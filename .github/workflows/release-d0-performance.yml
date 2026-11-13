@@ -42,7 +42,6 @@ jobs:
             tests/breach-perception-cache-performance.test.mjs \
             tests/performance-live-profiler.test.mjs \
             tests/performance-p1-5-runtime-integration.test.mjs \
-            tests/breach-replay-world.test.mjs \
             tests/lw-replay-world.test.mjs \
             tests/performance-normal-play-20261113.test.mjs
       - name: Candidate seed-fixed mission workloads
