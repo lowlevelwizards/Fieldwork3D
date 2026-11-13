@@ -7,7 +7,7 @@ import {ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type AchMichDetailLayers={
  bare:THREE.Group;hardware:THREE.Group;strap:THREE.Group;
- bindingMaterial:THREE.MeshStandardMaterial;
+ bindingMaterial:THREE.MeshBasicMaterial;
 };
 type Point=readonly [number,number,number];
 type Profile={
@@ -20,14 +20,14 @@ type Profile={
 const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  ach:{
   side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.68,
-  frontStud:[5.075,5.81,-3.12],rearStud:[5.075,5.10,1.86],
+  frontStud:[5.075,4.95,-3.12],rearStud:[5.075,3.91,1.86],
   hem:[[5.075,4.40,-5.535],[5.075,4.40,-2.20],
    [5.075,3.36,-1.50],[5.075,3.36,2.70],
    [5.075,2.68,3.55],[5.075,2.68,5.60]]
  },
  'mich-2002':{
   side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:3.365,
-  frontStud:[5.11,6.13,-3.10],rearStud:[5.115,5.42,3.05],
+  frontStud:[5.11,5.265,-3.10],rearStud:[5.115,4.52,3.05],
   hem:[[5.03,4.55,-5.70],[5.11,4.715,-4.48],
    [5.11,4.715,-1.90],[5.03,6.05,-1.25],
    [5.03,6.05,1.65],[5.115,3.97,2.30],
@@ -35,7 +35,7 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  },
  'mich-2001':{
   side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:3.33,
-  frontStud:[5.065,6.96,-3.16],rearStud:[5.015,5.32,3.79],
+  frontStud:[5.065,6.495,-3.16],rearStud:[5.015,3.91,3.79],
   hem:[[5.015,4.55,-5.71],[5.065,5.945,-4.60],
    [5.065,5.945,-1.96],[5.015,6.155,-1.45],
    [5.015,6.155,2.95],[5.015,3.33,3.80],
@@ -122,44 +122,44 @@ export function achMichRetentionPaths(
  for(const sign of [-1,1] as const){
   // Inset ~.60 behind outer shell face, with uppermost ends tucked beneath
   // the protective rubber binding. Front and rear both descend from behind.
-  const f:Point=[sign*4.49,achMichHemY(shell,p.frontStud[2])-.18,p.frontStud[2]];
-  const b:Point=[sign*4.49,achMichHemY(shell,p.rearStud[2])-.18,p.rearStud[2]];
-  const junction:Point=[sign*4.47,1.15,-3.92];
-  const chin:Point=[sign*2.30,-.16,-4.86];
-  result.push([f,junction],[b,[sign*4.53,2.02,-.25],junction],
+  const f:Point=[sign*4.49,achMichHemY(shell,p.frontStud[2])-.16,p.frontStud[2]];
+  const b:Point=[sign*4.49,achMichHemY(shell,p.rearStud[2])-.16,p.rearStud[2]];
+  // One quiet V immediately beneath the edge, then a broad under-jaw
+  // return. No independent green spike or outside-shell diagonal.
+  const junction:Point=[sign*4.47,1.22,-3.88];
+  const chin:Point=[sign*2.28,-.12,-4.88];
+  result.push([f,junction],[b,[sign*4.51,2.24,-.28],junction],
    [junction,chin]);
  }
  return result;
 }
+/** The webbing and chin pad are one physical assembly of the same
+ * material, as on the established PASGT system. The underside cup is
+ * joined at the exact two end points of the left and right chin straps.
+ */
 export function createAchMichRetentionGeometry(
  shell:typeof ACH_MICH_SHELLS[number]):THREE.BufferGeometry{
  const data:number[]=[];
  const paths=achMichRetentionPaths(shell);
  for(let i=0;i<paths.length;i++){
   const sign=i<3?-1:1;
-  // The first two legs create the restrained V underneath the side skirt;
-  // one final broad leg supports the chin cup, without an outside cage.
   const normal=new THREE.Vector3(sign*.68,0,-.74);
-  appendStrap(data,paths[i],normal,i%3===2?.45:.41);
+  appendStrap(data,paths[i],normal,i%3===2?.44:.41);
  }
+ const pt=(x:number,y:number,z:number):Point=>[x,y,z];
+ const topLeft=pt(-2.28,-.12,-4.88),topMiddle=pt(0,-.10,-4.98),
+  topRight=pt(2.28,-.12,-4.88);
+ const lowLeft=pt(-2.28,-.51,-4.88),lowMiddle=pt(0,-.55,-4.98),
+  lowRight=pt(2.28,-.51,-4.88);
+ for(const v of [topLeft,lowMiddle,lowLeft,topLeft,topMiddle,lowMiddle,
+  topMiddle,lowRight,lowMiddle,topMiddle,topRight,lowRight])data.push(...v);
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.achMichFourPoint=true;
- g.userData.chinWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH*2;
  g.userData.belowShellAnchors=true;
- return g;
-}
-function chinCupGeometry():THREE.BufferGeometry{
- const data:number[]=[];
- const l:Point=[-2.32,-.37,-4.91],m:Point=[0,-.42,-5.00],
-  r:Point=[2.32,-.37,-4.91];
- const ul:Point=[-2.32,.15,-4.91],um:Point=[0,.19,-5.00],
-  ur:Point=[2.32,.15,-4.91];
- for(const v of [l,m,um,l,um,ul,m,r,ur,m,ur,um])data.push(...v);
- const g=new THREE.BufferGeometry();
- g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
- g.computeVertexNormals();g.computeBoundingBox();
+ g.userData.integratedChinCup=true;
+ g.userData.chinWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH*2;
  return g;
 }
 export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetailLayers{
@@ -170,9 +170,11 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  const bare=hidden(parent,id+'-integrated-rubber-edge-binding'),
   hardware=hidden(parent,id+'-uncovered-retention-anchors'),
   strap=hidden(parent,id+'-broad-four-point-retention');
- const bindingMaterial=material(0x67705f);
- // One uniform material color is shared by all physical perimeter sections.
- bindingMaterial.vertexColors=false;
+ // Solid color, no normal-dependent brightness bands or faceted color steps.
+ // Recolored with the same shell swatch ledger as the original trim.
+ const bindingMaterial=new THREE.MeshBasicMaterial({
+  color:0x67705f,side:THREE.DoubleSide,vertexColors:false
+ });
  bindingMaterial.name='ach-mich-color-related-shell-binding';
  const edge=new THREE.Mesh(createAchMichBindingGeometry(shell),bindingMaterial);
  edge.name='ach-mich-rubber-shell-edge';edge.castShadow=false;
@@ -186,13 +188,10 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
    mesh.position.set(sign*(bolt[0]+.13),bolt[1],bolt[2]);
    mesh.castShadow=false;mesh.receiveShadow=false;hardware.add(mesh);
   }
- const webbing=material(0x59654f),pad=material(0x747c67);
+ const webbing=material(0x59654f);
  const main=new THREE.Mesh(createAchMichRetentionGeometry(shell),webbing);
- main.name='ach-mich-pasgt-width-four-point';main.castShadow=false;
+ main.name='ach-mich-integrated-four-point-and-chin-cup';main.castShadow=false;
  main.receiveShadow=false;strap.add(main);
- const cup=new THREE.Mesh(chinCupGeometry(),pad);
- cup.name='ach-mich-broad-chin-cup';cup.castShadow=false;
- cup.receiveShadow=false;strap.add(cup);
  // Keep each static material batched at creation; no global material/shader changes.
  consolidateVisualGroup(hardware);
  consolidateVisualGroup(strap);

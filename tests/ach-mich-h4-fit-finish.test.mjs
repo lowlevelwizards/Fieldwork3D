@@ -18,8 +18,8 @@ import {HEADWEAR_DETAIL_PIXEL_WORLD_SIZE}
 import {PIXEL_WORLD_SIZE} from '../src/rendering/pixel-recipes.ts';
 
 const thresholds={
- ach:{frontY:5.6,rearZ:2.3},'mich-2001':{frontY:6.8,rearZ:4.0},
- 'mich-2002':{frontY:5.9,rearZ:3.4}
+ ach:{frontY:4.9,rearZ:2.3},'mich-2001':{frontY:6.4,rearZ:4.0},
+ 'mich-2002':{frontY:5.2,rearZ:3.4}
 };
 test('H4 pronounced but localized crown chamfer is consistent across shell and drape',()=>{
  assert.ok(ACH_MICH_BEVEL_HEIGHT>=1.0);
