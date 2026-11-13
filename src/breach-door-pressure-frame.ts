@@ -14,6 +14,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
 import {crossingDoor} from './breach-passage.ts';
 import type {BodyDoorPressurePolicy} from './breach-door.ts';
+import {canDoorHandAssist} from './breach-door-hand-contact.ts';
 
 type TickClaims={
  at:number;
@@ -71,6 +72,7 @@ export function sessionDoorPressurePolicy(
 ):BodyDoorPressurePolicy{
  const frame=doorPressureTick(s);
  return {
+  canHandAssist:door=>canDoorHandAssist(s,actor,door),
   preferOpening:door=>{
    inspectDoor(s,frame,door);
    return frame.actorsOpening.has(actorKey(actor.id,door.id));
