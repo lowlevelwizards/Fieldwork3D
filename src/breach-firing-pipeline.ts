@@ -282,7 +282,7 @@ function updateContextualCrouch(s:Session,a:TeamActor):void{
    a.traversal!==null||a.squeeze||a.reload>0||
    !!a.treatmentActive||!!a.carryingId||
    a.plan.some(n=>n.kind==='move'||n.kind==='door'||n.kind==='tool'||
-     n.kind==='treat'||n.kind==='flash'||n.kind==='entry')||
+     n.kind==='treat'||n.kind==='flash'||n.entryDoorId!==undefined)||
    a.aim>.26||a.pace==='run';
  const automatic=a.autoCrouchOriginal==='stand';
  if(a.postureWasAuthored||busy){
