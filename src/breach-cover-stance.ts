@@ -77,11 +77,14 @@ export function advanceCoverStances(s:Session,dt=1/60):void{
   }
   const threat=!!a.targetId||a.side==='red'&&
     (!!a.contact||a.alert==='cover'||a.alert==='suspicious');
-  const target=picked?
-    coverStanceTarget(a.posture,picked.top,threat):0;
+  // The callback can update the candidate, despite TypeScript treating
+  // the callback's captured assignment as invisible control flow.
+  const selected=picked as StanceSurface|null;
+  const target=selected?
+    coverStanceTarget(a.posture,selected.top,threat):0;
   const previous=a.coverStanceDrop??0;
   const next=toward(previous,target,Math.max(0,dt)*13.5);
   a.coverStanceDrop=Math.abs(next)<.005?0:next;
-  a.coverStanceSource=picked?.id??null;
+  a.coverStanceSource=selected?.id??null;
  }
 }
