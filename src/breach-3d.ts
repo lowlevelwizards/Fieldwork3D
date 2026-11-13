@@ -141,8 +141,13 @@ export class TacticalScene3D{
    studioShadowPalette('plum-plus').fill,.60);
   /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
   private readonly presentationSight=new PresentationSightMemo();
-  private readonly profileSceneUpdate=
+  private profileSceneUpdate=
    new URLSearchParams(location.search).has('perf');
+  /** In-game PERF arms all scene timings even without ?perf=1 at launch.
+   * Hidden PERF continues recording, without changing render behavior. */
+  setPerformanceProfilingEnabled(enabled:boolean):void{
+   this.profileSceneUpdate=enabled;
+  }
   private scenePhaseStart=0;
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
    * wardrobe material/shadow generation as well as steady-state posing. */
