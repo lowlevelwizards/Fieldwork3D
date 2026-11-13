@@ -1076,7 +1076,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // arm from the weapon must not hide an unreachable world interaction.
     const contactDistance=i===0&&fullDoorContact?
       fullDoorContact.distanceTo(shoulder):0;
-    if(i===0&&reaching&&(!reachable||contactDistance>19.92))
+    if(i===0&&reaching&&!physicalContact&&
+       (!reachable||contactDistance>19.92))
       r.reachRequest={kind:'door',distance:Math.max(
         desired.distanceTo(shoulder),contactDistance)};
     // Impossible interactions must report the need for repositioning, not
