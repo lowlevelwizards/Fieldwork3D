@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
+import {assessFireLane} from '../src/breach-fire-safety.ts';
 import {fitWeaponPose} from '../src/breach-weapon-pose.ts';
 
 const base={x:0,z:0,heading:0,weaponYaw:0,
@@ -41,11 +42,18 @@ test('179: wall approach folds gun before impact without jumping sockets',()=>{
  assert.ok(tucked.stock.x<ready.stock.x-2);
  assert.deepEqual(tucked.stock.toArray(),legacy.stock.toArray());
 });
-test('179: an impossible blocked corridor suppresses shots, never moves actor',()=>{
+test('179: a nearby wall still vetoes the physical projectile path, without moving actor',()=>{
  const before=JSON.stringify(base);
- const result=weaponClearance(base,[],[],[wall(17)]);
+ const obstacle=wall(17);
+ const result=weaponClearance(base,[],[],[obstacle]);
  assert.equal(result.obstruction,true);
- assert.equal(result.blocked,true);
+ // A tucked muzzle may clear the wall, unlike the old arbitrary 18-unit
+ // exclusion; a real shot from that muzzle must still hit the wall.
+ const origin={x:result.muzzle.x,y:result.muzzle.z};
+ const lane=assessFireLane(origin,result.muzzle.y,
+  {x:100,y:0},result.muzzle.y,[],[obstacle],[]);
+ assert.ok(result.blocked||lane.blocker==='wall',
+  'either the rigid gun or the full projectile path must veto the wall');
  assert.ok(result.retraction>0);
  assert.equal(JSON.stringify(base),before);
 });
