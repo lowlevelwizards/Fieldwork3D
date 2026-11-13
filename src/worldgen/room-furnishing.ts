@@ -11,8 +11,9 @@ import {optionalOperationalFixtures} from './archetype-operational-variants.ts';
 import {orientFurnishings} from './prop-orientation.ts';
 import {ROOM_CONTRACTS} from './room-contracts.ts';
 import {recoverRoomEssentials} from './room-essential-recovery.ts';
-import {retainsTacticalSightline,engagementRoomRelevant,tacticalFurnishingValue} from './room-sightline-audit.ts';
-import {ballisticFurnishingValue,tacticalFurnitureFamily} from './room-ballistic-furnishing.ts';
+import {retainsTacticalSightline,engagementRoomRelevant} from './room-sightline-audit.ts';
+import {tacticalFurnitureFamily} from './room-ballistic-furnishing.ts';
+import {createTacticalFurnishingEvaluator} from './tactical-furnishing-evaluator.ts';
 import {placeServiceQueues} from './service-queue-layout.ts';
 import {planKitchenWorklines} from './kitchen-workline.ts';
 import {circulationReservations,overlapsCirculationReservation} from './circulation-reservations.ts';
@@ -217,6 +218,12 @@ function perimeterPositions(room:Room,w:number,h:number):Pt[]{
 export function furnishRooms(site:Site,seed:number):Site{
  const rng=seeded(seed^0x4f012f32);
  const reservedCirculation=circulationReservations(site);
+ // Door/opening centers are static during furnishing. Do not repeatedly
+ // allocate midpoint objects or call hypot for every candidate in every room.
+ const doorCenters=site.doors.map(d=>({x:(d.a.x+d.b.x)/2,
+   y:(d.a.y+d.b.y)/2}));
+ const openingCenters=(site.openings??[]).map(d=>({x:(d.a.x+d.b.x)/2,
+   y:(d.a.y+d.b.y)/2}));
  const mandatoryThroughRoutes=reservedCirculation.filter(r=>
    r.kind==='through-route'&&['apartment','townhouse','motel','office'].includes(site.archetype??''));
  // Preserve architectural sills and outdoor fixtures while furnishing interiors.
@@ -384,13 +391,17 @@ export function furnishRooms(site:Site,seed:number):Site{
    const positions:Anchor[]=[item.anchor,'ne','sw','se','nw','west','east'];
    const rotation=Math.floor(rng()*4);
    const order=i===0?positions:[positions[0],...positions.slice(1+rotation),...positions.slice(1,1+rotation)];
+   // One stable occupancy snapshot per item, updated only after commit.
+   // The previous candidate loop rebuilt this array in up to four gates.
+   const occupied=[...output,...placed];
+   const fixtures=occupied.filter(o=>o.fixture);
+   const zoneRooms=site.rooms.filter(r=>r.kind==='room'&&
+      (r.zoneId??r.id)===zone);
+   const zoneFixtures=fixtures.filter(o=>zoneRooms.some(r=>
+      o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h));
    const candidates=[
-     ...activityClusterCandidates(room,item.id,w,h,
-       [...output,...placed].filter(o=>o.fixture)),
-     ...relatedFurniturePositions(room,item.id,w,h,
-       [...output,...placed].filter(o=>o.fixture&&site.rooms.some(r=>
-         r.kind==='room'&&(r.zoneId??r.id)===zone&&
-         o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h))),
+     ...activityClusterCandidates(room,item.id,w,h,fixtures),
+     ...relatedFurniturePositions(room,item.id,w,h,zoneFixtures),
      ...order.map(anchor=>position(room,w,h,anchor)),
      ...perimeterPositions(room,w,h),
    ];
@@ -400,6 +411,14 @@ export function furnishRooms(site:Site,seed:number):Site{
    // This reuses circulation, density, overlap and doorway safety gates.
    const rankTactical=i>=essential.length&&engagementRoomRelevant(room)&&
     tacticalFurnitureFamily(item.id);
+   const isOptional=i>=essential.length;
+   const budgetOk=!isOptional||withinOptionalFurnitureBudget(
+     room,occupied,w*h);
+   const physical={...site,cover:occupied};
+   // Baseline ballistic and sightline scans are invariant over up to five
+   // candidates. Compute them once, not 2–3 times for each position.
+   const evaluate=rankTactical?
+     createTacticalFurnishingEvaluator(physical,room):null;
    let bestTacticalValue=-Infinity,validOptions=0;
    for(const p of candidates){
     if(p.x-w/2<room.x+9||p.x+w/2>room.x+room.w-9||
@@ -407,8 +426,7 @@ export function furnishRooms(site:Site,seed:number):Site{
     const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
     // Only optional additions obey the soft density budget. Never remove
     // mandatory sanitary fixtures or equipment to satisfy a furniture ratio.
-    if(i>=essential.length&&!withinOptionalFurnitureBudget(
-      room,[...output,...placed],w*h))continue;
+    if(!budgetOk)break;
     // Required groups retain access to this space; reject optional
     // extras that would eat an everyday pedestrian approach.
     // Mandatory fixtures may approach an entry wall but cannot sever the
@@ -416,20 +434,19 @@ export function furnishRooms(site:Site,seed:number):Site{
     if(overlapsCirculationReservation(candidate,
       i<essential.length?mandatoryThroughRoutes:reservedCirculation,room.id))
       continue;
-    if(site.doors.some(d=>Math.hypot(p.x-(d.a.x+d.b.x)/2,p.y-(d.a.y+d.b.y)/2)<Math.max(compact?39:54,Math.max(w,h)/2+(compact?19:30))))continue;
-    if((site.openings??[]).some(o=>Math.hypot(p.x-(o.a.x+o.b.x)/2,
-      p.y-(o.a.y+o.b.y)/2)<Math.max(65,Math.max(w,h)/2+32)))continue;
+    const doorLimit=Math.max(compact?39:54,
+       Math.max(w,h)/2+(compact?19:30));
+    if(doorCenters.some(d=>(p.x-d.x)**2+(p.y-d.y)**2<doorLimit**2))continue;
+    const openingLimit=Math.max(65,Math.max(w,h)/2+32);
+    if(openingCenters.some(o=>(p.x-o.x)**2+(p.y-o.y)**2<openingLimit**2))continue;
     if(reserved.some(q=>Math.abs(q.x-p.x)<w/2+24&&Math.abs(q.y-p.y)<h/2+24))continue;
-    if([...output,...placed].some(o=>overlap(o,candidate)))continue;
+    if(occupied.some(o=>overlap(o,candidate)))continue;
     // Additional tall clutter should create choices without completely
     // erasing sightlines at the REAL room doors. Essentials are exempt.
-    if(i>=essential.length&&!retainsTacticalSightline(
-      {...site,cover:output},room,candidate,placed))continue;
+    if(isOptional&&!rankTactical&&!retainsTacticalSightline(
+      physical,room,candidate,[]))continue;
     if(!rankTactical){chosen=candidate;break;}
-    const physical={...site,cover:output};
-    const ballistic=ballisticFurnishingValue(physical,room,candidate,placed);
-    const score=ballistic===-Infinity?-Infinity:
-      ballistic+tacticalFurnishingValue(physical,room,candidate,placed);
+    const score=evaluate!(candidate);
     if(score>bestTacticalValue&&score!==-Infinity){
       bestTacticalValue=score;chosen=candidate;
     }
