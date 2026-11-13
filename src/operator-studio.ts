@@ -26,6 +26,9 @@ import {requestedStudioRenderQuality,studioQualityLink}
  from './operator-studio-render-quality.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
+import {readHelmetField,resolveHelmetField,HELMET_FIELD_COLORS,
+ HELMET_FIELD_CONCEALMENT,HELMET_FIELD_TILTS,HELMET_FIELD_GOGGLES,
+ type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
 import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
  pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
 import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
@@ -1435,6 +1438,80 @@ function renderMaterials(){
       ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
       concealment:id as typeof details.concealment}}));
    }
+  }
+  if(['ach','mich-2001','mich-2002','pasgt'].includes(helmetShell)){
+   const historical=helmetShell==='pasgt';
+   const currentField=readHelmetField(w.helmetField);
+   const effective=resolveHelmetField(helmetShell,currentField);
+   const changeField=(changes:Partial<HelmetFieldOptions>)=>{
+    const before=current();
+    const carry=before.helmetField??{
+     ...readHelmetField(undefined),
+     band:historical&&readPasgtDetails(before.pasgtDetails,before.helmetSetup).band==='elastic'
+    };
+    changeWardrobe({...before,helmetField:readHelmetField({...carry,...changes})});
+   };
+   const picker=(title:string,key:'bandColor'|'webbingColor',
+    help:string)=>{
+    const section=row(title,help);
+    addSelect(section,HELMET_FIELD_COLORS.map(c=>[c,
+     c==='auto'?'AUTO · PERIOD / SHELL':c==='match'?'MATCH SHELL':
+     c==='olive'?'OLIVE / RANGER GREEN':c==='tan'?'TAN / COYOTE':'BLACK'] as const),
+     currentField[key],value=>changeField({[key]:value}));
+   };
+   const toggle=(section:HTMLElement,key:keyof HelmetFieldOptions,
+    title:string,glyph:string,availability=true)=>{
+    if(!availability)return;
+    const on=effective[key]===true;
+    const b=makeButton(title,on,()=>changeField({[key]:!on}));
+    b.classList.add('helmet-option-card');
+    const icon=document.createElement('span');icon.className='helmet-option-glyph';
+    icon.textContent=glyph;icon.setAttribute('aria-hidden','true');
+    b.prepend(icon);section.append(b);
+   };
+   const rowOf=(title:string,help:string)=>row(title,help);
+   const band=rowOf('FIELD RETAINING BAND',
+    historical?'Period elastic band, including rear cat-eye markers.':
+    'One low-profile elastic band over the helmet cover or painted shell.');
+   toggle(band,'band','ELASTIC BAND','▰');
+   picker('BAND COLOR','bandColor','Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
+   const foliage=rowOf('FIELD CONCEALMENT',
+    'One option at a time. Slits/loops, scrim, netting, and graded foliage are physical additions, not texture changes.');
+   addSelect(foliage,HELMET_FIELD_CONCEALMENT.map(c=>[c,
+    c.replaceAll('-',' ').toUpperCase()] as const),
+    currentField.concealment,v=>changeField({concealment:
+     v as HelmetFieldOptions['concealment']}));
+   const retention=rowOf('CHINSTRAP & RIDE',
+    'Unfastened uses two short dangling straps; the worn shell can be level or slightly tilted.');
+   toggle(retention,'fastened','FASTENED','⌁');
+   addSelect(retention,HELMET_FIELD_TILTS.map(c=>[c,c.toUpperCase()] as const),
+    currentField.tilt,v=>changeField({tilt:v as HelmetFieldOptions['tilt']}));
+   picker('RETENTION WEBBING COLOR','webbingColor',
+    'Auto matches period/shell family. Choose olive, tan or black to override.');
+   const structure=rowOf('HELMET STRUCTURE',
+    historical?'Optional period NVG bracket; modern rails, bungees and Velcro are intentionally excluded.':
+    'Independent modular mounting pieces; none change real equipment or protection.');
+   toggle(structure,'shroud','NVG SHROUD','▣');
+   toggle(structure,'rails','SIDE RAILS','▤',!historical);
+   toggle(structure,'bungees','BUNGEES','⌢',!historical);
+   toggle(structure,'velcro','VELCRO PANELS','▦',!historical);
+   const eyewear=rowOf('GOGGLE STOWAGE',
+    'On eyes, strapped over the helmet brow, or rear-stowed. The sleeve is visible only when stowed.');
+   addSelect(eyewear,HELMET_FIELD_GOGGLES.map(c=>[c,
+    c==='none'?'NONE':c==='eyes'?'ON EYES':c==='front'?'FRONT STOWED':'REAR STOWED'] as const),
+    currentField.goggles,v=>changeField({goggles:v as HelmetFieldOptions['goggles']}));
+   if(currentField.goggles==='front'||currentField.goggles==='rear')
+    toggle(eyewear,'goggleSleeve','FABRIC SLEEVE','▥');
+   const addons=rowOf('HELMET ADD-ONS',
+    historical?'Conservative period field kit; modern electronic/counterweight systems are unavailable.':
+    'Independent attachments may be mixed with shroud, rails, bungees and Velcro.');
+   toggle(addons,'strobe','IR STROBE','✦');
+   toggle(addons,'counterweight','COUNTERWEIGHT','▣',!historical);
+   toggle(addons,'battery','BATTERY PACK','▥',!historical);
+   toggle(addons,'light','HELMET LIGHT','◉',!historical);
+   toggle(addons,'camera','CAMERA','◈',!historical);
+   toggle(addons,'chemlight','CHEMLIGHT','│');
+   toggle(addons,'patches','PATCH / IDENTIFIER','▤');
   }
   if(item==='police-helmet'){
    const pos=row('POLICE PROTECTIVE VISOR',
