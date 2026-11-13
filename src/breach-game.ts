@@ -218,6 +218,8 @@ export type TeamActor=Operator & {
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
+  /** A3 fixed-step micro-aim state. Never sourced from render history. */
+  aimSideOffset?:number;aimSideTarget?:number;lastAimSideProbeAt?:number;
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
   /** Bounded, idle-only clearer gaze; never an authored aim or detection. */
   clearLookBearing?:number|null;lastClearLookProbeAt?:number;
