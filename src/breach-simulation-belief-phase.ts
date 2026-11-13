@@ -2,6 +2,7 @@
  * It never uses replay/renderer knowledge; each actor disproves only an
  * estimated contact position that they could physically observe.
  */
+import {sightRangeForSite} from './breach-visibility-range-policy.ts';
 import {angleDifference,length,targetAngle} from './breach-plan.ts';
 import {ageAwareness,clearObservedPosition} from './breach-awareness.ts';
 import type {Pt} from './breach-core.ts';
@@ -16,7 +17,7 @@ export function advanceBeliefAgingPhase(s:Session,h:number,
     for(const belief of Object.values(actor.awareness.contacts)){
       // Only direct vision of the *estimated floor position* can disprove it.
       if((actor.awareness.visualProgress[belief.id]??0)>.95)continue;
-      if(s.seconds-belief.lastAt<.65||d(actor.p,belief.estimate)>235)continue;
+      if(s.seconds-belief.lastAt<.65||d(actor.p,belief.estimate)>sightRangeForSite(s.site)-5)continue;
       if(Math.abs(angleDifference(actor.heading,angle(actor.p,belief.estimate)))>.90)continue;
       if(unobstructed(actor.p,belief.estimate,s,actor.posture==='crouch'))
         clearObservedPosition(actor.awareness,belief.id);
