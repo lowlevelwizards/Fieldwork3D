@@ -209,6 +209,9 @@ export type TeamActor=Operator & {
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
   postureChangedAt?:number;
+  /** A3.3 automatic, self-only friendly-cover crouch, not an authored stance. */
+  postureWasAuthored?:boolean;autoCrouchUntil?:number;
+  autoCrouchOriginal?:Posture|null;lastAutoCrouchProbeAt?:number;
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
