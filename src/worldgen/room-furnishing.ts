@@ -341,6 +341,8 @@ export function furnishRooms(site:Site,seed:number):Site{
     undefined;
   const available=specialized??defaultItems;
   const placed:Obstacle[]=[];
+  const zoneRooms=site.rooms.filter(r=>r.kind==='room'&&
+     (r.zoneId??r.id)===zone);
   const compact=room.w<108||room.h<104;
   const roomItems=compact?available.slice(0,1):available;
   // Complete required functional groups in single-cell zones. Multi-cell
@@ -388,6 +390,15 @@ export function furnishRooms(site:Site,seed:number):Site{
    if(w>room.w-24||h>room.h-24){
     furnishingIssues.push({roomId:room.id,fixture:item.id,reason:'insufficient-room-size'});continue;
    }
+   // The optional density decision cannot change until this item commits.
+   // Reject now before producing candidates or scanning 2.5D cover baselines.
+   const isOptional=i>=essential.length;
+   if(isOptional&&!withinOptionalFurnitureBudget(
+     room,[...output,...placed],w*h)){
+     furnishingIssues.push({roomId:room.id,fixture:item.id,
+       reason:'all-placements-blocked'});
+     continue;
+   }
    const positions:Anchor[]=[item.anchor,'ne','sw','se','nw','west','east'];
    const rotation=Math.floor(rng()*4);
    const order=i===0?positions:[positions[0],...positions.slice(1+rotation),...positions.slice(1,1+rotation)];
@@ -395,8 +406,6 @@ export function furnishRooms(site:Site,seed:number):Site{
    // The previous candidate loop rebuilt this array in up to four gates.
    const occupied=[...output,...placed];
    const fixtures=occupied.filter(o=>o.fixture);
-   const zoneRooms=site.rooms.filter(r=>r.kind==='room'&&
-      (r.zoneId??r.id)===zone);
    const zoneFixtures=fixtures.filter(o=>zoneRooms.some(r=>
       o.x>r.x&&o.x<r.x+r.w&&o.y>r.y&&o.y<r.y+r.h));
    const candidates=[
@@ -411,9 +420,6 @@ export function furnishRooms(site:Site,seed:number):Site{
    // This reuses circulation, density, overlap and doorway safety gates.
    const rankTactical=i>=essential.length&&engagementRoomRelevant(room)&&
     tacticalFurnitureFamily(item.id);
-   const isOptional=i>=essential.length;
-   const budgetOk=!isOptional||withinOptionalFurnitureBudget(
-     room,occupied,w*h);
    const physical={...site,cover:occupied};
    // Baseline ballistic and sightline scans are invariant over up to five
    // candidates. Compute them once, not 2–3 times for each position.
@@ -426,7 +432,6 @@ export function furnishRooms(site:Site,seed:number):Site{
     const candidate:Obstacle={...p,w,h,fixture:item.id,low:asset.cover==='low'};
     // Only optional additions obey the soft density budget. Never remove
     // mandatory sanitary fixtures or equipment to satisfy a furniture ratio.
-    if(!budgetOk)break;
     // Required groups retain access to this space; reject optional
     // extras that would eat an everyday pedestrian approach.
     // Mandatory fixtures may approach an entry wall but cannot sever the
