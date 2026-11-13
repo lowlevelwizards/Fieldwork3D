@@ -23,6 +23,7 @@ on:
       - 'a3-physicality-lab.html'
       - 'tests/animation-a3-*'
       - 'tests/breach-two-sided-fire-recovery.test.mjs'
+      - 'tests/breach-two-sided-fire-recovery.test.mjs'
       - 'docs/animation-a3-*'
       - '.github/workflows/animation-a3-2-4.yml'
   workflow_dispatch:
