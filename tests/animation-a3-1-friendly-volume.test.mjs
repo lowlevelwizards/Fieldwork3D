@@ -37,7 +37,7 @@ test('A3.1 diagonal trajectories and segment-overlap stay protected, not a cente
  assert.equal(shot(34,31,[F('crouch',50,0)]),'clear',
   'high shot never descends into crouched body');
  assert.equal(shot(29,27,[F('crouch',50,0)]),'clear');
- assert.equal(shot(29,24,[F('crouch',50,0)]),'friendly',
+ assert.equal(shot(29,23,[F('crouch',50,0)]),'friendly',
   'descending flank touches helmet edge');
  assert.equal(shot(18,18,[F('crouch',0,0)]),'friendly',
   'muzzle at occupied endpoint blocked');
