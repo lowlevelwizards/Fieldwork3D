@@ -351,6 +351,7 @@ function fire(s:Session,a:TeamActor,dt:number){
  // A3.2: only simulation time moves the tactical rifle accommodation.
  // Renderer/replay cannot initiate an offset or authorize a shot.
  if(a.health<=0||a.reload>0||a.traversal||a.squeeze||
+    a.firePolicy==='hold'||a.firePolicy==='suppress'||
     a.pace==='run'||a.plan[0]?.kind==='tool'||
     a.plan[0]?.kind==='treat'||a.plan[0]?.kind==='door')
    a.aimSideTarget=0;
