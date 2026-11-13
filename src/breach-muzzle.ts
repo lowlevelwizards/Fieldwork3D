@@ -23,6 +23,7 @@ export type MuzzleInput={x:number;z:number;heading:number;
   carryOverride?:Handling;carryBlend?:number;
   shoulderOffset?:number;shoulderPullback?:number;
   posture?:'stand'|'crouch';
+  coverStanceDrop?:number;
   equipment?:EquipmentLoadout};
 export const MUZZLE_TIP=19.5;
 export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
@@ -56,7 +57,8 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
   // Must agree with the visible neutral chest: no render-time history.
   return {x:p.x+local.x,y:26+legRestRise(p.velocity,
     p.posture??'stand')+local.y-
-    (p.posture==='crouch'?8:0),z:p.z+local.z,
+    (p.posture==='crouch'?8:0)-(p.coverStanceDrop??0),
+    z:p.z+local.z,
     yaw:Math.atan2(axis.z,axis.x),
     pitch:Math.atan2(axis.y,Math.hypot(axis.x,axis.z))};
 }
