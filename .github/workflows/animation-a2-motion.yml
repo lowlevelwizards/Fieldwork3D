@@ -1,0 +1,56 @@
+name: Animation A2 motion quality
+on:
+  pull_request:
+    paths:
+      - 'src/breach-contact-balance.ts'
+      - 'src/breach-body-motion.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'tests/animation-a2-*.test.mjs'
+      - 'scripts/audit-animation-a2.mjs'
+      - 'scripts/smoke-animation-a2.mjs'
+      - 'docs/animation-a2-0-a2-1-scope.md'
+      - '.github/workflows/animation-a2-motion.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: A2 contact/body, replay, published-pose regressions
+        run: node --experimental-strip-types --test tests/animation-a2-*.test.mjs tests/animation-a0-baseline.test.mjs tests/animation-a1-choreography.test.mjs tests/breach-motion-*.test.mjs tests/breach-126.test.mjs tests/breach-127.test.mjs tests/breach-gait-acceptance.test.mjs tests/breach-unified-pose-stability.test.mjs
+      - name: A2 reproducible motion report
+        run: node --experimental-strip-types scripts/audit-animation-a2.mjs --out artifacts/animation-a2/report.json
+      - name: Build and typecheck
+        run: npm run build
+      - name: Upload A2 time series
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animation-a2-motion-report
+          path: artifacts/animation-a2/report.json
+          if-no-files-found: ignore
+  gallery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: A2 actual mobile/desktop WebGL motion gallery
+        run: node scripts/smoke-animation-a2.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: animation-a2-mobile-desktop-gallery
+          path: artifacts/animation-a2/gallery/
+          if-no-files-found: ignore
