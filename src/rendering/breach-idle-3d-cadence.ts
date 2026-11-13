@@ -7,6 +7,7 @@ export const IDLE_3D_TARGET_FRAME_MS=1000/30;
 export const IDLE_3D_INPUT_GRACE_MS=800;
 export type Idle3DFrameInput=Readonly<{
  enabled:boolean;mode:'idle'|'live'|'replay'|'suspended';
+ inputGraceMs?:number;
  viewMode:'iso'|'top'|'plan2d';studioOccludes:boolean;
  now:number;lastSceneAt:number;lastSceneMode:string|null;
  sameSession:boolean;lastInputAt:number;
@@ -19,7 +20,7 @@ export function shouldSubmitIdle3D(x:Idle3DFrameInput):boolean{
     !Number.isFinite(x.lastSceneAt))return true;
  // Dragging, tapping, zooming, keyboard commands and camera easing stay at
  // normal cadence. This is not an input/gameplay throttle.
- if(x.now-x.lastInputAt<IDLE_3D_INPUT_GRACE_MS)return true;
+ if(x.now-x.lastInputAt<(x.inputGraceMs??IDLE_3D_INPUT_GRACE_MS))return true;
  // Allow 1.5ms tolerance for browsers with 16.67ms RAF cadence.
  return x.now-x.lastSceneAt>=IDLE_3D_TARGET_FRAME_MS-1.5;
 }

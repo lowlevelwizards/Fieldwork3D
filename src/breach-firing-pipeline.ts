@@ -95,10 +95,13 @@ function random(s:Session){
 function observedCivilianFireLane(s:Session,a:TeamActor,from:Pt,
  muzzleHeight:number,to:Pt,targetHeight:number):CivilianActor|null{
  if(a.side!=='blue'||!s.civilians.length)return null;
- const observed=s.civilians.filter(c=>c.health>0&&
+ // Reuse the exact predicates/ordering without a filter callback closure;
+ // only actually observed civilians are considered for fire-line safety.
+ const observed:CivilianActor[]=[];
+ for(const c of s.civilians)if(c.health>0&&
    d(a.p,c.p)<260&&
    Math.abs(angleDifference(a.heading,angle(a.p,c.p)))<1.2&&
-   liveVisibility(s,c.p)&&unobstructed(a.p,c.p,s,false));
+   liveVisibility(s,c.p)&&unobstructed(a.p,c.p,s,false))observed.push(c);
  return knownCivilianInFireLane(from,muzzleHeight,to,targetHeight,observed);
 }
 function civilianShotWithheld(s:Session,a:TeamActor):void{
@@ -134,16 +137,20 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  const n=a.plan[0];
  if(a.side==='blue'&&n&&n.kind!=='move'&&n.kind!=='look'&&
    n.kind!=='wait')return false;
- const friends=s.operators.filter(other=>other!==a&&other.health>0&&
-   other.side===a.side).map(safetyBodyFor);
- // Recovery must never rely on moving another body to open the lane.
- const people=[
-   ...s.operators.filter(other=>other!==a&&other.health>0).map(o=>o.p),
-   ...s.civilians.filter(c=>c.health>0).map(c=>c.p)
- ];
+ // One live roster scan replaces three filter/map/spread passes. Keep
+ // original operator-then-civilian ordering and every real body as a blocker.
+ const friends:ReturnType<typeof safetyBodyFor>[]=[];
+ const people:Pt[]=[];
+ for(const other of s.operators){
+  if(other===a||other.health<=0)continue;
+  if(other.side===a.side)friends.push(safetyBodyFor(other));
+  people.push(other.p);
+ }
+ for(const civil of s.civilians)if(civil.health>0)people.push(civil.p);
+ const world=sessionWorldGeometry(s);
  const aimYaw=angle(a.p,target.p);
  const clearBody=(candidate:Pt)=>
-   sweptBodyClear(a.p,candidate,s.doors,8,sessionWorldGeometry(s))&&
+   sweptBodyClear(a.p,candidate,s.doors,8,world)&&
    people.every(p=>{
     const start=d(a.p,p),end=d(candidate,p);
     // A stack may ALREADY be closer than normal comfortable spacing.
@@ -161,7 +168,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
      shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
      aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,velocity:0,recoil:a.recoil,
      threatRange:candidateRange
-   },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
+   },s.doors,world.cover,world.walls,
      friends);
    if(clearance.blocked)return false;
    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
@@ -175,7 +182,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
    if(assessFriendlyLane(from,clearance.muzzle.y,far,farHeight,
      friends).blocker==='friendly')return false;
    return assessFireLane(from,clearance.muzzle.y,target.p,height,
-      sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends).blocker==='clear';
+      world.cover,world.walls,s.doors,friends).blocker==='clear';
  };
  const correction=choosePhysicalCorrection(a.p,aimYaw,kind,
    clearBody,legalShot);
@@ -311,7 +318,8 @@ function updateContextualCrouch(s:Session,a:TeamActor):void{
  a.lastAutoCrouchProbeAt=s.seconds;
  let helpful=false;
  const world=sessionWorldGeometry(s);
- for(const rear of team(s)){
+ const allies=team(s);
+ for(const rear of allies){
   if(rear===a||rear.health<=0||rear.aim<.16||
      rear.velocity>10||rear.firePolicy==='hold'||!rear.targetId)
    continue;
@@ -348,8 +356,9 @@ function updateContextualCrouch(s:Session,a:TeamActor):void{
      assessFriendlyLane(origin,clearance.muzzle.y,outgoing,farHeight,
        [crouchedBody]).blocker!=='clear')
     continue;
-  const remaining=team(s).filter(o=>o!==a&&o!==rear&&o.health>0)
-    .map(safetyBodyFor);
+  const remaining:ReturnType<typeof safetyBodyFor>[]=[];
+  for(const other of allies)if(other!==a&&other!==rear&&other.health>0)
+   remaining.push(safetyBodyFor(other));
   if(assessFriendlyLane(origin,clearance.muzzle.y,target.p,
       targetHeight,remaining).blocker==='friendly')continue;
   if(assessFriendlyLane(origin,clearance.muzzle.y,outgoing,farHeight,
@@ -391,8 +400,9 @@ function updatePassiveWatchMicroAim(s:Session,a:TeamActor):void{
  const yaw=watch.mode==='fixed'&&watch.angle!==undefined?
     watch.angle:watch.point?
     angle(a.p,watch.point):a.weaponYaw;
- const friends=team(s).filter(other=>other!==a&&other.health>0)
-   .map(safetyBodyFor);
+ const friends:ReturnType<typeof safetyBodyFor>[]=[];
+ for(const other of team(s))if(other!==a&&other.health>0)
+  friends.push(safetyBodyFor(other));
  if(!friends.length){a.aimSideTarget=0;return;}
  const world=sessionWorldGeometry(s);
  const clear=(offset:number)=>{
@@ -506,15 +516,17 @@ function fire(s:Session,a:TeamActor,dt:number){
     }
   }
   const enemiesOf=a.side==='blue'?enemies(s):team(s);
-  const visible=enemiesOf.filter(e=>inSight(a,e,s));
+  const visible:TeamActor[]=[];
+  for(const enemy of enemiesOf)if(inSight(a,enemy,s))visible.push(enemy);
   // Legacy FOCUS saves use ordinary acquisition rather than an
   // inaccessible exclusive lock after FOCUS is removed from the interface.
   // Acquisition tests the SAME actual muzzle origin, height and friendly
   // body trajectory as ignition. The candidate-facing preview is only a
   // feasibility test; shot-time still rechecks the true settled weapon yaw.
   const world=sessionWorldGeometry(s);
-  const friends=s.operators.filter(other=>other!==a&&other.health>0&&
-    other.side===a.side).map(safetyBodyFor);
+  const friends:ReturnType<typeof safetyBodyFor>[]=[];
+  for(const other of s.operators)if(other!==a&&other.health>0&&
+      other.side===a.side)friends.push(safetyBodyFor(other));
   const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
     const clearance=weaponClearance({x:a.p.x,z:a.p.y,
       heading:a.heading,weaponYaw:angle(a.p,candidate.p),

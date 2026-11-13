@@ -144,10 +144,17 @@ function setProfilerOpen(open:boolean):boolean{
 function toggleProfiler():boolean{return setProfilerOpen(!!perfOverlay?.hidden||!perfOverlay);}
 function isProfilerVisible():boolean{return !!perfOverlay&&!perfOverlay.hidden;}
 function isProfilerRecording():boolean{return !!perfOverlay;}
-// Explicit A/B only. At rest, 3D can submit at 30Hz while the RAF,
-// 2D order overlays, HUD, audio and all game simulation remain unchanged.
-const idle3dExperiment=config.boot.idle3dExperiment;
-let last3dInputAt=-Infinity,last3dUpdateAt=-Infinity;
+// R1: On coarse-pointer devices, a genuinely untouched planning/terminal
+// scene may submit 3D at 30Hz. Every command, camera gesture and mode change
+// immediately restores full-rate 3D. RAF, UI, audio and 60Hz gameplay never
+// change cadence. Desktop stays full rate unless explicitly opted in.
+const idle3dAuto=!config.boot.idle3dExperiment&&
+ !config.boot.idle3dDisabled&&typeof window!=='undefined'&&
+ typeof window.matchMedia==='function'&&
+ window.matchMedia('(pointer:coarse)').matches;
+const idle3dExperiment=config.boot.idle3dExperiment||idle3dAuto;
+let last3dInputAt=idle3dAuto?performance.now():-Infinity;
+let last3dUpdateAt=-Infinity;
 let last3dSession:Session|null=null,last3dMode:RuntimeFrameMode|null=null;
 let idle3dSkipped=0;
 if(idle3dExperiment){
@@ -307,11 +314,16 @@ function tick(now:number){
   const studioOccludesTactical=config.isStudioVisible()&&
    !replayQuickVideo.active;
   const stageAvailable=!studioOccludesTactical&&!!stage&&viewMode!=='plan2d';
+  // A fresh planning transition gets a full input-grace window, even
+  // without a pointer event (e.g. after an automatic mission transition).
+  if(idle3dAuto&&frameMode==='idle'&&
+     (last3dMode!=='idle'||last3dSession!==state))last3dInputAt=now;
   const updated3d=stageAvailable&&shouldSubmitIdle3D({
    enabled:idle3dExperiment,mode:frameMode,viewMode,
    studioOccludes:studioOccludesTactical,now,
    lastSceneAt:last3dUpdateAt,lastSceneMode:last3dMode,
-   sameSession:last3dSession===state,lastInputAt:last3dInputAt
+   sameSession:last3dSession===state,lastInputAt:last3dInputAt,
+   inputGraceMs:idle3dAuto?1200:undefined
   });
   if(stageAvailable&&!updated3d)idle3dSkipped++;
   // The presentation-only idle clock must advance by actual elapsed wall
@@ -452,7 +464,8 @@ function tick(now:number){
       const sight=drainSightDiagnostics();
       const scenePhases=updated3d?stats?.scenePhases:null;
       const output='MODE '+frameMode+' (recent 120 frames)'+
-        (idle3dExperiment?' · IDLE3D 30 · SKIPS '+idle3dSkipped:'')+
+        (idle3dExperiment?' · IDLE3D '+(idle3dAuto?'AUTO ':'30 ')+
+          '· SKIPS '+idle3dSkipped:'')+
         '\nJS '+m.p50.toFixed(1)+'ms · P95 '+
         m.p95.toFixed(1)+' · MAX '+m.worst.toFixed(1)+
         '\nRAF GAP P50 '+m.rafP50.toFixed(1)+'ms · P95 '+

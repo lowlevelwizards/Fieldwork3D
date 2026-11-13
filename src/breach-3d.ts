@@ -64,7 +64,7 @@ import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
 import {BreachContactShadowBatch} from './rendering/breach-contact-shadow-batch.ts';
 import {RepeatedFixtureBatches} from './rendering/breach-repeated-fixture-batches.ts';
-import {ShadowUpdateController,stationaryShadowFingerprint,shadowEligibleBox}
+import {PausedShadowSceneController,shadowEligibleBox}
   from './rendering/breach-shadow-controller.ts';
 
 import {type WearKind,type WearMark} from './worldgen/environment-wear.ts';
@@ -614,7 +614,9 @@ export class TacticalScene3D{
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
   // One shared cosmetic draw rather than two transparent WebGL passes per rig.
   private readonly contactShadowBatch=new BreachContactShadowBatch(this.scene);
-  private readonly shadowUpdates=new ShadowUpdateController();
+  private readonly shadowUpdates=new PausedShadowSceneController();
+  private readonly shadowAppearanceKey=(actor:{id:string}):string|undefined=>
+    this.actors.get(actor.id)?.physical.root.userData.fieldworkLightingAppearanceKey as string|undefined;
   private shadowLodTransitions=0;
   private fogUnknown:THREE.InstancedMesh;
   private fogExplored:THREE.InstancedMesh;
@@ -2497,23 +2499,18 @@ export class TacticalScene3D{
     const dynamicShadows=s.phase==='running'||
       ((s.phase==='won'||s.phase==='lost')&&
         this.terminalPoseSeconds<1.0);
-    const shadowSignature=dynamicShadows?'':stationaryShadowFingerprint({
+    // Reuse the live rig's appearance fingerprint: no duplicated wardrobe
+    // serialization or transient actor/door arrays on unchanged idle frames.
+    // The controller compares every scalar and both complete ordered rosters.
+    if(this.shadowUpdates.shouldRefresh(dynamicShadows,{
       site:s.site?.seed??null,phase:s.phase,selected,
       focusX:shadowPoint.x,focusY:shadowPoint.y,
       objectRevision:s.objectRevision,known:s.seenGround.size,
       intelMode:s.intel.mode,lighting:s.lightingMode,
-      actors:s.operators.map(a=>({
-        id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
-        posture:a.posture,health:a.health,weaponYaw:a.weaponYaw,
-        recoil:a.recoil,reload:a.reload,stride:a.stride,
-        weapon:a.weapon,equipment:a.equipment,wardrobe:a.wardrobe
-      })),
-      doors:s.doors.map(d=>({id:d.id,
-        fraction:d.openFraction??(d.open?1:0),open:d.open})),
-      poseTime:this.terminalPoseSeconds,simulationTime:s.seconds
-    });
-    if(this.shadowUpdates.shouldRefresh(dynamicShadows,shadowSignature))
-      this.renderer.shadowMap.needsUpdate=true;
+      actors:s.operators,doors:s.doors,
+      poseTime:this.terminalPoseSeconds,simulationTime:s.seconds,
+      appearanceKey:this.shadowAppearanceKey
+    }))this.renderer.shadowMap.needsUpdate=true;
     // Read from the already posed historical rig. No additional animation
     // tick, physics, awareness query or mutable replay state is introduced.
     // The QA bodycam is never active without explicit personal disclosure.

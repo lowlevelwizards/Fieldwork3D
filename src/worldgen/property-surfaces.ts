@@ -155,6 +155,13 @@ export function planPropertySurfaces(site:Site):PropertySurface[]{
  const zones=new Map((site.exteriorZones??[]).map(z=>[z.id,z]));
  const clipped:PropertySurface[]=[];
  for(const mark of marks){
+  // A public roadway/sidewalk belongs to planPublicStreet's verified
+  // map-edge substrate, not to the private arrival-forecourt zone.
+  // C4 clipping applies to private ground decals only; clipping public
+  // slabs to the yard erased real curbs/ramps on several orientations.
+  if(street&&mark.id.startsWith('street:')){
+   clipped.push(mark);continue;
+  }
   const zone=zones.get(mark.zoneId);if(!zone)continue;
   const minX=Math.max(mark.x-mark.width/2,zone.x-zone.w/2);
   const maxX=Math.min(mark.x+mark.width/2,zone.x+zone.w/2);

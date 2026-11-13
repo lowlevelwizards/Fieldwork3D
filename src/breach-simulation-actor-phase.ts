@@ -31,16 +31,26 @@ export function advanceSimulationActors(s:Session,h:number,
  port:ActorSimulationPhasePort,
  markActor?:(id:string,section?:string,elapsedMs?:number)=>void):void{
  const {notify,battleEvent,unobstructed}=port;
-  for(const a of s.operators){
+ // Build the actual fallen-ally event candidate roster once per fixed tick.
+ // Keep source-actor ordering (and the recorded lastDownAt gate), because
+ // sighting a casualty may alter resolve and decisions *this same tick*.
+ // A casualty not yet witnessed stays eligible on every later tick.
+ const fallenEnemyAllies:TeamActor[]=[];
+ let newestFallenAt=-Infinity;
+ for(const actor of s.operators)if(actor.side==='red'&&
+    actor.health<=0&&!actor.surrendered){
+   fallenEnemyAllies.push(actor);
+   if(actor.lastDownAt>newestFallenAt)newestFallenAt=actor.lastDownAt;
+ }
+ for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
     if(a.side==='red'&&a.health>0){
       a.morale=Math.min(1,a.morale+h*.006-
         (a.suppression>.65?h*.075:0));
       // Only a visible nearby casualty affects this actor's resolve.
-      for(const fallen of s.operators){
-        if(fallen===a||fallen.side!==a.side||fallen.health>0||
-           fallen.surrendered||fallen.lastDownAt<=a.lastMoraleEventAt)continue;
+      if(newestFallenAt>a.lastMoraleEventAt)for(const fallen of fallenEnemyAllies){
+        if(fallen===a||fallen.lastDownAt<=a.lastMoraleEventAt)continue;
         const distance=d(a.p,fallen.p);
         const visible=distance<160&&
           Math.abs(angleDifference(a.heading,angle(a.p,fallen.p)))<1.25&&
