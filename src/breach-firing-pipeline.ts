@@ -414,6 +414,23 @@ function updatePassiveWatchMicroAim(s:Session,a:TeamActor):void{
  a.aimSideTarget=clear(0)?0:
    chooseMicroAimOffset(a.aimSideOffset??0,clear).offset;
 }
+/** Passive readiness remains useful under HOLD/RETURN orders; shot policy
+ * stays authoritative and never grants a target or actual fire permission. */
+function settlePassiveAim(a:TeamActor,dt:number):void{
+ const watch=a.aimInstruction;
+ const urgency=fireUrgency({
+  confirmed:false,
+  suspicious:a.suspicion.stage==='curious'||
+    a.suspicion.stage==='suspicious'||
+    a.suspicion.stage==='alerted'||
+    a.alert==='investigating'&&!!a.contact,
+  authored:!!watch&&watch.source!=='stack',
+  aimMode:watch?.mode
+ });
+ const ready=passiveAimReadiness(urgency),step=dt*
+   (urgency==='suspect'?1.8:urgency==='watch'?1.2:.90);
+ a.aim+=Math.max(-step,Math.min(step,ready-a.aim));
+}
 function fire(s:Session,a:TeamActor,dt:number){
  updateContextualCrouch(s,a);
  // A3.2: only simulation time moves the tactical rifle accommodation.
@@ -478,11 +495,11 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(a.side==='blue'){
     if(a.firePolicy==='hold'){
-      a.aim=Math.max(0,a.aim-dt*.35);return;
+      settlePassiveAim(a,dt);return;
     }
     if(a.firePolicy==='return'&&a.suppression<.10&&
       s.seconds-a.lastHitAt>3){
-      a.aim=Math.max(0,a.aim-dt*.35);return;
+      settlePassiveAim(a,dt);return;
     }
     if(a.firePolicy==='suppress'){
       fireSuppression(s,a,dt);return;
@@ -525,21 +542,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(!target){
     a.aimSideTarget=0;
     a.targetId=null;
-    const watch=a.aimInstruction;
-    const urgency=fireUrgency({
-      confirmed:false,
-      suspicious:a.suspicion.stage==='curious'||
-        a.suspicion.stage==='suspicious'||
-        a.suspicion.stage==='alerted'||
-        a.alert==='investigating'&&!!a.contact,
-      authored:!!watch&&watch.source!=='stack',
-      aimMode:watch?.mode
-    });
-    // LOOK/WATCH prepare the gun; suspicious cues bring it closer to
-    // point-ready. None of these states creates a contact or fires a shot.
-    const ready=passiveAimReadiness(urgency),step=dt*
-      (urgency==='suspect'?1.8:urgency==='watch'?1.2:.90);
-    a.aim+=Math.max(-step,Math.min(step,ready-a.aim));
+    // LOOK/WATCH/suspicion prepare the actual rifle even if no enemy can
+    // currently be seen. They never fabricate or authorize a shot.
+    settlePassiveAim(a,dt);
     const canPreferClearLook=a.velocity<6&&!a.aimInstruction&&
       a.side==='blue'&&!a.traversal&&!a.squeeze&&
       !['look','door','tool','treat','reload','flash'].includes(
