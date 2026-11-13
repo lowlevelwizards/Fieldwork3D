@@ -88,6 +88,7 @@ import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
+import {doorGripPoint} from './breach-door-grip.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {armedPrecontactStyle} from './breach-idle-life.ts';
@@ -1959,6 +1960,17 @@ export class TacticalScene3D{
             return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
               y:leaf.a.y+(leaf.b.y-leaf.a.y)*.78};})():
           handlePoint(activeDoor):undefined;
+      // D4: only physically attached actors sample the moving leaf.
+      // Released contacts retain their last real point for .24s.
+      const physicalGrip=actor.doorGrip;
+      const gripDoor=physicalGrip?.releasedAt===null?
+        s.doors.find(d=>d.id===physicalGrip.doorId):undefined;
+      const presentedGrip=physicalGrip?{
+        point:gripDoor?doorGripPoint(gripDoor,physicalGrip.fraction):
+          physicalGrip.point,
+        mode:physicalGrip.mode,startedAt:physicalGrip.startedAt,
+        releasedAt:physicalGrip.releasedAt
+      }:undefined;
       const threat=actor.targetId?
         s.operators.find(o=>o.id===actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
@@ -2117,10 +2129,11 @@ export class TacticalScene3D{
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
         doorMethod:actor.lastDoorMethod,
-        doorHandHold:!!grippedDoor,
+        doorHandHold:physicalGrip?.releasedAt===null||!!grippedDoor,
         doorHandHoldSince:grippedDoor?
           actor.doorTraversal?.handContactSince??undefined:undefined,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
+         doorGrip:presentedGrip,
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,
