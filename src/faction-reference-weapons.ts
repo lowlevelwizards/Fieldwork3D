@@ -48,7 +48,11 @@ export const REFERENCE_WEAPONS:Readonly<Record<string,ReferenceWeaponChoice>>={
  'korean-granite-2023':choice('ar-m4a1','proxy'),
  'indonesian-kopassus-1990':choice('ar-m16a1','representative'),
  'sandf-s2000-2015':choice('ak-akm','proxy'),
- 'us-swat-2015':choice('ar-m4a1','representative')
+ 'private-security-iraq-2007':choice('ar-m4a1','proxy'),
+ 'ukraine-territorial-2022':choice('ak-akm','representative'),
+ 'us-police-polo-2020':choice('ar-m4a1','proxy'),
+ 'us-swat-mp5-1995':choice('hk-mp5a3','representative'),
+  'us-swat-2015':choice('ar-m4a1','representative')
 };
 /** The returned notes are intentionally part of the preview, never saved as
  * "historically exact" metadata. */
