@@ -4,6 +4,8 @@
  */
 import type {Door,Obstacle,Pt,Segment} from './breach-core.ts';
 import type {Site} from './breach-site.ts';
+import {doorRangeFormationSpawns,type DoorRangeFormationId,
+ type DoorRangeApproachFace} from './breach-door-range-formations.ts';
 export type DoorRangeCaseId=
  'inward-left'|'outward-left'|'inward-right'|'outward-right'|
  'ajar-outward'|'wide-open'|'swing-furniture'|'near-frame'|
@@ -32,7 +34,9 @@ export function doorRangeCase(id:DoorRangeCaseId):DoorRangeCase{
  if(!found)throw Error('Unknown door test case '+id);
  return found;
 }
-export function doorRangeSite(id:DoorRangeCaseId):Site{
+export function doorRangeSite(id:DoorRangeCaseId,
+ formation:DoorRangeFormationId='center',
+ face:DoorRangeApproachFace='north'):Site{
  const c=doorRangeCase(id);
  const door:Door={id:'ENTRY',a:p(290,260),b:p(332,260),
   kind:'hinged',hinge:c.hinge,swing:c.swing,
