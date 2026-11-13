@@ -3,6 +3,7 @@ import {newSession,team,planMove,toggling,stepSession} from '../src/breach-game.
 import {planDoorSchedule} from '../src/breach-passage-plan.ts';
 import {legalMoveRoute} from '../src/breach-known-route-authoring.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {listenQueueDecision} from '../src/breach-queue-trace.ts';
 const pt=(x,y)=>({x,y});
 const site={seed:731,name:'Q2 independent route evidence',training:true,
  layout:'corridor',roomCount:0,rooms:[],cover:[],windows:[],
@@ -20,7 +21,12 @@ try{
  const schedule=planDoorSchedule(s.operators,s.doors,
    (a,b)=>legalMoveRoute(s,a,b));
  toggling(s);
- const checkpoints=[];
+ const checkpoints=[],events=[];
+ listenQueueDecision(s,e=>{
+  if(s.seconds>2.1&&s.seconds<2.8&&
+     (e.actor==='ash'||e.actor==='vale')&&events.length<110)
+   events.push(e);
+ });
  for(let i=0;i<180;i++){
   stepSession(s,1/30);
   if(i%20===0)checkpoints.push({t:s.seconds,operators:members.map(a=>({
@@ -29,5 +35,6 @@ try{
   }))});
  }
  console.log(JSON.stringify({kind:'Q2 independent schedule',slots:[...schedule],
-  checkpoints},null,2));
+  checkpoints,decisionSamples:events},null,2));
+ listenQueueDecision(s,null);
 }finally{activateSite(null);}

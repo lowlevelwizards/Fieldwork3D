@@ -9,13 +9,14 @@ import {coordinatePassage} from './breach-passage-coordinator.ts';
 import {passageDeadlockRetreatTarget,type PassageActor} from './breach-passage.ts';
 import {sweptBodyClear,sweptProfileClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
-import {noteQueueMotion} from './breach-queue-trace.ts';
+import {noteQueueMotion,noteQueueDecision} from './breach-queue-trace.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 export function negotiateMotorPassage(
  a:TeamActor,_p:Pt,initialMove:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;move:Pt}{
  const decision=coordinatePassage(s,a,initialMove,
   hooks.ensurePassageSchedule(s));
+ noteQueueDecision(s,a,decision);
  if(decision.hold){
   a.motorPause='passage';a.velocity=0;a.blockedTime=0;
   a.passageWaitSeconds+=dt;

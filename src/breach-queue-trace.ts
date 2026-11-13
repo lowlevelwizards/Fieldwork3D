@@ -4,6 +4,22 @@
 import type {Pt,Door} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pendingPassageSlot,type PassageSchedule} from './breach-passage-plan.ts';
+/** Q0 optional observation of actual motor queue decisions. No listener:
+ * no frame history, no allocations and no gameplay mutation. */
+export type QueueDecisionTrace={time:number;actor:string;
+ from:Pt;to:Pt;hold:boolean;reason:string;rank:number|null;doorId:string|null};
+const decisionListeners=new WeakMap<Session,(event:QueueDecisionTrace)=>void>();
+export function listenQueueDecision(s:Session,listener:((e:QueueDecisionTrace)=>void)|null){
+ if(listener)decisionListeners.set(s,listener);
+ else decisionListeners.delete(s);
+}
+export function noteQueueDecision(s:Session,a:TeamActor,
+ decision:{move:Pt;hold:boolean;reason:string;rank:number|null;doorId:string|null}){
+ const listener=decisionListeners.get(s);
+ if(listener)listener({time:s.seconds,actor:a.id,from:{...a.p},
+  to:{...decision.move},hold:decision.hold,reason:decision.reason,
+  rank:decision.rank,doorId:decision.doorId});
+}
 export type QueueMotionSource='opening-leaf-yield'|'idle-yield'|'deadlock-retreat-request';
 export type QueueMotionEvent={time:number;actor:string;source:QueueMotionSource;
  from:Pt;to:Pt;distance:number};
