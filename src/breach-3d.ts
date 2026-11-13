@@ -88,6 +88,7 @@ import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
+import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {armedPrecontactStyle} from './breach-idle-life.ts';
@@ -1957,6 +1958,17 @@ export class TacticalScene3D{
             return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*.78,
               y:leaf.a.y+(leaf.b.y-leaf.a.y)*.78};})():
           handlePoint(activeDoor):undefined;
+      // D4: a moving leaf's current position owns the wrist target.
+      // Only actors actually attached to a door resolve its geometry.
+      const physicalGrip=actor.doorHandContact;
+      const gripDoor=physicalGrip?.releasedAt===null?
+        s.doors.find(d=>d.id===physicalGrip.doorId):undefined;
+      const doorGrip=physicalGrip?{
+        point:gripDoor?doorHandPoint(gripDoor,physicalGrip.fraction):
+          physicalGrip.point,
+        mode:physicalGrip.mode,startedAt:physicalGrip.startedAt,
+        releasedAt:physicalGrip.releasedAt
+      }:undefined;
       const threat=actor.targetId?
         s.operators.find(o=>o.id===actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
@@ -2116,6 +2128,7 @@ export class TacticalScene3D{
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
         doorMethod:actor.lastDoorMethod,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
+         doorGrip,
         down:actor.health<=0,surrender:actor.surrendered,
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,
