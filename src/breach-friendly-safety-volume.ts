@@ -41,8 +41,10 @@ function segmentIntersectsCylinder(from:Pt,to:Pt,fromHeight:number,
  }
  const qb=2*(ox*dx+oy*dy),qc=ox*ox+oy*oy-radius*radius;
  const disc=qb*qb-4*qa*qc;
- if(disc<0)return false;
- const root=Math.sqrt(disc),lo=Math.max(0,(-qb-root)/(2*qa));
+ // Allow a tiny roundoff margin at exact body-cylinder tangency: this
+ // is a conservative *known 3D volume* check, not the legacy flat rule.
+ if(disc<-1e-8*qa)return false;
+ const root=Math.sqrt(Math.max(0,disc)),lo=Math.max(0,(-qb-root)/(2*qa));
  const hi=Math.min(1,(-qb+root)/(2*qa));
  if(lo>hi)return false;
  if(!Number.isFinite(fromHeight)||!Number.isFinite(toHeight))return true;
@@ -54,9 +56,19 @@ function segmentIntersectsCylinder(from:Pt,to:Pt,fromHeight:number,
  * guarded by the old flat disk at ANY height, including weapon probes. */
 export function friendIntersectsTrajectory(from:Pt,fromHeight:number,to:Pt,
  toHeight:number,friend:FriendlySafetyBody):boolean{
- if(friend.posture!=='stand'&&friend.posture!=='crouch')
-  return segmentIntersectsCylinder(from,to,0,0,friend,
-   LEGACY_FRIENDLY_RADIUS,-Infinity,Infinity);
+ if(friend.posture!=='stand'&&friend.posture!=='crouch'){
+  // Byte-for-byte equivalent to the previous planar projection predicate,
+  // including the STRICT radius check (the boundary itself was clear).
+  const dx=to.x-from.x,dy=to.y-from.y,total=Math.hypot(dx,dy);
+  if(total<=.0001)return false;
+  const ux=dx/total,uy=dy/total;
+  const px=friend.x-from.x,py=friend.y-from.y;
+  const along=px*ux+py*uy,across=Math.abs(px*uy-py*ux);
+  const nearest=Math.max(0,Math.min(total,along));
+  const axial=along-nearest;
+  return axial*axial+across*across<
+   LEGACY_FRIENDLY_RADIUS*LEGACY_FRIENDLY_RADIUS;
+ }
  const volumes=friend.posture==='crouch'?
   FRIENDLY_CROUCH_VOLUMES:FRIENDLY_STAND_VOLUMES;
  return volumes.some(v=>segmentIntersectsCylinder(from,to,fromHeight,
