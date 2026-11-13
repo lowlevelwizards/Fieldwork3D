@@ -24,7 +24,9 @@ import {applyReplayFrame} from '../src/breach-replay.ts';
 // undo/redo. Compare the actual serialized command contract, not object shape.
 const authoredPlan=plan=>JSON.parse(JSON.stringify(plan));
 const GOLDENS=Object.freeze({
- door:'633e18596396efab93038f75b7b1ccbc5602b0516f577cdd462b3de8e0ef7d84',
+ // Q2 rebaseline: recorded deterministic four-operator entry and WAIT
+ // under the single passage coordinator after V3 vision integration.
+ door:'ed0190cf41e1bf1218a18ad9045c5354182948ad4a050f6d92aeb658aac556a8',
  medical:'0166aaa68900f3a0150b3edab263e5c17573c368a2249e85debd6a9f389f6261',
  combat:'ac9b9366ff5dfb6f3e142187e3dff401f0fdc3fd737834abaf2971e483194a87',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'

@@ -86,8 +86,11 @@ export function friendlyArrivalSettleTarget(
    const bearing=baseAngle+turn;
    const p={x:goal.x+Math.cos(bearing)*r,
     y:goal.y+Math.sin(bearing)*r};
+   // The motor can retire a transient route within about three units of
+   // its destination. Leave that much extra margin here so the *real*
+   // resting center never ends up overlapping the nearest friendly.
    if(dist(p,at)<.2||dist(p,goal)>15.5||
-      peers.some(other=>dist(other,p)<14.5)||
+      peers.some(other=>dist(other,p)<20)||
       !sweep(at,p))continue;
    const score=dist(at,p)+dist(goal,p)*.5+
      Math.abs(turn)*2;

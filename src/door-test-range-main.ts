@@ -6,6 +6,9 @@ import {activateSite,doorLeafSegment,doorCenter,
  type Pt} from './breach-core.ts';
 import {pushDoor} from './breach-door.ts';
 import {DoorRangeMobileProfile} from './door-range-mobile-profile.ts';
+import {QueueMotionAudit,listenQueueMotion} from './breach-queue-trace.ts';
+import {planDoorSchedule} from './breach-passage-plan.ts';
+import {legalMoveRoute} from './breach-known-route-authoring.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {DOOR_RANGE_CASES,doorRangeSite,prepareDoorRangeCase,
  type DoorRangeCaseId} from './breach-door-test-cases.ts';
@@ -28,6 +31,10 @@ const clock=get<HTMLElement>('clock');
 const flipsView=get<HTMLElement>('flips');
 const go=get<HTMLButtonElement>('go');
 const trace=get<HTMLInputElement>('trace');
+const queueTraceToggle=get<HTMLInputElement>('queueTrace');
+const queueTraceInfo=get<HTMLElement>('queueTraceInfo');
+let queueAudit:QueueMotionAudit|null=null;
+let queueSlots:ReturnType<typeof planDoorSchedule>|null=null;
 const profileToggle=get<HTMLInputElement>('mobileProfile');
 const profileCanvas=get<HTMLCanvasElement>('mobileChart');
 const profileInfo=get<HTMLElement>('mobileStats');
@@ -73,6 +80,8 @@ function plan(){
  return ok;
 }
 function reset(){
+ if(s)listenQueueMotion(s,null);
+ queueAudit?.reset();queueSlots=null;
  profile?.reset();lastProfileDraw=0;
  playing=false;acc=0;flips=0;minSpacing=Infinity;
  passed=new Set();crossedAt=new Map();
@@ -89,6 +98,7 @@ function reset(){
  }
  selected.value=selectedId;
  planned=plan();
+ if(queueAudit)listenQueueMotion(s,e=>queueAudit?.event(e));
  sourceSide=new Map(members.map(a=>[a.id,Math.sign(a.p.y-260)]));
  activeIds=new Set(members.filter(a=>a.plan.length>0).map(a=>a.id));
  lastOpen=s.doors[0]?.open??false;
@@ -217,9 +227,16 @@ function tick(){
   .every(a=>!a.plan.length)){
   playing=false;go.textContent='GO';
  }
+ if(queueAudit){
+  queueSlots??=planDoorSchedule(team(s),s.doors,(from,to)=>legalMoveRoute(s,from,to));
+  queueAudit.sample(s,queueSlots);
+ }
 }
 function toggle(){
- if(s.phase==='planning')toggling(s);
+ if(s.phase==='planning'){
+  if(queueAudit)queueSlots=planDoorSchedule(team(s),s.doors,(from,to)=>legalMoveRoute(s,from,to));
+  toggling(s);
+ }
  else if(s.phase==='running')toggling(s);
  playing=s.phase==='running';
  go.textContent=playing?'PAUSE':'GO';
@@ -239,7 +256,7 @@ function report(){
    blockedTime:a.blockedTime,pause:a.motorPause,
    episode:a.doorTraversal,grip:a.doorHandContact,
    nav:a.nav.slice(0,8)
-  })),events:[...s.events],
+  })),events:[...s.events],queueAudit:queueAudit?.report()??null,
   mobileProfile:profile?.snapshot(performance.now())??null};
 }
 get<HTMLButtonElement>('reset').addEventListener('click',reset);
@@ -327,6 +344,12 @@ function drawMobileProfile(now:number){
  chart.fillStyle='#b8cdbf';chart.font='11px ui-monospace,monospace';
  chart.fillText('−60 s',5,height-5);chart.fillText('NOW',width-31,height-5);
 }
+queueTraceToggle.addEventListener('change',()=>{
+ queueAudit=queueTraceToggle.checked?new QueueMotionAudit():null;
+ queueSlots=null;
+ listenQueueMotion(s,queueAudit?e=>queueAudit?.event(e):null);
+ queueTraceInfo.textContent=queueAudit?'Q0 attribution armed — records 10Hz position samples and actual yield sources.':'OFF';
+});
 profileToggle.addEventListener('change',()=>{
  profile=profileToggle.checked?new DoorRangeMobileProfile():null;
  profileCanvas.hidden=!profile;
@@ -352,6 +375,11 @@ function frame(now:number){
  // A single browser draw for all fixed simulation ticks in this RAF.
  if(steps>0)paint();
  const paintMs=profile?performance.now()-paintStart:0;
+ if(queueAudit&&steps){
+  const report=queueAudit.report();
+  queueTraceInfo.textContent='Q0 WAIT backward '+report.waitingBackward.toFixed(2)+
+   'u · '+report.waitingSamples+' held samples · sources '+JSON.stringify(report.sources);
+ }
  if(profile){
   profile.add({at:now,raf:gap,sim:simMs,paint:paintMs,steps});
   if(now-lastProfileDraw>=250){

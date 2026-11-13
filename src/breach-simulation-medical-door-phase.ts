@@ -8,6 +8,8 @@ import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
 import {maintainDoorHandContact} from './breach-door-hand-contact.ts';
+import {noteQueueMotion} from './breach-queue-trace.ts';
+import {openingYieldBudget,commitOpeningYield} from './breach-passage-yield.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {BattleEvent} from './breach-combat.ts';
@@ -84,7 +86,10 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
        (door.pushTarget??1)<=1.01){
       for(const actor of s.operators){
         if(actor.health<=0)continue;
-        const candidate=initialOpeningYieldCandidate(door,actor.p);
+        const budget=openingYieldBudget(s,door,actor.id);
+        if(budget<.03)continue;
+        const candidate=initialOpeningYieldCandidate(door,actor.p,
+          Math.min(1.25,budget));
         if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))||
            s.operators.some(other=>{
              if(other===actor||other.health<=0)return false;
@@ -95,6 +100,8 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
                return after<16&&after<before-.01;
              return after<11;
            }))continue;
+        commitOpeningYield(s,door,actor.id,actor.p,candidate);
+        noteQueueMotion(s,actor,'opening-leaf-yield',actor.p,candidate);
         actor.priorP=clone(actor.p);
         actor.p=candidate;
         yielded=true;
