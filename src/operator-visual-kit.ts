@@ -26,6 +26,8 @@ import {createFieldTrouserPrototypes,updateFieldTrouserPrototypes,
  type FieldTrouserPrototypes} from './operator-field-trouser-prototypes.ts';
 import {createNewUpperGarments,updateNewUpperGarments,
  type NewUpperGarments} from './operator-new-upper-garments.ts';
+import {createCasualShirts,updateCasualShirts,isCasualShirtCut,
+ type CasualShirts} from './operator-casual-shirts.ts';
 import {createCanonicalAttachment} from './operator-axis-convention.ts';
 import {createWardrobeHeadLayers,updateWardrobeHeadLayers,
  type WardrobeHeadLayers} from './operator-wardrobe-head-visuals.ts';
@@ -64,6 +66,7 @@ export type OperatorVisualKit={
  fieldTrousers:FieldTrouserPrototypes;
  /** Real combat-shirt, outer smock and mountain/Gorka geometry. */
  newUpper:NewUpperGarments;
+ casualShirts:CasualShirts;
  helmet:THREE.Group;cap:THREE.Group;hair:THREE.Group;
  haircuts:THREE.Group[];graphicMarks:THREE.Group;
  jacket:THREE.Group;lightShirt:THREE.Group;
@@ -188,6 +191,7 @@ export function createOperatorVisualKit(
   cloth,trousers,trim,dark);
  const fieldBlouses=createFieldBlousePrototypes(chest,arms,cloth,trim);
  const newUpper=createNewUpperGarments(chest,arms,cloth,trim);
+ const casualShirts=createCasualShirts(chest,arms,cloth,trim,skin);
  const fieldTrousers=createFieldTrouserPrototypes(legs,trousers,trim,
   newUpper.mountainLegCanvas,newUpper.mountainLegPanel,chest);
  // Retire the old shared cuboid jacket and light-shirt meshes altogether.
@@ -312,7 +316,7 @@ export function createOperatorVisualKit(
  for(const surface of [helmet,cap,hair,jacket,lightShirt,softArmor,
   plateCarrier,chestRig,fieldWebbing,belt,dayPack,fieldPack,packHarness])
    consolidateVisualGroup(surface);
- return {visualChest:chest,baseTorso,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,
+ return {visualChest:chest,baseTorso,wardrobeHead,wardrobeBody,identityVisuals,wardrobeGear,accessories,fieldBlouses,fieldTrousers,newUpper,casualShirts,
   helmet,cap,hair,jacket,lightShirt,
   softArmor,plateCarrier,chestRig,
   fieldWebbing,belt,dayPack,fieldPack,packHarness,cargoPockets,bootCuffs,
@@ -390,6 +394,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   wardrobe?.sleeveState??'unrolled');
  updateNewUpperGarments(v.newUpper,looks.top,
   wardrobe?.sleeveState??'unrolled');
+ updateCasualShirts(v.casualShirts,looks.top,
+  wardrobe?.sleeveState??'unrolled');
  // Deform the REAL compressible pocket meshes only while rig webbing is
  // equipped. Cached transforms prevent incremental pose-time distortion.
  const pressRig=usingWardrobe?looks.rigStyle:'no-rig';
@@ -398,6 +404,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  else if(looks.top==='combat-shirt'||looks.top==='smock-jacket'||
   looks.top==='gorka-jacket')
   fitRigCoveredPockets(v.newUpper.cuts[looks.top].torso,pressRig);
+ else if(isCasualShirtCut(looks.top))
+  fitRigCoveredPockets(v.casualShirts.cuts[looks.top].torso,pressRig);
  updateFieldTrouserPrototypes(v.fieldTrousers,looks.trousers,
   wardrobe?.trouserHem??'bloused',looks.footwear==='bare-feet',looks.top);
  updateWardrobeBodyLayers(v.wardrobeBody,looks.top,looks.trousers,
@@ -415,7 +423,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
     v.fieldBlouses[looks.top].torso:
     looks.top==='combat-shirt'||looks.top==='smock-jacket'||
       looks.top==='gorka-jacket'?
-      v.newUpper.cuts[looks.top].torso:v.baseTorso;
+      v.newUpper.cuts[looks.top].torso:
+      isCasualShirtCut(looks.top)?v.casualShirts.cuts[looks.top].torso:v.baseTorso;
   const sources:ShoulderContactSource[]=[
     {id:'garment:'+looks.top,layer:'garment',material:'soft',
       object:garment}
@@ -582,6 +591,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
  else if(looks.top==='combat-shirt'||looks.top==='smock-jacket'||
   looks.top==='gorka-jacket')
   clothTorso=v.newUpper.cuts[looks.top].torso;
+ else if(isCasualShirtCut(looks.top))
+  clothTorso=v.casualShirts.cuts[looks.top].torso;
  clothTorso?.traverse(object=>{
   if(!(object instanceof THREE.Mesh))return;
   if(object.userData.armorCollarPiece)object.visible=!hideCollar;
