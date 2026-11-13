@@ -828,13 +828,18 @@ export function planSquadEntry(s:Session,doorId:string){
    return false;
   }
  }
+ // Q5: an already open hinged leaf makes closed-door stack slots
+ // potentially unreachable or occupied by the live panel. In that case
+ // synchronize and follow physical route(s) directly to clearing lanes.
+ const alreadyOpen=door.open&&(door.openFraction??0)>.3;
  const committed=atomicTeamEdit(s,alive,()=>{
-  for(const a of alive)
-   if(!a.plan.some(n=>n.stackDoorId===doorId)&&
-     !planStack(s,a.id,doorId))return false;
+  if(!alreadyOpen)
+   for(const a of alive)
+    if(!a.plan.some(n=>n.stackDoorId===doorId)&&
+      !planStack(s,a.id,doorId))return false;
   if(!planSync(s,alive.map(a=>a.id)))return false;
   const lead=alive[0];
-  if(!planDoor(s,lead.id,doorId,'open'))return false;
+  if(!alreadyOpen&&!planDoor(s,lead.id,doorId,'open'))return false;
   for(let i=0;i<alive.length;i++){
    const a=alive[i],slot=slots[i];
    if(i>0){

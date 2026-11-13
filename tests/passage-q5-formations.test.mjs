@@ -51,3 +51,33 @@ test('Q5 split pairs retain their approach flanks in the actual stack plans',asy
    'right pair stages on right side');
  }finally{activateSite(null);}
 });
+
+test('Q5 open leaves use live clearance rather than obsolete closed-door stack anchors',async()=>{
+ const {newSession,team,planSquadEntry}=await import('../src/breach-game.ts');
+ const {prepareDoorRangeCase}=await import('../src/breach-door-test-cases.ts');
+ const {activateSite}=await import('../src/breach-core.ts');
+ for(const id of ['ajar-outward','wide-open']){
+  const s=newSession(0,undefined,'full-view','small','hold',
+   doorRangeSite(id,'center','north'),{enableCivilians:false});
+  try{
+   prepareDoorRangeCase(s,id);
+   assert.ok(s.doors[0].open);
+   assert.equal(planSquadEntry(s,'ENTRY'),true);
+   for(const a of team(s).slice(0,4)){
+    assert.equal(a.plan.some(n=>n.stackDoorId==='ENTRY'),false);
+    assert.ok(a.plan.some(n=>n.entryDoorId==='ENTRY'));
+    assert.equal(a.plan.some(n=>n.kind==='door'&&n.doorId==='ENTRY'),false);
+   }
+  }finally{activateSite(null);}
+ }
+});
+test('Q5 south-side near-frame starts do not embed any operator in the shelf',()=>{
+ for(const f of DOOR_RANGE_FORMATIONS){
+  const site=doorRangeSite('near-frame',f.id,'south');
+  const o=site.cover[0],margin=8;
+  for(const point of site.spawn)
+   assert.ok(Math.abs(point.x-o.x)>o.w/2+margin||
+       Math.abs(point.y-o.y)>o.h/2+margin,
+       'initial point inside shelf: '+f.id+' '+JSON.stringify(point));
+ }
+});

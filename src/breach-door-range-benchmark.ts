@@ -4,6 +4,8 @@
 import {newSession,team,planSquadEntry,planMove,toggling,stepSession}
  from './breach-game.ts';
 import {activateSite,OPERATOR_RADIUS,type Pt} from './breach-core.ts';
+import {doorClear} from './breach-door.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import {DOOR_RANGE_CASES,doorRangeSite,prepareDoorRangeCase,
  type DoorRangeCaseId} from './breach-door-test-cases.ts';
 import type {DoorRangeFormationId,DoorRangeApproachFace}
@@ -72,9 +74,17 @@ export function runDoorRangeTrial(id:DoorRangeCaseId,
   if(!accepted)reason='planning rejected';
   else if(!finite)reason='non-finite actor';
   else if(!authored)reason='authored plan rewritten';
+  else if(id==='swing-furniture'&&
+      (crossed.every(x=>x!==null)||
+       doorClear(s.doors[0],sessionWorldGeometry(s))))
+   reason='obstructed panel incorrectly cleared for four operators';
+  else if(id==='swing-furniture')
+   reason=crossed.some(x=>x!==null)?
+    'genuine furniture obstruction · partial physical entry':
+    'genuine furniture obstruction · no body entry';
   else if(expected==='blocked'&&crossed.some(x=>x!==null))
-   reason='solid door penetrated';
-  else if(expected==='blocked')reason='correct physical obstruction';
+   reason='locked or wedged barrier penetrated';
+  else if(expected==='blocked')reason='correct locked or wedged obstruction';
   else if(crossed.some(x=>x===null))reason='incomplete physical crossing';
   else if(finished.some(x=>x===null))reason='unfinished authored plan';
   else if(Math.min(...actors.flatMap((a,i)=>actors.slice(i+1)
@@ -86,7 +96,11 @@ export function runDoorRangeTrial(id:DoorRangeCaseId,
   const finalGap=Math.min(...actors.flatMap((a,i)=>actors.slice(i+1)
     .map(b=>dist(a.p,b.p))));
   const ok=accepted&&finite&&authored&&
-    (expected==='blocked'?!crossed.some(x=>x!==null):
+    (expected==='blocked'?
+      id==='swing-furniture'?
+       crossed.some(x=>x===null)&&
+       !doorClear(s.doors[0],sessionWorldGeometry(s)):
+       !crossed.some(x=>x!==null):
       crossed.every(x=>x!==null)&&finished.every(x=>x!==null)&&
        finalGap>=OPERATOR_RADIUS*2-1.8);
   return {id,formation,face,protocol,seed:site.seed,expected,accepted,ok,

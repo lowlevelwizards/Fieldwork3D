@@ -49,7 +49,11 @@ export function doorRangeSite(id:DoorRangeCaseId,
   walls:[wall(90,260,290,260),wall(332,260,550,260)],
   doors:[door],cover:c.cover?.map(o=>({...o}))??[],
   entrance:p(311,260),
-  spawn:doorRangeFormationSpawns(formation,face),
+  // A south/right approach to this shelf must not START embedded in it.
+  // Recede all four points from the real fixture, preserving the formation.
+  spawn:doorRangeFormationSpawns(formation,face).map(point=>
+   id==='near-frame'&&face==='south'?
+    {...point,y:point.y+40}:point),
   enemies:[],objective:p(516,430),extract:p(516,445),
   bounds:{minX:0,minY:0,maxX:640,maxY:500}
  };
