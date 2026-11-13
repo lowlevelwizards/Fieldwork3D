@@ -8,6 +8,7 @@ import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
  type FieldHelmet} from './operator-helmet-field-policy.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
+import {createAchMichFieldNetGeometry} from './operator-helmet-field-net.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
@@ -78,15 +79,12 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  // renderer continues owning its independently approved field dress.
  if(id!=='pasgt')addAchMichConcealment(id,loops,scrim,leaves,olive,tan);
  const net=addGroup('net');
- for(const sign of [-1,1])for(let i=0;i<3;i++){
-  const z=-2.4+2.4*i;
-  const route:[[number,number,number],...[number,number,number][]]=[
-   [-x,y,z-sign],[-x,p.top-.78,z-sign],
-   [-x*.55,p.top+.14,z-sign*.52],[0,p.top+.16,z],
-   [x*.55,p.top+.14,z+sign*.52],
-   [x,p.top-.78,z+sign],[x,y,z+sign]];
-  for(let j=1;j<route.length;j++)
-   segment(net,olive,'crown-draped-net',route[j-1],route[j],.13);
+ if(id!=='pasgt'){
+  const mesh=new THREE.Mesh(createAchMichFieldNetGeometry(id),olive);
+  mesh.name='ach-mich-h9-shell-wrapped-diamond-net';
+  mesh.castShadow=false;mesh.receiveShadow=false;net.add(mesh);
+  net.userData.h9NetCordCount=6;
+  net.userData.h9SurfaceDraped=true;
  }
  const dangling=addGroup('unfastened');
  // The same anchored PASGT/ACH webbing is separated at its lower buckle.
