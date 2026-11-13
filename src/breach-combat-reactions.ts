@@ -20,7 +20,7 @@ export function chooseMuzzleRecoveryStep(p:Pt,aimYaw:number,
  canMove:(next:Pt)=>boolean,canShoot:(next:Pt)=>boolean):Pt|null{
  for(const delta of [0,-.30,.30]){
   const yaw=aimYaw+Math.PI+delta;
-  for(const length of [7,10,14,22,30]){
+  for(const length of [4,7,10,14,22,30]){
    const next={x:p.x+Math.cos(yaw)*length,
      y:p.y+Math.sin(yaw)*length};
    if(canMove(next)&&canShoot(next))return next;
@@ -38,7 +38,7 @@ export function chooseMuzzleRecoveryStep(p:Pt,aimYaw:number,
 export function chooseFriendlyLaneStep(p:Pt,aimYaw:number,
  canMove:(next:Pt)=>boolean,canShoot:(next:Pt)=>boolean):Pt|null{
  const left={x:-Math.sin(aimYaw),y:Math.cos(aimYaw)};
- for(const length of [12,20,28]){
+ for(const length of [4,7,10,12,20,28]){
   for(const side of [-1,1]){
    const next={x:p.x+left.x*length*side,
      y:p.y+left.y*length*side};
