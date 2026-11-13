@@ -111,11 +111,12 @@ export function createAchMichRetentionGeometry(
    profile.frontStud[1]-.08,profile.frontStud[2]];
   const back:Point=[sign*(profile.rearStud[0]+.22),
    profile.rearStud[1]-.08,profile.rearStud[2]];
-  // Keep both retention runs outside the 8-unit-wide skull, and converge
-  // near the side of the jaw rather than intersecting the face block.
-  const sideJoin:Point=[sign*5.52,1.64,-3.18];
-  const rearGuide:Point=[sign*5.58,3.38,.53];
-  const jawGuide:Point=[sign*4.85,.67,-4.48];
+  // Follow the actual side of the 8-unit skull closely, with a small
+  // positive stand-off. The former X5.52 jaw loop floated far outside the
+  // cheeks in the real phone WebGL captures; do not reintroduce that gap.
+  const sideJoin:Point=[sign*4.88,1.54,-3.63];
+  const rearGuide:Point=[sign*5.23,3.38,.53];
+  const jawGuide:Point=[sign*4.55,.67,-4.49];
   const chin:Point=[sign*2.23,-.20,-5.04];
   const normal=new THREE.Vector3(sign*.68,0,-.74);
   appendStrap(data,[front,sideJoin],normal,.45);

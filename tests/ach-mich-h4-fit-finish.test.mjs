@@ -51,7 +51,7 @@ test('H4 physical screws, binding and strap geometry stay coherent with each she
   for(let i=0;i<p.count;i++){
    const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
    if(y>1.15&&z>-4.15&&z<1.9)
-    assert.ok(Math.abs(x)>4.65,
+    assert.ok(Math.abs(x)>4.25,
      id+' strap outside head at '+x+','+y+','+z);
   }
   const binding=createAchMichBindingGeometry(id);
