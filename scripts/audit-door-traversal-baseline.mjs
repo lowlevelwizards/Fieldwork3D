@@ -27,6 +27,8 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
   const maneuverStarts=new Set();
   let flips=0,open=s.doors[0].open,invalid=0,maxBlock=0;
   let passageWait=0,selectedManeuverFrames=0,peakRetries=0;
+  let attachedHandFrames=0,longestGrip=0;
+  const actualGrips=new Set();
   if(accepted)toggling(s);
   for(let t=0;t<ticks&&accepted;t++){
    stepSession(s,1/60);
@@ -37,6 +39,12 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
     if(!a.plan.length)finished.add(a.id);
     maxBlock=Math.max(maxBlock,a.blockedTime);
     passageWait+=a.motorPause==='passage'?1/60:0;
+    const hand=a.doorGrip;
+    if(hand?.releasedAt===null){
+     attachedHandFrames++;
+     actualGrips.add(a.id+':'+hand.startedAt.toFixed(4));
+     longestGrip=Math.max(longestGrip,s.seconds-hand.startedAt);
+    }
     if(a.doorTraversal){
      const ep=a.doorTraversal;
      peakRetries=Math.max(peakRetries,ep.maneuverAttempts);
@@ -61,12 +69,18 @@ for(const c of DOOR_RANGE_CASES.slice(0,count)){
    passageWaitSeconds:+passageWait.toFixed(2),
    maneuverActors:[...maneuverActors],maneuverStarts:maneuverStarts.size,
    maneuverFrames:selectedManeuverFrames,peakManeuverAttempts:peakRetries,
+   realGripCount:actualGrips.size,attachedHandFrames,
+   longestGripSeconds:+longestGrip.toFixed(3),
    invalid,authoredPlanIntact:intact,
    operators:actors.map(a=>({id:a.id,position:a.p,
      orders:a.plan.length,pause:a.motorPause,
      blocked:a.blockedTime,navCount:a.nav.length,
      phase:a.doorTraversal?.phase??null,
-     maneuver:a.doorTraversal?.maneuver??null})),
+     maneuver:a.doorTraversal?.maneuver??null,
+     grip:a.doorGrip?{
+      mode:a.doorGrip.mode,attached:a.doorGrip.releasedAt===null,
+      point:a.doorGrip.point
+     }:null})),
    notices:s.events.filter(e=>/DOOR|ENTRY|BLOCKED/.test(e)).slice(-5)});
  }catch(error){
   hardFailures++;
