@@ -3,7 +3,8 @@ import type {Site} from './breach-site.ts';
 import type {Pt,Door,Segment,Obstacle} from './breach-core.ts';
 import {newSession,team,enemies,planMove,type Session} from './breach-game.ts';
 export type A3Scene='clear'|'rear-stack'|'offset-left'|'offset-right'|
- 'mixed-crouch'|'crossing'|'doorway'|'furniture';
+ 'mixed-crouch'|'crossing'|'doorway'|'furniture'|
+ 'brace-wall'|'brace-cover'|'brace-frame'|'stack-shoulder';
 export type A3Intent='hold'|'look'|'watch'|'engage';
 export type A3Weapon='carbine'|'rifle'|'smg'|'shotgun';
 export type A3Config={scenario:A3Scene;seed:number;operators:1|2|3|4;
@@ -17,7 +18,11 @@ export const A3_SCENES:readonly {id:A3Scene;label:string;note:string}[]=[
  {id:'mixed-crouch',label:'Mixed-height stack',note:'Current planar guard despite teammate crouching'},
  {id:'crossing',label:'Moving teammate',note:'Actual session tick and motor movement'},
  {id:'doorway',label:'Doorframe obstruction',note:'Real hinged leaf and wall clearance'},
- {id:'furniture',label:'Furniture obstruction',note:'Height-aware actual cover test'}
+ {id:'furniture',label:'Furniture obstruction',note:'Height-aware actual cover test'},
+ {id:'brace-wall',label:'Reachable wall brace',note:'Actual wall contact and support hand'},
+ {id:'brace-cover',label:'Solid cover brace',note:'Contact on an extant cover face'},
+ {id:'brace-frame',label:'Doorframe brace',note:'True frame anchor beside a door'},
+ {id:'stack-shoulder',label:'Aligned squad stack',note:'Support hand on leader rear shoulder'}
 ];
 export const DEFAULT_A3_CONFIG:A3Config={
  scenario:'rear-stack',seed:31063,operators:4,posture:'stand',
@@ -35,14 +40,27 @@ export function a3Fixture(config:A3Config):Site{
  if(scene==='crossing')positions[1]=p(187,260);
  if(scene==='doorway')positions[1]=p(175,288);
  if(scene==='furniture')positions[1]=p(177,286);
- const walls:Segment[]=scene==='doorway'?[
+ if(scene==='stack-shoulder'){
+  positions[1]=p(168,223);positions[2]=p(191,223);
+  positions[3]=p(214,223);
+ }
+ if(scene==='brace-frame')positions[0]=p(149,209);
+ const walls:Segment[]=scene==='brace-wall'?[{a:p(167,180),b:p(167,265)}]:
+ scene==='brace-frame'?[
+  {a:p(168,145),b:p(168,206)},
+  {a:p(168,248),b:p(168,285)}]:scene==='doorway'?[
   {a:p(270,40),b:p(270,185)},{a:p(270,255),b:p(270,415)}
  ]:[];
- const doors:Door[]=scene==='doorway'?[{
+ const doors:Door[]=scene==='brace-frame'?[{
+  id:'BRACE-FRAME',a:p(168,206),b:p(168,248),open:false,
+  openedAt:-1,kind:'hinged',hinge:'a',swing:1,style:'wood'
+ }]:scene==='doorway'?[{
   id:'TEST',a:p(270,185),b:p(270,255),open:false,
   openedAt:-1,kind:'hinged',hinge:'a',swing:1,style:'wood'
  }]:[];
- const cover:Obstacle[]=scene==='furniture'?
+ const cover:Obstacle[]=scene==='brace-cover'?
+  [{x:178,y:223,w:26,h:36,fixture:'counter',low:false,topHeight:27}]:
+  scene==='furniture'?
   [{x:259,y:224,w:29,h:47,fixture:'shelf',low:false}]:[];
  return {
   seed:config.seed,name:'A3 PHYSICALITY '+scene,layout:'courtyard',
