@@ -51,6 +51,8 @@ export type ReplayActorFrame=ActorFrame & {
  /** Optional for archived films recorded before D4. */
  doorHandContact?:DoorHandContact|null;
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
+ /** Optional on historical films: A3.2 physical lateral weapon accommodation. */
+ aimSideOffset?:number;
  /** Authored remaining orders at this historical sample. */
  plan?:PlanNode[];
 };
