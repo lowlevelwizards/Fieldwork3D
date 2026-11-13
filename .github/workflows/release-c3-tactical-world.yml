@@ -1,0 +1,85 @@
+name: Release C C8-C11 — NPC, Mission, Presentation Acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-enemy-decision-controller.ts'
+      - 'src/breach-ai-search.ts'
+      - 'src/breach-ai-contextual-observation.ts'
+      - 'src/worldgen/encounter-placement.ts'
+      - 'src/worldgen/encounter-roles.ts'
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'tests/release-c3-*'
+      - 'scripts/audit-release-c11-missions.mjs'
+      - 'scripts/compare-release-c11-missions.mjs'
+      - '.github/workflows/release-c3-tactical-world.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-c3-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  tactical-world:
+    name: C8–C11 physical mission parity and performance
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Fixed-clock AI, missions, render and replay critical regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-c3-c8-evidence-performance.test.mjs \
+            tests/release-c3-c9-mission-physical-parity.test.mjs \
+            tests/release-c3-c10-render-lifetime.test.mjs \
+            tests/breach-ai-work-scheduler-performance.test.mjs \
+            tests/breach-roadmap2-stage9-enemy-ai.test.mjs \
+            tests/awareness-ai-policy.test.mjs \
+            tests/awareness-mission-response-e4a.test.mjs \
+            tests/mission-defender-r7c.test.mjs \
+            tests/mission-reactivity-r8b.test.mjs \
+            tests/worldgen-encounter-placement.test.mjs \
+            tests/worldgen-encounter-roles.test.mjs \
+            tests/worldgen-encounter-integration.test.mjs \
+            tests/worldgen-encounter-missions.test.mjs \
+            tests/mission-quality-r5.test.mjs \
+            tests/tactical-mission-quality-operations.test.mjs \
+            tests/package-c7-mission-faction-semantics.test.mjs \
+            tests/performance-normal-play-20261113.test.mjs \
+            tests/lw-replay-world.test.mjs \
+            tests/worldgen-render-resources.test.mjs
+      - name: Build complete 33-map quality corpus
+        run: node --experimental-strip-types scripts/audit-release-c0.mjs c3-after-map.json
+      - name: Build real five-operation, fifteen-instance mission corpus
+        run: node --experimental-strip-types scripts/audit-release-c11-missions.mjs c3-after-missions.json
+      - uses: actions/checkout@v4
+        with:
+          ref: 5d24678d067f1357b691878e78faff4a77083646
+          path: c3-baseline
+      - name: Run exact C-R2 baseline world and missions
+        run: |
+          npm install --prefix c3-baseline --no-audit --no-fund
+          cp scripts/audit-release-c11-missions.mjs c3-baseline/scripts/audit-release-c11-missions.mjs
+          (cd c3-baseline && node --experimental-strip-types scripts/audit-release-c0.mjs ../c3-before-map.json)
+          (cd c3-baseline && node --experimental-strip-types scripts/audit-release-c11-missions.mjs ../c3-before-missions.json)
+      - name: Reject physical map and mission world regression
+        run: |
+          node scripts/compare-release-c0.mjs c3-before-map.json c3-after-map.json c3-map-delta.json
+          node scripts/compare-release-c11-missions.mjs c3-before-missions.json c3-after-missions.json c3-mission-delta.json
+      - name: TypeScript and production Vite build
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-c3-physical-and-mission-parity
+          if-no-files-found: ignore
+          path: |
+            c3-before-map.json
+            c3-after-map.json
+            c3-map-delta.json
+            c3-before-missions.json
+            c3-after-missions.json
+            c3-mission-delta.json
