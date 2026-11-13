@@ -76,7 +76,9 @@ function strobe(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h9Distinctive='manta-wide-emitter';
 }
 function counterweight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'back',-.47,.12);
+ const a=mount(shell,g,'back',0,.12);
+ // Rear weight carriage is one centered assembly, not a left-side pack.
+ block(a,'counterweight-backing-panel',p.dark,0,-.12,-.12,3.70,1.83,.14);
  const bag=[[-1.58,.59],[1.58,.59],[1.76,.30],
   [1.64,-.73],[1.26,-.92],[-1.26,-.92],[-1.64,-.73],[-1.76,.30]];
  silhouette(a,'rear-counterweight-textile-pouch',p.cloth,bag,.38);
@@ -88,9 +90,11 @@ function counterweight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette
  for(const x of [-1.26,1.26])
   block(a,'counterweight-strap-anchor',p.metal,x,.19,.47,.25,.54,.13);
  a.userData.h9Distinctive='segmented-weight-pouch';
+ a.userData.h5RearCenterline=true;
 }
 function battery(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'back',.62,.23);
+ const a=mount(shell,g,'back',0,.23);
+ block(a,'battery-back-retention-plate',p.cloth,0,-.10,-.13,2.30,1.76,.17);
  silhouette(a,'facet-backed-helmet-battery',p.dark,[
   [-.87,.62],[.69,.62],[.94,.40],[.94,-.53],
   [.68,-.71],[-.87,-.71],[-1.03,-.45],[-1.03,.39]
@@ -102,6 +106,7 @@ function battery(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  block(a,'battery-large-closure-latch',p.dark,0,.48,.77,.63,.25,.15);
  cylinder(a,'battery-cable-port',p.reflect,.76,-.23,.71,.20,.18);
  a.userData.h9Distinctive='rear-power-hardcase';
+ a.userData.h5RearCenterline=true;
 }
 function light(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mount(shell,g,'left',-.66,.38);
@@ -137,12 +142,15 @@ function camera(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
 }
 function chemlight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mount(shell,g,'right',.47,.47);
+ // Secured carrier: bare plastic cylinders cannot hang from painted shell.
+ block(a,'chemlight-elastic-holder-base',p.dark,0,0,.07,2.62,.55,.16);
  cylinder(a,'round-contained-chemlight',p.reflect,0,0,.33,.24,2.55,'x');
  for(const x of [-1.05,1.05]){
   cylinder(a,'chemlight-molded-end-cap',p.dark,x,0,.34,.30,.24,'x');
   block(a,'chemlight-elastic-retainer',p.cloth,x*.70,0,.20,.22,.44,.18);
  }
  a.userData.h9Distinctive='capped-secured-lightstick';
+ a.userData.h5ChemlightRetained=true;
 }
 export function addAchMichFieldAddon(
  shell:AchMichCoverShell,type:HelmetFieldAddon,g:THREE.Group,

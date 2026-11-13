@@ -18,7 +18,7 @@ test('H10.4: recognizable larger mounts, forward-facing camera/light and accessi
   assert.ok(stick);
   const rear=kit.modules.counterweight.children.find(o=>o.name==='helmet-addon-fitted-socket');
   const battery=kit.modules.battery.children.find(o=>o.name==='helmet-addon-fitted-socket');
-  assert.ok(rear&&battery);assert.ok(battery.position.x-rear.position.x>2.5);
+  assert.ok(rear&&battery);assert.ok(Math.abs(battery.position.x-rear.position.x)<.1);
  }
 });
 test('H10.5: legacy looks get safe mounting defaults and retain preferences while disabled',()=>{

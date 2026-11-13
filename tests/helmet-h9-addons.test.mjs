@@ -34,8 +34,8 @@ test('H9.7: every modern add-on has its own recognizable mounted silhouette',()=
   const battery=kit.modules.battery.children.find(x=>
    x.name==='helmet-addon-fitted-socket');
   assert.ok(counter&&battery);
-  assert.ok(battery.position.x-counter.position.x>2,
-   shell+' rear mounted modules must occupy separate positions');
+  assert.ok(Math.abs(battery.position.x-counter.position.x)<.1,
+   shell+' rear weight/battery modules share a centered exclusive mounting zone');
  }
 });
 test('H9.7: historical PASGT excludes modern unsupported modules',()=>{
