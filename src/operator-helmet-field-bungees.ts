@@ -7,7 +7,6 @@ import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
 import {sampleHelmetCover,type CoverRegion,type HelmetSurfaceFrame}
  from './operator-helmet-surface.ts';
-import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 
 type R='front'|'left'|'right';
 const finite=(v:THREE.Vector3)=>Number.isFinite(v.x+v.y+v.z);
@@ -49,7 +48,7 @@ function tether(shell:AchMichCoverShell,side:'left'|'right',g:THREE.Group,
  // The round low-poly cord stays outside the cloth at every sampled
  // attachment point and floats above the face just enough to avoid
  // texture z-fighting.
- const cord=add(g,'bungee-elastic-'+side,webbing,
+ add(g,'bungee-elastic-'+side,webbing,
   new THREE.TubeGeometry(curve,30,.087,5,false),new THREE.Vector3());
  // Visible cylindrical stiff sleeves keep the cord anchored at each end.
  for(const [name,f] of [
