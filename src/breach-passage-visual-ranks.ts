@@ -9,6 +9,7 @@ import {livePassageSchedule} from './breach-game.ts';
 import {planDoorSchedule,pendingPassageSlot,type PassageSchedule,
  type PassageSlot} from './breach-passage-plan.ts';
 import {legalMoveRoute} from './breach-known-route-authoring.ts';
+import {doorKnown} from './breach-intel.ts';
 
 type Preview={signature:string;schedule:PassageSchedule};
 const previews=new WeakMap<Session,Preview>();
@@ -61,7 +62,10 @@ export function thresholdRankMarkers(
     (x):x is PassageSlot=>x!==null);
   for(const slot of shown){
    const door=doors.get(slot.doorId);
-   if(!door)continue;
+   // UI may not disclose hidden doors just because the raw physical
+   // schedule knows they exist. The motor continues using the full
+   // immutable schedule; only presentation is filtered by player intel.
+   if(!door||(s.intel&&!doorKnown(s.intel,door.id)))continue;
    const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
    const width=dist(door.a,door.b);
    if(width<=0)continue;
@@ -81,8 +85,11 @@ export function nextThresholdRank(a:TeamActor,
  s:Session,schedule:PassageSchedule):number|null{
  if(s.phase==='planning'){
   const slots=schedule.get(a.id);
-  return slots?.length?slots[0].rank+1:null;
+  const first=slots?.[0];
+  return first&&(!s.intel||doorKnown(s.intel,first.doorId))?
+   first.rank+1:null;
  }
  const slot=pendingPassageSlot(a.p,schedule.get(a.id),s.doors);
- return slot?slot.rank+1:null;
+ return slot&&(!s.intel||doorKnown(s.intel,slot.doorId))?
+  slot.rank+1:null;
 }

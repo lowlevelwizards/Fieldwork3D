@@ -29,8 +29,14 @@ test('Q3 rank belongs to each threshold; later crossing order can reverse',()=>{
  const s={phase:'running',doors,operators:[a,b]};
  assert.equal(thresholdRankMarkers(s,schedule).length,2,
   'only the pending threshold is displayed during execution');
+ s.intel={doors:new Set(['FIRST'])};
+ assert.equal(thresholdRankMarkers(s,schedule).length,2,
+  'hidden second threshold must not leak to planning UI');
  assert.equal(nextThresholdRank(a,s,schedule),1);
  a.p=p(100,130);
+ assert.equal(nextThresholdRank(a,s,schedule),null,
+  'live number cannot reveal hidden upcoming door');
+ s.intel.doors.add('SECOND');
  assert.equal(nextThresholdRank(a,s,schedule),2,
   'number changes after first door clears');
  a.p=p(100,230);
