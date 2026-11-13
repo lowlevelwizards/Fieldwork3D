@@ -1,0 +1,38 @@
+name: Q0-Q2 stable queue critical
+on:
+  push:
+    branches: ['feature/passage-q0-q2-*']
+  pull_request:
+    paths:
+      - 'src/breach-passage-coordinator.ts'
+      - 'src/breach-motor-passage.ts'
+      - 'src/breach-passage-yield.ts'
+      - 'src/breach-queue-trace.ts'
+      - 'src/breach-simulation-medical-door-phase.ts'
+      - 'src/breach-simulation-actor-phase.ts'
+      - 'tests/passage-q*.test.mjs'
+      - '.github/workflows/passage-q-critical.yml'
+  workflow_dispatch:
+concurrency:
+  group: passage-q-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Q0-Q2 types and production bundle
+        run: npm run build
+      - name: Q0/Q1/Q2 pure invariants
+        run: node --experimental-strip-types --test tests/passage-q0-trace.test.mjs tests/passage-q1-yield.test.mjs tests/passage-q2-coordinator.test.mjs
+      - name: Four-hinge full-session diagnostics
+        run: node --experimental-strip-types scripts/audit-passage-q.mjs
+      - name: Four-hinge critical acceptance
+        run: node --experimental-strip-types --test tests/door-traversal-d2d3-four-operator.test.mjs tests/door-traversal-d4-live-grip.test.mjs

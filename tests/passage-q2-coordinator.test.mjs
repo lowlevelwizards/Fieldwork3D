@@ -63,12 +63,12 @@ test('Q2 different thresholds own different numbered crossings',()=>{
  const next={...door,id:'NEXT',a:p(80,200),b:p(120,200)};
  const s=game([a,b],[door,next]);
  const slots=new Map([
-  ['a',[slot('a',1),slot('a',0,'NEXT',1)]],
-  ['b',[slot('b',0),slot('b',1,'NEXT',1)]]
+  ['a',[slot('a',1),slot('a',0,'NEXT',-1)]],
+  ['b',[slot('b',0),slot('b',1,'NEXT',-1)]]
  ]);
  assert.equal(movement(s,a,p(100,154),slots).rank,1);
- a.p=p(100,215);
- a.plan=[{id:9,kind:'move',p:p(100,140)}];
+ a.p=p(100,65);
+ a.plan=[{id:9,kind:'move',p:p(100,260)}];
  // First A crossing is behind (negative signed depth). Next is pending.
- assert.equal(movement(s,a,p(100,214),slots).rank,0);
+ assert.equal(movement(s,a,p(100,66),slots).rank,0);
 });
