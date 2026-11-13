@@ -44,6 +44,9 @@ test('A3.11 short-stock permits only downrange emergency point fire',()=>{
   'short stock does not receive sighted ADS accuracy');
  assert.equal(urgentFireMode(null,.33,clearance,0),null);
  assert.equal(urgentFireMode('ads',1,clearance,SHORT_STOCK_FIRE_YAW_LIMIT+.02),null);
+ assert.equal(urgentFireMode('ads',1,{...clearance,
+  muzzle:{...clearance.muzzle,pitch:.56}},0),null,
+  'a gun visibly aimed at the floor cannot fire straight forward');
  assert.equal(urgentFireMode('ads',1,{...clearance,blocked:true},0),null);
  assert.equal(urgentFireMode(null,1,{...clearance,carryOverride:'low'},0),null);
  assert.equal(urgentFireMode('ads',1,{...clearance,carryOverride:'ready'},0),'ads');
