@@ -5,6 +5,13 @@
 import * as THREE from 'three';
 import {OPERATOR_SOLID_FAMILIES,tonedOperatorSolid} from './operator-solid-color-families.ts';
 export const TOP_COLORWAYS={
+ 'button-up-shirt':[
+  ['standard','Solid / camouflage'],
+  ['flannel-rust-red','Rust red flannel'],
+  ['flannel-green','Forest green flannel'],
+  ['flannel-blue','Dusty blue flannel'],
+  ['flannel-burnt-orange','Burnt orange flannel']
+ ],
  'combat-shirt':[
   ['standard','Sand knit'],['olive','Olive knit'],['ranger','Ranger green knit'],
   ['coyote','Coyote knit'],['black','Black knit']
