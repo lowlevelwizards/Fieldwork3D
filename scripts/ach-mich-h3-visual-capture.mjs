@@ -76,7 +76,7 @@ try{
     .filter({hasText:'Only the fabric receives camouflage'});
    const picker=section.locator('.studio-camo-picker');
    if(!(await picker.isVisible()))throw Error('Cover pattern picker hidden '+id);
-   await picker.locator('summary').click();
+   await picker.locator('summary.studio-camo-selected').click();
    const woodland=picker.locator('button.swatch')
     .filter({hasText:'M81 WOODLAND'}).first();
    await woodland.scrollIntoViewIfNeeded();await woodland.click();
