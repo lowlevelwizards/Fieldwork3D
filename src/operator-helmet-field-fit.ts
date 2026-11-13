@@ -10,10 +10,10 @@ import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
 
 type Section={region:Exclude<CoverRegion,'crown'>;us:number[]};
 const sections:Section[]=[
- {region:'front',us:[-.82,-.55,-.28,0,.28,.55,.82]},
- {region:'right',us:[-.83,-.56,-.28,0,.28,.56,.83]},
- {region:'back',us:[.82,.55,.28,0,-.28,-.55,-.82]},
- {region:'left',us:[.83,.56,.28,0,-.28,-.56,-.83]}
+ {region:'front',us:[-.96,-.70,-.42,-.14,.14,.42,.70,.96]},
+ {region:'right',us:[-.96,-.70,-.42,-.14,.14,.42,.70,.96]},
+ {region:'back',us:[.96,.70,.42,.14,-.14,-.42,-.70,-.96]},
+ {region:'left',us:[.96,.70,.42,.14,-.14,-.42,-.70,-.96]}
 ];
 /** Choose the real cover sample nearest the physical band height. */
 function bandFrame(shell:AchMichCoverShell,region:Section['region'],
