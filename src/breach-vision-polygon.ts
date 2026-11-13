@@ -44,7 +44,7 @@ export function visionPolygon(origin:Pt,heading:number,range=240,
         Math.min(VISION_HALF_ANGLE,delta+eps)));
   }
   angles.sort((a,b)=>a-b);
-  const buckets=range>240?
+  const buckets=range>360?
     angularRayBuckets(origin,heading,rayBlockers,VISION_HALF_ANGLE):null;
   const polygon:Pt[]=[{...origin}];
   let last=-Infinity;
