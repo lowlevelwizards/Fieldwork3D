@@ -41,20 +41,22 @@ export function addAchMichVelcro(
  shell:AchMichCoverShell,g:THREE.Group,
  olive:THREE.Material,dark:THREE.Material):void{
  // Cross-shell shape is large, but remains flush with the textile.
- panel(shell,'crown',0,-.10,.31,.24,g,olive,dark,'crown-velcro');
+ panel(shell,'crown',0,-.10,.45,.34,g,olive,dark,'crown-velcro');
  for(const region of ['left','right'] as const)
-  panel(shell,region,.30,.32,.27,.17,g,olive,dark,region+'-velcro');
- panel(shell,'back',0,.23,.29,.18,g,olive,dark,'rear-velcro');
+  panel(shell,region,.27,.32,.39,.24,g,olive,dark,region+'-velcro');
+ panel(shell,'back',0,.23,.43,.24,g,olive,dark,'rear-velcro');
+ g.userData.h10GraphicPanelsEnlarged=true;
  g.userData.h9ConformingPanels=4;
  g.userData.h9CornerSamples=32;
 }
 export function addAchMichIdentifierPatch(
  shell:AchMichCoverShell,g:THREE.Group,
  fabric:THREE.Material,dark:THREE.Material,marker:THREE.Material):void{
- panel(shell,'left',.33,.35,.28,.17,g,fabric,dark,'left-identifier');
+ panel(shell,'left',.29,.35,.43,.25,g,fabric,dark,'left-identifier');
  // One clear, restrained insignia made of two fitted cloth segments.
- const bar=contour(shell,'left',.33,.35,.16,.045,.288);
+ const bar=contour(shell,'left',.29,.35,.24,.070,.288);
  meshQuad(g,marker,'left-identifier-center-mark',bar);
+ g.userData.h10GraphicPatchEnlarged=true;
  g.userData.h9ConformingPatch=true;
  g.userData.h9LeftSideNormal=true;
 }
