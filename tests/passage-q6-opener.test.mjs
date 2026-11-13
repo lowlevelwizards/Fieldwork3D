@@ -4,7 +4,7 @@ import {activateSite} from '../src/breach-core.ts';
 import {newSession,team,planSquadEntry} from '../src/breach-game.ts';
 import {doorRangeSite,prepareDoorRangeCase}
  from '../src/breach-door-test-cases.ts';
-test('Q6 pre-opened hinge retains an opener before followers are released',()=>{
+test('Q6 pre-opened hinge delegates to real contact, no redundant OPEN order',()=>{
  for(const entry of ['ajar-outward','wide-open']){
   const s=newSession(0,undefined,'full-view','small','hold',
    doorRangeSite(entry),{enableCivilians:false});
@@ -13,7 +13,7 @@ test('Q6 pre-opened hinge retains an opener before followers are released',()=>{
    const initial=s.doors[0].openFraction;
    assert.equal(planSquadEntry(s,'ENTRY'),true,entry);
    assert.equal(team(s)[0].plan.some(n=>n.kind==='door'&&
-    n.method==='open'),true,entry+' keeps a deliberate opener');
+    n.method==='open'),false,entry+' should not chase the moving handle');
    assert.equal(s.doors[0].openFraction,initial,
     'planning never moves a real hinge');
    assert.equal(team(s).slice(1).every(a=>
