@@ -347,17 +347,59 @@ function updateContextualCrouch(s:Session,a:TeamActor):void{
   a.posture='stand';a.autoCrouchOriginal=null;
  }
 }
+/** A3.2: an authored LOOK/WATCH can physically sight down an empty
+ * sector without inventing a hostile contact or granting shot permission.
+ * The same shoulder candidate limits and real environment are used as
+ * combat; this is only a passive ready posture until a target is acquired.
+ */
+function updatePassiveWatchMicroAim(s:Session,a:TeamActor):void{
+ const watch=a.aimInstruction;
+ if(a.side!=='blue'||a.health<=0||!watch||watch.source==='stack'||
+    a.targetId!==null&&a.aim>.20||a.velocity>=10||
+    a.reload>0||!!a.traversal||a.squeeze||a.pace==='run'||
+    a.treatmentActive||a.carryingId!==null||
+    ['door','tool','treat','reload','flash'].includes(a.plan[0]?.kind??''))
+   return;
+ if(s.seconds-(a.lastAimSideProbeAt??-100)<.16)return;
+ a.lastAimSideProbeAt=s.seconds;
+ const yaw=watch.mode==='fixed'&&watch.angle!==undefined?
+    watch.angle:watch.point?
+    angle(a.p,watch.point):a.weaponYaw;
+ const far={x:a.p.x+Math.cos(yaw)*155,y:a.p.y+Math.sin(yaw)*155};
+ const friends=team(s).filter(other=>other!==a&&other.health>0)
+   .map(safetyBodyFor);
+ if(!friends.length){a.aimSideTarget=0;return;}
+ const world=sessionWorldGeometry(s);
+ const clear=(offset:number)=>{
+  const candidate=weaponClearance({x:a.p.x,z:a.p.y,
+    heading:a.heading,weaponYaw:yaw,shoulderOffset:offset,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+    equipment:a.equipment,aim:a.aim,posture:a.posture,
+    velocity:a.velocity,recoil:a.recoil},
+   s.doors,world.cover,world.walls,friends);
+  if(candidate.blocked)return false;
+  const from={x:candidate.muzzle.x,y:candidate.muzzle.z};
+  return assessFriendlyLane(from,candidate.muzzle.y,far,candidate.muzzle.y,
+    friends).blocker==='clear'&&
+   assessFireLane(from,candidate.muzzle.y,far,candidate.muzzle.y,
+    world.cover,world.walls,s.doors,friends).blocker==='clear';
+ };
+ a.aimSideTarget=clear(0)?0:
+   chooseMicroAimOffset(a.aimSideOffset??0,clear).offset;
+}
 function fire(s:Session,a:TeamActor,dt:number){
  updateContextualCrouch(s,a);
  // A3.2: only simulation time moves the tactical rifle accommodation.
  // Renderer/replay cannot initiate an offset or authorize a shot.
  if(a.health<=0||a.reload>0||a.traversal||a.squeeze||
-    a.firePolicy==='hold'||a.firePolicy==='suppress'||
+    (a.firePolicy==='hold'||a.firePolicy==='suppress')&&
+       (!a.aimInstruction||a.aimInstruction.source==='stack')||
     a.pace==='run'||a.plan[0]?.kind==='tool'||
     a.plan[0]?.kind==='treat'||a.plan[0]?.kind==='door')
    a.aimSideTarget=0;
  a.aimSideOffset=approachMicroAimOffset(
    a.aimSideOffset??0,a.aimSideTarget??0,dt);
+ updatePassiveWatchMicroAim(s,a);
   if(a.health<=0){
     a.reload=0;a.reloadMode=null;return;
   }
