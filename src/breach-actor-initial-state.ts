@@ -21,6 +21,8 @@ export const withActions=(a:Operator):TeamActor=>({
   intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],searchPauseUntil:0,plan:[],history:makeHistory(),nav:[],activeNode:-1,
   posture:'stand',pace:'walk',alert:'idle',velocity:0,turning:0,aim:0,
+  postureWasAuthored:false,autoCrouchUntil:0,autoCrouchOriginal:null,
+  lastAutoCrouchProbeAt:-100,
   targetId:null,suppression:0,stamina:1,magazine:12,reserve:36,
   reload:0,hits:0,kills:0,pointShots:0,aimedShots:0,longHits:0,
   stopped:false,contact:null,heard:null,
