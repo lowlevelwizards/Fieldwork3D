@@ -35,7 +35,7 @@ export function createCasualShirts(chest:THREE.Group,arms:readonly Arm[],
  const cuts={} as Record<CasualShirtCut,Prototype>;
  for(const cut of CASUAL_SHIRT_CUTS){
   const tee=cut==='t-shirt',button=cut==='button-up-shirt',
-   polo=cut==='polo-shirt',tank=cut==='tank-top';
+   polo=cut==='polo-shirt';
   const torso=group(chest,'casual-shirt:'+cut);
   const contact=VISIBLE_UPPER_CONTACT[cut][0];
   const shell=block(torso,cloth,contact.x,contact.y,contact.z,
