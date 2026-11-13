@@ -36,7 +36,8 @@ jobs:
           path: artifacts/animation-a2/report.json
           if-no-files-found: ignore
   gallery:
-    runs-on: ubuntu-latest
+    # Playwright 1.56 does not install Chromium on the newer Ubuntu 26 runner.
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4

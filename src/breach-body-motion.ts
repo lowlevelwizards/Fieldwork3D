@@ -20,7 +20,6 @@ export type BodyMotion={pelvisY:number;pelvisSide:number;
   support:number;chestLift:number;weaponYaw:number;weaponPitch:number;
   breath:number;};
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
-const smooth=(t:number)=>{const a=clamp(t,0,1);return a*a*(3-2*a);};
 // All stance load and contact support are calculated by the pure A2.1
 // kernel. This file remains the single writer of body presentation.
 export function bodyFromContacts(input:BalanceInput):BodyMotion{
