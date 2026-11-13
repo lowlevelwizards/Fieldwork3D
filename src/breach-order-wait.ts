@@ -19,7 +19,14 @@ export function advanceWaitOrder(
   const doorway=s.doors.find(d=>d.id===n.doorId);
   const gate=entryDoorState(doorway,
    doorway?sessionWorldGeometry(s):undefined);
-  if(gate!=='ready'){
+  // Door-clear alone is insufficient: an ajar panel can be passable
+  // before the opener has reached it, letting followers strike the leaf
+  // into their own lead. Await the actual planned OPEN completion.
+  const openerPending=s.operators.some(peer=>
+   peer.id!==a.id&&peer.side==='blue'&&peer.health>0&&
+   peer.plan[0]?.kind==='door'&&peer.plan[0]?.doorId===n.doorId&&
+   peer.plan[0]?.method==='open');
+  if(gate!=='ready'||openerPending){
    a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
    if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
     const stalledSwing=!!doorway&&doorway.open&&

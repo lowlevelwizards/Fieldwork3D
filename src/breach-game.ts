@@ -827,12 +827,9 @@ export function planSquadEntry(s:Session,doorId:string){
      !planStack(s,a.id,doorId))return false;
   if(!planSync(s,alive.map(a=>a.id)))return false;
   const lead=alive[0];
-  // A leaf already ajar is a push-through problem, not another latch
-  // opening assignment. The previous template forced the opener to chase
-  // a moving handle while followers advanced and swept the leaf into him.
-  // Retain explicit OPEN for truly closed doors and user authored actions.
-  if(!door.open||(door.openFraction??0)<.08)
-   if(!planDoor(s,lead.id,doorId,'open'))return false;
+  // A single designated opener remains authoritative. Followers do not
+  // enter until that real task completes, even for an initially ajar hinge.
+  if(!planDoor(s,lead.id,doorId,'open'))return false;
   for(let i=0;i<alive.length;i++){
    const a=alive[i],slot=slots[i];
    if(i>0){
