@@ -753,13 +753,18 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
       [p],OPERATOR_RADIUS+1))&&intelPassable(p,s.intel)&&
     !!routeWithIntel(s.intel,from,p).length&&
     occupied.every(other=>d(p,other)>23));
-  legal.sort((u,v)=>{
-    const rank=(p:Pt)=>{
-      const i=candidates.findIndex(candidate=>d(candidate,p)<1);
-      return (i-preferred+4)%4;
-    };
-    return rank(u)-rank(v)||d(from,u)-d(from,v);
-  });
+  // Q5: choose a stable, nearby *legal* physical stack slot rather
+  // than forcing every entry geometry into the same across-door zigzag.
+  // This never changes the candidate set, collision/leaf clearance, or
+  // authored order. A small role bias preserves a predictable formation
+  // when two slots have nearly equal travel cost.
+  const cost=(spot:Pt)=>{
+    const index=candidates.findIndex(candidate=>d(candidate,spot)<1);
+    const roleBias=Math.min(3,(index-preferred+candidates.length)%
+      candidates.length)*7;
+    return d(from,spot)+roleBias;
+  };
+  legal.sort((u,v)=>cost(u)-cost(v)||d(from,u)-d(from,v));
   if(!legal.length)return false;
   const point=legal[0],proposed=copyNodes(a.plan);
   proposed.splice(index,0,{id:s.nextId,kind:'move',p:clone(point),
