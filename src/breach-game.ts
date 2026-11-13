@@ -307,6 +307,11 @@ export type Session=Omit<TacticalState,'operators'> & {
  * A new GO after a tactical pause recomputes the remaining crossing
  * schedule. The running sequence is stable between those checkpoints. */
 const passageSchedules=new WeakMap<Session,PassageSchedule>();
+/** Q3 presentation may read the fixed GO-time schedule but can never
+ * claim, reorder or invalidate its execution-side participants. */
+export function livePassageSchedule(s:Session):PassageSchedule{
+ return ensurePassageSchedule(s);
+}
 function ensurePassageSchedule(s:Session):PassageSchedule{
  const old=passageSchedules.get(s);
  if(old)return old;

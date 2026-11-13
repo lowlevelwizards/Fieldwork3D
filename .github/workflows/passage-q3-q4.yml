@@ -1,0 +1,42 @@
+name: Q3-Q4 continuous squad flow critical
+on:
+  push:
+    branches: ['feature/passage-q3-q4-*']
+  pull_request:
+    paths:
+      - 'docs/passage-q3-q4.md'
+      - 'src/breach-passage-visual-ranks.ts'
+      - 'src/ui/passage-rank-badges.ts'
+      - 'src/breach-door-swing-staging.ts'
+      - 'src/breach-door-traversal-maneuver.ts'
+      - 'src/breach-passage-coordinator.ts'
+      - 'src/breach-2d-route-overlays.ts'
+      - 'src/breach-2d-projected-overlays.ts'
+      - 'src/breach-game.ts'
+      - 'tests/passage-q3-*.test.mjs'
+      - 'tests/passage-q4-*.test.mjs'
+      - '.github/workflows/passage-q3-q4.yml'
+  workflow_dispatch:
+concurrency:
+  group: passage-q34-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Q3–Q4 rank, swing, flow and prior Q0–Q2 contracts
+        run: node --experimental-strip-types --test tests/passage-q3-ranks.test.mjs tests/passage-q4-swing.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q0-trace.test.mjs tests/passage-q1-yield.test.mjs tests/passage-q2-coordinator.test.mjs
+      - name: Four hinge physical entry and live hand continuity
+        run: node --experimental-strip-types --test tests/door-traversal-d2d3-four-operator.test.mjs tests/door-traversal-d4-live-grip.test.mjs
+      - name: TypeScript and Pages production build
+        run: npm run build
+      - name: Representative 4-operator generated buildings
+        run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 5 600

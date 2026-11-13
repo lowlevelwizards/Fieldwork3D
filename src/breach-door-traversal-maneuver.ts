@@ -73,7 +73,11 @@ export function rehearseDoorLeafBypass(
  for(const [advance,clearance,lateral] of [
   [radius+6,radius+6,0],
   [radius+13,radius+13,5],
-  [radius+21,radius+20,-5]
+  [radius+21,radius+20,-5],
+  // Q4 rare outside-tip fallbacks. These reuse the same bounded actual
+  // swept-body validation and the recorded maneuver episode, never A*.
+  [radius+13,radius+24,9],
+  [radius+24,radius+28,-9]
  ]){
   const around={
    x:tip.x+f.x*advance,y:tip.y+f.y*advance};

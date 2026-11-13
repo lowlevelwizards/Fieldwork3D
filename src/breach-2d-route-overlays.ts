@@ -5,6 +5,7 @@ import type {MissionRecorder} from './breach-replay.ts';
 import type {DisplayRouteCache} from './breach-route-cache.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
+import {paintPassageRanks} from './ui/passage-rank-badges.ts';
 export type Route2DFrame={
  state:Session;replaying:boolean;selected:string;selectedNode:number|null;
  selectedActiveWatch:boolean;draggingNode:Pt|null;draggingWatchTarget:boolean;
@@ -273,6 +274,10 @@ function paths(){
       draw.stroke();draw.restore();
     }
   }
+  // Q3: only actual threshold-crossing plans get muted entry order.
+  // The tiny per-session preview is cached and never runs a new route
+  // search until the player changes a plan.
+  paintPassageRanks(state,draw,p=>p,colorFor,selected,replaying);
   const draft=draftRouteNeighbors();
   if(draft){
     draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.75;
