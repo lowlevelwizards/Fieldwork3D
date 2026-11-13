@@ -53,7 +53,9 @@ export function createModernHelmetCoverLayers(parent:THREE.Group,shell:string):
   color:simplified?0xffffff:OPERATOR_SOLID_FAMILIES['olive-drab'],
   roughness:simplified?.97:.98,
   metalness:0,flatShading:true,
-  vertexColors:!simplified,side:THREE.FrontSide
+  // Thin textile has no inward closing volume: keep it visible
+   // from grazing/underside inspection angles instead of a hollow helmet.
+   vertexColors:!simplified,side:simplified?THREE.DoubleSide:THREE.FrontSide
  });
  const binding=new THREE.MeshStandardMaterial({
   color:OPERATOR_SOLID_FAMILIES.charcoal,roughness:.98,flatShading:true,vertexColors:true
