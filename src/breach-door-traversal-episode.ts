@@ -30,6 +30,8 @@ export type DoorTraversalEpisode={
  /** D2 bounded maneuver attempts; no fresh route search every motor tick. */
  maneuverAttempts:number;nextManeuverAt:number;
  selectedLeafFraction:number;driftRecoveries:number;
+ /** Q6 one bounded check of the real short crossing, never each frame. */
+ lastShortEntryProbeAt?:number;
 };
 const squared=(a:Pt,b:Pt)=>{
  const x=a.x-b.x,y=a.y-b.y;return x*x+y*y;

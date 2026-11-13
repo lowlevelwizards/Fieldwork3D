@@ -18,7 +18,7 @@ import {handleMotorDoor} from './breach-motor-door.ts';
 import {resolveMotorCollision} from './breach-motor-collision.ts';
 import {d,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {syncDoorTraversalEpisode} from './breach-door-traversal-episode.ts';
-import {recoverDoorApproachDrift} from './breach-door-traversal-maneuver.ts';
+import {recoverDoorApproachDrift,preferShortPhysicalEntry} from './breach-door-traversal-maneuver.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
 
@@ -55,6 +55,9 @@ export function advanceActorMotor(
  if(profile)profile('motor-route',finishMotorCpuMeasurement(routeStart));
  if(readiness==='handled')return true;
  if(readiness==='unavailable')return false;
+ // Only generated ENTRY legs can replace an obviously inefficient
+ // transient route with the proven shorter real swept doorway maneuver.
+ preferShortPhysicalEntry(a,s,p);
 
  const strideStart=profile?beginMotorCpuMeasurement():0;
  // Tiny grid bends may be redundant once the full shoulder can take a

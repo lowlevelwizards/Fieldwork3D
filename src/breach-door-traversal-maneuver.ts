@@ -92,6 +92,54 @@ export function rehearseDoorLeafBypass(
  }
  return [];
 }
+/** Q6: reuse D2's physically rehearsed short portal, but BEFORE a
+ * generated entry spends seconds following a transient known-map detour.
+ * Never overrides a player waypoint, explicit WATCH, or a committed D2
+ * outside-leaf maneuver. Pure swept-body checks decide every new segment.
+ */
+export function preferShortPhysicalEntry(
+ a:TeamActor,s:Session,goal:Pt
+):boolean{
+ const order=a.plan[0],episode=a.doorTraversal;
+ if(!order?.entryDoorId||order.kind!=='move'||!episode||
+    episode.doorId!==order.entryDoorId||
+    episode.maneuver==='outside-leaf'||episode.phase==='release'||
+    s.seconds<(episode.lastShortEntryProbeAt??-10)+1.25)return false;
+ const door=s.doors.find(x=>x.id===episode.doorId);
+ if(!door||!door.open||(door.openFraction??0)<.82||
+    Math.abs(door.angularVelocity??0)>.16||
+    distance(a.p,doorCenter(door))>65)return false;
+ episode.lastShortEntryProbeAt=s.seconds;
+ const world=sessionWorldGeometry(s);
+ const candidate=rehearseDoorLeafBypass(a.p,goal,door,
+  (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+ if(!candidate.length||distance(candidate.at(-1)!,goal)>3)return false;
+ const pathLength=(points:readonly Pt[])=>{
+  let cost=0,from=a.p;
+  for(const point of points){cost+=distance(from,point);from=point;}
+  return cost;
+ };
+ const shortest=pathLength(candidate),existing=pathLength(a.nav);
+ const direct=distance(a.p,goal);
+ const first=a.nav[0];
+ const away=!!first&&
+  (first.x-a.p.x)*(goal.x-a.p.x)+
+  (first.y-a.p.y)*(goal.y-a.p.y)<-12;
+ const slowOrMisrouted=a.squeeze||episode.maneuver==='grab-and-hold'||
+  a.lastBlocker==='door'||away;
+ if(shortest>direct*1.65+20||
+    (slowOrMisrouted?shortest>existing*1.22+12:
+      shortest+12>=existing))return false;
+ episode.waypoints=candidate.map(clone);
+ episode.waypointIndex=0;
+ episode.maneuver='outside-leaf';
+ episode.phase='clear-leaf';
+ episode.lastTransitionAt=s.seconds;
+ a.nav=candidate.map(clone);
+ a.retryRouteAt=0;
+ a.recoveryAttempts=0;
+ return true;
+}
 /** Called only on physically blocked contact; an active maneuver never
  * gets a fresh route every 60Hz tick. A significant stall can authorize
  * one later retry, after ordinary dynamic bodies have had time to move.
