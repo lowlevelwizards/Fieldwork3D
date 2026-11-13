@@ -1,0 +1,58 @@
+name: A3.6-A3.7 physical braces and teammate stack release
+on:
+  pull_request:
+    paths:
+      - 'src/breach-contextual-support-contact.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-actor-initial-state.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/a3-physicality-*'
+      - 'a3-physicality-lab.html'
+      - 'tests/animation-a3-6-7-*'
+      - 'tests/animation-a3-0-physicality.test.mjs'
+      - 'docs/animation-a3-6-7-*'
+      - '.github/workflows/animation-a3-6-7.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: A3.6 physical wall cover and frame contact selection
+        run: node --experimental-strip-types --test --test-name-pattern='A3.6' tests/animation-a3-6-7-support-contacts.test.mjs
+      - name: A3.7 actual squad shoulder contact selection
+        run: node --experimental-strip-types --test --test-name-pattern='A3.7' tests/animation-a3-6-7-support-contacts.test.mjs
+      - name: Real session and D4 contact replay regression
+        run: node --experimental-strip-types --test tests/animation-a3-0-physicality.test.mjs tests/animation-a3-5-contact-anchors.test.mjs tests/door-traversal-d4-pose.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/breach-pose-contacts-compat.test.mjs
+      - name: Fire safety and leg motor remain unchanged
+        run: node --experimental-strip-types --test tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-4-micro-footwork.test.mjs tests/animation-a2-5-continuity.test.mjs
+      - name: TypeScript and production build
+        run: npm run build
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Actual-session Physicality Lab desktop and phone
+        run: node scripts/smoke-animation-a3-0.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-6-7-support-contacts-gallery
+          path: artifacts/animation-a3-0/gallery/
+          if-no-files-found: ignore

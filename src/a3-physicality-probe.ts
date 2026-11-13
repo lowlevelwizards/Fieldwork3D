@@ -92,11 +92,9 @@ export function probeA3(s:Session,config:A3Config){
  // produces an unearned new surface/teammate attachment.
  const contactAnchors=active.flatMap(a=>{
   const grip=a.doorHandContact;
-  if(!grip)return [];
-  const door=s.doors.find(d=>d.id===grip.doorId);
-  if(!door)return [];
-  const contact=doorGripPhysicalContact(grip.doorId,grip,
-    doorLeafSegment(door),a.p);
+  const door=grip?s.doors.find(d=>d.id===grip.doorId):null;
+  const contact=grip&&door?doorGripPhysicalContact(grip.doorId,grip,
+    doorLeafSegment(door),a.p):a.physicalContact;
   if(!contact)return [];
   return [{operatorId:a.id,kind:contact.intent,
    limb:contact.limb,target:contact.anchor.target,
@@ -105,7 +103,9 @@ export function probeA3(s:Session,config:A3Config){
      y:round(contact.anchor.point.y),z:round(contact.anchor.point.z)},
    normal:{x:round(contact.anchor.normal.x),
      y:round(contact.anchor.normal.y),z:round(contact.anchor.normal.z)},
-   attached:grip.releasedAt===null}];
+   attached:contact.releasedAt===null,
+   startedAt:round(contact.startedAt),
+   releasedAt:contact.releasedAt===null?null:round(contact.releasedAt)}];
  });
  return {
   version:A3_BASELINE_VERSION,config:{...config},
