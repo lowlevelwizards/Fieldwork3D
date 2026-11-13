@@ -3,6 +3,8 @@
  * hidden behind solid cover; preserve the current target when still valid.
  * The authoritative muzzle/shot safety gates MUST still run before ignition.
  */
+import {combatCostDiagnosticsEnabled,combatCostCounts}
+ from './breach-combat-cost-counters.ts';
 export type ObservableTarget={id:string;p:{x:number;y:number}};
 export function selectFireableContact<T extends ObservableTarget>(
  origin:{x:number;y:number},visible:readonly T[],currentId:string|null,
@@ -24,6 +26,7 @@ export function selectFireableContact<T extends ObservableTarget>(
  for(const candidate of near){
   if(currentVisible===null&&candidate.id===currentId)
    currentVisible=candidate;
+  if(combatCostDiagnosticsEnabled)combatCostCounts.multiTargetLaneChecks++;
   if(!clearLane(candidate))continue;
   if(firstSafe===null)firstSafe=candidate;
   if(currentSafe===null&&candidate.id===currentId)currentSafe=candidate;
