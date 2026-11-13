@@ -65,6 +65,8 @@ export type OperatorPose={
   handlingIntent?:HandlingIntent;threatRange?:number|null;
   /** A3.2 fixed-step physical stock/grip/muzzle lateral accommodation. */
   shoulderOffset?:number;
+  /** Result of true weapon-clearance pullback, not cosmetic interpolation. */
+  shoulderPullback?:number;
   handlingTransition?:HandlingTransition;
   obstruction?:boolean;friendlyNear?:boolean;friendlyAhead?:boolean;
   clearanceRetraction?:number;clearanceBlocked?:boolean;
