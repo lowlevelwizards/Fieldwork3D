@@ -218,6 +218,8 @@ export class TacticalScene3D{
   private readonly fogDiagnostic:FogDiagnostic=
     new URLSearchParams(location.search).get('fogDebug')==='palette'?
       'palette':'normal';
+  /** Scratch list for occluding operators; avoids two arrays per RAF. */
+  private readonly bloodBlockerScratch:Pt[]=[];
   private fogMemoryPaints=0;
   private fogSightPaints=0;
   private lastFogSession:Session|null=null;
@@ -1706,10 +1708,12 @@ export class TacticalScene3D{
     for(let i=0;i<this.observedDetails.length;i++){
       const detail=this.observedDetails[i];
       // Exact site-stable points; same visibility rule, fewer repeated rays.
+      const previousVisibility=detail.obj.visible;
       detail.obj.visible=presentDecor(s,detail,omniscient,
         personalDisclosure,personalGroundEvidence,
         p=>this.presentationSight.query(s,'decor',i,p));
-      this.staticBatches.setVisible(detail.obj,detail.obj.visible);
+      if(detail.obj.visible!==previousVisibility)
+       this.staticBatches.setVisible(detail.obj,detail.obj.visible);
     }
     // Director cuts walls around its actual historical friendly focal group,
     // rather than a potentially unrelated manually selected soldier.
@@ -1770,8 +1774,9 @@ export class TacticalScene3D{
       const observed=personal&&replayDoorHistory?
         replayDoorHistory.at(s.seconds,replayDisclosurePolicy.observerId,door.id):
         null;
-      const directlyObserved=!personal&&this.presentationSight.query(
-        s,'door',door.id,doorCenter(door));
+      // FULL-view already discloses this door; avoid a redundant LOS ray.
+      const directlyObserved=!personal&&(omniscient||this.presentationSight.query(
+        s,'door',door.id,doorCenter(door)));
       const visual=resolveDoorPresentation({
         door,personal,observed,omniscient,directlyObserved,
         rememberedOpen:s.intel.doorMemory.get(door.id)??0,
@@ -2350,8 +2355,12 @@ export class TacticalScene3D{
     const bloodCamera=opticalCamera.position;
     const orthoBlood=opticalCamera instanceof THREE.OrthographicCamera;
     opticalCamera.getWorldDirection(this.bloodCameraDirection).negate();
-    const visibleBloodBlockers=s.operators.filter(a=>
-      this.actors.get(a.id)?.root.visible).map(a=>a.p);
+    const visibleBloodBlockers=this.bloodBlockerScratch;
+    visibleBloodBlockers.length=0;
+    if(s.impactMarks.length&&replayDisclosurePolicy?.mode!=='operator')
+     for(const actor of s.operators)
+      if(this.actors.get(actor.id)?.root.visible)
+       visibleBloodBlockers.push(actor.p);
     let markCount=0;
     for(let markIndex=0;markIndex<s.impactMarks.length;markIndex++){
       const mark=s.impactMarks[markIndex];
