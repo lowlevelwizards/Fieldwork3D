@@ -32,7 +32,7 @@ export function shortStockUnderarmPocket(forwardPush=0):Anchor3{
 export function stockPocket(mode:Handling,forwardPush=0):Anchor3{
  const xPush=Math.max(0,Math.min(1.25,forwardPush));
   switch(mode){
-    case 'high':return {x:4.75+xPush,y:5.30,z:5.20};
+    case 'high':return {x:3.35+xPush*.35,y:1.05,z:5.45};
     case 'low':return {x:4.65+xPush,y:3.15,z:5.20};
     case 'ready':return {x:4.85+xPush,y:4.45,z:5.20};
     // SHORT disengages the front shoulder socket entirely.

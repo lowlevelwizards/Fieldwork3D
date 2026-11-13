@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
+import type {Handling,HandlingIntent} from './breach-weapon-pose.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {fitWeaponPose,handlingPose,weaponGrips,
   shortStockSourceHandling} from './breach-weapon-pose.ts';
@@ -17,13 +18,17 @@ export type MuzzleInput={x:number;z:number;heading:number;
   recoil:number;obstruction?:boolean;friendlyNear?:boolean;
   threatRange?:number|null;clearanceRetraction?:number;
   shortCompression?:number;
+  handlingIntent?:HandlingIntent;friendlyAhead?:boolean;
+  /** Explicit clearance carry selected by same shared policy. */
+  carryOverride?:Handling;
   posture?:'stand'|'crouch';
   equipment?:EquipmentLoadout};
 export const MUZZLE_TIP=19.5;
 export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
-  const handling=handlingPose({aim:p.aim,moving:Math.min(1,p.velocity/72),
+  const handling=p.carryOverride??handlingPose({aim:p.aim,moving:Math.min(1,p.velocity/72),
     obstruction:!!p.obstruction,friendlyNear:!!p.friendlyNear,
-    threatRange:p.threatRange,weapon:p.weapon});
+    threatRange:p.threatRange,weapon:p.weapon,
+    friendlyAhead:p.friendlyAhead,intent:p.handlingIntent});
   const configuration=p.weaponConfiguration?.weapon===p.weapon?
     p.weaponConfiguration:undefined;
   const fit=fitWeaponPose({weapon:p.weapon,handling,configuration,

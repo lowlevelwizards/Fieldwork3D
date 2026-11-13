@@ -4,6 +4,13 @@ on:
     paths:
       - 'src/breach-contact-balance.ts'
       - 'src/breach-motion-transitions.ts'
+      - 'src/breach-carry-policy.ts'
+      - 'src/breach-handling-profiles.ts'
+      - 'src/breach-weapon-pose.ts'
+      - 'src/breach-weapon-clearance.ts'
+      - 'src/breach-muzzle.ts'
+      - 'src/breach-pose-director.ts'
+      - 'src/breach-handling-context.ts'
       - 'src/breach-directional-gait.ts'
       - 'src/breach-hybrid-landing.ts'
       - 'src/breach-distance-gait.ts'
@@ -22,6 +29,7 @@ on:
       - 'docs/animation-a2-0-a2-1-scope.md'
       - 'docs/animation-a2-2-scope.md'
       - 'docs/animation-a2-3-scope.md'
+      - 'docs/animation-a2-4-scope.md'
       - '.github/workflows/animation-a2-motion.yml'
   workflow_dispatch:
 permissions:

@@ -31,7 +31,7 @@ export function directOperatorPose(p:OperatorPose,context:PoseDirectorContext){
       aim:p.aimBlend??(p.aiming?1:0),
       moving:context.moving,
       obstruction:!!p.obstruction||context.receivingBash,
-      friendlyNear:!!p.friendlyNear,
+      friendlyNear:!!p.friendlyNear,friendlyAhead:!!p.friendlyAhead,
       intent:p.handlingIntent,threatRange:p.threatRange,
       weapon:p.weapon,
       previous:p.deterministic?undefined:context.previousHandling,
