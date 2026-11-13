@@ -645,8 +645,9 @@
 (function(){
  var issue=null,problem='',ready=false;
  function bootReady(){return ready||document.documentElement.dataset.fieldworkAppReady==='1';}
+ function firstFrameReady(){return document.documentElement.dataset.fieldworkFirstSceneFrame==='1';}
  function displayProblem(reason){
-  if(bootReady())return;
+  if(bootReady()&&firstFrameReady())return;
   problem=String(reason||'Unknown startup failure').slice(0,900);
   if(issue){issue.querySelector('pre').textContent=problem;return;}
   issue=document.createElement('section');
@@ -696,7 +697,7 @@
   (document.body||document.documentElement).appendChild(issue);
  }
  window.addEventListener('error',function(event){
-  if(bootReady())return;
+  if(bootReady()&&firstFrameReady())return;
   var target=event.target;
   if(target?.tagName==='SCRIPT'){
    displayProblem('Could not load JavaScript module: '+(target.src||'unknown URL'));
@@ -705,7 +706,8 @@
   }
  },true);
  window.addEventListener('unhandledrejection',function(event){
-  if(!bootReady())displayProblem(event.reason?.message||String(event.reason));
+  if(!bootReady()||!firstFrameReady())
+   displayProblem(event.reason?.message||String(event.reason));
  });
  window.addEventListener('fieldwork:boot-ready',function(){
   ready=true;issue?.remove();issue=null;
