@@ -38,6 +38,7 @@ export function probeA3(s:Session,config:A3Config){
  const range=Math.hypot(target.p.x-shooter.p.x,target.p.y-shooter.p.y);
  const request={x:shooter.p.x,z:shooter.p.y,
   heading:shooter.heading,weaponYaw:shooter.weaponYaw,
+  shoulderOffset:shooter.aimSideOffset??0,
   weapon:shooter.weapon,weaponConfiguration:shooter.weaponConfiguration,
   equipment:shooter.equipment,aim:shooter.aim,
   posture:shooter.posture,velocity:shooter.velocity,recoil:shooter.recoil,
