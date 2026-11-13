@@ -1,65 +1,143 @@
-/** D4 — actual support-hand contact with a swinging hinged leaf.
- * A hand can start only on physical CONTACT returned by the swept motor.
- * Retaining the grip is a cheap reach/lifecycle check, not a new door
- * physics motor, remote pull, waypoint, teleport, or automatic aim command.
+/** D4 — one physical support-hand attachment, driven by the existing hinge.
+ * The episode flags are compatibility mirrors, NOT another pose controller.
+ * Only real accepted body contact can acquire. No collision exemptions,
+ * moving bodies, per-tick impulse injection, remote handles or extra IK.
  */
-import {type Door,type Pt} from './breach-core.ts';
-import {DOOR_REACH,handlePoint} from './breach-door.ts';
+import {doorLeafSegment,pointToSegment,type Door,type Pt}
+ from './breach-core.ts';
+import {handlePoint,PUSHED_OPEN_LIMIT} from './breach-door.ts';
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 import type {TeamActor} from './breach-game.ts';
-
-const withinHandle=(p:Pt,d:Door):boolean=>{
- const handle=handlePoint(d);
- return (p.x-handle.x)**2+(p.y-handle.y)**2<=DOOR_REACH**2;
+export const DOOR_HAND_ACQUIRE_REACH=27;
+export const DOOR_HAND_RELEASE_REACH=31;
+export const DOOR_HAND_RELEASE_DURATION=.24;
+export type DoorGripRecord={
+ doorId:string;fraction:number;mode:'handle'|'panel';
+ startedAt:number;releasedAt:number|null;point:Pt;
 };
-export function canMaintainDoorGrip(actor:TeamActor,door:Door,
- seconds:number):boolean{
- const order=actor.plan[0],e=actor.doorTraversal;
- if(!e||e.doorId!==door.id||!e.handContact||
-    e.phase==='release'||e.phase==='blocked'||
-    !door.open||door.wedged||door.kind==='shutter'||
-    door.kind==='sliding'||actor.health<=0||actor.surrendered||
-    !order||order.id!==e.authoredOrderId||
-    (order.kind!=='move'&&order.kind!=='pie')||
-    actor.reload>0||actor.treatmentActive||
-    actor.traversal||actor.traversalPending||
-    actor.pace==='run'||seconds-actor.lastShotAt<.4||
-    seconds-actor.lastThrowAt<.7)
-   return false;
- return withinHandle(actor.p,door);
+const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+const clamp=(x:number,lo:number,hi:number)=>
+ Math.max(lo,Math.min(hi,x));
+export function doorGripPoint(d:Door,fraction:number):Pt{
+ const leaf=doorLeafSegment(d);
+ return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*fraction,
+   y:leaf.a.y+(leaf.b.y-leaf.a.y)*fraction};
 }
-/** A real closing-face body contact that was converted to a physical
- * pull authorizes the hand. Merely passing near a leaf does not. */
-export function beginDoorGrip(actor:TeamActor,door:Door,
- seconds:number):boolean{
- const e=actor.doorTraversal;
- if(!e||e.doorId!==door.id||e.phase==='release'||
-    !door.open||door.wedged||door.kind==='sliding'||
-    door.kind==='shutter'||actor.health<=0||
-    actor.reload>0||actor.treatmentActive||
-    actor.pace==='run'||seconds-actor.lastShotAt<.4||
-    seconds-actor.lastThrowAt<.7||
-    !withinHandle(actor.p,door))return false;
- if(!e.handContact)e.handContactSince=seconds;
- e.handContact=true;
- // A support-hand reach is independent of the feet's rehearsed route.
- // Do not erase an active outside-leaf corridor and invite A* churn.
+function handAvailable(a:TeamActor,seconds:number):boolean{
+ const n=a.plan[0],e=a.doorTraversal;
+ return !!n&&!!e&&e.doorId!==undefined&&n.id===e.authoredOrderId&&
+   (n.kind==='move'||n.kind==='pie')&&a.side==='blue'&&
+   a.health>0&&!a.surrendered&&!a.traversal&&!a.traversalPending&&
+   a.reload<=0&&!a.treatmentActive&&a.pace!=='run'&&
+   n.moveMode!=='sprint'&&(a.targetId===null||a.targetId===undefined)&&
+   (a.aim??0)<.45&&seconds-(a.lastShotAt??-100)>.40&&
+   seconds-(a.lastThrowAt??-100)>.7&&
+   seconds-(a.lastBashAt??-100)>.6&&
+   (a.flashUntil??0)<=seconds&&
+   e.phase!=='release'&&e.phase!=='blocked';
+}
+function validDoor(a:TeamActor,d:Door):boolean{
+ return a.doorTraversal?.doorId===d.id&&d.open&&
+   !d.wedged&&!d.jammed&&!d.locked&&!d.heldBy&&
+   d.kind!=='sliding'&&d.kind!=='shutter';
+}
+function canReachWall(world:SessionWorldGeometry|undefined,
+ from:Pt,to:Pt):boolean{
+ return !world?.staticWallBlocksRay({a:from,b:to});
+}
+function chooseContact(a:TeamActor,d:Door,seconds:number,
+ world?:SessionWorldGeometry):{
+ fraction:number;mode:'handle'|'panel';point:Pt
+}|null{
+ if(!validDoor(a,d)||!handAvailable(a,seconds))return null;
+ const leaf=doorLeafSegment(d),handle=handlePoint(d);
+ const dx=leaf.b.x-leaf.a.x,dy=leaf.b.y-leaf.a.y;
+ const squared=Math.max(1,dx*dx+dy*dy);
+ const along=clamp(((a.p.x-leaf.a.x)*dx+
+   (a.p.y-leaf.a.y)*dy)/squared,.45,.86);
+ const nearHandle=distance(a.p,handle)<=DOOR_HAND_ACQUIRE_REACH;
+ const fraction=nearHandle?.82:along;
+ const point=doorGripPoint(d,fraction);
+ if(distance(a.p,point)>DOOR_HAND_ACQUIRE_REACH||
+   pointToSegment(a.p,leaf)>DOOR_HAND_ACQUIRE_REACH||
+   !canReachWall(world,a.p,point))return null;
+ return {fraction,mode:nearHandle?'handle':'panel',point};
+}
+/** Used by the existing body pressure policy. The physical contact
+ * solver still checks an actual closing-face body sweep first. */
+export function canDoorHandAssist(a:TeamActor,d:Door,
+ seconds:number,world?:SessionWorldGeometry):boolean{
+ return chooseContact(a,d,seconds,world)!==null;
+}
+/** Called ONLY after the real door's pressure solver reports handAssist.
+ * No speculative radius trigger, distant grip or authored plan rewrite. */
+export function beginDoorGrip(a:TeamActor,d:Door,seconds:number,
+ world?:SessionWorldGeometry):boolean{
+ const found=chooseContact(a,d,seconds,world);
+ if(!found)return false;
+ const current=a.doorGrip;
+ if(current?.releasedAt===null&&current.doorId===d.id)return true;
+ const record:DoorGripRecord={doorId:d.id,fraction:found.fraction,
+   mode:found.mode,point:found.point,startedAt:seconds,releasedAt:null};
+ a.doorGrip=record;
+ const e=a.doorTraversal!;
+ e.handContact=true;e.handContactSince=seconds;
  if(e.maneuver==='direct'||e.maneuver==='push-through')
   e.maneuver='grab-and-hold';
+ a.lastDoorId=d.id;a.lastDoorMethod='open';
  return true;
 }
-export function updateDoorGrip(actor:TeamActor,door:Door,
- seconds:number):boolean{
- const e=actor.doorTraversal;
- if(!e?.handContact)return false;
- if(!canMaintainDoorGrip(actor,door,seconds)){
+/** Retain a tiny presentation release record without retaining hinge force. */
+export function releaseDoorGrip(a:TeamActor,seconds:number):void{
+ const record=a.doorGrip;
+ if(record&&record.releasedAt===null)record.releasedAt=seconds;
+ const e=a.doorTraversal;
+ if(e?.handContact){
   e.handContact=false;e.handContactSince=null;
-  // The old short OPEN animation is timestamp-driven. Once an actual
-  // grasp is released, retire that cue instead of leaving the support
-  // hand visually attached to a handle that has moved out of reach.
-  if(actor.lastDoorId===door.id)
-   actor.lastDoorAt=Math.min(actor.lastDoorAt,seconds-1.13);
   if(e.maneuver==='grab-and-hold')e.maneuver='direct';
-  return false;
  }
+ if(record&&a.lastDoorId===record.doorId)
+  a.lastDoorAt=Math.min(a.lastDoorAt,seconds-1.13);
+}
+export function canMaintainDoorGrip(a:TeamActor,d:Door,seconds:number,
+ world?:SessionWorldGeometry):boolean{
+ const record=a.doorGrip;
+ if(!record||record.releasedAt!==null||record.doorId!==d.id||
+   !handAvailable(a,seconds)||!validDoor(a,d))return false;
+ const point=doorGripPoint(d,record.fraction);
+ return distance(a.p,point)<=DOOR_HAND_RELEASE_REACH&&
+   canReachWall(world,a.p,point);
+}
+/** Live heartbeat: one attached actor, one cheap reach test per fixed tick.
+ * The main globally-swept hinge phase remains the sole physics authority. */
+export function updateDoorGrip(a:TeamActor,d:Door,seconds:number,
+ world?:SessionWorldGeometry):boolean{
+ if(!canMaintainDoorGrip(a,d,seconds,world)){
+  releaseDoorGrip(a,seconds);return false;
+ }
+ const record=a.doorGrip!;
+ const target=doorGripPoint(d,record.fraction);
+ record.point.x=target.x;record.point.y=target.y;
+ if(a.doorTraversal){
+  a.doorTraversal.handContact=true;
+  a.doorTraversal.handContactSince=record.startedAt;
+ }
+ if((d.openFraction??0)<PUSHED_OPEN_LIMIT-.01)
+  d.pushTarget=PUSHED_OPEN_LIMIT;
  return true;
+}
+export function maintainDoorGrip(a:TeamActor,doors:readonly Door[],
+ seconds:number,world?:SessionWorldGeometry):void{
+ const record=a.doorGrip;
+ if(!record)return;
+ if(record.releasedAt!==null){
+  if(seconds-record.releasedAt>=DOOR_HAND_RELEASE_DURATION)
+   a.doorGrip=null;
+  return;
+ }
+ let door:Door|undefined;
+ for(const candidate of doors)
+  if(candidate.id===record.doorId){door=candidate;break;}
+ if(!door)releaseDoorGrip(a,seconds);
+ else updateDoorGrip(a,door,seconds,world);
 }
