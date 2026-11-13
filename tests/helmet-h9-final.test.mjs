@@ -17,9 +17,12 @@ test('H9.8: full appearance configuration serializes without destructive suppres
  const modern=resolveHelmetField('ach',stored);
  assert.equal(modern.goggles,'rear');
  assert.equal(modern.goggleSleeve,true);
- for(const key of ['shroud','rails','bungees','velcro','strobe','counterweight',
-  'battery','light','camera','chemlight','patches'])
+ for(const key of ['shroud','rails','bungees','velcro','strobe',
+  'light','camera','chemlight','patches'])
   assert.equal(modern[key],true,key);
+ assert.equal(modern.counterweight,false);
+ assert.equal(modern.battery,false);
+ assert.equal(stored.battery,true,'raw appearance retains suppressed preference');
  const pasgt=resolveHelmetField('pasgt',stored);
  for(const key of ['rails','bungees','velcro','counterweight','battery','camera','light'])
   assert.equal(pasgt[key],false,key);

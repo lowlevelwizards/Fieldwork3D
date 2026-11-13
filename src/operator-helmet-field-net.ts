@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover,type CoverRegion,type HelmetSurfaceFrame}
+import {sampleHelmetCover,sampleHelmetShell,type CoverRegion,type HelmetSurfaceFrame}
  from './operator-helmet-surface.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {achMichProfile,achMichHemY} from './operator-ach-mich-details.ts';
@@ -31,8 +31,9 @@ const clip=(slope:number,shift:number):[Edge,Edge]=>{
  hits.sort((a,b)=>a.x-b.x);
  return [hits[0],hits[hits.length-1]];
 };
-const roof=(shell:AchMichCoverShell,x:number,z:number):Pt=>{
- const sample=sampleHelmetCover(shell,'crown',x/3.4,z/3.8,.205);
+const roof=(shell:AchMichCoverShell,x:number,z:number,covered:boolean):Pt=>{
+ const sample=covered?sampleHelmetCover(shell,'crown',x/3.4,z/3.8,.205):
+  sampleHelmetShell(shell,'crown',x/3.4,z/3.8,.145);
  if(!sample)throw Error('H9.3 missing roof point '+shell+' '+x+','+z);
  return mat(sample);
 };
@@ -46,13 +47,14 @@ function sideRegion(edge:Edge):{region:Exclude<CoverRegion,'crown'>;u:number}{
  * to cross empty cloth or bouncing to the far side of the helmet.
  */
 const side=(shell:AchMichCoverShell,edge:Edge,v:number,
- offset=.16,drift=0):Pt=>{
+ offset=.16,drift=0,covered=true):Pt=>{
  const {region,u:rawU}=sideRegion(edge);
  const u=Math.max(-.84,Math.min(.84,rawU+drift));
  for(const uu of [u,u*.92,u*.78,u*.62])
   for(const vv of [v,v+.12,v-.12,v+.24,v-.24,.48,.22,.06]){
    const clamped=Math.max(-.75,Math.min(.86,vv));
-   const hit=sampleHelmetCover(shell,region,uu,clamped,offset);
+   const hit=covered?sampleHelmetCover(shell,region,uu,clamped,offset):
+    sampleHelmetShell(shell,region,uu,clamped,Math.max(.055,offset-.05));
    if(!hit)continue;
    if((region==='left'&&hit.position.x>0)||
       (region==='right'&&hit.position.x<0)||
@@ -77,24 +79,25 @@ const bandV=(shell:AchMichCoverShell,edge:Edge):number=>{
  return Math.max(-.65,Math.min(.48,
   2*(target-bottom-.38)/span-1));
 };
-function route(shell:AchMichCoverShell,slope:number,shift:number){
+function route(shell:AchMichCoverShell,slope:number,shift:number,
+ covered:boolean){
  const [a,b]=clip(slope,shift);
  const crown:Pt[]=[];
  for(let i=0;i<=8;i++){
   const t=i/8;
-  crown.push(roof(shell,a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t));
+  crown.push(roof(shell,a.x+(b.x-a.x)*t,a.z+(b.z-a.z)*t,covered));
  }
  const aTie=bandV(shell,a),bTie=bandV(shell,b);
  // Drift along each shell panel as the net descends; straight vertical
  // ladders at front/side were the last visible H8-like net artifact.
  const direction=Math.sign(slope);
  const points:Pt[]=[
-  side(shell,a,aTie,.048,direction*.23),
-  side(shell,a,(aTie+.72)*.5,.16,direction*.13),
-  side(shell,a,.72,.16,direction*.04),...crown,
-  side(shell,b,.72,.16,-direction*.04),
-  side(shell,b,(bTie+.72)*.5,.16,-direction*.13),
-  side(shell,b,bTie,.048,-direction*.23)
+  side(shell,a,aTie,.048,direction*.23,covered),
+  side(shell,a,(aTie+.72)*.5,.16,direction*.13,covered),
+  side(shell,a,.72,.16,direction*.04,covered),...crown,
+  side(shell,b,.72,.16,-direction*.04,covered),
+  side(shell,b,(bTie+.72)*.5,.16,-direction*.13,covered),
+  side(shell,b,bTie,.048,-direction*.23,covered)
  ];
  return {points,ends:[a,b],tieY:[
   points[0].position.y,points[points.length-1].position.y
@@ -116,13 +119,17 @@ function appendStrip(out:number[],path:Pt[]):void{
   for(const v of [p,q,r,p,r,s])put(v);
  }
 }
+const helmetNetCache=new Map<string,THREE.BufferGeometry>();
 export function createAchMichFieldNetGeometry(
- shell:AchMichCoverShell
+ shell:AchMichCoverShell,covered=true
 ):THREE.BufferGeometry{
+ const key=shell+':'+(covered?'cover':'bare');
+ const cached=helmetNetCache.get(key);
+ if(cached)return cached;
  const vertices:number[]=[],routes=[];
  for(const slope of [-.78,.82])
   for(const shift of [-2.75,.16,2.84]){
-   const path=route(shell,slope,shift);
+   const path=route(shell,slope,shift,covered);
    appendStrip(vertices,path.points);
    routes.push({
     slope,shift,
@@ -141,5 +148,7 @@ export function createAchMichFieldNetGeometry(
  g.userData.h10NetCordWidth=WIDTH;
  g.userData.h10BandTieY=HELMET_MOUNT_PROFILES[shell].top-2.39;
  g.userData.h9NetRoutes=routes;
+ g.userData.h5NetSurface=covered?'cover':'shell';
+ helmetNetCache.set(key,g);
  return g;
 }

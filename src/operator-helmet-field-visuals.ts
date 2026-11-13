@@ -97,6 +97,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   mesh.castShadow=false;mesh.receiveShadow=false;net.add(mesh);
   net.userData.h9NetCordCount=6;
   net.userData.h9SurfaceDraped=true;
+  net.userData.h5CoverAdaptiveNet=true;
  }
  const dangling=addGroup('unfastened');
  // The same anchored PASGT/ACH webbing is separated at its lower buckle.
@@ -194,7 +195,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
 }
 export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  shellHex:number,covered:boolean,headEyewear='eyes-none'):void{
- const s=resolveHelmetField(v.shell,raw),m=v.modules;
+ const s=resolveHelmetField(v.shell,raw,{covered}),m=v.modules;
  // Swap between cached, pre-authored cloth and shell ring profiles only
  // when the cover state changes; never raycast every animation frame.
  if(v.shell!=='pasgt'){
@@ -204,14 +205,21 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
    band.userData.h5Covered=covered;
   }
  }
+ if(v.shell!=='pasgt'){
+  const net=v.modules.net.getObjectByName('ach-mich-h9-shell-wrapped-diamond-net');
+  if(net instanceof THREE.Mesh&&net.userData.h5Covered!==covered){
+   net.geometry=createAchMichFieldNetGeometry(v.shell,covered);
+   net.userData.h5Covered=covered;
+  }
+ }
  const bandHex=resolveHelmetFieldColor(s.bandColor,shellHex,v.shell==='pasgt');
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
  // The net cannot be tied off if its retaining elastic is absent.
- m.band.visible=(s.band||(covered&&s.concealment==='net'))&&v.shell!=='pasgt';
+ m.band.visible=(s.band||s.concealment==='net')&&v.shell!=='pasgt';
  m.loops.visible=covered&&v.shell!=='pasgt'&&s.concealment!=='none';
  m.scrim.visible=covered&&v.shell!=='pasgt'&&s.concealment==='scrim';
- m.net.visible=covered&&v.shell!=='pasgt'&&s.concealment==='net';
+ m.net.visible=v.shell!=='pasgt'&&s.concealment==='net';
  m.leaves.visible=covered&&v.shell!=='pasgt'&&s.concealment.startsWith('foliage-')&&
   s.concealment!=='foliage-loops';
  const count=s.concealment==='foliage-sparse'?3:
@@ -234,6 +242,10 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   // not cross the central locking interface at brow height.
   if(key==='goggles-front'&&v.shell!=='pasgt')
    m[key].position.y=s.shroud?-.84:0;
+  const coverStrap=m[key].getObjectByName('goggle-retention-covered');
+  const bareStrap=m[key].getObjectByName('goggle-retention-bare');
+  if(coverStrap)coverStrap.visible=covered;
+  if(bareStrap)bareStrap.visible=!covered;
   const sleeve=m[key].getObjectByName('goggle-fabric-sleeve');
   if(sleeve)sleeve.visible=s.goggleSleeve&&where!=='eyes';
  }

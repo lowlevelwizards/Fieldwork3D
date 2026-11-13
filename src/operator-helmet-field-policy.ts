@@ -60,12 +60,28 @@ export const isFieldHelmet=(id:string):id is FieldHelmet=>
  * helmet cameras, battery packs and dedicated modern counterweights are not
  * represented on the baseline PASGT. This is NOT a modernized PASGT mode.
  */
-export function resolveHelmetField(id:string,raw:unknown):HelmetFieldOptions{
+export function resolveHelmetField(id:string,raw:unknown,
+ context:{covered?:boolean}={}):HelmetFieldOptions{
  const s=readHelmetField(raw);
  if(!isFieldHelmet(id))return {...HELMET_FIELD_DEFAULTS};
  if(id==='pasgt')return {...s,rails:false,bungees:false,velcro:false,
   counterweight:false,battery:false,camera:false,light:false};
- return s;
+ const r={...s};
+ // Stored choices are never discarded. Only the effective cosmetic assembly
+ // is constrained by the active cover, mount availability and occupied slots.
+ if(context.covered===false&&r.concealment!=='net')r.concealment='none';
+ if(!r.rails){r.light=false;r.camera=false;}
+ if(!r.rails||!r.shroud)r.bungees=false;
+ if(!r.rails&&!r.band)r.chemlight=false;
+ // Camera and light cannot occupy the same side-rail slot.
+ if(r.camera&&r.light&&r.cameraSide===r.lightSide)r.light=false;
+ // One centered rear carrier slot; rear goggles occupy the same zone.
+ if(r.goggles==='rear'){
+  r.counterweight=false;r.battery=false;
+ }else if(r.battery)r.counterweight=false;
+ // Adhesive panels on bare shell, or a compatible fabric cover.
+ if(context.covered===false&&!r.velcro)r.patches=false;
+ return r;
 }
 /** Fixed palette of historic webbing colors, with manual override. */
 export const HELMET_FIELD_HEX={olive:0x586548,tan:0x977e59,black:0x262a29} as const;

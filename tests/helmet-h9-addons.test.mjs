@@ -26,7 +26,9 @@ test('H9.7: every modern add-on has its own recognizable mounted silhouette',()=
    assert.ok(Math.abs(n.length()-1)<1e-3);
    for(const id of expected)assert.ok(g.getObjectByName(id),shell+' missing '+id);
    assert.ok(new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3()).length()>1);
-   updateHelmetFieldLayers(kit,{[name]:true},0x62705d,true);
+   updateHelmetFieldLayers(kit,{[name]:true,
+    ...(['light','camera'].includes(name)?{rails:true}:{}),
+    ...(name==='chemlight'?{band:true}:{})},0x62705d,true);
    assert.equal(g.visible,true);
   }
   const counter=kit.modules.counterweight.children.find(x=>
@@ -34,8 +36,8 @@ test('H9.7: every modern add-on has its own recognizable mounted silhouette',()=
   const battery=kit.modules.battery.children.find(x=>
    x.name==='helmet-addon-fitted-socket');
   assert.ok(counter&&battery);
-  assert.ok(battery.position.x-counter.position.x>2,
-   shell+' rear mounted modules must occupy separate positions');
+  assert.ok(Math.abs(battery.position.x-counter.position.x)<.1,
+   shell+' rear weight/battery modules share a centered exclusive mounting zone');
  }
 });
 test('H9.7: historical PASGT excludes modern unsupported modules',()=>{
