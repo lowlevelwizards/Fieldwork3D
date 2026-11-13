@@ -307,6 +307,25 @@ export type Session=Omit<TacticalState,'operators'> & {
  * A new GO after a tactical pause recomputes the remaining crossing
  * schedule. The running sequence is stable between those checkpoints. */
 const passageSchedules=new WeakMap<Session,PassageSchedule>();
+const passageDisplayCache=new WeakMap<Session,{signature:string;schedule:PassageSchedule}>();
+/** Preview ranks depend on *authored* intent, never motor navigation. The
+ * planning signature is cheap; known-route A* runs only when plans change.
+ * Running presentation uses the actual immutable GO-time motor schedule.
+ */
+export function passageScheduleForDisplay(s:Session):PassageSchedule{
+ if(s.phase==='running')return ensurePassageSchedule(s);
+ const signature=JSON.stringify([
+  s.objectRevision,s.intel.walls.size,s.intel.doorMemory.size,
+  s.operators.filter(a=>a.side==='blue').map(a=>[
+   a.id,a.health,a.p,a.pace,a.posture,a.loadMovementScale,a.plan])
+ ]);
+ const old=passageDisplayCache.get(s);
+ if(old?.signature===signature)return old.schedule;
+ const schedule=planDoorSchedule(s.operators,s.doors,
+   (from,to)=>legalMoveRoute(s,from,to));
+ passageDisplayCache.set(s,{signature,schedule});
+ return schedule;
+}
 function ensurePassageSchedule(s:Session):PassageSchedule{
  const old=passageSchedules.get(s);
  if(old)return old;

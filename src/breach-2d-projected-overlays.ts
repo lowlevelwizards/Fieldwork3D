@@ -3,7 +3,9 @@
  */
 import {doorCenter,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,team,enemies,isSeen,lastKnown,
- plannedWindowRoute,flashTrajectory} from './breach-game.ts';
+ plannedWindowRoute,flashTrajectory,passageScheduleForDisplay}
+ from './breach-game.ts';
+import {badgesForActor,paintPassageBadge} from './breach-passage-badges.ts';
 import type {TacticalScene3D} from './breach-3d.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
@@ -57,6 +59,7 @@ function renderProjectedPlans(){
   projectedRouteCache.beginFrame(stage.camera,cssW,cssH);
   draw.setTransform(dpr,0,0,dpr,0,0);
   draw.clearRect(0,0,cssW,cssH);
+  const crossingSchedule=!replaying?passageScheduleForDisplay(state):null;
   for(const a of team(state)){
     if(a.health<=0&&(!replaying||replayPlanVersion!=='original'))continue;
     if(replaying&&(replayPlanScope==='none'||
@@ -223,6 +226,13 @@ function renderProjectedPlans(){
       if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
     }
     draw.restore();
+    if(crossingSchedule){
+      for(const mark of badgesForActor(a.id,a.p,state.doors,crossingSchedule,
+        state.phase==='planning',false)){
+        paintPassageBadge(draw,worldToScreen(mark.point,12),
+          mark.rank,a.id===selected);
+      }
+    }
     const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);
     const squadIndex=team(state).findIndex(member=>member.id===a.id);
     const labelSpread=state.site?[

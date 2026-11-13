@@ -1,6 +1,8 @@
 /** 2D authored-order route and marker presentation. No movement authority. */
 import {W,H,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,team,flashTrajectory} from './breach-game.ts';
+import {type Session,type TeamActor,team,flashTrajectory,
+ passageScheduleForDisplay} from './breach-game.ts';
+import {badgesForActor,paintPassageBadge} from './breach-passage-badges.ts';
 import type {MissionRecorder} from './breach-replay.ts';
 import type {DisplayRouteCache} from './breach-route-cache.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
@@ -262,6 +264,14 @@ function paths(){
       }
     }
     draw.restore();
+    // Q3: labels belong only to real CROSSINGS, never to non-crossing MOVE
+    // nodes, helmets, or actors. Different doors can show different ranks.
+    if(!replaying){
+      const ranks=passageScheduleForDisplay(state);
+      for(const mark of badgesForActor(a.id,a.p,state.doors,ranks,
+        state.phase==='planning',false))
+        paintPassageBadge(draw,mark.point,mark.rank,a.id===selected);
+    }
     // A suppression order issued HERE belongs to the operator, not a node.
     if(a.id===selected&&a.firePolicy==='suppress'&&a.suppressPoint){
       draw.save();draw.strokeStyle='#e9a883';draw.lineWidth=1.8;
