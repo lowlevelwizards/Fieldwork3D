@@ -16,7 +16,7 @@ import {type Pt,segmentsCross,pointToSegment} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {aimHeight} from './breach-cover-height.ts';
-import {assessFireLane,fireLaneReachable} from './breach-fire-safety.ts';
+import {assessFireLane,assessFriendlyLane,fireLaneReachable} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 
@@ -189,8 +189,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   if(observedCivilianFireLane(s,a,from,muzzle.y,far,14)){
     civilianShotWithheld(s,a);return;
   }
-  if(assessFireLane(from,muzzle.y,far,14,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,
-    friends).blocker==='friendly')return;
+  if(assessFriendlyLane(from,muzzle.y,far,14,friends).blocker==='friendly')return;
   const impact=strikeSurface(from,far,s,muzzle.y,14,
     WEAPONS[a.weapon].penetration);
   const victim=firstCivilianAlongRay(from,yaw,
@@ -337,6 +336,8 @@ function fire(s:Session,a:TeamActor,dt:number){
        candidate.p,h)){
       civilianShotWithheld(s,a);return false;
     }
+    if(assessFriendlyLane(from,clearance.muzzle.y,candidate.p,h,
+      friends).blocker==='friendly')return false;
     const lane=assessFireLane(from,clearance.muzzle.y,candidate.p,h,
       world.cover,world.walls,s.doors,friends);
     if(lane.blocker==='clear')return true;
