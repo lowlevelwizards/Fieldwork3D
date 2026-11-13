@@ -1,0 +1,36 @@
+name: D4 final physical grip and replay acceptance
+on:
+  push:
+    branches:
+      - 'feature/door-d4-final-hand-*'
+  pull_request:
+    paths:
+      - 'src/breach-door-grip.ts'
+      - 'src/breach-door-grip-constants.ts'
+      - 'src/breach-pose-door-hand.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/breach-replay.ts'
+      - 'tests/door-d4-final-*.test.mjs'
+      - '.github/workflows/door-d4-final.yml'
+  workflow_dispatch:
+concurrency:
+  group: door-d4-final-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Real physical grips, canonical IK, replay, live four-operator regressions
+        run: |
+          node --experimental-strip-types --test tests/door-traversal-d4.test.mjs tests/door-traversal-d4-pose.test.mjs tests/door-traversal-d4-return.test.mjs tests/door-d4-final-visual.test.mjs tests/door-d4-final-live.test.mjs tests/breach-120.test.mjs tests/door-traversal-d2d3-four-operator.test.mjs tests/release7-outward-four.test.mjs tests/doorway-right-of-way-session.test.mjs
+      - name: Real physics four-hinge lab diagnostics
+        run: node --experimental-strip-types scripts/audit-door-traversal-baseline.mjs 4 1800
+      - name: TypeScript and production build
+        run: npm run build
