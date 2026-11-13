@@ -14,6 +14,8 @@ import {PerformanceTimeline,emptyPerformanceSceneCosts,
  from './breach-performance-timeline.ts';
 import {BreachPerfTimelinePanel} from './ui/breach-perf-timeline-panel.ts';
 import {drainSightDiagnostics,setSightDiagnosticsEnabled} from './breach-sight-cost-counters.ts';
+import {drainCombatCostDiagnostics,setCombatCostDiagnosticsEnabled}
+ from './breach-combat-cost-counters.ts';
 import {PhysicalActionRings} from './ui/physical-action-rings.ts';
 import {awarenessDebugLine} from './breach-awareness-debug.ts';
 import type {TacticalScene3D,ViewMode} from './breach-3d.ts';
@@ -104,6 +106,7 @@ let perfPanel:BreachPerfTimelinePanel|null=config.boot.perfOverlay?
 let perfOverlay=perfPanel?.root??null;
 if(perfOverlay)document.body.append(perfOverlay);
 setSightDiagnosticsEnabled(!!perfOverlay);
+setCombatCostDiagnosticsEnabled(!!perfOverlay);
 let frameMeter:FrameMeter|null=perfOverlay?new FrameMeter():null;
 const perfTimeline=new PerformanceTimeline();
 let perfTimelineSession:Session|null=null;
@@ -124,6 +127,7 @@ function setProfilerOpen(open:boolean):boolean{
   document.body.append(perfOverlay);
   frameMeter=new FrameMeter();
   setSightDiagnosticsEnabled(true);
+  setCombatCostDiagnosticsEnabled(true);
   // Activate full scene phase attribution immediately, even in a normal URL.
   config.getStage()?.setPerformanceProfilingEnabled?.(true);
   previousPerfJs=previousCoarseJs;
@@ -466,6 +470,7 @@ function tick(now:number){
     if(Math.floor(now/750)!==Math.floor((now-dt*1000)/750)){
       const m=frameMeter.summary();
       const sight=drainSightDiagnostics();
+      const combat=drainCombatCostDiagnostics();
       const scenePhases=updated3d?stats?.scenePhases:null;
       const output='MODE '+frameMode+' (recent 120 frames)'+
         (idle3dExperiment?' · IDLE3D '+(idle3dAuto?'AUTO ':'30 ')+
@@ -486,6 +491,11 @@ function tick(now:number){
           ' HIT · FULL '+sight.fullViewQueries+
         '\nPERSONAL '+sight.personalQueries+' Q / '+
           sight.personalOcclusionProbes+' LOS'+
+        '\nCOMBAT WORK (750ms, sim + 3D) CLEAR '+
+          combat.clearanceCalls+' / PROBES '+combat.clearanceProbes+
+          ' · TARGET LANE '+combat.multiTargetLaneChecks+
+          ' · RECOVERY '+combat.correctionSearches+' / '+
+          combat.correctionCandidates+' CAND'+
         '\nP1 VISIBLE Q/H/M/B '+(stats?.presentationSight.queries??0)+'/'+
           (stats?.presentationSight.hits??0)+'/'+
           (stats?.presentationSight.misses??0)+'/'+
