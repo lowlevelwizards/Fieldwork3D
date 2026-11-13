@@ -34,11 +34,11 @@ const orient=(mesh:THREE.Mesh,f:HelmetSurfaceFrame)=>{
 function tether(shell:AchMichCoverShell,side:'left'|'right',g:THREE.Group,
  webbing:THREE.Material,metal:THREE.Material,dark:THREE.Material){
  const sign=side==='left'?-1:1;
- const rail=point(shell,side,-.63,.30,.58);
- const shoulder=point(shell,side,-.79,.40,.64);
- const corner=point(shell,'front',sign*.84,.31,.68);
- const front=point(shell,'front',sign*.52,.29,.59);
- const shroud=point(shell,'front',sign*.29,.24,.50);
+ const rail=point(shell,side,-.63,.30,.76);
+ const shoulder=point(shell,side,-.79,.40,.88);
+ const corner=point(shell,'front',sign*.84,.31,.91);
+ const front=point(shell,'front',sign*.52,.29,.82);
+ const shroud=point(shell,'front',sign*.29,.24,.73);
  // A polyline along the shell's exterior, NOT a chord through the
  // front/side corner. A short soft curve removes sharp wire knees.
  const path=[rail.position,shoulder.position,corner.position,
@@ -49,7 +49,7 @@ function tether(shell:AchMichCoverShell,side:'left'|'right',g:THREE.Group,
  // attachment point and floats above the face just enough to avoid
  // texture z-fighting.
  add(g,'bungee-elastic-'+side,webbing,
-  new THREE.TubeGeometry(curve,30,.087,5,false),new THREE.Vector3());
+  new THREE.TubeGeometry(curve,30,.145,6,false),new THREE.Vector3());
  // Visible cylindrical stiff sleeves keep the cord anchored at each end.
  for(const [name,f] of [
   ['bungee-rail-sleeve',rail],['bungee-nvg-sleeve',shroud]
@@ -86,6 +86,7 @@ export function addAchMichRetainingBungees(
  const routes=[];for(const side of ['left','right'] as const)
   routes.push(tether(shell,side,g,elastic,metal,dark));
  g.userData.h9SurfaceMounted=true;
+ g.userData.h10BungeeThickness=.145;
  g.userData.h9BungeeCordCount=2;
  g.userData.h9BungeeHooks=4;
  g.userData.h9BungeeRoutes=routes;
