@@ -64,6 +64,8 @@ test('A3.5 release is immutable and replay-time pure',()=>{
  const a=physicalContactWeight(released,2.5);
  assert.ok(a>0&&a<1);
  assert.equal(a,physicalContactWeight(released,2.5));
+ assert.equal(resolvePhysicalContactPose({...released,releasedAt:3},
+   owners(),2.5)?.retained,true,'seek before release preserves attachment');
  assert.equal(physicalContactWeight(released,2.8),0);
  assert.equal(physicalContactWeight(c,1.5),0);
  assert.equal(resolvePhysicalContactPose(released,
