@@ -40,7 +40,10 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: TypeScript build and Door Lab bundle
         run: npm run build
-      - name: Five approach geometry and Q3–Q4 convoy integrity
+      - name: Six approach geometry and Q3–Q4 convoy integrity
         run: node --experimental-strip-types --test tests/passage-q5-approaches.test.mjs tests/passage-q5-live-blockers.test.mjs tests/breach-doorway-map-clearance.test.mjs tests/release4-squeeze-gate.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q3-ranks.test.mjs tests/passage-q4-swing.test.mjs
       - name: Strict 70-case real motor reliability and speed gates
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
+      - name: Release A 168-case real motor mirrored-approach reliability
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'release-a/') }}
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --release-a --extended --strict

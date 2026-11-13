@@ -12,7 +12,8 @@ import {legalMoveRoute} from './breach-known-route-authoring.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {DOOR_RANGE_CASES,DOOR_RANGE_APPROACHES,doorRangeSite,
  doorRangeApproachSpawn,prepareDoorRangeCase,
- type DoorRangeCaseId,type DoorRangeApproachId}
+ type DoorRangeCaseId,type DoorRangeApproachId,
+ type DoorRangeApproachFace}
  from './breach-door-test-cases.ts';
 import {Q5_HINGE_CASES,runDoorRangeQ5,summarizeQ5,
  type Q5BenchmarkResult,type Q5Program} from './door-range-q5-benchmark.ts';
@@ -26,6 +27,7 @@ const ctx=stage.getContext('2d')!;
 const scenario=get<HTMLSelectElement>('scenario');
 const program=get<HTMLSelectElement>('program');
 const approach=get<HTMLSelectElement>('approach');
+const approachFace=get<HTMLSelectElement>('approachFace');
 const matrixReport=get<HTMLElement>('matrixReport');
 const matrixButton=get<HTMLButtonElement>('runMatrix');
 const extendedMatrixButton=get<HTMLButtonElement>('runExtended');
@@ -89,8 +91,10 @@ function plan(){
  let ok=true;
  for(let i=0;i<active.length;i++){
   const a=active[i];
+  const south=approachFace.value==='south';
   const goal=program.value==='counterflow'&&i>=2?
-   p(300+(i-2)*18,174):p(282+i*23,346+(i%2)*18);
+   p(300+(i-2)*18,south?346:174):
+   p(282+i*23,south?174-(i%2)*18:346+(i%2)*18);
   ok=planMove(s,a.id,goal)&&ok;
  }
  return ok;
@@ -103,7 +107,8 @@ function reset(){
  passed=new Set();crossedAt=new Map();
  s=newSession(0,undefined,'full-view','small','hold',
   doorRangeSite(scenario.value as DoorRangeCaseId,
-   approach.value as DoorRangeApproachId),
+   approach.value as DoorRangeApproachId,
+   approachFace.value as DoorRangeApproachFace),
   {enableCivilians:false});
  prepareDoorRangeCase(s,scenario.value as DoorRangeCaseId);
  selectedId=team(s)[0]?.id??'';
@@ -174,12 +179,13 @@ function paint(){
  for(let y=46;y<=458;y+=20)drawLine(p(50,y),p(590,y),'#486055',.5);
  ctx.font='bold 12px system-ui';
  ctx.fillStyle='#8cac99';ctx.fillText('APPROACH',57,68);
- ctx.fillText('INTERIOR',57,445);
+ ctx.fillText('OTHER SIDE',57,445);
  // Q5: faint real deployment footprint for the chosen approach, including
  // where the members came from after the formation starts moving.
  ctx.save();ctx.strokeStyle='#9cbd9e';ctx.globalAlpha=.48;
  for(const start of doorRangeApproachSpawn(
-   approach.value as DoorRangeApproachId)){
+   approach.value as DoorRangeApproachId,
+   approachFace.value as DoorRangeApproachFace)){
   ctx.beginPath();ctx.arc(start.x,start.y,10,0,2*Math.PI);
   ctx.stroke();
  }
@@ -274,6 +280,7 @@ function toggle(){
 function report(){
  const door=s.doors[0];
  return {scenario:scenario.value,approach:approach.value,
+  face:approachFace.value,
   protocol:program.value,
   phase:s.phase,time:s.seconds,planned,flips,
   minOperatorSpacing:Number.isFinite(minSpacing)?minSpacing:null,
@@ -334,7 +341,7 @@ stage.addEventListener('pointerdown',event=>{
 });
 selected.addEventListener('change',()=>{selectedId=selected.value;paint();});
 trace.addEventListener('change',paint);
-for(const input of [scenario,program,approach])
+for(const input of [scenario,program,approach,approachFace])
  input.addEventListener('change',()=>{if(!matrixRunning)reset();});
 function q5FormatRow(r:Q5BenchmarkResult){
  const time=r.lastCross===null?'—':r.lastCross.toFixed(2)+'s';
@@ -342,7 +349,7 @@ function q5FormatRow(r:Q5BenchmarkResult){
  const expected=r.outcome==='expected-blocked'||
   r.outcome==='expected-obstructed';
  const label=expected?'OBSTRUCTED (EXPECTED)':r.success?'PASS':'FAIL';
- return label+' · '+r.door+' / '+r.approach+' / '+r.program+
+ return label+' · '+r.door+' / '+r.approach+' / '+r.face+' / '+r.program+
   ' · fourth '+time+' · convoy '+
   (r.crossingSpan===null?'—':r.crossingSpan.toFixed(2)+'s')+
   ' · finish '+finish+
@@ -361,24 +368,27 @@ async function runQ5Matrix(extended:boolean){
  go.textContent='GO';
  matrixRows=[];
  const combos:{door:DoorRangeCaseId;approach:DoorRangeApproachId;
-  program:Q5Program}[]=[];
+  face:DoorRangeApproachFace;program:Q5Program}[]=[];
  for(const door of Q5_HINGE_CASES)
   for(const entry of DOOR_RANGE_APPROACHES)
-   combos.push({door,approach:entry.id,program:'squad'});
+   for(const face of ['north','south'] as const)
+    combos.push({door,approach:entry.id,face,program:'squad'});
  if(extended){
   for(const door of Q5_HINGE_CASES)
    for(const entry of DOOR_RANGE_APPROACHES)
-    combos.push({door,approach:entry.id,program:'independent'});
+    for(const face of ['north','south'] as const)
+     combos.push({door,approach:entry.id,face,program:'independent'});
   for(const door of ['ajar-outward','wide-open','swing-furniture',
     'near-frame','locked','wedged'] as DoorRangeCaseId[])
    for(const entry of DOOR_RANGE_APPROACHES)
-    combos.push({door,approach:entry.id,program:'squad'});
+    for(const face of ['north','south'] as const)
+     combos.push({door,approach:entry.id,face,program:'squad'});
  }
  try{
-  for(const [i,{door,approach:formation,program:execution}] of
+  for(const [i,{door,approach:formation,face,program:execution}] of
    combos.entries()){
    if(matrixAbort)break;
-   const result=runDoorRangeQ5(door,formation,execution);
+   const result=runDoorRangeQ5(door,formation,execution,30,face);
    matrixRows.push(result);
    const summary=summarizeQ5(matrixRows);
    matrixReport.textContent=

@@ -23,6 +23,19 @@ jobs:
           node-version: '22'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
+      # Source and release artifact come from the SAME checked-out main SHA.
+      # These are bounded cross-system gates; broader affected-domain checks
+      # run on PRs. A failing contract blocks Pages before artifact upload.
+      - name: Critical tactical, fog, Studio and resource regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-roadmap2-stage1-contracts.test.mjs \
+            tests/passage-q5-approaches.test.mjs \
+            tests/animation-a3-10-close-stack-fire.test.mjs \
+            tests/animation-a3-11-progressive-urgency.test.mjs \
+            tests/fog-exterior-unseen-apertures-regression.test.mjs \
+            tests/operator-studio-main-menu.test.mjs \
+            tests/performance-p8-replay-memory.test.mjs
       # Release gate: typecheck, compile, stamp the build, and verify deployable output.
       # Behavioral regressions belong in focused PR checks; full suite is manual.
       - name: Build and verify Pages output

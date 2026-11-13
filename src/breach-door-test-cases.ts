@@ -36,20 +36,26 @@ export const DOOR_RANGE_APPROACHES=[
  {id:'left',label:'Stack LEFT · jamb'},
  {id:'right',label:'Stack RIGHT · jamb'},
  {id:'split',label:'SPLIT · two per side'},
- {id:'angle45',label:'45° · diagonal stack'}
+ {id:'angle45',label:'45° · diagonal stack'},
+ {id:'angle45-right',label:'45° · right-side diagonal'}
 ] as const;
 export type DoorRangeApproachId=
  (typeof DOOR_RANGE_APPROACHES)[number]['id'];
+export type DoorRangeApproachFace='north'|'south';
 const p=(x:number,y:number):Pt=>({x,y});
-export function doorRangeApproachSpawn(mode:DoorRangeApproachId):Pt[]{
- switch(mode){
+export function doorRangeApproachSpawn(mode:DoorRangeApproachId,
+ face:DoorRangeApproachFace='north'):Pt[]{
+ const positions:Pt[]=(()=>{switch(mode){
   case 'left':return [p(268,224),p(254,202),p(240,180),p(226,158)];
   case 'right':return [p(354,224),p(368,202),p(382,180),p(396,158)];
   case 'split':return [p(270,225),p(249,200),
    p(353,225),p(374,200)];
   case 'angle45':return [p(273,222),p(249,198),p(225,174),p(201,150)];
+  case 'angle45-right':return [p(349,222),p(373,198),p(397,174),p(421,150)];
   default:return [p(300,200),p(308,173),p(316,146),p(325,119)];
- }
+ }})();
+ return face==='north'?positions:
+  positions.map(point=>p(point.x,520-point.y));
 }
 
 const wall=(x:number,y:number,u:number,v:number):Segment=>({a:p(x,y),b:p(u,v)});
@@ -59,7 +65,8 @@ export function doorRangeCase(id:DoorRangeCaseId):DoorRangeCase{
  return found;
 }
 export function doorRangeSite(id:DoorRangeCaseId,
- approach:DoorRangeApproachId='straight'):Site{
+ approach:DoorRangeApproachId='straight',
+ face:DoorRangeApproachFace='north'):Site{
  const c=doorRangeCase(id);
  const door:Door={id:'ENTRY',a:p(290,260),b:p(332,260),
   kind:'hinged',hinge:c.hinge,swing:c.swing,
@@ -71,7 +78,10 @@ export function doorRangeSite(id:DoorRangeCaseId,
   scale:'small',roomCount:0,rooms:[],windows:[],
   walls:[wall(90,260,290,260),wall(332,260,550,260)],
   doors:[door],cover:c.cover?.map(o=>({...o}))??[],
-  entrance:p(311,260),spawn:doorRangeApproachSpawn(approach),
+  entrance:p(311,260),
+  // Keep south-side spawns outside the existing near-frame shelf.
+  spawn:doorRangeApproachSpawn(approach,face).map(point=>
+   id==='near-frame'&&face==='south'?{...point,y:point.y+40}:point),
   enemies:[],objective:p(516,430),extract:p(516,445),
   bounds:{minX:0,minY:0,maxX:640,maxY:500}
  };

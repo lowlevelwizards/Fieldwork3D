@@ -15,20 +15,20 @@ export const baseline=[
  'tests/after-action-v4-stage3-persistent-models.test.mjs'
 ];
 export const domains=[
- {name:'simulation',match:/^src\/.*(?:session|simulation|sim-|combat|ballistic|projectile|shot|damage|wound|ai-|awareness|enemy|civilian|actor|morale|tactical-state)/i,
-  tests:['tests/breach-roadmap2-stage10-combat.test.mjs','tests/breach-roadmap4-simulation-phases.test.mjs','tests/breach-roadmap2-deterministic.test.mjs']},
- {name:'movement-and-doors',match:/^src\/.*(?:movement|motor|locomotion|door|traversal|physical|collision|path|plan|order|waypoint|interaction)/i,
-  tests:['tests/breach-roadmap2-stage7-motor.test.mjs','tests/breach-roadmap2-stage8-orders.test.mjs','tests/doorway-right-of-way-session.test.mjs','tests/breach-physical-interactions-nov8.test.mjs']},
+ {name:'simulation',match:/^src\/.*(?:session|simulation|sim-|combat|ballistic|projectile|shot|damage|wound|ai-|awareness|enemy|civilian|actor|morale|tactical-state|fire|firing|friendly-safety|muzzle|aim-target)/i,
+  tests:['tests/breach-roadmap2-stage10-combat.test.mjs','tests/breach-roadmap4-simulation-phases.test.mjs','tests/breach-roadmap2-deterministic.test.mjs','tests/animation-a3-10-close-stack-fire.test.mjs','tests/animation-a3-11-progressive-urgency.test.mjs','tests/tactical-integration-09-firing-lanes.test.mjs']},
+ {name:'movement-and-doors',match:/^src\/.*(?:movement|motor|locomotion|door|traversal|physical|collision|path|plan|order|waypoint|interaction|passage|stack|squeeze|clearance)/i,
+  tests:['tests/breach-roadmap2-stage7-motor.test.mjs','tests/breach-roadmap2-stage8-orders.test.mjs','tests/doorway-right-of-way-session.test.mjs','tests/breach-physical-interactions-nov8.test.mjs','tests/passage-q5-approaches.test.mjs','tests/passage-q5-live-blockers.test.mjs']},
  {name:'world-and-sites',match:/^src\/.*(?:world|site|geometry|generator|worldgen|scene|map-|floor|architecture|cover|furniture)/i,
   tests:['tests/breach-roadmap2-stage12-world-context.test.mjs','tests/breach-closeout-stage5-world-isolation.test.mjs','tests/breach-roadmap2-stage2-physical-integrity.test.mjs','tests/breach-scene-memory-lifecycle-p6.test.mjs']},
  {name:'visibility-and-presentation',match:/^src\/.*(?:fog|visibility|intel|knowledge|breach-3d|breach-2d|render|presentation|scene|camera|lighting|sight)/i,
-  tests:['tests/breach-roadmap3-3d-disclosure.test.mjs','tests/breach-fog-visibility.test.mjs','tests/breach-closeout-stage3-presentation.test.mjs','tests/breach-scene-frame-p7.test.mjs']},
+  tests:['tests/breach-roadmap3-3d-disclosure.test.mjs','tests/breach-fog-visibility.test.mjs','tests/breach-closeout-stage3-presentation.test.mjs','tests/breach-scene-frame-p7.test.mjs','tests/fog-interior-occlusion-regression.test.mjs','tests/fog-exterior-unseen-apertures-regression.test.mjs']},
  {name:'replay-and-debrief',match:/^src\/.*(?:replay|debrief|after-action|mission-screen|recording|timeline|incident)/i,
   tests:['tests/breach-closeout-stage6-integration.test.mjs','tests/after-action-v4-stage1-navigation.test.mjs','tests/after-action-v4-stage2-hierarchy.test.mjs','tests/replay-r3-archive.test.mjs']},
  {name:'operator-and-equipment',match:/^src\/.*(?:operator|animation|pose|weapon|arsenal|equipment|rig|armor|gear|uniform|stock|magazine)/i,
-  tests:['tests/breach-closeout-stage4-pose-output.test.mjs','tests/breach-roadmap2-stage11-animation.test.mjs','tests/operator-lab-unified-poses.test.mjs','tests/arsenal-v2-game-integration.test.mjs']},
+  tests:['tests/breach-closeout-stage4-pose-output.test.mjs','tests/breach-roadmap2-stage11-animation.test.mjs','tests/operator-lab-unified-poses.test.mjs','tests/arsenal-v2-game-integration.test.mjs','tests/operator-studio-main-menu.test.mjs']},
  {name:'app-and-campaign',match:/^src\/.*(?:campaign|quick.?play|mission|config|settings|storage|menu|app-|bootstrap|main|ui\/|app\/)/i,
-  tests:['tests/consolidation-stage3-app-flow.test.mjs','tests/consolidation-stage2-config-persistence.test.mjs','tests/quick-play-scenario-generator.test.mjs','tests/campaign-02.test.mjs']}
+  tests:['tests/consolidation-stage3-app-flow.test.mjs','tests/consolidation-stage2-config-persistence.test.mjs','tests/quick-play-scenario-generator.test.mjs','tests/campaign-02.test.mjs','tests/operator-studio-main-menu.test.mjs']}
 ];
 export const configuredTestPaths=()=>[...new Set([...baseline,...domains.flatMap(g=>g.tests)])].sort();
 

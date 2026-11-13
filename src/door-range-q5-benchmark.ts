@@ -8,7 +8,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {newSession,team,planSquadEntry,planMove,
  stepSession,toggling} from './breach-game.ts';
 import {doorRangeSite,prepareDoorRangeCase,
- type DoorRangeCaseId,type DoorRangeApproachId}
+ type DoorRangeCaseId,type DoorRangeApproachId,type DoorRangeApproachFace}
  from './breach-door-test-cases.ts';
 
 export const Q5_MAX_SECONDS=30;
@@ -17,7 +17,8 @@ export const Q5_HINGE_CASES=[
 ] as const satisfies readonly DoorRangeCaseId[];
 export type Q5Program='squad'|'independent';
 export type Q5BenchmarkResult={
- door:DoorRangeCaseId;approach:DoorRangeApproachId;program:Q5Program;
+ door:DoorRangeCaseId;approach:DoorRangeApproachId;
+ face:DoorRangeApproachFace;program:Q5Program;
  outcome:'pass'|'plan-rejected'|'timeout'|'invalid-motion'|
   'expected-blocked'|'expected-obstructed'|'unsafe-crossing';
  planned:boolean;success:boolean;seconds:number;firstCross:number|null;
@@ -34,16 +35,18 @@ const metric=(n:number|null)=>n===null?null:+n.toFixed(3);
 const range=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function runDoorRangeQ5(
  door:DoorRangeCaseId,approach:DoorRangeApproachId,
- program:Q5Program='squad',maxSeconds=Q5_MAX_SECONDS
+ program:Q5Program='squad',maxSeconds=Q5_MAX_SECONDS,
+ face:DoorRangeApproachFace='north'
 ):Q5BenchmarkResult{
  const s=newSession(0,undefined,'full-view','small','hold',
-  doorRangeSite(door,approach),{enableCivilians:false});
+  doorRangeSite(door,approach,face),{enableCivilians:false});
  try{
   prepareDoorRangeCase(s,door);
   const actors=team(s).slice(0,4);
   // Distinct adult-size end positions; the old Door Lab's 12×6 spacing
   // could make independent actors finish on top of one another.
-  const goals=actors.map((_,i)=>({x:282+i*23,y:346+(i%2)*18}));
+  const goals=actors.map((_,i)=>({x:282+i*23,
+   y:face==='north'?346+(i%2)*18:174-(i%2)*18}));
   const planned=program==='squad'?planSquadEntry(s,'ENTRY'):
     actors.every((a,i)=>planMove(s,a.id,goals[i]));
   const crossed=new Map<string,number>();
@@ -59,7 +62,7 @@ export function runDoorRangeQ5(
      if(!Number.isFinite(a.p.x+a.p.y)||a.p.x<0||a.p.x>640||
         a.p.y<0||a.p.y>500)invalidMotion=true;
      // Full torso must be past the plane, not just on the threshold.
-     if(a.p.y>278&&!crossed.has(a.id))
+     if((face==='north'?a.p.y>278:a.p.y<242)&&!crossed.has(a.id))
       crossed.set(a.id,s.seconds);
      for(let j=i+1;j<actors.length;j++){
       const peer=actors[j],gap=range(a.p,peer.p);
@@ -99,7 +102,7 @@ export function runDoorRangeQ5(
    expectedObstructed?crossed.size===4?'unsafe-crossing':
      'expected-obstructed':
    !planned?'plan-rejected':pass?'pass':'timeout';
-  return {door,approach,program,outcome,planned,success:pass,
+  return {door,approach,face,program,outcome,planned,success:pass,
    seconds:+s.seconds.toFixed(3),
    firstCross:metric(times[0]??null),lastCross:metric(times[3]??null),
    crossingSpan:metric(times.length===4?times[3]-times[0]:null),
@@ -141,7 +144,7 @@ export function summarizeQ5(rows:readonly Q5BenchmarkResult[]){
   lastCrossWorst:times.at(-1)??null,
   finishMedian:quantile(finish,.5),finishWorst:finish.at(-1)??null,
   failures:failed.map(r=>({
-   door:r.door,approach:r.approach,program:r.program,
+   door:r.door,approach:r.approach,face:r.face,program:r.program,
    outcome:r.outcome,crossed:r.crossed,completed:r.completed,
    blocked:r.operators.map(a=>[a.id,a.orders,a.blocker,a.phase])}))};
 }
