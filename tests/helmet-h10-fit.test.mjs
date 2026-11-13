@@ -13,7 +13,7 @@ test('H10.0 closed elastic ring follows fitted ACH/MICH cloth, not a shell chord
   const geo=createAchMichSurfaceBandGeometry(shell);
   assert.equal(geo.userData.h10BandSurfaceFitted,true);
   assert.equal(geo.userData.h10BandClosed,true);
-  assert.ok(geo.userData.h10BandStations>=24);
+  assert.ok(geo.userData.h10BandStations>=32);
   const pos=geo.getAttribute('position');
   assert.equal(pos.count,geo.userData.h10BandStations*6);
   for(let i=0;i<pos.count;i++)
