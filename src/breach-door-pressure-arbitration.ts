@@ -33,14 +33,8 @@ export function incidentalCloseWouldBlockTeammate(
  actors:readonly TeamActor[],actor:TeamActor,door:Door
 ):boolean{
  if(operatorCrossingDoor(actor,door))return true;
- return actors.some(peer=>{
-  if(peer===actor||peer.side!==actor.side||peer.health<=0)return false;
-  const order=peer.plan[0];
-  if(!order||!['move','door','sync'].includes(order.kind))return false;
-  const goal=peer.nav.at(-1)??order.p;
-  return crossingDoor({
-   id:peer.id,p:peer.p,goal,side:peer.side,
-   active:true,health:peer.health,blockedTime:peer.blockedTime
-  },door);
- });
+ // The same current-order intent that governs touched-leaf pressure
+ // protects the whole friendly crossing. No separate goal guessing here.
+ return actors.some(peer=>peer!==actor&&peer.side===actor.side&&
+   activeDoorCrossingIntent(peer,door,true));
 }
