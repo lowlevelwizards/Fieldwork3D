@@ -254,10 +254,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
   capStep(a.p,move,door,slot.fromSide,
    QUEUE_WAIT_DEPTH,barrier,slot.rank):
   {...free,doorId:door.id,rank:slot.rank};
- const leader=candidates[index-1];
- if(forward>.025&&maybePromote(ctx,s,lane,{actor:a,slot},leader,move))
-  return {...free,doorId:door.id,rank:slot.rank};
- // A rank is a preferred crossing order, NOT a reservation for the
+  // A rank is a preferred crossing order, NOT a reservation for the
  // full width of a doorway. Only an actual higher-rank body sharing this
  // narrow longitudinal corridor can impose queue-depth spacing. Operators
  // alongside one another may keep moving where their real 2-D body gap
@@ -286,6 +283,12 @@ export function coordinatePassage(s:Session,a:TeamActor,
   capStep(a.p,move,door,slot.fromSide,
    safeDepth,barrier??'spacing',slot.rank):
   {move,hold:false,reason:'free' as const,doorId:door.id,rank:slot.rank};
+ // An uncommitted lead may be promoted ONLY after a true projected hold,
+ // never because someone nearby is slow while another lane is freely
+ // passable. This avoids rank churn and rare unnecessary world sweeps.
+ if(longitudinal.hold&&forward>.025&&
+    maybePromote(ctx,s,lane,{actor:a,slot},candidates[index-1],move))
+  return {...free,doorId:door.id,rank:slot.rank};
  // Q2: independently maintain actual center-to-center spacing through the
  // throat, not just projected depth. Two operators may have staggered
  // sideways paths at the same depth; longitudinal spacing alone permits a
@@ -295,7 +298,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  const proposed=longitudinal.move;
  for(let j=0;j<index;j++){
   const peer=candidates[j].actor;
-  if(peer.health<=0||!ready(candidates[j],ctx))continue;
+  // Ready members were scanned once above; nothing mutates their orders here.
   const fromGap=dist(a.p,peer.p);
   const toGap=dist(proposed,peer.p);
   if(toGap>=QUEUE_CENTER_GAP-.25||
