@@ -4,8 +4,8 @@
  * Same 512×256 three-cut print atlas and 7 px/world-unit as PASGT.
  */
 import * as THREE from 'three';
-import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET,
- ACH_MICH_BEVEL_HEIGHT} from './operator-headwear-silhouettes.ts';
+import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET}
+ from './operator-headwear-silhouettes.ts';
 import {achMichProfile,ACH_MICH_BINDING_HEIGHT} from './operator-ach-mich-details.ts';
 import {pasgtAtlasUv,PASGT_TOP_SEAM_OFFSETS,PASGT_FABRIC_PANELS,
  PASGT_UV_TEXELS_PER_UNIT} from './operator-pasgt-drape-geometry.ts';
@@ -14,12 +14,12 @@ export const ACH_MICH_COVER_OFFSET=.13;
 export const ACH_MICH_COVER_FOLDED_HEM=.18;
 export type AchMichCoverShell=typeof ACH_MICH_SHELLS[number];
 type Side='front'|'right'|'rear'|'left';
-type Ring='top'|'shoulder'|'ramp'|'hem';
+type Ring='top'|'shoulder'|'hem';
 type Sample={side:Side;x:number;z:number;bottom:number};
 const clamp=(n:number)=>Math.min(1,Math.max(0,n));
 type Style={
  shell:AchMichCoverShell;topY:number;topX:number;topFront:number;
- topRear:number;shoulderY:number;rampY:number;front:number;rear:number;
+ topRear:number;shoulderY:number;front:number;rear:number;
  sideX:number;hem:readonly (readonly [number,number,number])[];
  brow:number;nape:number;
 };
@@ -31,8 +31,8 @@ function dimensions(shell:AchMichCoverShell):Style{
   topX:crown.width/2-ACH_MICH_UPPER_INSET+offset,
   topFront:-crown.depth/2+ACH_MICH_UPPER_INSET-offset,
   topRear:crown.depth/2-ACH_MICH_UPPER_INSET+offset,
-  shoulderY:crown.y+crown.height/2-ACH_MICH_BEVEL_HEIGHT+offset,
-  rampY: shell==='ach'?6.72:shell==='mich-2001'?7.17:7.01,
+  // Direct, broad diagonal from crown toward the outer front/rear planes.
+  shoulderY: shell==='ach'?6.53:shell==='mich-2001'?6.77:6.79,
   front:p.front-offset,rear:p.rear+offset,
   sideX:p.side+offset,hem:p.hem,brow:p.brow,nape:p.nape
  };
@@ -74,24 +74,21 @@ function samples(style:Style):readonly (readonly Sample[])[]{
   x:-style.topX,z,bottom:sideBottom(style,z)}));
  return [front,right,rear,left];
 }
+/** Three contours: flat top, one broad diagonal shoulder, and hem.
+ * No intermediate inward-facing ramp or painted-shell-revealing shelf.
+ */
 function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,number]{
- const front=s.side==='front',rear=s.side==='rear',isSide=!front&&!rear;
+ const front=s.side==='front',rear=s.side==='rear',side=!front&&!rear;
  const sign=s.side==='left'?-1:1;
- const shoulderX=isSide?sideExtent(style,s.z)+ACH_MICH_COVER_OFFSET:
-  style.sideX;
- const x=ring==='top'?s.x:isSide?sign*shoulderX:
+ const extent=side?sideExtent(style,s.z)+ACH_MICH_COVER_OFFSET:style.sideX;
+ const x=ring==='top'?s.x:side?sign*extent:
   (s.x/style.topX)*style.sideX;
- const frontWeight=isSide?clamp((style.topFront+1.5-s.z)/1.5):1;
- const rearWeight=isSide?clamp((s.z-(style.topRear-1.5))/1.5):1;
- const shoulderFront=style.topFront-.17,shoulderRear=style.topRear+.17;
- const z=ring==='top'?s.z:
-  front?ring==='shoulder'?shoulderFront:style.front:
-  rear?ring==='shoulder'?shoulderRear:style.rear:
-  s.z+((ring==='shoulder'?shoulderFront:style.front)-style.topFront)*frontWeight+
-   ((ring==='shoulder'?shoulderRear:style.rear)-style.topRear)*rearWeight;
+ const f=side?clamp((style.topFront+1.5-s.z)/1.5):1;
+ const b=side?clamp((s.z-(style.topRear-1.5))/1.5):1;
+ const z=ring==='top'?s.z:front?style.front:rear?style.rear:
+  s.z+(style.front-style.topFront)*f+(style.rear-style.topRear)*b;
  const y=ring==='top'?style.topY:
   ring==='shoulder'?style.shoulderY:
-  ring==='ramp'?style.rampY:
   s.bottom+ACH_MICH_BINDING_HEIGHT+.035;
  return [x,y,z];
 }
@@ -103,7 +100,7 @@ function fabricCoordinate(style:Style,s:Sample,ring:Ring):
  readonly [number,number]{
  const xyz=ringPoint(style,s,ring);
  if(ring==='top')return [xyz[0],xyz[2]];
- const rings:readonly Ring[]=['top','shoulder','ramp','hem'];
+ const rings:readonly Ring[]=['top','shoulder','hem'];
  let distance=0;
  for(let i=1;i<=rings.indexOf(ring);i++){
   const a=ringPoint(style,s,rings[i-1]),
@@ -153,7 +150,7 @@ export function createAchMichDrapedGeometry(
  }
  const pairs:readonly (readonly [Ring,Ring])[]=hemOnly?
   [['hem','hem']]:
-  [['top','shoulder'],['shoulder','ramp'],['ramp','hem']];
+  [['top','shoulder'],['shoulder','hem']];
  for(const [upper,lower] of pairs){
   for(const panelSamples of panels)
    for(let i=0;i<panelSamples.length-1;i++){
@@ -192,5 +189,6 @@ export function createAchMichDrapedGeometry(
  g.userData.printPanels=[...PASGT_FABRIC_PANELS];
  g.userData.uvTexelsPerUnit=PASGT_UV_TEXELS_PER_UNIT;
  g.userData.minimumFoldHeight=ACH_MICH_COVER_FOLDED_HEM;
+ g.userData.achMichDirectFrontRearDiagonal=true;
  return g;
 }

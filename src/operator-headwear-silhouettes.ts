@@ -38,7 +38,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
   top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
  'ach':{id:'ach',frontExtent:-5.535,rearExtent:5.60,
-  top:8.84,earEdge:3.12,foreheadEdge:4.40,billLength:0},
+  top:8.84,earEdge:3.36,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0},
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
@@ -406,8 +406,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
  // by a visible margin, rather than merely touching at float-precision seams.
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.91,
   width:10.15,height:1.70,depth:1.25},
- // Two broad protection levels: ear scallop at Y3.12 and a genuinely
- // deeper rear return at Y2.68. Each cut is a substantial volume.
+ // One broad ear scallop at Y3.36 and a clearly deeper rear skirt at
+ // Y2.68. Both sections overlap substantially, without narrow steps.
  // No narrow side trim, decorative micro-stairs or floating panel.
  {name:'ach-continuous-nape',x:0,y:4.49,z:4.97,
   width:10.15,height:3.62,depth:1.26},
@@ -416,11 +416,11 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
    x:sign*4.55,y:5.25,z:-3.25,
    width:1.05,height:1.70,depth:2.60},
   {name:sign===-1?'ach-left-ear-wrap':'ach-right-ear-wrap',
-   x:sign*4.55,y:4.73,z:.55,
-   width:1.05,height:3.22,depth:5.50},
+   x:sign*4.55,y:4.84,z:.55,
+   width:1.05,height:2.96,depth:5.50},
   {name:sign===-1?'ach-left-nape-return':'ach-right-nape-return',
-   x:sign*4.55,y:4.50,z:4.30,
-   width:1.05,height:3.64,depth:2.65}
+   x:sign*4.55,y:4.50,z:4.20,
+   width:1.05,height:3.64,depth:2.85}
  ])
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region
@@ -491,7 +491,7 @@ const FAST_XP_MID_CUBOIDS:readonly HeadwearCuboid[]=[
 export const HEADWEAR_FIT_TARGETS=Object.freeze({
  ach:{
   brow:CUBE_HEAD_ANATOMY.brow+.10,
-  ear:CUBE_HEAD_ANATOMY.earCenter+.52,
+  ear:CUBE_HEAD_ANATOMY.earCenter+.76,
   nape:CUBE_HEAD_ANATOMY.nape+.48
  },
  'high-cut':{

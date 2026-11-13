@@ -22,8 +22,8 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
   side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.68,
   frontStud:[5.075,5.81,-3.12],rearStud:[5.075,5.10,1.86],
   hem:[[5.075,4.40,-5.535],[5.075,4.40,-2.20],
-   [5.075,3.12,-1.50],[5.075,3.12,2.91],
-   [5.075,2.68,3.58],[5.075,2.68,5.60]]
+   [5.075,3.36,-1.50],[5.075,3.36,2.70],
+   [5.075,2.68,3.55],[5.075,2.68,5.60]]
  },
  'mich-2002':{
   side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:3.365,
@@ -42,7 +42,7 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
    [5.015,3.33,5.66]]
  }
 };
-export const ACH_MICH_BINDING_HEIGHT=.58;
+export const ACH_MICH_BINDING_HEIGHT=.78;
 export const ACH_MICH_CHIN_STRAP_HALF_WIDTH=.44;
 export const achMichProfile=(shell:typeof ACH_MICH_SHELLS[number]):Profile=>
  PROFILES[shell];
@@ -53,7 +53,7 @@ const material=(hex:number)=>new THREE.MeshStandardMaterial({
 const hidden=(parent:THREE.Group,name:string):THREE.Group=>{
  const g=new THREE.Group();g.name=name;parent.add(g);return g;
 };
-/** A 0.58-high molded shell-color binding, broad enough to read at gameplay zoom.
+/** One broad .78-high molded shell-color binding, not a thin black underline.
  * Front / sides / rear share endpoints. Segment center-line follows the
  * actual bottom perimeter, including the real high-cut gaps. */
 export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number]){
@@ -62,7 +62,7 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
   data.push(...a,...b,...c);
  };
  const strip=(a:Point,b:Point,axis:'x'|'z')=>{
-  const ext=.13;
+  const ext=.16;
   const start:Point=axis==='x'?[a[0]+Math.sign(a[0])*ext,a[1],a[2]]:
    [a[0],a[1],a[2]+(a[2]<0?-ext:ext)];
   const end:Point=axis==='x'?[b[0]+Math.sign(b[0])*ext,b[1],b[2]]:
@@ -100,42 +100,62 @@ function appendStrap(data:number[],path:readonly Point[],normal:THREE.Vector3,
    data.push(p.x,p.y,p.z);
  }
 }
-/** Four substantial straps resolve into a single wide chin-cup.
- * Reuses PASGT's world-space ribbon normal rather than paper-thin
- * camera-axis quads. Both fasteners have physical strap origins. */
+/** ACH/MICH retention is mounted *inside* the shell. Only the exposed
+ * webbing below the ear cut and nape is drawn. Never start the webbing on
+ * the exterior screw face: that creates the green cage in H4 screenshots.
+ * Compare the PASGT two-point retention and genuine ACH four-point H-back.
+ */
+export function achMichHemY(
+ shell:typeof ACH_MICH_SHELLS[number],z:number):number{
+ const hem=PROFILES[shell].hem;
+ if(z<=hem[0][2])return hem[0][1];
+ for(let i=1;i<hem.length;i++)if(z<=hem[i][2]){
+  const a=hem[i-1],b=hem[i],span=b[2]-a[2];
+  const u=span>1e-6?(z-a[2])/span:0;
+  return a[1]+(b[1]-a[1])*u;
+ }
+ return hem[hem.length-1][1];
+}
+export function achMichRetentionPaths(
+ shell:typeof ACH_MICH_SHELLS[number]):readonly (readonly Point[])[]{
+ const p=PROFILES[shell],result:Point[][]=[];
+ for(const sign of [-1,1] as const){
+  // Inset ~.60 behind outer shell face, with uppermost ends tucked beneath
+  // the protective rubber binding. Front and rear both descend from behind.
+  const f:Point=[sign*4.49,achMichHemY(shell,p.frontStud[2])-.18,p.frontStud[2]];
+  const b:Point=[sign*4.49,achMichHemY(shell,p.rearStud[2])-.18,p.rearStud[2]];
+  const junction:Point=[sign*4.47,1.15,-3.92];
+  const chin:Point=[sign*2.30,-.16,-4.86];
+  result.push([f,junction],[b,[sign*4.53,2.02,-.25],junction],
+   [junction,chin]);
+ }
+ return result;
+}
 export function createAchMichRetentionGeometry(
  shell:typeof ACH_MICH_SHELLS[number]):THREE.BufferGeometry{
- const profile=PROFILES[shell],data:number[]=[];
- for(const sign of [-1,1] as const){
-  const front:Point=[sign*(profile.frontStud[0]+.20),
-   profile.frontStud[1]-.08,profile.frontStud[2]];
-  const back:Point=[sign*(profile.rearStud[0]+.22),
-   profile.rearStud[1]-.08,profile.rearStud[2]];
-  // Follow the actual side of the 8-unit skull closely, with a small
-  // positive stand-off. The former X5.52 jaw loop floated far outside the
-  // cheeks in the real phone WebGL captures; do not reintroduce that gap.
-  const sideJoin:Point=[sign*4.88,1.54,-3.63];
-  const rearGuide:Point=[sign*5.23,3.38,.53];
-  const jawGuide:Point=[sign*4.55,.67,-4.49];
-  const chin:Point=[sign*2.23,-.20,-5.04];
+ const data:number[]=[];
+ const paths=achMichRetentionPaths(shell);
+ for(let i=0;i<paths.length;i++){
+  const sign=i<3?-1:1;
+  // The first two legs create the restrained V underneath the side skirt;
+  // one final broad leg supports the chin cup, without an outside cage.
   const normal=new THREE.Vector3(sign*.68,0,-.74);
-  appendStrap(data,[front,sideJoin],normal,.45);
-  appendStrap(data,[back,rearGuide,sideJoin],normal,.44);
-  appendStrap(data,[sideJoin,jawGuide,chin],normal,.47);
+  appendStrap(data,paths[i],normal,i%3===2?.45:.41);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.achMichFourPoint=true;
  g.userData.chinWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH*2;
+ g.userData.belowShellAnchors=true;
  return g;
 }
 function chinCupGeometry():THREE.BufferGeometry{
  const data:number[]=[];
- const l:Point=[-2.14,-.44,-5.07],m:Point=[0,-.49,-5.13],
-  r:Point=[2.14,-.44,-5.07];
- const ul:Point=[-2.14,.18,-5.07],um:Point=[0,.19,-5.13],
-  ur:Point=[2.14,.18,-5.07];
+ const l:Point=[-2.32,-.37,-4.91],m:Point=[0,-.42,-5.00],
+  r:Point=[2.32,-.37,-4.91];
+ const ul:Point=[-2.32,.15,-4.91],um:Point=[0,.19,-5.00],
+  ur:Point=[2.32,.15,-4.91];
  for(const v of [l,m,um,l,um,ul,m,r,ur,m,ur,um])data.push(...v);
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
@@ -151,6 +171,8 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
   hardware=hidden(parent,id+'-uncovered-retention-anchors'),
   strap=hidden(parent,id+'-broad-four-point-retention');
  const bindingMaterial=material(0x67705f);
+ // One uniform material color is shared by all physical perimeter sections.
+ bindingMaterial.vertexColors=false;
  bindingMaterial.name='ach-mich-color-related-shell-binding';
  const edge=new THREE.Mesh(createAchMichBindingGeometry(shell),bindingMaterial);
  edge.name='ach-mich-rubber-shell-edge';edge.castShadow=false;
