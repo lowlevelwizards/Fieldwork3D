@@ -48,7 +48,10 @@ export function reconcileSceneActorLifetimes<T extends FrameActorVisual>(
      civilianRigs.set(civil.id,rig);
      scene.add(rig.root);
    }
-   updateCivilianRig(rig,civil,s.seconds);
+   // Pose sampling is a pure function of the current civilian and clock.
+   // Hidden rigs have no draw/physics effect; re-pose on the very first
+   // visible frame (including replay seeks) rather than every hidden RAF.
    rig.root.visible=visible;
+   if(visible)updateCivilianRig(rig,civil,s.seconds);
  }
 }
