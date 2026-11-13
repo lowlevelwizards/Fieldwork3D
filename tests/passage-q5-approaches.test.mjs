@@ -1,0 +1,72 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {DOOR_RANGE_APPROACHES,doorRangeApproachSpawn,doorRangeSite}
+ from '../src/breach-door-test-cases.ts';
+import {Q5_HINGE_CASES} from '../src/door-range-q5-benchmark.ts';
+const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+test('Q5 five distinct formations stay outside door and never spawn overlapping',()=>{
+ const signature=new Set();
+ for(const {id} of DOOR_RANGE_APPROACHES){
+  const spawn=doorRangeApproachSpawn(id);
+  assert.equal(spawn.length,4);
+  assert.ok(spawn.every(x=>x.y<240&&x.x>90&&x.x<550));
+  for(let i=0;i<4;i++)for(let j=i+1;j<4;j++)
+   assert.ok(distance(spawn[i],spawn[j])>20,
+    'full-radius operators must not be placed within one another');
+  signature.add(JSON.stringify(spawn));
+ }
+ assert.equal(signature.size,5);
+});
+test('Q5 all four hinges use the SAME approach preset geometry',()=>{
+ for(const {id} of DOOR_RANGE_APPROACHES){
+  const shared=doorRangeApproachSpawn(id);
+  for(const door of Q5_HINGE_CASES)
+   assert.deepEqual(doorRangeSite(door,id).spawn,shared);
+ }
+});
+test('Q5 left/right/jamb and split/45 geometry physically differ',()=>{
+ const left=doorRangeApproachSpawn('left'),
+  right=doorRangeApproachSpawn('right'),
+  split=doorRangeApproachSpawn('split'),
+  angled=doorRangeApproachSpawn('angle45');
+ assert.ok(left.every(p=>p.x<290));
+ assert.ok(right.every(p=>p.x>332));
+ assert.equal(split.filter(p=>p.x<290).length,2);
+ assert.equal(split.filter(p=>p.x>332).length,2);
+ assert.ok(angled.every((p,i)=>i===0||
+  Math.abs((p.x-angled[i-1].x)-(p.y-angled[i-1].y))<.001));
+});
+
+test('Q5 already-pushed-wide door has four legal known stack pockets',async()=>{
+ const {newSession,planSquadEntry,team}
+  =await import('../src/breach-game.ts');
+ const {prepareDoorRangeCase}
+  =await import('../src/breach-door-test-cases.ts');
+ const {doorLeafSegment,pointToSegment,activateSite}
+  =await import('../src/breach-core.ts');
+ for(const {id} of DOOR_RANGE_APPROACHES){
+  const s=newSession(0,undefined,'full-view','small','hold',
+   doorRangeSite('wide-open',id),{enableCivilians:false});
+  try{
+   prepareDoorRangeCase(s,'wide-open');
+   assert.equal(planSquadEntry(s,'ENTRY'),true,'wide-open '+id);
+   const leaf=doorLeafSegment(s.doors[0]);
+   const slots=team(s).slice(0,4).map(a=>
+    a.plan.find(n=>n.stackDoorId==='ENTRY')?.p);
+   assert.ok(slots.every(Boolean));
+   for(const point of slots)
+    assert.ok(pointToSegment(point,leaf)>=10.5,
+     'stage target must avoid already-present physical leaf');
+  }finally{activateSite(null);}
+ }
+});
+
+test('Q5 lab has all five approach and both opt-in matrix controls',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const html=readFileSync(new URL('../door-test-range.html',import.meta.url),'utf8');
+ const js=readFileSync(new URL('../src/door-test-range-main.ts',import.meta.url),'utf8');
+ for(const id of ['approach','runMatrix','runExtended','cancelMatrix',
+  'matrixReport','copyMatrix'])assert.ok(html.includes('id="'+id+'"'));
+ assert.match(js,/runDoorRangeQ5\(door,formation,execution\)/);
+ assert.match(js,/requestAnimationFrame\(\(\)=>resolve\(\)\)/);
+});

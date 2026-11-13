@@ -47,7 +47,17 @@ export function stackApproachPositions(door:Door,from:Pt):Pt[]{
   x:center.x+tx*lateral+nx*approach*(i<2?53:62),
   y:center.y+ty*lateral+ny*approach*(i<2?53:62)
  }));
- return [regular[0],regular[1],...rear,regular[2],regular[3]];
+ // Q5: pre-opened leaves can be body-pushed all the way to the actual
+ // 118-degree hinge stop DURING formation. Keep two fixed outer pockets
+ // available from the start rather than assigning an unsafe jamb point
+ // that becomes obstructed only after another teammate touches the leaf.
+ // The caller still checks actual swept physical clearance and reachability.
+ const wide=door.open&&(door.openFraction??0)>.1?
+  [-51,51].map(lateral=>({
+   x:center.x+tx*lateral+nx*approach*44,
+   y:center.y+ty*lateral+ny*approach*44
+  })):[];
+ return [regular[0],regular[1],...rear,regular[2],regular[3],...wide];
 }
 
 /** A generated squad-entry MOVE can pick up its own already-authored

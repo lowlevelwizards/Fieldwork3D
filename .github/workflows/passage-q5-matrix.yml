@@ -1,0 +1,35 @@
+name: Q5 Door Range approach matrix
+on:
+  push:
+    branches: ['feature/passage-q5-*']
+  pull_request:
+    paths:
+      - 'src/breach-door-test-cases.ts'
+      - 'src/door-range-q5-benchmark.ts'
+      - 'src/door-test-range-main.ts'
+      - 'door-test-range.html'
+      - 'tests/passage-q5-approaches.test.mjs'
+      - 'scripts/audit-passage-q5.mjs'
+      - '.github/workflows/passage-q5-matrix.yml'
+  workflow_dispatch:
+concurrency:
+  group: passage-q5-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript build and Door Lab bundle
+        run: npm run build
+      - name: Five approach geometry and Q3–Q4 convoy integrity
+        run: node --experimental-strip-types --test tests/passage-q5-approaches.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q3-ranks.test.mjs tests/passage-q4-swing.test.mjs
+      - name: Strict 70-case real motor reliability and speed gates
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict

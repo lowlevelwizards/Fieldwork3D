@@ -34,7 +34,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  * Author intent is editable PlanNode[]; motor navigation is transient.
  * The core retains the 052 static geometry and starter actors, not its old simulation.
  */
-import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
+import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
 import {type PlanNode,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions,doorOpensTowardApproach} from './breach-entry-coordination.ts';
@@ -58,7 +58,8 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {doorReachable,doorWouldStrikeActors} from './breach-door.ts';
+import {doorReachable,doorWouldStrikeActors,PUSHED_OPEN_LIMIT}
+ from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
@@ -745,21 +746,32 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   const outward=doorOpensTowardApproach(door,from);
   const preferred=team(s).findIndex(b=>b.id===id);
   const candidates=stackApproachPositions(door,from);
+  // Q5: a pre-opened panel can ALREADY be occupying the otherwise legal
+  // closed-door staging pocket. Use its current visible physical leaf,
+  // not the imaginary closed position; no hidden geometry is disclosed.
+  const currentLeaf=doorLeafSegment(door);
   // Smaller entrance frames retain valid nearby choices; never pick a
   // physical stack slot too far away to use the door.
   const legal=candidates.filter(p=>
     d(p,center)<(outward?68:43)&&
-    (!outward||!doorWouldStrikeActors({...door,openFraction:0},1.03,
+    pointToSegment(p,currentLeaf)>=OPERATOR_RADIUS+2.5&&
+    (!outward||!doorWouldStrikeActors({...door,openFraction:0},
+      door.open?PUSHED_OPEN_LIMIT:1.03,
       [p],OPERATOR_RADIUS+1))&&intelPassable(p,s.intel)&&
     !!routeWithIntel(s.intel,from,p).length&&
     occupied.every(other=>d(p,other)>23));
-  legal.sort((u,v)=>{
-    const rank=(p:Pt)=>{
-      const i=candidates.findIndex(candidate=>d(candidate,p)<1);
-      return (i-preferred+4)%4;
-    };
-    return rank(u)-rank(v)||d(from,u)-d(from,v);
-  });
+  // Q5: choose a stable, nearby *legal* physical stack slot rather
+  // than forcing every entry geometry into the same across-door zigzag.
+  // This never changes the candidate set, collision/leaf clearance, or
+  // authored order. A small role bias preserves a predictable formation
+  // when two slots have nearly equal travel cost.
+  const cost=(spot:Pt)=>{
+    const index=candidates.findIndex(candidate=>d(candidate,spot)<1);
+    const roleBias=Math.min(3,(index-preferred+candidates.length)%
+      candidates.length)*7;
+    return d(from,spot)+roleBias;
+  };
+  legal.sort((u,v)=>cost(u)-cost(v)||d(from,u)-d(from,v));
   if(!legal.length)return false;
   const point=legal[0],proposed=copyNodes(a.plan);
   proposed.splice(index,0,{id:s.nextId,kind:'move',p:clone(point),

@@ -35,6 +35,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <p>A dedicated deterministic test map running the <strong>real four-operator game motor</strong>, full door collision and hinge geometry. Select swing and fixture configurations, step frame-by-frame, and inspect an operator's remembered crossing episode.</p>
 <div class="controls">
 <label>PHYSICAL SCENARIO<select id="scenario"></select></label>
+<label>APPROACH FORMATION<select id="approach"></select></label>
 <label>EXECUTION<select id="program"><option value="squad">Coordinated 4-person entry</option>
 <option value="independent">Four independent MOVE plans</option>
 <option value="counterflow">Opposing two-way crossing</option>
@@ -55,6 +56,13 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <section><canvas id="doorStage" width="640" height="500"
  aria-label="Live top-down door and four-operator physical test map"></canvas>
 <p class="legend">Tap an operator to select; tap the floor to append a MOVE while planning. Amber = selected operator / leaf; teal = authored routes; dashed amber = temporary motor route. No physical collision is disabled.</p></section>
+<section><h1>Q5 · FOUR-OPERATOR APPROACH MATRIX</h1>
+<p>Run the real four-operator motor across five approaches and four left/right hinged swings (20). The extended set includes independent MOVE plans, ajar/wide doors, nearby fixtures, plus physically jammed and locked/wedged negatives (70). All durations are SIMULATION time, not measured GPU/real-device performance. An obstruction is only expected when the real physical door cannot clear. Any unexpected failure is displayed with the actual blocker.</p>
+<div class="actions"><button id="runMatrix">RUN CORE 20</button>
+<button id="runExtended">RUN EXTENDED 70</button>
+<button id="cancelMatrix" disabled>CANCEL MATRIX</button>
+<button id="copyMatrix">COPY MATRIX REPORT</button></div>
+<pre id="matrixReport" aria-live="polite">Not run · select a formation above for an individual case.</pre></section>
 <section><h1>Q0 · PASSAGE MOTION ATTRIBUTION</h1>
 <p>Opt-in 10Hz samples of threshold-relative movement, GO-time rank, holds and actual leaf/idle/retreat corrections. The COPY REPORT includes bounded 60-second history.</p>
 <label style="display:flex;align-items:center;gap:9px;font-size:12px"><input type="checkbox" id="queueTrace"> RECORD QUEUE TRACE</label>
