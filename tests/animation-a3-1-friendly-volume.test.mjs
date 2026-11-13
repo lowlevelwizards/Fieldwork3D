@@ -103,6 +103,43 @@ test('A3.1 all bodies are considered independently and shooter is excluded by ca
  const actor={p:p(50,5),posture:'crouch'};
  assert.deepEqual(safetyBodyFor(actor),{x:50,y:5,posture:'crouch'});
 });
+test('A3.1 moving teammate samples actual motor positions and deterministic body safety each tick',()=>{
+ const simulate=()=>{
+  const cfg={...DEFAULT_A3_CONFIG,scenario:'crossing',operators:2};
+  const s=createA3Session(cfg);
+  try{
+   const shooter=team(s)[0],ally=team(s)[1],target=enemies(s)[0];
+   const starting={...ally.p},trace=[];
+   for(let i=0;i<180;i++){
+    stepSession(s,1/60);
+    const body=safetyBodyFor(ally);
+    const muzzle=weaponClearance({
+      x:shooter.p.x,z:shooter.p.y,heading:shooter.heading,
+      weaponYaw:shooter.weaponYaw,weapon:shooter.weapon,
+      weaponConfiguration:shooter.weaponConfiguration,
+      equipment:shooter.equipment,aim:shooter.aim,
+      posture:shooter.posture,velocity:shooter.velocity,recoil:shooter.recoil
+    },s.doors,[],[]);
+    const from={x:muzzle.muzzle.x,y:muzzle.muzzle.z};
+    const toHeight=aimHeight(target.posture==='crouch');
+    const direct=friendIntersectsTrajectory(from,muzzle.muzzle.y,
+      target.p,toHeight,body);
+    const lane=assessFriendlyLane(from,muzzle.muzzle.y,
+      target.p,toHeight,[body]);
+    assert.equal(lane.blocker==='friendly',direct,
+      'actual moving-body protection must match shared shot-time geometry');
+    if(i%15===0)trace.push([
+      Number(ally.p.x.toFixed(3)),Number(ally.p.y.toFixed(3)),
+      lane.blocker
+    ]);
+   }
+   return {trace,moved:Math.hypot(ally.p.x-starting.x,ally.p.y-starting.y)>3};
+  }finally{activateSite(null);}
+ };
+ const one=simulate(),two=simulate();
+ assert.deepEqual(one,two,'real moving teammate must replay identically');
+ assert.equal(one.moved,true,'crossing fixture should exercise the actual motor');
+});
 test('A3.1 actual seeded Breach stack tracks crouch and uses the true current muzzle',()=>{
  const cfg={...DEFAULT_A3_CONFIG,scenario:'mixed-crouch',operators:2};
  const s=createA3Session(cfg);
