@@ -95,6 +95,7 @@ export function probeA3(s:Session,config:A3Config){
    weapon:shooter.weapon,aim:round(shooter.aim),
    firePolicy:shooter.firePolicy,lastFireBlock:shooter.lastFireBlock,
    recovery:shooter.fireRetreatTarget?at(shooter.fireRetreatTarget):null,
+   correction:shooter.fireRetreatReason??null,
    blockedTime:round(shooter.blockedTime),planCount:shooter.plan.length,
    shoulderOffset:round(shooter.aimSideOffset??0),
    shoulderTarget:round(shooter.aimSideTarget??0),
