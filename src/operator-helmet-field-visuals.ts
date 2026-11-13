@@ -13,6 +13,7 @@ import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
 import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
 import {addAchMichRetainingBungees} from './operator-helmet-field-bungees.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
+import {createHelmetFieldGoggleModule} from './operator-helmet-field-goggles.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
  bandMaterial:THREE.MeshStandardMaterial;webbingMaterial:THREE.MeshStandardMaterial;
@@ -125,7 +126,15 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   0,p.top-1.92,rear+.17);
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
   const g=addGroup(key),back=key==='goggles-rear',eyes=key==='goggles-eyes';
-  // The approved D2 goggle silhouette, not two independent dark cubes.
+  if(id!=='pasgt'){
+   // H9.5 D2 housing is preserved. Retention is now a separate,
+   // cover-fitting band and sleeve is sculpted to the housing itself.
+   createHelmetFieldGoggleModule(id,eyes?'eyes':back?'rear':'front',
+    g,dark,glass,webbingMaterial,tan);
+   continue;
+  }
+  // Period PASGT keeps the existing approved legacy housing until
+  // a separate historical goggle fit is authored and inspected.
   const pose=createD2GoggleFieldPose(dark,glass,webbingMaterial);
   pose.name='approved-d2-goggle-pose';
   if(back){pose.rotation.y=Math.PI;pose.position.set(0,p.top-6.78,rear-5.74);}
@@ -137,7 +146,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   g.add(pose);
   const sleeve=new THREE.Group();sleeve.name='goggle-fabric-sleeve';
   sleeve.visible=false;
-  plate(sleeve,tan,'flat-goggle-cloth-sleeve',
+  plate(sleeve,tan,'legacy-goggle-cloth-sleeve',
    [[-3.45,-.66],[3.45,-.66],[3.45,.66],[-3.45,.66]],
    0,p.top-2.9,back?rear+.49:front-.66,back?Math.PI:0);
   g.add(sleeve);
@@ -192,7 +201,7 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   const where=key.substring('goggles-'.length);
   m[key].visible=s.goggles===where&&
    (where!=='eyes'||!headEyewear.startsWith('goggles-'));
-  const sleeve=m[key].children.find(x=>x.name==='goggle-fabric-sleeve');
+  const sleeve=m[key].getObjectByName('goggle-fabric-sleeve');
   if(sleeve)sleeve.visible=s.goggleSleeve&&where!=='eyes';
  }
 }
