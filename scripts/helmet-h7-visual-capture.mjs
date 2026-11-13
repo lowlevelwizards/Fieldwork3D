@@ -39,7 +39,9 @@ try{
   };
   const toggle=async(label)=>{
    const b=page.getByRole('button',{name:label,exact:true});
-   await b.click();
+   // Per-operator field choices intentionally persist between shell families.
+   // If the previous shell enabled this option, don't toggle it back off.
+   if(await b.getAttribute('aria-pressed')!=='true')await b.click();
    if(await b.getAttribute('aria-pressed')!=='true')throw Error('No active toggle '+label);
    if(await detailTab.getAttribute('aria-pressed')!=='true')
     throw Error('Helmet toggle lost DETAILS step '+label);
