@@ -64,11 +64,8 @@ export function resolveMotorCollision(
   // assist, never an invented door manipulation across the room.
   if(doorContact?.handAssist){
     const contacted=s.doors.find(door=>door.id===doorContact.doorId);
-    if(contacted&&beginDoorGrip(a,contacted,s.seconds)){
+    if(contacted&&beginDoorGrip(a,contacted,s.seconds,world)){
       a.lastDoorAt=s.seconds;a.lastDoorId=contacted.id;
-      a.lastDoorMethod='open';
-    }else if(s.seconds-a.lastDoorAt>.76){
-      a.lastDoorAt=s.seconds;a.lastDoorId=doorContact.doorId;
       a.lastDoorMethod='open';
     }
   }
