@@ -17,7 +17,7 @@ export function scanEnemyVisualEvidence(s:Session,a:TeamActor,dt:number,
  // target belief, a hostile ID, a squad report or permission to shoot.
  const glimpse=visualId?null:s.operators.find(b=>b.side==='blue'&&
    detectedSight(a.awareness.visualProgress[b.id]??0));
- const observation=visualId?'identified/'+visualId:
+ const observation=visualId?visualId:
    glimpse?'silhouette/'+glimpse.id:null;
  if(observation!==a.lastVisualSuspicionId){
   a.lastVisualSuspicionId=observation;
