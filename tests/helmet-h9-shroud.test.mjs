@@ -13,7 +13,10 @@ test('H9.4a: ACH/MICH shrouds are sized, three-hole, winged, and fitted to actua
   assert.equal(anchor.userData.h9ShroudProfile,'three-hole-winged-nvg');
   assert.equal(anchor.userData.h9UsesCoverFrame,true);
   const frame=sampleHelmetCover(id,'front',0,.26,.16);
-  assert.ok(frame&&anchor.position.distanceTo(frame.position)<1e-4);
+  // H10 oversizes the shroud and offsets its physical backing out of
+  // the fitted cloth; do not demand a flush H9 center point.
+  assert.ok(frame&&anchor.position.distanceTo(
+   frame.position.clone().addScaledVector(frame.normal,.11))<1e-4);
   assert.equal(anchor.children.filter(x=>x.name==='nvgs-mount-screw').length,3);
   const plate=anchor.children.find(x=>x.name==='three-hole-shroud-open-wings');
   assert.ok(plate,'model must include wing openings and real thickness');

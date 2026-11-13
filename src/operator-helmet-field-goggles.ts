@@ -40,7 +40,7 @@ const sample=(shell:AchMichCoverShell,region:'left'|'right'|'front'|'back',
  let best:THREE.Vector3|null=null,score=Infinity;
  for(const uu of [u,u*.94,u*.84])
   for(const v of [-.65,-.48,-.30,-.12,.06,.22,.38,.55,.72]){
-   const f=sampleHelmetCover(shell,region,uu,v,.38);
+   const f=sampleHelmetCover(shell,region,uu,v,.63);
    if(!f)continue;
    const d=Math.abs(f.position.y-targetY)+Math.abs(u-uu)*.32;
    if(d<score){score=d;best=f.position;}
@@ -53,9 +53,9 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  const p=HELMET_MOUNT_PROFILES[shell];
  const y=p.top-2.95;
  const front=placement==='front';
- const nearZ=front?p.front+.45:p.rear-.44;
- const left=new THREE.Vector3(-4.12,y,nearZ);
- const right=new THREE.Vector3(4.12,y,nearZ);
+ const nearZ=front?p.front-1.08:p.rear+1.08;
+ const left=new THREE.Vector3(-4.25,y,nearZ);
+ const right=new THREE.Vector3(4.25,y,nearZ);
  const begin=front?-0.73:0.74,finish=-begin;
  const opposite=front?'back':'front';
  const path:THREE.Vector3[]=[left];
@@ -66,7 +66,7 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  for(const u of [finish,finish*.46,0,begin*.46,begin])
   path.push(sample(shell,'right',u,y));
  path.push(right);
- strip(g,path,.78,elastic,'continuous-helmet-goggle-strap');
+ strip(g,path,1.02,elastic,'continuous-helmet-goggle-strap');
  // Broad external adjusters, one on each side, not independent blocks.
  for(const region of ['left','right'] as const){
   const f=sampleHelmetCover(shell,region,front?-.06:.08,.19,.45);
@@ -78,6 +78,7 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
   buckle.name='helmet-strap-slider-'+region;
   buckle.castShadow=false;buckle.receiveShadow=false;g.add(buckle);
  }
+ g.userData.h10OverShellStrap=true;
  g.userData.h9FittedStrap=true;
  g.userData.h9StrapPath=path.map(v=>v.toArray());
  g.userData.h9StrapSegments=path.length-1;
@@ -91,16 +92,18 @@ export function createFittedGoggleSleeve(pose:THREE.Group,tan:THREE.Material,dar
  const sleeve=new THREE.Group();
  sleeve.name='goggle-fabric-sleeve';sleeve.visible=false;
  sleeve.position.copy(pose.position);sleeve.quaternion.copy(pose.quaternion);
+ // Match the same fourteen-point D2 field shell from field() rather
+ // than an independent, wider rectangle that hangs past its gasket.
  const outer=[
-  [-4.42,4.99],[-3.12,5.21],[3.12,5.21],[4.42,4.99],
-  [4.62,4.39],[4.34,2.23],[3.05,1.78],[1.35,1.91],
-  [.65,2.68],[-.65,2.68],[-1.35,1.91],[-3.05,1.78],
-  [-4.34,2.23],[-4.62,4.39]
+  [-4.32,5.16],[-3.12,5.37],[3.12,5.37],[4.32,5.16],
+  [4.50,4.52],[4.30,2.21],[3.01,1.90],[1.45,2.04],
+  [.75,2.82],[-.75,2.82],[-1.45,2.04],[-3.01,1.90],
+  [-4.30,2.21],[-4.50,4.52]
  ];
  const face=new THREE.Mesh(new THREE.ExtrudeGeometry(makeShape(outer),{
   depth:.17,bevelEnabled:false,steps:1
  }),tan);
- face.position.z=-6.08;face.name='fitted-sleeve-folded-cloth';
+ face.position.z=-6.015;face.name='fitted-sleeve-folded-cloth';
  face.castShadow=false;face.receiveShadow=false;sleeve.add(face);
  const seal=new THREE.Mesh(new THREE.ShapeGeometry(makeShape([
   [-4.29,4.86],[-3.06,5.09],[3.06,5.09],[4.29,4.86],
@@ -108,7 +111,7 @@ export function createFittedGoggleSleeve(pose:THREE.Group,tan:THREE.Material,dar
   [.68,2.85],[-.68,2.85],[-1.39,2.06],[-2.96,1.94],
   [-4.19,2.34],[-4.46,4.28]
  ])),dark);
- seal.name='sleeve-subtle-stitched-outline';seal.position.z=-6.17;
+ seal.name='sleeve-subtle-stitched-outline';seal.position.z=-6.11;
  seal.castShadow=false;seal.receiveShadow=false;
  // Slim border effect: dark perimeter behind a smaller tan center panel.
  sleeve.add(seal);
@@ -118,7 +121,7 @@ export function createFittedGoggleSleeve(pose:THREE.Group,tan:THREE.Material,dar
   [.75,2.93],[-.75,2.93],[-1.44,2.19],[-2.80,2.10],
   [-3.98,2.50],[-4.23,4.15]
  ])),tan);
- panel.name='sleeve-front-face';panel.position.z=-6.19;
+ panel.name='sleeve-front-face';panel.position.z=-6.13;
  panel.castShadow=false;panel.receiveShadow=false;sleeve.add(panel);
  sleeve.userData.h9HousingFitted=true;
  sleeve.userData.h9FaceContourPoints=outer.length;
@@ -136,8 +139,8 @@ export function createHelmetFieldGoggleModule(
  pose.name='approved-d2-goggle-pose';
  const p=HELMET_MOUNT_PROFILES[shell];
  if(placement==='rear'){
-  pose.rotation.y=Math.PI;pose.position.set(0,p.top-6.78,p.rear-5.74);
- }else if(placement==='front')pose.position.set(0,p.top-6.78,p.front+5.70);
+  pose.rotation.y=Math.PI;pose.position.set(0,p.top-6.78,p.rear-4.66);
+ }else if(placement==='front')pose.position.set(0,p.top-6.78,p.front+4.62);
  // Eye-worn D2 already has a proper strap geometry; stowed requires
  // the helmet contour band instead of a strap crossing through the shell.
  if(placement!=='eyes'){
@@ -150,6 +153,7 @@ export function createHelmetFieldGoggleModule(
  if(placement==='eyes')sleeve.visible=false;
  g.add(sleeve);
  g.userData.h9HelmetGoggles=true;
+ g.userData.h10ProudHousing=true;
  g.userData.h9Position=placement;
  return g;
 }
