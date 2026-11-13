@@ -7,6 +7,7 @@ import {advanceMedicalCondition} from './breach-medical-wounds.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
+import {maintainDoorGrip} from './breach-door-grip.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {BattleEvent} from './breach-combat.ts';
@@ -59,6 +60,11 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     }else battleEvent(s,'wound',casualty,casualty.p,
       casualty.name+' WOUND DETERIORATING');
   }
+  // D4 runs only for actual attached/releasing hands, before the existing
+  // swept hinge update; no per-frame impulse or second physics owner.
+  for(const actor of s.operators)
+   if(actor.doorGrip)maintainDoorGrip(actor,s.doors,s.seconds,
+     sessionWorldGeometry(s));
   // Door leaves sample all live bodies, but normal ticks do not move any
   // body during the door phase. Build the positions once per fixed tick,
   // refreshing only if a real opening-yield actually relocated an operator.
