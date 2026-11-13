@@ -7,11 +7,11 @@ import {ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type AchMichDetailLayers={bare:THREE.Group;strap:THREE.Group};
 const profiles={
- ach:{side:5.075,frontSide:4.40,ear:2.68,nape:2.68,
+ ach:{side:5.075,frontSide:4.40,sideFrontEdge:4.40,ear:2.68,nape:2.68,
   forward:-5.535,rear:5.60,frontBoltY:5.22,rearBoltY:4.68},
- 'mich-2002':{side:5.03,frontSide:4.55,ear:4.05,nape:3.37,
+ 'mich-2002':{side:5.03,frontSide:4.55,sideFrontEdge:4.715,ear:4.05,nape:3.37,
   forward:-5.70,rear:5.75,frontBoltY:5.75,rearBoltY:5.13},
- 'mich-2001':{side:5.015,frontSide:4.55,ear:5.95,nape:3.33,
+ 'mich-2001':{side:5.015,frontSide:4.55,sideFrontEdge:5.945,ear:5.95,nape:3.33,
   forward:-5.71,rear:5.66,frontBoltY:6.50,rearBoltY:5.05}
 } as const;
 function ribbon(group:THREE.Group,material:THREE.Material,
@@ -46,13 +46,14 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  ribbon(bare,trim,[-p.side,p.nape,p.rear+.035],
   [p.side,p.nape,p.rear+.035],.19,'y');
  for(const sign of [-1,1] as const){
-  const x=sign*(p.side+.035);
+  const x=sign*(p.side+.10);
   if(id==='ach'){
    ribbon(bare,trim,[x,p.frontSide,-4.95],[x,p.frontSide,-2.0],.19,'y');
    ribbon(bare,trim,[x,p.ear,-2.0],[x,p.ear,5.04],.19,'y');
   }else{
    // No fictitious binding across the genuine high-/mid-cut ear aperture.
-   ribbon(bare,trim,[x,p.frontSide,-4.9],[x,p.ear,-2.0],.19,'y');
+   ribbon(bare,trim,[x,p.sideFrontEdge,-4.6],
+    [x,p.sideFrontEdge,-2.0],.19,'y');
    ribbon(bare,trim,[x,p.nape,3.95],[x,p.nape,5.1],.19,'y');
   }
   // MICH 2001 has a genuinely open rear side; its rear anchor belongs on
