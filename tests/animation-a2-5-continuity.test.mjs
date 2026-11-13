@@ -143,3 +143,35 @@ test('A2.5 deterministic seek bypasses smoothing and restores exact endpoints',(
   finite(rig);
  }finally{rig.dispose();}
 });
+
+test('A2.5 every directed named transition preserves entry weapon and both hands',()=>{
+ const modes=['low','high','ready','point','ads','short'];
+ const rig=createOperatorRig('a25-all-pairs','blue');
+ let seconds=10,count=0;
+ try{
+  for(const from of modes)for(const to of modes){
+   if(from===to)continue;
+   // The deterministic first pose is the observable reference frame.
+   // Swapping handling intent at the next timestamp must not cause even
+   // one frame of rifle/arm teleporting, regardless of pose family.
+   seconds+=.12;
+   pose(rig,{seconds,handlingOverride:from,deterministic:true,
+    aimBlend:from==='ads'?1:0,aiming:from==='ads'});
+   const before=['held-weapon','arm-0-hand','arm-1-hand',
+    'arm-0-upper','arm-1-upper'].map(id=>snapshot(rig,id));
+   seconds+=1/60;
+   pose(rig,{seconds,handlingOverride:to,
+    aimBlend:to==='ads'?1:0,aiming:to==='ads'});
+   for(let i=0;i<before.length;i++){
+    const id=['held-weapon','arm-0-hand','arm-1-hand',
+     'arm-0-upper','arm-1-upper'][i];
+    const after=snapshot(rig,id);
+    assert.ok(vecDiff(after,before[i])<1e-5,
+     from+'→'+to+' '+id+' jumped on first transition frame');
+   }
+   finite(rig);
+   count++;
+  }
+  assert.equal(count,30);
+ }finally{rig.dispose();}
+});
