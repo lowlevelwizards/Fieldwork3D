@@ -125,10 +125,10 @@ try{
     .filter({hasText:'One option at a time.'}).locator('select');
    await conceal.selectOption('foliage-sparse');
    await capture(id+'-sparse-foliage-side','side');
-   await conceal.selectOption('foliage-medium');
+   await conceal.selectOption('foliage');
    await capture(id+'-medium-foliage-front','front');
    await capture(id+'-medium-foliage-side','side');
-   await conceal.selectOption('foliage-heavy');
+   await conceal.selectOption('foliage');
    await capture(id+'-heavy-foliage-side','side');
    await conceal.selectOption('scrim');
    await capture(id+'-scrim-front','front');

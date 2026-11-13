@@ -1500,8 +1500,10 @@ function renderMaterials(){
    if(state.setup.cover!=='none'){
     const concealRow=row('PASGT CONCEALMENT',
      'Foliage and scrim require slits; net automatically secures under the elastic band.');
-    addSelect(concealRow,PASGT_CONCEALMENTS.map(id=>[id,id.toUpperCase()] as const),
-     details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
+    addSelect(concealRow,PASGT_CONCEALMENTS.filter(id=>
+     ['none','scrim','net','foliage'].includes(id)).map(id=>
+     [id,id.toUpperCase()] as const),
+     details.concealment.startsWith('foliage')?'foliage':details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
       ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
       concealment:id as typeof details.concealment}}));
    }
@@ -1571,7 +1573,7 @@ function renderMaterials(){
     picker('BAND COLOR','bandColor',
      'Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
    const foliage=rowOf('FIELD CONCEALMENT',
-    'One option at a time. Slits/loops, scrim, netting, and graded foliage are physical additions, not texture changes.');
+    'Choose scrim, net, or full-density foliage; cover-dependent options hide without fabric.');
    addSelect(foliage,(historical||fieldCovered?HELMET_FIELD_CONCEALMENT:
     HELMET_FIELD_CONCEALMENT.filter(c=>c==='none'||c==='net')).map(c=>[c,
     c.replaceAll('-',' ').toUpperCase()] as const),

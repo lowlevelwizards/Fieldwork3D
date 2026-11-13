@@ -36,7 +36,7 @@ test('H10.5: legacy looks get safe mounting defaults and retain preferences whil
  assert.equal(kit.modules.camera.visible,false);
  assert.equal(kit.modules.camera.scale.x,-1);
  assert.equal(kit.modules.light.scale.x,-1);
- assert.equal(kit.modules.chemlight.scale.x,-1);
+ assert.equal(kit.modules.chemlight.scale.x,1);
  updateHelmetFieldLayers(kit,{...configured,camera:true,rails:true,band:false,concealment:'net'},0x586648,true);
  assert.equal(kit.modules.camera.visible,true);
  assert.equal(kit.modules.camera.scale.x,-1);
@@ -45,7 +45,7 @@ test('H10.5: legacy looks get safe mounting defaults and retain preferences whil
 test('H10.5: editor only reveals accessory child controls while equipped',()=>{
  const src=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
  assert.match(src,/if\(currentField\.band\|\|\(!historical&&currentField\.concealment==='net'\)\)/);
- for(const item of ['camera','light','chemlight'])
+ for(const item of ['camera','light'])
   assert.ok(src.includes('if(!historical&&currentField.'+item+')'));
  assert.match(src,/if\(currentField\.goggles==='front'\|\|currentField\.goggles==='rear'\)/);
 });

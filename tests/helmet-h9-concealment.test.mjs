@@ -25,11 +25,7 @@ test('H9.2: each ACH/MICH cover gets twelve true sewn slits, nine varied folded 
   }
   assert.ok(new Set(directions).size>=6,'foliage direction must be asymmetric');
   const active=kit.modules.leaves.children;
-  updateHelmetFieldLayers(kit,{concealment:'foliage-sparse'},0x666654,true);
-  assert.equal(active.filter(c=>c.visible).length,3);
-  updateHelmetFieldLayers(kit,{concealment:'foliage-medium'},0x666654,true);
-  assert.equal(active.filter(c=>c.visible).length,6);
-  updateHelmetFieldLayers(kit,{concealment:'foliage-heavy'},0x666654,true);
+  updateHelmetFieldLayers(kit,{concealment:'foliage'},0x666654,true);
   assert.equal(active.filter(c=>c.visible).length,10);
   updateHelmetFieldLayers(kit,{concealment:'scrim'},0x666654,true);
   assert.equal(kit.modules.scrim.visible,true);

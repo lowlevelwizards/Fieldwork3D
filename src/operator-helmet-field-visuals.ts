@@ -219,13 +219,12 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
  // The net cannot be tied off if its retaining elastic is absent.
  m.band.visible=(s.band||s.concealment==='net')&&v.shell!=='pasgt';
- m.loops.visible=covered&&v.shell!=='pasgt'&&s.concealment!=='none';
+ m.loops.visible=covered&&v.shell!=='pasgt'&&
+  (s.concealment==='scrim'||s.concealment==='foliage');
  m.scrim.visible=covered&&v.shell!=='pasgt'&&s.concealment==='scrim';
  m.net.visible=v.shell!=='pasgt'&&s.concealment==='net';
- m.leaves.visible=covered&&v.shell!=='pasgt'&&s.concealment.startsWith('foliage-')&&
-  s.concealment!=='foliage-loops';
- const count=s.concealment==='foliage-sparse'?3:
-  s.concealment==='foliage-medium'?6:10;
+ m.leaves.visible=covered&&v.shell!=='pasgt'&&s.concealment==='foliage';
+ const count=10;
  let i=0;for(const leaf of v.leaves.children)leaf.visible=i++<count;
  m.unfastened.visible=!s.fastened;
  const coveredBungees=m.bungees.getObjectByName('bungee-cover-route');

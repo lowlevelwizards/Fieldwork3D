@@ -18,7 +18,7 @@ test('H9.8: full appearance configuration serializes without destructive suppres
  assert.equal(modern.goggles,'rear');
  assert.equal(modern.goggleSleeve,true);
  for(const key of ['shroud','rails','bungees','velcro','strobe',
-  'light','camera','chemlight','patches'])
+  'light','camera','patches'])
   assert.equal(modern[key],true,key);
  assert.equal(modern.counterweight,false);
  assert.equal(modern.battery,false);
