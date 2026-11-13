@@ -2,7 +2,7 @@
  * The authoritative live simulation owns acquisition. Playback only consumes
  * immutable samples. This module is intentionally presentation-only.
  */
-import {isSeen,inSight,liveVisibility,observerPointVisible,type Session,type TeamActor} from './breach-game.ts';
+import {isDetected,personDetected,inSight,liveVisibility,observerPointVisible,type Session,type TeamActor} from './breach-game.ts';
 
 export type ReplayKnowledge={
   /** Exactly which actors had player-visible models at capture time. */
@@ -18,6 +18,8 @@ export type ReplayKnowledge={
    * Downed bodies and civilian observer truth are not represented yet.
    */
   operatorVisibleActorIds?:Record<string,string[]>;
+  /** V2 live visual silhouettes recorded before positive ID. */
+  operatorDetectedActorIds?:Record<string,string[]>;
   /** R4.2c: observer-specific visible civilians, including incapacitated
    * civilians. Present iff captured by the authoritative game simulation;
    * old replays explicitly do not contain this evidence.
@@ -43,6 +45,7 @@ export function captureReplayKnowledge(
   const visibleCivilianIds:string[]=[];
   const discovered=new Set(previouslyDiscovered);
   const operatorVisibleActorIds:Record<string,string[]>={};
+  const operatorDetectedActorIds:Record<string,string[]>={};
   const operatorVisibleCivilianIds:Record<string,string[]>={};
   const operatorVisibleBodyIds:Record<string,string[]>={};
   const operatorDiscoveredBodyIds:Record<string,string[]>={};
@@ -51,6 +54,9 @@ export function captureReplayKnowledge(
   const livingHostiles=s.operators.filter(a=>
     a.side!=='blue'&&a.health>0);
   for(const observer of blue){
+    operatorDetectedActorIds[observer.id]=observer.health>0?
+      livingHostiles.filter(target=>personDetected(observer,target,s))
+        .map(target=>target.id):[];
     operatorVisibleActorIds[observer.id]=observer.health>0?
       livingHostiles.filter(target=>inSight(observer,target,s))
         .map(target=>target.id):[];
@@ -68,7 +74,7 @@ export function captureReplayKnowledge(
   }
   for(const a of s.operators){
     const visible=a.side==='blue'||(a.health>0?
-      isSeen(s,a):liveVisibility(s,a.p));
+      isDetected(s,a):liveVisibility(s,a.p));
     if(visible)visibleActorIds.push(a.id);
     if(a.health<=0&&visible)discovered.add(a.id);
   }
@@ -76,6 +82,7 @@ export function captureReplayKnowledge(
     if(liveVisibility(s,c.p))visibleCivilianIds.push(c.id);
   return {visibleActorIds,visibleCivilianIds,
     discoveredBodyIds:[...discovered],operatorVisibleActorIds,
+    operatorDetectedActorIds,
     operatorVisibleCivilianIds,operatorVisibleBodyIds,operatorDiscoveredBodyIds};
 }
 
@@ -113,7 +120,7 @@ export function replayActorDisclosed(
       // location. Individual observers only display the actual recorded
       // current sighting; the memory itself remains on the timeline.
       recordedObserverCanSeeBody(sample,policy.observerId,a.id)===true:
-      recordedObserverCanSee(sample,policy.observerId,a.id)===true;
+      recordedObserverCanDetect(sample,policy.observerId,a.id)===true;
   if(sample)return sample.visibleActorIds.includes(a.id)||
     (a.health<=0&&sample.discoveredBodyIds.includes(a.id));
   // Legacy/corrupt archive missing a recorded sample must fail CLOSED.
@@ -156,6 +163,17 @@ export function recordedObserverCanSee(
   return byObserver[observerId].includes(targetId);
 }
 
+/** Prefer exact silhouette samples; pre-V2 archives fall back to confirmed ID.
+ * Never reconstruct a missing historical sample from live world geometry.
+ */
+export function recordedObserverCanDetect(
+ knowledge:ReplayKnowledge|null|undefined,observerId:string,targetId:string
+):boolean|null{
+ const detected=knowledge?.operatorDetectedActorIds;
+ if(detected&&Object.prototype.hasOwnProperty.call(detected,observerId))
+   return detected[observerId].includes(targetId);
+ return recordedObserverCanSee(knowledge,observerId,targetId);
+}
 /** null = old film/lost evidence; false = explicitly not observed. */
 export function recordedObserverCanSeeCivilian(
   knowledge:ReplayKnowledge|null|undefined,

@@ -50,6 +50,7 @@ import {MiniatureAttentionMask,type AttentionPolygon,type AttentionDisc}
 import {focusZoomMultiplier,recentRevealWeight,FOCUS_PROTECTION}
  from './rendering/miniature-attention-policy.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
+import {sightRangeForSite} from './breach-visibility-range-policy.ts';
 import {projectedOperatorHeightPx,operatorShadowDetail,
  applyOperatorShadowLod,cavityQualityForDetail}
  from './operator-shadow-quality.ts';
@@ -423,7 +424,7 @@ export class TacticalScene3D{
       for(const friendly of team(s)){
         if(friendly.health<=0)continue;
         const world=sessionWorldGeometry(s);
-        const polygon=visionPolygon(friendly.p,friendly.heading,240,
+        const polygon=visionPolygon(friendly.p,friendly.heading,sightRangeForSite(s.site),
           world.walls,s.doors,friendly.posture==='crouch',world.cover);
         const projected:FocusPoint[]=[];
         for(const p of polygon){

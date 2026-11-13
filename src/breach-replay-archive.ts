@@ -41,6 +41,7 @@ const allowed=(id:string)=>id.length>0&&id.length<=128&&/^[\w-]+$/.test(id);
 function validObserverEvidence(frame:ReplayFrame):boolean{
   const fields=[
     frame.knowledge?.operatorVisibleActorIds,
+    frame.knowledge?.operatorDetectedActorIds,
     frame.knowledge?.operatorVisibleCivilianIds,
     frame.knowledge?.operatorVisibleBodyIds,
     frame.knowledge?.operatorDiscoveredBodyIds

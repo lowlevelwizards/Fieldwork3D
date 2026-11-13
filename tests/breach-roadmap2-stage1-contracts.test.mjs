@@ -24,9 +24,9 @@ import {applyReplayFrame} from '../src/breach-replay.ts';
 // undo/redo. Compare the actual serialized command contract, not object shape.
 const authoredPlan=plan=>JSON.parse(JSON.stringify(plan));
 const GOLDENS=Object.freeze({
- door:'f0300241e8134d1a65c5e71fd22c827447e96128a92bb82c2bd64958c02f895c',
- medical:'a7b43bd0f015e426050ab1a001ce8bf67daf511a936efa9d3e5ea779de27f0b4',
- combat:'7d186411687555c809c6aac8caeedd0814008ac92b291cc799a550247ecda349',
+ door:'633e18596396efab93038f75b7b1ccbc5602b0516f577cdd462b3de8e0ef7d84',
+ medical:'0166aaa68900f3a0150b3edab263e5c17573c368a2249e85debd6a9f389f6261',
+ combat:'ac9b9366ff5dfb6f3e142187e3dff401f0fdc3fd737834abaf2971e483194a87',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
 });
 function authorDoorEntry(s){
