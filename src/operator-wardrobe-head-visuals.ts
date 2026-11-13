@@ -385,15 +385,16 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
    helmetCover?.headwearCamo,camoIdentity,coverRoll);
   const details=layers.achMich[assembly.headwear];
   if(details){
-   // Hide painted exterior under the fitted textile. The inward-facing
-   // liner retains the underside without bleeding through the cover.
+   // H5.7: A fabric cover does NOT replace the protective shell. Keep the
+   // actual solid exterior visible in both modes; the outer drape is fitted
+   // proud of it. Only the inset underside liner changes with cover state.
    const hardShell=layers.headwear[assembly.headwear]?.children.find(
     child=>child.userData.achMichBareShell);
    if(hardShell){
     for(const child of hardShell.children){
      if(child instanceof THREE.Mesh)
       child.visible=child.userData.achMichInterior===true?
-       shellCovered:!shellCovered;
+       shellCovered:true;
     }
    }
    updateAchMichDetails(details,shellCovered,
