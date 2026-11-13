@@ -171,7 +171,11 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
   r.flashCanister.visible=gear?.tactical==='tactical-smoke'||
     (gear?.tactical==='tactical-flash'&&
       (p.flashCharges===undefined||p.flashCharges>0));
-  for(const glove of r.gloveCovers)glove.visible=gear?.hands==='hands-gloves';
+  // Explicit wardrobe glove selection is cosmetic. It must neither inherit
+  // the shirt material nor toggle because a fabric or loadout tint changed.
+  for(const glove of r.gloveCovers)glove.visible=clothing.gloves!=='gloves-none';
+  r.colors.set(r.gloveMaterial,new THREE.Color(
+   garmentSolidHex(p.wardrobe?.gloveSolid??'ranger-green')));
   const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration);
