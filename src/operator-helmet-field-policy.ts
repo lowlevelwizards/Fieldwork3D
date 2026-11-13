@@ -72,7 +72,9 @@ export function resolveHelmetField(id:string,raw:unknown,
  if(context.covered===false&&r.concealment!=='net')r.concealment='none';
  if(!r.rails){r.light=false;r.camera=false;}
  if(!r.rails||!r.shroud)r.bungees=false;
- if(!r.rails&&!r.band)r.chemlight=false;
+ // A top-rear chemlight is clipped to its own carrier and needs neither
+ // rail nor elastic band; the crown strobe claims the same physical zone.
+ if(r.strobe)r.chemlight=false;
  // Camera and light cannot occupy the same side-rail slot.
  if(r.camera&&r.light&&r.cameraSide===r.lightSide)r.light=false;
  // One centered rear carrier slot; rear goggles occupy the same zone.

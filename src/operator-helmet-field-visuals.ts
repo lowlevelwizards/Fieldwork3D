@@ -239,7 +239,9 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  // meshes, evaluating rays, or adding per-frame visual work.
  m.camera.scale.x=s.cameraSide==='right'?1:-1;
  m.light.scale.x=s.lightSide==='left'?1:-1;
- m.chemlight.scale.x=s.chemlightSide==='right'?1:-1;
+ // Legacy chemlightSide is retained in saves but no longer changes
+ // the centered crown-rear attachment position.
+ m.chemlight.scale.x=1;
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
   const where=key.substring('goggles-'.length);
   m[key].visible=s.goggles===where&&

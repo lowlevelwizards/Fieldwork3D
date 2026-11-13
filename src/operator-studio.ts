@@ -1607,8 +1607,8 @@ function renderMaterials(){
    toggle(addons,'battery','BATTERY PACK','▥',!historical);
    toggle(addons,'light','HELMET LIGHT','◉',!historical&&currentField.rails);
    toggle(addons,'camera','CAMERA','◈',!historical&&currentField.rails);
-   toggle(addons,'chemlight','CHEMLIGHT','│',
-    historical||currentField.band||currentField.rails);
+   toggle(addons,'chemlight','CHEMLIGHT · TOP REAR','│',
+    historical||!effective.strobe);
    toggle(addons,'patches','PATCH / IDENTIFIER','▤',
     historical||fieldCovered||currentField.velcro);
    const sidePicker=(title:string,key:'cameraSide'|'lightSide'|'chemlightSide',
@@ -1624,9 +1624,7 @@ function renderMaterials(){
    if(!historical&&currentField.light)
     sidePicker('HELMET LIGHT MOUNT','lightSide',
      'Clip the forward-facing task light to the left or right rail.');
-   if(!historical&&currentField.chemlight)
-    sidePicker('CHEMLIGHT MOUNT','chemlightSide',
-     'Secure the enlarged capped chemlight along either helmet side.');
+   // No side picker: the modern chemlight is retained at the crown-rear.
   }
   if(item==='police-helmet'){
    const pos=row('POLICE PROTECTIVE VISOR',
