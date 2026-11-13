@@ -26,7 +26,7 @@ export function choosePhysicalCorrection(p:Pt,aimYaw:number,
  let tests=0;
  const lateral={x:-Math.sin(aimYaw),y:Math.cos(aimYaw)};
  const lengths=reason==='friendly'?[4,7,10,12,20,28]:
-   [4,7,10,14,22,30];
+   [2,3,4,7,10,14,22,30];
  const forward={x:Math.cos(aimYaw),y:Math.sin(aimYaw)};
  // Rank by minimal displacement; either blockage can benefit from lateral
  // or rear-oblique footwork. Each actual lane and swept move remains checked.
