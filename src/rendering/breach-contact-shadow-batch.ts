@@ -16,7 +16,6 @@ export class BreachContactShadowBatch{
  private readonly registered=new Map<string,[THREE.Mesh,THREE.Mesh]>();
  private readonly scratch=new THREE.Matrix4();
  private readonly last=new Float32Array(BUFFERED_SHADOWS*16);
- private lastCount=0;
  private dirty=true;
  constructor(scene:THREE.Scene){
   this.draw.name='operator-contact-shadows-batched';
@@ -65,7 +64,7 @@ export class BreachContactShadowBatch{
   }
   if(this.draw.count!==slot){this.draw.count=slot;changed=true;}
   if(changed)this.draw.instanceMatrix.needsUpdate=true;
-  this.lastCount=slot;this.dirty=false;
+  this.dirty=false;
  }
  get stats(){return {draws:this.draw.count?1:0,instances:this.draw.count,
   trackedOperators:this.registered.size};}
