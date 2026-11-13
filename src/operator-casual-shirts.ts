@@ -39,37 +39,34 @@ export function createCasualShirts(chest:THREE.Group,arms:readonly Arm[],
   const tee=cut==='t-shirt',button=cut==='button-up-shirt',
    polo=cut==='polo-shirt';
   const torso=group(chest,'casual-shirt:'+cut);
-  if(tee){
-   // Two unobtrusive neck-edge stitches on the existing chest block.
+  // The original torso front is X=+5, its top Y=+6. The previous
+  // 5.055-X thin overlays penetrated that face, leaving flickering strips
+  // at the neckline. All decorative FRONT faces now sit well clear of
+  // X=5; only the actual baseTorso owns the shirt body.
+  if(polo){
    for(const sign of [-1,1])
-    block(torso,trim,5.035,5.75,sign*1.24,.07,.10,1.32)
-     .name='tee:crew-neck-seam';
-  }else if(polo){
-   // Two short, flat collar leaves near the neck. No epaulettes or
-   // projected neckline cutout that would hide the original torso.
-   for(const sign of [-1,1])
-    block(torso,cloth,5.055,5.75,sign*1.38,.15,.46,1.62)
+    block(torso,cloth,5.35,5.70,sign*1.92,.34,.94,2.55)
      .name='polo:collar-leaf';
-   block(torso,cloth,5.06,4.72,0,.15,1.28,.37)
+   block(torso,cloth,5.33,4.67,0,.32,2.18,.72)
     .name='polo:short-placket';
-   for(const y of [4.45,4.9])
-    block(torso,trim,5.15,y,0,.10,.16,.16)
+   for(const y of [4.16,5.01])
+    block(torso,trim,5.57,y,0,.23,.38,.40)
      .name='polo:button';
   }else if(button){
-   // Preserve the button-up silhouette with thin details ON the torso,
-   // not a second oversized jacket-shaped chest.
+   // Exaggerated, recognizable shirt features; all share the existing
+   // torso textile and never add another box-sized jacket shell.
    for(const sign of [-1,1]){
-    block(torso,cloth,5.06,5.76,sign*1.43,.15,.46,1.76)
-     .name='button-up:flat-collar';
-    block(torso,cloth,5.08,2.18,sign*3.17,.16,1.86,3.14)
+    block(torso,cloth,5.34,5.71,sign*1.93,.35,.94,2.65)
+     .name='button-up:folded-collar';
+    block(torso,cloth,5.33,2.12,sign*3.23,.35,2.46,3.75)
      .name='button-up:chest-pocket';
-    block(torso,cloth,5.16,3.17,sign*3.17,.16,.18,3.23)
+    block(torso,cloth,5.57,3.43,sign*3.23,.22,.45,3.90)
      .name='button-up:pocket-flap';
    }
-   block(torso,cloth,5.09,-.11,0,.17,10.9,.46)
+   block(torso,cloth,5.30,-.10,0,.31,10.83,.85)
     .name='button-up:placket';
-   for(const y of [-4.5,-2.35,-.2,1.95,4.1])
-    block(torso,trim,5.20,y,0,.10,.25,.23)
+   for(const y of [-4.5,-2.3,-.1,2.1,4.3])
+    block(torso,trim,5.57,y,0,.24,.46,.45)
      .name='button-up:button';
   }
   // Tank top: zero added torso geometry. Bare arms plus the original
@@ -82,17 +79,28 @@ export function createCasualShirts(chest:THREE.Group,arms:readonly Arm[],
    const c=group(arm.lower,cut+':cuff:'+i);
    const roll=group(arm.upper,cut+':roll:'+i);
    if(tee||polo){
-    // ONE thin sleeve on the proximal section of the real skin arm.
-    // At the existing arm dimensions (3.9 x 4.0) this is barely larger
-    // than the limb, unlike the old bulky stacked sleeve + armor cuff.
-    block(u,cloth,0,-.29,0,3.98,.42,4.08)
+    // Both short sleeves follow the real upper-arm bone. About 10–20%
+    // more readable than the previous thin shell, but still not a pad.
+    block(u,cloth,0,-.252,0,4.25,.50,4.37)
      .name=cut+':short-sleeve';
+    if(polo){
+     // A shallow, slightly proud band at the DISTAL sleeve edge.
+     // Smaller cross-section would disappear at gameplay zoom.
+     block(u,cloth,0,-.025,0,4.39,.095,4.51)
+      .name='polo:sleeve-hem';
+    }
    }else if(button){
-    // Reuse the original articulated cloth sleeves and existing fabric
-    // cuffs; none of this creates another upper-arm or chest shell.
-    block(l,cloth,0,.36,0,4.30,.25,4.45);
-    block(c,cloth,0,-.16,0,4.42,.29,4.54)
-     .name='button-up:mid-forearm-cuff';
+    // Cuffed: cloth MUST extend continuously from the elbow to the
+    // raised forearm cuff. Rendering the entire forearm as bare skin and
+    // adding only a floating wrist band broke the elbow silhouette.
+    block(l,cloth,0,.36,0,4.30,.25,4.45)
+     .name='button-up:full-sleeve-edge';
+    block(c,cloth,0,-.35,0,3.66,.39,3.76)
+     .name='button-up:proximal-cuffed-sleeve';
+    block(c,cloth,0,-.50,0,4.08,.14,4.16)
+     .name='button-up:elbow-join';
+    block(c,cloth,0,-.17,0,4.13,.145,4.25)
+     .name='button-up:raised-forearm-cuff';
     block(roll,cloth,0,.37,0,4.62,.27,4.76);
     block(roll,cloth,0,.215,0,4.40,.12,4.52);
    }

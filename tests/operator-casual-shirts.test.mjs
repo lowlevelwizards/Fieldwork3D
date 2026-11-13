@@ -161,28 +161,99 @@ test('all casual tops recolor the ONE actual torso, without duplicate jacket she
   'tank is only the original torso and uncovered arms');
  r.dispose();
 });
-test('tee and polo sleeves are one thin piece per proximal arm, not armor cuffs',()=>{
- const r=createOperatorRig('rook','blue');
- for(const top of ['t-shirt','polo-shirt']){
-  poseOperator(r,frame(outfit(top)),0);
-  for(const sleeve of r.visualKit.casualShirts.cuts[top].upper){
-   assert.equal(sleeve.children.length,1,top+' single sleeve shape');
-   const part=sleeve.children[0];
-   assert.strictEqual(part.material,r.clothMaterial);
-   const dimensions=part.geometry.parameters;
-   assert.ok(dimensions.height<=.44,'sleeve is proximal, not full arm');
-   assert.ok(dimensions.width<=4.02,'sleeve closely hugs arm');
-   assert.ok(dimensions.depth<=4.12,'sleeve is not a raised shoulder pad');
+/** Preserve names through draw-call merging: one material can merge
+ * dozens of little sewn blocks without losing part-span identification. */
+function partBounds(group,name){
+ const box=new THREE.Box3();
+ let count=0;
+ for(const mesh of group.children){
+  if(!(mesh instanceof THREE.Mesh))continue;
+  const positions=mesh.geometry.getAttribute('position');
+  const spans=mesh.geometry.userData.fieldworkLightingPartSpans??[
+   {partId:mesh.name,start:0,count:positions.count}
+  ];
+  mesh.updateMatrix();
+  for(const span of spans){
+   if(span.partId!==name)continue;
+   for(let j=span.start;j<span.start+span.count;j++){
+    const v=new THREE.Vector3().fromBufferAttribute(positions,j)
+     .applyMatrix4(mesh.matrix);
+    box.expandByPoint(v);count++;
+   }
   }
  }
- poseOperator(r,frame(outfit('button-up-shirt',{sleeveState:'cuffed'})),0);
- for(const cuff of r.visualKit.casualShirts.cuts['button-up-shirt'].cuffedLower){
-  const mesh=cuff.children.find(child=>child.isMesh),geo=mesh.geometry;
-  geo.computeBoundingBox();
-  assert.ok(geo.boundingBox.max.y+mesh.position.y<.1,
-   'cuffed band is above wrist');
-  assert.ok(geo.boundingBox.min.y+mesh.position.y>-.5,
-   'cuff remains on forearm');
+ assert.ok(count>0,'missing authored clothing feature: '+name);
+ return box;
+}
+test('neckline overlays never sit inside torso front; T-shirt has no collar clutter',()=>{
+ const r=createOperatorRig('rook','blue');
+ const tees=r.visualKit.casualShirts.cuts['t-shirt'];
+ assert.equal(tees.torso.children.length,0,'tee uses plain torso, no neck strips');
+ for(const [cut,names] of [
+  ['polo-shirt',['polo:collar-leaf','polo:short-placket','polo:button']],
+  ['button-up-shirt',['button-up:folded-collar','button-up:placket',
+    'button-up:chest-pocket','button-up:pocket-flap','button-up:button']]
+ ]){
+  const group=r.visualKit.casualShirts.cuts[cut].torso;
+  for(const name of names){
+   const box=partBounds(group,name);
+   assert.ok(box.min.x>=5.12,
+    cut+' '+name+' must clear front X=5 with enough depth separation');
+  }
+ }
+ assert.ok(partBounds(r.visualKit.casualShirts.cuts['polo-shirt'].torso,
+  'polo:collar-leaf').getSize(new THREE.Vector3()).y>.8);
+ assert.ok(partBounds(r.visualKit.casualShirts.cuts['polo-shirt'].torso,
+  'polo:button').getSize(new THREE.Vector3()).z>=.38);
+ assert.ok(partBounds(r.visualKit.casualShirts.cuts['button-up-shirt'].torso,
+  'button-up:chest-pocket').getSize(new THREE.Vector3()).z>=3.7);
+ assert.ok(partBounds(r.visualKit.casualShirts.cuts['button-up-shirt'].torso,
+  'button-up:button').getSize(new THREE.Vector3()).y>=.45);
+ r.dispose();
+});
+test('short sleeves are slightly larger, with the distinctive polo hem restored',()=>{
+ const r=createOperatorRig('rook','blue');
+ for(const cut of ['t-shirt','polo-shirt']){
+  const model=r.visualKit.casualShirts.cuts[cut];
+  for(const sleeve of model.upper){
+   const shape=partBounds(sleeve,cut+':short-sleeve');
+   const size=shape.getSize(new THREE.Vector3());
+   assert.ok(size.x>=4.20&&size.x<=4.35,cut+' modest upper-arm width');
+   assert.ok(size.y>=.49&&size.y<=.52,cut+' modest sleeve length');
+   assert.ok(size.z>=4.35&&size.z<=4.45,cut+' modest upper-arm depth');
+   if(cut==='polo-shirt'){
+    const hem=partBounds(sleeve,'polo:sleeve-hem');
+    assert.ok(hem.max.y>shape.max.y,'hem sits at the distal sleeve edge');
+    assert.ok(hem.max.x>shape.max.x&&hem.max.z>shape.max.z,
+     'hem is proud of sleeve silhouette without big armor pad');
+   }else assert.equal(sleeve.children.length,1,'tee has no added cuff');
+  }
+ }
+ r.dispose();
+});
+test('cuffed button-up covers skin from elbow to raised forearm band',()=>{
+ const r=createOperatorRig('rook','blue');
+ const model=r.visualKit.casualShirts.cuts['button-up-shirt'];
+ for(const cuff of model.cuffedLower){
+  const sleeve=partBounds(cuff,'button-up:proximal-cuffed-sleeve');
+  const join=partBounds(cuff,'button-up:elbow-join');
+  const hem=partBounds(cuff,'button-up:raised-forearm-cuff');
+  assert.ok(sleeve.min.y<-.5,'forearm fabric reaches elbow joint');
+  assert.ok(join.min.y<-.55,'small overlap conceals bent elbow seam');
+  assert.ok(hem.max.y<-.08&&hem.min.y>-.27,
+   'raised cuff is on mid forearm, not wrist');
+  assert.ok(sleeve.max.y>=hem.min.y,
+   'cloth sleeve and cuff overlap instead of exposing a skin gap');
+ }
+ for(const posture of ['stand','crouch']){
+  poseOperator(r,frame(outfit('button-up-shirt',{sleeveState:'cuffed'}),
+   {posture}),0);
+  assert.ok(model.cuffedLower.every(g=>g.visible));
+  assert.ok(model.lower.every(g=>!g.visible));
+  for(const arm of r.arms){
+   assert.strictEqual(arm.upper.material,r.clothMaterial);
+   assert.strictEqual(arm.lower.material,r.skinMaterial);
+  }
  }
  r.dispose();
 });
