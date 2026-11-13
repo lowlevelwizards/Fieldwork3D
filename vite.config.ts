@@ -20,6 +20,7 @@ export default defineConfig({
       operatorStudio: 'operator-studio.html',
       mapLab: 'map-lab.html',
       physicalityLab: 'physicality-lab.html',
+      a3PhysicalityLab: 'a3-physicality-lab.html',
       doorTestRange: 'door-test-range.html',
       assetLab: 'asset-lab.html',
       soundLab: 'sound-lab.html',
