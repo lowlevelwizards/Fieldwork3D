@@ -197,7 +197,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   });
  };
  headModel('ach',true,model=>{
-  model.add(createHeadwearSilhouette('ach',detail('ach')));
+  const shell=createHeadwearSilhouette('ach',detail('ach'));
+  shell.userData.achMichBareShell=true;model.add(shell);
   addModernCover(model,'ach','ach');
   achMich.ach=createAchMichDetails(model,'ach');
  });
@@ -212,7 +213,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  });
  for(const id of ['mich-2001','mich-2002','fast-sf','fast-xp-mid'] as const)
   headModel(id,true,model=>{
-   model.add(createHeadwearSilhouette(id,detail(id)));
+   const shell=createHeadwearSilhouette(id,detail(id));
+   if((ACH_MICH_SHELLS as readonly string[]).includes(id))
+    shell.userData.achMichBareShell=true;
+   model.add(shell);
    addModernCover(model,id,id);
    if((ACH_MICH_SHELLS as readonly string[]).includes(id))
     achMich[id]=createAchMichDetails(model,id);
@@ -342,9 +346,16 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   updateModernHelmetCoverLayers(modern,shell,effective.setup,
    helmetCover?.headwearCamo,camoIdentity,coverRoll);
   const details=layers.achMich[assembly.headwear];
-  if(details)updateAchMichDetails(details,shellCovered,
-   !['half-mask','respirator-half','gas-gp5','gas-m17','gas-m40',
-     'gas-m50','shemagh','bandana'].includes(assembly.facewear));
+  if(details){
+   // Cover is the complete fitted exterior: never render a conflicting
+   // hard-shell brow/nape underneath its slanted front/rear.
+   const hardShell=layers.headwear[assembly.headwear]?.children.find(
+    child=>child.userData.achMichBareShell);
+   if(hardShell)hardShell.visible=!shellCovered;
+   updateAchMichDetails(details,shellCovered,
+    !['half-mask','respirator-half','gas-gp5','gas-m17','gas-m40',
+      'gas-m50','shemagh','bandana'].includes(assembly.facewear));
+  }
   const hardware=layers.modernHardware[assembly.headwear];
   if(hardware)updateHelmetHardware(hardware,effective.setup,assembly.headset);
   railMountedHeadset=effective.setup.headsetMount==='rail'&&
