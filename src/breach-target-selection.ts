@@ -9,16 +9,26 @@ export function selectFireableContact<T extends ObservableTarget>(
  clearLane:(target:T)=>boolean
 ):T|null{
  if(!visible.length)return null;
+ // A lone observed contact remains tracked even while its shot is blocked.
+ // No sort or clearLane side effects on this existing fast path.
+ if(visible.length===1)return visible[0];
  const near=[...visible].sort((a,b)=>{
   const ad=Math.hypot(a.p.x-origin.x,a.p.y-origin.y);
   const bd=Math.hypot(b.p.x-origin.x,b.p.y-origin.y);
   return ad-bd||a.id.localeCompare(b.id);
  });
- if(near.length===1)return near[0];
- const valid=near.filter(clearLane);
- // If every known lane is obstructed, keep tracking the already observed
- // contact instead of snapping to a closer, equally unshootable target.
- // Actual muzzle/friendly fire gates remain the only fire authority.
- return valid.find(t=>t.id===currentId)??valid[0]??
-   near.find(t=>t.id===currentId)??near[0];
+ let firstSafe:T|null=null,currentSafe:T|null=null,currentVisible:T|null=null;
+ // Evaluate EVERY sorted candidate, just as near.filter(clearLane) did.
+ // The callback can record a civilian safety warning. Short-circuiting
+ // after finding a target would change those game-side observations.
+ for(const candidate of near){
+  if(currentVisible===null&&candidate.id===currentId)
+   currentVisible=candidate;
+  if(!clearLane(candidate))continue;
+  if(firstSafe===null)firstSafe=candidate;
+  if(currentSafe===null&&candidate.id===currentId)currentSafe=candidate;
+ }
+ // Same priority as valid.find(current) ?? valid[0] ??
+ // near.find(current) ?? near[0], without a second valid[] allocation.
+ return currentSafe??firstSafe??currentVisible??near[0];
 }
