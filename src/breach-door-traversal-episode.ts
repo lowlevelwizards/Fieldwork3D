@@ -5,7 +5,6 @@
 import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS,
  type Door,type Pt} from './breach-core.ts';
 import {crossingDoor} from './breach-passage.ts';
-import {updateDoorGrip} from './breach-door-grip.ts';
 import type {TeamActor} from './breach-game.ts';
 
 export type DoorManeuver='direct'|'push-through'|'outside-leaf'|'grab-and-hold';
@@ -75,9 +74,8 @@ export function syncDoorTraversalEpisode(
   let door:Door|undefined;
   for(const d of doors)if(d.id===episode.doorId){door=d;break;}
   if(!door){actor.doorTraversal=null;return null;}
-  // D4 retains a genuine reachable grasp across motor ticks, and
-  // immediately releases when the leaf, hand, or authored order changes.
-  if(episode.handContact)updateDoorGrip(actor,door,seconds);
+  // D4's single authoritative hand record is updated in the physical
+  // door phase, including after a completed/cancelled episode.
   if(squared(actor.p,episode.lastPosition)>2.25){
    episode.lastPosition={...actor.p};
    episode.lastProgressAt=seconds;
