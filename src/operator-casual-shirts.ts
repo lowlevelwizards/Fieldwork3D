@@ -90,17 +90,17 @@ export function createCasualShirts(chest:THREE.Group,arms:readonly Arm[],
       .name='polo:sleeve-hem';
     }
    }else if(button){
-    // Cuffed: cloth MUST extend continuously from the elbow to the
-    // raised forearm cuff. Rendering the entire forearm as bare skin and
-    // adding only a floating wrist band broke the elbow silhouette.
-    block(l,cloth,0,.36,0,4.30,.25,4.45)
-     .name='button-up:full-sleeve-edge';
-    block(c,cloth,0,-.35,0,3.66,.39,3.76)
-     .name='button-up:proximal-cuffed-sleeve';
-    block(c,cloth,0,-.50,0,4.08,.14,4.16)
-     .name='button-up:elbow-join';
-    block(c,cloth,0,-.17,0,4.13,.145,4.25)
-     .name='button-up:raised-forearm-cuff';
+    // Cuffed: a SINGLE cloth forearm sleeve with ONE terminal band.
+    // Lower-bone normalized Y runs -0.5 (elbow) to +0.5 (wrist).
+    // Previous separate "elbow join" and mid-forearm ring read as
+    // duplicate cuffs. Extend the fabric smoothly down to Y=+.34,
+    // then finish it once, close to the wrist, leaving a short skin gap.
+    // The underlying articulated lower arm remains skin so movement,
+    // bends and the uncovered wrist all continue to render normally.
+    block(c,cloth,0,-.08,0,3.87,.84,3.98)
+     .name='button-up:cuffed-forearm-sleeve';
+    block(c,cloth,0,.31,0,4.12,.10,4.23)
+     .name='button-up:wrist-cuff';
     block(roll,cloth,0,.37,0,4.62,.27,4.76);
     block(roll,cloth,0,.215,0,4.40,.12,4.52);
    }
