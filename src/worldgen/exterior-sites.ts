@@ -2,7 +2,7 @@
  * Does not invent a new world coordinate system or dynamic-bound API.
  */
 import {type Site,type ExteriorZone,seeded} from '../breach-site.ts';
-import {type Obstacle,type Pt} from '../breach-core.ts';
+import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';
 import {parkingStallCandidates} from './parking-stalls.ts';
