@@ -173,9 +173,9 @@ export function coordinatePassage(s:Session,a:TeamActor,
     dist(a.p,doorCenter(door))>QUEUE_ENTRY_RADIUS||
     !ready({actor:a,slot},ctx))return free;
  const forward=forwardTravel(a.p,move,door,slot.fromSide);
- // A temporary, physically validated lateral/retreat footstep from
- // another motor stage must not be turned into a queue fallback.
- if(forward<=.025)return {...free,doorId:door.id,rank:slot.rank};
+ // Lateral corrective steps must still preserve real teammate body
+ // spacing: the queue does not own the leaf, but it owns avoiding a
+ // same-lane higher-rank person's capsule in any direction.
  // Only after the full body clears the exit plane is this
  // crossing outside the shared queue. Inside the throat, the leader may
  // go but a follower cannot ignore the body directly ahead.
@@ -190,10 +190,10 @@ export function coordinatePassage(s:Session,a:TeamActor,
   const otherDepth=normalDepth(other.p,door)*slot.fromSide;
   return own>=0&&otherDepth<0;
  });
- if(hostileThroat)return capStep(a.p,move,door,slot.fromSide,
+ if(hostileThroat&&forward>.025)return capStep(a.p,move,door,slot.fromSide,
   QUEUE_WAIT_DEPTH,'occupied',slot.rank);
  const otherSide=ownerFor(ctx,s,door);
- if(otherSide&&otherSide.side!==slot.fromSide)
+ if(forward>.025&&otherSide&&otherSide.side!==slot.fromSide)
   return capStep(a.p,move,door,slot.fromSide,
    QUEUE_WAIT_DEPTH,'opposing',slot.rank);
  if(!lane)return {...free,doorId:door.id,rank:slot.rank};
@@ -206,7 +206,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  const index=candidates.findIndex(m=>m.actor.id===a.id);
  if(index<1)return {...free,doorId:door.id,rank:slot.rank};
  const leader=candidates[index-1];
- if(maybePromote(ctx,s,lane,{actor:a,slot},leader,move))
+ if(forward>.025&&maybePromote(ctx,s,lane,{actor:a,slot},leader,move))
   return {...free,doorId:door.id,rank:slot.rank};
  const leadDepth=normalDepth(leader.actor.p,door)*slot.fromSide;
  let safeDepth=Math.max(QUEUE_WAIT_DEPTH,leadDepth+QUEUE_CENTER_GAP);
@@ -226,8 +226,10 @@ export function coordinatePassage(s:Session,a:TeamActor,
   if(Math.abs(peerLateral-ownLateral)>OPERATOR_RADIUS*2+7)continue;
   safeDepth=Math.max(safeDepth,peerDepth+QUEUE_CENTER_GAP);
  }
- const longitudinal=capStep(a.p,move,door,slot.fromSide,
-  safeDepth,'spacing',slot.rank);
+ const longitudinal=forward>.025?
+  capStep(a.p,move,door,slot.fromSide,
+   safeDepth,'spacing',slot.rank):
+  {move,hold:false,reason:'free' as const,doorId:door.id,rank:slot.rank};
  // Q2: independently maintain actual center-to-center spacing through the
  // throat, not just projected depth. Two operators may have staggered
  // sideways paths at the same depth; longitudinal spacing alone permits a
