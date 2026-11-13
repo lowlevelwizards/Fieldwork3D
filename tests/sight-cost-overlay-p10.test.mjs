@@ -21,8 +21,8 @@ test('visibility metrics never gate tactical decisions or operator reveal',()=>{
  const start=source.indexOf('export function observerPointVisible(');
  const end=source.indexOf('export function nearestDoor(',start);
  const functions=source.slice(start,end);
- assert.match(functions,/return unobstructed\(observer\.p,p,s,observer\.posture==='crouch'\)/);
- assert.match(functions,/if\(unobstructed\(a\.p,p,s,a\.posture==='crouch'\)\)/);
+ assert.match(functions,/return unobstructed\(observer\.p,p,s,observer\.posture==='crouch'\|\|\s*effectiveEyeHeight\(observer\)<25\)/);
+ assert.match(functions,/if\(unobstructed\(a\.p,p,s,a\.posture==='crouch'\|\|\s*effectiveEyeHeight\(a\)<25\)\)/);
  assert.doesNotMatch(functions,/drainSightDiagnostics\(/);
  assert.doesNotMatch(functions,/sightDiagnosticCounts\.[a-zA-Z]+\s*[!=<>]/,
    'counters can never control LOS results');
