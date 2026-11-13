@@ -31,7 +31,7 @@ test('Release A4: Exterior Known fog geometry follows concealed rooms, not all b
   for(let j=0;j<4;j++){
    const n=i*4+j,p=corners[j],coords=fogUvAt(p,world.bounds);
    assert.equal(positions.getX(n),p.x);
-   assert.equal(positions.getY(n),1.05);
+   assert.ok(Math.abs(positions.getY(n)-1.05)<1e-5);
    assert.equal(positions.getZ(n),p.y);
    assert.ok(Math.abs(uv.getX(n)-coords.u)<1e-6);
    assert.ok(Math.abs(uv.getY(n)-coords.v)<1e-6);
