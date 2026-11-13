@@ -7,6 +7,7 @@
  * can consume this contract without importing visual rig construction.
  */
 import type {PrecontactStyle} from './breach-idle-life.ts';
+import type {DoorGripPose} from './breach-pose-door-hand.ts';
 import type {V3ReloadCorridorProfile,V3MagazinePalm} from './breach-pose-v3-reload-choreography.ts';
 import type {V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
 import type {WeaponId} from './breach-combat.ts';
@@ -52,6 +53,8 @@ export type OperatorPose={
   doorMethod?:'open'|'close'|'kick'|'hold';down:boolean;
   /** D4 contact from the actual hinge, not a timed reach fiction. */
   doorHandHold?:boolean;doorHandHoldSince?:number;
+  /** D4 moving real panel, plus bounded visual-only release record. */
+  doorGrip?:DoorGripPose|null;
   lastBashAt?:number;bashRole?:BashRole;
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   /** Lab preview only: choose an exact stock/weapon readiness posture. */
