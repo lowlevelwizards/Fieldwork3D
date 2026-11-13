@@ -16,8 +16,10 @@ export type DoorRangeTrial={
  reason:string;crossed:number;finished:number;
  crossingSeconds:(number|null)[];finishSeconds:(number|null)[];
  fourthCrossSeconds:number|null;allOrdersSeconds:number|null;
- totalSeconds:number;minActorGap:number;maxBlockSeconds:number;
- flips:number;final:{name:string;p:Pt;remaining:number;
+ totalSeconds:number;minActorGap:number;finalActorGap:number;
+ maxBlockSeconds:number;
+ flips:number;door:{open:boolean;fraction:number;velocity:number;
+  locked:boolean;wedged:boolean};final:{name:string;p:Pt;remaining:number;
   blocker:string|null;pause:string|null;phase:string|null}[];
  events:string[];
 };
@@ -75,21 +77,31 @@ export function runDoorRangeTrial(id:DoorRangeCaseId,
   else if(expected==='blocked')reason='correct physical obstruction';
   else if(crossed.some(x=>x===null))reason='incomplete physical crossing';
   else if(finished.some(x=>x===null))reason='unfinished authored plan';
-  else if(minGap<OPERATOR_RADIUS*2-1.8)
-   reason='actor capsule overlap';
+  else if(Math.min(...actors.flatMap((a,i)=>actors.slice(i+1)
+    .map(b=>dist(a.p,b.p))))<OPERATOR_RADIUS*2-1.8)
+   reason='operator destinations overlap';
   else reason='four bodies crossed and orders completed';
+  // Friendly bodies intentionally PASS THROUGH each other while moving.
+  // Only a final unresolved co-location is an illegal settled destination.
+  const finalGap=Math.min(...actors.flatMap((a,i)=>actors.slice(i+1)
+    .map(b=>dist(a.p,b.p))));
   const ok=accepted&&finite&&authored&&
     (expected==='blocked'?!crossed.some(x=>x!==null):
       crossed.every(x=>x!==null)&&finished.every(x=>x!==null)&&
-       minGap>=OPERATOR_RADIUS*2-1.8);
+       finalGap>=OPERATOR_RADIUS*2-1.8);
   return {id,formation,face,protocol,seed:site.seed,expected,accepted,ok,
    reason,crossed:crossed.filter(x=>x!==null).length,
    finished:finished.filter(x=>x!==null).length,
    crossingSeconds:crossed,finishSeconds:finished,
    fourthCrossSeconds:crossed.every(x=>x!==null)?Math.max(...crossed as number[]):null,
    allOrdersSeconds:finished.every(x=>x!==null)?Math.max(...finished as number[]):null,
-   totalSeconds:s.seconds,minActorGap:minGap,maxBlockSeconds:maxBlocked,
-   flips,final:actors.map(a=>({name:a.name,p:{...a.p},
+   totalSeconds:s.seconds,minActorGap:minGap,finalActorGap:finalGap,
+   maxBlockSeconds:maxBlocked,
+   flips,door:{open:!!s.doors[0]?.open,
+    fraction:s.doors[0]?.openFraction??0,
+    velocity:s.doors[0]?.angularVelocity??0,
+    locked:!!s.doors[0]?.locked,wedged:!!s.doors[0]?.wedged},
+   final:actors.map(a=>({name:a.name,p:{...a.p},
     remaining:a.plan.length,blocker:a.lastBlocker??null,
     pause:a.motorPause??null,phase:a.doorTraversal?.phase??null})),
    events:s.events.slice(-8)};
@@ -106,6 +118,7 @@ export function summarizeDoorRangeTrials(trials:readonly DoorRangeTrial[]){
   fourthCross:{median:at(.5),p90:at(.9),worst:at(1)},
   failures:failed.map(t=>({id:t.id,formation:t.formation,face:t.face,
    protocol:t.protocol,reason:t.reason,crossed:t.crossed,
-   finished:t.finished,seconds:t.totalSeconds,
+   finished:t.finished,seconds:t.totalSeconds,door:t.door,
+   minGap:t.minActorGap,finalGap:t.finalActorGap,
    final:t.final,events:t.events}))};
 }

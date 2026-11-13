@@ -8,10 +8,14 @@ import {runDoorRangeTrial,summarizeDoorRangeTrials}
  from '../src/breach-door-range-benchmark.ts';
 const mode=process.argv[2]??'core',protocol=process.argv[3]??'squad';
 const ticks=Math.max(60,Math.min(3600,Number(process.argv[4]??1800)||1800));
-const cases=mode==='core'?DOOR_RANGE_CASES.slice(0,4):DOOR_RANGE_CASES;
-const formations=mode==='baseline'?DOOR_RANGE_FORMATIONS.slice(0,1):
- DOOR_RANGE_FORMATIONS;
-const faces=['north','south'];
+const onlyDoor=process.argv[5]??'';
+const cases=(mode==='core'?DOOR_RANGE_CASES.slice(0,4):DOOR_RANGE_CASES)
+ .filter(c=>!onlyDoor||c.id===onlyDoor);
+const onlyFormation=process.argv[6]??'';
+const formations=(mode==='baseline'?DOOR_RANGE_FORMATIONS.slice(0,1):
+ DOOR_RANGE_FORMATIONS).filter(f=>!onlyFormation||f.id===onlyFormation);
+const onlyFace=process.argv[7]??'';
+const faces=['north','south'].filter(f=>!onlyFace||f===onlyFace);
 const trials=[];
 for(const door of cases)for(const f of formations)for(const face of faces){
  const result=runDoorRangeTrial(door.id,f.id,face,protocol,ticks);
@@ -20,7 +24,8 @@ for(const door of cases)for(const f of formations)for(const face of faces){
   protocol,ok:result.ok,reason:result.reason,
   crossed:result.crossed,finished:result.finished,
   fourth:result.fourthCrossSeconds,all:result.allOrdersSeconds,
-  minGap:result.minActorGap}));
+  minGap:result.minActorGap,finalGap:result.finalActorGap,
+  fraction:result.door.fraction}));
 }
 const summary=summarizeDoorRangeTrials(trials);
 console.log('Q5_SUMMARY '+JSON.stringify({mode,protocol,ticks,...summary}));
