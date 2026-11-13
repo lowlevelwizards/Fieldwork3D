@@ -20,6 +20,6 @@ jobs:
       - name: Strict Q5 real-motor baseline and speed guard
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
       - name: Critical convoy and physical motor contracts
-        run: node --experimental-strip-types --test tests/passage-q3-flow.test.mjs tests/passage-q4-swing.test.mjs tests/passage-q5-live-blockers.test.mjs
+        run: node --experimental-strip-types --test tests/passage-q3-flow.test.mjs tests/passage-q4-swing.test.mjs tests/passage-q5-live-blockers.test.mjs tests/passage-q6-opener.test.mjs
       - name: Production build
         run: npm run build
