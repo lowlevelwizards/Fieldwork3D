@@ -204,13 +204,18 @@ export function coordinatePassage(s:Session,a:TeamActor,
   const otherDepth=normalDepth(other.p,door)*slot.fromSide;
   return own>=0&&otherDepth<0;
  });
- if(hostileThroat&&forward>.025)return capStep(a.p,move,door,slot.fromSide,
-  QUEUE_WAIT_DEPTH,'occupied',slot.rank);
+ // A real occupant sets a threshold barrier, but it must NEVER short
+ // circuit the queue's stricter follower gap. Previously follower #4 saw
+ // man #2 already inside, used only the loose 19-unit threshold barrier
+ // and walked into waiting man #3 at the approach frame.
  const otherSide=ownerFor(ctx,s,door);
- if(forward>.025&&otherSide&&otherSide.side!==slot.fromSide)
-  return capStep(a.p,move,door,slot.fromSide,
-   QUEUE_WAIT_DEPTH,'opposing',slot.rank);
- if(!lane)return {...free,doorId:door.id,rank:slot.rank};
+ const barrier=forward>.025?
+  otherSide&&otherSide.side!==slot.fromSide?'opposing':
+  hostileThroat?'occupied':null:null;
+ if(!lane)return barrier?
+  capStep(a.p,move,door,slot.fromSide,
+   QUEUE_WAIT_DEPTH,barrier,slot.rank):
+  {...free,doorId:door.id,rank:slot.rank};
  const candidates=lane.members.filter(m=>ready(m,ctx));
  const promoted=ctx.promotions.get(laneKey(door.id,lane.side));
  if(promoted){
@@ -218,7 +223,10 @@ export function coordinatePassage(s:Session,a:TeamActor,
   if(i>0)candidates.unshift(candidates.splice(i,1)[0]);
  }
  const index=candidates.findIndex(m=>m.actor.id===a.id);
- if(index<1)return {...free,doorId:door.id,rank:slot.rank};
+ if(index<1)return barrier?
+  capStep(a.p,move,door,slot.fromSide,
+   QUEUE_WAIT_DEPTH,barrier,slot.rank):
+  {...free,doorId:door.id,rank:slot.rank};
  const leader=candidates[index-1];
  if(forward>.025&&maybePromote(ctx,s,lane,{actor:a,slot},leader,move))
   return {...free,doorId:door.id,rank:slot.rank};
@@ -242,7 +250,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  }
  const longitudinal=forward>.025?
   capStep(a.p,move,door,slot.fromSide,
-   safeDepth,'spacing',slot.rank):
+   safeDepth,barrier??'spacing',slot.rank):
   {move,hold:false,reason:'free' as const,doorId:door.id,rank:slot.rank};
  // Q2: independently maintain actual center-to-center spacing through the
  // throat, not just projected depth. Two operators may have staggered
