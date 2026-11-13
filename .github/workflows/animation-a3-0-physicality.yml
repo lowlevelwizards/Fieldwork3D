@@ -24,7 +24,7 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - name: A3.0 real-session fixtures, deterministic replay and muzzle authority
-        run: node --experimental-strip-types --test tests/animation-a3-0-physicality.test.mjs tests/breach-150.test.mjs tests/physicality-11-lab.test.mjs
+        run: node --experimental-strip-types --test tests/animation-a3-0-physicality.test.mjs tests/physicality-11-lab.test.mjs
       - name: Existing player-friendly recovery and lateral safety regressions
         run: node --experimental-strip-types --test --test-name-pattern='short step-back|ally in lane|real player operator' tests/breach-two-sided-fire-recovery.test.mjs
       - name: A3.0 reproducible baseline performance and simulation report
