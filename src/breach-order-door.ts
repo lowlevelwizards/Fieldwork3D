@@ -12,6 +12,7 @@ import {doorClosingContested} from './breach-door-pressure-frame.ts';
 import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,
  PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
+import {selectActualKickFoot} from './breach-kick-foot-choice.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {completeOrder,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
@@ -66,6 +67,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     if(a.actionTimer===0){
       a.lastDoorAt=s.seconds;a.lastDoorId=door.id;
       a.lastDoorMethod=n.method??'open';
+      if(n.method==='kick')a.kickFoot=selectActualKickFoot(s,a,door);
     }
     a.actionTimer+=dt;
     if(n.method==='kick'&&a.actionTimer>=required*.53&&

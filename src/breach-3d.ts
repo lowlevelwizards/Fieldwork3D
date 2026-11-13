@@ -2148,7 +2148,7 @@ export class TacticalScene3D{
         reloadInserted:actor.reloadInserted,
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
-        doorMethod:actor.lastDoorMethod,
+        doorMethod:actor.lastDoorMethod,kickFoot:actor.kickFoot,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,

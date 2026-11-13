@@ -1,0 +1,43 @@
+name: A3.8–A3.9 staged physicality critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-pivot-episode.ts'
+      - 'src/breach-lockpick-contact.ts'
+      - 'src/breach-kick-foot-choice.ts'
+      - 'src/breach-operator-lower-body.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-order-lifecycle.ts'
+      - 'src/breach-order-movement.ts'
+      - 'src/breach-order-executor.ts'
+      - 'src/breach-enemy-decision-controller.ts'
+      - 'src/breach-contextual-support-contact.ts'
+      - 'src/breach-physical-contact-anchor.ts'
+      - 'src/breach-pose-action-state.ts'
+      - 'src/breach-cover-height.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'tests/animation-a3-8-*'
+      - 'tests/animation-a3-9-*'
+      - 'docs/animation-a3-8-9-*'
+      - '.github/workflows/animation-a3-8-9.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Stable world-aware 180-degree pivot and true lock contacts
+        run: node --experimental-strip-types --test tests/animation-a3-8-turn-episodes.test.mjs tests/animation-a3-8-lockpick-contact.test.mjs
+      - name: A3.9 unified physical cover top and kick support-foot selection
+        run: node --experimental-strip-types --test tests/animation-a3-9-cover-height-source.test.mjs tests/animation-a3-9-kick-leg-choice.test.mjs
+      - name: Existing A3 foot contact, action ownership and D4 door guarantees
+        run: node --experimental-strip-types --test tests/animation-a3-5-contact-anchors.test.mjs tests/animation-a3-6-7-support-contacts.test.mjs tests/animation-a2-3-directional.test.mjs tests/door-traversal-d4-live-grip.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run build

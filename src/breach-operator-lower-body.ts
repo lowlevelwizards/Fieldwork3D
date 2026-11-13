@@ -77,7 +77,7 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   foot.swinging=!target.contact;
   const targetWorld=scratch.targets[i].set(target.position.x,
     LEG_ANKLE_HEIGHT+target.height,target.position.y);
-  if(i===1&&kick){
+  if(i===(p.kickFoot??1)&&kick){
    const motion=smooth((kick.progress-.30)/.23)*
      (1-smooth((kick.progress-.67)/.25));
    if(p.doorPoint){

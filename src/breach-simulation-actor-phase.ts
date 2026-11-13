@@ -137,7 +137,7 @@ export function advanceSimulationActors(s:Session,h:number,
       // Orders may rotate toward their authored gaze earlier this tick.
       // Reaction uses a stronger one-second turn so opposing turn rates
       // cannot cancel each other and leave the operator facing away.
-      if(hitDirection!==null)rotate(a,hitDirection,h*1.85);
+      if(hitDirection!==null)rotate(a,hitDirection,h*1.85,s);
     }else{
       const enemyStart=markActor?performance.now():0;
       port.decideEnemy(s,a,h);

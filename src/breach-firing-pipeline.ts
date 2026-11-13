@@ -198,7 +198,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   if(a.aim<.65||Math.abs(angleDifference(a.weaponYaw,
     angle(a.p,point)))>.18)return;
   if(Math.abs(angleDifference(a.heading,a.weaponYaw))>.87){
-    rotate(a,a.weaponYaw,dt);return;
+    rotate(a,a.weaponYaw,dt,s);return;
   }
   const spread=dispersion(a.weapon,'ads',a.stability,a.velocity>10,
     a.suppression,a.injuryStage,a.recoil)*.9*
@@ -646,7 +646,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   const mode=readyMode(range,a.aim,a.weapon);
   if(!mode||a.fireCd>0)return;
   if(Math.abs(angleDifference(a.heading,a.weaponYaw))>.87){
-    rotate(a,a.weaponYaw,dt);return;
+    rotate(a,a.weaponYaw,dt,s);return;
   }
   // Do not claim a sighted hit while the barrel is still turning past target.
   if(Math.abs(Math.atan2(Math.sin(desiredYaw-a.weaponYaw),

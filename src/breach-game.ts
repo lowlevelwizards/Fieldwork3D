@@ -183,6 +183,10 @@ export type TeamActor=Operator & {
   doorHandContact:DoorHandContact|null;
   /** A3.6–7 fixed-step physical brace or teammate shoulder attachment. */
   physicalContact:PhysicalContact|null;
+  /** A3.8-T: fixed-step chosen turn arc, not render history. */
+  pivotEpisode?:import('./breach-pivot-episode.ts').PivotEpisode|null;
+  /** A3.9-K: real-sweep kick-leg choice, visual footstep IK only. */
+  kickFoot?:0|1|null;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
   /** Rate-limit physical clutter nudges and scene rebuilds. */
   lastAutoShoveAt:number;

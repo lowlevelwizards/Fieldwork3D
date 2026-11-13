@@ -3,9 +3,11 @@
  * this module never modifies locomotion, inventory, weapon, shots or peers.
  */
 import {pointToSegment,type Pt,type Segment,type Obstacle} from './breach-core.ts';
+import {coverHeight} from './breach-cover-height.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {lockpickContactCandidate} from './breach-lockpick-contact.ts';
 import {resolvePoseContactOwners,type ContactOwners} from './breach-pose-contacts.ts';
 import {contactWithinReach,sameContact,
   releasePhysicalContact,selectPhysicalContact,
@@ -63,7 +65,7 @@ export function coverSupportSurface(
  actor:Pt,cover:Obstacle,id:string):SupportSurface|null{
  if(cover.destroyed||cover.toppled||
     /fence|foliage|bush|tree|cloth/i.test(cover.fixture??''))return null;
- const height=cover.topHeight??(cover.low?17:29);
+ const height=coverHeight(cover);
  if(!Number.isFinite(height)||height<15)return null;
  const hx=Math.abs(cover.w)/2,hy=Math.abs(cover.h)/2;
  if(!(hx>2&&hy>2))return null;
@@ -247,6 +249,28 @@ export function advanceContextualSupportContacts(s:Session):void{
    a.physicalContact=null;
   }
   const current=a.physicalContact;
+  // The real TOOL order and physical keyway have precedence over ordinary
+  // idle bracing and teammate support. Never acquire two support contacts.
+  const order=a.plan[0];
+  if(order?.kind==='tool'&&order.toolMethod==='pick'&&
+     a.actionTimer>0){
+   const door=s.doors.find(d=>d.id===order.doorId);
+   const next=door?lockpickContactCandidate(s,a,door,current):null;
+   if(next&&current?.intent==='tool'&&current.releasedAt===null&&
+      sameContact(next,current)){
+    a.physicalContact={...next,startedAt:current.startedAt};
+   }else if(current?.releasedAt===null){
+    a.physicalContact=releasePhysicalContact(current,s.seconds);
+   }else if(next&&!current){
+    a.physicalContact=next;
+   }
+   continue;
+  }
+  if(current?.intent==='tool'){
+   if(current.releasedAt===null)
+    a.physicalContact=releasePhysicalContact(current,s.seconds);
+   continue;
+  }
   const owners=contactOwnersForActor(s,a);
   const allowed=contextualSupportAllowed(s,a,owners);
   if(!allowed){
