@@ -90,6 +90,7 @@ import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
+import {entryToolVerdict} from './breach-entry-tools.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {doorGripPhysicalContact} from './breach-physical-contact-anchor.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
@@ -1978,6 +1979,19 @@ export class TacticalScene3D{
         doorGripPhysicalContact(physicalGrip.doorId,doorGrip,
           doorLeafSegment(gripDoor),actor.p):
         actor.physicalContact??undefined;
+      // A3.8-L: the actual simulation keyway anchor is the lockpick clock.
+      // Replaying a recorded frame samples this same contact timestamp;
+      // no rendering-only progress state can invent an unlock.
+      const lockpickActive=physicalContact?.intent==='tool'&&
+        physicalContact.releasedAt===null&&
+        actor.plan[0]?.kind==='tool'&&
+        actor.plan[0].toolMethod==='pick';
+      const lockpickDoor=lockpickActive?s.doors.find(d=>
+        d.id===actor.plan[0]?.doorId):undefined;
+      const lockpickProgress=lockpickActive?
+        Math.max(0,Math.min(1,(s.seconds-physicalContact.startedAt)/
+          Math.max(.1,lockpickDoor?
+            entryToolVerdict(lockpickDoor,'pick').seconds:1.5))):0;
       const threat=actor.targetId?
         s.operators.find(o=>o.id===actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
@@ -2151,6 +2165,7 @@ export class TacticalScene3D{
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
         doorMethod:actor.lastDoorMethod,kickFoot:actor.kickFoot,
+        lockpickActive,lockpickProgress,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
