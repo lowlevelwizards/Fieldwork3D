@@ -20,13 +20,18 @@ export const GARMENT_SOLID_COLORS={
  'slate':{label:'Slate',hex:OPERATOR_SOLID_FAMILIES.slate},
  'charcoal':{label:'Charcoal',hex:OPERATOR_SOLID_FAMILIES.charcoal},
  'black':{label:'Black',hex:OPERATOR_SOLID_FAMILIES.black},
- 'off-white':{label:'Off-white',hex:OPERATOR_SOLID_FAMILIES['off-white']}
+ 'off-white':{label:'Off-white',hex:OPERATOR_SOLID_FAMILIES['off-white']},
+ 'navy':{label:'Deep Navy',hex:0x344654},
+ 'muted-blue':{label:'Dusty Blue',hex:0x61798a},
+ 'rust':{label:'Rust Red',hex:0x874e41},
+ 'burnt-orange':{label:'Burnt Orange',hex:0x9b6847}
 } as const;
 export type GarmentSolidId=keyof typeof GARMENT_SOLID_COLORS;
 const all:readonly GarmentSolidId[]=[
  'olive-drab','ranger-green','forest-green','field-green','sage',
  'foliage','khaki','sand','tan','coyote','brown','slate',
- 'charcoal','black','off-white','nutria-brown'];
+ 'charcoal','black','off-white','nutria-brown',
+ 'navy','muted-blue','rust','burnt-orange'];
 const kit:readonly GarmentSolidId[]=[
  'olive-drab','ranger-green','forest-green','foliage','khaki',
  'sand','tan','coyote','brown','nutria-brown','slate','charcoal','black'];
@@ -36,8 +41,21 @@ export const FABRIC_SOLID_CHOICES:Readonly<Record<FabricCamoChannel,readonly Gar
 export function isGarmentSolidId(value:unknown):value is GarmentSolidId{
  return typeof value==='string'&&Object.prototype.hasOwnProperty.call(GARMENT_SOLID_COLORS,value);
 }
-export function solidChoicesFor(channel:FabricCamoChannel):readonly GarmentSolidId[]{
- return FABRIC_SOLID_CHOICES[channel];
+/** Curated civilian shirt colors; no new neon or synthetic military palettes. */
+export const CASUAL_SHIRT_SOLIDS:Readonly<Record<string,readonly GarmentSolidId[]>>={
+ 't-shirt':['off-white','black','charcoal','slate','navy','muted-blue',
+  'olive-drab','ranger-green','khaki','tan','coyote','rust'],
+ 'button-up-shirt':['off-white','khaki','sand','olive-drab','forest-green',
+  'ranger-green','brown','slate','navy','muted-blue','rust','burnt-orange'],
+ 'polo-shirt':['off-white','black','charcoal','navy','muted-blue',
+  'ranger-green','forest-green','khaki','tan','rust'],
+ 'tank-top':['off-white','black','charcoal','slate','olive-drab',
+  'ranger-green','tan','coyote','navy']
+};
+export function solidChoicesFor(channel:FabricCamoChannel,
+ outfit?:{top:string}):readonly GarmentSolidId[]{
+ return channel==='top'&&outfit&&CASUAL_SHIRT_SOLIDS[outfit.top]?
+  CASUAL_SHIRT_SOLIDS[outfit.top]:FABRIC_SOLID_CHOICES[channel];
 }
 /** Artist-selected functional trim tones, not the average sampled map RGB.
  * Special cases can depart from terrain grouping where real fabric does. */
