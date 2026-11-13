@@ -11,7 +11,7 @@ import {
  coverSupportSurface,SUPPORT_RELEASE_WINDOW
 } from '../src/breach-contextual-support-contact.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
-import {snapshot} from '../src/breach-replay.ts';
+import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 import {resolveOperatorActionState}
  from '../src/breach-pose-action-state.ts';
 import {physicalContactWeight}
@@ -177,5 +177,19 @@ test('A3.6–A3.7 production 60 Hz step updates contact without editing plan',()
   assert.equal(JSON.stringify(a.plan),original);
   assert.ok(a.physicalContact?.intent==='brace'||a.physicalContact===null,
    'motor, target or action is allowed to veto, not invent contact');
+ }finally{clean();}
+});
+
+test('A3.7 archived film with no anchor clears stale current hand on seek',()=>{
+ const {s,a}=setup('stack-shoulder',2);
+ try{
+  advanceContextualSupportContacts(s);
+  assert.ok(a.physicalContact);
+  const historic=snapshot(s);
+  // Backwards compatibility: an old film never recorded this field.
+  for(const frame of historic.actors)delete frame.physicalContact;
+  applyReplayFrame(s,historic);
+  assert.equal(a.physicalContact,null);
+  assert.equal(s.seconds,historic.t);
  }finally{clean();}
 });
