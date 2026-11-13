@@ -21,6 +21,7 @@ export type MuzzleInput={x:number;z:number;heading:number;
   handlingIntent?:HandlingIntent;friendlyAhead?:boolean;
   /** Explicit clearance carry selected by same shared policy. */
   carryOverride?:Handling;carryBlend?:number;
+  shoulderOffset?:number;
   posture?:'stand'|'crouch';
   equipment?:EquipmentLoadout};
 export const MUZZLE_TIP=19.5;
@@ -33,6 +34,7 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
     p.weaponConfiguration:undefined;
   const fit=fitWeaponPose({weapon:p.weapon,handling,configuration,
     yaw:-p.weaponYaw+p.heading,recoil:p.recoil*6,
+    shoulderOffset:p.shoulderOffset,
     aimBlend:p.aim,clearanceRetraction:p.clearanceRetraction,
     shortCompression:p.shortCompression,
     shortFrom:p.shortFrom??shortStockSourceHandling(p.aim,
