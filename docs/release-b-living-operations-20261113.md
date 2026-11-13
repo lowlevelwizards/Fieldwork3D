@@ -26,3 +26,15 @@ Three first-class operation families:
 
 ## Baseline
 Current normal-play generation already opts into incident intent, but an incident is currently chosen *before* the encounter premise; premise-specific restrictions can reject it later in the dossier. Existing profile weights for three showcase families are modest, and actual local roles are mission/premise rather than incident-specific. These are the immediate gaps addressed here.
+
+## Live work ledger
+- B0: product constraints and existing authoritative systems catalogued.
+- B1: selected incident survives only if the *resolved* mission, building and actual encounter premise satisfy its authored eligibility. Premise sampling now respects the selected authored case instead of occasionally generating a contradictory story.
+- B2: seeded alternate physical encounter profiles: warrant uses prepared/clustered, missing person active/scattered, evidence quiet/scattered. Only current solver-supported profiles are used.
+- B3: actual guards/watchers/patrols are assigned from **already physically placed** hostiles. No new opponent/civilian, teleports, hidden target intel or combat exemptions. Patrol routes remain validated by the existing local routine gate.
+- B4: seeded playable capture, rescue and intel sites checked against actual encounter, mission facts, dossier disclosure and extraction objective.
+- B5: the existing Quick Play scenario creator now includes Random Case or one of the three incident families. Explicit selections force their compatible mission, constrain building choices, and travel in the existing off-thread worker request. Unsupported mission/building pairings are rejected visibly.
+- B6: maintain the actual batching resource lifetime assertion after main's recent instanced-contact-shadow work. Quiet/rescue/intel operations may legitimately have zero armed hostile actors.
+- Remaining release checkpoint: exact-head CI green, no queued or failed Pages build, main SHA rechecked before merge and public deployed stamp confirmed after. No performance or device-smoke claims without corresponding evidence.
+
+Future work remains scoped to Release B follow-up: more unique mission objectives, choices/consequence, dynamic civilians/negotiation and campaign continuity. This batch intentionally does not add a second scripted mission engine.
