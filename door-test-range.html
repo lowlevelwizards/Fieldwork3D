@@ -56,9 +56,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <section><canvas id="doorStage" width="640" height="500"
  aria-label="Live top-down door and four-operator physical test map"></canvas>
 <p class="legend">Tap an operator to select; tap the floor to append a MOVE while planning. Amber = selected operator / leaf; teal = authored routes; dashed amber = temporary motor route. No physical collision is disabled.</p></section>
-<section><h1>Q5 · 20-CASE ENTRY RELIABILITY MATRIX</h1>
-<p>Run the real four-operator motor across five starting approaches and all four inward/outward left/right hinges. A completed case requires all four full-body crossings AND all authored orders finished. Times are simulation seconds; this does not benchmark browser GPU speed. Expected locked/wedged non-crossing cases are separate. Failures remain visible with their actual blockers.</p>
-<div class="actions"><button id="runMatrix">RUN 20-CASE MATRIX</button>
+<section><h1>Q5 · FOUR-OPERATOR APPROACH MATRIX</h1>
+<p>Run the real four-operator motor across five approaches and four left/right hinged swings (20). The extended set includes independent MOVE plans, ajar/wide doors, nearby fixtures, plus physically jammed and locked/wedged negatives (70). All durations are SIMULATION time, not measured GPU/real-device performance. An obstruction is only expected when the real physical door cannot clear. Any unexpected failure is displayed with the actual blocker.</p>
+<div class="actions"><button id="runMatrix">RUN CORE 20</button>
+<button id="runExtended">RUN EXTENDED 70</button>
+<button id="cancelMatrix" disabled>CANCEL MATRIX</button>
 <button id="copyMatrix">COPY MATRIX REPORT</button></div>
 <pre id="matrixReport" aria-live="polite">Not run · select a formation above for an individual case.</pre></section>
 <section><h1>Q0 · PASSAGE MOTION ATTRIBUTION</h1>

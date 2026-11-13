@@ -15,7 +15,7 @@ import {DOOR_RANGE_CASES,DOOR_RANGE_APPROACHES,doorRangeSite,
  type DoorRangeCaseId,type DoorRangeApproachId}
  from './breach-door-test-cases.ts';
 import {Q5_HINGE_CASES,runDoorRangeQ5,summarizeQ5,
- type Q5BenchmarkResult} from './door-range-q5-benchmark.ts';
+ type Q5BenchmarkResult,type Q5Program} from './door-range-q5-benchmark.ts';
 import {newSession,team,planSquadEntry,planMove,clearPlan,
  toggling,stepSession,type Session} from './breach-game.ts';
 
@@ -28,8 +28,10 @@ const program=get<HTMLSelectElement>('program');
 const approach=get<HTMLSelectElement>('approach');
 const matrixReport=get<HTMLElement>('matrixReport');
 const matrixButton=get<HTMLButtonElement>('runMatrix');
+const extendedMatrixButton=get<HTMLButtonElement>('runExtended');
+const cancelMatrixButton=get<HTMLButtonElement>('cancelMatrix');
 let matrixRows:Q5BenchmarkResult[]=[];
-let matrixRunning=false;
+let matrixRunning=false,matrixAbort=false;
 const speed=get<HTMLSelectElement>('speed');
 const selected=get<HTMLSelectElement>('operator');
 const message=get<HTMLElement>('message');
@@ -336,39 +338,68 @@ for(const input of [scenario,program,approach])
 function q5FormatRow(r:Q5BenchmarkResult){
  const time=r.lastCross===null?'—':r.lastCross.toFixed(2)+'s';
  const finish=r.finishTime===null?'—':r.finishTime.toFixed(2)+'s';
- return (r.success?'PASS':'FAIL')+' · '+r.door+' / '+r.approach+
+ const expected=r.outcome==='expected-blocked'||
+  r.outcome==='expected-obstructed';
+ const label=expected?'OBSTRUCTED (EXPECTED)':r.success?'PASS':'FAIL';
+ return label+' · '+r.door+' / '+r.approach+' / '+r.program+
   ' · fourth '+time+' · finish '+finish+
   (r.success?'':' · '+r.outcome+' · '+r.crossed+'/4 crossed; '+
-   r.operators.map(a=>a.id+':'+a.orders+' orders/'+(a.blocker??'no blocker')).join(' | '));
+   r.operators.map(a=>a.id+':'+a.orders+' orders/'+(a.blocker??'clear')).join(' | '));
 }
-matrixButton.addEventListener('click',async()=>{
+async function runQ5Matrix(extended:boolean){
  if(matrixRunning)return;
- matrixRunning=true;matrixButton.disabled=true;
+ matrixRunning=true;matrixAbort=false;
+ matrixButton.disabled=true;extendedMatrixButton.disabled=true;
+ cancelMatrixButton.disabled=false;
+ // Isolate the batch from the visible running session. Each measurement
+ // constructs an unmodified real Session and restores the visible lab.
+ playing=false;
+ if(s.phase==='running')toggling(s);
+ go.textContent='GO';
  matrixRows=[];
- const combos=Q5_HINGE_CASES.flatMap(door=>
-  DOOR_RANGE_APPROACHES.map(a=>({door,approach:a.id})));
+ const combos:{door:DoorRangeCaseId;approach:DoorRangeApproachId;
+  program:Q5Program}[]=[];
+ for(const door of Q5_HINGE_CASES)
+  for(const entry of DOOR_RANGE_APPROACHES)
+   combos.push({door,approach:entry.id,program:'squad'});
+ if(extended){
+  for(const door of Q5_HINGE_CASES)
+   for(const entry of DOOR_RANGE_APPROACHES)
+    combos.push({door,approach:entry.id,program:'independent'});
+  for(const door of ['ajar-outward','wide-open','swing-furniture',
+    'near-frame','locked','wedged'] as DoorRangeCaseId[])
+   for(const entry of DOOR_RANGE_APPROACHES)
+    combos.push({door,approach:entry.id,program:'squad'});
+ }
  try{
-  for(const [i,{door,approach:formation}] of combos.entries()){
-   // An actual 60Hz fixed game, not an approximate lab simulator.
-   const result=runDoorRangeQ5(door,formation);
+  for(const [i,{door,approach:formation,program:execution}] of
+   combos.entries()){
+   if(matrixAbort)break;
+   const result=runDoorRangeQ5(door,formation,execution);
    matrixRows.push(result);
+   const summary=summarizeQ5(matrixRows);
    matrixReport.textContent=
     'MATRIX '+(i+1)+' / '+combos.length+' · '+
-     summarizeQ5(matrixRows).pass+' passed\n'+
+    summary.pass+' crossed successfully · '+
+    (summary.expectedBlocked+summary.expectedObstructed)+
+    ' expected obstructions · '+summary.failed+' failures\n'+
     matrixRows.map(q5FormatRow).join('\n');
-   // Yield between cases so the browser can draw progress and stay alive.
-   await new Promise<void>(resolve=>setTimeout(resolve,0));
+   // Give the user a rendered frame between real-session batches.
+   await new Promise<void>(resolve=>requestAnimationFrame(()=>resolve()));
   }
   const summary=summarizeQ5(matrixRows);
-  matrixReport.textContent=JSON.stringify(summary,null,2)+'\n\n'+
-    matrixRows.map(q5FormatRow).join('\n');
+  matrixReport.textContent=(matrixAbort?'CANCELLED\n':'COMPLETED\n')+
+   JSON.stringify(summary,null,2)+'\n\n'+
+   matrixRows.map(q5FormatRow).join('\n');
  }finally{
   matrixRunning=false;matrixButton.disabled=false;
-  // The benchmark owns isolated global site registration; restore the
-  // visible lab's original live Session after it finishes.
+  extendedMatrixButton.disabled=false;cancelMatrixButton.disabled=true;
   reset();
  }
-});
+}
+matrixButton.addEventListener('click',()=>{void runQ5Matrix(false);});
+extendedMatrixButton.addEventListener('click',()=>{void runQ5Matrix(true);});
+cancelMatrixButton.addEventListener('click',()=>{matrixAbort=true;});
 get<HTMLButtonElement>('copyMatrix').addEventListener('click',()=>{
  if(!matrixRows.length){message.textContent='Run Q5 matrix first';return;}
  void navigator.clipboard.writeText(JSON.stringify({
