@@ -138,7 +138,7 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
    ...s.operators.filter(other=>other!==a&&other.health>0).map(o=>o.p),
    ...s.civilians.filter(c=>c.health>0).map(c=>c.p)
  ];
- const aimYaw=angle(a.p,target.p),range=d(a.p,target.p);
+ const aimYaw=angle(a.p,target.p);
  const clearBody=(candidate:Pt)=>
    sweptBodyClear(a.p,candidate,s.doors,8,sessionWorldGeometry(s))&&
    people.every(p=>{
@@ -151,11 +151,14 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
     return pointToSegment(p,{a:a.p,b:candidate})>=20;
    });
  const legalShot=(candidate:Pt)=>{
+   // Preview where the weapon will truly point *after* the feet move.
+   const candidateYaw=angle(candidate,target.p);
+   const candidateRange=d(candidate,target.p);
    const clearance=weaponClearance({
-     x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:aimYaw,
+     x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:candidateYaw,
      shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
      aim:a.aim,posture:a.posture,velocity:0,recoil:a.recoil,
-     threatRange:range
+     threatRange:candidateRange
    },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
    if(clearance.blocked)return false;
    const from={x:clearance.muzzle.x,y:clearance.muzzle.z};
