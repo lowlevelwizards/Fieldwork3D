@@ -42,6 +42,9 @@ jobs:
             tests/arsenal-v2-campaign-adapter.test.mjs \
             tests/campaign-12.test.mjs \
             tests/breach-mission-controller-step8.test.mjs
+      - name: Production publication gate and executable path contract
+        if: ${{ startsWith(github.head_ref, 'release-a/') }}
+        run: node scripts/verification/ci-workflow-contract.mjs
       - name: Release A fog, Studio, firing and optimized renderer regressions
         if: ${{ startsWith(github.head_ref, 'release-a/') }}
         run: |

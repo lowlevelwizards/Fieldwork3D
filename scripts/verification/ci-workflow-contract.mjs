@@ -41,6 +41,17 @@ export function validateWorkflowContracts(wf){
  must('pages','npm run build');
  must('pages','fieldwork-build.json');
  must('pages','Verify public Pages serves expected build');
+ // Release A: the deployed artifact may not be uploaded if these
+ // compact tactical/replay/resource regressions did not pass first.
+ must('pages','Critical tactical, fog, Studio and resource regressions');
+ for(const check of [
+  'tests/passage-q5-approaches.test.mjs',
+  'tests/animation-a3-11-progressive-urgency.test.mjs',
+  'tests/fog-exterior-unseen-apertures-regression.test.mjs',
+  'tests/operator-studio-main-menu.test.mjs',
+  'tests/performance-p8-replay-memory.test.mjs'
+ ])must('pages',check);
+
  const missing=[];
  for(const text of Object.values(wf)){
   for(const match of text.matchAll(/\b(?:tests\/[\w.-]+\.test\.mjs|scripts\/[\w./-]+\.mjs)\b/g))
