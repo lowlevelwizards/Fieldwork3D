@@ -207,9 +207,9 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
 }
 export function updateAchMichDetails(layers:AchMichDetailLayers,
  covered:boolean,allowStrap:boolean):void{
- // Rubber binding is the protective shell's permanent edge. The fitted cloth
- // stops just above it and conceals the fasteners, not the binding.
- layers.bare.visible=true;
+ // The covered helmet displays its fitted cloth hem, not the bare-shell
+ // molded rim that formerly bled through as a wide solid-colored stripe.
+ layers.bare.visible=!covered;
  layers.hardware.visible=!covered;
  layers.strap.visible=allowStrap;
 }
