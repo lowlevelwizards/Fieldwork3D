@@ -31,7 +31,8 @@ for(const [door,approach] of scenarios){
    plan:a.plan.map(n=>({kind:stage(n),p:n.p}))}));
   const stats=new Map(actors.map(a=>[a.id,{
    lastStage:stage(a.plan[0]),stageTime:{},paused:{},still:{},moving:{},
-   cross:null,finish:null,stageChanges:[],lastP:{...a.p}}]));
+   cross:null,finish:null,stageChanges:[],lastP:{...a.p},
+   entryDistance:0,entryBacktrack:0,stalledBy:{},stallRun:null,longestStall:null}]));
   const fracEvents=[];
   let maxFraction=0;
   toggling(s);
@@ -49,6 +50,33 @@ for(const [door,approach] of scenarios){
     const now=stage(a.plan[0]);
     const moved=Math.hypot(a.p.x-st.lastP.x,a.p.y-st.lastP.y);
     st.stageTime[now]=(st.stageTime[now]??0)+1/60;
+    if(now==='entry'){
+     st.entryDistance+=moved;
+     const objective=a.plan[0]?.p;
+     if(objective&&moved>.02&&
+       (a.p.x-st.lastP.x)*(objective.x-st.lastP.x)+
+       (a.p.y-st.lastP.y)*(objective.y-st.lastP.y)<0)
+       st.entryBacktrack+=moved;
+     const cause=[a.lastBlocker??'none',
+       a.nav.length?'route':'no-nav',a.doorTraversal?.phase??'no-episode',
+       a.doorTraversal?.maneuver??'none',
+       a.traversalPending?'pending':'free',
+       a.squeeze?'squeeze':'normal'].join('/');
+     if(moved<.10){
+       st.stalledBy[cause]=(st.stalledBy[cause]??0)+1/60;
+       if(!st.stallRun)st.stallRun={start:round(s.seconds),cause,
+         at:{x:round(a.p.x),y:round(a.p.y)},
+         target:a.nav[0]??null,
+         nextRetry:round(Math.max(0,a.retryRouteAt-s.seconds)),
+         lastManeuver:a.doorTraversal?.maneuver??null};
+     }else if(st.stallRun){
+       const segment={...st.stallRun,end:round(s.seconds),
+        duration:round(s.seconds-st.stallRun.start)};
+       if(!st.longestStall||segment.duration>st.longestStall.duration)
+        st.longestStall=segment;
+       st.stallRun=null;
+     }
+    }
     const pause=a.motorPause??'none';
     const key=now+':'+pause;
     st.paused[key]=(st.paused[key]??0)+1/60;
@@ -77,7 +105,11 @@ for(const [door,approach] of scenarios){
     stageTime:Object.fromEntries(Object.entries(st.stageTime).map(([k,v])=>[k,round(v)])),
     still:Object.fromEntries(Object.entries(st.still).map(([k,v])=>[k,round(v)])),
     topPauses:sorted.slice(0,8).map(([key,v])=>[key,round(v)]),
-    changes:st.stageChanges};
+    entryDistance:round(st.entryDistance),
+    entryBacktrack:round(st.entryBacktrack),
+    stallCauses:Object.entries(st.stalledBy).sort((a,b)=>b[1]-a[1])
+      .slice(0,8).map(([k,v])=>[k,round(v)]),
+    longestStall:st.longestStall,changes:st.stageChanges};
   });
   console.log('Q6_TIMELINE '+JSON.stringify({door,approach,
    initial,hinge:fracEvents,operators:results}));
