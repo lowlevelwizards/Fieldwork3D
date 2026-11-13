@@ -19,7 +19,7 @@ import {createCivilian} from './breach-civilian-types.ts';
 import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {initializeWindows} from './breach-windows.ts';
-import {withSitePropIds} from './worldgen/site-object-identity.ts';
+import {withCoverPropIds,withSitePropIds} from './worldgen/site-object-identity.ts';
 import {initDoor} from './breach-door.ts';
 import {registerSessionWorldGeometry,sessionWorldGeometry} from './breach-world-context.ts';
 import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
@@ -154,9 +154,9 @@ export function assembleSession(index=0,siteSeed?:number,
     (site?.encounter?.neutrals??[]).map(createCivilian):[];
   if(site)for(const person of civilians)
     person.refugePoints=civilianRefugePoints(site,person);
-  const initialCover=initialWorldCover(site??null).map(o=>({...o,
+  const initialCover=withCoverPropIds(initialWorldCover(site??null).map(o=>({...o,
     material:materialForFixture(o.fixture),
-    integrity:MATERIALS[materialForFixture(o.fixture)].integrity}));
+    integrity:MATERIALS[materialForFixture(o.fixture)].integrity})));
   const initialDoorRecords=initialDoors(site??null);
   const state:Session={...seed,operators,civilians,
     civilianHarmEvents:[],objectRevision:0,

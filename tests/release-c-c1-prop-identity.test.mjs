@@ -25,6 +25,7 @@ test('C1: stable prop IDs, preserves custom IDs, does not mutate legacy input',(
  assert.equal(coverTargetIndex(stable,'2'),2,'legacy index is supported');
  assert.equal(coverTargetIndex(stable,'missing'),-1);
  assert.equal(coverTargetIndex(stable,'999'),-1);
+ assert.equal(coverTargetIndex(stable,'0'),0);
 });
 
 test('C1: relocation and cover collapse keep logical identity and original input',()=>{

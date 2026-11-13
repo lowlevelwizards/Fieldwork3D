@@ -34,7 +34,7 @@ export function withSitePropIds<T extends Site>(site:T):T{
 }
 /** New commands use stable IDs; old saved/recorded prop:17 orders work. */
 export function coverTargetIndex(cover:readonly Obstacle[],token:string):number{
- if(/^\\d+$/.test(token)){
+ if(/^[0-9]+$/.test(token)){
   const index=Number(token);
   return Number.isSafeInteger(index)&&index<cover.length?index:-1;
  }
