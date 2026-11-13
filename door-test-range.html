@@ -19,6 +19,7 @@ button:focus-visible,select:focus-visible{outline:2px solid #f0cf8a;outline-offs
 .actions button{flex:1 1 130px}#go{background:#dfbd7e;color:#172923;font-weight:800}
 details{margin-top:12px;border-top:1px solid #49685b;padding-top:10px}summary{cursor:pointer;min-height:38px;color:#e0cfab}
 canvas{display:block;width:100%;max-width:860px;margin:auto;aspect-ratio:640/500;background:#213c32;border:1px solid #62846e;border-radius:8px;touch-action:manipulation}
+#mobileChart{aspect-ratio:640/148}#mobileChart[hidden]{display:none}
 .stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
 .stat{background:#182e28;padding:9px;border-radius:7px;color:#acc9b8;font:11px ui-monospace,monospace}
 .stat strong{display:block;color:#f0d29d;font-size:14px;margin-top:3px;overflow-wrap:anywhere}
@@ -30,7 +31,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <header><strong>FIELDWORK / DOOR TEST RANGE</strong>
 <a href="./physicality-lab.html">PHYSICALITY LAB</a></header>
 <main>
-<section><h1>Doorway muscle memory · D0–D1</h1>
+<section><h1>Doorway muscle memory · D0–D6</h1>
 <p>A dedicated deterministic test map running the <strong>real four-operator game motor</strong>, full door collision and hinge geometry. Select swing and fixture configurations, step frame-by-frame, and inspect an operator's remembered crossing episode.</p>
 <div class="controls">
 <label>PHYSICAL SCENARIO<select id="scenario"></select></label>
@@ -44,7 +45,7 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <div class="actions"><button id="go">GO</button><button id="step">SINGLE TICK</button>
 <button id="reset">RESET CASE</button><button id="clearSelected">CLEAR SELECTED PLAN</button></div>
 <details><summary>HINGE DEBUG CONTROLS · PHYSICAL FORCE</summary>
-<p>These buttons inject debug door actions into the actual session. They are not simulated operator hand animations. D2–D4 will connect the continuous grab-and-hold choreography.</p>
+<p>These buttons inject debug door actions into the actual session. They are not simulated operator hand animations. D4 hand grip is live during actual operator crossings; manual debug force is separately labeled.</p>
 <div class="actions"><button id="open">OPEN</button><button id="push">PUSH WIDER</button>
 <button id="close">CLOSE</button><button id="wedge">TOGGLE WEDGE</button></div>
 </details>
@@ -54,6 +55,11 @@ pre{white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.55 ui-monospace,mono
 <section><canvas id="doorStage" width="640" height="500"
  aria-label="Live top-down door and four-operator physical test map"></canvas>
 <p class="legend">Tap an operator to select; tap the floor to append a MOVE while planning. Amber = selected operator / leaf; teal = authored routes; dashed amber = temporary motor route. No physical collision is disabled.</p></section>
+<section><h1>D6 · MOBILE 60-SECOND FRAME HISTORY</h1>
+<p>Optional real-device capture: amber = RAF interval worst in each 250-ms bucket; teal = simulation JS; rose = canvas drawing JS. RAF delays include browser scheduling, not measured GPU time. Capture is reset for each scenario.</p>
+<label style="display:flex;align-items:center;gap:9px;font-size:12px"><input type="checkbox" id="mobileProfile"> RECORD 60-SECOND PROFILE</label>
+<pre id="mobileStats">OFF — zero profiling and graph work.</pre>
+<canvas id="mobileChart" width="640" height="148" hidden aria-label="60-second RAF and CPU timing history chart"></canvas></section>
 <section><div class="stats">
 <div class="stat">SIM TIME<strong id="clock">0s</strong></div>
 <div class="stat">DOOR LEAF<strong id="doorInfo">—</strong></div>

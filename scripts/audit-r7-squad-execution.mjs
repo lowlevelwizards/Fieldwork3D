@@ -91,17 +91,33 @@ function run(site,seed,kind){
    planned.door?signed(a.p,planned.door):null);
   const initialSign=lastSigned.map(v=>Math.sign(v??0));
   let minSpacing=Infinity,reversalsNearDoor=0,maxBlocked=0;
+  // D6: physical travel and bounded door-episode invariants.
+  let maxPositionStep=0,physicsStepViolations=0;
+  let unboundedManeuverAttempts=0,liveHandFrames=0,doorStateFlips=0;
+  const openState=new Map(session.doors.map(d=>[d.id,d.open]));
   const lastStep=actors.map(()=>({x:0,y:0}));
   const lastP=actors.map(a=>({...a.p}));
   if(planned.accepted)toggling(session);
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    stepSession(session,1/60);
    survey.sample(actors,1/60);
+   for(const d of session.doors){
+    if(openState.get(d.id)!==d.open){
+     doorStateFlips++;openState.set(d.id,d.open);
+    }
+   }
    for(let i=0;i<actors.length;i++){
     const a=actors[i];
     if(!Number.isFinite(a.p.x)||!Number.isFinite(a.p.y))continue;
     maxBlocked=Math.max(maxBlocked,a.blockedTime||0);
     const step={x:a.p.x-lastP[i].x,y:a.p.y-lastP[i].y};
+    const stepDistance=Math.hypot(step.x,step.y);
+    maxPositionStep=Math.max(maxPositionStep,stepDistance);
+    // A step beyond 50 world units in 1/60 second is not locomotion.
+    if(stepDistance>50)physicsStepViolations++;
+    if((a.doorTraversal?.maneuverAttempts??0)>4)
+     unboundedManeuverAttempts++;
+    if(a.doorHandContact?.releasedAt===null)liveHandFrames++;
     if(planned.door){
      const face=signed(a.p,planned.door);
      if(crossed[i]===null&&initialSign[i]!==0&&
@@ -129,6 +145,8 @@ function run(site,seed,kind){
    crossed,orderIssues,planIntact,
    minSpacing:Number.isFinite(minSpacing)?round(minSpacing):null,
    reversalsNearDoor,maxBlockedSeconds:round(maxBlocked),
+   maxPositionStep:round(maxPositionStep),physicsStepViolations,
+   unboundedManeuverAttempts,liveHandFrames,doorStateFlips,
    simulatedSeconds:round(session.seconds),phase:session.phase,
    arrivals:stats.arrivals,incomplete:stats.incomplete,
    stallEpisodes:stats.stallEpisodes,retries:stats.retries,
@@ -175,11 +193,16 @@ const summary={
  stallEpisodes:sum('stallEpisodes'),retries:sum('retries'),
  passageWaitSeconds:round(sum('passageWaitSeconds')),
  reversalsNearDoor:sum('reversalsNearDoor'),
+ maxPositionStep:round(Math.max(0,...results.map(r=>r.maxPositionStep??0))),
+ physicsStepViolations:sum('physicsStepViolations'),
+ unboundedManeuverAttempts:sum('unboundedManeuverAttempts'),
+ liveHandFrames:sum('liveHandFrames'),doorStateFlips:sum('doorStateFlips'),
  invalidPositions:sum('invalidPositions'),
  corruptedPlans:results.filter(r=>!r.planIntact).length
 };
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
  ticks,summary,rows},null,2));
-if(exceptions||summary.invalidPositions||summary.corruptedPlans)
+if(exceptions||summary.invalidPositions||summary.corruptedPlans||
+ summary.physicsStepViolations||summary.unboundedManeuverAttempts)
  process.exitCode=1;

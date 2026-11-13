@@ -1,0 +1,38 @@
+name: D6 generated-building and mobile door acceptance
+on:
+  push:
+    branches:
+      - 'feature/door-traversal-d6-*'
+  pull_request:
+    paths:
+      - 'docs/door-traversal-d6.md'
+      - 'src/door-range-mobile-profile.ts'
+      - 'src/door-test-range-main.ts'
+      - 'door-test-range.html'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'tests/door-traversal-d6-*.test.mjs'
+      - '.github/workflows/door-traversal-d6.yml'
+  workflow_dispatch:
+concurrency:
+  group: d6-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Bounded mobile capture and one-paint-per-RAF integration
+        run: node --experimental-strip-types --test tests/door-traversal-d6-profile.test.mjs tests/door-traversal-d6-range-integration.test.mjs tests/door-test-range-page.test.mjs
+      - name: Physical four-operator and D4 live grip acceptance
+        run: node --experimental-strip-types --test tests/door-traversal-d2d3-four-operator.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/door-traversal-d5-motor.test.mjs
+      - name: Representative generated buildings (4 operators x 2 modes)
+        run: node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 5 600
+      - name: Typecheck and production Pages bundle
+        run: npm run build

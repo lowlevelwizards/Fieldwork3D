@@ -5,6 +5,7 @@
 import {activateSite,doorLeafSegment,doorCenter,
  type Pt} from './breach-core.ts';
 import {pushDoor} from './breach-door.ts';
+import {DoorRangeMobileProfile} from './door-range-mobile-profile.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {DOOR_RANGE_CASES,doorRangeSite,prepareDoorRangeCase,
  type DoorRangeCaseId} from './breach-door-test-cases.ts';
@@ -27,6 +28,11 @@ const clock=get<HTMLElement>('clock');
 const flipsView=get<HTMLElement>('flips');
 const go=get<HTMLButtonElement>('go');
 const trace=get<HTMLInputElement>('trace');
+const profileToggle=get<HTMLInputElement>('mobileProfile');
+const profileCanvas=get<HTMLCanvasElement>('mobileChart');
+const profileInfo=get<HTMLElement>('mobileStats');
+let profile:DoorRangeMobileProfile|null=null;
+let lastProfileDraw=0;
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const p=(x:number,y:number):Pt=>({x,y});
 const drawLine=(a:Pt,b:Pt,color:string,width=2)=>{
@@ -67,6 +73,7 @@ function plan(){
  return ok;
 }
 function reset(){
+ profile?.reset();lastProfileDraw=0;
  playing=false;acc=0;flips=0;minSpacing=Infinity;
  passed=new Set();crossedAt=new Map();
  s=newSession(0,undefined,'full-view','small','hold',
@@ -206,7 +213,6 @@ function paint(){
 function tick(){
  if(s.phase==='planning')return;
  stepSession(s,1/60);
- paint();
  if(team(s).slice(0,4).filter(a=>activeIds.has(a.id))
   .every(a=>!a.plan.length)){
   playing=false;go.textContent='GO';
@@ -233,13 +239,14 @@ function report(){
    blockedTime:a.blockedTime,pause:a.motorPause,
    episode:a.doorTraversal,grip:a.doorHandContact,
    nav:a.nav.slice(0,8)
-  })),events:[...s.events]};
+  })),events:[...s.events],
+  mobileProfile:profile?.snapshot(performance.now())??null};
 }
 get<HTMLButtonElement>('reset').addEventListener('click',reset);
 go.addEventListener('click',toggle);
 get<HTMLButtonElement>('step').addEventListener('click',()=>{
  if(s.phase==='planning')toggling(s);
- playing=false;go.textContent='GO';tick();
+ playing=false;go.textContent='GO';tick();paint();
 });
 get<HTMLButtonElement>('open').addEventListener('click',()=>{
  const door=s.doors[0];door.open=true;door.openedAt=s.seconds;paint();
@@ -280,13 +287,75 @@ stage.addEventListener('pointerdown',event=>{
 selected.addEventListener('change',()=>{selectedId=selected.value;paint();});
 trace.addEventListener('change',paint);
 for(const input of [scenario,program])input.addEventListener('change',reset);
+function drawMobileProfile(now:number){
+ if(!profile)return;
+ const s=profile.snapshot(now);
+ const fmt=(n:number)=>n.toFixed(1);
+ profileInfo.textContent=
+  'RAF worst '+fmt(s.worstRaf)+'ms · ≥33ms '+s.slow+
+  ' · ≥67ms '+s.severe+' · suspensions '+s.suspensions+
+  '\nSIM peak '+fmt(s.worstSim)+'ms / avg '+fmt(s.meanSim)+
+  'ms · DRAW peak '+fmt(s.worstPaint)+'ms / avg '+
+  fmt(s.meanPaint)+'ms · '+s.ticks+' fixed ticks / '+
+  s.frames+' callbacks';
+ const chart=profileCanvas.getContext('2d');
+ if(!chart)return;
+ const width=profileCanvas.width,height=profileCanvas.height;
+ chart.clearRect(0,0,width,height);
+ chart.fillStyle='#172923';chart.fillRect(0,0,width,height);
+ const scale=Math.max(70,Math.min(240,Math.ceil(s.worstRaf/20)*20));
+ const plot=height-22;
+ for(const threshold of [16.7,33.3,67]){
+  const y=plot-Math.min(threshold/scale,1)*plot;
+  chart.strokeStyle='#537365';chart.lineWidth=.7;
+  chart.beginPath();chart.moveTo(0,y);chart.lineTo(width,y);chart.stroke();
+  chart.fillStyle='#bad0c1';chart.font='10px ui-monospace,monospace';
+  chart.fillText(Math.round(threshold)+'ms',4,Math.max(10,y-3));
+ }
+ for(const b of s.buckets){
+  const x=(b.at-(now-60000))/60000*width;
+  if(x<0||x>width)continue;
+  const bars=[{ms:b.worstRaf,color:'#e6be80',width:2},
+   {ms:b.worstSim,color:'#70c8aa',width:1},
+   {ms:b.worstPaint,color:'#d48d87',width:1}];
+  for(const bar of bars){
+   const h=Math.min(1,bar.ms/scale)*plot;
+   chart.fillStyle=bar.color;
+   chart.fillRect(x,plot-h,bar.width,h);
+  }
+ }
+ chart.fillStyle='#b8cdbf';chart.font='11px ui-monospace,monospace';
+ chart.fillText('−60 s',5,height-5);chart.fillText('NOW',width-31,height-5);
+}
+profileToggle.addEventListener('change',()=>{
+ profile=profileToggle.checked?new DoorRangeMobileProfile():null;
+ profileCanvas.hidden=!profile;
+ profileInfo.textContent=profile?
+  'Recording real RAF gaps, fixed simulation and 2D drawing for 60 s.' :
+  'OFF — zero profiling and graph work.';
+ lastProfileDraw=0;
+ if(profile)drawMobileProfile(performance.now());
+});
 let last=0,acc=0;
 function frame(now:number){
+ const gap=last?Math.max(0,now-last):0;
+ const simStart=profile?performance.now():0;
+ let steps=0;
  if(playing&&s.phase==='running'){
-  acc+=Math.min(.12,(now-last)/1000||0)*Number(speed.value);
-  let steps=0;
+  acc+=Math.min(.12,gap/1000)*Number(speed.value);
   while(acc>=1/60&&steps<8&&playing){
    tick();acc-=1/60;steps++;
+  }
+ }
+ const simMs=profile?performance.now()-simStart:0;
+ const paintStart=profile?performance.now():0;
+ // A single browser draw for all fixed simulation ticks in this RAF.
+ if(steps>0)paint();
+ const paintMs=profile?performance.now()-paintStart:0;
+ if(profile){
+  profile.add({at:now,raf:gap,sim:simMs,paint:paintMs,steps});
+  if(now-lastProfileDraw>=250){
+   drawMobileProfile(now);lastProfileDraw=now;
   }
  }
  last=now;requestAnimationFrame(frame);
