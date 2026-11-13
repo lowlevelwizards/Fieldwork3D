@@ -1,6 +1,8 @@
 /** A3.1: authoritative stylized 2.5D friendly body protection.
- * This representation is deliberately conservative. All callers supplying
- * only {x,y} keep the previous unconditional 10.5-unit planar veto.
+ * Known-posture protection hugs torso/helmet geometry so a close teammate
+ * may aim beside a head or over a crouched body without a large angular
+ * exclusion cone. All callers supplying only {x,y} retain the conservative
+ * unconditional 10.5-unit planar veto.
  * These are shot/weapon safety volumes, never movement collision shapes.
  */
 import type {Pt} from './breach-core.ts';
@@ -9,15 +11,17 @@ export type FriendlyBodyActor={p:Pt;posture?:'stand'|'crouch'};
 export const LEGACY_FRIENDLY_RADIUS=10.5;
 /** Fixed protective cylinders include skin, equipment/helmet and margin.
  * Torso and head overlap vertically; no gap appears at neck height.
+ * Use body-sized radii rather than the old 10.5/8.5 comfort envelope:
+ * aim is vetoed by physical intersection, not by a 25-degree safety cone.
  * Coordinates share Breach's existing ground-zero/weapon-height scale.
  */
 export const FRIENDLY_STAND_VOLUMES=[
- {radius:10.5,bottom:0,top:29},
- {radius:8.5,bottom:20,top:42}
+ {radius:8,bottom:0,top:29},
+ {radius:6.2,bottom:20,top:42}
 ] as const;
 export const FRIENDLY_CROUCH_VOLUMES=[
- {radius:10.5,bottom:0,top:15},
- {radius:8.5,bottom:10,top:26}
+ {radius:8,bottom:0,top:15},
+ {radius:6.2,bottom:10,top:26}
 ] as const;
 /** The posture is committed fixed-step tactical state, not the render blend.
  * Do NOT infer tactical clearance from interpolated visual 3D joints. */
