@@ -7,6 +7,7 @@ import * as THREE from 'three';
 import {createAchMichDrapedGeometry,type AchMichCoverShell}
  from './operator-ach-mich-cover-drape.ts';
 import {achMichProfile,achMichHemY} from './operator-ach-mich-details.ts';
+import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 export type CoverRegion='front'|'back'|'left'|'right'|'crown';
 export type HelmetSurfaceFrame={
  position:THREE.Vector3;
@@ -37,7 +38,7 @@ export function sampleHelmetCover(
  shell:AchMichCoverShell,region:CoverRegion,u:number,v:number,
  clearance=.10
 ):HelmetSurfaceFrame|null{
- const profile=achMichProfile(shell);
+ const profile=achMichProfile(shell),top=HELMET_MOUNT_PROFILES[shell].top;
  const uu=clamped(u),vv=clamped(v);
  const origin=new THREE.Vector3(),direction=new THREE.Vector3();
  if(region==='crown'){
@@ -45,7 +46,7 @@ export function sampleHelmetCover(
  }else if(region==='front'||region==='back'){
   const low=region==='front'?profile.brow:profile.nape;
   origin.set(uu*profile.side*.79,
-   low+.38+(profile.top-low-.45)*(vv+1)/2,
+   low+.38+(top-low-.45)*(vv+1)/2,
    region==='front'?-18:18);
   direction.set(0,0,region==='front'?1:-1);
  }else{
@@ -53,7 +54,7 @@ export function sampleHelmetCover(
    (profile.front+profile.rear)*.50;
   const low=achMichHemY(shell,z);
   origin.set(region==='left'?-18:18,
-   low+.38+(profile.top-low-.45)*(vv+1)/2,z);
+   low+.38+(top-low-.45)*(vv+1)/2,z);
   direction.set(region==='left'?1:-1,0,0);
  }
  const caster=new THREE.Raycaster(origin,direction,0,35);
