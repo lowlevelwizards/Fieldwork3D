@@ -28,6 +28,11 @@ let studioFrame:HTMLIFrameElement|null=null;
  * The iframe never owns tactical simulation or authoritative roster state. */
 const STUDIO_WARM_RETAIN_MS=60_000;
 let studioReady=false,studioOpenEpoch=0,studioInitSentEpoch=-1;
+// The menu has no site; editing cannot inherit the last mission's phase.
+// A live Quick Play mission remains planning-only for appearance changes.
+const canEditQuickAppearance=()=>!config.isReplaying()&&(
+ config.getMode()==='menu'||
+ (config.getMode()==='quick'&&config.getSession().phase==='planning'));
 let studioReleaseTimer:ReturnType<typeof setTimeout>|null=null;
 function sendStudioInit(){
  if(!studioOverlay||studioOverlay.hidden||
@@ -45,7 +50,7 @@ function sendStudioInit(){
    weapon:p.weapon,weaponConfiguration:p.weaponConfiguration
   })),
   readonly:studioMode==='campaign'?!!config.getCampaign()?.activeContractId:
-   config.getSession().phase!=='planning'||config.isReplaying()
+   !canEditQuickAppearance()
  },location.origin);
 }
 function closeOperatorStudio(){
@@ -108,14 +113,14 @@ window.addEventListener('message',event=>{
   [{id:msg.id,wardrobe:msg.wardrobe}]);
  let ok=false;
  const currentCampaign=config.getCampaign();
- if(edits&&studioMode==='quick'&&config.getSession().phase==='planning'&&!config.isReplaying()){
+ if(edits&&studioMode==='quick'&&canEditQuickAppearance()){
   const next=applyStudioRosterEdits(config.getRoster(),edits);
   if(next){
    const previous=config.getRoster();config.setRoster(next);
    ok=config.saveRoster();
-   if(ok){config.applyQuickRoster();
-    config.onQuickSaved();}
-   else config.setRoster(previous);
+   if(!ok)config.setRoster(previous);
+   else if(config.getMode()==='quick'){
+    config.applyQuickRoster();config.onQuickSaved();}
   }
  }else if(edits&&studioMode==='campaign'&&currentCampaign&&!currentCampaign.activeContractId){
   const next=applyStudioCampaignEdits(currentCampaign,edits);

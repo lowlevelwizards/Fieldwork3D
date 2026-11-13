@@ -29,7 +29,7 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
- openReplayLibrary:()=>void;
+ openReplayLibrary:()=>void;openMenuStudio:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
  resupply:(id:string)=>void;resupplyMedical:(id:string)=>void;
@@ -139,6 +139,8 @@ export class CampaignScreen{
   if(hasSave)utility.append(button('NEW CAMPAIGN',this.handlers.newCampaign,
    'campaign-landing-link'));
   utility.append(button('REPLAY LIBRARY',this.handlers.openReplayLibrary,
+   'campaign-landing-link'));
+  utility.append(button('OPERATOR STUDIO',this.handlers.openMenuStudio,
    'campaign-landing-link'));
   const arsenal=node('a','campaign-landing-link','ARSENAL');
   arsenal.href='./arsenal.html';
