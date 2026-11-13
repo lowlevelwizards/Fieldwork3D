@@ -9,7 +9,7 @@ import {doorRangeSite} from '../src/breach-door-test-cases.ts';
 const p=(x,y)=>({x,y});
 const door=()=>{const d=initDoor({id:'ENTRY',a:p(290,260),
  b:p(332,260),kind:'hinged',hinge:'a',swing:1,
- open:true,openedAt:0},0);d.openFraction:.70;return d};
+ open:true,openedAt:0},0);d.openFraction=.70;return d};
 function setup(){
  const d=door(),near=handlePoint(d);
  const a={id:'rook',side:'blue',health:4,p:p(near.x,near.y-17),
