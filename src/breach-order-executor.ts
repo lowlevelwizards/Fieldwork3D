@@ -86,7 +86,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
     const threat=visibleThreat;
     if(threat){
       a.motorPause='contact';
-      a.velocity=0;rotate(a,angle(a.p,threat.p),dt);return;
+      a.velocity=0;rotate(a,angle(a.p,threat.p),dt,s);return;
     }
   }
   if(!n||a.health<=0){
@@ -95,7 +95,7 @@ export function createOrderExecutor(port:OrderExecutionPort){
     }
     a.velocity=Math.max(0,a.velocity-dt*160);
     const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
-    if(a.health>0&&held!==null)rotate(a,held,dt);
+    if(a.health>0&&held!==null)rotate(a,held,dt,s);
     return;
   }
   beginOrder(a,n,s.doors);
