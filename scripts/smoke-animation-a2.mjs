@@ -82,6 +82,25 @@ try{
      {mode:carryModes[item.name]},{timeout:20000});
    await page.screenshot({path:out+'/desktop-'+item.name+'.png'});
   }
+  // Three silhouettes cannot prove all weapon families, but these are
+  // actual 3D model frames of distinct AR, AK and HK proportions, not a
+  // generic procedural illustration.
+  for(const id of ['ak-akm','hk-g3a3','hk-mp5a3']){
+   await page.locator('#poseWeapon').selectOption(id);
+   for(const name of ['low-ready','high-ready','short-stock']){
+    await page.locator('#poseAnimation').selectOption(name);
+    await page.locator('#timeline').evaluate(node=>{
+     node.value='650';node.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    await page.waitForFunction(({id,mode})=>{
+     const d=document.querySelector('#preview')?.dataset;
+     return d?.ready==='true'&&d.poseFitWeapon===id&&
+      d.weaponHandling===mode&&d.track!==undefined&&
+      Math.abs(Number(d.time)-.650)<.003;
+    },{id,mode:carryModes[name]},{timeout:20000});
+    await page.screenshot({path:out+'/desktop-'+id+'-'+name+'.png'});
+   }
+  }
   if(errors.length)throw Error('A2 browser errors: '+errors.join('; '));
   console.log('A2 actual mobile/desktop WebGL motion gallery PASS',tracks.length);
  }finally{await browser.close();}
