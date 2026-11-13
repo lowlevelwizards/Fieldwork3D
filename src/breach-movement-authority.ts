@@ -47,6 +47,12 @@ export function resolveMovementFrame(
  proposals:readonly MotionProposal[],
  physicallyClear:(proposal:MotionProposal)=>boolean
 ):MotionDecision[]{
+ // No admissible body proposed movement: no geometry sweep or relative
+ // trajectory can reject a step. Preserve original order and destination
+ // references, including dead/carried bodies, without sorting all pairs.
+ // Use the SAME moved() predicate as the regular arbitration path.
+ if(!proposals.some(p=>p.alive&&!p.carried&&moved(p)))
+  return proposals.map(p=>({id:p.id,point:p.to,blocked:null}));
  const draft=new Map<string,MotionDecision>();
  const candidates=proposals.filter(p=>p.alive&&!p.carried);
  for(const p of proposals){
