@@ -103,6 +103,8 @@ try{
      .filter({hasText:'Auto uses period-appropriate webbing;'}).locator('select');
     await bandColor.selectOption('black');
     await capture(id+'-band-black-side','side');
+    await capture(id+'-band-black-front','front');
+    await capture(id+'-band-black-back','back');
     const bandBlack=await stage.screenshot();
     await bandColor.selectOption('tan');
     await capture(id+'-band-tan-side','side');

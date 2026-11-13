@@ -8,6 +8,7 @@ import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
  type FieldHelmet} from './operator-helmet-field-policy.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
+import {createAchMichSurfaceBandGeometry} from './operator-helmet-field-fit.ts';
 import {createAchMichFieldNetGeometry} from './operator-helmet-field-net.ts';
 import {addAchMichThreeHoleShroud} from './operator-helmet-field-shroud.ts';
 import {addAchMichArcRails} from './operator-helmet-field-rails.ts';
@@ -66,12 +67,14 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  const bandMaterial=mat(0x586548),webbingMaterial=mat(0x586548);
  const front=p.front-.09,rear=p.rear+.08,side=p.side+.15;
  const band=addGroup('band');
- // PASGT uses its approved band geometry; ACH/MICH gets a fitted ribbon.
- const x=p.side+.18,y=p.top-2.39,f=front-.12,b=rear+.12;
- ribbon(band,bandMaterial,'shell-fitted-elastic',[
-  [-x,y,f+.60],[-x*.8,y,f],[0,y,f],[x*.8,y,f],
-  [x,y,f+.60],[x,y,b-.60],[x*.8,y,b],[0,y,b],
-  [-x*.8,y,b],[-x,y,b-.60],[-x,y,f+.60]],.52);
+ // H10.0: fit an actual closed, outward-offset band to the cloth.
+ // Never use straight front/side chords through a covered shell.
+ if(id!=='pasgt'){
+  const mesh=new THREE.Mesh(createAchMichSurfaceBandGeometry(id),bandMaterial);
+  mesh.name='surface-wrapped-elastic-band';
+  mesh.castShadow=false;mesh.receiveShadow=false;band.add(mesh);
+  band.userData.h10RealCoverRing=true;
+ }
  const loops=addGroup('loops'),scrim=addGroup('scrim'),
   leaves=addGroup('leaves');
  // H9.2: populate from the ACTUAL fitted cloth surface. The PASGT

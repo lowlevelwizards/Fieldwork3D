@@ -13,7 +13,7 @@ import {achMichProfile,achMichHemY} from './operator-ach-mich-details.ts';
 type Pt={position:THREE.Vector3;normal:THREE.Vector3};
 type Edge={x:number;z:number};
 const ROOF_X=3.15,ROOF_Z=3.52;
-const WIDTH=.18;
+const WIDTH=.30; // H10.1: PASGT-class legibility at tactical zoom
 const mat=(p:HelmetSurfaceFrame):Pt=>({
  position:p.position.clone(),normal:p.normal.clone()
 });
@@ -138,6 +138,8 @@ export function createAchMichFieldNetGeometry(
  g.userData.h9NetPattern='sparse-diamond';
  g.userData.h9NetWrapped=true;
  g.userData.h9NetUnderBand=true;
+ g.userData.h10NetCordWidth=WIDTH;
+ g.userData.h10BandTieY=HELMET_MOUNT_PROFILES[shell].top-2.39;
  g.userData.h9NetRoutes=routes;
  return g;
 }
