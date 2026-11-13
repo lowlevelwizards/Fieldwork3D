@@ -5,6 +5,7 @@
 import {activateSite,doorLeafSegment,doorCenter,
  type Pt} from './breach-core.ts';
 import {pushDoor} from './breach-door.ts';
+import {doorGripPoint} from './breach-door-grip.ts';
 import {DOOR_RANGE_CASES,doorRangeSite,prepareDoorRangeCase,
  type DoorRangeCaseId} from './breach-door-test-cases.ts';
 import {newSession,team,planSquadEntry,planMove,clearPlan,
@@ -115,7 +116,9 @@ function stats(){
   const episode=a.doorTraversal;
   return a.name+' · '+(episode?episode.phase.toUpperCase()+
     ' / '+episode.maneuver.toUpperCase()+
-    (episode.handContact?' · HAND ON HANDLE':'')+
+    (a.doorGrip?.releasedAt===null?
+      ' · SUPPORT '+a.doorGrip.mode.toUpperCase():
+      a.doorGrip?' · HAND RETURNING':'')+
     ' · attempts '+episode.maneuverAttempts:
     'NO EPISODE')+
    ' · '+(a.motorPause??a.lastBlocker??'CLEAR')+
@@ -173,6 +176,15 @@ function paint(){
    }
   }
   ctx.setLineDash([]);
+  const grip=a.doorGrip;
+  if(grip){
+   const leaf=grip.releasedAt===null?
+     s.doors.find(d=>d.id===grip.doorId):undefined;
+   const target=leaf?doorGripPoint(leaf,grip.fraction):grip.point;
+   drawLine(a.p,target,leaf?'#ffe1a1':'#938774',2);
+   ctx.fillStyle=leaf?'#ffe1a1':'#938774';
+   ctx.beginPath();ctx.arc(target.x,target.y,3.5,0,Math.PI*2);ctx.fill();
+  }
   ctx.fillStyle=a.id===selectedId?'#f0cf8a':'#91d1bd';
   ctx.beginPath();ctx.arc(a.p.x,a.p.y,9,0,Math.PI*2);ctx.fill();
   ctx.strokeStyle='#172923';ctx.lineWidth=2;ctx.stroke();
@@ -216,7 +228,8 @@ function report(){
   operators:team(s).slice(0,4).map(a=>({
    id:a.id,p:a.p,remainingOrders:a.plan.length,
    blockedTime:a.blockedTime,pause:a.motorPause,
-   episode:a.doorTraversal,nav:a.nav.slice(0,8)
+   episode:a.doorTraversal,grip:a.doorGrip,
+   nav:a.nav.slice(0,8)
   })),events:[...s.events]};
 }
 get<HTMLButtonElement>('reset').addEventListener('click',reset);
