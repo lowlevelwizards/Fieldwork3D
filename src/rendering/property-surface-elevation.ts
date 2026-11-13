@@ -15,6 +15,16 @@ const layers:Record<SurfaceKind,number>={
  'planting-bed':0,'planting-edge':1,
  'waste-bay-line':1,'utility-bay-line':1,'loading-bay-line':1,
 };
+/** Finishes which intentionally overlap a base use a fixed precedence.
+ * Baseline site finishes keep their historical heights; details rise where
+ * independently authored rectangles would otherwise occupy the same plane.
+ * These are static presentation offsets, never navigation elevations.
+ */
+const finishLift:Partial<Record<SurfaceKind,number>>={
+ path:.035,
+ 'loading-zone':.07,'maintenance-bay':.07,'waste-collection':.07,
+ 'reserved-parking':.10,
+};
 export function propertySurfaceCenterHeight(kind:SurfaceKind):number{
  // Thin landscape/service details are flat finishes, not pretend curbs.
  // Explicit offsets keep them above the real zone plane and below all
@@ -23,7 +33,7 @@ export function propertySurfaceCenterHeight(kind:SurfaceKind):number{
  if(kind==='planting-edge')return -1.18;
  if(kind==='waste-bay-line'||kind==='utility-bay-line'||
     kind==='loading-bay-line')return -1.10;
- return -1.30+layers[kind]*.20;
+ return -1.30+layers[kind]*.20+(finishLift[kind]??0);
 }
 
 /** Stable height precedence when independently authored exterior zones touch.

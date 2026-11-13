@@ -50,7 +50,10 @@ export function buildSiteExterior(site:Site,host:SiteExteriorBuildHost):void{
       // One cheap repeated layer per relevant exterior zone, no dynamic allocation.
       const overlay=overlayForZone(outdoors,zone.kind);
       if(overlay){
-        const mark=host.plane(host.root,zone.x,zone.y,zone.w,zone.h,-1.42+lift,
+        const mark=// Every adjacent zone lift differs by .035. Keep overlay paint
+      // .015 above its own base but .020 below the next zone base;
+      // the former .030 offset left only .005 separation at crossings.
+      host.plane(host.root,zone.x,zone.y,zone.w,zone.h,-1.435+lift,
           host.overlay(overlay));
         mark.castShadow=false;mark.receiveShadow=false;
       }
