@@ -74,6 +74,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   mesh.name='surface-wrapped-elastic-band';
   mesh.castShadow=false;mesh.receiveShadow=false;band.add(mesh);
   band.userData.h10RealCoverRing=true;
+  band.userData.h5CoverAdaptive=true;
  }
  const loops=addGroup('loops'),scrim=addGroup('scrim'),
   leaves=addGroup('leaves');
@@ -173,6 +174,15 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
 export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  shellHex:number,covered:boolean,headEyewear='eyes-none'):void{
  const s=resolveHelmetField(v.shell,raw),m=v.modules;
+ // Swap between cached, pre-authored cloth and shell ring profiles only
+ // when the cover state changes; never raycast every animation frame.
+ if(v.shell!=='pasgt'){
+  const band=v.modules.band.getObjectByName('surface-wrapped-elastic-band');
+  if(band instanceof THREE.Mesh&&band.userData.h5Covered!==covered){
+   band.geometry=createAchMichSurfaceBandGeometry(v.shell,covered);
+   band.userData.h5Covered=covered;
+  }
+ }
  const bandHex=resolveHelmetFieldColor(s.bandColor,shellHex,v.shell==='pasgt');
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
