@@ -299,7 +299,19 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
 export function releaseStaticWallOverlap(from:Pt,goal:Pt,
  doors:Door[],maxStep=1.3,world?:SessionWorldGeometry):Pt|null{
  const r=OPERATOR_RADIUS+1;
- const overlaps=(world?.walls??WALLS).filter(w=>pointToSegment(from,w)<r-.01);
+ // This test runs before every live motor route step, not only when stuck.
+ // Use the existing session wall index for local candidates instead of
+ // scanning the entire level. Restore source order for rescue-angle ties.
+ let overlaps:Segment[];
+ if(world){
+  const hits:{wall:Segment;index:number}[]=[];
+  world.someWallNearPoint(from,r,(wall,index)=>{
+   if(pointToSegment(from,wall)<r-.01)hits.push({wall,index});
+   return false;
+  });
+  if(hits.length>1)hits.sort((a,b)=>a.index-b.index);
+  overlaps=hits.map(hit=>hit.wall);
+ }else overlaps=WALLS.filter(w=>pointToSegment(from,w)<r-.01);
  if(!overlaps.length)return null;
  const step=Math.max(.15,Math.min(1.4,maxStep));
  const aim=Math.atan2(goal.y-from.y,goal.x-from.x);
@@ -319,11 +331,16 @@ export function releaseStaticWallOverlap(from:Pt,goal:Pt,
      if(!(world?world.passable(at,0):passable(at,0))){valid=false;break;}
      // Check furniture at the same full operator radius.
      // A temporarily overlapping wall must never grant cover ghosting.
-     const wallBlocked=(world?.walls??WALLS).some(w=>
-       !overlaps.includes(w)&&pointToSegment(at,w)<r-.001);
-     const coverBlocked=(world?.cover??COVER).some(o=>isFootstepObstacle(o)&&
+     const wallTest=(w:Segment)=>
+       !overlaps.includes(w)&&pointToSegment(at,w)<r-.001;
+     const coverTest=(o:Obstacle)=>isFootstepObstacle(o)&&
        Math.abs(at.x-o.x)<o.w/2+OPERATOR_RADIUS&&
-       Math.abs(at.y-o.y)<o.h/2+OPERATOR_RADIUS);
+       Math.abs(at.y-o.y)<o.h/2+OPERATOR_RADIUS;
+     const wallBlocked=world?
+       world.someWallNearPoint(at,r,wallTest):WALLS.some(wallTest);
+     const coverBlocked=world?
+       world.someCoverNearPoint(at,OPERATOR_RADIUS,coverTest):
+       COVER.some(coverTest);
      if(wallBlocked||coverBlocked){valid=false;break;}
      for(const wall of overlaps){
        const before=pointToSegment(from,wall);
