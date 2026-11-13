@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from '../src/breach-combat-reactions.ts';
-import {assessFireLane} from '../src/breach-fire-safety.ts';
+import {assessFireLane,assessFriendlyLane} from '../src/breach-fire-safety.ts';
+import {safetyBodyFor} from '../src/breach-friendly-safety-volume.ts';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {newSession,team,enemies,stepSession,inSight}
@@ -58,7 +59,7 @@ test('ally in lane triggers only a short self-sidestep, never a shot through tea
  assert.equal(chooseFriendlyLaneStep(origin,0,()=>false,evaluate),null);
  assert.equal(chooseFriendlyLaneStep(origin,0,()=>true,()=>false),null);
 });
-test('real player operator can request friendly-fire sidestep with orders intact',()=>{
+test('real player either gets a genuinely clear near-stack shot or requests a foot correction',()=>{
  const fixture={...baseSite,seed:31059};
  const {s,lead,guard}=prepared(fixture);
  try{
@@ -80,14 +81,27 @@ test('real player operator can request friendly-fire sidestep with orders intact
       break;
     }
   }
-  assert.ok(selected,
-   'a safe lateral target should be selected once weapon handling settles: '+JSON.stringify({
-     phase:s.phase,visible:inSight(lead,guard,s),target:lead.targetId,
-     firePolicy:lead.firePolicy,velocity:lead.velocity,aim:lead.aim,
-     lastFireBlock:lead.lastFireBlock,lastFireRetreatAt:lead.lastFireRetreatAt,
-     guard:{p:guard.p,health:guard.health},blue:{p:lead.p,health:lead.health},
-     ally:ally.p,await:lead.aimInstruction,plan:lead.plan
-   }));
+  if(!selected){
+    // A3.10 deliberately permits close shoulder/head-clearance firing
+    // without footwork. That is preferable to a redundant sidestep,
+    // provided the gun and every actual bullet stayed away from the ally.
+    assert.ok(lead.shots>0,'must either fire or find a valid physical step');
+    assert.equal(ally.health,4,'friendly never receives damage');
+    const body=safetyBodyFor(ally);
+    const outgoing=s.shots.filter(shot=>shot.shooterId===lead.id);
+    assert.ok(outgoing.length>0,'shots must have real recorded muzzles');
+    for(const shot of outgoing){
+      assert.equal(assessFriendlyLane(initial,shot.muzzleHeight,
+        shot.start,shot.muzzleHeight,[body]).blocker,'clear',
+        'rigid gun must not pass through the allied body');
+      assert.equal(assessFriendlyLane(shot.start,shot.muzzleHeight,
+        shot.end,shot.impactHeight,[body]).blocker,'clear',
+        'actual projectile trajectory cannot intersect the teammate');
+    }
+    assert.deepEqual(ally.p,p(185,110),'teammate is not shoved');
+    assert.deepEqual(lead.p,initial,'true safe shots require no correction');
+    return;
+  }
   assert.ok(Math.abs(selected.x-initial.x)<6);
   // A3.4 deliberately finds the smallest VALID real step, potentially
   // 4 or 7 units instead of the former mandatory 12+ unit detour.
