@@ -83,6 +83,12 @@ test('A3.0 crouch is correctly reported as baseline, not falsely permitted throu
  assert.equal(crouch.shot.lane,'friendly',
   'future A3.1 vertical body protection is not implemented in A3.0');
 });
+test('A3.0 the doorway and tall fixture genuinely obstruct current shooting geometry',()=>{
+ const doorway=run('doorway',0,{operators:1});
+ const furniture=run('furniture',0,{operators:1});
+ assert.equal(doorway.shot.lane,'door');
+ assert.equal(furniture.shot.lane,'cover');
+});
 test('A3.0 seeded options, actor count and baseline lack of contact solver are explicit',()=>{
  const one=run('clear',0,{operators:1,posture:'crouch',weapon:'smg',
   intent:'hold',seed:173});
