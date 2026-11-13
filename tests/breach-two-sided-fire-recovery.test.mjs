@@ -90,7 +90,12 @@ test('real player operator can request friendly-fire sidestep with orders intact
     moved ||=Math.abs(lead.p.y-initial.y)>1.5;
     if(moved)break;
   }
-  assert.ok(moved,'the sidestep must execute through the live movement motor');
+  assert.ok(moved,'the sidestep must execute through the live movement motor: '+
+    JSON.stringify({from:initial,now:lead.p,goal:lead.fireRetreatTarget,
+      reason:lead.fireRetreatReason,nav:lead.nav,velocity:lead.velocity,
+      motorPause:lead.motorPause,lastBlocker:lead.lastBlocker,
+      blockedTime:lead.blockedTime,retryRouteAt:lead.retryRouteAt,
+      routeGoalKey:lead.routeGoalKey,phase:s.phase,seconds:s.seconds}));
   assert.deepEqual(ally.p,p(185,110),
     'teammate must remain stationary during a real sidestep');
  }finally{activateSite(null);}
