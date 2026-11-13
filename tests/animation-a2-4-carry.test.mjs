@@ -60,11 +60,16 @@ test('A2.4 low/high reference profiles are genuinely different carries',()=>{
  assert.ok(stockPocket('low').y>stockPocket('high').y);
  for(const weapon of ['carbine','rifle','smg','shotgun']){
   const low=fitWeaponPose({weapon,handling:'low',yaw:0,recoil:0});
-  const high=fitWeaponPose({weapon,handling:'high',yaw:0,recoil:0});
-  const ready=fitWeaponPose({weapon,handling:'ready',yaw:0,recoil:0});
+  const high=fitWeaponPose({weapon,handling:'high',yaw:0,recoil:0,
+   aimBlend:0});
+  const ready=fitWeaponPose({weapon,handling:'ready',yaw:0,recoil:0,
+   aimBlend:0});
   assert.ok(low.rotation.z<ready.rotation.z-.20);
   assert.ok(high.rotation.z>ready.rotation.z+.50);
-  assert.ok(high.stock.y<ready.stock.y-1.5);
+  assert.ok(high.stock.y<ready.stock.y-1.5,
+   'live zero-aim high-ready must stay in the armpit, not ADS shoulder');
+  assert.ok(high.stockError<3,
+   'high-ready stock must remain fitted to its own underarm pocket');
   assert.ok([low,high,ready].every(v=>
    Number.isFinite(v.contactError)&&Number.isFinite(v.stockError)));
  }

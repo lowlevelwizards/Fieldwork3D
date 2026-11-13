@@ -276,7 +276,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       mode==='low'?relaxedWeight:0);
     // Low-ready must use its own stock pocket even when live aimBlend=0.
     const shoulderPocket=input.aimBlend===undefined||mode==='short'||
-      mode==='low'?normalPocket:{
+      mode==='low'||mode==='high'?normalPocket:{
         x:stockPocket('ready',input.armorPush).x+
           (stockPocket('ads',input.armorPush).x-stockPocket('ready',input.armorPush).x)*blendAim,
         y:stockPocket('ready',input.armorPush).y+
@@ -346,7 +346,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   // Compare the physical buttstock against a stable operator anatomy point,
   // not a reference synthesized from the stock itself (always zero).
   const pocket=input.aimBlend===undefined||
-    input.handling==='low'?
+    input.handling==='low'||input.handling==='high'?
     lowReadyPocket(stockPocket(input.handling,input.armorPush),relaxed,relaxedWeight):{
       x:stockPocket('ready',input.armorPush).x+
         (stockPocket('ads',input.armorPush).x-stockPocket('ready',input.armorPush).x)*
