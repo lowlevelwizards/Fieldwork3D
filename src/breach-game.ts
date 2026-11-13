@@ -109,6 +109,8 @@ import {type PassageLease} from './breach-passage.ts';
 import type {DoorTraversalEpisode} from './breach-door-traversal-episode.ts';
 import type {DoorHandContact} from './breach-door-hand-contact.ts';
 import type {PhysicalContact} from './breach-physical-contact-anchor.ts';
+import {advanceCoverStances} from './breach-cover-stance.ts';
+import {effectiveEyeHeight,effectiveAimHeight} from './breach-cover-height.ts';
 import {advanceContextualSupportContacts}
  from './breach-contextual-support-contact.ts';
 
@@ -187,6 +189,8 @@ export type TeamActor=Operator & {
   pivotEpisode?:import('./breach-pivot-episode.ts').PivotEpisode|null;
   /** A3.9-K: real-sweep kick-leg choice, visual footstep IK only. */
   kickFoot?:0|1|null;
+  /** A3.9: fixed-step cover-matched height relative to authored posture. */
+  coverStanceDrop?:number;coverStanceSource?:string|null;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
   /** Rate-limit physical clutter nudges and scene rebuilds. */
   lastAutoShoveAt:number;
@@ -1246,7 +1250,8 @@ export function geometricallyVisible(a:TeamActor,b:TeamActor,s:Session){
     s.objectRevision+'/'+sessionWorldGeometry(s).revision,s.doors,()=>
       !exposure(a.p,b.p,s.doors,
         b.posture==='crouch',a.posture==='crouch',true,
-        sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover).blocked);
+        sessionWorldGeometry(s).walls,sessionWorldGeometry(s).cover,
+        effectiveEyeHeight(a),effectiveAimHeight(b)).blocked);
 }
 /** Confirmed vision is acquired over simulated time; rendering never grants sight. */
 export function inSight(a:TeamActor,b:TeamActor,s:Session){
@@ -1642,6 +1647,7 @@ const simulationPhasePort:SimulationPhasePort={
  motion:(s,h,origins,profile)=>advanceSimulationMotion(s,h,origins,motionSimulationPhasePort,profile),
  contacts:s=>{
   resolveCloseContact(s);
+  advanceCoverStances(s);
   advanceContextualSupportContacts(s);
  },
  reports:s=>runEnemyAi.distributeReports(s),
