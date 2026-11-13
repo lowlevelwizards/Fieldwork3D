@@ -159,6 +159,8 @@ export type WeaponFit={
 };
 export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
  configuration?:WeaponConfiguration;
+  /** A3.2 fixed-step, shooter-owned lateral weapon/shoulder accommodation. */
+  shoulderOffset?:number;
   /** Fire direction in chest-local space. */
   yaw:number;recoil:number;aimBlend?:number;
   swayYaw?:number;swayPitch?:number;
@@ -177,7 +179,22 @@ export type WeaponPoseInput={weapon:WeaponId;handling:Handling;
  * maths: allocating dozens of vectors per actor per render caused mobile GC
  * spikes. Only the winning solution becomes Three.js geometry.
  */
+/** The *same* rigid muzzle/stock/grips move as one fitted assembly.
+ * Rendering, contact IK and shot-time muzzle all use this wrapper.
+ * A3.2's few-centimeter translation never authorizes an unsafe shot.
+ */
 export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
+ const fit=fitWeaponPoseBase(input);
+ const offset=Math.max(-3.2,Math.min(3.2,input.shoulderOffset??0));
+ if(Math.abs(offset)<.0001)return fit;
+ return {...fit,
+  origin:fit.origin.clone().add(new THREE.Vector3(0,0,offset)),
+  stock:fit.stock.clone().add(new THREE.Vector3(0,0,offset)),
+  primary:fit.primary.clone().add(new THREE.Vector3(0,0,offset)),
+  support:fit.support.clone().add(new THREE.Vector3(0,0,offset))
+ };
+}
+function fitWeaponPoseBase(input:WeaponPoseInput):WeaponFit{
   // User-authored M4A1/AKM pose family. All physical weapon builds have
   // one cached underarm tuck, derived from their *real* grip sockets.
   // Retain the one true rigid weapon transform for rendering and firing.
@@ -186,7 +203,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     const phase=authoredShortPhase(input.shortCompression);
     const source=input.shortFrom&&input.shortFrom!=='short'?
       input.shortFrom:'ready';
-    const from=fitWeaponPose({...input,handling:source,
+    const from=fitWeaponPoseBase({...input,handling:source,
       shortCompression:undefined,clearanceRetraction:0,
       blendFrom:undefined,blendSnapshot:undefined,blendAlpha:undefined});
     if(phase<=0)return {...from,handling:'short'};
@@ -233,7 +250,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
     const from=input.blendSnapshot??fitWeaponPose({...input,
       handling:input.blendFrom!,blendFrom:undefined,
       blendSnapshot:undefined,blendAlpha:undefined});
-    const to=fitWeaponPose({...input,blendFrom:undefined,
+    const to=fitWeaponPoseBase({...input,blendFrom:undefined,
       blendSnapshot:undefined,blendAlpha:undefined});
     const t=clamp(input.blendAlpha,0,1);
     const origin=from.origin.clone().lerp(to.origin,t);
