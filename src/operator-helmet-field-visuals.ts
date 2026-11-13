@@ -121,59 +121,86 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   }
  }
  const shroud=addGroup('shroud');
- box(shroud,metal,id==='pasgt'?'period-nvg-plate':'front-nvg-shroud',
-  0,p.top-1.62,front-.42,2.25,1.62,.56);
- box(shroud,dark,'shroud-lower-slot',0,p.top-2.0,front-.77,1.14,.40,.32);
+ // Sculpted shallow shield with inset receiver; never a free-standing block.
+ plate(shroud,metal,id==='pasgt'?'period-bracket':'tapered-nvg-shroud',
+  [[-1.04,.70],[1.04,.70],[1.14,.16],[.78,-.71],
+   [-.78,-.71],[-1.14,.16]],0,p.top-1.79,front-.39);
+ plate(shroud,dark,'nvg-interface',
+  [[-.43,.16],[.43,.16],[.39,-.32],[-.39,-.32]],
+  0,p.top-1.86,front-.43);
  const rails=addGroup('rails');
  for(const sign of [-1,1]){
-  box(rails,metal,'side-rail',sign*(side+.38),p.top-2.45,0,.65,.63,4.1);
-  for(const z of [-1.2,0,1.2])
-   box(rails,dark,'rail-slot',sign*(side+.71),p.top-2.18,z,.16,.25,.65);
+  plate(rails,metal,'tapered-side-rail',
+   [[-1.84,-.27],[-1.48,.38],[1.50,.38],[1.91,-.24],
+    [1.50,-.47],[-1.48,-.47]],
+   sign*(side+.15),p.top-2.33,.05,sign*Math.PI/2);
+  for(const z of [-.96,0,.96])
+   plate(rails,dark,'rail-receiver-slot',
+    [[-.16,-.15],[.16,-.15],[.16,.14],[-.16,.14]],
+    sign*(side+.18),p.top-2.25,z,sign*Math.PI/2);
  }
  const bungees=addGroup('bungees');
  for(const sign of [-1,1]){
-  segment(bungees,olive,'bungee-retainer',
-   [sign*2.3,p.top+.06,front+.58],
-   [sign*(side+.12),p.top-1.2,.75],.15);
+  const route:[[number,number,number],...[number,number,number][]]=[
+   [sign*.85,p.top-1.37,front-.31],
+   [sign*2.40,p.top-.05,front+.44],
+   [sign*(side+.1),p.top-.89,-.55]];
+  for(let i=1;i<route.length;i++)
+   segment(bungees,olive,'tensioned-bungee',route[i-1],route[i],.13);
  }
  const velcroGroup=addGroup('velcro');
- box(velcroGroup,velcro,'velcro-top',0,p.top+.10,-.8,3.25,.12,2.5);
- for(const sign of [-1,1])box(velcroGroup,velcro,'velcro-side',
-  sign*(side+.30),p.top-2.40,1.75,.12,1.25,1.95);
- box(velcroGroup,velcro,'velcro-back',0,p.top-2.2,rear+.22,3.3,1.2,.12);
+ plate(velcroGroup,velcro,'thin-crown-velcro',
+  [[-1.14,-.68],[1.14,-.68],[1.14,.68],[-1.14,.68]],
+  0,p.top+.17,-.85,-Math.PI/2);
+ for(const sign of [-1,1])
+  plate(velcroGroup,velcro,'thin-side-velcro',
+   [[-.79,-.46],[.79,-.46],[.79,.46],[-.79,.46]],
+   sign*(side+.15),p.top-1.97,1.60,sign*Math.PI/2);
+ plate(velcroGroup,velcro,'thin-rear-velcro',
+  [[-1.24,-.46],[1.24,-.46],[1.24,.46],[-1.24,.46]],
+  0,p.top-1.92,rear+.17);
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
-  const g=addGroup(key),eyes=key==='goggles-eyes';
-  const back=key==='goggles-rear';
-  const y=eyes?2.18:p.top-1.9,z=eyes?-4.98:back?rear+.48:front-.55;
-  for(const sign of [-1,1]){
-   box(g,dark,'goggle-rubber-frame',sign*1.12,y,z,2.02,1.34,.78);
-   box(g,glass,'goggle-lens',sign*1.12,y,z+(back?.43:-.43),1.51,.83,.15);
-  }
-  box(g,dark,'goggle-bridge',0,y,z,.46,.53,.72);
+  const g=addGroup(key),back=key==='goggles-rear',eyes=key==='goggles-eyes';
+  // The approved D2 goggle silhouette, not two independent dark cubes.
+  const pose=createD2GoggleFieldPose(dark,glass,webbingMaterial);
+  pose.name='approved-d2-goggle-pose';
+  if(back){pose.rotation.y=Math.PI;pose.position.set(0,p.top-6.78,rear-5.74);}
+  else if(eyes)pose.position.set(0,0,0);
+  else pose.position.set(0,p.top-6.78,front+5.70);
+  pose.traverse(o=>{if(o instanceof THREE.Mesh){
+   o.castShadow=false;o.receiveShadow=false;
+  }});
+  g.add(pose);
   const sleeve=new THREE.Group();sleeve.name='goggle-fabric-sleeve';
-  box(sleeve,tan,'goggle-sleeve-wrap',0,y,z+(back?.70:-.70),
-   4.52,1.56,.27);
+  sleeve.visible=false;
+  plate(sleeve,tan,'flat-goggle-cloth-sleeve',
+   [[-3.45,-.66],[3.45,-.66],[3.45,.66],[-3.45,.66]],
+   0,p.top-2.9,back?rear+.49:front-.66,back?Math.PI:0);
   g.add(sleeve);
  }
  const strobe=addGroup('strobe');
- box(strobe,dark,'ir-strobe-base',0,p.top+.26,rear-1.05,1.35,.45,1.07);
- box(strobe,reflect,'ir-strobe-cap',0,p.top+.53,rear-1.05,1.0,.18,.76);
+ box(strobe,dark,'strobe-low-mount',0,p.top+.16,rear-1.06,1.02,.24,.79);
+ box(strobe,reflect,'strobe-shielded-cap',0,p.top+.32,rear-1.06,.73,.13,.55);
  const counterweight=addGroup('counterweight');
- box(counterweight,dark,'counterweight-pouch',0,p.top-2.35,rear+.59,3.2,1.6,.8);
+ box(counterweight,dark,'nape-counterweight-pouch',0,p.top-2.44,rear+.32,2.65,1.15,.49);
  const battery=addGroup('battery');
- box(battery,dark,'battery-pack',2.6,p.top-2.1,rear+.48,1.7,1.5,.80);
- box(battery,metal,'battery-latch',2.6,p.top-1.5,rear+.85,1.0,.26,.20);
+ box(battery,dark,'compact-battery',2.25,p.top-2.26,rear+.27,1.32,.92,.50);
+ box(battery,metal,'battery-latch',2.25,p.top-1.81,rear+.53,.75,.15,.14);
  const light=addGroup('light');
- box(light,metal,'side-task-light',side+.67,p.top-2.18,front+1.7,1.1,.88,1.5);
- box(light,reflect,'task-light-lens',side+.67,p.top-2.18,front+.83,.68,.58,.25);
+ box(light,metal,'compact-task-light',side+.19,p.top-2.13,front+1.35,.67,.70,1.11);
+ box(light,reflect,'task-light-lens',side+.19,p.top-2.13,front+.76,.42,.43,.12);
  const camera=addGroup('camera');
- box(camera,dark,'helmet-camera',side+.59,p.top-1.85,-.80,.94,1.04,1.62);
- box(camera,glass,'camera-lens',side+.59,p.top-1.85,-1.70,.65,.66,.21);
+ box(camera,dark,'mini-helmet-camera',side+.18,p.top-1.82,-.65,.64,.73,1.07);
+ box(camera,glass,'forward-camera-lens',side+.18,p.top-1.82,-1.25,.43,.43,.12);
  const chemlight=addGroup('chemlight');
- box(chemlight,reflect,'field-chemlight',-2.3,p.top+.24,rear-.72,.46,.44,2.0);
+ box(chemlight,reflect,'secured-chemlight',-2.10,p.top+.16,rear-.69,.28,.28,1.48);
  const patches=addGroup('patches');
- box(patches,velcro,'identifier-panel',-side-.38,p.top-2.48,1.68,.15,1.18,2.18);
- box(patches,reflect,'identifier-mark',-side-.51,p.top-2.48,1.68,.10,.47,1.02);
+ plate(patches,velcro,'flat-identifier-panel',
+  [[-.88,-.45],[.88,-.45],[.88,.45],[-.88,.45]],
+  -side-.16,p.top-2.40,1.69,-Math.PI/2);
+ plate(patches,reflect,'short-identifier-mark',
+  [[-.42,-.15],[.42,-.15],[.42,.15],[-.42,.15]],
+  -side-.19,p.top-2.40,1.69,-Math.PI/2);
  // Pre-merge only static groups; invisible groups cost no render work.
  for(const g of Object.values(modules))consolidateVisualGroup(g);
  return {root,shell:id,modules,bandMaterial,webbingMaterial,leaves};
