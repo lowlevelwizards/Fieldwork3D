@@ -1506,6 +1506,13 @@ function renderMaterials(){
    const printRow=row(simpleAchMich?'ACH / MICH COVER CAMOUFLAGE':
     'COMPATIBLE HEADGEAR PRINTS',simpleAchMich?
     'Only the fabric receives camouflage; the painted shell remains solid.':undefined);
+   if(simpleAchMich){
+    const base=document.createElement('div');base.className='material-row';
+    base.append(makeButton('PLAIN FABRIC',!w.headwearCamo,()=>changeWardrobe({
+     ...current(),headwearCamo:undefined
+    })));
+    printRow.append(base);
+   }
    addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
     changeWardrobe({...current(),headwearCamo:id,
      // An H1 helmet print always belongs to a physical cover, not bare resin.

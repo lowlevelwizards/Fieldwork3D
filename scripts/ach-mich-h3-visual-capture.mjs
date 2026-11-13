@@ -73,6 +73,14 @@ try{
    await page.locator('.material-group')
     .filter({hasText:'One fitted fabric cover or an exposed painted shell.'})
     .locator('select').selectOption('fitted');
+   const plain=page.locator('.material-group')
+    .filter({hasText:'Only the fabric receives camouflage'})
+    .getByRole('button',{name:'PLAIN FABRIC'});
+   await plain.click();
+   if(await plain.getAttribute('aria-pressed')!=='true')
+    throw Error('Plain fabric should be the active cover finish '+id);
+   if(await materialTab.getAttribute('aria-pressed')!=='true')
+    throw Error('Plain fabric selection left material tab '+id);
    for(const view of ['front','side','back'])
     await capture(id+'-plain-'+view,view);
    const section=page.locator('.material-group')
