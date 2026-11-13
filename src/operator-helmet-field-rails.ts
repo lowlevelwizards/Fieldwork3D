@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
 import {sampleHelmetCover,type HelmetSurfaceFrame}
  from './operator-helmet-surface.ts';
-import {achMichHemY} from './operator-ach-mich-details.ts';
+import {achMichHemY,achMichProfile} from './operator-ach-mich-details.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 
@@ -24,7 +24,11 @@ const railFrame=(shell:AchMichCoverShell,side:Side,u:number,rise=0):
  const p=HELMET_MOUNT_PROFILES[shell];
  const z=u*(p.rear-p.front)*.40+(p.front+p.rear)*.50;
  const low=achMichHemY(shell,z);
- const y=clamp(p.top-2.40+rise,low+.66,p.top-.68);
+ // A rail is one manufactured connector spanning the ear cut. It cannot
+ // dip into an open MICH-2002 ear window at each changing hem station.
+ const highestCut=Math.max(...achMichProfile(shell).hem.map(v=>v[1]));
+ const baseY=Math.max(p.top-2.43,highestCut+.51);
+ const y=clamp(baseY+rise,low+.52,p.top-.68);
  const v=clamp(2*(y-low-.38)/(p.top-low-.45)-1,-.58,.69);
  for(const uu of [u,u*.94,u*.84])
   for(const vv of [v,v+.11,v-.10,v+.23,v-.20,.25,.40]){
