@@ -23,8 +23,8 @@ function bandFrame(shell:AchMichCoverShell,region:Section['region'],
  for(const uu of [u,u*.94,u*.85])
   for(let i=0;i<=20;i++){
    const v=-.78+i*.078;
-   const frame=covered?sampleHelmetCover(shell,region,uu,v,.37):
-    sampleHelmetShell(shell,region,uu,v,.29);
+   const frame=covered?sampleHelmetCover(shell,region,uu,v,.10):
+    sampleHelmetShell(shell,region,uu,v,.085);
    if(!frame)continue;
    const distance=Math.abs(frame.position.y-target)+Math.abs(uu-u)*.35;
    if(distance<score){score=distance;selected=frame;}
@@ -47,12 +47,12 @@ export function createAchMichSurfaceBandGeometry(
  // put the top and bottom halves back inside sloped facets.
  const edge=(f:HelmetSurfaceFrame,sign:number,corner:boolean)=>{
   const p=f.position.clone().addScaledVector(f.up,sign*.35)
-   .addScaledVector(f.normal,.16);
+   .addScaledVector(f.normal,.028);
   if(corner){
    // A straight chord between orthogonal panels cuts into the corner.
    // Pull the elbow outward so front/side/rear transitions remain proud.
    const radial=new THREE.Vector3(p.x,0,p.z).normalize();
-   p.addScaledVector(radial,.34);
+   p.addScaledVector(radial,.085);
   }
   return p;
  };
@@ -71,8 +71,9 @@ export function createAchMichSurfaceBandGeometry(
  geometry.userData.h10BandStations=frames.length;
  geometry.userData.h10BandTargetY=target;
  geometry.userData.h5SurfaceMode=covered?'cover':'shell';
- geometry.userData.h58EdgeClearance=.16;
- geometry.userData.h58CornerClearance=.34;
+ geometry.userData.h58EdgeClearance=.028;
+ geometry.userData.h58CornerClearance=.085;
+ geometry.userData.h67CloseFit=true;
  bandGeometryByShell.set(key,geometry);
  return geometry;
 }
