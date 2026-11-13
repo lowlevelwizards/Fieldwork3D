@@ -35,6 +35,6 @@ try{
   }))});
  }
  console.log(JSON.stringify({kind:'Q2 independent schedule',slots:[...schedule],
-  checkpoints,decisionSamples:events},null,2));
+  checkpoints,decisionSamples:events,events:s.events},null,2));
  listenQueueDecision(s,null);
 }finally{activateSite(null);}
