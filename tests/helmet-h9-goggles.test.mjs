@@ -41,3 +41,15 @@ test('H9.5: eye-worn D2 keeps approved band without a duplicate helmet strap',()
  updateHelmetFieldLayers(kit,{goggles:'eyes',goggleSleeve:true},0x67745b,true);
  assert.equal(g.getObjectByName('goggle-fabric-sleeve')?.visible,false);
 });
+
+test('H9.5: historical PASGT retains D2 goggles but uses the fitted sleeve',()=>{
+ const kit=createHelmetFieldLayers(new THREE.Group(),'pasgt');
+ const g=kit.modules['goggles-rear'];
+ assert.ok(g.getObjectByName('approved-d2-goggle-pose'));
+ const sleeve=g.getObjectByName('goggle-fabric-sleeve');
+ assert.ok(sleeve);
+ assert.equal(sleeve.userData.h9HousingFitted,true);
+ assert.ok(sleeve.getObjectByName('fitted-sleeve-folded-cloth'));
+ updateHelmetFieldLayers(kit,{goggles:'rear',goggleSleeve:true},0x687253,true);
+ assert.equal(sleeve.visible,true);
+});
