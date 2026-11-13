@@ -23,7 +23,8 @@ const run=(scenario,ticks=12,extra={})=>{
 test('A3.0 contains all fixture families and one isolated actual Breach session',()=>{
  assert.deepEqual(A3_SCENES.map(x=>x.id),[
   'clear','rear-stack','offset-left','offset-right',
-  'mixed-crouch','crossing','doorway','furniture']);
+  'mixed-crouch','crossing','doorway','furniture',
+  'brace-wall','brace-cover','brace-frame','stack-shoulder']);
  for(const entry of A3_SCENES){
   const cfg=config(entry.id,{seed:31063,operators:4});
   const site=a3Fixture(cfg),s=createA3Session(cfg);
