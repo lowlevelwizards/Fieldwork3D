@@ -1,0 +1,58 @@
+name: Release C C0-C3 — Tactical World Foundation
+on:
+  pull_request:
+    paths:
+      - 'src/breach-core.ts'
+      - 'src/breach-site.ts'
+      - 'src/breach-session-factory.ts'
+      - 'src/breach-order-interactions.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-replay.ts'
+      - 'src/worldgen/site-object-identity.ts'
+      - 'src/worldgen/tactical-layout-selection.ts'
+      - 'src/worldgen/room-furnishing.ts'
+      - 'src/worldgen/tactical-furnishing-evaluator.ts'
+      - 'tests/release-c-*.test.mjs'
+      - 'scripts/audit-release-c0.mjs'
+      - '.github/workflows/release-c-tactical-world.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-c-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  foundation:
+    name: Physical identity, tactical maps, furnishings and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Critical C0-C3 and adjacent engine regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-c-c1-prop-identity.test.mjs \
+            tests/release-c-c2-tactical-layout.test.mjs \
+            tests/release-c-c3-furnishing-performance.test.mjs \
+            tests/mission-topology-r4.test.mjs \
+            tests/mission-furnishing-r7b.test.mjs \
+            tests/breach-roadmap2-stage12-world-context.test.mjs \
+            tests/lw-interaction-orders.test.mjs \
+            tests/lw-replay-world.test.mjs \
+            tests/replay-prop-stability-20261108.test.mjs \
+            tests/breach-roadmap2-stage10-combat.test.mjs \
+            tests/worldgen-29a-quality-matrix.test.mjs
+      - name: Deterministic 33-site real map baseline
+        run: node --experimental-strip-types scripts/audit-release-c0.mjs release-c0-matrix.json
+      - name: Production TypeScript and Vite build
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: release-c0-map-matrix
+          path: release-c0-matrix.json
+          if-no-files-found: ignore
