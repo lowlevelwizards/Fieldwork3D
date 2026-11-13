@@ -80,6 +80,7 @@ export function createBreachRuntimeLoop(config:BreachRuntimeLoopHooks){
  let last=performance.now(),accum=0,hudAt=0,running=false,frameQueued=false;
  let previousRenderActors:Record<string,RenderActor>|null=null;
  let previousRenderDoors:Record<string,number>|null=null;
+ let profiledStage:TacticalScene3D|null=null;
 
 const awarenessParam=config.boot.awareness;
 const awarenessPanel=awarenessParam!==null?
@@ -120,6 +121,8 @@ function setProfilerOpen(open:boolean):boolean{
   document.body.append(perfOverlay);
   frameMeter=new FrameMeter();
   setSightDiagnosticsEnabled(true);
+  // Activate full scene phase attribution immediately, even in a normal URL.
+  config.getStage()?.setPerformanceProfilingEnabled(true);
   previousPerfJs=previousCoarseJs;
   previousPerfMode=previousCoarseMode;
  }
@@ -179,6 +182,12 @@ function tick(now:number){
     replayDirector=replayCamera.director,replayKnowledge=config.knowledge,
     replayBodycam=config.bodycam,replayQuickVideo=config.video,
     audioController=config.audio,canvas=config.canvas;
+  // A new map can install its own scene after PERF was armed. Configure
+  // that scene once; never re-arm or allocate during each steady RAF.
+  if(stage!==profiledStage){
+   stage?.setPerformanceProfilingEnabled(!!perfOverlay);
+   profiledStage=stage;
+  }
   const frameMode=runtimeFrameMode({mode:campaignMode,
     quickPlayBusy:config.isQuickPlayBusy(),replaying,phase:state.phase});
   if(perfTimeline&&perfTimelineSession!==state){
