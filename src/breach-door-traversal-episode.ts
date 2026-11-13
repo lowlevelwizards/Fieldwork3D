@@ -73,9 +73,8 @@ export function syncDoorTraversalEpisode(
   let door:Door|undefined;
   for(const d of doors)if(d.id===episode.doorId){door=d;break;}
   if(!door){actor.doorTraversal=null;return null;}
-  // A hand grip is true only on the physical contact tick; without a
-  // fresh reachable panel contact there is no invisible remote holding.
-  episode.handContact=false;
+  // D4 retains a physical support-hand attachment while the world
+  // and hand-availability checks in the authoritative door phase pass.
   if(squared(actor.p,episode.lastPosition)>2.25){
    episode.lastPosition={...actor.p};
    episode.lastProgressAt=seconds;
