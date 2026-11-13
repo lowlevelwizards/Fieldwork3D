@@ -30,9 +30,11 @@ test('H5: the fitted cover has one continuous diagonal, no old inward ramp',()=>
   assert.ok(front>=12&&rear>=12,id+' fitted front/rear geometry absent');
  }
  const source=readFileSync(new URL('../src/operator-wardrobe-head-visuals.ts',import.meta.url),'utf8');
- // H8 retains the shell as a backing to the thin double-sided drape,
- // preventing the open underside seen in the field screenshots.
- assert.match(source,/hardShell.visible=true/);
+ // H9 draws only the inward liner beneath fitted cover fabric, never
+ // the painted exterior that otherwise bleeds through the cloth.
+ assert.match(source,/addInwardBacking\(shell\)/);
+ assert.match(source,/child\.userData\.achMichInterior===true/);
+ assert.doesNotMatch(source,/hardShell\.visible=true/);
  assert.match(source,/achMichBareShell=true/);
 });
 

@@ -7,7 +7,8 @@ import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
  type FieldHelmet} from './operator-helmet-field-policy.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
-import {PASGT_LEAF_CLUSTERS,createPasgtScrimRibbonGeometry} from './operator-pasgt-field-dress.ts';
+import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
+import {createAchMichFieldNetGeometry} from './operator-helmet-field-net.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
@@ -72,37 +73,18 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   [-x,y,f+.60],[-x*.8,y,f],[0,y,f],[x*.8,y,f],
   [x,y,f+.60],[x,y,b-.60],[x*.8,y,b],[0,y,b],
   [-x*.8,y,b],[-x,y,b-.60],[-x,y,f+.60]],.52);
- const loops=addGroup('loops');
- for(const sign of [-1,1])for(const z of [-3.0,0,2.6])
-  plate(loops,olive,'cloth-foliage-loop',
-   [[-.65,-.13],[.65,-.13],[.65,.13],[-.65,.13]],
-   sign*(side+.12),p.top-1.55,z,sign*Math.PI/2);
- const scrim=addGroup('scrim'),leaves=addGroup('leaves');
- for(let i=0;i<10;i++){
-  const sign=i%2?1:-1,z=-3.3+(i%5)*1.65;
-  const px=sign*(side+.18),py=p.top-1.42+(i%3)*.2;
-  // Identical PASGT authored silhouette, only attachment transform differs.
-  const leaf=new THREE.Mesh(PASGT_LEAF_CLUSTERS[i%3],i%3?olive:tan);
-  leaf.name='pasgt-derived-foliage';leaf.position.set(px,py,z);
-  leaf.rotation.y=sign*Math.PI/2;leaf.rotation.z=(i%3-1)*.14;
-  leaf.scale.setScalar(.87);leaf.castShadow=false;leaf.receiveShadow=false;
-  leaf.userData.keepSeparate=true;leaves.add(leaf);
-  const cloth=new THREE.Mesh(createPasgtScrimRibbonGeometry(i),i%3?olive:tan);
-  cloth.name='pasgt-derived-folded-scrim';cloth.position.set(px,py,z);
-  cloth.rotation.y=sign*Math.PI/2;cloth.rotation.z=(i%3-1)*.12;
-  cloth.scale.setScalar(.78);cloth.castShadow=false;cloth.receiveShadow=false;
-  scrim.add(cloth);
- }
+ const loops=addGroup('loops'),scrim=addGroup('scrim'),
+  leaves=addGroup('leaves');
+ // H9.2: populate from the ACTUAL fitted cloth surface. The PASGT
+ // renderer continues owning its independently approved field dress.
+ if(id!=='pasgt')addAchMichConcealment(id,loops,scrim,leaves,olive,tan);
  const net=addGroup('net');
- for(const sign of [-1,1])for(let i=0;i<3;i++){
-  const z=-2.4+2.4*i;
-  const route:[[number,number,number],...[number,number,number][]]=[
-   [-x,y,z-sign],[-x,p.top-.78,z-sign],
-   [-x*.55,p.top+.14,z-sign*.52],[0,p.top+.16,z],
-   [x*.55,p.top+.14,z+sign*.52],
-   [x,p.top-.78,z+sign],[x,y,z+sign]];
-  for(let j=1;j<route.length;j++)
-   segment(net,olive,'crown-draped-net',route[j-1],route[j],.13);
+ if(id!=='pasgt'){
+  const mesh=new THREE.Mesh(createAchMichFieldNetGeometry(id),olive);
+  mesh.name='ach-mich-h9-shell-wrapped-diamond-net';
+  mesh.castShadow=false;mesh.receiveShadow=false;net.add(mesh);
+  net.userData.h9NetCordCount=6;
+  net.userData.h9SurfaceDraped=true;
  }
  const dangling=addGroup('unfastened');
  // The same anchored PASGT/ACH webbing is separated at its lower buckle.
