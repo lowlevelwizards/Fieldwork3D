@@ -83,11 +83,12 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
   (s.x/style.topX)*style.sideX;
  const frontWeight=isSide?clamp((style.topFront+1.5-s.z)/1.5):1;
  const rearWeight=isSide?clamp((s.z-(style.topRear-1.5))/1.5):1;
+ const shoulderFront=style.topFront-.17,shoulderRear=style.topRear+.17;
  const z=ring==='top'?s.z:
-  front?ring==='shoulder'?style.topFront-.17:style.front:
-  rear?ring==='shoulder'?style.topRear+.17:style.rear:
-  s.z+(style.front-style.topFront)*frontWeight+
-   (style.rear-style.topRear)*rearWeight;
+  front?ring==='shoulder'?shoulderFront:style.front:
+  rear?ring==='shoulder'?shoulderRear:style.rear:
+  s.z+((ring==='shoulder'?shoulderFront:style.front)-style.topFront)*frontWeight+
+   ((ring==='shoulder'?shoulderRear:style.rear)-style.topRear)*rearWeight;
  const y=ring==='top'?style.topY:
   ring==='shoulder'?style.shoulderY:
   ring==='ramp'?style.rampY:
