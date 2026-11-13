@@ -90,6 +90,7 @@ import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
+import {entryToolVerdict} from './breach-entry-tools.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {doorGripPhysicalContact} from './breach-physical-contact-anchor.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
@@ -1978,6 +1979,19 @@ export class TacticalScene3D{
         doorGripPhysicalContact(physicalGrip.doorId,doorGrip,
           doorLeafSegment(gripDoor),actor.p):
         actor.physicalContact??undefined;
+      // A3.8-L: the actual simulation keyway anchor is the lockpick clock.
+      // Replaying a recorded frame samples this same contact timestamp;
+      // no rendering-only progress state can invent an unlock.
+      const lockpickActive=physicalContact?.intent==='tool'&&
+        physicalContact.releasedAt===null&&
+        actor.plan[0]?.kind==='tool'&&
+        actor.plan[0].toolMethod==='pick';
+      const lockpickDoor=lockpickActive?s.doors.find(d=>
+        d.id===actor.plan[0]?.doorId):undefined;
+      const lockpickProgress=lockpickActive?
+        Math.max(0,Math.min(1,(s.seconds-physicalContact.startedAt)/
+          Math.max(.1,lockpickDoor?
+            entryToolVerdict(lockpickDoor,'pick').seconds:1.5))):0;
       const threat=actor.targetId?
         s.operators.find(o=>o.id===actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
@@ -2018,7 +2032,8 @@ export class TacticalScene3D{
         weapon:actor.weapon,
          weaponConfiguration:actor.weaponConfiguration,
         equipment:actor.equipment,aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
-        posture:actor.posture,threatRange,friendlyNear:friendlyAhead,
+        posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,
+        threatRange,friendlyNear:friendlyAhead,
         friendlyAhead:actuallyAhead,handlingIntent
       },s.doors,undefined,undefined,nearbyAllies);
       const lightOn=!!actor.weaponLightOn&&actor.health>0&&
@@ -2101,13 +2116,6 @@ export class TacticalScene3D{
          weaponLightOn:actor.weaponLightOn,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
-        lockpickActive:actor.plan[0]?.kind==='tool'&&
-          actor.plan[0]?.toolMethod==='pick'&&actor.actionTimer>0,
-        lockpickProgress:actor.plan[0]?.kind==='tool'&&
-          actor.plan[0]?.toolMethod==='pick'?
-          Math.min(1,actor.actionTimer/Math.max(.1,
-            (actor.lastDoorId?s.doors.find(d=>d.id===actor.lastDoorId):null)?.
-             style==='reinforced'?8.5:5.5)):0,
         interactionCrouch:actor.treatmentActive?
           Math.min(1,Math.max(0,(s.seconds-actor.lastTreatmentAt)/.38)):
           actor.plan[0]?.kind==='tool'&&actor.plan[0]?.toolMethod==='pick'&&
@@ -2137,7 +2145,8 @@ export class TacticalScene3D{
         pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id]??
           liveMotion?.travelYaw[actor.id],
-        posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
+        posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,
+        injury:actor.injuryStage,weapon:actor.weapon,
         gait:actor.squeeze?'squeeze':
           actor.plan[0]?.kind==='pie'?'pie':
           actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
@@ -2149,6 +2158,7 @@ export class TacticalScene3D{
         lastThrowAt:actor.lastThrowAt,lastDoorAt:actor.lastDoorAt,
         lastBashAt:actor.lastBashAt,bashRole:actor.lastBashRole,
         doorMethod:actor.lastDoorMethod,kickFoot:actor.kickFoot,
+        lockpickActive,lockpickProgress,
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
