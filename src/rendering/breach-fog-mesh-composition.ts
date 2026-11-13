@@ -5,42 +5,46 @@
 import * as THREE from 'three';
 import {W,H} from '../breach-core.ts';
 import type {Site,WorldBounds} from '../breach-site.ts';
-import {fogUvAt} from '../breach-fog-domain.ts';
+import {exteriorKnownFogRects,fogUvAt} from '../breach-fog-domain.ts';
 
 export function tacticalFogBounds(site:Site|null):WorldBounds{
   return site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
 }
 
-/** Exterior Known uses the SAME world-aligned mask as the 2D renderer.
- * The canvas already erases reachable exterior and preserves indoor rooms and
- * enclosed courts. A second room-rectangle geometry clipping pass can leave
- * missing fog patches wherever the two spatial classifications disagree
- * (notably at open U-shaped shipping courts and connected floor modules).
- * One physical ground quad lets the authoritative DISPLAY alpha decide.
- * This never changes optical LOS, ground discovery, or tactical intelligence.
+/** In Exterior Known, no 3D triangle exists above publicly accessible lawn,
+ * sidewalk or open courtyard. The mesh and paint use ONE cached site footprint
+ * (room union plus genuinely enclosed courts); the shared texture still owns
+ * actual sight, exploration, fog tint and tactical disclosure. This prevents
+ * a rectangular outdoor slab even if the canvas is repainted during a swap.
+ * Construction happens only when a site changes, never per frame.
  */
 export function buildExteriorKnownFogGeometry(
   site:Site|null,bounds:WorldBounds=tacticalFogBounds(site)
 ):THREE.BufferGeometry{
-  const positions:number[]=[],uvs:number[]=[];
+  const positions:number[]=[],uvs:number[]=[],indices:number[]=[];
   if(site){
-    const corners=[
-      {x:bounds.minX,y:bounds.minY},
-      {x:bounds.minX,y:bounds.maxY},
-      {x:bounds.maxX,y:bounds.maxY},
-      {x:bounds.maxX,y:bounds.minY}
-    ];
-    for(const p of corners){
-      positions.push(p.x,1.05,p.y);
-      const uv=fogUvAt(p,bounds);
-      uvs.push(uv.u,uv.v);
+    for(const rect of exteriorKnownFogRects(site)){
+      const offset=positions.length/3;
+      const corners=[
+        {x:rect.x,y:rect.y},
+        {x:rect.x,y:rect.y+rect.h},
+        {x:rect.x+rect.w,y:rect.y+rect.h},
+        {x:rect.x+rect.w,y:rect.y}
+      ];
+      for(const p of corners){
+        positions.push(p.x,1.05,p.y);
+        const uv=fogUvAt(p,bounds);
+        uvs.push(uv.u,uv.v);
+      }
+      indices.push(offset,offset+1,offset+2,
+        offset,offset+2,offset+3);
     }
   }
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
-  geometry.setIndex(site?[0,1,2,0,2,3]:[]);
-  if(site)geometry.computeVertexNormals();
+  geometry.setIndex(indices);
+  if(positions.length)geometry.computeVertexNormals();
   return geometry;
 }
 
