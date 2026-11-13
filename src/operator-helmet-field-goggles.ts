@@ -61,14 +61,12 @@ const sample=(shell:AchMichCoverShell,region:'left'|'right'|'front'|'back',
  return best;
 };
 function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
- placement:'front'|'rear',elastic:THREE.Material,metal:THREE.Material){
+ placement:'front'|'rear',elastic:THREE.Material){
  const p=HELMET_MOUNT_PROFILES[shell];
  // Shift retention below the narrow elastic band while respecting the
  // MICH ear cutout; the outboard layer stays above rather than clipping it.
  const y=p.top-3.24;
  const front=placement==='front';
- const nearZ=front?p.front-1.08:p.rear+1.08;
- const begin=front?-.73:.74,finish=-begin;
  const opposite=front?'back':'front';
  const paths:Record<string,number[][]>={};
  for(const covered of [true,false]){
@@ -157,7 +155,7 @@ export function createHelmetFieldGoggleModule(
  if(placement!=='eyes'){
   for(const child of [...pose.children])
    if(/strap/i.test(child.name)){pose.remove(child);}
-  buildRetention(shell,g,placement,elastic,frame);
+  buildRetention(shell,g,placement,elastic);
  }
  g.add(pose);
  const sleeve=createFittedGoggleSleeve(pose,sleeveFabric,frame);
