@@ -7,7 +7,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {resolvePoseContactOwners,type ContactOwners} from './breach-pose-contacts.ts';
-import {contactWithinReach,contactAllowedByOwners,sameContact,
+import {contactWithinReach,sameContact,
   releasePhysicalContact,selectPhysicalContact,
   type PhysicalContact,type ContactClaim,type ContactPoint3}
  from './breach-physical-contact-anchor.ts';
@@ -15,7 +15,6 @@ import {contactWithinReach,contactAllowedByOwners,sameContact,
 export const SUPPORT_ACQUIRE_REACH=19.6;
 export const SUPPORT_RELEASE_REACH=22.5;
 export const SUPPORT_RELEASE_WINDOW=.31;
-const sq=(x:number)=>x*x;
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clamp=(n:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,n));
 const forward=(h:number):Pt=>({x:Math.cos(h),y:Math.sin(h)});
