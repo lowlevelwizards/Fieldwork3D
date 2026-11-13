@@ -72,3 +72,17 @@ test('Q2 different thresholds own different numbered crossings',()=>{
  // First A crossing is behind (negative signed depth). Next is pending.
  assert.equal(movement(s,a,p(100,66),slots).rank,0);
 });
+
+test('Q2 real occupant cannot bypass the waiting preceding rank',()=>{
+ const rook=actor('rook',308),moss=actor('moss',266);
+ const ash=actor('ash',241),vale=actor('vale',222);
+ const s=game([rook,moss,ash,vale]);
+ const slots=new Map([
+  ['rook',[slot('rook',0)]],['moss',[slot('moss',1)]],
+  ['ash',[slot('ash',2)]],['vale',[slot('vale',3)]]
+ ]);
+ const waiting=movement(s,vale,p(100,223),slots);
+ assert.equal(waiting.hold,true,
+  'an already-crossing occupant must not bypass rank 2 when rank 3 approaches');
+ assert.deepEqual(waiting.move,vale.p,'a queue HOLD is not a retreat');
+});
