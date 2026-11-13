@@ -11,6 +11,12 @@ on:
       - 'tests/performance-p1-5-*'
       - 'tests/performance-normal-play-20261113.test.mjs'
       - 'tests/performance-p3-replay-civilian.test.mjs'
+      - 'tests/performance-p6-furniture-batching.test.mjs'
+      - 'tests/performance-p7-saved-operator.test.mjs'
+      - 'tests/performance-p8-replay-memory.test.mjs'
+      - 'src/rendering/breach-repeated-fixture-batches.ts'
+      - 'src/rendering/breach-saved-operator-carry-bake.ts'
+      - 'src/breach-replay-sharing.ts'
       - 'src/breach-replay.ts'
       - 'src/rendering/breach-actor-frame-presenter.ts'
       - 'src/rendering/breach-3d-disclosure-presenter.ts'
@@ -47,6 +53,9 @@ jobs:
             tests/performance-p2-2-idle-3d-cadence.test.mjs \
             tests/performance-normal-play-20261113.test.mjs \
             tests/performance-p3-replay-civilian.test.mjs \
+            tests/performance-p6-furniture-batching.test.mjs \
+            tests/performance-p7-saved-operator.test.mjs \
+            tests/performance-p8-replay-memory.test.mjs \
             tests/breach-runtime-loop-step12.test.mjs \
             tests/runtime-perf-diagnostics.test.mjs
       - name: Three-view mobile history UI and execution policy A/B
