@@ -41,7 +41,7 @@ export type CampaignFlowHooks={
  siteSize:HTMLButtonElement;siteSettings:HTMLElement;randomSeed:()=>number;
  resetContract:(job:CampaignState['contracts'][number])=>void;
  launchQuickPlay:()=>void|Promise<void>;
- openReplayLibrary:()=>void;
+ openReplayLibrary:()=>void;openMenuStudio:()=>void;
  openStudio:(id:string)=>void;openArsenal:(id:string)=>void;
  showBriefing:()=>void;
 };
@@ -123,6 +123,7 @@ const campaignScreen=new CampaignScreen({
  continueCampaign:()=>showCampaignHome(),
  quickPlay:()=>{void config.launchQuickPlay();},
  openReplayLibrary:()=>config.openReplayLibrary(),
+ openMenuStudio:()=>config.openMenuStudio(),
  chooseContract:(id)=>{
   if(!model.campaign)return;
   const next=acceptContract(model.campaign,id);
