@@ -11,12 +11,18 @@ import {doorClosingContested} from './breach-door-pressure-frame.ts';
 import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
+import {openerThreatensLeaf,selectOpeningStance}
+ from './breach-door-opening-stance.ts';
 import {completeOrder,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
+// A transient per-actor door-order stance is chosen ONCE, and followed
+// through ordinary swept motor movement until physically reached.
+const openingStances=new WeakMap<TeamActor,{
+ node:number;door:string;point:Pt}>();
 export function createDoorOrderHandler(port:OrderExecutionPort){
  const {pairedLeaves,notify,hear,battleEvent,approach}=port;
  const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
@@ -57,6 +63,34 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
       failCurrentOrder(s,a,n,'DOOR BLOCKED · '+
         (interaction.reason??'UNAVAILABLE').toUpperCase());
       return true;
+    }
+    if(interaction.allowed&&n.method==='open'&&!door.open&&
+       a.actionTimer===0){
+      const previous=openingStances.get(a);
+      let target=previous?.node===n.id&&previous.door===door.id?
+        previous.point:null;
+      if(!target&&openerThreatensLeaf(door,a.p)){
+        const world=sessionWorldGeometry(s);
+        target=selectOpeningStance(door,a.p,
+          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+          s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p));
+        if(target)openingStances.set(a,{
+          node:n.id,door:door.id,point:target});
+      }
+      if(target&&d(a.p,target)>1.5){
+        // A later moving teammate may obstruct the saved pocket. Hold
+        // position rather than recomputing a new sidestep every 60Hz.
+        if(!sweptBodyClear(a.p,target,s.doors,OPERATOR_RADIUS,
+             sessionWorldGeometry(s))||
+           s.operators.some(b=>b!==a&&b.health>0&&
+             d(b.p,target)<OPERATOR_RADIUS*2+1)){
+          a.velocity=0;return true;
+        }
+        clearCurrentOrderIssue(a);
+        approach(a,target,dt,s,.82);
+        return true;
+      }
+      openingStances.delete(a);
     }
     clearCurrentOrderIssue(a);
     const required=n.method==='kick'?KICK_DURATION:
