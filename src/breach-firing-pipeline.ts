@@ -141,7 +141,15 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  const aimYaw=angle(a.p,target.p),range=d(a.p,target.p);
  const clearBody=(candidate:Pt)=>
    sweptBodyClear(a.p,candidate,s.doors,8,sessionWorldGeometry(s))&&
-   people.every(p=>pointToSegment(p,{a:a.p,b:candidate})>=20);
+   people.every(p=>{
+    const start=d(a.p,p),end=d(candidate,p);
+    // A stack may ALREADY be closer than normal comfortable spacing.
+    // Permit a tiny step only when it increases separation throughout
+    // the move; the unchanged physical motor remains the final authority.
+    if(start<20)return end>=start+1&&
+      pointToSegment(p,{a:a.p,b:candidate})>=start-.15;
+    return pointToSegment(p,{a:a.p,b:candidate})>=20;
+   });
  const legalShot=(candidate:Pt)=>{
    const clearance=weaponClearance({
      x:candidate.x,z:candidate.y,heading:a.heading,weaponYaw:aimYaw,
@@ -162,7 +170,11 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
    chooseMuzzleRecoveryStep(a.p,aimYaw,clearBody,legalShot);
  if(!next)return false;
  a.fireRetreatTarget=next;
- a.fireRetreatUntil=s.seconds+1.25;
+ // A few units of foot correction must not inherit the full duration
+ // of an emergency 28-unit sidestep; preserve a deterministic upper bound.
+ const correctionLength=d(a.p,next);
+ a.fireRetreatUntil=s.seconds+Math.max(.55,Math.min(1.25,
+   correctionLength/30+.50));
  a.lastFireRetreatAt=s.seconds;
  a.nav=[];a.retryRouteAt=0;
  return true;
