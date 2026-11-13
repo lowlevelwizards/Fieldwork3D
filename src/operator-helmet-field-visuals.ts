@@ -27,13 +27,6 @@ const box=(g:THREE.Group,m:THREE.Material,name:string,
  o.position.set(x,y,z);o.rotation.z=rz;o.castShadow=false;o.receiveShadow=false;
  g.add(o);return o;
 };
-const segment=(g:THREE.Group,m:THREE.Material,name:string,
- from:readonly [number,number,number],to:readonly [number,number,number],width:number)=>{
- const a=new THREE.Vector3(...from),b=new THREE.Vector3(...to);
- const d=b.clone().sub(a),mid=a.clone().add(b).multiplyScalar(.5);
- const o=box(g,m,name,mid.x,mid.y,mid.z,width,.16,d.length());
- o.quaternion.setFromUnitVectors(new THREE.Vector3(0,0,1),d.normalize());return o;
-};
 // The H8 accessories use thin surface-fitting strips instead of deep blocks.
 const ribbon=(g:THREE.Group,m:THREE.Material,name:string,points:number[][],h:number)=>{
  const a:number[]=[];
