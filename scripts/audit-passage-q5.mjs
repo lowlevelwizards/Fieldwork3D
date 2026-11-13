@@ -33,9 +33,27 @@ for(const {door,approach,program} of cases){
   settledSpacing:row.settledMinSeparation,closeFrames:row.closeFrames,
   doorState:row.doorState
  }));
- if(!row.success&&row.outcome!=='expected-blocked')
+ if(!row.success&&row.outcome!=='expected-blocked'&&
+    row.outcome!=='expected-obstructed')
   console.log('Q5_FAILURE '+JSON.stringify(row));
 }
+const core=rows.filter(r=>r.program==='squad'&&
+ Q5_HINGE_CASES.includes(r.door));
+const baseline=summarizeQ5(core);
+console.log('Q5_CORE_SUMMARY '+JSON.stringify(baseline));
 const summary=summarizeQ5(rows);
 console.log('Q5_SUMMARY '+JSON.stringify(summary));
-if(strict&&summary.failed)process.exitCode=1;
+if(strict){
+ if(summary.failed||summary.expectationsMet!==summary.cases)
+  process.exitCode=1;
+ // Q5 pinned baseline before travel-aware allocation:
+ // fourth-cross P90 15.53s / worst 17.73s, finish worst 20.35s.
+ // These gates require measurable improvement without timing shortcuts.
+ if(core.length===20&&
+  ((baseline.lastCrossP90??Infinity)>14.5||
+   (baseline.lastCrossWorst??Infinity)>16||
+   (baseline.finishWorst??Infinity)>19.5)){
+  console.error('Q5_SPEED_REGRESSION '+JSON.stringify(baseline));
+  process.exitCode=1;
+ }
+}

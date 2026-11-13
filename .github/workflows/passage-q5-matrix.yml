@@ -31,13 +31,5 @@ jobs:
         run: npm run build
       - name: Five approach geometry and Q3–Q4 convoy integrity
         run: node --experimental-strip-types --test tests/passage-q5-approaches.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q3-ranks.test.mjs tests/passage-q4-swing.test.mjs
-      - name: Real motor 20-case hinge and approach matrix
-        run: node --experimental-strip-types scripts/audit-passage-q5.mjs
-      - name: Pre-opened hinge staging diagnostics
-        run: node --experimental-strip-types scripts/q5-diagnose-preopen.mjs
-      - name: Diagnose pre-ajar RIGHT approach physical stall
-        run: node --experimental-strip-types scripts/q5-diagnose-ajar.mjs
-      - name: Physically blocked hinge fixture adjudication
-        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --fixtures
-      - name: Diagnose expanded 70-case real-world matrix
-        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended
+      - name: Strict 70-case real motor reliability and speed gates
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict

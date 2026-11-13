@@ -18,7 +18,8 @@ export const Q5_HINGE_CASES=[
 export type Q5Program='squad'|'independent';
 export type Q5BenchmarkResult={
  door:DoorRangeCaseId;approach:DoorRangeApproachId;program:Q5Program;
- outcome:'pass'|'plan-rejected'|'timeout'|'invalid-motion'|'expected-blocked'|'unsafe-crossing';
+ outcome:'pass'|'plan-rejected'|'timeout'|'invalid-motion'|
+  'expected-blocked'|'expected-obstructed'|'unsafe-crossing';
  planned:boolean;success:boolean;seconds:number;firstCross:number|null;
  lastCross:number|null;crossingSpan:number|null;finishTime:number|null;
  crossed:number;completed:number;minSeparation:number;
@@ -82,10 +83,21 @@ export function runDoorRangeQ5(
   const times=[...crossed.values()].sort((a,b)=>a-b);
   const complete=actors.filter(a=>!a.plan.length).length;
   const expectedBlocked=door==='locked'||door==='wedged';
+  const expectedObstructed=door==='swing-furniture'&&
+    doorState.blockedAtFullOpen&&!doorState.clear;
+  const unsafeSettling=Number.isFinite(settledMin)&&settledMin<15.5;
   const pass=planned&&!invalidMotion&&!expectedBlocked&&
+    !expectedObstructed&&!unsafeSettling&&
     crossed.size===4&&complete===4&&finishedAt!==null;
+  // A blocked 0.387-fraction hinge against a real cabinet is a NEGATIVE
+  // case: it is correct not to force four torsos through an aperture that
+  // doorClear rejects. One individual may find a legal pocket but a forced
+  // full-squad clearance would violate the real collision contract.
   const outcome:Q5BenchmarkResult['outcome']=invalidMotion?
-   'invalid-motion':expectedBlocked?crossed.size?'unsafe-crossing':'expected-blocked':
+   'invalid-motion':unsafeSettling?'unsafe-crossing':
+   expectedBlocked?crossed.size?'unsafe-crossing':'expected-blocked':
+   expectedObstructed?crossed.size===4?'unsafe-crossing':
+     'expected-obstructed':
    !planned?'plan-rejected':pass?'pass':'timeout';
   return {door,approach,program,outcome,planned,success:pass,
    seconds:+s.seconds.toFixed(3),
@@ -108,7 +120,8 @@ export function runDoorRangeQ5(
  }finally{activateSite(null);}
 }
 export function summarizeQ5(rows:readonly Q5BenchmarkResult[]){
- const positive=rows.filter(r=>r.outcome!=='expected-blocked');
+ const positive=rows.filter(r=>r.outcome!=='expected-blocked'&&
+  r.outcome!=='expected-obstructed');
  const failed=positive.filter(r=>!r.success);
  const passing=positive.filter(r=>r.success);
  const sort=(ns:number[])=>ns.sort((a,b)=>a-b);
@@ -116,7 +129,11 @@ export function summarizeQ5(rows:readonly Q5BenchmarkResult[]){
  const finish=sort(passing.map(r=>r.finishTime!).filter(Number.isFinite));
  const quantile=(a:number[],q:number)=>a.length?
   +a[Math.min(a.length-1,Math.floor((a.length-1)*q))].toFixed(2):null;
- return {cases:rows.length,expectedBlocked:rows.length-positive.length,
+ const expectedBlocked=rows.filter(r=>r.outcome==='expected-blocked').length;
+ const expectedObstructed=rows.filter(r=>
+  r.outcome==='expected-obstructed').length;
+ return {cases:rows.length,expectedBlocked,expectedObstructed,
+  expectationsMet:passing.length+expectedBlocked+expectedObstructed,
   pass:passing.length,failed:failed.length,
   completionPercent:positive.length?
    +(100*passing.length/positive.length).toFixed(1):0,
