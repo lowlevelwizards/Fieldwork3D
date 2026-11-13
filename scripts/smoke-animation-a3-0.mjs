@@ -55,6 +55,31 @@ try{
    await page.locator('#run').click();
    await page.waitForTimeout(200);
    await page.locator('#run').click();
+   // A3.6 and A3.7: real fixed-step anchors must be visible, not invented
+   // by the browser or an independent miniature contact simulator.
+   await page.locator('#scenario').selectOption('brace-wall');
+   await page.locator('#intent').selectOption('hold');
+   await page.locator('#operators').selectOption('1');
+   await page.locator('#step').click();
+   await page.waitForFunction(()=>document.querySelector('#contact')?.
+    textContent?.includes('BRACE'),null,{timeout:9000});
+   await page.locator('#scenario').selectOption('brace-cover');
+   await page.locator('#step').click();
+   await page.waitForFunction(()=>document.querySelector('#contact')?.
+    textContent?.includes('BRACE'),null,{timeout:9000});
+   await page.locator('#scenario').selectOption('brace-frame');
+   await page.locator('#step').click();
+   await page.waitForFunction(()=>document.querySelector('#contact')?.
+    textContent?.includes('BRACE'),null,{timeout:9000});
+   await page.locator('#operators').selectOption('4');
+   await page.locator('#scenario').selectOption('stack-shoulder');
+   await page.locator('#step').click();
+   await page.waitForFunction(()=>document.querySelector('#contact')?.
+    textContent?.includes('TEAMMATE'),null,{timeout:9000});
+   const contacts=await page.locator('#details').textContent();
+   if(!contacts?.includes('contactAnchors')||
+     !contacts.includes('targetId'))
+    throw Error(mode+' A3.7 lacks real team contact provenance');
    await page.screenshot({path:'artifacts/animation-a3-0/gallery/'+mode+'.png',
     fullPage:true});
    const perf=await page.locator('#perf').textContent();
