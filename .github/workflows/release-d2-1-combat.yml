@@ -40,10 +40,10 @@ jobs:
             tests/tactical-integration-17-firefight-b1.test.mjs \
             tests/breach-roadmap2-stage10-combat.test.mjs \
             tests/breach-perception-cache-performance.test.mjs
-      - name: Existing complete B2 pose, R7 sight, D1 and replay-sensitive contracts
+      - name: Current B8 pose-output/replay ownership, D1 and firing recovery contracts
         run: |
           node --experimental-strip-types --test \
-            tests/breach-pose-v3-action-matrix.test.mjs \
+            tests/package-b8-pose-closeout.test.mjs \
             tests/breach-two-sided-fire-recovery.test.mjs \
             tests/release-d1-threshold-commitment.test.mjs \
             tests/release-d1-coherent-crossing.test.mjs \
