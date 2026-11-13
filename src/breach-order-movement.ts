@@ -107,7 +107,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     // Explicit player WATCH/strafe remains at the authored cautious pace.
     const distantTemplateStack=n.kind==='move'&&!!n.stackDoorId&&
       n.aimLabel==='pie'&&d(a.p,n.p)>36&&
-      a.aimInstruction?.source!=='player';
+      (!a.aimInstruction||a.aimInstruction.source==='stack');
     move(a,n.p,dt,s,running?1.40:distantTemplateStack?1:cautious?.70:1);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
