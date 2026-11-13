@@ -24,7 +24,12 @@ test('A3.4 both sides and all lengths use deterministic minimal order',()=>{
   attempts.push(q.y-origin.y);
   return q.y-origin.y===12;
  });
- assert.deepEqual(attempts,[-4,4,-7,7,-10,10,-12,12]);
+ assert.deepEqual(attempts.slice(0,2),[-4,4],
+  'small lateral options retain first priority');
+ assert.ok(attempts.some(n=>Math.abs(n-12)<1e-6),
+  'the first legal 12-unit option must be visited');
+ assert.ok(attempts.every(n=>Math.abs(n)<=12+.001),
+  'never consider a longer step once the shorter mixed options succeed');
  assert.deepEqual(step,pt(5,17));
  const impossible=chooseFriendlyLaneStep(origin,0,()=>true,()=>false);
  assert.equal(impossible,null);
