@@ -10,12 +10,12 @@ import {identityMarking,referenceIdentity} from '../src/operator-identity-markin
 import {markingBitmap} from '../src/operator-identity-marking-art.ts';
 import {referenceWeaponChoice} from '../src/faction-reference-weapons.ts';
 
-test('forty unique, dated, auditable faction visual references',()=>{
+test('44 unique, dated, auditable faction visual references',()=>{
  const audit=auditFactionReferences();
- assert.equal(audit.referenceCount,40);
+ assert.equal(audit.referenceCount,44);
  assert.deepEqual(audit.issues,[]);
  assert.ok(audit.assetDemand.find(x=>x.id==='unit-insignia')?.referenceCount>=10);
- assert.equal(new Set(FACTION_REFERENCES.map(x=>x.id)).size,40);
+ assert.equal(new Set(FACTION_REFERENCES.map(x=>x.id)).size,44);
 });
 test('every reference has a valid virtual kit and a resolved outfit',()=>{
  for(const ref of FACTION_REFERENCES){
@@ -64,7 +64,7 @@ test('reference catalog spans multiple eras, regions and organizations',()=>{
  assert.ok(new Set(FACTION_REFERENCES.map(x=>x.organization)).size>=3);
 });
 
-test('all 40 reference kits apply cut-compatible independent equipment materials',()=>{
+test('all 44 reference kits apply cut-compatible independent equipment materials',()=>{
  for(const ref of FACTION_REFERENCES){
   const r=resolveFactionReference(ref),a=ref.gearAppearance;
   assert.ok(a,ref.id+' missing equipment profile');
@@ -150,4 +150,84 @@ test('current catalog uses available era-fitting weapons and modeled PASGT field
   assert.equal(r.wardrobe.markings?.leftShoulder,'flag-germany');
   assert.equal(r.wardrobe.markings?.rightShoulder,'flag-germany');
  }
+});
+
+test('historical field shirts now use available authentic short and solid cuts',()=>{
+ const rhodesia=resolveFactionReference('rhodesian-brushstroke-1975');
+ assert.equal(rhodesia.wardrobe.styles.top,'button-up-shirt');
+ assert.equal(rhodesia.wardrobe.sleeveState,'short');
+ assert.equal(rhodesia.wardrobe.fabricCamo?.top,'rhodesian-brushstroke');
+ assert.equal(rhodesia.wardrobe.fabricCamo?.trousers,'rhodesian-brushstroke');
+ assert.deepEqual(rhodesia.incompatibleChannels,[]);
+ const sadf=resolveFactionReference('sadf-nutria-1985');
+ assert.equal(sadf.wardrobe.styles.top,'button-up-shirt');
+ assert.equal(sadf.wardrobe.fabricSolids?.top,'nutria-brown');
+ assert.equal(sadf.wardrobe.fabricSolids?.trousers,'nutria-brown');
+ assert.equal(sadf.wardrobe.styles.rigStyle,'sadf-webbing');
+ assert.deepEqual(sadf.technicalIssues,[]);
+});
+
+test('four new dated references resolve mixed civilian and tactical dress',()=>{
+ const ids=['private-security-iraq-2007','ukraine-territorial-2022',
+  'us-police-polo-2020','us-swat-mp5-1995'];
+ for(const id of ids){
+  const ref=factionReference(id);
+  assert.ok(ref);
+  assert.ok(ref.sourceNotes.length>70);
+  const resolved=resolveFactionReference(ref);
+  assert.deepEqual(resolved.technicalIssues,[],id);
+  assert.deepEqual(resolved.incompatibleChannels,[],id);
+ }
+ const iraq=resolveFactionReference(ids[0]);
+ assert.equal(iraq.wardrobe.styles.top,'polo-shirt');
+ assert.equal(iraq.wardrobe.fabricSolids?.top,'navy');
+ assert.equal(iraq.wardrobe.fabricSolids?.trousers,'khaki');
+ assert.equal(iraq.wardrobe.fabricSolids?.armor,'black');
+ assert.equal(iraq.wardrobe.styles.headwear,'bare');
+ const ukraine=resolveFactionReference(ids[1]);
+ assert.equal(ukraine.wardrobe.styles.top,'button-up-shirt');
+ assert.equal(ukraine.wardrobe.topColorway,'flannel-gray');
+ assert.equal(ukraine.wardrobe.fabricCamo?.top,undefined);
+ assert.equal(ukraine.wardrobe.fabricSolids?.trousers,'olive-drab');
+ assert.equal(ukraine.kit.slots.armor,'armor-none');
+ assert.equal(ukraine.wardrobe.styles.gloves,'gloves-none');
+ const police=resolveFactionReference(ids[2]);
+ assert.equal(police.wardrobe.styles.top,'polo-shirt');
+ assert.equal(police.wardrobe.fabricSolids?.top,'navy');
+ assert.equal(police.wardrobe.styles.rigStyle,'no-rig');
+ assert.equal(police.wardrobe.markings?.chest,'label-police');
+ const swat=resolveFactionReference(ids[3]);
+ assert.equal(swat.wardrobe.styles.top,'bdu-shirt');
+ assert.equal(swat.wardrobe.fabricSolids?.trousers,'navy');
+ assert.equal(swat.wardrobe.gloveSolid,'black');
+ assert.equal(swat.weapon.presetId,'hk-mp5a3');
+ assert.notEqual(swat.weapon.fidelity,'proxy');
+ const existing=resolveFactionReference('us-swat-2015');
+ assert.equal(existing.weapon.presetId,'ar-m4a1');
+ assert.equal(existing.wardrobe.gloveSolid,'black');
+ assert.equal(resolveFactionReference('russian-omon-2002').wardrobe.gloveSolid,'black');
+});
+
+test('reference-specific colors and flannel survive appearance copying without inventory writes',()=>{
+ const original=initialEquipmentLoadout('carbine');
+ const snapshot=JSON.stringify(original);
+ const before=initialWardrobe();
+ before.skinTone='medium-neutral';
+ const preview=referenceLookForKit('ukraine-territorial-2022',original,before);
+ assert.equal(preview.resolved.wardrobe.topColorway,'flannel-gray');
+ assert.equal(preview.wardrobe.topColorway,'flannel-gray');
+ assert.equal(preview.wardrobe.fabricSolids?.trousers,'olive-drab');
+ assert.equal(preview.wardrobe.skinTone,before.skinTone);
+ assert.equal(JSON.stringify(original),snapshot);
+ const police=referenceLookForKit('us-swat-mp5-1995',original,before);
+ assert.equal(police.wardrobe.gloveSolid,'black');
+});
+
+test('invalid reference-only finishes report an actionable technical issue',()=>{
+ const original=factionReference('us-police-polo-2020');
+ const bogus={...original,topColorway:'flannel-blue',gloveSolid:'incorrect'};
+ const result=resolveFactionReference(bogus);
+ assert.ok(result.technicalIssues.some(x=>x.includes('Unavailable top finish')));
+ assert.ok(result.technicalIssues.some(x=>x.includes('Unavailable glove solid')));
+ assert.equal(result.wardrobe.topColorway,'standard');
 });

@@ -208,9 +208,10 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
   // The bones, solved knee/elbow positions and planted feet stay identical.
   const sleeveState=p.wardrobe?.sleeveState??'unrolled';
   const casualBareArms=clothing.top==='t-shirt'||clothing.top==='polo-shirt'||
-    clothing.top==='tank-top';
+    clothing.top==='tank-top'||
+    (clothing.top==='button-up-shirt'&&sleeveState==='short');
   const bareForearm=clothing.top==='base-layer'||casualBareArms||
-    (sleeveState==='rolled'||sleeveState==='cuffed');
+    (sleeveState==='rolled'||sleeveState==='cuffed'||sleeveState==='short');
   for(const arm of r.arms){
    // Rolled sleeves retain the FULL shoulder-to-elbow cuboid. Only the
    // forearm becomes bare skin and a fabric roll wraps the elbow end.

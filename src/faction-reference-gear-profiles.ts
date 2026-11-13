@@ -99,6 +99,30 @@ export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile
   note:"Scarlet beret is unprinted and old webbing remains olive."},
  'sandf-s2000-2015':{kit:{head:'head-cap',armor:'armor-none'},styles:{headwear:'patrol-cap',armorStyle:'armor-bare',rigStyle:'sadf-webbing',packStyle:'field-pack'},appearance:{headwearCamo:'south-african-s2000',rigSolid:'nutria-brown',packCamo:'south-african-s2000'},
   note:"P83 is the available brown rig proxy; later SANDF-specific kit can replace it."},
- 'us-swat-2015':{kit:{},styles:{headwear:'police-helmet',armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},appearance:{headwearSolid:'black',armorSolid:'black',rigSolid:'black'},
+ 'private-security-iraq-2007':{
+  kit:{head:'head-none',armor:'armor-soft',rig:'rig-light',backpack:'backpack-none'},
+  styles:{headwear:'bare',top:'polo-shirt',trousers:'bdu-trousers',
+   armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},
+  appearance:{armorSolid:'black',rigSolid:'black'},
+  note:"2007 documented blue polo/khaki trouser/black-armor pairing. Rig and carbine are generic visual proxies, not claimed issue."},
+ 'ukraine-territorial-2022':{
+  kit:{head:'head-none',armor:'armor-none',rig:'rig-light',backpack:'backpack-none',hands:'hands-none'},
+  styles:{headwear:'bare',top:'button-up-shirt',trousers:'bdu-trousers',
+   armorStyle:'armor-bare',rigStyle:'chicom-rig',packStyle:'no-pack'},
+  appearance:{rigSolid:'olive-drab'},
+  note:"Early volunteers' mix of civilian clothes and basic field equipment, not a standardized Ukrainian military uniform."},
+ 'us-police-polo-2020':{
+  kit:{head:'head-cap',armor:'armor-soft',rig:'rig-none',backpack:'backpack-none'},
+  styles:{headwear:'patrol-cap',top:'polo-shirt',trousers:'acu-trousers',
+   armorStyle:'soft-vest',rigStyle:'no-rig',packStyle:'no-pack',beltStyle:'duty-belt'},
+  appearance:{armorSolid:'black'},
+  note:"Agency-neutral navy polo and external soft armor. The patrol rifle is only a selectable preview, not standard issue."},
+ 'us-swat-mp5-1995':{
+  kit:{head:'head-helmet',armor:'armor-soft',rig:'rig-light',backpack:'backpack-none'},
+  styles:{headwear:'police-helmet',top:'bdu-shirt',trousers:'bdu-trousers',
+   armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},
+  appearance:{headwearSolid:'black',armorSolid:'black',rigSolid:'black'},
+  note:"Navy field dress and MP5A3 recognizable; helmet and protective kit remain generic period-specific proxies."},
+  'us-swat-2015':{kit:{},styles:{headwear:'police-helmet',armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},appearance:{headwearSolid:'black',armorSolid:'black',rigSolid:'black'},
   note:"Black police shell and armor are already the right broad silhouette."},
 };

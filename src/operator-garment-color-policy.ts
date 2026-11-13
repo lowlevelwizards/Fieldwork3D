@@ -54,7 +54,7 @@ export function isGarmentSolidId(value:unknown):value is GarmentSolidId{
 export const CASUAL_SHIRT_SOLIDS:Readonly<Record<string,readonly GarmentSolidId[]>>={
  't-shirt':['off-white','black','charcoal','slate','navy','muted-blue',
   'olive-drab','ranger-green','khaki','tan','coyote','rust'],
- 'button-up-shirt':['off-white','khaki','sand','olive-drab','forest-green',
+ 'button-up-shirt':['off-white','khaki','sand','nutria-brown','olive-drab','forest-green',
   'ranger-green','brown','slate','navy','muted-blue','rust','burnt-orange'],
  'polo-shirt':['off-white','black','charcoal','navy','muted-blue',
   'ranger-green','forest-green','khaki','tan','rust'],

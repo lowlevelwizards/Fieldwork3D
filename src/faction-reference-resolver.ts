@@ -6,6 +6,8 @@ import {readWardrobe,resolvedWardrobe,setWardrobeStyle,setWardrobeFabricSolid,
  setWardrobeFabricCamo,wardrobeConflicts,type WardrobeOptions,type WardrobeSlot}
  from './operator-wardrobe-data.ts';
 import {fabricCamoCompatible} from './operator-fabric-camo-policy.ts';
+import {isGloveSolid} from './operator-garment-color-policy.ts';
+import {resolvedTopColorway} from './operator-upper-colorways.ts';
 import {headwearCamoChoices} from './operator-headwear-camo.ts';
 import {helmetCoverChoices} from './operator-helmet-cover-policy.ts';
 import {outfitPresetForKit} from './operator-studio-presets.ts';
@@ -39,23 +41,52 @@ export function resolveFactionReference(input:FactionReference|string):Reference
  }
  const outfit=resolvedWardrobe(wardrobe,kit);
  const incompatibleChannels:string[]=[];
- if(reference.uniformCamo||reference.uniformSolid){
-  for(const channel of ['top','trousers'] as const){
-   // Replace the base recipe's fabric; never leak an unrelated base camouflage.
-   wardrobe=setWardrobeFabricCamo(wardrobe,channel,null,outfit);
-   if(reference.uniformSolid){
-    wardrobe=setWardrobeFabricSolid(wardrobe,channel,reference.uniformSolid,outfit);
-   }else if(reference.uniformCamo){
-    if(fabricCamoCompatible(reference.uniformCamo,channel,outfit))
-     wardrobe=setWardrobeFabricCamo(wardrobe,channel,reference.uniformCamo,outfit);
-    else {
-     // Deliberately neutral approximation, not a falsely labeled issued pattern.
-     wardrobe=setWardrobeFabricSolid(wardrobe,channel,'olive-drab',outfit);
-     incompatibleChannels.push(channel);
-    }
+ // Preserve legacy shared uniforms while allowing dated civilian/military
+ // mixtures: an explicit channel finish overrides only that channel.
+ for(const channel of ['top','trousers'] as const){
+  const solid=channel==='top'?
+   reference.topSolid??reference.uniformSolid:
+   reference.trousersSolid??reference.uniformSolid;
+  const print=channel==='top'?
+   reference.topCamo??(reference.topSolid?undefined:reference.uniformCamo):
+   reference.trousersCamo??(reference.trousersSolid?undefined:reference.uniformCamo);
+  if(!solid&&!print)continue;
+  if(solid&&print){
+   issues.push('Conflicting '+channel+' solid and print');
+   continue;
+  }
+  // A recipe print must not bleed into a differently dressed channel.
+  wardrobe=setWardrobeFabricCamo(wardrobe,channel,null,outfit);
+  if(solid){
+   const updated=setWardrobeFabricSolid(wardrobe,channel,solid,outfit);
+   if(updated===wardrobe&&wardrobe.fabricSolids?.[channel]!==solid)
+    issues.push('Unavailable '+channel+' solid: '+solid);
+   wardrobe=updated;
+  }else if(print){
+   if(fabricCamoCompatible(print,channel,outfit))
+    wardrobe=setWardrobeFabricCamo(wardrobe,channel,print,outfit);
+   else {
+    // A documented approximation, not a false pattern on a cut that
+    // cannot display it. The audit records every such compromise.
+    wardrobe=setWardrobeFabricSolid(wardrobe,channel,'olive-drab',outfit);
+    incompatibleChannels.push(channel);
    }
   }
  }
+ if(reference.topColorway){
+  const id=resolvedTopColorway(outfit.top,reference.topColorway);
+  if(id!==reference.topColorway)
+   issues.push('Unavailable top finish: '+reference.topColorway);
+  else{
+   // Plaid has a single fabric owner; an old printed top may never
+   // override the authored woven flannel. Trousers remain independent.
+   if(id.startsWith('flannel-'))
+    wardrobe=setWardrobeFabricCamo(wardrobe,'top',null,outfit);
+   wardrobe={...wardrobe,topColorway:id};
+  }
+ }
+ if(reference.gloveSolid&&!isGloveSolid(reference.gloveSolid))
+  issues.push('Unavailable glove solid: '+reference.gloveSolid);
  // Keep independent historical equipment finishes; a uniform print never
  // implicitly prints a pack or vest. Empty cuts do not consume fabric channels.
  const appearance=reference.gearAppearance;
@@ -100,7 +131,9 @@ export function resolveFactionReference(input:FactionReference|string):Reference
   ...(reference.policeVisorFrame?{policeVisorFrame:reference.policeVisorFrame}:{}),
   ...(reference.markings?{markings:reference.markings}:{}),
   ...(reference.sleeveState?{sleeveState:reference.sleeveState}:{}),
-  ...(reference.trouserHem?{trouserHem:reference.trouserHem}:{})});
+  ...(reference.trouserHem?{trouserHem:reference.trouserHem}:{}),
+  ...(reference.gloveSolid&&isGloveSolid(reference.gloveSolid)?
+    {gloveSolid:reference.gloveSolid}:{})});
  issues.push(...wardrobeConflicts(wardrobe,kit));
  return {reference,kit,wardrobe,weapon,technicalIssues:issues,incompatibleChannels};
 }

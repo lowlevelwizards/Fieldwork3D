@@ -1825,7 +1825,7 @@ function renderMaterials(){
   if(sleeves.length>1){
    const section=row('SLEEVE FINISH');
    addSelect(section,sleeves.map(id=>[id,id==='unrolled'?'FULL LENGTH':
-    id==='cuffed'?'WRIST CUFF':'ROLLED ABOVE ELBOW']),
+    id==='cuffed'?'WRIST CUFF':id==='short'?'SHORT SLEEVES':'ROLLED ABOVE ELBOW']),
     w.sleeveState,value=>changeWardrobe({...current(),sleeveState:
      value as WardrobeOptions['sleeveState']}));
   }
