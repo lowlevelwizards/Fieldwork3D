@@ -10,25 +10,25 @@ import {PASGT_LEAF_CLUSTERS,createPasgtScrimRibbonGeometry}
  from './operator-pasgt-field-dress.ts';
 type Slot={region:Exclude<CoverRegion,'crown'>;u:number;v:number};
 const SLOTS:readonly Slot[]=[
- {region:'front',u:-.56,v:-.07},
- {region:'front',u:.53,v:.11},
- {region:'back',u:-.57,v:.10},
- {region:'back',u:.60,v:-.12},
- {region:'right',u:-.75,v:.02},
- {region:'right',u:-.27,v:.27},
- {region:'right',u:.35,v:-.13},
- {region:'right',u:.77,v:.13},
- {region:'left',u:-.72,v:-.08},
- {region:'left',u:-.21,v:.23},
- {region:'left',u:.39,v:-.14},
- {region:'left',u:.76,v:.08}
+ {region:'front',u:-.56,v:.30},
+ {region:'front',u:.53,v:.22},
+ {region:'back',u:-.57,v:.38},
+ {region:'back',u:.60,v:.13},
+ {region:'right',u:-.75,v:.44},
+ {region:'right',u:-.27,v:.18},
+ {region:'right',u:.35,v:.08},
+ {region:'right',u:.77,v:.36},
+ {region:'left',u:-.72,v:.15},
+ {region:'left',u:-.21,v:.46},
+ {region:'left',u:.39,v:.06},
+ {region:'left',u:.76,v:.34}
 ];
 // Occupancy order intentionally alternates side, brow and nape. Heavy
 // foliage is NOT a mirrored hedge or a repeated planted-tree silhouette.
 const LEAF_SLOTS=[4,9,2,0,7,10,5,1,8,11] as const;
-const SCRIM_SLOTS=[1,10,4,3,8,6,0,11] as const;
+const SCRIM_SLOTS=[0,8,5,11,1,4,9,7,3] as const;
 const LEAN=[-.18,.11,-.24,.17,.08,-.13,.21,-.12,.16,-.08] as const;
-const SCALE=[.89,1.04,.81,1.06,.88,.98,1.10,.84,1.02,.93] as const;
+const SCALE=[1.18,1.31,1.16,1.36,1.21,1.28,1.43,1.17,1.35,1.26] as const;
 const slitMaterial=new THREE.MeshBasicMaterial({
  color:0x394638,side:THREE.DoubleSide,depthWrite:true
 });
@@ -83,7 +83,8 @@ export function addAchMichConcealment(
   fabric.position.copy(f.position);
   fabric.quaternion.copy(basis(right,up,normal));
   fabric.rotateZ(LEAN[i]*.7);
-  fabric.scale.setScalar(.58+(i%4)*.055);
+  fabric.rotateY(i%2?.31:-.34);
+  fabric.scale.setScalar(.87+(i%4)*.075);
   fabric.userData.h9ScrimDownOut=true;fabric.userData.h9SourceSlot=slot;
   fabric.castShadow=false;fabric.receiveShadow=false;scrim.add(fabric);
  }
@@ -98,7 +99,7 @@ export function addAchMichConcealment(
   if(facing.dot(f.normal)<0){
    right.negate();facing=right.clone().cross(aim).normalize();
   }
-  const bunch=new THREE.Mesh(PASGT_LEAF_CLUSTERS[i%3],i%3===0?tan:olive);
+  const bunch=new THREE.Mesh(PASGT_LEAF_CLUSTERS[i%3],i%4===0?tan:olive);
   bunch.name='pasgt-derived-foliage';
   bunch.position.copy(f.position).addScaledVector(f.normal,.12);
   bunch.quaternion.copy(basis(right,aim,facing));
