@@ -261,7 +261,7 @@ function renderProjectedPlans(){
   // Screen-space icons stay readable regardless of ortho pitch or zoom.
   for(const hostile of enemies(state)){
     if(replaying?!replayActorDisclosed(state,hostile,replayKnowledge.disclosure()):
-      !liveVisibility(state,hostile.p))continue;
+      !isSeen(state,hostile))continue;
     const ground=worldToScreen(hostile.p,1);
     // Do not paint projected blood/bodies over the finished 3D scene:
     // Canvas2D cannot depth-test against walls, packs or door leaves.
