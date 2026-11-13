@@ -840,6 +840,8 @@ function render(dt=0):void{
   replayAnalysis:replayDisplay.options.replayAnalysis,
   world2D,fog2D,actor2D,route2D,replay2D,projected2D
  });
+ // A successful actual frame confirms more than the presence of the HUD.
+ document.documentElement.dataset.fieldworkFirstSceneFrame='1';
 }
 /** Rejected authoring orders keep the existing plan intact and mark only
  * the attempted world point; no hidden geometry or actors are inspected. */
@@ -1572,3 +1574,6 @@ syncLiveProfilerControl(runtimeLoop.isProfilerVisible(),
 layout();cameraMode(viewMode);updateHud();
 if(appFlow.mode==='menu')campaignScreen.entry(!!campaign);
 runtimeLoop.start();
+// Only the completed bootstrap, not static HTML placeholders, claims readiness.
+document.documentElement.dataset.fieldworkAppReady='1';
+window.dispatchEvent(new Event('fieldwork:boot-ready'));

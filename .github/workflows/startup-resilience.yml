@@ -1,0 +1,34 @@
+name: Startup resilience — mobile bootstrap and missing assets
+on:
+  push:
+    branches: ['feature/startup-resilience-*']
+  pull_request:
+    paths:
+      - 'index.html'
+      - 'src/breach-main.ts'
+      - 'scripts/smoke-startup-resilience.mjs'
+      - 'tests/startup-resilience.test.mjs'
+      - '.github/workflows/startup-resilience.yml'
+permissions:
+  contents: read
+concurrency:
+  group: startup-resilience-ci
+  cancel-in-progress: true
+jobs:
+  startup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Check startup contract and build
+        run: |
+          node --test tests/startup-resilience.test.mjs
+          npm run build
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Exercise production bootstrap and missing JS recovery
+        run: node scripts/smoke-startup-resilience.mjs
