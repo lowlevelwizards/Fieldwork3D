@@ -16,7 +16,6 @@ import {planPublicStreet,overlapsPublicStreetRoad} from './public-street-layout.
 import {landscapePhysicalFootprint,TREE_FIXTURES} from './landscape-footprint.ts';
 import {outdoorFixtureAllowed,frontageEdgeCandidates}
  from './outdoor-fixture-policy.ts';
-const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<(a.w+b.w)/2+17&&Math.abs(a.y-b.y)<(a.h+b.h)/2+17;
 export function addExteriorProperty(site:Site,seed:number):Site{
  const rng=seeded(seed^0x15b8ad1);
