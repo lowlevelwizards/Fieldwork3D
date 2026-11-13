@@ -1,3 +1,4 @@
+import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
@@ -2000,7 +2001,7 @@ export class TacticalScene3D{
       for(const peer of s.operators){
         if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
         if(Math.hypot(peer.p.x-drawActor.x,peer.p.y-drawActor.z)<90)
-          nearbyAllies.push({x:peer.p.x,y:peer.p.y});
+          nearbyAllies.push(safetyBodyFor(peer));
       }
       // Physical contact is queried from the actual interpolated barrel,
       // never from a long ray projected along the feet/body heading.
