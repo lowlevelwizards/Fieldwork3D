@@ -10,7 +10,8 @@ export const TOP_COLORWAYS={
   ['flannel-rust-red','Rust red flannel'],
   ['flannel-green','Forest green flannel'],
   ['flannel-blue','Dusty blue flannel'],
-  ['flannel-burnt-orange','Burnt orange flannel']
+  ['flannel-burnt-orange','Burnt orange flannel'],
+  ['flannel-gray','Slate gray flannel']
  ],
  'combat-shirt':[
   ['standard','Sand knit'],['olive','Olive knit'],['ranger','Ranger green knit'],
@@ -145,7 +146,8 @@ export function gorkaSpecialtyTexture(id:'ss-leto'|'ss-autumn'):
 /** A deliberately restrained woven plaid tile. Unlike military camo,
  * this shirt-only repeat is not registered as a fabric-camouflage master. */
 export const BUTTON_UP_FLANNEL_IDS=[
- 'flannel-rust-red','flannel-green','flannel-blue','flannel-burnt-orange'
+ 'flannel-rust-red','flannel-green','flannel-blue','flannel-burnt-orange',
+ 'flannel-gray'
 ] as const;
 export type ButtonUpFlannelId=typeof BUTTON_UP_FLANNEL_IDS[number];
 export function isButtonUpFlannel(id:string):id is ButtonUpFlannelId{
@@ -156,13 +158,23 @@ const flannelPalettes:Readonly<Record<ButtonUpFlannelId,
  'flannel-rust-red':[0x865047,0x433b3b,0xb9a18b,0x674338],
  'flannel-green':[0x63755a,0x354839,0xa7aa87,0x50644d],
  'flannel-blue':[0x607c8d,0x38485c,0xb4afa2,0x4d6476],
- 'flannel-burnt-orange':[0xa2734c,0x60483b,0xc3ad8d,0x815a44]
+ 'flannel-burnt-orange':[0xa2734c,0x60483b,0xc3ad8d,0x815a44],
+ 'flannel-gray':[0x727674,0x363d40,0xb2b4aa,0x54595a]
 };
 const flannelCache=new Map<ButtonUpFlannelId,THREE.DataTexture>();
 export function buttonUpFlannelTexture(id:string):THREE.DataTexture|null{
  if(!isButtonUpFlannel(id))return null;
  const existing=flannelCache.get(id);if(existing)return existing;
  const colors=flannelPalettes[id],pixels=new Uint8Array(64*64*4);
+ // Make the pale ticking a muted woven thread, not a bright white line.
+ // Blend toward the base yarn in RGB instead of lowering pixel alpha:
+ // fabric must stay opaque, with no skin/underlay showing through plaid.
+ const mutedTick=(()=>{
+  const base=colors[0],light=colors[2],mix=.26;
+  const channel=(shift:number)=>Math.round(
+   ((base>>shift)&255)*(1-mix)+((light>>shift)&255)*mix);
+  return (channel(16)<<16)|(channel(8)<<8)|channel(0);
+ })();
  // A woven plaid needs alternating WARP + WEFT stripes and dark
  // intersections, not a 128-world-unit gradient masquerading as flannel.
  // Four nested 16px checks per axis keep the repeat legible on the torso.
@@ -173,11 +185,11 @@ export function buttonUpFlannelTexture(id:string):THREE.DataTexture|null{
   const hairline=(p:number)=>p===13||p===27;
   const ax=primary(a),ay=primary(b),sx=secondary(a),sy=secondary(b);
   const stripesX=ax||sx,stripesY=ay||sy;
-  // Four-color palette: base, navy/charcoal crossing, lighter ticking
-  // and secondary muted body stripe. Crossed bands have real 2D form.
+  // Four-color palette: base, dark crossings, muted woven ticking and
+  // secondary body stripe. Crossed bands have real 2D form.
   const rgb= ax&&ay?colors[1]:
    stripesX&&stripesY?colors[3]:
-   hairline(a)||hairline(b)?colors[2]:
+   hairline(a)||hairline(b)?mutedTick:
    stripesX||stripesY?colors[3]:colors[0];
   const offset=(y*64+x)*4;
   pixels[offset]=(rgb>>16)&255;
