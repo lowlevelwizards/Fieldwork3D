@@ -146,8 +146,10 @@ function maybePromote(ctx:Context,s:Session,lane:Lane,
  const waitDepth=normalDepth(waiting.actor.p,lane.door)*lane.side;
  if(throat(lead.p,lane.door)||leadDepth<=QUEUE_WAIT_DEPTH||
     dist(waiting.actor.p,doorCenter(lane.door))>70)return false;
- if(lead.blockedTime<1.7&&!(waitDepth+8<leadDepth&&
-    waiting.actor.passageWaitSeconds>1.25))return false;
+ // A WAITING follower never outranks the lead solely because it is
+ // physically closer or has waited longer. Promotion is a deliberately
+ // rare response to a confirmed *physical movement* stall.
+ if(lead.blockedTime<1.7||waitDepth+8<leadDepth)return false;
  ctx.nextPromotionProbe.set(key,s.seconds+.8);
  if(dist(waiting.actor.p,move)<.05||
     !sweptBodyClear(waiting.actor.p,move,s.doors,OPERATOR_RADIUS,
