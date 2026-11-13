@@ -8,6 +8,9 @@ import {headwearCuboidVolumes,chamferAchMichCrown,ACH_MICH_SHELLS,type HeadSilho
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {isH1ModernHelmet,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {headwearCamoTexture} from './operator-headwear-materials.ts';
+import {pasgtCoverTexture} from './operator-pasgt-cover-texture.ts';
+import {createAchMichDrapedGeometry,type AchMichCoverShell}
+ from './operator-ach-mich-cover-drape.ts';
 import {headwearCamoPlacement,type HeadwearCamoId} from './operator-headwear-camo.ts';
 import {enableBakedGearAO,bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {OPERATOR_SOLID_FAMILIES} from './operator-solid-color-families.ts';
@@ -45,9 +48,12 @@ export function createModernHelmetCoverLayers(parent:THREE.Group,shell:string):
  ModernHelmetCoverLayers{
  if(!isH1ModernHelmet(shell))throw Error('unsupported textile shell '+shell);
  const p=HELMET_MOUNT_PROFILES[shell],side=p.side;
+ const simplified=(ACH_MICH_SHELLS as readonly string[]).includes(shell);
  const fabric=new THREE.MeshStandardMaterial({
-  color:OPERATOR_SOLID_FAMILIES['olive-drab'],roughness:.98,
-  metalness:0,flatShading:true,vertexColors:true
+  color:simplified?0xffffff:OPERATOR_SOLID_FAMILIES['olive-drab'],
+  roughness:simplified?.97:.98,
+  metalness:0,flatShading:true,
+  vertexColors:!simplified,side:THREE.FrontSide
  });
  const binding=new THREE.MeshStandardMaterial({
   color:OPERATOR_SOLID_FAMILIES.charcoal,roughness:.98,flatShading:true,vertexColors:true
@@ -58,13 +64,25 @@ export function createModernHelmetCoverLayers(parent:THREE.Group,shell:string):
  fabric.userData.fieldworkStudioHelmetShellCover=true;
  for(const m of [fabric,binding,scrimMaterial]){
   m.userData.fieldworkStudioSoftGear=true;
-  enableBakedGearAO(m);
+  // The PASGT-style ACH fabric is neutral textured cloth: no double
+  // darkening via AO vertex colors or underpainted old material tint.
+  if(m!==fabric||!simplified)enableBakedGearAO(m);
  }
  const fitted=hidden(parent),loose=hidden(parent),band=hidden(parent),
   net=hidden(parent),sparse=hidden(parent),field=hidden(parent);
- const simplified=(ACH_MICH_SHELLS as readonly string[]).includes(shell);
  fitted.userData.shellId=shell;
- meshed(fitted,modernHelmetCoverVolumes(shell),fabric,'H1-fitted-cloth');
+ if(simplified){
+  const fittedMesh=new THREE.Mesh(createAchMichDrapedGeometry(
+   shell as AchMichCoverShell),fabric);
+  fittedMesh.name='ach-mich-h3-three-sewn-panel-drape';
+  fittedMesh.castShadow=true;fittedMesh.receiveShadow=false;
+  const hemMesh=new THREE.Mesh(createAchMichDrapedGeometry(
+   shell as AchMichCoverShell,true),fabric);
+  hemMesh.name='ach-mich-h3-simple-continuous-fabric-hem';
+  hemMesh.castShadow=false;hemMesh.receiveShadow=false;
+  fitted.add(fittedMesh,hemMesh);
+  fabric.map=pasgtCoverTexture(undefined,'ach-mich-solid');
+ }else meshed(fitted,modernHelmetCoverVolumes(shell),fabric,'H1-fitted-cloth');
  if(!simplified)meshed(loose,modernHelmetCoverVolumes(shell,true),fabric,'H1-loose-cloth');
  // Segmented retention band: no solid strip across the open ear interval.
  const fore=p.front-.20,rear=p.rear+.20;
@@ -98,9 +116,12 @@ export function updateModernHelmetCoverLayers(v:ModernHelmetCoverLayers,shell:st
  v.sparse.visible=active&&setup.scrim==='sparse';
  v.field.visible=active&&setup.scrim==='field';
  const print=active&&camo?camo:undefined;
- const map=print&&isH1ModernHelmet(shell)?headwearCamoTexture(
-  shell,print,headwearCamoPlacement(operatorId,'helmet-cover',print,roll)):null;
+ const simple=(ACH_MICH_SHELLS as readonly string[]).includes(shell);
+ const map=simple?
+  pasgtCoverTexture(print,operatorId,roll):
+  print&&isH1ModernHelmet(shell)?headwearCamoTexture(
+   shell,print,headwearCamoPlacement(operatorId,'helmet-cover',print,roll)):null;
  if(v.fabric.map!==map){v.fabric.map=map;v.fabric.needsUpdate=true;}
- v.fabric.color.setHex(print?0xffffff:OPERATOR_SOLID_FAMILIES['olive-drab']);
+ v.fabric.color.setHex(simple||print?0xffffff:OPERATOR_SOLID_FAMILIES['olive-drab']);
  v.activePrint=print??'';
 }

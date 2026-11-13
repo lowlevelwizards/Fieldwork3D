@@ -10,7 +10,7 @@ import {studioShadowSize} from '../src/operator-studio-lighting.ts';
 
 const source=(path)=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
-test('P2 shadow maps default to 512 in tactical, Studio and inspection scenes',()=>{
+test('P2 tactical shadows stay 512 while Studio inspection defaults to 1024',()=>{
  assert.equal(DEFAULT_SHADOW_MAP_SIZE,512);
  for(const touch of [true,false]){
   for(const mode of [null,'balanced','performance','quality']){
@@ -18,10 +18,10 @@ test('P2 shadow maps default to 512 in tactical, Studio and inspection scenes',(
     'tactical '+mode+' touch='+touch);
   }
  }
- assert.equal(requestedStudioRenderQuality('',3).shadowSize,512);
- assert.equal(studioShadowSize(''),512);
+ assert.equal(requestedStudioRenderQuality('',3).shadowSize,1024);
+ assert.equal(studioShadowSize(''),1024);
  assert.equal(requestedStudioRenderQuality(
-  '?studioShadowSize=invalid',3).shadowSize,512);
+  '?studioShadowSize=invalid',3).shadowSize,1024);
  // Higher resolutions remain intentional, explicit Studio diagnostic overrides.
  for(const n of [1024,2048]){
   assert.equal(requestedStudioRenderQuality(

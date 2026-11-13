@@ -15,7 +15,7 @@ test('R7 inspection lighting has one neutral background and coherent key profile
  assert.equal(studioShadowMode(''),'hybrid');
  assert.equal(studioShadowMode('?operatorLighting=legacy'),'legacy');
  assert.equal(studioShadowSize('?operatorShadowSize=512'),512);
- assert.equal(studioShadowSize(''),512);
+ assert.equal(studioShadowSize(''),1024);
  assert.ok(Math.abs(STUDIO_KEY_DIRECTION.length()-1)<1e-8);
  const root=new THREE.Group();
  const mesh=new THREE.Mesh(new THREE.BoxGeometry(5,10,5),
@@ -53,7 +53,7 @@ test('R7 hidden Studio suspends optional GPU work without stopping simulation',(
  assert.match(bridge,/STUDIO_WARM_RETAIN_MS=60_000/);
  assert.match(bridge,/studioFrame\.src='about:blank'/);
  assert.match(runtime,/studioOccludesTactical/);
- assert.match(runtime,/if\(!studioOccludesTactical&&stage/);
+ assert.match(runtime,/const stageAvailable=!studioOccludesTactical&&!!stage/);
  assert.match(runtime,/if\(!studioOccludesTactical\)config\.renderFrame\(dt\)/);
  assert.match(studio,/studioSuspended=true/);
  assert.match(studio,/thumbBrowser\.setSuspended\(true\)/);
