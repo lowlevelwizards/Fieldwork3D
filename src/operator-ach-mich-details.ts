@@ -234,6 +234,7 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  for(const sign of [-1,1]){
   const clasp=new THREE.Mesh(new THREE.BoxGeometry(.46,.42,.20),metal);
   clasp.name='fastened-four-point-adjustment-buckle';
+  clasp.userData.keepSeparate=true;
   clasp.position.set(sign*3.52,.83,-3.56);
   clasp.rotation.y=sign*.30;
   clasp.castShadow=false;clasp.receiveShadow=false;strap.add(clasp);
