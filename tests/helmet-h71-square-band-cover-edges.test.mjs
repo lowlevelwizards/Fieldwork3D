@@ -8,7 +8,8 @@ import {createAchMichDrapedGeometry,ACH_MICH_COVER_OFFSET,
 import {ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET,ACH_MICH_BEVEL_HEIGHT,
  headwearCuboidVolumes}
  from '../src/operator-headwear-silhouettes.ts';
-import {achMichProfile} from '../src/operator-ach-mich-details.ts';
+import {achMichProfile,ACH_MICH_BINDING_HEIGHT}
+ from '../src/operator-ach-mich-details.ts';
 import {HELMET_MOUNT_PROFILES}
  from '../src/operator-helmet-attachment-frames.ts';
 
@@ -63,11 +64,15 @@ test('H7.1 textile stays beyond hard side crown and has joined side corners',()=
     const x=sign*clothShoulderX;
     const z=rear?p.rear+ACH_MICH_COVER_OFFSET:
      p.front-ACH_MICH_COVER_OFFSET;
-    let shared=0;
-    for(let i=0;i<pos.count;i++)
-     if(close(pos.getX(i),x)&&close(pos.getY(i),shoulder)&&
-      close(pos.getZ(i),z))shared++;
-    assert.ok(shared>=2,shell+': front/rear side seam must share corners');
+    for(const y of [shoulder,
+     (rear?p.nape:p.brow)+ACH_MICH_BINDING_HEIGHT+.035]){
+     let shared=0;
+     for(let i=0;i<pos.count;i++)
+      if(close(pos.getX(i),x)&&close(pos.getY(i),y)&&
+       close(pos.getZ(i),z))shared++;
+     assert.ok(shared>=2,
+      shell+': front/rear side shoulder and hem must share corners');
+    }
    }
   }
   assert.equal(cover.userData.h71JoinedCoverCorners,true);
