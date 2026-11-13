@@ -313,22 +313,86 @@ const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
 /** A restrained top break, identical on the shell and its single fitted cover. */
 export const ACH_MICH_UPPER_INSET=.30;
 export const ACH_MICH_SHELLS=['ach','mich-2001','mich-2002'] as const;
+/** H3: bevel ONLY the upper .62 world units of the crown.
+ * The previous implementation slanted the *entire* side wall from the
+ * brow to the roof, producing a huge faceted box rather than a top bevel.
+ * Split the exterior triangles once, carrying their UV and color data
+ * through the cut; keep the original greedy union and one shell draw call.
+ */
+export const ACH_MICH_BEVEL_HEIGHT=.62;
 export function chamferAchMichCrown(geometry:THREE.BufferGeometry,
  volumes:readonly HeadwearCuboid[],id:string):void{
  if(!(ACH_MICH_SHELLS as readonly string[]).includes(id))return;
  const crown=volumes[0],roof=crown.y+crown.height/2;
- const pos=geometry.getAttribute('position') as THREE.BufferAttribute;
- for(let i=0;i<pos.count;i++){
-  const x=pos.getX(i),y=pos.getY(i),z=pos.getZ(i);
-  if(Math.abs(y-roof)>.0001)continue;
-  const atX=Math.abs(Math.abs(x)-crown.width/2)<.002;
-  const atZ=Math.abs(Math.abs(z)-crown.depth/2)<.002;
-  if(atX||atZ)pos.setXYZ(i,
-   atX?x-Math.sign(x)*ACH_MICH_UPPER_INSET:x,y,
-   atZ?z-Math.sign(z)*ACH_MICH_UPPER_INSET:z);
+ const low=roof-ACH_MICH_BEVEL_HEIGHT;
+ const position=geometry.getAttribute('position');
+ const uv=geometry.getAttribute('uv'),uv1=geometry.getAttribute('uv1');
+ const colors=geometry.getAttribute('color');
+ const names=[['position',position,3],['uv',uv,2],['uv1',uv1,2],
+  ['color',colors,3]] as const;
+ type Vertex={position:number[];uv:number[];uv1:number[];color:number[]};
+ const read=(i:number):Vertex=>{
+  const result={} as Vertex;
+  for(const [name,attr,size] of names){
+   (result[name] as number[])=[];
+   if(attr)for(let k=0;k<size;k++)result[name].push(attr.getComponent(i,k));
+  }
+  return result;
+ };
+ const blend=(a:Vertex,b:Vertex,t:number):Vertex=>{
+  const v={} as Vertex;
+  for(const [name,attr,size] of names){
+   (v[name] as number[])=[];
+   if(attr)for(let k=0;k<size;k++)
+    v[name].push(a[name][k]+(b[name][k]-a[name][k])*t);
+  }
+  return v;
+ };
+ const clip=(tri:readonly Vertex[],above:boolean):Vertex[]=>{
+  const polygon:Vertex[]=[];
+  for(let i=0;i<tri.length;i++){
+   const a=tri[i],b=tri[(i+1)%tri.length];
+   const insideA=above?a.position[1]>=low-1e-6:a.position[1]<=low+1e-6;
+   const insideB=above?b.position[1]>=low-1e-6:b.position[1]<=low+1e-6;
+   if(insideA)polygon.push(a);
+   if(insideA!==insideB){
+    const dy=b.position[1]-a.position[1];
+    if(Math.abs(dy)>1e-7)polygon.push(blend(a,b,(low-a.position[1])/dy));
+   }
+  }
+  return polygon;
+ };
+ const output:Record<string,number[]>={position:[],uv:[],uv1:[],color:[]};
+ const push=(v:Vertex)=>{
+  const p=[...v.position];
+  if(p[1]>low+.00001){
+   const strength=Math.min(1,Math.max(0,(p[1]-low)/ACH_MICH_BEVEL_HEIGHT));
+   const atX=Math.abs(Math.abs(p[0])-crown.width/2)<.002;
+   const atZ=Math.abs(Math.abs(p[2])-crown.depth/2)<.002;
+   if(atX)p[0]-=Math.sign(p[0])*ACH_MICH_UPPER_INSET*strength;
+   if(atZ)p[2]-=Math.sign(p[2])*ACH_MICH_UPPER_INSET*strength;
+  }
+  output.position.push(...p);
+  for(const name of ['uv','uv1','color'] as const)output[name].push(...v[name]);
+ };
+ const count=geometry.index?.count??position.count;
+ for(let i=0;i<count;i+=3){
+  const tri=[0,1,2].map(j=>read(geometry.index?.getX(i+j)??i+j));
+  const ymin=Math.min(...tri.map(v=>v.position[1])),
+   ymax=Math.max(...tri.map(v=>v.position[1]));
+  const polys=ymin<low-1e-6&&ymax>low+1e-6?
+   [clip(tri,false),clip(tri,true)]:[tri];
+  for(const poly of polys)for(let k=1;k<poly.length-1;k++){
+   push(poly[0]);push(poly[k]);push(poly[k+1]);
+  }
  }
- pos.needsUpdate=true;geometry.computeVertexNormals();geometry.computeBoundingBox();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute(output.position,3));
+ for(const [name,attr,size] of names)if(name!=='position'&&attr)
+  geometry.setAttribute(name,new THREE.Float32BufferAttribute(output[name],size));
+ geometry.setIndex(Array.from({length:output.position.length/3},(_,i)=>i));
+ geometry.computeVertexNormals();geometry.computeBoundingBox();
  geometry.userData.achMichCrownInset=ACH_MICH_UPPER_INSET;
+ geometry.userData.achMichBevelHeight=ACH_MICH_BEVEL_HEIGHT;
 }
 const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
  // Uninterrupted crown: the former 0.34-high top plate added a hairline
