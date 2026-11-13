@@ -763,7 +763,13 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   const lateral=(p:Pt)=>
     (p.x-center.x)*tangent.x+(p.y-center.y)*tangent.y;
   const originSide=lateral(from);
-  const hasFlank=Math.abs(originSide)>20;
+  // Apply flank-first assignment to a genuinely SPLIT team, not to four
+  // operators approaching together from one side. The original template
+  // can be quicker and physically simpler for a one-sided column.
+  const initialSides=team(s).filter(b=>b.health>0).map(b=>lateral(b.p));
+  const splitTeam=initialSides.some(v=>v< -20)&&
+    initialSides.some(v=>v>20);
+  const hasFlank=splitTeam&&Math.abs(originSide)>20;
   legal.sort((u,v)=>{
     const flank=(p:Pt)=>hasFlank&&lateral(p)*originSide<-.01?1:0;
     const rank=(p:Pt)=>{
