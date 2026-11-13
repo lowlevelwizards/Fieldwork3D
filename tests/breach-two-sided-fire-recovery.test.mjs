@@ -74,8 +74,15 @@ test('real player either gets a genuinely clear near-stack shot or requests a fo
   // Evaluate a bounded fixed-tick window rather than asserting an
   // instantaneous footstep before the first aim frame is settled.
   let selected=null;
+  const recordedShots=new Map();
   for(let tick=0;tick<36&&s.phase==='running';tick++){
     stepSession(s,1/30);
+    // s.shots is a short-lived tracer effect buffer (.40 seconds), not
+    // durable ballistic history. Capture each unique authoritative shot
+    // during the fixed-step run to validate its real muzzle afterwards.
+    for(const shot of s.shots)
+      if(shot.shooterId===lead.id)
+        recordedShots.set(shot.id,{...shot});
     if(lead.fireRetreatTarget){
       selected={...lead.fireRetreatTarget};
       break;
@@ -88,7 +95,7 @@ test('real player either gets a genuinely clear near-stack shot or requests a fo
     assert.ok(lead.shots>0,'must either fire or find a valid physical step');
     assert.equal(ally.health,4,'friendly never receives damage');
     const body=safetyBodyFor(ally);
-    const outgoing=s.shots.filter(shot=>shot.shooterId===lead.id);
+    const outgoing=[...recordedShots.values()];
     assert.ok(outgoing.length>0,'shots must have real recorded muzzles');
     for(const shot of outgoing){
       assert.equal(assessFriendlyLane(initial,shot.muzzleHeight,
