@@ -1,6 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {kickDoor,PUSHED_OPEN_LIMIT} from '../src/breach-door.ts';
+import {kickDoor,PUSHED_OPEN_LIMIT,doorWouldStrikeActors} from '../src/breach-door.ts';
+import {createDoorOrderHandler} from '../src/breach-order-door.ts';
+import {newSession,team} from '../src/breach-game.ts';
+import {doorRangeSite,prepareDoorRangeCase} from '../src/breach-door-test-cases.ts';
+import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
 import {doorLeafSegment,doorCenter} from '../src/breach-core.ts';
 
 const door=()=>({id:'ENTRY',a:{x:290,y:260},b:{x:332,y:260},
@@ -45,4 +49,42 @@ test('a wedged leaf remains unkickable and unchanged',()=>{
  const d={...door(),wedged:true};
  assert.equal(kickDoor(d,face(d)).opened,false);
  assert.equal(d.openFraction,.44);
+});
+
+test('Q5 live: ajar panel kick impacts a real defender behind the leaf',()=>{
+ const s=newSession(0,undefined,'full-view','small','hold',
+  doorRangeSite('ajar-outward'),{enableCivilians:false});
+ try{
+  prepareDoorRangeCase(s,'ajar-outward');
+  const d=s.doors[0],attacker=team(s)[0],defender=team(s)[1];
+  const fromFraction=d.openFraction;
+  const finishFraction=Math.min(PUSHED_OPEN_LIMIT,Math.max(.60,fromFraction+.42));
+  const hitLeaf=doorLeafSegment({...d,openFraction:finishFraction-.07});
+  defender.side='red';
+  defender.p={x:hitLeaf.a.x+(hitLeaf.b.x-hitLeaf.a.x)*.84,
+   y:hitLeaf.a.y+(hitLeaf.b.y-hitLeaf.a.y)*.84};
+  defender.priorP={...defender.p};
+  assert.equal(doorWouldStrikeActors({...d,openFraction:fromFraction},
+   finishFraction,[defender.p],OPERATOR_RADIUS+1),true,
+   'defender must physically occupy the kick sweep');
+  attacker.p=face(d);attacker.priorP={...attacker.p};
+  attacker.actionTimer=0;
+  const n={id:903,kind:'door',method:'kick',doorId:d.id,p:{...attacker.p}};
+  attacker.plan=[n];
+  const sideEffects=[];
+  const handler=createDoorOrderHandler({
+   approach:()=>false,advanceTraversal:()=>false,
+   notify:(_s,message)=>sideEffects.push(message),
+   hear:()=>{},battleEvent:(_s,kind,_actor,_point,text)=>sideEffects.push(text),
+   inSight:()=>false,liveVisibility:()=>false,
+   pairedLeaves:(_s,leaf)=>[leaf],movePhysicalProp:()=>false,
+   beginReload:()=>false
+  });
+  s.seconds=1;
+  assert.equal(handler(s,attacker,n,.44),true);
+  assert.ok(d.pushTarget>=1.55,'kick drives the real wide hinge target');
+  assert.ok((defender.doorStunUntil??0)>s.seconds,
+   'contact causes a bounded defensive stun');
+  assert.ok(sideEffects.some(x=>x.includes('STRUCK BY DOOR')));
+ }finally{activateSite(null);}
 });

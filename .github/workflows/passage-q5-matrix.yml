@@ -6,6 +6,7 @@ on:
     paths:
       - 'src/breach-door-test-cases.ts'
       - 'src/breach-door.ts'
+      - 'src/breach-door-kick-cover.ts'
       - 'src/breach-order-door.ts'
       - 'src/breach-squeeze-gate.ts'
       - 'src/breach-motor-collision.ts'

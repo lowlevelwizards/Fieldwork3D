@@ -1,4 +1,5 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {kickShoveLooseCover} from './breach-door-kick-cover.ts';
 /** Stage 8: explicit authoritative door OPEN/CLOSE/KICK/HOLD order,
  * including real sweep impact and repeated bounded kick attempts.
  */
@@ -78,6 +79,15 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         door.lastKickAt=s.seconds;
         if(outcome.opened){
           door.openedAt=s.seconds;
+          // One bounded, real-footprint shove of loose furniture touched
+          // by the kick arc. Fixed cabinets, barricades and walls stay solid.
+          const furniture=kickShoveLooseCover(s,door,impactStart,impactFinish);
+          if(furniture!==null){
+            const prop=s.coverState[furniture];
+            hear(s,prop,prop.toppled?95:65,'furniture');
+            battleEvent(s,'interaction',a,prop,
+              a.name+' KICKED '+(prop.fixture??'CLUTTER').toUpperCase());
+          }
           // Kicks into an occupied sweep impact the actual body. A validated
           // displacement clears room for the hinge; pinned actors remain solid.
           const impactLeaf=doorLeafSegment({...door,openFraction:impactFinish});
