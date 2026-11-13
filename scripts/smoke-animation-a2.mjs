@@ -41,7 +41,7 @@ try{
    null,{timeout:40000});
   // Pose QA MUST render a physical firearm. The Lab defaults to an
   // unarmed mannequin, which previously made carry screenshots misleading.
-  await page.locator('#weapon').selectOption('carbine');
+  await page.locator('#poseWeapon').selectOption('ar-m4a1');
   const carryModes={
    'low-ready':'low','high-ready':'high','ready':'ready',
    'point-shoot':'point','active-aim':'ads','short-stock':'short'
