@@ -74,7 +74,10 @@ export function consolidateVisualGroup(group:THREE.Group):void{
  // flaps are merged. One-time CPU work only; no per-frame AO traversal.
  bakeGearContactAO(group);
  rememberUnmergedShadowVolumes(group);
- const buckets=new Map<THREE.Material,THREE.Mesh[]>();
+ // Preserve the authored shadow contract when batching cosmetic pieces.
+ // In particular the lightweight helmet bands must never become large
+ // shadow casters merely because another piece shares their material.
+ const buckets=new Map<THREE.Material,Map<string,THREE.Mesh[]>>();
  for(const item of group.children){
   // Preserve per-mesh attribute parity in the existing iOS draw-call merge.
   if(item instanceof THREE.Mesh&&!Array.isArray(item.material))
@@ -85,7 +88,8 @@ export function consolidateVisualGroup(group:THREE.Group):void{
   const bucket=buckets.get(item.material)??[];
   bucket.push(item);buckets.set(item.material,bucket);
  }
- for(const [material,meshes] of buckets){
+ for(const [material,byShadow] of buckets)
+ for(const [flags,meshes] of byShadow){
   if(meshes.length<2)continue;
   // Armor uses both extruded (non-indexed) and box (indexed) faces.
   // Normalize that *one-time* mismatch instead of silently forfeiting
