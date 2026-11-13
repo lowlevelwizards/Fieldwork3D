@@ -87,7 +87,7 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  * It uses a shallow solid lip plus one broad stitched face, never an
  * unrelated rectangular board floating in front of the goggles.
  */
-function addSleeve(pose:THREE.Group,tan:THREE.Material,dark:THREE.Material){
+export function createFittedGoggleSleeve(pose:THREE.Group,tan:THREE.Material,dark:THREE.Material){
  const sleeve=new THREE.Group();
  sleeve.name='goggle-fabric-sleeve';sleeve.visible=false;
  sleeve.position.copy(pose.position);sleeve.quaternion.copy(pose.quaternion);
@@ -146,7 +146,7 @@ export function createHelmetFieldGoggleModule(
   buildRetention(shell,g,placement,elastic,frame);
  }
  g.add(pose);
- const sleeve=addSleeve(pose,sleeveFabric,frame);
+ const sleeve=createFittedGoggleSleeve(pose,sleeveFabric,frame);
  if(placement==='eyes')sleeve.visible=false;
  g.add(sleeve);
  g.userData.h9HelmetGoggles=true;
