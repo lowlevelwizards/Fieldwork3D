@@ -270,7 +270,12 @@ function tick(now:number){
   const uiAudioEnd=perfOverlay?performance.now():0;
   // Execution's full HUD reconciliation is DOM-heavy; explicit commands
   // still call updateHud() immediately, while live status refreshes ~5.5Hz.
-  if(now-hudAt>(state.phase==='running'?180:120)){
+  // Completed missions have no live status clock to reconcile at 8 Hz.
+  // Explicit selection/commands still update the HUD immediately. Keep
+  // planning at 120ms and active execution at 180ms as before.
+  const hudPeriod=state.phase==='running'?180:
+    (state.phase==='won'||state.phase==='lost')&&!replaying?750:120;
+  if(now-hudAt>hudPeriod){
     config.updateHud();if(replaying)config.updateReplayHud();hudAt=now;
   }
   const uiHudEnd=perfOverlay?performance.now():0;
