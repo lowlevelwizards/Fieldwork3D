@@ -16,35 +16,27 @@ const makeShape=(contour:readonly (readonly number[])[]):THREE.Shape=>{
  contour.forEach((p,i)=>i?sh.lineTo(p[0],p[1]):sh.moveTo(p[0],p[1]));
  sh.closePath();return sh;
 };
+/** One broad plane per authored strap section. No midpoint sampling,
+ * tessellated wraps or hidden adjacent quads. Geometry is built once. */
 const strip=(root:THREE.Group,points:THREE.Vector3[],width:number,
  material:THREE.Material,name:string):THREE.Mesh=>{
- const a:number[]=[];
- const quad=(p:THREE.Vector3,q:THREE.Vector3)=>{
-  const along=q.clone().sub(p).normalize();
-  const normal=new THREE.Vector3(p.x+q.x,.1,p.z+q.z).normalize();
-  // Webbing width lies tangent to the helmet, never fixed world-Y where
-  // sloped panels turn a broad strap edge into a shell-intersecting chord.
-  const across=new THREE.Vector3().crossVectors(normal,along)
-   .normalize().multiplyScalar(width*.5);
-  const outward=normal.multiplyScalar(.14);
-  const p0=p.clone().add(outward).sub(across),
-   p1=p.clone().add(outward).add(across),
-   q0=q.clone().add(outward).sub(across),
-   q1=q.clone().add(outward).add(across);
-  for(const x of [p0,q0,q1,p0,q1,p1])a.push(x.x,x.y,x.z);
- };
- for(let i=1;i<points.length;i++){
-  const p=points[i-1],q=points[i];
-  const mid=p.clone().lerp(q,.5);
-  // Turn the strap around corners, not through the shell between anchors.
-  if(i>1&&i<points.length-1)
-   mid.addScaledVector(new THREE.Vector3(mid.x,0,mid.z).normalize(),.18);
-  quad(p,mid);quad(mid,q);
- }
+ const p=points[0],q=points[1];
+ const along=q.clone().sub(p).normalize();
+ const radial=p.clone().add(q).multiplyScalar(.5);
+ radial.y=0;radial.normalize();
+ const across=new THREE.Vector3().crossVectors(radial,along)
+  .normalize().multiplyScalar(width*.5);
+ const lift=radial.multiplyScalar(.075);
+ const p0=p.clone().sub(across).add(lift),
+  p1=p.clone().add(across).add(lift),
+  q0=q.clone().sub(across).add(lift),
+  q1=q.clone().add(across).add(lift);
+ const data:number[]=[];
+ for(const v of [p0,q0,q1,p0,q1,p1])data.push(v.x,v.y,v.z);
  const geo=new THREE.BufferGeometry();
- geo.setAttribute('position',new THREE.Float32BufferAttribute(a,3));
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
  geo.computeVertexNormals();geo.computeBoundingBox();
- geo.userData.h62ContourRibbon=true;
+ geo.userData.h69OneBroadPlane=true;
  const mesh=new THREE.Mesh(geo,material);
  mesh.name=name;mesh.castShadow=false;mesh.receiveShadow=false;
  root.add(mesh);return mesh;
@@ -59,8 +51,8 @@ const sample=(shell:AchMichCoverShell,region:'left'|'right'|'front'|'back',
  for(const uu of [u,u*.94,u*.84])
   for(const v of [-.65,-.48,-.30,-.12,.06,.22,.38,.55,.72]){
    // Bare and covered strap routes must follow distinct actual surfaces.
-   const f=covered?sampleHelmetCover(shell,region,uu,v,.58):
-    sampleHelmetShell(shell,region,uu,v,.52);
+   const f=covered?sampleHelmetCover(shell,region,uu,v,.22):
+    sampleHelmetShell(shell,region,uu,v,.20);
    if(!f)continue;
    const d=Math.abs(f.position.y-targetY)+Math.abs(u-uu)*.32;
    if(d<score){score=d;best=f.position;}
@@ -83,39 +75,35 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
   const retention=new THREE.Group();
   retention.name=covered?'goggle-retention-covered':'goggle-retention-bare';
   retention.visible=covered;g.add(retention);
-  const left=new THREE.Vector3(-4.25,y,nearZ);
-  const right=new THREE.Vector3(4.25,y,nearZ);
-  const path:THREE.Vector3[]=[left];
-  for(const u of [begin,begin*.46,0,finish*.46,finish])
-   path.push(sample(shell,'left',u,y,covered));
-  for(const u of [-.68,-.35,0,.35,.68])
-   path.push(sample(shell,opposite,u,y,covered));
-  for(const u of [finish,finish*.46,0,begin*.46,begin])
-   path.push(sample(shell,'right',u,y,covered));
-  path.push(right);
-  strip(retention,path,1.02,elastic,
-   covered?'continuous-helmet-goggle-strap':'bare-shell-goggle-strap');
-  for(const region of ['left','right'] as const){
-   const f=covered?sampleHelmetCover(shell,region,front?-.06:.08,.19,.48):
-    sampleHelmetShell(shell,region,front?-.06:.08,.19,.43);
-   if(!f)continue;
-   const buckle=new THREE.Mesh(new THREE.BoxGeometry(.32,1.23,.13),metal);
-   buckle.position.copy(f.position);
-   buckle.quaternion.setFromRotationMatrix(new THREE.Matrix4()
-    .makeBasis(f.right,f.up,f.normal));
-   buckle.name='helmet-strap-slider-'+region;
-   buckle.castShadow=false;buckle.receiveShadow=false;retention.add(buckle);
-  }
+  const left:[THREE.Vector3,THREE.Vector3]=[
+   sample(shell,'left',front?-.84:.84,y,covered),
+   sample(shell,'left',front?.84:-.84,y,covered)
+  ];
+  const right:[THREE.Vector3,THREE.Vector3]=[
+   sample(shell,'right',front?.84:-.84,y,covered),
+   sample(shell,'right',front?-.84:.84,y,covered)
+  ];
+  const diagonal:[THREE.Vector3,THREE.Vector3]=[
+   sample(shell,opposite,-.82,y-.25,covered),
+   sample(shell,opposite,.82,y+.25,covered)
+  ];
+  const name=covered?'continuous-helmet-goggle-strap':
+   'bare-shell-goggle-strap';
+  strip(retention,left,2.02,elastic,name);
+  strip(retention,right,2.02,elastic,'right-goggle-strap-face');
+  strip(retention,diagonal,2.02,elastic,'diagonal-goggle-strap-bridge');
+  const path=[...left,...diagonal,...right];
   paths[covered?'covered':'bare']=path.map(v=>v.toArray());
  }
  g.userData.h10OverShellStrap=true;
  g.userData.h9FittedStrap=true;
  g.userData.h9StrapPath=paths.covered;
- g.userData.h9StrapSegments=paths.covered.length-1;
+ g.userData.h9StrapSegments=3;
+ g.userData.h69ThreePanelRetention=true;
  g.userData.h9StrapWraps=opposite;
  g.userData.h5AdaptiveStrapPaths=paths;
  g.userData.h5StrapOutsideElastic=true;
- g.userData.h62MidpointCornerClearance=true;
+ g.userData.h62MidpointCornerClearance=false;
 }
 /** Fitted fabric cover drawn on the goggles' actual D2 silhouette.
  * It uses a shallow solid lip plus one broad stitched face, never an
@@ -128,37 +116,27 @@ export function createFittedGoggleSleeve(pose:THREE.Group,tan:THREE.Material,dar
  // Match the same fourteen-point D2 field shell from field() rather
  // than an independent, wider rectangle that hangs past its gasket.
  const outer=[
-  [-4.32,5.16],[-3.12,5.37],[3.12,5.37],[4.32,5.16],
-  [4.50,4.52],[4.30,2.21],[3.01,1.90],[1.45,2.04],
-  [.75,2.82],[-.75,2.82],[-1.45,2.04],[-3.01,1.90],
-  [-4.30,2.21],[-4.50,4.52]
+  [-4.72,5.38],[-3.50,5.67],[3.50,5.67],[4.72,5.38],
+  [4.89,4.62],[4.71,2.05],[3.31,1.75],[1.62,1.89],
+  [.80,2.68],[-.80,2.68],[-1.62,1.89],[-3.31,1.75],
+  [-4.71,2.05],[-4.89,4.62]
  ];
  const face=new THREE.Mesh(new THREE.ExtrudeGeometry(makeShape(outer),{
-  depth:.17,bevelEnabled:false,steps:1
+  depth:.72,steps:1,bevelEnabled:true,bevelThickness:.12,
+  bevelSize:.16,bevelSegments:1,curveSegments:1
  }),tan);
- face.position.z=-6.015;face.name='fitted-sleeve-folded-cloth';
+ face.position.z=-6.06;face.name='fitted-sleeve-folded-cloth';
  face.castShadow=false;face.receiveShadow=false;sleeve.add(face);
- const seal=new THREE.Mesh(new THREE.ShapeGeometry(makeShape([
-  [-4.29,4.86],[-3.06,5.09],[3.06,5.09],[4.29,4.86],
-  [4.46,4.28],[4.19,2.34],[2.96,1.94],[1.39,2.06],
-  [.68,2.85],[-.68,2.85],[-1.39,2.06],[-2.96,1.94],
-  [-4.19,2.34],[-4.46,4.28]
- ])),dark);
- seal.name='sleeve-subtle-stitched-outline';seal.position.z=-6.11;
- seal.castShadow=false;seal.receiveShadow=false;
- // Slim border effect: dark perimeter behind a smaller tan center panel.
- sleeve.add(seal);
- const panel=new THREE.Mesh(new THREE.ShapeGeometry(makeShape([
-  [-4.06,4.74],[-2.88,4.98],[2.88,4.98],[4.06,4.74],
-  [4.23,4.15],[3.98,2.50],[2.80,2.10],[1.44,2.19],
-  [.75,2.93],[-.75,2.93],[-1.44,2.19],[-2.80,2.10],
-  [-3.98,2.50],[-4.23,4.15]
- ])),tan);
- panel.name='sleeve-front-face';panel.position.z=-6.13;
- panel.castShadow=false;panel.receiveShadow=false;sleeve.add(panel);
+ // One broad folded opening reads as a padded protective pouch, not
+ // a flat fabric decal or a second rigid pair of goggles.
+ const flap=new THREE.Mesh(new THREE.BoxGeometry(8.66,.37,.18),dark);
+ flap.position.set(0,5.42,-6.22);
+ flap.name='sleeve-padded-top-opening';
+ flap.castShadow=false;flap.receiveShadow=false;sleeve.add(flap);
  sleeve.userData.h9HousingFitted=true;
  sleeve.userData.h9FaceContourPoints=outer.length;
  sleeve.userData.h9HemThickness=hem;
+ sleeve.userData.h69SoftPouchDepth=.72;
  return sleeve;
 }
 export function createHelmetFieldGoggleModule(
