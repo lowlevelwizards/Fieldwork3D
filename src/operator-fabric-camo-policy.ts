@@ -109,6 +109,16 @@ export function fabricCamoCompatible(id:HeadwearCamoId,
  if(!entry.channels.includes(channel))return false;
  switch(channel){
   case 'top':
+   // These are commercially printed casual fabrics, not issue uniforms.
+   if(outfit.top==='t-shirt')
+    return ['m81-woodland','tiger-stripe','multicam','multicam-black'].includes(id);
+   if(outfit.top==='button-up-shirt')
+    return ['m81-woodland','woodland-dpm','flecktarn','three-color-desert',
+     'rhodesian-brushstroke'].includes(id);
+   if(outfit.top==='polo-shirt')
+    return ['m81-woodland','multicam','multicam-black'].includes(id);
+   if(outfit.top==='tank-top')
+    return ['m81-woodland','tiger-stripe','multicam-black'].includes(id);
    if(outfit.top==='combat-shirt')
     return ['ucp','multicam','scorpion-w2','woodland-marpat',
      'desert-marpat','cadpat-tw','british-mtp','finnish-m05',
