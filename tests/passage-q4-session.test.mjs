@@ -39,13 +39,10 @@ test('Q4 actual outward door session: one swept-safe stage, then a stable hold',
   follower.p={...where};
   const before={...follower.p};
   let stageTicks=0,holdTicks=0;
-  const observed=[];
   for(let i=0;i<100;i++){
    s.seconds+=1/60;
    const intended=p(follower.p.x,follower.p.y+1);
    const decision=coordinatePassage(s,follower,intended,slots);
-   if(i<9)observed.push({at:{...follower.p},reason:decision.reason,
-     hold:decision.hold,move:decision.move});
    if(decision.reason==='stage'){
     stageTicks++;
     assert.equal(decision.hold,false);
@@ -57,9 +54,7 @@ test('Q4 actual outward door session: one swept-safe stage, then a stable hold',
     assert.deepEqual(decision.move,follower.p);
    }
   }
-  console.log('Q4 SESSION STAGING DIAGNOSTIC',JSON.stringify({
-   initial:before,stageTicks,holdTicks,observed}));
-  assert.ok(stageTicks>1,'perform a real bounded multi-tick correction');
+   assert.ok(stageTicks>1,'perform a real bounded multi-tick correction');
   assert.ok(holdTicks>1,'settle into a stationary, rank-preserving hold');
   const span=Math.hypot(follower.p.x-before.x,follower.p.y-before.y);
   assert.ok(span<=61,'no cumulative runaway backward displacement');

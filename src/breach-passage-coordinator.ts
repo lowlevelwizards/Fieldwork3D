@@ -179,11 +179,13 @@ export function inspectPassageLane(s:Session,doorId:string,side:-1|1){
  */
 function stagedHold(ctx:Context,s:Session,a:TeamActor,slot:PassageSlot,
  door:Door,normalStep:Pt,hold:QueueDecision):QueueDecision{
- if(!hold.hold||!threatenedByOpeningLeaf(door,a.p,slot.fromSide))
-  return hold;
+ if(!hold.hold||(door.openFraction??0)>.88)return hold;
  const key=slot.doorId+'|'+slot.fromSide+'|'+a.id;
  let stage=ctx.leafStages.get(key);
  if(stage===undefined&&!ctx.leafStages.has(key)){
+  // Full physical leaf sweep is probed once for this episode, never
+  // repeated at 60Hz while following an already-selected safe pocket.
+  if(!threatenedByOpeningLeaf(door,a.p,slot.fromSide))return hold;
   const world=sessionWorldGeometry(s);
   stage=chooseLeafStage(door,a.p,slot.fromSide,
    (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),

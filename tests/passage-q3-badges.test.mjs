@@ -33,3 +33,25 @@ test('Q3 all badges use a visually separate location and numeric rank',()=>{
   a[0].point.y-b[0].point.y)>15);
  assert.deepEqual(b.map(q=>q.rank),[1]);
 });
+test('Q3 planning preview memoizes routes and changes only with authored intent',async()=>{
+ const {newSession,team,passageScheduleForDisplay,toggling}
+   =await import('../src/breach-game.ts');
+ const {doorRangeSite}=await import('../src/breach-door-test-cases.ts');
+ const {activateSite}=await import('../src/breach-core.ts');
+ const s=newSession(0,undefined,'full-view','small','hold',
+  doorRangeSite('inward-left'),{enableCivilians:false});
+ try{
+  const a=team(s)[0];
+  const before=passageScheduleForDisplay(s);
+  assert.equal(passageScheduleForDisplay(s),before,
+   'identical planning frames must never launch another known-route search');
+  a.plan=[{id:1,kind:'move',p:p(311,360)}];
+  const next=passageScheduleForDisplay(s);
+  assert.notEqual(next,before,'authored MOVE invalidates prediction');
+  assert.equal(passageScheduleForDisplay(s),next);
+  toggling(s);
+  const running=passageScheduleForDisplay(s);
+  assert.equal(passageScheduleForDisplay(s),running,
+   'live marker uses the exact engine GO-time schedule');
+ }finally{activateSite(null);}
+});
