@@ -10,6 +10,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  from '../src/equipment-weapon-assemblies.ts';
 import {muzzleAtShot} from '../src/breach-muzzle.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
+import {applyWorkbenchPose} from '../src/operator-pose-workbench.ts';
 const m4=selectWeaponFamilyPreset(
  initialWeaponConfiguration('carbine'),'ar-m4a1');
 const cases=FAMILY_PRESETS.map(p=>({
@@ -83,5 +84,32 @@ test('high/low central muzzle matches rigid displayed stock and rotations',()=>{
    close(actual.z,tip.z,1e-6);
    assert.ok(Number.isFinite(actual.pitch),name+' '+mode);
   }
+ }
+});
+
+test('actual high/low M4 rigs reproduce authored Workbench shoulders and wrists',()=>{
+ const neutral={x:0,z:0,heading:0,travelYaw:0,velocity:0,
+  seconds:2,stride:0,posture:'stand',injury:0,
+  weapon:'carbine',weaponConfiguration:m4,
+  reload:0,reloadDuration:1.8,
+  lastDoorAt:-100,lastThrowAt:-100,down:false,surrender:false,
+  aiming:false,firing:false,turning:0,aimBlend:0,
+  deterministic:true,poseV3Preview:true};
+ for(const mode of ['high','low']){
+  const rig=createOperatorRig('authored-'+mode,'blue');
+  const reference=createOperatorRig('reference-'+mode,'blue');
+  try{
+   poseOperator(rig,{...neutral,handlingOverride:mode},0);
+   const user=AUTHORED_READY_CARRIES[mode];
+   const report=applyWorkbenchPose(reference,user,m4);
+   assert.ok(rig.weapon.position.distanceTo(reference.weapon.position)<.001,
+    mode+' rigid weapon origin no longer matches user export');
+   for(let i=0;i<2;i++)
+    assert.ok(rig.arms[i].hand.position.distanceTo(
+      reference.arms[i].hand.position)<.05,
+      mode+' arm '+i+' no longer matches authored target');
+   assert.ok(Number.isFinite(report.maxReachError));
+   assert.ok(Number.isFinite(report.maxContactGap));
+  }finally{rig.dispose();reference.dispose();}
  }
 });
