@@ -122,7 +122,7 @@ function setProfilerOpen(open:boolean):boolean{
   frameMeter=new FrameMeter();
   setSightDiagnosticsEnabled(true);
   // Activate full scene phase attribution immediately, even in a normal URL.
-  config.getStage()?.setPerformanceProfilingEnabled(true);
+  config.getStage()?.setPerformanceProfilingEnabled?.(true);
   previousPerfJs=previousCoarseJs;
   previousPerfMode=previousCoarseMode;
  }
@@ -185,7 +185,7 @@ function tick(now:number){
   // A new map can install its own scene after PERF was armed. Configure
   // that scene once; never re-arm or allocate during each steady RAF.
   if(stage!==profiledStage){
-   stage?.setPerformanceProfilingEnabled(!!perfOverlay);
+   stage?.setPerformanceProfilingEnabled?.(!!perfOverlay);
    profiledStage=stage;
   }
   const frameMode=runtimeFrameMode({mode:campaignMode,
