@@ -160,6 +160,30 @@ try{
    for(const name of extras)await toggle(name);
    await capture(id+'-fully-kitted-side','side');
    await capture(id+'-fully-kitted-back','back');
+   if(id==='ach'){
+    // H9.7 final art gate: review each recognizable add-on in isolation
+    // rather than approving an all-on loadout that hides bad silhouettes.
+    const addonNames=['IR STROBE','COUNTERWEIGHT','BATTERY PACK',
+     'HELMET LIGHT','CAMERA','CHEMLIGHT'];
+    const slug=name=>name.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+    for(const name of [...addonNames,'PATCH / IDENTIFIER'])
+     await setToggleState(name,false);
+    for(const name of ['NVG SHROUD','SIDE RAILS','BUNGEES','VELCRO PANELS'])
+     await setToggleState(name,false);
+    await conceal.selectOption('none');
+    for(const name of addonNames){
+     await setToggleState(name,true);
+     await capture('ach-isolated-'+slug(name)+'-side','side');
+     if(['IR STROBE','COUNTERWEIGHT','BATTERY PACK'].includes(name))
+      await capture('ach-isolated-'+slug(name)+'-rear','back');
+     await setToggleState(name,false);
+    }
+    for(const name of addonNames)await setToggleState(name,true);
+    await setToggleState('PATCH / IDENTIFIER',true);
+    for(const name of ['NVG SHROUD','SIDE RAILS','BUNGEES','VELCRO PANELS'])
+     await setToggleState(name,true);
+    await conceal.selectOption('net');
+   }
    const goggles=page.locator('.material-group').filter({
     hasText:'On eyes, strapped over the helmet brow'}).locator('select');
    await goggles.selectOption('rear');
