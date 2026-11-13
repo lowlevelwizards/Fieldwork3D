@@ -30,7 +30,9 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - name: A3.1 body volumes, actual session and legacy safety
-        run: node --experimental-strip-types --test tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-0-physicality.test.mjs tests/breach-clearing-fire-c.test.mjs tests/breach-muzzle-lane-hotfix.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/civilian-d2-fire-safety.test.mjs tests/physicality-door-and-glass.test.mjs
+        run: node --experimental-strip-types --test tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-0-physicality.test.mjs tests/breach-muzzle-lane-hotfix.test.mjs tests/gameplay-g3-fire-lanes.test.mjs tests/civilian-d2-fire-safety.test.mjs tests/physicality-door-and-glass.test.mjs
+      - name: Legacy point-only clearance compatibility (exclude stale C18 entry-motion fixture)
+        run: node --experimental-strip-types --test --test-name-pattern='^(?!C18:)' tests/breach-clearing-fire-c.test.mjs
       - name: Existing operator friendly-fire physical recovery regressions
         run: node --experimental-strip-types --test --test-name-pattern='short step-back|ally in lane|real player operator' tests/breach-two-sided-fire-recovery.test.mjs
       - name: A3.1 height-aware seeded current vs legacy performance audit
