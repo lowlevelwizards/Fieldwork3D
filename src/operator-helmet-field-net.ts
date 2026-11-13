@@ -8,6 +8,7 @@ import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
 import {sampleHelmetCover,type CoverRegion,type HelmetSurfaceFrame}
  from './operator-helmet-surface.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
+import {achMichProfile,achMichHemY} from './operator-ach-mich-details.ts';
 
 type Pt={position:THREE.Vector3;normal:THREE.Vector3};
 type Edge={x:number;z:number};
@@ -46,15 +47,19 @@ const side=(shell:AchMichCoverShell,edge:Edge,v:number,offset=.16):Pt=>{
  if(!sample)throw Error('H9.3 missing '+region+' drape point '+shell);
  return mat(sample);
 };
+/** Find the retaining-band height from actual hem/profile dimensions.
+ * Avoid probing above or below the cloth: a ray at an unsupported height
+ * returns null and previously made the entire helmet fail to construct.
+ */
 const bandV=(shell:AchMichCoverShell,edge:Edge):number=>{
  const p=HELMET_MOUNT_PROFILES[shell],r=sideRegion(edge);
- const lower=sampleHelmetCover(shell,r.region,r.u,-.84,.10);
- const upper=sampleHelmetCover(shell,r.region,r.u,.84,.10);
- if(!lower||!upper)throw Error('H9.3 missing cover height limits');
- const target=p.top-2.39;
- const y=Math.min(upper.position.y-.36,Math.max(lower.position.y+.15,target));
- return Math.max(-.80,Math.min(.72,
-  1.68*(y-lower.position.y)/(upper.position.y-lower.position.y)-.84));
+ const profile=achMichProfile(shell);
+ const bottom=r.region==='front'?profile.brow:
+  r.region==='back'?profile.nape:achMichHemY(shell,r.u*4.4);
+ const target=Math.max(bottom+.50,Math.min(p.top-.85,p.top-2.39));
+ const span=Math.max(1,p.top-bottom-.45);
+ return Math.max(-.65,Math.min(.48,
+  2*(target-bottom-.38)/span-1));
 };
 function route(shell:AchMichCoverShell,slope:number,shift:number){
  const [a,b]=clip(slope,shift);
