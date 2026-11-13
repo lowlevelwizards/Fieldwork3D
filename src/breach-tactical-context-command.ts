@@ -97,10 +97,13 @@ export function dispatchTacticalContextCommand(input:{
   }
   case 'ctxWindow':{
    const at=node?.p??finalPoint(a);
-   const nearby=state.windows.filter(w=>w.operable&&!w.shattered&&
-     distance(at,{x:w.x,y:w.y})<54)
-     .sort((x,y)=>distance(at,{x:x.x,y:x.y})-
-       distance(at,{x:y.x,y:y.y}))[0];
+   let nearby:typeof state.windows[number]|undefined;
+   let best=54*54;
+   for(const w of state.windows){
+     if(!w.operable||w.shattered)continue;
+     const dx=w.x-at.x,dy=w.y-at.y,dist=dx*dx+dy*dy;
+     if(dist<best){best=dist;nearby=w;}
+   }
    if(!nearby||!planNearbyInteraction(state,selected,
      nearby.open?'close-window':'open-window',node?.id))
     state.events.push('NO OPERABLE WINDOW IN REACH');

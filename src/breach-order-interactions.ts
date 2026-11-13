@@ -20,6 +20,9 @@ const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
 export function createInteractionOrderHandler(port:OrderExecutionPort){
+ // Per-order resolution, not a global actor/prop lookup every frame. Weak
+ // references evaporate when a plan is edited, completed or replayed.
+ const pushTargets=new WeakMap<PlanNode,{token:string;index:number}>();
  const {approach,notify,battleEvent,liveVisibility,movePhysicalProp,hear}=port;
  const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
   failOrder(s,a,n,reason,port.notify);
@@ -88,7 +91,14 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     }
     const [kind,id]=n.objectId.split(':');
     if(kind==='prop'&&n.interaction==='push'){
-      const index=coverTargetIndex(s.coverState,id),o=s.coverState[index];
+      let resolved=pushTargets.get(n);
+      if(!resolved||resolved.token!==id||
+         (s.coverState[resolved.index]?.id!==id&&
+          String(resolved.index)!==id)){
+        resolved={token:id,index:coverTargetIndex(s.coverState,id)};
+        pushTargets.set(n,resolved);
+      }
+      const index=resolved.index,o=s.coverState[index];
       if(!o||!canRelocateCover(o)||d(a.p,{x:o.x,y:o.y})>
         Math.max(o.w,o.h)/2+43){
         failCurrentOrder(s,a,n,'OBJECT UNAVAILABLE');return true;
