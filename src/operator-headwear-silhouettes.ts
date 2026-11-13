@@ -38,7 +38,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
   top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
  'ach':{id:'ach',frontExtent:-5.535,rearExtent:5.60,
-  top:8.84,earEdge:2.68,foreheadEdge:4.40,billLength:0},
+  top:8.84,earEdge:3.12,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0},
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
@@ -311,7 +311,7 @@ const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
  * remain unchanged. All intersections are joined by the union mesher.
  */
 /** A restrained top break, identical on the shell and its single fitted cover. */
-export const ACH_MICH_UPPER_INSET=.30;
+export const ACH_MICH_UPPER_INSET=.53;
 export const ACH_MICH_SHELLS=['ach','mich-2001','mich-2002'] as const;
 /** H3: bevel ONLY the upper .62 world units of the crown.
  * The previous implementation slanted the *entire* side wall from the
@@ -319,7 +319,7 @@ export const ACH_MICH_SHELLS=['ach','mich-2001','mich-2002'] as const;
  * Split the exterior triangles once, carrying their UV and color data
  * through the cut; keep the original greedy union and one shell draw call.
  */
-export const ACH_MICH_BEVEL_HEIGHT=.62;
+export const ACH_MICH_BEVEL_HEIGHT=1.10;
 export function chamferAchMichCrown(geometry:THREE.BufferGeometry,
  volumes:readonly HeadwearCuboid[],id:string):void{
  if(!(ACH_MICH_SHELLS as readonly string[]).includes(id))return;
@@ -406,8 +406,9 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
  // by a visible margin, rather than merely touching at float-precision seams.
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.91,
   width:10.15,height:1.70,depth:1.25},
- // Deep nape and ear coverage share ONE lower line (Y2.68). We deliberately
- // sacrifice the old Y2.70->Y2.45->Y2.23 micro-staircase.
+ // Two broad protection levels: ear scallop at Y3.12 and a genuinely
+ // deeper rear return at Y2.68. Each cut is a substantial volume.
+ // No narrow side trim, decorative micro-stairs or floating panel.
  {name:'ach-continuous-nape',x:0,y:4.49,z:4.97,
   width:10.15,height:3.62,depth:1.26},
  ...([-1,1] as const).flatMap(sign=>[
@@ -415,8 +416,11 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
    x:sign*4.55,y:5.25,z:-3.25,
    width:1.05,height:1.70,depth:2.60},
   {name:sign===-1?'ach-left-ear-wrap':'ach-right-ear-wrap',
-   x:sign*4.55,y:4.49,z:1.70,
-   width:1.05,height:3.62,depth:7.80}
+   x:sign*4.55,y:4.73,z:.55,
+   width:1.05,height:3.22,depth:5.50},
+  {name:sign===-1?'ach-left-nape-return':'ach-right-nape-return',
+   x:sign*4.55,y:4.50,z:4.30,
+   width:1.05,height:3.64,depth:2.65}
  ])
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region
@@ -487,7 +491,7 @@ const FAST_XP_MID_CUBOIDS:readonly HeadwearCuboid[]=[
 export const HEADWEAR_FIT_TARGETS=Object.freeze({
  ach:{
   brow:CUBE_HEAD_ANATOMY.brow+.10,
-  ear:CUBE_HEAD_ANATOMY.earCenter+.08,
+  ear:CUBE_HEAD_ANATOMY.earCenter+.52,
   nape:CUBE_HEAD_ANATOMY.nape+.48
  },
  'high-cut':{

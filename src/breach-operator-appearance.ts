@@ -471,6 +471,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorPose){
      modelId,p.wardrobe?.headwearColor):null;
    if(solid!==null){
     r.colors.set(material,new THREE.Color(solid));
+    const achBinding=r.visualKit.wardrobeHead.achMich[id]?.bindingMaterial;
+    if(achBinding){
+     // Shell-colored molded rubber, slightly darker than the paint.
+     // Reuse the appearance ledger so downed tint and replay remain reversible.
+     r.colors.set(achBinding,new THREE.Color(solid)
+      .lerp(new THREE.Color(0x18241d),.28));
+    }
     continue;
    }
    // Unselected variants remain neutral; they cannot inherit the last

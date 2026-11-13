@@ -59,7 +59,7 @@ test('ACH uses one decisive side drop instead of narrow stepping',()=>{
  const v=headwearCuboidVolumes('ach');
  const brow=byName(v,'ach-protective-brow'),ear=byName(v,'ach-right-ear-wrap');
  assert.ok(brow&&ear);
- assert.ok(lowerAt(v,4.4,0)<2.9,'ACH extends through implied ear center');
+ assert.ok(lowerAt(v,4.4,0)<3.3,'ACH extends through implied ear center');
  assert.ok(lowerAt(v,4.4,-3)<6,'temple descends from brow');
  assert.ok(lowerAt(v,0,-5)<4.6,'front edge is near implied brow');
  assert.ok(lowerAt(v,0,4.95)<2.9,'protective lower rear skull');
@@ -87,7 +87,7 @@ test('both fit head dimensions without changing proportions or scale',()=>{
 test('stage 1E removes insignificant crown trim and consolidates silhouette steps',()=>{
  const ach=headwearCuboidVolumes('ach');
  const high=headwearCuboidVolumes('high-cut');
- assert.equal(ach.length,7,'ACH: crown, brow, nape and two broad side pairs');
+ assert.equal(ach.length,9,'ACH: crown, brow, nape and three substantial side pairs');
  assert.equal(high.length,5,'high-cut: crown, brow, rear and two temple returns');
  for(const [id,v] of [['ach',ach],['high-cut',high]]){
   assert.ok(v.every(p=>p.height>=1.7),
@@ -106,11 +106,13 @@ test('stage 1E removes insignificant crown trim and consolidates silhouette step
   byName(ach,'ach-right-temple'))>.2);
  assert.ok(zOverlap(byName(ach,'ach-right-temple'),
   byName(ach,'ach-right-ear-wrap'))>.2);
+ assert.ok(zOverlap(byName(ach,'ach-right-ear-wrap'),
+  byName(ach,'ach-right-nape-return'))>.2);
  assert.ok(zOverlap(byName(high,'highcut-protective-brow'),
   byName(high,'highcut-right-temple'))>.2);
- // The ACH side is two intentional plateaus; ear and nape share a bottom.
+ // ACH has an intentional shallow central-ear scallop and deep nape return.
  assert.ok(Math.abs(lowerAt(ach,4.4,-3.5)-4.40)<.01);
- assert.ok(Math.abs(lowerAt(ach,4.4,0)-2.68)<.01);
+ assert.ok(Math.abs(lowerAt(ach,4.4,0)-3.12)<.01);
  assert.ok(Math.abs(lowerAt(ach,4.4,4.6)-2.68)<.01);
  // The high-cut instead has exactly one broad, exposed ear interval.
  assert.ok(Math.abs(lowerAt(high,4.4,-3.5)-4.50)<.01);
@@ -120,9 +122,9 @@ test('stage 1E removes insignificant crown trim and consolidates silhouette step
 
 test('ACH first-pass top chamfer is intentional but keeps its lower-edge topology',()=>{
  const g=build('ach').children[0].geometry;
- assert.equal(g.userData.achMichCrownInset,.30);
+ assert.equal(g.userData.achMichCrownInset,.53);
  assert.ok(g.getAttribute('normal').count>0);
  const side=headwearCuboidVolumes('ach');
- assert.equal(side.length,7);
- assert.ok(Math.abs(lowerAt(side,4.4,0)-2.68)<.01);
+ assert.equal(side.length,9);
+ assert.ok(Math.abs(lowerAt(side,4.4,0)-3.12)<.01);
 });
