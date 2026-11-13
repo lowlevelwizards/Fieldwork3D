@@ -13,7 +13,9 @@ import {sightSpreadScale,type WeaponHandlingModifiers}
  * No separate hit dice, invisible aim snapping or projectile cutoff.
  */
 export function rangeSpreadScale(range:number,optimalRange:number):number{
- const excess=Math.max(0,range/Math.max(1,optimalRange)-1);
+ // The existing angular cone already gets less accurate with distance.
+ // Extra stabilization cost begins beyond the 12 m CQB envelope only.
+ const excess=Math.max(0,(range-Math.max(240,optimalRange))/Math.max(1,optimalRange));
  return 1+Math.min(.75,excess*.18);
 }
 export function shotDispersionCone(a:Pick<TeamActor,
