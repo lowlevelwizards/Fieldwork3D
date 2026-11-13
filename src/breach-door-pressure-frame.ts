@@ -46,18 +46,26 @@ function inspectDoor(s:Session,tick:TickClaims,door:Door):void{
  const center={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2};
  for(const actor of s.operators){
   if(actor.health<=0||!actor.plan.length)continue;
+  // Restrict work to a touched, local leaf. Squad-entry members already
+  // queued at this threshold protect it against accidental body CLOSE
+  // even while their zero-duration door-clear WAIT is still active.
+  // Otherwise a later-rank contact can slam the panel on the lead
+  // between successive entry movements (Q2 outward-leaf regression).
+  const dx=actor.p.x-center.x,dy=actor.p.y-center.y;
+  if(dx*dx+dy*dy>80*80)continue;
+  const queued=actor.plan.some(n=>n.kind==='move'&&
+    n.entryDoorId===door.id);
+  if(queued)tick.protectedBySide.add(sideKey(door.id,actor.side));
   const n=actor.plan[0];
   if(!['move','pie','door','sync'].includes(n.kind)||
      n.kind==='door'&&n.method==='close')continue;
   const episode=actor.doorTraversal;
   const goal=episode?.authoredOrderId===n.id?
     episode.destination:actor.nav.at(-1)??n.p;
-  // 66-unit physical claim radius before running exact crossing geometry.
-  const dx=actor.p.x-center.x,dy=actor.p.y-center.y;
-  if(dx*dx+dy*dy>66*66)continue;
   if(!crossingDoor({id:actor.id,p:actor.p,goal,
     side:actor.side,health:actor.health,active:true,
-    blockedTime:actor.blockedTime},door))continue;
+    blockedTime:actor.blockedTime},door)&&
+     !(n.kind==='move'&&n.entryDoorId===door.id))continue;
   tick.protectedBySide.add(sideKey(door.id,actor.side));
   tick.occupiedDoors.add(door.id);
   tick.actorsOpening.add(actorKey(actor.id,door.id));
