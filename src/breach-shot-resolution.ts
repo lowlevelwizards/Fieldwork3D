@@ -25,6 +25,7 @@ import {skillMultiplier} from './breach-skills.ts';
 import {shotYaw,rayHitsActor,muzzleEndpoint} from './breach-ballistics.ts';
 import {shotDispersionCone} from './breach-shot-ignition.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {urgentFireMode} from './breach-fire-urgency.ts';
 import {resolveArmorImpact} from './equipment-armor.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
@@ -89,6 +90,9 @@ export function createShotResolver(ports:ShotResolverPorts){
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
+  const threatYaw=Math.atan2(target.p.y-a.p.y,target.p.x-a.p.x);
+  if(sightClearance.carryOverride==='short'&&
+    urgentFireMode(mode,a.aim,sightClearance,threatYaw)!=='point')return;
   if(observedCivilianFireLane(s,a,
      {x:sightMuzzle.x,y:sightMuzzle.z},sightMuzzle.y,
      target.p,aimHeight(target.posture==='crouch'))){
@@ -127,7 +131,11 @@ export function createShotResolver(ports:ShotResolverPorts){
   const priorBurst=s.seconds-a.lastShotAt<.48;
   const proposedBurst=priorBurst?a.burstCount+1:1;
   // Roll ordering is authoritative. The pure ignition policy never calls RNG.
-  const cone=shotDispersionCone(a,mode,range,moving,mods,weapon.optimalRange);
+  // Underarm emergency fire is a real shot, not fake ADS. Penalize the
+  // shortened, unstable shoulder purchase before sampling seeded spread.
+  const cone=shotDispersionCone(a,mode,range,moving,mods,weapon.optimalRange)*
+    (sightClearance.carryOverride==='short'?
+      1.30+Math.max(0,sightClearance.compression)*.38:1);
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
@@ -135,6 +143,10 @@ export function createShotResolver(ports:ShotResolverPorts){
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
     friends);
   if(shotClearance.blocked){
+    a.lastFireBlock=shotClearance.blocker;return;
+  }
+  if(shotClearance.carryOverride==='short'&&
+    urgentFireMode(mode,a.aim,shotClearance,threatYaw)!=='point'){
     a.lastFireBlock=shotClearance.blocker;return;
   }
   const muzzle=shotClearance.muzzle;
