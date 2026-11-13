@@ -176,8 +176,11 @@ export function coordinatePassage(s:Session,a:TeamActor,
  // A temporary, physically validated lateral/retreat footstep from
  // another motor stage must not be turned into a queue fallback.
  if(forward<=.025)return {...free,doorId:door.id,rank:slot.rank};
- // The operator already in the throat must be allowed to clear it.
- if(throat(a.p,door))return {...free,doorId:door.id,rank:slot.rank};
+ // Only after the full body clears the exit plane is this
+ // crossing outside the shared queue. Inside the throat, the leader may
+ // go but a follower cannot ignore the body directly ahead.
+ if(normalDepth(a.p,door)*slot.fromSide< -OPERATOR_RADIUS-10)
+  return {...free,doorId:door.id,rank:slot.rank};
  const lane=ctx.lanes.get(laneKey(door.id,slot.fromSide));
  const occupants=s.operators.filter(other=>other!==a&&other.health>0&&
   throat(other.p,door));
@@ -223,6 +226,38 @@ export function coordinatePassage(s:Session,a:TeamActor,
   if(Math.abs(peerLateral-ownLateral)>OPERATOR_RADIUS*2+7)continue;
   safeDepth=Math.max(safeDepth,peerDepth+QUEUE_CENTER_GAP);
  }
- return capStep(a.p,move,door,slot.fromSide,
+ const longitudinal=capStep(a.p,move,door,slot.fromSide,
   safeDepth,'spacing',slot.rank);
+ // Q2: independently maintain actual center-to-center spacing through the
+ // throat, not just projected depth. Two operators may have staggered
+ // sideways paths at the same depth; longitudinal spacing alone permits a
+ // brief body-sized "accordion" when the lead changes lane.
+ if(longitudinal.hold)return longitudinal;
+ let fraction=1;
+ const proposed=longitudinal.move;
+ for(let j=0;j<index;j++){
+  const peer=candidates[j].actor;
+  if(peer.health<=0||!ready(candidates[j],ctx))continue;
+  const fromGap=dist(a.p,peer.p);
+  const toGap=dist(proposed,peer.p);
+  if(toGap>=QUEUE_CENTER_GAP-.25||
+     toGap>fromGap+.005)continue;
+  if(fromGap<QUEUE_CENTER_GAP-.25){fraction=0;break;}
+  // Fixed eight-step monotonic clamp; no route search or allocation.
+  let lo=0,hi=fraction;
+  for(let n=0;n<8;n++){
+   const mid=(lo+hi)/2;
+   const p={x:a.p.x+(proposed.x-a.p.x)*mid,
+    y:a.p.y+(proposed.y-a.p.y)*mid};
+   if(dist(p,peer.p)>=QUEUE_CENTER_GAP-.25)lo=mid;
+   else hi=mid;
+  }
+  fraction=Math.min(fraction,lo);
+ }
+ if(fraction>=.999)return longitudinal;
+ if(fraction<.04)return {move:a.p,hold:true,reason:'spacing',
+  doorId:door.id,rank:slot.rank};
+ return {move:{x:a.p.x+(proposed.x-a.p.x)*fraction,
+  y:a.p.y+(proposed.y-a.p.y)*fraction},hold:false,
+  reason:'spacing',doorId:door.id,rank:slot.rank};
 }
