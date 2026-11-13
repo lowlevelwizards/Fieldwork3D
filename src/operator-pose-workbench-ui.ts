@@ -16,6 +16,10 @@ import {
  interpolateWorkbenchPose,readWorkbenchPose,
  type WorkbenchPose,type WorkbenchTarget,type WorkbenchReport,type Vec3
 } from './operator-pose-workbench.ts';
+import {createWorkbenchChoreography,sampleWorkbenchChoreography,
+ upsertWorkbenchKey,removeWorkbenchKey,addWorkbenchMarker,
+ readWorkbenchChoreography,type WorkbenchChoreography}
+ from './operator-workbench-choreography.ts';
 
 type Selection=WorkbenchTarget|'torso'|'weaponRotation';
 const get=<T extends HTMLElement>(id:string):T=>{
@@ -176,6 +180,57 @@ let progress=1;
 let animate=false;
 let animationTime=0;
 let lastTick=0;
+const timelineSlider=get<HTMLInputElement>('wbTimelineTime');
+const timelineValue=get<HTMLOutputElement>('wbTimelineValue');
+const timelineKeys=get<HTMLOutputElement>('wbTimelineKeys');
+const timelineStoreKey='fieldwork.operator-choreography-library.v1';
+let timeline:WorkbenchChoreography|null=null;
+let timelineClock=0,timelinePreview=false,timelinePlaying=false;
+const savedTimelines:Record<string,WorkbenchChoreography>={};
+try{
+ const raw=localStorage.getItem(timelineStoreKey);
+ if(raw){
+  const stored=JSON.parse(raw) as Record<string,unknown>;
+  for(const [key,value] of Object.entries(stored)){
+   try{
+    const clip=readWorkbenchChoreography(JSON.stringify(value));
+    if(clip.preset===key)savedTimelines[key]=clip;
+   }catch{/* Ignore one invalid previous preview without losing others. */}
+  }
+ }
+}catch{/* Local storage is optional. */}
+function refreshTimeline(){
+ if(!timeline)return;
+ timelineSlider.max=String(Math.round(timeline.duration*1000));
+ timelineSlider.value=String(Math.round(timelineClock*1000));
+ timelineValue.textContent=timelineClock.toFixed(2)+'s / '+
+  timeline.duration.toFixed(2)+'s';
+ timelineKeys.textContent='KEYS  '+timeline.keys.map(k=>k.at.toFixed(2)+'s')
+  .join(' · ')+'\nMARKERS  '+(timeline.markers?.map(m=>
+   m.at.toFixed(2)+'s '+m.kind+': '+m.name).join(' · ')||'none');
+ get<HTMLButtonElement>('wbTimelinePlay').textContent=timelinePlaying?
+  'PAUSE TIMELINE':'PLAY TIMELINE';
+}
+function stopTimeline(){
+ timelinePlaying=false;timelinePreview=false;
+ refreshTimeline();
+}
+function saveTimeline(){
+ if(!timeline)return;
+ savedTimelines[timeline.preset]=timeline;
+ try{localStorage.setItem(timelineStoreKey,
+  JSON.stringify(savedTimelines));}
+ catch{notify('Local storage unavailable. Export sequence JSON instead.');}
+}
+function showTimeline(time:number){
+ if(!timeline)return;
+ animate=false;
+ timelineClock=Math.max(0,Math.min(timeline.duration,time));
+ timelinePreview=true;
+ refreshTimeline();
+ applyAndRenderTargets();
+}
+
 
 const clamps:{position:[number,number];angle:[number,number]}={
  position:[-30,35],angle:[-90,90]
@@ -231,6 +286,11 @@ function rebaseFromReady(preset:string,retain?:WorkbenchPose){
  weaponPicker.value=preset;
  previewSlider.value='100';previewValue.textContent='100%';
  progress=1;animate=false;
+ timeline=savedTimelines[preset]??
+  createWorkbenchChoreography(baseline,edited);
+ timelineClock=timeline.duration;
+ timelinePlaying=false;timelinePreview=false;
+ refreshTimeline();
  get<HTMLButtonElement>('wbAnimate').textContent='PLAY TRANSITION';
  refreshSelection();
  applyAndRenderTargets();
@@ -240,6 +300,7 @@ function getArray(pose:WorkbenchPose,key:Selection):Vec3{
   pose.weaponRotation:pose.targets[key];
 }
 function endPreview(){
+ stopTimeline();
  animate=false;progress=1;previewSlider.value='100';
  previewValue.textContent='100%';
  get<HTMLButtonElement>('wbAnimate').textContent='PLAY TRANSITION';
@@ -324,7 +385,9 @@ const setReport=(report:WorkbenchReport)=>{
     '\nJOINT LENGTHS LOCKED · No automatic armor/elbow solver.');
 };
 function applyAndRenderTargets(){
- const shown=progress>=.999?edited:
+ const shown=timelinePreview&&timeline?
+  sampleWorkbenchChoreography(timeline,timelineClock):
+  progress>=.999?edited:
   interpolateWorkbenchPose(baseline,edited,progress);
  const report=applyWorkbenchPose(rig,shown,activeConfiguration);
  rig.root.updateMatrixWorld(true);
@@ -479,7 +542,79 @@ get<HTMLButtonElement>('wbSnap').addEventListener('click',()=>{
  if(selection==='firingHand'||selection==='supportHand')refreshSelection();
  notify('Hand targets snapped to the actual rigid weapon grip sockets.');
 });
+
+timelineSlider.addEventListener('input',()=>{
+ timelinePlaying=false;
+ showTimeline(Number(timelineSlider.value)/1000);
+});
+get<HTMLButtonElement>('wbTimelinePlay').addEventListener('click',()=>{
+ if(!timeline)return;
+ timelinePlaying=!timelinePlaying;
+ if(timelinePlaying){
+  if(timelineClock>=timeline.duration-.001)timelineClock=0;
+  showTimeline(timelineClock);
+  timelinePlaying=true;
+ }
+ refreshTimeline();
+});
+get<HTMLButtonElement>('wbTimelineEdit').addEventListener('click',()=>{
+ if(!timeline)return;
+ edited=cloneWorkbenchPose(sampleWorkbenchChoreography(timeline,timelineClock));
+ endPreview();refreshSelection();applyAndRenderTargets();
+ notify('Loaded sampled keyframe into the manual editor. Edit, then CAPTURE it.');
+});
+get<HTMLButtonElement>('wbTimelineCapture').addEventListener('click',()=>{
+ if(!timeline)return;
+ try{
+  timeline=upsertWorkbenchKey(timeline,
+   Number(timelineSlider.value)/1000,edited);
+  saveTimeline();showTimeline(Number(timelineSlider.value)/1000);
+  notify('Captured current edited pose at '+timelineClock.toFixed(2)+'s.');
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
+});
+get<HTMLButtonElement>('wbTimelineRemove').addEventListener('click',()=>{
+ if(!timeline)return;
+ const time=Number(timelineSlider.value)/1000;
+ timeline=removeWorkbenchKey(timeline,time);
+ saveTimeline();showTimeline(time);
+ notify('Removed matching interior key if present. Endpoints stay protected.');
+});
+get<HTMLButtonElement>('wbCueAdd').addEventListener('click',()=>{
+ if(!timeline)return;
+ try{
+  const name=get<HTMLInputElement>('wbCueName').value.trim();
+  const kind=get<HTMLSelectElement>('wbCueKind').value as 'cue'|'contact';
+  timeline=addWorkbenchMarker(timeline,
+   Number(timelineSlider.value)/1000,kind,name);
+  saveTimeline();refreshTimeline();
+  notify('Added '+kind+' note: '+name+' (presentation metadata only).');
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
+});
+get<HTMLButtonElement>('wbTimelineSave').addEventListener('click',()=>{
+ saveTimeline();notify('Saved '+edited.preset+' choreography locally.');
+});
+get<HTMLButtonElement>('wbTimelineExport').addEventListener('click',()=>{
+ if(!timeline)return;
+ jsonField.value=JSON.stringify(timeline,null,2);
+ notify('Sequence JSON exported below. It is not deployed to combat.');
+});
+get<HTMLButtonElement>('wbTimelineImport').addEventListener('click',()=>{
+ try{
+  const loaded=readWorkbenchChoreography(jsonField.value);
+  if(loaded.preset!==edited.preset||loaded.keys[0].value.weapon!==edited.weapon)
+   throw Error('Sequence weapon/preset must match selected editor model');
+  timeline=loaded;saveTimeline();showTimeline(0);
+  notify('Imported '+timeline.keys.length+' keyframes for '+edited.preset);
+ }catch(error){notify(error instanceof Error?error.message:String(error));}
+});
+get<HTMLButtonElement>('wbTimelineReset').addEventListener('click',()=>{
+ timeline=createWorkbenchChoreography(baseline,edited);
+ timelineClock=timeline.duration;stopTimeline();refreshTimeline();
+ saveTimeline();applyAndRenderTargets();
+ notify('Recreated a two-key baseline to edited pose sequence.');
+});
 previewSlider.addEventListener('input',()=>{
+ stopTimeline();
  animate=false;progress=Number(previewSlider.value)/100;
  previewValue.textContent=previewSlider.value+'%';
  get<HTMLButtonElement>('wbAnimate').textContent='PLAY TRANSITION';
@@ -602,6 +737,11 @@ const ro=new ResizeObserver(resize);ro.observe(stage);
 function tick(now:number){
  const dt=Math.min(.05,Math.max(0,(now-lastTick)/1000));
  lastTick=now;
+ if(timelinePlaying&&timeline){
+  const next=Math.min(timeline.duration,timelineClock+dt);
+  if(next>=timeline.duration)timelinePlaying=false;
+  showTimeline(next);refreshTimeline();
+ }
  if(animate){
   animationTime+=dt;
   progress=(1-Math.cos(animationTime*1.75))/2;
@@ -616,6 +756,8 @@ function tick(now:number){
  canvas.dataset.workbenchWeapon=edited.weapon;
  canvas.dataset.workbenchTarget=selection;
  canvas.dataset.poseBlend=progress.toFixed(3);
+ canvas.dataset.choreographyTime=timelineClock.toFixed(3);
+ canvas.dataset.choreographyKeys=String(timeline?.keys.length??0);
  requestAnimationFrame(tick);
 }
 try{

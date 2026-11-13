@@ -89,6 +89,37 @@ try{
   await page.waitForFunction(()=>
    document.querySelector('#preview')?.dataset.poseBlend==='0.400');
   await page.locator('#wbEnd').click();
+  // A1: exercise real mobile WebGL sequence authoring, not just DOM IDs.
+  await page.locator('#wbChoreographyDetails').evaluate(e=>e.open=true);
+  await page.locator('#wbTimelineTime').evaluate(e=>{
+   e.value='600';e.dispatchEvent(new Event('input',{bubbles:true}));
+  });
+  await page.waitForFunction(()=>
+   document.querySelector('#preview')?.dataset.choreographyTime==='0.600');
+  await page.locator('#wbTimelineEdit').click();
+  await page.locator('#wbTimelineCapture').click();
+  await page.locator('#wbCueName').fill('support grip');
+  await page.locator('#wbCueKind').selectOption('contact');
+  await page.locator('#wbCueAdd').click();
+  await page.locator('#wbTimelineExport').click();
+  const clip=JSON.parse(await page.locator('#poseJson').inputValue());
+  if(clip.format!=='fieldwork-pose-choreography'||
+   clip.preset!=='ar-m4a1'||clip.keys.length!==3||
+   clip.markers[0]?.name!=='support grip')
+   throw Error('A1 mobile timeline failed capture/marker/export');
+  await page.locator('#wbTimelineSave').click();
+  await page.screenshot({path:output+'/phone-choreography.png'});
+  await page.locator('#wbTimelineReset').click();
+  await page.locator('#wbTimelineImport').click();
+  await page.locator('#wbTimelineExport').click();
+  if(JSON.stringify(clip)!==JSON.stringify(
+    JSON.parse(await page.locator('#poseJson').inputValue())))
+   throw Error('A1 mobile sequence import/export lost keyframes');
+  await page.locator('#wbTimelinePlay').click();
+  if(!(await page.locator('#wbTimelinePlay').innerText())
+    .includes('PAUSE'))throw Error('A1 mobile playback did not start');
+  await page.locator('#wbTimelinePlay').click();
+  await page.locator('#wbTimelineEdit').click();
   await page.locator('#wbWeapon').selectOption('ak-akm');
   await page.waitForFunction(()=>
    document.querySelector('#preview')?.dataset.workbenchWeapon==='rifle');
