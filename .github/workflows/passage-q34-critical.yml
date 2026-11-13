@@ -1,0 +1,38 @@
+name: Q3-Q4 continuous convoy and leaf staging
+on:
+  push:
+    branches: ['feature/passage-q3-q4-*']
+  pull_request:
+    paths:
+      - 'src/breach-passage-badges.ts'
+      - 'src/breach-passage-leaf-stage.ts'
+      - 'src/breach-passage-coordinator.ts'
+      - 'src/breach-2d-route-overlays.ts'
+      - 'src/breach-2d-projected-overlays.ts'
+      - 'tests/passage-q3-badges.test.mjs'
+      - 'tests/passage-q4-leaf-stage.test.mjs'
+      - '.github/workflows/passage-q34-critical.yml'
+  workflow_dispatch:
+concurrency:
+  group: passage-q34-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and production bundle
+        run: npm run build
+      - name: Q0-Q4 queue and badge invariants
+        run: node --experimental-strip-types --test tests/passage-q0-trace.test.mjs tests/passage-q1-yield.test.mjs tests/passage-q2-coordinator.test.mjs tests/passage-q3-badges.test.mjs tests/passage-q4-leaf-stage.test.mjs
+      - name: Four-hinge full session physical regression
+        run: node --experimental-strip-types --test tests/door-traversal-d2d3-four-operator.test.mjs tests/door-traversal-d4-live-grip.test.mjs
+      - name: Four-operator visual and physical audit
+        run: node --experimental-strip-types scripts/audit-passage-q.mjs
