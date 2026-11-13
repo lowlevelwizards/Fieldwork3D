@@ -106,7 +106,7 @@ export function addAchMichConcealment(
   bunch.scale.setScalar(SCALE[i]);
   bunch.castShadow=false;bunch.receiveShadow=false;
   bunch.userData.h9OutwardDown=[aim.x,aim.y,aim.z];
-  bunch.userData.h9Anchor=slot;
+  bunch.userData.h9Anchor=SLOTS[slot];
   bunch.userData.keepSeparate=true;leaves.add(bunch);
  }
  loops.userData.h9SewnSlitCount=frames.length;
