@@ -4,7 +4,7 @@ import type {SessionWorldGeometry} from './breach-world-context.ts';
  * still blocks entry, but an actor already inside its capsule may escape.
  * Static walls and cover remain unconditionally solid. */
 import {passable,pointToSegment,doorLeafSegment,WALLS,COVER,segmentsCross,
-  OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
+  OPERATOR_RADIUS,type Door,type Pt,type Segment,type Obstacle} from './breach-core.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const leafGap=(p:Pt,d:Door)=>pointToSegment(p,doorLeafSegment(d));
