@@ -1,3 +1,4 @@
+import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 / Stage 10: authoritative confirmed-target shot resolution.
  * Called only after live acquisition and ready-mode eligibility. Retains the
@@ -82,7 +83,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   }
   const sightMuzzle=sightClearance.muzzle;
   const friends=s.operators.filter(o=>o!==a&&o.health>0&&
-    o.side===a.side).map(o=>o.p);
+    o.side===a.side).map(safetyBodyFor);
   if(observedCivilianFireLane(s,a,
      {x:sightMuzzle.x,y:sightMuzzle.z},sightMuzzle.y,
      target.p,aimHeight(target.posture==='crouch'))){
