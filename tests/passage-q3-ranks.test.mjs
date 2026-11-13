@@ -83,5 +83,8 @@ test('Q3 rank render wiring is shared between actual Floor Plan and iso overlays
  for(const c of [flat,iso])assert.match(c,/paintPassageRanks\(/);
  assert.match(badge,/if\(replaying\|\|/);
  assert.match(badge,/thresholdRankMarkers\(/);
- assert.match(badge,/nextThresholdRank\(/);
+ assert.doesNotMatch(badge,/nextThresholdRank\(/);
+ for(const source of [flat,iso])
+  assert.doesNotMatch(source,/fillText\(String\((?:i\+1|plan\.indexOf\(n\)\+1)/,
+   'ordinary route dots should not carry duplicate numbers');
 });

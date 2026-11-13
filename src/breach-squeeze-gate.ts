@@ -6,11 +6,11 @@ export type SqueezeGate={
  alreadySqueezing:boolean;closedDoor:boolean;
  doorAdvancing:boolean;leafMoving:boolean;
  nearNarrowThreshold:boolean;opposingPressure:boolean;
- traversalPending:boolean;
+ traversalPending:boolean;settledPhysicalBlockage?:boolean;
 };
 export function shouldEnterSqueeze(g:SqueezeGate):boolean{
  return !g.fullBodyClear&&g.narrowBodyClear&&!g.alreadySqueezing&&
    !g.closedDoor&&!g.doorAdvancing&&!g.leafMoving&&
-   !g.traversalPending&&
+   (!g.traversalPending||g.settledPhysicalBlockage===true)&&
    (g.nearNarrowThreshold||g.opposingPressure);
 }

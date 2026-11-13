@@ -5,6 +5,16 @@ on:
   pull_request:
     paths:
       - 'src/breach-door-test-cases.ts'
+      - 'src/breach-door.ts'
+      - 'src/breach-order-door.ts'
+      - 'src/breach-squeeze-gate.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/worldgen/doorway-clutter-repair.ts'
+      - 'src/breach-2d-route-overlays.ts'
+      - 'src/breach-2d-projected-overlays.ts'
+      - 'src/ui/passage-rank-badges.ts'
+      - 'src/breach-passage-visual-ranks.ts'
+      - 'tests/passage-q5-live-blockers.test.mjs'
       - 'src/door-range-q5-benchmark.ts'
       - 'src/door-test-range-main.ts'
       - 'door-test-range.html'
@@ -30,6 +40,6 @@ jobs:
       - name: TypeScript build and Door Lab bundle
         run: npm run build
       - name: Five approach geometry and Q3–Q4 convoy integrity
-        run: node --experimental-strip-types --test tests/passage-q5-approaches.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q3-ranks.test.mjs tests/passage-q4-swing.test.mjs
+        run: node --experimental-strip-types --test tests/passage-q5-approaches.test.mjs tests/passage-q5-live-blockers.test.mjs tests/breach-doorway-map-clearance.test.mjs tests/release4-squeeze-gate.test.mjs tests/passage-q3-flow.test.mjs tests/passage-q3-ranks.test.mjs tests/passage-q4-swing.test.mjs
       - name: Strict 70-case real motor reliability and speed gates
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict

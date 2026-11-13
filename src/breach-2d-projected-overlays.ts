@@ -114,12 +114,12 @@ function renderProjectedPlans(){
         draggingNode:n.p,8);
       const invalidDrag=selectedNow&&draggingNode&&!draggingWatchTarget&&
         !intelPassable(draggingNode,state.intel,SQUEEZE_RADIUS);
-      circle(point.x,point.y,selectedNow?11:7,
+      // Same unnumbered waypoint grammar as Floor Plan. The only route
+      // digits now describe the ordering at actual crossed thresholds.
+      circle(point.x,point.y,selectedNow?11:
+        n.kind==='door'?7:a.id===selected?6:4,
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
-      circle(point.x,point.y,3,'#233b39');
-      draw.fillStyle='#142829';draw.font='700 12px "Saira Condensed",sans-serif';
-      draw.textAlign='center';draw.fillText(String(plan.indexOf(n)+1),
-        point.x,point.y+3);
+      if(selectedNow)circle(point.x,point.y,3,'#233b39');
       if(a.id===selected&&cachedRoute?.narrowOnly&&n.kind==='move'){
         draw.save();draw.fillStyle='#e7b980';
         draw.font='700 11px "Saira Condensed",sans-serif';

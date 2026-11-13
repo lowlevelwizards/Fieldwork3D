@@ -211,6 +211,16 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
  // The rattled door stays latched; the player must use the other side
  // or open it by hand. Never animate a kick opening into the kicker.
  if(!pushSide)return {opened:false,pushSide:false};
+ // A kick against an already unlatched, partially open hinged leaf is an
+ // actual forceful body contact. Reuse the existing bounded hinge motor and
+ // its full swept world/actor collision; never teleport the panel through a
+ // fixture or a person. Locked latches still use the repeated kick process.
+ if(d.open){
+  d.pushTarget=PUSHED_OPEN_LIMIT;
+  d.kickImpulse=1;
+  d.angularVelocity=Math.max(9,d.angularVelocity??0);
+  return {opened:true,pushSide:true};
+ }
  const brace=d.heldBy?.75:0;
  d.latchIntegrity=Math.max(-1,(d.latchIntegrity??1.05)-1.2+brace);
  const opened=(d.latchIntegrity??1)<=0;

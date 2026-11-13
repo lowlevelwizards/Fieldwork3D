@@ -170,12 +170,12 @@ function paths(){
       const semantics=visual[i];
       const point=selectedNow&&draggingNode&&!draggingWatchTarget&&n.kind!=='flash'?
         draggingNode:n.p;
-      circle(point.x,point.y,selectedNow?10:7,
+      // Waypoints remain clickable, but ordinary route dots do not compete
+      // with the Q3 threshold-order numbers or operator labels.
+      circle(point.x,point.y,selectedNow?10:
+        n.kind==='door'?7:a.id===selected?6:4,
         selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
-      circle(point.x,point.y,3,'#263836');
-      draw.textAlign='center';draw.fillStyle='#111e20';
-      draw.font='700 12px "Saira Condensed",sans-serif';
-      draw.fillText(String(i+1),point.x,point.y+3.1);
+      if(selectedNow)circle(point.x,point.y,3,'#263836');
       if(n.facing!==undefined){
         const end={x:point.x+Math.cos(n.facing)*40,
           y:point.y+Math.sin(n.facing)*40};
