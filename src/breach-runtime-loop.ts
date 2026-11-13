@@ -3,7 +3,7 @@
  */
 import type {BreachBootConfig} from './breach-boot-config.ts';
 import type {CampaignMode} from './breach-app-mode.ts';
-import {stepSession,team,type Session,type TeamActor} from './breach-game.ts';
+import {stepSession,type Session,type TeamActor} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import {renderSnapshot,type RenderActor} from './breach-frame-interpolation.ts';
@@ -300,7 +300,7 @@ function tick(now:number){
   }
   const uiHudEnd=perfOverlay?performance.now():0;
   // The manager owns its DOM nodes for the lifetime of this view.
-  physicalActionRings.update(team(state),state.doors,
+  physicalActionRings.update(state.operators,state.doors,
     frameMode==='live',
     p=>config.worldToScreen(p,viewMode==='plan2d'?14:34));
   const perfRenderStart=performance.now();

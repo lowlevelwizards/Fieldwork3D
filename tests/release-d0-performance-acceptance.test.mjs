@@ -59,6 +59,14 @@ test('D0: movement authority uses phase-local geometry and actor IDs, not repeat
  assert.match(authority,/if\(body&&body\.carriedById===a\.id\)/);
 });
 
+test('D0: tactical progress HUD uses the existing operator list without a frame filter',()=>{
+ const runtime=code('src/breach-runtime-loop.ts');
+ const rings=code('src/ui/physical-action-rings.ts');
+ assert.match(runtime,/physicalActionRings\.update\(state\.operators,state\.doors,/);
+ assert.match(rings,/if\(actor\.side==='red'\)continue/);
+ assert.doesNotMatch(runtime,/physicalActionRings\.update\(team\(state\)/);
+});
+
 test('D0: profiler remains opt-in; ordinary sessions retain coarse RAF only',()=>{
  const src=code('src/breach-runtime-loop.ts');
  const timeline=code('src/breach-performance-timeline.ts');

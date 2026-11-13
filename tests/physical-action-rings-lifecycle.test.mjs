@@ -73,3 +73,16 @@ test('treatment and reinforced lockpicking preserve progress and labels',()=>{
   assert.equal(nodes[0].style.display,'none');
   assert.equal(nodes.length,1);
 });
+
+test('D0: runtime roster contains hostiles but only friendlies render action rings',()=>{
+  const {doc,nodes}=fakeDocument(),rings=new PhysicalActionRings(doc);
+  const friendly={...picker('rook'),side:'blue'};
+  const hostile={...picker('enemy'),side:'red'};
+  rings.update([hostile],[],true,project);
+  assert.equal(nodes.length,0,'hostile action state must not create squad HUD');
+  rings.update([hostile,friendly],[],true,project);
+  assert.equal(nodes.length,1);
+  assert.equal(rings.size,1);
+  rings.update([hostile],[],true,project);
+  assert.equal(nodes.length,0,'removed friendly ring must be retired');
+});

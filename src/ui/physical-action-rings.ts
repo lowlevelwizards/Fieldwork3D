@@ -4,7 +4,7 @@
  */
 type Point={x:number;y:number};
 type RingActor={
-  id:string;p:Point;health:number;
+  id:string;p:Point;health:number;side?:'blue'|'red';
   plan:readonly {kind:string;toolMethod?:string;doorId?:string}[];
   actionTimer:number;lastDoorId?:string|null;
   treatmentActive:boolean;treatmentProgress:number;
@@ -21,10 +21,14 @@ export class PhysicalActionRings {
     live:boolean,project:(point:Point)=>Point):void{
     // A new site or roster may have fewer operators. The old nodes must go.
     for(const [id,ring] of this.rings){
-      if(actors.some(actor=>actor.id===id))continue;
+      if(actors.some(actor=>actor.id===id&&actor.side!=='red'))continue;
       ring.remove();this.rings.delete(id);
     }
     for(const actor of actors){
+      // Runtime supplies the authoritative roster directly. Only friendly
+      // progress belongs in the squad HUD; avoid a freshly filtered team
+      // array on every render frame when most actors are idle.
+      if(actor.side==='red')continue;
       const order=actor.plan[0];
       const picking=order?.kind==='tool'&&order.toolMethod==='pick'&&
         actor.actionTimer>0&&actor.lastDoorId===order.doorId;
