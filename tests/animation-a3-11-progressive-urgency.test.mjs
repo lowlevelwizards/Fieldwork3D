@@ -24,9 +24,9 @@ test('A3.11 readiness strictly escalates without creating a fire permission',()=
  const readiness=tiers.map(passiveAimReadiness);
  assert.deepEqual(readiness,[0,.12,.26,.32,.36]);
  assert.ok(readiness.every((v,i)=>i===0||v>readiness[i-1]));
- assert.equal(contactAimOnAcquisition(.26),.26);
- assert.equal(contactAimOnAcquisition(.01),.16);
- assert.equal(contactAimOnAcquisition(.98),.48);
+ assert.equal(contactAimOnAcquisition(.26),.36);
+ assert.equal(contactAimOnAcquisition(.01),.36);
+ assert.equal(contactAimOnAcquisition(.98),.52);
  assert.ok(contactAcquisitionScale('contact')<1);
  assert.ok(contactTurnScale('contact')>1);
  assert.equal(contactAcquisitionScale('watch'),1);
