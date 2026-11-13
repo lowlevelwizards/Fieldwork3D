@@ -25,7 +25,6 @@ export const DOOR_HAND_RELEASE_REACH=31;
 export const DOOR_HAND_RELEASE_DURATION=.24;
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clamp=(x:number,lo:number,hi:number)=>Math.max(lo,Math.min(hi,x));
-const copy=(p:Pt):Pt=>({x:p.x,y:p.y});
 export const doorHandPoint=(door:Door,fraction:number):Pt=>{
  const leaf=doorLeafSegment(door);
  return {x:leaf.a.x+(leaf.b.x-leaf.a.x)*fraction,
@@ -37,8 +36,7 @@ function handFree(a:TeamActor):boolean{
   a.plan[0]?.moveMode!=='sprint'&&
   a.plan[0]?.kind!=='tool'&&
   a.plan[0]?.kind!=='door'&&
-  a.targetId===null&&a.aim<.45&&
-  true;
+  a.targetId===null&&a.aim<.45;
 }
 function handFreeAt(a:TeamActor,now:number):boolean{
  return handFree(a)&&a.flashUntil<=now&&
@@ -85,10 +83,12 @@ export function acquireDoorHandContact(
   startedAt:s.seconds,releasedAt:null,point};
  if(a.doorTraversal){
   a.doorTraversal.handContact=true;
-  a.doorTraversal.maneuver='grab-and-hold';
+  // Preserve a selected outside-leaf footpath while the same hand
+  // physically helps keep the leaf clear.
+  if(a.doorTraversal.maneuver!=='outside-leaf')
+   a.doorTraversal.maneuver='grab-and-hold';
  }
  a.lastDoorId=door.id;a.lastDoorMethod='open';
- a.lastDoorAt=s.seconds;
  return true;
 }
 /** Called by explicit cancel/completion or the next simulation tick. */
