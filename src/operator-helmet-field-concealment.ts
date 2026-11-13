@@ -85,12 +85,12 @@ export function addAchMichConcealment(
   // Brow/nape strips should hang shorter and twist enough that their
   // folded cloth remains visible obliquely rather than a black needle.
   fabric.rotateZ(LEAN[i]*(slot<4?.55:.95));
-  fabric.rotateY(slot<4?(i%2?.38:-.42):(i%2?.14:-.16));
+  fabric.rotateY(slot<4?(i%2?.83:-.87):(i%2?.14:-.16));
   // Broad folded textile should hang visibly down the shell and just
   // past the brim. Shorter brow/nape pieces cannot become long spears.
   const shortEdge=slot<4;
   fabric.scale.set(1.13+(i%3)*.12,
-   (shortEdge?.60:.89)+(i%3)*.052,shortEdge?.94:.87);
+   (shortEdge?.54:.89)+(i%3)*.052,shortEdge?.94:.87);
   fabric.userData.h9ScrimDownOut=true;fabric.userData.h9SourceSlot=slot;
   fabric.castShadow=false;fabric.receiveShadow=false;scrim.add(fabric);
  }
