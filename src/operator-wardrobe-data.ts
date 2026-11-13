@@ -161,12 +161,13 @@ export const wardrobeItemsForSlot=(slot:WardrobeSlot)=>
  WARDROBE_ITEMS.filter(x=>x.slot===slot);
 export const wardrobeItem=(slot:WardrobeSlot,id:string)=>
  WARDROBE_ITEMS.find(x=>x.slot===slot&&x.id===id);
-export const SLEEVE_STATES=['unrolled','cuffed','rolled'] as const;
+export const SLEEVE_STATES=['unrolled','cuffed','rolled','short'] as const;
 export type SleeveState=typeof SLEEVE_STATES[number];
 export const TROUSER_HEMS=['unbloused','bloused','cuffed'] as const;
 export type TrouserHem=typeof TROUSER_HEMS[number];
-export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'||top==='button-up-shirt'?
- SLEEVE_STATES:['unrolled'] as const;
+export const sleeveStateOptions=(top:string)=>top==='button-up-shirt'?SLEEVE_STATES:
+ top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'?
+ SLEEVE_STATES.filter(state=>state!=='short'):['unrolled'] as const;
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
 export type WardrobeOptions=HelmetCoverConfig&{
