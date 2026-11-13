@@ -61,7 +61,8 @@ export function resolveMotorCollision(
   recordDoorManeuverContact(a,s,doorContact);
   // Existing handle reach animation shows a genuine, short support-hand
   // assist, never an invented door manipulation across the room.
-  if(doorContact?.handAssist&&s.seconds-a.lastDoorAt>.76){
+  if(doorContact?.handAssist&&!a.doorHandContact&&
+     s.seconds-a.lastDoorAt>.76){
     a.lastDoorAt=s.seconds;a.lastDoorId=doorContact.doorId;
     a.lastDoorMethod='open';
   }
