@@ -38,18 +38,21 @@ const stitchMaterial=new THREE.MeshBasicMaterial({
 const slitCut=new THREE.PlaneGeometry(1.36,.115);
 const slitStitch=new THREE.PlaneGeometry(1.54,.040);
 const endStitch=new THREE.PlaneGeometry(.07,.25);
-function surfaceMount(frame:HelmetSurfaceFrame):THREE.Group{
- const g=new THREE.Group();g.position.copy(frame.position);
- g.quaternion.setFromRotationMatrix(new THREE.Matrix4()
-  .makeBasis(frame.right,frame.up,frame.normal));
- return g;
-}
-const addPiece=(parent:THREE.Group,geometry:THREE.BufferGeometry,
- material:THREE.Material,name:string,y:number,z:number)=>{
- const m=new THREE.Mesh(geometry,material);
- m.name=name;m.position.set(0,y,z);m.castShadow=false;m.receiveShadow=false;
- parent.add(m);return m;
+const basis=(right:THREE.Vector3,up:THREE.Vector3,normal:THREE.Vector3)=>
+ new THREE.Quaternion().setFromRotationMatrix(new THREE.Matrix4()
+  .makeBasis(right,up,normal));
+const mark=(g:THREE.Group,f:HelmetSurfaceFrame,
+ geometry:THREE.BufferGeometry,material:THREE.Material,
+ name:string,x=0,y=0,z=0)=>{
+ const piece=new THREE.Mesh(geometry,material);piece.name=name;
+ piece.position.copy(f.position).addScaledVector(f.right,x)
+  .addScaledVector(f.up,y).addScaledVector(f.normal,z);
+ piece.quaternion.copy(basis(f.right,f.up,f.normal));
+ piece.castShadow=false;piece.receiveShadow=false;g.add(piece);
+ return piece;
 };
+/** Curated fixed positions. Independent leaf meshes stay toggleable;
+ * other static items can merge by material and original shadow flags. */
 export function addAchMichConcealment(
  shell:AchMichCoverShell,
  loops:THREE.Group,scrim:THREE.Group,leaves:THREE.Group,
@@ -57,73 +60,54 @@ export function addAchMichConcealment(
 ):void{
  const frames=SLOTS.map((slot,i)=>{
   const f=sampleHelmetCover(shell,slot.region,slot.u,slot.v,.105);
-  if(!f)throw Error('H9.2 no textile buttonhole surface '+shell+' #'+i);
-  const mount=surfaceMount(f);
-  mount.name='ach-mich-sewn-buttonhole-'+i;
-  mount.userData.h9SurfaceRegion=slot.region;
-  addPiece(mount,slitCut,slitMaterial,'real-horizontal-foliage-slit',0,.018);
+  if(!f)throw Error('H9.2 no cover at buttonhole '+shell+' #'+i);
+  mark(loops,f,slitCut,slitMaterial,'horizontal-fabric-buttonhole',0,0,.018);
   for(const y of [-.11,.11])
-   addPiece(mount,slitStitch,stitchMaterial,'reinforced-fabric-stitch',y,.023);
-  for(const x of [-.75,.75]){
-   const m=addPiece(mount,endStitch,stitchMaterial,'buttonhole-end-stitch',0,.027);
-   m.position.x=x;
-  }
-  loops.add(mount);
+   mark(loops,f,slitStitch,stitchMaterial,'buttonhole-reinforcement',
+    0,y,.023);
+  for(const x of [-.75,.75])
+   mark(loops,f,endStitch,stitchMaterial,'buttonhole-end-stitch',
+    x,0,.027);
   return f;
  });
  for(let i=0;i<SCRIM_SLOTS.length;i++){
   const slot=SCRIM_SLOTS[i],f=frames[slot];
-  const mount=new THREE.Group();
-  mount.name='h9-folded-scrim-mount-'+slot;
-  mount.position.copy(f.position);
-  // Local negative Y is GRAVITY. Cant local positive Y slightly inward,
-  // so the free end falls outward and over the helmet shoulder.
+  // The free end extends along negative Y: orient positive Y inward and
+  // upward so the fabric hangs OUTWARD and DOWN from its actual slit.
   const up=f.up.clone().multiplyScalar(.77)
    .addScaledVector(f.normal,-.64).normalize();
-  const right=f.right.clone();
-  const outward=right.clone().cross(up).normalize();
-  mount.quaternion.setFromRotationMatrix(new THREE.Matrix4()
-   .makeBasis(right,up,outward));
-  mount.rotateZ(LEAN[i]*.7);
-  mount.userData.h9ScrimDownOut=true;
-  mount.userData.h9SourceSlot=slot;
+  const right=f.right.clone(),normal=right.clone().cross(up).normalize();
   const fabric=new THREE.Mesh(createPasgtScrimRibbonGeometry(i),
    i%3===0?tan:olive);
   fabric.name='pasgt-derived-folded-scrim';
+  fabric.position.copy(f.position);
+  fabric.quaternion.copy(basis(right,up,normal));
+  fabric.rotateZ(LEAN[i]*.7);
   fabric.scale.setScalar(.58+(i%4)*.055);
-  fabric.castShadow=false;fabric.receiveShadow=false;
-  mount.add(fabric);scrim.add(mount);
+  fabric.userData.h9ScrimDownOut=true;fabric.userData.h9SourceSlot=slot;
+  fabric.castShadow=false;fabric.receiveShadow=false;scrim.add(fabric);
  }
  for(let i=0;i<LEAF_SLOTS.length;i++){
   const slot=LEAF_SLOTS[i],f=frames[slot];
-  const aim=f.normal.clone().multiplyScalar(.80+
-   (i%3)*.08).addScaledVector(f.up,-(.65+(i%4)*.09)).normalize();
-  // An authored card grows along its local +Y; bend that axis outward
-  // and DOWN, not toward the sky as the H8 side foliage did.
+  // PASGT geometry grows along local +Y; lean that axis DOWN/OUT,
+  // with authored slot-based angles rather than vertical hedgerows.
+  const aim=f.normal.clone().multiplyScalar(.80+(i%3)*.08)
+   .addScaledVector(f.up,-(.65+(i%4)*.09)).normalize();
   const right=f.right.clone();
   let facing=right.clone().cross(aim).normalize();
   if(facing.dot(f.normal)<0){
    right.negate();facing=right.clone().cross(aim).normalize();
   }
-  const mount=new THREE.Group();
-  mount.name='h9-outward-down-foliage-'+slot;
-  mount.position.copy(f.position);
-  mount.quaternion.setFromRotationMatrix(new THREE.Matrix4()
-   .makeBasis(right,aim,facing));
-  mount.rotateZ(LEAN[i]);
-  mount.rotateY(i%2?.10:-.12);
-  mount.userData.h9OutwardDown=[aim.x,aim.y,aim.z];
-  mount.userData.h9Anchor=slot;
   const bunch=new THREE.Mesh(PASGT_LEAF_CLUSTERS[i%3],i%3===0?tan:olive);
   bunch.name='pasgt-derived-foliage';
+  bunch.position.copy(f.position).addScaledVector(f.normal,.12);
+  bunch.quaternion.copy(basis(right,aim,facing));
+  bunch.rotateZ(LEAN[i]);bunch.rotateY(i%2?.10:-.12);
   bunch.scale.setScalar(SCALE[i]);
-  bunch.position.z=.12;
   bunch.castShadow=false;bunch.receiveShadow=false;
-  // Keep the curated pieces independently visible for sparse/medium/heavy.
-  bunch.userData.keepSeparate=true;
-  mount.add(bunch);
-  mount.userData.keepSeparate=true;
-  leaves.add(mount);
+  bunch.userData.h9OutwardDown=[aim.x,aim.y,aim.z];
+  bunch.userData.h9Anchor=slot;
+  bunch.userData.keepSeparate=true;leaves.add(bunch);
  }
  loops.userData.h9SewnSlitCount=frames.length;
  scrim.userData.h9FoldedStrips=SCRIM_SLOTS.length;
