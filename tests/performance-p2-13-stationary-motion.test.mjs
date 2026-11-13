@@ -46,7 +46,8 @@ test('civilian occupancy preserves live positions without two filtered/spread ar
  assert.match(phase,/const nearby:Array<\{id:string;p:Pt\}>=\[\]/);
  assert.match(phase,/for\(const a of s\.operators\)if\(a\.health>0\)nearby\.push\(a\)/);
  assert.match(phase,/for\(const c of s\.civilians\)if\(c\.health>0\)nearby\.push\(c\)/);
- assert.match(phase,/isCrowded:p=>nearby\.some\(body=>body!==civil&&/);
+ assert.match(phase,/isCrowded:p=>s\.operators\.some\(o=>o\.health>0&&/);
+ assert.match(phase,/s\.civilians\.some\(c=>c\.id!==civil\.id&&/);
  assert.match(phase,/const occupied=\(p:Pt,id:string\)=>nearby\.some/);
  assert.match(phase,/stepCivilianMovement\(civil,s\.seconds,h,clear,occupied,routeTo\)/);
 });
