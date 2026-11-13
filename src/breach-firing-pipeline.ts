@@ -14,7 +14,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {rotate} from './breach-order-lifecycle.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
-import {incomingHitFacing,chooseMuzzleRecoveryStep,chooseFriendlyLaneStep} from './breach-combat-reactions.ts';
+import {incomingHitFacing,choosePhysicalCorrection} from './breach-combat-reactions.ts';
 
 import {type Pt,segmentsCross,pointToSegment} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
@@ -165,11 +165,12 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
    return assessFireLane(from,clearance.muzzle.y,target.p,height,
       sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,s.doors,friends).blocker==='clear';
  };
- const next=kind==='friendly'?
-   chooseFriendlyLaneStep(a.p,aimYaw,clearBody,legalShot):
-   chooseMuzzleRecoveryStep(a.p,aimYaw,clearBody,legalShot);
- if(!next)return false;
+ const correction=choosePhysicalCorrection(a.p,aimYaw,kind,
+   clearBody,legalShot);
+ if(!correction)return false;
+ const next=correction.point;
  a.fireRetreatTarget=next;
+ a.fireRetreatReason=correction.kind;
  // A few units of foot correction must not inherit the full duration
  // of an emergency 28-unit sidestep; preserve a deterministic upper bound.
  const correctionLength=d(a.p,next);
