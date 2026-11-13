@@ -15,7 +15,7 @@ test('44 unique, dated, auditable faction visual references',()=>{
  assert.equal(audit.referenceCount,44);
  assert.deepEqual(audit.issues,[]);
  assert.ok(audit.assetDemand.find(x=>x.id==='unit-insignia')?.referenceCount>=10);
- assert.equal(new Set(FACTION_REFERENCES.map(x=>x.id)).size,40);
+ assert.equal(new Set(FACTION_REFERENCES.map(x=>x.id)).size,44);
 });
 test('every reference has a valid virtual kit and a resolved outfit',()=>{
  for(const ref of FACTION_REFERENCES){
