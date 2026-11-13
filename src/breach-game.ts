@@ -105,6 +105,7 @@ import {confirmedSight} from './breach-visual-perception.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
 import {type PassageLease} from './breach-passage.ts';
 import type {DoorTraversalEpisode} from './breach-door-traversal-episode.ts';
+import type {DoorGripRecord} from './breach-door-grip.ts';
 
 import {planDoorSchedule,type PassageSchedule} from './breach-passage-plan.ts';
 import {projectReachableGoal,type Blocker} from './breach-nav-diagnostics.ts';
@@ -173,6 +174,8 @@ export type TeamActor=Operator & {
   lastNormalLaneProbeAt:number;
   /** D1 non-driving memory of the original player-authored crossing. */
   doorTraversal:DoorTraversalEpisode|null;doorTraversalLastProbeAt:number;
+  /** Sole D4 physical hand binding; episode handContact is a mirror. */
+  doorGrip:DoorGripRecord|null;
   recoveryAttempts:number;retryRouteAt:number;routeGoalKey:string;
   /** Rate-limit physical clutter nudges and scene rebuilds. */
   lastAutoShoveAt:number;
