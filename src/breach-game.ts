@@ -209,6 +209,9 @@ export type TeamActor=Operator & {
   yieldTarget:Pt|null;yieldFor:string|null;yieldUntil:number;
   personality:Personality;morale:number;lastNoiseAt:number;
   postureChangedAt?:number;
+  /** A3.3 automatic, self-only friendly-cover crouch, not an authored stance. */
+  postureWasAuthored?:boolean;autoCrouchUntil?:number;
+  autoCrouchOriginal?:Posture|null;lastAutoCrouchProbeAt?:number;
   encounterActivity?:EncounterActivity;encounterReadiness?:EncounterReadiness;
   encounterRole?:EncounterRole;encounterGroupId?:string;
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
@@ -218,6 +221,8 @@ export type TeamActor=Operator & {
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
   weaponYaw:number;stability:number;recoil:number;lastShotAt:number;
+  /** A3 fixed-step micro-aim state. Never sourced from render history. */
+  aimSideOffset?:number;aimSideTarget?:number;lastAimSideProbeAt?:number;
   lastBashAt:number;lastBashRole:'push'|'receive'|null;
   /** Bounded, idle-only clearer gaze; never an authored aim or detection. */
   clearLookBearing?:number|null;lastClearLookProbeAt?:number;
@@ -226,6 +231,7 @@ export type TeamActor=Operator & {
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   /** Transient, collision-checked gun-clearance recovery; not a PlanNode. */
   fireRetreatTarget:Pt|null;fireRetreatUntil:number;lastFireRetreatAt:number;
+  fireRetreatReason?:string|null;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
   wardrobe?:WardrobeOptions;

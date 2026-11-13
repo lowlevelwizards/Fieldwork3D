@@ -9,7 +9,7 @@ import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
 import {recordDoorManeuverContact}
  from './breach-door-traversal-maneuver.ts';
-import {escapeOpenDoorOverlap} from './breach-navigation.ts';
+import {escapeOpenDoorOverlap,sweptBodyClear} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
@@ -67,6 +67,19 @@ export function prepareMotorRoute(
         y:a.p.y+(p.y-a.p.y)/goalDistance*distance};
       if(diagnoseMovement(a.p,contactProbe,s.doors).blocker==='furniture'&&
          tryAutoClearClutter(s,a,contactProbe,hooks))return 'handled';
+    }
+    // A3.4: a validated 4–10 unit local fire-lane correction is already
+    // fully swept before it is selected. Grid navigation can discard such
+    // short goals as sub-cell noise, leaving an apparently accepted step
+    // with no physical motion. Hand it to the SAME motor and collision
+    // pipeline via one real transient waypoint; never translate the body
+    // here, relax collision, or touch an authored PlanNode.
+    if(a.fireRetreatTarget&&d(p,a.fireRetreatTarget)<.5&&
+       goalDistance>=.9&&goalDistance<=12&&
+       sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
+      a.nav=[{...p}];
+      a.retryRouteAt=0;a.recoveryAttempts=0;
+      return 'ready';
     }
     if(s.seconds<a.retryRouteAt){a.velocity=0;return 'unavailable';}
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):

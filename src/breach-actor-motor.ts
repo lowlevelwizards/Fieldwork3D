@@ -73,7 +73,14 @@ export function advanceActorMotor(
    (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,
      sessionWorldGeometry(s))))a.nav.shift();
  const next=a.nav[0],gap=d(a.p,next);
- if(gap<3){
+ // A3.4's very short corrective destinations need a tighter *motor*
+ // waypoint tolerance, not just the order executor's final tolerance.
+ // The former 3-unit motor threshold discarded a 4-unit step after
+ // scarcely any real movement, leaving an apparently chosen correction
+ // with feet that barely moved. Ordinary authored routes retain 3 units.
+ const correcting=!!a.fireRetreatTarget&&
+   d(p,a.fireRetreatTarget)<.5;
+ if(gap<(correcting?.9:3)){
   a.nav.shift();
   if(profile)profile('motor-stride',finishMotorCpuMeasurement(strideStart));
   return false;

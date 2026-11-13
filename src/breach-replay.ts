@@ -51,6 +51,8 @@ export type ReplayActorFrame=ActorFrame & {
  /** Optional for archived films recorded before D4. */
  doorHandContact?:DoorHandContact|null;
  travelYaw?:number;intentKind?:string;awarenessCount?:number;
+ /** Optional on historical films: A3.2 physical lateral weapon accommodation. */
+ aimSideOffset?:number;
  /** Authored remaining orders at this historical sample. */
  plan?:PlanNode[];
 };
@@ -160,7 +162,8 @@ export function snapshot(s:Session,seenGround?:string[],
         ...a.doorHandContact,point:{...a.doorHandContact.point}
       }:null,
       stride:a.stride,
-      weaponYaw:a.weaponYaw,stability:a.stability,recoil:a.recoil,
+      weaponYaw:a.weaponYaw,aimSideOffset:a.aimSideOffset??0,
+      stability:a.stability,recoil:a.recoil,
       lastShotAt:a.lastShotAt,fireMode:a.fireMode,burstCount:a.burstCount,
       skills:reuseFrozenReplayValue(a.skills,prior?.skills,
         ()=>({...a.skills})),
@@ -352,6 +355,7 @@ export class MissionRecorder{
         y:mix(a.p.y,b.p.y,alpha)},
         heading:mixAngle(a.heading,b.heading,alpha),
         weaponYaw:mixAngle(a.weaponYaw,b.weaponYaw,alpha),
+        aimSideOffset:mix(a.aimSideOffset??0,b.aimSideOffset??0,alpha),
         travelYaw:mixAngle(a.travelYaw??a.heading,
           b.travelYaw??b.heading,alpha),
         velocity:mix(a.velocity,b.velocity,alpha),

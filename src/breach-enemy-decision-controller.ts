@@ -1,3 +1,4 @@
+import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 / Stage 9 — authoritative enemy AI decisions and report delivery.
  * Only enemy observation evidence can produce an AI contact. All navigation,
@@ -76,14 +77,14 @@ function electiveAiWork(s:Session,a:TeamActor,kind:string):boolean{
 
 function defensivePosition(a:TeamActor,from:Pt,s:Session):Pt|null{
   const others=enemies(s).map(other=>({id:other.id,p:other.p,
-    health:other.health,defense:other.defense}));
+    health:other.health,defense:other.defense,posture:other.posture}));
   return chooseDefense(a.p,from,s.doors,others,a.id,{},sessionWorldGeometry(s));
 }
 /** Firing reposition differs from a safe withdrawal. It must actually
  * expose a legal muzzle lane to the confirmed visible opponent. */
 function firingPosition(a:TeamActor,target:TeamActor,s:Session):Pt|null{
   const others=enemies(s).map(other=>({id:other.id,p:other.p,
-    health:other.health,defense:other.defense}));
+    health:other.health,defense:other.defense,posture:other.posture}));
   return chooseFiringDefense(a.p,target.p,s.doors,others,a.id,
     aimHeight(target.posture==='crouch'),sessionWorldGeometry(s));
 }
@@ -170,7 +171,7 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
     // An eye-level contact may be behind solid cover at muzzle height.
     // Reposition to an actual firing lane instead of staring at it while
     // repeatedly attempting blocked shots. Reposition has a cooldown.
-    const friends=enemies(s).filter(o=>o!==a&&o.health>0).map(o=>o.p);
+    const friends=enemies(s).filter(o=>o!==a&&o.health>0).map(safetyBodyFor);
     const lane=assessFireLane(a.p,a.posture==='crouch'?18:26,
       b.p,aimHeight(b.posture==='crouch'),world.cover,world.walls,s.doors,friends);
     a.combatChoice=chooseCombatAction({visible:true,remembered:true,

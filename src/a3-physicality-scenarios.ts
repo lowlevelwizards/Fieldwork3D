@@ -65,7 +65,10 @@ export function createA3Session(config:A3Config):Session{
   a.weaponYaw=a.heading;a.velocity=0;a.pace='walk';
   a.posture=i===1&&config.scenario==='mixed-crouch'?
    'crouch':config.posture;
-  a.firePolicy='hold';a.aim=config.intent==='engage'?1:0;
+  // Only the configured rear shooter may engage. Other squad members
+  // retain HOLD, allowing real supportive stacking without crossfire.
+  a.firePolicy=i===0&&config.intent==='engage'?'engage':'hold';
+  a.aim=i===0&&config.intent==='engage'?.92:0;
   a.weapon=config.weapon;a.weaponConfiguration=undefined;
   a.aimInstruction=config.intent==='watch'||config.intent==='look'?
    {mode:'fixed',angle:a.heading}:null;

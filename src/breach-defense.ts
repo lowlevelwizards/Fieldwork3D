@@ -2,11 +2,13 @@ import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Build 098: room defense positions, spacing and threat-oriented watches. */
 import {COVER,WALLS,activeSite,passable,route,doorCenter,type Door,type Pt} from './breach-core.ts';
 import {assessFireLane} from './breach-fire-safety.ts';
+import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {directionalCoverFrom} from './breach-cover-direction.ts';
 import {coverScore} from './breach-defense-scoring.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
-export type Defender={id:string;p:Pt;health:number;defense:Pt|null};
+export type Defender={id:string;p:Pt;health:number;defense:Pt|null;
+ posture?:'stand'|'crouch'};
 export function defenseCandidates(origin:Pt,threat:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
   void threat;
   const options:Pt[]=[];
@@ -67,7 +69,7 @@ export function chooseDefense(origin:Pt,threat:Pt,doors:Door[],
     // above or around it. Eye-level sight does not guarantee a firing lane.
     const lane=assessFireLane(p,26,threat,
       policy.targetHeight??32,world?.cover??COVER,world?.walls??WALLS,doors,
-      others.filter(o=>o.id!==selfId&&o.health>0).map(o=>o.p));
+      others.filter(o=>o.id!==selfId&&o.health>0).map(safetyBodyFor));
     const firingValue=lane.blocker==='clear';
     // When actually repositioning to shoot a visible opponent, a point
     // with no real muzzle lane is not a valid destination, even if it

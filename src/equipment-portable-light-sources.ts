@@ -15,7 +15,8 @@ export function activeWeaponLightSources(actors:readonly TeamActor[],
   if(a.health<=0||!a.weaponLightOn||a.weaponConfiguration?.slots.light!=='light-compact')
    continue;
   const clearance=weaponClearance({x:a.p.x,z:a.p.y,
-   heading:a.heading,weaponYaw:a.weaponYaw,weapon:a.weapon,
+   heading:a.heading,weaponYaw:a.weaponYaw,
+   shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,
    weaponConfiguration:a.weaponConfiguration,
    aim:a.aim,velocity:a.velocity,recoil:a.recoil,
    posture:a.posture},doors);

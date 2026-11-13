@@ -4,6 +4,7 @@ import {chooseMuzzleRecoveryStep,chooseFriendlyLaneStep}
  from '../src/breach-combat-reactions.ts';
 import {assessFireLane} from '../src/breach-fire-safety.ts';
 import {weaponClearance} from '../src/breach-weapon-clearance.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {newSession,team,enemies,stepSession,inSight}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
@@ -78,15 +79,24 @@ test('real player operator can request friendly-fire sidestep with orders intact
      ally:ally.p,await:lead.aimInstruction,plan:lead.plan
    }));
   assert.ok(Math.abs(lead.fireRetreatTarget.x-initial.x)<6);
-  assert.ok(Math.abs(lead.fireRetreatTarget.y-initial.y)>=12);
+  // A3.4 deliberately finds the smallest VALID real step, potentially
+  // 4 or 7 units instead of the former mandatory 12+ unit detour.
+  const requested=Math.abs(lead.fireRetreatTarget.y-initial.y);
+  assert.ok(requested>=3.9&&requested<=28,
+    'micro-step must be real, bounded and lateral');
   assert.deepEqual(ally.p,p(185,110),'recovery must not shove teammate');
   let moved=false;
   for(let tick=0;tick<24&&s.phase==='running';tick++){
     stepSession(s,1/30);
-    moved ||=Math.abs(lead.p.y-initial.y)>6;
+    moved ||=Math.abs(lead.p.y-initial.y)>1.5;
     if(moved)break;
   }
-  assert.ok(moved,'the sidestep must execute through the live movement motor');
+  assert.ok(moved,'the sidestep must execute through the live movement motor: '+
+    JSON.stringify({from:initial,now:lead.p,goal:lead.fireRetreatTarget,
+      reason:lead.fireRetreatReason,nav:lead.nav,velocity:lead.velocity,
+      motorPause:lead.motorPause,lastBlocker:lead.lastBlocker,
+      blockedTime:lead.blockedTime,retryRouteAt:lead.retryRouteAt,
+      routeGoalKey:lead.routeGoalKey,phase:s.phase,seconds:s.seconds}));
   assert.deepEqual(ally.p,p(185,110),
     'teammate must remain stationary during a real sidestep');
  }finally{activateSite(null);}
@@ -111,7 +121,7 @@ test('real enemy facing a shattered glass barrier seeks its own rearward muzzle 
     heading:guard.heading,weaponYaw:yaw,weapon:guard.weapon,
     weaponConfiguration:guard.weaponConfiguration,aim:guard.aim,
     posture:guard.posture,velocity:0,recoil:0,threatRange:near(guard.p,lead.p)},
-    s.doors);
+    s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   assert.ok(muzzle.blocked,
     'test must recreate a real unusable short-stock muzzle before recovery');
   stepSession(s,1/30);

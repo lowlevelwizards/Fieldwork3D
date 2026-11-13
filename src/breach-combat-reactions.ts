@@ -12,38 +12,58 @@ export function incomingHitFacing(heading:number,hitYaw:number,
  const toward=wrap(hitYaw+Math.PI);
  return Math.abs(wrap(toward-heading))>.20?toward:null;
 }
-/** Try small BACKWARD steps first. No sidestepping around unseen geometry:
- * both candidate motion and the complete resulting muzzle lane must pass
- * caller-supplied authoritative collision and fire-safety checks.
+/** Pre-rehearsed motor micro-maneuvers. The only things this resolver
+ * authors are candidate positions and a readable reason; live motor sweep
+ * and actual muzzle/fire validation come from the caller.
  */
-export function chooseMuzzleRecoveryStep(p:Pt,aimYaw:number,
- canMove:(next:Pt)=>boolean,canShoot:(next:Pt)=>boolean):Pt|null{
- for(const delta of [0,-.30,.30]){
-  const yaw=aimYaw+Math.PI+delta;
-  for(const length of [7,10,14,22,30]){
-   const next={x:p.x+Math.cos(yaw)*length,
-     y:p.y+Math.sin(yaw)*length};
-   if(canMove(next)&&canShoot(next))return next;
+export type PhysicalCorrectionKind='lateral-left'|'lateral-right'|
+ 'back'|'back-left'|'back-right';
+export type PhysicalCorrection={point:Pt;kind:PhysicalCorrectionKind;
+ distance:number;tests:number};
+export function choosePhysicalCorrection(p:Pt,aimYaw:number,
+ reason:'friendly'|'muzzle',canMove:(next:Pt)=>boolean,
+ canShoot:(next:Pt)=>boolean):PhysicalCorrection|null{
+ let tests=0;
+ const lateral={x:-Math.sin(aimYaw),y:Math.cos(aimYaw)};
+ const lengths=reason==='friendly'?[4,7,10,12,20,28]:
+   [4,7,10,14,22,30];
+ for(const length of lengths){
+  const candidates:{dx:number;dy:number;kind:PhysicalCorrectionKind}[]=
+   reason==='friendly'?[
+    {dx:-lateral.x*length,dy:-lateral.y*length,kind:'lateral-left'},
+    {dx:lateral.x*length,dy:lateral.y*length,kind:'lateral-right'}
+   ]:[
+    {dx:-Math.cos(aimYaw)*length,dy:-Math.sin(aimYaw)*length,kind:'back'},
+    {dx:Math.cos(aimYaw+Math.PI-.30)*length,
+     dy:Math.sin(aimYaw+Math.PI-.30)*length,kind:'back-left'},
+    {dx:Math.cos(aimYaw+Math.PI+.30)*length,
+     dy:Math.sin(aimYaw+Math.PI+.30)*length,kind:'back-right'},
+    {dx:Math.cos(aimYaw+Math.PI-.55)*length,
+     dy:Math.sin(aimYaw+Math.PI-.55)*length,kind:'back-left'},
+    {dx:Math.cos(aimYaw+Math.PI+.55)*length,
+     dy:Math.sin(aimYaw+Math.PI+.55)*length,kind:'back-right'}
+   ];
+  for(const candidate of candidates){
+   const next={x:p.x+candidate.dx,y:p.y+candidate.dy};
+   tests++;
+   if(canMove(next)&&canShoot(next))return {
+    point:next,kind:candidate.kind,distance:length,tests
+   };
   }
  }
  return null;
 }
-
-/** A teammate obscuring the target is a reason to move *ourselves*, never
- * the teammate or a reason to skip friendly-fire protection. Compare short
- * lateral steps on either side of the muzzle axis, nearest first, and only
- * accept a candidate whose entire motor sweep and firing lane are safe.
- * All candidate iteration is deterministic for replay.
+/** The motor remains the sole owner of the actual correction step.
+ * Keep compatibility with tactical callers expecting only the endpoint.
+ */
+export function chooseMuzzleRecoveryStep(p:Pt,aimYaw:number,
+ canMove:(next:Pt)=>boolean,canShoot:(next:Pt)=>boolean):Pt|null{
+ return choosePhysicalCorrection(p,aimYaw,'muzzle',canMove,canShoot)?.point??null;
+}
+/** A teammate in the lane must never be moved or ignored. Try the smallest
+ * lateral self-correction with safe full swept motion and shot geometry.
  */
 export function chooseFriendlyLaneStep(p:Pt,aimYaw:number,
  canMove:(next:Pt)=>boolean,canShoot:(next:Pt)=>boolean):Pt|null{
- const left={x:-Math.sin(aimYaw),y:Math.cos(aimYaw)};
- for(const length of [12,20,28]){
-  for(const side of [-1,1]){
-   const next={x:p.x+left.x*length*side,
-     y:p.y+left.y*length*side};
-   if(canMove(next)&&canShoot(next))return next;
-  }
- }
- return null;
+ return choosePhysicalCorrection(p,aimYaw,'friendly',canMove,canShoot)?.point??null;
 }

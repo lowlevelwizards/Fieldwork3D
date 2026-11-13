@@ -1,3 +1,4 @@
+import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 / Stage 10: authoritative confirmed-target shot resolution.
  * Called only after live acquisition and ready-mode eligibility. Retains the
@@ -16,7 +17,7 @@ import {shotPressureAtActor,shotPressureAmount} from './breach-shot-pressure.ts'
 import {length} from './breach-plan.ts';
 import {injuryOf,woundSeverity,nearCover} from './breach-combat.ts';
 import {aimHeight} from './breach-cover-height.ts';
-import {assessFireLane,fireLaneReachable} from './breach-fire-safety.ts';
+import {assessFireLane,assessFriendlyLane,fireLaneReachable} from './breach-fire-safety.ts';
 import {windowPaneSegment} from './breach-windows.ts';
 import {firstCivilianAlongRay,applyCivilianBulletHit} from './breach-civilian-ballistics.ts';
 import {recordCivilianHarm} from './breach-civilian-harm.ts';
@@ -72,7 +73,8 @@ export function createShotResolver(ports:ShotResolverPorts){
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
   const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:a.weaponYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
+    weaponYaw:a.weaponYaw,shoulderOffset:a.aimSideOffset??0,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
@@ -82,11 +84,17 @@ export function createShotResolver(ports:ShotResolverPorts){
   }
   const sightMuzzle=sightClearance.muzzle;
   const friends=s.operators.filter(o=>o!==a&&o.health>0&&
-    o.side===a.side).map(o=>o.p);
+    o.side===a.side).map(safetyBodyFor);
   if(observedCivilianFireLane(s,a,
      {x:sightMuzzle.x,y:sightMuzzle.z},sightMuzzle.y,
      target.p,aimHeight(target.posture==='crouch'))){
     civilianShotWithheld(s,a);return;
+  }
+  // A penetrable cover result must never mask an ally occupying that ray.
+  if(assessFriendlyLane({x:sightMuzzle.x,y:sightMuzzle.z},
+    sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
+    friends).blocker==='friendly'){
+    a.lastFireBlock='friendly';requestClearFireStep(s,a,target,'friendly');return;
   }
   const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
     sightMuzzle.y,target.p,aimHeight(target.posture==='crouch'),
@@ -113,7 +121,8 @@ export function createShotResolver(ports:ShotResolverPorts){
   const cone=shotDispersionCone(a,mode,range,moving,mods,weapon.optimalRange);
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
+    weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(shotClearance.blocked){
     a.lastFireBlock=shotClearance.blocker;return;
@@ -128,10 +137,26 @@ export function createShotResolver(ports:ShotResolverPorts){
      shotTarget,aimHeight(target.posture==='crouch'))){
     civilianShotWithheld(s,a);return;
   }
+  if(assessFriendlyLane(muzzlePoint,muzzle.y,shotTarget,
+    aimHeight(target.posture==='crouch'),friends).blocker==='friendly'){
+    a.lastFireBlock='friendly';return;
+  }
   const shotLane=assessFireLane(muzzlePoint,muzzle.y,
     shotTarget,aimHeight(target.posture==='crouch'),
     COVER,WALLS,s.doors,friends);
   if(shotLane.blocker==='friendly'){
+    a.lastFireBlock='friendly';return;
+  }
+  // A miss travels beyond the selected target. Verify the *complete*
+  // outgoing tracer trajectory against allies BEFORE consuming ammunition.
+  // A near-target check alone could approve a spread shot that intersects
+  // another teammate farther downrange.
+  const muzzleRange=d(muzzlePoint,target.p);
+  const far=muzzleEndpoint(muzzlePoint,yaw,Math.max(muzzleRange+38,170));
+  const strikeHeight=muzzle.y+(aimHeight(target.posture==='crouch')-
+    muzzle.y)*d(muzzlePoint,far)/Math.max(1,muzzleRange);
+  if(assessFriendlyLane(muzzlePoint,muzzle.y,far,strikeHeight,
+    friends).blocker==='friendly'){
     a.lastFireBlock='friendly';return;
   }
   const muzzleReach=strikeSurface(a.p,muzzlePoint,s,
@@ -148,12 +173,8 @@ export function createShotResolver(ports:ShotResolverPorts){
     (target.posture==='crouch'?1.7:0)-
     (nearCover(target.p,a.p,COVER)?2:0));
   const candidateHit=rayHitsActor(muzzlePoint,yaw,target.p,hitRadius);
-  const muzzleRange=d(muzzlePoint,target.p);
-  const far=muzzleEndpoint(muzzlePoint,yaw,Math.max(muzzleRange+38,170));
-  // Aim for the target's visible upper body, not an imaginary ground-level
-  // hitpoint. At close range this clears waist-high cover naturally.
-  const strikeHeight=muzzle.y+(aimHeight(target.posture==='crouch')-
-    muzzle.y)*d(muzzlePoint,far)/Math.max(1,muzzleRange);
+  // Full bullet travel was already height-checked against friendlies
+  // before ignition. Reuse the same far endpoint and height for ballistics.
   const strike=strikeSurface(muzzlePoint,far,s,muzzle.y,strikeHeight,
     weapon.penetration);
   const targetTrace=strikeSurface(muzzlePoint,target.p,s,muzzle.y,

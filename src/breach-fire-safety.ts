@@ -4,12 +4,15 @@
 import {segmentsCross,doorLeafSegment,type Door,type Obstacle,
   type Segment,type Pt} from './breach-core.ts';
 import {coverImpactFraction} from './breach-cover-height.ts';
+import {friendIntersectsTrajectory,type FriendlySafetyBody}
+ from './breach-friendly-safety-volume.ts';
+export type {FriendlySafetyBody} from './breach-friendly-safety-volume.ts';
 export type FireBlock='clear'|'wall'|'door'|'cover'|'friendly';
 export type FireLane={blocker:FireBlock;point?:Pt};
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
   targetHeight:number,cover:readonly Obstacle[],walls:readonly Segment[],
-  doors:readonly Door[],friends:readonly Pt[]=[],
+  doors:readonly Door[],friends:readonly FriendlySafetyBody[]=[],
   purpose:'projectile'|'weapon'='projectile'):FireLane{
   const ray={a:from,b:to};
   if(walls.some(w=>segmentsCross(ray,w)))return {blocker:'wall'};
@@ -20,24 +23,19 @@ export function assessFireLane(from:Pt,muzzleHeight:number,to:Pt,
   if(cover.some(c=>(purpose==='weapon'||c.fixture!=='glass-barrier')&&
     coverImpactFraction(from,to,muzzleHeight,targetHeight,c)!==null))
     return {blocker:'cover'};
-  const dx=to.x-from.x,dy=to.y-from.y;
-  const total=distance(from,to);
-  if(total>0.0001){
-    const ux=dx/total,uy=dy/total;
-    for(const p of friends){
-      const px=p.x-from.x,py=p.y-from.y;
-      const along=px*ux+py*uy;
-      const across=Math.abs(px*uy-py*ux);
-      // A teammate is a physical disk against the full muzzle-to-target
-      // segment, including bodies overlapping either endpoint.
-      // Callers exclude the shooter from the friends array.
-      const nearest=Math.max(0,Math.min(total,along));
-      const axial=along-nearest;
-      if(axial*axial+across*across<10.5*10.5)
-        return {blocker:'friendly',point:p};
-    }
-  }
-  return {blocker:'clear'};
+  return assessFriendlyLane(from,muzzleHeight,to,targetHeight,friends);
+}
+/** Used BEFORE any penetrable-material preview or ammunition expenditure.
+ * Main assessFireLane keeps established wall/door/cover priority for display
+ * and AI diagnostics, but a material result is never sufficient to grant
+ * permission when this independent teammate veto reports a hit.
+ */
+export function assessFriendlyLane(from:Pt,muzzleHeight:number,to:Pt,
+ targetHeight:number,friends:readonly FriendlySafetyBody[]):FireLane{
+ for(const body of friends)
+  if(friendIntersectsTrajectory(from,muzzleHeight,to,targetHeight,body))
+   return {blocker:'friendly',point:body};
+ return {blocker:'clear'};
 }
 
 /** Acquisition and ignition must agree on whether actual cover can be

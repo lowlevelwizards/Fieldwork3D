@@ -29,12 +29,26 @@ try{
     null,{timeout:25000});
    if(await page.locator('#lane').textContent()!=='FRIENDLY')
     throw Error(mode+' rear stack did not show baseline friendly block');
+   if(await page.locator('#legacyLane').textContent()!=='FRIENDLY')
+    throw Error(mode+' original flat-disc comparator missing');
+   if(await page.locator('#heightDelta').textContent()!=='SAME')
+    throw Error(mode+' centered standing stack unexpectedly disagrees');
    await page.locator('#step').click();
    await page.waitForFunction(()=>
     document.querySelector('#clock')?.textContent==='0.017s');
+   await page.locator('#intent').selectOption('engage');
+   await page.waitForFunction(()=>document.querySelector('#details')?.
+    textContent?.includes('"firePolicy": "engage"'));
+   if(await page.locator('#shoulder').textContent()===null||
+      await page.locator('#autoStance').textContent()===null)
+    throw Error(mode+' A3 tactical micro-aim/stance diagnostics absent');
    await page.locator('#scenario').selectOption('mixed-crouch');
    await page.waitForFunction(()=>document.querySelector('#details')?.
     textContent?.includes('"posture": "crouch"'));
+   const crouchReport=await page.locator('#details').textContent();
+   if(!crouchReport?.includes('"protectedTop": 26')||
+      !crouchReport.includes('"crouched"'))
+    throw Error(mode+' does not report actual A3.1 crouched body volumes');
    await page.locator('#scenario').selectOption('doorway');
    await page.locator('#operators').selectOption('2');
    await page.locator('#weapon').selectOption('smg');
@@ -51,6 +65,6 @@ try{
    if(errors.length)throw Error(mode+' browser errors: '+errors.join('; '));
    await page.close();
   }
-  console.log('A3.0 mobile/desktop real-session lab PASS');
+  console.log('A3.1 actual mobile/desktop body-volume gallery PASS');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

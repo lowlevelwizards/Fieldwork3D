@@ -55,6 +55,7 @@ function sample(){
  const poseStart=timestamp();
  poseOperator(rig,{
   x:actor.p.x,z:actor.p.y,heading:actor.heading,
+  shoulderOffset:actor.aimSideOffset??0,shotHeading:actor.weaponYaw,
   travelYaw:actor.heading,velocity:actor.velocity,
   seconds:s.seconds,stride:actor.stride,posture:actor.posture,
   injury:actor.injuryStage,weapon:actor.weapon,
@@ -102,12 +103,14 @@ function draw(){
   const leaf=doorLeafSegment(d);
   line(leaf.a.x,leaf.a.y,leaf.b.x,leaf.b.y,'#d9b477',5);
  }
- // Existing projectile safety uses full planar 10.5-unit disks. These
- // intentionally DO NOT imply the height-aware A3.1 safety model exists.
+ // A3.1 retains original planar 10.5-unit disks as comparison overlays.
+ // Actual fire permission uses the separate height-aware body volumes.
  for(const ally of probe.allies){
   circle(ally.position.x,ally.position.y,probe.friendlyPlanarRadius,
    'rgba(244,129,111,.2)','#e98e7d');
   circle(ally.position.x,ally.position.y,7,'#8ed0bf','#17362f');
+  ctx.fillStyle='#dfd4bd';ctx.font='9px ui-monospace,monospace';
+  ctx.fillText('H'+ally.protectedTop,ally.position.x+13,ally.position.y-12);
   line(ally.position.x,ally.position.y,
     ally.position.x+Math.cos(ally.heading)*14,
     ally.position.y+Math.sin(ally.heading)*14,'#e4f0df',1.5);
@@ -132,9 +135,15 @@ function draw(){
  ctx.fillText('TARGET',t.position.x-20,t.position.y-18);
  if(step){circle(step.x,step.y,4,'#e9ae60');}
  el<HTMLElement>('lane').textContent=shot.lane.toUpperCase();
+ el<HTMLElement>('legacyLane').textContent=shot.legacyPlanarLane.toUpperCase();
+ el<HTMLElement>('heightDelta').textContent=shot.changedByHeight?'DIFFERENT':'SAME';
  el<HTMLElement>('block').textContent=shot.hardBlocked?
   shot.weaponBlocker.toUpperCase():'CLEAR';
  el<HTMLElement>('handling').textContent=probe.carry.handling.toUpperCase();
+ el<HTMLElement>('shoulder').textContent=probe.shooter.shoulderOffset.toFixed(1)+
+  ' / '+probe.shooter.shoulderTarget.toFixed(1);
+ el<HTMLElement>('autoStance').textContent=probe.shooter.autoCrouchUntil>s.seconds?
+  'AUTO CROUCH':'ORDINARY';
  el<HTMLElement>('clock').textContent=s.seconds.toFixed(3)+'s';
  el<HTMLElement>('candidate').textContent=step?
   (step.x-a.position.x).toFixed(0)+','+(step.y-a.position.y).toFixed(0):'NONE';
@@ -146,6 +155,7 @@ function draw(){
  }));
  el<HTMLElement>('details').textContent=JSON.stringify({
   tick:tickIndex,actualShot:probe.shot,
+  bodyVolumes:probe.friendlyVolumes,
   visualMuzzle:probe.presentation,carry:probe.carry,
   recovery:probe.legacyRecovery,doorContacts:probe.doorContacts,
   operator:probe.shooter,allies:probe.allies
