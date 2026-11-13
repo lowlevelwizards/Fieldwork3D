@@ -90,6 +90,10 @@ export function createCasualShirts(chest:THREE.Group,arms:readonly Arm[],
       .name='polo:sleeve-hem';
     }
    }else if(button){
+    // A true tropical short sleeve, anchored to the animated upper arm;
+    // unlike a rolled cuff it has one clean edge and a bare elbow.
+    block(u,cloth,0,-.25,0,4.24,.50,4.36)
+     .name='button-up:tropical-short-sleeve';
     // Cuffed: a SINGLE cloth forearm sleeve with ONE terminal band.
     // Lower-bone normalized Y runs -0.5 (elbow) to +0.5 (wrist).
     // Previous separate "elbow join" and mid-forearm ring read as
@@ -116,7 +120,8 @@ export function updateCasualShirts(models:CasualShirts,top:string,sleeve:SleeveS
  for(const cut of CASUAL_SHIRT_CUTS){
   const on=cut===top,m=models.cuts[cut],button=cut==='button-up-shirt';
   m.torso.visible=on;
-  for(const g of m.upper)g.visible=on&&(cut==='t-shirt'||cut==='polo-shirt');
+  for(const g of m.upper)g.visible=on&&(cut==='t-shirt'||cut==='polo-shirt'||
+   (button&&sleeve==='short'));
   for(const g of m.lower)g.visible=on&&button&&sleeve==='unrolled';
   for(const g of m.cuffedLower)g.visible=on&&button&&sleeve==='cuffed';
   for(const g of m.rolledUpper)g.visible=on&&button&&sleeve==='rolled';
