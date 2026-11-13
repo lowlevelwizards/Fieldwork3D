@@ -2,13 +2,13 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: all attempted/active traversal follows the same fixed-tick
  * geometry and landing reservations. Never grants physical pass-through.
  */
-import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,type Pt,type Obstacle} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
-import {probeWindowPortalRoute,canOpenWindowForClimb,
- probeObstacleCrossing,preferTraversal,traversalRouteLength,
- sampleTraversal,traversalStepClear} from './breach-mantle.ts';
-import {manipulateWindow} from './breach-windows.ts';
+import {probeWindowPortalRoute,canOpenWindowForClimb,canClimbWindow,
+ crossingInterval,traversalKind,probeObstacleCrossing,preferTraversal,
+ traversalRouteLength,sampleTraversal,traversalStepClear} from './breach-mantle.ts';
+import {manipulateWindow,type WindowState} from './breach-windows.ts';
 import {d,clone,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
 
 export const motorTraversalWorld=(s:Session,a:TeamActor)=>({
@@ -24,10 +24,44 @@ const traversalFitness=(a:TeamActor)=>({
  pace:a.pace,injury:Math.min(3,Math.max(0,a.injuryStage)) as 0|1|2|3,
  loadFactor:1/Math.max(.55,a.loadMovementScale??1)
 });
+/** Exact-safe prerequisite for the costly ordinary A* + possible portal
+ * A* searches. A physically eligible *known* obstacle must intersect the
+ * same 170-unit probe used by probeObstacleCrossing, or a climbable window
+ * must separate the actor and goal. This only rejects impossibilities:
+ * all actual crossing and route tests still run unchanged afterward.
+ */
+export function plausibleMotorTraversal(from:Pt,goal:Pt,
+ knownCover:ReadonlySet<number>,cover:readonly Obstacle[],
+ windows:readonly WindowState[]):boolean{
+ const span=d(from,goal);
+ if(span>=20){
+  const probe=span>170?{x:from.x+(goal.x-from.x)*170/span,
+   y:from.y+(goal.y-from.y)*170/span}:goal;
+  for(const index of knownCover){
+   const obstacle=cover[index];
+   if(!obstacle)continue;
+   const kind=traversalKind(obstacle);
+   if(kind&&kind!=='step'&&crossingInterval(from,probe,obstacle))
+    return true;
+  }
+ }
+ for(const window of windows){
+  if(!canClimbWindow(window)&&!canOpenWindowForClimb(window))continue;
+  const fromSide=window.vertical?from.x-window.x:from.y-window.y;
+  const toSide=window.vertical?goal.x-window.x:goal.y-window.y;
+  if(fromSide*toSide<0&&Math.abs(fromSide)>=1&&
+     Math.abs(toSide)>=1)return true;
+ }
+ return false;
+}
 /** This is a transient motor decision; it does not alter an authored order.
  * Only a known, individually climbable obstacle can win over a longer walk.
  */
 function desiredTraverse(s:Session,a:TeamActor,goal:Pt){
+ // Most moves cross no vaultable objects or window portal. Avoid a full
+ // known-world A* route solely to discover that nothing can be traversed.
+ if(!plausibleMotorTraversal(a.p,goal,s.intel.cover,
+    s.coverState,s.windows))return null;
  const world=motorTraversalWorld(s,a);
  const fit=traversalFitness(a);
  const ordinary=routeWithSqueezeIntel(s.intel,a.p,goal);
