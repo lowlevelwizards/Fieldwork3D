@@ -88,6 +88,7 @@ import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPL
 import {type Site,type Room,type WideOpening} from './breach-site.ts';
 import {bakedOperatorCarry,prewarmSavedOperatorCarry}
  from './rendering/breach-saved-operator-carry-bake.ts';
+import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
@@ -1456,6 +1457,19 @@ export class TacticalScene3D{
     // Saved operator kit pouch/mag placement is ready before first combat.
     prewarmSavedOperatorCarry(a);
     const physical=createOperatorRig(a.id,a.side,true);
+    // Bake saved colors, field-gear geometry selection, shadow receivers,
+    // and reusable texture atlases at rig preparation, not first contact.
+    // Studio previews remain fully editable and animated bones unmerged.
+    const precomputed=bakedOperatorCarry(a);
+    updateOperatorAppearance(physical,{
+      appearanceSeed:a.appearanceSeed,equipment:a.equipment,
+      wardrobe:a.wardrobe,weaponConfiguration:a.weaponConfiguration,
+      magazineCarryLocations:precomputed.locations,
+      medicalCarryLocation:precomputed.medical,
+      utilityCarryLocation:precomputed.utility,
+      flashCharges:a.flashCharges,treatmentActive:a.treatmentActive,
+      down:a.health<=0,surrender:a.surrendered
+    });
     // Purely opt-in CPU phase marks inside poseOperator; no normal-play
     // instrumentation or changes to rig construction/animation decisions.
     if(this.profileSceneUpdate)
