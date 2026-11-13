@@ -130,12 +130,11 @@ export function achMichRetentionPaths(
   // z>-4. PASGT avoids this with an outboard cheek station before it
   // turns inward on the front side of the face.
   const junction:Point=[sign*4.56,1.37,-2.91];
-  // Seat both front cheek turns 0.18 closer to the front face while
-  // leaving the cheek's lateral clearance and the chin cup intact.
-  const cheekDrop:Point=[sign*4.63,.65,-4.44];
-  // Turn toward the chin only after clearing the cheek. Bring the front
-  // cup back to PASGT's proven -4.34 face depth: close to the -4.0 cube
-  // surface, but still forward of it; keep the outside cheek-drop unchanged.
+  // Pull both forward cheek corners inboard by .17 and back by .08.
+  // The full webbing ribbon still clears the -4 front / +/-4 side head box.
+  const cheekDrop:Point=[sign*4.46,.65,-4.36];
+  // Preserve the PASGT-like front chin cup and all shell anchor stations.
+  // Only the two cheek bends above it move in this fit pass.
   const chin:Point=[sign*2.34,-1.08,-4.34];
   result.push([f,junction],[b,junction],[junction,cheekDrop,chin]);
  }
@@ -223,16 +222,25 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  const main=new THREE.Mesh(createAchMichRetentionGeometry(shell),webbing);
  main.name='ach-mich-integrated-four-point-and-chin-cup';main.castShadow=false;
  main.receiveShadow=false;strap.add(main);
- // Large, readable clasp is seated on the continuous jaw webbing,
- // not suspended beside the face or drawn as an unsupported black dot.
+ // At gameplay distance the buckle only needs an outboard silhouette.
+ // Replace two 12-triangle 3D boxes with two double-sided flat quads in one
+ // static geometry: 4 triangles total, one draw call, no hidden side faces.
+ const claspVertices:number[]=[];
  for(const sign of [-1,1]){
-  const clasp=new THREE.Mesh(new THREE.BoxGeometry(.46,.42,.20),metal);
-  clasp.name='fastened-four-point-adjustment-buckle';
-  clasp.userData.keepSeparate=true;
-  clasp.position.set(sign*4.55,1.10,-3.03);
-  clasp.rotation.y=sign*.30;
-  clasp.castShadow=false;clasp.receiveShadow=false;strap.add(clasp);
+  const x=sign*4.69,y=1.10,z=-3.03;
+  const a:Point=[x,y-.21,z-.18],b:Point=[x,y-.21,z+.18],
+   c:Point=[x,y+.21,z+.18],d:Point=[x,y+.21,z-.18];
+  for(const p of [a,b,c,a,c,d])claspVertices.push(...p);
  }
+ const claspGeometry=new THREE.BufferGeometry();
+ claspGeometry.setAttribute('position',
+  new THREE.Float32BufferAttribute(claspVertices,3));
+ claspGeometry.computeVertexNormals();
+ const clasps=new THREE.Mesh(claspGeometry,metal);
+ clasps.name='fastened-four-point-adjustment-buckle';
+ clasps.userData.buckleFaces=4;
+ clasps.userData.buckleCount=2;
+ clasps.castShadow=false;clasps.receiveShadow=false;strap.add(clasps);
  // Keep each static material batched at creation; no global material/shader changes.
  consolidateVisualGroup(hardware);
  consolidateVisualGroup(strap);

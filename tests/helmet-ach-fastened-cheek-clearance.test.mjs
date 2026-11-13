@@ -35,11 +35,13 @@ test('PASGT reference and ACH/MICH fastened webbing clear cube head',()=>{
    assert.deepEqual(paths[side].at(-1),paths[side+2][0]);
    assert.equal(paths[side+2].length,3,'exterior cheek drop before chin');
    const cheek=paths[side+2][1],chin=paths[side+2][2];
-   assert.ok(Math.abs(cheek[0])>CUBE_HEAD_ANATOMY.rightX+.5);
-   // Front left/right cheek bends should stay near the face, not hover.
+   const lateralGap=Math.abs(cheek[0])-CUBE_HEAD_ANATOMY.rightX;
+   assert.ok(lateralGap>=.42&&lateralGap<=.49,
+    shell+' cheek bends should be just outside both jaw sides');
+   // Both cheek corners sit just forward of the box face.
    const cheekGap=CUBE_HEAD_ANATOMY.frontZ-cheek[2];
-   assert.ok(cheekGap>=.40&&cheekGap<=.48,
-    shell+' forward cheek turn must remain close but not intersect head');
+   assert.ok(cheekGap>=.33&&cheekGap<=.39,
+    shell+' forward cheek turn must be close but not intersect head');
    // PASGT's chin cup sits near -4.34, ahead of the -4 face.
    // Reject both the former .65-unit hover and any face penetration.
    const chinGap=CUBE_HEAD_ANATOMY.frontZ-chin[2];
