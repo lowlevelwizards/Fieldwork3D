@@ -50,10 +50,21 @@ test('solo closing pressure still works when there is no competing crossing',()=
  for(let i=0;i<10;i++)advanceDoor(door,1/60,[closing.from]);
  assert.ok(door.openFraction<old,'leaf should be able to move toward the frame');
 });
-test('game motor protects both no-route and normal movement pressure paths',()=>{
- const src=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
- assert.equal((src.match(/deferClosing:door=>doorClosingContested\(s,a,door\)/g)||[]).length,2);
- assert.match(src,/crossingDoor\(\{[\s\S]*?goal,side:peer.side/);
+test('current motor paths share one lazy touched-leaf pressure policy',()=>{
+ const route=readFileSync(new URL('../src/breach-motor-route.ts',import.meta.url),'utf8');
+ const collision=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
+ const frame=readFileSync(new URL('../src/breach-door-pressure-frame.ts',import.meta.url),'utf8');
+ const intent=readFileSync(new URL('../src/breach-door-pressure-arbitration.ts',import.meta.url),'utf8');
+ assert.match(route,/sessionDoorPressurePolicy\(s,a\)/,
+  'no-route physical push still gets the session hinge policy');
+ assert.match(collision,/sessionDoorPressurePolicy\(s,a\)/,
+  'normal swept motor still gets the same hinge policy');
+ assert.match(frame,/claimContact:door=>/,
+  'one touched-leaf impulse per simulation tick still applies');
+ assert.match(frame,/activeDoorCrossingIntent\(actor,door,true\)/,
+  'hinge policy shares active physical crossing classification');
+ assert.match(intent,/episode\?\.doorId===door\.id/,
+  'another door episode cannot impersonate this door crossing');
 });
 const door={id:'ENTRY',a:p(290,260),b:p(332,260),
   open:true,openedAt:0,hinge:'a',swing:-1,kind:'hinged'};
