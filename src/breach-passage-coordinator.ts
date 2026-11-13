@@ -159,6 +159,18 @@ function maybePromote(ctx:Context,s:Session,lane:Lane,
   waiting.actor.id+' ahead of delayed '+lead.id);
  return true;
 }
+/** Q0 debug read only: see why an actor was included/excluded from the
+ * GO-time lane. Never recompute the schedule or change queue ownership. */
+export function inspectPassageLane(s:Session,doorId:string,side:-1|1){
+ const ctx=contexts.get(s),lane=ctx?.lanes.get(laneKey(doorId,side));
+ return {hasLane:!!lane,promoted:ctx?.promotions.get(laneKey(doorId,side))??null,
+  members:lane?.members.map(m=>({
+   id:m.actor.id,rank:m.slot.rank,ready:ready(m,ctx!),
+   depth:normalDepth(m.actor.p,lane.door)*lane.side,
+   kind:m.actor.plan[0]?.kind??null,
+   currentSlot:pending(m.actor,ctx!.schedule,ctx!.byDoor)?.doorId??null
+  }))??[]};
+}
 /** Single Q2 entry point. Does not change positions or order authority.
  * Motor-passage applies a full stop or the returned bounded stride.
  */

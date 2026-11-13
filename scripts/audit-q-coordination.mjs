@@ -4,6 +4,7 @@ import {planDoorSchedule} from '../src/breach-passage-plan.ts';
 import {legalMoveRoute} from '../src/breach-known-route-authoring.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {listenQueueDecision} from '../src/breach-queue-trace.ts';
+import {inspectPassageLane} from '../src/breach-passage-coordinator.ts';
 const pt=(x,y)=>({x,y});
 const site={seed:731,name:'Q2 independent route evidence',training:true,
  layout:'corridor',roomCount:0,rooms:[],cover:[],windows:[],
@@ -25,7 +26,8 @@ try{
  listenQueueDecision(s,e=>{
   if(s.seconds>2.1&&s.seconds<2.8&&
      (e.actor==='ash'||e.actor==='vale')&&events.length<110)
-   events.push(e);
+   events.push({...e,...(e.actor==='vale'?{
+    lane:inspectPassageLane(s,'ENTRY',-1)}:{})});
  });
  for(let i=0;i<180;i++){
   stepSession(s,1/30);
