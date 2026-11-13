@@ -339,7 +339,7 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
  // by a visible margin, rather than merely touching at float-precision seams.
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.94,
   width:10.15,height:1.70,depth:1.14},
- // Deep nape and ear coverage share ONE lower line (Y2.23). We deliberately
+ // Deep nape and ear coverage share ONE lower line (Y2.68). We deliberately
  // sacrifice the old Y2.70->Y2.45->Y2.23 micro-staircase.
  {name:'ach-continuous-nape',x:0,y:4.49,z:4.97,
   width:10.15,height:3.62,depth:1.26},
@@ -420,8 +420,8 @@ const FAST_XP_MID_CUBOIDS:readonly HeadwearCuboid[]=[
 export const HEADWEAR_FIT_TARGETS=Object.freeze({
  ach:{
   brow:CUBE_HEAD_ANATOMY.brow+.10,
-  ear:CUBE_HEAD_ANATOMY.earCenter-.37,
-  nape:CUBE_HEAD_ANATOMY.nape+.03
+  ear:CUBE_HEAD_ANATOMY.earCenter+.08,
+  nape:CUBE_HEAD_ANATOMY.nape+.48
  },
  'high-cut':{
   brow:CUBE_HEAD_ANATOMY.brow+.20,
