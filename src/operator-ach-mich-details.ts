@@ -55,15 +55,18 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
    ribbon(bare,trim,[x,p.frontSide,-4.9],[x,p.ear,-2.0],.19,'y');
    ribbon(bare,trim,[x,p.nape,3.95],[x,p.nape,5.1],.19,'y');
   }
+  // MICH 2001 has a genuinely open rear side; its rear anchor belongs on
+  // the nape return, not in the empty ear interval.
+  const rearAnchorZ=id==='mich-2001'?4.18:2.72;
   const stud=new THREE.BoxGeometry(.16,.39,.39);
-  for(const [z,y] of [[-2.60,p.frontBoltY],[2.72,p.rearBoltY]]){
+  for(const [z,y] of [[-2.60,p.frontBoltY],[rearAnchorZ,p.rearBoltY]]){
    const bolt=new THREE.Mesh(stud,boltMat);
    bolt.name='ach-mich-retention-screw';
    bolt.position.set(sign*(p.side+.11),y,z);
    bolt.castShadow=false;bolt.receiveShadow=false;bare.add(bolt);
   }
   const anchorFront:[number,number,number]=[sign*4.85,p.frontBoltY,-2.50];
-  const anchorBack:[number,number,number]=[sign*4.85,p.rearBoltY,2.55];
+  const anchorBack:[number,number,number]=[sign*4.85,p.rearBoltY,rearAnchorZ];
   const cheek:[number,number,number]=[sign*3.95,1.15,-3.90];
   const chin:[number,number,number]=[sign*1.55,.10,-4.48];
   ribbon(strap,cloth,anchorFront,cheek,.40,'x');
