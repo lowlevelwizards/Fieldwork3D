@@ -27,7 +27,7 @@ export function directOperatorPose(p:OperatorPose,context:PoseDirectorContext){
   // Active combat and obstruction still take the exact same selection path
   // as shot-time weapon handling, with no additional visual yaw authority.
   const handling:Handling=p.treatmentActive?'low':
-    p.handlingOverride??handlingPose({
+    p.handlingOverride??p.clearanceCarry??handlingPose({
       aim:p.aimBlend??(p.aiming?1:0),
       moving:context.moving,
       obstruction:!!p.obstruction||context.receivingBash,

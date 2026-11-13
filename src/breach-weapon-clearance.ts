@@ -5,6 +5,7 @@
 import {COVER,WALLS,type Door,type Obstacle,type Segment,
   type Pt} from './breach-core.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
+import type {Handling} from './breach-weapon-pose.ts';
 import {muzzleAtShot,type MuzzleInput,type MuzzleSample}
   from './breach-muzzle.ts';
 export type ClearanceResult={
@@ -12,6 +13,8 @@ export type ClearanceResult={
   /** 0..1 wall-proximity-driven rifle fold: same as visible short-stock. */
   compression:number;
   blocker:FireBlock;muzzle:MuzzleSample;
+  /** Carry and underarm source shared with the exact visual fit. */
+  carryOverride?:Handling;shortFrom?:Handling;
 };
 /** Lead distance gives the elbows room to fold before contact; the rear
  * margin finishes compression when the free muzzle would penetrate. */
@@ -26,10 +29,12 @@ const clamp=(v:number)=>Math.max(0,Math.min(1,v));
  */
 export function weaponClearance(input:MuzzleInput,
   doors:readonly Door[],cover:readonly Obstacle[]=COVER,
-  walls:readonly Segment[]=WALLS):ClearanceResult{
+  walls:readonly Segment[]=WALLS,
+  friends:readonly Pt[]=[]):ClearanceResult{
   const from:Pt={x:input.x,y:input.z};
   const check=(tip:Pt,height:number):FireBlock=>
-    assessFireLane(from,height,tip,height,cover,walls,doors,[],'weapon').blocker;
+    assessFireLane(from,height,tip,height,cover,walls,doors,friends,
+      'weapon').blocker;
   const ready=muzzleAtShot({...input,obstruction:false,
     clearanceRetraction:0,shortCompression:undefined});
   const vx=ready.x-input.x,vy=ready.z-input.z;
@@ -61,8 +66,21 @@ export function weaponClearance(input:MuzzleInput,
   if(proximity<=.001)
     return {obstruction:false,blocked:false,compression:0,
       retraction:0,blocker:'clear',muzzle:ready};
+  // The first deterministic clearance stage is real shoulder-seated LOW.
+  // Only if that actual rigid muzzle is still unsafe do we fold into
+  // the authored underarm SHORT. Aim/shot permission stays independent.
+  const lowCarry=muzzleAtShot({...input,carryOverride:'low',
+    obstruction:false,shortCompression:undefined,
+    clearanceRetraction:0});
+  const lowBlock=check({x:lowCarry.x,y:lowCarry.z},lowCarry.y);
+  if(proximity<.30&&lowBlock==='clear')
+    return {obstruction:false,blocked:false,compression:0,
+      retraction:0,blocker:'clear',muzzle:lowCarry,
+      carryOverride:'low'};
+  const startFold=proximity<.30?0:(proximity-.30)/.70;
   const folded=(compression:number)=>{
     const muzzle=muzzleAtShot({...input,obstruction:true,
+      carryOverride:'short',shortFrom:'low',
       shortCompression:compression,clearanceRetraction:0});
     return {muzzle,blocker:check({x:muzzle.x,y:muzzle.z},muzzle.y)};
   };
@@ -75,13 +93,15 @@ export function weaponClearance(input:MuzzleInput,
     const full=folded(1);
     return {obstruction:true,blocked:true,compression:1,
       retraction:MAX_LEGACY_RETRACTION,blocker:
-        full.blocker==='clear'?horizonHit:full.blocker,muzzle:full.muzzle};
+        full.blocker==='clear'?horizonHit:full.blocker,
+      muzzle:full.muzzle,carryOverride:'short',shortFrom:'low'};
   }
-  const comfortable=folded(proximity);
+  const comfortable=folded(startFold);
   if(comfortable.blocker==='clear')
-    return {obstruction:true,blocked:false,compression:proximity,
-      retraction:proximity*MAX_LEGACY_RETRACTION,
-      blocker:'clear',muzzle:comfortable.muzzle};
+    return {obstruction:true,blocked:false,compression:startFold,
+      retraction:startFold*MAX_LEGACY_RETRACTION,
+      blocker:'clear',muzzle:comfortable.muzzle,
+      carryOverride:'short',shortFrom:'low'};
   // If the comfortable pose still hits the wall, find the *least* extra
   // compression that clears it. Stepped .12/.28/.48 jumps caused another
   // visible short-stock pop, even though the initial approach was smooth.
@@ -89,8 +109,9 @@ export function weaponClearance(input:MuzzleInput,
   if(full.blocker!=='clear')
     return {obstruction:true,blocked:true,compression:1,
       retraction:MAX_LEGACY_RETRACTION,
-      blocker:full.blocker,muzzle:full.muzzle};
-  let min=proximity,max=1;
+      blocker:full.blocker,muzzle:full.muzzle,
+      carryOverride:'short',shortFrom:'low'};
+  let min=startFold,max=1;
   let best=full.muzzle;
   for(let i=0;i<5;i++){
     const middle=(min+max)*.5;
@@ -100,5 +121,6 @@ export function weaponClearance(input:MuzzleInput,
   }
   return {obstruction:true,blocked:false,compression:max,
     retraction:max*MAX_LEGACY_RETRACTION,
-    blocker:'clear',muzzle:best};
+    blocker:'clear',muzzle:best,
+    carryOverride:'short',shortFrom:'low'};
 }

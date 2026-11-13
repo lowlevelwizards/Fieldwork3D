@@ -432,7 +432,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     yaw:manualShort&&p.handlingOverride==='short'?0:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
     shortCompression:manualRaw??p.shortCompression,
-    shortFrom:shortStockSourceHandling(
+    shortFrom:p.clearanceShortFrom??shortStockSourceHandling(
       p.aimBlend??(p.aiming?1:0),moving,p.weapon,!!p.friendlyNear),
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,

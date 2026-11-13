@@ -17,7 +17,7 @@ export type MuzzleInput={x:number;z:number;heading:number;
   weaponConfiguration?:WeaponConfiguration;
   recoil:number;obstruction?:boolean;friendlyNear?:boolean;
   threatRange?:number|null;clearanceRetraction?:number;
-  shortCompression?:number;
+  shortCompression?:number;shortFrom?:Handling;
   handlingIntent?:HandlingIntent;friendlyAhead?:boolean;
   /** Explicit clearance carry selected by same shared policy. */
   carryOverride?:Handling;
@@ -35,8 +35,8 @@ export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
     yaw:-p.weaponYaw+p.heading,recoil:p.recoil*6,
     aimBlend:p.aim,clearanceRetraction:p.clearanceRetraction,
     shortCompression:p.shortCompression,
-    shortFrom:shortStockSourceHandling(p.aim,Math.min(1,p.velocity/72),
-      p.weapon,!!p.friendlyNear),
+    shortFrom:p.shortFrom??shortStockSourceHandling(p.aim,
+      Math.min(1,p.velocity/72),p.weapon,!!p.friendlyNear),
     armorPush:equipmentStockPush(p.equipment)});
   const grip=weaponGrips(p.weapon,configuration);
   const assembly=configuration?resolveWeaponAssembly(configuration):null;
