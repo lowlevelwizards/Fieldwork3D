@@ -10,7 +10,10 @@ import {achMichProfile,ACH_MICH_BINDING_HEIGHT} from './operator-ach-mich-detail
 import {pasgtAtlasUv,PASGT_TOP_SEAM_OFFSETS,PASGT_FABRIC_PANELS,
  PASGT_UV_TEXELS_PER_UNIT} from './operator-pasgt-drape-geometry.ts';
 
-export const ACH_MICH_COVER_OFFSET=.13;
+// Exterior textile must clear the full unioned shell, not its inset liner.
+// A controlled ~0.2 unit fabric thickness prevents flat shell faces from
+// z-fighting through the drape without inflating accessory band spacing.
+export const ACH_MICH_COVER_OFFSET=.205;
 export const ACH_MICH_COVER_FOLDED_HEM=.18;
 export type AchMichCoverShell=typeof ACH_MICH_SHELLS[number];
 type Side='front'|'right'|'rear'|'left';
@@ -184,6 +187,7 @@ export function createAchMichDrapedGeometry(
  g.setAttribute('uv1',new THREE.Float32BufferAttribute(uvs.slice(),2));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.achMichDrapedFabric=true;
+ g.userData.h66CoverShellClearance=ACH_MICH_COVER_OFFSET;
  g.userData.achMichShell=shell;
  g.userData.achMichHemOnly=hemOnly;
  g.userData.printPanels=[...PASGT_FABRIC_PANELS];
