@@ -21,6 +21,10 @@ const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
+// An occupied final MOVE target is resolved once, not re-optimized on
+// every 60Hz tick. A transient settle is execution-only, never an authored
+// waypoint or an excuse to shift a teammate who is already stationary.
+const settledMoveTargets=new WeakMap<TeamActor,{nodeId:number;point:Pt}>();
 export function createMovementOrderHandler(port:OrderExecutionPort){
  const {approach}=port;
  return function executeMovementOrder(s:Session,a:TeamActor,n:PlanNode,dt:number,
@@ -66,17 +70,27 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   // Avoid finishing two authored MOVE destinations inside one friendly
   // body diameter. Make the *last moving operator* take a small, legal
   // settle step; never push or move someone whose own order is complete.
-  const settle=n.kind==='move'?friendlyArrivalSettleTarget(
-    a.p,n.p,friendlyPeers,(from,to)=>
+  const remembered=settledMoveTargets.get(a);
+  if(remembered&&remembered.nodeId!==n.id)settledMoveTargets.delete(a);
+  const retained=n.kind==='move'&&remembered?.nodeId===n.id?
+    remembered.point:null;
+  const settledAt=!!retained&&near(a.p,retained,3.5)&&
+    friendlyPeers.every(peer=>d(a.p,peer)>=14);
+  const newlySettled=n.kind==='move'&&!retained?
+    friendlyArrivalSettleTarget(a.p,n.p,friendlyPeers,(from,to)=>
       sessionWorldGeometry(s).passable(to,OPERATOR_RADIUS)&&
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):null;
-  if(settle){
+  if(newlySettled)settledMoveTargets.set(a,{nodeId:n.id,
+    point:{...newlySettled}});
+  const settle=retained??newlySettled;
+  if(settle&&!settledAt){
     move(a,settle,dt,s,.72);
     return true;
   }
-  const at=near(a.p,n.p,5)||(
+  const at=settledAt||near(a.p,n.p,5)||(
     n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
       friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))));
+  if(at&&retained)settledMoveTargets.delete(a);
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
     // Running cancels WATCH rather than merely suspending it.
     if(interruptsWatch(n,a.pace))a.aimInstruction=null;
