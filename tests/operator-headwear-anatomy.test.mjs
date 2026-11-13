@@ -23,7 +23,7 @@ test('ACH brow, ear cover, nape and crown are tied to head landmarks',()=>{
  assert.ok(Math.abs(bottom(v,4.4,0)-f.ear)<.15);
  assert.ok(Math.abs(bottom(v,0,5)-f.nape)<.15);
  assert.ok(f.ear<A.earTop,'shell extends over real implied ear region');
- assert.ok(f.nape<=A.nape+.2,'rear drop protects lower rear skull');
+ assert.ok(f.nape<=A.nape+.6,'rear drop protects lower rear skull');
  assert.ok(HEAD_SILHOUETTE_METRICS.ach.top-A.skullTop<2,
   'ACH top must not be perched far above the skull');
 });

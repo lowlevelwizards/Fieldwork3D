@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
-import {headwearCuboidVolumes,type HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
+import {headwearCuboidVolumes,chamferAchMichCrown,ACH_MICH_SHELLS,type HeadSilhouetteId} from './operator-headwear-silhouettes.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {isH1ModernHelmet,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {headwearCamoTexture} from './operator-headwear-materials.ts';
@@ -23,6 +23,8 @@ const meshed=(group:THREE.Group,parts:readonly HeadwearCuboid[],
  material:THREE.Material,label:string)=>{
  const geo=unionCuboids(parts,{faceTone:()=>1,faceRegion:(_part,axis,sign)=>
   axis===1&&sign===1?3:0});
+ if(label==='H1-fitted-cloth'&&(ACH_MICH_SHELLS as readonly string[]).includes(group.userData.shellId))
+  chamferAchMichCrown(geo,parts,group.userData.shellId);
  bakeGearGeometryAO(geo,material);
  const m=new THREE.Mesh(geo,material);m.name=label;m.castShadow=true;
  group.add(m);
@@ -60,16 +62,18 @@ export function createModernHelmetCoverLayers(parent:THREE.Group,shell:string):
  }
  const fitted=hidden(parent),loose=hidden(parent),band=hidden(parent),
   net=hidden(parent),sparse=hidden(parent),field=hidden(parent);
+ const simplified=(ACH_MICH_SHELLS as readonly string[]).includes(shell);
+ fitted.userData.shellId=shell;
  meshed(fitted,modernHelmetCoverVolumes(shell),fabric,'H1-fitted-cloth');
- meshed(loose,modernHelmetCoverVolumes(shell,true),fabric,'H1-loose-cloth');
+ if(!simplified)meshed(loose,modernHelmetCoverVolumes(shell,true),fabric,'H1-loose-cloth');
  // Segmented retention band: no solid strip across the open ear interval.
  const fore=p.front-.20,rear=p.rear+.20;
- meshed(band,[
+ if(!simplified)meshed(band,[
   part('band-front',0,p.ear+.48,fore,side*2+.28,.66,.40),
   part('band-rear',0,p.ear+.48,rear,side*2+.28,.66,.40)
  ],binding,'H1-retaining-band');
  const crown=p.top+.11,depth=(p.rear-p.front)*.82;
- meshed(net,[
+ if(!simplified)meshed(net,[
   ...[-2.7,0,2.7].map(x=>part('net-vertical',x,crown,0,.30,.20,depth)),
   ...[-2.7,2.7].map(z=>part('net-crossing',0,crown+.04,z,side*2,.20,.30))
  ],binding,'H1-coarse-net');
@@ -78,8 +82,10 @@ export function createModernHelmetCoverLayers(parent:THREE.Group,shell:string):
   part('scrim-back-right',side+.20,p.ear+1.38,p.rear-1.9,1.4,2.10,.8),
   part('scrim-back',2.7,p.top-.7,rear,.95,1.80,.78)
  ];
- meshed(sparse,pieces.slice(0,2),scrimMaterial,'H1-sparse-scrim');
- meshed(field,pieces,scrimMaterial,'H1-field-scrim');
+ if(!simplified){
+  meshed(sparse,pieces.slice(0,2),scrimMaterial,'H1-sparse-scrim');
+  meshed(field,pieces,scrimMaterial,'H1-field-scrim');
+ }
  return {fitted,loose,band,net,sparse,field,fabric,activePrint:''};
 }
 export function updateModernHelmetCoverLayers(v:ModernHelmetCoverLayers,shell:string,

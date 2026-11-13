@@ -23,3 +23,19 @@ test('new shell sockets have correct directional signs',()=>{
   assert.equal(s.railLeft.position[0],-s.railRight.position[0]);
  }
 });
+
+test('ACH/MICH simplified setups keep only cover and basic retention',()=>{
+ for(const id of ['ach','mich-2001','mich-2002']){
+  const raw=readHelmetSetup({cover:'loose',rails:'arc',shroud:'skeleton',
+   nvg:'dual-stowed',rearModule:'battery',retention:'dial',scrim:'field'});
+  const visible=resolveHelmetSetup(id,raw).setup;
+  assert.equal(visible.cover,'fitted');
+  assert.equal(visible.rails,'none');
+  assert.equal(visible.shroud,'none');
+  assert.equal(visible.nvg,'none');
+  assert.equal(visible.scrim,'none');
+  assert.equal(visible.retention,'four-point');
+  assert.equal(raw.rails,'arc');
+  assert.equal(resolveHelmetSetup(id,{cover:'none'}).setup.cover,'none');
+ }
+});

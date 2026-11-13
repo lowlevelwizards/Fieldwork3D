@@ -1279,7 +1279,8 @@ function renderMaterials(){
   row('HEADWEAR APPEARANCE',
    'All approved hats and helmets are selectable. Appearance does not alter head protection or inventory; the equipped kit controls those.');
   const helmetShell=item==='high-cut-rails'?'high-cut':item;
-  if(isH1ModernHelmet(helmetShell)&&helmetShell!=='pasgt'){
+  const simpleAchMich=['ach','mich-2001','mich-2002'].includes(helmetShell);
+  if(isH1ModernHelmet(helmetShell)&&helmetShell!=='pasgt'&&!simpleAchMich){
    const presets=helmetPresetChoices(helmetShell);
    if(presets.length){
     const quick=row('QUICK HELMET SETUPS','Reference-led modular cosmetics; each setup keeps the equipped protection unchanged.');
@@ -1330,21 +1331,35 @@ function renderMaterials(){
    }
    advanced.append(disclosure);
   }
+  if(simpleAchMich){
+   const shellCover=resolveHelmetSetup(helmetShell,w.helmetSetup,{
+    hasLegacyPrint:!!w.headwearCamo
+   }).setup.cover!=='none';
+   const coverRow=row('ACH / MICH COVER',
+    'One fitted fabric cover or an exposed painted shell. No legacy setup variants.');
+   addSelect(coverRow,[['none','BARE SHELL'],['fitted','COVER']] as const,
+    shellCover?'fitted':'none',v=>changeWardrobe({
+     ...current(),helmetSetup:readHelmetSetup({
+      ...current().helmetSetup,cover:v,presetOrigin:undefined
+     })
+    }));
+  }
   const solids=headwearColorChoices(item==='high-cut-rails'?'high-cut':item);
   const prints=headwearCamoChoices(item);
-  const group=row(item==='pasgt'?'PASGT SHELL COLOR':'HEADGEAR FINISH',
-   item==='pasgt'?
-    'Painted composite shell finish — remains selected underneath the cover.':
+  const group=row(item==='pasgt'?'PASGT SHELL COLOR':
+   simpleAchMich?'ACH / MICH SHELL COLOR':'HEADGEAR FINISH',
+   item==='pasgt'||simpleAchMich?
+    'Painted composite shell finish — remains selected underneath the fabric cover.':
     'Select an appropriate solid shell/fabric or approved cover print.');
   if(solids.length){
    const grid=document.createElement('div');grid.className='solid-swatches';
    for(const id of sortHeadwearSolids(solids,w.headwearColor)){
     const info=HEADWEAR_SOLID_COLORS[id];
-    const b=makeButton(info.label,(item==='pasgt'||!w.headwearCamo)&&
+    const b=makeButton(info.label,(item==='pasgt'||simpleAchMich||!w.headwearCamo)&&
      (w.headwearColor??solids[0])===id,()=>changeWardrobe({
       ...current(),headwearColor:id,
       // PASGT shell paint and textile cover print are independent channels.
-      headwearCamo:item==='pasgt'?current().headwearCamo:undefined}));
+      headwearCamo:item==='pasgt'||simpleAchMich?current().headwearCamo:undefined}));
     b.className='swatch';const chip=document.createElement('span');
     chip.className='swatch-chip';
     chip.style.backgroundColor='#'+info.hex.toString(16).padStart(6,'0');
@@ -1476,8 +1491,11 @@ function renderMaterials(){
     w.beretDrape??'right',value=>changeWardrobe({...current(),
      beretDrape:value as 'left'|'right'}));
   }
-  if(prints.length&&item!=='pasgt'){
-   const printRow=row('COMPATIBLE HEADGEAR PRINTS');
+  if(prints.length&&item!=='pasgt'&&(!simpleAchMich||
+    resolveHelmetSetup(helmetShell,w.helmetSetup,{hasLegacyPrint:!!w.headwearCamo}).setup.cover!=='none')){
+   const printRow=row(simpleAchMich?'ACH / MICH COVER CAMOUFLAGE':
+    'COMPATIBLE HEADGEAR PRINTS',simpleAchMich?
+    'Only the fabric receives camouflage; the painted shell remains solid.':undefined);
    addCamoSwatches(printRow,prints,w.headwearCamo??null,id=>
     changeWardrobe({...current(),headwearCamo:id,
      // An H1 helmet print always belongs to a physical cover, not bare resin.

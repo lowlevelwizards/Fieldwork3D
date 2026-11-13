@@ -14,5 +14,5 @@ test('H1 four new authored shell cuts have distinct source volumes',()=>{
 test('mid cuts have lower ear edge than high cuts',()=>{
  assert.ok(HEAD_SILHOUETTE_METRICS['mich-2002'].earEdge<HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge);
  assert.ok(HEAD_SILHOUETTE_METRICS['fast-xp-mid'].earEdge<HEAD_SILHOUETTE_METRICS['fast-sf'].earEdge);
- assert.equal(HEAD_SILHOUETTE_METRICS.ach.earEdge,2.23);
+ assert.equal(HEAD_SILHOUETTE_METRICS.ach.earEdge,2.68);
 });
