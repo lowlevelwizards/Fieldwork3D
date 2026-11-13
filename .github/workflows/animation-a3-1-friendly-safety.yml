@@ -14,6 +14,7 @@ on:
       - 'a3-physicality-lab.html'
       - 'tests/animation-a3-*'
       - 'scripts/audit-animation-a3-1.mjs'
+      - 'scripts/smoke-animation-a3-0.mjs'
       - 'docs/animation-a3-1-*'
       - '.github/workflows/animation-a3-1-friendly-safety.yml'
   workflow_dispatch:
