@@ -73,7 +73,8 @@ export function createShotResolver(ports:ShotResolverPorts){
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
   const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:a.weaponYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
+    weaponYaw:a.weaponYaw,shoulderOffset:a.aimSideOffset??0,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
@@ -120,7 +121,8 @@ export function createShotResolver(ports:ShotResolverPorts){
   const cone=shotDispersionCone(a,mode,range,moving,mods,weapon.optimalRange);
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
-    weaponYaw:proposedYaw,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
+    weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
+    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
   if(shotClearance.blocked){
     a.lastFireBlock=shotClearance.blocker;return;
