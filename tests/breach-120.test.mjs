@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
 import {solveTwoBone,alignSegment,bendDirection,ARM_LIMITS,LEG_LIMITS,
   intersectsTorso} from '../src/breach-ik.ts';
-import {fitWeaponPose,weaponGrips,liveShortStockPose} from '../src/breach-weapon-pose.ts';
+import {fitWeaponPose,weaponGrips,liveShortStockPose,liveReadyCarryPose} from '../src/breach-weapon-pose.ts';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 
 const near=(a,b,t=.0001)=>Math.abs(a-b)<t;
@@ -72,9 +72,15 @@ test('120: a gun is rigid; stock, firing hand and support grip derive from it',(
         // The short-stock author deliberately offsets the gun's yaw from
         // the upper body (M4 +8°, AK -2°). Preserve that intended angle
         // rather than forcing all underarm holds to aim straight ahead.
-        const wanted=yaw+(handling==='short'?
-          THREE.MathUtils.degToRad(
-            liveShortStockPose(weapon).weaponRotation[1]):0);
+        // Authored high/low carries have their own real rigid-weapon yaw
+        // offsets. A zero-offset assertion predates those approved poses.
+        // Preserve the current high/low/short reference rather than
+        // silently straightening an artist-authored carry to heading.
+        const authoredYaw=handling==='short'?
+          liveShortStockPose(weapon).weaponRotation[1]:
+          handling==='high'||handling==='low'?
+           liveReadyCarryPose(handling,weapon).weaponRotation[1]:0;
+        const wanted=yaw+THREE.MathUtils.degToRad(authoredYaw);
         assert.ok(Math.abs(Math.atan2(Math.sin(fit.rotation.y-wanted),
           Math.cos(fit.rotation.y-wanted)))<.05,
           'rigid weapon should keep its authored yaw relative to heading');
