@@ -95,8 +95,8 @@ test('real player either gets a genuinely clear near-stack shot or requests a fo
         shot.start,shot.muzzleHeight,[body]).blocker,'clear',
         'rigid gun must not pass through the allied body');
       assert.equal(assessFriendlyLane(shot.start,shot.muzzleHeight,
-        shot.end,shot.impactHeight,[body]).blocker,'clear',
-        'actual projectile trajectory cannot intersect the teammate');
+        guard.p,guard.posture==='crouch'?11:32,[body]).blocker,'clear',
+        'the real muzzle-to-target projectile lane cannot intersect the teammate');
     }
     assert.deepEqual(ally.p,p(185,110),'teammate is not shoved');
     assert.deepEqual(lead.p,initial,'true safe shots require no correction');
