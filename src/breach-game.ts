@@ -58,7 +58,8 @@ import {type FireBlock} from './breach-fire-safety.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
-import {doorReachable,doorWouldStrikeActors} from './breach-door.ts';
+import {doorReachable,doorWouldStrikeActors,PUSHED_OPEN_LIMIT}
+ from './breach-door.ts';
 
 import {entryToolVerdict,type EntryTool} from './breach-entry-tools.ts';
 import {canUseEntryTool} from './equipment-entry-tools.ts';
@@ -754,7 +755,8 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   const legal=candidates.filter(p=>
     d(p,center)<(outward?68:43)&&
     pointToSegment(p,currentLeaf)>=OPERATOR_RADIUS+2.5&&
-    (!outward||!doorWouldStrikeActors({...door,openFraction:0},1.03,
+    (!outward||!doorWouldStrikeActors({...door,openFraction:0},
+      door.open?PUSHED_OPEN_LIMIT:1.03,
       [p],OPERATOR_RADIUS+1))&&intelPassable(p,s.intel)&&
     !!routeWithIntel(s.intel,from,p).length&&
     occupied.every(other=>d(p,other)>23));

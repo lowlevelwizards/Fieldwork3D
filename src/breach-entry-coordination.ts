@@ -47,12 +47,12 @@ export function stackApproachPositions(door:Door,from:Pt):Pt[]{
   x:center.x+tx*lateral+nx*approach*(i<2?53:62),
   y:center.y+ty*lateral+ny*approach*(i<2?53:62)
  }));
- // Q5: a leaf pushed beyond the normal open angle may occupy the near
- // jamb staging pocket. Add two fixed OUTER approaches only in that state.
- // They stay on this side of the wall, outside the full hinge sweep;
- // planStack still checks real panel clearance, known routability and
- // separation against every already assigned team member.
- const wide=(door.openFraction??0)>1.1?
+ // Q5: pre-opened leaves can be body-pushed all the way to the actual
+ // 118-degree hinge stop DURING formation. Keep two fixed outer pockets
+ // available from the start rather than assigning an unsafe jamb point
+ // that becomes obstructed only after another teammate touches the leaf.
+ // The caller still checks actual swept physical clearance and reachability.
+ const wide=door.open&&(door.openFraction??0)>.1?
   [-51,51].map(lateral=>({
    x:center.x+tx*lateral+nx*approach*44,
    y:center.y+ty*lateral+ny*approach*44
