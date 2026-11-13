@@ -1,0 +1,84 @@
+name: D2.1 combat hotpath parity and diagnostics
+on:
+  pull_request:
+    paths:
+      - 'src/breach-order-executor.ts'
+      - 'src/breach-target-selection.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'src/breach-weapon-clearance.ts'
+      - 'src/breach-combat-reactions.ts'
+      - 'src/breach-combat-cost-counters.ts'
+      - 'src/breach-runtime-loop.ts'
+      - 'tests/release-d2-1-combat-hotpaths.test.mjs'
+      - '.github/workflows/release-d2-1-combat.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-d2-1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical-physical-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: D2.1 source parity, reference target ordering, and counters
+        run: node --experimental-strip-types --test tests/release-d2-1-combat-hotpaths.test.mjs
+      - name: A3 close-stack, posture, micro-aim, shot and target stability
+        run: |
+          node --experimental-strip-types --test \
+            tests/animation-a3-2-micro-aim.test.mjs \
+            tests/animation-a3-3-contextual-crouch.test.mjs \
+            tests/animation-a3-10-close-stack-fire.test.mjs \
+            tests/animation-a3-11-progressive-urgency.test.mjs \
+            tests/gameplay-g3-target-stability.test.mjs \
+            tests/tactical-integration-17-firefight-b1.test.mjs \
+            tests/breach-roadmap2-stage10-combat.test.mjs \
+            tests/breach-perception-cache-performance.test.mjs
+      - name: Existing complete B2 pose, R7 sight, D1 and replay-sensitive contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-pose-v3-action-matrix.test.mjs \
+            tests/breach-two-sided-fire-recovery.test.mjs \
+            tests/release-d1-threshold-commitment.test.mjs \
+            tests/release-d1-coherent-crossing.test.mjs \
+            tests/breach-189.test.mjs
+      - name: Live R7 scripted firing regression
+        run: node --experimental-strip-types scripts/audit-r7-firefights.mjs 4 7
+      - name: Production typecheck and bundle
+        run: npm run build
+  d0-exact-gameplay-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: 990c0b35c19ed2850a76d2827c98d5bc596342cc
+          path: baseline
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-audit --no-fund --prefix baseline
+      - name: Authoritative D1 baseline (ten reproducible workloads)
+        run: |
+          cd baseline
+          node --experimental-strip-types scripts/audit-release-d0-workloads.mjs ../d2-1-before.json
+      - name: Current D2.1 replay and simulated gameplay corpus
+        run: node --experimental-strip-types scripts/audit-release-d0-workloads.mjs d2-1-after.json
+      - name: Exact world, events, ammo, door, movement and replay fingerprints
+        run: node scripts/compare-release-d0-workloads.mjs d2-1-before.json d2-1-after.json d2-1-comparison.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d2-1-world-parity-and-cpu-advisory
+          path: |
+            d2-1-before.json
+            d2-1-after.json
+            d2-1-comparison.json
