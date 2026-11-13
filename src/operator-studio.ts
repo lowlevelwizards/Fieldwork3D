@@ -783,6 +783,17 @@ function posePreview(){
   appearanceSeed:p.appearanceSeed
  };
  poseOperator(rig,armedPose,0);
+ // H8 rendering diagnostics: prove the live rig, not just the selector,
+ // received the chosen band dye and visible attachment geometry.
+ const selectedHelmet=armedPose.wardrobe.styles.headwear;
+ const helmetField=rig.visualKit.wardrobeHead.helmetField[selectedHelmet];
+ if(helmetField){
+  canvas.dataset.helmetBandHex=helmetField.bandMaterial.color.getHexString();
+  canvas.dataset.helmetBandVisible=String(helmetField.modules.band.visible);
+  canvas.dataset.helmetBandMeshCount=String(helmetField.modules.band.children.length);
+  canvas.dataset.helmetWebbingHex=helmetField.webbingMaterial.color.getHexString();
+ }
+
  // Changing only a lighting option does not invalidate the appearance
  // fingerprint. Explicitly rebake from the neutral baseline in that case.
  if(!String(rig.root.userData.fieldworkHeightRootKey??'')
