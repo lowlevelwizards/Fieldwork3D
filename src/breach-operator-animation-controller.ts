@@ -217,8 +217,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // The pelvic shell accepts support rotation but is not a second
   // independent writer of the world/root heading or foot anchors.
   frame.hip.rotation.x=clamp(-motion.support*physicalSpeed/72*.022,-.03,.03);
+  const kickSupportSide=kick?(p.kickFoot===0?1:-1):0;
   frame.hip.position.z=motion.pelvisSide+
-    poseWeight*profile.pelvisShift;
+    poseWeight*profile.pelvisShift+
+    kickSupportSide*(kick?.brace??0);
   // Preserve the actual last displayed pelvis on rapid Lab retargets;
   // knees are re-solved from planted ankles, never independently lerped.
   if(authoredLabSwitch&&activeTransition?.authoredHip){
@@ -240,7 +242,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     bash.brace*.4-buckle*7-kneel*12+mannequinLift-
     poseWeight*profile.stanceCompression;
   frame.chest.position.z=motion.pelvisSide*.75+
-    poseWeight*profile.pelvisShift*.45;
+    poseWeight*profile.pelvisShift*.45+
+    kickSupportSide*(kick?.brace??0)*.60;
   frame.chest.rotation.z=motion.torsoForward+idleLife.sway+
     (kick?.torsoLean??0)+bash.lean-
     poseWeight*profile.torsoLean-
