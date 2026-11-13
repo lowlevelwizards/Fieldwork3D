@@ -1,0 +1,52 @@
+name: A3.5 physical contact anchors and ownership
+on:
+  pull_request:
+    paths:
+      - 'src/breach-physical-contact-anchor.ts'
+      - 'src/breach-pose-contacts.ts'
+      - 'src/breach-pose-action-state.ts'
+      - 'src/breach-operator-animation-contract.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/breach-3d.ts'
+      - 'src/a3-physicality-*'
+      - 'tests/animation-a3-5-*'
+      - 'docs/animation-a3-5-*'
+      - '.github/workflows/animation-a3-5.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: A3.5 anchor, reach, conflict, release and replay seeking
+        run: node --experimental-strip-types --test tests/animation-a3-5-contact-anchors.test.mjs tests/breach-pose-contacts-compat.test.mjs
+      - name: Real door hand, shared pose, A3 physical safety regressions
+        run: node --experimental-strip-types --test tests/door-traversal-d4-pose.test.mjs tests/door-traversal-d4-live-grip.test.mjs tests/door-traversal-d4-physics.test.mjs tests/animation-a3-0-physicality.test.mjs tests/animation-a3-1-friendly-volume.test.mjs tests/animation-a3-2-micro-aim.test.mjs tests/animation-a3-3-contextual-crouch.test.mjs tests/animation-a3-4-micro-footwork.test.mjs
+      - name: Production TypeScript and Vite build
+        run: npm run build
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Real-session Physicality Lab in desktop and mobile Chromium
+        run: node scripts/smoke-animation-a3-0.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: a3-5-contact-physicality-mobile-desktop
+          path: artifacts/animation-a3-0/gallery/
+          if-no-files-found: ignore
