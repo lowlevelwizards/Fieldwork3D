@@ -1186,7 +1186,7 @@ function renderMaterials(){
   // but display the active cut's iconic color instead of a stale choice.
   const rawPattern=w.fabricCamo?.[channel]??null;
   const pattern=rawPattern&&
-   (channel!=='armor'&&channel!=='gear'||choices.includes(rawPattern))?
+   choices.includes(rawPattern)?
     rawPattern:null;
   const eligibleSolids=channel==='gear'?
    (outfit.rigStyle==='no-rig'?solidChoicesFor('gear'):
@@ -1196,7 +1196,7 @@ function renderMaterials(){
    solidChoicesFor(channel,outfit);
   const rawSolid=w.fabricSolids?.[channel];
   const manualSolid=rawSolid&&
-   (channel!=='armor'&&channel!=='gear'||eligibleSolids.includes(rawSolid))?
+   eligibleSolids.includes(rawSolid)?
     rawSolid:null;
   const iconicSignature=channel==='gear'&&outfit.rigStyle!=='no-rig'?
    rigSignature(outfit.rigStyle):
