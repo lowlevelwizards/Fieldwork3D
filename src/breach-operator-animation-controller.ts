@@ -943,6 +943,11 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     handTargets:'manual',solver:'single-two-bone',
     stock:fit.stock.toArray()}:null;
   r.root.userData.authoredShortStock=manualReport;
+  r.root.userData.authoredReadyCarry=manualCarry?{
+    mode:handling,source:manualPose!.preset,progress:manualPhase,
+    stock:fit.stock.toArray(),contactGap:fit.contactError,
+    solver:'user-workbench-two-bone'
+  }:null;
   // Preserve the old M4-specific diagnostic only for exact M4A1 poses.
   r.root.userData.authoredM4ShortStock=
     manualReport&&manualPose!.preset==='ar-m4a1'&&

@@ -27,6 +27,7 @@ test('175: rigid grip transform includes optional unsighted contact-derived weap
 test('175: active firing suppresses cosmetic sway instead of steering hidden shots',()=>{
  const rig=readFileSync(new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
  assert.match(rig,/p\.firing\?0/);
- assert.match(rig,/swayYaw:motion\.weaponYaw\*freeMotion/);
+ assert.match(rig,/swayYaw:authoringCarry\?0:motion\.weaponYaw\*freeMotion/);
+ assert.match(rig,/swayPitch:authoringCarry\?0:motion\.weaponPitch\*freeMotion/);
  assert.match(rig,/motion\.chestLift\*freeMotion/);
 });
