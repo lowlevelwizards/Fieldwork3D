@@ -36,6 +36,8 @@ jobs:
         run: node --experimental-strip-types scripts/audit-q5-two-stalls.mjs
       - name: Physical matrix · hinged cardinal fixtures
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs core squad 1800
+      - name: Diagnose open leaf, furniture flank, and partial obstruction
+        run: node --experimental-strip-types scripts/audit-q5-edge-cases.mjs
       - name: All physical door variants · 120 squad cases including truthful obstructions
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs full squad 1800
       - name: Independent authored MOVE · 48 cardinal cases
