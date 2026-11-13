@@ -7,7 +7,8 @@ export type A3Scene='clear'|'rear-stack'|'offset-left'|'offset-right'|
 export type A3Intent='hold'|'look'|'watch'|'engage';
 export type A3Weapon='carbine'|'rifle'|'smg'|'shotgun';
 export type A3Config={scenario:A3Scene;seed:number;operators:1|2|3|4;
- posture:'stand'|'crouch';intent:A3Intent;weapon:A3Weapon};
+ posture:'stand'|'crouch';intent:A3Intent;weapon:A3Weapon;
+ bearingDeg:number};
 export const A3_SCENES:readonly {id:A3Scene;label:string;note:string}[]=[
  {id:'clear',label:'Unobstructed sight',note:'One clear front lane'},
  {id:'rear-stack',label:'Centered rear stack',note:'Friendly between muzzle and target'},
@@ -20,7 +21,7 @@ export const A3_SCENES:readonly {id:A3Scene;label:string;note:string}[]=[
 ];
 export const DEFAULT_A3_CONFIG:A3Config={
  scenario:'rear-stack',seed:31063,operators:4,posture:'stand',
- intent:'watch',weapon:'carbine'
+ intent:'watch',weapon:'carbine',bearingDeg:0
 };
 const p=(x:number,y:number):Pt=>({x,y});
 export function a3Fixture(config:A3Config):Site{
@@ -60,13 +61,14 @@ export function createA3Session(config:A3Config):Session{
  for(let i=0;i<blues.length;i++){
   const a=blues[i];
   if(i>=config.operators){a.health=0;continue;}
-  a.heading=0;a.weaponYaw=0;a.velocity=0;a.pace='walk';
+  a.heading=i===0?config.bearingDeg*Math.PI/180:0;
+  a.weaponYaw=a.heading;a.velocity=0;a.pace='walk';
   a.posture=i===1&&config.scenario==='mixed-crouch'?
    'crouch':config.posture;
   a.firePolicy='hold';a.aim=config.intent==='engage'?1:0;
   a.weapon=config.weapon;a.weaponConfiguration=undefined;
   a.aimInstruction=config.intent==='watch'||config.intent==='look'?
-   {mode:'fixed',angle:0}:null;
+   {mode:'fixed',angle:a.heading}:null;
   a.nav=[];a.plan=[];a.targetId=null;
   a.priorP={...a.p};
  }
