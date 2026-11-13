@@ -21,8 +21,10 @@ export function sampleHandlingTransition(
  r:OperatorRig,p:OperatorPose,handling:Handling):HandlingSample{
  // Active aim and ordinary firing still need a visual transition.
  // Shot-time muzzle and projectile headings remain simulation-owned.
+ // Clearance blends are deterministic, distance-sampled and already
+ // shared with muzzleAtShot. Do not stack a second live time-bridge.
  const passiveBlend=!p.deterministic&&!p.handlingOverride&&
-   !p.down&&!p.surrender;
+   p.clearanceCarry===undefined&&!p.down&&!p.surrender;
  if(!p.handlingOverride&&handling!==r.lastHandling){
    if(passiveBlend&&r.lastHandling){
      r.autoHandling={from:r.lastHandling,to:handling,alpha:0,

@@ -432,7 +432,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     yaw:manualShort&&p.handlingOverride==='short'?0:relativeYaw,
     recoil,clearanceRetraction:p.clearanceRetraction,
     shortCompression:manualRaw??p.shortCompression,
-    shortFrom:shortStockSourceHandling(
+    shortFrom:p.clearanceShortFrom??shortStockSourceHandling(
       p.aimBlend??(p.aiming?1:0),moving,p.weapon,!!p.friendlyNear),
     relaxedLowReady,
     swayYaw:motion.weaponYaw*freeMotion,
@@ -444,12 +444,17 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       p.handlingIntent==='run'||p.handlingIntent==='traverse'||
       p.handlingIntent==='reload'||p.handlingIntent==='treat'?0:
       p.aimBlend??(p.aiming?1:0),
-    blendFrom:authoredLabSwitch||p.shortCompression!==undefined?
+    blendFrom:p.clearanceCarry==='low'&&
+       p.clearanceBlend!==undefined?'ready':
+      authoredLabSwitch||p.shortCompression!==undefined?
       undefined:activeTransition?.from,
-    blendAlpha:authoredLabSwitch||p.shortCompression!==undefined?
+    blendAlpha:p.clearanceCarry==='low'?
+      p.clearanceBlend:
+      authoredLabSwitch||p.shortCompression!==undefined?
       undefined:activeTransition?
       lowReadyBlendPhase(activeTransition.alpha):undefined,
-    blendSnapshot:authoredLabSwitch||p.shortCompression!==undefined?
+    blendSnapshot:p.clearanceCarry!==undefined||
+      authoredLabSwitch||p.shortCompression!==undefined?
       undefined:activeTransition?.fromWeapon});
   // Small, deterministic rifle manipulation is permissible in the Lab
   // only while reloading: never alters shot-time muzzle or live aiming.

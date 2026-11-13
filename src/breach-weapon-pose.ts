@@ -11,6 +11,7 @@ import {shortStockReference,sameAuthoredReferenceBuild,
  transferShortStockPose} from './breach-authored-short-stock.ts';
 import type {WorkbenchPose} from './operator-pose-workbench.ts';
 import {handlingProfile} from './breach-handling-profiles.ts';
+import {chooseCarry,type CarryFacts} from './breach-carry-policy.ts';
 import {lowReadyFamilyFit,lowReadyPocket} from './breach-low-ready-family-fit.ts';
 import {riflePoseContacts,supportContactAt}
  from './breach-weapon-contact-zones.ts';
@@ -96,39 +97,16 @@ export type HandlingIntent='move'|'run'|'look'|'pie'|'door'|'hold'|'engage'|'squ
  * Optional hysteresis only affects passive ready states, never combat.
  * A physically blocked muzzle has absolute priority.
  */
-export function handlingPose(input:{aim:number;moving:number;
-  obstruction:boolean;friendlyNear:boolean;intent?:HandlingIntent;
-  threatRange?:number|null;weapon?:WeaponId;
-  previous?:Handling;heldFor?:number}):Handling{
-  if(input.obstruction||input.intent==='squeeze')return 'short';
-  // Never display ADS or point shooting while sprinting, climbing,
-  // manipulating a magazine or treating. These activities prohibit
-  // normal ignition even if the old aim meter has not yet decayed.
-  // Squeeze / blocked barrel is a stronger physical short-stock case.
-  if(input.intent==='run'||input.intent==='traverse'||
-     input.intent==='reload'||input.intent==='treat')return 'low';
-  const near=input.weapon==='shotgun'?86:
-    input.weapon==='smg'?100:74;
-  const closeThreat=input.threatRange!==undefined&&
-    input.threatRange!==null&&input.threatRange<=near;
-  if(closeThreat&&input.aim>=.34)return 'point';
-  if(input.aim>=.82)return 'ads';
-  if(input.aim>=.20)return 'point';
-  let next:Handling='ready';
-  if((input.intent==='door'||input.intent==='stack'||
-      input.intent==='entry')&&input.friendlyNear)next='high';
-  else if(input.intent==='entry'||input.intent==='stack'||
-          input.intent==='door'||input.intent==='pie'||
-          input.intent==='look'||input.intent==='hold'||
-          input.intent==='engage')next='ready';
-  else if(input.friendlyNear)next='low';
-  else if(input.moving>.32)next='low';
-  // Ignore brief passive-pose threshold flicker; never delay urgent combat
-  // or physical short-stock clearance. Replay omits previous for purity.
-  if(input.previous&&input.previous!==next&&
-     (input.heldFor??Infinity)<.16&&input.aim<.20)
-    return input.previous;
-  return next;
+export function handlingPose(input:CarryFacts&{
+ previous?:Handling;heldFor?:number}):Handling{
+ const choice=chooseCarry(input);
+ if(choice.urgent)return choice.handling;
+ // A brief idle/moving jitter may reuse its last presentation state.
+ // Contexts that protect a teammate or aim bypass this delay entirely.
+ if(input.previous&&input.previous!==choice.handling&&
+    (input.heldFor??Infinity)<.16&&input.aim<.20)
+   return input.previous;
+ return choice.handling;
 }
 /** Shared unblocked source of a progressively compressed stock. */
 export function shortStockSourceHandling(aim:number,moving:number,
@@ -298,7 +276,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
       mode==='low'?relaxedWeight:0);
     // Low-ready must use its own stock pocket even when live aimBlend=0.
     const shoulderPocket=input.aimBlend===undefined||mode==='short'||
-      mode==='low'?normalPocket:{
+      mode==='low'||mode==='high'?normalPocket:{
         x:stockPocket('ready',input.armorPush).x+
           (stockPocket('ads',input.armorPush).x-stockPocket('ready',input.armorPush).x)*blendAim,
         y:stockPocket('ready',input.armorPush).y+
@@ -368,7 +346,7 @@ export function fitWeaponPose(input:WeaponPoseInput):WeaponFit{
   // Compare the physical buttstock against a stable operator anatomy point,
   // not a reference synthesized from the stock itself (always zero).
   const pocket=input.aimBlend===undefined||
-    input.handling==='low'?
+    input.handling==='low'||input.handling==='high'?
     lowReadyPocket(stockPocket(input.handling,input.armorPush),relaxed,relaxedWeight):{
       x:stockPocket('ready',input.armorPush).x+
         (stockPocket('ads',input.armorPush).x-stockPocket('ready',input.armorPush).x)*

@@ -1991,8 +1991,17 @@ export class TacticalScene3D{
         s.operators.some(peer=>peer!==actor&&peer.side===actor.side&&
           peer.health>0&&Math.hypot(peer.p.x-actor.p.x,
             peer.p.y-actor.p.y)<40);
-      const friendlyAhead=stackCrowded||teammateAheadForHandling(
+      const actuallyAhead=teammateAheadForHandling(
         actor.p,actor.heading,s.operators,actor);
+      const friendlyAhead=stackCrowded||actuallyAhead;
+      // One allocation only for an actual nearby ally, avoiding global
+      // all-actor geometry work. Same sampled actor facts in live/replay.
+      const nearbyAllies:Pt[]=[];
+      for(const peer of s.operators){
+        if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
+        if(Math.hypot(peer.p.x-drawActor.x,peer.p.y-drawActor.z)<90)
+          nearbyAllies.push({x:peer.p.x,y:peer.p.y});
+      }
       // Physical contact is queried from the actual interpolated barrel,
       // never from a long ray projected along the feet/body heading.
       const clearance=weaponClearance({
@@ -2000,8 +2009,9 @@ export class TacticalScene3D{
         weaponYaw:drawActor.weaponYaw,weapon:actor.weapon,
          weaponConfiguration:actor.weaponConfiguration,
         equipment:actor.equipment,aim:actor.aim,velocity:actor.velocity,recoil:actor.recoil,
-        posture:actor.posture,threatRange,friendlyNear:friendlyAhead
-      },s.doors);
+        posture:actor.posture,threatRange,friendlyNear:friendlyAhead,
+        friendlyAhead:actuallyAhead,handlingIntent
+      },s.doors,undefined,undefined,nearbyAllies);
       const lightOn=!!actor.weaponLightOn&&actor.health>0&&
         actor.weaponConfiguration?.slots.light==='light-compact'&&object.root.visible;
       object.beam.visible=lightOn;
@@ -2140,6 +2150,9 @@ export class TacticalScene3D{
         handlingIntent,
         threatRange,
         obstruction:clearance.obstruction,
+        clearanceCarry:clearance.carryOverride,
+        clearanceShortFrom:clearance.shortFrom,
+        clearanceBlend:clearance.carryBlend,
         clearanceRetraction:clearance.retraction,
         shortCompression:handlingIntent==='squeeze'?1:
           clearance.obstruction?clearance.compression:undefined,
@@ -2148,7 +2161,7 @@ export class TacticalScene3D{
         hitSeverity:actor.lastHitSeverity,downPose:actor.downPose,
         downClearance:actor.downClearance,
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
-        friendlyNear:friendlyAhead
+        friendlyNear:friendlyAhead,friendlyAhead:actuallyAhead
       },dt);
       if(this.profileSceneUpdate){
        this.actorPhaseCosts.poseMs+=performance.now()-poseStart;

@@ -17,7 +17,9 @@ const tracks=[
  {name:'back',time:1250},{name:'turn-180',time:1800},
  {name:'pivot-reverse',time:2200},
  {name:'pie',time:1500},{name:'crouch-walk',time:1200},
- {name:'active-aim',time:1100},{name:'short-stock',time:900}
+ {name:'active-aim',time:1100},{name:'short-stock',time:900},
+ {name:'low-ready',time:650},{name:'high-ready',time:650},
+ {name:'ready',time:650},{name:'point-shoot',time:650}
 ];
 try{
  let ready=false;
@@ -37,6 +39,13 @@ try{
   await page.goto(origin+'/operator-lab.html?tab=poses',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#preview')?.dataset.ready==='true',
    null,{timeout:40000});
+  // Pose QA MUST render a physical firearm. The Lab defaults to an
+  // unarmed mannequin, which previously made carry screenshots misleading.
+  await page.locator('#poseWeapon').selectOption('ar-m4a1');
+  const carryModes={
+   'low-ready':'low','high-ready':'high','ready':'ready',
+   'point-shoot':'point','active-aim':'ads','short-stock':'short'
+  };
   for(const item of tracks){
    await page.locator('#poseAnimation').selectOption(item.name);
    await page.locator('#timeline').evaluate((node,time)=>{
@@ -47,10 +56,18 @@ try{
     return d?.ready==='true'&&d.track===name&&
       Math.abs(Number(d.time)-time/1000)<.003&&Number(d.drawCalls)>0;
    },item,{timeout:20000});
+   if(carryModes[item.name])
+    await page.waitForFunction(({mode})=>
+     document.querySelector('#preview')?.dataset.weaponHandling===mode,
+     {mode:carryModes[item.name]},{timeout:20000});
+   if(await page.locator('#weapon').inputValue()!=='carbine')
+    throw Error('Weapon QA unexpectedly became unarmed');
    await page.screenshot({path:out+'/iphone-'+item.name+'.png'});
   }
   await page.setViewportSize({width:1120,height:820});
-  for(const item of [tracks[0],tracks[1],tracks[4],tracks[7],tracks[9]]){
+  for(const item of [tracks[0],tracks[1],tracks[4],tracks[9],
+   ...tracks.filter(t=>['low-ready','high-ready','ready','point-shoot',
+      'active-aim','short-stock'].includes(t.name))]){
    await page.locator('#poseAnimation').selectOption(item.name);
    await page.locator('#timeline').evaluate((node,time)=>{
     node.value=String(time);node.dispatchEvent(new Event('input',{bubbles:true}));
@@ -59,7 +76,30 @@ try{
     const d=document.querySelector('#preview')?.dataset;
     return d?.track===name&&Math.abs(Number(d.time)-time/1000)<.003;
    },item,{timeout:20000});
+   if(carryModes[item.name])
+    await page.waitForFunction(({mode})=>
+     document.querySelector('#preview')?.dataset.weaponHandling===mode,
+     {mode:carryModes[item.name]},{timeout:20000});
    await page.screenshot({path:out+'/desktop-'+item.name+'.png'});
+  }
+  // Three silhouettes cannot prove all weapon families, but these are
+  // actual 3D model frames of distinct AR, AK and HK proportions, not a
+  // generic procedural illustration.
+  for(const id of ['ak-akm','hk-g3a3','hk-mp5a3']){
+   await page.locator('#poseWeapon').selectOption(id);
+   for(const name of ['low-ready','high-ready','short-stock']){
+    await page.locator('#poseAnimation').selectOption(name);
+    await page.locator('#timeline').evaluate(node=>{
+     node.value='650';node.dispatchEvent(new Event('input',{bubbles:true}));
+    });
+    await page.waitForFunction(({id,mode})=>{
+     const d=document.querySelector('#preview')?.dataset;
+     return d?.ready==='true'&&d.poseFitWeapon===id&&
+      d.weaponHandling===mode&&d.track!==undefined&&
+      Math.abs(Number(d.time)-.650)<.003;
+    },{id,mode:carryModes[name]},{timeout:20000});
+    await page.screenshot({path:out+'/desktop-'+id+'-'+name+'.png'});
+   }
   }
   if(errors.length)throw Error('A2 browser errors: '+errors.join('; '));
   console.log('A2 actual mobile/desktop WebGL motion gallery PASS',tracks.length);

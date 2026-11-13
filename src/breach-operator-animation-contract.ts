@@ -60,9 +60,12 @@ export type OperatorPose={
   handlingOverride?:Handling;
   handlingIntent?:HandlingIntent;threatRange?:number|null;
   handlingTransition?:HandlingTransition;
-  obstruction?:boolean;friendlyNear?:boolean;
+  obstruction?:boolean;friendlyNear?:boolean;friendlyAhead?:boolean;
   clearanceRetraction?:number;clearanceBlocked?:boolean;
   shortCompression?:number;
+  /** Same physical clearance stage/source as the shot-time muzzle. */
+  clearanceCarry?:Handling;clearanceShortFrom?:Handling;
+  clearanceBlend?:number;
   blocked?:boolean;footAllowed?:(point:{x:number;y:number})=>boolean;
   gait?:'walk'|'run'|'pie'|'squeeze';
   /** 0-1 motor-owned vault phase, also restored during replay. */
