@@ -16,7 +16,10 @@ export function setNodeControl(s:Session,id:string,nodeId:number,
   field:'postureState'|'paceState',value:'stand'|'crouch'|'walk'|'run'){
   const a=party(s,id),node=a?.plan.find(n=>n.id===nodeId);
   if(!a||!node||!canEdit(s))return false;
-  return edit(s,a,()=>{Object.assign(node,{[field]:value});});
+  return edit(s,a,()=>{
+   Object.assign(node,{[field]:value});
+   if(field==='postureState')a.postureWasAuthored=true;
+  });
 }
 
 export function setStartPace(s:Session,id:string,pace:'walk'|'run'){
@@ -60,5 +63,9 @@ export function toggleContactRule(s:Session,id:string){
 
 export function posture(s:Session,id:string){
   const a=party(s,id);if(!a||!canEdit(s))return false;
-  return edit(s,a,()=>{a.posture=a.posture==='stand'?'crouch':'stand';});
+  return edit(s,a,()=>{
+   a.autoCrouchUntil=0;a.autoCrouchOriginal=null;
+   a.postureWasAuthored=true;
+   a.posture=a.posture==='stand'?'crouch':'stand';
+  });
 }
