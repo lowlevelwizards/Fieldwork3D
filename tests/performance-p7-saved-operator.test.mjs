@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession} from '../src/breach-game.ts';
+import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 import {createOperatorRig} from '../src/breach-operator-rig.ts';
 import {updateOperatorAppearance} from '../src/breach-operator-appearance.ts';
 import {carryPlacementLedger} from '../src/equipment-carry-placement.ts';
@@ -10,7 +11,8 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
 test('saved operator visuals pre-bake the unchanged magazine and equipment projection',()=>{
  const s=newSession(0,2020);
  const actor=s.operators.find(a=>a.side==='blue');
- assert.ok(actor?.equipment);
+ assert.ok(actor);
+ actor.equipment=initialEquipmentLoadout(actor.weapon);
  prewarmSavedOperatorCarry(actor);
  const first=bakedOperatorCarry(actor);
  const fresh=carryPlacementLedger(actor.equipment,actor.spareMagazines);
@@ -34,7 +36,8 @@ test('saved operator visuals pre-bake the unchanged magazine and equipment proje
 
 test('saved static wardrobe and atlas bake runs before pose and reuses the cached fingerprint',()=>{
  const s=newSession(0,2021),actor=s.operators.find(a=>a.side==='blue');
- assert.ok(actor?.equipment);
+ assert.ok(actor);
+ actor.equipment=initialEquipmentLoadout(actor.weapon);
  const rig=createOperatorRig(actor.id,actor.side,true);
  const carried=bakedOperatorCarry(actor);
  const saved={
