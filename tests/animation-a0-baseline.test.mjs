@@ -53,7 +53,7 @@ test('A0 independent rigs, action seek and return do not corrupt pose output',()
   const after=captureAnimationQuality(a,4);
   const continuity=compareAnimationFrames(expected,after);
   assert.equal(continuity.frozenDrift,false,
-   'Recorded-contact seek drift: '+JSON.stringify(continuity));
+   'Recorded-contact seek drift: '+JSON.stringify(continuity)+' '+JSON.stringify(Object.entries(expected.slots).filter(([id,v])=>JSON.stringify(v)!==JSON.stringify(after.slots[id])).map(([id,v])=>({id,wasVisible:v[10],nowVisible:after.slots[id][10],before:v.slice(0,3),after:after.slots[id].slice(0,3)}))));
   assert.equal(captureAnimationQuality(b,4).slotCount,30);
  }finally{a.dispose();b.dispose();}
 });
