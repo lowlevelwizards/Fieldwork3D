@@ -145,9 +145,12 @@ export function advanceSimulationMotion(s:Session,h:number,
   // allocating two new Maps 60 times/second. Only populated firefights use
   // lookup indexes; always preserve live actor/civilian reference ownership.
   const actorById=s.operators.length>=12?
-    new Map<string,TeamActor>(s.operators.map(a=>[a.id,a])):null;
+    new Map<string,TeamActor>():null;
+  if(actorById)for(const actor of s.operators)actorById.set(actor.id,actor);
   const civilianById=s.civilians.length>=8?
-    new Map(s.civilians.map(c=>[c.id,c])):null;
+    new Map<string,(typeof s.civilians)[number]>():null;
+  if(civilianById)for(const civil of s.civilians)
+    civilianById.set(civil.id,civil);
   let transportLinks:{carrierId:string;bodyId:string}[]|null=null;
   for(const civil of s.civilians)if(civil.carriedById){
     if(!transportLinks)transportLinks=[];
