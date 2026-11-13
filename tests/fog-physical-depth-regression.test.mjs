@@ -13,7 +13,9 @@ test('3D fog uses physical depth, shared ground coordinates and proper sRGB',()=
  assert.match(scene,/map:this\.fogTexture,transparent:true,depthTest:true,opacity:1/);
  assert.match(scene,/depthWrite:false,toneMapped:false,side:THREE\.DoubleSide/);
  assert.match(scene,/this\.smoothFog\.position\.set\(W\/2,1\.05,H\/2\)/);
- assert.match(scene,/positions\.push\(p\.x,1\.05,p\.y\)/);
+ const meshSource=readFileSync(new URL(
+  '../src/rendering/breach-fog-mesh-composition.ts',import.meta.url),'utf8');
+ assert.match(meshSource,/positions\.push\(p\.x,1\.05,p\.y\)/);
  assert.match(scene,/this\.smoothFog\.renderOrder=1000/);
  assert.match(scene,/this\.exteriorKnownFog\.renderOrder=1000/);
  assert.match(scene,/this\.exteriorKnownFog\.visible=clippedExteriorFog/);

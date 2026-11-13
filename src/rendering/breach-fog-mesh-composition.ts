@@ -5,37 +5,42 @@
 import * as THREE from 'three';
 import {W,H} from '../breach-core.ts';
 import type {Site,WorldBounds} from '../breach-site.ts';
-import {exteriorKnownFogRects,fogUvAt} from '../breach-fog-domain.ts';
+import {fogUvAt} from '../breach-fog-domain.ts';
 
 export function tacticalFogBounds(site:Site|null):WorldBounds{
   return site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
 }
 
-/** Same quad vertices, winding and UV mapping as the original C1 scene. */
+/** Exterior Known uses the SAME world-aligned mask as the 2D renderer.
+ * The canvas already erases reachable exterior and preserves indoor rooms and
+ * enclosed courts. A second room-rectangle geometry clipping pass can leave
+ * missing fog patches wherever the two spatial classifications disagree
+ * (notably at open U-shaped shipping courts and connected floor modules).
+ * One physical ground quad lets the authoritative DISPLAY alpha decide.
+ * This never changes optical LOS, ground discovery, or tactical intelligence.
+ */
 export function buildExteriorKnownFogGeometry(
   site:Site|null,bounds:WorldBounds=tacticalFogBounds(site)
 ):THREE.BufferGeometry{
-  const positions:number[]=[],uvs:number[]=[],indices:number[]=[];
-  for(const rect of site?exteriorKnownFogRects(site):[]){
+  const positions:number[]=[],uvs:number[]=[];
+  if(site){
     const corners=[
-      {x:rect.x,y:rect.y},
-      {x:rect.x,y:rect.y+rect.h},
-      {x:rect.x+rect.w,y:rect.y+rect.h},
-      {x:rect.x+rect.w,y:rect.y}
+      {x:bounds.minX,y:bounds.minY},
+      {x:bounds.minX,y:bounds.maxY},
+      {x:bounds.maxX,y:bounds.maxY},
+      {x:bounds.maxX,y:bounds.minY}
     ];
-    const offset=positions.length/3;
     for(const p of corners){
       positions.push(p.x,1.05,p.y);
       const uv=fogUvAt(p,bounds);
       uvs.push(uv.u,uv.v);
     }
-    indices.push(offset,offset+1,offset+2,offset,offset+2,offset+3);
   }
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geometry.setAttribute('uv',new THREE.Float32BufferAttribute(uvs,2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
+  geometry.setIndex(site?[0,1,2,0,2,3]:[]);
+  if(site)geometry.computeVertexNormals();
   return geometry;
 }
 
