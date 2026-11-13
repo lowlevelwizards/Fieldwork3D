@@ -72,19 +72,23 @@ export function createShotResolver(ports:ShotResolverPorts){
   // The eyes may have a contact even when the muzzle cannot safely fire.
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
+  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
+    o.side===a.side).map(safetyBodyFor);
   const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:a.weaponYaw,shoulderOffset:a.aimSideOffset??0,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
+    friends);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
-    if(sightClearance.blocker==='wall'||sightClearance.blocker==='cover')
+    if(sightClearance.blocker==='friendly')
+      requestClearFireStep(s,a,target,'friendly');
+    else if(sightClearance.blocker==='wall'||sightClearance.blocker==='cover'||
+      sightClearance.blocker==='door')
       requestClearFireStep(s,a,target,'muzzle');
     return;
   }
   const sightMuzzle=sightClearance.muzzle;
-  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
-    o.side===a.side).map(safetyBodyFor);
   if(observedCivilianFireLane(s,a,
      {x:sightMuzzle.x,y:sightMuzzle.z},sightMuzzle.y,
      target.p,aimHeight(target.posture==='crouch'))){
@@ -128,7 +132,8 @@ export function createShotResolver(ports:ShotResolverPorts){
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
+    friends);
   if(shotClearance.blocked){
     a.lastFireBlock=shotClearance.blocker;return;
   }
