@@ -14,12 +14,16 @@ import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {selectActualKickFoot} from './breach-kick-foot-choice.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
+import {openerThreatensLeaf,selectOpeningStance}
+ from './breach-door-opening-stance.ts';
 import {completeOrder,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
+/** Stance belongs to an actor's active door-order node, not shared site state. */
+const openingStances=new WeakMap<TeamActor,{node:number;door:string;point:Pt}>();
 export function createDoorOrderHandler(port:OrderExecutionPort){
  const {pairedLeaves,notify,hear,battleEvent,approach}=port;
  const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
@@ -44,13 +48,13 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
        // Only a short physically swept correction is allowed.
        const remembered=a.nav.at(-1);
        const stage=remembered&&d(a.p,remembered)<75&&
-         d(a.p,remembered)>2&&doorReachable(remembered,door)?
+         d(a.p,remembered)>3.5&&doorReachable(remembered,door)?
            remembered:null;
        const point=stage??doorApproach(a.p,door,sessionWorldGeometry(s),
          [...s.operators.filter(other=>other!==a&&other.health>0)
            .map(other=>other.p),
-          ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
-       if(point&&d(a.p,point)>2&&d(a.p,point)<75&&
+          ...s.civilians.filter(c=>c.health>0).map(c=>c.p)],4.25);
+       if(point&&d(a.p,point)>3.5&&d(a.p,point)<75&&
           a.blockedTime<3.5&&a.recoveryAttempts<5){
          clearCurrentOrderIssue(a);
          approach(a,point,dt,s,.60);return true;
@@ -60,6 +64,34 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
       failCurrentOrder(s,a,n,'DOOR BLOCKED · '+
         (interaction.reason??'UNAVAILABLE').toUpperCase());
       return true;
+    }
+    // Before a closed panel swings, clear the opener's *real body* out of
+    // its swept path. A stable short stance uses the ordinary swept motor.
+    // Never replan the squad, move through an occupied shelf, or disable the
+    // same hinge/collision checks used during execution.
+    if(interaction.allowed&&n.method==='open'&&!door.open&&
+       a.actionTimer===0){
+      const previous=openingStances.get(a);
+      let target=previous?.node===n.id&&previous.door===door.id?
+        previous.point:null;
+      if(!target&&openerThreatensLeaf(door,a.p)){
+        const world=sessionWorldGeometry(s);
+        target=selectOpeningStance(door,a.p,
+          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+          s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p));
+        if(target)openingStances.set(a,{node:n.id,door:door.id,point:target});
+      }
+      if(target&&d(a.p,target)>1.5){
+        if(!sweptBodyClear(a.p,target,s.doors,OPERATOR_RADIUS,
+             sessionWorldGeometry(s))||
+           s.operators.some(b=>b!==a&&b.health>0&&
+             d(b.p,target)<OPERATOR_RADIUS*2+1)){
+          a.velocity=0;return true;
+        }
+        clearCurrentOrderIssue(a);
+        approach(a,target,dt,s,.82);return true;
+      }
+      openingStances.delete(a);
     }
     clearCurrentOrderIssue(a);
     const required=n.method==='kick'?KICK_DURATION:
