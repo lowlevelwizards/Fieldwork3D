@@ -97,6 +97,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   mesh.castShadow=false;mesh.receiveShadow=false;net.add(mesh);
   net.userData.h9NetCordCount=6;
   net.userData.h9SurfaceDraped=true;
+  net.userData.h5CoverAdaptiveNet=true;
  }
  const dangling=addGroup('unfastened');
  // The same anchored PASGT/ACH webbing is separated at its lower buckle.
@@ -202,6 +203,13 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   if(band instanceof THREE.Mesh&&band.userData.h5Covered!==covered){
    band.geometry=createAchMichSurfaceBandGeometry(v.shell,covered);
    band.userData.h5Covered=covered;
+  }
+ }
+ if(v.shell!=='pasgt'){
+  const net=v.modules.net.getObjectByName('ach-mich-h9-shell-wrapped-diamond-net');
+  if(net instanceof THREE.Mesh&&net.userData.h5Covered!==covered){
+   net.geometry=createAchMichFieldNetGeometry(v.shell,covered);
+   net.userData.h5Covered=covered;
   }
  }
  const bandHex=resolveHelmetFieldColor(s.bandColor,shellHex,v.shell==='pasgt');
