@@ -17,7 +17,7 @@ import {StaticSceneBatches}
 import {tacticalFogBounds,buildExteriorKnownFogGeometry,
  replaceTacticalFogGeometry}
  from '../src/rendering/breach-fog-mesh-composition.ts';
-import {fogUvAt}
+import {fogUvAt,exteriorKnownFogRects}
  from '../src/breach-fog-domain.ts';
 
 const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
@@ -133,31 +133,33 @@ test('C2 tactical scene uses one rendering assembly for initial and replacement 
  assert.match(scene,/applyStudioGraphicLighting\(object\.root,APPROVED_GRAPHIC_LIGHTING\)/);
 });
 
-test('C2 exterior-known 3D fog spans the full 2D mask domain without rectangular holes',()=>{
+test('C2 exterior-known 3D uses only the shared concealed footprint',()=>{
  const site=generateSite(31,'small');
  const bounds=tacticalFogBounds(site);
+ const footprint=exteriorKnownFogRects(site);
  const geom=buildExteriorKnownFogGeometry(site,bounds);
  const pos=geom.getAttribute('position'),uv=geom.getAttribute('uv');
  const indices=geom.getIndex();
- // Disclosed exterior is transparent in the SHARED canvas mask. The GPU
- // geometry must not additionally clip out room gaps or U-shaped courts.
- assert.equal(pos.count,4);
- assert.equal(uv.count,4);
- assert.equal(indices.count,6);
- assert.deepEqual(Array.from(indices.array),[0,1,2,0,2,3]);
- const points=[
-  {x:bounds.minX,y:bounds.minY},
-  {x:bounds.minX,y:bounds.maxY},
-  {x:bounds.maxX,y:bounds.maxY},
-  {x:bounds.maxX,y:bounds.minY}
- ];
- for(let i=0;i<4;i++){
-  const p=points[i],mapped=fogUvAt(p,bounds);
-  assert.ok(Math.abs(pos.getX(i)-p.x)<1e-5);
-  assert.ok(Math.abs(pos.getY(i)-1.05)<1e-5);
-  assert.ok(Math.abs(pos.getZ(i)-p.y)<1e-5);
-  assert.ok(Math.abs(uv.getX(i)-mapped.u)<1e-5);
-  assert.ok(Math.abs(uv.getY(i)-mapped.v)<1e-5);
+ assert.ok(footprint.length>0);
+ assert.equal(pos.count,footprint.length*4);
+ assert.equal(uv.count,pos.count);
+ assert.equal(indices.count,footprint.length*6);
+ for(let i=0;i<footprint.length;i++){
+  const r=footprint[i];
+  const corners=[
+   {x:r.x,y:r.y},{x:r.x,y:r.y+r.h},
+   {x:r.x+r.w,y:r.y+r.h},{x:r.x+r.w,y:r.y}
+  ];
+  for(let j=0;j<4;j++){
+   const index=i*4+j,p=corners[j],mapped=fogUvAt(p,bounds);
+   assert.ok(Math.abs(pos.getX(index)-p.x)<1e-5);
+   assert.ok(Math.abs(pos.getY(index)-1.05)<1e-5);
+   assert.ok(Math.abs(pos.getZ(index)-p.y)<1e-5);
+   assert.ok(Math.abs(uv.getX(index)-mapped.u)<1e-5);
+   assert.ok(Math.abs(uv.getY(index)-mapped.v)<1e-5);
+  }
+  assert.deepEqual(Array.from(indices.array.slice(i*6,i*6+6)),
+   [i*4,i*4+1,i*4+2,i*4,i*4+2,i*4+3]);
  }
  geom.dispose();
  const empty=buildExteriorKnownFogGeometry(null);
@@ -166,9 +168,7 @@ test('C2 exterior-known 3D fog spans the full 2D mask domain without rectangular
  empty.dispose();
 });
 
-test('C2 U-shaped shipping court has continuous physical fog coverage but retains exterior mask control',()=>{
- // An open U-shaped court is visibly exterior (clear in the paint mask).
- // The 3D drawing mesh still covers it; display alpha decides the pixels.
+test('C2 U-shaped open court is excluded, indoor modules stay concealed',()=>{
  const site={
   rooms:[
    {id:'N',x:100,y:100,w:240,h:40,kind:'room',tone:0},
@@ -179,13 +179,21 @@ test('C2 U-shaped shipping court has continuous physical fog coverage but retain
  };
  const geom=buildExteriorKnownFogGeometry(site,site.bounds);
  const pos=geom.getAttribute('position');
- const minX=Math.min(...Array.from({length:pos.count},(_,i)=>pos.getX(i)));
- const maxX=Math.max(...Array.from({length:pos.count},(_,i)=>pos.getX(i)));
- const minZ=Math.min(...Array.from({length:pos.count},(_,i)=>pos.getZ(i)));
- const maxZ=Math.max(...Array.from({length:pos.count},(_,i)=>pos.getZ(i)));
- assert.ok(minX<220&&maxX>220&&minZ<230&&maxZ>230,
-  'no 3D cut-out at the U-shaped shipping court');
- assert.equal(pos.count,4,'one quad for the shared display mask');
+ const covered=(x,y)=>{
+  for(let i=0;i<pos.count;i+=4){
+   const left=Math.min(pos.getX(i),pos.getX(i+2));
+   const right=Math.max(pos.getX(i),pos.getX(i+2));
+   const top=Math.min(pos.getZ(i),pos.getZ(i+2));
+   const bottom=Math.max(pos.getZ(i),pos.getZ(i+2));
+   if(x>left&&x<right&&y>top&&y<bottom)return true;
+  }
+  return false;
+ };
+ assert.equal(covered(120,120),true);
+ assert.equal(covered(120,240),true);
+ assert.equal(covered(320,240),true);
+ assert.equal(covered(220,230),false,'open court is public exterior');
+ assert.equal(covered(390,230),false,'lawn outside building stays uncovered');
  geom.dispose();
 });
 
