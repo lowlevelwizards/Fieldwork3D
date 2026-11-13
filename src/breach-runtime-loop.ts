@@ -273,8 +273,12 @@ function tick(now:number){
   // Completed missions have no live status clock to reconcile at 8 Hz.
   // Explicit selection/commands still update the HUD immediately. Keep
   // planning at 120ms and active execution at 180ms as before.
-  const hudPeriod=state.phase==='running'?180:
-    (state.phase==='won'||state.phase==='lost')&&!replaying?750:120;
+  const terminalHud=(state.phase==='won'||state.phase==='lost')&&!replaying;
+  const hudPeriod=state.phase==='running'?180:terminalHud?750:120;
+  // After an OS/browser suspension the completed HUD is already static.
+  // Do not combine its costly DOM reconciliation with the first 3D resume
+  // frame. Ordinary live/planning/replay resume paths remain untouched.
+  if(terminalHud&&frameGap>1000)hudAt=now;
   if(now-hudAt>hudPeriod){
     config.updateHud();if(replaying)config.updateReplayHud();hudAt=now;
   }
