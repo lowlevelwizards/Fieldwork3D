@@ -5,7 +5,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Site,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
-import {exteriorBriefedAt} from './breach-site-footprint.ts';
+import {exteriorKnownFogRects} from './breach-fog-domain.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
 import {sightRangeForSite} from './breach-visibility-range-policy.ts';
 import {forEachRememberedMicroCell} from './breach-fog-memory.ts';
@@ -55,33 +55,23 @@ export function paintFogMemory(ctx:CanvasRenderingContext2D,s:Session,
   ctx.fillRect(bounds.minX,bounds.minY,
     bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
   ctx.globalCompositeOperation='destination-out';
-  // Exterior Known is an exterior *region*, not a collection of room
-  // rectangles to alternate with even/odd clipping. Those rectangles may
-  // overlap at joints: even/odd produces unintended holes inside buildings.
-  // Erase reachable exterior first, then re-cover the UNION of all interior
-  // modules at their exact physical boundaries before applying real sight.
+  // Exterior Known is the complement of one precomputed physical concealment
+  // footprint, NOT a rectangular unknown field with many 10-unit exterior
+  // cutouts. The same immutable union is used by the 3D mesh: outside
+  // grass/courts cannot pick up giant black slabs on regenerated maps.
+  // This is site-only work cached across camera updates and visibility paints.
   if(s.intel.mode==='exterior-known'&&s.site){
     ctx.filter='none';
     ctx.fillStyle='#fff';
-    for(let row=Math.floor(bounds.minY/10);row<Math.ceil(bounds.maxY/10);row++)
-      for(let col=Math.floor(bounds.minX/10);col<Math.ceil(bounds.maxX/10);col++){
-        const p={x:col*10+5,y:row*10+5};
-        if(exteriorBriefedAt(s.site,p))ctx.fillRect(col*10,row*10,10,10);
-      }
-    // All interior modules use source-over compositing, so overlaps stay
-    // covered instead of turning into false exterior as parity flips.
+    ctx.fillRect(bounds.minX,bounds.minY,
+      bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);
     ctx.globalCompositeOperation='source-over';
     ctx.fillStyle=diagnostic==='palette'?'#b2226f':UNKNOWN_FOG_COLOR;
-    for(const room of s.site.rooms)
-      ctx.fillRect(room.x,room.y,room.w,room.h);
+    for(const rect of exteriorKnownFogRects(s.site))
+      ctx.fillRect(rect.x,rect.y,rect.w,rect.h);
     ctx.globalCompositeOperation='destination-out';
-    // Do NOT cut opacity away along known façades. Public walls, doors and
-    // windows have their own 3D foreground presentation, but their existence
-    // is not evidence that an operator saw any floor just INSIDE them.
-    // Cutting 11-unit strips here previously leaked unknown floor/shadows,
-    // even with no friendly in sight of a window or doorway. The only
-    // interior clearing comes from remembered geometric LOS and the live
-    // directional polygon below.
+    // Public façades/windows do not reveal indoor floors. Only later
+    // remembered knowledge and genuine live LOS can erase indoor opacity.
   }
   // Full View must clear the map outright, not leave a translucent tint
   // in 2D while 3D hides its fog mesh. It grants no new gameplay knowledge.
