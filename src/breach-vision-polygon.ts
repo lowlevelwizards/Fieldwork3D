@@ -31,10 +31,10 @@ export function visionPolygon(origin:Pt,heading:number,range=240,
   const angles:number[]=[];
   for(let i=0;i<=64;i++)
     angles.push(-VISION_HALF_ANGLE+2*VISION_HALF_ANGLE*i/64);
-  // Legacy 240-unit polygons retain their exact prior angle count for
-  // saved tests. Long-range polygons can omit out-of-range endpoint angles.
-  const angleBlockers=range>240?rayBlockers:blockers;
-  for(const line of angleBlockers)for(const point of [line.a,line.b]){
+  // Preserve the historical endpoint ray sampling exactly, including
+  // distant angle events; only ray/segment INTERSECTION uses the angular
+  // broadphase. This prevents contour shape drift in existing missions.
+  for(const line of blockers)for(const point of [line.a,line.b]){
     const absolute=Math.atan2(point.y-origin.y,point.x-origin.x);
     const delta=Math.atan2(Math.sin(absolute-heading),
       Math.cos(absolute-heading));
