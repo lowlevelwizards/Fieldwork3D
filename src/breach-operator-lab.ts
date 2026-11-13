@@ -17,7 +17,8 @@ import {timedHandling,smoothHandling,type HandlingTransition}
 import {lateralAxis,sideOffset,uncrossed} from './breach-locomotion.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
 import {LEG_UPPER_LENGTH,LEG_LOWER_LENGTH,LEG_HIP_SIDE} from './breach-leg-geometry.ts';
-import {LabMotionCache,LabHistoricalMotionCache,LabDistanceMotionCache,TRACK_DURATION,type LabTrack}
+import {LabMotionCache,LabHistoricalMotionCache,LabDistanceMotionCache,
+  sampleLabMovementImpulse,sampleLabTrack,TRACK_DURATION,type LabTrack}
   from './breach-lab-tracks.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
@@ -1576,7 +1577,8 @@ function showDiagnostics(){
   const balance=bodyFromContacts({feet,velocity:sampled.motion.speed,
     heading:sampled.motion.heading,travelYaw:sampled.motion.travelYaw,
     turning:sampled.motion.turning,injury:sampled.motion.injury,
-    posture:sampled.motion.posture});
+    posture:sampled.motion.posture,
+    motionImpulse:sampleLabMovementImpulse(track,clock)});
   const separated=sideOffset(feet[0].position,feet[1].position,
     -sampled.state.pelvisYaw);
   const crossing=!uncrossed(feet[0].position,feet[1].position,
@@ -1690,6 +1692,10 @@ function draw(){
     travelYaw:motion.travelYaw,
     seconds:clock,stride:clock*40,
     velocity:motion.speed,
+    acceleration:Math.max(-230,Math.min(230,
+      (motion.speed-sampleLabTrack(track,
+        Math.max(0,clock-1/60)).speed)*60)),
+    motionImpulse:sampleLabMovementImpulse(track,clock),
     posture:motion.posture,
     gait:track==='run'?'run':track==='pie'?'pie':
       track==='squeeze'?'squeeze':'walk',

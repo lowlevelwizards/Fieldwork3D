@@ -7,6 +7,8 @@ import type {Door} from './breach-core.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {footArticulation} from './breach-foot-articulation.ts';
 import type {FootTarget,FootstepInput} from './breach-footsteps.ts';
+import {indexMovementImpulses,sampleMovementImpulses,
+ type MotionEvent,type MomentumEnvelope} from './breach-motion-transitions.ts';
 import {createLiveGait,advanceLiveGait,type LiveGaitState}
   from './breach-live-gait.ts';
 
@@ -19,6 +21,7 @@ type FootEvent={
 type ActorTrack={
   gait:LiveGaitState;lastVelocity:number;
   accelEvents:{at:number;acceleration:number}[];
+  driveEvents:MotionEvent[];brakeEvents:MotionEvent[];
   events:[FootEvent[],FootEvent[]];last:{x:number;y:number;t:number};
   travelYaw:number;lastStepAt:number;
   travelYawEvents:{at:number;yaw:number}[];
@@ -40,6 +43,7 @@ export type ReplayPresentation={
   travelYaw:Record<string,number>;
   pelvisYaw:Record<string,number>;
   acceleration:Record<string,number>;
+  momentum:Record<string,MomentumEnvelope>;
   doors:Record<string,number>;
 };
 const clamp=(v:number,a:number,b:number)=>Math.max(a,Math.min(b,v));
@@ -98,7 +102,8 @@ export class ReplayMotionRecorder{
         track={gait:createLiveGait(),events:[[],[]],
           last:{...position,t:time},travelYaw:actor.heading,
           lastStepAt:-100,pelvisYawEvents:[],travelYawEvents:[],
-          lastVelocity:actor.velocity,accelEvents:[]};
+          lastVelocity:actor.velocity,accelEvents:[],
+          driveEvents:[],brakeEvents:[]};
         this.actors.set(actor.id,track);
       }
       const distance=Math.hypot(position.x-track.last.x,
@@ -143,7 +148,13 @@ export class ReplayMotionRecorder{
         (actor.velocity-track.lastVelocity)/velocityDt,-230,230):0;
       const acc=track.accelEvents;
       if(!acc.length||Math.abs(acc[acc.length-1].acceleration-
-        acceleration)>2)acc.push({at:time,acceleration});
+        acceleration)>2){
+        acc.push({at:time,acceleration});
+        const strength=clamp(acceleration/230,-1,1);
+        if(strength>.14)track.driveEvents.push({at:time,strength});
+        else if(strength<-.14)
+          track.brakeEvents.push({at:time,strength:-strength});
+      }
       track.lastVelocity=actor.velocity;
       const previousResets=track.gait.resets;
       const previousStep=track.gait.lastStepAt;
@@ -208,6 +219,7 @@ export class ReplayMotionRecorder{
     const travelYaw:Record<string,number>={};
     const pelvisYaw:Record<string,number>={};
     const acceleration:Record<string,number>={};
+    const momentum:Record<string,MomentumEnvelope>={};
     for(const id of ids){
       const track=this.actors.get(id);
       if(!track||!track.events[0].length)continue;
@@ -230,6 +242,8 @@ export class ReplayMotionRecorder{
         if(acc[mid].at<=time)ai=mid;else aj=mid-1;
       }
       acceleration[id]=acc[ai]?.acceleration??0;
+      momentum[id]=sampleMovementImpulses(track.driveEvents,
+        track.brakeEvents,time);
       const samples=track.pelvisYawEvents;
       let lo=0,hi=samples.length-1;
       while(lo<hi){
@@ -252,7 +266,7 @@ export class ReplayMotionRecorder{
       const alpha=b.at>a.at?clamp((time-a.at)/(b.at-a.at),0,1):0;
       doors[id]=a.fraction+(b.fraction-a.fraction)*alpha;
     }
-    return {feet,travelYaw,pelvisYaw,acceleration,doors};
+    return {feet,travelYaw,pelvisYaw,acceleration,momentum,doors};
   }
   /** Export exactly the evidence required by presentation and footsteps.
    * No active live-gait state or simulation scheduler is serialized.
@@ -286,8 +300,10 @@ export class ReplayMotionRecorder{
         !Array.isArray(actor.accelEvents))throw Error('Corrupt replay actor motion');
       const feet=structuredClone(actor.feet);
       const lastFoot=feet[0].at(-1);
+      const indexed=indexMovementImpulses(actor.accelEvents);
       this.actors.set(actor.id,{
         gait:createLiveGait(),lastVelocity:0,
+        driveEvents:indexed.drive,brakeEvents:indexed.brake,
         events:feet,
         last:{x:lastFoot?.to.x??0,y:lastFoot?.to.y??0,t:0},
         travelYaw:actor.travelYaw,lastStepAt:-100,
