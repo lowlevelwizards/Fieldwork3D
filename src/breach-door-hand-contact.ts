@@ -38,7 +38,7 @@ function handFree(a:TeamActor):boolean{
   a.plan[0]?.kind!=='tool'&&
   a.plan[0]?.kind!=='door'&&
   a.targetId===null&&a.aim<.45&&
-  a.flashUntil<=0; // overwritten below: flash uses absolute session seconds
+  true;
 }
 function handFreeAt(a:TeamActor,now:number):boolean{
  return handFree(a)&&a.flashUntil<=now&&
