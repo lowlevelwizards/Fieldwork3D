@@ -36,3 +36,27 @@ test('Q5 left/right/jamb and split/45 geometry physically differ',()=>{
  assert.ok(angled.every((p,i)=>i===0||
   Math.abs((p.x-angled[i-1].x)-(p.y-angled[i-1].y))<.001));
 });
+
+test('Q5 already-pushed-wide door has four legal known stack pockets',async()=>{
+ const {newSession,planSquadEntry,team}
+  =await import('../src/breach-game.ts');
+ const {prepareDoorRangeCase}
+  =await import('../src/breach-door-test-cases.ts');
+ const {doorLeafSegment,pointToSegment,activateSite}
+  =await import('../src/breach-core.ts');
+ for(const {id} of DOOR_RANGE_APPROACHES){
+  const s=newSession(0,undefined,'full-view','small','hold',
+   doorRangeSite('wide-open',id),{enableCivilians:false});
+  try{
+   prepareDoorRangeCase(s,'wide-open');
+   assert.equal(planSquadEntry(s,'ENTRY'),true,'wide-open '+id);
+   const leaf=doorLeafSegment(s.doors[0]);
+   const slots=team(s).slice(0,4).map(a=>
+    a.plan.find(n=>n.stackDoorId==='ENTRY')?.p);
+   assert.ok(slots.every(Boolean));
+   for(const point of slots)
+    assert.ok(pointToSegment(point,leaf)>=10.5,
+     'stage target must avoid already-present physical leaf');
+  }finally{activateSite(null);}
+ }
+});

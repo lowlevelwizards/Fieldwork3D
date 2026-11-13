@@ -47,7 +47,17 @@ export function stackApproachPositions(door:Door,from:Pt):Pt[]{
   x:center.x+tx*lateral+nx*approach*(i<2?53:62),
   y:center.y+ty*lateral+ny*approach*(i<2?53:62)
  }));
- return [regular[0],regular[1],...rear,regular[2],regular[3]];
+ // Q5: a leaf pushed beyond the normal open angle may occupy the near
+ // jamb staging pocket. Add two fixed OUTER approaches only in that state.
+ // They stay on this side of the wall, outside the full hinge sweep;
+ // planStack still checks real panel clearance, known routability and
+ // separation against every already assigned team member.
+ const wide=(door.openFraction??0)>1.1?
+  [-51,51].map(lateral=>({
+   x:center.x+tx*lateral+nx*approach*44,
+   y:center.y+ty*lateral+ny*approach*44
+  })):[];
+ return [regular[0],regular[1],...rear,regular[2],regular[3],...wide];
 }
 
 /** A generated squad-entry MOVE can pick up its own already-authored
