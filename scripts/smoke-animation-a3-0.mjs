@@ -36,6 +36,12 @@ try{
    await page.locator('#step').click();
    await page.waitForFunction(()=>
     document.querySelector('#clock')?.textContent==='0.017s');
+   await page.locator('#intent').selectOption('engage');
+   await page.waitForFunction(()=>document.querySelector('#details')?.
+    textContent?.includes('"firePolicy": "engage"'));
+   if(await page.locator('#shoulder').textContent()===null||
+      await page.locator('#autoStance').textContent()===null)
+    throw Error(mode+' A3 tactical micro-aim/stance diagnostics absent');
    await page.locator('#scenario').selectOption('mixed-crouch');
    await page.waitForFunction(()=>document.querySelector('#details')?.
     textContent?.includes('"posture": "crouch"'));
