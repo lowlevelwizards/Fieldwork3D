@@ -131,16 +131,46 @@ test('plaid is a legible checked textile at torso scale, not a flat tint',()=>{
   assert.notEqual(sample(12,12),sample(13,12),'fine woven ticking');
  }
 });
-test('tee, polo and tank have true open necks, and button cuff sits mid-forearm',()=>{
+test('all casual tops recolor the ONE actual torso, without duplicate jacket shells',()=>{
  const r=createOperatorRig('rook','blue');
- for(const top of ['t-shirt','polo-shirt','tank-top']){
-  poseOperator(r,frame(outfit(top)),0);
+ const torso=r.visualKit.baseTorso;
+ const torsoGeometry=torso.geometry;
+ for(const top of CASUAL_SHIRT_CUTS){
+  poseOperator(r,frame(outfit(top,{fabricSolids:{top:'rust'}})),0);
   const model=r.visualKit.casualShirts.cuts[top];
-  const contact=model.torso.children.find(mesh=>mesh.userData.armorContactShell);
-  assert.ok(contact,'retained armor contact metric');
-  assert.equal(contact.visible,false,'contact should not render as closed neck slab');
-  assert.ok(model.torso.children.some(mesh=>mesh.material===r.skinMaterial),
-   'visible skin inset at open throat');
+  assert.strictEqual(r.visualKit.baseTorso,torso,top+' keeps foundation');
+  assert.strictEqual(torso.geometry,torsoGeometry,top+' does not replace body');
+  assert.strictEqual(torso.material,r.clothMaterial,'fabric owns body');
+  assert.equal(r.colors.get(r.clothMaterial).getHex(),garmentSolidHex('rust'));
+  assert.ok(torso.visible,top+' torso stays visible');
+  assert.ok(model.torso.visible,top+' small details active');
+  for(const part of model.torso.children){
+   if(!(part instanceof THREE.Mesh))continue;
+   part.geometry.computeBoundingBox();
+   const box=part.geometry.boundingBox;
+   assert.ok(box.max.x-box.min.x<.8,
+    top+' must not introduce full-width chest/shoulder slabs');
+   assert.ok(part.material!==r.skinMaterial,
+    top+' no false skin plaque over chest');
+  }
+ }
+ assert.equal(r.visualKit.casualShirts.cuts['tank-top'].torso.children.length,0,
+  'tank is only the original torso and uncovered arms');
+ r.dispose();
+});
+test('tee and polo sleeves are one thin piece per proximal arm, not armor cuffs',()=>{
+ const r=createOperatorRig('rook','blue');
+ for(const top of ['t-shirt','polo-shirt']){
+  poseOperator(r,frame(outfit(top)),0);
+  for(const sleeve of r.visualKit.casualShirts.cuts[top].upper){
+   assert.equal(sleeve.children.length,1,top+' single sleeve shape');
+   const part=sleeve.children[0];
+   assert.strictEqual(part.material,r.clothMaterial);
+   const dimensions=part.geometry.parameters;
+   assert.ok(dimensions.height<=.44,'sleeve is proximal, not full arm');
+   assert.ok(dimensions.width<=4.02,'sleeve closely hugs arm');
+   assert.ok(dimensions.depth<=4.12,'sleeve is not a raised shoulder pad');
+  }
  }
  poseOperator(r,frame(outfit('button-up-shirt',{sleeveState:'cuffed'})),0);
  for(const cuff of r.visualKit.casualShirts.cuts['button-up-shirt'].cuffedLower){
