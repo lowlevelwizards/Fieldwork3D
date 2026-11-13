@@ -1,0 +1,38 @@
+name: D2-D3 physical door maneuver + arbitration
+on:
+  push:
+    branches:
+      - 'feature/door-traversal-d2-d3-*'
+  pull_request:
+    paths:
+      - 'src/breach-door-traversal-maneuver.ts'
+      - 'src/breach-door-traversal-episode.ts'
+      - 'src/breach-door-pressure-frame.ts'
+      - 'src/breach-door.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-motor-route.ts'
+      - 'tests/door-traversal-d2.test.mjs'
+      - 'tests/door-traversal-d3.test.mjs'
+      - '.github/workflows/door-traversal-d2-d3.yml'
+  workflow_dispatch:
+concurrency:
+  group: door-maneuvers-${{ github.ref }}
+  cancel-in-progress: true
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: D2-D3 exact tests and four-person physical acceptance
+        run: |
+          node --experimental-strip-types --test tests/door-traversal-d2.test.mjs tests/door-traversal-episode.test.mjs tests/release7-outward-four.test.mjs tests/release7-door-intent.test.mjs tests/release7-door-leaf-bypass.test.mjs tests/door-traversal-d0-d1.test.mjs tests/squad-entry-b-continuity.test.mjs tests/doorway-planned-sequence.test.mjs tests/release7-squad-queue.test.mjs
+      - name: Real physical door baseline diagnostics
+        run: node --experimental-strip-types scripts/audit-door-traversal-baseline.mjs 4 900
+      - name: Type check and production build
+        run: npm run build
