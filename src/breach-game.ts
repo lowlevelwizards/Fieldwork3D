@@ -231,6 +231,7 @@ export type TeamActor=Operator & {
   lastLaneWarnAt:number;lastFireBlock:FireBlock;
   /** Transient, collision-checked gun-clearance recovery; not a PlanNode. */
   fireRetreatTarget:Pt|null;fireRetreatUntil:number;lastFireRetreatAt:number;
+  fireRetreatReason?:string|null;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
   wardrobe?:WardrobeOptions;
