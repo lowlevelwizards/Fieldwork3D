@@ -31,7 +31,7 @@ export function passiveAimReadiness(urgency:FireUrgency):number{
  * enemy reaction, safety, reload and weapon turn limits remain authoritative.
  */
 export function contactAimOnAcquisition(previous:number):number{
- return Math.max(.16,Math.min(.48,Math.max(0,previous)));
+ return Math.max(.36,Math.min(.52,Math.max(0,previous)));
 }
 export function contactAcquisitionScale(urgency:FireUrgency):number{
  return urgency==='contact'?.74:1;
