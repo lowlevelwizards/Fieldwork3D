@@ -163,14 +163,22 @@ export function buttonUpFlannelTexture(id:string):THREE.DataTexture|null{
  if(!isButtonUpFlannel(id))return null;
  const existing=flannelCache.get(id);if(existing)return existing;
  const colors=flannelPalettes[id],pixels=new Uint8Array(64*64*4);
+ // A woven plaid needs alternating WARP + WEFT stripes and dark
+ // intersections, not a 128-world-unit gradient masquerading as flannel.
+ // Four nested 16px checks per axis keep the repeat legible on the torso.
  for(let y=0;y<64;y++)for(let x=0;x<64;x++){
   const a=x%32,b=y%32;
-  const broad=(p:number)=>p<5||(p>=17&&p<21);
-  const thin=(p:number)=>p===10||p===26;
-  const crossing=broad(a)&&broad(b);
-  const contrast=broad(a)||broad(b);
-  const bright=thin(a)||thin(b);
-  const rgb=colors[crossing?1:bright?2:contrast?3:0];
+  const primary=(p:number)=>p>=2&&p<8;
+  const secondary=(p:number)=>p>=18&&p<22;
+  const hairline=(p:number)=>p===13||p===27;
+  const ax=primary(a),ay=primary(b),sx=secondary(a),sy=secondary(b);
+  const stripesX=ax||sx,stripesY=ay||sy;
+  // Four-color palette: base, navy/charcoal crossing, lighter ticking
+  // and secondary muted body stripe. Crossed bands have real 2D form.
+  const rgb= ax&&ay?colors[1]:
+   stripesX&&stripesY?colors[3]:
+   hairline(a)||hairline(b)?colors[2]:
+   stripesX||stripesY?colors[3]:colors[0];
   const offset=(y*64+x)*4;
   pixels[offset]=(rgb>>16)&255;
   pixels[offset+1]=(rgb>>8)&255;
@@ -183,7 +191,9 @@ export function buttonUpFlannelTexture(id:string):THREE.DataTexture|null{
  tex.magFilter=THREE.NearestFilter;
  tex.minFilter=THREE.NearestMipmapNearestFilter;
  tex.generateMipmaps=true;
- tex.repeat.set(32/64,32/64);
+ // 64px artwork spans 16 world units (2x per metric UV). The old
+ // 0.5 repeat made the entire 12-unit shirt show a SINGLE flat quadrant.
+ tex.repeat.set(32/16,32/16);
  tex.name='Fieldwork button-up '+id;
  tex.needsUpdate=true;flannelCache.set(id,tex);
  return tex;

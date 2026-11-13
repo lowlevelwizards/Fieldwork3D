@@ -40,6 +40,8 @@ import './operator-appearance-grid.css';
 import {createWardrobeFabricCamoPicker} from './operator-fabric-camo-picker.ts';
 import {topColorwayChoices,resolvedTopColorway} from './operator-upper-colorways.ts';
 import {sleeveStateOptions} from './operator-wardrobe-data.ts';
+import {GLOVE_SOLIDS,GARMENT_SOLID_COLORS,isGloveSolid}
+ from './operator-garment-color-policy.ts';
 import {FAMILY_PRESETS} from './equipment-weapon-families.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from './equipment-weapon-assemblies.ts';
@@ -574,6 +576,11 @@ function syncWardrobe(){
  (document.getElementById('wardrobeMagazineOrder') as HTMLSelectElement).value=
   wardrobeOptions.mounts.magazineOrder;
  appearanceGrid?.refresh(labKit,wardrobeOptions);
+ const gloveState=document.getElementById('wardrobeGloveState') as HTMLSelectElement;
+ const gloveColor=document.getElementById('wardrobeGloveColor') as HTMLSelectElement;
+ gloveState.value=compatible.gloves;
+ gloveColor.value=wardrobeOptions.gloveSolid??'ranger-green';
+ gloveColor.disabled=compatible.gloves==='gloves-none';
  const sleeveSelect=document.getElementById('wardrobeSleeveState') as HTMLSelectElement;
  sleeveSelect.value=wardrobeOptions.sleeveState;
  sleeveSelect.disabled=sleeveStateOptions(compatible.top).length===1;
@@ -596,6 +603,26 @@ function syncWardrobe(){
   'Style unavailable for current kit: '+incompatible.join(', '):
   'Compatible visual styles. Gameplay equipment is unchanged.';
 }
+// Gloves have their own saved cosmetic on/off switch and textile tint.
+const gloveColorPicker=document.getElementById('wardrobeGloveColor') as HTMLSelectElement;
+for(const id of GLOVE_SOLIDS){
+ const option=document.createElement('option');
+ option.value=id;option.textContent=GARMENT_SOLID_COLORS[id].label;
+ gloveColorPicker.append(option);
+}
+document.getElementById('wardrobeGloveState')?.addEventListener('change',e=>{
+ checkpointAppearance();
+ const gloves=(e.target as HTMLSelectElement).value;
+ if(gloves!=='gloves-none'&&gloves!=='gloves-field')return;
+ wardrobeOptions={...wardrobeOptions,styles:{...wardrobeOptions.styles,gloves}};
+ syncWardrobe();
+});
+gloveColorPicker.addEventListener('change',()=>{
+ if(!isGloveSolid(gloveColorPicker.value))return;
+ checkpointAppearance();
+ wardrobeOptions={...wardrobeOptions,gloveSolid:gloveColorPicker.value};
+ syncWardrobe();
+});
 document.getElementById('wardrobeTopColorway')?.addEventListener('change',e=>{
  checkpointAppearance();
  const top=resolvedWardrobe(wardrobeOptions,labKit).top;
