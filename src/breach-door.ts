@@ -357,6 +357,8 @@ export type BodyDoorContact={doorId:string;advanced:boolean;handAssist?:boolean}
  * Explicit CLOSE orders and opening/hinge swing collision remain unchanged. */
 export type BodyDoorPressurePolicy={
  deferClosing?:(door:Door)=>boolean;
+ /** No real hand pull while busy or beyond short support-arm reach. */
+ canHandAssist?:(door:Door)=>boolean;
  /** A physical crossing may pull a reachable door instead of slamming it. */
  preferOpening?:(door:Door)=>boolean;
  /** Fixed-tick session policy: one body-generated hinge impulse per door. */
@@ -393,7 +395,8 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     // otherwise the operator must move around the free edge.
     const crossing=policy.preferOpening?.(door)??false;
     const assist=crossing&&pressure<0&&
-      dist(from,handlePoint(door))<=DOOR_REACH;
+      (policy.canHandAssist?.(door)??
+       dist(from,handlePoint(door))<=DOOR_REACH);
     const closing=pressure<0&&!assist;
     if(crossing&&closing)continue;
     // Two friendlies can press opposite faces on consecutive motor ticks.
