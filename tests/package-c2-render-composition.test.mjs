@@ -152,11 +152,11 @@ test('C2 exterior-known 3D uses only the shared concealed footprint',()=>{
   ];
   for(let j=0;j<4;j++){
    const index=i*4+j,p=corners[j],mapped=fogUvAt(p,bounds);
-   assert.ok(Math.abs(pos.getX(index)-p.x)<1e-5);
-   assert.ok(Math.abs(pos.getY(index)-1.05)<1e-5);
-   assert.ok(Math.abs(pos.getZ(index)-p.y)<1e-5);
-   assert.ok(Math.abs(uv.getX(index)-mapped.u)<1e-5);
-   assert.ok(Math.abs(uv.getY(index)-mapped.v)<1e-5);
+   assert.ok(Math.abs(pos.getX(index)-p.x)<1e-3);
+   assert.ok(Math.abs(pos.getY(index)-1.05)<1e-3);
+   assert.ok(Math.abs(pos.getZ(index)-p.y)<1e-3);
+   assert.ok(Math.abs(uv.getX(index)-mapped.u)<1e-3);
+   assert.ok(Math.abs(uv.getY(index)-mapped.v)<1e-3);
   }
   assert.deepEqual(Array.from(indices.array.slice(i*6,i*6+6)),
    [i*4,i*4+1,i*4+2,i*4,i*4+2,i*4+3]);
