@@ -1638,9 +1638,13 @@ function resolveCloseContact(s:Session){
 /** Shared gameplay action; physical object selection is based on its ID. */
 export function movePhysicalProp(s:Session,index:number,to:Pt):boolean{
  if(s.phase==='won'||s.phase==='lost')return false;
- const moved=relocateCover(s.coverState,index,to,sessionWorldGeometry(s).walls,s.doors,
-   [...s.operators.filter(a=>a.health>0).map(a=>a.p),
-    ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
+ // One local occupancy array; avoid three intermediate filter/map arrays
+ // on every short push increment.
+ const occupants:Pt[]=[];
+ for(const actor of s.operators)if(actor.health>0)occupants.push(actor.p);
+ for(const civil of s.civilians)if(civil.health>0)occupants.push(civil.p);
+ const moved=relocateCover(s.coverState,index,to,
+   sessionWorldGeometry(s).walls,s.doors,occupants);
  if(!moved)return false;
  s.objectRevision++;
  publishSessionCoverToActiveSite(s);
