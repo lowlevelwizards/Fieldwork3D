@@ -15,7 +15,7 @@ import {team} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 
 test('A3.9-H cover must be a real front-facing reachable surface',()=>{
- const p={x:145,y:223,heading:0};
+ const p={p:{x:145,y:223},heading:0};
  const cover={x:178,y:223,w:26,h:36,topHeight:27};
  assert.equal(stanceSurface(p,cover,0)?.top,27);
  assert.equal(stanceSurface({...p,heading:Math.PI},cover,0),null);
