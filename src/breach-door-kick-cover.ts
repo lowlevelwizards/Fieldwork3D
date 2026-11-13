@@ -2,7 +2,8 @@
  * Uses the SAME bounded contact shove as the walking motor. No moving a
  * built-in wall, fixed cabinet, wedged door, or collision teleport.
  */
-import {doorLeafSegment,type Door,type Pt} from './breach-core.ts';
+import {doorLeafSegment,OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
+import {doorSwingBlocked} from './breach-door.ts';
 import type {Session} from './breach-game.ts';
 import {autoShoveLightCover} from './breach-movable-cover.ts';
 import {sessionWorldGeometry,publishSessionCoverToActiveSite}
@@ -35,4 +36,24 @@ export function kickShoveLooseCover(s:Session,door:Door,
   return moved;
  }
  return null;
+}
+
+/** The visible impulse may stop on an immutable cabinet or wall before it
+ * reaches the defender. Impact and stun cannot jump through the obstruction.
+ * Static world tests only; dynamically struck actors are resolved with the
+ * existing physically swept displacement in the door-order handler.
+ * Bounded seven-probe bisection executes only for a deliberate kick. */
+export function kickReachableImpactFraction(s:Session,door:Door,
+ start:number,wanted:number):number{
+ if(wanted<=start)return start;
+ const world=sessionWorldGeometry(s);
+ if(!doorSwingBlocked(door,wanted,[],OPERATOR_RADIUS,world))return wanted;
+ let clear=start,blocked=wanted;
+ for(let i=0;i<7;i++){
+  const candidate=(clear+blocked)/2;
+  if(doorSwingBlocked(door,candidate,[],OPERATOR_RADIUS,world))
+   blocked=candidate;
+  else clear=candidate;
+ }
+ return clear;
 }

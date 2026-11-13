@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {kickDoor,PUSHED_OPEN_LIMIT,doorWouldStrikeActors} from '../src/breach-door.ts';
 import {createDoorOrderHandler} from '../src/breach-order-door.ts';
+import {kickReachableImpactFraction} from '../src/breach-door-kick-cover.ts';
 import {newSession,team} from '../src/breach-game.ts';
 import {doorRangeSite,prepareDoorRangeCase} from '../src/breach-door-test-cases.ts';
 import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
@@ -86,5 +87,17 @@ test('Q5 live: ajar panel kick impacts a real defender behind the leaf',()=>{
   assert.ok((defender.doorStunUntil??0)>s.seconds,
    'contact causes a bounded defensive stun');
   assert.ok(sideEffects.some(x=>x.includes('STRUCK BY DOOR')));
+ }finally{activateSite(null);}
+});
+
+test('Q5 kick impact never transmits through an immovable cabinet',()=>{
+ const s=newSession(0,undefined,'full-view','small','hold',
+  doorRangeSite('swing-furniture'),{enableCivilians:false});
+ try{
+  const door=s.doors[0];
+  door.open=true;door.openFraction=0;
+  const limit=kickReachableImpactFraction(s,door,0,.90);
+  assert.ok(limit>.2&&limit<.5,
+   'real fixture must stop the kick sweep before an actor behind it');
  }finally{activateSite(null);}
 });

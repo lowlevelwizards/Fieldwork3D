@@ -1,5 +1,5 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
-import {kickShoveLooseCover} from './breach-door-kick-cover.ts';
+import {kickShoveLooseCover,kickReachableImpactFraction} from './breach-door-kick-cover.ts';
 /** Stage 8: explicit authoritative door OPEN/CLOSE/KICK/HOLD order,
  * including real sweep impact and repeated bounded kick attempts.
  */
@@ -88,12 +88,16 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
             battleEvent(s,'interaction',a,prop,
               a.name+' KICKED '+(prop.fixture??'CLUTTER').toUpperCase());
           }
+          // Static fixtures can stop a kicked panel before it reaches a
+          // person. Resolve that real maximum before the character impact.
+          const physicalImpact=kickReachableImpactFraction(s,door,
+            impactStart,impactFinish);
           // Kicks into an occupied sweep impact the actual body. A validated
           // displacement clears room for the hinge; pinned actors remain solid.
-          const impactLeaf=doorLeafSegment({...door,openFraction:impactFinish});
+          const impactLeaf=doorLeafSegment({...door,openFraction:physicalImpact});
           for(const struck of s.operators){
             if(struck===a||struck.health<=0||
-               !doorWouldStrikeActors({...door,openFraction:impactStart},impactFinish,
+               !doorWouldStrikeActors({...door,openFraction:impactStart},physicalImpact,
                  [struck.p],OPERATOR_RADIUS+1))continue;
             const along=Math.max(0,Math.min(1,(
               (struck.p.x-impactLeaf.a.x)*(impactLeaf.b.x-impactLeaf.a.x)+
