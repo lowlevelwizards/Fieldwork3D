@@ -19,6 +19,11 @@ export type FactionReference={
  environment:ReferenceEnvironment;era:{start:number;end:number;label:string};
  summary:string;baseRecipeId:string;uniformCamo?:HeadwearCamoId;
  uniformSolid?:GarmentSolidId;
+ /** Independent dated mixed-dress fabrics; legacy shared uniforms still work. */
+ topSolid?:GarmentSolidId;topCamo?:HeadwearCamoId;
+ trousersSolid?:GarmentSolidId;trousersCamo?:HeadwearCamoId;
+ topColorway?:WardrobeOptions['topColorway'];
+ gloveSolid?:WardrobeOptions['gloveSolid'];
  styles?:Partial<Record<WardrobeSlot,string>>;
  kit?:Partial<Record<LoadoutSlot,string>>;
  headwearColor?:HeadwearSolidColorId;beretDrape?:'left'|'right';
@@ -88,10 +93,10 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  organization:'military',environment:'mixed',era:{start:1983,end:1994,label:'1980s–early 1990s'},
  summary:'Plain Nutria-brown field clothing and characteristic P83 battle jacket.',
  baseRecipeId:'bush-webbing',uniformSolid:'nutria-brown',
- kit:{armor:'armor-none'},styles:{headwear:'boonie',armorStyle:'armor-bare',rigStyle:'sadf-webbing'},
+ kit:{armor:'armor-none'},styles:{headwear:'boonie',top:'button-up-shirt',armorStyle:'armor-bare',rigStyle:'sadf-webbing'},
  headwearColor:'coyote-brown',gearSolid:'nutria-brown',weaponFamily:'R4 / Galil',
  gaps:[patch,weapon('galil-family','R4/Galil-family rifle')],
- sourceNotes:'Pattern 83 and Nutria clothing are the defining visual features.'},
+ sourceNotes:'Nutria-brown button-up approximates a period field shirt with P83 webbing. R4/Galil is still a labeled weapon proxy.'},
  {id:'swedish-m90-2000',name:'Swedish Armed Forces · M90',country:'Sweden',
  organization:'military',environment:'woodland',era:{start:1990,end:2020,label:'1990s–2010s'},
  summary:'Angular M90 camouflage with green load-bearing equipment.',
@@ -104,10 +109,10 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  organization:'military',environment:'woodland',era:{start:1965,end:1979,label:'1960s–1970s'},
  summary:'Brushstroke tropical field dress with simple canvas equipment.',
  baseRecipeId:'irregular-canvas',uniformCamo:'rhodesian-brushstroke',
- kit:{armor:'armor-none',rig:'rig-full'},styles:{headwear:'boonie',armorStyle:'armor-bare',rigStyle:'field-webbing'},
- sleeveState:'rolled',gearSolid:'khaki',weaponFamily:'FN FAL',
- gaps:[patch,weapon('fal-family','FN FAL/R1 rifle'),gap('tropical-shirt','Short-sleeved tropical field blouse')],
- sourceNotes:'Historical reference only; no endorsement or glorification of the government or conflict.'},
+ kit:{armor:'armor-none',rig:'rig-full'},styles:{headwear:'boonie',top:'button-up-shirt',armorStyle:'armor-bare',rigStyle:'field-webbing'},
+ sleeveState:'short',gearSolid:'khaki',weaponFamily:'FN FAL',
+ gaps:[patch,weapon('fal-family','FN FAL/R1 rifle'),gap('tropical-shirt','Specific tropical field-shirt tailoring and pockets','minor')],
+ sourceNotes:'Short-sleeved brushstroke field shirt and traditional webbing are approximations. Historical reference only, without endorsement.'},
  {id:'ukraine-mm14-2022',name:'Ukrainian Armed Forces · MM-14',country:'Ukraine',
  organization:'military',environment:'mixed',era:{start:2015,end:2026,label:'2010s–2020s'},
  summary:'MM-14 field dress with plausible mixed olive and coyote tactical equipment.',
@@ -266,7 +271,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  {id:'russian-omon-2002',name:'Russian MVD/OMON · Urban Kamysh',country:'Russia',
  organization:'police',environment:'urban',era:{start:1995,end:2010,label:'1990s–2000s'},
  summary:'Urban Kamysh uniform with black external tactical protection.',
- baseRecipeId:'police-entry',uniformCamo:'urban-kamysh',gearSolid:'black',
+ baseRecipeId:'police-entry',uniformCamo:'urban-kamysh',gearSolid:'black',gloveSolid:'black',
  styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'police-helmet'},
  policeVisorPosition:'lowered',policeVisorTint:'clear',
  policeVisorFrame:'standard',headwearColor:'black',markings:{chest:'label-omon'},weaponFamily:'AK / compact AK',
@@ -327,12 +332,55 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  {id:'us-swat-2015',name:'US Police · Tactical Entry',country:'United States',
  organization:'police',environment:'urban',era:{start:2005,end:2026,label:'2000s–2020s'},
  summary:'Dark tactical uniform, external ballistic vest and protected helmet.',
- baseRecipeId:'police-entry',uniformSolid:'black',gearSolid:'black',
+ baseRecipeId:'police-entry',uniformSolid:'black',gearSolid:'black',gloveSolid:'black',
  styles:{headwear:'police-helmet'},policeVisorPosition:'raised',
  policeVisorTint:'clear',policeVisorFrame:'standard',
  headwearColor:'black',markings:{chest:'label-swat'},weaponFamily:'MP5 / AR carbine / pump shotgun',
  gaps:[patch,weapon('mp5-family','MP5 SMG for period-specific appearance'),gap('police-marking','Clear POLICE/SWAT identification','defining'),gap('visor-police','Optional ballistic face shield')],
  sourceNotes:'General law-enforcement equipment category; actual SWAT kit differs widely by agency.'},
+
+ // Dated VISUAL studies, not a claim of universal issue or unit-specific kit.
+ {id:'private-security-iraq-2007',name:'Private Security · Iraq 2007',country:'Iraq',
+ organization:'irregular',environment:'urban',era:{start:2006,end:2008,label:'Mid-2000s'},
+ summary:'Low-profile private security: blue polo, beige trousers and black armor.',
+ baseRecipeId:'police-entry',topSolid:'navy',trousersSolid:'khaki',
+ styles:{top:'polo-shirt',trousers:'bdu-trousers',headwear:'bare',
+  armorStyle:'soft-vest',rigStyle:'micro-rig',gloves:'gloves-none'},
+ gearSolid:'black',weaponFamily:'Mixed private-security weapons (AR proxy)',
+ gaps:[patch,weapon('private-security-rifle','Contract-specific primary weapon','minor')],
+ sourceNotes:'2007 reporting describes beige trousers, blue polos and black body armor on British private-security personnel in Iraq. Rifle preview is illustrative, not universal. Source: Washington Post, 24 August 2007.'},
+ {id:'ukraine-territorial-2022',name:'Ukrainian Territorial Defense · Early 2022',country:'Ukraine',
+ organization:'irregular',environment:'urban',era:{start:2022,end:2022,label:'February–March 2022'},
+ summary:'Early volunteers in mixed civilian clothing and minimal field equipment.',
+ baseRecipeId:'irregular-canvas',topSolid:'slate',trousersSolid:'olive-drab',
+ topColorway:'flannel-gray',
+ styles:{top:'button-up-shirt',trousers:'bdu-trousers',headwear:'bare',
+  armorStyle:'armor-bare',rigStyle:'chicom-rig',gloves:'gloves-none'},
+ gearSolid:'olive-drab',weaponFamily:'Variable AK-pattern rifles',
+ gaps:[patch,weapon('volunteer-loadout','Variable early-volunteer field kit','minor')],
+ sourceNotes:'Civilian clothes and mismatched kit were documented among Ukrainian territorial volunteers in early 2022. Gray flannel is a representative civilian garment, not a unit-issued shirt. Source: Deutsche Welle, 26 March 2022.'},
+ {id:'us-police-polo-2020',name:'US Police · Polo Patrol',country:'United States',
+ organization:'police',environment:'urban',era:{start:2018,end:2026,label:'Late 2010s–2020s'},
+ summary:'Navy police polo, subdued trousers, duty belt, cap and protective vest.',
+ baseRecipeId:'police-entry',topSolid:'navy',trousersSolid:'navy',
+ styles:{headwear:'patrol-cap',top:'polo-shirt',trousers:'acu-trousers',
+  armorStyle:'soft-vest',rigStyle:'no-rig',gloves:'gloves-none'},
+ gearSolid:'black',markings:{chest:'label-police'},
+ weaponFamily:'Optional patrol rifle (AR preview)',
+ gaps:[patch,weapon('patrol-primary','Agency-specific optional patrol rifle','minor')],
+ sourceNotes:'Generic patrol-police visual reference, not any specific agency. A long-gun preview is required by the game; do not interpret it as standard patrol armament.'},
+ {id:'us-swat-mp5-1995',name:'US SWAT · MP5 Era',country:'United States',
+ organization:'police',environment:'urban',era:{start:1988,end:2003,label:'Late 1980s–early 2000s'},
+ summary:'Navy tactical field uniform, classic helmet, protective vest and HK MP5A3.',
+ baseRecipeId:'police-entry',uniformSolid:'navy',
+ styles:{headwear:'police-helmet',top:'bdu-shirt',trousers:'bdu-trousers',
+  armorStyle:'soft-vest',rigStyle:'micro-rig',gloves:'gloves-field'},
+ policeVisorPosition:'raised',policeVisorTint:'clear',policeVisorFrame:'standard',
+ headwearColor:'black',gloveSolid:'black',gearSolid:'black',
+ markings:{chest:'label-swat'},weaponFamily:'HK MP5A3',
+ gaps:[patch,gap('visor-police','Period-specific protective police helmet'),
+  gap('swat-vest','Agency-specific ballistic protection','minor')],
+ sourceNotes:'Generic period tactical police silhouette using the modeled MP5A3. Helmets, identification and firearms varied by department; not a named SWAT team.'},
 ] as FactionReference[]).map(reference=>{
  const profile=REFERENCE_GEAR_PROFILES[reference.id];
  if(!profile)throw Error('Missing equipment profile for '+reference.id);
