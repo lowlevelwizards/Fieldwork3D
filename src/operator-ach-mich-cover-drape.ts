@@ -15,6 +15,10 @@ import {pasgtAtlasUv,PASGT_TOP_SEAM_OFFSETS,PASGT_FABRIC_PANELS,
 // z-fighting through the drape without inflating accessory band spacing.
 export const ACH_MICH_COVER_OFFSET=.205;
 export const ACH_MICH_COVER_FOLDED_HEM=.18;
+// Extend the upper left/right fabric over the un-beveled shell flank.
+// Otherwise the long cloth diagonal crosses the hard crown just below
+// its shorter bevel, leaving thin shell-colored flashes on both sides.
+export const ACH_MICH_COVER_SIDE_CROWN_ALLOWANCE=.24;
 export type AchMichCoverShell=typeof ACH_MICH_SHELLS[number];
 type Side='front'|'right'|'rear'|'left';
 type Ring='top'|'shoulder'|'hem';
@@ -31,7 +35,8 @@ function dimensions(shell:AchMichCoverShell):Style{
  const offset=ACH_MICH_COVER_OFFSET;
  return {
   shell,topY:crown.y+crown.height/2+offset,
-  topX:crown.width/2-ACH_MICH_UPPER_INSET+offset,
+  topX:crown.width/2-ACH_MICH_UPPER_INSET+offset+
+   ACH_MICH_COVER_SIDE_CROWN_ALLOWANCE,
   topFront:-crown.depth/2+ACH_MICH_UPPER_INSET-offset,
   topRear:crown.depth/2-ACH_MICH_UPPER_INSET+offset,
   // Direct, broad diagonal from crown toward the outer front/rear planes.
@@ -83,7 +88,13 @@ function samples(style:Style):readonly (readonly Sample[])[]{
 function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,number]{
  const front=s.side==='front',rear=s.side==='rear',side=!front&&!rear;
  const sign=s.side==='left'?-1:1;
- const extent=side?sideExtent(style,s.z)+ACH_MICH_COVER_OFFSET:style.sideX;
+ // The first and last side vertices must match the front/rear vertices.
+ // MICH skirt stations sometimes protrude beyond the main side extent;
+ // using those offsets at the corner left a visible open cover seam.
+ const corner=side&&(Math.abs(s.z-style.topFront)<1e-5||
+  Math.abs(s.z-style.topRear)<1e-5);
+ const extent=side?(corner?style.sideX:
+  sideExtent(style,s.z)+ACH_MICH_COVER_OFFSET):style.sideX;
  const x=ring==='top'?s.x:side?sign*extent:
   (s.x/style.topX)*style.sideX;
  const f=side?clamp((style.topFront+1.5-s.z)/1.5):1;
@@ -188,6 +199,8 @@ export function createAchMichDrapedGeometry(
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.achMichDrapedFabric=true;
  g.userData.h66CoverShellClearance=ACH_MICH_COVER_OFFSET;
+ g.userData.h71SideCrownAllowance=ACH_MICH_COVER_SIDE_CROWN_ALLOWANCE;
+ g.userData.h71JoinedCoverCorners=true;
  g.userData.achMichShell=shell;
  g.userData.achMichHemOnly=hemOnly;
  g.userData.printPanels=[...PASGT_FABRIC_PANELS];
