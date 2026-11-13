@@ -37,5 +37,7 @@ jobs:
         run: node --experimental-strip-types scripts/q5-diagnose-preopen.mjs
       - name: Diagnose pre-ajar RIGHT approach physical stall
         run: node --experimental-strip-types scripts/q5-diagnose-ajar.mjs
+      - name: Physically blocked hinge fixture adjudication
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --fixtures
       - name: Diagnose expanded 70-case real-world matrix
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended

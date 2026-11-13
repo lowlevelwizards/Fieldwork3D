@@ -3,6 +3,8 @@
  * Runs one case at 60Hz; timing is simulated seconds, not host CPU time.
  */
 import {activateSite,type Pt} from './breach-core.ts';
+import {doorClear,doorSwingBlocked} from './breach-door.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 import {newSession,team,planSquadEntry,planMove,
  stepSession,toggling} from './breach-game.ts';
 import {doorRangeSite,prepareDoorRangeCase,
@@ -21,6 +23,7 @@ export type Q5BenchmarkResult={
  lastCross:number|null;crossingSpan:number|null;finishTime:number|null;
  crossed:number;completed:number;minSeparation:number;
  settledMinSeparation:number;closeFrames:number;
+ doorState:{fraction:number;clear:boolean;blockedAtFullOpen:boolean};
  operators:{id:string;x:number;y:number;orders:number;
   blocker:string|null;pause:string|null;phase:string|null;
   maneuver:string|null;blockedSeconds:number}[];
@@ -71,6 +74,11 @@ export function runDoorRangeQ5(
     }
    }
   }
+  const world=sessionWorldGeometry(s);
+  const leaf=s.doors[0];
+  const doorState={fraction:+(leaf.openFraction??0).toFixed(3),
+   clear:doorClear(leaf,world),
+   blockedAtFullOpen:doorSwingBlocked(leaf,1,[],undefined,world)};
   const times=[...crossed.values()].sort((a,b)=>a-b);
   const complete=actors.filter(a=>!a.plan.length).length;
   const expectedBlocked=door==='locked'||door==='wedged';
@@ -89,7 +97,7 @@ export function runDoorRangeQ5(
     +minSeparation.toFixed(3):0,
    settledMinSeparation:Number.isFinite(settledMin)?
     +settledMin.toFixed(3):0,
-   closeFrames,
+   closeFrames,doorState,
    operators:actors.map(a=>({id:a.id,x:+a.p.x.toFixed(2),
     y:+a.p.y.toFixed(2),orders:a.plan.length,
     blocker:a.lastBlocker??null,pause:a.motorPause??null,
