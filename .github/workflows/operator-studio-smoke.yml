@@ -33,6 +33,7 @@ on:
       - 'scripts/ach-mich-h3-visual-capture.mjs'
       - 'scripts/ach-mich-h4-visual-capture.mjs'
       - 'scripts/ach-mich-h5-visual-capture.mjs'
+      - 'scripts/ach-mich-h6-visual-capture.mjs'
       - 'src/operator-ach-mich-cover-drape.ts'
       - 'src/operator-ach-mich-details.ts'
       - 'src/operator-ach-mich-cover-drape.ts'
@@ -106,6 +107,16 @@ jobs:
       - name: Rendering R7.14 — actual Arsenal weapon 3D shader mobile smoke
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/lighting-r714-') }}
         run: node scripts/smoke-arsenal-lighting-r714.mjs
+      - name: H6 ACH/MICH chin retention and unified rim actual phone WebGL review
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ach-mich-h6-') }}
+        run: node scripts/ach-mich-h6-visual-capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ach-mich-h6-') }}
+        with:
+          name: ach-mich-h6-mobile-comparison
+          path: ach-mich-h6-captures/
+          if-no-files-found: warn
+          retention-days: 14
       - name: H5 ACH/MICH diagonal cover and under-rim strap WebGL validation
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ach-mich-h5-') }}
         run: node scripts/ach-mich-h5-visual-capture.mjs

@@ -78,7 +78,7 @@ export type OperatorRig={
   lastHandling:Handling|null;lastHandlingAt:number;
   autoHandling:(HandlingTransition&{at:number;duration?:number})|null;
   elbowSpread:[number,number];legGap:[number,number];
-  colors:Map<THREE.MeshStandardMaterial,THREE.Color>;
+  colors:Map<THREE.MeshStandardMaterial|THREE.MeshBasicMaterial,THREE.Color>;
   clothMaterial:THREE.MeshStandardMaterial;vestMaterial:THREE.MeshStandardMaterial;
   trouserMaterial:THREE.MeshStandardMaterial;packMaterial:THREE.MeshStandardMaterial;
   headClothMaterial:THREE.MeshStandardMaterial;
@@ -332,10 +332,11 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   // Include costume, face and accessory materials as well as the core skin,
   // cloth and steel. This keeps silhouette inspection and downed desaturation
   // honest instead of leaving floating colored eye marks and gear details.
-  const colors=new Map<THREE.MeshStandardMaterial,THREE.Color>();
+  const colors=new Map<THREE.MeshStandardMaterial|THREE.MeshBasicMaterial,THREE.Color>();
   root.traverse(obj=>{
     if(obj instanceof THREE.Mesh&&
-      obj.material instanceof THREE.MeshStandardMaterial)
+      (obj.material instanceof THREE.MeshStandardMaterial||
+       obj.material instanceof THREE.MeshBasicMaterial))
       colors.set(obj.material,obj.material.color.clone());
   });
   const rig:OperatorRig={root,camoIdentity:id,legacyFrame,headCanonicalFrame,

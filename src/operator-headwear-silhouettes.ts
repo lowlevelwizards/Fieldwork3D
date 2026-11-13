@@ -413,14 +413,14 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
   width:10.15,height:3.62,depth:1.26},
  ...([-1,1] as const).flatMap(sign=>[
   {name:sign===-1?'ach-left-temple':'ach-right-temple',
-   x:sign*4.55,y:5.25,z:-3.25,
-   width:1.05,height:1.70,depth:2.60},
+   x:sign*4.55,y:5.25,z:-3.31,
+   width:1.05,height:1.70,depth:2.78},
   {name:sign===-1?'ach-left-ear-wrap':'ach-right-ear-wrap',
    x:sign*4.55,y:4.84,z:.55,
    width:1.05,height:2.96,depth:5.50},
   {name:sign===-1?'ach-left-nape-return':'ach-right-nape-return',
-   x:sign*4.55,y:4.50,z:4.20,
-   width:1.05,height:3.64,depth:2.85}
+   x:sign*4.55,y:4.50,z:4.18,
+   width:1.05,height:3.64,depth:2.91}
  ])
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region

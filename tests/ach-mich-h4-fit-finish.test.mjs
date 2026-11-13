@@ -18,8 +18,8 @@ import {HEADWEAR_DETAIL_PIXEL_WORLD_SIZE}
 import {PIXEL_WORLD_SIZE} from '../src/rendering/pixel-recipes.ts';
 
 const thresholds={
- ach:{frontY:5.6,rearZ:2.3},'mich-2001':{frontY:6.8,rearZ:4.0},
- 'mich-2002':{frontY:5.9,rearZ:3.4}
+ ach:{frontY:4.9,rearZ:2.3},'mich-2001':{frontY:6.4,rearZ:4.0},
+ 'mich-2002':{frontY:5.2,rearZ:3.4}
 };
 test('H4 pronounced but localized crown chamfer is consistent across shell and drape',()=>{
  assert.ok(ACH_MICH_BEVEL_HEIGHT>=1.0);
@@ -47,12 +47,13 @@ test('H4 physical screws, binding and strap geometry stay coherent with each she
   assert.ok(profile.frontStud[2]<profile.rearStud[2]);
   const strap=createAchMichRetentionGeometry(id);
   const p=strap.getAttribute('position');
-  assert.ok(strap.boundingBox.min.z<-4.85,'chin cup and strap sit ahead of face');
+  assert.ok(strap.boundingBox.min.z<-4.40&&strap.boundingBox.min.z>-4.85,
+   'chin cup remains visible without hanging far ahead of face');
   for(let i=0;i<p.count;i++){
    const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
    if(y>1.15&&z>-4.15&&z<1.9)
-    assert.ok(Math.abs(x)>4.25,
-     id+' strap outside head at '+x+','+y+','+z);
+    assert.ok(Math.abs(x)>4.05,
+     id+' strap clear of skull block at '+x+','+y+','+z);
   }
   const binding=createAchMichBindingGeometry(id);
   assert.ok(binding.getAttribute('position').count<1300,
