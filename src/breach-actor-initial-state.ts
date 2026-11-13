@@ -33,7 +33,7 @@ export const withActions=(a:Operator):TeamActor=>({
   blockedTime:0,lastNavRepairAt:-10,lastNormalLaneProbeAt:-10,
   priorP:{...a.p},haltOnContact:false,retreatPoint:null,
   recoveryAttempts:0,retryRouteAt:0,routeGoalKey:'',
-  lastAutoShoveAt:-100,
+  lastAutoShoveAt:-100,doorTraversal:null,doorTraversalLastProbeAt:-10,
   squeeze:false,squeezeYaw:a.heading,squeezeTime:0,
    autoSidestep:null,
   traversalPending:null,traversal:null,traversalElapsed:0,

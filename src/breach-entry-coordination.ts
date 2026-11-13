@@ -3,12 +3,14 @@
  * move an actor, or replace collision/doorway reservations.
  */
 import {doorClear} from './breach-door.ts';
+import type {SessionWorldGeometry} from './breach-world-context.ts';
 import {OPERATOR_RADIUS,doorCenter,type Pt} from './breach-core.ts';
 import type {Door} from './breach-core.ts';
 export type EntryDoorGate='ready'|'pending'|'missing';
-export function entryDoorState(door:Door|undefined):EntryDoorGate{
+export function entryDoorState(door:Door|undefined,
+ world?:SessionWorldGeometry):EntryDoorGate{
  if(!door)return 'missing';
- return doorClear(door)?'ready':'pending';
+ return doorClear(door,world)?'ready':'pending';
 }
 
 /** Stack placement is measured in the real door frame, not world X/Y.

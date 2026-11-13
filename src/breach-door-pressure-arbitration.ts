@@ -10,7 +10,9 @@ import {crossingDoor} from './breach-passage.ts';
 export function operatorCrossingDoor(actor:TeamActor,door:Door):boolean{
  const order=actor.plan[0];
  if(!order||(order.kind!=='move'&&order.kind!=='pie'))return false;
- const goal=actor.nav.at(-1)??order.p;
+ const episode=actor.doorTraversal;
+ const goal=episode?.doorId===door.id&&episode.authoredOrderId===order.id?
+   episode.destination:actor.nav.at(-1)??order.p;
  return crossingDoor({id:actor.id,p:actor.p,goal,
    side:actor.side,active:true,health:actor.health,
    blockedTime:actor.blockedTime},door);
