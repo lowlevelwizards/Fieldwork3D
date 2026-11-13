@@ -46,13 +46,28 @@ jobs:
             tests/replay-prop-stability-20261108.test.mjs \
             tests/breach-roadmap2-stage10-combat.test.mjs \
             tests/worldgen-29a-quality-matrix.test.mjs
-      - name: Deterministic 33-site real map baseline
+      - name: Deterministic 33-site real map corpus (candidate)
         run: node --experimental-strip-types scripts/audit-release-c0.mjs release-c0-matrix.json
+      - uses: actions/checkout@v4
+        with:
+          ref: fcce0e437fdd6464db8cb5eb9ad5116052370155
+          path: release-c-baseline
+      - name: Exact pre-C main corpus (unchanged generator)
+        run: |
+          npm install --prefix release-c-baseline --no-audit --no-fund
+          cp scripts/audit-release-c0.mjs release-c-baseline/scripts/audit-release-c0.mjs
+          (cd release-c-baseline && node --experimental-strip-types scripts/audit-release-c0.mjs release-c0-before.json)
+          mv release-c-baseline/release-c0-before.json release-c0-before.json
+      - name: Compare pre-C vs C0-C3 physical quality and host-relative generation cost
+        run: node scripts/compare-release-c0.mjs release-c0-before.json release-c0-matrix.json release-c0-comparison.json
       - name: Production TypeScript and Vite build
         run: npm run build
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: release-c0-map-matrix
-          path: release-c0-matrix.json
+          path: |
+            release-c0-matrix.json
+            release-c0-before.json
+            release-c0-comparison.json
           if-no-files-found: ignore

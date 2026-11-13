@@ -21,3 +21,8 @@ Never change fixed-step motor, physical door clearance, line-of-fire authority, 
 - The current topology sampler builds a fresh edge graph for both candidates every comparison and recreates room arrays when no comparison is needed.
 - Furnishing iterates over all site props repeatedly for each candidate, and runs sightline and ballistic scans both before and after each candidate. Preserve geometry semantics while restricting scans to the current room and reusing invariant baseline calculations.
 - Do not indiscriminately cache mutable session object rays; geometry revisions must invalidate any cached physical data.
+
+## Measured C0–C3 first exact-head candidate (CI job 43495499362)
+- 36/36 C0–C3 and adjacent tests passed; 33/33 real generated sites across 11 archetypes and three scales valid.
+- Node CI-host sample only: median generated-site audit 217 ms, p90 403 ms, max 1,250.7 ms, mean composite quality 93.7/100. These timings **include** full audit and are NOT mobile game load time/FPS.
+- TypeScript and Vite production build passed. New before/after corpus step now checks the exact pre-C base SHA to distinguish general host variance from quality regressions. Existing tests still guard required work function, window/door physics and replay ownership.
