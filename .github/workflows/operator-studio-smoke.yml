@@ -37,6 +37,8 @@ on:
       - 'scripts/helmet-h7-visual-capture.mjs'
       - 'scripts/helmet-h9-visual-capture.mjs'
       - 'src/operator-helmet-surface.ts'
+      - 'src/operator-helmet-field-fit.ts'
+      - 'tests/helmet-h10-fit.test.mjs'
       - 'src/operator-helmet-field-concealment.ts'
       - 'src/operator-helmet-field-net.ts'
       - 'src/operator-helmet-field-shroud.ts'
@@ -130,6 +132,21 @@ jobs:
       - name: Rendering R7.14 — actual Arsenal weapon 3D shader mobile smoke
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/lighting-r714-') }}
         run: node scripts/smoke-arsenal-lighting-r714.mjs
+      - name: H10 staged helmet fit geometry and integration
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h10-') }}
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/helmet-h10-*.test.mjs tests/ach-mich-h5-cover-strap.test.mjs tests/helmet-h9-foundation.test.mjs tests/helmet-h9-concealment.test.mjs tests/helmet-h9-net.test.mjs tests/helmet-h9-shroud.test.mjs tests/helmet-h9-rails.test.mjs tests/helmet-h9-bungees.test.mjs tests/helmet-h9-goggles.test.mjs tests/helmet-h9-velcro.test.mjs tests/helmet-h9-addons.test.mjs tests/helmet-h9-final.test.mjs
+      - name: H10 covered-shell and textile phone WebGL capture
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h10-') }}
+        run: node scripts/helmet-h9-visual-capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h10-') }}
+        with:
+          name: helmet-h10-review
+          path: helmet-h9-captures/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: H9 staged helmet foundation types and focused geometry
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h9-') }}
         run: |
