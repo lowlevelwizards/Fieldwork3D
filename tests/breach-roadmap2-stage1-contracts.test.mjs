@@ -24,7 +24,10 @@ import {applyReplayFrame} from '../src/breach-replay.ts';
 // undo/redo. Compare the actual serialized command contract, not object shape.
 const authoredPlan=plan=>JSON.parse(JSON.stringify(plan));
 const GOLDENS=Object.freeze({
- door:'f0300241e8134d1a65c5e71fd22c827447e96128a92bb82c2bd64958c02f895c',
+ // Q2 verified real-session four-person ordering/WAIT/collision outcome;
+ // unlike the earlier visibility-only golden, the passage coordinator
+ // now enforces stable occupied-throat + predecessor clearance together.
+ door:'ed0190cf41e1bf1218a18ad9045c5354182948ad4a050f6d92aeb658aac556a8',
  medical:'a7b43bd0f015e426050ab1a001ce8bf67daf511a936efa9d3e5ea779de27f0b4',
  combat:'7d186411687555c809c6aac8caeedd0814008ac92b291cc799a550247ecda349',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
