@@ -9,13 +9,12 @@ export type FireUrgency='routine'|'look'|'watch'|'suspect'|'contact';
 export function fireUrgency(facts:{
  confirmed:boolean;suspicious:boolean;
  aimMode?:'free'|'fixed'|'track'|null;
- authored?:boolean
+ authored?:boolean;lookOrder?:boolean
 }):FireUrgency{
  if(facts.confirmed)return 'contact';
  if(facts.suspicious)return 'suspect';
- if(!facts.authored)return 'routine';
- if(facts.aimMode==='track')return 'watch';
- if(facts.aimMode==='fixed')return 'look';
+ if(facts.authored&&facts.aimMode==='track')return 'watch';
+ if(facts.lookOrder||facts.authored&&facts.aimMode==='fixed')return 'look';
  return 'routine';
 }
 /** A non-contact posture is anticipation only: no shots or new intel. */
