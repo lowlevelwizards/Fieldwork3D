@@ -353,13 +353,16 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
    !['half-mask','respirator-half','gas-gp5','gas-m17',
      'gas-m40','gas-m50','shemagh','bandana'].includes(assembly.facewear));
  }
- if(fieldActive&&shell==='pasgt'&&layers.pasgtCover){
+ if(shell==='pasgt'&&layers.pasgtCover){
   const old=layers.pasgtCover.field;
-  old.retention.visible=fieldState.fastened&&old.retention.visible;
-  old.bandMaterial.color.setHex(resolveHelmetFieldColor(fieldState.bandColor,
-   headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d,true));
-  old.webbingMaterial.color.setHex(resolveHelmetFieldColor(fieldState.webbingColor,
-   headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d,true));
+  if(fieldActive)old.retention.visible=fieldState.fastened&&old.retention.visible;
+  // Undo or reset must restore the original field-dress dyes as well.
+  old.bandMaterial.color.setHex(fieldActive?
+   resolveHelmetFieldColor(fieldState.bandColor,
+    headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d,true):0x5a6650);
+  old.webbingMaterial.color.setHex(fieldActive?
+   resolveHelmetFieldColor(fieldState.webbingColor,
+    headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d,true):0x58644e);
  }
  const modern=layers.modernCovers[assembly.headwear];
  if(modern&&isH1ModernHelmet(shell)){
@@ -381,9 +384,9 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
     (!fieldActive||fieldState.fastened)&&
     !['half-mask','respirator-half','gas-gp5','gas-m17','gas-m40',
       'gas-m50','shemagh','bandana'].includes(assembly.facewear));
-   if(fieldActive)details.webbingMaterial.color.setHex(
+   details.webbingMaterial.color.setHex(fieldActive?
     resolveHelmetFieldColor(fieldState.webbingColor,
-     headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d));
+     headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d):0x59654f);
   }
   const hardware=layers.modernHardware[assembly.headwear];
   if(hardware)updateHelmetHardware(hardware,effective.setup,assembly.headset);
