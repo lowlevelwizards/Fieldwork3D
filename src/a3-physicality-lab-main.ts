@@ -150,8 +150,8 @@ function draw(){
   operator:probe.shooter,allies:probe.allies
  },null,2);
  el<HTMLElement>('pose').textContent=JSON.stringify({
-  poseTime:poseOut.time,complete:poseOut.valid,
-  generation:poseOut.generation,slots:poseOut.slotCount,
+  poseTime:poseOut?.time??null,complete:poseOut?.valid??false,
+  generation:poseOut?.generation??0,slots:poseOut?.slotCount??0,
   stockError:rig.stockError,gripError:rig.gripError,eyeError:rig.eyeError,
   footScheduler:'rig-only (not firing authority)',feet
  },null,2);
@@ -165,8 +165,8 @@ function draw(){
 function report(){
  return {kind:'fieldwork-a3-0-baseline',config:{...config},tick:tickIndex,
   deltaSeconds:1/60,sample:probe,
-  posePreview:{time:inspectOperatorPoseOutput(rig).time,
-   valid:inspectOperatorPoseOutput(rig).valid,
+  posePreview:{time:inspectOperatorPoseOutput(rig)?.time??null,
+   valid:inspectOperatorPoseOutput(rig)?.valid??false,
    footPhases:rig.footsteps.feet.map(f=>f.phase)},
   timing:{samples:measurements,meanProbeMs:probeMs/Math.max(1,measurements),
    maxProbeMs,meanStepSessionMs:stepMs/Math.max(1,tickIndex),
