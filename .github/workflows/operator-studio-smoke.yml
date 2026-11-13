@@ -125,6 +125,14 @@ jobs:
           path: helmet-h7-captures/
           if-no-files-found: warn
           retention-days: 14
+      - name: H8 phone WebGL helmet visual review archive
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h8-') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: helmet-h8-mobile-visual-review
+          path: helmet-h7-captures/
+          if-no-files-found: warn
+          retention-days: 14
       - name: H6 ACH/MICH chin retention and unified rim actual phone WebGL review
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/ach-mich-h6-') }}
         run: node scripts/ach-mich-h6-visual-capture.mjs
