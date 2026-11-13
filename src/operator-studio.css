@@ -262,6 +262,7 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 /* R7.8 — one compact, explicit live Studio lighting audition surface.
  * Keep the operator viewport unobscured on a phone; choices live in the
  * scrollable editor sheet and never compete with appearance SAVE/COMPARE. */
+.studio-light-lab[hidden]{display:none!important}
 .studio-light-lab{flex:0 0 auto;border:1px solid #728c7c;border-radius:9px;
  background:#253d32;min-width:0}
 .studio-light-lab>summary{list-style:none;display:flex;align-items:center;
