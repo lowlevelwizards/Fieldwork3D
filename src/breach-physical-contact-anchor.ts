@@ -145,7 +145,8 @@ export function resolvePhysicalContactPose(
  if(!c||!validPhysicalContact(c,now)||
     !contactAllowedByOwners(c,owners))return null;
  const weight=physicalContactWeight(c,now);
- return weight>0?{contact:c,weight,retained:c.releasedAt===null}:null;
+ return weight>0?{contact:c,weight,
+   retained:c.releasedAt===null||now<c.releasedAt}:null;
 }
 /** D4 adapter: the moving leaf is the sole door geometry source; its
  * existing fixed-step hand contact remains the actual authority.
