@@ -11,6 +11,7 @@ import {decideHybridStep,hybridStepThreshold} from './breach-hybrid-step-planner
 import {advanceHybridContact,beginHybridContact,hybridFootTarget} from './breach-hybrid-contact.ts';
 import {hybridLanding} from './breach-hybrid-landing.ts';
 import {plannedBootYaw} from './breach-foot-yaw.ts';
+import {supportedPivotYaw} from './breach-directional-gait.ts';
 
 type Pt={x:number;y:number};
 const clone=(p:Pt)=>({x:p.x,y:p.y});
@@ -82,7 +83,7 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
     s.accumulated=Math.max(0,s.accumulated-request.threshold);
     const index=request.index;
     const foot=s.feet[index];
-    const landing=hybridLanding(input,index,s.feet[1-index],foot);
+    const landing=hybridLanding(input,index,s.feet[1-index],foot,s.mode);
     if(!landing.valid){
       // Keep the supporting foot; request motor slowdown on future
       // integration instead of inventing a foothold through furniture.
@@ -110,8 +111,10 @@ export function advanceDistanceGait(s:DistanceGaitState,input:FootstepInput):
   // lab prototype deliberately does not alter the authoritative motor.
   s.lastPosition=clone(input.position);s.lastTime=input.time;
   s.lastFacing=facing;s.lastYaw=input.rootYaw;
-  s.pelvisYaw+=clamp(Math.atan2(
-    Math.sin(input.rootYaw-s.pelvisYaw),
-    Math.cos(input.rootYaw-s.pelvisYaw)),-.18,.18);
+  // A2.3: stationary turns cannot swivel the hips through two unmoving
+  // planted boots. Use their real, fixed-step corrective replant yaws.
+  s.pelvisYaw=supportedPivotYaw(s.pelvisYaw,input.rootYaw,
+    s.feet[0].worldYaw,s.feet[1].worldYaw,
+    travelled<.04&&input.speed<6);
   return result;
 }

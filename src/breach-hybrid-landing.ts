@@ -5,6 +5,8 @@ import {horizontalLegReach,fitLandingToHip,LEG_HIP_SIDE}
   from './breach-leg-geometry.ts';
 import {hybridPhaseDurations} from './breach-hybrid-contact.ts';
 import {plannedBootYaw} from './breach-foot-yaw.ts';
+import {classifyLocomotion,type LocomotionMode} from './breach-locomotion.ts';
+import {directionalFootPlan} from './breach-directional-gait.ts';
 import {bootOutlineClearance,BOOT_CLEARANCE}
   from './breach-gait-geometry.ts';
 type Pt={x:number;y:number};
@@ -16,24 +18,28 @@ const dotSide=(a:Pt,b:Pt,f:number)=>
 export type HybridLanding={position:Pt;valid:boolean;futurePelvis:Pt;
  futureHip:Pt;reason:'clear'|'blocked'};
 export function hybridLanding(input:FootstepInput,index:number,
- other:FootstepState,stepFoot:FootstepState):HybridLanding{
+ other:FootstepState,stepFoot:FootstepState,
+ mode:LocomotionMode=classifyLocomotion(input.speed,
+  input.facingYaw??-input.rootYaw,input.travelYaw,input.turning)):HybridLanding{
  const facing=input.facingYaw??-input.rootYaw;
+ const policy=directionalFootPlan(input,mode,index as 0|1,stepFoot.worldYaw);
  const d=hybridPhaseDurations(input);
  // Bounded motor-velocity projection for an airborne foot, never a
  // presentation-layer position correction.
  const horizon=d.unload+d.swing+d.landing*.5;
- const expected=Math.min(input.speed*horizon,horizontalLegReach()*.89);
+ const expected=Math.min(input.speed*horizon*policy.travelProjection,
+   horizontalLegReach()*.89);
  const future={x:input.position.x+Math.cos(input.travelYaw)*expected,
    y:input.position.y+Math.sin(input.travelYaw)*expected};
  const sign=index===0?-1:1,width=input.gait==='squeeze'?2.6:
   input.posture==='crouch'?6.2:5.6;
  const futureHip=lateral(future,facing,sign*LEG_HIP_SIDE);
- const travelLead=input.gait==='run'?1.8:
-   input.gait==='pie'||input.gait==='squeeze'?.1:.8;
- const preferred=lateral({
-    x:future.x+Math.cos(input.travelYaw)*travelLead,
-    y:future.y+Math.sin(input.travelYaw)*travelLead
-   },facing,sign*width);
+ const travelLead=policy.travelLead;
+ const projected={
+   x:future.x+Math.cos(input.travelYaw)*travelLead,
+   y:future.y+Math.sin(input.travelYaw)*travelLead};
+ const preferred=lateral(projected,policy.landingFacing,
+   sign*width+policy.sideBias);
  const otherSide=dotSide(future,other.plantedAt,facing);
  const wanted=dotSide(future,preferred,facing);
  // Keep an ordinary lateral shuffle wider than the boot itself.

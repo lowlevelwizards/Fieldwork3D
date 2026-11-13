@@ -4,6 +4,10 @@ on:
     paths:
       - 'src/breach-contact-balance.ts'
       - 'src/breach-motion-transitions.ts'
+      - 'src/breach-directional-gait.ts'
+      - 'src/breach-hybrid-landing.ts'
+      - 'src/breach-distance-gait.ts'
+      - 'src/breach-hybrid-step-planner.ts'
       - 'src/breach-replay-motion.ts'
       - 'src/breach-lab-tracks.ts'
       - 'src/breach-operator-lab.ts'
@@ -13,9 +17,11 @@ on:
       - 'tests/animation-a2-*.test.mjs'
       - 'scripts/audit-animation-a2.mjs'
       - 'scripts/audit-animation-a2-2.mjs'
+      - 'scripts/audit-animation-a2-3.mjs'
       - 'scripts/smoke-animation-a2.mjs'
       - 'docs/animation-a2-0-a2-1-scope.md'
       - 'docs/animation-a2-2-scope.md'
+      - 'docs/animation-a2-3-scope.md'
       - '.github/workflows/animation-a2-motion.yml'
   workflow_dispatch:
 permissions:
@@ -35,6 +41,8 @@ jobs:
         run: node --experimental-strip-types scripts/audit-animation-a2.mjs --out artifacts/animation-a2/report.json
       - name: A2.2 deterministic movement transitions and replay report
         run: node --experimental-strip-types scripts/audit-animation-a2-2.mjs --out artifacts/animation-a2/transitions.json
+      - name: A2.3 directional gait/replay/contact matrix
+        run: node --experimental-strip-types scripts/audit-animation-a2-3.mjs --out artifacts/animation-a2/directional.json
       - name: Build and typecheck
         run: npm run build
       - name: Upload A2 time series
@@ -45,6 +53,7 @@ jobs:
           path: |
             artifacts/animation-a2/report.json
             artifacts/animation-a2/transitions.json
+            artifacts/animation-a2/directional.json
           if-no-files-found: ignore
   gallery:
     # Playwright 1.56 does not install Chromium on the newer Ubuntu 26 runner.
