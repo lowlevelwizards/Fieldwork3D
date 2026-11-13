@@ -86,7 +86,9 @@ add('headset','headset',[
 add('top','uniform',[
  ['bdu-shirt','Classic Field Blouse'],['acu-shirt','Modern Utility Blouse'],
  ['combat-shirt','Combat Shirt'],['smock-jacket','Windproof Field Smock'],
- ['gorka-jacket','Mountain / Gorka Jacket']
+ ['gorka-jacket','Mountain / Gorka Jacket'],
+ ['t-shirt','T-shirt'],['button-up-shirt','Button-up Shirt'],
+ ['polo-shirt','Polo Shirt'],['tank-top','Tank Top']
 ]);
 // Bare-short placeholders are no longer visible wardrobe options.
 // Unremodeled lower-body pieces are represented by one honest foundation.
@@ -162,7 +164,7 @@ export const SLEEVE_STATES=['unrolled','cuffed','rolled'] as const;
 export type SleeveState=typeof SLEEVE_STATES[number];
 export const TROUSER_HEMS=['unbloused','bloused','cuffed'] as const;
 export type TrouserHem=typeof TROUSER_HEMS[number];
-export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'?
+export const sleeveStateOptions=(top:string)=>top==='bdu-shirt'||top==='acu-shirt'||top==='combat-shirt'||top==='button-up-shirt'?
  SLEEVE_STATES:['unrolled'] as const;
 export const trouserHemOptions=(trousers:string)=>trousers==='bdu-trousers'||
  trousers==='acu-trousers'||trousers==='gorka-trousers'?TROUSER_HEMS:['unbloused'] as const;
@@ -346,7 +348,7 @@ export const setWardrobeStyle=(wardrobe:WardrobeOptions,slot:WardrobeSlot,id:str
 export function setWardrobeFabricSolid(wardrobe:WardrobeOptions,
  channel:FabricCamoChannel,id:GarmentSolidId,
  outfit?:CamoOutfit):WardrobeOptions{
- if(!FABRIC_SOLID_CHOICES[channel].includes(id))return wardrobe;
+ if(!solidChoicesFor(channel,outfit).includes(id))return wardrobe;
  if(outfit&&channel==='armor'&&!validArmorSolid(outfit.armorStyle,id))
   return wardrobe;
  if(outfit&&channel==='gear'&&outfit.rigStyle!=='no-rig'&&
