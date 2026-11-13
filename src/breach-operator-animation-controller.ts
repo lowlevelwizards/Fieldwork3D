@@ -620,7 +620,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     fit=interpolateWeaponCarry(activeTransition!.authoredFrom!,fit,
       activeTransition!.alpha);
   const carryTransition=manualShort?
-    {fit,active:false,alpha:1,bends:null}:
+    {fit,active:false,alpha:1,bends:null,hands:null}:
     sampleCarryTransition(r,p,fit,!!coupled);
   fit=carryTransition.fit;
   const carryTransitionActive=carryTransition.active;
