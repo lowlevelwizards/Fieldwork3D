@@ -64,7 +64,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   metal=mat(0x596158),velcro=mat(0x777860),
   glass=mat(0x26363a),reflect=mat(0xc8c4a8);
  const bandMaterial=mat(0x586548),webbingMaterial=mat(0x586548);
- const cy=p.top-2.48,front=p.front-.09,rear=p.rear+.08,side=p.side+.15;
+ const front=p.front-.09,rear=p.rear+.08,side=p.side+.15;
  const band=addGroup('band');
  // PASGT uses its approved band geometry; ACH/MICH gets a fitted ribbon.
  const x=p.side+.18,y=p.top-2.39,f=front-.12,b=rear+.12;
