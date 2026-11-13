@@ -20,11 +20,12 @@ function signature(s:Session):string{
  let key='';
  for(const a of s.operators){
   if(a.side!=='blue')continue;
-  key+=a.id+':'+a.p.x+','+a.p.y+':'+a.pace+':'+a.posture+';';
+  key+=a.id+':'+a.p.x+','+a.p.y+':'+a.pace+':'+a.posture+
+   ':'+(a.loadMovementScale??1)+';';
   for(const n of a.plan){
    key+=n.id+':'+n.kind+':'+n.p.x+','+n.p.y+':'+
     (n.duration??'')+':'+(n.moveMode??'')+':'+
-    (n.doorId??'')+';';
+    (n.paceState??'')+':'+(n.doorId??'')+';';
    if(n.arc)for(const p of n.arc)key+=p.x+','+p.y+';';
   }
  }

@@ -62,6 +62,10 @@ test('Q3 planning preview caches route schedule, invalidates upon plan edits and
   const changed=visiblePassageSchedule(s);
   assert.notEqual(changed,first,'existing preview invalidates after authoring');
   assert.equal(visiblePassageSchedule(s),changed);
+  a.plan[0].paceState='run';
+  const speedChanged=visiblePassageSchedule(s);
+  assert.notEqual(speedChanged,changed,
+   'a change to plan pacing must invalidate crossing order');
   assert.ok(undoPlan(s,a.id));
   assert.notEqual(visiblePassageSchedule(s),changed,
    'undo cannot reuse a stale crossing preview');
