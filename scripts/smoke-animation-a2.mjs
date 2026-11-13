@@ -39,6 +39,13 @@ try{
   await page.goto(origin+'/operator-lab.html?tab=poses',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.querySelector('#preview')?.dataset.ready==='true',
    null,{timeout:40000});
+  // Pose QA MUST render a physical firearm. The Lab defaults to an
+  // unarmed mannequin, which previously made carry screenshots misleading.
+  await page.locator('#weapon').selectOption('carbine');
+  const carryModes={
+   'low-ready':'low','high-ready':'high','ready':'ready',
+   'point-shoot':'point','active-aim':'ads','short-stock':'short'
+  };
   for(const item of tracks){
    await page.locator('#poseAnimation').selectOption(item.name);
    await page.locator('#timeline').evaluate((node,time)=>{
@@ -49,6 +56,12 @@ try{
     return d?.ready==='true'&&d.track===name&&
       Math.abs(Number(d.time)-time/1000)<.003&&Number(d.drawCalls)>0;
    },item,{timeout:20000});
+   if(carryModes[item.name])
+    await page.waitForFunction(({mode})=>
+     document.querySelector('#preview')?.dataset.weaponHandling===mode,
+     {mode:carryModes[item.name]},{timeout:20000});
+   if(await page.locator('#weapon').inputValue()!=='carbine')
+    throw Error('Weapon QA unexpectedly became unarmed');
    await page.screenshot({path:out+'/iphone-'+item.name+'.png'});
   }
   await page.setViewportSize({width:1120,height:820});
@@ -63,6 +76,10 @@ try{
     const d=document.querySelector('#preview')?.dataset;
     return d?.track===name&&Math.abs(Number(d.time)-time/1000)<.003;
    },item,{timeout:20000});
+   if(carryModes[item.name])
+    await page.waitForFunction(({mode})=>
+     document.querySelector('#preview')?.dataset.weaponHandling===mode,
+     {mode:carryModes[item.name]},{timeout:20000});
    await page.screenshot({path:out+'/desktop-'+item.name+'.png'});
   }
   if(errors.length)throw Error('A2 browser errors: '+errors.join('; '));
