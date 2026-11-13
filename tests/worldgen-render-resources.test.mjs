@@ -11,5 +11,9 @@ test('generated scene reuses bounded material and box caches without disposing s
  assert.ok(lifecycle.includes('!sharedGeometries.has(geometry)'));
  assert.ok(lifecycle.includes('for(const instance of instances)instance.dispose()'));
  assert.match(source,/solidCache\.get\(key\)/);
- assert.match(source,/this\.windowPaneMaterial/);
+ // Window pane material is now port-owned by the site scene builder.
+ assert.ok(source.includes('private windowPaneMaterial:'));
+ const builder=readFileSync(new URL('../src/rendering/breach-site-scene-builder.ts',
+   import.meta.url),'utf8');
+ assert.ok(builder.includes('windowPaneMaterial:THREE.MeshStandardMaterial|null'));
 });
