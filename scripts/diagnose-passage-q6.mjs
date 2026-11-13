@@ -8,7 +8,8 @@ const scenarios=process.argv.includes('--all')?
  ['inward-left','inward-right','outward-left','outward-right'].flatMap(door=>
   ['straight','left','right','split','angle45'].map(approach=>[door,approach])):
  [['outward-left','right'],['outward-right','angle45'],
-  ['outward-right','straight'],['inward-left','straight']];
+  ['outward-right','straight'],['inward-left','straight'],
+  ['ajar-outward','left'],['ajar-outward','angle45']];
 const round=n=>+n.toFixed(3);
 function stage(n){
  if(!n)return 'done';
