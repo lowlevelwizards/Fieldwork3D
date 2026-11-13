@@ -384,6 +384,10 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     const openingY=-(door.swing??-1)*lx/leafLength;
     const pressure=vx*openingX+vy*openingY;
     if(Math.abs(pressure)<Math.hypot(vx,vy)*.12)continue;
+    // Cheap local contact first; it must not snapshot traffic across
+    // the entire map for a door the actor cannot physically touch.
+    const before=pointToSegment(from,panel);
+    if(before>OPERATOR_RADIUS+7)continue;
     // Crossing intent wins over incidental closing, but never grants
     // collision bypass. A genuine reachable panel can be pulled by hand;
     // otherwise the operator must move around the free edge.
@@ -398,9 +402,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     // Reject this candidate before mutating hinge velocity or open state.
     if(closing&&policy.deferClosing?.(door))continue;
     if(!closing&&(door.openFraction??0)>=PUSHED_OPEN_LIMIT-.001)continue;
-    const before=pointToSegment(from,panel);
-    // The capsule must be near the *actual rotating leaf*.
-    if(before>OPERATOR_RADIUS+7)continue;
+    // The capsule is already proven near this actual leaf.
     let minimum=before;
     for(let i=1;i<=steps;i++){
       const t=i/steps;

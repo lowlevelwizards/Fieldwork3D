@@ -11,7 +11,8 @@ import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
-import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute}
+import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute,
+ recordDoorManeuverContact}
  from './breach-door-traversal-maneuver.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
@@ -57,6 +58,7 @@ export function resolveMotorCollision(
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     s.operators.filter(o=>o.health>0).map(o=>o.p),
     sessionDoorPressurePolicy(s,a),world);
+  recordDoorManeuverContact(a,doorContact);
   // Existing handle reach animation shows a genuine, short support-hand
   // assist, never an invented door manipulation across the room.
   if(doorContact?.handAssist&&s.seconds-a.lastDoorAt>.76){
