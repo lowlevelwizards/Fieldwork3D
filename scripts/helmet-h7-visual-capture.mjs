@@ -69,8 +69,15 @@ try{
     await bandColor.selectOption('tan');
     await capture(id+'-band-tan-side','side');
     const bandTan=await stage.screenshot();
-    if(bandBlack.equals(bandTan))
-     throw Error('Band color did not change any rendered pixels for '+id);
+    if(bandBlack.equals(bandTan)){
+     const diag=await page.locator('#studioCanvas').evaluate(c=>({
+      selected:c.dataset.helmetBandHex,visible:c.dataset.helmetBandVisible,
+      meshes:c.dataset.helmetBandMeshCount,
+      webbing:c.dataset.helmetWebbingHex,drawCalls:c.dataset.drawCalls
+     }));
+     throw Error('Band color did not change any rendered pixels for '+id+
+      ' diagnostics '+JSON.stringify(diag));
+    }
    const webbing=page.locator('.material-group')
     .filter({hasText:'Auto matches period/shell family.'}).locator('select');
    await webbing.selectOption('tan');
