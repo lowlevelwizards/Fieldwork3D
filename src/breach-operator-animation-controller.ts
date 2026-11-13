@@ -685,6 +685,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       -maxHeadVertical,maxHeadVertical)*strength;
     frame.head.position.z+=clamp(nearest.z-eye.z,
       -maxHeadLateral,maxHeadLateral)*strength;
+    // A2.5: the head is chest-local; lowering its center more than the
+    // exposed neck can bridge makes the neck vanish INTO the collar.
+    // Prefer a small residual sight offset to a detached/collapsed head.
+    // The gun, shot heading and both grip sockets remain unchanged.
+    frame.head.position.y=Math.max(9.45,frame.head.position.y);
+    frame.head.position.z=clamp(frame.head.position.z,-1.30,1.30);
   }
   const eye=P(ANATOMY.eyeRight.x,
     frame.head.position.y+ANATOMY.eyeRight.y-ANATOMY.headRest.y,

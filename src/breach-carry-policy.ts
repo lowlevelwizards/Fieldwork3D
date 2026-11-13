@@ -22,9 +22,14 @@ export function chooseCarry(f:CarryFacts):CarryChoice{
  // An ally actually ahead of the barrel must never be flagged simply
  // because the rest of the fireteam is stacked nearby. A separate
  // clearance probe calculates how much the gun must be brought back.
- if(f.friendlyAhead&&(f.aim<.2||f.intent==='stack'||
-   f.intent==='door'||f.intent==='entry'))
-  return pick('low','friendly-courtesy',true);
+ // A neutral rear stack must lift the muzzle rather than aim low into
+ // the teammate's back. LOOK/PIE keeps the deliberate scanning carry:
+ // the physical barrel probe still short-stocks if the lane is unsafe.
+ if(f.friendlyAhead&&f.aim<.20){
+  if(f.intent==='look'||f.intent==='pie'||f.intent==='engage')
+   return pick('ready','watch',true);
+  return pick('high','friendly-courtesy',true);
+ }
  const near=f.weapon==='shotgun'?86:f.weapon==='smg'?100:74;
  if(f.threatRange!=null&&f.threatRange<=near&&f.aim>=.34)
   return pick('point','close-contact',true);

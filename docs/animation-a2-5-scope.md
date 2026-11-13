@@ -1,0 +1,18 @@
+# Animation A2.5 — continuous, interruptible pose presentation
+
+## Acceptance and architecture
+A2.5 is a presentation and selection pass, not a new simulation clock, hitbox, muzzle, footstep scheduler, AI order or aim/fire permission.
+
+1. **Layer independence.** Lower-body travel/foot contacts continue from the motor irrespective of high, low, ready, point, ADS or short-stock handling. Running, traversal and interaction intents still explicitly own their appropriate carry. Strafing/reversing does not reset the held upper-body intent.
+2. **Friendly/threshold courtesy.** A neutral operator directly behind a teammate uses tucked, muzzle-up high ready rather than lowering the rifle toward a teammate's back. A look/watch order can maintain ready/point/ADS when actual clearance permits; a valid sideways clearance must not be treated as central obstruction merely because a friendly is nearby. Live fire still uses the independent fire-lane blocker. Tight-door and near-body obstruction retain an explicit *blocked* state; never permit clipping to masquerade as successful clearance.
+3. **Interruptions.** A single output-stage continuity mechanism can blend arbitrary retargets (ADS to high, high to short, short to low, turn to reload and back) from the most recently displayed pose. Apply smooth quaternion interpolation and local translation easing to coherent chest, head, pelvis, weapon and upper-body groups, not independent one-frame teleports. Visible child/parent transforms remain in the same commit; equipment visibility, dropped weapon, world root, lower-body foot contacts and muzzle safety never receive temporal interpolation. Same-time samples do not keep advancing. Replays/seek/discontinuities resolve directly from recorded pose time, without render history.
+4. **Progressive compression and give.** Preserve the existing deterministic distance-driven barrel/stock retraction and paired grip sockets (A2.4). The presentation bridge smooths changes in shoulders, wrists and elbow orientations as a *group*, retaining both articulated arm segments. An obstruction in immediate danger is allowed to snap to a physically safe endpoint rather than interpolate the gun through a wall; prefer pre-contact continuous compression.
+5. **Head and anatomy.** ADS sight accommodation may shift/rotate the head, but cannot drive the head/neck geometry down into the collar. Keep a bounded head-local neck clearance and avoid changing the shot-time aim vector.
+6. **Cost ceiling.** No new scene nodes, per-frame timers, searches or raycasts. Reuse typed output buffers; update existing transforms within the one six-stage publication transaction. Fixed number of eligible slots; no global gait/animation scheduler.
+7. **QA matrix.** Every six-pose pair including interrupted reversals; standing/crouched forward/backward/strafe; contact/no-contact; doorway and side-offset friendly; all primary weapon family groups; ADS sight; reload, door interaction, casualty, replay seek and paused identical timestamps. Assert complete stage publication, intact foot contacts, finite normalized quaternions, no friendly-fire bypass, and no additional writer. Use named A2.5 focused tests, typecheck and production build. Mobile/desktop WebGL visual review remains a separate release gate.
+
+## Release discipline
+Commit feature branch stages, run focused CI (existing A2 gates plus A2.5 matrix). Do not merge or deploy if baseline or new gates are red or the previous Pages publication is unresolved. Record any visual limitations before closeout.
+
+## Deferred
+Anatomically accurate arbitrary-mesh 3D swept collisions and physics-driven upper-body inverse dynamics across furniture and multiple moving operators. This pass is stylized, not full ragdoll dynamics.

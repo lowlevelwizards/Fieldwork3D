@@ -19,6 +19,10 @@ export type HandlingSample={
 };
 export function sampleHandlingTransition(
  r:OperatorRig,p:OperatorPose,handling:Handling):HandlingSample{
+ // Presentation-only time keeps transitions moving during tactical pause.
+ // Simulation action clocks and replay time are never advanced here.
+ const visualSeconds=p.deterministic?p.seconds:
+   p.idleLifeSeconds??p.seconds;
  // Active aim and ordinary firing still need a visual transition.
  // Shot-time muzzle and projectile headings remain simulation-owned.
  // Clearance blends are deterministic, distance-sampled and already
@@ -28,7 +32,7 @@ export function sampleHandlingTransition(
  if(!p.handlingOverride&&handling!==r.lastHandling){
    if(passiveBlend&&r.lastHandling){
      r.autoHandling={from:r.lastHandling,to:handling,alpha:0,
-       at:p.seconds,
+       at:visualSeconds,
        // Physically blocked short stock responds quickly, but is no
        // longer a one-frame elbow teleport. Urgent aim also stays sharp.
        duration:(handling==='short'||r.lastHandling==='short')?.15:
@@ -43,7 +47,7 @@ export function sampleHandlingTransition(
    // Keep a LINEAR time phase; each presentation channel applies the
    // same ease once, avoiding unintentional double-smooth pauses.
    ...r.autoHandling,alpha:Math.max(0,Math.min(1,
-     (p.seconds-r.autoHandling.at)/(r.autoHandling.duration??.26)))}:undefined;
+     (visualSeconds-r.autoHandling.at)/(r.autoHandling.duration??.26)))}:undefined;
  if(!passiveBlend)r.autoHandling=null;
  if(auto&&auto.alpha>=1)r.autoHandling=null;
  const active=p.handlingTransition??auto;

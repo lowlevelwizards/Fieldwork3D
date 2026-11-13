@@ -59,7 +59,10 @@ export function teammateAheadForHandling(
   const dx=pt.x-p.x,dy=pt.y-p.y;
   const forward=dx*fx+dy*fy;
   const across=Math.abs(dx*fy-dy*fx);
-  if(forward>=4&&forward<48&&across<20)return true;
+  // A teammate to the side of the barrel is not a front obstruction.
+  // The shot-time fire lane retains its larger independent safety radius.
+  // The narrower visual cone permits a genuine lateral muzzle opening.
+  if(forward>=4&&forward<48&&across<14.5)return true;
  }
  return false;
 }

@@ -20,6 +20,8 @@ export type ClearanceResult={
 };
 /** Lead distance gives the elbows room to fold before contact; the rear
  * margin finishes compression when the free muzzle would penetrate. */
+// Physical hard-block timing must not be relaxed just for visual doorway
+// grace: too-short anticipation can allow an impossible tight corridor.
 export const SHORT_STOCK_APPROACH_LEAD=14;
 export const SHORT_STOCK_REAR_MARGIN=7;
 const MAX_LEGACY_RETRACTION=3.4;
