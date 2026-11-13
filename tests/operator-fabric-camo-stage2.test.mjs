@@ -34,7 +34,8 @@ test('authentic policy has exactly the approved 62 patterns and five independent
  assert.equal(FABRIC_CAMO_POLICY['mitchell-leaf'].channels.length,0);
  assert.equal(fabricCamoCompatible('mitchell-leaf','top',outfit),false);
  assert.equal(fabricCamoCompatible('mitchell-leaf','pack',outfit),false);
- assert.ok(HEADWEAR_CAMO_ELIGIBILITY.ach.includes('mitchell-leaf'));
+ assert.ok(!HEADWEAR_CAMO_ELIGIBILITY.ach.includes('mitchell-leaf'),
+  'ACH-era cover palette excludes pre-ACH Mitchell leaf');
  assert.equal(fabricCamoCompatible('desert-marpat','armor',outfit),false);
  assert.equal(fabricCamoCompatible('woodland-marpat','armor',outfit),false);
  assert.equal(fabricCamoCompatible('woodland-marpat','pack',
