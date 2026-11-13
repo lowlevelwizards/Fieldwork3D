@@ -96,7 +96,7 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     // Bake immobile exterior/ground fixtures per spatial cell. Keep owner-
     // scoped doors, cover and fog groups independent; never touch descendants.
     consolidateStaticFixtureParts(host.root,{recursive:false,cellSize:220});
-    host.repeatedFixtures?.flush(host.root);
+    host.repeatedFixtures?.flush(host.root,host.sharedBoxGeometries);
 }
 
 /** Own no resources; renderer's material/scene lifetime remains authoritative. */
