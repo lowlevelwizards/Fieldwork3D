@@ -2137,7 +2137,8 @@ export class TacticalScene3D{
         pelvisYaw:replay?.pelvisYaw[actor.id]??liveMotion?.pelvisYaw[actor.id],
         travelYaw:replay?.travelYaw[actor.id]??
           liveMotion?.travelYaw[actor.id],
-        posture:actor.posture,injury:actor.injuryStage,weapon:actor.weapon,
+        posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,
+        injury:actor.injuryStage,weapon:actor.weapon,
         gait:actor.squeeze?'squeeze':
           actor.plan[0]?.kind==='pie'?'pie':
           actor.pace==='run'||actor.plan[0]?.moveMode==='sprint'?
