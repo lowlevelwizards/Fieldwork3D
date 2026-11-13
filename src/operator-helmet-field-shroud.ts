@@ -62,33 +62,37 @@ export function addAchMichThreeHoleShroud(
   [-.73,.34],[-.82,.80]
  ];
  const backing=contour(outer);
- face(anchor,'molded-shroud-rubber-interface',backing,dark,.075,-.09);
+ face(anchor,'molded-shroud-rubber-interface',backing,dark,.055,-.06);
  const body=contour(outer);
  relief(body,[[-1.43,-.19],[-.95,-.13],[-.86,.16],[-1.35,.08]]);
  relief(body,[[1.43,-.19],[1.35,.08],[.86,.16],[.95,-.13]]);
- face(anchor,'three-hole-shroud-open-wings',body,metal,.20,.035);
+ face(anchor,'three-hole-shroud-open-wings',body,metal,.14,.025);
  // Raised wedge and dark recessed NVG shoe: distinctly NOT a small box.
  const cradle=contour([
   [-.61,.73],[.61,.73],[.71,.42],[.69,-.65],
   [.50,-.90],[-.50,-.90],[-.69,-.65],[-.71,.42]
  ]);
- face(anchor,'raised-nvg-receiver-cradle',cradle,dark,.23,.26);
+ face(anchor,'raised-nvg-receiver-cradle',cradle,dark,.16,.185);
  const socket=contour([
   [-.42,.44],[.42,.44],[.42,-.42],[.28,-.67],
   [-.28,-.67],[-.42,-.42]
  ]);
- face(anchor,'nvg-receiver-locking-slot',socket,light,.065,.49);
+ face(anchor,'nvg-receiver-locking-slot',socket,metal,.055,.36);
+ const well=contour([
+  [-.28,.28],[.28,.28],[.28,-.40],[-.28,-.40]
+ ]);
+ face(anchor,'recessed-nvg-locking-well',well,dark,.025,.420);
  for(const sign of [-1,1]){
   const guide=contour(sign===-1?[
    [-.69,.50],[-.49,.50],[-.49,-.62],[-.66,-.78]
   ]:[
    [.49,.50],[.69,.50],[.66,-.78],[.49,-.62]
   ]);
-  face(anchor,'nvg-locking-track',guide,metal,.13,.52);
+  face(anchor,'nvg-locking-track',guide,metal,.09,.385);
  }
  // Three real hole positions: top center and one each on the side wings.
  for(const [x,y] of [[0,.91],[-1.47,-.32],[1.47,-.32]])
-  screw(anchor,x,y,.31,light,dark);
+  screw(anchor,x,y,.23,light,dark);
  anchor.userData.h9ShroudScrews=3;
  anchor.userData.h9ShroudProfile='three-hole-winged-nvg';
 }
