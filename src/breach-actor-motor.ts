@@ -18,6 +18,7 @@ import {handleMotorDoor} from './breach-motor-door.ts';
 import {resolveMotorCollision} from './breach-motor-collision.ts';
 import {d,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {syncDoorTraversalEpisode} from './breach-door-traversal-episode.ts';
+import {recoverDoorApproachDrift} from './breach-door-traversal-maneuver.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
 
@@ -45,6 +46,10 @@ export function advanceActorMotor(
  }
  if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
 
+ // Recover an operator who wandered far sideways while still committed
+ // to the same doorway. One full-radius swept staging correction per
+ // episode; never touch authored LOOK/WATCH or the global route graph.
+ if(a.side==='blue'&&recoverDoorApproachDrift(a,s))return true;
  const routeStart=profile?beginMotorCpuMeasurement():0;
  const readiness=prepareMotorRoute(a,p,dt,s,hooks);
  if(profile)profile('motor-route',finishMotorCpuMeasurement(routeStart));
@@ -60,6 +65,7 @@ export function advanceActorMotor(
    !a.plan[0]?.entryDoorId&&a.blockedTime<.2&&
    !a.squeeze&&!a.traversal&&!a.traversalPending&&
    !a.autoSidestep&&!a.aimInstruction&&
+   a.doorTraversal?.maneuver!=='outside-leaf'&&
    !approachingNarrowThreshold(a.p,p,s.doors),
    (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,
      sessionWorldGeometry(s))))a.nav.shift();

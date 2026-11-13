@@ -5,8 +5,8 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
-import {incidentalCloseWouldBlockTeammate,operatorCrossingDoor}
- from './breach-door-pressure-arbitration.ts';
+import {sessionDoorPressurePolicy}
+ from './breach-door-pressure-frame.ts';
 import {escapeOpenDoorOverlap} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
  from './breach-squeeze-route.ts';
@@ -25,6 +25,12 @@ export function prepareMotorRoute(
     a.lastNormalLaneProbeAt=-10;
   }
   if(!a.nav.length){
+    // Completed D2 temporary doorway footwork returns to the original
+    // authored destination, not another arbitrary temporary node.
+    if(a.doorTraversal?.maneuver==='outside-leaf'){
+      a.doorTraversal.waypoints=[];
+      a.doorTraversal.waypointIndex=0;
+    }
     // A hinge from an earlier state can leave the operator embedded in its
     // collision capsule. Take a bounded real swept step out before route
     // backoff; do not demand a new waypoint or let the route fail forever.
@@ -45,10 +51,8 @@ export function prepareMotorRoute(
       const probe={x:a.p.x+(p.x-a.p.x)/goalDistance*probeLength,
         y:a.p.y+(p.y-a.p.y)/goalDistance*probeLength};
       pressDoorOnBodyAttempt(a.p,probe,s.doors,dt,
-        s.operators.filter(o=>o.health>0).map(o=>o.p),{
-          deferClosing:door=>incidentalCloseWouldBlockTeammate(s.operators,a,door),
-          preferOpening:door=>operatorCrossingDoor(a,door)
-        },sessionWorldGeometry(s));
+        s.operators.filter(o=>o.health>0).map(o=>o.p),
+        sessionDoorPressurePolicy(s,a),sessionWorldGeometry(s));
     }
     // When two chairs interlock there may be no navigable path, so the
     // ordinary collision branch cannot run. Probe only a real, short

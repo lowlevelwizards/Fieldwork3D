@@ -359,6 +359,8 @@ export type BodyDoorPressurePolicy={
  deferClosing?:(door:Door)=>boolean;
  /** A physical crossing may pull a reachable door instead of slamming it. */
  preferOpening?:(door:Door)=>boolean;
+ /** Fixed-tick session policy: one body-generated hinge impulse per door. */
+ claimContact?:(door:Door)=>boolean;
 };
 export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   dt:number,actors:readonly Pt[],
@@ -366,7 +368,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
   const length=dist(from,to);
   if(length<.0001)return null;
   const steps=Math.max(1,Math.ceil(length/2));
-  const nearby:{door:Door;distance:number;closing:boolean;assist:boolean}[]=[];
+  let best:{door:Door;distance:number;closing:boolean;assist:boolean}|null=null;
   for(const door of doors){
     if(door.kind==='shutter'||door.kind==='sliding'||
        door.wedged||door.heldBy||
@@ -408,12 +410,12 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
     }
     if(minimum>OPERATOR_RADIUS+1.5||
        minimum>before-.015&&before>OPERATOR_RADIUS+1)continue;
-    nearby.push({door,distance:minimum,closing,assist});
+    if(!best||minimum<best.distance||
+      minimum===best.distance&&door.id.localeCompare(best.door.id)<0)
+      best={door,distance:minimum,closing,assist};
   }
-  nearby.sort((a,b)=>a.distance-b.distance||
-    a.door.id.localeCompare(b.door.id));
-  const contact=nearby[0];
-  if(!contact)return null;
+  const contact=best;
+  if(!contact||policy.claimContact?.(contact.door)===false)return null;
   const door=contact.door;
   const initial=door.openFraction??0;
   // Pressure at the outer latch edge has more torque than shoulder contact
