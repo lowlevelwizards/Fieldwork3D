@@ -28,12 +28,12 @@ details{margin-top:9px}summary{cursor:pointer;padding:6px;color:#dfcba9}
 @media(max-width:800px){.controls{grid-template-columns:repeat(3,minmax(0,1fr))}.workspace{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:500px){.controls{grid-template-columns:repeat(2,minmax(0,1fr))}main{padding:9px}.actions button{flex:1 1 28%}header{padding:12px} }
 </style></head><body>
-<header><strong>FIELDWORK / A3.0 PHYSICALITY LAB</strong><nav>
+<header><strong>FIELDWORK / A3.1 PHYSICALITY LAB</strong><nav>
 <a href="./index.html">GAME</a><a href="./physicality-lab.html">PASSAGE LAB</a>
 <a href="./door-test-range.html">DOOR RANGE</a><a href="./operator-lab.html">OPERATOR LAB</a>
 </nav></header>
 <main>
-<section><h1>ACTUAL BREACH / FIRING & CONTACT BASELINE</h1>
+<section><h1>ACTUAL BREACH / HEIGHT-AWARE FRIENDLY SAFETY</h1>
 <p>This lab evaluates the current production muzzle, firing-lane guard and motor inside an isolated real game session. It adds no new aiming, crouching or bracing abilities.</p>
 <div class="controls" style="margin-top:12px">
 <label>SCENARIO<select id="scenario"></select></label>
@@ -58,11 +58,13 @@ details{margin-top:9px}summary{cursor:pointer;padding:6px;color:#dfcba9}
 <span><b style="background:#ef9d8e"></b>Friendly blocker</span>
 <span><b style="background:#8fcfc2"></b>Friendly</span>
 <span><b style="background:#dfbb82"></b>Door / cover</span></div>
-<div class="note">BASELINE: the current friendly safety check is a flat 10.5-unit disk, regardless of standing or crouching. Orange dashed lines illustrate the existing candidate sidestep only. A3.1–A3.4 will improve these rules later.</div>
+<div class="note">A3.1: standing and crouched teammates use physical torso + helmet height bands for the actual weapon and projectile path. The original flat 10.5-unit radius remains visible as an A3.0 comparison. An orange dashed correction is the existing legacy motor candidate, not new micro-lean behavior. Automatic crouching and micro-aiming are NOT implemented yet.</div>
 </section>
 <section><h2>LIVE DIAGNOSTICS</h2>
 <div class="readouts">
 <div class="metric"><small>ACTUAL SHOT LANE</small><strong id="lane">—</strong></div>
+<div class="metric"><small>LEGACY FLAT LANE</small><strong id="legacyLane">—</strong></div>
+<div class="metric"><small>HEIGHT MODEL DELTA</small><strong id="heightDelta">—</strong></div>
 <div class="metric"><small>WEAPON BLOCK</small><strong id="block">—</strong></div>
 <div class="metric"><small>HANDLING</small><strong id="handling">—</strong></div>
 <div class="metric"><small>SIMULATION</small><strong id="clock">0.000s</strong></div>
