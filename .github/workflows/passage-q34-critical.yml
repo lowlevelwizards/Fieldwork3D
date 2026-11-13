@@ -11,6 +11,7 @@ on:
       - 'src/breach-2d-projected-overlays.ts'
       - 'tests/passage-q3-badges.test.mjs'
       - 'tests/passage-q4-leaf-stage.test.mjs'
+      - 'tests/passage-q4-session.test.mjs'
       - '.github/workflows/passage-q34-critical.yml'
   workflow_dispatch:
 concurrency:
@@ -31,7 +32,7 @@ jobs:
       - name: Typecheck and production bundle
         run: npm run build
       - name: Q0-Q4 queue and badge invariants
-        run: node --experimental-strip-types --test tests/passage-q0-trace.test.mjs tests/passage-q1-yield.test.mjs tests/passage-q2-coordinator.test.mjs tests/passage-q3-badges.test.mjs tests/passage-q4-leaf-stage.test.mjs
+        run: node --experimental-strip-types --test tests/passage-q0-trace.test.mjs tests/passage-q1-yield.test.mjs tests/passage-q2-coordinator.test.mjs tests/passage-q3-badges.test.mjs tests/passage-q4-leaf-stage.test.mjs tests/passage-q4-session.test.mjs
       - name: Four-hinge full session physical regression
         run: node --experimental-strip-types --test tests/door-traversal-d2d3-four-operator.test.mjs tests/door-traversal-d4-live-grip.test.mjs
       - name: Four-operator visual and physical audit
