@@ -92,7 +92,7 @@ test('169: shoulder girdle and eye alignment contribute without moving gameplay 
 test('169: Lab diagnostics and version label use the same elbow profile',()=>{
  const lab=readFileSync(new URL('../src/breach-operator-lab.ts',import.meta.url),'utf8');
  const html=readFileSync(new URL('../operator-lab.html',import.meta.url),'utf8');
- const rig=readFileSync(new URL('../src/breach-operator-rig.ts',import.meta.url),'utf8');
+ const rig=readFileSync(new URL('../src/breach-operator-animation-controller.ts',import.meta.url),'utf8');
  assert.match(html,/id="poseAnimation"/,
    'Pose Lab still exposes authored stance selection');
  assert.match(lab,/rig\.handlingProfile\?\?undefined/);
