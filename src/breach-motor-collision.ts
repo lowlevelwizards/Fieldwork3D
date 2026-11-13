@@ -39,25 +39,35 @@ export function resolveMotorCollision(
  const world=sessionWorldGeometry(s);
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
-  // Preserve roster order and live positions in one scan.
+  // The friendly steering routine is an exact no-op unless a teammate
+  // is within its 21/25-unit gate of the proposed step. Detect that gate
+  // during the existing opposing-actor scan; only then allocate the full
+  // friendly roster and evaluate swept alternative steps.
   const narrowApproach=approachingNarrowThreshold(a.p,p,s.doors);
-  let blocking:TeamActor|undefined;
-  const friendlyPositions:Pt[]=[];
+  let blocking:TeamActor|undefined,needsFriendlySteering=false;
+  const steerRadius=d(a.p,next)>26?25:21;
+  const steerRadiusSq=steerRadius*steerRadius;
   for(const b of s.operators){
     if(b===a||b.health<=0)continue;
+    const dx=b.p.x-move.x,dy=b.p.y-move.y;
+    const gapSq=dx*dx+dy*dy;
     if(b.side!==a.side){
-      if(!blocking&&d(b.p,move)<11)blocking=b;
-    }else if(!narrowApproach)friendlyPositions.push(b.p);
+      if(!blocking&&gapSq<121)blocking=b;
+    }else if(!narrowApproach&&gapSq<steerRadiusSq)
+      needsFriendlySteering=true;
   }
-  // Teammates are soft traffic, not rigid obstacles: preserve movement when
-  // there is no safe sidestep, and never force the stationary teammate away.
-  // Passage reservations supply queue spacing near narrow doors.
-  // Additional friendly steering here can put the last soldier against a
-  // jamb, causing false progress and a costly squeeze into the opening.
-  const desiredMove=narrowApproach?move:
-    friendlyPassingStep(a.p,move,next,friendlyPositions,
+  // Teammates remain soft traffic. Passage reservations own narrow doors,
+  // so a cosmetic sidestep must not steer the queue into the moving leaf.
+  let desiredMove=move;
+  if(needsFriendlySteering){
+    const friendlyPositions:Pt[]=[];
+    for(const b of s.operators)
+      if(b!==a&&b.health>0&&b.side===a.side)
+        friendlyPositions.push(b.p);
+    desiredMove=friendlyPassingStep(a.p,move,next,friendlyPositions,
       (from,to)=>a.squeeze?sweptProfileClear(from,to,s.doors,
         a.squeezeYaw,'squeeze',world):sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+  }
   // Resolve the physical body's intended step against the actual leaf
   // BEFORE evaluating movement clearance. The hinge may yield right now;
   // when it cannot (wall/actor), existing collision and recovery remain.
