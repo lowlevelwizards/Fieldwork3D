@@ -373,6 +373,8 @@ export class MissionRecorder{
         velocity:mix(a.velocity,b.velocity,alpha),
         turning:mix(a.turning,b.turning,alpha),
         aim:mix(a.aim,b.aim,alpha),
+        coverStanceDrop:mix(a.coverStanceDrop??0,
+          b.coverStanceDrop??0,alpha),
         reload:mix(a.reload,b.reload,alpha),
         recoil:mix(a.recoil,b.recoil,alpha),
         stability:mix(a.stability,b.stability,alpha),
