@@ -168,7 +168,7 @@ test('R7.12 A/B modes preserve safe no-AA/hard-shadow/off-bake fallback',()=>{
  assert.equal(standard.canvasAA,true);
  assert.equal(standard.pixelRatio,1.5);
  assert.equal(standard.shadowFilter,'soft');
- assert.equal(standard.shadowSize,512);
+ assert.equal(standard.shadowSize,1024);
  assert.equal(requestedStudioRenderQuality('?studioShadowSize=512',3).shadowSize,512);
  assert.equal(requestedStudioRenderQuality('?studioShadowSize=1024',3).shadowSize,1024);
  assert.equal(standard.shadowBias,'stable');

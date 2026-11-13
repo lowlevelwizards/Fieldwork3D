@@ -818,6 +818,11 @@ function canEquip(slot:WardrobeSlot,id:string){
 }
 function changeWardrobe(next:WardrobeOptions){
  if(saveInFlight)return;
+ // Refresh replaces material controls; preserve the user's exact scroll and
+ // active selection step instead of jumping them back to item browsing.
+ const sheet=materialRoot.closest<HTMLElement>('.studio-sheet');
+ const savedScroll=sheet?.scrollTop??0;
+ const savedStep=activeStep;
  const oldLook=current();
  const changedFacewear=next.styles.facewear!==oldLook.styles.facewear||
   next.d2FaceMode!==oldLook.d2FaceMode;
@@ -831,6 +836,9 @@ function changeWardrobe(next:WardrobeOptions){
  }else{edits.set(selected,parsed);dirty.add(selected);}
  say(dirty.size+' UNSAVED OPERATOR LOOK'+(dirty.size===1?'':'S'));
  refresh();
+ activeStep=savedStep;
+ applyStudioStep();
+ if(sheet)sheet.scrollTop=savedScroll;
  if(changedFacewear&&activeCategory==='facewear')focusCameraOnCategory('facewear');
 }
 function chooseStyle(slot:WardrobeSlot,id:string){
@@ -852,7 +860,7 @@ function undo(){
  say('RESTORED PREVIOUS APPEARANCE');refresh();
 }
 undoButton.addEventListener('click',undo);
-const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
+const MATERIAL_LABELS=/^(SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|ACH \/ MICH COVER|ACH \/ MICH SHELL COLOR|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
 function studioSectionKind(node:HTMLElement):'materials'|'details'{
  return node.dataset.studioStep==='materials'?'materials':'details';
 }
@@ -958,6 +966,8 @@ function addCamoSwatches(target:HTMLElement,ids:readonly HeadwearCamoId[],
    if(!wrap){
     wrap=document.createElement('div');wrap.className='fw-camo-choice-wrap';
     const b=makeButton(HEADWEAR_CAMO_RECIPES[id].label,active===id,()=>{
+     // Refreshing the preview rebuilds the picker. Keep its disclosure open.
+     openCamoLibraries.add(context);
      recordCamoRecent(id);choose(id);
     });
     b.className='swatch';
@@ -1353,7 +1363,7 @@ function renderMaterials(){
     'Select an appropriate solid shell/fabric or approved cover print.');
   if(solids.length){
    const grid=document.createElement('div');grid.className='solid-swatches';
-   for(const id of sortHeadwearSolids(solids,w.headwearColor)){
+   for(const id of sortHeadwearSolids(solids)){
     const info=HEADWEAR_SOLID_COLORS[id];
     const b=makeButton(info.label,(item==='pasgt'||simpleAchMich||!w.headwearCamo)&&
      (w.headwearColor??solids[0])===id,()=>changeWardrobe({

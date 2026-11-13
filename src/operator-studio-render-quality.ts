@@ -1,4 +1,3 @@
-import {DEFAULT_SHADOW_MAP_SIZE} from './rendering/shadow-map-budget.ts';
 /** Studio-only rendering A/B quality settings. All toggles are query-scoped;
  * no effects on tactical gameplay, saved appearance, shared assets or replay.
  * Canvas MSAA must be chosen before WebGL context creation. */
@@ -19,10 +18,9 @@ export function requestedStudioRenderQuality(search:string,
   pixelRatio:Math.max(1,Math.min(maxDevice,2,Math.max(1,ratio))),
   shadowFilter:p.get('studioShadowFilter')==='hard'?'hard':
    p.get('studioShadowFilter')==='pcf'?'pcf':'soft',
-  // Default stays at the unified 512 budget; larger maps are explicit
-  // Studio-only comparison options and never spill into live Breach.
+  // A 1024² Studio-only inspection map. Gameplay retains the 512² budget.
   shadowSize:p.get('studioShadowSize')==='2048'?2048:
-   p.get('studioShadowSize')==='1024'?1024:DEFAULT_SHADOW_MAP_SIZE,
+   p.get('studioShadowSize')==='512'?512:1024,
   shadowBias:p.get('studioShadowBias')==='legacy'?'legacy':'stable',
   liveShadows:p.get('studioLiveShadows')!=='off',
   celAA:p.get('studioCelAA')!=='off',

@@ -66,7 +66,9 @@ test('solid colors use stable perceptual lightness with recommended shades first
  assert.equal(new Set(sorted).size,colors.length);
  assert.ok(sorted.indexOf('forest-green')<sorted.indexOf('sand'));
  const helmets=sortHeadwearSolids(['black','navy','olive-drab','desert-tan'],'navy');
- assert.equal(helmets[0],'navy');
+ assert.equal(helmets[0],'olive-drab');
+ assert.deepEqual(sortHeadwearSolids(['black','navy','olive-drab','desert-tan'],'olive-drab'),helmets,
+  'the selected shell color never jumps to the front');
  assert.equal(new Set(helmets).size,4);
 });
 test('coordinated outfit only applies manufactured, eligible equipment finishes',()=>{

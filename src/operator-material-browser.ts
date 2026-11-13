@@ -314,7 +314,7 @@ export function sortGarmentSolids(values:readonly GarmentSolidId[],
 
 /** Same perceptual ordering for the independent helmet/shell palette. */
 export function sortHeadwearSolids(values:readonly HeadwearSolidColorId[],
- preferred?:HeadwearSolidColorId):HeadwearSolidColorId[]{
+ _preferred?:HeadwearSolidColorId):HeadwearSolidColorId[]{
  const groups=(id:HeadwearSolidColorId)=>{
   if(/green|olive|soviet|postwar|foliage/.test(id))return 0;
   if(/tan|coyote/.test(id))return 1;
@@ -323,8 +323,6 @@ export function sortHeadwearSolids(values:readonly HeadwearSolidColorId[],
   return 4;
  };
  return [...new Set(values)].sort((a,b)=>{
-  if(preferred&&(a===preferred||b===preferred))
-   return a===preferred?-1:1;
   return groups(a)-groups(b)||
    colorLightness(HEADWEAR_SOLID_COLORS[b].hex)-
     colorLightness(HEADWEAR_SOLID_COLORS[a].hex)||
