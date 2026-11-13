@@ -3,7 +3,8 @@
  */
 import {readHelmetSetup} from './operator-helmet-setup-policy.ts';
 export const PASGT_BANDS=['none','elastic'] as const;
-export const PASGT_CONCEALMENTS=['none','foliage','scrim','net'] as const;
+export const PASGT_CONCEALMENTS=['none','foliage','foliage-loops','foliage-sparse',
+ 'foliage-medium','foliage-heavy','scrim','net'] as const;
 export type PasgtBand=typeof PASGT_BANDS[number];
 export type PasgtConcealment=typeof PASGT_CONCEALMENTS[number];
 export type PasgtDetails={
@@ -18,7 +19,8 @@ export const PASGT_DEFAULT_DETAILS:Readonly<PasgtDetails>=Object.freeze({
 const allowed=<T extends string>(value:unknown,values:readonly T[],fallback:T):T=>
  typeof value==='string'&&values.includes(value as T)?value as T:fallback;
 export const pasgtConcealmentRequiresSlits=(value:PasgtConcealment):boolean=>
- value==='foliage'||value==='scrim';
+ value==='foliage'||value==='scrim'||value==='foliage-loops'||
+ value==='foliage-sparse'||value==='foliage-medium'||value==='foliage-heavy';
 export function readPasgtDetails(value:unknown,legacyHelmetSetup?:unknown):PasgtDetails{
  const incoming:Record<string,unknown>=value&&typeof value==='object'&&!Array.isArray(value)?
   value as Record<string,unknown>:{};
