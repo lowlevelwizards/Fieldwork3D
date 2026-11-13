@@ -212,7 +212,7 @@ test('reference-specific colors and flannel survive appearance copying without i
  const original=initialEquipmentLoadout('carbine');
  const snapshot=JSON.stringify(original);
  const before=initialWardrobe();
- before.skinTone='tone-01';
+ before.skinTone='medium-neutral';
  const preview=referenceLookForKit('ukraine-territorial-2022',original,before);
  assert.equal(preview.resolved.wardrobe.topColorway,'flannel-gray');
  assert.equal(preview.wardrobe.topColorway,'flannel-gray');
