@@ -85,6 +85,7 @@ type MutableOutput={
  staged:Float64Array[];
  indicesByStage:number[][];
  stageMask:number;pendingTime:number;pending:boolean;
+ lastRenderedHandling:string|null;
 };
 const outputs=new WeakMap<OperatorRig,MutableOutput>();
 function outputFor(r:OperatorRig):MutableOutput{
@@ -108,7 +109,7 @@ function outputFor(r:OperatorRig):MutableOutput{
  output={slots:declared.map(node=>({...node,values:new Float64Array(11)})),
   slotCount:declared.length,time:0,generation:0,valid:false,
   staged:declared.map(()=>new Float64Array(11)),indicesByStage,
-  stageMask:0,pendingTime:0,pending:false};
+  stageMask:0,pendingTime:0,pending:false,lastRenderedHandling:null};
  outputs.set(r,output);
  return output;
 }
@@ -248,14 +249,20 @@ export function captureOperatorPoseOutput(r:OperatorRig,p:OperatorPose):
  * Visibility and equipment changes remain discrete. Replay and seeks do
  * not consume any render history.
  */
-function blendCompletePoseOutput(output:MutableOutput,p:OperatorPose):void{
+function blendCompletePoseOutput(output:MutableOutput,p:OperatorPose,
+ renderedHandling:string|null):void{
  if(!output.valid||p.deterministic||p.replayFeet||p.down||p.surrender)
   return;
  const elapsed=p.seconds-output.time;
  if(elapsed<0||elapsed>.35)return;
  const body=poseContinuityAlpha(elapsed,'body');
  const head=poseContinuityAlpha(elapsed,'head');
- const carry=poseContinuityAlpha(elapsed,'carry');
+ // A named carry switch must start at the previous DISPLAYED pose,
+ // never at a delayed IK target. Otherwise two different directors can
+ // move the gun on the very first transition frame (ADS -> low, for example).
+ const retarget=output.lastRenderedHandling!==null&&
+   renderedHandling!==null&&output.lastRenderedHandling!==renderedHandling;
+ const carry=retarget?0:poseContinuityAlpha(elapsed,'carry');
  for(let i=0;i<output.slotCount;i++){
   const slot=output.slots[i],id=slot.id;
   let group:PoseContinuityGroup|null=null;
@@ -276,10 +283,13 @@ function blendCompletePoseOutput(output:MutableOutput,p:OperatorPose):void{
  */
 export function commitOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
  const output=outputFor(r);
+ const renderedHandling=p.handlingOverride??p.clearanceCarry??
+   r.lastHandling??null;
  if(output.pending&&output.pendingTime===p.seconds&&
     output.stageMask===COMPLETE_STAGE_MASK)
-  blendCompletePoseOutput(output,p);
+  blendCompletePoseOutput(output,p,renderedHandling);
  publishOperatorPoseOutput(r,p,true);
+ output.lastRenderedHandling=renderedHandling;
 }
 /** Introspection for Lab and diagnostics only. Published buffers remain
  * stable while another frame is staged. Mutating typed values is unsupported.
