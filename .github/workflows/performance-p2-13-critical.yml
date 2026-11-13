@@ -26,8 +26,12 @@ jobs:
           tests/performance-p2-13-traversal-hotpaths.test.mjs
           tests/breach-mantle-contract.test.mjs
           tests/breach-mantle-session.test.mjs
-          tests/breach-wall-glide-here-window.test.mjs
           tests/breach-roadmap2-stage7-motor.test.mjs
           tests/performance-p2-8-sweep-broadphase.test.mjs
+      - name: Focused wall overlap and window traversal regressions
+        run: >
+          node --experimental-strip-types --test
+          --test-name-pattern='walking both directions|nearby wall|motor reports resolved|tiny static-wall overlap|window classification|closed standard window|angled destination'
+          tests/breach-wall-glide-here-window.test.mjs
       - name: Typecheck and production build
         run: npm run check && npx vite build
