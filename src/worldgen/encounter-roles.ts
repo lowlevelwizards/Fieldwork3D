@@ -46,12 +46,19 @@ export function assignObjectiveSecurity(
  const capture=assigned.find(a=>a.role==='target');
  const focus=mission==='capture'?capture?.position:site.objective;
  if(!focus)return assigned;
- const closest=assigned.map((actor,index)=>({
-   actor,index,distance:near(actor.position,focus)
-  })).filter(x=>x.actor.role!=='target'&&x.actor.role!=='leader'&&
-    x.distance<=175)
-   .sort((a,b)=>a.distance-b.distance||
-    a.actor.id.localeCompare(b.actor.id))[0];
+ // Preserve distance and actor-id tie behavior without allocating
+ // and sorting the entire population for an already placed objective.
+ let closest:{actor:EncounterActorSpec;index:number;distance:number}|null=null;
+ for(let index=0;index<assigned.length;index++){
+  const actor=assigned[index];
+  if(actor.role==='target'||actor.role==='leader')continue;
+  const distance=near(actor.position,focus);
+  if(distance>175)continue;
+  if(!closest||distance<closest.distance||
+     distance===closest.distance&&
+       actor.id.localeCompare(closest.actor.id)<0)
+    closest={actor,index,distance};
+ }
  if(!closest)return assigned;
  const role:EncounterRole=mission==='hold'?'reserve':'sentry';
  assigned[closest.index]={...closest.actor,role,weaponProfile:'security'};

@@ -101,8 +101,37 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
   verified.set(anchor.room.id,ok);
   return ok;
  };
+ // These properties depend only on the authored room and immutable site,
+ // not on which NPC group is being assigned. The original scoring recalculated
+ // doorway midpoints, activity props and 2.5D defender suitability for
+ // every anchor × group. Compute them once at map-build time.
+ const immutableScore=new Map<string,{
+   entryDist:number;nearestDoor:number;nearActivity:boolean;tactical:number
+ }>();
+ for(const anchor of anchors){
+  let nearestDoor=Infinity;
+  for(const door of site.doors){
+   const dx=anchor.p.x-(door.a.x+door.b.x)/2;
+   const dy=anchor.p.y-(door.a.y+door.b.y)/2;
+   const range=Math.hypot(dx,dy);
+   if(range<nearestDoor)nearestDoor=range;
+  }
+  let nearActivity=false;
+  if(profile==='active')for(const o of site.cover){
+   if(o.fixture&&Math.hypot(anchor.p.x-o.x,anchor.p.y-o.y)<85){
+     nearActivity=true;break;
+   }
+  }
+  immutableScore.set(anchor.room.id,{
+    entryDist:dist(anchor.p,site.entrance),nearestDoor,nearActivity,
+    tactical:tacticalDefenderRoomScore(anchor.room,site.cover,
+      site.doors,profile,site)
+  });
+ }
  const placed=new Map<string,EncounterActorSpec>();
  const used=new Map<string,number>();
+ const occupiedZones=new Set<string>();
+ const actorById=new Map(planned.map(actor=>[actor.id,actor]));
  const occupied:{p:Pt;roomId:string;groupId:string}[]=[];
  const eligible=(p:Pt,anchor:Anchor,groupId:string)=>{
   if(!staticLegal(p,anchor.room))return false;
@@ -116,7 +145,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
  // Distribute distinct groups across different functional rooms first.
  // Members prefer their shared room but can spill to nearby free rooms.
  for(const group of groups){
-  const members=group.members.map(id=>planned.find(a=>a.id===id))
+  const members=group.members.map(id=>actorById.get(id))
    .filter((a):a is EncounterActorSpec=>!!a);
   if(!members.length)continue;
   const ranked=anchors.map(anchor=>{
@@ -128,14 +157,9 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
    // Distinct encounter shapes, but capacity, route checks, safe insertion
    // and physical body clearance below remain completely authoritative.
    const zone=anchor.room.zoneId??anchor.room.id;
-   const zoneOccupied=anchors.some(other=>
-     (other.room.zoneId??other.room.id)===zone&&
-     (used.get(other.room.id)??0)>0);
-   const entryDist=dist(anchor.p,site.entrance);
-   const nearestDoor=Math.min(Infinity,...site.doors.map(d=>dist(anchor.p,{
-     x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2})));
-   const nearActivity=site.cover.some(o=>o.fixture&&
-     dist(anchor.p,{x:o.x,y:o.y})<85);
+   const zoneOccupied=occupiedZones.has(zone);
+   const {entryDist,nearestDoor,nearActivity,tactical}=
+     immutableScore.get(anchor.room.id)!;
    const profileBonus=
      profile==='quiet-approach'?Math.min(90,entryDist*.24)-40:
      profile==='clustered'?(zoneOccupied?90:-20):
@@ -144,7 +168,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
    const score=(count===0?110:-90)+
      (anchor.capacity-count)*12-Math.min(32,originalDist*.065)+
      profileBonus+
-     tacticalDefenderRoomScore(anchor.room,site.cover,site.doors,profile,site)+
+     tactical+
      rng()*32;
    return {anchor,score};
   }).filter(x=>(used.get(x.anchor.room.id)??0)<x.anchor.capacity)
@@ -173,6 +197,7 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
        roomId:anchor.room.id,zoneId:anchor.room.zoneId??anchor.room.id});
      occupied.push({p,roomId:anchor.room.id,groupId:group.id});
      used.set(anchor.room.id,(used.get(anchor.room.id)??0)+1);
+     occupiedZones.add(anchor.room.zoneId??anchor.room.id);
      if(anchor!==home)fallbacks++;
      accepted=true;break;
     }
