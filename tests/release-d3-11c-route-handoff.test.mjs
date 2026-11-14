@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {setTransientRouteObserver,setTransientRoute,prependTransientLeg}
@@ -52,3 +53,18 @@ test('C2: an owned outside-leaf path can make legitimate lateral progress',async
  // A new arbitrary waypoint cannot masquerade as owned maneuver progress.
  assert.equal(noteMeaningfulDoorProgress(e,p(8,30),p(80,30),door,5),false);
 });
+
+test('C3: physically legal oriented squeeze retains its route; real stalls can recover',()=>{
+ const collision=readSource('../src/breach-motor-collision.ts');
+ const guard=collision.indexOf('if(!normalClear&&!(a.squeeze&&narrowClear)&&');
+ const probe=collision.indexOf('recoverNormalLane(a.p,p,s.doors,world)');
+ assert.ok(guard>=0&&probe>guard,'normal-lane A* must be gated by actual narrow clearance');
+ assert.match(collision.slice(guard,probe),/!blocking&&!closed&&!a\.traversalPending/);
+ assert.match(collision,/const traversable=a.squeeze\?narrowClear:normalClear/);
+});
+function readSource(path){
+ return requireText(new URL(path,import.meta.url));
+}
+function requireText(url){
+ return readFileSync(url,'utf8');
+}
