@@ -70,9 +70,12 @@ jobs:
           git fetch --no-tags --depth=1 origin 37f805825b3e295bb68b791d0cbae7a1df0b6d74
           git worktree add --detach "$RUNNER_TEMP/d3-r2-baseline" 37f805825b3e295bb68b791d0cbae7a1df0b6d74
           ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d3-r2-baseline/node_modules"
-          node --experimental-strip-types "$RUNNER_TEMP/d3-r2-baseline/scripts/audit-r7-squad-execution.mjs" 11 1800 --clinic-only > "$RUNNER_TEMP/d3-r2-clinic30.json"
+          # Frozen R2.6 audit predates --clinic-only. Limit ONLY its offline
+          # audit loop to the exact clinic fixture; simulation remains intact.
+          node -e 'const fs=require("fs"),p=process.argv[1],s=fs.readFileSync(p,"utf8"),needle="for(let i=0;i<sites;i++){";if(!s.includes(needle))throw Error("R2.6 audit loop changed");fs.writeFileSync(p,s.replace(needle,"for(let i=10;i<11;i++){"))' "$RUNNER_TEMP/d3-r2-baseline/scripts/audit-r7-squad-execution.mjs"
+          node --experimental-strip-types "$RUNNER_TEMP/d3-r2-baseline/scripts/audit-r7-squad-execution.mjs" 11 1800 > "$RUNNER_TEMP/d3-r2-clinic30.json"
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 1800 --clinic-only > "$RUNNER_TEMP/d3-r3-clinic30.json"
-          node -e 'const a=require(process.argv[1]),b=require(process.argv[2]);const compact=r=>({summary:r.summary,entry:r.rows[0]?.modes?.find(m=>m.mode==="entry")?.triage,entryOps:r.rows[0]?.modes?.find(m=>m.mode==="entry")?.operators});console.log(JSON.stringify({baseline:compact(a),candidate:compact(b)},null,2));if(b.summary.invalidPositions||b.summary.corruptedPlans||b.summary.physicsStepViolations)throw Error("clinic 30-second safety failure")' "$RUNNER_TEMP/d3-r2-clinic30.json" "$RUNNER_TEMP/d3-r3-clinic30.json"
+          node -e 'const a=require(process.argv[1]),b=require(process.argv[2]);const compact=r=>{const site=r.rows.find(x=>x.seed===31175);if(!site)throw Error("wrong baseline site");const entry=site.modes?.find(m=>m.mode==="entry");return {seed:site.seed,summary:r.summary,entry:entry?.triage,entryOps:entry?.operators};};console.log(JSON.stringify({baseline:compact(a),candidate:compact(b)},null,2));if(b.summary.invalidPositions||b.summary.corruptedPlans||b.summary.physicsStepViolations)throw Error("clinic 30-second safety failure")' "$RUNNER_TEMP/d3-r2-clinic30.json" "$RUNNER_TEMP/d3-r3-clinic30.json"
       - name: Production TypeScript + Vite bundle
         run: npm run build
       - name: Retain reproducible generated-map triage
