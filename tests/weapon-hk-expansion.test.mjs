@@ -29,7 +29,7 @@ const create=id=>{
  return {config,group};
 };
 test('catalog: 8 AR, 9 AK and 12 distinct HK factory models',()=>{
- assert.ok(FAMILY_PRESETS.length>=29,'preserve original 29 factory references');
+ assert.equal(FAMILY_PRESETS.length,29);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
  for(const id of ids){
   const {config,group}=create(id);
