@@ -4,7 +4,7 @@ import {nearMotorDoorStroke} from './breach-motor-door-broadphase.ts';
  * opens before body contact. Explicit authored DOOR actions retain priority.
  */
 import {pointToSegment,doorLeafSegment,doorBlocksSegment,doorCenter,
- OPERATOR_RADIUS,type Pt} from './breach-core.ts';
+ OPERATOR_RADIUS,type Pt,type Door} from './breach-core.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {canAutoOpenEnRoute,autoDoorAtBodyContact,doorApproach,
  doorReachable,doorWouldStrikeActors} from './breach-door.ts';
@@ -21,7 +21,7 @@ import {failCurrentOrder} from './breach-order-lifecycle.ts';
  * generate an incidental closing impulse on this panel.
  */
 export function canClearStalledOpening(from:Pt,step:Pt,next:Pt,
- door:typeof import('./breach-core.ts').Door,openingSeconds:number):boolean{
+ door:Door,openingSeconds:number):boolean{
  const fraction=door.openFraction??(door.open?1:0);
  if(!door.open||door.wedged||door.heldBy||
     fraction<.15||fraction>=.72||
