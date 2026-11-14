@@ -22,6 +22,8 @@ test('D2.2a identical live snapshot reuses clearance without a second solve',()=
   const same={...input}; // same VALUES, not merely the same input object
   const reused=matchingShotSight(snapshot,same,doors,cover,walls,friends);
   assert.equal(reused,snapshot.clearance);
+  assert.equal(matchingShotSight(snapshot,{...same,coverStanceDrop:0},
+    doors,cover,walls,friends),reused,'undefined and zero cover drop share geometry');
   assert.deepEqual(drainCombatCostDiagnostics().clearanceCalls,1);
   assert.equal(reused.blocked,false);
  }finally{setCombatCostDiagnosticsEnabled(false);}
@@ -32,7 +34,7 @@ test('D2.2a any changed physical input or world roster forces recomputation',()=
  for(const patch of [
   {x:101},{z:102},{heading:.01},{weaponYaw:.01},
   {shoulderOffset:1.2},{aim:.3},{posture:'crouch'},
-  {coverStanceDrop:0},{velocity:12},{recoil:.2},
+  {coverStanceDrop:1},{velocity:12},{recoil:.2},
   {threatRange:100},{weapon:'pistol'}, {friendlyNear:true},
   {clearanceRetraction:1},{shortCompression:.6},{shoulderPullback:2}
  ]){
