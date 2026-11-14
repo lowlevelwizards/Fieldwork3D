@@ -1,0 +1,83 @@
+name: D2.6 exact-gameplay integration and hotpath closeout
+on:
+  pull_request:
+    paths:
+      - 'src/breach-simulation-actor-phase.ts'
+      - 'src/breach-simulation-motion-phase.ts'
+      - 'src/breach-movement-authority.ts'
+      - 'src/breach-visual-acquisition.ts'
+      - 'tests/release-d2-6-integrated-performance.test.mjs'
+      - 'docs/release-d2-6-integrated-performance-20261113.md'
+      - '.github/workflows/release-d2-6-integration.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d2-6-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D2.6 baseline algorithm, lighting, movement, deterministic parity
+        run: node --experimental-strip-types --test tests/release-d2-6-integrated-performance.test.mjs
+      - name: Previously shipped D2.1-D2.5 and physical crossing regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d2-1-combat-hotpaths.test.mjs \
+            tests/release-d2-2-fire-preflight.test.mjs \
+            tests/release-d2-3-interruption-priority.test.mjs \
+            tests/release-d2-4-contact-cover-pose.test.mjs \
+            tests/release-d2-5-perception-quality.test.mjs \
+            tests/release-d1-coherent-crossing.test.mjs \
+            tests/breach-closeout-stage2-simulation-phases.test.mjs
+      - name: Real perception, fog, civilian, contact, replay and stance
+        run: |
+          node --experimental-strip-types --test \
+            tests/visibility-v1-long-range.test.mjs \
+            tests/visibility-v2-authoritative-sighting.test.mjs \
+            tests/visibility-v2-detection-id.test.mjs \
+            tests/visibility-v3-distance-combat.test.mjs \
+            tests/animation-a3-6-7-support-contacts.test.mjs \
+            tests/animation-a3-9-continuous-cover-stance.test.mjs \
+            tests/breach-roadmap2-stage9-enemy-ai.test.mjs \
+            tests/breach-roadmap2-stage10-combat.test.mjs \
+            tests/breach-perception-cache-performance.test.mjs
+      - name: TypeScript check and production bundle
+        run: npm run build
+  exact-d25-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Compare same-node D2.5/D2.6 ten-workload authoritative fingerprints
+        env:
+          BASELINE_SHA: 0cb749d1ef2482efc4b9e9167c996d3c77ed7a73
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d2-5-baseline" "$BASELINE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d2-5-baseline/node_modules"
+          node --experimental-strip-types "$RUNNER_TEMP/d2-5-baseline/scripts/audit-release-d0-workloads.mjs" "$RUNNER_TEMP/d2-5.json"
+          node --experimental-strip-types scripts/audit-release-d0-workloads.mjs "$RUNNER_TEMP/d2-6.json"
+          node scripts/compare-release-d0-workloads.mjs "$RUNNER_TEMP/d2-5.json" "$RUNNER_TEMP/d2-6.json" "$RUNNER_TEMP/d2-6-parity.json"
+      - name: Retain reproducible fingerprints and advisory CPU reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d2-6-reproducible-fingerprint-and-cpu-advisory
+          path: |
+            ${{ runner.temp }}/d2-5.json
+            ${{ runner.temp }}/d2-6.json
+            ${{ runner.temp }}/d2-6-parity.json
+          if-no-files-found: ignore
