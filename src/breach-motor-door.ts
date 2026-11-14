@@ -7,7 +7,7 @@ import {pointToSegment,doorLeafSegment,doorBlocksSegment,doorCenter,
  OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {canAutoOpenEnRoute,autoDoorAtBodyContact,doorApproach,
- doorReachable,doorWouldStrikeActors,approachingDoorLeaf} from './breach-door.ts';
+ doorReachable,doorWouldStrikeActors,physicallyOpeningDoorLeaf} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -134,9 +134,10 @@ export function handleMotorDoor(
       // try a real near-panel stride. It may press, sidestep or still stop;
       // this does not grant clearance, auto-teleport or claim queue rank.
       // Never wake remote/receding actors or authored WAIT/KICK/CLOSE.
+      // Require opening-side impulse; the opposite face caused ping-pong.
       const physicallyTouching=a.side==='blue'&&
         (pendingDoor?.kind==='move'||pendingDoor?.kind==='pie')&&
-        approachingDoorLeaf(a.p,move,doorAhead);
+        physicallyOpeningDoorLeaf(a.p,move,doorAhead);
       if(a.actionTimer>=.65&&
          (operatorCrossingDoor(a,doorAhead)||physicallyTouching)){
         if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5)

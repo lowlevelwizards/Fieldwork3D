@@ -28,6 +28,19 @@ export function approachingDoorLeaf(from:Pt,next:Pt,d:Door):boolean{
    (prior<21&&approach<=prior+.25));
 }
 
+/** Only a real near-leaf stride with positive tangential opening pressure
+ * can leave the partial-door opening gate. This matches the same mechanical
+ * pressure sign used by pressDoorOnBodyAttempt, and does not grant clearance.
+ */
+export function physicallyOpeningDoorLeaf(from:Pt,to:Pt,d:Door):boolean{
+ if(!approachingDoorLeaf(from,to,d))return false;
+ const panel=doorLeafSegment(d);
+ const lx=panel.b.x-panel.a.x,ly=panel.b.y-panel.a.y;
+ const len=Math.hypot(lx,ly)||1;
+ const dx=to.x-from.x,dy=to.y-from.y;
+ const pressure=(d.swing??-1)*(dx*ly-dy*lx)/len;
+ return pressure>Math.hypot(dx,dy)*.12;
+}
 export function handlePoint(d:Door):Pt{
   if(d.kind==='shutter')return doorCenter(d);
   // Handle follows the actual rotated leaf, letting the support hand track
