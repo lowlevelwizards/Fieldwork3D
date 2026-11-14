@@ -1,0 +1,52 @@
+name: D2.5 detection, identification and range quality critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-visual-perception.ts'
+      - 'src/breach-visual-acquisition.ts'
+      - 'src/breach-ai-visual-evidence.ts'
+      - 'src/breach-encounter-readiness.ts'
+      - 'src/breach-firing-cadence.ts'
+      - 'src/breach-shot-ignition.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'tests/release-d2-5-perception-quality.test.mjs'
+      - '.github/workflows/release-d2-5-perception-range.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-d2-5-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D2.5 split perception, reaction and ranged-fire acceptance
+        run: node --experimental-strip-types --test tests/release-d2-5-perception-quality.test.mjs
+      - name: Existing V1-V3 long-range visibility, real sightings and replay
+        run: |
+          node --experimental-strip-types --test \
+            tests/visibility-v0-range-policy.test.mjs \
+            tests/visibility-v1-long-range.test.mjs \
+            tests/visibility-v2-detection-id.test.mjs \
+            tests/visibility-v2-authoritative-sighting.test.mjs \
+            tests/visibility-v3-distance-combat.test.mjs \
+            tests/breach-encounter-readiness.test.mjs \
+            tests/breach-roadmap2-stage9-enemy-ai.test.mjs
+      - name: Original fire, replay and D2.3/D2.4 contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-roadmap2-stage10-combat.test.mjs \
+            tests/release-d2-3-interruption-priority.test.mjs \
+            tests/release-d2-4-contact-cover-pose.test.mjs \
+            tests/gameplay-g3-target-stability.test.mjs \
+            tests/breach-perception-cache-performance.test.mjs \
+            tests/replay-r43-personal-visibility.test.mjs
+      - name: Production typecheck and build
+        run: npm run build
