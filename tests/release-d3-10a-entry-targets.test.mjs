@@ -34,7 +34,7 @@ test('D3.10A entry lanes search for alternate full-size legal endpoints',()=>{
 test('D3.10A actual full-view generated ENTRY destinations are standing-safe',()=>{
  let accepted=0,failed=0;
  for(let index=0;index<names.length;index++){
-  const seed=31032+index*13;
+  const seed=31045+index*13;
   const site=generateSite(seed,index%2===0?'small':'standard',
     undefined,{mission:'intel'},{archetype:names[index]});
   const quiet={...site,training:true,enemies:[],encounter:undefined};
