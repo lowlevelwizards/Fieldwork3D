@@ -6,6 +6,8 @@ on:
       - src/breach-authored-goal-block.ts
       - src/breach-motor-route.ts
       - tests/release-d3-10b-authored-obstruction.test.mjs
+      - tests/release-d3-10b-diagnostic-parity.test.mjs
+      - src/breach-nav-diagnostics.ts
       - .github/workflows/d3-10b-authored-obstruction.yml
   workflow_dispatch:
 permissions:
@@ -26,7 +28,7 @@ jobs:
           node-version: '24'
       - run: npm install --no-audit --no-fund
       - name: D3.10B exact-source regressions
-        run: node --experimental-strip-types --test tests/release-d3-10b-authored-obstruction.test.mjs tests/release-d3-9c-progress.test.mjs
+        run: node --experimental-strip-types --test tests/release-d3-10b-authored-obstruction.test.mjs tests/release-d3-10b-diagnostic-parity.test.mjs tests/release-d3-9c-progress.test.mjs
       - name: Typecheck and production build
         run: npm run build
       - name: Paired frozen 45-second full physical session corpus
@@ -46,7 +48,7 @@ jobs:
               motelAsh:{before:a,after:b}};
             console.log("D3.10B45",JSON.stringify(output,null,2));
             if(!a||!b)throw Error("missing frozen motel Ash witness");
-            if(!b.orderIssue?.reason?.includes("DESTINATION OBSTRUCTED"))
+            if(!(typeof b.orderIssue==='string'?b.orderIssue:b.orderIssue?.reason)?.includes("DESTINATION OBSTRUCTED"))
               throw Error("authored impossible target did not report a truthful retained-order issue");
             if(b.remainingOrders!==1||b.arrived)
               throw Error("authored blocked goal changed or falsely arrived");
