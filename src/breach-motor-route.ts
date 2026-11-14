@@ -9,7 +9,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
-import {recordDoorManeuverContact}
+import {recordDoorManeuverContact,tryGoalCompleteDoorHandoffAfterEscape}
  from './breach-door-traversal-maneuver.ts';
 import {escapeOpenDoorOverlap,sweptBodyClear} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
@@ -74,6 +74,7 @@ export function prepareMotorRoute(
     if(escape){
       a.priorP=clone(a.p);a.p=escape;a.velocity=0;
       a.blockedTime=0;a.lastBlocker='door';
+      if(tryGoalCompleteDoorHandoffAfterEscape(a,s,p))return 'handled';
       if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return 'handled';
     }
