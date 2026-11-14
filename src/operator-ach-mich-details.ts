@@ -22,18 +22,18 @@ type Profile={
 };
 const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  ach:{
-  side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.72,
-  frontStud:[5.075,4.95,-3.12],rearStud:[5.075,2.77,1.86],
+  side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.35,
+  frontStud:[5.075,4.95,-2.05],rearStud:[5.075,2.90,4.15],
   hem:UNIFIED_HELMET_HEMS.ach
  },
  'mich-2002':{
-  side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:2.92,
-  frontStud:[5.03,5.10,-3.10],rearStud:[5.03,3.47,2.85],
+  side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:2.62,
+  frontStud:[5.03,5.10,-2.05],rearStud:[5.03,3.17,4.15],
   hem:UNIFIED_HELMET_HEMS['mich-2002']
  },
  'mich-2001':{
-  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:3.12,
-  frontStud:[5.015,5.22,-3.45],rearStud:[5.015,3.67,3.79],
+  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:2.85,
+  frontStud:[5.015,5.22,-2.10],rearStud:[5.015,3.40,4.15],
   hem:UNIFIED_HELMET_HEMS['mich-2001']
  }
 };
@@ -62,20 +62,24 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
  const triangle=(a:Point,b:Point,c:Point)=>{
   data.push(...a,...b,...c);
  };
- const strip=(a:Point,b:Point,axis:'x'|'z')=>{
-  const ext=shell==='mich-2001'?.095:.16;
-  const start:Point=axis==='x'?[a[0]+Math.sign(a[0])*ext,a[1],a[2]]:
-   [a[0],a[1],a[2]+(a[2]<0?-ext:ext)];
-  const end:Point=axis==='x'?[b[0]+Math.sign(b[0])*ext,b[1],b[2]]:
-   [b[0],b[1],b[2]+(b[2]<0?-ext:ext)];
+ // All twelve strips share precisely coincident OUTER endpoints at
+ // front and rear corners. Previously the side and front strips offset
+ // along different axes, leaving tiny isolated tabs visible on iPhone.
+ const ext=shell==='mich-2001'?.095:.16;
+ const outside=(v:Point):Point=>[
+  v[0]+Math.sign(v[0])*ext,v[1],
+  v[2]===p.front?p.front-ext:v[2]===p.rear?p.rear+ext:v[2]
+ ];
+ const strip=(a:Point,b:Point)=>{
+  const start=outside(a),end=outside(b);
   const raise=(v:Point):Point=>[v[0],v[1]+bindingHeight,v[2]];
   triangle(start,end,raise(end));triangle(start,raise(end),raise(start));
  };
- strip([-p.side,p.brow,p.front],[p.side,p.brow,p.front],'z');
- strip([p.side,p.nape,p.rear],[-p.side,p.nape,p.rear],'z');
+ strip([-p.side,p.brow,p.front],[p.side,p.brow,p.front]);
+ strip([p.side,p.nape,p.rear],[-p.side,p.nape,p.rear]);
  for(const sign of [-1,1] as const){
   const pts=p.hem.map(v=>[sign*v[0],v[1],v[2]] as Point);
-  for(let i=1;i<pts.length;i++)strip(pts[i-1],pts[i],'x');
+  for(let i=1;i<pts.length;i++)strip(pts[i-1],pts[i]);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
