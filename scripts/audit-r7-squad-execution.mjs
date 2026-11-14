@@ -30,6 +30,12 @@ const ticks=Math.max(120,Math.min(1800,Number.parseInt(process.argv[3]??'600',10
 // R3 portal connectivity is costly; run only when explicitly requested.
 const portal=process.argv.includes('--portal');
 const clinicOnly=process.argv.includes('--clinic-only');
+// Exact seeded-site diagnosis, opt-in, does not change any motor paths.
+const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
+const requestedSite=requestedSiteArg?Number(requestedSiteArg.split('=')[1]):null;
+if(requestedSite!==null&&(!Number.isInteger(requestedSite)||
+ requestedSite<0||requestedSite>=names.length))
+ throw Error('invalid --site-index (expected 0..10)');
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const round=n=>Math.round(n*100)/100;
 const signed=(p,d)=>{
@@ -227,6 +233,16 @@ function run(site,seed,kind){
    doorFlipDetails:[...perDoorFlips].map(([id,flips])=>({id,flips}))
     .sort((a,b)=>b.flips-a.flips||a.id.localeCompare(b.id)),
    simulatedSeconds:round(session.seconds),phase:session.phase,
+   // D3.7 offline incident snapshots: mark which authored gate is actually
+   // active and which hinge may be preventing movement (or a SYNC).
+   endDoorStates:session.doors.map(door=>({
+    id:door.id,open:door.open,fraction:round(door.openFraction??0),
+    angularVelocity:round(door.angularVelocity??0),
+    pushTarget:round(door.pushTarget??0),heldBy:door.heldBy??null,
+    locked:!!door.locked,wedged:!!door.wedged,jammed:!!door.jammed
+   })),
+   orderCancelledEvents:session.events.filter(e=>
+    typeof e==='string'&&e.includes('ORDER CANCELLED')).slice(-12),
    arrivals:stats.arrivals,incomplete:stats.incomplete,
    stallEpisodes:stats.stallEpisodes,retries:stats.retries,
    passageWaitSeconds:stats.passageWaitSeconds,
@@ -234,6 +250,17 @@ function run(site,seed,kind){
    invalidPositions:stats.invalidPositions,
    operators:stats.details.map(d=>({
     id:d.actor,arrived:d.arrived,remaining:d.remaining,
+    activeOrderDetails:actors.find(a=>a.id===d.actor).plan[0]?
+     {kind:actors.find(a=>a.id===d.actor).plan[0].kind,
+      id:actors.find(a=>a.id===d.actor).plan[0].id,
+      doorId:actors.find(a=>a.id===d.actor).plan[0].doorId??null,
+      entryDoorId:actors.find(a=>a.id===d.actor).plan[0].entryDoorId??null,
+      syncCode:actors.find(a=>a.id===d.actor).plan[0].syncCode??null,
+      duration:actors.find(a=>a.id===d.actor).plan[0].duration??null}:null,
+    syncReady:actors.find(a=>a.id===d.actor).syncReady??null,
+    actionTimer:round(actors.find(a=>a.id===d.actor).actionTimer??0),
+    waitRemaining:round(actors.find(a=>a.id===d.actor).waitRemaining??0),
+    doorHand:actors.find(a=>a.id===d.actor).doorHandContact?.doorId??null,
     // End-state evidence only. Read current authoritative motor state;
     // no new tick-level probes, authority, or path calculation.
     goal:planned.goals.get(d.actor)??null,
@@ -259,7 +286,8 @@ function run(site,seed,kind){
 }
 const rows=[];
 let exceptions=0;
-for(let i=clinicOnly?10:0;i<(clinicOnly?11:sites);i++){
+for(let i=requestedSite??(clinicOnly?10:0);
+ i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
  const seed=31045+i*13,archetype=names[i%names.length];
  const scale=i%2===0?'small':'standard';
  try{
