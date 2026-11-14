@@ -90,7 +90,8 @@ test('H13 compatibility: all mount requirements are visible without lost saved o
  assert.equal(effective.battery,false);
  assert.equal(raw.bungees,true);
  const studio=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
- assert.ok(studio.includes('helmetFieldCompatibilityIssues('));
+ assert.ok(studio.includes('resolveEffectiveHelmetAppearance('),
+  'Studio now shares the same effective compatibility state as the renderer');
  assert.ok(studio.includes('helmet-option-requirement'));
  assert.ok(studio.includes('next.cameraSide='));
 });
