@@ -27,13 +27,13 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
   hem:UNIFIED_HELMET_HEMS.ach
  },
  'mich-2002':{
-  side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:3.82,
-  frontStud:[5.03,5.10,-3.10],rearStud:[5.03,4.37,3.05],
+  side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:2.92,
+  frontStud:[5.03,5.10,-3.10],rearStud:[5.03,3.47,2.85],
   hem:UNIFIED_HELMET_HEMS['mich-2002']
  },
  'mich-2001':{
-  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:3.90,
-  frontStud:[5.015,5.22,-3.45],rearStud:[5.015,4.45,3.79],
+  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:3.12,
+  frontStud:[5.015,5.22,-3.45],rearStud:[5.015,3.67,3.79],
   hem:UNIFIED_HELMET_HEMS['mich-2001']
  }
 };
@@ -54,7 +54,7 @@ const hidden=(parent:THREE.Group,name:string):THREE.Group=>{
  const g=new THREE.Group();g.name=name;parent.add(g);return g;
 };
 /** One continuous molded shell-color edge, without added contour layers.
- * H18 reduces its height on Full/Mid; High-Cut remains unchanged.
+ * H21 shares the exact six-point ear/nape perimeter from the shell.
  * Front/sides/rear share exact endpoints. */
 export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number]){
  const p=PROFILES[shell],data:number[]=[],
