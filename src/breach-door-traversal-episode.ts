@@ -21,6 +21,13 @@ export type DoorTraversalEpisode={
  maneuver:DoorManeuver;
  lastProgressAt:number;
  lastPosition:Pt;
+ /** Best directional approach to the real threshold; arbitrary shuffling
+  * sideways must never renew the physical crossing progress clock. */
+ bestSignedDepth?:number;
+ /** A committed outside-leaf waypoint has its own meaningful progress,
+  * including legitimate clearance movement away from the final goal. */
+ progressWaypoint?:Pt|null;
+ bestWaypointDistance?:number;
  lastTransitionAt:number;
  obstructionReason:string|null;
  /** D1 leaves both blank: no automated footwork or remote hand contact. */
@@ -56,6 +63,38 @@ function candidate(actor:TeamActor,doors:readonly Door[],goal:Pt,
   }
  }
  return best;
+}
+/** Update an episode only after REAL progress into its intended doorway
+ * or toward its OWN committed physical waypoint. Route swapping and small
+ * lateral motion cannot reset the stall clock. Nothing moves here. */
+export function noteMeaningfulDoorProgress(
+ episode:DoorTraversalEpisode,position:Pt,next:Pt|undefined,
+ door:Door,seconds:number):boolean{
+ const depth=signedDoorSide(position,door)*episode.approachSide;
+ const previousDepth=episode.bestSignedDepth??depth;
+ if(episode.bestSignedDepth===undefined)episode.bestSignedDepth=depth;
+ let advancing=false;
+ if(depth<previousDepth-1.5){
+  episode.bestSignedDepth=depth;advancing=true;
+ }
+ const owned=episode.maneuver==='outside-leaf'&&!!next&&
+  episode.waypoints.some(point=>squared(point,next)<9);
+ if(owned){
+  if(!episode.progressWaypoint||squared(next!,episode.progressWaypoint)>=9){
+   episode.progressWaypoint={...next!};
+   episode.bestWaypointDistance=Math.sqrt(squared(position,next!));
+  }else{
+   const distance=Math.sqrt(squared(position,next!));
+   if(distance<(episode.bestWaypointDistance??distance)-1.5){
+    episode.bestWaypointDistance=distance;advancing=true;
+   }
+  }
+ }else{
+  episode.progressWaypoint=null;
+  episode.bestWaypointDistance=undefined;
+ }
+ if(advancing)episode.lastProgressAt=seconds;
+ return advancing;
 }
 /** One cheap fixed-tick observation. No new A*, swept collision, extra
  * search when an episode is already active or a distant actor is idle.
@@ -96,10 +135,9 @@ export function syncDoorTraversalEpisode(
   }
   // D4 retains a physical support-hand attachment while the world
   // and hand-availability checks in the authoritative door phase pass.
-  if(squared(actor.p,episode.lastPosition)>2.25){
+  if(squared(actor.p,episode.lastPosition)>2.25)
    episode.lastPosition={...actor.p};
-   episode.lastProgressAt=seconds;
-  }
+  noteMeaningfulDoorProgress(episode,actor.p,actor.nav[0],door,seconds);
   const side=signedDoorSide(actor.p,door)*episode.approachSide;
   let phase:DoorTraversalPhase;
   if(side<=-(OPERATOR_RADIUS+8))phase='release';
@@ -129,6 +167,7 @@ export function syncDoorTraversalEpisode(
   approachSide:side>=0?1:-1,startedAt:seconds,
   phase:!door.open||fraction<.72?'open':'approach',
   maneuver:'direct',lastProgressAt:seconds,lastPosition:{...actor.p},
+  bestSignedDepth:side,progressWaypoint:null,
   lastTransitionAt:seconds,obstructionReason:null,
   waypoints:[],waypointIndex:0,handContact:false,
   maneuverAttempts:0,nextManeuverAt:seconds,
