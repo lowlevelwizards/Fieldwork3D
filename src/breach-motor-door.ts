@@ -158,7 +158,10 @@ export function handleMotorDoor(
            episode.maneuver!=='outside-leaf'&&
            a.actionTimer>=2.5&&
            s.seconds-episode.lastProgressAt>=1.8&&
-           episode.maneuverAttempts<2&&
+           // Share the existing four rehearsal attempts; allow two
+           // subsequent, bounded physical self-clearance attempts even
+           // if the earlier leaf-bypass candidates failed to route.
+           episode.maneuverAttempts<6&&
            s.seconds>=episode.nextManeuverAt){
           const relief=selfBlockingHingeRelief(a,s,p);
           episode.maneuverAttempts++;
