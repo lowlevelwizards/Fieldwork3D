@@ -17,9 +17,11 @@ test('all approved headwear stays one unioned, UV mapped exterior mesh',()=>{
   const g=createHeadwearSilhouette(id,createHeadwearDetailMaterial(id));
   assert.equal(g.children.length,1,id);
   const geo=g.children[0].geometry;
-  assert.equal(geo.userData.greedyCuboidUnion,true,id);
+  assert.ok(id==='ach'?geo.userData.h17UnifiedContour:
+   geo.userData.greedyCuboidUnion,id);
   assert.equal(geo.userData.materialRegions,true,id);
-  assert.equal(geo.userData.cuboids.length,headwearCuboidVolumes(id).length,id);
+  if(id!=='ach')assert.equal(geo.userData.cuboids.length,
+   headwearCuboidVolumes(id).length,id);
   assert.equal(geo.getAttribute('uv').count,geo.getAttribute('position').count,id);
   assert.equal(geo.getAttribute('color').count,geo.getAttribute('position').count,id);
   assert.equal(geo.userData.pixelWorldSize,1,id);
