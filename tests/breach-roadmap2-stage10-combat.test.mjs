@@ -56,7 +56,7 @@ test('physical bullet effects commit health, cover, doors, glass, suppression an
  assert.match(resolution,/s\.casings\.push\(/);
  assert.match(resolution,/retainImpactMark\(/);
  assert.match(resolution,/s\.deaths\+\+/);
- assert.match(pipeline,/commitShot\(s,a,target,\{mode,range,moving,mods,weapon,profile\}\)/);
+ assert.match(pipeline,/commitShot\(s,a,target,\{mode,range,moving,mods,weapon,profile,\s*preflight:shotPreflight\}\)/);
  assert.match(environment,/function damageStruckCover\(/);
  assert.match(environment,/function shatterStruckWindows\(/);
 });
