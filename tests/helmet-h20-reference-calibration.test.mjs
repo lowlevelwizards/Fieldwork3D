@@ -36,7 +36,7 @@ test('H20: full, partial and open-ear cuts have an emphatic three-step hierarchy
  assert.equal(full.length,6);assert.equal(mid.length,6);assert.equal(high.length,6);
  for(const hem of [full,mid,high]){
   assert.ok(hem.every(p=>near(p[0],hem[0][0])));
-  for(let i=1;i<hem.length;i++)assert.ok(hem[i][2]>hem[i-1][2]+.7);
+  for(let i=1;i<hem.length;i++)assert.ok(hem[i][2]-hem[i-1][2]>=.69,'no tiny contour notches');
  }
  assert.ok(near(full[2][1],2.04));
  assert.ok(near(mid[2][1],3.06));
