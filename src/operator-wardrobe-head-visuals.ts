@@ -21,8 +21,6 @@ import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import {createPasgtCoverLayers,updatePasgtCoverLayers,type PasgtCoverLayers}
  from './operator-pasgt-cover-visuals.ts';
 import {type PasgtDetails} from './operator-pasgt-cover-policy.ts';
-import {createHelmetHardware,updateHelmetHardware,type HelmetHardwareLayers}
- from './operator-helmet-module-visuals.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 import {bakeGearGeometryAO} from './operator-baked-gear-ao.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
@@ -60,7 +58,6 @@ export type WardrobeHeadLayers={
  m56Extras?:M56Extras;
  policeVisor?:PoliceVisorLayers;
  modernCovers:Record<string,ModernHelmetCoverLayers>;
- modernHardware:Record<string,HelmetHardwareLayers>;
  achMich:Record<string,AchMichDetailLayers>;
  helmetField:Record<string,HelmetFieldLayers>;
  pasgtCover?:PasgtCoverLayers;
@@ -88,13 +85,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let policeVisor:PoliceVisorLayers|undefined;
  let pasgtCover:PasgtCoverLayers|undefined;
  const modernCovers:Record<string,ModernHelmetCoverLayers>={};
- const modernHardware:Record<string,HelmetHardwareLayers>={};
  const achMich:Record<string,AchMichDetailLayers>={};
  const helmetField:Record<string,HelmetFieldLayers>={};
  const addModernCover=(model:THREE.Group,id:string,shell:string)=>{
   modernCovers[id]=createModernHelmetCoverLayers(model,shell);
-  if(!(ACH_MICH_SHELLS as readonly string[]).includes(shell))
-   modernHardware[id]=createHelmetHardware(model,shell);
  };
  // A dedicated face textile material ensures color edits never recolor helmets,
  // uniform sleeves, straps or unrelated body pieces.
@@ -220,16 +214,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   achMich.ach=createAchMichDetails(model,'ach');
   helmetField.ach=createHelmetFieldLayers(model,'ach');
  });
- headModel('high-cut',true,model=>{
-  model.add(createHeadwearSilhouette('high-cut',detail('high-cut')));
-  addModernCover(model,'high-cut','high-cut');
- });
- // Rails inherit the approved shell without inventing a new silhouette.
- headModel('high-cut-rails',true,model=>{
-  model.add(createHeadwearSilhouette('high-cut',detail('high-cut','high-cut-rails')));
-  addModernCover(model,'high-cut-rails','high-cut');
- });
- for(const id of ['mich-2001','mich-2002','fast-sf','fast-xp-mid'] as const)
+ for(const id of ['mich-2001','mich-2002'] as const)
   headModel(id,true,model=>{
    const shell=createHeadwearSilhouette(id,detail(id));
    if((ACH_MICH_SHELLS as readonly string[]).includes(id))
@@ -310,7 +295,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
   deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m56Extras,policeVisor,
-  modernCovers,modernHardware,achMich,pasgtCover,helmetField};
+  modernCovers,achMich,pasgtCover,helmetField};
  layersRef=layers;return layers;
 }
 export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
@@ -343,14 +328,13 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  // Only the worn accessories are built on battlefield rigs. Studio and
  // operator labs remain eager; switching a style builds it just once.
  layers.deferredHeadwear[assembly.headwear]?.();
- const shell=assembly.headwear==='high-cut-rails'?'high-cut':assembly.headwear;
+ const shell=assembly.headwear;
  const helmet=resolveEffectiveHelmetAppearance({
   shell,helmetSetup:helmetCover?.helmetSetup,helmetField:helmetCover?.helmetField,
   pasgtDetails:helmetCover?.pasgtDetails,headwearCamo:helmetCover?.headwearCamo,
   headset:assembly.headset,eyewear:assembly.eyewear,facewear:assembly.facewear
  });
  const fieldActive=helmet.fieldActive,fieldState=helmet.field;
- let railMountedHeadset=false;
  let shellCovered=false;
  if(shell==='pasgt'&&layers.pasgtCover){
   shellCovered=helmet.cover;
@@ -398,11 +382,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
     resolveHelmetFieldColor(fieldState.webbingColor,
      headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d):0x59654f);
   }
-  const hardware=layers.modernHardware[assembly.headwear];
-  if(hardware)updateHelmetHardware(hardware,helmet.setup,assembly.headset);
-  railMountedHeadset=helmet.setup.headsetMount==='rail'&&
-   helmet.setup.rails!=='none'&&
-   ['over-ear','boom-headset','helmet-ears'].includes(assembly.headset);
+
  }
  if(shell==='m1-steel')
   shellCovered=!!helmetCover?.helmetCover&&helmetCover.helmetCover!=='none';
@@ -429,8 +409,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  // retention straps or helmet hardware. Update this after cover resolution so
  // changing fitted/loose/none instantly alters the preview without saving art.
  const bareShellIds=new Set([
-  'ach','pasgt','high-cut','high-cut-rails','mich-2001',
-  'mich-2002','fast-sf','fast-xp-mid','m1-steel','soviet-steel',
+  'ach','pasgt','mich-2001','mich-2002','m1-steel','soviet-steel',
   'ddr-m56','police-helmet'
  ]);
  const activeHeadwear=layers.headwear[assembly.headwear];
@@ -451,10 +430,6 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
    bareShellIds.has(assembly.headwear)&&!shellCovered&&shellMat?
     shellMat:null;
  }
- // Rail cups are separate canonical-head hardware; hide the legacy headband
- // model completely to prevent duplicate ears and a band through the shell.
- if(railMountedHeadset&&layers.headset[assembly.headset])
-  layers.headset[assembly.headset].visible=false;
  // A persistent option of the same balaclava, never a separate wardrobe card.
  if(layers.twoHoleMouthCover)
   layers.twoHoleMouthCover.visible=facewear==='balaclava-three'&&d2FaceMode==='two-hole';
