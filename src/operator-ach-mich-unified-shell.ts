@@ -53,7 +53,7 @@ export const UNIFIED_HELMET_EAR_SHOULDERS:Readonly<
 // levels, and the existing hem. Values are relative to the central ear
 // height, NOT independently stretched at the temple and nape stations.
 export const ACH_MICH_EAR_SHOULDER_FRACTION=.52; // compatibility reference
-export const ACH_MICH_EAR_FACE_TOP_FRACTION=.59;
+export const ACH_MICH_EAR_FACE_TOP_FRACTION=.62;
 export const ACH_MICH_EAR_FACE_BOTTOM_FRACTION=.93;
 export const ACH_MICH_EAR_UPPER_BEVEL_HEIGHT=.17;
 /** A single ear cross-section contract shared by shell and fitted cloth.

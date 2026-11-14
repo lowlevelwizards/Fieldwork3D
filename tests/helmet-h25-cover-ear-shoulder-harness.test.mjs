@@ -31,7 +31,7 @@ test('H26: no ear protrusion above midwall and no high-cut lateral bulge',()=>{
   if(id==='mich-2001')assert.ok(widths.every(v=>near(v,hem[0][0])));
   else assert.ok(widths[2]-widths[0]>.49,'full/mid retain ear mass');
   assert.ok(near(ACH_MICH_EAR_SHOULDER_FRACTION,.52));
-  assert.ok(near(ACH_MICH_EAR_FACE_TOP_FRACTION,.59));
+  assert.ok(near(ACH_MICH_EAR_FACE_TOP_FRACTION,.62));
   assert.ok(near(ACH_MICH_EAR_FACE_BOTTOM_FRACTION,.93));
   const {onsetY:splitY,faceTopY,faceBottomY}=
    unifiedHelmetEarVerticalProfile(id,shoulderY,hem[2][1],hem[2][2]);

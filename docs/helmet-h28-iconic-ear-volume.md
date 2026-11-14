@@ -16,7 +16,7 @@ have enlarged the wedges instead of creating a legible protective volume.
 - Outer face stays full width at the two central ear stations; the rear
   shoulder returns to the existing nape hem width at the next station.
   This eliminates the second gradual triangular wedge into the rear.
-- Unified vertical ear profile: face top ~59% and bottom ~93% toward the
+- Unified vertical ear profile: face top ~62% and bottom ~93% toward the
   central ear hem, with one consistent **0.17** upper bevel. Local hem
   clearance is preserved with a single shared clamp, not special leading
   brow conditionals.
