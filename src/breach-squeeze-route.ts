@@ -259,10 +259,17 @@ export function routeToNextOperableDoor(
        if(door.locked||door.jammed||door.wedged||door.heldBy||
          !canAutoOpenEnRoute({kind:'move'},door.id))return [];
        if((door.openFraction??(door.open?1:0))>=.72)return [];
-       // This final point remains intentionally beyond current leaf
-       // clearance. The motor stops and opens the door at body contact.
-       // Do NOT append any later hypothetical waypoints.
-       return [...prefix,{...next}];
+       // The coarse A* may compress several closed portals into one
+       // long segment. Stop just BEYOND the FIRST contact, not at the
+       // remote goal or the second door. The ordinary motor will approach
+       // this local contact, operate the real leaf and replan later.
+       const beyond=Math.min(1,t+(OPERATOR_RADIUS*2+4)/Math.max(1,span));
+       const stage={x:previous.x+(next.x-previous.x)*beyond,
+         y:previous.y+(next.y-previous.y)*beyond};
+       if(!sweptBodyClear(previous,stage,
+          doors.filter(other=>other!==door),OPERATOR_RADIUS,world))
+         return [];
+       return [...prefix,stage];
      }
    }
    return [];
