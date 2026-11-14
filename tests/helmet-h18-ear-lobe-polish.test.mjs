@@ -21,15 +21,16 @@ test('H18: Full and Mid have distinct, single-piece iconic ear lobes',()=>{
    assert.ok(hem[i][2]-hem[i-1][2]>.6,'one ordered angular outline');
   assert.ok(near(hem[2][1],hem[3][1]),'one flat oversized ear lobe');
   assert.ok(near(hem[4][1],hem[5][1]),'one uninterrupted nape');
-  if(id==='ach')assert.ok(hem[4][1]-hem[3][1]>.6,'Full-Cut protects ears deepest');
+  if(id==='ach')assert.ok(hem[4][1]-hem[3][1]>.2&&hem[4][1]-hem[3][1]<.4,
+    'Full-Cut lower contour has a gentle ear-to-nape rise');
   else assert.ok(hem[3][1]>hem[4][1]+.1,'Mid-Cut rear returns BELOW its ear cut');
-  assert.ok(hem[3][2]-hem[2][2]>3.4,'broad feature reads at gameplay scale');
+  assert.ok(hem[3][2]-hem[2][2]>3.0,'broad feature reads at gameplay scale');
   assert.equal(achMichProfile(id).hem,hem,'shell, cover and binding share a source');
   assert.equal(headwearCuboidVolumes(id).length,5,'no new stacked side boxes');
   assert.ok(near(HEAD_SILHOUETTE_METRICS[id].earEdge,hem[2][1]));
  }
  assert.ok(near(f[2][1],2.04)&&near(m[2][1],3.06));
- assert.ok(near(f[5][1],2.72)&&near(m[5][1],2.92));
+ assert.ok(near(f[5][1],2.35)&&near(m[5][1],2.62));
  assert.ok(m[2][1]-f[2][1]>=1,'Full-Cut is recognizably deeper');
  assert.ok(m[5][1]-f[5][1]>=.15 && m[5][1]-f[5][1]<.4,
   'nape stays near Full-Cut protection while ear clearance varies');

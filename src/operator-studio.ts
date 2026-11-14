@@ -40,6 +40,8 @@ import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
 import {applyHelmetPreset,helmetPresetChoices} from './operator-helmet-preset-catalog.ts';
 import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
  type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
+import {createHelmetAnatomyGuide,HELMET_ANATOMY_GUIDE_NAME}
+ from './operator-helmet-anatomy-guide.ts';
 import {M1956_VARIANTS,type M1956Variant} from './operator-m1956-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
@@ -824,6 +826,11 @@ function posePreview(){
  canvas.dataset.operatorShadowColor=light.shadow;
  if(lightingInspectorOutput)
   previewOperatorLightingLayers(rig.root,diagnosticLayers);
+ // Diagnostic URL only; built once per rig/head frame. Never a runtime
+ // tactical check or persistent cosmetic part.
+ if(params.get('helmetAnatomy')==='1'&&
+    !rig.headCanonicalFrame.getObjectByName(HELMET_ANATOMY_GUIDE_NAME))
+  rig.headCanonicalFrame.add(createHelmetAnatomyGuide());
  studioLighting.invalidateGeometry();
  renderScene();
  canvas.dataset.operatorPreviewMs=
