@@ -1,3 +1,4 @@
+import {setTransientRoute} from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
@@ -41,7 +42,7 @@ export function restoreAfterOpenLeafEscape(
  const route=routeWithSqueezeWorld(a.p,goal,s.doors,world);
  if(!route.length||!sweptBodyClear(a.p,route[0],s.doors,
     OPERATOR_RADIUS,world))return false;
- a.nav=route;
+ setTransientRoute(s,a,route,'door-leaf-escape');
  a.retryRouteAt=0;a.recoveryAttempts=0;
  return true;
 }
@@ -112,7 +113,7 @@ export function prepareMotorRoute(
     if(a.fireRetreatTarget&&d(p,a.fireRetreatTarget)<.5&&
        goalDistance>=.9&&goalDistance<=12&&
        sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
-      a.nav=[{...p}];
+      setTransientRoute(s,a,[{...p}],'fire-retreat');
       a.retryRouteAt=0;a.recoveryAttempts=0;
       return 'ready';
     }
@@ -125,8 +126,9 @@ export function prepareMotorRoute(
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       return 'unavailable';
     }
-    a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
-      hooks.cachedEnemyRoute(s,a.p,p,true);
+    setTransientRoute(s,a,a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
+      hooks.cachedEnemyRoute(s,a.p,p,true),
+      a.side==='blue'?'initial-intel':'initial-enemy');
     if(!a.nav.length&&a.side==='blue'){
       // A known small object that the player drew THROUGH is a contextual
       // crossing, not a permanently impassable destination. Approach its
@@ -145,7 +147,7 @@ export function prepareMotorRoute(
         const path=d(a.p,staging)<5?[]:
           routeWithSqueezeWorld(a.p,staging,s.doors,sessionWorldGeometry(s));
         if(d(a.p,staging)<5||path.length)
-          a.nav=[...path,p];
+          setTransientRoute(s,a,[...path,p],'shove-stage');
       }
     }
     if(!a.nav.length){
