@@ -1,0 +1,47 @@
+/** D3.11C: opt-in forensic witness for transient physical-route writers.
+ * No observer is installed in production. Does not own physics, route
+ * selection, player orders, or any persistent actor state.
+ */
+import type {Session,TeamActor} from './breach-game.ts';
+import type {Pt} from './breach-core.ts';
+export type RouteSource=
+ 'initial-intel'|'initial-enemy'|'shove-stage'|'fire-retreat'|
+ 'door-short-entry'|'door-rehearsal'|'door-drift'|'door-leaf-escape'|
+ 'full-body-lane'|'blocked-leg-connector'|'collision-world-replan'|
+ 'collision-intel-replan'|'self-hinge-relief'|'local-detour'|
+ 'passage-retreat';
+export type TransientRouteTransition={
+ seconds:number;actorId:string;source:RouteSource;
+ prior:readonly Pt[];next:readonly Pt[];
+ squeeze:boolean;blockedTime:number;blocker:string|null;
+ doorId:string|null;doorPhase:string|null;doorManeuver:string|null;
+ doorFraction:number|null;goalKey:string;
+};
+let listener:((record:TransientRouteTransition)=>void)|null=null;
+/** For offline deterministic evidence only; clear in a finally clause. */
+export function setTransientRouteObserver(
+ next:((record:TransientRouteTransition)=>void)|null):void{listener=next;}
+function report(s:Session,a:TeamActor,source:RouteSource,next:readonly Pt[]){
+ const fn=listener;if(!fn)return;
+ const doorId=a.doorTraversal?.doorId??null;
+ const door=doorId?s.doors.find(d=>d.id===doorId):undefined;
+ fn({seconds:s.seconds,actorId:a.id,source,
+  prior:a.nav.map(p=>({...p})),next:next.map(p=>({...p})),
+  squeeze:a.squeeze,blockedTime:a.blockedTime,
+  blocker:a.lastBlocker??null,doorId,
+  doorPhase:a.doorTraversal?.phase??null,
+  doorManeuver:a.doorTraversal?.maneuver??null,
+  doorFraction:door?.openFraction??null,goalKey:a.routeGoalKey});
+}
+/** Assign exactly the proposed transient route; zero extra allocations
+ * when no offline observer is installed. */
+export function setTransientRoute(
+ s:Session,a:TeamActor,route:Pt[],source:RouteSource):void{
+ if(listener)report(s,a,source,route);
+ a.nav=route;
+}
+export function prependTransientLeg(
+ s:Session,a:TeamActor,leg:Pt,source:RouteSource):void{
+ if(listener)report(s,a,source,[leg,...a.nav]);
+ a.nav.unshift(leg);
+}
