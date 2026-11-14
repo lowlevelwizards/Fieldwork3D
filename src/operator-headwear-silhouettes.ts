@@ -46,7 +46,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
   top:8.76,earEdge:3.06,foreheadEdge:4.55,billLength:0},
  'mich-2001':{id:'mich-2001',frontExtent:-5.61,rearExtent:5.64,
-  top:8.70,earEdge:4.78,foreheadEdge:4.55,billLength:0},
+  top:8.70,earEdge:5.30,foreheadEdge:4.55,billLength:0},
  'fast-sf':{id:'fast-sf',frontExtent:-5.53,rearExtent:5.66,
   top:8.80,earEdge:6.04,foreheadEdge:4.55,billLength:0},
  'fast-xp-mid':{id:'fast-xp-mid',frontExtent:-5.68,rearExtent:5.81,
@@ -450,18 +450,18 @@ const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
   width:1.06,height:3.45,depth:7.10
  }))
 ];
-/** H19: fitting/shadow envelopes only; shell itself uses the same
+/** H20: fitting/shadow envelopes only; shell itself uses the same
  * contiguous silhouette geometry as the Full/Mid cuts. No temple boxes
  * or side-wall plates are rendered. The unchanged roof height is 8.705.
  */
 const MICH_2001_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2001-main-crown',x:0,y:7.43,z:0,width:10.03,height:2.55,depth:10.18},
  {name:'m2001-brow',x:0,y:5.45,z:-4.95,width:10.03,height:1.80,depth:1.52},
- {name:'m2001-rear-coverage',x:0,y:5.20,z:4.50,width:10.03,height:2.16,depth:2.32},
+ {name:'m2001-rear-coverage',x:0,y:5.09,z:4.50,width:10.03,height:2.38,depth:2.32},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'m2001-left-ear-nape':'m2001-right-ear-nape',
-  x:sign*4.52,y:5.615,z:.20,
-  width:.99,height:1.83,depth:7.00
+  x:sign*4.52,y:5.875,z:.20,
+  width:.99,height:1.31,depth:7.00
  }))
 ];
 const FAST_SF_CUBOIDS:readonly HeadwearCuboid[]=[
