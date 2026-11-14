@@ -18,6 +18,13 @@ test('H14: original PASGT is not silently equipped with a modern rail kit',()=>{
  for(const key of ['rails','bungees','velcro','camera','light','patches'])
   assert.equal(kit.modules[key].visible,false,key);
  assert.ok(kit.modules.shroud.getObjectByName('pasgt-period-bracket'));
+ assert.equal(kit.modules.shroud.userData.h14PeriodNvgStrap,true);
+ for(const mode of ['covered','bare']){
+  const g=kit.modules.shroud.getObjectByName('pasgt-nvg-strap-'+mode);
+  assert.ok(g,'period strap variant missing '+mode);
+  const strap=g.getObjectByName('period-pasgt-nvg-retaining-strap');
+  assert.equal(strap.geometry.userData.h14PeriodNvgTopStrap,true);
+ }
 });
 
 test('H14: legitimate PASGT rail kit supports every fitted accessory family',()=>{
@@ -47,6 +54,9 @@ test('H14: legitimate PASGT rail kit supports every fitted accessory family',()=
    assert.equal(kit.modules[key].getObjectByName('pasgt-'+key+'-bare').visible,
     !covered,key);
   }
+  const crown=kit.modules.shroud;
+  assert.equal(crown.getObjectByName('pasgt-nvg-strap-covered').visible,covered);
+  assert.equal(crown.getObjectByName('pasgt-nvg-strap-bare').visible,!covered);
   assert.equal(kit.modules.camera.visible,true);
   assert.equal(kit.modules.light.visible,true);
   assert.equal(kit.modules.counterweight.visible,true);
