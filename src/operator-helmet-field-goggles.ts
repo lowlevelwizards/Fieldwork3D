@@ -6,7 +6,6 @@
 import * as THREE from 'three';
 import {ACH_MICH_COVER_OFFSET,type AchMichCoverShell}
  from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover,sampleHelmetShell} from './operator-helmet-surface.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 
