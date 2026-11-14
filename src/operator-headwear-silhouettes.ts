@@ -413,8 +413,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
   width:10.15,height:4.45,depth:1.26},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'ach-left-ear-nape':'ach-right-ear-nape',
-  x:sign*4.55,y:4.425,z:1.77,
-  width:1.05,height:4.77,depth:4.10
+  x:sign*4.65,y:4.425,z:1.77,
+  width:1.41,height:4.77,depth:4.10
  }))
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region
@@ -443,11 +443,11 @@ const HIGH_CUT_CUBOIDS:readonly HeadwearCuboid[]=[
 const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2002-crown',x:0,y:7.40,z:0,width:10.06,height:2.70,depth:10.45},
  {name:'m2002-brow',x:0,y:5.54,z:-4.89,width:10.06,height:1.97,depth:1.62},
- {name:'m2002-nape',x:0,y:4.275,z:4.83,width:10.06,height:4.45,depth:1.78},
+ {name:'m2002-nape',x:0,y:4.20,z:4.83,width:10.06,height:4.60,depth:1.78},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'m2002-left-ear-nape':'m2002-right-ear-nape',
-  x:sign*4.50,y:4.785,z:1.77,
-  width:1.06,height:3.45,depth:4.10
+  x:sign*4.64,y:4.785,z:1.90,
+  width:1.28,height:3.45,depth:3.90
  }))
 ];
 /** H20: fitting/shadow envelopes only; shell itself uses the same
@@ -457,11 +457,11 @@ const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
 const MICH_2001_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2001-main-crown',x:0,y:7.43,z:0,width:10.03,height:2.55,depth:10.18},
  {name:'m2001-brow',x:0,y:5.45,z:-4.95,width:10.03,height:1.80,depth:1.52},
- {name:'m2001-rear-coverage',x:0,y:4.265,z:4.50,width:10.03,height:4.03,depth:2.32},
+ {name:'m2001-rear-coverage',x:0,y:4.165,z:4.50,width:10.03,height:4.23,depth:2.32},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'m2001-left-ear-nape':'m2001-right-ear-nape',
-  x:sign*4.52,y:5.875,z:1.77,
-  width:.99,height:1.31,depth:4.10
+  x:sign*4.57,y:5.875,z:1.90,
+  width:1.15,height:1.31,depth:3.90
  }))
 ];
 const FAST_SF_CUBOIDS:readonly HeadwearCuboid[]=[
@@ -560,7 +560,16 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
  if(!unified)chamferAchMichCrown(geometry,volume,id);
  // Existing helmet construction tones are compressed for dark camo inks.
  softenHeadwearAO(geometry);
- const mesh=new THREE.Mesh(geometry,m);
+ // The shell includes a real 0.48-unit inward underside fold, but its
+ // handedness was culled from below and by the light's opposite view.
+ // Clone only unified helmet materials: other wardrobe pieces may share m.
+ // Double-side render/shadow without new meshes, faces or per-frame cost.
+ const shellMaterial=unified?m.clone():m;
+ if(unified){
+  shellMaterial.side=THREE.DoubleSide;
+  shellMaterial.shadowSide=THREE.DoubleSide;
+ }
+ const mesh=new THREE.Mesh(geometry,shellMaterial);
  mesh.name=id+(unified?'-unified-lowpoly-shell':'-continuous-cuboid-exterior');
  mesh.castShadow=true;
  // Keep its self-shadow noise out of the clean close-up silhouette review.
