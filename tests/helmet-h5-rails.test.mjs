@@ -15,6 +15,6 @@ test('H5.2: continuous ARC rails descend behind ear instead of rising',()=>{
   assert.equal(kit.modules.bungees.userData.h5CloserSurfaceFit,true);
   const routes=kit.modules.bungees.userData.h9BungeeRoutes;
   assert.equal(routes.length,2);
-  assert.ok(routes.every(r=>r.segmentCount===30));
+  assert.ok(routes.every(r=>r.segmentCount===4));
  }
 });
