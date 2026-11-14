@@ -74,12 +74,7 @@ export function prepareMotorRoute(
     if(escape){
       a.priorP=clone(a.p);a.p=escape;a.velocity=0;
       a.blockedTime=0;a.lastBlocker='door';
-      // D3.11C: a real swept overlap escape just invalidated this route.
-      // Give the same door motor a bounded quarter-second to yield before
-      // another intel A* immediately selects the same colliding leaf.
-      // The no-nav physical pressure/escape probes still run every tick.
-      if(!restoreAfterOpenLeafEscape(a,s,p))
-        a.retryRouteAt=s.seconds+.25;
+      if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return 'handled';
     }
     // Never execute expensive route searches every fixed tick for a proven
