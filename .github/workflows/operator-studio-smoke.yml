@@ -143,6 +143,21 @@ jobs:
           path: ach-mich-h6-captures/
           if-no-files-found: warn
           retention-days: 21
+      - name: H31C cover/shell triangle clearance, fit and production build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/ach-mich-cover-shell-clearance-') }}
+        run: |
+          npm run build
+          node --experimental-strip-types --test tests/helmet-h31c-cover-shell-penetration.test.mjs tests/helmet-h25-cover-ear-shoulder-harness.test.mjs tests/helmet-h27-broad-ear-and-flat-straps.test.mjs tests/helmet-h28-iconic-ear-volume.test.mjs tests/helmet-h30-reference-contour.test.mjs tests/helmet-h66-shell-cover-clearance.test.mjs tests/helmet-h67-close-fit.test.mjs tests/helmet-h71-square-band-cover-edges.test.mjs tests/ach-mich-h5-cover-strap.test.mjs
+      - name: H31C actual WebGL all-cut cover fit
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/ach-mich-cover-shell-clearance-') }}
+        run: node scripts/ach-mich-h6-visual-capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'fix/ach-mich-cover-shell-clearance-') }}
+        with:
+          name: h31c-cover-fit-mobile
+          path: ach-mich-h6-captures/
+          if-no-files-found: warn
+          retention-days: 14
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
