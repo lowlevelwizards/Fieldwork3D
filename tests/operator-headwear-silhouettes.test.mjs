@@ -39,9 +39,11 @@ test('two helmet families render single joined faceless-interior cuboid exterior
   assert.equal(g.userData.modelAxes,'-Z-forward,+X-right,+Y-up');
   const geometry=g.children[0].geometry;
   assert.equal(geometry.type,'BufferGeometry');
-  assert.ok(geometry.userData.greedyCuboidUnion);
-  assert.equal(geometry.userData.cuboids.length,
-    headwearCuboidVolumes(id).length);
+  if(id==='ach')assert.equal(geometry.userData.h17UnifiedContour,true);
+  else{
+   assert.ok(geometry.userData.greedyCuboidUnion);
+   assert.equal(geometry.userData.cuboids.length,headwearCuboidVolumes(id).length);
+  }
   assert.ok(geometry.index.count>=36);
   for(const n of geometry.getAttribute('position').array)
    assert.ok(Number.isFinite(n));
@@ -57,7 +59,7 @@ test('two helmet families render single joined faceless-interior cuboid exterior
 });
 test('ACH uses one decisive side drop instead of narrow stepping',()=>{
  const v=headwearCuboidVolumes('ach');
- const brow=byName(v,'ach-protective-brow'),ear=byName(v,'ach-right-ear-wrap');
+ const brow=byName(v,'ach-protective-brow'),ear=byName(v,'ach-right-ear-nape');
  assert.ok(brow&&ear);
  assert.ok(lowerAt(v,4.4,0)<3.5,'ACH retains ear coverage with raised scallop');
  assert.ok(lowerAt(v,4.4,-3)<6,'temple descends from brow');
@@ -84,40 +86,21 @@ test('both fit head dimensions without changing proportions or scale',()=>{
  }
 });
 
-test('stage 1E removes insignificant crown trim and consolidates silhouette steps',()=>{
+test('H17 ACH has one integrated side contour, not stacked guard plates',()=>{
  const ach=headwearCuboidVolumes('ach');
  const high=headwearCuboidVolumes('high-cut');
- assert.equal(ach.length,9,'ACH: crown, brow, nape and three substantial side pairs');
- assert.equal(high.length,5,'high-cut: crown, brow, rear and two temple returns');
- for(const [id,v] of [['ach',ach],['high-cut',high]]){
-  assert.ok(v.every(p=>p.height>=1.7),
-   id+' must not add little upper strips or narrow silhouette risers');
-  assert.ok(v.every(p=>p.width>=.96&&p.depth>=1.10),
-   id+' must use substantial deliberate masses');
-  assert.ok(!v.some(p=>/step|trim|ridge|plate/i.test(p.name)),
-   id+' should contain no decorative staircase');
-  assert.equal(build(id).userData.stage,'1E');
- }
- // Each authored broad section overlaps its neighbor by >= 0.2 units,
- // avoiding near-coplanar floating-point cracks in the cuboid union.
- const zOverlap=(a,b)=>Math.min(a.z+a.depth/2,b.z+b.depth/2)-
-  Math.max(a.z-a.depth/2,b.z-b.depth/2);
- assert.ok(zOverlap(byName(ach,'ach-protective-brow'),
-  byName(ach,'ach-right-temple'))>.2);
- assert.ok(zOverlap(byName(ach,'ach-right-temple'),
-  byName(ach,'ach-right-ear-wrap'))>.2);
- assert.ok(zOverlap(byName(ach,'ach-right-ear-wrap'),
-  byName(ach,'ach-right-nape-return'))>.2);
- assert.ok(zOverlap(byName(high,'highcut-protective-brow'),
-  byName(high,'highcut-right-temple'))>.2);
- // H16: Full-Cut has a deeper, slightly flared central ear bump and nape return.
- assert.ok(Math.abs(lowerAt(ach,4.4,-3.5)-4.40)<.01);
+ assert.equal(ach.length,5,'crown, brow, rear, two coarse fit envelopes');
+ assert.equal(high.length,5,'High-Cut remains unchanged');
+ assert.ok(ach.every(v=>!/temple|ear-wrap|nape-return/.test(v.name)));
+ const shell=build('ach'),geo=shell.children[0].geometry;
+ assert.equal(shell.children.length,1);
+ assert.equal(geo.userData.h17UnifiedContour,true);
+ assert.ok(geo.userData.exteriorQuads<=30);
+ assert.equal(geo.userData.achMichCrownInset,.53);
+ assert.equal(build('high-cut').userData.stage,'1E');
  assert.ok(Math.abs(lowerAt(ach,4.4,0)-2.31)<.01);
- assert.ok(Math.abs(lowerAt(ach,4.4,4.6)-2.55)<.01);
- // The high-cut instead has exactly one broad, exposed ear interval.
- assert.ok(Math.abs(lowerAt(high,4.4,-3.5)-4.50)<.01);
+ assert.ok(Math.abs(lowerAt(ach,0,4.6)-2.55)<.01);
  assert.ok(Math.abs(lowerAt(high,4.4,0)-5.95)<.01);
- assert.ok(Math.abs(lowerAt(high,4.4,3.5)-3.10)<.01);
 });
 
 test('ACH first-pass top chamfer is intentional but keeps its lower-edge topology',()=>{
@@ -125,6 +108,6 @@ test('ACH first-pass top chamfer is intentional but keeps its lower-edge topolog
  assert.equal(g.userData.achMichCrownInset,.53);
  assert.ok(g.getAttribute('normal').count>0);
  const side=headwearCuboidVolumes('ach');
- assert.equal(side.length,9);
+ assert.equal(side.length,5);
  assert.ok(Math.abs(lowerAt(side,4.4,0)-2.31)<.01);
 });

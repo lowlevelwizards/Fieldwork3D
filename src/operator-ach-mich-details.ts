@@ -4,6 +4,8 @@
  */
 import * as THREE from 'three';
 import {ACH_MICH_SHELLS} from './operator-headwear-silhouettes.ts';
+import {UNIFIED_HELMET_HEMS}
+ from './operator-ach-mich-unified-shell.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 export type AchMichDetailLayers={
  bare:THREE.Group;coveredLiner:THREE.Group;hardware:THREE.Group;strap:THREE.Group;
@@ -21,18 +23,13 @@ type Profile={
 const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  ach:{
   side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.55,
-  frontStud:[5.075,4.95,-3.12],rearStud:[5.075,3.47,1.86],
-  hem:[[5.075,4.40,-5.535],[5.075,4.40,-2.51],
-   [5.33,2.31,-2.36],[5.33,2.31,2.42],
-   [5.075,2.55,2.70],[5.075,2.55,5.60]]
+  frontStud:[5.075,4.95,-3.12],rearStud:[5.075,2.86,1.86],
+  hem:UNIFIED_HELMET_HEMS.ach
  },
  'mich-2002':{
   side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:3.21,
-  frontStud:[5.11,5.265,-3.10],rearStud:[5.115,4.52,3.05],
-  hem:[[5.03,4.55,-5.70],[5.11,4.45,-4.48],
-   [5.11,4.45,-2.18],[5.34,2.99,-1.98],
-   [5.34,2.99,2.38],[5.115,3.48,2.64],
-   [5.115,3.48,4.66],[5.03,3.21,5.75]]
+  frontStud:[5.03,5.10,-3.10],rearStud:[5.03,3.75,3.05],
+  hem:UNIFIED_HELMET_HEMS['mich-2002']
  },
  'mich-2001':{
   side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:3.33,

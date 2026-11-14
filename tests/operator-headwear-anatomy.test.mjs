@@ -43,7 +43,8 @@ test('matched ACH/high-cut 3/4 silhouettes retain overlap-free orthogonal joins'
   const model=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   assert.equal(model.children.length,1);
   const geometry=model.children[0].geometry;
-  assert.equal(geometry.userData.greedyCuboidUnion,true);
+  assert.ok(id==='ach'?geometry.userData.h17UnifiedContour:
+   geometry.userData.greedyCuboidUnion);
   assert.ok(geometry.userData.exteriorQuads<150,
    'keep single efficient cuboid silhouette on mobile');
   assert.equal(model.children[0].receiveShadow,false);
