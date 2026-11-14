@@ -66,15 +66,18 @@ export function initialIntel(mode:IntelMode,site:Site|undefined,
  }
  return intel;
 }
+/** Precomputed immutable sample order: no temporary numeric array per wall. */
+const SEGMENT_SAMPLES=[.25,.5,.75] as const;
 export function observeIntel(intel:IntelState,site:Site|undefined,
   doors:Door[],visible:(p:Pt)=>boolean,world?:SessionWorldGeometry){
  const walls=world?.walls??WALLS,cover=world?.cover??COVER;
  const observesSegment=(seg:Segment)=>{
    const dx=seg.b.x-seg.a.x,dy=seg.b.y-seg.a.y;
    const n=Math.max(1,Math.hypot(dx,dy));
-   for(const t of [.25,.5,.75]){
+   // Fixed wall normal reused for all three identical exact sight probes.
+   const nx=-dy/n*12,ny=dx/n*12;
+   for(const t of SEGMENT_SAMPLES){
      const p={x:seg.a.x+dx*t,y:seg.a.y+dy*t};
-     const nx=-dy/n*12,ny=dx/n*12;
      if(visible(p)||visible({x:p.x+nx,y:p.y+ny})||
        visible({x:p.x-nx,y:p.y-ny}))return true;
    }
@@ -95,13 +98,14 @@ export function observeIntel(intel:IntelState,site:Site|undefined,
    if(intel.cover.has(i))return;
    // Exposed sample points are outside the collidable/occluding box.
    const x=o.w/2+2.5,y=o.h/2+2.5;
-   const samples=[
-     {x:o.x-x,y:o.y},{x:o.x+x,y:o.y},
-     {x:o.x,y:o.y-y},{x:o.x,y:o.y+y},
-     {x:o.x-x,y:o.y-y},{x:o.x+x,y:o.y-y},
-     {x:o.x-x,y:o.y+y},{x:o.x+x,y:o.y+y},
-   ];
-   if(samples.some(visible))intel.cover.add(i);
+   // Preserve the exact historical eight probe positions and
+   // short-circuit order. Do not allocate an 8-point array and .some()
+   // callback for every unknown fixture on every intel cadence.
+   if(visible({x:o.x-x,y:o.y})||visible({x:o.x+x,y:o.y})||
+      visible({x:o.x,y:o.y-y})||visible({x:o.x,y:o.y+y})||
+      visible({x:o.x-x,y:o.y-y})||visible({x:o.x+x,y:o.y-y})||
+      visible({x:o.x-x,y:o.y+y})||visible({x:o.x+x,y:o.y+y}))
+     intel.cover.add(i);
  });
  site?.rooms.forEach(r=>{
    if(intel.rooms.has(r.id))return;

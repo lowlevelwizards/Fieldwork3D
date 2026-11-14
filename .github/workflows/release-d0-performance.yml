@@ -46,11 +46,15 @@ jobs:
             tests/performance-normal-play-20261113.test.mjs
       - name: Candidate seed-fixed mission workloads
         run: node --experimental-strip-types scripts/audit-release-d0-workloads.mjs d0-after.json
+      # D0's original frozen release is a historical reference, not a
+      # correct expected fingerprint after intentional D1/D2 changes.
+      # Every PR must prove exact same-seed behavior against its real base;
+      # manual dispatch retains the archived D0 reference.
       - uses: actions/checkout@v4
         with:
-          ref: 6b3715a0e9b25017e9aeca26ba0ddcc64c7aa764
+          ref: ${{ github.event.pull_request.base.sha || '6b3715a0e9b25017e9aeca26ba0ddcc64c7aa764' }}
           path: d0-baseline
-      - name: Exact previous-main same workload inputs and script
+      - name: Exact actual PR base same workload inputs and script
         run: |
           npm install --prefix d0-baseline --no-audit --no-fund
           cp scripts/audit-release-d0-workloads.mjs d0-baseline/scripts/audit-release-d0-workloads.mjs
