@@ -4,6 +4,7 @@ on:
     branches: [feature/d3-2-r2-physical-hinge-body-recovery-20261114]
     paths:
       - scripts/audit-r7-squad-execution.mjs
+      - scripts/audit-d3-10a-retail-vale.mjs
       - src/breach-d3-c-progress.ts
       - tests/release-d3-9c-progress.test.mjs
       - .github/workflows/d3-10a-progress45.yml
@@ -77,6 +78,16 @@ jobs:
               after.summary.physicsStepViolations||after.summary.corruptedPlans)
               process.exit(1);
           ' "$RUNNER_TEMP/baseline45.json" "$RUNNER_TEMP/c45.json"
+      - name: Exact retail ENTRY Vale route witness before and after
+        run: |
+          cp scripts/audit-d3-10a-retail-vale.mjs "$RUNNER_TEMP/d310base/scripts/audit-d3-10a-retail-vale.mjs"
+          node --experimental-strip-types "$RUNNER_TEMP/d310base/scripts/audit-d3-10a-retail-vale.mjs" > "$RUNNER_TEMP/retail-before.json"
+          node --experimental-strip-types scripts/audit-d3-10a-retail-vale.mjs > "$RUNNER_TEMP/retail-after.json"
+          node -e '
+            const old=require(process.argv[1]),now=require(process.argv[2]);
+            const summary=x=>({initial:x.initial,at:x.observations.filter(t=>[10,14,18,20,22,24,26,30,34,38,42,44].includes(t.t)),nearCover:x.nearCover,nearWalls:x.nearWalls,nearestDoors:x.nearestDoors,finalRoute:x.finalRoute,cancel:x.cancel});
+            console.log("D3.10A VALE TRACE",JSON.stringify({old:summary(old),now:summary(now)},null,2));
+          ' "$RUNNER_TEMP/retail-before.json" "$RUNNER_TEMP/retail-after.json"
       - name: Retain full per-five-second evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,4 +96,6 @@ jobs:
           path: |
             ${{ runner.temp }}/c45.json
             ${{ runner.temp }}/baseline45.json
+            ${{ runner.temp }}/retail-before.json
+            ${{ runner.temp }}/retail-after.json
           if-no-files-found: ignore
