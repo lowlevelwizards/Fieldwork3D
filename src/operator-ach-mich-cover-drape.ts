@@ -24,7 +24,7 @@ export const ACH_MICH_COVER_FOLDED_HEM=.18;
 export const ACH_MICH_COVER_SIDE_CROWN_ALLOWANCE=.24;
 export type AchMichCoverShell=typeof ACH_MICH_SHELLS[number];
 type Side='front'|'right'|'rear'|'left';
-type Ring='top'|'shoulder'|'onset'|'faceTop'|'faceBottom'|'hem';
+type Ring='top'|'crownShoulder'|'shoulder'|'onset'|'faceTop'|'faceBottom'|'hem';
 type Sample={side:Side;x:number;z:number;bottom:number};
 const clamp=(n:number)=>Math.min(1,Math.max(0,n));
 type Style={
@@ -117,7 +117,7 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
  const profile=unifiedHelmetEarVerticalProfile(
   style.shell,style.shellShoulderY,s.bottom,s.z);
  // Match the flat upper wall, broad lower face, and continuous lower hem.
- const sideWidth=ring==='shoulder'||ring==='onset'?style.sideX+.08:
+ const sideWidth=ring==='crownShoulder'||ring==='shoulder'||ring==='onset'?style.sideX+.08:
   ring==='faceTop'||ring==='faceBottom'?midWidth+outward+.08:
   extentAtHem+outward+.05;
  const x=ring==='top'?s.x:side?sign*(corner?style.sideX:sideWidth):
@@ -127,6 +127,7 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
  const z=ring==='top'?s.z:front?style.front:rear?style.rear:
   s.z+(style.front-style.topFront)*f+(style.rear-style.topRear)*b;
  const y=ring==='top'?style.topY:
+  ring==='crownShoulder'?style.shellShoulderY+.07:
   ring==='shoulder'?style.shoulderY:
   ring==='onset'?profile.onsetY+.07:
   ring==='faceTop'?profile.faceTopY+.07:
@@ -144,7 +145,7 @@ function fabricCoordinate(style:Style,s:Sample,ring:Ring):
  readonly [number,number]{
  const xyz=ringPoint(style,s,ring);
  if(ring==='top')return [xyz[0],xyz[2]];
- const rings:readonly Ring[]=['top','shoulder','onset','faceTop','faceBottom','hem'];
+ const rings:readonly Ring[]=['top','crownShoulder','shoulder','onset','faceTop','faceBottom','hem'];
  let distance=0;
  for(let i=1;i<=rings.indexOf(ring);i++){
   const a=ringPoint(style,s,rings[i-1]),
@@ -194,7 +195,8 @@ export function createAchMichDrapedGeometry(
  }
  const pairs:readonly (readonly [Ring,Ring])[]=hemOnly?
   [['hem','hem']]:
-  [['top','shoulder'],['shoulder','onset'],
+  [['top','crownShoulder'],['crownShoulder','shoulder'],
+   ['shoulder','onset'],
    ['onset','faceTop'],['faceTop','faceBottom'],['faceBottom','hem']];
  for(const [upper,lower] of pairs){
   for(const panelSamples of panels)
@@ -253,6 +255,7 @@ export function createAchMichDrapedGeometry(
  g.userData.h28UnifiedEarProfileMatched=true;
  g.userData.h30ReferenceContourCandidateMatched=true;
  g.userData.h31cRoofAnchoredToShellContour=true;
+ g.userData.h31cMatchesShellCrownBevel=true;
  g.userData.h25TuckedConcealedBinding=true;
  return g;
 }
