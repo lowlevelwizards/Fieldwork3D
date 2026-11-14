@@ -34,3 +34,11 @@ test('C: slow physical door motion / real queue is not mislabelled as stall',()=
  assert.equal(classifyCProgressWindow(make({travel:0,net:0,
   openingSeconds:4})).suspicious,false);
 });
+
+test('C1 candidate only accepted with viable furniture next leg',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
+ assert.match(source,/a\.lastBlocker!=='furniture'\|\|/);
+ assert.match(source,/sweptBodyClear\(candidate,next,s\.doors,OPERATOR_RADIUS,world\)/);
+ assert.match(source,/if\(candidate&&continues&&d\(candidate,p\)/);
+});

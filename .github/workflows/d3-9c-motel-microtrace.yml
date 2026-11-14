@@ -4,6 +4,8 @@ on:
     branches: [feature/d3-9-clean-single-opener-20261114]
     paths:
       - 'scripts/audit-d3-9c-motel.mjs'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-order-movement.ts'
       - '.github/workflows/d3-9c-motel-microtrace.yml'
   workflow_dispatch:
 permissions:

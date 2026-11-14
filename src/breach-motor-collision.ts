@@ -267,7 +267,14 @@ export function resolveMotorCollision(
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts)==='detour'){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p),8,world);
-    if(candidate&&d(candidate,p)<d(a.p,p)+12&&
+    // C1: only adopt a furniture detour with a valid next leg.
+    // Motel 31149 was cycling between grid 280 and a blocked 312 waypoint;
+    // these two microsteps made no goalward progress but reset blockedTime.
+    // Reject the blind alley and let the existing bounded world-route
+    // recovery handle it. No collision exception or extra motor authority.
+    const continues=a.lastBlocker!=='furniture'||
+      !candidate||sweptBodyClear(candidate,next,s.doors,OPERATOR_RADIUS,world);
+    if(candidate&&continues&&d(candidate,p)<d(a.p,p)+12&&
       watchClearanceAllowed(a.p,candidate,p,
         !!a.aimInstruction&&a.aimInstruction.mode!=='free',
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&

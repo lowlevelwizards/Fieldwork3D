@@ -8,6 +8,8 @@ on:
       - tests/release-d3-9c-progress.test.mjs
       - .github/workflows/d3-9c-progress35.yml
       - src/breach-motor-door.ts
+      - src/breach-motor-collision.ts
+      - src/breach-order-movement.ts
       - src/breach-door-traversal-episode.ts
       - src/breach-door-opening-footwork.ts
   workflow_dispatch:
