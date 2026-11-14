@@ -200,6 +200,8 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  // A correction belongs only to the authored node and confirmed contact
  // that justified it; no per-tick target searches or plan-array signatures.
  a.fireRetreatPlanId=a.plan[0]?.id??null;
+ a.fireRetreatPlanKind=a.plan[0]?.kind??null;
+ a.fireRetreatPlanPoint=a.plan[0]?{...a.plan[0].p}:null;
  a.fireRetreatContactId=target.id;
  // A few units of foot correction must not inherit the full duration
  // of an emergency 28-unit sidestep; preserve a deterministic upper bound.
