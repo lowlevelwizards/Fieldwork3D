@@ -81,10 +81,10 @@ export function addAchMichRetainingBungees(
  const cover=new THREE.Group(),bare=new THREE.Group();
  cover.name='bungee-cover-route';bare.name='bungee-bare-route';
  cover.visible=true;bare.visible=false;g.add(cover,bare);
- const routes=[];
+ const routes=[],bareRoutes=[];
  for(const side of ['left','right'] as const){
   routes.push(tether(shell,side,cover,elastic,metal,true));
-  tether(shell,side,bare,elastic,metal,false);
+  bareRoutes.push(tether(shell,side,bare,elastic,metal,false));
  }
  g.userData.h9SurfaceMounted=true;
  g.userData.h10BungeeThickness=.15;
@@ -94,6 +94,7 @@ export function addAchMichRetainingBungees(
  g.userData.h61CoverAwareTethers=true;
  g.userData.h67LowClearanceRoute=true;
  g.userData.h9BungeeRoutes=routes;
+ g.userData.h12BareBungeeRoutes=bareRoutes;
  g.userData.h12NoTubeGeometry=true;
  g.userData.h12ElbowBeyondShell=true;
 }
