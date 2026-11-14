@@ -14,7 +14,6 @@ import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
 import {noteD32MotorDoorSelection} from './breach-d3-motor-door-witness.ts';
-import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
 
 /** D3.2.5: an opened hinge that has STOPPED well below its target may
  * no longer monopolize the actor motor. The ordinary collision/recovery
@@ -145,38 +144,6 @@ export function handleMotorDoor(
       // Incidental body CLOSE on this exact leaf is deferred ONLY for
       // this motor attempt, preventing the D3.1 277-flip ping-pong.
       if(a.side==='blue'&&stalledDoorYieldsToMotor(doorAhead,a.actionTimer)){
-        // D3.8: a hand-assisted hinge can stop against the bodies trying to
-        // open it. This motor path formerly reset blockedTime every tick,
-        // so collision's existing self-clearance never got a turn.
-        // Only after a sustained stationary OPEN episode, stage ONE short,
-        // fully swept, teammate-clear relief from that same existing helper.
-        // This preserves the authored MOVE and lets the ordinary motor
-        // execute the feet on subsequent ticks. No teleport/leaf override.
-        const episode=a.doorTraversal;
-        if(pendingDoor?.kind==='move'&&episode?.doorId===doorAhead.id&&
-           episode.phase!=='release'&&
-           episode.maneuver!=='outside-leaf'&&
-           a.actionTimer>=2.5&&
-           s.seconds-episode.lastProgressAt>=1.8&&
-           // Share the existing four rehearsal attempts; allow two
-           // subsequent, bounded physical self-clearance attempts even
-           // if the earlier leaf-bypass candidates failed to route.
-           episode.maneuverAttempts<6&&
-           s.seconds>=episode.nextManeuverAt){
-          const relief=selfBlockingHingeRelief(a,s,p);
-          episode.maneuverAttempts++;
-          episode.nextManeuverAt=s.seconds+2;
-          if(relief){
-            episode.maneuver='outside-leaf';
-            episode.waypoints=[{...relief}];episode.waypointIndex=0;
-            episode.phase='clear-leaf';
-            episode.lastTransitionAt=s.seconds;
-            a.nav.unshift(relief);
-            a.retryRouteAt=0;a.recoveryAttempts=0;
-            a.motorPause=null;
-            return {paused:true,closed:false};
-          }
-        }
         a.motorPause=null;
         return {paused:false,closed:false,clearingDoorId:doorAhead.id};
       }
