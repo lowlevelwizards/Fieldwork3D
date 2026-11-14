@@ -20,7 +20,8 @@ import {approachingNarrowThreshold} from './breach-passage.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
  twoSidedSqueezePressure,sweptProfileClear,escapeOpenDoorOverlap,
  slideAroundStaticCorner,glideAlongStaticWall} from './breach-navigation.ts';
-import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel}
+import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel,
+ routeToNextOperableDoor}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement,blockedStepCause} from './breach-nav-diagnostics.ts';
 import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breach-movement-recovery.ts';
@@ -342,8 +343,14 @@ export function resolveMotorCollision(
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
       const replanAt=profile?beginMotorCpuMeasurement():0;
-      const repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
+      let repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
         routeWithSqueezeWorld(a.p,p,s.doors,world);
+      // D3.3: only a FAILED collision-truth route may request a future
+      // closed-door portal. The motor owns the actual contact/open and
+      // collision; this is a transient, physically swept approach prefix.
+      if(!repaired.length&&a.side==='blue'&&
+         a.plan[0]?.kind==='move'&&!a.doorTraversal&&!a.traversalPending)
+        repaired=routeToNextOperableDoor(a.p,p,s.doors,world);
       if(profile)profile('motor-collision-replan',finishMotorCpuMeasurement(replanAt));
       // A world-truth path that repeats the stuck steps is not progress.
       // Known-intel fallback is allowed only if it materially differs;
