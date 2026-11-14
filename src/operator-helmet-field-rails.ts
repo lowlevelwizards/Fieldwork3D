@@ -10,6 +10,7 @@ import {sampleHelmetShell,type HelmetSurfaceFrame}
 import {achMichHemY,achMichProfile} from './operator-ach-mich-details.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
+import {helmetHexFastenerGeometry} from './operator-helmet-fasteners.ts';
 
 type Side='left'|'right';
 type RailStation={u:number;rise:number};
@@ -48,6 +49,16 @@ const railFrame=(shell:AchMichCoverShell,side:Side,u:number,rise=0):
  }
  throw Error('H5.2 no '+shell+' '+side+' shell rail frame at u='+u);
 };
+/** Front ARC accessory socket shared by the light and camera models.
+ * Attaches to the real manufactured connector, not a second shell-mounted
+ * bracket that can drift away from the rail at different shell cuts.
+ */
+export function arcFrontAccessoryFrame(shell:AchMichCoverShell,side:Side):
+ HelmetSurfaceFrame{
+ const frame=railFrame(shell,side,-.39,.38);
+ frame.position.addScaledVector(frame.normal,.42);
+ return frame;
+}
 const quad=(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3,
  d:THREE.Vector3,out:number[])=>{
  for(const v of [a,b,c,a,c,d])out.push(v.x,v.y,v.z);
@@ -87,22 +98,19 @@ const attach=(parent:THREE.Group,frame:HelmetSurfaceFrame,mesh:THREE.Mesh,
  mesh.castShadow=false;mesh.receiveShadow=false;parent.add(mesh);
 };
 const bolt=(parent:THREE.Group,frame:HelmetSurfaceFrame,
- dark:THREE.Material,light:THREE.Material)=>{
+ _dark:THREE.Material,light:THREE.Material)=>{
  const mount=new THREE.Group();
  mount.name='arc-rail-chinstrap-sharing-bolt';
  mount.position.copy(frame.position).addScaledVector(frame.normal,.44);
  mount.quaternion.setFromRotationMatrix(new THREE.Matrix4()
   .makeBasis(frame.right,frame.up,frame.normal));
  parent.add(mount);
- for(const [name,radius,depth,material,z] of [
-  ['arc-recessed-washer',.33,.055,dark,.025],
-  ['arc-visible-bolt-head',.23,.070,light,.075]
- ] as const){
-  const m=new THREE.Mesh(new THREE.CylinderGeometry(radius,radius,depth,8),
-   material);
-  m.name=name;m.position.z=z;m.rotation.x=Math.PI/2;
-  m.castShadow=false;m.receiveShadow=false;mount.add(m);
- }
+ // Match the NVG shroud: one large flat hex per bolt, no tiny rings.
+ const head=new THREE.Mesh(
+  helmetHexFastenerGeometry([[0,0]],.24,.13),light);
+ head.name='arc-visible-bolt-head';
+ head.castShadow=false;head.receiveShadow=false;
+ mount.add(head);
 };
 export function addAchMichArcRails(
  shell:AchMichCoverShell,root:THREE.Group,
