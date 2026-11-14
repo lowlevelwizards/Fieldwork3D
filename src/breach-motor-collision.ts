@@ -142,8 +142,7 @@ export function resolveMotorCollision(
       // departure point. It was retired at 3 units before the furniture
       // actually cleared (motel 31149), then re-entered the same prop.
       // For furniture contact only, complete this verified leg precisely.
-      if(a.lastBlocker==='furniture')
-        notePreciseLocalDetour(a,fullLane[0]);
+      notePreciseLocalDetour(a,fullLane[0]);
       // Preserve existing WATCH facing and weapon intention; only the
       // feet choose a different line around the obstruction.
       a.squeeze=false;a.squeezeTime=0;
@@ -290,7 +289,7 @@ export function resolveMotorCollision(
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
       a.nav.unshift(candidate);
-      if(a.lastBlocker==='furniture')notePreciseLocalDetour(a,candidate);
+      notePreciseLocalDetour(a,candidate);
       a.lastNavRepairAt=s.seconds;
       return true;
     }
