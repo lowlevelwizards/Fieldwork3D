@@ -8,6 +8,8 @@ on:
       - 'src/breach-visual-acquisition.ts'
       - 'src/breach-ground-discovery.ts'
       - 'src/breach-game.ts'
+      - 'src/breach-intel.ts'
+      - 'tests/release-d2-6-intel-probe-parity.test.mjs'
       - 'tests/visibility-v1-long-range.test.mjs'
       - 'tests/release-d2-6-integrated-performance.test.mjs'
       - 'docs/release-d2-6-integrated-performance-20261113.md'
@@ -28,8 +30,11 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - name: D2.6 baseline algorithm, lighting, movement, deterministic parity
-        run: node --experimental-strip-types --test tests/release-d2-6-integrated-performance.test.mjs
+      - name: D2.6 fixed-step movement, vision, structural probe parity
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d2-6-integrated-performance.test.mjs \
+            tests/release-d2-6-intel-probe-parity.test.mjs
       - name: Previously shipped D2.1-D2.5 and physical crossing regressions
         run: |
           node --experimental-strip-types --test \
