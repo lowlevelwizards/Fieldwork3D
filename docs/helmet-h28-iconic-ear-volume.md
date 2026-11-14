@@ -11,8 +11,8 @@ have enlarged the wedges instead of creating a legible protective volume.
   front/ear/nape longitudinal perimeter stations.
 - Enlarged continuous ear face: full half-width **5.92** (base 5.075),
   mid half-width **5.78** (base 5.03); high cut stays **5.015**.
-- Slightly shorten the front step at the lower side: full ear-start Z -0.46,
-  mid Z -0.16, retaining >0.6 station spacing.
+- Preserve the previously approved full/mid brow, ear and nape Z stations;
+  shorten the upper ear bevel rather than moving anatomical cut boundaries.
 - Outer face stays full width at the two central ear stations; the rear
   shoulder returns to the existing nape hem width at the next station.
   This eliminates the second gradual triangular wedge into the rear.

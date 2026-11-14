@@ -11,7 +11,7 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  ach:[
   [5.075,4.40,-5.535],
   [5.075,4.40,-1.12],
-  [5.355,2.04,-0.46],
+  [5.355,2.04,-0.12],
   [5.355,2.04,2.35],
   [5.125,1.85,3.88],
   [5.075,1.85,5.60]
@@ -19,7 +19,7 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  'mich-2002':[
   [5.03,4.55,-5.70],
   [5.03,4.55,-0.78],
-  [5.28,3.06,-0.16],
+  [5.28,3.06,0.10],
   [5.28,3.06,2.52],
   [5.08,1.90,4.08],
   [5.03,1.90,5.75]

@@ -33,7 +33,7 @@ test('H28: broad iconic lower face, compact transitions and distinct full/mid/hi
   const expected=id==='ach'?5.92:5.78;
   assert.ok(near(width[2],expected)&&near(width[3],expected));
   assert.ok(width[2]-hem[0][0]>.73,'visible exaggerated ear mass');
-  assert.ok(hem[3][2]-hem[2][2]>2.6,'long rectangular outer face');
+  assert.ok(hem[3][2]-hem[2][2]>2.4,'long rectangular outer face');
   assert.ok(near(width[4],hem[4][0])&&near(width[5],hem[5][0]),
    'rear returns to base nape with no extra wedge tail');
   for(const i of [2,3]){
