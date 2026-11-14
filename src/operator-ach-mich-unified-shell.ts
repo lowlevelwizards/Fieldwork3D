@@ -1,11 +1,11 @@
-/** H18: one continuous, deliberately angular lower shell per side.
+/** H19: one continuous, deliberately angular lower shell per side.
  * The same six silhouette stations used by H17 now emphasize the distinct
  * ear lobe (full vs mid) and slope into the nape without adding polygons.
  * One faceted roof, two planar sides, one brow/nape; one draw call.
  */
 import * as THREE from 'three';
 import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
-export type UnifiedCut='ach'|'mich-2002';
+export type UnifiedCut='ach'|'mich-2002'|'mich-2001';
 export type ShellPoint=readonly [number,number,number]; // x, y, z
 export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[]>>={
  ach:[
@@ -23,6 +23,16 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
   [5.03,3.06,1.38],
   [5.03,3.82,3.05],
   [5.03,3.82,5.75]
+ ],
+ // H19: over-ear opening (ear top Y4), not a Y6 floating pancake.
+ // Two broad straight sides and one rear drop; no intermediate trim steps.
+ 'mich-2001':[
+  [5.015,4.55,-5.71],
+  [5.015,4.55,-3.28],
+  [5.015,4.78,-2.32],
+  [5.015,4.78,1.42],
+  [5.015,4.12,3.14],
+  [5.015,4.12,5.66]
  ]
 };
 type V=readonly [number,number,number];
