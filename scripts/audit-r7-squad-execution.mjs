@@ -96,6 +96,11 @@ function run(site,seed,kind){
   const planned=kind==='entry'?planEntry(session,actors):
    planFourMoves(session,actors,site);
   const initial=actors.map(a=>new Set(a.plan.map(n=>n.id)));
+  // D3.6: frozen per-run authored targets and entry positions. Endpoints
+  // expose actual arrival, not just plan exhaustion or a 3-second triage.
+  const starting=actors.map(a=>({...a.p}));
+  const startedGoalDistance=actors.map(a=>planned.goals.has(a.id)?
+   round(dist(a.p,planned.goals.get(a.id))):null);
   const survey=new MovementQualitySurvey(actors,planned.goals);
   const crossed=actors.map(()=>null),lastSigned=actors.map(a=>
    planned.door?signed(a.p,planned.door):null);
@@ -229,6 +234,18 @@ function run(site,seed,kind){
    invalidPositions:stats.invalidPositions,
    operators:stats.details.map(d=>({
     id:d.actor,arrived:d.arrived,remaining:d.remaining,
+    // End-state evidence only. Read current authoritative motor state;
+    // no new tick-level probes, authority, or path calculation.
+    goal:planned.goals.get(d.actor)??null,
+    position:{...actors.find(a=>a.id===d.actor).p},
+    start:starting[actors.findIndex(a=>a.id===d.actor)],
+    startingGoalDistance:startedGoalDistance[actors.findIndex(a=>a.id===d.actor)],
+    nextNav:actors.find(a=>a.id===d.actor).nav[0]??null,
+    lastBlocker:actors.find(a=>a.id===d.actor).lastBlocker??null,
+    doorEpisode:actors.find(a=>a.id===d.actor).doorTraversal?
+     {doorId:actors.find(a=>a.id===d.actor).doorTraversal.doorId,
+      phase:actors.find(a=>a.id===d.actor).doorTraversal.phase,
+      maneuver:actors.find(a=>a.id===d.actor).doorTraversal.maneuver}:null,
     stallEpisodes:d.stallEpisodes,blockedSeconds:d.blockedSeconds,
     waitSeconds:d.passageWaitSeconds,retries:d.retries,
     longestStillSeconds:d.longestStillSeconds,
@@ -266,6 +283,11 @@ const summary={
  triageCounts,sites:rows.length,exceptions,attempted:results.length,
  acceptedFour:results.filter(r=>r.accepted===4).length,
  completedFour:results.filter(r=>r.complete).length,
+ // Unlike logical plan completion, these inspect real FINAL world positions.
+ physicalArrivals:sum('arrivals'),
+ physicalCompletedFour:results.filter(r=>r.accepted===4&&r.arrivals===4).length,
+ logicalDoneButNotArrived:results.reduce((n,r)=>n+(r.operators??[]).filter(o=>
+  o.remainingOrders===0&&!o.arrived).length,0),
  incomplete:sum('incomplete'),rejected:sum('rejected'),
  stallEpisodes:sum('stallEpisodes'),retries:sum('retries'),
  passageWaitSeconds:round(sum('passageWaitSeconds')),
