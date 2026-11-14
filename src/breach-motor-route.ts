@@ -9,7 +9,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
-import {recordDoorManeuverContact,tryRehearsedDoorManeuver}
+import {recordDoorManeuverContact}
  from './breach-door-traversal-maneuver.ts';
 import {escapeOpenDoorOverlap,sweptBodyClear} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
@@ -74,11 +74,6 @@ export function prepareMotorRoute(
     if(escape){
       a.priorP=clone(a.p);a.p=escape;a.velocity=0;
       a.blockedTime=0;a.lastBlocker='door';
-      // Only after a REAL fully swept overlap escape, rehearse the same
-      // identified leaf from the corrected body position. Exact full-body
-      // sweeps and the episode's existing two/four-attempt limits govern it.
-      if(a.squeeze&&a.doorTraversal?.phase==='clear-leaf'&&
-         tryRehearsedDoorManeuver(a,s,p,false,true))return 'handled';
       if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return 'handled';
     }
