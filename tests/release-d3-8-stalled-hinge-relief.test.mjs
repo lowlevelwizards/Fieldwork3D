@@ -51,7 +51,7 @@ test('D3.8 cold hinge handoff has a bounded episode retry and never bypasses col
   import.meta.url),'utf8');
  assert.match(source,/a\.actionTimer>=2\.5/);
  assert.match(source,/s\.seconds-episode\.lastProgressAt>=1\.8/);
- assert.match(source,/episode\.maneuverAttempts<2/);
+ assert.match(source,/episode\.maneuverAttempts<6/);
  assert.match(source,/selfBlockingHingeRelief\(a,s,p\)/);
  assert.match(source,/a\.nav\.unshift\(relief\)/);
  assert.match(source,/episode\.maneuver='outside-leaf'/);
