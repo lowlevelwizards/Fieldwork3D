@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {createHelmetFieldLayers,updateHelmetFieldLayers}
  from '../src/operator-helmet-field-visuals.ts';
-import {sampleHelmetCover} from '../src/operator-helmet-surface.ts';
+import {sampleHelmetCover,sampleHelmetShell} from '../src/operator-helmet-surface.ts';
 
 test('H9.4a: ACH/MICH shrouds are sized, three-hole, winged, and fitted to actual fabric',()=>{
  for(const id of ['ach','mich-2001','mich-2002']){
@@ -16,11 +16,12 @@ test('H9.4a: ACH/MICH shrouds are sized, three-hole, winged, and fitted to actua
   assert.ok(anchor.userData.h11TriangleCount<=110,
    'shroud geometry must stay lean for gameplay');
   assert.equal(anchor.userData.h9UsesCoverFrame,true);
-  const frame=sampleHelmetCover(id,'front',0,.26,.16);
+  const frame=sampleHelmetCover(id,'front',0,.26,.095);
+  const bare=sampleHelmetShell(id,'front',0,.26,.095);
   // H10 oversizes the shroud and offsets its physical backing out of
   // the fitted cloth; do not demand a flush H9 center point.
   assert.ok(frame&&anchor.position.distanceTo(
-   frame.position.clone().addScaledVector(frame.normal,.14))<1e-4);
+   frame.position.clone().addScaledVector(frame.normal,.04))<1e-4);
   assert.equal(anchor.children.length,4,
    'one plate, one center block, one socket, one batched fastener mesh');
   const screws=anchor.children.find(x=>x.name==='three-oversized-nvg-fasteners');
@@ -43,8 +44,21 @@ test('H9.4a: ACH/MICH shrouds are sized, three-hole, winged, and fitted to actua
   assert.ok(size.x>4.9&&size.y>2.9,
    'shroud should be exaggerated enough to read at gameplay distance');
   assert.ok(anchor.children.every(c=>!c.castShadow));
+  const shellAnchor=kit.modules.shroud.getObjectByName('shroud-bare-mount');
+  assert.ok(shellAnchor&&bare);
+  assert.ok(shellAnchor.position.distanceTo(
+   bare.position.clone().addScaledVector(bare.normal,.04))<1e-4);
+  assert.ok(shellAnchor.position.distanceTo(anchor.position)>.15);
+  assert.equal(shellAnchor.children.length,4);
+  assert.equal(shellAnchor.children[0].geometry,anchor.children[0].geometry,
+   'cover and bare shroud should share static geometry');
   updateHelmetFieldLayers(kit,{shroud:true},0x65705d,true);
   assert.equal(kit.modules.shroud.visible,true);
+  assert.equal(anchor.visible,true);
+  assert.equal(shellAnchor.visible,false);
+  updateHelmetFieldLayers(kit,{shroud:true},0x65705d,false);
+  assert.equal(anchor.visible,false);
+  assert.equal(shellAnchor.visible,true);
  }
 });
 
