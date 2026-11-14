@@ -38,6 +38,7 @@ import {skillMultiplier} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,muzzleEndpoint,recoverWeapon} from './breach-ballistics.ts';
 
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {prepareShotSight,nearShotLane} from './breach-fire-preflight.ts';
 import {fireUrgency,passiveAimReadiness,contactAimOnAcquisition,
  contactAcquisitionScale,contactTurnScale,urgentFireMode}
  from './breach-fire-urgency.ts';
@@ -545,10 +546,9 @@ function fire(s:Session,a:TeamActor,dt:number){
        candidate.p,h)){
       civilianShotWithheld(s,a);return false;
     }
-    if(assessFriendlyLane(from,clearance.muzzle.y,candidate.p,h,
-      friends).blocker==='friendly')return false;
-    const lane=assessFireLane(from,clearance.muzzle.y,candidate.p,h,
+    const lane=nearShotLane(from,clearance.muzzle.y,candidate.p,h,
       world.cover,world.walls,s.doors,friends);
+    if(lane.blocker==='friendly')return false;
     if(lane.blocker==='clear')return true;
     if(lane.blocker!=='cover')return false;
     const preview=strikeSurface(from,candidate.p,s,
@@ -699,13 +699,17 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.fireCd>0)return;
   // A short-stock remains an *actual* shooting pose when its muzzle points
   // toward a confirmed threat, not just a blocked animation state.
-  const muzzle=weaponClearance({
+  // A2.2: own the settled sight solution once for this synchronous shot
+  // attempt. The resolver may reuse it only with exact matching inputs;
+  // randomized projectile clearance remains separately authoritative.
+  const shotPreflight=prepareShotSight({
     x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:a.weaponYaw,
     shoulderOffset:a.aimSideOffset??0,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
     equipment:a.equipment,aim:a.aim,posture:a.posture,velocity:a.velocity,
     recoil:a.recoil,threatRange:range
   },s.doors,world.cover,world.walls,friends);
+  const muzzle=shotPreflight.clearance;
   const mode=urgentFireMode(readyMode(range,a.aim,a.weapon),
     a.aim,muzzle,desiredYaw);
   if(!mode){
@@ -720,7 +724,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(Math.abs(Math.atan2(Math.sin(desiredYaw-a.weaponYaw),
     Math.cos(desiredYaw-a.weaponYaw)))>.38)return;
   a.fireMode=mode;
-  commitShot(s,a,target,{mode,range,moving,mods,weapon,profile});
+  commitShot(s,a,target,{mode,range,moving,mods,weapon,profile,
+    preflight:shotPreflight});
 }
 
  return {fire,requestClearFireStep};
