@@ -47,5 +47,13 @@ jobs:
             tests/animation-a3-1-friendly-volume.test.mjs \
             tests/animation-a3-4-micro-footwork.test.mjs \
             tests/release-d2-3-interruption-priority.test.mjs
+      - name: Observational 2/8/16-rig pose CPU probe
+        run: node --experimental-strip-types scripts/bench-operator-pose-pipeline.mjs --quick --out artifacts/d2-4/pose-cpu.json
       - name: Production typecheck and bundle
         run: npm run build
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d2-4-pose-cpu-evidence
+          path: artifacts/d2-4/
+          if-no-files-found: ignore
