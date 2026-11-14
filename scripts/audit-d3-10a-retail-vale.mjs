@@ -46,7 +46,14 @@ try{
    motorPause:vale.motorPause,blocker:vale.lastBlocker,plan:vale.plan[0]?.kind??null,
    activeDoor:vale.doorTraversal?.doorId??null,
    speed:r(vale.velocity),
-   navSwept:nav?sweptBodyClear(vale.p,nav,s.doors,OPERATOR_RADIUS,world):null});
+   navSwept:nav?sweptBodyClear(vale.p,nav,s.doors,OPERATOR_RADIUS,world):null,
+   squad:actors.map(a=>({id:a.id,p:{...a.p},nav:a.nav[0]??null,
+    remaining:r(distance(a.p,goals.find(g=>g.id===a.id).p)),
+    plan:a.plan[0]?.kind??null,blocked:r(a.blockedTime),
+    lastBlocker:a.lastBlocker,velocity:r(a.velocity),
+    motorPause:a.motorPause,
+    nearestPeer:r(Math.min(...actors.filter(b=>b!==a).map(b=>distance(a.p,b.p))))}))
+  });
  }
  const nearCover=world.cover.filter(o=>
    Math.abs(o.x-vale.p.x)<o.w/2+40&&
