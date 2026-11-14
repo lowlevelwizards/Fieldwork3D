@@ -48,6 +48,10 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
   front=hem[0][2],rear=hem.at(-1)![2];
  const shoulderY=roofY-bevelHeight,topX=s-topInset;
  const topF=front+topInset,topR=rear-topInset;
+ // A small rear rake: the low nape reaches farther back than the upper
+ // shoulder, avoiding a vertical slab end without adding contour stations.
+ const shoulderRear=rear-.20;
+ const upperZ=(z:number)=>z===rear?shoulderRear:z;
  const positions:number[]=[],uv:number[]=[],uv1:number[]=[],colors:number[]=[];
  let quads=0;
  const add=(p:V,axis:0|1|2,region:0|1|2|3,tone:number)=>{
@@ -84,10 +88,10 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  for(const sign of [-1,1] as const){
   const x=sign*s,tx=sign*topX;
   quad(v(tx,roofY,topF),v(tx,roofY,topR),
-   v(x,shoulderY,rear),v(x,shoulderY,front),v(sign,1,0),0,0,.97);
+   v(x,shoulderY,shoulderRear),v(x,shoulderY,front),v(sign,1,0),0,0,.97);
   for(let i=1;i<hem.length;i++){
    const a=hem[i-1],b=hem[i];
-   quad(v(x,shoulderY,a[2]),v(x,shoulderY,b[2]),
+   quad(v(x,shoulderY,upperZ(a[2])),v(x,shoulderY,upperZ(b[2])),
     v(sign*b[0],b[1],b[2]),v(sign*a[0],a[1],a[2]),
     v(sign,0,0),0,1,
     cut==='ach'?.90:.91);
@@ -102,12 +106,12 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
   v(s,shoulderY,front),v(-s,shoulderY,front),
   v(0,0,-1),2,0,.96);
  quad(v(-topX,roofY,topR),v(topX,roofY,topR),
-  v(s,shoulderY,rear),v(-s,shoulderY,rear),
+  v(s,shoulderY,shoulderRear),v(-s,shoulderY,shoulderRear),
   v(0,0,1),2,0,.96);
  quad(v(-s,shoulderY,front),v(s,shoulderY,front),
   v(s,hem[0][1],front),v(-s,hem[0][1],front),
   v(0,0,-1),2,2,.92);
- quad(v(-s,shoulderY,rear),v(s,shoulderY,rear),
+ quad(v(-s,shoulderY,shoulderRear),v(s,shoulderY,shoulderRear),
   v(s,hem.at(-1)![1],rear),v(-s,hem.at(-1)![1],rear),
   v(0,0,1),2,1,.90);
  for(const [z,y,dir] of [[front,hem[0][1],-1],[rear,hem.at(-1)![1],1]]){
