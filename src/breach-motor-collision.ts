@@ -29,6 +29,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
+import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
@@ -282,7 +283,9 @@ export function resolveMotorCollision(
       const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
-      a.nav.unshift(candidate);a.lastNavRepairAt=s.seconds;
+      a.nav.unshift(candidate);
+      if(a.lastBlocker==='furniture')notePreciseLocalDetour(a,candidate);
+      a.lastNavRepairAt=s.seconds;
       return true;
     }
   }

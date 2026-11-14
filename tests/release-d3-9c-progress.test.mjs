@@ -42,3 +42,16 @@ test('C1 candidate only accepted with viable furniture next leg',async()=>{
  assert.match(source,/sweptBodyClear\(candidate,next,s\.doors,OPERATOR_RADIUS,world\)/);
  assert.match(source,/if\(candidate&&continues&&d\(candidate,p\)/);
 });
+
+test('C1 short furniture detour must reach its safe departure point',async()=>{
+ const {localDetourWaypointTolerance,notePreciseLocalDetour,
+  completePreciseLocalDetour}=await import('../src/breach-motor-local-detour.ts');
+ const a={},corner={x:280,y:504},next={x:312,y:504};
+ assert.equal(localDetourWaypointTolerance(a,corner),3);
+ notePreciseLocalDetour(a,corner);
+ assert.equal(localDetourWaypointTolerance(a,corner),1);
+ assert.equal(localDetourWaypointTolerance(a,next),3);
+ notePreciseLocalDetour(a,corner);
+ completePreciseLocalDetour(a);
+ assert.equal(localDetourWaypointTolerance(a,corner),3);
+});
