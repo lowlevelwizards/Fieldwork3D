@@ -16,31 +16,33 @@ const near=(a,b,eps=.002)=>Math.abs(a-b)<=eps;
 const xyz=(attr,i)=>[attr.getX(i),attr.getY(i),attr.getZ(i)];
 const same=(a,b)=>a.every((x,i)=>near(x,b[i]));
 
-test('H22: ear-zone transitions move behind former 25% profile, center on anatomy',()=>{
+test('H23: ear-zone slope begins around 40%, and the opening clears the implied ear',()=>{
  for(const id of ['ach','mich-2002','mich-2001']){
   const hem=UNIFIED_HELMET_HEMS[id],front=hem[0][2],rear=hem[5][2];
   assert.equal(hem.length,6);
-  // The brow stays heavy through roughly the first third of the shell.
+  // The heavy temple now reaches about 40% from the face; the full
+  // ear-cut height only begins around halfway down the shell.
   const startFraction=(hem[1][2]-front)/(rear-front);
   const earFraction=(hem[2][2]-front)/(rear-front);
-  assert.ok(startFraction>.30 && startFraction<.35,id+' front-of-ear slope');
-  assert.ok(earFraction>.39 && earFraction<.44,id+' ear starts around 40%');
-  assert.ok(near((hem[2][2]+hem[3][2])/2,CUBE_HEAD_ANATOMY.earZ,.01),
-   id+' actual cut is centered around the projected ear');
-  assert.ok(hem[3][2]-hem[2][2]>=3.15);
+  assert.ok(startFraction>.38 && startFraction<.42,id+' front-of-ear slope');
+  assert.ok(earFraction>.48 && earFraction<.51,id+' ear opening begins near halfway');
+  assert.ok(hem[2][2]<CUBE_HEAD_ANATOMY.earZ &&
+   hem[3][2]>CUBE_HEAD_ANATOMY.earZ,
+   id+' the ear opening contains the anatomical ear marker');
+  assert.ok(hem[3][2]-hem[2][2]>=2.4);
   for(let i=1;i<hem.length;i++)
    assert.ok(hem[i][2]>hem[i-1][2],'six increasing, unmangled stations');
  }
 });
-test('H22: lower protected nape remains separate from three distinct ear reliefs',()=>{
+test('H23: lower nape profiles protect the back while ear heights remain distinct',()=>{
  const [f,m,h]=['ach','mich-2002','mich-2001'].map(id=>UNIFIED_HELMET_HEMS[id]);
  assert.deepEqual([f[2][1],m[2][1],h[2][1]],[2.04,3.06,5.30]);
- assert.deepEqual([f[5][1],m[5][1],h[5][1]],[2.35,2.62,2.85]);
- assert.ok(f[5][1]-f[3][1]>=.20 && f[5][1]-f[3][1]<=.35,
-  'Full-Cut has a gentle, nearly flat ear-to-nape transition');
- assert.ok(m[3][1]-m[5][1]>.4,'Mid-Cut partial ear relief is visible');
- assert.ok(h[3][1]-h[5][1]>2.4,'High-Cut keeps iconic ear opening');
- assert.ok(m[4][2]>m[3][2]+1.4&&h[4][2]>h[3][2]+1.6,
+ assert.deepEqual([f[5][1],m[5][1],h[5][1]],[1.85,2.05,2.25]);
+ assert.ok(f[3][1]-f[5][1]>=.15 && f[3][1]-f[5][1]<=.25,
+  'Full-Cut nape gently descends from the ear rather than rising');
+ assert.ok(m[3][1]-m[5][1]>=1,'Mid-Cut rear is below partial ear relief');
+ assert.ok(h[3][1]-h[5][1]>=3,'High-Cut keeps iconic ear opening');
+ assert.ok(m[4][2]>m[3][2]+1.5&&h[4][2]>h[3][2]+1.5,
   'broad rear diagonals; no tiny hanging tail');
 });
 test('H22: front/rear binding corners now share endpoints with each side strip',()=>{

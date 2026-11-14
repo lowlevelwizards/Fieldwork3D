@@ -1,4 +1,4 @@
-/** H22: one continuous anatomical ear/nape shell, centered over the cube ear.
+/** H23: rearward ear onset and deeper anatomical napes, without new faces.
  * The same six silhouette stations used by H17 now emphasize the distinct
  * ear lobe (full vs mid) and slope into the nape without adding polygons.
  * One faceted roof, two planar sides, one brow/nape; one draw call.
@@ -10,32 +10,33 @@ export type ShellPoint=readonly [number,number,number]; // x, y, z
 export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[]>>={
  ach:[
   [5.075,4.40,-5.535],
-  [5.075,4.40,-2.05],
-  [5.075,2.04,-1.10],
-  [5.075,2.04,2.10],
-  [5.075,2.35,3.55],
-  [5.075,2.35,5.60]
+  [5.075,4.40,-1.12],
+  [5.075,2.04,-0.12],
+  [5.075,2.04,2.35],
+  [5.075,1.85,3.88],
+  [5.075,1.85,5.60]
  ],
  'mich-2002':[
   [5.03,4.55,-5.70],
-  [5.03,4.55,-2.05],
-  [5.03,3.06,-1.10],
-  [5.03,3.06,2.10],
-  [5.03,2.62,3.55],
-  [5.03,2.62,5.75]
+  [5.03,4.55,-1.12],
+  [5.03,3.06,-0.12],
+  [5.03,3.06,2.35],
+  [5.03,2.05,3.88],
+  [5.03,2.05,5.75]
  ],
  // H20: MICH TC-2001 is a full ear cutout, not the TC-2002 partial cut.
  // Raise ONLY the ear arch while seating the rear lower on the head.
- // H22 centers the ear arch near Z+.5 while retaining Y5.30 relief.
- // Relative proportions are stylized; NOT millimeter conversions. Six
- // stations, no new faces or per-frame work.
+ // H23 shifts the *onset* of the ear opening behind the temple (near
+ // Z0, beside the symbolic ear), while retaining the iconic Y5.30 arch.
+ // The rear drops independently to a Y2.25 nape below the head-ear top.
+ // Proportions are stylized; not millimeter conversions. Six stations.
  'mich-2001':[
   [5.015,4.55,-5.71],
-  [5.015,4.55,-2.10],
-  [5.015,5.30,-1.10],
-  [5.015,5.30,2.10],
-  [5.015,2.85,3.75],
-  [5.015,2.85,5.66]
+  [5.015,4.55,-1.15],
+  [5.015,5.30,-0.12],
+  [5.015,5.30,2.35],
+  [5.015,2.25,3.93],
+  [5.015,2.25,5.66]
  ]
 };
 type V=readonly [number,number,number];
