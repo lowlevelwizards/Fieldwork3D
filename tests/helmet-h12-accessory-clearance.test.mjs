@@ -46,7 +46,8 @@ for(const shell of ['ach','mich-2001','mich-2002']){
    for(const route of routes){
     assert.ok(Math.abs(route.path[0][0])>p.side+layer+.3);
     assert.ok(Math.abs(route.path[2][0])>p.side+layer+.3);
-    assert.ok(route.path[2][2]<p.front-layer-.3);
+    assert.ok(route.path[2][2]>route.cornerZ);
+    assert.ok(route.path[3][2]<p.front-layer-.3);
     assert.ok(route.path[4][2]<p.front-layer-.3);
    }
   }
