@@ -55,6 +55,11 @@ jobs:
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 5 1200 > "$RUNNER_TEMP/d3-generated.json"
           node -e 'const r=require(process.argv[1]);const lowNet=r.rows.flatMap(row=>(row.modes??[]).flatMap(mode=>(mode.triage??[]).filter(op=>op.state==="little-net-movement").map(op=>({seed:row.seed,archetype:row.archetype,mode:mode.mode,doorId:mode.doorId,operator:op,orders:mode.operators?.find(a=>a.id===op.actor)}))));console.log(JSON.stringify({ticks:r.ticks,summary:r.summary,lowNet},null,2));if(r.summary.doorStateFlips>90)throw Error("Door oscillation regression: "+r.summary.doorStateFlips+" exceeded 90")' "$RUNNER_TEMP/d3-generated.json"
+      - name: R3 exact-sweep portal topology and seed 31175 clinic witness
+        run: |
+          node --experimental-strip-types --test tests/release-d3-2-r3-portal-connectivity.test.mjs
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900 --clinic-only --portal > "$RUNNER_TEMP/d3-clinic-portal.json"
+          node -e 'const r=require(process.argv[1]);const w=r.rows[0]?.modes?.find(m=>m.mode==="entry")?.physicalBlockEvidence?.filter(e=>e.operator==="vale"&&e.routeFeasibility?.portalConnectivity).map(e=>({time:e.time,route:e.routeFeasibility.portalConnectivity,goal:e.routeFeasibility.goal,endPoint:e.routeFeasibility.endPoint}));console.log(JSON.stringify({summary:r.summary,clinic:w},null,2));if(!w?.length)throw Error("missing clinic portal witness")' "$RUNNER_TEMP/d3-clinic-portal.json"
       - name: Production TypeScript + Vite bundle
         run: npm run build
       - name: Retain reproducible generated-map triage
@@ -62,7 +67,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: d3-0-d3-1-generated-site-triage
-          path: ${{ runner.temp }}/d3-generated.json
+          path: |
+            ${{ runner.temp }}/d3-generated.json
+            ${{ runner.temp }}/d3-clinic-portal.json
           if-no-files-found: ignore
   truth-parity:
     runs-on: ubuntu-latest
