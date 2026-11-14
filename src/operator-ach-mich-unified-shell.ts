@@ -213,9 +213,9 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  g.userData.h28UnifiedEarProfile=true;
  g.userData.h28BroadFlatEarMass=cut!=='mich-2001';
  g.userData.h26HighCutNoLateralBulge=cut==='mich-2001';
- g.userData.h25EarShoulderFraction=ACH_MICH_EAR_SHOULDER_FRACTION;
- g.userData.h27EarFaceTopFraction=ACH_MICH_EAR_FACE_TOP_FRACTION;
- g.userData.h27EarFaceBottomFraction=ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
+
+
+
  g.userData.h28UpperBevelHeight=ACH_MICH_EAR_UPPER_BEVEL_HEIGHT;
  g.userData.h30ReferenceContourCandidate=true;
  g.userData.h30MaxEarOverhang=cut==='ach'?.320:cut==='mich-2002'?.305:0;
