@@ -601,6 +601,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // A3.2: only a confirmed visible contact may trigger a bounded physical
   // shoulder shift. Candidate shot lines use the SAME muzzle+IK fit as live
   // ignition and preserve the independent civilian and teammate vetoes.
+  let centeredFireableThisTick=false;
   const microAllowed=a.side==='blue'&&allowMicroAim({
     moving:a.velocity,busy:!!a.traversal||a.squeeze||a.reload>0||
       !!a.treatmentActive||a.carryingId!==null||
@@ -644,6 +645,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     // A single call-local answer avoids repeating identical geometry and
     // known-civilian visibility probes within this same fixed tick.
     const centeredClear=canFireOffset(0);
+    centeredFireableThisTick=centeredClear;
     a.aimSideTarget=centeredClear?0:
       chooseMicroAimOffset(a.aimSideOffset??0,
         offset=>offset===0?centeredClear:canFireOffset(offset)).offset;
@@ -652,7 +654,11 @@ function fire(s:Session,a:TeamActor,dt:number){
   // even if their current firing lane is obstructed. That is correct
   // targeting behavior, but friendly sidestep must run *after* selection,
   // rather than only in the (often unreachable) no-target branch.
-  if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&friends.length){
+  // A proven centered same-snapshot far + near lane needs no redundant
+  // friendly sidestep probe. Only skip when the actual shoulder is centered;
+  // movement toward the target offset still requires a fresh live check.
+  if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&friends.length&&
+    !(centeredFireableThisTick&&Math.abs(a.aimSideOffset??0)<.001)){
     const preflight=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
       weaponYaw:angle(a.p,target.p),shoulderOffset:a.aimSideOffset??0,
       weapon:a.weapon,
