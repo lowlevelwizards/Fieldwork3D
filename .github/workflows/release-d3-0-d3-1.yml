@@ -1,0 +1,90 @@
+name: D3.0–D3.1 reliability triage and lean doorway hotpaths
+on:
+  pull_request:
+    paths:
+      - 'src/breach-door.ts'
+      - 'src/breach-motor-door.ts'
+      - 'src/breach-passage-coordinator.ts'
+      - 'src/breach-d3-progress-triage.ts'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'tests/release-d3-*.test.mjs'
+      - 'docs/release-d3-0-d3-1-reliability-20261114.md'
+      - '.github/workflows/release-d3-0-d3-1.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-0-d3-1-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D3 observations, door contact selection and physical queue ownership
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-0-progress-triage.test.mjs \
+            tests/release-d3-1-passage-hotpaths.test.mjs \
+            tests/release-d1-coherent-crossing.test.mjs \
+            tests/release-d1-threshold-commitment.test.mjs \
+            tests/passage-q2-coordinator.test.mjs \
+            tests/passage-q4-swing.test.mjs \
+            tests/gameplay-g4d-auto-door-contact.test.mjs \
+            tests/door-traversal-d5-motor.test.mjs \
+            tests/door-pressure-counterflow-r1.test.mjs
+      - name: Real inward/outward four-person entry, grip and waypoint flow
+        run: |
+          node --experimental-strip-types --test \
+            tests/door-traversal-d2d3-four-operator.test.mjs \
+            tests/doorway-planned-sequence.test.mjs \
+            tests/doorway-convoy-flow.test.mjs \
+            tests/door-traversal-d4-live-grip.test.mjs
+      - name: Generated-building four-operator acceptance (diagnostic quality)
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 5 1200 > "$RUNNER_TEMP/d3-generated.json"
+          node -e 'const r=require(process.argv[1]);console.log(JSON.stringify({ticks:r.ticks,summary:r.summary},null,2))' "$RUNNER_TEMP/d3-generated.json"
+      - name: Production TypeScript + Vite bundle
+        run: npm run build
+      - name: Retain reproducible generated-map triage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-0-d3-1-generated-site-triage
+          path: ${{ runner.temp }}/d3-generated.json
+          if-no-files-found: ignore
+  truth-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Exact original base versus D3 gameplay fingerprints, not timings
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d3-base" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d3-base/node_modules"
+          node --experimental-strip-types "$RUNNER_TEMP/d3-base/scripts/audit-release-d0-workloads.mjs" "$RUNNER_TEMP/d3-before.json"
+          node --experimental-strip-types scripts/audit-release-d0-workloads.mjs "$RUNNER_TEMP/d3-after.json"
+          node scripts/compare-release-d0-workloads.mjs "$RUNNER_TEMP/d3-before.json" "$RUNNER_TEMP/d3-after.json" "$RUNNER_TEMP/d3-parity.json"
+      - name: Retain exact-workload truth and advisory CPU data
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-0-d3-1-exact-gameplay-parity
+          path: |
+            ${{ runner.temp }}/d3-before.json
+            ${{ runner.temp }}/d3-after.json
+            ${{ runner.temp }}/d3-parity.json
+          if-no-files-found: ignore
