@@ -216,6 +216,14 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
    net.userData.h5Covered=covered;
   }
  }
+ // Both NVG attachment frames are pre-authored; no raycast or geometry
+ // rebuilding during cover toggles. Keep the shroud actually seated.
+ if(v.shell!=='pasgt'){
+  const cloth=m.shroud.getObjectByName('shroud-covered-mount');
+  const shell=m.shroud.getObjectByName('shroud-bare-mount');
+  if(cloth)cloth.visible=covered;
+  if(shell)shell.visible=!covered;
+ }
  const bandHex=resolveHelmetFieldColor(s.bandColor,shellHex,v.shell==='pasgt');
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
