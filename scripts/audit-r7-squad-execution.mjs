@@ -27,6 +27,9 @@ const names=['house','townhouse','apartment','retail','office','garage',
  'warehouse','restaurant','motel','utility','clinic'];
 const sites=Math.max(1,Math.min(44,Number.parseInt(process.argv[2]??'11',10)||11));
 const ticks=Math.max(120,Math.min(1800,Number.parseInt(process.argv[3]??'600',10)||600));
+// R3 portal connectivity is costly; run only when explicitly requested.
+const portal=process.argv.includes('--portal');
+const clinicOnly=process.argv.includes('--clinic-only');
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const round=n=>Math.round(n*100)/100;
 const signed=(p,d)=>{
@@ -147,7 +150,8 @@ function run(site,seed,kind){
         // Two read-only world-route probes, only after genuine sustained
         // physical blockage; not called in the live motor hotpath.
         routeFeasibility:index===1||index===2?
-          captureD32RecoveryFeasibility(a,session):null,
+          captureD32RecoveryFeasibility(a,session,
+            portal&&seed===31175&&kind==='entry'&&a.id==='vale'&&index===1):null,
         hingeSelfClearance:index===1||index===2?
           captureD32SelfBlockingHinge(a,session):null});
      }
@@ -238,7 +242,7 @@ function run(site,seed,kind){
 }
 const rows=[];
 let exceptions=0;
-for(let i=0;i<sites;i++){
+for(let i=clinicOnly?10:0;i<(clinicOnly?11:sites);i++){
  const seed=31045+i*13,archetype=names[i%names.length];
  const scale=i%2===0?'small':'standard';
  try{
