@@ -83,6 +83,21 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install --with-deps chromium
       - run: node scripts/smoke-operator-studio.mjs
+      - name: H26 geometry, four-point retention, cover and production build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h26-') }}
+        run: |
+          npm run build
+          node --experimental-strip-types --test tests/helmet-h16-coverage-silhouette.test.mjs tests/helmet-h18-ear-lobe-polish.test.mjs tests/helmet-h19-highcut-anatomy.test.mjs tests/helmet-h20-reference-calibration.test.mjs tests/helmet-h21-ear-nape-separation.test.mjs tests/helmet-h22-ear-centering-nape.test.mjs tests/helmet-h23-rearward-ear-deep-nape.test.mjs tests/helmet-h24-shadow-rim-ear-width.test.mjs tests/helmet-h25-cover-ear-shoulder-harness.test.mjs tests/ach-mich-h4-fit-finish.test.mjs
+      - name: H26 real iPhone WebGL three-cut comparison captures
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h26-') }}
+        run: node scripts/ach-mich-h6-visual-capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h26-') }}
+        with:
+          name: helmet-h26-actual-phone-webgl
+          path: ach-mich-h6-captures/
+          if-no-files-found: ignore
+          retention-days: 14
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
