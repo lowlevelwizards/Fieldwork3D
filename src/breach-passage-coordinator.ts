@@ -205,6 +205,30 @@ export function coordinatePassage(s:Session,a:TeamActor,
     dist(a.p,ctx.centers.get(door.id)!)>QUEUE_ENTRY_RADIUS||
     !ready({actor:a,slot},ctx))return free;
  const forward=forwardTravel(a.p,move,door,slot.fromSide);
+ // Q7: a stable, wide-open doorway is no longer a turn-taking
+ // checkpoint. An immutable GO-time rank or expired opposing-side lease
+ // must not hold an operator behind an EMPTY opening. Check only nearby
+ // actual bodies against this fixed-tick stride; the existing swept motor
+ // continues to enforce world geometry, door leaves and final collisions.
+ // Keep the old convoy/counterflow policy when another body really blocks
+ // the step or while the hinge is still opening. This replaces (rather
+ // than adds to) the more expensive rank + owner scans on clear passages.
+ if(forward>.025&&door.open&&
+    (door.openFraction??0)>=.9&&
+    Math.abs(door.angularVelocity??0)<.16){
+  let blockedByBody=false;
+  for(const peer of s.operators){
+   if(peer===a||peer.health<=0)continue;
+   const now=dist(a.p,peer.p);
+   const proposed=dist(move,peer.p);
+   if(proposed<QUEUE_CENTER_GAP-.25&&
+      proposed<now+.005){
+    blockedByBody=true;break;
+   }
+  }
+  if(!blockedByBody)
+   return {...free,doorId:door.id,rank:slot.rank};
+ }
  // Lateral corrective steps must still preserve real teammate body
  // spacing: the queue does not own the leaf, but it owns avoiding a
  // same-lane higher-rank person's capsule in any direction.
