@@ -142,19 +142,19 @@ export function addPasgtRetrofitVelcro(root:THREE.Group,
  fabric:THREE.Material,dark:THREE.Material){
  profiles(root,'velcro',(g,layer)=>{
   for(const sign of [-1,1]){
-   panel(g,fabric,'pasgt-side-velcro',sign*(p.side+layer+.25),
+   panel(g,fabric,'pasgt-side-velcro',sign*(p.side+layer+.045),
     6.27,.52,2.0,.83,sign*Math.PI/2);
   }
   const crown=panel(g,fabric,'pasgt-crown-velcro',0,p.top+layer+.10,.8,2.0,1.3);
   crown.rotation.x=-Math.PI/2;
-  panel(g,dark,'pasgt-rear-velcro',0,6.30,p.rear+layer+.24,2.5,.95);
+  panel(g,dark,'pasgt-rear-velcro',0,6.30,p.rear+layer+.055,2.5,.95);
  });
  root.userData.h14Period='later-adhesive-panels';
 }
 export function addPasgtRetrofitIdentifier(root:THREE.Group,
  fabric:THREE.Material,dark:THREE.Material,light:THREE.Material){
  profiles(root,'patches',(g,layer)=>{
-  const x=-(p.side+layer+.285);
+  const x=-(p.side+layer+.08);
   panel(g,dark,'pasgt-identifier-backing',x,6.26,1.0,2.45,1.10,-Math.PI/2);
   panel(g,fabric,'pasgt-identifier-patch',x-.025,6.26,1.0,
    2.24,.90,-Math.PI/2);
