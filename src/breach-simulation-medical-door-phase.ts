@@ -6,7 +6,7 @@ import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {advanceMedicalCondition} from './breach-medical-wounds.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
-import {advanceDoor,doorReachable,openingYieldEligible,initialOpeningYieldCandidate} from './breach-door.ts';
+import {advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
 import {maintainDoorHandContact} from './breach-door-hand-contact.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
 import {openingYieldBudget,commitOpeningYield} from './breach-passage-yield.ts';
@@ -82,10 +82,8 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     // An operator just inside the initial sweep may yield a small REAL
     // step before the leaf advances. This is not an actor-collision bypass:
     // static geometry, other leaves and opposing bodies must all remain solid.
-    // D3.7: one shared eligibility gate. A stationary, hand-assisted
-    // partial hinge can use the SAME capped physical shoulder yield as
-    // ordinary opening; a freely advancing or wide leaf cannot.
-    if(openingYieldEligible(door)){
+    if(door.open&&(door.openFraction??0)<.96&&
+       (door.pushTarget??1)<=1.01){
       for(const actor of s.operators){
         if(actor.health<=0)continue;
         const budget=openingYieldBudget(s,door,actor.id);
