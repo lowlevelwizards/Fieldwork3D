@@ -55,7 +55,7 @@ test('H3 physical hardware has meaningful graphic scale and shell anchors',()=>{
   const parent=new THREE.Group(),details=createAchMichDetails(parent,id);
   assert.equal(details.hardware.userData.achMichRetentionScrews,4);
   updateAchMichDetails(details,true,true);
-  assert.equal(details.bare.visible,true);
+  assert.equal(details.bare.visible,false);
   assert.equal(details.hardware.visible,false);
   assert.equal(details.strap.visible,true);
   updateAchMichDetails(details,false,false);
@@ -79,7 +79,8 @@ test('H3 ACH/MICH cover uses PASGT atlas pitch and fitted cloth rather than cubo
   assert.equal(drape.userData.uvTexelsPerUnit,PASGT_UV_TEXELS_PER_UNIT);
   assert.equal(drape.userData.printPanels.length,3);
   assert.ok(drape.boundingBox.max.y>roof);
-  assert.ok(drape.boundingBox.min.y>Math.min(...shell.map(p=>p.y-p.height/2)));
+  assert.ok(drape.boundingBox.min.y>=Math.min(...shell.map(p=>p.y-p.height/2))-.17,
+    'fabric must turn slightly below shell lower edge to conceal rubber');
   assert.ok(hem.getAttribute('position').count>12);
   for(let i=0;i<pos.count;i++){
    const u=uv.getX(i),v=uv.getY(i);
