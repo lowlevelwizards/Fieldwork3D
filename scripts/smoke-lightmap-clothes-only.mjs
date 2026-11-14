@@ -51,6 +51,11 @@ try{
    await item.waitFor({state:'visible',timeout:10000});
    if(await item.isDisabled())throw Error(id+' unavailable in Studio');
    await item.click();
+   // Studio intentionally keeps ITEM active while auditioning several cuts.
+   // Enter MATERIAL explicitly instead of relying on the removed auto-jump.
+   if(await page.locator('[data-studio-step="items"]').getAttribute('aria-pressed')!=='true')
+    throw Error(id+': selecting a garment unexpectedly left ITEMS');
+   await page.locator('[data-studio-step="materials"]').click();
    await page.waitForFunction(()=>
     document.querySelector('[data-studio-step="materials"]')?.getAttribute('aria-pressed')==='true',
     null,{timeout:10000});
