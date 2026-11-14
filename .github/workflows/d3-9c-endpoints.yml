@@ -1,0 +1,29 @@
+name: D3.9C physical near-goal and short-route diagnosis
+on:
+  push:
+    branches: [feature/d3-9-clean-single-opener-20261114]
+    paths:
+      - 'scripts/audit-d3-9c-endpoints.mjs'
+      - '.github/workflows/d3-9c-endpoints.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  endpoints:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Real clearance, nearby furniture and endpoint feasibility
+        run: |
+          node --experimental-strip-types scripts/audit-d3-9c-endpoints.mjs > "$RUNNER_TEMP/endpoints.json"
+          node -e 'const x=require(process.argv[1]);console.log("C ENDPOINTS",JSON.stringify(x));' "$RUNNER_TEMP/endpoints.json"
+      - name: Preserve endpoint diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-9c-endpoint-diagnostics
+          path: ${{ runner.temp }}/endpoints.json
