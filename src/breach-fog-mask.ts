@@ -7,7 +7,7 @@ import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {exteriorKnownFogRects} from './breach-fog-domain.ts';
 import {visionPolygon} from './breach-vision-polygon.ts';
-import {sightRangeForSite} from './breach-visibility-range-policy.ts';
+import {NEAR_FINE_SIGHT_RANGE,sightRangeForSite} from './breach-visibility-range-policy.ts';
 import {forEachRememberedMicroCell} from './breach-fog-memory.ts';
 import {traceFogCellContours,appendSmoothFogContours,type FogCell}
   from './breach-fog-contours.ts';
@@ -165,25 +165,42 @@ export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
   // Live directional LOS is already vector geometry. Native raster
   // antialiasing keeps its edge crisp; no Gaussian halo through walls.
   ctx.filter='none';
-  ctx.fillStyle='#fff';
-  ctx.beginPath();
+  // The physical sight range reaches the map edge, but rendering the
+  // entire far cone as completely transparent creates enormous black/clear
+  // shadow wedges behind small fixtures. Grade only VISIBLE ground by
+  // distance: near geometry is clear; far geometry remains subdued. Unknown
+  // ground OUTSIDE each exact LOS polygon stays fully opaque. This changes
+  // presentation, not actors, detection, exploration or ray occlusion.
+  // There are at most the living squad's few polygons per changed fog paint;
+  // gradients are native Canvas paints, not extra point/visibility queries.
+  const range=sightRangeForSite(s.site);
+  const canGrade=typeof ctx.createRadialGradient==='function';
   // Both 2D floor plan and 3D fog use the SAME session-owned optical
-  // geometry. Global WALLS/COVER follow whichever site was last activated,
-  // which may be a different mission or a replay being inspected.
+  // geometry. Global WALLS/COVER can belong to another active session.
   const world=s.coverState?sessionWorldGeometry(s):null;
   const walls=world?.walls??s.site?.walls??WALLS;
   const cover=world?.cover??s.site?.cover??COVER;
-  let polygonCount=0;
   for(const a of team(s)){
     if(a.health<=0)continue;
-    const poly=visionPolygon(a.p,a.heading,sightRangeForSite(s.site),walls,s.doors,
+    const poly=visionPolygon(a.p,a.heading,range,walls,s.doors,
       a.posture==='crouch',cover);
     if(poly.length<3)continue;
+    if(canGrade&&range>NEAR_FINE_SIGHT_RANGE){
+      const ramp=ctx.createRadialGradient(a.p.x,a.p.y,
+        NEAR_FINE_SIGHT_RANGE*.75,a.p.x,a.p.y,range);
+      ramp.addColorStop(0,'rgba(255,255,255,1)');
+      ramp.addColorStop(.35,'rgba(255,255,255,.82)');
+      ramp.addColorStop(.7,'rgba(255,255,255,.58)');
+      ramp.addColorStop(1,'rgba(255,255,255,.38)');
+      ctx.fillStyle=ramp;
+    }else ctx.fillStyle='#fff';
+    ctx.beginPath();
     ctx.moveTo(poly[0].x,poly[0].y);
     for(let i=1;i<poly.length;i++)ctx.lineTo(poly[i].x,poly[i].y);
-    ctx.closePath();polygonCount++;
+    ctx.closePath();
+    ctx.fill();
   }
-  if(polygonCount)ctx.fill();
+  ctx.filter='none';
   ctx.restore();
 }
 /** Legacy one-shot path retained for deterministic visual comparison and
