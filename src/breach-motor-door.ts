@@ -15,6 +15,8 @@ import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
 import {noteD32MotorDoorSelection} from './breach-d3-motor-door-witness.ts';
 import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
+import {shouldStageForOpening} from './breach-door-opening-ownership.ts';
+import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
 
 /** D3.2.5: an opened hinge that has STOPPED well below its target may
  * no longer monopolize the actor motor. The ordinary collision/recovery
@@ -29,6 +31,13 @@ export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number):boolea
    Math.abs(door.angularVelocity??0)<.16;
 }
 
+/** Only a non-opener in a REAL partial opening may temporarily stage.
+ * Store one finite transient footstep per actor/order/door; authored MOVE
+ * and its destination are untouched. Never reassign on each frame. */
+const followerClearance=new WeakMap<TeamActor,{
+ doorId:string;orderId:number;target:Pt|null;
+ attempts:number;nextAt:number
+}>();
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;closed:boolean;clearingDoorId?:string}{
@@ -82,6 +91,45 @@ export function handleMotorDoor(
   doorAhead??=autoDoorAtBodyContact(a.p,move,
     s.doors,sessionWorldGeometry(s),pendingDoor,a.side==='red');
   if(doorAhead){
+    if(shouldStageForOpening(s,a,doorAhead)){
+      // No follower may open, push, or retain a hand on this partial leaf.
+      // All physical clearance still runs through the existing motor.
+      releaseDoorHandContact(a,s.seconds);
+      const order=a.plan[0]!;
+      let staged=followerClearance.get(a);
+      if(!staged||staged.doorId!==doorAhead.id||
+         staged.orderId!==order.id){
+        staged={doorId:doorAhead.id,orderId:order.id,
+          target:null,attempts:0,nextAt:0};
+        followerClearance.set(a,staged);
+      }
+      if(staged.target){
+        const distance=d(a.p,staged.target);
+        if(distance>3.5&&a.nav.length&&
+           d(a.nav[0],staged.target)<3.5){
+          a.motorPause=null;
+          return {paused:false,closed:false};
+        }
+        if(distance<=3.5)staged.target=null;
+      }
+      // Only an operator ACTUALLY in the moving sweep needs to step
+      // backwards/laterally. Reuse the existing rate-limited, full-body
+      // self-clearance library instead of a new formation route solver.
+      if(staged.attempts<3&&s.seconds>=staged.nextAt){
+        const retreat=selfBlockingHingeRelief(a,s,p);
+        staged.nextAt=s.seconds+1.1;
+        if(retreat){
+          staged.attempts++;
+          staged.target={...retreat};
+          a.nav.unshift(retreat);
+          a.retryRouteAt=0;
+          a.motorPause=null;
+          return {paused:true,closed:false};
+        }
+      }
+      a.velocity=0;a.motorPause='door-opening';
+      return {paused:true,closed:false};
+    }
     // When an earlier frame queued a short handle-side correction, let the
     // normal swept motor EXECUTE those footsteps before opening the hinge.
     // Otherwise every frame requeues the same stage while paused forever.
