@@ -38,17 +38,19 @@ function requireText(url){
  return readFileSync(url,'utf8');
 }
 
-test('C3: swept leaf escapes defer repeat A* but preserve real pressure/recovery',()=>{
- const route=readSource('../src/breach-motor-route.ts');
+test('C3: only real swept leaf escapes can request bounded same-door rehearsal',()=>{
+ const motor=readSource('../src/breach-motor-route.ts');
  const collision=readSource('../src/breach-motor-collision.ts');
- const restore=route.slice(route.indexOf('export function restoreAfterOpenLeafEscape('),
-  route.indexOf('export type MotorRouteReadiness'));
- assert.match(restore,/\(door\.openFraction\?\?0\)>=\.96/);
- assert.match(restore,/sweptBodyClear\(a\.p,route\[0\],s\.doors,\s*OPERATOR_RADIUS,world\)/);
- for(const source of [route,collision]){
-  assert.match(source,/if\(!restoreAfterOpenLeafEscape\(a,s,p\)\)\s*a\.retryRouteAt=s\.seconds\+\.25/);
- }
- assert.ok(route.indexOf('pressDoorOnBodyAttempt')<route.indexOf('if(s.seconds<a.retryRouteAt)'),
-   'physical door pressure must remain active during the no-nav backoff');
- assert.match(route,/if\(s\.seconds<a\.retryRouteAt\)/);
+ const maneuver=readSource('../src/breach-door-traversal-maneuver.ts');
+ for(const source of [motor,collision])
+  assert.match(source,/a\.squeeze&&a\.doorTraversal\?\.phase==='clear-leaf'&&\s*tryRehearsedDoorManeuver\(a,s,p,/);
+ assert.match(motor,/tryRehearsedDoorManeuver\(a,s,p,false,true\)/);
+ assert.match(collision,/tryRehearsedDoorManeuver\(a,s,p,canAutoSidestep,true\)/);
+ assert.match(maneuver,/afterSweptLeafEscape=false/);
+ assert.match(maneuver,/episode\.maneuverAttempts>=2&&!leafChanged/);
+ assert.match(maneuver,/episode\.maneuverAttempts>=4/);
+ assert.match(maneuver,/s\.seconds<episode\.nextManeuverAt/);
+ assert.match(maneuver,/sweptBodyClear\(from,to,s\.doors,OPERATOR_RADIUS,world\)/);
+ assert.match(motor,/if\(!restoreAfterOpenLeafEscape\(a,s,p\)\)a\.retryRouteAt=0/);
+ assert.match(collision,/if\(!restoreAfterOpenLeafEscape\(a,s,p\)\)a\.retryRouteAt=0/);
 });
