@@ -64,8 +64,8 @@ test('H22: front/rear binding corners now share endpoints with each side strip',
   assert.ok(near(g.userData.minimumHeight,achMichBindingHeight(id)));
   const shell=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   assert.equal(shell.children.length,1);
-  assert.equal(shell.children[0].geometry.index.count,234);
-  assert.equal(shell.children[0].geometry.userData.exteriorQuads,39);
+  assert.equal(shell.children[0].geometry.index.count,id==='mich-2001'?234:294);
+  assert.equal(shell.children[0].geometry.userData.exteriorQuads,id==='mich-2001'?39:49);
   const cover=createAchMichDrapedGeometry(id);
   assert.ok(cover.boundingBox.max.y>shell.children[0].geometry.boundingBox.max.y);
   assert.ok(near(achMichProfile(id).nape,UNIFIED_HELMET_HEMS[id][5][1]));

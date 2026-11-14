@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {UNIFIED_HELMET_HEMS,UNIFIED_HELMET_EAR_SHOULDERS,
- ACH_MICH_EAR_SHOULDER_FRACTION,unifiedHelmetEarShoulderWidth}
+ ACH_MICH_EAR_SHOULDER_FRACTION,ACH_MICH_EAR_CREST_FRACTION,
+ unifiedHelmetEarShoulderWidth}
  from '../src/operator-ach-mich-unified-shell.ts';
 import {createHeadwearSilhouette,headwearCuboidVolumes,ACH_MICH_BEVEL_HEIGHT}
  from '../src/operator-headwear-silhouettes.ts';
@@ -10,11 +11,12 @@ import {createAchMichDrapedGeometry,ACH_MICH_COVER_OFFSET}
  from '../src/operator-ach-mich-cover-drape.ts';
 import {achMichProfile,createAchMichDetails,
  achMichRetentionPaths,createAchMichRetentionGeometry,
+ ACH_MICH_CHIN_STRAP_HALF_WIDTH,
  updateAchMichDetails} from '../src/operator-ach-mich-details.ts';
 const ids=['ach','mich-2002','mich-2001'];
 const near=(a,b,t=.012)=>Math.abs(a-b)<t;
-test('H25: visible outward ear shoulder begins halfway down the actual sidewall',()=>{
- const max=[5.80,5.74,5.60];
+test('H26: no ear protrusion above midwall and no high-cut lateral bulge',()=>{
+ const max=[5.80,5.74,5.015];
  for(let n=0;n<ids.length;n++){
   const id=ids[n],hem=UNIFIED_HELMET_HEMS[id],
    widths=UNIFIED_HELMET_EAR_SHOULDERS[id];
@@ -25,22 +27,31 @@ test('H25: visible outward ear shoulder begins halfway down the actual sidewall'
   assert.ok(near(widths[2],max[n]));
   assert.ok(near(widths[3],max[n]));
   assert.ok(near(widths[0],hem[0][0]));
-  assert.ok(widths[2]-widths[0]>.55,
-   'not the tiny H24 lip-only bulge');
+  if(id==='mich-2001')assert.ok(widths.every(v=>near(v,hem[0][0])));
+  else assert.ok(widths[2]-widths[0]>.55,'full/mid retain ear mass');
   assert.ok(near(ACH_MICH_EAR_SHOULDER_FRACTION,.52));
+  assert.ok(near(ACH_MICH_EAR_CREST_FRACTION,.78));
   const splitY=shoulderY+(hem[2][1]-shoulderY)*ACH_MICH_EAR_SHOULDER_FRACTION;
+  const crestY=shoulderY+(hem[2][1]-shoulderY)*ACH_MICH_EAR_CREST_FRACTION;
   const shell=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   const g=shell.children[0].geometry,p=g.getAttribute('position');
-  assert.equal(g.userData.exteriorQuads,39,'only 10 static quads added');
-  assert.equal(g.index.count,234,'78 triangles, same single shell draw call');
+  assert.equal(g.userData.exteriorQuads,id==='mich-2001'?39:49);
+  assert.equal(g.index.count,id==='mich-2001'?234:294);
   assert.equal(shell.children.length,1);
-  let left=false,right=false;
-  for(let i=0;i<p.count;i++)if(
-   near(p.getZ(i),hem[2][2])&&near(p.getY(i),splitY)){
-    left ||= near(p.getX(i),-max[n]);
-    right ||= near(p.getX(i),max[n]);
+  let onsetL=false,onsetR=false,crestL=false,crestR=false;
+  for(let i=0;i<p.count;i++)if(near(p.getZ(i),hem[2][2])){
+   if(near(p.getY(i),splitY)){
+    onsetL ||= near(p.getX(i),-hem[0][0]);
+    onsetR ||= near(p.getX(i),hem[0][0]);
+   }
+   if(near(p.getY(i),crestY)){
+    crestL ||= near(p.getX(i),-max[n]);
+    crestR ||= near(p.getX(i),max[n]);
+   }
   }
-  assert.ok(left&&right,id+' bulge exists at MIDHEIGHT on both sides');
+  assert.ok(onsetL&&onsetR,id+' upper half must keep base width');
+  if(id!=='mich-2001')assert.ok(crestL&&crestR,
+   id+' maximum ear width only in the lower quarter');
   assert.ok(near(unifiedHelmetEarShoulderWidth(id,hem[2][2]),max[n]));
   assert.ok(near(g.boundingBox.max.x,max[n]));
  }
@@ -72,6 +83,7 @@ test('H25: fitted cover passes outside real ear shoulder and wraps below molded 
    assert.ok(hemOutside,id+' outer fabric covers the complete lower lip');
   }
   assert.equal(cover.userData.h25EarShoulderMatched,true);
+  assert.equal(cover.userData.h26OnsetAndLowerCrestMatched,true);
   assert.equal(cover.userData.h25TuckedConcealedBinding,true);
   assert.equal(fold.userData.h25TuckedConcealedBinding,true);
   assert.ok(fold.getAttribute('position').count>=42);
@@ -86,7 +98,7 @@ test('H25: fitted cover passes outside real ear shoulder and wraps below molded 
   assert.equal(layers.bare.visible,true);
  }
 });
-test('H25: chinstrap three-way cheek joint has no overlapping full-width caps',()=>{
+test('H26: chinstrap stays full-width through every three-way junction',()=>{
  for(const id of ids){
   const paths=achMichRetentionPaths(id),g=createAchMichRetentionGeometry(id),
    a=g.getAttribute('position');
@@ -95,10 +107,15 @@ test('H25: chinstrap three-way cheek joint has no overlapping full-width caps',(
   assert.deepEqual(paths[0][1],paths[2][0]);
   assert.ok(paths[0][1][2]>-1,'actual junction is now beneath the ear');
   assert.ok(Math.abs(paths[0][1][0])<5&&Math.abs(paths[0][1][0])>4);
-  assert.equal(a.count,36,'12 triangles incl cup vs 18 before');
-  assert.equal(g.userData.h25SharedTaperedYJunction,true);
-  // No degenerate faces, the three tapering bands meet at exactly one
-  // authored point. A disconnected or overlapping cap is unnecessary.
+  assert.equal(a.count,54,'16 ribbon triangles and 2 chin-cup triangles');
+  assert.equal(g.userData.h26FullWidthYJunction,true);
+  assert.equal(g.userData.h25SharedTaperedYJunction,false);
+  for(let q=0;q<48;q+=6){
+   const p=k=>new THREE.Vector3(a.getX(k),a.getY(k),a.getZ(k));
+   assert.ok(near(p(q).distanceTo(p(q+1)),ACH_MICH_CHIN_STRAP_HALF_WIDTH*2,.005));
+   assert.ok(near(p(q+2).distanceTo(p(q+5)),ACH_MICH_CHIN_STRAP_HALF_WIDTH*2,.005));
+  }
+  // No degenerate faces or overlapping triangular cap at the Y junction.
   const p=i=>new THREE.Vector3(a.getX(i),a.getY(i),a.getZ(i));
   for(let i=0;i<a.count;i+=3){
    const area=p(i+1).sub(p(i)).cross(p(i+2).sub(p(i))).length()/2;
