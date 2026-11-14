@@ -51,8 +51,12 @@ test('H18: fewer rim pixels without new geometry and fabric stays synchronized',
   const straps=achMichRetentionPaths(id);
   assert.equal(straps.length,6);
   for(const [stud,offset] of [[p.frontStud,0],[p.rearStud,1]]){
-   assert.ok(near(stud[1],achMichHemY(id,stud[2])+.55,.055),
-    'screw height follows updated angled lower contour');
+   if(id==='mich-2001')
+    assert.ok(stud[1]>achMichHemY(id,stud[2])+.40,
+     'unchanged High-Cut hardware still clears its binding');
+   else
+    assert.ok(near(stud[1],achMichHemY(id,stud[2])+.55,.055),
+     'Full/Mid screw height follows updated lower contour');
    for(let side=0;side<2;side++)
     assert.ok(straps[side*3+offset][0][1]<achMichHemY(id,stud[2])-.10);
   }
