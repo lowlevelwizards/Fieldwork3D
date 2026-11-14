@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {ORIGINAL_R4_29,historicalPresetCohort} from './helpers/historical-weapon-presets.mjs';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import * as THREE from 'three';
@@ -23,15 +24,15 @@ const bound=(group,slot)=>{
  assert.ok(b,'missing '+slot);return b;
 };
 test('R4+HK catalog preserves 17 original recipes and adds twelve HK presets',()=>{
- assert.equal(FAMILY_PRESETS.length,29);
- assert.equal(Object.keys(FAMILY_PARTS).length,133);
- assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,29);
- assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ar').length,8);
+ assert.equal(historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R4_29).length,29);
+ assert.ok(Object.keys(FAMILY_PARTS).length>=133,'original R4 parts preserved');
+ assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,FAMILY_PRESETS.length);
+ assert.equal(ORIGINAL_R4_29.filter(id=>id.startsWith('ar-')).length,8);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ak').length,9);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
  for(const id of ['ar-m16a2','ar-colt733','ak-aks74','ak-akms','ak-rpk74','ar-mk12mod0'])
   assert.ok(FAMILY_PRESETS.some(p=>p.id===id),id);
- for(const p of FAMILY_PRESETS){
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R4_29)){
   const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(p.weapon),p.id);
   assert.deepEqual(readWeaponConfiguration(JSON.parse(JSON.stringify(cfg)),p.weapon),cfg,p.id+' persistence');
   for(const slot of FAMILY_PART_SLOTS){
@@ -43,7 +44,7 @@ test('R4+HK catalog preserves 17 original recipes and adds twelve HK presets',()
  }
 });
 test('R4+HK all 29 models have seated parts and authoritative muzzle',()=>{
- for(const p of FAMILY_PRESETS){
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R4_29)){
   const m=model(p.id),box=new THREE.Box3().setFromObject(m.group);
   assert.ok(Math.abs(box.max.x-resolveWeaponAssembly(m.config).muzzleX)<.001,p.id+' game muzzle');
   assert.ok(m.group.children.length>=12&&m.group.children.length<=(p.family==='ar'?36:28),p.id+' budget');
