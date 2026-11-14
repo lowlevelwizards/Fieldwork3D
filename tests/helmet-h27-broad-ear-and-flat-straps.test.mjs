@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {UNIFIED_HELMET_HEMS,UNIFIED_HELMET_EAR_SHOULDERS,
  ACH_MICH_EAR_SHOULDER_FRACTION,ACH_MICH_EAR_FACE_TOP_FRACTION,
- ACH_MICH_EAR_FACE_BOTTOM_FRACTION}
+ ACH_MICH_EAR_FACE_BOTTOM_FRACTION,unifiedHelmetEarVerticalProfile}
  from '../src/operator-ach-mich-unified-shell.ts';
 import {createHeadwearSilhouette,headwearCuboidVolumes,ACH_MICH_BEVEL_HEIGHT}
  from '../src/operator-headwear-silhouettes.ts';
@@ -20,6 +20,14 @@ test('H27: full/mid have long protective faces, short bevel and no spikes',()=>{
    crown=headwearCuboidVolumes(id)[0];
   const shoulder=crown.y+crown.height/2-ACH_MICH_BEVEL_HEIGHT;
   const geom=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial()).children[0].geometry;
+  if(id!=='mich-2001'){
+   const frontProfile=unifiedHelmetEarVerticalProfile(id,shoulder,hem[1][1]);
+   assert.ok(frontProfile.faceTopY<=hem[1][1]+.25,
+    'ear guard must NOT produce upward spike beside brow-to-ear transition');
+   assert.ok(frontProfile.faceBottomY>hem[1][1],
+    'ear guard stays above the front local hem');
+   assert.equal(geom.userData.h27BrowSpikeClamp,true);
+  }
   const p=geom.getAttribute('position'),max=Math.max(...widths);
   assert.equal(hem.length,6);
   assert.equal(geom.userData.exteriorQuads,id==='mich-2001'?39:59);
@@ -82,6 +90,7 @@ test('H27: fitted cover follows both ear-face levels and retains underfold',()=>
   const pos=cover.getAttribute('position'),hem=UNIFIED_HELMET_HEMS[id],
    width=UNIFIED_HELMET_EAR_SHOULDERS[id];
   assert.equal(cover.userData.h27BroadEarFaceMatched,true);
+  assert.equal(cover.userData.h27BrowSpikeClampMatched,true);
   assert.equal(cover.getAttribute('uv1').count,pos.count);
   assert.ok(fold.getAttribute('position').count>35);
   if(id==='mich-2001')continue;
