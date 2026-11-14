@@ -125,7 +125,8 @@ function run(site,seed,kind){
    traceActor:utilityTrace&&seed===31162&&kind==='authored'?'rook':null,
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
-  if(grid)setRouteGridAuditObserver(grid.observe);
+  // Do not include offline forensic world-route probes in live-A* totals.
+  // Register only while the authoritative Session simulation is stepping.
   const crossed=actors.map(()=>null),lastSigned=actors.map(a=>
    planned.door?signed(a.p,planned.door):null);
   const initialSign=lastSigned.map(v=>Math.sign(v??0));
@@ -153,7 +154,12 @@ function run(site,seed,kind){
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
-   stepSession(session,1/60);
+   if(grid)setRouteGridAuditObserver(grid.observe);
+   try{
+    stepSession(session,1/60);
+   }finally{
+    if(grid)setRouteGridAuditObserver(null);
+   }
    survey.sample(actors,1/60);
    quality?.sample(actors,session.seconds);
    if(progress)for(let i=0;i<actors.length;i++){
