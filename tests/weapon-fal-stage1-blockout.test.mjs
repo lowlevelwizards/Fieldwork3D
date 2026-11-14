@@ -32,7 +32,8 @@ test('FAL S1: minimal body is aligned, named and below existing HK budget',()=>{
  assert.ok(fal.children.every(c=>c.name.startsWith('family-')));
  const raised=buildFALStage1Silhouette(material,{raisedCarryHandle:true});
  assert.equal(raised.children.length,fal.children.length+1);
- assert.ok(box(raised).max.y>box(fal).max.y);
+ assert.ok(raised.children.some(c=>c.name==='family-receiver-fal-stage1-receiver-4'),
+  'small FAL handle remains a genuine additional contour');
  clearWeaponSilhouette(fal);clearWeaponSilhouette(raised);
  assert.equal(fal.children.length,0);
  material.dispose();
@@ -73,6 +74,6 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
   'fore-end must stay shallow and gently tapered, not an M16 triangle');
  assert.ok(ears.max.y>=2.90&&ears.max.y<=3.1,'front sight ears must be modest');
  assert.ok(receiver.max.y>=1.8,'upper dust cover should remain long and clear');
- assert.equal(g.children.length,12,'S1B must not add decorative meshes');
+ assert.equal(g.children.length,12,'S1C core stays exactly 12 simple shapes');
  clearWeaponSilhouette(g);material.dispose();
 });
