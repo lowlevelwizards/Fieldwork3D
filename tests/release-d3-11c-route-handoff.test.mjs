@@ -66,3 +66,13 @@ function readSource(path){
 function requireText(url){
  return readFileSync(url,'utf8');
 }
+
+test('C3: stationary mostly-open escape can only adopt fully swept physical route',()=>{
+ const source=readSource('../src/breach-motor-route.ts');
+ const restore=source.slice(source.indexOf('export function restoreAfterOpenLeafEscape('),
+  source.indexOf('export type MotorRouteReadiness'));
+ assert.match(restore,/\(door\.openFraction\?\?0\)>=\.82/);
+ assert.match(restore,/Math\.abs\(door\.angularVelocity\?\?0\)<\.16/);
+ assert.match(restore,/sweptBodyClear\(a\.p,route\[0\],s\.doors,\s*OPERATOR_RADIUS,world\)/);
+ assert.match(restore,/setTransientRoute\(s,a,route,'door-leaf-escape'\)/);
+});
