@@ -4,6 +4,18 @@ export type HandOwner='weapon'|'magazine'|'ammunition'|'door'|'brace'|'teammate'
  'throw'|'medical'|'guard'|'free';
 export type ContactAction='hold'|'surrender'|'down'|'treatment'|
  'reload'|'throw'|'push'|'injury'|'door';
+/** One non-authoritative injury-guard window for the fixed contact
+ * scheduler and the visual pose decision. Actual aiming/shooting always wins
+ * the support hand; a glancing uninjured hit is not a medical arm action. */
+export type WoundedGuardFacts={
+ down:boolean;injury:number;hitRegion:string|null|undefined;
+ aiming:boolean;firing:boolean;hitAge:number|undefined;
+};
+export function woundedHandGuard(p:WoundedGuardFacts):boolean{
+ return !p.down&&p.injury>0&&p.hitRegion!=='leg'&&
+  !p.aiming&&!p.firing&&p.hitAge!==undefined&&
+  p.hitAge>=0&&p.hitAge<1.1;
+}
 export type ContactRequest={
  surrender:boolean;down:boolean;downProgress:number;
  treatmentActive:boolean;reloadActive:boolean;
