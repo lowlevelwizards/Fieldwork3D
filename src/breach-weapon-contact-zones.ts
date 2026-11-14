@@ -6,9 +6,10 @@ import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon
 import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './weapons/geometry/ak-barrel-profiles.ts';
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
+import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
-export type RiflePoseContacts={family:'ar'|'ak'|'hk';stock:RiflePoint;
+export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal';stock:RiflePoint;
  primary:RiflePoint;support:RifleContactRange;scale:number};
 export const AR_HANDGUARD_START=3.55;
 export function arHandguardEnd(id:string):number{
@@ -23,14 +24,15 @@ export function riflePoseContacts(
  id:WeaponId,config?:WeaponConfiguration):RiflePoseContacts|null{
  if(!config||config.weapon!==id||!config.build)return null;
  const b=config.build;
- if(b.family!=='ar'&&b.family!=='ak'&&b.family!=='hk')return null;
+ if(b.family!=='ar'&&b.family!=='ak'&&b.family!=='hk'&&b.family!=='fal')return null;
  const a=resolveWeaponAssembly(config),ar=b.family==='ar',hk=b.family==='hk';
  // HK reach targets share the fore-end's authoritative barrel-art landmarks.
  // Never independently hardcode a number that can silently drift from mesh art.
  const hkArt=hk?hkBarrelArt(b.parts.barrel):undefined;
- const start=hkArt?.handguardStartX??
+ const falArt=b.family==='fal'?falBarrelArt(b.parts.barrel):undefined;
+ const start=falArt?.handguardStartX??hkArt?.handguardStartX??
   (ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver));
- const end=hkArt?.handguardEndX??
+ const end=falArt?.handguardEndX??hkArt?.handguardEndX??
   (ar?arHandguardEnd(b.parts.handguard):
   (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX);
  // All ordinary two-handed holds must locate the palm on the actual
