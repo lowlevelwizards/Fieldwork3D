@@ -102,6 +102,9 @@ function run(site,seed,kind){
   let maxPositionStep=0,physicsStepViolations=0;
   let unboundedManeuverAttempts=0,liveHandFrames=0,doorStateFlips=0;
   const openState=new Map(session.doors.map(d=>[d.id,d.open]));
+  // Offline-only attribution: discriminate repeated flipping on ONE hinge
+  // from unrelated expected door manipulations in the same large building.
+  const perDoorFlips=new Map();
   const lastStep=actors.map(()=>({x:0,y:0}));
   const lastP=actors.map(a=>({...a.p}));
   // Read-only final three-second net-displacement witness; not a motor input.
@@ -152,6 +155,7 @@ function run(site,seed,kind){
    for(const d of session.doors){
     if(openState.get(d.id)!==d.open){
      doorStateFlips++;openState.set(d.id,d.open);
+     perDoorFlips.set(d.id,(perDoorFlips.get(d.id)??0)+1);
     }
    }
    for(let i=0;i<actors.length;i++){
@@ -211,6 +215,8 @@ function run(site,seed,kind){
    reversalsNearDoor,maxBlockedSeconds:round(maxBlocked),
    maxPositionStep:round(maxPositionStep),physicsStepViolations,
    unboundedManeuverAttempts,liveHandFrames,doorStateFlips,
+   doorFlipDetails:[...perDoorFlips].map(([id,flips])=>({id,flips}))
+    .sort((a,b)=>b.flips-a.flips||a.id.localeCompare(b.id)),
    simulatedSeconds:round(session.seconds),phase:session.phase,
    arrivals:stats.arrivals,incomplete:stats.incomplete,
    stallEpisodes:stats.stallEpisodes,retries:stats.retries,

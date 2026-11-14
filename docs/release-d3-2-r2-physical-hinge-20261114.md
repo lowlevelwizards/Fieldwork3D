@@ -12,3 +12,13 @@ If witnesses show a viable self-clearance, integrate a single bounded correction
 R2.0 11-site real motor witness demonstrates legal clearance in clinic 31175. In entry mode Vale self-blocks hinge D6 at fraction .372, 9.01-unit leaf gap, 0 angular velocity. A fully swept 8-unit southeast step changes the gap to 15–17 and clears the hinge, with no operator occupying the landing. In authored mode Ash self-blocks D6 at fraction .572 and has similarly valid 8-unit relief, though Moss may also need to continue.
 The **existing** physical collision recovery branch, when actually blocking on a door for >=.85s and passing its usual route retry gate, can enqueue at most one small fully swept relief point before the current transient nav. Only explicit MOVE with no active DoorTraversalEpisode, no pending climb, and max 4 retries qualifies. The point must increase clearance to the selected leaf by >=3 units, release the actor's self-block of further hinge opening, be unoccupied (radius >=17), and pass actual swept-body and static hinge sweep checks. No position mutation, teleport, special collision exemption, new per-frame scan, new timer, extra physics object, or authored order edits. The existing motor moves the actor on the next tick; a full ordinary route retry remains available if no safe relief exists.
 Acceptance: 5/11-site actual generated arrival/progress vs R1, D1/D5/Q5 70-case physical stable; door oscillation <=90, no new sidestep ping-pong or regression to squad entry. Revert if no meaningful benefit.
+
+## R2.1 measured result — useful but not release-ready
+The same-seed 11-building R7 real-motor audit after the bounded self-clearance step:
+- **Physical-block endpoints 3 → 0** versus R1, no invalid positions, oversized steps, or corrupted authored plans.
+- Clinic seed 31175 entry Vale changed from 0 recent net displacement and 3.88s blocking to 15.9 world units recent movement and 0 blocked time. Ash also resumed moving in the authored scenario. Across 11 sites, count of recently moving operators rose from 27 to 30.
+- Full four-operator plans remain 6/22 within the short 15-second audit, 41/88 individuals completed.
+- Door logical state flips rose **81 → 89** across 11 sites, with clinic entry 16 → 21 and house entry 20 → 23. This oscillation risk needs diagnosis before release; Q5 70-case, D5, Ground Zero and exact gameplay parity all passed.
+
+## R2.2 — read-only door flip attribution
+Add offline-only per-door logical open/close flip counts to each generated-site mode result. Distinguish one leaf repeatedly ping-ponging from normal opening of multiple unrelated leaves. No live simulation changes. The R2 release remains DRAFT, unmerged, undeployed until this is understood and oscillation is acceptably controlled.
