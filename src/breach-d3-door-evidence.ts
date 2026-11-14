@@ -1,6 +1,6 @@
 /** D3.2 offline forensic witness; NEVER imported by a live motor or renderer. */
-import {doorCenter,doorLeafSegment,doorWouldStrikeActors,pointToSegment,OPERATOR_RADIUS} from './breach-core.ts';
-import {doorSwingBlocked} from './breach-door.ts';
+import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS} from './breach-core.ts';
+import {doorSwingBlocked,doorWouldStrikeActors} from './breach-door.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 const pos=(p:{x:number;y:number}|undefined)=>p?{x:+p.x.toFixed(2),y:+p.y.toFixed(2)}:null;
