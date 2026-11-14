@@ -13,7 +13,10 @@
 import {generateSite} from '../src/breach-site.ts';
 import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
-import {activateSite,OPERATOR_RADIUS,doorLeafSegment} from '../src/breach-core.ts';
+import {activateSite,OPERATOR_RADIUS,doorLeafSegment,
+ setRouteGridAuditObserver} from '../src/breach-core.ts';
+import {D311RouteSurvey,createD311GridObserver}
+ from './lib/d3-11-route-quality.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear} from '../src/breach-navigation.ts';
@@ -36,6 +39,9 @@ const ticks=Math.max(120,Math.min(2700,Number.parseInt(process.argv[3]??'600',10
 const portal=process.argv.includes('--portal');
 // D3.9C read-only five-second evidence, opt-in; NO added live motor work.
 const progress=process.argv.includes('--progress');
+// D3.11A audit is OFFLINE-only and opt-in.
+const routeQuality=process.argv.includes('--route-quality');
+const utilityTrace=process.argv.includes('--utility-trace');
 const clinicOnly=process.argv.includes('--clinic-only');
 // Exact seeded-site diagnosis, opt-in, does not change any motor paths.
 const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
@@ -115,6 +121,11 @@ function run(site,seed,kind){
   const startedGoalDistance=actors.map(a=>planned.goals.has(a.id)?
    round(dist(a.p,planned.goals.get(a.id))):null);
   const survey=new MovementQualitySurvey(actors,planned.goals);
+  const quality=routeQuality?new D311RouteSurvey(actors,planned.goals,{
+   traceActor:utilityTrace&&seed===31162&&kind==='authored'?'rook':null,
+   traceEvery:15}):null;
+  const grid=routeQuality?createD311GridObserver():null;
+  if(grid)setRouteGridAuditObserver(grid.observe);
   const crossed=actors.map(()=>null),lastSigned=actors.map(a=>
    planned.door?signed(a.p,planned.door):null);
   const initialSign=lastSigned.map(v=>Math.sign(v??0));
@@ -144,6 +155,7 @@ function run(site,seed,kind){
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
    stepSession(session,1/60);
    survey.sample(actors,1/60);
+   quality?.sample(actors,session.seconds);
    if(progress)for(let i=0;i<actors.length;i++){
     const a=actors[i],m=observed[i];
     m.travel+=dist(a.p,m.last);m.last={...a.p};
@@ -322,6 +334,7 @@ function run(site,seed,kind){
    rejectedDoors:planned.rejectedDoors??[],complete,
    warehouseHingeWitness,
    ...(progress?{progressEvidence}:{}),
+   ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
@@ -383,7 +396,10 @@ function run(site,seed,kind){
     motorPause:actors.find(a=>a.id===d.actor)?.motorPause??null,
     orderIssue:d.orderIssue
    }))};
- }finally{enableD32MotorDoorWitness(false);activateSite(null);}
+ }finally{
+  setRouteGridAuditObserver(null);
+  enableD32MotorDoorWitness(false);activateSite(null);
+ }
 }
 const rows=[];
 let exceptions=0;
@@ -430,6 +446,18 @@ const summary={
 };
 const progressWindows=progress?results.flatMap(mode=>mode.progressEvidence??[]):[];
 const suspicious=progressWindows.filter(w=>w.suspicious);
+const qualityResults=routeQuality?results.filter(m=>m.routeQuality):[];
+const routeQualitySummary=routeQuality?{
+ searches:qualityResults.reduce((n,m)=>n+m.gridAudit.searches,0),
+ expanded:qualityResults.reduce((n,m)=>n+m.gridAudit.expanded,0),
+ cpuMs:round(qualityResults.reduce((n,m)=>n+m.gridAudit.elapsedMs,0)),
+ routeSelections:qualityResults.reduce((n,m)=>n+m.routeQuality.actors.reduce(
+  (sum,a)=>sum+a.routeSelections,0),0),
+ waypointAdvances:qualityResults.reduce((n,m)=>n+m.routeQuality.actors.reduce(
+  (sum,a)=>sum+a.waypointAdvances,0),0),
+ revisitedCells:qualityResults.reduce((n,m)=>n+m.routeQuality.actors.reduce(
+  (sum,a)=>sum+a.revisitedCells,0),0)
+}:null;
 const progressSummary=progress?{
  windows:progressWindows.length,
  suspiciousWindows:suspicious.length,
@@ -440,7 +468,8 @@ const progressSummary=progress?{
 }:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
- ticks,summary,...(progress?{progressSummary}:{}),rows},null,2));
+ ticks,summary,...(progress?{progressSummary}:{}),
+ ...(routeQuality?{routeQualitySummary}:{}),rows},null,2));
 if(exceptions||summary.invalidPositions||summary.corruptedPlans||
  summary.physicsStepViolations||summary.unboundedManeuverAttempts)
  process.exitCode=1;
