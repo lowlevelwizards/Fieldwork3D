@@ -34,3 +34,6 @@ No new per-frame actor query, A*, broad collision exceptions, teleports, hidden 
 - **D3.1.4 — Quality closeout.** Report generated-map completion counts and triage transparently; do not claim that an allocation-only release by itself fixes every 15-second noncompletion. Live-device FPS, responsiveness, fog and thermal acceptance still require user-run captures.
 
 No new update-loop owner, timer, cache, collision relaxation or synthetic forward displacement is added.
+
+### D3.1.3 — No-cache far-door motor broadphase
+The no-route motor still tested every world door's rotated leaf on every attempted stride, despite the actor being many rooms away. Add a conservative frame-center rectangle test before that expensive leaf work and before the actual body-contact fallback. A hinged tip, fully translated sliding panel, and shutter lie within 1.5 frame widths of frame center; the Manhattan upper bound plus collision margin excludes only *provably far* leaves. Retain the exact real leaf, world, body and hinge narrowphase for every near candidate, and test thousands of deterministic rotations/translations for zero false rejects. No spatial cache invalidation, additional ray, clock or collision relaxation.

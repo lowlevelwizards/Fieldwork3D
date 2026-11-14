@@ -1,4 +1,5 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {nearMotorDoorStroke} from './breach-motor-door-broadphase.ts';
 /** Stage 7: handle physical closed leaves and intentional automatic
  * opens before body contact. Explicit authored DOOR actions retain priority.
  */
@@ -23,6 +24,9 @@ export function handleMotorDoor(
   let closedDoor:typeof s.doors[number]|undefined;
   let closedDistance=Infinity;
   for(const door of s.doors){
+    // Conservative circle/AABB rejection BEFORE trigonometric leaf
+    // geometry. A contact or segment crossing cannot be outside this.
+    if(!nearMotorDoorStroke(door,a.p,move,24))continue;
     const distance=pointToSegment(move,doorLeafSegment(door));
     if(distance>=24&&!doorBlocksSegment(door,{a:a.p,b:move}))
       continue;
@@ -44,8 +48,8 @@ export function handleMotorDoor(
   let doorAhead:typeof s.doors[number]|undefined;
   let closest=Infinity;
   for(const door of s.doors){
-    if(!canAutoOpenEnRoute(pendingDoor,door.id,a.side==='red'))
-      continue;
+    if(!canAutoOpenEnRoute(pendingDoor,door.id,a.side==='red')||
+       !nearMotorDoorStroke(door,a.p,a.p,56))continue;
     if(door.open&&(door.openFraction??0)>=.72)continue;
     if(!doorReachable(a.p,door))continue;
     if(!doorBlocksSegment(door,{a:a.p,b:next})&&

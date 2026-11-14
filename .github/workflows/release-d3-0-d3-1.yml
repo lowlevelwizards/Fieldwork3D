@@ -4,6 +4,7 @@ on:
     paths:
       - 'src/breach-door.ts'
       - 'src/breach-motor-door.ts'
+      - 'src/breach-motor-door-broadphase.ts'
       - 'src/breach-passage-coordinator.ts'
       - 'src/breach-d3-progress-triage.ts'
       - 'scripts/audit-r7-squad-execution.mjs'
