@@ -9,7 +9,8 @@ const canvas=document.querySelector<HTMLCanvasElement>('#view');
 const side=document.querySelector<HTMLButtonElement>('#side');
 const quarter=document.querySelector<HTMLButtonElement>('#quarter');
 const carry=document.querySelector<HTMLInputElement>('#carry');
-if(!canvas||!side||!quarter||!carry)
+const factory=document.querySelector<HTMLInputElement>('#factory');
+if(!canvas||!side||!quarter||!carry||!factory)
  throw new Error('Incomplete FAL stage 1 comparison lab');
 
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
@@ -34,7 +35,10 @@ const existing=(weapon:'rifle'|'carbine',preset:string)=>{
 const m4=existing('carbine','ar-m4a1'),g3=existing('rifle','hk-g3a3');
 m4.position.y=17.5;g3.position.y=0;
 root.add(m4,g3);
-let fal=buildFALStage1Silhouette(monochrome);
+const makeFAL=()=>factory.checked?existing('rifle','fal-5000'):
+ buildFALStage1Silhouette(monochrome,{raisedCarryHandle:carry.checked});
+carry.disabled=factory.checked;
+let fal=makeFAL();
 fal.position.y=-17.5;
 root.add(fal);
 let isSide=true;
@@ -60,12 +64,12 @@ quarter.addEventListener('click',()=>{
  isSide=false;side.setAttribute('aria-pressed','false');
  quarter.setAttribute('aria-pressed','true');render();
 });
-carry.addEventListener('change',()=>{
- root.remove(fal);
- clearWeaponSilhouette(fal);
- fal=buildFALStage1Silhouette(monochrome,{raisedCarryHandle:carry.checked});
- fal.position.y=-17.5;
- root.add(fal);render();
-});
+const refreshFAL=()=>{
+ root.remove(fal);clearWeaponSilhouette(fal);
+ carry.disabled=factory.checked;
+ fal=makeFAL();fal.position.y=-17.5;root.add(fal);render();
+};
+carry.addEventListener('change',refreshFAL);
+factory.addEventListener('change',refreshFAL);
 new ResizeObserver(render).observe(canvas);
 render();
