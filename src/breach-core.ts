@@ -266,7 +266,7 @@ const sweepPassable=(from:Pt,to:Pt,canStand:(p:Pt)=>boolean)=>{
 /** Broad pathfinding remains 16-unit A*, with bounded local 8-unit rescue
  * for a physically valid narrow route missed by the coarse grid. */
 export function route(from:Pt,to:Pt,
-  canStand:(p:Pt)=>boolean=passable):Pt[]{
+  canStand:(p:Pt)=>boolean=passable,repairBlockedStart=false):Pt[]{
   // Most routes have a legal snapped endpoint. Preserve the single cheap
   // A* path in that overwhelmingly common case. A disconnected map must not
   // pay for another full search on every attempted door or actor route.
@@ -278,16 +278,16 @@ export function route(from:Pt,to:Pt,
     // Bypass the guaranteed failed first pass when the snapped target is
     // physically invalid. A nearby swept legal grid anchor is enough.
     return distance(from,to)>245?
-      routeGrid(from,to,canStand,GRID,5000,Infinity,true):
-      routeGrid(from,to,canStand,GRID/2,3800,76,true);
+      routeGrid(from,to,canStand,GRID,5000,Infinity,true,repairBlockedStart):
+      routeGrid(from,to,canStand,GRID/2,3800,76,true,repairBlockedStart);
   }
-  const broad=routeGrid(from,to,canStand,GRID,6000);
+  const broad=routeGrid(from,to,canStand,GRID,6000,Infinity,false,repairBlockedStart);
   if(broad.length||distance(from,to)>245)return broad;
-  return routeGrid(from,to,canStand,GRID/2,3800,76,true);
+  return routeGrid(from,to,canStand,GRID/2,3800,76,true,repairBlockedStart);
 }
 function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   grid:number,budget:number,padding=Infinity,
-  alternateGoal=false):Pt[]{
+  alternateGoal=false,repairBlockedStart=false):Pt[]{
   const cellAt=(p:Pt)=>({col:Math.round(p.x/grid),
     row:Math.round(p.y/grid)});
   const cellPoint=(col:number,row:number):Pt=>({x:col*grid,
@@ -328,8 +328,9 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   // Seed a few NEARBY, fully swept legal grid starts into this SAME A*;
   // no second global search, actor movement or collision exemption.
   const snapped=cellPoint(st.col,st.row);
-  const displacedStart=!walkableCell(st.col,st.row)||
-    !sweepPassable(from,snapped,canStand);
+  const displacedStart=repairBlockedStart&&
+    (!walkableCell(st.col,st.row)||
+     !sweepPassable(from,snapped,canStand));
   if(!displacedStart){
     best.set(startKey,0);
     open.push({col:st.col,row:st.row,g:0,f:0});
@@ -342,7 +343,21 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
           const col=st.col+dx,row=st.row+dy;
           if(!walkableCell(col,row))continue;
           const point=cellPoint(col,row);
-          if(!sweepPassable(from,point,canStand))continue;
+          // This entry is the only bridge from the actor's exact real
+          // position to the rescued grid. Use finer checks than the
+          // ordinary grid sweep, so a grazing furniture edge cannot be
+          // accepted merely because a 4-unit sample skipped it.
+          const span=distance(from,point);
+          let connectorSafe=true;
+          for(let sample=1,n=Math.max(1,Math.ceil(span/1.25));
+              sample<=n;sample++){
+            const t=sample/n;
+            if(!canStand({x:from.x+(point.x-from.x)*t,
+              y:from.y+(point.y-from.y)*t})){
+              connectorSafe=false;break;
+            }
+          }
+          if(!connectorSafe)continue;
           const k=key(col,row);
           const g=distance(from,point)/grid;
           if(g>=(best.get(k)??Infinity))continue;
