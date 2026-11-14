@@ -138,8 +138,12 @@ function run(site,seed,kind){
    routeWitness.counts[e.source]=(routeWitness.counts[e.source]??0)+1;
    const key=e.actorId+':'+e.source;
    routeWitness.byActor[key]=(routeWitness.byActor[key]??0)+1;
-   if(e.source==='door-leaf-escape'&&!e.next.length)
+   if(e.source==='door-leaf-escape'){
+    if(!e.next.length)
      recentLeafEscapes.set(e.actorId,{at:e.seconds,doorId:e.doorId});
+    else recentLeafEscapes.delete(e.actorId);
+   }else if(e.source!=='initial-intel')
+    recentLeafEscapes.delete(e.actorId);
    if(e.source==='initial-intel'){
     const prior=recentLeafEscapes.get(e.actorId);
     if(prior&&e.seconds-prior.at<=1&&prior.doorId===e.doorId){
