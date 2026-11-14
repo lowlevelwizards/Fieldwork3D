@@ -91,6 +91,25 @@ export function implicitDoorOpeningOwner(s:Session,d:Door):string|null{
   lastIntentAt:s.seconds,explicit:chosen.plan[0].kind==='door'});
  return chosen.id;
 }
+/** An actual full-reach support-hand candidate may take over a merely
+ * anticipated implicit opener BEFORE contact. This is not an independent
+ * hand lease: it replaces the SAME door owner, and cannot steal from
+ * an explicit DOOR order or another operator's already-attached hand.
+ * Invoked only on real touched-leaf pressure, never a global scan.
+ */
+export function claimContactReadyOpening(s:Session,a:TeamActor,d:Door):boolean{
+ const owner=implicitDoorOpeningOwner(s,d);
+ if(!owner||owner===a.id||a.side!=='blue')return !owner||owner===a.id;
+ const prior=s.operators.find(x=>x.id===owner);
+ if(!prior||prior.plan[0]?.kind==='door'||
+    (prior.doorHandContact?.doorId===d.id&&
+     prior.doorHandContact.releasedAt===null)||
+    !candidate(a,d,true))return false;
+ const map=owners.get(s)!;
+ map.set(d.id,{actorId:a.id,orderId:a.plan[0].id,
+   lastIntentAt:s.seconds,explicit:false});
+ return true;
+}
 /** The opening lease limits manipulation only, never physical passage. */
 export function mayManipulateOpening(s:Session,a:TeamActor,d:Door):boolean{
  const owner=implicitDoorOpeningOwner(s,d);

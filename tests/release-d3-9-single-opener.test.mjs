@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {implicitDoorOpeningOwner,shouldStageForOpening,mayManipulateOpening}
+import {implicitDoorOpeningOwner,shouldStageForOpening,mayManipulateOpening,claimContactReadyOpening}
  from '../src/breach-door-opening-ownership.ts';
 const p=(x,y)=>({x,y});
 // Proven 25-second warehouse BODY coordinates, not a hypothetical pose.
@@ -138,4 +138,14 @@ test('D3.9A3 explicit OPEN finishing keeps its own moving leaf briefly',()=>{
  s.seconds=1.55;
  assert.equal(implicitDoorOpeningOwner(s,d),null,
   'expired explicit ownership cannot stall an otherwise valid mover');
+});
+
+test('D3.9A physical hand contact may claim one anticipated implicit door',()=>{
+ const d=door(),rook=actor('rook',0),moss=actor('moss',1);
+ const s={seconds:0,doors:[d],operators:[rook,moss]};
+ const initial=implicitDoorOpeningOwner(s,d);
+ const follower=s.operators.find(a=>a.id!==initial);
+ assert.equal(claimContactReadyOpening(s,follower,d),true);
+ assert.equal(implicitDoorOpeningOwner(s,d),follower.id);
+ assert.equal(mayManipulateOpening(s,s.operators.find(a=>a.id===initial),d),false);
 });

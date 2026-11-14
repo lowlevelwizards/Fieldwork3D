@@ -110,4 +110,10 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
     if(yielded)doorOccupants=liveDoorOccupants(s);
     advanceDoor(door,h,doorOccupants,sessionWorldGeometry(s));
   }
+  // Hinge motion occurs AFTER the initial hand reach check. Revalidate
+  // only attached hands at the newly rotated panel position, otherwise a
+  // fast leaf can leave a one-frame grip beyond actual reach.
+  for(const actor of s.operators)
+    if(actor.doorHandContact?.releasedAt===null)
+      maintainDoorHandContact(s,actor);
 }
