@@ -27,24 +27,24 @@ test('H19: implied cube face landmarks are ordered without adding mesh geometry'
  assert.ok(A.earZ>0&&A.earZ<A.rearZ,'ears are just behind center');
 });
 
-test('H19: High-Cut over-ear opening, temple and rear coverage stay anatomical',()=>{
+test('H20: High-Cut over-ear arch is distinct and rear remains seated',()=>{
  const high=UNIFIED_HELMET_HEMS['mich-2001'];
  assert.equal(high.length,6,'six continuous perimeter stations');
  assert.ok(high.every(p=>near(p[0],5.015)));
  for(let i=1;i<high.length;i++)
   assert.ok(high[i][2]-high[i-1][2]>.7,'single ordered outline, no tiny tabs');
  assert.ok(near(high[0][1],4.55)&&near(high[1][1],4.55));
- assert.ok(near(high[2][1],high[3][1])&&near(high[2][1],4.78));
- assert.ok(near(high[4][1],high[5][1])&&near(high[5][1],4.12));
- assert.ok(high[2][1]>A.earTop+.45 &&
+ assert.ok(near(high[2][1],high[3][1])&&near(high[2][1],5.30));
+ assert.ok(near(high[4][1],high[5][1])&&near(high[5][1],3.90));
+ assert.ok(high[2][1]>A.earTop+1.1 &&
   high[2][1]<A.hairline,'side clears upper ear but remains below hairline');
- assert.ok(high[4][1]>A.earTop &&
-  high[4][1]<A.brow,'rear wraps skull without dropping to mid-cut');
+ assert.ok(high[4][1]<A.earTop &&
+  high[4][1]>A.brow-.5,'rear extends just below ear top but stays above mid-cut ear lobe');
  assert.ok(high[1][2]<A.earZ&&high[4][2]>A.earZ);
  assert.equal(achMichProfile('mich-2001').hem,high);
- assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,4.78);
+ assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,5.30);
  assert.ok(achMichHemY('mich-2001',A.earZ)>A.earTop+.5);
- assert.ok(achMichHemY('mich-2001',4.6)>4.1);
+ assert.ok(achMichHemY('mich-2001',4.6)>3.85);
  assert.ok(UNIFIED_HELMET_HEMS['mich-2002'][2][1]<high[2][1]-1.6);
  assert.ok(UNIFIED_HELMET_HEMS.ach[2][1]<high[2][1]-2.5);
  assert.equal(HELMET_MOUNT_PROFILES['mich-2001'].ear,5.91,
@@ -64,7 +64,7 @@ test('H19: no stacked exterior panels, same one-draw low-poly shell',()=>{
  assert.equal(geom.index.count,174,'58 shell triangles');
  assert.equal(geom.getAttribute('position').count,174);
  assert.ok(near(geom.boundingBox.max.y,8.705));
- assert.ok(near(geom.boundingBox.min.y,4.12));
+ assert.ok(near(geom.boundingBox.min.y,3.90));
  assert.equal(geom.userData.achMichCrownInset,ACH_MICH_UPPER_INSET);
  assert.equal(geom.userData.achMichBevelHeight,ACH_MICH_BEVEL_HEIGHT);
  assert.ok(geom.getAttribute('uv1').count>0);
@@ -82,7 +82,7 @@ test('H19: narrow rubber edge follows one shell/cover perimeter',()=>{
  let maxSide=0;
  for(let i=0;i<pos.count;i++)maxSide=Math.max(maxSide,Math.abs(pos.getX(i)));
  assert.ok(maxSide<=p.side+.10,'no offset thick floating rim or side tabs');
- assert.ok(near(binding.boundingBox.min.y,4.12));
+ assert.ok(near(binding.boundingBox.min.y,3.90));
  const cover=createAchMichDrapedGeometry(id);
  assert.ok(cover.boundingBox.max.y>8.705);
  assert.ok(cover.userData.h71JoinedCoverCorners);
