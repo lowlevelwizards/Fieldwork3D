@@ -64,18 +64,17 @@ test('H4 physical screws, binding and strap geometry stay coherent with each she
  }
 });
 
-test('H4 ACH ear scallop remains distinct from nape and PASGT-style protective return',()=>{
- const v=headwearCuboidVolumes('ach');
- const ear=v.find(p=>p.name==='ach-right-ear-wrap');
- const nape=v.find(p=>p.name==='ach-right-nape-return');
- assert.ok(ear&&nape);
- assert.ok(ear.y-ear.height/2<2.4);
- assert.ok(nape.y-nape.height/2<=2.6);
- assert.ok(nape.z-nape.depth/2<ear.z+ear.depth/2-.20,
-  'joined protective volumes overlap without a floating corner');
- assert.ok(ear.depth>=5&&nape.depth>=2.5,
-  'no tiny ear contour fragments');
+test('H17 Full-Cut ear and nape read as one low-poly contour',()=>{
+ const p=achMichProfile('ach');
+ assert.equal(p.hem.length,6);
+ assert.ok(p.hem.every(point=>point[0]===p.side));
+ assert.equal(p.hem[2][1],2.31);
+ assert.equal(p.hem.at(-1)[1],2.55);
+ const shell=createHeadwearSilhouette('ach',new THREE.MeshStandardMaterial());
+ assert.equal(shell.children[0].geometry.userData.h17UnifiedContour,true);
+ assert.ok(shell.children[0].geometry.userData.exteriorQuads<=30);
 });
+
 test('H4 PASGT and ACH covers share uniform WORLD density, not an arbitrary rescale',()=>{
  assert.equal(HEADWEAR_DETAIL_PIXEL_WORLD_SIZE,PIXEL_WORLD_SIZE);
  for(const id of ['m81-woodland','three-color-desert','multicam',
