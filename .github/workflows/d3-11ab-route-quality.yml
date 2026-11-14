@@ -6,6 +6,7 @@ on:
       - src/breach-core.ts
       - src/breach-motor-route.ts
       - src/breach-squeeze-route.ts
+      - src/breach-route-cache.ts
       - scripts/audit-r7-squad-execution.mjs
       - scripts/lib/d3-11-route-quality.mjs
       - tests/release-d3-11ab-route-quality.test.mjs
