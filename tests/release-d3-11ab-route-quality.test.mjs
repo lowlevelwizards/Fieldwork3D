@@ -89,7 +89,9 @@ test('D3.11B preview fallback reuses failed normal A* instead of repeating it',a
 
 test('D3.11A excludes forensic offline probes from measured live route budget',()=>{
  const audit=readFileSync(new URL('../scripts/audit-r7-squad-execution.mjs',import.meta.url),'utf8');
- assert.match(audit,/if\(grid\)setRouteGridAuditObserver\(grid\.observe\);\s*try\{\s*stepSession\(session,1\/60\);\s*\}finally\{\s*if\(grid\)setRouteGridAuditObserver\(null\);/);
+ assert.match(audit,/if\(grid\)setRouteGridAuditObserver\(grid\.observe\);\s*(?:if\(recordRoute\)setTransientRouteObserver\(recordRoute\);\s*)?try\{\s*stepSession\(session,1\/60\);\s*\}finally\{\s*if\(grid\)setRouteGridAuditObserver\(null\);/);
+ assert.match(audit,/if\(recordRoute\)setTransientRouteObserver\(null\);/,
+  'route attribution must also stop before forensic-only probes');
  assert.ok(audit.indexOf('setRouteGridAuditObserver(null);',
   audit.indexOf('stepSession(session,1/60)'))<
   audit.indexOf('captureD32RecoveryFeasibility(a,session,'),
