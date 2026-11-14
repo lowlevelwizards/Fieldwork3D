@@ -115,7 +115,7 @@ test('D3.10A planning uses full body, without changing authored MOVE goals',asyn
  const block=game.slice(game.indexOf('export function planSquadEntry'),
    game.indexOf('/** Tactical WAIT:',game.indexOf('export function planSquadEntry')));
  assert.match(block,/intelPassable\(p,s\.intel,OPERATOR_RADIUS\)/);
- assert.match(block,/pointToSegment\(p,knownLeaf\)<OPERATOR_RADIUS\+1/);
+ assert.match(block,/pointToSegment\(p,knownLeaf\)>=OPERATOR_RADIUS\+1/);
  assert.match(block,/routeWithSqueezeIntel\(s\.intel,start,p\)/);
  assert.doesNotMatch(block,/sessionWorldGeometry\(s\)/);
 });
