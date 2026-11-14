@@ -8,9 +8,7 @@ import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET,
  ACH_MICH_BEVEL_HEIGHT}
  from './operator-headwear-silhouettes.ts';
 import {achMichProfile} from './operator-ach-mich-details.ts';
-import {ACH_MICH_EAR_SHOULDER_FRACTION,ACH_MICH_EAR_FACE_TOP_FRACTION,
- ACH_MICH_EAR_FACE_BOTTOM_FRACTION,
- unifiedHelmetEarShoulderWidth}
+import {unifiedHelmetEarVerticalProfile,unifiedHelmetEarShoulderWidth}
  from './operator-ach-mich-unified-shell.ts';
 import {pasgtAtlasUv,PASGT_TOP_SEAM_OFFSETS,PASGT_FABRIC_PANELS,
  PASGT_UV_TEXELS_PER_UNIT} from './operator-pasgt-drape-geometry.ts';
@@ -110,12 +108,10 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
   sideExtent(style,s.z);
  const outward=ACH_MICH_COVER_OFFSET;
  const midWidth=unifiedHelmetEarShoulderWidth(style.shell,s.z);
- const onsetY=style.shellShoulderY+
-  (s.bottom-style.shellShoulderY)*ACH_MICH_EAR_SHOULDER_FRACTION;
- const faceTopY=style.shellShoulderY+
-  (s.bottom-style.shellShoulderY)*ACH_MICH_EAR_FACE_TOP_FRACTION;
- const faceBottomY=style.shellShoulderY+
-  (s.bottom-style.shellShoulderY)*ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
+ // Share the shell's ear-anchored levels and brow/nape clamps.
+ // Independent cloth interpolation would recreate its corrected spike.
+ const profile=unifiedHelmetEarVerticalProfile(
+  style.shell,style.shellShoulderY,s.bottom);
  // Follow the actual clean upper wall and lower-quarter ear profile.
  const sideWidth=ring==='shoulder'||ring==='onset'?style.sideX+.08:
   ring==='faceTop'||ring==='faceBottom'?midWidth+outward+.08:
@@ -128,9 +124,9 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
   s.z+(style.front-style.topFront)*f+(style.rear-style.topRear)*b;
  const y=ring==='top'?style.topY:
   ring==='shoulder'?style.shoulderY:
-  ring==='onset'?onsetY+.07:
-  ring==='faceTop'?faceTopY+.07:
-  ring==='faceBottom'?faceBottomY+.07:
+  ring==='onset'?profile.onsetY+.07:
+  ring==='faceTop'?profile.faceTopY+.07:
+  ring==='faceBottom'?profile.faceBottomY+.07:
   // Cloth passes below the shell edge, so even the top of the molded
   // rubber is concealed instead of showing as a colored stripe.
   s.bottom-.14;
@@ -248,6 +244,7 @@ export function createAchMichDrapedGeometry(
  g.userData.h25EarShoulderMatched=true;
  g.userData.h26OnsetAndLowerCrestMatched=true;
  g.userData.h27BroadEarFaceMatched=true;
+ g.userData.h27BrowSpikeClampMatched=true;
  g.userData.h25TuckedConcealedBinding=true;
  return g;
 }
