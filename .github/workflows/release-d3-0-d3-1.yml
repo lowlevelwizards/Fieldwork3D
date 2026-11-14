@@ -33,6 +33,8 @@ jobs:
             tests/release-d3-0-progress-triage.test.mjs \
             tests/release-d3-1-passage-hotpaths.test.mjs \
             tests/release-d3-1-door-broadphase.test.mjs \
+            tests/release-d3-2-door-evidence.test.mjs \
+            tests/release-d3-2-short-clear-handoff.test.mjs \
             tests/release-d1-coherent-crossing.test.mjs \
             tests/release-d1-threshold-commitment.test.mjs \
             tests/passage-q2-coordinator.test.mjs \
