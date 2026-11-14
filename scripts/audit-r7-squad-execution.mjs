@@ -128,11 +128,30 @@ function run(site,seed,kind){
    traceActor:utilityTrace&&seed===31162&&kind==='authored'?'rook':null,
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
-  const routeWitness=routeTransitions?{counts:{},byActor:{},events:[]}:null;
+  const routeWitness=routeTransitions?{counts:{},byActor:{},events:[],
+   escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
+  // Offline-only evidence: associate one physical LEAF escape with the
+  // next immediate reacquisition for the SAME actor and door. A route that
+  // was successfully restored from world truth is not an escape/retry pair.
+  const recentLeafEscapes=routeWitness?new Map():null;
   const recordRoute=routeWitness?(e)=>{
    routeWitness.counts[e.source]=(routeWitness.counts[e.source]??0)+1;
    const key=e.actorId+':'+e.source;
    routeWitness.byActor[key]=(routeWitness.byActor[key]??0)+1;
+   if(e.source==='door-leaf-escape'&&!e.next.length)
+     recentLeafEscapes.set(e.actorId,{at:e.seconds,doorId:e.doorId});
+   if(e.source==='initial-intel'){
+    const prior=recentLeafEscapes.get(e.actorId);
+    if(prior&&e.seconds-prior.at<=1&&prior.doorId===e.doorId){
+     routeWitness.escapeReacquirePairs++;
+     routeWitness.pairsByActor[e.actorId]=
+      (routeWitness.pairsByActor[e.actorId]??0)+1;
+     const doorKey=prior.doorId??'unknown';
+     routeWitness.pairsByDoor[doorKey]=
+      (routeWitness.pairsByDoor[doorKey]??0)+1;
+    }
+    recentLeafEscapes.delete(e.actorId);
+   }
    if(utilityTrace&&seed===31162&&kind==='authored'&&
       e.actorId==='rook'&&routeWitness.events.length<400)
      routeWitness.events.push({...e,seconds:round(e.seconds),
@@ -469,6 +488,18 @@ const summary={
 };
 const progressWindows=progress?results.flatMap(mode=>mode.progressEvidence??[]):[];
 const suspicious=progressWindows.filter(w=>w.suspicious);
+const transitionSummary=routeTransitions?{
+ counts:results.reduce((all,mode)=>{
+  for(const [source,count] of Object.entries(mode.routeTransitions?.counts??{}))
+   all[source]=(all[source]??0)+count;
+  return all;},{}),
+ escapeReacquirePairs:results.reduce((n,mode)=>
+  n+(mode.routeTransitions?.escapeReacquirePairs??0),0),
+ pairsByDoor:results.reduce((all,mode)=>{
+  for(const [door,count] of Object.entries(mode.routeTransitions?.pairsByDoor??{}))
+   all[door]=(all[door]??0)+count;
+  return all;},{})
+}:null;
 const qualityResults=routeQuality?results.filter(m=>m.routeQuality):[];
 const routeQualitySummary=routeQuality?{
  searches:qualityResults.reduce((n,m)=>n+m.gridAudit.searches,0),
@@ -492,7 +523,8 @@ const progressSummary=progress?{
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
  ticks,summary,...(progress?{progressSummary}:{}),
- ...(routeQuality?{routeQualitySummary}:{}),rows},null,2));
+ ...(routeQuality?{routeQualitySummary}:{}),
+ ...(routeTransitions?{transitionSummary}:{}),rows},null,2));
 if(exceptions||summary.invalidPositions||summary.corruptedPlans||
  summary.physicsStepViolations||summary.unboundedManeuverAttempts)
  process.exitCode=1;
