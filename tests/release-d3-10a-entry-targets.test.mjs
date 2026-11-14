@@ -24,7 +24,7 @@ test('D3.10A entry lanes search for alternate full-size legal endpoints',()=>{
    // Simulate an interior room that cannot fit a full body in the
    // first lateral candidate but accepts the more central alternatives.
    return p.x<54&&p.y>60&&p.y<180&&
-     Math.abs(p.y-120)>7;
+     Math.abs(p.y-120)>24;
  });
  assert.ok(visited>4,'attempt alternate positions rather than using a blocked slot');
  for(const lane of lanes)assert.ok(lane.point.x<54);
