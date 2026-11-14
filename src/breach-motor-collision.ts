@@ -251,7 +251,11 @@ export function resolveMotorCollision(
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
       setTransientRoute(s,a,[],'door-leaf-escape');
-      if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
+      // Do not immediately reacquire the identical colliding known-intel
+      // path after a REAL leaf overlap escape. Door pressure and physical
+      // escape stay live during this bounded retry interval.
+      if(!restoreAfterOpenLeafEscape(a,s,p))
+        a.retryRouteAt=s.seconds+.25;
       return true;
     }
   }
