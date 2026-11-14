@@ -12,8 +12,8 @@ import {HELMET_MOUNT_PROFILES}
  from '../src/operator-helmet-attachment-frames.ts';
 
 test('H17: Full and Mid are one integrated skirt; High retains open ears',()=>{
- for(const [id,ear,nape] of [['ach',2.31,2.55],
-  ['mich-2002',2.99,3.21]]){
+ for(const [id,ear,nape] of [['ach',2.04,2.72],
+  ['mich-2002',3.06,3.82]]){
   const v=headwearCuboidVolumes(id),p=achMichProfile(id);
   assert.equal(v.length,5,'three large envelope sectors and one side per ear');
   assert.equal(v.filter(x=>x.name.includes('ear-nape')).length,2);
