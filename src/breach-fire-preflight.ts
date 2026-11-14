@@ -43,7 +43,7 @@ export function matchingShotSight(preflight:ShotSightPreflight|undefined,
   p.weaponConfiguration===input.weaponConfiguration&&
   p.equipment===input.equipment&&p.aim===input.aim&&
   p.posture===input.posture&&
-  p.coverStanceDrop===input.coverStanceDrop&&
+  (p.coverStanceDrop??0)===(input.coverStanceDrop??0)&&
   p.velocity===input.velocity&&p.recoil===input.recoil&&
   p.threatRange===input.threatRange&&
   p.obstruction===input.obstruction&&
