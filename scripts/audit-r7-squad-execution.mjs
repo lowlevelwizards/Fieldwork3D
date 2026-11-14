@@ -16,6 +16,7 @@ import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
 import {activateSite} from '../src/breach-core.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
+import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
 import {captureD32DoorEvidence,dueDoorHoldMilestones,D32_HOLD_MILESTONES}
  from '../src/breach-d3-door-evidence.ts';
 
@@ -103,7 +104,7 @@ function run(site,seed,kind){
   // Read-only final three-second net-displacement witness; not a motor input.
   const windowStart=actors.map(a=>({...a.p}));
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
-  if(planned.accepted)toggling(session);
+  if(planned.accepted){enableD32MotorDoorWitness(true);toggling(session);}
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
@@ -205,7 +206,7 @@ function run(site,seed,kind){
     motorPause:actors.find(a=>a.id===d.actor)?.motorPause??null,
     orderIssue:d.orderIssue
    }))};
- }finally{activateSite(null);}
+ }finally{enableD32MotorDoorWitness(false);activateSite(null);}
 }
 const rows=[];
 let exceptions=0;

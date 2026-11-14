@@ -35,8 +35,7 @@ import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
  canAutoSidestep:boolean,closed:boolean,hooks:ActorMotorHooks,
- profile?:((section:string,elapsedMs:number)=>void),
- clearingDoorId?:string):boolean{
+ profile?:((section:string,elapsedMs:number)=>void)):boolean{
  const world=sessionWorldGeometry(s);
   // Allies may brush and pass one another: their bodies never hard-block
   // authored routes. Only an opposing actor is a physical traffic barrier.
@@ -72,19 +71,9 @@ export function resolveMotorCollision(
   // Resolve the physical body's intended step against the actual leaf
   // BEFORE evaluating movement clearance. The hinge may yield right now;
   // when it cannot (wall/actor), existing collision and recovery remain.
-  const pressurePolicy=sessionDoorPressurePolicy(s,a);
-  if(clearingDoorId){
-    // Opening a real partially blocked hinge must not be answered by
-    // an incidental BODY CLOSE on the very next validated route step.
-    // Only this leaf is protected, only for this already swept-clear
-    // motor step. Explicit CLOSE, other hinges, actor collision unchanged.
-    const originalDeferClosing=pressurePolicy.deferClosing;
-    pressurePolicy.deferClosing=door=>door.id===clearingDoorId||
-      originalDeferClosing?.(door)===true;
-  }
   const doorContact=pressDoorOnBodyAttempt(a.p,desiredMove,s.doors,dt,
     ()=>s.operators.filter(o=>o.health>0).map(o=>o.p),
-    pressurePolicy,world);
+    sessionDoorPressurePolicy(s,a),world);
   recordDoorManeuverContact(a,s,doorContact);
   // Existing handle reach animation shows a genuine, short support-hand
   // assist, never an invented door manipulation across the room.

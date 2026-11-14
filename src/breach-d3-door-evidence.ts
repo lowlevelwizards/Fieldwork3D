@@ -2,6 +2,7 @@
 import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS} from './breach-core.ts';
 import {doorSwingBlocked,doorWouldStrikeActors} from './breach-door.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
+import {selectedD32MotorDoor} from './breach-d3-motor-door-witness.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 const pos=(p:{x:number;y:number}|undefined)=>p?{x:+p.x.toFixed(2),y:+p.y.toFixed(2)}:null;
@@ -39,6 +40,7 @@ export function captureD32DoorEvidence(a:TeamActor,s:Session){
     nextWaypointLeafGap:a.nav[0]?round(pointToSegment(a.nav[0],doorLeafSegment(door))):null};
   });
  return {time:round(s.seconds),actor:a.id,position:pos(a.p),
+  selectedDoorId:selectedD32MotorDoor(a,s.seconds),
   order:order?.kind??null,orderId:order?.id??null,goal:pos(order?.p),
   next:pos(a.nav[0]),navLength:a.nav.length,motorPause:a.motorPause,
   nextWaypointSweptClear:!!a.nav[0]&&

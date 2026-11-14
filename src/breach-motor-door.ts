@@ -4,7 +4,7 @@ import {nearMotorDoorStroke} from './breach-motor-door-broadphase.ts';
  * opens before body contact. Explicit authored DOOR actions retain priority.
  */
 import {pointToSegment,doorLeafSegment,doorBlocksSegment,doorCenter,
- OPERATOR_RADIUS,type Pt,type Door} from './breach-core.ts';
+ OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {canAutoOpenEnRoute,autoDoorAtBodyContact,doorApproach,
  doorReachable,doorWouldStrikeActors} from './breach-door.ts';
@@ -13,30 +13,11 @@ import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
-
-/** D3.2.3: a short pre-existing nav leg completely valid under the CURRENT
- * physical leaf requires no further opening. This never changes a route,
- * claims clearance for a future step, or loosens swept collision. It is
- * evaluated only after a partially open hinge has actually stopped.
- */
-export function shortClearLegPastStalledLeaf(from:Pt,next:Pt,
- door:Door,seconds:number,
- swept:(from:Pt,to:Pt)=>boolean):boolean{
- const fraction=door.openFraction??(door.open?1:0);
- if(!door.open||door.wedged||door.heldBy||door.locked||
-   fraction<.32||fraction>=.72||seconds<.85||
-   Math.abs(door.angularVelocity??0)>.16)return false;
- const distance=d(from,next);
- if(distance<.1||distance>22)return false;
- // The entire *current* nav segment must be lawfully open at this
- // instantaneous leaf angle, including its normal body radius.
- return pointToSegment(next,doorLeafSegment(door))>=OPERATOR_RADIUS+1&&
-   swept(from,next);
-}
+import {noteD32MotorDoorSelection} from './breach-d3-motor-door-witness.ts';
 
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
- hooks:ActorMotorHooks):{paused:boolean;closed:boolean;clearingDoorId?:string}{
+ hooks:ActorMotorHooks):{paused:boolean;closed:boolean}{
   // Identify the leaf for closed-door authored handling; open hinged
   // leaves are pushed by the coupled swept-body solver below, not by
   // standing nearby or crossing a broad radius trigger.
@@ -112,6 +93,9 @@ export function handleMotorDoor(
       }
     }
     a.motorPause='door-opening';
+    // Audit-only opt-in: report the ACTUAL selected door, not the nearest
+    // geometric guess. Disabled during normal live play.
+    noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
     if(opening.reason==='held'||opening.reason==='locked'||
@@ -142,18 +126,6 @@ export function handleMotorDoor(
       hooks.notify(s,a.name+' OPENED '+doorAhead.id);
     }
     if((doorAhead.openFraction??0)<.72){
-      // A different operator may be standing inside the hinge's sweep,
-      // stopping at 57–65% open. Do NOT wait for an arbitrary 72% angle
-      // when the CURRENT short nav leg is ALREADY fully body-sweep clear.
-      // Exactly this door remains protected from incidental body CLOSE
-      // while that one step goes through the normal movement authority.
-      if(a.side==='blue'&&shortClearLegPastStalledLeaf(
-         a.p,next,doorAhead,a.actionTimer,
-         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,
-          sessionWorldGeometry(s)))){
-        a.motorPause=null;
-        return {paused:false,closed:false,clearingDoorId:doorAhead.id};
-      }
       // A partly open outward leaf can physically occupy the approach side.
       // A MOVING crossing operator may now sidestep or grasp its handle;
       // holding the entire motor in DOOR OPENING prevented either recovery.
