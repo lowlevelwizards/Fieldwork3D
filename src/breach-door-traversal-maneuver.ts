@@ -262,7 +262,7 @@ export function selfBlockingHingeRelief(
   // angles can all lie inside its swing. D3.7's exact warehouse witness
   // showed a swept-clear 14–22-unit step away from the authored goal.
   // This is a single cold-stall attempt, never a 60 Hz search.
-  for(const radius of [8,14,22])
+  for(const radius of [8,14,22,32])
     for(const turn of [0,Math.PI/8,-Math.PI/8,Math.PI/4,
       -Math.PI/4,3*Math.PI/8,-3*Math.PI/8,Math.PI,
       Math.PI/2,-Math.PI/2,5*Math.PI/8,-5*Math.PI/8,
