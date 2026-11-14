@@ -41,9 +41,11 @@ test('H9.4b: ACH-ARC rails span both cover sides with real shape and two mounts'
  }
 });
 
-test('H9.4b: historical PASGT still has no modern accessory rail',()=>{
+test('H14: historical PASGT defaults bare but later retrofit rails can be equipped',()=>{
  const kit=createHelmetFieldLayers(new THREE.Group(),'pasgt');
- assert.equal(kit.modules.rails.children.length,0);
- updateHelmetFieldLayers(kit,{rails:true},0x5c695c,true);
+ assert.equal(kit.modules.rails.children.length,2);
+ updateHelmetFieldLayers(kit,{rails:false},0x5c695c,true);
  assert.equal(kit.modules.rails.visible,false);
+ updateHelmetFieldLayers(kit,{rails:true},0x5c695c,true);
+ assert.equal(kit.modules.rails.visible,true);
 });
