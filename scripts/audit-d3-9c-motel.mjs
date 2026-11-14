@@ -5,6 +5,8 @@ import {activateSite,doorLeafSegment,pointToSegment,OPERATOR_RADIUS} from '../sr
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {sweptBodyClear,glideAlongStaticWall} from '../src/breach-navigation.ts';
 import {diagnoseMovement} from '../src/breach-nav-diagnostics.ts';
+import {routeWithSqueezeWorld} from '../src/breach-squeeze-route.ts';
+import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 const seed=31149,site=generateSite(seed,'small',undefined,{mission:'intel'},{archetype:'motel'});
 const quiet={...site,training:true,enemies:[],encounter:undefined};
 const s=newSession(0,seed,'full-view',site.scale??'small','intel',quiet,{enableCivilians:false});
@@ -42,7 +44,19 @@ try{
     y:a.p.y+(next.y-a.p.y)/distance*.5}:a.p;
    const block=next?diagnoseMovement(a.p,probe,s.doors,[],OPERATOR_RADIUS,world):null;
    const glide=next?glideAlongStaticWall(a.p,probe,s.doors,world):null;
+   const late=a.id==='vale'&&(t+1)%60===0&&t>=1200&&t<=1440;
+   const destination=goal.get(a.id);
+   const doorD6=s.doors.find(d=>d.id==='D6');
+   const cold=late&&destination?{
+     worldRoute:routeWithSqueezeWorld(a.p,destination,s.doors,world).slice(0,12),
+     leafBypass:doorD6?rehearseDoorLeafBypass(a.p,destination,doorD6,
+       (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world)):[],
+     D6:doorD6?{id:doorD6.id,a:doorD6.a,b:doorD6.b,
+       hinge:doorD6.hinge,swing:doorD6.swing,
+       fraction:doorD6.openFraction,leaf:doorLeafSegment(doorD6)}:null
+   }:null;
    return {id:a.id,p:{x:r(a.p.x),y:r(a.p.y)},heading:r(a.heading),
+    cold,
     probe:{clear:next?sweptBodyClear(a.p,probe,s.doors,OPERATOR_RADIUS,world):null,
      blocker:block?.blocker??null,point:block?.point??null,
      glide:glide?{x:r(glide.x),y:r(glide.y)}:null},
