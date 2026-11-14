@@ -285,7 +285,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(v.fabricCamo&&typeof v.fabricCamo==='object'&&!Array.isArray(v.fabricCamo)){
   for(const channel of FABRIC_CAMO_CHANNELS){
    const id=v.fabricCamo[channel];
-   if(isHeadwearCamoId(id)&&id!=='splittertarn-31'){
+   if(isHeadwearCamoId(id)){
     (result.fabricCamo??={})[channel]=id;
    }
   }
@@ -293,7 +293,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
  if(v.lastFabricCamo&&typeof v.lastFabricCamo==='object'&&!Array.isArray(v.lastFabricCamo)){
   for(const channel of FABRIC_CAMO_CHANNELS){
    const id=v.lastFabricCamo[channel];
-   if(isHeadwearCamoId(id)&&id!=='splittertarn-31')
+   if(isHeadwearCamoId(id))
     (result.lastFabricCamo??={})[channel]=id;
   }
  }
@@ -331,7 +331,7 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   result.helmetField=readHelmetField(v.helmetField);
  if(v.pasgtDetails&&typeof v.pasgtDetails==='object')
   result.pasgtDetails=readPasgtDetails(v.pasgtDetails,v.helmetSetup);
- if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
+ if(isHeadwearCamoId(v.headwearCamo))result.headwearCamo=v.headwearCamo;
  if(Number.isInteger(v.headwearCamoRoll)&&v.headwearCamoRoll!>=0&&v.headwearCamoRoll!<4096)
   result.headwearCamoRoll=v.headwearCamoRoll;
  if(SLEEVE_STATES.includes(v.sleeveState as SleeveState))

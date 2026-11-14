@@ -39,7 +39,8 @@ test('seven authored auditions are independently structured, correctly dense, an
  for(const id of ['woodland-dpm','swedish-m90','six-color-desert','alpenflage'])
   assert.equal(HEADWEAR_CAMO_DENSITY[id],1,'broad motifs must remain one pixel/unit');
  assert.equal(headwearCamoChoices('pasgt').includes('six-color-desert'),true);
- assert.equal(headwearCamoChoices('pasgt').includes('woodland-marpat'),false);
+ assert.equal(headwearCamoChoices('pasgt').includes('woodland-marpat'),true,
+  'PASGT woodland MARPAT was added as an approved textile combination');
  assert.equal(headwearCamoChoices('ach').includes('alpenflage'),false);
  assert.equal(headwearCamoChoices('mich-2001').includes('woodland-dpm'),false);
  assert.equal(headwearCamoChoices('beanie').length,0);

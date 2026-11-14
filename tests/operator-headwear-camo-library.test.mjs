@@ -37,7 +37,8 @@ test('5A mobile browser provides grouped searchable filtering, favorites and rec
  assert.match(lab,/camoCompareDetails\.open/);
  const initial={terrain:'all',style:'all',origin:'Canada',text:'',
   onlyCompatible:false,onlyFavorites:false};
- assert.deepEqual(filterCamoCatalog(initial,[],new Set()),['cadpat-tw']);
+ assert.deepEqual(filterCamoCatalog(initial,[],new Set()),['cadpat-tw','cadpat-ar'],
+  'Canadian catalog includes both woodland and arid CADPAT');
  const favorites=filterCamoCatalog({terrain:'woodland',style:'digital',origin:'all',
   text:'',onlyCompatible:true,onlyFavorites:true},headwearCamoChoices('boonie'),
   new Set(['woodland-marpat','cadpat-tw']));

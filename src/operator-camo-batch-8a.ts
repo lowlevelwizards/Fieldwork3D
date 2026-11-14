@@ -68,7 +68,8 @@ export const CAMO8A_RECIPES:Readonly<Record<Camo8AId,Camo8ARecipe>>=
  Object.fromEntries(CAMO8A_IDS.map(id=>{
   const recipe=recipes[id];
   return [id,{...recipe,get targetCoverage():readonly number[]{
-   if(id==='pencott-metropolis'||id==='kryptek-typhon')return recipe.targetCoverage;
+   // Report the actual authored raster coverage for every pattern.
+   // Art remains unchanged; this avoids stale hand-entered metadata.
    const counts=recipe.colors.map(()=>0);
    for(const ink of camo8AIndices(id))counts[ink]++;
    return counts.map(c=>c/4096);
