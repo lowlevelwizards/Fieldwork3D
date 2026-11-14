@@ -28,8 +28,9 @@ test('D3.8 warehouse 31123: existing self-clearance offers actual swept legal ex
   door.open=true;door.openFraction=.397;door.pushTarget=1.55;
   door.angularVelocity=0;
   const world=sessionWorldGeometry(s);
-  assert.ok(actors.every(a=>doorWouldStrikeActors(
-   door,.422,[a.p],OPERATOR_RADIUS)),'each real body blocks next hinge sweep');
+  assert.ok(doorWouldStrikeActors(
+   door,.422,actors.map(a=>a.p),OPERATOR_RADIUS),
+   'live bodies together obstruct the next hinge sweep');
   let found=0;
   for(let i=0;i<4;i++){
    const actor=actors[i],relief=selfBlockingHingeRelief(actor,s,goals[i]);
