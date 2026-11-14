@@ -149,11 +149,11 @@ test('A1 bounded shards preserve exact complete test ownership',()=>{
  assert.throws(()=>shardTestPaths(files,['--shard=0/16']));
 });
 
-test('A1 five complete per-model camouflage pose suites have exclusive CI shards',()=>{
- const heavy=['patrol-cap','boonie','ach','mich-2001','pasgt']
+test('A1 eight live-pose shards keep all four Boonie slices and the other helmets isolated',()=>{
+ const heavy=['patrol-cap','boonie-1','boonie-2','boonie-3','boonie-4','ach','mich-2001','pasgt']
   .map(model=>'tests/operator-headwear-camo-pose-'+model+'.test.mjs');
  const files=[...Array.from({length:44},(_,i)=>'other-'+i),...heavy];
  const shards=Array.from({length:16},(_,i)=>shardTestPaths(files,['--shard='+(i+1)+'/16']));
  assert.deepEqual(shards.flat().sort(),[...files].sort());
- assert.deepEqual(shards.slice(-5),heavy.map(path=>[path]));
+ assert.deepEqual(shards.slice(-8),heavy.map(path=>[path]));
 });

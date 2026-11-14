@@ -175,9 +175,18 @@ jobs:
       - name: A1 live camouflage pose 1/5 (patrol-cap)
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
         run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-patrol-cap.test.mjs
-      - name: A1 live camouflage pose 2/5 (boonie)
+      - name: A1 live camouflage pose boonie batch 1/4
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
-        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-boonie.test.mjs
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-boonie-1.test.mjs
+      - name: A1 live camouflage pose boonie batch 2/4
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-boonie-2.test.mjs
+      - name: A1 live camouflage pose boonie batch 3/4
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-boonie-3.test.mjs
+      - name: A1 live camouflage pose boonie batch 4/4
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-boonie-4.test.mjs
       - name: A1 live camouflage pose 3/5 (ach)
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
         run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-ach.test.mjs

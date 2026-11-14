@@ -11,7 +11,7 @@ export function shardTestPaths(paths,args=process.argv.slice(2)){
  // Place expensive per-model live 3D geometry/pose tests in independent
  // final shards. Every test file is still selected once; ordinary regression
  // tests never share a job with these memory-intensive rendering checks.
- const heavy=paths.filter(path=>/^tests\/operator-headwear-camo-pose-(?:patrol-cap|boonie|ach|mich-2001|pasgt)\.test\.mjs$/.test(path));
+ const heavy=paths.filter(path=>/^tests\/operator-headwear-camo-pose-(?:patrol-cap|boonie-[1-4]|ach|mich-2001|pasgt)\.test\.mjs$/.test(path));
  if(total>heavy.length&&heavy.length){
   const ordinary=paths.filter(path=>!heavy.includes(path));
   const regularCount=total-heavy.length;

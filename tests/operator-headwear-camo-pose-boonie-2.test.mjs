@@ -24,7 +24,7 @@ const pose=(kit,wardrobe)=>({
  unarmedPreview:true,equipment:kit,wardrobe
 });
 // Independent test shard; original coverage and assertions preserved.
-test('live boonie pose swaps all approved camo and solids without geometry mutation',()=>{
+test('live boonie pose validates camouflage prints 17–32 and solid restoration',()=>{
  const rig=createOperatorRig('rook','blue');
  const model='boonie'; {
   const {kit,wardrobe}=selectWardrobeItem(bareLabEquipment(),initialWardrobe(),'headwear',model);
@@ -36,7 +36,10 @@ test('live boonie pose swaps all approved camo and solids without geometry mutat
   const eligible=headwearCamoChoices(model);
   // Check the entire 62-print art catalog live once on the Boonie, while
   // representative early/middle/late prints validate each other shell.
-  const samples=eligible;
+  assert.deepEqual([...eligible].sort(),[...HEADWEAR_CAMO_IDS].sort(),
+   'all authored prints are represented across four bounded live-pose shards');
+  const samples=eligible.slice(16,32);
+  assert.equal(samples.length,16,'expected deterministic boonie print shard');
   for(const id of samples){
    const selection={...wardrobe,headwearCamo:id};
    poseOperator(rig,pose(kit,selection),0);
