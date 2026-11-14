@@ -16,7 +16,7 @@ export const FAL_ART:Readonly<{
  muzzleX:number;magazineCenterX:number;magazineBottomY:number;
 }> = Object.freeze({
  stockRearX:-15.00,receiverRearX:-6.60,receiverFrontX:3.85,
- handguardStartX:3.80,handguardEndX:14.10,
+ handguardStartX:3.65,handguardEndX:14.10,
  frontSightX:14.70,muzzleX:22.00,
  magazineCenterX:1.35,magazineBottomY:-8.05
 });
@@ -80,9 +80,9 @@ export function buildFALCoreSilhouette(
 
  // S1C: shallow, wide and gently tapered FAL forearm, NOT M16 triangular.
  p('handguard',[
-  [3.80,1.06],[4.48,1.40],[12.30,1.39],
+  [3.65,1.06],[4.48,1.40],[12.30,1.39],
   [14.10,1.01],[14.10,-1.05],[12.86,-1.45],
-  [4.46,-1.74],[3.80,-1.32]
+  [4.46,-1.74],[3.65,-1.32]
  ],3.46);
 
  // One six-sided barrel. The gas-block sight is near the end of the
