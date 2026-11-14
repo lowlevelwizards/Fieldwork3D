@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {newSession,team} from '../src/breach-game.ts';
-import {incomingHitFacing,hitFacingInterrupted}
+import {incomingHitFacing,hitFacingInterrupted,choosePhysicalCorrection}
  from '../src/breach-combat-reactions.ts';
 import {fireCorrectionStopReason,cancelFireCorrection,
  correctionContactChanged} from '../src/breach-fire-recovery-policy.ts';
@@ -110,4 +110,58 @@ test('D2.3: ownership and no quiet-tick reactive work in fixed-tick sources',()=
  assert.match(firing,/if\(a.fireRetreatTarget\)cancelFireCorrection\(a\)/);
  assert.doesNotMatch(source('breach-fire-recovery-policy.ts'),
   /requestAnimationFrame\(|setInterval\(|Math.random\(|weaponClearance\(/);
+});
+
+/** Exact pre-D2.3 candidate generation and callback order. */
+function priorCorrection(p,yaw,reason,canMove,canShoot){
+ let tests=0;
+ const lateral={x:-Math.sin(yaw),y:Math.cos(yaw)};
+ const forward={x:Math.cos(yaw),y:Math.sin(yaw)};
+ const lengths=reason==='friendly'?[4,7,10,12,20,28]:
+  [2,3,4,7,10,14,22,30];
+ for(const length of lengths){
+  const offset=(side,back,kind)=>{
+   const norm=Math.hypot(side,back);
+   return {dx:(lateral.x*side-forward.x*back)*length/norm,
+    dy:(lateral.y*side-forward.y*back)*length/norm,kind};
+  };
+  const candidates=reason==='friendly'?[
+   offset(-1,0,'lateral-left'),offset(1,0,'lateral-right'),
+   offset(-1,1,'back-left'),offset(1,1,'back-right'),offset(0,1,'back')
+  ]:[
+   offset(0,1,'back'),offset(-.5,1,'back-left'),
+   offset(.5,1,'back-right'),offset(-1,1,'back-left'),
+   offset(1,1,'back-right'),offset(-1,0,'lateral-left'),
+   offset(1,0,'lateral-right')
+  ];
+  for(const c of candidates){
+   const next={x:p.x+c.dx,y:p.y+c.dy};
+   tests++;
+   if(canMove(next)&&canShoot(next))
+    return {point:next,kind:c.kind,distance:length,tests};
+  }
+ }
+ return null;
+}
+test('D2.3 optimization preserves every candidate, swept probe order and solution',()=>{
+ const from={x:23,y:-9};
+ for(const reason of ['friendly','muzzle']){
+  for(const yaw of [0,.33,-1.28,Math.PI]){
+   for(const goal of [0,1,4,17,1000]){
+    let first=0,second=0;
+    const before=priorCorrection(from,yaw,reason,q=>{
+     first++;return first>goal;
+    },q=>q.x!==1000);
+    const after=choosePhysicalCorrection(from,yaw,reason,q=>{
+     second++;return second>goal;
+    },q=>q.x!==1000);
+    assert.deepEqual(after,before,
+     'rank, result, floating point coordinate and counted attempts remain exact');
+    assert.equal(second,first);
+   }
+  }
+ }
+ const src=source('breach-combat-reactions.ts');
+ assert.match(src,/const FRIENDLY_PATTERNS:readonly CorrectionPattern\[\]/);
+ assert.doesNotMatch(src,/const candidates=reason==='friendly'/);
 });
