@@ -102,3 +102,11 @@ test('C4 stable open threshold ignores finished friendly as queue claimant',asyn
  assert.match(src,/finishedFriendly\(a,peer\)/);
  assert.match(src,/finishedFriendly\(a,other\)/);
 });
+
+test('C2c previously selected settle cannot hide unrecoverable static landing',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const text=readFileSync(new URL('../src/breach-order-movement.ts',import.meta.url),'utf8');
+ assert.match(text,/n\.entryDoorId&&a\.blockedTime>=6/);
+ assert.match(text,/!sessionWorldGeometry\(s\)\.passable\(n\.p,OPERATOR_RADIUS\)/);
+ assert.match(text,/settledMoveTargets\.delete\(a\);\s*failCurrentOrder/);
+});

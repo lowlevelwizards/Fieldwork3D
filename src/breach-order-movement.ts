@@ -86,6 +86,20 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   if(remembered&&remembered.nodeId!==n.id)settledMoveTargets.delete(a);
   const retained=n.kind==='move'&&remembered?.nodeId===n.id?
     remembered.point:null;
+  // C2c: a previously selected near-goal settling footstep is not proof
+  // that the actor can execute it. When the ORIGINAL generated target is
+  // inside immutable static wall clearance, do not let retained footwork
+  // bypass the same bounded failure policy forever. Give it six seconds
+  // of genuine attempted motion first; then report the blocked template.
+  // Player-authored MOVE and open/closing door-only obstructions are exempt.
+  if(n.kind==='move'&&n.entryDoorId&&a.blockedTime>=6&&
+     d(a.p,n.p)<=18.5&&
+     !sessionWorldGeometry(s).passable(n.p,OPERATOR_RADIUS)){
+    settledMoveTargets.delete(a);
+    failCurrentOrder(s,a,n,
+      'ENTRY LANDING BLOCKED · NO SAFE INTERIOR FOOTPRINT',port.notify);
+    return true;
+  }
   const settledAt=!!retained&&near(a.p,retained,3.5)&&
     friendlyPeers.every(peer=>d(a.p,peer)>=14);
   // C2: only the generated ENTRY endpoint may move to a physically
