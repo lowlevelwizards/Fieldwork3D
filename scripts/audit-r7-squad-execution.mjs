@@ -17,7 +17,8 @@ import {activateSite} from '../src/breach-core.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
-import {captureD32DoorEvidence,dueDoorHoldMilestones,D32_HOLD_MILESTONES}
+import {captureD32DoorEvidence,dueDoorHoldMilestones,D32_HOLD_MILESTONES,
+ dueD32BlockMilestones,D32_BLOCK_MILESTONES}
  from '../src/breach-d3-door-evidence.ts';
 
 const names=['house','townhouse','apartment','retail','office','garage',
@@ -104,6 +105,7 @@ function run(site,seed,kind){
   // Read-only final three-second net-displacement witness; not a motor input.
   const windowStart=actors.map(a=>({...a.p}));
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
+  const blockWitness=actors.map(()=>({mask:0,events:[]}));
   if(planned.accepted){enableD32MotorDoorWitness(true);toggling(session);}
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
@@ -126,6 +128,16 @@ function run(site,seed,kind){
       trace.mask|=1<<index;
       if(trace.events.length<12)
        trace.events.push({event:'held',duration:D32_HOLD_MILESTONES[index],
+        ...captureD32DoorEvidence(a,session)});
+     }
+    // Reuse actual motor blockedTime. No new game-loop queries or timers.
+    const physical=blockWitness[i];
+    if(a.blockedTime<.1)physical.mask=0;
+    else if(a.blockedTime>=D32_BLOCK_MILESTONES[0])
+     for(const index of dueD32BlockMilestones(a.blockedTime,physical.mask)){
+      physical.mask|=1<<index;
+      if(physical.events.length<12)
+       physical.events.push({event:'blocked',duration:D32_BLOCK_MILESTONES[index],
         ...captureD32DoorEvidence(a,session)});
      }
    }
@@ -183,6 +195,8 @@ function run(site,seed,kind){
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
+    operator:actors[i].id,...e}))),
+   physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    crossed,orderIssues,planIntact,triage,
    minSpacing:Number.isFinite(minSpacing)?round(minSpacing):null,

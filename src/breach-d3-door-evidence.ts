@@ -8,6 +8,14 @@ import type {Session,TeamActor} from './breach-game.ts';
 const pos=(p:{x:number;y:number}|undefined)=>p?{x:+p.x.toFixed(2),y:+p.y.toFixed(2)}:null;
 const round=(x:number)=>+x.toFixed(3);
 export const D32_HOLD_MILESTONES=[.75,1.5,3,6,12] as const;
+/** Forensic thresholds on preexisting motor.blockedTime, not a live clock. */
+export const D32_BLOCK_MILESTONES=[.85,1.7,3.4,6.8] as const;
+export function dueD32BlockMilestones(age:number,mask:number):number[]{
+ const due:number[]=[];
+ for(let i=0;i<D32_BLOCK_MILESTONES.length;i++)
+  if(!(mask&(1<<i))&&age>=D32_BLOCK_MILESTONES[i])due.push(i);
+ return due;
+}
 export function dueDoorHoldMilestones(age:number,mask:number):number[]{
  const due:number[]=[];
  for(let i=0;i<D32_HOLD_MILESTONES.length;i++)
@@ -47,6 +55,8 @@ export function captureD32DoorEvidence(a:TeamActor,s:Session){
     sweptBodyClear(a.p,a.nav[0],s.doors,OPERATOR_RADIUS,world),
   blockedTime:round(a.blockedTime),actionTimer:round(a.actionTimer),
   retries:a.recoveryAttempts,blocker:a.lastBlocker,
+  retryRouteAt:round(a.retryRouteAt),lastNavRepairAt:round(a.lastNavRepairAt),
+  routeGoalKey:a.routeGoalKey,
   traversal:a.doorTraversal?{doorId:a.doorTraversal.doorId,
     phase:a.doorTraversal.phase,maneuver:a.doorTraversal.maneuver}:null,doors};
 }
