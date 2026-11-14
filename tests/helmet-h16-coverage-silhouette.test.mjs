@@ -25,7 +25,7 @@ test('H17: Full and Mid are one integrated skirt; High retains open ears',()=>{
   assert.equal(achMichHemY(id,5.4),nape);
   assert.equal(HEAD_SILHOUETTE_METRICS[id].earEdge,ear);
  }
- assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,5.91);
+ assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,4.78);
  assert.equal(HELMET_MOUNT_PROFILES['mich-2002'].ear,4.05);
  assert.equal(HELMET_MOUNT_PROFILES.ach.ear,2.92);
 });
@@ -41,7 +41,6 @@ test('H17: single low-poly shell and matching cover/binding envelopes',()=>{
   assert.equal(straps.length,6);
   assert.ok(edge.getAttribute('position').count<150);
   assert.ok(cloth.boundingBox.max.y>mesh.geometry.boundingBox.max.y);
-  if(id==='mich-2001')continue;
   const geometry=mesh.geometry;
   assert.equal(geometry.userData.h17UnifiedContour,true);
   assert.ok(geometry.userData.exteriorQuads<=30);
