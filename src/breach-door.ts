@@ -517,24 +517,11 @@ export function doorClear(d:Door,world?:SessionWorldGeometry):boolean{
  * must validate this step against ALL walls, doors, furniture, and actors.
  * A blocked sidestep leaves the door blocked as usual.
  */
-/** D3.7: the same finite, swept shoulder-yield may clear a stationary
- * hand-assisted hinge. Previously pushTarget>1.01 disabled ALL yield even
- * at a jammed 40% opening while four bodies held the panel. Never yield
- * for an advancing assisted leaf or beyond the ordinary traverse angle.
- * This is an existing door-phase gate; no second mover or search.
- */
-export function openingYieldEligible(d:Door):boolean{
- if(!d.open||d.kind==='sliding'||d.kind==='shutter'||d.wedged||
-    (d.openFraction??0)>=.96)return false;
- if((d.pushTarget??1)<=1.01)return true;
- const fraction=d.openFraction??0;
- return fraction>=.12&&fraction<.72&&
-   Math.abs(d.angularVelocity??0)<.16;
-}
 export function initialOpeningYieldCandidate(d:Door,actor:Pt,
   maxStep=1.25):Pt|null{
- if(!openingYieldEligible(d))return null;
  const fraction=d.openFraction??0;
+ if(!d.open||d.kind==='sliding'||d.kind==='shutter'||d.wedged||
+    fraction>=.96||(d.pushTarget??1)>1.01)return null;
  const leaf=doorLeafSegment(d);
  const future=doorLeafSegment({...d,openFraction:Math.min(1.03,fraction+.065)});
  const before=pointToSegment(actor,leaf),after=pointToSegment(actor,future);
