@@ -23,9 +23,9 @@ const close=(a,b,e=.001)=>Math.abs(a-b)<e;
 const shots=(g,x,y)=>new THREE.Raycaster(new THREE.Vector3(x,y,25),
  new THREE.Vector3(0,0,-1)).intersectObjects(g.children,true).length;
 test('R4.2 all eight AR builds keep original saves and canonical barrel labels',()=>{
- assert.ok(ar.length>=8);
- assert.ok(FAMILY_PRESETS.length>=17,'preserve original 17 factory references');
- assert.ok(Object.keys(FAMILY_PARTS).length>=93,'preserve 93 authored core parts');
+ assert.equal(ar.length,8);
+ assert.equal(FAMILY_PRESETS.length,17);
+ assert.equal(Object.keys(FAMILY_PARTS).length,93);
  assert.equal(Object.keys(AR_BARREL_ART).length,7);
  for(const p of ar){
   const {config,group}=model(p.id);
