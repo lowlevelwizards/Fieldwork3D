@@ -38,9 +38,16 @@ export function probeD32SampledConnectivity(
   return true;
  };
  if(!canStand(from)||!canStand(to))return none();
- if(canCross(from,to))return {connected:true,exhausted:true,
-   visited:0,startAnchors:1,routeSteps:1,first:{...to},last:{...to},
-   ...(witnessPath?{path:[{...to}]}:{})};
+ if(canCross(from,to)){
+  const samples=witnessPath?Math.max(1,Math.ceil(gap(from,to)/step)):1;
+  const path=witnessPath?Array.from({length:samples},(_,i)=>{
+   const t=(i+1)/samples;
+   return {x:from.x+(to.x-from.x)*t,y:from.y+(to.y-from.y)*t};
+  }):undefined;
+  return {connected:true,exhausted:true,visited:0,startAnchors:1,
+   routeSteps:samples,first:path?.[0]??{...to},last:{...to},
+   ...(path?{path}:{})};
+ }
  const minCol=Math.ceil(world.bounds.minX/step),
   maxCol=Math.floor(world.bounds.maxX/step);
  const minRow=Math.ceil(world.bounds.minY/step),
