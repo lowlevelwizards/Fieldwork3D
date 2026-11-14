@@ -21,7 +21,7 @@ import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
  twoSidedSqueezePressure,sweptProfileClear,escapeOpenDoorOverlap,
  slideAroundStaticCorner,glideAlongStaticWall} from './breach-navigation.ts';
 import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel,
- routeToNextOperableDoor}
+ routeToNextOperableDoor,repairBlockedTransientWorldLeg}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement,blockedStepCause} from './breach-nav-diagnostics.ts';
 import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breach-movement-recovery.ts';
@@ -336,6 +336,22 @@ export function resolveMotorCollision(
           a.nav.unshift(relief);
           a.recoveryAttempts++;
           a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+          return true;
+        }
+      }
+      // D3.4 clinic wall witness: operator drift can make a short,
+      // previously valid TRANSIENT waypoint physically unreachable from
+      // today's exact position. Rejoin that same waypoint through one
+      // bounded world-truth full-body connector BEFORE trying a new global
+      // authored-goal path (which may lie behind several closed portals).
+      // The existing collision retry already paid for this check.
+      if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+         (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
+         !a.doorTraversal&&!a.traversalPending&&a.nav.length){
+        const connected=repairBlockedTransientWorldLeg(
+          a.p,next,a.nav.slice(1),s.doors,world);
+        if(connected.length&&materiallyDifferentRoute(a.nav,connected)){
+          a.nav=connected;a.retryRouteAt=0;a.recoveryAttempts=0;
           return true;
         }
       }
