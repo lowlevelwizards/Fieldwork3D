@@ -417,3 +417,17 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 #studioMaterials .helmet-field-help[aria-expanded="true"]{
  background:#cbb285;color:#20342b;border-color:#ead7a8;
 }
+
+/* H13: present prerequisites instead of hiding controls. Keep mobile cards
+ * readable and prevent a disabled item from resembling a selected one. */
+#studioMaterials .helmet-option-unavailable{
+ opacity:.58;filter:saturate(.55);cursor:not-allowed;
+ flex-wrap:wrap;
+}
+#studioMaterials .helmet-option-requirement{
+ display:block;flex-basis:100%;margin-left:1.65rem;
+ font:600 9px/1.2 "Work Sans",sans-serif;letter-spacing:.035em;
+}
+#studioMaterials .helmet-compatibility-notice{
+ grid-column:1/-1;color:#d8bc8d;font:600 11px/1.4 "Work Sans",sans-serif;
+}
