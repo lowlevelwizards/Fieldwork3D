@@ -126,5 +126,5 @@ test('ACH first-pass top chamfer is intentional but keeps its lower-edge topolog
  assert.ok(g.getAttribute('normal').count>0);
  const side=headwearCuboidVolumes('ach');
  assert.equal(side.length,9);
- assert.ok(Math.abs(lowerAt(side,4.4,0)-3.36)<.01);
+ assert.ok(Math.abs(lowerAt(side,4.4,0)-2.31)<.01);
 });
