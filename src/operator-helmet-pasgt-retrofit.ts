@@ -73,6 +73,36 @@ const sideBand=(g:THREE.Group,sign:number,layer:number,
   o.rotation.y=sign*Math.PI/2;
  }
 };
+/** Authentic PASGT NVG head strap follows the original crown to nape,
+ * unlike later three-point ARC hardware. Two static cloth paths share the
+ * period bracket, never requiring rails or bungees.
+ */
+export function addPasgtPeriodNvgStrap(root:THREE.Group,elastic:THREE.Material){
+ profiles(root,'nvg-strap',(g,layer)=>{
+  const path=[
+   new THREE.Vector3(0,6.98,p.front-.39),
+   new THREE.Vector3(0,8.53+layer,-5.47),
+   new THREE.Vector3(0,p.top+layer+.16,-4.26),
+   new THREE.Vector3(0,p.top+layer+.18,4.12),
+   new THREE.Vector3(0,6.90,p.rear+layer+.13)
+  ];
+  // Crown textile is horizontal; a single quad per physical segment.
+  const data:number[]=[],half=.43;
+  for(let i=1;i<path.length;i++){
+   const a=path[i-1],b=path[i];
+   quad(data,[a.clone().add(new THREE.Vector3(-half,0,0)),
+    a.clone().add(new THREE.Vector3(half,0,0)),
+    b.clone().add(new THREE.Vector3(half,0,0)),
+    b.clone().add(new THREE.Vector3(-half,0,0))]);
+  }
+  const geometry=new THREE.BufferGeometry();
+  geometry.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
+  geometry.computeVertexNormals();geometry.computeBoundingBox();
+  geometry.userData.h14PeriodNvgTopStrap=true;
+  put(g,'period-pasgt-nvg-retaining-strap',geometry,elastic);
+ });
+ root.userData.h14PeriodNvgStrap=true;
+}
 export function addPasgtRetrofitRails(root:THREE.Group,
  metal:THREE.Material,dark:THREE.Material,light:THREE.Material){
  profiles(root,'rails',(g,layer)=>{
