@@ -17,9 +17,20 @@ try{
  const entry=doors.slice(0,12).find(d=>planSquadEntry(s,d.id));
  if(!entry)throw Error('motel failed to select ENTRY');
  const goal=new Map(actors.map(a=>[a.id,a.plan.find(n=>n.entryDoorId===entry.id)?.p]));
- toggling(s);const rows=[];
+ toggling(s);const rows=[],micro=[];
+ const prev=actors.map(a=>({...a.p}));
  for(let t=0;t<2100;t++){
   stepSession(s,1/60);
+  if(t>=480&&t<650){
+   micro.push({tick:t+1,sec:r(s.seconds),actors:actors.filter(a=>a.id==='ash'||a.id==='vale').map(a=>({
+    id:a.id,p:{x:r(a.p.x),y:r(a.p.y)},
+    v:r(a.velocity),blocked:r(a.blockedTime),
+    retry:a.recoveryAttempts,nav:a.nav[0]?{x:r(a.nav[0].x),y:r(a.nav[0].y)}:null,
+    navLength:a.nav.length,last:a.lastBlocker,
+    repairAt:r(a.lastNavRepairAt),retryAt:r(a.retryRouteAt),
+    squeeze:a.squeeze
+   }))});
+  }
   if((t+1)%30!==0)continue;
   rows.push({t:r((t+1)/60),actors:actors.filter(a=>a.id==='ash'||a.id==='vale').map(a=>{
    const nearby=s.doors.map(d=>({id:d.id,g:r(pointToSegment(a.p,doorLeafSegment(d))),
@@ -42,5 +53,5 @@ try{
     near:nearby};
   })});
  }
- console.log(JSON.stringify({seed,entry:entry.id,goals:[...goal],rows}));
+ console.log(JSON.stringify({seed,entry:entry.id,goals:[...goal],rows,micro}));
 }finally{activateSite(null);}
