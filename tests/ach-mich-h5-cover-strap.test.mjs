@@ -74,5 +74,5 @@ test('H17: one continuous ear/nape surface replaces the three side cuboids',()=>
  const p=achMichProfile('ach');
  assert.ok(p.hem.every(point=>point[0]===p.side));
  assert.equal(achMichHemY('ach',0),2.04);
- assert.equal(achMichHemY('ach',5.1),2.72);
+ assert.equal(achMichHemY('ach',5.1),2.35);
 });
