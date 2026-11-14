@@ -34,9 +34,9 @@ const rayHits=(group,x,y)=>{
  return caster.intersectObjects(group.children,true).length>0;
 };
 test('R3.1: 91 parts and 17 presets retain combat muzzle and geometry budget',()=>{
- assert.ok(Object.keys(FAMILY_PARTS).length>=91,'preserve 91 authored core parts');
- assert.ok(FAMILY_PRESETS.length>=17,'preserve original 17 factory references');
- for(const p of FAMILY_PRESETS.filter(p=>p.family==='ar'||p.family==='ak')){
+ assert.equal(Object.keys(FAMILY_PARTS).length,91);
+ assert.equal(FAMILY_PRESETS.length,17);
+ for(const p of FAMILY_PRESETS){
   const {config,group}=assembly(p.id);
   const bounds=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(bounds.max.x-resolveWeaponAssembly(config).muzzleX)<.001,
@@ -46,7 +46,7 @@ test('R3.1: 91 parts and 17 presets retain combat muzzle and geometry budget',()
  }
 });
 test('R3.1: major solid envelopes intersect in X, Y and Z without floating',()=>{
- for(const p of FAMILY_PRESETS.filter(p=>p.family==='ar'||p.family==='ak')){
+ for(const p of FAMILY_PRESETS){
   const {group}=assembly(p.id);
   for(const [a,b] of [
    ['stock','receiver'],['receiver','handguard'],
