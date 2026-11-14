@@ -85,11 +85,11 @@ test('H17 three canonical coverage cuts retain accurate shell and binding',()=>{
  const high=headwearCuboidVolumes('mich-2001');
  assert.equal(mid.length,5);
  assert.equal(mid.filter(x=>x.name.includes('ear-nape')).length,2);
- assert.ok(high.some(x=>x.name==='m2001-short-temple'));
+ assert.equal(high.filter(x=>x.name.includes('ear-nape')).length,2);
  const hem=achMichProfile('mich-2002').hem;
  assert.ok(hem.every(p=>p[0]===achMichProfile('mich-2002').side));
  assert.equal(hem[2][1],2.99);
- assert.equal(achMichProfile('mich-2001').hem[1][1],6.025);
+ assert.equal(achMichProfile('mich-2001').hem[1][1],4.55);
 });
 
 test('H15: shell cuts are first in Details; shell change does not reset accessories',()=>{
