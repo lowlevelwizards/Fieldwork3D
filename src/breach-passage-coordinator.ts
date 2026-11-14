@@ -217,7 +217,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  // Live occupant coordinates are never cached: short scalar scan,
  // no repeated per-operator temporary roster allocations.
  let hostileThroat=false;
- if(normalDepth(a.p,door)*slot.fromSide>=0)
+ if(forward>.025&&normalDepth(a.p,door)*slot.fromSide>=0)
   for(const other of s.operators){
    if(other===a||other.health<=0||!throat(other.p,door))continue;
    if(normalDepth(other.p,door)*slot.fromSide<0){
@@ -228,7 +228,13 @@ export function coordinatePassage(s:Session,a:TeamActor,
  // circuit the queue's stricter follower gap. Previously follower #4 saw
  // man #2 already inside, used only the loose 19-unit threshold barrier
  // and walked into waiting man #3 at the approach frame.
- const otherSide=ownerFor(ctx,s,door);
+ // With no opposite-side lane in this immutable GO schedule there is no
+ // counterflow owner to arbitrate. Skip the otherwise repeated rank/owner
+ // scan on the common one-direction four-operator entry; retain the live
+ // physical throat scan above and every same-lane spacing/solid-body veto.
+ const otherSide=forward>.025&&
+  ctx.lanes.has(laneKey(door.id,-slot.fromSide))?
+  ownerFor(ctx,s,door):null;
  const barrier=forward>.025?
   otherSide&&otherSide.side!==slot.fromSide?'opposing':
   hostileThroat?'occupied':null:null;

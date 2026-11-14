@@ -41,13 +41,11 @@ export function handleMotorDoor(
   // A route toward an authored door may cross OTHER doors. Do not let
   // the destination DOOR node disable ordinary collision-aware opening
   // of an intervening closed leaf; this was the G4d seeded deadlock.
-  const automaticCandidates:typeof s.doors=[];
   let doorAhead:typeof s.doors[number]|undefined;
   let closest=Infinity;
   for(const door of s.doors){
     if(!canAutoOpenEnRoute(pendingDoor,door.id,a.side==='red'))
       continue;
-    automaticCandidates.push(door);
     if(door.open&&(door.openFraction??0)>=.72)continue;
     if(!doorReachable(a.p,door))continue;
     if(!doorBlocksSegment(door,{a:a.p,b:next})&&
@@ -59,8 +57,11 @@ export function handleMotorDoor(
     }
   }
   // Physical near-contact is the only fallback, not a sorted search.
+  // Same physical candidate/selection order, no filtered array allocated
+  // for every stride through a map full of doors. An explicit KICK/CLOSE/
+  // HOLD still excludes its target while allowing intervening leaves.
   doorAhead??=autoDoorAtBodyContact(a.p,move,
-    automaticCandidates,sessionWorldGeometry(s));
+    s.doors,sessionWorldGeometry(s),pendingDoor,a.side==='red');
   if(doorAhead){
     // When an earlier frame queued a short handle-side correction, let the
     // normal swept motor EXECUTE those footsteps before opening the hinge.

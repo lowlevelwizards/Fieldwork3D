@@ -25,3 +25,12 @@
 ## D3.1 no-go boundaries
 
 No new per-frame actor query, A*, broad collision exceptions, teleports, hidden move-order changes or additional hinge controller. The next stage may skip *irrelevant opposite-side ownership work* when the immutable GO schedule has no opposing-side lane; it must still evaluate live throat occupancy, collision, same-lane follower gaps and all active counterflow exactly.
+
+## D3.1 staged implementation: cheaper authoritative door/queue work
+
+- **D3.1.1 — Single-direction owner fast path.** Avoid calling `ownerFor` for a positive crossing stride when the immutable GO schedule contains no lane coming through the same door from the opposite side. This removes repeated readiness/owner scans in ordinary squad entry without changing the same-side rank, physical spacing, door plane or swept motor. A live opposite-direction body inside the throat is still detected by the separate dynamic occupant scan; schedules that do include counterflow retain the identical owner/lease path.
+- **D3.1.2 — Zero array construction for automatic contact fallback.** The ordinary motor formerly allocated `automaticCandidates` on *every* attempted movement stride only to pass it to the nearest physical door-contact probe. Pass the existing door array and live order policy directly into the already ordered, physical contact scan. The fallback filters identically to `canAutoOpenEnRoute` and keeps lock, kick, CLOSE, HOLD, intervening leaf and target-priority behavior. Pure direct callers without an order policy keep their existing API.
+- **D3.1.3 — Behavioral gate.** Add explicit ordered-body contact parity against the old filtered-list oracle across seeded door sets, direct KICK/CLOSE/HOLD and no-plan tests, and source-audited single-direction lane fast path. Run D1 owner/counterflow, Q2/Q4, real four-operator inward/outward, D5 contact, full generated-site data and production build.
+- **D3.1.4 — Quality closeout.** Report generated-map completion counts and triage transparently; do not claim that an allocation-only release by itself fixes every 15-second noncompletion. Live-device FPS, responsiveness, fog and thermal acceptance still require user-run captures.
+
+No new update-loop owner, timer, cache, collision relaxation or synthetic forward displacement is added.

@@ -63,10 +63,16 @@ export function canAutoOpenEnRoute(plan:{
  return candidateDoorId!==plan.doorId||(plan.method??'open')==='open';
 }
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
- doors:readonly Door[],world?:SessionWorldGeometry):Door|undefined{
+ doors:readonly Door[],world?:SessionWorldGeometry,
+ plan?:{kind:string;doorId?:string;method?:string}|null,
+ ai?:boolean):Door|undefined{
  let nearest:Door|undefined;
  let nearestDistance=Infinity;
  for(const d of doors){
+   // Optional policy for the live motor: filter in the existing contact
+   // scan instead of allocating an eligible-door array EVERY motor tick.
+   // Older pure detection callers intentionally retain their unfiltered API.
+   if(ai!==undefined&&!canAutoOpenEnRoute(plan,d.id,ai))continue;
    if((d.open&&doorClear(d,world))||!doorReachable(from,d))
      continue;
    const leaf=doorLeafSegment(d);
