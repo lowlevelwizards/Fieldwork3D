@@ -18,7 +18,8 @@ import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
 import {shouldStageForOpening,mayManipulateOpening,claimOpeningIntent}
  from './breach-door-opening-ownership.ts';
 import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
-import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFootwork}
+import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFootwork,
+  openingSweepThreatens,upcomingOpeningSweep,selectGuidedOpeningStep}
  from './breach-door-opening-footwork.ts';
 
 /** D3.2.5: an opened hinge that has STOPPED well below its target may
@@ -106,12 +107,17 @@ export function handleMotorDoor(
       (doorAhead.openFraction??0)>=.15&&
       (doorAhead.openFraction??0)<.72&&
       Math.abs(doorAhead.angularVelocity??0)<.16;
+    const threatens=a.side==='blue'&&doorAhead.open&&
+      openingSweepThreatens(doorAhead,a.p);
     const ownerRelief=!follower&&a.side==='blue'&&
-      pendingDoor?.kind==='move'&&stopped&&a.actionTimer>=1.5;
+      pendingDoor?.kind==='move'&&
+      (stopped&&a.actionTimer>=1.5||threatens);
     if(follower||ownerRelief){
       // No follower may open, push, or retain a hand on this partial leaf.
       // All physical clearance still runs through the existing motor.
-      releaseDoorHandContact(a,s.seconds);
+      // Only a non-owner drops the hand. An opener with reachable contact
+      // must be allowed to guide the leaf WHILE executing the footstep.
+      if(follower)releaseDoorHandContact(a,s.seconds);
       const order=a.plan[0]!;
       const staged=openingFootwork(a,doorAhead.id,order.id,'swing');
       if(staged.target){
@@ -126,13 +132,12 @@ export function handleMotorDoor(
         }
         staged.target=null;
       }
-      if(follower){
+      if(follower||ownerRelief){
         // A valid authored stride takes priority over a NEW clearance
         // detour. Otherwise a safe approach can be replaced by a needless
         // retreat and lose seconds, despite never threatening the leaf.
         const fraction=doorAhead.openFraction??0;
-        const swing=Math.min(Math.max(1,doorAhead.pushTarget??1),
-          fraction+.24);
+        const swing=upcomingOpeningSweep(doorAhead);
         if(!doorWouldStrikeActors(doorAhead,swing,[move],OPERATOR_RADIUS)&&
            sweptBodyClear(a.p,move,s.doors,OPERATOR_RADIUS,
              sessionWorldGeometry(s))){
@@ -145,7 +150,10 @@ export function handleMotorDoor(
       // self-clearance library instead of a new formation route solver.
       if(staged.attempts<5&&s.seconds>=staged.nextAt&&
          (follower||ownerRelief)){
-        const retreat=selfBlockingHingeRelief(a,s,p);
+        const retreat=threatens?
+          selectGuidedOpeningStep(a,s,doorAhead,p)||
+            (stopped?selfBlockingHingeRelief(a,s,p):null):
+          selfBlockingHingeRelief(a,s,p);
         staged.nextAt=s.seconds+1.1;
         if(retreat){
           staged.attempts++;
@@ -154,7 +162,7 @@ export function handleMotorDoor(
           // translation here; actual movement occurs on the next tick.
           queueOpeningFootstep(a,retreat);
           a.retryRouteAt=0;
-          releaseDoorHandContact(a,s.seconds);
+          if(follower)releaseDoorHandContact(a,s.seconds);
           a.motorPause=null;
           return {paused:true,closed:false};
         }
@@ -238,6 +246,15 @@ export function handleMotorDoor(
         // D3.9's shared owner/follower traffic staging above is the ONLY
         // cold self-clearance authority. Do not separately create a second
         // D3.8 episode retry, whose transient nav could fight the first.
+        a.motorPause=null;
+        return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+      }
+      // With an actual physical hand attached, permit the ordinary
+      // full-radius swept motor to execute the guided pivot. Holding the
+      // DOOR OPENING pause here would make the hand and feet mutually exclusive.
+      if(a.side==='blue'&&
+         a.doorHandContact?.doorId===doorAhead.id&&
+         a.doorHandContact.releasedAt===null){
         a.motorPause=null;
         return {paused:false,closed:false,clearingDoorId:doorAhead.id};
       }

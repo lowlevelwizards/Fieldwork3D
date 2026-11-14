@@ -190,3 +190,14 @@ test('D3.9B1 shared transient footwork is stable and duplicate-free',async()=>{
  assert.notEqual(openingFootwork(a,'FRONT',1,'swing'),x);
  assert.equal(openingFootwork(a,'FRONT',1,'stance').kind,'stance');
 });
+
+test('D3.9B2 opening footwork only activates for a real partial sweep',async()=>{
+ const {openingSweepThreatens,upcomingOpeningSweep,selectGuidedOpeningStep}
+  =await import('../src/breach-door-opening-footwork.ts');
+ const d=door(),rook=actor('rook',0);
+ assert.ok(upcomingOpeningSweep(d)>(d.openFraction??0));
+ const full={...d,openFraction:1.55};
+ assert.equal(openingSweepThreatens(full,rook.p),false);
+ const s={seconds:0,doors:[full],operators:[rook],civilians:[]};
+ assert.equal(selectGuidedOpeningStep(rook,s,full,p(150,237)),null);
+});
