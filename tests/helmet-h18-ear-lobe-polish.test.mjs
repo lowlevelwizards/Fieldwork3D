@@ -16,7 +16,8 @@ test('H18: Full and Mid have distinct, single-piece iconic ear lobes',()=>{
  for(const [id,hem] of [['ach',f],['mich-2002',m]]){
   assert.equal(hem.length,6,'reuse the exact same six existing perimeter points');
   const x=hem[0][0];
-  assert.ok(hem.every(p=>p[0]===x),'no applied plate or outward ear slab');
+  assert.ok(hem.every(p=>p[0]>=x&&p[0]<=x+.3),
+    'one unified outward ear swell, no separate plates');
   for(let i=1;i<hem.length;i++)
    assert.ok(hem[i][2]-hem[i-1][2]>.6,'one ordered angular outline');
   assert.ok(near(hem[2][1],hem[3][1]),'one flat oversized ear lobe');
@@ -30,7 +31,7 @@ test('H18: Full and Mid have distinct, single-piece iconic ear lobes',()=>{
   assert.ok(near(HEAD_SILHOUETTE_METRICS[id].earEdge,hem[2][1]));
  }
  assert.ok(near(f[2][1],2.04)&&near(m[2][1],3.06));
- assert.ok(near(f[5][1],1.85)&&near(m[5][1],2.05));
+ assert.ok(near(f[5][1],1.85)&&near(m[5][1],1.90));
  assert.ok(m[2][1]-f[2][1]>=1,'Full-Cut is recognizably deeper');
  assert.ok(m[5][1]-f[5][1]>=.15 && m[5][1]-f[5][1]<.35,
   'nape stays near Full-Cut protection while ear clearance varies');
@@ -58,7 +59,8 @@ test('H18: fewer rim pixels without new geometry and fabric stays synchronized',
     assert.ok(stud[1]>achMichHemY(id,stud[2])+.40,
      'unchanged High-Cut hardware still clears its binding');
    else
-    assert.ok(near(stud[1],achMichHemY(id,stud[2])+.55,.055),
+    assert.ok(near(stud[1],achMichHemY(id,stud[2])+
+      achMichBindingHeight(id)+.45,.055),
      'Full/Mid screw height follows updated lower contour');
    for(let side=0;side<2;side++)
     assert.ok(straps[side*3+offset][0][1]<achMichHemY(id,stud[2])-.10);
