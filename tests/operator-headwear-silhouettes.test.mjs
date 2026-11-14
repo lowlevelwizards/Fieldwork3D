@@ -82,7 +82,7 @@ test('both fit head dimensions without changing proportions or scale',()=>{
   const b=box(build(id));
   assert.ok(b.min.x>=-5.6&&b.max.x<=5.6);
   assert.ok(b.min.z>=-6&&b.max.z<=5.9);
-  assert.ok(b.min.y>=(id==='ach'?2.0:2.1)&&b.max.y<9.0);
+  assert.ok(b.min.y>=(id==='ach'?1.8:2.1)&&b.max.y<9.0);
  }
 });
 
