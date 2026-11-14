@@ -60,7 +60,7 @@ test('both game editors expose one shared approved swatch UI without inventory g
  const css=readFileSync(new URL('../src/operator-headwear-picker.css',import.meta.url),'utf8');
  assert.match(campaign,/createHeadwearAppearancePicker\(person\.loadout,wardrobe/);
  assert.match(quick,/createHeadwearAppearancePicker\(member\.loadout/);
- assert.match(picker,/headwearCamoPixels\(id\)/);
+ assert.match(picker,/paintCamoPreview\(canvas,id\)/);
  assert.match(picker,/headwearColorChoices\(canon\)/);
  assert.match(picker,/headwearCamoChoices\(model\)/);
  assert.match(picker,/nextHeadwearCamoRoll/);
