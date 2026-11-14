@@ -60,6 +60,8 @@ export const LOW_READY_PASSES:Readonly<Record<LowReadyPass,{
 };
 export function lowReadyArchetype(config:WeaponConfiguration):LowReadyArchetype|null{
  const build=config.build;if(!build)return null;
+ // Similar G3/FAL support posture is intentional; both retain unique contacts.
+ if(build.family==='fal')return LOW_READY_ARCHETYPES['hk-rifle'];
  if(build.family==='hk')
   return LOW_READY_ARCHETYPES[
    build.parts.receiver==='hk-mp5k-stockless'&&
