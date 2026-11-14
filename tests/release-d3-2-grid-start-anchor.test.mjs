@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {route} from '../src/breach-core.ts';
+import {routeWithIntel,knownFurnitureBlocksSnappedStart} from '../src/breach-intel.ts';
 const windowSill={x:602,y:305.5,w:10,h:52};
 function passableWithSill(p,r=8,sill=windowSill){
  return p.x>24+r&&p.x<720-r&&p.y>24+r&&p.y<690-r&&
@@ -57,4 +58,23 @@ test('D3.2.11: ordinary authored paths do not enable furniture-start rescue',()=
  assert.match(source,/a\.lastBlocker==='furniture'&&a\.blockedTime>=\.85/);
  const core=readFileSync(new URL('../src/breach-core.ts',import.meta.url),'utf8');
  assert.match(core,/repairBlockedStart=false/);
+});
+
+test('D3.2.12: known sill enables start rescue but unknown sill never leaks into planning',()=>{
+ const from={x:613.07,y:339.61},goal={x:115,y:164};
+ const obstacle={...windowSill,id:'pt',fixture:'window-sill'};
+ const world={
+  bounds:{minX:0,minY:0,maxX:740,maxY:740},
+  someWallNearPoint:()=>false,
+  someCoverNearPoint(_p,_r,cb){return cb(obstacle,0);},
+  passable:p=>passableWithSill(p)
+ };
+ const intel={mode:'full-view',walls:new Set(),doors:new Set(),
+  cover:new Set([0]),rooms:new Set(),doorMemory:new Map()};
+ assert.equal(knownFurnitureBlocksSnappedStart(intel,from,world),true);
+ const path=routeWithIntel(intel,from,goal,world);
+ assert.ok(path.length>0,'known furniture should have a legal start anchor');
+ assert.equal(physicallyClear(from,path[0],p=>passableWithSill(p)),true);
+ const unknown={...intel,cover:new Set()};
+ assert.equal(knownFurnitureBlocksSnappedStart(unknown,from,world),false);
 });

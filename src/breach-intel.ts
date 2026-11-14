@@ -2,8 +2,8 @@ import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** 140: Player intelligence is not the same as physical world truth.
  * Architecture may be prebriefed; cover and moving objects are only known
  * after observation. All modes share the same discovered state. */
-import {WALLS,COVER,activeWorldBounds,pointToSegment,route,type Door,type Pt,
-  type Segment,someWallNearPoint,someCoverNearPoint} from './breach-core.ts';
+import {WALLS,COVER,GRID,activeWorldBounds,pointToSegment,route,type Door,type Pt,
+  type Segment,type Obstacle,someWallNearPoint,someCoverNearPoint} from './breach-core.ts';
 import type {Site} from './breach-site.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 import {insideSiteFootprint,accessibleExteriorWall} from './breach-site-footprint.ts';
@@ -144,11 +144,34 @@ export function intelPassable(p:Pt,intel:IntelState,clearance=8,
    Math.abs(p.y-o.y)<o.h/2+clearance))return false;
  return true;
 }
+/** A known physical prop can cover the nearest grid START even though
+ * the actor is fully clear at its precise coordinates. Only this known
+ * furniture condition enables the bounded, swept start-anchor rescue.
+ * Do not alter ordinary wall/door routes or reveal hidden furnishings.
+ */
+export function knownFurnitureBlocksSnappedStart(
+ intel:IntelState,from:Pt,world?:SessionWorldGeometry):boolean{
+ if(!intel.cover.size)return false;
+ const owner=ownerWorld(intel,world);
+ if(!intelPassable(from,intel,8,owner))return false;
+ const snap={x:Math.round(from.x/GRID)*GRID,
+  y:Math.round(from.y/GRID)*GRID};
+ const hits=(o:Obstacle,i:number)=>isFootstepObstacle(o)&&
+  intel.cover.has(i)&&
+  Math.abs(snap.x-o.x)<o.w/2+8&&
+  Math.abs(snap.y-o.y)<o.h/2+8;
+ return owner?owner.someCoverNearPoint(snap,8,hits):
+  someCoverNearPoint(snap,8,hits);
+}
 export const routeWithIntel=(intel:IntelState,from:Pt,to:Pt,
- world?:SessionWorldGeometry)=>
- (world??intelWorlds.get(intel))?
- (world??intelWorlds.get(intel))!.route(from,to,p=>intelPassable(p,intel,8,world)):
- route(from,to,p=>intelPassable(p,intel));
+ world?:SessionWorldGeometry)=>{
+ const owner=ownerWorld(intel,world);
+ // Keep the owning session world across ALL route-grid samples, instead
+ // of repeatedly resolving its WeakMap on each passability check.
+ const canStand=(p:Pt)=>intelPassable(p,intel,8,owner);
+ return route(from,to,canStand,
+  knownFurnitureBlocksSnappedStart(intel,from,owner));
+};
 export function intelFogLevel(intel:IntelState,site:Site|undefined,
   p:Pt,currentlyVisible:boolean,everSeen:boolean){
  return groundFogLevel(groundKnowledgeAt(intel.mode,site,p,currentlyVisible,everSeen));
