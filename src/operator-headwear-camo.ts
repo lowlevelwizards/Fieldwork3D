@@ -823,14 +823,6 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
   // Restrained modern foreign-shell proxies already used by dated reference kits.
   'russian-emr','pla-xingkong','ukrainian-mm14','jgsdf-type2',
   'south-korean-granite-b'],
- 'high-cut':['m81-woodland','ucp','multicam','flecktarn','swedish-m90',
-  'woodland-marpat','desert-marpat','finnish-m05','polish-pantera','desert-tropentarn',
-  'scorpion-w2','russian-emr','pla-xingkong','cadpat-tw','british-mtp','indian-digital-2022',
-  'australian-dpcu','italian-vegetato',
-  'atacs-fg','ukrainian-mm14','aor2','multicam-tropic','atacs-au','aor1','multicam-arid',
-  'multicam-black','multicam-alpine','pencott-greenzone','pencott-badlands','kryptek-highlander','spectre-skwo',
-  'russian-izlom','jgsdf-type2','pencott-metropolis','kryptek-typhon','norwegian-m98',
-  'south-korean-granite-b','cadpat-ar'],
  pasgt:['m81-woodland','three-color-desert','woodland-dpm','six-color-desert',
   'flecktarn','desert-tropentarn','woodland-marpat','desert-marpat','british-mtp',
   'erdl-lowland','polish-pantera','russian-flora','rhodesian-brushstroke',
@@ -841,15 +833,13 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
   'indonesian-kopassus-flowing-blood','usaf-abu'],
  'mich-2001':['m81-woodland','three-color-desert','multicam','ucp','aor1','aor2','flecktarn','desert-tropentarn'],
  'mich-2002':['m81-woodland','three-color-desert','multicam','ucp','aor1','aor2','flecktarn','desert-tropentarn'],
- 'fast-sf':['multicam','multicam-black','aor1','aor2','scorpion-w2','british-mtp','atacs-fg'],
- 'fast-xp-mid':['multicam','multicam-black','aor1','aor2','scorpion-w2','british-mtp','atacs-fg'],
  'soviet-steel':[],
  'm1-steel':[],
  'ddr-m56':[],
  'police-helmet':[]
 };
 export function headwearCamoChoices(model:string):readonly HeadwearCamoId[]{
- const id=model==='high-cut-rails'?'high-cut':model as HeadSilhouetteId;
+ const id=model as HeadSilhouetteId;
  return HEADWEAR_CAMO_ELIGIBILITY[id]??[];
 }
 export function isHeadwearCamoId(value:unknown):value is HeadwearCamoId{

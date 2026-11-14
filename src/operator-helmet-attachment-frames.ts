@@ -7,7 +7,7 @@ export const HELMET_SOCKET_NAMES=['frontShroud','frontLower','railLeft','railRig
 export type HelmetSocketName=typeof HELMET_SOCKET_NAMES[number];
 export type HelmetSocket={position:readonly [number,number,number];normal:readonly [number,number,number]};
 type Profile={front:number;rear:number;side:number;top:number;ear:number};
-const metrics=(id:'ach'|'pasgt'|'high-cut',side:number):Profile=>{
+const metrics=(id:'ach'|'pasgt',side:number):Profile=>{
  const m=HEAD_SILHOUETTE_METRICS[id];
  return {front:m.frontExtent,rear:m.rearExtent,side,top:m.top,ear:m.earEdge};
 };
@@ -15,12 +15,9 @@ export const HELMET_MOUNT_PROFILES:Readonly<Record<H1ModernHelmet,Profile>>={
  // Legacy equipment heights are mounting stations, not the lowest shell hem.
  // Keep rails/headset sockets in the upper sidewall as ear guards deepen.
  ach:{...metrics('ach',5.08),ear:2.92},pasgt:metrics('pasgt',5.18),
- 'high-cut':metrics('high-cut',4.88),
  'mich-2002':{front:-5.70,rear:5.75,side:5.04,top:8.76,ear:4.05},
  // Ear value is the upper accessory mounting station, not the cut edge.
- 'mich-2001':{front:-5.61,rear:5.64,side:4.97,top:8.70,ear:5.91},
- 'fast-sf':{front:-5.53,rear:5.66,side:4.92,top:8.80,ear:6.04},
- 'fast-xp-mid':{front:-5.68,rear:5.81,side:5.00,top:8.78,ear:4.20}
+ 'mich-2001':{front:-5.61,rear:5.64,side:4.97,top:8.70,ear:5.91}
 };
 const s=(x:number,y:number,z:number,nx:number,ny:number,nz:number):HelmetSocket=>({
  position:[x,y,z],normal:[nx,ny,nz]

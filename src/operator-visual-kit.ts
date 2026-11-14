@@ -181,8 +181,8 @@ export function createOperatorVisualKit(
  // R7 diagnostic hard-shell rim eligibility is semantic, not based on
  // fragment hue or guessed vertex normals. Cloth hats remain unhighlighted.
  const rimHeadwear=new Set([
-  'soviet-steel','pasgt','ach','high-cut','mich-2001','mich-2002',
-  'fast-sf','fast-xp-mid','m1-steel','ddr-m56','police-helmet'
+  'soviet-steel','pasgt','ach','mich-2001','mich-2002',
+  'm1-steel','ddr-m56','police-helmet'
  ]);
  for(const [style,group] of Object.entries(wardrobeHead.headwear))
   if(rimHeadwear.has(style))group.userData.fieldworkRimRegion='hard-shell';

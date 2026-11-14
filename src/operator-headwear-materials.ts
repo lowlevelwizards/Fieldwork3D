@@ -21,8 +21,8 @@ export const HEADWEAR_ATLAS_PIXELS=64;
 export const HEADWEAR_REGION_PIXELS=32;
 export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMaterialKind>>={
  'patrol-cap':'cotton','boonie':'cotton','beanie':'knit','beret':'cotton',
- 'ach':'composite','high-cut':'composite','mich-2001':'composite','mich-2002':'composite',
- 'fast-sf':'composite','fast-xp-mid':'composite','pasgt':'composite','soviet-steel':'steel','m1-steel':'steel','ddr-m56':'steel','police-helmet':'composite'
+ 'ach':'composite','mich-2001':'composite','mich-2002':'composite',
+ 'pasgt':'composite','soviet-steel':'steel','m1-steel':'steel','ddr-m56':'steel','police-helmet':'composite'
 };
 /** Neutral surface-lighting finish independent of contextual color/camo. */
 export type HeadwearSurfaceProfile={
@@ -35,11 +35,8 @@ export const HEADWEAR_SURFACE_PROFILE:Readonly<Record<HeadSilhouetteId,HeadwearS
  'beanie':{family:'ribbed-knit',roughness:.99,metalness:0},
  'beret':{family:'woven-twill',roughness:.995,metalness:0},
  'ach':{family:'matte-composite',roughness:.92,metalness:0},
- 'high-cut':{family:'matte-composite',roughness:.91,metalness:0},
  'mich-2001':{family:'matte-composite',roughness:.92,metalness:0},
  'mich-2002':{family:'matte-composite',roughness:.92,metalness:0},
- 'fast-sf':{family:'matte-composite',roughness:.90,metalness:0},
- 'fast-xp-mid':{family:'matte-composite',roughness:.90,metalness:0},
  'pasgt':{family:'matte-composite',roughness:.945,metalness:0},
  'soviet-steel':{family:'painted-steel',roughness:.77,metalness:.12},
  'm1-steel':{family:'painted-steel',roughness:.84,metalness:.09},
@@ -97,15 +94,9 @@ export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
    // Matte manufactured shell: shape/edge through vertex colors, not
    // simulated patch/Velcro rectangles on the crown or side.
    return region===1?241:region===2?231:region===3?251:249;
-  case 'high-cut':
-   // Even quieter than the ACH. Ear relief is actual geometry.
-   return region===1?240:region===2?228:region===3?251:249;
   case 'mich-2001':
   case 'mich-2002':
    return region===1?240:region===2?227:region===3?251:249;
-  case 'fast-sf':
-  case 'fast-xp-mid':
-   return region===1?242:region===2?230:region===3?251:250;
   case 'pasgt':
    // Monolithic older shell with distinctly weighty brow and lower skirt.
    return region===1?236:region===2?217:region===3?251:249;
@@ -316,7 +307,6 @@ export function headwearFaceTone(id:HeadSilhouetteId,name:string,
    name.includes('badge-stiffener')?.86:name.includes('drape')?.93:1;break;
   case 'ach':value=name.includes('ear-wrap')?.88:name.includes('nape')?.90:
    name.includes('brow')?.92:1;break;
-  case 'high-cut':value=name.includes('nape')?.89:name.includes('brow')?.91:1;break;
   case 'pasgt':value=name.includes('peak')?.84:name.includes('skirt')?.89:
    name.includes('ear-lobe')?.90:1;break;
   case 'soviet-steel':value=name.includes('edge')?.80:name.includes('bowl')?.94:1;break;
