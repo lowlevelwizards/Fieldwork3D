@@ -38,12 +38,14 @@ export function buildFALCoreSilhouette(
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number)=>
   addCuboid(root,slot,partIds[slot],ids[slot]++,x,y,z,w,h,d,materials[slot]);
 
- // S1C: genuine swept FAL stock with a restrained rearward comb; no M16 triangle.
+ // FAL rear stock: full butt, long level comb and narrow wrist near receiver.
+ // No M16-style peak or G3-like constant-width wedge.
  // One uninterrupted, low-vertex stock volume with a broad miniaturized pad.
  p('stock',[
-  [-15.00,.98],[-13.54,1.02],[-10.78,1.08],
-  [-8.30,1.43],[-6.20,.68],[-6.13,-1.40],
-  [-9.42,-2.42],[-14.72,-3.38],[-15.00,-3.20]
+  [-15.00,1.03],[-13.30,1.14],[-11.20,1.17],
+  [-9.50,.96],[-8.23,.54],[-6.20,.48],
+  [-6.13,-1.25],[-8.40,-1.58],[-10.50,-2.50],
+  [-14.72,-3.46],[-15.00,-3.27]
  ],3.18);
  b('stock',-14.86,-1.12,0,.28,4.22,3.45);
 
