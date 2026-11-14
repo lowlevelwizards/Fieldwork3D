@@ -90,8 +90,29 @@ export function handleMotorDoor(
   // HOLD still excludes its target while allowing intervening leaves.
   doorAhead??=autoDoorAtBodyContact(a.p,move,
     s.doors,sessionWorldGeometry(s),pendingDoor,a.side==='red');
+  // A follower's physical clearing step can take them past the handle's
+  // reach. Keep their SAME active threshold in scope until its aperture
+  // is traversable; otherwise they immediately walk back into the sweep.
+  if(!doorAhead&&a.side==='blue'&&pendingDoor?.kind==='move'&&
+     a.doorTraversal?.authoredOrderId===pendingDoor.id){
+    const episodeDoor=s.doors.find(d=>d.id===a.doorTraversal!.doorId);
+    if(episodeDoor&&(episodeDoor.openFraction??0)<.72&&
+       d(a.p,doorCenter(episodeDoor))<80)
+      doorAhead=episodeDoor;
+  }
   if(doorAhead){
-    if(shouldStageForOpening(s,a,doorAhead)){
+    // When this one door is physically stalled, its designated opener
+    // ALSO must be able to vacate the leaf's sweep. Keep the same
+    // bounded temporary footstep for opener and followers alike.
+    const follower=shouldStageForOpening(s,a,doorAhead);
+    const stopped=doorAhead.open&&
+      (doorAhead.openFraction??0)>=.15&&
+      (doorAhead.openFraction??0)<.72&&
+      Math.abs(doorAhead.angularVelocity??0)<.16;
+    const ownerRelief=!follower&&a.side==='blue'&&
+      pendingDoor?.kind==='move'&&stopped&&a.actionTimer>=1.5;
+    if(follower||ownerRelief){
+      if(follower)releaseDoorHandContact(a,s.seconds);
       // No follower may open, push, or retain a hand on this partial leaf.
       // All physical clearance still runs through the existing motor.
       releaseDoorHandContact(a,s.seconds);
@@ -105,30 +126,42 @@ export function handleMotorDoor(
       }
       if(staged.target){
         const distance=d(a.p,staged.target);
-        if(distance>3.5&&a.nav.length&&
-           d(a.nav[0],staged.target)<3.5){
+        if(distance>3.5){
+          // Once chosen, clearance outranks the obstructed original grid
+          // waypoint until the SAME full-body motor reaches it. Old route
+          // repair must not silently replace this safety-critical footstep.
+          if(!a.nav.length||d(a.nav[0],staged.target)>=3.5)
+            a.nav.unshift({...staged.target});
           a.motorPause=null;
-          return {paused:false,closed:false};
+          return {paused:false,closed:false,clearingDoorId:doorAhead.id};
         }
-        if(distance<=3.5)staged.target=null;
+        staged.target=null;
       }
       // Only an operator ACTUALLY in the moving sweep needs to step
       // backwards/laterally. Reuse the existing rate-limited, full-body
       // self-clearance library instead of a new formation route solver.
-      if(staged.attempts<3&&s.seconds>=staged.nextAt){
+      if(staged.attempts<5&&s.seconds>=staged.nextAt&&
+         (follower||ownerRelief)){
         const retreat=selfBlockingHingeRelief(a,s,p);
         staged.nextAt=s.seconds+1.1;
         if(retreat){
           staged.attempts++;
           staged.target={...retreat};
+          // A reachable, physically swept transient waypoint. No body
+          // translation here; actual movement occurs on the next tick.
           a.nav.unshift(retreat);
           a.retryRouteAt=0;
+          releaseDoorHandContact(a,s.seconds);
           a.motorPause=null;
           return {paused:true,closed:false};
         }
       }
-      a.velocity=0;a.motorPause='door-opening';
-      return {paused:true,closed:false};
+      if(follower){
+        a.velocity=0;a.motorPause='door-opening';
+        return {paused:true,closed:false};
+      }
+      // Opener may keep operating after a legal shoulder clearance.
+      // A blocked attempt remains under the ordinary D3 motor authority.
     }
     // When an earlier frame queued a short handle-side correction, let the
     // normal swept motor EXECUTE those footsteps before opening the hinge.
