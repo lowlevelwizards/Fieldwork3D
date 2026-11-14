@@ -8,7 +8,7 @@ import {doorCenter} from './breach-core.ts';
 import {doorReachable} from './breach-door.ts';
 import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 
-type Lease={actorId:string;orderId:number;lastIntentAt:number};
+type Lease={actorId:string;orderId:number;lastIntentAt:number;explicit:boolean};
 const owners=new WeakMap<Session,Map<string,Lease>>();
 const sq=(a:{x:number;y:number},b:{x:number;y:number})=>
  (a.x-b.x)**2+(a.y-b.y)**2;
@@ -44,7 +44,7 @@ function stillOwns(a:TeamActor,d:Door,lease:Lease,now:number):boolean{
     sq(a.p,doorCenter(d))>96*96)return false;
  if(a.plan[0]?.id===lease.orderId)
    return candidate(a,d,false);
- return d.open&&(d.openFraction??0)>.08&&
+ return lease.explicit&&d.open&&(d.openFraction??0)>.08&&
    !finished(d)&&now-lease.lastIntentAt<1.25&&
    a.plan[0]?.kind!=='door';
 }
@@ -87,8 +87,8 @@ export function implicitDoorOpeningOwner(s:Session,d:Door):string|null{
  // No arbitration needed for a lone operator. Preserve the ordinary
  // motor and hand path without creating a pointless traffic checkpoint.
  if(contenders<2||!chosen)return null;
- map.set(d.id,{actorId:chosen.id,
-  orderId:chosen.plan[0].id,lastIntentAt:s.seconds});
+ map.set(d.id,{actorId:chosen.id,orderId:chosen.plan[0].id,
+  lastIntentAt:s.seconds,explicit:chosen.plan[0].kind==='door'});
  return chosen.id;
 }
 /** The opening lease limits manipulation only, never physical passage. */

@@ -48,9 +48,10 @@ test('D3.9 explicit opening has priority and invalid owner hands off',()=>{
 test('D3.9 release ownership immediately once physical aperture is clear',()=>{
  const d=door(),rook=actor('rook',0),moss=actor('moss',1);
  const s={seconds:1,doors:[d],operators:[rook,moss]};
- assert.ok(['rook','moss'].includes(implicitDoorOpeningOwner(s,d)));
+ const owner=implicitDoorOpeningOwner(s,d);
+ assert.ok(['rook','moss'].includes(owner));
  d.openFraction=.95;
- assert.equal(implicitDoorOpeningOwner(s,d),'rook',
+ assert.equal(implicitDoorOpeningOwner(s,d),owner,
   'an active owner persists while a 1.55 push target remains');
  d.openFraction=1.55;
  assert.equal(implicitDoorOpeningOwner(s,d),null);
@@ -114,4 +115,27 @@ test('D3.9A2 order, motor and grip share the same manipulator',async()=>{
  assert.match(motor,/!mayManipulateOpening\(s,a,doorAhead\)/);
  assert.match(motor,/!doorWouldStrikeActors\(doorAhead,swing,\[move\]/);
  assert.match(hand,/!assisted\|\|!mayManipulateOpening\(s,a,door\)/);
+});
+
+test('D3.9A3 cancelled implicit MOVE cannot retain a ghost owner',()=>{
+ const d=door(),rook=actor('rook',0),moss=actor('moss',1);
+ const s={seconds:0,doors:[d],operators:[rook,moss]};
+ const owner=implicitDoorOpeningOwner(s,d);
+ assert.ok(owner);
+ const chosen=s.operators.find(a=>a.id===owner);
+ chosen.plan=[];
+ assert.equal(implicitDoorOpeningOwner(s,d),null,
+  'only the remaining uncontested actor may manipulate');
+ assert.equal(mayManipulateOpening(s,moss,d),true);
+ assert.equal(mayManipulateOpening(s,rook,d),true);
+});
+test('D3.9A3 explicit OPEN finishing keeps its own moving leaf briefly',()=>{
+ const d=door(),rook=actor('rook',0),moss=actor('moss',1,'door');
+ const s={seconds:0,doors:[d],operators:[rook,moss]};
+ assert.equal(implicitDoorOpeningOwner(s,d),'moss');
+ moss.plan=[];s.seconds=.25;
+ assert.equal(implicitDoorOpeningOwner(s,d),'moss');
+ s.seconds=1.55;
+ assert.equal(implicitDoorOpeningOwner(s,d),null,
+  'expired explicit ownership cannot stall an otherwise valid mover');
 });
