@@ -13,8 +13,8 @@
 import {generateSite} from '../src/breach-site.ts';
 import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
-import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
-import {doorSwingBlocked,doorWouldStrikeActors} from '../src/breach-door.ts';
+import {activateSite,OPERATOR_RADIUS,doorLeafSegment} from '../src/breach-core.ts';
+import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear} from '../src/breach-navigation.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
@@ -220,11 +220,22 @@ function run(site,seed,kind){
    if(door){
     const world=sessionWorldGeometry(session);
     const f=door.openFraction??0,next=Math.min(1,f+.025);
+    const nearby=cachedHingeSweepNeighborhood(door,world);
     warehouseHingeWitness={
      fraction:round(f),pushTarget:round(door.pushTarget??1),
      staticBlocksSwing:doorSwingBlocked(door,next,[],undefined,world),
      anyBodyBlocksSwing:doorWouldStrikeActors(door,next,
       actors.map(a=>a.p),OPERATOR_RADIUS),
+     // Exact real geometry for offline top-down evidence rendering,
+     // rather than a speculative mock screenshot.
+     physicalDoor:{a:door.a,b:door.b,hinge:door.hinge,
+      swing:door.swing,kind:door.kind,leaf:doorLeafSegment(door)},
+     nearWalls:nearby.walls.map(w=>({a:w.a,b:w.b})),
+     nearCover:nearby.cover.map(o=>({
+      x:o.x,y:o.y,w:o.w,h:o.h,id:o.id??null,fixture:o.fixture??null})),
+     bodyObstruction:actors.map(a=>({
+      id:a.id,p:{...a.p},
+      strikesNext:doorWouldStrikeActors(door,next,[a.p],OPERATOR_RADIUS)})),
      actors:actors.map(a=>({
       id:a.id,phase:a.doorTraversal?.phase??null,
       self: captureD32SelfBlockingHinge(a,session),
