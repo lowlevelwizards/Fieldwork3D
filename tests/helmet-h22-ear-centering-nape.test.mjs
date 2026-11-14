@@ -80,7 +80,9 @@ test('H22: opt-in Studio anatomy guide is purely visual and head-relative',()=>{
  assert.equal(guide.children.length,1);
  assert.ok(guide.children[0] instanceof THREE.LineSegments);
  assert.equal(guide.children[0].geometry.getAttribute('position').count,20);
- assert.ok(near(guide.children[0].geometry.boundingBox?.min.y??1.35,1.35));
+ guide.children[0].geometry.computeBoundingBox();
+ assert.ok(near(guide.children[0].geometry.boundingBox.min.y,1.35));
+ assert.ok(near(guide.children[0].geometry.boundingBox.max.y,4.0));
  const studio=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
  assert.match(studio,/params.get\('helmetAnatomy'\)==='1'/);
  assert.match(studio,/rig.headCanonicalFrame.add\(createHelmetAnatomyGuide\(\)\)/);
