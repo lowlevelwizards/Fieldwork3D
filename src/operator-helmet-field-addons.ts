@@ -5,6 +5,7 @@
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
 import {sampleHelmetShell,type CoverRegion} from './operator-helmet-surface.ts';
+import {arcFrontAccessoryFrame} from './operator-helmet-field-rails.ts';
 
 export type HelmetFieldAddon='strobe'|'counterweight'|'battery'|
  'light'|'camera'|'chemlight';
@@ -58,6 +59,21 @@ const mount=(shell:AchMichCoverShell,g:THREE.Group,
   }
  throw Error('H9.7 unable to attach '+region+' on '+shell);
 };
+const mountArc=(shell:AchMichCoverShell,g:THREE.Group,
+ side:'left'|'right')=>{
+ const f=arcFrontAccessoryFrame(shell,side);
+ const anchor=new THREE.Group();
+ anchor.name='helmet-addon-fitted-socket';
+ anchor.position.copy(f.position);
+ anchor.quaternion.setFromRotationMatrix(new THREE.Matrix4()
+  .makeBasis(f.right,f.up,f.normal));
+ anchor.userData.h13RailAttached=true;
+ anchor.userData.h13RailSide=side;
+ anchor.userData.h5HardMountedToShell=true;
+ anchor.userData.h9RealCoverNormal=f.normal.toArray();
+ g.add(anchor);
+ return anchor;
+};
 function strobe(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mount(shell,g,'crown',0,.67);
  const base=[[-.76,-.42],[.76,-.42],[.98,-.12],
@@ -109,7 +125,7 @@ function battery(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h5RearCenterline=true;
 }
 function light(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'left',-.66,.38);
+ const a=mountArc(shell,g,'left');
  block(a,'mlps-rail-mount',p.dark,0,0,.22,.84,.57,.34);
  // Three short faceted neck links make the bend readable at small scale.
  const neck=[[-.16,.18,.52],[-.34,.36,.73],[-.58,.50,.89]];
@@ -124,7 +140,7 @@ function light(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h9Distinctive='angled-flex-neck-lamp';
 }
 function camera(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
- const a=mount(shell,g,'right',-.35,.46);
+ const a=mountArc(shell,g,'right');
  // Right-side bracket looks forward, not out through the operator's ear.
  const body=new THREE.Group();
  body.name='forward-facing-action-camera-mount';
