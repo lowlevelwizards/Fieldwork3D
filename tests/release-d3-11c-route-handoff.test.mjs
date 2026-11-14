@@ -38,19 +38,13 @@ function requireText(url){
  return readFileSync(url,'utf8');
 }
 
-test('C3: only real swept leaf escapes can request bounded same-door rehearsal',()=>{
+test('C3: failed proactive short-stage adoption stays disabled',()=>{
  const motor=readSource('../src/breach-motor-route.ts');
  const collision=readSource('../src/breach-motor-collision.ts');
  const maneuver=readSource('../src/breach-door-traversal-maneuver.ts');
- for(const source of [motor,collision])
-  assert.match(source,/a\.squeeze&&a\.doorTraversal\?\.phase==='clear-leaf'&&\s*tryRehearsedDoorManeuver\(a,s,p,/);
- assert.match(motor,/tryRehearsedDoorManeuver\(a,s,p,false,true\)/);
- assert.match(collision,/tryRehearsedDoorManeuver\(a,s,p,canAutoSidestep,true\)/);
- assert.match(maneuver,/afterSweptLeafEscape=false/);
+ assert.doesNotMatch(motor,/tryRehearsedDoorManeuver\(a,s,p,false,true\)/);
+ assert.doesNotMatch(collision,/tryRehearsedDoorManeuver\(a,s,p,canAutoSidestep,true\)/);
+ assert.doesNotMatch(maneuver,/afterSweptLeafEscape/);
  assert.match(maneuver,/episode\.maneuverAttempts>=2&&!leafChanged/);
  assert.match(maneuver,/episode\.maneuverAttempts>=4/);
- assert.match(maneuver,/s\.seconds<episode\.nextManeuverAt/);
- assert.match(maneuver,/sweptBodyClear\(from,to,s\.doors,OPERATOR_RADIUS,world\)/);
- assert.match(motor,/if\(!restoreAfterOpenLeafEscape\(a,s,p\)\)a\.retryRouteAt=0/);
- assert.match(collision,/if\(!restoreAfterOpenLeafEscape\(a,s,p\)\)a\.retryRouteAt=0/);
 });
