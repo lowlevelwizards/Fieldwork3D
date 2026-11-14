@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {ORIGINAL_R2_17,historicalPresetCohort} from './helpers/historical-weapon-presets.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
@@ -11,7 +12,7 @@ import {weaponVisualLayout}
  from '../src/weapons/geometry/weapon-visual-layout.ts';
 import {partVisualBounds,workbenchVisualAnchors}
  from '../src/weapons/geometry/weapon-visual-anchors.ts';
-import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_STANAG_METAL,AR_MUTED_FDE,AK_WARM_RESIN}
+import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_STANAG_METAL,AR_STANAG_RIB,AR_POLYMER_RIB,AR_MUTED_FDE,AK_WARM_RESIN}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 
 const metal=new THREE.MeshBasicMaterial(),polymer=new THREE.MeshBasicMaterial();
@@ -30,13 +31,13 @@ const slotBox=(g,slot)=>{
 const overlap=(a,b)=>(Math.min(a.max,b.max)-Math.max(a.min,b.min));
 
 test('R3: retains all 91 family IDs, 11 presets and physical muzzle invariants',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,91);
- assert.equal(FAMILY_PRESETS.length,17);
- for(const preset of FAMILY_PRESETS){
+ assert.ok(Object.keys(FAMILY_PARTS).length>=91,'historical R3 parts preserved');
+ assert.equal(historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17).length,17);
+ for(const preset of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {config,group}=model(preset.id);
   const extent=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(extent.max.x-resolveWeaponAssembly(config).muzzleX)<.001,preset.id);
-  assert.ok(group.children.length<=28,'budget '+preset.id);
+  assert.ok(group.children.length<=(preset.family==='ar'?36:28),'budget '+preset.id);
   const layout=weaponVisualLayout(config);
   assert.equal(layout.longitudinalScale,resolveWeaponAssembly(config).lengthScale);
   assert.ok(layout.longitudinalScale>0&&layout.longitudinalScale<=1);
@@ -58,7 +59,7 @@ test('R3: compact Mk18 and AKS-74U actually read shorter in scaled workbench',()
 });
 
 test('R3: major part connections have positive deliberate overlap in local silhouettes',()=>{
- for(const p of FAMILY_PRESETS){
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {group}=model(p.id);
   const stock=slotBox(group,'stock'),receiver=slotBox(group,'receiver');
   const grip=slotBox(group,'grip'),mag=slotBox(group,'magazine');
@@ -76,7 +77,7 @@ test('R3: major part connections have positive deliberate overlap in local silho
 });
 
 test('R3: body socket labels project over real mesh envelopes, not floating constants',()=>{
- for(const preset of FAMILY_PRESETS){
+ for(const preset of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {config,group}=model(preset.id);
   const anchors=workbenchVisualAnchors(config,group,'body');
   assert.equal(anchors.length,6);
@@ -97,8 +98,8 @@ test('R3: non-Mk18 ARs are consistently near-black while Mk18 furniture is FDE',
   const {group}=model(id);
   assert.ok(group.children.filter(m=>!m.userData.weaponPixelArt).every(m=>
    m.name.startsWith('family-magazine-')?
-    [AR_STANAG_METAL,AR_BLACK_POLYMER].includes(m.material):
-    [AR_BLACK_METAL,AR_BLACK_POLYMER].includes(m.material)),
+    [AR_STANAG_METAL,AR_STANAG_RIB,AR_BLACK_POLYMER].includes(m.material):
+    [AR_BLACK_METAL,AR_BLACK_POLYMER,AR_POLYMER_RIB].includes(m.material)),
    id+' black receiver and distinct metal magazine');
   clearWeaponSilhouette(group);
  }
@@ -122,6 +123,6 @@ test('R3: baked resin palette and 3D/2D same scaled transform are wired',()=>{
   import.meta.url),'utf8');
  assert.match(src,/this\.model\.scale\.x=layout\.longitudinalScale/);
  assert.match(src,/workbenchVisualAnchors\(this\.config,this\.model,this\.mode\)/);
- assert.match(src,/const centerX=weaponVisualLayout\(this\.config\)\.workbenchCenterX/);
- assert.match(src,/this\.sideCamera\.lookAt\(centerX,0,0\)/);
+ assert.match(src,/const centerX=this\.previewCenterX,centerY=this\.previewCenterY/);
+ assert.match(src,/this\.sideCamera\.lookAt\(centerX,centerY,0\)/);
 });

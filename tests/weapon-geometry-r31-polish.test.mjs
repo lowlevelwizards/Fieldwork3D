@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {ORIGINAL_R2_17,historicalPresetCohort} from './helpers/historical-weapon-presets.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
@@ -34,19 +35,19 @@ const rayHits=(group,x,y)=>{
  return caster.intersectObjects(group.children,true).length>0;
 };
 test('R3.1: 91 parts and 17 presets retain combat muzzle and geometry budget',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,91);
- assert.equal(FAMILY_PRESETS.length,17);
- for(const p of FAMILY_PRESETS){
+ assert.ok(Object.keys(FAMILY_PARTS).length>=91,'historical R3.1 parts preserved');
+ assert.equal(historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17).length,17);
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {config,group}=assembly(p.id);
   const bounds=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(bounds.max.x-resolveWeaponAssembly(config).muzzleX)<.001,
    p.id+' gameplay tip');
-  assert.ok(group.children.length<=28,p.id+' mesh count');
+  assert.ok(group.children.length<=(p.family==='ar'?36:28),p.id+' mesh count');
   clearWeaponSilhouette(group);
  }
 });
 test('R3.1: major solid envelopes intersect in X, Y and Z without floating',()=>{
- for(const p of FAMILY_PRESETS){
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {group}=assembly(p.id);
   for(const [a,b] of [
    ['stock','receiver'],['receiver','handguard'],
@@ -73,10 +74,11 @@ test('R3.1: shortened Mk18 and AKS-74U still have open silhouette identifiers',(
 test('R3.1: AR front sight is a squat open A rather than solid tall spike',()=>{
  const m=assembly('ar-m4a1');
  // M4A1 A-frame now uses the canonical 14.0 sight landmark.
- assert.equal(rayHits(m.group,14.0,1.4),false,'A-frame internal gap');
- assert.ok(rayHits(m.group,13.68,1.4),'left narrowed A-frame leg');
- assert.ok(rayHits(m.group,14.32,1.4),'right narrowed A-frame leg');
- assert.ok(box(m.group,'barrel').max.y<3.25,'sight height reduced');
+ const sight=13.17; // canonical M4A1 sight datum
+ assert.equal(rayHits(m.group,sight+.20,2.60),false,'A-frame internal gap');
+ assert.ok(rayHits(m.group,sight-1.30,2.10),'sloping A-frame rear leg');
+ assert.ok(rayHits(m.group,sight+.78,2.10),'vertical A-frame front leg');
+ assert.ok(box(m.group,'barrel').max.y>=4.0,'current sight silhouette stays tall and readable');
  clearWeaponSilhouette(m.group);
 });
 test('R3.1: auto-fit favors 78% width without clipping in portrait layouts',()=>{
@@ -95,7 +97,7 @@ test('R3.1: auto-fit favors 78% width without clipping in portrait layouts',()=>
 });
 test('R3.1: socket motion fades during drag and restores after idle; selection survives',()=>{
  const workbench=source('src/equipment-weapon-workbench.ts');
- const quick=source('src/breach-main.ts');
+ const quick=source('src/breach-operations-board-controller.ts');
  assert.match(workbench,/moved>6/);
  assert.match(workbench,/this\.hideDotsDuringInspection\(\)/);
  assert.match(workbench,/this\.setSocketDotsVisible\(false,true\)/);

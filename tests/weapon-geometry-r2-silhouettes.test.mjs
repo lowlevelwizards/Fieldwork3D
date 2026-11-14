@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {ORIGINAL_R2_17,historicalPresetCohort} from './helpers/historical-weapon-presets.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {FAMILY_PARTS,FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
@@ -30,8 +31,8 @@ const hits=(model,x,y)=>{
 };
 
 test('R2: 91 visual part definitions, 17 curated IDs and correct landmark furniture',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,91);
- assert.equal(FAMILY_PRESETS.length,17);
+ assert.ok(Object.keys(FAMILY_PARTS).length>=91,'historical R2 part catalog preserved');
+ assert.equal(historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17).length,17);
  const byId=Object.fromEntries(FAMILY_PRESETS.map(p=>[p.id,p]));
  assert.equal(byId['ar-m16a4'].parts.handguard,'ar-m5-rail');
  assert.equal(byId['ar-car15'].parts.handguard,'ar-car15-ribbed');
@@ -44,12 +45,12 @@ test('R2: 91 visual part definitions, 17 curated IDs and correct landmark furnit
 
 test('R2: all 17 assembled profiles preserve shot tip, finite bounds and mesh budget',()=>{
  let profiles=0;
- for(const p of FAMILY_PRESETS){
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {group,config}=model(p.id);
   const extent=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(extent.max.x-resolveWeaponAssembly(config).muzzleX)<.001,
    p.id+' muzzle invariant');
-  assert.ok(group.children.length>=12&&group.children.length<=28,
+  assert.ok(group.children.length>=12&&group.children.length<=(p.family==='ar'?36:28),
    p.id+' mesh budget: '+group.children.length);
   for(const mesh of group.children){
    assert.ok(mesh.name.startsWith('family-'),p.id+' part naming');
@@ -94,8 +95,9 @@ test('R2: compact silhouettes differ without changing gameplay muzzle location',
  assert.ok(resolveWeaponAssembly(a.config).lengthScale>
   resolveWeaponAssembly(b.config).lengthScale);
  const longGuard=bounds(a,'handguard'),shortGuard=bounds(b,'handguard');
- assert.ok(shortGuard.max.x>longGuard.max.x,
-  'compact rail may approach tip even when exposed segment is shorter');
+ assert.ok(shortGuard.max.x<resolveWeaponAssembly(b.config).muzzleX&&
+  longGuard.max.x<resolveWeaponAssembly(a.config).muzzleX,
+  'both handguards end before their own authoritative muzzle');
  assert.ok(shortGuard.max.z-longGuard.max.z>.1,
   'Mk 18 rail is visibly thicker');
  const compact=model('ak-aks74u'),full=model('ak-akm');

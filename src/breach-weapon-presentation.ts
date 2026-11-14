@@ -4,7 +4,7 @@
 import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,WEAPON_PLATFORMS,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
-import {AR_VISUAL_ANATOMY,AK_VISUAL_ANATOMY,HK_VISUAL_ANATOMY}
+import {AR_VISUAL_ANATOMY,AK_VISUAL_ANATOMY,HK_VISUAL_ANATOMY,FAL_VISUAL_ANATOMY}
  from './weapons/geometry/weapon-receiver-anatomy.ts';
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 export type WeaponSocket={x:number;y:number;z:number};
@@ -23,7 +23,8 @@ export function weaponPresentationSockets(id:WeaponId,
  const hkArt=build?.family==='hk'?hkBarrelArt(build.parts.barrel):null;
  const anatomy=build?.family==='ar'?AR_VISUAL_ANATOMY:
   build?.family==='ak'?AK_VISUAL_ANATOMY:
-  build?.family==='hk'?HK_VISUAL_ANATOMY:null;
+  build?.family==='hk'?HK_VISUAL_ANATOMY:
+  build?.family==='fal'?FAL_VISUAL_ANATOMY:null;
  return {
   stock:{x:a.stockX,y:0,z:0},
   primary:{x:a.primaryX,y:a.primaryY,z:1.8},
@@ -36,6 +37,8 @@ export function weaponPresentationSockets(id:WeaponId,
    y:(anatomy?.magazineTopY??-2.15)+2.75,z:-2.85
   }:build?.family==='ak'?{
    x:(anatomy?.magwellCenterX??1)+.65,y:1.75,z:2.7
+  }:build?.family==='fal'?{
+   x:-4.8,y:.52,z:-2.4
   }:build?.family==='hk'?{
    x:(hkArt?.handguardStartX??4)+.20,y:1.45,z:-2.70
   }:{x:1,y:2.2,z:-2.7},

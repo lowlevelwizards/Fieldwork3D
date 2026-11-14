@@ -45,3 +45,10 @@ export const HK556_MAG_RIB=finish(0x353d39,.95,.10,'steel');
 export const HK_SD_SUPPRESSOR_METAL=finish(0x2f3434,.80,.16,'steel');
 /** Muzzle brakes/flash hiders are blackened steel, not rubber furniture. */
 export const HK_MUZZLE_METAL=finish(0x2f3533,.78,.16,'steel');
+
+/** FAL finish identities stay close to existing HK/AR weapon palette. */
+export const FAL_BLACK_METAL=finish(0x414844,.82,.10,'steel');
+export const FAL_DARK_POLYMER=finish(0x343d37,.93,.02,'polymer');
+export const FAL_MAG_METAL=finish(0x515a54,.91,.09,'steel');
+/** Minimal, dark, flat graphic vents, not expensive true cut-through slots. */
+export const FAL_VENT_SHADOW=finish(0x232c28,.98,.0,'polymer');

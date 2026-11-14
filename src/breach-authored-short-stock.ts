@@ -30,7 +30,7 @@ export const AKM_AUTHORED_SHORT:Readonly<WorkbenchPose>={
 export function shortStockReference(weapon:WeaponId,
  config?:WeaponConfiguration):Readonly<WorkbenchPose>{
  const family=config?.build?.family;
- return family==='ak'||family==='hk'&&weapon==='rifle'||
+ return family==='ak'||family==='fal'||family==='hk'&&weapon==='rifle'||
    (!family&&(weapon==='rifle'||weapon==='shotgun'))?
    AKM_AUTHORED_SHORT:M4A1_AUTHORED_SHORT;
 }
