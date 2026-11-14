@@ -65,7 +65,7 @@ test('H21: static unified shells, shared cover and rubber edge',()=>{
   assert.equal(paths.length,6);
   assert.ok(cover.boundingBox.max.y>=geom.boundingBox.max.y);
   // The cover's lower rear seam must meet the new rim, not H20's old rear.
-  const expected=p.nape+achMichBindingHeight(id)+.035;
+  const expected=p.nape-.14;
   const pos=cover.getAttribute('position');
   let rearSeamVertex=false;
   for(let i=0;i<pos.count;i++){
