@@ -10,11 +10,11 @@ import {WEAPON_ATTACHMENTS,
  from '../equipment-weapon-assemblies.ts';
 import {arsenalPartName} from './naming.ts';
 
-export type ArsenalPlatformId='ar15'|'ak'|'g3'|'hk33'|'mp5';
+export type ArsenalPlatformId='ar15'|'ak'|'g3'|'hk33'|'mp5'|'fal';
 export type ArsenalSlot=FamilyPartSlot|Exclude<WeaponAttachmentSlot,'stock'>;
 export type ArsenalCategoryId='core'|'front'|'furniture'|'magazine'|'sights'|'muzzle'|'accessories';
 export type ArsenalPartKind='family'|'accessory';
-export type ArsenalBrowseGroup='ar'|'ak'|'hk';
+export type ArsenalBrowseGroup='ar'|'ak'|'hk'|'fal';
 export interface ArsenalPlatform{
  id:ArsenalPlatformId;name:string;group:ArsenalBrowseGroup;
 }
@@ -35,7 +35,8 @@ export const ARSENAL_PLATFORMS:readonly ArsenalPlatform[]=[
  {id:'ak',name:'AK',group:'ak'},
  {id:'g3',name:'G3',group:'hk'},
  {id:'hk33',name:'HK33 / HK53',group:'hk'},
- {id:'mp5',name:'MP5',group:'hk'}
+ {id:'mp5',name:'MP5',group:'hk'},
+ {id:'fal',name:'FN FAL',group:'fal'}
 ];
 export const ARSENAL_CATEGORIES:readonly ArsenalCategory[]=[
  {id:'core',name:'Receiver',slots:['receiver']},
@@ -53,7 +54,8 @@ const RECEIVER_PLATFORMS:Readonly<Record<string,ArsenalPlatformId>>={
  'hk-g3-early':'g3','hk-g3-drum':'g3',
  'hk33-556-rifle':'hk33','hk53-556-compact':'hk33',
  'hk-mp5-standard':'mp5','hk-mp5sd-integral':'mp5',
- 'hk-mp5k-stockless':'mp5'
+ 'hk-mp5k-stockless':'mp5',
+ 'fal-50-receiver':'fal'
 };
 export function arsenalPlatformForReceiver(receiverId:string):ArsenalPlatformId|undefined{
  return RECEIVER_PLATFORMS[receiverId];
