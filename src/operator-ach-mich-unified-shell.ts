@@ -101,6 +101,7 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
  g.setAttribute('uv1',new THREE.Float32BufferAttribute(uv1,2));
  g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+ g.setIndex(Array.from({length:positions.length/3},(_,i)=>i));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.h17UnifiedContour=true;
  g.userData.exteriorQuads=quads;
