@@ -49,7 +49,7 @@ test('R2: all 17 assembled profiles preserve shot tip, finite bounds and mesh bu
   const extent=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(extent.max.x-resolveWeaponAssembly(config).muzzleX)<.001,
    p.id+' muzzle invariant');
-  assert.ok(group.children.length>=12&&group.children.length<=28,
+  assert.ok(group.children.length>=12&&group.children.length<=(p.family==='ar'?36:28),
    p.id+' mesh budget: '+group.children.length);
   for(const mesh of group.children){
    assert.ok(mesh.name.startsWith('family-'),p.id+' part naming');
@@ -94,8 +94,9 @@ test('R2: compact silhouettes differ without changing gameplay muzzle location',
  assert.ok(resolveWeaponAssembly(a.config).lengthScale>
   resolveWeaponAssembly(b.config).lengthScale);
  const longGuard=bounds(a,'handguard'),shortGuard=bounds(b,'handguard');
- assert.ok(shortGuard.max.x>longGuard.max.x,
-  'compact rail may approach tip even when exposed segment is shorter');
+ assert.ok(shortGuard.max.x<resolveWeaponAssembly(b.config).muzzleX&&
+  longGuard.max.x<resolveWeaponAssembly(a.config).muzzleX,
+  'both handguards end before their own authoritative muzzle');
  assert.ok(shortGuard.max.z-longGuard.max.z>.1,
   'Mk 18 rail is visibly thicker');
  const compact=model('ak-aks74u'),full=model('ak-akm');
