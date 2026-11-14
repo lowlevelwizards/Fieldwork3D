@@ -9,7 +9,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {doorClosingContested} from './breach-door-pressure-frame.ts';
-import {mayManipulateOpening} from './breach-door-opening-ownership.ts';
+import {claimOpeningIntent} from './breach-door-opening-ownership.ts';
 import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,
  PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
@@ -44,7 +44,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     // Explicit OPEN/KICK and implicit crossing share one manipulator.
     // Preserve the authored node and timer while another operates it.
     if((n.method==='open'||n.method==='kick'||!n.method)&&
-       !mayManipulateOpening(s,a,door)){
+       !claimOpeningIntent(s,a,door)){
       a.velocity=0;a.motorPause='door-opening';
       return true;
     }

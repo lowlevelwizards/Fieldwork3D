@@ -69,27 +69,32 @@ export function implicitDoorOpeningOwner(s:Session,d:Door):string|null{
   }
   map.delete(d.id);
  }
- let chosen:TeamActor|null=null,score=Infinity,contenders=0;
- const center=doorCenter(d);
- for(const a of s.operators){
-  if(!candidate(a,d,true))continue;
+ return null;
+}
+/** Ownership starts at the actual, reachable OPEN/KICK or physical panel
+ * contact — not when two operators merely approach the same doorway.
+ * This is called BEFORE the interaction changes the hinge, so only the
+ * first legitimate manipulator operates it. An explicit OPEN/KICK already
+ * in reach takes precedence over an incidental implicit attempt.
+ */
+export function claimOpeningIntent(s:Session,a:TeamActor,d:Door):boolean{
+ const owner=implicitDoorOpeningOwner(s,d);
+ if(a.side!=='blue'||!operable(d)||finished(d))return true;
+ if(owner)return owner===a.id;
+ if(!candidate(a,d,true))return true;
+ let contenders=0,explicitOther=false;
+ for(const other of s.operators){
+  if(!candidate(other,d,true))continue;
   contenders++;
-  // An actual hand already grasping the panel wins over another nearby
-  // implicit crossing. Otherwise explicit OPEN/KICK takes precedence.
-  const grip=a.doorHandContact?.doorId===d.id&&
-   a.doorHandContact.releasedAt===null;
-  const explicit=a.plan[0]?.kind==='door';
-  const value=(grip?0:explicit?10000:20000)+sq(a.p,center);
-  if(value<score||value===score&&chosen&&a.id<chosen.id){
-   chosen=a;score=value;
-  }
+  if(other!==a&&other.plan[0]?.kind==='door')explicitOther=true;
  }
- // No arbitration needed for a lone operator. Preserve the ordinary
- // motor and hand path without creating a pointless traffic checkpoint.
- if(contenders<2||!chosen)return null;
- map.set(d.id,{actorId:chosen.id,orderId:chosen.plan[0].id,
-  lastIntentAt:s.seconds,explicit:chosen.plan[0].kind==='door'});
- return chosen.id;
+ if(contenders<2)return true;
+ if(a.plan[0]?.kind!=='door'&&explicitOther)return false;
+ let map=owners.get(s);
+ if(!map){map=new Map();owners.set(s,map);}
+ map.set(d.id,{actorId:a.id,orderId:a.plan[0].id,
+  lastIntentAt:s.seconds,explicit:a.plan[0].kind==='door'});
+ return true;
 }
 /** An actual full-reach support-hand candidate may take over a merely
  * anticipated implicit opener BEFORE contact. This is not an independent
@@ -99,7 +104,8 @@ export function implicitDoorOpeningOwner(s:Session,d:Door):string|null{
  */
 export function claimContactReadyOpening(s:Session,a:TeamActor,d:Door):boolean{
  const owner=implicitDoorOpeningOwner(s,d);
- if(!owner||owner===a.id||a.side!=='blue')return !owner||owner===a.id;
+ if(!owner)return claimOpeningIntent(s,a,d);
+ if(owner===a.id||a.side!=='blue')return owner===a.id;
  const prior=s.operators.find(x=>x.id===owner);
  if(!prior||prior.plan[0]?.kind==='door'||
     (prior.doorHandContact?.doorId===d.id&&

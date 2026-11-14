@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {implicitDoorOpeningOwner,shouldStageForOpening,mayManipulateOpening,claimContactReadyOpening}
+import {implicitDoorOpeningOwner,shouldStageForOpening,mayManipulateOpening,claimContactReadyOpening,claimOpeningIntent}
  from '../src/breach-door-opening-ownership.ts';
 const p=(x,y)=>({x,y});
 // Proven 25-second warehouse BODY coordinates, not a hypothetical pose.
@@ -24,8 +24,9 @@ test('D3.9 exactly one stable opening owner, even when closer follower moves',()
  const d=door(),rook=actor('rook',0),moss=actor('moss',1),
   ash=actor('ash',2),vale=actor('vale',3);
  const s={seconds:1,doors:[d],operators:[rook,moss,ash,vale]};
+ assert.equal(claimOpeningIntent(s,rook,d),true);
  const owner=implicitDoorOpeningOwner(s,d);
- assert.ok([rook,moss,ash,vale].some(a=>a.id===owner));
+ assert.equal(owner,'rook');
  for(const a of [rook,moss,ash,vale])
   assert.equal(shouldStageForOpening(s,a,d),a.id!==owner);
  const follower=[rook,moss,ash,vale].find(a=>a.id!==owner);
@@ -37,8 +38,11 @@ test('D3.9 explicit opening has priority and invalid owner hands off',()=>{
  const d=door(),rook=actor('rook',0),moss=actor('moss',1,'door'),
   ash=actor('ash',2);
  const s={seconds:1,doors:[d],operators:[rook,moss,ash]};
+ assert.equal(claimOpeningIntent(s,moss,d),true);
  assert.equal(implicitDoorOpeningOwner(s,d),'moss');
  moss.health=0;
+ assert.equal(implicitDoorOpeningOwner(s,d),null);
+ assert.equal(claimOpeningIntent(s,rook,d),true);
  const after=implicitDoorOpeningOwner(s,d);
  assert.equal(after,'rook');
  rook.plan=[];
@@ -48,8 +52,9 @@ test('D3.9 explicit opening has priority and invalid owner hands off',()=>{
 test('D3.9 release ownership immediately once physical aperture is clear',()=>{
  const d=door(),rook=actor('rook',0),moss=actor('moss',1);
  const s={seconds:1,doors:[d],operators:[rook,moss]};
+ assert.equal(claimOpeningIntent(s,rook,d),true);
  const owner=implicitDoorOpeningOwner(s,d);
- assert.ok(['rook','moss'].includes(owner));
+ assert.equal(owner,'rook');
  d.openFraction=.95;
  assert.equal(implicitDoorOpeningOwner(s,d),owner,
   'an active owner persists while a 1.55 push target remains');
@@ -73,7 +78,7 @@ test('D3.9 all pressure, hand and motor roles use same opener lease',async()=>{
  const hand=read('breach-door-hand-contact.ts');
  const motor=read('breach-motor-door.ts');
  assert.match(pressure,/mayManipulateOpening\(s,actor,door\)/);
- assert.match(pressure,/if\(!mayManipulateOpening\(s,actor,door\)\)return false/);
+ assert.match(pressure,/if\(!claimOpeningIntent\(s,actor,door\)\)return false/);
  assert.match(hand,/mayManipulateOpening\(s,a,door\)/);
  assert.match(motor,/shouldStageForOpening\(s,a,doorAhead\)/);
  assert.match(motor,/selfBlockingHingeRelief\(a,s,p\)/);
@@ -87,8 +92,10 @@ test('D3.9A claims a CLOSED door before any hinge-body jam',()=>{
  const d=door();d.open=false;d.openFraction=0;d.angularVelocity=0;
  const rook=actor('rook',0),moss=actor('moss',1),s={
   seconds:0,doors:[d],operators:[rook,moss]};
+ assert.equal(implicitDoorOpeningOwner(s,d),null);
+ assert.equal(claimOpeningIntent(s,rook,d),true);
  const owner=implicitDoorOpeningOwner(s,d);
- assert.ok(owner==='rook'||owner==='moss');
+ assert.equal(owner,'rook');
  assert.equal(mayManipulateOpening(s,rook,d),owner==='rook');
  assert.equal(mayManipulateOpening(s,moss,d),owner==='moss');
  assert.equal(implicitDoorOpeningOwner(s,d),owner);
@@ -101,6 +108,7 @@ test('D3.9A solo interaction is never blocked by a missing lease',()=>{
 test('D3.9A leaves an independently traversable angle free of staging',()=>{
  const d=door(),rook=actor('rook',0),moss=actor('moss',1);
  const s={seconds:0,doors:[d],operators:[rook,moss]};
+ assert.equal(claimOpeningIntent(s,rook,d),true);
  assert.ok(implicitDoorOpeningOwner(s,d));
  d.openFraction=.86;
  assert.equal(shouldStageForOpening(s,moss,d),false);
@@ -111,7 +119,7 @@ test('D3.9A2 order, motor and grip share the same manipulator',async()=>{
  const read=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
  const explicit=read('breach-order-door.ts'),motor=read('breach-motor-door.ts');
  const hand=read('breach-door-hand-contact.ts');
- assert.match(explicit,/!mayManipulateOpening\(s,a,door\)/);
+ assert.match(explicit,/!claimOpeningIntent\(s,a,door\)/);
  assert.match(motor,/!mayManipulateOpening\(s,a,doorAhead\)/);
  assert.match(motor,/!doorWouldStrikeActors\(doorAhead,swing,\[move\]/);
  assert.match(hand,/!assisted\|\|!mayManipulateOpening\(s,a,door\)/);
@@ -120,8 +128,9 @@ test('D3.9A2 order, motor and grip share the same manipulator',async()=>{
 test('D3.9A3 cancelled implicit MOVE cannot retain a ghost owner',()=>{
  const d=door(),rook=actor('rook',0),moss=actor('moss',1);
  const s={seconds:0,doors:[d],operators:[rook,moss]};
+ assert.equal(claimOpeningIntent(s,rook,d),true);
  const owner=implicitDoorOpeningOwner(s,d);
- assert.ok(owner);
+ assert.equal(owner,'rook');
  const chosen=s.operators.find(a=>a.id===owner);
  chosen.plan=[];
  assert.equal(implicitDoorOpeningOwner(s,d),null,
@@ -132,6 +141,7 @@ test('D3.9A3 cancelled implicit MOVE cannot retain a ghost owner',()=>{
 test('D3.9A3 explicit OPEN finishing keeps its own moving leaf briefly',()=>{
  const d=door(),rook=actor('rook',0),moss=actor('moss',1,'door');
  const s={seconds:0,doors:[d],operators:[rook,moss]};
+ assert.equal(claimOpeningIntent(s,moss,d),true);
  assert.equal(implicitDoorOpeningOwner(s,d),'moss');
  moss.plan=[];s.seconds=.25;
  assert.equal(implicitDoorOpeningOwner(s,d),'moss');
@@ -143,6 +153,7 @@ test('D3.9A3 explicit OPEN finishing keeps its own moving leaf briefly',()=>{
 test('D3.9A physical hand contact may claim one anticipated implicit door',()=>{
  const d=door(),rook=actor('rook',0),moss=actor('moss',1);
  const s={seconds:0,doors:[d],operators:[rook,moss]};
+ assert.equal(claimOpeningIntent(s,rook,d),true);
  const initial=implicitDoorOpeningOwner(s,d);
  const follower=s.operators.find(a=>a.id!==initial);
  assert.equal(claimContactReadyOpening(s,follower,d),true);
@@ -157,4 +168,12 @@ test('D3.9A3 chooses safe forward movement before fallback retreat',async()=>{
  const relief=source.indexOf('const retreat=selfBlockingHingeRelief');
  assert.ok(safe>=0&&relief>=0&&safe<relief,
   'do not replace an already clear follower stride with unnecessary retreat');
+});
+
+test('D3.9A proximity alone does not seize a door before physical intent',()=>{
+ const d=door(),rook=actor('rook',0),moss=actor('moss',1);
+ const s={seconds:0,doors:[d],operators:[rook,moss]};
+ assert.equal(implicitDoorOpeningOwner(s,d),null);
+ assert.equal(claimOpeningIntent(s,moss,d),true);
+ assert.equal(implicitDoorOpeningOwner(s,d),'moss');
 });

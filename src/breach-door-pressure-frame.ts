@@ -15,7 +15,7 @@ import {doorLeafSegment,pointToSegment,OPERATOR_RADIUS,type Door} from './breach
 import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 import type {BodyDoorPressurePolicy} from './breach-door.ts';
 import {canDoorHandAssist} from './breach-door-hand-contact.ts';
-import {mayManipulateOpening,claimContactReadyOpening}
+import {mayManipulateOpening,claimContactReadyOpening,claimOpeningIntent}
  from './breach-door-opening-ownership.ts';
 
 type TickClaims={
@@ -95,7 +95,7 @@ export function sessionDoorPressurePolicy(
    const frame=doorPressureTick(s);
    inspectDoor(s,frame,door);
    if(!frame.actorsOpening.has(actorKey(actor.id,door.id)))return false;
-   if(mayManipulateOpening(s,actor,door))return true;
+   if(claimOpeningIntent(s,actor,door))return true;
    // Only a truly reachable free support hand can replace an anticipated
    // implicit opener. Physical leaf contact is still checked by the motor.
    return canDoorHandAssist(s,actor,door)&&
@@ -109,7 +109,7 @@ export function sessionDoorPressurePolicy(
   claimContact:door=>{
    // The selected opener alone may inject incidental pressure while the
    // leaf is incomplete; a follower's real swept feet remain unaffected.
-   if(!mayManipulateOpening(s,actor,door))return false;
+   if(!claimOpeningIntent(s,actor,door))return false;
    const frame=doorPressureTick(s);
    if(frame.claimedImpulses.has(door.id))return false;
    frame.claimedImpulses.add(door.id);

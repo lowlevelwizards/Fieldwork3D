@@ -15,7 +15,7 @@ import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
 import {noteD32MotorDoorSelection} from './breach-d3-motor-door-witness.ts';
 import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
-import {shouldStageForOpening,mayManipulateOpening}
+import {shouldStageForOpening,mayManipulateOpening,claimOpeningIntent}
  from './breach-door-opening-ownership.ts';
 import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
 
@@ -102,6 +102,7 @@ export function handleMotorDoor(
       doorAhead=episodeDoor;
   }
   if(doorAhead){
+    const openingAllowed=claimOpeningIntent(s,a,doorAhead);
     // When this one door is physically stalled, its designated opener
     // ALSO must be able to vacate the leaf's sweep. Keep the same
     // bounded temporary footstep for opener and followers alike.
@@ -203,7 +204,7 @@ export function handleMotorDoor(
     }
     // No non-owner may issue a second automatic OPEN; the physical motor
     // can still cross a genuinely clear aperture without this permission.
-    if(!mayManipulateOpening(s,a,doorAhead)){
+    if(!openingAllowed||!mayManipulateOpening(s,a,doorAhead)){
       a.motorPause=null;
       return {paused:false,closed:false,clearingDoorId:doorAhead.id};
     }
