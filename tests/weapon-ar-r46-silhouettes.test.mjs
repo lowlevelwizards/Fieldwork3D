@@ -32,9 +32,9 @@ const box=(g,slot)=>partVisualBounds(g,slot);
 const meshes=(g,slot)=>g.children.filter(x=>x.name.startsWith('family-'+slot+'-'));
 
 test('R4.6 shared visual ID contract and authored stock contact geometry',()=>{
- assert.ok(FAMILY_PRESETS.filter(p=>p.family==='ar').length>=8);
- assert.ok(FAMILY_PRESETS.length>=17,'preserve original AR/AK recipes');
- assert.ok(Object.keys(FAMILY_PARTS).length>=93,'preserve previous part IDs');
+ assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ar').length,8);
+ assert.equal(FAMILY_PRESETS.length,17);
+ assert.equal(Object.keys(FAMILY_PARTS).length,93);
  const a=model('ar-m16a1'),b=model('ar-m16a2');
  assert.ok(close(a.a.stockX,-13.74)&&close(b.a.stockX,-14.30));
  assert.ok(box(a.g,'stock').min.x> -14.1,'A1 is 20% shorter in stock section');
