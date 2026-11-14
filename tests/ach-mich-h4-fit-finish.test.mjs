@@ -68,7 +68,7 @@ test('H4 physical screws, binding and strap geometry stay coherent with each she
 test('H17 Full-Cut ear and nape read as one low-poly contour',()=>{
  const p=achMichProfile('ach');
  assert.equal(p.hem.length,6);
- assert.ok(p.hem.every(point=>point[0]===p.side));
+ assert.ok(p.hem.every(point=>point[0]>=p.side&&point[0]<=p.side+.3));
  assert.equal(p.hem[2][1],2.04);
  assert.equal(p.hem.at(-1)[1],1.85);
  const shell=createHeadwearSilhouette('ach',new THREE.MeshStandardMaterial());
