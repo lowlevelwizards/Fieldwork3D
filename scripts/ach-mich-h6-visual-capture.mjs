@@ -62,10 +62,18 @@ try{
    // Refocus to HEAD before photographing the next shell's details.
    await page.getByRole('button',{name:'Customize head'}).click();
    await itemTab.click();
-   const selection=page.locator('[data-appearance-item="'+id+'"]');
+   // H15 consolidated all three cuts into the Ballistic Helmet item.
+   // Select that item, then change its cut in HEAD > DETAILS; the old
+   // standalone mich-2001 / mich-2002 item selectors no longer exist.
+   const selection=page.locator('[data-appearance-item="ach"]');
    await selection.scrollIntoViewIfNeeded();
-   if(await selection.isDisabled())throw Error('Helmet not equipable '+id);
+   if(await selection.isDisabled())throw Error('Ballistic helmet not equipable');
    await selection.click();
+   await page.locator('#studioWorkflow [data-studio-step="details"]').click();
+   const cut=id==='ach'?'full':id==='mich-2002'?'mid':'high';
+   const cutButton=page.locator('[data-helmet-cut="'+cut+'"]');
+   await cutButton.waitFor({timeout:15000});
+   await cutButton.click();
    await materialTab.click();
    const cover=page.locator('.material-group')
     .filter({hasText:'One fitted fabric cover or an exposed painted shell.'}).locator('select');

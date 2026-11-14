@@ -17,7 +17,7 @@ test('H24: mirrored per-station ear mass, not extra shell parts',()=>{
  const levels=ids.map(id=>UNIFIED_HELMET_HEMS[id]);
  assert.ok(levels[0][2][0]-levels[0][0][0]>=.25,'Full ear bulges more');
  assert.ok(levels[1][2][0]-levels[1][0][0]>=.22,'Mid ear bulges');
- assert.ok(levels[2][2][0]-levels[2][0][0]>=.10,'High upper shell has mild width');
+ assert.equal(levels[2][2][0]-levels[2][0][0],0,'High has no lateral ear bulge');
  assert.ok(levels[0][2][0]-levels[0][0][0]>
   levels[1][2][0]-levels[1][0][0]);
  assert.ok(levels[1][2][0]-levels[1][0][0]>
@@ -27,8 +27,8 @@ test('H24: mirrored per-station ear mass, not extra shell parts',()=>{
   const shell=createHeadwearSilhouette(id,mat);
   const mesh=shell.children[0],geo=mesh.geometry;
   assert.equal(shell.children.length,1);
-  assert.equal(geo.index.count,234,'78 triangles; one added shoulder row');
-  assert.equal(geo.userData.exteriorQuads,39);
+  assert.equal(geo.index.count,id==='mich-2001'?234:294);
+  assert.equal(geo.userData.exteriorQuads,id==='mich-2001'?39:49);
   assert.equal(mesh.castShadow,true);
   assert.equal(mesh.material.side,THREE.DoubleSide);
   assert.equal(mesh.material.shadowSide,THREE.DoubleSide);

@@ -33,24 +33,24 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  'mich-2001':[
   [5.015,4.55,-5.71],
   [5.015,4.55,-0.80],
-  [5.145,5.30,0.10],
-  [5.145,5.30,2.52],
-  [5.065,2.05,4.08],
+  [5.015,5.30,0.10],
+  [5.015,5.30,2.52],
+  [5.015,2.05,4.08],
   [5.015,2.05,5.66]
  ]
 };
-/** H25: the OUTWARD shoulder is halfway down the sidewall. This must
- * not be confused with the YZ ear-cut station or the lower hem X.
- * Six longitudinal stations remain the same on both left/right sides.
- * Full has the strongest mass, Mid nearly as much; High is lighter.
+/** Crest widths at the lower-quarter ring; the upper half remains flat.
+ * High-cut has no outward ear crest. All cuts retain six YZ hem stations.
  */
 export const UNIFIED_HELMET_EAR_SHOULDERS:Readonly<
  Record<UnifiedCut,readonly number[]>>={
  ach:[5.075,5.075,5.80,5.80,5.22,5.075],
  'mich-2002':[5.03,5.03,5.74,5.74,5.18,5.03],
- 'mich-2001':[5.015,5.015,5.60,5.60,5.15,5.015]
+ 'mich-2001':[5.015,5.015,5.015,5.015,5.015,5.015]
 };
 export const ACH_MICH_EAR_SHOULDER_FRACTION=.52;
+// A lower-quarter peak keeps the mass below the quiet upper half.
+export const ACH_MICH_EAR_CREST_FRACTION=.78;
 /** Linear front-back sampling shared by shell and fitted cover. */
 export function unifiedHelmetEarShoulderWidth(cut:UnifiedCut,z:number):number{
  const hem=UNIFIED_HELMET_HEMS[cut],width=UNIFIED_HELMET_EAR_SHOULDERS[cut];
@@ -114,20 +114,32 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
    v(x,shoulderY,shoulderRear),v(x,shoulderY,front),v(sign,1,0),0,0,.97);
   for(let i=1;i<hem.length;i++){
    const a=hem[i-1],b=hem[i];
-   // The silhouette below is untouched. Two angular sidewall bands
-   // produce an actual shoulder halfway down the wall (not a blob at
-   // the bottom lip). The extra five quads are static, no new draw call.
-   const split=(point:ShellPoint,index:number):V=>[
-    sign*earWidths[index],
+   // Keep the entire upper half at the original side width, then
+   // expand only below this onset. No chamfer-to-ear triangular panel.
+   const onset=(point:ShellPoint):V=>[
+    sign*s,
     shoulderY+(point[1]-shoulderY)*ACH_MICH_EAR_SHOULDER_FRACTION,
     point[2]
    ];
-   const splitA=split(a,i-1),splitB=split(b,i);
+   const onsetA=onset(a),onsetB=onset(b);
    quad(v(x,shoulderY,upperZ(a[2])),v(x,shoulderY,upperZ(b[2])),
-    splitB,splitA,v(sign,0,0),0,1,cut==='ach'?.92:.93);
-   quad(splitA,splitB,v(sign*b[0],b[1],b[2]),
-    v(sign*a[0],a[1],a[2]),v(sign,0,0),0,1,
-    cut==='ach'?.90:.91);
+    onsetB,onsetA,v(sign,0,0),0,1,.96);
+   if(cut!=='mich-2001'){
+    // Static lower-quarter ear crest retains width without a flared lip.
+    const crest=(point:ShellPoint,index:number):V=>[
+     sign*earWidths[index],
+     shoulderY+(point[1]-shoulderY)*ACH_MICH_EAR_CREST_FRACTION,
+     point[2]
+    ];
+    const crestA=crest(a,i-1),crestB=crest(b,i);
+    quad(onsetA,onsetB,crestB,crestA,v(sign,0,0),0,1,.95);
+    quad(crestA,crestB,v(sign*b[0],b[1],b[2]),
+     v(sign*a[0],a[1],a[2]),v(sign,0,0),0,1,.94);
+   }else{
+    // High cut: no lateral ear mass, while the ear arch and nape remain.
+    quad(onsetA,onsetB,v(sign*b[0],b[1],b[2]),
+     v(sign*a[0],a[1],a[2]),v(sign,0,0),0,1,.95);
+   }
    // A narrow underside fold is part of the SAME shell, not a second rim.
    quad(v(sign*a[0],a[1],a[2]),v(sign*b[0],b[1],b[2]),
     v(sign*(b[0]-.48),b[1],b[2]),
@@ -160,7 +172,10 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.h17UnifiedContour=true;
  g.userData.h25MidwallEarShoulder=true;
+ g.userData.h26LowerEarOnset=true;
+ g.userData.h26HighCutNoLateralBulge=cut==='mich-2001';
  g.userData.h25EarShoulderFraction=ACH_MICH_EAR_SHOULDER_FRACTION;
+ g.userData.h26EarCrestFraction=ACH_MICH_EAR_CREST_FRACTION;
  g.userData.exteriorQuads=quads;
  g.userData.camoUvLayout='planar-top/continuous-perimeter';
  g.userData.achMichCrownInset=topInset;

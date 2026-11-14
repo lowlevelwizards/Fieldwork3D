@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {ACH_MICH_SHELLS,headwearCuboidVolumes,HEAD_SILHOUETTE_METRICS,
  createHeadwearSilhouette} from '../src/operator-headwear-silhouettes.ts';
-import {UNIFIED_HELMET_HEMS} from '../src/operator-ach-mich-unified-shell.ts';
+import {UNIFIED_HELMET_HEMS,UNIFIED_HELMET_EAR_SHOULDERS} from '../src/operator-ach-mich-unified-shell.ts';
 import {achMichProfile,achMichHemY,createAchMichBindingGeometry,
  achMichRetentionPaths} from '../src/operator-ach-mich-details.ts';
 import {createAchMichDrapedGeometry}
@@ -44,13 +44,14 @@ test('H17: single low-poly shell and matching cover/binding envelopes',()=>{
   assert.ok(cloth.boundingBox.max.y>mesh.geometry.boundingBox.max.y);
   const geometry=mesh.geometry;
   assert.equal(geometry.userData.h17UnifiedContour,true);
-  assert.ok(geometry.userData.exteriorQuads<=30);
-  assert.ok(geometry.getAttribute('position').count<=190);
+  assert.ok(geometry.userData.exteriorQuads<=49);
+  assert.ok(geometry.getAttribute('position').count<=294);
   assert.ok(geometry.getAttribute('uv1').count>0);
   assert.equal(geometry.userData.achMichCrownInset,.53);
   assert.equal(geometry.userData.achMichBevelHeight,1.10);
   assert.ok(geometry.getAttribute('color').count>0);
-  const widest=Math.max(...UNIFIED_HELMET_HEMS[id].map(p=>p[0]));
+  const widest=Math.max(...UNIFIED_HELMET_HEMS[id].map(p=>p[0]),
+   ...UNIFIED_HELMET_EAR_SHOULDERS[id]);
   assert.ok(geometry.boundingBox.max.x<=widest+.001);
   assert.ok(geometry.boundingBox.min.x>=-widest-.001);
  }

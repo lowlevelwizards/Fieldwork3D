@@ -48,7 +48,7 @@ export const ACH_MICH_BINDING_HEIGHT=.78;
 export const achMichBindingHeight=(
  shell:typeof ACH_MICH_SHELLS[number]):number=>
  shell==='mich-2001'?.42:.52;
-export const ACH_MICH_CHIN_STRAP_HALF_WIDTH=.44;
+export const ACH_MICH_CHIN_STRAP_HALF_WIDTH=.39;
 export const achMichProfile=(shell:typeof ACH_MICH_SHELLS[number]):Profile=>
  PROFILES[shell];
 const material=(hex:number)=>new THREE.MeshStandardMaterial({
@@ -120,31 +120,37 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
  g.userData.minimumHeight=bindingHeight;
  return g;
 }
-/** Webbing connects at a true shared Y-point. Taper the three ribbons
- * to that vertex rather than laying three broad rectangles over one
- * another (the source of the blocky overlapping cheek triangles).
- * No junction cap or extra meshes, so lower triangle count.
+/** Full-width webbing converges on a common finite seam instead of
+ * tapering to the needle-like zero-width vertex introduced in H25.
+ * Every segment is static and uses the same authoritative webbing width.
  */
 function appendStrap(data:number[],path:readonly Point[],normal:THREE.Vector3,
- halfWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH,joint?:Point){
+ halfWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH,joint?:Point,
+ commonJointAcross?:THREE.Vector3){
  const vec=(p:Point)=>new THREE.Vector3(...p);
- const atJoint=(p:Point)=>joint===p; // same immutable authored waypoint
+ const axes:THREE.Vector3[]=[];
  for(let i=1;i<path.length;i++){
-  const pa=path[i-1],pb=path[i],a=vec(pa),b=vec(pb);
-  const tangent=b.clone().sub(a).normalize();
-  const across=new THREE.Vector3().crossVectors(normal,tangent)
-   .normalize().multiplyScalar(halfWidth);
-  const taperStart=atJoint(pa),taperEnd=atJoint(pb);
-  const a0=a.clone().add(taperStart?new THREE.Vector3():across),
-   a1=a.clone().sub(taperStart?new THREE.Vector3():across),
-   b0=b.clone().sub(taperEnd?new THREE.Vector3():across),
-   b1=b.clone().add(taperEnd?new THREE.Vector3():across);
-  const emit=(p:THREE.Vector3,q:THREE.Vector3,r:THREE.Vector3)=>{
-   for(const v of [p,q,r])data.push(v.x,v.y,v.z);
-  };
-  if(taperEnd)emit(a0,a1,b);
-  else if(taperStart)emit(a,b0,b1);
-  else{emit(a0,a1,b0);emit(a0,b0,b1);}
+  const tangent=vec(path[i]).sub(vec(path[i-1])).normalize();
+  axes.push(new THREE.Vector3().crossVectors(normal,tangent).normalize());
+ }
+ const spans=path.map((point,i)=>{
+  if(point===joint&&commonJointAcross)
+   return commonJointAcross.clone().multiplyScalar(halfWidth);
+  const across=axes[Math.min(i,axes.length-1)].clone();
+  if(i>0&&i<axes.length){
+   const prev=axes[i-1],next=axes[i];
+   across.copy(prev).add(next.dot(prev)<0?next.clone().negate():next).normalize();
+  }
+  return across.multiplyScalar(halfWidth);
+ });
+ const emit=(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3)=>{
+  for(const v of [a,b,c])data.push(v.x,v.y,v.z);
+ };
+ for(let i=1;i<path.length;i++){
+  const a=vec(path[i-1]),b=vec(path[i]);
+  const a0=a.clone().add(spans[i-1]),a1=a.clone().sub(spans[i-1]);
+  const b0=b.clone().sub(spans[i]),b1=b.clone().add(spans[i]);
+  emit(a0,a1,b0);emit(a0,b0,b1);
  }
 }
 /** ACH/MICH retention is mounted *inside* the shell. Only the exposed
@@ -194,13 +200,18 @@ export function createAchMichRetentionGeometry(
  shell:typeof ACH_MICH_SHELLS[number]):THREE.BufferGeometry{
  const data:number[]=[];
  const paths=achMichRetentionPaths(shell);
- // PASGT-style shared plane: broad uninterrupted webbing, without the
- // oversized triangular hub patches that intersected the cheek silhouette.
+ // The three ribbons per side share one finite-width seam with no cap.
  for(let i=0;i<paths.length;i++){
   const sign=i<3?-1:1;
   const junction=paths[sign<0?0:3][1];
-  appendStrap(data,paths[i],new THREE.Vector3(sign*.68,0,-.74),
-   .39,junction);
+  const down=paths[sign<0?2:5][1];
+  const normal=new THREE.Vector3(sign*.68,0,-.74);
+  const tangent=new THREE.Vector3(
+   down[0]-junction[0],down[1]-junction[1],down[2]-junction[2]
+  ).normalize();
+  const sharedAcross=new THREE.Vector3().crossVectors(normal,tangent).normalize();
+  appendStrap(data,paths[i],normal,
+   ACH_MICH_CHIN_STRAP_HALF_WIDTH,junction,sharedAcross);
  }
  // Join at the exact two chin endpoints, without a second overlapping
  // junction. The cup's top edge is just below the known -1 skull bottom.
@@ -215,7 +226,8 @@ export function createAchMichRetentionGeometry(
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.achMichFourPoint=true;
- g.userData.h25SharedTaperedYJunction=true;
+ g.userData.h25SharedTaperedYJunction=false;
+ g.userData.h26FullWidthYJunction=true;
  g.userData.belowShellAnchors=true;
  g.userData.integratedChinCup=true;
  g.userData.chinWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH*2;

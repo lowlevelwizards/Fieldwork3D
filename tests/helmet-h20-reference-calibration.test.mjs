@@ -57,13 +57,13 @@ test('H20: full, partial and open-ear cuts have an emphatic three-step hierarchy
   'shared source drives shell, cover and binding');
 });
 
-test('H20: no new polygons, cover/trim drift or retention clipping',()=>{
+test('H26: static shell with shared cover, trim and retention',()=>{
  for(const id of ['ach','mich-2002','mich-2001']){
   const g=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   const mesh=g.children[0].geometry;
   assert.equal(mesh.userData.h17UnifiedContour,true);
-  assert.equal(mesh.userData.exteriorQuads,39);
-  assert.equal(mesh.index.count,234,'78 shell triangles at all three cuts');
+  assert.equal(mesh.userData.exteriorQuads,id==='mich-2001'?39:49);
+  assert.equal(mesh.index.count,id==='mich-2001'?234:294);
   assert.equal(g.children.length,1,'one static shell draw');
   const cover=createAchMichDrapedGeometry(id),
     trim=createAchMichBindingGeometry(id),p=achMichProfile(id);
