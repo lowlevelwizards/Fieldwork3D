@@ -10,12 +10,12 @@ const actor=()=>({
  nav:[p(176,288)],blockedTime:0,lastBlocker:'clear',
  doorTraversal:null,doorTraversalLastProbeAt:-10
 });
-test('D3.4: remote lateral CROSS from stale FRONT episode releases ownership',()=>{
+test('D3.9B0: remote open FRONT episode releases immediately, not a frame later',()=>{
  const a=actor(),e=syncDoorTraversalEpisode(a,[door],1);
  assert.ok(e);
  a.p=p(500,268);
- assert.equal(syncDoorTraversalEpisode(a,[door],1.1)?.phase,'cross',
-  'lateral drift reproduces the signed-side crossing false ownership');
+ assert.equal(syncDoorTraversalEpisode(a,[door],1.1),null,
+  'a remote fully opened leaf should release even before the next CROSS tick');
  const authored=a.plan[0],nav=a.nav;
  assert.equal(syncDoorTraversalEpisode(a,[door],1.2),null);
  assert.equal(a.doorTraversal,null);
