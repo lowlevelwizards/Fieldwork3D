@@ -19,11 +19,6 @@ export function entryLanes(door:Door,from:Pt,count:number,
  // positions in a room that's only ~60 units wide.
  const layouts=[
   {depths:[62,62,111,111],offsets:[22,15,30,8,37,0]},
-  // D3.10A: where both 111-deep rear slots collide with shelving, try a
-  // compact staggered rear pair before pushing the entire squad into a
-  // deep single-file gallery. Still require distinct real landing footprints
-  // and known-map routes for every candidate (caller owns full-body radius).
-  {depths:[62,62,98,118],offsets:[22,15,30,8,37,0]},
   {depths:[52,88,124,160,198,236],offsets:[0,8,15,22,30]},
   {depths:[66,105,144,183,222,261],offsets:[0,10,18,25]}
  ];
