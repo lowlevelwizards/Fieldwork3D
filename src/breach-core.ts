@@ -319,9 +319,39 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
     if(!targets.size)return [];
   }else targets.add(goalKey);
   const open=new RouteOpenHeap();
-  open.push({col:st.col,row:st.row,g:0,f:0});
-  const best=new Map<string,number>([[startKey,0]]);
+  const best=new Map<string,number>();
   const parents=new Map<string,string>();
+  // D3.2.10: world-truth recovery can start at a legal *subgrid* position
+  // whose nearest grid center is INSIDE a sill or furniture clearance.
+  // The old A* seeded that illegal center, then rejected every route
+  // because its initial physical connector crossed the obstacle.
+  // Seed a few NEARBY, fully swept legal grid starts into this SAME A*;
+  // no second global search, actor movement or collision exemption.
+  const snapped=cellPoint(st.col,st.row);
+  const displacedStart=!walkableCell(st.col,st.row)||
+    !sweepPassable(from,snapped,canStand);
+  if(!displacedStart){
+    best.set(startKey,0);
+    open.push({col:st.col,row:st.row,g:0,f:0});
+  }else{
+    if(!canStand(from))return [];
+    for(let ring=1;ring<=2;ring++)
+      for(let dy=-ring;dy<=ring;dy++)
+        for(let dx=-ring;dx<=ring;dx++){
+          if(Math.max(Math.abs(dx),Math.abs(dy))!==ring)continue;
+          const col=st.col+dx,row=st.row+dy;
+          if(!walkableCell(col,row))continue;
+          const point=cellPoint(col,row);
+          if(!sweepPassable(from,point,canStand))continue;
+          const k=key(col,row);
+          const g=distance(from,point)/grid;
+          if(g>=(best.get(k)??Infinity))continue;
+          best.set(k,g);parents.set(k,startKey);
+          open.push({col,row,g,
+            f:g+Math.hypot(col-goal.col,row-goal.row)});
+        }
+    if(!open.length)return [];
+  }
   const visited=new Set<string>();
   let reachedKey:string|null=null;
   const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
@@ -368,6 +398,10 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   const compact:Pt[]=[];
   for(let i=0;i<path.length;i++){
     const a=compact.at(-1)??from,b=path[i],c=path[i+1];
+    // A repaired start anchor is physically proven from the actor's
+    // actual position. Keep that connector: collinearity alone does not
+    // prove it safe to skip the anchor beside a solid obstacle.
+    if(displacedStart&&i===0){compact.push(b);continue;}
     if(c){
       const cross=(b.x-a.x)*(c.y-b.y)-(b.y-a.y)*(c.x-b.x);
       if(Math.abs(cross)<1e-6)continue;
