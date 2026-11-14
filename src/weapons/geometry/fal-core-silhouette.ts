@@ -21,7 +21,7 @@ export const FAL_ART:Readonly<{
  magazineCenterX:1.35,magazineBottomY:-8.05
 });
 
-export type FALCoreOptions={raisedCarryHandle?:boolean};
+export type FALCoreOptions={raisedCarryHandle?:boolean;showFactoryMuzzle?:boolean};
 export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>>;
 export type FALCoreIds=Readonly<Record<SlotName,string>>;
 /** One source of geometry for the test lab and production FAL. */
@@ -88,7 +88,7 @@ export function buildFALCoreSilhouette(
  // One six-sided barrel. The gas-block sight is near the end of the
  // handguard rather than at the muzzle as on the G3.
  const barrel=addFacetedTube(root,'barrel',partIds.barrel,
-  ids.barrel++,13.85,21.15,.61,materials.barrel);
+  ids.barrel++,13.85,options.showFactoryMuzzle===false?22.00:21.15,.61,materials.barrel);
  barrel.position.y=.12;
  // S1C: short wide gas-block ears; never an M16 tower or G3 hood.
  p('barrel',[
@@ -97,8 +97,8 @@ export function buildFALCoreSilhouette(
   [14.87,2.80],[15.12,3.00],[15.37,2.65],
   [15.38,.24]
  ],1.82);
- // Simple long Belgian muzzle treatment, entirely within authoritative tip.
- p('barrel',[
+ // Simple short Belgian factory muzzle; omit when a mounted muzzle replaces it.
+ if(options.showFactoryMuzzle!==false)p('barrel',[
   [21.03,-.74],[21.28,-.84],[21.70,-.84],
   [22.00,-.67],[22.00,.67],[21.70,.84],
   [21.28,.84],[21.03,.74]
