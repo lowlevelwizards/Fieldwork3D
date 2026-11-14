@@ -5,6 +5,7 @@
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
+import {canonicalBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
 import {readPasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import {isPoliceVisorPosition,isPoliceVisorTint,isPoliceVisorFrame,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {isM56Details,isM56Net,type M56Options} from './operator-ddr-m56-policy.ts';
@@ -52,7 +53,7 @@ add('headwear','soft',[
 ]);
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
- ['ach','ACH / MICH-style helmet'],['high-cut','High-cut helmet'],
+ ['ach','Ballistic Helmet'],['high-cut','High-cut helmet'],
  ['mich-2001','MICH 2001 high-cut'],['mich-2002','MICH 2002 gunfighter'],
  ['fast-sf','FAST SF high-cut'],['fast-xp-mid','FAST XP mid-cut'],
  ['m1-steel','US M1 steel helmet'],['ddr-m56','East German M56 steel helmet'],
@@ -263,8 +264,12 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
     slot==='eyewear'&&['clear-glasses','sunglasses','safety-glasses',
      'goggles-down','goggles-up'].includes(id??'')?
      migrateD2Eyewear(id).style:id;
-   if(typeof upgraded==='string'&&wardrobeItem(slot,upgraded))
-    result.styles[slot]=upgraded;
+   // H15: map retired generic/FAST headwear into the developed MICH/ACH
+    // shells while retaining independent cover, palette and accessory data.
+    const mapped=slot==='headwear'&&typeof upgraded==='string'?
+     canonicalBallisticHelmet(upgraded):upgraded;
+    if(typeof mapped==='string'&&wardrobeItem(slot,mapped))
+     result.styles[slot]=mapped;
   }
  }
  // Additive version-1 config. Unknown/incorrect eyewear options are discarded.
