@@ -18,7 +18,7 @@ import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 import {createHelmetFieldGoggleModule,createFittedGoggleSleeve} from './operator-helmet-field-goggles.ts';
 import {addAchMichVelcro,addAchMichIdentifierPatch} from './operator-helmet-field-velcro.ts';
 import {addAchMichFieldAddon} from './operator-helmet-field-addons.ts';
-import {addPasgtRetrofitRails,addPasgtRetrofitBungees,
+import {addPasgtRetrofitRails,addPasgtPeriodNvgStrap,addPasgtRetrofitBungees,
  addPasgtRetrofitVelcro,addPasgtRetrofitIdentifier,
  updatePasgtRetrofitCover} from './operator-helmet-pasgt-retrofit.ts';
 export type HelmetFieldLayers={
@@ -143,6 +143,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   plate(shroud,dark,'pasgt-bracket-socket',
    [[-.43,.16],[.43,.16],[.39,-.32],[-.39,-.32]],
    0,p.top-1.86,front-.43);
+  addPasgtPeriodNvgStrap(shroud,webbingMaterial);
  }else addAchMichThreeHoleShroud(id,shroud,metal,dark,reflect);
  const rails=addGroup('rails');
  if(id==='pasgt')addPasgtRetrofitRails(rails,metal,dark,reflect);
@@ -212,7 +213,7 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  }
  // Covered/bare PASGT retrofit parts are pre-authored. No per-frame
  // reprojection and no ACH drape assumptions on this much deeper shell.
- if(v.shell==='pasgt')for(const key of ['rails','bungees','velcro','patches'])
+ if(v.shell==='pasgt')for(const key of ['shroud','rails','bungees','velcro','patches'])
   updatePasgtRetrofitCover(m[key],covered);
  // Both NVG attachment frames are pre-authored; no raycast or geometry
  // rebuilding during cover toggles. Keep the shroud actually seated.
