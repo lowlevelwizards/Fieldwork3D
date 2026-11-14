@@ -116,7 +116,7 @@ export function buildFALStage1Silhouette(
  if(options.raisedCarryHandle){
   addProfileFrame(root,'receiver','fal-stage1-carry',ids.receiver++,
    [[2.45,1.75],[2.48,3.82],[5.97,3.94],[6.15,1.63]],
-   [[3.02,2.18],[3.02,3.25],[5.42,3.28],[5.52,2.08]],
+   [[5.52,2.08],[5.42,3.28],[3.02,3.25],[3.02,2.18]],
    1.48,material);
  }
  return root;
