@@ -24,6 +24,13 @@ export function fireCorrectionStopReason(a:TeamActor,now:number,
  // plan signature. Older recordings without it fall back to kind checks.
  if(a.fireRetreatPlanId!==undefined&&
     a.fireRetreatPlanId!==(n?.id??null))return 'plan-changed';
+ // Editing the SAME node (dragging its destination, changing action)
+ // also invalidates the optional footstep with only primitive compares.
+ if(a.fireRetreatPlanKind!==undefined&&
+    a.fireRetreatPlanKind!==(n?.kind??null))return 'plan-changed';
+ const original=a.fireRetreatPlanPoint;
+ if(original&&(!n||n.p.x!==original.x||n.p.y!==original.y))
+  return 'plan-changed';
  if(n?.moveMode==='sprint'||n&&
     !['move','look','wait'].includes(n.kind))
   return 'authored-action';
@@ -44,6 +51,8 @@ export function cancelFireCorrection(a:TeamActor):void{
  a.fireRetreatReason=null;
  a.fireRetreatPlanId=null;
  a.fireRetreatContactId=null;
+ a.fireRetreatPlanPoint=null;
+ a.fireRetreatPlanKind=null;
  a.nav=[];
 }
 
