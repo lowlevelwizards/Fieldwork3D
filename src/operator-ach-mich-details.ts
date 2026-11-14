@@ -20,22 +20,22 @@ type Profile={
   * These match visible shell faces; no unsupported suspended trim. */
  hem:readonly Point[];
 };
+/** The six shared shell stations are the source of truth. Derive rim,
+ * brow, nape and fastener stations instead of maintaining three parallel
+ * numeric ledgers that can fall out of sync during silhouette revisions.
+ */
+const profileFor=(shell:typeof ACH_MICH_SHELLS[number]):Profile=>{
+ const hem=UNIFIED_HELMET_HEMS[shell];
+ const side=hem[0][0],front=hem[0][2],rear=hem[hem.length-1][2];
+ const brow=hem[0][1],nape=hem[hem.length-1][1];
+ return {side,front,rear,brow,nape,hem,
+  frontStud:[side,brow+(shell==='mich-2001'?.67:.55),hem[1][2]],
+  rearStud:[side,nape+.55,4.15]};
+};
 const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
- ach:{
-  side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.35,
-  frontStud:[5.075,4.95,-2.05],rearStud:[5.075,2.90,4.15],
-  hem:UNIFIED_HELMET_HEMS.ach
- },
- 'mich-2002':{
-  side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:2.62,
-  frontStud:[5.03,5.10,-2.05],rearStud:[5.03,3.17,4.15],
-  hem:UNIFIED_HELMET_HEMS['mich-2002']
- },
- 'mich-2001':{
-  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:2.85,
-  frontStud:[5.015,5.22,-2.10],rearStud:[5.015,3.40,4.15],
-  hem:UNIFIED_HELMET_HEMS['mich-2001']
- }
+ ach:profileFor('ach'),
+ 'mich-2002':profileFor('mich-2002'),
+ 'mich-2001':profileFor('mich-2001')
 };
 // Historical height preserved as a named compatibility constant; the
 // visible edge now follows the same modest finishing weight on every cut.
@@ -54,7 +54,7 @@ const hidden=(parent:THREE.Group,name:string):THREE.Group=>{
  const g=new THREE.Group();g.name=name;parent.add(g);return g;
 };
 /** One continuous molded shell-color edge, without added contour layers.
- * H21 shares the exact six-point ear/nape perimeter from the shell.
+ * H23 shares the exact six-point ear/nape perimeter from the shell.
  * Front/sides/rear share exact endpoints. */
 export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number]){
  const p=PROFILES[shell],data:number[]=[],
