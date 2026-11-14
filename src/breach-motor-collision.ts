@@ -138,6 +138,12 @@ export function resolveMotorCollision(
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
       a.nav=fullLane;a.retryRouteAt=0;a.recoveryAttempts=0;
+      // C1c: the full-width lane repair also begins with a short corner
+      // departure point. It was retired at 3 units before the furniture
+      // actually cleared (motel 31149), then re-entered the same prop.
+      // For furniture contact only, complete this verified leg precisely.
+      if(a.lastBlocker==='furniture')
+        notePreciseLocalDetour(a,fullLane[0]);
       // Preserve existing WATCH facing and weapon intention; only the
       // feet choose a different line around the obstruction.
       a.squeeze=false;a.squeezeTime=0;
