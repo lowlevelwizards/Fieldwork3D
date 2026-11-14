@@ -5,7 +5,7 @@
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
-import {doorCenter,pointToSegment,doorLeafSegment} from './breach-core.ts';
+import {doorCenter} from './breach-core.ts';
 import {doorReachable} from './breach-door.ts';
 import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 
@@ -30,7 +30,10 @@ function candidate(a:TeamActor,d:Door):boolean{
  return sq(a.p,center)<84*84;
 }
 export function implicitDoorOpeningOwner(s:Session,d:Door):string|null{
- if(!partial(d))return null;
+ if(!partial(d)){
+  owners.get(s)?.delete(d.id);
+  return null;
+ }
  let map=owners.get(s);
  if(!map){map=new Map();owners.set(s,map);}
  const previous=map.get(d.id);
