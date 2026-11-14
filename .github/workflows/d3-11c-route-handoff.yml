@@ -47,6 +47,8 @@ jobs:
               summary:data.summary,quality:data.routeQualitySummary,
               rook:m.routeQuality.actors.find(x=>x.id==="rook"),
               handoffs:m.routeTransitions.counts,
+              escapeReacquirePairs:m.routeTransitions.escapeReacquirePairs,
+              pairsByDoor:m.routeTransitions.pairsByDoor,
               rookHandoffs:m.routeTransitions.byActor,
               episodeTransitions:events.filter(e=>e.seconds>=9&&e.seconds<=25)
                .map(e=>({at:e.seconds,source:e.source,
@@ -77,6 +79,7 @@ jobs:
              current:Object.fromEntries(keys.map(k=>[k,after.summary[k]])),
              searchBefore:before.routeQualitySummary,
              searchAfter:after.routeQualitySummary,
+             routeTransitionSummary:after.transitionSummary,
              progressBefore:before.progressSummary,
              progressAfter:after.progressSummary},null,2));
             for(const k of ["acceptedFour","physicalArrivals",
