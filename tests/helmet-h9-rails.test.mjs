@@ -12,6 +12,7 @@ test('H9.4b: ACH-ARC rails span both cover sides with real shape and two mounts'
    const g=kit.modules.rails.children.find(x=>x.name==='h9-ach-arc-'+side);
    assert.ok(g,'missing '+id+' '+side+' surface rail');
    assert.equal(g.userData.h9ArcFamily,'ACH-ARC');
+   assert.equal(g.userData.h12TallRearArc,true);
    assert.equal(g.userData.h9ArcScrews,2);
    assert.equal(g.userData.h9ArcSlots,6);
    assert.equal(g.userData.h9SurfaceFitted,true);
@@ -32,7 +33,7 @@ test('H9.4b: ACH-ARC rails span both cover sides with real shape and two mounts'
    const box=new THREE.Box3().setFromObject(g),size=new THREE.Vector3();
    box.getSize(size);
    assert.ok(size.z>5.5,id+' '+side+' rail too short to read');
-   assert.ok(size.y>1.0,id+' '+side+' lacks raised rear curve');
+   assert.ok(size.y>1.55,id+' '+side+' lacks exaggerated rear curve');
    assert.ok(g.children.some(x=>x.name==='curved-full-length-ach-arc-track'));
   }
   updateHelmetFieldLayers(kit,{rails:true},0x5c695c,true);
