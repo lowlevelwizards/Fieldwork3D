@@ -1421,7 +1421,7 @@ function renderMaterials(){
    addSelect(coverRow,[['none','BARE SHELL'],['fitted','COVER']] as const,
     shellCover?'fitted':'none',v=>changeWardrobe({
      ...current(),helmetSetup:readHelmetSetup({
-      ...current().helmetSetup,cover:v,presetOrigin:undefined
+      ...current().helmetSetup,cover:v
      })
     }));
   }
@@ -1454,8 +1454,7 @@ function renderMaterials(){
    const details=readPasgtDetails(w.pasgtDetails,w.helmetSetup);
    const updateCover=(covered:boolean)=>changeWardrobe({
     ...current(),helmetSetup:readHelmetSetup({
-     ...current().helmetSetup,cover:covered?'fitted':'none',
-     presetOrigin:undefined
+     ...current().helmetSetup,cover:covered?'fitted':'none'
     })
    });
    const coverRow=row('PASGT CLOTH COVER',
@@ -1746,7 +1745,7 @@ function renderMaterials(){
     changeWardrobe({...current(),headwearCamo:id,
      // An H1 helmet print always belongs to a physical cover, not bare resin.
      helmetSetup:isH1ModernHelmet(helmetShell)?readHelmetSetup({
-      ...current().helmetSetup,cover:'fitted',presetOrigin:undefined}):
+      ...current().helmetSetup,cover:'fitted'}):
       current().helmetSetup,
      headwearCamoRoll:
       w.headwearCamo===id?nextHeadwearCamoRoll(w.headwearCamoRoll):0}),
