@@ -81,7 +81,7 @@ test('D3.9 all pressure, hand and motor roles use same opener lease',async()=>{
  assert.match(pressure,/if\(!claimOpeningIntent\(s,actor,door\)\)return false/);
  assert.match(hand,/mayManipulateOpening\(s,a,door\)/);
  assert.match(motor,/shouldStageForOpening\(s,a,doorAhead\)/);
- assert.match(motor,/selfBlockingHingeRelief\(a,s,p\)/);
+ assert.match(motor,/selfBlockingHingeRelief\(a,s,p,doorAhead\)/);
  assert.match(motor,/queueOpeningFootstep\(a,retreat\)/);
  assert.match(motor,/staged\.attempts<5/);
  assert.match(motor,/ownerRelief/);
@@ -216,4 +216,13 @@ test('D3.9B0 stale remote OPEN approach is retired without rewriting MOVE',async
  syncDoorTraversalEpisode(a,[d],12);
  assert.equal(a.doorTraversal,null);
  assert.equal(a.plan[0].id,1);
+});
+
+test('D3.9B4 explicit and implicit door footwork share swept relief',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
+ const order=src('breach-order-door.ts'),motor=src('breach-motor-door.ts');
+ assert.match(order,/selectGuidedOpeningStep\(a,s,door,n\.p\)/);
+ assert.match(order,/foot\.attempts<3/);
+ assert.match(motor,/selfBlockingHingeRelief\(a,s,p,doorAhead\)/);
 });

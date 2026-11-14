@@ -237,13 +237,15 @@ export function recordDoorManeuverContact(
  * genuine door-collision retry after the existing blocked-time threshold.
  */
 export function selfBlockingHingeRelief(
- a:TeamActor,s:Session,goal:Pt
+ a:TeamActor,s:Session,goal:Pt,onlyDoor?:Door
 ):Pt|null{
  const world=sessionWorldGeometry(s);
  const otherPositions=s.operators.filter(other=>other!==a&&other.health>0)
    .map(other=>other.p);
  const aim=Math.atan2(goal.y-a.p.y,goal.x-a.p.x);
- for(const door of s.doors){
+ // A known obstruction must not select a different door's escape step.
+ // Generic collision recovery still retains its all-door fallback.
+ for(const door of onlyDoor?[onlyDoor]:s.doors){
   const fraction=door.openFraction??(door.open?1:0);
   if(!door.open||door.kind==='sliding'||door.kind==='shutter'||
      door.locked||door.wedged||door.heldBy||

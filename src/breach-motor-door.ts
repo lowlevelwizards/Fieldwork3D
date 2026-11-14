@@ -151,8 +151,8 @@ export function handleMotorDoor(
          (follower||ownerRelief)){
         const retreat=threatens?
           selectGuidedOpeningStep(a,s,doorAhead,p)||
-            (stopped?selfBlockingHingeRelief(a,s,p):null):
-          selfBlockingHingeRelief(a,s,p);
+            (stopped?selfBlockingHingeRelief(a,s,p,doorAhead):null):
+          selfBlockingHingeRelief(a,s,p,doorAhead);
         staged.nextAt=s.seconds+1.1;
         if(retreat){
           staged.attempts++;

@@ -17,8 +17,8 @@ import {selectActualKickFoot} from './breach-kick-foot-choice.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {openerThreatensLeaf,selectOpeningStance}
  from './breach-door-opening-stance.ts';
-import {openingFootwork,setOpeningFootstep,clearOpeningFootwork}
- from './breach-door-opening-footwork.ts';
+import {openingFootwork,setOpeningFootstep,clearOpeningFootwork,
+ selectGuidedOpeningStep} from './breach-door-opening-footwork.ts';
 import {acquireDoorHandContact,releaseDoorHandContact}
  from './breach-door-hand-contact.ts';
 import {completeOrder,clearCurrentOrderIssue,
@@ -41,6 +41,8 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
        (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&
         door.open&&(door.openFraction??1)>=.98)){
       // The requested state already exists: legitimate completion.
+      clearOpeningFootwork(a,door.id,n.id);
+      releaseDoorHandContact(a,s.seconds);
       pop(a);return true;
     }
     // The authored OPEN remains active while its real leaf rotates; no
@@ -49,7 +51,22 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
       acquireDoorHandContact(s,a,door,true);
       const clear=doorClear(door,sessionWorldGeometry(s));
       if(!clear&&a.actionTimer<2.15){
-        a.actionTimer+=dt;a.velocity=0;return true;
+        // Guide the real leaf while using the SAME bounded door stance
+        // record and actual swept actor motor. No new movement controller.
+        const foot=openingFootwork(a,door.id,n.id,'stance');
+        if(foot.target&&d(a.p,foot.target)<=3.5)foot.target=null;
+        if(!foot.target&&foot.attempts<3&&s.seconds>=foot.nextAt){
+          const next=selectGuidedOpeningStep(a,s,door,n.p);
+          foot.nextAt=s.seconds+.65;
+          if(next){foot.attempts++;setOpeningFootstep(a,foot,next);}
+        }
+        a.actionTimer+=dt;
+        if(foot.target){
+          clearCurrentOrderIssue(a);
+          approach(a,foot.target,dt,s,.78);
+          return true;
+        }
+        a.velocity=0;return true;
       }
       if(!clear)
         notify(s,a.name+' DOOR SWING OBSTRUCTED · CHECK ENTRY');
