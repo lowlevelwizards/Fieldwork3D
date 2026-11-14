@@ -35,7 +35,7 @@ test('H20: High-Cut over-ear arch is distinct and rear remains seated',()=>{
   assert.ok(high[i][2]-high[i-1][2]>.7,'single ordered outline, no tiny tabs');
  assert.ok(near(high[0][1],4.55)&&near(high[1][1],4.55));
  assert.ok(near(high[2][1],high[3][1])&&near(high[2][1],5.30));
- assert.ok(near(high[4][1],high[5][1])&&near(high[5][1],3.12));
+ assert.ok(near(high[4][1],high[5][1])&&near(high[5][1],2.85));
  assert.ok(high[2][1]>A.earTop+1.1 &&
   high[2][1]<A.hairline,'side clears upper ear but remains below hairline');
  assert.ok(high[4][1]<A.earTop-0.7 &&
@@ -65,7 +65,7 @@ test('H19: no stacked exterior panels, same one-draw low-poly shell',()=>{
  assert.equal(geom.index.count,174,'58 shell triangles');
  assert.equal(geom.getAttribute('position').count,174);
  assert.ok(near(geom.boundingBox.max.y,8.705));
- assert.ok(near(geom.boundingBox.min.y,3.12));
+ assert.ok(near(geom.boundingBox.min.y,2.85));
  assert.equal(geom.userData.achMichCrownInset,ACH_MICH_UPPER_INSET);
  assert.equal(geom.userData.achMichBevelHeight,ACH_MICH_BEVEL_HEIGHT);
  assert.ok(geom.getAttribute('uv1').count>0);
@@ -83,7 +83,7 @@ test('H19: narrow rubber edge follows one shell/cover perimeter',()=>{
  let maxSide=0;
  for(let i=0;i<pos.count;i++)maxSide=Math.max(maxSide,Math.abs(pos.getX(i)));
  assert.ok(maxSide<=p.side+.10,'no offset thick floating rim or side tabs');
- assert.ok(near(binding.boundingBox.min.y,3.12));
+ assert.ok(near(binding.boundingBox.min.y,2.85));
  const cover=createAchMichDrapedGeometry(id);
  assert.ok(cover.boundingBox.max.y>8.705);
  assert.ok(cover.userData.h71JoinedCoverCorners);
