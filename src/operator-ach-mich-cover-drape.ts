@@ -248,6 +248,7 @@ export function createAchMichDrapedGeometry(
  g.userData.h27BrowSpikeClampMatched=true;
  g.userData.h27NoLeadingFinMatched=true;
  g.userData.h28UnifiedEarProfileMatched=true;
+ g.userData.h30ReferenceContourCandidateMatched=true;
  g.userData.h25TuckedConcealedBinding=true;
  return g;
 }
