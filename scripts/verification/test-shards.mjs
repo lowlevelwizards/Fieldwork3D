@@ -8,14 +8,15 @@ export function shardTestPaths(paths,args=process.argv.slice(2)){
  const index=Number(match[1]),total=Number(match[2]);
  if(total<1||total>32||index<1||index>total)
   throw Error('Shard number must be within 1..TOTAL, TOTAL <=32');
- // Live per-pattern 3D pose validation is intentionally expensive.
- // Own the final shard exclusively so it cannot time out alongside a second
- // full integration suite. Every file still executes exactly once.
- const heavy='tests/operator-headwear-camo-pose.test.mjs';
- if(total>1&&paths.includes(heavy)){
-  if(index===total)return [heavy];
-  const normal=paths.filter(path=>path!==heavy);
-  return normal.filter((_,i)=>i%(total-1)===index-1);
+ // Place expensive per-model live 3D geometry/pose tests in independent
+ // final shards. Every test file is still selected once; ordinary regression
+ // tests never share a job with these memory-intensive rendering checks.
+ const heavy=paths.filter(path=>/^tests\/operator-headwear-camo-pose-(?:patrol-cap|boonie|ach|mich-2001|pasgt)\.test\.mjs$/.test(path));
+ if(total>heavy.length&&heavy.length){
+  const ordinary=paths.filter(path=>!heavy.includes(path));
+  const regularCount=total-heavy.length;
+  if(index>regularCount)return [heavy[index-regularCount-1]];
+  return ordinary.filter((_,i)=>i%regularCount===index-1);
  }
  return paths.filter((_,i)=>i%total===index-1);
 }

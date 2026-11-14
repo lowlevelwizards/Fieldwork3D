@@ -24,9 +24,9 @@ const pose=(kit,wardrobe)=>({
  unarmedPreview:true,equipment:kit,wardrobe
 });
 // Independent test shard; original coverage and assertions preserved.
-test('live pose swaps camo and solid without animation restoring gray or mutating geometry',()=>{
+test('live pasgt pose swaps all approved camo and solids without geometry mutation',()=>{
  const rig=createOperatorRig('rook','blue');
- for(const model of ['patrol-cap','boonie','ach','mich-2001','pasgt']){
+ const model='pasgt'; {
   const {kit,wardrobe}=selectWardrobeItem(bareLabEquipment(),initialWardrobe(),'headwear',model);
   const material=rig.visualKit.wardrobeHead.headwearMaterials[model];
   const finish=material.roughnessMap;

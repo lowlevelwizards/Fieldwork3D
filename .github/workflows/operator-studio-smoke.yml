@@ -172,9 +172,21 @@ jobs:
       - name: A1 camo atlas and pattern library
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
         run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-motifs.test.mjs tests/operator-headwear-camo-library.test.mjs tests/operator-headwear-camo-coverage.test.mjs
-      - name: A1 live camouflage pose
+      - name: A1 live camouflage pose 1/5 (patrol-cap)
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
-        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose.test.mjs
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-patrol-cap.test.mjs
+      - name: A1 live camouflage pose 2/5 (boonie)
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-boonie.test.mjs
+      - name: A1 live camouflage pose 3/5 (ach)
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-ach.test.mjs
+      - name: A1 live camouflage pose 4/5 (mich-2001)
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-mich-2001.test.mjs
+      - name: A1 live camouflage pose 5/5 (pasgt)
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose-pasgt.test.mjs
       - name: A1 print rerolls and shared headwear state
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
         run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-reroll.test.mjs tests/operator-wardrobe-headwear.test.mjs
