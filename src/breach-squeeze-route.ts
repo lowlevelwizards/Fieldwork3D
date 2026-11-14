@@ -120,9 +120,14 @@ function narrowRoute(from:Pt,to:Pt,
   }
   return course;
 }
-export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
+/** Planning preview can pass its already-computed normal result. This
+ * avoids a second identical normal A* when only the narrow fallback is
+ * needed; the authoritative motor keeps the established normal-first rule.
+ */
+export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt,
+ knownNormal?:readonly Pt[]):Pt[]{
  const canStand=(p:Pt,r:number)=>intelPassable(p,intel,r);
- const standard=routeWithIntel(intel,from,to);
+ const standard=knownNormal??routeWithIntel(intel,from,to);
  // A normal-body path always wins, even when the narrow shortcut is
  // shorter. Favor a few units of breathing room when it costs little.
  if(standard.length)return preferRoomyPath(from,to,standard,canStand,
