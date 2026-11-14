@@ -66,7 +66,7 @@ test('live boonie pose validates camouflage prints 49–62 and solid restoration
   assert.equal(material.map,headwearDetailTexture(model),'solid construction atlas restored');
   assert.equal(material.vertexColors,true,'solid headwear restores structural vertex shading');
   assert.equal(material.color.getHex(),HEADWEAR_SOLID_COLORS[solidId].hex);
-  assert.deepEqual([...samples].sort(),[...HEADWEAR_CAMO_IDS].sort(),
+  assert.deepEqual([...samples].sort(),HEADWEAR_CAMO_IDS.slice(48,62).slice().sort(),
    'all authored camouflage patterns remain covered by the live Boonie rig');
  }
  rig.dispose();
