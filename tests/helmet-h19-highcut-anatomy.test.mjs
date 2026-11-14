@@ -45,7 +45,8 @@ test('H20: High-Cut over-ear arch is distinct and rear remains seated',()=>{
  assert.equal(achMichProfile('mich-2001').hem,high);
  assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,5.30);
  assert.ok(achMichHemY('mich-2001',A.earZ)>A.earTop+.5);
- assert.ok(achMichHemY('mich-2001',4.6)>3.10);
+ assert.ok(near(achMichHemY('mich-2001',4.6),2.85),
+  'H22 retains the lowered rear nape behind the open ear');
  assert.ok(UNIFIED_HELMET_HEMS['mich-2002'][2][1]<high[2][1]-1.6);
  assert.ok(UNIFIED_HELMET_HEMS.ach[2][1]<high[2][1]-2.5);
  assert.equal(HELMET_MOUNT_PROFILES['mich-2001'].ear,5.91,
