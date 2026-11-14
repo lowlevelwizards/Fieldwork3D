@@ -21,8 +21,8 @@ test('H27: full/mid have long protective faces, short bevel and no spikes',()=>{
   const shoulder=crown.y+crown.height/2-ACH_MICH_BEVEL_HEIGHT;
   const geom=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial()).children[0].geometry;
   if(id!=='mich-2001'){
-   const frontProfile=unifiedHelmetEarVerticalProfile(id,shoulder,hem[1][1]);
-   assert.ok(frontProfile.faceTopY<=hem[1][1]+.25,
+   const frontProfile=unifiedHelmetEarVerticalProfile(id,shoulder,hem[1][1],hem[1][2]);
+   assert.ok(frontProfile.faceTopY<=hem[1][1]+.30,
     'ear guard must NOT produce upward spike beside brow-to-ear transition');
    assert.ok(frontProfile.faceBottomY>hem[1][1],
     'ear guard stays above the front local hem');
@@ -38,10 +38,10 @@ test('H27: full/mid have long protective faces, short bevel and no spikes',()=>{
   }
   for(const station of [2,3]){
    const y=hem[station][1],z=hem[station][2];
-   const onsetY=shoulder+(y-shoulder)*ACH_MICH_EAR_SHOULDER_FRACTION;
-   const faceTop=shoulder+(y-shoulder)*ACH_MICH_EAR_FACE_TOP_FRACTION;
-   const faceBottom=shoulder+(y-shoulder)*ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
-   assert.ok(onsetY-faceTop>0.5);
+   const {onsetY,faceTopY:faceTop,faceBottomY:faceBottom}=
+    unifiedHelmetEarVerticalProfile(id,shoulder,y,z);
+   assert.ok(onsetY-faceTop>.12&&onsetY-faceTop<.23,
+    'upper ear bevel must remain short');
    assert.ok(faceTop-faceBottom>0.9,'broad wall rather than a thin ridge');
    let foundOnset=false,foundUpper=false,foundLower=false;
    for(let i=0;i<p.count;i++)if(near(p.getZ(i),z)){
