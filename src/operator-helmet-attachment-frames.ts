@@ -14,7 +14,7 @@ const metrics=(id:'ach'|'pasgt'|'high-cut',side:number):Profile=>{
 export const HELMET_MOUNT_PROFILES:Readonly<Record<H1ModernHelmet,Profile>>={
  ach:metrics('ach',5.08),pasgt:metrics('pasgt',5.18),
  'high-cut':metrics('high-cut',4.88),
- 'mich-2002':{front:-5.70,rear:5.75,side:5.04,top:8.76,ear:4.05},
+ 'mich-2002':{front:-5.70,rear:5.75,side:5.04,top:8.76,ear:3.14},
  'mich-2001':{front:-5.61,rear:5.64,side:4.97,top:8.70,ear:5.91},
  'fast-sf':{front:-5.53,rear:5.66,side:4.92,top:8.80,ear:6.04},
  'fast-xp-mid':{front:-5.68,rear:5.81,side:5.00,top:8.78,ear:4.20}
