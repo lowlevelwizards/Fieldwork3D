@@ -25,9 +25,12 @@ const pose=(kit,wardrobe)=>({
 });
 // Independent test shard; original coverage and assertions preserved.
 test('live boonie pose validates camouflage prints 1–16 and solid restoration',()=>{
- const rig=createOperatorRig('rook','blue');
+ // Match battlefield lazy accessories; avoid unrelated mesh allocations.
+ const rig=createOperatorRig('rook','blue',true);
  const model='boonie'; {
   const {kit,wardrobe}=selectWardrobeItem(bareLabEquipment(),initialWardrobe(),'headwear',model);
+  // Instantiate the selected headwear before asserting its geometry.
+  poseOperator(rig,pose(kit,wardrobe),0);
   const material=rig.visualKit.wardrobeHead.headwearMaterials[model];
   const finish=material.roughnessMap;
   const geo=rig.visualKit.wardrobeHead.headwear[model].children[0].children[0].geometry;
