@@ -7,10 +7,12 @@ import type {WeaponFamilyBuild} from './equipment-weapon-families.ts';
 import {addARFamily} from './weapons/geometry/ar-silhouettes.ts';
 import {addAKFamily} from './weapons/geometry/ak-silhouettes.ts';
 import {addHKFamily} from './weapons/geometry/hk-silhouettes.ts';
+import {addFALFamily} from './weapons/geometry/fal-silhouettes.ts';
 
 import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,
  AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD,
- HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD}
+ HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD,
+ FAL_BLACK_METAL,FAL_DARK_POLYMER}
  from './weapons/geometry/weapon-visual-palette.ts';
 export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,
@@ -24,7 +26,11 @@ export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
    AR_MUTED_FDE,showFactoryMuzzle);
  else if(build.family==='ak')
   addAKFamily(root,build,AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD);
- else addHKFamily(root,build,HK_BLACK_METAL,HK_DARK_POLYMER,
-  HK_WOOD,showFactoryMuzzle);
+ else if(build.family==='hk')
+  addHKFamily(root,build,HK_BLACK_METAL,HK_DARK_POLYMER,
+   HK_WOOD,showFactoryMuzzle);
+ else if(build.family==='fal')
+  addFALFamily(root,build,FAL_BLACK_METAL,FAL_DARK_POLYMER,showFactoryMuzzle);
+ else throw new Error('Unknown weapon visual family');
  return root;
 }
