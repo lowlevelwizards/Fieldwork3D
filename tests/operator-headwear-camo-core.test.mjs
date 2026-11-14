@@ -44,7 +44,8 @@ test('forty-six independently authored 32/64px camo families use fixed opaque ca
     id+' color '+tone+' must keep measured authored color proportions');
   assert.ok(coverage.every(n=>n>.01&&n<(id==='east-german-strichtarn'?.90:.80)),
    id+' all ink tones must appear (raincloth may be mostly neutral)');
-  assert.ok(recipe.colors.length>=3&&recipe.colors.length<=7,id);
+  assert.ok(recipe.colors.length>=(id==='british-desert-dpm'?2:3)&&recipe.colors.length<=7,
+   id+' must retain its authentic ink count (British Desert DPM is two-color)');
   for(let i=0;i<indices.length;i++){
    assert.equal(tile[i*4+3],255,id);
    assert.ok(indices[i]<recipe.colors.length,id);

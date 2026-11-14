@@ -148,3 +148,11 @@ test('A1 bounded shards preserve exact complete test ownership',()=>{
  assert.throws(()=>shardTestPaths(files,['--shard=17/16']));
  assert.throws(()=>shardTestPaths(files,['--shard=0/16']));
 });
+
+test('A1 long camouflage pose test has an exclusive CI shard',()=>{
+ const files=[...Array.from({length:44},(_,i)=>'other-'+i),
+  'tests/operator-headwear-camo-pose.test.mjs'];
+ const shards=Array.from({length:16},(_,i)=>shardTestPaths(files,['--shard='+(i+1)+'/16']));
+ assert.deepEqual(shards.flat().sort(),[...files].sort());
+ assert.deepEqual(shards[15],['tests/operator-headwear-camo-pose.test.mjs']);
+});
