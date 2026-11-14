@@ -66,14 +66,13 @@ test('H5: physical retention starts behind the shell and beneath the lip',()=>{
  }
 });
 
-test('H5: ACH central ear and deeper nape are substantial, not tiny stepped parts',()=>{
+test('H17: one continuous ear/nape surface replaces the three side cuboids',()=>{
  const v=headwearCuboidVolumes('ach');
- const ear=v.find(x=>x.name==='ach-right-ear-wrap');
- const nape=v.find(x=>x.name==='ach-right-nape-return');
- assert.ok(ear&&nape);
- assert.ok(ear.height>=4.0&&ear.depth>=5.0&&ear.width>=1.25,
-  'H16 deep, broad flared ear guard should remain one major volume');
- assert.ok(nape.height>=3.6&&nape.depth>=2.8);
- assert.ok(ear.y-ear.height/2<nape.y-nape.height/2-.15);
- assert.ok(nape.z-nape.depth/2<ear.z+ear.depth/2-.35);
+ assert.equal(v.length,5);
+ assert.equal(v.filter(x=>x.name.includes('ear-nape')).length,2);
+ assert.equal(v.filter(x=>/ear-wrap|temple|nape-return/.test(x.name)).length,0);
+ const p=achMichProfile('ach');
+ assert.ok(p.hem.every(point=>point[0]===p.side));
+ assert.equal(achMichHemY('ach',0),2.31);
+ assert.equal(achMichHemY('ach',5.1),2.55);
 });
