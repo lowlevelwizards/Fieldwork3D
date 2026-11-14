@@ -210,6 +210,24 @@ export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],
  if(!tail.length||!routeSwept(relief,tail,fineSweep))return [];
  return [relief,...smoothTraversalRoute(relief,tail,physical)];
 }
+/** D3.4: locally reconnect a displaced body to the SAME existing
+ * transient waypoint. This is called only on the motor's already
+ * rate-limited sustained WALL/FURNITURE replan, never during a normal tick.
+ * A legal full-body connector can be added in front of the remaining
+ * transient route; the authored PlanNode and intended door sequence stay.
+ * No world-state change, independent movement rule, or collision override.
+ */
+export function repairBlockedTransientWorldLeg(from:Pt,next:Pt,
+ remaining:readonly Pt[],doors:Door[],world?:SessionWorldGeometry):Pt[]{
+ const span=Math.hypot(from.x-next.x,from.y-next.y);
+ if(span<4||span>64||sweptBodyClear(from,next,doors,OPERATOR_RADIUS,world))
+   return [];
+ const connector=routeWithNormalWorld(from,next,doors,world);
+ if(!connector.length||courseLength(from,connector)>span*2.5+20||
+    !sweptBodyClear(from,connector[0],doors,OPERATOR_RADIUS,world))
+   return [];
+ return [...connector,...remaining.map(p=>({...p}))];
+}
 /** At a grazing prop edge, the coarse A* start cell can be blocked even
  * though the actor itself has a perfectly legal full-size sidestep. Search a
  * few short, swept local escapes before authorizing a squeeze. Each recovery
