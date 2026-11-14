@@ -10,9 +10,9 @@ import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
 
 const p=(x,y)=>({x,y});
 test('D3.8 warehouse 31123: existing self-clearance offers actual swept legal exit from body-stalled leaf',()=>{
- const seed=31123,site=generateSite(seed,'standard',undefined,
+ const seed=31123,site=generateSite(seed,'small',undefined,
   {mission:'intel'},{archetype:'warehouse'});
- const s=newSession(0,seed,'full-view','standard','intel',
+ const s=newSession(0,seed,'full-view',site.scale??'small','intel',
   {...site,training:true,enemies:[],encounter:undefined},
   {enableCivilians:false});
  try{
