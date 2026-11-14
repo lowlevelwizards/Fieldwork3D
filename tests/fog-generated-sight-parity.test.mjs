@@ -4,6 +4,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession,team,observerPointVisible} from '../src/breach-game.ts';
+import {paintFogVisibility} from '../src/breach-fog-mask.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {visionPolygon} from '../src/breach-vision-polygon.ts';
@@ -47,4 +48,31 @@ test('generated-site 3D fog sight polygons do not over-disclose indoor ground',(
  assert.equal(unseenInPolygon,0,
   'Fog polygons reveal '+unseenInPolygon+' blocked indoor samples / '+checked+
   '; examples: '+JSON.stringify(worst));
+});
+
+// Native Canvas fill is radial but remains bounded by the SAME exact sight
+// polygon. This avoids a new CPU scan and keeps the fully hidden region opaque.
+test('far sight is graded inside actual LOS rather than fully erased',()=>{
+ const s=newSession(0,19,'exterior-known','small');
+ const gradients=[],fills=[];
+ const canvas={width:1,height:1};
+ const ctx={canvas,filter:'none',fillStyle:'#fff',
+  globalCompositeOperation:'source-over',save(){},restore(){},
+  setTransform(){},beginPath(){},moveTo(){},lineTo(){},closePath(){},
+  fill(){fills.push({mode:this.globalCompositeOperation,style:this.fillStyle});},
+  createRadialGradient(...radii){
+   const gradient={radii,stops:[],addColorStop(at,color){this.stops.push({at,color});}};
+   gradients.push(gradient);return gradient;
+  }};
+ try{
+  paintFogVisibility(ctx,s);
+  assert.equal(gradients.length,team(s).filter(a=>a.health>0).length);
+  assert.equal(fills.length,gradients.length);
+  assert.ok(fills.every(f=>f.mode==='destination-out'&&gradients.includes(f.style)));
+  for(const gradient of gradients){
+   assert.equal(gradient.stops[0].color,'rgba(255,255,255,1)');
+   assert.equal(gradient.stops.at(-1).color,'rgba(255,255,255,.38)');
+   assert.ok(gradient.radii[5]>gradient.radii[2]);
+  }
+ }finally{activateSite(null);}
 });
