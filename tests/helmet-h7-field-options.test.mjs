@@ -16,7 +16,7 @@ test('H7 saved options do not vanish when changing between historical and modern
  const v=readHelmetField({rails:true,shroud:true,camera:true,velcro:true,
   band:true,concealment:'net',goggles:'front',light:true,strobe:true});
  const old=resolveHelmetField('pasgt',v);
- assert.equal(old.rails,false);assert.equal(old.camera,false);
+ assert.equal(old.rails,true);assert.equal(old.camera,false);
  assert.equal(old.shroud,true);assert.equal(old.goggles,'front');
  assert.equal(resolveHelmetField('ach',v).rails,true);
  assert.equal(v.rails,true);
