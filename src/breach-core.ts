@@ -266,7 +266,7 @@ const sweepPassable=(from:Pt,to:Pt,canStand:(p:Pt)=>boolean)=>{
 /** Broad pathfinding remains 16-unit A*, with bounded local 8-unit rescue
  * for a physically valid narrow route missed by the coarse grid. */
 export function route(from:Pt,to:Pt,
-  canStand:(p:Pt)=>boolean=passable):Pt[]{
+  canStand:(p:Pt)=>boolean=passable,repairBlockedStart=false):Pt[]{
   // Most routes have a legal snapped endpoint. Preserve the single cheap
   // A* path in that overwhelmingly common case. A disconnected map must not
   // pay for another full search on every attempted door or actor route.
@@ -278,16 +278,16 @@ export function route(from:Pt,to:Pt,
     // Bypass the guaranteed failed first pass when the snapped target is
     // physically invalid. A nearby swept legal grid anchor is enough.
     return distance(from,to)>245?
-      routeGrid(from,to,canStand,GRID,5000,Infinity,true):
-      routeGrid(from,to,canStand,GRID/2,3800,76,true);
+      routeGrid(from,to,canStand,GRID,5000,Infinity,true,repairBlockedStart):
+      routeGrid(from,to,canStand,GRID/2,3800,76,true,repairBlockedStart);
   }
-  const broad=routeGrid(from,to,canStand,GRID,6000);
+  const broad=routeGrid(from,to,canStand,GRID,6000,Infinity,false,repairBlockedStart);
   if(broad.length||distance(from,to)>245)return broad;
-  return routeGrid(from,to,canStand,GRID/2,3800,76,true);
+  return routeGrid(from,to,canStand,GRID/2,3800,76,true,repairBlockedStart);
 }
 function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   grid:number,budget:number,padding=Infinity,
-  alternateGoal=false):Pt[]{
+  alternateGoal=false,repairBlockedStart=false):Pt[]{
   const cellAt=(p:Pt)=>({col:Math.round(p.x/grid),
     row:Math.round(p.y/grid)});
   const cellPoint=(col:number,row:number):Pt=>({x:col*grid,
@@ -319,9 +319,54 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
     if(!targets.size)return [];
   }else targets.add(goalKey);
   const open=new RouteOpenHeap();
-  open.push({col:st.col,row:st.row,g:0,f:0});
-  const best=new Map<string,number>([[startKey,0]]);
+  const best=new Map<string,number>();
   const parents=new Map<string,string>();
+  // D3.2.10: world-truth recovery can start at a legal *subgrid* position
+  // whose nearest grid center is INSIDE a sill or furniture clearance.
+  // The old A* seeded that illegal center, then rejected every route
+  // because its initial physical connector crossed the obstacle.
+  // Seed a few NEARBY, fully swept legal grid starts into this SAME A*;
+  // no second global search, actor movement or collision exemption.
+  const snapped=cellPoint(st.col,st.row);
+  const displacedStart=repairBlockedStart&&
+    (!walkableCell(st.col,st.row)||
+     !sweepPassable(from,snapped,canStand));
+  if(!displacedStart){
+    best.set(startKey,0);
+    open.push({col:st.col,row:st.row,g:0,f:0});
+  }else{
+    if(!canStand(from))return [];
+    for(let ring=1;ring<=2;ring++)
+      for(let dy=-ring;dy<=ring;dy++)
+        for(let dx=-ring;dx<=ring;dx++){
+          if(Math.max(Math.abs(dx),Math.abs(dy))!==ring)continue;
+          const col=st.col+dx,row=st.row+dy;
+          if(!walkableCell(col,row))continue;
+          const point=cellPoint(col,row);
+          // This entry is the only bridge from the actor's exact real
+          // position to the rescued grid. Use finer checks than the
+          // ordinary grid sweep, so a grazing furniture edge cannot be
+          // accepted merely because a 4-unit sample skipped it.
+          const span=distance(from,point);
+          let connectorSafe=true;
+          for(let sample=1,n=Math.max(1,Math.ceil(span/1.25));
+              sample<=n;sample++){
+            const t=sample/n;
+            if(!canStand({x:from.x+(point.x-from.x)*t,
+              y:from.y+(point.y-from.y)*t})){
+              connectorSafe=false;break;
+            }
+          }
+          if(!connectorSafe)continue;
+          const k=key(col,row);
+          const g=distance(from,point)/grid;
+          if(g>=(best.get(k)??Infinity))continue;
+          best.set(k,g);parents.set(k,startKey);
+          open.push({col,row,g,
+            f:g+Math.hypot(col-goal.col,row-goal.row)});
+        }
+    if(!open.length)return [];
+  }
   const visited=new Set<string>();
   let reachedKey:string|null=null;
   const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
@@ -368,6 +413,10 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   const compact:Pt[]=[];
   for(let i=0;i<path.length;i++){
     const a=compact.at(-1)??from,b=path[i],c=path[i+1];
+    // A repaired start anchor is physically proven from the actor's
+    // actual position. Keep that connector: collinearity alone does not
+    // prove it safe to skip the anchor beside a solid obstacle.
+    if(displacedStart&&i===0){compact.push(b);continue;}
     if(c){
       const cross=(b.x-a.x)*(c.y-b.y)-(b.y-a.y)*(c.x-b.x);
       if(Math.abs(cross)<1e-6)continue;
