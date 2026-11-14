@@ -1,100 +1,128 @@
-/** H9.4a: three-hole ACH/MICH NVG shroud.
- * A shallow, graphic Wilcox-style retaining plate with authentic three-point
- * mount silhouette, negative-space wing cutouts, actual raised NVG receiver
- * guides and oversized readable fasteners. No electronics or gameplay role.
+/** H11: gameplay-readable NVG shroud for ACH/MICH.
+ * One broad mounting silhouette, one protruding receiver and one open-looking
+ * rectangular socket. No ornamental tracks, wing perforations, washer stacks
+ * or per-frame geometry. Attach once to the real front drape facet.
  */
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover} from './operator-helmet-surface.ts';
-const contour=(points:readonly (readonly [number,number])[]):THREE.Shape=>{
+import {sampleHelmetCover,sampleHelmetShell} from './operator-helmet-surface.ts';
+
+type Pt=readonly [number,number];
+const PLATE_OUTLINE:readonly Pt[]=[
+ // One tall top lug, an angular wing to either side, and a squared base.
+ [-.58,1.48],[.58,1.48],[.94,.83],[.94,.47],
+ [1.78,.34],[2.24,.02],[2.24,-.64],[1.78,-.91],
+ [.95,-.82],[.95,-1.25],[-.95,-1.25],[-.95,-.82],
+ [-1.78,-.91],[-2.24,-.64],[-2.24,.02],[-1.78,.34],
+ [-.94,.47],[-.94,.83]
+];
+const shapeFrom=(points:readonly Pt[])=>{
  const s=new THREE.Shape();
- for(let i=0;i<points.length;i++){
-  const [x,y]=points[i];if(i===0)s.moveTo(x,y);else s.lineTo(x,y);
- }
- s.closePath();return s;
+ points.forEach(([x,y],i)=>i?s.lineTo(x,y):s.moveTo(x,y));
+ s.closePath();
+ return s;
 };
-const relief=(shape:THREE.Shape,points:readonly (readonly [number,number])[])=>{
- const h=new THREE.Path();
- points.forEach(([x,y],i)=>i?h.lineTo(x,y):h.moveTo(x,y));
- h.closePath();shape.holes.push(h);
+const mesh=(parent:THREE.Group,name:string,geometry:THREE.BufferGeometry,
+ material:THREE.Material,x=0,y=0,z=0)=>{
+ const result=new THREE.Mesh(geometry,material);
+ result.name=name;result.position.set(x,y,z);
+ result.castShadow=false;result.receiveShadow=false;
+ parent.add(result);return result;
 };
-const face=(g:THREE.Group,name:string,shape:THREE.Shape,
- material:THREE.Material,depth=.15,z=0)=>{
- const mesh=new THREE.Mesh(new THREE.ExtrudeGeometry(shape,{
-  depth,steps:1,bevelEnabled:false,curveSegments:1
- }),material);
- mesh.name=name;mesh.position.z=z;
- mesh.castShadow=false;mesh.receiveShadow=false;g.add(mesh);return mesh;
-};
-const screw=(g:THREE.Group,x:number,y:number,z:number,
- metal:THREE.Material,dark:THREE.Material)=>{
- const washer=new THREE.Mesh(new THREE.CylinderGeometry(.21,.21,.06,8),dark);
- washer.position.set(x,y,z);washer.rotation.x=Math.PI/2;
- washer.name='nvgs-washer';g.add(washer);
- const head=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.075,8),metal);
- head.position.set(x,y,z+.046);head.rotation.x=Math.PI/2;
- head.name='nvgs-mount-screw';g.add(head);
- for(const m of [washer,head]){m.castShadow=false;m.receiveShadow=false;}
-};
-/** Do not approximate the shroud with one front-facing rectangle. The
- * attaching frame comes from the actual draped shell/front facet, and
- * all three screw heads remain on the same molded mount.
+/** Batch three intentionally oversized, flat hex fasteners as ONE mesh.
+ * No round cylinders or separate hidden washer geometry.
+ */
+function threeFasteners(parent:THREE.Group,light:THREE.Material){
+ const positions:number[]=[];
+ const centers:readonly Pt[]=[[0,1.16],[-1.86,-.30],[1.86,-.30]];
+ const r=.24,z=.242;
+ for(const [cx,cy] of centers)
+  for(let side=0;side<6;side++){
+   const a=side*Math.PI/3+Math.PI/6;
+   const b=(side+1)*Math.PI/3+Math.PI/6;
+   positions.push(
+    cx,cy,z,
+    cx+Math.cos(a)*r,cy+Math.sin(a)*r,z,
+    cx+Math.cos(b)*r,cy+Math.sin(b)*r,z
+   );
+  }
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geo.computeVertexNormals();geo.computeBoundingBox();
+ geo.userData.h11FastenerIslands=centers.length;
+ const screws=mesh(parent,'three-oversized-nvg-fasteners',geo,light);
+ screws.userData.h11FastenerCount=centers.length;
+ return screws;
+}
+/** A single static surface anchor shared across all presentation scales.
+ * PASGT retains its separate historical bracket in field-visuals.
  */
 export function addAchMichThreeHoleShroud(
  shell:AchMichCoverShell,g:THREE.Group,
  metal:THREE.Material,dark:THREE.Material,light:THREE.Material
 ):void{
- const f=sampleHelmetCover(shell,'front',0,.26,.16);
- if(!f)throw Error('H9.4 missing front shroud face on '+shell);
+ const f=sampleHelmetCover(shell,'front',0,.26,.095);
+ const bare=sampleHelmetShell(shell,'front',0,.26,.095);
+ if(!f||!bare)throw Error('H11 missing front shroud facet on '+shell);
  const anchor=new THREE.Group();
- anchor.name='h9-three-hole-shroud-surface-anchor';
- anchor.position.copy(f.position).addScaledVector(f.normal,.11);
+ anchor.name='shroud-covered-mount';
+ anchor.position.copy(f.position).addScaledVector(f.normal,.04);
  anchor.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
-  f.right,f.up,f.normal));
+  f.right,f.up,f.normal
+ ));
  anchor.userData.h9SurfaceNormal=f.normal.toArray();
  anchor.userData.h9UsesCoverFrame=true;
  g.add(anchor);
- const outer:[number,number][]=[
-  [-.62,1.16],[.62,1.16],[.82,.80],[.73,.34],
-  [1.65,.18],[1.85,-.17],[1.70,-.57],[1.20,-.68],
-  [.67,-.49],[.60,-1.06],[-.60,-1.06],[-.67,-.49],
-  [-1.20,-.68],[-1.70,-.57],[-1.85,-.17],[-1.65,.18],
-  [-.73,.34],[-.82,.80]
- ];
- const backing=contour(outer);
- face(anchor,'molded-shroud-rubber-interface',backing,dark,.055,-.06);
- const body=contour(outer);
- relief(body,[[-1.43,-.19],[-.95,-.13],[-.86,.16],[-1.35,.08]]);
- relief(body,[[1.43,-.19],[1.35,.08],[.86,.16],[.95,-.13]]);
- face(anchor,'three-hole-shroud-open-wings',body,metal,.14,.025);
- // Raised wedge and dark recessed NVG shoe: distinctly NOT a small box.
- const cradle=contour([
-  [-.61,.73],[.61,.73],[.71,.42],[.69,-.65],
-  [.50,-.90],[-.50,-.90],[-.69,-.65],[-.71,.42]
- ]);
- face(anchor,'raised-nvg-receiver-cradle',cradle,dark,.16,.185);
- const socket=contour([
-  [-.42,.44],[.42,.44],[.42,-.42],[.28,-.67],
-  [-.28,-.67],[-.42,-.42]
- ]);
- face(anchor,'nvg-receiver-locking-slot',socket,metal,.055,.36);
- const well=contour([
-  [-.28,.28],[.28,.28],[.28,-.40],[-.28,-.40]
- ]);
- face(anchor,'recessed-nvg-locking-well',well,dark,.025,.420);
- for(const sign of [-1,1]){
-  const guide=contour(sign===-1?[
-   [-.69,.50],[-.49,.50],[-.49,-.62],[-.66,-.78]
-  ]:[
-   [.49,.50],[.69,.50],[.66,-.78],[.49,-.62]
-  ]);
-  face(anchor,'nvg-locking-track',guide,metal,.09,.385);
- }
- // Three real hole positions: top center and one each on the side wings.
- for(const [x,y] of [[0,.91],[-1.47,-.32],[1.47,-.32]])
-  screw(anchor,x,y,.23,light,dark);
- anchor.scale.set(1.29,1.22,1.10);
- anchor.userData.h10GraphicScale=1.29;
+
+ // One solid, thick outline; the four recognizable sections are
+ // top lug, broad side wings, base, and the raised central receiver.
+ // No holes or layered plates cutting down the distant silhouette.
+ const plate=new THREE.ExtrudeGeometry(shapeFrom(PLATE_OUTLINE),{
+  depth:.22,steps:1,bevelEnabled:false,curveSegments:1
+ });
+ mesh(anchor,'iconic-three-hole-shroud-plate',plate,dark,0,0,-.025);
+
+ // A bold block, 25% more proud than the old thin receiver. Its
+ // large planar front is easy to read even under simple cel shading.
+ mesh(anchor,'single-block-nvg-receiver',
+  new THREE.BoxGeometry(1.55,1.76,.48),metal,0,-.08,.39);
+
+ // One dark inset rectangle implies the receiver opening without
+ // another nested bezel, tiny tracks, bevels, or unseen back faces.
+ mesh(anchor,'single-oversized-nvg-socket',
+  new THREE.PlaneGeometry(.87,1.08),dark,0,-.08,.637);
+
+ threeFasteners(anchor,light);
+ // Larger footprint in screen space, but still follows the draped
+ // front normal and stays separate from optional bungees/rails.
+ anchor.scale.set(1.28,1.20,1.22);
+ anchor.userData.h10GraphicScale=1.28;
  anchor.userData.h9ShroudScrews=3;
- anchor.userData.h9ShroudProfile='three-hole-winged-nvg';
+ anchor.userData.h9ShroudProfile='graphic-block-wing-lug';
+ anchor.userData.h11IconicShroud=true;
+ anchor.userData.h11PlateOutlinePoints=PLATE_OUTLINE.length;
+ anchor.userData.h11PrimaryPartCount=4;
+ anchor.userData.h11NoWingPerforations=true;
+ let triangles=0;
+ anchor.traverse(o=>{
+  if(o instanceof THREE.Mesh){
+   const count=o.geometry.index?.count??
+    o.geometry.getAttribute('position').count;
+   triangles+=Math.floor(count/3);
+  }
+ });
+ anchor.userData.h11TriangleCount=triangles;
+ // A single cover transform floated over bare helmets. Cache the two
+ // mounting frames while SHARING all geometry/material via clone().
+ const bareAnchor=anchor.clone(true);
+ bareAnchor.name='shroud-bare-mount';
+ bareAnchor.position.copy(bare.position).addScaledVector(bare.normal,.04);
+ bareAnchor.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+  bare.right,bare.up,bare.normal
+ ));
+ bareAnchor.visible=false;
+ bareAnchor.userData.h11MountedOn='shell';
+ anchor.userData.h11MountedOn='cover';
+ anchor.userData.h11SeatClearance=.04;
+ g.add(bareAnchor);
 }
