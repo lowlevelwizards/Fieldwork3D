@@ -354,7 +354,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  let shellCovered=false;
  if(shell==='pasgt'&&layers.pasgtCover){
   shellCovered=helmet.cover;
-  updatePasgtCoverLayers(layers.pasgtCover,effective.setup.cover!=='none',
+  updatePasgtCoverLayers(layers.pasgtCover,helmet.cover,
    helmet.pasgt!,
    helmetCover?.headwearCamo,camoIdentity,coverRoll,
    !['half-mask','respirator-half','gas-gp5','gas-m17',
