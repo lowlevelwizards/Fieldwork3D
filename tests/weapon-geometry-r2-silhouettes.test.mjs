@@ -30,8 +30,8 @@ const hits=(model,x,y)=>{
 };
 
 test('R2: 91 visual part definitions, 17 curated IDs and correct landmark furniture',()=>{
- assert.ok(Object.keys(FAMILY_PARTS).length>=91,'preserve 91 authored core parts');
- assert.ok(FAMILY_PRESETS.length>=17,'preserve original 17 factory references');
+ assert.equal(Object.keys(FAMILY_PARTS).length,91);
+ assert.equal(FAMILY_PRESETS.length,17);
  const byId=Object.fromEntries(FAMILY_PRESETS.map(p=>[p.id,p]));
  assert.equal(byId['ar-m16a4'].parts.handguard,'ar-m5-rail');
  assert.equal(byId['ar-car15'].parts.handguard,'ar-car15-ribbed');
@@ -44,7 +44,7 @@ test('R2: 91 visual part definitions, 17 curated IDs and correct landmark furnit
 
 test('R2: all 17 assembled profiles preserve shot tip, finite bounds and mesh budget',()=>{
  let profiles=0;
- for(const p of FAMILY_PRESETS.filter(p=>p.family==='ar'||p.family==='ak')){
+ for(const p of FAMILY_PRESETS){
   const {group,config}=model(p.id);
   const extent=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(extent.max.x-resolveWeaponAssembly(config).muzzleX)<.001,
