@@ -106,7 +106,6 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
  const extentAtHem=corner?style.hem[s.z===style.topFront?0:5][0]:
   sideExtent(style,s.z);
  const outward=ACH_MICH_COVER_OFFSET;
- const midWidth=unifiedHelmetEarShoulderWidth(style.shell,s.z);
  // H29: cloth follows the same six hem points and the same short return
  // as the shell; no independently authored outward ear face/ridge.
  const sideWidth=ring==='hem'?extentAtHem+outward+.05:
