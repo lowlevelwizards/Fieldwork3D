@@ -122,7 +122,7 @@ export function referenceForPreset(id:string):WorkbenchPose{
  const preset=PRESET_CATALOG.find(p=>p.id===id);
  if(!preset)throw Error('Unknown target '+id);
  const idSource=preset.family==='ak'||preset.weapon==='shotgun'||
-   preset.family==='hk'&&preset.weapon==='rifle'?
+   (preset.family==='hk'||preset.family==='fal')&&preset.weapon==='rifle'?
    'ak-akm':'ar-m4a1';
  return AUTHORED_SHORT_REFERENCES[idSource];
 }
