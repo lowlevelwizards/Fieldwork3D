@@ -19,6 +19,8 @@ test('A1: effective appearance is deterministic and preserves every requested pr
   assert.equal(a.field.battery,false);
   assert.equal(a.field.chemlight,false);
   assert.equal(a.field.concealment,'none');
+  assert.equal(a.availability.light,'Requires side rails');
+  assert.ok(a.availability.bungees);
   assert.ok(a.feedback.find(x=>x.key==='light'&&x.status==='saved-inactive'));
   assert.ok(a.feedback.find(x=>x.key==='concealment'));
  }
@@ -27,6 +29,7 @@ test('A1: field net automatically requires band without rewriting save',()=>{
  const input={shell:'ach',helmetSetup:{cover:'fitted'},helmetField:{band:false,concealment:'net'}};
  const e=resolveEffectiveHelmetAppearance(input);
  assert.equal(e.field.band,true,'effective state includes the required net band');
+ assert.equal(e.availability.band,'Required by retaining net');
  assert.ok(e.feedback.some(x=>x.key==='band'&&x.status==='required'));
  assert.equal(input.helmetField.band,false);
 });

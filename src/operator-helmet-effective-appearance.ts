@@ -15,6 +15,7 @@ export type EffectiveHelmetAppearance={
  field:HelmetFieldOptions;fieldActive:boolean;
  pasgt:PasgtDetails|undefined;
  feedback:readonly HelmetChoiceFeedback[];
+ availability:Readonly<Partial<Record<keyof HelmetFieldOptions,string>>>;
 };
 export type HelmetAppearanceInput={
  shell:string;helmetSetup?:unknown;helmetField?:unknown;
@@ -35,6 +36,23 @@ export function resolveEffectiveHelmetAppearance(
  const field=resolveHelmetField(shell,requestedField,{covered:cover});
  if(field.concealment==='net')field.band=true;
  const feedback:HelmetChoiceFeedback[]=[];
+ const availability:Partial<Record<keyof HelmetFieldOptions,string>>={};
+ if(isFieldHelmet(shell)){
+  if(!field.rails){
+   availability.camera='Requires side rails';
+   availability.light='Requires side rails';
+  }
+  if(!field.rails||!field.shroud)
+   availability.bungees=!field.rails?'Requires side rails':'Requires an NVG shroud';
+  if(field.strobe)availability.chemlight='Crown slot occupied by strobe';
+  if(field.goggles==='rear'){
+   availability.counterweight='Rear goggles occupy carrier';
+   availability.battery='Rear goggles occupy carrier';
+  }
+  if(!cover&&!field.velcro)availability.patches='Requires cover or Velcro panels';
+  if(field.concealment==='net')availability.band='Required by retaining net';
+  if(shell==='pasgt')availability.battery='Not available on PASGT';
+ }
  for(const key of isFieldHelmet(shell)?
   Object.keys(requestedField) as (keyof HelmetFieldOptions)[]:[]){
   const saved=requestedField[key],visible=field[key];
@@ -68,5 +86,5 @@ export function resolveEffectiveHelmetAppearance(
   slits:field.concealment!=='none'
  }:pasgt;
  return {shell,cover,setup,field,fieldActive,pasgt:effectivePasgt,
-  feedback};
+  feedback,availability};
 }

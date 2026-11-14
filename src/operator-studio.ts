@@ -1545,14 +1545,9 @@ function renderMaterials(){
     const netLocksBand=key==='band'&&currentField.concealment==='net';
     const on=netLocksBand||effective[key]===true;
     availability=availability&&!netLocksBand;
-    const reason=!availability?(
-     netLocksBand?'REQUIRED TO SECURE NET':
-     historical?'NOT AVAILABLE ON PASGT':
-     key==='bungees'?!currentField.rails?'REQUIRES SIDE RAILS':'REQUIRES NVG SHROUD':
-     key==='camera'||key==='light'?'REQUIRES SIDE RAILS':
-     key==='chemlight'?'CROWN SLOT OCCUPIED':
-     key==='battery'||key==='counterweight'?'REAR GOGGLES OCCUPY SLOT':
-     key==='patches'?'REQUIRES VELCRO OR COVER':'UNAVAILABLE'):null;
+    const requirement=resolvedHelmet.availability[key];
+    availability=availability&&!requirement;
+    const reason=requirement??(!availability?'UNAVAILABLE':null);
     const b=makeButton(title,on,()=>changeField({[key]:!on}));
     b.classList.add('helmet-option-card');
     const icon=document.createElement('span');icon.className='helmet-option-glyph';

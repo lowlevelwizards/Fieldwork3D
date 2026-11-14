@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {achMichHemY} from './operator-ach-mich-details.ts';
-import {isFieldHelmet,readHelmetField,resolveHelmetField,resolveHelmetFieldColor,
+import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
  type FieldHelmet} from './operator-helmet-field-policy.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
@@ -195,7 +195,8 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
 export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  shellHex:number,covered:boolean,headEyewear='eyes-none',
  alreadyResolved=false):void{
- const s=alreadyResolved?readHelmetField(raw):resolveHelmetField(v.shell,raw,{covered}),m=v.modules;
+ const s=alreadyResolved?raw as HelmetFieldOptions:
+  resolveHelmetField(v.shell,raw,{covered}),m=v.modules;
  // Swap between cached, pre-authored cloth and shell ring profiles only
  // when the cover state changes; never raycast every animation frame.
  if(v.shell!=='pasgt'){
