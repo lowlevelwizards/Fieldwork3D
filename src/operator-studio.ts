@@ -38,6 +38,8 @@ import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
  HELMET_HEADSET_MOUNT_OPTIONS,HELMET_REAR_OPTIONS,HELMET_LIGHT_OPTIONS,
  type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {applyHelmetPreset,helmetPresetChoices} from './operator-helmet-preset-catalog.ts';
+import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
+ type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
 import {M1956_VARIANTS,type M1956Variant} from './operator-m1956-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
@@ -864,6 +866,9 @@ function chooseStyle(slot:WardrobeSlot,id:string){
    slot==='rigStyle'?'THIS RIG LOOK NEEDS A MATCHING EQUIPPED LOAD-BEARING CLASS':
    'This item requires a different equipped kit');return;
  }
+ // Re-selecting Ballistic Helmet must not reset an existing mid/high cut.
+ if(slot==='headwear'&&id==='ach'&&ballisticHelmetCut(current().styles.headwear))
+  return;
  // Preserve ITEM while auditioning different styles; MATERIAL stays optional.
  changeWardrobe(setWardrobeStyle(current(),slot,id));
  applyStudioStep();
@@ -1356,8 +1361,48 @@ function renderMaterials(){
   }
  }
  if(activeCategory==='headwear'){
+  const activeCut=ballisticHelmetCut(item);
+  if(activeCut){
+   // First HEAD > DETAILS section. Reuse approved ACH/MICH shells and fitted
+   // cover/mount profiles; switching does not discard attached options.
+   const cutGroup=row('BALLISTIC HELMET CUT',
+    'Choose coverage. Covers, colors, and accessories remain selected.');
+   cutGroup.classList.add('helmet-cut-section');
+   const cards=document.createElement('div');cards.className='helmet-cut-cards';
+   const shapes:Record<BallisticHelmetCut,string>={
+    full:'M5 10 L12 4 H52 L60 10 V28 H51 V39 H14 V29 H5 Z',
+    mid:'M5 10 L12 4 H52 L60 10 V28 H48 V35 H40 V22 H24 V35 H14 V28 H5 Z',
+    high:'M5 10 L12 4 H52 L60 10 V28 H48 V22 H17 V28 H5 Z'
+   };
+   for(const choice of [
+    {id:'full',title:'FULL-CUT',hint:'MORE COVERAGE'},
+    {id:'mid',title:'MID-CUT',hint:'EAR NOTCH'},
+    {id:'high',title:'HIGH-CUT',hint:'OPEN EAR'}
+   ] as const){
+    const b=makeButton(choice.title,activeCut===choice.id,()=>{
+     const before=current();
+     changeWardrobe({...before,styles:{...before.styles,
+      headwear:BALLISTIC_CUT_SHELL[choice.id]}});
+    });
+    b.className='helmet-cut-card';b.dataset.helmetCut=choice.id;
+    b.setAttribute('aria-label',choice.title+' · '+choice.hint);
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 64 44');
+    svg.setAttribute('aria-hidden','true');
+    svg.classList.add('helmet-cut-illustration');
+    const shell=document.createElementNS('http://www.w3.org/2000/svg','path');
+    shell.setAttribute('d',shapes[choice.id]);
+    shell.setAttribute('fill','currentColor');svg.append(shell);
+    const name=document.createElement('span');
+    name.className='helmet-cut-title';name.textContent=choice.title;
+    const hint=document.createElement('small');
+    hint.className='helmet-cut-caption';hint.textContent=choice.hint;
+    b.replaceChildren(svg,name,hint);cards.append(b);
+   }
+   cutGroup.append(cards);
+  }
   row('HEADWEAR APPEARANCE',
-   'All approved hats and helmets are selectable. Appearance does not alter head protection or inventory; the equipped kit controls those.');
+   'Choose headwear in ITEMS. Shell cut and accessories are cosmetic; equipped protection is unchanged.');
   const helmetShell=item==='high-cut-rails'?'high-cut':item;
   const simpleAchMich=['ach','mich-2001','mich-2002'].includes(helmetShell);
   if(isH1ModernHelmet(helmetShell)&&helmetShell!=='pasgt'&&!simpleAchMich){
