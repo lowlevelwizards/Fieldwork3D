@@ -89,7 +89,7 @@ export function buildFALCoreSilhouette(
  // handguard rather than at the muzzle as on the G3.
  const barrel=addFacetedTube(root,'barrel',partIds.barrel,
   ids.barrel++,13.85,options.showFactoryMuzzle===false?22.00:21.15,.61,materials.barrel);
- barrel.position.y=.12;
+ barrel.position.y=0;
  // S1C: short wide gas-block ears; never an M16 tower or G3 hood.
  p('barrel',[
   [13.98,.24],[14.08,1.55],[14.12,2.68],
