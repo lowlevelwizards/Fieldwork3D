@@ -19,9 +19,9 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  'mich-2002':[
   [5.03,4.55,-5.70],
   [5.03,4.55,-0.78],
-  [5.28,3.06,0.12],
-  [5.28,3.06,2.48],
-  [5.08,1.90,3.88],
+  [5.28,3.06,0.10],
+  [5.28,3.06,2.52],
+  [5.08,1.90,4.08],
   [5.03,1.90,5.75]
  ],
  // H20: MICH TC-2001 is a full ear cutout, not the TC-2002 partial cut.
@@ -33,9 +33,9 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  'mich-2001':[
   [5.015,4.55,-5.71],
   [5.015,4.55,-0.80],
-  [5.145,5.30,0.12],
-  [5.145,5.30,2.48],
-  [5.065,2.05,3.93],
+  [5.145,5.30,0.10],
+  [5.145,5.30,2.52],
+  [5.065,2.05,4.08],
   [5.015,2.05,5.66]
  ]
 };
