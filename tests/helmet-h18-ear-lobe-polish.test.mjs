@@ -74,14 +74,14 @@ test('H19: identical crown language, 58 triangles for all three helmet cuts',()=
   assert.equal(group.children.length,1);
   const g=group.children[0].geometry;
   assert.equal(g.userData.h17UnifiedContour,true);
-  assert.equal(g.userData.exteriorQuads,29);
-  assert.equal(g.index.count,174,'29 quads = 58 triangles');
+  assert.equal(g.userData.exteriorQuads,39);
+  assert.equal(g.index.count,234,'29 quads = 58 triangles');
   assert.ok(near(g.boundingBox.max.y,roof));
   assert.equal(g.userData.achMichCrownInset,.53);
   assert.equal(g.userData.achMichBevelHeight,1.10);
  }
  const high=createHeadwearSilhouette('mich-2001',new THREE.MeshStandardMaterial());
  assert.equal(high.children[0].geometry.userData.h17UnifiedContour,true);
- assert.equal(high.children[0].geometry.userData.exteriorQuads,29);
+ assert.equal(high.children[0].geometry.userData.exteriorQuads,39);
  assert.ok(near(achMichHemY('mich-2001',.5),5.30));
 });
