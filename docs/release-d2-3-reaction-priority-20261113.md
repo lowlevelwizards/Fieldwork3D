@@ -29,7 +29,11 @@ The player firing pipeline reuses its already-computed, confirmed visible target
 
 `hitFacingInterrupted` makes current physical/hard action, a true contact stop and a recent active firing contact outrank optional incoming-hit facing. Neither LOOK/WATCH nor authored moving routes are deleted. The idle player executor now chooses **one** heading source in order: confirmed visible threat, then recent actual incoming-hit direction, then authored LOOK/WATCH. The later actor-phase hit override applies only while a soft active plan remains; it does not apply a second idle turn. A3.8 turn episodes remain owned by `rotate()`. The shared predicate is also used by weapon-yaw hit response. Quiet ticks short-circuit on hit age before calling the priority function.
 
-## D2.3d — Validation and release gate
+## D2.3d — Candidate search allocation reduction (implemented)
+
+The fixed two-sided correction search previously reconstructed a 5- or 7-item candidate array and offset objects **for every length ring** (up to 30 or 56 candidates during a failed search), while repeatedly calling `Math.hypot(side,back)` for the same fixed maneuver definitions. D2.3 precomputes two small immutable-order descriptor rosters and normalized weights once per module, leaving only the candidate point objects required by the existing swept collision/muzzle callbacks. Length order, lateral/rear ordering, exact floating-point expression, tests counter and early exits are preserved. The new reference-algorithm parity corpus validates both obstruction types across several aim angles and collision acceptance patterns.
+
+## D2.3e — Validation and release gate
 
 - New tests validate identical-plan continuation, hard action/hold/return/reload/sprint/retreat/no-ammo interruptions, same-node drag edit, different node ID/kind edits, contact-change and loss, cancellation without plan mutation, hit vs hard/active contact precedence, and no new render-time scheduler.
 - Real `breach-two-sided-fire-recovery`, `release5-investigation-continuity`, A3.3/A3.8/A3.10/A3.11, tactical targeting, D1 coherent crossing and R7 four-person firefights must pass. Also build/typecheck.
