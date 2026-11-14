@@ -27,6 +27,7 @@ import {initialWardrobe,resolvedWardrobe,
  wardrobeItemsForSlot,WARDROBE_SLOTS,type WardrobeSlot,
  type WardrobeOptions,type WardrobeItem} from './operator-wardrobe-data.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {isBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
 import {studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
 
