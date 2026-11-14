@@ -257,16 +257,9 @@ export function selfBlockingHingeRelief(
      doorSwingBlocked(door,future,[],OPERATOR_RADIUS,world))continue;
   // Favor forward footwork; fixed small angular offsets permit shoulder
   // clearance without converting the maneuver into broad pathfinding.
-  // First retain the original eight close, goal-oriented candidates.
-  // If a teammate is already EMBEDDED against the stopped leaf, those
-  // angles can all lie inside its swing. D3.7's exact warehouse witness
-  // showed a swept-clear 14–22-unit step away from the authored goal.
-  // This is a single cold-stall attempt, never a 60 Hz search.
-  for(const radius of [8,14,22])
+  for(const radius of [8,14])
     for(const turn of [0,Math.PI/8,-Math.PI/8,Math.PI/4,
-      -Math.PI/4,3*Math.PI/8,-3*Math.PI/8,Math.PI,
-      Math.PI/2,-Math.PI/2,5*Math.PI/8,-5*Math.PI/8,
-      3*Math.PI/4,-3*Math.PI/4,7*Math.PI/8,-7*Math.PI/8]){
+      -Math.PI/4,3*Math.PI/8,-3*Math.PI/8,Math.PI]){
       const theta=aim+turn;
       const p={x:a.p.x+Math.cos(theta)*radius,
        y:a.p.y+Math.sin(theta)*radius};
