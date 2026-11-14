@@ -95,11 +95,31 @@ export function captureD32RecoveryFeasibility(a:TeamActor,s:Session){
  if(!goal)return null;
  const world=sessionWorldGeometry(s);
  const worldRoute=routeWithSqueezeWorld(a.p,goal,s.doors,world);
- const fullyOpenedLeafNear=s.doors.some(door=>
+ // R2.5: offline witness only, not a route command. Distinguish a
+ // blocked snapped start from a truly disconnected goal by testing
+ // short exact-swept feet positions and routing from that real point.
+ const stableOpenLeafNear=!worldRoute.length&&s.doors.some(door=>
    door.open&&(door.openFraction??0)>=.95&&
    pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+6);
- const rescuedWorld=fullyOpenedLeafNear?
-   routeWithSqueezeWorld(a.p,goal,s.doors,world,true):[];
+ const localCandidates=[];
+ if(stableOpenLeafNear){
+  const heading=Math.atan2(goal.y-a.p.y,goal.x-a.p.x);
+  for(const length of [8,16])
+   for(const turn of [0,Math.PI/4,-Math.PI/4]){
+    const angle=heading+turn,point={x:a.p.x+Math.cos(angle)*length,
+     y:a.p.y+Math.sin(angle)*length};
+    if(!sweptBodyClear(a.p,point,s.doors,OPERATOR_RADIUS,world)){
+     localCandidates.push({length,turn,clear:false,routeCount:0});
+     continue;
+    }
+    const newRoute=routeWithSqueezeWorld(point,goal,s.doors,world);
+    localCandidates.push({length,turn,clear:true,
+     point:pos(point),routeCount:newRoute.length,
+     next:pos(newRoute[0]),nextClear:newRoute[0]?
+      sweptBodyClear(point,newRoute[0],s.doors,OPERATOR_RADIUS,world):
+      null});
+   }
+ }
  const intelRoute=a.side==='blue'?
    routeWithSqueezeIntel(s.intel,a.p,goal):[];
  const firstWorld=worldRoute[0],firstIntel=intelRoute[0];
@@ -117,10 +137,8 @@ export function captureD32RecoveryFeasibility(a:TeamActor,s:Session){
  return {goal:pos(goal),currentFirst:pos(firstActual),
   current:clearance(firstActual),worldCount:worldRoute.length,
   worldFirst:pos(firstWorld),worldClear:clearance(firstWorld),
-  repairedStartEligible:fullyOpenedLeafNear,
-  repairedWorldCount:rescuedWorld.length,
-  repairedWorldFirst:pos(rescuedWorld[0]),
-  repairedWorldClear:clearance(rescuedWorld[0]),
+  localProbeEligible:stableOpenLeafNear,
+  localProbe:localCandidates,
   intelCount:intelRoute.length,intelFirst:pos(firstIntel),
   intelClear:clearance(firstIntel),cover};
 }

@@ -160,19 +160,18 @@ const worldCanStand=(doors:Door[],world?:SessionWorldGeometry)=>{
  * Its result is transient navigation, not an authored path change. */
 export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],
  world?:SessionWorldGeometry,
- sharedCanStand?:(point:Pt,radius:number)=>boolean,
- repairBlockedStart=false):Pt[]{
+ sharedCanStand?:(point:Pt,radius:number)=>boolean):Pt[]{
  const canStand=sharedCanStand??worldCanStand(doors,world);
  if(!canStand(to,OPERATOR_RADIUS))return [];
  const physical=(a:Pt,b:Pt)=>sweptProfileClear(a,b,doors,0,'normal',world);
- const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS),repairBlockedStart);
+ const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS));
  if(standard.length&&routeSwept(from,standard,physical))
    return preferRoomyPath(from,to,standard,canStand,
      (a,b,r)=>intelSweep(a,b,canStand,r)&&physical(a,b));
  // An 8-unit grid may legally visit each cell but cut a solid corner
  // between cells. Do not mistake that coarse-grid miss for a genuinely
  // narrow corridor: first try a padded route, then one safe lateral step.
- const padded=route(from,to,p=>canStand(p,COMFORT_RADIUS),repairBlockedStart);
+ const padded=route(from,to,p=>canStand(p,COMFORT_RADIUS));
  if(padded.length&&routeSwept(from,padded,physical))
    return smoothTraversalRoute(from,padded,physical);
  // At a furniture corner a diagonal micro-step may be unsafe even when
@@ -259,12 +258,9 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorld
  }
  return [];
 }
-export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],
- world?:SessionWorldGeometry,repairBlockedStart=false):Pt[]{
- // OPENING hinged leaves remain pushable as normal. The optional
- // start-anchor rescue is diagnostics-only until R2 release acceptance.
- const normal=routeWithNormalWorld(from,to,doors,world,
-   undefined,repairBlockedStart);
+export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
+ // Open hinged leaves are pushable; ordinary motion must remain eligible.
+ const normal=routeWithNormalWorld(from,to,doors,world);
  if(normal.length)return normal;
  const canStand=worldCanStand(doors,world);
  const narrow=narrowRoute(from,to,canStand);
