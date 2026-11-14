@@ -16,7 +16,7 @@ const toward=(from:number,to:number,max:number)=>
 export type StanceSurface={id:string;top:number;face:Pt;distance:number};
 /** True nearby FACE, not center-radius proximity or a hidden obstacle. */
 export function stanceSurface(a:Pick<TeamActor,'p'|'heading'>,
- c:Obstacle,index:number):StanceSurface|null{
+ c:Obstacle,index:number,facing?:Readonly<Pt>):StanceSurface|null{
  if(c.destroyed||c.toppled||/fence|foliage|bush|tree|cloth|glass/i
    .test(c.fixture??''))return null;
  const top=coverHeight(c),halfX=Math.abs(c.w)/2,halfY=Math.abs(c.h)/2;
@@ -26,7 +26,7 @@ export function stanceSurface(a:Pick<TeamActor,'p'|'heading'>,
  const py=clamp(a.p.y,c.y-halfY,c.y+halfY);
  const dx=px-a.p.x,dy=py-a.p.y,dist=Math.hypot(dx,dy);
  if(dist<5||dist>21)return null;
- const f={x:Math.cos(a.heading),y:Math.sin(a.heading)};
+ const f=facing??{x:Math.cos(a.heading),y:Math.sin(a.heading)};
  if((dx*f.x+dy*f.y)/dist<.52)return null;
  return {id:'cover:'+index,top,face:{x:px,y:py},distance:dist};
 }
@@ -59,13 +59,18 @@ export function coverStanceEligible(a:TeamActor,s:Session):boolean{
  * value use identical actual chest, muzzle and body safety geometry.
  */
 export function advanceCoverStances(s:Session,dt=1/60):void{
- const world=sessionWorldGeometry(s);
+ // Ineligible/moving actors do no world or index work. The existing
+ // revision-scoped geometry remains the only source of cover truth.
+ let world:ReturnType<typeof sessionWorldGeometry>|null=null;
+ const geometry=()=>world??(world=sessionWorldGeometry(s));
  for(const a of s.operators){
   let picked:StanceSurface|null=null;
   if(coverStanceEligible(a,s)){
-   world.someCoverNearPoint(a.p,35,(cover,index)=>{
-    const face=stanceSurface(a,cover,index);
-    if(!face||!world.isClear(a.p,{
+   const currentWorld=geometry();
+   const facing={x:Math.cos(a.heading),y:Math.sin(a.heading)};
+   currentWorld.someCoverNearPoint(a.p,35,(cover,index)=>{
+    const face=stanceSurface(a,cover,index,facing);
+    if(!face||!currentWorld.isClear(a.p,{
       x:a.p.x+(face.face.x-a.p.x)*.90,
       y:a.p.y+(face.face.y-a.p.y)*.90
     },s.doors))return false;
