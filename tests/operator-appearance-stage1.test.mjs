@@ -15,7 +15,7 @@ test('headgear picker respects material eligibility without changing kit or appr
  const initial=initialWardrobe();
  const blocked=selectHeadwearCamo(initial,'soviet-steel','m81-woodland');
  assert.equal(blocked,initial,'painted steel cannot receive a cloth camouflage');
- assert.equal(headwearAppearanceModel('high-cut-rails'),'high-cut');
+ assert.equal(headwearAppearanceModel('mich-2001'),'mich-2001');
  assert.ok(headwearCamoChoices('ach').includes('m81-woodland'));
  const solid=selectHeadwearSolid(initial,'ach','black');
  assert.equal(solid.headwearColor,'black');

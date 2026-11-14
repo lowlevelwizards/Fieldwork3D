@@ -57,7 +57,7 @@ test('item compatibility is restricted, validated, and persists through outfit s
  assert.equal(headwearCamoChoices('beanie').length,0);
  assert.equal(headwearCamoChoices('soviet-steel').length,0);
  assert.equal(headwearCamoChoices('bare').length,0);
- assert.deepEqual(headwearCamoChoices('high-cut-rails'),headwearCamoChoices('high-cut'));
+ assert.ok(headwearCamoChoices('mich-2001').includes('multicam'));
  assert.equal(resolvedHeadwearCamo('ach','tiger-stripe'),null);
  assert.equal(resolvedHeadwearCamo('boonie','tiger-stripe'),'tiger-stripe');
  for(const id of HEADWEAR_CAMO_IDS){
@@ -67,7 +67,7 @@ test('item compatibility is restricted, validated, and persists through outfit s
  assert.equal(readWardrobe({...initialWardrobe(),headwearCamo:'unknown'}).headwearCamo,undefined);
 });
 test('printed camouflage uses a separate 128px UV1 atlas; 1:1 finish remains unchanged',()=>{
- for(const model of ['boonie','ach','high-cut','patrol-cap','pasgt']){
+ for(const model of ['boonie','ach','mich-2001','patrol-cap','pasgt']){
   const id=headwearCamoChoices(model)[0],texture=headwearCamoTexture(model,id);
   assert.equal(texture.image.width,128);
   assert.equal(texture.image.height,128);
@@ -90,7 +90,7 @@ test('printed camouflage uses a separate 128px UV1 atlas; 1:1 finish remains unc
 });
 test('live pose swaps camo and solid without animation restoring gray or mutating geometry',()=>{
  const rig=createOperatorRig('rook','blue');
- for(const model of ['patrol-cap','boonie','ach','high-cut','pasgt']){
+ for(const model of ['patrol-cap','boonie','ach','mich-2001','pasgt']){
   const {kit,wardrobe}=selectWardrobeItem(bareLabEquipment(),initialWardrobe(),'headwear',model);
   const material=rig.visualKit.wardrobeHead.headwearMaterials[model];
   const finish=material.roughnessMap;
@@ -233,7 +233,7 @@ test('seven authored auditions are independently structured, correctly dense, an
  assert.equal(headwearCamoChoices('pasgt').includes('six-color-desert'),true);
  assert.equal(headwearCamoChoices('pasgt').includes('woodland-marpat'),false);
  assert.equal(headwearCamoChoices('ach').includes('alpenflage'),false);
- assert.equal(headwearCamoChoices('high-cut').includes('woodland-dpm'),false);
+ assert.equal(headwearCamoChoices('mich-2001').includes('woodland-dpm'),false);
  assert.equal(headwearCamoChoices('beanie').length,0);
 });
 test('3C palettes give M81 and DPM distinct identities without recoloring woodland MARPAT',()=>{

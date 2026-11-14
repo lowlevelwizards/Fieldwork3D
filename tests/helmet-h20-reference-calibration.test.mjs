@@ -13,8 +13,8 @@ import {createAchMichDrapedGeometry}
  from '../src/operator-ach-mich-cover-drape.ts';
 
 const near=(a,b,e=.002)=>Math.abs(a-b)<=e;
-test('H20: five comparable archetypes preserve their independent style identities',()=>{
- const ids=['pasgt','ach','mich-2002','mich-2001','fast-sf'];
+test('H20: four comparable archetypes preserve their independent style identities',()=>{
+ const ids=['pasgt','ach','mich-2002','mich-2001'];
  for(const id of ids){
   const model=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   assert.equal(model.children.length,1,id);
@@ -24,9 +24,6 @@ test('H20: five comparable archetypes preserve their independent style identitie
  // PASGT's peak reaches much farther forward than the MICH brow.
  assert.ok(HEAD_SILHOUETTE_METRICS.pasgt.frontExtent<
   HEAD_SILHOUETTE_METRICS.ach.frontExtent-.65);
- // The FAST is deliberately not treated as the MICH TC-2001's same geometry.
- const fast=createHeadwearSilhouette('fast-sf',new THREE.MeshStandardMaterial());
- assert.ok(fast.children[0].geometry.userData.h17UnifiedContour!==true);
 });
 
 test('H20: full, partial and open-ear cuts have an emphatic three-step hierarchy',()=>{
