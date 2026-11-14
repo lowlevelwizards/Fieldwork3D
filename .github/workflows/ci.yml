@@ -38,16 +38,134 @@ jobs:
           node --test tests/ci-regression-plan.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
-      - name: Fixed-clock baseline plus changed-source domain regressions
+      - name: Fixed-clock domain regressions 1/16
         env:
           CI_BASE_REF: ${{ github.base_ref }}
-        run: |
-          # Emit progress during expensive geometry/camouflage test modules.
-          # Keep the exact regression selection and failure exit code intact.
-          ( while sleep 12; do echo "CI regression tests still running"; done ) &
-          heartbeat=$!
-          trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
-          node scripts/verification/ci-regression-plan.mjs --run
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=1/16
+      - name: Fixed-clock domain regressions 2/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=2/16
+      - name: Fixed-clock domain regressions 3/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=3/16
+      - name: Fixed-clock domain regressions 4/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=4/16
+      - name: Fixed-clock domain regressions 5/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=5/16
+      - name: Fixed-clock domain regressions 6/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=6/16
+      - name: Fixed-clock domain regressions 7/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=7/16
+      - name: Fixed-clock domain regressions 8/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=8/16
+      - name: Fixed-clock domain regressions 9/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=9/16
+      - name: Fixed-clock domain regressions 10/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=10/16
+      - name: Fixed-clock domain regressions 11/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=11/16
+      - name: Fixed-clock domain regressions 12/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=12/16
+      - name: Fixed-clock domain regressions 13/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=13/16
+      - name: Fixed-clock domain regressions 14/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=14/16
+      - name: Fixed-clock domain regressions 15/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=15/16
+      - name: Fixed-clock domain regressions 16/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --shard=16/16
+      - name: Fail-closed architecture regressions 1/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=1/16
+      - name: Fail-closed architecture regressions 2/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=2/16
+      - name: Fail-closed architecture regressions 3/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=3/16
+      - name: Fail-closed architecture regressions 4/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=4/16
+      - name: Fail-closed architecture regressions 5/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=5/16
+      - name: Fail-closed architecture regressions 6/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=6/16
+      - name: Fail-closed architecture regressions 7/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=7/16
+      - name: Fail-closed architecture regressions 8/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=8/16
+      - name: Fail-closed architecture regressions 9/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=9/16
+      - name: Fail-closed architecture regressions 10/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=10/16
+      - name: Fail-closed architecture regressions 11/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=11/16
+      - name: Fail-closed architecture regressions 12/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=12/16
+      - name: Fail-closed architecture regressions 13/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=13/16
+      - name: Fail-closed architecture regressions 14/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=14/16
+      - name: Fail-closed architecture regressions 15/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=15/16
+      - name: Fail-closed architecture regressions 16/16
+        env:
+          CI_BASE_REF: ${{ github.base_ref }}
+        run: node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=16/16
       - name: Verify extracted deterministic architecture boundaries
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production typecheck, build and build-stamp integrity

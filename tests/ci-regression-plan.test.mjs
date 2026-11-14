@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {baseline,domains,configuredTestPaths,selectCiTests,checkCatalog} from '../scripts/verification/ci-regression-plan.mjs';
+import {shardTestPaths} from '../scripts/verification/test-shards.mjs';
 
 test('A9 catalog is complete and keeps unique domain names',()=>{
  const result=checkCatalog();
@@ -136,4 +137,14 @@ test('Release A: menu and studio changes get no-mission editing smoke',()=>{
   const p=selectCiTests([file]);
   assert.ok(p.tests.includes('tests/operator-studio-main-menu.test.mjs'),file);
  }
+});
+
+test('A1 bounded shards preserve exact complete test ownership',()=>{
+ const files=Array.from({length:47},(_,i)=>'test-'+i);
+ const shards=Array.from({length:16},(_,i)=>shardTestPaths(files,['--shard='+(i+1)+'/16']));
+ assert.deepEqual(shards.flat().sort(),[...files].sort());
+ assert.ok(shards.every(group=>group.length<=3));
+ assert.deepEqual(shardTestPaths(files,[]),files);
+ assert.throws(()=>shardTestPaths(files,['--shard=17/16']));
+ assert.throws(()=>shardTestPaths(files,['--shard=0/16']));
 });

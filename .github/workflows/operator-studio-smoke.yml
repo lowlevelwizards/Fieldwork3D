@@ -160,14 +160,27 @@ jobs:
           path: ach-mich-h6-captures/
           if-no-files-found: warn
           retention-days: 14
-      - name: A1 helmet policy, live field modules and production build
+      - name: A1 production build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
-        run: |
-          npm run build
-          ( while sleep 12; do echo "A1 geometry and rendering tests still running"; done ) &
-          heartbeat=$!
-          trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
-          node --experimental-strip-types --test --test-concurrency=1 tests/helmet-a1-effective-appearance.test.mjs tests/helmet-h15-cut-consolidation.test.mjs tests/operator-headwear-anatomy.test.mjs tests/operator-headwear-camo-core.test.mjs tests/operator-headwear-camo-pose.test.mjs tests/operator-headwear-camo-reroll.test.mjs tests/operator-headwear-camo-auditions.test.mjs tests/operator-headwear-camo-extended.test.mjs tests/operator-headwear-camo-motifs.test.mjs tests/operator-headwear-camo-library.test.mjs tests/operator-headwear-camo-coverage.test.mjs tests/operator-wardrobe-headwear.test.mjs tests/helmet-h14-pasgt-retrofit-roster.test.mjs tests/helmet-h7-field-options.test.mjs tests/helmet-h7-visuals.test.mjs tests/helmet-h10-fit.test.mjs tests/helmet-h13-mount-and-compatibility.test.mjs tests/helmet-h30-reference-contour.test.mjs tests/helmet-h31c-cover-shell-penetration.test.mjs
+        run: npm run build
+      - name: A1 effective appearance, headwear geometry and PASGT policy
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/helmet-a1-effective-appearance.test.mjs tests/helmet-h15-cut-consolidation.test.mjs tests/operator-headwear-anatomy.test.mjs tests/helmet-h14-pasgt-retrofit-roster.test.mjs
+      - name: A1 camo master art and approved eligibility
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-core.test.mjs tests/operator-headwear-camo-auditions.test.mjs tests/operator-headwear-camo-extended.test.mjs
+      - name: A1 camo atlas and pattern library
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-motifs.test.mjs tests/operator-headwear-camo-library.test.mjs tests/operator-headwear-camo-coverage.test.mjs
+      - name: A1 live camouflage pose
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-pose.test.mjs
+      - name: A1 print rerolls and shared headwear state
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/operator-headwear-camo-reroll.test.mjs tests/operator-wardrobe-headwear.test.mjs
+      - name: A1 mount, cover and approved silhouette regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/helmet-h7-field-options.test.mjs tests/helmet-h7-visuals.test.mjs tests/helmet-h10-fit.test.mjs tests/helmet-h13-mount-and-compatibility.test.mjs tests/helmet-h30-reference-contour.test.mjs tests/helmet-h31c-cover-shell-penetration.test.mjs
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
