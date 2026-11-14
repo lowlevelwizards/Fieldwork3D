@@ -298,7 +298,8 @@ export function headwearFaceRegion(id:HeadSilhouetteId,name:string,
   if(name.includes('bowl'))return 1;
   return axis===1&&sign===1?3:0;
  }
- if(name.includes('nape')||name.includes('temple')||name.includes('wrap'))return 1;
+ if(name.includes('nape')||name.includes('temple')||name.includes('wrap')||
+  name.includes('ear-guard'))return 1;
  if(name.includes('brow'))return 2;
  return axis===1&&sign===1?3:0;
 }
