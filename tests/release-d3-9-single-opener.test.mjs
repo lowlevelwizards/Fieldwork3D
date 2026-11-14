@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {implicitDoorOpeningOwner,shouldStageForOpening}
+import {implicitDoorOpeningOwner,shouldStageForOpening,mayManipulateOpening}
  from '../src/breach-door-opening-ownership.ts';
 const p=(x,y)=>({x,y});
 // Proven 25-second warehouse BODY coordinates, not a hypothetical pose.
@@ -50,6 +50,9 @@ test('D3.9 release ownership immediately once physical aperture is clear',()=>{
  const s={seconds:1,doors:[d],operators:[rook,moss]};
  assert.ok(['rook','moss'].includes(implicitDoorOpeningOwner(s,d)));
  d.openFraction=.95;
+ assert.equal(implicitDoorOpeningOwner(s,d),'rook',
+  'an active owner persists while a 1.55 push target remains');
+ d.openFraction=1.55;
  assert.equal(implicitDoorOpeningOwner(s,d),null);
  assert.equal(shouldStageForOpening(s,moss,d),false);
  d.openFraction=.4;rook.health=0;
@@ -77,4 +80,27 @@ test('D3.9 all pressure, hand and motor roles use same opener lease',async()=>{
  assert.match(motor,/staged\.attempts<5/);
  assert.match(motor,/ownerRelief/);
  assert.match(motor,/a\.nav\.unshift\(\{\.\.\.staged\.target\}\)/);
+});
+
+test('D3.9A claims a CLOSED door before any hinge-body jam',()=>{
+ const d=door();d.open=false;d.openFraction=0;d.angularVelocity=0;
+ const rook=actor('rook',0),moss=actor('moss',1),s={
+  seconds:0,doors:[d],operators:[rook,moss]};
+ const owner=implicitDoorOpeningOwner(s,d);
+ assert.ok(owner==='rook'||owner==='moss');
+ assert.equal(mayManipulateOpening(s,rook,d),owner==='rook');
+ assert.equal(mayManipulateOpening(s,moss,d),owner==='moss');
+ assert.equal(implicitDoorOpeningOwner(s,d),owner);
+});
+test('D3.9A solo interaction is never blocked by a missing lease',()=>{
+ const d=door(),rook=actor('rook',0),s={seconds:0,doors:[d],operators:[rook]};
+ assert.equal(implicitDoorOpeningOwner(s,d),null);
+ assert.equal(mayManipulateOpening(s,rook,d),true);
+});
+test('D3.9A leaves an independently traversable angle free of staging',()=>{
+ const d=door(),rook=actor('rook',0),moss=actor('moss',1);
+ const s={seconds:0,doors:[d],operators:[rook,moss]};
+ assert.ok(implicitDoorOpeningOwner(s,d));
+ d.openFraction=.86;
+ assert.equal(shouldStageForOpening(s,moss,d),false);
 });
