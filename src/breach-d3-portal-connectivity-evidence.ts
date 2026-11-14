@@ -71,14 +71,13 @@ export function probeD32SampledConnectivity(
   visited++;
   if(gap(p,to)<=step*2.5&&canCross(p,to)){
    const terminal=key(cell.col,cell.row);
-   let cursor:string|null=terminal,routeSteps=1;
+   let cursor:string|null=terminal,routeSteps=1,rootKey=terminal;
    while(cursor!==null){
-    routeSteps++;cursor=parents.get(cursor)??null;
+    rootKey=cursor;routeSteps++;cursor=parents.get(cursor)??null;
    }
-   const root=queue.find(entry=>parents.get(key(entry.col,entry.row))===null&&
-     key(entry.col,entry.row)===terminal);
+   const [firstCol,firstRow]=rootKey.split(',').map(Number);
    return {connected:true,exhausted:true,visited,startAnchors:anchors,
-     routeSteps,first:root?at(root.col,root.row):p,last:{...to}};
+     routeSteps,first:at(firstCol,firstRow),last:{...to}};
   }
   for(const [dx,dy] of directions){
    const col=cell.col+dx,row=cell.row+dy,id=key(col,row);
