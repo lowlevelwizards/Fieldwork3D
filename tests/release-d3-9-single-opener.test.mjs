@@ -149,3 +149,12 @@ test('D3.9A physical hand contact may claim one anticipated implicit door',()=>{
  assert.equal(implicitDoorOpeningOwner(s,d),follower.id);
  assert.equal(mayManipulateOpening(s,s.operators.find(a=>a.id===initial),d),false);
 });
+
+test('D3.9A3 chooses safe forward movement before fallback retreat',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const source=readFileSync(new URL('../src/breach-motor-door.ts',import.meta.url),'utf8');
+ const safe=source.indexOf('A valid authored stride takes priority');
+ const relief=source.indexOf('const retreat=selfBlockingHingeRelief');
+ assert.ok(safe>=0&&relief>=0&&safe<relief,
+  'do not replace an already clear follower stride with unnecessary retreat');
+});

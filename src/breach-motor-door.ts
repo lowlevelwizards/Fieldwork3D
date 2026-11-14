@@ -137,6 +137,20 @@ export function handleMotorDoor(
         }
         staged.target=null;
       }
+      if(follower){
+        // A valid authored stride takes priority over a NEW clearance
+        // detour. Otherwise a safe approach can be replaced by a needless
+        // retreat and lose seconds, despite never threatening the leaf.
+        const fraction=doorAhead.openFraction??0;
+        const swing=Math.min(Math.max(1,doorAhead.pushTarget??1),
+          fraction+.24);
+        if(!doorWouldStrikeActors(doorAhead,swing,[move],OPERATOR_RADIUS)&&
+           sweptBodyClear(a.p,move,s.doors,OPERATOR_RADIUS,
+             sessionWorldGeometry(s))){
+          a.motorPause=null;
+          return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+        }
+      }
       // Only an operator ACTUALLY in the moving sweep needs to step
       // backwards/laterally. Reuse the existing rate-limited, full-body
       // self-clearance library instead of a new formation route solver.
@@ -157,17 +171,6 @@ export function handleMotorDoor(
         }
       }
       if(follower){
-        // A lease is NOT a movement permit. Keep moving when the ordinary
-        // stride is swept clear and stays out of the upcoming leaf arc.
-        const fraction=doorAhead.openFraction??0;
-        const swing=Math.min(Math.max(1,doorAhead.pushTarget??1),
-          fraction+.24);
-        if(!doorWouldStrikeActors(doorAhead,swing,[move],OPERATOR_RADIUS)&&
-           sweptBodyClear(a.p,move,s.doors,OPERATOR_RADIUS,
-             sessionWorldGeometry(s))){
-          a.motorPause=null;
-          return {paused:false,closed:false,clearingDoorId:doorAhead.id};
-        }
         a.velocity=0;a.motorPause='door-opening';
         return {paused:true,closed:false};
       }
