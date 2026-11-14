@@ -85,6 +85,30 @@ test('D3.10A actual full-view generated ENTRY destinations are standing-safe',()
    attempts:names.length}));
 });
 
+test('D3.10A repairs one unsafe lane locally without shifting its neighbors',async()=>{
+ const {settleKnownEntryLandings}=await import('../src/breach-entry-landing.ts');
+ const door={id:'D',a:{x:407,y:342.65},b:{x:407,y:300.65},
+   kind:'hinged',hinge:'a',swing:-1,open:false,openFraction:0};
+ const slots=[
+  {point:{x:345,y:343.65},look:{x:260,y:410},side:'left',depth:62},
+  {point:{x:345,y:299.65},look:{x:260,y:230},side:'right',depth:62},
+  {point:{x:292.54,y:311.65},look:{x:200,y:400},side:'left',depth:111},
+  {point:{x:296,y:284.65},look:{x:210,y:210},side:'right',depth:111}
+ ];
+ const isSafe=p=>Number.isFinite(p.x)&&Number.isFinite(p.y)&&
+   !(p.x>280&&p.x<306&&p.y>311&&p.y<350);
+ const repaired=settleKnownEntryLandings(door,slots,isSafe);
+ assert.ok(repaired);
+ assert.equal(repaired.length,4);
+ assert.deepEqual(repaired[0].point,slots[0].point);
+ assert.deepEqual(repaired[1].point,slots[1].point);
+ assert.deepEqual(repaired[3].point,slots[3].point);
+ assert.ok(distance(repaired[2].point,slots[2].point)<=14);
+ assert.ok(isSafe(repaired[2].point));
+ for(let i=0;i<4;i++)for(let j=0;j<i;j++)
+  assert.ok(distance(repaired[i].point,repaired[j].point)>=23);
+});
+
 test('D3.10A planning uses full body, without changing authored MOVE goals',async()=>{
  const {readFileSync}=await import('node:fs');
  const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
