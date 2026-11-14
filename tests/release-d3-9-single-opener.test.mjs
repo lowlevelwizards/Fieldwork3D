@@ -165,7 +165,7 @@ test('D3.9A3 chooses safe forward movement before fallback retreat',async()=>{
  const {readFileSync}=await import('node:fs');
  const source=readFileSync(new URL('../src/breach-motor-door.ts',import.meta.url),'utf8');
  const safe=source.indexOf('A valid authored stride takes priority');
- const relief=source.indexOf('const retreat=selfBlockingHingeRelief');
+ const relief=source.indexOf('const retreat=threatens?');
  assert.ok(safe>=0&&relief>=0&&safe<relief,
   'do not replace an already clear follower stride with unnecessary retreat');
 });
