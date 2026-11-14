@@ -7,7 +7,7 @@ import {pointToSegment,doorLeafSegment,doorBlocksSegment,doorCenter,
  OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {canAutoOpenEnRoute,autoDoorAtBodyContact,doorApproach,
- doorReachable,doorWouldStrikeActors} from './breach-door.ts';
+ doorReachable,doorWouldStrikeActors,approachingDoorLeaf} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -127,7 +127,18 @@ export function handleMotorDoor(
       // holding the entire motor in DOOR OPENING prevented either recovery.
       // Continue only after a short lawful opening attempt. The following
       // swept-body motor still treats the leaf as completely SOLID.
-      if(operatorCrossingDoor(a,doorAhead)&&a.actionTimer>=.65){
+      // An intervening partially-open leaf may be genuine physical contact
+      // even when the authored goal's straight-line crossing predicate
+      // does not designate THIS door (for example a detoured room route).
+      // After the normal handle attempt, let the *same swept body motor*
+      // try a real near-panel stride. It may press, sidestep or still stop;
+      // this does not grant clearance, auto-teleport or claim queue rank.
+      // Never wake remote/receding actors or authored WAIT/KICK/CLOSE.
+      const physicallyTouching=a.side==='blue'&&
+        (pendingDoor?.kind==='move'||pendingDoor?.kind==='pie')&&
+        approachingDoorLeaf(a.p,move,doorAhead);
+      if(a.actionTimer>=.65&&
+         (operatorCrossingDoor(a,doorAhead)||physicallyTouching)){
         if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5)
           hooks.notify(s,a.name+
             ' DOOR SWING OBSTRUCTED · CHECK ENTRY');

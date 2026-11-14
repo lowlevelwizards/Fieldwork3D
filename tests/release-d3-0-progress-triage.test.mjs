@@ -15,6 +15,12 @@ test('D3.0: authored WAIT is distinct from a traffic-induced passage hold',()=>{
  assert.equal(classifyD3Progress({...base,motorPause:'passage'}),
   'passage-hold');
 });
+test('D3.0: waiting for a partially open leaf is not mislabeled as a route stall',()=>{
+ assert.equal(classifyD3Progress({...base,motorPause:'door-opening',
+  recentNetMovement:0}),'door-opening-hold');
+ assert.equal(classifyD3Progress({...base,motorPause:'door-opening',
+  recentNetMovement:8}),'moving');
+});
 test('D3.0: physical blockage and explicit failures remain visible',()=>{
  assert.equal(classifyD3Progress({...base,blockedTime:1.1}),
   'physical-block');

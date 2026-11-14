@@ -10,7 +10,7 @@ export type D3ProgressEvidence={
 };
 export type D3ProgressLabel='unplanned'|'completed'|'order-issue'|
  'authored-hold'|'passage-hold'|'physical-block'|
- 'moving'|'little-net-movement';
+ 'moving'|'little-net-movement'|'door-opening-hold';
 export function classifyD3Progress(e:D3ProgressEvidence):D3ProgressLabel{
  if(!e.planned)return 'unplanned';
  if(e.planComplete)return 'completed';
@@ -20,6 +20,8 @@ export function classifyD3Progress(e:D3ProgressEvidence):D3ProgressLabel{
     e.activeOrder==='holdClear'||e.activeOrder==='stack'||
     e.activeOrder==='sync')return 'authored-hold';
  if(e.motorPause==='passage')return 'passage-hold';
+ if(e.motorPause==='door-opening'&&e.recentNetMovement<2)
+  return 'door-opening-hold';
  if(e.blockedTime>=.85)return 'physical-block';
  // Net movement is evidence of activity, not proof of goalward progress.
  return e.recentNetMovement>=2?'moving':'little-net-movement';
