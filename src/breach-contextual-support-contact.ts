@@ -8,7 +8,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {lockpickContactCandidate} from './breach-lockpick-contact.ts';
-import {resolvePoseContactOwners,type ContactOwners} from './breach-pose-contacts.ts';
+import {resolvePoseContactOwners,woundedHandGuard,type ContactOwners} from './breach-pose-contacts.ts';
 import {contactWithinReach,sameContact,
   releasePhysicalContact,selectSinglePhysicalContact,
   type PhysicalContact,type ContactClaim,type ContactPoint3}
@@ -225,14 +225,19 @@ function contactOwnersForActor(s:Session,a:TeamActor):ContactOwners{
      a.lastDoorMethod!=='kick';
  const pushActive=now-a.lastBashAt>=0&&now-a.lastBashAt<.53&&
    a.lastBashRole==='push';
- const guardActive=now-a.lastHitAt>=0&&now-a.lastHitAt<1.1&&
-   a.lastHitRegion!=='leg'&&a.aim<.2;
+ const guardActive=woundedHandGuard({
+  down:a.health<=0,injury:a.injuryStage,hitRegion:a.lastHitRegion,
+  aiming:a.aim>.20,
+  firing:now-a.lastShotAt>=0&&now-a.lastShotAt<.12,
+  hitAge:now-a.lastHitAt
+ });
  return resolvePoseContactOwners({surrender:a.surrendered,
   down:a.health<=0,downProgress:a.health<=0?1:0,
   treatmentActive:a.treatmentActive,reloadActive:a.reload>0,
   reloadProgress:a.reloadDuration>0?
    clamp(1-a.reload/a.reloadDuration,0,1):0,
-  reloadMode:a.reloadMode??'emergency',throwActive,
+  reloadMode:a.reloadMode??(a.weapon==='shotgun'?'shells':'emergency'),
+  throwActive,
   pushActive,woundedGuard:guardActive,doorActive});
 }
 export function contextualSupportAllowed(
