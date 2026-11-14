@@ -251,9 +251,9 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  if(v.shell!=='pasgt'){
   const bareOffset=covered?0:.16;
   for(const rail of m.rails.children)
-   rail.position.x=rail.name.endsWith('-left')?bareOffset:-bareOffset;
-  m.light.position.x=s.lightSide==='left'?bareOffset:-bareOffset;
-  m.camera.position.x=s.cameraSide==='left'?bareOffset:-bareOffset;
+   rail.position.x=covered?0:rail.name.endsWith('-left')?bareOffset:-bareOffset;
+  m.light.position.x=covered?0:s.lightSide==='left'?bareOffset:-bareOffset;
+  m.camera.position.x=covered?0:s.cameraSide==='left'?bareOffset:-bareOffset;
  }
  m.camera.scale.x=s.cameraSide==='right'?1:-1;
  m.light.scale.x=s.lightSide==='left'?1:-1;
