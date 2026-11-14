@@ -32,8 +32,13 @@ export function restoreAfterOpenLeafEscape(
  a:TeamActor,s:Session,goal:Pt
 ):boolean{
  if(s.seconds-a.lastNavRepairAt<.7)return false;
+ // D3.11C: after a REAL swept escape, a stationary mostly-open hinge
+ // can already have a fully swept world-truth departure. Do not force a
+ // re-entry into the same known-map leaf on every tick while waiting for
+ // an arbitrary 96% visual open fraction. Every proposed full-width first
+ // step is still checked with the unchanged physical collision predicate.
  const near=s.doors.some(door=>door.open&&
-  (door.openFraction??0)>=.96&&
+  (door.openFraction??0)>=.82&&
   Math.abs(door.angularVelocity??0)<.16&&
   pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+13);
  if(!near)return false;
