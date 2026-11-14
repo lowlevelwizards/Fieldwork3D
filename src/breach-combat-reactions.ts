@@ -4,7 +4,23 @@
 import type {Pt} from './breach-core.ts';
 import {combatCostDiagnosticsEnabled,combatCostCounts}
  from './breach-combat-cost-counters.ts';
+import type {TeamActor} from './breach-game.ts';
 const wrap=(v:number)=>Math.atan2(Math.sin(v),Math.cos(v));
+/** Fixed-step precedence for an optional incoming-hit *facing* request.
+ * A real hit can interrupt idle LOOK/WATCH, but not a committed physical
+ * maneuver, hands-on tool, stun, authenticated contact stop or already
+ * firing contact. No LOS work, simulation timer or additional motor.
+ */
+export function hitFacingInterrupted(a:TeamActor,now:number):boolean{
+ if(a.health<=0||a.surrendered||a.traversal||a.traversalPending||
+    a.squeeze||a.fireRetreatTarget||a.carryingId||a.treatmentActive||
+    a.reload>0||a.flashUntil>now||(a.doorStunUntil??0)>now||
+    a.pace==='run'||a.motorPause==='contact')return true;
+ if(a.targetId!==null&&now-a.lastShotAt<.48)return true;
+ const n=a.plan[0];
+ return !!n&&(n.moveMode==='sprint'||
+   ['door','tool','treat','evacuate','flash','reload'].includes(n.kind));
+}
 /** The hit yaw is projectile travel direction: reverse to face the source.
  * A brief reaction can override gaze, not route ownership or fire policy.
  */
