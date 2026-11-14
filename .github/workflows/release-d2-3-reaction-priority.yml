@@ -1,0 +1,48 @@
+name: D2.3 reaction priority and physical correction ownership
+on:
+  pull_request:
+    paths:
+      - 'src/breach-fire-recovery-policy.ts'
+      - 'src/breach-combat-reactions.ts'
+      - 'src/breach-simulation-actor-phase.ts'
+      - 'src/breach-order-executor.ts'
+      - 'src/breach-enemy-decision-controller.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-actor-initial-state.ts'
+      - 'tests/release-d2-3-interruption-priority.test.mjs'
+      - '.github/workflows/release-d2-3-reaction-priority.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-d2-3-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical-reaction-correction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: D2.3 interruption, plan edits, hit reaction and contact ownership
+        run: node --experimental-strip-types --test tests/release-d2-3-interruption-priority.test.mjs
+      - name: Existing physical correction, A3, D1 and enemy investigation
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-two-sided-fire-recovery.test.mjs \
+            tests/release5-investigation-continuity.test.mjs \
+            tests/animation-a3-8-turn-episodes.test.mjs \
+            tests/animation-a3-10-close-stack-fire.test.mjs \
+            tests/animation-a3-11-progressive-urgency.test.mjs \
+            tests/animation-a3-3-contextual-crouch.test.mjs \
+            tests/breach-roadmap2-stage10-combat.test.mjs \
+            tests/release-d1-coherent-crossing.test.mjs \
+            tests/gameplay-g3-target-stability.test.mjs
+      - name: Real R7 four-person firefights
+        run: node --experimental-strip-types scripts/audit-r7-firefights.mjs 4 7
+      - name: Typecheck and production build
+        run: npm run build
