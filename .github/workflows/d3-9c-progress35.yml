@@ -10,6 +10,7 @@ on:
       - src/breach-motor-door.ts
       - src/breach-motor-collision.ts
       - src/breach-order-movement.ts
+      - src/breach-passage-coordinator.ts
       - src/breach-door-traversal-episode.ts
       - src/breach-door-opening-footwork.ts
   workflow_dispatch:

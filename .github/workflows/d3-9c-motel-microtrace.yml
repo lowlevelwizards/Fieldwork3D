@@ -6,6 +6,7 @@ on:
       - 'scripts/audit-d3-9c-motel.mjs'
       - 'src/breach-motor-collision.ts'
       - 'src/breach-order-movement.ts'
+      - 'src/breach-passage-coordinator.ts'
       - '.github/workflows/d3-9c-motel-microtrace.yml'
   workflow_dispatch:
 permissions:

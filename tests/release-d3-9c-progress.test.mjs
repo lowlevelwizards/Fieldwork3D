@@ -93,3 +93,12 @@ test('C4 real stable open-leaf escape hands off to world route, not repeated int
  assert.match(route,/!sweptBodyClear\(a\.p,route\[0\]/);
  assert.match(collision,/restoreAfterOpenLeafEscape\(a,s,p\)/);
 });
+
+test('C4 stable open threshold ignores finished friendly as queue claimant',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('../src/breach-passage-coordinator.ts',import.meta.url),'utf8');
+ assert.match(src,/const finishedFriendly=/);
+ assert.match(src,/peer\.side===a\.side&&!peer\.plan\.length/);
+ assert.match(src,/finishedFriendly\(a,peer\)/);
+ assert.match(src,/finishedFriendly\(a,other\)/);
+});
