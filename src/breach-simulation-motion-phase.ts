@@ -44,7 +44,9 @@ export function advanceSimulationMotion(s:Session,h:number,
  const geometry=()=>world??(world=sessionWorldGeometry(s));
  const carryStart=cpuMark();
   // Authoritative coupled body proposal, before hard-actor resolution.
-  const coupledBodyStarts=new Map<string,Pt>();
+  // Allocate custody rollback bookkeeping only if this frame truly
+  // carries a civilian. Ordinary traffic and empty missions need none.
+  let coupledBodyStarts:Map<string,Pt>|null=null;
   for(const carrier of s.operators){
     if(!carrier.carryingId)continue;
     const civil=s.civilians.find(c=>c.id===carrier.carryingId&&
@@ -52,10 +54,12 @@ export function advanceSimulationMotion(s:Session,h:number,
     if(!civil)continue;
     const from=motionStart.get(carrier.id)??carrier.p;
     const bodyFrom=motionStart.get(civil.id)??civil.p;
-    const others=[
-      ...s.operators.filter(o=>o!==carrier&&o.health>0).map(o=>o.p),
-      ...s.civilians.filter(c=>c!==civil).map(c=>c.p)
-    ];
+    // A single ordered roster replaces four filtering/mapping arrays;
+    // keep live positions and operator-before-civilian contact semantics.
+    const others:Pt[]=[];
+    for(const o of s.operators)if(o!==carrier&&o.health>0)
+      others.push(o.p);
+    for(const c of s.civilians)if(c!==civil)others.push(c.p);
     const next=proposedCivilianTransportStep(bodyFrom,from,carrier.p,
       carrier.heading,civil.transportMode??carrier.plan[0]?.transportMode??'drag',
       (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,geometry()),others,h*36);
@@ -64,6 +68,7 @@ export function advanceSimulationMotion(s:Session,h:number,
       civil.p=clone(bodyFrom);civil.velocity=0;
       continue;
     }
+    if(!coupledBodyStarts)coupledBodyStarts=new Map<string,Pt>();
     coupledBodyStarts.set(carrier.id,clone(bodyFrom));
     civil.priorP=clone(bodyFrom);civil.p=next;civil.velocity=0;
   }
@@ -181,7 +186,7 @@ export function advanceSimulationMotion(s:Session,h:number,
     const a=actorById?.get(decision.id)??
       s.operators.find(unit=>unit.id===decision.id)!;
     a.p=clone(decision.point);
-    const start=coupledBodyStarts.get(a.id);
+    const start=coupledBodyStarts?.get(a.id);
     if(start&&a.carryingId){
       const body=civilianById?.get(a.carryingId)??
         s.civilians.find(c=>c.id===a.carryingId);
