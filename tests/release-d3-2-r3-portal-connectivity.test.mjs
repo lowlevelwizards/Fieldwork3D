@@ -24,6 +24,24 @@ test('D3.2 R3: solid leaf separates static-connected space from physical route',
  assert.equal(evidence.staticOnly.connected,true);
  assert.equal(evidence.physical.connected,false);
  assert.equal(evidence.physical.exhausted,true);
+ assert.equal(evidence.withoutActuableLeaves.connected,true);
+ assert.equal(evidence.withoutStableOpenLeaves.connected,false);
+ assert.equal(evidence.withoutNearestLeaf.omittedId,'SPLIT');
+ assert.equal(evidence.withoutNearestLeaf.result.connected,true);
+ assert.equal(evidence.nearbyLeaves[0].hypotheticallyActuable,true);
+});
+test('D3.2 R3: locked and wedged hinges are not counted as actuable',()=>{
+ const leaf={id:'LOCKED',a:pt(48,0),b:pt(48,96),open:false,
+  openedAt:-1,kind:'hinged',hinge:'a',swing:-1,openFraction:0,
+  locked:true};
+ const locked=captureD32PortalConnectivity(pt(24,48),pt(72,48),
+  [leaf],world);
+ assert.equal(locked.withoutActuableLeaves.connected,false);
+ assert.equal(locked.nearbyLeaves[0].hypotheticallyActuable,false);
+ leaf.locked=false;leaf.wedged=true;
+ const wedged=captureD32PortalConnectivity(pt(24,48),pt(72,48),
+  [leaf],world);
+ assert.equal(wedged.withoutActuableLeaves.connected,false);
 });
 test('D3.2 R3: visit limit reports inconclusive rather than disconnected',()=>{
  const leaf={id:'SPLIT',a:pt(48,0),b:pt(48,96),open:false,
