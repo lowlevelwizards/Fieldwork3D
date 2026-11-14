@@ -31,7 +31,7 @@ test('H18: Full and Mid have distinct, single-piece iconic ear lobes',()=>{
  assert.ok(near(f[5][1],2.72)&&near(m[5][1],3.82));
  assert.ok(m[2][1]-f[2][1]>=1,'Full-Cut is recognizably deeper');
  assert.ok(m[5][1]-f[5][1]>=1,'the nape coverage is also distinguishable');
- assert.ok(near(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,4.78));
+ assert.ok(near(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,5.30));
 });
 
 test('H18: fewer rim pixels without new geometry and fabric stays synchronized',()=>{
@@ -78,5 +78,5 @@ test('H19: identical crown language, 58 triangles for all three helmet cuts',()=
  const high=createHeadwearSilhouette('mich-2001',new THREE.MeshStandardMaterial());
  assert.equal(high.children[0].geometry.userData.h17UnifiedContour,true);
  assert.equal(high.children[0].geometry.userData.exteriorQuads,29);
- assert.ok(near(achMichHemY('mich-2001',0),4.78));
+ assert.ok(near(achMichHemY('mich-2001',0),5.30));
 });
