@@ -186,12 +186,17 @@ export function paintFogVisibility(ctx:CanvasRenderingContext2D,s:Session){
       a.posture==='crouch',cover);
     if(poly.length<3)continue;
     if(canGrade&&range>NEAR_FINE_SIGHT_RANGE){
+      // Fixed *presentation* distance, rather than stretching the gradient
+      // to an arbitrarily huge procedural-map diagonal. At 600+ units a
+      // narrow window/crack must not project a fully bright triangular wedge
+      // across the warehouse. Remote sight still exists in the simulation.
+      const displayFadeEnd=Math.min(range,NEAR_FINE_SIGHT_RANGE*2.5);
       const ramp=ctx.createRadialGradient(a.p.x,a.p.y,
-        NEAR_FINE_SIGHT_RANGE*.75,a.p.x,a.p.y,range);
+        NEAR_FINE_SIGHT_RANGE*.65,a.p.x,a.p.y,displayFadeEnd);
       ramp.addColorStop(0,'rgba(255,255,255,1)');
-      ramp.addColorStop(.35,'rgba(255,255,255,.82)');
-      ramp.addColorStop(.7,'rgba(255,255,255,.58)');
-      ramp.addColorStop(1,'rgba(255,255,255,.38)');
+      ramp.addColorStop(.3,'rgba(255,255,255,.8)');
+      ramp.addColorStop(.7,'rgba(255,255,255,.3)');
+      ramp.addColorStop(1,'rgba(255,255,255,.08)');
       ctx.fillStyle=ramp;
     }else ctx.fillStyle='#fff';
     ctx.beginPath();
