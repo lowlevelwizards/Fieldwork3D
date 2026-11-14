@@ -32,21 +32,17 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
   hem:UNIFIED_HELMET_HEMS['mich-2002']
  },
  'mich-2001':{
-  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:3.33,
-  frontStud:[5.065,6.495,-3.16],rearStud:[5.015,3.91,3.79],
-  hem:[[5.015,4.55,-5.71],[5.065,6.025,-4.60],
-   [5.065,6.025,-1.96],[5.015,6.155,-1.45],
-   [5.015,6.155,2.95],[5.015,3.33,3.80],
-   [5.015,3.33,5.66]]
+  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:4.12,
+  frontStud:[5.015,5.22,-3.28],rearStud:[5.015,4.67,3.79],
+  hem:UNIFIED_HELMET_HEMS['mich-2001']
  }
 };
-// Legacy tall edge is retained on the untouched high-cut shell.
+// Historical height preserved as a named compatibility constant; the
+// visible edge now follows the same modest finishing weight on every cut.
 export const ACH_MICH_BINDING_HEIGHT=.78;
-// H18: Full/Mid use a smaller edge that follows the shell as finishing
-// rather than a second armor skirt. Evaluated only at mesh creation.
 export const achMichBindingHeight=(
  shell:typeof ACH_MICH_SHELLS[number]):number=>
- shell==='mich-2001'?ACH_MICH_BINDING_HEIGHT:.52;
+ shell==='mich-2001'?.42:.52;
 export const ACH_MICH_CHIN_STRAP_HALF_WIDTH=.44;
 export const achMichProfile=(shell:typeof ACH_MICH_SHELLS[number]):Profile=>
  PROFILES[shell];
