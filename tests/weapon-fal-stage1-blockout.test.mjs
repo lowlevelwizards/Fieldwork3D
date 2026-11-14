@@ -52,7 +52,7 @@ test('FAL S1: all three real silhouettes compare at one unmodified art scale',()
  material.dispose();
 });
 
-test('FAL S1B: caricature landmarks materially separate the defining forms',()=>{
+test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
  const material=new THREE.MeshBasicMaterial(),g=buildFALStage1Silhouette(material);
  const byName=(name)=>{
   const mesh=g.children.find(child=>child.name===name);
@@ -64,13 +64,14 @@ test('FAL S1B: caricature landmarks materially separate the defining forms',()=>
  const handguard=byName('family-handguard-fal-stage1-handguard-0');
  const ears=byName('family-barrel-fal-stage1-barrel-1');
  const receiver=byName('family-receiver-fal-stage1-receiver-0');
- assert.ok(stock.max.y>=1.98,'stock needs a large high hump');
- assert.ok(stock.min.y<=-3.70,'stock should retain a low swept heel');
- assert.ok(grip.min.x<=-6.8,'grip heel should be clearly rear-raked');
- assert.ok(grip.min.y<=-7.10,'grip should remain substantial at thumbnail size');
- assert.ok(handguard.max.y>=1.6&&handguard.min.y<=-2.2,
-  'fore-end must be a deep, triangular mass, not a G3-like tube');
- assert.ok(ears.max.y>=3.3,'distinct FAL open-ear sight silhouette');
+ assert.ok(stock.max.y>=1.3&&stock.max.y<=1.55,'stock comb must stay gently swept');
+ assert.ok(stock.min.y>=-3.50&&stock.min.y<=-3.20,'stock heel should not be a triangular M16 wedge');
+ assert.ok(grip.min.x>=-6.20&&grip.min.x<=-5.90,'grip rake must be restrained');
+ assert.ok(grip.min.y>=-6.7&&grip.min.y<=-6.4,'grip should remain chunky and compact');
+ assert.ok(handguard.max.y>=1.3&&handguard.max.y<=1.5&&
+  handguard.min.y>=-1.85&&handguard.min.y<=-1.6,
+  'fore-end must stay shallow and gently tapered, not an M16 triangle');
+ assert.ok(ears.max.y>=2.90&&ears.max.y<=3.1,'front sight ears must be modest');
  assert.ok(receiver.max.y>=1.8,'upper dust cover should remain long and clear');
  assert.equal(g.children.length,12,'S1B must not add decorative meshes');
  clearWeaponSilhouette(g);material.dispose();
