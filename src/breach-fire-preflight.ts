@@ -62,11 +62,15 @@ export function matchingShotSight(preflight:ShotSightPreflight|undefined,
  * Check known teammates BEFORE testing penetrable cover: walls/cover must
  * never conceal an ally veto. The final stochastic trajectory is separate.
  */
+// No near-target ally has been approved until the explicit volume veto
+// below passes. Do not check the same unchanged list again when testing
+// only static materials; the projectile's far ray is checked separately.
+const NO_FRIENDLIES:readonly FriendlySafetyBody[]=[];
 export function nearShotLane(from:Pt,muzzleHeight:number,to:Pt,
  targetHeight:number,cover:readonly Obstacle[],walls:readonly Segment[],
  doors:readonly Door[],friends:readonly FriendlySafetyBody[]):FireLane{
  const allied=assessFriendlyLane(from,muzzleHeight,to,targetHeight,friends);
  return allied.blocker==='friendly'?allied:
   assessFireLane(from,muzzleHeight,to,targetHeight,
-   cover,walls,doors,friends);
+   cover,walls,doors,NO_FRIENDLIES);
 }
