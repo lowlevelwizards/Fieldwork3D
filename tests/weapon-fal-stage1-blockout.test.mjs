@@ -65,7 +65,7 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
  const handguard=byName('family-handguard-fal-stage1-handguard-0');
  const ears=byName('family-barrel-fal-stage1-barrel-1');
  const receiver=byName('family-receiver-fal-stage1-receiver-0');
- assert.ok(stock.max.y>=1.3&&stock.max.y<=1.55,'stock comb must stay gently swept');
+ assert.ok(stock.max.y>=1.1&&stock.max.y<=1.3,'full rear comb tapers into a slender FAL wrist');
  assert.ok(stock.min.y>=-3.50&&stock.min.y<=-3.20,'stock heel should not be a triangular M16 wedge');
  assert.ok(grip.min.x>=-6.20&&grip.min.x<=-5.90,'grip rake must be restrained');
  assert.ok(grip.min.y>=-6.7&&grip.min.y<=-6.4,'grip should remain chunky and compact');
