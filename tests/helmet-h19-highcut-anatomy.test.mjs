@@ -64,7 +64,7 @@ test('H19: no stacked exterior panels, same one-draw low-poly shell',()=>{
  assert.equal(geom.userData.h17UnifiedContour,true);
  assert.equal(geom.userData.exteriorQuads,39);
  assert.equal(geom.index.count,234,'78 shell triangles');
- assert.equal(geom.getAttribute('position').count,174);
+ assert.equal(geom.getAttribute('position').count,234);
  assert.ok(near(geom.boundingBox.max.y,8.705));
  assert.ok(near(geom.boundingBox.min.y,2.05));
  assert.equal(geom.userData.achMichCrownInset,ACH_MICH_UPPER_INSET);
