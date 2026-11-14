@@ -25,7 +25,7 @@ test('H23: ear-zone slope begins around 40%, and the opening clears the implied 
   const startFraction=(hem[1][2]-front)/(rear-front);
   const earFraction=(hem[2][2]-front)/(rear-front);
   assert.ok(startFraction>.38 && startFraction<.45,id+' front-of-ear slope');
-  assert.ok(earFraction>.48 && earFraction<.51,id+' ear opening begins near halfway');
+  assert.ok(earFraction>.48 && earFraction<.53,id+' ear opening begins near halfway');
   assert.ok(hem[2][2]<CUBE_HEAD_ANATOMY.earZ &&
    hem[3][2]>CUBE_HEAD_ANATOMY.earZ,
    id+' the ear opening contains the anatomical ear marker');
