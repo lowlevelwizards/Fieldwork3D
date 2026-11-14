@@ -163,11 +163,12 @@ export function chooseEnvironmentSupport(
  return (picks.retained??picks.best)?.claim??null;
 }
 export function teammateShoulderPoint(
- leader:Pick<TeamActor,'p'|'heading'|'posture'>
+ leader:Pick<TeamActor,'p'|'heading'|'posture'|'coverStanceDrop'>
 ):ContactPoint3{
  const f=forward(leader.heading),l=left(leader.heading);
  return {x:leader.p.x-f.x*5+l.x*5.5,
-   y:leader.posture==='crouch'?13:21,
+   // Reuse the fixed-step, replay-owned height of the real leader.
+   y:(leader.posture==='crouch'?13:21)-(leader.coverStanceDrop??0),
    z:leader.p.y-f.y*5+l.y*5.5};
 }
 /** A physical rear-shoulder attachment, never a permission to shoot through
