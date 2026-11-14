@@ -53,9 +53,11 @@ test('D3.2.10: impossible world remains impossible; no ghost start anchor',()=>{
  assert.deepEqual(route(from,goal,canStand),[]);
 });
 
-test('D3.2.11: ordinary authored paths do not enable furniture-start rescue',()=>{
- const source=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
- assert.match(source,/a\.lastBlocker==='furniture'&&a\.blockedTime>=\.85/);
+test('D3.2.12: only known furniture routing opts into rescued grid starts',()=>{
+ const collision=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
+ assert.doesNotMatch(collision,/repairBlockedStart|a\.lastBlocker==='furniture'&&a\.blockedTime>=\.85/);
+ const intel=readFileSync(new URL('../src/breach-intel.ts',import.meta.url),'utf8');
+ assert.match(intel,/knownFurnitureBlocksSnappedStart\(intel,from,owner\)/);
  const core=readFileSync(new URL('../src/breach-core.ts',import.meta.url),'utf8');
  assert.match(core,/repairBlockedStart=false/);
 });
