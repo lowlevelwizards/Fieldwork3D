@@ -51,7 +51,11 @@ test('H9.4c: cords and hooks are paired and anchored to the intended surface',()
   assert.equal(g.visible,false);
  }
 });
-test('H9.4c: period PASGT does not display modern retention bungees',()=>{
+test('H14: PASGT modernization requires real rails and NVG bracket',()=>{
  const kit=createHelmetFieldLayers(new THREE.Group(),'pasgt');
- assert.equal(kit.modules.bungees.children.length,0);
+ assert.equal(kit.modules.bungees.children.length,2);
+ updateHelmetFieldLayers(kit,{bungees:true,shroud:true},0x586548,true);
+ assert.equal(kit.modules.bungees.visible,false);
+ updateHelmetFieldLayers(kit,{bungees:true,rails:true,shroud:true},0x586548,true);
+ assert.equal(kit.modules.bungees.visible,true);
 });
