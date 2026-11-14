@@ -40,27 +40,29 @@ export function buildFALStage1Silhouette(
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number)=>
   addCuboid(root,slot,'fal-stage1-'+slot,ids[slot]++,x,y,z,w,h,d,material);
 
- // Fixed stock: large swept silhouette, a real hump behind the receiver,
- // and a thick black-box-scale rear pad. One continuous large outline.
+ // S1B: exaggerated FAL hump-back, high cheek shoulder and low swept heel.
+ // One uninterrupted, low-vertex stock volume with a broad miniaturized pad.
  p('stock',[
-  [-15.00,.55],[-13.15,.70],[-10.45,1.12],[-7.96,1.17],
-  [-6.20,.48],[-6.13,-1.32],[-9.35,-2.39],
-  [-14.70,-3.38],[-15.00,-3.18]
+  [-15.00,.88],[-14.64,1.05],[-12.68,1.31],
+  [-10.72,1.86],[-9.30,1.99],[-8.40,1.80],
+  [-6.20,.52],[-6.13,-1.44],[-9.35,-2.18],
+  [-14.72,-3.73],[-15.00,-3.55]
  ],3.18);
- b('stock',-14.86,-1.30,0,.28,4.12,3.44);
+ b('stock',-14.86,-1.32,0,.28,4.60,3.45);
 
- // Receiver's long stepped upper cover. Deliberately NO G3-style raised
+ // S1B: reinforce the distinctive two-step FAL top-cover near the nose.
  // cocking tube and NO AR-like split carry-handle upper.
  p('receiver',[
-  [-6.60,-.85],[-6.60,1.17],[-5.76,1.81],
-  [2.95,1.81],[3.85,1.15],[3.85,-.72],
-  [2.95,-1.18],[-5.72,-1.44]
+  [-6.60,-.87],[-6.60,1.10],[-5.78,1.86],
+  [.88,1.86],[1.55,1.65],[3.06,1.65],
+  [3.85,.99],[3.85,-.76],[2.94,-1.21],
+  [-5.76,-1.46]
  ],3.50);
  // Single angular lower, sculpting the grip/magazine negative space.
  p('receiver',[
-  [-6.25,-1.14],[-5.73,-1.82],[-4.56,-2.23],
-  [-3.14,-2.23],[-2.18,-1.42],[-.60,-1.34],
-  [.16,-2.40],[3.34,-2.56],[3.75,-1.05]
+  [-6.27,-1.17],[-5.66,-1.98],[-4.51,-2.38],
+  [-3.15,-2.38],[-2.08,-1.53],[-.56,-1.50],
+  [.16,-2.54],[3.36,-2.64],[3.75,-1.05]
  ],3.18);
  // Distinct FAL magazine-well wedge projecting down toward the magazine.
  p('receiver',[
@@ -68,11 +70,11 @@ export function buildFALStage1Silhouette(
   [3.10,-3.19],[-.25,-3.19]
  ],3.28);
 
- // Chunky rear-raked grip and close-to-vertical full-size box magazine.
+ // S1B: dramatically rear-raked chunky grip; preserve open mag/grip gap.
  p('grip',[
-  [-5.02,-2.16],[-2.90,-2.16],
-  [-3.34,-5.72],[-3.60,-6.49],
-  [-5.43,-6.53],[-5.48,-4.45]
+  [-5.18,-2.18],[-2.97,-2.18],
+  [-4.34,-6.33],[-4.85,-7.14],
+  [-6.87,-7.14],[-6.57,-5.52]
  ],2.32);
  p('magazine',[
   [-.36,-2.98],[3.10,-2.98],
@@ -80,12 +82,12 @@ export function buildFALStage1Silhouette(
   [-.08,-8.05],[-.34,-7.69]
  ],2.32);
 
- // FN handguard: long flattened taper rather than a straight G3 tube
- // or a square M4 quad rail. NO slots, ribs, screws or textures in Stage 1.
+ // S1B: prominent triangular/wedge forearm, fuller at rear and visibly
+ // narrowing toward the gas block. NO vents, ribs or surface details.
  p('handguard',[
-  [3.80,1.13],[4.50,1.40],[12.78,1.36],
-  [14.10,.93],[14.10,-1.08],[12.95,-1.45],
-  [4.44,-1.70],[3.80,-1.31]
+  [3.80,1.14],[4.46,1.67],[11.98,1.62],
+  [13.74,1.26],[14.10,.75],[14.10,-.91],
+  [12.22,-1.28],[4.56,-2.22],[3.80,-1.88]
  ],3.46);
 
  // One six-sided barrel. The gas-block sight is near the end of the
@@ -93,11 +95,13 @@ export function buildFALStage1Silhouette(
  const barrel=addFacetedTube(root,'barrel','fal-stage1-barrel',
   ids.barrel++,13.85,21.15,.61,material);
  barrel.position.y=.12;
- // Large protective-ears front sight: one silhouette, not a G3 ring.
+ // S1B: enlarged FAL gas-block sight with pronounced protective ears;
+ // heavy V-shaped sight opening, never a G3 ring.
  p('barrel',[
-  [14.13,.23],[14.16,2.41],[14.38,2.83],
-  [14.61,2.83],[14.70,2.11],
-  [14.91,2.70],[15.18,2.70],[15.28,.23]
+  [13.97,.24],[14.05,1.47],[14.06,3.05],
+  [14.35,3.38],[14.58,3.10],[14.67,2.36],
+  [14.80,3.07],[15.07,3.32],[15.35,3.00],
+  [15.38,.24]
  ],1.82);
  // Simple long Belgian muzzle treatment, entirely within authoritative tip.
  p('barrel',[
@@ -105,10 +109,10 @@ export function buildFALStage1Silhouette(
   [22.00,-.67],[22.00,.67],[21.70,.84],
   [21.28,.84],[21.03,.74]
  ],1.78);
- // One short rear sight block. Leave tiny knobs, posts and pins unmodeled.
+ // S1B: taller low-poly FAL rear blade; no knobs, pins or aperture holes.
  p('receiver',[
-  [-5.43,1.79],[-5.32,2.53],[-4.99,2.73],
-  [-4.62,2.66],[-4.42,1.79]
+  [-5.52,1.82],[-5.42,2.74],[-5.06,3.00],
+  [-4.68,2.86],[-4.48,1.82]
  ],1.74);
 
  // Optional, deliberately gated silhouette probe. If the rifle only looks
