@@ -49,8 +49,8 @@ test('H21: static unified shells, shared cover and rubber edge',()=>{
   const group=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   assert.equal(group.children.length,1,'one shell mesh for '+id);
   const geom=group.children[0].geometry;
-  assert.equal(geom.userData.exteriorQuads,29,'no extra faces for '+id);
-  assert.equal(geom.index.count,174,'58 triangles for '+id);
+  assert.equal(geom.userData.exteriorQuads,39,'one midwall shoulder row for '+id);
+  assert.equal(geom.index.count,234,'78 triangles for '+id);
   assert.equal(headwearCuboidVolumes(id).length,5,'no stacked guard plates');
   const p=achMichProfile(id),hem=UNIFIED_HELMET_HEMS[id];
   assert.equal(p.hem,hem,'one contour drives shell, cover, rubber edge');
@@ -65,7 +65,7 @@ test('H21: static unified shells, shared cover and rubber edge',()=>{
   assert.equal(paths.length,6);
   assert.ok(cover.boundingBox.max.y>=geom.boundingBox.max.y);
   // The cover's lower rear seam must meet the new rim, not H20's old rear.
-  const expected=p.nape+achMichBindingHeight(id)+.035;
+  const expected=p.nape-.14;
   const pos=cover.getAttribute('position');
   let rearSeamVertex=false;
   for(let i=0;i<pos.count;i++){

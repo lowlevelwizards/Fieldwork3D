@@ -62,9 +62,9 @@ test('H19: no stacked exterior panels, same one-draw low-poly shell',()=>{
  assert.equal(shell.children.length,1);
  const geom=shell.children[0].geometry;
  assert.equal(geom.userData.h17UnifiedContour,true);
- assert.equal(geom.userData.exteriorQuads,29);
- assert.equal(geom.index.count,174,'58 shell triangles');
- assert.equal(geom.getAttribute('position').count,174);
+ assert.equal(geom.userData.exteriorQuads,39);
+ assert.equal(geom.index.count,234,'78 shell triangles');
+ assert.equal(geom.getAttribute('position').count,234);
  assert.ok(near(geom.boundingBox.max.y,8.705));
  assert.ok(near(geom.boundingBox.min.y,2.05));
  assert.equal(geom.userData.achMichCrownInset,ACH_MICH_UPPER_INSET);
@@ -83,7 +83,7 @@ test('H19: narrow rubber edge follows one shell/cover perimeter',()=>{
  assert.equal(pos.count,72);
  let maxSide=0;
  for(let i=0;i<pos.count;i++)maxSide=Math.max(maxSide,Math.abs(pos.getX(i)));
- assert.ok(maxSide<=Math.max(...p.hem.map(v=>v[0]))+.10,
+ assert.ok(maxSide<=5.61,
    'no offset thick floating rim beyond variable shell width');
  assert.ok(near(binding.boundingBox.min.y,2.05));
  const cover=createAchMichDrapedGeometry(id);

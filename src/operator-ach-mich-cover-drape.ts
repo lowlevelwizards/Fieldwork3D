@@ -4,9 +4,12 @@
  * Same 512×256 three-cut print atlas and 7 px/world-unit as PASGT.
  */
 import * as THREE from 'three';
-import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET}
+import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET,
+ ACH_MICH_BEVEL_HEIGHT}
  from './operator-headwear-silhouettes.ts';
-import {achMichProfile,achMichBindingHeight} from './operator-ach-mich-details.ts';
+import {achMichProfile} from './operator-ach-mich-details.ts';
+import {ACH_MICH_EAR_SHOULDER_FRACTION,unifiedHelmetEarShoulderWidth}
+ from './operator-ach-mich-unified-shell.ts';
 import {pasgtAtlasUv,PASGT_TOP_SEAM_OFFSETS,PASGT_FABRIC_PANELS,
  PASGT_UV_TEXELS_PER_UNIT} from './operator-pasgt-drape-geometry.ts';
 
@@ -21,13 +24,13 @@ export const ACH_MICH_COVER_FOLDED_HEM=.18;
 export const ACH_MICH_COVER_SIDE_CROWN_ALLOWANCE=.24;
 export type AchMichCoverShell=typeof ACH_MICH_SHELLS[number];
 type Side='front'|'right'|'rear'|'left';
-type Ring='top'|'shoulder'|'hem';
+type Ring='top'|'shoulder'|'flare'|'hem';
 type Sample={side:Side;x:number;z:number;bottom:number};
 const clamp=(n:number)=>Math.min(1,Math.max(0,n));
 type Style={
  shell:AchMichCoverShell;topY:number;topX:number;topFront:number;
  topRear:number;shoulderY:number;front:number;rear:number;
- sideX:number;hem:readonly (readonly [number,number,number])[];
+ sideX:number;shellShoulderY:number;hem:readonly (readonly [number,number,number])[];
  brow:number;nape:number;
 };
 function dimensions(shell:AchMichCoverShell):Style{
@@ -42,7 +45,9 @@ function dimensions(shell:AchMichCoverShell):Style{
   // Direct, broad diagonal from crown toward the outer front/rear planes.
   shoulderY: shell==='ach'?6.53:shell==='mich-2001'?6.77:6.79,
   front:p.front-offset,rear:p.rear+offset,
-  sideX:p.side+offset,hem:p.hem,brow:p.brow,nape:p.nape
+  sideX:p.side+offset,
+  shellShoulderY:crown.y+crown.height/2-ACH_MICH_BEVEL_HEIGHT,
+  hem:p.hem,brow:p.brow,nape:p.nape
  };
 }
 const sideBottom=(style:Style,z:number):number=>{
@@ -90,17 +95,30 @@ function samples(style:Style):readonly (readonly Sample[])[]{
 /** Three contours: flat top, one broad diagonal shoulder, and hem.
  * No intermediate inward-facing ramp or painted-shell-revealing shelf.
  */
+/** The textile uses the exact same six longitudinal shell stations
+ * and the *actual* additional middle sidewall shoulder. No interpolated
+ * diagonal cloth panel may cross through that outward shoulder.
+ */
 function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,number]{
  const front=s.side==='front',rear=s.side==='rear',side=!front&&!rear;
  const sign=s.side==='left'?-1:1;
- // The first and last side vertices must match the front/rear vertices.
- // MICH skirt stations sometimes protrude beyond the main side extent;
- // using those offsets at the corner left a visible open cover seam.
  const corner=side&&(Math.abs(s.z-style.topFront)<1e-5||
   Math.abs(s.z-style.topRear)<1e-5);
- const extent=side?(corner?style.sideX:
-  sideExtent(style,s.z)+ACH_MICH_COVER_OFFSET):style.sideX;
- const x=ring==='top'?s.x:side?sign*extent:
+ const extentAtHem=corner?style.hem[s.z===style.topFront?0:5][0]:
+  sideExtent(style,s.z);
+ const outward=ACH_MICH_COVER_OFFSET;
+ const midWidth=unifiedHelmetEarShoulderWidth(style.shell,s.z);
+ const flareY=style.shellShoulderY+
+  (s.bottom-style.shellShoulderY)*ACH_MICH_EAR_SHOULDER_FRACTION;
+ // Between the shell's top shoulder and its ear shoulder, x expands
+ // linearly. At the textile shoulder ring sample the actual shell width.
+ const sideAtShoulder=style.sideX-outward+
+  (midWidth-(style.sideX-outward))*
+   clamp((style.shellShoulderY-style.shoulderY)/
+    Math.max(.15,style.shellShoulderY-flareY));
+ const sideWidth=ring==='shoulder'?sideAtShoulder+outward+.08:
+  ring==='flare'?midWidth+outward+.08:extentAtHem+outward+.05;
+ const x=ring==='top'?s.x:side?sign*(corner?style.sideX:sideWidth):
   (s.x/style.topX)*style.sideX;
  const f=side?clamp((style.topFront+1.5-s.z)/1.5):1;
  const b=side?clamp((s.z-(style.topRear-1.5))/1.5):1;
@@ -108,7 +126,10 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
   s.z+(style.front-style.topFront)*f+(style.rear-style.topRear)*b;
  const y=ring==='top'?style.topY:
   ring==='shoulder'?style.shoulderY:
-  s.bottom+achMichBindingHeight(style.shell)+.035;
+  ring==='flare'?flareY+.07:
+  // Cloth passes below the shell edge, so even the top of the molded
+  // rubber is concealed instead of showing as a colored stripe.
+  s.bottom-.14;
  return [x,y,z];
 }
 /** Three UV islands retain the exact PASGT fabric print texel pitch.
@@ -119,7 +140,7 @@ function fabricCoordinate(style:Style,s:Sample,ring:Ring):
  readonly [number,number]{
  const xyz=ringPoint(style,s,ring);
  if(ring==='top')return [xyz[0],xyz[2]];
- const rings:readonly Ring[]=['top','shoulder','hem'];
+ const rings:readonly Ring[]=['top','shoulder','flare','hem'];
  let distance=0;
  for(let i=1;i<=rings.indexOf(ring);i++){
   const a=ringPoint(style,s,rings[i-1]),
@@ -169,7 +190,7 @@ export function createAchMichDrapedGeometry(
  }
  const pairs:readonly (readonly [Ring,Ring])[]=hemOnly?
   [['hem','hem']]:
-  [['top','shoulder'],['shoulder','hem']];
+  [['top','shoulder'],['shoulder','flare'],['flare','hem']];
  for(const [upper,lower] of pairs){
   for(const panelSamples of panels)
    for(let i=0;i<panelSamples.length-1;i++){
@@ -179,15 +200,22 @@ export function createAchMichDrapedGeometry(
      (a.x+b.x)/2>PASGT_TOP_SEAM_OFFSETS[1]?'right':'top';
     if(hemOnly){
      const p0=ringPoint(style,a,'hem'),p1=ringPoint(style,b,'hem');
-     const raised=(p:readonly number[]):readonly [number,number,number]=>
-      [p[0],p[1]+ACH_MICH_COVER_FOLDED_HEM,p[2]];
-     const outside=(p:readonly number[]):readonly [number,number,number]=>
-      [p[0]+(a.side==='right'?.045:a.side==='left'?-.045:0),
-       p[1],p[2]+(a.side==='front'?-.045:a.side==='rear'?.045:0)];
-     const up0=outside(raised(p0)),up1=outside(raised(p1));
-     const lo0=outside(p0),lo1=outside(p1);
-     quad(up0,up1,lo1,lo0,uv(a,'hem',panel),
-      uv(b,'hem',panel),uv(b,'hem',panel),uv(a,'hem',panel));
+     // A genuine inward turn, not a second outward skirt hovering over
+     // the rubber. The cloth main panel ends at this exact seam.
+     const inset=(p:readonly number[],sample:Sample):
+      readonly [number,number,number]=>{
+      const left=sample.side==='left',right=sample.side==='right',
+       front=sample.side==='front',rear=sample.side==='rear';
+      const cornerX=sample.x<0?-1:1;
+      return [
+       p[0]-(left?-.33:right?.33:.33*cornerX),
+       p[1]-.10,
+       p[2]+(front?.27:rear?-.27:0)
+      ];
+     };
+     quad(p0,p1,inset(p1,b),inset(p0,a),
+      uv(a,'hem',panel),uv(b,'hem',panel),
+      uv(b,'hem',panel),uv(a,'hem',panel));
     }else{
      quad(ringPoint(style,a,upper),ringPoint(style,b,upper),
       ringPoint(style,b,lower),ringPoint(style,a,lower),
@@ -212,5 +240,7 @@ export function createAchMichDrapedGeometry(
  g.userData.uvTexelsPerUnit=PASGT_UV_TEXELS_PER_UNIT;
  g.userData.minimumFoldHeight=ACH_MICH_COVER_FOLDED_HEM;
  g.userData.achMichDirectFrontRearDiagonal=true;
+ g.userData.h25EarShoulderMatched=true;
+ g.userData.h25TuckedConcealedBinding=true;
  return g;
 }

@@ -55,7 +55,7 @@ test('PASGT reference and ACH/MICH fastened webbing clear cube head',()=>{
   for(let i=padStart;i<positions.count;i++)
    assert.ok(Math.abs(positions.getZ(i)+4.34)<1e-5,
     shell+' cup should follow the strap endpoints at PASGT face depth');
-  assert.equal(positions.count,54);
+  assert.equal(positions.count,36);
   assert.equal(penetratesHead(geometry),false,shell+' fastened strap clips face');
   assert.ok(geometry.boundingBox.max.y>2,'shell anchors remain at upper rim');
   assert.ok(geometry.boundingBox.min.y<-1.5,'chin cup clears jaw bottom');

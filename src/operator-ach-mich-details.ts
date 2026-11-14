@@ -120,20 +120,31 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
  g.userData.minimumHeight=bindingHeight;
  return g;
 }
+/** Webbing connects at a true shared Y-point. Taper the three ribbons
+ * to that vertex rather than laying three broad rectangles over one
+ * another (the source of the blocky overlapping cheek triangles).
+ * No junction cap or extra meshes, so lower triangle count.
+ */
 function appendStrap(data:number[],path:readonly Point[],normal:THREE.Vector3,
- halfWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH){
+ halfWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH,joint?:Point){
  const vec=(p:Point)=>new THREE.Vector3(...p);
+ const atJoint=(p:Point)=>joint===p; // same immutable authored waypoint
  for(let i=1;i<path.length;i++){
-  const a=vec(path[i-1]),b=vec(path[i]);
+  const pa=path[i-1],pb=path[i],a=vec(pa),b=vec(pb);
   const tangent=b.clone().sub(a).normalize();
   const across=new THREE.Vector3().crossVectors(normal,tangent)
    .normalize().multiplyScalar(halfWidth);
-  const v=[
-   a.clone().add(across),a.clone().sub(across),
-   b.clone().sub(across),b.clone().add(across)
-  ];
-  for(const p of [v[0],v[1],v[2],v[0],v[2],v[3]])
-   data.push(p.x,p.y,p.z);
+  const taperStart=atJoint(pa),taperEnd=atJoint(pb);
+  const a0=a.clone().add(taperStart?new THREE.Vector3():across),
+   a1=a.clone().sub(taperStart?new THREE.Vector3():across),
+   b0=b.clone().sub(taperEnd?new THREE.Vector3():across),
+   b1=b.clone().add(taperEnd?new THREE.Vector3():across);
+  const emit=(p:THREE.Vector3,q:THREE.Vector3,r:THREE.Vector3)=>{
+   for(const v of [p,q,r])data.push(v.x,v.y,v.z);
+  };
+  if(taperEnd)emit(a0,a1,b);
+  else if(taperStart)emit(a,b0,b1);
+  else{emit(a0,a1,b0);emit(a0,b0,b1);}
  }
 }
 /** ACH/MICH retention is mounted *inside* the shell. Only the exposed
@@ -164,7 +175,7 @@ export function achMichRetentionPaths(
   // to chin diagonal crossed the 8x8 head cube: midway it had |x|<4 AND
   // z>-4. PASGT avoids this with an outboard cheek station before it
   // turns inward on the front side of the face.
-  const junction:Point=[sign*4.56,1.37,-2.91];
+  const junction:Point=[sign*4.62,1.14,-.35];
   // Pull both forward cheek corners inboard by .17 and back by .08.
   // The full webbing ribbon still clears the -4 front / +/-4 side head box.
   const cheekDrop:Point=[sign*4.46,.65,-4.36];
@@ -187,7 +198,9 @@ export function createAchMichRetentionGeometry(
  // oversized triangular hub patches that intersected the cheek silhouette.
  for(let i=0;i<paths.length;i++){
   const sign=i<3?-1:1;
-  appendStrap(data,paths[i],new THREE.Vector3(sign*.68,0,-.74),.39);
+  const junction=paths[sign<0?0:3][1];
+  appendStrap(data,paths[i],new THREE.Vector3(sign*.68,0,-.74),
+   .39,junction);
  }
  // Join at the exact two chin endpoints, without a second overlapping
  // junction. The cup's top edge is just below the known -1 skull bottom.
@@ -202,6 +215,7 @@ export function createAchMichRetentionGeometry(
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.achMichFourPoint=true;
+ g.userData.h25SharedTaperedYJunction=true;
  g.userData.belowShellAnchors=true;
  g.userData.integratedChinCup=true;
  g.userData.chinWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH*2;
@@ -260,7 +274,7 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
  // static geometry: 4 triangles total, one draw call, no hidden side faces.
  const claspVertices:number[]=[];
  for(const sign of [-1,1]){
-  const x=sign*4.69,y=1.10,z=-3.03;
+  const x=sign*4.69,y=.79,z=-3.25;
   const a:Point=[x,y-.21,z-.18],b:Point=[x,y-.21,z+.18],
    c:Point=[x,y+.21,z+.18],d:Point=[x,y+.21,z-.18];
   for(const p of [a,b,c,a,c,d])claspVertices.push(...p);

@@ -67,8 +67,8 @@ test('H23: shell, cover, edge and hardware share the six profile stations',()=>{
   const shell=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   const g=shell.children[0].geometry;
   assert.equal(shell.children.length,1);
-  assert.equal(g.userData.exteriorQuads,29);
-  assert.equal(g.index.count,174,'same 58 triangles');
+  assert.equal(g.userData.exteriorQuads,39);
+  assert.equal(g.index.count,234,'same 78 triangles');
   assert.ok(close(g.boundingBox.min.y,Math.min(...hem.map(p=>p[1]))));
   const edge=createAchMichBindingGeometry(id),e=edge.getAttribute('position');
   assert.equal(edge.userData.segmentCount,12);
@@ -79,7 +79,7 @@ test('H23: shell, cover, edge and hardware share the six profile stations',()=>{
    assert.ok(same(point(e,a),point(e,b)),
     'corner is watertight, not two crossing trim slivers');
   const cover=createAchMichDrapedGeometry(id),v=cover.getAttribute('position');
-  const rearSeamY=p.nape+achMichBindingHeight(id)+.035;
+  const rearSeamY=p.nape-.14;
   let rearSeam=false;
   for(let i=0;i<v.count;i++)if(close(v.getY(i),rearSeamY,.004)&&
    v.getZ(i)>p.rear-.15){rearSeam=true;break;}

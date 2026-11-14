@@ -27,8 +27,8 @@ test('H24: mirrored per-station ear mass, not extra shell parts',()=>{
   const shell=createHeadwearSilhouette(id,mat);
   const mesh=shell.children[0],geo=mesh.geometry;
   assert.equal(shell.children.length,1);
-  assert.equal(geo.index.count,174,'58 triangles; no new faces');
-  assert.equal(geo.userData.exteriorQuads,29);
+  assert.equal(geo.index.count,234,'78 triangles; one added shoulder row');
+  assert.equal(geo.userData.exteriorQuads,39);
   assert.equal(mesh.castShadow,true);
   assert.equal(mesh.material.side,THREE.DoubleSide);
   assert.equal(mesh.material.shadowSide,THREE.DoubleSide);

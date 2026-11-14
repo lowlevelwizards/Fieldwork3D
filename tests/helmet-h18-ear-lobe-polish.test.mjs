@@ -46,11 +46,11 @@ test('H18: fewer rim pixels without new geometry and fabric stays synchronized',
   assert.ok(near(binding.userData.minimumHeight,height));
   const p=achMichProfile(id),attrib=cover.getAttribute('position');
   for(const z of [p.front,p.rear]){
-   const y=(z===p.front?p.brow:p.nape)+height+.035;
+   const y=(z===p.front?p.brow:p.nape)-.14;
    let matches=0;
    for(let i=0;i<attrib.count;i++)
     if(near(attrib.getY(i),y,.003))matches++;
-   assert.ok(matches>0,'draped cover offset follows same reduced binding height');
+   assert.ok(matches>0,'H25 cloth extends past the covered rubber lip');
   }
   const straps=achMichRetentionPaths(id);
   assert.equal(straps.length,6);
@@ -74,14 +74,14 @@ test('H19: identical crown language, 58 triangles for all three helmet cuts',()=
   assert.equal(group.children.length,1);
   const g=group.children[0].geometry;
   assert.equal(g.userData.h17UnifiedContour,true);
-  assert.equal(g.userData.exteriorQuads,29);
-  assert.equal(g.index.count,174,'29 quads = 58 triangles');
+  assert.equal(g.userData.exteriorQuads,39);
+  assert.equal(g.index.count,234,'29 quads = 58 triangles');
   assert.ok(near(g.boundingBox.max.y,roof));
   assert.equal(g.userData.achMichCrownInset,.53);
   assert.equal(g.userData.achMichBevelHeight,1.10);
  }
  const high=createHeadwearSilhouette('mich-2001',new THREE.MeshStandardMaterial());
  assert.equal(high.children[0].geometry.userData.h17UnifiedContour,true);
- assert.equal(high.children[0].geometry.userData.exteriorQuads,29);
+ assert.equal(high.children[0].geometry.userData.exteriorQuads,39);
  assert.ok(near(achMichHemY('mich-2001',.5),5.30));
 });
