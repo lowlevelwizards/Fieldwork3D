@@ -13,8 +13,11 @@ const d=length;
 const angle=targetAngle;
 
 export function advanceActorSightProgress(s:Session,dt:number,geometricallyVisible:SightTest){
- // One scene sample per simulation-time bucket, never one raycast per sight pair.
- const lighting=actorLightingLevels(s);
+ // Most sampled sight pairs are occluded or facing-away. Defer the
+ // shared 8 Hz illumination field until the first *physically visible*
+ // subject, rather than rebuilding lighting for a no-contact tick. The
+ // same world state and one snapshot serve every subsequent pair.
+ let lighting:ReturnType<typeof actorLightingLevels>|null=null;
  for(const observer of s.operators){
   if(observer.health<=0)continue;
   for(const subject of s.operators){
@@ -26,7 +29,8 @@ export function advanceActorSightProgress(s:Session,dt:number,geometricallyVisib
    const signal=visible?visualGain(range,
     angleDifference(observer.heading,angle(observer.p,subject.p)),
     subject.velocity>10,subject.posture==='crouch')*
-    lightVisibilityGain(lighting.get(subject.id)??1)*
+    lightVisibilityGain((lighting??(lighting=actorLightingLevels(s)))
+      .get(subject.id)??1)*
     (subject.weaponLightOn&&subject.weaponConfiguration?.slots.light==='light-compact'?1.18:1)*
     (observer.side==='red'?perceptualReadiness(
       observer.encounterReadiness??'attentive'):1):0;
