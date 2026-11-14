@@ -9,7 +9,7 @@ export type FALBarrelArt={
 export const FAL_BARREL_ART:Readonly<Record<string,FALBarrelArt>>={
  'fal-21-service':{
   id:'fal-21-service',nominalInches:21,lengthScale:.95,
-  handguardStartX:3.80,handguardEndX:14.10,
+  handguardStartX:3.65,handguardEndX:14.10,
   frontSightX:14.70,muzzleX:22.00,muzzleY:0
  }
 };
