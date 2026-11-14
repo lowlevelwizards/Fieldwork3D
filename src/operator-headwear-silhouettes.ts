@@ -560,16 +560,16 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
  if(!unified)chamferAchMichCrown(geometry,volume,id);
  // Existing helmet construction tones are compressed for dark camo inks.
  softenHeadwearAO(geometry);
- // The shell includes a real 0.48-unit inward underside fold, but its
- // handedness was culled from below and by the light's opposite view.
- // Clone only unified helmet materials: other wardrobe pieces may share m.
- // Double-side render/shadow without new meshes, faces or per-frame cost.
- const shellMaterial=unified?m.clone():m;
+ // The shell already has an inward underside fold; its back faces
+ // were culled from below and in shadow-map views. ACH/MICH headwear
+ // materials are independently allocated per variant and are also the
+ // authoritative references for runtime recoloring. Do NOT clone them:
+ // that would disconnect the visible shell from appearance/save updates.
  if(unified){
-  shellMaterial.side=THREE.DoubleSide;
-  shellMaterial.shadowSide=THREE.DoubleSide;
+  m.side=THREE.DoubleSide;
+  m.shadowSide=THREE.DoubleSide;
  }
- const mesh=new THREE.Mesh(geometry,shellMaterial);
+ const mesh=new THREE.Mesh(geometry,m);
  mesh.name=id+(unified?'-unified-lowpoly-shell':'-continuous-cuboid-exterior');
  mesh.castShadow=true;
  // Keep its self-shadow noise out of the clean close-up silhouette review.
