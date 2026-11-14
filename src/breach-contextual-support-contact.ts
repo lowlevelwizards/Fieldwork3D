@@ -10,7 +10,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {lockpickContactCandidate} from './breach-lockpick-contact.ts';
 import {resolvePoseContactOwners,type ContactOwners} from './breach-pose-contacts.ts';
 import {contactWithinReach,sameContact,
-  releasePhysicalContact,selectPhysicalContact,
+  releasePhysicalContact,selectSinglePhysicalContact,
   type PhysicalContact,type ContactClaim,type ContactPoint3}
  from './breach-physical-contact-anchor.ts';
 
@@ -104,20 +104,21 @@ const actorFacingSurface=(a:TeamActor,point:Pt):boolean=>{
 };
 function contactForSurface(
  s:Session,a:TeamActor,surface:SupportSurface,
- world:SessionWorldGeometry,retaining:boolean
+ world:SessionWorldGeometry,retaining:boolean,origin:ContactPoint3
 ):ContactClaim|null{
  if(!actorFacingSurface(a,surface.point))return null;
- const origin=handOrigin(a);
  const contact:PhysicalContact={intent:'brace',limb:'support-hand',
   anchor:{target:'surface',id:surface.id,
     point:{x:surface.point.x,y:surface.height,z:surface.point.y},
     normal:{x:surface.normal.x,y:0,z:surface.normal.y}},
   startedAt:s.seconds,releasedAt:null};
+ // Do not perform world raycasts until the anchor is truly within the
+ // physical hand envelope. No candidate that passed before is rejected.
  const evidence={from:origin,acquireReach:SUPPORT_ACQUIRE_REACH,
-  retainReach:SUPPORT_RELEASE_REACH,
-  lineClear:faceVisible(s,world,origin,surface.point,surface.normal)};
- return contactWithinReach(contact,evidence,retaining)?
-  {contact,reach:evidence}:null;
+  retainReach:SUPPORT_RELEASE_REACH,lineClear:true};
+ if(!contactWithinReach(contact,evidence,retaining))return null;
+ evidence.lineClear=faceVisible(s,world,origin,surface.point,surface.normal);
+ return evidence.lineClear?{contact,reach:evidence}:null;
 }
 export function chooseEnvironmentSupport(
  s:Session,a:TeamActor,world:SessionWorldGeometry,
@@ -130,7 +131,7 @@ export function chooseEnvironmentSupport(
   if(!surface)return;
   const retained=!!previous&&previous.releasedAt===null&&
     previous.anchor.id===surface.id;
-  const claim=contactForSurface(s,a,surface,world,retained);
+  const claim=contactForSurface(s,a,surface,world,retained,origin);
   if(!claim)return;
   const option={claim,score:Math.hypot(
     surface.point.x-origin.x,surface.height-origin.y,
@@ -200,10 +201,12 @@ export function chooseTeammateSupport(
     normal:{x:normal.x,y:0,z:normal.y}},
    startedAt:s.seconds,releasedAt:null};
   const e={from,acquireReach:SUPPORT_ACQUIRE_REACH,
-   retainReach:SUPPORT_RELEASE_REACH,
-   lineClear:world.isClear(sourcePoint(from),target,s.doors)};
-  if(!contactWithinReach(contact,e,!!previous&&
-    previous.releasedAt===null&&sameContact(contact,previous)))continue;
+   retainReach:SUPPORT_RELEASE_REACH,lineClear:true};
+  const retaining=!!previous&&previous.releasedAt===null&&
+    sameContact(contact,previous);
+  if(!contactWithinReach(contact,e,retaining))continue;
+  e.lineClear=world.isClear(sourcePoint(from),target,s.doors);
+  if(!e.lineClear)continue;
   const candidate={claim:{contact,reach:e},
    score:Math.hypot(shoulder.x-from.x,shoulder.y-from.y,
      shoulder.z-from.z)};
@@ -248,7 +251,10 @@ export function contextualSupportAllowed(
  * All anchors are observational; this only changes the support hand pose.
  */
 export function advanceContextualSupportContacts(s:Session):void{
- const world=sessionWorldGeometry(s);
+ // An empty, moving or busy squad must not even ask for geometry.
+ // The first truly eligible actor lazily obtains the one session index.
+ let world:SessionWorldGeometry|null=null;
+ const geometry=()=>world??(world=sessionWorldGeometry(s));
  for(const a of s.operators){
   const previous=a.physicalContact;
   // A recorded release must finish before any different contact begins.
@@ -288,11 +294,12 @@ export function advanceContextualSupportContacts(s:Session):void{
   }
   // A genuine close aligned stack outranks decorative world bracing;
   // otherwise prefer retaining the current surface to prevent twitching.
-  const team=chooseTeammateSupport(s,a,world,current);
-  const surface=team?null:chooseEnvironmentSupport(s,a,world,current);
-  const candidate=(team??surface);
-  const choice=candidate?selectPhysicalContact([candidate],
-    owners,s.seconds,current):null;
+  const currentWorld=geometry();
+  const team=chooseTeammateSupport(s,a,currentWorld,current);
+  const surface=team?null:chooseEnvironmentSupport(s,a,currentWorld,current);
+  const candidate=team??surface;
+  const choice=candidate?selectSinglePhysicalContact(
+    candidate,owners,s.seconds,current):null;
   if(choice){
    if(current?.releasedAt===null&&sameContact(current,choice)){
     // Geometry follows the actual leader and wall, but the grip clock is
