@@ -46,7 +46,7 @@ try{
    // The material tab hides the item grid. Explicitly return to ITEM
    // before choosing each real garment; otherwise every screenshot
    // silently captures the same BDU top and falsely "checks" three styles.
-   await page.locator('[data-studio-step="items"]').click();
+   await page.locator('button[data-studio-step="items"]').click();
    const item=page.locator('[data-appearance-item="'+id+'"]');
    await item.waitFor({state:'visible',timeout:10000});
    if(await item.isDisabled())throw Error(id+' unavailable in Studio');
@@ -55,9 +55,9 @@ try{
    // Enter MATERIAL explicitly instead of relying on the removed auto-jump.
    if(await page.locator('[data-studio-step="items"]').getAttribute('aria-pressed')!=='true')
     throw Error(id+': selecting a garment unexpectedly left ITEMS');
-   await page.locator('[data-studio-step="materials"]').click();
+   await page.locator('button[data-studio-step="materials"]').click();
    await page.waitForFunction(()=>
-    document.querySelector('[data-studio-step="materials"]')?.getAttribute('aria-pressed')==='true',
+    document.querySelector('button[data-studio-step="materials"]')?.getAttribute('aria-pressed')==='true',
     null,{timeout:10000});
    await page.waitForTimeout(280);
    const shot=await page.locator('#studioCanvas').screenshot();
