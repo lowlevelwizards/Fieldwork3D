@@ -30,9 +30,9 @@ const slotBox=(g,slot)=>{
 const overlap=(a,b)=>(Math.min(a.max,b.max)-Math.max(a.min,b.min));
 
 test('R3: retains all 91 family IDs, 11 presets and physical muzzle invariants',()=>{
- assert.ok(Object.keys(FAMILY_PARTS).length>=91,'preserve 91 authored core parts');
- assert.ok(FAMILY_PRESETS.length>=17,'preserve original 17 factory references');
- for(const preset of FAMILY_PRESETS.filter(p=>p.family==='ar'||p.family==='ak')){
+ assert.equal(Object.keys(FAMILY_PARTS).length,91);
+ assert.equal(FAMILY_PRESETS.length,17);
+ for(const preset of FAMILY_PRESETS){
   const {config,group}=model(preset.id);
   const extent=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(extent.max.x-resolveWeaponAssembly(config).muzzleX)<.001,preset.id);
@@ -58,7 +58,7 @@ test('R3: compact Mk18 and AKS-74U actually read shorter in scaled workbench',()
 });
 
 test('R3: major part connections have positive deliberate overlap in local silhouettes',()=>{
- for(const p of FAMILY_PRESETS.filter(p=>p.family==='ar'||p.family==='ak')){
+ for(const p of FAMILY_PRESETS){
   const {group}=model(p.id);
   const stock=slotBox(group,'stock'),receiver=slotBox(group,'receiver');
   const grip=slotBox(group,'grip'),mag=slotBox(group,'magazine');
@@ -76,7 +76,7 @@ test('R3: major part connections have positive deliberate overlap in local silho
 });
 
 test('R3: body socket labels project over real mesh envelopes, not floating constants',()=>{
- for(const preset of FAMILY_PRESETS.filter(p=>p.family==='ar'||p.family==='ak')){
+ for(const preset of FAMILY_PRESETS){
   const {config,group}=model(preset.id);
   const anchors=workbenchVisualAnchors(config,group,'body');
   assert.equal(anchors.length,6);
