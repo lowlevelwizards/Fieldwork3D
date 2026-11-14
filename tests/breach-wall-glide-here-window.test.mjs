@@ -194,3 +194,23 @@ test('an angled destination finds the real center of a usable window',()=>{
  assert.equal(op.landing.y,120);
  assert.ok(d(op.approach,op.landing)<45);
 });
+
+test('C6 indexed wall candidate tie order matches original wall order',()=>{
+ const walls=[
+  {a:{x:100,y:0},b:{x:100,y:250}},
+  {a:{x:20,y:0},b:{x:20,y:250}},
+  {a:{x:104,y:0},b:{x:104,y:250}}
+ ];
+ const world={
+  walls,someWallNearPoint(p,r,callback){
+   for(const i of [2,0])callback(walls[i],i);return false;
+  }
+ };
+ const from={x:112.8,y:140},desired={x:107,y:144};
+ const ordered=glideAlongStaticWall(from,desired,[],{
+  ...world,someWallNearPoint(p,r,callback){
+   for(const i of [0,2])callback(walls[i],i);return false;
+  }
+ });
+ assert.deepEqual(glideAlongStaticWall(from,desired,[],world),ordered);
+});

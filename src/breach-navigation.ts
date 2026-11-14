@@ -233,7 +233,18 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
  const step=Math.hypot(dx,dy);
  if(step<.04)return null;
  let best:Pt|null=null,bestMovement=-Infinity;
- for(const wall of (world?.walls??WALLS)){
+ // C6: only nearby walls can touch the failed full-radius stride.
+ // Reuse the already present spatial index, preserving source tie order.
+ const localWalls:typeof WALLS=world?[]:WALLS;
+ if(world){
+   const candidates:{wall:typeof WALLS[number];index:number}[]=[];
+   world.someWallNearPoint(from,OPERATOR_RADIUS+6,(wall,index)=>{
+     candidates.push({wall,index});return false;
+   });
+   if(candidates.length>1)candidates.sort((a,b)=>a.index-b.index);
+   for(const candidate of candidates)localWalls.push(candidate.wall);
+ }
+ for(const wall of localWalls){
    const vx=wall.b.x-wall.a.x,vy=wall.b.y-wall.a.y;
    const len=Math.hypot(vx,vy);
    if(len<.001)continue;
