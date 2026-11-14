@@ -4,7 +4,8 @@
  * band around the actual ACH/MICH textile surface. Built once per look.
  */
 import * as THREE from 'three';
-import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
+import {ACH_MICH_COVER_OFFSET,type AchMichCoverShell}
+ from './operator-ach-mich-cover-drape.ts';
 import {sampleHelmetCover,sampleHelmetShell} from './operator-helmet-surface.ts';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
@@ -23,7 +24,7 @@ const makeShape=(contour:readonly (readonly number[])[]):THREE.Shape=>{
  */
 const perimeter=(shell:AchMichCoverShell,covered:boolean,y:number)=>{
  const p=HELMET_MOUNT_PROFILES[shell];
- const layer=covered?.205:0;
+ const layer=covered?ACH_MICH_COVER_OFFSET:0;
  const sx=p.side+layer+.43;
  const front=p.front-layer-.41,rear=p.rear+layer+.41;
  const points:THREE.Vector3[]=[];
