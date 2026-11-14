@@ -71,9 +71,9 @@ test('D3.9 all pressure, hand and motor roles use same opener lease',async()=>{
  const pressure=read('breach-door-pressure-frame.ts');
  const hand=read('breach-door-hand-contact.ts');
  const motor=read('breach-motor-door.ts');
- assert.match(pressure,/implicitDoorOpeningOwner\(s,door\)===actor\.id/);
- assert.match(pressure,/if\(owner&&owner!==actor\.id\)return false/);
- assert.match(hand,/implicitDoorOpeningOwner\(s,door\)!==a\.id/);
+ assert.match(pressure,/mayManipulateOpening\(s,actor,door\)/);
+ assert.match(pressure,/if\(!mayManipulateOpening\(s,actor,door\)\)return false/);
+ assert.match(hand,/mayManipulateOpening\(s,a,door\)/);
  assert.match(motor,/shouldStageForOpening\(s,a,doorAhead\)/);
  assert.match(motor,/selfBlockingHingeRelief\(a,s,p\)/);
  assert.match(motor,/a\.nav\.unshift\(retreat\)/);
@@ -103,4 +103,15 @@ test('D3.9A leaves an independently traversable angle free of staging',()=>{
  assert.ok(implicitDoorOpeningOwner(s,d));
  d.openFraction=.86;
  assert.equal(shouldStageForOpening(s,moss,d),false);
+});
+
+test('D3.9A2 order, motor and grip share the same manipulator',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const read=path=>readFileSync(new URL('../src/'+path,import.meta.url),'utf8');
+ const explicit=read('breach-order-door.ts'),motor=read('breach-motor-door.ts');
+ const hand=read('breach-door-hand-contact.ts');
+ assert.match(explicit,/!mayManipulateOpening\(s,a,door\)/);
+ assert.match(motor,/!mayManipulateOpening\(s,a,doorAhead\)/);
+ assert.match(motor,/!doorWouldStrikeActors\(doorAhead,swing,\[move\]/);
+ assert.match(hand,/!assisted\|\|!mayManipulateOpening\(s,a,door\)/);
 });

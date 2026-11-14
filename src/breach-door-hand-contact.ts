@@ -9,7 +9,7 @@ import {handlePoint,PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {signedDoorSide} from './breach-door-traversal-episode.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
-import {implicitDoorOpeningOwner} from './breach-door-opening-ownership.ts';
+import {mayManipulateOpening} from './breach-door-opening-ownership.ts';
 import {DOOR_HAND_ACQUIRE_REACH,DOOR_HAND_RELEASE_REACH,
  DOOR_HAND_RELEASE_DURATION} from './breach-door-hand-constants.ts';
 export {DOOR_HAND_ACQUIRE_REACH,DOOR_HAND_RELEASE_REACH,
@@ -88,7 +88,7 @@ export function canDoorHandAssist(
 export function acquireDoorHandContact(
  s:Session,a:TeamActor,door:Door,assisted:boolean
 ):boolean{
- if(!assisted)return false;
+ if(!assisted||!mayManipulateOpening(s,a,door))return false;
  const current=a.doorHandContact;
  if(current?.releasedAt===null&&current.doorId===door.id)return true;
  const candidate=handCandidate(s,a,door);
@@ -129,8 +129,7 @@ export function maintainDoorHandContact(s:Session,a:TeamActor):void{
  const door=s.doors.find(d=>d.id===contact.doorId);
  if(!door||!door.open||door.wedged||door.locked||door.jammed||
     door.heldBy||!validCrossing(a,door)||!handFreeAt(a,s.seconds)||
-    ((door.openFraction??0)<.72&&
-      implicitDoorOpeningOwner(s,door)!==a.id)){
+    !mayManipulateOpening(s,a,door)){
   releaseDoorHandContact(a,s.seconds);return;
  }
  const point=doorHandPoint(door,contact.fraction);

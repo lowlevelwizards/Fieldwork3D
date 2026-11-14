@@ -15,7 +15,8 @@ import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
 import {noteD32MotorDoorSelection} from './breach-d3-motor-door-witness.ts';
 import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
-import {shouldStageForOpening} from './breach-door-opening-ownership.ts';
+import {shouldStageForOpening,mayManipulateOpening}
+ from './breach-door-opening-ownership.ts';
 import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
 
 /** D3.2.5: an opened hinge that has STOPPED well below its target may
@@ -112,7 +113,6 @@ export function handleMotorDoor(
     const ownerRelief=!follower&&a.side==='blue'&&
       pendingDoor?.kind==='move'&&stopped&&a.actionTimer>=1.5;
     if(follower||ownerRelief){
-      if(follower)releaseDoorHandContact(a,s.seconds);
       // No follower may open, push, or retain a hand on this partial leaf.
       // All physical clearance still runs through the existing motor.
       releaseDoorHandContact(a,s.seconds);
@@ -157,6 +157,17 @@ export function handleMotorDoor(
         }
       }
       if(follower){
+        // A lease is NOT a movement permit. Keep moving when the ordinary
+        // stride is swept clear and stays out of the upcoming leaf arc.
+        const fraction=doorAhead.openFraction??0;
+        const swing=Math.min(Math.max(1,doorAhead.pushTarget??1),
+          fraction+.24);
+        if(!doorWouldStrikeActors(doorAhead,swing,[move],OPERATOR_RADIUS)&&
+           sweptBodyClear(a.p,move,s.doors,OPERATOR_RADIUS,
+             sessionWorldGeometry(s))){
+          a.motorPause=null;
+          return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+        }
         a.velocity=0;a.motorPause='door-opening';
         return {paused:true,closed:false};
       }
@@ -186,6 +197,12 @@ export function handleMotorDoor(
         a.nav.unshift(staged);a.velocity=0;
         a.motorPause=null;return {paused:true,closed:false};
       }
+    }
+    // No non-owner may issue a second automatic OPEN; the physical motor
+    // can still cross a genuinely clear aperture without this permission.
+    if(!mayManipulateOpening(s,a,doorAhead)){
+      a.motorPause=null;
+      return {paused:false,closed:false,clearingDoorId:doorAhead.id};
     }
     a.motorPause='door-opening';
     noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);

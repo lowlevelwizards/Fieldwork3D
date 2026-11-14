@@ -94,7 +94,7 @@ export function implicitDoorOpeningOwner(s:Session,d:Door):string|null{
 /** The opening lease limits manipulation only, never physical passage. */
 export function mayManipulateOpening(s:Session,a:TeamActor,d:Door):boolean{
  const owner=implicitDoorOpeningOwner(s,d);
- return !owner||owner===a.id;
+ return a.side!=='blue'||!owner||owner===a.id;
 }
 /** A follower must avoid the active partial swing, but may still walk
  * wherever the physical motor and existing passage queue permit.
