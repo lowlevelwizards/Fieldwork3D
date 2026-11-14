@@ -51,3 +51,27 @@ test('FAL S1: all three real silhouettes compare at one unmodified art scale',()
  for(const g of [m4,g3,fal])clearWeaponSilhouette(g);
  material.dispose();
 });
+
+test('FAL S1B: caricature landmarks materially separate the defining forms',()=>{
+ const material=new THREE.MeshBasicMaterial(),g=buildFALStage1Silhouette(material);
+ const byName=(name)=>{
+  const mesh=g.children.find(child=>child.name===name);
+  assert.ok(mesh,'Missing shape '+name);
+  return new THREE.Box3().setFromObject(mesh);
+ };
+ const stock=byName('family-stock-fal-stage1-stock-0');
+ const grip=byName('family-grip-fal-stage1-grip-0');
+ const handguard=byName('family-handguard-fal-stage1-handguard-0');
+ const ears=byName('family-barrel-fal-stage1-barrel-1');
+ const receiver=byName('family-receiver-fal-stage1-receiver-0');
+ assert.ok(stock.max.y>=1.98,'stock needs a large high hump');
+ assert.ok(stock.min.y<=-3.70,'stock should retain a low swept heel');
+ assert.ok(grip.min.x<=-6.8,'grip heel should be clearly rear-raked');
+ assert.ok(grip.min.y<=-7.10,'grip should remain substantial at thumbnail size');
+ assert.ok(handguard.max.y>=1.6&&handguard.min.y<=-2.2,
+  'fore-end must be a deep, triangular mass, not a G3-like tube');
+ assert.ok(ears.max.y>=3.3,'distinct FAL open-ear sight silhouette');
+ assert.ok(receiver.max.y>=1.8,'upper dust cover should remain long and clear');
+ assert.equal(g.children.length,12,'S1B must not add decorative meshes');
+ clearWeaponSilhouette(g);material.dispose();
+});
