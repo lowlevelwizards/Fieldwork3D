@@ -118,7 +118,7 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
     Math.max(.15,style.shellShoulderY-flareY));
  const sideWidth=ring==='shoulder'?sideAtShoulder+outward+.08:
   ring==='flare'?midWidth+outward+.08:extentAtHem+outward+.05;
- const x=ring==='top'?s.x:side?sign*sideWidth:
+ const x=ring==='top'?s.x:side?sign*(corner?style.sideX:sideWidth):
   (s.x/style.topX)*style.sideX;
  const f=side?clamp((style.topFront+1.5-s.z)/1.5):1;
  const b=side?clamp((s.z-(style.topRear-1.5))/1.5):1;
