@@ -95,6 +95,11 @@ export function captureD32RecoveryFeasibility(a:TeamActor,s:Session){
  if(!goal)return null;
  const world=sessionWorldGeometry(s);
  const worldRoute=routeWithSqueezeWorld(a.p,goal,s.doors,world);
+ const fullyOpenedLeafNear=s.doors.some(door=>
+   door.open&&(door.openFraction??0)>=.95&&
+   pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+6);
+ const rescuedWorld=fullyOpenedLeafNear?
+   routeWithSqueezeWorld(a.p,goal,s.doors,world,true):[];
  const intelRoute=a.side==='blue'?
    routeWithSqueezeIntel(s.intel,a.p,goal):[];
  const firstWorld=worldRoute[0],firstIntel=intelRoute[0];
@@ -112,6 +117,10 @@ export function captureD32RecoveryFeasibility(a:TeamActor,s:Session){
  return {goal:pos(goal),currentFirst:pos(firstActual),
   current:clearance(firstActual),worldCount:worldRoute.length,
   worldFirst:pos(firstWorld),worldClear:clearance(firstWorld),
+  repairedStartEligible:fullyOpenedLeafNear,
+  repairedWorldCount:rescuedWorld.length,
+  repairedWorldFirst:pos(rescuedWorld[0]),
+  repairedWorldClear:clearance(rescuedWorld[0]),
   intelCount:intelRoute.length,intelFirst:pos(firstIntel),
   intelClear:clearance(firstIntel),cover};
 }
