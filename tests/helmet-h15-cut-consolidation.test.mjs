@@ -24,6 +24,13 @@ test('A1: exactly three ballistic cuts with actual modeled geometry',()=>{
  }
  assert.equal(ballisticHelmetCut('pasgt'),null);
 });
+test('A1: unrecognized former helmet remains a real ballistic item',()=>{
+ const base=initialWardrobe(),loaded=readWardrobe({...base,
+  styles:{...base.styles,headwear:'no-longer-installed-shell'},
+  helmetSetup:{cover:'fitted'}});
+ assert.equal(loaded.styles.headwear,'ach');
+ assert.equal(loaded.helmetSetup.cover,'fitted');
+});
 test('A1: active looks survive repeated save normalization',()=>{
  const base=initialWardrobe();
  for(const id of Object.values(BALLISTIC_CUT_SHELL)){

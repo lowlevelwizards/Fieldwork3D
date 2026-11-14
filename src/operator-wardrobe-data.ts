@@ -264,6 +264,11 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
      canonicalBallisticHelmet(upgraded):upgraded;
     if(typeof mapped==='string'&&wardrobeItem(slot,mapped))
      result.styles[slot]=mapped;
+    else if(slot==='headwear'&&typeof mapped==='string'&&
+      (v.helmetSetup||v.helmetField))
+     // Unknown historical helmet metadata can only map to a CURRENT shell.
+     // Never restore retired models or their unused modular geometry.
+     result.styles.headwear='ach';
   }
  }
  // Additive version-1 config. Unknown/incorrect eyewear options are discarded.
