@@ -108,11 +108,12 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
   sideExtent(style,s.z);
  const outward=ACH_MICH_COVER_OFFSET;
  const midWidth=unifiedHelmetEarShoulderWidth(style.shell,s.z);
- // Share the shell's ear-anchored levels and brow/nape clamps.
- // Independent cloth interpolation would recreate its corrected spike.
+ // Follow H28's ONE shell-defined ear cross-section. In particular, the
+ // short upper bevel and oversized lower face must not be independently
+ // re-interpolated by the cloth (which would create another triangular fin).
  const profile=unifiedHelmetEarVerticalProfile(
   style.shell,style.shellShoulderY,s.bottom,s.z);
- // Follow the actual clean upper wall and lower-quarter ear profile.
+ // Match the flat upper wall, broad lower face, and continuous lower hem.
  const sideWidth=ring==='shoulder'||ring==='onset'?style.sideX+.08:
   ring==='faceTop'||ring==='faceBottom'?midWidth+outward+.08:
   extentAtHem+outward+.05;
@@ -246,6 +247,7 @@ export function createAchMichDrapedGeometry(
  g.userData.h27BroadEarFaceMatched=true;
  g.userData.h27BrowSpikeClampMatched=true;
  g.userData.h27NoLeadingFinMatched=true;
+ g.userData.h28UnifiedEarProfileMatched=true;
  g.userData.h25TuckedConcealedBinding=true;
  return g;
 }
