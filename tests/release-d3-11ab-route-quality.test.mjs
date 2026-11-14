@@ -62,3 +62,27 @@ test('D3.11B motor contact probe passes authoritative session context',()=>{
  const src=readFileSync(new URL('../src/breach-motor-route.ts',import.meta.url),'utf8');
  assert.match(src,/diagnoseMovement\(a\.p,contactProbe,s\.doors,\[\],OPERATOR_RADIUS,\s*sessionWorldGeometry\(s\)\)/);
 });
+
+test('D3.11B preview fallback reuses failed normal A* instead of repeating it',async()=>{
+ const {activateSite}=await import('../src/breach-core.ts');
+ const {initialIntel,routeWithIntel}=await import('../src/breach-intel.ts');
+ const {routeWithSqueezeIntel}=await import('../src/breach-squeeze-route.ts');
+ activateSite(null);
+ const intel=initialIntel('full-view',undefined,[]);
+ const from={x:210,y:250},goal={x:159,y:189}; // fixed cover interior
+ const normal=routeWithIntel(intel,from,goal);
+ assert.deepEqual(normal,[],'test must represent a genuinely failed normal route');
+ const observed=[];
+ try{
+  setRouteGridAuditObserver(e=>observed.push(e));
+  const original=routeWithSqueezeIntel(intel,from,goal);
+  const repeated=observed.length;
+  observed.length=0;
+  const hinted=routeWithSqueezeIntel(intel,from,goal,normal);
+  assert.deepEqual(hinted,original,'hint cannot affect route or squeeze selection');
+  assert.ok(repeated>=1,'old fallback repeats the already-failed normal A*');
+  assert.equal(observed.length,0,'ineligible narrow destination needs no extra A*');
+ }finally{setRouteGridAuditObserver(null);activateSite(null);}
+ const preview=readFileSync(new URL('../src/breach-route-cache.ts',import.meta.url),'utf8');
+ assert.match(preview,/routeWithSqueezeIntel\(intel,snapped,to,normal\)/);
+});
