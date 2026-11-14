@@ -46,7 +46,7 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  topInset:number,bevelHeight:number):THREE.BufferGeometry{
  const hem=UNIFIED_HELMET_HEMS[cut],s=hem[0][0],
   front=hem[0][2],rear=hem.at(-1)![2];
- const shoulderY=roofY-bevelHeight,topX=s-topInset;
+ const shoulderY=roofY-bevelHeight,inner=s-.48,topX=s-topInset;
  const topF=front+topInset,topR=rear-topInset;
  // A small rear rake: the low nape reaches farther back than the upper
  // shoulder, avoiding a vertical slab end without adding contour stations.
