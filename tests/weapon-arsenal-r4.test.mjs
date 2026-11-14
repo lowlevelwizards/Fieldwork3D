@@ -92,13 +92,14 @@ test('R4 STANAG steel is lighter, polymer magazine stays dark',()=>{
 });
 test('R4 shared browser and game-specific switching are wired without phantom campaign purchases',()=>{
  const browser=src('src/ui/weapon-preset-browser.ts');
- const quick=src('src/breach-main.ts');
+ const quick=src('src/breach-operations-board-controller.ts');
+ const flow=src('src/breach-campaign-flow.ts');
  const campaign=src('src/campaign-ui.ts');
  assert.match(browser,/FAMILY_PRESETS\.filter\(p=>p\.family===family\)/);
  assert.match(browser,/options\.availability\?\.\(p\)/);
  assert.match(quick,/next=equipRoster\(next,member\.id,preset\.weapon\)/);
  assert.match(quick,/next=configureRosterWeaponPreset\(next,member\.id,presetId\)/);
- assert.match(quick,/next=equipCampaignWeapon\(next,id,preset\.weapon\)/);
- assert.match(quick,/next=equipCampaignWeaponPreset\(next,id,presetId\)/);
+ assert.match(flow,/next=equipCampaignWeapon\(next,id,preset\.weapon\)/);
+ assert.match(flow,/next=equipCampaignWeaponPreset\(next,id,presetId\)/);
  assert.match(campaign,/c\.inventory\.weapons\[preset\.weapon\]/);
 });
