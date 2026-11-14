@@ -68,7 +68,7 @@ test('H24: rubber lip maintains perpendicular visual width even on diagonals',()
   }
   // Exact shared corners of all twelve perimeter segments.
   for(const [a,b] of [[0,12],[1,42],[7,37],[6,67],
-   [5,17],[2,44],[11,41],[8,71]])
+   [5,17],[2,47],[11,68],[8,38]])
    assert.ok(dist(point(p,a),point(p,b))<.005,
     'front/rear upper and lower corner matches side exactly');
  }
