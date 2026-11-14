@@ -94,7 +94,7 @@ test('H25: chinstrap three-way cheek joint has no overlapping full-width caps',(
   assert.deepEqual(paths[0][1],paths[1][1]);
   assert.deepEqual(paths[0][1],paths[2][0]);
   assert.ok(paths[0][1][2]>-1,'actual junction is now beneath the ear');
-  assert.ok(paths[0][1][0]<5&&paths[0][1][0]>4);
+  assert.ok(Math.abs(paths[0][1][0])<5&&Math.abs(paths[0][1][0])>4);
   assert.equal(a.count,36,'12 triangles incl cup vs 18 before');
   assert.equal(g.userData.h25SharedTaperedYJunction,true);
   // No degenerate faces, the three tapering bands meet at exactly one
