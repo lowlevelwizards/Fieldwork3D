@@ -26,20 +26,27 @@ test('Q7 open, unoccupied doorway: later-ranked ready mover crosses without wait
  assert.equal(actual.rank,1);
  assert.deepEqual(follow.plan[0].p,p(100,40));
 });
-test('Q7 fully open crossing: previous counterflow claim cannot reserve empty opening',()=>{
+test('Q7 stable open leaf cancels a stale opposing-side reservation',()=>{
  const lead=actor('lead',135,40);
- const counter=actor('counter',65,170);
- const s=session([lead,counter]);
- const schedule=new Map([[lead.id,[slot(lead,1,0)]],
-   [counter.id,[slot(counter,-1,0)]]]);
+ const counter=actor('counter',81,170);
+ const d={...door,openFraction:.4,angularVelocity:0};
+ const s=session([lead,counter],d);
+ const schedule=new Map([
+  [lead.id,[{...slot(lead,1,0),eta:1}]],
+  [counter.id,[{...slot(counter,-1,0),eta:2}]]
+ ]);
  assert.equal(coordinatePassage(s,lead,p(100,134),schedule).hold,false);
- // Move former claimant far away while it retains the authored MOVE,
- // leaving an old 1.8s lease in the immutable queue context.
- lead.p=p(100,220);
- s.seconds=.05;
- const free=coordinatePassage(s,counter,p(100,68),schedule);
+ // Old owner moved AWAY from threshold, but 1.8s right-of-way lease
+ // persists. While half-open, its opposing reservation still applies.
+ lead.p=p(100,220);s.seconds=.05;
+ const stillOpening=coordinatePassage(s,counter,p(100,82),schedule);
+ assert.equal(stillOpening.hold,true);
+ assert.equal(stillOpening.reason,'opposing');
+ // Once stable and fully open, only real body positions matter.
+ d.openFraction=1;
+ const free=coordinatePassage(s,counter,p(100,82),schedule);
  assert.equal(free.hold,false);
- assert.deepEqual(free.move,p(100,68));
+ assert.deepEqual(free.move,p(100,82));
 });
 test('Q7 open doorway still holds when real body occupies the next stride',()=>{
  const lead=actor('lead',125,40),follow=actor('follow',145,40);
@@ -50,15 +57,13 @@ test('Q7 open doorway still holds when real body occupies the next stride',()=>{
  assert.equal(held.hold,true);
  assert.deepEqual(held.move,follow.p);
 });
-test('Q7 still defers partially open and moving leaves to regular queue/hinge safety',()=>{
- const lead=actor('lead',155,40);
- const follow=actor('follow',132,40);
- const schedule=new Map([[lead.id,[slot(lead,1,0)]],
-   [follow.id,[slot(follow,1,1)]]]);
- // A half-open doorway is NOT equivalent to a fully clear physical opening.
+test('Q7 partially open leaves still honor actual body spacing',()=>{
+ const lead=actor('lead',125,40),follow=actor('follow',145,40);
  const d={...door,openFraction:.4,angularVelocity:1.2};
  const s=session([lead,follow],d);
- const decision=coordinatePassage(s,follow,p(100,130),schedule);
- assert.equal(decision.reason,'spacing');
- assert.equal(decision.hold,true);
+ const schedule=new Map([[lead.id,[slot(lead,1,0)]],
+  [follow.id,[slot(follow,1,1)]]]);
+ const held=coordinatePassage(s,follow,p(100,144),schedule);
+ assert.equal(held.hold,true);
+ assert.equal(held.reason,'spacing');
 });
