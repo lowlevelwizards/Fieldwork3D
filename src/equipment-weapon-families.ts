@@ -8,9 +8,9 @@ import {AR_BARREL_ART} from './weapons/geometry/ar-barrel-profiles.ts';
 export const FAMILY_PART_SLOTS=['stock','receiver','grip','magazine',
  'handguard','barrel'] as const;
 export type FamilyPartSlot=typeof FAMILY_PART_SLOTS[number];
-export type WeaponFamily='ar'|'ak'|'hk';
+export type WeaponFamily='ar'|'ak'|'hk'|'fal';
 export type FamilyLength='long'|'mid'|'short';
-type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9';
+type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762';
 export type WeaponFamilyPart={
  id:string;name:string;family:WeaponFamily;slot:FamilyPartSlot;
  receivers?:readonly string[];feed?:Feed;length?:FamilyLength;
@@ -162,7 +162,14 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ak-103-factory':add('ak-103-factory','AK-103 factory-pattern muzzle · 100-series','ak','barrel',{receivers:['ak103'],length:'long',role:'rifle'}),
  'ak-rpk-long':add('ak-rpk-long','RPK-74 heavy front and folded bipod','ak','barrel',{receivers:['ak-rpk74'],length:'long',role:'rifle'}),
  'ak-mid':add('ak-mid','AK carbine barrel','ak','barrel',{receivers:['ak105'],length:'mid',role:'carbine'}),
- 'ak-short':add('ak-short','AKS-74U compact barrel','ak','barrel',{receivers:['akcompact'],length:'short',role:'carbine'})
+ 'ak-short':add('ak-short','AKS-74U compact barrel','ak','barrel',{receivers:['akcompact'],length:'short',role:'carbine'}),
+ // FAL S2: keep the parts catalogue lean; all 6 parts carry a visible role.
+ 'fal-50-receiver':add('fal-50-receiver','FN FAL 50.00 metric receiver','fal','receiver',{feed:'fal762',role:'rifle'}),
+ 'fal-fixed-polymer':add('fal-fixed-polymer','FN FAL fixed humpback stock','fal','stock',{receivers:['fal-50-receiver'],stockX:-15.00}),
+ 'fal-grip':add('fal-grip','Classic FN FAL pistol grip','fal','grip',{receivers:['fal-50-receiver']}),
+ 'fal-mag20':add('fal-mag20','FAL 20-round steel magazine','fal','magazine',{feed:'fal762'}),
+ 'fal-vented':add('fal-vented','Classic ventilated FN FAL fore-end','fal','handguard',{receivers:['fal-50-receiver'],length:'long'}),
+ 'fal-21-service':add('fal-21-service','FN FAL 21-inch service barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'long',role:'rifle',nominalInches:21})
 };
 const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg',family:WeaponFamily,
  receiver:string,stock:string,grip:string,magazine:string,handguard:string,
@@ -201,7 +208,9 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('ak-rpk74','RPK-74','rifle','ak','ak-rpk74','ak-rpk-clubfoot','ak-grip-bakelite','ak-rpk-mag45','ak-rpk-wood','ak-rpk-long'),
  p('ak-ak103','AK-103','rifle','ak','ak103','ak-sidefold','ak-grip-poly','ak-mag762poly','ak-poly-long','ak-long'),
  p('ak-aks74u','AKS-74U','carbine','ak','akcompact','ak-skeleton','ak-grip-bakelite','ak-mag545','ak-wood-short','ak-short'),
- p('ak-ak105','AK-105','carbine','ak','ak105','ak-sidefold','ak-grip-poly','ak-mag545poly','ak-poly-mid','ak-mid')
+ p('ak-ak105','AK-105','carbine','ak','ak105','ak-sidefold','ak-grip-poly','ak-mag545poly','ak-poly-mid','ak-mid'),
+ p('fal-5000','FN FAL 50.00','rifle','fal','fal-50-receiver',
+  'fal-fixed-polymer','fal-grip','fal-mag20','fal-vented','fal-21-service')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
