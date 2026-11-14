@@ -8,7 +8,8 @@ import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET,
  ACH_MICH_BEVEL_HEIGHT}
  from './operator-headwear-silhouettes.ts';
 import {achMichProfile} from './operator-ach-mich-details.ts';
-import {ACH_MICH_EAR_SHOULDER_FRACTION,unifiedHelmetEarShoulderWidth}
+import {ACH_MICH_EAR_SHOULDER_FRACTION,ACH_MICH_EAR_CREST_FRACTION,
+ unifiedHelmetEarShoulderWidth}
  from './operator-ach-mich-unified-shell.ts';
 import {pasgtAtlasUv,PASGT_TOP_SEAM_OFFSETS,PASGT_FABRIC_PANELS,
  PASGT_UV_TEXELS_PER_UNIT} from './operator-pasgt-drape-geometry.ts';
@@ -24,7 +25,7 @@ export const ACH_MICH_COVER_FOLDED_HEM=.18;
 export const ACH_MICH_COVER_SIDE_CROWN_ALLOWANCE=.24;
 export type AchMichCoverShell=typeof ACH_MICH_SHELLS[number];
 type Side='front'|'right'|'rear'|'left';
-type Ring='top'|'shoulder'|'flare'|'hem';
+type Ring='top'|'shoulder'|'onset'|'flare'|'hem';
 type Sample={side:Side;x:number;z:number;bottom:number};
 const clamp=(n:number)=>Math.min(1,Math.max(0,n));
 type Style={
@@ -108,15 +109,12 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
   sideExtent(style,s.z);
  const outward=ACH_MICH_COVER_OFFSET;
  const midWidth=unifiedHelmetEarShoulderWidth(style.shell,s.z);
- const flareY=style.shellShoulderY+
+ const onsetY=style.shellShoulderY+
   (s.bottom-style.shellShoulderY)*ACH_MICH_EAR_SHOULDER_FRACTION;
- // Between the shell's top shoulder and its ear shoulder, x expands
- // linearly. At the textile shoulder ring sample the actual shell width.
- const sideAtShoulder=style.sideX-outward+
-  (midWidth-(style.sideX-outward))*
-   clamp((style.shellShoulderY-style.shoulderY)/
-    Math.max(.15,style.shellShoulderY-flareY));
- const sideWidth=ring==='shoulder'?sideAtShoulder+outward+.08:
+ const crestY=style.shellShoulderY+
+  (s.bottom-style.shellShoulderY)*ACH_MICH_EAR_CREST_FRACTION;
+ // Follow the actual clean upper wall and lower-quarter ear profile.
+ const sideWidth=ring==='shoulder'||ring==='onset'?style.sideX+.08:
   ring==='flare'?midWidth+outward+.08:extentAtHem+outward+.05;
  const x=ring==='top'?s.x:side?sign*(corner?style.sideX:sideWidth):
   (s.x/style.topX)*style.sideX;
@@ -126,7 +124,8 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
   s.z+(style.front-style.topFront)*f+(style.rear-style.topRear)*b;
  const y=ring==='top'?style.topY:
   ring==='shoulder'?style.shoulderY:
-  ring==='flare'?flareY+.07:
+  ring==='onset'?onsetY+.07:
+  ring==='flare'?crestY+.07:
   // Cloth passes below the shell edge, so even the top of the molded
   // rubber is concealed instead of showing as a colored stripe.
   s.bottom-.14;
@@ -140,7 +139,7 @@ function fabricCoordinate(style:Style,s:Sample,ring:Ring):
  readonly [number,number]{
  const xyz=ringPoint(style,s,ring);
  if(ring==='top')return [xyz[0],xyz[2]];
- const rings:readonly Ring[]=['top','shoulder','flare','hem'];
+ const rings:readonly Ring[]=['top','shoulder','onset','flare','hem'];
  let distance=0;
  for(let i=1;i<=rings.indexOf(ring);i++){
   const a=ringPoint(style,s,rings[i-1]),
@@ -190,7 +189,8 @@ export function createAchMichDrapedGeometry(
  }
  const pairs:readonly (readonly [Ring,Ring])[]=hemOnly?
   [['hem','hem']]:
-  [['top','shoulder'],['shoulder','flare'],['flare','hem']];
+  [['top','shoulder'],['shoulder','onset'],
+   ['onset','flare'],['flare','hem']];
  for(const [upper,lower] of pairs){
   for(const panelSamples of panels)
    for(let i=0;i<panelSamples.length-1;i++){
@@ -241,6 +241,7 @@ export function createAchMichDrapedGeometry(
  g.userData.minimumFoldHeight=ACH_MICH_COVER_FOLDED_HEM;
  g.userData.achMichDirectFrontRearDiagonal=true;
  g.userData.h25EarShoulderMatched=true;
+ g.userData.h26OnsetAndLowerCrestMatched=true;
  g.userData.h25TuckedConcealedBinding=true;
  return g;
 }
