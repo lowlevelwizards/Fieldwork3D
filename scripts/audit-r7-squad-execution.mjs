@@ -15,6 +15,7 @@ import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
+import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 
 const names=['house','townhouse','apartment','retail','office','garage',
  'warehouse','restaurant','motel','utility','clinic'];
@@ -97,8 +98,12 @@ function run(site,seed,kind){
   const openState=new Map(session.doors.map(d=>[d.id,d.open]));
   const lastStep=actors.map(()=>({x:0,y:0}));
   const lastP=actors.map(a=>({...a.p}));
+  // Read-only final three-second net-displacement witness; not a motor input.
+  const windowStart=actors.map(a=>({...a.p}));
   if(planned.accepted)toggling(session);
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
+   if(tick===Math.max(0,ticks-180))
+    for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
    stepSession(session,1/60);
    survey.sample(actors,1/60);
    for(const d of session.doors){
@@ -139,10 +144,22 @@ function run(site,seed,kind){
   const planIntact=actors.every((a,i)=>a.plan.every(n=>initial[i].has(n.id)));
   const orderIssues=actors.map(a=>a.orderIssue?.reason??null);
   const complete=planned.accepted===4&&actors.every(a=>!a.plan.length);
+  const triage=stats.details.map((detail,i)=>{
+   const actor=actors[i];
+   const recentNetMovement=round(dist(actor.p,windowStart[i]));
+   return {actor:actor.id,state:classifyD3Progress({
+    planned:detail.planned,planComplete:actor.plan.length===0,
+    activeOrder:actor.plan[0]?.kind??null,
+    motorPause:actor.motorPause,blockedTime:actor.blockedTime,
+    orderIssue:detail.orderIssue,navCount:actor.nav.length,
+    recentNetMovement
+   }),recentNetMovement,activeOrder:actor.plan[0]?.kind??null,
+    blockedTime:round(actor.blockedTime),navCount:actor.nav.length};
+  });
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
-   crossed,orderIssues,planIntact,
+   crossed,orderIssues,planIntact,triage,
    minSpacing:Number.isFinite(minSpacing)?round(minSpacing):null,
    reversalsNearDoor,maxBlockedSeconds:round(maxBlocked),
    maxPositionStep:round(maxPositionStep),physicsStepViolations,
@@ -185,8 +202,11 @@ for(let i=0;i<sites;i++){
 }
 const results=rows.flatMap(row=>row.modes??[]);
 const sum=key=>results.reduce((n,r)=>n+(r[key]||0),0);
+const triageCounts={};
+for(const row of results)for(const operator of row.triage??[])
+ triageCounts[operator.state]=(triageCounts[operator.state]??0)+1;
 const summary={
- sites:rows.length,exceptions,attempted:results.length,
+ triageCounts,sites:rows.length,exceptions,attempted:results.length,
  acceptedFour:results.filter(r=>r.accepted===4).length,
  completedFour:results.filter(r=>r.complete).length,
  incomplete:sum('incomplete'),rejected:sum('rejected'),
