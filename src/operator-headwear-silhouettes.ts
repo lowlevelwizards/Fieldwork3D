@@ -40,11 +40,11 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
   top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
  'ach':{id:'ach',frontExtent:-5.535,rearExtent:5.60,
-  top:8.84,earEdge:2.31,foreheadEdge:4.40,billLength:0},
+  top:8.84,earEdge:2.04,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0},
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
-  top:8.76,earEdge:2.99,foreheadEdge:4.55,billLength:0},
+  top:8.76,earEdge:3.06,foreheadEdge:4.55,billLength:0},
  'mich-2001':{id:'mich-2001',frontExtent:-5.61,rearExtent:5.64,
   top:8.70,earEdge:5.91,foreheadEdge:4.55,billLength:0},
  'fast-sf':{id:'fast-sf',frontExtent:-5.53,rearExtent:5.66,
@@ -409,12 +409,12 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
   width:10.15,height:3.04,depth:10.25},
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.91,
   width:10.15,height:1.70,depth:1.25},
- {name:'ach-continuous-nape',x:0,y:4.425,z:4.97,
-  width:10.15,height:3.75,depth:1.26},
+ {name:'ach-continuous-nape',x:0,y:4.51,z:4.97,
+  width:10.15,height:3.58,depth:1.26},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'ach-left-ear-nape':'ach-right-ear-nape',
-  x:sign*4.55,y:4.56,z:.28,
-  width:1.05,height:4.50,depth:7.50
+  x:sign*4.55,y:4.425,z:.28,
+  width:1.05,height:4.77,depth:7.50
  }))
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region
@@ -435,19 +435,19 @@ const HIGH_CUT_CUBOIDS:readonly HeadwearCuboid[]=[
   width:.96,height:1.80,depth:2.25
  }))
 ];
-/** H16: Mid-Cut inherits much of the former Full-Cut protective depth.
- * Its two broad lateral ear guards are shorter than Full-Cut's, but form
- * a deliberate lower bump instead of leaving a giant empty side notch.
- * Keep the H3 faceted crown and the high cut unchanged.
+/** H18: mid-cut retains a short continuous ear lobe and raised nape.
+ * Five coarse volumes are fitting metadata only. The actual low-poly
+ * shell and its contour are authored in operator-ach-mich-unified-shell.
+ * The original faceted crown and High-Cut geometry remain unchanged.
  */
 const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2002-crown',x:0,y:7.40,z:0,width:10.06,height:2.70,depth:10.45},
  {name:'m2002-brow',x:0,y:5.54,z:-4.89,width:10.06,height:1.97,depth:1.62},
- {name:'m2002-nape',x:0,y:4.855,z:4.83,width:10.06,height:3.29,depth:1.78},
+ {name:'m2002-nape',x:0,y:5.16,z:4.83,width:10.06,height:2.68,depth:1.78},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'m2002-left-ear-nape':'m2002-right-ear-nape',
-  x:sign*4.50,y:4.75,z:.38,
-  width:1.06,height:3.52,depth:7.10
+  x:sign*4.50,y:4.785,z:.38,
+  width:1.06,height:3.45,depth:7.10
  }))
 ];
 const MICH_2001_CUBOIDS:readonly HeadwearCuboid[]=[
@@ -488,8 +488,8 @@ const FAST_XP_MID_CUBOIDS:readonly HeadwearCuboid[]=[
 export const HEADWEAR_FIT_TARGETS=Object.freeze({
  ach:{
   brow:CUBE_HEAD_ANATOMY.brow+.10,
-  ear:CUBE_HEAD_ANATOMY.earCenter-.29,
-  nape:CUBE_HEAD_ANATOMY.nape+.35
+  ear:CUBE_HEAD_ANATOMY.earCenter-.56,
+  nape:CUBE_HEAD_ANATOMY.nape+.52
  },
  'high-cut':{
   brow:CUBE_HEAD_ANATOMY.brow+.20,

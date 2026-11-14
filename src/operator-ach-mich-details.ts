@@ -22,13 +22,13 @@ type Profile={
 };
 const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  ach:{
-  side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.55,
-  frontStud:[5.075,4.95,-3.12],rearStud:[5.075,2.86,1.86],
+  side:5.075,front:-5.535,rear:5.60,brow:4.40,nape:2.72,
+  frontStud:[5.075,4.95,-3.12],rearStud:[5.075,2.77,1.86],
   hem:UNIFIED_HELMET_HEMS.ach
  },
  'mich-2002':{
-  side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:3.21,
-  frontStud:[5.03,5.10,-3.10],rearStud:[5.03,3.75,3.05],
+  side:5.03,front:-5.70,rear:5.75,brow:4.55,nape:3.82,
+  frontStud:[5.03,5.10,-3.10],rearStud:[5.03,4.37,3.05],
   hem:UNIFIED_HELMET_HEMS['mich-2002']
  },
  'mich-2001':{
@@ -40,7 +40,13 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
    [5.015,3.33,5.66]]
  }
 };
+// Legacy tall edge is retained on the untouched high-cut shell.
 export const ACH_MICH_BINDING_HEIGHT=.78;
+// H18: Full/Mid use a smaller edge that follows the shell as finishing
+// rather than a second armor skirt. Evaluated only at mesh creation.
+export const achMichBindingHeight=(
+ shell:typeof ACH_MICH_SHELLS[number]):number=>
+ shell==='mich-2001'?ACH_MICH_BINDING_HEIGHT:.52;
 export const ACH_MICH_CHIN_STRAP_HALF_WIDTH=.44;
 export const achMichProfile=(shell:typeof ACH_MICH_SHELLS[number]):Profile=>
  PROFILES[shell];
@@ -51,11 +57,12 @@ const material=(hex:number)=>new THREE.MeshStandardMaterial({
 const hidden=(parent:THREE.Group,name:string):THREE.Group=>{
  const g=new THREE.Group();g.name=name;parent.add(g);return g;
 };
-/** One broad .78-high molded shell-color binding, not a thin black underline.
- * Front / sides / rear share endpoints. Segment center-line follows the
- * actual bottom perimeter, including the real high-cut gaps. */
+/** One continuous molded shell-color edge, without added contour layers.
+ * H18 reduces its height on Full/Mid; High-Cut remains unchanged.
+ * Front/sides/rear share exact endpoints. */
 export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number]){
- const p=PROFILES[shell],data:number[]=[];
+ const p=PROFILES[shell],data:number[]=[],
+  bindingHeight=achMichBindingHeight(shell);
  const triangle=(a:Point,b:Point,c:Point)=>{
   data.push(...a,...b,...c);
  };
@@ -65,7 +72,7 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
    [a[0],a[1],a[2]+(a[2]<0?-ext:ext)];
   const end:Point=axis==='x'?[b[0]+Math.sign(b[0])*ext,b[1],b[2]]:
    [b[0],b[1],b[2]+(b[2]<0?-ext:ext)];
-  const raise=(v:Point):Point=>[v[0],v[1]+ACH_MICH_BINDING_HEIGHT,v[2]];
+  const raise=(v:Point):Point=>[v[0],v[1]+bindingHeight,v[2]];
   triangle(start,end,raise(end));triangle(start,raise(end),raise(start));
  };
  strip([-p.side,p.brow,p.front],[p.side,p.brow,p.front],'z');
@@ -79,7 +86,7 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.achMichBinding=true;
  g.userData.segmentCount=2+2*(p.hem.length-1);
- g.userData.minimumHeight=ACH_MICH_BINDING_HEIGHT;
+ g.userData.minimumHeight=bindingHeight;
  return g;
 }
 function appendStrap(data:number[],path:readonly Point[],normal:THREE.Vector3,
@@ -212,7 +219,7 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
    // Keep the full screw face above the raised rubber edge binding.
    mesh.position.set(sign*(bolt[0]+.13),
     Math.max(bolt[1],achMichHemY(shell,bolt[2])+
-     ACH_MICH_BINDING_HEIGHT+.29),bolt[2]);
+     achMichBindingHeight(shell)+.29),bolt[2]);
    mesh.castShadow=false;mesh.receiveShadow=false;hardware.add(mesh);
   }
  const webbing=material(0x59654f);

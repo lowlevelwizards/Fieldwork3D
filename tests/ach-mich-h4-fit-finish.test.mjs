@@ -68,8 +68,8 @@ test('H17 Full-Cut ear and nape read as one low-poly contour',()=>{
  const p=achMichProfile('ach');
  assert.equal(p.hem.length,6);
  assert.ok(p.hem.every(point=>point[0]===p.side));
- assert.equal(p.hem[2][1],2.31);
- assert.equal(p.hem.at(-1)[1],2.55);
+ assert.equal(p.hem[2][1],2.04);
+ assert.equal(p.hem.at(-1)[1],2.72);
  const shell=createHeadwearSilhouette('ach',new THREE.MeshStandardMaterial());
  assert.equal(shell.children[0].geometry.userData.h17UnifiedContour,true);
  assert.ok(shell.children[0].geometry.userData.exteriorQuads<=30);

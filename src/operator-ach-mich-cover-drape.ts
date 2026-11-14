@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import {headwearCuboidVolumes,ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET}
  from './operator-headwear-silhouettes.ts';
-import {achMichProfile,ACH_MICH_BINDING_HEIGHT} from './operator-ach-mich-details.ts';
+import {achMichProfile,achMichBindingHeight} from './operator-ach-mich-details.ts';
 import {pasgtAtlasUv,PASGT_TOP_SEAM_OFFSETS,PASGT_FABRIC_PANELS,
  PASGT_UV_TEXELS_PER_UNIT} from './operator-pasgt-drape-geometry.ts';
 
@@ -108,7 +108,7 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
   s.z+(style.front-style.topFront)*f+(style.rear-style.topRear)*b;
  const y=ring==='top'?style.topY:
   ring==='shoulder'?style.shoulderY:
-  s.bottom+ACH_MICH_BINDING_HEIGHT+.035;
+  s.bottom+achMichBindingHeight(style.shell)+.035;
  return [x,y,z];
 }
 /** Three UV islands retain the exact PASGT fabric print texel pitch.
