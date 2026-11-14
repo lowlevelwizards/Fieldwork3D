@@ -58,16 +58,17 @@ export function readHelmetField(value:unknown):HelmetFieldOptions{
 export const isFieldHelmet=(id:string):id is FieldHelmet=>
  (FIELD_HELMETS as readonly string[]).includes(id);
 /** Restrict the original PASGT to field-supported configurations.
- * Clip-on NVG brackets and goggles are period backed; ARC side rails,
- * helmet cameras, battery packs and dedicated modern counterweights are not
- * represented on the baseline PASGT. This is NOT a modernized PASGT mode.
+ * Strap-on NVG brackets and goggles are period backed. Later PASGT-derived
+ * aftermarket retrofit systems support optional rails, shroud, bungees and
+ * hook-and-loop equipment; historical baseline keeps those turned OFF.
  */
 export function resolveHelmetField(id:string,raw:unknown,
  context:{covered?:boolean}={}):HelmetFieldOptions{
  const s=readHelmetField(raw);
  if(!isFieldHelmet(id))return {...HELMET_FIELD_DEFAULTS};
- if(id==='pasgt')return {...s,rails:false,bungees:false,velcro:false,
-  counterweight:false,battery:false,camera:false,light:false};
+ // PASGT accepts optional later retrofit rails, adhesive panels, and
+ // rail-mounted hardware. This is *not* enabled on a historical default.
+ // Like ACH, any unsupported combination is suppressed without deleting it.
  const r={...s};
  // Stored choices are never discarded. Only the effective cosmetic assembly
  // is constrained by the active cover, mount availability and occupied slots.
@@ -93,7 +94,8 @@ export function resolveHelmetField(id:string,raw:unknown,
 export function helmetFieldCompatibilityIssues(id:string,raw:unknown,
  covered:boolean):string[]{
  const v=readHelmetField(raw),issues:string[]=[];
- if(id==='pasgt')return issues;
+ if(id==='pasgt'&&v.rails)issues.push(
+  'PASGT side rails are a later retrofit, not original issue equipment.');
  if(v.bungees&&!v.rails)issues.push('Bungees require side rails.');
  if(v.bungees&&!v.shroud)issues.push('Bungees require the NVG shroud.');
  if(v.light&&!v.rails)issues.push('Helmet light requires side rails.');
