@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {UNIFIED_HELMET_HEMS,UNIFIED_HELMET_EAR_SHOULDERS,
- ACH_MICH_EAR_SHOULDER_FRACTION,ACH_MICH_EAR_FACE_TOP_FRACTION,
- ACH_MICH_EAR_FACE_BOTTOM_FRACTION,
+ ACH_MICH_EAR_UPPER_BEVEL_HEIGHT,ACH_MICH_EAR_BROW_RELIEF,
+ ACH_MICH_EAR_HEM_RETURN,
  unifiedHelmetEarVerticalProfile,unifiedHelmetEarShoulderWidth}
  from '../src/operator-ach-mich-unified-shell.ts';
 import {createHeadwearSilhouette,headwearCuboidVolumes,ACH_MICH_BEVEL_HEIGHT}
@@ -17,7 +17,7 @@ import {achMichProfile,createAchMichDetails,
 const ids=['ach','mich-2002','mich-2001'];
 const near=(a,b,t=.012)=>Math.abs(a-b)<t;
 test('H26: no ear protrusion above midwall and no high-cut lateral bulge',()=>{
- const max=[5.92,5.78,5.015];
+ const max=[5.395,5.335,5.015];
  for(let n=0;n<ids.length;n++){
   const id=ids[n],hem=UNIFIED_HELMET_HEMS[id],
    widths=UNIFIED_HELMET_EAR_SHOULDERS[id];
@@ -29,10 +29,11 @@ test('H26: no ear protrusion above midwall and no high-cut lateral bulge',()=>{
   assert.ok(near(widths[3],max[n]));
   assert.ok(near(widths[0],hem[0][0]));
   if(id==='mich-2001')assert.ok(widths.every(v=>near(v,hem[0][0])));
-  else assert.ok(widths[2]-widths[0]>.49,'full/mid retain ear mass');
-  assert.ok(near(ACH_MICH_EAR_SHOULDER_FRACTION,.52));
-  assert.ok(near(ACH_MICH_EAR_FACE_TOP_FRACTION,.62));
-  assert.ok(near(ACH_MICH_EAR_FACE_BOTTOM_FRACTION,.93));
+  else assert.ok(widths[2]-widths[0]>.28&&widths[2]-widths[0]<.35,
+   'integrated ear sidewall is modest, neither H28 huge wedge nor H29 flat slab');
+  assert.ok(near(ACH_MICH_EAR_BROW_RELIEF,.17));
+  assert.ok(near(ACH_MICH_EAR_HEM_RETURN,.14));
+  assert.ok(near(ACH_MICH_EAR_UPPER_BEVEL_HEIGHT,.18));
   const {onsetY:splitY,faceTopY,faceBottomY}=
    unifiedHelmetEarVerticalProfile(id,shoulderY,hem[2][1],hem[2][2]);
   const shell=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());

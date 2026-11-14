@@ -30,9 +30,10 @@ test('H28: broad iconic lower face, compact transitions and distinct full/mid/hi
    assert.ok(hem[2][1]>hem[1][1]+.7,'high-cut ear opening stays high');
    continue;
   }
-  const expected=id==='ach'?5.92:5.78;
+  const expected=id==='ach'?5.395:5.335;
   assert.ok(near(width[2],expected)&&near(width[3],expected));
-  assert.ok(width[2]-hem[0][0]>.73,'visible exaggerated ear mass');
+  assert.ok(width[2]-hem[0][0]>.28&&width[2]-hem[0][0]<.35,
+   'reference-informed modest molded sidewall, not protruding block');
   assert.ok(hem[3][2]-hem[2][2]>2.4,'long rectangular outer face');
   assert.ok(near(width[4],hem[4][0])&&near(width[5],hem[5][0]),
    'rear returns to base nape with no extra wedge tail');
@@ -50,7 +51,7 @@ test('H28: broad iconic lower face, compact transitions and distinct full/mid/hi
   }
   // The forward temple never grows a raised fin above the brow.
   const front=unifiedHelmetEarVerticalProfile(id,shoulder,hem[1][1],hem[1][2]);
-  assert.ok(front.faceTopY<=hem[1][1]+.31);
+  assert.ok(front.faceTopY<=hem[1][1]+.22);
   assert.ok(front.onsetY-front.faceTopY<.20);
  }
 });

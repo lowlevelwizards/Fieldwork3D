@@ -2,8 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {UNIFIED_HELMET_HEMS,UNIFIED_HELMET_EAR_SHOULDERS,
- ACH_MICH_EAR_SHOULDER_FRACTION,ACH_MICH_EAR_FACE_TOP_FRACTION,
- ACH_MICH_EAR_FACE_BOTTOM_FRACTION,unifiedHelmetEarVerticalProfile}
+ ACH_MICH_EAR_UPPER_BEVEL_HEIGHT,unifiedHelmetEarVerticalProfile}
  from '../src/operator-ach-mich-unified-shell.ts';
 import {createHeadwearSilhouette,headwearCuboidVolumes,ACH_MICH_BEVEL_HEIGHT}
  from '../src/operator-headwear-silhouettes.ts';
@@ -98,14 +97,13 @@ test('H27: fitted cover follows both ear-face levels and retains underfold',()=>
   const shoulder=crown.y+crown.height/2-ACH_MICH_BEVEL_HEIGHT;
   for(const index of [2,3]){
    const z=hem[index][2],bottom=hem[index][1];
-   for(const fraction of [ACH_MICH_EAR_FACE_TOP_FRACTION,
-    ACH_MICH_EAR_FACE_BOTTOM_FRACTION]){
-    const y=shoulder+(bottom-shoulder)*fraction+.07;
+   const profile=unifiedHelmetEarVerticalProfile(id,shoulder,bottom,z);
+   for(const y of [profile.faceTopY+.07,profile.faceBottomY+.07]){
     let exposed=false;
     for(let j=0;j<pos.count;j++)
      if(near(pos.getZ(j),z)&&near(pos.getY(j),y)&&
       pos.getX(j)>=width[index]+ACH_MICH_COVER_OFFSET+.065)exposed=true;
-    assert.ok(exposed,id+' fabric must clear both edges of the ear wall');
+    assert.ok(exposed,id+' fitted cloth clears actual H30 face');
    }
   }
  }
