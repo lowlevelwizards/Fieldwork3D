@@ -35,7 +35,6 @@ jobs:
             tests/release-d3-1-door-broadphase.test.mjs \
             tests/release-d3-2-door-evidence.test.mjs \
             tests/release-d3-2-hinge-arbitrated-release.test.mjs \
-            tests/release-d3-2-stalled-route-recovery.test.mjs \
             tests/release-d3-2-door-evidence.test.mjs \
             tests/release-d3-2-short-clear-handoff.test.mjs \
             tests/release-d1-coherent-crossing.test.mjs \

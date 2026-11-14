@@ -136,18 +136,8 @@ export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
  * world-route search. A route never advances a hinge or simulation tick;
  * the next route constructs a fresh snapshot. Broadphase rejection is only
  * AABB: every possible contact still gets exact pointToSegment clearance. */
-/** Only the door ALREADY confirmed physically stalled is a non-pushable
- * partial leaf for the current world-truth RECOVERY search. All other
- * incomplete hinges remain eligible for normal opening/body pressure.
- * The ordinary swept motor has always treated ALL leaf angles as solid.
- */
-export function worldRouteLeafObstacle(d:Door,stalledDoorId?:string):boolean{
- return d.open&&((d.openFraction??0)>=.72||
-   d.id===stalledDoorId&&(d.openFraction??0)>=.15);
-}
-const worldCanStand=(doors:Door[],world?:SessionWorldGeometry,
- stalledDoorId?:string)=>{
-  const leaves=doors.filter(d=>worldRouteLeafObstacle(d,stalledDoorId))
+const worldCanStand=(doors:Door[],world?:SessionWorldGeometry)=>{
+  const leaves=doors.filter(d=>d.open&&(d.openFraction??0)>=.72)
     .map(d=>{
       const leaf=doorLeafSegment(d);
       return {leaf,minX:Math.min(leaf.a.x,leaf.b.x),
@@ -268,14 +258,11 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorld
  }
  return [];
 }
-export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],
- world?:SessionWorldGeometry,stalledDoorId?:string):Pt[]{
- // Only a confirmed stalled leaf changes this SINGLE recovery route
- // snapshot. Other hinged doors remain openable by the usual motor.
- const canStand=worldCanStand(doors,world,stalledDoorId);
- const normal=routeWithNormalWorld(from,to,doors,world,
-   stalledDoorId?canStand:undefined);
+export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
+ // Open hinged leaves are pushable; ordinary motion must remain eligible.
+ const normal=routeWithNormalWorld(from,to,doors,world);
  if(normal.length)return normal;
+ const canStand=worldCanStand(doors,world);
  const narrow=narrowRoute(from,to,canStand);
  let previous=from;
  for(const point of narrow){
