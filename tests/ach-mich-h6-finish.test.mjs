@@ -35,7 +35,8 @@ test('H6 no dangling rear detours: each of two suspensions joins a single jaw po
   for(let side=0;side<2;side++){
    assert.equal(paths[side*3].length,2);
    assert.equal(paths[side*3+1].length,2);
-   assert.equal(paths[side*3+2].length,2);
+   assert.equal(paths[side*3+2].length,3,
+    'cheek routing retains its one deliberate correction away from the face');
    assert.deepEqual(paths[side*3][1],paths[side*3+1][1]);
    assert.deepEqual(paths[side*3+2][0],paths[side*3][1]);
   }
@@ -56,7 +57,8 @@ test('H6 one unlit tintable band and a single unified strap mesh, no duplicate c
   assert.ok(details.bindingMaterial instanceof THREE.MeshBasicMaterial);
   assert.equal(details.bindingMaterial.vertexColors,false);
   assert.equal(details.bare.children.length,1);
-  assert.equal(details.strap.children.length,1);
+  assert.equal(details.strap.children.length,2,
+   'webbing plus consolidated paired buckles retain separate materials');
   assert.equal(details.strap.children[0].geometry.userData.integratedChinCup,true);
   assert.equal(details.hardware.userData.achMichRetentionScrews,4);
   assert.ok(createAchMichBindingGeometry(id).userData.segmentCount>=6);
