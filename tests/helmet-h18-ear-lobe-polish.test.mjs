@@ -68,14 +68,14 @@ test('H18: fewer rim pixels without new geometry and fabric stays synchronized',
  }
 });
 
-test('H26: shared crown with lower ear crest only on full and mid',()=>{
+test('H29: shared crown with unified lower contour on all three cuts',()=>{
  for(const [id,roof] of [['ach',8.84],['mich-2002',8.75]]){
   const group=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   assert.equal(group.children.length,1);
   const g=group.children[0].geometry;
   assert.equal(g.userData.h17UnifiedContour,true);
-  assert.equal(g.userData.exteriorQuads,59);
-  assert.equal(g.index.count,354,'59 quads = 118 triangles');
+  assert.equal(g.userData.exteriorQuads,39);
+  assert.equal(g.index.count,234,'H29: 39 quads = 78 triangles');
   assert.ok(near(g.boundingBox.max.y,roof));
   assert.equal(g.userData.achMichCrownInset,.53);
   assert.equal(g.userData.achMichBevelHeight,1.10);
