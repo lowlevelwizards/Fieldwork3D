@@ -3,6 +3,8 @@ import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS} from './breac
 import {doorSwingBlocked,doorWouldStrikeActors} from './breach-door.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {selectedD32MotorDoor} from './breach-d3-motor-door-witness.ts';
+import {routeWithSqueezeWorld,routeWithSqueezeIntel} from './breach-squeeze-route.ts';
+import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 const pos=(p:{x:number;y:number}|undefined)=>p?{x:+p.x.toFixed(2),y:+p.y.toFixed(2)}:null;
@@ -59,4 +61,33 @@ export function captureD32DoorEvidence(a:TeamActor,s:Session){
   routeGoalKey:a.routeGoalKey,
   traversal:a.doorTraversal?{doorId:a.doorTraversal.doorId,
     phase:a.doorTraversal.phase,maneuver:a.doorTraversal.maneuver}:null,doors};
+}
+
+/** Recompute normal recovery candidates ONLY in the offline generated audit
+ * after a sustained physical stall. This does not replace the live route.
+ * All simulations and true collision tests are unchanged. */
+export function captureD32RecoveryFeasibility(a:TeamActor,s:Session){
+ const goal=a.plan[0]?.p;
+ if(!goal)return null;
+ const world=sessionWorldGeometry(s);
+ const worldRoute=routeWithSqueezeWorld(a.p,goal,s.doors,world);
+ const intelRoute=a.side==='blue'?
+   routeWithSqueezeIntel(s.intel,a.p,goal):[];
+ const firstWorld=worldRoute[0],firstIntel=intelRoute[0];
+ const firstActual=a.nav[0];
+ const clearance=(p:typeof a.p|undefined)=>p?{
+  swept:sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world),
+  cause:diagnoseMovement(a.p,p,s.doors,[],OPERATOR_RADIUS,world).blocker,
+  distance:round(Math.hypot(a.p.x-p.x,a.p.y-p.y))
+ }:null;
+ const cover=world.cover.filter(o=>Math.hypot(o.x-a.p.x,o.y-a.p.y)<75)
+   .sort((a,b)=>Math.hypot(a.x-goal.x,a.y-goal.y)-
+      Math.hypot(b.x-goal.x,b.y-goal.y))
+   .slice(0,5).map(o=>({id:o.id??null,fixture:o.fixture??null,
+     x:round(o.x),y:round(o.y),w:round(o.w),h:round(o.h)}));
+ return {goal:pos(goal),currentFirst:pos(firstActual),
+  current:clearance(firstActual),worldCount:worldRoute.length,
+  worldFirst:pos(firstWorld),worldClear:clearance(firstWorld),
+  intelCount:intelRoute.length,intelFirst:pos(firstIntel),
+  intelClear:clearance(firstIntel),cover};
 }

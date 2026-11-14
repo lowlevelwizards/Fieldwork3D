@@ -17,7 +17,8 @@ import {activateSite} from '../src/breach-core.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
-import {captureD32DoorEvidence,dueDoorHoldMilestones,D32_HOLD_MILESTONES,
+import {captureD32DoorEvidence,captureD32RecoveryFeasibility,
+ dueDoorHoldMilestones,D32_HOLD_MILESTONES,
  dueD32BlockMilestones,D32_BLOCK_MILESTONES}
  from '../src/breach-d3-door-evidence.ts';
 
@@ -138,7 +139,11 @@ function run(site,seed,kind){
       physical.mask|=1<<index;
       if(physical.events.length<12)
        physical.events.push({event:'blocked',duration:D32_BLOCK_MILESTONES[index],
-        ...captureD32DoorEvidence(a,session)});
+        ...captureD32DoorEvidence(a,session),
+        // Two read-only world-route probes, only after genuine sustained
+        // physical blockage; not called in the live motor hotpath.
+        routeFeasibility:index===1||index===2?
+          captureD32RecoveryFeasibility(a,session):null});
      }
    }
    for(const d of session.doors){
