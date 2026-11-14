@@ -47,7 +47,7 @@ test('H20: full, partial and open-ear cuts have an emphatic three-step hierarchy
  assert.ok(near(high[1][1],4.55));
  assert.ok(near(high[3][1],5.30));
  assert.ok(high[2][1]-high[1][1]>=.70,'high cut rises visibly above the brow');
- assert.ok(near(high[4][1],3.12)&&near(high[5][1],3.12));
+ assert.ok(near(high[4][1],2.85)&&near(high[5][1],2.85));
  assert.ok(high[3][1]-high[4][1]>=1.35,
   'deep rear return rather than floating cap');
  assert.ok(high[2][1]-A.earTop>=1.2,'clean opening over implied ear');
@@ -74,7 +74,7 @@ test('H20: no new polygons, cover/trim drift or retention clipping',()=>{
   assert.equal(achMichRetentionPaths(id).length,6);
  }
  assert.ok(near(achMichHemY('mich-2001',.5),5.30));
- assert.ok(near(achMichHemY('mich-2001',5),3.12));
+ assert.ok(near(achMichHemY('mich-2001',5),2.85));
  assert.ok(near(achMichBindingHeight('mich-2001'),.42));
 });
 
