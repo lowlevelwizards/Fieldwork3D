@@ -42,7 +42,8 @@ test('D3.9 explicit opening has priority and invalid owner hands off',()=>{
  const after=implicitDoorOpeningOwner(s,d);
  assert.equal(after,'rook');
  rook.plan=[];
- assert.equal(implicitDoorOpeningOwner(s,d),'ash');
+ assert.equal(implicitDoorOpeningOwner(s,d),null,
+  'a lone active operator needs no multi-body ownership lease');
 });
 test('D3.9 release ownership immediately once physical aperture is clear',()=>{
  const d=door(),rook=actor('rook',0),moss=actor('moss',1);
@@ -52,14 +53,14 @@ test('D3.9 release ownership immediately once physical aperture is clear',()=>{
  assert.equal(implicitDoorOpeningOwner(s,d),null);
  assert.equal(shouldStageForOpening(s,moss,d),false);
  d.openFraction=.4;rook.health=0;
- assert.equal(implicitDoorOpeningOwner(s,d),'moss',
-  'new opening cycle cannot retain a stale owner');
+ assert.equal(implicitDoorOpeningOwner(s,d),null,
+  'a new cycle with one remaining blocker is ordinary door traffic');
 });
 test('D3.9 inactive and opposing actors do not commandeer implicit door',()=>{
  const d=door(),rook=actor('rook',0),
   red={...actor('enemy',-1),side:'red'},idle={...actor('idle',-2),plan:[]};
  const s={seconds:1,doors:[d],operators:[red,idle,rook]};
- assert.equal(implicitDoorOpeningOwner(s,d),'rook');
+ assert.equal(implicitDoorOpeningOwner(s,d),null);
 });
 test('D3.9 all pressure, hand and motor roles use same opener lease',async()=>{
  const {readFileSync}=await import('node:fs');
