@@ -8,6 +8,7 @@ import type {WeaponId} from './breach-combat.ts';
 import {arBarrelArt,AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 import {akBarrelArt} from './weapons/geometry/ak-barrel-profiles.ts';
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
+import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
@@ -230,7 +231,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const build=config.build;
  const art=build?.family==='ar'?arBarrelArt(build.parts.barrel):
   build?.family==='ak'?akBarrelArt(build.parts.barrel):
-  build?.family==='hk'?hkBarrelArt(build.parts.barrel):undefined;
+  build?.family==='hk'?hkBarrelArt(build.parts.barrel):
+  build?.family==='fal'?falBarrelArt(build.parts.barrel):undefined;
  const mounted={} as Record<WeaponAttachmentSlot,WeaponAttachment>;
  let mass=p.baseMassKg,weighted=p.baseMassKg*p.baseBalanceX;
  let inertia=p.baseMassKg*(18*18/12+p.baseBalanceX*p.baseBalanceX);
@@ -273,7 +275,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale,
   massKg:mass,balanceX:balance,rotationalInertia:Math.max(1,inertia),
   muzzleX:(art?.muzzleX??p.muzzleX)+(mounted.muzzle.muzzleExtension??0),
-  muzzleY:build?.family==='ar'?AR_VISUAL_AXIS_Y:0,
+  muzzleY:build?.family==='ar'?AR_VISUAL_AXIS_Y:
+   build?.family==='fal'?(falBarrelArt(build.parts.barrel)?.muzzleY??0):0,
   stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
   primaryX,primaryY,
   supportX:triRailVertical?7.0:supportX+(mounted.foregrip.supportShift??0),
