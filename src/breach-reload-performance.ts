@@ -35,6 +35,9 @@ export function reloadMechanismFor(weapon:WeaponId,
  if(family==='ar')return 'ar-bolt-catch';
  if(family==='ak')return 'ak-rocking';
  if(family==='hk')return 'hk-roller';
+ // FAL receives straight-magazine legacy choreography, never an HK slap.
+ // A dedicated FAL control gesture is a later, separately validated stage.
+ if(family==='fal')return 'legacy';
  return 'legacy';
 }
 export function reloadAnimationCue(mechanism:ReloadMechanism,
