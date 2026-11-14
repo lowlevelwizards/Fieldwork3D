@@ -1,4 +1,6 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {fireCorrectionStopReason,cancelFireCorrection}
+ from './breach-fire-recovery-policy.ts';
 /** Stage 8: one fixed-tick tactical order dispatcher.
  * Branch priority is exactly the former breach-game.runOrders priority:
  * traversal -> defensive movement -> contact -> node activation -> special
@@ -52,9 +54,11 @@ export function createOrderExecutor(port:OrderExecutionPort){
   // Complete or expire it before resuming the original waypoint motor.
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
-    if(s.seconds>a.fireRetreatUntil||d(a.p,goal)<.9||
+    // Higher-priority player actions and edited orders cancel optional
+    // footwork BEFORE any swept geometry test or route acquisition.
+    if(fireCorrectionStopReason(a,s.seconds)||d(a.p,goal)<.9||
        !sweptBodyClear(a.p,goal,s.doors,8,sessionWorldGeometry(s))){
-      a.fireRetreatTarget=null;a.fireRetreatReason=null;a.nav=[];
+      cancelFireCorrection(a);
     }else{
       port.approach(a,goal,dt,s,.64);
       return;
