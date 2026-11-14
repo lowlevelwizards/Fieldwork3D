@@ -62,18 +62,14 @@ test('H6 one unlit tintable band and a single unified strap mesh, no duplicate c
   assert.ok(createAchMichBindingGeometry(id).userData.segmentCount>=6);
  }
 });
-test('H6 ACH ear/nape transition remains broad and cover still shares exact H5 crown',()=>{
+test('H17 continuous lower contour retains crown and cloth alignment',()=>{
  assert.equal(ACH_MICH_BEVEL_HEIGHT,1.10);
  assert.equal(ACH_MICH_UPPER_INSET,.53);
  const p=achMichProfile('ach');
  for(let i=1;i<p.hem.length;i++)
-  assert.ok(p.hem[i][2]-p.hem[i-1][2]>=.46,
-   'minimum perimeter spacing prevents small zigzag facets');
- const volumes=headwearCuboidVolumes('ach');
- const temple=volumes.find(v=>v.name==='ach-right-temple');
- const nape=volumes.find(v=>v.name==='ach-right-nape-return');
- assert.ok(temple&&nape);
- assert.ok(temple.depth>=2.7&&nape.depth>=2.9);
+  assert.ok(p.hem[i][2]-p.hem[i-1][2]>=.65);
+ assert.ok(p.hem.every(point=>point[0]===p.side));
+ assert.equal(headwearCuboidVolumes('ach').length,5);
  for(const id of ACH_MICH_SHELLS){
   const cover=createAchMichDrapedGeometry(id);
   assert.equal(cover.userData.achMichDirectFrontRearDiagonal,true);
