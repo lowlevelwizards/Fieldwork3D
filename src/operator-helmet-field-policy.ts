@@ -87,6 +87,29 @@ export function resolveHelmetField(id:string,raw:unknown,
  if(context.covered===false&&!r.velcro)r.patches=false;
  return r;
 }
+/** Visibility restrictions exposed to Studio, not hidden from its user.
+ * Stored preferences stay intact when a prerequisite is temporarily removed.
+ */
+export function helmetFieldCompatibilityIssues(id:string,raw:unknown,
+ covered:boolean):string[]{
+ const v=readHelmetField(raw),issues:string[]=[];
+ if(id==='pasgt')return issues;
+ if(v.bungees&&!v.rails)issues.push('Bungees require side rails.');
+ if(v.bungees&&!v.shroud)issues.push('Bungees require the NVG shroud.');
+ if(v.light&&!v.rails)issues.push('Helmet light requires side rails.');
+ if(v.camera&&!v.rails)issues.push('Camera requires side rails.');
+ if(v.light&&v.camera&&v.lightSide===v.cameraSide)
+  issues.push('Light and camera need opposite rail sides.');
+ if(v.strobe&&v.chemlight)
+  issues.push('IR strobe and top-rear chemlight share the crown mounting slot.');
+ if(v.goggles==='rear'&&(v.battery||v.counterweight))
+  issues.push('Rear-stowed goggles occupy the rear battery/counterweight slot.');
+ if(v.battery&&v.counterweight)
+  issues.push('Battery and counterweight occupy the same rear carrier.');
+ if(!covered&&v.patches&&!v.velcro)
+  issues.push('Bare-shell patches require Velcro panels.');
+ return issues;
+}
 /** Fixed palette of historic webbing colors, with manual override. */
 export const HELMET_FIELD_HEX={olive:0x586548,tan:0x977e59,black:0x262a29} as const;
 export function resolveHelmetFieldColor(
