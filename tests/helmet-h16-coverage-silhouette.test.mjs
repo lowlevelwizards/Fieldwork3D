@@ -25,7 +25,7 @@ test('H17: Full and Mid are one integrated skirt; High retains open ears',()=>{
   assert.equal(achMichHemY(id,5.4),nape);
   assert.equal(HEAD_SILHOUETTE_METRICS[id].earEdge,ear);
  }
- assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,4.78);
+ assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,5.30);
  assert.equal(HELMET_MOUNT_PROFILES['mich-2002'].ear,4.05);
  assert.equal(HELMET_MOUNT_PROFILES.ach.ear,2.92);
 });

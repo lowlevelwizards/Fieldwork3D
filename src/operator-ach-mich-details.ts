@@ -32,8 +32,8 @@ const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
   hem:UNIFIED_HELMET_HEMS['mich-2002']
  },
  'mich-2001':{
-  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:4.12,
-  frontStud:[5.015,5.22,-3.28],rearStud:[5.015,4.67,3.79],
+  side:5.015,front:-5.71,rear:5.66,brow:4.55,nape:3.90,
+  frontStud:[5.015,5.22,-3.45],rearStud:[5.015,4.45,3.79],
   hem:UNIFIED_HELMET_HEMS['mich-2001']
  }
 };
