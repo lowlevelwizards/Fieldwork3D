@@ -658,7 +658,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // friendly sidestep probe. Only skip when the actual shoulder is centered;
   // movement toward the target offset still requires a fresh live check.
   if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&friends.length&&
-    !(centeredFireableThisTick&&Math.abs(a.aimSideOffset??0)<.001)){
+    !(centeredFireableThisTick&&(a.aimSideOffset??0)===0)){
     const preflight=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
       weaponYaw:angle(a.p,target.p),shoulderOffset:a.aimSideOffset??0,
       weapon:a.weapon,
