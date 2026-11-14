@@ -1,3 +1,4 @@
+import {assertPropertySurfaceSubstrate} from './property-surface-substrate.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {planPropertySurfaces} from '../src/worldgen/property-surfaces.ts';
@@ -25,10 +26,7 @@ test('live property markings remain within their actual exterior zones',()=>{
  for(let seed=0;seed<120;seed++){
   const site=generateSite(seed);
   for(const mark of planPropertySurfaces(site)){
-   const zone=site.exteriorZones?.find(z=>z.id===mark.zoneId);
-   assert.ok(zone);
-   assert.ok(mark.x-mark.width/2>=zone.x-zone.w/2-1);
-   assert.ok(mark.y-mark.depth/2>=zone.y-zone.h/2-1);
+   assertPropertySurfaceSubstrate(site,mark);
    if(mark.kind==='drainage-grate')drains++;
    if(mark.kind==='path')paths++;
   }
