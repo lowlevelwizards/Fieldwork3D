@@ -44,9 +44,9 @@ function add(slot:WardrobeSlot,family:string,records:readonly (readonly [string,
  for(const [id,name] of records)ITEMS.push({id,slot,name,family,style:id,onlyWith});
 }
 add('headwear','bare',[['bare','Uncovered']]);
-// Only the seven reviewed headwear silhouettes are selectable in Studio.
-// Older placeholder variants remain loadout-safe internally but do not
-// pollute the approved art catalog.
+// The wardrobe registry also accepts archived models for saved looks,
+// loadouts and reference kits. Operator Studio filters modern duplicates to
+// one Ballistic Helmet card with Full/Mid/High in its Details tab.
 add('headwear','soft',[
  ['patrol-cap','Patrol cap'],['beanie','Beanie'],['boonie','Boonie hat'],
  ['beret','Military beret']
