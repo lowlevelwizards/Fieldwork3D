@@ -109,7 +109,7 @@ function main(){
   if(plan.runBroadCritical)console.log('scripts/verification/breach-critical-suite.mjs');
   return;
  }
- const result=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-concurrency=2',...plan.tests],{stdio:'inherit',env:process.env});
+ const result=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-concurrency=1',...plan.tests],{stdio:'inherit',env:process.env});
  if(result.error)throw result.error;
  if(result.status!==0)process.exit(result.status??1);
  if(plan.runBroadCritical){

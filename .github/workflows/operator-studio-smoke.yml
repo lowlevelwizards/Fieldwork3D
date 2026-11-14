@@ -164,7 +164,7 @@ jobs:
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
         run: |
           npm run build
-          node --experimental-strip-types --test tests/helmet-a1-effective-appearance.test.mjs tests/helmet-h15-cut-consolidation.test.mjs tests/operator-headwear-anatomy.test.mjs tests/operator-headwear-camo.test.mjs tests/operator-wardrobe-headwear.test.mjs tests/helmet-h14-pasgt-retrofit-roster.test.mjs tests/helmet-h7-field-options.test.mjs tests/helmet-h7-visuals.test.mjs tests/helmet-h10-fit.test.mjs tests/helmet-h13-mount-and-compatibility.test.mjs tests/helmet-h30-reference-contour.test.mjs tests/helmet-h31c-cover-shell-penetration.test.mjs
+          node --experimental-strip-types --test --test-concurrency=1 tests/helmet-a1-effective-appearance.test.mjs tests/helmet-h15-cut-consolidation.test.mjs tests/operator-headwear-anatomy.test.mjs tests/operator-headwear-camo.test.mjs tests/operator-wardrobe-headwear.test.mjs tests/helmet-h14-pasgt-retrofit-roster.test.mjs tests/helmet-h7-field-options.test.mjs tests/helmet-h7-visuals.test.mjs tests/helmet-h10-fit.test.mjs tests/helmet-h13-mount-and-compatibility.test.mjs tests/helmet-h30-reference-contour.test.mjs tests/helmet-h31c-cover-shell-penetration.test.mjs
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
