@@ -2,10 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {UNIFIED_HELMET_HEMS,UNIFIED_HELMET_EAR_SHOULDERS,
- ACH_MICH_EAR_SHOULDER_FRACTION,ACH_MICH_EAR_FACE_TOP_FRACTION,
- ACH_MICH_EAR_FACE_BOTTOM_FRACTION,
- unifiedHelmetEarVerticalProfile,unifiedHelmetEarShoulderWidth}
- from '../src/operator-ach-mich-unified-shell.ts';
+ ACH_MICH_LOWER_EDGE_RETURN_HEIGHT,unifiedHelmetEarShoulderWidth} from '../src/operator-ach-mich-unified-shell.ts';
 import {createHeadwearSilhouette,headwearCuboidVolumes,ACH_MICH_BEVEL_HEIGHT}
  from '../src/operator-headwear-silhouettes.ts';
 import {createAchMichDrapedGeometry,ACH_MICH_COVER_OFFSET}
@@ -16,53 +13,34 @@ import {achMichProfile,createAchMichDetails,
  updateAchMichDetails} from '../src/operator-ach-mich-details.ts';
 const ids=['ach','mich-2002','mich-2001'];
 const near=(a,b,t=.012)=>Math.abs(a-b)<t;
-test('H26: no ear protrusion above midwall and no high-cut lateral bulge',()=>{
- const max=[5.92,5.78,5.015];
- for(let n=0;n<ids.length;n++){
-  const id=ids[n],hem=UNIFIED_HELMET_HEMS[id],
-   widths=UNIFIED_HELMET_EAR_SHOULDERS[id];
-  const crown=headwearCuboidVolumes(id)[0];
-  const shoulderY=crown.y+crown.height/2-ACH_MICH_BEVEL_HEIGHT;
+test('H29: no ear extrusion, contour alone drives width and sidewall',()=>{
+ for(const id of ids){
+  const hem=UNIFIED_HELMET_HEMS[id],widths=UNIFIED_HELMET_EAR_SHOULDERS[id];
   assert.equal(hem.length,6);
-  assert.equal(widths.length,6);
-  assert.ok(near(widths[2],max[n]));
-  assert.ok(near(widths[3],max[n]));
-  assert.ok(near(widths[0],hem[0][0]));
-  if(id==='mich-2001')assert.ok(widths.every(v=>near(v,hem[0][0])));
-  else assert.ok(widths[2]-widths[0]>.49,'full/mid retain ear mass');
-  assert.ok(near(ACH_MICH_EAR_SHOULDER_FRACTION,.52));
-  assert.ok(near(ACH_MICH_EAR_FACE_TOP_FRACTION,.62));
-  assert.ok(near(ACH_MICH_EAR_FACE_BOTTOM_FRACTION,.93));
-  const {onsetY:splitY,faceTopY,faceBottomY}=
-   unifiedHelmetEarVerticalProfile(id,shoulderY,hem[2][1],hem[2][2]);
+  assert.deepEqual(widths,hem.map(p=>p[0]),'no independently authored crest');
   const shell=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   const g=shell.children[0].geometry,p=g.getAttribute('position');
-  assert.equal(g.userData.exteriorQuads,id==='mich-2001'?39:59);
-  assert.equal(g.index.count,id==='mich-2001'?234:354);
   assert.equal(shell.children.length,1);
-  let onsetL=false,onsetR=false,faceTopL=false,faceTopR=false,faceBottomL=false,faceBottomR=false;
-  for(let i=0;i<p.count;i++)if(near(p.getZ(i),hem[2][2])){
-   if(near(p.getY(i),splitY)){
-    onsetL ||= near(p.getX(i),-hem[0][0]);
-    onsetR ||= near(p.getX(i),hem[0][0]);
-   }
-   if(near(p.getY(i),faceTopY)){
-    faceTopL ||= near(p.getX(i),-max[n]);
-    faceTopR ||= near(p.getX(i),max[n]);
-   }
-   if(near(p.getY(i),faceBottomY)){
-    faceBottomL ||= near(p.getX(i),-max[n]);
-    faceBottomR ||= near(p.getX(i),max[n]);
+  assert.equal(g.userData.exteriorQuads,39);
+  assert.equal(g.index.count,234);
+  assert.equal(g.userData.h29NoEarExtrusion,true);
+  assert.equal(g.userData.h29LowerReturnHeight,ACH_MICH_LOWER_EDGE_RETURN_HEIGHT);
+  for(const station of [1,2,3,4]){
+   const [x,y,z]=hem[station];
+   for(const sign of [-1,1]){
+    let atHem=false,aboveHem=false;
+    for(let i=0;i<p.count;i++)if(near(p.getZ(i),z)){
+     atHem ||= near(p.getX(i),sign*x)&&near(p.getY(i),y);
+     aboveHem ||= near(p.getX(i),sign*hem[0][0])&&
+      near(p.getY(i),y+ACH_MICH_LOWER_EDGE_RETURN_HEIGHT);
+    }
+    assert.ok(atHem&&aboveHem,id+' short lower return integrates silhouette');
    }
   }
-  assert.ok(onsetL&&onsetR,id+' upper half must keep base width');
-  if(id!=='mich-2001')assert.ok(faceTopL&&faceTopR&&faceBottomL&&faceBottomR,
-   id+' broad side wall has equal-width upper and lower edges');
-  assert.ok(near(unifiedHelmetEarShoulderWidth(id,hem[2][2]),max[n]));
-  assert.ok(near(g.boundingBox.max.x,max[n]));
+  assert.ok(near(unifiedHelmetEarShoulderWidth(id,hem[2][2]),hem[2][0]));
  }
 });
-test('H25: fitted cover passes outside real ear shoulder and wraps below molded edge',()=>{
+test('H29: fitted cover wraps the contour and conceals the molded edge',()=>{
  for(const id of ids){
   const hem=UNIFIED_HELMET_HEMS[id],
    widths=UNIFIED_HELMET_EAR_SHOULDERS[id];
@@ -88,9 +66,9 @@ test('H25: fitted cover passes outside real ear shoulder and wraps below molded 
      hemOutside=true;
    assert.ok(hemOutside,id+' outer fabric covers the complete lower lip');
   }
-  assert.equal(cover.userData.h25EarShoulderMatched,true);
-  assert.equal(cover.userData.h26OnsetAndLowerCrestMatched,true);
-  assert.equal(cover.userData.h27BroadEarFaceMatched,true);
+  assert.equal(cover.userData.h29ContourDrivenCover,true);
+
+
   assert.equal(cover.userData.h25TuckedConcealedBinding,true);
   assert.equal(fold.userData.h25TuckedConcealedBinding,true);
   assert.ok(fold.getAttribute('position').count>=42);
