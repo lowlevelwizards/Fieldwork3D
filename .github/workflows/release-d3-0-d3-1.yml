@@ -60,7 +60,7 @@ jobs:
         run: |
           node --experimental-strip-types --test tests/release-d3-2-r3-portal-connectivity.test.mjs
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900 --clinic-only --portal > "$RUNNER_TEMP/d3-clinic-portal.json"
-          node -e 'const r=require(process.argv[1]);const w=r.rows[0]?.modes?.find(m=>m.mode==="entry")?.physicalBlockEvidence?.filter(e=>e.operator==="vale"&&e.routeFeasibility?.portalConnectivity).map(e=>({time:e.time,route:e.routeFeasibility.portalConnectivity,goal:e.routeFeasibility.goal,endPoint:e.routeFeasibility.endPoint}));console.log(JSON.stringify({summary:r.summary,clinic:w},null,2));if(!w?.length)throw Error("missing clinic portal witness")' "$RUNNER_TEMP/d3-clinic-portal.json"
+          node -e 'const r=require(process.argv[1]);const entry=r.rows[0]?.modes?.find(m=>m.mode==="entry");const w=entry?.physicalBlockEvidence?.filter(e=>e.operator==="vale"&&e.routeFeasibility?.portalConnectivity).map(e=>({time:e.time,route:e.routeFeasibility.portalConnectivity,goal:e.routeFeasibility.goal,endPoint:e.routeFeasibility.endPoint}));const vale=entry?.triage?.find(e=>e.actor==="vale");console.log(JSON.stringify({summary:r.summary,vale,clinic:w},null,2));if(!w?.length&&vale?.state!=="moving"&&vale?.state!=="completed")throw Error("clinic has no stall witness and no confirmed Vale progress")' "$RUNNER_TEMP/d3-clinic-portal.json"
       - name: D3.3 same-seed 11-site 15-second movement benchmark
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900 > "$RUNNER_TEMP/d3-r3-benchmark.json"
