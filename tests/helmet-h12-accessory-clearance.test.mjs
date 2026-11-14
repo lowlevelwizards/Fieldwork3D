@@ -41,11 +41,12 @@ for(const shell of ['ach','mich-2001','mich-2002']){
     assert.equal(strip.geometry.getAttribute('position').count,24);
     assert.equal(strip.geometry.userData.h12SegmentCount,4);
    }
-   const routes=kit.modules.bungees.userData.h9BungeeRoutes;
+   const routes=kit.modules.bungees.userData[covered?
+    'h9BungeeRoutes':'h12BareBungeeRoutes'];
    for(const route of routes){
-    assert.ok(Math.abs(route.path[0][0])>p.side+ACH_MICH_COVER_OFFSET+.3);
+    assert.ok(Math.abs(route.path[0][0])>p.side+layer+.3);
     assert.ok(Math.abs(route.path[2][0])>p.side+ACH_MICH_COVER_OFFSET+.3);
-    assert.ok(route.path[2][2]<p.front-ACH_MICH_COVER_OFFSET-.3);
+    assert.ok(route.path[2][2]<p.front-layer-.3);
     assert.ok(route.path[4][2]<p.front-ACH_MICH_COVER_OFFSET-.3);
    }
   }
