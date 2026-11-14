@@ -251,11 +251,6 @@ export function resolveMotorCollision(
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
       setTransientRoute(s,a,[],'door-leaf-escape');
-      // Rehearse only after actual full-body escape, never in response to
-      // a merely hypothetical open leaf or a new authored waypoint.
-      if(a.squeeze&&a.doorTraversal?.phase==='clear-leaf'&&
-         tryRehearsedDoorManeuver(a,s,p,canAutoSidestep,true))
-        return true;
       if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return true;
     }
