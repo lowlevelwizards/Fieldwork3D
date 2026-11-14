@@ -13,6 +13,7 @@ import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
+import {noteD32MotorDoorSelection} from './breach-d3-motor-door-witness.ts';
 
 /** D3.2.5: an opened hinge that has STOPPED well below its target may
  * no longer monopolize the actor motor. The ordinary collision/recovery
@@ -105,6 +106,7 @@ export function handleMotorDoor(
       }
     }
     a.motorPause='door-opening';
+    noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
     if(opening.reason==='held'||opening.reason==='locked'||
