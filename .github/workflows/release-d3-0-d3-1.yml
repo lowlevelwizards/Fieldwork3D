@@ -65,6 +65,14 @@ jobs:
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900 > "$RUNNER_TEMP/d3-r3-benchmark.json"
           node -e 'const r=require(process.argv[1]);console.log(JSON.stringify(r.summary,null,2));if(r.summary.invalidPositions||r.summary.corruptedPlans||r.summary.physicsStepViolations||r.summary.doorStateFlips>90)throw Error("D3.3 movement invariant failed")' "$RUNNER_TEMP/d3-r3-benchmark.json"
+      - name: D3.3 compare actual clinic 30-second motor with immutable R2.6
+        run: |
+          git fetch --no-tags --depth=1 origin 37f805825b3e295bb68b791d0cbae7a1df0b6d74
+          git worktree add --detach "$RUNNER_TEMP/d3-r2-baseline" 37f805825b3e295bb68b791d0cbae7a1df0b6d74
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d3-r2-baseline/node_modules"
+          node --experimental-strip-types "$RUNNER_TEMP/d3-r2-baseline/scripts/audit-r7-squad-execution.mjs" 11 1800 --clinic-only > "$RUNNER_TEMP/d3-r2-clinic30.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 1800 --clinic-only > "$RUNNER_TEMP/d3-r3-clinic30.json"
+          node -e 'const a=require(process.argv[1]),b=require(process.argv[2]);const compact=r=>({summary:r.summary,entry:r.rows[0]?.modes?.find(m=>m.mode==="entry")?.triage,entryOps:r.rows[0]?.modes?.find(m=>m.mode==="entry")?.operators});console.log(JSON.stringify({baseline:compact(a),candidate:compact(b)},null,2));if(b.summary.invalidPositions||b.summary.corruptedPlans||b.summary.physicsStepViolations)throw Error("clinic 30-second safety failure")' "$RUNNER_TEMP/d3-r2-clinic30.json" "$RUNNER_TEMP/d3-r3-clinic30.json"
       - name: Production TypeScript + Vite bundle
         run: npm run build
       - name: Retain reproducible generated-map triage
@@ -76,6 +84,8 @@ jobs:
             ${{ runner.temp }}/d3-generated.json
             ${{ runner.temp }}/d3-clinic-portal.json
             ${{ runner.temp }}/d3-r3-benchmark.json
+            ${{ runner.temp }}/d3-r2-clinic30.json
+            ${{ runner.temp }}/d3-r3-clinic30.json
           if-no-files-found: ignore
   truth-parity:
     runs-on: ubuntu-latest
