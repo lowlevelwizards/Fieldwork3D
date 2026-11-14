@@ -326,7 +326,7 @@ export function resolveMotorCollision(
       // an undiscovered door frame. The authored final goal is unchanged.
       const replanAt=profile?beginMotorCpuMeasurement():0;
       const repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
-        routeWithSqueezeWorld(a.p,p,s.doors,world);
+        routeWithSqueezeWorld(a.p,p,s.doors,world,clearingDoorId);
       if(profile)profile('motor-collision-replan',finishMotorCpuMeasurement(replanAt));
       // A world-truth path that repeats the stuck steps is not progress.
       // Known-intel fallback is allowed only if it materially differs;
