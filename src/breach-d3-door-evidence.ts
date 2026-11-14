@@ -1,7 +1,7 @@
 /** D3.2 offline forensic witness; NEVER imported by a live motor or renderer. */
 import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS} from './breach-core.ts';
 import {doorSwingBlocked,doorWouldStrikeActors} from './breach-door.ts';
-import {sweptBodyClear} from './breach-navigation.ts';
+import {bodyClear,sweptBodyClear} from './breach-navigation.ts';
 import {selectedD32MotorDoor} from './breach-d3-motor-door-witness.ts';
 import {probeD32HingeSelfClearance} from './breach-d3-hinge-escape-evidence.ts';
 import {routeWithSqueezeWorld,routeWithSqueezeIntel} from './breach-squeeze-route.ts';
@@ -134,7 +134,20 @@ export function captureD32RecoveryFeasibility(a:TeamActor,s:Session){
       Math.hypot(b.x-goal.x,b.y-goal.y))
    .slice(0,5).map(o=>({id:o.id??null,fixture:o.fixture??null,
      x:round(o.x),y:round(o.y),w:round(o.w),h:round(o.h)}));
- return {goal:pos(goal),currentFirst:pos(firstActual),
+ // Endpoint accessibility is independent of route connectivity.
+ // Without these flags, repeated empty A* routes cannot distinguish an
+ // impossible authored goal from disconnected world portals.
+ const endPoint={
+  actorWorldPassable:world.passable(a.p,OPERATOR_RADIUS),
+  actorBodyClear:bodyClear(a.p,s.doors,OPERATOR_RADIUS,world),
+  goalWorldPassable:world.passable(goal,OPERATOR_RADIUS),
+  goalBodyClear:bodyClear(goal,s.doors,OPERATOR_RADIUS,world),
+  snappedActor:pos({x:Math.round(a.p.x/16)*16,
+    y:Math.round(a.p.y/16)*16}),
+  snappedGoal:pos({x:Math.round(goal.x/16)*16,
+    y:Math.round(goal.y/16)*16})
+ };
+ return {goal:pos(goal),endPoint,currentFirst:pos(firstActual),
   current:clearance(firstActual),worldCount:worldRoute.length,
   worldFirst:pos(firstWorld),worldClear:clearance(firstWorld),
   localProbeEligible:stableOpenLeafNear,
