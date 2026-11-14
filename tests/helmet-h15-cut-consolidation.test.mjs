@@ -60,6 +60,26 @@ test('H15: legacy saves migrate shell while preserving all customization state',
  }
 });
 
+test('H15: legacy H1 rail/lights/optic hardware maps into H7 without being lost',()=>{
+ const original={...initialWardrobe(),styles:{
+  ...initialWardrobe().styles,headwear:'fast-sf'
+ },helmetSetup:{rails:'arc',shroud:'integrated',cover:'fitted',
+  light:'right',rearModule:'counterweight',rearStrobe:true,scrim:'field'}};
+ const migrated=readWardrobe(original);
+ assert.equal(migrated.styles.headwear,'mich-2001');
+ assert.equal(migrated.helmetSetup?.rails,'arc',
+  'archived H1 options remain saved');
+ assert.equal(migrated.helmetField?.rails,true);
+ assert.equal(migrated.helmetField?.shroud,true);
+ assert.equal(migrated.helmetField?.light,true);
+ assert.equal(migrated.helmetField?.lightSide,'right');
+ assert.equal(migrated.helmetField?.counterweight,true);
+ assert.equal(migrated.helmetField?.strobe,true);
+ assert.equal(migrated.helmetField?.concealment,'scrim');
+ const explicit={...original,helmetField:{rails:false,shroud:false}};
+ assert.equal(readWardrobe(explicit).helmetField?.rails,false,
+  'newer H7 choices override legacy migration');
+});
 test('H15: deliberate minor silhouette refinements keep bindings on shell',()=>{
  const mid=headwearCuboidVolumes('mich-2002')
   .find(x=>x.name==='m2002-front-temple');
