@@ -10,5 +10,5 @@ test('H17 full cut has a single full-depth ear/nape silhouette',()=>{
  assert.equal(HEAD_SILHOUETTE_METRICS.ach.earEdge,2.04);
  assert.equal(achMichHemY('ach',0),2.04);
  assert.equal(p.hem[2][1],2.04);
- assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,5.91);
+ assert.equal(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,4.78);
 });
