@@ -13,7 +13,10 @@ test('A1: only supported, modeled helmets remain registered',()=>{
   ['soviet-steel','pasgt','ach','mich-2001','mich-2002',
    'm1-steel','ddr-m56','police-helmet']);
  assert.equal(new Set(ids).size,ids.length);
- assert.equal(activeAppearanceItems('headwear').filter(x=>x.id==='ach').length,1);
+ const cards=activeAppearanceItems('headwear');
+ assert.deepEqual(cards.filter(x=>['ach','mich-2001','mich-2002'].includes(x.id))
+  .map(x=>x.id),['ach'],
+  'show only Ballistic Helmet in ITEMS; Full/Mid/High live in DETAILS');
 });
 test('A1: exactly three ballistic cuts with actual modeled geometry',()=>{
  assert.deepEqual(BALLISTIC_CUT_SHELL,{full:'ach',mid:'mich-2002',high:'mich-2001'});
