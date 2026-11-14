@@ -23,8 +23,7 @@ export function entryLanes(door:Door,from:Pt,count:number,
   // compact staggered rear pair before pushing the entire squad into a
   // deep single-file gallery. Still require distinct real landing footprints
   // and known-map routes for every candidate (caller owns full-body radius).
-  {depths:[62,62,90,118],offsets:[22,15,30,8,37,0],
-   rearOffsets:[0,8,15,22,30,37]},
+  {depths:[62,62,98,118],offsets:[22,15,30,8,37,0]},
   {depths:[52,88,124,160,198,236],offsets:[0,8,15,22,30]},
   {depths:[66,105,144,183,222,261],offsets:[0,10,18,25]}
  ];
@@ -34,11 +33,7 @@ export function entryLanes(door:Door,from:Pt,count:number,
    const sign=i%2===0?-1:1;
    const depth=layout.depths[i]??layout.depths.at(-1)!+(i-layout.depths.length+1)*38;
    let chosen:Pt|null=null;
-   // Rear staggered entrants favor the center aisle, leaving the first
-   // pair's near-flank final approaches clear of stationary teammates.
-   const offsets=i>=2&&'rearOffsets' in layout?
-     layout.rearOffsets:layout.offsets;
-   for(const lateral of offsets){
+   for(const lateral of layout.offsets){
     for(const direction of [sign,-sign]){
      const p={x:center.x+inward.x*depth+tangent.x*lateral*direction,
       y:center.y+inward.y*depth+tangent.y*lateral*direction};
@@ -87,9 +82,7 @@ export function entryLanes(door:Door,from:Pt,count:number,
    const depth=layout.depths[i]??layout.depths.at(-1)!+
      (i-layout.depths.length+1)*38;
    const options:EntrySlot[]=[];
-   const offsets=i>=2&&'rearOffsets' in layout?
-     layout.rearOffsets:layout.offsets;
-   for(const lateral of offsets){
+   for(const lateral of layout.offsets){
     for(const direction of [intended,-intended]){
      const p={x:center.x+inward.x*depth+tangent.x*lateral*direction,
       y:center.y+inward.y*depth+tangent.y*lateral*direction};
