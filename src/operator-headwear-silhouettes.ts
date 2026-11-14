@@ -14,6 +14,8 @@ import {unionCuboids,type HeadwearCuboid} from './operator-cuboid-union.ts';
 import {CUBE_HEAD_ANATOMY} from './operator-head-anatomy.ts';
 import {headwearFaceTone,headwearFaceRegion} from './operator-headwear-materials.ts';
 import {softenHeadwearAO} from './operator-baked-gear-ao.ts';
+import {createUnifiedHelmetShellGeometry}
+ from './operator-ach-mich-unified-shell.ts';
 export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ddr-m56'|'police-helmet'|'ach'|'high-cut'|'mich-2001'|'mich-2002'|'fast-sf'|'fast-xp-mid';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
@@ -397,32 +399,23 @@ export function chamferAchMichCrown(geometry:THREE.BufferGeometry,
  geometry.userData.achMichCrownInset=ACH_MICH_UPPER_INSET;
  geometry.userData.achMichBevelHeight=ACH_MICH_BEVEL_HEIGHT;
 }
+/** H17: these five coarse fit envelopes are not rendered as overlapping boxes.
+ * The actual ach shell is generated as one continuous polygonal ear/nape
+ * skirt by createUnifiedHelmetShellGeometry. Keep crown metrics and API
+ * envelopes for historic fit tests and accessory positioning.
+ */
 const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
- // Uninterrupted crown: the former 0.34-high top plate added a hairline
- // contour with no distinct protective purpose.
  {name:'ach-continuous-crown',x:0,y:7.32,z:0,
   width:10.15,height:3.04,depth:10.25},
- // One broad brow line; side volumes share its lower edge and overlap
- // by a visible margin, rather than merely touching at float-precision seams.
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.91,
   width:10.15,height:1.70,depth:1.25},
- // H16: deepen only the lower protection. The existing flat crown and
- // top chamfer are deliberately unchanged. One broad protruding ear lobe
- // per side reads independently of the shallower rear nape at game scale.
- // Cuboids still union to one exterior mesh; no extra silhouette tiers.
  {name:'ach-continuous-nape',x:0,y:4.425,z:4.97,
   width:10.15,height:3.75,depth:1.26},
- ...([-1,1] as const).flatMap(sign=>[
-  {name:sign===-1?'ach-left-temple':'ach-right-temple',
-   x:sign*4.55,y:5.25,z:-3.31,
-   width:1.05,height:1.70,depth:2.78},
-  {name:sign===-1?'ach-left-ear-wrap':'ach-right-ear-wrap',
-   x:sign*4.68,y:4.35,z:.05,
-   width:1.30,height:4.08,depth:5.10},
-  {name:sign===-1?'ach-left-nape-return':'ach-right-nape-return',
-   x:sign*4.55,y:4.435,z:3.90,
-   width:1.05,height:3.77,depth:3.50}
- ])
+ ...([-1,1] as const).map(sign=>({
+  name:sign<0?'ach-left-ear-nape':'ach-right-ear-nape',
+  x:sign*4.55,y:4.56,z:.28,
+  width:1.05,height:4.50,depth:7.50
+ }))
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region
  * is genuine NEGATIVE space: low brow -> clean high cut -> low rear.
@@ -451,17 +444,11 @@ const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2002-crown',x:0,y:7.40,z:0,width:10.06,height:2.70,depth:10.45},
  {name:'m2002-brow',x:0,y:5.54,z:-4.89,width:10.06,height:1.97,depth:1.62},
  {name:'m2002-nape',x:0,y:4.855,z:4.83,width:10.06,height:3.29,depth:1.78},
- ...([-1,1] as const).flatMap(sign=>[
-  {name:sign<0?'m2002-left-front-temple':'m2002-right-front-temple',
-   x:sign*4.56,y:5.575,z:-3.18,
-   width:1.10,height:2.25,depth:3.30},
-  {name:sign<0?'m2002-left-ear-guard':'m2002-right-ear-guard',
-   x:sign*4.68,y:4.735,z:.20,
-   width:1.32,height:3.49,depth:4.75},
-  {name:sign<0?'m2002-left-rear-return':'m2002-right-rear-return',
-   x:sign*4.58,y:4.77,z:3.70,
-   width:1.07,height:2.58,depth:3.50}
- ])
+ ...([-1,1] as const).map(sign=>({
+  name:sign<0?'m2002-left-ear-nape':'m2002-right-ear-nape',
+  x:sign*4.50,y:4.75,z:.38,
+  width:1.06,height:3.52,depth:7.10
+ }))
 ];
 const MICH_2001_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2001-main-crown',x:0,y:7.43,z:0,width:10.03,height:2.55,depth:10.18},
@@ -536,9 +523,13 @@ export function headwearCuboidVolumes(id:HeadSilhouetteId):readonly HeadwearCubo
 }
 function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId){
  const volume=headwearCuboidVolumes(id);
- const geometry=unionCuboids(volume,{faceTone:(part,axis,sign)=>
-  headwearFaceTone(id,part.name,axis,sign),
-  faceRegion:(part,axis,sign)=>headwearFaceRegion(id,part.name,axis,sign)});
+ const unified=id==='ach'||id==='mich-2002';
+ const geometry=unified?
+  createUnifiedHelmetShellGeometry(id,
+   volume[0].y+volume[0].height/2,ACH_MICH_UPPER_INSET,ACH_MICH_BEVEL_HEIGHT):
+  unionCuboids(volume,{faceTone:(part,axis,sign)=>
+   headwearFaceTone(id,part.name,axis,sign),
+   faceRegion:(part,axis,sign)=>headwearFaceRegion(id,part.name,axis,sign)});
  // Audition only on the PASGT roof corners; all underlying cuboid volumes,
  // ear coverage, bore/silhouette metrics and collision remain untouched.
  if(id==='pasgt'){
@@ -561,11 +552,11 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
   geometry.userData.pasgtCrownCornerInset=PASGT_UPPER_CROWN_INSET;
  }
  // Apply the same subtle facet to the ACH-family shells and their cloth envelopes.
- chamferAchMichCrown(geometry,volume,id);
+ if(!unified)chamferAchMichCrown(geometry,volume,id);
  // Existing helmet construction tones are compressed for dark camo inks.
  softenHeadwearAO(geometry);
  const mesh=new THREE.Mesh(geometry,m);
- mesh.name=id+'-continuous-cuboid-exterior';
+ mesh.name=id+(unified?'-unified-lowpoly-shell':'-continuous-cuboid-exterior');
  mesh.castShadow=true;
  // Keep its self-shadow noise out of the clean close-up silhouette review.
  mesh.receiveShadow=false;
@@ -586,6 +577,7 @@ export function createHeadwearSilhouette(
  } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  group.userData.silhouette=id;
- group.userData.primitive='cuboids-only';
+ group.userData.primitive=id==='ach'||id==='mich-2002'? 
+  'single-extruded-contour':'cuboids-only';
  return group;
 }
