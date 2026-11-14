@@ -42,7 +42,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0},
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
-  top:8.76,earEdge:3.14,foreheadEdge:4.55,billLength:0},
+  top:8.76,earEdge:2.99,foreheadEdge:4.55,billLength:0},
  'mich-2001':{id:'mich-2001',frontExtent:-5.61,rearExtent:5.64,
   top:8.70,earEdge:5.91,foreheadEdge:4.55,billLength:0},
  'fast-sf':{id:'fast-sf',frontExtent:-5.53,rearExtent:5.66,
@@ -457,7 +457,7 @@ const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
    width:1.10,height:2.25,depth:3.30},
   {name:sign<0?'m2002-left-ear-guard':'m2002-right-ear-guard',
    x:sign*4.68,y:4.735,z:.20,
-   width:1.32,height:3.19,depth:4.75},
+   width:1.32,height:3.49,depth:4.75},
   {name:sign<0?'m2002-left-rear-return':'m2002-right-rear-return',
    x:sign*4.58,y:4.77,z:3.70,
    width:1.07,height:2.58,depth:3.50}
