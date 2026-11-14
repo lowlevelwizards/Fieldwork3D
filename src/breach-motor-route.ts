@@ -99,7 +99,8 @@ export function prepareMotorRoute(
       const distance=Math.min(4,goalDistance);
       const contactProbe={x:a.p.x+(p.x-a.p.x)/goalDistance*distance,
         y:a.p.y+(p.y-a.p.y)/goalDistance*distance};
-      if(diagnoseMovement(a.p,contactProbe,s.doors).blocker==='furniture'&&
+      if(diagnoseMovement(a.p,contactProbe,s.doors,[],OPERATOR_RADIUS,
+         sessionWorldGeometry(s)).blocker==='furniture'&&
          tryAutoClearClutter(s,a,contactProbe,hooks))return 'handled';
     }
     // A3.4: a validated 4–10 unit local fire-lane correction is already
