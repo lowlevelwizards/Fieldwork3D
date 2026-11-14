@@ -1,4 +1,4 @@
-/** H20: one continuous, reference-calibrated angular shell per side.
+/** H21: one continuous, anatomically segmented ear/nape shell per side.
  * The same six silhouette stations used by H17 now emphasize the distinct
  * ear lobe (full vs mid) and slope into the nape without adding polygons.
  * One faceted roof, two planar sides, one brow/nape; one draw call.
@@ -21,20 +21,21 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
   [5.03,4.55,-3.10],
   [5.03,3.06,-2.18],
   [5.03,3.06,1.38],
-  [5.03,3.82,3.05],
-  [5.03,3.82,5.75]
+  [5.03,2.92,2.85],
+  [5.03,2.92,5.75]
  ],
  // H20: MICH TC-2001 is a full ear cutout, not the TC-2002 partial cut.
  // Raise ONLY the ear arch while seating the rear lower on the head.
- // Relative proportions are stylized against real side references; they
- // are NOT millimeter-to-game-unit conversions. Six stations, no new faces.
+ // H21 leaves the ear arch at Y5.30, dropping just the rear protection.
+ // Relative proportions are stylized; NOT millimeter conversions. Six
+ // stations, no new faces or per-frame work.
  'mich-2001':[
   [5.015,4.55,-5.71],
   [5.015,4.55,-3.45],
   [5.015,5.30,-2.15],
   [5.015,5.30,1.75],
-  [5.015,3.90,3.35],
-  [5.015,3.90,5.66]
+  [5.015,3.12,3.05],
+  [5.015,3.12,5.66]
  ]
 };
 type V=readonly [number,number,number];
