@@ -700,8 +700,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   // After a real flank hit, orient toward the attack before reacquiring an
   // unrelated old contact. A now-visible hostile in that sector still wins
   // through the normal target selector on the following ticks.
-  const hitFacing=a.side==='blue'?
-    incomingHitFacing(a.heading,a.lastHitYaw,s.seconds-a.lastHitAt,
+  const hitAge=s.seconds-a.lastHitAt;
+  const hitFacing=a.side==='blue'&&hitAge>=.16&&hitAge<=1.20?
+    incomingHitFacing(a.heading,a.lastHitYaw,hitAge,
       {busy:hitFacingInterrupted(a,s.seconds)}):null;
   if(hitFacing!==null&&s.seconds-a.lastHitAt<.85&&
      Math.abs(angleDifference(hitFacing,angle(a.p,target.p)))>.75){
