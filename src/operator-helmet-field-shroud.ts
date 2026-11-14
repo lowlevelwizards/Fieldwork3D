@@ -5,7 +5,7 @@
  */
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
-import {sampleHelmetCover} from './operator-helmet-surface.ts';
+import {sampleHelmetCover,sampleHelmetShell} from './operator-helmet-surface.ts';
 
 type Pt=readonly [number,number];
 const PLATE_OUTLINE:readonly Pt[]=[
@@ -61,11 +61,12 @@ export function addAchMichThreeHoleShroud(
  shell:AchMichCoverShell,g:THREE.Group,
  metal:THREE.Material,dark:THREE.Material,light:THREE.Material
 ):void{
- const f=sampleHelmetCover(shell,'front',0,.26,.16);
- if(!f)throw Error('H11 missing front shroud facet on '+shell);
+ const f=sampleHelmetCover(shell,'front',0,.26,.095);
+ const bare=sampleHelmetShell(shell,'front',0,.26,.095);
+ if(!f||!bare)throw Error('H11 missing front shroud facet on '+shell);
  const anchor=new THREE.Group();
- anchor.name='h11-iconic-shroud-surface-anchor';
- anchor.position.copy(f.position).addScaledVector(f.normal,.14);
+ anchor.name='shroud-covered-mount';
+ anchor.position.copy(f.position).addScaledVector(f.normal,.04);
  anchor.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
   f.right,f.up,f.normal
  ));
@@ -111,4 +112,17 @@ export function addAchMichThreeHoleShroud(
   }
  });
  anchor.userData.h11TriangleCount=triangles;
+ // A single cover transform floated over bare helmets. Cache the two
+ // mounting frames while SHARING all geometry/material via clone().
+ const bareAnchor=anchor.clone(true);
+ bareAnchor.name='shroud-bare-mount';
+ bareAnchor.position.copy(bare.position).addScaledVector(bare.normal,.04);
+ bareAnchor.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(
+  bare.right,bare.up,bare.normal
+ ));
+ bareAnchor.visible=false;
+ bareAnchor.userData.h11MountedOn='shell';
+ anchor.userData.h11MountedOn='cover';
+ anchor.userData.h11SeatClearance=.04;
+ g.add(bareAnchor);
 }
