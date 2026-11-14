@@ -3,7 +3,7 @@
  * A four-unit flood can distinguish coarse A* misses from an actually
  * disconnected sampled walkable region without weakening collision.
  */
-import {OPERATOR_RADIUS,type Door,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment,type Door,type Pt} from './breach-core.ts';
 import {bodyClear,sweptBodyClear} from './breach-navigation.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 
@@ -95,7 +95,34 @@ export function probeD32SampledConnectivity(
 export function captureD32PortalConnectivity(
  from:Pt,to:Pt,doors:Door[],world:SessionWorldGeometry
 ){
+ // Each counterfactual uses the same exact swept collision predicate;
+ // door omission here only CLASSIFIES the disconnection. It never gives the
+ // runtime motor permission to cross a leaf or assumes a hinge can actuate.
+ const fraction=(door:Door)=>door.openFraction??(door.open?1:0);
+ const hypotheticallyActuable=(door:Door)=>
+  (door.kind===undefined||door.kind==='hinged')&&
+  !door.locked&&!door.jammed&&!door.wedged&&!door.heldBy&&
+  fraction(door)<.72;
+ const stableOpen=(door:Door)=>door.open&&fraction(door)>=.72;
+ const ranked=[...doors].sort((a,b)=>
+  pointToSegment(from,doorLeafSegment(a))-
+  pointToSegment(from,doorLeafSegment(b))||
+  a.id.localeCompare(b.id));
+ const nearest=ranked[0];
+ const probe=(testDoors:Door[])=>
+  probeD32SampledConnectivity(from,to,testDoors,world,4,true);
  return {resolution:4,
-  physical:probeD32SampledConnectivity(from,to,doors,world,4,true),
-  staticOnly:probeD32SampledConnectivity(from,to,doors,world,4,false)};
+  physical:probe(doors),
+  staticOnly:probeD32SampledConnectivity(from,to,doors,world,4,false),
+  withoutActuableLeaves:probe(doors.filter(d=>!hypotheticallyActuable(d))),
+  withoutStableOpenLeaves:probe(doors.filter(d=>!stableOpen(d))),
+  withoutNearestLeaf:nearest?
+   {omittedId:nearest.id,result:probe(doors.filter(d=>d!==nearest))}:null,
+  nearbyLeaves:ranked.slice(0,8).map(d=>({
+   id:d.id,fraction:fraction(d),open:d.open,
+   gap:Math.round(pointToSegment(from,doorLeafSegment(d))*100)/100,
+   hypotheticallyActuable:hypotheticallyActuable(d),
+   stableOpen:stableOpen(d),locked:!!d.locked,
+   jammed:!!d.jammed,wedged:!!d.wedged,held:!!d.heldBy
+  }))};
 }
