@@ -246,6 +246,15 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   m[key].visible=s[key];
  // Mirror complete prebuilt surface-mounted models rather than rebuilding
  // meshes, evaluating rays, or adding per-frame visual work.
+ // Side rails are rigid fittings: on a bare shell tuck the whole rail
+ // and its directly clamped accessories in together. No geometry rebuild.
+ if(v.shell!=='pasgt'){
+  const bareOffset=covered?0:.16;
+  for(const rail of m.rails.children)
+   rail.position.x=rail.name.endsWith('-left')?bareOffset:-bareOffset;
+  m.light.position.x=s.lightSide==='left'?bareOffset:-bareOffset;
+  m.camera.position.x=s.cameraSide==='left'?bareOffset:-bareOffset;
+ }
  m.camera.scale.x=s.cameraSide==='right'?1:-1;
  m.light.scale.x=s.lightSide==='left'?1:-1;
  // Legacy chemlightSide is retained in saves but no longer changes
@@ -255,10 +264,19 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   const where=key.substring('goggles-'.length);
   m[key].visible=s.goggles===where&&
    (where!=='eyes'||!headEyewear.startsWith('goggles-'));
-  // A front-stowed goggle must sit below the modeled NVG shroud,
-  // not cross the central locking interface at brow height.
-  if(key==='goggles-front'&&v.shell!=='pasgt')
-   m[key].position.y=s.shroud?-.84:0;
+  // The tilted front housing needs clearance from the NVG receiver;
+  // move ONLY the housing and matched sleeve, never the perimeter strap.
+  if(key==='goggles-front'&&v.shell!=='pasgt'){
+   const pose=m[key].getObjectByName('approved-d2-goggle-pose');
+   const sleeve=m[key].getObjectByName('goggle-fabric-sleeve');
+   const shift=s.shroud?-.58:0;
+   const lift=s.shroud?.16:0;
+   const baseZ=HELMET_MOUNT_PROFILES[v.shell].front+3.72;
+   const baseY=HELMET_MOUNT_PROFILES[v.shell].top-5.95;
+   if(pose){pose.position.z=baseZ+shift;pose.position.y=baseY+lift;}
+   if(sleeve){sleeve.position.z=baseZ+shift;sleeve.position.y=baseY+lift;}
+   m[key].position.y=0;m[key].position.z=0;
+  }
   const coverStrap=m[key].getObjectByName('goggle-retention-covered');
   const bareStrap=m[key].getObjectByName('goggle-retention-bare');
   if(coverStrap)coverStrap.visible=covered;
