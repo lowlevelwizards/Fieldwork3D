@@ -852,11 +852,26 @@ export function planSquadEntry(s:Session,doorId:string){
  const alive=team(s).filter(a=>a.health>0);
  if(!alive.length)return false;
  const start=finalPoint(alive[0]);
- // Predicted entry geometry sees only discovered walls and furniture.
- // Actual doorway passage and clearance remain the live motor's authority.
- const slots=entryLanes(door,start,alive.length,p=>
-   intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
-   !!routeWithSqueezeIntel(s.intel,start,p).length);
+ // D3.10A: an operator may squeeze THROUGH a narrow approach but must
+ // be able to STAND at a generated clearing destination with the full body.
+ // Use only discovered/briefed geometry; hidden props are still handled by
+ // the physical motor and its bounded execution-time settle/failure policy.
+ // The actual current door leaf is solid even when partly or fully open.
+ // Sample it once here, never for every candidate or simulation tick.
+ const knownLeaf=doorLeafSegment(door);
+ const entryRouteCache=new Map<string,boolean>();
+ const slots=entryLanes(door,start,alive.length,p=>{
+   if(!intelPassable(p,s.intel,OPERATOR_RADIUS)||
+      pointToSegment(p,knownLeaf)<OPERATOR_RADIUS+1)return false;
+   // Candidate points repeat across fast layouts and bounded backtracking.
+   // Avoid re-running a potentially expensive known-map route search.
+   const key=p.x.toFixed(3)+':'+p.y.toFixed(3);
+   const cached=entryRouteCache.get(key);
+   if(cached!==undefined)return cached;
+   const reachable=routeWithSqueezeIntel(s.intel,start,p).length>0;
+   entryRouteCache.set(key,reachable);
+   return reachable;
+ });
  if(slots.length!==alive.length){
   notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
   return false;
