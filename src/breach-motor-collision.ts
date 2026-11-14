@@ -12,7 +12,7 @@ import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './brea
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute,
- recordDoorManeuverContact}
+ selfBlockingHingeRelief,recordDoorManeuverContact}
  from './breach-door-traversal-maneuver.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
@@ -321,6 +321,23 @@ export function resolveMotorCollision(
     if((repair==='replan'||repair==='report')&&s.seconds>=a.retryRouteAt&&
        !ownsDoorManeuverRoute(a)){
       a.lastNavRepairAt=s.seconds;
+      // R2.1: when the actor ITSELF blocks a stationary partial hinge,
+      // a tiny fully swept step can free the opening before a broad A*.
+      // Only ordinary MOVE without an active doorway maneuver may use it.
+      // Reuse the existing retry budget and the current physical motor;
+      // do not move or reorient the actor here.
+      if(a.side==='blue'&&a.lastBlocker==='door'&&
+         a.blockedTime>=.85&&a.recoveryAttempts<4&&
+         !a.doorTraversal&&!a.traversal&&!a.traversalPending&&
+         a.plan[0]?.kind==='move'){
+        const relief=selfBlockingHingeRelief(a,s,p);
+        if(relief){
+          a.nav.unshift(relief);
+          a.recoveryAttempts++;
+          a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+          return true;
+        }
+      }
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
