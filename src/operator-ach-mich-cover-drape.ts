@@ -111,7 +111,7 @@ function ringPoint(style:Style,s:Sample,ring:Ring):readonly [number,number,numbe
  // Share the shell's ear-anchored levels and brow/nape clamps.
  // Independent cloth interpolation would recreate its corrected spike.
  const profile=unifiedHelmetEarVerticalProfile(
-  style.shell,style.shellShoulderY,s.bottom);
+  style.shell,style.shellShoulderY,s.bottom,s.z);
  // Follow the actual clean upper wall and lower-quarter ear profile.
  const sideWidth=ring==='shoulder'||ring==='onset'?style.sideX+.08:
   ring==='faceTop'||ring==='faceBottom'?midWidth+outward+.08:
@@ -245,6 +245,7 @@ export function createAchMichDrapedGeometry(
  g.userData.h26OnsetAndLowerCrestMatched=true;
  g.userData.h27BroadEarFaceMatched=true;
  g.userData.h27BrowSpikeClampMatched=true;
+ g.userData.h27NoLeadingFinMatched=true;
  g.userData.h25TuckedConcealedBinding=true;
  return g;
 }
