@@ -37,6 +37,7 @@ jobs:
             tests/release-d3-2-hinge-arbitrated-release.test.mjs \
             tests/release-d3-2-door-evidence.test.mjs \
             tests/release-d3-2-short-clear-handoff.test.mjs \
+            tests/release-d3-3-portal-first-leg.test.mjs \
             tests/release-d1-coherent-crossing.test.mjs \
             tests/release-d1-threshold-commitment.test.mjs \
             tests/passage-q2-coordinator.test.mjs \
@@ -60,6 +61,10 @@ jobs:
           node --experimental-strip-types --test tests/release-d3-2-r3-portal-connectivity.test.mjs
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900 --clinic-only --portal > "$RUNNER_TEMP/d3-clinic-portal.json"
           node -e 'const r=require(process.argv[1]);const w=r.rows[0]?.modes?.find(m=>m.mode==="entry")?.physicalBlockEvidence?.filter(e=>e.operator==="vale"&&e.routeFeasibility?.portalConnectivity).map(e=>({time:e.time,route:e.routeFeasibility.portalConnectivity,goal:e.routeFeasibility.goal,endPoint:e.routeFeasibility.endPoint}));console.log(JSON.stringify({summary:r.summary,clinic:w},null,2));if(!w?.length)throw Error("missing clinic portal witness")' "$RUNNER_TEMP/d3-clinic-portal.json"
+      - name: D3.3 same-seed 11-site 15-second movement benchmark
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900 > "$RUNNER_TEMP/d3-r3-benchmark.json"
+          node -e 'const r=require(process.argv[1]);console.log(JSON.stringify(r.summary,null,2));if(r.summary.invalidPositions||r.summary.corruptedPlans||r.summary.physicsStepViolations||r.summary.doorStateFlips>90)throw Error("D3.3 movement invariant failed")' "$RUNNER_TEMP/d3-r3-benchmark.json"
       - name: Production TypeScript + Vite bundle
         run: npm run build
       - name: Retain reproducible generated-map triage
@@ -70,6 +75,7 @@ jobs:
           path: |
             ${{ runner.temp }}/d3-generated.json
             ${{ runner.temp }}/d3-clinic-portal.json
+            ${{ runner.temp }}/d3-r3-benchmark.json
           if-no-files-found: ignore
   truth-parity:
     runs-on: ubuntu-latest
