@@ -38,6 +38,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
 import {type PlanNode,type PlanKind,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
+import {settleKnownEntryLandings} from './breach-entry-landing.ts';
 import {stackApproachPositions,doorOpensTowardApproach} from './breach-entry-coordination.ts';
 import type {Site,SiteScale} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
@@ -852,26 +853,31 @@ export function planSquadEntry(s:Session,doorId:string){
  const alive=team(s).filter(a=>a.health>0);
  if(!alive.length)return false;
  const start=finalPoint(alive[0]);
- // D3.10A: an operator may squeeze THROUGH a narrow approach but must
- // be able to STAND at a generated clearing destination with the full body.
- // Use only discovered/briefed geometry; hidden props are still handled by
- // the physical motor and its bounded execution-time settle/failure policy.
- // The actual current door leaf is solid even when partly or fully open.
- // Sample it once here, never for every candidate or simulation tick.
+ // Preserve the familiar tactical lane choices from D3.9, including a
+ // narrow *route* where it is physically possible to turn sideways.
+ // Only a generated DESTINATION must support an upright full-body stand.
+ // Correct a known-unsafe landing locally (max 14 units) instead of
+ // selecting an unrelated far-interior gallery, which can create loops.
  const knownLeaf=doorLeafSegment(door);
- const entryRouteCache=new Map<string,boolean>();
- const slots=entryLanes(door,start,alive.length,p=>{
-   if(!intelPassable(p,s.intel,OPERATOR_RADIUS)||
-      pointToSegment(p,knownLeaf)<OPERATOR_RADIUS+1)return false;
-   // Candidate points repeat across fast layouts and bounded backtracking.
-   // Avoid re-running a potentially expensive known-map route search.
+ const routeCache=new Map<string,boolean>();
+ const routeTo=(p:Pt)=>{
    const key=p.x.toFixed(3)+':'+p.y.toFixed(3);
-   const cached=entryRouteCache.get(key);
+   const cached=routeCache.get(key);
    if(cached!==undefined)return cached;
    const reachable=routeWithSqueezeIntel(s.intel,start,p).length>0;
-   entryRouteCache.set(key,reachable);
+   routeCache.set(key,reachable);
    return reachable;
- });
+ };
+ const candidateLanes=entryLanes(door,start,alive.length,p=>
+   intelPassable(p,s.intel,SQUEEZE_RADIUS)&&routeTo(p));
+ const standing=(p:Pt)=>intelPassable(p,s.intel,OPERATOR_RADIUS)&&
+   pointToSegment(p,knownLeaf)>=OPERATOR_RADIUS+1&&routeTo(p);
+ const corrected=candidateLanes.length===alive.length?
+   settleKnownEntryLandings(door,candidateLanes,standing):null;
+ // If one lane cannot be moved by a physically small, known-safe amount,
+ // let the original deterministic generator search alternative legal
+ // full-body layouts. All selection runs only on explicit authoring.
+ const slots=corrected??entryLanes(door,start,alive.length,standing);
  if(slots.length!==alive.length){
   notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
   return false;
