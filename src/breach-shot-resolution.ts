@@ -25,6 +25,8 @@ import {skillMultiplier} from './breach-skills.ts';
 import {shotYaw,rayHitsActor,muzzleEndpoint} from './breach-ballistics.ts';
 import {shotDispersionCone} from './breach-shot-ignition.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {matchingShotSight,nearShotLane,type ShotSightPreflight}
+ from './breach-fire-preflight.ts';
 import {urgentFireMode} from './breach-fire-urgency.ts';
 import {resolveArmorImpact} from './equipment-armor.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
@@ -41,6 +43,8 @@ export type ShotCommitContext={
  mods:ReturnType<typeof weaponHandlingModifiers>;
  weapon:(typeof WEAPONS)[keyof typeof WEAPONS];
  profile:(typeof BALLISTICS)[keyof typeof BALLISTICS];
+ /** Call-local sight result from the SAME fire() invocation; never a shot permit. */
+ preflight?:ShotSightPreflight;
 };
 export type ShotResolverPorts=ReturnType<typeof createShotEnvironmentCommitter> & {
  team:(s:Session)=>TeamActor[];
@@ -73,13 +77,18 @@ export function createShotResolver(ports:ShotResolverPorts){
   // The eyes may have a contact even when the muzzle cannot safely fire.
   // Hold the shot rather than dumping ammunition into adjacent cover or
   // risking a friendly operator standing in the near firing corridor.
-  const friends=s.operators.filter(o=>o!==a&&o.health>0&&
+  const friends=ctx.preflight?.friends??s.operators.filter(o=>o!==a&&o.health>0&&
     o.side===a.side).map(safetyBodyFor);
-  const sightClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
+  const sightInput={x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:a.weaponYaw,shoulderOffset:a.aimSideOffset??0,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
-    friends);
+    velocity:a.velocity,recoil:a.recoil,threatRange:range};
+  // Reuse only an identical synchronous fixed-tick sample. In particular,
+  // a nonzero cover-height offset previously absent in the readiness probe
+  // deliberately forces a fresh settled solve here for safety and parity.
+  const sightClearance=matchingShotSight(ctx.preflight,sightInput,
+    s.doors,COVER,WALLS,friends)??
+    weaponClearance(sightInput,s.doors,COVER,WALLS,friends);
   if(sightClearance.blocked){
     a.lastFireBlock=sightClearance.blocker;
     if(sightClearance.blocker==='friendly')
@@ -98,13 +107,9 @@ export function createShotResolver(ports:ShotResolverPorts){
      target.p,effectiveAimHeight(target))){
     civilianShotWithheld(s,a);return;
   }
-  // A penetrable cover result must never mask an ally occupying that ray.
-  if(assessFriendlyLane({x:sightMuzzle.x,y:sightMuzzle.z},
-    sightMuzzle.y,target.p,effectiveAimHeight(target),
-    friends).blocker==='friendly'){
-    a.lastFireBlock='friendly';requestClearFireStep(s,a,target,'friendly');return;
-  }
-  const lane=assessFireLane({x:sightMuzzle.x,y:sightMuzzle.z},
+  // One shared near-target preflight: teammate safety takes precedence
+  // over penetrable cover. The final shot path is ALWAYS checked again.
+  const lane=nearShotLane({x:sightMuzzle.x,y:sightMuzzle.z},
     sightMuzzle.y,target.p,effectiveAimHeight(target),
     COVER,WALLS,s.doors,friends);
   a.lastFireBlock=lane.blocker;
@@ -135,7 +140,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
-    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls,
+    velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,COVER,WALLS,
     friends);
   if(shotClearance.blocked){
     a.lastFireBlock=shotClearance.blocker;return;
