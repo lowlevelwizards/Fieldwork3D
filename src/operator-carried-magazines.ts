@@ -9,13 +9,17 @@ import {HK_MAG20_OUTLINE,HK_MAG20_CENTER_X,HK_MAG20_TOP_Y,HK_MAG20_LENGTH}
 import {HK556_MAG_CENTER_X,HK556_MAG_TOP_Y,HK556_MAG_LENGTHS,
  hk556MagazineOutline,type HK556MagazineId}
  from './weapons/geometry/hk-556-magazine-profiles.ts';
+import {FAL_MAG20_OUTLINE,FAL_MAG20_CENTER_X,FAL_MAG20_TOP_Y,FAL_MAG20_LENGTH}
+ from './weapons/geometry/fal-magazine-profiles.ts';
 import {MP5_MAG_CENTER_X,MP5_MAG_TOP_Y,MP5_MAG_LENGTH,mp5MagazineOutline}
  from './weapons/geometry/hk-mp5-magazine-profiles.ts';
-import {HK_MAG_METAL,HK556_MAG_METAL,HK9_MAG_METAL}
+import {HK_MAG_METAL,HK556_MAG_METAL,HK9_MAG_METAL,FAL_MAG_METAL}
  from './weapons/geometry/weapon-visual-palette.ts';
-export type CarriedMagProfile={family:'ar'|'ak'|'hk';length:number;material:number};
+export type CarriedMagProfile={family:'ar'|'ak'|'hk'|'fal';length:number;material:number};
 export function carriedMagazineProfile(part:string|null|undefined):CarriedMagProfile|null{
  if(!part)return null;
+ if(part==='fal-mag20')
+  return {family:'fal',length:FAL_MAG20_LENGTH,material:FAL_MAG_METAL.color.getHex()};
  if(part==='hk-g3-mag20')
   return {family:'hk',length:HK_MAG20_LENGTH,material:HK_MAG_METAL.color.getHex()};
  if(part==='hk9-mag30')
@@ -39,13 +43,14 @@ export function carriedMagazineProfile(part:string|null|undefined):CarriedMagPro
 export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
  const profile=carriedMagazineProfile(part);
  if(!profile)return null;
- if(profile.family==='hk'){
+ if(profile.family==='hk'||profile.family==='fal'){
+  const fal=profile.family==='fal';
   const is556=part==='hk556-mag25'||part==='hk556-mag30',is9=part==='hk9-mag30';
-  const points=is9?mp5MagazineOutline():
+  const points=fal?FAL_MAG20_OUTLINE:is9?mp5MagazineOutline():
    is556?hk556MagazineOutline(part as HK556MagazineId):HK_MAG20_OUTLINE;
-  const center=is9?MP5_MAG_CENTER_X:is556?HK556_MAG_CENTER_X:HK_MAG20_CENTER_X;
-  const topY=is9?MP5_MAG_TOP_Y:is556?HK556_MAG_TOP_Y:HK_MAG20_TOP_Y;
-  const depth=is9?1.42:is556?1.90:2.08;
+  const center=fal?FAL_MAG20_CENTER_X:is9?MP5_MAG_CENTER_X:is556?HK556_MAG_CENTER_X:HK_MAG20_CENTER_X;
+  const topY=fal?FAL_MAG20_TOP_Y:is9?MP5_MAG_TOP_Y:is556?HK556_MAG_TOP_Y:HK_MAG20_TOP_Y;
+  const depth=fal?2.32:is9?1.42:is556?1.90:2.08;
   const shape=new THREE.Shape();
   shape.moveTo(points[0][0],points[0][1]);
   for(const [x,y] of points.slice(1))shape.lineTo(x,y);
