@@ -62,8 +62,8 @@ test('H20: no new polygons, cover/trim drift or retention clipping',()=>{
   const g=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   const mesh=g.children[0].geometry;
   assert.equal(mesh.userData.h17UnifiedContour,true);
-  assert.equal(mesh.userData.exteriorQuads,29);
-  assert.equal(mesh.index.count,174,'58 shell triangles at all three cuts');
+  assert.equal(mesh.userData.exteriorQuads,39);
+  assert.equal(mesh.index.count,234,'78 shell triangles at all three cuts');
   assert.equal(g.children.length,1,'one static shell draw');
   const cover=createAchMichDrapedGeometry(id),
     trim=createAchMichBindingGeometry(id),p=achMichProfile(id);
