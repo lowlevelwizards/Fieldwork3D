@@ -24,8 +24,9 @@ const makeShape=(contour:readonly (readonly number[])[]):THREE.Shape=>{
 const perimeter=(shell:AchMichCoverShell,covered:boolean,y:number)=>{
  const p=HELMET_MOUNT_PROFILES[shell];
  const layer=covered?ACH_MICH_COVER_OFFSET:0;
- const sx=p.side+layer+.43;
- const front=p.front-layer-.41,rear=p.rear+layer+.41;
+ // Strap clears the mounted ARC rail OUTER face and the NVG receiver.
+ const sx=p.side+layer+1.02;
+ const front=p.front-layer-1.54,rear=p.rear+layer+.68;
  const points:THREE.Vector3[]=[];
  const steps=4;
  for(let i=0;i<steps;i++)points.push(
@@ -82,7 +83,8 @@ function buildRetention(shell:AchMichCoverShell,g:THREE.Group,
  g.userData.h5AdaptiveStrapPaths=paths;
  g.userData.h5StrapOutsideElastic=true;
  g.userData.h12FullPerimeter=true;
- g.userData.h12StrapClearance=.43;
+ g.userData.h12StrapClearance=1.02;
+ g.userData.h13OverRailAndShroud=true;
 }
 /** Fitted fabric cover drawn on the goggles' actual D2 silhouette.
  * It uses a shallow solid lip plus one broad stitched face, never an
@@ -96,26 +98,27 @@ export function createFittedGoggleSleeve(pose:THREE.Group,tan:THREE.Material,dar
  // than an independent, wider rectangle that hangs past its gasket.
  const outer=[
   [-4.72,5.38],[-3.50,5.67],[3.50,5.67],[4.72,5.38],
-  [4.89,4.62],[4.71,2.05],[3.31,1.75],[1.62,1.89],
-  [.80,2.68],[-.80,2.68],[-1.62,1.89],[-3.31,1.75],
-  [-4.71,2.05],[-4.89,4.62]
+  [4.98,4.62],[4.78,1.95],[3.40,1.80],[1.75,1.95],
+  [.95,2.20],[-.95,2.20],[-1.75,1.95],[-3.40,1.80],
+  [-4.78,1.95],[-4.98,4.62]
  ];
  const face=new THREE.Mesh(new THREE.ExtrudeGeometry(makeShape(outer),{
-  depth:.72,steps:1,bevelEnabled:true,bevelThickness:.12,
-  bevelSize:.16,bevelSegments:1,curveSegments:1
+  depth:.98,steps:1,bevelEnabled:true,bevelThickness:.15,
+  bevelSize:.18,bevelSegments:1,curveSegments:1
  }),tan);
- face.position.z=-6.06;face.name='fitted-sleeve-folded-cloth';
+ face.position.z=-6.20;face.name='fitted-sleeve-folded-cloth';
  face.castShadow=false;face.receiveShadow=false;sleeve.add(face);
  // One broad folded opening reads as a padded protective pouch, not
  // a flat fabric decal or a second rigid pair of goggles.
  const flap=new THREE.Mesh(new THREE.BoxGeometry(8.66,.37,.18),dark);
- flap.position.set(0,5.42,-6.22);
+ flap.position.set(0,5.42,-6.34);
  flap.name='sleeve-padded-top-opening';
  flap.castShadow=false;flap.receiveShadow=false;sleeve.add(flap);
  sleeve.userData.h9HousingFitted=true;
  sleeve.userData.h9FaceContourPoints=outer.length;
  sleeve.userData.h9HemThickness=hem;
- sleeve.userData.h69SoftPouchDepth=.72;
+ sleeve.userData.h69SoftPouchDepth=.98;
+ sleeve.userData.h13SoftenedNoseNotch=true;
  return sleeve;
 }
 export function createHelmetFieldGoggleModule(
@@ -130,7 +133,11 @@ export function createHelmetFieldGoggleModule(
  const p=HELMET_MOUNT_PROFILES[shell];
  if(placement==='rear'){
   pose.rotation.y=Math.PI;pose.position.set(0,p.top-6.78,p.rear-4.66);
- }else if(placement==='front')pose.position.set(0,p.top-6.78,p.front+4.62);
+ }else if(placement==='front'){
+  // Angle up toward the crown, out in front of the shroud receiver.
+  pose.position.set(0,p.top-5.95,p.front+3.72);
+  pose.rotation.x=-.23;
+ }
  // Eye-worn D2 already has a proper strap geometry; stowed requires
  // the helmet contour band instead of a strap crossing through the shell.
  if(placement!=='eyes'){
@@ -142,6 +149,10 @@ export function createHelmetFieldGoggleModule(
  const sleeve=createFittedGoggleSleeve(pose,sleeveFabric,frame);
  if(placement==='eyes')sleeve.visible=false;
  g.add(sleeve);
+ if(placement==='front'){
+  g.userData.h13FrontTiltRadians=-.23;
+  g.userData.h13FrontForwardOffset=.90;
+ }
  g.userData.h9HelmetGoggles=true;
  g.userData.h10ProudHousing=true;
  g.userData.h9Position=placement;
