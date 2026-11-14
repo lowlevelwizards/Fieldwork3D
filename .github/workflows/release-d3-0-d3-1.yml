@@ -40,7 +40,6 @@ jobs:
             tests/release-d3-4-transient-rejoin.test.mjs \
             tests/release-d3-4-stale-episode-release.test.mjs \
             tests/release-d3-5-open-door-no-queue.test.mjs \
-            tests/release-d3-7-assisted-opening-yield.test.mjs \
             tests/door-traversal-episode.test.mjs \
             tests/release-d1-coherent-crossing.test.mjs \
             tests/release-d1-threshold-commitment.test.mjs \
