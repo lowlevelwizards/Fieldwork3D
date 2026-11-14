@@ -225,6 +225,18 @@ export function coordinatePassage(s:Session,a:TeamActor,
       proposed<now+.005){
     blockedByBody=true;break;
    }
+   // Preserve actual near-threshold COUNTERFLOW right-of-way.
+   // A live opposing mover within 48 units is a real imminent
+   // conflict, not the stale remote lease we're releasing.
+   const center=ctx.centers.get(door.id)!;
+   const dx=peer.p.x-center.x,dy=peer.p.y-center.y;
+   if(dx*dx+dy*dy>=48*48)continue;
+   const peerSlot=pending(peer,schedule,ctx.byDoor);
+   if(peerSlot?.doorId===door.id&&
+      peerSlot.fromSide!==slot.fromSide&&
+      ready({actor:peer,slot:peerSlot},ctx)){
+    blockedByBody=true;break;
+   }
   }
   if(!blockedByBody)
    return {...free,doorId:door.id,rank:slot.rank};
