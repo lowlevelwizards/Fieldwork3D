@@ -66,5 +66,7 @@ test('D3.9 all pressure, hand and motor roles use same opener lease',async()=>{
  assert.match(motor,/shouldStageForOpening\(s,a,doorAhead\)/);
  assert.match(motor,/selfBlockingHingeRelief\(a,s,p\)/);
  assert.match(motor,/a\.nav\.unshift\(retreat\)/);
- assert.match(motor,/staged\.attempts<3/);
+ assert.match(motor,/staged\.attempts<5/);
+ assert.match(motor,/ownerRelief/);
+ assert.match(motor,/a\.nav\.unshift\(\{\.\.\.staged\.target\}\)/);
 });
