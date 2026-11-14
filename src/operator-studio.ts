@@ -28,7 +28,7 @@ import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeViso
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
 import {readHelmetField,resolveHelmetField,HELMET_FIELD_COLORS,
  HELMET_FIELD_CONCEALMENT,HELMET_FIELD_TILTS,HELMET_FIELD_GOGGLES,
- HELMET_FIELD_SIDES,
+ HELMET_FIELD_SIDES,helmetFieldCompatibilityIssues,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
 import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
  pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
@@ -1524,6 +1524,14 @@ function renderMaterials(){
     const next={...carry,...changes};
     if(changes.counterweight===true)next.battery=false;
     if(changes.battery===true)next.counterweight=false;
+    // Treat the two ARC rails as distinct sockets: selecting a camera
+    // or light moves the other device to the free side rather than
+    // silently retaining an invisible conflicting device.
+    if(next.light&&next.camera&&next.lightSide===next.cameraSide){
+     if(changes.light===true||changes.lightSide!==undefined)
+      next.cameraSide=next.lightSide==='left'?'right':'left';
+     else next.lightSide=next.cameraSide==='left'?'right':'left';
+    }
     changeWardrobe({...before,helmetField:readHelmetField(next)});
    };
    const picker=(title:string,key:'bandColor'|'webbingColor',
@@ -1536,13 +1544,27 @@ function renderMaterials(){
    };
    const toggle=(section:HTMLElement,key:keyof HelmetFieldOptions,
     title:string,glyph:string,availability=true)=>{
-    if(!availability)return;
     const on=effective[key]===true;
+    const reason=!availability?(
+     historical?'NOT AVAILABLE ON PASGT':
+     key==='bungees'?!currentField.rails?'REQUIRES SIDE RAILS':'REQUIRES NVG SHROUD':
+     key==='camera'||key==='light'?'REQUIRES SIDE RAILS':
+     key==='chemlight'?'CROWN SLOT OCCUPIED':
+     key==='patches'?'REQUIRES VELCRO OR COVER':'UNAVAILABLE'):null;
     const b=makeButton(title,on,()=>changeField({[key]:!on}));
     b.classList.add('helmet-option-card');
     const icon=document.createElement('span');icon.className='helmet-option-glyph';
     icon.textContent=glyph;icon.setAttribute('aria-hidden','true');
-    b.prepend(icon);section.append(b);
+    b.prepend(icon);
+    if(reason){
+     b.disabled=true;
+     b.classList.add('helmet-option-unavailable');
+     b.setAttribute('aria-label',title+' — '+reason);
+     const note=document.createElement('small');
+     note.className='helmet-option-requirement';note.textContent=reason;
+     b.append(note);
+    }
+    section.append(b);
    };
    const rowOf=(title:string,help:string)=>{
      const group=row(title,help);
@@ -1626,6 +1648,16 @@ function renderMaterials(){
    if(!historical&&currentField.light)
     sidePicker('HELMET LIGHT MOUNT','lightSide',
      'Clip the forward-facing task light to the left or right rail.');
+   const compatibility=helmetFieldCompatibilityIssues(
+    helmetShell,currentField,fieldCovered);
+   if(compatibility.length){
+    const fit=rowOf('MOUNT COMPATIBILITY',
+     'Stored options are preserved, but incompatible hardware is hidden until its mount is free.');
+    const note=document.createElement('small');
+    note.className='helmet-compatibility-notice';
+    note.textContent=compatibility.join(' ');
+    fit.append(note);
+   }
    // No side picker: the modern chemlight is retained at the crown-rear.
   }
   if(item==='police-helmet'){
