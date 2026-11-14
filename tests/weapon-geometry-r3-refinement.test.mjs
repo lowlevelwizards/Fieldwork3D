@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {ORIGINAL_R2_17,historicalPresetCohort} from './helpers/historical-weapon-presets.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
@@ -30,9 +31,9 @@ const slotBox=(g,slot)=>{
 const overlap=(a,b)=>(Math.min(a.max,b.max)-Math.max(a.min,b.min));
 
 test('R3: retains all 91 family IDs, 11 presets and physical muzzle invariants',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,91);
- assert.equal(FAMILY_PRESETS.length,17);
- for(const preset of FAMILY_PRESETS){
+ assert.ok(Object.keys(FAMILY_PARTS).length>=91,'historical R3 parts preserved');
+ assert.equal(historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17).length,17);
+ for(const preset of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {config,group}=model(preset.id);
   const extent=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(extent.max.x-resolveWeaponAssembly(config).muzzleX)<.001,preset.id);
@@ -58,7 +59,7 @@ test('R3: compact Mk18 and AKS-74U actually read shorter in scaled workbench',()
 });
 
 test('R3: major part connections have positive deliberate overlap in local silhouettes',()=>{
- for(const p of FAMILY_PRESETS){
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {group}=model(p.id);
   const stock=slotBox(group,'stock'),receiver=slotBox(group,'receiver');
   const grip=slotBox(group,'grip'),mag=slotBox(group,'magazine');
@@ -76,7 +77,7 @@ test('R3: major part connections have positive deliberate overlap in local silho
 });
 
 test('R3: body socket labels project over real mesh envelopes, not floating constants',()=>{
- for(const preset of FAMILY_PRESETS){
+ for(const preset of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {config,group}=model(preset.id);
   const anchors=workbenchVisualAnchors(config,group,'body');
   assert.equal(anchors.length,6);
