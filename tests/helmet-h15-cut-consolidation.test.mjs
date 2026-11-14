@@ -80,17 +80,16 @@ test('H15: legacy H1 rail/lights/optic hardware maps into H7 without being lost'
  assert.equal(readWardrobe(explicit).helmetField?.rails,false,
   'newer H7 choices override legacy migration');
 });
-test('H15: deliberate minor silhouette refinements keep bindings on shell',()=>{
- const mid=headwearCuboidVolumes('mich-2002')
-  .find(x=>x.name==='m2002-right-front-temple');
- const high=headwearCuboidVolumes('mich-2001')
-  .find(x=>x.name==='m2001-short-temple');
- assert.ok(mid&&high);
- assert.ok(Math.abs(mid.y-mid.height/2-4.45)<1e-5);
- assert.ok(Math.abs(high.y-high.height/2-6.025)<1e-5);
- assert.equal(achMichProfile('mich-2002').hem[1][1],4.45);
+test('H17 three canonical coverage cuts retain accurate shell and binding',()=>{
+ const mid=headwearCuboidVolumes('mich-2002');
+ const high=headwearCuboidVolumes('mich-2001');
+ assert.equal(mid.length,5);
+ assert.equal(mid.filter(x=>x.name.includes('ear-nape')).length,2);
+ assert.ok(high.some(x=>x.name==='m2001-short-temple'));
+ const hem=achMichProfile('mich-2002').hem;
+ assert.ok(hem.every(p=>p[0]===achMichProfile('mich-2002').side));
+ assert.equal(hem[2][1],2.99);
  assert.equal(achMichProfile('mich-2001').hem[1][1],6.025);
- assert.ok(high.y-high.height/2>mid.y-mid.height/2+1.0);
 });
 
 test('H15: shell cuts are first in Details; shell change does not reset accessories',()=>{
