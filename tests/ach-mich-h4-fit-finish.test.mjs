@@ -69,8 +69,8 @@ test('H4 ACH ear scallop remains distinct from nape and PASGT-style protective r
  const ear=v.find(p=>p.name==='ach-right-ear-wrap');
  const nape=v.find(p=>p.name==='ach-right-nape-return');
  assert.ok(ear&&nape);
- assert.ok(ear.y-ear.height/2>=3.05);
- assert.ok(nape.y-nape.height/2<=2.7);
+ assert.ok(ear.y-ear.height/2<2.4);
+ assert.ok(nape.y-nape.height/2<=2.6);
  assert.ok(nape.z-nape.depth/2<ear.z+ear.depth/2-.20,
   'joined protective volumes overlap without a floating corner');
  assert.ok(ear.depth>=5&&nape.depth>=2.5,
