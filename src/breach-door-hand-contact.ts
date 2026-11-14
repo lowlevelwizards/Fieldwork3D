@@ -5,7 +5,7 @@
  */
 import {doorLeafSegment,pointToSegment,
  type Door,type Pt} from './breach-core.ts';
-import {handlePoint,PUSHED_OPEN_LIMIT} from './breach-door.ts';
+import {handlePoint,PUSHED_OPEN_LIMIT,doorReachable} from './breach-door.ts';
 import {signedDoorSide} from './breach-door-traversal-episode.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -37,7 +37,8 @@ function handFree(a:TeamActor):boolean{
   a.reload<=0&&!a.treatmentActive&&a.pace!=='run'&&
   a.plan[0]?.moveMode!=='sprint'&&
   a.plan[0]?.kind!=='tool'&&
-  a.plan[0]?.kind!=='door'&&
+  (a.plan[0]?.kind!=='door'||a.plan[0]?.method==='open'||
+   a.plan[0]?.method===undefined)&&
   a.targetId===null&&a.aim<.45;
 }
 function handFreeAt(a:TeamActor,now:number):boolean{
@@ -52,6 +53,10 @@ function rayClear(s:Session,from:Pt,to:Pt):boolean{
 }
 function validCrossing(a:TeamActor,door:Door):boolean{
  const e=a.doorTraversal,n=a.plan[0];
+ // Real explicit OPEN supports a live hand without inventing a MOVE episode.
+ if(n?.kind==='door'&&n.doorId===door.id&&
+    (n.method==='open'||n.method===undefined))
+  return a.side==='blue'&&doorReachable(a.p,door);
  if(!e||!n||e.doorId!==door.id||e.authoredOrderId!==n.id||
     e.phase==='release'||e.phase==='blocked'||a.side!=='blue')
   return false;
@@ -140,6 +145,10 @@ export function maintainDoorHandContact(s:Session,a:TeamActor):void{
  contact.point=point;
  if(a.doorTraversal)a.doorTraversal.handContact=true;
  // Opening is physically bounded by the real moving-leaf hinge sweeps.
- if((door.openFraction??0)<PUSHED_OPEN_LIMIT-.01)
+ const explicit=a.plan[0]?.kind==='door'&&
+   (a.plan[0].method==='open'||a.plan[0].method===undefined);
+ // An explicit OPEN uses its ordinary opening target; an actual crossing
+ // may request the full additional swing, still subject to exact collision.
+ if(!explicit&&(door.openFraction??0)<PUSHED_OPEN_LIMIT-.01)
   door.pushTarget=PUSHED_OPEN_LIMIT;
 }

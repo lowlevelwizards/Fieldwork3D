@@ -10,7 +10,7 @@ import type {PlanNode} from './breach-plan.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {doorClosingContested} from './breach-door-pressure-frame.ts';
 import {claimOpeningIntent} from './breach-door-opening-ownership.ts';
-import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,
+import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,doorClear,
  PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {selectActualKickFoot} from './breach-kick-foot-choice.ts';
@@ -19,6 +19,8 @@ import {openerThreatensLeaf,selectOpeningStance}
  from './breach-door-opening-stance.ts';
 import {openingFootwork,setOpeningFootstep,clearOpeningFootwork}
  from './breach-door-opening-footwork.ts';
+import {acquireDoorHandContact,releaseDoorHandContact}
+ from './breach-door-hand-contact.ts';
 import {completeOrder,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
@@ -39,6 +41,20 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
        (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&
         door.open&&(door.openFraction??1)>=.98)){
       // The requested state already exists: legitimate completion.
+      pop(a);return true;
+    }
+    // The authored OPEN remains active while its real leaf rotates; no
+    // simultaneous extra order, simulated grip, or remote door force.
+    if((n.method==='open'||!n.method)&&door.open&&a.actionTimer>=.78){
+      acquireDoorHandContact(s,a,door,true);
+      const clear=doorClear(door,sessionWorldGeometry(s));
+      if(!clear&&a.actionTimer<2.15){
+        a.actionTimer+=dt;a.velocity=0;return true;
+      }
+      if(!clear)
+        notify(s,a.name+' DOOR SWING OBSTRUCTED · CHECK ENTRY');
+      releaseDoorHandContact(a,s.seconds);
+      clearOpeningFootwork(a,door.id,n.id);
       pop(a);return true;
     }
     // Explicit OPEN/KICK and implicit crossing share one manipulator.
@@ -257,6 +273,8 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         notify(s,door.id+' OPENED');
         battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED',
           {action:'door-open',objectId:door.id});
+        acquireDoorHandContact(s,a,door,true);
+        return true;
       }
       pop(a);
     }
