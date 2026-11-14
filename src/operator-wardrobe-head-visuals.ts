@@ -144,20 +144,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   defer(deferredHeadwear,id,model,()=>build(model));
   return model;
  };
- const brimCap=(id:string,backward=false,soft=false)=>{
-  headModel(id,false,cap=>{
-   cube(cap,cloth,-.5,6.66,0,8.45,1.65,8.35);
-   cube(cap,soft?vest:cloth,-.9,7.55,0,7.05,.45,7.4);
-   cube(cap,cloth,backward?-4.5:4.5,5.95,0,4.0,.45,7.7);
-  });
- };
- brimCap('baseball-cap');
- brimCap('backwards-cap',true);
  // Stage 1 silhouette prototypes live in -Z forward head space.
  headModel('patrol-cap',true,cap=>cap.add(
   createHeadwearSilhouette('patrol-cap',detail('patrol-cap'))));
  headModel('beret',true,cap=>cap.add(createHeadwearSilhouette('beret',detail('beret'))));
- brimCap('field-cap',false,true);
  // Stage 1G–1J: these already exist in the wardrobe catalog. Replace
  // their older multi-cube placeholders with the same canonical, unified
  // silhouette system as the approved ACH and high-cut.
@@ -226,7 +216,6 @@ export function createWardrobeHeadLayers(head:THREE.Group,
    if((ACH_MICH_SHELLS as readonly string[]).includes(id))
     helmetField[id]=createHelmetFieldLayers(model,id);
   });
- helmet('skate-helmet',9.65,2,false);
  helmet('bump-helmet',9.1,2,true);
  // D2-A1: fitted canonical -Z fabric shells with real skin-revealing apertures.
  let twoHoleMouthCover:THREE.Group|undefined;

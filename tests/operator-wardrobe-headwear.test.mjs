@@ -21,10 +21,15 @@ test('wardrobe headgear and face accessories are mutually exclusive',()=>{
  assert.equal(r.visualKit.wardrobeHead.headset['helmet-ears'].visible,true);
  assert.equal(r.visualKit.hair.visible,false);
  kit=setEquipmentChoice(kit,'head','head-cap');
- w=setWardrobeStyle(w,'headwear','backwards-cap');
+ w=setWardrobeStyle(w,'headwear','patrol-cap');
  poseOperator(r,pose(kit,w),0);
  assert.equal(r.visualKit.wardrobeHead.headwear['mich-2001'].visible,false);
- assert.equal(r.visualKit.wardrobeHead.headwear['backwards-cap'].visible,true);
+ assert.equal(r.visualKit.wardrobeHead.headwear['patrol-cap'].visible,true);
+ for(const retired of ['baseball-cap','backwards-cap','field-cap','skate-helmet'])
+  assert.equal(retired in r.visualKit.wardrobeHead.headwear,false,
+   retired+' must not allocate invisible retired model geometry');
+ assert.ok('bump-helmet' in r.visualKit.wardrobeHead.headwear,
+  'real head-bump equipment still needs its non-ballistic visual');
  assert.equal(r.visualKit.helmet.visible,false);
  r.dispose();
 });
