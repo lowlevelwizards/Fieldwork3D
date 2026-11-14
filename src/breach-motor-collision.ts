@@ -1,3 +1,4 @@
+import {setTransientRoute,prependTransientLeg} from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: authoritative body-collision response and recovery.
  * A full-radius swept motion is preferred; squeeze is only a physical
@@ -138,7 +139,7 @@ export function resolveMotorCollision(
       const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
-      a.nav=fullLane;a.retryRouteAt=0;a.recoveryAttempts=0;
+      setTransientRoute(s,a,fullLane,'full-body-lane');a.retryRouteAt=0;a.recoveryAttempts=0;
       // C1c: the full-width lane repair also begins with a short corner
       // departure point. It was retired at 3 units before the furniture
       // actually cleared (motel 31149), then re-entered the same prop.
@@ -249,7 +250,7 @@ export function resolveMotorCollision(
       a.blockedTime=0;a.lastBlocker='door';
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
-      a.nav=[];
+      setTransientRoute(s,a,[],'door-leaf-escape');
       if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return true;
     }
@@ -291,7 +292,7 @@ export function resolveMotorCollision(
       const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
-      a.nav.unshift(candidate);
+      prependTransientLeg(s,a,candidate,'local-detour');
       notePreciseLocalDetour(a,candidate);
       a.lastNavRepairAt=s.seconds;
       return true;
@@ -351,7 +352,7 @@ export function resolveMotorCollision(
          a.plan[0]?.kind==='move'){
         const relief=selfBlockingHingeRelief(a,s,p);
         if(relief){
-          a.nav.unshift(relief);
+          prependTransientLeg(s,a,relief,'self-hinge-relief');
           a.recoveryAttempts++;
           a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
           return true;
@@ -369,7 +370,7 @@ export function resolveMotorCollision(
         const connected=repairBlockedTransientWorldLeg(
           a.p,next,a.nav.slice(1),s.doors,world);
         if(connected.length&&materiallyDifferentRoute(a.nav,connected)){
-          a.nav=connected;a.retryRouteAt=0;a.recoveryAttempts=0;
+          setTransientRoute(s,a,connected,'blocked-leg-connector');a.retryRouteAt=0;a.recoveryAttempts=0;
           return true;
         }
       }
@@ -391,11 +392,11 @@ export function resolveMotorCollision(
       // never replace a route with an empty result while the door moves.
       let adopted=false;
       if(materiallyDifferentRoute(a.nav,repaired)){
-        a.nav=repaired;adopted=true;
+        setTransientRoute(s,a,repaired,'collision-world-replan');adopted=true;
       }else if(a.side==='blue'){
         const known=routeWithSqueezeIntel(s.intel,a.p,p);
         if(materiallyDifferentRoute(a.nav,known)){
-          a.nav=known;adopted=true;
+          setTransientRoute(s,a,known,'collision-intel-replan');adopted=true;
         }
       }
       if(adopted){
