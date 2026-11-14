@@ -5,7 +5,8 @@ import {bodyClear,sweptBodyClear} from './breach-navigation.ts';
 import {selectedD32MotorDoor} from './breach-d3-motor-door-witness.ts';
 import {probeD32HingeSelfClearance} from './breach-d3-hinge-escape-evidence.ts';
 import {captureD32PortalConnectivity} from './breach-d3-portal-connectivity-evidence.ts';
-import {routeWithSqueezeWorld,routeWithSqueezeIntel} from './breach-squeeze-route.ts';
+import {routeWithSqueezeWorld,routeWithSqueezeIntel,
+  routeWithNormalWorld} from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Session,TeamActor} from './breach-game.ts';
@@ -125,6 +126,15 @@ export function captureD32RecoveryFeasibility(a:TeamActor,s:Session,includePorta
    routeWithSqueezeIntel(s.intel,a.p,goal):[];
  const firstWorld=worldRoute[0],firstIntel=intelRoute[0];
  const firstActual=a.nav[0];
+ // D3.4 offline: test whether the CURRENT transient waypoint can be
+ // reached by a short full-body world route after route drift. The
+ // authored destination may require future door interactions, but this
+ // local connector does not. This probe never executes a motor step.
+ const navGap=firstActual?
+   Math.hypot(firstActual.x-a.p.x,firstActual.y-a.p.y):Infinity;
+ const transientRepair=firstActual&&navGap<=64&&
+   !sweptBodyClear(a.p,firstActual,s.doors,OPERATOR_RADIUS,world)?
+    routeWithNormalWorld(a.p,firstActual,s.doors,world):[];
  const clearance=(p:typeof a.p|undefined)=>p?{
   swept:sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world),
   cause:diagnoseMovement(a.p,p,s.doors,[],OPERATOR_RADIUS,world).blocker,
@@ -152,7 +162,14 @@ export function captureD32RecoveryFeasibility(a:TeamActor,s:Session,includePorta
   portalConnectivity:includePortal?
     captureD32PortalConnectivity(a.p,goal,s.doors,world):null,
   currentFirst:pos(firstActual),
-  current:clearance(firstActual),worldCount:worldRoute.length,
+  current:clearance(firstActual),
+  transientRepair:{eligible:!!firstActual&&navGap<=64,
+    count:transientRepair.length,
+    first:pos(transientRepair[0]),
+    firstClear:transientRepair[0]?
+      sweptBodyClear(a.p,transientRepair[0],s.doors,OPERATOR_RADIUS,world):null,
+    last:pos(transientRepair.at(-1))},
+  worldCount:worldRoute.length,
   worldFirst:pos(firstWorld),worldClear:clearance(firstWorld),
   localProbeEligible:stableOpenLeafNear,
   localProbe:localCandidates,
