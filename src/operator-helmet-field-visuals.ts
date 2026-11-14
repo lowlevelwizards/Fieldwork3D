@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 import {achMichHemY} from './operator-ach-mich-details.ts';
 import {isFieldHelmet,resolveHelmetField,resolveHelmetFieldColor,
- type FieldHelmet} from './operator-helmet-field-policy.ts';
+ type FieldHelmet,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
 import {consolidateVisualGroup} from './operator-visual-mesh-merge.ts';
 import {addAchMichConcealment} from './operator-helmet-field-concealment.ts';
 import {createAchMichSurfaceBandGeometry} from './operator-helmet-field-fit.ts';
