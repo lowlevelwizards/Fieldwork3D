@@ -109,5 +109,8 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  g.userData.achMichCrownInset=topInset;
  g.userData.achMichBevelHeight=bevelHeight;
  g.userData.materialRegions=true;
+ g.userData.pixelWorldSize=PIXEL_WORLD_SIZE;
+ g.userData.materialAtlasPixels=64;
+ g.userData.camoAtlasPixels=128;
  return g;
 }
