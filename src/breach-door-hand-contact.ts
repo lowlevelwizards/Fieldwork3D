@@ -5,10 +5,11 @@
  */
 import {doorLeafSegment,pointToSegment,
  type Door,type Pt} from './breach-core.ts';
-import {handlePoint,PUSHED_OPEN_LIMIT} from './breach-door.ts';
+import {handlePoint,PUSHED_OPEN_LIMIT,doorReachable} from './breach-door.ts';
 import {signedDoorSide} from './breach-door-traversal-episode.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {mayManipulateOpening} from './breach-door-opening-ownership.ts';
 import {DOOR_HAND_ACQUIRE_REACH,DOOR_HAND_RELEASE_REACH,
  DOOR_HAND_RELEASE_DURATION} from './breach-door-hand-constants.ts';
 export {DOOR_HAND_ACQUIRE_REACH,DOOR_HAND_RELEASE_REACH,
@@ -36,7 +37,8 @@ function handFree(a:TeamActor):boolean{
   a.reload<=0&&!a.treatmentActive&&a.pace!=='run'&&
   a.plan[0]?.moveMode!=='sprint'&&
   a.plan[0]?.kind!=='tool'&&
-  a.plan[0]?.kind!=='door'&&
+  (a.plan[0]?.kind!=='door'||a.plan[0]?.method==='open'||
+   a.plan[0]?.method===undefined)&&
   a.targetId===null&&a.aim<.45;
 }
 function handFreeAt(a:TeamActor,now:number):boolean{
@@ -51,6 +53,10 @@ function rayClear(s:Session,from:Pt,to:Pt):boolean{
 }
 function validCrossing(a:TeamActor,door:Door):boolean{
  const e=a.doorTraversal,n=a.plan[0];
+ // Real explicit OPEN supports a live hand without inventing a MOVE episode.
+ if(n?.kind==='door'&&n.doorId===door.id&&
+    (n.method==='open'||n.method===undefined))
+  return a.side==='blue'&&doorReachable(a.p,door);
  if(!e||!n||e.doorId!==door.id||e.authoredOrderId!==n.id||
     e.phase==='release'||e.phase==='blocked'||a.side!=='blue')
   return false;
@@ -87,7 +93,7 @@ export function canDoorHandAssist(
 export function acquireDoorHandContact(
  s:Session,a:TeamActor,door:Door,assisted:boolean
 ):boolean{
- if(!assisted)return false;
+ if(!assisted||!mayManipulateOpening(s,a,door))return false;
  const current=a.doorHandContact;
  if(current?.releasedAt===null&&current.doorId===door.id)return true;
  const candidate=handCandidate(s,a,door);
@@ -127,7 +133,8 @@ export function maintainDoorHandContact(s:Session,a:TeamActor):void{
  }
  const door=s.doors.find(d=>d.id===contact.doorId);
  if(!door||!door.open||door.wedged||door.locked||door.jammed||
-    door.heldBy||!validCrossing(a,door)||!handFreeAt(a,s.seconds)){
+    door.heldBy||!validCrossing(a,door)||!handFreeAt(a,s.seconds)||
+    !mayManipulateOpening(s,a,door)){
   releaseDoorHandContact(a,s.seconds);return;
  }
  const point=doorHandPoint(door,contact.fraction);
@@ -138,6 +145,10 @@ export function maintainDoorHandContact(s:Session,a:TeamActor):void{
  contact.point=point;
  if(a.doorTraversal)a.doorTraversal.handContact=true;
  // Opening is physically bounded by the real moving-leaf hinge sweeps.
- if((door.openFraction??0)<PUSHED_OPEN_LIMIT-.01)
+ const explicit=a.plan[0]?.kind==='door'&&
+   (a.plan[0].method==='open'||a.plan[0].method===undefined);
+ // An explicit OPEN uses its ordinary opening target; an actual crossing
+ // may request the full additional swing, still subject to exact collision.
+ if(!explicit&&(door.openFraction??0)<PUSHED_OPEN_LIMIT-.01)
   door.pushTarget=PUSHED_OPEN_LIMIT;
 }

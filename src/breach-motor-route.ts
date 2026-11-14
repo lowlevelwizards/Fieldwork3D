@@ -2,7 +2,8 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
  */
-import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment,type Pt}
+ from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {sessionDoorPressurePolicy}
@@ -17,6 +18,31 @@ import {routeRetrySeconds} from './breach-movement-recovery.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
 
+/** After an ACTUAL swept door overlap escape, prefer one physical
+ * world-truth connector past a STABLE fully-open leaf. Otherwise a
+ * temporary intel route can immediately walk the feet back INTO the
+ * same solid panel, causing endless 0.7-unit reverse/forward motion.
+ * One cold (>=0.7s) route probe; untouched authored GO order; no
+ * second physical movement controller or ghost clearance.
+ */
+export function restoreAfterOpenLeafEscape(
+ a:TeamActor,s:Session,goal:Pt
+):boolean{
+ if(s.seconds-a.lastNavRepairAt<.7)return false;
+ const near=s.doors.some(door=>door.open&&
+  (door.openFraction??0)>=.96&&
+  Math.abs(door.angularVelocity??0)<.16&&
+  pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+13);
+ if(!near)return false;
+ a.lastNavRepairAt=s.seconds;
+ const world=sessionWorldGeometry(s);
+ const route=routeWithSqueezeWorld(a.p,goal,s.doors,world);
+ if(!route.length||!sweptBodyClear(a.p,route[0],s.doors,
+    OPERATOR_RADIUS,world))return false;
+ a.nav=route;
+ a.retryRouteAt=0;a.recoveryAttempts=0;
+ return true;
+}
 export type MotorRouteReadiness='ready'|'handled'|'unavailable';
 export function prepareMotorRoute(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks):MotorRouteReadiness{
@@ -40,7 +66,8 @@ export function prepareMotorRoute(
     if(escape){
       a.priorP=clone(a.p);a.p=escape;a.velocity=0;
       a.blockedTime=0;a.lastBlocker='door';
-      a.retryRouteAt=0;return 'handled';
+      if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
+      return 'handled';
     }
     // Never execute expensive route searches every fixed tick for a proven
     // unreachable destination. Changes of goal or recovered progress reset.
@@ -81,7 +108,15 @@ export function prepareMotorRoute(
       a.retryRouteAt=0;a.recoveryAttempts=0;
       return 'ready';
     }
-    if(s.seconds<a.retryRouteAt){a.velocity=0;return 'unavailable';}
+    if(s.seconds<a.retryRouteAt){
+      // C3: a backoff is still REAL time stationary with an active MOVE.
+      // Previously blockedTime advanced for only one 60Hz tick per A*
+      // attempt, leaving a 20-second unreachable toilet destination
+      // reporting as neither blocked nor awaiting action. Do not repeat
+      // searches during cooldown; keep the authored order for user edits.
+      a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
+      return 'unavailable';
+    }
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       hooks.cachedEnemyRoute(s,a.p,p,true);
     if(!a.nav.length&&a.side==='blue'){

@@ -1,0 +1,88 @@
+name: D3.10A 45-second progress and obstruction triage
+on:
+  pull_request:
+    branches: [feature/d3-2-r2-physical-hinge-body-recovery-20261114]
+    paths:
+      - scripts/audit-r7-squad-execution.mjs
+      - src/breach-d3-c-progress.ts
+      - tests/release-d3-9c-progress.test.mjs
+      - .github/workflows/d3-10a-progress45.yml
+      - src/breach-motor-door.ts
+      - src/breach-motor-collision.ts
+      - src/breach-order-movement.ts
+      - src/breach-game.ts
+      - src/breach-entry-lanes.ts
+      - src/breach-intel.ts
+      - src/breach-entry-target-settle.ts
+      - tests/release-d3-10a-entry-targets.test.mjs
+      - src/breach-passage-coordinator.ts
+      - src/breach-door-traversal-episode.ts
+      - src/breach-door-opening-footwork.ts
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-10a-progress45-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  diagnosis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Validate progress classification
+        run: node --experimental-strip-types --test tests/release-d3-9c-progress.test.mjs
+      - name: Build / typecheck
+        run: npm run build
+      - name: D3.10A entry endpoint invariants
+        run: |
+          if test -f tests/release-d3-10a-entry-targets.test.mjs; then node --experimental-strip-types --test tests/release-d3-10a-entry-targets.test.mjs; fi
+      - name: 45-second observed real-world corpus
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --progress > "$RUNNER_TEMP/c45.json"
+          node -e 'const r=require(process.argv[1]);const bad=r.rows.flatMap(site=>(site.modes??[]).flatMap(m=>(m.progressEvidence??[]).filter(w=>w.suspicious).map(w=>({site:site.archetype,seed:site.seed,mode:m.mode,actor:w.actor,...w}))));const pending=r.rows.flatMap(site=>(site.modes??[]).flatMap(m=>(m.operators??[]).filter(a=>!a.arrived).map(a=>({site:site.archetype,seed:site.seed,mode:m.mode,id:a.id,remaining:a.remaining,travel:a.progressDistance,blocked:a.blockedSeconds,pause:a.motorPause,nav:a.nextNav,episode:a.doorEpisode}))));const flips=r.rows.flatMap(site=>(site.modes??[]).flatMap(m=>(m.doorFlipDetails??[]).filter(d=>d.flips>=2).map(d=>({site:site.archetype,seed:site.seed,mode:m.mode,...d}))));console.log("D3.10A45",JSON.stringify({summary:r.summary,progress:r.progressSummary,bad,pending,flips},null,2));if(r.summary.invalidPositions||r.summary.physicsStepViolations||r.summary.corruptedPlans)throw Error("unsafe motion or plan corruption")' "$RUNNER_TEMP/c45.json"
+      - name: Paired unchanged-code 45-second baseline
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d310base" 697dba61f1926f9a277fc18df31e311b56ab129f
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d310base/node_modules"
+          node --experimental-strip-types "$RUNNER_TEMP/d310base/scripts/audit-r7-squad-execution.mjs" 11 2700 --progress > "$RUNNER_TEMP/baseline45.json"
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const before=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+            const after=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+            const items=r=>new Map(r.rows.flatMap(site=>(site.modes??[]).flatMap(mode=>(mode.operators??[]).map(a=>[site.seed+"/"+mode.mode+"/"+a.id,{...a,seed:site.seed,mode:mode.mode}]))));
+            const old=items(before),now=items(after);
+            const changes=[...now].map(([key,a])=>{
+              const b=old.get(key);
+              return {key,arrivalDelta:Number(!!a.arrived)-Number(!!b?.arrived),
+                remainingBefore:b?.remaining,remainingAfter:a.remaining,
+                orderBefore:b?.remainingOrders,orderAfter:a.remainingOrders,
+                blockerAfter:a.lastBlocker};
+            }).filter(c=>c.arrivalDelta||c.remainingBefore!==c.remainingAfter||
+              c.orderBefore!==c.orderAfter);
+            const modes=r=>r.rows.flatMap(s=>(s.modes??[]).map(m=>({seed:s.seed,mode:m.mode,accepted:m.accepted,reason:m.reason,arrivals:m.arrivals})));
+            const oldMode=new Map(modes(before).map(m=>[m.seed+"/"+m.mode,m]));
+            const rejected=modes(after).filter(m=>m.accepted<4).map(m=>({...m,prior:oldMode.get(m.seed+"/"+m.mode)}));
+            console.log("D3.10A PAIRED 45s",JSON.stringify({base:before.summary,
+              now:after.summary,progressBase:before.progressSummary,
+              progressNow:after.progressSummary,changedActors:changes,
+              rejectedModes:rejected},null,2));
+            if(after.summary.exceptions||after.summary.invalidPositions||
+              after.summary.physicsStepViolations||after.summary.corruptedPlans)
+              process.exit(1);
+          ' "$RUNNER_TEMP/baseline45.json" "$RUNNER_TEMP/c45.json"
+      - name: Retain full per-five-second evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-10a-45s-progress-witness
+          path: |
+            ${{ runner.temp }}/c45.json
+            ${{ runner.temp }}/baseline45.json
+          if-no-files-found: ignore

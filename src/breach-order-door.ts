@@ -9,21 +9,24 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {doorClosingContested} from './breach-door-pressure-frame.ts';
-import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,
+import {claimOpeningIntent} from './breach-door-opening-ownership.ts';
+import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,doorClear,
  PUSHED_OPEN_LIMIT} from './breach-door.ts';
 import {KICK_DURATION} from './breach-door-actions.ts';
 import {selectActualKickFoot} from './breach-kick-foot-choice.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {openerThreatensLeaf,selectOpeningStance}
  from './breach-door-opening-stance.ts';
+import {openingFootwork,setOpeningFootstep,clearOpeningFootwork,
+ selectGuidedOpeningStep} from './breach-door-opening-footwork.ts';
+import {acquireDoorHandContact,releaseDoorHandContact}
+ from './breach-door-hand-contact.ts';
 import {completeOrder,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
-/** Stance belongs to an actor's active door-order node, not shared site state. */
-const openingStances=new WeakMap<TeamActor,{node:number;door:string;point:Pt}>();
 export function createDoorOrderHandler(port:OrderExecutionPort){
  const {pairedLeaves,notify,hear,battleEvent,approach}=port;
  const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
@@ -38,7 +41,45 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
        (n.method!=='close'&&n.method!=='kick'&&n.method!=='hold'&&
         door.open&&(door.openFraction??1)>=.98)){
       // The requested state already exists: legitimate completion.
+      clearOpeningFootwork(a,door.id,n.id);
+      releaseDoorHandContact(a,s.seconds);
       pop(a);return true;
+    }
+    // The authored OPEN remains active while its real leaf rotates; no
+    // simultaneous extra order, simulated grip, or remote door force.
+    if((n.method==='open'||!n.method)&&door.open&&a.actionTimer>=.78){
+      acquireDoorHandContact(s,a,door,true);
+      const clear=doorClear(door,sessionWorldGeometry(s));
+      if(!clear&&a.actionTimer<2.15){
+        // Guide the real leaf while using the SAME bounded door stance
+        // record and actual swept actor motor. No new movement controller.
+        const foot=openingFootwork(a,door.id,n.id,'stance');
+        if(foot.target&&d(a.p,foot.target)<=3.5)foot.target=null;
+        if(!foot.target&&foot.attempts<3&&s.seconds>=foot.nextAt){
+          const next=selectGuidedOpeningStep(a,s,door,n.p);
+          foot.nextAt=s.seconds+.65;
+          if(next){foot.attempts++;setOpeningFootstep(a,foot,next);}
+        }
+        a.actionTimer+=dt;
+        if(foot.target){
+          clearCurrentOrderIssue(a);
+          approach(a,foot.target,dt,s,.78);
+          return true;
+        }
+        a.velocity=0;return true;
+      }
+      if(!clear)
+        notify(s,a.name+' DOOR SWING OBSTRUCTED · CHECK ENTRY');
+      releaseDoorHandContact(a,s.seconds);
+      clearOpeningFootwork(a,door.id,n.id);
+      pop(a);return true;
+    }
+    // Explicit OPEN/KICK and implicit crossing share one manipulator.
+    // Preserve the authored node and timer while another operates it.
+    if((n.method==='open'||n.method==='kick'||!n.method)&&
+       !claimOpeningIntent(s,a,door)){
+      a.velocity=0;a.motorPause='door-opening';
+      return true;
     }
     const interaction=doorInteraction({target:door,actorId:a.id,
       actorPosition:a.p,action:n.method??'open'});
@@ -71,15 +112,14 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     // same hinge/collision checks used during execution.
     if(interaction.allowed&&n.method==='open'&&!door.open&&
        a.actionTimer===0){
-      const previous=openingStances.get(a);
-      let target=previous?.node===n.id&&previous.door===door.id?
-        previous.point:null;
+      const stance=openingFootwork(a,door.id,n.id,'stance');
+      let target=stance.target;
       if(!target&&openerThreatensLeaf(door,a.p)){
         const world=sessionWorldGeometry(s);
         target=selectOpeningStance(door,a.p,
           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
           s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p));
-        if(target)openingStances.set(a,{node:n.id,door:door.id,point:target});
+        if(target)setOpeningFootstep(a,stance,target);
       }
       if(target&&d(a.p,target)>1.5){
         if(!sweptBodyClear(a.p,target,s.doors,OPERATOR_RADIUS,
@@ -91,7 +131,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         clearCurrentOrderIssue(a);
         approach(a,target,dt,s,.82);return true;
       }
-      openingStances.delete(a);
+      clearOpeningFootwork(a,door.id,n.id);
     }
     clearCurrentOrderIssue(a);
     const required=n.method==='kick'?KICK_DURATION:
@@ -250,6 +290,8 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         notify(s,door.id+' OPENED');
         battleEvent(s,'door',a,doorCenter(door),door.id+' OPENED',
           {action:'door-open',objectId:door.id});
+        acquireDoorHandContact(s,a,door,true);
+        return true;
       }
       pop(a);
     }

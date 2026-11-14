@@ -82,3 +82,15 @@ test('D4 grip can be released before next simulation frame without hinge mutatio
  assert.equal(a.doorHandContact.releasedAt,s.seconds+.05);
  assert.equal(d.openFraction,angle);
 });
+
+test('D3.9B3 explicit OPEN uses support hand without forcing full 1.55 swing',()=>{
+ const {s,a,d}=setup();
+ a.plan=[{id:7,kind:'door',doorId:d.id,method:'open',p:p(310,360)}];
+ a.doorTraversal=null;
+ assert.equal(acquireDoorHandContact(s,a,d,true),true);
+ const initial=d.pushTarget;
+ s.seconds+=1/60;maintainDoorHandContact(s,a);
+ assert.equal(d.pushTarget,initial);
+ a.plan[0].method='kick';maintainDoorHandContact(s,a);
+ assert.notEqual(a.doorHandContact?.releasedAt,null);
+});

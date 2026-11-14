@@ -9,6 +9,8 @@ import {approachingNarrowThreshold} from './breach-passage.ts';
 import {canSmoothMotorCorner} from './breach-motor-cornering.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
+import {localDetourWaypointTolerance,completePreciseLocalDetour}
+ from './breach-motor-local-detour.ts';
 import {sampleActorMotorStride} from './breach-actor-motor-stride.ts';
 import {advanceMotorTraversal,prepareMotorTraversal}
  from './breach-motor-traversal.ts';
@@ -80,7 +82,8 @@ export function advanceActorMotor(
  // with feet that barely moved. Ordinary authored routes retain 3 units.
  const correcting=!!a.fireRetreatTarget&&
    d(p,a.fireRetreatTarget)<.5;
- if(gap<(correcting?.9:3)){
+ if(gap<(correcting?.9:localDetourWaypointTolerance(a,next))){
+  completePreciseLocalDetour(a);
   a.nav.shift();
   if(profile)profile('motor-stride',finishMotorCpuMeasurement(strideStart));
   return false;

@@ -14,6 +14,13 @@ import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
 import {noteD32MotorDoorSelection} from './breach-d3-motor-door-witness.ts';
+import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
+import {shouldStageForOpening,mayManipulateOpening,claimOpeningIntent}
+ from './breach-door-opening-ownership.ts';
+import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
+import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFootwork,
+  openingSweepThreatens,upcomingOpeningSweep,selectGuidedOpeningStep}
+ from './breach-door-opening-footwork.ts';
 
 /** D3.2.5: an opened hinge that has STOPPED well below its target may
  * no longer monopolize the actor motor. The ordinary collision/recovery
@@ -80,7 +87,92 @@ export function handleMotorDoor(
   // HOLD still excludes its target while allowing intervening leaves.
   doorAhead??=autoDoorAtBodyContact(a.p,move,
     s.doors,sessionWorldGeometry(s),pendingDoor,a.side==='red');
+  // A follower's physical clearing step can take them past the handle's
+  // reach. Keep their SAME active threshold in scope until its aperture
+  // is traversable; otherwise they immediately walk back into the sweep.
+  if(!doorAhead&&a.side==='blue'&&pendingDoor?.kind==='move'&&
+     a.doorTraversal?.authoredOrderId===pendingDoor.id){
+    const episodeDoor=s.doors.find(d=>d.id===a.doorTraversal!.doorId);
+    if(episodeDoor&&(episodeDoor.openFraction??0)<.72&&
+       d(a.p,doorCenter(episodeDoor))<80)
+      doorAhead=episodeDoor;
+  }
   if(doorAhead){
+    const openingAllowed=claimOpeningIntent(s,a,doorAhead);
+    // When this one door is physically stalled, its designated opener
+    // ALSO must be able to vacate the leaf's sweep. Keep the same
+    // bounded temporary footstep for opener and followers alike.
+    const follower=shouldStageForOpening(s,a,doorAhead);
+    const stopped=doorAhead.open&&
+      (doorAhead.openFraction??0)>=.15&&
+      (doorAhead.openFraction??0)<.72&&
+      Math.abs(doorAhead.angularVelocity??0)<.16;
+    const threatens=a.side==='blue'&&doorAhead.open&&
+      openingSweepThreatens(doorAhead,a.p);
+    const ownerRelief=!follower&&a.side==='blue'&&
+      pendingDoor?.kind==='move'&&
+      (stopped&&a.actionTimer>=1.5||threatens);
+    if(follower||ownerRelief){
+      // No follower may open, push, or retain a hand on this partial leaf.
+      // All physical clearance still runs through the existing motor.
+      // Only a non-owner drops the hand. An opener with reachable contact
+      // must be allowed to guide the leaf WHILE executing the footstep.
+      if(follower)releaseDoorHandContact(a,s.seconds);
+      const order=a.plan[0]!;
+      const staged=openingFootwork(a,doorAhead.id,order.id,'swing');
+      if(staged.target){
+        const distance=d(a.p,staged.target);
+        if(distance>3.5){
+          // Once chosen, clearance outranks the obstructed original grid
+          // waypoint until the SAME full-body motor reaches it. Old route
+          // repair must not silently replace this safety-critical footstep.
+          queueOpeningFootstep(a,staged.target);
+          a.motorPause=null;
+          return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+        }
+        staged.target=null;
+      }
+      if(follower||ownerRelief){
+        // A valid authored stride takes priority over a NEW clearance
+        // detour. Otherwise a safe approach can be replaced by a needless
+        // retreat and lose seconds, despite never threatening the leaf.
+        const swing=upcomingOpeningSweep(doorAhead);
+        if(!doorWouldStrikeActors(doorAhead,swing,[move],OPERATOR_RADIUS)&&
+           sweptBodyClear(a.p,move,s.doors,OPERATOR_RADIUS,
+             sessionWorldGeometry(s))){
+          a.motorPause=null;
+          return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+        }
+      }
+      // Only an operator ACTUALLY in the moving sweep needs to step
+      // backwards/laterally. Reuse the existing rate-limited, full-body
+      // self-clearance library instead of a new formation route solver.
+      if(staged.attempts<5&&s.seconds>=staged.nextAt&&
+         (follower||ownerRelief)){
+        const retreat=threatens?
+          selectGuidedOpeningStep(a,s,doorAhead,p)||
+            (stopped?selfBlockingHingeRelief(a,s,p,doorAhead):null):
+          selfBlockingHingeRelief(a,s,p,doorAhead);
+        staged.nextAt=s.seconds+1.1;
+        if(retreat){
+          staged.attempts++;
+          setOpeningFootstep(a,staged,retreat);
+          // A reachable, physically swept transient waypoint. No body
+          // translation here; actual movement occurs on the next tick.
+          queueOpeningFootstep(a,retreat);
+          a.retryRouteAt=0;
+          if(follower)releaseDoorHandContact(a,s.seconds);
+          a.motorPause=null;
+          return {paused:true,closed:false};
+        }
+      }
+      if(follower){
+        a.velocity=0;a.motorPause='door-opening';
+        return {paused:true,closed:false};
+      }
+      // Opener may keep operating after a legal shoulder clearance.
+      // A blocked attempt remains under the ordinary D3 motor authority.
+    }
     // When an earlier frame queued a short handle-side correction, let the
     // normal swept motor EXECUTE those footsteps before opening the hinge.
     // Otherwise every frame requeues the same stage while paused forever.
@@ -104,6 +196,12 @@ export function handleMotorDoor(
         a.nav.unshift(staged);a.velocity=0;
         a.motorPause=null;return {paused:true,closed:false};
       }
+    }
+    // No non-owner may issue a second automatic OPEN; the physical motor
+    // can still cross a genuinely clear aperture without this permission.
+    if(!openingAllowed||!mayManipulateOpening(s,a,doorAhead)){
+      a.motorPause=null;
+      return {paused:false,closed:false,clearingDoorId:doorAhead.id};
     }
     a.motorPause='door-opening';
     noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);
@@ -144,6 +242,18 @@ export function handleMotorDoor(
       // Incidental body CLOSE on this exact leaf is deferred ONLY for
       // this motor attempt, preventing the D3.1 277-flip ping-pong.
       if(a.side==='blue'&&stalledDoorYieldsToMotor(doorAhead,a.actionTimer)){
+        // D3.9's shared owner/follower traffic staging above is the ONLY
+        // cold self-clearance authority. Do not separately create a second
+        // D3.8 episode retry, whose transient nav could fight the first.
+        a.motorPause=null;
+        return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+      }
+      // With an actual physical hand attached, permit the ordinary
+      // full-radius swept motor to execute the guided pivot. Holding the
+      // DOOR OPENING pause here would make the hand and feet mutually exclusive.
+      if(a.side==='blue'&&
+         a.doorHandContact?.doorId===doorAhead.id&&
+         a.doorHandContact.releasedAt===null){
         a.motorPause=null;
         return {paused:false,closed:false,clearingDoorId:doorAhead.id};
       }
@@ -162,6 +272,8 @@ export function handleMotorDoor(
       return {paused:true,closed:false};
     }
     a.actionTimer=0;
+    if(pendingDoor?.kind==='move')
+      clearOpeningFootwork(a,doorAhead.id,pendingDoor.id);
   }else if(a.side==='red')a.actionTimer=0;
   const closed=!!closedDoor&&!closedDoor.open&&
     pointToSegment(move,doorLeafSegment(closedDoor))<9.5&&

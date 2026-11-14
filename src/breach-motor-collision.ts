@@ -28,7 +28,9 @@ import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breac
 import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
+import {restoreAfterOpenLeafEscape} from './breach-motor-route.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
+import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
@@ -137,6 +139,11 @@ export function resolveMotorCollision(
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
       a.nav=fullLane;a.retryRouteAt=0;a.recoveryAttempts=0;
+      // C1c: the full-width lane repair also begins with a short corner
+      // departure point. It was retired at 3 units before the furniture
+      // actually cleared (motel 31149), then re-entered the same prop.
+      // For furniture contact only, complete this verified leg precisely.
+      notePreciseLocalDetour(a,fullLane[0]);
       // Preserve existing WATCH facing and weapon intention; only the
       // feet choose a different line around the obstruction.
       a.squeeze=false;a.squeezeTime=0;
@@ -242,7 +249,9 @@ export function resolveMotorCollision(
       a.blockedTime=0;a.lastBlocker='door';
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
-      a.nav=[];a.retryRouteAt=0;return true;
+      a.nav=[];
+      if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
+      return true;
     }
   }
   // Furniture corners should be brushed around, not treated as hard jams.
@@ -267,7 +276,14 @@ export function resolveMotorCollision(
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts)==='detour'){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p),8,world);
-    if(candidate&&d(candidate,p)<d(a.p,p)+12&&
+    // C1: only adopt a furniture detour with a valid next leg.
+    // Motel 31149 was cycling between grid 280 and a blocked 312 waypoint;
+    // these two microsteps made no goalward progress but reset blockedTime.
+    // Reject the blind alley and let the existing bounded world-route
+    // recovery handle it. No collision exception or extra motor authority.
+    const continues=a.lastBlocker!=='furniture'||
+      !candidate||sweptBodyClear(candidate,next,s.doors,OPERATOR_RADIUS,world);
+    if(candidate&&continues&&d(candidate,p)<d(a.p,p)+12&&
       watchClearanceAllowed(a.p,candidate,p,
         !!a.aimInstruction&&a.aimInstruction.mode!=='free',
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
@@ -275,7 +291,9 @@ export function resolveMotorCollision(
       const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
-      a.nav.unshift(candidate);a.lastNavRepairAt=s.seconds;
+      a.nav.unshift(candidate);
+      notePreciseLocalDetour(a,candidate);
+      a.lastNavRepairAt=s.seconds;
       return true;
     }
   }

@@ -1,0 +1,49 @@
+name: D3.9B townhouse forensic (read-only)
+on:
+  push:
+    branches:
+      - feature/d3-9-clean-single-opener-20261114
+    paths:
+      - 'scripts/audit-d3-9b-townhouse.mjs'
+      - 'scripts/audit-d3-9b-d11-witness.mjs'
+      - '.github/workflows/d3-9b-townhouse-forensic.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Frozen D3.9 pre-A versus current, identical read-only 30s witness
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d39-pre" 375c64bc33ee18757cf969e00bc617ef12ca26d5
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d39-pre/node_modules"
+          cp scripts/audit-d3-9b-townhouse.mjs "$RUNNER_TEMP/d39-pre/scripts/audit-d3-9b-townhouse.mjs"
+          node --experimental-strip-types "$RUNNER_TEMP/d39-pre/scripts/audit-d3-9b-townhouse.mjs" > "$RUNNER_TEMP/d39-before.json"
+          node --experimental-strip-types scripts/audit-d3-9b-townhouse.mjs > "$RUNNER_TEMP/d39-after.json"
+          node -e 'const a=require(process.argv[1]),b=require(process.argv[2]);const compact=r=>({seed:r.seed,final:r.final,checkpoints:r.checkpoints.map(c=>({seconds:c.seconds,arrivals:c.arrivals,operators:c.actors.filter(x=>["rook","moss"].includes(x.id)).map(x=>({id:x.id,remaining:x.remaining,cumulativeDistance:x.cumulativeDistance,blockedSeconds:x.blockedSeconds,passageWaitSeconds:x.passageWaitSeconds,retries:x.retries,velocity:x.velocity,motorPause:x.motorPause,doorTraversal:x.doorTraversal,nextNav:x.nextNav,position:x.position}))})),transitions:r.transitions.filter(x=>x.id==="moss"||x.door==="D11").slice(0,32)});console.log("D39 TOWNHOUSE PAIRED",JSON.stringify({before:compact(a),after:compact(b)}));if(b.final.invalidPositions)throw Error("invalid physical positions")' "$RUNNER_TEMP/d39-before.json" "$RUNNER_TEMP/d39-after.json"
+      - name: D11 precise 12s leaf and squeeze trace (pre-A vs current)
+        run: |
+          cp scripts/audit-d3-9b-d11-witness.mjs "$RUNNER_TEMP/d39-pre/scripts/audit-d3-9b-d11-witness.mjs"
+          node --experimental-strip-types "$RUNNER_TEMP/d39-pre/scripts/audit-d3-9b-d11-witness.mjs" > "$RUNNER_TEMP/d11-before.json"
+          node --experimental-strip-types scripts/audit-d3-9b-d11-witness.mjs > "$RUNNER_TEMP/d11-after.json"
+          node -e 'const a=require(process.argv[1]),b=require(process.argv[2]);for(const [label,r] of [["BEFORE",a],["AFTER",b]])console.log("D11 TRACE "+label,JSON.stringify(r.checkpoints.filter(x=>x.D11),null,0));' "$RUNNER_TEMP/d11-before.json" "$RUNNER_TEMP/d11-after.json"
+      - name: Attach evidence, not a release gate
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d39b-townhouse-comparison
+          path: |
+            ${{ runner.temp }}/d39-before.json
+            ${{ runner.temp }}/d39-after.json
+            ${{ runner.temp }}/d11-before.json
+            ${{ runner.temp }}/d11-after.json
+          if-no-files-found: ignore

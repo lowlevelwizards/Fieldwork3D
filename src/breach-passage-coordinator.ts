@@ -38,6 +38,11 @@ const alongDoor=(p:Pt,d:Door)=>{
   (Math.hypot(dx,dy)||1);
 };
 const laneKey=(doorId:string,side:number)=>doorId+'|'+side;
+/** Finished friendlies never reserve a stable open threshold; the
+ * actual motor still owns physical body/separation. Active crossing
+ * entrants and counterflow retain the existing queue policy. */
+const finishedFriendly=(a:TeamActor,peer:TeamActor)=>
+ peer.side===a.side&&!peer.plan.length;
 function context(s:Session,schedule:PassageSchedule):Context{
  const cached=contexts.get(s);
  if(cached?.schedule===schedule)return cached;
@@ -218,7 +223,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
     Math.abs(door.angularVelocity??0)<.16){
   let blockedByBody=false;
   for(const peer of s.operators){
-   if(peer===a||peer.health<=0)continue;
+   if(peer===a||peer.health<=0||finishedFriendly(a,peer))continue;
    const now=dist(a.p,peer.p);
    const proposed=dist(move,peer.p);
    if(proposed<QUEUE_CENTER_GAP-.25&&
@@ -255,7 +260,8 @@ export function coordinatePassage(s:Session,a:TeamActor,
  let hostileThroat=false;
  if(forward>.025&&normalDepth(a.p,door)*slot.fromSide>=0)
   for(const other of s.operators){
-   if(other===a||other.health<=0||!throat(other.p,door))continue;
+   if(other===a||other.health<=0||
+      finishedFriendly(a,other)||!throat(other.p,door))continue;
    if(normalDepth(other.p,door)*slot.fromSide<0){
     hostileThroat=true;break;
    }

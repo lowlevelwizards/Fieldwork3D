@@ -11,9 +11,11 @@ import {sweptBodyClear} from './breach-navigation.ts';
 import {friendlyArrivalSettleTarget,nearOccupiedFriendlyGoal}
  from './breach-friendly-traffic.ts';
 import {entryClearanceForLook} from './breach-entry-coordination.ts';
+import {selectPhysicalEntrySettle} from './breach-entry-target-settle.ts';
+import {bodyClear} from './breach-navigation.ts';
 import {autoSidestepFacing} from './breach-auto-sidestep.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
-import {completeOrder,rotate,aimHeading,applyAimNode}
+import {completeOrder,failCurrentOrder,rotate,aimHeading,applyAimNode}
  from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -25,6 +27,7 @@ const pop=completeOrder;
 // every 60Hz tick. A transient settle is execution-only, never an authored
 // waypoint or an excuse to shift a teammate who is already stationary.
 const settledMoveTargets=new WeakMap<TeamActor,{nodeId:number;point:Pt}>();
+const entrySettleProbe=new WeakMap<TeamActor,{nodeId:number;nextAt:number}>();
 export function createMovementOrderHandler(port:OrderExecutionPort){
  const {approach}=port;
  return function executeMovementOrder(s:Session,a:TeamActor,n:PlanNode,dt:number,
@@ -83,10 +86,50 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   if(remembered&&remembered.nodeId!==n.id)settledMoveTargets.delete(a);
   const retained=n.kind==='move'&&remembered?.nodeId===n.id?
     remembered.point:null;
+  // C2c: a previously selected near-goal settling footstep is not proof
+  // that the actor can execute it. When the ORIGINAL generated target is
+  // inside immutable static wall clearance, do not let retained footwork
+  // bypass the same bounded failure policy forever. Give it six seconds
+  // of genuine attempted motion first; then report the blocked template.
+  // Player-authored MOVE and open/closing door-only obstructions are exempt.
+  if(n.kind==='move'&&n.entryDoorId&&a.blockedTime>=6&&
+     d(a.p,n.p)<=18.5&&
+     !sessionWorldGeometry(s).passable(n.p,OPERATOR_RADIUS)){
+    settledMoveTargets.delete(a);
+    failCurrentOrder(s,a,n,
+      'ENTRY LANDING BLOCKED · NO SAFE INTERIOR FOOTPRINT',port.notify);
+    return true;
+  }
   const settledAt=!!retained&&near(a.p,retained,3.5)&&
     friendlyPeers.every(peer=>d(a.p,peer)>=14);
+  // C2: only the generated ENTRY endpoint may move to a physically
+  // verified nearby interior position. No authored MOVE target is changed.
+  const probe=entrySettleProbe.get(a);
+  const nearBlockedEntry=n.kind==='move'&&!retained&&!!n.entryDoorId&&
+    a.blockedTime>=.85&&d(a.p,n.p)<=18.5&&
+    (!probe||probe.nodeId!==n.id||s.seconds>=probe.nextAt);
+  let entrySettle:Pt|null=null;
+  if(nearBlockedEntry){
+   entrySettleProbe.set(a,{nodeId:n.id,nextAt:s.seconds+1.5});
+   const door=s.doors.find(leaf=>leaf.id===n.entryDoorId);
+   const world=sessionWorldGeometry(s);
+   if(door&&!bodyClear(n.p,s.doors,OPERATOR_RADIUS,world))
+    entrySettle=selectPhysicalEntrySettle(a.p,n.p,door,friendlyPeers,
+     point=>world.passable(point,OPERATOR_RADIUS)&&
+      bodyClear(point,s.doors,OPERATOR_RADIUS,world),
+     (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+   // Only a GENERATED landing inside a fixed physical wall is irrecoverable.
+   // Opening a leaf cannot fix it; do not quietly count this as arrival
+   // or repeatedly collide for 30 seconds. Other MOVE orders stay authored.
+   if(!entrySettle&&door&&!world.passable(n.p,OPERATOR_RADIUS)&&
+      a.blockedTime>=3.5){
+    failCurrentOrder(s,a,n,'ENTRY LANDING BLOCKED · NO SAFE INTERIOR FOOTPRINT',
+      port.notify);
+    return true;
+   }
+  }
   const newlySettled=n.kind==='move'&&!retained?
-    friendlyArrivalSettleTarget(a.p,n.p,friendlyPeers,(from,to)=>
+    entrySettle??friendlyArrivalSettleTarget(a.p,n.p,friendlyPeers,(from,to)=>
       sessionWorldGeometry(s).passable(to,OPERATOR_RADIUS)&&
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):null;
   if(newlySettled)settledMoveTargets.set(a,{nodeId:n.id,

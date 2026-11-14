@@ -237,13 +237,15 @@ export function recordDoorManeuverContact(
  * genuine door-collision retry after the existing blocked-time threshold.
  */
 export function selfBlockingHingeRelief(
- a:TeamActor,s:Session,goal:Pt
+ a:TeamActor,s:Session,goal:Pt,onlyDoor?:Door
 ):Pt|null{
  const world=sessionWorldGeometry(s);
  const otherPositions=s.operators.filter(other=>other!==a&&other.health>0)
    .map(other=>other.p);
  const aim=Math.atan2(goal.y-a.p.y,goal.x-a.p.x);
- for(const door of s.doors){
+ // A known obstruction must not select a different door's escape step.
+ // Generic collision recovery still retains its all-door fallback.
+ for(const door of onlyDoor?[onlyDoor]:s.doors){
   const fraction=door.openFraction??(door.open?1:0);
   if(!door.open||door.kind==='sliding'||door.kind==='shutter'||
      door.locked||door.wedged||door.heldBy||
@@ -257,9 +259,16 @@ export function selfBlockingHingeRelief(
      doorSwingBlocked(door,future,[],OPERATOR_RADIUS,world))continue;
   // Favor forward footwork; fixed small angular offsets permit shoulder
   // clearance without converting the maneuver into broad pathfinding.
-  for(const radius of [8,14])
+  // First retain the original eight close, goal-oriented candidates.
+  // If a teammate is already EMBEDDED against the stopped leaf, those
+  // angles can all lie inside its swing. D3.7's exact warehouse witness
+  // showed a swept-clear 14–22-unit step away from the authored goal.
+  // This is a single cold-stall attempt, never a 60 Hz search.
+  for(const radius of [8,14,22,32])
     for(const turn of [0,Math.PI/8,-Math.PI/8,Math.PI/4,
-      -Math.PI/4,3*Math.PI/8,-3*Math.PI/8,Math.PI]){
+      -Math.PI/4,3*Math.PI/8,-3*Math.PI/8,Math.PI,
+      Math.PI/2,-Math.PI/2,5*Math.PI/8,-5*Math.PI/8,
+      3*Math.PI/4,-3*Math.PI/4,7*Math.PI/8,-7*Math.PI/8]){
       const theta=aim+turn;
       const p={x:a.p.x+Math.cos(theta)*radius,
        y:a.p.y+Math.sin(theta)*radius};

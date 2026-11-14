@@ -20,6 +20,7 @@ import {sweptBodyClear} from '../src/breach-navigation.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
+import {classifyCProgressWindow} from '../src/breach-d3-c-progress.ts';
 import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
 import {captureD32DoorEvidence,captureD32RecoveryFeasibility,
  captureD32SelfBlockingHinge,
@@ -30,9 +31,11 @@ import {captureD32DoorEvidence,captureD32RecoveryFeasibility,
 const names=['house','townhouse','apartment','retail','office','garage',
  'warehouse','restaurant','motel','utility','clinic'];
 const sites=Math.max(1,Math.min(44,Number.parseInt(process.argv[2]??'11',10)||11));
-const ticks=Math.max(120,Math.min(1800,Number.parseInt(process.argv[3]??'600',10)||600));
+const ticks=Math.max(120,Math.min(2700,Number.parseInt(process.argv[3]??'600',10)||600));
 // R3 portal connectivity is costly; run only when explicitly requested.
 const portal=process.argv.includes('--portal');
+// D3.9C read-only five-second evidence, opt-in; NO added live motor work.
+const progress=process.argv.includes('--progress');
 const clinicOnly=process.argv.includes('--clinic-only');
 // Exact seeded-site diagnosis, opt-in, does not change any motor paths.
 const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
@@ -129,12 +132,28 @@ function run(site,seed,kind){
   const windowStart=actors.map(a=>({...a.p}));
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
   const blockWitness=actors.map(()=>({mask:0,events:[]}));
+  const progressEvidence=[];
+  const observed=actors.map(a=>({
+   start:{...a.p},last:{...a.p},travel:0,blocked:0,squeezing:0,
+   passage:0,opening:0,lastRetries:a.recoveryAttempts,
+   retries:0,badWindows:0
+  }));
   if(planned.accepted){enableD32MotorDoorWitness(true);toggling(session);}
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
    stepSession(session,1/60);
    survey.sample(actors,1/60);
+   if(progress)for(let i=0;i<actors.length;i++){
+    const a=actors[i],m=observed[i];
+    m.travel+=dist(a.p,m.last);m.last={...a.p};
+    if(a.blockedTime>=.85)m.blocked+=1/60;
+    if(a.squeeze)m.squeezing+=1/60;
+    if(a.motorPause==='passage')m.passage+=1/60;
+    if(a.motorPause==='door-opening')m.opening+=1/60;
+    m.retries+=Math.max(0,a.recoveryAttempts-m.lastRetries);
+    m.lastRetries=a.recoveryAttempts;
+   }
    // Capture only pause transitions and milestones; offline audit, not live game.
    for(let i=0;i<actors.length;i++){
     const a=actors[i],trace=doorWitness[i];
@@ -204,6 +223,45 @@ function run(site,seed,kind){
     lastP[i]={...a.p};
     for(let j=0;j<i;j++)minSpacing=Math.min(minSpacing,dist(a.p,actors[j].p));
    }
+   if(progress&&((tick+1)%300===0||tick+1===ticks)){
+    const seconds=round((tick+1)/60);
+    for(let i=0;i<actors.length;i++){
+     const a=actors[i],m=observed[i],goal=planned.goals.get(a.id);
+     const net=round(dist(a.p,m.start));
+     const travel=round(m.travel);
+     const remaining=goal?round(dist(a.p,goal)):null;
+     const kind=a.plan[0]?.kind??null;
+     const intentional=kind==='wait'||kind==='watch'||kind==='sync'||
+      kind==='stack'||kind==='holdClear';
+     const classification=classifyCProgressWindow({
+      active:!!a.plan.length,kind,
+      goalReduction:goal?round(dist(m.start,goal)-dist(a.p,goal)):null,
+      travel,net,blockedSeconds:m.blocked,
+      squeezeSeconds:m.squeezing,
+      passageSeconds:m.passage,
+      openingSeconds:m.opening,orderIssue:a.orderIssue?.reason??null,
+      attempts:m.retries,badWindows:m.badWindows
+     });
+     m.badWindows=classification.consecutivePoorWindows;
+     progressEvidence.push({
+      seconds,actor:a.id,kind,classification:classification.status,
+      suspicious:classification.suspicious,
+      consecutivePoorWindows:m.badWindows,
+      net,travel,
+      goalReduction:goal?round(dist(m.start,goal)-dist(a.p,goal)):null,
+      remaining,blockedSeconds:round(m.blocked),
+      squeezeSeconds:round(m.squeezing),
+      passageSeconds:round(m.passage),
+      openingSeconds:round(m.opening),
+      retries:m.retries,position:{...a.p},
+      nextNav:a.nav[0]??null,
+      motorPause:a.motorPause,orderIssue:a.orderIssue?.reason??null,
+      doorEpisode:a.doorTraversal?.doorId??null
+     });
+     m.start={...a.p};m.travel=0;m.blocked=0;m.squeezing=0;
+     m.passage=0;m.opening=0;m.retries=0;
+    }
+   }
    if(actors.every(a=>!a.plan.length))break;
   }
   const stats=survey.finish(actors);
@@ -263,6 +321,7 @@ function run(site,seed,kind){
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
    warehouseHingeWitness,
+   ...(progress?{progressEvidence}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
@@ -369,9 +428,19 @@ const summary={
  invalidPositions:sum('invalidPositions'),
  corruptedPlans:results.filter(r=>!r.planIntact).length
 };
+const progressWindows=progress?results.flatMap(mode=>mode.progressEvidence??[]):[];
+const suspicious=progressWindows.filter(w=>w.suspicious);
+const progressSummary=progress?{
+ windows:progressWindows.length,
+ suspiciousWindows:suspicious.length,
+ suspectedLoops:suspicious.filter(w=>w.classification==='movement-loop').length,
+ sustainedStill:suspicious.filter(w=>w.classification==='sustained-still').length,
+ affected:suspicious.map(w=>w.actor),
+ maxObservedSeconds:round(Math.max(0,...progressWindows.map(w=>w.seconds)))
+}:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
- ticks,summary,rows},null,2));
+ ticks,summary,...(progress?{progressSummary}:{}),rows},null,2));
 if(exceptions||summary.invalidPositions||summary.corruptedPlans||
  summary.physicsStepViolations||summary.unboundedManeuverAttempts)
  process.exitCode=1;
