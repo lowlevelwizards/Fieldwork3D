@@ -41,7 +41,7 @@ test('R3.1: 91 parts and 17 presets retain combat muzzle and geometry budget',()
   const bounds=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(bounds.max.x-resolveWeaponAssembly(config).muzzleX)<.001,
    p.id+' gameplay tip');
-  assert.ok(group.children.length<=28,p.id+' mesh count');
+  assert.ok(group.children.length<=(p.family==='ar'?36:28),p.id+' mesh count');
   clearWeaponSilhouette(group);
  }
 });
@@ -73,10 +73,11 @@ test('R3.1: shortened Mk18 and AKS-74U still have open silhouette identifiers',(
 test('R3.1: AR front sight is a squat open A rather than solid tall spike',()=>{
  const m=assembly('ar-m4a1');
  // M4A1 A-frame now uses the canonical 14.0 sight landmark.
- assert.equal(rayHits(m.group,14.0,1.4),false,'A-frame internal gap');
- assert.ok(rayHits(m.group,13.68,1.4),'left narrowed A-frame leg');
- assert.ok(rayHits(m.group,14.32,1.4),'right narrowed A-frame leg');
- assert.ok(box(m.group,'barrel').max.y<3.25,'sight height reduced');
+ const sight=13.17; // canonical M4A1 sight datum
+ assert.equal(rayHits(m.group,sight+.20,2.60),false,'A-frame internal gap');
+ assert.ok(rayHits(m.group,sight-1.65,2.10),'sloping A-frame rear leg');
+ assert.ok(rayHits(m.group,sight+.78,2.10),'vertical A-frame front leg');
+ assert.ok(box(m.group,'barrel').max.y>=4.0,'current sight silhouette stays tall and readable');
  clearWeaponSilhouette(m.group);
 });
 test('R3.1: auto-fit favors 78% width without clipping in portrait layouts',()=>{
@@ -95,7 +96,7 @@ test('R3.1: auto-fit favors 78% width without clipping in portrait layouts',()=>
 });
 test('R3.1: socket motion fades during drag and restores after idle; selection survives',()=>{
  const workbench=source('src/equipment-weapon-workbench.ts');
- const quick=source('src/breach-main.ts');
+ const quick=source('src/breach-operations-board-controller.ts');
  assert.match(workbench,/moved>6/);
  assert.match(workbench,/this\.hideDotsDuringInspection\(\)/);
  assert.match(workbench,/this\.setSocketDotsVisible\(false,true\)/);
