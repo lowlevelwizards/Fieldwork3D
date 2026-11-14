@@ -32,8 +32,9 @@ test('H24: mirrored per-station ear mass, not extra shell parts',()=>{
   assert.equal(mesh.castShadow,true);
   assert.equal(mesh.material.side,THREE.DoubleSide);
   assert.equal(mesh.material.shadowSide,THREE.DoubleSide);
-  assert.notEqual(mesh.material,mat,'shared swatch material must not be mutated');
-  assert.equal(mat.side,THREE.FrontSide);
+  assert.equal(mesh.material,mat,'visible shell must track dynamic swatch updates');
+  assert.equal(mat.side,THREE.DoubleSide);
+  assert.equal(mat.shadowSide,THREE.DoubleSide);
   const pos=geo.getAttribute('position');
   const xCoords=new Set();
   for(let i=0;i<pos.count;i++)
