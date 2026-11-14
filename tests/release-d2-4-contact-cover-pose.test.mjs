@@ -10,7 +10,7 @@ import {chooseEnvironmentSupport,chooseTeammateSupport,
  from '../src/breach-contextual-support-contact.ts';
 import {selectPhysicalContact,selectSinglePhysicalContact}
  from '../src/breach-physical-contact-anchor.ts';
-import {resolvePoseContactOwners} from '../src/breach-pose-contacts.ts';
+import {resolvePoseContactOwners,woundedHandGuard} from '../src/breach-pose-contacts.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {stanceSurface} from '../src/breach-cover-stance.ts';
 const setup=(scenario='brace-wall',operators=1)=>{
@@ -122,5 +122,33 @@ test('D2.4.2 hoisted heading shares exact cover stance selection',()=>{
    const facing={x:Math.cos(heading),y:Math.sin(heading)};
    assert.deepEqual(stanceSurface(a,c,0,facing),direct);
   }
+ }finally{activateSite(null);}
+});
+
+test('D2.4.3 one injury guard policy respects physical action priority',()=>{
+ const base={down:false,injury:1,hitRegion:'torso',
+  aiming:false,firing:false,hitAge:.3};
+ assert.equal(woundedHandGuard(base),true);
+ for(const change of [
+  {down:true},{injury:0},{hitRegion:'leg'},{aiming:true},
+  {firing:true},{hitAge:-1},{hitAge:1.1}
+ ])assert.equal(woundedHandGuard({...base,...change}),false,
+   JSON.stringify(change));
+});
+test('D2.4.3 uninjured hit no longer steals a planted support hand',()=>{
+ const {s,a}=setup('stack-shoulder',2);
+ try{
+  advanceContextualSupportContacts(s);
+  const contact=a.physicalContact;
+  assert.equal(contact?.intent,'teammate');
+  a.lastHitAt=s.seconds;a.lastHitRegion='torso';a.injuryStage=0;
+  s.seconds+=1/60;
+  advanceContextualSupportContacts(s);
+  assert.equal(a.physicalContact?.anchor.id,contact.anchor.id);
+  assert.equal(a.physicalContact?.releasedAt,null);
+  a.injuryStage=1;s.seconds+=1/60;
+  advanceContextualSupportContacts(s);
+  assert.ok(a.physicalContact?.releasedAt!==null,
+   'a genuine injury releases the support hand');
  }finally{activateSite(null);}
 });
