@@ -15,6 +15,8 @@ import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
 import {activateSite,OPERATOR_RADIUS,doorLeafSegment,
  setRouteGridAuditObserver} from '../src/breach-core.ts';
+import {setTransientRouteObserver}
+ from '../src/breach-route-transition.ts';
 import {D311RouteSurvey,createD311GridObserver}
  from './lib/d3-11-route-quality.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
@@ -42,6 +44,7 @@ const progress=process.argv.includes('--progress');
 // D3.11A audit is OFFLINE-only and opt-in.
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
+const routeTransitions=process.argv.includes('--route-transitions');
 const clinicOnly=process.argv.includes('--clinic-only');
 // Exact seeded-site diagnosis, opt-in, does not change any motor paths.
 const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
@@ -125,6 +128,16 @@ function run(site,seed,kind){
    traceActor:utilityTrace&&seed===31162&&kind==='authored'?'rook':null,
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
+  const routeWitness=routeTransitions?{counts:{},byActor:{},events:[]}:null;
+  const recordRoute=routeWitness?(e)=>{
+   routeWitness.counts[e.source]=(routeWitness.counts[e.source]??0)+1;
+   const key=e.actorId+':'+e.source;
+   routeWitness.byActor[key]=(routeWitness.byActor[key]??0)+1;
+   if(utilityTrace&&seed===31162&&kind==='authored'&&
+      e.actorId==='rook'&&routeWitness.events.length<400)
+     routeWitness.events.push({...e,seconds:round(e.seconds),
+      prior:e.prior.slice(0,4),next:e.next.slice(0,4)});
+  }:null;
   // Do not include offline forensic world-route probes in live-A* totals.
   // Register only while the authoritative Session simulation is stepping.
   const crossed=actors.map(()=>null),lastSigned=actors.map(a=>
@@ -155,10 +168,12 @@ function run(site,seed,kind){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
    if(grid)setRouteGridAuditObserver(grid.observe);
+   if(recordRoute)setTransientRouteObserver(recordRoute);
    try{
     stepSession(session,1/60);
    }finally{
     if(grid)setRouteGridAuditObserver(null);
+    if(recordRoute)setTransientRouteObserver(null);
    }
    survey.sample(actors,1/60);
    quality?.sample(actors,session.seconds);
@@ -341,6 +356,7 @@ function run(site,seed,kind){
    warehouseHingeWitness,
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
+   ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
@@ -404,6 +420,7 @@ function run(site,seed,kind){
    }))};
  }finally{
   setRouteGridAuditObserver(null);
+  setTransientRouteObserver(null);
   enableD32MotorDoorWitness(false);activateSite(null);
  }
 }
