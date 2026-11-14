@@ -22,7 +22,7 @@ test('H7 helmet visuals are built once, then visibility-only for every shell',()
   assert.equal(modules.rails.visible,true);
   assert.equal(modules.camera.visible,true);
   assert.equal(modules.leaves.visible,shell!=='pasgt');
-  assert.equal(modules.chemlight.visible,shell==='pasgt');
+  assert.equal(modules.chemlight.visible,false);
   assert.equal(modules['goggles-front'].visible,false);
   assert.equal(modules['goggles-rear'].getObjectByName('goggle-fabric-sleeve')?.visible,true);
   updateHelmetFieldLayers(layers,{...field,goggles:'front',
