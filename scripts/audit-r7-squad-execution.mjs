@@ -18,6 +18,7 @@ import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
 import {captureD32DoorEvidence,captureD32RecoveryFeasibility,
+ captureD32SelfBlockingHinge,
  dueDoorHoldMilestones,D32_HOLD_MILESTONES,
  dueD32BlockMilestones,D32_BLOCK_MILESTONES}
  from '../src/breach-d3-door-evidence.ts';
@@ -143,7 +144,9 @@ function run(site,seed,kind){
         // Two read-only world-route probes, only after genuine sustained
         // physical blockage; not called in the live motor hotpath.
         routeFeasibility:index===1||index===2?
-          captureD32RecoveryFeasibility(a,session):null});
+          captureD32RecoveryFeasibility(a,session):null,
+        hingeSelfClearance:index===1||index===2?
+          captureD32SelfBlockingHinge(a,session):null});
      }
    }
    for(const d of session.doors){

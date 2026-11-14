@@ -3,6 +3,7 @@ import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS} from './breac
 import {doorSwingBlocked,doorWouldStrikeActors} from './breach-door.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {selectedD32MotorDoor} from './breach-d3-motor-door-witness.ts';
+import {probeD32HingeSelfClearance} from './breach-d3-hinge-escape-evidence.ts';
 import {routeWithSqueezeWorld,routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -66,6 +67,29 @@ export function captureD32DoorEvidence(a:TeamActor,s:Session){
 /** Recompute normal recovery candidates ONLY in the offline generated audit
  * after a sustained physical stall. This does not replace the live route.
  * All simulations and true collision tests are unchanged. */
+/** Extra bounded forensic probe only for the ACTUAL sustained door
+ * collision milestone. Never used during ordinary execution. */
+export function captureD32SelfBlockingHinge(a:TeamActor,s:Session){
+ const world=sessionWorldGeometry(s);
+ const door=s.doors.find(d=>(d.openFraction??0)>=.15&&
+    (d.openFraction??0)<.72&&d.open&&
+    pointToSegment(a.p,doorLeafSegment(d))<OPERATOR_RADIUS+27&&
+    doorWouldStrikeActors(d,Math.min(1,(d.openFraction??0)+.025),
+      [a.p],OPERATOR_RADIUS));
+ if(!door)return null;
+ const others=s.operators.filter(b=>b!==a&&b.health>0);
+ const goal=a.plan[0]?.p??a.p;
+ return {doorId:door.id,hinge:door.hinge,swing:door.swing,
+  a:pos(door.a),b:pos(door.b),fraction:round(door.openFraction??0),
+  leaf:doorLeafSegment(door),selfBlocking:true,
+  otherBlocking:others.filter(b=>doorWouldStrikeActors(door,
+    Math.min(1,(door.openFraction??0)+.025),[b.p],OPERATOR_RADIUS))
+   .map(b=>({id:b.id,p:pos(b.p)})),
+  options:probeD32HingeSelfClearance(a.p,goal,door,
+    others.map(b=>b.p),(from,to)=>
+      sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))
+ };
+}
 export function captureD32RecoveryFeasibility(a:TeamActor,s:Session){
  const goal=a.plan[0]?.p;
  if(!goal)return null;
