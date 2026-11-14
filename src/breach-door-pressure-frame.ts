@@ -15,6 +15,7 @@ import {doorLeafSegment,pointToSegment,OPERATOR_RADIUS,type Door} from './breach
 import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 import type {BodyDoorPressurePolicy} from './breach-door.ts';
 import {canDoorHandAssist} from './breach-door-hand-contact.ts';
+import {implicitDoorOpeningOwner} from './breach-door-opening-ownership.ts';
 
 type TickClaims={
  at:number;
@@ -87,11 +88,16 @@ export function sessionDoorPressurePolicy(
 ):BodyDoorPressurePolicy{
  // Construct arbitration sets only when a touched leaf requests them.
  return {
-  canHandAssist:door=>canDoorHandAssist(s,actor,door),
+  canHandAssist:door=>
+   ((door.openFraction??0)>=.72||
+    implicitDoorOpeningOwner(s,door)===actor.id)&&
+   canDoorHandAssist(s,actor,door),
   preferOpening:door=>{
    const frame=doorPressureTick(s);
    inspectDoor(s,frame,door);
-   return frame.actorsOpening.has(actorKey(actor.id,door.id));
+   return frame.actorsOpening.has(actorKey(actor.id,door.id))&&
+     ((door.openFraction??0)>=.72||
+       implicitDoorOpeningOwner(s,door)===actor.id);
   },
   deferClosing:door=>{
    const frame=doorPressureTick(s);
@@ -99,6 +105,12 @@ export function sessionDoorPressurePolicy(
    return frame.protectedBySide.has(sideKey(door.id,actor.side));
   },
   claimContact:door=>{
+   // The selected opener alone may inject incidental pressure while the
+   // leaf is incomplete; a follower's real swept feet remain unaffected.
+   if((door.openFraction??0)<.72){
+    const owner=implicitDoorOpeningOwner(s,door);
+    if(owner&&owner!==actor.id)return false;
+   }
    const frame=doorPressureTick(s);
    if(frame.claimedImpulses.has(door.id))return false;
    frame.claimedImpulses.add(door.id);
