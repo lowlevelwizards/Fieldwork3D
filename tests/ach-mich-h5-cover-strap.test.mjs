@@ -56,7 +56,8 @@ test('H5: physical retention starts behind the shell and beneath the lip',()=>{
   }
   const geom=createAchMichRetentionGeometry(id);
   assert.equal(geom.userData.belowShellAnchors,true);
-  assert.ok(geom.boundingBox.min.z<-4.5);
+  assert.ok(geom.boundingBox.min.z<-4.30&&geom.boundingBox.min.z>-4.50,
+   'flat webbing follows cheek/front near the head without a projecting shard');
   assert.ok(geom.getAttribute('position').count<125);
   const trim=createAchMichBindingGeometry(id);
   assert.ok(trim.getAttribute('position').count>30);

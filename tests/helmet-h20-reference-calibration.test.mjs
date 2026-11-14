@@ -62,8 +62,8 @@ test('H26: static shell with shared cover, trim and retention',()=>{
   const g=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   const mesh=g.children[0].geometry;
   assert.equal(mesh.userData.h17UnifiedContour,true);
-  assert.equal(mesh.userData.exteriorQuads,id==='mich-2001'?39:49);
-  assert.equal(mesh.index.count,id==='mich-2001'?234:294);
+  assert.equal(mesh.userData.exteriorQuads,id==='mich-2001'?39:59);
+  assert.equal(mesh.index.count,id==='mich-2001'?234:354);
   assert.equal(g.children.length,1,'one static shell draw');
   const cover=createAchMichDrapedGeometry(id),
     trim=createAchMichBindingGeometry(id),p=achMichProfile(id);

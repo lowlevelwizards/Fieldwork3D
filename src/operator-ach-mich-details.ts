@@ -120,36 +120,29 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
  g.userData.minimumHeight=bindingHeight;
  return g;
 }
-/** Full-width webbing converges on a common finite seam instead of
- * tapering to the needle-like zero-width vertex introduced in H25.
- * Every segment is static and uses the same authoritative webbing width.
+/** One rectangular ribbon quad per straight run. Each edge is parallel
+ * to the run's centerline and the width remains constant at both ends.
+ * Do NOT force unrelated Y-legs to share one rotated seam: that shears the
+ * rectangles into the sharp triangles visible in H26. The three segments
+ * meet by their natural, unpinched ends. The cheek-to-chin run faces forward,
+ * while the suspension runs face outward along the side of the head.
+ * Generated only on outfit construction; two triangles per straight run.
  */
-function appendStrap(data:number[],path:readonly Point[],normal:THREE.Vector3,
- halfWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH,joint?:Point,
- commonJointAcross?:THREE.Vector3){
+function appendStrap(data:number[],path:readonly Point[],sign:number,
+ halfWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH){
  const vec=(p:Point)=>new THREE.Vector3(...p);
- const axes:THREE.Vector3[]=[];
- for(let i=1;i<path.length;i++){
-  const tangent=vec(path[i]).sub(vec(path[i-1])).normalize();
-  axes.push(new THREE.Vector3().crossVectors(normal,tangent).normalize());
- }
- const spans=path.map((point,i)=>{
-  if(point===joint&&commonJointAcross)
-   return commonJointAcross.clone().multiplyScalar(halfWidth);
-  const across=axes[Math.min(i,axes.length-1)].clone();
-  if(i>0&&i<axes.length){
-   const prev=axes[i-1],next=axes[i];
-   across.copy(prev).add(next.dot(prev)<0?next.clone().negate():next).normalize();
-  }
-  return across.multiplyScalar(halfWidth);
- });
  const emit=(a:THREE.Vector3,b:THREE.Vector3,c:THREE.Vector3)=>{
-  for(const v of [a,b,c])data.push(v.x,v.y,v.z);
+  for(const p of [a,b,c])data.push(p.x,p.y,p.z);
  };
  for(let i=1;i<path.length;i++){
   const a=vec(path[i-1]),b=vec(path[i]);
-  const a0=a.clone().add(spans[i-1]),a1=a.clone().sub(spans[i-1]);
-  const b0=b.clone().sub(spans[i]),b1=b.clone().add(spans[i]);
+  const tangent=b.clone().sub(a).normalize();
+  const faceNormal=Math.abs(tangent.x)>Math.abs(tangent.z)*1.3?
+   new THREE.Vector3(0,0,-1):new THREE.Vector3(sign,0,0);
+  const across=new THREE.Vector3().crossVectors(faceNormal,tangent)
+   .normalize().multiplyScalar(halfWidth);
+  const a0=a.clone().add(across),a1=a.clone().sub(across);
+  const b0=b.clone().sub(across),b1=b.clone().add(across);
   emit(a0,a1,b0);emit(a0,b0,b1);
  }
 }
@@ -200,19 +193,9 @@ export function createAchMichRetentionGeometry(
  shell:typeof ACH_MICH_SHELLS[number]):THREE.BufferGeometry{
  const data:number[]=[];
  const paths=achMichRetentionPaths(shell);
- // The three ribbons per side share one finite-width seam with no cap.
- for(let i=0;i<paths.length;i++){
-  const sign=i<3?-1:1;
-  const junction=paths[sign<0?0:3][1];
-  const down=paths[sign<0?2:5][1];
-  const normal=new THREE.Vector3(sign*.68,0,-.74);
-  const tangent=new THREE.Vector3(
-   down[0]-junction[0],down[1]-junction[1],down[2]-junction[2]
-  ).normalize();
-  const sharedAcross=new THREE.Vector3().crossVectors(normal,tangent).normalize();
-  appendStrap(data,paths[i],normal,
-   ACH_MICH_CHIN_STRAP_HALF_WIDTH,junction,sharedAcross);
- }
+ // Straight, constant-width panels; no sheared shared Y seam or caps.
+ for(let i=0;i<paths.length;i++)
+  appendStrap(data,paths[i],i<3?-1:1);
  // Join at the exact two chin endpoints, without a second overlapping
  // junction. The cup's top edge is just below the known -1 skull bottom.
  const leftChin=paths[2][2],rightChin=paths[5][2];
@@ -228,6 +211,7 @@ export function createAchMichRetentionGeometry(
  g.userData.achMichFourPoint=true;
  g.userData.h25SharedTaperedYJunction=false;
  g.userData.h26FullWidthYJunction=true;
+ g.userData.h27RectangularStraightWebbing=true;
  g.userData.belowShellAnchors=true;
  g.userData.integratedChinCup=true;
  g.userData.chinWidth=ACH_MICH_CHIN_STRAP_HALF_WIDTH*2;

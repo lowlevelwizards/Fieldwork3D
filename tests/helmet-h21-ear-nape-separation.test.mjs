@@ -49,8 +49,8 @@ test('H21: static unified shells, shared cover and rubber edge',()=>{
   const group=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   assert.equal(group.children.length,1,'one shell mesh for '+id);
   const geom=group.children[0].geometry;
-  assert.equal(geom.userData.exteriorQuads,id==='mich-2001'?39:49);
-  assert.equal(geom.index.count,id==='mich-2001'?234:294);
+  assert.equal(geom.userData.exteriorQuads,id==='mich-2001'?39:59);
+  assert.equal(geom.index.count,id==='mich-2001'?234:354);
   assert.equal(headwearCuboidVolumes(id).length,5,'no stacked guard plates');
   const p=achMichProfile(id),hem=UNIFIED_HELMET_HEMS[id];
   assert.equal(p.hem,hem,'one contour drives shell, cover, rubber edge');

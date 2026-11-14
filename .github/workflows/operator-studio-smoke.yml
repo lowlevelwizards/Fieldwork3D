@@ -98,6 +98,21 @@ jobs:
           path: ach-mich-h6-captures/
           if-no-files-found: ignore
           retention-days: 14
+      - name: H27 broad-shell face, rectangular webbing, cover and production build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h27-') }}
+        run: |
+          npm run build
+          node --experimental-strip-types --test tests/helmet-h16-coverage-silhouette.test.mjs tests/helmet-h18-ear-lobe-polish.test.mjs tests/helmet-h19-highcut-anatomy.test.mjs tests/helmet-h20-reference-calibration.test.mjs tests/helmet-h21-ear-nape-separation.test.mjs tests/helmet-h22-ear-centering-nape.test.mjs tests/helmet-h23-rearward-ear-deep-nape.test.mjs tests/helmet-h24-shadow-rim-ear-width.test.mjs tests/helmet-h25-cover-ear-shoulder-harness.test.mjs tests/helmet-h27-broad-ear-and-flat-straps.test.mjs tests/ach-mich-h4-fit-finish.test.mjs tests/helmet-ach-fastened-cheek-clearance.test.mjs tests/helmet-ach-strap-buckle-topology.test.mjs tests/ach-mich-h5-cover-strap.test.mjs
+      - name: H27 actual iPhone WebGL bare and covered comparison
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h27-') }}
+        run: node scripts/ach-mich-h6-visual-capture.mjs
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h27-') }}
+        with:
+          name: helmet-h27-phone-comparison
+          path: ach-mich-h6-captures/
+          if-no-files-found: warn
+          retention-days: 14
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs
