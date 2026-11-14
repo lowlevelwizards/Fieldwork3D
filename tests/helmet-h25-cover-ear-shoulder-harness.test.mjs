@@ -52,9 +52,9 @@ test('H29: fitted cover wraps the contour and conceals the molded edge',()=>{
    let found=false;
    for(let i=0;i<pos.count;i++)
     if(near(pos.getZ(i),z)&&
-       pos.getX(i)>=widths[index]+ACH_MICH_COVER_OFFSET+.065)
+       pos.getX(i)>=widths[index]+ACH_MICH_COVER_OFFSET+.035)
        found=true;
-   assert.ok(found,id+' cloth has a shaped outward ring over bulge');
+   assert.ok(found,id+' cloth clears actual lower hem without fabricated bulge');
   }
   // The main drape ends BELOW the bare shell lip, rather than at its
   // upper boundary where H24 left a visible stripe.
