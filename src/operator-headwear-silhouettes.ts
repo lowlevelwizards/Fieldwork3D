@@ -420,8 +420,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
    x:sign*4.68,y:4.35,z:.05,
    width:1.30,height:4.08,depth:5.10},
   {name:sign===-1?'ach-left-nape-return':'ach-right-nape-return',
-   x:sign*4.55,y:4.435,z:3.95,
-   width:1.05,height:3.77,depth:3.40}
+   x:sign*4.55,y:4.435,z:3.90,
+   width:1.05,height:3.77,depth:3.50}
  ])
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region
