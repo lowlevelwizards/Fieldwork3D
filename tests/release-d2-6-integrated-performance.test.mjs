@@ -6,6 +6,10 @@ import {resolveMovementFrame,sweptPairMayTouch}
  from '../src/breach-movement-authority.ts';
 import {advanceActorSightProgress}
  from '../src/breach-visual-acquisition.ts';
+import {forEachGroundSightCandidate}
+ from '../src/breach-ground-discovery.ts';
+import {groundView}
+ from '../src/breach-ground-view.ts';
 import {newSession,team,stepSession,toggling}
  from '../src/breach-game.ts';
 import {stage1ContactSite,stage1DoorSite,stage1Snapshot}
@@ -125,5 +129,26 @@ test('D2.6 clock, RNG, replay-visible tactical state remain deterministic',()=>{
     battles:s.battleEvents};
   };
   try{assert.deepEqual(run(),run());}finally{activateSite(null);}
+ }
+});
+
+test('D2.6.4 early far-cell bucket filter visits exactly the historical cells in order',()=>{
+ const bounds={minX:0,minY:0,maxX:1360,maxY:1420};
+ for(const heading of [0,Math.PI/5,Math.PI*.79,-1.3]){
+  for(const radius of [240,450,850,1850]){
+   const view=groundView(305,415,heading,radius);
+   for(let bucket=0;bucket<16;bucket++){
+    const before=[],after=[];
+    forEachGroundSightCandidate(view,bounds,20,(col,row,p)=>{
+     if(((col+row*3)&15)!==bucket)return;
+     before.push([col,row,p.x,p.y]);
+    });
+    forEachGroundSightCandidate(view,bounds,20,(col,row,p)=>{
+     after.push([col,row,p.x,p.y]);
+    },bucket);
+    assert.deepEqual(after,before,
+      'same ranked terrain cells, radius '+radius+' bucket '+bucket);
+   }
+  }
  }
 });
