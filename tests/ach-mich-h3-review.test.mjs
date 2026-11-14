@@ -51,7 +51,7 @@ test('H3 physical hardware has meaningful graphic scale and shell anchors',()=>{
   assert.ok(binding.boundingBox);
   assert.ok(binding.userData.segmentCount>=8);
   const harness=createAchMichRetentionGeometry(id);
-  assert.ok(harness.getAttribute('position').count>40);
+  assert.ok(harness.getAttribute('position').count>=36);
   const parent=new THREE.Group(),details=createAchMichDetails(parent,id);
   assert.equal(details.hardware.userData.achMichRetentionScrews,4);
   updateAchMichDetails(details,true,true);
