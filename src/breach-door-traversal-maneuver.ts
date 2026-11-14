@@ -1,3 +1,4 @@
+import {setTransientRoute} from './breach-route-transition.ts';
 /** D2 / fixed-action doorway muscle memory.
  * A crossing chooses ONE short physically swept maneuver when an actual
  * step fails against its identified hinged leaf. Three repeatable tip
@@ -135,7 +136,7 @@ export function preferShortPhysicalEntry(
  episode.maneuver='outside-leaf';
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
- a.nav=candidate.map(clone);
+ setTransientRoute(s,a,candidate.map(clone),'door-short-entry');
  a.retryRouteAt=0;
  a.recoveryAttempts=0;
  return true;
@@ -172,7 +173,7 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  episode.maneuver='outside-leaf';
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
- a.nav=path.map(clone);
+ setTransientRoute(s,a,path.map(clone),'door-rehearsal');
  a.autoSidestep=beginAutoSidestep(a.p,next,path[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
  a.retryRouteAt=0;a.recoveryAttempts=0;
@@ -209,7 +210,7 @@ export function recoverDoorApproachDrift(a:TeamActor,s:Session):boolean{
  e.maneuver='outside-leaf';
  e.waypoints=[clone(staging)];
  e.waypointIndex=0;
- a.nav=[clone(staging)];
+ setTransientRoute(s,a,[clone(staging)],'door-drift');
  a.retryRouteAt=0;a.recoveryAttempts=0;
  a.squeeze=false;a.squeezeTime=0;
  return true;
