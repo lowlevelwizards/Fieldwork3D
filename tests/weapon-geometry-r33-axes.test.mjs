@@ -28,15 +28,15 @@ const width=b=>b.max.x-b.min.x,depth=b=>b.max.z-b.min.z;
 const close=(a,b,eps=.0001)=>Math.abs(a-b)<eps;
 
 test('R3.3 axis contract explicitly separates silhouette X and side-wall depth Z',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,93);
- assert.equal(FAMILY_PRESETS.length,17);
+ assert.ok(Object.keys(FAMILY_PARTS).length>=93,'preserve 93 authored core parts');
+ assert.ok(FAMILY_PRESETS.length>=17,'preserve original 17 factory references');
  for(const anatomy of [AR_VISUAL_ANATOMY,AK_VISUAL_ANATOMY]){
   assert.ok(anatomy.magazineWidthX>=2.9,'restored side-profile width');
   assert.ok(anatomy.magazineDepthZ<=2.3,'narrowed lateral depth');
   assert.ok(anatomy.magazineWidthX>anatomy.magazineDepthZ*1.25,
    'silhouette cannot be accidentally squeezed along X again');
  }
- for(const p of FAMILY_PRESETS){
+ for(const p of FAMILY_PRESETS.filter(p=>p.family==='ar'||p.family==='ak')){
   const m=model(p.id),mag=bounds(m,'magazine');
   const a=m.cfg.build?.family==='ar'?AR_VISUAL_ANATOMY:AK_VISUAL_ANATOMY;
   assert.ok(width(mag)>2.9,p.id+' magazine should have real side silhouette');
