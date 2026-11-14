@@ -41,7 +41,13 @@ jobs:
       - name: Fixed-clock baseline plus changed-source domain regressions
         env:
           CI_BASE_REF: ${{ github.base_ref }}
-        run: node scripts/verification/ci-regression-plan.mjs --run
+        run: |
+          # Emit progress during expensive geometry/camouflage test modules.
+          # Keep the exact regression selection and failure exit code intact.
+          ( while sleep 12; do echo "CI regression tests still running"; done ) &
+          heartbeat=$!
+          trap 'kill "$heartbeat" 2>/dev/null || true' EXIT
+          node scripts/verification/ci-regression-plan.mjs --run
       - name: Verify extracted deterministic architecture boundaries
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production typecheck, build and build-stamp integrity
