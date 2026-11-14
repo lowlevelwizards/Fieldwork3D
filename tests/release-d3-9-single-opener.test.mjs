@@ -201,3 +201,19 @@ test('D3.9B2 opening footwork only activates for a real partial sweep',async()=>
  const s={seconds:0,doors:[full],operators:[rook],civilians:[]};
  assert.equal(selectGuidedOpeningStep(rook,s,full,p(150,237)),null);
 });
+
+test('D3.9B0 stale remote OPEN approach is retired without rewriting MOVE',async()=>{
+ const {syncDoorTraversalEpisode}=await import('../src/breach-door-traversal-episode.ts');
+ const d={id:'D11',a:p(260,374),b:p(224,374),kind:'hinged',
+  hinge:'a',swing:1,open:true,openFraction:1.55,pushTarget:1.55};
+ const a=actor('rook',0);
+ a.p=p(360,440); // ~135 from actual D11 center
+ a.doorTraversal={doorId:d.id,authoredOrderId:a.plan[0].id,
+  destination:{...a.plan[0].p},phase:'approach',maneuver:'direct',
+  lastPosition:{...a.p},lastProgressAt:1,lastTransitionAt:1,
+  approachSide:1,startedAt:0,waypoints:[],waypointIndex:0,
+  maneuverAttempts:0,nextManeuverAt:0,driftRecoveries:0,handContact:false};
+ syncDoorTraversalEpisode(a,[d],12);
+ assert.equal(a.doorTraversal,null);
+ assert.equal(a.plan[0].id,1);
+});
