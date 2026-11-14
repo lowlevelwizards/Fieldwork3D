@@ -86,3 +86,12 @@ test('D3.11B preview fallback reuses failed normal A* instead of repeating it',a
  const preview=readFileSync(new URL('../src/breach-route-cache.ts',import.meta.url),'utf8');
  assert.match(preview,/routeWithSqueezeIntel\(intel,snapped,to,normal\)/);
 });
+
+test('D3.11A excludes forensic offline probes from measured live route budget',()=>{
+ const audit=readFileSync(new URL('../scripts/audit-r7-squad-execution.mjs',import.meta.url),'utf8');
+ assert.match(audit,/if\(grid\)setRouteGridAuditObserver\(grid\.observe\);\s*try\{\s*stepSession\(session,1\/60\);\s*\}finally\{\s*if\(grid\)setRouteGridAuditObserver\(null\);/);
+ assert.ok(audit.indexOf('setRouteGridAuditObserver(null);',
+  audit.indexOf('stepSession(session,1/60)'))<
+  audit.indexOf('captureD32RecoveryFeasibility(a,session,'),
+  'offline body/blocker route probing must be excluded');
+});
