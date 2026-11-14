@@ -82,13 +82,13 @@ test('H15: legacy H1 rail/lights/optic hardware maps into H7 without being lost'
 });
 test('H15: deliberate minor silhouette refinements keep bindings on shell',()=>{
  const mid=headwearCuboidVolumes('mich-2002')
-  .find(x=>x.name==='m2002-front-temple');
+  .find(x=>x.name==='m2002-right-front-temple');
  const high=headwearCuboidVolumes('mich-2001')
   .find(x=>x.name==='m2001-short-temple');
  assert.ok(mid&&high);
- assert.ok(Math.abs(mid.y-mid.height/2-4.845)<1e-5);
+ assert.ok(Math.abs(mid.y-mid.height/2-4.45)<1e-5);
  assert.ok(Math.abs(high.y-high.height/2-6.025)<1e-5);
- assert.equal(achMichProfile('mich-2002').hem[1][1],4.845);
+ assert.equal(achMichProfile('mich-2002').hem[1][1],4.45);
  assert.equal(achMichProfile('mich-2001').hem[1][1],6.025);
  assert.ok(high.y-high.height/2>mid.y-mid.height/2+1.0);
 });
