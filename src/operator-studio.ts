@@ -1544,12 +1544,16 @@ function renderMaterials(){
    };
    const toggle=(section:HTMLElement,key:keyof HelmetFieldOptions,
     title:string,glyph:string,availability=true)=>{
-    const on=effective[key]===true;
+    const netLocksBand=key==='band'&&currentField.concealment==='net';
+    const on=netLocksBand||effective[key]===true;
+    availability=availability&&!netLocksBand;
     const reason=!availability?(
+     netLocksBand?'REQUIRED TO SECURE NET':
      historical?'NOT AVAILABLE ON PASGT':
      key==='bungees'?!currentField.rails?'REQUIRES SIDE RAILS':'REQUIRES NVG SHROUD':
      key==='camera'||key==='light'?'REQUIRES SIDE RAILS':
      key==='chemlight'?'CROWN SLOT OCCUPIED':
+     key==='battery'||key==='counterweight'?'REAR GOGGLES OCCUPY SLOT':
      key==='patches'?'REQUIRES VELCRO OR COVER':'UNAVAILABLE'):null;
     const b=makeButton(title,on,()=>changeField({[key]:!on}));
     b.classList.add('helmet-option-card');
@@ -1627,8 +1631,10 @@ function renderMaterials(){
     historical?'Conservative period field kit; modern electronic/counterweight systems are unavailable.':
     'Equipment uses actual mount slots: rear carriers and rail hardware can conflict.');
    toggle(addons,'strobe','IR STROBE','✦');
-   toggle(addons,'counterweight','COUNTERWEIGHT','▣',!historical);
-   toggle(addons,'battery','BATTERY PACK','▥',!historical);
+   toggle(addons,'counterweight','COUNTERWEIGHT','▣',
+    !historical&&currentField.goggles!=='rear');
+   toggle(addons,'battery','BATTERY PACK','▥',
+    !historical&&currentField.goggles!=='rear');
    toggle(addons,'light','HELMET LIGHT','◉',!historical&&currentField.rails);
    toggle(addons,'camera','CAMERA','◈',!historical&&currentField.rails);
    toggle(addons,'chemlight','CHEMLIGHT · TOP REAR','│',
