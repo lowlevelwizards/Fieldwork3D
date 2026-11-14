@@ -26,7 +26,7 @@ test('A1: effective appearance is deterministic and preserves every requested pr
 test('A1: field net automatically requires band without rewriting save',()=>{
  const input={shell:'ach',helmetSetup:{cover:'fitted'},helmetField:{band:false,concealment:'net'}};
  const e=resolveEffectiveHelmetAppearance(input);
- assert.equal(e.field.band,false,'net will be displayed using existing renderer rule');
+ assert.equal(e.field.band,true,'effective state includes the required net band');
  assert.ok(e.feedback.some(x=>x.key==='band'&&x.status==='required'));
  assert.equal(input.helmetField.band,false);
 });

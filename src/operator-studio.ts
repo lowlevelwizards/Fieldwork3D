@@ -26,9 +26,9 @@ import {requestedStudioRenderQuality,studioQualityLink}
  from './operator-studio-render-quality.ts';
 import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeVisorFit} from './operator-police-visor-policy.ts';
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
-import {readHelmetField,resolveHelmetField,HELMET_FIELD_COLORS,
+import {readHelmetField,HELMET_FIELD_COLORS,
  HELMET_FIELD_CONCEALMENT,HELMET_FIELD_TILTS,HELMET_FIELD_GOGGLES,
- HELMET_FIELD_SIDES,helmetFieldCompatibilityIssues,
+ HELMET_FIELD_SIDES,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
 import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
  pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
@@ -38,6 +38,7 @@ import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
  HELMET_HEADSET_MOUNT_OPTIONS,HELMET_REAR_OPTIONS,HELMET_LIGHT_OPTIONS,
  type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {applyHelmetPreset,helmetPresetChoices} from './operator-helmet-preset-catalog.ts';
+import {resolveEffectiveHelmetAppearance} from './operator-helmet-effective-appearance.ts';
 import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
  type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
 import {createHelmetAnatomyGuide,HELMET_ANATOMY_GUIDE_NAME}
@@ -1411,6 +1412,11 @@ function renderMaterials(){
   row('HEADWEAR APPEARANCE',
    'Choose headwear in ITEMS. Shell cut and accessories are cosmetic; equipped protection is unchanged.');
   const helmetShell=item==='high-cut-rails'?'high-cut':item;
+  const resolvedHelmet=resolveEffectiveHelmetAppearance({
+   shell:helmetShell,helmetSetup:w.helmetSetup,helmetField:w.helmetField,
+   pasgtDetails:w.pasgtDetails,headwearCamo:w.headwearCamo,
+   headset:w.styles.headset,eyewear:w.styles.eyewear,facewear:w.styles.facewear
+  });
   const simpleAchMich=['ach','mich-2001','mich-2002'].includes(helmetShell);
   if(isH1ModernHelmet(helmetShell)&&helmetShell!=='pasgt'&&!simpleAchMich){
    const presets=helmetPresetChoices(helmetShell);
@@ -1464,9 +1470,7 @@ function renderMaterials(){
    advanced.append(disclosure);
   }
   if(simpleAchMich){
-   const shellCover=resolveHelmetSetup(helmetShell,w.helmetSetup,{
-    hasLegacyPrint:!!w.headwearCamo
-   }).setup.cover!=='none';
+   const shellCover=resolvedHelmet.cover;
    const coverRow=row('ACH / MICH COVER',
     'One fitted fabric cover or an exposed painted shell. No legacy setup variants.');
    addSelect(coverRow,[['none','BARE SHELL'],['fitted','COVER']] as const,
@@ -1563,10 +1567,8 @@ function renderMaterials(){
   if(['ach','mich-2001','mich-2002','pasgt'].includes(helmetShell)){
    const historical=helmetShell==='pasgt';
    const currentField=readHelmetField(w.helmetField);
-   const fieldCovered=resolveHelmetSetup(helmetShell,w.helmetSetup,{
-    hasLegacyPrint:!!w.headwearCamo
-   }).setup.cover!=='none';
-   const effective=resolveHelmetField(helmetShell,currentField,{covered:fieldCovered});
+   const fieldCovered=resolvedHelmet.cover;
+   const effective=resolvedHelmet.field;
    const changeField=(changes:Partial<HelmetFieldOptions>)=>{
     const before=current();
     const carry=before.helmetField??{
@@ -1706,14 +1708,14 @@ function renderMaterials(){
    if(currentField.light)
     sidePicker('HELMET LIGHT MOUNT','lightSide',
      'Clip the forward-facing task light to the left or right rail.');
-   const compatibility=helmetFieldCompatibilityIssues(
-    helmetShell,currentField,fieldCovered);
+   const compatibility=resolvedHelmet.feedback;
    if(compatibility.length){
     const fit=rowOf('MOUNT COMPATIBILITY',
      'Stored options are preserved, but incompatible hardware is hidden until its mount is free.');
     const note=document.createElement('small');
     note.className='helmet-compatibility-notice';
-    note.textContent=compatibility.join(' ');
+    note.textContent=compatibility.map(x=>
+     x.status==='required'?x.reason:x.key.toUpperCase()+': '+x.reason).join(' · ');
     fit.append(note);
    }
    // No side picker: the modern chemlight is retained at the crown-rear.

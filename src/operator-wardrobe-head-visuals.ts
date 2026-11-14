@@ -12,14 +12,15 @@ import {createM1HelmetCoverLayers,updateM1HelmetCoverLayers,
 import type {HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {createModernHelmetCoverLayers,updateModernHelmetCoverLayers,
  type ModernHelmetCoverLayers} from './operator-helmet-cover-geometry.ts';
-import {resolveHelmetSetup,isH1ModernHelmet,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
-import {resolveHelmetField,resolveHelmetFieldColor,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
+import {isH1ModernHelmet,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
+import {resolveEffectiveHelmetAppearance} from './operator-helmet-effective-appearance.ts';
+import {resolveHelmetFieldColor,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
 import {createHelmetFieldLayers,updateHelmetFieldLayers,type HelmetFieldLayers} from './operator-helmet-field-visuals.ts';
 import {headwearSolidHex} from './operator-headwear-colors.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
 import {createPasgtCoverLayers,updatePasgtCoverLayers,type PasgtCoverLayers}
  from './operator-pasgt-cover-visuals.ts';
-import {readPasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
+import {type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import {createHelmetHardware,updateHelmetHardware,type HelmetHardwareLayers}
  from './operator-helmet-module-visuals.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
@@ -343,22 +344,18 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  // operator labs remain eager; switching a style builds it just once.
  layers.deferredHeadwear[assembly.headwear]?.();
  const shell=assembly.headwear==='high-cut-rails'?'high-cut':assembly.headwear;
- const fieldActive=!!helmetCover?.helmetField;
- const fieldState=resolveHelmetField(shell,helmetCover?.helmetField);
+ const helmet=resolveEffectiveHelmetAppearance({
+  shell,helmetSetup:helmetCover?.helmetSetup,helmetField:helmetCover?.helmetField,
+  pasgtDetails:helmetCover?.pasgtDetails,headwearCamo:helmetCover?.headwearCamo,
+  headset:assembly.headset,eyewear:assembly.eyewear,facewear:assembly.facewear
+ });
+ const fieldActive=helmet.fieldActive,fieldState=helmet.field;
  let railMountedHeadset=false;
  let shellCovered=false;
  if(shell==='pasgt'&&layers.pasgtCover){
-  const effective=resolveHelmetSetup('pasgt',helmetCover?.helmetSetup,{
-   hasLegacyPrint:!!helmetCover?.headwearCamo
-  });
-  shellCovered=effective.setup.cover!=='none';
+  shellCovered=helmet.cover;
   updatePasgtCoverLayers(layers.pasgtCover,effective.setup.cover!=='none',
-   fieldActive?{
-    ...readPasgtDetails(helmetCover?.pasgtDetails,helmetCover?.helmetSetup),
-    band:fieldState.band?'elastic':'none',
-    concealment:fieldState.concealment,
-    slits:fieldState.concealment!=='none'
-   }:readPasgtDetails(helmetCover?.pasgtDetails,helmetCover?.helmetSetup),
+   helmet.pasgt!,
    helmetCover?.headwearCamo,camoIdentity,coverRoll,
    !['half-mask','respirator-half','gas-gp5','gas-m17',
      'gas-m40','gas-m50','shemagh','bandana'].includes(assembly.facewear));
@@ -376,12 +373,8 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  }
  const modern=layers.modernCovers[assembly.headwear];
  if(modern&&isH1ModernHelmet(shell)){
-  const effective=resolveHelmetSetup(shell,helmetCover?.helmetSetup,{
-   hasLegacyPrint:!!helmetCover?.headwearCamo,
-   headset:assembly.headset,eyewear:assembly.eyewear,facewear
-  });
-  shellCovered=effective.setup.cover!=='none';
-  updateModernHelmetCoverLayers(modern,shell,effective.setup,
+  shellCovered=helmet.cover;
+  updateModernHelmetCoverLayers(modern,shell,helmet.setup,
    helmetCover?.headwearCamo,camoIdentity,coverRoll);
   const details=layers.achMich[assembly.headwear];
   if(details){
@@ -406,9 +399,9 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
      headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d):0x59654f);
   }
   const hardware=layers.modernHardware[assembly.headwear];
-  if(hardware)updateHelmetHardware(hardware,effective.setup,assembly.headset);
-  railMountedHeadset=effective.setup.headsetMount==='rail'&&
-   effective.setup.rails!=='none'&&
+  if(hardware)updateHelmetHardware(hardware,helmet.setup,assembly.headset);
+  railMountedHeadset=helmet.setup.headsetMount==='rail'&&
+   helmet.setup.rails!=='none'&&
    ['over-ear','boom-headset','helmet-ears'].includes(assembly.headset);
  }
  if(shell==='m1-steel')
@@ -445,7 +438,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  if(fieldLayers){
   updateHelmetFieldLayers(fieldLayers,fieldState,
    headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d,
-   shellCovered,assembly.eyewear);
+   shellCovered,assembly.eyewear,true);
   if(!fieldActive)for(const g of Object.values(fieldLayers.modules))g.visible=false;
   if(['gas-gp5','gas-m17','gas-m40','gas-m50'].includes(assembly.facewear))
    fieldLayers.modules.unfastened.visible=false;

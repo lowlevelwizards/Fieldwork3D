@@ -33,8 +33,10 @@ export function resolveEffectiveHelmetAppearance(
  const fieldActive=isFieldHelmet(shell)&&input.helmetField!==undefined;
  const requestedField=readHelmetField(input.helmetField);
  const field=resolveHelmetField(shell,requestedField,{covered:cover});
+ if(field.concealment==='net')field.band=true;
  const feedback:HelmetChoiceFeedback[]=[];
- for(const key of Object.keys(requestedField) as (keyof HelmetFieldOptions)[]){
+ for(const key of isFieldHelmet(shell)?
+  Object.keys(requestedField) as (keyof HelmetFieldOptions)[]:[]){
   const saved=requestedField[key],visible=field[key];
   if(saved===visible)continue;
   if(typeof saved==='boolean'&&saved===true&&visible===false||
