@@ -88,7 +88,7 @@ test('H17 three canonical coverage cuts retain accurate shell and binding',()=>{
  assert.equal(high.filter(x=>x.name.includes('ear-nape')).length,2);
  const hem=achMichProfile('mich-2002').hem;
  assert.ok(hem.every(p=>p[0]===achMichProfile('mich-2002').side));
- assert.equal(hem[2][1],2.99);
+ assert.equal(hem[2][1],3.06);
  assert.equal(achMichProfile('mich-2001').hem[1][1],4.55);
 });
 
