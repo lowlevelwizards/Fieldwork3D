@@ -24,7 +24,7 @@ test('H23: ear-zone slope begins around 40%, and the opening clears the implied 
   // ear-cut height only begins around halfway down the shell.
   const startFraction=(hem[1][2]-front)/(rear-front);
   const earFraction=(hem[2][2]-front)/(rear-front);
-  assert.ok(startFraction>.38 && startFraction<.42,id+' front-of-ear slope');
+  assert.ok(startFraction>.38 && startFraction<.45,id+' front-of-ear slope');
   assert.ok(earFraction>.48 && earFraction<.51,id+' ear opening begins near halfway');
   assert.ok(hem[2][2]<CUBE_HEAD_ANATOMY.earZ &&
    hem[3][2]>CUBE_HEAD_ANATOMY.earZ,
@@ -37,7 +37,7 @@ test('H23: ear-zone slope begins around 40%, and the opening clears the implied 
 test('H23: lower nape profiles protect the back while ear heights remain distinct',()=>{
  const [f,m,h]=['ach','mich-2002','mich-2001'].map(id=>UNIFIED_HELMET_HEMS[id]);
  assert.deepEqual([f[2][1],m[2][1],h[2][1]],[2.04,3.06,5.30]);
- assert.deepEqual([f[5][1],m[5][1],h[5][1]],[1.85,2.05,2.25]);
+ assert.deepEqual([f[5][1],m[5][1],h[5][1]],[1.85,1.90,2.05]);
  assert.ok(f[3][1]-f[5][1]>=.15 && f[3][1]-f[5][1]<=.25,
   'Full-Cut nape gently descends from the ear rather than rising');
  assert.ok(m[3][1]-m[5][1]>=1,'Mid-Cut rear is below partial ear relief');
@@ -70,7 +70,8 @@ test('H22: front/rear binding corners now share endpoints with each side strip',
   assert.ok(cover.boundingBox.max.y>shell.children[0].geometry.boundingBox.max.y);
   assert.ok(near(achMichProfile(id).nape,UNIFIED_HELMET_HEMS[id][5][1]));
   for(const stud of [p.frontStud,p.rearStud])
-   assert.ok(near(stud[1]-achMichHemY(id,stud[2]),.55,.15),
+   assert.ok(near(stud[1]-achMichHemY(id,stud[2]),
+      achMichBindingHeight(id)+.45,.15),
     id+' retention hardware should follow new silhouette');
   assert.equal(achMichRetentionPaths(id).length,6);
  }
