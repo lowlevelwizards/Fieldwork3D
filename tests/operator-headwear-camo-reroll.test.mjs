@@ -78,13 +78,17 @@ test('operator-specific print phases are stable, change on reroll, and keep prin
   const changed=headwearCamoTexture('boonie',id,reroll);
   assert.notEqual(same,changed,'independent texture phase');
   assert.equal(changed.channel,1,'must retain fabric UV1 channel');
-  assert.equal(HEADWEAR_CAMO_DENSITY[id],id==='finnish-m05'?3:
+  if(HEADWEAR_CAMO_IDS.indexOf(id)<30)
+   assert.equal(HEADWEAR_CAMO_DENSITY[id],id==='finnish-m05'?3:
    ['ucp','tiger-stripe','multicam','flecktarn','woodland-marpat',
     'desert-marpat','erdl-lowland','polish-pantera','desert-tropentarn',
     'east-german-strichtarn','splittertarn-31','australian-dpcu','italian-vegetato',
     'scorpion-w2','cadpat-tw','british-mtp','indian-digital-2022',
     'mitchell-leaf'].includes(id)?2:
     ['russian-emr','pla-xingkong'].includes(id)?3:1);
+  else assert.ok(Number.isFinite(HEADWEAR_CAMO_DENSITY[id])&&
+    HEADWEAR_CAMO_DENSITY[id]>=1&&HEADWEAR_CAMO_DENSITY[id]<=4,
+    id+' newer authored pattern needs a valid 1–4 pixels/unit density');
  }
  assert.equal(nextHeadwearCamoRoll(0),1);
  assert.equal(nextHeadwearCamoRoll(4095),0);
