@@ -72,6 +72,6 @@ test('H5: ACH central ear and deeper nape are substantial, not tiny stepped part
  assert.ok(ear&&nape);
  assert.ok(ear.height>=2.9&&ear.depth>=5.4);
  assert.ok(nape.height>=3.6&&nape.depth>=2.8);
- assert.ok(ear.y-ear.height/2>nape.y-nape.height/2+.5);
+ assert.ok(ear.y-ear.height/2<nape.y-nape.height/2-.15);
  assert.ok(nape.z-nape.depth/2<ear.z+ear.depth/2-.35);
 });
