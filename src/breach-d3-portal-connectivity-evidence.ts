@@ -12,10 +12,12 @@ const key=(col:number,row:number)=>col+','+row;
 export type D32ConnectivityResult={
  connected:boolean;exhausted:boolean;visited:number;
  startAnchors:number;routeSteps:number|null;first:Pt|null;last:Pt|null;
+ /** Only materialized on explicit offline witness request. */
+ path?:Pt[];
 };
 export function probeD32SampledConnectivity(
  from:Pt,to:Pt,doors:Door[],world:SessionWorldGeometry,
- step=4,includeLeaves=true,maxVisits=40000
+ step=4,includeLeaves=true,maxVisits=40000,witnessPath=false
 ):D32ConnectivityResult{
  const none=(anchors=0,visited=0,exhausted=true):D32ConnectivityResult=>
   ({connected:false,exhausted,visited,startAnchors:anchors,
@@ -37,7 +39,8 @@ export function probeD32SampledConnectivity(
  };
  if(!canStand(from)||!canStand(to))return none();
  if(canCross(from,to))return {connected:true,exhausted:true,
-   visited:0,startAnchors:1,routeSteps:1,first:{...to},last:{...to}};
+   visited:0,startAnchors:1,routeSteps:1,first:{...to},last:{...to},
+   ...(witnessPath?{path:[{...to}]}:{})};
  const minCol=Math.ceil(world.bounds.minX/step),
   maxCol=Math.floor(world.bounds.maxX/step);
  const minRow=Math.ceil(world.bounds.minY/step),
@@ -72,12 +75,19 @@ export function probeD32SampledConnectivity(
   if(gap(p,to)<=step*2.5&&canCross(p,to)){
    const terminal=key(cell.col,cell.row);
    let cursor:string|null=terminal,routeSteps=1,rootKey=terminal;
+   const reverse:Pt[]=witnessPath?[{...to}]:[];
    while(cursor!==null){
-    rootKey=cursor;routeSteps++;cursor=parents.get(cursor)??null;
+    rootKey=cursor;routeSteps++;
+    if(witnessPath){
+     const [col,row]=cursor.split(',').map(Number);
+     reverse.push(at(col,row));
+    }
+    cursor=parents.get(cursor)??null;
    }
    const [firstCol,firstRow]=rootKey.split(',').map(Number);
    return {connected:true,exhausted:true,visited,startAnchors:anchors,
-     routeSteps,first:at(firstCol,firstRow),last:{...to}};
+     routeSteps,first:at(firstCol,firstRow),last:{...to},
+     ...(witnessPath?{path:reverse.reverse()}:{})};
   }
   for(const [dx,dy] of directions){
    const col=cell.col+dx,row=cell.row+dy,id=key(col,row);
@@ -111,10 +121,39 @@ export function captureD32PortalConnectivity(
  const nearest=ranked[0];
  const probe=(testDoors:Door[])=>
   probeD32SampledConnectivity(from,to,testDoors,world,4,true);
+ const hypothetical=probeD32SampledConnectivity(from,to,
+  doors.filter(d=>!hypotheticallyActuable(d)),world,4,true,40000,true);
+ // The hypothetical path is NOT a runnable motor route. Record only which
+ // real closed leaves it crosses, in order, and the last fully swept-safe
+ // approach before its first contact. A closed door must still be opened
+ // physically by the existing interaction authority.
+ const sequence:{id:string;at:Pt;fraction:number}[]=[];
+ let safeApproach:Pt|null=null,firstBlockedDoorId:string|null=null;
+ let previous=from,actualPrefixSafe=true;
+ for(const point of hypothetical.path??[]){
+  if(actualPrefixSafe){
+   if(sweptBodyClear(previous,point,doors,OPERATOR_RADIUS,world))
+    safeApproach={...point};
+   else actualPrefixSafe=false;
+  }
+  for(const door of doors){
+   if(!hypotheticallyActuable(door)||sequence.some(s=>s.id===door.id))
+    continue;
+   if(!sweptBodyClear(previous,point,[door],OPERATOR_RADIUS,world)){
+    if(!firstBlockedDoorId)firstBlockedDoorId=door.id;
+    sequence.push({id:door.id,at:{...point},fraction:fraction(door)});
+   }
+  }
+  previous=point;
+ }
+ const {path:_witnessPath,...hypotheticalSummary}=hypothetical;
  return {resolution:4,
   physical:probe(doors),
   staticOnly:probeD32SampledConnectivity(from,to,doors,world,4,false),
-  withoutActuableLeaves:probe(doors.filter(d=>!hypotheticallyActuable(d))),
+  withoutActuableLeaves:hypotheticalSummary,
+  routePortalSequence:sequence,
+  firstBlockedDoorId,
+  safeApproachBeforeFirstContact:safeApproach,
   withoutStableOpenLeaves:probe(doors.filter(d=>!stableOpen(d))),
   withoutNearestLeaf:nearest?
    {omittedId:nearest.id,result:probe(doors.filter(d=>d!==nearest))}:null,
