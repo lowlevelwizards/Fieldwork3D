@@ -37,6 +37,7 @@ jobs:
             tests/release-d3-2-hinge-arbitrated-release.test.mjs \
             tests/release-d3-2-short-clear-handoff.test.mjs \
             tests/release-d3-3-portal-first-leg.test.mjs \
+            tests/release-d3-4-transient-rejoin.test.mjs \
             tests/release-d1-coherent-crossing.test.mjs \
             tests/release-d1-threshold-commitment.test.mjs \
             tests/passage-q2-coordinator.test.mjs \
