@@ -32,12 +32,8 @@ import {readHelmetField,HELMET_FIELD_COLORS,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
 import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
  pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
-import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
- HELMET_COVER_OPTIONS,HELMET_RAIL_OPTIONS,HELMET_SHROUD_OPTIONS,
- HELMET_NVG_OPTIONS,HELMET_SCRIM_OPTIONS,HELMET_RETENTION_OPTIONS,
- HELMET_HEADSET_MOUNT_OPTIONS,HELMET_REAR_OPTIONS,HELMET_LIGHT_OPTIONS,
- type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
-import {applyHelmetPreset,helmetPresetChoices} from './operator-helmet-preset-catalog.ts';
+import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup}
+ from './operator-helmet-setup-policy.ts';
 import {resolveEffectiveHelmetAppearance} from './operator-helmet-effective-appearance.ts';
 import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
  type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
@@ -1411,64 +1407,13 @@ function renderMaterials(){
   }
   row('HEADWEAR APPEARANCE',
    'Choose headwear in ITEMS. Shell cut and accessories are cosmetic; equipped protection is unchanged.');
-  const helmetShell=item==='high-cut-rails'?'high-cut':item;
+  const helmetShell=item;
   const resolvedHelmet=resolveEffectiveHelmetAppearance({
    shell:helmetShell,helmetSetup:w.helmetSetup,helmetField:w.helmetField,
    pasgtDetails:w.pasgtDetails,headwearCamo:w.headwearCamo,
    headset:w.styles.headset,eyewear:w.styles.eyewear,facewear:w.styles.facewear
   });
   const simpleAchMich=['ach','mich-2001','mich-2002'].includes(helmetShell);
-  if(isH1ModernHelmet(helmetShell)&&helmetShell!=='pasgt'&&!simpleAchMich){
-   const presets=helmetPresetChoices(helmetShell);
-   if(presets.length){
-    const quick=row('QUICK HELMET SETUPS','Reference-led modular cosmetics; each setup keeps the equipped protection unchanged.');
-    for(const preset of presets)
-     quick.append(makeButton(preset.label,
-      w.helmetSetup?.presetOrigin===preset.id,
-      ()=>changeWardrobe(applyHelmetPreset(current(),helmetShell,preset.id))));
-   }
-   const setup=readHelmetSetup(w.helmetSetup);
-   const advanced=row('HELMET COMPONENTS','Independent cover, rail, optics, communications and retention. Saved choices survive incompatible combinations.');
-   const disclosure=document.createElement('details');
-   const summary=document.createElement('summary');
-   summary.textContent='ADVANCED HELMET CONFIGURATION';
-   disclosure.append(summary);
-   const option=(label:string,key:keyof HelmetSetupV1,choices:readonly string[])=>{
-    const line=document.createElement('div');line.className='material-group';
-    const heading=document.createElement('label');heading.textContent=label;
-    line.append(heading);
-    addSelect(line,choices.map(x=>[x,x.replaceAll('-',' ').toUpperCase()] as const),
-     String(setup[key]),value=>{
-      const before=current();
-      changeWardrobe({...before,helmetSetup:readHelmetSetup({
-       ...before.helmetSetup,[key]:value,presetOrigin:undefined})});
-     });
-    disclosure.append(line);
-   };
-   option('COVER','cover',HELMET_COVER_OPTIONS);
-   option('RETAINING BAND','band',['none','elastic']);
-   option('NET / SCRIM','scrim',HELMET_SCRIM_OPTIONS);
-   option('CHIN / NAPE RETENTION','retention',HELMET_RETENTION_OPTIONS);
-   option('FRONT SHROUD','shroud',HELMET_SHROUD_OPTIONS);
-   option('SIDE RAILS','rails',HELMET_RAIL_OPTIONS);
-   option('NIGHT VISION','nvg',HELMET_NVG_OPTIONS);
-   option('HEADSET MOUNT','headsetMount',HELMET_HEADSET_MOUNT_OPTIONS);
-   option('REAR MODULE','rearModule',HELMET_REAR_OPTIONS);
-   option('TASK LIGHT','light',HELMET_LIGHT_OPTIONS);
-   disclosure.append(makeButton('REAR STROBE: '+(setup.rearStrobe?'ON':'OFF'),
-    setup.rearStrobe,()=>changeWardrobe({...current(),helmetSetup:readHelmetSetup({
-     ...current().helmetSetup,rearStrobe:!setup.rearStrobe,presetOrigin:undefined})})));
-   const effective=resolveHelmetSetup(helmetShell,w.helmetSetup,{
-    hasLegacyPrint:!!w.headwearCamo,
-    headset:w.styles.headset,eyewear:w.styles.eyewear,facewear:w.styles.facewear
-   });
-   if(effective.suppressed.length){
-    const note=document.createElement('small');
-    note.textContent='FIT RESTRICTIONS: '+effective.suppressed.join(' · ');
-    disclosure.append(note);
-   }
-   advanced.append(disclosure);
-  }
   if(simpleAchMich){
    const shellCover=resolvedHelmet.cover;
    const coverRow=row('ACH / MICH COVER',
@@ -1480,7 +1425,7 @@ function renderMaterials(){
      })
     }));
   }
-  const solids=headwearColorChoices(item==='high-cut-rails'?'high-cut':item);
+  const solids=headwearColorChoices(item);
   const prints=headwearCamoChoices(item);
   const group=row(item==='pasgt'?'PASGT SHELL COLOR':
    simpleAchMich?'ACH / MICH SHELL COLOR':'HEADGEAR FINISH',

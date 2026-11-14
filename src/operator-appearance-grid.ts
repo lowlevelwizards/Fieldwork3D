@@ -29,7 +29,6 @@ import {initialWardrobe,resolvedWardrobe,
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
-import {isBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
 
 export const APPEARANCE_GROUP_LABELS:Readonly<Record<WardrobeSlot,string>>={
  headwear:'HEAD',facewear:'FACE',eyewear:'EYES',headset:'COMMS',
@@ -57,10 +56,8 @@ const focus=(slot:WardrobeSlot)=>{
 };
 export function activeAppearanceItems(slot:WardrobeSlot):readonly WardrobeItem[]{
  const items=wardrobeItemsForSlot(slot);
- // One illustrated ballistic item card; full/mid/high live at the top
- // of HEAD > DETAILS. Do not purge legacy IDs used in stored appearances.
- return slot==='headwear'?
-  items.filter(item=>!isBallisticHelmet(item.id)||item.id==='ach'):items;
+ // All registered items are real, selectable models.
+ return items;
 }
 export function appearanceItemAvailable(kit:EquipmentLoadout,w:WardrobeOptions,
  slot:WardrobeSlot,id:string):boolean{

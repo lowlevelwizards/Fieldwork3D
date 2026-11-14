@@ -15,8 +15,7 @@ import {createCamoBrowseControls,createCamoFavoriteButton,
  from './operator-material-browser-ui.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 
-export const headwearAppearanceModel=(id:string)=>
- id==='high-cut-rails'?'high-cut':id;
+export const headwearAppearanceModel=(id:string)=>id;
 
 export function selectHeadwearSolid(w:WardrobeOptions,model:string,
  requested:unknown):WardrobeOptions{

@@ -5,7 +5,7 @@
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
-import {canonicalBallisticHelmet,isLegacyBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
+import {canonicalBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
 import {readPasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import {isPoliceVisorPosition,isPoliceVisorTint,isPoliceVisorFrame,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {isM56Details,isM56Net,type M56Options} from './operator-ddr-m56-policy.ts';
@@ -44,18 +44,14 @@ function add(slot:WardrobeSlot,family:string,records:readonly (readonly [string,
  for(const [id,name] of records)ITEMS.push({id,slot,name,family,style:id,onlyWith});
 }
 add('headwear','bare',[['bare','Uncovered']]);
-// The wardrobe registry also accepts archived models for saved looks,
-// loadouts and reference kits. Operator Studio filters modern duplicates to
-// one Ballistic Helmet card with Full/Mid/High in its Details tab.
+// Register only actually supported headwear. Ballistic cuts live in Details.
 add('headwear','soft',[
  ['patrol-cap','Patrol cap'],['beanie','Beanie'],['boonie','Boonie hat'],
  ['beret','Military beret']
 ]);
 add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
- ['ach','Ballistic Helmet'],['high-cut','High-cut helmet'],
- ['mich-2001','MICH 2001 high-cut'],['mich-2002','MICH 2002 gunfighter'],
- ['fast-sf','FAST SF high-cut'],['fast-xp-mid','FAST XP mid-cut'],
+ ['ach','Ballistic Helmet'],['mich-2001','MICH High Cut'],['mich-2002','MICH Mid Cut'],
  ['m1-steel','US M1 steel helmet'],['ddr-m56','East German M56 steel helmet'],
  ['police-helmet','Protective police helmet']
 ]);
@@ -264,8 +260,6 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
     slot==='eyewear'&&['clear-glasses','sunglasses','safety-glasses',
      'goggles-down','goggles-up'].includes(id??'')?
      migrateD2Eyewear(id).style:id;
-   // H15: map retired generic/FAST headwear into the developed MICH/ACH
-    // shells while retaining independent cover, palette and accessory data.
     const mapped=slot==='headwear'&&typeof upgraded==='string'?
      canonicalBallisticHelmet(upgraded):upgraded;
     if(typeof mapped==='string'&&wardrobeItem(slot,mapped))
@@ -330,29 +324,6 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   result.helmetSetup=readHelmetSetup(v.helmetSetup);
  if(v.helmetField&&typeof v.helmetField==='object')
   result.helmetField=readHelmetField(v.helmetField);
- // Original FAST/high-cut models stored cosmetic devices in H1 helmetSetup.
- // ACH/MICH deliberately uses the H7 helmetField layer. Carry every
- // representable device over once, unless a newer field selection exists.
- // Never delete or alter the original setup (presets may inspect it).
- const former=v.styles?.headwear;
- if(typeof former==='string'&&isLegacyBallisticHelmet(former)&&
-    v.helmetSetup&&typeof v.helmetSetup==='object'&&!v.helmetField){
-  const old=readHelmetSetup(v.helmetSetup),field=readHelmetField(undefined);
-  field.rails=old.rails!=='none';
-  field.shroud=old.shroud!=='none';
-  field.band=old.band==='elastic';
-  field.concealment=old.scrim==='net'?'net':
-   old.scrim==='field'?'scrim':old.scrim==='sparse'?'scrim':'none';
-  field.light=old.light!=='none';
-  field.lightSide=old.light==='left'?'left':'right';
-  field.counterweight=old.rearModule==='counterweight';
-  field.battery=old.rearModule==='battery';
-  field.strobe=old.rearStrobe;
-  // Retain mutually compatible cosmetic mounts; H7 resolves any conflicts.
-  if(field.rails||field.shroud||field.band||field.light||
-     field.counterweight||field.battery||field.strobe||
-     field.concealment!=='none')result.helmetField=field;
- }
  if(v.pasgtDetails&&typeof v.pasgtDetails==='object')
   result.pasgtDetails=readPasgtDetails(v.pasgtDetails,v.helmetSetup);
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
@@ -468,8 +439,7 @@ export function resolvedWardrobe(wardrobe:WardrobeOptions|undefined,
   if(desired.headset==='helmet-ears')desired.headset='comms-none';
  }
  if(desired.headset==='helmet-ears'&&
-   !['ach','high-cut','high-cut-rails','bump-helmet',
-     'pasgt','mich-2001','mich-2002','fast-sf','fast-xp-mid'].includes(desired.headwear))
+   !['ach','bump-helmet','pasgt','mich-2001','mich-2002'].includes(desired.headwear))
   desired.headset='comms-none';
  choose('armorStyle',slots.armor==='armor-carrier'?
   ['plate-slick','plate-jpc','plate-standard','plate-heavy','plate-legacy']:
