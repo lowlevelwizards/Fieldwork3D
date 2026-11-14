@@ -1,4 +1,6 @@
 import {setTransientRoute} from './breach-route-transition.ts';
+import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
+import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 /** D2 / fixed-action doorway muscle memory.
  * A crossing chooses ONE short physically swept maneuver when an actual
  * step fails against its identified hinged leaf. Three repeatable tip
@@ -178,6 +180,59 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
   a.heading,episode.destination,s.seconds,canAutoSidestep);
  a.retryRouteAt=0;a.recoveryAttempts=0;
  a.squeeze=false;a.squeezeTime=0;
+ return true;
+}
+/** D3.11D: ONLY after actual body-vs-leaf escape, ask whether the
+ * established tiny physical maneuver can connect all the way to the
+ * ORIGINAL MOVE destination. A portal-only proposal is NOT a valid route
+ * replacement: continue with the old known-map recovery instead.
+ *
+ * This never grants permission to move or skip a door: the rehearsed legs
+ * are full-body swept now, the first intel-tail join is swept against the
+ * actual world, and the normal motor checks the entire route as it walks.
+ * On failure only a cold-probe timestamp changes, not maneuver ownership.
+ */
+export function tryGoalCompleteDoorHandoffAfterEscape(
+ a:TeamActor,s:Session,goal:Pt
+):boolean{
+ const e=a.doorTraversal,order=a.plan[0];
+ if(a.side!=='blue'||!a.squeeze||!e||!order||
+    order.kind!=='move'||e.authoredOrderId!==order.id||
+    distance(goal,order.p)>.5||e.phase==='release'||
+    (e.maneuver==='outside-leaf'&&e.waypoints.length>0)||
+    s.seconds<e.nextManeuverAt||
+    s.seconds<(e.lastShortEntryProbeAt??-10)+1.25)return false;
+ const door=s.doors.find(d=>d.id===e.doorId);
+ if(!door||!door.open||(door.openFraction??0)<.82||
+    Math.abs(door.angularVelocity??0)>.16||
+    distance(a.p,doorCenter(door))>65||
+    e.maneuverAttempts>=4)return false;
+ const leafChanged=Math.abs((door.openFraction??0)-
+  e.selectedLeafFraction)>.14;
+ if(e.maneuverAttempts>=2&&!leafChanged)return false;
+ e.lastShortEntryProbeAt=s.seconds;
+ const world=sessionWorldGeometry(s);
+ const clear=(from:Pt,to:Pt)=>
+  sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+ const stage=rehearseDoorLeafBypass(a.p,goal,door,clear);
+ if(!stage.length)return false;
+ const end=stage[stage.length-1];
+ const tail=distance(end,goal)<=3?[]:
+   routeWithSqueezeIntel(s.intel,end,goal);
+ const route=completePortalRouteToAuthoredGoal(stage,goal,tail,clear);
+ if(!route.length)return false;
+ // Only a fully continuous route toward the actual original goal is
+ // permitted to replace the route being recovered after the real escape.
+ e.maneuverAttempts++;
+ e.selectedLeafFraction=door.openFraction??0;
+ e.nextManeuverAt=s.seconds+1.5;
+ e.waypoints=route.map(clone);
+ e.waypointIndex=0;
+ e.maneuver='outside-leaf';
+ e.phase='clear-leaf';
+ e.lastTransitionAt=s.seconds;
+ setTransientRoute(s,a,route,'door-rehearsal');
+ a.retryRouteAt=0;a.recoveryAttempts=0;
  return true;
 }
 /** A truly wayward approach can be recovered by one deterministic move
