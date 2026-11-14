@@ -71,7 +71,9 @@ test('far sight is graded inside actual LOS rather than fully erased',()=>{
   assert.ok(fills.every(f=>f.mode==='destination-out'&&gradients.includes(f.style)));
   for(const gradient of gradients){
    assert.equal(gradient.stops[0].color,'rgba(255,255,255,1)');
-   assert.equal(gradient.stops.at(-1).color,'rgba(255,255,255,.38)');
+   assert.equal(gradient.stops.at(-1).color,'rgba(255,255,255,.08)');
+   assert.ok(gradient.radii[5]<=600,
+    'very large generated sites must not stretch fully clear ground cones');
    assert.ok(gradient.radii[5]>gradient.radii[2]);
   }
  }finally{activateSite(null);}
