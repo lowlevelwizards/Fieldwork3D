@@ -285,6 +285,16 @@ export function route(from:Pt,to:Pt,
   if(broad.length||distance(from,to)>245)return broad;
   return routeGrid(from,to,canStand,GRID/2,3800,76,true,repairBlockedStart);
 }
+/** Cold D3 portal recovery only. The normal 16-unit A* deliberately
+ * bounds its 8-unit fallback to a nearby corridor; that can miss a legal
+ * long walk to an alternate door outside the local padding. This ONE
+ * bounded 8-unit search is never used for routine route acquisition or
+ * inside a frame loop. The caller must still sweep every live step.
+ */
+export function routeExtendedPortalRecovery(from:Pt,to:Pt,
+ canStand:(p:Pt)=>boolean):Pt[]{
+ return routeGrid(from,to,canStand,GRID/2,8000,Infinity,true,true);
+}
 function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   grid:number,budget:number,padding=Infinity,
   alternateGoal=false,repairBlockedStart=false):Pt[]{
