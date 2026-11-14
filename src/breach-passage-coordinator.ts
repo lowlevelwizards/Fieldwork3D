@@ -205,7 +205,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
     dist(a.p,ctx.centers.get(door.id)!)>QUEUE_ENTRY_RADIUS||
     !ready({actor:a,slot},ctx))return free;
  const forward=forwardTravel(a.p,move,door,slot.fromSide);
- // Q7: a stable, wide-open doorway is no longer a turn-taking
+ // Q7: a stably traversable doorway is no longer a turn-taking
  // checkpoint. An immutable GO-time rank or expired opposing-side lease
  // must not hold an operator behind an EMPTY opening. Check only nearby
  // actual bodies against this fixed-tick stride; the existing swept motor
@@ -214,7 +214,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  // the step or while the hinge is still opening. This replaces (rather
  // than adds to) the more expensive rank + owner scans on clear passages.
  if(forward>.025&&door.open&&
-    (door.openFraction??0)>=.9&&
+    (door.openFraction??0)>=.72&&
     Math.abs(door.angularVelocity??0)<.16){
   let blockedByBody=false;
   for(const peer of s.operators){
