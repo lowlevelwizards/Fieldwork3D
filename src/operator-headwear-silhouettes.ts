@@ -447,8 +447,8 @@ const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2002-brow',x:0,y:5.54,z:-4.89,width:10.06,height:1.97,depth:1.62},
  {name:'m2002-nape',x:0,y:4.94,z:4.83,width:10.06,height:3.15,depth:1.78},
  ...([-1,1] as const).flatMap(sign=>[
-  {name:'m2002-front-temple',x:sign*4.56,y:5.70,z:-3.18,
-   width:1.10,height:1.97,depth:3.3},
+  {name:'m2002-front-temple',x:sign*4.56,y:5.77,z:-3.18,
+   width:1.10,height:1.85,depth:3.3},
   {name:'m2002-rear-return',x:sign*4.58,y:5.02,z:3.70,
    width:1.07,height:2.10,depth:3.50}
  ])
@@ -458,8 +458,8 @@ const MICH_2001_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2001-brow',x:0,y:5.45,z:-4.95,width:10.03,height:1.80,depth:1.52},
  {name:'m2001-rear-coverage',x:0,y:4.87,z:4.50,width:10.03,height:3.08,depth:2.32},
  ...([-1,1] as const).map(sign=>({
-  name:'m2001-short-temple',x:sign*4.54,y:6.57,z:-3.28,
-  width:1.05,height:1.25,depth:2.64
+  name:'m2001-short-temple',x:sign*4.54,y:6.61,z:-3.28,
+  width:1.05,height:1.17,depth:2.64
  }))
 ];
 const FAST_SF_CUBOIDS:readonly HeadwearCuboid[]=[
