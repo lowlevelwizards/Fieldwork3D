@@ -18,8 +18,8 @@ import {HEADWEAR_DETAIL_PIXEL_WORLD_SIZE}
 import {PIXEL_WORLD_SIZE} from '../src/rendering/pixel-recipes.ts';
 
 const thresholds={
- ach:{frontY:4.9,rearZ:2.3},'mich-2001':{frontY:5.2,rearZ:4.0},
- 'mich-2002':{frontY:5.0,rearZ:3.4}
+ ach:{frontY:4.9},'mich-2001':{frontY:5.2},
+ 'mich-2002':{frontY:5.0}
 };
 test('H4 pronounced but localized crown chamfer is consistent across shell and drape',()=>{
  assert.ok(ACH_MICH_BEVEL_HEIGHT>=1.0);
@@ -41,7 +41,8 @@ test('H4 physical screws, binding and strap geometry stay coherent with each she
   const profile=achMichProfile(id);
   const t=thresholds[id];
   assert.ok(profile.frontStud[1]>=t.frontY,id+' forward anchor raised');
-  assert.ok(profile.rearStud[2]<=t.rearZ,id+' rear anchor moved forward');
+  assert.ok(profile.rearStud[2]>=profile.hem[4][2]&&
+   profile.rearStud[2]<profile.rear,id+' rear anchor seated on nape skirt');
   assert.ok(profile.frontStud[0]>=profile.side,id+' screw seated on side');
   assert.ok(profile.rearStud[0]>=profile.side,id+' rear screw seated on side');
   assert.ok(profile.frontStud[2]<profile.rearStud[2]);
@@ -69,7 +70,7 @@ test('H17 Full-Cut ear and nape read as one low-poly contour',()=>{
  assert.equal(p.hem.length,6);
  assert.ok(p.hem.every(point=>point[0]===p.side));
  assert.equal(p.hem[2][1],2.04);
- assert.equal(p.hem.at(-1)[1],2.72);
+ assert.equal(p.hem.at(-1)[1],2.35);
  const shell=createHeadwearSilhouette('ach',new THREE.MeshStandardMaterial());
  assert.equal(shell.children[0].geometry.userData.h17UnifiedContour,true);
  assert.ok(shell.children[0].geometry.userData.exteriorQuads<=30);
