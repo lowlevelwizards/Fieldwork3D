@@ -1613,13 +1613,13 @@ function renderMaterials(){
    picker('RETENTION WEBBING COLOR','webbingColor',
     'Auto matches period/shell family. Choose olive, tan or black to override.');
    const structure=rowOf('HELMET STRUCTURE',
-    historical?'Optional period NVG bracket; modern rails, bungees and Velcro are intentionally excluded.':
+    historical?'Original PASGT retains its deep shell and strap-on NVG bracket. Rails, bungees, Velcro and electronics are optional later RETROFITS, not standard issue.':
     'Independent modular mounting pieces; none change real equipment or protection.');
    toggle(structure,'shroud','NVG SHROUD','▣');
-   toggle(structure,'rails','SIDE RAILS','▤',!historical);
+   toggle(structure,'rails',historical?'RETROFIT SIDE RAILS':'SIDE RAILS','▤');
    toggle(structure,'bungees','BUNGEES','⌢',
-    !historical&&currentField.rails&&currentField.shroud);
-   toggle(structure,'velcro','VELCRO PANELS','▦',!historical);
+    currentField.rails&&currentField.shroud);
+   toggle(structure,'velcro','VELCRO PANELS','▦');
    const eyewear=rowOf('GOGGLE STOWAGE',
     'On eyes, strapped over the helmet brow, or rear-stowed. The sleeve is visible only when stowed.');
    addSelect(eyewear,HELMET_FIELD_GOGGLES.map(c=>[c,
@@ -1628,15 +1628,15 @@ function renderMaterials(){
    if(currentField.goggles==='front'||currentField.goggles==='rear')
     toggle(eyewear,'goggleSleeve','FABRIC SLEEVE','▥');
    const addons=rowOf('HELMET ADD-ONS',
-    historical?'Conservative period field kit; modern electronic/counterweight systems are unavailable.':
+    historical?'Optional modernized PASGT field accessories: rail-mounted devices require retrofit rails; rear pouches and adhesive tabs are late additions.':
     'Equipment uses actual mount slots: rear carriers and rail hardware can conflict.');
    toggle(addons,'strobe','IR STROBE','✦');
    toggle(addons,'counterweight','COUNTERWEIGHT','▣',
-    !historical&&currentField.goggles!=='rear');
+    currentField.goggles!=='rear');
    toggle(addons,'battery','BATTERY PACK','▥',
     !historical&&currentField.goggles!=='rear');
-   toggle(addons,'light','HELMET LIGHT','◉',!historical&&currentField.rails);
-   toggle(addons,'camera','CAMERA','◈',!historical&&currentField.rails);
+   toggle(addons,'light','HELMET LIGHT','◉',currentField.rails);
+   toggle(addons,'camera','CAMERA','◈',currentField.rails);
    toggle(addons,'chemlight','CHEMLIGHT · TOP REAR','│',
     historical||!effective.strobe);
    toggle(addons,'patches','PATCH / IDENTIFIER','▤',
@@ -1648,10 +1648,10 @@ function renderMaterials(){
      [c,c==='left'?'LEFT SIDE':'RIGHT SIDE'] as const),
      currentField[key],v=>changeField({[key]:v}));
    };
-   if(!historical&&currentField.camera)
+   if(currentField.camera)
     sidePicker('CAMERA MOUNT','cameraSide',
      'Forward-facing camera on the left or right helmet side.');
-   if(!historical&&currentField.light)
+   if(currentField.light)
     sidePicker('HELMET LIGHT MOUNT','lightSide',
      'Clip the forward-facing task light to the left or right rail.');
    const compatibility=helmetFieldCompatibilityIssues(
