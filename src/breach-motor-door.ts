@@ -52,8 +52,14 @@ export function handleMotorDoor(
        !nearMotorDoorStroke(door,a.p,a.p,56))continue;
     if(door.open&&(door.openFraction??0)>=.72)continue;
     if(!doorReachable(a.p,door))continue;
-    if(!doorBlocksSegment(door,{a:a.p,b:next})&&
-       !doorBlocksSegment(door,{a:a.p,b:p}))continue;
+    // The actor's CURRENT collision-checked route leg owns which portal
+    // is being approached. A distant final goal may lie directly behind
+    // a nearby leaf even while nav is already detouring around that leaf.
+    // Treating that imaginary straight line as a second opening request
+    // paused operators indefinitely in generated houses/townhouses.
+    // If the current leg misses a tangent leaf, the real body-contact
+    // fallback below still tests it at the actual shoulder envelope.
+    if(!doorBlocksSegment(door,{a:a.p,b:next}))continue;
     const distance=pointToSegment(a.p,doorLeafSegment(door));
     if(distance<closest||
        distance===closest&&doorAhead&&door.id.localeCompare(doorAhead.id)<0){
