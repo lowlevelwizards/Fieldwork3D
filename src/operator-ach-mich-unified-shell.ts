@@ -45,37 +45,34 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  */
 export const UNIFIED_HELMET_EAR_SHOULDERS:Readonly<
  Record<UnifiedCut,readonly number[]>>={
- ach:[5.075,5.075,5.67,5.67,5.19,5.075],
- 'mich-2002':[5.03,5.03,5.56,5.56,5.15,5.03],
+ ach:[5.075,5.075,5.92,5.92,5.125,5.075],
+ 'mich-2002':[5.03,5.03,5.78,5.78,5.08,5.03],
  'mich-2001':[5.015,5.015,5.015,5.015,5.015,5.015]
 };
-export const ACH_MICH_EAR_SHOULDER_FRACTION=.52;
-// Two edges of ONE broad protective face: short outward bevel, long wall,
-// compact inward return. Fractions are measured toward the hem at each station.
-export const ACH_MICH_EAR_FACE_TOP_FRACTION=.66;
-export const ACH_MICH_EAR_FACE_BOTTOM_FRACTION=.90;
-/** Ear-side planes are referenced to the central ear, NOT individually
- * stretched over each hem height. The old station-relative calculation
- * lifted the leading brow/ear junction into a pointed upward spike.
- * Local clamps keep front edges inside the actual brow/nape perimeter.
+// H28: one exaggerated lower-side face, two narrowly spaced transition
+// levels, and the existing hem. Values are relative to the central ear
+// height, NOT independently stretched at the temple and nape stations.
+export const ACH_MICH_EAR_SHOULDER_FRACTION=.52; // compatibility reference
+export const ACH_MICH_EAR_FACE_TOP_FRACTION=.62;
+export const ACH_MICH_EAR_FACE_BOTTOM_FRACTION=.93;
+export const ACH_MICH_EAR_UPPER_BEVEL_HEIGHT=.17;
+/** A single ear cross-section contract shared by shell and fitted cloth.
+ * No special leading-temple spike clamp, per-cut patch or stacked plate.
+ * The local hem establishes a small safety margin at the brow and nape,
+ * while the central ear establishes the main horizontal shape breaks.
  */
 export function unifiedHelmetEarVerticalProfile(
- cut:UnifiedCut,shoulderY:number,hemY:number,z:number){
- const earHem=UNIFIED_HELMET_HEMS[cut][2][1];
- const nominalTop=shoulderY+(earHem-shoulderY)*ACH_MICH_EAR_FACE_TOP_FRACTION;
- const nominalBottom=shoulderY+(earHem-shoulderY)*ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
- const faceBottomY=Math.max(hemY+.08,nominalBottom);
- const faceTopY=Math.max(hemY+.24,nominalTop,faceBottomY+.16);
- const normalOnsetY=Math.max(
-  shoulderY+(hemY-shoulderY)*ACH_MICH_EAR_SHOULDER_FRACTION,
-  faceTopY+.28
- );
- // The leading brow-to-ear station has NO raised ear bevel. Its former
- // midwall onset created the isolated triangular fin despite a low
- // ear-face top. The bevel acquires height only inside the ear region.
- const leading=cut!=='mich-2001'&&
-  z<=UNIFIED_HELMET_HEMS[cut][1][2]+.0001;
- const onsetY=leading?faceTopY+.08:normalOnsetY;
+ cut:UnifiedCut,shoulderY:number,hemY:number,_z?:number){
+ const centralHemY=UNIFIED_HELMET_HEMS[cut][2][1];
+ const nominalTop=shoulderY+
+  (centralHemY-shoulderY)*ACH_MICH_EAR_FACE_TOP_FRACTION;
+ const nominalBottom=shoulderY+
+  (centralHemY-shoulderY)*ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
+ const faceBottomY=Math.max(nominalBottom,hemY+.10);
+ const faceTopY=Math.max(nominalTop,hemY+.28,faceBottomY+.18);
+ // One short shoulder-to-ear transition at every station. At the brow
+ // there is no lateral bulge, so its edge cannot form a rising fin.
+ const onsetY=faceTopY+ACH_MICH_EAR_UPPER_BEVEL_HEIGHT;
  return {onsetY,faceTopY,faceBottomY};
 }
 
@@ -142,8 +139,8 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
    v(x,shoulderY,shoulderRear),v(x,shoulderY,front),v(sign,1,0),0,0,.97);
   for(let i=1;i<hem.length;i++){
    const a=hem[i-1],b=hem[i];
-   // Keep the entire upper half at the original side width, then
-   // expand only below this onset. No chamfer-to-ear triangular panel.
+   // The broad upper shell remains unbroken; the ear face expands only
+   // in the short last bevel. No extra leading-temple fin band.
    const onset=(point:ShellPoint):V=>[
     sign*s,
     unifiedHelmetEarVerticalProfile(cut,shoulderY,point[1],point[2]).onsetY,
@@ -153,9 +150,8 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
    quad(v(x,shoulderY,upperZ(a[2])),v(x,shoulderY,upperZ(b[2])),
     onsetB,onsetA,v(sign,0,0),0,1,.96);
    if(cut!=='mich-2001'){
-    // Two equal-width contour rings form a substantial, near-vertical
-    // protective face. The only outward transition is a short bevel;
-    // the hem return tucks UNDER it rather than forming a pointed ridge.
+    // One oversized rectangular lower protective face. The rear station
+    // returns to the ordinary nape width in one simple taper.
     const face=(point:ShellPoint,index:number,edge:'top'|'bottom'):V=>{
      const profile=unifiedHelmetEarVerticalProfile(cut,shoulderY,point[1],point[2]);
      return [
@@ -166,10 +162,10 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
     };
     const topA=face(a,i-1,'top'),topB=face(b,i,'top');
     const bottomA=face(a,i-1,'bottom'),bottomB=face(b,i,'bottom');
-    quad(onsetA,onsetB,topB,topA,v(sign,0,0),0,1,.96);
-    quad(topA,topB,bottomB,bottomA,v(sign,0,0),0,1,.94);
+    quad(onsetA,onsetB,topB,topA,v(sign,0,0),0,1,.95);
+    quad(topA,topB,bottomB,bottomA,v(sign,0,0),0,1,.95);
     quad(bottomA,bottomB,v(sign*b[0],b[1],b[2]),
-     v(sign*a[0],a[1],a[2]),v(sign,0,0),0,1,.92);
+     v(sign*a[0],a[1],a[2]),v(sign,0,0),0,1,.95);
    }else{
     // High cut: no lateral ear mass, while the ear arch and nape remain.
     quad(onsetA,onsetB,v(sign*b[0],b[1],b[2]),
@@ -211,10 +207,13 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  g.userData.h27BroadEarFace=cut!=='mich-2001';
  g.userData.h27BrowSpikeClamp=true;
  g.userData.h27NoLeadingFin=true;
+ g.userData.h28UnifiedEarProfile=true;
+ g.userData.h28BroadFlatEarMass=cut!=='mich-2001';
  g.userData.h26HighCutNoLateralBulge=cut==='mich-2001';
  g.userData.h25EarShoulderFraction=ACH_MICH_EAR_SHOULDER_FRACTION;
  g.userData.h27EarFaceTopFraction=ACH_MICH_EAR_FACE_TOP_FRACTION;
  g.userData.h27EarFaceBottomFraction=ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
+ g.userData.h28UpperBevelHeight=ACH_MICH_EAR_UPPER_BEVEL_HEIGHT;
  g.userData.exteriorQuads=quads;
  g.userData.camoUvLayout='planar-top/continuous-perimeter';
  g.userData.achMichCrownInset=topInset;

@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {UNIFIED_HELMET_HEMS,UNIFIED_HELMET_EAR_SHOULDERS,
  ACH_MICH_EAR_SHOULDER_FRACTION,ACH_MICH_EAR_FACE_TOP_FRACTION,
  ACH_MICH_EAR_FACE_BOTTOM_FRACTION,
- unifiedHelmetEarShoulderWidth}
+ unifiedHelmetEarVerticalProfile,unifiedHelmetEarShoulderWidth}
  from '../src/operator-ach-mich-unified-shell.ts';
 import {createHeadwearSilhouette,headwearCuboidVolumes,ACH_MICH_BEVEL_HEIGHT}
  from '../src/operator-headwear-silhouettes.ts';
@@ -17,7 +17,7 @@ import {achMichProfile,createAchMichDetails,
 const ids=['ach','mich-2002','mich-2001'];
 const near=(a,b,t=.012)=>Math.abs(a-b)<t;
 test('H26: no ear protrusion above midwall and no high-cut lateral bulge',()=>{
- const max=[5.67,5.56,5.015];
+ const max=[5.92,5.78,5.015];
  for(let n=0;n<ids.length;n++){
   const id=ids[n],hem=UNIFIED_HELMET_HEMS[id],
    widths=UNIFIED_HELMET_EAR_SHOULDERS[id];
@@ -31,11 +31,10 @@ test('H26: no ear protrusion above midwall and no high-cut lateral bulge',()=>{
   if(id==='mich-2001')assert.ok(widths.every(v=>near(v,hem[0][0])));
   else assert.ok(widths[2]-widths[0]>.49,'full/mid retain ear mass');
   assert.ok(near(ACH_MICH_EAR_SHOULDER_FRACTION,.52));
-  assert.ok(near(ACH_MICH_EAR_FACE_TOP_FRACTION,.66));
-  assert.ok(near(ACH_MICH_EAR_FACE_BOTTOM_FRACTION,.90));
-  const splitY=shoulderY+(hem[2][1]-shoulderY)*ACH_MICH_EAR_SHOULDER_FRACTION;
-  const faceTopY=shoulderY+(hem[2][1]-shoulderY)*ACH_MICH_EAR_FACE_TOP_FRACTION;
-  const faceBottomY=shoulderY+(hem[2][1]-shoulderY)*ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
+  assert.ok(near(ACH_MICH_EAR_FACE_TOP_FRACTION,.62));
+  assert.ok(near(ACH_MICH_EAR_FACE_BOTTOM_FRACTION,.93));
+  const {onsetY:splitY,faceTopY,faceBottomY}=
+   unifiedHelmetEarVerticalProfile(id,shoulderY,hem[2][1],hem[2][2]);
   const shell=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   const g=shell.children[0].geometry,p=g.getAttribute('position');
   assert.equal(g.userData.exteriorQuads,id==='mich-2001'?39:59);
