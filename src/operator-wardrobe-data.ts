@@ -5,7 +5,7 @@
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {readHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
-import {canonicalBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
+import {canonicalBallisticHelmet,isLegacyBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
 import {readPasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 import {isPoliceVisorPosition,isPoliceVisorTint,isPoliceVisorFrame,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {isM56Details,isM56Net,type M56Options} from './operator-ddr-m56-policy.ts';
@@ -330,6 +330,29 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
   result.helmetSetup=readHelmetSetup(v.helmetSetup);
  if(v.helmetField&&typeof v.helmetField==='object')
   result.helmetField=readHelmetField(v.helmetField);
+ // Original FAST/high-cut models stored cosmetic devices in H1 helmetSetup.
+ // ACH/MICH deliberately uses the H7 helmetField layer. Carry every
+ // representable device over once, unless a newer field selection exists.
+ // Never delete or alter the original setup (presets may inspect it).
+ const former=v.styles?.headwear;
+ if(typeof former==='string'&&isLegacyBallisticHelmet(former)&&
+    v.helmetSetup&&typeof v.helmetSetup==='object'&&!v.helmetField){
+  const old=readHelmetSetup(v.helmetSetup),field=readHelmetField(undefined);
+  field.rails=old.rails!=='none';
+  field.shroud=old.shroud!=='none';
+  field.band=old.band==='elastic';
+  field.concealment=old.scrim==='net'?'net':
+   old.scrim==='field'?'scrim':old.scrim==='sparse'?'scrim':'none';
+  field.light=old.light!=='none';
+  field.lightSide=old.light==='left'?'left':'right';
+  field.counterweight=old.rearModule==='counterweight';
+  field.battery=old.rearModule==='battery';
+  field.strobe=old.rearStrobe;
+  // Retain mutually compatible cosmetic mounts; H7 resolves any conflicts.
+  if(field.rails||field.shroud||field.band||field.light||
+     field.counterweight||field.battery||field.strobe||
+     field.concealment!=='none')result.helmetField=field;
+ }
  if(v.pasgtDetails&&typeof v.pasgtDetails==='object')
   result.pasgtDetails=readPasgtDetails(v.pasgtDetails,v.helmetSetup);
  if(isHeadwearCamoId(v.headwearCamo)&&v.headwearCamo!=='splittertarn-31')result.headwearCamo=v.headwearCamo;
