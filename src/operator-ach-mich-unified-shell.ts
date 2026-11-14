@@ -1,7 +1,7 @@
-/** H17: one continuous, deliberately angular lower shell per side.
- * Five large outline stations replace the stacked temple / ear / rear boxes.
- * A faceted roof, two planar sides, one brow and one nape share one static
- * BufferGeometry and one draw call. No overlapping external plate faces.
+/** H18: one continuous, deliberately angular lower shell per side.
+ * The same six silhouette stations used by H17 now emphasize the distinct
+ * ear lobe (full vs mid) and slope into the nape without adding polygons.
+ * One faceted roof, two planar sides, one brow/nape; one draw call.
  */
 import * as THREE from 'three';
 import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
@@ -11,18 +11,18 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  ach:[
   [5.075,4.40,-5.535],
   [5.075,4.40,-3.12],
-  [5.075,2.31,-2.40],
-  [5.075,2.31,2.20],
-  [5.075,2.55,2.90],
-  [5.075,2.55,5.60]
+  [5.075,2.04,-2.42],
+  [5.075,2.04,1.45],
+  [5.075,2.72,3.00],
+  [5.075,2.72,5.60]
  ],
  'mich-2002':[
   [5.03,4.55,-5.70],
   [5.03,4.55,-3.10],
-  [5.03,2.99,-2.25],
-  [5.03,2.99,2.30],
-  [5.03,3.21,3.10],
-  [5.03,3.21,5.75]
+  [5.03,3.06,-2.18],
+  [5.03,3.06,1.38],
+  [5.03,3.82,3.05],
+  [5.03,3.82,5.75]
  ]
 };
 type V=readonly [number,number,number];
