@@ -13,7 +13,11 @@
 import {generateSite} from '../src/breach-site.ts';
 import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
-import {activateSite} from '../src/breach-core.ts';
+import {activateSite,OPERATOR_RADIUS} from '../src/breach-core.ts';
+import {doorSwingBlocked,doorWouldStrikeActors} from '../src/breach-door.ts';
+import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
+import {sweptBodyClear} from '../src/breach-navigation.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
@@ -206,6 +210,32 @@ function run(site,seed,kind){
   const planIntact=actors.every((a,i)=>a.plan.every(n=>initial[i].has(n.id)));
   const orderIssues=actors.map(a=>a.orderIssue?.reason??null);
   const complete=planned.accepted===4&&actors.every(a=>!a.plan.length);
+  // D3.7 forensic warehouse probe, END OF RUN ONLY. Compare leaf swept
+  // against architecture with and without human bodies, and test the
+  // already-existing finite bypass / full-body self-clearance options.
+  // No additional work in the real Session motor or per-actor hotpath.
+  let warehouseHingeWitness=null;
+  if(seed===31123&&kind==='authored'){
+   const door=session.doors.find(d=>d.id==='FRONT');
+   if(door){
+    const world=sessionWorldGeometry(session);
+    const f=door.openFraction??0,next=Math.min(1,f+.025);
+    warehouseHingeWitness={
+     fraction:round(f),pushTarget:round(door.pushTarget??1),
+     staticBlocksSwing:doorSwingBlocked(door,next,[],undefined,world),
+     anyBodyBlocksSwing:doorWouldStrikeActors(door,next,
+      actors.map(a=>a.p),OPERATOR_RADIUS),
+     actors:actors.map(a=>({
+      id:a.id,phase:a.doorTraversal?.phase??null,
+      self: captureD32SelfBlockingHinge(a,session),
+      route: captureD32RecoveryFeasibility(a,session),
+      rehearsed:rehearseDoorLeafBypass(a.p,a.plan[0]?.p??a.p,
+       door,(from,to)=>sweptBodyClear(from,to,session.doors,
+        OPERATOR_RADIUS,world))
+     }))
+    };
+   }
+  }
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -221,6 +251,7 @@ function run(site,seed,kind){
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
+   warehouseHingeWitness,
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
