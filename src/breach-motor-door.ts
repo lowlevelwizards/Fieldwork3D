@@ -136,7 +136,6 @@ export function handleMotorDoor(
         // A valid authored stride takes priority over a NEW clearance
         // detour. Otherwise a safe approach can be replaced by a needless
         // retreat and lose seconds, despite never threatening the leaf.
-        const fraction=doorAhead.openFraction??0;
         const swing=upcomingOpeningSweep(doorAhead);
         if(!doorWouldStrikeActors(doorAhead,swing,[move],OPERATOR_RADIUS)&&
            sweptBodyClear(a.p,move,s.doors,OPERATOR_RADIUS,
