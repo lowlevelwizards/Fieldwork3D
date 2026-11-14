@@ -4,7 +4,7 @@ import {nearMotorDoorStroke} from './breach-motor-door-broadphase.ts';
  * opens before body contact. Explicit authored DOOR actions retain priority.
  */
 import {pointToSegment,doorLeafSegment,doorBlocksSegment,doorCenter,
- OPERATOR_RADIUS,type Pt} from './breach-core.ts';
+ OPERATOR_RADIUS,type Pt,type Door} from './breach-core.ts';
 import type {TeamActor,Session} from './breach-game.ts';
 import {canAutoOpenEnRoute,autoDoorAtBodyContact,doorApproach,
  doorReachable,doorWouldStrikeActors} from './breach-door.ts';
@@ -13,11 +13,23 @@ import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
-import {noteD32MotorDoorSelection} from './breach-d3-motor-door-witness.ts';
+
+/** D3.2.5: an opened hinge that has STOPPED well below its target may
+ * no longer monopolize the actor motor. The ordinary collision/recovery
+ * pipeline gets its attempt, with that same leaf protected from incidental
+ * closing. This is not a collision exemption or a forced movement.
+ * The hinge remains solely responsible for actual leaf rotation.
+ */
+export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number):boolean{
+ const fraction=door.openFraction??(door.open?1:0);
+ return door.open&&!door.locked&&!door.heldBy&&!door.wedged&&
+   fraction>=.15&&fraction<.72&&openingSeconds>=.9&&
+   Math.abs(door.angularVelocity??0)<.16;
+}
 
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
- hooks:ActorMotorHooks):{paused:boolean;closed:boolean}{
+ hooks:ActorMotorHooks):{paused:boolean;closed:boolean;clearingDoorId?:string}{
   // Identify the leaf for closed-door authored handling; open hinged
   // leaves are pushed by the coupled swept-body solver below, not by
   // standing nearby or crossing a broad radius trigger.
@@ -93,9 +105,6 @@ export function handleMotorDoor(
       }
     }
     a.motorPause='door-opening';
-    // Audit-only opt-in: report the ACTUAL selected door, not the nearest
-    // geometric guess. Disabled during normal live play.
-    noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
     if(opening.reason==='held'||opening.reason==='locked'||
@@ -126,6 +135,16 @@ export function handleMotorDoor(
       hooks.notify(s,a.name+' OPENED '+doorAhead.id);
     }
     if((doorAhead.openFraction??0)<.72){
+      // Hinge can be body-obstructed at 57–65% for many seconds.
+      // Once its angular motor has truly STOPPED, let the single existing
+      // swept collision motor attempt the movement and, if necessary,
+      // its regular bounded route recovery. There is no free passage.
+      // Incidental body CLOSE on this exact leaf is deferred ONLY for
+      // this motor attempt, preventing the D3.1 277-flip ping-pong.
+      if(a.side==='blue'&&stalledDoorYieldsToMotor(doorAhead,a.actionTimer)){
+        a.motorPause=null;
+        return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+      }
       // A partly open outward leaf can physically occupy the approach side.
       // A MOVING crossing operator may now sidestep or grasp its handle;
       // holding the entire motor in DOOR OPENING prevented either recovery.
