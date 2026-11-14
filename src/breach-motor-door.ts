@@ -14,6 +14,27 @@ import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
 
+/** D3.2.1: a stalled partially-open hinge must not freeze a pre-existing
+ * legal route leg that is LEAVING its physical leaf. This is a permission
+ * for the ordinary swept body motor to attempt its step, not a move, push,
+ * hinge override or additional recovery solver. Receding contact cannot
+ * generate an incidental closing impulse on this panel.
+ */
+export function canClearStalledOpening(from:Pt,step:Pt,next:Pt,
+ door:typeof import('./breach-core.ts').Door,openingSeconds:number):boolean{
+ const fraction=door.openFraction??(door.open?1:0);
+ if(!door.open||door.wedged||door.heldBy||
+    fraction<.15||fraction>=.72||
+    openingSeconds<.65||Math.abs(door.angularVelocity??0)>.16)return false;
+ const leaf=doorLeafSegment(door);
+ const before=pointToSegment(from,leaf);
+ // This must be a real spatial separation, not lateral motion along a
+ // touching leaf; a remote authored goal cannot authorize the handoff.
+ return pointToSegment(step,leaf)>before+.04&&
+   pointToSegment(next,leaf)>before+.8&&
+   !doorBlocksSegment(door,{a:from,b:step});
+}
+
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;closed:boolean}{
@@ -122,6 +143,15 @@ export function handleMotorDoor(
       hooks.notify(s,a.name+' OPENED '+doorAhead.id);
     }
     if((doorAhead.openFraction??0)<.72){
+      // A stalled hinge may be blocked by the operator's own body. Do
+      // not trap the existing route when its CURRENT physical step is
+      // moving distinctly AWAY from that same leaf. Actual swept collision,
+      // other bodies and queue arbitration still decide the step below.
+      if(a.side==='blue'&&canClearStalledOpening(a.p,move,next,
+        doorAhead,a.actionTimer)){
+        a.motorPause=null;
+        return {paused:false,closed:false};
+      }
       // A partly open outward leaf can physically occupy the approach side.
       // A MOVING crossing operator may now sidestep or grasp its handle;
       // holding the entire motor in DOOR OPENING prevented either recovery.
