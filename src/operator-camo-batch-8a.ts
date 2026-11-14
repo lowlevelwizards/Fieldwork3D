@@ -2,6 +2,7 @@
  * Same polygon-first and layered detail pipeline as 6A/7A. No imported
  * fabric images. 7A relatives reuse the EXACT indexed family masters.
  */
+import {camo7AIndices} from './operator-camo-batch-7a.ts';
 export const CAMO8A_IDS=[
  'russian-izlom','greek-lizard','urban-kamysh','jgsdf-type2',
  'pencott-metropolis','south-african-s2000','kryptek-typhon','norwegian-m98'
@@ -71,7 +72,14 @@ export const CAMO8A_RECIPES:Readonly<Record<Camo8AId,Camo8ARecipe>>=
    // Report the actual authored raster coverage for every pattern.
    // Art remains unchanged; this avoids stale hand-entered metadata.
    const counts=recipe.colors.map(()=>0);
-   for(const ink of camo8AIndices(id))counts[ink]++;
+   // Two variants intentionally reuse their original 7A pixel master.
+   // Pass that master rather than synthesizing replacement pattern art.
+   const relatives=id==='pencott-metropolis'?{
+    pencott:camo7AIndices('pencott-greenzone')
+   }:id==='kryptek-typhon'?{
+    highlander:camo7AIndices('kryptek-highlander')
+   }:undefined;
+   for(const ink of camo8AIndices(id,relatives))counts[ink]++;
    return counts.map(c=>c/4096);
   }}];
  })) as unknown as Record<Camo8AId,Camo8ARecipe>;
