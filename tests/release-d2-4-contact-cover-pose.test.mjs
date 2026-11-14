@@ -6,11 +6,13 @@ import {createA3Session,DEFAULT_A3_CONFIG}
 import {team} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {chooseEnvironmentSupport,chooseTeammateSupport,
- advanceContextualSupportContacts}
+ teammateShoulderPoint,advanceContextualSupportContacts}
  from '../src/breach-contextual-support-contact.ts';
 import {selectPhysicalContact,selectSinglePhysicalContact}
  from '../src/breach-physical-contact-anchor.ts';
 import {resolvePoseContactOwners} from '../src/breach-pose-contacts.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {stanceSurface} from '../src/breach-cover-stance.ts';
 const setup=(scenario='brace-wall',operators=1)=>{
  const s=createA3Session({...DEFAULT_A3_CONFIG,scenario,operators,intent:'hold'});
  s.seconds=2;
@@ -88,5 +90,37 @@ test('D2.4.1 idle release never requests world geometry to decide action',()=>{
   a.reload=1.5;s.seconds+=1/60;
   advanceContextualSupportContacts(s);
   assert.ok(a.physicalContact?.releasedAt!==null);
+ }finally{activateSite(null);}
+});
+
+test('D2.4.2 leader shoulder follows fixed-step cover stance without moving peer',()=>{
+ const {s,a}=setup('stack-shoulder',2);
+ try{
+  const lead=team(s)[1];
+  const before=teammateShoulderPoint(lead);
+  const leaderBefore={...lead.p};
+  lead.coverStanceDrop=4.25;
+  const after=teammateShoulderPoint(lead);
+  assert.equal(after.y,before.y-4.25);
+  assert.equal(after.x,before.x);
+  assert.equal(after.z,before.z);
+  const world=sessionWorldGeometry(s);
+  const claim=chooseTeammateSupport(s,a,world,null);
+  assert.deepEqual(claim?.contact.anchor.point,after);
+  assert.deepEqual(lead.p,leaderBefore,'support never pushes the leader');
+  lead.coverStanceDrop=0;
+  assert.deepEqual(teammateShoulderPoint(lead),before);
+ }finally{activateSite(null);}
+});
+test('D2.4.2 hoisted heading shares exact cover stance selection',()=>{
+ const {s,a}=setup('brace-cover');
+ try{
+  const c={x:a.p.x+17,y:a.p.y,w:20,h:20,topHeight:27};
+  for(const heading of [-3,-1.2,-.4,0,.25,.8,Math.PI]){
+   a.heading=heading;
+   const direct=stanceSurface(a,c,0);
+   const facing={x:Math.cos(heading),y:Math.sin(heading)};
+   assert.deepEqual(stanceSurface(a,c,0,facing),direct);
+  }
  }finally{activateSite(null);}
 });
