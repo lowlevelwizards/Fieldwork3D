@@ -24,8 +24,10 @@ test('H9.8: full appearance configuration serializes without destructive suppres
  assert.equal(modern.battery,false);
  assert.equal(stored.battery,true,'raw appearance retains suppressed preference');
  const pasgt=resolveHelmetField('pasgt',stored);
- for(const key of ['rails','bungees','velcro','counterweight','battery','camera','light'])
-  assert.equal(pasgt[key],false,key);
+ for(const key of ['rails','bungees','velcro','camera','light'])
+  assert.equal(pasgt[key],true,key);
+ for(const key of ['counterweight','battery'])
+  assert.equal(pasgt[key],false,'rear goggles block '+key);
  // Unsupported PASGT options remain in the saved look; switching back
  // to ACH must not destroy preferences.
  assert.equal(readHelmetField(stored).battery,true);

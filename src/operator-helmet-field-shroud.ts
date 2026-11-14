@@ -6,6 +6,7 @@
 import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
 import {sampleHelmetCover,sampleHelmetShell} from './operator-helmet-surface.ts';
+import {helmetHexFastenerGeometry} from './operator-helmet-fasteners.ts';
 
 type Pt=readonly [number,number];
 const PLATE_OUTLINE:readonly Pt[]=[
@@ -33,22 +34,8 @@ const mesh=(parent:THREE.Group,name:string,geometry:THREE.BufferGeometry,
  * No round cylinders or separate hidden washer geometry.
  */
 function threeFasteners(parent:THREE.Group,light:THREE.Material){
- const positions:number[]=[];
  const centers:readonly Pt[]=[[0,1.16],[-1.86,-.30],[1.86,-.30]];
- const r=.24,z=.242;
- for(const [cx,cy] of centers)
-  for(let side=0;side<6;side++){
-   const a=side*Math.PI/3+Math.PI/6;
-   const b=(side+1)*Math.PI/3+Math.PI/6;
-   positions.push(
-    cx,cy,z,
-    cx+Math.cos(a)*r,cy+Math.sin(a)*r,z,
-    cx+Math.cos(b)*r,cy+Math.sin(b)*r,z
-   );
-  }
- const geo=new THREE.BufferGeometry();
- geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
- geo.computeVertexNormals();geo.computeBoundingBox();
+ const geo=helmetHexFastenerGeometry(centers,.24,.242);
  geo.userData.h11FastenerIslands=centers.length;
  const screws=mesh(parent,'three-oversized-nvg-fasteners',geo,light);
  screws.userData.h11FastenerCount=centers.length;

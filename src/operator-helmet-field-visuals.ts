@@ -18,6 +18,9 @@ import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 import {createHelmetFieldGoggleModule,createFittedGoggleSleeve} from './operator-helmet-field-goggles.ts';
 import {addAchMichVelcro,addAchMichIdentifierPatch} from './operator-helmet-field-velcro.ts';
 import {addAchMichFieldAddon} from './operator-helmet-field-addons.ts';
+import {addPasgtRetrofitRails,addPasgtPeriodNvgStrap,addPasgtRetrofitBungees,
+ addPasgtRetrofitVelcro,addPasgtRetrofitIdentifier,
+ updatePasgtRetrofitCover} from './operator-helmet-pasgt-retrofit.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
  bandMaterial:THREE.MeshStandardMaterial;webbingMaterial:THREE.MeshStandardMaterial;
@@ -74,7 +77,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   metal=mat(0x596158),velcro=mat(0x777860),
   glass=mat(0x26363a),reflect=mat(0xc8c4a8);
  const bandMaterial=mat(0x586548),webbingMaterial=mat(0x586548);
- const front=p.front-.09,rear=p.rear+.08,side=p.side+.15;
+ const front=p.front-.09,rear=p.rear+.08;
  const band=addGroup('band');
  // H10.0: fit an actual closed, outward-offset band to the cloth.
  // Never use straight front/side chords through a covered shell.
@@ -140,13 +143,17 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
   plate(shroud,dark,'pasgt-bracket-socket',
    [[-.43,.16],[.43,.16],[.39,-.32],[-.39,-.32]],
    0,p.top-1.86,front-.43);
+  addPasgtPeriodNvgStrap(shroud,webbingMaterial);
  }else addAchMichThreeHoleShroud(id,shroud,metal,dark,reflect);
  const rails=addGroup('rails');
- if(id!=='pasgt')addAchMichArcRails(id,rails,metal,dark,reflect);
+ if(id==='pasgt')addPasgtRetrofitRails(rails,metal,dark,reflect);
+ else addAchMichArcRails(id,rails,metal,dark,reflect);
  const bungees=addGroup('bungees');
- if(id!=='pasgt')addAchMichRetainingBungees(id,bungees,olive,metal,dark);
+ if(id==='pasgt')addPasgtRetrofitBungees(bungees,olive,metal);
+ else addAchMichRetainingBungees(id,bungees,olive,metal,dark);
  const velcroGroup=addGroup('velcro');
- if(id!=='pasgt')addAchMichVelcro(id,velcroGroup,velcro,dark);
+ if(id==='pasgt')addPasgtRetrofitVelcro(velcroGroup,velcro,dark);
+ else addAchMichVelcro(id,velcroGroup,velcro,dark);
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
   const g=addGroup(key),back=key==='goggles-rear',eyes=key==='goggles-eyes';
   if(id!=='pasgt'){
@@ -176,23 +183,11 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  for(const key of ['strobe','counterweight','battery','light','camera',
   'chemlight'] as const){
   const g=addGroup(key);
-  if(id!=='pasgt')
-   addAchMichFieldAddon(id,key,g,{dark,metal,cloth:tan,reflect});
-  else if(key==='strobe'){
-   box(g,dark,'pasgt-low-profile-marker-base',0,p.top+.16,rear-1.06,
-    1.02,.24,.79);
-   box(g,reflect,'pasgt-marker-lens',0,p.top+.32,rear-1.06,.73,.13,.55);
-  }else if(key==='chemlight')
-   box(g,reflect,'period-secured-chemlight',-2.10,p.top+.16,rear-.69,
-    .28,.28,1.48);
+  addAchMichFieldAddon(id,key,g,{dark,metal,cloth:tan,reflect});
  }
  const patches=addGroup('patches');
- if(id!=='pasgt')addAchMichIdentifierPatch(id,patches,velcro,dark,reflect);
- else{
-  plate(patches,velcro,'pasgt-period-identifier',
-   [[-.88,-.45],[.88,-.45],[.88,.45],[-.88,.45]],
-   -side-.16,p.top-2.40,1.69,-Math.PI/2);
- }
+ if(id==='pasgt')addPasgtRetrofitIdentifier(patches,velcro,dark,reflect);
+ else addAchMichIdentifierPatch(id,patches,velcro,dark,reflect);
  // Pre-merge only static groups; invisible groups cost no render work.
  for(const g of Object.values(modules))consolidateVisualGroup(g);
  return {root,shell:id,modules,bandMaterial,webbingMaterial,leaves};
@@ -216,6 +211,10 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
    net.userData.h5Covered=covered;
   }
  }
+ // Covered/bare PASGT retrofit parts are pre-authored. No per-frame
+ // reprojection and no ACH drape assumptions on this much deeper shell.
+ if(v.shell==='pasgt')for(const key of ['shroud','rails','bungees','velcro','patches'])
+  updatePasgtRetrofitCover(m[key],covered);
  // Both NVG attachment frames are pre-authored; no raycast or geometry
  // rebuilding during cover toggles. Keep the shroud actually seated.
  if(v.shell!=='pasgt'){
@@ -246,6 +245,15 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   m[key].visible=s[key];
  // Mirror complete prebuilt surface-mounted models rather than rebuilding
  // meshes, evaluating rays, or adding per-frame visual work.
+ // Side rails are rigid fittings: on a bare shell tuck the whole rail
+ // and its directly clamped accessories in together. No geometry rebuild.
+ if(v.shell!=='pasgt'){
+  const bareOffset=covered?0:.16;
+  for(const rail of m.rails.children)
+   rail.position.x=covered?0:rail.name.endsWith('-left')?bareOffset:-bareOffset;
+  m.light.position.x=covered?0:s.lightSide==='left'?bareOffset:-bareOffset;
+  m.camera.position.x=covered?0:s.cameraSide==='left'?bareOffset:-bareOffset;
+ }
  m.camera.scale.x=s.cameraSide==='right'?1:-1;
  m.light.scale.x=s.lightSide==='left'?1:-1;
  // Legacy chemlightSide is retained in saves but no longer changes
@@ -255,10 +263,19 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
   const where=key.substring('goggles-'.length);
   m[key].visible=s.goggles===where&&
    (where!=='eyes'||!headEyewear.startsWith('goggles-'));
-  // A front-stowed goggle must sit below the modeled NVG shroud,
-  // not cross the central locking interface at brow height.
-  if(key==='goggles-front'&&v.shell!=='pasgt')
-   m[key].position.y=s.shroud?-.84:0;
+  // The tilted front housing needs clearance from the NVG receiver;
+  // move ONLY the housing and matched sleeve, never the perimeter strap.
+  if(key==='goggles-front'&&v.shell!=='pasgt'){
+   const pose=m[key].getObjectByName('approved-d2-goggle-pose');
+   const sleeve=m[key].getObjectByName('goggle-fabric-sleeve');
+   const shift=s.shroud?-.58:0;
+   const lift=s.shroud?.16:0;
+   const baseZ=HELMET_MOUNT_PROFILES[v.shell].front+3.72;
+   const baseY=HELMET_MOUNT_PROFILES[v.shell].top-5.95;
+   if(pose){pose.position.z=baseZ+shift;pose.position.y=baseY+lift;}
+   if(sleeve){sleeve.position.z=baseZ+shift;sleeve.position.y=baseY+lift;}
+   m[key].position.y=0;m[key].position.z=0;
+  }
   const coverStrap=m[key].getObjectByName('goggle-retention-covered');
   const bareStrap=m[key].getObjectByName('goggle-retention-bare');
   if(coverStrap)coverStrap.visible=covered;

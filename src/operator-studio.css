@@ -417,3 +417,49 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 #studioMaterials .helmet-field-help[aria-expanded="true"]{
  background:#cbb285;color:#20342b;border-color:#ead7a8;
 }
+
+/* H13: present prerequisites instead of hiding controls. Keep mobile cards
+ * readable and prevent a disabled item from resembling a selected one. */
+#studioMaterials .helmet-option-unavailable{
+ opacity:.58;filter:saturate(.55);cursor:not-allowed;
+ flex-wrap:wrap;
+}
+#studioMaterials .helmet-option-requirement{
+ display:block;flex-basis:100%;margin-left:1.65rem;
+ font:600 9px/1.2 "Work Sans",sans-serif;letter-spacing:.035em;
+}
+#studioMaterials .helmet-compatibility-notice{
+ grid-column:1/-1;color:#d8bc8d;font:600 11px/1.4 "Work Sans",sans-serif;
+}
+
+/* H15 · three shell cuts live in Details, not duplicate headwear cards.
+ * Large mobile targets, one shared row, no additional WebGL thumbnail rigs. */
+#studioMaterials .helmet-cut-section{order:-10}
+#studioMaterials .helmet-cut-cards{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:8px;width:100%;margin-top:10px
+}
+#studioMaterials .helmet-cut-card{
+ min-width:0;min-height:105px;padding:9px 4px 7px;
+ display:flex;flex-direction:column;align-items:center;justify-content:center;
+ gap:6px;border-radius:10px;
+}
+#studioMaterials .helmet-cut-illustration{
+ width:min(100%,76px);height:45px;
+ color:var(--accent-color,#c2bf97);
+}
+#studioMaterials .helmet-cut-card[aria-pressed="true"] .helmet-cut-illustration{
+ color:#31453d
+}
+#studioMaterials .helmet-cut-title{
+ font-weight:800;font-size:12px;letter-spacing:.015em;
+ white-space:nowrap
+}
+#studioMaterials .helmet-cut-caption{
+ font-weight:600;font-size:9px;letter-spacing:.025em;
+ line-height:1.25;white-space:nowrap
+}
+@media(max-width:420px){
+ #studioMaterials .helmet-cut-title{font-size:11px}
+ #studioMaterials .helmet-cut-caption{font-size:8px}
+}

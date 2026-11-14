@@ -28,7 +28,7 @@ import {POLICE_VISOR_POSITIONS,POLICE_VISOR_TINTS,POLICE_VISOR_FRAMES,policeViso
 import {M56_DETAILS,M56_NETS} from './operator-ddr-m56-policy.ts';
 import {readHelmetField,resolveHelmetField,HELMET_FIELD_COLORS,
  HELMET_FIELD_CONCEALMENT,HELMET_FIELD_TILTS,HELMET_FIELD_GOGGLES,
- HELMET_FIELD_SIDES,
+ HELMET_FIELD_SIDES,helmetFieldCompatibilityIssues,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
 import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
  pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
@@ -38,6 +38,8 @@ import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup,
  HELMET_HEADSET_MOUNT_OPTIONS,HELMET_REAR_OPTIONS,HELMET_LIGHT_OPTIONS,
  type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {applyHelmetPreset,helmetPresetChoices} from './operator-helmet-preset-catalog.ts';
+import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
+ type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
 import {M1956_VARIANTS,type M1956Variant} from './operator-m1956-policy.ts';
 import {ALICE_LC2_LOADS,type AliceLc2Load} from './operator-alice-lc2-policy.ts';
 import {HELMET_COVER_STYLES,HELMET_BANDS,HELMET_NET_STYLES,
@@ -864,6 +866,9 @@ function chooseStyle(slot:WardrobeSlot,id:string){
    slot==='rigStyle'?'THIS RIG LOOK NEEDS A MATCHING EQUIPPED LOAD-BEARING CLASS':
    'This item requires a different equipped kit');return;
  }
+ // Re-selecting Ballistic Helmet must not reset an existing mid/high cut.
+ if(slot==='headwear'&&id==='ach'&&ballisticHelmetCut(current().styles.headwear))
+  return;
  // Preserve ITEM while auditioning different styles; MATERIAL stays optional.
  changeWardrobe(setWardrobeStyle(current(),slot,id));
  applyStudioStep();
@@ -1356,8 +1361,48 @@ function renderMaterials(){
   }
  }
  if(activeCategory==='headwear'){
+  const activeCut=ballisticHelmetCut(item);
+  if(activeCut){
+   // First HEAD > DETAILS section. Reuse approved ACH/MICH shells and fitted
+   // cover/mount profiles; switching does not discard attached options.
+   const cutGroup=row('BALLISTIC HELMET CUT',
+    'Choose coverage. Covers, colors, and accessories remain selected.');
+   cutGroup.classList.add('helmet-cut-section');
+   const cards=document.createElement('div');cards.className='helmet-cut-cards';
+   const shapes:Record<BallisticHelmetCut,string>={
+    full:'M5 10 L12 4 H52 L60 10 V28 H51 V39 H14 V29 H5 Z',
+    mid:'M5 10 L12 4 H52 L60 10 V28 H48 V35 H40 V22 H24 V35 H14 V28 H5 Z',
+    high:'M5 10 L12 4 H52 L60 10 V28 H48 V22 H17 V28 H5 Z'
+   };
+   for(const choice of [
+    {id:'full',title:'FULL-CUT',hint:'MORE COVERAGE'},
+    {id:'mid',title:'MID-CUT',hint:'EAR NOTCH'},
+    {id:'high',title:'HIGH-CUT',hint:'OPEN EAR'}
+   ] as const){
+    const b=makeButton(choice.title,activeCut===choice.id,()=>{
+     const before=current();
+     changeWardrobe({...before,styles:{...before.styles,
+      headwear:BALLISTIC_CUT_SHELL[choice.id]}});
+    });
+    b.className='helmet-cut-card';b.dataset.helmetCut=choice.id;
+    b.setAttribute('aria-label',choice.title+' · '+choice.hint);
+    const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+    svg.setAttribute('viewBox','0 0 64 44');
+    svg.setAttribute('aria-hidden','true');
+    svg.classList.add('helmet-cut-illustration');
+    const shell=document.createElementNS('http://www.w3.org/2000/svg','path');
+    shell.setAttribute('d',shapes[choice.id]);
+    shell.setAttribute('fill','currentColor');svg.append(shell);
+    const name=document.createElement('span');
+    name.className='helmet-cut-title';name.textContent=choice.title;
+    const hint=document.createElement('small');
+    hint.className='helmet-cut-caption';hint.textContent=choice.hint;
+    b.replaceChildren(svg,name,hint);cards.append(b);
+   }
+   cutGroup.append(cards);
+  }
   row('HEADWEAR APPEARANCE',
-   'All approved hats and helmets are selectable. Appearance does not alter head protection or inventory; the equipped kit controls those.');
+   'Choose headwear in ITEMS. Shell cut and accessories are cosmetic; equipped protection is unchanged.');
   const helmetShell=item==='high-cut-rails'?'high-cut':item;
   const simpleAchMich=['ach','mich-2001','mich-2002'].includes(helmetShell);
   if(isH1ModernHelmet(helmetShell)&&helmetShell!=='pasgt'&&!simpleAchMich){
@@ -1524,6 +1569,14 @@ function renderMaterials(){
     const next={...carry,...changes};
     if(changes.counterweight===true)next.battery=false;
     if(changes.battery===true)next.counterweight=false;
+    // Treat the two ARC rails as distinct sockets: selecting a camera
+    // or light moves the other device to the free side rather than
+    // silently retaining an invisible conflicting device.
+    if(next.light&&next.camera&&next.lightSide===next.cameraSide){
+     if(changes.light===true||changes.lightSide!==undefined)
+      next.cameraSide=next.lightSide==='left'?'right':'left';
+     else next.lightSide=next.cameraSide==='left'?'right':'left';
+    }
     changeWardrobe({...before,helmetField:readHelmetField(next)});
    };
    const picker=(title:string,key:'bandColor'|'webbingColor',
@@ -1536,13 +1589,31 @@ function renderMaterials(){
    };
    const toggle=(section:HTMLElement,key:keyof HelmetFieldOptions,
     title:string,glyph:string,availability=true)=>{
-    if(!availability)return;
-    const on=effective[key]===true;
+    const netLocksBand=key==='band'&&currentField.concealment==='net';
+    const on=netLocksBand||effective[key]===true;
+    availability=availability&&!netLocksBand;
+    const reason=!availability?(
+     netLocksBand?'REQUIRED TO SECURE NET':
+     historical?'NOT AVAILABLE ON PASGT':
+     key==='bungees'?!currentField.rails?'REQUIRES SIDE RAILS':'REQUIRES NVG SHROUD':
+     key==='camera'||key==='light'?'REQUIRES SIDE RAILS':
+     key==='chemlight'?'CROWN SLOT OCCUPIED':
+     key==='battery'||key==='counterweight'?'REAR GOGGLES OCCUPY SLOT':
+     key==='patches'?'REQUIRES VELCRO OR COVER':'UNAVAILABLE'):null;
     const b=makeButton(title,on,()=>changeField({[key]:!on}));
     b.classList.add('helmet-option-card');
     const icon=document.createElement('span');icon.className='helmet-option-glyph';
     icon.textContent=glyph;icon.setAttribute('aria-hidden','true');
-    b.prepend(icon);section.append(b);
+    b.prepend(icon);
+    if(reason){
+     b.disabled=true;
+     b.classList.add('helmet-option-unavailable');
+     b.setAttribute('aria-label',title+' — '+reason);
+     const note=document.createElement('small');
+     note.className='helmet-option-requirement';note.textContent=reason;
+     b.append(note);
+    }
+    section.append(b);
    };
    const rowOf=(title:string,help:string)=>{
      const group=row(title,help);
@@ -1587,13 +1658,13 @@ function renderMaterials(){
    picker('RETENTION WEBBING COLOR','webbingColor',
     'Auto matches period/shell family. Choose olive, tan or black to override.');
    const structure=rowOf('HELMET STRUCTURE',
-    historical?'Optional period NVG bracket; modern rails, bungees and Velcro are intentionally excluded.':
+    historical?'Original PASGT retains its deep shell and strap-on NVG bracket. Rails, bungees, Velcro and electronics are optional later RETROFITS, not standard issue.':
     'Independent modular mounting pieces; none change real equipment or protection.');
    toggle(structure,'shroud','NVG SHROUD','▣');
-   toggle(structure,'rails','SIDE RAILS','▤',!historical);
+   toggle(structure,'rails',historical?'RETROFIT SIDE RAILS':'SIDE RAILS','▤');
    toggle(structure,'bungees','BUNGEES','⌢',
-    !historical&&currentField.rails&&currentField.shroud);
-   toggle(structure,'velcro','VELCRO PANELS','▦',!historical);
+    currentField.rails&&currentField.shroud);
+   toggle(structure,'velcro','VELCRO PANELS','▦');
    const eyewear=rowOf('GOGGLE STOWAGE',
     'On eyes, strapped over the helmet brow, or rear-stowed. The sleeve is visible only when stowed.');
    addSelect(eyewear,HELMET_FIELD_GOGGLES.map(c=>[c,
@@ -1602,13 +1673,15 @@ function renderMaterials(){
    if(currentField.goggles==='front'||currentField.goggles==='rear')
     toggle(eyewear,'goggleSleeve','FABRIC SLEEVE','▥');
    const addons=rowOf('HELMET ADD-ONS',
-    historical?'Conservative period field kit; modern electronic/counterweight systems are unavailable.':
+    historical?'Optional modernized PASGT field accessories: rail-mounted devices require retrofit rails; rear pouches and adhesive tabs are late additions.':
     'Equipment uses actual mount slots: rear carriers and rail hardware can conflict.');
    toggle(addons,'strobe','IR STROBE','✦');
-   toggle(addons,'counterweight','COUNTERWEIGHT','▣',!historical);
-   toggle(addons,'battery','BATTERY PACK','▥',!historical);
-   toggle(addons,'light','HELMET LIGHT','◉',!historical&&currentField.rails);
-   toggle(addons,'camera','CAMERA','◈',!historical&&currentField.rails);
+   toggle(addons,'counterweight','COUNTERWEIGHT','▣',
+    currentField.goggles!=='rear');
+   toggle(addons,'battery','BATTERY PACK','▥',
+    !historical&&currentField.goggles!=='rear');
+   toggle(addons,'light','HELMET LIGHT','◉',currentField.rails);
+   toggle(addons,'camera','CAMERA','◈',currentField.rails);
    toggle(addons,'chemlight','CHEMLIGHT · TOP REAR','│',
     historical||!effective.strobe);
    toggle(addons,'patches','PATCH / IDENTIFIER','▤',
@@ -1620,12 +1693,22 @@ function renderMaterials(){
      [c,c==='left'?'LEFT SIDE':'RIGHT SIDE'] as const),
      currentField[key],v=>changeField({[key]:v}));
    };
-   if(!historical&&currentField.camera)
+   if(currentField.camera)
     sidePicker('CAMERA MOUNT','cameraSide',
      'Forward-facing camera on the left or right helmet side.');
-   if(!historical&&currentField.light)
+   if(currentField.light)
     sidePicker('HELMET LIGHT MOUNT','lightSide',
      'Clip the forward-facing task light to the left or right rail.');
+   const compatibility=helmetFieldCompatibilityIssues(
+    helmetShell,currentField,fieldCovered);
+   if(compatibility.length){
+    const fit=rowOf('MOUNT COMPATIBILITY',
+     'Stored options are preserved, but incompatible hardware is hidden until its mount is free.');
+    const note=document.createElement('small');
+    note.className='helmet-compatibility-notice';
+    note.textContent=compatibility.join(' ');
+    fit.append(note);
+   }
    // No side picker: the modern chemlight is retained at the crown-rear.
   }
   if(item==='police-helmet'){

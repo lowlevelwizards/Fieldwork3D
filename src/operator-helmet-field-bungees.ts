@@ -50,11 +50,15 @@ function tether(shell:AchMichCoverShell,side:'left'|'right',root:THREE.Group,
  const sideX=sign*Math.max(Math.abs(rail.position.x),p.side+layer+.44);
  const frontZ=p.front-layer-.44;
  const y=rail.position.y;
+ // A single deliberate diagonal corner break joins the straight
+ // side and frontal runs. Both diagonal endpoints project OUTSIDE the
+ // protective shell, so the connecting chord never enters the corner.
+ const bend=.64;
  const path=[
   new THREE.Vector3(sideX,y,rail.position.z),
-  new THREE.Vector3(sideX,y+.06,(rail.position.z+frontZ)*.50),
-  new THREE.Vector3(sideX,y+.08,frontZ),
-  new THREE.Vector3(sign*3.22,y+.06,frontZ),
+  new THREE.Vector3(sideX,y+.06,(rail.position.z+frontZ+bend)*.52),
+  new THREE.Vector3(sideX,y+.08,frontZ+bend),
+  new THREE.Vector3(sideX-sign*bend,y+.08,frontZ),
   new THREE.Vector3(sign*1.62,y+.04,frontZ)
  ];
  add(root,'bungee-flat-elastic-'+side,elastic,ribbon(path));
@@ -71,7 +75,7 @@ function tether(shell:AchMichCoverShell,side:'left'|'right',root:THREE.Group,
   surfaceAnchors:[path[0].toArray(),path[4].toArray()],
   first:path[0].toArray(),last:path[4].toArray(),
   segmentCount:4,cornerX:sideX,cornerZ:frontZ,
-  covered
+  covered,diagonalBreak:[2,3] as const
  };
 }
 export function addAchMichRetainingBungees(
@@ -97,4 +101,5 @@ export function addAchMichRetainingBungees(
  g.userData.h12BareBungeeRoutes=bareRoutes;
  g.userData.h12NoTubeGeometry=true;
  g.userData.h12ElbowBeyondShell=true;
+ g.userData.h13SingleDiagonalBreak=true;
 }
