@@ -4,6 +4,8 @@ import {chooseMicroAimOffset,approachMicroAimOffset,allowMicroAim}
 import {canContextuallyCrouch,validRearStack,contextualCrouchRecovery}
  from './breach-contextual-crouch.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {cancelFireCorrection,correctionContactChanged}
+ from './breach-fire-recovery-policy.ts';
 import {createShotResolver} from './breach-shot-resolution.ts';
 import {createShotEnvironmentCommitter} from './breach-shot-environment.ts';
 /** Roadmap 2 / Stage 10 — unified authoritative firing & damage pipeline.
@@ -195,6 +197,10 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  const next=correction.point;
  a.fireRetreatTarget=next;
  a.fireRetreatReason=correction.kind;
+ // A correction belongs only to the authored node and confirmed contact
+ // that justified it; no per-tick target searches or plan-array signatures.
+ a.fireRetreatPlanId=a.plan[0]?.id??null;
+ a.fireRetreatContactId=target.id;
  // A few units of foot correction must not inherit the full duration
  // of an emergency 28-unit sidestep; preserve a deterministic upper bound.
  const correctionLength=d(a.p,next);
@@ -560,6 +566,9 @@ function fire(s:Session,a:TeamActor,dt:number){
     return fireLaneReachable(lane,preview,candidate.p);
   });
   if(!target){
+    // The visible roster is already computed: losing the confirmed
+    // contact ends an optional footstep without another LOS scan.
+    if(a.fireRetreatTarget)cancelFireCorrection(a);
     a.aimSideTarget=0;
     a.targetId=null;
     // LOOK/WATCH/suspicion prepare the actual rifle even if no enemy can
@@ -598,6 +607,8 @@ function fire(s:Session,a:TeamActor,dt:number){
       dt*profile.turnSpeed*mods.turn);
     return;
   }
+  // A different confirmed target takes priority over an old footstep.
+  if(correctionContactChanged(a,target.id))cancelFireCorrection(a);
   // A3.2: only a confirmed visible contact may trigger a bounded physical
   // shoulder shift. Candidate shot lines use the SAME muzzle+IK fit as live
   // ignition and preserve the independent civilian and teammate vetoes.
