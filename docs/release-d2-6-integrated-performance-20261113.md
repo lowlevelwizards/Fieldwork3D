@@ -36,3 +36,7 @@
 - Do not claim phone FPS, battery, thermal or GPU change from Node timings. User-device acceptance: equal seed/layout, four-man outward door stack and threshold, cover/squeeze, active 4v4 firefight, populated civilians, replay seek, fog on generated map. Capture 60s same-device 33/67ms RAF spike rates, CPU slices, and heap after warmup with low-power mode off.
 
 **Invariants:** one fixed tick, one actor/door/civilian motor, one shot authority, one authoritative sight, one replay journal, one hand-owner policy, one 30-slot pose output. No added recurring checking, new stale caches, or altered user orders.
+
+## Corrective CI integration finding
+
+The original `.github/workflows/release-d0-performance.yml` compares all PRs against historical D0 `6b3715a`, which predates D1, D2.1–D2.5 intentional gameplay changes. It fails on `mission-hold` even when the D2.6 source is **bit-for-bit parity with D2.5** on all ten workloads. This is a stale golden, not a newly introduced behavior discrepancy. D2.6 corrects the legacy workflow to fetch `github.event.pull_request.base.sha` as its reference on PRs while retaining frozen D0 when manually dispatched. The separate dedicated D2.6 workflow continues to compare against pinned D2.5 `0cb749d`; **both gates must pass**. No regression has been ignored, expected fingerprints silently rewritten, or minimum sampling thresholds reduced.
