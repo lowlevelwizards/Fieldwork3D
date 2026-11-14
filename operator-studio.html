@@ -6,7 +6,89 @@
 <title>FIELDWORK / OPERATOR STUDIO</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@400;500;600;700;800&family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="./src/operator-studio.css"/>
+<!-- The few structural rules needed before the external hashed CSS arrives.
+     Keep an embedded Studio usable even if iOS briefly fails to fetch CSS. -->
+<style id="studioCriticalLayout">
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0;width:100%;height:100%;overflow:hidden}
+body{background:#c4c7bd;color:#e8e9dc;font-family:"Saira Condensed","Arial Narrow",sans-serif}
+#studioRoot{height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+.studio-top{display:flex;align-items:center;gap:8px;flex:0 0 auto;
+  min-height:54px;padding:7px 11px;background:#1a2b28;color:#edf0e7}
+.studio-top button,.studio-stage-actions button,.studio-sheet button{
+  min-height:36px;border:1px solid #739085;border-radius:7px;
+  background:#2d473c;color:#e8eee3;padding:7px 10px;font:700 13px sans-serif}
+.studio-operator-label{flex:1;min-width:0;display:flex;flex-direction:column}
+.studio-operator-label select{min-width:0;max-width:100%;background:#1a2b28;color:#f5f2e7}
+#studioRoot>main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+.studio-stage{position:relative;flex:1 1 56%;min-height:160px;overflow:hidden;background:#c4c7bd}
+#studioCanvas{display:block;width:100%;height:100%;touch-action:none}
+.studio-stage-actions{position:absolute;right:8px;bottom:8px;display:flex;
+  gap:4px;max-width:calc(100% - 16px);flex-wrap:wrap;justify-content:flex-end}
+.studio-sheet{position:relative;flex:0 1 44%;min-height:180px;max-height:65%;
+  overflow-y:auto;overscroll-behavior:contain;padding:12px;background:#22372f;
+  border-top:2px solid #89a49a;border-radius:16px 16px 0 0;color:#e8eee3}
+.studio-sheet-title{display:flex;justify-content:space-between;gap:8px}
+.studio-history{display:flex;gap:4px;align-items:flex-start}
+.studio-categories,.studio-subcategories{display:flex;gap:5px;overflow-x:auto;margin:8px 0}
+.studio-workflow{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px}
+#studioItemBrowser,#studioMaterials{min-width:0}
+[hidden]{display:none!important}
+</style>
+<link id="studioTheme" rel="stylesheet" href="./src/operator-studio.css"/>
+<script>
+/* A partial Pages/cache rollout can strand a valid Studio JS bundle without
+   its stylesheet. Retry ONLY the missing CSS; never reload unsaved edits. */
+(function(){
+ var primary=document.getElementById('studioTheme');
+ var retries=0,pending=false,warning=null;
+ function ready(){return getComputedStyle(document.documentElement)
+   .getPropertyValue('--fw-studio-styles-ready').trim()==='1';}
+ function announce(){
+  if(warning||!document.body)return;
+  warning=document.createElement('div');
+  warning.setAttribute('role','status');
+  warning.style.cssText='position:fixed;bottom:12px;left:12px;right:12px;'+
+   'z-index:9999;background:#243e34;color:#f4ead3;padding:12px;'+
+   'border:1px solid #d4b27c;border-radius:8px;font:13px system-ui';
+  warning.append('Studio theme unavailable. The editing layout is still accessible. ');
+  var button=document.createElement('button');button.textContent='RETRY STYLES';
+  button.style.cssText='margin-left:8px;padding:8px;border:1px solid #ead3a2;'+
+   'background:#c6ad7b;color:#172a24;border-radius:5px';
+  button.addEventListener('click',function(){retries=0;retry();});
+  warning.append(button);document.body.append(warning);
+ }
+ function recovered(){
+  if(!ready())return false;
+  if(warning){warning.remove();warning=null;}
+  // ResizeObserver normally follows the restored layout; this also wakes
+  // the operator preview if the broken sheet never triggered a size change.
+  window.dispatchEvent(new Event('resize'));
+  return true;
+ }
+ function retry(){
+  if(recovered()||pending)return;
+  if(retries>=2){announce();return;}
+  ++retries;pending=true;
+  var link=document.createElement('link');
+  link.rel='stylesheet';
+  // Vite rewrites the primary href to the hashed production asset; reuse it.
+  var url=new URL(primary.href,document.baseURI);
+  url.searchParams.set('studio-css-retry',String(retries));
+  link.href=url.href;
+  link.onload=function(){
+   pending=false;
+   requestAnimationFrame(function(){if(!recovered())retry();});
+  };
+  link.onerror=function(){pending=false;retry();};
+  document.head.append(link);
+ }
+ primary.addEventListener('error',function(){setTimeout(retry,250);});
+ document.addEventListener('DOMContentLoaded',function(){
+  setTimeout(function(){if(!recovered())retry();},500);
+ });
+})();
+</script>
 </head><body>
 <div id="studioRoot">
 <header class="studio-top">

@@ -41,6 +41,11 @@ try{
    console.error('Studio startup diagnostics',JSON.stringify({state,pageErrors:errors}));
    throw error;
   }
+  // A painted canvas is insufficient if iOS lost only the Studio CSS:
+  // screenshot symptom is an unstyled header and the editor offscreen.
+  const cssReady=await page.evaluate(()=>getComputedStyle(document.documentElement)
+   .getPropertyValue('--fw-studio-styles-ready').trim()==='1');
+  if(!cssReady)throw Error('Studio preview loaded without its primary stylesheet');
   const stage=page.locator('.studio-stage'),
    editor=page.locator('.studio-sheet');
   const [box,control]=await Promise.all([stage.boundingBox(),editor.boundingBox()]);
@@ -136,6 +141,36 @@ try{
   if(errors.length)throw Error('Uncaught Studio errors: '+errors.join('; '));
   await mkdir('operator-studio-captures',{recursive:true});
   await page.screenshot({path:'operator-studio-captures/mobile-portrait.png'});
+
+  // Simulate an iOS/CDN stylesheet miss. The tiny inline fallback must keep
+  // BOTH the editor and viewport usable, with a manual retry (no forced
+  // navigation that would discard an unsaved appearance).
+  const cssMiss=await browser.newPage({
+   viewport:{width:390,height:844},deviceScaleFactor:2,
+   isMobile:true,hasTouch:true
+  });
+  try{
+   await cssMiss.route('**/src/operator-studio.css*',route=>route.abort());
+   await cssMiss.goto(origin+'/operator-studio.html?cssFallback=1',
+    {waitUntil:'domcontentloaded'});
+   await cssMiss.waitForTimeout(1600);
+   const state=await cssMiss.evaluate(()=>{
+    const stage=document.querySelector('.studio-stage').getBoundingClientRect();
+    const sheet=document.querySelector('.studio-sheet').getBoundingClientRect();
+    return {
+     cssReady:getComputedStyle(document.documentElement)
+      .getPropertyValue('--fw-studio-styles-ready').trim(),
+     root:getComputedStyle(document.getElementById('studioRoot')).display,
+     stageH:stage.height,sheetH:sheet.height,sheetY:sheet.top,
+     width:window.innerWidth,height:window.innerHeight,
+     retry:document.body.innerText.includes('RETRY STYLES')
+    };
+   });
+   if(state.cssReady==='1'||state.root!=='flex'||state.stageH<160||
+      state.sheetH<180||state.sheetY>=state.height-100||!state.retry)
+    throw Error('Missing-CSS mobile fallback failed: '+JSON.stringify(state));
+   await cssMiss.screenshot({path:'operator-studio-captures/css-missing-fallback.png'});
+  }finally{await cssMiss.close();}
   console.log('Studio mobile WebGL boot, real garment selection, solids and saved appearance passed');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
