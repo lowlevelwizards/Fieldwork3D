@@ -40,7 +40,10 @@ test('H16: silhouette hierarchy is legible without accessories',()=>{
  }
  assert.equal(HEAD_SILHOUETTE_METRICS.ach.earEdge,fullEar);
  assert.equal(HEAD_SILHOUETTE_METRICS['mich-2002'].earEdge,midEar);
- assert.equal(HELMET_MOUNT_PROFILES['mich-2002'].ear,midEar);
+ assert.equal(HELMET_MOUNT_PROFILES['mich-2002'].ear,4.05,
+  'upper sidewall accessory station must not drop with the guard');
+ assert.equal(HELMET_MOUNT_PROFILES.ach.ear,2.92,
+  'full-cut mount station stays at its established height');
 });
 
 test('H16: cover, edge binding and webbing follow the same new lower profile',()=>{
