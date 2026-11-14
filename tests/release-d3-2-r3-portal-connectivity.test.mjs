@@ -29,6 +29,12 @@ test('D3.2 R3: solid leaf separates static-connected space from physical route',
  assert.equal(evidence.withoutNearestLeaf.omittedId,'SPLIT');
  assert.equal(evidence.withoutNearestLeaf.result.connected,true);
  assert.equal(evidence.nearbyLeaves[0].hypotheticallyActuable,true);
+ assert.equal(evidence.firstBlockedDoorId,'SPLIT');
+ assert.deepEqual(evidence.routePortalSequence.map(p=>p.id),['SPLIT']);
+ assert.ok(evidence.safeApproachBeforeFirstContact);
+ assert.ok(evidence.safeApproachBeforeFirstContact.x<48);
+ assert.equal(evidence.withoutActuableLeaves.path,undefined,
+  'long hypothetical route is not exposed as a game nav route');
 });
 test('D3.2 R3: locked and wedged hinges are not counted as actuable',()=>{
  const leaf={id:'LOCKED',a:pt(48,0),b:pt(48,96),open:false,
