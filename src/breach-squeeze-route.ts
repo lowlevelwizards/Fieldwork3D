@@ -50,7 +50,7 @@ const routeSwept=(from:Pt,path:readonly Pt[],
 };
 /** No extra A* for a clear normal route. Only search a roomier lane when
  * the ordinary route brushes known geometry; reject gross detours. */
-function preferRoomyPath(from:Pt,to:Pt,ordinary:Pt[],
+function preferRoomyPath(from:Pt,to:Pt,ordinary:readonly Pt[],
  canStand:(p:Pt,r:number)=>boolean,
  canSweep:(a:Pt,b:Pt,r:number)=>boolean):Pt[]{
  const normal=smoothTraversalRoute(from,ordinary,
