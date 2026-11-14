@@ -3,8 +3,9 @@ import type {SessionWorldGeometry} from './breach-world-context.ts';
  * by the known map: never reveal hidden walls or furniture while planning. */
 import {type Pt,route,passable,type Door,OPERATOR_RADIUS,
   pointToSegment,doorLeafSegment} from './breach-core.ts';
+import {canAutoOpenEnRoute} from './breach-door.ts';
 import {type IntelState,intelPassable,routeWithIntel} from './breach-intel.ts';
-import {profileSamples,squeezeFacing,sweptProfileClear,SQUEEZE_RADIUS}
+import {profileSamples,squeezeFacing,sweptProfileClear,sweptBodyClear,SQUEEZE_RADIUS}
   from './breach-navigation.ts';
 import {localDetour} from './breach-cooperation.ts';
 
@@ -136,8 +137,10 @@ export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt):Pt[]{
  * world-route search. A route never advances a hinge or simulation tick;
  * the next route constructs a fresh snapshot. Broadphase rejection is only
  * AABB: every possible contact still gets exact pointToSegment clearance. */
-const worldCanStand=(doors:Door[],world?:SessionWorldGeometry)=>{
-  const leaves=doors.filter(d=>d.open&&(d.openFraction??0)>=.72)
+const worldCanStand=(doors:Door[],world?:SessionWorldGeometry,
+  portalMode=false)=>{
+  const leaves=doors.filter(d=>d.open&&(d.openFraction??0)>=.72||
+      portalMode&&(d.locked||d.jammed||d.wedged||!!d.heldBy))
     .map(d=>{
       const leaf=doorLeafSegment(d);
       return {leaf,minX:Math.min(leaf.a.x,leaf.b.x),
@@ -212,6 +215,63 @@ export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],
  * few short, swept local escapes before authorizing a squeeze. Each recovery
  * then rejoins a real normal-body route; no waypoint/goal is modified.
  * Bounded to avoid route-search spikes in genuine narrow corridors. */
+
+/** D3.3: after an *actual physical collision* defeats world-truth routing,
+ * a closed but operable door is a future portal, never current free space.
+ * Search the SAME 16/8-unit A* once with only those portals hypothesized,
+ * then retain the collision-clear prefix and at most ONE door-contact leg.
+ * Existing handle, hinge, queue and swept-body motor decide if it opens.
+ * This function never moves an actor, learns hidden intel, or rewrites plans.
+ */
+export function routeToNextOperableDoor(
+ from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry
+):Pt[]{
+ if(!doors.some(d=>!d.locked&&!d.jammed&&!d.wedged&&!d.heldBy&&
+    (d.openFraction??(d.open?1:0))<.72))return [];
+ const canStand=worldCanStand(doors,world,true);
+ if(!canStand(from,OPERATOR_RADIUS)||!canStand(to,OPERATOR_RADIUS))
+   return [];
+ // Unlike a blind local shimmy, this candidate must have an actual
+ // connected world route under the hypothetical future door states.
+ // Start-anchor repair is scoped to this cold recovery request.
+ const proposal=route(from,to,p=>canStand(p,OPERATOR_RADIUS),true);
+ if(!proposal.length)return [];
+ const prefix:Pt[]=[];
+ let previous=from;
+ for(const next of proposal){
+   if(sweptBodyClear(previous,next,doors,OPERATOR_RADIUS,world)){
+     prefix.push({...next});previous=next;continue;
+   }
+   // Locate FIRST actual leaf contact along the proposed segment.
+   // A distant door must be reached by ordinary, physically swept motor
+   // footsteps; it is not opened or declared clear from here.
+   const span=Math.hypot(next.x-previous.x,next.y-previous.y);
+   const count=Math.max(1,Math.ceil(span/2));
+   for(let sample=1;sample<=count;sample++){
+     const t=sample/count;
+     const p={x:previous.x+(next.x-previous.x)*t,
+       y:previous.y+(next.y-previous.y)*t};
+     if(!(world?world.passable(p,OPERATOR_RADIUS):passable(p,OPERATOR_RADIUS)))
+       return [];
+     for(const door of doors){
+       if(pointToSegment(p,doorLeafSegment(door))>=OPERATOR_RADIUS+1)
+         continue;
+       if(door.locked||door.jammed||door.wedged||door.heldBy||
+         !canAutoOpenEnRoute({kind:'move'},door.id))return [];
+       if((door.openFraction??(door.open?1:0))>=.72)return [];
+       // This final point remains intentionally beyond current leaf
+       // clearance. The motor stops and opens the door at body contact.
+       // Do NOT append any later hypothetical waypoints.
+       return [...prefix,{...next}];
+     }
+   }
+   return [];
+ }
+ // A hypothetical door-free path that contains no actual portal contact
+ // is not a reason to replace the regular world route.
+ return [];
+}
+
 export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
  // A single blocked collision can try up to thirteen full-grid A* routes.
  // Adjacent escape probes repeat many identical geometry/door tests.
