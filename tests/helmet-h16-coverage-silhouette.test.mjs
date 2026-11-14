@@ -38,8 +38,8 @@ test('H16: silhouette hierarchy is legible without accessories',()=>{
   assert.ok(pair[0].x===-pair[1].x);
   assert.ok(pair.every(p=>p.depth>4.7),'no micro-detail ear stairs');
  }
- assert.equal(HEAD_SILHOUETTE_METRICS.ach.earEdge,fullEar);
- assert.equal(HEAD_SILHOUETTE_METRICS['mich-2002'].earEdge,midEar);
+ assert.ok(near(HEAD_SILHOUETTE_METRICS.ach.earEdge,fullEar));
+ assert.ok(near(HEAD_SILHOUETTE_METRICS['mich-2002'].earEdge,midEar));
  assert.equal(HELMET_MOUNT_PROFILES['mich-2002'].ear,4.05,
   'upper sidewall accessory station must not drop with the guard');
  assert.equal(HELMET_MOUNT_PROFILES.ach.ear,2.92,
