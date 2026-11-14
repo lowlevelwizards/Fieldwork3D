@@ -1,0 +1,74 @@
+name: D3.9C paired regression attribution
+on:
+  push:
+    branches: [feature/d3-9-clean-single-opener-20261114]
+    paths:
+      - '.github/workflows/d3-9c-regression-compare.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Same 25s corpus before B and after B with exact forensic detail
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/a3" 059faf94a7ee4669245eac902c06761ff0ec4260
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/a3/node_modules"
+          cp scripts/audit-r7-squad-execution.mjs "$RUNNER_TEMP/a3/scripts/audit-r7-squad-execution.mjs"
+          cp src/breach-d3-c-progress.ts "$RUNNER_TEMP/a3/src/breach-d3-c-progress.ts"
+          node --experimental-strip-types "$RUNNER_TEMP/a3/scripts/audit-r7-squad-execution.mjs" 11 1500 > "$RUNNER_TEMP/a3-25.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 1500 > "$RUNNER_TEMP/b-25.json"
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const base=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+            const now=JSON.parse(fs.readFileSync(process.argv[2],"utf8"));
+            const flatten=r=>r.rows.flatMap(s=>(s.modes??[]).flatMap(m=>m.operators.map(a=>({
+              key:s.seed+"/"+m.mode+"/"+a.id,seed:s.seed,mode:m.mode,
+              id:a.id,retries:a.retries,arrived:a.arrived,
+              remaining:a.remaining,travel:a.progressDistance,
+              stalled:a.stallEpisodes,blocked:a.blockedSeconds,
+              wait:a.waitSeconds,orders:a.remainingOrders,
+              blocker:a.lastBlocker
+            }))));
+            const compare=new Map(flatten(base).map(x=>[x.key,x]));
+            const actorDiffs=flatten(now).map(x=>{
+              const before=compare.get(x.key);
+              return {key:x.key,retryDelta:x.retries-before.retries,
+               arrivalDelta:Number(x.arrived)-Number(before.arrived),
+               blockedDelta:+(x.blocked-before.blocked).toFixed(2),
+               stillRemaining:x.remaining,originalRemaining:before.remaining,
+               planEnded:x.orders===0,blocker:x.blocker}
+            }).filter(x=>x.retryDelta||x.arrivalDelta||x.blockedDelta);
+            const doors=r=>new Map(r.rows.flatMap(s=>(s.modes??[]).flatMap(m=>
+              m.doorFlipDetails.map(d=>[s.seed+"/"+m.mode+"/"+d.id,d.flips]))));
+            const oldDoors=doors(base),newDoors=doors(now);
+            const doorDiffs=[...new Set([...oldDoors.keys(),...newDoors.keys()])]
+              .map(k=>({key:k,before:oldDoors.get(k)??0,after:newDoors.get(k)??0,
+                delta:(newDoors.get(k)??0)-(oldDoors.get(k)??0)}))
+              .filter(d=>d.delta).sort((a,b)=>b.delta-a.delta);
+            const cancel=r=>r.rows.flatMap(s=>(s.modes??[]).flatMap(m=>
+              m.orderCancelledEvents.map(e=>({seed:s.seed,mode:m.mode,event:e}))));
+            console.log("C PAIRED REGRESSIONS",JSON.stringify({base:base.summary,
+              now:now.summary,actorDiffs,doorDiffs,
+              cancellationsBefore:cancel(base),cancellationsAfter:cancel(now)},null,2));
+            if(now.summary.invalidPositions||now.summary.corruptedPlans||
+              now.summary.physicsStepViolations)process.exit(1);
+          ' "$RUNNER_TEMP/a3-25.json" "$RUNNER_TEMP/b-25.json"
+      - name: Preserve exact before and after JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-9c-paired-regression-attribution
+          path: |
+            ${{ runner.temp }}/a3-25.json
+            ${{ runner.temp }}/b-25.json
+          if-no-files-found: ignore
