@@ -75,6 +75,19 @@ export function syncDoorTraversalEpisode(
   let door:Door|undefined;
   for(const d of doors)if(d.id===episode.doorId){door=d;break;}
   if(!door){actor.doorTraversal=null;return null;}
+  // D3.4: a traversed doorway cannot own a remote actor indefinitely.
+  // A long alternate route may travel tangent to the door frame, keeping
+  // signed-side classification in CROSS even hundreds of units away.
+  // Release only an ordinary direct/push episode that has already crossed
+  // (or is blocked after crossing) and is >110 units from its real frame.
+  // Preserve active outside-leaf rehearsal and the approach/open phases.
+  // The existing 60 Hz episode observation already owns this lifecycle;
+  // no new motor search, timer, physics object or authored-plan mutation.
+  if((episode.phase==='cross'||episode.phase==='blocked')&&
+     episode.maneuver!=='outside-leaf'&&
+     squared(actor.p,doorCenter(door))>110*110){
+    actor.doorTraversal=null;return null;
+  }
   // D4 retains a physical support-hand attachment while the world
   // and hand-availability checks in the authoritative door phase pass.
   if(squared(actor.p,episode.lastPosition)>2.25){
