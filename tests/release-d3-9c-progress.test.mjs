@@ -55,3 +55,10 @@ test('C1 short furniture detour must reach its safe departure point',async()=>{
  completePreciseLocalDetour(a);
  assert.equal(localDetourWaypointTolerance(a,corner),3);
 });
+
+test('C3 route backoff counts actual immobility but never drops an order',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('../src/breach-motor-route.ts',import.meta.url),'utf8');
+ assert.match(src,/if\(s\.seconds<a\.retryRouteAt\)\{[\s\S]*?a\.blockedTime\+=dt;a\.lastBlocker='route'/);
+ assert.match(src,/a\.retryRouteAt=s\.seconds\+routeRetrySeconds/);
+});

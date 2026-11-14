@@ -81,7 +81,15 @@ export function prepareMotorRoute(
       a.retryRouteAt=0;a.recoveryAttempts=0;
       return 'ready';
     }
-    if(s.seconds<a.retryRouteAt){a.velocity=0;return 'unavailable';}
+    if(s.seconds<a.retryRouteAt){
+      // C3: a backoff is still REAL time stationary with an active MOVE.
+      // Previously blockedTime advanced for only one 60Hz tick per A*
+      // attempt, leaving a 20-second unreachable toilet destination
+      // reporting as neither blocked nor awaiting action. Do not repeat
+      // searches during cooldown; keep the authored order for user edits.
+      a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
+      return 'unavailable';
+    }
     a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       hooks.cachedEnemyRoute(s,a.p,p,true);
     if(!a.nav.length&&a.side==='blue'){
