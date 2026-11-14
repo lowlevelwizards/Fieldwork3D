@@ -46,11 +46,11 @@ test('H18: fewer rim pixels without new geometry and fabric stays synchronized',
   assert.ok(near(binding.userData.minimumHeight,height));
   const p=achMichProfile(id),attrib=cover.getAttribute('position');
   for(const z of [p.front,p.rear]){
-   const y=(z===p.front?p.brow:p.nape)+height+.035;
+   const y=(z===p.front?p.brow:p.nape)-.14;
    let matches=0;
    for(let i=0;i<attrib.count;i++)
     if(near(attrib.getY(i),y,.003))matches++;
-   assert.ok(matches>0,'draped cover offset follows same reduced binding height');
+   assert.ok(matches>0,'H25 cloth extends past the covered rubber lip');
   }
   const straps=achMichRetentionPaths(id);
   assert.equal(straps.length,6);
