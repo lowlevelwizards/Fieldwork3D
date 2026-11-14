@@ -25,8 +25,8 @@ const unit=(v:Pt):Pt=>{
  const n=Math.hypot(v.x,v.y);return n>1e-6?
   {x:v.x/n,y:v.y/n}:{x:0,y:0};
 };
-const handOrigin=(a:TeamActor):ContactPoint3=>{
- const f=forward(a.heading),l=left(a.heading);
+const handOrigin=(a:TeamActor,
+ f:Pt=forward(a.heading),l:Pt=left(a.heading)):ContactPoint3=>{
  return {x:a.p.x+f.x*4+l.x*4,
    y:(a.posture==='crouch'?13:20)-(a.coverStanceDrop??0),
    z:a.p.y+f.y*4+l.y*4};
@@ -93,8 +93,7 @@ export function coverSupportSurface(
    y:cover.y+sign*hy},normal:{x:0,y:sign},
    height:Math.min(21,height),kind:'cover'};
 }
-const actorFacingSurface=(a:TeamActor,point:Pt):boolean=>{
- const f=forward(a.heading),l=left(a.heading);
+const actorFacingSurface=(a:TeamActor,point:Pt,f:Pt,l:Pt):boolean=>{
  const delta={x:point.x-a.p.x,y:point.y-a.p.y};
  const front=delta.x*f.x+delta.y*f.y;
  const supportSide=delta.x*l.x+delta.y*l.y;
@@ -104,9 +103,10 @@ const actorFacingSurface=(a:TeamActor,point:Pt):boolean=>{
 };
 function contactForSurface(
  s:Session,a:TeamActor,surface:SupportSurface,
- world:SessionWorldGeometry,retaining:boolean,origin:ContactPoint3
+ world:SessionWorldGeometry,retaining:boolean,origin:ContactPoint3,
+ f:Pt,l:Pt
 ):ContactClaim|null{
- if(!actorFacingSurface(a,surface.point))return null;
+ if(!actorFacingSurface(a,surface.point,f,l))return null;
  const contact:PhysicalContact={intent:'brace',limb:'support-hand',
   anchor:{target:'surface',id:surface.id,
     point:{x:surface.point.x,y:surface.height,z:surface.point.y},
@@ -124,14 +124,15 @@ export function chooseEnvironmentSupport(
  s:Session,a:TeamActor,world:SessionWorldGeometry,
  previous:PhysicalContact|null
 ):ContactClaim|null{
- const origin=handOrigin(a),p=sourcePoint(origin);
+ const f=forward(a.heading),l=left(a.heading);
+ const origin=handOrigin(a,f,l),p=sourcePoint(origin);
  const picks:{best:ScoredSupport|null;retained:ScoredSupport|null}={
   best:null,retained:null};
  function push(surface:SupportSurface|null){
   if(!surface)return;
   const retained=!!previous&&previous.releasedAt===null&&
     previous.anchor.id===surface.id;
-  const claim=contactForSurface(s,a,surface,world,retained,origin);
+  const claim=contactForSurface(s,a,surface,world,retained,origin,f,l);
   if(!claim)return;
   const option={claim,score:Math.hypot(
     surface.point.x-origin.x,surface.height-origin.y,
@@ -180,7 +181,7 @@ export function chooseTeammateSupport(
 ):ContactClaim|null{
  if(a.side!=='blue')return null;
  const f=forward(a.heading),l=left(a.heading);
- const from=handOrigin(a);
+ const from=handOrigin(a,f,l);
  let best:ScoredSupport|null=null;
  let retained:ScoredSupport|null=null;
  for(const lead of s.operators){
