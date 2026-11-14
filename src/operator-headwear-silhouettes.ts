@@ -409,8 +409,8 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
   width:10.15,height:3.04,depth:10.25},
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.91,
   width:10.15,height:1.70,depth:1.25},
- {name:'ach-continuous-nape',x:0,y:4.325,z:4.97,
-  width:10.15,height:3.95,depth:1.26},
+ {name:'ach-continuous-nape',x:0,y:4.075,z:4.97,
+  width:10.15,height:4.45,depth:1.26},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'ach-left-ear-nape':'ach-right-ear-nape',
   x:sign*4.55,y:4.425,z:.28,
@@ -443,7 +443,7 @@ const HIGH_CUT_CUBOIDS:readonly HeadwearCuboid[]=[
 const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2002-crown',x:0,y:7.40,z:0,width:10.06,height:2.70,depth:10.45},
  {name:'m2002-brow',x:0,y:5.54,z:-4.89,width:10.06,height:1.97,depth:1.62},
- {name:'m2002-nape',x:0,y:4.56,z:4.83,width:10.06,height:3.88,depth:1.78},
+ {name:'m2002-nape',x:0,y:4.275,z:4.83,width:10.06,height:4.45,depth:1.78},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'m2002-left-ear-nape':'m2002-right-ear-nape',
   x:sign*4.50,y:4.785,z:.38,
@@ -457,7 +457,7 @@ const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
 const MICH_2001_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2001-main-crown',x:0,y:7.43,z:0,width:10.03,height:2.55,depth:10.18},
  {name:'m2001-brow',x:0,y:5.45,z:-4.95,width:10.03,height:1.80,depth:1.52},
- {name:'m2001-rear-coverage',x:0,y:4.565,z:4.50,width:10.03,height:3.43,depth:2.32},
+ {name:'m2001-rear-coverage',x:0,y:4.265,z:4.50,width:10.03,height:4.03,depth:2.32},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'m2001-left-ear-nape':'m2001-right-ear-nape',
   x:sign*4.52,y:5.875,z:.20,
