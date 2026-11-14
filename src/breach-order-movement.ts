@@ -15,7 +15,7 @@ import {selectPhysicalEntrySettle} from './breach-entry-target-settle.ts';
 import {bodyClear} from './breach-navigation.ts';
 import {autoSidestepFacing} from './breach-auto-sidestep.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
-import {completeOrder,rotate,aimHeading,applyAimNode}
+import {completeOrder,failCurrentOrder,rotate,aimHeading,applyAimNode}
  from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -104,6 +104,15 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
      point=>world.passable(point,OPERATOR_RADIUS)&&
       bodyClear(point,s.doors,OPERATOR_RADIUS,world),
      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+   // Only a GENERATED landing inside a fixed physical wall is irrecoverable.
+   // Opening a leaf cannot fix it; do not quietly count this as arrival
+   // or repeatedly collide for 30 seconds. Other MOVE orders stay authored.
+   if(!entrySettle&&door&&!world.passable(n.p,OPERATOR_RADIUS)&&
+      a.blockedTime>=3.5){
+    failCurrentOrder(s,a,n,'ENTRY LANDING BLOCKED · NO SAFE INTERIOR FOOTPRINT',
+      port.notify);
+    return true;
+   }
   }
   const newlySettled=n.kind==='move'&&!retained?
     entrySettle??friendlyArrivalSettleTarget(a.p,n.p,friendlyPeers,(from,to)=>

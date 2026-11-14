@@ -76,3 +76,10 @@ test('C2 generated interior landing uses real swept body, not approach-side comp
  assert.equal(selectPhysicalEntrySettle(start,goal,door,[],
   ()=>false,()=>true),null);
 });
+
+test('C2 invalid static generated landing fails visibly, never counts as arrival',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const s=readFileSync(new URL('../src/breach-order-movement.ts',import.meta.url),'utf8');
+ assert.match(s,/!entrySettle&&door&&!world\.passable\(n\.p,OPERATOR_RADIUS\)/);
+ assert.match(s,/failCurrentOrder\(s,a,n,'ENTRY LANDING BLOCKED/);
+});
