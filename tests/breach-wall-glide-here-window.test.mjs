@@ -202,7 +202,8 @@ test('C6 indexed wall candidate tie order matches original wall order',()=>{
   {a:{x:104,y:0},b:{x:104,y:250}}
  ];
  const world={
-  walls,someWallNearPoint(p,r,callback){
+  walls,passable:()=>true,
+  someWallNearPoint(p,r,callback){
    for(const i of [2,0])callback(walls[i],i);return false;
   }
  };
