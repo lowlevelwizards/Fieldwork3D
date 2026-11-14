@@ -246,6 +246,8 @@ export type TeamActor=Operator & {
   /** Transient, collision-checked gun-clearance recovery; not a PlanNode. */
   fireRetreatTarget:Pt|null;fireRetreatUntil:number;lastFireRetreatAt:number;
   fireRetreatReason?:string|null;
+  /** D2.3: one transient commitment token, invalidated by authored edits. */
+  fireRetreatPlanId?:number|null;fireRetreatContactId?:string|null;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
   wardrobe?:WardrobeOptions;
