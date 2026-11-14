@@ -11,7 +11,7 @@
  * remain live and exact at the moment a hinge or actor attempts to move.
  */
 import type {Session,TeamActor} from './breach-game.ts';
-import type {Door} from './breach-core.ts';
+import {doorLeafSegment,pointToSegment,OPERATOR_RADIUS,type Door} from './breach-core.ts';
 import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 import type {BodyDoorPressurePolicy} from './breach-door.ts';
 import {canDoorHandAssist} from './breach-door-hand-contact.ts';
@@ -57,6 +57,18 @@ function inspectDoor(s:Session,tick:TickClaims,door:Door):void{
     n.entryDoorId===door.id);
   if(queued)tick.protectedBySide.add(sideKey(door.id,actor.side));
   const n=actor.plan[0];
+  // R2.3: an active operator physically brushing an already OPEN leaf
+  // is occupying that aperture even if a temporary nav leg means
+  // signed-goal crossing recognition has not acquired a D2 episode.
+  // This is evaluated ONLY in the existing touched-door, once-per-tick
+  // actor loop. It prevents body-driven CLOSE while feet clear the panel;
+  // explicit CLOSE and real hinge/body collision remain authoritative.
+  if((n.kind==='move'||n.kind==='pie')&&door.open&&
+     (door.openFraction??0)>.08&&
+     pointToSegment(actor.p,doorLeafSegment(door))<OPERATOR_RADIUS+7){
+    tick.protectedBySide.add(sideKey(door.id,actor.side));
+    tick.occupiedDoors.add(door.id);
+  }
   if(!['move','pie','door','sync'].includes(n.kind)||
      n.kind==='door'&&n.method==='close')continue;
   if(!activeDoorCrossingIntent(actor,door,true)&&
