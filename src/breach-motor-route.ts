@@ -15,6 +15,8 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
+import {holdKnownFixedAuthoredGoal}
+ from './breach-authored-goal-block.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
 
@@ -53,6 +55,11 @@ export function prepareMotorRoute(
     a.lastNormalLaneProbeAt=-10;
   }
   if(!a.nav.length){
+    // D3.10B: after real retries have established a known, immovable
+    // authored landing, do not run the same A* and contact probes forever.
+    // The issue stays visible, and any authored-goal/cover change wakes it.
+    if(holdKnownFixedAuthoredGoal(s,a,p,goalKey,dt,hooks.notify))
+      return 'unavailable';
     // Completed D2 temporary doorway footwork returns to the original
     // authored destination, not another arbitrary temporary node.
     if(a.doorTraversal?.maneuver==='outside-leaf'){
