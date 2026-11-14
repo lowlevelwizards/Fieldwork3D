@@ -8,7 +8,7 @@ import {achMichProfile,achMichHemY,achMichRetentionPaths,
  createAchMichRetentionGeometry,createAchMichBindingGeometry,
  createAchMichDetails,ACH_MICH_BINDING_HEIGHT}
  from '../src/operator-ach-mich-details.ts';
-import {createAchMichDrapedGeometry}
+import {createAchMichDrapedGeometry,ACH_MICH_COVER_OFFSET}
  from '../src/operator-ach-mich-cover-drape.ts';
 
 test('H5: the fitted cover has one continuous diagonal, no old inward ramp',()=>{
@@ -21,7 +21,8 @@ test('H5: the fitted cover has one continuous diagonal, no old inward ramp',()=>
   assert.ok(drape.boundingBox.max.y>roof.y+roof.height/2);
   // The shoulder is an external continuous vertical face, not a shelf.
   const p=achMichProfile(id);
-  const frontExtreme=p.front-.13,rearExtreme=p.rear+.13;
+  const frontExtreme=p.front-ACH_MICH_COVER_OFFSET,
+   rearExtreme=p.rear+ACH_MICH_COVER_OFFSET;
   let front=0,rear=0;
   for(let i=0;i<vertices.count;i++){
    if(Math.abs(vertices.getZ(i)-frontExtreme)<.005)front++;
@@ -70,8 +71,9 @@ test('H5: ACH central ear and deeper nape are substantial, not tiny stepped part
  const ear=v.find(x=>x.name==='ach-right-ear-wrap');
  const nape=v.find(x=>x.name==='ach-right-nape-return');
  assert.ok(ear&&nape);
- assert.ok(ear.height>=2.9&&ear.depth>=5.4);
+ assert.ok(ear.height>=4.0&&ear.depth>=5.0&&ear.width>=1.25,
+  'H16 deep, broad flared ear guard should remain one major volume');
  assert.ok(nape.height>=3.6&&nape.depth>=2.8);
- assert.ok(ear.y-ear.height/2>nape.y-nape.height/2+.5);
+ assert.ok(ear.y-ear.height/2<nape.y-nape.height/2-.15);
  assert.ok(nape.z-nape.depth/2<ear.z+ear.depth/2-.35);
 });

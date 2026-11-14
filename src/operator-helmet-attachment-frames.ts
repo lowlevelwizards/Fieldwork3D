@@ -12,7 +12,9 @@ const metrics=(id:'ach'|'pasgt'|'high-cut',side:number):Profile=>{
  return {front:m.frontExtent,rear:m.rearExtent,side,top:m.top,ear:m.earEdge};
 };
 export const HELMET_MOUNT_PROFILES:Readonly<Record<H1ModernHelmet,Profile>>={
- ach:metrics('ach',5.08),pasgt:metrics('pasgt',5.18),
+ // Legacy equipment heights are mounting stations, not the lowest shell hem.
+ // Keep rails/headset sockets in the upper sidewall as ear guards deepen.
+ ach:{...metrics('ach',5.08),ear:2.92},pasgt:metrics('pasgt',5.18),
  'high-cut':metrics('high-cut',4.88),
  'mich-2002':{front:-5.70,rear:5.75,side:5.04,top:8.76,ear:4.05},
  'mich-2001':{front:-5.61,rear:5.64,side:4.97,top:8.70,ear:5.91},

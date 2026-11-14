@@ -110,10 +110,10 @@ test('stage 1E removes insignificant crown trim and consolidates silhouette step
   byName(ach,'ach-right-nape-return'))>.2);
  assert.ok(zOverlap(byName(high,'highcut-protective-brow'),
   byName(high,'highcut-right-temple'))>.2);
- // ACH has an intentional shallow central-ear scallop and deep nape return.
+ // H16: Full-Cut has a deeper, slightly flared central ear bump and nape return.
  assert.ok(Math.abs(lowerAt(ach,4.4,-3.5)-4.40)<.01);
- assert.ok(Math.abs(lowerAt(ach,4.4,0)-3.36)<.01);
- assert.ok(Math.abs(lowerAt(ach,4.4,4.6)-2.68)<.01);
+ assert.ok(Math.abs(lowerAt(ach,4.4,0)-2.31)<.01);
+ assert.ok(Math.abs(lowerAt(ach,4.4,4.6)-2.55)<.01);
  // The high-cut instead has exactly one broad, exposed ear interval.
  assert.ok(Math.abs(lowerAt(high,4.4,-3.5)-4.50)<.01);
  assert.ok(Math.abs(lowerAt(high,4.4,0)-5.95)<.01);
@@ -126,5 +126,5 @@ test('ACH first-pass top chamfer is intentional but keeps its lower-edge topolog
  assert.ok(g.getAttribute('normal').count>0);
  const side=headwearCuboidVolumes('ach');
  assert.equal(side.length,9);
- assert.ok(Math.abs(lowerAt(side,4.4,0)-3.36)<.01);
+ assert.ok(Math.abs(lowerAt(side,4.4,0)-2.31)<.01);
 });
