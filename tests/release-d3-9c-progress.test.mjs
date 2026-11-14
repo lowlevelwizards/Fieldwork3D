@@ -62,3 +62,17 @@ test('C3 route backoff counts actual immobility but never drops an order',async(
  assert.match(src,/if\(s\.seconds<a\.retryRouteAt\)\{[\s\S]*?a\.blockedTime\+=dt;a\.lastBlocker='route'/);
  assert.match(src,/a\.retryRouteAt=s\.seconds\+routeRetrySeconds/);
 });
+
+test('C2 generated interior landing uses real swept body, not approach-side completion',async()=>{
+ const {selectPhysicalEntrySettle}=await import('../src/breach-entry-target-settle.ts');
+ const door={id:'D',a:{x:100,y:80},b:{x:100,y:120},kind:'hinged',
+  hinge:'a',swing:1,open:true,openFraction:1};
+ const start={x:115,y:100},goal={x:125,y:100};
+ const chosen=selectPhysicalEntrySettle(start,goal,door,[],
+  p=>p.x>110&&p.y>70&&p.y<130,()=>true);
+ assert.ok(chosen);
+ assert.ok(chosen.x>100);
+ assert.ok(Math.hypot(chosen.x-goal.x,chosen.y-goal.y)<16);
+ assert.equal(selectPhysicalEntrySettle(start,goal,door,[],
+  ()=>false,()=>true),null);
+});
