@@ -1,7 +1,7 @@
-/** H24: per-station mirrored lateral ear mass and continuous low-poly hems.
- * The same six silhouette stations used by H17 emphasize the distinct
- * ear lobe (full vs mid) and slope into the nape without adding polygons.
- * One faceted roof, two planar sides, one brow/nape; one draw call.
+/** H30: reference-guided ACH/MICH sidewall candidate, not yet merged.
+ * Preserve the chunky crown and the six actual brow/ear/nape stations;
+ * modest lateral molding adds shape without H28's giant ear extrusion.
+ * One continuous static shell and one draw call.
  */
 import * as THREE from 'three';
 import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
@@ -39,39 +39,42 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
   [5.015,2.05,5.66]
  ]
 };
-/** Broad full/mid ear-panel widths, front-to-back (not a peak ridge).
- * The upper half is flat; high-cut has no lateral ear projection.
- * All cuts retain the six original YZ hem stations.
+/** H30 modest integrated cheek/ear shell fullness.
+ * Source of real protective COVERAGE is the shared lower YZ contour, not
+ * this separate lateral width. High cut remains unflared.
  */
 export const UNIFIED_HELMET_EAR_SHOULDERS:Readonly<
  Record<UnifiedCut,readonly number[]>>={
- ach:[5.075,5.075,5.92,5.92,5.125,5.075],
- 'mich-2002':[5.03,5.03,5.78,5.78,5.08,5.03],
+ ach:[5.075,5.075,5.395,5.395,5.125,5.075],
+ 'mich-2002':[5.03,5.03,5.335,5.335,5.08,5.03],
  'mich-2001':[5.015,5.015,5.015,5.015,5.015,5.015]
 };
-// H28: one exaggerated lower-side face, two narrowly spaced transition
-// levels, and the existing hem. Values are relative to the central ear
-// height, NOT independently stretched at the temple and nape stations.
-export const ACH_MICH_EAR_SHOULDER_FRACTION=.52; // compatibility reference
-export const ACH_MICH_EAR_FACE_TOP_FRACTION=.62;
-export const ACH_MICH_EAR_FACE_BOTTOM_FRACTION=.93;
-export const ACH_MICH_EAR_UPPER_BEVEL_HEIGHT=.17;
-/** A single ear cross-section contract shared by shell and fitted cloth.
- * No special leading-temple spike clamp, per-cut patch or stacked plate.
- * The local hem establishes a small safety margin at the brow and nape,
- * while the central ear establishes the main horizontal shape breaks.
+// H30 reference study: the helmet's lower SIDE CONTOUR carries coverage.
+// The shell may swell out only ~0.30 units at the ear, compared with
+// H28's ~0.8: enough to read as molded protection without an attached box.
+// The face-top break is anchored to the brow, not rederived from every hem
+// station (which previously generated a slanted/triangular upper ridge).
+export const ACH_MICH_EAR_UPPER_BEVEL_HEIGHT=.18;
+export const ACH_MICH_EAR_BROW_RELIEF=.17;
+export const ACH_MICH_EAR_HEM_RETURN=.14;
+/** A common brow-line shoulder with a full, continuous ear-side face.
+ * This is an ART-DIRECTION CANDIDATE, not an approved final silhouette.
+ * The exact same profile is consumed by bare shell and fitted cover.
  */
 export function unifiedHelmetEarVerticalProfile(
  cut:UnifiedCut,shoulderY:number,hemY:number,_z?:number){
- const centralHemY=UNIFIED_HELMET_HEMS[cut][2][1];
- const nominalTop=shoulderY+
-  (centralHemY-shoulderY)*ACH_MICH_EAR_FACE_TOP_FRACTION;
- const nominalBottom=shoulderY+
-  (centralHemY-shoulderY)*ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
- const faceBottomY=Math.max(nominalBottom,hemY+.10);
- const faceTopY=Math.max(nominalTop,hemY+.28,faceBottomY+.18);
- // One short shoulder-to-ear transition at every station. At the brow
- // there is no lateral bulge, so its edge cannot form a rising fin.
+ const hem=UNIFIED_HELMET_HEMS[cut];
+ if(cut==='mich-2001'){
+  // Leave the approved open-ear high-cut geometry unchanged in H30.
+  const centralHemY=hem[2][1];
+  const nominalTop=shoulderY+(centralHemY-shoulderY)*.62;
+  const nominalBottom=shoulderY+(centralHemY-shoulderY)*.93;
+  const faceBottomY=Math.max(nominalBottom,hemY+.10);
+  const faceTopY=Math.max(nominalTop,hemY+.28,faceBottomY+.18);
+  return {onsetY:faceTopY+.17,faceTopY,faceBottomY};
+ }
+ const faceTopY=hem[1][1]+ACH_MICH_EAR_BROW_RELIEF;
+ const faceBottomY=Math.min(faceTopY-.08,hemY+ACH_MICH_EAR_HEM_RETURN);
  const onsetY=faceTopY+ACH_MICH_EAR_UPPER_BEVEL_HEIGHT;
  return {onsetY,faceTopY,faceBottomY};
 }
@@ -139,8 +142,8 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
    v(x,shoulderY,shoulderRear),v(x,shoulderY,front),v(sign,1,0),0,0,.97);
   for(let i=1;i<hem.length;i++){
    const a=hem[i-1],b=hem[i];
-   // The broad upper shell remains unbroken; the ear face expands only
-   // in the short last bevel. No extra leading-temple fin band.
+   // Preserve the broad upper shell, then transition into a slightly
+   // fuller sidewall at the BROW line. Avoid H28's projecting ear box.
    const onset=(point:ShellPoint):V=>[
     sign*s,
     unifiedHelmetEarVerticalProfile(cut,shoulderY,point[1],point[2]).onsetY,
@@ -150,8 +153,8 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
    quad(v(x,shoulderY,upperZ(a[2])),v(x,shoulderY,upperZ(b[2])),
     onsetB,onsetA,v(sign,0,0),0,1,.96);
    if(cut!=='mich-2001'){
-    // One oversized rectangular lower protective face. The rear station
-    // returns to the ordinary nape width in one simple taper.
+    // The EAR COVERAGE is shaped by the existing six-point hem.
+    // Modest continuous lateral molding only; no separate ear plate.
     const face=(point:ShellPoint,index:number,edge:'top'|'bottom'):V=>{
      const profile=unifiedHelmetEarVerticalProfile(cut,shoulderY,point[1],point[2]);
      return [
@@ -214,6 +217,8 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  g.userData.h27EarFaceTopFraction=ACH_MICH_EAR_FACE_TOP_FRACTION;
  g.userData.h27EarFaceBottomFraction=ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
  g.userData.h28UpperBevelHeight=ACH_MICH_EAR_UPPER_BEVEL_HEIGHT;
+ g.userData.h30ReferenceContourCandidate=true;
+ g.userData.h30MaxEarOverhang=cut==='ach'?.320:cut==='mich-2002'?.305:0;
  g.userData.exteriorQuads=quads;
  g.userData.camoUvLayout='planar-top/continuous-perimeter';
  g.userData.achMichCrownInset=topInset;
