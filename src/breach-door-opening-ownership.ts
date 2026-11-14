@@ -6,7 +6,7 @@
 import type {Session,TeamActor} from './breach-game.ts';
 import type {Door} from './breach-core.ts';
 import {doorCenter} from './breach-core.ts';
-import {doorReachable} from './breach-door.ts';
+import {doorReachable,doorWouldStrikeActors} from './breach-door.ts';
 import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 
 type Lease={actorId:string;orderId:number};
@@ -43,6 +43,22 @@ export function implicitDoorOpeningOwner(s:Session,d:Door):string|null{
    return prior.id;
   map.delete(d.id);
  }
+ // Do not impose an opening owner or staging queue on ordinary freely
+ // opening doors. Acquire a lease only after a real partial hinge STOPS
+ // against at least two active nearby squad bodies. Once acquired, keep
+ // the same opener while the followers physically clear its swing.
+ const fraction=d.openFraction??0;
+ if(!d.open||fraction<.15||Math.abs(d.angularVelocity??0)>=.16)
+  return null;
+ let physicalBlockers=0;
+ const next=Math.min(1,fraction+.025);
+ for(const a of s.operators){
+  if(!candidate(a,d)||!doorReachable(a.p,d))continue;
+  if(doorWouldStrikeActors(d,next,[a.p])){
+   if(++physicalBlockers>=2)break;
+  }
+ }
+ if(physicalBlockers<2)return null;
  const center=doorCenter(d);
  let best:TeamActor|null=null;
  let score=Infinity;
