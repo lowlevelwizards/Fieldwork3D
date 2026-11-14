@@ -21,7 +21,7 @@ try{
  const prev=actors.map(a=>({...a.p}));
  for(let t=0;t<2100;t++){
   stepSession(s,1/60);
-  if(t>=480&&t<650){
+  if(t>=1200&&t<1380){
    micro.push({tick:t+1,sec:r(s.seconds),actors:actors.filter(a=>a.id==='ash'||a.id==='vale').map(a=>({
     id:a.id,p:{x:r(a.p.x),y:r(a.p.y)},
     v:r(a.velocity),blocked:r(a.blockedTime),

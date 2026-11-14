@@ -23,7 +23,7 @@ jobs:
       - name: Half-second real motor trace
         run: |
           node --experimental-strip-types scripts/audit-d3-9c-motel.mjs > "$RUNNER_TEMP/motel.json"
-          node -e 'const x=require(process.argv[1]);console.log("MOTEL MICRO",JSON.stringify({...x,rows:x.rows.filter(r=>r.t>=8&&r.t<=22)}));' "$RUNNER_TEMP/motel.json"
+          node -e 'const x=require(process.argv[1]);console.log("MOTEL MICRO",JSON.stringify({...x,rows:x.rows.filter(r=>r.t>=20&&r.t<=35)}));' "$RUNNER_TEMP/motel.json"
           node -e 'const x=require(process.argv[1]);console.log("C 60HZ",JSON.stringify(x.micro.filter((t,i)=>i<50).map(t=>({t:t.sec,a:t.actors.map(a=>({id:a.id,p:a.p,v:a.v,blocked:a.blocked,nav:a.nav,navLength:a.navLength,repairAt:a.repairAt,last:a.last}))}))));' "$RUNNER_TEMP/motel.json"
       - name: Preserve full 35 seconds
         uses: actions/upload-artifact@v4
