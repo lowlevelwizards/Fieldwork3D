@@ -150,17 +150,21 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  for(const civil of s.civilians)if(civil.health>0)people.push(civil.p);
  const world=sessionWorldGeometry(s);
  const aimYaw=angle(a.p,target.p);
- const clearBody=(candidate:Pt)=>
-   sweptBodyClear(a.p,candidate,s.doors,8,world)&&
-   people.every(p=>{
-    const start=d(a.p,p),end=d(candidate,p);
-    // A stack may ALREADY be closer than normal comfortable spacing.
-    // Permit a tiny step only when it increases separation throughout
-    // the move; the unchanged physical motor remains the final authority.
-    if(start<20)return end>=start+1&&
-      pointToSegment(p,{a:a.p,b:candidate})>=start-.15;
-    return pointToSegment(p,{a:a.p,b:candidate})>=20;
-   });
+ const clearBody=(candidate:Pt)=>{
+   if(!sweptBodyClear(a.p,candidate,s.doors,8,world))return false;
+   // Avoid creating an Array.every closure per bounded candidate while
+   // keeping the exact separation constraints and iteration order.
+   for(const p of people){
+     const start=d(a.p,p),end=d(candidate,p);
+     // An already tight stack may step ONLY if separation increases.
+     if(start<20){
+       if(!(end>=start+1&&
+         pointToSegment(p,{a:a.p,b:candidate})>=start-.15))return false;
+     }else if(!(pointToSegment(p,{a:a.p,b:candidate})>=20))
+       return false;
+   }
+   return true;
+ };
  const legalShot=(candidate:Pt)=>{
    const candidateYaw=angle(candidate,target.p);
    const candidateRange=d(candidate,target.p);
@@ -636,8 +640,13 @@ function fire(s:Session,a:TeamActor,dt:number){
     };
     // A centered clear shot needs no contact correction. Otherwise keep
     // an already clear prior accommodation to prevent left-right flutter.
-    a.aimSideTarget=canFireOffset(0)?0:
-      chooseMicroAimOffset(a.aimSideOffset??0,canFireOffset).offset;
+    // The deterministic candidate order can revisit centered offset 0.
+    // A single call-local answer avoids repeating identical geometry and
+    // known-civilian visibility probes within this same fixed tick.
+    const centeredClear=canFireOffset(0);
+    a.aimSideTarget=centeredClear?0:
+      chooseMicroAimOffset(a.aimSideOffset??0,
+        offset=>offset===0?centeredClear:canFireOffset(offset)).offset;
   }
   // The target selector deliberately keeps tracking a lone visible target
   // even if their current firing lane is obstructed. That is correct
