@@ -83,3 +83,13 @@ test('C2 invalid static generated landing fails visibly, never counts as arrival
  assert.match(s,/!entrySettle&&door&&!world\.passable\(n\.p,OPERATOR_RADIUS\)/);
  assert.match(s,/failCurrentOrder\(s,a,n,'ENTRY LANDING BLOCKED/);
 });
+
+test('C4 real stable open-leaf escape hands off to world route, not repeated intel',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const route=readFileSync(new URL('../src/breach-motor-route.ts',import.meta.url),'utf8');
+ const collision=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
+ assert.match(route,/export function restoreAfterOpenLeafEscape/);
+ assert.match(route,/routeWithSqueezeWorld\(a\.p,goal,s\.doors,world\)/);
+ assert.match(route,/!sweptBodyClear\(a\.p,route\[0\]/);
+ assert.match(collision,/restoreAfterOpenLeafEscape\(a,s,p\)/);
+});

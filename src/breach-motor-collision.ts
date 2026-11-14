@@ -28,6 +28,7 @@ import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breac
 import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
+import {restoreAfterOpenLeafEscape} from './breach-motor-route.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
@@ -248,7 +249,9 @@ export function resolveMotorCollision(
       a.blockedTime=0;a.lastBlocker='door';
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
-      a.nav=[];a.retryRouteAt=0;return true;
+      a.nav=[];
+      if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
+      return true;
     }
   }
   // Furniture corners should be brushed around, not treated as hard jams.
