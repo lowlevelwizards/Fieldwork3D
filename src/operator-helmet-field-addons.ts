@@ -6,7 +6,9 @@ import * as THREE from 'three';
 import type {AchMichCoverShell} from './operator-ach-mich-cover-drape.ts';
 import {sampleHelmetShell,type CoverRegion} from './operator-helmet-surface.ts';
 import {arcFrontAccessoryFrame} from './operator-helmet-field-rails.ts';
+import {HELMET_MOUNT_PROFILES} from './operator-helmet-attachment-frames.ts';
 
+type AddonShell=AchMichCoverShell|'pasgt';
 export type HelmetFieldAddon='strobe'|'counterweight'|'battery'|
  'light'|'camera'|'chemlight';
 export type FieldAddonPalette={
@@ -40,8 +42,40 @@ const cylinder=(g:THREE.Group,name:string,mat:THREE.Material,
  if(axis==='x')mesh.rotation.z=Math.PI/2;
  mesh.castShadow=false;mesh.receiveShadow=false;g.add(mesh);return mesh;
 };
-const mount=(shell:AchMichCoverShell,g:THREE.Group,
+/** PASGT mounts are fixed to its *own* deep shell. A retrofit is not
+ * fitted with MICH drape samples and never changes the historical outline. */
+const pasgtSocket=(region:CoverRegion,u:number,v:number)=>{
+ const p=HELMET_MOUNT_PROFILES.pasgt;
+ const normal=new THREE.Vector3(),position=new THREE.Vector3();
+ if(region==='crown'){
+  normal.set(0,1,0);position.set(u*3.2,p.top+.18,p.rear-1.2-v*3);
+ }else if(region==='back'){
+  normal.set(0,0,1);position.set(u*2.8,p.top-2.4+v*.28,p.rear+.28);
+ }else if(region==='front'){
+  normal.set(0,0,-1);position.set(u*3.2,p.top-2.5,p.front-.28);
+ }else{
+  const sign=region==='left'?-1:1;
+  normal.set(sign,0,0);
+  position.set(sign*(p.side+.28),p.top-2.5+v*.20,u*3.1);
+ }
+ const up=region==='crown'?new THREE.Vector3(0,0,-1):
+  new THREE.Vector3(0,1,0);
+ const right=up.clone().cross(normal).normalize();
+ return {position,normal,right,up};
+};
+const mount=(shell:AddonShell,g:THREE.Group,
  region:CoverRegion,u:number,v:number)=>{
+ if(shell==='pasgt'){
+  const f=pasgtSocket(region,u,v),anchor=new THREE.Group();
+  anchor.name='helmet-addon-fitted-socket';
+  anchor.position.copy(f.position);
+  anchor.quaternion.setFromRotationMatrix(new THREE.Matrix4()
+   .makeBasis(f.right,f.up,f.normal));
+  anchor.userData.h14PasgtRetrofitSocket=true;
+  anchor.userData.h5HardMountedToShell=true;
+  g.add(anchor);
+  return anchor;
+ }
  for(const uu of [u,u*.86,u*.7])
   for(const vv of [v,v+.12,v-.12,.24]){
    const f=sampleHelmetShell(shell,region,uu,vv,.13);
@@ -59,22 +93,24 @@ const mount=(shell:AchMichCoverShell,g:THREE.Group,
   }
  throw Error('H9.7 unable to attach '+region+' on '+shell);
 };
-const mountArc=(shell:AchMichCoverShell,g:THREE.Group,
+const mountArc=(shell:AddonShell,g:THREE.Group,
  side:'left'|'right')=>{
- const f=arcFrontAccessoryFrame(shell,side);
+ const f=shell==='pasgt'?
+  pasgtSocket(side,-.85,.37):arcFrontAccessoryFrame(shell,side);
  const anchor=new THREE.Group();
  anchor.name='helmet-addon-fitted-socket';
  anchor.position.copy(f.position);
  anchor.quaternion.setFromRotationMatrix(new THREE.Matrix4()
   .makeBasis(f.right,f.up,f.normal));
  anchor.userData.h13RailAttached=true;
+ anchor.userData.h14PasgtRetrofit=shell==='pasgt';
  anchor.userData.h13RailSide=side;
  anchor.userData.h5HardMountedToShell=true;
  anchor.userData.h9RealCoverNormal=f.normal.toArray();
  g.add(anchor);
  return anchor;
 };
-function strobe(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
+function strobe(shell:AddonShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mount(shell,g,'crown',0,.67);
  const base=[[-.76,-.42],[.76,-.42],[.98,-.12],
   [.89,.39],[.58,.57],[-.58,.57],[-.89,.39],[-.98,-.12]];
@@ -91,7 +127,7 @@ function strobe(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
   block(a,'strobe-shell-retention-tab',p.cloth,x,-.18,.21,.18,.34,.23);
  a.userData.h9Distinctive='manta-wide-emitter';
 }
-function counterweight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
+function counterweight(shell:AddonShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mount(shell,g,'back',0,.12);
  // Rear weight carriage is one centered assembly, not a left-side pack.
  block(a,'counterweight-backing-panel',p.dark,0,-.12,-.12,3.70,1.83,.14);
@@ -108,7 +144,7 @@ function counterweight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette
  a.userData.h9Distinctive='segmented-weight-pouch';
  a.userData.h5RearCenterline=true;
 }
-function battery(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
+function battery(shell:AddonShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mount(shell,g,'back',0,.23);
  block(a,'battery-back-retention-plate',p.cloth,0,-.10,-.13,2.30,1.76,.17);
  silhouette(a,'facet-backed-helmet-battery',p.dark,[
@@ -124,7 +160,7 @@ function battery(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h9Distinctive='rear-power-hardcase';
  a.userData.h5RearCenterline=true;
 }
-function light(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
+function light(shell:AddonShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mountArc(shell,g,'left');
  block(a,'mlps-rail-mount',p.dark,0,0,.22,.84,.57,.34);
  // Three short faceted neck links make the bend readable at small scale.
@@ -139,7 +175,7 @@ function light(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  cylinder(lamp,'large-lamp-retention-ring',p.metal,0,0,.39,.39,.11,'z');
  a.userData.h9Distinctive='angled-flex-neck-lamp';
 }
-function camera(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
+function camera(shell:AddonShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mountArc(shell,g,'right');
  // Right-side bracket looks forward, not out through the operator's ear.
  const body=new THREE.Group();
@@ -156,7 +192,7 @@ function camera(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  block(body,'camera-large-status-window',p.reflect,-.47,.21,1.33,.35,.22,.07);
  a.userData.h9Distinctive='large-lens-action-camera';
 }
-function chemlight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
+function chemlight(shell:AddonShell,g:THREE.Group,p:FieldAddonPalette){
  const a=mount(shell,g,'crown',0,.88);
  // Crown-rear mounting pocket, not a bare cylinder on a side rail.
  // Secured carrier: bare plastic cylinders cannot hang from painted shell.
@@ -171,7 +207,7 @@ function chemlight(shell:AchMichCoverShell,g:THREE.Group,p:FieldAddonPalette){
  a.userData.h63ChemlightMount='crown-rear';
 }
 export function addAchMichFieldAddon(
- shell:AchMichCoverShell,type:HelmetFieldAddon,g:THREE.Group,
+ shell:AddonShell,type:HelmetFieldAddon,g:THREE.Group,
  palette:FieldAddonPalette
 ):void{
  if(type==='strobe')strobe(shell,g,palette);
