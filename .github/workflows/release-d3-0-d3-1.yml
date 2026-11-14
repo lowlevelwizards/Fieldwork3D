@@ -32,6 +32,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/release-d3-0-progress-triage.test.mjs \
             tests/release-d3-1-passage-hotpaths.test.mjs \
+            tests/release-d3-1-door-broadphase.test.mjs \
             tests/release-d1-coherent-crossing.test.mjs \
             tests/release-d1-threshold-commitment.test.mjs \
             tests/passage-q2-coordinator.test.mjs \
@@ -49,7 +50,7 @@ jobs:
       - name: Generated-building four-operator acceptance (diagnostic quality)
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 5 1200 > "$RUNNER_TEMP/d3-generated.json"
-          node -e 'const r=require(process.argv[1]);console.log(JSON.stringify({ticks:r.ticks,summary:r.summary},null,2))' "$RUNNER_TEMP/d3-generated.json"
+          node -e 'const r=require(process.argv[1]);const lowNet=r.rows.flatMap(row=>(row.modes??[]).flatMap(mode=>(mode.triage??[]).filter(op=>op.state==="little-net-movement").map(op=>({seed:row.seed,archetype:row.archetype,mode:mode.mode,doorId:mode.doorId,operator:op,orders:mode.operators?.find(a=>a.id===op.actor)}))));console.log(JSON.stringify({ticks:r.ticks,summary:r.summary,lowNet},null,2))' "$RUNNER_TEMP/d3-generated.json"
       - name: Production TypeScript + Vite bundle
         run: npm run build
       - name: Retain reproducible generated-map triage
