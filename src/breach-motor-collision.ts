@@ -12,7 +12,8 @@ import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
-import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute,
+import {tryGoalCompleteDoorHandoffAfterEscape,
+  tryRehearsedDoorManeuver,ownsDoorManeuverRoute,
  selfBlockingHingeRelief,recordDoorManeuverContact}
  from './breach-door-traversal-maneuver.ts';
 import {sessionDoorPressurePolicy}
@@ -251,6 +252,7 @@ export function resolveMotorCollision(
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
       setTransientRoute(s,a,[],'door-leaf-escape');
+      if(tryGoalCompleteDoorHandoffAfterEscape(a,s,p))return true;
       if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return true;
     }
