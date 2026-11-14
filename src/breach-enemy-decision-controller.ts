@@ -1,3 +1,5 @@
+import {fireCorrectionStopReason,cancelFireCorrection}
+ from './breach-fire-recovery-policy.ts';
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Roadmap 2 / Stage 9 — authoritative enemy AI decisions and report delivery.
@@ -100,9 +102,10 @@ function enemyDecisions(s:Session,a:TeamActor,dt:number){
   // never outranks a defensive withdrawal or interrupts a timed traversal.
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
-    if(a.alert==='retreat'||freshAlarm||s.seconds>a.fireRetreatUntil||
-       d(a.p,goal)<3||!sweptBodyClear(a.p,goal,s.doors,OPERATOR_RADIUS,world)){
-      a.fireRetreatTarget=null;a.nav=[];
+    if(fireCorrectionStopReason(a,s.seconds,!!freshAlarm)||
+       d(a.p,goal)<3||
+       !sweptBodyClear(a.p,goal,s.doors,OPERATOR_RADIUS,world)){
+      cancelFireCorrection(a);
     }else{
       approach(a,goal,dt,s,.64);
       return;

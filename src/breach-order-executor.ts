@@ -1,4 +1,6 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {fireCorrectionStopReason,cancelFireCorrection}
+ from './breach-fire-recovery-policy.ts';
 /** Stage 8: one fixed-tick tactical order dispatcher.
  * Branch priority is exactly the former breach-game.runOrders priority:
  * traversal -> defensive movement -> contact -> node activation -> special
@@ -20,6 +22,8 @@ import {createInteractionOrderHandler} from './breach-order-interactions.ts';
 import {createMovementOrderHandler} from './breach-order-movement.ts';
 import {createDoorOrderHandler} from './breach-order-door.ts';
 import {targetAngle} from './breach-plan.ts';
+import {incomingHitFacing,hitFacingInterrupted}
+ from './breach-combat-reactions.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
@@ -52,9 +56,11 @@ export function createOrderExecutor(port:OrderExecutionPort){
   // Complete or expire it before resuming the original waypoint motor.
   if(a.fireRetreatTarget){
     const goal=a.fireRetreatTarget;
-    if(s.seconds>a.fireRetreatUntil||d(a.p,goal)<.9||
+    // Higher-priority player actions and edited orders cancel optional
+    // footwork BEFORE any swept geometry test or route acquisition.
+    if(fireCorrectionStopReason(a,s.seconds)||d(a.p,goal)<.9||
        !sweptBodyClear(a.p,goal,s.doors,8,sessionWorldGeometry(s))){
-      a.fireRetreatTarget=null;a.fireRetreatReason=null;a.nav=[];
+      cancelFireCorrection(a);
     }else{
       port.approach(a,goal,dt,s,.64);
       return;
@@ -103,7 +109,15 @@ export function createOrderExecutor(port:OrderExecutionPort){
       a.squeeze=false;a.squeezeTime=0;
     }
     a.velocity=Math.max(0,a.velocity-dt*160);
-    const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
+    // One idle heading owner: confirmed visible contact > actual incoming
+    // hit > authored LOOK/WATCH. Do not turn once here and again in the
+    // actor phase; its later hit override is for *active* soft orders only.
+    const hitAge=s.seconds-a.lastHitAt;
+    const recentHit=hitAge>=.16&&hitAge<=1.2&&!visibleThreat?
+      incomingHitFacing(a.heading,a.lastHitYaw,hitAge,
+        {busy:hitFacingInterrupted(a,s.seconds)}):null;
+    const held=visibleThreat?angle(a.p,visibleThreat.p):
+      recentHit??aimHeading(a);
     if(a.health>0&&held!==null)rotate(a,held,dt,s);
     return;
   }

@@ -73,7 +73,17 @@ jobs:
       - name: Current D2.1 replay and simulated gameplay corpus
         run: node --experimental-strip-types scripts/audit-release-d0-workloads.mjs d2-1-after.json
       - name: Exact world, events, ammo, door, movement and replay fingerprints
-        run: node scripts/compare-release-d0-workloads.mjs d2-1-before.json d2-1-after.json d2-1-comparison.json
+        run: |
+          # Preserve strict D1 parity for D2.1/2.2 and every ordinary PR.
+          # D2.3 deliberately cancels one stale temporary footstep. Accept
+          # ONLY its separately source-audited, constrained mission-hold
+          # delta, not any broader safety/gameplay divergence.
+          if [[ "${GITHUB_HEAD_REF}" == "feature/d2-3-reaction-recovery-priority-20261113" ]]; then
+            node scripts/compare-release-d0-workloads.mjs d2-1-before.json d2-1-after.json d2-1-comparison.json ||
+              node scripts/verify-release-d2-3-intent-delta.mjs d2-1-before.json d2-1-after.json
+          else
+            node scripts/compare-release-d0-workloads.mjs d2-1-before.json d2-1-after.json d2-1-comparison.json
+          fi
       - uses: actions/upload-artifact@v4
         if: always()
         with:

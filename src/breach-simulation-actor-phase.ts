@@ -11,7 +11,7 @@ import {noteQueueMotion} from './breach-queue-trace.ts';
 import {idleYieldAllowed,commitIdleYield} from './breach-passage-yield.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
-import {incomingHitFacing} from './breach-combat-reactions.ts';
+import {incomingHitFacing,hitFacingInterrupted} from './breach-combat-reactions.ts';
 import {rotate} from './breach-order-lifecycle.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import type {Session,TeamActor} from './breach-game.ts';
@@ -138,12 +138,14 @@ export function advanceSimulationActors(s:Session,h:number,
       // Incoming *actual hits* provide coarse directional evidence even
       // before the flanking shooter enters the operator's vision cone.
       // A brief gaze override never removes a WATCH or changes a MOVE.
-      const hitDirection=incomingHitFacing(a.heading,a.lastHitYaw,
-        s.seconds-a.lastHitAt,{
-          busy:!!a.traversal||!!a.squeeze||!!a.carryingId||
-            a.pace==='run'||a.treatmentActive||
-            a.plan[0]?.kind==='treat'
-        });
+      const hitAge=s.seconds-a.lastHitAt;
+      // The order executor already owns idle and confirmed-contact
+      // headings. Only active soft orders need the temporary hit override.
+      // Avoid evaluating busy priorities on the 99% of quiet fixed ticks.
+      const hitDirection=a.plan.length&&hitAge>=.16&&hitAge<=1.20?
+        incomingHitFacing(a.heading,a.lastHitYaw,hitAge,{
+          busy:hitFacingInterrupted(a,s.seconds)
+        }):null;
       // Orders may rotate toward their authored gaze earlier this tick.
       // Reaction uses a stronger one-second turn so opposing turn rates
       // cannot cancel each other and leave the operator facing away.

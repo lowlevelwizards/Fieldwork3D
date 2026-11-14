@@ -36,7 +36,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  * The core retains the 052 static geometry and starter actors, not its old simulation.
  */
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
-import {type PlanNode,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
+import {type PlanNode,type PlanKind,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
 import {entryLanes} from './breach-entry-lanes.ts';
 import {stackApproachPositions,doorOpensTowardApproach} from './breach-entry-coordination.ts';
 import type {Site,SiteScale} from './breach-site.ts';
@@ -246,6 +246,10 @@ export type TeamActor=Operator & {
   /** Transient, collision-checked gun-clearance recovery; not a PlanNode. */
   fireRetreatTarget:Pt|null;fireRetreatUntil:number;lastFireRetreatAt:number;
   fireRetreatReason?:string|null;
+  /** D2.3: one transient commitment token, invalidated by authored edits. */
+  fireRetreatPlanId?:number|null;fireRetreatContactId?:string|null;
+  /** Snapshot only when correction is committed; never a live plan cache. */
+  fireRetreatPlanPoint?:Pt|null;fireRetreatPlanKind?:PlanKind|null;
   fireMode:FiringMode;burstCount:number;skills:ShootingSkills;
   appearanceSeed:number;equipment?:EquipmentLoadout;
   wardrobe?:WardrobeOptions;
