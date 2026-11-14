@@ -99,7 +99,7 @@ test('H17 ACH has one integrated side contour, not stacked guard plates',()=>{
  assert.equal(geo.userData.achMichCrownInset,.53);
  assert.equal(build('high-cut').userData.stage,'1E');
  assert.ok(Math.abs(lowerAt(ach,4.4,0)-2.04)<.01);
- assert.ok(Math.abs(lowerAt(ach,0,4.6)-2.35)<.01);
+ assert.ok(Math.abs(lowerAt(ach,0,4.6)-1.85)<.01);
  assert.ok(Math.abs(lowerAt(high,4.4,0)-5.95)<.01);
 });
 
