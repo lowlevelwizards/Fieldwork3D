@@ -65,7 +65,7 @@ test('H7.1 textile stays beyond hard side crown and has joined side corners',()=
     const z=rear?p.rear+ACH_MICH_COVER_OFFSET:
      p.front-ACH_MICH_COVER_OFFSET;
     for(const y of [shoulder,
-     (rear?p.nape:p.brow)+achMichBindingHeight(shell)+.035]){
+     (rear?p.nape:p.brow)-.14]){
      let shared=0;
      for(let i=0;i<pos.count;i++)
       if(close(pos.getX(i),x)&&close(pos.getY(i),y)&&
