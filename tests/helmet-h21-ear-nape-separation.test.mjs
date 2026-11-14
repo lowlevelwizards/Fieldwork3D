@@ -1,0 +1,83 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {UNIFIED_HELMET_HEMS} from '../src/operator-ach-mich-unified-shell.ts';
+import {createHeadwearSilhouette,headwearCuboidVolumes}
+ from '../src/operator-headwear-silhouettes.ts';
+import {achMichProfile,achMichHemY,achMichBindingHeight,
+ createAchMichBindingGeometry,achMichRetentionPaths}
+ from '../src/operator-ach-mich-details.ts';
+import {createAchMichDrapedGeometry}
+ from '../src/operator-ach-mich-cover-drape.ts';
+const near=(a,b,e=.003)=>Math.abs(a-b)<=e;
+
+test('H21: ear cut is independent of rear protection across the three cuts',()=>{
+ const full=UNIFIED_HELMET_HEMS.ach,
+  mid=UNIFIED_HELMET_HEMS['mich-2002'],
+  high=UNIFIED_HELMET_HEMS['mich-2001'];
+ assert.deepEqual(full.map(p=>[p[1],p[2]]),[
+  [4.4,-5.535],[4.4,-3.12],[2.04,-2.42],
+  [2.04,1.45],[2.72,3.00],[2.72,5.60]
+ ],'Full-Cut is unchanged');
+ assert.deepEqual(mid.map(p=>[p[1],p[2]]),[
+  [4.55,-5.70],[4.55,-3.10],[3.06,-2.18],
+  [3.06,1.38],[2.92,2.85],[2.92,5.75]
+ ],'Mid-Cut ear remains fixed, only rear is lowered');
+ assert.deepEqual(high.map(p=>[p[1],p[2]]),[
+  [4.55,-5.71],[4.55,-3.45],[5.30,-2.15],
+  [5.30,1.75],[3.12,3.05],[3.12,5.66]
+ ],'High-Cut ear arch remains fixed, rear has deliberate nape tail');
+ const hems=[full,mid,high];
+ for(const p of hems){
+  assert.equal(p.length,6);
+  for(let i=1;i<p.length;i++)
+   assert.ok(p[i][2]>p[i-1][2],'no added tiny turns or discontinuities');
+  assert.ok(p.every(v=>near(v[0],p[0][0])),'single flat side wall');
+  assert.ok(near(p[4][1],p[5][1]),'rear is a continuous nape, not a separate plate');
+ }
+ assert.ok(mid[4][1]<mid[3][1],'Mid-Cut rear MUST descend behind the ear');
+ assert.ok(high[4][1]<high[3][1]-2,'High-Cut ear MUST be open with rear protection');
+ assert.ok(full[5][1]<mid[5][1]&&mid[5][1]<high[5][1]);
+ assert.ok(high[5][1]-full[5][1]<=.41,
+  'all three retain comparable nape coverage while ears differ strongly');
+ assert.ok(high[2][1]-mid[2][1]>2.2,'different iconic ear clearances');
+});
+
+test('H21: static unified shells, shared cover and rubber edge',()=>{
+ for(const id of ['ach','mich-2002','mich-2001']){
+  const group=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
+  assert.equal(group.children.length,1,'one shell mesh for '+id);
+  const geom=group.children[0].geometry;
+  assert.equal(geom.userData.exteriorQuads,29,'no extra faces for '+id);
+  assert.equal(geom.index.count,174,'58 triangles for '+id);
+  assert.equal(headwearCuboidVolumes(id).length,5,'no stacked guard plates');
+  const p=achMichProfile(id),hem=UNIFIED_HELMET_HEMS[id];
+  assert.equal(p.hem,hem,'one contour drives shell, cover, rubber edge');
+  assert.ok(near(p.nape,hem.at(-1)[1]));
+  assert.ok(near(geom.boundingBox.min.y,Math.min(...hem.map(v=>v[1]))));
+  const trim=createAchMichBindingGeometry(id),
+   cover=createAchMichDrapedGeometry(id),
+   paths=achMichRetentionPaths(id);
+  assert.equal(trim.userData.segmentCount,12);
+  assert.ok(near(trim.userData.minimumHeight,achMichBindingHeight(id)));
+  assert.ok(near(trim.boundingBox.min.y,Math.min(...hem.map(v=>v[1]))));
+  assert.equal(paths.length,6);
+  assert.ok(cover.boundingBox.max.y>=geom.boundingBox.max.y);
+  // The cover's lower rear seam must meet the new rim, not H20's old rear.
+  const expected=p.nape+achMichBindingHeight(id)+.035;
+  const pos=cover.getAttribute('position');
+  let rearSeamVertex=false;
+  for(let i=0;i<pos.count;i++){
+   if(near(pos.getY(i),expected,.004)&&pos.getZ(i)>p.rear-.12){
+    rearSeamVertex=true;break;
+   }
+  }
+  assert.ok(rearSeamVertex,'cover hem follows rear return: '+id);
+  for(const stud of [p.frontStud,p.rearStud])
+   assert.ok(near(stud[1]-achMichHemY(id,stud[2]),.55,.15),
+    'fastener follows contour rather than floating behind it: '+id);
+  for(const path of paths)
+   assert.ok(path[0][1]<achMichHemY(id,path[0][2])-.10,
+    'webbing enters from just under the shell edge: '+id);
+ }
+});
