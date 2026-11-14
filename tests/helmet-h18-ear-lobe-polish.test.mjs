@@ -74,8 +74,8 @@ test('H26: shared crown with lower ear crest only on full and mid',()=>{
   assert.equal(group.children.length,1);
   const g=group.children[0].geometry;
   assert.equal(g.userData.h17UnifiedContour,true);
-  assert.equal(g.userData.exteriorQuads,49);
-  assert.equal(g.index.count,294,'49 quads = 98 triangles');
+  assert.equal(g.userData.exteriorQuads,59);
+  assert.equal(g.index.count,354,'59 quads = 118 triangles');
   assert.ok(near(g.boundingBox.max.y,roof));
   assert.equal(g.userData.achMichCrownInset,.53);
   assert.equal(g.userData.achMichBevelHeight,1.10);

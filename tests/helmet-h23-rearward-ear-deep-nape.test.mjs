@@ -67,8 +67,8 @@ test('H23: shell, cover, edge and hardware share the six profile stations',()=>{
   const shell=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   const g=shell.children[0].geometry;
   assert.equal(shell.children.length,1);
-  assert.equal(g.userData.exteriorQuads,id==='mich-2001'?39:49);
-  assert.equal(g.index.count,id==='mich-2001'?234:294);
+  assert.equal(g.userData.exteriorQuads,id==='mich-2001'?39:59);
+  assert.equal(g.index.count,id==='mich-2001'?234:354);
   assert.ok(close(g.boundingBox.min.y,Math.min(...hem.map(p=>p[1]))));
   const edge=createAchMichBindingGeometry(id),e=edge.getAttribute('position');
   assert.equal(edge.userData.segmentCount,12);

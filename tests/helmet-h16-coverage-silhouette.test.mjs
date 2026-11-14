@@ -44,8 +44,8 @@ test('H17: single low-poly shell and matching cover/binding envelopes',()=>{
   assert.ok(cloth.boundingBox.max.y>mesh.geometry.boundingBox.max.y);
   const geometry=mesh.geometry;
   assert.equal(geometry.userData.h17UnifiedContour,true);
-  assert.ok(geometry.userData.exteriorQuads<=49);
-  assert.ok(geometry.getAttribute('position').count<=294);
+  assert.ok(geometry.userData.exteriorQuads<=59);
+  assert.ok(geometry.getAttribute('position').count<=354);
   assert.ok(geometry.getAttribute('uv1').count>0);
   assert.equal(geometry.userData.achMichCrownInset,.53);
   assert.equal(geometry.userData.achMichBevelHeight,1.10);

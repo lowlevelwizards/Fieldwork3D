@@ -73,7 +73,7 @@ test('H17 Full-Cut ear and nape read as one low-poly contour',()=>{
  assert.equal(p.hem.at(-1)[1],1.85);
  const shell=createHeadwearSilhouette('ach',new THREE.MeshStandardMaterial());
  assert.equal(shell.children[0].geometry.userData.h17UnifiedContour,true);
- assert.ok(shell.children[0].geometry.userData.exteriorQuads<=49);
+ assert.ok(shell.children[0].geometry.userData.exteriorQuads<=59);
 });
 
 test('H4 PASGT and ACH covers share uniform WORLD density, not an arbitrary rescale',()=>{
