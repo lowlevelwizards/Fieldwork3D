@@ -18,6 +18,9 @@ import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 import {createHelmetFieldGoggleModule,createFittedGoggleSleeve} from './operator-helmet-field-goggles.ts';
 import {addAchMichVelcro,addAchMichIdentifierPatch} from './operator-helmet-field-velcro.ts';
 import {addAchMichFieldAddon} from './operator-helmet-field-addons.ts';
+import {addPasgtRetrofitRails,addPasgtRetrofitBungees,
+ addPasgtRetrofitVelcro,addPasgtRetrofitIdentifier,
+ updatePasgtRetrofitCover} from './operator-helmet-pasgt-retrofit.ts';
 export type HelmetFieldLayers={
  shell:FieldHelmet;modules:Record<string,THREE.Group>;
  bandMaterial:THREE.MeshStandardMaterial;webbingMaterial:THREE.MeshStandardMaterial;
@@ -142,11 +145,14 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
    0,p.top-1.86,front-.43);
  }else addAchMichThreeHoleShroud(id,shroud,metal,dark,reflect);
  const rails=addGroup('rails');
- if(id!=='pasgt')addAchMichArcRails(id,rails,metal,dark,reflect);
+ if(id==='pasgt')addPasgtRetrofitRails(rails,metal,dark,reflect);
+ else addAchMichArcRails(id,rails,metal,dark,reflect);
  const bungees=addGroup('bungees');
- if(id!=='pasgt')addAchMichRetainingBungees(id,bungees,olive,metal,dark);
+ if(id==='pasgt')addPasgtRetrofitBungees(bungees,olive,metal);
+ else addAchMichRetainingBungees(id,bungees,olive,metal,dark);
  const velcroGroup=addGroup('velcro');
- if(id!=='pasgt')addAchMichVelcro(id,velcroGroup,velcro,dark);
+ if(id==='pasgt')addPasgtRetrofitVelcro(velcroGroup,velcro,dark);
+ else addAchMichVelcro(id,velcroGroup,velcro,dark);
  for(const key of ['goggles-front','goggles-rear','goggles-eyes']){
   const g=addGroup(key),back=key==='goggles-rear',eyes=key==='goggles-eyes';
   if(id!=='pasgt'){
@@ -176,23 +182,11 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
  for(const key of ['strobe','counterweight','battery','light','camera',
   'chemlight'] as const){
   const g=addGroup(key);
-  if(id!=='pasgt')
-   addAchMichFieldAddon(id,key,g,{dark,metal,cloth:tan,reflect});
-  else if(key==='strobe'){
-   box(g,dark,'pasgt-low-profile-marker-base',0,p.top+.16,rear-1.06,
-    1.02,.24,.79);
-   box(g,reflect,'pasgt-marker-lens',0,p.top+.32,rear-1.06,.73,.13,.55);
-  }else if(key==='chemlight')
-   box(g,reflect,'period-secured-chemlight',-2.10,p.top+.16,rear-.69,
-    .28,.28,1.48);
+  addAchMichFieldAddon(id,key,g,{dark,metal,cloth:tan,reflect});
  }
  const patches=addGroup('patches');
- if(id!=='pasgt')addAchMichIdentifierPatch(id,patches,velcro,dark,reflect);
- else{
-  plate(patches,velcro,'pasgt-period-identifier',
-   [[-.88,-.45],[.88,-.45],[.88,.45],[-.88,.45]],
-   -side-.16,p.top-2.40,1.69,-Math.PI/2);
- }
+ if(id==='pasgt')addPasgtRetrofitIdentifier(patches,velcro,dark,reflect);
+ else addAchMichIdentifierPatch(id,patches,velcro,dark,reflect);
  // Pre-merge only static groups; invisible groups cost no render work.
  for(const g of Object.values(modules))consolidateVisualGroup(g);
  return {root,shell:id,modules,bandMaterial,webbingMaterial,leaves};
@@ -216,6 +210,10 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
    net.userData.h5Covered=covered;
   }
  }
+ // Covered/bare PASGT retrofit parts are pre-authored. No per-frame
+ // reprojection and no ACH drape assumptions on this much deeper shell.
+ if(v.shell==='pasgt')for(const key of ['rails','bungees','velcro','patches'])
+  updatePasgtRetrofitCover(m[key],covered);
  // Both NVG attachment frames are pre-authored; no raycast or geometry
  // rebuilding during cover toggles. Keep the shroud actually seated.
  if(v.shell!=='pasgt'){
