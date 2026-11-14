@@ -102,10 +102,26 @@ const identity=(c:PhysicalContact)=>c.anchor.target+':'+c.anchor.id+
 /** Fixed ordering; a previously planted contact wins ties. One limb can
  * never acquire two contacts. Calls run only at fixed simulation ticks.
  */
+/** Common single-candidate path: no transient filter or sort for the
+ * production contact scheduler. Validation is identical to multi-claim
+ * arbitration and the retained start clock is handled by its caller. */
+export function selectSinglePhysicalContact(
+ claim:ContactClaim,owners:ContactOwners,now:number,
+ previous:PhysicalContact|null=null
+):PhysicalContact|null{
+ const {contact,reach}=claim;
+ return validPhysicalContact(contact,now)&&contact.releasedAt===null&&
+   contactAllowedByOwners(contact,owners)&&
+   contactWithinReach(contact,reach,
+     !!previous&&previous.releasedAt===null&&sameContact(contact,previous))?
+   contact:null;
+}
 export function selectPhysicalContact(
  claims:readonly ContactClaim[],owners:ContactOwners,now:number,
  previous:PhysicalContact|null=null
 ):PhysicalContact|null{
+ if(claims.length===1)return selectSinglePhysicalContact(
+   claims[0],owners,now,previous);
  const eligible=claims.filter(({contact,reach})=>
    validPhysicalContact(contact,now)&&contact.releasedAt===null&&
    contactAllowedByOwners(contact,owners)&&

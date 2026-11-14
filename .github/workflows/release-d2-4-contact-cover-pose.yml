@@ -1,0 +1,59 @@
+name: D2.4 contact/cover/pose consolidation critical
+on:
+  pull_request:
+    paths:
+      - 'src/breach-contextual-support-contact.ts'
+      - 'src/breach-physical-contact-anchor.ts'
+      - 'src/breach-cover-stance.ts'
+      - 'src/breach-pose-contacts.ts'
+      - 'src/breach-pose-action-state.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/release-d2-4-contact-cover-pose.test.mjs'
+      - '.github/workflows/release-d2-4-contact-cover-pose.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D2.4 exact reach / arbitration / height contracts
+        run: node --experimental-strip-types --test tests/release-d2-4-contact-cover-pose.test.mjs
+      - name: A3.5-9 real physical contact and authored cover height
+        run: |
+          node --experimental-strip-types --test \
+            tests/animation-a3-5-contact-anchors.test.mjs \
+            tests/animation-a3-6-7-support-contacts.test.mjs \
+            tests/animation-a3-8-lockpick-contact.test.mjs \
+            tests/animation-a3-9-continuous-cover-stance.test.mjs \
+            tests/animation-a3-9-cover-height-source.test.mjs
+      - name: B1-B2 and B8 pose / replay handoff
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-pose-action-state.test.mjs \
+            tests/package-b1-pose-decision.test.mjs \
+            tests/package-b2-pose-output.test.mjs \
+            tests/package-b8-pose-closeout.test.mjs
+      - name: Real door hand, shot safety and short-stock
+        run: |
+          node --experimental-strip-types --test \
+            tests/door-traversal-d4-live-grip.test.mjs \
+            tests/animation-a3-1-friendly-volume.test.mjs \
+            tests/animation-a3-4-micro-footwork.test.mjs \
+            tests/release-d2-3-interruption-priority.test.mjs
+      - name: Observational 2/8/16-rig pose CPU probe
+        run: node --experimental-strip-types scripts/bench-operator-pose-pipeline.mjs --quick --out artifacts/d2-4/pose-cpu.json
+      - name: Production typecheck and bundle
+        run: npm run build
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d2-4-pose-cpu-evidence
+          path: artifacts/d2-4/
+          if-no-files-found: ignore

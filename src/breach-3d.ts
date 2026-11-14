@@ -2051,23 +2051,26 @@ export class TacticalScene3D{
           actor.aimInstruction.source!=='stack',
         speed:actor.velocity
       });
-      const stackCrowded=(handlingIntent==='stack'||
-        handlingIntent==='door'||handlingIntent==='entry')&&
-        s.operators.some(peer=>peer!==actor&&peer.side===actor.side&&
-          peer.health>0&&Math.hypot(peer.p.x-actor.p.x,
-            peer.p.y-actor.p.y)<40);
-      const actuallyAhead=teammateAheadForHandling(
-        actor.p,actor.heading,s.operators,actor);
-      const friendlyAhead=stackCrowded||actuallyAhead;
-      // One allocation only for an actual nearby ally, avoiding global
-      // all-actor geometry work. Same sampled actor facts in live/replay.
+      // Both passive stack courtesy and render-frame safety roster need
+      // the SAME live allied actor list. Collect them in one existing
+      // per-actor pass without caching any peer state or changing either
+      // radius / authoritative shot-time safety rule.
+      const stackContext=handlingIntent==='stack'||
+        handlingIntent==='door'||handlingIntent==='entry';
+      let stackCrowded=false;
       const nearbyAllies=this.nearbyAllyScratch;
       nearbyAllies.length=0;
       for(const peer of s.operators){
         if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
+        if(stackContext&&!stackCrowded&&
+          Math.hypot(peer.p.x-actor.p.x,peer.p.y-actor.p.y)<40)
+          stackCrowded=true;
         if(Math.hypot(peer.p.x-drawActor.x,peer.p.y-drawActor.z)<90)
           nearbyAllies.push(safetyBodyFor(peer));
       }
+      const actuallyAhead=teammateAheadForHandling(
+        actor.p,actor.heading,s.operators,actor);
+      const friendlyAhead=stackCrowded||actuallyAhead;
       // Physical contact is queried from the actual interpolated barrel,
       // never from a long ray projected along the feet/body heading.
       const clearance=weaponClearance({

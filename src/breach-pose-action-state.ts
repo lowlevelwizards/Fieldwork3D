@@ -4,7 +4,7 @@
  * One call per pose evaluation, shared by legacy/V3/V4 rig branches.
  */
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
-import {resolvePoseContactOwners} from './breach-pose-contacts.ts';
+import {resolvePoseContactOwners,woundedHandGuard} from './breach-pose-contacts.ts';
 import {doorGripWeight} from './breach-pose-door-hand.ts';
 import {physicalContactWeight,resolvePhysicalContactPose}
  from './breach-physical-contact-anchor.ts';
@@ -33,9 +33,9 @@ export function resolveOperatorActionState(
  const doorActive=gripWeight>0||
    (doorAge>=0&&doorAge<1.12&&!!p.doorPoint&&
    p.doorMethod!=='kick')||!!p.lockpickActive&&!!p.doorPoint;
- const woundedGuard=!p.down&&p.injury>0&&p.hitRegion!=='leg'&&
-   !p.aiming&&!p.firing&&p.hitAge!==undefined&&
-   p.hitAge>=0&&p.hitAge<1.1;
+ const woundedGuard=woundedHandGuard({down:p.down,injury:p.injury,
+  hitRegion:p.hitRegion,aiming:p.aiming,firing:p.firing,
+  hitAge:p.hitAge});
  const originalOwners=resolvePoseContactOwners({
    surrender:p.surrender,down:p.down,downProgress,
    treatmentActive,reloadActive,reloadProgress,reloadMode,

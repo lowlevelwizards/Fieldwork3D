@@ -135,7 +135,9 @@ test('A3.7 competing door, reload, injury, sprint and active aim release',()=>{
    if(action==='aim')a.aim=.99;
    if(action==='sprint')a.pace='run';
    if(action==='injury'){
-    a.lastHitAt=s.seconds;a.lastHitRegion='torso';
+    // A genuine wound, not a non-injuring contact flash, owns the guard
+    // hand. This is the same injury-stage evidence used by rendered poses.
+    a.lastHitAt=s.seconds;a.lastHitRegion='torso';a.injuryStage=1;
    }
    s.seconds+=1/60;
    advanceContextualSupportContacts(s);
