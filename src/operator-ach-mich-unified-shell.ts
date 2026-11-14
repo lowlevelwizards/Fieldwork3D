@@ -60,16 +60,22 @@ export const ACH_MICH_EAR_FACE_BOTTOM_FRACTION=.90;
  * Local clamps keep front edges inside the actual brow/nape perimeter.
  */
 export function unifiedHelmetEarVerticalProfile(
- cut:UnifiedCut,shoulderY:number,hemY:number){
+ cut:UnifiedCut,shoulderY:number,hemY:number,z:number){
  const earHem=UNIFIED_HELMET_HEMS[cut][2][1];
  const nominalTop=shoulderY+(earHem-shoulderY)*ACH_MICH_EAR_FACE_TOP_FRACTION;
  const nominalBottom=shoulderY+(earHem-shoulderY)*ACH_MICH_EAR_FACE_BOTTOM_FRACTION;
  const faceBottomY=Math.max(hemY+.08,nominalBottom);
  const faceTopY=Math.max(hemY+.24,nominalTop,faceBottomY+.16);
- const onsetY=Math.max(
+ const normalOnsetY=Math.max(
   shoulderY+(hemY-shoulderY)*ACH_MICH_EAR_SHOULDER_FRACTION,
   faceTopY+.28
  );
+ // The leading brow-to-ear station has NO raised ear bevel. Its former
+ // midwall onset created the isolated triangular fin despite a low
+ // ear-face top. The bevel acquires height only inside the ear region.
+ const leading=cut!=='mich-2001'&&
+  z<=UNIFIED_HELMET_HEMS[cut][1][2]+.0001;
+ const onsetY=leading?faceTopY+.08:normalOnsetY;
  return {onsetY,faceTopY,faceBottomY};
 }
 
@@ -140,7 +146,7 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
    // expand only below this onset. No chamfer-to-ear triangular panel.
    const onset=(point:ShellPoint):V=>[
     sign*s,
-    unifiedHelmetEarVerticalProfile(cut,shoulderY,point[1]).onsetY,
+    unifiedHelmetEarVerticalProfile(cut,shoulderY,point[1],point[2]).onsetY,
     point[2]
    ];
    const onsetA=onset(a),onsetB=onset(b);
@@ -151,7 +157,7 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
     // protective face. The only outward transition is a short bevel;
     // the hem return tucks UNDER it rather than forming a pointed ridge.
     const face=(point:ShellPoint,index:number,edge:'top'|'bottom'):V=>{
-     const profile=unifiedHelmetEarVerticalProfile(cut,shoulderY,point[1]);
+     const profile=unifiedHelmetEarVerticalProfile(cut,shoulderY,point[1],point[2]);
      return [
       sign*earWidths[index],
       edge==='top'?profile.faceTopY:profile.faceBottomY,
@@ -204,6 +210,7 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
  g.userData.h26LowerEarOnset=true;
  g.userData.h27BroadEarFace=cut!=='mich-2001';
  g.userData.h27BrowSpikeClamp=true;
+ g.userData.h27NoLeadingFin=true;
  g.userData.h26HighCutNoLateralBulge=cut==='mich-2001';
  g.userData.h25EarShoulderFraction=ACH_MICH_EAR_SHOULDER_FRACTION;
  g.userData.h27EarFaceTopFraction=ACH_MICH_EAR_FACE_TOP_FRACTION;
