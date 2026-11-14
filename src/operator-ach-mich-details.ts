@@ -28,9 +28,14 @@ const profileFor=(shell:typeof ACH_MICH_SHELLS[number]):Profile=>{
  const hem=UNIFIED_HELMET_HEMS[shell];
  const side=hem[0][0],front=hem[0][2],rear=hem[hem.length-1][2];
  const brow=hem[0][1],nape=hem[hem.length-1][1];
+ const binding=shell==='mich-2001'?.42:.52;
+ // Bolts sit on actual shell material, above the complete molded lip and
+ // far enough from the step that their squared heads do not overhang it.
+ const frontZ=hem[1][2]-.32;
+ const rearZ=hem[4][2]+.36;
  return {side,front,rear,brow,nape,hem,
-  frontStud:[side,brow+(shell==='mich-2001'?.67:.55),hem[1][2]],
-  rearStud:[side,nape+.55,4.15]};
+  frontStud:[side,brow+binding+.45,frontZ],
+  rearStud:[side,nape+binding+.45,rearZ]};
 };
 const PROFILES:Readonly<Record<typeof ACH_MICH_SHELLS[number],Profile>>={
  ach:profileFor('ach'),
@@ -62,24 +67,50 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
  const triangle=(a:Point,b:Point,c:Point)=>{
   data.push(...a,...b,...c);
  };
- // All twelve strips share precisely coincident OUTER endpoints at
- // front and rear corners. Previously the side and front strips offset
- // along different axes, leaving tiny isolated tabs visible on iPhone.
  const ext=shell==='mich-2001'?.095:.16;
  const outside=(v:Point):Point=>[
   v[0]+Math.sign(v[0])*ext,v[1],
   v[2]===p.front?p.front-ext:v[2]===p.rear?p.rear+ext:v[2]
  ];
- const strip=(a:Point,b:Point)=>{
-  const start=outside(a),end=outside(b);
-  const raise=(v:Point):Point=>[v[0],v[1]+bindingHeight,v[2]];
-  triangle(start,end,raise(end));triangle(start,raise(end),raise(start));
+ // For every YZ lower-edge segment, the upper rubber outline is a true
+ // perpendicular offset, not a constant vertical raise. At the 6 authored
+ // corners the adjacent normals meet at one miter. This prevents narrower
+ // diagonal bands without another mesh, segment or render pass.
+ const normal=(a:Point,b:Point):readonly [number,number]=>{
+  const dy=b[1]-a[1],dz=b[2]-a[2];
+  const len=Math.hypot(dy,dz)||1;
+  return [dz/len,-dy/len]; // Y and Z components, outward/up
  };
- strip([-p.side,p.brow,p.front],[p.side,p.brow,p.front]);
- strip([p.side,p.nape,p.rear],[-p.side,p.nape,p.rear]);
+ const raised=(v:Point,ny=1,nz=0):Point=>
+  [v[0],v[1]+ny*bindingHeight,v[2]+nz*bindingHeight];
+ const strip=(a:Point,b:Point,upA:Point,upB:Point)=>{
+  const start=outside(a),end=outside(b);
+  // Keep x of lifted vertices the same as its corresponding lower vertex.
+  const u0:Point=[upA[0]+Math.sign(upA[0])*ext,upA[1],
+   upA[2]===p.front?p.front-ext:upA[2]===p.rear?p.rear+ext:upA[2]];
+  const u1:Point=[upB[0]+Math.sign(upB[0])*ext,upB[1],
+   upB[2]===p.front?p.front-ext:upB[2]===p.rear?p.rear+ext:upB[2]];
+  triangle(start,end,u1);triangle(start,u1,u0);
+ };
+ // Front and rear lower edge share exact outer corner vertices with sides.
+ const frontLeft:Point=[-p.side,p.brow,p.front],
+  frontRight:Point=[p.side,p.brow,p.front],
+  rearRight:Point=[p.hem.at(-1)![0],p.nape,p.rear],
+  rearLeft:Point=[-p.hem.at(-1)![0],p.nape,p.rear];
+ strip(frontLeft,frontRight,raised(frontLeft),raised(frontRight));
+ strip(rearRight,rearLeft,raised(rearRight),raised(rearLeft));
  for(const sign of [-1,1] as const){
   const pts=p.hem.map(v=>[sign*v[0],v[1],v[2]] as Point);
-  for(let i=1;i<pts.length;i++)strip(pts[i-1],pts[i]);
+  const normals=pts.slice(1).map((v,i)=>normal(pts[i],v));
+  const upper=pts.map((pt,i)=>{
+   if(i===0||i===pts.length-1)return raised(pt);
+   const before=normals[i-1],after=normals[i],
+    dot=before[0]*after[0]+before[1]*after[1];
+   const scale=1/Math.max(.35,1+dot);
+   return raised(pt,(before[0]+after[0])*scale,
+    (before[1]+after[1])*scale);
+  });
+  for(let i=1;i<pts.length;i++)strip(pts[i-1],pts[i],upper[i-1],upper[i]);
  }
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(data,3));
@@ -217,9 +248,7 @@ export function createAchMichDetails(parent:THREE.Group,id:string):AchMichDetail
    const mesh=new THREE.Mesh(studGeometry,metal);
    mesh.name='ach-mich-retention-screw';
    // Keep the full screw face above the raised rubber edge binding.
-   mesh.position.set(sign*(bolt[0]+.13),
-    Math.max(bolt[1],achMichHemY(shell,bolt[2])+
-     achMichBindingHeight(shell)+.29),bolt[2]);
+   mesh.position.set(sign*(bolt[0]+.13),bolt[1],bolt[2]);
    mesh.castShadow=false;mesh.receiveShadow=false;hardware.add(mesh);
   }
  const webbing=material(0x59654f);
