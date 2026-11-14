@@ -16,7 +16,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import {rotate} from './breach-order-lifecycle.ts';
 import {segmentImpact,strikeSurface} from './breach-ballistic-resolution.ts';
-import {incomingHitFacing,choosePhysicalCorrection} from './breach-combat-reactions.ts';
+import {incomingHitFacing,hitFacingInterrupted,choosePhysicalCorrection} from './breach-combat-reactions.ts';
 
 import {type Pt,segmentsCross,pointToSegment} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
@@ -701,7 +701,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   // unrelated old contact. A now-visible hostile in that sector still wins
   // through the normal target selector on the following ticks.
   const hitFacing=a.side==='blue'?
-    incomingHitFacing(a.heading,a.lastHitYaw,s.seconds-a.lastHitAt):null;
+    incomingHitFacing(a.heading,a.lastHitYaw,s.seconds-a.lastHitAt,
+      {busy:hitFacingInterrupted(a,s.seconds)}):null;
   if(hitFacing!==null&&s.seconds-a.lastHitAt<.85&&
      Math.abs(angleDifference(hitFacing,angle(a.p,target.p)))>.75){
     a.weaponYaw=approachAngle(a.weaponYaw,hitFacing,dt*profile.turnSpeed*mods.turn);
