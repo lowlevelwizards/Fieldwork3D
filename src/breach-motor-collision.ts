@@ -12,7 +12,7 @@ import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './brea
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute,
- recordDoorManeuverContact}
+ selfBlockingHingeRelief,recordDoorManeuverContact}
  from './breach-door-traversal-maneuver.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
@@ -20,7 +20,8 @@ import {approachingNarrowThreshold} from './breach-passage.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
  twoSidedSqueezePressure,sweptProfileClear,escapeOpenDoorOverlap,
  slideAroundStaticCorner,glideAlongStaticWall} from './breach-navigation.ts';
-import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel}
+import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel,
+ routeToNextOperableDoor,repairBlockedTransientWorldLeg}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement,blockedStepCause} from './breach-nav-diagnostics.ts';
 import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breach-movement-recovery.ts';
@@ -321,12 +322,51 @@ export function resolveMotorCollision(
     if((repair==='replan'||repair==='report')&&s.seconds>=a.retryRouteAt&&
        !ownsDoorManeuverRoute(a)){
       a.lastNavRepairAt=s.seconds;
+      // R2.1: when the actor ITSELF blocks a stationary partial hinge,
+      // a tiny fully swept step can free the opening before a broad A*.
+      // Only ordinary MOVE without an active doorway maneuver may use it.
+      // Reuse the existing retry budget and the current physical motor;
+      // do not move or reorient the actor here.
+      if(a.side==='blue'&&a.lastBlocker==='door'&&
+         a.blockedTime>=.85&&a.recoveryAttempts<4&&
+         !a.doorTraversal&&!a.traversal&&!a.traversalPending&&
+         a.plan[0]?.kind==='move'){
+        const relief=selfBlockingHingeRelief(a,s,p);
+        if(relief){
+          a.nav.unshift(relief);
+          a.recoveryAttempts++;
+          a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+          return true;
+        }
+      }
+      // D3.4 clinic wall witness: operator drift can make a short,
+      // previously valid TRANSIENT waypoint physically unreachable from
+      // today's exact position. Rejoin that same waypoint through one
+      // bounded world-truth full-body connector BEFORE trying a new global
+      // authored-goal path (which may lie behind several closed portals).
+      // The existing collision retry already paid for this check.
+      if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+         (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
+         !a.doorTraversal&&!a.traversalPending&&a.nav.length){
+        const connected=repairBlockedTransientWorldLeg(
+          a.p,next,a.nav.slice(1),s.doors,world);
+        if(connected.length&&materiallyDifferentRoute(a.nav,connected)){
+          a.nav=connected;a.retryRouteAt=0;a.recoveryAttempts=0;
+          return true;
+        }
+      }
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
       const replanAt=profile?beginMotorCpuMeasurement():0;
-      const repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
+      let repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
         routeWithSqueezeWorld(a.p,p,s.doors,world);
+      // D3.3: only a FAILED collision-truth route may request a future
+      // closed-door portal. The motor owns the actual contact/open and
+      // collision; this is a transient, physically swept approach prefix.
+      if(!repaired.length&&a.side==='blue'&&
+         a.plan[0]?.kind==='move'&&!a.doorTraversal&&!a.traversalPending)
+        repaired=routeToNextOperableDoor(a.p,p,s.doors,world);
       if(profile)profile('motor-collision-replan',finishMotorCpuMeasurement(replanAt));
       // A world-truth path that repeats the stuck steps is not progress.
       // Known-intel fallback is allowed only if it materially differs;

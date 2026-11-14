@@ -205,6 +205,42 @@ export function coordinatePassage(s:Session,a:TeamActor,
     dist(a.p,ctx.centers.get(door.id)!)>QUEUE_ENTRY_RADIUS||
     !ready({actor:a,slot},ctx))return free;
  const forward=forwardTravel(a.p,move,door,slot.fromSide);
+ // Q7: a stably traversable doorway is no longer a turn-taking
+ // checkpoint. An immutable GO-time rank or expired opposing-side lease
+ // must not hold an operator behind an EMPTY opening. Check only nearby
+ // actual bodies against this fixed-tick stride; the existing swept motor
+ // continues to enforce world geometry, door leaves and final collisions.
+ // Keep the old convoy/counterflow policy when another body really blocks
+ // the step or while the hinge is still opening. This replaces (rather
+ // than adds to) the more expensive rank + owner scans on clear passages.
+ if(forward>.025&&door.open&&
+    (door.openFraction??0)>=.72&&
+    Math.abs(door.angularVelocity??0)<.16){
+  let blockedByBody=false;
+  for(const peer of s.operators){
+   if(peer===a||peer.health<=0)continue;
+   const now=dist(a.p,peer.p);
+   const proposed=dist(move,peer.p);
+   if(proposed<QUEUE_CENTER_GAP-.25&&
+      proposed<now+.005){
+    blockedByBody=true;break;
+   }
+   // Preserve actual near-threshold COUNTERFLOW right-of-way.
+   // A live opposing mover within 48 units is a real imminent
+   // conflict, not the stale remote lease we're releasing.
+   const center=ctx.centers.get(door.id)!;
+   const dx=peer.p.x-center.x,dy=peer.p.y-center.y;
+   if(dx*dx+dy*dy>=48*48)continue;
+   const peerSlot=pending(peer,schedule,ctx.byDoor);
+   if(peerSlot?.doorId===door.id&&
+      peerSlot.fromSide!==slot.fromSide&&
+      ready({actor:peer,slot:peerSlot},ctx)){
+    blockedByBody=true;break;
+   }
+  }
+  if(!blockedByBody)
+   return {...free,doorId:door.id,rank:slot.rank};
+ }
  // Lateral corrective steps must still preserve real teammate body
  // spacing: the queue does not own the leaf, but it owns avoiding a
  // same-lane higher-rank person's capsule in any direction.

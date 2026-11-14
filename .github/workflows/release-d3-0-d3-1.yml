@@ -35,8 +35,12 @@ jobs:
             tests/release-d3-1-door-broadphase.test.mjs \
             tests/release-d3-2-door-evidence.test.mjs \
             tests/release-d3-2-hinge-arbitrated-release.test.mjs \
-            tests/release-d3-2-door-evidence.test.mjs \
             tests/release-d3-2-short-clear-handoff.test.mjs \
+            tests/release-d3-3-portal-first-leg.test.mjs \
+            tests/release-d3-4-transient-rejoin.test.mjs \
+            tests/release-d3-4-stale-episode-release.test.mjs \
+            tests/release-d3-5-open-door-no-queue.test.mjs \
+            tests/door-traversal-episode.test.mjs \
             tests/release-d1-coherent-crossing.test.mjs \
             tests/release-d1-threshold-commitment.test.mjs \
             tests/passage-q2-coordinator.test.mjs \
@@ -51,10 +55,26 @@ jobs:
             tests/doorway-planned-sequence.test.mjs \
             tests/doorway-convoy-flow.test.mjs \
             tests/door-traversal-d4-live-grip.test.mjs
-      - name: Generated-building four-operator acceptance (diagnostic quality)
+      - name: D3.6 25-second real-world arrivals and blockers (11 seeded buildings)
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 5 1200 > "$RUNNER_TEMP/d3-generated.json"
-          node -e 'const r=require(process.argv[1]);const lowNet=r.rows.flatMap(row=>(row.modes??[]).flatMap(mode=>(mode.triage??[]).filter(op=>op.state==="little-net-movement").map(op=>({seed:row.seed,archetype:row.archetype,mode:mode.mode,doorId:mode.doorId,operator:op,orders:mode.operators?.find(a=>a.id===op.actor)}))));console.log(JSON.stringify({ticks:r.ticks,summary:r.summary,lowNet},null,2));if(r.summary.doorStateFlips>90)throw Error("Door oscillation regression: "+r.summary.doorStateFlips+" exceeded 90")' "$RUNNER_TEMP/d3-generated.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 1500 > "$RUNNER_TEMP/d3-generated25.json"
+          node -e 'const r=require(process.argv[1]);const endpoints=r.rows.flatMap(site=>(site.modes??[]).flatMap(mode=>(mode.operators??[]).filter(o=>!o.arrived).map(o=>({seed:site.seed,site:site.archetype,mode:mode.mode,id:o.id,remaining:o.remaining,started:o.startingGoalDistance,travel:o.progressDistance,blocked:o.blockedSeconds,still:o.longestStillSeconds,pause:o.motorPause,reason:o.lastBlocker,episode:o.doorEpisode,nav:o.nextNav,position:o.position,goal:o.goal,orders:o.remainingOrders}))));const incident=r.rows.filter(row=>[31084,31123,31149,31162].includes(row.seed)).map(row=>({seed:row.seed,site:row.archetype,modes:row.modes.map(mode=>({mode:mode.mode,warehouseHingeWitness:mode.warehouseHingeWitness,doors:mode.endDoorStates,orderCancelled:mode.orderCancelledEvents,operators:mode.operators.map(o=>({id:o.id,arrived:o.arrived,remaining:o.remaining,position:o.position,orders:o.remainingOrders,active:o.activeOrderDetails,syncReady:o.syncReady,actionTimer:o.actionTimer,waitRemaining:o.waitRemaining,hand:o.doorHand,episode:o.doorEpisode,reason:o.lastBlocker,nav:o.nextNav}))}))}));console.log(JSON.stringify({seconds:r.ticks/60,summary:r.summary,nonarrivals:endpoints,incident},null,2));if(r.summary.doorStateFlips>120)throw Error("Door oscillation regression: "+r.summary.doorStateFlips+" exceeded 120");if(r.summary.physicalArrivals===undefined)throw Error("No physical-arrival evidence")' "$RUNNER_TEMP/d3-generated25.json"
+      - name: R3 exact-sweep portal topology and seed 31175 clinic witness
+        run: |
+          node --experimental-strip-types --test tests/release-d3-2-r3-portal-connectivity.test.mjs
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 900 --clinic-only --portal > "$RUNNER_TEMP/d3-clinic-portal.json"
+          node -e 'const r=require(process.argv[1]);const entry=r.rows[0]?.modes?.find(m=>m.mode==="entry");const w=entry?.physicalBlockEvidence?.filter(e=>e.operator==="vale"&&e.routeFeasibility?.portalConnectivity).map(e=>({time:e.time,route:e.routeFeasibility.portalConnectivity,goal:e.routeFeasibility.goal,endPoint:e.routeFeasibility.endPoint}));const vale=entry?.triage?.find(e=>e.actor==="vale");console.log(JSON.stringify({summary:r.summary,vale,clinic:w},null,2));if(!w?.length&&vale?.state!=="moving"&&vale?.state!=="completed")throw Error("clinic has no stall witness and no confirmed Vale progress")' "$RUNNER_TEMP/d3-clinic-portal.json"
+      - name: D3.3 compare actual clinic 30-second motor with immutable R2.6
+        run: |
+          git fetch --no-tags --depth=1 origin 37f805825b3e295bb68b791d0cbae7a1df0b6d74
+          git worktree add --detach "$RUNNER_TEMP/d3-r2-baseline" 37f805825b3e295bb68b791d0cbae7a1df0b6d74
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d3-r2-baseline/node_modules"
+          # Frozen R2.6 audit predates --clinic-only. Limit ONLY its offline
+          # audit loop to the exact clinic fixture; simulation remains intact.
+          node -e 'const fs=require("fs"),p=process.argv[1],s=fs.readFileSync(p,"utf8"),needle="for(let i=0;i<sites;i++){";if(!s.includes(needle))throw Error("R2.6 audit loop changed");fs.writeFileSync(p,s.replace(needle,"for(let i=10;i<11;i++){"))' "$RUNNER_TEMP/d3-r2-baseline/scripts/audit-r7-squad-execution.mjs"
+          node --experimental-strip-types "$RUNNER_TEMP/d3-r2-baseline/scripts/audit-r7-squad-execution.mjs" 11 1800 > "$RUNNER_TEMP/d3-r2-clinic30.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 1800 --clinic-only > "$RUNNER_TEMP/d3-r3-clinic30.json"
+          node -e 'const a=require(process.argv[1]),b=require(process.argv[2]);const compact=r=>{const site=r.rows.find(x=>x.seed===31175);if(!site)throw Error("wrong baseline site");const entry=site.modes?.find(m=>m.mode==="entry");return {seed:site.seed,summary:r.summary,entry:entry?.triage,entryOps:entry?.operators,doorFlips:entry?.doorFlipDetails,valePhysicalWitness:entry?.physicalBlockEvidence?.filter(e=>e.operator==="vale").slice(-3)};};console.log(JSON.stringify({baseline:compact(a),candidate:compact(b)},null,2));if(b.summary.invalidPositions||b.summary.corruptedPlans||b.summary.physicsStepViolations)throw Error("clinic 30-second safety failure");const entry=b.rows.find(x=>x.seed===31175)?.modes?.find(x=>x.mode==="entry");if(!entry?.operators?.find(x=>x.id==="vale")?.arrived)throw Error("D3.4 clinic Vale did not actually reach authored goal")' "$RUNNER_TEMP/d3-r2-clinic30.json" "$RUNNER_TEMP/d3-r3-clinic30.json"
       - name: Production TypeScript + Vite bundle
         run: npm run build
       - name: Retain reproducible generated-map triage
@@ -62,7 +82,11 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: d3-0-d3-1-generated-site-triage
-          path: ${{ runner.temp }}/d3-generated.json
+          path: |
+            ${{ runner.temp }}/d3-generated25.json
+            ${{ runner.temp }}/d3-clinic-portal.json
+            ${{ runner.temp }}/d3-r2-clinic30.json
+            ${{ runner.temp }}/d3-r3-clinic30.json
           if-no-files-found: ignore
   truth-parity:
     runs-on: ubuntu-latest

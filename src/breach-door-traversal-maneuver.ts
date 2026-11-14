@@ -11,7 +11,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {beginAutoSidestep} from './breach-auto-sidestep.ts';
 import {signedDoorSide} from './breach-door-traversal-episode.ts';
-import type {BodyDoorContact} from './breach-door.ts';
+import {doorWouldStrikeActors,doorSwingBlocked,type BodyDoorContact} from './breach-door.ts';
 import {acquireDoorHandContact} from './breach-door-hand-contact.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
@@ -229,6 +229,49 @@ export function recordDoorManeuverContact(
   if(door)acquireDoorHandContact(s,actor,door,true);
  }else if(contact.advanced&&episode.maneuver==='direct')
   episode.maneuver='push-through';
+}
+/** R2.1: existing physical motor recovery can use ONE legal correction
+ * when an unowned, self-blocked partial hinge cannot advance. No authored
+ * edit, new GO controller, body pushing, or door-angle modification.
+ * This function is never called on a normal frame: only a bounded,
+ * genuine door-collision retry after the existing blocked-time threshold.
+ */
+export function selfBlockingHingeRelief(
+ a:TeamActor,s:Session,goal:Pt
+):Pt|null{
+ const world=sessionWorldGeometry(s);
+ const otherPositions=s.operators.filter(other=>other!==a&&other.health>0)
+   .map(other=>other.p);
+ const aim=Math.atan2(goal.y-a.p.y,goal.x-a.p.x);
+ for(const door of s.doors){
+  const fraction=door.openFraction??(door.open?1:0);
+  if(!door.open||door.kind==='sliding'||door.kind==='shutter'||
+     door.locked||door.wedged||door.heldBy||
+     fraction<.15||fraction>=.72||
+     Math.abs(door.angularVelocity??0)>.16)continue;
+  const leaf=doorLeafSegment(door);
+  const initial=pointToSegment(a.p,leaf);
+  if(initial>=OPERATOR_RADIUS+4)continue;
+  const future=Math.min(1,fraction+.025);
+  if(!doorWouldStrikeActors(door,future,[a.p],OPERATOR_RADIUS)||
+     doorSwingBlocked(door,future,[],OPERATOR_RADIUS,world))continue;
+  // Favor forward footwork; fixed small angular offsets permit shoulder
+  // clearance without converting the maneuver into broad pathfinding.
+  for(const radius of [8,14])
+    for(const turn of [0,Math.PI/8,-Math.PI/8,Math.PI/4,
+      -Math.PI/4,3*Math.PI/8,-3*Math.PI/8,Math.PI]){
+      const theta=aim+turn;
+      const p={x:a.p.x+Math.cos(theta)*radius,
+       y:a.p.y+Math.sin(theta)*radius};
+      if(pointToSegment(p,leaf)<initial+3||
+         doorWouldStrikeActors(door,future,[p],OPERATOR_RADIUS)||
+         otherPositions.some(q=>distance(p,q)<OPERATOR_RADIUS*2+1)||
+         !sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world))
+        continue;
+      return p;
+    }
+ }
+ return null;
 }
 /** When the current motor route is the saved maneuver, its chosen
  * clearance corridor owns navigation until finished or truly stalled.
