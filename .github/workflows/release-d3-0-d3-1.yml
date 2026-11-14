@@ -55,10 +55,10 @@ jobs:
             tests/doorway-planned-sequence.test.mjs \
             tests/doorway-convoy-flow.test.mjs \
             tests/door-traversal-d4-live-grip.test.mjs
-      - name: Generated-building four-operator acceptance (diagnostic quality)
+      - name: D3.6 25-second real-world arrivals and blockers (11 seeded buildings)
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 5 1200 > "$RUNNER_TEMP/d3-generated.json"
-          node -e 'const r=require(process.argv[1]);const lowNet=r.rows.flatMap(row=>(row.modes??[]).flatMap(mode=>(mode.triage??[]).filter(op=>op.state==="little-net-movement").map(op=>({seed:row.seed,archetype:row.archetype,mode:mode.mode,doorId:mode.doorId,operator:op,orders:mode.operators?.find(a=>a.id===op.actor)}))));console.log(JSON.stringify({ticks:r.ticks,summary:r.summary,lowNet},null,2));if(r.summary.doorStateFlips>90)throw Error("Door oscillation regression: "+r.summary.doorStateFlips+" exceeded 90")' "$RUNNER_TEMP/d3-generated.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 1500 > "$RUNNER_TEMP/d3-generated25.json"
+          node -e 'const r=require(process.argv[1]);const endpoints=r.rows.flatMap(site=>(site.modes??[]).flatMap(mode=>(mode.operators??[]).filter(o=>!o.arrived).map(o=>({seed:site.seed,site:site.archetype,mode:mode.mode,id:o.id,remaining:o.remaining,started:o.startingGoalDistance,travel:o.progressDistance,blocked:o.blockedSeconds,still:o.longestStillSeconds,pause:o.motorPause,reason:o.lastBlocker,episode:o.doorEpisode,nav:o.nextNav,position:o.position,goal:o.goal,orders:o.remainingOrders}))));console.log(JSON.stringify({seconds:r.ticks/60,summary:r.summary,nonarrivals:endpoints},null,2));if(r.summary.doorStateFlips>120)throw Error("Door oscillation regression: "+r.summary.doorStateFlips+" exceeded 120");if(r.summary.physicalArrivals===undefined)throw Error("No physical-arrival evidence")' "$RUNNER_TEMP/d3-generated25.json"
       - name: R3 exact-sweep portal topology and seed 31175 clinic witness
         run: |
           node --experimental-strip-types --test tests/release-d3-2-r3-portal-connectivity.test.mjs
@@ -83,7 +83,7 @@ jobs:
         with:
           name: d3-0-d3-1-generated-site-triage
           path: |
-            ${{ runner.temp }}/d3-generated.json
+            ${{ runner.temp }}/d3-generated25.json
             ${{ runner.temp }}/d3-clinic-portal.json
             ${{ runner.temp }}/d3-r2-clinic30.json
             ${{ runner.temp }}/d3-r3-clinic30.json
