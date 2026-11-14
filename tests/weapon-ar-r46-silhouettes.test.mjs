@@ -2,6 +2,7 @@
  * All checks are on actual game meshes, not independent illustrations.
  */
 import test from 'node:test';
+import {ORIGINAL_AR8,historicalPresetCohort} from './helpers/historical-weapon-presets.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
@@ -32,9 +33,9 @@ const box=(g,slot)=>partVisualBounds(g,slot);
 const meshes=(g,slot)=>g.children.filter(x=>x.name.startsWith('family-'+slot+'-'));
 
 test('R4.6 shared visual ID contract and authored stock contact geometry',()=>{
- assert.equal(FAMILY_PRESETS.filter(p=>p.family==='ar').length,8);
- assert.equal(FAMILY_PRESETS.length,17);
- assert.equal(Object.keys(FAMILY_PARTS).length,93);
+ assert.equal(historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_AR8).length,8);
+ assert.ok(FAMILY_PRESETS.length>=17,'the original factory models are retained');
+ assert.ok(Object.keys(FAMILY_PARTS).length>=93,'the original art parts are retained');
  const a=model('ar-m16a1'),b=model('ar-m16a2');
  assert.ok(close(a.a.stockX,-13.74)&&close(b.a.stockX,-14.30));
  assert.ok(box(a.g,'stock').min.x> -14.1,'A1 is 20% shorter in stock section');
