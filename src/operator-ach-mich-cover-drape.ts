@@ -40,8 +40,11 @@ function dimensions(shell:AchMichCoverShell):Style{
   shell,topY:crown.y+crown.height/2+offset,
   topX:crown.width/2-ACH_MICH_UPPER_INSET+offset+
    ACH_MICH_COVER_SIDE_CROWN_ALLOWANCE,
-  topFront:-crown.depth/2+ACH_MICH_UPPER_INSET-offset,
-  topRear:crown.depth/2-ACH_MICH_UPPER_INSET+offset,
+  // H31C: use the actual unified shell roof endpoints, NOT the old
+  // crown cuboid depth. The old top anchors sat inside the sloping front
+  // and rear shell faces, so the cloth crossed the crown between rings.
+  topFront:p.hem[0][2]+ACH_MICH_UPPER_INSET-offset,
+  topRear:p.hem.at(-1)![2]-ACH_MICH_UPPER_INSET+offset,
   // Direct, broad diagonal from crown toward the outer front/rear planes.
   shoulderY: shell==='ach'?6.53:shell==='mich-2001'?6.77:6.79,
   front:p.front-offset,rear:p.rear+offset,
@@ -249,6 +252,7 @@ export function createAchMichDrapedGeometry(
  g.userData.h27NoLeadingFinMatched=true;
  g.userData.h28UnifiedEarProfileMatched=true;
  g.userData.h30ReferenceContourCandidateMatched=true;
+ g.userData.h31cRoofAnchoredToShellContour=true;
  g.userData.h25TuckedConcealedBinding=true;
  return g;
 }
