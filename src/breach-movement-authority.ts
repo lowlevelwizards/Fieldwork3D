@@ -24,15 +24,17 @@ export const sweptPairMayTouch=(af:Pt,at:Pt,bf:Pt,bt:Pt,envelope:number)=>
  Math.max(bf.x,bt.x)+envelope>Math.min(af.x,at.x)&&
  Math.max(af.y,at.y)+envelope>Math.min(bf.y,bt.y)&&
  Math.max(bf.y,bt.y)+envelope>Math.min(af.y,at.y);
-const crosses=(a:MotionProposal,b:MotionProposal)=>{
- // A collision is meaningful only when the proposed final positions
- // converge. Fixed ticks bound travel; retain clearance during swaps.
- const final=dist(a.to,b.to);
+const crosses=(a:MotionProposal,aTo:Pt,
+ b:MotionProposal,bTo:Pt)=>{
+ // The current accepted endpoints are already held by the draft. Read
+ // them directly instead of cloning two proposals for each candidate pair.
+ // All original swept trajectory math, envelope and loser order are intact.
+ const final=dist(aTo,bTo);
  const initial=dist(a.from,b.from);
  const envelope=a.side==='neutral'||b.side==='neutral'?20:11;
  if(final<envelope&&final<initial-.001)return true;
- const ux=a.to.x-a.from.x-(b.to.x-b.from.x);
- const uy=a.to.y-a.from.y-(b.to.y-b.from.y);
+ const ux=aTo.x-a.from.x-(bTo.x-b.from.x);
+ const uy=aTo.y-a.from.y-(bTo.y-b.from.y);
  const ox=a.from.x-b.from.x,oy=a.from.y-b.from.y;
  const sq=ux*ux+uy*uy;
  if(sq<1e-7)return false;
@@ -77,8 +79,7 @@ export function resolveMovementFrame(
   // arithmetic before allocating temporary proposals or calculating sqrt.
   if(!sweptPairMayTouch(a.from,pa.point,b.from,pb.point,
     a.side==='neutral'||b.side==='neutral'?20:11))continue;
-  const da={...a,to:pa.point},db={...b,to:pb.point};
-  if(!crosses(da,db))continue;
+  if(!crosses(a,pa.point,b,pb.point))continue;
   const movingA=dist(a.from,pa.point)>.0001;
   const movingB=dist(b.from,pb.point)>.0001;
   // Opposing stationary body stays. If both moved, ID order grants passage

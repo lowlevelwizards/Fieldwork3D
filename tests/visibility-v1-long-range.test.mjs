@@ -35,7 +35,12 @@ test('V1 sight polygons reach distant ground but stop on solid walls',()=>{
 test('V1 distant memory queries are bucketed while close details stay exact',()=>{
  const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
  assert.ok(game.includes('const bucket=Math.floor(s.seconds*7)&15'));
- assert.ok(game.includes('if(((col+row*3)&15)!==bucket)return;'));
+ const discovery=readFileSync(new URL('../src/breach-ground-discovery.ts',
+   import.meta.url),'utf8');
+ assert.ok(game.includes('},bucket);'),
+  'authoritative far observation passes its deterministic slot upstream');
+ assert.ok(discovery.includes('if(farBucket!==undefined&&((col+row*3)&15)!==farBucket)continue;'),
+  'unscheduled terrain tiles are culled before FOV/point allocation');
  assert.ok(game.includes('NEAR_FINE_SIGHT_RANGE**2'));
  assert.ok(game.includes('notePersonalGround(s,blue.id,s.seconds,fine)'));
 });

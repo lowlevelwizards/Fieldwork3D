@@ -9,7 +9,8 @@ import type {Pt} from './breach-core.ts';
 export type GroundSamplingBounds={minX:number;minY:number;maxX:number;maxY:number};
 export type GroundSample=(col:number,row:number,p:Pt)=>void;
 export function forEachGroundSightCandidate(view:GroundView,
- bounds:GroundSamplingBounds,step:10|20,visit:GroundSample):void{
+ bounds:GroundSamplingBounds,step:10|20,visit:GroundSample,
+ farBucket?:number):void{
  const minX=Math.max(Math.floor(bounds.minX/step),
    Math.floor((view.x-view.radius)/step));
  const maxX=Math.min(Math.ceil(bounds.maxX/step)-1,
@@ -19,6 +20,11 @@ export function forEachGroundSightCandidate(view:GroundView,
  const maxY=Math.min(Math.ceil(bounds.maxY/step)-1,
    Math.floor((view.y+view.radius)/step));
  for(let row=minY;row<=maxY;row++)for(let col=minX;col<=maxX;col++){
+   // Far discovery historically schedules only one deterministic 1/16
+   // bucket per observation. Reject the other 15 buckets *before* the
+   // FOV dot/radius test and temporary point allocation. The callback
+   // receives exactly the original ordered candidate subset.
+   if(farBucket!==undefined&&((col+row*3)&15)!==farBucket)continue;
    const x=col*step+step/2,y=row*step+step/2;
    if(groundViewCandidate(view,x,y))visit(col,row,{x,y});
  }

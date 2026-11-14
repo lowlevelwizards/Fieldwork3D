@@ -10,13 +10,19 @@ import {detectedSight} from './breach-visual-perception.ts';
 export function scanEnemyVisualEvidence(s:Session,a:TeamActor,dt:number,
  inSight:(observer:TeamActor,target:TeamActor,s:Session)=>boolean
 ):TeamActor[]{
- const visible=s.operators.filter(b=>b.side==='blue'&&inSight(a,b,s));
+ // One roster scan computes the exact same confirmed list and first
+ // detectable shape. Progress is owned by the fixed-step visual phase.
+ const visible:TeamActor[]=[];
+ let glimpse:TeamActor|null=null;
+ for(const b of s.operators){
+  if(b.side!=='blue')continue;
+  if(inSight(a,b,s))visible.push(b);
+  if(glimpse===null&&detectedSight(
+    a.awareness.visualProgress[b.id]??0))glimpse=b;
+ }
  const visualId=visible[0]?.id??null;
- // Progress was accumulated only from physical, facing-valid optical LOS.
  // An unconfirmed person can make a guard curious, but cannot create a
  // target belief, a hostile ID, a squad report or permission to shoot.
- const glimpse=visualId?null:s.operators.find(b=>b.side==='blue'&&
-   detectedSight(a.awareness.visualProgress[b.id]??0));
  const observation=visualId?visualId:
    glimpse?'silhouette/'+glimpse.id:null;
  if(observation!==a.lastVisualSuspicionId){
@@ -35,8 +41,12 @@ export function scanEnemyVisualEvidence(s:Session,a:TeamActor,dt:number,
  if(visualId)maintainVisualContact(a.suspicion,s.seconds);
  if(visible.length&&a.encounterReactionUntil===Number.POSITIVE_INFINITY){
   a.encounterReactionStartedAt=s.seconds;
+  // Only a directly confirmed actor may set this initial reaction
+  // clock; unidentified silhouettes cannot accelerate or delay a shot.
+  const first=visible[0];
   a.encounterReactionUntil=s.seconds+encounterReactionDelay(
-   a.encounterReadiness??'attentive',a.id);
+   a.encounterReadiness??'attentive',a.id,
+   Math.hypot(first.p.x-a.p.x,first.p.y-a.p.y));
  }
  return visible;
 }

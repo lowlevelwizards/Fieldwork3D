@@ -109,10 +109,20 @@ export function advanceSimulationActors(s:Session,h:number,
       // explicit WAIT, WATCH, STACK and authored positions untouched.
       if(!a.plan.length&&!a.nav.length&&!a.traversal&&
          !a.traversalPending&&!a.aimInstruction&&!a.carryingId){
-        const nearby=s.operators.filter(b=>b!==a&&b.side==='blue'&&
-          b.health>0&&b.plan[0]?.kind==='move'&&
-          d(a.p,b.p)<75);
-        if(nearby.length&&idleYieldAllowed(s,a.id,nearby.map(b=>b.id))){
+        // No allocation for the common idle tick with no approaching
+        // moving friendly. Preserve live actor order and the exact original
+        // Euclidean 75-unit acceptance boundary when a peer exists.
+        let nearby:TeamActor[]|null=null;
+        for(const b of s.operators)if(b!==a&&b.side==='blue'&&
+          b.health>0&&b.plan[0]?.kind==='move'&&d(a.p,b.p)<75){
+          if(!nearby)nearby=[];
+          nearby.push(b);
+        }
+        if(nearby){
+          // The passage ledger must observe exactly the same ordered IDs
+          // at the eligibility and commitment stages of this one tick.
+          const nearbyIds=nearby.map(b=>b.id);
+          if(idleYieldAllowed(s,a.id,nearbyIds)){
           const idle:PassageActor={
             id:a.id,side:a.side,p:a.p,goal:null,
             health:a.health,blockedTime:a.blockedTime,active:false
@@ -126,10 +136,11 @@ export function advanceSimulationActors(s:Session,h:number,
             (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),h*45);
           if(yieldStep&&!s.operators.some(b=>b!==a&&b.health>0&&
               d(b.p,yieldStep)<13&&d(b.p,yieldStep)<d(b.p,a.p)-.01)){
-            commitIdleYield(s,a.id,nearby.map(b=>b.id));
+            commitIdleYield(s,a.id,nearbyIds);
             noteQueueMotion(s,a,'idle-yield',a.p,yieldStep);
             a.p=yieldStep;a.velocity=d(a.priorP,a.p)/Math.max(h,.0001);
             a.motorPause='passage';
+          }
           }
         }
       }

@@ -3,7 +3,7 @@
  * contract; contact belief is never inferred from presentation fog.
  */
 import {angleDifference,length,targetAngle} from './breach-plan.ts';
-import {visualGain,advanceSight} from './breach-visual-perception.ts';
+import {visualGain,advanceSight,identificationRate} from './breach-visual-perception.ts';
 import {actorLightingLevels,lightVisibilityGain} from './equipment-sight-lighting.ts';
 import {perceptualReadiness} from './breach-encounter-readiness.ts';
 import {addObservation,visibleObservation} from './breach-awareness.ts';
@@ -13,22 +13,30 @@ const d=length;
 const angle=targetAngle;
 
 export function advanceActorSightProgress(s:Session,dt:number,geometricallyVisible:SightTest){
- // One scene sample per simulation-time bucket, never one raycast per sight pair.
- const lighting=actorLightingLevels(s);
+ // Most sampled sight pairs are occluded or facing-away. Defer the
+ // shared 8 Hz illumination field until the first *physically visible*
+ // subject, rather than rebuilding lighting for a no-contact tick. The
+ // same world state and one snapshot serve every subsequent pair.
+ let lighting:ReturnType<typeof actorLightingLevels>|null=null;
  for(const observer of s.operators){
   if(observer.health<=0)continue;
   for(const subject of s.operators){
    if(subject.side===observer.side||subject.health<=0)continue;
    const visible=geometricallyVisible(observer,subject,s);
-   const signal=visible?visualGain(d(observer.p,subject.p),
+   // One already-authoritative sight sample and one actor-pair range.
+   // Never add a ray just to decide if this is detectable vs identified.
+   const range=visible?d(observer.p,subject.p):0;
+   const signal=visible?visualGain(range,
     angleDifference(observer.heading,angle(observer.p,subject.p)),
     subject.velocity>10,subject.posture==='crouch')*
-    lightVisibilityGain(lighting.get(subject.id)??1)*
+    lightVisibilityGain((lighting??(lighting=actorLightingLevels(s)))
+      .get(subject.id)??1)*
     (subject.weaponLightOn&&subject.weaponConfiguration?.slots.light==='light-compact'?1.18:1)*
     (observer.side==='red'?perceptualReadiness(
       observer.encounterReadiness??'attentive'):1):0;
    const old=observer.awareness.visualProgress[subject.id]??0;
-   observer.awareness.visualProgress[subject.id]=advanceSight(old,dt,signal,visible);
+   observer.awareness.visualProgress[subject.id]=advanceSight(
+    old,dt,signal,visible,visible?identificationRate(range):1);
   }
  }
 }

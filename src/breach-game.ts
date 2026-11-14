@@ -1347,7 +1347,6 @@ function observe(s:Session){
         const farView=groundView(blue.p.x,blue.p.y,blue.heading,farReach);
         const bucket=Math.floor(s.seconds*7)&15;
         forEachGroundSightCandidate(farView,bounds,20,(col,row,p)=>{
-          if(((col+row*3)&15)!==bucket)return;
           const dx=p.x-blue.p.x,dy=p.y-blue.p.y;
           if(dx*dx+dy*dy<=NEAR_FINE_SIGHT_RANGE**2)return;
           const fine='fine:'+col+','+row;
@@ -1358,7 +1357,7 @@ function observe(s:Session){
           const coarse=Math.floor(p.x/40)+','+Math.floor(p.y/40);
           s.seenGround.add(coarse);
           notePersonalGround(s,blue.id,s.seconds,coarse);
-        });
+        },bucket);
       }
       if(s.seenGround.size!==beforeGroundSize)s.seenGroundRevision++;
     }
