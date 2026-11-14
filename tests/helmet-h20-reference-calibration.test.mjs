@@ -35,7 +35,7 @@ test('H20: full, partial and open-ear cuts have an emphatic three-step hierarchy
   high=UNIFIED_HELMET_HEMS['mich-2001'];
  assert.equal(full.length,6);assert.equal(mid.length,6);assert.equal(high.length,6);
  for(const hem of [full,mid,high]){
-  assert.ok(hem.every(p=>near(p[0],hem[0][0])));
+  assert.ok(hem.every(p=>p[0]>=hem[0][0]&&p[0]<=hem[0][0]+.3));
   for(let i=1;i<hem.length;i++)assert.ok(hem[i][2]-hem[i-1][2]>=.69,'no tiny contour notches');
  }
  assert.ok(near(full[2][1],2.04));
@@ -47,7 +47,7 @@ test('H20: full, partial and open-ear cuts have an emphatic three-step hierarchy
  assert.ok(near(high[1][1],4.55));
  assert.ok(near(high[3][1],5.30));
  assert.ok(high[2][1]-high[1][1]>=.70,'high cut rises visibly above the brow');
- assert.ok(near(high[4][1],2.25)&&near(high[5][1],2.25));
+ assert.ok(near(high[4][1],2.05)&&near(high[5][1],2.05));
  assert.ok(high[3][1]-high[4][1]>=1.35,
   'deep rear return rather than floating cap');
  assert.ok(high[2][1]-A.earTop>=1.2,'clean opening over implied ear');
@@ -74,7 +74,7 @@ test('H20: no new polygons, cover/trim drift or retention clipping',()=>{
   assert.equal(achMichRetentionPaths(id).length,6);
  }
  assert.ok(near(achMichHemY('mich-2001',.5),5.30));
- assert.ok(near(achMichHemY('mich-2001',5),2.25));
+ assert.ok(near(achMichHemY('mich-2001',5),2.05));
  assert.ok(near(achMichBindingHeight('mich-2001'),.42));
 });
 

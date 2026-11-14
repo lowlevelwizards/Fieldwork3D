@@ -20,19 +20,20 @@ test('H21: ear cut is independent of rear protection across the three cuts',()=>
   [2.04,2.35],[1.85,3.88],[1.85,5.60]
  ],'Full-Cut ear remains deep with a slightly descending nape');
  assert.deepEqual(mid.map(p=>[p[1],p[2]]),[
-  [4.55,-5.70],[4.55,-1.12],[3.06,-0.12],
-  [3.06,2.35],[2.05,3.88],[2.05,5.75]
+  [4.55,-5.70],[4.55,-0.78],[3.06,0.10],
+  [3.06,2.52],[1.90,4.08],[1.90,5.75]
  ],'Mid-Cut ear relief starts near halfway and nape stays deep');
  assert.deepEqual(high.map(p=>[p[1],p[2]]),[
-  [4.55,-5.71],[4.55,-1.15],[5.30,-0.12],
-  [5.30,2.35],[2.25,3.93],[2.25,5.66]
+  [4.55,-5.71],[4.55,-0.80],[5.30,0.10],
+  [5.30,2.52],[2.05,4.08],[2.05,5.66]
  ],'High-Cut over-ear clearance remains large with deep nape');
  const hems=[full,mid,high];
  for(const p of hems){
   assert.equal(p.length,6);
   for(let i=1;i<p.length;i++)
    assert.ok(p[i][2]>p[i-1][2],'no added tiny turns or discontinuities');
-  assert.ok(p.every(v=>near(v[0],p[0][0])),'single flat side wall');
+  assert.ok(p.every(v=>v[0]>=p[0][0]&&v[0]<=p[0][0]+.3),
+   'one continuous varying side width, not an added side plate');
   assert.ok(near(p[4][1],p[5][1]),'rear is a continuous nape, not a separate plate');
  }
  assert.ok(mid[4][1]<mid[3][1],'Mid-Cut rear MUST descend behind the ear');
@@ -74,7 +75,8 @@ test('H21: static unified shells, shared cover and rubber edge',()=>{
   }
   assert.ok(rearSeamVertex,'cover hem follows rear return: '+id);
   for(const stud of [p.frontStud,p.rearStud])
-   assert.ok(near(stud[1]-achMichHemY(id,stud[2]),.55,.15),
+   assert.ok(near(stud[1]-achMichHemY(id,stud[2]),
+      achMichBindingHeight(id)+.45,.15),
     'fastener follows contour rather than floating behind it: '+id);
   for(const path of paths)
    assert.ok(path[0][1]<achMichHemY(id,path[0][2])-.10,

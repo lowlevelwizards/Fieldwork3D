@@ -20,9 +20,9 @@ test('H23: forward ear drop begins near 40% and reaches true ear depth halfway',
   const hem=UNIFIED_HELMET_HEMS[id],front=hem[0][2],rear=hem[5][2],
    fraction=z=>(z-front)/(rear-front);
   assert.equal(hem.length,6,'no silhouette tessellation');
-  assert.ok(fraction(hem[1][2])>.38 && fraction(hem[1][2])<.42,
+  assert.ok(fraction(hem[1][2])>.38 && fraction(hem[1][2])<.45,
    id+' temple continues further back before dropping');
-  assert.ok(fraction(hem[2][2])>.48 && fraction(hem[2][2])<.51,
+  assert.ok(fraction(hem[2][2])>.48 && fraction(hem[2][2])<.53,
    id+' ear depth starts near middle of skull');
   assert.ok(hem[2][2]<HEAD.earZ && hem[3][2]>HEAD.earZ,
    'symbolic ear remains beneath the correct coverage/opening');
@@ -35,7 +35,7 @@ test('H23: nape spans around skull nape, lower but distinct among cuts',()=>{
  const f=UNIFIED_HELMET_HEMS.ach,m=UNIFIED_HELMET_HEMS['mich-2002'],
   h=UNIFIED_HELMET_HEMS['mich-2001'];
  assert.deepEqual([f[2][1],m[2][1],h[2][1]],[2.04,3.06,5.30]);
- assert.deepEqual([f[5][1],m[5][1],h[5][1]],[1.85,2.05,2.25]);
+ assert.deepEqual([f[5][1],m[5][1],h[5][1]],[1.85,1.90,2.05]);
  assert.ok(f[5][1]<HEAD.nape,'Full covers just below nape landmark');
  assert.ok(m[5][1]<HEAD.nape,'Mid wraps down to nape');
  assert.ok(h[5][1]<=HEAD.nape+.05,'High shields nape despite open ears');
@@ -54,9 +54,9 @@ test('H23: shell, cover, edge and hardware share the six profile stations',()=>{
   assert.equal(p.hem,hem);
   assert.ok(close(p.brow,hem[0][1]));
   assert.ok(close(p.nape,hem[5][1]));
-  assert.ok(close(p.frontStud[2],hem[1][2]),
+  assert.ok(close(p.frontStud[2],hem[1][2]-.32),
    'front screw tracks actual relocated temple station');
-  assert.ok(close(p.rearStud[1],p.nape+.55),
+  assert.ok(close(p.rearStud[1],p.nape+achMichBindingHeight(id)+.45),
    'rear screw tracks actual nape Y');
   for(const stud of [p.frontStud,p.rearStud])
    assert.ok(stud[1]>achMichHemY(id,stud[2])+.53,

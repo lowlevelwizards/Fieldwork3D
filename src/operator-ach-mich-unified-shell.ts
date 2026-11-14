@@ -1,4 +1,4 @@
-/** H23: rearward ear onset and deeper anatomical napes, without new faces.
+/** H24: per-station mirrored lateral ear mass and continuous low-poly hems.
  * The same six silhouette stations used by H17 now emphasize the distinct
  * ear lobe (full vs mid) and slope into the nape without adding polygons.
  * One faceted roof, two planar sides, one brow/nape; one draw call.
@@ -11,18 +11,18 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  ach:[
   [5.075,4.40,-5.535],
   [5.075,4.40,-1.12],
-  [5.075,2.04,-0.12],
-  [5.075,2.04,2.35],
-  [5.075,1.85,3.88],
+  [5.355,2.04,-0.12],
+  [5.355,2.04,2.35],
+  [5.125,1.85,3.88],
   [5.075,1.85,5.60]
  ],
  'mich-2002':[
   [5.03,4.55,-5.70],
-  [5.03,4.55,-1.12],
-  [5.03,3.06,-0.12],
-  [5.03,3.06,2.35],
-  [5.03,2.05,3.88],
-  [5.03,2.05,5.75]
+  [5.03,4.55,-0.78],
+  [5.28,3.06,0.10],
+  [5.28,3.06,2.52],
+  [5.08,1.90,4.08],
+  [5.03,1.90,5.75]
  ],
  // H20: MICH TC-2001 is a full ear cutout, not the TC-2002 partial cut.
  // Raise ONLY the ear arch while seating the rear lower on the head.
@@ -32,11 +32,11 @@ export const UNIFIED_HELMET_HEMS:Readonly<Record<UnifiedCut,readonly ShellPoint[
  // Proportions are stylized; not millimeter conversions. Six stations.
  'mich-2001':[
   [5.015,4.55,-5.71],
-  [5.015,4.55,-1.15],
-  [5.015,5.30,-0.12],
-  [5.015,5.30,2.35],
-  [5.015,2.25,3.93],
-  [5.015,2.25,5.66]
+  [5.015,4.55,-0.80],
+  [5.145,5.30,0.10],
+  [5.145,5.30,2.52],
+  [5.065,2.05,4.08],
+  [5.015,2.05,5.66]
  ]
 };
 type V=readonly [number,number,number];
@@ -48,6 +48,10 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
   front=hem[0][2],rear=hem.at(-1)![2];
  const shoulderY=roofY-bevelHeight,inner=s-.48,topX=s-topInset;
  const topF=front+topInset,topR=rear-topInset;
+ // A small rear rake: the low nape reaches farther back than the upper
+ // shoulder, avoiding a vertical slab end without adding contour stations.
+ const shoulderRear=rear-.20;
+ const upperZ=(z:number)=>z===rear?shoulderRear:z;
  const positions:number[]=[],uv:number[]=[],uv1:number[]=[],colors:number[]=[];
  let quads=0;
  const add=(p:V,axis:0|1|2,region:0|1|2|3,tone:number)=>{
@@ -76,21 +80,25 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
   for(const i of [0,1,2,0,2,3])add(points[i],axis,region,tone);
   quads++;
  };
+ // The unchanged 6 stations carry both YZ cut and variable X half-width.
+ // Mirror X for both sides. No supplemental side cubes, physics or draw calls.
  // The existing roof height and single chunky top chamfer are preserved.
  quad(v(-topX,roofY,topF),v(-topX,roofY,topR),
   v(topX,roofY,topR),v(topX,roofY,topF),v(0,1,0),1,3,1);
  for(const sign of [-1,1] as const){
   const x=sign*s,tx=sign*topX;
   quad(v(tx,roofY,topF),v(tx,roofY,topR),
-   v(x,shoulderY,rear),v(x,shoulderY,front),v(sign,1,0),0,0,.97);
+   v(x,shoulderY,shoulderRear),v(x,shoulderY,front),v(sign,1,0),0,0,.97);
   for(let i=1;i<hem.length;i++){
    const a=hem[i-1],b=hem[i];
-   quad(v(x,shoulderY,a[2]),v(x,shoulderY,b[2]),
-    v(x,b[1],b[2]),v(x,a[1],a[2]),v(sign,0,0),0,1,
+   quad(v(x,shoulderY,upperZ(a[2])),v(x,shoulderY,upperZ(b[2])),
+    v(sign*b[0],b[1],b[2]),v(sign*a[0],a[1],a[2]),
+    v(sign,0,0),0,1,
     cut==='ach'?.90:.91);
    // A narrow underside fold is part of the SAME shell, not a second rim.
-   quad(v(x,a[1],a[2]),v(x,b[1],b[2]),
-    v(sign*inner,b[1],b[2]),v(sign*inner,a[1],a[2]),
+   quad(v(sign*a[0],a[1],a[2]),v(sign*b[0],b[1],b[2]),
+    v(sign*(b[0]-.48),b[1],b[2]),
+    v(sign*(a[0]-.48),a[1],a[2]),
     v(0,-1,0),1,1,.87);
   }
  }
@@ -98,12 +106,12 @@ export function createUnifiedHelmetShellGeometry(cut:UnifiedCut,roofY:number,
   v(s,shoulderY,front),v(-s,shoulderY,front),
   v(0,0,-1),2,0,.96);
  quad(v(-topX,roofY,topR),v(topX,roofY,topR),
-  v(s,shoulderY,rear),v(-s,shoulderY,rear),
+  v(s,shoulderY,shoulderRear),v(-s,shoulderY,shoulderRear),
   v(0,0,1),2,0,.96);
  quad(v(-s,shoulderY,front),v(s,shoulderY,front),
   v(s,hem[0][1],front),v(-s,hem[0][1],front),
   v(0,0,-1),2,2,.92);
- quad(v(-s,shoulderY,rear),v(s,shoulderY,rear),
+ quad(v(-s,shoulderY,shoulderRear),v(s,shoulderY,shoulderRear),
   v(s,hem.at(-1)![1],rear),v(-s,hem.at(-1)![1],rear),
   v(0,0,1),2,1,.90);
  for(const [z,y,dir] of [[front,hem[0][1],-1],[rear,hem.at(-1)![1],1]]){
