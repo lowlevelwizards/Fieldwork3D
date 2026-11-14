@@ -38,11 +38,11 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
   top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
  'ach':{id:'ach',frontExtent:-5.535,rearExtent:5.60,
-  top:8.84,earEdge:2.92,foreheadEdge:4.40,billLength:0},
+  top:8.84,earEdge:2.31,foreheadEdge:4.40,billLength:0},
  'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
   top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0},
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
-  top:8.76,earEdge:4.05,foreheadEdge:4.55,billLength:0},
+  top:8.76,earEdge:3.14,foreheadEdge:4.55,billLength:0},
  'mich-2001':{id:'mich-2001',frontExtent:-5.61,rearExtent:5.64,
   top:8.70,earEdge:5.91,foreheadEdge:4.55,billLength:0},
  'fast-sf':{id:'fast-sf',frontExtent:-5.53,rearExtent:5.66,
@@ -406,21 +406,22 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
  // by a visible margin, rather than merely touching at float-precision seams.
  {name:'ach-protective-brow',x:0,y:5.25,z:-4.91,
   width:10.15,height:1.70,depth:1.25},
- // One full ear-protection drop to Y2.92, with only the shallow rear nape
- // return to Y2.68. No mid-ear stair or high-cut-looking scallop.
- // No narrow side trim, decorative micro-stairs or floating panel.
- {name:'ach-continuous-nape',x:0,y:4.49,z:4.97,
-  width:10.15,height:3.62,depth:1.26},
+ // H16: deepen only the lower protection. The existing flat crown and
+ // top chamfer are deliberately unchanged. One broad protruding ear lobe
+ // per side reads independently of the shallower rear nape at game scale.
+ // Cuboids still union to one exterior mesh; no extra silhouette tiers.
+ {name:'ach-continuous-nape',x:0,y:4.425,z:4.97,
+  width:10.15,height:3.75,depth:1.26},
  ...([-1,1] as const).flatMap(sign=>[
   {name:sign===-1?'ach-left-temple':'ach-right-temple',
    x:sign*4.55,y:5.25,z:-3.31,
    width:1.05,height:1.70,depth:2.78},
   {name:sign===-1?'ach-left-ear-wrap':'ach-right-ear-wrap',
-   x:sign*4.55,y:4.65,z:.55,
-   width:1.05,height:3.46,depth:5.50},
+   x:sign*4.68,y:4.35,z:.05,
+   width:1.30,height:4.08,depth:5.10},
   {name:sign===-1?'ach-left-nape-return':'ach-right-nape-return',
-   x:sign*4.55,y:4.50,z:4.18,
-   width:1.05,height:3.64,depth:2.91}
+   x:sign*4.55,y:4.435,z:3.95,
+   width:1.05,height:3.77,depth:3.40}
  ])
 ];
 /** High-cut uses the same single-mass crown logic, but the ear region
@@ -441,16 +442,25 @@ const HIGH_CUT_CUBOIDS:readonly HeadwearCuboid[]=[
   width:.96,height:1.80,depth:2.25
  }))
 ];
-/** H1-B: distinct, independently authored coverage cuts — not scaled ACH/high-cut. */
+/** H16: Mid-Cut inherits much of the former Full-Cut protective depth.
+ * Its two broad lateral ear guards are shorter than Full-Cut's, but form
+ * a deliberate lower bump instead of leaving a giant empty side notch.
+ * Keep the H3 faceted crown and the high cut unchanged.
+ */
 const MICH_2002_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m2002-crown',x:0,y:7.40,z:0,width:10.06,height:2.70,depth:10.45},
  {name:'m2002-brow',x:0,y:5.54,z:-4.89,width:10.06,height:1.97,depth:1.62},
- {name:'m2002-nape',x:0,y:4.94,z:4.83,width:10.06,height:3.15,depth:1.78},
+ {name:'m2002-nape',x:0,y:4.855,z:4.83,width:10.06,height:3.29,depth:1.78},
  ...([-1,1] as const).flatMap(sign=>[
-  {name:'m2002-front-temple',x:sign*4.56,y:5.77,z:-3.18,
-   width:1.10,height:1.85,depth:3.3},
-  {name:'m2002-rear-return',x:sign*4.58,y:5.02,z:3.70,
-   width:1.07,height:2.10,depth:3.50}
+  {name:sign<0?'m2002-left-front-temple':'m2002-right-front-temple',
+   x:sign*4.56,y:5.575,z:-3.18,
+   width:1.10,height:2.25,depth:3.30},
+  {name:sign<0?'m2002-left-ear-guard':'m2002-right-ear-guard',
+   x:sign*4.68,y:4.735,z:.20,
+   width:1.32,height:3.19,depth:4.75},
+  {name:sign<0?'m2002-left-rear-return':'m2002-right-rear-return',
+   x:sign*4.58,y:4.77,z:3.70,
+   width:1.07,height:2.58,depth:3.50}
  ])
 ];
 const MICH_2001_CUBOIDS:readonly HeadwearCuboid[]=[
@@ -491,8 +501,8 @@ const FAST_XP_MID_CUBOIDS:readonly HeadwearCuboid[]=[
 export const HEADWEAR_FIT_TARGETS=Object.freeze({
  ach:{
   brow:CUBE_HEAD_ANATOMY.brow+.10,
-  ear:CUBE_HEAD_ANATOMY.earCenter+.76,
-  nape:CUBE_HEAD_ANATOMY.nape+.48
+  ear:CUBE_HEAD_ANATOMY.earCenter-.29,
+  nape:CUBE_HEAD_ANATOMY.nape+.35
  },
  'high-cut':{
   brow:CUBE_HEAD_ANATOMY.brow+.20,
