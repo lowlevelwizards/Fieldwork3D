@@ -8,7 +8,7 @@ import {createAchMichDrapedGeometry,ACH_MICH_COVER_OFFSET,
 import {ACH_MICH_SHELLS,ACH_MICH_UPPER_INSET,ACH_MICH_BEVEL_HEIGHT,
  headwearCuboidVolumes}
  from '../src/operator-headwear-silhouettes.ts';
-import {achMichProfile,ACH_MICH_BINDING_HEIGHT}
+import {achMichProfile,achMichBindingHeight}
  from '../src/operator-ach-mich-details.ts';
 import {HELMET_MOUNT_PROFILES}
  from '../src/operator-helmet-attachment-frames.ts';
@@ -65,7 +65,7 @@ test('H7.1 textile stays beyond hard side crown and has joined side corners',()=
     const z=rear?p.rear+ACH_MICH_COVER_OFFSET:
      p.front-ACH_MICH_COVER_OFFSET;
     for(const y of [shoulder,
-     (rear?p.nape:p.brow)+ACH_MICH_BINDING_HEIGHT+.035]){
+     (rear?p.nape:p.brow)+achMichBindingHeight(shell)+.035]){
      let shared=0;
      for(let i=0;i<pos.count;i++)
       if(close(pos.getX(i),x)&&close(pos.getY(i),y)&&
