@@ -5,12 +5,20 @@ const base:Record<EncounterReadiness,number>={
  unaware:1.35,relaxed:.90,attentive:.52,suspicious:.34,
  alerted:.18,prepared:.09
 };
-export function encounterReactionDelay(readiness:EncounterReadiness,actorId:string):number{
+/** Extra orientation cost applies only after real confirmed sight.
+ * Near-CQB original reaction and deterministic actor jitter are preserved.
+ * One evaluation at first contact, never a per-tick/renderer countdown.
+ */
+export function confirmedRangeReactionCost(range:number):number{
+ return Math.min(.30,Math.max(0,range-240)*.00026);
+}
+export function encounterReactionDelay(readiness:EncounterReadiness,
+ actorId:string,confirmedRange=0):number{
  let hash=2166136261;
  for(let i=0;i<actorId.length;i++)
   hash=Math.imul(hash^actorId.charCodeAt(i),16777619);
  const jitter=(hash>>>0)%13/100;
- return base[readiness]+jitter;
+ return base[readiness]+jitter+confirmedRangeReactionCost(confirmedRange);
 }
 
 /** Readiness affects how quickly an already geometrically visible shape is
