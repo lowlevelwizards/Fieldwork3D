@@ -63,8 +63,17 @@ export function createOrderExecutor(port:OrderExecutionPort){
   // A confirmed visible threat can temporarily interrupt authored attention.
   // This is reactive execution only; it never modifies the player's plan.
   const threatStart=profile?performance.now():0;
-  const visibleThreat=s.operators.filter(e=>e.side==='red').filter(e=>e.health>0&&port.inSight(a,e,s))
-    .sort((x,y)=>d(a.p,x.p)-d(a.p,y.p))[0];
+  // An allocation-free scan preserves filter order, exact Euclidean
+  // ranking and the original roster-order tie break of stable Array.sort.
+  // Still evaluate each living red's confirmed sight exactly once.
+  let visibleThreat:TeamActor|undefined,nearestDistance=Infinity;
+  for(const e of s.operators){
+    if(e.side!=='red'||e.health<=0||!port.inSight(a,e,s))continue;
+    const distance=d(a.p,e.p);
+    if(!visibleThreat||distance<nearestDistance){
+      visibleThreat=e;nearestDistance=distance;
+    }
+  }
   if(profile)profile('threat-scan',performance.now()-threatStart);
   const orderStart=profile?performance.now():0;
   // One measured scope encloses every early return from authored-order

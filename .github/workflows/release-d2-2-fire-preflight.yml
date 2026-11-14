@@ -1,0 +1,43 @@
+name: D2.2 same-snapshot firing preflight and safety
+on:
+  pull_request:
+    paths:
+      - 'src/breach-fire-preflight.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'src/breach-shot-resolution.ts'
+      - 'tests/release-d2-2-fire-preflight.test.mjs'
+      - '.github/workflows/release-d2-2-fire-preflight.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: release-d2-2-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  snapshot-and-critical-fire:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Same-snapshot reuse, mismatches and friendly safety precedence
+        run: node --experimental-strip-types --test tests/release-d2-2-fire-preflight.test.mjs
+      - name: Prior D2.1, A3.2/3/10/11, fixed-tick recovery and real firefights
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d2-1-combat-hotpaths.test.mjs \
+            tests/animation-a3-2-micro-aim.test.mjs \
+            tests/animation-a3-3-contextual-crouch.test.mjs \
+            tests/animation-a3-10-close-stack-fire.test.mjs \
+            tests/animation-a3-11-progressive-urgency.test.mjs \
+            tests/breach-two-sided-fire-recovery.test.mjs \
+            tests/tactical-integration-17-firefight-b1.test.mjs \
+            tests/breach-roadmap2-stage10-combat.test.mjs \
+            tests/breach-189.test.mjs
+      - name: Live four-person firefight scenarios
+        run: node --experimental-strip-types scripts/audit-r7-firefights.mjs 4 7
+      - name: Build and typecheck
+        run: npm run build

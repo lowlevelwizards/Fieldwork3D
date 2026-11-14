@@ -38,6 +38,7 @@ import {skillMultiplier} from './breach-skills.ts';
 import {BALLISTICS,approachAngle,readyMode,dispersion,shotYaw,muzzleEndpoint,recoverWeapon} from './breach-ballistics.ts';
 
 import {weaponClearance} from './breach-weapon-clearance.ts';
+import {prepareShotSight,nearShotLane} from './breach-fire-preflight.ts';
 import {fireUrgency,passiveAimReadiness,contactAimOnAcquisition,
  contactAcquisitionScale,contactTurnScale,urgentFireMode}
  from './breach-fire-urgency.ts';
@@ -149,17 +150,21 @@ function requestClearFireStep(s:Session,a:TeamActor,target:TeamActor,
  for(const civil of s.civilians)if(civil.health>0)people.push(civil.p);
  const world=sessionWorldGeometry(s);
  const aimYaw=angle(a.p,target.p);
- const clearBody=(candidate:Pt)=>
-   sweptBodyClear(a.p,candidate,s.doors,8,world)&&
-   people.every(p=>{
-    const start=d(a.p,p),end=d(candidate,p);
-    // A stack may ALREADY be closer than normal comfortable spacing.
-    // Permit a tiny step only when it increases separation throughout
-    // the move; the unchanged physical motor remains the final authority.
-    if(start<20)return end>=start+1&&
-      pointToSegment(p,{a:a.p,b:candidate})>=start-.15;
-    return pointToSegment(p,{a:a.p,b:candidate})>=20;
-   });
+ const clearBody=(candidate:Pt)=>{
+   if(!sweptBodyClear(a.p,candidate,s.doors,8,world))return false;
+   // Avoid creating an Array.every closure per bounded candidate while
+   // keeping the exact separation constraints and iteration order.
+   for(const p of people){
+     const start=d(a.p,p),end=d(candidate,p);
+     // An already tight stack may step ONLY if separation increases.
+     if(start<20){
+       if(!(end>=start+1&&
+         pointToSegment(p,{a:a.p,b:candidate})>=start-.15))return false;
+     }else if(!(pointToSegment(p,{a:a.p,b:candidate})>=20))
+       return false;
+   }
+   return true;
+ };
  const legalShot=(candidate:Pt)=>{
    const candidateYaw=angle(candidate,target.p);
    const candidateRange=d(candidate,target.p);
@@ -525,8 +530,12 @@ function fire(s:Session,a:TeamActor,dt:number){
   // feasibility test; shot-time still rechecks the true settled weapon yaw.
   const world=sessionWorldGeometry(s);
   const friends:ReturnType<typeof safetyBodyFor>[]=[];
-  for(const other of s.operators)if(other!==a&&other.health>0&&
-      other.side===a.side)friends.push(safetyBodyFor(other));
+  // With zero confirmed contacts target selection never tests a fire lane.
+  // Avoid rebuilding allied safety volumes on every quiet/passive tick;
+  // do not relax them for any actual engagement or shot.
+  if(visible.length)for(const other of s.operators)
+   if(other!==a&&other.health>0&&other.side===a.side)
+    friends.push(safetyBodyFor(other));
   const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
     const clearance=weaponClearance({x:a.p.x,z:a.p.y,
       heading:a.heading,weaponYaw:angle(a.p,candidate.p),
@@ -541,10 +550,9 @@ function fire(s:Session,a:TeamActor,dt:number){
        candidate.p,h)){
       civilianShotWithheld(s,a);return false;
     }
-    if(assessFriendlyLane(from,clearance.muzzle.y,candidate.p,h,
-      friends).blocker==='friendly')return false;
-    const lane=assessFireLane(from,clearance.muzzle.y,candidate.p,h,
+    const lane=nearShotLane(from,clearance.muzzle.y,candidate.p,h,
       world.cover,world.walls,s.doors,friends);
+    if(lane.blocker==='friendly')return false;
     if(lane.blocker==='clear')return true;
     if(lane.blocker!=='cover')return false;
     const preview=strikeSurface(from,candidate.p,s,
@@ -593,6 +601,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // A3.2: only a confirmed visible contact may trigger a bounded physical
   // shoulder shift. Candidate shot lines use the SAME muzzle+IK fit as live
   // ignition and preserve the independent civilian and teammate vetoes.
+  let centeredFireableThisTick=false;
   const microAllowed=a.side==='blue'&&allowMicroAim({
     moving:a.velocity,busy:!!a.traversal||a.squeeze||a.reload>0||
       !!a.treatmentActive||a.carryingId!==null||
@@ -632,14 +641,24 @@ function fire(s:Session,a:TeamActor,dt:number){
     };
     // A centered clear shot needs no contact correction. Otherwise keep
     // an already clear prior accommodation to prevent left-right flutter.
-    a.aimSideTarget=canFireOffset(0)?0:
-      chooseMicroAimOffset(a.aimSideOffset??0,canFireOffset).offset;
+    // The deterministic candidate order can revisit centered offset 0.
+    // A single call-local answer avoids repeating identical geometry and
+    // known-civilian visibility probes within this same fixed tick.
+    const centeredClear=canFireOffset(0);
+    centeredFireableThisTick=centeredClear;
+    a.aimSideTarget=centeredClear?0:
+      chooseMicroAimOffset(a.aimSideOffset??0,
+        offset=>offset===0?centeredClear:canFireOffset(offset)).offset;
   }
   // The target selector deliberately keeps tracking a lone visible target
   // even if their current firing lane is obstructed. That is correct
   // targeting behavior, but friendly sidestep must run *after* selection,
   // rather than only in the (often unreachable) no-target branch.
-  if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&friends.length){
+  // A proven centered same-snapshot far + near lane needs no redundant
+  // friendly sidestep probe. Only skip when the actual shoulder is centered;
+  // movement toward the target offset still requires a fresh live check.
+  if(a.side==='blue'&&a.velocity<10&&!a.fireRetreatTarget&&friends.length&&
+    !(centeredFireableThisTick&&(a.aimSideOffset??0)===0)){
     const preflight=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
       weaponYaw:angle(a.p,target.p),shoulderOffset:a.aimSideOffset??0,
       weapon:a.weapon,
@@ -695,13 +714,17 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.fireCd>0)return;
   // A short-stock remains an *actual* shooting pose when its muzzle points
   // toward a confirmed threat, not just a blocked animation state.
-  const muzzle=weaponClearance({
+  // A2.2: own the settled sight solution once for this synchronous shot
+  // attempt. The resolver may reuse it only with exact matching inputs;
+  // randomized projectile clearance remains separately authoritative.
+  const shotPreflight=prepareShotSight({
     x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:a.weaponYaw,
     shoulderOffset:a.aimSideOffset??0,
     weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
     equipment:a.equipment,aim:a.aim,posture:a.posture,velocity:a.velocity,
     recoil:a.recoil,threatRange:range
   },s.doors,world.cover,world.walls,friends);
+  const muzzle=shotPreflight.clearance;
   const mode=urgentFireMode(readyMode(range,a.aim,a.weapon),
     a.aim,muzzle,desiredYaw);
   if(!mode){
@@ -716,7 +739,8 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(Math.abs(Math.atan2(Math.sin(desiredYaw-a.weaponYaw),
     Math.cos(desiredYaw-a.weaponYaw)))>.38)return;
   a.fireMode=mode;
-  commitShot(s,a,target,{mode,range,moving,mods,weapon,profile});
+  commitShot(s,a,target,{mode,range,moving,mods,weapon,profile,
+    preflight:shotPreflight});
 }
 
  return {fire,requestClearFireStep};

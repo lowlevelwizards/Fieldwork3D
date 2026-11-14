@@ -5,6 +5,8 @@
 import {COVER,WALLS,type Door,type Obstacle,type Segment,
   type Pt} from './breach-core.ts';
 import {assessFireLane,type FireBlock} from './breach-fire-safety.ts';
+import {combatCostDiagnosticsEnabled,combatCostCounts}
+ from './breach-combat-cost-counters.ts';
 import type {Handling} from './breach-weapon-pose.ts';
 import {muzzleAtShot,type MuzzleInput,type MuzzleSample}
   from './breach-muzzle.ts';
@@ -37,10 +39,13 @@ export function weaponClearance(input:MuzzleInput,
   doors:readonly Door[],cover:readonly Obstacle[]=COVER,
   walls:readonly Segment[]=WALLS,
   friends:readonly Pt[]=[]):ClearanceResult{
+  if(combatCostDiagnosticsEnabled)combatCostCounts.clearanceCalls++;
   const from:Pt={x:input.x,y:input.z};
-  const check=(tip:Pt,height:number):FireBlock=>
-    assessFireLane(from,height,tip,height,cover,walls,doors,friends,
+  const check=(tip:Pt,height:number):FireBlock=>{
+    if(combatCostDiagnosticsEnabled)combatCostCounts.clearanceProbes++;
+    return assessFireLane(from,height,tip,height,cover,walls,doors,friends,
       'weapon').blocker;
+  };
   const ready=muzzleAtShot({...input,obstruction:false,
     clearanceRetraction:0,shortCompression:undefined});
   const vx=ready.x-input.x,vy=ready.z-input.z;

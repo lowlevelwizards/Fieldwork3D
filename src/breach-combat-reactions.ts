@@ -2,6 +2,8 @@
  * Never change authored orders, spawn intel, teleport, or waive firing safety.
  */
 import type {Pt} from './breach-core.ts';
+import {combatCostDiagnosticsEnabled,combatCostCounts}
+ from './breach-combat-cost-counters.ts';
 const wrap=(v:number)=>Math.atan2(Math.sin(v),Math.cos(v));
 /** The hit yaw is projectile travel direction: reverse to face the source.
  * A brief reaction can override gaze, not route ownership or fire policy.
@@ -23,6 +25,7 @@ export type PhysicalCorrection={point:Pt;kind:PhysicalCorrectionKind;
 export function choosePhysicalCorrection(p:Pt,aimYaw:number,
  reason:'friendly'|'muzzle',canMove:(next:Pt)=>boolean,
  canShoot:(next:Pt)=>boolean):PhysicalCorrection|null{
+ if(combatCostDiagnosticsEnabled)combatCostCounts.correctionSearches++;
  let tests=0;
  const lateral={x:-Math.sin(aimYaw),y:Math.cos(aimYaw)};
  const lengths=reason==='friendly'?[4,7,10,12,20,28]:
@@ -50,6 +53,7 @@ export function choosePhysicalCorrection(p:Pt,aimYaw:number,
   for(const candidate of candidates){
    const next={x:p.x+candidate.dx,y:p.y+candidate.dy};
    tests++;
+   if(combatCostDiagnosticsEnabled)combatCostCounts.correctionCandidates++;
    if(canMove(next)&&canShoot(next))return {
     point:next,kind:candidate.kind,distance:length,tests
    };
