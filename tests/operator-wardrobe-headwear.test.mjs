@@ -12,12 +12,12 @@ test('wardrobe headgear and face accessories are mutually exclusive',()=>{
  const r=createOperatorRig('rook','blue');
  let kit=initialEquipmentLoadout(),w=initialWardrobe();
  w=setWardrobeStyle(w,'headwear','mich-2001');
- w=setWardrobeStyle(w,'eyewear','goggles-up');
+ w=setWardrobeStyle(w,'eyewear','goggles-field');
  w=setWardrobeStyle(w,'headset','helmet-ears');
  poseOperator(r,pose(kit,w),0);
  assert.equal(r.visualKit.helmet.visible,false);
  assert.equal(r.visualKit.wardrobeHead.headwear['mich-2001'].visible,true);
- assert.equal(r.visualKit.wardrobeHead.eyewear['goggles-up'].visible,true);
+ assert.equal(r.visualKit.wardrobeHead.eyewear['goggles-field'].visible,true);
  assert.equal(r.visualKit.wardrobeHead.headset['helmet-ears'].visible,true);
  assert.equal(r.visualKit.hair.visible,false);
  kit=setEquipmentChoice(kit,'head','head-cap');

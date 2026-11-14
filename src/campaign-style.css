@@ -1,4 +1,5 @@
 @import './ui/fieldwork-design.css';
+@import './operator-material-browser.css';
 /* Campaign management never alters the tactical canvas or render pipeline. */
 .campaign-screen{position:fixed;z-index:120;inset:0;overflow-y:auto;
  overscroll-behavior:contain;touch-action:pan-y;background:var(--fw-bg);

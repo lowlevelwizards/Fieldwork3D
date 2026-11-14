@@ -6,7 +6,6 @@ import {CAMO_SORT_OPTIONS,CAMO_ENVIRONMENT_OPTIONS,CAMO_FAMILY_OPTIONS,
  CAMO_ERA_OPTIONS,camoBrowserState,saveCamoBrowserState,
  resetCamoBrowserState,toggleCamoFavorite,type CamoBrowserState} from './operator-material-browser.ts';
 import type {HeadwearCamoId} from './operator-headwear-camo.ts';
-import './operator-material-browser.css';
 
 const select=(label:string,values:readonly (readonly [string,string])[],
  value:string,changed:(value:string)=>void)=>{
