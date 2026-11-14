@@ -1,3 +1,4 @@
+import {prependTransientLeg} from './breach-route-transition.ts';
 /** Q2: one cached, threshold-relative right-of-way decision.
  * Queue waits never synthesize lateral/backward movement or reroute.
  * True counterflow deadlocks alone can use the pre-existing bounded,
@@ -44,7 +45,7 @@ export function negotiateMotorPassage(
      if(target){
       noteQueueMotion(s,a,'deadlock-retreat-request',a.p,target);
       const retreat=target;
-      a.nav.unshift(retreat);a.passageRetreatKey=retreatKey;
+      prependTransientLeg(s,a,retreat,'passage-retreat');a.passageRetreatKey=retreatKey;
       a.retryRouteAt=0;a.recoveryAttempts=0;
       a.passageWaitSeconds=0;
      }
