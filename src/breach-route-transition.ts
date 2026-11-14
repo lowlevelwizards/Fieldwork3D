@@ -45,3 +45,10 @@ export function prependTransientLeg(
  if(listener)report(s,a,source,[leg,...a.nav]);
  a.nav.unshift(leg);
 }
+
+/** Observe an existing in-place prepend without replacing its original
+ * mutation contract (passage sequencing keeps a.nav.unshift unchanged). */
+export function observeTransientPrepend(
+ s:Session,a:TeamActor,leg:Pt,source:RouteSource):void{
+ if(listener)report(s,a,source,[leg,...a.nav]);
+}
