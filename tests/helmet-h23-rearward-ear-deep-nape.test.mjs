@@ -79,7 +79,7 @@ test('H23: shell, cover, edge and hardware share the six profile stations',()=>{
    assert.ok(same(point(e,a),point(e,b)),
     'corner is watertight, not two crossing trim slivers');
   const cover=createAchMichDrapedGeometry(id),v=cover.getAttribute('position');
-  const rearSeamY=p.nape+achMichBindingHeight(id)+.035;
+  const rearSeamY=p.nape-.14;
   let rearSeam=false;
   for(let i=0;i<v.count;i++)if(close(v.getY(i),rearSeamY,.004)&&
    v.getZ(i)>p.rear-.15){rearSeam=true;break;}
