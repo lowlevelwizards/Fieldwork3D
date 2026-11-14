@@ -16,17 +16,17 @@ test('H21: ear cut is independent of rear protection across the three cuts',()=>
   mid=UNIFIED_HELMET_HEMS['mich-2002'],
   high=UNIFIED_HELMET_HEMS['mich-2001'];
  assert.deepEqual(full.map(p=>[p[1],p[2]]),[
-  [4.4,-5.535],[4.4,-2.05],[2.04,-1.10],
-  [2.04,2.10],[2.35,3.55],[2.35,5.60]
- ],'Full-Cut keeps its ear depth, but its lower nape now rises gently');
+  [4.4,-5.535],[4.4,-1.12],[2.04,-0.12],
+  [2.04,2.35],[1.85,3.88],[1.85,5.60]
+ ],'Full-Cut ear remains deep with a slightly descending nape');
  assert.deepEqual(mid.map(p=>[p[1],p[2]]),[
-  [4.55,-5.70],[4.55,-2.05],[3.06,-1.10],
-  [3.06,2.10],[2.62,3.55],[2.62,5.75]
- ],'Mid-Cut ear depth remains fixed, its opening shifts back and nape drops');
+  [4.55,-5.70],[4.55,-1.12],[3.06,-0.12],
+  [3.06,2.35],[2.05,3.88],[2.05,5.75]
+ ],'Mid-Cut ear relief starts near halfway and nape stays deep');
  assert.deepEqual(high.map(p=>[p[1],p[2]]),[
-  [4.55,-5.71],[4.55,-2.10],[5.30,-1.10],
-  [5.30,2.10],[2.85,3.75],[2.85,5.66]
- ],'High-Cut ear depth remains fixed, its opening shifts back and nape drops');
+  [4.55,-5.71],[4.55,-1.15],[5.30,-0.12],
+  [5.30,2.35],[2.25,3.93],[2.25,5.66]
+ ],'High-Cut over-ear clearance remains large with deep nape');
  const hems=[full,mid,high];
  for(const p of hems){
   assert.equal(p.length,6);
