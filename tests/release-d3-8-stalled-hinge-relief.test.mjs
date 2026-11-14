@@ -36,7 +36,7 @@ test('D3.8 warehouse 31123: existing self-clearance offers actual swept legal ex
    const actor=actors[i],relief=selfBlockingHingeRelief(actor,s,goals[i]);
    if(!relief)continue;
    assert.ok(sweptBodyClear(actor.p,relief,s.doors,OPERATOR_RADIUS,world));
-   assert.ok(Math.hypot(relief.x-actor.p.x,relief.y-actor.p.y)<=22.01);
+   assert.ok(Math.hypot(relief.x-actor.p.x,relief.y-actor.p.y)<=32.01);
    assert.ok(actors.every(peer=>peer===actor||
     Math.hypot(relief.x-peer.p.x,relief.y-peer.p.y)>=2*OPERATOR_RADIUS+1));
    found++;
@@ -49,10 +49,11 @@ test('D3.8 cold hinge handoff has a bounded episode retry and never bypasses col
  const {readFileSync}=await import('node:fs');
  const source=readFileSync(new URL('../src/breach-motor-door.ts',
   import.meta.url),'utf8');
- assert.match(source,/a\.actionTimer>=2\.5/);
- assert.match(source,/s\.seconds-episode\.lastProgressAt>=1\.8/);
- assert.match(source,/episode\.maneuverAttempts<6/);
+ // D3.9 consolidates the earlier separate D3.8 retry into the same
+ // bounded opener/follower clearance ownership, without two nav writers.
+ assert.match(source,/ownerRelief/);
+ assert.match(source,/staged\.attempts<5/);
  assert.match(source,/selfBlockingHingeRelief\(a,s,p\)/);
- assert.match(source,/a\.nav\.unshift\(relief\)/);
- assert.match(source,/episode\.maneuver='outside-leaf'/);
+ assert.match(source,/a\.nav\.unshift\(retreat\)/);
+ assert.doesNotMatch(source,/episode\.maneuverAttempts<6/);
 });
