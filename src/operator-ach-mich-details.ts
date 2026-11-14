@@ -63,7 +63,7 @@ export function createAchMichBindingGeometry(shell:typeof ACH_MICH_SHELLS[number
   data.push(...a,...b,...c);
  };
  const strip=(a:Point,b:Point,axis:'x'|'z')=>{
-  const ext=.16;
+  const ext=shell==='mich-2001'?.095:.16;
   const start:Point=axis==='x'?[a[0]+Math.sign(a[0])*ext,a[1],a[2]]:
    [a[0],a[1],a[2]+(a[2]<0?-ext:ext)];
   const end:Point=axis==='x'?[b[0]+Math.sign(b[0])*ext,b[1],b[2]]:
