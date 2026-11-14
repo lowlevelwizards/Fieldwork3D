@@ -113,7 +113,13 @@ export function resolveMotorCollision(
   // full-shoulder route around it (often just a short sidestep). This is
   // transient motor navigation; the player-authored waypoint stays put.
   // Rate-limit this *physical-world* search to avoid A* churn every tick.
-  if(!normalClear&&!blocking&&!closed&&!a.traversalPending&&
+  // D3.11C3: a FULL-body probe must not displace a CURRENTLY LEGAL
+  // oriented squeeze step. That was making the FRONT doorway alternate
+  // normal-grid and narrow routes every 0.5s despite real body clearance.
+  // An actually blocked narrow step still reaches this exact recovery
+  // path immediately, with all original door/maneuver/physics authority.
+  if(!normalClear&&!(a.squeeze&&narrowClear)&&
+     !blocking&&!closed&&!a.traversalPending&&
      s.seconds-a.lastNormalLaneProbeAt>.50){
     // Failed comfort searches must not restart the world-truth recovery
     // clock; it needs uninterrupted stall time to escalate blocked moves.
