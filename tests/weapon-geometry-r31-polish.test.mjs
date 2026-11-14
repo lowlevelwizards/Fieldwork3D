@@ -75,7 +75,7 @@ test('R3.1: AR front sight is a squat open A rather than solid tall spike',()=>{
  // M4A1 A-frame now uses the canonical 14.0 sight landmark.
  const sight=13.17; // canonical M4A1 sight datum
  assert.equal(rayHits(m.group,sight+.20,2.60),false,'A-frame internal gap');
- assert.ok(rayHits(m.group,sight-1.65,2.10),'sloping A-frame rear leg');
+ assert.ok(rayHits(m.group,sight-1.30,2.10),'sloping A-frame rear leg');
  assert.ok(rayHits(m.group,sight+.78,2.10),'vertical A-frame front leg');
  assert.ok(box(m.group,'barrel').max.y>=4.0,'current sight silhouette stays tall and readable');
  clearWeaponSilhouette(m.group);
