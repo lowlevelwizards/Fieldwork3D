@@ -23,10 +23,10 @@ const bound=(group,slot)=>{
  assert.ok(b,'missing '+slot);return b;
 };
 test('R4+HK catalog preserves 17 original recipes and adds twelve HK presets',()=>{
- assert.ok(FAMILY_PRESETS.length>=29,'preserve original 29 factory references');
- assert.ok(Object.keys(FAMILY_PARTS).length>=133,'preserve 133 authored core parts');
- assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,FAMILY_PRESETS.length);
- assert.ok(FAMILY_PRESETS.filter(x=>x.family==='ar').length>=8);
+ assert.equal(FAMILY_PRESETS.length,29);
+ assert.equal(Object.keys(FAMILY_PARTS).length,133);
+ assert.equal(new Set(FAMILY_PRESETS.map(x=>x.id)).size,29);
+ assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ar').length,8);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='ak').length,9);
  assert.equal(FAMILY_PRESETS.filter(x=>x.family==='hk').length,12);
  for(const id of ['ar-m16a2','ar-colt733','ak-aks74','ak-akms','ak-rpk74','ar-mk12mod0'])
