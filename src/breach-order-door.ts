@@ -17,14 +17,14 @@ import {selectActualKickFoot} from './breach-kick-foot-choice.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {openerThreatensLeaf,selectOpeningStance}
  from './breach-door-opening-stance.ts';
+import {openingFootwork,setOpeningFootstep,clearOpeningFootwork}
+ from './breach-door-opening-footwork.ts';
 import {completeOrder,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
-/** Stance belongs to an actor's active door-order node, not shared site state. */
-const openingStances=new WeakMap<TeamActor,{node:number;door:string;point:Pt}>();
 export function createDoorOrderHandler(port:OrderExecutionPort){
  const {pairedLeaves,notify,hear,battleEvent,approach}=port;
  const failCurrentOrder=(s:Session,a:TeamActor,n:PlanNode,reason:string)=>
@@ -79,15 +79,14 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
     // same hinge/collision checks used during execution.
     if(interaction.allowed&&n.method==='open'&&!door.open&&
        a.actionTimer===0){
-      const previous=openingStances.get(a);
-      let target=previous?.node===n.id&&previous.door===door.id?
-        previous.point:null;
+      const stance=openingFootwork(a,door.id,n.id,'stance');
+      let target=stance.target;
       if(!target&&openerThreatensLeaf(door,a.p)){
         const world=sessionWorldGeometry(s);
         target=selectOpeningStance(door,a.p,
           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
           s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p));
-        if(target)openingStances.set(a,{node:n.id,door:door.id,point:target});
+        if(target)setOpeningFootstep(a,stance,target);
       }
       if(target&&d(a.p,target)>1.5){
         if(!sweptBodyClear(a.p,target,s.doors,OPERATOR_RADIUS,
@@ -99,7 +98,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         clearCurrentOrderIssue(a);
         approach(a,target,dt,s,.82);return true;
       }
-      openingStances.delete(a);
+      clearOpeningFootwork(a,door.id,n.id);
     }
     clearCurrentOrderIssue(a);
     const required=n.method==='kick'?KICK_DURATION:

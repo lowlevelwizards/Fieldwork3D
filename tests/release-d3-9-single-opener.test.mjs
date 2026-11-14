@@ -82,10 +82,10 @@ test('D3.9 all pressure, hand and motor roles use same opener lease',async()=>{
  assert.match(hand,/mayManipulateOpening\(s,a,door\)/);
  assert.match(motor,/shouldStageForOpening\(s,a,doorAhead\)/);
  assert.match(motor,/selfBlockingHingeRelief\(a,s,p\)/);
- assert.match(motor,/a\.nav\.unshift\(retreat\)/);
+ assert.match(motor,/queueOpeningFootstep\(a,retreat\)/);
  assert.match(motor,/staged\.attempts<5/);
  assert.match(motor,/ownerRelief/);
- assert.match(motor,/a\.nav\.unshift\(\{\.\.\.staged\.target\}\)/);
+ assert.match(motor,/queueOpeningFootstep\(a,staged\.target\)/);
 });
 
 test('D3.9A claims a CLOSED door before any hinge-body jam',()=>{
@@ -176,4 +176,17 @@ test('D3.9A proximity alone does not seize a door before physical intent',()=>{
  assert.equal(implicitDoorOpeningOwner(s,d),null);
  assert.equal(claimOpeningIntent(s,moss,d),true);
  assert.equal(implicitDoorOpeningOwner(s,d),'moss');
+});
+
+test('D3.9B1 shared transient footwork is stable and duplicate-free',async()=>{
+ const {openingFootwork,setOpeningFootstep,queueOpeningFootstep,
+  clearOpeningFootwork}=await import('../src/breach-door-opening-footwork.ts');
+ const a=actor('rook',0),x=openingFootwork(a,'FRONT',1,'swing');
+ x.attempts=2;setOpeningFootstep(a,x,p(320,430));
+ assert.equal(openingFootwork(a,'FRONT',1,'swing'),x);
+ queueOpeningFootstep(a,x.target);queueOpeningFootstep(a,x.target);
+ assert.equal(a.nav.filter(v=>v.x===320&&v.y===430).length,1);
+ clearOpeningFootwork(a,'FRONT',1);
+ assert.notEqual(openingFootwork(a,'FRONT',1,'swing'),x);
+ assert.equal(openingFootwork(a,'FRONT',1,'stance').kind,'stance');
 });

@@ -18,6 +18,8 @@ import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
 import {shouldStageForOpening,mayManipulateOpening,claimOpeningIntent}
  from './breach-door-opening-ownership.ts';
 import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
+import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFootwork}
+ from './breach-door-opening-footwork.ts';
 
 /** D3.2.5: an opened hinge that has STOPPED well below its target may
  * no longer monopolize the actor motor. The ordinary collision/recovery
@@ -32,13 +34,6 @@ export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number):boolea
    Math.abs(door.angularVelocity??0)<.16;
 }
 
-/** Only a non-opener in a REAL partial opening may temporarily stage.
- * Store one finite transient footstep per actor/order/door; authored MOVE
- * and its destination are untouched. Never reassign on each frame. */
-const followerClearance=new WeakMap<TeamActor,{
- doorId:string;orderId:number;target:Pt|null;
- attempts:number;nextAt:number
-}>();
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;closed:boolean;clearingDoorId?:string}{
@@ -118,21 +113,14 @@ export function handleMotorDoor(
       // All physical clearance still runs through the existing motor.
       releaseDoorHandContact(a,s.seconds);
       const order=a.plan[0]!;
-      let staged=followerClearance.get(a);
-      if(!staged||staged.doorId!==doorAhead.id||
-         staged.orderId!==order.id){
-        staged={doorId:doorAhead.id,orderId:order.id,
-          target:null,attempts:0,nextAt:0};
-        followerClearance.set(a,staged);
-      }
+      const staged=openingFootwork(a,doorAhead.id,order.id,'swing');
       if(staged.target){
         const distance=d(a.p,staged.target);
         if(distance>3.5){
           // Once chosen, clearance outranks the obstructed original grid
           // waypoint until the SAME full-body motor reaches it. Old route
           // repair must not silently replace this safety-critical footstep.
-          if(!a.nav.length||d(a.nav[0],staged.target)>=3.5)
-            a.nav.unshift({...staged.target});
+          queueOpeningFootstep(a,staged.target);
           a.motorPause=null;
           return {paused:false,closed:false,clearingDoorId:doorAhead.id};
         }
@@ -161,10 +149,10 @@ export function handleMotorDoor(
         staged.nextAt=s.seconds+1.1;
         if(retreat){
           staged.attempts++;
-          staged.target={...retreat};
+          setOpeningFootstep(a,staged,retreat);
           // A reachable, physically swept transient waypoint. No body
           // translation here; actual movement occurs on the next tick.
-          a.nav.unshift(retreat);
+          queueOpeningFootstep(a,retreat);
           a.retryRouteAt=0;
           releaseDoorHandContact(a,s.seconds);
           a.motorPause=null;
@@ -268,6 +256,8 @@ export function handleMotorDoor(
       return {paused:true,closed:false};
     }
     a.actionTimer=0;
+    if(pendingDoor?.kind==='move')
+      clearOpeningFootwork(a,doorAhead.id,pendingDoor.id);
   }else if(a.side==='red')a.actionTimer=0;
   const closed=!!closedDoor&&!closedDoor.open&&
     pointToSegment(move,doorLeafSegment(closedDoor))<9.5&&
