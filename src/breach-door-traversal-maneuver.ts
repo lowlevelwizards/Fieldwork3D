@@ -146,7 +146,7 @@ export function preferShortPhysicalEntry(
  * one later retry, after ordinary dynamic bodies have had time to move.
  */
 export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
- next:Pt,canAutoSidestep:boolean):boolean{
+ next:Pt,canAutoSidestep:boolean,afterSweptLeafEscape=false):boolean{
  const episode=a.doorTraversal;
  if(!episode||episode.phase==='release'||
     s.seconds<episode.nextManeuverAt)return false;
@@ -159,7 +159,11 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
     episode.selectedLeafFraction)>.14;
  if(episode.maneuverAttempts>=2&&!leafChanged)return false;
  if(episode.maneuverAttempts>=4)return false;
- if(episode.maneuver!=='direct'&&
+ // A physical, fully swept escape is new evidence: re-evaluate the
+ // verified doorway corridor even if harmless lateral motion recently
+ // refreshed the older displacement-only progress clock. Leaf stability,
+ // two-attempt steady-angle cap, four total attempts and cooldown remain.
+ if(episode.maneuver!=='direct'&&!afterSweptLeafEscape&&
    s.seconds-episode.lastProgressAt<1.8)return false;
  episode.maneuverAttempts++;
  episode.selectedLeafFraction=door.openFraction??0;
