@@ -48,7 +48,7 @@ jobs:
               motelAsh:{before:a,after:b}};
             console.log("D3.10B45",JSON.stringify(output,null,2));
             if(!a||!b)throw Error("missing frozen motel Ash witness");
-            if(!(typeof b.orderIssue==='string'?b.orderIssue:b.orderIssue?.reason)?.includes("DESTINATION OBSTRUCTED"))
+            if(!(typeof b.orderIssue==="string"?b.orderIssue:b.orderIssue?.reason)?.includes("DESTINATION OBSTRUCTED"))
               throw Error("authored impossible target did not report a truthful retained-order issue");
             if(b.remainingOrders!==1||b.arrived)
               throw Error("authored blocked goal changed or falsely arrived");
