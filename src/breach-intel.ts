@@ -137,11 +137,18 @@ export function intelPassable(p:Pt,intel:IntelState,clearance=8,
  const bounds=world?.bounds??activeWorldBounds();
  if(p.x<bounds.minX+13||p.y<bounds.minY+20||
    p.x>bounds.maxX-13||p.y>bounds.maxY-13)return false;
- if((world?.someWallNearPoint.bind(world)??someWallNearPoint)(p,clearance+1,(w,i)=>intel.walls.has(i)&&
-   pointToSegment(p,w)<clearance+1))return false;
- if((world?.someCoverNearPoint.bind(world)??someCoverNearPoint)(p,clearance,(o,i)=>isFootstepObstacle(o)&&intel.cover.has(i)&&
+ // Reuse the owning world method directly. Binding two geometry methods
+ // for every candidate/grid sample allocated avoidable closures in A*.
+ // Source ordering, discovered-only predicates and clearance are unchanged.
+ const wallTest=(w:Segment,i:number)=>intel.walls.has(i)&&
+   pointToSegment(p,w)<clearance+1;
+ if(world?world.someWallNearPoint(p,clearance+1,wallTest):
+   someWallNearPoint(p,clearance+1,wallTest))return false;
+ const coverTest=(o:Obstacle,i:number)=>isFootstepObstacle(o)&&intel.cover.has(i)&&
    Math.abs(p.x-o.x)<o.w/2+clearance&&
-   Math.abs(p.y-o.y)<o.h/2+clearance))return false;
+   Math.abs(p.y-o.y)<o.h/2+clearance;
+ if(world?world.someCoverNearPoint(p,clearance,coverTest):
+   someCoverNearPoint(p,clearance,coverTest))return false;
  return true;
 }
 /** A known physical prop can cover the nearest grid START even though
