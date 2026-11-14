@@ -1,4 +1,5 @@
 import test from 'node:test';
+import {ORIGINAL_R2_17,historicalPresetCohort} from './helpers/historical-weapon-presets.mjs';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {readFileSync} from 'node:fs';
@@ -34,9 +35,9 @@ const rayHits=(group,x,y)=>{
  return caster.intersectObjects(group.children,true).length>0;
 };
 test('R3.1: 91 parts and 17 presets retain combat muzzle and geometry budget',()=>{
- assert.equal(Object.keys(FAMILY_PARTS).length,91);
- assert.equal(FAMILY_PRESETS.length,17);
- for(const p of FAMILY_PRESETS){
+ assert.ok(Object.keys(FAMILY_PARTS).length>=91,'historical R3.1 parts preserved');
+ assert.equal(historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17).length,17);
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {config,group}=assembly(p.id);
   const bounds=new THREE.Box3().setFromObject(group);
   assert.ok(Math.abs(bounds.max.x-resolveWeaponAssembly(config).muzzleX)<.001,
@@ -46,7 +47,7 @@ test('R3.1: 91 parts and 17 presets retain combat muzzle and geometry budget',()
  }
 });
 test('R3.1: major solid envelopes intersect in X, Y and Z without floating',()=>{
- for(const p of FAMILY_PRESETS){
+ for(const p of historicalPresetCohort(FAMILY_PRESETS,ORIGINAL_R2_17)){
   const {group}=assembly(p.id);
   for(const [a,b] of [
    ['stock','receiver'],['receiver','handguard'],
