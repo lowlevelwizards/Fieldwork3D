@@ -16,6 +16,8 @@ import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
 import {activateSite} from '../src/breach-core.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
+import {captureD32DoorEvidence,dueDoorHoldMilestones,D32_HOLD_MILESTONES}
+ from '../src/breach-d3-door-evidence.ts';
 
 const names=['house','townhouse','apartment','retail','office','garage',
  'warehouse','restaurant','motel','utility','clinic'];
@@ -100,12 +102,32 @@ function run(site,seed,kind){
   const lastP=actors.map(a=>({...a.p}));
   // Read-only final three-second net-displacement witness; not a motor input.
   const windowStart=actors.map(a=>({...a.p}));
+  const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
   if(planned.accepted)toggling(session);
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
    stepSession(session,1/60);
    survey.sample(actors,1/60);
+   // Capture only pause transitions and milestones; offline audit, not live game.
+   for(let i=0;i<actors.length;i++){
+    const a=actors[i],trace=doorWitness[i];
+    if(a.motorPause!==trace.pause){
+     if(trace.pause==='door-opening'&&trace.events.length<12)
+      trace.events.push({event:'exit',duration:round(session.seconds-trace.since),
+       ...captureD32DoorEvidence(a,session)});
+     trace.pause=a.motorPause;trace.since=session.seconds;trace.mask=0;
+     if(a.motorPause==='door-opening'&&trace.events.length<12)
+      trace.events.push({event:'enter',...captureD32DoorEvidence(a,session)});
+    }
+    if(a.motorPause==='door-opening')
+     for(const index of dueDoorHoldMilestones(session.seconds-trace.since,trace.mask)){
+      trace.mask|=1<<index;
+      if(trace.events.length<12)
+       trace.events.push({event:'held',duration:D32_HOLD_MILESTONES[index],
+        ...captureD32DoorEvidence(a,session)});
+     }
+   }
    for(const d of session.doors){
     if(openState.get(d.id)!==d.open){
      doorStateFlips++;openState.set(d.id,d.open);
@@ -159,6 +181,8 @@ function run(site,seed,kind){
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
+   doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
+    operator:actors[i].id,...e}))),
    crossed,orderIssues,planIntact,triage,
    minSpacing:Number.isFinite(minSpacing)?round(minSpacing):null,
    reversalsNearDoor,maxBlockedSeconds:round(maxBlocked),
