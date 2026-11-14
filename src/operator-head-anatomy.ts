@@ -9,6 +9,9 @@
 export const CUBE_HEAD_ANATOMY=Object.freeze({
  skullTop:7,skullBottom:-1,
  brow:4.3,hairline:5.7,
+ // Implied features are reference coordinates only, never visible geometry.
+ eyeCenter:3.65,noseBase:1.85,mouth:.65,
+ earZ:.50,
  earTop:4.0,earCenter:2.6,earBottom:1.35,
  nape:2.2,chin:-.65,
  frontZ:-4,rearZ:4,leftX:-4,rightX:4

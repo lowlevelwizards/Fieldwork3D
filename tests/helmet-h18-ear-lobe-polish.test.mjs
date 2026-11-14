@@ -31,14 +31,14 @@ test('H18: Full and Mid have distinct, single-piece iconic ear lobes',()=>{
  assert.ok(near(f[5][1],2.72)&&near(m[5][1],3.82));
  assert.ok(m[2][1]-f[2][1]>=1,'Full-Cut is recognizably deeper');
  assert.ok(m[5][1]-f[5][1]>=1,'the nape coverage is also distinguishable');
- assert.ok(near(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,5.91));
+ assert.ok(near(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge,4.78));
 });
 
 test('H18: fewer rim pixels without new geometry and fabric stays synchronized',()=>{
  for(const id of ACH_MICH_SHELLS){
   const cover=createAchMichDrapedGeometry(id),binding=createAchMichBindingGeometry(id);
   const height=achMichBindingHeight(id);
-  assert.ok(near(height,id==='mich-2001'?.78:.52));
+  assert.ok(near(height,id==='mich-2001'?.42:.52));
   assert.ok(near(binding.userData.minimumHeight,height));
   const p=achMichProfile(id),attrib=cover.getAttribute('position');
   for(const z of [p.front,p.rear]){
@@ -63,7 +63,7 @@ test('H18: fewer rim pixels without new geometry and fabric stays synchronized',
  }
 });
 
-test('H18: same faceted crown, 58-triangle one-mesh shell and unchanged High-Cut',()=>{
+test('H19: identical crown language, 58 triangles for all three helmet cuts',()=>{
  for(const [id,roof] of [['ach',8.84],['mich-2002',8.75]]){
   const group=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
   assert.equal(group.children.length,1);
@@ -76,6 +76,7 @@ test('H18: same faceted crown, 58-triangle one-mesh shell and unchanged High-Cut
   assert.equal(g.userData.achMichBevelHeight,1.10);
  }
  const high=createHeadwearSilhouette('mich-2001',new THREE.MeshStandardMaterial());
- assert.equal(high.children[0].geometry.userData.h17UnifiedContour,undefined);
- assert.ok(near(achMichHemY('mich-2001',0),6.155));
+ assert.equal(high.children[0].geometry.userData.h17UnifiedContour,true);
+ assert.equal(high.children[0].geometry.userData.exteriorQuads,29);
+ assert.ok(near(achMichHemY('mich-2001',0),4.78));
 });
