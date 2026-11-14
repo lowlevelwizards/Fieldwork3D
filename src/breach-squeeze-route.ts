@@ -1,7 +1,7 @@
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Normal routes win when available. Narrow fallback remains constrained
  * by the known map: never reveal hidden walls or furniture while planning. */
-import {type Pt,route,passable,type Door,OPERATOR_RADIUS,
+import {type Pt,route,routeExtendedPortalRecovery,passable,type Door,OPERATOR_RADIUS,
   pointToSegment,doorLeafSegment} from './breach-core.ts';
 import {canAutoOpenEnRoute} from './breach-door.ts';
 import {type IntelState,intelPassable,routeWithIntel} from './breach-intel.ts';
@@ -218,7 +218,7 @@ export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],
 
 /** D3.3: after an *actual physical collision* defeats world-truth routing,
  * a closed but operable door is a future portal, never current free space.
- * Search the SAME 16/8-unit A* once with only those portals hypothesized,
+ * Search the SAME bounded 8-unit A* once with only those portals hypothesized,
  * then retain the collision-clear prefix and at most ONE door-contact leg.
  * Existing handle, hinge, queue and swept-body motor decide if it opens.
  * This function never moves an actor, learns hidden intel, or rewrites plans.
@@ -233,8 +233,11 @@ export function routeToNextOperableDoor(
    return [];
  // Unlike a blind local shimmy, this candidate must have an actual
  // connected world route under the hypothetical future door states.
+ // A distant alternate portal can lie outside the ordinary local
+ // 8-unit fallback corridor; this cold, bounded search has no padding.
  // Start-anchor repair is scoped to this cold recovery request.
- const proposal=route(from,to,p=>canStand(p,OPERATOR_RADIUS),true);
+ const proposal=routeExtendedPortalRecovery(from,to,
+   p=>canStand(p,OPERATOR_RADIUS));
  if(!proposal.length)return [];
  const prefix:Pt[]=[];
  let previous=from;
