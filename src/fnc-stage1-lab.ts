@@ -4,8 +4,8 @@ import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geome
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
 import {buildFNCStage1Silhouette,type FNCArtFinishes}
  from './weapons/geometry/fnc-stage1-blockout.ts';
-import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MUZZLE_METAL,
- AR_STANAG_METAL,AR_STANAG_RIB,FAL_LOWER_METAL,FAL_VENT_SHADOW}
+import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MUZZLE_METAL,HK556_MAG_METAL,HK556_MAG_RIB,
+ FAL_LOWER_METAL,FAL_VENT_SHADOW}
  from './weapons/geometry/weapon-visual-palette.ts';
 
 const canvas=document.querySelector<HTMLCanvasElement>('#view');
@@ -28,8 +28,8 @@ fill.position.set(-24,31,-72);scene.add(fill);
 const FNC_FACTORY: FNCArtFinishes={
  steel:HK_BLACK_METAL,lower:FAL_LOWER_METAL,stock:HK_BLACK_METAL,
  cheek:HK_DARK_POLYMER,grip:HK_DARK_POLYMER,
- handguard:HK_DARK_POLYMER,magazine:AR_STANAG_METAL,
- stamp:AR_STANAG_RIB,barrel:HK_BLACK_METAL,
+ handguard:HK_DARK_POLYMER,magazine:HK556_MAG_METAL,
+ stamp:HK556_MAG_RIB,barrel:HK_BLACK_METAL,
  muzzle:HK_MUZZLE_METAL,shadow:FAL_VENT_SHADOW
 };
 const createFNC=()=>buildFNCStage1Silhouette(mono,finish.checked?FNC_FACTORY:{});
