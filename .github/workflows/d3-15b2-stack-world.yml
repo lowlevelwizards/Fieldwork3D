@@ -4,6 +4,8 @@ on:
     paths:
       - 'src/breach-cycle-lane-recovery.ts'
       - 'src/breach-motor-collision.ts'
+      - 'src/breach-stack-micro-corner.ts'
+      - 'tests/release-d3-15b4-motor-micro-corner.test.mjs'
       - 'tests/release-d3-15b2-doorless-stack-world.test.mjs'
       - '.github/workflows/d3-15b2-stack-world.yml'
   workflow_dispatch:
@@ -24,6 +26,7 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/release-d3-15b2-doorless-stack-world.test.mjs \
+            tests/release-d3-15b4-motor-micro-corner.test.mjs \
             tests/release-d3-14c2-cycle-world-lane.test.mjs \
             tests/release-d3-14d2-retail-rehearsal.test.mjs
       - name: Actual 45s motel Vale repeated STACK lane / SYNC
