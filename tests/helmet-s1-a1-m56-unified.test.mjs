@@ -159,8 +159,13 @@ test('S1-A1D roof and underside are lit and hollow, not a head-covering bottom',
 test('S1-A1D physical square-head diagonal clearance survives extreme slope',()=>{
  const mesh=new THREE.Mesh(createM56UnifiedShellGeometry(),
   new THREE.MeshBasicMaterial({side:THREE.DoubleSide}));
- for(const y of [7,6.8,6.5,6,5.6,5.1]){
+ // The intentionally raised brow Y5.30 exposes lower front head at
+ // Y5.1; that opening is part of the requested silhouette, not a leak.
+ // Raycast every skull corner above the front rim and the deep rear at
+ // Y5.1 so genuine split steel/corner clipping still fails the gate.
+ for(const y of [7,6.8,6.5,6,5.6,5.4,5.1]){
   for(const sx of [-1,1])for(const sz of [-1,1]){
+   if(y<5.30&&sz<0)continue;
    const ray=new THREE.Raycaster(new THREE.Vector3(0,y,0),
     new THREE.Vector3(sx,0,sz).normalize(),0,25);
    const hits=ray.intersectObject(mesh,false);
