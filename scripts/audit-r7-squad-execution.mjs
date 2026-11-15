@@ -23,7 +23,9 @@ import {D313G2_HOLDOUT_22,D313G2_HOLDOUT_ID}
  from './lib/d3-13g2-fresh-22-manifest.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
-import {sweptBodyClear} from '../src/breach-navigation.ts';
+import {sweptBodyClear,bodyClear} from '../src/breach-navigation.ts';
+import {routeToNextOperableDoor,routeWithSqueezeWorld}
+ from '../src/breach-squeeze-route.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
@@ -46,6 +48,7 @@ const progress=process.argv.includes('--progress');
 // D3.11A audit is OFFLINE-only and opt-in.
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
+const portalAfterRun=process.argv.includes('--portal-after-run');
 const routeTransitions=process.argv.includes('--route-transitions');
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 // D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
@@ -74,6 +77,8 @@ const requestedSeedArg=process.argv.find(a=>a.startsWith('--audit-seed='));
 const requestedSeed=requestedSeedArg?Number(requestedSeedArg.split('=')[1]):null;
 const requestedScaleArg=process.argv.find(a=>a.startsWith('--audit-scale='));
 const requestedScale=requestedScaleArg?.split('=')[1]??null;
+if(portalAfterRun&&requestedSite===null)
+ throw Error('--portal-after-run needs one selected site');
 if(g2Fresh22&&(sites!==22||requestedSite!==null||clinicOnly||
     requestedSeedArg||requestedScaleArg))
  throw Error('G2 fresh holdout requires 22 sites and no seed/site overrides');
@@ -398,6 +403,48 @@ function run(site,seed,kind){
     };
    }
   }
+  // H3: ONE offline diagnostic after the 45-second real motor is fully
+  // finished. This deliberately does not run each tick or adopt a route.
+  // Compare true world connectivity against the established hypothetical
+  // future-operable-door recovery from the actor's ACTUAL final position.
+  let portalAfterRunEvidence=null;
+  if(portalAfterRun&&kind==='authored'){
+   const a=actors.find(op=>op.id==='rook');
+   const goal=a?planned.goals.get(a.id):null;
+   if(a&&goal){
+    const world=sessionWorldGeometry(session);
+    const actual=routeWithSqueezeWorld(a.p,goal,session.doors,world);
+    const proposed=routeToNextOperableDoor(a.p,goal,session.doors,world);
+    const door=a.doorTraversal?.doorId?
+      session.doors.find(d=>d.id===a.doorTraversal.doorId):null;
+    const sweep=(route)=>route.length&&
+      sweptBodyClear(a.p,route[0],session.doors,OPERATOR_RADIUS,world);
+    const pathLength=route=>{
+     let at=a.p,total=0;
+     for(const next of route){total+=dist(at,next);at=next;}
+     return round(total);
+    };
+    portalAfterRunEvidence={
+      actorId:a.id,position:{...a.p},goal:{...goal},
+      remaining:round(dist(a.p,goal)),lastBlocker:a.lastBlocker??null,
+      navHead:a.nav.slice(0,4),bodyClear:bodyClear(a.p,session.doors,
+        OPERATOR_RADIUS,world),
+      doorEpisode:a.doorTraversal?.doorId??null,
+      physicalLeaf:door?{id:door.id,a:{...door.a},b:{...door.b},
+        leaf:doorLeafSegment(door),fraction:door.openFraction??0,
+        angularVelocity:door.angularVelocity??0}:null,
+      operableClosedDoors:session.doors.filter(d=>
+        !d.locked&&!d.jammed&&!d.wedged&&!d.heldBy&&
+        (d.openFraction??0)<.72).map(d=>d.id),
+      actualWorld:{length:actual.length,cost:pathLength(actual),
+        first:actual.slice(0,4),last:actual.slice(-2),
+        physicallySweptFirst:!!sweep(actual)},
+      futurePortal:{length:proposed.length,cost:pathLength(proposed),
+        first:proposed.slice(0,4),last:proposed.slice(-2),
+        physicallySweptFirst:!!sweep(proposed)}
+    };
+   }
+  }
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -414,6 +461,7 @@ function run(site,seed,kind){
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
    warehouseHingeWitness,
+   ...(portalAfterRun?{portalAfterRunEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
