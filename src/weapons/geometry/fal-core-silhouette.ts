@@ -50,7 +50,7 @@ export function buildFALCoreSilhouette(
  // Shell ends inside the broad plate; the plate alone owns X=-15.
  // Preserve the FAL comb/wrist rather than inventing a taller M16-like hump.
  p('stock',[
-  [-14.60,1.04],[-10.30,1.07],
+  [-14.60,1.04],[-10.30,1.15],
   [-8.05,.22],[-6.12,.22],[-6.12,-.88],
   [-8.40,-1.14],[-11.50,-2.76],[-14.60,-3.05]
  ],3.00);
