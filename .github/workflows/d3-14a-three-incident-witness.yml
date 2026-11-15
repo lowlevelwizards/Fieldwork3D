@@ -1,10 +1,7 @@
 name: D3.14A read-only three-loop cause classification
 on:
-  pull_request:
-    paths:
-      - .github/workflows/d3-14a-three-incident-witness.yml
-      - docs/d3-14a-unseen-loop-triage-20261115.md
   workflow_dispatch:
+
 permissions:
   contents: read
 jobs:
