@@ -50,7 +50,7 @@ test('timed WAIT, entry gate, SYNC and a traversing operator remain distinct',()
  assert.equal(executionStatus(a).progress,.5);
  assert.equal(executionStatus({...a,traversalRetreating:true}).kind,'recovering');
 });
-test('unavailable entry tool is retained and reported once, never silently popped',()=>{
+test('unavailable entry tool is cancelled exactly once and visible after plan drain',()=>{
  const s=newSession(0,undefined,'full-view','standard','hold',site);
  try{
   const a=team(s)[0];
@@ -58,13 +58,17 @@ test('unavailable entry tool is retained and reported once, never silently poppe
    doorId:'NOT-A-DOOR',toolMethod:'pry'}];
   s.phase='running';
   stepSession(s,1/30);
-  assert.equal(a.plan[0]?.id,888);
-  assert.equal(a.orderIssue?.reason,'ENTRY TOOL UNAVAILABLE');
+  assert.equal(a.plan.length,0,'terminal tool unavailability retires only that node');
+  assert.equal(a.failedOrders,1);
+  assert.equal(a.completedOrders,0,'cancelled orders cannot become successes');
+  assert.equal(a.lastFailedOrder?.id,888);
+  assert.equal(a.lastFailedOrder?.reason,'ENTRY TOOL UNAVAILABLE');
   const count=s.events.filter(x=>x.includes('ENTRY TOOL UNAVAILABLE')).length;
   for(let i=0;i<10;i++)stepSession(s,1/30);
-  assert.equal(a.plan[0]?.id,888);
+  assert.equal(a.plan.length,0);
+  assert.equal(a.failedOrders,1,'stale failure is never counted twice');
   assert.equal(s.events.filter(x=>x.includes('ENTRY TOOL UNAVAILABLE')).length,count);
-  assert.equal(executionStatus(a).kind,'blocked');
+  assert.equal(executionStatus(a).reason,'order-cancelled');
  }finally{activateSite(null);}
 });
 test('operator cards expose a compact status and accessible reason, without new tactical orders',()=>{
