@@ -1,11 +1,7 @@
 name: D3.14C2 independent resolved incidents regression
 on:
-  pull_request:
-    paths:
-      - src/breach-cycle-lane-recovery.ts
-      - src/breach-motor-collision.ts
-      - .github/workflows/d3-14c2-known-incidents.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 jobs:
