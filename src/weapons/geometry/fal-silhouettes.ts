@@ -8,7 +8,7 @@ import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {buildFALCoreSilhouette} from './fal-core-silhouette.ts';
 import {addCuboid,addOutline} from './profile-primitives.ts';
 import {addFALHandguardVents} from './fal-handguard-profiles.ts';
-import {FAL_MAG_METAL,FAL_VENT_SHADOW} from './weapon-visual-palette.ts';
+import {FAL_MAG_METAL,FAL_VENT_SHADOW,FAL_LOWER_METAL} from './weapon-visual-palette.ts';
 
 export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,polymer:THREE.Material,
@@ -22,7 +22,8 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
   throw new Error('Unimplemented FAL appearance configuration');
  // One common geometry source: S1C lab and live Arsenal use identical forms.
  const core=buildFALCoreSilhouette({
-  stock:polymer,receiver:steel,grip:polymer,magazine:FAL_MAG_METAL,
+  stock:polymer,receiver:steel,receiverLower:FAL_LOWER_METAL,
+  grip:polymer,magazine:FAL_MAG_METAL,
   handguard:polymer,barrel:steel
  },build.parts,{raisedCarryHandle:true,showFactoryMuzzle});
  while(core.children.length)root.add(core.children[0]);
@@ -38,8 +39,8 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // One bold, six-point ejection-panel mark on the RIGHT; no G3 bolt copy.
  // Embedded slightly in the receiver face to avoid a floating decal.
  const port=addOutline(root,'receiver',build.parts.receiver,8,[
-  [-.50,.38],[-.38,1.02],[2.36,1.02],
-  [2.50,.89],[2.50,.38],[-.50,.30]
+  [-.50,.21],[-.38,1.16],[1.95,1.16],
+  [2.50,.94],[2.50,.35],[2.22,.21]
  ],.09,FAL_VENT_SHADOW);
  port.position.z=1.80;
  port.userData.falEjectionPort=true;

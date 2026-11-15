@@ -48,6 +48,9 @@ export const HK_MUZZLE_METAL=finish(0x2f3533,.78,.16,'steel');
 
 /** FAL finish identities stay close to existing HK/AR weapon palette. */
 export const FAL_BLACK_METAL=finish(0x414844,.82,.10,'steel');
+/** Slightly subdued lower housing distinguishes the FN's stamped/form
+ * hierarchy without adding overlay plates, seams or screws. */
+export const FAL_LOWER_METAL=finish(0x353d39,.87,.08,'steel');
 export const FAL_DARK_POLYMER=finish(0x343d37,.93,.02,'polymer');
 export const FAL_MAG_METAL=finish(0x515a54,.91,.09,'steel');
 /** Minimal, dark, flat graphic vents, not expensive true cut-through slots. */

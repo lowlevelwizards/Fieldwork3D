@@ -24,7 +24,7 @@ export const FAL_ART:Readonly<{
 });
 
 export type FALCoreOptions={raisedCarryHandle?:boolean;showFactoryMuzzle?:boolean};
-export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>>;
+export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material}>;
 export type FALCoreIds=Readonly<Record<SlotName,string>>;
 /** One source of geometry for the test lab and production FAL. */
 export function buildFALCoreSilhouette(
@@ -39,6 +39,9 @@ export function buildFALCoreSilhouette(
   addOutline(root,slot,partIds[slot],ids[slot]++,points,depth,materials[slot]);
  const b=(slot:SlotName,x:number,y:number,z:number,w:number,h:number,d:number)=>
   addCuboid(root,slot,partIds[slot],ids[slot]++,x,y,z,w,h,d,materials[slot]);
+ const lower=(points:Outline,depth:number)=>
+  addOutline(root,'receiver',partIds.receiver,ids.receiver++,points,depth,
+   materials.receiverLower??materials.receiver);
 
  // FAL rear stock: full butt, long level comb and narrow wrist near receiver.
  // No M16-style peak or G3-like constant-width wedge.
@@ -46,9 +49,9 @@ export function buildFALCoreSilhouette(
  // Shell ends inside the broad plate; the plate alone owns X=-15.
  // Preserve the FAL comb/wrist rather than inventing a taller M16-like hump.
  p('stock',[
-  [-14.60,1.03],[-13.30,1.14],[-11.20,1.17],
-  [-9.50,.96],[-8.23,.54],[-6.20,.48],
-  [-6.13,-1.25],[-8.40,-1.45],[-10.50,-2.30],
+  [-14.60,1.05],[-13.20,1.24],[-11.30,1.27],
+  [-9.55,1.00],[-8.26,.52],[-6.20,.43],
+  [-6.13,-.97],[-8.30,-1.49],[-10.55,-2.36],
   [-14.60,-3.39]
  ],3.00);
  b('stock',-14.64,-1.15,0,.72,4.85,3.55);
@@ -56,27 +59,28 @@ export function buildFALCoreSilhouette(
  // S1C: continuous FAL cover with one angular nose, no invented top notch.
  // cocking tube and NO AR-like split carry-handle upper.
  p('receiver',[
-  [-6.60,-.89],[-6.60,1.15],[-5.70,1.83],
-  [2.80,1.83],[3.85,1.08],[3.85,-.76],
-  [2.95,-1.21],[-5.72,-1.46]
+  [-6.60,-.87],[-6.60,1.08],[-5.86,1.66],
+  [-5.36,1.80],[2.42,1.80],[3.27,1.54],
+  [3.85,1.04],[3.85,-.62],[3.10,-.95],[-5.77,-1.25]
  ],3.50);
  // Single angular lower, sculpting the grip/magazine negative space.
- p('receiver',[
-  [-6.27,-1.17],[-5.66,-1.98],[-4.51,-2.38],
-  [-3.15,-2.38],[-2.08,-1.53],[-.56,-1.50],
-  [.16,-2.54],[3.36,-2.64],[3.75,-1.05]
- ],3.18);
+ lower([
+  [-6.29,-1.04],[-5.80,-1.69],[-4.98,-2.07],
+  [-4.42,-2.43],[-3.07,-2.33],[-2.18,-1.61],
+  [-.47,-1.60],[.29,-2.66],[3.14,-2.77],
+  [3.80,-1.10],[2.95,-1.30]
+ ],3.16);
  // Distinct FAL magazine-well wedge projecting down toward the magazine.
- p('receiver',[
-  [-.42,-1.95],[3.38,-1.95],[3.52,-3.02],
-  [3.10,-3.19],[-.25,-3.19]
+ lower([
+  [-.45,-1.96],[3.36,-1.96],[3.50,-2.68],
+  [3.09,-3.19],[-.22,-3.19],[-.48,-2.75]
  ],3.28);
 
  // S1C: compact raked FAL grip; preserve open mag/grip gap.
  p('grip',[
-  [-5.12,-2.18],[-2.91,-2.18],
-  [-3.72,-5.87],[-4.18,-6.58],
-  [-5.96,-6.58],[-5.92,-5.15]
+  [-5.12,-2.18],[-3.12,-2.18],
+  [-3.94,-5.82],[-4.40,-6.44],
+  [-5.96,-6.44],[-5.88,-4.87]
  ],2.16);
  p('magazine',FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH);
 
@@ -125,11 +129,17 @@ export function buildFALCoreSilhouette(
  // no AR-style upright arch, hollow box, hinges or screws. Factory enabled.
  if(options.raisedCarryHandle){
   const support=addBar(root,'receiver',partIds.receiver,ids.receiver++,
-   [3.20,1.42],[2.96,3.07],.40,.54,materials.receiver);
+   [3.20,1.42],[2.90,3.23],.50,.62,materials.receiver);
   support.position.z=-1.60;
   support.userData.falCarrySupport=true;
-  const grip=addCuboid(root,'receiver',partIds.receiver,ids.receiver++,
-   1.48,3.23,-1.61,3.32,.84,.90,materials.stock);
+  // One contoured handhold instead of a floating cuboid; this is an
+  // offset folding FAL carrying handle, never an AR bridge/arch.
+  const grip=addOutline(root,'receiver',partIds.receiver,ids.receiver++,[
+   [-.29,3.16],[-.12,3.58],[.22,3.83],
+   [2.64,3.83],[3.07,3.57],[3.07,3.16],
+   [2.71,2.99],[.05,2.99]
+  ],.90,materials.stock);
+  grip.position.z=-1.61;
   grip.userData.falCarryGrip=true;
  }
  return root;
