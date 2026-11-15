@@ -14,7 +14,9 @@ export function joinedLocalOpenLeafStage(
  canSweep:(a:Pt,b:Pt)=>boolean,
  canStand:(p:Pt)=>boolean,
  knownTail:(from:Pt,goal:Pt)=>Pt[],
- witness?:(reason:string)=>void
+ witness?:(reason:string)=>void,
+ /** At most two COLD, world-truth approaches to a near-side frame point. */
+ physicalApproach?:(from:Pt,to:Pt)=>Pt[]
 ):Pt[]{
  if(!door.open||door.wedged||door.kind==='sliding'||
     door.kind==='shutter'||(door.openFraction??0)<.82||
@@ -62,6 +64,7 @@ export function joinedLocalOpenLeafStage(
  // aperture as two separate ordinary physical legs. These are local
  // waypoints only; the tail still ends at the original authored GO.
  // Never propose positions outside the frame's usable shoulder width.
+ const firstFrameCandidate=paths.length;
  const ownSide=Math.sign(dot({x:from.x-frameMid.x,
    y:from.y-frameMid.y},portalNormal))||1;
  const halfLane=Math.max(0,width/2-OPERATOR_RADIUS-3);
@@ -78,16 +81,46 @@ export function joinedLocalOpenLeafStage(
    else paths.push([before,beyond]);
   }
  let best:Pt[]=[],bestCost=Infinity;
- let tailProbes=0;
+ let tailProbes=0,physicalApproachProbes=0;
  // Read-only rejection counters, populated only when the audit supplies
  // a witness. No extra route, path or full-body sweep is ever attempted.
  let unsafeLeg=0,failedJoin=0,missingTail=0,longStage=0,tooLong=0;
- for(const stage of paths){
+ for(let index=0;index<paths.length;index++){
+  const stage=paths[index];
   let previous=from,travel=0,valid=true;
-  for(const point of stage){
-   const leg=dist(previous,point);
-   if(leg<2||leg>108||!canStand(point)||!canSweep(previous,point)){
+  let physicalPrefix:Pt[]=[];
+  for(let legIndex=0;legIndex<stage.length;legIndex++){
+   const point=stage[legIndex],leg=dist(previous,point);
+   if(leg<2||leg>108||!canStand(point)){
     unsafeLeg++;valid=false;break;
+   }
+   if(!canSweep(previous,point)){
+    // H2B: a nearby FRAME-SIDE approach may lie around an immovable
+    // jamb. One bounded world-truth connector to that first local
+    // waypoint is legal, even when a straight full-width chord is not.
+    // Never apply this to the old leaf-tip or remote goal proposals.
+    if(legIndex!==0||index<firstFrameCandidate||
+       !physicalApproach||physicalApproachProbes>=2){
+      unsafeLeg++;valid=false;break;
+    }
+    physicalApproachProbes++;
+    const approach=physicalApproach(from,point);
+    if(!approach.length||dist(approach.at(-1)!,point)>3){
+      unsafeLeg++;valid=false;break;
+    }
+    let at=from,total=0,verified=true;
+    for(const wp of approach){
+      if(!canStand(wp)||!canSweep(at,wp)){
+       verified=false;break;
+      }
+      total+=dist(at,wp);at=wp;
+    }
+    if(!verified||total>145||total>leg*2.6+22){
+      unsafeLeg++;valid=false;break;
+    }
+    physicalPrefix=approach.map(clone);
+    travel+=total;previous=point;
+    continue;
    }
    travel+=leg;previous=point;
   }
@@ -110,11 +143,14 @@ export function joinedLocalOpenLeafStage(
   if(total>dist(from,goal)*1.7+40||total>=bestCost){
    tooLong++;continue;
   }
-  bestCost=total;best=[...stage.map(clone),...tail.map(clone)];
+  const routeStage=physicalPrefix.length?
+    [...physicalPrefix,...stage.slice(1).map(clone)]:stage.map(clone);
+  bestCost=total;best=[...routeStage,...tail.map(clone)];
  }
  if(!best.length&&witness)
   witness('unsafe-leg='+unsafeLeg+',too-far='+longStage+
    ',no-tail='+missingTail+',blocked-join='+failedJoin+
-   ',long-tail='+tooLong+',searched-tail='+tailProbes);
+   ',long-tail='+tooLong+',searched-tail='+tailProbes+
+   ',physical-approach='+physicalApproachProbes);
  return best;
 }
