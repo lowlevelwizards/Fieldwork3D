@@ -18,8 +18,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-          cache: npm
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - name: Reproduce independent motel small (read-only 60Hz)
         run: |
           mkdir -p ${{ runner.temp }}/d3-13f
