@@ -28,11 +28,20 @@ export function allowPhysicalRouteReissue(
  if(!states){states=new Map();byActor.set(actor,states);}
  const previous=states.get(family);
  const remaining=distance(actor.p,goal);
+ // A backward portal-only maneuver can be individually swept-clear yet
+ // repeatedly undo a good approach. Keep a longer *same-anchor* witness
+ // only for that proven case; productive and full-GO rehearsals retain
+ // the normal B gate.
+ const backwardDoor=family==='door-rehearsal'&&
+   distance(route[route.length-1],goal)>remaining+3;
+ const maxAge=backwardDoor?18:8;
+ const allowed=backwardDoor?2:4;
  const same=!!previous&&previous.orderId===order.id&&
    previous.token===token&&distance(previous.goal,goal)<.5&&
    distance(previous.first,route[0])<3&&
    distance(previous.anchor,actor.p)<3&&
-   seconds-previous.lastAt<5&&seconds-previous.firstAt<8&&
+   seconds-previous.lastAt<(backwardDoor?7:5)&&
+   seconds-previous.firstAt<maxAge&&
    remaining>=previous.bestRemaining-3;
  if(!same){
    states.set(family,{orderId:order.id,token,
@@ -43,5 +52,5 @@ export function allowPhysicalRouteReissue(
  previous.count++;
  previous.lastAt=seconds;
  previous.bestRemaining=Math.min(previous.bestRemaining,remaining);
- return previous.count<4;
+ return previous.count<allowed;
 }

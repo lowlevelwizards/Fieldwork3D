@@ -40,6 +40,9 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
+import {claimRepeatedFurnitureDeparture,
+ selectMotorVerifiedFurnitureDeparture}
+ from './breach-d317c-micro-departure.ts';
 import {stackMicroRecoveryEligible,claimStackMicroAttempt,selectStackMicroCorner}
  from './breach-stack-micro-corner.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
@@ -457,6 +460,26 @@ export function resolveMotorCollision(
           prependTransientLeg(s,a,relief,'self-hinge-relief');
           a.recoveryAttempts++;
           a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+          return true;
+        }
+      }
+      // D3.17C: after THREE real, separated furniture collisions from the
+      // same physical anchor and to the same blocked nav node, try a
+      // bounded cold departure. Existing authored GO, queue, collision
+      // and replan semantics remain unchanged if no safe route exists.
+      if(a.nav.length&&claimRepeatedFurnitureDeparture(a,p,next,s.seconds)){
+        const verified=selectMotorVerifiedFurnitureDeparture(
+          a.p,p,a.nav,
+          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+          (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
+        if(verified.length&&watchClearanceAllowed(a.p,verified[0],p,
+           !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))){
+          setTransientRoute(s,a,verified,'cold-micro-departure');
+          notePreciseLocalDetour(a,verified[0]);
+          // Do not erase evidence of repeated failure. This route is only
+          // provisional until actual feet progress through the first step.
+          a.retryRouteAt=0;
           return true;
         }
       }
