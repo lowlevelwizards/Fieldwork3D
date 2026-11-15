@@ -67,8 +67,8 @@ test('P7: fewer front markings and less dominant muzzle; retained FN geometry',(
  assert.ok(bounds(gas).max.z<bounds(get(g,'fncP5LowerHex')).max.z);
  const marks=g.children.filter(x=>x.userData.fncP7ReducedUpperMarks);
  assert.equal(marks.length,2);
- assert.ok(marks.every(x=>x.geometry.getAttribute('position').count===12),
-  'each side is exactly two long upper channels, not a row of vent dashes');
+ assert.ok(marks.every(x=>x.geometry.getAttribute('position').count===60),
+  'each upper gas side has two rows of five batched vent dashes');
  const size=bounds(end).max.y-bounds(end).min.y;
  const barrelSize=bounds(get(g,'fncServiceBarrel')).max.y-
   bounds(get(g,'fncServiceBarrel')).min.y;

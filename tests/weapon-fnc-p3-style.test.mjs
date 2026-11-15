@@ -46,9 +46,9 @@ test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
   const parts=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
   assert.deepEqual(parts.map(x=>x.userData.fncP5GrooveSide).sort(),[-1,1]);
   for(const mark of parts){
-   const count=level==='upper'?2:1;
+   const count=2;
    assert.equal(mark.userData.fncP5GrooveCount,count);
-   const segments=1;
+   const segments=level==='upper'?5:1;
    assert.equal(mark.geometry.getAttribute('position').count,count*segments*6);
    const normal=mark.geometry.getAttribute('normal').getZ(0);
    assert.ok(normal*mark.userData.fncP5GrooveSide>.95,
@@ -87,7 +87,8 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  const handle=of(g,'fncP5LargeChargingHandle')[0];
  const muzzle=of(g,'fncP5ChunkyMuzzle')[0];
  assert.ok(front&&rear&&handle&&muzzle);
- assert.equal(front.geometry.parameters.shapes.holes.length,1);
+ assert.equal(front.geometry.parameters.shapes.holes.length,0);
+ assert.ok(front.userData.fncP11TwinEarFrontSight);
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
  assert.ok(box(front).max.y>3.0);
  assert.ok(box(rear).max.y>2.40);
