@@ -20,16 +20,16 @@ import {SSH40_STEEL_LEVELS,SSH40_FIT_LANDMARKS}
 import {readHelmetCoverConfig} from '../src/operator-helmet-cover-policy.ts';
 import {readFileSync} from 'node:fs';
 
-const insideHead=(p:readonly number[],margin=0)=>
+const insideHead=(p,margin=0)=>
  Math.abs(p[0])<4+margin&&p[2]>-4-margin&&p[2]<4+margin&&
  p[1]>-1-margin&&p[1]<7+margin;
-const near=(a:number,b:number)=>Math.abs(a-b)<.00001;
+const near=(a,b)=>Math.abs(a-b)<.00001;
 
 test('B2-B adapts the PROVEN M1/PASGT and ACH/MICH head clearances',()=>{
  const ach=achMichRetentionPaths('ach');
  const pasgt=createPasgtRetentionGeometry();
  assert.equal(pasgt.userData.pasgtSimpleTwoPointRetention,true);
- for(const sign of [-1,1] as const){
+ for(const sign of [-1,1]){
   const route=ssh40RetentionPath(sign,'fastened');
   const approved=m1RetentionPath(sign,'fastened');
   const trusted=ach[sign<0?2:5];
@@ -89,7 +89,7 @@ test('B2-B two canvas states are cached and exclusive; masks hide, not erase',()
 });
 
 test('B2-B canvas geometry and centerlines never intersect the cube head',()=>{
- for(const mode of ['fastened','unfastened'] as const){
+ for(const mode of ['fastened','unfastened']){
   const root=new THREE.Group(),layers=createSsh40RetentionLayers(root);
   const g=layers[mode].children[0].geometry,p=g.getAttribute('position');
   assert.equal(SSH40_CHINSTRAP_WIDTH,.76);
@@ -98,7 +98,7 @@ test('B2-B canvas geometry and centerlines never intersect the cube head',()=>{
    assert.ok(!insideHead(v,.035),
     `canvas triangle vertex ${i} must clear head: ${v.join(',')}`);
   }
-  for(const sign of [-1,1] as const){
+  for(const sign of [-1,1]){
    const route=ssh40RetentionPath(sign,mode);
    assert.ok(route.length>=4);
    for(let j=1;j<route.length;j++)for(let n=0;n<=32;n++){
