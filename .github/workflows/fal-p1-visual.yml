@@ -1,4 +1,4 @@
-name: FAL P7 — Iconic minimal-poly receiver, stock and furniture
+name: FAL P8 — Proportion rebalance and bold FN landmarks
 on:
   pull_request:
     branches: [main]
@@ -21,6 +21,7 @@ on:
       - 'tests/weapon-fal-p4-receiver.test.mjs'
       - 'tests/weapon-fal-p5-triangle.test.mjs'
       - 'tests/weapon-fal-p6-geometry-budget.test.mjs'
+      - 'tests/weapon-fal-p8-proportions.test.mjs'
       - 'scripts/audit-weapon-geometry.mjs'
       - 'scripts/smoke-fal-p1-visual.mjs'
       - '.github/workflows/fal-p1-visual.yml'
@@ -46,7 +47,8 @@ jobs:
             tests/weapon-fal-p3-reference-style.test.mjs \
             tests/weapon-fal-p4-receiver.test.mjs \
             tests/weapon-fal-p5-triangle.test.mjs \
-            tests/weapon-fal-p6-geometry-budget.test.mjs
+            tests/weapon-fal-p6-geometry-budget.test.mjs \
+            tests/weapon-fal-p8-proportions.test.mjs
       - name: Quantify emitted triangles against existing weapons
         run: node --experimental-strip-types scripts/audit-weapon-geometry.mjs
       - name: Typecheck and production compile
@@ -58,7 +60,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fal-p7-final-3d-comparisons
+          name: fal-p8-final-3d-comparisons
           path: fal-p1-captures/
           if-no-files-found: ignore
           retention-days: 14

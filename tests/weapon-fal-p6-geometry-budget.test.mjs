@@ -30,7 +30,7 @@ test('receiver and handguard use one uninterrupted six-point section per end',()
  assert.equal(countGeometry(upper).triangles,24);
  assert.equal(countGeometry(hand).triangles,24);
  assert.ok(FAL_HANDGUARD_STATIONS[0].top>=1.85);
- assert.ok(FAL_HANDGUARD_STATIONS[0].bottom<=-2.10);
+ assert.ok(FAL_HANDGUARD_STATIONS[0].bottom>=-1.60,'P8 trims only the lower handguard skirt');
  clearWeaponSilhouette(root);mat.dispose();
 });
 test('barrel, carry handle and sights are large rectilinear forms',()=>{

@@ -70,9 +70,9 @@ test('FAL S2: FAL-specific geometry, front sight, carry handle, vents and muzzle
  assert.equal(g.children.filter(x=>x.name.startsWith('family-handguard-fal-vented')).length,3);
  assert.ok(g.children.every(x=>x.name.startsWith('family-')));
  assert.equal(g.children.filter(x=>x.name.startsWith('family-magazine-')).length,3);
- assert.ok(g.children.some(x=>x.name==='family-receiver-fal-50-receiver-3'&&x.userData.falCarrySupport),
+ assert.ok(g.children.some(x=>x.name==='family-receiver-fal-50-receiver-4'&&x.userData.falCarrySupport),
   'factory carry support is attached to the receiver');
- assert.ok(g.children.some(x=>x.name==='family-receiver-fal-50-receiver-4'&&x.userData.falCarryGrip),
+ assert.ok(g.children.some(x=>x.name==='family-receiver-fal-50-receiver-5'&&x.userData.falCarryGrip),
   'FAL factory grip extends rearward from its support');
  clearWeaponSilhouette(g);assert.equal(g.children.length,0);m.dispose();
 });

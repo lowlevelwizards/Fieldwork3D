@@ -68,14 +68,14 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
  const ears=byName('family-barrel-fal-stage1-barrel-2');
  const receiver=byName('family-receiver-fal-stage1-receiver-0');
  assert.ok(stock.max.y>=.70&&stock.max.y<=.75,'stock comb drops toward the butt');
- assert.ok(stock.min.y>=-2.82&&stock.min.y<=-2.72,'P7 stock heel stays compact and flattened');
- assert.ok(grip.min.x>=-6.20&&grip.min.x<=-5.90,'grip rake must be restrained');
- assert.ok(grip.min.y>=-6.52&&grip.min.y<=-6.44,'simplified skewed grip remains compact');
+ assert.ok(stock.min.y>=-4.13&&stock.min.y<=-4.04,'P8 stock heel is broad and extended downward');
+ assert.ok(grip.min.x>=-6.56&&grip.min.x<=-6.48,'P8 grip sweeps further backward');
+ assert.ok(grip.min.y>=-5.89&&grip.min.y<=-5.81,'P8 grip is shorter and sharply raked');
  assert.ok(handguard.max.y>=1.85&&handguard.max.y<=1.95&&
-  handguard.min.y>=-2.20&&handguard.min.y<=-2.08,
+  handguard.min.y>=-1.60&&handguard.min.y<=-1.52,
   'P6 fore-end is deliberately tall with unmistakable FAL tapered shoulders');
- assert.ok(ears.max.y>=2.90&&ears.max.y<=3.1,'front sight ears must be modest');
- assert.ok(receiver.max.y>=1.8,'upper dust cover should remain long and clear');
+ assert.ok(ears.max.y>=3.13&&ears.max.y<=3.21,'P8 front sight ears are exaggerated and bold');
+ assert.ok(receiver.max.y>=1.52&&receiver.max.y<=1.58,'P8 receiver is lower than handguard');
  assert.equal(g.children.length,18,'P7: fewer receiver features and purposeful muzzle silhouette');
  clearWeaponSilhouette(g);material.dispose();
 });
