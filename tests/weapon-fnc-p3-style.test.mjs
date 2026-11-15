@@ -89,7 +89,10 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
  assert.ok(box(front).max.y>3.0);
  assert.ok(box(rear).max.y>2.6);
- assert.ok(box(handle).max.x-box(handle).min.x>1.8);
+ assert.ok(box(handle).max.x-box(handle).min.x<1.15,
+  'charging handle is short along X, not a stretched receiver-side bar');
+ assert.ok(box(handle).max.z>2.58,
+  'charging handle extends boldly out along Z');
  assert.ok(box(handle).max.z>box(of(g,'fncP5CrownedReceiver')[0]).max.z+.6);
  assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.55);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
