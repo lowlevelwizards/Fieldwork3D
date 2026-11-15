@@ -9,6 +9,8 @@
 import * as THREE from 'three';
 import {addOutline,addCuboid,addFacetedTube,addBar,
  type Outline,type SlotName} from './profile-primitives.ts';
+import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH} from './fal-magazine-profiles.ts';
+import {addFALFacetedHandguard} from './fal-handguard-profiles.ts';
 
 export const FAL_ART:Readonly<{
  stockRearX:number;receiverRearX:number;receiverFrontX:number;
@@ -46,10 +48,10 @@ export function buildFALCoreSilhouette(
  p('stock',[
   [-14.60,1.03],[-13.30,1.14],[-11.20,1.17],
   [-9.50,.96],[-8.23,.54],[-6.20,.48],
-  [-6.13,-1.25],[-8.40,-1.58],[-10.50,-2.50],
+  [-6.13,-1.25],[-8.40,-1.45],[-10.50,-2.30],
   [-14.60,-3.39]
- ],3.18);
- b('stock',-14.73,-1.15,0,.54,4.70,3.45);
+ ],3.00);
+ b('stock',-14.64,-1.15,0,.72,4.85,3.55);
 
  // S1C: continuous FAL cover with one angular nose, no invented top notch.
  // cocking tube and NO AR-like split carry-handle upper.
@@ -73,21 +75,14 @@ export function buildFALCoreSilhouette(
  // S1C: compact raked FAL grip; preserve open mag/grip gap.
  p('grip',[
   [-5.12,-2.18],[-2.91,-2.18],
-  [-3.72,-5.87],[-4.12,-6.58],
-  [-6.11,-6.58],[-5.92,-5.15]
- ],2.32);
- p('magazine',[
-  [-.36,-2.98],[3.10,-2.98],
-  [3.12,-7.61],[2.96,-8.05],
-  [-.08,-8.05],[-.34,-7.69]
- ],2.32);
+  [-3.72,-5.87],[-4.18,-6.58],
+  [-5.96,-6.58],[-5.92,-5.15]
+ ],2.16);
+ p('magazine',FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH);
 
- // S1C: shallow, wide and gently tapered FAL forearm, NOT M16 triangular.
- p('handguard',[
-  [3.65,1.06],[4.48,1.40],[12.30,1.39],
-  [14.10,1.01],[14.10,-1.05],[12.86,-1.45],
-  [4.46,-1.74],[3.65,-1.32]
- ],3.46);
+ // One broad eight-facet FAL forearm: gently tucked TOP shoulders, not
+ // the tubular G3 or triangular M16. Vent marks follow the flat side faces.
+ addFALFacetedHandguard(root,partIds.handguard,ids.handguard++,materials.handguard);
 
  // One six-sided barrel. The gas-block sight is near the end of the
  // handguard rather than at the muzzle as on the G3.
@@ -130,11 +125,11 @@ export function buildFALCoreSilhouette(
  // no AR-style upright arch, hollow box, hinges or screws. Factory enabled.
  if(options.raisedCarryHandle){
   const support=addBar(root,'receiver',partIds.receiver,ids.receiver++,
-   [3.20,1.42],[2.96,3.07],.29,.48,materials.receiver);
+   [3.20,1.42],[2.96,3.07],.40,.54,materials.receiver);
   support.position.z=-1.60;
   support.userData.falCarrySupport=true;
   const grip=addCuboid(root,'receiver',partIds.receiver,ids.receiver++,
-   1.56,3.19,-1.61,3.04,.64,.74,materials.stock);
+   1.48,3.23,-1.61,3.32,.84,.90,materials.stock);
   grip.userData.falCarryGrip=true;
  }
  return root;

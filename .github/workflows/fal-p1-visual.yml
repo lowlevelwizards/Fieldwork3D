@@ -5,9 +5,14 @@ on:
     paths:
       - 'src/weapons/geometry/fal-core-silhouette.ts'
       - 'src/weapons/geometry/fal-silhouettes.ts'
+      - 'src/weapons/geometry/fal-handguard-profiles.ts'
+      - 'src/weapons/geometry/fal-magazine-profiles.ts'
+      - 'src/weapons/geometry/weapon-receiver-anatomy.ts'
+      - 'src/operator-carried-magazines.ts'
       - 'tests/weapon-fal-stage1-blockout.test.mjs'
       - 'tests/weapon-fal-stage2-family.test.mjs'
       - 'tests/weapon-fal-p1-identity.test.mjs'
+      - 'tests/weapon-fal-p2-style.test.mjs'
       - 'scripts/smoke-fal-p1-visual.mjs'
       - '.github/workflows/fal-p1-visual.yml'
 permissions:
@@ -27,7 +32,8 @@ jobs:
           node --experimental-strip-types --test \
             tests/weapon-fal-stage1-blockout.test.mjs \
             tests/weapon-fal-stage2-family.test.mjs \
-            tests/weapon-fal-p1-identity.test.mjs
+            tests/weapon-fal-p1-identity.test.mjs \
+            tests/weapon-fal-p2-style.test.mjs
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install --with-deps chromium
       - name: Capture actual shared-scale M4/G3/FAL 3D views
