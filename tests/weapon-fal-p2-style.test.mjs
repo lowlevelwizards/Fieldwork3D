@@ -56,7 +56,7 @@ test('FAL P2: balanced stock, slightly slimmer grip, bold seated pad and handle'
  const support=bounds(root.children.find(x=>x.userData.falCarrySupport));
  approx(shell.max.z-shell.min.z,3.0);
  approx(grip.max.z-grip.min.z,2.16);
- approx(pad.max.x-pad.min.x,.72);
+ approx(pad.max.x-pad.min.x,.88);
  approx(pad.max.y-pad.min.y,4.85);
  approx(pad.min.x,-15);
  assert.ok(pad.max.x>shell.min.x+.06);
@@ -105,12 +105,14 @@ test('FAL P2: one continuous handguard, upper shoulder chamfer and batched vents
  assert.equal(marks.length,2);
  assert.deepEqual(marks.map(x=>x.userData.falVentSide).sort(),[-1,1]);
  for(const vent of marks){
-  assert.equal(vent.geometry.getAttribute('position').count,12,
-   'three quads per side, one mesh');
+  assert.equal(vent.geometry.getAttribute('position').count,18,
+   'three six-sided slots batched into one mesh per side');
   const v=bounds(vent);
-  approx(Math.abs((v.min.z+v.max.z)/2),1.748);
-  assert.ok(v.min.y>-.05&&v.max.y<.94,
-   'marks remain within visible side flat, not floating on chamfer');
+  assert.equal(vent.userData.falFaceAligned,true);
+  assert.ok(v.max.z-v.min.z>.01,
+   'slots conform to tapered forearm rather than floating at fixed z');
+  assert.ok(v.min.y>.02&&v.max.y<.90,
+   'marks remain inside broad side flat and below upper chamfer');
  }
  clearWeaponSilhouette(root);mat.dispose();
 });
