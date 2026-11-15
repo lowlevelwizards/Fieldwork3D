@@ -1,4 +1,4 @@
-import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
+import {setTransientRoute,noteDoorHandoffRejection,hasTransientRouteObserver} from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
@@ -12,7 +12,8 @@ import {sessionDoorPressurePolicy}
 import {recordDoorManeuverContact,tryGoalCompleteDoorHandoffAfterEscape}
  from './breach-door-traversal-maneuver.ts';
 import {escapeOpenDoorOverlap,sweptBodyClear,bodyClear} from './breach-navigation.ts';
-import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld}
+import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld,
+ routeToNextOperableDoor}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
@@ -21,7 +22,9 @@ import {holdKnownFixedAuthoredGoal}
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {sweptRejoinExistingRoute,takeRepeatedDoorEscapeRoute,
- finishDoorEscapeRejoin} from './breach-door-escape-rejoin.ts';
+ finishDoorEscapeRejoin,claimColdFrameApproachProbe,
+ claimColdFuturePortalProbe}
+ from './breach-door-escape-rejoin.ts';
 import {joinedLocalOpenLeafStage} from './breach-door-escape-stage.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
@@ -71,9 +74,13 @@ export function restoreRepeatedDoorEscapeRoute(
     (a.doorTraversal.maneuver==='outside-leaf'&&
      a.doorTraversal.waypoints.length>0))return false;
  const world=sessionWorldGeometry(s);
- if(!bodyClear(a.p,s.doors,OPERATOR_RADIUS,world))return false;
+ if(!bodyClear(a.p,s.doors,OPERATOR_RADIUS,world)){
+   noteDoorHandoffRejection(s,a,'h:body-still-overlapping');return false;
+ }
  const original=takeRepeatedDoorEscapeRoute(a,s.seconds,goal);
- if(!original)return false;
+ if(!original){
+   noteDoorHandoffRejection(s,a,'h:no-eligible-repeat-evidence');return false;
+ }
  const sweep=(from:Pt,to:Pt)=>
    sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
  let rejoined=sweptRejoinExistingRoute(a.p,goal,original,sweep);
@@ -107,10 +114,42 @@ export function restoreRepeatedDoorEscapeRoute(
     pointToSegment(a.p,doorLeafSegment(stageDoor))<OPERATOR_RADIUS+44){
    rejoined=joinedLocalOpenLeafStage(a.p,goal,stageDoor,sweep,
      point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
-     (point,destination)=>routeWithSqueezeIntel(s.intel,point,destination));
+     (point,destination)=>routeWithSqueezeIntel(s.intel,point,destination),
+     hasTransientRouteObserver()?
+       reason=>noteDoorHandoffRejection(s,a,'h:stage:'+reason):undefined,
+     (from,to)=>claimColdFrameApproachProbe(a,stageDoor.id,goal,
+       stageDoor.openFraction??0)?
+         routeWithNormalWorld(from,to,s.doors,world):[]);
    usedLocalStage=rejoined.length>0;
+ }else if(!rejoined.length){
+   noteDoorHandoffRejection(s,a,'h:leaf-unavailable-or-far');
  }
- if(!rejoined.length||d(rejoined[rejoined.length-1],goal)>3)return false;
+ if(!rejoined.length||d(rejoined[rejoined.length-1],goal)>3){
+   noteDoorHandoffRejection(s,a,'h:no-accepted-local-rejoin');
+   // H4: after a witnessed THREE-escape open-leaf loop where every
+   // local full-width approach is impossible, try the motor's EXISTING
+   // D3.3 physical prefix to the FIRST FUTURE OPERABLE DOOR. Ordinary
+   // world routing to the final GO can legitimately fail behind that
+   // door. The prefix never completes the authored PlanNode and its
+   // actual hinge contact/open remains governed by the same motor.
+   // One cold A* proposal per unchanged door/order/physical position.
+   if(stageDoor?.open&&(stageDoor.openFraction??0)>=.82&&
+      claimColdFuturePortalProbe(a,stageDoor.id,goal,
+        stageDoor.openFraction??0)){
+     const prefix=routeToNextOperableDoor(a.p,goal,s.doors,world);
+     let cost=0,at=a.p;
+     for(const point of prefix){cost+=d(at,point);at=point;}
+     if(prefix.length>=2&&sweep(a.p,prefix[0])&&
+        d(a.p,prefix[0])<=96&&cost<=d(a.p,goal)*1.9+48){
+       setTransientRoute(s,a,prefix,'door-escape-future-portal');
+       finishDoorEscapeRejoin(a);
+       a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;a.recoveryAttempts=0;
+       return true;
+     }
+     noteDoorHandoffRejection(s,a,'h:future-portal-prefix-unavailable');
+   }
+   return false;
+ }
  setTransientRoute(s,a,rejoined,
    usedLocalStage?'door-escape-local-portal':'door-escape-world-rejoin');
  finishDoorEscapeRejoin(a);
