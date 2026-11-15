@@ -29,6 +29,8 @@ import {D314C_HOLDOUT_22,D314C_HOLDOUT_ID}
  from './lib/d3-14c-seventh-blind22.mjs';
 import {D314D_HOLDOUT_22,D314D_HOLDOUT_ID}
  from './lib/d3-14d-eighth-blind22.mjs';
+import {D315A_HOLDOUT_22,D315A_HOLDOUT_ID}
+ from './lib/d3-15a-ninth-blind22.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,doorClear,doorReachable,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {doorInteraction} from '../src/breach-interactions.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
@@ -68,6 +70,7 @@ const h2Fresh22=process.argv.includes('--h2-fresh-22');
 const d314bBlind22=process.argv.includes('--d314b-blind22');
 const d314cBlind22=process.argv.includes('--d314c-blind22');
 const d314dBlind22=process.argv.includes('--d314d-blind22');
+const d315aBlind22=process.argv.includes('--d315a-blind22');
 // D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
 // Run with --route-transitions --site-index=7 --trace-actor=rook
 // and optionally --trace-mode=authored (or entry).
@@ -94,6 +97,10 @@ const requestedSeedArg=process.argv.find(a=>a.startsWith('--audit-seed='));
 const requestedSeed=requestedSeedArg?Number(requestedSeedArg.split('=')[1]):null;
 const requestedScaleArg=process.argv.find(a=>a.startsWith('--audit-scale='));
 const requestedScale=requestedScaleArg?.split('=')[1]??null;
+if(d315aBlind22&&(g2Fresh22||h2Fresh22||d314bBlind22||
+  d314cBlind22||d314dBlind22||sites!==22||requestedSite!==null||
+  clinicOnly||requestedSeedArg||requestedScaleArg))
+ throw Error('D3.15A ninth blind holdout needs 22 sites with no overrides');
 if(d314dBlind22&&(g2Fresh22||h2Fresh22||d314bBlind22||
   d314cBlind22||sites!==22||requestedSite!==null||clinicOnly||
   requestedSeedArg||requestedScaleArg))
@@ -693,7 +700,8 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const cohort=d314dBlind22?D314D_HOLDOUT_22[i]:
+ const cohort=d315aBlind22?D315A_HOLDOUT_22[i]:
+   d314dBlind22?D314D_HOLDOUT_22[i]:
    d314cBlind22?D314C_HOLDOUT_22[i]:
    d314bBlind22?D314B_HOLDOUT_22[i]:
    h2Fresh22?D313H2_HOLDOUT_22[i]:
@@ -778,7 +786,8 @@ const progressSummary=progress?{
 }:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
- ...(d314dBlind22?{corpus:D314D_HOLDOUT_ID}:
+ ...(d315aBlind22?{corpus:D315A_HOLDOUT_ID}:
+   d314dBlind22?{corpus:D314D_HOLDOUT_ID}:
    d314cBlind22?{corpus:D314C_HOLDOUT_ID}:
    d314bBlind22?{corpus:D314B_HOLDOUT_ID}:
    h2Fresh22?{corpus:D313H2_HOLDOUT_ID}:
