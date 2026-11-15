@@ -207,7 +207,10 @@ export type TeamActor=Operator & {
   lastBlocker:Blocker;
   /** Execution diagnostics are transient; never rewrite authored PlanNode[]. */
   motorPause:MotorPause;orderIssue:ExecutionIssue|null;
-  completedOrders:number;passageWaitSeconds:number;passageStallReported:boolean;
+  completedOrders:number;failedOrders:number;
+  /** Last witnessed terminal cancellation survives queue draining for debrief. */
+  lastFailedOrder:{id:number;kind:string;reason:string;at:number}|null;
+  passageWaitSeconds:number;passageStallReported:boolean;
   /** At most one physical deadlock retreat per authored waypoint and goal.
    * The motor can still queue/wait afterward, but never stack retreats. */
   passageRetreatKey?:string;
