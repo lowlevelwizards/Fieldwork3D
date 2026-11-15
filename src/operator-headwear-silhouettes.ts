@@ -30,8 +30,8 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
   top:8.255,earEdge:4.54,foreheadEdge:4.54,billLength:0},
  'beanie':{id:'beanie',frontExtent:-5.00,rearExtent:5.00,
   top:8.65,earEdge:3.745,foreheadEdge:3.745,billLength:0},
- 'm1-steel':{id:'m1-steel',frontExtent:-5.79,rearExtent:5.69,
-  top:8.74,earEdge:4.53,foreheadEdge:4.53,billLength:0},
+ 'm1-steel':{id:'m1-steel',frontExtent:-7.12,rearExtent:6.84,
+  top:8.98,earEdge:4.40,foreheadEdge:4.40,billLength:0},
  'ddr-m56':{id:'ddr-m56',frontExtent:-6.80,rearExtent:8.10,
   top:8.775,earEdge:4.43,foreheadEdge:4.65,billLength:0},
  'police-helmet':{id:'police-helmet',frontExtent:-5.70,rearExtent:5.80,
@@ -214,11 +214,11 @@ const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
  * operator-m1-helmet-profile.ts, not these deliberately coarse envelopes.
  */
 const M1_FIT_VOLUMES:readonly HeadwearCuboid[]=[
- {name:'m1-main-bowl-fit',x:0,y:6.58,z:0,width:10.40,height:4.00,depth:10.52},
- {name:'m1-front-fit',x:0,y:5.0,z:-5.42,width:11.10,height:.94,depth:1.06},
- {name:'m1-rear-fit',x:0,y:5.0,z:5.25,width:11.10,height:.94,depth:1.06},
- {name:'m1-right-rim-fit',x:5.42,y:4.53,z:0,width:.26,height:.19,depth:11.06},
- {name:'m1-left-rim-fit',x:-5.42,y:4.53,z:0,width:.26,height:.19,depth:11.06}
+ {name:'m1-main-bowl-fit',x:0,y:6.95,z:0,width:12.35,height:4.06,depth:12.42},
+ {name:'m1-front-fit',x:0,y:4.57,z:-6.82,width:13.76,height:.33,depth:.60},
+ {name:'m1-rear-fit',x:0,y:4.57,z:6.54,width:13.76,height:.33,depth:.60},
+ {name:'m1-right-rim-fit',x:6.73,y:4.57,z:0,width:.30,height:.33,depth:13.68},
+ {name:'m1-left-rim-fit',x:-6.73,y:4.57,z:0,width:.30,height:.33,depth:13.68}
 ];
 /** R5H1 East German M56: wider shallow swept lower perimeter than M1.
  * Authored ring has real overlap in every axis before cube-union.

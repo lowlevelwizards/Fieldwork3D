@@ -9,32 +9,32 @@ import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 type Point=readonly [number,number,number];
 type Level={name:string;y:number;side:number;front:number;rear:number};
 export type M1SurfaceMode='steel'|'fitted'|'loose';
-/** Clockwise around the bowl when viewed from above (front at -Z).
- * Deliberately broad cheek and corner facets, no subdivision/rounding.
+/** Eight intentionally broad perimeter faces: four long flats and four
+ * large corners. The previous 14-point outline made the M1 look faceted
+ * rather than boldly stylized like the approved ACH/MICH family.
+ * +Y is up, -Z is front; do not add intermediate corner wedges.
  */
 export const M1_OUTLINE:readonly (readonly [number,number])[]=[
- [0,-1],[.61,-.97],[.94,-.73],[1,-.23],[1,.38],
- [.84,.79],[.47,.99],[0,1.03],[-.47,.99],[-.84,.79],
- [-1,.38],[-1,-.23],[-.94,-.73],[-.61,-.97]
+ [-.70,-1],[.70,-1],[1,-.70],[1,.70],
+ [.70,1],[-.70,1],[-1,.70],[-1,-.70]
 ] as const;
-/** Outside steel stages: one smaller roof, broad sloping shoulders,
- * continuous bowl wall, and one thin rolled perimeter. No box-stacks.
+/** Six contour stations: dominant flat top, SINGLE crown shoulder, long
+ * pot wall, strongly projecting rolled lip and small underside return.
+ * An oversized M1 relative to the operator head is intentional.
  */
 export const M1_STEEL_LEVELS:readonly Level[]=[
- {name:'crown',y:8.74,side:3.77,front:3.80,rear:3.82},
- {name:'upper-shoulder',y:7.90,side:4.43,front:4.49,rear:4.45},
- {name:'lower-shoulder',y:6.75,side:5.03,front:5.16,rear:5.04},
- {name:'bowl-wall',y:5.00,side:5.16,front:5.27,rear:5.21},
- {name:'rolled-rim-top',y:4.72,side:5.55,front:5.79,rear:5.53},
- {name:'rolled-rim-bottom',y:4.53,side:5.55,front:5.79,rear:5.53},
- {name:'inward-edge',y:4.56,side:5.35,front:5.59,rear:5.33},
- {name:'underside',y:4.76,side:5.08,front:5.18,rear:5.10}
+ {name:'crown',y:8.98,side:5.00,front:5.10,rear:4.95},
+ {name:'single-shoulder',y:7.66,side:6.03,front:6.15,rear:5.95},
+ {name:'long-pot-wall',y:5.06,side:6.17,front:6.29,rear:6.12},
+ {name:'rolled-rim-top',y:4.73,side:6.88,front:7.12,rear:6.84},
+ {name:'rolled-rim-bottom',y:4.40,side:6.88,front:7.12,rear:6.84},
+ {name:'inward-return',y:4.47,side:6.58,front:6.82,rear:6.54}
 ] as const;
 export const M1_FIT_LANDMARKS=Object.freeze({
- roof:8.74,rimBottom:4.53,frontExtent:-5.79,rearExtent:5.69,
- sideExtent:5.55,
- chinstrapRight:[5.08,4.96,-.87] as const,
- chinstrapLeft:[-5.08,4.96,-.87] as const
+ roof:8.98,rimBottom:4.40,frontExtent:-7.12,rearExtent:6.84,
+ sideExtent:6.88,
+ chinstrapRight:[6.08,4.94,-.96] as const,
+ chinstrapLeft:[-6.08,4.94,-.96] as const
 });
 const xyz=(level:Level,index:number):Point=>{
  const [fx,fz]=M1_OUTLINE[(index+M1_OUTLINE.length)%M1_OUTLINE.length];
@@ -43,27 +43,28 @@ const xyz=(level:Level,index:number):Point=>{
 };
 export const m1SurfacePoint=(mode:M1SurfaceMode,ring:number,index:number):Point=>
  xyz(m1Levels(mode)[ring],index);
+/** Cloth conforms to the enlarged exterior, without producing another
+ * visible stepped roof or hiding the deliberately oversized steel lip.
+ */
 const cloth=(mode:'fitted'|'loose'):readonly Level[]=>{
  const slack=mode==='loose'?1:0;
  return [
-  {name:'cloth-crown',y:8.88+slack*.13,side:3.94+slack*.12,
-   front:3.98+slack*.12,rear:4.00+slack*.12},
-  {name:'cloth-upper',y:8.00+slack*.09,side:4.63+slack*.16,
-   front:4.69+slack*.17,rear:4.64+slack*.16},
-  {name:'cloth-shoulder',y:6.79+slack*.07,side:5.23+slack*.18,
-   front:5.38+slack*.18,rear:5.26+slack*.17},
-  {name:'cloth-lower',y:5.21+slack*(-.08),side:5.34+slack*.19,
-   front:5.48+slack*.18,rear:5.38+slack*.17},
-  {name:'cloth-hem',y:5.03+slack*(-.13),side:5.34+slack*.21,
-   front:5.49+slack*.20,rear:5.38+slack*.20},
-  {name:'cloth-return',y:5.07+slack*(-.11),side:5.22+slack*.16,
-   front:5.36+slack*.15,rear:5.25+slack*.15}
+  {name:'cloth-crown',y:9.11+slack*.15,side:5.17+slack*.12,
+   front:5.28+slack*.13,rear:5.13+slack*.12},
+  {name:'cloth-shoulder',y:7.77+slack*.10,side:6.23+slack*.17,
+   front:6.36+slack*.17,rear:6.15+slack*.17},
+  {name:'cloth-pot-wall',y:5.29+slack*(-.08),side:6.37+slack*.20,
+   front:6.51+slack*.19,rear:6.32+slack*.19},
+  {name:'cloth-hem',y:5.04+slack*(-.12),side:6.39+slack*.22,
+   front:6.54+slack*.21,rear:6.34+slack*.20},
+  {name:'cloth-return',y:5.10+slack*(-.10),side:6.22+slack*.17,
+   front:6.37+slack*.16,rear:6.19+slack*.16}
  ];
 };
 export function m1Levels(mode:M1SurfaceMode):readonly Level[]{
  return mode==='steel'?M1_STEEL_LEVELS:cloth(mode);
 }
-/** One indexed, flat-faceted model with UV, print UV, atlas regions, AO
+/** One indexed, bold-faceted model with UV, print UV, atlas regions, AO
  * vertex colors and correct normal orientation. Open underside, no faux cap.
  */
 export function createM1ProfileGeometry(mode:M1SurfaceMode):THREE.BufferGeometry{
@@ -109,9 +110,9 @@ export function createM1ProfileGeometry(mode:M1SurfaceMode):THREE.BufferGeometry
   const top=levels[j],bottom=levels[j+1];
   const covered=mode!=='steel';
   const region:0|1|2|3=covered?j>=levels.length-2?1:0:
-   j===3||j===4?2:j>=5?1:j===2?1:0;
+   j===2||j===3?2:j===4?1:0;
   const tone=covered?j===0?.99:j>=levels.length-2?.91:.96:
-   j===4?.83:j>=5?.78:j===3?.91:j===2?.94:.975;
+   j===3?.82:j===4?.77:j===2?.91:j===1?.94:.975;
   for(let i=0;i<n;i++){
    const k=(i+1)%n,a=xyz(top,i),b=xyz(top,k),
     c=xyz(bottom,k),d=xyz(bottom,i);
@@ -130,6 +131,8 @@ export function createM1ProfileGeometry(mode:M1SurfaceMode):THREE.BufferGeometry
  g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
  g.setIndex(indices);g.computeVertexNormals();g.computeBoundingBox();
  g.userData.m1FacetedSurface=true;
+ g.userData.m1BoldSilhouetteRevision=2;
+ g.userData.m1OutlineSegments=M1_OUTLINE.length;
  g.userData.m1ProfileMode=mode;
  g.userData.m1ProfileStations=levels.map(x=>x.name);
  g.userData.exteriorQuads=quads;
