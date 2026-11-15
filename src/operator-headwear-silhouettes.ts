@@ -39,8 +39,8 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
   top:8.90,earEdge:2.20,foreheadEdge:4.90,billLength:0},
  'pasgt':{id:'pasgt',frontExtent:-6.34,rearExtent:5.68,
   top:8.78,earEdge:1.71,foreheadEdge:4.055,billLength:0},
- 'soviet-steel':{id:'soviet-steel',frontExtent:-5.53,rearExtent:5.53,
-  top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
+ 'soviet-steel':{id:'soviet-steel',frontExtent:-5.92,rearExtent:6.08,
+  top:9.65,earEdge:3.78,foreheadEdge:3.98,billLength:0},
  'ach':{id:'ach',frontExtent:-5.535,rearExtent:5.60,
   top:8.84,earEdge:2.04,foreheadEdge:4.40,billLength:0},
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
@@ -271,24 +271,30 @@ const DDR_M56_CUBOIDS:readonly HeadwearCuboid[]=[
   x:sign*6.22,y:4.80,z:.65,width:1.30,height:.85,depth:14.90
  }))
 ];
+/** B2-A2: NON-RENDERED coarse fit/shadow metadata; the SSh-40 is rendered
+ * exclusively by operator-ssh40-helmet-profile.ts. These loose envelopes
+ * reflect its expanded crown and asymmetric front/rear sweep and retain
+ * compatibility with consumers expecting a cuboid list. They must never
+ * be used as a second visible shell or as exact mesh geometry.
+ */
 const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'ssh40-main-dome',x:0,y:7.73,z:0,
-  width:9.15,height:1.75,depth:9.25},
- {name:'ssh40-bowl-front',x:0,y:5.97,z:-4.56,
-  width:10.00,height:3.10,depth:1.04},
- {name:'ssh40-bowl-rear',x:0,y:5.64,z:4.56,
-  width:10.00,height:3.78,depth:1.04},
+ {name:'ssh40-main-dome-fit',x:0,y:8.86,z:0,
+  width:9.20,height:1.58,depth:9.40},
+ {name:'ssh40-bowl-front-fit',x:0,y:6.40,z:-5.12,
+  width:11.20,height:3.80,depth:1.44},
+ {name:'ssh40-bowl-rear-fit',x:0,y:6.19,z:5.22,
+  width:11.20,height:4.28,depth:1.50},
  ...([-1,1] as const).map(sign=>({
-  name:sign===-1?'ssh40-bowl-left':'ssh40-bowl-right',
-  x:sign*4.51,y:5.71,z:0,width:.98,height:3.62,depth:10.16
+  name:sign<0?'ssh40-bowl-left-fit':'ssh40-bowl-right-fit',
+  x:sign*4.95,y:6.40,z:.08,width:1.25,height:3.80,depth:11.20
  })),
- {name:'ssh40-integrated-front-edge',x:0,y:4.79,z:-5.00,
-  width:10.80,height:1.48,depth:1.06},
- {name:'ssh40-integrated-rear-edge',x:0,y:4.14,z:5.00,
-  width:10.80,height:1.48,depth:1.06},
+ {name:'ssh40-integrated-front-edge-fit',x:0,y:4.33,z:-5.45,
+  width:11.72,height:.70,depth:.94},
+ {name:'ssh40-integrated-rear-edge-fit',x:0,y:3.78,z:5.54,
+  width:11.72,height:.80,depth:1.08},
  ...([-1,1] as const).map(sign=>({
-  name:sign===-1?'ssh40-integrated-left-edge':'ssh40-integrated-right-edge',
-  x:sign*4.875,y:4.44,z:0,width:1.05,height:1.48,depth:11.06
+  name:sign<0?'ssh40-integrated-left-edge-fit':'ssh40-integrated-right-edge-fit',
+  x:sign*5.41,y:4.30,z:.08,width:.90,height:1.04,depth:12.00
  }))
 ];
 /** Stage 1E — confident, subtractive helmet silhouettes.

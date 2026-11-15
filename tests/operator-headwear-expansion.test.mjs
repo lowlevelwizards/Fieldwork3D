@@ -55,7 +55,8 @@ test('all six current authored heads render one authoritative exterior per wardr
   assert.ok(Math.abs(b.minZ-m.frontExtent)<(id==='pasgt'?.15:.002),
    id+' front metadata');
   assert.ok(Math.abs(b.maxZ-m.rearExtent)<.002,id+' rear metadata');
-  assert.ok(m.top-A.skullTop<2.2,id+' crown cannot float above skull');
+  assert.ok(m.top-A.skullTop<(id==='soviet-steel'?2.8:2.2),
+   id+' crown height must stay within the intentional shell silhouette');
   for(let i=1;i<v.length;i++){
    assert.ok(v.slice(0,i).some(p=>
     overlap(p,v[i],'x')>.10&&overlap(p,v[i],'y')>.10&&
@@ -175,26 +176,25 @@ test('PASGT front peak and deep skirt differentiate it from protected ACH',()=>{
  assert.ok(!covering(v,0,4.3,-3.5),'PASGT must expose face');
 });
 
-test('SSh-40 is a single deep steel pot with a subtle INTEGRATED lower flare',()=>{
- const v=headwearCuboidVolumes('soviet-steel');
- assert.equal(v.length,9);
- const crown=by(v,'ssh40-main-dome'),side=by(v,'ssh40-bowl-right');
- const rim=by(v,'ssh40-integrated-right-edge');
- const front=by(v,'ssh40-integrated-front-edge');
+test('B2-A2 SSh-40 fit metadata is expanded and remains hollow',()=>{
+ const v=headwearCuboidVolumes('soviet-steel'),m=M['soviet-steel'];
+ assert.equal(v.length,9,'coarse old cuboid envelopes are fit metadata only');
+ const crown=by(v,'ssh40-main-dome-fit'),side=by(v,'ssh40-bowl-right-fit');
+ const rim=by(v,'ssh40-integrated-right-edge-fit');
+ const front=by(v,'ssh40-integrated-front-edge-fit');
  assert.ok(crown&&side&&rim&&front);
- // ONE dome-to-bowl step, ONE restrained shell-edge flare. No shelves.
- const crownOuter=crown.width/2,bodyOuter=side.x+side.width/2;
- const rimOuter=rim.x+rim.width/2;
- assert.ok(bodyOuter-crownOuter>.35&&bodyOuter-crownOuter<.5);
- assert.ok(rimOuter-bodyOuter>=.35&&rimOuter-bodyOuter<=.41,
-  'lower flare must never become an umbrella/kettle brim');
- assert.ok(front.depth<1.2,'not a broad floating frontal visor');
- assert.ok(lower(v,4.5,0)<A.brow,'steel shell hangs over ear region');
- assert.ok(M['soviet-steel'].foreheadEdge>A.earTop);
- assert.ok(!covering(v,0,4.3,0),'steel interior is hollow');
- assert.ok(!covering(v,0,5.0,-3.5),'front of face stays open');
- assert.ok(bounds(v).maxX<5.5,'outer width remains a fitted steel pot');
- assert.ok(bounds(v).minZ> -5.7,'short shell lip, not kettle brim');
+ assert.ok(side.x+side.width/2-crown.width/2>.8,
+  'broad bell below a smaller dome instead of stepped pot');
+ assert.ok(rim.x+rim.width/2-side.x-side.width/2<.35,
+  'rolled perimeter is restrained rather than a projecting shelf');
+ assert.ok(front.depth<1.2,'no floating frontal visor');
+ assert.ok(lower(v,5.1,0)<A.brow,'steel edge wraps temple');
+ assert.ok(m.foreheadEdge<=A.earTop,'low front rim, no upper eyebrow shelf');
+ assert.ok(!covering(v,0,4.3,0),'coarse shell proxy leaves skull interior hollow');
+ assert.ok(!covering(v,0,5.0,-3.5),'front of face remains open');
+ assert.ok(Math.abs(bounds(v).maxX-5.86)<1e-6);
+ assert.ok(Math.abs(bounds(v).minZ+5.92)<1e-6);
+ assert.ok(Math.abs(bounds(v).maxZ-6.08)<1e-6);
 });
 
 test('Stage 1L model contours expose only purposeful mass transitions',()=>{
@@ -262,29 +262,27 @@ test('Stage 1N PASGT preserves clean aligned side and rear joins',()=>{
  assert.ok(M.pasgt.earEdge< M.ach.earEdge);
 });
 
-test('Stage 1N steel rim thickens while keeping intentional brow/ear/nape profiles',()=>{
+test('B2-A2 SSh-40 broad helmet proxy follows its front/side/rear sweep',()=>{
  const v=headwearCuboidVolumes('soviet-steel');
- const names=['ssh40-integrated-front-edge','ssh40-integrated-rear-edge',
-  'ssh40-integrated-left-edge','ssh40-integrated-right-edge'];
+ const names=['ssh40-integrated-front-edge-fit','ssh40-integrated-rear-edge-fit',
+  'ssh40-integrated-left-edge-fit','ssh40-integrated-right-edge-fit'];
  const [front,rear,left,right]=names.map(n=>by(v,n));
  assert.ok(front&&rear&&left&&right);
- for(const p of [front,rear,left,right])assert.ok(Math.abs(p.height-1.48)<1e-6);
  const bottom=p=>p.y-p.height/2;
- assert.ok(Math.abs(bottom(front)-4.05)<1e-6,'front stays above upper ear and clears brow');
- assert.ok(Math.abs(bottom(left)-3.70)<1e-6,'side edge covers upper ear');
- assert.ok(Math.abs(bottom(right)-3.70)<1e-6);
- assert.ok(Math.abs(bottom(rear)-3.40)<1e-6,'rear provides a distinct nape drop');
- // Two broad 0.30–0.35 unit protective transitions, not tiny trim steps.
- assert.ok(bottom(front)-bottom(right)>.30);
- assert.ok(bottom(right)-bottom(rear)>.25);
+ assert.ok(Math.abs(bottom(front)-3.98)<1e-6);
+ assert.ok(Math.abs(bottom(left)-3.78)<1e-6);
+ assert.ok(Math.abs(bottom(right)-3.78)<1e-6);
+ assert.ok(Math.abs(bottom(rear)-3.38)<1e-6);
+ assert.ok(bottom(front)>bottom(right)&&bottom(right)>bottom(rear));
  assert.ok(Math.abs(front.width/2-(right.x+right.width/2))<1e-6,
-  'front and side rim X outer faces coincide; no 0.005 unit corner spur');
+  'front and side fit width align');
  assert.ok(Math.abs(rear.width/2-(-left.x+left.width/2))<1e-6);
- assert.ok(Math.abs(front.z-front.depth/2+right.depth/2)<1e-6,
-  'front and side rim Z outer faces coincide');
- assert.ok(Math.abs(rear.z+rear.depth/2-right.depth/2)<1e-6);
- assert.ok(Math.abs(M['soviet-steel'].foreheadEdge-4.05)<1e-6);
- assert.ok(Math.abs(M['soviet-steel'].earEdge-3.70)<1e-6);
+ assert.ok(Math.abs(front.z-front.depth/2-
+  (right.z-right.depth/2))<1e-6,'front fit extent aligns');
+ assert.ok(Math.abs(rear.z+rear.depth/2-
+  (right.z+right.depth/2))<1e-6,'rear fit extent aligns');
+ assert.ok(Math.abs(M['soviet-steel'].foreheadEdge-3.98)<1e-6);
+ assert.ok(Math.abs(M['soviet-steel'].earEdge-3.78)<1e-6);
 });
 
 test('Stage 1N bold secondary forms preserve all five bottom contacts and footprints',()=>{
@@ -295,9 +293,9 @@ test('Stage 1N bold secondary forms preserve all five bottom contacts and footpr
   ['boonie','boonie-front-band',1.88,4.54],
   ['beanie','beanie-front-cuff',2.42,3.745],
   ['pasgt','pasgt-integrated-front-peak',1.85,4.055],
-  ['soviet-steel','ssh40-integrated-front-edge',1.48,4.05],
-  ['soviet-steel','ssh40-integrated-rear-edge',1.48,3.40],
-  ['soviet-steel','ssh40-integrated-right-edge',1.48,3.70]
+  ['soviet-steel','ssh40-integrated-front-edge-fit',.70,3.98],
+  ['soviet-steel','ssh40-integrated-rear-edge-fit',.80,3.38],
+  ['soviet-steel','ssh40-integrated-right-edge-fit',1.04,3.78]
  ];
  for(const [id,name,height,bottom] of samples){
   const part=by(headwearCuboidVolumes(id),name);
@@ -316,11 +314,11 @@ test('Stage 1N bold secondary forms preserve all five bottom contacts and footpr
   close(b.y-b.height/2,4.52,name+' lower extent');
  }
  const steel=headwearCuboidVolumes('soviet-steel');
- for(const name of ['ssh40-integrated-front-edge','ssh40-integrated-rear-edge']){
-  close(by(steel,name).width,10.80,name+' outer width');
+ for(const name of ['ssh40-integrated-front-edge-fit','ssh40-integrated-rear-edge-fit']){
+  close(by(steel,name).width,11.72,name+' fit outer width');
  }
- for(const side of ['ssh40-integrated-left-edge','ssh40-integrated-right-edge'])
-  close(Math.abs(by(steel,side).x)+by(steel,side).width/2,5.40,side+' aligned outer X');
+ for(const side of ['ssh40-integrated-left-edge-fit','ssh40-integrated-right-edge-fit'])
+  close(Math.abs(by(steel,side).x)+by(steel,side).width/2,5.86,side+' aligned fit X');
  close(M.beanie.top,8.65,'tall beanie crown');
  // Each model still leaves space inside the shell and the face exposed.
  for(const id of ['patrol-cap','boonie','beanie','pasgt','soviet-steel']){
