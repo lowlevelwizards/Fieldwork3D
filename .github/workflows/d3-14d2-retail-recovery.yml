@@ -1,0 +1,85 @@
+name: D3.14D2 physically swept retail rehearsal recovery
+on:
+  pull_request:
+    paths:
+      - 'src/breach-retail-rehearsal-recovery.ts'
+      - 'src/breach-door-traversal-maneuver.ts'
+      - 'src/breach-route-transition.ts'
+      - 'tests/release-d3-14d2-retail-rehearsal.test.mjs'
+      - '.github/workflows/d3-14d2-retail-recovery.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: d3-14d2-retail-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  physical-retail-and-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and existing D3 invariant tests
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-14d2-retail-rehearsal.test.mjs \
+            tests/release-d3-14c2-cycle-world-lane.test.mjs \
+            tests/release-d3-14b2-narrow-leaf-exit.test.mjs \
+            tests/release-d3-11d-portal-handoff.test.mjs
+      - name: Retail D2 exact 45s real-motor reproduced incident
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=3 --audit-seed=5412896 --audit-scale=small \
+            --progress --route-quality --route-transitions \
+            --trace-actor=rook --trace-mode=authored \
+            > "$RUNNER_TEMP/d314d2-retail.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d314d2-retail.json','utf8'));
+          const m=r.rows[0].modes.find(m=>m.mode==='authored');
+          const a=m.operators.find(a=>a.id==='rook');
+          const sources=Object.fromEntries(Object.entries(m.routeTransitions.byActor)
+            .filter(([key])=>key.startsWith('rook:')));
+          console.log('D314D2_RETAIL',JSON.stringify({
+            arrived:a.arrived,remaining:a.remaining,physicalArrivals:m.arrivals,
+            sources,progress:r.progressSummary,route:r.routeQualitySummary,
+            safety:r.summary
+          }));
+          const s=r.summary;
+          if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts)
+            throw Error('D3.14D2 invalid physical motor or authored plan');
+          if((sources['rook:door-rehearsal-world']??0)<1)
+            throw Error('D3.14D2 never selected a physically swept full-GO rescue');
+          if(!a.arrived||m.arrivals<4)
+            throw Error('D3.14D2 did not bring retail Rook and squad to real GO');
+          NODE
+      - name: Frozen historical 88 operator physical regression
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress --route-quality > "$RUNNER_TEMP/d314d2-historical.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d314d2-historical.json','utf8'));
+          const s=r.summary,p=r.progressSummary,q=r.routeQualitySummary;
+          console.log('D314D2_HISTORICAL',JSON.stringify({summary:s,progress:p,route:q}));
+          if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts||
+             s.physicalArrivals<80||s.physicalCompletedFour<18||
+             s.completedFour<21||s.stallEpisodes>8||s.retries>5||
+             p.suspectedLoops||p.sustainedStill||q.searches>2850)
+            throw Error('D3.14D2 historical movement regression');
+          NODE
+      - name: Save immutable actual motor traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-14d2-retail-and-88-operator-45s
+          path: ${{ runner.temp }}/d314d2-*.json
+          retention-days: 90
