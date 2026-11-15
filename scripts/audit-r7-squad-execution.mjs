@@ -154,7 +154,7 @@ function run(site,seed,kind){
    traceActor:utilityTrace&&seed===31162&&kind==='authored'?'rook':null,
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
-  const routeWitness=routeTransitions?{counts:{},byActor:{},events:[],
+  const routeWitness=routeTransitions?{counts:{},byActor:{},rejectReasons:{},events:[],
    escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
   // Offline-only evidence: associate one physical LEAF escape with the
   // next immediate reacquisition for the SAME actor and door. A route that
@@ -162,13 +162,16 @@ function run(site,seed,kind){
   const recentLeafEscapes=routeWitness?new Map():null;
   const recordRoute=routeWitness?(e)=>{
    routeWitness.counts[e.source]=(routeWitness.counts[e.source]??0)+1;
+   if(e.source==='door-handoff-reject')
+    routeWitness.rejectReasons[e.reason??'unknown']=
+      (routeWitness.rejectReasons[e.reason??'unknown']??0)+1;
    const key=e.actorId+':'+e.source;
    routeWitness.byActor[key]=(routeWitness.byActor[key]??0)+1;
    if(e.source==='door-leaf-escape'){
     if(!e.next.length)
      recentLeafEscapes.set(e.actorId,{at:e.seconds,doorId:e.doorId});
     else recentLeafEscapes.delete(e.actorId);
-   }else if(e.source!=='initial-intel')
+   }else if(e.source!=='initial-intel'&&e.source!=='door-handoff-reject')
     recentLeafEscapes.delete(e.actorId);
    if(e.source==='initial-intel'){
     const prior=recentLeafEscapes.get(e.actorId);
@@ -185,7 +188,7 @@ function run(site,seed,kind){
    const selectedActor=traceActor??(utilityTrace&&seed===31162&&
      kind==='authored'?'rook':null);
    if(selectedActor===e.actorId&&
-      (!traceMode||kind===traceMode)&&routeWitness.events.length<400)
+      (!traceMode||kind===traceMode)&&routeWitness.events.length<600)
      routeWitness.events.push({...e,seconds:round(e.seconds),
       prior:e.prior.slice(0,4),next:e.next.slice(0,4)});
   }:null;
@@ -524,6 +527,10 @@ const transitionSummary=routeTransitions?{
  counts:results.reduce((all,mode)=>{
   for(const [source,count] of Object.entries(mode.routeTransitions?.counts??{}))
    all[source]=(all[source]??0)+count;
+  return all;},{}),
+ rejectReasons:results.reduce((all,mode)=>{
+  for(const [reason,count] of Object.entries(mode.routeTransitions?.rejectReasons??{}))
+   all[reason]=(all[reason]??0)+count;
   return all;},{}),
  escapeReacquirePairs:results.reduce((n,mode)=>
   n+(mode.routeTransitions?.escapeReacquirePairs??0),0),
