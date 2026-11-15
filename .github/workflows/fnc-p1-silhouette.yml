@@ -1,14 +1,26 @@
-name: FNC P2 isolated exterior modeling acceptance
+name: FNC P2 Arsenal release integration
 on:
   pull_request:
     branches: [main]
     paths:
       - 'src/weapons/geometry/fnc-stage1-blockout.ts'
+      - 'src/weapons/geometry/fnc-silhouettes.ts'
+      - 'src/equipment-weapon-families.ts'
+      - 'src/equipment-weapon-assemblies.ts'
+      - 'src/breach-modular-weapon-geometry.ts'
+      - 'src/breach-weapon-contact-zones.ts'
+      - 'src/breach-weapon-presentation.ts'
+      - 'src/arsenal/catalog.ts'
+      - 'src/arsenal/magazine-identities.ts'
+      - 'src/arsenal/naming.ts'
+      - 'src/operator-carried-magazines.ts'
       - 'src/weapons/geometry/fnc-handguard-profiles.ts'
       - 'src/fnc-stage1-lab.ts'
       - 'fnc-stage1-lab.html'
       - 'tests/weapon-fnc-stage1-blockout.test.mjs'
       - 'tests/weapon-fnc-p2-forms.test.mjs'
+      - 'tests/weapon-fnc-arsenal-live.test.mjs'
+      - 'scripts/smoke-fnc-arsenal.mjs'
       - 'vite.config.ts'
       - 'scripts/smoke-fnc-p1-visual.mjs'
       - '.github/workflows/fnc-p1-silhouette.yml'
@@ -22,17 +34,21 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs
+      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/arsenal-v2-catalog.test.mjs
       - run: npm run check
       - run: npm run build
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install --with-deps chromium
       - name: Capture five-rifle real WebGL comparison in four views
         run: node scripts/smoke-fnc-p1-visual.mjs
+      - name: Render FN FNC Arsenal desktop and mobile Workbench
+        run: node scripts/smoke-fnc-arsenal.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fnc-p2-exterior-forms-webgl-views
-          path: fnc-p1-captures/
+          name: fnc-p2-arsenal-deployment-views
+          path: |
+            fnc-p1-captures/
+            fnc-arsenal-captures/
           if-no-files-found: ignore
           retention-days: 14
