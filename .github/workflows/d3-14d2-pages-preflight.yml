@@ -1,3 +1,4 @@
+# Post-merge read-only proof: current main must be fully deployed and publicly stamped.
 name: D3.14D2 Pages release preflight
 on:
   pull_request:
