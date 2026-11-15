@@ -34,6 +34,13 @@ test('P3A: independent upper gas cover, three bold vents per side, fuller belly'
  assert.equal(where(g,'fncDistinctGasCover').length,1);
  assert.deepEqual(where(g,'fncGasVentSide').map(x=>x.userData.fncGasVentSide).sort(),[-1,1]);
  assert.ok(where(g,'fncGasVentSide').every(x=>x.userData.fncGasVentCount===3));
+ const cover=box(where(g,'fncDistinctGasCover')[0]);
+ const polymer=box(where(g,'fncP3FullerBelly')[0]);
+ assert.ok(cover.max.z>polymer.max.z+.04,
+  'front vent cover must visibly stand outside the thick polymer sides');
+ const right=box(where(g,'fncGasVentSide').find(x=>x.userData.fncGasVentSide===1));
+ assert.ok(right.min.z>cover.max.z+.015,
+  'vent marks must stay visible without touching the cover side plane');
  assert.equal(where(g,'fncGrooveSide').length,2);
  assert.equal(where(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,8);
  assert.ok(box(where(g,'fncDistinctGasCover')[0]).max.y>
