@@ -12,6 +12,7 @@ import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines}
  from './ar-magazine-profiles.ts';
 import {addFNCFacetedForearm,addFNCHandstopLip,addFNCForearmMarks,addFNCUpperGasBox}
  from './fnc-handguard-profiles.ts';
+import {FNC_FRONT_P13} from './fnc-front-layout.ts';
 
 export const FNC_P1=Object.freeze({
  stockRearX:-14.85,receiverRearX:-6.38,receiverFrontX:4.12,
@@ -27,7 +28,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p12-tight-fore-end-fieldwork-exterior';
+ root.name='fnc-p13-unified-front-assembly-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -191,8 +192,9 @@ export function buildFNCStage1Silhouette(
   rib.castShadow=false;rib.receiveShadow=false;
  }
 
- // P12: retain the two distinct mark languages, but move the upper
- // cover down/back into the body and seat; no exploded-looking gap.
+ // P13: derive every visual component from one front-layout contract.
+ // The polymer extends under the gas cover; the six-sided collar wraps
+ // the polymer rather than looking like a full-height blade.
  addFNCFacetedForearm(root,mat('handguard'));
  addFNCHandstopLip(root,mat('handguard'));
  addFNCUpperGasBox(root,mat('steel'));
@@ -227,26 +229,29 @@ export function buildFNCStage1Silhouette(
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
  }
- // P12: pull the broad gas/sight seat back 0.50 art units and keep it
- // firmly intersecting the longer vented cover (no isolated sight tower).
+ // One minimal contoured gas/sight base. Its rear roof begins at the
+ // gas-cover roof height, and only climbs gently under the sight ears.
+ // It shares the front-layout stations instead of separately tuning them.
+ const s=FNC_FRONT_P13.sight;
  const front=p('barrel',[
-  [12.62,-.32],[12.68,.90],[13.25,1.30],
-  [15.42,1.30],[15.42,-.32]
- ],2.04,'steel');
+  [s.baseStartX,s.baseBottomY],[s.baseStartX,s.baseRearTopY],
+  [s.baseShoulderX,s.baseRearTopY],
+  [s.baseFlatStartX,s.baseTopY],
+  [s.baseEndX,s.baseTopY],[s.baseEndX,s.baseBottomY]
+ ],s.baseDepth,'steel');
+ front.userData.fncP13CompactIntegratedSightBase=true;
  front.userData.fncP7ContinuousGasSightSeat=true;
  front.userData.fncFrontSightBase=true;
  front.userData.fncP4IntegratedGasSeat=true;
- // Share the FAL's actual Fieldwork grammar: TWO chunky cuboid ears,
- // with no central miniature post or sculpted horseshoe. A real open
- // void between ears reads cleanly from the side, front and obliques.
- // Each ear intersects the broad base. Only two simple meshes are needed.
+ // Exactly the FAL-family two-cuboid vocabulary, reduced to sit on the
+ // flatter base. Keep one genuine empty gap, no third post or hood.
  for(const side of [-1,1] as const){
-  const ear=b('barrel',14.66,2.08,side*.72,
-   .76,2.02,.80,'steel');
+  const ear=b('barrel',s.earX,s.earY,side*s.earHalfSpacing,
+   s.earLength,s.earHeight,s.earDepth,'steel');
   ear.userData.fncP12FALLikeFrontEar=side<0?'left':'right';
+  ear.userData.fncP13CompactFrontEar=true;
   ear.userData.fncProtectedFrontSight=true;
   if(side===-1){
-   // Historical tags keep the shared Arsenal inspections working.
    ear.userData.fncP5OversizedFrontSight=true;
    ear.userData.fncP6BroadProtectedSight=true;
   }
