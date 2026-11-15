@@ -31,7 +31,7 @@ jobs:
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --site-index=8 --audit-seed=9492261 --audit-scale=small \
             --route-transitions --progress --route-quality \
-            --trace-actor=vale --trace-mode=entry \
+            --trace-actor=vale --trace-mode=entry --d315b-route-probe \
             > "$RUNNER_TEMP/d315b2-motel.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -42,7 +42,7 @@ jobs:
             .filter(([k])=>k.startsWith('vale:')));
           console.log('D315B2_MOTEL',JSON.stringify({
             arrivals:m.arrivals,complete:m.complete,operators:m.operators,
-            sources,stalls:m.stallEpisodes,route:r.routeQualitySummary,
+            sources,finalPhysicalRoute:m.d315bRouteEvidence,stalls:m.stallEpisodes,route:r.routeQualitySummary,
             progress:r.progressSummary,safety:s
           }));
           if(s.exceptions||s.invalidPositions||s.corruptedPlans||
