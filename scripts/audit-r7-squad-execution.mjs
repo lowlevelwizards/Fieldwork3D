@@ -13,7 +13,7 @@
 import {generateSite} from '../src/breach-site.ts';
 import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
-import {activateSite,OPERATOR_RADIUS,doorLeafSegment,
+import {activateSite,OPERATOR_RADIUS,doorLeafSegment,pointToSegment,
  setRouteGridAuditObserver} from '../src/breach-core.ts';
 import {setTransientRouteObserver}
  from '../src/breach-route-transition.ts';
@@ -35,13 +35,15 @@ import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} fro
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeToNextOperableDoor,
- recoverNormalLane,routeWithSqueezeIntel}
+ recoverNormalLane,routeWithSqueezeIntel,routeWithNormalWorld}
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {physicalOrderOutcome,successfulSquadExecution}
  from '../src/breach-order-outcome.ts';
 import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.ts';
+import {relevantStableOpenLeaf,selectPhysicalOpenLeafRejoin}
+ from '../src/breach-physical-leaf-rejoin.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {classifyCProgressWindow} from '../src/breach-d3-c-progress.ts';
@@ -64,6 +66,9 @@ const progress=process.argv.includes('--progress');
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
+// D3.17E: offline-only, post-run real geometry witness for blocked bodies.
+// It never runs in live movement, advances the simulation, or adopts a route.
+const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
@@ -702,6 +707,31 @@ function run(site,seed,kind){
    }),recentNetMovement,activeOrder:actor.plan[0]?.kind??null,
     blockedTime:round(actor.blockedTime),navCount:actor.nav.length};
   });
+  const leafRecoveryEvidence=leafRejoinDiagnostic?actors.filter(a=>
+    a.blockedTime>=.85&&a.plan[0]?.kind==='move').map(a=>{
+    const goal=a.plan[0].p,world=sessionWorldGeometry(session);
+    const leaf=relevantStableOpenLeaf(a.p,session.doors,
+       a.doorTraversal?.doorId??null);
+    const sweep=(from,to)=>sweptBodyClear(from,to,
+      session.doors,OPERATOR_RADIUS,world);
+    const physical=leaf?selectPhysicalOpenLeafRejoin(
+      a.p,goal,a.nav,leaf,sweep,
+      p=>bodyClear(p,session.doors,OPERATOR_RADIUS,world),
+      (from,to)=>routeWithNormalWorld(from,to,session.doors,world)):[];
+    const nearby=session.doors.filter(door=>door.open)
+      .map(door=>({id:door.id,
+        gap:round(pointToSegment(a.p,doorLeafSegment(door))),
+        fraction:round(door.openFraction??0)}))
+      .sort((a,b)=>a.gap-b.gap).slice(0,4);
+    return {actor:a.id,blocker:a.lastBlocker,blockedTime:round(a.blockedTime),
+      position:{...a.p},goal:{...goal},navCount:a.nav.length,
+      firstNav:a.nav[0]??null,lastNav:a.nav.at(-1)??null,
+      firstNavFullBodyClear:a.nav.length?sweep(a.p,a.nav[0]):null,
+      firstNavStandable:a.nav.length?bodyClear(a.nav[0],
+        session.doors,OPERATOR_RADIUS,world):null,
+      leaf:leaf?.id??null,nearestOpenLeaves:nearby,
+      selectedJoin:physical.slice(0,5),selectedNodeCount:physical.length};
+   }):[];
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
    successful,queueDrained:complete,
    cancelledOrders:actors.reduce((n,a)=>n+(a.failedOrders??0),0),
@@ -712,6 +742,7 @@ function run(site,seed,kind){
    ...(d314cFrontProbe?{d314cFrontEvidence}:{}),
    ...(d315bRouteProbe?{d315bRouteEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
+   ...(leafRejoinDiagnostic?{leafRecoveryEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({

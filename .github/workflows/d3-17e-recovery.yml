@@ -44,6 +44,7 @@ jobs:
             node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
               11 2700 --site-index="$2" --audit-seed="$3" \
               --audit-scale="$4" --progress --route-transitions \
+              --leaf-rejoin-diagnostic \
               --trace-actor="$6" --trace-mode="$5" \
               > "$RUNNER_TEMP/d317e-$1.json"
           done
@@ -61,6 +62,7 @@ jobs:
                 waiting:a.activeOrder,remainingOrders:a.remainingOrders
               })),
               transitions:m.routeTransitions.byActor,
+              leafRecoveryEvidence:m.leafRecoveryEvidence,
               summary:x.summary,progress:x.progressSummary
             }));
             if(x.summary.invalidPositions||x.summary.physicsStepViolations||
