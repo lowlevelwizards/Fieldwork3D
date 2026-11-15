@@ -14,15 +14,15 @@ const all=(g,k)=>g.children.filter(x=>x.userData[k]);
 const box=x=>new THREE.Box3().setFromObject(x);
 const size=(g,axis)=>box(g).max[axis]-box(g).min[axis];
 const meets=(a,b)=>box(a).intersectsBox(box(b));
-test('P13 extended polymer still shorter than slim gas cover, all parts connected',()=>{
+test('P15 tall polymer still shorter than elevated gas cover, all parts connected',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const polymer=get(g,'fncP11ShortWidePolymer');
  const gas=get(g,'fncP11LongSlimVentedCover');
  const lip=get(g,'fncP11HandstopLip'),base=get(g,'fncP7ContinuousGasSightSeat');
  assert.ok(polymer&&gas&&lip&&base);
- assert.ok(size(polymer,'x')>7.65&&size(polymer,'x')<7.75);
- assert.ok(size(gas,'x')>8.8&&size(gas,'x')<9.0);
- assert.ok(size(gas,'x')>size(polymer,'x')+1.1);
+ assert.ok(size(polymer,'x')>8.20&&size(polymer,'x')<8.30);
+ assert.ok(size(gas,'x')>11.35&&size(gas,'x')<11.45);
+ assert.ok(size(gas,'x')>size(polymer,'x')+3.0);
  assert.ok(size(gas,'z')<size(polymer,'z')*.7);
  assert.ok(meets(polymer,gas)&&meets(gas,base));
  assert.ok(meets(polymer,lip));

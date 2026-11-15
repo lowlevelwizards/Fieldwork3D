@@ -17,8 +17,8 @@ test('P13 further nested front end preserves physical-overlap contracts',()=>{
  const polymer=get(g,'fncP11ShortWidePolymer'),gas=get(g,'fncP12CompressedGasCover'),
   stop=get(g,'fncP12ChunkyHandstop'),seat=get(g,'fncP7ContinuousGasSightSeat');
  assert.ok(polymer&&gas&&stop&&seat);
- assert.ok(box(gas).min.x<5.1&&box(gas).max.x<14.0);
- assert.ok(box(gas).min.y<-.48&&box(gas).max.y<.6);
+ assert.ok(box(gas).min.x<2.60&&box(gas).max.x<14.0);
+ assert.ok(box(gas).min.y<-.40&&box(gas).max.y>1.48);
  assert.ok(box(gas).min.y<box(polymer).max.y-.35,
   'gas cover must nest visibly down into polymer');
  assert.ok(box(seat).min.x<12.7&&box(seat).max.x<15.5);
@@ -28,7 +28,7 @@ test('P13 further nested front end preserves physical-overlap contracts',()=>{
  assert.ok(touch(stop,polymer)&&touch(stop,gas),
   'molded stop must belong to both overlapping visual zones');
  assert.ok(size(gas,'z')<size(polymer,'z')*.70);
- assert.ok(size(gas,'x')>size(polymer,'x')+1.1);
+ assert.ok(size(gas,'x')>size(polymer,'x')+3.0);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -38,7 +38,7 @@ test('P13 handstop has one faceted molded collar and no rectangular fin',()=>{
  assert.ok(stop&&polymer);
  assert.ok(size(stop,'x')>.50&&size(stop,'x')<.60);
  assert.ok(size(stop,'z')>size(polymer,'z')+.11);
- assert.ok(size(stop,'y')>2.05&&size(stop,'y')<2.15);
+ assert.ok(size(stop,'y')>2.60&&size(stop,'y')<2.80);
  assert.equal(stop.geometry.type,'BufferGeometry');
  assert.equal(all(g,'fncP12ChunkyHandstop').length,1);
  clearWeaponSilhouette(g);m.dispose();
