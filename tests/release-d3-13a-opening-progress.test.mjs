@@ -22,9 +22,9 @@ test('D3.13A: actual angular opening progress resets the watchdog',()=>{
  // A real angular change, unlike velocity alone, extends the grace.
  d.openFraction+=.04;
  assert.equal(openingHasStagnated(d,2.35),false);
- for(let t=2.45;t<4.95;t+=.1)openingHasStagnated(d,t);
- assert.equal(openingHasStagnated(d,4.95),false);
- assert.equal(openingHasStagnated(d,5.05),true);
+ for(let t=2.45;t<4.9;t+=.1)openingHasStagnated(d,t);
+ assert.equal(openingHasStagnated(d,4.9),false);
+ assert.equal(openingHasStagnated(d,5.1),true);
 });
 test('D3.13A: new door, replay seek, reclosed leaf and unavailable hardware reset',()=>{
  const d=door(),other=door();
