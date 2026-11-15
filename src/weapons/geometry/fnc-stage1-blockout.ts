@@ -157,8 +157,8 @@ export function buildFNCStage1Silhouette(
 
  // A substantial lower heel and one bold rearward rake, not a wafer wedge.
  const grip=p('grip',[
-  [-5.36,-2.26],[-3.47,-2.26],[-3.65,-2.68],
-  [-4.74,-5.72],[-6.58,-5.88],[-6.79,-5.59]
+  [-5.56,-2.26],[-3.35,-2.26],[-3.61,-2.68],
+  [-4.79,-5.62],[-6.60,-5.75],[-6.79,-5.52]
  ],2.18,'grip');
  grip.userData.fncGrip=true;
  // Shared 30-round STANAG centerline/normal math: not another hand-tuned
