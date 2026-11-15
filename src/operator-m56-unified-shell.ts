@@ -1,4 +1,4 @@
-/** S1-A1C: anatomically swept one-piece DDR M56 stamped steel shell.
+/** S1-A1D: deliberately low-poly, angular DDR M56 stamped steel shell.
  * Boxy Fieldwork interpretation of the real M56's shallow crown,
  * diagonal bell and striking long swept rear flare.
  * NO stacked cuboids, extra ridge bands or M1-style rolled brim.
@@ -12,43 +12,42 @@ type Point=readonly [number,number,number];
 type Ring={name:string;y:number;side:number;front:number;rear:number;
  frontRise?:number;rearDrop?:number;earDip?:number};
 export const M56_PERIMETER:readonly (readonly [number,number])[]=[
- // The side facets need two extra stations per side to articulate
- // the behind-ear change of slope. They are NOT ear cutouts or trim.
- [-.72,-1],[.72,-1],[1,-.72],[1,-.18],[1,.31],[1,.72],
- [.72,1],[-.72,1],[-1,.72],[-1,.31],[-1,-.18],[-1,-.72]
+ // Eight purposeful corners: front visor, front-side, behind-ear hinge,
+ // and projecting rear nape. Two side slope changes, NO ear notch.
+ [-.72,-1],[.72,-1],[1,-.62],[1,.20],
+ [.72,1],[-.72,1],[-1,.20],[-1,-.62]
 ] as const;
-/** Three readable external masses: a slightly taller angular crown,
- * one sloping bell and its integral swept lower skirt. Four side-only
- * profile stations carve the recognizable ear-to-nape slope without a
- * PASGT-like cutout. The lower 0.13 is the actual steel termination,
- * NOT a separate projecting rim or a second material-colored band.
- * Preserve the accepted overall X/Z maxima and the hollow skull fit.
+/** Exactly seven profile rings and eight perimeter corners produce
+ * 112 triangles including crown and recessed interior, down from 192.
+ * One large nearly vertical upper bell meets ONE unmistakably angled
+ * lower protective skirt. No decorative intermediate terraces.
+ * Hem is a continuous descending visor / ear / rear contour; not an
+ * M1 brim, PASGT ear cut, or a protruding polygon ear guard.
+ * Exterior X/Z maxima, cap top and square-head clearance are retained.
  */
 export const M56_SHELL_RINGS:readonly Ring[]=[
- {name:'reduced-angular-crown',y:8.775,side:3.08,front:3.48,rear:3.72},
- {name:'single-upper-shoulder',y:7.86,side:5.60,front:5.70,rear:6.00},
- // One long bell-to-skirt sweep, not parallel terraces.
- // The front visor rises; the rear/nape hangs lower than the ear zone.
- {name:'flowing-upper-skirt',y:6.48,side:6.03,front:6.15,rear:7.12,
-  frontRise:.11,rearDrop:.17,earDip:.06},
- {name:'integral-flared-edge-top',y:4.65,side:6.77,front:6.75,rear:8.04,
-  frontRise:.48,rearDrop:.82,earDip:.14},
- {name:'thin-steel-edge-bottom',y:4.52,side:6.87,front:6.80,rear:8.10,
-  frontRise:.49,rearDrop:.86,earDip:.21},
- {name:'inward-stamped-return',y:4.60,side:6.38,front:6.34,rear:7.58,
-  frontRise:.44,rearDrop:.80,earDip:.19},
+ {name:'square-faceted-crown',y:8.775,side:3.08,front:3.48,rear:3.72},
+ {name:'broad-upper-shoulder',y:7.87,side:5.58,front:5.70,rear:6.00},
+ {name:'lower-bell-angular-break',y:5.95,side:5.79,front:5.93,rear:6.75,
+  frontRise:.12,rearDrop:.12},
+ // Strong lower outward sweep: front up, ear protected, nape deep.
+ {name:'swept-stamped-edge',y:4.47,side:6.87,front:6.80,rear:8.10,
+  frontRise:.83,rearDrop:1.12,earDip:.12},
+ // Inward rolled steel return, NOT another visible painted skirt tier.
+ {name:'inset-steel-return',y:4.55,side:6.47,front:6.40,rear:7.65,
+  frontRise:.80,rearDrop:1.09,earDip:.10},
  {name:'recessed-inner-wall',y:7.40,side:5.50,front:5.58,rear:5.94},
  {name:'recessed-interior-ceiling',y:7.75,side:4.90,front:5.00,rear:5.20}
 ] as const;
 export const M56_SHELL_FIT=Object.freeze({
  top:8.775,outerSide:6.87,frontExtent:-6.80,rearExtent:8.10,
- frontHem:5.01,sideHem:3.86,rearHem:3.66
+ frontHem:5.30,sideHem:4.126,rearHem:3.35
 });
 // A single contour function drives the outer steel and inset return.
-// Around the ear the downward sweep changes gradient, but never makes
- // a sharp hole or independent apron. The ends remain clean front/rear.
+// The single behind-ear corner defines the clear change of slope;
+ // no smooth interpolated staircase or independently attached panel.
 export const m56EarTransition=(fz:number):number=>
- Math.max(0,1-Math.abs(fz-.20)/.64);
+ Math.max(0,1-Math.abs(fz-.20)/.65);
 const sample=(ring:Ring,index:number):Point=>{
  const [fx,fz]=M56_PERIMETER[(index+M56_PERIMETER.length)%M56_PERIMETER.length];
  const along=fz<0?(ring.frontRise??0)*-fz:-(ring.rearDrop??0)*fz;
@@ -114,19 +113,18 @@ export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
    [0,1,0],3,1);
  for(let j=0;j<M56_SHELL_RINGS.length-1;j++){
   const a=M56_SHELL_RINGS[j],b=M56_SHELL_RINGS[j+1];
-  // All visible bell/skirt faces use the SAME steel region. The old
-  // alternate atlas on j=3 read as an attached dark belt on mobile.
-  // Only the turned-under lip/interior use the recess material.
-  const region:0|1|2|3=j>=4?1:0;
-  const tone=j===0?.985:j===1?.97:j<=3?.96:
-   j===4?.88:j===5?.83:.85;
+  // Only the three large OUTER surfaces share painted steel. The narrow
+  // inward return and recessed lining use the shadow atlas.
+  const region:0|1|2|3=j>=3?1:0;
+  const tone=j===0?.985:j===1?.965:j===2?.965:
+   j===3?.87:j===4?.83:.85;
   for(let i=0;i<N;i++){
    const k=(i+1)%N,p=sample(a,i),q=sample(a,k),
     r=sample(b,k),s=sample(b,i);
    const mx=(p[0]+q[0]+r[0]+s[0])/4,
     mz=(p[2]+q[2]+r[2]+s[2])/4;
-   const toward:Point=j>=5?[-mx,0,-mz]:
-    j===4?[0,-1,0]:[mx,j===0?.35:0,mz];
+   const toward:Point=j>=4?[-mx,0,-mz]:
+    j===3?[0,-1,0]:[mx,j===0?.35:0,mz];
    face([p,q,r,s],toward,region,tone);
   }
  }
@@ -143,7 +141,9 @@ export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
  geo.setIndex(index);
  geo.computeBoundingBox();
  geo.userData.m56UnifiedStampedShell=true;
- geo.userData.m56ProfileRevision='S1-A1C';
+ geo.userData.m56ProfileRevision='S1-A1D';
+ geo.userData.m56TriangleBudget=112;
+ geo.userData.m56SingleLowerAngularBreak=true;
  geo.userData.m56EarToNapeContour=true;
  geo.userData.m56ConsistentQuadNormals=true;
  geo.userData.m56SkirtSwept=true;
