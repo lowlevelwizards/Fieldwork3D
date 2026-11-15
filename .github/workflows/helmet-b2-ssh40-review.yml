@@ -6,6 +6,10 @@ on:
       - src/operator-headwear-silhouettes.ts
       - src/operator-ssh40-helmet-profile.ts
       - src/operator-ssh40-retention.ts
+      - src/operator-helmet-cover-policy.ts
+      - src/operator-wardrobe-head-visuals.ts
+      - src/operator-studio.ts
+      - src/operator-ssh40-retention.ts
       - src/operator-wardrobe-head-visuals.ts
       - tests/helmet-b2-ssh40*.test.mjs
       - docs/helmet-b2-ssh40-identity-20261115.md
@@ -36,7 +40,8 @@ jobs:
             tests/operator-headwear-expansion.test.mjs \
             tests/operator-headwear-materials.test.mjs \
             tests/r5-historical-helmet-d.test.mjs \
-            tests/helmet-b2-ssh40-profile.test.mjs
+            tests/helmet-b2-ssh40-profile.test.mjs \
+            tests/helmet-b2-ssh40-retention.test.mjs
       - name: Production build and typecheck
         run: npm run build
       - name: 44-view identical mobile Studio comparison (SSh-40 / M1 / PASGT / DDR)
