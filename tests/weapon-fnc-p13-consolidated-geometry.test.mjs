@@ -26,7 +26,7 @@ test('P13: authoritative layout controls a longer polymer, still shorter than me
  assert.ok(near(box(polymer).max.x,L.polymer.endX));
  assert.ok(near(box(gas).min.x,L.gas.startX));
  assert.ok(near(box(gas).max.x,L.gas.endX));
- assert.ok(size(polymer,'x')>8.20&&size(polymer,'x')<8.30);
+ assert.ok(size(polymer,'x')>8.50&&size(polymer,'x')<8.55);
  assert.ok(size(gas,'x')-size(polymer,'x')>3.0);
  assert.ok(size(gas,'z')<size(polymer,'z')*.65);
  assert.ok(touch(polymer,gas)&&touch(gas,collar));

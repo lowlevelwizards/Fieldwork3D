@@ -20,8 +20,8 @@ test('P15 tall polymer still shorter than elevated gas cover, all parts connecte
  const gas=get(g,'fncP11LongSlimVentedCover');
  const lip=get(g,'fncP11HandstopLip'),base=get(g,'fncP7ContinuousGasSightSeat');
  assert.ok(polymer&&gas&&lip&&base);
- assert.ok(size(polymer,'x')>8.20&&size(polymer,'x')<8.30);
- assert.ok(size(gas,'x')>11.35&&size(gas,'x')<11.45);
+ assert.ok(size(polymer,'x')>8.50&&size(polymer,'x')<8.55);
+ assert.ok(size(gas,'x')>11.75&&size(gas,'x')<11.82);
  assert.ok(size(gas,'x')>size(polymer,'x')+3.0);
  assert.ok(size(gas,'z')<size(polymer,'z')*.7);
  assert.ok(meets(polymer,gas)&&meets(gas,base));
@@ -58,7 +58,7 @@ test('P12: two FAL-simple sight ears, real center void and no extra post',()=>{
  assert.equal(ears.length,2);
  assert.deepEqual(ears.map(e=>e.userData.fncP12FALLikeFrontEar).sort(),
   ['left','right']);
- assert.ok(ears.every(e=>e.geometry.type==='BoxGeometry'&&meets(e,base)));
+ assert.ok(ears.every(e=>e.geometry.type==='ExtrudeGeometry'&&meets(e,base)));
  const [left,right]=ears.slice().sort((a,b)=>box(a).min.z-box(b).min.z);
  assert.ok(box(left).max.z<box(right).min.z-.1,
   'negative space between ears must be genuine');

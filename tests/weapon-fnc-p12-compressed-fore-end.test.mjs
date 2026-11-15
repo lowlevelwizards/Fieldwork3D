@@ -47,7 +47,7 @@ test('P12 front is exactly two cuboid FAL-family ears without central prong',()=
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const ears=all(g,'fncP12FALLikeFrontEar');
  assert.equal(ears.length,2);
- assert.ok(ears.every(e=>e.geometry.type==='BoxGeometry'));
+ assert.ok(ears.every(e=>e.geometry.type==='ExtrudeGeometry'));
  const left=ears.find(e=>e.userData.fncP12FALLikeFrontEar==='left');
  const right=ears.find(e=>e.userData.fncP12FALLikeFrontEar==='right');
  assert.ok(left&&right);
