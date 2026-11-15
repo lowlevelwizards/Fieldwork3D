@@ -25,13 +25,14 @@ import {reloadMechanismFor} from '../src/breach-reload-performance.ts';
 import {FAL_BARREL_ART} from '../src/weapons/geometry/fal-barrel-profiles.ts';
 
 const rifle=()=>selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fal-5000');
-test('FAL S2: one authentic factory option and just six authored core parts',()=>{
+test('FAL S2/P13: four compatible factory references with shared receiver',()=>{
  const matches=FAMILY_PRESETS.filter(p=>p.family==='fal');
- assert.equal(matches.length,1);
- assert.equal(matches[0].id,'fal-5000');
+ assert.deepEqual(matches.map(x=>x.id),
+  ['fal-5000','fal-5000-classic','fal-5061','fal-5063']);
  assert.equal(ARSENAL_PLATFORMS.find(p=>p.id==='fal')?.name,'FN FAL');
- assert.deepEqual(arsenalReferencesForPlatform('fal').map(p=>p.id),['fal-5000']);
- assert.equal(Object.values(FAMILY_PARTS).filter(p=>p.family==='fal').length,6);
+ assert.deepEqual(arsenalReferencesForPlatform('fal').map(p=>p.id),
+  matches.map(x=>x.id));
+ assert.equal(Object.values(FAMILY_PARTS).filter(p=>p.family==='fal').length,11);
  assert.deepEqual(arsenalCatalogIssues(),[]);
  const build=initialWeaponFamilyBuild('fal-5000');
  assert.ok(build);
