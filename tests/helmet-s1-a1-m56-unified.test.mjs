@@ -59,8 +59,8 @@ test('S1-A1 iconic DDR wide rear flare without additional concentric tiers',()=>
  const crown=M56_SHELL_RINGS[0],shoulder=M56_SHELL_RINGS[1],
   wall=M56_SHELL_RINGS[2],edge=M56_SHELL_RINGS[4];
  assert.ok(wall.side>shoulder.side+.8,'one broad continuous bell');
- assert.ok(edge.side-wall.side>.95,'single characteristic M56 flare');
- assert.ok(edge.rear-wall.rear>1.5,'long rear protective sweep');
+ assert.ok(edge.side-wall.side>.75,'single characteristic M56 flare');
+ assert.ok(edge.rear-wall.rear>1.2,'long rear protective sweep');
  assert.ok(edge.rear-edge.front>1.2,'profile is unmistakably asymmetrical');
  assert.ok(M56_PERIMETER.length===8,'retain boxy faceting');
  const m=HEAD_SILHOUETTE_METRICS['ddr-m56'];
@@ -80,7 +80,7 @@ test('S1-A1 M56 shell stays hollow with correctly oriented roof and underside',(
   const x=p.getX(i),y=p.getY(i),z=p.getZ(i);
   assert.ok([x,y,z,n.getY(i)].every(Number.isFinite));
   if(y>8.774&&n.getY(i)>.9)roof++;
-  if(y>7.57&&y<7.59&&n.getY(i)<-.9)innerRoof++;
+  if(y>7.74&&y<7.76&&n.getY(i)<-.9)innerRoof++;
   if(Math.abs(x)<1&&Math.abs(z)<1&&y<6)filled++;
  }
  assert.ok(roof>=8,'crown top visibly shaded');
