@@ -24,7 +24,7 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // One common geometry source: S1C lab and live Arsenal use identical forms.
  const core=buildFALCoreSilhouette({
   stock:polymer,receiver:steel,receiverLower:FAL_LOWER_METAL,
-  grip:polymer,magazine:FAL_MAG_METAL,magazineRib:FAL_MAG_RIB,
+  grip:polymer,magazine:FAL_MAG_METAL,magazineRib:FAL_MAG_RIB,muzzleSlot:FAL_VENT_SHADOW,
   handguard:polymer,barrel:steel
  },build.parts,{raisedCarryHandle:true,showFactoryMuzzle});
  while(core.children.length)root.add(core.children[0]);

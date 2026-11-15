@@ -23,7 +23,7 @@ test('FAL P1: single shared art core keeps full-sized datum and lean factory bud
   handguard:poly,magazine:steel};
  const ids=Object.fromEntries(Object.keys(mats).map(x=>[x,'fal-unit-'+x]));
  const core=buildFALCoreSilhouette(mats,ids,{raisedCarryHandle:true});
- assert.equal(core.children.length,19,'P7: merged lower, ribbed magazine and combo muzzle');
+ assert.equal(core.children.length,20,'P7: merged lower, ribbon magazine and slotted combo muzzle');
  const full=bounds(core);
  assert.ok(Math.abs(full.min.x-FAL_ART.stockRearX)<.001);
  assert.ok(Math.abs(full.max.x-FAL_ART.muzzleX)<.001);

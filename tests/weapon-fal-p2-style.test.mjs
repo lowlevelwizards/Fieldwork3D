@@ -31,7 +31,7 @@ const named=(root,name)=>{
 test('FAL P2/P4: distinct family, compact exterior and unmodified global anchors',()=>{
  const mat=new THREE.MeshBasicMaterial();
  const config=choose('fal-5000'),root=buildWeaponSilhouette('rifle',mat,mat,config);
- assert.equal(root.children.length,25);
+ assert.equal(root.children.length,26);
  const groups=['stock','receiver','grip','magazine','handguard','barrel'];
  for(const slot of groups)assert.ok(partVisualBounds(root,slot),'slot '+slot);
  assert.equal(root.children.filter(x=>x.name.startsWith('family-handguard-')).length,3);

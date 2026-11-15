@@ -1,4 +1,4 @@
-name: FAL P6 — Sculptural economy and silhouette verification
+name: FAL P7 — Iconic minimal-poly receiver, stock and furniture
 on:
   pull_request:
     branches: [main]
@@ -58,7 +58,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fal-p6-low-poly-comparisons
+          name: fal-p7-final-3d-comparisons
           path: fal-p1-captures/
           if-no-files-found: ignore
           retention-days: 14

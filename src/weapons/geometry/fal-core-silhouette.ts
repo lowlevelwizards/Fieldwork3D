@@ -25,7 +25,7 @@ export const FAL_ART:Readonly<{
 });
 
 export type FALCoreOptions={raisedCarryHandle?:boolean;showFactoryMuzzle?:boolean};
-export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material}>;
+export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material}>;
 export type FALCoreIds=Readonly<Record<SlotName,string>>;
 /** One source of geometry for the test lab and production FAL. */
 export function buildFALCoreSilhouette(
@@ -104,10 +104,28 @@ export function buildFALCoreSilhouette(
  // Late-pattern FAL-style COMBO device: a long slim square sleeve
  // immediately after a broad collar. Not a generic short end cap.
  if(options.showFactoryMuzzle!==false){
-  const collar=b('barrel',20.80,0,0,.33,1.28,1.25);
+  const collar=b('barrel',20.22,0,0,.34,1.30,1.32);
   collar.userData.falMuzzleCollar=true;
-  const device=b('barrel',21.47,0,0,1.06,1.00,1.00);
+  const device=b('barrel',21.12,0,0,1.76,1.00,1.00);
   device.userData.falMuzzleCombo=true;
+  // Two bold stamped slots batched into one four-triangle graphic.
+  const verts:number[]=[],indices:number[]=[];
+  for(const side of [-1,1] as const){
+   const first=verts.length/3,z=side*.536;
+   for(const [x,y] of [[20.57,-.15],[21.48,-.15],
+                         [21.48,.15],[20.57,.15]])
+    verts.push(x,y,z);
+   if(side===1)indices.push(first,first+1,first+2,first,first+2,first+3);
+   else indices.push(first,first+2,first+1,first,first+3,first+2);
+  }
+  const slotGeometry=new THREE.BufferGeometry();
+  slotGeometry.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+  slotGeometry.setIndex(indices);slotGeometry.computeVertexNormals();
+  const slots=new THREE.Mesh(slotGeometry,materials.muzzleSlot??materials.barrel);
+  slots.name='family-barrel-'+partIds.barrel+'-'+ids.barrel++;
+  slots.userData.falMuzzleSlots=true;
+  slots.castShadow=false;slots.receiveShadow=false;
+  slots.renderOrder=3;root.add(slots);
  }
  // A single substantial rear sight blade, no miniature articulated parts.
  b('receiver',-5.00,2.18,0,.80,.74,1.58);
