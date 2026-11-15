@@ -18,7 +18,7 @@ concurrency:
 jobs:
   historical-art:
     if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
