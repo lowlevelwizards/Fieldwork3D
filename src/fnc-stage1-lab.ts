@@ -26,9 +26,7 @@ const baseline=(weapon:'rifle'|'carbine',id:string)=>{
  });
  return model;
 };
-const rows:[
- readonly [string,THREE.Group]
-][]=[
+const rows:readonly (readonly [string,THREE.Group])[]=[
  ['FNC',buildFNCStage1Silhouette(mono)],
  ['FAL',baseline('rifle','fal-5000')],
  ['G3',baseline('rifle','hk-g3a3')],
