@@ -73,11 +73,14 @@ export function selectPhysicalOpenLeafRejoin(
   y:(door.b.y-door.a.y)/width};
  const normal={x:-tangent.y,y:tangent.x};
  const center=doorCenter(door);
- const joinIndices=[1,2,3,4].filter(i=>i<original.length);
+ // The CURRENT next node may be standable but its direct first chord
+ // crosses an open leaf (Clinic D9 Moss). It is eligible for a *staged*
+ // join only, never for reissuing the exact blocked direct stride.
+ const joinIndices=[0,1,2,3,4].filter(i=>i<original.length);
  const maxTravel=100;
  // Rejoin a disposable later motor waypoint only if this single physical
  // chord really fits; we don't skip or replace a player-authored order.
- for(const i of joinIndices){
+ for(const i of joinIndices.filter(i=>i>0)){
   const at=original[i];
   if(d(from,at)>maxTravel||!bodyClear(at))continue;
   const result=joinsExistingMotorRoute(from,goal,original,i,[at],
@@ -103,19 +106,26 @@ export function selectPhysicalOpenLeafRejoin(
      if(result.length)return result;
     }
    }
+ // Probe the shortest plausible continuation before spending our two
+ // existing cold world searches; iteration order across portal sides is
+ // not a useful estimate of which connector will physically reach.
+ const pairs:{point:Pt;index:number;cost:number}[]=[];
+ for(const point of candidates)for(const i of joinIndices){
+  const join=original[i],gap=d(point,join);
+  if(gap>80||!bodyClear(join))continue;
+  pairs.push({point,index:i,cost:gap+d(from,point)*.25});
+ }
+ pairs.sort((a,b)=>a.cost-b.cost||a.index-b.index);
  let searched=0;
- for(const point of candidates){
+ for(const candidate of pairs){
   if(searched>=2)break;
-  for(const i of joinIndices){
-   const join=original[i];
-   if(d(point,join)>80||!bodyClear(join))continue;
-   searched++;
-   const path=worldRoute(point,join);
-   const result=joinsExistingMotorRoute(from,goal,original,i,
-     [point,...path],sweep,maxTravel);
-   if(result.length)return result;
-   break;
-  }
+  searched++;
+  const join=original[candidate.index];
+  const path=worldRoute(candidate.point,join);
+  if(!path.length)continue;
+  const result=joinsExistingMotorRoute(from,goal,original,
+    candidate.index,[candidate.point,...path],sweep,maxTravel);
+  if(result.length)return result;
  }
  return [];
 }

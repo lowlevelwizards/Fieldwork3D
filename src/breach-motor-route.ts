@@ -312,6 +312,21 @@ export function prepareMotorRoute(
           setTransientRoute(s,a,[...path,p],'shove-stage');
       }
     }
+    // D3.18C Garage: an actor with NO transient nav never reaches the
+    // blocked-leg collision replan where D3.3 first-portals were used.
+    // After one genuinely failed normal route, permit that SAME existing
+    // bounded portal prefix from this cold retry. Its hypothetical crossing
+    // does not clear or open the door; the ordinary motor still must press
+    // and physically traverse the real hinge. No authored GO edits.
+    if(!a.nav.length&&a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       a.recoveryAttempts>=1&&!a.doorTraversal&&!a.traversalPending){
+      const prefix=routeToNextOperableDoor(a.p,p,s.doors,
+        sessionWorldGeometry(s));
+      if(prefix.length){
+        setTransientRoute(s,a,prefix,'initial-portal-recovery');
+        provisionalRouteAccepted(a);
+      }
+    }
     if(!a.nav.length){
       // Only an actual failed normal+intel+shove/portal attempt can be
       // cached. Do not claim a remote hidden obstacle is player-known.
