@@ -1,9 +1,12 @@
-name: FAL P3 — Reference-led 3D art validation
+name: FAL P4 — Faceted receiver validation
 on:
   pull_request:
     branches: [main]
     paths:
       - 'src/weapons/geometry/fal-core-silhouette.ts'
+      - 'src/weapons/geometry/fal-receiver-form.ts'
+      - 'src/fal-stage1-lab.ts'
+      - 'fal-stage1-lab.html'
       - 'src/weapons/geometry/fal-silhouettes.ts'
       - 'src/weapons/geometry/fal-handguard-profiles.ts'
       - 'src/weapons/geometry/fal-magazine-profiles.ts'
@@ -15,6 +18,7 @@ on:
       - 'tests/weapon-fal-p1-identity.test.mjs'
       - 'tests/weapon-fal-p2-style.test.mjs'
       - 'tests/weapon-fal-p3-reference-style.test.mjs'
+      - 'tests/weapon-fal-p4-receiver.test.mjs'
       - 'scripts/smoke-fal-p1-visual.mjs'
       - '.github/workflows/fal-p1-visual.yml'
 permissions:
@@ -36,7 +40,8 @@ jobs:
             tests/weapon-fal-stage2-family.test.mjs \
             tests/weapon-fal-p1-identity.test.mjs \
             tests/weapon-fal-p2-style.test.mjs \
-            tests/weapon-fal-p3-reference-style.test.mjs
+            tests/weapon-fal-p3-reference-style.test.mjs \
+            tests/weapon-fal-p4-receiver.test.mjs
       - name: Typecheck and production compile
         run: npm run check && npm run build
       - run: npm install --no-save --package-lock=false playwright@1.56.1
@@ -46,7 +51,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fal-p1-actual-3d-comparisons
+          name: fal-p4-actual-3d-comparisons
           path: fal-p1-captures/
           if-no-files-found: ignore
           retention-days: 14

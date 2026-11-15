@@ -8,9 +8,10 @@ import {buildFALStage1Silhouette} from './weapons/geometry/fal-stage1-blockout.t
 const canvas=document.querySelector<HTMLCanvasElement>('#view');
 const side=document.querySelector<HTMLButtonElement>('#side');
 const quarter=document.querySelector<HTMLButtonElement>('#quarter');
+const left=document.querySelector<HTMLButtonElement>('#left');
 const carry=document.querySelector<HTMLInputElement>('#carry');
 const factory=document.querySelector<HTMLInputElement>('#factory');
-if(!canvas||!side||!quarter||!carry||!factory)
+if(!canvas||!side||!quarter||!left||!carry||!factory)
  throw new Error('Incomplete FAL stage 1 comparison lab');
 
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
@@ -41,7 +42,7 @@ carry.disabled=factory.checked;
 let fal=makeFAL();
 fal.position.y=-17.5;
 root.add(fal);
-let isSide=true;
+let currentView:'side'|'quarter'|'left'='side';
 const render=()=>{
  const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);
  renderer.setSize(w,h,false);
@@ -51,19 +52,22 @@ const render=()=>{
  camera.top=halfH;camera.bottom=-halfH;
  camera.updateProjectionMatrix();
  const center=new THREE.Vector3(3.5,-2.6,0);
- camera.position.set(isSide?3.5:28,isSide?-2.6:5.0,80);
+ camera.position.set(currentView==='quarter'?28:3.5,
+  currentView==='quarter'?5:-2.6,currentView==='left'?-80:80);
  camera.lookAt(center);
  camera.updateMatrixWorld();
  renderer.render(scene,camera);
 };
-side.addEventListener('click',()=>{
- isSide=true;side.setAttribute('aria-pressed','true');
- quarter.setAttribute('aria-pressed','false');render();
-});
-quarter.addEventListener('click',()=>{
- isSide=false;side.setAttribute('aria-pressed','false');
- quarter.setAttribute('aria-pressed','true');render();
-});
+const selectView=(view:'side'|'quarter'|'left')=>{
+ currentView=view;
+ side.setAttribute('aria-pressed',String(view==='side'));
+ quarter.setAttribute('aria-pressed',String(view==='quarter'));
+ left.setAttribute('aria-pressed',String(view==='left'));
+ render();
+};
+side.addEventListener('click',()=>selectView('side'));
+quarter.addEventListener('click',()=>selectView('quarter'));
+left.addEventListener('click',()=>selectView('left'));
 const refreshFAL=()=>{
  root.remove(fal);clearWeaponSilhouette(fal);
  carry.disabled=factory.checked;

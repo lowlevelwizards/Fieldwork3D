@@ -76,6 +76,6 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
   'fore-end must stay shallow and gently tapered, not an M16 triangle');
  assert.ok(ears.max.y>=2.90&&ears.max.y<=3.1,'front sight ears must be modest');
  assert.ok(receiver.max.y>=1.8,'upper dust cover should remain long and clear');
- assert.equal(g.children.length,15,'FAL P1: base + two ears + post replace original sight');
+ assert.equal(g.children.length,16,'P4 receiver-only open guard extends original core');
  clearWeaponSilhouette(g);material.dispose();
 });

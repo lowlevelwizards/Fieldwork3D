@@ -48,6 +48,9 @@ try{
   await capture('m4-g3-fal-factory-side');
   await page.getByRole('button',{name:'THREE-QUARTER'}).click();
   await capture('m4-g3-fal-factory-three-quarter');
+  await page.getByRole('button',{name:'LEFT SIDE'}).click();
+  await capture('m4-g3-fal-factory-left-side');
+  await page.getByRole('button',{name:'THREE-QUARTER'}).click();
   await page.locator('#factory').uncheck();
   await page.locator('#carry').check();
   await capture('fal-core-with-carry-three-quarter');
@@ -60,7 +63,7 @@ try{
   await page.waitForFunction(()=>document.querySelector('#view')?.width>0);
   await capture('m4-g3-fal-mobile-side');
   if(errors.length)throw Error('3D FAL lab errors: '+errors.join(' | '));
-  console.log('FAL P1: 5 actual Three.js side/three-quarter/mobile comparison captures passed.');
+  console.log('FAL P4: 6 actual Three.js right/left/three-quarter/mobile comparison captures passed.');
   await page.close();
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

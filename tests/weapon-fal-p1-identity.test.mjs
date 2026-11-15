@@ -23,7 +23,7 @@ test('FAL P1: single shared art core keeps full-sized datum and lean factory bud
   handguard:poly,magazine:steel};
  const ids=Object.fromEntries(Object.keys(mats).map(x=>[x,'fal-unit-'+x]));
  const core=buildFALCoreSilhouette(mats,ids,{raisedCarryHandle:true});
- assert.equal(core.children.length,17,'15 baseline meshes plus two-piece handle');
+ assert.equal(core.children.length,18,'P4: 16 core meshes plus two-piece handle');
  const full=bounds(core);
  assert.ok(Math.abs(full.min.x-FAL_ART.stockRearX)<.001);
  assert.ok(Math.abs(full.max.x-FAL_ART.muzzleX)<.001);
@@ -61,7 +61,7 @@ test('FAL P1: front sight has centered post and two lateral protective ears',()=
  assert.ok(B.max.y>P.min.y,'center post embeds into base');
  assert.ok(L.max.y>2.9&&L.max.y<3.05,'maintain current short FAL sight envelope');
  assert.ok(Math.abs((L.min.x+L.max.x)/2-FAL_ART.frontSightX)<.5);
- assert.equal(root.children.length,21);
+ assert.equal(root.children.length,25);
  assert.equal(root.children.filter(x=>x.name.startsWith('family-handguard-fal-vented')).length,3);
  assert.ok(root.children.every(x=>x.name.startsWith('family-')));
  clearWeaponSilhouette(root);m.dispose();
@@ -87,7 +87,7 @@ test('FAL P1: no-factory-muzzle build still reaches authoritative muzzle, no dou
  const mats={stock:m,receiver:m,grip:m,magazine:m,handguard:m,barrel:m};
  const ids={stock:'s',receiver:'r',grip:'g',magazine:'m',handguard:'h',barrel:'b'};
  const root=buildFALCoreSilhouette(mats,ids,{raisedCarryHandle:true,showFactoryMuzzle:false});
- assert.equal(root.children.length,16);
+ assert.equal(root.children.length,17);
  assert.ok(Math.abs(bounds(root).max.x-22)<.001);
  assert.ok(!root.children.some(x=>x.name==='family-barrel-b-5'),
   'bare muzzle has no factory tip mesh');
