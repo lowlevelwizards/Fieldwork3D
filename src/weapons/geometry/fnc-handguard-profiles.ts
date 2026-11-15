@@ -1,4 +1,4 @@
-/** FNC P13: cohesive six-sided art front end (polymer + molded lip +
+/** FNC P14: aligned six-sided art front end (polymer + molded lip +
  * slim faceted gas cover + batched groove / vent surfaces). The P13
  * layout contract owns all relative positions; meshes build on demand only.
  * +X muzzle, +Y up, +Z right. No physical assembly or firing changes.
@@ -78,20 +78,24 @@ export function addFNCFacetedForearm(root:THREE.Group,
  mesh.userData.fncMoldedFlutesPerSide=2;
  mesh.userData.fncP11ShortWidePolymer=true;
  mesh.userData.fncP13ExtendedPolymer=true;
+ mesh.userData.fncP14ReceiverSeatedPolymer=true;
  mesh.userData.fncP6OutwardEndcaps=true;
  return mesh;
 }
 export function addFNCHandstopLip(root:THREE.Group,
  material:THREE.Material):THREE.Mesh{
- // One faceted collar, shaped like the polymer, not a full-height fin.
- // It straddles the polymer termination and remains below the gas roof.
+ // One short molded collar, with the front face pulled back toward
+ // the polymer profile. Tapering is longitudinal; no overlay plate.
+ const rearX=STOP.centerX-STOP.length/2;
+ const frontX=STOP.centerX+STOP.length/2;
  const mesh=makeSixFacePrism(root,material,
-  'family-handguard-fnc-p13-molded-endstop',
-  [STOP.centerX-STOP.length/2,STOP.centerX+STOP.length/2],
-  (_,i)=>polymerCross(STOP.profileScale,i));
+  'family-handguard-fnc-p14-tapered-molded-endstop',
+  [rearX,frontX],(x,i)=>polymerCross(
+   x===rearX?STOP.rearScale:STOP.frontScale,i));
  mesh.userData.fncP11HandstopLip=true;
  mesh.userData.fncP12ChunkyHandstop=true;
  mesh.userData.fncP13MoldedCollar=true;
+ mesh.userData.fncP14TaperedMoldedCollar=true;
  return mesh;
 }
 const GAS_PROFILE:readonly (readonly [number,number])[]=[
@@ -111,6 +115,7 @@ export function addFNCUpperGasBox(root:THREE.Group,
  mesh.userData.fncP11LongSlimVentedCover=true;
  mesh.userData.fncP12CompressedGasCover=true;
  mesh.userData.fncP13NestedFacetedGasCover=true;
+ mesh.userData.fncP14LoweredGasCover=true;
  return mesh;
 }
 const GAS_SLOTS:readonly (readonly [number,number])[]=

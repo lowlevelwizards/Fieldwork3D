@@ -7,7 +7,7 @@ import type {WeaponFamilyBuild,FamilyPartSlot}
  from '../../equipment-weapon-families.ts';
 import {buildFNCStage1Silhouette} from './fnc-stage1-blockout.ts';
 import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MUZZLE_METAL,HK556_MAG_METAL,HK556_MAG_RIB,
- FAL_LOWER_METAL,FAL_VENT_SHADOW}
+ FAL_LOWER_METAL,FAL_DARK_POLYMER,FAL_VENT_SHADOW}
  from './weapon-visual-palette.ts';
 const REQUIRED:Readonly<Record<FamilyPartSlot,string>>={
  receiver:'fnc-service-receiver',stock:'fnc-tube-folder',
@@ -22,7 +22,7 @@ export function addFNCFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const form=buildFNCStage1Silhouette(HK_BLACK_METAL,{
   steel:HK_BLACK_METAL,lower:FAL_LOWER_METAL,
   stock:HK_BLACK_METAL,buttpad:HK_DARK_POLYMER,grip:HK_DARK_POLYMER,
-  handguard:HK_DARK_POLYMER,magazine:HK556_MAG_METAL,
+  handguard:FAL_DARK_POLYMER,magazine:HK556_MAG_METAL,
   stamp:HK556_MAG_RIB,barrel:HK_BLACK_METAL,
   muzzle:HK_MUZZLE_METAL,shadow:FAL_VENT_SHADOW
  },showFactoryMuzzle);
