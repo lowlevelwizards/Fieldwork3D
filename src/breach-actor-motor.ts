@@ -23,6 +23,8 @@ import {syncDoorTraversalEpisode} from './breach-door-traversal-episode.ts';
 import {recoverDoorApproachDrift,preferShortPhysicalEntry} from './breach-door-traversal-maneuver.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
+import {hasMotorGateObserver,recordMotorGate}
+ from './breach-motor-gate-witness.ts';
 
 export function advanceActorMotor(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks,
@@ -105,6 +107,21 @@ export function advanceActorMotor(
  const doorStart=profile?beginMotorCpuMeasurement():0;
  const door=handleMotorDoor(a,p,next,passage.move,dt,s,hooks);
  if(profile)profile('motor-door',finishMotorCpuMeasurement(doorStart));
+ // D3.15B3 offline-only: sample the exact physical motor's chosen
+ // passage step, actual door veto and full-body clearance, rather than
+ // inferring movement from the final world snapshot.
+ if(hasMotorGateObserver()&&a.blockedTime>=1){
+   const world=sessionWorldGeometry(s);
+   recordMotorGate({seconds:s.seconds,actorId:a.id,
+     position:{...a.p},next:{...next},attempt:{...passage.move},
+     orderKind:a.plan[0]?.kind??null,blockedSeconds:a.blockedTime,
+     lastBlocker:a.lastBlocker??null,
+     doorPaused:door.paused,doorClosed:door.closed,
+     passagePaused:passage.paused,velocity:a.velocity,
+     passageStepClear:sweptBodyClear(a.p,passage.move,s.doors,
+       OPERATOR_RADIUS,world),
+     nextSwept:sweptBodyClear(a.p,next,s.doors,OPERATOR_RADIUS,world)});
+ }
  if(door.paused)return true;
 
  const collisionStart=profile?beginMotorCpuMeasurement():0;
