@@ -49,7 +49,7 @@ export function buildFALCoreSilhouette(
   [-6.13,-1.25],[-8.40,-1.58],[-10.50,-2.50],
   [-14.60,-3.39]
  ],3.18);
- b('stock',-14.73,-1.15,0,.54,4.70,3.45);
+ b('stock',-14.64,-1.15,0,.72,4.85,3.55);
 
  // S1C: continuous FAL cover with one angular nose, no invented top notch.
  // cocking tube and NO AR-like split carry-handle upper.
@@ -130,11 +130,11 @@ export function buildFALCoreSilhouette(
  // no AR-style upright arch, hollow box, hinges or screws. Factory enabled.
  if(options.raisedCarryHandle){
   const support=addBar(root,'receiver',partIds.receiver,ids.receiver++,
-   [3.20,1.42],[2.96,3.07],.29,.48,materials.receiver);
+   [3.20,1.42],[2.96,3.07],.40,.54,materials.receiver);
   support.position.z=-1.60;
   support.userData.falCarrySupport=true;
   const grip=addCuboid(root,'receiver',partIds.receiver,ids.receiver++,
-   1.56,3.19,-1.61,3.04,.64,.74,materials.stock);
+   1.48,3.23,-1.61,3.32,.84,.90,materials.stock);
   grip.userData.falCarryGrip=true;
  }
  return root;
