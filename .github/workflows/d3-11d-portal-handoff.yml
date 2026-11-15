@@ -82,6 +82,29 @@ jobs:
               if(after.summary[k]>0)throw Error("safety violation: "+k);
             if(after.progressSummary.suspectedLoops>before.progressSummary.suspectedLoops)
               throw Error("increased movement-loop windows");
+            // A sum of 79 arrivals can conceal one operator repeatedly
+            // running laps while another improves. Compare each actor and
+            // reject extreme travel that fails to reduce goal distance.
+            for(let i=0;i<before.rows.length;i++){
+              for(let j=0;j<before.rows[i].modes.length;j++){
+                const old=before.rows[i].modes[j],next=after.rows[i].modes[j];
+                for(const actor of old.operators){
+                  const updated=next.operators.find(x=>x.id===actor.id);
+                  const oq=old.routeQuality.actors.find(x=>x.id===actor.id);
+                  const nq=next.routeQuality.actors.find(x=>x.id===actor.id);
+                  const label=before.rows[i].archetype+"/"+old.mode+"/"+actor.id;
+                  if(actor.arrived&&!updated.arrived)
+                    throw Error("operator arrival regressed: "+label);
+                  if(nq.travel>oq.travel*1.8+50&&
+                     updated.remaining>=actor.remaining-5)
+                    throw Error("unproductive travel inflation: "+label+
+                      " "+oq.travel+"→"+nq.travel);
+                }
+              }
+            }
+            if(after.routeQualitySummary.revisitedCells>
+               before.routeQualitySummary.revisitedCells+20)
+              throw Error("too many new revisited map cells");
           ' "$RUNNER_TEMP/baseline.json" "$RUNNER_TEMP/current.json"
       - name: Preserve exact case data
         if: always()
