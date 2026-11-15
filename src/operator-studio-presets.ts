@@ -9,7 +9,7 @@ import {FABRIC_CAMO_CHANNELS,fabricCamoCompatible} from './operator-fabric-camo-
 export const STUDIO_PRESET_STORAGE_KEY='fieldwork3d.operator-studio-presets.v1';
 export const STUDIO_PRESET_LIMIT=8;
 export type StudioPreset={name:string;wardrobe:WardrobeOptions};
-const normalizedName=(name:unknown)=>
+export const normalizeStudioPresetName=(name:unknown)=>
  typeof name==='string'?name.trim().replace(/\s+/g,' ').slice(0,32):'';
 /** Import old files or potentially corrupted storage without throwing. */
 export function readStudioPresets(raw:unknown):StudioPreset[]{
@@ -24,10 +24,12 @@ export function readStudioPresets(raw:unknown):StudioPreset[]{
  for(const value of obj.presets.slice(0,32)){
   if(!value||typeof value!=='object'||Array.isArray(value))continue;
   const entry=value as {name?:unknown;wardrobe?:unknown};
-  const name=normalizedName(entry.name);
+  const name=normalizeStudioPresetName(entry.name);
   if(!name||seen.has(name.toLowerCase())||result.length>=STUDIO_PRESET_LIMIT)continue;
   const wardrobe=readWardrobe(entry.wardrobe);
-  if(!entry.wardrobe||typeof entry.wardrobe!=='object')continue;
+  if(!entry.wardrobe||typeof entry.wardrobe!=='object'||
+   Array.isArray(entry.wardrobe)||
+   (entry.wardrobe as {version?:unknown}).version!==1)continue;
   seen.add(name.toLowerCase());
   result.push({name,wardrobe});
  }
@@ -35,7 +37,7 @@ export function readStudioPresets(raw:unknown):StudioPreset[]{
 }
 export function saveStudioPreset(presets:readonly StudioPreset[],
  name:string,raw:WardrobeOptions):StudioPreset[]{
- const label=normalizedName(name);
+ const label=normalizeStudioPresetName(name);
  if(!label)return [...presets];
  const next=readStudioPresets({version:1,presets});
  const idx=next.findIndex(x=>x.name.toLowerCase()===label.toLowerCase());
@@ -71,4 +73,20 @@ export function outfitPresetForKit(raw:unknown,kit:EquipmentLoadout):
    fabricCamo[channel]=undefined;
  }
  return readWardrobe({...safe,fabricCamo});
+}
+
+/** Publish an in-memory preset change only AFTER durable storage succeeds.
+ * A storage quota/security failure must never create a phantom saved preset.
+ */
+export function commitStudioPresetChange(
+ current:readonly StudioPreset[],next:readonly StudioPreset[],
+ persist:(serialized:string)=>void
+):{presets:StudioPreset[];saved:boolean}{
+ const validated=readStudioPresets({version:1,presets:next});
+ try{
+  persist(serializeStudioPresets(validated));
+  return {presets:validated,saved:true};
+ }catch{
+  return {presets:[...current],saved:false};
+ }
 }

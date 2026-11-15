@@ -34,9 +34,10 @@ test('applying a saved preset never invents equipment or incompatible garments',
  const restricted=setEquipmentChoice(base,'head','head-none');
  const wanted=setWardrobeStyle(initialWardrobe(),'headwear','ach');
  const saved=outfitPresetForKit(wanted,restricted);
- assert.equal(saved.styles.headwear,undefined,'helmet not granted by cosmetic preset');
+ assert.equal(saved.styles.headwear,'ach','cosmetic helmet preference survives');
  const outfit=resolvedWardrobe(saved,restricted);
- assert.equal(outfit.headwear,'bare');
+ assert.equal(outfit.headwear,'ach','display is cosmetic, not owned equipment');
+ assert.equal(restricted.slots.head,'head-none','combat protection is unchanged');
  assert.equal(restricted.slots.head,'head-none');
  const w=setWardrobeStyle(initialWardrobe(),'top','combat-shirt');
  const chosen=setWardrobeFabricCamo(w,'top','multicam',resolvedWardrobe(w,base));
