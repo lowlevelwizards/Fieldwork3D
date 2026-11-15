@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {joinedLocalOpenLeafStage}
  from '../src/breach-door-escape-stage.ts';
-import {claimColdFrameApproachProbe}
+import {claimColdFrameApproachProbe,claimColdFuturePortalProbe}
  from '../src/breach-door-escape-rejoin.ts';
 import {OPERATOR_RADIUS} from '../src/breach-core.ts';
 const p=(x,y)=>({x,y});
@@ -99,4 +99,25 @@ test('D3.13H2C: cold searches are capped for an unchanged real leaf and MOVE',()
  actor.plan=[];
  assert.equal(claimColdFrameApproachProbe(actor,'D2',goal,.75),false,
   'an operator with no active MOVE can never ask for one');
+});
+
+test('D3.13H4: only one future closed-door probe per unchanged leaf/order',()=>{
+ const actor={plan:[{kind:'move',id:711}],p:p(254,265)};
+ const goal=p(536,132);
+ assert.equal(claimColdFuturePortalProbe(actor,'D2',goal,1),true);
+ assert.equal(claimColdFuturePortalProbe(actor,'D2',goal,1),false,
+  'cannot repeatedly A* toward future doors during the same hinge loop');
+ actor.p=p(255,265);
+ assert.equal(claimColdFuturePortalProbe(actor,'D2',goal,1),false,
+  'sub-radius drift must not reset the physical budget');
+ actor.p=p(290,265);
+ assert.equal(claimColdFuturePortalProbe(actor,'D2',goal,1),true,
+  'material actual progress permits another bounded probe');
+ assert.equal(claimColdFuturePortalProbe(actor,'D2',goal,.72),true,
+  'a changed hinge opens a new local physical situation');
+ actor.plan[0]={kind:'move',id:712};
+ assert.equal(claimColdFuturePortalProbe(actor,'D2',goal,.72),true,
+  'authored order edits never inherit a previous route decision');
+ actor.plan=[];
+ assert.equal(claimColdFuturePortalProbe(actor,'D2',goal,.72),false);
 });
