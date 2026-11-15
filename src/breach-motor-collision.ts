@@ -31,6 +31,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {restoreAfterOpenLeafEscape} from './breach-motor-route.ts';
+import {sweptRejoinExistingRoute} from './breach-door-escape-rejoin.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
@@ -249,6 +250,26 @@ export function resolveMotorCollision(
     if(escape){
       a.priorP=clone(a.p);a.p=escape;a.velocity=0;
       a.blockedTime=0;a.lastBlocker='door';
+      // D3.13G2: an open leaf may have displaced the actual body from
+      // an earlier disposable grid waypoint. Retain the original GO and
+      // only drop that blocked prefix if the same full-width physical
+      // sweep directly reaches a later node on the SAME route.
+      // Never do A* here, cross an unswept leaf or complete an order.
+      if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+         s.seconds-a.lastNavRepairAt>=.7&&
+         s.doors.some(door=>door.open&&
+           (door.openFraction??0)>=.82&&
+           pointToSegment(a.p,doorLeafSegment(door))<
+             OPERATOR_RADIUS+13)){
+        a.lastNavRepairAt=s.seconds;
+        const rejoined=sweptRejoinExistingRoute(a.p,p,a.nav,
+          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+        if(rejoined.length){
+          setTransientRoute(s,a,rejoined,'door-escape-swept-rejoin');
+          a.retryRouteAt=0;a.recoveryAttempts=0;
+          return true;
+        }
+      }
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
       setTransientRoute(s,a,[],'door-leaf-escape');
