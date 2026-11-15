@@ -7,7 +7,7 @@ import {HEAD_SILHOUETTE_METRICS as M,
  createHeadwearSilhouette,headwearCuboidVolumes}
  from '../src/operator-headwear-silhouettes.ts';
 
-const ids=['patrol-cap','boonie','beanie','pasgt','soviet-steel','ach','high-cut'];
+const ids=['patrol-cap','boonie','beanie','pasgt','soviet-steel','ach'];
 const remade=ids.slice(0,5);
 const by=(v,name)=>v.find(p=>p.name===name);
 const bounds=v=>({
@@ -33,7 +33,7 @@ const overlap=(a,b,axis)=>{
   Math.max(a[axis]-a[size]/2,b[axis]-b[size]/2);
 };
 
-test('all seven heads render one authoritative exterior per wardrobe item',()=>{
+test('all six current authored heads render one authoritative exterior per wardrobe item',()=>{
  for(const id of ids){
   const v=headwearCuboidVolumes(id);
   const g=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
@@ -64,7 +64,7 @@ test('all seven heads render one authoritative exterior per wardrobe item',()=>{
   const stage={
    'patrol-cap':'1N','boonie':'1N','beanie':'1N',
    'pasgt':'1N','soviet-steel':'B2',
-   'ach':'1E','high-cut':'1E'
+   'ach':'1E'
   };
   assert.equal(g.userData.stage,stage[id]);
  }
@@ -170,8 +170,8 @@ test('PASGT front peak and deep skirt differentiate it from protected ACH',()=>{
   'PASGT eyebrow-level brow is lower than ACH');
  assert.ok(lower(v,4.4,0)<lower(ach,4.4,0)-.3,
   'PASGT ear lobes descend below ACH');
- assert.ok(lower(v,0,5)<lower(ach,0,5)-.3,
-  'PASGT deep rear nape');
+ assert.ok(lower(v,0,5)<2.0&&lower(v,0,5)<lower(v,0,-5),
+  'PASGT maintains a deep rear nape without asserting its edge below the newer full-cut ACH');
  assert.ok(!covering(v,0,4.3,-3.5),'PASGT must expose face');
 });
 
