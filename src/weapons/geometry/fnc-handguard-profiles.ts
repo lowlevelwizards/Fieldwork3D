@@ -61,7 +61,7 @@ export function addFNCUpperGasBox(root:THREE.Group,
  material:THREE.Material):THREE.Mesh{
  const geometry=new THREE.BoxGeometry(8.80,1.25,1.48);
  const mesh=new THREE.Mesh(geometry,material);
- mesh.position.set(8.66,.39,0); // X 4.26..13.06; Y -.235..1.015
+ mesh.position.set(8.43,.39,0); // X 4.03..12.83; closes shoulder-to-gas gap
  mesh.name='family-handguard-fnc-p5-upper-gas-box';
  mesh.userData.fncP5UpperGasBox=true;
  mesh.userData.fncP6NarrowGasBox=true;

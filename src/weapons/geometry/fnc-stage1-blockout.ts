@@ -142,9 +142,10 @@ export function buildFNCStage1Silhouette(
  // in the rear/middle portion, rather than filling the stock's large void.
  // It is a chunky single gusset, not a false third full-length rail.
  const web=p('stock',[
-  [-12.06,-.53],[-10.23,-.51],[-10.92,-2.13],[-11.57,-2.54]
- ],.91,'stock');
+  [-12.38,-.47],[-10.24,-.47],[-11.49,-2.56]
+ ],1.08,'stock');
  web.userData.fncP5StockMiddleBrace=true;
+ web.userData.fncP6BoldStockWeb=true;
 
  // Crowned body is intentionally closer to FAL's stylized 3D shoulders.
  // The lower visibly projects OUTSIDE both upper sides.

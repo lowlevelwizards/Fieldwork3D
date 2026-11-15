@@ -67,6 +67,14 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
  const muzzle=by(g,'fncP6StubbyMuzzle')[0];
  assert.ok(upper&&rear&&front&&handle&&stem&&muzzle);
  assert.ok(box(upper).max.x<4.0);
+ const web=by(g,'fncP6BoldStockWeb')[0];
+ const gas=by(g,'fncP5UpperGasBox')[0];
+ assert.ok(web&&gas);
+ assert.ok(web.geometry.getAttribute('position').count>=3,
+  'central triangular stock gusset uses one solid bold silhouette');
+ assert.ok(box(web).max.x-box(web).min.x>2.05);
+ assert.ok(box(gas).min.x-box(upper).max.x<.35,
+  'upper gas box begins close to the receiver front rather than floating');
  assert.ok(box(front).max.y>3.15);
  assert.ok(box(rear).max.y>2.80);
  assert.equal(front.geometry.parameters.shapes.holes.length,1);
