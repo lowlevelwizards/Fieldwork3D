@@ -19,13 +19,14 @@ export type ReferenceResolution={
  weapon:ReturnType<typeof referenceWeaponChoice>;
  technicalIssues:readonly string[];incompatibleChannels:readonly string[];
 };
-export function resolveFactionReference(input:FactionReference|string):ReferenceResolution{
+export function resolveFactionReference(input:FactionReference|string,
+ previewPresetId?:string):ReferenceResolution{
  const reference=typeof input==='string'?factionReference(input):input;
  if(!reference)throw Error('Unknown reference');
  const base=wardrobeRecipe(reference.baseRecipeId);
  if(!base)throw Error('Unknown reference base recipe: '+reference.baseRecipeId);
  const built=applyWardrobeRecipe(base);
- const weapon=referenceWeaponChoice(reference.id);
+ const weapon=referenceWeaponChoice(reference.id,previewPresetId);
  let kit=syncPrimaryWeapon(built.kit,weapon.weapon),wardrobe=built.wardrobe;
  const issues:string[]=[];
  for(const [slot,id] of Object.entries(reference.kit??{})){

@@ -3,7 +3,7 @@ import {FACTION_REFERENCES,type FactionReference} from './faction-reference-cata
 import {referenceVisualStatus} from './faction-reference-audit.ts';
 import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
-import {referenceWeaponChoice} from './faction-reference-weapons.ts';
+import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-weapons.ts';
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
 export type ReferenceBrowserHooks={
  onPreview:(id:string)=>void;onApply:(id:string)=>void;onClose:()=>void;
@@ -28,6 +28,7 @@ export class FactionReferenceBrowser{
  private readonly summary:HTMLElement;
  private readonly apply:HTMLButtonElement;
  private chosen=FACTION_REFERENCES[0].id;
+ private readonly weaponPreviewOverrides=new Map<string,string>();
  private readOnly=false;
  constructor(root:HTMLElement,hooks:ReferenceBrowserHooks){
   this.root=root;this.hooks=hooks;
@@ -69,6 +70,11 @@ export class FactionReferenceBrowser{
   this.renderList();this.renderDetail();
  }
  get selectedId(){return this.chosen;}
+ /** Nonpersistent preview variant; applying a look never purchases/issues a rifle. */
+ get selectedWeaponPresetId(){
+  return this.weaponPreviewOverrides.get(this.chosen) ??
+   referenceWeaponChoice(this.chosen).presetId;
+ }
  show(readonly=false){
   this.readOnly=readonly;
   this.root.hidden=false;
@@ -115,7 +121,8 @@ export class FactionReferenceBrowser{
  private renderDetail(){
   const r=FACTION_REFERENCES.find(x=>x.id===this.chosen) as FactionReference;
   const status=referenceVisualStatus(r);
-   const issued=referenceWeaponChoice(r.id);
+  const options=referenceWeaponOptions(r.id);
+  const issued=referenceWeaponChoice(r.id,this.selectedWeaponPresetId);
   const fit=this.hooks.compatibility(r.id);
   this.detail.replaceChildren();
   this.detail.append(
@@ -132,6 +139,26 @@ export class FactionReferenceBrowser{
    el('p','reference-sources',r.sourceNotes),
    ...(r.gearFitNote?[el('p','reference-sources','GEAR MODEL FIT · '+r.gearFitNote)]:[])
   );
+  if(options.length>1){
+   const section=el('div','reference-weapon-choices');
+   section.append(el('strong','','PERIOD WEAPON PREVIEWS'));
+   const picker=el('select','reference-weapon-choice');
+   picker.setAttribute('aria-label','Reference weapon preview');
+   for(const value of options){
+    const issuedOption=referenceWeaponChoice(r.id,value.presetId);
+    picker.append(option(value.presetId,issuedOption.preset.name));
+   }
+   picker.value=issued.presetId;
+   picker.addEventListener('change',()=>{
+    this.weaponPreviewOverrides.set(r.id,picker.value);
+    this.renderDetail();
+    if(!this.root.hidden)this.hooks.onPreview(r.id);
+   });
+   section.append(picker,el('p','reference-sources',issued.note),
+    el('small','reference-meta',
+    'VISUAL PREVIEW ONLY · APPLYING A LOOK DOES NOT CHANGE YOUR EQUIPPED WEAPON'));
+   this.detail.append(section);
+  }
   const missing=unresolvedReferenceGaps(r);
   if(missing.length){
    const block=el('div','reference-gap-list');

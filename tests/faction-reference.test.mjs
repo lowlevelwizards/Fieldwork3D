@@ -8,7 +8,8 @@ import {initialWardrobe,wardrobeConflicts} from '../src/operator-wardrobe-data.t
 import {referenceGapFidelity} from '../src/faction-reference-asset-registry.ts';
 import {identityMarking,referenceIdentity} from '../src/operator-identity-markings.ts';
 import {markingBitmap} from '../src/operator-identity-marking-art.ts';
-import {referenceWeaponChoice} from '../src/faction-reference-weapons.ts';
+import {referenceWeaponChoice,referenceWeaponOptions}
+ from '../src/faction-reference-weapons.ts';
 
 test('44 unique, dated, auditable faction visual references',()=>{
  const audit=auditFactionReferences();
@@ -230,4 +231,28 @@ test('invalid reference-only finishes report an actionable technical issue',()=>
  assert.ok(result.technicalIssues.some(x=>x.includes('Unavailable top finish')));
  assert.ok(result.technicalIssues.some(x=>x.includes('Unavailable glove solid')));
  assert.equal(result.wardrobe.topColorway,'standard');
+});
+
+test('FAL family is distributed to dated, documented faction previews without false universal issue',()=>{
+ const options=(id)=>referenceWeaponOptions(id);
+ assert.equal(referenceWeaponChoice('sadf-nutria-1985').presetId,'fal-5000');
+ assert.equal(referenceWeaponChoice('rhodesian-brushstroke-1975').presetId,'fal-5000');
+ const rhodesian=options('rhodesian-brushstroke-1975');
+ assert.deepEqual(rhodesian.map(x=>x.presetId),['fal-5000','fal-5061']);
+ assert.equal(referenceWeaponChoice('rhodesian-brushstroke-1975','fal-5061').presetId,'fal-5061');
+ assert.deepEqual(options('ukraine-mm14-2022').map(x=>x.presetId),
+  ['ak-ak74m','fal-5061']);
+ const alt=resolveFactionReference('ukraine-mm14-2022','fal-5061');
+ assert.equal(alt.weapon.presetId,'fal-5061');
+ assert.equal(alt.technicalIssues.length,0);
+ // October 2022 Para delivery cannot be applied to a Feb-Mar volunteer kit.
+ assert.deepEqual(options('ukraine-territorial-2022').map(x=>x.presetId),['ak-akm']);
+ for(const id of ['belgian-jigsaw-1995','british-dpm-1995',
+  'australian-dpcu-2004','sandf-s2000-2015']){
+  assert.ok(options(id).every(x=>!x.presetId.startsWith('fal-')),
+   id+' needs its dated predominant service weapon, not a speculative FAL');
+ }
+ assert.throws(()=>referenceWeaponChoice('ukraine-mm14-2022','fal-5063'),
+  /Unsupported preview weapon/);
+ assert.deepEqual(auditFactionReferences().issues,[]);
 });

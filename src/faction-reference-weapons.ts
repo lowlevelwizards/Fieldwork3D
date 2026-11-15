@@ -54,11 +54,37 @@ export const REFERENCE_WEAPONS:Readonly<Record<string,ReferenceWeaponChoice>>={
  'us-swat-mp5-1995':choice('hk-mp5a3','representative'),
   'us-swat-2015':choice('ar-m4a1','representative')
 };
+/**
+ * Limited, specifically supported alternate weapon previews for a dated
+ * reference. Baseline weapon selections remain the most representative.
+ * This must not be used as a country-level "ever had a FAL" shortcut.
+ * Preview is visual only and does not alter live equipment inventory.
+ */
+export type ReferenceWeaponAlternative=ReferenceWeaponChoice&{note:string};
+export const REFERENCE_WEAPON_ALTERNATES:
+ Readonly<Record<string,readonly ReferenceWeaponAlternative[]>>={
+ 'rhodesian-brushstroke-1975':[
+  {presetId:'fal-5061',fidelity:'representative',
+   note:'Folding-stock FAL 50.61 also documented among Rhodesian Security Forces.'}
+ ],
+ 'ukraine-mm14-2022':[
+  {presetId:'fal-5061',fidelity:'representative',
+   note:'Limited FN FAL 50.61 Para deliveries documented in Ukrainian service in October 2022; not standard issue.'}
+ ]
+};
+export function referenceWeaponOptions(id:string){
+ const selected=REFERENCE_WEAPONS[id];
+ if(!selected)throw new Error('Reference missing explicit weapon issue: '+id);
+ return [{...selected,note:'Primary period reference'},
+  ...(REFERENCE_WEAPON_ALTERNATES[id]??[])];
+}
 /** The returned notes are intentionally part of the preview, never saved as
  * "historically exact" metadata. */
-export function referenceWeaponChoice(id:string){
- const selection=REFERENCE_WEAPONS[id];
- if(!selection)throw new Error('Reference missing explicit weapon issue: '+id);
+export function referenceWeaponChoice(id:string,previewPresetId?:string){
+ const options=referenceWeaponOptions(id);
+ const selection=previewPresetId?
+  options.find(x=>x.presetId===previewPresetId):options[0];
+ if(!selection)throw new Error('Unsupported preview weapon '+previewPresetId+' for '+id);
  const issue=issueWeaponPreset(selection.presetId);
  return {...selection,...issue};
 }
