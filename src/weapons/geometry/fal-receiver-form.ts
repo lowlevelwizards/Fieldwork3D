@@ -96,7 +96,7 @@ export function addFALCrownedReceiver(
 export function addFALScoopedPort(root:THREE.Group,
  receiverId:string,index:number,material:THREE.Material):THREE.Mesh{
  const outline:readonly (readonly [number,number])[]=[
-  [.14,.12],[.14,.82],[2.64,.82],[2.64,.12]
+  [-.80,.12],[-.80,.82],[2.64,.82],[2.64,.12]
  ];
  const vertices:number[]=[];
  for(const [x,y] of outline)
@@ -126,7 +126,7 @@ export function addFALPivotPair(root:THREE.Group,receiverId:string,
   geometry.rotateX(Math.PI/2);
   const mesh=new THREE.Mesh(geometry,material);
   mesh.name='family-receiver-'+receiverId+'-'+(startIndex+result.length);
-  mesh.position.set(-1.14,-1.84,side*1.80);
+  mesh.position.set(-2.05,-1.84,side*1.80);
   mesh.userData.falPivotSide=side;
   mesh.castShadow=true;mesh.receiveShadow=true;
   root.add(mesh);result.push(mesh);
