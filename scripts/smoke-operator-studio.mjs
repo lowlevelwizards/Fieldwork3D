@@ -125,8 +125,13 @@ try{
   if(Number(await page.locator('#studioCanvas').getAttribute('data-draw-calls'))<=0)
    throw Error('Reference selection lost shared 3D preview');
   await page.locator('.reference-apply').click();
-  if(await page.locator('#studioReferencesPanel').isVisible())
+  // Reference application can finish on the next Studio render turn.
+  // Wait for the real closed state rather than sampling immediately.
+  try{await page.locator('#studioReferencesPanel').waitFor({
+   state:'hidden',timeout:6000
+  });}catch{
    throw Error('Compatible reference apply did not return to Studio');
+  }
   if(!await page.locator('#studioApply').isEnabled())
    throw Error('Reference apply did not create an unsaved wardrobe draft');
   const storedAfterReference=await page.evaluate(()=>

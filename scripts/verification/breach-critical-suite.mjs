@@ -4,6 +4,7 @@
  */
 import {spawnSync} from 'node:child_process';
 import {existsSync} from 'node:fs';
+import {shardTestPaths} from './test-shards.mjs';
 const tests=[
  'tests/consolidation-stage7-domain-ownership.test.mjs',
  'tests/consolidation-stage8-world-ownership.test.mjs',
@@ -51,14 +52,17 @@ const tests=[
  'tests/breach-fog-visibility.test.mjs',
  'tests/breach-runtime-loop-step12.test.mjs'
 ];
+const selected=shardTestPaths(tests);
 if(process.argv.includes('--list')){
- process.stdout.write(tests.join('\n')+'\n');
+ process.stdout.write(selected.join('\n')+'\n');
  process.exit(0);
 }
 for(const file of tests)
  if(!existsSync(file))throw Error('Critical regression missing: '+file);
+if(!selected.length)process.exit(0);
+console.log('A1 bounded architecture regression shard',selected.length,'files');
 const run=spawnSync(process.execPath,
- ['--experimental-strip-types','--test',...tests],
+ ['--experimental-strip-types','--test','--test-concurrency=1',...selected],
  {stdio:'inherit',env:process.env});
 if(run.error)throw run.error;
 process.exit(run.status??1);

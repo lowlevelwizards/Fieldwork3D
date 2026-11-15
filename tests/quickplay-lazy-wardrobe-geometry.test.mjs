@@ -110,7 +110,7 @@ test('battlefield headgear, facewear and headsets build only when worn',()=>{
 });
 test('eager lab and lazy battlefield variants retain the same solid geometry',()=>{
  const eager=makeHead(false),lazy=makeHead(true);
- for(const headwear of ['pasgt','boonie','ach','high-cut-rails']){
+ for(const headwear of ['pasgt','boonie','ach','mich-2001']){
   updateWardrobeHeadLayers(eager.layers,headwear,'face-none',
    'eyes-none','headset-none');
   updateWardrobeHeadLayers(lazy.layers,headwear,'face-none',

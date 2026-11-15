@@ -490,7 +490,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   }
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;
-   const modelId=(id==='high-cut-rails'?'high-cut':id) as HeadSilhouetteId;
+   const modelId=(id) as HeadSilhouetteId;
    const requestedCamo=selected&&p.wardrobe?.headwearCamo!=='splittertarn-31'?
      resolvedHeadwearCamo(modelId,p.wardrobe?.headwearCamo):null;
    // Modern printed helmets carry actual cloth covers; preserve the

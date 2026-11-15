@@ -6,6 +6,8 @@ on:
       - 'src/operator-studio.ts'
       - 'src/operator-studio-graphic-lighting.ts'
       - 'src/operator-wardrobe-head-visuals.ts'
+      - 'src/operator-helmet-effective-appearance.ts'
+      - 'tests/helmet-a1-effective-appearance.test.mjs'
       - 'src/operator-wardrobe-gear-visuals.ts'
       - 'src/operator-visual-kit.ts'
       - 'scripts/smoke-operator-r715-bleed.mjs'
@@ -161,6 +163,19 @@ jobs:
           path: ach-mich-h6-captures/
           if-no-files-found: warn
           retention-days: 14
+      # A1 release scope is deliberately bounded to UI, appearance,
+      # basic camouflage, compatibility and approved silhouettes.
+      # Heavy per-pose camouflage stress tests remain available as Node tests
+      # rather than extending this mandatory smoke job past runner limits.
+      - name: A1 production build
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: npm run build
+      - name: A1 appearance, headwear anatomy, PASGT and camo core
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/helmet-a1-effective-appearance.test.mjs tests/helmet-h15-cut-consolidation.test.mjs tests/operator-headwear-anatomy.test.mjs tests/helmet-h14-pasgt-retrofit-roster.test.mjs tests/operator-headwear-camo-core.test.mjs
+      - name: A1 mount, cover and approved silhouette regressions
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/a1-helmet-') }}
+        run: node --experimental-strip-types --test --test-concurrency=1 tests/helmet-h7-field-options.test.mjs tests/helmet-h7-visuals.test.mjs tests/helmet-h10-fit.test.mjs tests/helmet-h13-mount-and-compatibility.test.mjs tests/helmet-h30-reference-contour.test.mjs tests/helmet-h31c-cover-shell-penetration.test.mjs
       - name: R5 UV1 self-shadow atlas — actual mobile WebGL proof
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/operator-lighting-r5-') }}
         run: node scripts/smoke-operator-lightmap-r5.mjs

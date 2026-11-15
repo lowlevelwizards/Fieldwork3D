@@ -27,9 +27,9 @@ import {initialWardrobe,resolvedWardrobe,
  wardrobeItemsForSlot,WARDROBE_SLOTS,type WardrobeSlot,
  type WardrobeOptions,type WardrobeItem} from './operator-wardrobe-data.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {isBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
 import {studioUsesVisibleFace} from './operator-studio-preview-policy.ts';
 import {selectWardrobeItem} from './operator-wardrobe-unified.ts';
-import {isBallisticHelmet} from './operator-ballistic-helmet-cut.ts';
 
 export const APPEARANCE_GROUP_LABELS:Readonly<Record<WardrobeSlot,string>>={
  headwear:'HEAD',facewear:'FACE',eyewear:'EYES',headset:'COMMS',
@@ -57,8 +57,9 @@ const focus=(slot:WardrobeSlot)=>{
 };
 export function activeAppearanceItems(slot:WardrobeSlot):readonly WardrobeItem[]{
  const items=wardrobeItemsForSlot(slot);
- // One illustrated ballistic item card; full/mid/high live at the top
- // of HEAD > DETAILS. Do not purge legacy IDs used in stored appearances.
+ // Full/Mid/High are three real, persisted meshes but ONE item in Studio.
+ // Cut switching belongs to HEAD > DETAILS, not duplicate cards in ITEMS.
+ // Retain all cut IDs for renderer, saved looks, and the details selector.
  return slot==='headwear'?
   items.filter(item=>!isBallisticHelmet(item.id)||item.id==='ach'):items;
 }

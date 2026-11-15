@@ -16,7 +16,7 @@ import {headwearFaceTone,headwearFaceRegion} from './operator-headwear-materials
 import {softenHeadwearAO} from './operator-baked-gear-ao.ts';
 import {createUnifiedHelmetShellGeometry}
  from './operator-ach-mich-unified-shell.ts';
-export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ddr-m56'|'police-helmet'|'ach'|'high-cut'|'mich-2001'|'mich-2002'|'fast-sf'|'fast-xp-mid';
+export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ddr-m56'|'police-helmet'|'ach'|'mich-2001'|'mich-2002';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
  earEdge:number;foreheadEdge:number;billLength:number;
@@ -41,16 +41,10 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
   top:8.605,earEdge:3.70,foreheadEdge:4.05,billLength:0},
  'ach':{id:'ach',frontExtent:-5.535,rearExtent:5.60,
   top:8.84,earEdge:2.04,foreheadEdge:4.40,billLength:0},
- 'high-cut':{id:'high-cut',frontExtent:-5.485,rearExtent:5.35,
-  top:8.70,earEdge:5.95,foreheadEdge:4.50,billLength:0},
  'mich-2002':{id:'mich-2002',frontExtent:-5.70,rearExtent:5.75,
   top:8.76,earEdge:3.06,foreheadEdge:4.55,billLength:0},
  'mich-2001':{id:'mich-2001',frontExtent:-5.61,rearExtent:5.64,
-  top:8.70,earEdge:5.30,foreheadEdge:4.55,billLength:0},
- 'fast-sf':{id:'fast-sf',frontExtent:-5.53,rearExtent:5.66,
-  top:8.80,earEdge:6.04,foreheadEdge:4.55,billLength:0},
- 'fast-xp-mid':{id:'fast-xp-mid',frontExtent:-5.68,rearExtent:5.81,
-  top:8.78,earEdge:4.20,foreheadEdge:4.58,billLength:0}
+  top:8.70,earEdge:5.30,foreheadEdge:4.55,billLength:0}
 };
 /** Stage 1K: hollow fitting bands instead of solid boxes perched on top.
  * Upper cap volumes sit above the skull; the side/front/rear panels wrap
@@ -417,24 +411,6 @@ const ACH_CUBOIDS:readonly HeadwearCuboid[]=[
   width:1.41,height:4.77,depth:4.10
  }))
 ];
-/** High-cut uses the same single-mass crown logic, but the ear region
- * is genuine NEGATIVE space: low brow -> clean high cut -> low rear.
- * No thin cap strip or ornamental temple prong at the cutout.
- */
-const HIGH_CUT_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'highcut-continuous-crown',x:0,y:7.325,z:0,
-  width:9.75,height:2.75,depth:9.85},
- {name:'highcut-protective-brow',x:0,y:5.40,z:-4.855,
-  width:9.75,height:1.80,depth:1.26},
- // A single substantial rear mass forms the rear side return AND nape.
- {name:'highcut-continuous-nape',x:0,y:4.70,z:4.175,
-  width:9.75,height:3.20,depth:2.35},
- ...([-1,1] as const).map(sign=>({
-  name:sign===-1?'highcut-left-temple':'highcut-right-temple',
-  x:sign*4.395,y:5.40,z:-3.35,
-  width:.96,height:1.80,depth:2.25
- }))
-];
 /** H23: mid-cut retains a partial rearward ear lobe and deeper protected nape.
  * Five coarse volumes are fitting metadata only. The actual low-poly
  * shell and its contour are authored in operator-ach-mich-unified-shell.
@@ -464,28 +440,6 @@ const MICH_2001_CUBOIDS:readonly HeadwearCuboid[]=[
   width:1.15,height:1.31,depth:3.90
  }))
 ];
-const FAST_SF_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'fast-sf-main-crown',x:0,y:7.53,z:0,width:9.70,height:2.54,depth:10.35},
- {name:'fast-sf-front-mount-mass',x:0,y:6.70,z:-4.93,width:9.62,height:2.80,depth:1.20},
- {name:'fast-sf-front-brow',x:0,y:5.29,z:-5.05,width:9.62,height:1.45,depth:1.12},
- {name:'fast-sf-strong-rear-return',x:0,y:4.86,z:4.79,width:9.70,height:3.32,depth:1.66},
- ...([-1,1] as const).map(sign=>({
-  name:'fast-sf-ear-cut-temple',x:sign*4.40,y:6.75,z:-3.23,
-  width:1.00,height:1.40,depth:2.55
- }))
-];
-const FAST_XP_MID_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'fast-xp-mid-crown',x:0,y:7.53,z:0,width:10.12,height:2.50,depth:10.62},
- {name:'fast-xp-mid-brow',x:0,y:5.50,z:-5.04,width:10.12,height:1.86,depth:1.28},
- {name:'fast-xp-mid-nape',x:0,y:4.93,z:4.88,width:10.12,height:3.43,depth:1.82},
- ...([-1,1] as const).flatMap(sign=>[
-  {name:'fast-xp-mid-forward-temple',x:sign*4.58,y:5.55,z:-3.32,
-   width:1.10,height:2.18,depth:3.25},
-  {name:'fast-xp-mid-rear-side',x:sign*4.59,y:4.98,z:2.75,
-   width:1.08,height:2.84,depth:4.25}
- ])
-];
-
 /** Symbolic anatomical coverage contract, based on current unchanged head.
  * Y values are local to the existing head bone. Tests also measure the
  * actual union profile, not just declared intent.
@@ -496,11 +450,6 @@ export const HEADWEAR_FIT_TARGETS=Object.freeze({
   ear:CUBE_HEAD_ANATOMY.earCenter-.56,
   nape:CUBE_HEAD_ANATOMY.nape+.52
  },
- 'high-cut':{
-  brow:CUBE_HEAD_ANATOMY.brow+.20,
-  ear:CUBE_HEAD_ANATOMY.earTop+1.95,
-  nape:CUBE_HEAD_ANATOMY.nape+.90
- }
 });
 /** Authored source of silhouette proportions; never derive helmet type
  * by scaling another helmet or by swapping detail strips.
@@ -516,9 +465,7 @@ const HEADGEAR_VOLUMES:Readonly<Record<HeadSilhouetteId,readonly HeadwearCuboid[
  'ddr-m56':DDR_M56_CUBOIDS,
  'police-helmet':POLICE_HELMET_CUBOIDS,
  'ach':ACH_CUBOIDS,
- 'high-cut':HIGH_CUT_CUBOIDS,
- 'mich-2001':MICH_2001_CUBOIDS,'mich-2002':MICH_2002_CUBOIDS,
- 'fast-sf':FAST_SF_CUBOIDS,'fast-xp-mid':FAST_XP_MID_CUBOIDS
+ 'mich-2001':MICH_2001_CUBOIDS,'mich-2002':MICH_2002_CUBOIDS
 };
 /** All seven authored shapes use one exterior union mesh and the same -Z
  * head-local attachment, in battle as well as Operator Lab.
@@ -586,8 +533,7 @@ export function createHeadwearSilhouette(
  group.userData.stage=({
   'patrol-cap':'1N','boonie':'1N','beanie':'1N','beret':'R5C',
   'pasgt':'1N','soviet-steel':'1N','m1-steel':'R5D','ddr-m56':'R5H1','police-helmet':'R5H3',
-  'ach':'1E','high-cut':'1E',
-  'mich-2001':'H1-B','mich-2002':'H1-B','fast-sf':'H1-B','fast-xp-mid':'H1-B'
+  'ach':'1E','mich-2001':'H1-B','mich-2002':'H1-B'
  } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  group.userData.silhouette=id;

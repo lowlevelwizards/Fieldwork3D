@@ -106,15 +106,12 @@ test('H14: conflicts are resolved without erasing saved PASGT preferences',()=>{
 });
 
 test('H14 roster: each family keeps its authored independent lower-ear profile',()=>{
- const ids=['pasgt','ach','mich-2001','mich-2002','high-cut',
-  'fast-sf','fast-xp-mid','m1-steel','ddr-m56','soviet-steel'];
+ const ids=['pasgt','ach','mich-2001','mich-2002','m1-steel','ddr-m56','soviet-steel'];
  const cuts=ids.map(id=>HEAD_SILHOUETTE_METRICS[id].earEdge);
- assert.ok(new Set(cuts).size>=8);
+ assert.ok(new Set(cuts).size>=7);
  assert.ok(HEAD_SILHOUETTE_METRICS.pasgt.earEdge<
   HEAD_SILHOUETTE_METRICS.ach.earEdge);
  assert.ok(HEAD_SILHOUETTE_METRICS['mich-2001'].earEdge>
   HEAD_SILHOUETTE_METRICS['mich-2002'].earEdge);
- assert.ok(HEAD_SILHOUETTE_METRICS['fast-sf'].earEdge>
-  HEAD_SILHOUETTE_METRICS['fast-xp-mid'].earEdge);
  for(const id of ids)assert.ok(headwearCuboidVolumes(id).length>=3);
 });

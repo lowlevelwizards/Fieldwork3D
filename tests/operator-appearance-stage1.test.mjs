@@ -15,7 +15,7 @@ test('headgear picker respects material eligibility without changing kit or appr
  const initial=initialWardrobe();
  const blocked=selectHeadwearCamo(initial,'soviet-steel','m81-woodland');
  assert.equal(blocked,initial,'painted steel cannot receive a cloth camouflage');
- assert.equal(headwearAppearanceModel('high-cut-rails'),'high-cut');
+ assert.equal(headwearAppearanceModel('mich-2001'),'mich-2001');
  assert.ok(headwearCamoChoices('ach').includes('m81-woodland'));
  const solid=selectHeadwearSolid(initial,'ach','black');
  assert.equal(solid.headwearColor,'black');
@@ -53,19 +53,26 @@ test('approved headwear identity survives saved outfits and Quick Play reset',()
  assert.equal(restored.members[0].wardrobe.headwearCamo,'m81-woodland');
 });
 
-test('both game editors expose one shared approved swatch UI without inventory grants',()=>{
+test('Quick Play and Campaign route headwear editing through canonical Studio without inventory grants',()=>{
  const campaign=readFileSync(new URL('../src/campaign-ui.ts',import.meta.url),'utf8');
  const quick=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const picker=readFileSync(new URL('../src/operator-headwear-picker.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/operator-headwear-picker.css',import.meta.url),'utf8');
- assert.match(campaign,/createHeadwearAppearancePicker\(person\.loadout,wardrobe/);
- assert.match(quick,/createHeadwearAppearancePicker\(member\.loadout/);
- assert.match(picker,/headwearCamoPixels\(id\)/);
+ assert.match(campaign,/this\.handlers\.openStudio\(p\.id\)/,
+  'Campaign appearance button opens the single Studio editor');
+ assert.match(quick,/openStudio:id=>openOperatorStudio\(id,'quick'\)/,
+  'Quick Play appearance editing uses the canonical Studio bridge');
+ assert.match(quick,/openStudio:id=>openOperatorStudio\(id,'campaign'\)/,
+  'Campaign bridge preserves the correct campaign context');
+ assert.doesNotMatch(campaign,/createHeadwearAppearancePicker\(/);
+ assert.doesNotMatch(quick,/createHeadwearAppearancePicker\(/);
+ assert.match(picker,/paintCamoPreview\(canvas,id\)/);
  assert.match(picker,/headwearColorChoices\(canon\)/);
  assert.match(picker,/headwearCamoChoices\(model\)/);
  assert.match(picker,/nextHeadwearCamoRoll/);
  assert.match(picker,/options\.disabled/);
- assert.match(quick,/expandedQuickWardrobe=member\.id/);
+ assert.doesNotMatch(quick,/expandedQuickWardrobe/,
+  'removed inline wardrobe must not be recreated alongside Studio');
  assert.match(css,/min-height:44px/);
  assert.doesNotMatch(picker,/setEquipmentChoice|equipCampaignGear|equipRosterGear/);
 });

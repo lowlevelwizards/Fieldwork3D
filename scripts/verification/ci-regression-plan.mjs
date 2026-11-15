@@ -5,6 +5,7 @@
 import assert from 'node:assert/strict';
 import {existsSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
+import {shardTestPaths} from './test-shards.mjs';
 
 export const baseline=[
  'tests/breach-roadmap2-stage1-contracts.test.mjs',
@@ -109,13 +110,23 @@ function main(){
   if(plan.runBroadCritical)console.log('scripts/verification/breach-critical-suite.mjs');
   return;
  }
- const result=spawnSync(process.execPath,['--experimental-strip-types','--test','--test-concurrency=2',...plan.tests],{stdio:'inherit',env:process.env});
- if(result.error)throw result.error;
- if(result.status!==0)process.exit(result.status??1);
- if(plan.runBroadCritical){
-  const broad=spawnSync(process.execPath,['scripts/verification/breach-critical-suite.mjs'],{stdio:'inherit',env:process.env});
-  if(broad.error)throw broad.error;
-  process.exit(broad.status??1);
+ const shardArgs=args.filter(arg=>arg.startsWith('--shard='));
+ const broadOnly=args.includes('--broad-only');
+ const selected=shardTestPaths(plan.tests,args);
+ if(!broadOnly&&selected.length){
+  console.log('A1 bounded CI regression shard',selected.length,'files');
+  const result=spawnSync(process.execPath,['--experimental-strip-types',
+   '--test','--test-concurrency=1',...selected],{stdio:'inherit',env:process.env});
+  if(result.error)throw result.error;
+  if(result.status!==0)process.exit(result.status??1);
  }
+ if(plan.runBroadCritical&&(broadOnly||shardArgs.length===0)){
+  const critical=spawnSync(process.execPath,
+   ['scripts/verification/breach-critical-suite.mjs',...shardArgs],
+   {stdio:'inherit',env:process.env});
+  if(critical.error)throw critical.error;
+  process.exit(critical.status??1);
+ }
+
 }
 if(process.argv[1]&&new URL(import.meta.url).pathname===process.argv[1])main();

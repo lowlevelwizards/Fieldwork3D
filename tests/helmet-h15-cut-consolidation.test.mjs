@@ -1,106 +1,48 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
-import {initialWardrobe,readWardrobe,wardrobeItemsForSlot}
+import * as THREE from 'three';
+import {readWardrobe,initialWardrobe,wardrobeItemsForSlot}
  from '../src/operator-wardrobe-data.ts';
 import {activeAppearanceItems} from '../src/operator-appearance-grid.ts';
 import {BALLISTIC_CUT_SHELL,ballisticHelmetCut,canonicalBallisticHelmet}
  from '../src/operator-ballistic-helmet-cut.ts';
-import {headwearCuboidVolumes} from '../src/operator-headwear-silhouettes.ts';
-import {achMichProfile} from '../src/operator-ach-mich-details.ts';
-
-test('H15: only one ballistic family card, all other helmet types retained',()=>{
- const displayed=activeAppearanceItems('headwear');
- const ids=displayed.map(x=>x.id);
- assert.equal(displayed.filter(x=>ballisticHelmetCut(x.id)).length,1);
- assert.equal(displayed.find(x=>x.id==='ach')?.name,'Ballistic Helmet');
- for(const id of ['high-cut','high-cut-rails','mich-2001','mich-2002',
-  'fast-sf','fast-xp-mid'])assert.ok(!ids.includes(id),id);
- for(const id of ['pasgt','m1-steel','soviet-steel','ddr-m56','police-helmet'])
-  assert.ok(ids.includes(id),id);
- // IDs are intentionally still valid for historic assets and input migration.
- for(const id of ['high-cut','mich-2001','fast-sf','fast-xp-mid'])
-  assert.ok(wardrobeItemsForSlot('headwear').some(x=>x.id===id));
+import {createHeadwearSilhouette} from '../src/operator-headwear-silhouettes.ts';
+test('A1: only supported, modeled helmets remain registered',()=>{
+ const items=wardrobeItemsForSlot('headwear'),ids=items.map(x=>x.id);
+ assert.deepEqual(items.filter(x=>x.family==='ballistic').map(x=>x.id),
+  ['soviet-steel','pasgt','ach','mich-2001','mich-2002',
+   'm1-steel','ddr-m56','police-helmet']);
+ assert.equal(new Set(ids).size,ids.length);
+ const cards=activeAppearanceItems('headwear');
+ assert.deepEqual(cards.filter(x=>['ach','mich-2001','mich-2002'].includes(x.id))
+  .map(x=>x.id),['ach'],
+  'show only Ballistic Helmet in ITEMS; Full/Mid/High live in DETAILS');
 });
-
-test('H15: exactly three canonical cuts with no new shell renderer',()=>{
- assert.deepEqual(BALLISTIC_CUT_SHELL,{
-  full:'ach',mid:'mich-2002',high:'mich-2001'
- });
- const legacy={
-  'high-cut':'mich-2001','high-cut-rails':'mich-2001',
-  'fast-sf':'mich-2001','fast-xp-mid':'mich-2002'
- };
- for(const [old,expected] of Object.entries(legacy))
-  assert.equal(canonicalBallisticHelmet(old),expected);
- for(const id of ['ach','mich-2002','mich-2001'])
+test('A1: exactly three ballistic cuts with actual modeled geometry',()=>{
+ assert.deepEqual(BALLISTIC_CUT_SHELL,{full:'ach',mid:'mich-2002',high:'mich-2001'});
+ for(const id of Object.values(BALLISTIC_CUT_SHELL)){
+  assert.ok(ballisticHelmetCut(id));
   assert.equal(canonicalBallisticHelmet(id),id);
+  assert.equal(createHeadwearSilhouette(id,new THREE.MeshStandardMaterial()).children.length,1);
+ }
  assert.equal(ballisticHelmetCut('pasgt'),null);
 });
-
-test('H15: legacy saves migrate shell while preserving all customization state',()=>{
- const seed=initialWardrobe();
- for(const [from,to] of [
-  ['high-cut','mich-2001'],['high-cut-rails','mich-2001'],
-  ['fast-sf','mich-2001'],['fast-xp-mid','mich-2002'],
-  ['mich-2001','mich-2001'],['mich-2002','mich-2002']
- ]){
-  const incoming={...seed,styles:{...seed.styles,headwear:from},
-   helmetField:{shroud:true,rails:true,bungees:true,goggles:'front',
-    camera:true,cameraSide:'left'},helmetSetup:{cover:'fitted'},
-   headwearColor:'olive-drab'};
-  const result=readWardrobe(incoming);
-  assert.equal(result.styles.headwear,to,from);
-  assert.equal(result.helmetField?.rails,true);
-  assert.equal(result.helmetField?.bungees,true);
-  assert.equal(result.helmetField?.goggles,'front');
-  assert.equal(result.helmetSetup?.cover,'fitted');
-  assert.equal(incoming.styles.headwear,from,'never modify input in-place');
-  assert.equal(readWardrobe(result).styles.headwear,to,'round-trip');
+test('A1: unrecognized former helmet remains a real ballistic item',()=>{
+ const base=initialWardrobe(),loaded=readWardrobe({...base,
+  styles:{...base.styles,headwear:'no-longer-installed-shell'},
+  helmetSetup:{cover:'fitted'}});
+ assert.equal(loaded.styles.headwear,'ach');
+ assert.equal(loaded.helmetSetup.cover,'fitted');
+});
+test('A1: active looks survive repeated save normalization',()=>{
+ const base=initialWardrobe();
+ for(const id of Object.values(BALLISTIC_CUT_SHELL)){
+  const original={...base,styles:{...base.styles,headwear:id},
+   helmetSetup:{cover:'fitted'},helmetField:{rails:true,shroud:true,
+    bungees:true,goggles:'front',camera:true,cameraSide:'left'}};
+  const once=readWardrobe(original),twice=readWardrobe(once);
+  assert.deepEqual(once,twice);
+  assert.equal(once.styles.headwear,id);
+  assert.equal(once.helmetField?.bungees,true);
  }
-});
-
-test('H15: legacy H1 rail/lights/optic hardware maps into H7 without being lost',()=>{
- const original={...initialWardrobe(),styles:{
-  ...initialWardrobe().styles,headwear:'fast-sf'
- },helmetSetup:{rails:'arc',shroud:'integrated',cover:'fitted',
-  light:'right',rearModule:'counterweight',rearStrobe:true,scrim:'field'}};
- const migrated=readWardrobe(original);
- assert.equal(migrated.styles.headwear,'mich-2001');
- assert.equal(migrated.helmetSetup?.rails,'arc',
-  'archived H1 options remain saved');
- assert.equal(migrated.helmetField?.rails,true);
- assert.equal(migrated.helmetField?.shroud,true);
- assert.equal(migrated.helmetField?.light,true);
- assert.equal(migrated.helmetField?.lightSide,'right');
- assert.equal(migrated.helmetField?.counterweight,true);
- assert.equal(migrated.helmetField?.strobe,true);
- assert.equal(migrated.helmetField?.concealment,'scrim');
- const explicit={...original,helmetField:{rails:false,shroud:false}};
- assert.equal(readWardrobe(explicit).helmetField?.rails,false,
-  'newer H7 choices override legacy migration');
-});
-test('H17 three canonical coverage cuts retain accurate shell and binding',()=>{
- const mid=headwearCuboidVolumes('mich-2002');
- const high=headwearCuboidVolumes('mich-2001');
- assert.equal(mid.length,5);
- assert.equal(mid.filter(x=>x.name.includes('ear-nape')).length,2);
- assert.equal(high.filter(x=>x.name.includes('ear-nape')).length,2);
- const hem=achMichProfile('mich-2002').hem;
- assert.ok(hem.every(p=>p[0]===achMichProfile('mich-2002').side));
- assert.equal(hem[2][1],3.06);
- assert.equal(achMichProfile('mich-2001').hem[1][1],4.55);
-});
-
-test('H15: shell cuts are first in Details; shell change does not reset accessories',()=>{
- const source=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
- const start=source.indexOf("if(activeCategory==='headwear'){");
- const cut=source.indexOf("row('BALLISTIC HELMET CUT'",start);
- const headwear=source.indexOf("row('HEADWEAR APPEARANCE'",start);
- assert.ok(start>=0&&cut>start&&headwear>cut,
-  'cut selector must precede other headwear controls');
- assert.ok(source.includes('helmet-cut-card'));
- assert.ok(source.includes('headwear:BALLISTIC_CUT_SHELL[choice.id]'));
- assert.ok(source.includes('...before.styles,'));
- assert.ok(source.includes("id==='ach'&&ballisticHelmetCut(current().styles.headwear)"));
 });

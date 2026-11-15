@@ -5,9 +5,9 @@ import {initialWardrobe,resolvedWardrobe} from '../src/operator-wardrobe-data.ts
 import {selectWardrobeItem} from '../src/operator-wardrobe-unified.ts';
 test('one real headgear selection equips and displays its exact class',()=>{
  const bare=bareLabEquipment();
- let result=selectWardrobeItem(bare,initialWardrobe(),'headwear','high-cut-rails');
+ let result=selectWardrobeItem(bare,initialWardrobe(),'headwear','mich-2001');
  assert.equal(result.kit.slots.head,'head-helmet');
- assert.equal(resolvedWardrobe(result.wardrobe,result.kit).headwear,'high-cut-rails');
+ assert.equal(resolvedWardrobe(result.wardrobe,result.kit).headwear,'mich-2001');
  result=selectWardrobeItem(result.kit,result.wardrobe,'headwear','beanie');
  assert.equal(result.kit.slots.head,'head-cap');
  assert.equal(resolvedWardrobe(result.wardrobe,result.kit).headwear,'beanie');
