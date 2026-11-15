@@ -11,8 +11,8 @@ import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
 import {recordDoorManeuverContact,tryGoalCompleteDoorHandoffAfterEscape}
  from './breach-door-traversal-maneuver.ts';
-import {escapeOpenDoorOverlap,sweptBodyClear} from './breach-navigation.ts';
-import {routeWithSqueezeIntel,routeWithSqueezeWorld}
+import {escapeOpenDoorOverlap,sweptBodyClear,bodyClear} from './breach-navigation.ts';
+import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
@@ -20,6 +20,8 @@ import {holdKnownFixedAuthoredGoal}
  from './breach-authored-goal-block.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
+import {sweptRejoinExistingRoute,takeRepeatedDoorEscapeRoute,
+ finishDoorEscapeRejoin} from './breach-door-escape-rejoin.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
  * world-truth connector past a STABLE fully-open leaf. Otherwise a
@@ -54,6 +56,51 @@ export function restoreAfterOpenLeafEscape(
  a.retryRouteAt=0;a.recoveryAttempts=0;
  return true;
 }
+/** G2B: only after THREE repeated real leaf escapes and after the body
+ * itself is no longer embedded, pay for one cold, bounded physical-world
+ * connector to a NEARBY node on the actor's ORIGINAL temporary route.
+ * Later closed doors stay real and must be opened by the normal motor.
+ * Never substitute the local waypoint for the authored final GO.
+ */
+export function restoreRepeatedDoorEscapeRoute(
+ a:TeamActor,s:Session,goal:Pt
+):boolean{
+ if(a.side!=='blue'||a.plan[0]?.kind!=='move'||
+    a.lastBlocker!=='door'||!a.doorTraversal?.doorId||
+    (a.doorTraversal.maneuver==='outside-leaf'&&
+     a.doorTraversal.waypoints.length>0))return false;
+ const world=sessionWorldGeometry(s);
+ if(!bodyClear(a.p,s.doors,OPERATOR_RADIUS,world))return false;
+ const original=takeRepeatedDoorEscapeRoute(a,s.seconds,goal);
+ if(!original)return false;
+ const sweep=(from:Pt,to:Pt)=>
+   sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+ let rejoined=sweptRejoinExistingRoute(a.p,goal,original,sweep);
+ // Directly skipping a stale grid node was the safe, but ineffective,
+ // G2A experiment. Now permit at most three COLD world-truth joins to
+ // nearby disposable waypoints, not the remote goal behind more doors.
+ if(!rejoined.length)
+  for(let i=1;i<Math.min(original.length,5);i++){
+   const target=original[i],span=d(a.p,target);
+   if(span<5||span>112)continue;
+   const connector=routeWithNormalWorld(a.p,target,s.doors,world);
+   if(!connector.length||d(connector[connector.length-1],target)>3||
+      !sweep(a.p,connector[0]))continue;
+   let length=0,from=a.p,valid=true;
+   for(const node of connector){
+    if(!sweep(from,node)){valid=false;break;}
+    length+=d(from,node);from=node;
+   }
+   if(!valid||length>Math.max(120,span*2.5+24))continue;
+   rejoined=[...connector.map(clone),...original.slice(i+1).map(clone)];
+   break;
+  }
+ if(!rejoined.length||d(rejoined[rejoined.length-1],goal)>3)return false;
+ setTransientRoute(s,a,rejoined,'door-escape-world-rejoin');
+ finishDoorEscapeRejoin(a);
+ a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;a.recoveryAttempts=0;
+ return true;
+}
 export type MotorRouteReadiness='ready'|'handled'|'unavailable';
 export function prepareMotorRoute(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks):MotorRouteReadiness{
@@ -86,6 +133,7 @@ export function prepareMotorRoute(
       if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return 'handled';
     }
+    if(restoreRepeatedDoorEscapeRoute(a,s,p))return 'ready';
     // Never execute expensive route searches every fixed tick for a proven
     // unreachable destination. Changes of goal or recovered progress reset.
     // A route may be temporarily unavailable solely because a swung leaf
