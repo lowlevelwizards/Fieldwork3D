@@ -11,17 +11,18 @@ import {createHeadwearDetailMaterial,headwearDetailPixels,
 import {TILE_PIXELS,PIXEL_WORLD_SIZE}
  from '../src/rendering/pixel-recipes.ts';
 
-const ids=['patrol-cap','boonie','beanie','ach','high-cut','pasgt','soviet-steel'];
-test('all approved headwear stays one unioned, UV mapped exterior mesh',()=>{
+const ids=['patrol-cap','boonie','beanie','ach','pasgt','soviet-steel'];
+test('all approved headwear stays one material-mapped authoritative exterior mesh',()=>{
  for(const id of ids){
   const g=createHeadwearSilhouette(id,createHeadwearDetailMaterial(id));
   assert.equal(g.children.length,1,id);
   const geo=g.children[0].geometry;
   assert.ok(id==='ach'?geo.userData.h17UnifiedContour:
+   id==='soviet-steel'?geo.userData.ssh40FacetedSurface:
    geo.userData.greedyCuboidUnion,id);
   assert.equal(geo.userData.materialRegions,true,id);
-  if(id!=='ach')assert.equal(geo.userData.cuboids.length,
-   headwearCuboidVolumes(id).length,id);
+  if(id!=='ach'&&id!=='soviet-steel')
+   assert.equal(geo.userData.cuboids.length,headwearCuboidVolumes(id).length,id);
   assert.equal(geo.getAttribute('uv').count,geo.getAttribute('position').count,id);
   assert.equal(geo.getAttribute('color').count,geo.getAttribute('position').count,id);
   assert.equal(geo.userData.pixelWorldSize,1,id);
@@ -100,7 +101,7 @@ test('2B.1: crown tops are quiet instead of containing arbitrary dark blocks',()
   for(let y=0;y<32;y++)for(let x=0;x<32;x++)values.add(headwearRegionPixel(id,3,x,y));
   assert.ok(values.size<=2,id+' top must be clean');
  }
- for(const id of ['beanie','ach','high-cut','pasgt','soviet-steel']){
+ for(const id of ['beanie','ach','pasgt','soviet-steel']){
   assert.equal(headwearRegionPixel(id,3,10,10),headwearRegionPixel(id,3,20,20),id);
  }
 });
@@ -117,7 +118,7 @@ test('2B.1: marks must explain construction, not random rectangles',()=>{
  assert.ok(headwearRegionPixel('beanie',1,16,17)<
   headwearRegionPixel('beanie',0,16,17));
  // No helmet has three unmotivated dark spots on the crown.
- for(const id of ['ach','high-cut','pasgt','soviet-steel']){
+ for(const id of ['ach','pasgt','soviet-steel']){
   assert.equal(headwearRegionPixel(id,0,12,15),
    headwearRegionPixel(id,0,20,24),id);
  }
@@ -126,7 +127,7 @@ test('2B.1: physical top/underside mapping is intentional',()=>{
  assert.equal(headwearFaceRegion('patrol-cap','patrol-integrated-crown',1,1),3);
  assert.equal(headwearFaceRegion('boonie','boonie-integrated-crown',1,1),3);
  assert.equal(headwearFaceRegion('boonie','boonie-front-brim',1,-1),1);
- for(const id of ['ach','high-cut','pasgt','soviet-steel']){
+ for(const id of ['ach','pasgt','soviet-steel']){
   assert.equal(headwearFaceRegion(id,id+'-continuous-crown',1,1),3,id);
  }
  assert.equal(headwearFaceRegion('soviet-steel','ssh40-integrated-front-edge',2,-1),2);
@@ -148,7 +149,7 @@ test('Stage 2C: quiet patrol seams and sewn boonie brim, no hard channel',()=>{
 test('Stage 2C: physically distinct tint-independent finishes, 1:1 scale',()=>{
  const expected={
   'patrol-cap':'woven-twill','boonie':'woven-canvas','beanie':'ribbed-knit',
-  'ach':'matte-composite','high-cut':'matte-composite',
+  'ach':'matte-composite',
   'pasgt':'matte-composite','soviet-steel':'painted-steel'
  };
  for(const id of ids){
