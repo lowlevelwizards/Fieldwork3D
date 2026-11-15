@@ -59,12 +59,13 @@ export function addFNCFacetedForearm(root:THREE.Group,
  */
 export function addFNCUpperGasBox(root:THREE.Group,
  material:THREE.Material):THREE.Mesh{
- const geometry=new THREE.BoxGeometry(8.80,1.25,1.48);
+ const geometry=new THREE.BoxGeometry(9.90,1.25,1.48);
  const mesh=new THREE.Mesh(geometry,material);
- mesh.position.set(8.43,.39,0); // X 4.03..12.83; closes shoulder-to-gas gap
+ mesh.position.set(8.35,.39,0); // X 3.40..13.30, meets sight seat at 13.12
  mesh.name='family-handguard-fnc-p5-upper-gas-box';
  mesh.userData.fncP5UpperGasBox=true;
  mesh.userData.fncP6NarrowGasBox=true;
+ mesh.userData.fncP7ConnectedGasHousing=true;
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh;
 }
 /** Two thick uninterrupted grooves on the polymer hex, three much thicker
@@ -82,7 +83,7 @@ export function addFNCForearmMarks(root:THREE.Group,
   // Three long dotted rows: each is 3 bold rectangles with deliberate
   // breathing room. The lower two are each a single uninterrupted channel.
   const intervals:readonly (readonly [number,number])[]=
-   upper?[[4.70,6.80],[7.23,9.36],[9.79,12.20]]:
+   upper?[[4.77,8.10],[8.62,12.55]]:
    [[4.66,12.28]];
   const height=upper?.235:.29;
   for(const y of ys)for(const [x0,x1] of intervals){
@@ -108,6 +109,7 @@ export function addFNCForearmMarks(root:THREE.Group,
   mesh.userData.fncP5GrooveLevel=level;
   mesh.userData.fncP5GrooveCount=ys.length;
   mesh.userData.fncP6GrooveSegmentsPerRow=intervals.length;
+  mesh.userData.fncP7ReducedUpperMarks=upper;
   mesh.userData.fncP6BoldGrooveHeight=height;
   mesh.castShadow=false;mesh.receiveShadow=false;root.add(mesh);marks.push(mesh);
  };

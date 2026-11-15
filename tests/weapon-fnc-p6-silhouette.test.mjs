@@ -46,7 +46,7 @@ test('P6: two broad uninterrupted lower channels, three segmented upper tracks',
   const meshes=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
   assert.equal(meshes.length,2);
   for(const mesh of meshes){
-   const rows=level==='upper'?3:2,segments=level==='upper'?3:1;
+   const rows=level==='upper'?3:2,segments=level==='upper'?2:1;
    assert.equal(mesh.userData.fncP5GrooveCount,rows);
    assert.equal(mesh.userData.fncP6GrooveSegmentsPerRow,segments);
    assert.ok(mesh.userData.fncP6BoldGrooveHeight>=.23);
@@ -72,18 +72,18 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
  assert.ok(web&&gas);
  assert.ok(web.geometry.getAttribute('position').count>=3,
   'central triangular stock gusset uses one solid bold silhouette');
- assert.ok(box(web).max.x-box(web).min.x>2.05);
+ assert.ok(box(web).max.x-box(web).min.x>1.7);
  assert.ok(box(gas).min.x-box(upper).max.x<.35,
   'upper gas box begins close to the receiver front rather than floating');
  assert.ok(box(front).max.y>3.15);
- assert.ok(box(rear).max.y>2.80);
+ assert.ok(box(rear).max.y>2.60);
  assert.equal(front.geometry.parameters.shapes.holes.length,1);
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
  assert.ok(box(handle).max.x-box(handle).min.x<1.16);
  assert.ok(box(handle).max.z>box(upper).max.z+1.25);
  assert.ok(box(stem).max.z>box(handle).min.z,
   'short connecting stem must intersect the projecting grip');
- assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.9);
+ assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.60);
  assert.ok(box(muzzle).max.x-box(muzzle).min.x<1.55);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
