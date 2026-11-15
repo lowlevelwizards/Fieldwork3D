@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {fixedGoalCorrectionText} from '../src/breach-authored-goal-block.ts';
 import {recoveryAdviceFor} from '../src/ui/recovery-guidance.ts';
-import {classifyExecutionNotice} from '../src/ui/execution-feedback.ts';
+import {classifyExecutionNotice,ExecutionNoticeFeed,locateNoticeOrder} from '../src/ui/execution-feedback.ts';
 
 test('D3.16B: known fixture at physical GO identifies action without inventing a new destination',()=>{
  const text=fixedGoalCorrectionText('furniture');
@@ -33,4 +33,21 @@ test('D3.16B: physical hold retains authored goal; only known solid fixtures qua
  assert.match(src,/a\.orderIssue=\{nodeId:node!\.id,reason,since:s\.seconds\}/);
  assert.match(src,/a\.orderIssue\.reason===previous\.reason/);
  assert.doesNotMatch(src,/a\.plan\.(?:shift|splice|push)\(|n\.p\s*=|node\.p\s*=/);
+});
+
+test('D3.16B: typed mobile warning preserves actionable fixture diagnosis and locates original GO',()=>{
+ const move={id:3,kind:'move',p:{x:619.3,y:248}};
+ const actor={id:'ash',plan:[move]};
+ const text='ASH NEEDS ATTENTION · '+fixedGoalCorrectionText('furniture');
+ const feed=new ExecutionNoticeFeed();
+ const notice=feed.update([],'running',1000,[{
+  id:1,t:10,actor:'ash',p:{x:585.6,y:248.91},
+  orderId:3,kind:'blocked',reason:'order-failed',text
+ }]);
+ assert.equal(notice?.severity,'warning');
+ assert.equal(notice?.actorId,'ash');
+ assert.equal(notice?.orderId,3);
+ assert.match(notice?.recovery??'',/blocked MOVE waypoint/);
+ assert.deepEqual(locateNoticeOrder(notice,[actor]),{actorId:'ash',orderId:3});
+ assert.deepEqual(actor.plan,[move],'feedback cannot edit the existing GO');
 });
