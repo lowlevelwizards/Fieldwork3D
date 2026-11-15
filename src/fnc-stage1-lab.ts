@@ -2,19 +2,38 @@
 import * as THREE from 'three';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
-import {buildFNCStage1Silhouette} from './weapons/geometry/fnc-stage1-blockout.ts';
+import {buildFNCStage1Silhouette,type FNCArtFinishes}
+ from './weapons/geometry/fnc-stage1-blockout.ts';
+import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MAG_METAL,HK_MUZZLE_METAL,
+ AR_STANAG_METAL,AR_STANAG_RIB,FAL_LOWER_METAL,FAL_VENT_SHADOW}
+ from './weapons/geometry/weapon-visual-palette.ts';
 
 const canvas=document.querySelector<HTMLCanvasElement>('#view');
 const side=document.querySelector<HTMLButtonElement>('#side');
 const quarter=document.querySelector<HTMLButtonElement>('#quarter');
 const reverse=document.querySelector<HTMLButtonElement>('#left');
-if(!canvas||!side||!quarter||!reverse)
+const finish=document.querySelector<HTMLInputElement>('#finish');
+if(!canvas||!side||!quarter||!reverse||!finish)
  throw new Error('Incomplete FNC P1 silhouette lab');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
 renderer.setPixelRatio(Math.min(1.5,window.devicePixelRatio||1));
 const scene=new THREE.Scene();
 scene.background=new THREE.Color('#a1aaa0');
 const mono=new THREE.MeshBasicMaterial({color:0x27352d,side:THREE.DoubleSide});
+scene.add(new THREE.HemisphereLight(0xeef5eb,0x5c6e62,2.15));
+const key=new THREE.DirectionalLight(0xffffff,3.25);
+key.position.set(28,48,70);scene.add(key);
+const fill=new THREE.DirectionalLight(0xe3eee6,1.4);
+fill.position.set(-24,31,-72);scene.add(fill);
+const FNC_FACTORY: FNCArtFinishes={
+ steel:HK_BLACK_METAL,lower:FAL_LOWER_METAL,stock:HK_BLACK_METAL,
+ cheek:HK_DARK_POLYMER,grip:HK_DARK_POLYMER,
+ handguard:HK_DARK_POLYMER,magazine:AR_STANAG_METAL,
+ stamp:AR_STANAG_RIB,barrel:HK_BLACK_METAL,
+ muzzle:HK_MUZZLE_METAL,shadow:FAL_VENT_SHADOW
+};
+const createFNC=()=>buildFNCStage1Silhouette(mono,finish.checked?FNC_FACTORY:{});
+
 const root=new THREE.Group();
 scene.add(root);
 const camera=new THREE.OrthographicCamera(-25,25,55,-55,.1,300);
@@ -26,8 +45,8 @@ const baseline=(weapon:'rifle'|'carbine',id:string)=>{
  });
  return model;
 };
-const rows:readonly (readonly [string,THREE.Group])[]=[
- ['FNC',buildFNCStage1Silhouette(mono)],
+const rows:[string,THREE.Group][]=[
+ ['FNC',createFNC()],
  ['FAL',baseline('rifle','fal-5000')],
  ['G3',baseline('rifle','hk-g3a3')],
  ['AK-74',baseline('rifle','ak-ak74')],
@@ -62,6 +81,14 @@ const setView=(next:typeof view)=>{
 side.addEventListener('click',()=>setView('side'));
 quarter.addEventListener('click',()=>setView('quarter'));
 reverse.addEventListener('click',()=>setView('left'));
+finish.addEventListener('change',()=>{
+ const previous=rows[0][1];
+ root.remove(previous);clearWeaponSilhouette(previous);
+ const updated=createFNC();
+ updated.position.y=42;
+ root.add(updated);rows[0][1]=updated;
+ render();
+});
 window.addEventListener('pagehide',()=>{
  rows.forEach(([,g])=>clearWeaponSilhouette(g));
  mono.dispose();renderer.dispose();

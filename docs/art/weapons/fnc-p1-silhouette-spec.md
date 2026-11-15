@@ -49,3 +49,20 @@ P1 is deliberately dark flat-material with neutral sage-gray inspection backgrou
 - Side, three-quarter and opposite-side camera toggles function; five rows use one camera, one scale and identical flat material.
 - Tests verify open stock, profile landmarks, topology budget and absence of any live FNC preset.
 - Explicit visual approval before P2. No merge or deploy as part of P1.
+
+## P2 — reference-led exterior identity pass
+
+The P1B length/magazine correction remains authoritative; P2 is **visual-only** on the same draft feature branch. Reuse the existing six-slot game-art conventions and shared historical palettes; keep the rifle separate from live family serialization until approved.
+
+- **Stock**: original metal two-leg hollow folding stock plus one obvious black insulating top-rail sleeve. No collapse animation or opaque filled stock. Preserve stock and butt contact extrema.
+- **Receiver**: flat stamped upper and boxy lower/magwell, one restrained roof step. Right-side ejection/charging region and left-side selector are intentionally asymmetric and low-detail; no rows of artificial rivets or accessory rail.
+- **Fore-end**: octagonal faceted polymer mass (shared visual language with the G3 but FN-specific front taper and lower body), exactly one long longitudinal recessed side line plus two broad upper slots on each side. Batch marks on real flat faces; no floating vent boxes or repeated mesh clutter.
+- **Magazine**: the proven AR 30-round STANAG curve/normal generator reused unchanged; only placement and size tailored, plus two muted, broad stamped ribs; 5.56 not FAL 7.62.
+- **Barrel/sights**: retain P1B 17.7-inch historical barrel metadata and X = 19.50 art muzzle. Add a quiet front collar/gas-block mass and maintain large, legible protected front sights.
+- **Finish**: use immutable HK/FAL/AR black metal, polymer, magazine, shadow and muzzle materials in the FNC-only preview. Monochrome toggle preserves apples-to-apples comparisons against existing rifles.
+- **Workflow**: 5-rifle one-scale lab, side/three-quarter/opposite/mobile browser captures, factory/monochrome comparison, CI art-boundary/geometry tests. Never merge/deploy before user reviews the models.
+
+### Historical image/style sources
+- Small Arms Survey FNC profile and distinctive two-leg stock/rounded grooved fore-end: https://www.smallarmssurvey.org/sites/default/files/resources/SmallArmsSurvey_ID_PlayingCards.pdf
+- Small Arms Review FN FNC factory forms, stock sleeve and receiver: https://smallarmsreview.com/fabrique-nationales-carbine-the-fnc-in-america/
+- Commons original FNC right-hand image: https://commons.wikimedia.org/wiki/File:FN_Herstal_FNC_5.56_mm_Assault_Rifle_Right_Side.jpg

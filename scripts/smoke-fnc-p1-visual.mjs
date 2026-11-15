@@ -37,6 +37,8 @@ try{
    const png=await page.locator('.lab').screenshot({path:'fnc-p1-captures/'+label+'.png'});
    if(png.length<12000)throw Error('Empty FNC P1 WebGL capture '+label);
   };
+  if(!(await page.locator('#finish').isChecked()))
+   throw Error('P2 factory materials must be enabled in the default lab view');
   await capture('fnc-fal-g3-ak74-m16a2-side');
   await page.getByRole('button',{name:'THREE-QUARTER'}).click();
   if(await page.getByRole('button',{name:'THREE-QUARTER'}).getAttribute('aria-pressed')!=='true')
@@ -44,11 +46,17 @@ try{
   await capture('fnc-fal-g3-ak74-m16a2-three-quarter');
   await page.getByRole('button',{name:'OPPOSITE SIDE'}).click();
   await capture('fnc-fal-g3-ak74-m16a2-opposite');
+  await page.locator('#finish').uncheck();
+  await page.getByRole('button',{name:'SIDE',exact:true}).click();
+  await capture('fnc-p2-all-monochrome-side');
+  await page.locator('#finish').check();
+  await page.getByRole('button',{name:'THREE-QUARTER'}).click();
+  await capture('fnc-p2-factory-three-quarter');
   await page.setViewportSize({width:430,height:960});
   await page.getByRole('button',{name:'SIDE',exact:true}).click();
   await page.waitForFunction(()=>document.querySelector('#view')?.width>0);
   await capture('fnc-fal-g3-ak74-m16a2-mobile');
   if(errors.length)throw Error('FNC P1 lab had Three.js errors: '+errors.join(' | '));
-  console.log('FNC P1 actual WebGL lab: side / quarter / opposite / mobile captures passed');
+  console.log('FNC P2 WebGL lab: factory/monochrome, side/quarter/opposite/mobile captures passed');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
