@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {joinedLocalOpenLeafStage}
  from '../src/breach-door-escape-stage.ts';
+import {claimColdFrameApproachProbe}
+ from '../src/breach-door-escape-rejoin.ts';
 import {OPERATOR_RADIUS} from '../src/breach-core.ts';
 const p=(x,y)=>({x,y});
 const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -77,4 +79,24 @@ test('D3.13H2B: a blocked world connector cannot become an authored route',()=>{
    (_a,target)=>{probes++;return [p(355,308),{...target}];});
  assert.deepEqual(route,[],'invalid first approach never replaces the MOVE');
  assert.ok(probes<=2,'a failed cold probe has a strict pathfinder budget');
+});
+
+test('D3.13H2C: cold searches are capped for an unchanged real leaf and MOVE',()=>{
+ const actor={plan:[{kind:'move',id:17}],p:p(250,270)};
+ const goal=p(520,150);
+ assert.deepEqual(Array.from({length:5},()=>
+  claimColdFrameApproachProbe(actor,'D2',goal,1)),
+  [true,true,true,true,false],
+  'only four attempts per stationary opened leaf and authored order');
+ assert.equal(claimColdFrameApproachProbe(actor,'D2',goal,.75),true,
+  'a materially changed actual physical leaf permits a fresh probe');
+ actor.plan[0]={kind:'move',id:18};
+ assert.equal(claimColdFrameApproachProbe(actor,'D2',goal,.75),true,
+  'a genuinely revised MOVE is a distinct physical route');
+ actor.p=p(295,270);
+ assert.equal(claimColdFrameApproachProbe(actor,'D2',goal,.75),true,
+  'meaningful real body progress releases the previous cold budget');
+ actor.plan=[];
+ assert.equal(claimColdFrameApproachProbe(actor,'D2',goal,.75),false,
+  'an operator with no active MOVE can never ask for one');
 });
