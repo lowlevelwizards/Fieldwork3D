@@ -1,0 +1,58 @@
+name: D3.15A read-only frozen door opening evidence
+on:
+  pull_request:
+    paths:
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-15a-door-opening-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-door-state:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Read-only real 60 Hz motor, restaurant small seed 9473230
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+           11 2700 --site-index=7 --audit-seed=9473230 --audit-scale=small \
+           --progress --d315a-door-probe > "$RUNNER_TEMP/d315a-restaurant.json"
+      - name: Read-only real 60 Hz motor, townhouse standard seed 9568385
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+           11 2700 --site-index=1 --audit-seed=9568385 --audit-scale=standard \
+           --progress --d315a-door-probe > "$RUNNER_TEMP/d315a-townhouse.json"
+      - name: Print compact exact-door physical history and invariants
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for(const type of ['restaurant','townhouse']){
+            const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315a-'+type+'.json','utf8'));
+            const m=r.rows[0].modes.find(x=>x.mode==='entry');
+            console.log('D315A_'+type.toUpperCase(),JSON.stringify({
+              endDoor:m.endDoorStates.find(d=>d.id==='FRONT'),
+              arrivals:m.arrivals,operators:m.operators,
+              samples:m.d315aDoorSamples?.filter(x=>
+                x.seconds<=6||x.seconds%5===0||x.seconds>=43),
+              safety:r.summary
+            }));
+            if(r.summary.exceptions||r.summary.physicsStepViolations||
+              r.summary.corruptedPlans||r.summary.invalidPositions)
+              throw Error('nonphysical evidence invalid');
+            if((m.d315aDoorSamples?.length??0)<25)
+              throw Error('missing frozen door-order timeline');
+          }
+          NODE
+      - name: Preserve both complete frozen pre-candidate real-motor traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d315a-before-two-door-opening-frozen
+          path: ${{ runner.temp }}/d315a-*.json
+          retention-days: 90
+          if-no-files-found: ignore
