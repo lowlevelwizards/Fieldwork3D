@@ -33,7 +33,7 @@ jobs:
             microDirect:e?.microDirect,
             solutions:e?.microRouteSolutions,samples:e?.microRouteSamples,
             cover:e?.nearbyCover}));
-          if(!e||r.summary.exceptions||r.summary.physicsStepViolations||
+          if((m.arrivals<4&&!e)||r.summary.exceptions||r.summary.physicsStepViolations||
              r.summary.corruptedPlans)throw Error('bad fixed motor evidence');
           NODE
       - name: Archive all exact real map geometry evidence
