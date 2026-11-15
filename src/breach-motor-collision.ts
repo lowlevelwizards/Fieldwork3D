@@ -35,6 +35,7 @@ import {sweptRejoinExistingRoute,noteRepeatedDoorLeafEscape} from './breach-door
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
+ shouldProbeDoorlessStackLane,sweptGoalRouteFromStackCycle,
  noteCircularWorldRoute,ownsCircularWorldRoute}
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
@@ -157,6 +158,24 @@ export function resolveMotorCollision(
           (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
         if(alternative.length){
           setTransientRoute(s,a,alternative,'lane-cycle-world');
+          noteCircularWorldRoute(a,s.seconds);
+          a.retryRouteAt=0;a.recoveryAttempts=0;
+          a.squeeze=false;a.squeezeTime=0;
+          return true;
+        }
+      }
+      // D3.15B2: a real generated STACK move can cycle between the same
+      // local detour and an unreachable next known waypoint before any
+      // door episode exists. After THREE accepted physical local departures
+      // from one anchor with no GO progress, use ONE cold world route to
+      // the CURRENT STACK PlanNode. It cannot skip SYNC or the future OPEN.
+      if(shouldProbeDoorlessStackLane(a,p,s.seconds)){
+        const sweep=(from:Pt,to:Pt)=>
+          sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+        const worldTail=sweptGoalRouteFromStackCycle(
+          a.p,p,routeWithSqueezeWorld(a.p,p,s.doors,world),sweep);
+        if(worldTail.length){
+          setTransientRoute(s,a,worldTail,'lane-cycle-world');
           noteCircularWorldRoute(a,s.seconds);
           a.retryRouteAt=0;a.recoveryAttempts=0;
           a.squeeze=false;a.squeezeTime=0;
