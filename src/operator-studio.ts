@@ -748,7 +748,8 @@ function posePreview(){
  // Restore exact unmodified colors before the wardrobe refresh; otherwise
  // a previously disabled debug layer would contaminate the next bake.
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
- const reference=referenceOpen?resolveFactionReference(referenceBrowser.selectedId):null;
+ const reference=referenceOpen?resolveFactionReference(
+  referenceBrowser.selectedId,referenceBrowser.selectedWeaponPresetId):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){
    releaseOperatorPreviewRig(scene,rig,()=>{

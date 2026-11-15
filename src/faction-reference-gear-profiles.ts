@@ -57,7 +57,7 @@ export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile
   note:"M1956 H-suspenders and canvas pouches are correct era, with no plate armor."},
  'usmc-desert-2010':{kit:{armor:'armor-carrier',backpack:'backpack-field'},styles:{headwear:'pasgt',armorStyle:'plate-legacy',rigStyle:'chest-placard',packStyle:'field-pack'},appearance:{headwearCamo:'desert-marpat',armorSolid:'coyote',rigSolid:'coyote',packCamo:'woodland-marpat'},
   note:"MTV stand-in retains coyote MOLLE and woodland MARPAT ILBE."},
- 'us-navy-aor1-2014':{kit:{},styles:{headwear:'high-cut',armorStyle:'plate-jpc',rigStyle:'micro-rig',packStyle:'day-pack'},appearance:{headwearSolid:'desert-tan',armorSolid:'coyote',rigSolid:'coyote',packSolid:'coyote'},
+ 'us-navy-aor1-2014':{kit:{},styles:{headwear:'mich-2001',armorStyle:'plate-jpc',rigStyle:'micro-rig',packStyle:'day-pack'},appearance:{headwearSolid:'desert-tan',armorSolid:'coyote',rigSolid:'coyote',packSolid:'coyote'},
   note:"High-cut and JPC are already close; standard equipment should not all become AOR1."},
  'british-mtp-2015':{kit:{rig:'rig-full',backpack:'backpack-field'},styles:{headwear:'pasgt',armorStyle:'plate-legacy',rigStyle:'split-front',packStyle:'rucksack'},appearance:{headwearCamo:'british-mtp',armorCamo:'british-mtp',rigCamo:'british-mtp',packCamo:'british-mtp'},
   note:"PASGT/Mk7 and legacy/Osprey IV proxies are closest currently available."},

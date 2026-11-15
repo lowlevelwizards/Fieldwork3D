@@ -1,7 +1,8 @@
 /** Shared Arsenal inspection lights for actual Gallery thumbnails and the
  * full-screen Workbench. The tactical/Studio KEY direction remains the
  * reference, while a soft sky/side bounce exposes dark weapon faces seen
- * almost edge-on to that key. Background deliberately stays charcoal-green.
+ * almost edge-on to that key. A LIGHT, neutral sage-gray inspection matte
+ * lets both black receivers and olive furniture read against the backdrop.
  *
  * Static light objects per viewport/thumbnail scene, not per render frame.
  * No new shader variants, shadows or asset/material recoloring.
@@ -10,12 +11,11 @@ import * as THREE from 'three';
 import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION}
  from '../operator-studio-lighting.ts';
 
-export const ARSENAL_INSPECTION_BACKGROUND=0x182824;
+export const ARSENAL_INSPECTION_BACKGROUND=0xa1aaa0;
 /** A presentation-only ambient supplement, NOT another gameplay light rig.
- * A very dark plum ground and a nearly horizontal gameplay key leave the
- * near-facing flat sides of black AR/HK rifles darker than #182824. Lift
- * the sky and ground neutrally; a broad cool side fill gives every face
- * a readable value without adding another shadow or changing the palette.
+ * Dark furniture was nearly invisible against the previous charcoal matte.
+ * This neutral sky/side bounce remains unchanged: the matte supplies the
+ * contrast, not brighter weapon materials or additional lights.
  */
 export const ARSENAL_SKY_FILL=Object.freeze({
  sky:0xf0f5eb,
