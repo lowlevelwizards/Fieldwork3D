@@ -1,0 +1,109 @@
+name: D3.13A+B true unseen 22 + fixed regression 22 evaluation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/d3-13ab-generalization.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-13ab-final-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  real-generalization:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Prepare the exact released engine and identical forensic instrumentation
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base" b8ed3d6100582ef8a5a8acd0cc3dee0fff98adbd
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/base/node_modules"
+          cp scripts/audit-r7-squad-execution.mjs "$RUNNER_TEMP/base/scripts/audit-r7-squad-execution.mjs"
+      - name: Evaluate a second FRESH, never-selected 22-map corpus FIRST
+        run: |
+          # Seed namespace is fixed before reading any run: 1200201+9311*i.
+          # Eleven archetypes, alternating sizes; each has both sizes.
+          for version in before after; do
+            if [[ "$version" == before ]]; then root="$RUNNER_TEMP/base";else root="$GITHUB_WORKSPACE";fi
+            node --experimental-strip-types "$root/scripts/audit-r7-squad-execution.mjs" \
+              22 2700 --dev-seed-base=1200201 --dev-seed-stride=9311 \
+              --progress --route-quality > "$RUNNER_TEMP/fresh22-${version}.json"
+          done
+      - name: Prepare the frozen FIRST holdout harness unchanged
+        run: |
+          audit_sha=0e6ba260ffdf2ec9e78ebf8a7f13657816cac62c
+          git fetch --no-tags origin "$audit_sha"
+          for file in scripts/audit-r7-squad-execution.mjs scripts/lib/d3-holdout-22-manifest.mjs scripts/report-d3-holdout-22.mjs; do
+            mkdir -p "$(dirname "$file")" "$RUNNER_TEMP/base/$(dirname "$file")"
+            git show "$audit_sha:$file" > "$file"
+            cp "$file" "$RUNNER_TEMP/base/$file"
+          done
+      - name: Evaluate fixed first 22-map problem corpus unchanged
+        run: |
+          node --experimental-strip-types "$RUNNER_TEMP/base/scripts/audit-r7-squad-execution.mjs" \
+            22 2700 --holdout-22 --progress --route-quality > "$RUNNER_TEMP/fixed22-before.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --holdout-22 --progress --route-quality > "$RUNNER_TEMP/fixed22-after.json"
+      - name: Report all physical deltas per seed, including negative results
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const load=p=>JSON.parse(fs.readFileSync(p,"utf8"));
+            const rowSummary=r=>({
+              move:r.modes?.find(m=>m.mode==="authored")?.arrivals??null,
+              entry:r.modes?.find(m=>m.mode==="entry")?.arrivals??null,
+              stalls:r.modes?.reduce((n,m)=>n+m.stallEpisodes,0)??null,
+              retries:r.modes?.reduce((n,m)=>n+m.retries,0)??null,
+              loops:r.modes?.reduce((n,m)=>n+
+                (m.progressEvidence?.filter(x=>x.classification==="movement-loop").length??0),0)??null
+            });
+            const pick=r=>({arrivals:r.summary.physicalArrivals,
+              squads:r.summary.physicalCompletedFour,
+              logical:r.summary.completedFour,
+              stalls:r.summary.stallEpisodes,retries:r.summary.retries,
+              loops:r.progressSummary.suspectedLoops,
+              still:r.progressSummary.sustainedStill,
+              corrupted:r.summary.corruptedPlans,
+              invalid:r.summary.invalidPositions,
+              violations:r.summary.physicsStepViolations,
+              routeSearches:r.routeQualitySummary.searches});
+            for(const label of ["fresh22","fixed22"]){
+              const b=load(process.argv[1]+"/"+label+"-before.json");
+              const a=load(process.argv[1]+"/"+label+"-after.json");
+              if(b.rows.length!==22||a.rows.length!==22)throw Error("incomplete "+label);
+              const differences=b.rows.map((r,i)=>({
+                seed:r.seed,type:r.archetype,scale:r.scale,
+                before:rowSummary(r),after:rowSummary(a.rows[i])
+              }));
+              console.log("D313AB_FINAL_"+label.toUpperCase(),
+                JSON.stringify({before:pick(b),after:pick(a),differences}));
+              for(const x of [a,b])
+                for(const key of ["exceptions","invalidPositions","physicsStepViolations",
+                    "corruptedPlans","unboundedManeuverAttempts"])
+                  if(x.summary[key])throw Error(label+" unsafe "+key);
+              if(a.summary.physicalArrivals<b.summary.physicalArrivals||
+                 a.summary.physicalCompletedFour<b.summary.physicalCompletedFour)
+                throw Error("real physical outcome regression on "+label);
+              if(a.progressSummary.sustainedStill>b.progressSummary.sustainedStill)
+                throw Error("more sustained still on "+label);
+            }
+          ' "$RUNNER_TEMP"
+      - name: Preserve every generated map and operator trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-13ab-fresh22-and-fixed22-physical-outcomes
+          path: |
+            ${{ runner.temp }}/fresh22-before.json
+            ${{ runner.temp }}/fresh22-after.json
+            ${{ runner.temp }}/fixed22-before.json
+            ${{ runner.temp }}/fixed22-after.json
+          if-no-files-found: warn
