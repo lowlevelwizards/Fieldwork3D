@@ -1,3 +1,4 @@
+# Post-merge D3.15 verify production commit 1ad19d82e045cc4fd20d0dba78b0794a3926cd9d.
 # D3.15 independent current main Pages preflight, read-only audit checkpoint.
 name: D3.14D2 Pages release preflight
 on:
