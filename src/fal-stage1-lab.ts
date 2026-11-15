@@ -22,6 +22,10 @@ scene.background=new THREE.Color('#172521');
 scene.add(new THREE.HemisphereLight(0xe6f0e6,0x29372e,2.25));
 const key=new THREE.DirectionalLight(0xffffff,2.8);
 key.position.set(30,55,80);scene.add(key);
+// A symmetric inspection fill makes left-side receiver geometry readable.
+// This is LAB ONLY; production Arsenal lighting remains unchanged.
+const fill=new THREE.DirectionalLight(0xe9f3e9,2.35);
+fill.position.set(-25,35,-80);scene.add(fill);
 const monochrome=new THREE.MeshBasicMaterial({color:0xaebbad,side:THREE.DoubleSide});
 const camera=new THREE.OrthographicCamera(-22,22,26,-26,.1,300);
 const root=new THREE.Group();
