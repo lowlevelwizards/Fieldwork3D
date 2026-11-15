@@ -205,6 +205,9 @@ export function buildFNCStage1Silhouette(
   // An elongated but still chunky six-sided factory device. Keep the
   // original 19.50 muzzle-tip art datum and continuous barrel overlap.
   const geometry=new THREE.CylinderGeometry(.83,.83,1.74,6,1);
+  // Aim a facet vertex vertically so the six-sided shroud retains its
+  // intended full visible width instead of appearing unexpectedly skinny.
+  geometry.rotateY(Math.PI/6);
   geometry.rotateZ(Math.PI/2);
   const muzzle=new THREE.Mesh(geometry,mat('muzzle'));
   muzzle.position.x=18.63;
