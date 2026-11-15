@@ -28,6 +28,23 @@ jobs:
             --progress --route-quality --route-transitions \
             --trace-actor=vale --trace-mode=entry \
             > "$RUNNER_TEMP/d3-14a/townhouse-entry-vale.json"
+      - name: P0 D9 Vale — offline full-body and actual squeezed-body feasibility
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=1 --audit-seed=5532875 --audit-scale=standard \
+            --d314b-clearance-probe --progress \
+            > "$RUNNER_TEMP/d3-14a/d9-vale-clearance.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const report=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+
+            '/d3-14a/d9-vale-clearance.json','utf8'));
+          const mode=report.rows[0].modes.find(m=>m.mode==='entry');
+          console.log('D314B_VALE_CLEARANCE',JSON.stringify(
+            mode.d314bClearanceEvidence));
+          if(!mode.d314bClearanceEvidence||report.summary.exceptions||
+             report.summary.physicsStepViolations||report.summary.corruptedPlans)
+            throw Error('invalid read-only clearance witness');
+          NODE
       - name: Townhouse small authored Rook — FRONT oscillating route
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
