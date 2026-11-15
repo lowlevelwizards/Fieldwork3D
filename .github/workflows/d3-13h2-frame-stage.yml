@@ -1,9 +1,11 @@
-name: D3.13H2 frame-side physical portal acceptance
+name: D3.13H4 cold future-door physical recovery acceptance
 on:
   pull_request:
     paths:
       - src/breach-door-escape-stage.ts
       - src/breach-motor-route.ts
+      - src/breach-door-escape-rejoin.ts
+      - src/breach-route-transition.ts
       - tests/release-d3-13h2-frame-stage.test.mjs
       - .github/workflows/d3-13h2-frame-stage.yml
   workflow_dispatch:
@@ -44,7 +46,7 @@ jobs:
              x.stallEpisodes>8||x.retries>5||p.suspectedLoops||p.sustainedStill||
              q.searches>3150)throw Error('H2 historical physics or movement regression');
           NODE
-      - name: Test unmodified small motel Rook loop against new frame approach
+      - name: Test small motel Rook reaches a new physical waypoint via future portal
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 \
             --site-index=8 --audit-seed=1855967 --audit-scale=small \
@@ -65,7 +67,28 @@ jobs:
             physicalViolations:s.summary.physicsStepViolations}));
           if(s.summary.exceptions||s.summary.invalidPositions||
              s.summary.corruptedPlans||s.summary.physicsStepViolations||
-             m.arrivals<2)throw Error('small motel regression');
+             m.arrivals<3||rook.remaining>=290)
+            throw Error('H4 failed to recover actual Rook progress');
+          NODE
+      - name: Previously resolved standard motel must stay fully physical
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 \
+            --site-index=8 --audit-seed=2069994 --audit-scale=standard \
+            --route-transitions --route-quality --progress \
+            --trace-actor=rook --trace-mode=authored \
+            > "$RUNNER_TEMP/d313h2-standard.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const s=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d313h2-standard.json','utf8'));
+          const m=s.rows[0].modes.find(m=>m.mode==='authored');
+          const rook=m.operators.find(a=>a.id==='rook');
+          console.log('D313H4_STANDARD',JSON.stringify({
+            arrivals:m.arrivals,rookRemaining:rook.remaining,
+            sources:m.routeTransitions.counts}));
+          if(s.summary.exceptions||s.summary.invalidPositions||
+             s.summary.corruptedPlans||s.summary.physicsStepViolations||
+             m.arrivals<4||rook.remaining>5)
+            throw Error('H4 regressed established G2C standard motel recovery');
           NODE
       - name: Retain both complete 60Hz simulation traces
         if: always()
