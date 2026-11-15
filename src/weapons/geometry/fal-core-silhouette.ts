@@ -53,7 +53,9 @@ export function buildFALCoreSilhouette(
   // Drooping rear comb and broad butt, narrowed in DEPTH, not side height.
   // Keep the P7 drooping comb and thin depth, but give the heel
   // proper 7.62-stock weight instead of a miniature short butt.
-  [-14.60,.12],[-11.60,.27],[-8.10,.72],[-6.12,.72],
+  // Raise ONLY the forward stock-neck plane toward the rear upper roof.
+  // One sloped plane, not a new peak or a set of decorative bevels.
+  [-14.60,.12],[-11.60,.27],[-8.10,.72],[-6.12,1.48],
   [-6.12,-.82],[-8.70,-1.60],[-11.50,-4.20],[-14.60,-4.81]
  ],2.34);
  // Fifteen percent more stock silhouette comes from the lower heel,
@@ -79,9 +81,10 @@ export function buildFALCoreSilhouette(
   materials.transitionMetal??materials.receiverLower??materials.receiver);
  transition.userData.falReceiverHandguardBridge=true;
 
- // P5 grip: short, stout, swept back; preserve open trigger/mag gap.
+ // P10: a tiny +X translation of the existing four-point grip;
+ // preserve its short height, rake, width and open trigger/mag gap.
  p('grip',[
-  [-5.38,-2.18],[-3.18,-2.18],[-4.96,-5.85],[-6.81,-5.85]
+  [-5.14,-2.18],[-2.94,-2.18],[-4.72,-5.85],[-6.57,-5.85]
  ],2.16);
  p('magazine',FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH);
  // Two thick stamped ribbons follow the same straight magazine centerline
