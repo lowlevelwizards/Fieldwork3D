@@ -13,6 +13,9 @@ export type ExecutionIssue={nodeId:number;reason:string;since:number};
 export type ExecutionStatus={
  kind:ExecutionKind;label:string;detail:string;
  orderId:number|null;reason:string;progress?:number;
+ /** Optional named teammate, displayed by the HUD without changing the
+  * established executionStatus.detail API or hidden-world information. */
+ waitingFor?:string;
 };
 export type ExecutionActor={
  id:string;health:number;plan:readonly PlanNode[];
@@ -127,11 +130,10 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
        order.kind==='sync'&&order.syncCode===code)));
    const ready=peers.filter(p=>p.syncReady===code).length;
    const waiting=peers.find(p=>p.syncReady!==code);
-   return result('waiting','SYNC '+code,
-     peers.length?(ready+'/'+peers.length+' READY'+
-       (waiting?.id?' · WAITING FOR '+waiting.id.toUpperCase():''))
-       :'WAITING FOR SYNC',
+   const status=result('waiting','SYNC '+code,
+     peers.length?ready+'/'+peers.length+' READY':'WAITING FOR SYNC',
      id,'sync');
+   return waiting?.id?{...status,waitingFor:waiting.id}:status;
  }
  if(n.kind==='move'||n.kind==='pie'){
    if(a.velocity<.2&&a.activeNode===n.id&&a.blockedTime>.2)

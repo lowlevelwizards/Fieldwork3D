@@ -29,7 +29,9 @@ test('E9 SYNC reports visible pending squadmate rather than fictional blockage',
  {id:'rook',health:100,syncReady:null,plan:[{kind:'sync',id:4,syncCode:'B1'}]}];
  const result=executionStatus(a,{phase:'running',peers});
  assert.equal(result.label,'SYNC B1');
- assert.match(result.detail,/WAITING FOR ROOK/);
+ assert.equal(result.detail,'1/2 READY',
+  'compatibility: canonical sync readiness detail is unchanged');
+ assert.equal(result.waitingFor,'rook');
  assert.equal(result.reason,'sync');
 });
 test('E9 intentionally authored WAIT remains WAIT',()=>{

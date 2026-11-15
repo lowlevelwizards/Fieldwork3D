@@ -42,9 +42,7 @@ import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {physicalOrderOutcome,successfulSquadExecution}
  from '../src/breach-order-outcome.ts';
 import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.ts';
-import {relevantStableOpenLeaf,selectPhysicalOpenLeafRejoin}
- from '../src/breach-physical-leaf-rejoin.ts';
-import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
+ import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {classifyCProgressWindow} from '../src/breach-d3-c-progress.ts';
 import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
@@ -69,6 +67,10 @@ const routeTransitions=process.argv.includes('--route-transitions');
 // D3.17E: offline-only, post-run real geometry witness for blocked bodies.
 // It never runs in live movement, advances the simulation, or adopts a route.
 const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
+// This auditor is copied verbatim into immutable earlier builds for paired
+// testing. Never statically import feature-only helpers on that baseline.
+const leafRejoinHelpers=leafRejoinDiagnostic?
+  await import('../src/breach-physical-leaf-rejoin.ts'):null;
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
@@ -710,11 +712,11 @@ function run(site,seed,kind){
   const leafRecoveryEvidence=leafRejoinDiagnostic?actors.filter(a=>
     a.blockedTime>=.85&&a.plan[0]?.kind==='move').map(a=>{
     const goal=a.plan[0].p,world=sessionWorldGeometry(session);
-    const leaf=relevantStableOpenLeaf(a.p,session.doors,
+    const leaf=leafRejoinHelpers.relevantStableOpenLeaf(a.p,session.doors,
        a.doorTraversal?.doorId??null);
     const sweep=(from,to)=>sweptBodyClear(from,to,
       session.doors,OPERATOR_RADIUS,world);
-    const physical=leaf?selectPhysicalOpenLeafRejoin(
+    const physical=leaf?leafRejoinHelpers.selectPhysicalOpenLeafRejoin(
       a.p,goal,a.nav,leaf,sweep,
       p=>bodyClear(p,session.doors,OPERATOR_RADIUS,world),
       (from,to)=>routeWithNormalWorld(from,to,session.doors,world)):[];
