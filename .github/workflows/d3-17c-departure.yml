@@ -1,0 +1,118 @@
+name: D3.17C physical departure acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-d317c-micro-departure.ts'
+      - 'src/breach-route-recurrence.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-route-transition.ts'
+      - 'tests/release-d3-17c-physical-departure.test.mjs'
+      - '.github/workflows/d3-17c-departure.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-three:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Types and physical-regression tests
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-17c-physical-departure.test.mjs \
+            tests/release-d3-17b-route-recurrence.test.mjs \
+            tests/release-d3-17a-loop-forensics.test.mjs \
+            tests/release-d3-15b4-motor-micro-corner.test.mjs \
+            tests/release-d3-14d2-retail-rehearsal.test.mjs
+      - name: Reproduce three frozen actor/mode cases in real motor
+        run: |
+          for record in "0 13919313 small house" "8 14136777 small motel" "9 14462973 standard utility"; do
+            set -- $record
+            node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+              11 2700 --site-index=$1 --audit-seed=$2 --audit-scale=$3 \
+              --progress --route-transitions \
+              > "$RUNNER_TEMP/d317c-$4.json"
+          done
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for (const [site,mode,actor] of [
+            ['house','entry','ash'],['motel','entry','ash'],
+            ['utility','authored','ash']]) {
+            const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317c-'+site+'.json','utf8'));
+            if(r.summary.exceptions||r.summary.invalidPositions||
+               r.summary.physicsStepViolations||r.summary.corruptedPlans||
+               r.summary.unboundedManeuverAttempts)
+              throw Error('unsafe physical motor: '+site);
+            const m=r.rows[0].modes.find(m=>m.mode===mode);
+            const a=m.operators.find(a=>a.id===actor);
+            const route=Object.fromEntries(Object.entries(m.routeTransitions.byActor)
+              .filter(([k])=>k.startsWith(actor+':')));
+            console.log('D317C_TARGET',JSON.stringify({
+              site,seed:r.rows[0].seed,mode,actor,arrived:a.arrived,
+              remaining:a.remaining,outcome:a.outcome,
+              route,physicalArrivals:m.arrivals,
+              blocked:a.blockedSeconds,stalls:a.stallEpisodes,
+              progress:r.progressSummary
+            }));
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d317c-exact-three-repros
+          path: ${{ runner.temp }}/d317c-*.json
+          retention-days: 90
+  frozen-cohorts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Historical 11-map real physical baseline
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress --route-quality > "$RUNNER_TEMP/d317c-historical.json"
+      - name: Frozen tenth 22-map real 60Hz body and loop evidence
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-transitions \
+            --trace-cases=13919313:entry:ash,14136777:entry:ash,14354241:entry:vale,14435790:entry:rook,14462973:authored:ash \
+            > "$RUNNER_TEMP/d317c-frozen22.json"
+          node scripts/report-d3-17a-loop-forensics.mjs \
+            "$RUNNER_TEMP/d317c-frozen22.json" \
+            "$RUNNER_TEMP/d317c-incidents.json"
+      - name: Assert actual physical results and no historical regression
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const read=n=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317c-'+n+'.json','utf8'));
+          const a=read('historical'),b=read('frozen22'),c=read('incidents');
+          const safe=s=>!s.exceptions&&!s.invalidPositions&&!s.corruptedPlans&&
+             !s.physicsStepViolations&&!s.unboundedManeuverAttempts;
+          console.log('D317C_ACCEPTANCE',JSON.stringify({
+            historical:a.summary,blind22:b.summary,
+            forensic:c.summary
+          }));
+          if(!safe(a.summary)||!safe(b.summary))
+            throw Error('D3.17C safety regression');
+          if(a.summary.physicalArrivals<80||a.summary.physicalCompletedFour<18||
+             a.progressSummary.suspectedLoops>0)
+            throw Error('D3.17C historical physical regression');
+          if(b.summary.physicalArrivals<134||b.summary.physicalCompletedFour<26)
+            throw Error('D3.17C tenth blind actual-arrival regression');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d317c-physical-frozen-cohorts
+          path: ${{ runner.temp }}/d317c-*.json
+          retention-days: 90
