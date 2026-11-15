@@ -17,6 +17,9 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld,
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
+import {shouldPauseNegativeGoalProbe}
+ from './breach-cold-route-cache.ts';
+import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {holdKnownFixedAuthoredGoal}
  from './breach-authored-goal-block.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
@@ -270,6 +273,20 @@ export function prepareMotorRoute(
       // searches during cooldown; keep the authored order for user edits.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       return 'unavailable';
+    }
+    // D3.17E6: the known/current landing is not full-body or even
+    // squeeze-body passable, and earlier route attempts failed. Preserve
+    // the user's waypoint, but do not burn another identical A* while
+    // the operator, doors and cover remain unchanged. Re-probe boundedly.
+    // World truth is used by the motor ONLY; HUD never reveals hidden cover.
+    if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       a.recoveryAttempts>=2&&!a.doorTraversal&&
+       !sessionWorldGeometry(s).passable(p,SQUEEZE_RADIUS)&&
+       shouldPauseNegativeGoalProbe(a,p,s.seconds,
+         sessionWorldGeometry(s).revision,s.doors)){
+       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
+       a.retryRouteAt=s.seconds+2.5;
+       return 'unavailable';
     }
     setTransientRoute(s,a,a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       hooks.cachedEnemyRoute(s,a.p,p,true),

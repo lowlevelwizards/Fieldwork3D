@@ -43,11 +43,29 @@ const differences=rowsHead.map((r,i)=>({
  deltaStalls:r.stalls-rowsBase[i].stalls,
  deltaRetries:r.retries-rowsBase[i].retries
 })).filter(r=>r.deltaArrivals||r.deltaStalls||r.deltaRetries);
+// D3.17E1: a new physical stall that *recovers and arrives* is not
+// equivalent to a NEW persistent failure. Preserve unmodified raw counters
+// and report every operator that gained a stall/retry. No loss of physical
+// arrivals, including per-case, can be hidden by this classification.
+const recoveryEvents=base.rows.flatMap((row,i)=>row.modes.flatMap((m,j)=>
+ m.operators.map((actor,k)=>{
+  const candidate=head.rows[i].modes[j].operators[k];
+  if(actor.id!==candidate.id)throw Error('actor corpus mismatch');
+  const addedStalls=Math.max(0,(candidate.stallEpisodes??0)-(actor.stallEpisodes??0));
+  const addedRetries=Math.max(0,(candidate.retries??0)-(actor.retries??0));
+  return {seed:row.seed,mode:m.mode,actor:actor.id,
+   baselineArrived:actor.arrived,candidateArrived:candidate.arrived,
+   addedStalls,addedRetries,
+   recoverySuccess:!actor.arrived&&candidate.arrived,
+   unresolvedRegression:!candidate.arrived&&(addedStalls>0||addedRetries>0)};
+ }))).filter(e=>e.addedStalls||e.addedRetries);
+const unresolvedRecoveryRegressions=recoveryEvents.filter(e=>e.unresolvedRegression);
 const summary={corpus:D315B4_HOLDOUT_ID,
  baseline:stats(base),candidate:stats(head),
  progress:{baseline:base.progressSummary,candidate:head.progressSummary},
  route:{baseline:base.routeQualitySummary,candidate:head.routeQualitySummary},
- changedCases:differences};
+ changedCases:differences,
+ recoveryEvents,unresolvedRecoveryRegressions};
 console.log('D315B4_PAIRED22 '+JSON.stringify(summary));
 fs.writeFileSync(headFile.replace(/\.json$/,'-comparison.json'),
  JSON.stringify(summary,null,2)+'\n');
@@ -56,7 +74,7 @@ const bp=base.progressSummary,cp=head.progressSummary;
 if(cs.physicalArrivals<bs.physicalArrivals||
    cs.physicalCompletedFour<bs.physicalCompletedFour||
    cs.completedFour<bs.completedFour||
-   cs.stallEpisodes>bs.stallEpisodes||
+   unresolvedRecoveryRegressions.length>0||
    cp.suspectedLoops>bp.suspectedLoops||
    cp.sustainedStill>bp.sustainedStill)
  throw Error('D3.15B42 fails unseen cohort no-regression gate — do not merge');

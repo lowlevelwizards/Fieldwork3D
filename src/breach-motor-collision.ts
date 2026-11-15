@@ -40,6 +40,8 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
+import {shouldProbeStationaryCollisionRoute}
+ from './breach-recovery-proposal-gate.ts';
 import {claimRepeatedFurnitureDeparture,
  selectMotorVerifiedFurnitureDeparture}
  from './breach-d317c-micro-departure.ts';
@@ -482,6 +484,17 @@ export function resolveMotorCollision(
           a.retryRouteAt=0;
           return true;
         }
+      }
+      // D3.17E2: route changes are not physical progress. After repeated
+      // immobile furniture contacts with unchanged door/cover geometry,
+      // defer redundant world+intel A* until a cold probe is due. All
+      // other physical reactions above remain active on every tick.
+      if(a.lastBlocker==='furniture'&&a.blockedTime>=2.8&&
+         !shouldProbeStationaryCollisionRoute(a,p,s.seconds,world.revision,
+           s.doors)){
+        a.recoveryAttempts++;
+        a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+        return true;
       }
       // D3.4 clinic wall witness: operator drift can make a short,
       // previously valid TRANSIENT waypoint physically unreachable from
