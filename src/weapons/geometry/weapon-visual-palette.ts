@@ -52,12 +52,18 @@ export const FAL_BLACK_METAL=finish(0x414844,.82,.10,'steel');
  * hierarchy without adding overlay plates, seams or screws. */
 export const FAL_LOWER_METAL=finish(0x353d39,.87,.08,'steel');
 export const FAL_DARK_POLYMER=finish(0x343d37,.93,.02,'polymer');
-export const FAL_MAG_METAL=finish(0x515a54,.91,.09,'steel');
+/** Same neutral steel as the neighboring G3 battle-rifle magazine. */
+export const FAL_MAG_METAL=HK_MAG_METAL;
 /** Minimal, dark, flat graphic vents, not expensive true cut-through slots. */
 export const FAL_VENT_SHADOW=finish(0x232c28,.98,.0,'polymer');
 
 /** Restrained pressed steel line on the FAL's 20-round magazine. */
-export const FAL_MAG_RIB=finish(0x3f4a42,.94,.08,'steel');
+export const FAL_MAG_RIB=finish(0x404847,.94,.08,'steel');
 
 /** Exposed, deliberately unadorned steel bridge between FAL upper and fore-end. */
 export const FAL_TRANSITION_METAL=finish(0x2a312e,.86,.13,'steel');
+
+/** G3/FAL factory muzzle steel is deliberately darker than receiver steel. */
+export const FAL_MUZZLE_METAL=HK_MUZZLE_METAL;
+/** Dark port inside the combo device is METAL, not the polymer vent finish. */
+export const FAL_MUZZLE_SLOT=finish(0x202624,.98,.05,'steel');

@@ -25,7 +25,7 @@ export const FAL_ART:Readonly<{
 });
 
 export type FALCoreOptions={raisedCarryHandle?:boolean;showFactoryMuzzle?:boolean};
-export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material;transitionMetal?:THREE.Material}>;
+export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material;muzzleMetal?:THREE.Material;transitionMetal?:THREE.Material}>;
 export type FALCoreIds=Readonly<Record<SlotName,string>>;
 /** One source of geometry for the test lab and production FAL. */
 export function buildFALCoreSilhouette(
@@ -115,9 +115,11 @@ export function buildFALCoreSilhouette(
  // broad steel collar and one long chunky four-sided body. Preserve X=22
  // as the muzzle for all pose, camera, firing and ballistic contracts.
  if(options.showFactoryMuzzle!==false){
-  const collar=b('barrel',18.59,0,0,.56,1.75,1.76);
+  const collar=addCuboid(root,'barrel',partIds.barrel,ids.barrel++,
+   18.59,0,0,.56,1.75,1.76,materials.muzzleMetal??materials.barrel);
   collar.userData.falMuzzleCollar=true;
-  const device=b('barrel',20.32,0,0,3.36,1.50,1.50);
+  const device=addCuboid(root,'barrel',partIds.barrel,ids.barrel++,
+   20.32,0,0,3.36,1.50,1.50,materials.muzzleMetal??materials.barrel);
   device.userData.falMuzzleCombo=true;
   // A pair of broad simple dark port strokes, four triangles total.
   const verts:number[]=[],indices:number[]=[];

@@ -9,7 +9,8 @@ import {buildFALCoreSilhouette} from './fal-core-silhouette.ts';
 import {addFALScoopedPort,addFALPivotPair} from './fal-receiver-form.ts';
 import {addCuboid} from './profile-primitives.ts';
 import {addFALHandguardVents} from './fal-handguard-profiles.ts';
-import {FAL_MAG_METAL,FAL_MAG_RIB,FAL_VENT_SHADOW,FAL_LOWER_METAL,FAL_TRANSITION_METAL} from './weapon-visual-palette.ts';
+import {FAL_MAG_METAL,FAL_MAG_RIB,FAL_VENT_SHADOW,FAL_LOWER_METAL,FAL_TRANSITION_METAL,
+ FAL_MUZZLE_METAL,FAL_MUZZLE_SLOT} from './weapon-visual-palette.ts';
 
 export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,polymer:THREE.Material,
@@ -25,7 +26,8 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  const core=buildFALCoreSilhouette({
   stock:polymer,receiver:steel,receiverLower:FAL_LOWER_METAL,
   transitionMetal:FAL_TRANSITION_METAL,
-  grip:polymer,magazine:FAL_MAG_METAL,magazineRib:FAL_MAG_RIB,muzzleSlot:FAL_VENT_SHADOW,
+  grip:polymer,magazine:FAL_MAG_METAL,magazineRib:FAL_MAG_RIB,
+  muzzleMetal:FAL_MUZZLE_METAL,muzzleSlot:FAL_MUZZLE_SLOT,
   handguard:polymer,barrel:steel
  },build.parts,{raisedCarryHandle:true,showFactoryMuzzle});
  while(core.children.length)root.add(core.children[0]);
