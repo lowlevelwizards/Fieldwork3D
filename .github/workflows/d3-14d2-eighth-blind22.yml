@@ -1,0 +1,68 @@
+name: D3.14D2 eighth blind 22-map paired physical acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-retail-rehearsal-recovery.ts'
+      - 'src/breach-door-traversal-maneuver.ts'
+      - 'scripts/lib/d3-14d-eighth-blind22.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'scripts/report-d3-14d-blind22.mjs'
+      - '.github/workflows/d3-14d2-eighth-blind22.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+concurrency:
+  group: d3-14d2-eighth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Candidate exact PR head
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Immutable C2 baseline with unrelated FAL-only main updates
+        uses: actions/checkout@v4
+        with:
+          path: baseline
+          ref: 91f381dc2be284c5e406daa122a2caabd4fb7f29
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Same frozen cohort/harness in baseline and candidate
+        run: |
+          cp candidate/scripts/audit-r7-squad-execution.mjs baseline/scripts/audit-r7-squad-execution.mjs
+          cp candidate/scripts/lib/d3-14d-eighth-blind22.mjs baseline/scripts/lib/d3-14d-eighth-blind22.mjs
+          npm --prefix baseline install --no-audit --no-fund
+          npm --prefix candidate install --no-audit --no-fund
+          mkdir -p "$RUNNER_TEMP/d3-14d"
+      - name: Baseline exact eighth 22 map x 2 modes x 4 operators x 45s
+        run: |
+          cd baseline
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d314d-blind22 --progress --route-quality \
+            > "$RUNNER_TEMP/d3-14d/baseline.json"
+      - name: Candidate identical maps, doors, orders, physics and time
+        run: |
+          cd candidate
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d314d-blind22 --progress --route-quality \
+            > "$RUNNER_TEMP/d3-14d/candidate.json"
+      - name: Reject any lost physical arrivals, loop or A-star regressions
+        run: |
+          cd candidate
+          node scripts/report-d3-14d-blind22.mjs \
+            "$RUNNER_TEMP/d3-14d/baseline.json" \
+            "$RUNNER_TEMP/d3-14d/candidate.json"
+      - name: Archive both full real motor runs and comparison
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-14d-eighth-blind22-paired
+          path: ${{ runner.temp }}/d3-14d/*.json
+          retention-days: 90
+          if-no-files-found: ignore
