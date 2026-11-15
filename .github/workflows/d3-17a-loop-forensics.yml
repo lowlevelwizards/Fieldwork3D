@@ -28,7 +28,7 @@ jobs:
       - name: Full 22 unseen sites x two modes x four actual bodies x 45 seconds
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d315b4-blind22 --progress --route-transitions \
+            22 2700 --d315b4-blind22 --progress --route-transitions --trace-cases=13919313:entry:ash,14136777:entry:ash,14354241:entry:vale,14435790:entry:rook,14462973:authored:ash \
             > "$RUNNER_TEMP/d317a-tenth-physical.json"
       - name: Rank all flagged real five-second windows by exact seed, actor, location and movement
         run: |
