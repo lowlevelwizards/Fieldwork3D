@@ -173,7 +173,7 @@ export function buildFNCStage1Silhouette(
   [FNC_FRONT_P13.receiver.magwellRearX,-2.24],
   [FNC_FRONT_P13.receiver.magwellFrontX,-2.24],
   [2.73,-3.14],[2.59,-3.34],[.20,-3.34],[.07,-3.13]
- ],3.58,'lower');
+ ],3.64,'lower');
  well.userData.fncP8DistinctMagwell=true;
  well.userData.fncP16IntegratedMagazineSocket=true;
  // One deliberate stamping on the lower's flank, not decorative rivets.
