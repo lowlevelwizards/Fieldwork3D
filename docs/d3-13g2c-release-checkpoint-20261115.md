@@ -1,6 +1,6 @@
 # D3.13G2C — Bounded portal escape/rejoin release checkpoint
 
-Date: 2026-11-15. This is the release candidate after **two unsuccessful G2 experiments** and a tested physically gated local-stage recovery. Previous D3.13E remote-reach attempts remain rejected/unmerged. Do not claim they were fixed by G2C.
+Date: 2026-11-15. Consolidated main-targeted release owner: **PR #1439** (containing stacked read-only D3.13F/G1 diagnostics and G2C gameplay). This is the release candidate after **two unsuccessful G2 experiments** and a tested physically gated local-stage recovery. Previous D3.13E remote-reach attempts remain rejected/unmerged. Do not claim they were fixed by G2C.
 
 ## Behavior
 
