@@ -65,6 +65,19 @@ const requestedSite=requestedSiteArg?Number(requestedSiteArg.split('=')[1]):null
 if(requestedSite!==null&&(!Number.isInteger(requestedSite)||
  requestedSite<0||requestedSite>=names.length))
  throw Error('invalid --site-index (expected 0..10)');
+// Offline audit uses an exact generated map rather than retuning the fixed
+// 11-map release corpus. Require explicit archetype index for overrides.
+const requestedSeedArg=process.argv.find(a=>a.startsWith('--audit-seed='));
+const requestedSeed=requestedSeedArg?Number(requestedSeedArg.split('=')[1]):null;
+const requestedScaleArg=process.argv.find(a=>a.startsWith('--audit-scale='));
+const requestedScale=requestedScaleArg?.split('=')[1]??null;
+if((requestedSeedArg||requestedScaleArg)&&requestedSite===null)
+ throw Error('audit seed/scale override requires --site-index');
+if(requestedSeedArg&&(!Number.isSafeInteger(requestedSeed)||
+ requestedSeed<=0||requestedSeed>2147483647))
+ throw Error('invalid --audit-seed');
+if(requestedScale&&requestedScale!=='small'&&requestedScale!=='standard')
+ throw Error('invalid --audit-scale');
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const round=n=>Math.round(n*100)/100;
 const signed=(p,d)=>{
@@ -466,8 +479,8 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const seed=31045+i*13,archetype=names[i%names.length];
- const scale=i%2===0?'small':'standard';
+ const seed=requestedSeed??31045+i*13,archetype=names[i%names.length];
+ const scale=requestedScale??(i%2===0?'small':'standard');
  try{
   const site=generateSite(seed,scale,undefined,{mission:'intel'},
    {archetype});
