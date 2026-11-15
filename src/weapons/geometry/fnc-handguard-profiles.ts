@@ -1,4 +1,4 @@
-/** FNC P14: aligned six-sided art front end (polymer + molded lip +
+/** FNC P15: taller, aligned six-sided art front end (polymer + molded lip +
  * slim faceted gas cover + batched groove / vent surfaces). The P13
  * layout contract owns all relative positions; meshes build on demand only.
  * +X muzzle, +Y up, +Z right. No physical assembly or firing changes.
@@ -46,9 +46,12 @@ function makeSixFacePrism(root:THREE.Group,material:THREE.Material,
  mesh.name=name;mesh.castShadow=true;mesh.receiveShadow=true;
  root.add(mesh);return mesh;
 }
+// Reuse the same vertical transform for body, molded stop and side grooves.
+const polymerY=(y:number)=>POLY.pivotY+
+ (y-POLY.pivotY)*POLY.heightScale+POLY.liftY;
 function polymerCross(scale:number,i:number):[number,number]{
  const [y,z]=HEX[i];
- return [-1.11+(y+1.11)*scale,z*scale];
+ return [polymerY(POLY.pivotY+(y-POLY.pivotY)*scale),z*scale];
 }
 const POLY_STATIONS:readonly Station[]=[
  {x:POLY.startX,scale:.96},
@@ -69,7 +72,7 @@ export function addFNCFacetedForearm(root:THREE.Group,
   return POLY_STATIONS[POLY_STATIONS.length-1].scale;
  };
  const mesh=makeSixFacePrism(root,material,
-  'family-handguard-fnc-p13-extended-polymer',
+  'family-handguard-fnc-p15-tall-polymer',
   POLY_STATIONS.map(s=>s.x),(x,i)=>polymerCross(scaleAt(x),i));
  mesh.userData.fncLongGroovedHandguard=true;
  mesh.userData.fncFacetedHandguard=true;
@@ -79,6 +82,7 @@ export function addFNCFacetedForearm(root:THREE.Group,
  mesh.userData.fncP11ShortWidePolymer=true;
  mesh.userData.fncP13ExtendedPolymer=true;
  mesh.userData.fncP14ReceiverSeatedPolymer=true;
+ mesh.userData.fncP15RaisedPolymer=true;
  mesh.userData.fncP6OutwardEndcaps=true;
  return mesh;
 }
@@ -96,6 +100,7 @@ export function addFNCHandstopLip(root:THREE.Group,
  mesh.userData.fncP12ChunkyHandstop=true;
  mesh.userData.fncP13MoldedCollar=true;
  mesh.userData.fncP14TaperedMoldedCollar=true;
+ mesh.userData.fncP15RaisedCollar=true;
  return mesh;
 }
 const GAS_PROFILE:readonly (readonly [number,number])[]=[
@@ -107,7 +112,7 @@ export function addFNCUpperGasBox(root:THREE.Group,
  material:THREE.Material):THREE.Mesh{
  // One six-face metal envelope; no extra bridge boxes.
  const mesh=makeSixFacePrism(root,material,
-  'family-handguard-fnc-p13-integrated-vented-cover',
+  'family-handguard-fnc-p15-upper-gas-spine',
   [GAS.startX,GAS.endX],(_,i)=>GAS_PROFILE[i]);
  mesh.userData.fncP5UpperGasBox=true;
  mesh.userData.fncP6NarrowGasBox=true;
@@ -116,6 +121,7 @@ export function addFNCUpperGasBox(root:THREE.Group,
  mesh.userData.fncP12CompressedGasCover=true;
  mesh.userData.fncP13NestedFacetedGasCover=true;
  mesh.userData.fncP14LoweredGasCover=true;
+ mesh.userData.fncP15UpperGasSpine=true;
  return mesh;
 }
 const GAS_SLOTS:readonly (readonly [number,number])[]=
@@ -136,9 +142,9 @@ function polymerSurfaceZ(y:number){
  // Interpolate the current full-width polymer facets, not the
  // previously hard-coded gas-box side planes.
  const scale=POLY.fullScale;
- const mid=-1.11+(-1.21+1.11)*scale;
- const top=-1.11+(-.18+1.11)*scale;
- const bottom=-1.11+(-2.04+1.11)*scale;
+ const mid=polymerY(POLY.pivotY+(-1.21-POLY.pivotY)*scale);
+ const top=polymerY(POLY.pivotY+(-.18-POLY.pivotY)*scale);
+ const bottom=polymerY(POLY.pivotY+(-2.04-POLY.pivotY)*scale);
  const zm=1.10*scale,zt=.76*scale,zb=.65*scale;
  return y>=mid
   ?zm+(y-mid)*(zt-zm)/(top-mid)
@@ -149,7 +155,7 @@ export function addFNCForearmMarks(root:THREE.Group,
  const marks:THREE.Mesh[]=[];
  const addSide=(side:-1|1,level:'upper'|'lower')=>{
   const pos:number[]=[],upper=level==='upper';
-  const ys=upper?GAS.ventSideYs:POLY.grooveYs;
+  const ys=upper?GAS.ventSideYs:POLY.grooveYs.map(polymerY);
   const spans=upper?GAS_SLOTS:[[POLY.grooveStartX,POLY.grooveEndX]] as const;
   const height=upper?GAS.ventHeight:.24;
   const depth=(y:number)=>
