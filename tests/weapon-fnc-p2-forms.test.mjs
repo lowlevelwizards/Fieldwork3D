@@ -12,13 +12,13 @@ test('FNC P2: real polymer forearm mesh, broad mirrored grooves, open padded sto
  const m=new THREE.MeshBasicMaterial();
  const g=buildFNCStage1Silhouette(m);
  assert.equal(of(g,'fncFacetedHandguard').length,1);
- assert.equal(of(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,8);
- assert.equal(of(g,'fncGrooveSide').length,2);
- assert.deepEqual(of(g,'fncGrooveSide').map(x=>x.userData.fncGrooveSide).sort(),[-1,1]);
- assert.ok(of(g,'fncGrooveSide').every(x=>x.userData.fncVentCount===3));
+ assert.equal(of(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,24);
+ assert.equal(of(g,'fncVentSide').length,2);
+ assert.deepEqual(of(g,'fncVentSide').map(x=>x.userData.fncVentSide).sort(),[-1,1]);
+ assert.ok(of(g,'fncVentSide').every(x=>x.userData.fncGasVentCount===3));
  assert.equal(of(g,'fncStockRail').filter(x=>x.userData.fncStockRail===true).length,2);
  assert.equal(of(g,'fncCheekSleeve').length,1);
- assert.equal(of(g,'fncHandguardNoseCollar').length,1);
+ assert.equal(of(g,'fncHandguardNoseCollar').length,0);
  assert.equal(of(g,'fncStampedMagazineRib').length,2);
  assert.equal(of(g,'fncMagwellLip').length,1);
  const cheek=of(g,'fncCheekSleeve')[0];
@@ -30,7 +30,7 @@ test('FNC P2: asymmetrical receiver port, side handle and left selector',()=>{
  const m=new THREE.MeshBasicMaterial();
  const g=buildFNCStage1Silhouette(m);
  assert.equal(of(g,'fncRightPort').length,1);
- assert.equal(of(g,'fncPortLip').length,1);
+ assert.equal(of(g,'fncPortLip').length,0);
  assert.equal(of(g,'fncRightChargingHandle').length,1);
  assert.equal(of(g,'fncLeftSelector').length,1);
  assert.ok(bound(of(g,'fncRightPort')[0]).min.z>0);
