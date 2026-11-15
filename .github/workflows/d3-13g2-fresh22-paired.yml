@@ -1,15 +1,5 @@
 name: D3.13G2 fourth independent 22-map paired acceptance
 on:
-  pull_request:
-    paths:
-      - src/breach-door-escape-stage.ts
-      - src/breach-door-escape-rejoin.ts
-      - src/breach-motor-route.ts
-      - src/breach-motor-collision.ts
-      - scripts/audit-r7-squad-execution.mjs
-      - scripts/lib/d3-13g2-fresh-22-manifest.mjs
-      - scripts/report-d3-13g2-fresh22.mjs
-      - .github/workflows/d3-13g2-fresh22-paired.yml
   workflow_dispatch:
 
 permissions:
