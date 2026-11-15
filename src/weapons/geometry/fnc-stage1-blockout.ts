@@ -194,7 +194,7 @@ export function buildFNCStage1Silhouette(
  if(showFactoryMuzzle){
   // One still oversized, but STUBBIER six-sided muzzle.
   // Its forward endpoint remains the original factory muzzle datum 19.50.
-  const geometry=new THREE.CylinderGeometry(1.02,1.02,1.48,6,1);
+  const geometry=new THREE.CylinderGeometry(1.16,1.16,1.48,6,1);
   geometry.rotateZ(Math.PI/2);
   const muzzle=new THREE.Mesh(geometry,mat('muzzle'));
   muzzle.position.x=18.76;

@@ -47,7 +47,8 @@ test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
   for(const mark of parts){
    const count=level==='upper'?3:2;
    assert.equal(mark.userData.fncP5GrooveCount,count);
-   assert.equal(mark.geometry.getAttribute('position').count,count*6);
+   const segments=level==='upper'?3:1;
+   assert.equal(mark.geometry.getAttribute('position').count,count*segments*6);
    const normal=mark.geometry.getAttribute('normal').getZ(0);
    assert.ok(normal*mark.userData.fncP5GrooveSide>.95,
     'both longitudinal stroke sets must face their visible side');
