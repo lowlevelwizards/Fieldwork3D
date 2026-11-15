@@ -149,6 +149,7 @@ export function inspectE0(root=ROOT,{inventory,presentation}={}){
    catch{return null;}};
  const a0=inventory??scanRepository(root);
  const c0=presentation??inspectC0(root);
+ verifyC0(c0); // Protect C0's existing cross-view/geometry contracts.
  const cssPaths=all.filter(x=>x.startsWith('src/')&&x.endsWith('.css'));
  const css=cssPaths.map(path=>({path,...cssCandidates(get(path))}))
   .sort((a,b)=>b.sameContextRepeatedSelectors-a.sameContextRepeatedSelectors||

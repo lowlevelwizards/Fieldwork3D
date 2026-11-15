@@ -35,7 +35,7 @@ test('E0 prioritized scope contains all twelve auditable domains and no extra ow
  assert.equal(E0_START_SHA.length,40);
  assert.equal(E0_AREAS.length,12);
  assert.equal(new Set(E0_AREAS.map(x=>x.id)).size,12);
- assert.equal(new Set(E0_INVARIANTS.map(x=>x.name)).size,E0_INVARIANTS.length);
+ assert.equal(new Set(E0_INVARIANTS.map(x=>x[0])).size,E0_INVARIANTS.length);
  for(const p of E0_AREAS){
   assert.ok(p.impact>=1&&p.impact<=5);
   assert.ok(p.ease>=1&&p.ease<=5);
