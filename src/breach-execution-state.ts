@@ -129,7 +129,7 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
    const waiting=peers.find(p=>p.syncReady!==code);
    return result('waiting','SYNC '+code,
      peers.length?(ready+'/'+peers.length+' READY'+
-       (waiting?' · WAITING FOR '+(waiting.id??'TEAM').toUpperCase():''))
+       (waiting?.id?' · WAITING FOR '+waiting.id.toUpperCase():''))
        :'WAITING FOR SYNC',
      id,'sync');
  }
