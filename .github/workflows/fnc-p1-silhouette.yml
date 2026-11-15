@@ -1,4 +1,4 @@
-name: FNC P5 FNC family shape acceptance
+name: FNC P6 robust geometry and Fieldwork shape
 on:
   pull_request:
     branches: [main]
@@ -20,6 +20,7 @@ on:
       - 'tests/weapon-fnc-stage1-blockout.test.mjs'
       - 'tests/weapon-fnc-p2-forms.test.mjs'
       - 'tests/weapon-fnc-p3-style.test.mjs'
+      - 'tests/weapon-fnc-p6-silhouette.test.mjs'
       - 'tests/weapon-fnc-arsenal-live.test.mjs'
       - 'scripts/smoke-fnc-arsenal.mjs'
       - 'vite.config.ts'
@@ -35,7 +36,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-p3-style.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/arsenal-v2-catalog.test.mjs
+      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-p3-style.test.mjs tests/weapon-fnc-p6-silhouette.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/arsenal-v2-catalog.test.mjs
       - run: npm run check
       - run: npm run build
       - run: npm install --no-save --package-lock=false playwright@1.56.1
@@ -47,7 +48,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fnc-p5-rifle-shape-review-views
+          name: fnc-p6-rifle-shape-review-views
           path: |
             fnc-p1-captures/
             fnc-arsenal-captures/
