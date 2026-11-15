@@ -12,7 +12,7 @@ These are proportional references, not instructions to mechanically scale the cu
 - Width reduction: rim 12.10 total vs 13.76, but preserve exaggeration relative to head.
 - Front/back extent: 6.93 forward / 6.55 rear (ratio depth-to-width ~1.11).
 - M1 beak projects 1.07 past lower front wall; rear projection only .35.
-- Rim plane rises toward the face and falls toward the nape: approximately .64-.68 Y difference.
+- Rim plane rises toward the face and falls toward the nape: approximately .64-.68 Y difference; rolled rim thickness .48 (previous .37), strengthening its edge in gameplay.
 - Upper crown shifts rearward .38, tapering down to .08 at lower wall.
 - A recessed inner wall returns upward from the rolled edge, visible at low camera angle. No solid floor over the head.
 - Fitted/loose covers, retaining band, net and retention anchors must use the same sloped profile; no separate geometric fallback.

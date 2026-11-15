@@ -15,7 +15,7 @@ test('B1-A one-piece M1: intentional facets, thin rolled rim, open underside',()
  assert.ok(roof.side/bowl.side>.79&&roof.side/bowl.side<.83,
   'flat crown is broad without making the whole shell square');
  const rim=M1_STEEL_LEVELS[3],lower=M1_STEEL_LEVELS[4];
- assert.ok(rim.y-lower.y>=.35&&rim.y-lower.y<=.40,
+ assert.ok(rim.y-lower.y>=.45&&rim.y-lower.y<=.52,
   'rolled edge is exaggerated but remains subordinate to the pot');
  assert.ok(rim.side-bowl.side>.5,'readable rolled lip on both sides');
  assert.ok(rim.front-bowl.front>.75,'front lip is unmistakable');

@@ -32,12 +32,12 @@ export const M1_STEEL_LEVELS:readonly Level[]=[
  {name:'single-shoulder',y:8.62,side:5.35,front:5.65,rear:6.12,pitch:.26,shift:.29},
  {name:'long-pot-wall',y:5.20,side:5.48,front:5.86,rear:6.20,pitch:.30,shift:.08},
  {name:'rolled-rim-top',y:4.82,side:6.05,front:6.93,rear:6.55,pitch:.32},
- {name:'rolled-rim-bottom',y:4.45,side:6.05,front:6.93,rear:6.55,pitch:.34},
- {name:'inward-return',y:4.55,side:5.42,front:6.24,rear:6.00,pitch:.32},
- {name:'recessed-liner-edge',y:4.98,side:5.12,front:5.83,rear:5.70,pitch:.28}
+ {name:'rolled-rim-bottom',y:4.34,side:6.05,front:6.93,rear:6.55,pitch:.34},
+ {name:'inward-return',y:4.45,side:5.42,front:6.24,rear:6.00,pitch:.32},
+ {name:'recessed-liner-edge',y:5.05,side:5.12,front:5.83,rear:5.70,pitch:.28}
 ] as const;
 export const M1_FIT_LANDMARKS=Object.freeze({
- roof:10.24,rimBottom:4.11,frontExtent:-6.93,rearExtent:6.55,
+ roof:10.24,rimBottom:4.00,frontExtent:-6.93,rearExtent:6.55,
  sideExtent:6.05,
  chinstrapRight:[5.34,5.05,-.87] as const,
  chinstrapLeft:[-5.34,5.05,-.87] as const

@@ -31,7 +31,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'beanie':{id:'beanie',frontExtent:-5.00,rearExtent:5.00,
   top:8.65,earEdge:3.745,foreheadEdge:3.745,billLength:0},
  'm1-steel':{id:'m1-steel',frontExtent:-6.93,rearExtent:6.55,
-  top:10.24,earEdge:4.11,foreheadEdge:4.79,billLength:1.07},
+  top:10.24,earEdge:4.00,foreheadEdge:4.68,billLength:1.07},
  'ddr-m56':{id:'ddr-m56',frontExtent:-6.80,rearExtent:8.10,
   top:8.775,earEdge:4.43,foreheadEdge:4.65,billLength:0},
  'police-helmet':{id:'police-helmet',frontExtent:-5.70,rearExtent:5.80,
