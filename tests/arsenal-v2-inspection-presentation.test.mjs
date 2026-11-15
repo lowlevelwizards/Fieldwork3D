@@ -6,11 +6,16 @@ import {ARSENAL_INSPECTION_BACKGROUND,ARSENAL_SKY_FILL,addArsenalInspectionLight
  from '../src/arsenal/inspection-lighting.ts';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
-test('Arsenal owns an independent dark scene and two-sided readable light rig',()=>{
+test('Arsenal owns a light neutral inspection matte and two-sided readable light rig',()=>{
  const scene=new THREE.Scene();
  addArsenalInspectionLighting(scene);
  assert.equal(scene.background.getHex(),ARSENAL_INSPECTION_BACKGROUND);
- assert.equal(ARSENAL_INSPECTION_BACKGROUND,0x182824);
+ assert.equal(ARSENAL_INSPECTION_BACKGROUND,0xa1aaa0);
+ const bg=new THREE.Color(ARSENAL_INSPECTION_BACKGROUND);
+ assert.ok((bg.r+bg.g+bg.b)/3>.33,'neutral light matte should not crush dark silhouettes');
+ const css=read('src/arsenal/arsenal.css');
+ assert.match(css,/\.arsenal-wb-viewport\{[^}]*background:#a1aaa0\}/);
+ assert.ok(Math.abs(bg.r-bg.g)<.1&&Math.abs(bg.g-bg.b)<.1,'neutral, not saturated green');
  const directional=scene.children.filter(x=>x instanceof THREE.DirectionalLight);
  assert.equal(directional.length,2);
  assert.equal(directional[0].intensity,2.35);
