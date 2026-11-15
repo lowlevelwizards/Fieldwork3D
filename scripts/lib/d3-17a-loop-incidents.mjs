@@ -17,6 +17,18 @@ function completeEpisode(row,mode,id,bucket,results){
  const routeCounts=Object.fromEntries(Object.entries(typed)
   .filter(([key])=>key.startsWith(id+':'))
   .map(([key,value])=>[key.slice(id.length+1),value]));
+ // Full-run transition totals alone cannot attribute a specific 5s loop.
+ // Only the opt-in, time-stamped trace can support local route evidence.
+ const routeEvents=(mode.routeTransitions?.events??[]).filter(e=>
+  e.actorId===id&&e.seconds>=bucket[0].seconds-5&&
+  e.seconds<=bucket.at(-1).seconds);
+ const episodeRouteCounts={};
+ for(const e of routeEvents)
+  episodeRouteCounts[e.source]=(episodeRouteCounts[e.source]??0)+1;
+ const firstPosition=bucket[0].position,lastPosition=bucket.at(-1).position;
+ const sampledReturnDistance=firstPosition&&lastPosition?
+  r2(Math.hypot(lastPosition.x-firstPosition.x,
+    lastPosition.y-firstPosition.y)):null;
  const waypointKeys=bucket.map(w=>w.nextNav?
   [Math.round(w.nextNav.x),Math.round(w.nextNav.y)].join(','):null);
  const uniqueWaypoints=[...new Set(waypointKeys.filter(Boolean))];
@@ -40,7 +52,10 @@ function completeEpisode(row,mode,id,bucket,results){
   openingSeconds:total('openingSeconds'),
   squeezeSeconds:total('squeezeSeconds'),retries:total('retries'),
   distinctNextWaypoints:uniqueWaypoints,doorEpisodes,pauses,
-  routeCounts,finalOutcome:op?.outcome??null,
+  // routeCounts is the WHOLE actor run, retained for historical comparison;
+  // episodeRouteCounts and routeEvents are restricted to this incident.
+  routeCounts,episodeRouteCounts,routeEvents,
+  sampledReturnDistance,finalOutcome:op?.outcome??null,
   finallyArrived:op?.arrived??null,
   endOrder:op?.activeOrder??null,
   endRemaining:op?.remaining??null,
@@ -109,6 +124,8 @@ export function analyzeD317LoopIncidents(report){
   recoveredEpisodes:incidents.filter(x=>x.finallyArrived===true).length,
   physicallyUnreachedEpisodes:incidents.filter(x=>x.finallyArrived===false).length,
   totalLowNetTravel:r2(incidents.reduce((n,x)=>n+x.lowNetTravel,0)),
+  incidentsWithTimedRoutes:incidents.filter(x=>x.routeEvents.length>0).length,
+  timedRouteEvents:incidents.reduce((n,x)=>n+x.routeEvents.length,0),
   suspiciousPhysicalBlockWindows:physicalBlocks,
   suspiciousStillWindows:sustainedStill,classifiedWindows:stateCounts,
   realPhysicsSummary:report.summary??null
