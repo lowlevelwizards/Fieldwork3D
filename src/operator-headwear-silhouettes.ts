@@ -282,8 +282,8 @@ const STEEL_CUBOIDS:readonly HeadwearCuboid[]=[
   width:9.20,height:1.58,depth:9.40},
  {name:'ssh40-bowl-front-fit',x:0,y:6.40,z:-5.12,
   width:11.20,height:3.80,depth:1.44},
- {name:'ssh40-bowl-rear-fit',x:0,y:6.23,z:5.22,
-  width:11.20,height:4.20,depth:1.50},
+ {name:'ssh40-bowl-rear-fit',x:0,y:6.19,z:5.22,
+  width:11.20,height:4.28,depth:1.50},
  ...([-1,1] as const).map(sign=>({
   name:sign<0?'ssh40-bowl-left-fit':'ssh40-bowl-right-fit',
   x:sign*4.95,y:6.40,z:.08,width:1.25,height:3.80,depth:11.20
