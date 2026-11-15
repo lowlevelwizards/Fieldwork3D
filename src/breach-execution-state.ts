@@ -72,10 +72,19 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
      hard?'BLOCKED':'RECOVERING',a.lastBlocker.toUpperCase(),id,
      'collision-'+a.lastBlocker);
  }
- if(!n)return result(a.completedOrders>0?'complete':'idle',
-   a.completedOrders>0?'ORDERS COMPLETE':'IDLE',
-   a.completedOrders>0?'AWAITING YOUR PLAN':'NO ACTIVE ORDERS',
-   null,a.completedOrders>0?'complete':'idle');
+ if(!n){
+   // Never render an exhausted queue as successful when its authorial
+   // orders were discarded after a witnessed terminal failure. Active
+   // actions and ordinary idle actors keep their existing state.
+   const failed=a.failedOrders??0;
+   if(failed>0)return result('blocked','ORDERS CANCELLED',
+     failed+' FAILED · '+(a.lastFailedOrder?.reason??'SEE EVENT LOG'),
+     null,'order-cancelled');
+   return result(a.completedOrders>0?'complete':'idle',
+     a.completedOrders>0?'ORDERS COMPLETE':'IDLE',
+     a.completedOrders>0?'AWAITING YOUR PLAN':'NO ACTIVE ORDERS',
+     null,a.completedOrders>0?'complete':'idle');
+ }
  if(n.kind==='wait'||n.kind==='holdClear'){
    if(n.doorId){
      const door=ctx.doors?.find(d=>d.id===n.doorId);
