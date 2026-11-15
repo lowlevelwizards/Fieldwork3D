@@ -1,6 +1,6 @@
 # D3.14B2 — Coordinated bounded squeeze-leaf release checkpoint
 
-Date: 2026-11-15. Integrate read-only D3.14A evidence plus D3.14B2 scoped physical microstage through **one** main-targeted release. Parent draft diagnostic PR #1445 is evidence, not a separate production merge.
+Date: 2026-11-15. **Consolidated main-targeted release owner: PR #1447**, based on successfully deployed main SHA 6ba8b593e27ff9126ec688ff9d23e489d63652a6. Integrate read-only D3.14A evidence plus D3.14B2 scoped physical microstage through **one** main-targeted release. Parent draft diagnostic PR #1445 is evidence, not a separate production merge.
 
 ## Confirmed cause
 
