@@ -1,4 +1,4 @@
-/** S1-A1D: deliberately low-poly, angular DDR M56 stamped steel shell.
+/** S1-A1E: silhouette-first DDR M56 steel shell, with two major masses.
  * Boxy Fieldwork interpretation of the real M56's shallow crown,
  * diagonal bell and striking long swept rear flare.
  * NO stacked cuboids, extra ridge bands or M1-style rolled brim.
@@ -12,48 +12,46 @@ type Point=readonly [number,number,number];
 type Ring={name:string;y:number;side:number;front:number;rear:number;
  frontRise?:number;rearDrop?:number;earDip?:number};
 export const M56_PERIMETER:readonly (readonly [number,number])[]=[
- // Eight purposeful corners: front visor, front-side, behind-ear hinge,
- // and projecting rear nape. Two side slope changes, NO ear notch.
- [-.72,-1],[.72,-1],[1,-.62],[1,.20],
- [.72,1],[-.72,1],[-1,.20],[-1,-.62]
+ // Eight coarse corners. The upper shell stays straight; only the lower
+ // two rings shape the shallow side-ear relief and descending rear skirt.
+ [-.72,-1],[.72,-1],[1,-.72],[1,-.05],
+ [.72,1],[-.72,1],[-1,-.05],[-1,-.72]
 ] as const;
-/** Exactly seven profile rings and eight perimeter corners produce
- * 112 triangles including crown and recessed interior, down from 192.
- * One large nearly vertical upper bell meets ONE unmistakably angled
- * lower protective skirt. No decorative intermediate terraces.
- * Hem is a continuous descending visor / ear / rear contour; not an
- * M1 brim, PASGT ear cut, or a protruding polygon ear guard.
- * Exterior X/Z maxima, cap top and square-head clearance are retained.
+/** Six profile rings (96 triangles) including the hidden underside.
+ * Two exterior shell masses only: a broad nearly upright bell and ONE
+ * strongly flared stamped skirt. The shallow ear relief exists ONLY in
+ * the hem and steel return; no separate earpiece mesh or upper-shell ring.
+ * Fit maximum extents and color/wardrobe identity remain unchanged.
  */
 export const M56_SHELL_RINGS:readonly Ring[]=[
- {name:'square-faceted-crown',y:8.775,side:3.08,front:3.48,rear:3.72},
- {name:'broad-upper-shoulder',y:7.87,side:5.58,front:5.70,rear:6.00},
- {name:'lower-bell-angular-break',y:5.95,side:5.79,front:5.93,rear:6.75,
-  frontRise:.12,rearDrop:.12},
- // Strong lower outward sweep: front up, ear protected, nape deep.
- {name:'swept-stamped-edge',y:4.47,side:6.87,front:6.80,rear:8.10,
-  frontRise:.83,rearDrop:1.12,earDip:.12},
- // Inward rolled steel return, NOT another visible painted skirt tier.
- {name:'inset-steel-return',y:4.55,side:6.47,front:6.40,rear:7.65,
-  frontRise:.80,rearDrop:1.09,earDip:.10},
+ {name:'broad-square-crown',y:8.775,side:4.40,front:4.74,rear:4.96},
+ {name:'single-upright-bell',y:6.02,side:5.73,front:5.82,rear:6.43},
+ {name:'distinct-swept-skirt-hem',y:4.53,side:6.87,front:6.80,rear:8.10,
+  frontRise:.70,rearDrop:1.00},
+ {name:'thin-inward-steel-return',y:4.63,side:6.46,front:6.39,rear:7.66,
+  frontRise:.68,rearDrop:.98},
  {name:'recessed-inner-wall',y:7.40,side:5.50,front:5.58,rear:5.94},
  {name:'recessed-interior-ceiling',y:7.75,side:4.90,front:5.00,rear:5.20}
 ] as const;
 export const M56_SHELL_FIT=Object.freeze({
  top:8.775,outerSide:6.87,frontExtent:-6.80,rearExtent:8.10,
- frontHem:5.30,sideHem:4.126,rearHem:3.35
+ frontHem:5.23,sideHem:4.995,rearHem:3.53
 });
-// A single contour function drives the outer steel and inset return.
-// The single behind-ear corner defines the clear change of slope;
- // no smooth interpolated staircase or independently attached panel.
+/** Ear transition is localized to the two low steel rings, not the cap.
+ * - The temple falls from the forehead to expose the face.
+ * - The side rim rises gently over the ear, then drops to the long nape.
+ * A purposeful shallow notch rather than a separate PASGT-shaped panel.
+ */
 export const m56EarTransition=(fz:number):number=>
- Math.max(0,1-Math.abs(fz-.20)/.65);
+ Math.max(0,1-Math.abs(fz+.05)/.67);
 const sample=(ring:Ring,index:number):Point=>{
- const [fx,fz]=M56_PERIMETER[(index+M56_PERIMETER.length)%M56_PERIMETER.length];
+ const n=M56_PERIMETER.length,idx=(index+n)%n;
+ const [fx,fz]=M56_PERIMETER[idx];
+ const edge=ring===M56_SHELL_RINGS[2]||ring===M56_SHELL_RINGS[3];
+ const temple=edge&&(idx===2||idx===7)?-.47:0;
+ const ear=edge&&(idx===3||idx===6)?.43:0;
  const along=fz<0?(ring.frontRise??0)*-fz:-(ring.rearDrop??0)*fz;
- const sideWeight=Math.max(0,(Math.abs(fx)-.72)/.28);
- const earDip=(ring.earDip??0)*sideWeight*m56EarTransition(fz);
- return [fx*ring.side,ring.y+along-earDip,
+ return [fx*ring.side,ring.y+along+temple+ear,
   fz*(fz<0?ring.front:ring.rear)];
 };
 export const m56SurfacePoint=(ring:number,index:number):Point=>
@@ -113,18 +111,17 @@ export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
    [0,1,0],3,1);
  for(let j=0;j<M56_SHELL_RINGS.length-1;j++){
   const a=M56_SHELL_RINGS[j],b=M56_SHELL_RINGS[j+1];
-  // Only the three large OUTER surfaces share painted steel. The narrow
-  // inward return and recessed lining use the shadow atlas.
-  const region:0|1|2|3=j>=3?1:0;
-  const tone=j===0?.985:j===1?.965:j===2?.965:
-   j===3?.87:j===4?.83:.85;
+  // One painted exterior tone across BOTH substantial surfaces; shadow
+  // coloring starts only on the turned-under edge and hollow interior.
+  const region:0|1|2|3=j>=2?1:0;
+  const tone=j<2?.97:j===2?.88:j===3?.83:.85;
   for(let i=0;i<N;i++){
    const k=(i+1)%N,p=sample(a,i),q=sample(a,k),
     r=sample(b,k),s=sample(b,i);
    const mx=(p[0]+q[0]+r[0]+s[0])/4,
     mz=(p[2]+q[2]+r[2]+s[2])/4;
-   const toward:Point=j>=4?[-mx,0,-mz]:
-    j===3?[0,-1,0]:[mx,j===0?.35:0,mz];
+   const toward:Point=j>=3?[-mx,0,-mz]:
+    j===2?[0,-1,0]:[mx,0,mz];
    face([p,q,r,s],toward,region,tone);
   }
  }
@@ -141,8 +138,9 @@ export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
  geo.setIndex(index);
  geo.computeBoundingBox();
  geo.userData.m56UnifiedStampedShell=true;
- geo.userData.m56ProfileRevision='S1-A1D';
- geo.userData.m56TriangleBudget=112;
+ geo.userData.m56ProfileRevision='S1-A1E';
+ geo.userData.m56TriangleBudget=96;
+ geo.userData.m56LocalEarRelief=true;
  geo.userData.m56SingleLowerAngularBreak=true;
  geo.userData.m56EarToNapeContour=true;
  geo.userData.m56ConsistentQuadNormals=true;
