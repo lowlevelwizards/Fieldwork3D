@@ -35,6 +35,46 @@ try{
   });
   try{
    await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
+   // User-facing bug: flat-sided black M4 thumbnail fell BELOW its dark
+   // green gallery background in P9, even though WebGL rendered correctly.
+   // Sample the real generated WebP hero, not screenshot text or CSS borders.
+   await page.waitForFunction(()=>{
+    const image=document.querySelector('.arsenal-hero-media img');
+    return image instanceof HTMLImageElement&&image.complete&&image.naturalWidth>=400;
+   },null,{timeout:25000});
+   const contrast=await page.evaluate(()=>{
+    const image=document.querySelector('.arsenal-hero-media img');
+    if(!(image instanceof HTMLImageElement))throw Error('No M4 hero thumbnail');
+    const canvas=document.createElement('canvas');
+    canvas.width=image.naturalWidth;canvas.height=image.naturalHeight;
+    const ctx=canvas.getContext('2d',{willReadFrequently:true});
+    if(!ctx)throw Error('No screenshot pixel inspection context');
+    ctx.drawImage(image,0,0);
+    const pixels=ctx.getImageData(0,0,canvas.width,canvas.height).data;
+    // Background #182824. Ignore compression noise <=6 channels and
+    // measure actual nonbackground 3D-model pixels.
+    const bg=[24,40,36],luma=(r,g,b)=>.2126*r+.7152*g+.0722*b;
+    const baseline=luma(...bg);
+    let foreground=0,lit=0,dark=0;
+    for(let i=0;i<pixels.length;i+=4){
+     const r=pixels[i],g=pixels[i+1],b=pixels[i+2];
+     if(Math.max(Math.abs(r-bg[0]),Math.abs(g-bg[1]),
+       Math.abs(b-bg[2]))<=6)continue;
+     foreground++;
+     const y=luma(r,g,b);
+     if(y>=baseline+8)lit++;
+     if(y<baseline-3)dark++;
+    }
+    return {foreground,lit,dark,litFraction:lit/Math.max(1,foreground)};
+   });
+   // Require substantial brighter surfaces, not just a pale ejection-port
+   // pixel among a nearly invisible rifle. This guards both card and hero
+   // because they share ArsenalThumbnailer and identical scene lighting.
+   if(contrast.foreground<250||contrast.litFraction<.25)
+    throw Error('Black M4 gallery silhouette still too dark: '+
+     JSON.stringify(contrast));
+   capture('arsenal-lit-m4-gallery-hero.png',
+    await page.locator('.arsenal-hero-media').screenshot());
    await page.locator('.arsenal-hero-open').click();
    const canvas=page.locator('.arsenal-wb-canvas');
    await canvas.waitFor({state:'visible'});

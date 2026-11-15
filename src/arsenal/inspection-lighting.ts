@@ -1,27 +1,38 @@
-/** Arsenal full-screen Workbench and Gallery thumbnails use the SAME
- * approved in-mission lighting direction, tint and strength as tactical
- * gameplay. Only the background differs: retain the charcoal-green studio
- * backdrop for isolated weapon readability. No second Studio lighting lab.
+/** Shared Arsenal inspection lights for actual Gallery thumbnails and the
+ * full-screen Workbench. The tactical/Studio KEY direction remains the
+ * reference, while a soft sky/side bounce exposes dark weapon faces seen
+ * almost edge-on to that key. Background deliberately stays charcoal-green.
  *
- * These are static scene lights, created only once per viewport/thumbnail,
- * not on orbit frames. No new shader variants or shadow passes.
+ * Static light objects per viewport/thumbnail scene, not per render frame.
+ * No new shader variants, shadows or asset/material recoloring.
  */
 import * as THREE from 'three';
-import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION,studioShadowPalette}
+import {STUDIO_INSPECTION_LIGHT,STUDIO_KEY_DIRECTION}
  from '../operator-studio-lighting.ts';
 
 export const ARSENAL_INSPECTION_BACKGROUND=0x182824;
+/** A presentation-only ambient supplement, NOT another gameplay light rig.
+ * A very dark plum ground and a nearly horizontal gameplay key leave the
+ * near-facing flat sides of black AR/HK rifles darker than #182824. Lift
+ * the sky and ground neutrally; a broad cool side fill gives every face
+ * a readable value without adding another shadow or changing the palette.
+ */
+export const ARSENAL_SKY_FILL=Object.freeze({
+ sky:0xf0f5eb,
+ ground:0x7c9488,
+ hemisphereIntensity:2.30,
+ fill:0xd6ebe0,
+ fillIntensity:1.75
+});
 export function addArsenalInspectionLighting(scene:THREE.Scene):void{
  scene.background=new THREE.Color(ARSENAL_INSPECTION_BACKGROUND);
- // Match TacticalScene3D graphic mode: sky/ground 1.20, warm key 2.35,
- // restrained plum-plus fill 0.60. Never use the old inspection-specific
- // 2.65/3.25/1.95 overexposure that flattened weapon materials.
- const accent=studioShadowPalette('plum-plus');
  const hemisphere=new THREE.HemisphereLight(
-  STUDIO_INSPECTION_LIGHT.sky,accent.ground,1.20);
+  ARSENAL_SKY_FILL.sky,ARSENAL_SKY_FILL.ground,
+  ARSENAL_SKY_FILL.hemisphereIntensity);
  const key=new THREE.DirectionalLight(STUDIO_INSPECTION_LIGHT.key,2.35);
  key.position.copy(STUDIO_KEY_DIRECTION).multiplyScalar(300);
- const fill=new THREE.DirectionalLight(accent.fill,.60);
- fill.position.set(-35,23,30);
+ const fill=new THREE.DirectionalLight(
+  ARSENAL_SKY_FILL.fill,ARSENAL_SKY_FILL.fillIntensity);
+ fill.position.set(-42,24,64);
  scene.add(hemisphere,key,fill);
 }
