@@ -12,7 +12,7 @@ on:
       - '.github/workflows/fnc-p1-silhouette.yml'
 jobs:
   isolated-fnc-p1:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
