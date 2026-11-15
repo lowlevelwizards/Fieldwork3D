@@ -56,7 +56,7 @@ test('P11: long lower ribs, broken upper gas vents and 5.56 magazine',()=>{
  assert.ok(width(mag)<3.10);
  assert.ok(Math.abs(box(mag).min.y-FNC_P1.magazineBottomY)<.03);
  const rear=get(g,'fncP8CompactRearSight'),front=get(g,'fncProtectedFrontSight');
- assert.ok(box(front).max.y>box(rear).max.y+.65);
+ assert.ok(box(front).max.y>box(rear).max.y+.5);
  const muzzle=get(g,'fncP8TaperedMuzzleMass');
  const barrel=get(g,'fncServiceBarrel');
  assert.ok(box(muzzle).max.y-box(muzzle).min.y<

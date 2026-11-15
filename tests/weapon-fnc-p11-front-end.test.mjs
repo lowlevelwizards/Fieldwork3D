@@ -26,7 +26,7 @@ test('P11 shorter, wider polymer and longer, slimmer steel cover remain connecte
  assert.ok(size(gas,'z')<size(polymer,'z')*.7);
  assert.ok(meets(polymer,gas)&&meets(gas,base));
  assert.ok(meets(polymer,lip));
- assert.ok(size(lip,'x')<.31);
+ assert.ok(size(lip,'x')>.6&&size(lip,'x')<.75);
  assert.ok(box(lip).min.y<box(polymer).min.y-.1);
  assert.equal(polymer.userData.fncCrossSectionFaces,6);
  clearWeaponSilhouette(g);m.dispose();
@@ -51,21 +51,19 @@ test('P11 two long handguard ribs, broken gas sides, five upward roof vents',()=
  assert.ok(roof.geometry.getAttribute('normal').getY(0)>.9);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P11 two raised front sight ears, lower central post, open sky',()=>{
+test('P12: two FAL-simple sight ears, real center void and no extra post',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const sight=get(g,'fncP11TwinEarFrontSight');
- assert.ok(sight&&meets(sight,get(g,'fncP7ContinuousGasSightSeat')));
- assert.equal(sight.geometry.parameters.shapes.holes.length,0);
- assert.ok(size(sight,'z')>1.8&&size(sight,'x')<.83);
- let left=false,right=false,center=false;
- const pos=sight.geometry.getAttribute('position');
- for(let i=0;i<pos.count;i++){
-  const z=pos.getZ(i),y=pos.getY(i);
-  if(y>3.15&&z<-.45)left=true;
-  if(y>3.15&&z>.45)right=true;
-  if(y>2.3&&Math.abs(z)<.2)center=true;
- }
- assert.ok(left&&right&&center);
+ const ears=all(g,'fncP12FALLikeFrontEar');
+ const base=get(g,'fncP7ContinuousGasSightSeat');
+ assert.equal(ears.length,2);
+ assert.deepEqual(ears.map(e=>e.userData.fncP12FALLikeFrontEar).sort(),
+  ['left','right']);
+ assert.ok(ears.every(e=>e.geometry.type==='BoxGeometry'&&meets(e,base)));
+ const [left,right]=ears.slice().sort((a,b)=>box(a).min.z-box(b).min.z);
+ assert.ok(box(left).max.z<box(right).min.z-.1,
+  'negative space between ears must be genuine');
+ assert.ok(ears.every(e=>size(e,'x')<.80&&size(e,'y')<2.1));
+ assert.equal(g.children.some(e=>e.userData.fncP11TwinEarFrontSight),false);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();
@@ -74,7 +72,7 @@ test('P11 factory and suppressor appearance retain common anchors and P10 stock'
  const m=new THREE.MeshBasicMaterial();
  const preset=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
  const full=buildWeaponSilhouette('rifle',m,m,preset);
- assert.ok(get(full,'fncP11TwinEarFrontSight'));
+ assert.equal(all(full,'fncP12FALLikeFrontEar').length,2);
  assert.ok(get(full,'fncP11TopGasVentRow'));
  assert.ok(get(full,'fncP11HandstopLip'));
  assert.ok(get(full,'fncP10DarkThickButtpad'));
