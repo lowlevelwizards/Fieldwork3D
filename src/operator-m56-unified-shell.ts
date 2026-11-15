@@ -18,20 +18,22 @@ export const M56_PERIMETER:readonly (readonly [number,number])[]=[
 /** Three meaningful external masses: a short square top, one main
  * tapering bowl, and the continuous *integral* outward lower flare.
  * The bottom 0.35 is the stamped sheet edge, not a separate visor.
+ * The larger upper shoulder and inset inner wall surround every actual
+ * 8x8 skull corner: no exposed tan triangles at Studio zoom.
  * Preserve the historical and existing code's front and rear maxima.
  */
 export const M56_SHELL_RINGS:readonly Ring[]=[
  {name:'broad-flat-crown',y:8.775,side:3.65,front:4.05,rear:4.35},
- {name:'single-upper-shoulder',y:8.07,side:4.80,front:4.95,rear:5.35},
- {name:'continuous-sloping-bell',y:5.52,side:5.78,front:5.86,rear:6.55},
+ {name:'single-upper-shoulder',y:8.07,side:5.60,front:5.70,rear:6.00},
+ {name:'continuous-sloping-bell',y:5.52,side:5.95,front:6.00,rear:6.80},
  {name:'integral-flared-edge-top',y:4.78,side:6.78,front:6.75,rear:8.04,
   frontRise:.19,rearDrop:.20},
  {name:'thin-steel-edge-bottom',y:4.43,side:6.87,front:6.80,rear:8.10,
   frontRise:.22,rearDrop:.205},
  {name:'inward-stamped-return',y:4.51,side:6.38,front:6.34,rear:7.58,
   frontRise:.19,rearDrop:.18},
- {name:'recessed-inner-wall',y:6.48,side:4.89,front:5.05,rear:5.37},
- {name:'recessed-interior-ceiling',y:7.58,side:3.25,front:3.60,rear:3.85}
+ {name:'recessed-inner-wall',y:7.40,side:5.50,front:5.58,rear:5.94},
+ {name:'recessed-interior-ceiling',y:7.75,side:4.90,front:5.00,rear:5.20}
 ] as const;
 export const M56_SHELL_FIT=Object.freeze({
  top:8.775,outerSide:6.87,frontExtent:-6.80,rearExtent:8.10,
