@@ -23,9 +23,14 @@ import {D313G2_HOLDOUT_22,D313G2_HOLDOUT_ID}
  from './lib/d3-13g2-fresh-22-manifest.mjs';
 import {D313H2_HOLDOUT_22,D313H2_HOLDOUT_ID}
  from './lib/d3-13h2-fresh22-manifest.mjs';
+import {D314B_HOLDOUT_22,D314B_HOLDOUT_ID}
+ from './lib/d3-14b-sixth-blind22.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
-import {sweptBodyClear} from '../src/breach-navigation.ts';
+import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing} from '../src/breach-navigation.ts';
+import {routeWithSqueezeWorld,routeToNextOperableDoor}
+ from '../src/breach-squeeze-route.ts';
+import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
@@ -50,7 +55,9 @@ const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
+const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const h2Fresh22=process.argv.includes('--h2-fresh-22');
+const d314bBlind22=process.argv.includes('--d314b-blind22');
 // D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
 // Run with --route-transitions --site-index=7 --trace-actor=rook
 // and optionally --trace-mode=authored (or entry).
@@ -77,9 +84,14 @@ const requestedSeedArg=process.argv.find(a=>a.startsWith('--audit-seed='));
 const requestedSeed=requestedSeedArg?Number(requestedSeedArg.split('=')[1]):null;
 const requestedScaleArg=process.argv.find(a=>a.startsWith('--audit-scale='));
 const requestedScale=requestedScaleArg?.split('=')[1]??null;
+if(d314bBlind22&&(g2Fresh22||h2Fresh22||sites!==22||
+  requestedSite!==null||clinicOnly||requestedSeedArg||requestedScaleArg))
+ throw Error('D3.14B blind holdout needs 22 sites and no overrides');
 if(h2Fresh22&&(g2Fresh22||sites!==22||requestedSite!==null||clinicOnly||
     requestedSeedArg||requestedScaleArg))
  throw Error('H2 holdout requires 22 sites with no overrides or other cohort');
+if(d314bClearanceProbe&&requestedSite===null)
+ throw Error('D3.14B clearance probe needs one selected site');
 if(g2Fresh22&&(sites!==22||requestedSite!==null||clinicOnly||
     requestedSeedArg||requestedScaleArg))
  throw Error('G2 fresh holdout requires 22 sites and no seed/site overrides');
@@ -408,6 +420,67 @@ function run(site,seed,kind){
     };
    }
   }
+  // D3.14B: READ ONLY, once after 45-second simulation. Determine if
+  // Vale's real squeeze body can leave the D9 cycle and which DIRECTIONS
+  // really clear the current static geometry. Never insert or execute a
+  // candidate, touch the authored goal, or allocate per live motor tick.
+  let d314bClearanceEvidence=null;
+  if(d314bClearanceProbe&&kind==='entry'){
+   const actor=actors.find(a=>a.id==='vale');
+   const goal=actor?planned.goals.get(actor.id):null;
+   if(actor&&goal){
+    const world=sessionWorldGeometry(session);
+    const fullStand=bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world);
+    const next=actor.nav[0]??goal;
+    const step=(from,to)=>sweptBodyClear(from,to,session.doors,OPERATOR_RADIUS,world);
+    const narrow=(from,to)=>sweptProfileClear(from,to,session.doors,
+       squeezeFacing(Math.atan2(to.y-from.y,to.x-from.x)),'squeeze',world);
+    const angles=Array.from({length:16},(_,i)=>i*Math.PI/8);
+    const neighborhood=[];
+    for(const distance of [4,8,16,28]){
+     const options=angles.map((angle,i)=>{
+      const target={x:actor.p.x+Math.cos(angle)*distance,
+       y:actor.p.y+Math.sin(angle)*distance};
+      return {headingIndex:i,full:step(actor.p,target),
+       narrow:narrow(actor.p,target),
+       closer:dist(target,goal)<dist(actor.p,goal)};
+     });
+     neighborhood.push({distance,fullSafe:options.filter(v=>v.full).map(v=>v.headingIndex),
+      narrowSafe:options.filter(v=>v.narrow).map(v=>v.headingIndex),
+      goalwardFull:options.filter(v=>v.full&&v.closer).map(v=>v.headingIndex),
+      goalwardNarrow:options.filter(v=>v.narrow&&v.closer).map(v=>v.headingIndex)});
+    }
+    const episode=actor.doorTraversal;
+    const door=episode?session.doors.find(d=>d.id===episode.doorId):null;
+    const route=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+    const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+    d314bClearanceEvidence={
+     actorId:actor.id,position:{...actor.p},goal:{...goal},
+     remaining:round(dist(actor.p,goal)),fullStand,
+     squeeze:actor.squeeze,squeezeYaw:actor.squeezeYaw,
+     heading:actor.heading,blockedTime:actor.blockedTime,lastBlocker:actor.lastBlocker,
+     nextNav:actor.nav.slice(0,5),nextFullClear:step(actor.p,next),
+     nextNarrowClear:narrow(actor.p,next),
+     originalGoalFullClear:step(actor.p,goal),
+     originalGoalNarrowClear:narrow(actor.p,goal),
+     episode:episode?{id:episode.doorId,phase:episode.phase,
+      maneuver:episode.maneuver,approachSide:episode.approachSide,
+      waypoints:episode.waypoints.slice(0,4),lastProgressAt:episode.lastProgressAt}:null,
+     leaf:door?{a:{...door.a},b:{...door.b},leaf:doorLeafSegment(door),
+      fraction:door.openFraction,angularVelocity:door.angularVelocity,
+      open:door.open}:null,
+     otherOperators:actors.filter(a=>a!==actor).map(a=>({id:a.id,p:{...a.p}})),
+     closedOperable:session.doors.filter(d=>!d.locked&&!d.jammed&&!d.wedged&&
+       !d.heldBy&&(d.openFraction??0)<.72).map(d=>d.id),
+     actualWorld:{length:route.length,first:route.slice(0,4),
+      firstClear:route.length?step(actor.p,route[0]):null},
+     futurePortal:{length:future.length,first:future.slice(0,4),
+      firstClear:future.length?step(actor.p,future[0]):null},
+     neighborhood,
+     boundedNarrowExit:observeNarrowLeafExit(actor.p,goal,next,narrow,step)
+    };
+   }
+  }
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -424,6 +497,7 @@ function run(site,seed,kind){
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
    warehouseHingeWitness,
+   ...(d314bClearanceProbe?{d314bClearanceEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
@@ -498,7 +572,8 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const cohort=h2Fresh22?D313H2_HOLDOUT_22[i]:
+ const cohort=d314bBlind22?D314B_HOLDOUT_22[i]:
+   h2Fresh22?D313H2_HOLDOUT_22[i]:
    g2Fresh22?D313G2_HOLDOUT_22[i]:null;
  const seed=requestedSeed??cohort?.seed??31045+i*13;
  const archetype=cohort?.archetype??names[i%names.length];
@@ -580,7 +655,8 @@ const progressSummary=progress?{
 }:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
- ...(h2Fresh22?{corpus:D313H2_HOLDOUT_ID}:
+ ...(d314bBlind22?{corpus:D314B_HOLDOUT_ID}:
+   h2Fresh22?{corpus:D313H2_HOLDOUT_ID}:
    g2Fresh22?{corpus:D313G2_HOLDOUT_ID}:{}),
  ticks,summary,...(progress?{progressSummary}:{}),
  ...(routeQuality?{routeQualitySummary}:{}),

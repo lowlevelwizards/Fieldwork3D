@@ -5,11 +5,15 @@
  */
 import type {TeamActor} from './breach-game.ts';
 import type {Pt} from './breach-core.ts';
+import {preciseNarrowExitWaypoint} from './breach-squeeze-leaf-exit.ts';
 const detours=new WeakMap<TeamActor,Pt>();
 export function notePreciseLocalDetour(a:TeamActor,target:Pt):void{
  detours.set(a,{...target});
 }
 export function localDetourWaypointTolerance(a:TeamActor,next:Pt):number{
+ // Four-unit fully swept narrow stages require actual local arrival.
+ // Ordinary A* and existing furniture-detour tolerances are unchanged.
+ if(preciseNarrowExitWaypoint(a,next))return .85;
  const point=detours.get(a);
  if(!point)return 3;
  if(Math.hypot(point.x-next.x,point.y-next.y)>1){
