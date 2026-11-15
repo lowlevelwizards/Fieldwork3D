@@ -1,7 +1,7 @@
-/** P4 R1A: FAL-specific, eight-facet crowned receiver shell.
- * Deliberately replaces the constant-Z side-profile extrusion. The broad
- * trapezoidal shoulder narrowing must be visible from the WORKBENCH camera.
- * +X muzzle, +Y up, +/-Z weapon sides. No live-frame allocations.
+/** P5: exaggerated, truncated-triangle FAL receiver crown.
+ * Six stations, eight vertices in each cross-section: same low-poly mesh
+ * density as P4, but dramatically different massing. +X points muzzleward.
+ * Roof and shoulders are intentionally oversized/stylized game-art forms.
  */
 import * as THREE from 'three';
 
@@ -9,40 +9,52 @@ type Station=Readonly<{
  x:number;top:number;bottom:number;sideHalfZ:number;roofHalfZ:number
 }>;
 export const FAL_UPPER_STATIONS:readonly Station[]=[
- {x:-6.60,top:1.08,bottom:-.87,sideHalfZ:1.40,roofHalfZ:1.04},
- {x:-5.84,top:1.66,bottom:-1.14,sideHalfZ:1.64,roofHalfZ:1.15},
- {x:-5.36,top:1.83,bottom:-1.23,sideHalfZ:1.69,roofHalfZ:1.16},
- {x:2.42,top:1.83,bottom:-1.23,sideHalfZ:1.69,roofHalfZ:1.16},
- {x:3.27,top:1.54,bottom:-.95,sideHalfZ:1.55,roofHalfZ:1.08},
- {x:3.85,top:1.04,bottom:-.62,sideHalfZ:1.40,roofHalfZ:.98}
+ {x:-6.60,top:1.08,bottom:-.87,sideHalfZ:1.55,roofHalfZ:.65},
+ {x:-5.84,top:1.66,bottom:-1.14,sideHalfZ:1.81,roofHalfZ:.67},
+ {x:-5.36,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
+ {x:2.42,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
+ {x:3.27,top:1.54,bottom:-.95,sideHalfZ:1.70,roofHalfZ:.63},
+ {x:3.85,top:1.04,bottom:-.62,sideHalfZ:1.51,roofHalfZ:.61}
 ];
-/** Side Z on the actual sloping, right/left shoulder at Y.
- * One source for receiver surface marks and their placement. */
-export function falUpperSideHalfZ(y:number,x=1):number{
+/** Center section slopes for roughly two-thirds of its full vertical height.
+ * At the short ends a lower shoulder limit prevents inverted rings. */
+export function falUpperShoulderY(s:Station):number{
+ return Math.max(s.bottom+.43,s.top-2.06);
+}
+function stationAt(x:number):Station{
  const stations=FAL_UPPER_STATIONS;
- let a=stations[0],b=stations[1];
  for(let i=1;i<stations.length;i++){
-  if(x<=stations[i].x){a=stations[i-1];b=stations[i];break;}
-  a=stations[i];b=stations[i];
+  if(x<=stations[i].x){
+   const a=stations[i-1],b=stations[i];
+   const t=Math.max(0,Math.min(1,(x-a.x)/(b.x-a.x)));
+   return {
+    x,top:a.top+(b.top-a.top)*t,bottom:a.bottom+(b.bottom-a.bottom)*t,
+    sideHalfZ:a.sideHalfZ+(b.sideHalfZ-a.sideHalfZ)*t,
+    roofHalfZ:a.roofHalfZ+(b.roofHalfZ-a.roofHalfZ)*t
+   };
+  }
  }
- const t=a===b?0:Math.max(0,Math.min(1,(x-a.x)/(b.x-a.x)));
- const top=a.top+(b.top-a.top)*t;
- const bottom=a.bottom+(b.bottom-a.bottom)*t;
- const side=a.sideHalfZ+(b.sideHalfZ-a.sideHalfZ)*t;
- const roof=a.roofHalfZ+(b.roofHalfZ-a.roofHalfZ)*t;
- const shoulder=top-.76;
- if(y>=shoulder)return roof+(side-roof)*
-  Math.max(0,Math.min(1,(top-y)/.76));
- if(y>=bottom+.30)return side;
- return side-.14*Math.max(0,Math.min(1,(bottom+.30-y)/.30));
+ return {...stations[stations.length-1],x};
+}
+/** EXACT same shoulder surface interpolation used by shell and identity marks.
+ * No independently guessed Z for ports, tracks or the face of the receiver. */
+export function falUpperSideHalfZ(y:number,x=1):number{
+ const s=stationAt(x),shoulder=falUpperShoulderY(s);
+ if(y>=shoulder){
+  const t=Math.max(0,Math.min(1,(y-shoulder)/(s.top-shoulder)));
+  return s.sideHalfZ+(s.roofHalfZ-s.sideHalfZ)*t;
+ }
+ if(y>=s.bottom+.24)return s.sideHalfZ;
+ return s.sideHalfZ-.16*Math.max(0,Math.min(1,(s.bottom+.24-y)/.24));
 }
 function point(s:Station,n:number):[number,number,number]{
  const {x,top,bottom,sideHalfZ:w,roofHalfZ:r}=s;
+ const shoulder=falUpperShoulderY(s);
  const ring:readonly (readonly [number,number])[]=[
-  [bottom,-w+.14],[bottom,w-.14],
-  [bottom+.30,w],[top-.76,w],
+  [bottom,-w+.16],[bottom,w-.16],
+  [bottom+.24,w],[shoulder,w],
   [top,r],[top,-r],
-  [top-.76,-w],[bottom+.30,-w]
+  [shoulder,-w],[bottom+.24,-w]
  ];
  return [x,ring[n][0],ring[n][1]];
 }
@@ -76,6 +88,7 @@ export function addFALCrownedReceiver(
  mesh.name='family-receiver-'+receiverId+'-'+index;
  mesh.userData.falCrownedUpper=true;
  mesh.userData.falUpperStationCount=FAL_UPPER_STATIONS.length;
+ mesh.userData.falTriangularP5=true;
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
  return mesh;
 }
