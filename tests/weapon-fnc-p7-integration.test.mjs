@@ -74,7 +74,7 @@ test('P7: fewer front markings and less dominant muzzle; retained FN geometry',(
  const size=bounds(end).max.y-bounds(end).min.y;
  const barrelSize=bounds(get(g,'fncServiceBarrel')).max.y-
   bounds(get(g,'fncServiceBarrel')).min.y;
- assert.ok(size/barrelSize>1.5&&size/barrelSize<2.0);
+ assert.ok(size/barrelSize>1.20&&size/barrelSize<1.50);
  assert.equal(g.children.filter(x=>x.userData.fncP7StockWeb).length,1);
  clearWeaponSilhouette(g);m.dispose();
 });
