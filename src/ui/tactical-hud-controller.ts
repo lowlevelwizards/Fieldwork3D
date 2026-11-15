@@ -186,11 +186,12 @@ export function createTacticalHudController(
     const presentation=resolveHudPresentation({
       phase,urgency,explicitHelp:hasHelp,coaching:!!tip,targetPrompt:targetArmed
     });
-    document.body.dataset.hudPhase=phase;
-    document.body.dataset.hudUrgency=urgency;
-    input.hint.dataset.hintKind=hasHelp?'help':targetArmed?'target':'coach';
-    input.hint.textContent=hasHelp?helpText:targetArmed?message(input):
-      presentation.showCoaching?(tip?.text??''):message(input);
+    if(document.body.dataset.hudPhase!==phase)document.body.dataset.hudPhase=phase;
+    if(document.body.dataset.hudUrgency!==urgency)document.body.dataset.hudUrgency=urgency;
+    const hintKind=hasHelp?'help':targetArmed?'target':'coach';
+    if(input.hint.dataset.hintKind!==hintKind)input.hint.dataset.hintKind=hintKind;
+    writeDomText(input.hint,hasHelp?helpText:targetArmed?message(input):
+      presentation.showCoaching?(tip?.text??''):message(input));
     input.hint.hidden=!presentation.showGuidance;
   }
   /** Feedback from game *results*, not a second validation pipeline. */
@@ -220,7 +221,8 @@ export function createTacticalHudController(
     const shown=state.phase==='planning'&&!input.replaying&&
       !!actor&&actor.health>0;
     quickStates.hidden=!shown;
-    quickStates.dataset.owner=shown?actor!.id:'';
+    const owner=shown?actor!.id:'';
+    if(quickStates.dataset.owner!==owner)quickStates.dataset.owner=owner;
     hudHeight.sync(input.tacticalHud);
     if(!shown||!actor)return;
     const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
@@ -230,16 +232,16 @@ export function createTacticalHudController(
     const quickScope=input.scopeElement;
     // Scope is provided by the existing HUD mount; no duplicate DOM.
     if(quickScope){
-      quickScope.textContent=actor.name.toUpperCase()+' · '+scope+
+      writeDomText(quickScope,actor.name.toUpperCase()+' · '+scope+
         (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?
-          ' · WATCH ACTIVE':'');
+          ' · WATCH ACTIVE':''));
       quickScope.title=node?
         'Commands apply when '+actor.name+' reaches waypoint '+index:
         input.selectedActiveWatch&&input.watchTargetPresent?
           'The active WATCH point can be dragged or deleted from its marker':
           'Commands apply to '+actor.name+' at their current position';
     }
-    quickStates.setAttribute('aria-label',actor.name+' · '+scope+' commands');
+    writeDomAttribute(quickStates,'aria-label',actor.name+' · '+scope+' commands');
     const current=input.plannedControl(node?.id);
     const choices=contextActionChoices({
       door:false,node:!!node,flashRemaining:state.flashRemaining,
@@ -258,13 +260,14 @@ export function createTacticalHudController(
       }
       const label=button.querySelector<HTMLElement>('.command-label');
       if(label&&label.textContent!==choice.label)label.textContent=choice.label;
-      button.title=choice.title??choice.label;
+      const nextTitle=choice.title??choice.label;
+      if(button.title!==nextTitle)button.title=nextTitle;
       input.installHelp(button);
-      button.setAttribute('aria-label',(node?'Waypoint: ':'Operator: ')+
+      writeDomAttribute(button,'aria-label',(node?'Waypoint: ':'Operator: ')+
         choice.label+'. '+(choice.title??''));
       button.disabled=!!choice.disabled;
       if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
-      else button.setAttribute('aria-pressed',String(choice.pressed));
+      else writeDomAttribute(button,'aria-pressed',String(choice.pressed));
     }
   }
   function renderTargetMode(config:{
@@ -274,10 +277,10 @@ export function createTacticalHudController(
     const target=config.phase!=='planning'||config.replaying?'':targeting.label;
     config.cancelTarget.hidden=!target;
     if(target){
-      config.cancelTarget.textContent='✕ CANCEL '+target;
-      config.cancelTarget.setAttribute('aria-label','Cancel '+target+' targeting');
+      writeDomText(config.cancelTarget,'✕ CANCEL '+target);
+      writeDomAttribute(config.cancelTarget,'aria-label','Cancel '+target+' targeting');
     }
-    config.hint.dataset.targetMode=target;
+    if(config.hint.dataset.targetMode!==target)config.hint.dataset.targetMode=target;
   }
   function renderPhase(config:{
     phase:Session['phase'];started:boolean;replaying:boolean;seconds:number;
