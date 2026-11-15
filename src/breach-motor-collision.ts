@@ -39,6 +39,7 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  noteCircularWorldRoute,ownsCircularWorldRoute}
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
+import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {stackMicroRecoveryEligible,claimStackMicroAttempt,selectStackMicroCorner}
  from './breach-stack-micro-corner.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
@@ -185,10 +186,16 @@ export function resolveMotorCollision(
           return true;
         }
       }
-      const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
-        s.seconds,canAutoSidestep);
-      if(side)a.autoSidestep=side;
-      setTransientRoute(s,a,fullLane,'full-body-lane');a.retryRouteAt=0;a.recoveryAttempts=0;
+      // D3.17B2: don't reissue a byte-for-byte equivalent side excursion
+      // from a repeatedly revisited physical anchor. Keep ordinary
+      // collision, glide, world recovery and original order available;
+      // crucially, do not reset recoveryAttempts without actual progress.
+      if(allowPhysicalRouteReissue(a,'full-body-lane',p,fullLane,s.seconds)){
+        const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
+          s.seconds,canAutoSidestep);
+        if(side)a.autoSidestep=side;
+        setTransientRoute(s,a,fullLane,'full-body-lane');
+        a.retryRouteAt=0;a.recoveryAttempts=0;
       // C1c: the full-width lane repair also begins with a short corner
       // departure point. It was retired at 3 units before the furniture
       // actually cleared (motel 31149), then re-entered the same prop.
@@ -196,8 +203,9 @@ export function resolveMotorCollision(
       notePreciseLocalDetour(a,fullLane[0]);
       // Preserve existing WATCH facing and weapon intention; only the
       // feet choose a different line around the obstruction.
-      a.squeeze=false;a.squeezeTime=0;
-      return true;
+        a.squeeze=false;a.squeezeTime=0;
+        return true;
+      }
     }
   }
   // A grazing wall is not a narrow corridor. Glide the legal tangential
@@ -466,8 +474,15 @@ export function resolveMotorCollision(
          !a.doorTraversal&&!a.traversalPending&&a.nav.length){
         const connected=repairBlockedTransientWorldLeg(
           a.p,next,a.nav.slice(1),s.doors,world);
-        if(connected.length&&materiallyDifferentRoute(a.nav,connected)){
-          setTransientRoute(s,a,connected,'blocked-leg-connector');a.retryRouteAt=0;a.recoveryAttempts=0;
+        // D3.17B3: connector waypoints are not progress if the actor
+        // already walked back to the same furniture anchor repeatedly.
+        // Fall through to bounded physical-world replan, without resetting
+        // the normal recovery budget when an identical connector recurs.
+        if(connected.length&&materiallyDifferentRoute(a.nav,connected)&&
+           allowPhysicalRouteReissue(a,'blocked-leg-connector',p,
+             connected,s.seconds)){
+          setTransientRoute(s,a,connected,'blocked-leg-connector');
+          a.retryRouteAt=0;a.recoveryAttempts=0;
           return true;
         }
       }

@@ -1,4 +1,5 @@
 import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
+import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
 import {shouldProbeRepeatedDoorRehearsal,fullySweptRehearsalExit}
@@ -173,6 +174,13 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
    sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
  const path=rehearseDoorLeafBypass(a.p,episode.destination,door,sweep);
  if(!path.length)return false;
+ // D3.17B1: the same physical doorway stage cannot be repeatedly issued
+ // from the same anchor with no progress to the original GO. A real new
+ // order, moved hinge, actor relocation, or productive travel resets it.
+ // Leave collision handling/true blocked recovery active if rejected.
+ const leafToken=door.id+':'+Math.round((door.openFraction??0)*6);
+ if(!allowPhysicalRouteReissue(a,'door-rehearsal',episode.destination,
+    path,s.seconds,leafToken))return false;
  // D3.14D2: a real open D2 can repeatedly accept the same swept
  // short rehearsal, then fall back to a stale remembered-map route.
  // Count only separately accepted physical rehearsals at the same
