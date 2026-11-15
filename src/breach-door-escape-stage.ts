@@ -13,7 +13,8 @@ export function joinedLocalOpenLeafStage(
  from:Pt,goal:Pt,door:Door,
  canSweep:(a:Pt,b:Pt)=>boolean,
  canStand:(p:Pt)=>boolean,
- knownTail:(from:Pt,goal:Pt)=>Pt[]
+ knownTail:(from:Pt,goal:Pt)=>Pt[],
+ witness?:(reason:string)=>void
 ):Pt[]{
  if(!door.open||door.wedged||door.kind==='sliding'||
     door.kind==='shutter'||(door.openFraction??0)<.82||
@@ -57,27 +58,42 @@ export function joinedLocalOpenLeafStage(
  }
  let best:Pt[]=[],bestCost=Infinity;
  let tailProbes=0;
+ // Read-only rejection counters, populated only when the audit supplies
+ // a witness. No extra route, path or full-body sweep is ever attempted.
+ let unsafeLeg=0,failedJoin=0,missingTail=0,longStage=0,tooLong=0;
  for(const stage of paths){
   let previous=from,travel=0,valid=true;
   for(const point of stage){
    const leg=dist(previous,point);
    if(leg<2||leg>108||!canStand(point)||!canSweep(previous,point)){
-    valid=false;break;
+    unsafeLeg++;valid=false;break;
    }
    travel+=leg;previous=point;
   }
-  if(!valid||travel>155||dist(previous,goal)>dist(from,goal)+18)
-   continue;
+  if(!valid)continue;
+  if(travel>155||dist(previous,goal)>dist(from,goal)+18){
+   longStage++;continue;
+  }
   // At most three known-intel tail searches on one cold, repeated escape
   // episode. A first-leg join into the leaf is never accepted.
   if(++tailProbes>3)break;
   const tail=knownTail(previous,goal);
-  if(!tail.length||dist(tail[tail.length-1],goal)>3||
-     !canSweep(previous,tail[0]))continue;
+  if(!tail.length||dist(tail[tail.length-1],goal)>3){
+   missingTail++;continue;
+  }
+  if(!canSweep(previous,tail[0])){
+   failedJoin++;continue;
+  }
   let total=travel,at=previous;
   for(const node of tail){total+=dist(at,node);at=node;}
-  if(total>dist(from,goal)*1.7+40||total>=bestCost)continue;
+  if(total>dist(from,goal)*1.7+40||total>=bestCost){
+   tooLong++;continue;
+  }
   bestCost=total;best=[...stage.map(clone),...tail.map(clone)];
  }
+ if(!best.length&&witness)
+  witness('unsafe-leg='+unsafeLeg+',too-far='+longStage+
+   ',no-tail='+missingTail+',blocked-join='+failedJoin+
+   ',long-tail='+tooLong+',searched-tail='+tailProbes);
  return best;
 }
