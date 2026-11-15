@@ -21,7 +21,8 @@ test('B2-A2 Soviet steel is one faceted hollow bell, not a stacked hidden shell'
  assert.equal(shell.children.length,0);
  assert.equal(g.userData.ssh40FacetedSurface,true);
  assert.equal(g.userData.ssh40VisibleInterior,true);
- assert.equal(g.userData.ssh40IdentityRevision,3);
+ assert.equal(g.userData.ssh40IdentityRevision,4);
+ assert.equal(g.userData.ssh40SkirtEdgeRevision,'B2-A3');
  assert.equal(g.userData.ssh40OutlineSegments,8);
  assert.equal(g.userData.ssh40ProfileStations.length,8,
   'removed an unnecessary exterior ring instead of only reducing its shading');
@@ -66,6 +67,54 @@ test('B2-A2 SSh-40 is larger, low and swept, with a restrained rolled perimeter'
   assert.ok(Math.abs(low[0])>=Math.abs(returnEdge[0]),
    'interior rolls back inwards at the bottom');
  }
+});
+
+test('B2-A3 preserves the boxy crown and large unrounded shoulder',()=>{
+ const [top,shoulder]=SSH40_STEEL_LEVELS;
+ assert.deepEqual(
+  [top.y,top.side,top.front,top.rear],
+  [9.65,3.45,3.70,3.82],'approved top dimensions must not be rounded');
+ assert.deepEqual(
+  [shoulder.y,shoulder.side,shoulder.front,shoulder.rear],
+  [8.80,4.56,4.67,4.79],'approved broad shoulder stays untouched');
+ assert.equal(SSH40_OUTLINE.length,8,'no extra facets');
+ assert.equal(SSH40_STEEL_LEVELS.length,8,'no extra circumferential bands');
+});
+
+test('B2-A3 lower skirt is calmer, rim short and gentle, but swept nape remains',()=>{
+ const bell=SSH40_STEEL_LEVELS[2],rimTop=SSH40_STEEL_LEVELS[3],
+  rimBottom=SSH40_STEEL_LEVELS[4];
+ near(bell.y,4.62,'broad wall continues below old break');
+ near(bell.side,5.76,'subtle transition into lower skirt');
+ near(rimTop.y-rimBottom.y,.27,'short readable rolled band');
+ assert.ok(rimTop.side-bell.side>0&&rimTop.side-bell.side<.09,
+  'lower skirt only widens slightly at outer roll');
+ assert.ok(rimTop.front-bell.front>0&&rimTop.front-bell.front<.05,
+  'no protruding front shelf');
+ assert.ok(rimTop.rear-bell.rear>0&&rimTop.rear-bell.rear<.05,
+  'no overhanging rear shelf');
+ assert.ok(rimBottom.side>=rimTop.side&&rimBottom.side-rimTop.side<=.03001,
+  'the roll itself has almost no lateral projection');
+ near(ssh40SurfacePoint(4,0)[1],3.98,'front hem is unchanged');
+ near(ssh40SurfacePoint(4,2)[1],3.92,'front quarter is unchanged');
+ near(ssh40SurfacePoint(4,4)[1],3.38,'rear nape drop is unchanged');
+ const b=createSsh40ProfileGeometry().boundingBox;
+ near(b.max.y,9.65,'top remains unchanged');
+ near(b.min.x,-5.86,'overall width remains unchanged');
+ near(b.max.x,5.86,'overall width remains unchanged');
+ near(b.min.z,-5.92,'front extent remains unchanged');
+ near(b.max.z,6.08,'rear extent remains unchanged');
+ near(b.min.y,3.38,'lowest hem remains unchanged');
+});
+
+test('B2-A3 shades skirt as steel shell, not an artificial wide dark band',()=>{
+ const g=createSsh40ProfileGeometry(),uv=g.getAttribute('uv');
+ // 8 roof triangles × 3 vertices + 8 segments × 4 vertices per band.
+ const start=8*3,band=8*4;
+ for(let i=start+2*band;i<start+3*band;i++)
+  assert.ok(uv.getY(i)<.5,'lower wall uses primary-shell tile');
+ for(let i=start+3*band;i<start+4*band;i++)
+  assert.ok(uv.getY(i)>.5,'only the short actual roll uses lip tile');
 });
 
 test('B2-A2 M1 remains a distinctive taller pot with a more projecting brim',()=>{

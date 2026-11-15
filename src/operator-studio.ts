@@ -1744,6 +1744,13 @@ function renderMaterials(){
     w.m56Net??'none',id=>changeWardrobe({...current(),
      m56Net:id as WardrobeOptions['m56Net']}));
   }
+  if(item==='soviet-steel'){
+   const strap=row('SSh-40 CHINSTRAP',
+    'Period two-piece Soviet canvas webbing and slip buckle, attached at the shell sides. Concealed for bulky facewear; your choice is saved.');
+   addSelect(strap,[['fastened','FASTENED'],['unfastened','UNFASTENED']] as const,
+    w.ssh40Chinstrap??'fastened',value=>changeWardrobe({...current(),
+     ssh40Chinstrap:value as WardrobeOptions['ssh40Chinstrap']}));
+  }
   if(item==='m1-steel'){
    const strap=row('M1 CHINSTRAP',
     'Historical two-piece webbing. The fastening is concealed for bulky masks; the selection is retained.');
