@@ -13,7 +13,9 @@ export const SSH40_OUTLINE:readonly (readonly [number,number])[]=[
  [-.70,-1],[.70,-1],[1,-.70],[1,.70],
  [.70,1],[-.70,1],[-1,.70],[-1,-.70]
 ] as const;
-/** B2-A2: LARGE, simple Soviet bell; three exterior masses rather than
+/** B2-A3: retain the approved broad, boxy Soviet bell, refining ONLY its
+ * skirt-to-edge junction and shallow stamped steel roll.
+ * B2-A2: LARGE, simple Soviet bell; three exterior masses rather than
  * four successively bevelled bands. The narrow roll is integrated into the
  * lower bell, not a projecting M1-style shelf. The high crown gives the
  * cube skull room without repeating the M1's broad rectangular pot.
@@ -22,9 +24,12 @@ export const SSH40_OUTLINE:readonly (readonly [number,number])[]=[
 export const SSH40_STEEL_LEVELS:readonly Level[]=[
  {name:'crown-top',y:9.65,side:3.45,front:3.70,rear:3.82},
  {name:'dome-to-bell-shoulder',y:8.80,side:4.56,front:4.67,rear:4.79},
- {name:'single-continuous-bell-wall',y:4.72,side:5.72,front:5.84,rear:6.02,
+ // Carry the broad wall farther down before the tiny roll. Nearly vertical
+ // lower skirt: no abrupt projecting lip or additional circumference ring.
+ {name:'single-continuous-bell-wall',y:4.62,side:5.76,front:5.87,rear:6.04,
   frontRise:.20,rearDrop:.38},
- {name:'integrated-rolled-edge-top',y:4.18,side:5.86,front:5.92,rear:6.08,
+ // Shorter outer edge band (0.27 vs 0.40), with a gentle fore/aft sweep.
+ {name:'integrated-rolled-edge-top',y:4.05,side:5.83,front:5.90,rear:6.06,
   frontRise:.20,rearDrop:.40},
  {name:'integrated-rolled-edge-bottom',y:3.78,side:5.86,front:5.92,rear:6.08,
   frontRise:.20,rearDrop:.40},
@@ -88,9 +93,12 @@ export function createSsh40ProfileGeometry():THREE.BufferGeometry{
   face([center,point(roof,i),point(roof,(i+1)%n)],[0,1,0],3,.99);
  for(let j=0;j<SSH40_STEEL_LEVELS.length-1;j++){
   const a=SSH40_STEEL_LEVELS[j],b=SSH40_STEEL_LEVELS[j+1];
-  const region:0|1|2|3=j===2||j===3?2:j>=4?1:0;
-  const tone=j===3?.90:j===4?.88:j===5?.84:j===6?.86:
-   j===2?.93:j===1?.955:.985;
+  // The skirt is the same quiet painted shell as the bowl (region 0).
+  // Region 2 only covers the short actual steel roll; it must never
+  // darken a half-unit-wide strip of the continuous outer wall.
+  const region:0|1|2|3=j===3?2:j>=4?1:0;
+  const tone=j===3?.965:j===4?.90:j===5?.84:j===6?.86:
+   j===2?.96:j===1?.955:.985;
   for(let i=0;i<n;i++){
    const k=(i+1)%n,p=point(a,i),q=point(a,k),
     r=point(b,k),s=point(b,i);
@@ -114,12 +122,13 @@ export function createSsh40ProfileGeometry():THREE.BufferGeometry{
  geometry.setIndex(indices);
  geometry.computeVertexNormals();geometry.computeBoundingBox();
  geometry.userData.ssh40FacetedSurface=true;
- geometry.userData.ssh40IdentityRevision=3;
+ geometry.userData.ssh40IdentityRevision=4;
  geometry.userData.ssh40VisibleInterior=true;
  geometry.userData.ssh40OutlineSegments=n;
  geometry.userData.ssh40ProfileStations=SSH40_STEEL_LEVELS.map(l=>l.name);
  geometry.userData.exteriorQuads=quads;
  geometry.userData.ssh40BroadBellRevision='B2-A2';
+ geometry.userData.ssh40SkirtEdgeRevision='B2-A3';
  geometry.userData.materialRegions=true;
  geometry.userData.pixelWorldSize=PIXEL_WORLD_SIZE;
  geometry.userData.materialAtlasPixels=64;
