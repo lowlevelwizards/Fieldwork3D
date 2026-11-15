@@ -29,7 +29,8 @@ import {D314C_HOLDOUT_22,D314C_HOLDOUT_ID}
  from './lib/d3-14c-seventh-blind22.mjs';
 import {D314D_HOLDOUT_22,D314D_HOLDOUT_ID}
  from './lib/d3-14d-eighth-blind22.mjs';
-import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
+import {doorSwingBlocked,doorWouldStrikeActors,doorClear,doorReachable,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
+import {doorInteraction} from '../src/breach-interactions.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeToNextOperableDoor,
@@ -62,6 +63,7 @@ const routeTransitions=process.argv.includes('--route-transitions');
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
+const d315aDoorProbe=process.argv.includes('--d315a-door-probe');
 const h2Fresh22=process.argv.includes('--h2-fresh-22');
 const d314bBlind22=process.argv.includes('--d314b-blind22');
 const d314cBlind22=process.argv.includes('--d314c-blind22');
@@ -257,6 +259,8 @@ function run(site,seed,kind){
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
   const blockWitness=actors.map(()=>({mask:0,events:[]}));
   const progressEvidence=[];
+  // D3.15A: no mutation, one sample per second of actual door-OPEN order.
+  const d315aDoorSamples=[];
   const observed=actors.map(a=>({
    start:{...a.p},last:{...a.p},travel:0,blocked:0,squeezing:0,
    passage:0,opening:0,lastRetries:a.recoveryAttempts,
@@ -275,6 +279,29 @@ function run(site,seed,kind){
     if(recordRoute)setTransientRouteObserver(null);
    }
    survey.sample(actors,1/60);
+   if(d315aDoorProbe&&kind==='entry'&&tick%60===59){
+     const a=actors[0],n=a.plan[0],door=session.doors.find(d=>d.id==='FRONT');
+     if(door){
+       const world=sessionWorldGeometry(session),target=n?.p??a.p;
+       const interaction=doorInteraction({target:door,actorId:a.id,
+         actorPosition:a.p,action:'open'});
+       d315aDoorSamples.push({seconds:round(session.seconds),
+         position:{...a.p},nextNav:a.nav[0]??null,order:n?.kind??null,
+         method:n?.method??null,orderId:n?.id??null,goal:{...target},
+         actionTimer:round(a.actionTimer),blockedTime:round(a.blockedTime),
+         motorPause:a.motorPause,hand:a.doorHandContact?.doorId??null,
+         handLive:a.doorHandContact?.releasedAt===null,
+         fraction:round(door.openFraction??0),
+         velocity:round(door.angularVelocity??0),open:door.open,
+         pushTarget:round(door.pushTarget??0),doorClear:doorClear(door,world),
+         reachable:doorReachable(a.p,door),
+         interactionAllowed:interaction.allowed,
+         interactionReason:interaction.reason??null,
+         goalBodyClear:bodyClear(target,session.doors,OPERATOR_RADIUS,world),
+         nextSwept:a.nav.length?sweptBodyClear(a.p,a.nav[0],
+           session.doors,OPERATOR_RADIUS,world):null});
+     }
+   }
    quality?.sample(actors,session.seconds);
    if(progress)for(let i=0;i<actors.length;i++){
     const a=actors[i],m=observed[i];
@@ -591,6 +618,7 @@ function run(site,seed,kind){
    warehouseHingeWitness,
    ...(d314bClearanceProbe?{d314bClearanceEvidence}:{}),
    ...(d314cFrontProbe?{d314cFrontEvidence}:{}),
+   ...(d315aDoorProbe?{d315aDoorSamples}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
