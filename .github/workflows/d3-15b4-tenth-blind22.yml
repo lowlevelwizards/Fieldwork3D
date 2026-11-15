@@ -36,6 +36,9 @@ jobs:
       - name: Freeze SAME seed/map and read-only 60Hz auditor for both
         run: |
           cp candidate/scripts/audit-r7-squad-execution.mjs baseline/scripts/audit-r7-squad-execution.mjs
+          # Shared audit-only classifier must exist on the immutable baseline
+          # when using the candidate's read-only observation harness.
+          cp candidate/src/breach-order-outcome.ts baseline/src/breach-order-outcome.ts
           cp candidate/scripts/lib/d3-15b4-tenth-blind22.mjs baseline/scripts/lib/d3-15b4-tenth-blind22.mjs
           npm --prefix baseline install --no-audit --no-fund
           npm --prefix candidate install --no-audit --no-fund
