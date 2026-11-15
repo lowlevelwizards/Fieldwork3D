@@ -1,0 +1,52 @@
+name: D3.16A forensic 88-operator physical vs logical truth
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d3-16a-historical-truth.yml'
+      - 'scripts/audit-r7-squad-execution.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  truth:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Exact historical baseline 11 sites 2 modes 4 actors x 2700 real ticks
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress > "$RUNNER_TEMP/d316a-historical.json"
+      - name: Print every physical non-arrival with cancelled orders and final gate
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d316a-historical.json','utf8'));
+          for(const site of r.rows)for(const mode of site.modes){
+            const nonarrival=mode.operators.filter(x=>!x.arrived);
+            if(!nonarrival.length)continue;
+            console.log('D316A_CASE',JSON.stringify({
+              archetype:site.archetype,seed:site.seed,scale:site.scale,
+              mode:mode.mode,arrivals:mode.arrivals,complete:mode.complete,
+              orderCancelledEvents:mode.orderCancelledEvents,
+              operators:nonarrival,doors:mode.endDoorStates?.filter(x=>
+                x.locked||x.heldBy||x.fraction>.1),
+              triage:mode.triage,progress:mode.progressEvidence?.slice(-10)
+            }));
+          }
+          console.log('D316A_TOTAL',JSON.stringify(r.summary));
+          if(r.summary.exceptions||r.summary.invalidPositions||
+             r.summary.corruptedPlans||r.summary.physicsStepViolations)
+             throw Error('invalid physical historical corpus');
+          NODE
+      - name: Preserve entire actual 60Hz physical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d316a-historical-mismatch-evidence
+          path: ${{ runner.temp }}/d316a-historical.json
+          retention-days: 90
