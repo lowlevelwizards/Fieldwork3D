@@ -39,6 +39,8 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  noteCircularWorldRoute,ownsCircularWorldRoute}
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
+import {stackMicroRecoveryEligible,claimStackMicroAttempt,selectStackMicroCorner}
+ from './breach-stack-micro-corner.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
 
@@ -394,6 +396,27 @@ export function resolveMotorCollision(
       diagnoseMovement(a.p,desiredMove,s.doors,
         s.operators.filter(b=>b!==a&&b.side!==a.side&&b.health>0)
         .map(b=>b.p),8,world).blocker,!!blocking,closed);
+    // D3.15B4: the world A* may give a coarse-swept straight leg whose
+    // FIRST 0.3-unit real motor step catches a furniture corner. Do not
+    // endlessly reissue that same chord. After a genuine 1.1-second
+    // physical blockage on a GENERATED STACK waypoint, explore at most
+    // 2 cold local micro-corner episodes. EVERY suggested sub-unit stride
+    // is full-capsule swept and the original stack GO remains untouched.
+    // A temporary first leg is motor-executed normally, never teleported.
+    if(stackMicroRecoveryEligible(a)&&
+       claimStackMicroAttempt(a,s.seconds)){
+      const sideRoute=selectStackMicroCorner(a.p,p,
+        (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+      if(sideRoute.length){
+        setTransientRoute(s,a,sideRoute,'stack-micro-corner');
+        notePreciseLocalDetour(a,sideRoute[0]);
+        noteCircularWorldRoute(a,s.seconds);
+        a.lastNavRepairAt=s.seconds;
+        a.retryRouteAt=0;
+        a.recoveryAttempts=0;
+        return true;
+      }
+    }
     if(a.side==='blue'&&a.lastBlocker==='furniture'){
       const newlyKnown=discoverContactCover(s.intel,a.p,13);
       if(newlyKnown.length){
