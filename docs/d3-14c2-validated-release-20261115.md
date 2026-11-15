@@ -1,6 +1,6 @@
 # D3.14C2 — Coordinated FRONT physical-lane recovery release
 
-Date: 2026-11-15. Sole main-targeted integration owner: PR #1450. Consolidates read-only FRONT feasibility PR #1449 with C2 gameplay stage; do not merge both separately.
+Date: 2026-11-15. Sole main-targeted integration owner: PR #1450. Current preflight main base SHA d324cef61ae61c667614d6a4499aec1fb3ad6867, with unrelated FAL/M1/SSH40 headgear and CI changes only since the deployed B2 movement baseline. The main-targeted CI must rerun on this exact release head. Consolidates read-only FRONT feasibility PR #1449 with C2 gameplay stage; do not merge both separately.
 
 ## What the 60 Hz actual-motor evidence proved
 
