@@ -70,7 +70,7 @@ try{
   await page.getByRole('button',{name:'LEFT SIDE'}).click();
   await capture('m4-g3-fal-shaded-left-side');
   if(errors.length)throw Error('3D FAL lab errors: '+errors.join(' | '));
-  console.log('FAL P4: 8 actual Three.js right/left/shaded/three-quarter/mobile comparison captures passed.');
+  console.log('FAL P5: 8 Three.js right/left/shaded/three-quarter/mobile comparison captures passed.');
   await page.close();
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

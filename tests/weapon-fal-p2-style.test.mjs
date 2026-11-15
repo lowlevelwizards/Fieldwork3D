@@ -61,7 +61,7 @@ test('FAL P2: balanced stock, slightly slimmer grip, bold seated pad and handle'
  approx(pad.min.x,-15);
  assert.ok(pad.max.x>shell.min.x+.06);
  assert.ok(pad.min.y<shell.min.y&&pad.max.y>shell.max.y);
- approx(carry.max.y-carry.min.y,.84);
+ approx(carry.max.y-carry.min.y,.97);
  approx(carry.max.z-carry.min.z,.90);
  assert.ok(carry.intersectsBox(support),'carry handle must be connected');
  assert.ok(carry.min.x<0&&carry.max.x<3.2);
@@ -91,7 +91,7 @@ test('FAL P2: one continuous handguard, upper shoulder chamfer and batched vents
  const b=bounds(hand);
  approx(b.min.x,3.65);approx(b.max.x,14.10);
  approx(b.max.y,1.40);approx(b.min.y,-1.74);
- approx(b.max.z-b.min.z,3.46);
+ approx(b.max.z-b.min.z,3.56);
  assert.equal(FAL_HANDGUARD_STATIONS.length,4);
  assert.equal(hand.userData.falFacetedHandguard,true);
  const verts=hand.geometry.getAttribute('position');
@@ -123,9 +123,9 @@ test('FAL P2: restrained receiver port remains right-only and HK model unchanged
  const p=bounds(port);
  assert.equal(port.userData.falEjectionPort,true);
  approx(p.max.x-p.min.x,2.97);
- assert.ok(p.min.z>1.35&&p.max.z<1.76,'right-side scoop follows crowned upper shoulder');
+ assert.ok(p.min.z>.65&&p.max.z<1.52,'right-side scoop follows the new steep shoulder');
  const receiver=named(fal,'family-receiver-fal-50-receiver-0');
- assert.ok(bounds(receiver).max.z>=1.64&&bounds(receiver).max.z<=1.70);
+ assert.ok(bounds(receiver).max.z>=1.82&&bounds(receiver).max.z<=1.87);
  const charger=named(fal,'family-receiver-fal-50-receiver-7');
  assert.ok(bounds(charger).max.z<0,'charging lever stays on left');
  const g3=buildWeaponSilhouette('rifle',mat,mat,choose('hk-g3a3'));

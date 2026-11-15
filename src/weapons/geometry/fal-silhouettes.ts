@@ -6,8 +6,7 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {buildFALCoreSilhouette} from './fal-core-silhouette.ts';
-import {addOutline} from './profile-primitives.ts';
-import {addFALScoopedPort,addFALPivotPair} from './fal-receiver-form.ts';
+import {addFALScoopedPort,addFALPivotPair,addFALLeftSurfacePlate} from './fal-receiver-form.ts';
 import {addFALHandguardVents} from './fal-handguard-profiles.ts';
 import {FAL_MAG_METAL,FAL_VENT_SHADOW,FAL_LOWER_METAL} from './weapon-visual-palette.ts';
 
@@ -34,23 +33,17 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  addFALHandguardVents(root,build.parts.handguard,FAL_VENT_SHADOW);
  // Chunky left cocking lever and a long SIDE RUNNER. These share the
  // FN upper side but not the right-hand ejection opening.
- const handle=addOutline(root,'receiver',build.parts.receiver,7,[
+ addFALLeftSurfacePlate(root,build.parts.receiver,7,[
   [.48,.54],[2.18,.54],[2.18,.82],
   [1.90,.95],[1.58,1.11],[.66,1.11],[.48,.91]
- ],.56,steel);
- handle.position.z=-1.94;
- handle.userData.falChargingHandle=true;
- handle.castShadow=false;
+ ],.28,steel,'falChargingHandle');
  // Right: one high, broad scoop on the sloped shoulder, not a port sticker
  // hovering above the faceted receiver. No counterpart on the left.
  addFALScoopedPort(root,build.parts.receiver,8,FAL_VENT_SHADOW);
  // Both sides: one memorable, deliberately enlarged circular silhouette.
  addFALPivotPair(root,build.parts.receiver,9,steel);
- const runner=addOutline(root,'receiver',build.parts.receiver,11,[
+ addFALLeftSurfacePlate(root,build.parts.receiver,11,[
   [-2.75,.59],[2.68,.59],[2.68,.96],
   [2.00,1.04],[-2.45,1.04]
- ],.24,steel);
- runner.position.z=-1.77;
- runner.userData.falChargingTrack=true;
- runner.castShadow=false;
+ ],.12,steel,'falChargingTrack');
 }

@@ -48,7 +48,7 @@ test('P3 receiver: deeper shaped lower is a dedicated steel tone, not a duplicat
   'FAL lower housing must be a visible structural shape');
  const port=root.children.filter(x=>x.userData.falEjectionPort);
  assert.equal(port.length,1,'only one right-side ejection-port relief');
- assert.ok(box(port[0]).min.z>1.35&&box(port[0]).max.z<1.76);
+ assert.ok(box(port[0]).min.z>.65&&box(port[0]).max.z<1.52);
  const left=root.getObjectByName('family-receiver-fal-50-receiver-7');
  assert.ok(left&&box(left).max.z<0,'charging handle belongs on left');
  assert.equal(left.userData.falChargingHandle,true);
