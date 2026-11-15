@@ -1,0 +1,58 @@
+name: D3.17B replay three physical loop incidents with route writers
+on:
+  pull_request:
+    paths:
+      - 'scripts/lib/d3-17b-route-timeline.mjs'
+      - 'scripts/report-d3-17b-route-trace.mjs'
+      - 'tests/release-d3-17b-route-timeline.test.mjs'
+      - '.github/workflows/d3-17b-three-route-traces.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Read-only route transition report contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-17a-loop-forensics.test.mjs \
+            tests/release-d3-17b-route-timeline.test.mjs
+      - name: Exact utility 14462973 / Ash authored 45-second actual motor
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=9 --audit-seed=14462973 --audit-scale=standard \
+            --progress --route-transitions --trace-actor=ash --trace-mode=authored \
+            > "$RUNNER_TEMP/d317b-utility.json"
+          node scripts/report-d3-17b-route-trace.mjs \
+            "$RUNNER_TEMP/d317b-utility.json" "$RUNNER_TEMP/d317b-utility-trace.json"
+      - name: Exact motel 14136777 / Ash entry 45-second actual motor
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=14136777 --audit-scale=small \
+            --progress --route-transitions --trace-actor=ash --trace-mode=entry \
+            > "$RUNNER_TEMP/d317b-motel.json"
+          node scripts/report-d3-17b-route-trace.mjs \
+            "$RUNNER_TEMP/d317b-motel.json" "$RUNNER_TEMP/d317b-motel-trace.json"
+      - name: Exact garage 14354241 / Vale entry 45-second actual motor
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=5 --audit-seed=14354241 --audit-scale=standard \
+            --progress --route-transitions --trace-actor=vale --trace-mode=entry \
+            > "$RUNNER_TEMP/d317b-garage.json"
+          node scripts/report-d3-17b-route-trace.mjs \
+            "$RUNNER_TEMP/d317b-garage.json" "$RUNNER_TEMP/d317b-garage-trace.json"
+      - name: Archive actual route writer source timestamps and 60 Hz evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d317b-three-physical-route-writer-traces
+          path: ${{ runner.temp }}/d317b-*.json
+          retention-days: 90
