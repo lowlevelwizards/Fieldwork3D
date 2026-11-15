@@ -109,7 +109,7 @@ test('D3.13G2C local portal stage retains exact destination and checks every leg
  const from=p(308,229),goal=p(326,420);
  let tested=0,joined=0;
  const route=joinedLocalOpenLeafStage(from,goal,door,
-  (a,b)=>{tested++;if(b===goal)joined++;return true;},
+  (a,b)=>{tested++;if(b.x===goal.x&&b.y===goal.y)joined++;return true;},
   ()=>true,
   (_from,to)=>[{...to}]);
  assert.ok(route.length>=2,'the local stage always includes authored tail');
