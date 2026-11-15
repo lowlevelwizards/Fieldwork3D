@@ -16,6 +16,8 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
+import {observeRouteLoop,worthwhileLoopRecovery}
+ from './breach-route-loop-recovery.ts';
 import {holdKnownFixedAuthoredGoal}
  from './breach-authored-goal-block.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
@@ -54,6 +56,26 @@ export function prepareMotorRoute(
     a.autoSidestep=null;
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
     a.lastNormalLaneProbeAt=-10;
+  }
+  // D3.13B: only repeated REAL locomotion back to approximately the
+  // same world location with no authored-goal progress can prompt one
+  // expensive world-truth replan. Not elapsed time alone, not a WAIT,
+  // a SYNC, a healthy long detour, or a door/passage/short-step action.
+  const cyclic=observeRouteLoop(a,p,s.seconds,
+    a.side==='blue'&&a.plan[0]?.kind==='move'&&a.nav.length>0&&
+    !a.squeeze&&!a.traversal&&!a.traversalPending&&
+    !a.doorTraversal&&!a.autoSidestep&&!a.fireRetreatTarget&&
+    a.blockedTime<.3&&!a.motorPause);
+  if(cyclic&&s.seconds-a.lastNavRepairAt>=4){
+    a.lastNavRepairAt=s.seconds;
+    const world=sessionWorldGeometry(s);
+    const alternative=routeWithSqueezeWorld(a.p,p,s.doors,world);
+    if(worthwhileLoopRecovery(a.p,a.nav,alternative)&&
+       sweptBodyClear(a.p,alternative[0],s.doors,OPERATOR_RADIUS,world)){
+      setTransientRoute(s,a,alternative,'loop-world-replan');
+      a.retryRouteAt=0;a.recoveryAttempts=0;
+      hooks.notify(s,a.name+' ROUTE LOOP · TAKING SHORTER SAFE PATH');
+    }else hooks.notify(s,a.name+' ROUTE CIRCLING · NO SHORTER SAFE PATH');
   }
   if(!a.nav.length){
     // D3.10B: after real retries have established a known, immovable
