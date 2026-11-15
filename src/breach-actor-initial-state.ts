@@ -44,6 +44,7 @@ export const withActions=(a:Operator):TeamActor=>({
   traversalElevation:0,lastTraversalAt:-100,
   traversalRetreating:false,
   lastBlocker:'clear',motorPause:null,orderIssue:null,completedOrders:0,
+  failedOrders:0,lastFailedOrder:null,
   passageWaitSeconds:0,passageStallReported:false,
   executionLastStatus:null,
   pieIndex:0,aimInstruction:null,lastHitAt:-100,lastDownAt:-100,

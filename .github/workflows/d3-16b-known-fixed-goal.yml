@@ -1,0 +1,83 @@
+name: D3.16B Ash motel fixed GO correction and real motor acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-authored-goal-block.ts'
+      - 'src/ui/recovery-guidance.ts'
+      - 'src/ui/execution-feedback.ts'
+      - 'tests/release-d3-16b-fixed-goal-feedback.test.mjs'
+      - 'tests/tactical-integration-13-execution-status.test.mjs'
+      - '.github/workflows/d3-16b-known-fixed-goal.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  fixed-goal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and human-facing tactical status contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-16a-honest-order-outcomes.test.mjs \
+            tests/release-d3-16b-fixed-goal-feedback.test.mjs \
+            tests/tactical-integration-13-execution-status.test.mjs \
+            tests/breach-roadmap2-stage8-orders.test.mjs \
+            tests/release7-mobile-clarity.test.mjs
+      - name: Frozen motel 31149 x 45s real actor collision, same unmodified orders
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=31149 --audit-scale=small \
+            --progress > "$RUNNER_TEMP/d316b-motel.json"
+      - name: Preserve Ash destination and one actionable issue; seven cancellations remain real
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d316b-motel.json','utf8'));
+          const m=r.rows[0].modes.find(x=>x.mode==='authored');
+          const ash=m.operators.find(o=>o.id==='ash');
+          const vale=m.operators.find(o=>o.id==='vale');
+          console.log('D316B_MOTEL',JSON.stringify({ash,vale,summary:r.summary,events:m.orderCancelledEvents}));
+          if(!ash||ash.arrived||ash.remainingOrders!==1||ash.failedOrders!==0||
+             ash.activeOrder!=='move'||ash.remaining<30||ash.remaining>40||
+             !/MOVE BLOCKED · GO INSIDE FURNITURE · DRAG WAYPOINT TO CLEAR FLOOR/.test(ash.orderIssue??''))
+             throw Error('Ash goal was moved/cancelled, blocked hint ungrounded, or no real obstruction');
+          if(!vale||vale.failedOrders!==1||vale.arrived||vale.remainingOrders!==0)
+             throw Error('locked-door cancellation no longer truthful');
+          if(r.summary.physicalArrivals!==6||r.summary.physicalCompletedFour!==1||
+             r.summary.successfulFour!==1||r.summary.terminallyCancelledOrders!==1||
+             r.summary.cancelledOperators!==1||r.summary.physicallyPendingOperators!==1||
+             r.summary.exceptions||r.summary.physicsStepViolations||
+             r.summary.corruptedPlans||r.summary.invalidPositions)
+             throw Error('frozen motel physics or failure outcomes regressed');
+          NODE
+      - name: Historical 88 operators x 45s and exact 7+1 outcome classification
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress > "$RUNNER_TEMP/d316b-historical.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d316b-historical.json','utf8'));
+          const s=r.summary;
+          console.log('D316B_HISTORICAL',JSON.stringify(s));
+          if(s.physicalArrivals!==80||s.physicalCompletedFour!==18||
+             s.successfulFour!==16||s.terminallyCancelledOrders!==9||
+             s.cancelledOperators!==9||s.cancelledAndNotArrived!==7||
+             s.arrivedDespiteCancellation!==2||s.physicallyPendingOperators!==1||
+             s.unreachedDrainedOperators!==0||s.stallEpisodes>8||
+             s.exceptions||s.physicsStepViolations||s.invalidPositions||
+             s.corruptedPlans)throw Error('D3.16B historical physical truth regressed');
+          NODE
+      - name: Archive full actual 60 Hz incident and 88-operator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d316b-motel-and-historical-physical-truth
+          path: ${{ runner.temp }}/d316b-*.json
+          retention-days: 90

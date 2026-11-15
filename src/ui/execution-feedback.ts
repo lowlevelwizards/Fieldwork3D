@@ -38,13 +38,19 @@ export function classifyExecutionTransition(event:Pick<ExecutionEvent,'kind'|'re
   case 'started':return null;
  }
 }
-function executionRecovery(reason:string):string|undefined{
+function executionRecovery(reason:string,text:string):string|undefined{
+ // Typed execution transitions already contain only player-visible status
+ // detail. Reuse the SAME guide as the legacy event log, not a generic
+ // 'edit order' tip that hides the confirmed furniture-at-GO diagnosis.
+ if(reason==='order-failed'){
+  const action=recoveryAdviceFor(text);
+  return action?.next??'Select the affected order to edit or replace it.';
+ }
  if(reason==='door-locked'||reason==='door-obstructed'||reason==='door-held')
   return 'Check the known door and select another available action.';
  if(reason==='traffic-stall'||reason==='traffic')
   return 'Check teammate spacing and the shared passage.';
- if(reason==='order-failed')
-  return 'Select the affected order to edit or replace it.';
+
  if(reason.startsWith('collision-'))
   return 'Check the visible obstruction and adjust the route if needed.';
  return undefined;
@@ -91,7 +97,7 @@ export class ExecutionNoticeFeed{
         severity:classification.severity,priority:classification.priority,
         born:now,expires:now+classification.duration,
         recovery:classification.severity==='warning'?
-          executionRecovery(event.reason):undefined});
+          executionRecovery(event.reason,event.text):undefined});
       if(this.queue.length>8)this.queue.shift();
     }
     if(this.priorPhase&&phase!==this.priorPhase){

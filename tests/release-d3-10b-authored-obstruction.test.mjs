@@ -34,7 +34,8 @@ test('B1 known unmovable authored landing parks once, preserving order',()=>{
   assert.equal(notices.length,1);
   assert.equal(a.plan[0],node,'do not change authored goal');
   assert.equal(a.orderIssue.nodeId,node.id);
-  assert.match(a.orderIssue.reason,/DESTINATION OBSTRUCTED/);
+  assert.equal(a.orderIssue.reason,
+   'MOVE BLOCKED · GO INSIDE FURNITURE · DRAG WAYPOINT TO CLEAR FLOOR');
   assert.equal(executionStatus(a).kind,'blocked');
   for(let i=0;i<300;i++)
    assert.equal(holdKnownFixedAuthoredGoal(s,a,goal,key,1/60,note),true);
