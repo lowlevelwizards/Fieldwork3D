@@ -19,7 +19,8 @@ import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
 import {shouldPauseNegativeGoalProbe}
  from './breach-cold-route-cache.ts';
-import {SQUEEZE_RADIUS} from './breach-navigation.ts';
+// A physically blocked full-body GO warrants a bounded repeat pause
+// AFTER failed route attempts; squeeze candidates still re-probe every 6s.
 import {holdKnownFixedAuthoredGoal}
  from './breach-authored-goal-block.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
@@ -281,7 +282,7 @@ export function prepareMotorRoute(
     // World truth is used by the motor ONLY; HUD never reveals hidden cover.
     if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
        a.recoveryAttempts>=2&&!a.doorTraversal&&
-       !sessionWorldGeometry(s).passable(p,SQUEEZE_RADIUS)&&
+       !sessionWorldGeometry(s).passable(p,OPERATOR_RADIUS)&&
        shouldPauseNegativeGoalProbe(a,p,s.seconds,
          sessionWorldGeometry(s).revision,s.doors)){
        a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';

@@ -527,8 +527,10 @@ export function resolveMotorCollision(
       if(a.lastBlocker==='furniture'&&a.blockedTime>=2.8&&
          !shouldProbeStationaryCollisionRoute(a,p,s.seconds,world.revision,
            s.doors)){
-        a.recoveryAttempts++;
-        a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+        // Deferring an expensive probe is NOT a new retry. Only count
+        // route attempts actually attempted (positive deltas remain real).
+        a.retryRouteAt=s.seconds+
+          routeRetrySeconds(Math.max(1,a.recoveryAttempts));
         return true;
       }
       // D3.4 clinic wall witness: operator drift can make a short,

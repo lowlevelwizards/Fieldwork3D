@@ -57,7 +57,8 @@ const recoveryEvents=base.rows.flatMap((row,i)=>row.modes.flatMap((m,j)=>
    baselineArrived:actor.arrived,candidateArrived:candidate.arrived,
    addedStalls,addedRetries,
    recoverySuccess:!actor.arrived&&candidate.arrived,
-   unresolvedRegression:!candidate.arrived&&(addedStalls>0||addedRetries>0)};
+   unresolvedRegression:(addedStalls>0||addedRetries>0)&&
+      !(candidate.arrived&&!actor.arrived)};
  }))).filter(e=>e.addedStalls||e.addedRetries);
 const unresolvedRecoveryRegressions=recoveryEvents.filter(e=>e.unresolvedRegression);
 const summary={corpus:D315B4_HOLDOUT_ID,
