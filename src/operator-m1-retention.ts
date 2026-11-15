@@ -16,7 +16,30 @@ export const m1RetentionAllowed=(facewear:string)=>!
  (M1_BLOCKING_FACEWEAR as readonly string[]).includes(facewear);
 export type M1RetentionLayers={fastened:THREE.Group;unfastened:THREE.Group;
  material:THREE.MeshStandardMaterial;};
-type P=readonly [number,number,number];
+export type M1RetentionPoint=readonly [number,number,number];
+type P=M1RetentionPoint;
+/** Preserve the approved PASGT upper-temple and ACH/MICH cheek clearance.
+ * The old M1 route went inside the 8×8 head box at X±3.85 / Z−3.68,
+ * and put its buckle directly against the face at Y−.43 / Z−4.08.
+ * The cheek MUST stay outside the side cube until Z<=−4.36, then run
+ * BELOW the chin, without importing a modern four-point harness.
+ */
+export function m1RetentionPath(sign:-1|1,style:M1Chinstrap):readonly P[]{
+ const anchor=sign>0?M1_FIT_LANDMARKS.chinstrapRight:
+  M1_FIT_LANDMARKS.chinstrapLeft;
+ if(style==='unfastened')return [
+  anchor,
+  [sign*5.06,1.43,-1.58], // approved ACH/MICH outboard released junction
+  [sign*5.26,-1.17,-1.82] // hangs freely outside the head/neck
+ ];
+ return [
+  anchor,
+  [sign*4.99,3.30,-1.12], // approved PASGT upper webbing station
+  [sign*4.46,.65,-4.36], // approved ACH/MICH cheek turn, ahead of face
+  [sign*2.34,-1.08,-4.34], // proven low ACH/MICH under-chin point
+  [sign*.18,-1.18,-4.47] // meet beneath jaw, not inside the face
+ ];
+}
 function geometry(fastened:boolean):THREE.BufferGeometry{
  const coords:number[]=[],colors:number[]=[];
  const add=(p:P,tone:number)=>{coords.push(...p);colors.push(tone,tone,tone);};
@@ -35,36 +58,22 @@ function geometry(fastened:boolean):THREE.BufferGeometry{
    panel(make(a,1),make(a,-1),make(b,-1),make(b,1),.91);
   }
  };
- for(const sign of [-1,1] as const){
-  const anchor=sign>0?M1_FIT_LANDMARKS.chinstrapRight:
-   M1_FIT_LANDMARKS.chinstrapLeft;
-  if(fastened){
-   // Slightly asymmetric buckle, no large center padded chin cup.
-   const joinX=sign>0?.72:-.72;
-   ribbon([
-    anchor,
-    [sign*4.85,2.42,-2.71],
-    [sign*3.85,.72,-3.68],
-    [joinX,-.43,-4.08]
-   ],.76);
-  }else{
-   ribbon([
-    anchor,
-    [sign*5.38,2.17,-1.60],
-    [sign*5.16,.28,-1.77]
-   ],.72);
-  }
- }
- // One restrained buckle graphic in the SAME mesh/draw call.
- if(fastened)panel([.55,-.65,-4.16],[1.22,-.65,-4.16],
-  [1.22,-.35,-4.16],[.55,-.35,-4.16],.50);
- else panel([4.92,.22,-1.84],[5.36,.22,-1.84],
-  [5.36,.49,-1.84],[4.92,.49,-1.84],.50);
+ for(const sign of [-1,1] as const)
+  ribbon(m1RetentionPath(sign,fastened?'fastened':'unfastened'),
+   fastened?.76:.72);
+ // Keep the one-piece low under-chin buckle with the *same* dark webbing.
+ // Old buckle sat at the front of the head; now it meets both strap ends.
+ if(fastened)panel([-.31,-1.39,-4.54],[.35,-1.39,-4.54],
+  [.35,-1.06,-4.54],[-.31,-1.06,-4.54],.50);
+ else panel([5.03,-1.32,-1.87],[5.48,-1.32,-1.87],
+  [5.48,-1.00,-1.87],[5.03,-1.00,-1.87],.50);
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
  g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
  g.computeVertexNormals();g.computeBoundingBox();
  g.userData.m1TwoPieceChinstrap=true;
+ g.userData.m1ProvenHeadClearance=true;
+ g.userData.m1ChinstrapRouteRevision=5;
  g.userData.m1Unfastened=!fastened;
  return g;
 }

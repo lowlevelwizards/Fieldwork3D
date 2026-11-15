@@ -1,4 +1,4 @@
-/** B0: controlled source-of-truth Studio captures, not a release gate.
+/** B0/R5: controlled Studio captures of helmet families + both M1 strap states.
  * Run with the project's Playwright dev dependencies installed:
  * node scripts/helmet-b0-m1-capture.mjs
  */
@@ -61,6 +61,16 @@ try{
    const group=page.locator('.material-group').filter({hasText:'M1 HELMET COVER'});
    await group.locator('select').selectOption(cover);
    await shoot('m1-'+cover);
+  }
+  // R5: confirm the real rendered webbing in BOTH saved states rather than
+  // assuming that geometry and masks alone prove there is no facial clipping.
+  await details.click();
+  const m1Cover=page.locator('.material-group').filter({hasText:'M1 HELMET COVER'});
+  await m1Cover.locator('select').selectOption('none');
+  const strapGroup=page.locator('.material-group').filter({hasText:'M1 CHINSTRAP'});
+  for(const state of ['fastened','unfastened']){
+   await strapGroup.locator('select').selectOption(state);
+   await shoot('m1-strap-'+state);
   }
   if(errors.length)throw Error('Runtime errors: '+errors.join(' | '));
   await writeFile(out+'/manifest.json',JSON.stringify({

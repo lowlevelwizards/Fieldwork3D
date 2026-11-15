@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   historical-art:
-    if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' || github.head_ref == 'feature/b1-m1-bold-oversized-correction-20261115' || github.head_ref == 'feature/b1-m1-orthographic-identity-20261115' || github.head_ref == 'feature/b1-r4-m1-underside-rim-rear-20261115' }}
+    if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' || github.head_ref == 'feature/b1-m1-bold-oversized-correction-20261115' || github.head_ref == 'feature/b1-m1-orthographic-identity-20261115' || github.head_ref == 'feature/b1-r4-m1-underside-rim-rear-20261115' || github.head_ref == 'feature/b1-r5-m1-chinstrap-clearance-20261115' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -30,14 +30,14 @@ jobs:
           npm install --no-audit --no-fund
           npm install --no-save --package-lock=false playwright@1.56.1
           npx playwright install --with-deps chromium
-      - name: Capture 36 identical Studio views of historical helmets
+      - name: Capture 44 Studio views including fastened/unfastened M1 webbing
         run: node scripts/helmet-b0-m1-capture.mjs
         env:
           HELMET_CAPTURE_DIR: helmet-b0-captures
       - name: Retain raw visual comparison and per-frame draw calls
         uses: actions/upload-artifact@v4
         with:
-          name: b1-m1-oversized-visuals
+          name: b1-m1-r5-strap-clearance-views
           path: helmet-b0-captures/
           if-no-files-found: error
           retention-days: 14
