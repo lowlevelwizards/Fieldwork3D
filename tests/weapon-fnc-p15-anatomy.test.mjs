@@ -73,7 +73,7 @@ test('P15 two broken side vent rows clear polymer roof and follow gas wall',()=>
  assert.ok(grooves.every(x=>sz(x,'x')>5.5));
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P15 grip moved forward without detaching user's primary hand anchor',()=>{
+test('P15 grip moved forward while preserving primary hand anchor',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const grip=get(g,'fncGrip'),lower=get(g,'fncP15FlatLowerNose');
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
