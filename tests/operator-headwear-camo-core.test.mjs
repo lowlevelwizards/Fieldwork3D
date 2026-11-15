@@ -55,6 +55,16 @@ test('forty-six independently authored 32/64px camo families use fixed opaque ca
  }
  assert.equal(unique.size,62,'patterns must not be color-only variations of one tile');
 });
+test('Camo indices reuse immutable canonical art without exposing mutable cache state',()=>{
+ for(const id of ['m81-woodland','belgian-jigsaw','pencott-metropolis','kryptek-typhon']){
+  const first=headwearCamoIndices(id),second=headwearCamoIndices(id);
+  assert.notEqual(first,second,id+' must return independent snapshots');
+  assert.deepEqual(first,second,id+' indices are deterministic on repeat reads');
+  const original=second[0];
+  first[0]=(original+1)%HEADWEAR_CAMO_RECIPES[id].colors.length;
+  assert.equal(headwearCamoIndices(id)[0],original,id+' cached master is protected');
+ }
+});
 test('item compatibility is restricted, validated, and persists through outfit serialization',()=>{
  assert.equal(headwearCamoChoices('beanie').length,0);
  assert.equal(headwearCamoChoices('soviet-steel').length,0);

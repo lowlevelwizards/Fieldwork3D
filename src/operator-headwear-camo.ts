@@ -1171,7 +1171,18 @@ function inPolygon(x:number,y:number,coords:readonly number[]):boolean{
 /** Exposes raw indices for tests and the inspection UI; the same data is
  * used for the actual garment map, rather than a separate fake preview.
  */
+// Preserve all authored pattern pixels while avoiding repeated polygon rasterization
+// during placement scoring and frequent Operator Studio/live pose updates.
+// Public callers receive a copy so they cannot corrupt the cached master.
+const camoIndicesCache=new Map<HeadwearCamoId,Uint8Array>();
 export function headwearCamoIndices(id:HeadwearCamoId):Uint8Array{
+ const cached=camoIndicesCache.get(id);
+ if(cached)return cached.slice();
+ const generated=computeHeadwearCamoIndices(id);
+ camoIndicesCache.set(id,generated);
+ return generated.slice();
+}
+function computeHeadwearCamoIndices(id:HeadwearCamoId):Uint8Array{
  if(isCamo9AId(id))return camo9AIndices(id);
  if(isCamo9BId(id))return camo9BIndices(id);
  if(isCamo8AId(id))return camo8AIndices(id,{
