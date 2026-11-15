@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {preserveExplicitDoorActionClock}
  from '../src/breach-motor-door.ts';
+import {mayHandoffOpenedDoorOrder}
+ from '../src/breach-order-movement.ts';
 
 test('D3.15A2: full explicit DOOR clock survives motor footwork',()=>{
  for(const method of ['open','kick','close','hold'])
@@ -14,4 +16,23 @@ test('D3.15A2: transient movement and idle implicit timers still reset',()=>{
    assert.equal(preserveExplicitDoorActionClock({kind}),false);
  assert.equal(preserveExplicitDoorActionClock(undefined),false);
  assert.equal(preserveExplicitDoorActionClock(null),false);
+});
+
+test('D3.15A2: only reachable, already-open physical hinge yields DOOR execution',()=>{
+ const door={id:'FRONT',kind:'hinged',a:{x:0,y:0},b:{x:40,y:0},
+   hinge:'a',swing:1,open:true,openFraction:.94};
+ const order={kind:'door',method:'open',doorId:'FRONT'};
+ assert.equal(mayHandoffOpenedDoorOrder(order,{x:12,y:10},[door]),true);
+ assert.equal(mayHandoffOpenedDoorOrder(order,{x:500,y:500},[door]),false,
+   'no remote OPEN action from an unreachable operator');
+ assert.equal(mayHandoffOpenedDoorOrder(order,{x:12,y:10},
+   [{...door,open:false,openFraction:0}]),false);
+ assert.equal(mayHandoffOpenedDoorOrder(order,{x:12,y:10},
+   [{...door,openFraction:.08}]),false);
+ for(const method of ['close','kick','hold'])
+  assert.equal(mayHandoffOpenedDoorOrder({...order,method},{x:12,y:10},[door]),false);
+ for(const kind of ['move','sync','wait'])
+  assert.equal(mayHandoffOpenedDoorOrder({...order,kind},{x:12,y:10},[door]),false);
+ assert.equal(mayHandoffOpenedDoorOrder({...order,doorId:'D2'},
+   {x:12,y:10},[door]),false);
 });
