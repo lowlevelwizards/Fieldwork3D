@@ -16,8 +16,9 @@ test('R4.3 skips a shallow redundant motor bend only after a verified full-body 
 });
 test('R4.3 authoring and actor translation stay in their original owners',()=>{
  const code=readFileSync(new URL('../src/breach-actor-motor.ts',import.meta.url),'utf8');
- assert.match(code,/canSmoothMotorCorner\(a\.p,a\.nav\[0\],a\.nav\[1\]/);
+ assert.match(code,/boundedMotorCornerLookahead\(a\.p,a\.nav,canSmoothGrid/);
  assert.match(code,/a\.plan\[0\]\?\.kind==='move'/);
  assert.match(code,/sweptBodyClear\(from,to,s\.doors,OPERATOR_RADIUS/);
- assert.match(code,/\)\)\)\)a\.nav\.shift\(\)/);
+ assert.match(code,/localDetourWaypointTolerance\(a,a\.nav\[0\]\)===3/);
+ assert.match(code,/for\(let i=0;i<skipped;i\+\+\)a\.nav\.shift\(\)/);
 });
