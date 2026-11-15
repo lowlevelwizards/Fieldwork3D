@@ -101,7 +101,7 @@ test('D3.13E cached remote MOVE episode cannot open an unreachable closed door',
   assert.equal(messages.some(m=>m.includes('OPENED')),false);
  }finally{activateSite(null);}
 });
-test('D3.13E remotely retained partial leaf yields to solid movement without grip',()=>{
+test('D3.13E already-opening leaf preserves its real physical handoff',()=>{
  const s=newSession(),a=team(s)[0],messages=[];
  try{
   const door=initDoor({id:'PARTIAL',a:{x:300,y:300},b:{x:342,y:300},
@@ -115,9 +115,10 @@ test('D3.13E remotely retained partial leaf yields to solid movement without gri
   assert.equal(doorReachable(a.p,door),false);
   const result=handleMotorDoor(a,move.p,move.p,{x:320,y:260},
     1/60,s,hooks(messages));
-  assert.equal(result.paused,false,'ordinary full-body motor retains movement');
-  assert.equal(a.actionTimer,.35,'no out-of-range OPEN timing');
-  assert.equal(door.openFraction,.3,'cannot change a physical panel remotely');
+  assert.equal(result.paused,true,
+    'existing partly opening hinge retains its lawful opening phase');
+  assert.ok(a.actionTimer>.35,'ongoing hinge handoff is not accidentally cancelled');
+  assert.equal(door.openFraction,.3,'no remote leaf force or changed collision');
   assert.equal(a.plan[0],move);
   assert.equal(messages.some(m=>m.includes('OPENED')),false);
  }finally{activateSite(null);}
