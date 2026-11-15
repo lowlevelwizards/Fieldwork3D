@@ -25,7 +25,7 @@ export const FAL_ART:Readonly<{
 });
 
 export type FALCoreOptions={raisedCarryHandle?:boolean;showFactoryMuzzle?:boolean};
-export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material;muzzleMetal?:THREE.Material;transitionMetal?:THREE.Material}>;
+export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material;muzzleMetal?:THREE.Material;transitionMetal?:THREE.Material;carryHandle?:THREE.Material}>;
 export type FALCoreIds=Readonly<Record<SlotName,string>>;
 /** One source of geometry for the test lab and production FAL. */
 export function buildFALCoreSilhouette(
@@ -155,7 +155,7 @@ export function buildFALCoreSilhouette(
    materials.receiver);
   // One giant RECTANGULAR handhold. No tiny chamfers or floating arch.
   const grip=addCuboid(root,'receiver',partIds.receiver,ids.receiver++,
-   1.08,3.55,-1.61,4.08,1.05,1.15,materials.stock);
+   1.08,3.55,-1.61,4.08,1.05,1.15,materials.carryHandle??materials.stock);
   grip.userData.falCarryGrip=true;
  }
  // P7: trigger guard intentionally omitted; the negative space stays open.

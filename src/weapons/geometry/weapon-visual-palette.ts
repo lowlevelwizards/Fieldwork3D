@@ -52,6 +52,9 @@ export const FAL_BLACK_METAL=finish(0x414844,.82,.10,'steel');
  * hierarchy without adding overlay plates, seams or screws. */
 export const FAL_LOWER_METAL=finish(0x353d39,.87,.08,'steel');
 export const FAL_DARK_POLYMER=finish(0x343d37,.93,.02,'polymer');
+/** Early FAL stock, handguard and optional grip share the approved G3 wood
+ * identity, without adding procedural grain or extra geometry. */
+export const FAL_WOOD=HK_WOOD;
 /** Same neutral steel as the neighboring G3 battle-rifle magazine. */
 export const FAL_MAG_METAL=HK_MAG_METAL;
 /** Minimal, dark, flat graphic vents, not expensive true cut-through slots. */

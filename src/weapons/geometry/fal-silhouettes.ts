@@ -10,25 +10,29 @@ import {addFALScoopedPort,addFALPivotPair} from './fal-receiver-form.ts';
 import {addCuboid} from './profile-primitives.ts';
 import {addFALHandguardVents} from './fal-handguard-profiles.ts';
 import {FAL_MAG_METAL,FAL_MAG_RIB,FAL_VENT_SHADOW,FAL_LOWER_METAL,FAL_TRANSITION_METAL,
- FAL_MUZZLE_METAL,FAL_MUZZLE_SLOT} from './weapon-visual-palette.ts';
+ FAL_MUZZLE_METAL,FAL_MUZZLE_SLOT,FAL_WOOD,FAL_DARK_POLYMER} from './weapon-visual-palette.ts';
 
 export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,polymer:THREE.Material,
  showFactoryMuzzle=true):void{
  if(build.parts.receiver!=='fal-50-receiver'||
-    build.parts.stock!=='fal-fixed-polymer'||
-    build.parts.handguard!=='fal-vented'||
+    !['fal-fixed-polymer','fal-fixed-wood'].includes(build.parts.stock)||
+    !['fal-vented','fal-vented-wood'].includes(build.parts.handguard)||
     build.parts.barrel!=='fal-21-service'||
     build.parts.magazine!=='fal-mag20'||
-    build.parts.grip!=='fal-grip')
+    !['fal-grip','fal-grip-wood'].includes(build.parts.grip))
   throw new Error('Unimplemented FAL appearance configuration');
- // One common geometry source: S1C lab and live Arsenal use identical forms.
+ const woodStock=build.parts.stock==='fal-fixed-wood';
+ const woodHandguard=build.parts.handguard==='fal-vented-wood';
+ const woodGrip=build.parts.grip==='fal-grip-wood';
+ // The approved P10 geometry is shared exactly; FAL wood changes materials
+ // only, never receiver proportions, grip mounts or stock-contact datums.
  const core=buildFALCoreSilhouette({
-  stock:polymer,receiver:steel,receiverLower:FAL_LOWER_METAL,
-  transitionMetal:FAL_TRANSITION_METAL,
-  grip:polymer,magazine:FAL_MAG_METAL,magazineRib:FAL_MAG_RIB,
+  stock:woodStock?FAL_WOOD:polymer,receiver:steel,receiverLower:FAL_LOWER_METAL,
+  transitionMetal:FAL_TRANSITION_METAL,carryHandle:FAL_DARK_POLYMER,
+  grip:woodGrip?FAL_WOOD:polymer,magazine:FAL_MAG_METAL,magazineRib:FAL_MAG_RIB,
   muzzleMetal:FAL_MUZZLE_METAL,muzzleSlot:FAL_MUZZLE_SLOT,
-  handguard:polymer,barrel:steel
+  handguard:woodHandguard?FAL_WOOD:polymer,barrel:steel
  },build.parts,{raisedCarryHandle:true,showFactoryMuzzle});
  while(core.children.length)root.add(core.children[0]);
 
