@@ -37,7 +37,7 @@ test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
  assert.ok(hex&&gas);
  assert.equal(hex.userData.fncCrossSectionFaces,6);
  const hb=box(hex),gb=box(gas);
- assert.ok(gb.max.y>hb.max.y+.55,'lowered gas cover still rises above polymer');
+ assert.ok(gb.max.y>hb.max.y+.47,'nested gas cover must rise modestly above polymer');
  assert.ok(gb.max.z<hb.max.z-.13,'gas box must be narrower than the hex');
  assert.ok(gb.min.y<hb.max.y,'two volumes intersect instead of floating');
  const marks=of(g,'fncP5GrooveSide');
@@ -91,7 +91,8 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  assert.ok(front.userData.fncP12FALLikeFrontEar,
   'simplified FAL-style twin ears replace sculpted sight');
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
- assert.ok(box(front).max.y>3.0);
+ assert.ok(box(front).max.y>2.55&&box(front).max.y<2.70,
+  'compact FAL-like ears must not remain tall towers');
  assert.ok(box(rear).max.y>2.40);
  assert.ok(box(handle).max.x-box(handle).min.x<1.15,
   'charging handle is short along X, not a stretched receiver-side bar');

@@ -12,7 +12,7 @@ const all=(g,k)=>g.children.filter(c=>c.userData[k]);
 const box=x=>new THREE.Box3().setFromObject(x);
 const size=(x,k)=>box(x).max[k]-box(x).min[k];
 const touch=(a,b)=>box(a).intersectsBox(box(b));
-test('P12 tightened vertical and X relationships preserve true connected front end',()=>{
+test('P13 further nested front end preserves physical-overlap contracts',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const polymer=get(g,'fncP11ShortWidePolymer'),gas=get(g,'fncP12CompressedGasCover'),
   stop=get(g,'fncP12ChunkyHandstop'),seat=get(g,'fncP7ContinuousGasSightSeat');
@@ -28,18 +28,18 @@ test('P12 tightened vertical and X relationships preserve true connected front e
  assert.ok(touch(stop,polymer)&&touch(stop,gas),
   'molded stop must belong to both overlapping visual zones');
  assert.ok(size(gas,'z')<size(polymer,'z')*.70);
- assert.ok(size(gas,'x')>size(polymer,'x')+2.5);
+ assert.ok(size(gas,'x')>size(polymer,'x')+1.4);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P12 lip is chunky but remains a single simple molded polymer part',()=>{
+test('P13 handstop has one faceted molded collar and no rectangular fin',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const stop=get(g,'fncP12ChunkyHandstop'),polymer=get(g,'fncP11ShortWidePolymer');
  assert.ok(stop&&polymer);
- assert.ok(size(stop,'x')>.64&&size(stop,'x')<.72);
- assert.ok(size(stop,'z')>size(polymer,'z')+.25);
- assert.ok(size(stop,'y')>2.2&&size(stop,'y')<2.35);
- assert.equal(stop.geometry.type,'BoxGeometry');
+ assert.ok(size(stop,'x')>.50&&size(stop,'x')<.60);
+ assert.ok(size(stop,'z')>size(polymer,'z')+.20);
+ assert.ok(size(stop,'y')>2.15&&size(stop,'y')<2.25);
+ assert.equal(stop.geometry.type,'BufferGeometry');
  assert.equal(all(g,'fncP12ChunkyHandstop').length,1);
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -53,7 +53,7 @@ test('P12 front is exactly two cuboid FAL-family ears without central prong',()=
  assert.ok(left&&right);
  assert.ok(box(left).max.z<box(right).min.z);
  assert.ok(ears.every(e=>touch(e,get(g,'fncP7ContinuousGasSightSeat'))));
- assert.ok(ears.every(e=>Math.abs((box(e).max.x+box(e).min.x)/2-14.66)<.02));
+ assert.ok(ears.every(e=>Math.abs((box(e).max.x+box(e).min.x)/2-14.32)<.02));
  assert.ok(ears.every(e=>box(e).max.y<3.12));
  assert.equal(Boolean(get(g,'fncP11TwinEarFrontSight')),false);
  clearWeaponSilhouette(g);m.dispose();
