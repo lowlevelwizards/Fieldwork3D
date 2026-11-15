@@ -1,0 +1,51 @@
+name: D3.15B read-only motel Vale sync-blocked real 45s trace
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d3-15b-motel-vale-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-motel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Frozen small motel 9492261 ×45s ×60Hz real Session
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=9492261 --audit-scale=small \
+            --route-transitions --progress --route-quality \
+            --trace-actor=vale --trace-mode=entry \
+            > "$RUNNER_TEMP/d315b-motel.json"
+      - name: Show exactly why synchronization never releases
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315b-motel.json','utf8'));
+          const m=r.rows[0].modes.find(x=>x.mode==='entry');
+          console.log('D315B_MOTEL',JSON.stringify({
+            accepted:m.accepted,arrivals:m.arrivals,doorId:m.doorId,
+            operators:m.operators,transitions:m.routeTransitions,
+            progress:m.progressEvidence?.filter(w=>w.actor==='vale'),
+            route:r.routeQualitySummary,summary:r.summary
+          }));
+          if(r.summary.exceptions||r.summary.invalidPositions||
+             r.summary.corruptedPlans||r.summary.physicsStepViolations)
+            throw Error('invalid physical-motor read-only evidence');
+          if((m.routeTransitions?.events?.length??0)<4)
+            throw Error('missing Vale route-transition source evidence');
+          NODE
+      - name: Archive complete motor route/source and five-second history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d315b-frozen-motel-vale-45s
+          path: ${{ runner.temp }}/d315b-*.json
+          retention-days: 90
+          if-no-files-found: ignore
