@@ -20,7 +20,9 @@ test('B1-A one-piece M1: intentional facets, thin rolled rim, open underside',()
  assert.ok(geo.index?.count>0);
  assert.equal(geo.userData.m1FacetedSurface,true);
  geo.computeBoundingBox();
- assert.equal(geo.boundingBox.max.y,HEAD_SILHOUETTE_METRICS['m1-steel'].top);
+ assert.ok(Math.abs(geo.boundingBox.max.y-
+  HEAD_SILHOUETTE_METRICS['m1-steel'].top)<1e-4,
+  'Float32 geometry must match authored roof within upload precision');
  assert.ok(geo.boundingBox.max.x>5.45&&geo.boundingBox.max.x<6);
  assert.ok(geo.boundingBox.min.z<HEAD_SILHOUETTE_METRICS['soviet-steel'].frontExtent);
  assert.ok(geo.boundingBox.max.y-geo.boundingBox.min.y>4);
