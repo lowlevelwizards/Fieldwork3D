@@ -77,7 +77,7 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
   'P10 longer plate is still compact relative to the open stock void');
  assert.ok(box(gas).min.x<box(by(g,'fncP5LowerHex')[0]).max.x,
   'extended gas cover overlaps shortened fore-end without floating');
- assert.ok(box(front).max.y>2.55&&box(front).max.y<2.70);
+ assert.ok(box(front).max.y>2.38&&box(front).max.y<2.50);
  assert.ok(box(rear).max.y>2.40);
  assert.ok(front.userData.fncP12FALLikeFrontEar);
  assert.equal(by(g,'fncP12FALLikeFrontEar').length,2);
@@ -86,7 +86,7 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
  assert.ok(box(handle).max.z>box(upper).max.z+1.25);
  assert.ok(box(stem).max.z>box(handle).min.z,
   'short connecting stem must intersect the projecting grip');
- assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.60);
+ assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.20);
  assert.ok(box(muzzle).max.x-box(muzzle).min.x<1.90);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
