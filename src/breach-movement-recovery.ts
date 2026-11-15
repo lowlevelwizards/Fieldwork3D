@@ -52,3 +52,12 @@ export function materiallyDifferentRoute(
  return proposed.some((p,i)=>Math.hypot(
   p.x-current[i].x,p.y-current[i].y)>tolerance);
 }
+
+// D3.18B: assigning a transient path is only a proposal. The ordinary
+// motor resets recoveryAttempts after a real successful footstep; a route
+// writer must not manufacture progress or erase stalled-route evidence.
+export function provisionalRouteAccepted(
+ actor:{retryRouteAt:number;recoveryAttempts:number}
+):void{
+ actor.retryRouteAt=0;
+}

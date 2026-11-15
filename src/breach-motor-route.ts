@@ -16,7 +16,7 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld,
  routeToNextOperableDoor}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
-import {routeRetrySeconds} from './breach-movement-recovery.ts';
+import {routeRetrySeconds,provisionalRouteAccepted} from './breach-movement-recovery.ts';
 import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe,
  knownIntelRouteKey} from './breach-cold-route-cache.ts';
 // Cache only proven unsuccessful route probes, never a guessed blocked GO.
@@ -64,7 +64,7 @@ export function restoreAfterOpenLeafEscape(
   noteDoorHandoffRejection(s,a,'world:first-leg-not-swept');return false;
  }
  setTransientRoute(s,a,route,'door-leaf-escape');
- a.retryRouteAt=0;a.recoveryAttempts=0;
+ provisionalRouteAccepted(a);
  return true;
 }
 /** G2B: only after THREE repeated real leaf escapes and after the body
@@ -150,7 +150,7 @@ export function restoreRepeatedDoorEscapeRoute(
         d(a.p,prefix[0])<=96&&cost<=d(a.p,goal)*1.9+48){
        setTransientRoute(s,a,prefix,'door-escape-future-portal');
        finishDoorEscapeRejoin(a);
-       a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;a.recoveryAttempts=0;
+       a.lastNavRepairAt=s.seconds;provisionalRouteAccepted(a);
        return true;
      }
      noteDoorHandoffRejection(s,a,'h:future-portal-prefix-unavailable');
@@ -179,8 +179,8 @@ export function restoreRepeatedDoorEscapeRoute(
          ...original.map(clone)],'door-squeeze-leaf-exit');
        ownNarrowExitWaypoints(a,stages);
        finishDoorEscapeRejoin(a);
-       a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;
-       a.recoveryAttempts=0;
+       a.lastNavRepairAt=s.seconds;
+       provisionalRouteAccepted(a);
        return true;
      }
      noteDoorHandoffRejection(s,a,'d314b:no-full-squeeze-join');
@@ -190,7 +190,7 @@ export function restoreRepeatedDoorEscapeRoute(
  setTransientRoute(s,a,rejoined,
    usedLocalStage?'door-escape-local-portal':'door-escape-world-rejoin');
  finishDoorEscapeRejoin(a);
- a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;a.recoveryAttempts=0;
+ a.lastNavRepairAt=s.seconds;provisionalRouteAccepted(a);
  return true;
 }
 export type MotorRouteReadiness='ready'|'handled'|'unavailable';
@@ -263,7 +263,7 @@ export function prepareMotorRoute(
        goalDistance>=.9&&goalDistance<=12&&
        sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
       setTransientRoute(s,a,[{...p}],'fire-retreat');
-      a.retryRouteAt=0;a.recoveryAttempts=0;
+      provisionalRouteAccepted(a);
       return 'ready';
     }
     if(s.seconds<a.retryRouteAt){
@@ -312,6 +312,21 @@ export function prepareMotorRoute(
           setTransientRoute(s,a,[...path,p],'shove-stage');
       }
     }
+    // D3.18C Garage: an actor with NO transient nav never reaches the
+    // blocked-leg collision replan where D3.3 first-portals were used.
+    // After one genuinely failed normal route, permit that SAME existing
+    // bounded portal prefix from this cold retry. Its hypothetical crossing
+    // does not clear or open the door; the ordinary motor still must press
+    // and physically traverse the real hinge. No authored GO edits.
+    if(!a.nav.length&&a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       a.recoveryAttempts>=1&&!a.doorTraversal&&!a.traversalPending){
+      const prefix=routeToNextOperableDoor(a.p,p,s.doors,
+        sessionWorldGeometry(s));
+      if(prefix.length){
+        setTransientRoute(s,a,prefix,'initial-portal-recovery');
+        provisionalRouteAccepted(a);
+      }
+    }
     if(!a.nav.length){
       // Only an actual failed normal+intel+shove/portal attempt can be
       // cached. Do not claim a remote hidden obstacle is player-known.
@@ -334,7 +349,7 @@ export function prepareMotorRoute(
       }
       return 'unavailable';
     }
-    a.retryRouteAt=0;a.recoveryAttempts=0;
+    provisionalRouteAccepted(a);
   }
 
  return 'ready';

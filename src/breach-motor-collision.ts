@@ -26,7 +26,8 @@ import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel,
  routeToNextOperableDoor,repairBlockedTransientWorldLeg}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement,blockedStepCause} from './breach-nav-diagnostics.ts';
-import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breach-movement-recovery.ts';
+import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute,
+ provisionalRouteAccepted} from './breach-movement-recovery.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
@@ -170,7 +171,7 @@ export function resolveMotorCollision(
         if(alternative.length){
           setTransientRoute(s,a,alternative,'lane-cycle-world');
           noteCircularWorldRoute(a,s.seconds);
-          a.retryRouteAt=0;a.recoveryAttempts=0;
+          provisionalRouteAccepted(a);
           a.squeeze=false;a.squeezeTime=0;
           return true;
         }
@@ -189,7 +190,7 @@ export function resolveMotorCollision(
         if(worldTail.length){
           setTransientRoute(s,a,worldTail,'lane-cycle-world');
           noteCircularWorldRoute(a,s.seconds);
-          a.retryRouteAt=0;a.recoveryAttempts=0;
+          provisionalRouteAccepted(a);
           a.squeeze=false;a.squeezeTime=0;
           return true;
         }
@@ -203,7 +204,7 @@ export function resolveMotorCollision(
           s.seconds,canAutoSidestep);
         if(side)a.autoSidestep=side;
         setTransientRoute(s,a,fullLane,'full-body-lane');
-        a.retryRouteAt=0;a.recoveryAttempts=0;
+        provisionalRouteAccepted(a);
         // Precise landing avoids discarding a chosen swept corner before
         // the operator physically reaches it.
         notePreciseLocalDetour(a,fullLane[0]);
@@ -326,7 +327,7 @@ export function resolveMotorCollision(
         if(rejoined.length){
           a.lastNavRepairAt=s.seconds;
           setTransientRoute(s,a,rejoined,'door-escape-swept-rejoin');
-          a.retryRouteAt=0;a.recoveryAttempts=0;
+          provisionalRouteAccepted(a);
           return true;
         }
       }
@@ -425,8 +426,7 @@ export function resolveMotorCollision(
         notePreciseLocalDetour(a,sideRoute[0]);
         noteCircularWorldRoute(a,s.seconds);
         a.lastNavRepairAt=s.seconds;
-        a.retryRouteAt=0;
-        a.recoveryAttempts=0;
+        provisionalRouteAccepted(a);
         return true;
       }
     }
@@ -524,7 +524,8 @@ export function resolveMotorCollision(
       // immobile furniture contacts with unchanged door/cover geometry,
       // defer redundant world+intel A* until a cold probe is due. All
       // other physical reactions above remain active on every tick.
-      if(a.lastBlocker==='furniture'&&a.blockedTime>=2.8&&
+      if((a.lastBlocker==='furniture'||a.lastBlocker==='wall')&&
+         a.blockedTime>=2.8&&
          !shouldProbeStationaryCollisionRoute(a,p,s.seconds,world.revision,
            s.doors)){
         // Deferring an expensive probe is NOT a new retry. Only count
@@ -552,7 +553,7 @@ export function resolveMotorCollision(
            allowPhysicalRouteReissue(a,'blocked-leg-connector',p,
              connected,s.seconds)){
           setTransientRoute(s,a,connected,'blocked-leg-connector');
-          a.retryRouteAt=0;a.recoveryAttempts=0;
+          provisionalRouteAccepted(a);
           return true;
         }
       }
@@ -582,7 +583,7 @@ export function resolveMotorCollision(
         }
       }
       if(adopted){
-        a.retryRouteAt=0;a.recoveryAttempts=0;
+        provisionalRouteAccepted(a);
       }else{
         a.recoveryAttempts++;
         a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);

@@ -5,6 +5,7 @@
  * Call only after genuine blockedTime at the end of the active MOVE.
  */
 import {doorCenter,type Door,type Pt} from './breach-core.ts';
+import {fullBodyMotorRouteClear} from './breach-recovery-route-validation.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 function side(p:Pt,door:Door):number{
  const center=doorCenter(door),dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
@@ -12,22 +13,46 @@ function side(p:Pt,door:Door):number{
 }
 export function selectPhysicalEntrySettle(
  from:Pt,goal:Pt,door:Door,peers:readonly Pt[],
- canStand:(p:Pt)=>boolean,sweep:(from:Pt,to:Pt)=>boolean
+ canStand:(p:Pt)=>boolean,sweep:(from:Pt,to:Pt)=>boolean,
+ worldRoute?:(from:Pt,to:Pt)=>Pt[],
+ onWorldRoute?:(path:Pt[])=>void
 ):Pt|null{
  const sign=Math.sign(side(goal,door));
  if(!sign)return null;
+ // Prefer the smallest real full-body footstep; the 20/26-unit outer
+ // ring is only for genuinely obstructed GENERATED endpoints (Retail D1).
+ // No hidden geometry is read while the plan is being authored.
  let best:Pt|null=null,bestScore=Infinity;
- for(const radius of [4,8,12,15]){
+ const cold: {point:Pt;score:number}[]=[];
+ for(const radius of [4,8,12,15,20,26]){
   for(let i=0;i<16;i++){
    const theta=i*Math.PI/8;
    const p={x:goal.x+Math.cos(theta)*radius,
     y:goal.y+Math.sin(theta)*radius};
-   if(side(p,door)*sign<2||!canStand(p)||!sweep(from,p)||
+   if(side(p,door)*sign<2||!canStand(p)||
       peers.some(other=>d(other,p)<20))continue;
    const score=d(p,goal)+d(from,p)*.24;
-   if(score<bestScore){bestScore=score;best=p;}
+   if(sweep(from,p)){
+    if(score<bestScore){bestScore=score;best=p;}
+   }else if(worldRoute) cold.push({point:p,score});
   }
   if(best)break;
  }
- return best;
+ if(best)return best;
+ // A doorframe can block the direct chord while a real detour reaches
+ // another legal interior landing. At most THREE cold world searches, and
+ // every proposed leg is checked by the same capsule verifier as recovery.
+ // The ordinary motor executes the resulting route; this grants no motion.
+ if(worldRoute){
+  cold.sort((a,b)=>a.score-b.score);
+  for(const candidate of cold.slice(0,3)){
+   const path=worldRoute(from,candidate.point);
+   if(path.length&&d(path[path.length-1],candidate.point)<=3&&
+      fullBodyMotorRouteClear(from,path,sweep,d(from,candidate.point)*2.1+36)){
+    onWorldRoute?.(path.map(q=>({...q})));
+    return candidate.point;
+   }
+  }
+ }
+ return null;
 }

@@ -1,0 +1,119 @@
+name: D3.18 targeted physical recovery and performance acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-*.ts'
+      - 'tests/release-d3-18*.test.mjs'
+      - '.github/workflows/d3-18-physical-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-18-physical-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck, new targeted tests, and old recovery contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-18a-entry-landings.test.mjs \
+            tests/release-d3-18b-provisional-recovery.test.mjs \
+            tests/release-d3-18c-targeted-joins.test.mjs \
+            tests/release-d3-17e-physical-leaf-rejoin.test.mjs \
+            tests/release-d3-17e-recovery-accounting.test.mjs \
+            tests/release-d3-17c-physical-departure.test.mjs \
+            tests/release-d3-17d-door-route-join.test.mjs \
+            tests/release-d3-10a-entry-targets.test.mjs \
+            tests/release-d3-9c-progress.test.mjs
+  physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Real fixed-step historical 11-site and frozen blind 22-site
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress --route-quality > "$RUNNER_TEMP/d318-historical.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-quality \
+            > "$RUNNER_TEMP/d318-frozen22.json"
+      - name: Preserve physical and measured search evidence
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for(const name of ['historical','frozen22']){
+            const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d318-'+name+'.json'));
+            const s=d.summary,p=d.progressSummary,q=d.routeQualitySummary;
+            console.log('D318_'+name.toUpperCase(),JSON.stringify({
+              arrivals:s.physicalArrivals,squads:s.physicalCompletedFour,
+              stalls:s.stallEpisodes,retries:s.retries,loops:p.suspectedLoops,
+              routeSearches:q.searches,routeCpu:q.totalCpuMs??q.cpuMs??q
+            }));
+            if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+               s.physicsStepViolations||s.unboundedManeuverAttempts||
+               p.suspectedLoops||p.sustainedStill)
+              throw Error('D3.18 physical/safety regression: '+name);
+            if(s.physicalArrivals<(name==='historical'?80:140)||
+               s.physicalCompletedFour<(name==='historical'?18:29))
+              throw Error('D3.18 physical arrival regression: '+name);
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d318-physical-acceptance
+          path: ${{ runner.temp }}/d318-*.json
+          retention-days: 60
+
+  fresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: New eleventh 22-site 176-operator physical holdout
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress --route-quality \
+            > "$RUNNER_TEMP/d318-fresh22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {D318_FRESH_ID,D318_FRESH_22} from './scripts/lib/d3-18-eleventh-fresh22.mjs';
+          const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d318-fresh22.json'));
+          const s=d.summary,p=d.progressSummary,q=d.routeQualitySummary;
+          if(d.corpus!==D318_FRESH_ID||d.rows.length!==22||d.ticks!==2700)
+            throw Error('wrong independent cohort');
+          for(let i=0;i<22;i++)
+            if(d.rows[i].seed!==D318_FRESH_22[i].seed||
+               d.rows[i].archetype!==D318_FRESH_22[i].archetype||
+               d.rows[i].scale!==D318_FRESH_22[i].scale||
+               d.rows[i].modes?.length!==2)
+              throw Error('mutated or missing fresh scenario '+i);
+          console.log('D318_FRESH22',JSON.stringify({
+            physicalArrivals:s.physicalArrivals,fullSquads:s.physicalCompletedFour,
+            retries:s.retries,stalls:s.stallEpisodes,suspectedLoops:p.suspectedLoops,
+            gridSearches:q.searches,cpuMs:q.cpuMs}));
+          if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts)
+            throw Error('D3.18 fresh seed physical/safety violation');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d318-eleventh-fresh22-motor
+          path: ${{ runner.temp }}/d318-fresh22.json
+          retention-days: 60

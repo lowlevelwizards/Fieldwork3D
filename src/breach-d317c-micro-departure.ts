@@ -5,7 +5,7 @@
 import type {Pt} from './breach-core.ts';
 import type {TeamActor} from './breach-game.ts';
 import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
-import {fullBodyMotorRouteClear} from './breach-recovery-route-validation.ts';
+import {fullBodyMotorRouteClear,joinsExistingMotorRoute} from './breach-recovery-route-validation.ts';
 
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
@@ -79,9 +79,40 @@ export function selectMotorVerifiedFurnitureDeparture(
    if(physicallyContinuous(from,goal,proposal,sweep))
      return proposal.map(clone);
   }
- // Only after safe short departures and a failed old-path join, try a
- // bounded world-truth recovery. No repeated full-grid A* on every tick.
+ // D3.18C: reconnect at an existing disposable node when an
+ // intervening unopened door makes a full GO route impossible. A suffix
+ // is NOT certified as passable: later doors remain owned by the motor.
+ // Check direct joins first (zero searches), then spend at most TWO
+ // cold world searches on a promising intermediate join.
+ const indices=[1,2,3,4].filter(i=>i<existing.length-1);
+ const maxTravel=distance(from,goal)*2+48;
+ for(const stage of candidates){
+  for(const i of indices){
+   const node=existing[i];
+   if(distance(stage,node)>90)continue;
+   const joined=joinsExistingMotorRoute(from,goal,existing,i,
+    [stage,node],sweep,maxTravel);
+   if(joined.length)return joined;
+  }
+ }
+ let searches=0;
  for(const stage of candidates.slice(0,4)){
+  for(const i of indices){
+   const node=existing[i];
+   if(distance(stage,node)>90||searches>=2)continue;
+   searches++;
+   const tail=worldRoute(stage,node);
+   const joined=joinsExistingMotorRoute(from,goal,existing,i,
+    [stage,...tail],sweep,maxTravel);
+   if(tail.length&&joined.length)return joined;
+  }
+  if(searches>=2)break;
+ }
+ // Keep the original full-GO recovery, but never exceed the existing
+ // four-A* budget shared with the intermediate connector attempts.
+ for(const stage of candidates.slice(0,4)){
+  if(searches>=4)break;
+  searches++;
   const tail=worldRoute(stage,goal);
   if(!tail.length||distance(tail.at(-1)!,goal)>3)continue;
   const proposed=[stage,...tail];
