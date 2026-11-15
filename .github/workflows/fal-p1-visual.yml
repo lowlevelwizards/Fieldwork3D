@@ -20,6 +20,7 @@ on:
       - 'tests/weapon-fal-p3-reference-style.test.mjs'
       - 'tests/weapon-fal-p4-receiver.test.mjs'
       - 'tests/weapon-fal-p5-triangle.test.mjs'
+      - 'scripts/audit-weapon-geometry.mjs'
       - 'scripts/smoke-fal-p1-visual.mjs'
       - '.github/workflows/fal-p1-visual.yml'
 permissions:
@@ -44,6 +45,8 @@ jobs:
             tests/weapon-fal-p3-reference-style.test.mjs \
             tests/weapon-fal-p4-receiver.test.mjs \
             tests/weapon-fal-p5-triangle.test.mjs
+      - name: Quantify emitted triangles against existing weapons
+        run: node --experimental-strip-types scripts/audit-weapon-geometry.mjs
       - name: Typecheck and production compile
         run: npm run check && npm run build
       - run: npm install --no-save --package-lock=false playwright@1.56.1
