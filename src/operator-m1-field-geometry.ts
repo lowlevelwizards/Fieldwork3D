@@ -6,7 +6,6 @@ import {m1PerimeterAt,M1_OUTLINE,type M1SurfaceMode}
  from './operator-m1-helmet-profile.ts';
 type P=readonly [number,number,number];
 export const M1_FIELD_MODES=['steel','fitted','loose'] as const;
-const modes=M1_FIELD_MODES;
 const f=(a:P,b:P,c:P,triangles:number[])=>triangles.push(...a,...b,...c);
 const geometry=(vertices:number[],kind:string):THREE.BufferGeometry=>{
  const g=new THREE.BufferGeometry();
