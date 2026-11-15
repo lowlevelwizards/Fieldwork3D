@@ -31,7 +31,7 @@ import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {restoreAfterOpenLeafEscape} from './breach-motor-route.ts';
-import {sweptRejoinExistingRoute} from './breach-door-escape-rejoin.ts';
+import {sweptRejoinExistingRoute,noteRepeatedDoorLeafEscape} from './breach-door-escape-rejoin.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
@@ -270,6 +270,12 @@ export function resolveMotorCollision(
           return true;
         }
       }
+      // G2B: only three repeated REAL leaf overlaps on this same
+      // unchanged authored MOVE qualify for one later local world probe.
+      // The original goal and disposable route stay separate.
+      if(a.side==='blue')
+        noteRepeatedDoorLeafEscape(a,s.seconds,p,
+          a.doorTraversal?.doorId??null,a.nav);
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
       setTransientRoute(s,a,[],'door-leaf-escape');
