@@ -28,7 +28,8 @@ test('F5.3 material family and graphic ramp are coherent in every view',()=>{
  assert.ok(MATERIAL_RESPONSES.steel.highlight>MATERIAL_RESPONSES.fabric.highlight);
  assert.ok(MATERIAL_RESPONSES.fabric.shadow>=MATERIAL_RESPONSES.armor.shadow);
  assert.equal(STUDIO_INSPECTION_BACKGROUND,0xc4c7bd);
- assert.match(source('src/arsenal/viewport.ts'),/this\.scene\.background=new THREE\.Color\(STUDIO_INSPECTION_BACKGROUND\)/);
+ assert.match(source('src/arsenal/viewport.ts'),/addArsenalInspectionLighting\(this\.scene\)/);
+ assert.match(source('src/arsenal/thumbnailer.ts'),/addArsenalInspectionLighting\(this\.scene\)/);
 });
 test('F5.3 changes preserve original legacy options and visibility ownership',()=>{
  const scene=source('src/breach-3d.ts');

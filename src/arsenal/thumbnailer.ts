@@ -3,6 +3,8 @@
  * No separate, misleading illustration assets or per-card WebGL renderers.
  */
 import * as THREE from 'three';
+import {addArsenalInspectionLighting} from './inspection-lighting.ts';
+import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from '../breach-weapon-accessories.ts';
 import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
@@ -18,10 +20,7 @@ export class ArsenalThumbnailer{
  private readonly cache=new Map<string,string>();
  private unavailable=false;
  constructor(){
-  this.scene.background=new THREE.Color(0x162723);
-  this.scene.add(new THREE.HemisphereLight(0xe2e9d9,0x253c36,2.3));
-  const key=new THREE.DirectionalLight(0xf8d8a8,2.6);
-  key.position.set(30,55,70);this.scene.add(key);
+  addArsenalInspectionLighting(this.scene);
  }
  render(recipe:ArsenalRecipeV2,size:'card'|'hero'='card'):string|undefined{
   const id=[recipe.platformId,recipe.weapon,...Object.values(recipe.parts),
@@ -33,7 +32,8 @@ export class ArsenalThumbnailer{
    if(!this.renderer){
     this.renderer=new THREE.WebGLRenderer({alpha:false,antialias:false,
      preserveDrawingBuffer:true,powerPreference:'low-power'});
-    this.renderer.setPixelRatio(1);
+    configureGraphicRendererOutput(this.renderer);
+   this.renderer.setPixelRatio(1);
    }
    const width=size==='hero'?900:400,height=size==='hero'?350:160;
    this.renderer.setSize(width,height,false);

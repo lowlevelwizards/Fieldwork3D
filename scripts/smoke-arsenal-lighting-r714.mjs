@@ -1,9 +1,12 @@
-/** R7.14: actual mobile Chromium WebGL smoke through the shared Arsenal viewer. */
+/** Arsenal live mobile smoke. Historical filename retained for CI callers.
+ * R16: dark viewport, readable real weapon surfaces, part dots fading
+ * during inspection, no obsolete lab, no cyan selection box.
+ */
 import {spawn} from 'node:child_process';
 import {mkdirSync,writeFileSync} from 'node:fs';
 import {chromium} from 'playwright';
-/** Opt-in artifact capture for the final F5 checkpoint only. */
-const f5Save=(name,bytes)=>{
+
+const capture=(name,bytes)=>{
  if(process.env.FW_F5_CAPTURE!=='1')return;
  mkdirSync('visual-foundation-f5-captures',{recursive:true});
  writeFileSync('visual-foundation-f5-captures/'+name,bytes);
@@ -31,42 +34,50 @@ try{
     errors.push(m.text());
   });
   try{
-   await page.goto(origin+'/arsenal.html?lightingLab=1',{waitUntil:'domcontentloaded'});
+   await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
    await page.locator('.arsenal-hero-open').click();
    const canvas=page.locator('.arsenal-wb-canvas');
    await canvas.waitFor({state:'visible'});
    await page.waitForFunction(()=>
     document.querySelector('.arsenal-wb-canvas')?.width>150,null,{timeout:25000});
-   const lab=page.locator('.arsenal-lighting-lab');
-   if(!await lab.evaluate(el=>el.open))throw Error('Arsenal Lab query did not open');
-   await page.waitForTimeout(250);
-   const on=await canvas.screenshot();
-   await page.getByLabel('HIGHLIGHT').selectOption('off');
-   await page.waitForTimeout(250);
-   const off=await canvas.screenshot();
-   if(on.byteLength<3000||off.byteLength<3000)
-    throw Error('Blank real weapon WebGL canvas');
-   if(on.equals(off))
-    throw Error('Arsenal glint did not change real weapon pixels');
-   f5Save('arsenal-glint.png',on);
-   f5Save('arsenal-no-glint.png',off);
-   await page.getByLabel('HIGHLIGHT').selectOption('dual');
-   await page.locator('input[aria-label="GLINT THICKNESS"]').evaluate(el=>{
-    el.value='2';el.dispatchEvent(new Event('input',{bubbles:true}));
-   });
-   await page.waitForFunction(()=>document.querySelector(
-    '.arsenal-lighting-range output')!==null);
-   await page.locator('.arsenal-lighting-actions button').first().click();
-   await page.waitForTimeout(150);
-   await page.locator('.arsenal-lighting-actions button').first().click();
-   await page.waitForTimeout(150);
+   await page.waitForFunction(()=>
+    document.querySelectorAll('.arsenal-wb-socket:not([hidden])').length>=6);
+   if(await page.locator('.arsenal-lighting-lab').count()!==0)
+    throw Error('Deleted lighting lab reappeared');
+   if(await page.locator('canvas').count()===0)
+    throw Error('No weapon canvas');
+   const dots=page.locator('.arsenal-wb-socket:not([hidden])');
+   if(await dots.count()<6)throw Error('Missing major part sockets');
+   const first=await canvas.screenshot();
+   if(first.length<3000)throw Error('Blank real WebGL viewport');
+   capture('arsenal-dark.png',first);
+   // The active marker changes the existing category controls, not a box.
+   await page.getByRole('button',{name:'Select stock'}).click();
+   if(await page.locator('.arsenal-wb-socket[aria-pressed="true"]').count()!==1)
+    throw Error('Active dot selection not synchronized');
+   if(await page.locator('.arsenal-wb-category[aria-pressed="true"]').textContent()!=='Furniture')
+    throw Error('White dot did not select the corresponding part category');
+   const r=await canvas.boundingBox();
+   if(!r)throw Error('No canvas bounding box');
+   const px=r.x+r.width*.84,py=r.y+r.height*.68;
+   await page.mouse.move(px,py);
+   await page.mouse.down();
+   await page.mouse.move(px-75,py-24,{steps:4});
+   await page.waitForFunction(()=>
+    document.querySelector('.arsenal-wb-sockets')?.classList.contains('is-inspecting'));
+   capture('arsenal-sockets-hidden.png',await canvas.screenshot());
+   await page.mouse.up();
+   await page.waitForFunction(()=>
+    !document.querySelector('.arsenal-wb-sockets')?.classList.contains('is-inspecting'));
+   if(await page.locator('.arsenal-wb-socket:not([hidden])').count()<6)
+    throw Error('White dots failed to restore after orbiting');
    await page.locator('.arsenal-wb-back').click();
    await page.locator('.arsenal-card').nth(1).click();
    await page.locator('.arsenal-hero-open').click();
-   await page.locator('.arsenal-wb-canvas').waitFor({state:'visible'});
-   await page.waitForTimeout(300);
-   if(errors.length)throw Error('Arsenal actual WebGL error: '+errors.join(' | '));
-   console.log('R7.14 real Arsenal weapons, thickness controls, glint A/B and mobile WebGL passed');
+   await page.waitForFunction(()=>
+    document.querySelectorAll('.arsenal-wb-socket:not([hidden])').length>=6);
+   if(errors.length)throw Error('Arsenal WebGL error: '+errors.join(' | '));
+   console.log('Arsenal mobile smoke passed: real weapon, dark inspection, white socket taps and fade');
   }finally{await page.close();}
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

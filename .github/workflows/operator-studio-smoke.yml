@@ -83,6 +83,9 @@ jobs:
       - run: npm install --no-save --package-lock=false playwright@1.56.1
       - run: npx playwright install --with-deps chromium
       - run: node scripts/smoke-operator-studio.mjs
+      - name: Arsenal R16 dark inspection and white socket mobile smoke
+        if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/arsenal-dark-viewport-') }}
+        run: node scripts/smoke-arsenal-lighting-r714.mjs
       - name: H26 geometry, four-point retention, cover and production build
         if: ${{ github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/helmet-h26-') }}
         run: |
@@ -182,7 +185,7 @@ jobs:
           node scripts/smoke-arsenal-lighting-r714.mjs
           node scripts/smoke-rendering-r718-breach.mjs
           test -s visual-foundation-f5-captures/studio-three-band.png
-          test -s visual-foundation-f5-captures/arsenal-glint.png
+          test -s visual-foundation-f5-captures/arsenal-dark.png
           test -s visual-foundation-f5-captures/breach-graphic.png
       - uses: actions/upload-artifact@v4
         if: ${{ always() && github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/visual-foundation-f4-f5-') }}

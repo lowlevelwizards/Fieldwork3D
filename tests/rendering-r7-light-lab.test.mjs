@@ -63,7 +63,7 @@ test('R7.10 Lighting Lab presents only usable user-selected choices',()=>{
   'studioRimSkinWidth','studioRimSkin','studioRimSkinLightThreshold',
   'studioRimSkinWarmth','studioLightAzimuth','studioRimMask'])
   assert.match(html,new RegExp('id="'+id+'"'));
- assert.match(html,/OPEN 3D ARSENAL LIGHTING LAB/);
+ assert.doesNotMatch(html,/OPEN 3D ARSENAL LIGHTING LAB/);
  const ts=read('src/operator-studio.ts');
  assert.match(ts,/labCelLowWrap\.hidden=!celOn/);
  assert.match(ts,/labRimAmountWrap\.hidden=!rimOn/);
@@ -86,20 +86,16 @@ test('R7.10 lighting cannot be stored in roster or loadout',()=>{
  assert.match(grid,/this\.cache\.clear\(\)/);
 });
 
-test('R7.14 Arsenal Lab uses actual Workbench 3D scene and avoids save pollution',()=>{
- const lab=read('src/arsenal/lighting-lab.ts');
+test('Arsenal Lighting Lab is removed while Operator Studio remains separate',()=>{
  const viewer=read('src/arsenal/viewport.ts');
  const screen=read('src/arsenal/workbench-screen.ts');
- assert.match(lab,/mountArsenalLightingLab/);
- assert.match(lab,/COMPARE ORIGINAL/);
- assert.match(lab,/SINGLE-EDGE COVERAGE/);
- assert.match(lab,/KEY LIGHT ORBIT/);
- assert.doesNotMatch(lab,/localStorage|sessionStorage|persistArsenal/);
- assert.match(viewer,/applyStudioGraphicLighting\(this\.model,settings\)/);
- assert.match(viewer,/disposeStudioGraphicLighting\(this\.model\)/);
- assert.match(screen,/mountArsenalLightingLab\(panel/);
+ const lighting=read('src/arsenal/inspection-lighting.ts');
+ assert.doesNotMatch(screen,/mountArsenalLightingLab|lightingLab/);
+ assert.doesNotMatch(viewer,/setLighting\(|Box3Helper|applyStudioGraphicLighting/);
+ assert.match(viewer,/addArsenalInspectionLighting/);
+ assert.match(lighting,/ARSENAL_INSPECTION_BACKGROUND=0x182824/);
+ assert.doesNotMatch(lighting,/localStorage|sessionStorage|persistArsenal/);
 });
-
 test('R7.15 hard/gear/skin settings are independent, clamped and preview-only',()=>{
  const d=DEFAULT_STUDIO_LIGHT_LAB;
  assert.equal(d.rimWidth,2.5);
@@ -129,10 +125,9 @@ test('R7.15 hard/gear/skin settings are independent, clamped and preview-only',(
  const grid=read('src/operator-appearance-grid.ts');
  assert.match(grid,/previous\.rimFabricWidth===settings\.rimFabricWidth/);
  assert.match(grid,/previous\.rimSkinWarmth===settings\.rimSkinWarmth/);
- const arsenal=read('src/arsenal/lighting-lab.ts');
- assert.match(arsenal,/3-band graphic \+ highlight/);
- assert.match(arsenal,/APPROVED_GRAPHIC_LIGHTING/);
- assert.doesNotMatch(arsenal,/GEAR EDGE WIDTH|SKIN WARMTH/);
+ const arsenal=read('src/arsenal/inspection-lighting.ts');
+ assert.match(arsenal,/addArsenalInspectionLighting/);
+ assert.doesNotMatch(arsenal,/GEAR EDGE WIDTH|SKIN WARMTH|APPROVED_GRAPHIC_LIGHTING/);
 });
 test('R7.15 soft equipment is included without turning lenses into outlines',()=>{
  const rig=read('src/breach-operator-rig.ts');
@@ -155,18 +150,20 @@ test('R7.15 soft equipment is included without turning lenses into outlines',()=
 
 test('R7.18 shared look reaches Arsenal/live, without tactical shadow-size changes',()=>{
  const live=read('src/breach-3d.ts');
+ const site=read('src/rendering/breach-site-render-composition.ts');
  const arsenal=read('src/arsenal/viewport.ts');
  const world=read('src/breach-graphic-world-lighting.ts');
  const studio=read('src/operator-studio-graphic-lighting.ts');
  assert.match(live,/applyStudioGraphicLighting\(object\.root,APPROVED_GRAPHIC_LIGHTING\)/);
- assert.match(live,/applyWorldGraphicLighting\(this\.root\)/);
+ assert.match(live,/composeBreachSiteRender\(/);
+ assert.match(site,/applyWorldGraphicLighting\(host\.root\)/);
  assert.match(live,/this\.quality\.shadowSize/);
  assert.doesNotMatch(live,/studioShadowSize|studioShadowSizeOverride/);
- assert.match(arsenal,/APPROVED_GRAPHIC_LIGHTING/);
- assert.match(arsenal,/STUDIO_INSPECTION_LIGHT/);
- assert.match(arsenal,/studioShadowPalette/);
+ assert.match(arsenal,/addArsenalInspectionLighting/);
+ assert.doesNotMatch(arsenal,/STUDIO_INSPECTION_LIGHT|studioShadowPalette/);
  assert.match(studio,/fieldworkCelHighlightTone/);
  assert.match(studio,/vec3\(\.975,\.926,\.941\)/);
- assert.match(world,/r718-world-3-band-rose/);
+ assert.match(world,/f1-world-3-band-edge-aa/);
+ assert.match(world,/WORLD_GRAPHIC_FRAGMENT/);
  assert.doesNotMatch(world,/new THREE\.Mesh|new THREE\.WebGLRenderTarget/);
 });
