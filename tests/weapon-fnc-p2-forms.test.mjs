@@ -8,7 +8,7 @@ import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 const bound=g=>new THREE.Box3().setFromObject(g);
 const of=(g,k)=>g.children.filter(c=>c.userData[k]);
 
-test('FNC P2: real polymer forearm mesh, broad mirrored grooves, open padded stock',()=>{
+test('FNC P10: grooved forearm and clean open stock without cheek sleeve',()=>{
  const m=new THREE.MeshBasicMaterial();
  const g=buildFNCStage1Silhouette(m);
  assert.equal(of(g,'fncFacetedHandguard').length,1);
@@ -17,13 +17,14 @@ test('FNC P2: real polymer forearm mesh, broad mirrored grooves, open padded sto
  assert.deepEqual(of(g,'fncP5GrooveLevel').map(x=>x.userData.fncP5GrooveLevel).sort(),['lower','lower','upper','upper']);
  assert.ok(of(g,'fncP5GrooveLevel').every(x=>x.userData.fncP5GrooveCount===(x.userData.fncP5GrooveLevel==='upper'?2:1)));
  assert.equal(of(g,'fncStockRail').filter(x=>x.userData.fncStockRail===true).length,2);
- assert.equal(of(g,'fncCheekSleeve').length,1);
+ assert.equal(of(g,'fncCheekSleeve').length,0);
  assert.equal(of(g,'fncHandguardNoseCollar').length,0);
  assert.equal(of(g,'fncStampedMagazineRib').length,2);
  assert.equal(of(g,'fncMagwellLip').length,1);
- const cheek=of(g,'fncCheekSleeve')[0];
- assert.ok(bound(cheek).max.y>-.45,'cheek is on top stock rail');
- assert.ok(bound(cheek).min.y>-1,'cheek does not fill stock void');
+ const top=of(g,'fncP10ContinuousBareUpperRail')[0];
+ assert.ok(top&&bound(top).max.x-bound(top).min.x>7.5,
+  'metal top beam reaches the butt without the former sleeve');
+ assert.ok(bound(top).min.y>-.7,'bare rail preserves the stock void');
  clearWeaponSilhouette(g);m.dispose();
 });
 test('FNC P2: asymmetrical receiver port, side handle and left selector',()=>{

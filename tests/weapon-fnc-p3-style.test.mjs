@@ -14,14 +14,15 @@ import {HK556_MAG_METAL,HK556_MAG_RIB}
 const box=x=>new THREE.Box3().setFromObject(x);
 const of=(g,k)=>g.children.filter(x=>x.userData[k]);
 const factory=()=>selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
-test('P9 stock: no cheek/metal overlap and a distinct inset FNC bridge plate',()=>{
+test('P10 stock: continuous upper rail and distinct inset FNC bridge plate',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const rails=of(g,'fncStockRail').filter(x=>x.userData.fncStockRail===true);
- const cheek=of(g,'fncCheekSleeve')[0],web=of(g,'fncP5StockMiddleBrace')[0];
+ const web=of(g,'fncP5StockMiddleBrace')[0];
  assert.equal(rails.length,2);
- assert.equal(of(g,'fncNoCoplanarRail').length,1);
- assert.ok(box(rails[0]).min.x>=box(cheek).max.x-.03,
-  'insulated and steel top rails must never share coplanar length');
+ assert.equal(of(g,'fncCheekSleeve').length,0);
+ assert.equal(of(g,'fncNoCoplanarRail').length,0);
+ assert.ok(box(rails[0]).max.x-box(rails[0]).min.x>7.5,
+  'the uninterrupted upper steel rail replaces the entire sleeve assembly');
  assert.ok(box(rails[0]).min.y>box(rails[1]).max.y+.20);
  assert.ok(web,'FNC stock requires the intermediate triangular web');
  assert.ok(box(web).min.x<-11&&box(web).max.x>-11);

@@ -1,8 +1,8 @@
-/** FN FNC P9 shared Arsenal/Workbench/operator silhouette.
- * Fieldwork's angular FN receiver and large polymer handguard remain intact.
- * The stock uses parallel upper/lower beams, one lower-rail knee, a recessed
- * joining web, a chunky hinge block and a separate buttplate. No trigger guard.
- * +X muzzle, +Y up, +Z right; static geometry on demand.
+/** FN FNC P10 shared Arsenal/Workbench/operator silhouette.
+ * The stock uses one continuous bare upper beam, a kinked lower bar,
+ * a thin extended inset plate, compact rectangular hinge and dark butt pad.
+ * No cheek sleeve or trigger guard. Visual geometry builds on demand only.
+ * +X muzzle, +Y up, +Z right.
  */
 import * as THREE from 'three';
 import {buildFNCrownMesh} from './fn-crowned-shell.ts';
@@ -19,7 +19,7 @@ export const FNC_P1=Object.freeze({
  frontSightX:15.20,muzzleX:19.50,magazineBottomY:-7.80,
  nominalBarrelInches:17.7
 });
-type Finish='steel'|'lower'|'stock'|'cheek'|'grip'|'handguard'|
+type Finish='steel'|'lower'|'stock'|'buttpad'|'grip'|'handguard'|
  'magazine'|'stamp'|'barrel'|'muzzle'|'shadow';
 export type FNCArtFinishes=Readonly<Partial<Record<Finish,THREE.Material>>>;
 
@@ -27,7 +27,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p9-stock-fieldwork-exterior';
+ root.name='fnc-p10-stock-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -94,10 +94,12 @@ export function buildFNCStage1Silhouette(
   mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
   return mesh;
  };
- // Keep P2's disjoint top steel and polymer sleeve: no coplanar shimmer.
- // Both are geometrically straight and together form ONE upper stock rail.
- const top=rail([-6.45,.03],[-9.46,.01],.69);
+ // Remove the oversized rear cheek sleeve entirely. A continuous
+ // metal-colored top rail replaces BOTH old segments, avoiding a gap,
+ // doubled faces or additional draw calls.
+ const top=rail([-6.45,.03],[-14.26,-.04],.84);
  top.userData.fncP9UpperMetalRail=true;
+ top.userData.fncP10ContinuousBareUpperRail=true;
  // Lower rail stays parallel for over three art units; at x=-10.18 its
  // single angular knee descends toward the lower butt connection.
  // A single six-vertex extrusion avoids separate, z-fighting bar joins.
@@ -109,37 +111,35 @@ export function buildFNCStage1Silhouette(
  lowerRail.userData.fncKinkedLowerRail=true;
  lowerRail.userData.fncP8StraightStockBrace=true;
  lowerRail.userData.fncP9ParallelThenAngled=true;
- // One broad rectangular hinge bracket owns the rear receiver junction.
- // It projects slightly in Z beyond the rails, but not beyond the receiver.
+ // Slightly longer in X, taller in Y and shallower in Z than P9,
+ // still visibly sturdier than either structural rail.
  const hinge=p('stock',[
-  [-7.20,.40],[-6.02,.40],[-6.02,-1.95],[-7.20,-1.95]
- ],1.88,'stock');
+  [-7.48,.53],[-5.96,.53],[-5.96,-2.10],[-7.48,-2.10]
+ ],1.68,'stock');
  hinge.userData.fncStockHinge=true;
  hinge.userData.fncP9BlockHinge=true;
- // Distinct heavy upright rear pad; unchanged overall x = -14.85.
- // Front face receives both rails without leaving open-ended gaps.
+ hinge.userData.fncP10RefinedHinge=true;
+ // The same six-point butt profile keeps the original length and vertical
+ // silhouette, but gains depth and the former cheek pad's dark finish.
  const pad=p('stock',[
   [-14.85,.36],[-14.17,.36],[-14.10,.12],
   [-14.10,-3.36],[-14.35,-3.56],[-14.85,-3.56]
- ],1.86,'stock');
+ ],2.18,'buttpad');
  pad.userData.fncP8NarrowButtplate=true;
  pad.userData.fncButtPlate=true;
  pad.userData.fncP9ConnectedButtplate=true;
- const cheek=rail([-9.46,.01],[-14.26,-.04],1.04,'cheek');
- cheek.userData.fncStockRail=false;
- cheek.userData.fncCheekSleeve=true;
- cheek.userData.fncNoCoplanarRail=true;
- cheek.userData.fncP9ExtendedCheekConnection=true;
- // Flat inset joining plate, not a third bar or a full stock sidewall.
- // Its upper edge meets the sleeve; the shallow lower edge intersects
- // the diagonal lower beam while leaving the large rear void fully open.
+ pad.userData.fncP10DarkThickButtpad=true;
+ // Lengthen the inset joining plate in X while reducing its Z depth.
+ // Intersections with the continuous upper bar and angled lower bar remain
+ // deliberate; it is still a flat plate, not a solid stock sidewall.
  const web=p('stock',[
-  [-12.55,-.49],[-10.67,-.49],[-11.76,-2.36],[-12.10,-2.48]
- ],.90,'stock');
+  [-12.95,-.34],[-10.39,-.34],[-11.72,-2.30],[-12.37,-2.66]
+ ],.64,'stock');
  web.userData.fncP5StockMiddleBrace=true;
  web.userData.fncP6BoldStockWeb=true;
  web.userData.fncP7StockWeb=true;
  web.userData.fncP9RecessedJoiningPlate=true;
+ web.userData.fncP10LongThinConnector=true;
 
  // Crowned body is intentionally closer to FAL's stylized 3D shoulders.
  // The lower visibly projects OUTSIDE both upper sides.
