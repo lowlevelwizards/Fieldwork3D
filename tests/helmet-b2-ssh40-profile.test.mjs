@@ -54,7 +54,7 @@ test('B2-A2 SSh-40 is larger, low and swept, with a restrained rolled perimeter'
  near(SSH40_FIT_LANDMARKS.frontHem,m.foreheadEdge,'front hem fit');
  near(ssh40SurfacePoint(4,0)[1],3.98,'front hem');
  near(ssh40SurfacePoint(4,4)[1],3.38,'rear hem');
- near(ssh40SurfacePoint(4,1)[1],3.92,'front quarter of swept hem');
+ near(ssh40SurfacePoint(4,2)[1],3.92,'front quarter of swept hem');
  const top=SSH40_STEEL_LEVELS[0],shoulder=SSH40_STEEL_LEVELS[1],
   bell=SSH40_STEEL_LEVELS[2],roll=SSH40_STEEL_LEVELS[3];
  assert.ok(bell.side-top.side>2.2,'big bell above a modest upper dome');
