@@ -9,19 +9,22 @@ export type RouteSource=
  'door-short-entry'|'door-rehearsal'|'door-drift'|'door-leaf-escape'|
  'full-body-lane'|'blocked-leg-connector'|'collision-world-replan'|
  'collision-intel-replan'|'self-hinge-relief'|'local-detour'|
- 'passage-retreat';
+ 'passage-retreat'|'door-handoff-reject';
 export type TransientRouteTransition={
  seconds:number;actorId:string;source:RouteSource;
  prior:readonly Pt[];next:readonly Pt[];
  squeeze:boolean;blockedTime:number;blocker:string|null;
  doorId:string|null;doorPhase:string|null;doorManeuver:string|null;
  doorFraction:number|null;goalKey:string;
+ /** Set only on read-only rejection witnesses. */
+ reason?:string;
 };
 let listener:((record:TransientRouteTransition)=>void)|null=null;
 /** For offline deterministic evidence only; clear in a finally clause. */
 export function setTransientRouteObserver(
  next:((record:TransientRouteTransition)=>void)|null):void{listener=next;}
-function report(s:Session,a:TeamActor,source:RouteSource,next:readonly Pt[]){
+function report(s:Session,a:TeamActor,source:RouteSource,next:readonly Pt[],
+ reason?:string){
  const fn=listener;if(!fn)return;
  const doorId=a.doorTraversal?.doorId??null;
  const door=doorId?s.doors.find(d=>d.id===doorId):undefined;
@@ -31,7 +34,8 @@ function report(s:Session,a:TeamActor,source:RouteSource,next:readonly Pt[]){
   blocker:a.lastBlocker??null,doorId,
   doorPhase:a.doorTraversal?.phase??null,
   doorManeuver:a.doorTraversal?.maneuver??null,
-  doorFraction:door?.openFraction??null,goalKey:a.routeGoalKey});
+  doorFraction:door?.openFraction??null,goalKey:a.routeGoalKey,
+  ...(reason?{reason}:{})});
 }
 /** Assign exactly the proposed transient route; zero extra allocations
  * when no offline observer is installed. */
@@ -51,4 +55,12 @@ export function prependTransientLeg(
 export function observeTransientPrepend(
  s:Session,a:TeamActor,leg:Pt,source:RouteSource):void{
  if(listener)report(s,a,source,[leg,...a.nav]);
+}
+
+/** D3.13G: offline-only rejection diagnostics. Does not write actor state,
+ * change a path or call A*. The production motor pays one null check. */
+export function noteDoorHandoffRejection(
+ s:Session,a:TeamActor,reason:string
+):void{
+ if(listener)report(s,a,'door-handoff-reject',a.nav,reason);
 }
