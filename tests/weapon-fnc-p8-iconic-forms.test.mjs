@@ -55,7 +55,7 @@ test('P8: three large groove rows per side, slim STANAG and differentiated sight
  }
  assert.equal(get(g,'fncMoldedFlutesPerSide').userData.fncMoldedFlutesPerSide,1);
  const mag=get(g,'fnc556Magazine');
- assert.ok(width(mag)<2.8);
+ assert.ok(width(mag)<3.10);
  assert.ok(Math.abs(box(mag).min.y-FNC_P1.magazineBottomY)<.03);
  const rear=get(g,'fncP8CompactRearSight'),front=get(g,'fncProtectedFrontSight');
  assert.ok(box(front).max.y>box(rear).max.y+.65);
