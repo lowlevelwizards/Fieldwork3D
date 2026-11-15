@@ -30,11 +30,12 @@ import {readHelmetField,HELMET_FIELD_COLORS,
  HELMET_FIELD_CONCEALMENT,HELMET_FIELD_TILTS,HELMET_FIELD_GOGGLES,
  HELMET_FIELD_SIDES,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
-import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
+import {readPasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
  pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
 import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup}
  from './operator-helmet-setup-policy.ts';
 import {resolveEffectiveHelmetAppearance} from './operator-helmet-effective-appearance.ts';
+import {editHelmetFieldPreferences,editPasgtFieldDress} from './operator-helmet-appearance-edit.ts';
 import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
  type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
 import {createHelmetAnatomyGuide,HELMET_ANATOMY_GUIDE_NAME}
@@ -1448,10 +1449,7 @@ function renderMaterials(){
    }group.append(grid);
   }
   if(item==='pasgt'){
-   const state=resolveHelmetSetup('pasgt',w.helmetSetup,{
-    hasLegacyPrint:!!w.headwearCamo
-   });
-   const details=readPasgtDetails(w.pasgtDetails,w.helmetSetup);
+   const details=resolvedHelmet.pasgt??readPasgtDetails(w.pasgtDetails,w.helmetSetup);
    const updateCover=(covered:boolean)=>changeWardrobe({
     ...current(),helmetSetup:readHelmetSetup({
      ...current().helmetSetup,cover:covered?'fitted':'none'
@@ -1460,9 +1458,8 @@ function renderMaterials(){
    const coverRow=row('PASGT CLOTH COVER',
     'One fitted cover. NO COVER exposes painted composite, never camouflaged shell.');
    addSelect(coverRow,[['none','NO COVER'],['fitted','COVER']] as const,
-    state.setup.cover==='none'?'none':'fitted',id=>updateCover(id==='fitted'));
-   if(state.setup.cover!=='none'){
-    const effective=resolvePasgtDetails(w.pasgtDetails,w.helmetSetup);
+    resolvedHelmet.cover?'fitted':'none',id=>updateCover(id==='fitted'));
+   if(resolvedHelmet.cover){
     const slitRow=row('FOLIAGE SLITS',
      'Simple fabric cuts for leaves or scrim, not protruding sewn loops.');
     if(pasgtConcealmentRequiresSlits(details.concealment)){
@@ -1471,9 +1468,8 @@ function renderMaterials(){
      slitRow.append(explanation);
     }else{
      addSelect(slitRow,[['off','NO SLITS'],['on','FOLIAGE SLITS']] as const,
-      effective.slits?'on':'off',v=>changeWardrobe({...current(),
-       pasgtDetails:{...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
-        slits:v==='on'}}));
+      details.slits?'on':'off',v=>changeWardrobe(
+       editPasgtFieldDress(current(),{slits:v==='on'})));
     }
     if(prints.length){
      const printRow=row('PASGT COVER PATTERN',
@@ -1487,25 +1483,24 @@ function renderMaterials(){
    }
    const bandRow=row('PASGT HELMET BAND',
     'A broad, surface-fitted elastic strip above the brow and around the rear skirt.');
-   const netForcesBand=state.setup.cover!=='none'&&details.concealment==='net';
+   const netForcesBand=resolvedHelmet.cover&&details.concealment==='net';
    if(netForcesBand){
     const explanation=document.createElement('small');
     explanation.textContent='ON · REQUIRED TO SECURE NET';
     bandRow.append(explanation);
    }else addSelect(bandRow,PASGT_BANDS.map(id=>[
     id,id==='none'?'NONE':'ELASTIC BAND'] as const),
-    details.band,id=>changeWardrobe({...current(),pasgtDetails:{
-     ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
-     band:id as typeof details.band}}));
-   if(state.setup.cover!=='none'){
+    details.band,id=>changeWardrobe(editPasgtFieldDress(current(),
+      {band:id as typeof details.band})));
+   if(resolvedHelmet.cover){
     const concealRow=row('PASGT CONCEALMENT',
      'Foliage and scrim require slits; net automatically secures under the elastic band.');
     addSelect(concealRow,PASGT_CONCEALMENTS.filter(id=>
      ['none','scrim','net','foliage'].includes(id)).map(id=>
      [id,id.toUpperCase()] as const),
-     details.concealment.startsWith('foliage')?'foliage':details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
-      ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
-      concealment:id as typeof details.concealment}}));
+     details.concealment.startsWith('foliage')?'foliage':details.concealment,
+     id=>changeWardrobe(editPasgtFieldDress(current(),
+      {concealment:id as typeof details.concealment})));
    }
   }
   if(['ach','mich-2001','mich-2002','pasgt'].includes(helmetShell)){
@@ -1513,25 +1508,8 @@ function renderMaterials(){
    const currentField=readHelmetField(w.helmetField);
    const fieldCovered=resolvedHelmet.cover;
    const effective=resolvedHelmet.field;
-   const changeField=(changes:Partial<HelmetFieldOptions>)=>{
-    const before=current();
-    const carry=before.helmetField??{
-     ...readHelmetField(undefined),
-     band:historical&&readPasgtDetails(before.pasgtDetails,before.helmetSetup).band==='elastic'
-    };
-    const next={...carry,...changes};
-    if(changes.counterweight===true)next.battery=false;
-    if(changes.battery===true)next.counterweight=false;
-    // Treat the two ARC rails as distinct sockets: selecting a camera
-    // or light moves the other device to the free side rather than
-    // silently retaining an invisible conflicting device.
-    if(next.light&&next.camera&&next.lightSide===next.cameraSide){
-     if(changes.light===true||changes.lightSide!==undefined)
-      next.cameraSide=next.lightSide==='left'?'right':'left';
-     else next.lightSide=next.cameraSide==='left'?'right':'left';
-    }
-    changeWardrobe({...before,helmetField:readHelmetField(next)});
-   };
+   const changeField=(changes:Partial<HelmetFieldOptions>)=>
+    changeWardrobe(editHelmetFieldPreferences(current(),helmetShell,changes));
    const picker=(title:string,key:'bandColor'|'webbingColor',
     help:string)=>{
     const section=row(title,help);
