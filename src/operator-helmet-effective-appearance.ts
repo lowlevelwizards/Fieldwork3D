@@ -5,7 +5,7 @@
 import {readHelmetSetup,resolveHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,resolveHelmetField,isFieldHelmet,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
-import {readPasgtDetails,resolvePasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
+import {readPasgtDetails,resolvePasgtDetails,pasgtConcealmentRequiresSlits,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 export type HelmetChoiceStatus='active'|'saved-inactive'|'required'|'unavailable';
 export type HelmetChoiceFeedback={
  key:string;status:HelmetChoiceStatus;reason:string;
@@ -83,7 +83,7 @@ export function resolveEffectiveHelmetAppearance(
   ...readPasgtDetails(input.pasgtDetails,input.helmetSetup),
   band:field.band||field.concealment==='net'?'elastic' as const:'none' as const,
   concealment:field.concealment,
-  slits:field.concealment!=='none'
+  slits:pasgt.slits||pasgtConcealmentRequiresSlits(field.concealment)
  }:pasgt;
  return {shell,cover,setup,field,fieldActive,pasgt:effectivePasgt,
   feedback,availability};
