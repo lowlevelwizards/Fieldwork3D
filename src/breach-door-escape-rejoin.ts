@@ -79,3 +79,37 @@ export function takeRepeatedDoorEscapeRoute(
 export function finishDoorEscapeRejoin(actor:TeamActor):void{
  episodes.delete(actor);
 }
+
+/** H2C: per-authored-MOVE, per-physical-leaf cold A* allowance.
+ * The H2B frame-approach fallback can spend two world searches every
+ * repeated leaf escape even when the immovable jamb has no lawful path.
+ * Cap only these OPTIONAL frame-approach searches; ordinary G2C direct
+ * portal staging, physical release, and original order recovery remain
+ * fully eligible. A changed real hinge, order or material body movement
+ * resets the allowance. No global navigation or collision state.
+ */
+type FrameProbeBudget={
+ orderId:number;doorId:string;goalX:number;goalY:number;
+ leafFraction:number;position:Pt;probes:number;
+};
+const frameProbeBudgets=new WeakMap<TeamActor,FrameProbeBudget>();
+export function claimColdFrameApproachProbe(
+ actor:TeamActor,doorId:string,goal:Pt,leafFraction:number
+):boolean{
+ const order=actor.plan[0];
+ if(order?.kind!=='move')return false;
+ const old=frameProbeBudgets.get(actor);
+ const same=!!old&&old.orderId===order.id&&old.doorId===doorId&&
+  old.goalX===goal.x&&old.goalY===goal.y&&
+  Math.abs(old.leafFraction-leafFraction)<.14&&
+  gap(old.position,actor.p)<32;
+ if(!same){
+  frameProbeBudgets.set(actor,{orderId:order.id,doorId,
+   goalX:goal.x,goalY:goal.y,leafFraction,
+   position:{...actor.p},probes:1});
+  return true;
+ }
+ if(old!.probes>=4)return false;
+ old!.probes++;
+ return true;
+}
