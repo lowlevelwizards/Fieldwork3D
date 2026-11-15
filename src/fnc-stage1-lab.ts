@@ -27,7 +27,7 @@ const fill=new THREE.DirectionalLight(0xe3eee6,1.4);
 fill.position.set(-24,31,-72);scene.add(fill);
 const FNC_FACTORY: FNCArtFinishes={
  steel:HK_BLACK_METAL,lower:FAL_LOWER_METAL,stock:HK_BLACK_METAL,
- cheek:HK_DARK_POLYMER,grip:HK_DARK_POLYMER,
+ buttpad:HK_DARK_POLYMER,grip:HK_DARK_POLYMER,
  handguard:HK_DARK_POLYMER,magazine:HK556_MAG_METAL,
  stamp:HK556_MAG_RIB,barrel:HK_BLACK_METAL,
  muzzle:HK_MUZZLE_METAL,shadow:FAL_VENT_SHADOW
