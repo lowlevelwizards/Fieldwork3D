@@ -14,6 +14,7 @@ import {friendlyArrivalSettleTarget,nearOccupiedFriendlyGoal}
 import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {selectPhysicalEntrySettle} from './breach-entry-target-settle.ts';
 import {bodyClear} from './breach-navigation.ts';
+import {routeWithNormalWorld} from './breach-squeeze-route.ts';
 import {autoSidestepFacing} from './breach-auto-sidestep.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
 import {completeOrder,failCurrentOrder,rotate,aimHeading,applyAimNode}
@@ -110,7 +111,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   // bypass the same bounded failure policy forever. Give it six seconds
   // of genuine attempted motion first; then report the blocked template.
   // Player-authored MOVE and open/closing door-only obstructions are exempt.
-  if(n.kind==='move'&&n.entryDoorId&&a.blockedTime>=6&&
+  if(n.kind==='move'&&n.entryDoorId&&!retained&&a.blockedTime>=6&&
      d(a.p,n.p)<=18.5&&
      !sessionWorldGeometry(s).passable(n.p,OPERATOR_RADIUS)){
     settledMoveTargets.delete(a);
@@ -124,7 +125,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   // verified nearby interior position. No authored MOVE target is changed.
   const probe=entrySettleProbe.get(a);
   const nearBlockedEntry=n.kind==='move'&&!retained&&!!n.entryDoorId&&
-    a.blockedTime>=.85&&d(a.p,n.p)<=18.5&&
+    a.blockedTime>=.85&&d(a.p,n.p)<=34&&
     (!probe||probe.nodeId!==n.id||s.seconds>=probe.nextAt);
   let entrySettle:Pt|null=null;
   if(nearBlockedEntry){
@@ -135,7 +136,8 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     entrySettle=selectPhysicalEntrySettle(a.p,n.p,door,friendlyPeers,
      point=>world.passable(point,OPERATOR_RADIUS)&&
       bodyClear(point,s.doors,OPERATOR_RADIUS,world),
-     (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+     (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+     (from,to)=>routeWithNormalWorld(from,to,s.doors,world));
    // Only a GENERATED landing inside a fixed physical wall is irrecoverable.
    // Opening a leaf cannot fix it; do not quietly count this as arrival
    // or repeatedly collide for 30 seconds. Other MOVE orders stay authored.
