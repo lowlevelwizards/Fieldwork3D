@@ -6,11 +6,12 @@
 import * as THREE from 'three';
 import {addOutline,addCuboid,addBar} from './profile-primitives.ts';
 import type {SlotName,Outline} from './profile-primitives.ts';
+import {arMagazineCurve,arMagazineOutline} from './ar-magazine-profiles.ts';
 
 export const FNC_P1=Object.freeze({
   stockRearX:-14.85,receiverRearX:-6.38,receiverFrontX:4.12,
   handguardStartX:3.45,handguardEndX:13.55,
-  frontSightX:15.20,muzzleX:19.50,magazineBottomY:-8.05,
+  frontSightX:15.20,muzzleX:19.50,magazineBottomY:-7.80,
   nominalBarrelInches:17.7
 });
 
@@ -55,14 +56,14 @@ export function buildFNCStage1Silhouette(material:THREE.Material):THREE.Group{
  p('grip',[
   [-5.07,-2.31],[-3.42,-2.31],[-5.03,-6.08],[-7.01,-6.08]
  ],2.02);
- // Corrected FNC 30-round STANAG silhouette. The P1 straight slab was too
- // broad at its heel and visually uncurved. These nine broad outline points
- // make one gently swept, slightly narrowed magazine, no decorative ridges.
- const mag=p('magazine',[
-  [.55,-2.81],[2.85,-2.81],[2.90,-4.10],[2.75,-5.60],
-  [2.50,-7.30],[2.18,-7.90],[-.23,-8.05],
-  [-.05,-6.55],[.32,-4.95]
- ],1.49);
+ // Reuse the AR 30-round STANAG centerline/normal profile rather than
+ // mint a separate FN-only outline. The first blockout was too straight.
+ // Art-specific placement, width and length follow the FNC's receiver.
+ const magazineCurve={
+  ...arMagazineCurve('30',1.65,-2.81,2.55,1.49),
+  length:4.65,sweep:.72
+ };
+ const mag=p('magazine',arMagazineOutline(magazineCurve),magazineCurve.depth);
  mag.userData.fnc556Magazine=true;
  mag.userData.fnc30RoundCurved=true;
 
