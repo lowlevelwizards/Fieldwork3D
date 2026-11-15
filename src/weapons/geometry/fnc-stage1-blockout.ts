@@ -1,4 +1,4 @@
-/** FN FNC P5 shared Arsenal/Workbench/operator silhouette.
+/** FN FNC P6 shared Arsenal/Workbench/operator silhouette.
  * Deliberate five-mass Fieldwork grammar: crowned FAL-like upper narrower
  * than the lower, actual triangular FNC stock brace, hexagonal polymer
  * handguard UNDER a separate upper gas-box, and bold simple rifle hardware.
@@ -26,7 +26,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p5-fieldwork-exterior';
+ root.name='fnc-p6-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -72,8 +72,8 @@ export function buildFNCStage1Silhouette(
   const stations=[
    {x:-6.38,top:1.46,bottom:-.99,side:1.34,roof:.67},
    {x:-5.59,top:1.60,bottom:-.99,side:1.34,roof:.67},
-   {x:2.60,top:1.60,bottom:-.99,side:1.34,roof:.67},
-   {x:4.12,top:.48,bottom:-.99,side:1.24,roof:.66}
+   {x:2.30,top:1.60,bottom:-.99,side:1.34,roof:.67},
+   {x:3.73,top:.45,bottom:-.99,side:1.24,roof:.66}
   ] as const;
   const ring=(s:typeof stations[number],i:number):[number,number,number]=>{
    const shoulder=Math.max(s.bottom+.48,s.top-1.20);
@@ -95,8 +95,10 @@ export function buildFNCStage1Silhouette(
   const a=stations[0],z=stations[stations.length-1];
   for(let i=0;i<6;i++){
    const j=(i+1)%6;
-   tri([a.x,0,0],ring(a,j),ring(a,i));
-   tri([z.x,-.30,0],ring(z,i),ring(z,j));
+   // P5 caps were inward-facing; side strip already faces outward.
+   // The rear face is -X and the front face is +X.
+   tri([a.x,0,0],ring(a,i),ring(a,j));
+   tri([z.x,-.30,0],ring(z,j),ring(z,i));
   }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
@@ -107,6 +109,8 @@ export function buildFNCStage1Silhouette(
   mesh.userData.fncP5CrownedReceiver=true;
   mesh.userData.fncP5RoofHalfWidth=.67;
   mesh.userData.fncP5UpperSideHalfWidth=1.34;
+  mesh.userData.fncP6OutwardReceiverEndcaps=true;
+  mesh.userData.fncP6ShortenedReceiverFrontX=3.73;
   mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
   return mesh;
  };
@@ -138,9 +142,10 @@ export function buildFNCStage1Silhouette(
  // in the rear/middle portion, rather than filling the stock's large void.
  // It is a chunky single gusset, not a false third full-length rail.
  const web=p('stock',[
-  [-12.06,-.53],[-10.23,-.51],[-10.92,-2.13],[-11.57,-2.54]
- ],.91,'stock');
+  [-12.38,-.47],[-10.24,-.47],[-11.49,-2.56]
+ ],1.08,'stock');
  web.userData.fncP5StockMiddleBrace=true;
+ web.userData.fncP6BoldStockWeb=true;
 
  // Crowned body is intentionally closer to FAL's stylized 3D shoulders.
  // The lower visibly projects OUTSIDE both upper sides.
@@ -148,7 +153,7 @@ export function buildFNCStage1Silhouette(
  // Integrate the magwell lip into the lower instead of stacking two almost
  // coplanar full-width extrusions. Broad steel lower edge remains readable.
  const lower=p('receiver',[
-  [-6.30,-.98],[3.76,-.98],[3.60,-2.30],
+  [-6.30,-.98],[3.57,-.98],[3.51,-2.30],
   [3.06,-3.06],[.18,-3.06],[-.40,-2.70],
   [-1.30,-2.35],[-6.30,-2.35]
  ],3.42,'lower');
@@ -188,41 +193,44 @@ export function buildFNCStage1Silhouette(
   showFactoryMuzzle?5.35:5.66,.96,.96,'barrel');
  barrel.userData.fncServiceBarrel=true;
  if(showFactoryMuzzle){
-  // Heavier six-face FN muzzle, with one uninterrupted mass and no
-  // little collar rings. The muzzle tip stays at the 19.50 art datum.
-  const geometry=new THREE.CylinderGeometry(.95,.95,1.78,6,1);
+  // One still oversized, but STUBBIER six-sided muzzle.
+  // Its forward endpoint remains the original factory muzzle datum 19.50.
+  const geometry=new THREE.CylinderGeometry(1.16,1.16,1.48,6,1);
   geometry.rotateZ(Math.PI/2);
   const muzzle=new THREE.Mesh(geometry,mat('muzzle'));
-  muzzle.position.x=18.61;
+  muzzle.position.x=18.76;
   muzzle.name='family-barrel-fnc-p5-service-muzzle-'+ids.barrel++;
   muzzle.userData.fncMuzzle=true;
   muzzle.userData.fncP4SingleMuzzle=true;
   muzzle.userData.fncP5ChunkyMuzzle=true;
+  muzzle.userData.fncP6StubbyMuzzle=true;
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
  }
  // Large and un-fiddly. Front guard is deliberately the dominant icon;
  // its inner hole remains one broad cutout, not a fine modeled post.
  const front=p('barrel',[
-  [13.94,-.25],[14.07,.92],[14.55,1.23],
-  [15.78,1.23],[15.78,-.25]
- ],1.85,'steel');
+  [13.93,-.25],[14.02,.93],[14.46,1.30],
+  [15.92,1.30],[15.92,-.25]
+ ],2.04,'steel');
  front.userData.fncFrontSightBase=true;
  front.userData.fncP4IntegratedGasSeat=true;
  const sight=aperture('barrel','front-guard',
-  [[14.57,1.20],[14.60,2.53],[14.87,3.10],
-   [15.42,3.10],[15.73,2.53],[15.78,1.20]],
-  [[14.95,1.70],[15.02,2.64],[15.34,2.64],[15.44,1.70]],
-  1.02);
+  [[14.35,1.24],[14.39,2.61],[14.80,3.23],
+   [15.55,3.23],[15.98,2.61],[16.00,1.24]],
+  [[14.89,1.80],[15.00,2.67],[15.37,2.67],[15.48,1.80]],
+  1.22);
  sight.userData.fncProtectedFrontSight=true;
  sight.userData.fncP5OversizedFrontSight=true;
+ sight.userData.fncP6BroadProtectedSight=true;
  const rear=aperture('receiver','rear-guard',
-  [[-5.60,1.47],[-5.51,2.66],[-4.32,2.66],[-4.23,1.47]],
-  [[-5.26,1.80],[-5.16,2.30],[-4.69,2.30],[-4.57,1.80]],
-  1.09);
+  [[-5.78,1.45],[-5.69,2.84],[-4.10,2.84],[-4.02,1.45]],
+  [[-5.27,1.88],[-5.18,2.39],[-4.65,2.39],[-4.55,1.88]],
+  1.25);
  rear.userData.fncRearAperture=true;
  rear.userData.fncProtectedRearSight=true;
  rear.userData.fncP5OversizedRearSight=true;
+ rear.userData.fncP6BroadProtectedSight=true;
 
  // Asymmetric: right-side port/cover and charging handle, left selector.
  // Protruding parts overlap the RECEIVER body rather than float beside it.
@@ -231,16 +239,19 @@ export function buildFNCStage1Silhouette(
  port.castShadow=false;port.receiveShadow=false;
  // No separate lip: a second bright rectangle drew attention away from
  // the stamped receiver silhouette. The broad port itself is enough.
- // One long, broad projecting FN handle. Extruded six-point silhouette,
- // visibly larger in side elevation and 3D than the P4 peg.
+ // P5 accidentally lengthened the charging handle FORE-AFT. P6 restores
+ // a stubby profile and projects the whole handle outward from +Z instead.
+ // The short stem overlaps the upper sidewall so it never floats.
+ const handleStem=b('receiver',.36,.62,1.49,.59,.57,.67,'steel');
+ handleStem.userData.fncP6ChargingHandleStem=true;
  const handle=p('receiver',[
-  [-.55,.37],[-.22,.97],[1.19,.97],
-  [1.64,.72],[1.48,.31],[-.30,.31]
- ],.88,'steel');
- handle.position.z=1.71;
+  [-.12,.35],[.64,.35],[.79,.99],[-.11,.99]
+ ],1.18,'steel');
+ handle.position.z=2.07;
  handle.userData.fncRightChargingHandle=true;
  handle.userData.fncSixFacetedHandle=true;
  handle.userData.fncP5LargeChargingHandle=true;
+ handle.userData.fncP6ProtrudingChargingHandle=true;
  const selectorGeo=new THREE.CylinderGeometry(.37,.37,.22,6,1);
  selectorGeo.rotateX(Math.PI/2);
  const selector=new THREE.Mesh(selectorGeo,mat('steel'));

@@ -33,8 +33,11 @@ export function addFNCFacetedForearm(root:THREE.Group,
  const rear=STATIONS[0],front=STATIONS[STATIONS.length-1];
  for(let i=0;i<6;i++){
   const j=(i+1)%6;
-  tri([rear.x,-1.11,0],vertex(rear,j),vertex(rear,i));
-  tri([front.x,-1.11,0],vertex(front,i),vertex(front,j));
+  // The winding of the longitudinal strips is already outward. End caps
+  // must face the *opposite* direction: -X rear, +X muzzle side.
+  // P5 had both caps backwards, so Three.js culled their front faces.
+  tri([rear.x,-1.11,0],vertex(rear,i),vertex(rear,j));
+  tri([front.x,-1.11,0],vertex(front,j),vertex(front,i));
  }
  const geo=new THREE.BufferGeometry();
  geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
@@ -46,6 +49,7 @@ export function addFNCFacetedForearm(root:THREE.Group,
  mesh.userData.fncCrossSectionFaces=6;
  mesh.userData.fncP5LowerHex=true;
  mesh.userData.fncMoldedFlutesPerSide=2;
+ mesh.userData.fncP6OutwardEndcaps=true;
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
  return mesh;
 }
@@ -55,33 +59,43 @@ export function addFNCFacetedForearm(root:THREE.Group,
  */
 export function addFNCUpperGasBox(root:THREE.Group,
  material:THREE.Material):THREE.Mesh{
- const geometry=new THREE.BoxGeometry(9.20,1.35,1.72);
+ const geometry=new THREE.BoxGeometry(8.80,1.25,1.48);
  const mesh=new THREE.Mesh(geometry,material);
- mesh.position.set(8.66,.40,0); // X 4.06..13.26; Y -.275..1.075
+ mesh.position.set(8.43,.39,0); // X 4.03..12.83; closes shoulder-to-gas gap
  mesh.name='family-handguard-fnc-p5-upper-gas-box';
  mesh.userData.fncP5UpperGasBox=true;
+ mesh.userData.fncP6NarrowGasBox=true;
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh;
 }
-/** Two restrained LONG parallel lines on the hex and three on the upper
- * steel box. All four side mark meshes follow the actual exterior faces and
- * are not coplanar. Every stripe is one quad, not rivets or little holes.
+/** Two thick uninterrupted grooves on the polymer hex, three much thicker
+ * rows of intermittent DASHES on the upper gas box, FAL-like.
+ * All strokes are batches, one mesh per side+level; there are no loose
+ * individual screws, insets or thin texture details.
  */
 export function addFNCForearmMarks(root:THREE.Group,
  dark:THREE.Material):THREE.Mesh[]{
  const marks:THREE.Mesh[]=[];
  const addStrokes=(side:-1|1,level:'upper'|'lower')=>{
   const positions:number[]=[];
-  const ys=level==='upper'?[.05,.42,.78]:[-.91,-1.60];
-  for(const y of ys){
-   const x0=4.66,x1=12.36,h=level==='upper'?.115:.145;
-   // Face of the top box, or extrapolated face of the lower hex.
-   const z=(yy:number)=>level==='upper'?.889:
-    (yy>=-1.21? .72+(-.18-yy)*(.33/1.03):
-     1.05-(-1.21-yy)*(.44/.83))+.038;
+  const upper=level==='upper';
+  const ys=upper?[.02,.39,.75]:[-.91,-1.65];
+  // Three long dotted rows: each is 3 bold rectangles with deliberate
+  // breathing room. The lower two are each a single uninterrupted channel.
+  const intervals:readonly (readonly [number,number])[]=
+   upper?[[4.70,6.80],[7.23,9.36],[9.79,12.20]]:
+   [[4.66,12.28]];
+  const height=upper?.235:.29;
+  for(const y of ys)for(const [x0,x1] of intervals){
+   const h=height/2;
+   // Outside the actual side planes, with no surface fighting:
+   // gas box Z=.74; lower hex side slopes from Z=.72 to Z=1.05.
+   const depth=(yy:number)=>upper?.782:
+    (yy>=-1.21?.72+(-.18-yy)*(.33/1.03):
+     1.05-(-1.21-yy)*(.44/.83))+.065;
    const v=(x:number,yy:number):[number,number,number]=>
-    [x,yy,side*z(yy)];
-   const a=v(x0,y-h/2),b=v(x1,y-h/2),
-    c=v(x1,y+h/2),d=v(x0,y+h/2);
+    [x,yy,side*depth(yy)];
+   const a=v(x0,y-h),b=v(x1,y-h),
+    c=v(x1,y+h),d=v(x0,y+h);
    if(side>0)positions.push(...a,...b,...c,...a,...c,...d);
    else positions.push(...a,...c,...b,...a,...d,...c);
   }
@@ -89,10 +103,12 @@ export function addFNCForearmMarks(root:THREE.Group,
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geometry.computeVertexNormals();
   const mesh=new THREE.Mesh(geometry,dark);
-  mesh.name='family-handguard-fnc-p5-'+level+'-grooves-'+side;
+  mesh.name='family-handguard-fnc-p6-'+level+'-grooves-'+side;
   mesh.userData.fncP5GrooveSide=side;
   mesh.userData.fncP5GrooveLevel=level;
   mesh.userData.fncP5GrooveCount=ys.length;
+  mesh.userData.fncP6GrooveSegmentsPerRow=intervals.length;
+  mesh.userData.fncP6BoldGrooveHeight=height;
   mesh.castShadow=false;mesh.receiveShadow=false;root.add(mesh);marks.push(mesh);
  };
  for(const side of [-1,1] as const){
