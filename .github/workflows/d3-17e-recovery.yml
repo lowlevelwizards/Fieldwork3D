@@ -28,6 +28,8 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/release-d3-17e-recovery-accounting.test.mjs \
+            tests/release-d3-17e-physical-leaf-rejoin.test.mjs \
+            tests/release-d3-17e-operator-status.test.mjs \
             tests/release-d3-17d-door-route-join.test.mjs \
             tests/release-d3-17c-physical-departure.test.mjs \
             tests/release-d3-17b-route-recurrence.test.mjs \

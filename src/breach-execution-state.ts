@@ -26,7 +26,7 @@ export type ExecutionActor={
  lastFailedOrder?:{id:number;kind:string;reason:string;at:number}|null;
  passageWaitSeconds?:number;
 };
-type Peer={health:number;syncReady:string|null;plan:readonly PlanNode[]};
+type Peer={id?:string;health:number;syncReady:string|null;plan:readonly PlanNode[]};
 type DoorView={id:string;open:boolean;openFraction?:number};
 export type ExecutionContext={
  phase?:'planning'|'running'|'won'|'lost';
@@ -129,7 +129,7 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
    const waiting=peers.find(p=>p.syncReady!==code);
    return result('waiting','SYNC '+code,
      peers.length?(ready+'/'+peers.length+' READY'+
-       (waiting?' · WAITING FOR TEAM':''))
+       (waiting?' · WAITING FOR '+(waiting.id??'TEAM').toUpperCase():''))
        :'WAITING FOR SYNC',
      id,'sync');
  }
