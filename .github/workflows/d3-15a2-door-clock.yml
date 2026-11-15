@@ -57,8 +57,10 @@ jobs:
              r.summary.corruptedPlans||r.summary.physicsStepViolations||
              r.summary.unboundedManeuverAttempts)
               throw Error(name+' invalid physical movement or order');
-           if(a.activeOrder==='door'&&a.actionTimer===0)
-              throw Error(name+' explicit DOOR still loses its live clock');
+           if(m.arrivals!==4||m.operators.some(x=>!x.arrived||x.remainingOrders>0))
+              throw Error(name+' four operators did not physically complete original goals');
+           if(m.crossed.some(x=>x===null))
+              throw Error(name+' did not physically cross the actual FRONT door plane');
           }
           const h=load('historical'),s=h.summary,p=h.progressSummary,q=h.routeQualitySummary;
           console.log('D315A2_HISTORICAL',JSON.stringify({s,p,q}));
