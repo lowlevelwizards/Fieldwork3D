@@ -75,6 +75,8 @@ export function addFNCForearmMarks(root:THREE.Group,material:THREE.Material):
 /** One stepped stamped gas housing, elevated from the end of the long
  * polymer lower belly. Three conspicuous, widely spaced vents PER SIDE
  * are batched into one mesh for each side, never individual screws/holes.
+ * The visible side is deliberately wider than the polymer underneath;
+ * otherwise the ports disappear behind the polymer in side elevation.
  */
 export function addFNCGasCover(root:THREE.Group,metal:THREE.Material,
  dark:THREE.Material):THREE.Mesh{
@@ -87,9 +89,9 @@ export function addFNCGasCover(root:THREE.Group,metal:THREE.Material,
  for(let i=1;i<outline.length;i++)shape.lineTo(outline[i][0],outline[i][1]);
  shape.closePath();
  const geometry=new THREE.ExtrudeGeometry(shape,{
-  depth:2.32,bevelEnabled:false,curveSegments:1,steps:1
+  depth:3.14,bevelEnabled:false,curveSegments:1,steps:1
  });
- geometry.translate(0,0,-1.16);
+ geometry.translate(0,0,-1.57);
  const housing=new THREE.Mesh(geometry,metal);
  housing.name='family-handguard-fnc-p3-gas-cover';
  housing.userData.fncDistinctGasCover=true;
@@ -97,7 +99,7 @@ export function addFNCGasCover(root:THREE.Group,metal:THREE.Material,
  for(const side of [-1,1] as const){
   const pos:number[]=[];
   for(const x of [11.27,12.03,12.79]){
-   const z=side*1.185,w=.37;
+   const z=side*1.595,w=.40;
    const a:[number,number,number]=[x-w/2,.58,z];
    const b:[number,number,number]=[x+w/2,.58,z];
    const c:[number,number,number]=[x+w/2,.90,z];
