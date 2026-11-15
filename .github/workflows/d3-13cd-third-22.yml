@@ -1,0 +1,99 @@
+name: D3.13C/D independent third 22-map generalization audit
+on:
+  pull_request:
+    branches: [feature/d3-13d-fulfilled-open-order-handoff-20261114]
+    paths:
+      - '.github/workflows/d3-13cd-third-22.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  genuine-unseen:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Set up exact released motor and read-only 60 Hz cohort harness
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base" b8ed3d6100582ef8a5a8acd0cc3dee0fff98adbd
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/base/node_modules"
+          audit=0e6ba260ffdf2ec9e78ebf8a7f13657816cac62c
+          git fetch --no-tags origin "$audit"
+          for file in scripts/audit-r7-squad-execution.mjs scripts/lib/d3-holdout-22-manifest.mjs; do
+            mkdir -p "$(dirname "$file")" "$RUNNER_TEMP/base/$(dirname "$file")"
+            git show "$audit:$file" > "$file"
+            cp "$file" "$RUNNER_TEMP/base/$file"
+          done
+          # Freeze the third independent seed set BEFORE seeing any outcomes.
+          # Keep all 11 archetypes × two sizes and exactly the same orders.
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const [candidate,baseline]=process.argv.slice(1);
+            const src=fs.readFileSync(candidate,"utf8");
+            const a="const seed=cohort?.seed??31045+i*13;";
+            const b="const scale=cohort?.scale??(i%2===0?\x27small\x27:\x27standard\x27);";
+            if(!src.includes(a)||!src.includes(b))
+              throw Error("source changed; cannot freeze blind cohort");
+            const revised=src.replace(a,"const seed=1700311+i*19457;")
+              .replace(b,"const scale=i<11?\x27small\x27:\x27standard\x27;");
+            fs.writeFileSync(candidate,revised);
+            fs.writeFileSync(baseline,revised);
+          ' "$GITHUB_WORKSPACE/scripts/audit-r7-squad-execution.mjs" "$RUNNER_TEMP/base/scripts/audit-r7-squad-execution.mjs"
+      - name: Compare 22 genuinely NEW layouts (44 squads per build, 45 seconds each)
+        run: |
+          node --experimental-strip-types "$RUNNER_TEMP/base/scripts/audit-r7-squad-execution.mjs" \
+            22 2700 --progress --route-quality > "$RUNNER_TEMP/new22-before.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --progress --route-quality > "$RUNNER_TEMP/new22-after.json"
+      - name: Report per-site true arrival and recovery changes
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const load=p=>JSON.parse(fs.readFileSync(p,"utf8"));
+            const b=load(process.argv[1]+"/new22-before.json");
+            const a=load(process.argv[1]+"/new22-after.json");
+            const pick=r=>({arrivals:r.summary.physicalArrivals,
+              squads:r.summary.physicalCompletedFour,
+              logical:r.summary.completedFour,
+              stalls:r.summary.stallEpisodes,
+              retries:r.summary.retries,
+              loops:r.progressSummary.suspectedLoops,
+              still:r.progressSummary.sustainedStill,
+              searches:r.routeQualitySummary.searches,
+              doorFlips:r.summary.doorStateFlips});
+            if(a.rows.length!==22||b.rows.length!==22)throw Error("wrong map count");
+            const changes=b.rows.map((r,i)=>{
+              const s=a.rows[i];if(s.seed!==r.seed)throw Error("different map seeds");
+              return {seed:r.seed,type:r.archetype,scale:r.scale,
+                before:r.modes.map(m=>({mode:m.mode,arrivals:m.arrivals,
+                  retries:m.retries,stalls:m.stallEpisodes})),
+                after:s.modes.map(m=>({mode:m.mode,arrivals:m.arrivals,
+                  retries:m.retries,stalls:m.stallEpisodes}))};
+            }).filter(x=>JSON.stringify(x.before)!==JSON.stringify(x.after));
+            console.log("D313CD_UNSEEN22",JSON.stringify({
+              before:pick(b),after:pick(a),changes}));
+            for(const r of [b,a])
+              for(const key of ["exceptions","invalidPositions",
+                  "physicsStepViolations","corruptedPlans","unboundedManeuverAttempts"])
+                if(r.summary[key])throw Error("physical safety violation "+key);
+            if(a.summary.physicalArrivals<b.summary.physicalArrivals||
+               a.summary.physicalCompletedFour<b.summary.physicalCompletedFour)
+              throw Error("new-seed physical arrival regression");
+            if(a.progressSummary.sustainedStill>b.progressSummary.sustainedStill)
+              throw Error("new sustained still");
+          ' "$RUNNER_TEMP"
+      - name: Keep all 176 operator records from both versions
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-13cd-independent-unseen-22
+          path: |
+            ${{ runner.temp }}/new22-before.json
+            ${{ runner.temp }}/new22-after.json
+          if-no-files-found: warn
