@@ -139,7 +139,6 @@ button:focus-visible{outline:2px solid #e9c493;outline-offset:3px}
  border:1px solid #93aa9377;border-radius:6px;
  box-shadow:0 6px 30px #09161799;backdrop-filter:blur(6px);
  transform:translate(-50%,-100%)}
-.context-tools[hidden]{display:none}
 .context-tools button{border:1px solid #718f83a8;border-radius:4px;
  padding:7px 10px;min-height:35px;background:var(--fw-panel-raised);color:#e1e7d4;
  font-size:10px;letter-spacing:.05em;white-space:nowrap}
@@ -382,7 +381,6 @@ body.replaying .foot,body.replaying .guidance,body.replaying .feed{display:none!
   left:50%;max-width:min(330px,calc(100vw - 28px));
   transform:translateX(-50%);background:#162622ef;
   border-color:#9aac8a80;font-size:11px;padding:8px 11px}
-.guidance[hidden],.feed[hidden]{display:none!important}
 .feed{bottom:calc(112px + env(safe-area-inset-bottom));left:50%;
   transform:translateX(-50%);max-width:min(350px,calc(100vw - 24px));
   width:max-content;text-align:center;background:#152421ec;
@@ -480,7 +478,6 @@ button:disabled{opacity:.48;cursor:default}
 .context-primary button{min-height:52px}
 .context-tools .context-state button{flex-direction:row;min-height:40px}
 .context-primary .ui-icon{width:19px;height:19px}
-.context-state .ui-icon{width:16px;height:16px}
 .bar #back,.bar #moreOrders,.orders #undo,.orders #redo,
 .orders #siteSettingsToggle,.cancel-target{
  display:inline-flex;align-items:center;justify-content:center;gap:5px}
