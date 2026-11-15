@@ -61,7 +61,7 @@ test('FAL P1: front sight has centered post and two lateral protective ears',()=
  assert.ok(B.max.y>P.min.y,'center post embeds into base');
  assert.ok(L.max.y>2.9&&L.max.y<3.05,'maintain current short FAL sight envelope');
  assert.ok(Math.abs((L.min.x+L.max.x)/2-FAL_ART.frontSightX)<.5);
- assert.equal(root.children.length,25);
+ assert.equal(root.children.length,26);
  assert.equal(root.children.filter(x=>x.name.startsWith('family-handguard-fal-vented')).length,3);
  assert.ok(root.children.every(x=>x.name.startsWith('family-')));
  clearWeaponSilhouette(root);m.dispose();

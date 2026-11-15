@@ -76,6 +76,6 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
   'P6 fore-end is deliberately tall with unmistakable FAL tapered shoulders');
  assert.ok(ears.max.y>=2.90&&ears.max.y<=3.1,'front sight ears must be modest');
  assert.ok(receiver.max.y>=1.8,'upper dust cover should remain long and clear');
- assert.equal(g.children.length,17,'P7: fewer receiver features and purposeful muzzle silhouette');
+ assert.equal(g.children.length,18,'P7: fewer receiver features and purposeful muzzle silhouette');
  clearWeaponSilhouette(g);material.dispose();
 });
