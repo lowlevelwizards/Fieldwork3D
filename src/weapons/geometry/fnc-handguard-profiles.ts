@@ -53,10 +53,11 @@ export function addFNCForearmMarks(root:THREE.Group,material:THREE.Material):
  THREE.Mesh[]{
  const result:THREE.Mesh[]=[];
  for(const side of [-1,1] as const){
-  const z=side*1.515,positions=[
-   4.55,-.91,z, 9.54,-.91,z, 9.54,-1.17,z,
-   4.55,-.91,z, 9.54,-1.17,z, 4.55,-1.17,z
-  ];
+  const z=side*1.54;
+  const a=[4.55,-.91,z],b=[9.54,-.91,z],
+   d=[4.55,-1.17,z],e=[9.54,-1.17,z];
+  const positions=side>0?[...a,...e,...b,...a,...d,...e]:
+   [...a,...b,...e,...a,...e,...d];
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geo.computeVertexNormals();
@@ -81,21 +82,14 @@ export function addFNCGasCover(root:THREE.Group,metal:THREE.Material,
   [10.73,.11],[10.73,1.19],[11.20,1.46],
   [13.23,1.46],[13.55,1.11],[13.55,.11]
  ];
- const vertices:number[]=[];
- for(let i=1;i<outline.length-1;i++){
-  for(const z of [-1.16,1.16]){
-   for(const j of [0,i,i+1])vertices.push(outline[j][0],outline[j][1],z);
-  }
- }
- for(let i=0;i<outline.length;i++){
-  const j=(i+1)%outline.length;
-  const a=outline[i],b=outline[j];
-  vertices.push(a[0],a[1],-1.16,b[0],b[1],-1.16,
-   b[0],b[1],1.16,a[0],a[1],-1.16,b[0],b[1],1.16,a[0],a[1],1.16);
- }
- const geometry=new THREE.BufferGeometry();
- geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
- geometry.computeVertexNormals();
+ const shape=new THREE.Shape();
+ shape.moveTo(outline[0][0],outline[0][1]);
+ for(let i=1;i<outline.length;i++)shape.lineTo(outline[i][0],outline[i][1]);
+ shape.closePath();
+ const geometry=new THREE.ExtrudeGeometry(shape,{
+  depth:2.32,bevelEnabled:false,curveSegments:1,steps:1
+ });
+ geometry.translate(0,0,-1.16);
  const housing=new THREE.Mesh(geometry,metal);
  housing.name='family-handguard-fnc-p3-gas-cover';
  housing.userData.fncDistinctGasCover=true;
@@ -108,7 +102,8 @@ export function addFNCGasCover(root:THREE.Group,metal:THREE.Material,
    const b:[number,number,number]=[x+w/2,.58,z];
    const c:[number,number,number]=[x+w/2,.90,z];
    const d:[number,number,number]=[x-w/2,.90,z];
-   pos.push(...a,...b,...c,...a,...c,...d);
+   if(side>0)pos.push(...a,...c,...b,...a,...d,...c);
+   else pos.push(...a,...b,...c,...a,...c,...d);
   }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
