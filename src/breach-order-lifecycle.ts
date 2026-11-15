@@ -89,6 +89,12 @@ export function completeOrder(a:TeamActor){retireCurrentOrder(a,true);}
  */
 export function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string,notify:(s:Session,text:string)=>void){
   if(a.plan[0]?.id!==n.id)return; // A stale callback cannot skip the next order.
+  // D3.16: a terminally cancelled order MUST remain distinguishable
+  // from a successfully executed one after plan draining. It is not an
+  // unresolved orderIssue (which belongs only to the currently held node).
+  // The stale-node check above makes this exactly-once and replay-stable.
+  a.failedOrders=(a.failedOrders??0)+1;
+  a.lastFailedOrder={id:n.id,kind:n.kind,reason,at:s.seconds};
   notify(s,a.name+' '+reason+' · ORDER CANCELLED');
   a.velocity=0;
   retireCurrentOrder(a,false);
