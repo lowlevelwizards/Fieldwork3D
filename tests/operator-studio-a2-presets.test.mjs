@@ -33,10 +33,10 @@ test('A2-B eight preset cap still supports case-insensitive overwrite',()=>{
  for(let i=0;i<STUDIO_PRESET_LIMIT;i++)
   presets=saveStudioPreset(presets,'Look '+i,wardrobe());
  assert.equal(presets.length,8);
- const revised={...wardrobe(),headwearColor:'olive'};
+ const revised={...wardrobe(),headwearColor:'olive-drab'};
  const changed=saveStudioPreset(presets,'  LOOK   0 ',revised);
  assert.equal(changed.length,8);
- assert.equal(changed[0].wardrobe.headwearColor,'olive');
+ assert.equal(changed[0].wardrobe.headwearColor,'olive-drab');
  assert.equal(normalizeStudioPresetName('  LOOK   0 '),'LOOK 0');
  assert.equal(saveStudioPreset(changed,'Ninth',wardrobe()).length,8);
 });

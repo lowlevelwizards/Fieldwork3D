@@ -60,7 +60,7 @@ test('Studio has six readable primary categories and contextual controls',()=>{
  assert.match(studio,/outfitPresetForKit\(/);
  assert.match(studio,/last saved look/i);
  assert.match(studio,/canCopyPrint\?'CAMOUFLAGE'/);
- assert.match(studio,/setWardrobeFabricSolid\(current\(\),channel,sourceSolid\)/);
+ assert.match(studio,/setWardrobeFabricSolid\(current\(\),channel,sourceSolid,outfit\)/);
  assert.match(studio,/studioRoot.dataset.comparing/);
  assert.match(css,/\.studio-more-panel/);
  assert.match(grid,/this\.liveContext/);

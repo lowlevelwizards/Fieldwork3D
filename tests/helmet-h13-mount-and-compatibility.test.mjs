@@ -93,5 +93,10 @@ test('H13 compatibility: all mount requirements are visible without lost saved o
  assert.ok(studio.includes('resolveEffectiveHelmetAppearance('),
   'Studio now shares the same effective compatibility state as the renderer');
  assert.ok(studio.includes('helmet-option-requirement'));
- assert.ok(studio.includes('next.cameraSide='));
+ assert.ok(studio.includes('editHelmetFieldPreferences('),
+  'Studio delegates socket decisions to the shared A2 edit policy');
+ const editing=readFileSync(new URL('../src/operator-helmet-appearance-edit.ts',
+  import.meta.url),'utf8');
+ assert.ok(editing.includes('next.cameraSide='),
+  'Both rail sockets still have deterministic reassignment');
 });

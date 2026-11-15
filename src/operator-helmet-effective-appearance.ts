@@ -76,6 +76,7 @@ export function resolveEffectiveHelmetAppearance(
  if(requestedSetup.cover!==setup.cover&&input.helmetSetup!==undefined)
   feedback.push({key:'cover',status:'saved-inactive',
    reason:'This shell uses a fitted cover'});
+ const savedPasgt=shell==='pasgt'?readPasgtDetails(input.pasgtDetails,input.helmetSetup):undefined;
  const pasgt=shell==='pasgt'?resolvePasgtDetails(input.pasgtDetails,input.helmetSetup,cover):undefined;
  // The PASGT field system takes precedence over the separate PASGT details
  // only when the field preferences are explicitly present.
@@ -83,7 +84,7 @@ export function resolveEffectiveHelmetAppearance(
   ...readPasgtDetails(input.pasgtDetails,input.helmetSetup),
   band:field.band||field.concealment==='net'?'elastic' as const:'none' as const,
   concealment:field.concealment,
-  slits:pasgt.slits||pasgtConcealmentRequiresSlits(field.concealment)
+  slits:!!savedPasgt?.slits||pasgtConcealmentRequiresSlits(field.concealment)
  }:pasgt;
  return {shell,cover,setup,field,fieldActive,pasgt:effectivePasgt,
   feedback,availability};

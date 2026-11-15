@@ -56,3 +56,13 @@ test('A2-A socket ownership follows latest explicit selection',()=>{
  assert.equal(weight.helmetField.battery,false);
  assert.equal(weight.helmetField.counterweight,true);
 });
+
+test('A2-A active field concealment owns forced PASGT slits',()=>{
+ const raw={...initialWardrobe(),helmetSetup:{version:1,cover:'fitted'},
+  pasgtDetails:{slits:false,band:'none',concealment:'scrim'},
+  helmetField:{concealment:'none'}};
+ assert.equal(appearance(raw).pasgt.slits,false);
+ const updated=editPasgtFieldDress(raw,{concealment:'foliage'});
+ assert.equal(appearance(updated).pasgt.slits,true);
+ assert.equal(raw.pasgtDetails.slits,false);
+});
