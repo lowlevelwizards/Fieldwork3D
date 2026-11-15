@@ -1,4 +1,4 @@
-import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
+import {setTransientRoute,noteDoorHandoffRejection,hasTransientRouteObserver} from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
@@ -71,9 +71,13 @@ export function restoreRepeatedDoorEscapeRoute(
     (a.doorTraversal.maneuver==='outside-leaf'&&
      a.doorTraversal.waypoints.length>0))return false;
  const world=sessionWorldGeometry(s);
- if(!bodyClear(a.p,s.doors,OPERATOR_RADIUS,world))return false;
+ if(!bodyClear(a.p,s.doors,OPERATOR_RADIUS,world)){
+   noteDoorHandoffRejection(s,a,'h:body-still-overlapping');return false;
+ }
  const original=takeRepeatedDoorEscapeRoute(a,s.seconds,goal);
- if(!original)return false;
+ if(!original){
+   noteDoorHandoffRejection(s,a,'h:no-eligible-repeat-evidence');return false;
+ }
  const sweep=(from:Pt,to:Pt)=>
    sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
  let rejoined=sweptRejoinExistingRoute(a.p,goal,original,sweep);
@@ -107,10 +111,16 @@ export function restoreRepeatedDoorEscapeRoute(
     pointToSegment(a.p,doorLeafSegment(stageDoor))<OPERATOR_RADIUS+44){
    rejoined=joinedLocalOpenLeafStage(a.p,goal,stageDoor,sweep,
      point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
-     (point,destination)=>routeWithSqueezeIntel(s.intel,point,destination));
+     (point,destination)=>routeWithSqueezeIntel(s.intel,point,destination),
+     hasTransientRouteObserver()?
+       reason=>noteDoorHandoffRejection(s,a,'h:stage:'+reason):undefined);
    usedLocalStage=rejoined.length>0;
+ }else if(!rejoined.length){
+   noteDoorHandoffRejection(s,a,'h:leaf-unavailable-or-far');
  }
- if(!rejoined.length||d(rejoined[rejoined.length-1],goal)>3)return false;
+ if(!rejoined.length||d(rejoined[rejoined.length-1],goal)>3){
+   noteDoorHandoffRejection(s,a,'h:no-accepted-local-rejoin');return false;
+ }
  setTransientRoute(s,a,rejoined,
    usedLocalStage?'door-escape-local-portal':'door-escape-world-rejoin');
  finishDoorEscapeRejoin(a);
