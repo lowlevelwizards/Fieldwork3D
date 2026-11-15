@@ -46,6 +46,19 @@ const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
 const clinicOnly=process.argv.includes('--clinic-only');
+// Development corpus only, separate from the frozen 22-map blind holdout.
+const numericFlag=(name,fallback)=>{
+ const value=process.argv.find(arg=>arg.startsWith(name+'='));
+ if(!value)return fallback;
+ const n=Number(value.slice(name.length+1));
+ if(!Number.isSafeInteger(n)||n<0)throw Error('invalid '+name);
+ return n;
+};
+const devSeedBase=numericFlag('--dev-seed-base',31045);
+const devSeedStride=numericFlag('--dev-seed-stride',13);
+if((devSeedBase!==31045||devSeedStride!==13)&&
+   process.argv.some(arg=>arg.startsWith('--site-index=')))
+ throw Error('development seed batch may not target one selected site');
 // Exact seeded-site diagnosis, opt-in, does not change any motor paths.
 const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
 const requestedSite=requestedSiteArg?Number(requestedSiteArg.split('=')[1]):null;
@@ -451,7 +464,7 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const seed=31045+i*13,archetype=names[i%names.length];
+ const seed=devSeedBase+i*devSeedStride,archetype=names[i%names.length];
  const scale=i%2===0?'small':'standard';
  try{
   const site=generateSite(seed,scale,undefined,{mission:'intel'},
