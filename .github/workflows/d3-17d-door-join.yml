@@ -50,6 +50,11 @@ jobs:
              r.summary.physicsStepViolations||r.summary.corruptedPlans||
              r.summary.unboundedManeuverAttempts)
             throw Error('D3.17D real physics or authored order violation');
+          if(!a.arrived||a.remainingOrders||a.failedOrders||m.arrivals!==4||
+             r.progressSummary.suspectedLoops)
+            throw Error('D3.17D COURT-1 did not achieve real 4-body GO');
+          if((sources['ash:door-rehearsal-joined-waypoint']??0)<1)
+            throw Error('D3.17D never established a swept local waypoint join');
           NODE
       - uses: actions/upload-artifact@v4
         if: always()
