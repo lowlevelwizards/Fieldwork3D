@@ -46,6 +46,13 @@ export const MP5_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  magazineTopY:-2.35,magwellTopY:-1.98,magwellBottomY:-2.82,
  portX:1.48,portY:.48,portWidthX:2.72,portHeightY:1.08
 };
+/** FN FNC magazine and right-side charging port share art-space coordinates. */
+export const FNC_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
+ gripShiftX:-4.65,gripDepthZ:2.02,
+ magwellCenterX:1.65,magazineWidthX:2.55,magazineDepthZ:1.49,
+ magazineTopY:-2.81,magwellTopY:-1.10,magwellBottomY:-3.05,
+ portX:2.08,portY:.35,portWidthX:2.38,portHeightY:.65
+};
 /** FN FAL 50.00 visual magazine/port landmarks shared with reload choreography. */
 export const FAL_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  gripShiftX:-4.45,gripDepthZ:2.16,

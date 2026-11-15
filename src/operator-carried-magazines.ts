@@ -15,9 +15,11 @@ import {MP5_MAG_CENTER_X,MP5_MAG_TOP_Y,MP5_MAG_LENGTH,mp5MagazineOutline}
  from './weapons/geometry/hk-mp5-magazine-profiles.ts';
 import {HK_MAG_METAL,HK556_MAG_METAL,HK9_MAG_METAL,FAL_MAG_METAL}
  from './weapons/geometry/weapon-visual-palette.ts';
-export type CarriedMagProfile={family:'ar'|'ak'|'hk'|'fal';length:number;material:number};
+export type CarriedMagProfile={family:'ar'|'ak'|'hk'|'fal'|'fnc';length:number;material:number};
 export function carriedMagazineProfile(part:string|null|undefined):CarriedMagProfile|null{
  if(!part)return null;
+ if(part==='fnc-mag30')
+  return {family:'fnc',length:4.65,material:0x687369};
  if(part==='fal-mag20')
   return {family:'fal',length:FAL_MAG20_LENGTH,material:FAL_MAG_METAL.color.getHex()};
  if(part==='hk-g3-mag20')
@@ -62,9 +64,10 @@ export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
   geometry.rotateY(Math.PI/2);
   return geometry;
  }
- const ar=profile.family==='ar';
+ const ar=profile.family==='ar'||profile.family==='fnc';
  const curve=ar?
-  arMagazineCurve(part==='ar-mag20'?'20':part==='ar-magpoly'?'poly':'30'):
+  (part==='fnc-mag30'?{...arMagazineCurve('30',1.65,-2.81,2.55,1.49),length:4.65,sweep:.72}:
+  arMagazineCurve(part==='ar-mag20'?'20':part==='ar-magpoly'?'poly':'30')):
   akMagazineCurve(part.startsWith('ak-rpk')?'rpk45':
    part.startsWith('ak-mag762')?'762':'545');
  const points=ar?
