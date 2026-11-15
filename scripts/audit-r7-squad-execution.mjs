@@ -37,6 +37,7 @@ import {routeWithSqueezeWorld,routeToNextOperableDoor,
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {classifyCProgressWindow} from '../src/breach-d3-c-progress.ts';
@@ -62,6 +63,7 @@ const routeTransitions=process.argv.includes('--route-transitions');
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
+const d315bRouteProbe=process.argv.includes('--d315b-route-probe');
 const h2Fresh22=process.argv.includes('--h2-fresh-22');
 const d314bBlind22=process.argv.includes('--d314b-blind22');
 const d314cBlind22=process.argv.includes('--d314c-blind22');
@@ -573,6 +575,49 @@ function run(site,seed,kind){
     };
    }
   }
+  // D3.15B2: one read-only post-simulation feasibility inspection
+  // of the *active* authorial MOVE to STACK, not the remote entry landing.
+  // No actor, door, plan, clock, body clearance or nav is modified.
+  let d315bRouteEvidence=null;
+  if(d315bRouteProbe&&kind==='entry'){
+   const actor=actors.find(a=>a.id==='vale');
+   const current=actor?.plan[0];
+   if(actor&&current?.kind==='move'){
+    const world=sessionWorldGeometry(session);
+    const goal=current.p;
+    const full=(a,b)=>sweptBodyClear(a,b,session.doors,OPERATOR_RADIUS,world);
+    const inspect=(route)=>{
+     let at=actor.p,cost=0,invalid=0;
+     for(const pt of route){cost+=dist(at,pt);if(!full(at,pt))invalid++;at=pt;}
+     return {nodes:route.length,cost:round(cost),invalid,
+      goalCompleted:route.length>0&&dist(route.at(-1),goal)<3,
+      first:route.slice(0,8),last:route.slice(-3),
+      firstLegClear:route.length>0?full(actor.p,route[0]):false};
+    };
+    const local=recoverNormalLane(actor.p,goal,session.doors,world);
+    const directWorld=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+    const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+    const alternate=local.length?alternateFullBodyLaneFromCycle(actor.p,
+      goal,local[0],full,(a,b)=>routeWithSqueezeWorld(a,b,session.doors,world)):[];
+    const last=planned.goals.get(actor.id);
+    const finalWorld=last?routeWithSqueezeWorld(actor.p,last,session.doors,world):[];
+    d315bRouteEvidence={actorId:actor.id,position:{...actor.p},
+      activeOrder:{id:current.id,kind:current.kind,goal:{...goal},
+       stackDoorId:current.stackDoorId??null,entryDoorId:current.entryDoorId??null},
+      finalLanding:last?{...last}:null,
+      currentGoalRemaining:round(dist(actor.p,goal)),
+      finalLandingRemaining:last?round(dist(actor.p,last)):null,
+      squeeze:actor.squeeze,blockedTime:round(actor.blockedTime),
+      doorTraversal:actor.doorTraversal?.doorId??null,
+      currentNextNav:actor.nav.slice(0,6),
+      local:inspect(local),directWorld:inspect(directWorld),
+      firstFuturePortal:inspect(future),oppositeDeparture:inspect(alternate),
+      finalLandingWorldNodes:finalWorld.length,
+      clearStandingBody:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
+      closedDoors:session.doors.filter(d=>!d.open||d.openFraction<.72)
+       .map(d=>({id:d.id,open:!!d.open,locked:!!d.locked,fraction:round(d.openFraction??0)}))};
+   }
+  }
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -591,6 +636,7 @@ function run(site,seed,kind){
    warehouseHingeWitness,
    ...(d314bClearanceProbe?{d314bClearanceEvidence}:{}),
    ...(d314cFrontProbe?{d314cFrontEvidence}:{}),
+   ...(d315bRouteProbe?{d315bRouteEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
