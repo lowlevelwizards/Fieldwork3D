@@ -69,7 +69,7 @@ test('D3.11D: only real leaf escape may attempt proactive joined route',()=>{
  assert.match(maneuver,/e\.authoredOrderId!==order\.id/);
  assert.match(maneuver,/s\.seconds<e\.nextManeuverAt/);
  assert.match(maneuver,/e\.maneuverAttempts>=4/);
- assert.match(maneuver,/completePortalRouteToAuthoredGoal\(stage,goal,tail,clear\)/);
+ assert.match(maneuver,/completePortalRouteToAuthoredGoal\(a\.p,stage,goal,tail,clear\)/);
  assert.match(maneuver,/routeWithSqueezeIntel\(s\.intel,end,goal\)/);
  assert.match(maneuver,/sweptBodyClear\(from,to,s\.doors,OPERATOR_RADIUS,world\)/);
  assert.match(collision,/if\(!restoreAfterOpenLeafEscape\(a,s,p\)\)a\.retryRouteAt=0/);
