@@ -1,0 +1,53 @@
+name: D3.16 coordinated A+B production checkpoint
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/d3-16-coordinated-release.yml'
+      - 'src/breach-actor-initial-state.ts'
+      - 'src/breach-order-lifecycle.ts'
+      - 'src/breach-execution-state.ts'
+      - 'src/breach-order-outcome.ts'
+      - 'src/breach-authored-goal-block.ts'
+      - 'src/ui/recovery-guidance.ts'
+      - 'src/ui/execution-feedback.ts'
+      - 'tests/release-d3-16a-honest-order-outcomes.test.mjs'
+      - 'tests/release-d3-16b-fixed-goal-feedback.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  coordinated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Integrated TS and physical truthful feedback contract
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-16a-honest-order-outcomes.test.mjs \
+            tests/release-d3-16b-fixed-goal-feedback.test.mjs \
+            tests/breach-roadmap2-stage8-orders.test.mjs \
+            tests/tactical-integration-13-execution-status.test.mjs \
+            tests/release7-mobile-clarity.test.mjs \
+            tests/tactical-integration-14-execution-feedback.test.mjs
+      - name: Verify no automated GO editing or alternate actor-physics authority
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const source=fs.readFileSync('src/breach-authored-goal-block.ts','utf8');
+          const ui=fs.readFileSync('src/ui/execution-feedback.ts','utf8');
+          const state=fs.readFileSync('src/breach-execution-state.ts','utf8');
+          if(/a\.plan\.(?:shift|splice|push)\(|node\.p\s*=/.test(source))
+           throw Error('fixed GO correction modified authored plan');
+          if(!source.includes('s.intel.cover.has(i)')||
+             !source.includes('!canRelocateCover(cover)')||
+             !ui.includes('executionRecovery(event.reason,event.text)')||
+             !state.includes('ORDERS CANCELLED'))
+           throw Error('missing known-only motor/HUD/warning release contract');
+          console.log('D316_COORDINATED_RELEASE_PASS');
+          NODE
