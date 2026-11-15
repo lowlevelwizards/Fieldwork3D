@@ -28,7 +28,7 @@ jobs:
             --progress --route-quality --route-transitions \
             --trace-actor=vale --trace-mode=entry \
             > "$RUNNER_TEMP/d3-14a/townhouse-entry-vale.json"
-      - name: P0 D9 Vale — offline full-body and actual squeezed-body feasibility
+      - name: P0 D9 Vale — bounded real squeeze-step route rejoin feasibility
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --site-index=1 --audit-seed=5532875 --audit-scale=standard \
