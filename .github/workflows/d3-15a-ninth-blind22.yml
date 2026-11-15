@@ -1,0 +1,68 @@
+name: D3.15A ninth blind 22-map real 60Hz paired acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-motor-door.ts'
+      - 'src/breach-order-movement.ts'
+      - 'src/breach-entry-coordination.ts'
+      - 'src/breach-order-wait.ts'
+      - 'scripts/lib/d3-15a-ninth-blind22.mjs'
+      - 'scripts/report-d3-15a-blind22.mjs'
+      - '.github/workflows/d3-15a-ninth-blind22.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-15a-ninth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  ninth-paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Exact candidate PR head
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Immutable deployed D3.14D2 baseline (prior production)
+        uses: actions/checkout@v4
+        with:
+          path: baseline
+          ref: a1e30544cdc8019c6e5e5ad001f6d4329397c59f
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Same frozen ninth cohort and read-only audit harness
+        run: |
+          cp candidate/scripts/audit-r7-squad-execution.mjs baseline/scripts/audit-r7-squad-execution.mjs
+          cp candidate/scripts/lib/d3-15a-ninth-blind22.mjs baseline/scripts/lib/d3-15a-ninth-blind22.mjs
+          npm --prefix baseline install --no-audit --no-fund
+          npm --prefix candidate install --no-audit --no-fund
+          mkdir -p "$RUNNER_TEMP/d315a"
+      - name: Released D3.14D2 ninth 22x2x4 45-second physical reference
+        run: |
+          cd baseline
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+           22 2700 --d315a-blind22 --progress --route-quality \
+           > "$RUNNER_TEMP/d315a/baseline.json"
+      - name: Candidate identical ninth seeds, orders and full 60Hz motor
+        run: |
+          cd candidate
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+           22 2700 --d315a-blind22 --progress --route-quality \
+           > "$RUNNER_TEMP/d315a/candidate.json"
+      - name: Enforce per-squad no-lost-arrivals and no added stalls/loops/search
+        run: |
+          cd candidate
+          node scripts/report-d3-15a-blind22.mjs \
+           "$RUNNER_TEMP/d315a/baseline.json" \
+           "$RUNNER_TEMP/d315a/candidate.json"
+      - name: Preserve full frozen before/after actual motor and report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d315a-ninth-blind22-paired
+          path: ${{ runner.temp }}/d315a/*.json
+          retention-days: 90
+          if-no-files-found: ignore
