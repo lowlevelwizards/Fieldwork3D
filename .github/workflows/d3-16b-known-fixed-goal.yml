@@ -50,7 +50,8 @@ jobs:
              throw Error('Ash goal was moved/cancelled, blocked hint ungrounded, or no real obstruction');
           if(!vale||vale.failedOrders!==1||vale.arrived||vale.remainingOrders!==0)
              throw Error('locked-door cancellation no longer truthful');
-          if(r.summary.physicalArrivals!==2||r.summary.terminallyCancelledOrders!==1||
+          if(r.summary.physicalArrivals!==6||r.summary.physicalCompletedFour!==1||
+             r.summary.successfulFour!==1||r.summary.terminallyCancelledOrders!==1||
              r.summary.cancelledOperators!==1||r.summary.physicallyPendingOperators!==1||
              r.summary.exceptions||r.summary.physicsStepViolations||
              r.summary.corruptedPlans||r.summary.invalidPositions)
