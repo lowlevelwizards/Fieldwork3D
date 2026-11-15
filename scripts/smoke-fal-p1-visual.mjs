@@ -69,7 +69,34 @@ try{
   await capture('m4-g3-fal-shaded-three-quarter');
   await page.getByRole('button',{name:'LEFT SIDE'}).click();
   await capture('m4-g3-fal-shaded-left-side');
-  if(errors.length)throw Error('3D FAL lab errors: '+errors.join(' | '));
+  // Render the three NEW real factory models in the shipped Arsenal, not
+  // a synthetic lab-only builder; retain a review capture for each.
+  await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
+  await page.locator('.arsenal-search').fill('FAL');
+  const variants=[
+   ['FN FAL 50.00 · Wood','wood-5000'],
+   ['FN FAL 50.61 Para','para-5061'],
+   ['FN FAL 50.63 Para','para-5063']
+  ];
+  for(const [name,file] of variants){
+   await page.getByRole('button',{name:'Select '+name}).click();
+   await page.waitForFunction(expected=>
+    document.querySelector('.arsenal-hero-copy h2')?.textContent===expected&&
+    document.querySelector('.arsenal-hero-media img')?.naturalWidth>=400,
+    name,{timeout:30000});
+   const photo=await page.locator('.arsenal-hero').screenshot({
+    path:'fal-p1-captures/arsenal-'+file+'.png'});
+   if(photo.length<7000)throw Error('Blank Arsenal '+name+' hero');
+  }
+  // The short Para must also open in the actual mobile Workbench without
+  // an unsupported-parts exception.
+  await page.setViewportSize({width:430,height:920});
+  await page.locator('.arsenal-hero-open').click();
+  await page.waitForFunction(()=>document.body.textContent?.includes('FN FAL 50.63 Para')&&
+   !!document.querySelector('canvas'),null,{timeout:30000});
+  const paraWorkbench=await page.screenshot({path:'fal-p1-captures/arsenal-para-5063-mobile-workbench.png'});
+  if(paraWorkbench.length<11000)throw Error('Blank Para Workbench');
+  if(errors.length)throw Error('3D FAL lab/Arsenal errors: '+errors.join(' | '));
   console.log('FAL P5: 8 Three.js right/left/shaded/three-quarter/mobile comparison captures passed.');
   await page.close();
  }finally{await browser.close();}
