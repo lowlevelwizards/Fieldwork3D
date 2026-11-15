@@ -182,6 +182,36 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  a.squeeze=false;a.squeezeTime=0;
  return true;
 }
+/** A transient, actor-owned budget survives replacement of the doorway
+ * episode for the SAME authored move. Without it one actor can repeatedly
+ * accept a full A* tail for the same already-rehearsed hinge and circle the
+ * room without goal progress. Weak keys disappear with the real actor.
+ */
+const joinedPortalHandoffs=new WeakMap<TeamActor,{
+ orderId:number;doorId:string;goalX:number;goalY:number;
+ count:number;lastLeafFraction:number;
+}>();
+export function canRehearseJoinedPortalOncePerLeaf(
+ actor:TeamActor,orderId:number,doorId:string,goal:Pt,
+ leafFraction:number
+):boolean{
+ const used=joinedPortalHandoffs.get(actor);
+ if(!used||used.orderId!==orderId||used.doorId!==doorId||
+    used.goalX!==goal.x||used.goalY!==goal.y)return true;
+ return used.count<2&&
+   Math.abs(leafFraction-used.lastLeafFraction)>.14;
+}
+function noteJoinedPortalHandoff(
+ actor:TeamActor,orderId:number,doorId:string,goal:Pt,leafFraction:number
+):void{
+ const prior=joinedPortalHandoffs.get(actor);
+ const same=!!prior&&prior.orderId===orderId&&prior.doorId===doorId&&
+  prior.goalX===goal.x&&prior.goalY===goal.y;
+ joinedPortalHandoffs.set(actor,{
+  orderId,doorId,goalX:goal.x,goalY:goal.y,
+  count:same?prior!.count+1:1,lastLeafFraction:leafFraction
+ });
+}
 /** D3.11D: ONLY after actual body-vs-leaf escape, ask whether the
  * established tiny physical maneuver can connect all the way to the
  * ORIGINAL MOVE destination. A portal-only proposal is NOT a valid route
@@ -209,7 +239,9 @@ export function tryGoalCompleteDoorHandoffAfterEscape(
     e.maneuverAttempts>=4)return false;
  const leafChanged=Math.abs((door.openFraction??0)-
   e.selectedLeafFraction)>.14;
- if(e.maneuverAttempts>=2&&!leafChanged)return false;
+ if(e.maneuverAttempts>=2&&!leafChanged||
+    !canRehearseJoinedPortalOncePerLeaf(a,order.id,e.doorId,goal,
+      door.openFraction??0))return false;
  e.lastShortEntryProbeAt=s.seconds;
  const world=sessionWorldGeometry(s);
  const clear=(from:Pt,to:Pt)=>
@@ -226,6 +258,7 @@ export function tryGoalCompleteDoorHandoffAfterEscape(
  e.maneuverAttempts++;
  e.selectedLeafFraction=door.openFraction??0;
  e.nextManeuverAt=s.seconds+1.5;
+ noteJoinedPortalHandoff(a,order.id,e.doorId,goal,door.openFraction??0);
  e.waypoints=route.map(clone);
  e.waypointIndex=0;
  e.maneuver='outside-leaf';
