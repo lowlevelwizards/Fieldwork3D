@@ -55,7 +55,7 @@ try{
   await ach.click();
   await page.locator('#studioWorkflow button[data-studio-step="details"]').click();
   const rails=page.locator('[data-helmet-option="rails"]');
-  const light=page.locator('[data-helmet-option="light"]');
+  const light=page.locator('.helmet-option-card[data-helmet-option="light"]');
   if(!await rails.isVisible()||!await light.isVisible())
    throw Error('Helmet mounting controls missing in details');
   if(await rails.getAttribute('aria-pressed')!=='true')await rails.click();
