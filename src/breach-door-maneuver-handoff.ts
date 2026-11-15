@@ -13,18 +13,23 @@ const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
  * An unreachable destination is not silently reclassified as a portal goal.
  */
 export function completePortalRouteToAuthoredGoal(
- stage:readonly Pt[],goal:Pt,continuation:readonly Pt[],
+ from:Pt,stage:readonly Pt[],goal:Pt,continuation:readonly Pt[],
  canSweep:(a:Pt,b:Pt)=>boolean
 ):Pt[]{
  if(!stage.length)return [];
  const end=stage[stage.length-1];
- if(distance(end,goal)<=3)return stage.map(clone);
- if(!continuation.length||
-    distance(continuation[continuation.length-1],goal)>3)return [];
- // Disallow a step that merely reverses into the same real, solid leaf.
- const next=continuation[0];
- if(distance(end,next)>1&&!canSweep(end,next))return [];
- // Preserve the exact authored final goal even when a grid endpoint is
- // within tolerance. This is an execution hint, not a new PlanNode.
- return [...stage.map(clone),...continuation.map(clone)];
+ if(distance(end,goal)>3&&(!continuation.length||
+    distance(continuation[continuation.length-1],goal)>3))return [];
+ // A physical portal probe is a LOCAL correction, not a license to
+ // replace a large-map route with a long speculative course. Reject
+ // excessive detours, even when every waypoint is individually legal.
+ // Existing motor recovery remains fully eligible after rejection.
+ const route=distance(end,goal)<=3?stage:[...stage,...continuation];
+ let length=0,at=from;
+ for(const next of route){length+=distance(at,next);at=next;}
+ if(length>distance(from,goal)*1.35+24)return [];
+ // Do not re-enter the real hinged leaf at the stage/route handoff.
+ if(distance(end,goal)>3&&distance(end,continuation[0])>1&&
+    !canSweep(end,continuation[0]))return [];
+ return route.map(clone);
 }
