@@ -3,7 +3,7 @@
  * selection, player orders, or any persistent actor state.
  */
 import type {Session,TeamActor} from './breach-game.ts';
-import type {Pt} from './breach-core.ts';
+import {doorLeafSegment,type Pt} from './breach-core.ts';
 export type RouteSource=
  'initial-intel'|'initial-enemy'|'shove-stage'|'fire-retreat'|
  'door-short-entry'|'door-rehearsal'|'door-drift'|'door-leaf-escape'|
@@ -16,6 +16,8 @@ export type TransientRouteTransition={
  squeeze:boolean;blockedTime:number;blocker:string|null;
  doorId:string|null;doorPhase:string|null;doorManeuver:string|null;
  doorFraction:number|null;goalKey:string;
+ /** Offline-only physically measured actor and leaf at route decision. */
+ position?:Pt;leafA?:Pt;leafB?:Pt;
  /** Set only on read-only rejection witnesses. */
  reason?:string;
 };
@@ -35,6 +37,9 @@ function report(s:Session,a:TeamActor,source:RouteSource,next:readonly Pt[],
   doorPhase:a.doorTraversal?.phase??null,
   doorManeuver:a.doorTraversal?.maneuver??null,
   doorFraction:door?.openFraction??null,goalKey:a.routeGoalKey,
+  position:{...a.p},
+  ...(door?{leafA:{...doorLeafSegment(door).a},
+    leafB:{...doorLeafSegment(door).b}}:{}),
   ...(reason?{reason}:{})});
 }
 /** Assign exactly the proposed transient route; zero extra allocations
@@ -64,3 +69,6 @@ export function noteDoorHandoffRejection(
 ):void{
  if(listener)report(s,a,'door-handoff-reject',a.nav,reason);
 }
+
+/** Zero-impact offline audit switch; the gameplay motor never installs it. */
+export function hasTransientRouteObserver():boolean{return listener!==null;}
