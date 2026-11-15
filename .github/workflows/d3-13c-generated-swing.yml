@@ -1,0 +1,96 @@
+name: D3.13C physical generated door swing — real 45s validation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/worldgen/generated-door-swing.ts'
+      - 'src/breach-site.ts'
+      - 'tests/release-d3-13c-generated-swing.test.mjs'
+      - '.github/workflows/d3-13c-generated-swing.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-13c-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  generated-door-reality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Physical 72% real architecture and existing door safety
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-13c-generated-swing.test.mjs \
+            tests/release-d3-9-single-opener.test.mjs \
+            tests/release-d3-11d-portal-handoff.test.mjs \
+            tests/door-traversal-d4-physics.test.mjs
+      - name: Production compilation and type checks
+        run: npm run build
+      - name: Prepare exact original engine and frozen 22-map audit
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/base" b8ed3d6100582ef8a5a8acd0cc3dee0fff98adbd
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/base/node_modules"
+          audit=0e6ba260ffdf2ec9e78ebf8a7f13657816cac62c
+          git fetch --no-tags origin "$audit"
+          for file in scripts/audit-r7-squad-execution.mjs scripts/lib/d3-holdout-22-manifest.mjs; do
+            mkdir -p "$(dirname "$file")" "$RUNNER_TEMP/base/$(dirname "$file")"
+            git show "$audit:$file" > "$file"
+            cp "$file" "$RUNNER_TEMP/base/$file"
+          done
+      - name: Compare exact 22-map problem regression cohort at full physical 45s
+        run: |
+          node --experimental-strip-types "$RUNNER_TEMP/base/scripts/audit-r7-squad-execution.mjs" \
+            22 2700 --holdout-22 --progress --route-quality > "$RUNNER_TEMP/fixed22-before.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --holdout-22 --progress --route-quality > "$RUNNER_TEMP/fixed22-after.json"
+      - name: Report true per-map improvements and safety, never only logical completions
+        run: |
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const get=p=>JSON.parse(fs.readFileSync(p,"utf8"));
+            const b=get(process.argv[1]+"/fixed22-before.json");
+            const a=get(process.argv[1]+"/fixed22-after.json");
+            const pick=r=>({arrivals:r.summary.physicalArrivals,
+              fullyArrivedSquads:r.summary.physicalCompletedFour,
+              logical:r.summary.completedFour,
+              stalls:r.summary.stallEpisodes,retries:r.summary.retries,
+              loops:r.progressSummary.suspectedLoops,
+              still:r.progressSummary.sustainedStill,
+              routeSearches:r.routeQualitySummary.searches,
+              doorStateFlips:r.summary.doorStateFlips});
+            if(b.rows.length!==22||a.rows.length!==22)throw Error("incomplete comparison");
+            const changed=b.rows.map((r,i)=>({
+              seed:r.seed,type:r.archetype,scale:r.scale,
+              before:r.modes.map(m=>({mode:m.mode,arrivals:m.arrivals,
+               retries:m.retries,stalls:m.stallEpisodes,complete:m.complete})),
+              after:a.rows[i].modes.map(m=>({mode:m.mode,arrivals:m.arrivals,
+               retries:m.retries,stalls:m.stallEpisodes,complete:m.complete}))
+            })).filter(x=>JSON.stringify(x.before)!==JSON.stringify(x.after));
+            console.log("D313C_FIXED22",JSON.stringify({before:pick(b),after:pick(a),changed}));
+            for(const r of [a,b])
+             for(const k of ["exceptions","invalidPositions","physicsStepViolations",
+                 "corruptedPlans","unboundedManeuverAttempts"])
+              if(r.summary[k])throw Error("unsafe "+k);
+            if(a.summary.physicalArrivals<b.summary.physicalArrivals||
+               a.summary.physicalCompletedFour<b.summary.physicalCompletedFour)
+              throw Error("physical arrival regression");
+            if(a.progressSummary.sustainedStill>b.progressSummary.sustainedStill)
+              throw Error("new sustained still");
+          ' "$RUNNER_TEMP"
+      - name: Preserve raw per-actor full-run evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-13c-72-percent-22-map-45s
+          path: |
+            ${{ runner.temp }}/fixed22-before.json
+            ${{ runner.temp }}/fixed22-after.json
+          if-no-files-found: warn
