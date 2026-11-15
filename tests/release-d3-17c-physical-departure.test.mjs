@@ -45,6 +45,16 @@ test('D3.17C: physical departure requires the full-size motor sweep, not endpoin
  assert.ok(selected.length>2,'should choose a swept first sidestep');
  assert.deepEqual(selected.at(-1),goal);
 });
+test('D3.17C: valid full-goal door rescue is evaluated before repeat rejection',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('../src/breach-door-traversal-maneuver.ts',
+   import.meta.url),'utf8');
+ const fn=src.slice(src.indexOf('export function tryRehearsedDoorManeuver('),
+   src.indexOf('export function canRehearseJoinedPortalOncePerLeaf('));
+ assert.ok(fn.indexOf('const chosen=whole.length?whole:path')>=0);
+ assert.ok(fn.indexOf('const chosen=whole.length?whole:path')<
+   fn.indexOf('if(!allowPhysicalRouteReissue'));
+});
 test('D3.17C: no candidate when every microstride or final GO is blocked',()=>{
  assert.deepEqual(selectMotorVerifiedFurnitureDeparture(p(0,0),p(30,0),
   [p(10,0),p(30,0)],()=>false,()=>[]),[]);

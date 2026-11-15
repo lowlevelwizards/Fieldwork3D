@@ -171,18 +171,6 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
    sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
  const path=rehearseDoorLeafBypass(a.p,episode.destination,door,sweep);
  if(!path.length)return false;
- // D3.17B1: the same physical doorway stage cannot be repeatedly issued
- // from the same anchor with no progress to the original GO. A real new
- // order, moved hinge, actor relocation, or productive travel resets it.
- // Leave collision handling/true blocked recovery active if rejected.
- const leafToken=door.id+':'+Math.round((door.openFraction??0)*6);
- if(!allowPhysicalRouteReissue(a,'door-rehearsal',episode.destination,
-    path,s.seconds,leafToken))return false;
- // Commit a retry only after selecting a new swept stage. A suppressed
- // repeated proposal must not consume the physical maneuver budget.
- episode.maneuverAttempts++;
- episode.selectedLeafFraction=door.openFraction??0;
- episode.nextManeuverAt=s.seconds+1.5;
  // D3.14D2: a real open D2 can repeatedly accept the same swept
  // short rehearsal, then fall back to a stale remembered-map route.
  // Count only separately accepted physical rehearsals at the same
@@ -193,6 +181,16 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
    a.p,episode.destination,
    routeWithSqueezeWorld(a.p,episode.destination,s.doors,world),sweep):[];
  const chosen=whole.length?whole:path;
+ // D3.17C: a valid goal-reaching world recovery wins over suppressing
+ // the partial portal stage from a repeated backwards episode. Count
+ // actual chosen routes rather than the preliminary rehearsal candidate.
+ const leafToken=door.id+':'+Math.round((door.openFraction??0)*6);
+ if(!allowPhysicalRouteReissue(a,'door-rehearsal',episode.destination,
+    chosen,s.seconds,leafToken))return false;
+ // A rejected repeat must not consume the existing maneuver retry budget.
+ episode.maneuverAttempts++;
+ episode.selectedLeafFraction=door.openFraction??0;
+ episode.nextManeuverAt=s.seconds+1.5;
  episode.waypoints=chosen.map(clone);
  episode.waypointIndex=0;
  episode.maneuver='outside-leaf';

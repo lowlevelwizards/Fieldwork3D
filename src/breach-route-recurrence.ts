@@ -35,7 +35,7 @@ export function allowPhysicalRouteReissue(
  const backwardDoor=family==='door-rehearsal'&&
    distance(route[route.length-1],goal)>remaining+3;
  const maxAge=backwardDoor?18:8;
- const allowed=backwardDoor?2:4;
+ const allowed=backwardDoor?3:4;
  const same=!!previous&&previous.orderId===order.id&&
    previous.token===token&&distance(previous.goal,goal)<.5&&
    distance(previous.first,route[0])<3&&
