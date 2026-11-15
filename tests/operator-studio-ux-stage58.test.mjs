@@ -65,7 +65,8 @@ test('Studio has six readable primary categories and contextual controls',()=>{
  assert.match(css,/\.studio-more-panel/);
  assert.match(grid,/this\.liveContext/);
  assert.match(grid,/this\.previewIdentity/);
- assert.match(grid,/JSON\.stringify\(this\.wardrobe\)/);
+ assert.match(grid,/appearanceThumbnailKey\(/,
+  'Stable content-based thumbnail keys prevent unnecessary card redraws');
  assert.ok(!grid.includes("item.id==='acu-shirt'?'scorpion-w2'"),
   'Studio cards must not inject a demo print');
 });
