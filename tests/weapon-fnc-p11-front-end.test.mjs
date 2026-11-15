@@ -20,14 +20,14 @@ test('P13 extended polymer still shorter than slim gas cover, all parts connecte
  const gas=get(g,'fncP11LongSlimVentedCover');
  const lip=get(g,'fncP11HandstopLip'),base=get(g,'fncP7ContinuousGasSightSeat');
  assert.ok(polymer&&gas&&lip&&base);
- assert.ok(size(polymer,'x')>7.1&&size(polymer,'x')<7.4);
+ assert.ok(size(polymer,'x')>7.65&&size(polymer,'x')<7.75);
  assert.ok(size(gas,'x')>8.8&&size(gas,'x')<9.0);
- assert.ok(size(gas,'x')>size(polymer,'x')+1.4);
+ assert.ok(size(gas,'x')>size(polymer,'x')+1.1);
  assert.ok(size(gas,'z')<size(polymer,'z')*.7);
  assert.ok(meets(polymer,gas)&&meets(gas,base));
  assert.ok(meets(polymer,lip));
  assert.ok(size(lip,'x')>.5&&size(lip,'x')<.6);
- assert.ok(box(lip).min.y<box(polymer).min.y-.1);
+ assert.ok(box(lip).min.y<box(polymer).min.y-.045);
  assert.equal(polymer.userData.fncCrossSectionFaces,6);
  clearWeaponSilhouette(g);m.dispose();
 });

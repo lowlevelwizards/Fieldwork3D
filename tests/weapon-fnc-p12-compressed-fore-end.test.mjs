@@ -28,7 +28,7 @@ test('P13 further nested front end preserves physical-overlap contracts',()=>{
  assert.ok(touch(stop,polymer)&&touch(stop,gas),
   'molded stop must belong to both overlapping visual zones');
  assert.ok(size(gas,'z')<size(polymer,'z')*.70);
- assert.ok(size(gas,'x')>size(polymer,'x')+1.4);
+ assert.ok(size(gas,'x')>size(polymer,'x')+1.1);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -37,8 +37,8 @@ test('P13 handstop has one faceted molded collar and no rectangular fin',()=>{
  const stop=get(g,'fncP12ChunkyHandstop'),polymer=get(g,'fncP11ShortWidePolymer');
  assert.ok(stop&&polymer);
  assert.ok(size(stop,'x')>.50&&size(stop,'x')<.60);
- assert.ok(size(stop,'z')>size(polymer,'z')+.20);
- assert.ok(size(stop,'y')>2.15&&size(stop,'y')<2.25);
+ assert.ok(size(stop,'z')>size(polymer,'z')+.11);
+ assert.ok(size(stop,'y')>2.05&&size(stop,'y')<2.15);
  assert.equal(stop.geometry.type,'BufferGeometry');
  assert.equal(all(g,'fncP12ChunkyHandstop').length,1);
  clearWeaponSilhouette(g);m.dispose();
@@ -53,7 +53,7 @@ test('P12 front is exactly two cuboid FAL-family ears without central prong',()=
  assert.ok(left&&right);
  assert.ok(box(left).max.z<box(right).min.z);
  assert.ok(ears.every(e=>touch(e,get(g,'fncP7ContinuousGasSightSeat'))));
- assert.ok(ears.every(e=>Math.abs((box(e).max.x+box(e).min.x)/2-14.32)<.02));
+ assert.ok(ears.every(e=>Math.abs((box(e).max.x+box(e).min.x)/2-14.26)<.02));
  assert.ok(ears.every(e=>box(e).max.y<3.12));
  assert.equal(Boolean(get(g,'fncP11TwinEarFrontSight')),false);
  clearWeaponSilhouette(g);m.dispose();

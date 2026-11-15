@@ -28,7 +28,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p13-unified-front-assembly-fieldwork-exterior';
+ root.name='fnc-p14-aligned-front-assembly-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -240,6 +240,7 @@ export function buildFNCStage1Silhouette(
   [s.baseEndX,s.baseTopY],[s.baseEndX,s.baseBottomY]
  ],s.baseDepth,'steel');
  front.userData.fncP13CompactIntegratedSightBase=true;
+ front.userData.fncP14LowSightBase=true;
  front.userData.fncP7ContinuousGasSightSeat=true;
  front.userData.fncFrontSightBase=true;
  front.userData.fncP4IntegratedGasSeat=true;
@@ -250,6 +251,7 @@ export function buildFNCStage1Silhouette(
    s.earLength,s.earHeight,s.earDepth,'steel');
   ear.userData.fncP12FALLikeFrontEar=side<0?'left':'right';
   ear.userData.fncP13CompactFrontEar=true;
+  ear.userData.fncP14ReducedFrontEar=true;
   ear.userData.fncProtectedFrontSight=true;
   if(side===-1){
    ear.userData.fncP5OversizedFrontSight=true;
