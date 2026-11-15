@@ -29,6 +29,8 @@ import {D314C_HOLDOUT_22,D314C_HOLDOUT_ID}
  from './lib/d3-14c-seventh-blind22.mjs';
 import {D314D_HOLDOUT_22,D314D_HOLDOUT_ID}
  from './lib/d3-14d-eighth-blind22.mjs';
+import {D315B4_HOLDOUT_22,D315B4_HOLDOUT_ID}
+ from './lib/d3-15b4-tenth-blind22.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing} from '../src/breach-navigation.ts';
@@ -37,6 +39,7 @@ import {routeWithSqueezeWorld,routeToNextOperableDoor,
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {classifyCProgressWindow} from '../src/breach-d3-c-progress.ts';
@@ -62,10 +65,12 @@ const routeTransitions=process.argv.includes('--route-transitions');
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
+const d315bRouteProbe=process.argv.includes('--d315b-route-probe');
 const h2Fresh22=process.argv.includes('--h2-fresh-22');
 const d314bBlind22=process.argv.includes('--d314b-blind22');
 const d314cBlind22=process.argv.includes('--d314c-blind22');
 const d314dBlind22=process.argv.includes('--d314d-blind22');
+const d315b4Blind22=process.argv.includes('--d315b4-blind22');
 // D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
 // Run with --route-transitions --site-index=7 --trace-actor=rook
 // and optionally --trace-mode=authored (or entry).
@@ -92,6 +97,10 @@ const requestedSeedArg=process.argv.find(a=>a.startsWith('--audit-seed='));
 const requestedSeed=requestedSeedArg?Number(requestedSeedArg.split('=')[1]):null;
 const requestedScaleArg=process.argv.find(a=>a.startsWith('--audit-scale='));
 const requestedScale=requestedScaleArg?.split('=')[1]??null;
+if(d315b4Blind22&&(g2Fresh22||h2Fresh22||d314bBlind22||
+  d314cBlind22||d314dBlind22||sites!==22||requestedSite!==null||
+  clinicOnly||requestedSeedArg||requestedScaleArg))
+ throw Error('D3.15B4 tenth blind cohort needs 22 sites and no overrides');
 if(d314dBlind22&&(g2Fresh22||h2Fresh22||d314bBlind22||
   d314cBlind22||sites!==22||requestedSite!==null||clinicOnly||
   requestedSeedArg||requestedScaleArg))
@@ -573,6 +582,95 @@ function run(site,seed,kind){
     };
    }
   }
+  // D3.15B2: one read-only post-simulation feasibility inspection
+  // of the *active* authorial MOVE to STACK, not the remote entry landing.
+  // No actor, door, plan, clock, body clearance or nav is modified.
+  let d315bRouteEvidence=null;
+  if(d315bRouteProbe&&kind==='entry'){
+   const actor=actors.find(a=>a.id==='vale');
+   const current=actor?.plan[0];
+   if(actor&&current?.kind==='move'){
+    const world=sessionWorldGeometry(session);
+    const goal=current.p;
+    const full=(a,b)=>sweptBodyClear(a,b,session.doors,OPERATOR_RADIUS,world);
+    const inspect=(route)=>{
+     let at=actor.p,cost=0,invalid=0;
+     for(const pt of route){cost+=dist(at,pt);if(!full(at,pt))invalid++;at=pt;}
+     return {nodes:route.length,cost:round(cost),invalid,
+      goalCompleted:route.length>0&&dist(route.at(-1),goal)<3,
+      first:route.slice(0,8),last:route.slice(-3),
+      firstLegClear:route.length>0?full(actor.p,route[0]):false};
+    };
+    const local=recoverNormalLane(actor.p,goal,session.doors,world);
+    const directWorld=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+    const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+    const alternate=local.length?alternateFullBodyLaneFromCycle(actor.p,
+      goal,local[0],full,(a,b)=>routeWithSqueezeWorld(a,b,session.doors,world)):[];
+    const last=planned.goals.get(actor.id);
+    const finalWorld=last?routeWithSqueezeWorld(actor.p,last,session.doors,world):[];
+    // D3.15B4: cold-only microstride feasibility. A long sweep sampling
+    // every 4 units can miss the true first motor step next to furniture.
+    const micro=(from,to)=>{
+      const gap=dist(from,to),steps=Math.max(1,Math.ceil(gap/.3));
+      let prior=from;
+      for(let k=1;k<=steps;k++){
+        const t=k/steps,pt={x:from.x+(to.x-from.x)*t,
+          y:from.y+(to.y-from.y)*t};
+        if(!full(prior,pt))return {clear:false,t,
+          blockedAt:pt,from:prior};
+        prior=pt;
+      }
+      return {clear:true};
+    };
+    const microDirect=micro(actor.p,goal);
+    const offsets=[];
+    const candidates=[];
+    for(const radius of [2,4,7,11]){
+      for(let dir=0;dir<16;dir++){
+        const yaw=2*Math.PI*dir/16;
+        const stage={x:actor.p.x+Math.cos(yaw)*radius,
+          y:actor.p.y+Math.sin(yaw)*radius};
+        const first=micro(actor.p,stage);
+        if(!first.clear)continue;
+        const tail=routeWithSqueezeWorld(stage,goal,session.doors,world);
+        const route=[stage,...tail];
+        let prior=actor.p,bad=null,cost=0;
+        for(const point of route){
+          cost+=dist(prior,point);
+          const outcome=micro(prior,point);
+          if(!outcome.clear){bad=outcome;break;}
+          prior=point;
+        }
+        const record={dir,radius,stage,cost:round(cost),
+          reaches:!!tail.length&&dist(tail.at(-1),goal)<3,
+          microClear:bad===null,blocks:bad?.blockedAt??null,
+          nodes:route.slice(0,5)};
+        if(candidates.length<35)candidates.push(record);
+        if(record.reaches&&record.microClear)offsets.push(record);
+      }
+    }
+    d315bRouteEvidence={actorId:actor.id,position:{...actor.p},
+      activeOrder:{id:current.id,kind:current.kind,goal:{...goal},
+       stackDoorId:current.stackDoorId??null,entryDoorId:current.entryDoorId??null},
+      finalLanding:last?{...last}:null,
+      currentGoalRemaining:round(dist(actor.p,goal)),
+      finalLandingRemaining:last?round(dist(actor.p,last)):null,
+      squeeze:actor.squeeze,blockedTime:round(actor.blockedTime),
+      doorTraversal:actor.doorTraversal?.doorId??null,
+      currentNextNav:actor.nav.slice(0,6),
+      local:inspect(local),directWorld:inspect(directWorld),
+      firstFuturePortal:inspect(future),oppositeDeparture:inspect(alternate),
+      finalLandingWorldNodes:finalWorld.length,
+      clearStandingBody:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
+      microDirect,microRouteSolutions:offsets.slice(0,12),
+      microRouteSamples:candidates.slice(0,25),
+      nearbyCover:world.cover.filter(c=>
+       Math.hypot(c.x-actor.p.x,c.y-actor.p.y)<45)
+       .slice(0,10).map(c=>({x:c.x,y:c.y,w:c.w,h:c.h})),
+      closedDoors:session.doors.filter(d=>!d.open||d.openFraction<.72)
+       .map(d=>({id:d.id,open:!!d.open,locked:!!d.locked,fraction:round(d.openFraction??0)}))};
+   }
+  }
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -591,6 +689,7 @@ function run(site,seed,kind){
    warehouseHingeWitness,
    ...(d314bClearanceProbe?{d314bClearanceEvidence}:{}),
    ...(d314cFrontProbe?{d314cFrontEvidence}:{}),
+   ...(d315bRouteProbe?{d315bRouteEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
@@ -665,7 +764,8 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const cohort=d314dBlind22?D314D_HOLDOUT_22[i]:
+ const cohort=d315b4Blind22?D315B4_HOLDOUT_22[i]:
+   d314dBlind22?D314D_HOLDOUT_22[i]:
    d314cBlind22?D314C_HOLDOUT_22[i]:
    d314bBlind22?D314B_HOLDOUT_22[i]:
    h2Fresh22?D313H2_HOLDOUT_22[i]:
@@ -750,7 +850,8 @@ const progressSummary=progress?{
 }:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
- ...(d314dBlind22?{corpus:D314D_HOLDOUT_ID}:
+ ...(d315b4Blind22?{corpus:D315B4_HOLDOUT_ID}:
+   d314dBlind22?{corpus:D314D_HOLDOUT_ID}:
    d314cBlind22?{corpus:D314C_HOLDOUT_ID}:
    d314bBlind22?{corpus:D314B_HOLDOUT_ID}:
    h2Fresh22?{corpus:D313H2_HOLDOUT_ID}:

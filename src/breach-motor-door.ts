@@ -35,6 +35,15 @@ export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number):boolea
    Math.abs(door.angularVelocity??0)<.16;
 }
 
+/** D3.15A2: a real authored DOOR node owns its execution timer.
+ * The generic move motor may reset transient implicit OPEN timers, but
+ * must never erase the 0.78s explicit opening action while its operator
+ * performs physically swept corrective footwork beside that same leaf.
+ */
+export function preserveExplicitDoorActionClock(
+ pending:{kind:string}|null|undefined
+):boolean{return pending?.kind==='door';}
+
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;closed:boolean;clearingDoorId?:string}{
@@ -271,7 +280,12 @@ export function handleMotorDoor(
       }
       return {paused:true,closed:false};
     }
-    a.actionTimer=0;
+    // The auto-open motor normally clears a temporary opening timer
+    // after its physical step. An authored DOOR OPEN/KICK/CLOSE/HOLD,
+    // however, owns its own actionTimer in breach-order-door.ts. Resetting
+    // it here made an already-opening, self-blocked leaf wait forever while
+    // the explicit opener tried to sidestep at the frame.
+    if(!preserveExplicitDoorActionClock(pendingDoor))a.actionTimer=0;
     if(pendingDoor?.kind==='move')
       clearOpeningFootwork(a,doorAhead.id,pendingDoor.id);
   }else if(a.side==='red')a.actionTimer=0;

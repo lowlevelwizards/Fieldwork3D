@@ -4,7 +4,7 @@
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
-import {entryDoorState} from './breach-entry-coordination.ts';
+import {entryDoorState,leaderBeyondOpenEntry} from './breach-entry-coordination.ts';
 import {doorSwingBlocked} from './breach-door.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 
@@ -19,7 +19,19 @@ export function advanceWaitOrder(
   const doorway=s.doors.find(d=>d.id===n.doorId);
   const gate=entryDoorState(doorway,
    doorway?sessionWorldGeometry(s):undefined);
-  if(gate!=='ready'){
+  // The fixed full-shoulder straight gate is conservative. When the
+  // GENERATED squad's own leader has physically reached the opposite
+  // side of this already-open door, allow the next operator to TRY the
+  // authored entry instead of waiting forever on a false-negative
+  // straight-line gate. Every real movement still runs the same body
+  // sweep; this does not declare the aperture universally passable.
+  const entry=n.duration===0?a.plan.find(next=>
+    next.kind==='move'&&next.entryDoorId===n.doorId):undefined;
+  const lead=entry?s.operators.find(other=>
+    other.side===a.side&&other.health>0):undefined;
+  const leadAcross=!!entry&&!!lead&&lead!==a&&
+    leaderBeyondOpenEntry(doorway,lead.p,a.p,entry.p);
+  if(gate!=='ready'&&!leadAcross){
    a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
    if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
     const stalledSwing=!!doorway&&doorway.open&&

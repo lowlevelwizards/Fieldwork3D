@@ -3,7 +3,8 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
  * progression and waypoint arrival. Motion is still delegated to the
  * authoritative Stage 7 physical motor.
  */
-import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,type Pt,type Door} from './breach-core.ts';
+import {doorReachable} from './breach-door.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {targetAngle,interruptsWatch} from './breach-plan.ts';
@@ -23,6 +24,23 @@ const near=(a:Pt,b:Pt,range:number)=>d(a,b)<=range;
 const angle=(a:Pt,b:Pt)=>targetAngle(a,b);
 const clone=(p:Pt):Pt=>({...p});
 const pop=completeOrder;
+/** D3.15A2: after a REAL, reachable hinge is already opening, let the
+ * explicit OPEN order handler work at that physical leaf. Otherwise the
+ * generic waypoint motor repeatedly walks toward a point now INSIDE the
+ * opened panel and never yields execution to the authoritative DOOR node.
+ * No remote open: the actor must physically reach the actual moving leaf.
+ */
+export function mayHandoffOpenedDoorOrder(
+ n:Pick<PlanNode,'kind'|'method'|'doorId'>,at:Pt,
+ doors:readonly Door[]
+):boolean{
+ if(n.kind!=='door'||n.method&&n.method!=='open'||!n.doorId)
+   return false;
+ const door=doors.find(d=>d.id===n.doorId);
+ return !!door&&door.open&&(door.openFraction??0)>=.15&&
+   doorReachable(at,door);
+}
+
 // An occupied final MOVE target is resolved once, not re-optimized on
 // every 60Hz tick. A transient settle is execution-only, never an authored
 // waypoint or an excuse to shift a teammate who is already stationary.
@@ -143,7 +161,8 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
       friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))));
   if(at&&retained)settledMoveTargets.delete(a);
-  if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')){
+  if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')&&
+     !mayHandoffOpenedDoorOrder(n,a.p,s.doors)){
     // Running cancels WATCH rather than merely suspending it.
     if(interruptsWatch(n,a.pace))a.aimInstruction=null;
     // A persistent tracking/PIE stance stays cautious on every segment,

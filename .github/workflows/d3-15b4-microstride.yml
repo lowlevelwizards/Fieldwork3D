@@ -1,0 +1,45 @@
+name: D3.15B4 frozen motel microstride feasibility
+on:
+  pull_request:
+    paths:
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-15b4-microstride.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  microstep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: One actual 45s frozen motel simulation followed by cold sub-unit feasibility
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+           11 2700 --site-index=8 --audit-seed=9492261 --audit-scale=small \
+           --d315b-route-probe > "$RUNNER_TEMP/d315b4-feasibility.json"
+      - name: Print full-body motor microsteps and feasible sidestep corridors
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315b4-feasibility.json','utf8'));
+          const m=r.rows[0].modes.find(x=>x.mode==='entry'),e=m.d315bRouteEvidence;
+          console.log('D315B4_FINE',JSON.stringify({arrivals:m.arrivals,
+            goal:e?.activeOrder?.goal,position:e?.position,
+            microDirect:e?.microDirect,
+            solutions:e?.microRouteSolutions,samples:e?.microRouteSamples,
+            cover:e?.nearbyCover}));
+          if((m.arrivals<4&&!e)||r.summary.exceptions||r.summary.physicsStepViolations||
+             r.summary.corruptedPlans)throw Error('bad fixed motor evidence');
+          NODE
+      - name: Archive all exact real map geometry evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d315b4-frozen-motel-microstride
+          path: ${{ runner.temp }}/d315b4-*.json
+          retention-days: 90

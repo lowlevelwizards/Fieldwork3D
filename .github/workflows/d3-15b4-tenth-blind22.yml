@@ -1,0 +1,68 @@
+name: D3.15B4 tenth blind 22-map paired physical acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-stack-micro-corner.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-cycle-lane-recovery.ts'
+      - 'scripts/lib/d3-15b4-tenth-blind22.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'scripts/report-d3-15b4-blind22.mjs'
+      - '.github/workflows/d3-15b4-tenth-blind22.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d315b4-tenth-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Candidate exact PR head
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - name: Stable main before D3.15B feature
+        uses: actions/checkout@v4
+        with:
+          path: baseline
+          ref: 53bbc59f34ed31fca334fe5cd7c2ad92e4c8aac1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Freeze SAME seed/map and read-only 60Hz auditor for both
+        run: |
+          cp candidate/scripts/audit-r7-squad-execution.mjs baseline/scripts/audit-r7-squad-execution.mjs
+          cp candidate/scripts/lib/d3-15b4-tenth-blind22.mjs baseline/scripts/lib/d3-15b4-tenth-blind22.mjs
+          npm --prefix baseline install --no-audit --no-fund
+          npm --prefix candidate install --no-audit --no-fund
+          mkdir -p "$RUNNER_TEMP/d315b4"
+      - name: Untouched main, tenth frozen 22 real sites x 2 modes x 4 bodies x 45s
+        run: |
+          cd baseline
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-quality \
+            > "$RUNNER_TEMP/d315b4/baseline.json"
+      - name: B4 real motor, identical maps, orders, doors and 60Hz execution
+        run: |
+          cd candidate
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-quality \
+            > "$RUNNER_TEMP/d315b4/candidate.json"
+      - name: Reject any physical arrival/loop/stall regression
+        run: |
+          cd candidate
+          node scripts/report-d3-15b4-blind22.mjs \
+           "$RUNNER_TEMP/d315b4/baseline.json" \
+           "$RUNNER_TEMP/d315b4/candidate.json"
+      - name: Preserve full blind before and after evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d315b4-tenth-blind22-paired
+          path: ${{ runner.temp }}/d315b4/*.json
+          retention-days: 90
+          if-no-files-found: ignore

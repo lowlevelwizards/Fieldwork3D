@@ -13,6 +13,34 @@ export function entryDoorState(door:Door|undefined,
  return doorClear(door,world)?'ready':'pending';
 }
 
+/** D3.15A3: a generated squad's leader can physically reach the far
+ * side of an already OPEN entrance via a valid (possibly non-straight)
+ * 60Hz motor route, while the generic straight body-width sample remains
+ * 'pending'. Followers may then attempt their existing authored MOVE.
+ * This is NOT doorClear, collision clearance, plan completion or a grant
+ * to move across the leaf: each subsequent footstep stays fully swept.
+ */
+export function leaderBeyondOpenEntry(
+ door:Door|undefined,leader:Pt|undefined,
+ waiting:Pt,interiorGoal:Pt|undefined
+):boolean{
+ if(!door||!leader||!interiorGoal||!door.open||
+    door.locked||door.wedged||door.jammed||door.heldBy||
+    (door.openFraction??0)<.72)return false;
+ const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+ const width=Math.hypot(dx,dy);
+ if(width<OPERATOR_RADIUS*2+4)return false;
+ const center=doorCenter(door),nx=-dy/width,ny=dx/width;
+ const side=(p:Pt)=>(p.x-center.x)*nx+(p.y-center.y)*ny;
+ const lead=side(leader),follower=side(waiting),goal=side(interiorGoal);
+ // Require an entire torso clear of the plane and a stable interior
+ // destination opposite the waiter's actual frame side.
+ return Math.abs(lead)>=OPERATOR_RADIUS+8&&
+   Math.abs(goal)>=OPERATOR_RADIUS+8&&
+   Math.abs(follower)>=4&&
+   lead*goal>0&&follower*goal<0;
+}
+
 /** Stack placement is measured in the real door frame, not world X/Y.
  * A diagonally mounted door has the same approach-side geometry as a
  * horizontal or vertical one. This proposes candidates only: the caller
