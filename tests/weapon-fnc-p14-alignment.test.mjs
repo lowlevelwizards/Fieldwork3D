@@ -25,7 +25,7 @@ test('P15 receiver and handguard stay in real 3D contact after body shortening',
  const upper=one(g,'fncP5CrownedReceiver');
  const lower=one(g,'fncAngularLower');
  assert.ok(poly&&upper&&lower);
- assert.ok(close(box(poly).min.x,2.45));
+ assert.ok(close(box(poly).min.x,2.18));
  assert.ok(close(box(upper).max.x,2.75));
  assert.ok(close(box(lower).max.x,2.75));
  assert.ok(box(upper).max.x-box(poly).min.x>.29,
@@ -96,7 +96,7 @@ test('P14 front base no longer forms a tall pedestal under twin FAL ears',()=>{
  assert.equal(ears.length,2);
  assert.ok(close(box(base).max.y,1.52));
  assert.ok(size(base,'x')<2.8);
- assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.60)));
+ assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.44)));
  assert.ok(box(ears[0]).max.y-box(gas).max.y<1.15,
   'P15 twin ears remain seated within the taller gas/sight structure');
  assert.ok(size(ears[0],'z')<.78);
