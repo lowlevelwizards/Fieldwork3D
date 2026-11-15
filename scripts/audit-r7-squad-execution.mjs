@@ -19,6 +19,8 @@ import {setTransientRouteObserver}
  from '../src/breach-route-transition.ts';
 import {D311RouteSurvey,createD311GridObserver}
  from './lib/d3-11-route-quality.mjs';
+import {D3_HOLDOUT_22,D3_HOLDOUT_22_ID}
+ from './lib/d3-holdout-22-manifest.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear} from '../src/breach-navigation.ts';
@@ -46,12 +48,16 @@ const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
 const clinicOnly=process.argv.includes('--clinic-only');
+// Frozen independently seeded holdout cohort; never a new movement rule.
+const holdout22=process.argv.includes('--holdout-22');
 // Exact seeded-site diagnosis, opt-in, does not change any motor paths.
 const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
 const requestedSite=requestedSiteArg?Number(requestedSiteArg.split('=')[1]):null;
 if(requestedSite!==null&&(!Number.isInteger(requestedSite)||
  requestedSite<0||requestedSite>=names.length))
  throw Error('invalid --site-index (expected 0..10)');
+if(holdout22&&(sites!==22||requestedSite!==null||clinicOnly))
+ throw Error('holdout-22 requires 22 sites without --site-index or --clinic-only');
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const round=n=>Math.round(n*100)/100;
 const signed=(p,d)=>{
@@ -451,8 +457,10 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const seed=31045+i*13,archetype=names[i%names.length];
- const scale=i%2===0?'small':'standard';
+ const cohort=holdout22?D3_HOLDOUT_22[i]:null;
+ const seed=cohort?.seed??31045+i*13;
+ const archetype=cohort?.archetype??names[i%names.length];
+ const scale=cohort?.scale??(i%2===0?'small':'standard');
  try{
   const site=generateSite(seed,scale,undefined,{mission:'intel'},
    {archetype});
@@ -526,6 +534,7 @@ const progressSummary=progress?{
 }:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
+ ...(holdout22?{corpus:D3_HOLDOUT_22_ID}:{}),
  ticks,summary,...(progress?{progressSummary}:{}),
  ...(routeQuality?{routeQualitySummary}:{}),
  ...(routeTransitions?{transitionSummary}:{}),rows},null,2));
