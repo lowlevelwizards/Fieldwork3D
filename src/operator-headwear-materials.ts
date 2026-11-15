@@ -107,8 +107,10 @@ export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
   case 'police-helmet':
    return region===1?237:region===2?225:region===3?251:248;
   case 'soviet-steel':
-   // Stamped painted bowl: absolutely clean roof, one purposeful dark rim.
-   return region===1?245:region===2?221:region===3?251:249;
+   // Stamped painted bowl: clean roof and a narrow readable rolled lip.
+   // B2-A3: the broader dark band was visually too black and shelf-like;
+   // lightening only the steel-lip tile preserves all other helmet finishes.
+   return region===1?245:region===2?232:region===3?251:249;
  }
 }
 /** Compatibility accepts material names for older tests/tools. Runtime
