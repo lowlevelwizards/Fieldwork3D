@@ -1,4 +1,4 @@
-import {setTransientRoute} from './breach-route-transition.ts';
+import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
@@ -31,17 +31,25 @@ import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
 export function restoreAfterOpenLeafEscape(
  a:TeamActor,s:Session,goal:Pt
 ):boolean{
- if(s.seconds-a.lastNavRepairAt<.7)return false;
+ if(s.seconds-a.lastNavRepairAt<.7){
+  noteDoorHandoffRejection(s,a,'world:cooldown');return false;
+ }
  const near=s.doors.some(door=>door.open&&
   (door.openFraction??0)>=.96&&
   Math.abs(door.angularVelocity??0)<.16&&
   pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+13);
- if(!near)return false;
+ if(!near){
+  noteDoorHandoffRejection(s,a,'world:no-stable-open-leaf');return false;
+ }
  a.lastNavRepairAt=s.seconds;
  const world=sessionWorldGeometry(s);
  const route=routeWithSqueezeWorld(a.p,goal,s.doors,world);
- if(!route.length||!sweptBodyClear(a.p,route[0],s.doors,
-    OPERATOR_RADIUS,world))return false;
+ if(!route.length){
+  noteDoorHandoffRejection(s,a,'world:no-full-body-route');return false;
+ }
+ if(!sweptBodyClear(a.p,route[0],s.doors,OPERATOR_RADIUS,world)){
+  noteDoorHandoffRejection(s,a,'world:first-leg-not-swept');return false;
+ }
  setTransientRoute(s,a,route,'door-leaf-escape');
  a.retryRouteAt=0;a.recoveryAttempts=0;
  return true;
