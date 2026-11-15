@@ -7,11 +7,11 @@
  * Live Arsenal and the one-material comparison lab share this same builder.
  */
 import * as THREE from 'three';
-import {addOutline,addCuboid,addFacetedTube,addBar,addProfileFrame,
+import {addOutline,addCuboid,addFacetedTube,addProfileFrame,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH} from './fal-magazine-profiles.ts';
 import {addFALFacetedHandguard} from './fal-handguard-profiles.ts';
-import {addFALCrownedReceiver} from './fal-receiver-form.ts';
+import {addFALCrownedReceiver,addFALAngledCarrySupport} from './fal-receiver-form.ts';
 
 export const FAL_ART:Readonly<{
  stockRearX:number;receiverRearX:number;receiverFrontX:number;
@@ -130,10 +130,8 @@ export function buildFALCoreSilhouette(
  // long rearward horizontal polymer grip. Both solids physically overlap;
  // no AR-style upright arch, hollow box, hinges or screws. Factory enabled.
  if(options.raisedCarryHandle){
-  const support=addBar(root,'receiver',partIds.receiver,ids.receiver++,
-   [3.20,1.42],[2.90,3.23],.50,.62,materials.receiver);
-  support.position.z=-1.60;
-  support.userData.falCarrySupport=true;
+  addFALAngledCarrySupport(root,partIds.receiver,ids.receiver++,
+   materials.receiver);
   // One contoured handhold instead of a floating cuboid; this is an
   // offset folding FAL carrying handle, never an AR bridge/arch.
   const grip=addOutline(root,'receiver',partIds.receiver,ids.receiver++,[

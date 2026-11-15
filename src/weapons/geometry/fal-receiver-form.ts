@@ -101,12 +101,12 @@ export function addFALCrownedReceiver(
 export function addFALScoopedPort(root:THREE.Group,
  receiverId:string,index:number,material:THREE.Material):THREE.Mesh{
  const outline:readonly (readonly [number,number])[]=[
-  [-.05,1.00],[.16,1.36],[.80,1.53],[2.45,1.49],
-  [2.92,1.19],[2.87,.79],[2.42,.69],[.55,.70]
+  [-.05,1.01],[.15,1.39],[.82,1.61],[2.36,1.56],
+  [2.92,1.16],[2.87,.79],[2.36,.70],[.42,.70]
  ];
  const vertices:number[]=[];
  for(const [x,y] of outline)
-  vertices.push(x,y,falUpperSideHalfZ(y,x)+.035);
+  vertices.push(x,y,falUpperSideHalfZ(y,x)+.055);
  const indices:number[]=[];
  for(let i=1;i<outline.length-1;i++)
   indices.push(0,i+1,i);
@@ -138,4 +138,53 @@ export function addFALPivotPair(root:THREE.Group,receiverId:string,
   root.add(mesh);result.push(mesh);
  }
  return result;
+}
+/** Surface-following angular steel boss / runner: one solid mesh whose
+ * inner face intersects the receiver while the exterior follows the tapered
+ * top, keeping details attached at ANY silhouette strength. */
+export function addFALLeftSurfacePlate(
+ root:THREE.Group,receiverId:string,index:number,
+ points:readonly (readonly [number,number])[],
+ projection:number,material:THREE.Material,tag:string
+):THREE.Mesh{
+ const n=points.length,vertices:number[]=[],indices:number[]=[];
+ for(const outside of [true,false]){
+  for(const [x,y] of points){
+   const z=falUpperSideHalfZ(y,x)+(outside?projection:-.08);
+   vertices.push(x,y,-z);
+  }
+ }
+ for(let i=1;i<n-1;i++){
+  indices.push(0,i+1,i);
+  indices.push(n,n+i,n+i+1);
+ }
+ for(let i=0;i<n;i++){
+  const j=(i+1)%n;
+  indices.push(i,j,n+j,i,n+j,n+i);
+ }
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ geometry.setIndex(indices);geometry.computeVertexNormals();
+ const mesh=new THREE.Mesh(geometry,material);
+ mesh.name='family-receiver-'+receiverId+'-'+index;
+ mesh.userData[tag]=true;
+ mesh.userData.falSurfaceFitted=true;
+ mesh.castShadow=false;mesh.receiveShadow=false;
+ root.add(mesh);return mesh;
+}
+/** A single thick angled support, physically connected to receiver's new
+ * shoulder below and the existing polymer handle above. */
+export function addFALAngledCarrySupport(
+ root:THREE.Group,receiverId:string,index:number,material:THREE.Material
+):THREE.Mesh{
+ const a=new THREE.Vector3(3.18,1.28,-1.12),
+  b=new THREE.Vector3(2.89,3.25,-1.60);
+ const axis=b.clone().sub(a),length=axis.length();
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(.52,length,.56),material);
+ mesh.name='family-receiver-'+receiverId+'-'+index;
+ mesh.position.copy(a).add(b).multiplyScalar(.5);
+ mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),axis.normalize());
+ mesh.userData.falCarrySupport=true;
+ mesh.castShadow=true;mesh.receiveShadow=true;
+ root.add(mesh);return mesh;
 }
