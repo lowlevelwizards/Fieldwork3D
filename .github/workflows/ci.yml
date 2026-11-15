@@ -38,75 +38,10 @@ jobs:
           node --test tests/ci-regression-plan.test.mjs
           node scripts/verification/ci-regression-plan.mjs --check
           node scripts/verification/ci-workflow-contract.mjs
-      # A1 safe-release checkpoint: cover the changed helmet contract, field
-      # visuals, mount compatibility and last approved silhouette without
-      # scheduling 32 unrelated, serial regression shards.
-      - name: A1 focused helmet and Studio critical regressions
-        if: ${{ github.head_ref == 'feature/a1-helmet-unified-and-legacy-removal-20261114' }}
-        run: |
-          node --experimental-strip-types --test --test-concurrency=1 \
-            tests/helmet-a1-effective-appearance.test.mjs \
-            tests/helmet-h7-field-options.test.mjs \
-            tests/helmet-h7-visuals.test.mjs \
-            tests/helmet-h10-fit.test.mjs \
-            tests/helmet-h13-mount-and-compatibility.test.mjs \
-            tests/helmet-h30-reference-contour.test.mjs \
-            tests/helmet-h31c-cover-shell-penetration.test.mjs \
-            tests/operator-wardrobe-headwear.test.mjs \
-            tests/operator-studio-main-menu.test.mjs
-      # A2-A/D release gate: validate helmet config, feedback, preset and UI contracts
-      # without re-running 32 unrelated historical test shards.
-      - name: A2 helmet configuration and preset critical regressions
-        if: ${{ github.head_ref == 'feature/a2-helmet-config-and-presets-20261114' }}
-        run: |
-          node --experimental-strip-types --test --test-concurrency=1 \
-            tests/helmet-a2-configuration.test.mjs \
-            tests/helmet-a2-feedback.test.mjs \
-            tests/helmet-a2-studio-performance.test.mjs \
-            tests/operator-studio-a2-presets.test.mjs \
-            tests/helmet-a1-effective-appearance.test.mjs \
-            tests/helmet-h7-field-options.test.mjs \
-            tests/helmet-h13-mount-and-compatibility.test.mjs \
-            tests/helmet-h14-pasgt-retrofit-roster.test.mjs \
-            tests/helmet-h31c-cover-shell-penetration.test.mjs \
-            tests/operator-studio-ux-stage58.test.mjs \
-            tests/operator-studio-save-all-stage511.test.mjs \
-            tests/operator-wardrobe-headwear.test.mjs \
-            tests/operator-wardrobe-persistence.test.mjs
-      # A3/A4: bounded visual-feedback, navigation and thumbnail lifecycle checks.
-      - name: A3 A4 helmet Studio feedback and performance critical regressions
-        if: ${{ github.head_ref == 'feature/a3-a4-helmet-studio-flow-performance-20261114' }}
-        run: |
-          node --experimental-strip-types --test --test-concurrency=1 \
-            tests/helmet-a3-prerequisite-actions.test.mjs \
-            tests/helmet-a4-thumbnail-refresh.test.mjs \
-            tests/helmet-a2-feedback.test.mjs \
-            tests/helmet-a2-configuration.test.mjs \
-            tests/helmet-a1-effective-appearance.test.mjs \
-            tests/helmet-h13-mount-and-compatibility.test.mjs \
-            tests/helmet-h14-pasgt-retrofit-roster.test.mjs \
-            tests/helmet-h31c-cover-shell-penetration.test.mjs \
-            tests/operator-studio-a2-presets.test.mjs \
-            tests/operator-studio-save-all-stage511.test.mjs \
-            tests/operator-studio-ux-stage58.test.mjs \
-            tests/operator-studio-main-menu.test.mjs
-      # B0/B1: art-profile, wardrobe persistence and M1 field contact gate.
-      - name: B1 M1 historical silhouette and retention critical tests
-        if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' || github.head_ref == 'feature/b1-m1-bold-oversized-correction-20261115' || github.head_ref == 'feature/b1-m1-orthographic-identity-20261115' || github.head_ref == 'feature/b1-r4-m1-underside-rim-rear-20261115' || github.head_ref == 'feature/b1-r5-m1-chinstrap-clearance-20261115' }}
-        run: |
-          node --experimental-strip-types --test --test-concurrency=1 \
-            tests/helmet-b1-m1-shell.test.mjs \
-            tests/helmet-b1-m1-retention.test.mjs \
-            tests/r5-historical-helmet-d.test.mjs \
-            tests/r5-m1-cover-stage-e.test.mjs \
-            tests/helmet-a1-effective-appearance.test.mjs \
-            tests/operator-studio-a2-presets.test.mjs \
-            tests/operator-studio-ux-stage58.test.mjs \
-            tests/operator-wardrobe-headwear.test.mjs \
-            tests/operator-wardrobe-persistence.test.mjs
-      # Other PRs retain affected-domain and fail-closed architecture coverage.
+      # E1: one source-owned regression selector for EVERY PR, including
+      # historical feature branches. Specialized art/browser gates remain
+      # independent checks when their files or workflows require them.
       - name: Fixed-clock affected-domain and architecture regression shards
-        if: ${{ github.head_ref != 'feature/a1-helmet-unified-and-legacy-removal-20261114' && github.head_ref != 'feature/a2-helmet-config-and-presets-20261114' && github.head_ref != 'feature/a3-a4-helmet-studio-flow-performance-20261114' && github.head_ref != 'feature/b0-b1-m1-historical-rebuild-20261114' && github.head_ref != 'feature/b1-m1-bold-oversized-correction-20261115' && github.head_ref != 'feature/b1-m1-orthographic-identity-20261115' && github.head_ref != 'feature/b1-r4-m1-underside-rim-rear-20261115' && github.head_ref != 'feature/b1-r5-m1-chinstrap-clearance-20261115' }}
         env:
           CI_BASE_REF: ${{ github.base_ref }}
         run: |
@@ -117,7 +52,6 @@ jobs:
             node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=${shard}/16
           done
       - name: Verify extracted deterministic architecture boundaries
-        if: ${{ github.head_ref != 'feature/a1-helmet-unified-and-legacy-removal-20261114' && github.head_ref != 'feature/a2-helmet-config-and-presets-20261114' && github.head_ref != 'feature/a3-a4-helmet-studio-flow-performance-20261114' && github.head_ref != 'feature/b0-b1-m1-historical-rebuild-20261114' && github.head_ref != 'feature/b1-m1-bold-oversized-correction-20261115' && github.head_ref != 'feature/b1-m1-orthographic-identity-20261115' && github.head_ref != 'feature/b1-r4-m1-underside-rim-rear-20261115' && github.head_ref != 'feature/b1-r5-m1-chinstrap-clearance-20261115' }}
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production typecheck, build and build-stamp integrity
         run: npm run build

@@ -5,7 +5,7 @@ import {shardTestPaths} from '../scripts/verification/test-shards.mjs';
 
 test('A9 catalog is complete and keeps unique domain names',()=>{
  const result=checkCatalog();
- assert.equal(result.domains,7);
+ assert.equal(result.domains,12);
  assert.ok(result.uniqueTests>baseline.length);
  assert.equal(new Set(configuredTestPaths()).size,configuredTestPaths().length);
 });
@@ -156,4 +156,21 @@ test('A1 eight live-pose shards keep all four Boonie slices and the other helmet
  const shards=Array.from({length:16},(_,i)=>shardTestPaths(files,['--shard='+(i+1)+'/16']));
  assert.deepEqual(shards.flat().sort(),[...files].sort());
  assert.deepEqual(shards.slice(-8),heavy.map(path=>[path]));
+});
+
+test('E1 source-domain selection covers UI, CSS, Studio, helmets, and Arsenal without a branch-name escape',()=>{
+ const cases=[
+  ['src/ui/tactical-hud-controller.ts','tactical-ui','tests/package-c4-tactical-ui-consolidation.test.mjs'],
+  ['src/breach-main.ts','tactical-ui','tests/breach-runtime-loop-step12.test.mjs'],
+  ['src/breach-style.css','presentation-styles','tests/visual-foundation-f5-mobile-visual-gate.test.mjs'],
+  ['src/operator-headwear-silhouettes.ts','helmet-visual','tests/helmet-b1-m1-shell.test.mjs'],
+  ['src/operator-studio.ts','studio-controls','tests/operator-studio-save-all-stage511.test.mjs'],
+  ['src/arsenal/workbench-screen.ts','arsenal-ui','tests/arsenal-v2-editing-ui.test.mjs']
+ ];
+ for(const [file,domain,requiredTest] of cases){
+  const selected=selectCiTests([file]);
+  assert.ok(selected.domains.includes(domain),file);
+  assert.ok(selected.tests.includes(requiredTest),file);
+  assert.deepEqual(selected.unknown,[],file);
+ }
 });

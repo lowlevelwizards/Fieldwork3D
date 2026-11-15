@@ -3,6 +3,7 @@
  * the only authority for command feasibility and execution.
  */
 import {currentSiteIdentity} from './current-site-identity.ts';
+import {writeDomText,writeDomAttribute,writeDomStyle} from './tactical-dom-reconciliation.ts';
 import {compactSiteTitle} from './site-title.ts';
 import {renderMissionDebrief} from './breach-mission-debrief.ts';
 import {debriefPrimaryActionLabel} from './fieldwork-vocabulary.ts';
@@ -376,7 +377,7 @@ export function createTacticalHudController(
   }
   function renderOperatorCard(input:{
     state:Session;replaying:boolean;selected:string;id:string;
-    actor:TeamActor|undefined;button:HTMLButtonElement;
+    actor:TeamActor|undefined;peers:TeamActor[];button:HTMLButtonElement;
     ammo:HTMLElement;hp:HTMLElement;
     paintAccent:(element:HTMLElement,id:string)=>void;
   }):void{
@@ -385,33 +386,34 @@ export function createTacticalHudController(
     input.paintAccent(button,id);
     button.hidden=!a;
     const title=button.querySelector('strong');
-    if(title&&a)title.textContent=a.name;
+    if(title&&a)writeDomText(title,a.name);
     button.classList.toggle('selected',id===selected);
     button.classList.toggle('down',!a||a.health<=0);
-    button.title=a?WEAPONS[a.weapon].label+' • '+
+    const buttonTitle=a?WEAPONS[a.weapon].label+' • '+
       injuryOf(a.injuryStage).toUpperCase():'NO OPERATOR';
+    if(button.title!==buttonTitle)button.title=buttonTitle;
     button.classList.toggle('loading',!!a&&a.reload>0);
-    button.style.setProperty('--reload-progress',
+    writeDomStyle(button,'--reload-progress',
       ((a?.reload??0)>0?Math.round(100*(1-a!.reload/
         (WEAPONS[a!.weapon].reload*(a!.injuryStage===2?1.5:
           a!.injuryStage===1?1.1:1)))):0)+'%');
     const capacity=a?liveMagazineCapacity(a.weapon,a.weaponConfiguration):0;
     const alert=a?magazineAlert(a.magazine,capacity):'normal';
-    ammo.dataset.ammo=alert;
-    ammo.textContent=a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
-      (a.reload>0?' ↻':''):'--';
+    if(ammo.dataset.ammo!==alert)ammo.dataset.ammo=alert;
+    writeDomText(ammo,a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
+      (a.reload>0?' ↻':''):'--');
     ammo.title=a?`${a.magazine} / ${capacity} loaded · ${a.reserve} reserve rounds`:'';
-    button.setAttribute('aria-pressed',String(id===selected));
-    hp.textContent=!a?'--':a.health<=0?'DOWN':
-      a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK';
+    writeDomAttribute(button,'aria-pressed',String(id===selected));
+    writeDomText(hp,!a?'--':a.health<=0?'DOWN':
+      a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK');
     const condition=!a?'missing':a.health<=0?'down':
       a.injuryStage===2?'heavy':a.injuryStage===1?'hurt':'healthy';
     const fill=condition==='down'?0:condition==='heavy'?34:
       condition==='hurt'?67:100;
-    button.style.setProperty('--health-fill',fill+'%');
-    button.style.setProperty('--health-color',
+    writeDomStyle(button,'--health-fill',fill+'%');
+    writeDomStyle(button,'--health-color',
       condition==='heavy'?'#c77f68':condition==='hurt'?'#d0ad76':'#91b5a5');
-    button.dataset.condition=condition;
+    if(button.dataset.condition!==condition)button.dataset.condition=condition;
     let stateLine=button.querySelector<HTMLElement>('.unit-execution');
     if(!stateLine){
       stateLine=document.createElement('span');
@@ -419,7 +421,7 @@ export function createTacticalHudController(
     }
     const execution=a?executionStatus(a,{
       phase:state.phase==='planning'&&state.started?'running':state.phase,
-      doors:state.doors,peers:team(state)
+      doors:state.doors,peers:input.peers
     }):null;
     const status=compactExecutionStatus(execution,{
       selected:id===selected,
@@ -429,22 +431,24 @@ export function createTacticalHudController(
       down:!a||a.health<=0
     });
     stateLine.hidden=!status.visible;
-    stateLine.textContent=status.label;
-    stateLine.dataset.kind=execution?.kind??'idle';
-    stateLine.dataset.priority=status.priority;
-    button.dataset.executionVisible=String(status.visible);
+    writeDomText(stateLine,status.label);
+    const executionKind=execution?.kind??'idle';
+    if(stateLine.dataset.kind!==executionKind)stateLine.dataset.kind=executionKind;
+    if(stateLine.dataset.priority!==status.priority)stateLine.dataset.priority=status.priority;
+    if(button.dataset.executionVisible!==String(status.visible))
+      button.dataset.executionVisible=String(status.visible);
     stateLine.title=execution?.waitingFor?
       status.detail+' · WAITING FOR '+execution.waitingFor.toUpperCase():
       status.detail;
     if(execution?.progress!==undefined){
       stateLine.dataset.progress='true';
-      stateLine.style.setProperty('--execution-progress',
+      writeDomStyle(stateLine,'--execution-progress',
         Math.round(execution.progress*100)+'%');
     }else{
       stateLine.removeAttribute('data-progress');
       stateLine.style.removeProperty('--execution-progress');
     }
-    button.setAttribute('aria-label',a?
+    writeDomAttribute(button,'aria-label',a?
       a.name+', '+condition+', '+a.magazine+' of '+capacity+
       ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':'')+
       '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
@@ -458,6 +462,9 @@ export function createTacticalHudController(
       canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
       reducedMotion,weaponChooser,hideWeaponChooser,favoriteActive,
       recorder,campaign,operationsLogged}=input;
+    // One read-only squad snapshot per HUD reconciliation, never a second
+    // simulation or movement authority.
+    const friendly=team(state);
 
   ui.quickPlaySetup.hidden=mode!=='quick'||replaying;
   const identity=currentSiteIdentity(state.site,mode==='quick');
@@ -497,7 +504,7 @@ export function createTacticalHudController(
    button.textContent=casualty?mode+' · '+casualty.name.toUpperCase():mode;
   }
   if(fieldLightButton){
-   const selectedActor=team(state).find(a=>a.id===selected);
+   const selectedActor=friendly.find(a=>a.id===selected);
    const light=lightControlState(selectedActor,state.phase,replaying);
    if(fieldLightButton.textContent!==light.text)fieldLightButton.textContent=light.text;
    fieldLightButton.setAttribute('aria-label',light.aria);
@@ -511,13 +518,13 @@ export function createTacticalHudController(
     phaseNode:ui.phase,clock:ui.clock,play:ui.play,
     reducedMotion:reducedMotion,icon:tacticalIcon
   });
-  const active=team(state).find(o=>o.id===selected);
+  const active=friendly.find(o=>o.id===selected);
   if(navPanel){
-    navPanel.textContent=team(state).map(a=>a.name+'  '+
+    writeDomText(navPanel,friendly.map(a=>a.name+'  '+
       a.lastBlocker.toUpperCase()+
       '  blocked '+a.blockedTime.toFixed(2)+'s\n'+
       'nav '+a.nav.length+'  orders '+a.plan.length+
-      '  ('+a.p.x.toFixed(0)+','+a.p.y.toFixed(0)+')').join('\n');
+      '  ('+a.p.x.toFixed(0)+','+a.p.y.toFixed(0)+')').join('\n'));
   }
   canvas.dataset.navBlock=active?.lastBlocker??'clear';
   // Read-only plan status for phone gesture regression tests.
@@ -529,7 +536,7 @@ export function createTacticalHudController(
   if(auditRouteMode&&active&&viewMode==='plan2d'){
     const candidates:{x:number;y:number;clearance:number}[]=[];
     let from=active.p;
-    const markers=[...team(state).map(unit=>worldToScreen(unit.p,8)),
+    const markers=[...friendly.map(unit=>worldToScreen(unit.p,8)),
       ...active.plan.map(n=>worldToScreen(n.p,8))];
     for(const node of active.plan){
       if(node.kind!=='move'&&node.kind!=='door')continue;
@@ -564,7 +571,8 @@ export function createTacticalHudController(
     cancelTarget:ui.cancelTarget,hint:ui.hint,
     phase:state.phase,replaying
   });
-  ui.loadout.textContent='WEAPON · '+(active?.weapon.toUpperCase()??'—');
+  writeDomText(ui.loadout,'WEAPON · '+(active?.weapon.toUpperCase()??'—'));
+
   ui.loadout.disabled=mode==='mission'||state.phase!=='planning'||replaying;
   if(ui.loadout.disabled&&!weaponChooser.hidden)hideWeaponChooser();
   const availability=tacticalUiActionAvailability({
@@ -596,7 +604,7 @@ export function createTacticalHudController(
   });
   for(const id of ['rook','moss','ash','vale'] as const){
     renderOperatorCard({
-      state,replaying,selected,id,actor:team(state).find(o=>o.id===id),
+      state,replaying,selected,id,actor:friendly.find(o=>o.id===id),peers:friendly,
       button:ui[id],
       ammo:ui[(id+'Ammo') as 'rookAmmo'|'mossAmmo'|'ashAmmo'|'valeAmmo'],
       hp:ui[(id+'Hp') as 'rookHp'|'mossHp'|'ashHp'|'valeHp'],
@@ -608,7 +616,7 @@ export function createTacticalHudController(
   const siteSubheading=document.querySelector<HTMLElement>('.ident small');
   if(siteHeader)siteHeader.textContent=compactSiteTitle(state.site);
   if(siteSubheading)siteSubheading.textContent=state.site?
-    team(state).length+' OPERATORS · '+
+    friendly.length+' OPERATORS · '+
     (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
     'TACTICAL TRAINING';
   if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
@@ -618,9 +626,9 @@ export function createTacticalHudController(
     feed:ui.feed,hint:ui.hint
   });
   const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
-  ui.mission.textContent=(state.phase==='planning'?
+  writeDomText(ui.mission,(state.phase==='planning'?
       brief.code+' • ':'')+missionText(state)+
-    (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):'');
+    (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):''));
 
   }
 
