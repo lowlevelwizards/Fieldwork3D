@@ -122,7 +122,10 @@ export class ArsenalViewport{
  }
  /** Keep six body sockets available; show relevant accessory sockets on demand. */
  setVisibleSlots(slots:readonly ArsenalSlot[]){
-  this.activeExtraSlots=slots.filter(s=>!FAMILY_SLOTS.includes(s as FamilyPartSlot));
+  const extras=slots.filter(s=>!FAMILY_SLOTS.includes(s as FamilyPartSlot));
+  if(extras.length===this.activeExtraSlots.length&&
+   extras.every((slot,i)=>slot===this.activeExtraSlots[i]))return;
+  this.activeExtraSlots=extras;
   this.rebuildSocketDots();
  }
  setSelectedSlot(slot:ArsenalSlot){
@@ -139,7 +142,7 @@ export class ArsenalViewport{
  }
  private rebuildSocketDots(){
   this.clearSocketDots();
-  if(!this.body||!this.config)return;
+  if(!this.renderer||!this.body||!this.config)return;
   const sockets:ArsenalSlot[]=[...FAMILY_SLOTS,...this.activeExtraSlots];
   const accessory=workbenchVisualAnchors(this.config,this.body,'attachments');
   for(const slot of sockets){
