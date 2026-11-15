@@ -26,7 +26,8 @@ test('FNC P1: independent stock, barrel and handguard silhouette landmarks',()=>
  assert.equal(g.children.filter(c=>c.userData.fncP5GrooveSide).length,4);
  assert.equal(g.children.filter(c=>c.userData.fnc556Magazine).length,1);
  assert.equal(g.children.filter(c=>c.userData.fncFlatStampedUpper).length,1);
- assert.equal(g.children.filter(c=>c.userData.fncP8OpenTriggerGuard).length,1);
+ assert.equal(g.children.filter(c=>c.userData.fncP8OpenTriggerGuard).length,0);
+ assert.ok(g.children.every(c=>!c.name.includes('trigger-guard')));
  assert.equal(g.children.filter(c=>c.userData.fncP8DistinctMagwell).length,1);
  assert.ok(!g.children.some(c=>c.userData.falCrownedUpper),
   'FNC must not reuse the FAL roof or receiver');
