@@ -1,8 +1,10 @@
-name: FAL P9 — Final alignment, finish parity and live-studio lighting
+name: FAL Family — P11 wood, P12 Para stock, P13 Para barrel
 on:
   pull_request:
     branches: [main]
     paths:
+      - 'src/equipment-weapon-families.ts'
+      - 'src/weapons/geometry/fal-barrel-profiles.ts'
       - 'src/weapons/geometry/fal-core-silhouette.ts'
       - 'src/weapons/geometry/fal-receiver-form.ts'
       - 'src/fal-stage1-lab.ts'
@@ -15,6 +17,7 @@ on:
       - 'src/operator-carried-magazines.ts'
       - 'tests/weapon-fal-stage1-blockout.test.mjs'
       - 'tests/weapon-fal-stage2-family.test.mjs'
+      - 'tests/weapon-fal-p11-p13-variants.test.mjs'
       - 'tests/weapon-fal-p1-identity.test.mjs'
       - 'tests/weapon-fal-p2-style.test.mjs'
       - 'tests/weapon-fal-p3-reference-style.test.mjs'
@@ -45,6 +48,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/weapon-fal-stage1-blockout.test.mjs \
             tests/weapon-fal-stage2-family.test.mjs \
+            tests/weapon-fal-p11-p13-variants.test.mjs \
             tests/weapon-fal-p1-identity.test.mjs \
             tests/weapon-fal-p2-style.test.mjs \
             tests/weapon-fal-p3-reference-style.test.mjs \
@@ -67,7 +71,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fal-p9-final-3d-comparisons
+          name: fal-p11-p13-family-3d-comparisons
           path: |
             fal-p1-captures/
             visual-foundation-f5-captures/
