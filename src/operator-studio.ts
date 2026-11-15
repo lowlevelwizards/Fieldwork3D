@@ -97,7 +97,7 @@ import {createCamoBrowseControls,createCamoFavoriteButton,
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 import {STUDIO_PRESET_STORAGE_KEY,STUDIO_PRESET_LIMIT,
  readStudioPresets,saveStudioPreset,deleteStudioPreset,
- serializeStudioPresets,outfitPresetForKit,
+ outfitPresetForKit,commitStudioPresetChange,normalizeStudioPresetName,
  type StudioPreset} from './operator-studio-presets.ts';
 import './operator-appearance-grid.css';
 
@@ -839,24 +839,27 @@ function canEquip(slot:WardrobeSlot,id:string){
  const p=member();
  return !!p&&resolvedWardrobe(setWardrobeStyle(current(),slot,id),p.loadout)[slot]===id;
 }
+function restoreDraft(look:WardrobeOptions){
+ const parsed=readWardrobe(look);
+ const saved=readWardrobe(member()?.wardrobe);
+ if(JSON.stringify(parsed)===JSON.stringify(saved)){
+  edits.delete(selected);dirty.delete(selected);
+ }else{edits.set(selected,parsed);dirty.add(selected);}
+}
 function changeWardrobe(next:WardrobeOptions){
  if(saveInFlight)return;
- // Refresh replaces material controls; preserve the user's exact scroll and
- // active selection step instead of jumping them back to item browsing.
  const sheet=materialRoot.closest<HTMLElement>('.studio-sheet');
  const savedScroll=sheet?.scrollTop??0;
  const savedStep=activeStep;
  const oldLook=current();
- const changedFacewear=next.styles.facewear!==oldLook.styles.facewear||
-  next.d2FaceMode!==oldLook.d2FaceMode;
+ const parsed=readWardrobe(next);
+ const changedFacewear=parsed.styles.facewear!==oldLook.styles.facewear||
+  parsed.d2FaceMode!==oldLook.d2FaceMode;
  if(comparingSaved)comparingSaved=false;
  if(readOnly){say('Appearance is locked during an active campaign operation');return;}
- if(JSON.stringify(next)===JSON.stringify(current()))return;
- history.set(selected,[...(history.get(selected)??[]).slice(-24),readWardrobe(current())]);
- const parsed=readWardrobe(next);
- if(JSON.stringify(parsed)===JSON.stringify(member()?.wardrobe)){
-  edits.delete(selected);dirty.delete(selected);
- }else{edits.set(selected,parsed);dirty.add(selected);}
+ if(JSON.stringify(parsed)===JSON.stringify(readWardrobe(oldLook)))return;
+ history.set(selected,[...(history.get(selected)??[]).slice(-24),readWardrobe(oldLook)]);
+ restoreDraft(parsed);
  say(dirty.size+' UNSAVED OPERATOR LOOK'+(dirty.size===1?'':'S'));
  refresh();
  activeStep=savedStep;
@@ -882,8 +885,11 @@ function undo(){
  comparingSaved=false;
  const stack=history.get(selected)??[],last=stack.pop();
  if(!last)return;
- history.set(selected,stack);edits.set(selected,last);dirty.add(selected);
- say('RESTORED PREVIOUS APPEARANCE');refresh();
+ history.set(selected,stack);
+ restoreDraft(last);
+ say(dirty.has(selected)?'RESTORED PREVIOUS APPEARANCE · UNSAVED':
+  'RESTORED LAST SAVED APPEARANCE');
+ refresh();
 }
 undoButton.addEventListener('click',undo);
 const MATERIAL_LABELS=/^(GLOVES · INDEPENDENT|GLOVE COLOR|SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|ACH \/ MICH COVER|ACH \/ MICH SHELL COLOR|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
@@ -1965,8 +1971,9 @@ function renderPresetMenu(){
  const selectedName=presetSelect.value;
  presetApply.disabled=readOnly||comparingSaved||saveInFlight||!selectedName;
  presetDelete.disabled=readOnly||comparingSaved||saveInFlight||!selectedName;
- presetSave.disabled=readOnly||comparingSaved||saveInFlight||
-  studioPresets.length>=STUDIO_PRESET_LIMIT;
+ presetSave.disabled=readOnly||comparingSaved||saveInFlight;
+ presetSave.textContent=studioPresets.length>=STUDIO_PRESET_LIMIT?
+  'SAVE / REPLACE PRESET':'SAVE PRESET';
  const p=member();
  const pair=p?pairedUniformFor(activeCategory,current(),p.loadout):null;
  matchSetButton.hidden=!pair;
@@ -1976,10 +1983,15 @@ function renderPresetMenu(){
  if(pair)matchSetButton.textContent='MATCH '+(pair.slot==='top'?'TOP':'TROUSERS')+
   ' · '+(pair.id==='gorka-trousers'?'GORKA':pair.id.includes('acu')?'ACU':'BDU');
 }
-function persistStudioPresets(){
- try{localStorage.setItem(STUDIO_PRESET_STORAGE_KEY,
-  serializeStudioPresets(studioPresets));return true;}
- catch{say('PRESET SAVE BLOCKED BY BROWSER STORAGE');return false;}
+function persistStudioPresets(next:readonly StudioPreset[]){
+ const result=commitStudioPresetChange(studioPresets,next,value=>
+  localStorage.setItem(STUDIO_PRESET_STORAGE_KEY,value));
+ if(!result.saved){
+  say('PRESET SAVE BLOCKED BY BROWSER STORAGE · OLD PRESETS KEPT');
+  return false;
+ }
+ studioPresets=result.presets;
+ return true;
 }
 compareButton.addEventListener('click',()=>{
  if(!dirty.has(selected))return;
@@ -1996,18 +2008,25 @@ resetButton.addEventListener('click',()=>{
 });
 presetSelect.addEventListener('change',renderPresetMenu);
 presetSave.addEventListener('click',()=>{
- if(readOnly||comparingSaved)return;
- const name=window.prompt('Name this appearance-only preset (up to 32 characters):');
- if(name===null||!name.trim())return;
- const next=saveStudioPreset(studioPresets,name,current());
- if(next.length===studioPresets.length&&
-  !studioPresets.some(x=>x.name.toLowerCase()===name.trim().toLowerCase())){
-  say('MAXIMUM OF '+STUDIO_PRESET_LIMIT+' APPEARANCE PRESETS');return;
+ if(readOnly||comparingSaved||saveInFlight)return;
+ const name=window.prompt('Name this appearance-only preset (up to 32 characters):',
+  presetSelect.value||'');
+ if(name===null)return;
+ const normalized=normalizeStudioPresetName(name);
+ if(!normalized)return;
+ const existing=studioPresets.some(x=>x.name.toLowerCase()===normalized.toLowerCase());
+ if(!existing&&studioPresets.length>=STUDIO_PRESET_LIMIT){
+  say('MAXIMUM OF '+STUDIO_PRESET_LIMIT+' APPEARANCE PRESETS · SELECT ONE TO REPLACE');
+  return;
  }
- studioPresets=next;
- if(!persistStudioPresets())return;
- renderPresetMenu();presetSelect.value=name.trim().replace(/\s+/g,' ').slice(0,32);
- renderPresetMenu();say('APPEARANCE PRESET SAVED · NO EQUIPMENT');
+ const next=saveStudioPreset(studioPresets,normalized,current());
+ if(!persistStudioPresets(next))return;
+ renderPresetMenu();
+ presetSelect.value=studioPresets.find(x=>
+  x.name.toLowerCase()===normalized.toLowerCase())?.name??'';
+ renderPresetMenu();
+ say(existing?'APPEARANCE PRESET REPLACED · NO EQUIPMENT':
+  'APPEARANCE PRESET SAVED · NO EQUIPMENT');
 });
 presetApply.addEventListener('click',()=>{
  if(readOnly||comparingSaved)return;
@@ -2021,8 +2040,8 @@ presetDelete.addEventListener('click',()=>{
  if(readOnly||comparingSaved||!presetSelect.value)return;
  const name=presetSelect.value;
  if(!window.confirm('Delete appearance preset "'+name+'"?'))return;
- studioPresets=deleteStudioPreset(studioPresets,name);
- if(!persistStudioPresets())return;
+ const next=deleteStudioPreset(studioPresets,name);
+ if(!persistStudioPresets(next))return;
  renderPresetMenu();say('PRESET DELETED');
 });
 matchSetButton.addEventListener('click',()=>{
