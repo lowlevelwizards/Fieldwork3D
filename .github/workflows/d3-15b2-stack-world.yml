@@ -1,0 +1,80 @@
+name: D3.15B2 doorless STACK 45s actual motor
+on:
+  pull_request:
+    paths:
+      - 'src/breach-cycle-lane-recovery.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'tests/release-d3-15b2-doorless-stack-world.test.mjs'
+      - '.github/workflows/d3-15b2-stack-world.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  physical-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and complete physical lane contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-15b2-doorless-stack-world.test.mjs \
+            tests/release-d3-14c2-cycle-world-lane.test.mjs \
+            tests/release-d3-14d2-retail-rehearsal.test.mjs
+      - name: Actual 45s motel Vale repeated STACK lane / SYNC
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=9492261 --audit-scale=small \
+            --route-transitions --progress --route-quality \
+            --trace-actor=vale --trace-mode=entry \
+            > "$RUNNER_TEMP/d315b2-motel.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315b2-motel.json','utf8'));
+          const m=r.rows[0].modes.find(x=>x.mode==='entry'),s=r.summary;
+          const vale=m.operators.find(o=>o.id==='vale');
+          const sources=Object.fromEntries(Object.entries(m.routeTransitions.byActor)
+            .filter(([k])=>k.startsWith('vale:')));
+          console.log('D315B2_MOTEL',JSON.stringify({
+            arrivals:m.arrivals,complete:m.complete,operators:m.operators,
+            sources,stalls:m.stallEpisodes,route:r.routeQualitySummary,
+            progress:r.progressSummary,safety:s
+          }));
+          if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts)
+             throw Error('invalid physical or authored-plan behavior');
+          if((sources['vale:lane-cycle-world']??0)<1)
+             throw Error('did not select physically swept original STACK-world recovery');
+          if(vale?.activeOrder==='move'&&vale?.activeOrderDetails?.entryDoorId===null)
+             throw Error('Vale still cycling to original STACK');
+          if(m.arrivals<4||!m.complete)
+             throw Error('motel squad failed actual four-body entry');
+          NODE
+      - name: Frozen historical 11-site 88-operator 45s parity
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress --route-quality > "$RUNNER_TEMP/d315b2-historical.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315b2-historical.json','utf8'));
+          const s=r.summary,p=r.progressSummary,q=r.routeQualitySummary;
+          console.log('D315B2_HISTORICAL',JSON.stringify({summary:s,progress:p,route:q}));
+          if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts||
+             s.physicalArrivals<80||s.physicalCompletedFour<18||
+             s.completedFour<21||s.stallEpisodes>8||
+             p.suspectedLoops||p.sustainedStill||q.searches>2850)
+             throw Error('D3.15B2 historical actual-body regression');
+          NODE
+      - name: Retain exact real 45s physical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d315b2-motel-and-historical-45s
+          path: ${{ runner.temp }}/d315b2-*.json
+          retention-days: 90
