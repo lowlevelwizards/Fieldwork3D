@@ -28,7 +28,8 @@ import {D314B_HOLDOUT_22,D314B_HOLDOUT_ID}
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing} from '../src/breach-navigation.ts';
-import {routeWithSqueezeWorld,routeToNextOperableDoor}
+import {routeWithSqueezeWorld,routeToNextOperableDoor,
+ recoverNormalLane,routeWithSqueezeIntel}
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
@@ -56,6 +57,7 @@ const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
+const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
 const h2Fresh22=process.argv.includes('--h2-fresh-22');
 const d314bBlind22=process.argv.includes('--d314b-blind22');
 // D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
@@ -90,6 +92,8 @@ if(d314bBlind22&&(g2Fresh22||h2Fresh22||sites!==22||
 if(h2Fresh22&&(g2Fresh22||sites!==22||requestedSite!==null||clinicOnly||
     requestedSeedArg||requestedScaleArg))
  throw Error('H2 holdout requires 22 sites with no overrides or other cohort');
+if(d314cFrontProbe&&requestedSite===null)
+ throw Error('D3.14C FRONT feasibility probe needs one selected site');
 if(d314bClearanceProbe&&requestedSite===null)
  throw Error('D3.14B clearance probe needs one selected site');
 if(g2Fresh22&&(sites!==22||requestedSite!==null||clinicOnly||
@@ -481,6 +485,57 @@ function run(site,seed,kind){
     };
    }
   }
+  // D3.14C: exactly one POST-SIM, read-only comparison of the REAL
+  // physically swept local lane, known-intel tail and existing future
+  // operable-door recovery. No paths are adopted, no actor moved, no
+  // collision relaxed or expensive test run inside a live 60Hz tick.
+  let d314cFrontEvidence=null;
+  if(d314cFrontProbe&&kind==='authored'){
+   const actor=actors.find(a=>a.id==='rook');
+   const goal=actor?planned.goals.get(actor.id):null;
+   if(actor&&goal){
+    const world=sessionWorldGeometry(session);
+    const full=(a,b)=>sweptBodyClear(a,b,session.doors,
+      OPERATOR_RADIUS,world);
+    const plan=route=>{let at=actor.p,length=0,illegal=0;
+     for(const p of route){
+      length+=dist(at,p);
+      if(!full(at,p))illegal++;at=p;
+     }
+     return {nodes:route.length,totalLength:round(length),
+      allLegsFullySwept:illegal===0,illegalLegs:illegal,
+      first:route.slice(0,6),last:route.slice(-3),
+      firstPhysicallyClear:route.length?full(actor.p,route[0]):null,
+      reachesAuthoredGoal:route.length?
+       dist(route[route.length-1],goal)<3:false};
+    };
+    const lane=recoverNormalLane(actor.p,goal,session.doors,world);
+    const actual=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+    const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+    const intel=routeWithSqueezeIntel(session.intel,actor.p,goal);
+    const episode=actor.doorTraversal;
+    const door=episode?session.doors.find(d=>d.id===episode.doorId):null;
+    d314cFrontEvidence={
+     actorId:actor.id,position:{...actor.p},goal:{...goal},
+     remaining:round(dist(actor.p,goal)),squeeze:actor.squeeze,
+     lastBlocker:actor.lastBlocker,blockedTime:round(actor.blockedTime),
+     routeNav:actor.nav.slice(0,6),bodyFullyClear:bodyClear(actor.p,
+      session.doors,OPERATOR_RADIUS,world),
+     episode:episode?{doorId:episode.doorId,phase:episode.phase,
+      maneuver:episode.maneuver,approachSide:episode.approachSide,
+      attempts:episode.maneuverAttempts}:null,
+     leaf:door?{a:door.a,b:door.b,
+      leaf:doorLeafSegment(door),fraction:door.openFraction,
+      angularVelocity:door.angularVelocity}:null,
+     otherActors:actors.filter(a=>a!==actor).map(a=>({
+      id:a.id,p:{...a.p}})),
+     closedOperable:session.doors.filter(d=>!d.locked&&!d.jammed&&
+      !d.wedged&&!d.heldBy&&(d.openFraction??0)<.72).map(d=>d.id),
+     fullBodyLane:plan(lane),actualWorld:plan(actual),
+     firstFutureDoor:plan(future),knownIntel:plan(intel)
+    };
+   }
+  }
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -498,6 +553,7 @@ function run(site,seed,kind){
    rejectedDoors:planned.rejectedDoors??[],complete,
    warehouseHingeWitness,
    ...(d314bClearanceProbe?{d314bClearanceEvidence}:{}),
+   ...(d314cFrontProbe?{d314cFrontEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
