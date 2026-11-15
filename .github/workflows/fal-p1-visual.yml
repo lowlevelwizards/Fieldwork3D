@@ -62,10 +62,14 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Capture actual shared-scale M4/G3/FAL 3D views
         run: node scripts/smoke-fal-p1-visual.mjs
+      - name: Verify dark-background live-lit Arsenal Workbench on mobile
+        run: FW_F5_CAPTURE=1 node scripts/smoke-arsenal-lighting-r714.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: fal-p9-final-3d-comparisons
-          path: fal-p1-captures/
+          path: |
+            fal-p1-captures/
+            visual-foundation-f5-captures/
           if-no-files-found: ignore
           retention-days: 14
