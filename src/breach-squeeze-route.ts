@@ -8,6 +8,7 @@ import {type IntelState,intelPassable,routeWithIntel} from './breach-intel.ts';
 import {profileSamples,squeezeFacing,sweptProfileClear,sweptBodyClear,SQUEEZE_RADIUS}
   from './breach-navigation.ts';
 import {localDetour} from './breach-cooperation.ts';
+import {fullBodyMotorRouteClear} from './breach-recovery-route-validation.ts';
 
 const narrowPassable=(at:Pt,canStand:(p:Pt,r:number)=>boolean)=>
   canStand(at,SQUEEZE_RADIUS);
@@ -229,7 +230,9 @@ export function repairBlockedTransientWorldLeg(from:Pt,next:Pt,
    return [];
  const connector=routeWithNormalWorld(from,next,doors,world);
  if(!connector.length||courseLength(from,connector)>span*2.5+20||
-    !sweptBodyClear(from,connector[0],doors,OPERATOR_RADIUS,world))
+    !fullBodyMotorRouteClear(from,connector,
+      (a,b)=>sweptBodyClear(a,b,doors,OPERATOR_RADIUS,world),
+      span*2.5+20))
    return [];
  return [...connector,...remaining.map(p=>({...p}))];
 }
@@ -353,9 +356,11 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorld
 }
 export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],world?:SessionWorldGeometry):Pt[]{
  // Open hinged leaves are pushable; ordinary motion must remain eligible.
- const normal=routeWithNormalWorld(from,to,doors,world);
- if(normal.length)return normal;
+ // Reuse one immutable synchronous leaf/passability snapshot for both
+ // normal and narrow passes. No cross-tick caching of moving hinges.
  const canStand=worldCanStand(doors,world);
+ const normal=routeWithNormalWorld(from,to,doors,world,canStand);
+ if(normal.length)return normal;
  const narrow=narrowRoute(from,to,canStand);
  let previous=from;
  for(const point of narrow){

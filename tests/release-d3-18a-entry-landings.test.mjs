@@ -28,7 +28,7 @@ test('D3.18A: cold physically verified continuation behind a door leaf',()=>{
  const from=p(208,169),original=p(206,185);
  const chosen=selectPhysicalEntrySettle(from,original,door,[],
   q=>q.x>224,
-  ()=>false,
+  (a,b)=>b.x<=217||a.x>=215,
   (a,b)=>[p(216,155),b]);
  assert.ok(chosen);
  assert.ok(chosen.x>224,'still on original intended side');

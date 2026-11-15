@@ -1,3 +1,4 @@
+import {provisionalRouteAccepted} from './breach-movement-recovery.ts';
 import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
@@ -144,8 +145,7 @@ export function preferShortPhysicalEntry(
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
  setTransientRoute(s,a,candidate.map(clone),'door-short-entry');
- a.retryRouteAt=0;
- a.recoveryAttempts=0;
+ provisionalRouteAccepted(a);
  return true;
 }
 /** Called only on physically blocked contact; an active maneuver never
@@ -212,7 +212,7 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
    joined.length?'door-rehearsal-joined-waypoint':'door-rehearsal');
  a.autoSidestep=beginAutoSidestep(a.p,next,chosen[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
- a.retryRouteAt=0;a.recoveryAttempts=0;
+ provisionalRouteAccepted(a);
  a.squeeze=false;a.squeezeTime=0;
  return true;
 }
@@ -319,7 +319,7 @@ export function tryGoalCompleteDoorHandoffAfterEscape(
  e.phase='clear-leaf';
  e.lastTransitionAt=s.seconds;
  setTransientRoute(s,a,route,'door-rehearsal');
- a.retryRouteAt=0;a.recoveryAttempts=0;
+ provisionalRouteAccepted(a);
  return true;
 }
 /** A truly wayward approach can be recovered by one deterministic move
@@ -353,7 +353,7 @@ export function recoverDoorApproachDrift(a:TeamActor,s:Session):boolean{
  e.waypoints=[clone(staging)];
  e.waypointIndex=0;
  setTransientRoute(s,a,[clone(staging)],'door-drift');
- a.retryRouteAt=0;a.recoveryAttempts=0;
+ provisionalRouteAccepted(a);
  a.squeeze=false;a.squeezeTime=0;
  return true;
 }

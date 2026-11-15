@@ -16,7 +16,7 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld,
  routeToNextOperableDoor}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
-import {routeRetrySeconds} from './breach-movement-recovery.ts';
+import {routeRetrySeconds,provisionalRouteAccepted} from './breach-movement-recovery.ts';
 import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe,
  knownIntelRouteKey} from './breach-cold-route-cache.ts';
 // Cache only proven unsuccessful route probes, never a guessed blocked GO.
@@ -64,7 +64,7 @@ export function restoreAfterOpenLeafEscape(
   noteDoorHandoffRejection(s,a,'world:first-leg-not-swept');return false;
  }
  setTransientRoute(s,a,route,'door-leaf-escape');
- a.retryRouteAt=0;a.recoveryAttempts=0;
+ provisionalRouteAccepted(a);
  return true;
 }
 /** G2B: only after THREE repeated real leaf escapes and after the body
@@ -150,7 +150,7 @@ export function restoreRepeatedDoorEscapeRoute(
         d(a.p,prefix[0])<=96&&cost<=d(a.p,goal)*1.9+48){
        setTransientRoute(s,a,prefix,'door-escape-future-portal');
        finishDoorEscapeRejoin(a);
-       a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;a.recoveryAttempts=0;
+       a.lastNavRepairAt=s.seconds;provisionalRouteAccepted(a);
        return true;
      }
      noteDoorHandoffRejection(s,a,'h:future-portal-prefix-unavailable');
@@ -179,8 +179,8 @@ export function restoreRepeatedDoorEscapeRoute(
          ...original.map(clone)],'door-squeeze-leaf-exit');
        ownNarrowExitWaypoints(a,stages);
        finishDoorEscapeRejoin(a);
-       a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;
-       a.recoveryAttempts=0;
+       a.lastNavRepairAt=s.seconds;
+       provisionalRouteAccepted(a);
        return true;
      }
      noteDoorHandoffRejection(s,a,'d314b:no-full-squeeze-join');
@@ -190,7 +190,7 @@ export function restoreRepeatedDoorEscapeRoute(
  setTransientRoute(s,a,rejoined,
    usedLocalStage?'door-escape-local-portal':'door-escape-world-rejoin');
  finishDoorEscapeRejoin(a);
- a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;a.recoveryAttempts=0;
+ a.lastNavRepairAt=s.seconds;provisionalRouteAccepted(a);
  return true;
 }
 export type MotorRouteReadiness='ready'|'handled'|'unavailable';
@@ -263,7 +263,7 @@ export function prepareMotorRoute(
        goalDistance>=.9&&goalDistance<=12&&
        sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
       setTransientRoute(s,a,[{...p}],'fire-retreat');
-      a.retryRouteAt=0;a.recoveryAttempts=0;
+      provisionalRouteAccepted(a);
       return 'ready';
     }
     if(s.seconds<a.retryRouteAt){
@@ -334,7 +334,7 @@ export function prepareMotorRoute(
       }
       return 'unavailable';
     }
-    a.retryRouteAt=0;a.recoveryAttempts=0;
+    provisionalRouteAccepted(a);
   }
 
  return 'ready';
