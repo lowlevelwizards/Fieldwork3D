@@ -60,7 +60,7 @@ export function buildFALCoreSilhouette(
  // cocking tube and NO AR-like split carry-handle upper.
  p('receiver',[
   [-6.60,-.87],[-6.60,1.08],[-5.86,1.66],
-  [-5.36,1.80],[2.42,1.80],[3.27,1.54],
+  [-5.36,1.83],[2.42,1.83],[3.27,1.54],
   [3.85,1.04],[3.85,-.62],[3.10,-.95],[-5.77,-1.25]
  ],3.50);
  // Single angular lower, sculpting the grip/magazine negative space.
