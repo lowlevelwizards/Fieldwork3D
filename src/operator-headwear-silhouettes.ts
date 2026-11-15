@@ -35,7 +35,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'm1-steel':{id:'m1-steel',frontExtent:-6.93,rearExtent:6.55,
   top:10.24,earEdge:3.56,foreheadEdge:4.76,billLength:1.07},
  'ddr-m56':{id:'ddr-m56',frontExtent:-6.80,rearExtent:8.10,
-  top:8.775,earEdge:4.43,foreheadEdge:4.65,billLength:0},
+  top:8.775,earEdge:4.43,foreheadEdge:4.74,billLength:0},
  'police-helmet':{id:'police-helmet',frontExtent:-5.70,rearExtent:5.80,
   top:8.90,earEdge:2.20,foreheadEdge:4.90,billLength:0},
  'pasgt':{id:'pasgt',frontExtent:-6.34,rearExtent:5.68,
@@ -518,6 +518,12 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
   m.side=THREE.DoubleSide;
   m.shadowSide=THREE.DoubleSide;
  }
+ // M56's handmade quad normals are intentionally *flat per broad panel*.
+ // Three.js flatShading bypasses supplied normals and exposes the two
+ // non-coplanar triangle halves as mismatched dark wedges; disable it for
+ // this shell alone. Every other headgear material remains unchanged.
+ if(id==='ddr-m56'&&m instanceof THREE.MeshStandardMaterial)
+  m.flatShading=false;
  const mesh=new THREE.Mesh(geometry,m);
  mesh.name=id+(id==='m1-steel'?'-one-piece-faceted-steel-shell':
   id==='soviet-steel'?'-one-piece-faceted-bell-shell':

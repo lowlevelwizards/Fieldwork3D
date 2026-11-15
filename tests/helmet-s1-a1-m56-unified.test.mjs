@@ -26,7 +26,9 @@ test('S1-A1 one M56 stamped steel surface replaces every visible cuboid tier',()
  assert.equal(g.userData.m56UnifiedStampedShell,true);
  assert.equal(g.userData.m56ContinuousFlare,true);
  assert.equal(g.userData.m56VisibleRecessedInterior,true);
- assert.equal(g.userData.m56ProfileRevision,'S1-A1');
+ assert.equal(g.userData.m56ProfileRevision,'S1-A1B');
+ assert.equal(g.userData.m56ConsistentQuadNormals,true);
+ assert.equal(g.userData.m56SkirtSwept,true);
  assert.equal(g.userData.greedyCuboidUnion,undefined);
  assert.equal(g.userData.m56PerimeterFacets,8);
  assert.equal(M56_SHELL_RINGS.length,8);
@@ -51,17 +53,17 @@ test('S1-A1 iconic DDR wide rear flare without additional concentric tiers',()=>
  near(b.max.x,6.87,'right flare');
  near(b.min.z,-6.80,'front');
  near(b.max.z,8.10,'long rear');
- near(b.min.y,4.225,'rear nape');
- near(m56SurfacePoint(4,0)[1],4.65,'raised front');
- near(m56SurfacePoint(4,2)[1],4.5884,'front quarter');
- near(m56SurfacePoint(4,4)[1],4.225,'rear nape');
- near(m56SurfacePoint(4,6)[1],4.2824,'rear quarter');
+ near(b.min.y,3.97,'rear nape');
+ near(m56SurfacePoint(4,0)[1],4.74,'raised front');
+ near(m56SurfacePoint(4,2)[1],4.6532,'front quarter');
+ near(m56SurfacePoint(4,4)[1],3.97,'rear nape');
+ near(m56SurfacePoint(4,6)[1],4.0988,'rear quarter');
  const crown=M56_SHELL_RINGS[0],shoulder=M56_SHELL_RINGS[1],
   wall=M56_SHELL_RINGS[2],edge=M56_SHELL_RINGS[4];
  assert.ok(wall.side>shoulder.side+.25&&wall.side<shoulder.side+.65,
   'continuous wall gently widens from shoulder rather than a hard intermediate tier');
  assert.ok(edge.side-wall.side>.75,'single characteristic M56 flare');
- assert.ok(edge.rear-wall.rear>1.2,'long rear protective sweep');
+ assert.ok(edge.rear-wall.rear>.85,'long rear protective sweep');
  assert.ok(edge.rear-edge.front>1.2,'profile is unmistakably asymmetrical');
  assert.ok(M56_PERIMETER.length===8,'retain boxy faceting');
  const m=HEAD_SILHOUETTE_METRICS['ddr-m56'];
@@ -72,6 +74,78 @@ test('S1-A1 iconic DDR wide rear flare without additional concentric tiers',()=>
  near(m.earEdge,M56_SHELL_FIT.sideHem,'fit ear');
  assert.ok(edge.rear>HEAD_SILHOUETTE_METRICS['m1-steel'].rearExtent+1.4);
  assert.ok(edge.front>HEAD_SILHOUETTE_METRICS['soviet-steel'].rearExtent);
+});
+
+test('S1-A1B Studio honors authored quad normals only for M56',()=>{
+ const mat=new THREE.MeshStandardMaterial({flatShading:true});
+ const m56=createHeadwearSilhouette('ddr-m56',mat);
+ assert.equal(m56.children.length,1);
+ assert.equal(m56.children[0].material,mat,
+  'retain the authoritative recolorable headwear material');
+ assert.equal(mat.flatShading,false,
+  'do not override M56 authored quad normals with triangle derivative normals');
+ const m1Mat=new THREE.MeshStandardMaterial({flatShading:true});
+ createHeadwearSilhouette('m1-steel',m1Mat);
+ assert.equal(m1Mat.flatShading,true,'approved M1 shading untouched');
+ const sshMat=new THREE.MeshStandardMaterial({flatShading:true});
+ createHeadwearSilhouette('soviet-steel',sshMat);
+ assert.equal(sshMat.flatShading,true,'approved Soviet shading untouched');
+});
+
+test('S1-A1B crown is narrower but remains square and eight-faceted',()=>{
+ const top=M56_SHELL_RINGS[0],shoulder=M56_SHELL_RINGS[1];
+ near(top.side,3.08,'reduced flat crown half-width');
+ near(top.front,3.48,'reduced flat crown forward reach');
+ near(top.rear,3.72,'reduced flat crown rear reach');
+ near(top.y,8.775,'helmet fit height preserved');
+ near(shoulder.side,5.60,'proven skull-covering shoulder stays broad');
+ assert.ok(top.side/shoulder.side<.58,'crown is visibly subordinate to shell');
+ assert.equal(M56_PERIMETER.length,8,'no extra smoothing facets');
+ assert.equal(M56_SHELL_RINGS.length,8,'no extra decorative profile bands');
+});
+test('S1-A1B flare grows through bell and sweeps farther down at rear',()=>{
+ const shoulder=M56_SHELL_RINGS[1],skirt=M56_SHELL_RINGS[2],
+  flare=M56_SHELL_RINGS[3],lip=M56_SHELL_RINGS[4];
+ assert.ok(skirt.y>6.3&&skirt.y<6.5,
+  'flare begins above old abrupt horizontal shelf');
+ assert.ok(skirt.side>shoulder.side+.3&&skirt.side<shoulder.side+.6);
+ assert.ok(flare.side-skirt.side<.75,
+  'wide flare is introduced through the wall instead of a separate shelf');
+ assert.ok(flare.rear-skirt.rear<1.1,
+  'rear taper grows gradually into the integral flare');
+ assert.ok(lip.frontRise>.29&&lip.rearDrop>.44,
+  'raised front and lower rear are both intentionally emphasized');
+ assert.ok(lip.y+lip.frontRise-(lip.y-lip.rearDrop)>.70,
+  'distinctive fore-and-aft slope, not a level boonie brim');
+ assert.ok(lip.side-flare.side<.15,
+  'thin steel termination stays subordinate to main shell');
+ near(M56_SHELL_FIT.frontHem,lip.y+lip.frontRise,'front fit');
+ near(M56_SHELL_FIT.rearHem,lip.y-lip.rearDrop,'rear fit');
+});
+
+test('S1-A1B every quad has consistent broad-plane normals and no inverted triangles',()=>{
+ const g=createM56UnifiedShellGeometry(),p=g.getAttribute('position'),
+  normals=g.getAttribute('normal');
+ const offset=M56_PERIMETER.length*3,quads=(M56_SHELL_RINGS.length-1)*8;
+ assert.equal(normals.count,p.count);
+ assert.equal(g.userData.exteriorQuads,quads);
+ for(let q=0;q<quads;q++){
+  const at=offset+q*4,
+   n=new THREE.Vector3(normals.getX(at),normals.getY(at),normals.getZ(at));
+  near(n.length(),1,'unit normal for quad '+q,.0001);
+  for(let k=1;k<4;k++)for(const component of ['X','Y','Z'])
+   near(normals['get'+component](at+k),normals['get'+component](at),
+    'flat quad '+q+' normal '+component,.0001);
+  const v=i=>new THREE.Vector3(p.getX(i),p.getY(i),p.getZ(i));
+  const [a,b,c,d]=[v(at),v(at+1),v(at+2),v(at+3)];
+  for(const [u,vv,w] of [[a,b,c],[a,c,d]]){
+   const cross=new THREE.Vector3().crossVectors(
+    new THREE.Vector3().subVectors(vv,u),
+    new THREE.Vector3().subVectors(w,u));
+   assert.ok(cross.length()>.00001,'no degenerate facets in quad '+q);
+   assert.ok(cross.dot(n)>0,'both triangles face the same authored direction: '+q);
+  }
+ }
 });
 
 test('S1-A1 M56 shell stays hollow with correctly oriented roof and underside',()=>{
