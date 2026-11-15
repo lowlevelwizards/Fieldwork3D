@@ -22,7 +22,7 @@ type Finish='steel'|'lower'|'stock'|'cheek'|'grip'|'handguard'|
 export type FNCArtFinishes=Readonly<Partial<Record<Finish,THREE.Material>>>;
 
 export function buildFNCStage1Silhouette(
- material:THREE.Material,finishes:FNCArtFinishes={}
+ material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
  root.name='fnc-p2-exterior-art-preview';
@@ -105,10 +105,13 @@ export function buildFNCStage1Silhouette(
  const gas=b('barrel',12.45,1.25,0,2.48,.47,1.08,'barrel');
  gas.userData.fncUpperGasRun=true;
  // Retain corrected P1B barrel diameter and overall muzzle/stock datums.
- const barrel=b('barrel',16.33,0,0,5.35,.96,.96,'barrel');
+ const barrel=b('barrel',showFactoryMuzzle?16.33:16.67,0,0,
+  showFactoryMuzzle?5.35:5.66,.96,.96,'barrel');
  barrel.userData.fncServiceBarrel=true;
- const muzzle=b('barrel',18.90,0,0,1.20,1.16,1.16,'muzzle');
- muzzle.userData.fncMuzzle=true;
+ if(showFactoryMuzzle){
+  const muzzle=b('barrel',18.90,0,0,1.20,1.16,1.16,'muzzle');
+  muzzle.userData.fncMuzzle=true;
+ }
  const gasBlock=b('barrel',14.25,.15,0,.88,1.12,1.30,'steel');
  gasBlock.userData.fncFrontGasBlock=true;
  const front=b('barrel',15.20,.80,0,1.12,1.30,1.38,'steel');
