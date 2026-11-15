@@ -13,8 +13,9 @@ test('Arsenal owns an independent dark scene and two-sided readable light rig',(
  assert.equal(ARSENAL_INSPECTION_BACKGROUND,0x182824);
  const directional=scene.children.filter(x=>x instanceof THREE.DirectionalLight);
  assert.equal(directional.length,2);
- assert.ok(directional.every(l=>l.intensity>=1.9));
- assert.ok(scene.children.some(x=>x instanceof THREE.HemisphereLight));
+ assert.equal(directional[0].intensity,2.35);
+ assert.equal(directional[1].intensity,.60);
+ assert.equal(scene.children.find(x=>x instanceof THREE.HemisphereLight)?.intensity,1.20);
  assert.match(read('src/arsenal/thumbnailer.ts'),/addArsenalInspectionLighting\(this\.scene\)/);
  assert.match(read('src/arsenal/viewport.ts'),/addArsenalInspectionLighting\(this\.scene\)/);
  assert.match(read('src/arsenal/thumbnailer.ts'),/configureGraphicRendererOutput\(this\.renderer\)/);
