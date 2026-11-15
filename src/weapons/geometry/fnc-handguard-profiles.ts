@@ -1,100 +1,102 @@
-/** FN FNC P4 Fieldwork front end.
- * ONE continuous sculpted, fluted polymer silhouette from receiver to nose.
- * Two broad molded side channels are actual cross-section geometry, not
- * dark sticker meshes. The forward ventilation marks sit ON this body,
- * rather than a second rectangular gas cover piled on top of it.
- * No hidden legacy fore-end or interchangeable fake P3 gas crown.
+/** FN FNC P5 shape grammar. Two big volumes, not a 24-face fluted slab:
+ * narrow hexagonal lower handguard and a clear rectangular upper gas cover.
+ * +X muzzle, +Y up, +Z right. Two long lower grooves and three long upper
+ * grooves per side, each batched. Geometry built only on weapon selection.
  */
 import * as THREE from 'three';
 
-type Ring=Readonly<{x:number;scale:number;centerY:number}>;
-const RINGS:readonly Ring[]=[
- {x:3.45,scale:.93,centerY:-.58},
- {x:4.30,scale:1,centerY:-.58},
- {x:10.42,scale:1,centerY:-.58},
- {x:11.14,scale:.98,centerY:-.58},
- {x:13.55,scale:.89,centerY:-.65}
+type Station=Readonly<{x:number;scale:number}>;
+const STATIONS:readonly Station[]=[
+ {x:3.45,scale:.96},{x:4.12,scale:1},
+ {x:11.85,scale:1},{x:13.55,scale:.93}
 ];
-/** One thick tube/block cross-section: two deeply legible molded channels
- * per side, a very broad belly and four simple corner chamfers. The flute
- * depressions run in X; they are NOT additional floating box geometry.
- */
-const PROFILE:readonly (readonly [number,number])[]=[
- [-2.19,-.80],[-2.19,.80],[-1.65,1.36],
- [-1.36,1.36],[-1.13,1.14],[-.95,1.14],[-.73,1.40],
- [-.43,1.40],[-.21,1.16],[-.03,1.16],[.19,1.40],
- [.64,1.06],[.91,.70],
- [.91,-.70],[.64,-1.06],[.19,-1.40],
- [-.03,-1.16],[-.21,-1.16],[-.43,-1.40],
- [-.73,-1.40],[-.95,-1.14],[-1.13,-1.14],
- [-1.36,-1.36],[-1.65,-1.36]
+// A deliberately narrow SIX-sided barrel-like handhold, with a broad underside.
+// Its top is partly covered by the actual gas box, never a tall square slab.
+const HEX:readonly (readonly [number,number])[]=[
+ [-2.04,-.61],[-2.04,.61],[-1.21,1.05],
+ [-.18,.72],[-.18,-.72],[-1.21,-1.05]
 ];
-const point=(ring:Ring,i:number):[number,number,number]=>{
- const [y,z]=PROFILE[i];
- return [ring.x,ring.centerY+(y+.58)*ring.scale,z*ring.scale];
+const vertex=(s:Station,i:number):[number,number,number]=>{
+ const [y,z]=HEX[i];return [s.x,-1.11+(y+1.11)*s.scale,z*s.scale];
 };
-export function addFNCFacetedForearm(
- root:THREE.Group,material:THREE.Material
-):THREE.Mesh{
+export function addFNCFacetedForearm(root:THREE.Group,
+ material:THREE.Material):THREE.Mesh{
  const vertices:number[]=[];
  const tri=(a:readonly number[],b:readonly number[],c:readonly number[])=>
   vertices.push(...a,...b,...c);
- for(let n=0;n<RINGS.length-1;n++)for(let i=0;i<PROFILE.length;i++){
-  const j=(i+1)%PROFILE.length;
-  const a=point(RINGS[n],i),b=point(RINGS[n+1],i);
-  const c=point(RINGS[n+1],j),d=point(RINGS[n],j);
+ for(let n=0;n<STATIONS.length-1;n++)for(let i=0;i<6;i++){
+  const j=(i+1)%6;
+  const a=vertex(STATIONS[n],i),b=vertex(STATIONS[n+1],i),
+   c=vertex(STATIONS[n+1],j),d=vertex(STATIONS[n],j);
   tri(a,b,c);tri(a,c,d);
  }
- const a=RINGS[0],z=RINGS[RINGS.length-1];
- for(let i=0;i<PROFILE.length;i++){
-  const j=(i+1)%PROFILE.length;
-  tri([a.x,a.centerY,0],point(a,j),point(a,i));
-  tri([z.x,z.centerY,0],point(z,i),point(z,j));
+ const rear=STATIONS[0],front=STATIONS[STATIONS.length-1];
+ for(let i=0;i<6;i++){
+  const j=(i+1)%6;
+  tri([rear.x,-1.11,0],vertex(rear,j),vertex(rear,i));
+  tri([front.x,-1.11,0],vertex(front,i),vertex(front,j));
  }
- const geometry=new THREE.BufferGeometry();
- geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
- geometry.computeVertexNormals();
- const mesh=new THREE.Mesh(geometry,material);
- mesh.name='family-handguard-fnc-p4-continuous-fluted-body';
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ geo.computeVertexNormals();
+ const mesh=new THREE.Mesh(geo,material);
+ mesh.name='family-handguard-fnc-p5-hex-lower';
  mesh.userData.fncLongGroovedHandguard=true;
  mesh.userData.fncFacetedHandguard=true;
- mesh.userData.fncCrossSectionFaces=PROFILE.length;
- mesh.userData.fncP4UnifiedForearm=true;
+ mesh.userData.fncCrossSectionFaces=6;
+ mesh.userData.fncP5LowerHex=true;
  mesh.userData.fncMoldedFlutesPerSide=2;
- mesh.castShadow=true;mesh.receiveShadow=true;
- root.add(mesh);return mesh;
+ mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
+ return mesh;
 }
-/** Three prominent ventilation impressions on the same molded front body,
- * one batched mesh per visible side. Surfaces follow the forward taper in Z,
- * using outward-facing winding. No separate elevated gas-cover geometry.
+/** Tall but NARROW top box, seated over the hex handhold for a recognizable
+ * stacked FNC cross-section. Not another full-width receiver-like extrusion.
+ * This is the single gas box, not a chain of three small adapter blocks.
+ */
+export function addFNCUpperGasBox(root:THREE.Group,
+ material:THREE.Material):THREE.Mesh{
+ const geometry=new THREE.BoxGeometry(9.20,1.35,1.72);
+ const mesh=new THREE.Mesh(geometry,material);
+ mesh.position.set(8.66,.40,0); // X 4.06..13.26; Y -.275..1.075
+ mesh.name='family-handguard-fnc-p5-upper-gas-box';
+ mesh.userData.fncP5UpperGasBox=true;
+ mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh;
+}
+/** Two restrained LONG parallel lines on the hex and three on the upper
+ * steel box. All four side mark meshes follow the actual exterior faces and
+ * are not coplanar. Every stripe is one quad, not rivets or little holes.
  */
 export function addFNCForearmMarks(root:THREE.Group,
- material:THREE.Material):THREE.Mesh[]{
- const result:THREE.Mesh[]=[];
- const scale=(x:number)=>x<=11.14?1-(x-10.42)*(.02/.72):
-  .98-(x-11.14)*(.09/2.41);
- for(const side of [-1,1] as const){
+ dark:THREE.Material):THREE.Mesh[]{
+ const marks:THREE.Mesh[]=[];
+ const addStrokes=(side:-1|1,level:'upper'|'lower')=>{
   const positions:number[]=[];
-  for(const x of [11.15,11.92,12.69]){
-   const left=x-.25,right=x+.25;
-   const at=(xx:number,yy:number):[number,number,number]=>
-    [xx,yy,side*(1.402*scale(xx)+.035)];
-   const a=at(left,-.55),b=at(right,-.55),
-    c=at(right,-.14),d=at(left,-.14);
+  const ys=level==='upper'?[.05,.42,.78]:[-.91,-1.60];
+  for(const y of ys){
+   const x0=4.66,x1=12.36,h=level==='upper'?.115:.145;
+   // Face of the top box, or extrapolated face of the lower hex.
+   const z=(yy:number)=>level==='upper'?.889:
+    (yy>=-1.21? .72+(-.18-yy)*(.33/1.03):
+     1.05-(-1.21-yy)*(.44/.83))+.038;
+   const v=(x:number,yy:number):[number,number,number]=>
+    [x,yy,side*z(yy)];
+   const a=v(x0,y-h/2),b=v(x1,y-h/2),
+    c=v(x1,y+h/2),d=v(x0,y+h/2);
    if(side>0)positions.push(...a,...b,...c,...a,...c,...d);
    else positions.push(...a,...c,...b,...a,...d,...c);
   }
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
   geometry.computeVertexNormals();
-  const mesh=new THREE.Mesh(geometry,material);
-  mesh.name='family-handguard-fnc-p4-integrated-vents-'+side;
-  mesh.userData.fncVentSide=side;
-  mesh.userData.fncGasVentSide=side;
-  mesh.userData.fncGasVentCount=3;
-  mesh.userData.fncP4FlushVentMarks=true;
-  mesh.castShadow=false;mesh.receiveShadow=false;
-  root.add(mesh);result.push(mesh);
+  const mesh=new THREE.Mesh(geometry,dark);
+  mesh.name='family-handguard-fnc-p5-'+level+'-grooves-'+side;
+  mesh.userData.fncP5GrooveSide=side;
+  mesh.userData.fncP5GrooveLevel=level;
+  mesh.userData.fncP5GrooveCount=ys.length;
+  mesh.castShadow=false;mesh.receiveShadow=false;root.add(mesh);marks.push(mesh);
+ };
+ for(const side of [-1,1] as const){
+  addStrokes(side,'upper');addStrokes(side,'lower');
  }
- return result;
+ return marks;
 }
