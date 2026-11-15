@@ -5,6 +5,7 @@
  * P6: do not insert transition rings or bevels that do not change the read.
  */
 import * as THREE from 'three';
+import {buildFNCrownMesh} from './fn-crowned-shell.ts';
 
 type Station=Readonly<{
  x:number;top:number;bottom:number;sideHalfZ:number;roofHalfZ:number
@@ -43,45 +44,14 @@ export function falUpperSideHalfZ(y:number,x=1):number{
  }
  return s.sideHalfZ;
 }
-function point(s:Station,n:number):[number,number,number]{
- const {x,top,bottom,sideHalfZ:w,roofHalfZ:r}=s;
- const shoulder=falUpperShoulderY(s);
- // Flat bottom, two purposeful long triangular shoulders, flat narrow roof.
- // No redundant lower bevel, no intermediate rings at tiny changes of slope.
- const ring:readonly (readonly [number,number])[]=[
-  [bottom,-w],[bottom,w],[shoulder,w],
-  [top,r],[top,-r],[shoulder,-w]
- ];
- return [x,ring[n][0],ring[n][1]];
-}
 export function addFALCrownedReceiver(
  root:THREE.Group,receiverId:string,index:number,material:THREE.Material
 ):THREE.Mesh{
- const verts:number[]=[];
- const tri=(a:readonly number[],b:readonly number[],c:readonly number[])=>
-  verts.push(...a,...b,...c);
- for(let i=0;i<FAL_UPPER_STATIONS.length-1;i++){
-  for(let j=0;j<6;j++){
-   const k=(j+1)%6,a=point(FAL_UPPER_STATIONS[i],j);
-   const b=point(FAL_UPPER_STATIONS[i+1],j);
-   const c=point(FAL_UPPER_STATIONS[i+1],k);
-   const d=point(FAL_UPPER_STATIONS[i],k);
-   tri(a,b,c);tri(a,c,d);
-  }
- }
- const rear=FAL_UPPER_STATIONS[0],front=FAL_UPPER_STATIONS.at(-1)!;
- const center=(s:Station):[number,number,number]=>
-  [s.x,(s.top+s.bottom)/2,0];
- for(let j=0;j<6;j++){
-  const k=(j+1)%6;
-  // P6 had inverted cap windings: they were culled from the outside.
-  tri(center(rear),point(rear,j),point(rear,k));
-  tri(center(front),point(front,k),point(front,j));
- }
- const geometry=new THREE.BufferGeometry();
- geometry.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
- geometry.computeVertexNormals();
- const mesh=new THREE.Mesh(geometry,material);
+ // Exact same vertex layout, triangle order, cap centers and normals as
+ // the approved FAL P6 shell; only the duplicative tessellator is shared.
+ const mesh=buildFNCrownMesh(FAL_UPPER_STATIONS,material,{
+  shoulderY:falUpperShoulderY
+ });
  mesh.name='family-receiver-'+receiverId+'-'+index;
  mesh.userData.falCrownedUpper=true;
  mesh.userData.falUpperStationCount=FAL_UPPER_STATIONS.length;

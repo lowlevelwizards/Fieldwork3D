@@ -5,6 +5,7 @@
  * No trigger guard. +X muzzle, +Y up, +Z right; static geometry on demand.
  */
 import * as THREE from 'three';
+import {buildFNCrownMesh} from './fn-crowned-shell.ts';
 import {addOutline,addCuboid,addBar} from './profile-primitives.ts';
 import type {SlotName,Outline} from './profile-primitives.ts';
 import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines}
@@ -75,35 +76,13 @@ export function buildFNCStage1Silhouette(
    {x:2.17,top:1.60,bottom:-.99,side:1.34,roof:.67},
    {x:3.20,top:.45,bottom:-.99,side:1.24,roof:.66}
   ] as const;
-  const ring=(s:typeof stations[number],i:number):[number,number,number]=>{
-   const shoulder=Math.max(s.bottom+.48,s.top-1.20);
-   const yz:readonly (readonly [number,number])[]=[
-    [s.bottom,-s.side],[s.bottom,s.side],[shoulder,s.side],
-    [s.top,s.roof],[s.top,-s.roof],[shoulder,-s.side]
-   ];
-   return [s.x,yz[i][0],yz[i][1]];
-  };
-  const positions:number[]=[];
-  const tri=(a:readonly number[],b:readonly number[],d:readonly number[])=>
-   positions.push(...a,...b,...d);
-  for(let n=0;n<stations.length-1;n++)for(let i=0;i<6;i++){
-   const j=(i+1)%6;
-   const a=ring(stations[n],i),b=ring(stations[n+1],i),
-    d=ring(stations[n+1],j),e=ring(stations[n],j);
-   tri(a,b,d);tri(a,d,e);
-  }
-  const a=stations[0],z=stations[stations.length-1];
-  for(let i=0;i<6;i++){
-   const j=(i+1)%6;
-   // P5 caps were inward-facing; side strip already faces outward.
-   // The rear face is -X and the front face is +X.
-   tri([a.x,0,0],ring(a,i),ring(a,j));
-   tri([z.x,-.30,0],ring(z,j),ring(z,i));
-  }
-  const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
-  geo.computeVertexNormals();
-  const mesh=new THREE.Mesh(geo,mat('steel'));
+  const mesh=buildFNCrownMesh(stations.map(s=>({
+   x:s.x,top:s.top,bottom:s.bottom,
+   sideHalfZ:s.side,roofHalfZ:s.roof
+  })),mat('steel'),{
+   shoulderY:s=>Math.max(s.bottom+.48,s.top-1.20),
+   capCenterY:(_,end)=>end==='rear'?0:-.30
+  });
   mesh.name='family-receiver-fnc-p5-crowned-upper-'+ids.receiver++;
   mesh.userData.fncFlatStampedUpper=true;
   mesh.userData.fncP5CrownedReceiver=true;
