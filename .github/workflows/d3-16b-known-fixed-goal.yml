@@ -4,6 +4,7 @@ on:
     paths:
       - 'src/breach-authored-goal-block.ts'
       - 'src/ui/recovery-guidance.ts'
+      - 'src/ui/execution-feedback.ts'
       - 'tests/release-d3-16b-fixed-goal-feedback.test.mjs'
       - 'tests/tactical-integration-13-execution-status.test.mjs'
       - '.github/workflows/d3-16b-known-fixed-goal.yml'
