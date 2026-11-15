@@ -62,8 +62,15 @@ try{
   await page.setViewportSize({width:430,height:920});
   await page.waitForFunction(()=>document.querySelector('#view')?.width>0);
   await capture('m4-g3-fal-mobile-side');
+  // Distinguish real 3D facets/material hierarchy from a flat silhouette.
+  await page.setViewportSize({width:1280,height:1000});
+  await page.locator('#shaded').check();
+  await page.getByRole('button',{name:'THREE-QUARTER'}).click();
+  await capture('m4-g3-fal-shaded-three-quarter');
+  await page.getByRole('button',{name:'LEFT SIDE'}).click();
+  await capture('m4-g3-fal-shaded-left-side');
   if(errors.length)throw Error('3D FAL lab errors: '+errors.join(' | '));
-  console.log('FAL P4: 6 actual Three.js right/left/three-quarter/mobile comparison captures passed.');
+  console.log('FAL P4: 8 actual Three.js right/left/shaded/three-quarter/mobile comparison captures passed.');
   await page.close();
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
