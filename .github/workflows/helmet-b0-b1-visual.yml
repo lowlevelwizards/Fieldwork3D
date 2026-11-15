@@ -1,4 +1,4 @@
-name: B0/B1 M1 Historical Helmet Visual Acceptance
+name: B0/B1 M1 Helmet Visual Acceptance and Corrections
 on:
   pull_request:
     branches: [main]
@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   historical-art:
-    if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' }}
+    if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' || github.head_ref == 'feature/b1-m1-bold-oversized-correction-20261115' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
@@ -37,7 +37,7 @@ jobs:
       - name: Retain raw visual comparison and per-frame draw calls
         uses: actions/upload-artifact@v4
         with:
-          name: b0-b1-m1-studio-visuals
+          name: b1-m1-oversized-visuals
           path: helmet-b0-captures/
           if-no-files-found: error
           retention-days: 14
