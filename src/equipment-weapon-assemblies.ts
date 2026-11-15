@@ -232,7 +232,9 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const art=build?.family==='ar'?arBarrelArt(build.parts.barrel):
   build?.family==='ak'?akBarrelArt(build.parts.barrel):
   build?.family==='hk'?hkBarrelArt(build.parts.barrel):
-  build?.family==='fal'?falBarrelArt(build.parts.barrel):undefined;
+  build?.family==='fal'?falBarrelArt(build.parts.barrel):
+  build?.family==='fnc'&&build.parts.barrel==='fnc-177-service'?
+  {lengthScale:.94,muzzleX:19.50,muzzleY:0}:undefined;
  const mounted={} as Record<WeaponAttachmentSlot,WeaponAttachment>;
  let mass=p.baseMassKg,weighted=p.baseMassKg*p.baseBalanceX;
  let inertia=p.baseMassKg*(18*18/12+p.baseBalanceX*p.baseBalanceX);
