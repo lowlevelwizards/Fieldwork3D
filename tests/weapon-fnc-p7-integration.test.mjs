@@ -23,7 +23,9 @@ test('P7: factory barrel intersects handguard, gas housing and gas/sight seat',(
  for(const [name,mesh] of [['guard',guard],['gas box',gas],['sight/gas seat',seat]])
   assert.ok(meets(bar,mesh), 'barrel MUST physically intersect '+name);
  assert.ok(meets(gas,seat),'gas box and sight seat must overlap in all 3 axes');
- assert.ok(meets(guard,seat),'lower handguard and sight seat must overlap');
+ assert.ok(meets(guard,gas),'short polymer must connect into long upper gas cover');
+ assert.ok(bounds(guard).max.x<bounds(seat).min.x,
+  'polymer is intentionally shorter than the separate vented gas cover');
  assert.ok(meets(bar,muzzle),'barrel and factory muzzle must be solidly seated');
  assert.ok(bar.userData.fncP7BarrelStartX<bounds(gas).max.x-1);
  assert.ok(Math.abs(bounds(g).max.x-FNC_P1.muzzleX)<.02);
@@ -67,8 +69,8 @@ test('P7: fewer front markings and less dominant muzzle; retained FN geometry',(
  assert.ok(bounds(gas).max.z<bounds(get(g,'fncP5LowerHex')).max.z);
  const marks=g.children.filter(x=>x.userData.fncP7ReducedUpperMarks);
  assert.equal(marks.length,2);
- assert.ok(marks.every(x=>x.geometry.getAttribute('position').count===12),
-  'each side is exactly two long upper channels, not a row of vent dashes');
+ assert.ok(marks.every(x=>x.geometry.getAttribute('position').count===60),
+  'each upper gas side has two rows of five batched vent dashes');
  const size=bounds(end).max.y-bounds(end).min.y;
  const barrelSize=bounds(get(g,'fncServiceBarrel')).max.y-
   bounds(get(g,'fncServiceBarrel')).min.y;

@@ -10,7 +10,7 @@ import {addOutline,addCuboid,addBar} from './profile-primitives.ts';
 import type {SlotName,Outline} from './profile-primitives.ts';
 import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines}
  from './ar-magazine-profiles.ts';
-import {addFNCFacetedForearm,addFNCForearmMarks,addFNCUpperGasBox}
+import {addFNCFacetedForearm,addFNCHandstopLip,addFNCForearmMarks,addFNCUpperGasBox}
  from './fnc-handguard-profiles.ts';
 
 export const FNC_P1=Object.freeze({
@@ -27,7 +27,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p10-stock-fieldwork-exterior';
+ root.name='fnc-p11-vented-front-end-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -191,16 +191,17 @@ export function buildFNCStage1Silhouette(
   rib.castShadow=false;rib.receiveShadow=false;
  }
 
- // Two dominant volumes: hex polymer fore-end beneath a slim gas cover.
- // Only three bold longitudinal mold-line cues per side, no barcode vents.
+ // P11: shorter, fuller polymer with two continuous lines per side;
+ // longer, slimmer steel gas cover with broad broken vents and top slots.
  addFNCFacetedForearm(root,mat('handguard'));
+ addFNCHandstopLip(root,mat('handguard'));
  addFNCUpperGasBox(root,mat('steel'));
  addFNCForearmMarks(root,mat('shadow'));
  // Retain corrected P1B barrel diameter and overall muzzle/stock datums.
  // P7: barrel begins INSIDE the existing fore-end and continues through
  // the front-sight base, not hovering beyond the handguard termination.
  // Both factory and suppressed paths retain their original MUZZLE endpoint.
- const barrelStartX=12.20;
+ const barrelStartX=8.55;
  const barrelEndX=showFactoryMuzzle?19.005:FNC_P1.muzzleX;
  const barrel=b('barrel',(barrelStartX+barrelEndX)/2,0,0,
   barrelEndX-barrelStartX,1.00,1.00,'barrel');
@@ -237,11 +238,29 @@ export function buildFNCStage1Silhouette(
  front.userData.fncP7ContinuousGasSightSeat=true;
  front.userData.fncFrontSightBase=true;
  front.userData.fncP4IntegratedGasSeat=true;
- const sight=aperture('barrel','front-guard',
-  [[14.35,1.24],[14.39,2.61],[14.80,3.23],
-   [15.55,3.23],[15.98,2.61],[16.00,1.24]],
-  [[14.89,1.80],[15.00,2.67],[15.37,2.67],[15.48,1.80]],
-  1.22);
+ // Front sight: FAL-family paired protective ears with a shorter central
+ // pin, rendered as one concave U-like outline in the YZ plane. The
+ // space between ears is really open sky, not a painted side-facing hole.
+ const fork=new THREE.Shape();
+ const outline:readonly (readonly [number,number])[]=[
+  [-.94,1.23],[-.94,2.82],[-.70,3.23],[-.50,3.23],
+  [-.50,1.53],[-.13,1.53],[-.13,2.35],[.13,2.35],
+  [.13,1.53],[.50,1.53],[.50,3.23],[.70,3.23],
+  [.94,2.82],[.94,1.23]
+ ];
+ fork.moveTo(outline[0][0],outline[0][1]);
+ for(let i=1;i<outline.length;i++)fork.lineTo(outline[i][0],outline[i][1]);
+ fork.closePath();
+ const forkGeo=new THREE.ExtrudeGeometry(fork,{
+  depth:.80,bevelEnabled:false,steps:1,curveSegments:1
+ });
+ forkGeo.translate(0,0,-.40);
+ forkGeo.rotateY(Math.PI/2);
+ forkGeo.translate(15.18,0,0);
+ const sight=new THREE.Mesh(forkGeo,mat('steel'));
+ sight.name='family-barrel-fnc-p11-twin-ear-front-'+ids.barrel++;
+ sight.castShadow=true;sight.receiveShadow=true;root.add(sight);
+ sight.userData.fncP11TwinEarFrontSight=true;
  sight.userData.fncProtectedFrontSight=true;
  sight.userData.fncP5OversizedFrontSight=true;
  sight.userData.fncP6BroadProtectedSight=true;

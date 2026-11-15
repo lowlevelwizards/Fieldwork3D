@@ -42,16 +42,16 @@ test('P8: right-side ejection is BEHIND the charging handle, not vice versa',()=
  assert.ok(!g.children.some(x=>x.userData.fncLeftChargingHandle));
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P8: three large groove rows per side, slim STANAG and differentiated sights',()=>{
+test('P11: long lower ribs, broken upper gas vents and 5.56 magazine',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const marks=g.children.filter(x=>x.userData.fncP5GrooveLevel);
  assert.equal(marks.length,4);
  for(const side of [-1,1]){
   const rows=marks.filter(x=>x.userData.fncP5GrooveSide===side);
-  assert.deepEqual(rows.map(x=>x.userData.fncP5GrooveCount).sort(),[1,2]);
-  assert.ok(rows.every(x=>x.userData.fncP6GrooveSegmentsPerRow===1));
+  assert.deepEqual(rows.map(x=>x.userData.fncP5GrooveCount).sort(),[2,2]);
+  assert.deepEqual(rows.map(x=>x.userData.fncP6GrooveSegmentsPerRow).sort(),[1,5]);
  }
- assert.equal(get(g,'fncMoldedFlutesPerSide').userData.fncMoldedFlutesPerSide,1);
+ assert.equal(get(g,'fncMoldedFlutesPerSide').userData.fncMoldedFlutesPerSide,2);
  const mag=get(g,'fnc556Magazine');
  assert.ok(width(mag)<3.10);
  assert.ok(Math.abs(box(mag).min.y-FNC_P1.magazineBottomY)<.03);

@@ -35,7 +35,7 @@ test('P6: rear receiver and forward handguard are truly closed and outward-facin
  capNormal(guard,'rear');capNormal(guard,'front');
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P8: one broad lower channel, two uninterrupted upper tracks per side',()=>{
+test('P11: two polymer lines and broken upper gas rows per side',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const upper=by(g,'fncP5UpperGasBox')[0],lower=by(g,'fncP5LowerHex')[0];
  assert.ok(upper&&lower);
@@ -46,10 +46,10 @@ test('P8: one broad lower channel, two uninterrupted upper tracks per side',()=>
   const meshes=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
   assert.equal(meshes.length,2);
   for(const mesh of meshes){
-   const rows=level==='upper'?2:1,segments=1;
+   const rows=2,segments=level==='upper'?5:1;
    assert.equal(mesh.userData.fncP5GrooveCount,rows);
    assert.equal(mesh.userData.fncP6GrooveSegmentsPerRow,segments);
-   assert.ok(mesh.userData.fncP6BoldGrooveHeight>=.23);
+   assert.ok(mesh.userData.fncP6BoldGrooveHeight>=.15);
    assert.equal(mesh.geometry.getAttribute('position').count,rows*segments*6);
    const normal=mesh.geometry.getAttribute('normal').getZ(0);
    assert.ok(normal*mesh.userData.fncP5GrooveSide>.9);
@@ -75,11 +75,12 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
  assert.ok(box(web).max.x-box(web).min.x>2.5&&
   box(web).max.x-box(web).min.x<2.9,
   'P10 longer plate is still compact relative to the open stock void');
- assert.ok(box(gas).min.x-box(upper).max.x<.35,
-  'upper gas box begins close to the receiver front rather than floating');
+ assert.ok(box(gas).min.x<box(by(g,'fncP5LowerHex')[0]).max.x,
+  'extended gas cover overlaps shortened fore-end without floating');
  assert.ok(box(front).max.y>3.15);
  assert.ok(box(rear).max.y>2.40);
- assert.equal(front.geometry.parameters.shapes.holes.length,1);
+ assert.equal(front.geometry.parameters.shapes.holes.length,0);
+ assert.ok(front.userData.fncP11TwinEarFrontSight);
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
  assert.ok(box(handle).max.x-box(handle).min.x<1.16);
  assert.ok(box(handle).max.z>box(upper).max.z+1.25);

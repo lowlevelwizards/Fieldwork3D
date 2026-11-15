@@ -15,10 +15,12 @@ test('FNC P10: grooved forearm and clean open stock without cheek sleeve',()=>{
  assert.equal(of(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,6);
  assert.equal(of(g,'fncP5GrooveSide').length,4);
  assert.deepEqual(of(g,'fncP5GrooveLevel').map(x=>x.userData.fncP5GrooveLevel).sort(),['lower','lower','upper','upper']);
- assert.ok(of(g,'fncP5GrooveLevel').every(x=>x.userData.fncP5GrooveCount===(x.userData.fncP5GrooveLevel==='upper'?2:1)));
+ assert.ok(of(g,'fncP5GrooveLevel').every(x=>x.userData.fncP5GrooveCount===2));
  assert.equal(of(g,'fncStockRail').filter(x=>x.userData.fncStockRail===true).length,2);
  assert.equal(of(g,'fncCheekSleeve').length,0);
  assert.equal(of(g,'fncHandguardNoseCollar').length,0);
+ assert.equal(of(g,'fncP11HandstopLip').length,1);
+ assert.equal(of(g,'fncP11TopGasVentRow').length,1);
  assert.equal(of(g,'fncStampedMagazineRib').length,2);
  assert.equal(of(g,'fncMagwellLip').length,1);
  const top=of(g,'fncP10ContinuousBareUpperRail')[0];
