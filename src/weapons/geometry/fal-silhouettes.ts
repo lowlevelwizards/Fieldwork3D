@@ -6,7 +6,8 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {buildFALCoreSilhouette} from './fal-core-silhouette.ts';
-import {addCuboid} from './profile-primitives.ts';
+import {addCuboid,addOutline} from './profile-primitives.ts';
+import {addFALHandguardVents} from './fal-handguard-profiles.ts';
 import {FAL_MAG_METAL,FAL_VENT_SHADOW} from './weapon-visual-palette.ts';
 
 export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
@@ -26,22 +27,21 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  },build.parts,{raisedCarryHandle:true,showFactoryMuzzle});
  while(core.children.length)root.add(core.children[0]);
 
- // FAL's large, high-positioned ventilation openings: three shadows per
- // visible side rather than real perforations, inset bevels or internal mesh.
- let n=0;
- for(const z of [-1.78,1.78]){
-  for(const x of [6.65,9.25,11.75]){
-   const mark=addCuboid(root,'handguard',build.parts.handguard,1+n++,
-    x,.79,z,1.54,.38,.10,FAL_VENT_SHADOW);
-   mark.castShadow=false;mark.receiveShadow=false;
-  }
- }
+ // One batched geometric mark per side, three large vents each.
+ // Flat side faces and vents stay together when the forearm tapers.
+ addFALHandguardVents(root,build.parts.handguard,FAL_VENT_SHADOW);
  // Short charging handle (left) and a restrained ejection-panel mark (right).
  // These are the only receiver details that materially aid recognition.
  const handle=addCuboid(root,'receiver',build.parts.receiver,7,
   -4.8,.52,-1.99,1.18,.60,.52,steel);
  handle.castShadow=false;
- const port=addCuboid(root,'receiver',build.parts.receiver,8,
-  1.05,.61,1.81,2.25,.54,.11,FAL_VENT_SHADOW);
+ // One bold, six-point ejection-panel mark on the RIGHT; no G3 bolt copy.
+ // Embedded slightly in the receiver face to avoid a floating decal.
+ const port=addOutline(root,'receiver',build.parts.receiver,8,[
+  [-.50,.38],[-.38,1.02],[2.36,1.02],
+  [2.50,.89],[2.50,.38],[-.50,.30]
+ ],.09,FAL_VENT_SHADOW);
+ port.position.z=1.80;
+ port.userData.falEjectionPort=true;
  port.castShadow=false;port.receiveShadow=false;
 }
