@@ -32,7 +32,7 @@ export const M56_SHELL_RINGS:readonly Ring[]=[
  {name:'flowing-upper-skirt',y:6.48,side:6.03,front:6.15,rear:7.12,
   frontRise:.11,rearDrop:.17,earDip:.06},
  {name:'integral-flared-edge-top',y:4.65,side:6.77,front:6.75,rear:8.04,
-  frontRise:.34,rearDrop:.63,earDip:.14},
+  frontRise:.48,rearDrop:.82,earDip:.14},
  {name:'thin-steel-edge-bottom',y:4.52,side:6.87,front:6.80,rear:8.10,
   frontRise:.49,rearDrop:.86,earDip:.21},
  {name:'inward-stamped-return',y:4.60,side:6.38,front:6.34,rear:7.58,
@@ -45,7 +45,7 @@ export const M56_SHELL_FIT=Object.freeze({
  frontHem:5.01,sideHem:3.86,rearHem:3.66
 });
 // A single contour function drives the outer steel and inset return.
- // Around the ear the downward sweep changes gradient, but never makes
+// Around the ear the downward sweep changes gradient, but never makes
  // a sharp hole or independent apron. The ends remain clean front/rear.
 export const m56EarTransition=(fz:number):number=>
  Math.max(0,1-Math.abs(fz-.20)/.64);
