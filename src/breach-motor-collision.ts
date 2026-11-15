@@ -196,13 +196,10 @@ export function resolveMotorCollision(
         if(side)a.autoSidestep=side;
         setTransientRoute(s,a,fullLane,'full-body-lane');
         a.retryRouteAt=0;a.recoveryAttempts=0;
-      // C1c: the full-width lane repair also begins with a short corner
-      // departure point. It was retired at 3 units before the furniture
-      // actually cleared (motel 31149), then re-entered the same prop.
-      // For furniture contact only, complete this verified leg precisely.
-      notePreciseLocalDetour(a,fullLane[0]);
-      // Preserve existing WATCH facing and weapon intention; only the
-      // feet choose a different line around the obstruction.
+        // Precise landing avoids discarding a chosen swept corner before
+        // the operator physically reaches it.
+        notePreciseLocalDetour(a,fullLane[0]);
+        // Preserve WATCH facing and weapon intention.
         a.squeeze=false;a.squeezeTime=0;
         return true;
       }

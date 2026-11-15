@@ -166,9 +166,6 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  if(episode.maneuverAttempts>=4)return false;
  if(episode.maneuver!=='direct'&&
    s.seconds-episode.lastProgressAt<1.8)return false;
- episode.maneuverAttempts++;
- episode.selectedLeafFraction=door.openFraction??0;
- episode.nextManeuverAt=s.seconds+1.5;
  const world=sessionWorldGeometry(s);
  const sweep=(from:Pt,to:Pt)=>
    sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
@@ -181,6 +178,11 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  const leafToken=door.id+':'+Math.round((door.openFraction??0)*6);
  if(!allowPhysicalRouteReissue(a,'door-rehearsal',episode.destination,
     path,s.seconds,leafToken))return false;
+ // Commit a retry only after selecting a new swept stage. A suppressed
+ // repeated proposal must not consume the physical maneuver budget.
+ episode.maneuverAttempts++;
+ episode.selectedLeafFraction=door.openFraction??0;
+ episode.nextManeuverAt=s.seconds+1.5;
  // D3.14D2: a real open D2 can repeatedly accept the same swept
  // short rehearsal, then fall back to a stale remembered-map route.
  // Count only separately accepted physical rehearsals at the same

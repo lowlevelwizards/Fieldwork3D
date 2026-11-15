@@ -13,8 +13,8 @@ type Witness={
 const byActor=new WeakMap<TeamActor,Map<string,Witness>>();
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 
-/** Return false only after THREE near-identical route reissues from the same
- * real position/GO, without >=8 units of goal progress. Re-probe after 8s,
+/** Return false only after FOUR near-identical route reissues from the same
+ * real position/GO, without >=3 units of goal progress. Re-probe after 8s,
  * significant physical relocation, goal/door changes, or a new order.
  * This is an expensive-recovery callsite gate, NEVER a movement/GO gate.
  */
@@ -31,9 +31,9 @@ export function allowPhysicalRouteReissue(
  const same=!!previous&&previous.orderId===order.id&&
    previous.token===token&&distance(previous.goal,goal)<.5&&
    distance(previous.first,route[0])<3&&
-   distance(previous.anchor,actor.p)<12&&
+   distance(previous.anchor,actor.p)<3&&
    seconds-previous.lastAt<5&&seconds-previous.firstAt<8&&
-   remaining>=previous.bestRemaining-8;
+   remaining>=previous.bestRemaining-3;
  if(!same){
    states.set(family,{orderId:order.id,token,
      goal:{...goal},first:{...route[0]},anchor:{...actor.p},
@@ -43,5 +43,5 @@ export function allowPhysicalRouteReissue(
  previous.count++;
  previous.lastAt=seconds;
  previous.bestRemaining=Math.min(previous.bestRemaining,remaining);
- return previous.count<3;
+ return previous.count<4;
 }
