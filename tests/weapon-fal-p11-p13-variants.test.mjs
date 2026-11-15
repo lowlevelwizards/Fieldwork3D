@@ -67,8 +67,13 @@ test('P11: wood recolors ONLY stock/handguard; P10 topology and contact stay ide
  for(const slot of ['stock','handguard']){
   const meshes=w.root.children.filter(x=>x.name.startsWith('family-'+slot+'-'));
   assert.ok(meshes.length>=1);
-  assert.ok(meshes.every(x=>x.material===FAL_WOOD));
-  assert.ok(meshes.every(x=>visualMaterialRole(x.material)==='wood'));
+  const woodSolids=slot==='handguard'?meshes.filter(x=>x.userData.falFacetedHandguard):meshes;
+  assert.ok(woodSolids.length>=1);
+  assert.ok(woodSolids.every(x=>x.material===FAL_WOOD),
+   'solid wood furniture changes finish without changing shape');
+  assert.ok(woodSolids.every(x=>visualMaterialRole(x.material)==='wood'));
+  if(slot==='handguard')assert.equal(meshes.filter(x=>x.userData.falVentCount===3).length,2,
+   'dark graphic vents remain dark strokes rather than wood-tinted decals');
  }
  const blackGrip=w.root.children.find(x=>x.name.startsWith('family-grip-'));
  assert.equal(blackGrip.material,FAL_DARK_POLYMER);
