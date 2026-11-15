@@ -51,6 +51,29 @@ test('D3.17A: identical actor after a productive step is a distinct episode',()=
  assert.equal(out.summary.incidents,2);
  assert.deepEqual(out.incidents.map(x=>x.intervalStart),[15,0]);
 });
+test('D3.17A: classify only timestamped, same-actor, in-episode route transitions',()=>{
+ const data=make([
+  w(5,'ash','moving-goalward',false,70,60),
+  w(10,'ash','movement-loop',false,80,2,{position:{x:11,y:12}}),
+  w(15,'ash','movement-loop',true,90,2,{position:{x:11,y:12.002}}),
+  w(20,'ash','moving-goalward',false,70,60)
+ ]);
+ data.rows[0].modes[0].routeTransitions.events=[
+  {actorId:'ash',seconds:3,source:'initial-intel'},
+  {actorId:'moss',seconds:11,source:'door-rehearsal'},
+  {actorId:'ash',seconds:7,source:'full-body-lane'},
+  {actorId:'ash',seconds:13,source:'full-body-lane'},
+  {actorId:'ash',seconds:17,source:'blocked-leg-connector'}
+ ];
+ const out=analyzeD317LoopIncidents(data);
+ assert.equal(out.incidents[0].routeCounts['door-leaf-escape'],3,
+  'historical run totals must remain separate from incident evidence');
+ assert.deepEqual(out.incidents[0].episodeRouteCounts,{'full-body-lane':2});
+ assert.deepEqual(out.incidents[0].routeEvents.map(e=>e.seconds),[7,13]);
+ assert.equal(out.incidents[0].sampledReturnDistance,0);
+ assert.equal(out.summary.incidentsWithTimedRoutes,1);
+ assert.equal(out.summary.timedRouteEvents,2);
+});
 test('D3.17A: carryover from physical obstruction is isolated, not a proven two-window loop',()=>{
  const out=analyzeD317LoopIncidents(make([
   w(5,'ash','physical-obstruction',true,0,0,{blockedSeconds:4}),
