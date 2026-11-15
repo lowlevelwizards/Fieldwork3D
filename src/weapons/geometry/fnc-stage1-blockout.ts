@@ -287,6 +287,7 @@ export function buildFNCStage1Silhouette(
  front.userData.fncP13CompactIntegratedSightBase=true;
  front.userData.fncP14LowSightBase=true;
  front.userData.fncP15AlignedGasSightBase=true;
+ front.userData.fncP16CompactGasSightBase=true;
  front.userData.fncP7ContinuousGasSightSeat=true;
  front.userData.fncFrontSightBase=true;
  front.userData.fncP4IntegratedGasSeat=true;
