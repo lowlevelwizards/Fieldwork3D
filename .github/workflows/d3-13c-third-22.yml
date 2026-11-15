@@ -3,7 +3,7 @@ on:
   pull_request:
     branches: [feature/d3-13c-site-geometry-swing-preflight-20261114]
     paths:
-      - '.github/workflows/d3-13cd-third-22.yml'
+      - '.github/workflows/d3-13c-third-22.yml'
   workflow_dispatch:
 permissions:
   contents: read
