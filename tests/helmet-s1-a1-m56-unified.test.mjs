@@ -26,14 +26,15 @@ test('S1-A1 one M56 stamped steel surface replaces every visible cuboid tier',()
  assert.equal(g.userData.m56UnifiedStampedShell,true);
  assert.equal(g.userData.m56ContinuousFlare,true);
  assert.equal(g.userData.m56VisibleRecessedInterior,true);
- assert.equal(g.userData.m56ProfileRevision,'S1-A1B');
+ assert.equal(g.userData.m56ProfileRevision,'S1-A1C');
  assert.equal(g.userData.m56ConsistentQuadNormals,true);
  assert.equal(g.userData.m56SkirtSwept,true);
+ assert.equal(g.userData.m56EarToNapeContour,true);
  assert.equal(g.userData.greedyCuboidUnion,undefined);
- assert.equal(g.userData.m56PerimeterFacets,8);
+ assert.equal(g.userData.m56PerimeterFacets,12);
  assert.equal(M56_SHELL_RINGS.length,8);
  assert.equal(g.userData.m56ProfileStations.length,8);
- assert.ok(g.index.count/3<=140,'no decorative tiers/hidden meshes');
+ assert.ok(g.index.count/3<=200,'no decorative tiers/hidden meshes');
  assert.equal(g.userData.materialRegions,true);
  assert.equal(g.userData.pixelWorldSize,1);
  assert.equal(g.userData.materialAtlasPixels,64);
@@ -53,11 +54,11 @@ test('S1-A1 iconic DDR wide rear flare without additional concentric tiers',()=>
  near(b.max.x,6.87,'right flare');
  near(b.min.z,-6.80,'front');
  near(b.max.z,8.10,'long rear');
- near(b.min.y,3.97,'rear nape');
- near(m56SurfacePoint(4,0)[1],4.74,'raised front');
- near(m56SurfacePoint(4,2)[1],4.6532,'front quarter');
- near(m56SurfacePoint(4,4)[1],3.97,'rear nape');
- near(m56SurfacePoint(4,6)[1],4.0988,'rear quarter');
+ near(b.min.y,3.66,'rear nape');
+ near(m56SurfacePoint(4,0)[1],5.01,'raised front');
+ near(m56SurfacePoint(4,2)[1],4.8728,'front quarter');
+ near(m56SurfacePoint(4,6)[1],3.66,'rear nape');
+ near(m56SurfacePoint(4,5)[1],3.861425,'rear side behind ear');
  const crown=M56_SHELL_RINGS[0],shoulder=M56_SHELL_RINGS[1],
   wall=M56_SHELL_RINGS[2],edge=M56_SHELL_RINGS[4];
  assert.ok(wall.side>shoulder.side+.25&&wall.side<shoulder.side+.65,
@@ -65,7 +66,7 @@ test('S1-A1 iconic DDR wide rear flare without additional concentric tiers',()=>
  assert.ok(edge.side-wall.side>.75,'single characteristic M56 flare');
  assert.ok(edge.rear-wall.rear>.85,'long rear protective sweep');
  assert.ok(edge.rear-edge.front>1.2,'profile is unmistakably asymmetrical');
- assert.ok(M56_PERIMETER.length===8,'retain boxy faceting');
+ assert.ok(M56_PERIMETER.length===12,'twelve bold facets with two added ear-profile stations per side');
  const m=HEAD_SILHOUETTE_METRICS['ddr-m56'];
  near(m.top,M56_SHELL_FIT.top,'fit top');
  near(m.frontExtent,M56_SHELL_FIT.frontExtent,'fit front');
@@ -92,15 +93,16 @@ test('S1-A1B Studio honors authored quad normals only for M56',()=>{
  assert.equal(sshMat.flatShading,true,'approved Soviet shading untouched');
 });
 
-test('S1-A1B crown is narrower but remains square and eight-faceted',()=>{
+test('S1-A1C crown remains square with four deliberate side-profile stations',()=>{
  const top=M56_SHELL_RINGS[0],shoulder=M56_SHELL_RINGS[1];
  near(top.side,3.08,'reduced flat crown half-width');
  near(top.front,3.48,'reduced flat crown forward reach');
  near(top.rear,3.72,'reduced flat crown rear reach');
  near(top.y,8.775,'helmet fit height preserved');
  near(shoulder.side,5.60,'proven skull-covering shoulder stays broad');
+ near(shoulder.y,7.86,'taller crown and continuous upper shoulder');
  assert.ok(top.side/shoulder.side<.58,'crown is visibly subordinate to shell');
- assert.equal(M56_PERIMETER.length,8,'no extra smoothing facets');
+ assert.equal(M56_PERIMETER.length,12,'just four extra vertices to define ear region');
  assert.equal(M56_SHELL_RINGS.length,8,'no extra decorative profile bands');
 });
 test('S1-A1B flare grows through bell and sweeps farther down at rear',()=>{
@@ -126,7 +128,7 @@ test('S1-A1B flare grows through bell and sweeps farther down at rear',()=>{
 test('S1-A1B every quad has consistent broad-plane normals and no inverted triangles',()=>{
  const g=createM56UnifiedShellGeometry(),p=g.getAttribute('position'),
   normals=g.getAttribute('normal');
- const offset=M56_PERIMETER.length*3,quads=(M56_SHELL_RINGS.length-1)*8;
+ const offset=M56_PERIMETER.length*3,quads=(M56_SHELL_RINGS.length-1)*M56_PERIMETER.length;
  assert.equal(normals.count,p.count);
  assert.equal(g.userData.exteriorQuads,quads);
  for(let q=0;q<quads;q++){
@@ -197,4 +199,36 @@ test('S1-A1 authentic period details remain optional, sparse and aligned',()=>{
  assert.ok(headwearColorChoices('ddr-m56').length>0);
  assert.equal(headwearCamoChoices('ddr-m56').length,0,
   'the painted shell is not accidentally made a cloth camo material');
+});
+
+test('S1-A1C single unbroken M56 ear-to-nape contour is distinct from a horizontal hat brim',()=>{
+ const lower=M56_SHELL_RINGS[4],upper=M56_SHELL_RINGS[3];
+ const hem=Array.from({length:M56_PERIMETER.length},(_,i)=>m56SurfacePoint(4,i));
+ // In canonical -Z-forward space the front sits higher, then the side
+ // has a deliberate ear transition, and the rear drops into the nape.
+ assert.ok(hem[0][1]>hem[2][1]+.12,'front visor rises above temple');
+ assert.ok(hem[2][1]>hem[3][1]+.25,'front-side contour steps into ear');
+ assert.ok(hem[3][1]>hem[4][1]+.35,'ear-to-nape transition remains unmistakable');
+ assert.ok(hem[4][1]>hem[5][1]+.16,'swept skirt protects behind ear');
+ assert.ok(hem[5][1]>hem[6][1]+.18,'rear nape remains deepest');
+ // Reflective left/right points are identical in Y/Z, not asymmetric slots.
+ for(let i=0;i<6;i++){
+  const mirror=i===0?1:i===1?0:13-i;
+  near(hem[i][0],-hem[mirror][0],'mirrored lateral extent');
+  near(hem[i][1],hem[mirror][1],'mirrored lower contour');
+  near(hem[i][2],hem[mirror][2],'mirrored fore-aft extent');
+ }
+ // The steel termination is thin and follows the SAME continuous edge.
+ for(let i=0;i<M56_PERIMETER.length;i++){
+  const top=m56SurfacePoint(3,i),bottom=hem[i];
+  assert.ok(top[1]-bottom[1]>.08&&top[1]-bottom[1]<.27,
+   'thin integral edge does not invert or form a second brim at '+i);
+  assert.ok(Math.abs(top[0]-bottom[0])<.15,
+   'outward termination is narrow at '+i);
+ }
+ near(lower.y+lower.frontRise,M56_SHELL_FIT.frontHem,'front hem fit');
+ near(lower.y-lower.rearDrop,M56_SHELL_FIT.rearHem,'rear hem fit');
+ near(hem[5][1],M56_SHELL_FIT.sideHem,.003);
+ assert.ok(upper.side<lower.side&&upper.rear<lower.rear,
+  'the skirt flares continuously without a separate plate');
 });
