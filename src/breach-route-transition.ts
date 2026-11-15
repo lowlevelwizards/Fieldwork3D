@@ -8,7 +8,7 @@ export type RouteSource=
  'initial-intel'|'initial-enemy'|'shove-stage'|'fire-retreat'|
  'door-short-entry'|'door-rehearsal'|'door-drift'|'door-leaf-escape'|
  'full-body-lane'|'blocked-leg-connector'|'collision-world-replan'|
- 'collision-intel-replan'|'self-hinge-relief'|'local-detour'|
+ 'collision-intel-replan'|'loop-world-replan'|'self-hinge-relief'|'local-detour'|
  'passage-retreat';
 export type TransientRouteTransition={
  seconds:number;actorId:string;source:RouteSource;
