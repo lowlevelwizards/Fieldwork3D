@@ -42,6 +42,43 @@ export function shouldProbeCircularFullBodyLane(
  prior.attempted=true;
  return true;
 }
+/** D3.15B2: a generated STACK MOVE is a real authored waypoint
+ * BEFORE the team's synchronization barrier. It can repeatedly reissue
+ * the same local full-body lane even without a doorway episode. Reuse
+ * the same monotonic actor-scoped three-recurrence witness, keyed to the
+ * stack door rather than pretending an open-leaf episode exists.
+ */
+export function shouldProbeDoorlessStackLane(
+ a:TeamActor,goal:Pt,seconds:number
+):boolean{
+ const order=a.plan[0];
+ if(a.side!=='blue'||a.doorTraversal||a.squeeze||
+    order?.kind!=='move'||!order.stackDoorId||order.entryDoorId||
+    distance(order.p,goal)>.25)return false;
+ return shouldProbeCircularFullBodyLane(a,goal,'stack:'+order.stackDoorId,seconds);
+}
+
+/** The world-truth route to the CURRENT stack waypoint can differ from
+ * the cyclic local lane even when a local first step is swept. One cold,
+ * finite route adoption only after three actual source-level repetitions.
+ * Check the first and EVERY later full capsule sweep and original
+ * authored node, not the distant post-SYNC interior entry landing.
+ */
+export function sweptGoalRouteFromStackCycle(
+ from:Pt,goal:Pt,route:readonly Pt[],
+ sweep:(a:Pt,b:Pt)=>boolean
+):Pt[]{
+ if(!route.length||distance(from,goal)<15||
+    distance(route[route.length-1],goal)>3)return [];
+ let at=from,cost=0;
+ for(const p of route){
+  const step=distance(at,p);
+  if(!Number.isFinite(step)||!sweep(at,p))return [];
+  cost+=step;at=p;
+ }
+ if(cost>distance(from,goal)*1.85+36)return [];
+ return route.map(clone);
+}
 /** The recurring lane already points at a first FULL-BODY-SWEPT
  * departure that eventually revisits its starting cell. Explore only
  * two *opposite* nearby departure corners, each through the established
