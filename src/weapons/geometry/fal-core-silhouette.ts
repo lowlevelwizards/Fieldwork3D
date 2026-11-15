@@ -11,6 +11,7 @@ import {addOutline,addCuboid,addFacetedTube,addBar,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH} from './fal-magazine-profiles.ts';
 import {addFALFacetedHandguard} from './fal-handguard-profiles.ts';
+import {addFALCrownedReceiver} from './fal-receiver-form.ts';
 
 export const FAL_ART:Readonly<{
  stockRearX:number;receiverRearX:number;receiverFrontX:number;
@@ -56,13 +57,10 @@ export function buildFALCoreSilhouette(
  ],3.00);
  b('stock',-14.56,-1.15,0,.88,4.85,3.55);
 
- // S1C: continuous FAL cover with one angular nose, no invented top notch.
- // cocking tube and NO AR-like split carry-handle upper.
- p('receiver',[
-  [-6.60,-.87],[-6.60,1.08],[-5.86,1.66],
-  [-5.36,1.83],[2.42,1.83],[3.27,1.54],
-  [3.85,1.04],[3.85,-.62],[3.10,-.95],[-5.77,-1.25]
- ],3.50);
+ // P4 R1A: one continuously crowned upper receiver mesh; broad faceted
+ // shoulders taper toward the roof to visually echo the FAL handguard.
+ // Not a rectangular extrude and not an AR/G3 imitation.
+ addFALCrownedReceiver(root,partIds.receiver,ids.receiver++,materials.receiver);
  // Single angular lower, sculpting the grip/magazine negative space.
  lower([
   [-6.29,-1.04],[-5.80,-1.69],[-4.98,-2.07],
