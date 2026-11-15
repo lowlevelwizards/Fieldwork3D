@@ -30,15 +30,24 @@ export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extra
  // Early M56 used three exposed liner fasteners: one per side and one rear.
  // Sample the unified bell instead of hand-maintaining fastener positions.
  // Side rivets sit forward of each ear, rear rivet on the swept nape.
- for(const i of [3,10]){
-  const upper=m56SurfacePoint(2,i),lower=m56SurfacePoint(3,i),t=.58;
-  part(rivets,dark,mix(upper[0],lower[0],t)+Math.sign(upper[0])*.14,
-   mix(upper[1],lower[1],t),mix(upper[2],lower[2],t),
+ for(const [frontSide,ear] of [[2,3],[7,6]]){
+  // Between the two side facets: front of ear, on the steel wall.
+  const upperFront=m56SurfacePoint(2,frontSide),
+   upperEar=m56SurfacePoint(2,ear),
+   hemFront=m56SurfacePoint(3,frontSide),
+   hemEar=m56SurfacePoint(3,ear);
+  const midpoint=(axis:number)=>mix(
+   mix(upperFront[axis],upperEar[axis],.55),
+   mix(hemFront[axis],hemEar[axis],.55),.28);
+  const x=midpoint(0);
+  part(rivets,dark,x+Math.sign(x)*.17,midpoint(1),midpoint(2),
    .42,.42,.40,'m56-rivet-side');
  }
- const rearUpper=m56SurfacePoint(2,6),rearLower=m56SurfacePoint(3,6),t=.55;
- part(rivets,dark,0,mix(rearUpper[1],rearLower[1],t),
-  mix(rearUpper[2],rearLower[2],t)+.16,.42,.42,.40,'m56-rivet-rear');
+ // Rear liner fastener, derived from the actual nape and not a prior Y.
+ const upperRear=m56SurfacePoint(2,4),hemRear=m56SurfacePoint(3,4);
+ part(rivets,dark,0,mix(upperRear[1],hemRear[1],.32),
+  mix(upperRear[2],hemRear[2],.32)+.17,
+  .42,.42,.40,'m56-rivet-rear');
  const net=new THREE.Group();net.name='m56-period-coarse-net';parent.add(net);
  const cloth=new THREE.MeshStandardMaterial({
   color:OPERATOR_SOLID_FAMILIES['olive-drab'],roughness:.99,
@@ -50,10 +59,10 @@ export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extra
   part(net,cloth,0,8.83,z,6.15,.28,.34,'m56-net-crown-transverse');
  for(const side of [-1,1]){
   // Follow the one-piece bell and integral flare; no nested-tier net rings.
-  part(net,cloth,side*5.94,6.95,.15,.34,1.42,10.0,'m56-net-upper-side');
-  part(net,cloth,side*6.37,5.58,.35,.34,1.20,12.3,'m56-net-mid-side');
+  part(net,cloth,side*5.83,6.93,.15,.34,1.42,10.0,'m56-net-upper-side');
+  part(net,cloth,side*6.17,5.40,.35,.34,1.20,12.3,'m56-net-mid-side');
  }
- // Twelve coarse, premerged runs follow the ACTUAL rising brow, ear
+ // Eight coarse, premerged runs follow the ACTUAL rising brow, ear
  // transition, and lowered nape. A single horizontal bar floated on
  // the old lower apron and obscured the shell's defining silhouette.
  for(let i=0;i<M56_PERIMETER.length;i++)
