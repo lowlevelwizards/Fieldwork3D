@@ -24,7 +24,7 @@ export const M56_PERIMETER:readonly (readonly [number,number])[]=[
  * Fit maximum extents and color/wardrobe identity remain unchanged.
  */
 export const M56_SHELL_RINGS:readonly Ring[]=[
- {name:'broad-square-crown',y:8.775,side:4.40,front:4.74,rear:4.96},
+ {name:'broad-square-crown',y:8.775,side:4.80,front:5.05,rear:5.30},
  {name:'single-upright-bell',y:6.02,side:5.73,front:5.82,rear:6.43},
  {name:'distinct-swept-skirt-hem',y:4.53,side:6.87,front:6.80,rear:8.10,
   frontRise:.70,rearDrop:1.00},
