@@ -35,7 +35,7 @@ import {sweptRejoinExistingRoute,noteRepeatedDoorLeafEscape} from './breach-door
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
- shouldProbeDoorlessStackLane,sweptGoalRouteFromStackCycle,
+ shouldProbeDoorlessStackLane,alternateStackWorldRoute,
  noteCircularWorldRoute,ownsCircularWorldRoute}
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
@@ -172,8 +172,9 @@ export function resolveMotorCollision(
       if(shouldProbeDoorlessStackLane(a,p,s.seconds)){
         const sweep=(from:Pt,to:Pt)=>
           sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
-        const worldTail=sweptGoalRouteFromStackCycle(
-          a.p,p,routeWithSqueezeWorld(a.p,p,s.doors,world),sweep);
+        const worldTail=alternateStackWorldRoute(
+          a.p,p,fullLane[0],sweep,
+          (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
         if(worldTail.length){
           setTransientRoute(s,a,worldTail,'lane-cycle-world');
           noteCircularWorldRoute(a,s.seconds);
