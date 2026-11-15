@@ -817,6 +817,10 @@ const summary={
  terminallyCancelledOrders:sum('cancelledOrders'),
  cancelledOperators:results.reduce((n,r)=>n+(r.operators??[])
   .filter(o=>o.outcome==='cancelled').length,0),
+ cancelledAndNotArrived:results.reduce((n,r)=>n+(r.operators??[])
+  .filter(o=>o.outcome==='cancelled'&&!o.arrived).length,0),
+ arrivedDespiteCancellation:results.reduce((n,r)=>n+(r.operators??[])
+  .filter(o=>o.outcome==='cancelled'&&o.arrived).length,0),
  physicallyPendingOperators:results.reduce((n,r)=>n+(r.operators??[])
   .filter(o=>o.outcome==='pending').length,0),
  unreachedDrainedOperators:results.reduce((n,r)=>n+(r.operators??[])
