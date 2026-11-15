@@ -32,6 +32,8 @@ export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
    HK_WOOD,showFactoryMuzzle);
  else if(build.family==='fal')
   addFALFamily(root,build,FAL_BLACK_METAL,FAL_DARK_POLYMER,showFactoryMuzzle);
+ else if(build.family==='fnc')
+  addFNCFamily(root,build,showFactoryMuzzle);
  else throw new Error('Unknown weapon visual family');
  return root;
 }
