@@ -8,6 +8,7 @@ import {addARFamily} from './weapons/geometry/ar-silhouettes.ts';
 import {addAKFamily} from './weapons/geometry/ak-silhouettes.ts';
 import {addHKFamily} from './weapons/geometry/hk-silhouettes.ts';
 import {addFALFamily} from './weapons/geometry/fal-silhouettes.ts';
+import {addFNCFamily} from './weapons/geometry/fnc-silhouettes.ts';
 
 import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,
  AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD,
