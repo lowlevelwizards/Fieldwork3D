@@ -280,12 +280,14 @@ function run(site,seed,kind){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
    if(grid)setRouteGridAuditObserver(grid.observe);
+   if(recordMotorGate)setMotorGateObserver(recordMotorGate);
    if(recordRoute)setTransientRouteObserver(recordRoute);
    try{
     stepSession(session,1/60);
    }finally{
     if(grid)setRouteGridAuditObserver(null);
     if(recordRoute)setTransientRouteObserver(null);
+    if(recordMotorGate)setMotorGateObserver(null);
    }
    survey.sample(actors,1/60);
    quality?.sample(actors,session.seconds);
@@ -648,6 +650,7 @@ function run(site,seed,kind){
    ...(d314bClearanceProbe?{d314bClearanceEvidence}:{}),
    ...(d314cFrontProbe?{d314cFrontEvidence}:{}),
    ...(d315bRouteProbe?{d315bRouteEvidence}:{}),
+   ...(d315bMotorProbe?{d315bMotorGateEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
@@ -715,6 +718,7 @@ function run(site,seed,kind){
  }finally{
   setRouteGridAuditObserver(null);
   setTransientRouteObserver(null);
+  setMotorGateObserver(null);
   enableD32MotorDoorWitness(false);activateSite(null);
  }
 }
