@@ -6,7 +6,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import {doorLeafSegment,type Pt} from './breach-core.ts';
 export type RouteSource=
  'initial-intel'|'initial-enemy'|'shove-stage'|'fire-retreat'|
- 'door-short-entry'|'door-rehearsal'|'door-drift'|'door-leaf-escape'|
+ 'door-short-entry'|'door-rehearsal'|'door-rehearsal-world'|'door-drift'|'door-leaf-escape'|
  'full-body-lane'|'blocked-leg-connector'|'collision-world-replan'|
  'collision-intel-replan'|'self-hinge-relief'|'local-detour'|
  'passage-retreat'|'door-handoff-reject'|'door-escape-swept-rejoin'|'door-escape-world-rejoin'|'door-escape-local-portal'|'door-escape-future-portal'|'door-squeeze-leaf-exit'|'lane-cycle-world';
