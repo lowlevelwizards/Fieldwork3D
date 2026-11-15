@@ -1,4 +1,4 @@
-/** FAL 50.00 one-piece faceted forearm and six graphics batched per side.
+/** FAL 50.00 one-piece faceted forearm and six slots batched per side.
  * Its upper shoulders are inset, unlike the older constant-Z extrusion.
  * Unlike the HK/G3 round-tube forearm, the FAL keeps broad central side flats.
  * Meshes are created only on recipe changes, never on render frames.
@@ -10,12 +10,12 @@ type Station=Readonly<{x:number;top:number;bottom:number;halfWidth:number}>;
 export const FAL_HANDGUARD_STATIONS:readonly Station[]=[
  {x:3.65,top:1.06,bottom:-1.32,halfWidth:1.69},
  {x:4.48,top:1.40,bottom:-1.74,halfWidth:1.73},
- {x:12.30,top:1.39,bottom:-1.53,halfWidth:1.73},
- {x:14.10,top:1.01,bottom:-1.05,halfWidth:1.60}
+ {x:12.30,top:1.39,bottom:-1.53,halfWidth:1.70},
+ {x:14.10,top:.96,bottom:-1.05,halfWidth:1.45}
 ];
-const TOP_INSET=.27;
+const TOP_INSET=.46;
 const BOTTOM_INSET=.32;
-const TOP_CHAMFER=.46;
+const TOP_CHAMFER=.55;
 const BOTTOM_CHAMFER=.38;
 function ringPoint(station:Station,index:number):[number,number,number]{
  const {x,top,bottom,halfWidth:w}=station;
@@ -62,24 +62,41 @@ export function addFALFacetedHandguard(root:THREE.Group,id:string,
  root.add(mesh);
  return mesh;
 }
-/** Three large vent shadows per side, with one mesh per face.
- * Geometry and material remain owned by the existing handguard part.
+/** Three substantial, six-sided slots per side, tapered with the actual
+ * handguard flats. A single mesh per side means no floating z-offset vents
+ * over the nose taper and no per-slot scene objects.
  */
+function handguardHalfWidthAt(x:number):number{
+ const stations=FAL_HANDGUARD_STATIONS;
+ for(let i=1;i<stations.length;i++){
+  if(x<=stations[i].x){
+   const a=stations[i-1],b=stations[i];
+   const t=Math.max(0,Math.min(1,(x-a.x)/(b.x-a.x)));
+   return a.halfWidth+(b.halfWidth-a.halfWidth)*t;
+  }
+ }
+ return stations[stations.length-1].halfWidth;
+}
 export function addFALHandguardVents(root:THREE.Group,id:string,
  material:THREE.Material):THREE.Mesh[]{
  const result:THREE.Mesh[]=[];
  for(const side of [-1,1] as const){
   const vertices:number[]=[],indices:number[]=[];
   for(const x of [6.65,9.25,11.75]){
-   const first=vertices.length/3,halfWidth=.77,halfHeight=.20;
-   const y=.61,z=side*(1.73+.018);
-   vertices.push(
-    x-halfWidth,y-halfHeight,z,
-    x+halfWidth,y-halfHeight,z,
-    x+halfWidth,y+halfHeight,z,
-    x-halfWidth,y+halfHeight,z);
-   if(side===1)indices.push(first,first+1,first+2,first,first+2,first+3);
-   else indices.push(first,first+2,first+1,first,first+3,first+2);
+   const w=.90,h=.28,cap=.20,y=.36;
+   // Long hexagonal ends evoke the rounded FN openings at miniature size,
+   // instead of duplicating the G3's shorter square ventilation pattern.
+   const profile:readonly [number,number][]=[
+    [x-w+cap,y-h],[x+w-cap,y-h],[x+w,y],
+    [x+w-cap,y+h],[x-w+cap,y+h],[x-w,y]
+   ];
+   const first=vertices.length/3;
+   for(const [px,py] of profile)
+    vertices.push(px,py,side*(handguardHalfWidthAt(px)+.018));
+   for(let i=1;i<5;i++){
+    if(side===1)indices.push(first,first+i,first+i+1);
+    else indices.push(first,first+i+1,first+i);
+   }
   }
   const geometry=new THREE.BufferGeometry();
   geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
@@ -88,6 +105,7 @@ export function addFALHandguardVents(root:THREE.Group,id:string,
   mesh.name='family-handguard-'+id+'-'+(side===-1?1:2);
   mesh.userData.falVentSide=side;
   mesh.userData.falVentCount=3;
+  mesh.userData.falFaceAligned=true;
   mesh.castShadow=false;mesh.receiveShadow=false;
   mesh.renderOrder=3;
   root.add(mesh);result.push(mesh);

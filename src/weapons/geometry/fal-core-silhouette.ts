@@ -114,9 +114,9 @@ export function buildFALCoreSilhouette(
  sightPost.userData.falFrontPost=true;
  // Simple short Belgian factory muzzle; omit when a mounted muzzle replaces it.
  if(options.showFactoryMuzzle!==false)p('barrel',[
-  [21.03,-.74],[21.28,-.84],[21.70,-.84],
-  [22.00,-.67],[22.00,.67],[21.70,.84],
-  [21.28,.84],[21.03,.74]
+  [20.93,-.58],[21.24,-.76],[21.73,-.74],
+  [22.00,-.52],[22.00,.52],[21.73,.74],
+  [21.24,.76],[20.93,.58]
  ],1.78);
  // S1C: low chunky rear blade; no knobs, pins or aperture holes.
  p('receiver',[
