@@ -14,9 +14,9 @@ import {FAL_BLACK_METAL,FAL_DARK_POLYMER,FAL_MAG_METAL,
  FAL_MAG_RIB,FAL_TRANSITION_METAL,FAL_MUZZLE_METAL,FAL_MUZZLE_SLOT,
  HK_MAG_METAL,HK_MUZZLE_METAL,AR_BLACK_METAL,AK_BLACK_METAL}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
-import {ARSENAL_INSPECTION_BACKGROUND,addArsenalInspectionLighting}
+import {ARSENAL_INSPECTION_BACKGROUND,ARSENAL_SKY_FILL,addArsenalInspectionLighting}
  from '../src/arsenal/inspection-lighting.ts';
-import {STUDIO_KEY_DIRECTION,STUDIO_INSPECTION_LIGHT,studioShadowPalette}
+import {STUDIO_KEY_DIRECTION,STUDIO_INSPECTION_LIGHT}
  from '../src/operator-studio-lighting.ts';
 import {GRAPHIC_LIGHT_PROFILE}
  from '../src/rendering/graphic-lighting-profile.ts';
@@ -115,19 +115,19 @@ test('P9 finishes share in-game HK/AK/AR material logic and dark muzzle steel',(
  assert.equal(port.material,FAL_MUZZLE_SLOT);
  clearWeaponSilhouette(root);m.dispose();
 });
-test('P9 Arsenal and Gallery use in-game key/ground/fill with dark backdrop',()=>{
+test('P9 Arsenal and Gallery preserve game key with readable sky bounce and dark backdrop',()=>{
  const scene=new THREE.Scene();addArsenalInspectionLighting(scene);
  assert.equal(scene.background.getHex(),ARSENAL_INSPECTION_BACKGROUND);
  const hemi=scene.children.find(x=>x instanceof THREE.HemisphereLight);
  const dirs=scene.children.filter(x=>x instanceof THREE.DirectionalLight);
  assert.equal(dirs.length,2);
  const [key,fill]=dirs;
- assert.equal(hemi.intensity,1.20);
+ assert.equal(hemi.intensity,ARSENAL_SKY_FILL.hemisphereIntensity);
  assert.equal(key.intensity,2.35);
- assert.equal(fill.intensity,.60);
- assert.equal(hemi.color.getHex(),STUDIO_INSPECTION_LIGHT.sky);
- assert.equal(hemi.groundColor.getHex(),studioShadowPalette('plum-plus').ground);
- assert.equal(fill.color.getHex(),studioShadowPalette('plum-plus').fill);
+ assert.equal(fill.intensity,ARSENAL_SKY_FILL.fillIntensity);
+ assert.equal(hemi.color.getHex(),ARSENAL_SKY_FILL.sky);
+ assert.equal(hemi.groundColor.getHex(),ARSENAL_SKY_FILL.ground);
+ assert.equal(fill.color.getHex(),ARSENAL_SKY_FILL.fill);
  assert.ok(key.position.clone().normalize().distanceTo(STUDIO_KEY_DIRECTION)<1e-8);
  assert.ok(STUDIO_KEY_DIRECTION.distanceTo(new THREE.Vector3(
   ...GRAPHIC_LIGHT_PROFILE.keyDirection).normalize())<1e-8);

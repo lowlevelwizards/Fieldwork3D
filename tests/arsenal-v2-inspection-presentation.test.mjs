@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync,existsSync} from 'node:fs';
 import * as THREE from 'three';
-import {ARSENAL_INSPECTION_BACKGROUND,addArsenalInspectionLighting}
+import {ARSENAL_INSPECTION_BACKGROUND,ARSENAL_SKY_FILL,addArsenalInspectionLighting}
  from '../src/arsenal/inspection-lighting.ts';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
@@ -14,8 +14,16 @@ test('Arsenal owns an independent dark scene and two-sided readable light rig',(
  const directional=scene.children.filter(x=>x instanceof THREE.DirectionalLight);
  assert.equal(directional.length,2);
  assert.equal(directional[0].intensity,2.35);
- assert.equal(directional[1].intensity,.60);
- assert.equal(scene.children.find(x=>x instanceof THREE.HemisphereLight)?.intensity,1.20);
+ assert.equal(directional[1].intensity,ARSENAL_SKY_FILL.fillIntensity);
+ const hemi=scene.children.find(x=>x instanceof THREE.HemisphereLight);
+ assert.equal(hemi?.intensity,ARSENAL_SKY_FILL.hemisphereIntensity);
+ assert.equal(hemi?.color.getHex(),ARSENAL_SKY_FILL.sky);
+ assert.equal(hemi?.groundColor.getHex(),ARSENAL_SKY_FILL.ground);
+ assert.equal(directional[1].color.getHex(),ARSENAL_SKY_FILL.fill);
+ assert.ok(directional[1].position.z>0,'broad side bounce illuminates side-on ARs');
+ assert.ok(ARSENAL_SKY_FILL.hemisphereIntensity>=2,'dark furniture must remain legible');
+ assert.ok(ARSENAL_SKY_FILL.fillIntensity>=1.5,'do not crush gallery faces');
+ assert.ok(directional[1].intensity<directional[0].intensity,'key remains dominant');
  assert.match(read('src/arsenal/thumbnailer.ts'),/addArsenalInspectionLighting\(this\.scene\)/);
  assert.match(read('src/arsenal/viewport.ts'),/addArsenalInspectionLighting\(this\.scene\)/);
  assert.match(read('src/arsenal/thumbnailer.ts'),/configureGraphicRendererOutput\(this\.renderer\)/);
