@@ -36,6 +36,17 @@ test('all approved headwear stays one material-mapped authoritative exterior mes
   }
  }
 });
+test('B2-A3 Soviet rolled-lip ink is quieter without changing other helmet tiles',()=>{
+ assert.equal(headwearRegionPixel('soviet-steel',2,16,16),232);
+ assert.equal(headwearRegionPixel('soviet-steel',0,16,16),249);
+ assert.ok(headwearRegionPixel('soviet-steel',2,16,16)<
+  headwearRegionPixel('soviet-steel',0,16,16));
+ assert.equal(headwearRegionPixel('m1-steel',2,16,16),216,
+  'approved M1 ink untouched');
+ assert.equal(headwearRegionPixel('pasgt',2,16,16),217,
+  'approved PASGT ink untouched');
+});
+
 test('headwear texture scale and grayscale-only pixels match operator materials',()=>{
  assert.equal(HEADWEAR_DETAIL_PIXEL_WORLD_SIZE,PIXEL_WORLD_SIZE);
  for(const kind of ['cotton','knit','composite','steel']){
