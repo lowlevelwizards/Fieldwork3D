@@ -1,4 +1,4 @@
-name: FNC P3 Fieldwork art acceptance
+name: FNC P4 Fieldwork silhouette acceptance
 on:
   pull_request:
     branches: [main]
@@ -47,7 +47,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fnc-p3-fieldwork-review-views
+          name: fnc-p4-fieldwork-shape-review-views
           path: |
             fnc-p1-captures/
             fnc-arsenal-captures/

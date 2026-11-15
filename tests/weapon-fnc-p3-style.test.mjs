@@ -28,46 +28,41 @@ test('P3A: insulated stock is segmented, not drawn coplanar over metal stock',()
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P3A: independent upper gas cover, three bold vents per side, fuller belly',()=>{
+test('P4A: one fluted front, with three integrated, outward-facing vents per side',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- assert.equal(where(g,'fncP3FullerBelly').length,1);
- assert.equal(where(g,'fncDistinctGasCover').length,1);
- assert.deepEqual(where(g,'fncGasVentSide').map(x=>x.userData.fncGasVentSide).sort(),[-1,1]);
- assert.ok(where(g,'fncGasVentSide').every(x=>x.userData.fncGasVentCount===3));
- const cover=box(where(g,'fncDistinctGasCover')[0]);
- const polymer=box(where(g,'fncP3FullerBelly')[0]);
- assert.ok(cover.max.z>polymer.max.z+.04,
-  'front vent cover must visibly stand outside the thick polymer sides');
- const right=box(where(g,'fncGasVentSide').find(x=>x.userData.fncGasVentSide===1));
- assert.ok(right.min.z>cover.max.z+.015,
-  'vent marks must stay visible without touching the cover side plane');
- const exposed=where(g,'fncGasVentSide');
- for(const mark of exposed){
-  const n=mark.geometry.getAttribute('normal').getZ(0);
-  assert.ok(n*mark.userData.fncGasVentSide>.5,
-   'gas vent triangles must face OUTWARD or they disappear via back-face culling');
+ assert.equal(where(g,'fncP4UnifiedForearm').length,1);
+ assert.equal(where(g,'fncDistinctGasCover').length,0,
+  'the stacked P3 gas-crown must be gone');
+ assert.equal(where(g,'fncHandguardNoseCollar').length,0);
+ assert.equal(where(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,24);
+ assert.equal(where(g,'fncP4UnifiedForearm')[0].userData.fncMoldedFlutesPerSide,2);
+ const vents=where(g,'fncVentSide');
+ assert.deepEqual(vents.map(x=>x.userData.fncVentSide).sort(),[-1,1]);
+ assert.ok(vents.every(x=>x.userData.fncGasVentCount===3));
+ for(const v of vents){
+  const n=v.geometry.getAttribute('normal').getZ(0);
+  assert.ok(n*v.userData.fncVentSide>.5,'visible side vents face outward');
+  assert.ok(Math.abs(box(v).max.z)<1.6,'vents stay close to the molded front');
  }
- assert.equal(where(g,'fncGrooveSide').length,2);
- assert.equal(where(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,8);
- assert.ok(box(where(g,'fncDistinctGasCover')[0]).max.y>
-  box(where(g,'fncP3FullerBelly')[0]).max.y+.3);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P3B: signed rear/front guards, hex receiver controls and compact muzzle',()=>{
+test('P4B: two actual U-shaped protected sights and one simple muzzle',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- assert.equal(where(g,'fncFrontSightEar').length,2);
- assert.equal(where(g,'fncSweptFrontEar').length,2);
- assert.equal(where(g,'fncRearSightEar').length,2);
- assert.equal(where(g,'fncSixFacetedHandle').length,1);
- assert.equal(where(g,'fncSixFaceMuzzle').length,1);
- assert.equal(where(g,'fncMuzzleSlot').length,1);
- const slot=where(g,'fncMuzzleSlot')[0];
- const normals=slot.geometry.getAttribute('normal');
- assert.ok(normals.getZ(0)<-.5&&normals.getZ(6)>.5,
-  'muzzle windows must face outward on both sides');
- assert.equal(where(g,'fncStampedCover').length,0,'receiver roof must not add a covering box');
- assert.equal(where(g,'fncMagwellLip').length,1,'lower magwell must be integrated');
- assert.ok(where(g,'fncRearSightEar').every(x=>box(x).max.y<2.6));
+ const front=where(g,'fncProtectedFrontSight');
+ const rear=where(g,'fncProtectedRearSight');
+ assert.equal(front.length,1);assert.equal(rear.length,1);
+ assert.ok(front[0].geometry.parameters.shapes.holes.length===1);
+ assert.ok(rear[0].geometry.parameters.shapes.holes.length===1);
+ assert.equal(where(g,'fncP4IntegratedGasSeat').length,1);
+ assert.equal(where(g,'fncFrontGasBlock').length,0);
+ assert.equal(where(g,'fncFrontSightEar').length,0);
+ assert.equal(where(g,'fncRearSightEar').length,0);
+ assert.equal(where(g,'fncP4SingleMuzzle').length,1);
+ assert.equal(where(g,'fncMuzzleSlot').length,0);
+ assert.equal(where(g,'fncMuzzleCollar').length,0);
+ assert.equal(where(g,'fncStampedCover').length,0);
+ assert.equal(where(g,'fncMagwellLip').length,1);
+ assert.ok(box(rear[0]).max.y<2.6);
  const body=box(g);
  assert.ok(Math.abs(body.min.x-FNC_P1.stockRearX)<.02);
  assert.ok(Math.abs(body.max.x-FNC_P1.muzzleX)<.02);
@@ -84,7 +79,7 @@ test('P3C: live factory art shares the dark HK 5.56 magazine precedents',()=>{
  assert.equal(where(g,'fncNoCoplanarRail').length,1);
  const tri=g.children.reduce((n,x)=>n+
   (x.geometry?.index?.count??x.geometry?.getAttribute('position')?.count??0)/3,0);
- assert.ok(g.children.length<=36,'no uncontrolled mesh proliferation');
- assert.ok(tri<1250,'keep stylized low-poly budget bounded');
+ assert.ok(g.children.length<=28,'P4 removes decorative attached meshes');
+ assert.ok(tri<1100,'keep sculpted handguard within low-poly budget');
  clearWeaponSilhouette(g);m.dispose();
 });

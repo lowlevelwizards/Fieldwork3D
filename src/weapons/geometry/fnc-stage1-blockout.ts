@@ -1,14 +1,15 @@
-/** FN FNC P2 visual refinement. Independent, inspection-only geometry;
- * no weapon preset, faction allocation, animation or ballistic modification.
- * Geometry is built once on selection, never in a frame loop.
- * +X muzzle, +Y up, +Z right; share scale with approved Fieldwork rifles.
+/** FN FNC P4 silhouette source shared by Arsenal, Workbench and operators.
+ * Fieldwork art: five deliberate masses, two open stock members, continuous
+ * fluted forearm, compact protected sights and minimal attached micro-parts.
+ * No trigger guard: other approved Fieldwork rifles intentionally omit it.
+ * +X muzzle, +Y up, +Z right. Geometry constructed only when a model changes.
  */
 import * as THREE from 'three';
 import {addOutline,addCuboid,addBar} from './profile-primitives.ts';
 import type {SlotName,Outline} from './profile-primitives.ts';
 import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines}
  from './ar-magazine-profiles.ts';
-import {addFNCFacetedForearm,addFNCForearmMarks,addFNCGasCover}
+import {addFNCFacetedForearm,addFNCForearmMarks}
  from './fnc-handguard-profiles.ts';
 
 export const FNC_P1=Object.freeze({
@@ -25,7 +26,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p3-fieldwork-exterior';
+ root.name='fnc-p4-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -37,31 +38,54 @@ export function buildFNCStage1Silhouette(
   addCuboid(root,slot,'fnc-p2-'+slot,ids[slot]++,x,y,z,w,h,d,mat(role));
  const rail=(a:readonly [number,number],end:readonly [number,number],
   width:number,role:Finish='stock')=>{
-  const mesh=addBar(root,'stock','fnc-p2-stock',ids.stock++,
+  const mesh=addBar(root,'stock','fnc-p4-stock',ids.stock++,
    a,end,width,1.04,mat(role));
   mesh.userData.fncStockRail=true;
+  return mesh;
+ };
+ const aperture=(slot:SlotName,name:string,
+   outer:readonly (readonly [number,number])[],
+   inner:readonly (readonly [number,number])[],
+   depth:number,role:Finish='steel')=>{
+  const shape=new THREE.Shape();
+  shape.moveTo(outer[0][0],outer[0][1]);
+  for(let i=1;i<outer.length;i++)shape.lineTo(outer[i][0],outer[i][1]);
+  shape.closePath();
+  const opening=new THREE.Path();
+  // Trace an opposite winding to form a real negative-space opening.
+  opening.moveTo(inner[0][0],inner[0][1]);
+  for(let i=1;i<inner.length;i++)opening.lineTo(inner[i][0],inner[i][1]);
+  opening.closePath();shape.holes.push(opening);
+  const geometry=new THREE.ExtrudeGeometry(shape,{
+   depth,bevelEnabled:false,steps:1,curveSegments:1
+  });
+  geometry.translate(0,0,-depth/2);
+  const mesh=new THREE.Mesh(geometry,mat(role));
+  mesh.name='family-'+slot+'-fnc-p4-'+name+'-'+ids[slot]++;
+  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
   return mesh;
  };
  // The insulated top tube and its metal portion now own DISJOINT lengths.
  // P2 drew the entire metal rail under a larger sleeve: equal-depth faces
  // shimmered in side views. Both terminate at x=-9.46 without overlap.
- rail([-6.45,.03],[-9.46,.01],.57);
+ rail([-6.45,.03],[-9.46,.01],.69);
+ // One stout, gently kinked lower member; NO flat triangular panel.
  const lowerRail=p('stock',[
-  [-6.50,-1.30],[-8.91,-1.64],[-14.12,-2.72],
-  [-14.12,-3.36],[-8.90,-2.25],[-6.50,-1.95]
- ],1.04,'stock');
+  [-6.48,-1.34],[-8.88,-1.61],[-14.12,-2.75],
+  [-14.12,-3.45],[-8.90,-2.33],[-6.48,-2.02]
+ ],1.12,'stock');
  lowerRail.userData.fncStockRail=true;
  lowerRail.userData.fncKinkedLowerRail=true;
  const hinge=p('stock',[
-  [-7.10,.35],[-6.05,.35],[-5.93,-1.69],[-6.49,-2.05],[-7.10,-1.58]
- ],1.82,'stock');
+  [-6.94,.29],[-6.05,.29],[-6.02,-1.83],[-6.94,-1.83]
+ ],1.66,'stock');
  hinge.userData.fncStockHinge=true;
  const pad=p('stock',[
   [-14.85,.36],[-14.03,.36],[-13.99,-3.36],
   [-14.32,-3.56],[-14.85,-3.56]
  ],1.96,'stock');
  pad.userData.fncButtPlate=true;
- const cheek=rail([-9.46,.01],[-14.03,-.04],.83,'cheek');
+ const cheek=rail([-9.46,.01],[-14.03,-.04],1.04,'cheek');
  cheek.userData.fncStockRail=false;
  cheek.userData.fncCheekSleeve=true;
  cheek.userData.fncNoCoplanarRail=true;
@@ -69,26 +93,26 @@ export function buildFNCStage1Silhouette(
  // One integrated stepped stamped upper: no redundant roof-cover plate.
  // Flat top, punched shoulder, angular transition into FN front furniture.
  const upper=p('receiver',[
-  [-6.38,-1.22],[-6.38,1.24],[-5.60,1.60],
-  [1.70,1.60],[2.95,1.36],[3.34,.84],[4.12,.17],
-  [4.12,-1.22]
+  [-6.38,-.99],[-6.38,1.13],[-5.59,1.58],
+  [1.85,1.58],[2.80,1.26],[3.32,.58],[4.12,.10],
+  [4.12,-.99]
  ],2.80,'steel');
  upper.userData.fncFlatStampedUpper=true;
  // Integrate the magwell lip into the lower instead of stacking two almost
  // coplanar full-width extrusions. Broad steel lower edge remains readable.
  const lower=p('receiver',[
-  [-6.30,-1.10],[3.90,-1.10],[3.60,-2.32],
-  [3.15,-3.03],[.12,-3.03],[-.32,-2.71],
-  [-1.25,-2.35],[-6.30,-2.35]
- ],2.93,'lower');
+  [-6.30,-1.00],[3.76,-1.00],[3.60,-2.30],
+  [3.06,-3.06],[.18,-3.06],[-.40,-2.70],
+  [-1.30,-2.35],[-6.30,-2.35]
+ ],2.98,'lower');
  lower.userData.fncAngularLower=true;
  lower.userData.fncMagwellLip=true;
 
  // A substantial lower heel and one bold rearward rake, not a wafer wedge.
  const grip=p('grip',[
-  [-5.33,-2.27],[-3.46,-2.27],[-3.58,-2.66],
-  [-4.77,-5.99],[-6.57,-6.16],[-6.88,-5.86]
- ],2.08,'grip');
+  [-5.36,-2.26],[-3.47,-2.26],[-3.65,-2.68],
+  [-4.74,-5.72],[-6.58,-5.88],[-6.79,-5.59]
+ ],2.18,'grip');
  grip.userData.fncGrip=true;
  // Shared 30-round STANAG centerline/normal math: not another hand-tuned
  // stepped magazine. Two broad pressed ribs track the same curved face.
@@ -106,74 +130,54 @@ export function buildFNCStage1Silhouette(
   rib.castShadow=false;rib.receiveShadow=false;
  }
 
- // Full polymer belly steps down while the independent upper metal housing
- // carries exactly three large ports per side. Same broad art boundaries.
+ // A single sculpted, fluted handguard, with three clean front vents
+ // IN the same silhouette. No raised crown, floating vent box or collar.
  addFNCFacetedForearm(root,mat('handguard'));
  addFNCForearmMarks(root,mat('shadow'));
- addFNCGasCover(root,mat('steel'),mat('shadow'));
- const collar=b('handguard',13.47,-.29,0,.30,2.28,2.40,'steel');
- collar.userData.fncHandguardNoseCollar=true;
  // Retain corrected P1B barrel diameter and overall muzzle/stock datums.
  const barrel=b('barrel',showFactoryMuzzle?16.33:16.67,0,0,
   showFactoryMuzzle?5.35:5.66,.96,.96,'barrel');
  barrel.userData.fncServiceBarrel=true;
  if(showFactoryMuzzle){
-  const collar=b('barrel',18.21,0,0,.42,1.24,1.24,'muzzle');
-  collar.userData.fncMuzzleCollar=true;
+  // One recognizable six-sided end, not layered collars and slots.
   const geometry=new THREE.CylinderGeometry(.65,.65,1.20,6,1);
   geometry.rotateZ(Math.PI/2);
   const muzzle=new THREE.Mesh(geometry,mat('muzzle'));
   muzzle.position.x=18.90;
-  muzzle.name='family-barrel-fnc-p3-flash-hider-'+ids.barrel++;
+  muzzle.name='family-barrel-fnc-p4-simple-muzzle-'+ids.barrel++;
   muzzle.userData.fncMuzzle=true;
-  muzzle.userData.fncSixFaceMuzzle=true;
+  muzzle.userData.fncP4SingleMuzzle=true;
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
-  // One batched long dark window per side, offset from the six-sided surface.
-  // No teeth, holes or extra muzzle components; the front stays one hex body.
-  const slots:number[]=[];
-  for(const side of [-1,1] as const){
-   const z=side*.688,a=[18.72,-.14,z],d=[18.72,.14,z],
-    b=[19.28,-.14,z],c=[19.28,.14,z];
-   if(side>0)slots.push(...a,...b,...c,...a,...c,...d);
-   else slots.push(...a,...c,...b,...a,...d,...c);
-  }
-  const slotGeo=new THREE.BufferGeometry();
-  slotGeo.setAttribute('position',new THREE.Float32BufferAttribute(slots,3));
-  slotGeo.computeVertexNormals();
-  const port=new THREE.Mesh(slotGeo,mat('shadow'));
-  port.name='family-barrel-fnc-p3-muzzle-window-'+ids.barrel++;
-  port.userData.fncMuzzleSlot=true;
-  port.castShadow=false;port.receiveShadow=false;root.add(port);
  }
- const gasBlock=b('barrel',14.25,.15,0,.88,1.12,1.30,'steel');
- gasBlock.userData.fncFrontGasBlock=true;
- const front=b('barrel',15.20,.78,0,1.18,1.25,1.74,'steel');
+ // One integrated gas/sight seat replaces multiple little boxes.
+ const front=p('barrel',[
+  [13.93,-.20],[14.14,.83],[14.53,1.11],
+  [15.71,1.11],[15.71,-.20]
+ ],1.67,'steel');
  front.userData.fncFrontSightBase=true;
- for(const side of [-1,1] as const){
-  const ear=p('barrel',[
-   [14.66,1.22],[14.77,2.28],[15.01,2.66],
-   [15.34,2.66],[15.70,2.14],[15.74,1.22]
-  ],.46,'steel');
-  ear.position.z=side*.64;
-  ear.userData.fncFrontSightEar=side;
-  ear.userData.fncSweptFrontEar=true;
- }
- // FNC protected rear aperture: a low U instead of the P2 LEGO-cube.
- const rear=b('receiver',-4.91,1.64,0,1.04,.42,1.43,'steel');
+ front.userData.fncP4IntegratedGasSeat=true;
+ const sight=aperture('barrel','front-guard',
+  [[14.79,1.12],[14.83,2.15],[15.04,2.44],
+   [15.34,2.44],[15.56,2.15],[15.60,1.12]],
+  [[14.98,1.54],[15.09,2.09],[15.28,2.09],[15.40,1.54]],
+  .69);
+ sight.userData.fncProtectedFrontSight=true;
+ // Low, thick U-profile rear guard: compact negative space, not twin pegs.
+ const rear=aperture('receiver','rear-guard',
+  [[-5.36,1.52],[-5.29,2.13],[-4.56,2.13],[-4.48,1.52]],
+  [[-5.14,1.64],[-5.08,1.97],[-4.74,1.97],[-4.70,1.64]],
+  .88);
  rear.userData.fncRearAperture=true;
- for(const side of [-1,1] as const){
-  const ear=b('receiver',-4.91,2.03,side*.52,.48,.67,.35,'steel');
-  ear.userData.fncRearSightEar=side;
- }
+ rear.userData.fncProtectedRearSight=true;
 
  // Asymmetric: right-side port/cover and charging handle, left selector.
  // Protruding parts overlap the RECEIVER body rather than float beside it.
- const port=b('receiver',2.08,.35,1.45,2.38,.65,.15,'shadow');
+ const port=b('receiver',2.09,.33,1.45,1.87,.50,.15,'shadow');
  port.userData.fncRightPort=true;
  port.castShadow=false;port.receiveShadow=false;
- const portLip=b('receiver',3.16,.35,1.54,.32,.58,.14,'lower');
- portLip.userData.fncPortLip=true;
+ // No separate lip: a second bright rectangle drew attention away from
+ // the stamped receiver silhouette. The broad port itself is enough.
  // Short stem seated in side wall, with one broad six-face operating knob.
  b('receiver',.42,.61,1.50,.48,.38,.43,'steel');
  const handleGeo=new THREE.CylinderGeometry(.40,.40,.55,6,1);
