@@ -1,0 +1,25 @@
+name: FNC P1 isolated silhouette acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/weapons/geometry/fnc-stage1-blockout.ts'
+      - 'src/fnc-stage1-lab.ts'
+      - 'fnc-stage1-lab.html'
+      - 'tests/weapon-fnc-stage1-blockout.test.mjs'
+      - 'vite.config.ts'
+      - '.github/workflows/fnc-p1-silhouette.yml'
+jobs:
+  isolated-fnc-p1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs
+      - run: npm run check
+      - run: npm run build

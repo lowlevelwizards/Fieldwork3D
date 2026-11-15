@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Fieldwork | FNC P1 Silhouette Lab</title>
+<style>
+:root{color-scheme:light;font-family:system-ui,sans-serif;background:#d8dfd6;color:#26352d}
+*{box-sizing:border-box}body{margin:0;padding:18px}
+main{max-width:1000px;margin:0 auto}
+h1{font-size:1.5rem;letter-spacing:.045em;margin:6px 0}
+p{line-height:1.45;color:#425249;margin:7px 0 12px}
+.controls{display:flex;gap:10px;flex-wrap:wrap;margin:15px 0}
+button{font:inherit;font-weight:650;color:#243229;background:#eff2ec;border:1px solid #82978a;border-radius:8px;padding:10px 16px;cursor:pointer}
+button[aria-pressed=true]{background:#32463a;color:#f3f7f0}
+.lab{position:relative;border:1px solid #899c8d;border-radius:12px;overflow:hidden;background:#a1aaa0}
+canvas{display:block;width:100%;height:1040px}
+.tags{position:absolute;inset:0;display:grid;grid-template-rows:repeat(5,1fr);pointer-events:none}
+.tags>div{display:flex;align-items:flex-start;padding:12px 16px;font-size:12px;letter-spacing:.08em;font-weight:800;color:#34483b;border-bottom:1px solid #728477}
+.tags>div:last-child{border-bottom:0}
+small{display:block;color:#52645a;margin-top:12px;line-height:1.5}
+@media(max-width:600px){body{padding:8px}canvas{height:900px}.tags>div{padding:8px;font-size:10px}}
+</style>
+</head>
+<body>
+<main>
+<h1>FIELDWORK / FNC P1 — SILHOUETTE CHECKPOINT</h1>
+<p>One isolated FN FNC blockout against four actual Arsenal rifles, all at the same model scale, in identical flat material. Neutral inspection background; no faction, loadout, gameplay, or release changes.</p>
+<div class="controls">
+<button id="side" aria-pressed="true">SIDE</button>
+<button id="quarter" aria-pressed="false">THREE-QUARTER</button>
+<button id="left" aria-pressed="false">OPPOSITE SIDE</button>
+</div>
+<div class="lab">
+<canvas id="view" aria-label="Monochrome FN FNC blockout compared with FAL 50.00, G3A3, AK-74 and M16A2 in five rows"></canvas>
+<div class="tags">
+<div>FNC P1 — NEW BLOCKOUT</div>
+<div>FN FAL 50.00 — FAMILY REFERENCE</div>
+<div>HK G3A3 — STAMPED RECEIVER</div>
+<div>AK-74 — ALTERNATE 5.45</div>
+<div>M16A2 — 5.56 SCALE REFERENCE</div>
+</div>
+</div>
+<small>Review: open folding stock, level stamped upper, long grooved fore-end, 5.56 magazine and front sight must read independently of the FAL. Approval needed before FNC production integration or Ak 5 branching.</small>
+</main>
+<script type="module" src="./src/fnc-stage1-lab.ts"></script>
+</body>
+</html>

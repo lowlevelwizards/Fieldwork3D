@@ -25,6 +25,7 @@ export default defineConfig({
       assetLab: 'asset-lab.html',
       soundLab: 'sound-lab.html',
       briefingLab: 'briefing-lab.html',
+      fncStage1Lab: 'fnc-stage1-lab.html',
     } },
   },
 });
