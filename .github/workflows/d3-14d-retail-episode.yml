@@ -1,0 +1,71 @@
+name: D3.14D retail D2 outside-leaf rehearsal read-only evidence
+on:
+  pull_request:
+    paths:
+      - .github/workflows/d3-14d-retail-episode.yml
+      - docs/d3-14d-retail-episode-triage-20261115.md
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  retail-episode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Exact frozen retail small seed · authored Rook · 45s 60Hz motor
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=3 --audit-seed=5412896 --audit-scale=small \
+            --d314c-front-probe --route-transitions --progress --route-quality \
+            --trace-actor=rook --trace-mode=authored \
+            > "$RUNNER_TEMP/d314d-retail.json"
+      - name: Report real route/episode ownership without changing motor
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+
+            '/d314d-retail.json','utf8'));
+          const row=r.rows[0];
+          const m=row.modes.find(m=>m.mode==='authored');
+          const a=m.operators.find(a=>a.id==='rook');
+          const route=m.d314cFrontEvidence,w=m.routeTransitions;
+          const source=Object.fromEntries(Object.entries(w.byActor??{})
+            .filter(([k])=>k.startsWith('rook:')));
+          const rejection=Object.fromEntries(Object.entries(w.rejectsByActor??{})
+            .filter(([k])=>k.startsWith('rook:')));
+          console.log('D314D_RETAIL_EPISODE',JSON.stringify({
+           seed:row.seed,scale:row.scale,physicalArrivals:m.arrivals,
+           rook:{position:a.position,remaining:a.remaining,
+             arrived:a.arrived,episode:a.doorEpisode,blocker:a.lastBlocker},
+           originalGoal:route?.goal,physicalPosition:route?.position,
+           door:route?.episode,leaf:route?.leaf,routeNav:route?.routeNav,
+           fullyClear:route?.bodyFullyClear,
+           fullWorldRoute:route?.actualWorld,
+           worldLane:route?.fullBodyLane,
+           intelRoute:route?.knownIntel,
+           nextOperableDoor:route?.firstFutureDoor,
+           ownRouteSources:source,ownRejections:rejection,
+           firstEvents:w.events.slice(0,8),lastEvents:w.events.slice(-8),
+           progress:m.progressEvidence,
+           safety:{exceptions:r.summary.exceptions,
+            positions:r.summary.invalidPositions,
+            physics:r.summary.physicsStepViolations,
+            plans:r.summary.corruptedPlans}
+          }));
+          if(!route||!a||row.seed!==5412896||
+             r.summary.exceptions||r.summary.invalidPositions||
+             r.summary.physicsStepViolations||r.summary.corruptedPlans||
+             m.arrivals<3)throw Error('read-only retail physical audit invalid');
+          NODE
+      - name: Archive complete 60Hz retail physical route trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-14d-retail-d2-outside-leaf-45s
+          path: ${{ runner.temp }}/d314d-retail.json
+          retention-days: 90
