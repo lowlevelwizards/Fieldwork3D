@@ -104,8 +104,9 @@ export function addFNCGasCover(root:THREE.Group,metal:THREE.Material,
    const b:[number,number,number]=[x+w/2,.58,z];
    const c:[number,number,number]=[x+w/2,.90,z];
    const d:[number,number,number]=[x-w/2,.90,z];
-   if(side>0)pos.push(...a,...c,...b,...a,...d,...c);
-   else pos.push(...a,...b,...c,...a,...c,...d);
+   // Counterclockwise from outside: +Z for right, -Z for left.
+   if(side>0)pos.push(...a,...b,...c,...a,...c,...d);
+   else pos.push(...a,...c,...b,...a,...d,...c);
   }
   const geo=new THREE.BufferGeometry();
   geo.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));

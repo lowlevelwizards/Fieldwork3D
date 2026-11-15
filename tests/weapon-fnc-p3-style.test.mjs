@@ -41,6 +41,12 @@ test('P3A: independent upper gas cover, three bold vents per side, fuller belly'
  const right=box(where(g,'fncGasVentSide').find(x=>x.userData.fncGasVentSide===1));
  assert.ok(right.min.z>cover.max.z+.015,
   'vent marks must stay visible without touching the cover side plane');
+ const exposed=where(g,'fncGasVentSide');
+ for(const mark of exposed){
+  const n=mark.geometry.getAttribute('normal').getZ(0);
+  assert.ok(n*mark.userData.fncGasVentSide>.5,
+   'gas vent triangles must face OUTWARD or they disappear via back-face culling');
+ }
  assert.equal(where(g,'fncGrooveSide').length,2);
  assert.equal(where(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,8);
  assert.ok(box(where(g,'fncDistinctGasCover')[0]).max.y>
@@ -55,6 +61,10 @@ test('P3B: signed rear/front guards, hex receiver controls and compact muzzle',(
  assert.equal(where(g,'fncSixFacetedHandle').length,1);
  assert.equal(where(g,'fncSixFaceMuzzle').length,1);
  assert.equal(where(g,'fncMuzzleSlot').length,1);
+ const slot=where(g,'fncMuzzleSlot')[0];
+ const normals=slot.geometry.getAttribute('normal');
+ assert.ok(normals.getZ(0)<-.5&&normals.getZ(12)>.5,
+  'muzzle windows must face outward on both sides');
  assert.equal(where(g,'fncStampedCover').length,0,'receiver roof must not add a covering box');
  assert.equal(where(g,'fncMagwellLip').length,1,'lower magwell must be integrated');
  assert.ok(where(g,'fncRearSightEar').every(x=>box(x).max.y<2.6));

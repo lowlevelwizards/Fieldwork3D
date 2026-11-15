@@ -135,8 +135,8 @@ export function buildFNCStage1Silhouette(
   for(const side of [-1,1] as const){
    const z=side*.688,a=[18.72,-.14,z],d=[18.72,.14,z],
     b=[19.28,-.14,z],c=[19.28,.14,z];
-   if(side>0)slots.push(...a,...c,...b,...a,...d,...c);
-   else slots.push(...a,...b,...c,...a,...c,...d);
+   if(side>0)slots.push(...a,...b,...c,...a,...c,...d);
+   else slots.push(...a,...c,...b,...a,...d,...c);
   }
   const slotGeo=new THREE.BufferGeometry();
   slotGeo.setAttribute('position',new THREE.Float32BufferAttribute(slots,3));
