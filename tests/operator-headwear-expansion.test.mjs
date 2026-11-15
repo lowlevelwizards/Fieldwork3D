@@ -33,7 +33,7 @@ const overlap=(a,b,axis)=>{
   Math.max(a[axis]-a[size]/2,b[axis]-b[size]/2);
 };
 
-test('all seven heads render one real orthogonal exterior per wardrobe item',()=>{
+test('all seven heads render one authoritative exterior per wardrobe item',()=>{
  for(const id of ids){
   const v=headwearCuboidVolumes(id);
   const g=createHeadwearSilhouette(id,new THREE.MeshStandardMaterial());
@@ -42,8 +42,10 @@ test('all seven heads render one real orthogonal exterior per wardrobe item',()=
   assert.equal(g.children[0].receiveShadow,false,id);
   const geo=g.children[0].geometry;
   assert.ok(id==='ach'?geo.userData.h17UnifiedContour:
+   id==='soviet-steel'?geo.userData.ssh40FacetedSurface:
    geo.userData.greedyCuboidUnion,id);
-  if(id!=='ach')assert.equal(geo.userData.cuboids.length,v.length,id);
+  if(id!=='ach'&&id!=='soviet-steel')
+   assert.equal(geo.userData.cuboids.length,v.length,id);
   assert.ok(geo.index.count>=36,id);
   assert.ok(geo.userData.exteriorQuads<150,id+' too many visible planes');
   assert.ok(v.every(p=>p.height>=.70&&p.width>=.90&&p.depth>=.90),
@@ -61,7 +63,7 @@ test('all seven heads render one real orthogonal exterior per wardrobe item',()=
   }
   const stage={
    'patrol-cap':'1N','boonie':'1N','beanie':'1N',
-   'pasgt':'1N','soviet-steel':'1N',
+   'pasgt':'1N','soviet-steel':'B2',
    'ach':'1E','high-cut':'1E'
   };
   assert.equal(g.userData.stage,stage[id]);
