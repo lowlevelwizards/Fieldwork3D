@@ -79,3 +79,50 @@ export function addFALCrownedReceiver(
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
  return mesh;
 }
+
+/** One large concave-looking angular shadow following the actual crown
+ * surface instead of a floating, fronto-parallel rectangular port decal.
+ * It represents the distinctive raised right-side ejection scallop, not
+ * its operational internals. One six-triangle face, zero tiny hardware.
+ */
+export function addFALScoopedPort(root:THREE.Group,
+ receiverId:string,index:number,material:THREE.Material):THREE.Mesh{
+ const outline:readonly (readonly [number,number])[]=[
+  [-.05,1.00],[.16,1.36],[.80,1.53],[2.45,1.49],
+  [2.92,1.19],[2.87,.79],[2.42,.69],[.55,.70]
+ ];
+ const vertices:number[]=[];
+ for(const [x,y] of outline)
+  vertices.push(x,y,falUpperSideHalfZ(y,x)+.035);
+ const indices:number[]=[];
+ for(let i=1;i<outline.length-1;i++)
+  indices.push(0,i+1,i);
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ geometry.setIndex(indices);
+ geometry.computeVertexNormals();
+ const mesh=new THREE.Mesh(geometry,material);
+ mesh.name='family-receiver-'+receiverId+'-'+index;
+ mesh.userData.falEjectionPort=true;
+ mesh.userData.falSculptedScallop=true;
+ mesh.castShadow=false;mesh.receiveShadow=false;
+ mesh.renderOrder=3;
+ root.add(mesh);return mesh;
+}
+/** Two low-resolution steel discs provide the characteristic takedown
+ * pivot landmark on each side; they are REPRESENTATIONAL, not operable. */
+export function addFALPivotPair(root:THREE.Group,receiverId:string,
+ startIndex:number,material:THREE.Material):THREE.Mesh[]{
+ const result:THREE.Mesh[]=[];
+ for(const side of [-1,1] as const){
+  const geometry=new THREE.CylinderGeometry(.55,.55,.18,8,1);
+  geometry.rotateX(Math.PI/2);
+  const mesh=new THREE.Mesh(geometry,material);
+  mesh.name='family-receiver-'+receiverId+'-'+(startIndex+result.length);
+  mesh.position.set(-1.14,-1.83,side*1.74);
+  mesh.userData.falPivotSide=side;
+  mesh.castShadow=true;mesh.receiveShadow=true;
+  root.add(mesh);result.push(mesh);
+ }
+ return result;
+}
