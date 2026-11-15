@@ -96,7 +96,7 @@ test('P9 dark bridge is leaner and taller; stock +15 percent; angled grip',()=>{
  assert.ok(stock.max.y-stock.min.y>=5.50,'15 percent more stock height');
  assert.ok(pad.max.y-pad.min.y>=4.97);
  assert.ok(stock.max.z-stock.min.z<=2.35);
- assert.ok(grip.min.x<=-6.79);
+ assert.ok(grip.min.x>=-6.60&&grip.min.x<=-6.54);
  clearWeaponSilhouette(root);m.dispose();
 });
 test('P9 finishes share in-game HK/AK/AR material logic and dark muzzle steel',()=>{
@@ -131,4 +131,33 @@ test('P9 Arsenal and Gallery preserve game key with readable sky bounce and dark
  assert.ok(key.position.clone().normalize().distanceTo(STUDIO_KEY_DIRECTION)<1e-8);
  assert.ok(STUDIO_KEY_DIRECTION.distanceTo(new THREE.Vector3(
   ...GRAPHIC_LIGHT_PROFILE.keyDirection).normalize())<1e-8);
+});
+
+test('P10 forward stock neck climbs toward receiver; grip only translates forward',()=>{
+ const {root,m,c}=make();
+ const shell=root.children.find(x=>x.name==='family-stock-fal-fixed-polymer-0');
+ const grip=root.children.find(x=>x.name==='family-grip-fal-grip-0');
+ const receiver=root.children.find(x=>x.name==='family-receiver-fal-50-receiver-0');
+ assert.ok(shell&&grip&&receiver);
+ const sb=bounds(shell),gb=bounds(grip),rb=bounds(receiver);
+ const vertices=shell.geometry.getAttribute('position');
+ const contains=(x,y)=>Array.from({length:vertices.count},
+  (_,i)=>i).some(i=>Math.abs(vertices.getX(i)-x)<.001&&
+   Math.abs(vertices.getY(i)-y)<.001);
+ assert.ok(contains(-8.10,.72),'preserve existing sloping comb');
+ assert.ok(contains(-6.12,1.48),'raise only forwardmost stock top corner');
+ assert.ok(contains(-14.60,.12)&&contains(-14.60,-4.81),
+  'preserve butt silhouette and lower heel');
+ assert.ok(Math.abs(rb.max.y-sb.max.y)<.10,
+  'neck should rise near the rear receiver roof');
+ assert.ok(sb.max.x>rb.min.x,'stock and upper must overlap, not float apart');
+ assert.ok(sb.max.z-sb.min.z<=2.35,'do not thicken stock');
+ assert.ok(Math.abs(gb.min.x+6.57)<.001);
+ assert.ok(Math.abs(gb.max.x+2.94)<.001);
+ assert.ok(Math.abs((gb.max.y-gb.min.y)-3.67)<.001);
+ assert.ok(gb.max.x<-.89,'grip still has air gap behind the magazine');
+ assert.equal(root.children.filter(x=>x.name.startsWith('family-stock-')).length,2);
+ assert.equal(root.children.filter(x=>x.name.startsWith('family-grip-')).length,1);
+ assert.equal(resolveWeaponAssembly(c).muzzleX,22);
+ clearWeaponSilhouette(root);m.dispose();
 });
