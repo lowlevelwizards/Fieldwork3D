@@ -1,6 +1,6 @@
 # D3.13H4 validated release checkpoint — 2026-11-15
 
-This release consolidates staged H1 diagnostics, H2C bounded frame-side physical staging, and H4 cold future-door recovery. Main-targeted PR #1444 is the only integration and production release owner; stacked parent PRs #1440 and #1442 must not be independently merged.
+This release consolidates staged H1 diagnostics, H2C bounded frame-side physical staging, and H4 cold future-door recovery. Main integration is anchored against successfully deployed SHA 83502f4e170c8343912cb374c55eb9f800000f7a (unrelated FAL/helmet changes only since the movement baseline); a new main-targeted CI run remains mandatory. Main-targeted PR #1444 is the only integration and production release owner; stacked parent PRs #1440 and #1442 must not be independently merged.
 
 ## Root cause
 
