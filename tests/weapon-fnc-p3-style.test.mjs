@@ -1,4 +1,4 @@
-/** FNC P3 Fieldwork identity: shape and regression gates at factory scale. */
+/** FNC P5 Fieldwork identity: large forms, readable sight openings and stock. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -12,74 +12,103 @@ import {HK556_MAG_METAL,HK556_MAG_RIB}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 
 const box=x=>new THREE.Box3().setFromObject(x);
-const where=(g,k)=>g.children.filter(x=>x.userData[k]);
+const of=(g,k)=>g.children.filter(x=>x.userData[k]);
 const factory=()=>selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
-test('P3A: insulated stock is segmented, not drawn coplanar over metal stock',()=>{
+test('P5 stock: no cheek/metal overlap and an actual triangular FNC brace',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const rails=where(g,'fncStockRail').filter(x=>x.userData.fncStockRail===true);
- const [cheek]=where(g,'fncCheekSleeve');
+ const rails=of(g,'fncStockRail').filter(x=>x.userData.fncStockRail===true);
+ const cheek=of(g,'fncCheekSleeve')[0],web=of(g,'fncP5StockMiddleBrace')[0];
  assert.equal(rails.length,2);
- assert.equal(where(g,'fncKinkedLowerRail').length,1);
- assert.equal(where(g,'fncNoCoplanarRail').length,1);
- const top=box(rails[0]),sleeve=box(cheek);
- assert.ok(top.min.x>=sleeve.max.x-.03,
-  'upper steel rail must end at the cheek sleeve instead of running underneath it');
- assert.ok(top.min.y>box(rails[1]).max.y+.2,'stock opening must remain visible');
+ assert.equal(of(g,'fncNoCoplanarRail').length,1);
+ assert.ok(box(rails[0]).min.x>=box(cheek).max.x-.03,
+  'insulated and steel top rails must never share coplanar length');
+ assert.ok(box(rails[0]).min.y>box(rails[1]).max.y+.20);
+ assert.ok(web,'FNC stock requires the intermediate triangular web');
+ assert.ok(box(web).min.x<-11&&box(web).max.x>-11);
+ assert.ok(box(web).max.y<0&&box(web).min.y>-2.9,
+  'web lies between the stock rails without becoming a solid butt');
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P4A: one fluted front, with three integrated, outward-facing vents per side',()=>{
+test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- assert.equal(where(g,'fncP4UnifiedForearm').length,1);
- assert.equal(where(g,'fncDistinctGasCover').length,0,
-  'the stacked P3 gas-crown must be gone');
- assert.equal(where(g,'fncHandguardNoseCollar').length,0);
- assert.equal(where(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,24);
- assert.equal(where(g,'fncP4UnifiedForearm')[0].userData.fncMoldedFlutesPerSide,2);
- const vents=where(g,'fncVentSide');
- assert.deepEqual(vents.map(x=>x.userData.fncVentSide).sort(),[-1,1]);
- assert.ok(vents.every(x=>x.userData.fncGasVentCount===3));
- for(const v of vents){
-  const n=v.geometry.getAttribute('normal').getZ(0);
-  assert.ok(n*v.userData.fncVentSide>.5,'visible side vents face outward');
-  assert.ok(Math.abs(box(v).max.z)<1.6,'vents stay close to the molded front');
+ const hex=of(g,'fncP5LowerHex')[0],gas=of(g,'fncP5UpperGasBox')[0];
+ assert.ok(hex&&gas);
+ assert.equal(hex.userData.fncCrossSectionFaces,6);
+ const hb=box(hex),gb=box(gas);
+ assert.ok(gb.max.y>hb.max.y+.8,'upper box must rise visibly above hex');
+ assert.ok(gb.max.z<hb.max.z-.13,'gas box must be narrower than the hex');
+ assert.ok(gb.min.y<hb.max.y,'two volumes intersect instead of floating');
+ const marks=of(g,'fncP5GrooveSide');
+ assert.equal(marks.length,4);
+ for(const level of ['upper','lower']){
+  const parts=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
+  assert.deepEqual(parts.map(x=>x.userData.fncP5GrooveSide).sort(),[-1,1]);
+  for(const mark of parts){
+   const count=level==='upper'?3:2;
+   assert.equal(mark.userData.fncP5GrooveCount,count);
+   assert.equal(mark.geometry.getAttribute('position').count,count*6);
+   const normal=mark.geometry.getAttribute('normal').getZ(0);
+   assert.ok(normal*mark.userData.fncP5GrooveSide>.95,
+    'both longitudinal stroke sets must face their visible side');
+  }
  }
+ assert.equal(of(g,'fncDistinctGasCover').length,0);
+ assert.equal(of(g,'fncP4UnifiedForearm').length,0);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P4B: two actual U-shaped protected sights and one simple muzzle',()=>{
+test('P5 receiver: true three-dimensional tapered roof narrower than lower',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const front=where(g,'fncProtectedFrontSight');
- const rear=where(g,'fncProtectedRearSight');
- assert.equal(front.length,1);assert.equal(rear.length,1);
- assert.ok(front[0].geometry.parameters.shapes.holes.length===1);
- assert.ok(rear[0].geometry.parameters.shapes.holes.length===1);
- assert.equal(where(g,'fncP4IntegratedGasSeat').length,1);
- assert.equal(where(g,'fncFrontGasBlock').length,0);
- assert.equal(where(g,'fncFrontSightEar').length,0);
- assert.equal(where(g,'fncRearSightEar').length,0);
- assert.equal(where(g,'fncP4SingleMuzzle').length,1);
- assert.equal(where(g,'fncMuzzleSlot').length,0);
- assert.equal(where(g,'fncMuzzleCollar').length,0);
- assert.equal(where(g,'fncStampedCover').length,0);
- assert.equal(where(g,'fncMagwellLip').length,1);
- assert.ok(box(rear[0]).max.y<2.6);
- const body=box(g);
- assert.ok(Math.abs(body.min.x-FNC_P1.stockRearX)<.02);
- assert.ok(Math.abs(body.max.x-FNC_P1.muzzleX)<.02);
+ const upper=of(g,'fncP5CrownedReceiver')[0];
+ const lower=of(g,'fncAngularLower')[0];
+ assert.ok(upper&&lower);
+ assert.equal(upper.userData.fncP5RoofHalfWidth,.67);
+ assert.equal(upper.userData.fncP5UpperSideHalfWidth,1.34);
+ assert.ok(box(upper).max.z<box(lower).max.z-.30,
+  'upper side must be narrower than the lower even below its shoulder');
+ const pos=upper.geometry.getAttribute('position');
+ const nearRoof=[],side=[];
+ for(let i=0;i<pos.count;i++){
+  const y=pos.getY(i),z=Math.abs(pos.getZ(i));
+  if(y>1.38)nearRoof.push(z);
+  if(y<-.65)side.push(z);
+ }
+ assert.ok(nearRoof.length>0&&side.length>0);
+ assert.ok(Math.max(...nearRoof)<Math.max(...side)-.35,
+  'actual upper cross section must taper toward roof in Z');
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P3C: live factory art shares the dark HK 5.56 magazine precedents',()=>{
+test('P5 landmarks: oversized sight openings, longer charging handle and muzzle',()=>{
+ const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
+ const front=of(g,'fncP5OversizedFrontSight')[0];
+ const rear=of(g,'fncP5OversizedRearSight')[0];
+ const handle=of(g,'fncP5LargeChargingHandle')[0];
+ const muzzle=of(g,'fncP5ChunkyMuzzle')[0];
+ assert.ok(front&&rear&&handle&&muzzle);
+ assert.equal(front.geometry.parameters.shapes.holes.length,1);
+ assert.equal(rear.geometry.parameters.shapes.holes.length,1);
+ assert.ok(box(front).max.y>3.0);
+ assert.ok(box(rear).max.y>2.6);
+ assert.ok(box(handle).max.x-box(handle).min.x>1.8);
+ assert.ok(box(handle).max.z>box(of(g,'fncP5CrownedReceiver')[0]).max.z+.6);
+ assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.55);
+ assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
+ const noFactory=buildFNCStage1Silhouette(m,{},false);
+ assert.equal(of(noFactory,'fncMuzzle').length,0);
+ assert.ok(Math.abs(box(noFactory).max.x-FNC_P1.muzzleX)<.02);
+ clearWeaponSilhouette(noFactory);clearWeaponSilhouette(g);m.dispose();
+});
+test('P5: shared dark magazine and compact low-poly production asset',()=>{
  const m=new THREE.MeshBasicMaterial();
  const g=buildWeaponSilhouette('rifle',m,m,factory());
- const mag=where(g,'fnc556Magazine')[0];
- const rib=where(g,'fncStampedMagazineRib')[0];
- assert.ok(mag&&rib);
- assert.equal(mag.material,HK556_MAG_METAL);
- assert.equal(rib.material,HK556_MAG_RIB);
- assert.equal(where(g,'fncNoCoplanarRail').length,1);
+ const mag=of(g,'fnc556Magazine')[0],rib=of(g,'fncStampedMagazineRib')[0];
+ assert.equal(mag?.material,HK556_MAG_METAL);
+ assert.equal(rib?.material,HK556_MAG_RIB);
+ assert.equal(of(g,'fncP5StockMiddleBrace').length,1);
+ assert.equal(of(g,'fncP5UpperGasBox').length,1);
  const tri=g.children.reduce((n,x)=>n+
   (x.geometry?.index?.count??x.geometry?.getAttribute('position')?.count??0)/3,0);
- assert.ok(g.children.length<=28,'P4 removes decorative attached meshes');
- assert.ok(tri<1100,'keep sculpted handguard within low-poly budget');
+ assert.ok(g.children.length<=30,'avoid unnecessary decorative attachments');
+ assert.ok(tri<1050,'preserve low-poly Fieldwork geometry budget');
  clearWeaponSilhouette(g);m.dispose();
 });
