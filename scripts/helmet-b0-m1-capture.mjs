@@ -44,8 +44,15 @@ try{
   };
   for(const id of ['m1-steel','pasgt','soviet-steel','ddr-m56','ach','mich-2002']){
    await items.click();
-   const button=page.locator('[data-appearance-item="'+id+'"]');
+   // The current wardrobe intentionally has ONE ballistic item card.
+   // Select the MICH via its MID-CUT detail control, not a retired item card.
+   const itemId=id==='mich-2002'?'ach':id;
+   const button=page.locator('[data-appearance-item="'+itemId+'"]');
    await button.scrollIntoViewIfNeeded();await button.click();
+   if(id==='mich-2002'){
+    await details.click();
+    await page.locator('[data-helmet-cut="mid"]').click();
+   }
    await shoot(id+'-as-saved');
   }
   await items.click();await page.locator('[data-appearance-item="m1-steel"]').click();
