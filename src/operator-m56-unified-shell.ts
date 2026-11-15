@@ -1,0 +1,124 @@
+/** S1-A1: the one-piece stamped DDR M56 steel shell.
+ * Boxy Fieldwork interpretation of the real M56's shallow crown,
+ * diagonal bell and striking long swept rear flare.
+ * NO stacked cuboids, extra ridge bands or M1-style rolled brim.
+ * One low-poly mesh owns both exterior and visible recessed underside.
+ * Head frame: +Y up, -Z face, +X operator right.
+ */
+import * as THREE from 'three';
+import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
+
+type Point=readonly [number,number,number];
+type Ring={name:string;y:number;side:number;front:number;rear:number;
+ frontRise?:number;rearDrop?:number};
+export const M56_PERIMETER:readonly (readonly [number,number])[]=[
+ [-.72,-1],[.72,-1],[1,-.72],[1,.72],
+ [.72,1],[-.72,1],[-1,.72],[-1,-.72]
+] as const;
+/** Three meaningful external masses: a short square top, one main
+ * tapering bowl, and the continuous *integral* outward lower flare.
+ * The bottom 0.35 is the stamped sheet edge, not a separate visor.
+ * Preserve the historical and existing code's front and rear maxima.
+ */
+export const M56_SHELL_RINGS:readonly Ring[]=[
+ {name:'broad-flat-crown',y:8.775,side:3.65,front:4.05,rear:4.35},
+ {name:'single-upper-shoulder',y:8.07,side:4.80,front:4.95,rear:5.35},
+ {name:'continuous-sloping-bell',y:5.52,side:5.78,front:5.86,rear:6.55},
+ {name:'integral-flared-edge-top',y:4.78,side:6.78,front:6.75,rear:8.04,
+  frontRise:.19,rearDrop:.20},
+ {name:'thin-steel-edge-bottom',y:4.43,side:6.87,front:6.80,rear:8.10,
+  frontRise:.22,rearDrop:.205},
+ {name:'inward-stamped-return',y:4.51,side:6.38,front:6.34,rear:7.58,
+  frontRise:.19,rearDrop:.18},
+ {name:'recessed-inner-wall',y:6.48,side:4.89,front:5.05,rear:5.37},
+ {name:'recessed-interior-ceiling',y:7.58,side:3.25,front:3.60,rear:3.85}
+] as const;
+export const M56_SHELL_FIT=Object.freeze({
+ top:8.775,outerSide:6.87,frontExtent:-6.80,rearExtent:8.10,
+ frontHem:4.65,sideHem:4.43,rearHem:4.225
+});
+const sample=(ring:Ring,index:number):Point=>{
+ const [fx,fz]=M56_PERIMETER[(index+8)%8];
+ return [fx*ring.side,
+  ring.y+(fz<0?(ring.frontRise??0)*-fz:-(ring.rearDrop??0)*fz),
+  fz*(fz<0?ring.front:ring.rear)];
+};
+export const m56SurfacePoint=(ring:number,index:number):Point=>
+ sample(M56_SHELL_RINGS[ring],index);
+
+export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
+ const positions:number[]=[],uv:number[]=[],uv1:number[]=[],colors:number[]=[],
+  index:number[]=[];
+ let quads=0;
+ const put=(p:Point,region:0|1|2|3,tone:number,axis:0|1|2)=>{
+  positions.push(...p);
+  const u=axis===0?p[2]:p[0],v=axis===1?p[2]:p[1];
+  uv.push(((region%2)*32+16+u/PIXEL_WORLD_SIZE)/64,
+   (Math.floor(region/2)*32+16+v/PIXEL_WORLD_SIZE)/64);
+  const clamp=(n:number)=>Math.max(.005,Math.min(31.995,n));
+  const span=8.2,per=axis===2?(p[2]<0?span+p[0]:5*span-p[0]):
+   axis===0?(p[0]>0?3*span+p[2]:7*span-p[2]):16+p[0];
+  const cu=axis===1?16+p[0]:per*32/(8*span),
+   cv=axis===1?16+p[2]:16+p[1];
+  uv1.push(((region%2)*64+2*clamp(cu))/128,
+   (Math.floor(region/2)*64+2*clamp(cv))/128);
+  colors.push(tone,tone,tone);
+ };
+ const face=(points:readonly Point[],outward:Point,
+  region:0|1|2|3,tone:number)=>{
+  const [a,b,c]=points;
+  const normal=new THREE.Vector3(...b).sub(new THREE.Vector3(...a))
+   .cross(new THREE.Vector3(...c).sub(new THREE.Vector3(...a)));
+  const ordered=normal.dot(new THREE.Vector3(...outward))>=0?
+   points:[points[0],...points.slice(1).reverse()];
+  const abs=[Math.abs(normal.x),Math.abs(normal.y),Math.abs(normal.z)];
+  const axis=abs.indexOf(Math.max(...abs)) as 0|1|2;
+  const start=positions.length/3;
+  for(const point of ordered)put(point,region,tone,axis);
+  index.push(start,start+1,start+2);
+  if(ordered.length===4){index.push(start,start+2,start+3);quads++;}
+ };
+ const N=M56_PERIMETER.length,top=M56_SHELL_RINGS[0];
+ for(let i=0;i<N;i++)
+  face([[0,top.y,0],sample(top,i),sample(top,(i+1)%N)],
+   [0,1,0],3,1);
+ for(let j=0;j<M56_SHELL_RINGS.length-1;j++){
+  const a=M56_SHELL_RINGS[j],b=M56_SHELL_RINGS[j+1];
+  const region:0|1|2|3=j===3?2:j>=4?1:0;
+  const tone=j===0?.985:j===1?.97:j===2?.96:j===3?.92:
+   j===4?.88:j===5?.83:.85;
+  for(let i=0;i<N;i++){
+   const k=(i+1)%N,p=sample(a,i),q=sample(a,k),
+    r=sample(b,k),s=sample(b,i);
+   const mx=(p[0]+q[0]+r[0]+s[0])/4,
+    mz=(p[2]+q[2]+r[2]+s[2])/4;
+   const toward:Point=j>=5?[-mx,0,-mz]:
+    j===4?[0,-1,0]:[mx,j===0?.35:0,mz];
+   face([p,q,r,s],toward,region,tone);
+  }
+ }
+ const inner=M56_SHELL_RINGS[M56_SHELL_RINGS.length-1];
+ for(let i=0;i<N;i++)
+  face([[0,inner.y,0],sample(inner,(i+1)%N),sample(inner,i)],
+   [0,-1,0],1,.84);
+ const geo=new THREE.BufferGeometry();
+ geo.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
+ geo.setAttribute('uv1',new THREE.Float32BufferAttribute(uv1,2));
+ geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+ geo.setIndex(index);
+ geo.computeVertexNormals();geo.computeBoundingBox();
+ geo.userData.m56UnifiedStampedShell=true;
+ geo.userData.m56ProfileRevision='S1-A1';
+ geo.userData.m56VisibleRecessedInterior=true;
+ geo.userData.m56ContinuousFlare=true;
+ geo.userData.m56ProfileStations=M56_SHELL_RINGS.map(r=>r.name);
+ geo.userData.m56PerimeterFacets=N;
+ geo.userData.exteriorQuads=quads;
+ geo.userData.materialRegions=true;
+ geo.userData.pixelWorldSize=PIXEL_WORLD_SIZE;
+ geo.userData.materialAtlasPixels=64;
+ geo.userData.camoAtlasPixels=128;
+ geo.userData.camoUvLayout='planar-top/continuous-perimeter';
+ return geo;
+}
