@@ -19,6 +19,8 @@ import {setTransientRouteObserver}
  from '../src/breach-route-transition.ts';
 import {D311RouteSurvey,createD311GridObserver}
  from './lib/d3-11-route-quality.mjs';
+import {D313G2_HOLDOUT_22,D313G2_HOLDOUT_ID}
+ from './lib/d3-13g2-fresh-22-manifest.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear} from '../src/breach-navigation.ts';
@@ -45,6 +47,7 @@ const progress=process.argv.includes('--progress');
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
+const g2Fresh22=process.argv.includes('--g2-fresh-22');
 // D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
 // Run with --route-transitions --site-index=7 --trace-actor=rook
 // and optionally --trace-mode=authored (or entry).
@@ -71,6 +74,9 @@ const requestedSeedArg=process.argv.find(a=>a.startsWith('--audit-seed='));
 const requestedSeed=requestedSeedArg?Number(requestedSeedArg.split('=')[1]):null;
 const requestedScaleArg=process.argv.find(a=>a.startsWith('--audit-scale='));
 const requestedScale=requestedScaleArg?.split('=')[1]??null;
+if(g2Fresh22&&(sites!==22||requestedSite!==null||clinicOnly||
+    requestedSeedArg||requestedScaleArg))
+ throw Error('G2 fresh holdout requires 22 sites and no seed/site overrides');
 if((requestedSeedArg||requestedScaleArg)&&requestedSite===null)
  throw Error('audit seed/scale override requires --site-index');
 if(requestedSeedArg&&(!Number.isSafeInteger(requestedSeed)||
@@ -482,8 +488,10 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const seed=requestedSeed??31045+i*13,archetype=names[i%names.length];
- const scale=requestedScale??(i%2===0?'small':'standard');
+ const cohort=g2Fresh22?D313G2_HOLDOUT_22[i]:null;
+ const seed=requestedSeed??cohort?.seed??31045+i*13;
+ const archetype=cohort?.archetype??names[i%names.length];
+ const scale=requestedScale??cohort?.scale??(i%2===0?'small':'standard');
  try{
   const site=generateSite(seed,scale,undefined,{mission:'intel'},
    {archetype});
@@ -561,6 +569,7 @@ const progressSummary=progress?{
 }:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
+ ...(g2Fresh22?{corpus:D313G2_HOLDOUT_ID}:{}),
  ticks,summary,...(progress?{progressSummary}:{}),
  ...(routeQuality?{routeQualitySummary}:{}),
  ...(routeTransitions?{transitionSummary}:{}),rows},null,2));
