@@ -34,25 +34,31 @@ export function bodyClear(p:Pt,doors:Door[],radius=OPERATOR_RADIUS,world?:Sessio
 }
 export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   radius=OPERATOR_RADIUS,world?:SessionWorldGeometry){
-  const steps=Math.max(1,Math.ceil(distance(from,to)/4));
+  const length=distance(from,to);
+  const steps=Math.max(1,Math.ceil(length/4));
   const candidates=doorsNearSweep(from,to,doors,radius+1);
-  const trapped=candidates.filter(item=>pointToSegment(from,item.leaf)<radius+1);
+  // D3.12A: only the moving leaf position matters, sampled once per
+  // query. Cache the start-to-leaf gap on that transient candidate,
+  // rather than recalculating it for every overlapping sweep sample
+  // and searching a second trapped-doors array. Never persist between
+  // ticks: actual door angles and replay states remain authoritative.
+  const initialGaps=candidates.map(item=>pointToSegment(from,item.leaf));
+  const releaseProgress=Math.min(.04,length*.04);
   for(let i=1;i<=steps;i++){
     const f=i/steps;
     const at={x:from.x+(to.x-from.x)*f,
       y:from.y+(to.y-from.y)*f};
     if(!(world?world.passable(at,radius):passable(at,radius)))return false;
-    for(const item of candidates){
-      const gap=pointToSegment(at,item.leaf);
+    for(let j=0;j<candidates.length;j++){
+      const gap=pointToSegment(at,candidates[j].leaf);
       if(gap>=radius+1)continue;
+      const initial=initialGaps[j];
       // A leaf can close into an actor. Permit movement away from it;
       // never allow a new intrusion or movement deeper into overlap.
-      const initial=pointToSegment(from,item.leaf);
-      if(!trapped.includes(item)||gap+1e-5<initial)return false;
+      if(initial>=radius+1||gap+1e-5<initial)return false;
       // An embedded body must actually move OUT of the leaf, not travel
       // parallel through its interior at the same penetration depth.
-      if(i===steps&&gap<radius+1&&
-         gap<initial+Math.min(.04,distance(from,to)*.04))return false;
+      if(i===steps&&gap<initial+releaseProgress)return false;
     }
   }
   return true;
