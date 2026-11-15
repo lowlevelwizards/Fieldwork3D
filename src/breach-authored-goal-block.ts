@@ -8,7 +8,6 @@ import type {Session,TeamActor} from './breach-game.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
-import type {Blocker} from './breach-nav-diagnostics.ts';
 
 type HeldGoal={orderId:number;goalKey:string;revision:number;reason:string};
 const held=new WeakMap<TeamActor,HeldGoal>();
@@ -26,7 +25,7 @@ export function fixedGoalCorrectionText(blocker:'wall'|'furniture'):string{
  * an undiscovered prop, or a temporarily standing teammate is not a fixed
  * destination obstruction. Spatial indexes are already session-owned.
  */
-export function knownFixedGoalBlock(s:Session,goal:Pt):Blocker|null{
+export function knownFixedGoalBlock(s:Session,goal:Pt):'wall'|'furniture'|null{
  const world=sessionWorldGeometry(s);
  if(world.someWallNearPoint(goal,OPERATOR_RADIUS+1,(wall,i)=>
    s.intel.walls.has(i)&&
@@ -74,7 +73,7 @@ export function holdKnownFixedAuthoredGoal(
      a.lastBlocker!=='wall'))return false;
  const obstruction=knownFixedGoalBlock(s,goal);
  if(!obstruction)return false;
- const reason=fixedGoalCorrectionText(obstruction as 'wall'|'furniture');
+ const reason=fixedGoalCorrectionText(obstruction);
  held.set(a,{orderId:node!.id,goalKey,
    revision:sessionWorldGeometry(s).revision,reason});
  a.orderIssue={nodeId:node!.id,reason,since:s.seconds};
