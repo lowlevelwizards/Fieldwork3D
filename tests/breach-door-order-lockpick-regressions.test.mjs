@@ -76,3 +76,49 @@ test('successful picking unlocks but never opens or moves the door',()=>{
   assert.match(messages[0],/UNLOCKED/);
  }finally{activateSite(null);}
 });
+
+test('D3.13E cached remote MOVE episode cannot open an unreachable closed door',()=>{
+ const s=newSession(),a=team(s)[0],messages=[];
+ try{
+  const door=initDoor({id:'REMOTE',a:{x:300,y:300},b:{x:342,y:300},
+    kind:'hinged',hinge:'a',swing:1,open:false,openedAt:-1},0);
+  s.doors=[door];s.operators=[a];a.p={x:320,y:240};
+  const move={id:91130,kind:'move',p:{x:320,y:400}};
+  a.plan=[move];a.nav=[];a.actionTimer=0;
+  a.doorTraversal={doorId:door.id,authoredOrderId:move.id,
+    destination:{...move.p}};
+  assert.equal(doorReachable(a.p,door),false);
+  const start={...a.p};
+  for(let tick=0;tick<30;tick++){
+    handleMotorDoor(a,move.p,move.p,{x:320,y:260},
+      1/60,s,hooks(messages));
+    s.seconds+=1/60;
+  }
+  assert.equal(door.open,false,'no OPEN may be issued at cached episode range');
+  assert.equal(a.actionTimer,0,'remote door must not accumulate an OPEN timer');
+  assert.deepEqual(a.p,start,'door handler cannot teleport the actor');
+  assert.equal(a.plan[0],move,'authored MOVE remains untouched');
+  assert.equal(messages.some(m=>m.includes('OPENED')),false);
+ }finally{activateSite(null);}
+});
+test('D3.13E remotely retained partial leaf yields to solid movement without grip',()=>{
+ const s=newSession(),a=team(s)[0],messages=[];
+ try{
+  const door=initDoor({id:'PARTIAL',a:{x:300,y:300},b:{x:342,y:300},
+    kind:'hinged',hinge:'a',swing:1,open:true,openedAt:0},0);
+  door.openFraction=.3;door.angularVelocity=.2;
+  s.doors=[door];s.operators=[a];a.p={x:320,y:240};
+  const move={id:91131,kind:'move',p:{x:320,y:400}};
+  a.plan=[move];a.nav=[];a.actionTimer=.35;
+  a.doorTraversal={doorId:door.id,authoredOrderId:move.id,
+    destination:{...move.p}};
+  assert.equal(doorReachable(a.p,door),false);
+  const result=handleMotorDoor(a,move.p,move.p,{x:320,y:260},
+    1/60,s,hooks(messages));
+  assert.equal(result.paused,false,'ordinary full-body motor retains movement');
+  assert.equal(a.actionTimer,.35,'no out-of-range OPEN timing');
+  assert.equal(door.openFraction,.3,'cannot change a physical panel remotely');
+  assert.equal(a.plan[0],move);
+  assert.equal(messages.some(m=>m.includes('OPENED')),false);
+ }finally{activateSite(null);}
+});
