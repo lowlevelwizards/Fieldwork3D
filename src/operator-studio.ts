@@ -36,6 +36,7 @@ import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup}
  from './operator-helmet-setup-policy.ts';
 import {resolveEffectiveHelmetAppearance} from './operator-helmet-effective-appearance.ts';
 import {editHelmetFieldPreferences,editPasgtFieldDress} from './operator-helmet-appearance-edit.ts';
+import {helmetFieldControlState} from './operator-helmet-control-state.ts';
 import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
  type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
 import {createHelmetAnatomyGuide,HELMET_ANATOMY_GUIDE_NAME}
@@ -1526,23 +1527,25 @@ function renderMaterials(){
    };
    const toggle=(section:HTMLElement,key:keyof HelmetFieldOptions,
     title:string,glyph:string,availability=true)=>{
-    const netLocksBand=key==='band'&&currentField.concealment==='net';
-    const on=netLocksBand||effective[key]===true;
-    availability=availability&&!netLocksBand;
-    const requirement=resolvedHelmet.availability[key];
-    availability=availability&&!requirement;
-    const reason=requirement??(!availability?'UNAVAILABLE':null);
-    const b=makeButton(title,on,()=>changeField({[key]:!on}));
+    const control=helmetFieldControlState(key,currentField,effective,
+     resolvedHelmet.availability[key],availability);
+    const b=makeButton(title,control.pressed,()=>
+     changeField({[key]:currentField[key]!==true}));
     b.classList.add('helmet-option-card');
+    b.dataset.helmetOption=key;
+    b.dataset.helmetOptionState=control.status;
+    b.disabled=b.disabled||control.disabled;
     const icon=document.createElement('span');icon.className='helmet-option-glyph';
     icon.textContent=glyph;icon.setAttribute('aria-hidden','true');
     b.prepend(icon);
-    if(reason){
-     b.disabled=true;
-     b.classList.add('helmet-option-unavailable');
-     b.setAttribute('aria-label',title+' — '+reason);
+    if(control.note){
+     if(control.status==='saved-inactive')
+      b.classList.add('helmet-option-saved-inactive');
+     if(control.status==='unavailable')
+      b.classList.add('helmet-option-unavailable');
+     b.setAttribute('aria-label',title+' — '+control.note);
      const note=document.createElement('small');
-     note.className='helmet-option-requirement';note.textContent=reason;
+     note.className='helmet-option-requirement';note.textContent=control.note;
      b.append(note);
     }
     section.append(b);
@@ -1568,20 +1571,28 @@ function renderMaterials(){
      }
      return group;
     };
-   const band=rowOf('FIELD RETAINING BAND',
-    historical?'Period elastic band, including rear cat-eye markers.':
-    'One low-profile elastic band over the helmet cover or painted shell.');
-   toggle(band,'band','ELASTIC BAND','▰');
-   if(currentField.band||(!historical&&currentField.concealment==='net'))
-    picker('BAND COLOR','bandColor',
-     'Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
-   const foliage=rowOf('FIELD CONCEALMENT',
-    'Choose scrim, net, or full-density foliage; cover-dependent options hide without fabric.');
-   addSelect(foliage,(historical||fieldCovered?HELMET_FIELD_CONCEALMENT:
-    HELMET_FIELD_CONCEALMENT.filter(c=>c==='none'||c==='net')).map(c=>[c,
-    c.replaceAll('-',' ').toUpperCase()] as const),
-    effective.concealment,v=>changeField({concealment:
-     v as HelmetFieldOptions['concealment']}));
+   // PASGT's historical band and concealment are edited above once,
+   // not duplicated as a competing generic field-control row.
+   if(!historical){
+    const band=rowOf('FIELD RETAINING BAND',
+     'One low-profile elastic band over the helmet cover or painted shell.');
+    toggle(band,'band','ELASTIC BAND','▰');
+    if(currentField.band||currentField.concealment==='net')
+     picker('BAND COLOR','bandColor',
+      'Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
+    const foliage=rowOf('FIELD CONCEALMENT',
+     'Choices without a fitted cover remain saved and reactivate when the cover returns.');
+    addSelect(foliage,HELMET_FIELD_CONCEALMENT.map(c=>
+     [c,c.toUpperCase()] as const),
+     currentField.concealment,v=>changeField({
+      concealment:v as HelmetFieldOptions['concealment']}));
+    if(currentField.concealment!==effective.concealment){
+     const note=document.createElement('small');
+     note.className='helmet-option-requirement';
+     note.textContent='SAVED · INACTIVE · Requires fitted fabric cover';
+     foliage.append(note);
+    }
+   }
    const retention=rowOf('CHINSTRAP & RIDE',
     'Unfastened exposes long loose webbing and buckles; the shell can be level or slightly tilted.');
    toggle(retention,'fastened','FASTENED','⌁');
@@ -1631,7 +1642,10 @@ function renderMaterials(){
    if(currentField.light)
     sidePicker('HELMET LIGHT MOUNT','lightSide',
      'Clip the forward-facing task light to the left or right rail.');
-   const compatibility=resolvedHelmet.feedback;
+   // Controls already show actionable prerequisites inline. Keep only
+   // non-toggle issues here rather than repeating the entire warning list.
+   const compatibility=resolvedHelmet.feedback.filter(x=>
+    x.key==='concealment'||x.key==='cover');
    if(compatibility.length){
     const fit=rowOf('MOUNT COMPATIBILITY',
      'Stored options are preserved, but incompatible hardware is hidden until its mount is free.');
