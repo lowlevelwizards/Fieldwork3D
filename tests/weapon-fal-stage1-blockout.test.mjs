@@ -68,12 +68,12 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
  const ears=byName('family-barrel-fal-stage1-barrel-2');
  const receiver=byName('family-receiver-fal-stage1-receiver-0');
  assert.ok(stock.max.y>=1.1&&stock.max.y<=1.3,'full rear comb tapers into a slender FAL wrist');
- assert.ok(stock.min.y>=-3.50&&stock.min.y<=-3.20,'stock heel should not be a triangular M16 wedge');
+ assert.ok(stock.min.y>=-3.16&&stock.min.y<=-2.95,'P6 stock heel must stay compact rather than forming an oversized M16-like wedge');
  assert.ok(grip.min.x>=-6.20&&grip.min.x<=-5.90,'grip rake must be restrained');
  assert.ok(grip.min.y>=-6.7&&grip.min.y<=-6.4,'grip should remain chunky and compact');
- assert.ok(handguard.max.y>=1.3&&handguard.max.y<=1.5&&
-  handguard.min.y>=-1.85&&handguard.min.y<=-1.6,
-  'fore-end must stay shallow and gently tapered, not an M16 triangle');
+ assert.ok(handguard.max.y>=1.85&&handguard.max.y<=1.95&&
+  handguard.min.y>=-2.20&&handguard.min.y<=-2.08,
+  'P6 fore-end is deliberately tall with unmistakable FAL tapered shoulders');
  assert.ok(ears.max.y>=2.90&&ears.max.y<=3.1,'front sight ears must be modest');
  assert.ok(receiver.max.y>=1.8,'upper dust cover should remain long and clear');
  assert.equal(g.children.length,16,'P4 receiver-only open guard extends original core');

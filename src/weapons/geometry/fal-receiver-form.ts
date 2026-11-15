@@ -1,7 +1,8 @@
 /** P5: exaggerated, truncated-triangle FAL receiver crown.
- * Six stations, eight vertices in each cross-section: same low-poly mesh
- * density as P4, but dramatically different massing. +X points muzzleward.
+ * Four stations, six vertices in each cross-section: half the P5 shell
+ * triangles without sacrificing the main silhouette, but dramatically different massing. +X points muzzleward.
  * Roof and shoulders are intentionally oversized/stylized game-art forms.
+ * P6: do not insert transition rings or bevels that do not change the read.
  */
 import * as THREE from 'three';
 
@@ -10,10 +11,8 @@ type Station=Readonly<{
 }>;
 export const FAL_UPPER_STATIONS:readonly Station[]=[
  {x:-6.60,top:1.08,bottom:-.87,sideHalfZ:1.55,roofHalfZ:.65},
- {x:-5.84,top:1.66,bottom:-1.14,sideHalfZ:1.81,roofHalfZ:.67},
  {x:-5.36,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
  {x:2.42,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
- {x:3.27,top:1.54,bottom:-.95,sideHalfZ:1.70,roofHalfZ:.63},
  {x:3.85,top:1.04,bottom:-.62,sideHalfZ:1.51,roofHalfZ:.61}
 ];
 /** Center section slopes for roughly two-thirds of its full vertical height.
@@ -44,17 +43,16 @@ export function falUpperSideHalfZ(y:number,x=1):number{
   const t=Math.max(0,Math.min(1,(y-shoulder)/(s.top-shoulder)));
   return s.sideHalfZ+(s.roofHalfZ-s.sideHalfZ)*t;
  }
- if(y>=s.bottom+.24)return s.sideHalfZ;
- return s.sideHalfZ-.16*Math.max(0,Math.min(1,(s.bottom+.24-y)/.24));
+ return s.sideHalfZ;
 }
 function point(s:Station,n:number):[number,number,number]{
  const {x,top,bottom,sideHalfZ:w,roofHalfZ:r}=s;
  const shoulder=falUpperShoulderY(s);
+ // Flat bottom, two purposeful long triangular shoulders, flat narrow roof.
+ // No redundant lower bevel, no intermediate rings at tiny changes of slope.
  const ring:readonly (readonly [number,number])[]=[
-  [bottom,-w+.16],[bottom,w-.16],
-  [bottom+.24,w],[shoulder,w],
-  [top,r],[top,-r],
-  [shoulder,-w],[bottom+.24,-w]
+  [bottom,-w],[bottom,w],[shoulder,w],
+  [top,r],[top,-r],[shoulder,-w]
  ];
  return [x,ring[n][0],ring[n][1]];
 }
@@ -65,8 +63,8 @@ export function addFALCrownedReceiver(
  const tri=(a:readonly number[],b:readonly number[],c:readonly number[])=>
   verts.push(...a,...b,...c);
  for(let i=0;i<FAL_UPPER_STATIONS.length-1;i++){
-  for(let j=0;j<8;j++){
-   const k=(j+1)%8,a=point(FAL_UPPER_STATIONS[i],j);
+  for(let j=0;j<6;j++){
+   const k=(j+1)%6,a=point(FAL_UPPER_STATIONS[i],j);
    const b=point(FAL_UPPER_STATIONS[i+1],j);
    const c=point(FAL_UPPER_STATIONS[i+1],k);
    const d=point(FAL_UPPER_STATIONS[i],k);
@@ -76,8 +74,8 @@ export function addFALCrownedReceiver(
  const rear=FAL_UPPER_STATIONS[0],front=FAL_UPPER_STATIONS.at(-1)!;
  const center=(s:Station):[number,number,number]=>
   [s.x,(s.top+s.bottom)/2,0];
- for(let j=0;j<8;j++){
-  const k=(j+1)%8;
+ for(let j=0;j<6;j++){
+  const k=(j+1)%6;
   tri(center(rear),point(rear,k),point(rear,j));
   tri(center(front),point(front,j),point(front,k));
  }
@@ -93,16 +91,13 @@ export function addFALCrownedReceiver(
  return mesh;
 }
 
-/** One large concave-looking angular shadow following the actual crown
- * surface instead of a floating, fronto-parallel rectangular port decal.
- * It represents the distinctive raised right-side ejection scallop, not
- * its operational internals. One six-triangle face, zero tiny hardware.
+/** P6: intentionally plain rectangular ejection port. Two triangles,
+ * directly following the slope; no ornamental chamfers or false scoop.
  */
 export function addFALScoopedPort(root:THREE.Group,
  receiverId:string,index:number,material:THREE.Material):THREE.Mesh{
  const outline:readonly (readonly [number,number])[]=[
-  [-.05,1.01],[.15,1.39],[.82,1.61],[2.36,1.56],
-  [2.92,1.16],[2.87,.79],[2.36,.70],[.42,.70]
+  [-.28,.86],[-.28,1.54],[2.30,1.54],[2.30,.86]
  ];
  const vertices:number[]=[];
  for(const [x,y] of outline)
@@ -117,7 +112,7 @@ export function addFALScoopedPort(root:THREE.Group,
  const mesh=new THREE.Mesh(geometry,material);
  mesh.name='family-receiver-'+receiverId+'-'+index;
  mesh.userData.falEjectionPort=true;
- mesh.userData.falSculptedScallop=true;
+ mesh.userData.falRectangularPort=true;
  mesh.castShadow=false;mesh.receiveShadow=false;
  mesh.renderOrder=3;
  root.add(mesh);return mesh;
@@ -128,7 +123,7 @@ export function addFALPivotPair(root:THREE.Group,receiverId:string,
  startIndex:number,material:THREE.Material):THREE.Mesh[]{
  const result:THREE.Mesh[]=[];
  for(const side of [-1,1] as const){
-  const geometry=new THREE.CylinderGeometry(.55,.55,.18,8,1);
+  const geometry=new THREE.CylinderGeometry(.55,.55,.18,6,1);
   geometry.rotateX(Math.PI/2);
   const mesh=new THREE.Mesh(geometry,material);
   mesh.name='family-receiver-'+receiverId+'-'+(startIndex+result.length);
