@@ -19,13 +19,15 @@ test('FNC P1: independent stock, barrel and handguard silhouette landmarks',()=>
  assert.ok(b.min.y<=FNC_P1.magazineBottomY+.01);
  assert.ok(FNC_P1.frontSightX>FNC_P1.handguardEndX+1);
  assert.ok(FNC_P1.muzzleX>FNC_P1.frontSightX+4);
- assert.ok(g.children.length>=19&&g.children.length<=28);
+ assert.ok(g.children.length>=22&&g.children.length<=34);
  assert.ok(g.children.every(c=>c.name.startsWith('family-')));
  assert.equal(g.children.filter(c=>c.userData.fncStockRail).length,2);
  assert.equal(g.children.filter(c=>c.userData.fncLongGroovedHandguard).length,1);
  assert.equal(g.children.filter(c=>c.userData.fncP5GrooveSide).length,4);
  assert.equal(g.children.filter(c=>c.userData.fnc556Magazine).length,1);
  assert.equal(g.children.filter(c=>c.userData.fncFlatStampedUpper).length,1);
+ assert.equal(g.children.filter(c=>c.userData.fncP8OpenTriggerGuard).length,1);
+ assert.equal(g.children.filter(c=>c.userData.fncP8DistinctMagwell).length,1);
  assert.ok(!g.children.some(c=>c.userData.falCrownedUpper),
   'FNC must not reuse the FAL roof or receiver');
  const triangleCount=g.children.reduce((count,c)=>{
@@ -33,7 +35,7 @@ test('FNC P1: independent stock, barrel and handguard silhouette landmarks',()=>
   return count+(c.geometry.index?.count??
    c.geometry.getAttribute('position').count)/3;
  },0);
- assert.ok(triangleCount<950,'P2 must retain a compact exterior budget');
+ assert.ok(triangleCount<1150,'P8 must retain a compact exterior budget');
  clearWeaponSilhouette(g);assert.equal(g.children.length,0);
  material.dispose();
 });

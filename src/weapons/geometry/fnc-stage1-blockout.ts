@@ -2,7 +2,8 @@
  * Deliberate five-mass Fieldwork grammar: crowned FAL-like upper narrower
  * than the lower, actual triangular FNC stock brace, hexagonal polymer
  * handguard UNDER a separate upper gas-box, and bold simple rifle hardware.
- * No trigger guard. +X muzzle, +Y up, +Z right; static geometry on demand.
+ * True open trigger guard and legible separate stamped forms.
+ * +X muzzle, +Y up, +Z right; static geometry on demand.
  */
 import * as THREE from 'three';
 import {buildFNCrownMesh} from './fn-crowned-shell.ts';
@@ -27,7 +28,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p7-fieldwork-exterior';
+ root.name='fnc-p8-iconic-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -98,11 +99,13 @@ export function buildFNCStage1Silhouette(
  // P2 drew the entire metal rail under a larger sleeve: equal-depth faces
  // shimmered in side views. Both terminate at x=-9.46 without overlap.
  rail([-6.45,.03],[-9.46,.01],.69);
- // One stout, gently kinked lower member; NO flat triangular panel.
+ // A straighter, narrower tapered lower brace gives the folding stock
+ // its metal skeleton rather than a broad shovel-blade side silhouette.
  const lowerRail=p('stock',[
-  [-6.48,-1.34],[-8.88,-1.61],[-14.12,-2.75],
-  [-14.12,-3.45],[-8.90,-2.33],[-6.48,-2.02]
+  [-6.48,-1.32],[-8.84,-1.82],[-14.12,-2.96],
+  [-14.12,-3.46],[-8.82,-2.36],[-6.48,-1.98]
  ],1.12,'stock');
+ lowerRail.userData.fncP8StraightStockBrace=true;
  lowerRail.userData.fncStockRail=true;
  lowerRail.userData.fncKinkedLowerRail=true;
  const hinge=p('stock',[
@@ -110,9 +113,10 @@ export function buildFNCStage1Silhouette(
  ],1.66,'stock');
  hinge.userData.fncStockHinge=true;
  const pad=p('stock',[
-  [-14.85,.36],[-14.03,.36],[-13.99,-3.36],
-  [-14.32,-3.56],[-14.85,-3.56]
- ],1.96,'stock');
+  [-14.85,.36],[-14.18,.36],[-14.15,-3.36],
+  [-14.36,-3.56],[-14.85,-3.56]
+ ],1.74,'stock');
+ pad.userData.fncP8NarrowButtplate=true;
  pad.userData.fncButtPlate=true;
  const cheek=rail([-9.46,.01],[-14.03,-.04],1.04,'cheek');
  cheek.userData.fncStockRail=false;
@@ -122,8 +126,8 @@ export function buildFNCStage1Silhouette(
  // in the rear/middle portion, rather than filling the stock's large void.
  // It is a chunky single gusset, not a false third full-length rail.
  const web=p('stock',[
-  [-12.20,-.47],[-10.38,-.47],[-11.43,-2.35]
- ],.98,'stock');
+  [-11.95,-.56],[-10.58,-.56],[-11.43,-1.94]
+ ],.90,'stock');
  web.userData.fncP5StockMiddleBrace=true;
  web.userData.fncP6BoldStockWeb=true;
  web.userData.fncP7StockWeb=true;
@@ -140,32 +144,50 @@ export function buildFNCStage1Silhouette(
  ],3.42,'lower');
  lower.userData.fncAngularLower=true;
  lower.userData.fncMagwellLip=true;
+ // A single broad dark step makes upper and lower readable as separate
+ // stampings from either side; unlike fine engraved lines it survives zoom.
+ const seam=p('receiver',[
+  [-6.19,-.97],[2.91,-.97],[2.87,-1.12],[-6.19,-1.12]
+ ],3.56,'shadow');
+ seam.userData.fncP8UpperLowerSeam=true;
+ seam.castShadow=false;seam.receiveShadow=false;
+ // Independent shallow magwell housing, proud of the lower shell sides.
+ // It is one larger iconic shape, not a stack of detail plates.
+ const well=p('receiver',[
+  [.01,-2.24],[3.18,-2.24],[3.08,-3.18],[.30,-3.18]
+ ],3.65,'lower');
+ well.userData.fncP8DistinctMagwell=true;
 
- // A substantial lower heel and one bold rearward rake, not a wafer wedge.
+ // A narrow, raked polymer grip and truly open, chunky trigger-guard loop.
  const grip=p('grip',[
-  [-5.56,-2.26],[-3.35,-2.26],[-3.61,-2.68],
-  [-4.79,-5.62],[-6.60,-5.75],[-6.79,-5.52]
- ],2.18,'grip');
+  [-5.48,-2.26],[-3.48,-2.26],[-3.72,-2.68],
+  [-4.89,-5.62],[-6.42,-5.75],[-6.59,-5.52]
+ ],1.99,'grip');
  grip.userData.fncGrip=true;
+ grip.userData.fncP8NarrowGrip=true;
+ const triggerGuard=aperture('grip','trigger-guard',
+  [[-3.67,-2.32],[-.70,-2.38],[-1.11,-3.67],[-3.43,-3.67]],
+  [[-3.21,-3.23],[-1.52,-3.23],[-1.37,-2.77],[-3.30,-2.73]],
+  .79,'steel');
+ triggerGuard.userData.fncP8OpenTriggerGuard=true;
  // Shared 30-round STANAG centerline/normal math: not another hand-tuned
  // stepped magazine. Two broad pressed ribs track the same curved face.
  const magazineCurve={
-  ...arMagazineCurve('30',1.65,-2.81,2.55,1.49),
-  length:4.65,sweep:.72
+  ...arMagazineCurve('30',1.65,-2.81,2.32,1.40),
+  length:4.68,sweep:.72
  };
  const mag=p('magazine',arMagazineOutline(magazineCurve),
   magazineCurve.depth,'magazine');
  mag.userData.fnc556Magazine=true;
  mag.userData.fnc30RoundCurved=true;
  for(const profile of arMagazineRibOutlines(magazineCurve)){
-  const rib=p('magazine',profile,1.54,'stamp');
+  const rib=p('magazine',profile,1.45,'stamp');
   rib.userData.fncStampedMagazineRib=true;
   rib.castShadow=false;rib.receiveShadow=false;
  }
 
- // Two distinctive primary masses: narrow hexagonal polymer cylinder
- // beneath one upper gas-block box. TWO long lower side lines, THREE on
- // the upper box. No tiny vent holes and no extra collar stack.
+ // Two dominant volumes: hex polymer fore-end beneath a slim gas cover.
+ // Only three bold longitudinal mold-line cues per side, no barcode vents.
  addFNCFacetedForearm(root,mat('handguard'));
  addFNCUpperGasBox(root,mat('steel'));
  addFNCForearmMarks(root,mat('shadow'));
@@ -176,22 +198,23 @@ export function buildFNCStage1Silhouette(
  const barrelStartX=12.20;
  const barrelEndX=showFactoryMuzzle?19.005:FNC_P1.muzzleX;
  const barrel=b('barrel',(barrelStartX+barrelEndX)/2,0,0,
-  barrelEndX-barrelStartX,1.04,1.04,'barrel');
+  barrelEndX-barrelStartX,1.00,1.00,'barrel');
  barrel.userData.fncServiceBarrel=true;
  barrel.userData.fncP7BarrelStartX=barrelStartX;
  if(showFactoryMuzzle){
-  // One still oversized, but STUBBIER six-sided muzzle.
-  // Its forward endpoint remains the original factory muzzle datum 19.50.
-  const geometry=new THREE.CylinderGeometry(.94,.94,1.48,6,1);
+  // An elongated but still chunky six-sided factory device. Keep the
+  // original 19.50 muzzle-tip art datum and continuous barrel overlap.
+  const geometry=new THREE.CylinderGeometry(.83,.83,1.74,6,1);
   geometry.rotateZ(Math.PI/2);
   const muzzle=new THREE.Mesh(geometry,mat('muzzle'));
-  muzzle.position.x=18.76;
+  muzzle.position.x=18.63;
   muzzle.name='family-barrel-fnc-p5-service-muzzle-'+ids.barrel++;
   muzzle.userData.fncMuzzle=true;
   muzzle.userData.fncP4SingleMuzzle=true;
   muzzle.userData.fncP5ChunkyMuzzle=true;
   muzzle.userData.fncP6StubbyMuzzle=true;
   muzzle.userData.fncP7BalancedMuzzle=true;
+  muzzle.userData.fncP8TaperedMuzzleMass=true;
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
  }
@@ -214,36 +237,37 @@ export function buildFNCStage1Silhouette(
  sight.userData.fncProtectedFrontSight=true;
  sight.userData.fncP5OversizedFrontSight=true;
  sight.userData.fncP6BroadProtectedSight=true;
- // Smaller, wider protective ear, avoiding the freestanding LEGO turret.
+ // Compact rear ear is deliberately smaller than the tall tapered
+ // front shroud: both read at miniature scale without matching towers.
  const rear=aperture('receiver','rear-guard',
-  [[-5.87,1.40],[-5.79,2.62],[-4.01,2.62],[-3.93,1.40]],
-  [[-5.30,1.78],[-5.21,2.20],[-4.65,2.20],[-4.55,1.78]],
-  1.32);
+  [[-5.65,1.42],[-5.60,2.48],[-4.18,2.48],[-4.13,1.42]],
+  [[-5.17,1.77],[-4.63,1.77],[-4.72,2.19],[-5.09,2.19]],
+  1.28);
+ rear.userData.fncP8CompactRearSight=true;
  rear.userData.fncRearAperture=true;
  rear.userData.fncProtectedRearSight=true;
  rear.userData.fncP5OversizedRearSight=true;
  rear.userData.fncP6BroadProtectedSight=true;
 
- // A single ejection/charging opening, not isolated black port and side
- // handle. One low-vertex L silhouette runs from the shallow retracting
- // handle slot into the forward ejection opening, like the real FNC.
- // Position is mapped to the actual outside of the crowned receiver side.
+ // Correct right-hand relationship: the broad rear ejection opening
+ // occupies x -1.22..0.68; a shallow forward track reaches the charging
+ // handle around x 2.2. One connected graphic, no tiny floating panels.
  const operatingSlot=p('receiver',[
-  [-.28,.54],[2.82,.54],[2.82,-.22],
-  [1.29,-.22],[1.29,.23],[-.28,.23]
+  [-1.22,.60],[2.55,.60],[2.55,.29],
+  [.68,.29],[.68,-.20],[-1.22,-.20]
  ],.10,'shadow');
  operatingSlot.position.z=1.355;
  operatingSlot.userData.fncRightPort=true;
  operatingSlot.userData.fncP7UnifiedEjectionSlot=true;
+ operatingSlot.userData.fncP8RearPortForwardHandle=true;
  operatingSlot.castShadow=false;operatingSlot.receiveShadow=false;
- // The handle sits WITHIN the receiver-side charging-slot outline,
- // just behind the ejection window and markedly proud of the receiver.
- // One stubby steel stem and one large, short lateral grip.
- const handleStem=b('receiver',1.18,.68,1.53,.59,.54,.80,'steel');
+ // Charging knob lies FORWARD of the ejection cutout, still attached to
+ // and projecting from the upper receiver. Preserve the one-piece stem.
+ const handleStem=b('receiver',2.16,.69,1.53,.59,.54,.80,'steel');
  handleStem.userData.fncP6ChargingHandleStem=true;
  handleStem.userData.fncP7SlotAnchoredStem=true;
  const handle=p('receiver',[
-  [.78,.42],[1.51,.42],[1.66,1.07],[.76,1.07]
+  [1.80,.44],[2.50,.44],[2.65,1.08],[1.77,1.08]
  ],1.18,'steel');
  handle.position.z=2.15;
  handle.userData.fncRightChargingHandle=true;
@@ -251,6 +275,7 @@ export function buildFNCStage1Silhouette(
  handle.userData.fncP5LargeChargingHandle=true;
  handle.userData.fncP6ProtrudingChargingHandle=true;
  handle.userData.fncP7PortAlignedHandle=true;
+ handle.userData.fncP8ForwardChargingHandle=true;
  const selectorGeo=new THREE.CylinderGeometry(.37,.37,.22,6,1);
  selectorGeo.rotateX(Math.PI/2);
  const selector=new THREE.Mesh(selectorGeo,mat('steel'));

@@ -45,9 +45,9 @@ test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
   const parts=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
   assert.deepEqual(parts.map(x=>x.userData.fncP5GrooveSide).sort(),[-1,1]);
   for(const mark of parts){
-   const count=level==='upper'?3:2;
+   const count=level==='upper'?2:1;
    assert.equal(mark.userData.fncP5GrooveCount,count);
-   const segments=level==='upper'?2:1;
+   const segments=1;
    assert.equal(mark.geometry.getAttribute('position').count,count*segments*6);
    const normal=mark.geometry.getAttribute('normal').getZ(0);
    assert.ok(normal*mark.userData.fncP5GrooveSide>.95,
@@ -89,13 +89,13 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  assert.equal(front.geometry.parameters.shapes.holes.length,1);
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
  assert.ok(box(front).max.y>3.0);
- assert.ok(box(rear).max.y>2.6);
+ assert.ok(box(rear).max.y>2.40);
  assert.ok(box(handle).max.x-box(handle).min.x<1.15,
   'charging handle is short along X, not a stretched receiver-side bar');
  assert.ok(box(handle).max.z>2.58,
   'charging handle extends boldly out along Z');
  assert.ok(box(handle).max.z>box(of(g,'fncP5CrownedReceiver')[0]).max.z+.6);
- assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.55);
+ assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.60);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  const noFactory=buildFNCStage1Silhouette(m,{},false);
  assert.equal(of(noFactory,'fncMuzzle').length,0);
@@ -112,7 +112,7 @@ test('P5: shared dark magazine and compact low-poly production asset',()=>{
  assert.equal(of(g,'fncP5UpperGasBox').length,1);
  const tri=g.children.reduce((n,x)=>n+
   (x.geometry?.index?.count??x.geometry?.getAttribute('position')?.count??0)/3,0);
- assert.ok(g.children.length<=30,'avoid unnecessary decorative attachments');
- assert.ok(tri<1050,'preserve low-poly Fieldwork geometry budget');
+ assert.ok(g.children.length<=34,'avoid unnecessary decorative attachments');
+ assert.ok(tri<1150,'preserve low-poly Fieldwork geometry budget');
  clearWeaponSilhouette(g);m.dispose();
 });

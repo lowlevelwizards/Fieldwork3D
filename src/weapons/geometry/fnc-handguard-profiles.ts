@@ -1,7 +1,6 @@
-/** FN FNC P5 shape grammar. Two big volumes, not a 24-face fluted slab:
- * narrow hexagonal lower handguard and a clear rectangular upper gas cover.
- * +X muzzle, +Y up, +Z right. Two long lower grooves and three long upper
- * grooves per side, each batched. Geometry built only on weapon selection.
+/** FN FNC P8 large-form grammar. Six-face polymer handguard below one
+ * rectangular gas cover. Just three bold channels per side, no thin slots.
+ * +X muzzle, +Y up, +Z right. Built on weapon selection, never per frame.
  */
 import * as THREE from 'three';
 
@@ -48,7 +47,8 @@ export function addFNCFacetedForearm(root:THREE.Group,
  mesh.userData.fncFacetedHandguard=true;
  mesh.userData.fncCrossSectionFaces=6;
  mesh.userData.fncP5LowerHex=true;
- mesh.userData.fncMoldedFlutesPerSide=2;
+ mesh.userData.fncMoldedFlutesPerSide=1;
+ mesh.userData.fncP8BroadMolding=true;
  mesh.userData.fncP6OutwardEndcaps=true;
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
  return mesh;
@@ -68,10 +68,9 @@ export function addFNCUpperGasBox(root:THREE.Group,
  mesh.userData.fncP7ConnectedGasHousing=true;
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh;
 }
-/** Two thick uninterrupted grooves on the polymer hex, three much thicker
- * rows of intermittent DASHES on the upper gas box, FAL-like.
- * All strokes are batches, one mesh per side+level; there are no loose
- * individual screws, insets or thin texture details.
+/** One broad polymer channel and two continuous gas-cover grooves per side.
+ * These low-relief graphic marks are deliberately batched and mirrored;
+ * no narrow barcode vents, floating slot blocks or micro-screws.
  */
 export function addFNCForearmMarks(root:THREE.Group,
  dark:THREE.Material):THREE.Mesh[]{
@@ -79,13 +78,12 @@ export function addFNCForearmMarks(root:THREE.Group,
  const addStrokes=(side:-1|1,level:'upper'|'lower')=>{
   const positions:number[]=[];
   const upper=level==='upper';
-  const ys=upper?[.02,.39,.75]:[-.91,-1.65];
-  // Three long dotted rows: each is 3 bold rectangles with deliberate
-  // breathing room. The lower two are each a single uninterrupted channel.
+  const ys=upper?[.18,.72]:[-1.21];
+  // Long uninterrupted recesses survive thumbnail scale far better
+  // than multiple ranks of fine segmented ventilation stripes.
   const intervals:readonly (readonly [number,number])[]=
-   upper?[[4.77,8.10],[8.62,12.55]]:
-   [[4.66,12.28]];
-  const height=upper?.235:.29;
+   upper?[[4.74,12.47]]:[[4.66,12.28]];
+  const height=upper?.29:.34;
   for(const y of ys)for(const [x0,x1] of intervals){
    const h=height/2;
    // Outside the actual side planes, with no surface fighting:
@@ -110,6 +108,7 @@ export function addFNCForearmMarks(root:THREE.Group,
   mesh.userData.fncP5GrooveCount=ys.length;
   mesh.userData.fncP6GrooveSegmentsPerRow=intervals.length;
   mesh.userData.fncP7ReducedUpperMarks=upper;
+  mesh.userData.fncP8GroovesPerSide=3;
   mesh.userData.fncP6BoldGrooveHeight=height;
   mesh.castShadow=false;mesh.receiveShadow=false;root.add(mesh);marks.push(mesh);
  };
