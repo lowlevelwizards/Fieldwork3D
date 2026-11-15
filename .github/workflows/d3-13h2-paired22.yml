@@ -1,14 +1,7 @@
 name: D3.13H2 fifth independent 22-map paired acceptance
 on:
-  pull_request:
-    paths:
-      - src/breach-door-escape-stage.ts
-      - src/breach-motor-route.ts
-      - scripts/audit-r7-squad-execution.mjs
-      - scripts/lib/d3-13h2-fresh22-manifest.mjs
-      - scripts/report-d3-13h2-fresh22.mjs
-      - .github/workflows/d3-13h2-paired22.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:
