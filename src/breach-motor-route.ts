@@ -17,10 +17,10 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld,
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
-import {shouldPauseNegativeGoalProbe}
+import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe}
  from './breach-cold-route-cache.ts';
-// A physically blocked full-body GO warrants a bounded repeat pause
-// AFTER failed route attempts; squeeze candidates still re-probe every 6s.
+// Cache only proven unsuccessful route probes, never a guessed blocked GO.
+// A changed object/door/order or 4 seconds of real time reopens the query.
 import {holdKnownFixedAuthoredGoal}
  from './breach-authored-goal-block.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
@@ -275,18 +275,16 @@ export function prepareMotorRoute(
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       return 'unavailable';
     }
-    // D3.17E6: the known/current landing is not full-body or even
-    // squeeze-body passable, and earlier route attempts failed. Preserve
-    // the user's waypoint, but do not burn another identical A* while
-    // the operator, doors and cover remain unchanged. Re-probe boundedly.
-    // World truth is used by the motor ONLY; HUD never reveals hidden cover.
+    // D3.17E6: replay a short *negative* result only if the prior
+    // actual route query failed at this same actor/GO and every real door
+    // and world-cover revision remains unchanged. Physical door pressure
+    // and contact/shove opportunities above have already run this tick.
     if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
-       a.recoveryAttempts>=2&&!a.doorTraversal&&
-       !sessionWorldGeometry(s).passable(p,OPERATOR_RADIUS)&&
-       shouldPauseNegativeGoalProbe(a,p,s.seconds,
+       !a.doorTraversal&&shouldPauseNegativeGoalProbe(a,p,s.seconds,
          sessionWorldGeometry(s).revision,s.doors)){
        a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
-       a.retryRouteAt=s.seconds+2.5;
+       // A deferred search is NOT an attempted search or retry.
+       a.retryRouteAt=s.seconds+.6;
        return 'unavailable';
     }
     setTransientRoute(s,a,a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
@@ -314,6 +312,11 @@ export function prepareMotorRoute(
       }
     }
     if(!a.nav.length){
+      // Only an actual failed normal+intel+shove/portal attempt can be
+      // cached. Do not claim a remote hidden obstacle is player-known.
+      if(a.side==='blue'&&a.plan[0]?.kind==='move')
+        noteFailedRouteProbe(a,p,s.seconds,
+          sessionWorldGeometry(s).revision,s.doors);
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       a.recoveryAttempts++;

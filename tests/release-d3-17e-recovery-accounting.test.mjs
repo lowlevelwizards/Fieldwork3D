@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {shouldProbeStationaryCollisionRoute,
  physicalDoorPoseKey} from '../src/breach-recovery-proposal-gate.ts';
-import {shouldPauseNegativeGoalProbe}
+import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe}
  from '../src/breach-cold-route-cache.ts';
 const p=(x,y)=>({x,y});
 const actor=()=>({id:'ash',side:'blue',p:p(0,0),
@@ -33,15 +33,18 @@ test('E2 actual progress, hinge change, cover revision and new order reset',()=>
  assert.notEqual(physicalDoorPoseKey(a.p,[door(.5)]),
   physicalDoorPoseKey(a.p,[door(.6)]));
 });
-test('E6 negative goal cache expires and invalidates immediately',()=>{
+test('E6 only an ACTUAL failed A* may be cached; retries remain live',()=>{
  const a=actor(),goal=p(60,0);
  assert.equal(shouldPauseNegativeGoalProbe(a,goal,1,1,[door()]),false);
+ noteFailedRouteProbe(a,goal,1,1,[door()]);
  assert.equal(shouldPauseNegativeGoalProbe(a,goal,2,1,[door()]),true);
- assert.equal(shouldPauseNegativeGoalProbe(a,goal,7.1,1,[door()]),false);
- assert.equal(shouldPauseNegativeGoalProbe(a,goal,7.5,1,[door(.5)]),false);
- assert.equal(shouldPauseNegativeGoalProbe(a,goal,8,2,[door(.5)]),false);
- a.plan[0].id=22;
- assert.equal(shouldPauseNegativeGoalProbe(a,goal,8.1,2,[door(.5)]),false);
+ assert.equal(shouldPauseNegativeGoalProbe(a,goal,5.1,1,[door()]),false);
+ assert.equal(shouldPauseNegativeGoalProbe(a,goal,2,1,[door(.5)]),false);
+ assert.equal(shouldPauseNegativeGoalProbe(a,goal,2,2,[door()]),false);
+ a.p=p(6,0);
+ assert.equal(shouldPauseNegativeGoalProbe(a,goal,2,1,[door()]),false);
+ a.p=p(0,0);a.plan[0].id=22;
+ assert.equal(shouldPauseNegativeGoalProbe(a,goal,2,1,[door()]),false);
 });
 test('E1 recovered stalls remain visible but are not unresolved regressions',()=>{
  const baseline={arrived:false,stallEpisodes:0,retries:0};
