@@ -1,14 +1,7 @@
 name: D3.14C seventh blind 22-map paired physical acceptance
 on:
-  pull_request:
-    paths:
-      - src/breach-cycle-lane-recovery.ts
-      - src/breach-motor-collision.ts
-      - scripts/audit-r7-squad-execution.mjs
-      - scripts/lib/d3-14c-seventh-blind22.mjs
-      - scripts/report-d3-14c-blind22.mjs
-      - .github/workflows/d3-14c-seventh-blind22.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:
