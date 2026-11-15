@@ -163,6 +163,7 @@ test('R7.18 shared look reaches Arsenal/live, without tactical shadow-size chang
  assert.doesNotMatch(arsenal,/STUDIO_INSPECTION_LIGHT|studioShadowPalette/);
  assert.match(studio,/fieldworkCelHighlightTone/);
  assert.match(studio,/vec3\(\.975,\.926,\.941\)/);
- assert.match(world,/r718-world-3-band-rose/);
+ assert.match(world,/f1-world-3-band-edge-aa/);
+ assert.match(world,/WORLD_GRAPHIC_FRAGMENT/);
  assert.doesNotMatch(world,/new THREE\.Mesh|new THREE\.WebGLRenderTarget/);
 });
