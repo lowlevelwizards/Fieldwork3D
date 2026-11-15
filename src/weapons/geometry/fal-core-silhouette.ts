@@ -4,10 +4,10 @@
  *
  * +X points toward the muzzle, +Y is up, and Z is side-to-side depth.
  * The object is deliberately monochrome and constructed on demand, never per frame.
- * Do not promote this blockout to live equipment before visual approval.
+ * Live Arsenal and the one-material comparison lab share this same builder.
  */
 import * as THREE from 'three';
-import {addOutline,addCuboid,addFacetedTube,addProfileFrame,
+import {addOutline,addCuboid,addFacetedTube,addBar,
  type Outline,type SlotName} from './profile-primitives.ts';
 
 export const FAL_ART:Readonly<{
@@ -41,13 +41,15 @@ export function buildFALCoreSilhouette(
  // FAL rear stock: full butt, long level comb and narrow wrist near receiver.
  // No M16-style peak or G3-like constant-width wedge.
  // One uninterrupted, low-vertex stock volume with a broad miniaturized pad.
+ // Shell ends inside the broad plate; the plate alone owns X=-15.
+ // Preserve the FAL comb/wrist rather than inventing a taller M16-like hump.
  p('stock',[
-  [-15.00,1.03],[-13.30,1.14],[-11.20,1.17],
+  [-14.60,1.03],[-13.30,1.14],[-11.20,1.17],
   [-9.50,.96],[-8.23,.54],[-6.20,.48],
   [-6.13,-1.25],[-8.40,-1.58],[-10.50,-2.50],
-  [-14.72,-3.46],[-15.00,-3.27]
+  [-14.60,-3.39]
  ],3.18);
- b('stock',-14.86,-1.12,0,.28,4.22,3.45);
+ b('stock',-14.73,-1.17,0,.54,4.65,3.45);
 
  // S1C: continuous FAL cover with one angular nose, no invented top notch.
  // cocking tube and NO AR-like split carry-handle upper.
@@ -92,13 +94,25 @@ export function buildFALCoreSilhouette(
  const barrel=addFacetedTube(root,'barrel',partIds.barrel,
   ids.barrel++,13.85,options.showFactoryMuzzle===false?22.00:21.15,.61,materials.barrel);
  barrel.position.y=0;
- // S1C: short wide gas-block ears; never an M16 tower or G3 hood.
+ // Authentic protected FAL post: one broad gas-block base, two lateral
+ // ears and a central post. Ears spread across Z, NOT along barrel X like
+ // an M16 A-frame. Large contiguous shapes, no pins or mechanism geometry.
  p('barrel',[
-  [13.98,.24],[14.08,1.55],[14.12,2.68],
-  [14.39,3.02],[14.61,2.82],[14.70,2.32],
-  [14.87,2.80],[15.12,3.00],[15.37,2.65],
-  [15.38,.24]
- ],1.82);
+  [14.02,.20],[14.06,1.40],[14.24,1.73],
+  [15.10,1.73],[15.35,1.43],[15.35,.20]
+ ],2.20);
+ const earProfile:Outline=[
+  [14.15,1.42],[14.22,2.52],[14.41,2.94],
+  [14.76,2.94],[15.04,2.63],[15.16,1.42]
+ ];
+ const leftEar=p('barrel',earProfile,.46);
+ leftEar.position.z=-.79;
+ leftEar.userData.falFrontEar='left';
+ const rightEar=p('barrel',earProfile,.46);
+ rightEar.position.z=.79;
+ rightEar.userData.falFrontEar='right';
+ const sightPost=b('barrel',14.70,2.16,0,.22,1.24,.23);
+ sightPost.userData.falFrontPost=true;
  // Simple short Belgian factory muzzle; omit when a mounted muzzle replaces it.
  if(options.showFactoryMuzzle!==false)p('barrel',[
   [21.03,-.74],[21.28,-.84],[21.70,-.84],
@@ -111,13 +125,17 @@ export function buildFALCoreSilhouette(
   [-4.72,2.66],[-4.48,1.82]
  ],1.74);
 
- // Optional compact, FAL-specific folding carry handle; never an AR bridge.
- // Factory presentation may enable it; monochrome silhouette can hide it.
+ // A small offset folding-handle representation: bent steel support with
+ // long rearward horizontal polymer grip. Both solids physically overlap;
+ // no AR-style upright arch, hollow box, hinges or screws. Factory enabled.
  if(options.raisedCarryHandle){
-  addProfileFrame(root,'receiver',partIds.receiver,ids.receiver++,
-   [[3.55,1.47],[3.58,2.92],[5.68,3.01],[5.73,1.44]],
-   [[5.21,1.83],[5.17,2.47],[4.10,2.43],[4.08,1.83]],
-   1.48,materials.receiver);
+  const support=addBar(root,'receiver',partIds.receiver,ids.receiver++,
+   [3.20,1.42],[2.96,3.07],.29,.48,materials.receiver);
+  support.position.z=-1.60;
+  support.userData.falCarrySupport=true;
+  const grip=addCuboid(root,'receiver',partIds.receiver,ids.receiver++,
+   1.56,3.19,-1.61,3.04,.64,.74,materials.stock);
+  grip.userData.falCarryGrip=true;
  }
  return root;
 }
