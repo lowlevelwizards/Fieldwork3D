@@ -251,7 +251,7 @@ export function tryGoalCompleteDoorHandoffAfterEscape(
  const end=stage[stage.length-1];
  const tail=distance(end,goal)<=3?[]:
    routeWithSqueezeIntel(s.intel,end,goal);
- const route=completePortalRouteToAuthoredGoal(stage,goal,tail,clear);
+ const route=completePortalRouteToAuthoredGoal(a.p,stage,goal,tail,clear);
  if(!route.length)return false;
  // Only a fully continuous route toward the actual original goal is
  // permitted to replace the route being recovered after the real escape.
