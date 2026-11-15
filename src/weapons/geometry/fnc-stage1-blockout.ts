@@ -190,7 +190,7 @@ export function buildFNCStage1Silhouette(
  if(showFactoryMuzzle){
   // Heavier six-face FN muzzle, with one uninterrupted mass and no
   // little collar rings. The muzzle tip stays at the 19.50 art datum.
-  const geometry=new THREE.CylinderGeometry(.80,.80,1.78,6,1);
+  const geometry=new THREE.CylinderGeometry(.95,.95,1.78,6,1);
   geometry.rotateZ(Math.PI/2);
   const muzzle=new THREE.Mesh(geometry,mat('muzzle'));
   muzzle.position.x=18.61;
