@@ -34,8 +34,7 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Chunky left cocking lever and a long SIDE RUNNER. These share the
  // FN upper side but not the right-hand ejection opening.
  addFALLeftSurfacePlate(root,build.parts.receiver,7,[
-  [.48,.54],[2.18,.54],[2.18,.82],
-  [1.90,.95],[1.58,1.11],[.66,1.11],[.48,.91]
+  [.48,.54],[2.18,.54],[2.18,1.08],[.48,1.08]
  ],.28,steel,'falChargingHandle');
  // Right: one high, broad scoop on the sloped shoulder, not a port sticker
  // hovering above the faceted receiver. No counterpart on the left.
@@ -43,7 +42,6 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Both sides: one memorable, deliberately enlarged circular silhouette.
  addFALPivotPair(root,build.parts.receiver,9,steel);
  addFALLeftSurfacePlate(root,build.parts.receiver,11,[
-  [-2.75,.59],[2.68,.59],[2.68,.96],
-  [2.00,1.04],[-2.45,1.04]
+  [-2.75,.64],[2.68,.64],[2.68,.96],[-2.75,.96]
  ],.12,steel,'falChargingTrack');
 }
