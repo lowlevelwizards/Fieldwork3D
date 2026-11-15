@@ -11,9 +11,9 @@ export const FAL_MAG20_DEPTH=1.62;
  * lower than front heel. One prism, no separate shoe or AK-like curvature.
  * Max visual drop remains -8.05 for historical pose/camera comparisons. */
 export const FAL_MAG20_OUTLINE:Outline=[
- [-.26,-2.98],[2.96,-2.98],
- [2.96,-7.30],[2.80,-7.47],
- [-.12,-8.05],[-.26,-7.90]
+ [-.54,-2.98],[3.24,-2.98],
+ [3.24,-7.30],[3.08,-7.47],
+ [-.40,-8.05],[-.54,-7.90]
 ];
 
 /** Two parallel, restrained steel pressing ribs built from a shared
@@ -21,7 +21,7 @@ export const FAL_MAG20_OUTLINE:Outline=[
  * No independent protruding stamp geometry or needless beveling. */
 export function falMagazineRibOutlines():Outline[]{
  const headY=FAL_MAG20_TOP_Y-.37,tailY=-7.40;
- return [-.55,.55].map(dx=>{
+ return [-.68,.68].map(dx=>{
   const x=FAL_MAG20_CENTER_X+dx,half=.105;
   return [[x-half,headY],[x+half,headY],
    [x+half,tailY],[x-half,tailY]];

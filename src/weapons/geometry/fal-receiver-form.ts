@@ -10,8 +10,8 @@ type Station=Readonly<{
  x:number;top:number;bottom:number;sideHalfZ:number;roofHalfZ:number
 }>;
 export const FAL_UPPER_STATIONS:readonly Station[]=[
- {x:-6.60,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
- {x:3.85,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67}
+ {x:-6.60,top:1.55,bottom:-1.16,sideHalfZ:1.70,roofHalfZ:.62},
+ {x:3.10,top:1.55,bottom:-1.16,sideHalfZ:1.70,roofHalfZ:.62}
 ];
 /** Center section slopes for roughly two-thirds of its full vertical height.
  * At the short ends a lower shoulder limit prevents inverted rings. */
@@ -138,8 +138,8 @@ export function addFALPivotPair(root:THREE.Group,receiverId:string,
 export function addFALAngledCarrySupport(
  root:THREE.Group,receiverId:string,index:number,material:THREE.Material
 ):THREE.Mesh{
- const a=new THREE.Vector3(3.18,1.28,-1.12),
-  b=new THREE.Vector3(2.89,3.25,-1.60);
+ const a=new THREE.Vector3(2.64,1.12,-1.10),
+  b=new THREE.Vector3(2.52,3.25,-1.60);
  const axis=b.clone().sub(a),length=axis.length();
  const mesh=new THREE.Mesh(new THREE.BoxGeometry(.52,length,.56),material);
  mesh.name='family-receiver-'+receiverId+'-'+index;

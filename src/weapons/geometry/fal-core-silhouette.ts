@@ -19,7 +19,7 @@ export const FAL_ART:Readonly<{
  muzzleX:number;magazineCenterX:number;magazineBottomY:number;
 }> = Object.freeze({
  stockRearX:-15.00,receiverRearX:-6.60,receiverFrontX:3.85,
- handguardStartX:3.65,handguardEndX:14.10,
+ handguardStartX:4.20,handguardEndX:14.10,
  frontSightX:14.70,muzzleX:22.00,
  magazineCenterX:1.35,magazineBottomY:-8.05
 });
@@ -51,10 +51,12 @@ export function buildFALCoreSilhouette(
  // Preserve the FAL comb/wrist rather than inventing a taller M16-like hump.
  p('stock',[
   // Drooping rear comb and broad butt, narrowed in DEPTH, not side height.
+  // Keep the P7 drooping comb and thin depth, but give the heel
+  // proper 7.62-stock weight instead of a miniature short butt.
   [-14.60,.12],[-11.60,.27],[-8.10,.72],[-6.12,.72],
-  [-6.12,-.82],[-8.70,-1.13],[-11.50,-2.64],[-14.60,-2.78]
+  [-6.12,-.82],[-8.70,-1.47],[-11.50,-3.62],[-14.60,-4.09]
  ],2.34);
- b('stock',-14.56,-1.33,0,.88,3.02,2.66);
+ b('stock',-14.56,-1.99,0,.88,4.26,2.66);
 
  // P6: one reduced-triangle upper receiver mesh; broad intentional faceted
  // shoulders taper toward the roof to visually echo the FAL handguard.
@@ -69,7 +71,7 @@ export function buildFALCoreSilhouette(
 
  // P5 grip: short, stout, swept back; preserve open trigger/mag gap.
  p('grip',[
-  [-5.38,-2.18],[-3.18,-2.18],[-4.07,-6.48],[-6.12,-6.48]
+  [-5.38,-2.18],[-3.18,-2.18],[-4.67,-5.85],[-6.52,-5.85]
  ],2.16);
  p('magazine',FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH);
  // Two thick stamped ribbons follow the same straight magazine centerline
