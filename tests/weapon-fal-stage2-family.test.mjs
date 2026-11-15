@@ -82,7 +82,7 @@ test('FAL S2: stock, gripping, magazine sockets, carried magazine and safe poses
  assert.ok(contacts.support.near.x>3.8&&contacts.support.far.x<14.1);
  assert.equal(contacts.stock.x,a.stockX);
  const sockets=weaponPresentationSockets('rifle',c);
- assert.equal(sockets.magazine.x,1.35);
+ assert.equal(sockets.magazine.x,1.00);
  assert.equal(sockets.magazine.y,-2.98);
  assert.equal(sockets.muzzle.x,a.muzzleX);
  assert.ok(lowReadyFamilyFit(c),"reuse G3 long-rifle posture, not its silhouette");

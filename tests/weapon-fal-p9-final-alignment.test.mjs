@@ -45,8 +45,9 @@ test('P9 visual mag center moves 0.35 rearward with both stamped ribs',()=>{
  const lower=root.children.find(x=>x.name==='family-receiver-fal-50-receiver-1');
  assert.ok(bounds(lower).min.x<-6);
  assert.ok(FAL_MAG20_OUTLINE[4][1]<FAL_MAG20_OUTLINE[3][1]);
- // Do not silently edit gameplay sockets or inventory while moving the art.
- assert.equal(weaponPresentationSockets('rifle',c).magazine.x,1.35);
+ // Presentation magazine socket follows the moved model. Shot sockets,
+ // actual ammunition and authoritative ballistics do NOT move.
+ assert.equal(weaponPresentationSockets('rifle',c).magazine.x,1.00);
  assert.equal(resolveWeaponAssembly(c).muzzleX,22);
  clearWeaponSilhouette(root);m.dispose();
 });

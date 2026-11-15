@@ -6,8 +6,10 @@ triangular upper and handguard. **Keep those principal shapes.**
 - Integrated lower lip extends backward at Y=-3.19 from X=-.10 to -1.10.
 - FAL 20-round magazine (and existing two ribs) shifts rearward by .35 in X:
   center 1.35 -> 1.00, original width 3.78 and Z thickness 1.62 retained.
-  Carried mag geometry recenters from this same constant. Tactical reload
-  sockets and authoritative firing/stock pose X remain unchanged.
+  Carried mag geometry recenters from this same constant. Presentation
+  magazine socket follows the art from X1.35 to X1.00 so the reload
+  handoff lines up. Firing muzzle, stock-contact pose, ammunition and
+  the simulation remain unchanged.
 - Circle pivot on each side moves back X=-1.14 -> -2.05, staying behind
   magazine left edge X=-.89.
 - Right port remains a flat quad on the sloping receiver face; rear edge
@@ -49,7 +51,8 @@ there is no Lighting Lab, mutable toggle or additional shadow pass.
 ## Verification
 - Strict names/part identifiers and stable shot muzzle X=22/stock X=-15.
 - A single low-poly bridge, two-ear front post, seated rear blade, no trigger guard.
-- Continuous mag/rib motion and grounded visual port vs unchanged real sockets.
+- Continuous mag/rib motion, aligned presentation magazine socket,
+  grounded visual port and unchanged authoritative firing geometry.
 - Numeric palette/color role parity and the exact lighting rig.
 - Emitted triangle budget + shaded side/quarter/mobile browser captures.
 - Required main CI, merge only at a cleared verified Pages checkpoint, and
