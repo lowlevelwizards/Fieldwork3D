@@ -52,3 +52,13 @@ export function resolvedHelmetCoverConfig(headwear:string,
   helmetScrim:r.helmetScrim??'none'
  };
 }
+
+/** B1 effective visual state only. Requested preferences are never erased.
+ * Band/net may fasten to bare steel; scrim must have a physical support.
+ */
+export function resolvedM1FieldDress(raw:HelmetCoverConfig|undefined):HelmetCoverConfig{
+ const effective=resolvedHelmetCoverConfig('m1-steel',raw);
+ if(effective.helmetScrim!=='none'&&effective.helmetBand==='none'&&
+    effective.helmetNet==='none')effective.helmetScrim='none';
+ return effective;
+}
