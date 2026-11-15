@@ -173,7 +173,8 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'fal-mag20':add('fal-mag20','FAL 20-round steel magazine','fal','magazine',{feed:'fal762'}),
  'fal-vented':add('fal-vented','Classic ventilated FN FAL fore-end','fal','handguard',{receivers:['fal-50-receiver'],length:'long'}),
  'fal-vented-wood':add('fal-vented-wood','Classic vented wooden fore-end','fal','handguard',{receivers:['fal-50-receiver'],length:'long'}),
- 'fal-21-service':add('fal-21-service','FN FAL 21-inch service barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'long',role:'rifle',nominalInches:21})
+ 'fal-21-service':add('fal-21-service','FN FAL 21-inch service barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'long',role:'rifle',nominalInches:21}),
+ 'fal-172-para':add('fal-172-para','FN FAL Para 17.2-inch barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'mid',role:'rifle',nominalInches:17.2})
 };
 const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg',family:WeaponFamily,
  receiver:string,stock:string,grip:string,magazine:string,handguard:string,
@@ -218,7 +219,9 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('fal-5000-classic','FN FAL 50.00 · Wood','rifle','fal','fal-50-receiver',
   'fal-fixed-wood','fal-grip','fal-mag20','fal-vented-wood','fal-21-service'),
  p('fal-5061','FN FAL 50.61 Para','rifle','fal','fal-50-receiver',
-  'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-21-service')
+  'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-21-service'),
+ p('fal-5063','FN FAL 50.63 Para','rifle','fal','fal-50-receiver',
+  'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-172-para')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
@@ -240,7 +243,11 @@ export function compatibleFamilyPart(receiverId:string,slot:FamilyPartSlot,
  if(part.receivers&&!part.receivers.includes(receiverId))return false;
  if(part.feed&&part.feed!==receiver.feed)return false;
  if(part.role&&part.role!==weapon&&part.role!=='both')return false;
- if(slot==='handguard'&&barrelLength&&part.length!==barrelLength)return false;
+ // A 50.63 Para retains a full-sized FAL vented handguard despite its
+ // shorter exposed muzzle. Other families keep strict length matching.
+ if(slot==='handguard'&&barrelLength&&part.length!==barrelLength&&
+    !(receiver.family==='fal'&&barrelLength==='mid'&&part.length==='long'))
+  return false;
  return true;
 }
 export function readWeaponFamilyBuild(raw:unknown,weapon:WeaponId):WeaponFamilyBuild|undefined{

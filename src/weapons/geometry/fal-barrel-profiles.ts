@@ -11,6 +11,11 @@ export const FAL_BARREL_ART:Readonly<Record<string,FALBarrelArt>>={
   id:'fal-21-service',nominalInches:21,lengthScale:.95,
   handguardStartX:3.65,handguardEndX:14.10,
   frontSightX:14.70,muzzleX:22.00,muzzleY:0
+ },
+ 'fal-172-para':{
+  id:'fal-172-para',nominalInches:17.2,lengthScale:.84,
+  handguardStartX:3.65,handguardEndX:14.10,
+  frontSightX:14.70,muzzleX:19.40,muzzleY:0
  }
 };
 export const falBarrelArt=(id:string):FALBarrelArt|undefined=>

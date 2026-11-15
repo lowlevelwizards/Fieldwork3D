@@ -12,6 +12,7 @@ import {addOutline,addCuboid,addBar,
 import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH,falMagazineRibOutlines} from './fal-magazine-profiles.ts';
 import {addFALFacetedHandguard} from './fal-handguard-profiles.ts';
 import {addFALCrownedReceiver,addFALAngledCarrySupport} from './fal-receiver-form.ts';
+import {FAL_BARREL_ART} from './fal-barrel-profiles.ts';
 
 export const FAL_ART:Readonly<{
  stockRearX:number;receiverRearX:number;receiverFrontX:number;
@@ -33,6 +34,8 @@ export function buildFALCoreSilhouette(
 ):THREE.Group{
  const root=new THREE.Group();
  root.name='fal-5000-core-silhouette';
+ const barrelArt=FAL_BARREL_ART[partIds.barrel]??FAL_BARREL_ART['fal-21-service'];
+ const shortDelta=barrelArt.muzzleX-FAL_ART.muzzleX;
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -116,9 +119,11 @@ export function buildFALCoreSilhouette(
 
  // One six-sided barrel. The gas-block sight is near the end of the
  // handguard rather than at the muzzle as on the G3.
- const barrelEnd=options.showFactoryMuzzle===false?22.00:18.58;
+ const barrelEnd=options.showFactoryMuzzle===false?
+  barrelArt.muzzleX:18.58+shortDelta;
  const barrel=b('barrel',(13.85+barrelEnd)/2,0,0,
   barrelEnd-13.85,.92,.92);
+ barrel.userData.falBarrelLength=barrelArt.nominalInches;
  barrel.userData.falBoxBarrel=true;
  // FAL P8: a monumental U-shaped sight, nothing fiddly inside it.
  // Only the base and two chunky rectangular ears; no central post.
@@ -133,10 +138,10 @@ export function buildFALCoreSilhouette(
  // as the muzzle for all pose, camera, firing and ballistic contracts.
  if(options.showFactoryMuzzle!==false){
   const collar=addCuboid(root,'barrel',partIds.barrel,ids.barrel++,
-   18.59,0,0,.56,1.75,1.76,materials.muzzleMetal??materials.barrel);
+   18.59+shortDelta,0,0,.56,1.75,1.76,materials.muzzleMetal??materials.barrel);
   collar.userData.falMuzzleCollar=true;
   const device=addCuboid(root,'barrel',partIds.barrel,ids.barrel++,
-   20.32,0,0,3.36,1.50,1.50,materials.muzzleMetal??materials.barrel);
+   20.32+shortDelta,0,0,3.36,1.50,1.50,materials.muzzleMetal??materials.barrel);
   device.userData.falMuzzleCombo=true;
   // A pair of broad simple dark port strokes, four triangles total.
   const verts:number[]=[],indices:number[]=[];
@@ -144,7 +149,7 @@ export function buildFALCoreSilhouette(
    const first=verts.length/3,z=side*.786;
    for(const [x,y] of [[19.03,-.23],[21.24,-.23],
                          [21.24,.23],[19.03,.23]])
-    verts.push(x,y,z);
+    verts.push(x+shortDelta,y,z);
    if(side===1)indices.push(first,first+1,first+2,first,first+2,first+3);
    else indices.push(first,first+2,first+1,first,first+3,first+2);
   }

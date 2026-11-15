@@ -18,7 +18,7 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  if(build.parts.receiver!=='fal-50-receiver'||
     !['fal-fixed-polymer','fal-fixed-wood','fal-para-folder'].includes(build.parts.stock)||
     !['fal-vented','fal-vented-wood'].includes(build.parts.handguard)||
-    build.parts.barrel!=='fal-21-service'||
+    !['fal-21-service','fal-172-para'].includes(build.parts.barrel)||
     build.parts.magazine!=='fal-mag20'||
     !['fal-grip','fal-grip-wood'].includes(build.parts.grip))
   throw new Error('Unimplemented FAL appearance configuration');
