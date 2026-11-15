@@ -38,7 +38,8 @@ export function arsenalReferenceIdentity(recipe:ArsenalRecipeV2):{
  const fallback=recipe.platformId==='ar15'?'AR-15':
   recipe.platformId==='ak'?'AK':recipe.platformId==='g3'?'G3':
   recipe.platformId==='hk33'?'HK33 / HK53':
-  recipe.platformId==='fal'?'FN FAL':'MP5';
+  recipe.platformId==='fal'?'FN FAL':
+  recipe.platformId==='fnc'?'FN FNC':'MP5';
  if(recognized.length!==1)
   return {name:fallback+' · Custom',modified:true,ambiguous:recognized.length>1};
  const ref=recognized[0];
