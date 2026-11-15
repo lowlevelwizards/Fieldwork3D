@@ -127,7 +127,8 @@ test('the touch gesture uses HERE replacement, not route-append',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  const commands=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
  assert.match(main,/dispatchTacticalPointerRelease/);
- assert.match(commands,/planMoveStroke\(port\.state,port\.selected,points\.slice\(1\),false,true,strokeOutcome\)/);
+ assert.match(commands,/const spaced=spaceStrokeWaypoints\(points,projectStroke,18,/);
+ assert.match(commands,/planMoveStroke\(port\.state,port\.selected,spaced\.slice\(1\),false,true,strokeOutcome\)/);
  assert.match(commands,/ROUTE REPLACED FROM HERE · UNDO TO RESTORE/);
 });
 test('window classification distinguishes standard sash from fixed and unsafe glazing',()=>{
