@@ -20,7 +20,7 @@ export function orientGeneratedDoorSwings(site:Site):Site{
  // authoritative runtime check once operators start moving.
  const world={
   site,walls:site.walls,cover:site.cover,revision:0
- } as SessionWorldGeometry;
+ } as unknown as SessionWorldGeometry;
  let changed=false;
  const doors=site.doors.map(door=>{
   if((door.kind&&door.kind!=='hinged')||door.pairedWith||
@@ -28,7 +28,8 @@ export function orientGeneratedDoorSwings(site:Site):Site{
   const original={...door,open:false,openFraction:0};
   if(!doorSwingBlocked(original,GENERATED_DOOR_PASSAGE_FRACTION,
       [],OPERATOR_RADIUS,world))return door;
-  const alternative={...original,swing:door.swing===1?-1:1};
+  const opposite:1|-1=door.swing===1?-1:1;
+  const alternative={...original,swing:opposite};
   if(doorSwingBlocked(alternative,GENERATED_DOOR_PASSAGE_FRACTION,
       [],OPERATOR_RADIUS,world))return door;
   changed=true;
