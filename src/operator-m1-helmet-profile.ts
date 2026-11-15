@@ -156,8 +156,11 @@ export function m1PerimeterAt(y:number,mode:M1SurfaceMode):readonly Point[]{
  const levels=m1Levels(mode);
  // Interpolate the real pitched contour points, NOT a new flat Y ring.
  // This keeps band/net anchors on the swept rear shell and taller front lip.
- let lower=levels.findIndex(x=>x.y<=y);
- if(lower<=0)lower=1;
+ // The last one/two return stations go back upward into the helmet;
+ // sample only the *outer* wall when placing bands, scrim and net borders.
+ const exteriorLast=3;
+ let lower=levels.slice(1,exteriorLast+1).findIndex(x=>x.y<=y)+1;
+ if(lower<=0)lower=exteriorLast;
  const upper=levels[lower-1],below=levels[lower];
  const t=upper.y===below.y?0:
   Math.max(0,Math.min(1,(upper.y-y)/(upper.y-below.y)));

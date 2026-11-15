@@ -43,23 +43,23 @@ function geometry(fastened:boolean):THREE.BufferGeometry{
    const joinX=sign>0?.72:-.72;
    ribbon([
     anchor,
-    [sign*5.40,2.42,-2.71],
-    [sign*4.15,.72,-3.68],
+    [sign*4.85,2.42,-2.71],
+    [sign*3.85,.72,-3.68],
     [joinX,-.43,-4.08]
    ],.76);
   }else{
    ribbon([
     anchor,
-    [sign*6.04,2.17,-1.60],
-    [sign*5.82,.28,-1.77]
+    [sign*5.38,2.17,-1.60],
+    [sign*5.16,.28,-1.77]
    ],.72);
   }
  }
  // One restrained buckle graphic in the SAME mesh/draw call.
  if(fastened)panel([.55,-.65,-4.16],[1.22,-.65,-4.16],
   [1.22,-.35,-4.16],[.55,-.35,-4.16],.50);
- else panel([5.56,.22,-1.84],[6.00,.22,-1.84],
-  [6.00,.49,-1.84],[5.56,.49,-1.84],.50);
+ else panel([4.92,.22,-1.84],[5.36,.22,-1.84],
+  [5.36,.49,-1.84],[4.92,.49,-1.84],.50);
  const g=new THREE.BufferGeometry();
  g.setAttribute('position',new THREE.Float32BufferAttribute(coords,3));
  g.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
