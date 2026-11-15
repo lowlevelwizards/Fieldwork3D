@@ -28,6 +28,7 @@ import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeToNextOperableDoor}
  from '../src/breach-squeeze-route.ts';
+import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
@@ -469,7 +470,8 @@ function run(site,seed,kind){
       firstClear:route.length?step(actor.p,route[0]):null},
      futurePortal:{length:future.length,first:future.slice(0,4),
       firstClear:future.length?step(actor.p,future[0]):null},
-     neighborhood
+     neighborhood,
+     boundedNarrowExit:observeNarrowLeafExit(actor.p,goal,next,narrow,step)
     };
    }
   }
