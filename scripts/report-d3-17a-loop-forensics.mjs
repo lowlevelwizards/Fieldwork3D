@@ -24,7 +24,10 @@ const top=report.incidents.slice(0,15).map(e=>({
  lowNetTravel:e.lowNetTravel,goalReduction:e.goalReduction,
  endRemaining:e.endRemaining,finalOutcome:e.finalOutcome,
  pause:e.pauses,doorEpisode:e.doorEpisodes,
- nextNav:e.distinctNextWaypoints,route:e.routeCounts
+ nextNav:e.distinctNextWaypoints,
+ sampledReturnDistance:e.sampledReturnDistance,
+ episodeRoutes:e.episodeRouteCounts,runRoutes:e.routeCounts,
+ timedRouteEvents:e.routeEvents.length
 }));
 console.log('D317A_LOOP_FORENSICS '+JSON.stringify({
  summary:report.summary,top
