@@ -213,7 +213,7 @@ test('S1-A1C single unbroken M56 ear-to-nape contour is distinct from a horizont
  assert.ok(hem[5][1]>hem[6][1]+.18,'rear nape remains deepest');
  // Reflective left/right points are identical in Y/Z, not asymmetric slots.
  for(let i=0;i<6;i++){
-  const mirror=11-i;
+  const mirror=i===0?1:i===1?0:13-i;
   near(hem[i][0],-hem[mirror][0],'mirrored lateral extent');
   near(hem[i][1],hem[mirror][1],'mirrored lower contour');
   near(hem[i][2],hem[mirror][2],'mirrored fore-aft extent');
