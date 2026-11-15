@@ -1,7 +1,9 @@
 import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
-import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
+import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld}
+ from './breach-squeeze-route.ts';
+import {coldSweptDoorWaypointJoin} from './breach-d317d-door-route-join.ts';
 import {shouldProbeRepeatedDoorRehearsal,fullySweptRehearsalExit}
  from './breach-retail-rehearsal-recovery.ts';
 /** D2 / fixed-action doorway muscle memory.
@@ -180,7 +182,16 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  const whole=cold?fullySweptRehearsalExit(
    a.p,episode.destination,
    routeWithSqueezeWorld(a.p,episode.destination,s.doors,world),sweep):[];
- const chosen=whole.length?whole:path;
+ // D3.17D: a *cold* repeat can join an existing nearby transient
+ // waypoint even when the distant authored GO lies beyond other closed
+ // portals. All legs to the original nav join are verified at real
+ // motor-sized full-body strides, and the saved tail keeps its original GO.
+ // Generated ENTRY still uses its established explicit doorway sequence.
+ const joined=cold&&!whole.length&&a.plan[0]?.kind==='move'&&
+   !a.plan[0].entryDoorId?
+   coldSweptDoorWaypointJoin(a.p,episode.destination,a.nav,path,
+     (from,to)=>routeWithNormalWorld(from,to,s.doors,world),sweep):[];
+ const chosen=whole.length?whole:joined.length?joined:path;
  // D3.17C: a valid goal-reaching world recovery wins over suppressing
  // the partial portal stage from a repeated backwards episode. Count
  // actual chosen routes rather than the preliminary rehearsal candidate.
@@ -197,7 +208,8 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
  setTransientRoute(s,a,chosen.map(clone),
-   whole.length?'door-rehearsal-world':'door-rehearsal');
+   whole.length?'door-rehearsal-world':
+   joined.length?'door-rehearsal-joined-waypoint':'door-rehearsal');
  a.autoSidestep=beginAutoSidestep(a.p,next,chosen[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
  a.retryRouteAt=0;a.recoveryAttempts=0;
