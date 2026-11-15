@@ -56,7 +56,7 @@ test('FAL P2: balanced stock, slightly slimmer grip, bold seated pad and handle'
  const support=bounds(root.children.find(x=>x.userData.falCarrySupport));
  approx(shell.max.z-shell.min.z,3.0);
  approx(grip.max.z-grip.min.z,2.16);
- approx(pad.max.x-pad.min.x,.72);
+ approx(pad.max.x-pad.min.x,.88);
  approx(pad.max.y-pad.min.y,4.85);
  approx(pad.min.x,-15);
  assert.ok(pad.max.x>shell.min.x+.06);

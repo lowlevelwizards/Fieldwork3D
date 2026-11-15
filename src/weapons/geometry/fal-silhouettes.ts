@@ -33,8 +33,11 @@ export function addFALFamily(root:THREE.Group,build:WeaponFamilyBuild,
  addFALHandguardVents(root,build.parts.handguard,FAL_VENT_SHADOW);
  // Short charging handle (left) and a restrained ejection-panel mark (right).
  // These are the only receiver details that materially aid recognition.
+ // The non-reciprocating charging handle belongs at the LEFT-FRONT of
+ // the receiver, just behind the carrying-handle pivot. Keep it chunky.
  const handle=addCuboid(root,'receiver',build.parts.receiver,7,
-  -4.8,.52,-1.99,1.18,.60,.52,steel);
+  1.30,.57,-1.98,1.36,.72,.62,steel);
+ handle.userData.falChargingHandle=true;
  handle.castShadow=false;
  // One bold, six-point ejection-panel mark on the RIGHT; no G3 bolt copy.
  // Embedded slightly in the receiver face to avoid a floating decal.

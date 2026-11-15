@@ -51,6 +51,11 @@ test('P3 receiver: deeper shaped lower is a dedicated steel tone, not a duplicat
  assert.ok(box(port[0]).min.z>1.75);
  const left=root.getObjectByName('family-receiver-fal-50-receiver-7');
  assert.ok(left&&box(left).max.z<0,'charging handle belongs on left');
+ assert.equal(left.userData.falChargingHandle,true);
+ assert.ok(box(left).min.x>0,'charging handle belongs on receiver front, not behind grip');
+ const pad=root.getObjectByName('family-stock-fal-fixed-polymer-1');
+ assert.ok(pad&&box(pad).max.x-box(pad).min.x>=.87,
+  'thick FN buttpad must read clearly in side silhouette');
  clearWeaponSilhouette(root);m.dispose();
 });
 test('P3 handle and guard: contoured handle supported, six-sided vents follow front taper',()=>{

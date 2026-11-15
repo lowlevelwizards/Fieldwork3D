@@ -26,6 +26,8 @@ complexity, new saved parts or game simulation changes.
 3. P3C: eight-sided shoulder-inset handguard, front taper to 1.45 half-width,
    three larger hexagonal FN-style vent shadows each side aligned to changing
    side Z, tapered slimmer factory muzzle profile
+4. P3F: thicker 0.88 side-view buttpad retaining X=-15 and front-positioned
+   left charging handle near X=1.30 instead of the false rear grip position
 
 ## Non-goals and compatibility
 Exactly one `fal-5000` factory variant; same six part IDs, pose contacts, muzzle
