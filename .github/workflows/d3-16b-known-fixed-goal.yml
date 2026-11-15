@@ -65,8 +65,9 @@ jobs:
           const s=r.summary;
           console.log('D316B_HISTORICAL',JSON.stringify(s));
           if(s.physicalArrivals!==80||s.physicalCompletedFour!==18||
-             s.successfulFour!==18||s.terminallyCancelledOrders!==7||
-             s.cancelledOperators!==7||s.physicallyPendingOperators!==1||
+             s.successfulFour!==16||s.terminallyCancelledOrders!==9||
+             s.cancelledOperators!==9||s.cancelledAndNotArrived!==7||
+             s.arrivedDespiteCancellation!==2||s.physicallyPendingOperators!==1||
              s.unreachedDrainedOperators!==0||s.stallEpisodes>8||
              s.exceptions||s.physicsStepViolations||s.invalidPositions||
              s.corruptedPlans)throw Error('D3.16B historical physical truth regressed');
