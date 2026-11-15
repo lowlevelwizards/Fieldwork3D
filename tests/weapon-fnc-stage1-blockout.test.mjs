@@ -18,7 +18,7 @@ test('FNC P1: independent stock, barrel and handguard silhouette landmarks',()=>
  assert.ok(Math.abs(b.max.x-FNC_P1.muzzleX)<.02);
  assert.ok(b.min.y<=FNC_P1.magazineBottomY+.01);
  assert.ok(FNC_P1.frontSightX>FNC_P1.handguardEndX+1);
- assert.ok(FNC_P1.muzzleX>FNC_P1.frontSightX+6);
+ assert.ok(FNC_P1.muzzleX>FNC_P1.frontSightX+4);
  assert.ok(g.children.length>=15&&g.children.length<=25);
  assert.ok(g.children.every(c=>c.name.startsWith('family-')));
  assert.equal(g.children.filter(c=>c.userData.fncStockRail).length,2);
@@ -36,6 +36,21 @@ test('FNC P1: independent stock, barrel and handguard silhouette landmarks',()=>
  assert.ok(triangleCount<550,'P1 should stay under a compact inspection budget');
  clearWeaponSilhouette(g);assert.equal(g.children.length,0);
  material.dispose();
+});
+test('FNC P1B: 30-round magazine curve and visible barrel weight survive geometry build',()=>{
+ const material=new THREE.MeshBasicMaterial();
+ const g=buildFNCStage1Silhouette(material);
+ const mag=g.children.find(c=>c.userData.fnc30RoundCurved);
+ const barrel=g.children.find(c=>c.userData.fncServiceBarrel);
+ assert.ok(mag&&barrel,'P1B curved STANAG and service barrel must be separate');
+ const mb=box(mag),bb=box(barrel);
+ assert.ok(mb.max.x-mb.min.x<3.3,'STANAG magazine must not become FAL-wide');
+ assert.ok(mb.min.y===FNC_P1.magazineBottomY,'updated magazine extends to authored datum');
+ assert.ok(bb.max.y-bb.min.y>.90,'barrel not a .66 pencil-thin wire');
+ assert.ok(bb.max.y-bb.min.y<1.05,'still a visually slimmer barrel than handguard');
+ assert.ok((FNC_P1.muzzleX-FNC_P1.stockRearX)<35,
+  'FNC must be visually shorter than legacy 36.4-unit blockout');
+ clearWeaponSilhouette(g);material.dispose();
 });
 test('FNC P1: truly open rail stock with clear butt and receiver anchor',()=>{
  const material=new THREE.MeshBasicMaterial();
@@ -57,8 +72,8 @@ test('FNC P1: equal-scale comparison is real production art, not a replacement',
  const all=[g,...competitors];
  assert.ok(all.every(model=>Number.isFinite(width(model))&&width(model)>25));
  assert.ok(all.every(model=>box(model).max.y-box(model).min.y>5));
- assert.ok(Math.abs(width(g)-width(competitors[0]))>.1,
-  'FNC must not be the original FAL width');
+ assert.ok(width(g)<width(competitors[0])*.95,
+  'FNC full-size must read visibly shorter than the standard FAL');
  assert.ok(!FAMILY_PRESETS.some(p=>p.id.startsWith('fnc-')),
   'review-only blockout must not appear as a live loadout preset');
  all.forEach(clearWeaponSilhouette);material.dispose();

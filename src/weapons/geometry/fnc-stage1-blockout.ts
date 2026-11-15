@@ -10,7 +10,7 @@ import type {SlotName,Outline} from './profile-primitives.ts';
 export const FNC_P1=Object.freeze({
   stockRearX:-14.85,receiverRearX:-6.38,receiverFrontX:4.12,
   handguardStartX:3.45,handguardEndX:13.55,
-  frontSightX:15.20,muzzleX:21.55,magazineBottomY:-8.32,
+  frontSightX:15.20,muzzleX:19.50,magazineBottomY:-8.05,
   nominalBarrelInches:17.7
 });
 
@@ -55,12 +55,16 @@ export function buildFNCStage1Silhouette(material:THREE.Material):THREE.Group{
  p('grip',[
   [-5.07,-2.31],[-3.42,-2.31],[-5.03,-6.08],[-7.01,-6.08]
  ],2.02);
- // Slim 5.56 STANAG-like curved magazine rather than FAL's wide straight 7.62.
+ // Corrected FNC 30-round STANAG silhouette. The P1 straight slab was too
+ // broad at its heel and visually uncurved. These nine broad outline points
+ // make one gently swept, slightly narrowed magazine, no decorative ridges.
  const mag=p('magazine',[
-  [.34,-2.81],[2.95,-2.81],[2.62,-8.01],
-  [-.38,-8.32],[.03,-6.06]
+  [.55,-2.81],[2.85,-2.81],[2.90,-4.10],[2.75,-5.60],
+  [2.50,-7.30],[2.18,-7.90],[-.23,-8.05],
+  [-.05,-6.55],[.32,-4.95]
  ],1.49);
  mag.userData.fnc556Magazine=true;
+ mag.userData.fnc30RoundCurved=true;
 
  // Iconic long handguard with substantial rounded-bottom outline and
  // one recessed longitudinal groove. Stay legible at gameplay distance.
@@ -74,9 +78,13 @@ export function buildFNCStage1Silhouette(material:THREE.Material):THREE.Group{
  // Slender upper gas-run: separate from main handguard and receiver.
  b('barrel',12.48,1.15,0,2.57,.48,1.15);
 
- // Exposed service rifle barrel and oversized short flash suppressor.
- b('barrel',16.87,0,0,6.53,.66,.66);
- const muzzle=b('barrel',20.89,0,0,1.32,1.02,1.02);
+ // P1B: the .66 pencil-thin tube exaggerated how exposed the FNC barrel
+ // feels. Use a heavier 0.96 art diameter; shorten exposed span to bring
+ // extended rifle length into line with the shorter 997 mm FNC vs FAL.
+ // Nominal real 449 mm barrel remains 17.7 in; art units are not inches.
+ const barrel=b('barrel',16.33,0,0,5.35,.96,.96);
+ barrel.userData.fncServiceBarrel=true;
+ const muzzle=b('barrel',18.90,0,0,1.20,1.16,1.16);
  muzzle.userData.fncMuzzle=true;
  const front=b('barrel',15.20,.80,0,1.12,1.30,1.38);
  front.userData.fncFrontSightBase=true;
