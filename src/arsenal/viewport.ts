@@ -1,19 +1,16 @@
-/** Arsenal V2 Stage 4: standalone, on-demand weapon inspection viewport.
- * No socket dots, duplicated part UI, inventory writes, or continuous animation.
+/** Arsenal V2: on-demand 3D inspection, with minimal projected part sockets.
+ * No gameplay writes, duplicated models, continuous loops, or experimental lab.
  */
 import * as THREE from 'three';
 import {tagVisualMaterial} from '../rendering/material-identity.ts';
-import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
-import {applyStudioGraphicLighting,disposeStudioGraphicLighting}
- from '../operator-studio-graphic-lighting.ts';
-import {effectiveStudioLightLab,APPROVED_GRAPHIC_LIGHTING,
- type StudioLightLabSettings} from '../operator-studio-light-lab.ts';
-import {STUDIO_INSPECTION_BACKGROUND,STUDIO_INSPECTION_LIGHT,
- studioShadowPalette,STUDIO_KEY_DIRECTION} from '../operator-studio-lighting.ts';
+import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
+import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from '../breach-weapon-accessories.ts';
 import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
-import {partVisualBounds} from '../weapons/geometry/weapon-visual-anchors.ts';
+import {partVisualBounds,workbenchVisualAnchors}
+ from '../weapons/geometry/weapon-visual-anchors.ts';
+import type {WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {workbenchFitDistance} from '../weapons/geometry/weapon-workbench-camera-fit.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {remapArsenalZoom} from './camera-state.ts';
@@ -27,12 +24,13 @@ export class ArsenalViewport{
  private readonly scene=new THREE.Scene();
  private readonly camera=new THREE.PerspectiveCamera(37,1,.1,400);
  private readonly model=new THREE.Group();
- private readonly keyLight=new THREE.DirectionalLight(0xf8d8a8,2.6);
- private readonly fillLight=new THREE.DirectionalLight(
-  STUDIO_INSPECTION_LIGHT.fill,0);
- private readonly hemisphere=new THREE.HemisphereLight(0xe2e9d9,0x253c36,2.3);
- private lighting:StudioLightLabSettings={...APPROVED_GRAPHIC_LIGHTING};
- private compareOriginal=false;
+ private readonly socketLayer:HTMLDivElement;
+ private readonly socketButtons=new Map<ArsenalSlot,HTMLButtonElement>();
+ private readonly socketLocal=new Map<ArsenalSlot,THREE.Vector3>();
+ private activeExtraSlots:readonly ArsenalSlot[]=[];
+ private dotsRestoreTimer:ReturnType<typeof setTimeout>|null=null;
+ private inspecting=false;
+ private config:WeaponConfiguration|null=null;
  private readonly steel=tagVisualMaterial(new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true}),'steel');
  private readonly dark=tagVisualMaterial(new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true}),'polymer');
  private readonly resizeObserver:ResizeObserver;
@@ -41,7 +39,6 @@ export class ArsenalViewport{
  private readonly onSelect:(slot:ArsenalSlot)=>void;
  private body:THREE.Group|null=null;
  private attachments:THREE.Group|null=null;
- private highlight:THREE.Box3Helper|null=null;
  private selected:ArsenalSlot='receiver';
  private target=new THREE.Vector3();
  private fitDistance=55;
@@ -63,14 +60,12 @@ export class ArsenalViewport{
   this.canvas.className='arsenal-wb-canvas';
   this.canvas.setAttribute('aria-label','3D weapon inspection; drag to orbit, pinch to zoom');
   this.canvas.style.touchAction='none';
-  host.append(this.canvas);
-  this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
-  this.keyLight.position.set(30,55,70);
-  this.fillLight.position.set(-35,23,30);
-  this.scene.add(this.hemisphere,this.keyLight,this.fillLight,this.model);
-  // The Arsenal uses the same real authored weapon parts as gameplay; every
-  // opaque piece can audition the Studio weapon material without recoloring.
-  this.model.userData.fieldworkWeaponPresentation=true;
+  this.socketLayer=document.createElement('div');
+  this.socketLayer.className='arsenal-wb-sockets';
+  this.socketLayer.setAttribute('aria-label','Select weapon part');
+  host.append(this.canvas,this.socketLayer);
+  addArsenalInspectionLighting(this.scene);
+  this.scene.add(this.model);
   let renderer:THREE.WebGLRenderer|null=null;
   try{
    renderer=new THREE.WebGLRenderer({canvas:this.canvas,antialias:false,
@@ -95,12 +90,7 @@ export class ArsenalViewport{
   this.setRecipe(recipe,false);
  }
  private clearParts(){
-  // Return source materials before disposing weapon geometry and caches.
-  disposeStudioGraphicLighting(this.model);
-  if(this.highlight){this.scene.remove(this.highlight);
-   this.highlight.geometry.dispose();
-   for(const material of Array.isArray(this.highlight.material)?this.highlight.material:[this.highlight.material])material.dispose();
-   this.highlight=null;}
+  this.clearSocketDots();
   if(this.body){this.model.remove(this.body);clearWeaponSilhouette(this.body);
    this.body=null;}
   if(this.attachments){
@@ -111,7 +101,7 @@ export class ArsenalViewport{
  }
  setRecipe(recipe:ArsenalRecipeV2,preserveView=true):boolean{
   const config=arsenalRecipeToLegacy(recipe);if(!config)return false;
-  this.clearParts();
+  this.clearParts();this.config=config;
   this.body=buildWeaponSilhouette(config.weapon,this.steel,this.dark,config);
   this.attachments=buildWeaponAccessories(config,this.steel,this.dark);
   this.model.add(this.body,this.attachments);
@@ -126,60 +116,96 @@ export class ArsenalViewport{
    config.build?.parts.receiver==='hk-mp5k-stockless');
   if(!preserveView){this.distance=this.fitDistance;this.yaw=.12;this.pitch=.12;}
   else this.distance=remapArsenalZoom(oldFit,this.distance,this.fitDistance);
+  this.rebuildSocketDots();
   this.setSelectedSlot(this.selected);
-  this.applyLightingPreview();this.invalidate();
   return true;
  }
- /** Preview-only lighting, never stored in build recipes or inventory. */
- setLighting(settings:StudioLightLabSettings,compareOriginal=false){
-  this.lighting=effectiveStudioLightLab(settings);
-  this.compareOriginal=compareOriginal;
-  this.applyLightingPreview();
-  this.invalidate();
- }
- private applyLightingPreview(){
-  const active=!this.compareOriginal&&
-   (this.lighting.toon!==0||this.lighting.rim!=='off'||
-    this.lighting.gradient!=='current');
-  const settings=active?this.lighting:effectiveStudioLightLab(this.lighting,true);
-  // F5.1: A/B compares MATERIALS, not two unrelated studios.
-  // Preserve the currently selected key/fill, neutral background and color
-  // output even when source materials are restored for Original inspection.
-  const p=STUDIO_INSPECTION_LIGHT;
-  const plum=studioShadowPalette(this.lighting.shadow);
-  this.scene.background=new THREE.Color(STUDIO_INSPECTION_BACKGROUND);
-  this.keyLight.color.setHex(p.key);
-  this.keyLight.intensity=p.keyIntensity;
-  this.hemisphere.color.setHex(p.sky);
-  this.hemisphere.groundColor.setHex(plum.ground);
-  this.hemisphere.intensity=p.hemiIntensity;
-  this.fillLight.color.setHex(plum.fill);
-  this.fillLight.intensity=p.fillIntensity*
-   (this.lighting.shadow==='plum-plus'?G.plumFillBoost:1);
-  this.keyLight.position.copy(STUDIO_KEY_DIRECTION)
-   .applyAxisAngle(new THREE.Vector3(0,1,0),
-    THREE.MathUtils.degToRad(this.lighting.lightAzimuth))
-   .multiplyScalar(90);
-  applyStudioGraphicLighting(this.model,settings);
+ /** Keep six body sockets available; show relevant accessory sockets on demand. */
+ setVisibleSlots(slots:readonly ArsenalSlot[]){
+  this.activeExtraSlots=slots.filter(s=>!FAMILY_SLOTS.includes(s as FamilyPartSlot));
+  this.rebuildSocketDots();
  }
  setSelectedSlot(slot:ArsenalSlot){
   this.selected=slot;
-  if(this.highlight){this.scene.remove(this.highlight);
-   this.highlight.geometry.dispose();
-   for(const material of Array.isArray(this.highlight.material)?this.highlight.material:[this.highlight.material])material.dispose();this.highlight=null;}
-  if(this.body&&FAMILY_SLOTS.includes(slot as FamilyPartSlot)){
-   const bounds=partVisualBounds(this.body,slot as FamilyPartSlot);
-   if(bounds){
-    this.body.updateMatrixWorld(true);
-    bounds.applyMatrix4(this.body.matrixWorld);
-    this.highlight=new THREE.Box3Helper(bounds,0x9fccc4);
-    for(const material of Array.isArray(this.highlight.material)?this.highlight.material:[this.highlight.material]){
-     material.transparent=true;material.opacity=.43;material.depthTest=true;
-    }
-    this.scene.add(this.highlight);
-   }
+  for(const [id,button] of this.socketButtons){
+   button.setAttribute('aria-pressed',String(id===slot));
   }
   this.invalidate();
+ }
+ private clearSocketDots(){
+  this.socketButtons.clear();
+  this.socketLocal.clear();
+  this.socketLayer.replaceChildren();
+ }
+ private rebuildSocketDots(){
+  this.clearSocketDots();
+  if(!this.body||!this.config)return;
+  const sockets:ArsenalSlot[]=[...FAMILY_SLOTS,...this.activeExtraSlots];
+  const accessory=workbenchVisualAnchors(this.config,this.body,'attachments');
+  for(const slot of sockets){
+   let point:THREE.Vector3|undefined;
+   if(FAMILY_SLOTS.includes(slot as FamilyPartSlot)){
+    const b=partVisualBounds(this.body,slot as FamilyPartSlot);
+    if(b&&!b.isEmpty()){
+     point=b.getCenter(new THREE.Vector3());
+     point.z=b.max.z+.25;
+    }
+   }else{
+    const mount=accessory.find(a=>a.slot===slot);
+    if(mount)point=new THREE.Vector3(mount.x,mount.y,mount.z);
+   }
+   if(!point)continue;
+   const button=document.createElement('button');
+   button.type='button';
+   button.className='arsenal-wb-socket';
+   button.setAttribute('aria-label','Select '+slot.replace(/([A-Z])/g,' $1').toLowerCase());
+   button.setAttribute('aria-pressed',String(slot===this.selected));
+   button.title='Select '+slot;
+   const dot=document.createElement('span');
+   dot.className='arsenal-wb-socket-dot';dot.setAttribute('aria-hidden','true');
+   button.append(dot);
+   button.addEventListener('click',()=>{if(!this.inspecting)this.onSelect(slot);});
+   this.socketButtons.set(slot,button);
+   this.socketLocal.set(slot,point);
+   this.socketLayer.append(button);
+  }
+  this.invalidate();
+ }
+ /** Reproject tiny HTML hit targets only on existing on-demand render frames. */
+ private positionSocketDots(width:number,height:number){
+  if(!this.body)return;
+  this.body.updateWorldMatrix(true,false);
+  const front=Math.cos(this.yaw)>=0;
+  for(const [slot,button] of this.socketButtons){
+   const local=this.socketLocal.get(slot);
+   if(!local)continue;
+   const point=local.clone();
+   // Place on whichever side of the mesh the player is currently viewing.
+   point.z=front?Math.abs(point.z):-Math.abs(point.z);
+   point.applyMatrix4(this.body.matrixWorld).project(this.camera);
+   const x=(point.x+1)*width*.5,y=(1-point.y)*height*.5;
+   const visible=point.z>=-1&&point.z<=1&&x>=8&&x<=width-8&&
+    y>=8&&y<=height-8;
+   button.hidden=!visible;
+   if(visible)button.style.transform=
+    'translate(-50%,-50%) translate('+x.toFixed(1)+'px,'+y.toFixed(1)+'px)';
+  }
+ }
+ private hideDotsDuringInspection(){
+  if(this.dotsRestoreTimer!==null){
+   clearTimeout(this.dotsRestoreTimer);this.dotsRestoreTimer=null;
+  }
+  this.inspecting=true;
+  this.socketLayer.classList.add('is-inspecting');
+ }
+ private finishInspection(){
+  if(this.pointers.size>0)return;
+  if(this.dotsRestoreTimer!==null)clearTimeout(this.dotsRestoreTimer);
+  this.dotsRestoreTimer=setTimeout(()=>{
+   this.dotsRestoreTimer=null;
+   this.inspecting=false;
+   this.socketLayer.classList.remove('is-inspecting');
+  },window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:180);
  }
  fit(){
   this.distance=this.fitDistance;this.yaw=.12;this.pitch=.12;
@@ -209,6 +235,7 @@ export class ArsenalViewport{
    this.target.z+this.distance*Math.cos(this.yaw)*cos);
   this.camera.lookAt(this.target);
   this.renderer.render(this.scene,this.camera);
+  this.positionSocketDots(w,h);
  }
  private pick(clientX:number,clientY:number){
   if(!this.body)return;
@@ -236,15 +263,17 @@ export class ArsenalViewport{
   if(!this.pointers.size){this.gestureMoved=false;this.multiTouch=false;}
   this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   this.origins.set(e.pointerId,{x:e.clientX,y:e.clientY});
-  if(this.pointers.size>1){this.multiTouch=true;this.pinch=0;}
+  if(this.pointers.size>1){this.multiTouch=true;this.pinch=0;
+   this.hideDotsDuringInspection();}
  };
  private move=(e:PointerEvent)=>{
   const old=this.pointers.get(e.pointerId);if(!old)return;
   const dx=e.clientX-old.x,dy=e.clientY-old.y;
   this.pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   const start=this.origins.get(e.pointerId);
-  if(start&&Math.hypot(e.clientX-start.x,e.clientY-start.y)>7)
-   this.gestureMoved=true;
+  if(start&&Math.hypot(e.clientX-start.x,e.clientY-start.y)>7){
+   this.gestureMoved=true;this.hideDotsDuringInspection();
+  }
   if(this.pointers.size===1){
    this.yaw-=dx*.009;this.pitch=THREE.MathUtils.clamp(this.pitch+dy*.007,-.65,.85);
   }else if(this.pointers.size===2){
@@ -264,25 +293,28 @@ export class ArsenalViewport{
    this.pick(e.clientX,e.clientY);
   this.pointers.delete(e.pointerId);this.origins.delete(e.pointerId);
   this.pinch=0;
-  if(!this.pointers.size){this.gestureMoved=false;this.multiTouch=false;}
+  if(!this.pointers.size){this.gestureMoved=false;this.multiTouch=false;
+   this.finishInspection();}
  };
  private wheel=(e:WheelEvent)=>{
   if(!this.renderer)return;
-  e.preventDefault();
+  e.preventDefault();this.hideDotsDuringInspection();
   this.distance=THREE.MathUtils.clamp(
    this.distance*Math.exp(e.deltaY*.001),18,210);
-  this.invalidate();
+  this.invalidate();this.finishInspection();
  };
  dispose(){
   if(this.disposed)return;this.disposed=true;
   this.resizeObserver.disconnect();
   cancelAnimationFrame(this.frame);
+  if(this.dotsRestoreTimer!==null)clearTimeout(this.dotsRestoreTimer);
   this.canvas.removeEventListener('pointerdown',this.down);
   this.canvas.removeEventListener('pointermove',this.move);
   this.canvas.removeEventListener('pointerup',this.up);
   this.canvas.removeEventListener('pointercancel',this.up);
   this.canvas.removeEventListener('wheel',this.wheel);
-  this.clearParts();this.renderer?.dispose();this.renderer?.forceContextLoss();
+  this.clearParts();this.socketLayer.remove();
+  this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.steel.dispose();this.dark.dispose();
  }
 }
