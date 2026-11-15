@@ -113,7 +113,8 @@ export function restoreRepeatedDoorEscapeRoute(
      point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
      (point,destination)=>routeWithSqueezeIntel(s.intel,point,destination),
      hasTransientRouteObserver()?
-       reason=>noteDoorHandoffRejection(s,a,'h:stage:'+reason):undefined);
+       reason=>noteDoorHandoffRejection(s,a,'h:stage:'+reason):undefined,
+     (from,to)=>routeWithNormalWorld(from,to,s.doors,world));
    usedLocalStage=rejoined.length>0;
  }else if(!rejoined.length){
    noteDoorHandoffRejection(s,a,'h:leaf-unavailable-or-far');
