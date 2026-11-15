@@ -1,13 +1,7 @@
 name: D3.13H1 small motel physical handoff witness
 on:
-  pull_request:
-    paths:
-      - src/breach-motor-route.ts
-      - src/breach-door-escape-stage.ts
-      - src/breach-route-transition.ts
-      - scripts/audit-r7-squad-execution.mjs
-      - .github/workflows/d3-13h1-small-motel-witness.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 concurrency:
