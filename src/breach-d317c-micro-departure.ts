@@ -5,6 +5,7 @@
 import type {Pt} from './breach-core.ts';
 import type {TeamActor} from './breach-game.ts';
 import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
+import {fullBodyMotorRouteClear} from './breach-recovery-route-validation.ts';
 
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
@@ -91,14 +92,6 @@ export function selectMotorVerifiedFurnitureDeparture(
 }
 function physicallyContinuous(from:Pt,goal:Pt,route:readonly Pt[],
  sweep:(a:Pt,b:Pt)=>boolean):boolean{
- if(!route.length||distance(route.at(-1)!,goal)>3)return false;
- let at=from,travel=0;
- const maxLength=distance(from,goal)*2+48;
- for(const to of route){
-  travel+=distance(at,to);
-  if(travel>maxLength||!fullBodyMotorStrideClear(at,to,sweep))
-   return false;
-  at=to;
- }
- return true;
+ return !!route.length&&distance(route.at(-1)!,goal)<=3&&
+   fullBodyMotorRouteClear(from,route,sweep,distance(from,goal)*2+48);
 }

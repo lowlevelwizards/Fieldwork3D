@@ -5,6 +5,7 @@
  */
 import type {Pt} from './breach-core.ts';
 import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
+import {fullBodyMotorRouteClear} from './breach-recovery-route-validation.ts';
 
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
@@ -30,14 +31,8 @@ export function coldSweptDoorWaypointJoin(
  const costLimit=span*2.35+38;
  const accepts=(prefix:readonly Pt[],tail:readonly Pt[]):Pt[]=>{
   if(!tail.length||distance(tail[tail.length-1],join)>3)return [];
-  let prev=from,length=0;
-  for(const p of [...prefix,...tail]){
-   const part=distance(prev,p);
-   length+=part;
-   if(length>costLimit||!Number.isFinite(part)||
-      !fullBodyMotorStrideClear(prev,p,sweep))return [];
-   prev=p;
-  }
+  if(!fullBodyMotorRouteClear(from,[...prefix,...tail],
+    sweep,costLimit))return [];
   // Avoid copying/validating the old tail: this route does not grant
   // clearance through any future still-closed door.
   return [...prefix.map(clone),...tail.map(clone),

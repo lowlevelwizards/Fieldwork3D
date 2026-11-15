@@ -42,6 +42,9 @@ import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {shouldProbeStationaryCollisionRoute}
  from './breach-recovery-proposal-gate.ts';
+import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
+ selectPhysicalOpenLeafRejoin} from './breach-physical-leaf-rejoin.ts';
+import {routeWithNormalWorld} from './breach-squeeze-route.ts';
 import {claimRepeatedFurnitureDeparture,
  selectMotorVerifiedFurnitureDeparture}
  from './breach-d317c-micro-departure.ts';
@@ -463,6 +466,38 @@ export function resolveMotorCollision(
           a.recoveryAttempts++;
           a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
           return true;
+        }
+      }
+      // D3.17E3-5: an actual stationary body at a stable open leaf may
+      // have a bad *transient* landing even without formal D2 ownership.
+      // Try a cold full-body microstride-checked join to a later existing
+      // transient node; keep the original GO and all subsequent door
+      // actions. Do not fire on normal movement, active squeeze/traverse
+      // or a still-swinging panel. Failed probes never alter navigation.
+      if(a.side==='blue'&&a.plan[0]?.kind==='move'&&a.nav.length>=2&&
+         a.blockedTime>=1.8&&
+         (a.lastBlocker==='furniture'||a.lastBlocker==='door'||
+          a.lastBlocker==='wall')){
+        const leaf=relevantStableOpenLeaf(a.p,s.doors,
+          a.doorTraversal?.doorId??null);
+        if(leaf&&claimPhysicalLeafRejoin(a,leaf,p,s.seconds,
+             world.revision,s.doors)){
+          const physical=selectPhysicalOpenLeafRejoin(
+            a.p,p,a.nav,leaf,
+            (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+            point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
+            (from,to)=>routeWithNormalWorld(from,to,s.doors,world));
+          if(physical.length&&
+             watchClearanceAllowed(a.p,physical[0],p,
+               !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+               (from,to)=>sweptBodyClear(from,to,
+                 s.doors,OPERATOR_RADIUS,world))){
+            setTransientRoute(s,a,physical,'open-leaf-local-rejoin');
+            notePreciseLocalDetour(a,physical[0]);
+            a.lastNavRepairAt=s.seconds;
+            a.retryRouteAt=s.seconds+.65;
+            return true;
+          }
         }
       }
       // D3.17C: after THREE real, separated furniture collisions from the
