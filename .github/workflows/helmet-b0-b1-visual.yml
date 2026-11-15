@@ -17,7 +17,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   historical-art:
-    if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' || github.head_ref == 'feature/b1-m1-bold-oversized-correction-20261115' || github.head_ref == 'feature/b1-m1-orthographic-identity-20261115' }}
+    if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' || github.head_ref == 'feature/b1-m1-bold-oversized-correction-20261115' || github.head_ref == 'feature/b1-m1-orthographic-identity-20261115' || github.head_ref == 'feature/b1-r4-m1-underside-rim-rear-20261115' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:

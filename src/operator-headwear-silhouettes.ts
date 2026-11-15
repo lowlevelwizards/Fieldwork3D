@@ -31,7 +31,7 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
  'beanie':{id:'beanie',frontExtent:-5.00,rearExtent:5.00,
   top:8.65,earEdge:3.745,foreheadEdge:3.745,billLength:0},
  'm1-steel':{id:'m1-steel',frontExtent:-6.93,rearExtent:6.55,
-  top:10.24,earEdge:4.00,foreheadEdge:4.68,billLength:1.07},
+  top:10.24,earEdge:3.56,foreheadEdge:4.76,billLength:1.07},
  'ddr-m56':{id:'ddr-m56',frontExtent:-6.80,rearExtent:8.10,
   top:8.775,earEdge:4.43,foreheadEdge:4.65,billLength:0},
  'police-helmet':{id:'police-helmet',frontExtent:-5.70,rearExtent:5.80,
@@ -216,7 +216,7 @@ const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
 const M1_FIT_VOLUMES:readonly HeadwearCuboid[]=[
  {name:'m1-main-bowl-fit',x:0,y:7.47,z:0.10,width:11.05,height:5.60,depth:12.42},
  {name:'m1-front-fit',x:0,y:4.94,z:-6.65,width:12.10,height:.38,depth:.56},
- {name:'m1-rear-fit',x:0,y:4.30,z:6.25,width:12.10,height:.38,depth:.60},
+ {name:'m1-rear-fit',x:0,y:3.97,z:6.25,width:12.10,height:.82,depth:.60},
  {name:'m1-right-rim-fit',x:5.89,y:4.62,z:0,width:.30,height:.42,depth:13.48},
  {name:'m1-left-rim-fit',x:-5.89,y:4.62,z:0,width:.30,height:.42,depth:13.48}
 ];

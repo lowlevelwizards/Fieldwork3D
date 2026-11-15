@@ -92,7 +92,7 @@ jobs:
             tests/operator-studio-main-menu.test.mjs
       # B0/B1: art-profile, wardrobe persistence and M1 field contact gate.
       - name: B1 M1 historical silhouette and retention critical tests
-        if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' || github.head_ref == 'feature/b1-m1-bold-oversized-correction-20261115' || github.head_ref == 'feature/b1-m1-orthographic-identity-20261115' }}
+        if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' || github.head_ref == 'feature/b1-m1-bold-oversized-correction-20261115' || github.head_ref == 'feature/b1-m1-orthographic-identity-20261115' || github.head_ref == 'feature/b1-r4-m1-underside-rim-rear-20261115' }}
         run: |
           node --experimental-strip-types --test --test-concurrency=1 \
             tests/helmet-b1-m1-shell.test.mjs \
@@ -106,7 +106,7 @@ jobs:
             tests/operator-wardrobe-persistence.test.mjs
       # Other PRs retain affected-domain and fail-closed architecture coverage.
       - name: Fixed-clock affected-domain and architecture regression shards
-        if: ${{ github.head_ref != 'feature/a1-helmet-unified-and-legacy-removal-20261114' && github.head_ref != 'feature/a2-helmet-config-and-presets-20261114' && github.head_ref != 'feature/a3-a4-helmet-studio-flow-performance-20261114' && github.head_ref != 'feature/b0-b1-m1-historical-rebuild-20261114' && github.head_ref != 'feature/b1-m1-bold-oversized-correction-20261115' && github.head_ref != 'feature/b1-m1-orthographic-identity-20261115' }}
+        if: ${{ github.head_ref != 'feature/a1-helmet-unified-and-legacy-removal-20261114' && github.head_ref != 'feature/a2-helmet-config-and-presets-20261114' && github.head_ref != 'feature/a3-a4-helmet-studio-flow-performance-20261114' && github.head_ref != 'feature/b0-b1-m1-historical-rebuild-20261114' && github.head_ref != 'feature/b1-m1-bold-oversized-correction-20261115' && github.head_ref != 'feature/b1-m1-orthographic-identity-20261115' && github.head_ref != 'feature/b1-r4-m1-underside-rim-rear-20261115' }}
         env:
           CI_BASE_REF: ${{ github.base_ref }}
         run: |
@@ -117,7 +117,7 @@ jobs:
             node scripts/verification/ci-regression-plan.mjs --run --broad-only --shard=${shard}/16
           done
       - name: Verify extracted deterministic architecture boundaries
-        if: ${{ github.head_ref != 'feature/a1-helmet-unified-and-legacy-removal-20261114' && github.head_ref != 'feature/a2-helmet-config-and-presets-20261114' && github.head_ref != 'feature/a3-a4-helmet-studio-flow-performance-20261114' && github.head_ref != 'feature/b0-b1-m1-historical-rebuild-20261114' && github.head_ref != 'feature/b1-m1-bold-oversized-correction-20261115' && github.head_ref != 'feature/b1-m1-orthographic-identity-20261115' }}
+        if: ${{ github.head_ref != 'feature/a1-helmet-unified-and-legacy-removal-20261114' && github.head_ref != 'feature/a2-helmet-config-and-presets-20261114' && github.head_ref != 'feature/a3-a4-helmet-studio-flow-performance-20261114' && github.head_ref != 'feature/b0-b1-m1-historical-rebuild-20261114' && github.head_ref != 'feature/b1-m1-bold-oversized-correction-20261115' && github.head_ref != 'feature/b1-m1-orthographic-identity-20261115' && github.head_ref != 'feature/b1-r4-m1-underside-rim-rear-20261115' }}
         run: node scripts/verification/breach-architecture-boundaries.mjs
       - name: Production typecheck, build and build-stamp integrity
         run: npm run build
