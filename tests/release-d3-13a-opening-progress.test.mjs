@@ -17,18 +17,18 @@ test('D3.13A: noisy angular velocity cannot disguise an unchanged real aperture'
 });
 test('D3.13A: actual angular opening progress resets the watchdog',()=>{
  const d=door();
- assert.equal(openingHasStagnated(d,0),false);
- assert.equal(openingHasStagnated(d,2.3),false);
+ for(let tick=0;tick<=138;tick++)
+  assert.equal(openingHasStagnated(d,tick/60),false);
  // A real angular change, unlike velocity alone, extends the grace.
  d.openFraction+=.04;
  assert.equal(openingHasStagnated(d,2.35),false);
- assert.equal(openingHasStagnated(d,2.9),false);
- assert.equal(openingHasStagnated(d,4.97),true);
+ for(let t=2.45;t<4.95;t+=.1)openingHasStagnated(d,t);
+ assert.equal(openingHasStagnated(d,4.95),false);
+ assert.equal(openingHasStagnated(d,5.05),true);
 });
 test('D3.13A: new door, replay seek, reclosed leaf and unavailable hardware reset',()=>{
  const d=door(),other=door();
- openingHasStagnated(d,1);
- openingHasStagnated(d,3.7);
+ for(let t=1;t<3.75;t+=.1)openingHasStagnated(d,t);
  assert.equal(openingHasStagnated(d,3.8),true);
  assert.equal(openingHasStagnated(other,3.8),false);
  assert.equal(openingHasStagnated(d,0),false,'replay seeking backwards');
@@ -50,6 +50,7 @@ test('D3.13A: no no-progress expiry when the hinge is only unobserved',()=>{
  openingHasStagnated(d,0);
  assert.equal(openingHasStagnated(d,20),false);
  assert.equal(openingHasStagnated(d,20.5),false);
+ for(let t=20.6;t<23.2;t+=.1)openingHasStagnated(d,t);
  assert.equal(openingHasStagnated(d,23.2),true);
 });
 test('D3.13A: ownership and collision contracts remain unchanged',()=>{
