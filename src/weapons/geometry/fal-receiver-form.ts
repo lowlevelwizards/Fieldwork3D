@@ -123,7 +123,7 @@ export function addFALPivotPair(root:THREE.Group,receiverId:string,
  startIndex:number,material:THREE.Material):THREE.Mesh[]{
  const result:THREE.Mesh[]=[];
  for(const side of [-1,1] as const){
-  const geometry=new THREE.CylinderGeometry(.55,.55,.18,8,1);
+  const geometry=new THREE.CylinderGeometry(.55,.55,.18,6,1);
   geometry.rotateX(Math.PI/2);
   const mesh=new THREE.Mesh(geometry,material);
   mesh.name='family-receiver-'+receiverId+'-'+(startIndex+result.length);
