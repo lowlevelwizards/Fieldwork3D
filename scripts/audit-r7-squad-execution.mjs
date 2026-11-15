@@ -19,6 +19,8 @@ import {setTransientRouteObserver}
  from '../src/breach-route-transition.ts';
 import {D311RouteSurvey,createD311GridObserver}
  from './lib/d3-11-route-quality.mjs';
+import {D313G2_HOLDOUT_22,D313G2_HOLDOUT_ID}
+ from './lib/d3-13g2-fresh-22-manifest.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear} from '../src/breach-navigation.ts';
@@ -45,6 +47,20 @@ const progress=process.argv.includes('--progress');
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
+const g2Fresh22=process.argv.includes('--g2-fresh-22');
+// D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
+// Run with --route-transitions --site-index=7 --trace-actor=rook
+// and optionally --trace-mode=authored (or entry).
+const traceActorArg=process.argv.find(a=>a.startsWith('--trace-actor='));
+const traceActor=traceActorArg?.slice('--trace-actor='.length)??null;
+const traceModeArg=process.argv.find(a=>a.startsWith('--trace-mode='));
+const traceMode=traceModeArg?.slice('--trace-mode='.length)??null;
+if((traceActor||traceMode)&&!routeTransitions)
+ throw Error('--trace-actor/--trace-mode require --route-transitions');
+if(traceActorArg&&(!traceActor||traceActor.length>32))
+ throw Error('invalid --trace-actor');
+if(traceMode!==null&&traceMode!=='authored'&&traceMode!=='entry')
+ throw Error('invalid --trace-mode (authored or entry)');
 const clinicOnly=process.argv.includes('--clinic-only');
 // Exact seeded-site diagnosis, opt-in, does not change any motor paths.
 const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
@@ -52,6 +68,22 @@ const requestedSite=requestedSiteArg?Number(requestedSiteArg.split('=')[1]):null
 if(requestedSite!==null&&(!Number.isInteger(requestedSite)||
  requestedSite<0||requestedSite>=names.length))
  throw Error('invalid --site-index (expected 0..10)');
+// Offline audit uses an exact generated map rather than retuning the fixed
+// 11-map release corpus. Require explicit archetype index for overrides.
+const requestedSeedArg=process.argv.find(a=>a.startsWith('--audit-seed='));
+const requestedSeed=requestedSeedArg?Number(requestedSeedArg.split('=')[1]):null;
+const requestedScaleArg=process.argv.find(a=>a.startsWith('--audit-scale='));
+const requestedScale=requestedScaleArg?.split('=')[1]??null;
+if(g2Fresh22&&(sites!==22||requestedSite!==null||clinicOnly||
+    requestedSeedArg||requestedScaleArg))
+ throw Error('G2 fresh holdout requires 22 sites and no seed/site overrides');
+if((requestedSeedArg||requestedScaleArg)&&requestedSite===null)
+ throw Error('audit seed/scale override requires --site-index');
+if(requestedSeedArg&&(!Number.isSafeInteger(requestedSeed)||
+ requestedSeed<=0||requestedSeed>2147483647))
+ throw Error('invalid --audit-seed');
+if(requestedScale&&requestedScale!=='small'&&requestedScale!=='standard')
+ throw Error('invalid --audit-scale');
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const round=n=>Math.round(n*100)/100;
 const signed=(p,d)=>{
@@ -128,7 +160,7 @@ function run(site,seed,kind){
    traceActor:utilityTrace&&seed===31162&&kind==='authored'?'rook':null,
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
-  const routeWitness=routeTransitions?{counts:{},byActor:{},events:[],
+  const routeWitness=routeTransitions?{counts:{},byActor:{},rejectReasons:{},events:[],
    escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
   // Offline-only evidence: associate one physical LEAF escape with the
   // next immediate reacquisition for the SAME actor and door. A route that
@@ -136,13 +168,16 @@ function run(site,seed,kind){
   const recentLeafEscapes=routeWitness?new Map():null;
   const recordRoute=routeWitness?(e)=>{
    routeWitness.counts[e.source]=(routeWitness.counts[e.source]??0)+1;
+   if(e.source==='door-handoff-reject')
+    routeWitness.rejectReasons[e.reason??'unknown']=
+      (routeWitness.rejectReasons[e.reason??'unknown']??0)+1;
    const key=e.actorId+':'+e.source;
    routeWitness.byActor[key]=(routeWitness.byActor[key]??0)+1;
    if(e.source==='door-leaf-escape'){
     if(!e.next.length)
      recentLeafEscapes.set(e.actorId,{at:e.seconds,doorId:e.doorId});
     else recentLeafEscapes.delete(e.actorId);
-   }else if(e.source!=='initial-intel')
+   }else if(e.source!=='initial-intel'&&e.source!=='door-handoff-reject')
     recentLeafEscapes.delete(e.actorId);
    if(e.source==='initial-intel'){
     const prior=recentLeafEscapes.get(e.actorId);
@@ -156,8 +191,10 @@ function run(site,seed,kind){
     }
     recentLeafEscapes.delete(e.actorId);
    }
-   if(utilityTrace&&seed===31162&&kind==='authored'&&
-      e.actorId==='rook'&&routeWitness.events.length<400)
+   const selectedActor=traceActor??(utilityTrace&&seed===31162&&
+     kind==='authored'?'rook':null);
+   if(selectedActor===e.actorId&&
+      (!traceMode||kind===traceMode)&&routeWitness.events.length<600)
      routeWitness.events.push({...e,seconds:round(e.seconds),
       prior:e.prior.slice(0,4),next:e.next.slice(0,4)});
   }:null;
@@ -451,8 +488,10 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const seed=31045+i*13,archetype=names[i%names.length];
- const scale=i%2===0?'small':'standard';
+ const cohort=g2Fresh22?D313G2_HOLDOUT_22[i]:null;
+ const seed=requestedSeed??cohort?.seed??31045+i*13;
+ const archetype=cohort?.archetype??names[i%names.length];
+ const scale=requestedScale??cohort?.scale??(i%2===0?'small':'standard');
  try{
   const site=generateSite(seed,scale,undefined,{mission:'intel'},
    {archetype});
@@ -497,6 +536,10 @@ const transitionSummary=routeTransitions?{
   for(const [source,count] of Object.entries(mode.routeTransitions?.counts??{}))
    all[source]=(all[source]??0)+count;
   return all;},{}),
+ rejectReasons:results.reduce((all,mode)=>{
+  for(const [reason,count] of Object.entries(mode.routeTransitions?.rejectReasons??{}))
+   all[reason]=(all[reason]??0)+count;
+  return all;},{}),
  escapeReacquirePairs:results.reduce((n,mode)=>
   n+(mode.routeTransitions?.escapeReacquirePairs??0),0),
  pairsByDoor:results.reduce((all,mode)=>{
@@ -526,6 +569,7 @@ const progressSummary=progress?{
 }:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
+ ...(g2Fresh22?{corpus:D313G2_HOLDOUT_ID}:{}),
  ticks,summary,...(progress?{progressSummary}:{}),
  ...(routeQuality?{routeQualitySummary}:{}),
  ...(routeTransitions?{transitionSummary}:{}),rows},null,2));

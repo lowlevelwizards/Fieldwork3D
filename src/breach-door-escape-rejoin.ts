@@ -1,0 +1,81 @@
+/** D3.13G2: after a REAL door-leaf escape, a stale disposable grid
+ * prefix may steer the actor straight back into the open leaf.
+ * Only shorten the existing route if its first leg is *physically blocked*
+ * and a later node is directly reachable by the very same full-body sweep.
+ * Preserve the original authored destination as the final node. No A*,
+ * second motor, special geometry clearance or authored-order mutation.
+ */
+import type {Pt} from './breach-core.ts';
+import type {TeamActor} from './breach-game.ts';
+const gap=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
+export function sweptRejoinExistingRoute(
+ from:Pt,authoredGoal:Pt,nav:readonly Pt[],
+ canSweep:(a:Pt,b:Pt)=>boolean
+):Pt[]{
+ if(nav.length<2||gap(nav[nav.length-1],authoredGoal)>3||
+    canSweep(from,nav[0]))return [];
+ // Bounded to nearby disposable legs. Never short-circuit a remote
+ // door sequence, regardless of how many later intel nodes seem clear.
+ for(let i=1;i<Math.min(nav.length,7);i++){
+  if(gap(from,nav[i])>96||!canSweep(from,nav[i]))continue;
+  return nav.slice(i).map(p=>({...p}));
+ }
+ return [];
+}
+
+/** G2B: retain only the existing disposable route after repeated true
+ * physical overlap escapes at one unchanged doorway/GO. The stored route
+ * has no execution authority; it is an input to a later cold world-truth
+ * connector search when the body is wholly free of the leaf.
+ *
+ * Weak keys give one actor-bound transient episode; replacing a PlanNode,
+ * door, goal or moving materially away retires the old evidence.
+ */
+type EscapeEpisode={
+ orderId:number;doorId:string;goalX:number;goalY:number;
+ anchor:Pt;lastAt:number;observations:number;nextProbeAt:number;
+ priorRoute:Pt[];
+};
+const episodes=new WeakMap<TeamActor,EscapeEpisode>();
+export function noteRepeatedDoorLeafEscape(
+ actor:TeamActor,seconds:number,goal:Pt,doorId:string|null,
+ nav:readonly Pt[]
+):void{
+ const order=actor.plan[0];
+ if(!doorId||order?.kind!=='move'||nav.length<2||
+    gap(nav[nav.length-1],goal)>3)return;
+ const old=episodes.get(actor);
+ const same=!!old&&old.orderId===order.id&&
+   old.doorId===doorId&&old.goalX===goal.x&&old.goalY===goal.y&&
+   seconds-old.lastAt<=2&&gap(actor.p,old.anchor)<24;
+ if(!same){
+  episodes.set(actor,{orderId:order.id,doorId,goalX:goal.x,goalY:goal.y,
+    anchor:{...actor.p},lastAt:seconds,observations:1,
+    nextProbeAt:seconds+.35,priorRoute:[]});
+  return;
+ }
+ old!.lastAt=seconds;
+ old!.observations=Math.min(4,old!.observations+1);
+ // Make ONE copy on the third recurrence, not one per motor tick.
+ if(old!.observations===3)
+  old!.priorRoute=nav.map(p=>({...p}));
+}
+/** Consume one cold attempt. A failed path will not re-probe each frame.
+ * Success or a materially changed door/GO starts a fresh episode.
+ */
+export function takeRepeatedDoorEscapeRoute(
+ actor:TeamActor,seconds:number,goal:Pt
+):Pt[]|null{
+ const old=episodes.get(actor),order=actor.plan[0];
+ if(!old||order?.kind!=='move'||order.id!==old.orderId||
+    goal.x!==old.goalX||goal.y!==old.goalY){
+  episodes.delete(actor);return null;
+ }
+ if(old.observations<3||!old.priorRoute.length||
+    seconds-old.lastAt>2||seconds<old.nextProbeAt)return null;
+ old.nextProbeAt=seconds+2;
+ return old.priorRoute;
+}
+export function finishDoorEscapeRejoin(actor:TeamActor):void{
+ episodes.delete(actor);
+}
