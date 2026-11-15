@@ -1,0 +1,47 @@
+name: D3.13H3 offline future-door portal feasibility
+on:
+  pull_request:
+    paths:
+      - scripts/audit-r7-squad-execution.mjs
+      - .github/workflows/d3-13h3-portal-feasibility.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  feasibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Syntax and genuine motor physical-feasibility witness
+        run: |
+          node --check scripts/audit-r7-squad-execution.mjs
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=1855967 --audit-scale=small \
+            --portal-after-run --progress --route-quality \
+            > "$RUNNER_TEMP/d313h3-feasibility.json"
+      - name: Report real-world versus first future-door recovery
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d313h3-feasibility.json','utf8'));
+          const m=x.rows[0].modes.find(m=>m.mode==='authored');
+          console.log('D313H3_PORTAL_FEASIBILITY',JSON.stringify({
+            seed:x.rows[0].seed,arrivals:m.arrivals,
+            evidence:m.portalAfterRunEvidence}));
+          if(!m.portalAfterRunEvidence||x.summary.exceptions||
+             x.summary.invalidPositions||x.summary.corruptedPlans||
+             x.summary.physicsStepViolations||m.arrivals<2)
+           throw Error('audit changed or corrupted physical movement');
+          NODE
+      - name: Retain complete 45-second raw motor trace
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-13h3-small-motel-future-door-cold-audit
+          path: ${{ runner.temp }}/d313h3-feasibility.json
+          retention-days: 90
