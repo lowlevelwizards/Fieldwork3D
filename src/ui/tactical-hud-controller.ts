@@ -4,6 +4,7 @@
  */
 import {currentSiteIdentity} from './current-site-identity.ts';
 import {writeDomText,writeDomAttribute,writeDomStyle} from './tactical-dom-reconciliation.ts';
+import {createTacticalHudHeightSync} from './tactical-hud-height.ts';
 import {compactSiteTitle} from './site-title.ts';
 import {renderMissionDebrief} from './breach-mission-debrief.ts';
 import {debriefPrimaryActionLabel} from './fieldwork-vocabulary.ts';
@@ -124,6 +125,7 @@ export type TacticalGuidanceInput={
 export function createTacticalHudController(
  targeting:TacticalInteractionState=createTacticalInteractionState()){
   const feedback=new TacticalFeedback();
+  const hudHeight=createTacticalHudHeightSync();
   const teaching=new ContextualTeaching(
     key=>{try{return localStorage.getItem('fieldwork3d.ui.teach.v2.'+key)==='1';}
       catch{return false;}},
@@ -219,10 +221,7 @@ export function createTacticalHudController(
       !!actor&&actor.health>0;
     quickStates.hidden=!shown;
     quickStates.dataset.owner=shown?actor!.id:'';
-    const height=Math.ceil(input.tacticalHud.getBoundingClientRect().height);
-    const value=height+'px';
-    if(document.documentElement.style.getPropertyValue('--tactical-hud-height')!==value)
-      document.documentElement.style.setProperty('--tactical-hud-height',value);
+    hudHeight.sync(input.tacticalHud);
     if(!shown||!actor)return;
     const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
     const scope=node?'WAYPOINT '+String(index).padStart(2,'0'):
