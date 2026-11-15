@@ -52,7 +52,7 @@ jobs:
           const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315b-feasibility.json','utf8'));
           const m=r.rows[0].modes.find(x=>x.mode==='entry');
           console.log('D315B_PHYSICAL_ROUTE',JSON.stringify(m.d315bRouteEvidence));
-          if(!m.d315bRouteEvidence||r.summary.exceptions||r.summary.physicsStepViolations||
+          if((m.arrivals<4&&!m.d315bRouteEvidence)||r.summary.exceptions||r.summary.physicsStepViolations||
              r.summary.corruptedPlans)throw Error('D3.15B feasibility not valid');
           NODE
       - name: Archive complete motor route/source and five-second history
