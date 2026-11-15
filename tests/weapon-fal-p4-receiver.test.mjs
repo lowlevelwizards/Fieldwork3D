@@ -22,13 +22,13 @@ test('P4 crowned FN receiver has real 3D shoulder taper without adding density',
  assert.equal(upper.geometry.type,'BufferGeometry');
  assert.ok(upper.geometry.getAttribute('position').count<=300);
  const central=FAL_UPPER_STATIONS[3];
- assert.ok(central.sideHalfZ-central.roofHalfZ>=.5,
+ assert.ok(central.sideHalfZ-central.roofHalfZ>=1.10,
   'Crowned roof must be noticeably narrower than receiver shoulders');
  assert.equal(central.top,1.83);
  assert.ok(Math.abs(bbox(upper).max.z-central.sideHalfZ)<.01);
  const verts=upper.geometry.getAttribute('position'),topWidths=[];
  for(let i=0;i<verts.count;i++)if(verts.getY(i)>1.82)topWidths.push(Math.abs(verts.getZ(i)));
- assert.ok(topWidths.length>0&&Math.max(...topWidths)<=1.17);
+ assert.ok(topWidths.length>0&&Math.max(...topWidths)<=.70);
  assert.ok(falUpperSideHalfZ(1.43,1)<falUpperSideHalfZ(.80,1)-.20);
  assert.equal(root.children.length,25,'receiver art budget must remain deliberate');
  clearWeaponSilhouette(root);m.dispose();
