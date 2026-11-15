@@ -35,7 +35,7 @@ test('FAL P2/P4: distinct family, compact exterior and unmodified global anchors
  const groups=['stock','receiver','grip','magazine','handguard','barrel'];
  for(const slot of groups)assert.ok(partVisualBounds(root,slot),'slot '+slot);
  assert.equal(root.children.filter(x=>x.name.startsWith('family-handguard-')).length,3);
- assert.equal(root.children.filter(x=>x.name.startsWith('family-magazine-')).length,1);
+ assert.equal(root.children.filter(x=>x.name.startsWith('family-magazine-')).length,3);
  const all=bounds(root),assembly=resolveWeaponAssembly(config);
  approx(all.min.x,-15);approx(all.max.x,22);
  assert.equal(assembly.muzzleX,22);
@@ -54,25 +54,25 @@ test('FAL P2: balanced stock, slightly slimmer grip, bold seated pad and handle'
  const grip=bounds(named(root,'family-grip-fal-grip-0'));
  const carry=bounds(root.children.find(x=>x.userData.falCarryGrip));
  const support=bounds(root.children.find(x=>x.userData.falCarrySupport));
- approx(shell.max.z-shell.min.z,3.0);
+ approx(shell.max.z-shell.min.z,2.34);
  approx(grip.max.z-grip.min.z,2.16);
  approx(pad.max.x-pad.min.x,.88);
- approx(pad.max.y-pad.min.y,4.32);
+ approx(pad.max.y-pad.min.y,3.02);
  approx(pad.min.x,-15);
  assert.ok(pad.max.x>shell.min.x+.06);
- assert.ok(pad.min.y<shell.min.y&&pad.max.y>shell.max.y);
- approx(carry.max.y-carry.min.y,.85);
- approx(carry.max.z-carry.min.z,.90);
+ assert.ok(pad.min.y<shell.min.y&&pad.max.y>.10);
+ approx(carry.max.y-carry.min.y,1.05);
+ approx(carry.max.z-carry.min.z,1.15);
  assert.ok(carry.intersectsBox(support),'carry handle must be connected');
  assert.ok(carry.min.x<0&&carry.max.x<3.2);
  clearWeaponSilhouette(root);mat.dispose();
 });
-test('FAL P2: magazine silhouette is its own identity but matches G3 depth',()=>{
+test('FAL P7: magazine silhouette stays FAL-specific while becoming narrower than G3',()=>{
  const mat=new THREE.MeshBasicMaterial();
  const root=buildWeaponSilhouette('rifle',mat,mat,choose('fal-5000'));
  const mag=bounds(named(root,'family-magazine-fal-mag20-0'));
  approx(mag.max.z-mag.min.z,FAL_MAG20_DEPTH);
- assert.equal(FAL_MAG20_DEPTH,HK_VISUAL_ANATOMY.magazineDepthZ);
+ assert.ok(FAL_MAG20_DEPTH<HK_VISUAL_ANATOMY.magazineDepthZ);
  assert.equal(FAL_VISUAL_ANATOMY.magazineDepthZ,FAL_MAG20_DEPTH);
  assert.equal(FAL_VISUAL_ANATOMY.gripDepthZ,2.16);
  assert.equal(FAL_MAG20_LENGTH,5.07);
@@ -90,9 +90,9 @@ test('FAL P2: one continuous handguard, upper shoulder chamfer and batched vents
  const hand=named(root,'family-handguard-fal-vented-0');
  const b=bounds(hand);
  approx(b.min.x,3.65);approx(b.max.x,14.10);
- approx(b.max.y,1.90);approx(b.min.y,-2.14);
+ approx(b.max.y,1.90);approx(b.min.y,-2.12);
  approx(b.max.z-b.min.z,3.68);
- assert.equal(FAL_HANDGUARD_STATIONS.length,4);
+ assert.equal(FAL_HANDGUARD_STATIONS.length,2);
  assert.equal(hand.userData.falFacetedHandguard,true);
  const verts=hand.geometry.getAttribute('position');
  assert.ok(verts.count<=200,'single low-vertex handguard, not dense tessellation');
@@ -123,7 +123,7 @@ test('FAL P2: restrained receiver port remains right-only and HK model unchanged
  const p=bounds(port);
  assert.equal(port.userData.falEjectionPort,true);
  approx(p.max.x-p.min.x,2.58);
- assert.ok(p.min.z>.65&&p.max.z<1.52,'right-side scoop follows the new steep shoulder');
+ assert.ok(p.min.z>1.15&&p.max.z<1.80,'right port hugs the barrel-height face');
  const receiver=named(fal,'family-receiver-fal-50-receiver-0');
  assert.ok(bounds(receiver).max.z>=1.82&&bounds(receiver).max.z<=1.87);
  const charger=named(fal,'family-receiver-fal-50-receiver-7');
