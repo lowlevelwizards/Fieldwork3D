@@ -44,15 +44,15 @@ export function buildFALCoreSilhouette(
   addOutline(root,'receiver',partIds.receiver,ids.receiver++,points,depth,
    materials.receiverLower??materials.receiver);
 
- // FAL rear stock: full butt, long level comb and narrow wrist near receiver.
+ // P5 stock: broad chunky heel and strongly pinched neck behind receiver.
  // No M16-style peak or G3-like constant-width wedge.
  // One uninterrupted, low-vertex stock volume with a broad miniaturized pad.
  // Shell ends inside the broad plate; the plate alone owns X=-15.
  // Preserve the FAL comb/wrist rather than inventing a taller M16-like hump.
  p('stock',[
   [-14.60,1.05],[-13.20,1.24],[-11.30,1.27],
-  [-9.55,1.00],[-8.26,.52],[-6.20,.43],
-  [-6.13,-.97],[-8.30,-1.49],[-10.55,-2.36],
+  [-9.40,1.00],[-8.00,.22],[-6.20,.20],
+  [-6.13,-.83],[-8.27,-1.22],[-10.10,-2.58],
   [-14.60,-3.39]
  ],3.00);
  b('stock',-14.56,-1.15,0,.88,4.85,3.55);
@@ -78,11 +78,11 @@ export function buildFALCoreSilhouette(
   [3.04,-3.19],[-.12,-3.19],[-.65,-2.48]
  ],3.32);
 
- // S1C: compact raked FAL grip; preserve open mag/grip gap.
+ // P5 grip: short, stout, swept back; preserve open trigger/mag gap.
  p('grip',[
-  [-5.12,-2.18],[-3.12,-2.18],
-  [-3.94,-5.82],[-4.40,-6.44],
-  [-5.96,-6.44],[-5.88,-4.87]
+  [-5.22,-2.18],[-3.03,-2.18],[-3.65,-4.48],
+  [-3.98,-5.92],[-4.38,-6.54],[-6.08,-6.54],
+  [-6.07,-5.21],[-5.78,-3.67]
  ],2.16);
  p('magazine',FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH);
 
@@ -135,9 +135,9 @@ export function buildFALCoreSilhouette(
   // One contoured handhold instead of a floating cuboid; this is an
   // offset folding FAL carrying handle, never an AR bridge/arch.
   const grip=addOutline(root,'receiver',partIds.receiver,ids.receiver++,[
-   [-.29,3.16],[-.12,3.58],[.22,3.83],
-   [2.64,3.83],[3.07,3.57],[3.07,3.16],
-   [2.71,2.99],[.05,2.99]
+   [-.72,3.14],[-.55,3.65],[-.19,3.99],
+   [2.51,3.99],[3.05,3.65],[3.05,3.20],
+   [2.69,3.02],[-.31,3.02]
   ],.90,materials.stock);
   grip.position.z=-1.61;
   grip.userData.falCarryGrip=true;
