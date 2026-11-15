@@ -261,10 +261,10 @@ export function resolveMotorCollision(
            (door.openFraction??0)>=.82&&
            pointToSegment(a.p,doorLeafSegment(door))<
              OPERATOR_RADIUS+13)){
-        a.lastNavRepairAt=s.seconds;
         const rejoined=sweptRejoinExistingRoute(a.p,p,a.nav,
           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
         if(rejoined.length){
+          a.lastNavRepairAt=s.seconds;
           setTransientRoute(s,a,rejoined,'door-escape-swept-rejoin');
           a.retryRouteAt=0;a.recoveryAttempts=0;
           return true;
