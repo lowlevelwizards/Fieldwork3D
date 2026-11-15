@@ -60,5 +60,7 @@ if(cs.physicalArrivals<bs.physicalArrivals||
    cp.suspectedLoops>bp.suspectedLoops||
    cp.sustainedStill>bp.sustainedStill)
  throw Error('D3.14C2 fails unseen cohort no-regression gate — do not merge');
+if(differences.some(r=>r.deltaArrivals<0))
+ throw Error('D3.14C2 loses an arrival on an unseen individual squad — reject');
 if(head.routeQualitySummary.searches>base.routeQualitySummary.searches*1.12+50)
  throw Error('D3.14C2 excessive search work on unseen maps — do not merge');
