@@ -17,6 +17,7 @@ import {softenHeadwearAO} from './operator-baked-gear-ao.ts';
 import {createUnifiedHelmetShellGeometry}
  from './operator-ach-mich-unified-shell.ts';
 import {createM1ProfileGeometry} from './operator-m1-helmet-profile.ts';
+import {createSsh40ProfileGeometry} from './operator-ssh40-helmet-profile.ts';
 export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ddr-m56'|'police-helmet'|'ach'|'mich-2001'|'mich-2002';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
@@ -467,7 +468,8 @@ export function headwearCuboidVolumes(id:HeadSilhouetteId):readonly HeadwearCubo
 function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId){
  const volume=headwearCuboidVolumes(id);
  const unified=id==='ach'||id==='mich-2002'||id==='mich-2001';
- const geometry=id==='m1-steel'?createM1ProfileGeometry('steel'):unified?
+ const geometry=id==='m1-steel'?createM1ProfileGeometry('steel'):
+  id==='soviet-steel'?createSsh40ProfileGeometry():unified?
   createUnifiedHelmetShellGeometry(id,
    volume[0].y+volume[0].height/2,ACH_MICH_UPPER_INSET,ACH_MICH_BEVEL_HEIGHT):
   unionCuboids(volume,{faceTone:(part,axis,sign)=>
@@ -509,6 +511,7 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
  }
  const mesh=new THREE.Mesh(geometry,m);
  mesh.name=id+(id==='m1-steel'?'-one-piece-faceted-steel-shell':
+  id==='soviet-steel'?'-one-piece-faceted-bell-shell':
   unified?'-unified-lowpoly-shell':'-continuous-cuboid-exterior');
  mesh.castShadow=true;
  // Keep its self-shadow noise out of the clean close-up silhouette review.
@@ -524,12 +527,13 @@ export function createHeadwearSilhouette(
  headwearFromVolumes(group,material,id);
  group.userData.stage=({
   'patrol-cap':'1N','boonie':'1N','beanie':'1N','beret':'R5C',
-  'pasgt':'1N','soviet-steel':'1N','m1-steel':'R5D','ddr-m56':'R5H1','police-helmet':'R5H3',
+  'pasgt':'1N','soviet-steel':'B2','m1-steel':'R5D','ddr-m56':'R5H1','police-helmet':'R5H3',
   'ach':'1E','mich-2001':'H1-B','mich-2002':'H1-B'
  } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  group.userData.silhouette=id;
  group.userData.primitive=id==='m1-steel'?'m1-one-piece-faceted-profile':
+  id==='soviet-steel'?'ssh40-one-piece-faceted-bell':
   id==='ach'||id==='mich-2002'||id==='mich-2001'?
   'single-extruded-contour':'cuboids-only';
  return group;
