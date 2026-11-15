@@ -10,10 +10,8 @@ type Station=Readonly<{
  x:number;top:number;bottom:number;sideHalfZ:number;roofHalfZ:number
 }>;
 export const FAL_UPPER_STATIONS:readonly Station[]=[
- {x:-6.60,top:1.08,bottom:-.87,sideHalfZ:1.55,roofHalfZ:.65},
- {x:-5.36,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
- {x:2.42,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
- {x:3.85,top:1.04,bottom:-.62,sideHalfZ:1.51,roofHalfZ:.61}
+ {x:-6.60,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
+ {x:3.85,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67}
 ];
 /** Center section slopes for roughly two-thirds of its full vertical height.
  * At the short ends a lower shoulder limit prevents inverted rings. */
@@ -76,8 +74,9 @@ export function addFALCrownedReceiver(
   [s.x,(s.top+s.bottom)/2,0];
  for(let j=0;j<6;j++){
   const k=(j+1)%6;
-  tri(center(rear),point(rear,k),point(rear,j));
-  tri(center(front),point(front,j),point(front,k));
+  // P6 had inverted cap windings: they were culled from the outside.
+  tri(center(rear),point(rear,j),point(rear,k));
+  tri(center(front),point(front,k),point(front,j));
  }
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
@@ -97,7 +96,7 @@ export function addFALCrownedReceiver(
 export function addFALScoopedPort(root:THREE.Group,
  receiverId:string,index:number,material:THREE.Material):THREE.Mesh{
  const outline:readonly (readonly [number,number])[]=[
-  [-.28,.86],[-.28,1.54],[2.30,1.54],[2.30,.86]
+  [.14,.12],[.14,.82],[2.64,.82],[2.64,.12]
  ];
  const vertices:number[]=[];
  for(const [x,y] of outline)
