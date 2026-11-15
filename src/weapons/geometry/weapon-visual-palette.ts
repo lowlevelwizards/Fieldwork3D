@@ -58,3 +58,6 @@ export const FAL_VENT_SHADOW=finish(0x232c28,.98,.0,'polymer');
 
 /** Restrained pressed steel line on the FAL's 20-round magazine. */
 export const FAL_MAG_RIB=finish(0x3f4a42,.94,.08,'steel');
+
+/** Exposed, deliberately unadorned steel bridge between FAL upper and fore-end. */
+export const FAL_TRANSITION_METAL=finish(0x2a312e,.86,.13,'steel');

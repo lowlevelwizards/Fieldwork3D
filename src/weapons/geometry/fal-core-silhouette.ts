@@ -25,7 +25,7 @@ export const FAL_ART:Readonly<{
 });
 
 export type FALCoreOptions={raisedCarryHandle?:boolean;showFactoryMuzzle?:boolean};
-export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material}>;
+export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material;transitionMetal?:THREE.Material}>;
 export type FALCoreIds=Readonly<Record<SlotName,string>>;
 /** One source of geometry for the test lab and production FAL. */
 export function buildFALCoreSilhouette(
@@ -65,9 +65,17 @@ export function buildFALCoreSilhouette(
  // Single integrated lower AND FAL magazine shroud. No overlapping well
  // plate or decorative seam: the front drops directly into the mag lip.
  lower([
-  [-6.30,-1.12],[3.55,-1.12],[3.06,-3.19],
+  [-6.30,-1.12],[3.24,-1.12],[3.00,-3.19],
   [-.10,-3.19],[-.90,-2.35],[-4.55,-2.35],[-6.30,-1.80]
  ],3.40);
+ // FAL's distinct exposed cubist steel gas/receiver collar: intentionally
+ // one dark rectangular bridge in the clear space between the upper shell
+ // ending at X=3.10 and the fore-end beginning at X=4.20.
+ // Attachment/ballistic muzzle landmarks remain unchanged.
+ const transition=addCuboid(root,'receiver',partIds.receiver,ids.receiver++,
+  3.65,.10,0,1.30,2.30,2.46,
+  materials.transitionMetal??materials.receiverLower??materials.receiver);
+ transition.userData.falReceiverHandguardBridge=true;
 
  // P5 grip: short, stout, swept back; preserve open trigger/mag gap.
  p('grip',[
@@ -89,33 +97,32 @@ export function buildFALCoreSilhouette(
 
  // One six-sided barrel. The gas-block sight is near the end of the
  // handguard rather than at the muzzle as on the G3.
- const barrelEnd=options.showFactoryMuzzle===false?22.00:21.15;
+ const barrelEnd=options.showFactoryMuzzle===false?22.00:18.58;
  const barrel=b('barrel',(13.85+barrelEnd)/2,0,0,
   barrelEnd-13.85,.92,.92);
  barrel.userData.falBoxBarrel=true;
- // Simplified graphic FAL protective front sight: three upright boxes
- // and one square base. Deliberately no angled bevels or punched details.
- const sightBase=b('barrel',14.70,.76,0,1.18,1.42,2.18);
+ // FAL P8: a monumental U-shaped sight, nothing fiddly inside it.
+ // Only the base and two chunky rectangular ears; no central post.
+ const sightBase=b('barrel',14.70,.80,0,1.35,1.60,2.62);
  sightBase.userData.falFrontBase=true;
  for(const side of [-1,1] as const){
-  const ear=b('barrel',14.70,2.13,side*.77,.62,1.67,.46);
+  const ear=b('barrel',14.70,2.18,side*1.04,.80,1.98,.78);
   ear.userData.falFrontEar=side<0?'left':'right';
  }
- const post=b('barrel',14.70,2.08,0,.24,1.24,.24);
- post.userData.falFrontPost=true;
- // Late-pattern FAL-style COMBO device: a long slim square sleeve
- // immediately after a broad collar. Not a generic short end cap.
+ // Exaggerated FN-style combination device: roughly double the P7 length,
+ // broad steel collar and one long chunky four-sided body. Preserve X=22
+ // as the muzzle for all pose, camera, firing and ballistic contracts.
  if(options.showFactoryMuzzle!==false){
-  const collar=b('barrel',20.22,0,0,.34,1.30,1.32);
+  const collar=b('barrel',18.59,0,0,.56,1.75,1.76);
   collar.userData.falMuzzleCollar=true;
-  const device=b('barrel',21.12,0,0,1.76,1.00,1.00);
+  const device=b('barrel',20.32,0,0,3.36,1.50,1.50);
   device.userData.falMuzzleCombo=true;
-  // Two bold stamped slots batched into one four-triangle graphic.
+  // A pair of broad simple dark port strokes, four triangles total.
   const verts:number[]=[],indices:number[]=[];
   for(const side of [-1,1] as const){
-   const first=verts.length/3,z=side*.536;
-   for(const [x,y] of [[20.57,-.15],[21.48,-.15],
-                         [21.48,.15],[20.57,.15]])
+   const first=verts.length/3,z=side*.786;
+   for(const [x,y] of [[19.03,-.23],[21.24,-.23],
+                         [21.24,.23],[19.03,.23]])
     verts.push(x,y,z);
    if(side===1)indices.push(first,first+1,first+2,first,first+2,first+3);
    else indices.push(first,first+2,first+1,first,first+3,first+2);
