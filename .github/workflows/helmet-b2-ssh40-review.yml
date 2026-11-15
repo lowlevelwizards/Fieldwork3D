@@ -1,0 +1,52 @@
+name: B2 SSh-40 reference baseline and visual acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/operator-headwear-silhouettes.ts
+      - src/operator-ssh40-helmet-profile.ts
+      - src/operator-ssh40-retention.ts
+      - src/operator-wardrobe-head-visuals.ts
+      - tests/helmet-b2-ssh40*.test.mjs
+      - docs/helmet-b2-ssh40-identity-20261115.md
+      - .github/workflows/helmet-b2-ssh40-review.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: helmet-b2-ssh40-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  visual-baseline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies and Chromium
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: SSh-40 historical, headwear, material regression baseline
+        run: |
+          node --experimental-strip-types --test --test-concurrency=1 \
+            tests/operator-headwear-expansion.test.mjs \
+            tests/operator-headwear-materials.test.mjs \
+            tests/r5-historical-helmet-d.test.mjs
+      - name: Production build and typecheck
+        run: npm run build
+      - name: 44-view identical mobile Studio comparison (SSh-40 / M1 / PASGT / DDR)
+        run: node scripts/helmet-b0-m1-capture.mjs
+        env:
+          HELMET_CAPTURE_DIR: helmet-b2-ssh40-views
+      - name: Retain source-authoritative front side rear fit images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: b2-ssh40-mobile-silhouette-comparisons
+          path: helmet-b2-ssh40-views/
+          if-no-files-found: ignore
+          retention-days: 14
