@@ -27,6 +27,7 @@ export class ArsenalViewport{
  private readonly socketLayer:HTMLDivElement;
  private readonly socketButtons=new Map<ArsenalSlot,HTMLButtonElement>();
  private readonly socketLocal=new Map<ArsenalSlot,THREE.Vector3>();
+ private readonly socketScratch=new THREE.Vector3();
  private activeExtraSlots:readonly ArsenalSlot[]=[];
  private dotsRestoreTimer:ReturnType<typeof setTimeout>|null=null;
  private inspecting=false;
@@ -182,7 +183,7 @@ export class ArsenalViewport{
   for(const [slot,button] of this.socketButtons){
    const local=this.socketLocal.get(slot);
    if(!local)continue;
-   const point=local.clone();
+   const point=this.socketScratch.copy(local);
    // Place on whichever side of the mesh the player is currently viewing.
    point.z=front?Math.abs(point.z):-Math.abs(point.z);
    point.applyMatrix4(this.body.matrixWorld).project(this.camera);
