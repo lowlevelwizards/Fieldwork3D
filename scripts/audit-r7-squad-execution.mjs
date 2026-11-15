@@ -532,7 +532,31 @@ function run(site,seed,kind){
      closedOperable:session.doors.filter(d=>!d.locked&&!d.jammed&&
       !d.wedged&&!d.heldBy&&(d.openFraction??0)<.72).map(d=>d.id),
      fullBodyLane:plan(lane),actualWorld:plan(actual),
-     firstFutureDoor:plan(future),knownIntel:plan(intel)
+     firstFutureDoor:plan(future),knownIntel:plan(intel),
+     // Frozen recurrent source-coordinate witness: these coordinates
+     // came from the separately archived H4 real 60Hz route transitions.
+     // Evaluate only after the sim, with the same exact final physical
+     // hinge and static geometry; do not mutate actor positions.
+     frozenLoopCenters:[{x:494.5,y:497.6},{x:493.5,y:511.2},
+       {x:460,y:500}].map(from=>{
+       const route=routeWithSqueezeWorld(from,goal,session.doors,world);
+       const candidate=recoverNormalLane(from,goal,session.doors,world);
+       const summarize=path=>{
+        let at=from,length=0,illegal=0;
+        for(const to of path){
+         if(!full(at,to))illegal++;
+         length+=dist(at,to);at=to;
+        }
+        return {nodes:path.length,length:round(length),illegal,
+         first:path.slice(0,5),last:path.slice(-2)};
+       };
+       return {from,bodyClear:bodyClear(from,session.doors,
+         OPERATOR_RADIUS,world),
+        toSouthCornerFull:full(from,{x:512,y:512}),
+        toFirstOldLaneFull:full(from,{x:460,y:500}),
+        toNorthPortalFull:full(from,{x:496,y:448}),
+        realWorld:summarize(route),normalLane:summarize(candidate)};
+      })
     };
    }
   }
