@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {completePortalRouteToAuthoredGoal}
  from '../src/breach-door-maneuver-handoff.ts';
-import {rehearseDoorLeafBypass}
+import {rehearseDoorLeafBypass,canRehearseJoinedPortalOncePerLeaf,
+ noteJoinedPortalHandoff}
  from '../src/breach-door-traversal-maneuver.ts';
 import {OPERATOR_RADIUS} from '../src/breach-core.ts';
 import {sweptBodyClear} from '../src/breach-navigation.ts';
@@ -72,4 +73,22 @@ test('D3.11D: only real leaf escape may attempt proactive joined route',()=>{
  assert.match(maneuver,/routeWithSqueezeIntel\(s\.intel,end,goal\)/);
  assert.match(maneuver,/sweptBodyClear\(from,to,s\.doors,OPERATOR_RADIUS,world\)/);
  assert.match(collision,/if\(!restoreAfterOpenLeafEscape\(a,s,p\)\)a\.retryRouteAt=0/);
+});
+
+test('D3.11D2: one accepted handoff per unchanged authored door; new goal resets',()=>{
+ const actor={},g=p(400,200);
+ assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,13,'FRONT',g,.82),true);
+ noteJoinedPortalHandoff(actor,13,'FRONT',g,.82);
+ assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,13,'FRONT',g,.82),false);
+ assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,13,'FRONT',g,.90),false);
+ assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,13,'FRONT',g,.99),true);
+ noteJoinedPortalHandoff(actor,13,'FRONT',g,.99);
+ assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,13,'FRONT',g,.60),false,
+  'two accepted attempts exhaust bounded budget even if the leaf changes');
+ assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,14,'FRONT',g,.99),true,
+  'a new authored order is independent');
+ assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,13,'SIDE',g,.99),true,
+  'a different doorway is independent');
+ assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,13,'FRONT',p(401,200),.99),true,
+  'a revised authored goal is independent');
 });
