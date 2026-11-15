@@ -10,7 +10,7 @@ test('D3.18C: furniture departure rejoins later transient node, keeps GO',()=>{
  const original=[p(15,0),p(32,12),p(55,12),goal];
  // The first leg hits furniture. A safe short sideways stage and
  // downstream join are possible even though full GO is not pre-cleared.
- const sweep=(a,b)=>!(a.x<14&&b.x===15&&b.y===0);
+ const sweep=(a,b)=>!(b.x>14.5&&b.x<15.5&&Math.abs(b.y)<.5);
  const result=selectMotorVerifiedFurnitureDeparture(from,goal,original,
   sweep,()=>[]);
  assert.ok(result.length);
@@ -26,7 +26,7 @@ test('D3.18C: Clinic first nav may rejoin by stage, never reissue blocked direct
  const leaf={id:'D9',a:p(0,-20),b:p(0,20),kind:'hinged',
   open:true,openFraction:1,angularVelocity:0,wedged:false};
  const from=p(-16,0),goal=p(80,0),first=p(20,0);
- const sweep=(a,b)=>!(a.x===from.x&&b.x===first.x&&b.y===0);
+ const sweep=(a,b)=>!(a.x===from.x&&b.x>0&&b.y===0);
  const route=selectPhysicalOpenLeafRejoin(from,goal,
   [first,p(45,0),goal],leaf,sweep,()=>true,()=>[]);
  assert.ok(route.length);

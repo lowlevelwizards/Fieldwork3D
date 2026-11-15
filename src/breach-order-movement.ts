@@ -111,8 +111,8 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   // bypass the same bounded failure policy forever. Give it six seconds
   // of genuine attempted motion first; then report the blocked template.
   // Player-authored MOVE and open/closing door-only obstructions are exempt.
-  if(n.kind==='move'&&n.entryDoorId&&!retained&&a.blockedTime>=6&&
-     d(a.p,n.p)<=18.5&&
+  if(n.kind==='move'&&n.entryDoorId&&a.blockedTime>=6&&
+     !retained&&d(a.p,n.p)<=18.5&&
      !sessionWorldGeometry(s).passable(n.p,OPERATOR_RADIUS)){
     settledMoveTargets.delete(a);
     failCurrentOrder(s,a,n,
