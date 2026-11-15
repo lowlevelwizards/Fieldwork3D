@@ -601,6 +601,47 @@ function run(site,seed,kind){
       goal,local[0],full,(a,b)=>routeWithSqueezeWorld(a,b,session.doors,world)):[];
     const last=planned.goals.get(actor.id);
     const finalWorld=last?routeWithSqueezeWorld(actor.p,last,session.doors,world):[];
+    // D3.15B4: cold-only microstride feasibility. A long sweep sampling
+    // every 4 units can miss the true first motor step next to furniture.
+    const micro=(from,to)=>{
+      const gap=dist(from,to),steps=Math.max(1,Math.ceil(gap/.3));
+      let prior=from;
+      for(let k=1;k<=steps;k++){
+        const t=k/steps,pt={x:from.x+(to.x-from.x)*t,
+          y:from.y+(to.y-from.y)*t};
+        if(!full(prior,pt))return {clear:false,t,
+          blockedAt:pt,from:prior};
+        prior=pt;
+      }
+      return {clear:true};
+    };
+    const microDirect=micro(actor.p,goal);
+    const offsets=[];
+    const candidates=[];
+    for(const radius of [2,4,7,11]){
+      for(let dir=0;dir<16;dir++){
+        const yaw=2*Math.PI*dir/16;
+        const stage={x:actor.p.x+Math.cos(yaw)*radius,
+          y:actor.p.y+Math.sin(yaw)*radius};
+        const first=micro(actor.p,stage);
+        if(!first.clear)continue;
+        const tail=routeWithSqueezeWorld(stage,goal,session.doors,world);
+        const route=[stage,...tail];
+        let prior=actor.p,bad=null,cost=0;
+        for(const point of route){
+          cost+=dist(prior,point);
+          const outcome=micro(prior,point);
+          if(!outcome.clear){bad=outcome;break;}
+          prior=point;
+        }
+        const record={dir,radius,stage,cost:round(cost),
+          reaches:!!tail.length&&dist(tail.at(-1),goal)<3,
+          microClear:bad===null,blocks:bad?.blockedAt??null,
+          nodes:route.slice(0,5)};
+        if(candidates.length<35)candidates.push(record);
+        if(record.reaches&&record.microClear)offsets.push(record);
+      }
+    }
     d315bRouteEvidence={actorId:actor.id,position:{...actor.p},
       activeOrder:{id:current.id,kind:current.kind,goal:{...goal},
        stackDoorId:current.stackDoorId??null,entryDoorId:current.entryDoorId??null},
@@ -614,6 +655,11 @@ function run(site,seed,kind){
       firstFuturePortal:inspect(future),oppositeDeparture:inspect(alternate),
       finalLandingWorldNodes:finalWorld.length,
       clearStandingBody:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
+      microDirect,microRouteSolutions:offsets.slice(0,12),
+      microRouteSamples:candidates.slice(0,25),
+      nearbyCover:world.cover.filter(c=>
+       Math.hypot(c.x-actor.p.x,c.y-actor.p.y)<45)
+       .slice(0,10).map(c=>({x:c.x,y:c.y,w:c.w,h:c.h})),
       closedDoors:session.doors.filter(d=>!d.open||d.openFraction<.72)
        .map(d=>({id:d.id,open:!!d.open,locked:!!d.locked,fraction:round(d.openFraction??0)}))};
    }
