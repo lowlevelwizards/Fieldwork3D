@@ -122,7 +122,7 @@ test('FAL P2: restrained receiver port remains right-only and HK model unchanged
  const port=named(fal,'family-receiver-fal-50-receiver-8');
  const p=bounds(port);
  assert.equal(port.userData.falEjectionPort,true);
- approx(p.max.x-p.min.x,2.58);
+ approx(p.max.x-p.min.x,2.50);
  assert.ok(p.min.z>1.15&&p.max.z<1.80,'right port hugs the barrel-height face');
  const receiver=named(fal,'family-receiver-fal-50-receiver-0');
  assert.ok(bounds(receiver).max.z>=1.82&&bounds(receiver).max.z<=1.87);

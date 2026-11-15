@@ -99,7 +99,7 @@ export function buildFALCoreSilhouette(
   const ear=b('barrel',14.70,2.13,side*.77,.62,1.67,.46);
   ear.userData.falFrontEar=side<0?'left':'right';
  }
- const post=b('barrel',14.70,2.17,0,.24,1.24,.24);
+ const post=b('barrel',14.70,2.08,0,.24,1.24,.24);
  post.userData.falFrontPost=true;
  // Late-pattern FAL-style COMBO device: a long slim square sleeve
  // immediately after a broad collar. Not a generic short end cap.

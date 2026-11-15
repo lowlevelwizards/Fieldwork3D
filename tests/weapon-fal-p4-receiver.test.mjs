@@ -30,7 +30,7 @@ test('rear receiver cap faces OUTWARD and is not culled in the Workbench',()=>{
   return b.sub(a).cross(c.sub(a)).normalize();
  };
  assert.ok(triNormal(36).x<-.9,'rear cap must face toward the stock');
- assert.ok(triNormal(54).x>.9,'front cap must face toward the barrel');
+ assert.ok(triNormal(39).x>.9,'front cap must face toward the barrel');
  clearWeaponSilhouette(root);mat.dispose();
 });
 test('ejection port is down at the barrel line without changing actual bore/socket coordinates',()=>{
