@@ -39,6 +39,7 @@ import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
+import {setMotorGateObserver} from '../src/breach-motor-gate-witness.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {classifyCProgressWindow} from '../src/breach-d3-c-progress.ts';
 import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
@@ -64,6 +65,7 @@ const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
 const d315bRouteProbe=process.argv.includes('--d315b-route-probe');
+const d315bMotorProbe=process.argv.includes('--d315b-motor-probe');
 const h2Fresh22=process.argv.includes('--h2-fresh-22');
 const d314bBlind22=process.argv.includes('--d314b-blind22');
 const d314cBlind22=process.argv.includes('--d314c-blind22');
@@ -259,6 +261,15 @@ function run(site,seed,kind){
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
   const blockWitness=actors.map(()=>({mask:0,events:[]}));
   const progressEvidence=[];
+  const d315bMotorGateEvidence=[];
+  let lastRecordedGate=-20;
+  const recordMotorGate=d315bMotorProbe?(e)=>{
+    if(kind==='entry'&&e.actorId==='vale'&&
+       e.seconds-lastRecordedGate>=1&&d315bMotorGateEvidence.length<65){
+      lastRecordedGate=e.seconds;
+      d315bMotorGateEvidence.push({...e,seconds:round(e.seconds)});
+    }
+  }:null;
   const observed=actors.map(a=>({
    start:{...a.p},last:{...a.p},travel:0,blocked:0,squeezing:0,
    passage:0,opening:0,lastRetries:a.recoveryAttempts,
