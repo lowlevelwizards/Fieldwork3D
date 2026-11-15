@@ -16,7 +16,7 @@ for(let i=0;i<N;i++){
  const seed=base+i*stride,type=types[i%types.length],
   scale=i<types.length?'small':'standard';
  const site=generateSite(seed,scale,undefined,
-  {enableIncidentIntent:false,enemyCount:0,civilianCount:0},
+  {mission:'intel'},
   {archetype:type});
  // The clearance function uses exactly site/walls/cover/revision.
  const world={site,walls:site.walls,cover:site.cover,revision:0};
