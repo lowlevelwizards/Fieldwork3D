@@ -12,21 +12,19 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 const get=(g,k)=>g.children.find(c=>c.userData[k]);
 const box=g=>new THREE.Box3().setFromObject(g);
 const width=g=>box(g).max.x-box(g).min.x;
-test('P8: stamped hierarchy, raised magwell and a genuinely open guard',()=>{
+test('P9: stamped hierarchy and raised magwell without standalone trigger frame',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const upper=get(g,'fncP5CrownedReceiver');
  const lower=get(g,'fncAngularLower');
  const seam=get(g,'fncP8UpperLowerSeam');
  const well=get(g,'fncP8DistinctMagwell');
- const trigger=get(g,'fncP8OpenTriggerGuard');
- assert.ok(upper&&lower&&seam&&well&&trigger);
+ assert.ok(upper&&lower&&seam&&well);
+ assert.equal(Boolean(get(g,'fncP8OpenTriggerGuard')),false);
+ assert.ok(g.children.every(x=>!x.name.includes('trigger-guard')));
  assert.ok(box(upper).max.z<box(lower).max.z-.3);
  assert.ok(box(seam).max.z>box(lower).max.z+.05);
  assert.ok(box(well).max.z>box(lower).max.z+.10);
- assert.equal(trigger.geometry.parameters.shapes.holes.length,1);
- assert.ok(box(trigger).min.y<box(lower).min.y-.4,
-  'open guard projects into a visibly unfilled trigger gap');
- assert.ok(box(trigger).min.x<box(well).min.x);
+ assert.ok(box(get(g,'fncGrip')).min.x<box(well).min.x);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P8: right-side ejection is BEHIND the charging handle, not vice versa',()=>{
@@ -71,7 +69,7 @@ test('P8: factory path uses identical geometry; suppressed mode has no factory m
  const m=new THREE.MeshBasicMaterial();
  const preset=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
  const factory=buildWeaponSilhouette('rifle',m,m,preset);
- assert.ok(get(factory,'fncP8OpenTriggerGuard'));
+ assert.equal(Boolean(get(factory,'fncP8OpenTriggerGuard')),false);
  assert.ok(get(factory,'fncP8DistinctMagwell'));
  const bare=buildFNCStage1Silhouette(m,{},false);
  assert.equal(Boolean(get(bare,'fncMuzzle')),false);
