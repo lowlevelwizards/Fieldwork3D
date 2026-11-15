@@ -45,3 +45,36 @@ test('D3.13H2: refuses all unsafe or incomplete frame approaches',()=>{
    {...door,openFraction:.2},()=>true,()=>true,()=>[goal]),[],
    'a closed or nearly closed leaf cannot be ignored');
 });
+
+test('D3.13H2B: a short verified world connector can reach a frame-side stage',()=>{
+ const door={id:'HINGE',a:p(300,260),b:p(340,260),kind:'hinged',
+  hinge:'a',swing:1,open:true,openFraction:1,angularVelocity:0};
+ const from=p(321,308),goal=p(320,152),via=p(345,307);
+ const same=(a,b)=>d(a,b)<.001;
+ let searches=0;
+ const sweep=(a,b)=>!same(a,from)||same(b,via);
+ const route=joinedLocalOpenLeafStage(from,goal,door,sweep,()=>true,
+   (_at,g)=>[{...g}],undefined,
+   (_at,target)=>{searches++;return [{...via},{...target}];});
+ assert.ok(route.length>=4,'intermediate, near side, far side, authored GO');
+ assert.deepEqual(route[0],via,'a fully swept world corridor reaches the near side');
+ assert.deepEqual(route.at(-1),goal,'the player-authored destination is retained');
+ assert.ok(searches>0&&searches<=2,'no unbounded or per-frame A* candidates');
+ let at=from;
+ for(const node of route){
+  assert.equal(sweep(at,node),true,'each submitted physical leg is fully swept');
+  at=node;
+ }
+});
+
+test('D3.13H2B: a blocked world connector cannot become an authored route',()=>{
+ const door={id:'HINGE',a:p(300,260),b:p(340,260),kind:'hinged',
+  hinge:'a',swing:1,open:true,openFraction:1,angularVelocity:0};
+ const from=p(321,308),goal=p(320,152);
+ let probes=0;
+ const route=joinedLocalOpenLeafStage(from,goal,door,
+   (a,_b)=>d(a,from)>.01,()=>true,()=>[goal],undefined,
+   (_a,target)=>{probes++;return [p(355,308),{...target}];});
+ assert.deepEqual(route,[],'invalid first approach never replaces the MOVE');
+ assert.ok(probes<=2,'a failed cold probe has a strict pathfinder budget');
+});
