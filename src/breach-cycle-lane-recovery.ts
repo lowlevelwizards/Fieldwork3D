@@ -10,6 +10,7 @@ const clone=(p:Pt)=>({x:p.x,y:p.y});
 type Cycle={
  orderId:number;doorId:string;goal:Pt;anchor:Pt;
  count:number;bestRemaining:number;attempted:boolean;
+ lastAt:number;
  activeUntil:number;
 };
 const loops=new WeakMap<TeamActor,Cycle>();
@@ -26,14 +27,16 @@ export function shouldProbeCircularFullBodyLane(
  const same=prior&&prior.orderId===order.id&&prior.doorId===doorId&&
   distance(prior.goal,goal)<.25&&
   distance(prior.anchor,a.p)<23&&
+  seconds-prior.lastAt<8&&
   remaining>=prior.bestRemaining-12;
  if(!same){
   loops.set(a,{orderId:order.id,doorId,goal:clone(goal),
    anchor:clone(a.p),count:1,bestRemaining:remaining,
-   attempted:false,activeUntil:0});
+   lastAt:seconds,attempted:false,activeUntil:0});
   return false;
  }
  prior.count=Math.min(5,prior.count+1);
+ prior.lastAt=seconds;
  prior.bestRemaining=Math.min(prior.bestRemaining,remaining);
  if(prior.count<3||prior.attempted)return false;
  prior.attempted=true;
