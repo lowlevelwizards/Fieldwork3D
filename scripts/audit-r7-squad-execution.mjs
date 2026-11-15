@@ -45,6 +45,19 @@ const progress=process.argv.includes('--progress');
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
+// D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
+// Run with --route-transitions --site-index=7 --trace-actor=rook
+// and optionally --trace-mode=authored (or entry).
+const traceActorArg=process.argv.find(a=>a.startsWith('--trace-actor='));
+const traceActor=traceActorArg?.slice('--trace-actor='.length)??null;
+const traceModeArg=process.argv.find(a=>a.startsWith('--trace-mode='));
+const traceMode=traceModeArg?.slice('--trace-mode='.length)??null;
+if((traceActor||traceMode)&&!routeTransitions)
+ throw Error('--trace-actor/--trace-mode require --route-transitions');
+if(traceActorArg&&(!traceActor||traceActor.length>32))
+ throw Error('invalid --trace-actor');
+if(traceMode!==null&&traceMode!=='authored'&&traceMode!=='entry')
+ throw Error('invalid --trace-mode (authored or entry)');
 const clinicOnly=process.argv.includes('--clinic-only');
 // Exact seeded-site diagnosis, opt-in, does not change any motor paths.
 const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
@@ -156,8 +169,10 @@ function run(site,seed,kind){
     }
     recentLeafEscapes.delete(e.actorId);
    }
-   if(utilityTrace&&seed===31162&&kind==='authored'&&
-      e.actorId==='rook'&&routeWitness.events.length<400)
+   const selectedActor=traceActor??(utilityTrace&&seed===31162&&
+     kind==='authored'?'rook':null);
+   if(selectedActor===e.actorId&&
+      (!traceMode||kind===traceMode)&&routeWitness.events.length<400)
      routeWitness.events.push({...e,seconds:round(e.seconds),
       prior:e.prior.slice(0,4),next:e.next.slice(0,4)});
   }:null;
