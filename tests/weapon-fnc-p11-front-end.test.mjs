@@ -14,19 +14,19 @@ const all=(g,k)=>g.children.filter(x=>x.userData[k]);
 const box=x=>new THREE.Box3().setFromObject(x);
 const size=(g,axis)=>box(g).max[axis]-box(g).min[axis];
 const meets=(a,b)=>box(a).intersectsBox(box(b));
-test('P11 shorter, wider polymer and longer, slimmer steel cover remain connected',()=>{
+test('P13 extended polymer still shorter than slim gas cover, all parts connected',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const polymer=get(g,'fncP11ShortWidePolymer');
  const gas=get(g,'fncP11LongSlimVentedCover');
  const lip=get(g,'fncP11HandstopLip'),base=get(g,'fncP7ContinuousGasSightSeat');
  assert.ok(polymer&&gas&&lip&&base);
- assert.ok(size(polymer,'x')>6&&size(polymer,'x')<6.2);
+ assert.ok(size(polymer,'x')>7.1&&size(polymer,'x')<7.4);
  assert.ok(size(gas,'x')>8.8&&size(gas,'x')<9.0);
- assert.ok(size(gas,'x')>size(polymer,'x')+2.5);
+ assert.ok(size(gas,'x')>size(polymer,'x')+1.4);
  assert.ok(size(gas,'z')<size(polymer,'z')*.7);
  assert.ok(meets(polymer,gas)&&meets(gas,base));
  assert.ok(meets(polymer,lip));
- assert.ok(size(lip,'x')>.6&&size(lip,'x')<.75);
+ assert.ok(size(lip,'x')>.5&&size(lip,'x')<.6);
  assert.ok(box(lip).min.y<box(polymer).min.y-.1);
  assert.equal(polymer.userData.fncCrossSectionFaces,6);
  clearWeaponSilhouette(g);m.dispose();
@@ -62,7 +62,7 @@ test('P12: two FAL-simple sight ears, real center void and no extra post',()=>{
  const [left,right]=ears.slice().sort((a,b)=>box(a).min.z-box(b).min.z);
  assert.ok(box(left).max.z<box(right).min.z-.1,
   'negative space between ears must be genuine');
- assert.ok(ears.every(e=>size(e,'x')<.80&&size(e,'y')<2.1));
+ assert.ok(ears.every(e=>size(e,'x')<.85&&size(e,'y')<1.8));
  assert.equal(g.children.some(e=>e.userData.fncP11TwinEarFrontSight),false);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);

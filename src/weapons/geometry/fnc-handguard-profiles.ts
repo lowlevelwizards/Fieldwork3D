@@ -31,7 +31,9 @@ function makeSixFacePrism(root:THREE.Group,material:THREE.Material,
   tri(a,b,c);tri(a,c,d);
  }
  const rear=stations[0],front=stations[stations.length-1];
- const center=(x:number):[number,number,number]=>[x,-1.11,0];
+ const center=(x:number):[number,number,number]=>[
+  x,Array.from({length:6},(_,i)=>cross(x,i)[0]).reduce((a,b)=>a+b,0)/6,0
+ ];
  for(let i=0;i<6;i++){
   const j=(i+1)%6;
   tri(center(rear),vertex(rear,i),vertex(rear,j));
