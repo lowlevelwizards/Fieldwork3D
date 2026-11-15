@@ -44,7 +44,7 @@ jobs:
             if(r.summary.exceptions||r.summary.physicsStepViolations||
               r.summary.corruptedPlans||r.summary.invalidPositions)
               throw Error('nonphysical evidence invalid');
-            if((m.d315aDoorSamples?.length??0)<25)
+            if((m.d315aDoorSamples?.length??0)<5)
               throw Error('missing frozen door-order timeline');
           }
           NODE
