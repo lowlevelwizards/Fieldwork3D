@@ -26,6 +26,9 @@ import {sweptRejoinExistingRoute,takeRepeatedDoorEscapeRoute,
  claimColdFuturePortalProbe}
  from './breach-door-escape-rejoin.ts';
 import {joinedLocalOpenLeafStage} from './breach-door-escape-stage.ts';
+import {sweptProfileClear,squeezeFacing} from './breach-navigation.ts';
+import {findBoundedNarrowLeafExit,claimNarrowLeafExitProbe,
+ ownNarrowExitWaypoints} from './breach-squeeze-leaf-exit.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
  * world-truth connector past a STABLE fully-open leaf. Otherwise a
@@ -147,6 +150,36 @@ export function restoreRepeatedDoorEscapeRoute(
        return true;
      }
      noteDoorHandoffRejection(s,a,'h:future-portal-prefix-unavailable');
+   }
+   // D3.14B2: a fully opened D9-style leaf can trap an operator in
+   // repeated squeezed-footwork / intel-route reacquisition even when
+   // the actual body is clear. Only a proven GENERATED ENTRY episode,
+   // in genuine grab-and-hold / clear-leaf mode, may try ONE bounded
+   // physically swept narrow-stage route around the panel. The short
+   // steps are executed by the normal motor, not moved here.
+   if(a.squeeze&&stageDoor?.open&&
+      (stageDoor.openFraction??0)>=.82&&
+      Math.abs(stageDoor.angularVelocity??0)<.16&&
+      a.doorTraversal?.phase==='clear-leaf'&&
+      a.doorTraversal.maneuver==='grab-and-hold'&&
+      claimNarrowLeafExitProbe(a,stageDoor.id,goal,
+       stageDoor.openFraction??0)){
+     const narrow=(from:Pt,to:Pt)=>
+       sweptProfileClear(from,to,s.doors,
+         squeezeFacing(Math.atan2(to.y-from.y,to.x-from.x)),
+         'squeeze',world);
+     const stages=findBoundedNarrowLeafExit(
+       a.p,goal,original[0],narrow,sweep);
+     if(stages.length){
+       setTransientRoute(s,a,[...stages.map(clone),
+         ...original.map(clone)],'door-squeeze-leaf-exit');
+       ownNarrowExitWaypoints(a,stages);
+       finishDoorEscapeRejoin(a);
+       a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;
+       a.recoveryAttempts=0;
+       return true;
+     }
+     noteDoorHandoffRejection(s,a,'d314b:no-full-squeeze-join');
    }
    return false;
  }
