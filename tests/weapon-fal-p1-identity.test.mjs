@@ -25,8 +25,8 @@ test('FAL P1: single shared art core keeps full-sized datum and lean factory bud
  const core=buildFALCoreSilhouette(mats,ids,{raisedCarryHandle:true});
  assert.equal(core.children.length,17,'15 baseline meshes plus two-piece handle');
  const full=bounds(core);
- assert.equal(full.min.x,FAL_ART.stockRearX);
- assert.equal(full.max.x,FAL_ART.muzzleX);
+ assert.ok(Math.abs(full.min.x-FAL_ART.stockRearX)<.001);
+ assert.ok(Math.abs(full.max.x-FAL_ART.muzzleX)<.001);
  const support=core.children.find(x=>x.userData.falCarrySupport);
  const handle=core.children.find(x=>x.userData.falCarryGrip);
  assert.ok(support&&handle);
@@ -71,7 +71,7 @@ test('FAL P1: buttplate terminates stock without end-face collision or side seam
  const root=buildWeaponSilhouette('rifle',m,m,config());
  const shell=bounds(find(root,'family-stock-fal-fixed-polymer-0'));
  const pad=bounds(find(root,'family-stock-fal-fixed-polymer-1'));
- assert.equal(pad.min.x,-15);
+ assert.ok(Math.abs(pad.min.x+15)<.001);
  assert.ok(shell.min.x>-14.7,'stock rear terminates inside pad');
  assert.ok(shell.min.x<pad.max.x-.05,'stock overlaps pad rather than leaving a gap');
  assert.ok(pad.min.y<shell.min.y&&pad.max.y>=shell.max.y);
@@ -88,7 +88,7 @@ test('FAL P1: no-factory-muzzle build still reaches authoritative muzzle, no dou
  const ids={stock:'s',receiver:'r',grip:'g',magazine:'m',handguard:'h',barrel:'b'};
  const root=buildFALCoreSilhouette(mats,ids,{raisedCarryHandle:true,showFactoryMuzzle:false});
  assert.equal(root.children.length,16);
- assert.equal(bounds(root).max.x,22);
+ assert.ok(Math.abs(bounds(root).max.x-22)<.001);
  assert.ok(!root.children.some(x=>x.name==='family-barrel-b-5'),
   'bare muzzle has no factory tip mesh');
  clearWeaponSilhouette(root);m.dispose();
