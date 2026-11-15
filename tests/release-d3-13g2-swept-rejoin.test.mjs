@@ -75,7 +75,7 @@ test('D3.13G2B cold world-rejoin evidence requires repeated same-door physical e
   'the saved disposable route cannot be mutated by callers');
  assert.equal(takeRepeatedDoorEscapeRoute(actor,1.51,goal),null,
   'cannot cold-probe every motor tick');
- assert.deepEqual(takeRepeatedDoorEscapeRoute(actor,3.51,goal),nav,
+ assert.deepEqual(takeRepeatedDoorEscapeRoute(actor,3.5,goal),nav,
   'a later repeat can be checked after the two-second budget');
  finishDoorEscapeRejoin(actor);
  assert.equal(takeRepeatedDoorEscapeRoute(actor,3.6,goal),null);
