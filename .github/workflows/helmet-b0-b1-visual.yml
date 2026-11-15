@@ -1,0 +1,43 @@
+name: B0/B1 M1 Historical Helmet Visual Acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/operator-m1-*.ts'
+      - 'src/operator-headwear-silhouettes.ts'
+      - 'src/operator-helmet-cover-*.ts'
+      - 'src/operator-wardrobe-head-visuals.ts'
+      - 'src/operator-studio.ts'
+      - 'scripts/helmet-b0-m1-capture.mjs'
+      - '.github/workflows/helmet-b0-b1-visual.yml'
+permissions:
+  contents: read
+concurrency:
+  group: b0-b1-art-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+jobs:
+  historical-art:
+    if: ${{ github.head_ref == 'feature/b0-b1-m1-historical-rebuild-20261114' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install project and Chromium
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Capture 36 identical Studio views of historical helmets
+        run: node scripts/helmet-b0-m1-capture.mjs
+        env:
+          HELMET_CAPTURE_DIR: helmet-b0-captures
+      - name: Retain raw visual comparison and per-frame draw calls
+        uses: actions/upload-artifact@v4
+        with:
+          name: b0-b1-m1-studio-visuals
+          path: helmet-b0-captures/
+          if-no-files-found: error
+          retention-days: 14

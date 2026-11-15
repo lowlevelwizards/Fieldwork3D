@@ -1744,32 +1744,49 @@ function renderMaterials(){
      m56Net:id as WardrobeOptions['m56Net']}));
   }
   if(item==='m1-steel'){
+   const strap=row('M1 CHINSTRAP',
+    'Historical two-piece webbing. The fastening is concealed for bulky masks; the selection is retained.');
+   addSelect(strap,[['fastened','FASTENED'],['unfastened','UNFASTENED']] as const,
+    w.m1Chinstrap??'fastened',value=>changeWardrobe({...current(),
+     m1Chinstrap:value as WardrobeOptions['m1Chinstrap']}));
    const panel=row('M1 HELMET COVER',
     'A separate cloth layer over the steel shell. The rolled metal rim stays visible.');
    addSelect(panel,HELMET_COVER_STYLES.map(id=>[id,
     id==='none'?'BARE PAINTED STEEL':id==='fitted'?'FITTED COVER':'LOOSE COVER'] as const),
     w.helmetCover??'none',value=>changeWardrobe({...current(),
      helmetCover:value as WardrobeOptions['helmetCover']}));
-   if(w.helmetCover&&w.helmetCover!=='none'){
+   const hasCover=w.helmetCover&&w.helmetCover!=='none';
+   if(hasCover){
     const available=helmetCoverChoices(item);
     const fabric=row('M1 COVER CAMOUFLAGE',
-     'Historical selection, not a generic camouflage permission for the steel shell.');
+     'Fabric print only; the painted steel remains independent.');
     addCamoSwatches(fabric,available,w.helmetCoverCamo??null,id=>
      changeWardrobe({...current(),helmetCoverCamo:id}),
      'm1-cover',w.fabricCamo?.top??null);
-    const band=row('HELMET RETAINING BAND');
-    addSelect(band,HELMET_BANDS.map(x=>[x,x.toUpperCase()] as const),
-     w.helmetBand??'none',value=>changeWardrobe({...current(),
-      helmetBand:value as WardrobeOptions['helmetBand']}));
-    const net=row('COARSE NETTING');
-    addSelect(net,HELMET_NET_STYLES.map(x=>[x,x.toUpperCase()] as const),
-     w.helmetNet??'none',value=>changeWardrobe({...current(),
-      helmetNet:value as WardrobeOptions['helmetNet']}));
-    const scrim=row('HELMET SCRIM');
-    addSelect(scrim,HELMET_SCRIM_STYLES.map(x=>[x,x.toUpperCase()] as const),
-     w.helmetScrim??'none',value=>changeWardrobe({...current(),
-      helmetScrim:value as WardrobeOptions['helmetScrim']}));
    }
+   const band=row('M1 RETAINING BAND',
+    'Fits the bare steel bowl or selected cover. Never changes armor.');
+   addSelect(band,HELMET_BANDS.map(x=>[x,x.toUpperCase()] as const),
+    w.helmetBand??'none',value=>changeWardrobe({...current(),
+     helmetBand:value as WardrobeOptions['helmetBand']}));
+   const net=row('M1 COARSE NETTING',
+    'Follows the crown on bare or covered steel.');
+   addSelect(net,HELMET_NET_STYLES.map(x=>[x,x.toUpperCase()] as const),
+    w.helmetNet??'none',value=>changeWardrobe({...current(),
+     helmetNet:value as WardrobeOptions['helmetNet']}));
+   const scrim=row('M1 SCRIM',
+    'Needs a retaining band or net. Your saved selection remains when both are removed.');
+   addSelect(scrim,HELMET_SCRIM_STYLES.map(x=>[x,x.toUpperCase()] as const),
+    w.helmetScrim??'none',value=>changeWardrobe({...current(),
+     helmetScrim:value as WardrobeOptions['helmetScrim']}));
+   if(w.helmetScrim&&w.helmetScrim!=='none'&&
+      (!w.helmetBand||w.helmetBand==='none')&&
+      (!w.helmetNet||w.helmetNet==='none')){
+    const note=document.createElement('small');
+    note.textContent='SAVED · INACTIVE · Add a band or net to secure scrim';
+    note.className='helmet-option-requirement';scrim.append(note);
+   }
+
   }
   if(item==='beret'){
    const drape=row('BERET DRAPE','One asymmetric wool silhouette, mirrored without adding a separate hat.');

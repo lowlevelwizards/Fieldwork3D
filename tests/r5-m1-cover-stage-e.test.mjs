@@ -35,7 +35,7 @@ test('R5E: fitted and loose cloth have distinct meshes and optional field equipm
   v.sparseScrim,v.fieldScrim]){
   assert.equal(group.visible,false);
   assert.ok(group.children.length>0);
-  assert.ok(group.children.every(x=>x instanceof THREE.Mesh));
+  assert.ok(group.children.every(x=>x instanceof THREE.Mesh||x instanceof THREE.Group));
  }
  const fittedGeo=v.fitted.children[0].geometry;
  const looseGeo=v.loose.children[0].geometry;
@@ -48,9 +48,22 @@ test('R5E: fitted and loose cloth have distinct meshes and optional field equipm
  assert.equal(v.net.visible,true);
  assert.equal(v.clothBand.visible,true);
  assert.equal(v.sparseScrim.visible,true);
+ assert.ok(v.net.children.some(x=>x.visible&&x.name==='m1-fitted'));
+ assert.equal(v.sparseScrim.children.some(x=>x.visible&&x.name==='m1-fitted'),true);
  assert.ok(v.fabric.map);
  updateM1HelmetCoverLayers(v,{helmetCover:'none'},'test-1');
  assert.equal(v.fitted.visible,false);
  assert.equal(v.loose.visible,false);
  assert.equal(v.fabric.map,null);
+});
+
+test('B1-A bare steel retains compatible net and band with no cloth cover',()=>{
+ const v=createM1HelmetCoverLayers(new THREE.Group());
+ updateM1HelmetCoverLayers(v,{helmetCover:'none',helmetNet:'coarse',
+  helmetBand:'elastic',helmetScrim:'field'},'test-bare');
+ assert.equal(v.fitted.visible,false);
+ assert.equal(v.elasticBand.visible,true);
+ assert.equal(v.net.visible,true);
+ assert.equal(v.fieldScrim.visible,true);
+ assert.equal(v.net.children.find(x=>x.name==='m1-steel').visible,true);
 });

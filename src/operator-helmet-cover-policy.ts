@@ -3,6 +3,7 @@
  * generated for incompatible helmet families.
  */
 import {isHeadwearCamoId,type HeadwearCamoId} from './operator-headwear-camo.ts';
+import {readM1Chinstrap,type M1Chinstrap} from './operator-m1-retention.ts';
 export const HELMET_COVER_STYLES=['none','fitted','loose'] as const;
 export const HELMET_BANDS=['none','cloth','elastic'] as const;
 export const HELMET_NET_STYLES=['none','coarse'] as const;
@@ -17,6 +18,7 @@ export type HelmetCoverConfig={
  helmetBand?:HelmetBandStyle;
  helmetNet?:HelmetNetStyle;
  helmetScrim?:HelmetScrimStyle;
+ m1Chinstrap?:M1Chinstrap;
 };
 /** Deliberately small: periods need individual reference recipes. Avoid
  * treating an existing camo master as proof it was issued on every helmet.
@@ -37,6 +39,8 @@ export function readHelmetCoverConfig(raw:unknown):HelmetCoverConfig{
  if(x.helmetNet&&HELMET_NET_STYLES.includes(x.helmetNet))result.helmetNet=x.helmetNet;
  if(x.helmetScrim&&HELMET_SCRIM_STYLES.includes(x.helmetScrim))
   result.helmetScrim=x.helmetScrim;
+ if(x.m1Chinstrap==='fastened'||x.m1Chinstrap==='unfastened')
+  result.m1Chinstrap=readM1Chinstrap(x.m1Chinstrap);
  return result;
 }
 export function resolvedHelmetCoverConfig(headwear:string,
@@ -49,6 +53,17 @@ export function resolvedHelmetCoverConfig(headwear:string,
    r.helmetCoverCamo:undefined,
   helmetBand:r.helmetBand??'none',
   helmetNet:r.helmetNet??'none',
-  helmetScrim:r.helmetScrim??'none'
+  helmetScrim:r.helmetScrim??'none',
+  m1Chinstrap:readM1Chinstrap(r.m1Chinstrap)
  };
+}
+
+/** B1 effective visual state only. Requested preferences are never erased.
+ * Band/net may fasten to bare steel; scrim must have a physical support.
+ */
+export function resolvedM1FieldDress(raw:HelmetCoverConfig|undefined):HelmetCoverConfig{
+ const effective=resolvedHelmetCoverConfig('m1-steel',raw);
+ if(effective.helmetScrim!=='none'&&effective.helmetBand==='none'&&
+    effective.helmetNet==='none')effective.helmetScrim='none';
+ return effective;
 }
