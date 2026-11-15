@@ -1,0 +1,52 @@
+name: D3.15B3 exact blocked-stride door/collision witness
+on:
+  pull_request:
+    paths:
+      - 'src/breach-motor-gate-witness.ts'
+      - 'src/breach-actor-motor.ts'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-15b3-last-stride.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-final-stride:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck exact physical motor witness
+        run: npm run check
+      - name: Full 45s frozen motel real-motor blocked stride
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+           11 2700 --site-index=8 --audit-seed=9492261 --audit-scale=small \
+           --d315b-route-probe --d315b-motor-probe \
+           > "$RUNNER_TEMP/d315b3-motor.json"
+      - name: Show actual door veto, step sweep, and last body route
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315b3-motor.json','utf8'));
+          const m=r.rows[0].modes.find(x=>x.mode==='entry');
+          console.log('D315B3_REAL_GATE',JSON.stringify({
+            vale:m.operators.find(x=>x.id==='vale'),
+            gate:m.d315bMotorGateEvidence?.slice(-20),
+            end:m.d315bRouteEvidence
+          }));
+          if(r.summary.exceptions||r.summary.invalidPositions||
+             r.summary.physicsStepViolations||r.summary.corruptedPlans||
+             (m.d315bMotorGateEvidence?.length??0)<4)
+             throw Error('missing or corrupt true fixed-step witness');
+          NODE
+      - name: Archive immutable real 60Hz blocked stride history
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d315b3-actual-motor-gate-45s
+          path: ${{ runner.temp }}/d315b3-*.json
+          retention-days: 90
