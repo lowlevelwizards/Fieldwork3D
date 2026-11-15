@@ -1,0 +1,110 @@
+name: D3.17D utility waypoint join physics acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-d317d-door-route-join.ts'
+      - 'src/breach-door-traversal-maneuver.ts'
+      - 'src/breach-route-transition.ts'
+      - 'tests/release-d3-17d-door-route-join.test.mjs'
+      - '.github/workflows/d3-17d-door-join.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exact-utility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Types and nearby physical motor regression
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-17d-door-route-join.test.mjs \
+            tests/release-d3-17c-physical-departure.test.mjs \
+            tests/release-d3-17b-route-recurrence.test.mjs \
+            tests/release-d3-14d2-retail-rehearsal.test.mjs
+      - name: Exact COURT-1 physical operator and safe route rejoin
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=9 --audit-seed=14462973 \
+            --audit-scale=standard --progress --route-transitions \
+            --trace-actor=ash --trace-mode=authored \
+            > "$RUNNER_TEMP/d317d-utility.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317d-utility.json','utf8'));
+          const m=r.rows[0].modes.find(x=>x.mode==='authored');
+          const a=m.operators.find(x=>x.id==='ash');
+          const sources=Object.fromEntries(Object.entries(m.routeTransitions.byActor)
+            .filter(([name])=>name.startsWith('ash:')));
+          console.log('D317D_UTILITY',JSON.stringify({
+            ash:a,arrivals:m.arrivals,route:sources,
+            progress:r.progressSummary,summary:r.summary
+          }));
+          if(r.summary.exceptions||r.summary.invalidPositions||
+             r.summary.physicsStepViolations||r.summary.corruptedPlans||
+             r.summary.unboundedManeuverAttempts)
+            throw Error('D3.17D real physics or authored order violation');
+          if(!a.arrived||a.remainingOrders||a.failedOrders||m.arrivals!==4||
+             r.progressSummary.suspectedLoops)
+            throw Error('D3.17D COURT-1 did not achieve real 4-body GO');
+          if((sources['ash:door-rehearsal-joined-waypoint']??0)<1)
+            throw Error('D3.17D never established a swept local waypoint join');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d317d-utility-exact
+          path: ${{ runner.temp }}/d317d-utility.json
+          retention-days: 90
+  physical-cohort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Historical 11-site four-body physical truth
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress --route-quality > "$RUNNER_TEMP/d317d-historical.json"
+      - name: Frozen 22-site 176-body physical truth
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-transitions \
+            --trace-cases=13919313:entry:ash,14136777:entry:ash,14462973:authored:ash \
+            > "$RUNNER_TEMP/d317d-frozen22.json"
+      - name: Enforce genuine arrivals and unchanged authored safety
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const read=n=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317d-'+n+'.json','utf8'));
+          const h=read('historical'),f=read('frozen22');
+          console.log('D317D_COHORT',JSON.stringify({
+            historical:h.summary,frozen:f.summary,progress:f.progressSummary,
+            historicalProgress:h.progressSummary
+          }));
+          for(const r of [h,f])
+            if(r.summary.exceptions||r.summary.invalidPositions||
+               r.summary.physicsStepViolations||r.summary.corruptedPlans||
+               r.summary.unboundedManeuverAttempts)
+              throw Error('D3.17D authored plan / physical safety regression');
+          if(h.summary.physicalArrivals<80||h.summary.physicalCompletedFour<18||
+             h.progressSummary.suspectedLoops)
+            throw Error('D3.17D historical physical regression');
+          if(f.summary.physicalArrivals<139||f.summary.physicalCompletedFour<28)
+            throw Error('D3.17D frozen 22 physical arrival regression');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d317d-physical-cohort
+          path: ${{ runner.temp }}/d317d-*.json
+          retention-days: 90

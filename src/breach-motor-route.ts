@@ -17,6 +17,10 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld,
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
+import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe,
+ knownIntelRouteKey} from './breach-cold-route-cache.ts';
+// Cache only proven unsuccessful route probes, never a guessed blocked GO.
+// A changed object/door/order or 4 seconds of real time reopens the query.
 import {holdKnownFixedAuthoredGoal}
  from './breach-authored-goal-block.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
@@ -271,6 +275,19 @@ export function prepareMotorRoute(
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       return 'unavailable';
     }
+    // D3.17E6: replay a short *negative* result only if the prior
+    // actual route query failed at this same actor/GO and every real door
+    // and world-cover revision remains unchanged. Physical door pressure
+    // and contact/shove opportunities above have already run this tick.
+    if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       !a.doorTraversal&&shouldPauseNegativeGoalProbe(a,p,s.seconds,
+         sessionWorldGeometry(s).revision,s.doors,
+         knownIntelRouteKey(s.intel))){
+       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
+       // A deferred search is NOT an attempted search or retry.
+       a.retryRouteAt=s.seconds+.6;
+       return 'unavailable';
+    }
     setTransientRoute(s,a,a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
       hooks.cachedEnemyRoute(s,a.p,p,true),
       a.side==='blue'?'initial-intel':'initial-enemy');
@@ -296,6 +313,12 @@ export function prepareMotorRoute(
       }
     }
     if(!a.nav.length){
+      // Only an actual failed normal+intel+shove/portal attempt can be
+      // cached. Do not claim a remote hidden obstacle is player-known.
+      if(a.side==='blue'&&a.plan[0]?.kind==='move')
+        noteFailedRouteProbe(a,p,s.seconds,
+          sessionWorldGeometry(s).revision,s.doors,
+          knownIntelRouteKey(s.intel));
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       a.recoveryAttempts++;

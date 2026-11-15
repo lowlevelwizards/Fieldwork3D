@@ -1,0 +1,78 @@
+name: D3.17B physical route-cycle regression
+on:
+  pull_request:
+    paths:
+      - 'src/breach-route-recurrence.ts'
+      - 'src/breach-door-traversal-maneuver.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'tests/release-d3-17b-route-recurrence.test.mjs'
+      - '.github/workflows/d3-17b-physical-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Types and critical physical route/order tests
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-17b-route-recurrence.test.mjs \
+            tests/release-d3-17a-loop-forensics.test.mjs \
+            tests/release-d3-9c-progress.test.mjs
+      - name: Real 22 blind sites, both modes, four bodies, 45s at 60Hz
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-transitions \
+            --trace-cases=13919313:entry:ash,14136777:entry:ash,14354241:entry:vale,14435790:entry:rook,14462973:authored:ash \
+            > "$RUNNER_TEMP/d317b-physical.json"
+      - name: Inspect true arrivals, route churn and physics safety
+        run: |
+          node scripts/report-d3-17a-loop-forensics.mjs \
+            "$RUNNER_TEMP/d317b-physical.json" \
+            "$RUNNER_TEMP/d317b-incidents.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const a=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317b-physical.json','utf8'));
+          const f=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317b-incidents.json','utf8'));
+          const top=f.incidents.map(x=>({
+            seed:x.seed,mode:x.mode,actor:x.actor,
+            endRemaining:x.endRemaining,lowNetTravel:x.lowNetTravel,
+            routeWrites:x.episodeRouteCounts,
+            finallyArrived:x.finallyArrived
+          }));
+          console.log('D317B_PHYSICAL_RESULT',JSON.stringify({
+            physicalArrivals:a.summary.physicalArrivals,
+            physicallyCompleteSquads:a.summary.physicalCompletedFour,
+            flaggedLoops:f.summary.flaggedWindows,
+            loopIncidents:f.summary.incidents,
+            timedRoutes:f.summary.timedRouteEvents,
+            physicalBlocks:f.summary.suspiciousPhysicalBlockWindows,
+            exceptions:a.summary.exceptions,
+            physicsViolations:a.summary.physicsStepViolations,
+            invalidPositions:a.summary.invalidPositions,
+            corruptedPlans:a.summary.corruptedPlans,
+            unboundedManeuvers:a.summary.unboundedManeuverAttempts,top
+          }));
+          if(a.summary.exceptions||a.summary.physicsStepViolations||
+             a.summary.invalidPositions||a.summary.corruptedPlans||
+             a.summary.unboundedManeuverAttempts)
+            throw Error('D3.17B physics or authored-plan regression');
+          if(a.summary.physicalArrivals<133||
+             a.summary.physicalCompletedFour<26)
+            throw Error('D3.17B arrival regression against exact D3.17A cohort');
+          NODE
+      - name: Archive baseline-comparable real physical evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d317b-tenth22-physical-route-recovery
+          path: ${{ runner.temp }}/d317b-*.json
+          retention-days: 90

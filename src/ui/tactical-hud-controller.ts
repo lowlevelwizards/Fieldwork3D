@@ -433,7 +433,9 @@ export function createTacticalHudController(
     stateLine.dataset.kind=execution?.kind??'idle';
     stateLine.dataset.priority=status.priority;
     button.dataset.executionVisible=String(status.visible);
-    stateLine.title=status.detail;
+    stateLine.title=execution?.waitingFor?
+      status.detail+' · WAITING FOR '+execution.waitingFor.toUpperCase():
+      status.detail;
     if(execution?.progress!==undefined){
       stateLine.dataset.progress='true';
       stateLine.style.setProperty('--execution-progress',

@@ -39,6 +39,15 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  noteCircularWorldRoute,ownsCircularWorldRoute}
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
+import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
+import {shouldProbeStationaryCollisionRoute}
+ from './breach-recovery-proposal-gate.ts';
+import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
+ selectPhysicalOpenLeafRejoin} from './breach-physical-leaf-rejoin.ts';
+import {routeWithNormalWorld} from './breach-squeeze-route.ts';
+import {claimRepeatedFurnitureDeparture,
+ selectMotorVerifiedFurnitureDeparture}
+ from './breach-d317c-micro-departure.ts';
 import {stackMicroRecoveryEligible,claimStackMicroAttempt,selectStackMicroCorner}
  from './breach-stack-micro-corner.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
@@ -185,19 +194,23 @@ export function resolveMotorCollision(
           return true;
         }
       }
-      const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
-        s.seconds,canAutoSidestep);
-      if(side)a.autoSidestep=side;
-      setTransientRoute(s,a,fullLane,'full-body-lane');a.retryRouteAt=0;a.recoveryAttempts=0;
-      // C1c: the full-width lane repair also begins with a short corner
-      // departure point. It was retired at 3 units before the furniture
-      // actually cleared (motel 31149), then re-entered the same prop.
-      // For furniture contact only, complete this verified leg precisely.
-      notePreciseLocalDetour(a,fullLane[0]);
-      // Preserve existing WATCH facing and weapon intention; only the
-      // feet choose a different line around the obstruction.
-      a.squeeze=false;a.squeezeTime=0;
-      return true;
+      // D3.17B2: don't reissue a byte-for-byte equivalent side excursion
+      // from a repeatedly revisited physical anchor. Keep ordinary
+      // collision, glide, world recovery and original order available;
+      // crucially, do not reset recoveryAttempts without actual progress.
+      if(allowPhysicalRouteReissue(a,'full-body-lane',p,fullLane,s.seconds)){
+        const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
+          s.seconds,canAutoSidestep);
+        if(side)a.autoSidestep=side;
+        setTransientRoute(s,a,fullLane,'full-body-lane');
+        a.retryRouteAt=0;a.recoveryAttempts=0;
+        // Precise landing avoids discarding a chosen swept corner before
+        // the operator physically reaches it.
+        notePreciseLocalDetour(a,fullLane[0]);
+        // Preserve WATCH facing and weapon intention.
+        a.squeeze=false;a.squeezeTime=0;
+        return true;
+      }
     }
   }
   // A grazing wall is not a narrow corridor. Glide the legal tangential
@@ -455,6 +468,71 @@ export function resolveMotorCollision(
           return true;
         }
       }
+      // D3.17E3-5: an actual stationary body at a stable open leaf may
+      // have a bad *transient* landing even without formal D2 ownership.
+      // Try a cold full-body microstride-checked join to a later existing
+      // transient node; keep the original GO and all subsequent door
+      // actions. Do not fire on normal movement, active squeeze/traverse
+      // or a still-swinging panel. Failed probes never alter navigation.
+      if(a.side==='blue'&&a.plan[0]?.kind==='move'&&a.nav.length>=2&&
+         a.blockedTime>=1.8&&
+         (a.lastBlocker==='furniture'||a.lastBlocker==='door'||
+          a.lastBlocker==='wall')){
+        const leaf=relevantStableOpenLeaf(a.p,s.doors,
+          a.doorTraversal?.doorId??null);
+        if(leaf&&claimPhysicalLeafRejoin(a,leaf,p,s.seconds,
+             world.revision,s.doors)){
+          const physical=selectPhysicalOpenLeafRejoin(
+            a.p,p,a.nav,leaf,
+            (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+            point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
+            (from,to)=>routeWithNormalWorld(from,to,s.doors,world));
+          if(physical.length&&
+             watchClearanceAllowed(a.p,physical[0],p,
+               !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+               (from,to)=>sweptBodyClear(from,to,
+                 s.doors,OPERATOR_RADIUS,world))){
+            setTransientRoute(s,a,physical,'open-leaf-local-rejoin');
+            notePreciseLocalDetour(a,physical[0]);
+            a.lastNavRepairAt=s.seconds;
+            a.retryRouteAt=s.seconds+.65;
+            return true;
+          }
+        }
+      }
+      // D3.17C: after THREE real, separated furniture collisions from the
+      // same physical anchor and to the same blocked nav node, try a
+      // bounded cold departure. Existing authored GO, queue, collision
+      // and replan semantics remain unchanged if no safe route exists.
+      if(a.nav.length&&claimRepeatedFurnitureDeparture(a,p,next,s.seconds)){
+        const verified=selectMotorVerifiedFurnitureDeparture(
+          a.p,p,a.nav,
+          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+          (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
+        if(verified.length&&watchClearanceAllowed(a.p,verified[0],p,
+           !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))){
+          setTransientRoute(s,a,verified,'cold-micro-departure');
+          notePreciseLocalDetour(a,verified[0]);
+          // Do not erase evidence of repeated failure. This route is only
+          // provisional until actual feet progress through the first step.
+          a.retryRouteAt=0;
+          return true;
+        }
+      }
+      // D3.17E2: route changes are not physical progress. After repeated
+      // immobile furniture contacts with unchanged door/cover geometry,
+      // defer redundant world+intel A* until a cold probe is due. All
+      // other physical reactions above remain active on every tick.
+      if(a.lastBlocker==='furniture'&&a.blockedTime>=2.8&&
+         !shouldProbeStationaryCollisionRoute(a,p,s.seconds,world.revision,
+           s.doors)){
+        // Deferring an expensive probe is NOT a new retry. Only count
+        // route attempts actually attempted (positive deltas remain real).
+        a.retryRouteAt=s.seconds+
+          routeRetrySeconds(Math.max(1,a.recoveryAttempts));
+        return true;
+      }
       // D3.4 clinic wall witness: operator drift can make a short,
       // previously valid TRANSIENT waypoint physically unreachable from
       // today's exact position. Rejoin that same waypoint through one
@@ -466,8 +544,15 @@ export function resolveMotorCollision(
          !a.doorTraversal&&!a.traversalPending&&a.nav.length){
         const connected=repairBlockedTransientWorldLeg(
           a.p,next,a.nav.slice(1),s.doors,world);
-        if(connected.length&&materiallyDifferentRoute(a.nav,connected)){
-          setTransientRoute(s,a,connected,'blocked-leg-connector');a.retryRouteAt=0;a.recoveryAttempts=0;
+        // D3.17B3: connector waypoints are not progress if the actor
+        // already walked back to the same furniture anchor repeatedly.
+        // Fall through to bounded physical-world replan, without resetting
+        // the normal recovery budget when an identical connector recurs.
+        if(connected.length&&materiallyDifferentRoute(a.nav,connected)&&
+           allowPhysicalRouteReissue(a,'blocked-leg-connector',p,
+             connected,s.seconds)){
+          setTransientRoute(s,a,connected,'blocked-leg-connector');
+          a.retryRouteAt=0;a.recoveryAttempts=0;
           return true;
         }
       }

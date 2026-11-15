@@ -1,0 +1,67 @@
+name: D3.17A forensic actual loop incidents, 22 blind maps
+on:
+  pull_request:
+    paths:
+      - 'scripts/lib/d3-17a-loop-incidents.mjs'
+      - 'scripts/report-d3-17a-loop-forensics.mjs'
+      - 'tests/release-d3-17a-loop-forensics.test.mjs'
+      - '.github/workflows/d3-17a-loop-forensics.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  forensic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Test exact loop grouping semantics and canonical detector
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-17a-loop-forensics.test.mjs \
+            tests/release-d3-9c-progress.test.mjs
+      - name: Full 22 unseen sites x two modes x four actual bodies x 45 seconds
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-transitions --trace-cases=13919313:entry:ash,14136777:entry:ash,14354241:entry:vale,14435790:entry:rook,14462973:authored:ash \
+            > "$RUNNER_TEMP/d317a-tenth-physical.json"
+      - name: Rank all flagged real five-second windows by exact seed, actor, location and movement
+        run: |
+          node scripts/report-d3-17a-loop-forensics.mjs \
+            "$RUNNER_TEMP/d317a-tenth-physical.json" \
+            "$RUNNER_TEMP/d317a-loop-incidents.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const a=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317a-tenth-physical.json','utf8'));
+          const f=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317a-loop-incidents.json','utf8'));
+          if(a.summary.physicalArrivals!==133||
+             a.summary.physicalCompletedFour!==26||
+             a.progressSummary.suspectedLoops!==23||
+             f.summary.flaggedWindows!==23||
+             f.summary.orphanFlaggedWindows||
+             a.summary.exceptions||a.summary.corruptedPlans||
+             a.summary.physicsStepViolations||a.summary.invalidPositions||
+             a.summary.unboundedManeuverAttempts)
+           throw Error('D3.17A must preserve exact D3.16 tenth-cohort real-motor witness');
+          console.log('D317A_REAL_MOTOR_ACCEPTED',JSON.stringify({
+           physicalArrivals:a.summary.physicalArrivals,
+           physicalCompletedFour:a.summary.physicalCompletedFour,
+           flaggedWindows:f.summary.flaggedWindows,
+           distinctIncidents:f.summary.incidents,
+           distinctActors:f.summary.distinctOperators,
+           consecutiveLoopIncidents:f.summary.consecutiveLoopIncidents,
+           isolatedFlaggedIncidents:f.summary.isolatedFlaggedIncidents
+          }));
+          NODE
+      - name: Archive exact real physical evidence and ranked incidents
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d317a-tenth22-loop-forensics
+          path: ${{ runner.temp }}/d317a-*.json
+          retention-days: 90

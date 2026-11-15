@@ -13,6 +13,9 @@ export type ExecutionIssue={nodeId:number;reason:string;since:number};
 export type ExecutionStatus={
  kind:ExecutionKind;label:string;detail:string;
  orderId:number|null;reason:string;progress?:number;
+ /** Optional named teammate, displayed by the HUD without changing the
+  * established executionStatus.detail API or hidden-world information. */
+ waitingFor?:string;
 };
 export type ExecutionActor={
  id:string;health:number;plan:readonly PlanNode[];
@@ -26,7 +29,7 @@ export type ExecutionActor={
  lastFailedOrder?:{id:number;kind:string;reason:string;at:number}|null;
  passageWaitSeconds?:number;
 };
-type Peer={health:number;syncReady:string|null;plan:readonly PlanNode[]};
+type Peer={id?:string;health:number;syncReady:string|null;plan:readonly PlanNode[]};
 type DoorView={id:string;open:boolean;openFraction?:number};
 export type ExecutionContext={
  phase?:'planning'|'running'|'won'|'lost';
@@ -68,9 +71,20 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
    return result('waiting','WAITING','WINDOW LANDING OCCUPIED',id,'window');
  if(n&&a.blockedTime>=.85&&a.lastBlocker!=='clear'){
    const hard=a.blockedTime>=3.5||a.recoveryAttempts>=5;
+   const reason='collision-'+a.lastBlocker;
+   // Only the operator's actually observed motor blocker is exposed.
+   // An unreachable route does not disclose hidden furniture or walls.
+   const label=a.lastBlocker==='route'?'ROUTE UNAVAILABLE':
+     a.lastBlocker==='door'?'DOOR OBSTRUCTED':
+     a.lastBlocker==='furniture'?'MOVEMENT OBSTRUCTED':
+     a.lastBlocker==='wall'?'WALL OBSTRUCTION':'BLOCKED';
+   const detail=a.lastBlocker==='route'?'ORDERS RETAINED':
+     a.lastBlocker==='door'?'CHECK DOOR CLEARANCE':
+     a.lastBlocker==='furniture'?'CHECK VISIBLE COVER':
+     a.lastBlocker==='wall'?'CHECK CLEAR ROUTE':
+     a.lastBlocker.toUpperCase();
    return result(hard?'blocked':'recovering',
-     hard?'BLOCKED':'RECOVERING',a.lastBlocker.toUpperCase(),id,
-     'collision-'+a.lastBlocker);
+     hard?label:'RECOVERING',detail,id,reason);
  }
  if(!n){
    // Never render an exhausted queue as successful when its authorial
@@ -115,9 +129,11 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
      (p.syncReady===code||p.plan.some(order=>
        order.kind==='sync'&&order.syncCode===code)));
    const ready=peers.filter(p=>p.syncReady===code).length;
-   return result('waiting','SYNC '+code,
+   const waiting=peers.find(p=>p.syncReady!==code);
+   const status=result('waiting','SYNC '+code,
      peers.length?ready+'/'+peers.length+' READY':'WAITING FOR SYNC',
      id,'sync');
+   return waiting?.id?{...status,waitingFor:waiting.id}:status;
  }
  if(n.kind==='move'||n.kind==='pie'){
    if(a.velocity<.2&&a.activeNode===n.id&&a.blockedTime>.2)

@@ -55,8 +55,13 @@ jobs:
           if(s.exceptions||s.invalidPositions||s.corruptedPlans||
              s.physicsStepViolations||s.unboundedManeuverAttempts)
             throw Error('D3.14D2 invalid physical motor or authored plan');
-          if((sources['rook:door-rehearsal-world']??0)<1)
-            throw Error('D3.14D2 never selected a physically swept full-GO rescue');
+          // Source names are implementation details. A physically swept
+          // local portal rejoin is also a valid path to the real authored GO.
+          const validRescue=['door-rehearsal-world','door-escape-local-portal',
+            'door-escape-world-rejoin','door-escape-swept-rejoin']
+            .reduce((sum,key)=>sum+(sources['rook:'+key]??0),0);
+          if(validRescue<1)
+            throw Error('D3.14D2 no physically validated portal recovery');
           if(!a.arrived||m.arrivals<4)
             throw Error('D3.14D2 did not bring retail Rook and squad to real GO');
           NODE
