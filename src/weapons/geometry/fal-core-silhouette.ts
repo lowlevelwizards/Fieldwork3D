@@ -62,17 +62,21 @@ export function buildFALCoreSilhouette(
  // Not a rectangular extrude and not an AR/G3 imitation.
  addFALCrownedReceiver(root,partIds.receiver,ids.receiver++,materials.receiver);
  // Single angular lower, sculpting the grip/magazine negative space.
+ // P4 R1B: broad one-piece LOWER, not a narrow dark strip behind the
+ // upper shell. Its sloped belly makes the grip/guard/magwell relationship
+ // legible at miniature scale. One silhouette, one material, no seam decals.
  lower([
-  [-6.29,-1.04],[-5.80,-1.69],[-4.98,-2.07],
-  [-4.42,-2.43],[-3.07,-2.33],[-2.18,-1.61],
-  [-.47,-1.60],[.29,-2.66],[3.14,-2.77],
-  [3.80,-1.10],[2.95,-1.30]
- ],3.16);
- // Distinct FAL magazine-well wedge projecting down toward the magazine.
+  [-6.30,-1.08],[3.62,-1.03],[3.82,-1.43],
+  [3.18,-2.65],[.14,-2.60],[-.80,-2.24],
+  [-1.34,-2.40],[-2.67,-2.45],[-3.65,-2.69],
+  [-4.60,-2.66],[-5.35,-2.04],[-6.30,-1.70]
+ ],3.40);
+ // Characteristic broad sloped FN magazine shroud. It is a receiver
+ // landmark, not a separate functional magazine or insertion socket.
  lower([
-  [-.45,-1.96],[3.36,-1.96],[3.50,-2.68],
-  [3.09,-3.19],[-.22,-3.19],[-.48,-2.75]
- ],3.28);
+  [-.36,-1.82],[3.16,-1.82],[3.50,-2.50],
+  [3.04,-3.19],[-.12,-3.19],[-.65,-2.48]
+ ],3.32);
 
  // S1C: compact raked FAL grip; preserve open mag/grip gap.
  p('grip',[
