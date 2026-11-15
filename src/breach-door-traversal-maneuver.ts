@@ -201,7 +201,7 @@ export function canRehearseJoinedPortalOncePerLeaf(
  return used.count<2&&
    Math.abs(leafFraction-used.lastLeafFraction)>.14;
 }
-function noteJoinedPortalHandoff(
+export function noteJoinedPortalHandoff(
  actor:TeamActor,orderId:number,doorId:string,goal:Pt,leafFraction:number
 ):void{
  const prior=joinedPortalHandoffs.get(actor);
