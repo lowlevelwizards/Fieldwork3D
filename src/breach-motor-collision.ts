@@ -34,6 +34,9 @@ import {restoreAfterOpenLeafEscape} from './breach-motor-route.ts';
 import {sweptRejoinExistingRoute,noteRepeatedDoorLeafEscape} from './breach-door-escape-rejoin.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
+import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
+ noteCircularWorldRoute,ownsCircularWorldRoute}
+ from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
@@ -116,6 +119,7 @@ export function resolveMotorCollision(
   // transient motor navigation; the player-authored waypoint stays put.
   // Rate-limit this *physical-world* search to avoid A* churn every tick.
   if(!normalClear&&!blocking&&!closed&&!a.traversalPending&&
+     !ownsCircularWorldRoute(a,s.seconds)&&
      s.seconds-a.lastNormalLaneProbeAt>.50){
     // Failed comfort searches must not restart the world-truth recovery
     // clock; it needs uninterrupted stall time to escalate blocked moves.
@@ -138,6 +142,27 @@ export function resolveMotorCollision(
          !!a.aimInstruction&&a.aimInstruction.mode!=='free',
          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
        sweptBodyClear(a.p,fullLane[0],s.doors,OPERATOR_RADIUS,world)){
+      // D3.14C2: after 3 genuine repeated departures from nearly
+      // the same physical anchor with no GO progress, the same legal
+      // detour can loop back forever. One bounded world-truth ALTERNATE
+      // departure, on the opposite side of this local lane, must have
+      // every leg fully swept and finish at the original authored GO.
+      if(a.side==='blue'&&
+         a.doorTraversal?.maneuver==='grab-and-hold'&&
+         shouldProbeCircularFullBodyLane(a,p,
+           a.doorTraversal.doorId,s.seconds)){
+        const alternative=alternateFullBodyLaneFromCycle(
+          a.p,p,fullLane[0],
+          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+          (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
+        if(alternative.length){
+          setTransientRoute(s,a,alternative,'lane-cycle-world');
+          noteCircularWorldRoute(a,s.seconds);
+          a.retryRouteAt=0;a.recoveryAttempts=0;
+          a.squeeze=false;a.squeezeTime=0;
+          return true;
+        }
+      }
       const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
