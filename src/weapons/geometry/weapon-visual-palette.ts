@@ -55,3 +55,6 @@ export const FAL_DARK_POLYMER=finish(0x343d37,.93,.02,'polymer');
 export const FAL_MAG_METAL=finish(0x515a54,.91,.09,'steel');
 /** Minimal, dark, flat graphic vents, not expensive true cut-through slots. */
 export const FAL_VENT_SHADOW=finish(0x232c28,.98,.0,'polymer');
+
+/** Restrained pressed steel line on the FAL's 20-round magazine. */
+export const FAL_MAG_RIB=finish(0x3f4a42,.94,.08,'steel');

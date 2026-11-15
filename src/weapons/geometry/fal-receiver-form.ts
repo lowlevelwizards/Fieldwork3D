@@ -122,49 +122,16 @@ export function addFALPivotPair(root:THREE.Group,receiverId:string,
  startIndex:number,material:THREE.Material):THREE.Mesh[]{
  const result:THREE.Mesh[]=[];
  for(const side of [-1,1] as const){
-  const geometry=new THREE.CylinderGeometry(.55,.55,.18,6,1);
+  const geometry=new THREE.CylinderGeometry(.79,.79,.22,6,1);
   geometry.rotateX(Math.PI/2);
   const mesh=new THREE.Mesh(geometry,material);
   mesh.name='family-receiver-'+receiverId+'-'+(startIndex+result.length);
-  mesh.position.set(-1.14,-1.83,side*1.74);
+  mesh.position.set(-1.14,-1.84,side*1.80);
   mesh.userData.falPivotSide=side;
   mesh.castShadow=true;mesh.receiveShadow=true;
   root.add(mesh);result.push(mesh);
  }
  return result;
-}
-/** Surface-following angular steel boss / runner: one solid mesh whose
- * inner face intersects the receiver while the exterior follows the tapered
- * top, keeping details attached at ANY silhouette strength. */
-export function addFALLeftSurfacePlate(
- root:THREE.Group,receiverId:string,index:number,
- points:readonly (readonly [number,number])[],
- projection:number,material:THREE.Material,tag:string
-):THREE.Mesh{
- const n=points.length,vertices:number[]=[],indices:number[]=[];
- for(const outside of [true,false]){
-  for(const [x,y] of points){
-   const z=falUpperSideHalfZ(y,x)+(outside?projection:-.08);
-   vertices.push(x,y,-z);
-  }
- }
- for(let i=1;i<n-1;i++){
-  indices.push(0,i+1,i);
-  indices.push(n,n+i,n+i+1);
- }
- for(let i=0;i<n;i++){
-  const j=(i+1)%n;
-  indices.push(i,j,n+j,i,n+j,n+i);
- }
- const geometry=new THREE.BufferGeometry();
- geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
- geometry.setIndex(indices);geometry.computeVertexNormals();
- const mesh=new THREE.Mesh(geometry,material);
- mesh.name='family-receiver-'+receiverId+'-'+index;
- mesh.userData[tag]=true;
- mesh.userData.falSurfaceFitted=true;
- mesh.castShadow=false;mesh.receiveShadow=false;
- root.add(mesh);return mesh;
 }
 /** A single thick angled support, physically connected to receiver's new
  * shoulder below and the existing polymer handle above. */
