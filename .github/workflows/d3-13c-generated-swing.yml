@@ -5,6 +5,9 @@ on:
     paths:
       - 'src/worldgen/generated-door-swing.ts'
       - 'src/breach-site.ts'
+      - 'src/breach-door.ts'
+      - 'src/breach-order-movement.ts'
+      - 'tests/release-d3-13d-already-open-handoff.test.mjs'
       - 'tests/release-d3-13c-generated-swing.test.mjs'
       - '.github/workflows/d3-13c-generated-swing.yml'
   workflow_dispatch:
@@ -29,6 +32,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/release-d3-13c-generated-swing.test.mjs \
+            tests/release-d3-13d-already-open-handoff.test.mjs \
             tests/release-d3-9-single-opener.test.mjs \
             tests/release-d3-11d-portal-handoff.test.mjs \
             tests/door-traversal-d4-physics.test.mjs
@@ -79,7 +83,9 @@ jobs:
              for(const k of ["exceptions","invalidPositions","physicsStepViolations",
                  "corruptedPlans","unboundedManeuverAttempts"])
               if(r.summary[k])throw Error("unsafe "+k);
-            if(a.summary.physicalArrivals<b.summary.physicalArrivals||
+            if(a.summary.physicalArrivals<147||
+               a.summary.physicalCompletedFour<31||
+               a.summary.physicalArrivals<b.summary.physicalArrivals||
                a.summary.physicalCompletedFour<b.summary.physicalCompletedFour)
               throw Error("physical arrival regression");
             if(a.progressSummary.sustainedStill>b.progressSummary.sustainedStill)
