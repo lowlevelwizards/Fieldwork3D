@@ -55,7 +55,7 @@ try{
   await page.locator('#carry').check();
   await capture('fal-core-with-carry-three-quarter');
   await page.locator('#carry').uncheck();
-  await page.getByRole('button',{name:'SIDE'}).click();
+  await page.getByRole('button',{name:'SIDE',exact:true}).click();
   await capture('fal-core-without-carry-side');
   // The factory FAL must also render in a mobile-sized review frame.
   await page.locator('#factory').check();
