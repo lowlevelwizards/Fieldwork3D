@@ -300,29 +300,26 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  color:var(--fw-text-warm)}
 .arsenal-wb-finish-help[hidden]{display:none}
 
-/* R7.14 — reversible, opt-in weapon Lighting Lab in the existing Workbench.
-   Controls live in the scrollable editor panel, not across the 3D viewport. */
-.arsenal-lighting-lab{border:1px solid #8da89a;border-radius:8px;
- background:#1d302b;color:#eff2e6;padding:0;min-width:0}
-.arsenal-lighting-lab>summary{cursor:pointer;list-style:none;
- padding:13px;font:750 14px/1.2 var(--fw-font-menu);letter-spacing:.06em}
-.arsenal-lighting-lab>summary::-webkit-details-marker{display:none}
-.arsenal-lighting-lab[open]>summary{border-bottom:1px solid #445d53}
-.arsenal-lighting-controls{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
- gap:11px;padding:13px}
-.arsenal-lighting-controls label{display:flex;flex-direction:column;gap:6px;
- min-width:0;color:#e5dec5;font:650 11px/1.25 var(--fw-font-action)}
-.arsenal-lighting-controls select{display:block;width:100%;min-height:39px;
- border:1px solid #6c8279;border-radius:5px;padding:8px;background:#273a34;
- color:#f6e8d0;font:600 12px var(--fw-font-action)}
-.arsenal-lighting-controls .arsenal-lighting-range{grid-column:1/-1;
- display:grid;grid-template-columns:1fr auto;align-items:center;gap:5px 10px}
-.arsenal-lighting-range output{color:#f4d49c;font-variant-numeric:tabular-nums}
-.arsenal-lighting-range input{grid-column:1/-1;accent-color:#dfc18f;
- width:100%;min-height:30px;touch-action:pan-x}
-.arsenal-lighting-actions{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:8px}
-.arsenal-lighting-actions button{flex:1;min-height:43px;padding:9px;
- border:1px solid #a5a893;border-radius:5px;background:#334e42;
- color:#f9e9c8;font:700 12px var(--fw-font-action)}
-.arsenal-lighting-controls small{grid-column:1/-1;color:#a9bcb0;
- line-height:1.45}
+
+/* White part-selection dots are independent of WebGL, and never obscure the
+ * weapon with bounding boxes. A large invisible button supports phone taps. */
+.arsenal-wb-sockets{position:absolute;inset:0;pointer-events:none;z-index:2}
+.arsenal-wb-socket{position:absolute;top:0;left:0;display:flex;align-items:center;
+ justify-content:center;width:44px;height:44px;padding:0;border:0;
+ border-radius:50%;background:transparent;pointer-events:auto;
+ cursor:pointer;touch-action:manipulation;opacity:1;
+ transition:opacity .25s ease;outline-offset:-4px}
+.arsenal-wb-socket[hidden]{display:none}
+.arsenal-wb-socket-dot{width:8px;height:8px;border-radius:50%;
+ background:#f5faf5b3;border:1px solid #ffffffa0;
+ box-shadow:0 0 0 1px #071611b8,0 0 5px #ffffff54;
+ pointer-events:none;transition:transform .12s ease,background .12s ease,
+ box-shadow .12s ease}
+.arsenal-wb-socket[aria-pressed="true"] .arsenal-wb-socket-dot{
+ background:#fff;transform:scale(1.28);
+ box-shadow:0 0 0 4px #ffffff36,0 0 8px #ffffffc0}
+.arsenal-wb-socket:focus-visible{outline:2px solid #f4f8ea}
+.arsenal-wb-sockets.is-inspecting .arsenal-wb-socket{opacity:0;pointer-events:none}
+@media(prefers-reduced-motion:reduce){
+ .arsenal-wb-socket,.arsenal-wb-socket-dot{transition:none}
+}
