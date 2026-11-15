@@ -113,3 +113,29 @@ export function claimColdFrameApproachProbe(
  old!.probes++;
  return true;
 }
+
+/** H4: one cold future-operable-door recovery per unchanged physical
+ * episode. Unlike a local frame probe this may search for the NEXT
+ * still-closed door, but its result is only temporary motor navigation.
+ * No second motor, no false authored GO completion or remote open.
+ * Author edits, a truly swung leaf or meaningful operator progress reset.
+ */
+type FuturePortalBudget={
+ orderId:number;doorId:string;goalX:number;goalY:number;
+ leafFraction:number;position:Pt;
+};
+const futurePortalBudgets=new WeakMap<TeamActor,FuturePortalBudget>();
+export function claimColdFuturePortalProbe(
+ actor:TeamActor,doorId:string,goal:Pt,leafFraction:number
+):boolean{
+ const order=actor.plan[0];
+ if(order?.kind!=='move')return false;
+ const old=futurePortalBudgets.get(actor);
+ if(old&&old.orderId===order.id&&old.doorId===doorId&&
+    old.goalX===goal.x&&old.goalY===goal.y&&
+    Math.abs(old.leafFraction-leafFraction)<.14&&
+    gap(old.position,actor.p)<32)return false;
+ futurePortalBudgets.set(actor,{orderId:order.id,doorId,
+  goalX:goal.x,goalY:goal.y,leafFraction,position:{...actor.p}});
+ return true;
+}
