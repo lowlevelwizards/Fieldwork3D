@@ -40,7 +40,7 @@ test('traffic stalls surface without introducing squad role automation',()=>{
  assert.equal(executionStatus({...a,passageWaitSeconds:1}).kind,'waiting');
  assert.equal(executionStatus({...a,motorPause:null}).kind,'moving');
 });
-test('failed flash, reload, furniture and missing door orders are retained',()=>{
+test('terminally unavailable flash, reload, prop and missing-door orders cancel once and stay visible',()=>{
  const s=newSession(0,undefined,'full-view','standard','hold',site);
  try{
   const a=team(s)[0];s.phase='running';
@@ -58,10 +58,17 @@ test('failed flash, reload, furniture and missing door orders are retained',()=>
     'OBJECT UNAVAILABLE']
   ];
   for(const [order,setup,expected] of scenarios){
+    const priorFailed=a.failedOrders,priorSuccess=a.completedOrders;
     a.plan=[order];a.activeNode=-1;a.orderIssue=null;
     setup();stepSession(s,1/30);
-    assert.equal(a.plan[0]?.id,order.id,'failed order must remain editable');
-    assert.equal(a.orderIssue?.reason,expected);
+    assert.equal(a.plan.length,0,'terminally unavailable order is retired');
+    assert.equal(a.failedOrders,priorFailed+1,'terminal failure counts once');
+    assert.equal(a.completedOrders,priorSuccess,'failure is never credited as success');
+    assert.equal(a.lastFailedOrder?.id,order.id);
+    assert.equal(a.lastFailedOrder?.reason,expected);
+    assert.equal(executionStatus(a).reason,'order-cancelled');
+    for(let i=0;i<3;i++)stepSession(s,1/30);
+    assert.equal(a.failedOrders,priorFailed+1,'idle ticks do not repeat failures');
   }
  }finally{activateSite(null);}
 });
@@ -91,12 +98,12 @@ test('transition log is sparse, typed, friendly-only and replay captures it',()=
  }finally{activateSite(null);}
 });
 test('both 2D and projected views draw persistent issue markers; replay uses the same log',()=>{
- const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ const world=readFileSync(new URL('../src/breach-2d-world-renderer.ts',import.meta.url),'utf8');
  const renderer=readFileSync(new URL('../src/breach-2d-actor-renderer.ts',import.meta.url),'utf8');
  const projected=readFileSync(new URL('../src/breach-2d-projected-overlays.ts',import.meta.url),'utf8');
  const picking=readFileSync(new URL('../src/breach-tactical-picking.ts',import.meta.url),'utf8');
  const replay=readFileSync(new URL('../src/breach-replay.ts',import.meta.url),'utf8');
- assert.match(main,/actor2D\.drawExecutionProblem\(a,false\)/);
+ assert.match(world,/actor2D\.drawExecutionProblem\(a,false\)/);
  assert.match(renderer,/const status=executionProblemStatus\(a\)/);
  assert.match(projected,/drawExecutionProblem\(a,true\)/);
  assert.match(picking,/executionMarkerPoint\(unit,viewMode!=='plan2d'\)/);
