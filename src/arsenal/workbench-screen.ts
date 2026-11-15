@@ -16,7 +16,6 @@ import {createArsenalDraft,commitArsenalProposal,undoArsenalDraft,redoArsenalDra
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../equipment-weapon-assemblies.ts';
 import {ArsenalViewport} from './viewport.ts';
-import {mountArsenalLightingLab} from './lighting-lab.ts';
 import {proposeArsenalRecipeLoad,acceptArsenalRecipeLoad,arsenalRecipeDifferenceLabel,
  type ArsenalRecipeLoadProposal} from './recipe-loading.ts';
 import {ARSENAL_PLATFORMS,type ArsenalPlatformId} from './catalog.ts';
@@ -139,9 +138,6 @@ export function openArsenalWorkbench(
   const category=ARSENAL_CATEGORIES.find(c=>c.slots.includes(slot));
   if(category){activeCategory=category;activeSlot=slot;pending=null;renderSelection();}
  });
- mountArsenalLightingLab(panel,(settings,compareOriginal)=>
-  viewer.setLighting(settings,compareOriginal),
-  new URLSearchParams(window.location.search).get('lightingLab')==='1');
  function currentPartId(slot:ArsenalSlot):string{
   return BODY_SLOTS.includes(slot as FamilyPartSlot)?
    draft.working.parts[slot as FamilyPartSlot]:
@@ -293,6 +289,7 @@ export function openArsenalWorkbench(
   }
   undo.disabled=draft.undo.length===0;redo.disabled=draft.redo.length===0;
   showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
+  viewer.setVisibleSlots(activeCategory.slots);
   viewer.setSelectedSlot(activeSlot);
   renderChoices();renderPending();
  }
