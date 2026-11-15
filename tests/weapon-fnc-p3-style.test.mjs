@@ -37,7 +37,7 @@ test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
  assert.ok(hex&&gas);
  assert.equal(hex.userData.fncCrossSectionFaces,6);
  const hb=box(hex),gb=box(gas);
- assert.ok(gb.max.y>hb.max.y+.8,'upper box must rise visibly above hex');
+ assert.ok(gb.max.y>hb.max.y+.55,'lowered gas cover still rises above polymer');
  assert.ok(gb.max.z<hb.max.z-.13,'gas box must be narrower than the hex');
  assert.ok(gb.min.y<hb.max.y,'two volumes intersect instead of floating');
  const marks=of(g,'fncP5GrooveSide');
@@ -87,8 +87,9 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  const handle=of(g,'fncP5LargeChargingHandle')[0];
  const muzzle=of(g,'fncP5ChunkyMuzzle')[0];
  assert.ok(front&&rear&&handle&&muzzle);
- assert.equal(front.geometry.parameters.shapes.holes.length,0);
- assert.ok(front.userData.fncP11TwinEarFrontSight);
+ assert.equal(of(g,'fncP12FALLikeFrontEar').length,2);
+ assert.ok(front.userData.fncP12FALLikeFrontEar,
+  'simplified FAL-style twin ears replace sculpted sight');
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
  assert.ok(box(front).max.y>3.0);
  assert.ok(box(rear).max.y>2.40);
@@ -114,7 +115,7 @@ test('P5: shared dark magazine and compact low-poly production asset',()=>{
  assert.equal(of(g,'fncP5UpperGasBox').length,1);
  const tri=g.children.reduce((n,x)=>n+
   (x.geometry?.index?.count??x.geometry?.getAttribute('position')?.count??0)/3,0);
- assert.ok(g.children.length<=34,'avoid unnecessary decorative attachments');
+ assert.ok(g.children.length<=36,'avoid unnecessary decorative attachments');
  assert.ok(tri<1150,'preserve low-poly Fieldwork geometry budget');
  clearWeaponSilhouette(g);m.dispose();
 });

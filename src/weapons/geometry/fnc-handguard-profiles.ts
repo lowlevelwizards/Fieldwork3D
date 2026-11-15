@@ -1,4 +1,4 @@
-/** FN FNC P11: two broad visual families; static geometry, no fine texture.
+/** FN FNC P12: tight two-zone front end; static geometry, no fine texture.
  * Compact six-face polymer grip: two long ribs on each side, small front lip.
  * Longer, narrower gas cover: two rows of FIVE broken slots on each side
  * and five slots over the roof, batched into one mesh per visible face.
@@ -52,16 +52,21 @@ export function addFNCFacetedForearm(root:THREE.Group,
 }
 export function addFNCHandstopLip(root:THREE.Group,
  material:THREE.Material):THREE.Mesh{
- const mesh=new THREE.Mesh(new THREE.BoxGeometry(.26,2.16,2.49),material);
- mesh.position.set(9.47,-1.18,0);
+ // A thicker, visible molded endstop instead of a paper-thin fin.
+ const mesh=new THREE.Mesh(new THREE.BoxGeometry(.68,2.30,2.66),material);
+ mesh.position.set(9.48,-1.18,0);
+ mesh.userData.fncP12ChunkyHandstop=true;
  mesh.name='family-handguard-fnc-p11-small-handstop';
  mesh.userData.fncP11HandstopLip=true;
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh;
 }
 export function addFNCUpperGasBox(root:THREE.Group,
  material:THREE.Material):THREE.Mesh{
+ // Move the cover .40 toward the receiver and .24 down into the
+ // polymer profile. The near end still connects to the front sight seat.
  const mesh=new THREE.Mesh(new THREE.BoxGeometry(8.90,1.08,1.34),material);
- mesh.position.set(9.90,.28,0); // X 5.45..14.35, Y -.26...82
+ mesh.position.set(9.50,.04,0); // X 5.05..13.95, Y -.50...58
+ mesh.userData.fncP12CompressedGasCover=true;
  mesh.name='family-handguard-fnc-p11-slim-vented-cover';
  mesh.userData.fncP5UpperGasBox=true;
  mesh.userData.fncP6NarrowGasBox=true;
@@ -70,8 +75,8 @@ export function addFNCUpperGasBox(root:THREE.Group,
  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);return mesh;
 }
 const GAS_SLOTS:readonly (readonly [number,number])[]=[
- [5.96,6.96],[7.42,8.42],[8.88,9.88],
- [10.34,11.34],[11.80,12.80]
+ [5.56,6.56],[7.02,8.02],[8.48,9.48],
+ [9.94,10.94],[11.40,12.40]
 ];
 const quad=(out:number[],a:readonly number[],b:readonly number[],
  c:readonly number[],d:readonly number[],flip=false)=>{
@@ -83,7 +88,7 @@ export function addFNCForearmMarks(root:THREE.Group,
  const marks:THREE.Mesh[]=[];
  const addSide=(side:-1|1,level:'upper'|'lower')=>{
   const pos:number[]=[], upper=level==='upper';
-  const ys=upper?[.04,.46]:[-.81,-1.53];
+  const ys=upper?[-.20,.22]:[-.81,-1.53];
   const spans=upper?GAS_SLOTS:[[4.49,8.90]] as const;
   const height=upper?.155:.24;
   const depth=(y:number)=>{
@@ -122,7 +127,7 @@ export function addFNCForearmMarks(root:THREE.Group,
  }
  const top:number[]=[];
  for(const [x0,x1] of GAS_SLOTS){
-  const y=.875,z=.25;
+  const y=.635,z=.25;
   const a:[number,number,number]=[x0,y,-z],
    b:[number,number,number]=[x1,y,-z],
    c:[number,number,number]=[x1,y,z],

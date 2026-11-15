@@ -27,7 +27,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p11-vented-front-end-fieldwork-exterior';
+ root.name='fnc-p12-tight-fore-end-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -191,8 +191,8 @@ export function buildFNCStage1Silhouette(
   rib.castShadow=false;rib.receiveShadow=false;
  }
 
- // P11: shorter, fuller polymer with two continuous lines per side;
- // longer, slimmer steel gas cover with broad broken vents and top slots.
+ // P12: retain the two distinct mark languages, but move the upper
+ // cover down/back into the body and seat; no exploded-looking gap.
  addFNCFacetedForearm(root,mat('handguard'));
  addFNCHandstopLip(root,mat('handguard'));
  addFNCUpperGasBox(root,mat('steel'));
@@ -227,43 +227,30 @@ export function buildFNCStage1Silhouette(
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
  }
- // Large and un-fiddly. Front guard is deliberately the dominant icon;
- // its inner hole remains one broad cutout, not a fine modeled post.
- // This one broad sight/gas seat reaches REARWARD into the lower
- // handguard and gas-box terminus; no extra connector cuboid.
+ // P12: pull the broad gas/sight seat back 0.50 art units and keep it
+ // firmly intersecting the longer vented cover (no isolated sight tower).
  const front=p('barrel',[
-  [13.12,-.32],[13.18,.90],[13.75,1.30],
-  [15.92,1.30],[15.92,-.32]
+  [12.62,-.32],[12.68,.90],[13.25,1.30],
+  [15.42,1.30],[15.42,-.32]
  ],2.04,'steel');
  front.userData.fncP7ContinuousGasSightSeat=true;
  front.userData.fncFrontSightBase=true;
  front.userData.fncP4IntegratedGasSeat=true;
- // Front sight: FAL-family paired protective ears with a shorter central
- // pin, rendered as one concave U-like outline in the YZ plane. The
- // space between ears is really open sky, not a painted side-facing hole.
- const fork=new THREE.Shape();
- const outline:readonly (readonly [number,number])[]=[
-  [-.94,1.23],[-.94,2.82],[-.70,3.23],[-.50,3.23],
-  [-.50,1.53],[-.13,1.53],[-.13,2.35],[.13,2.35],
-  [.13,1.53],[.50,1.53],[.50,3.23],[.70,3.23],
-  [.94,2.82],[.94,1.23]
- ];
- fork.moveTo(outline[0][0],outline[0][1]);
- for(let i=1;i<outline.length;i++)fork.lineTo(outline[i][0],outline[i][1]);
- fork.closePath();
- const forkGeo=new THREE.ExtrudeGeometry(fork,{
-  depth:.80,bevelEnabled:false,steps:1,curveSegments:1
- });
- forkGeo.translate(0,0,-.40);
- forkGeo.rotateY(Math.PI/2);
- forkGeo.translate(15.18,0,0);
- const sight=new THREE.Mesh(forkGeo,mat('steel'));
- sight.name='family-barrel-fnc-p11-twin-ear-front-'+ids.barrel++;
- sight.castShadow=true;sight.receiveShadow=true;root.add(sight);
- sight.userData.fncP11TwinEarFrontSight=true;
- sight.userData.fncProtectedFrontSight=true;
- sight.userData.fncP5OversizedFrontSight=true;
- sight.userData.fncP6BroadProtectedSight=true;
+ // Share the FAL's actual Fieldwork grammar: TWO chunky cuboid ears,
+ // with no central miniature post or sculpted horseshoe. A real open
+ // void between ears reads cleanly from the side, front and obliques.
+ // Each ear intersects the broad base. Only two simple meshes are needed.
+ for(const side of [-1,1] as const){
+  const ear=b('barrel',14.66,2.08,side*.72,
+   .76,2.02,.80,'steel');
+  ear.userData.fncP12FALLikeFrontEar=side<0?'left':'right';
+  ear.userData.fncProtectedFrontSight=true;
+  if(side===-1){
+   // Historical tags keep the shared Arsenal inspections working.
+   ear.userData.fncP5OversizedFrontSight=true;
+   ear.userData.fncP6BroadProtectedSight=true;
+  }
+ }
  // Compact rear ear is deliberately smaller than the tall tapered
  // front shroud: both read at miniature scale without matching towers.
  const rear=aperture('receiver','rear-guard',
