@@ -26,7 +26,7 @@ const box=object=>new THREE.Box3().setFromObject(object);
 
 test('P5 receiver: an unmistakably narrow crown over 2/3-height sloping shoulders',()=>{
  const {root,mat}=create();
- const mid=FAL_UPPER_STATIONS[3];
+ const mid=FAL_UPPER_STATIONS[2];
  const shell=root.getObjectByName('family-receiver-fal-50-receiver-0');
  assert.ok(shell&&shell.userData.falTriangularP5);
  assert.ok(mid.roofHalfZ/mid.sideHalfZ<=.41,
@@ -54,7 +54,7 @@ test('P5 handguard matches rounded triangular receiver with six projected FN ven
  assert.equal(vents.length,2);
  for(const v of vents){
   const pts=v.geometry.getAttribute('position');
-  assert.equal(pts.count,18);
+  assert.equal(pts.count,12);
   for(let i=0;i<pts.count;i++){
    assert.ok(Math.abs(Math.abs(pts.getZ(i))-
     (falHandguardSideHalfZAt(pts.getX(i),pts.getY(i))+.035))<1e-5,

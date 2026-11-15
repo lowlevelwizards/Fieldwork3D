@@ -57,11 +57,11 @@ test('FAL P2: balanced stock, slightly slimmer grip, bold seated pad and handle'
  approx(shell.max.z-shell.min.z,3.0);
  approx(grip.max.z-grip.min.z,2.16);
  approx(pad.max.x-pad.min.x,.88);
- approx(pad.max.y-pad.min.y,4.85);
+ approx(pad.max.y-pad.min.y,4.32);
  approx(pad.min.x,-15);
  assert.ok(pad.max.x>shell.min.x+.06);
  assert.ok(pad.min.y<shell.min.y&&pad.max.y>shell.max.y);
- approx(carry.max.y-carry.min.y,.97);
+ approx(carry.max.y-carry.min.y,.85);
  approx(carry.max.z-carry.min.z,.90);
  assert.ok(carry.intersectsBox(support),'carry handle must be connected');
  assert.ok(carry.min.x<0&&carry.max.x<3.2);
@@ -90,8 +90,8 @@ test('FAL P2: one continuous handguard, upper shoulder chamfer and batched vents
  const hand=named(root,'family-handguard-fal-vented-0');
  const b=bounds(hand);
  approx(b.min.x,3.65);approx(b.max.x,14.10);
- approx(b.max.y,1.40);approx(b.min.y,-1.74);
- approx(b.max.z-b.min.z,3.56);
+ approx(b.max.y,1.90);approx(b.min.y,-2.14);
+ approx(b.max.z-b.min.z,3.68);
  assert.equal(FAL_HANDGUARD_STATIONS.length,4);
  assert.equal(hand.userData.falFacetedHandguard,true);
  const verts=hand.geometry.getAttribute('position');
@@ -105,8 +105,8 @@ test('FAL P2: one continuous handguard, upper shoulder chamfer and batched vents
  assert.equal(marks.length,2);
  assert.deepEqual(marks.map(x=>x.userData.falVentSide).sort(),[-1,1]);
  for(const vent of marks){
-  assert.equal(vent.geometry.getAttribute('position').count,18,
-   'three six-sided slots batched into one mesh per side');
+  assert.equal(vent.geometry.getAttribute('position').count,12,
+   'three rectangular slots batched into one mesh per side');
   const v=bounds(vent);
   assert.equal(vent.userData.falFaceAligned,true);
   assert.ok(v.max.z-v.min.z>.01,
@@ -122,7 +122,7 @@ test('FAL P2: restrained receiver port remains right-only and HK model unchanged
  const port=named(fal,'family-receiver-fal-50-receiver-8');
  const p=bounds(port);
  assert.equal(port.userData.falEjectionPort,true);
- approx(p.max.x-p.min.x,2.97);
+ approx(p.max.x-p.min.x,2.58);
  assert.ok(p.min.z>.65&&p.max.z<1.52,'right-side scoop follows the new steep shoulder');
  const receiver=named(fal,'family-receiver-fal-50-receiver-0');
  assert.ok(bounds(receiver).max.z>=1.82&&bounds(receiver).max.z<=1.87);

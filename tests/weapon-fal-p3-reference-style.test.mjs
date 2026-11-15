@@ -72,7 +72,7 @@ test('P3 handle and guard: contoured handle supported, six-sided vents follow fr
  const vents=root.children.filter(x=>x.userData.falVentCount===3);
  assert.equal(vents.length,2);
  for(const v of vents){
-  assert.equal(v.geometry.getAttribute('position').count,18);
+  assert.equal(v.geometry.getAttribute('position').count,12);
   assert.equal(v.userData.falFaceAligned,true);
   assert.ok(box(v).max.z-box(v).min.z>.01);
  }

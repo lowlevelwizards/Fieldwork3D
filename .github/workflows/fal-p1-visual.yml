@@ -1,4 +1,4 @@
-name: FAL P5 — Triangular receiver and fore-end validation
+name: FAL P6 — Sculptural economy and silhouette verification
 on:
   pull_request:
     branches: [main]
@@ -20,6 +20,7 @@ on:
       - 'tests/weapon-fal-p3-reference-style.test.mjs'
       - 'tests/weapon-fal-p4-receiver.test.mjs'
       - 'tests/weapon-fal-p5-triangle.test.mjs'
+      - 'tests/weapon-fal-p6-geometry-budget.test.mjs'
       - 'scripts/audit-weapon-geometry.mjs'
       - 'scripts/smoke-fal-p1-visual.mjs'
       - '.github/workflows/fal-p1-visual.yml'
@@ -44,7 +45,8 @@ jobs:
             tests/weapon-fal-p2-style.test.mjs \
             tests/weapon-fal-p3-reference-style.test.mjs \
             tests/weapon-fal-p4-receiver.test.mjs \
-            tests/weapon-fal-p5-triangle.test.mjs
+            tests/weapon-fal-p5-triangle.test.mjs \
+            tests/weapon-fal-p6-geometry-budget.test.mjs
       - name: Quantify emitted triangles against existing weapons
         run: node --experimental-strip-types scripts/audit-weapon-geometry.mjs
       - name: Typecheck and production compile
@@ -56,7 +58,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fal-p5-actual-3d-comparisons
+          name: fal-p6-low-poly-comparisons
           path: fal-p1-captures/
           if-no-files-found: ignore
           retention-days: 14
