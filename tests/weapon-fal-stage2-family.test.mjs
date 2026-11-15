@@ -66,12 +66,14 @@ test('FAL S2: FAL-specific geometry, front sight, carry handle, vents and muzzle
  assert.ok(Math.abs(bounds.max.x-a.muzzleX)<.02);
  assert.equal(a.muzzleX,FAL_BARREL_ART['fal-21-service'].muzzleX);
  assert.equal(a.muzzleY,0);
- assert.ok(g.children.length>=19&&g.children.length<=24);
+ assert.equal(g.children.length,25,'FAL P1: 17 core shapes plus 8 identity accents');
  assert.equal(g.children.filter(x=>x.name.startsWith('family-handguard-fal-vented')).length,7);
  assert.ok(g.children.every(x=>x.name.startsWith('family-')));
  assert.equal(g.children.filter(x=>x.name.startsWith('family-magazine-')).length,1);
- assert.ok(g.children.some(x=>x.name==='family-receiver-fal-50-receiver-4'),
-  'factory has distinct, small carry handle');
+ assert.ok(g.children.some(x=>x.name==='family-receiver-fal-50-receiver-4'&&x.userData.falCarrySupport),
+  'factory carry support is attached to the receiver');
+ assert.ok(g.children.some(x=>x.name==='family-receiver-fal-50-receiver-5'&&x.userData.falCarryGrip),
+  'FAL factory grip extends rearward from its support');
  clearWeaponSilhouette(g);assert.equal(g.children.length,0);m.dispose();
 });
 test('FAL S2: stock, gripping, magazine sockets, carried magazine and safe poses',()=>{
