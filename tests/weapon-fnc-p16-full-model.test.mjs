@@ -1,0 +1,126 @@
+/** FN FNC P16: complete silhouette checks at actual modular art seams. */
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import * as THREE from 'three';
+import {FNC_FRONT_P13 as L} from '../src/weapons/geometry/fnc-front-layout.ts';
+import {buildFNCStage1Silhouette,FNC_P1}
+ from '../src/weapons/geometry/fnc-stage1-blockout.ts';
+import {buildWeaponSilhouette,clearWeaponSilhouette}
+ from '../src/breach-weapon-geometry.ts';
+import {initialWeaponConfiguration,selectWeaponFamilyPreset,resolveWeaponAssembly}
+ from '../src/equipment-weapon-assemblies.ts';
+const one=(g,k)=>g.children.find(x=>x.userData[k]);
+const many=(g,k)=>g.children.filter(x=>x.userData[k]);
+const box=o=>new THREE.Box3().setFromObject(o);
+const sz=(o,axis)=>box(o).max[axis]-box(o).min[axis];
+const near=(a,b,t=.026)=>Math.abs(a-b)<t;
+const touch=(a,b)=>box(a).intersectsBox(box(b));
+test('P16 magwell matches STANAG insertion instead of projecting past receiver',()=>{
+ const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
+ const upper=one(g,'fncP15FlatReceiverNose'),lower=one(g,'fncP15FlatLowerNose');
+ const well=one(g,'fncP16IntegratedMagazineSocket');
+ const mag=one(g,'fncP16CenteredMagazineSeat');
+ assert.ok(upper&&lower&&well&&mag);
+ assert.ok(box(well).max.x<=box(upper).max.x+.03);
+ assert.ok(box(well).max.x<=box(lower).max.x+.03);
+ assert.ok(touch(well,lower)&&touch(well,mag));
+ assert.ok(box(mag).min.x<box(well).min.x+.5);
+ assert.ok(box(mag).max.x>box(well).max.x-.5);
+ assert.ok(box(mag).max.y>box(well).min.y+.45);
+ assert.ok(near(L.receiver.magazineCenterX,1.54));
+ assert.ok(sz(well,'z')<3.65,'socket side should not become a bulky plate');
+ const ribs=many(g,'fncStampedMagazineRib');
+ assert.equal(ribs.length,2);
+ assert.ok(ribs.every(x=>touch(x,mag)));
+ clearWeaponSilhouette(g);m.dispose();
+});
+test('P16 exposed receiver stamping and selector stay sparse and side-specific',()=>{
+ const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
+ const upper=one(g,'fncP15FlatReceiverNose'),
+  lower=one(g,'fncP15FlatLowerNose'),
+  seam=one(g,'fncP8UpperLowerSeam'),
+  stamp=one(g,'fncP16LowerStampRelief'),
+  lever=one(g,'fncP16BroadSelectorLever');
+ assert.ok(upper&&lower&&seam&&stamp&&lever);
+ assert.ok(box(seam).max.x<=box(upper).max.x+.01);
+ assert.ok(sz(seam,'y')>.20&&sz(seam,'y')<.25);
+ assert.ok(box(stamp).max.z>box(lower).max.z);
+ assert.ok(box(lever).min.z<box(lower).min.z);
+ assert.ok(sz(stamp,'x')>4.5&&sz(stamp,'y')<.2);
+ assert.ok(sz(lever,'x')<1&&sz(lever,'y')<.5);
+ assert.ok(one(g,'fncP8RearPortForwardHandle'));
+ assert.ok(one(g,'fncP10DarkThickButtpad'));
+ clearWeaponSilhouette(g);m.dispose();
+});
+test('P16 fore-end roots penetrate both receiver shells without spacer meshes',()=>{
+ const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
+ const poly=one(g,'fncP16ConcealedReceiverRoot'),
+  gas=one(g,'fncP16ExtendedGasRoot'),
+  upper=one(g,'fncP15FlatReceiverNose'),
+  lower=one(g,'fncP15FlatLowerNose'),
+  stop=one(g,'fncP15RaisedCollar');
+ assert.ok(poly&&gas&&upper&&lower&&stop);
+ assert.ok(near(box(poly).min.x,2.18)&&near(box(gas).min.x,2.16));
+ assert.ok(box(upper).max.x-box(gas).min.x>.55);
+ assert.ok(box(lower).max.x-box(poly).min.x>.55);
+ assert.ok(touch(poly,upper)&&touch(poly,lower)&&touch(gas,upper));
+ assert.ok(touch(poly,gas)&&touch(poly,stop)&&touch(gas,stop));
+ assert.ok(sz(poly,'y')>2.5&&sz(gas,'y')>1.9);
+ const vents=many(g,'fncP11BrokenGasSideSlots');
+ assert.equal(vents.length,2);
+ assert.ok(vents.every(v=>box(v).min.y>box(poly).max.y+.1));
+ clearWeaponSilhouette(g);m.dispose();
+});
+test('P16 twin-ear guards chamfered but keep FAL open silhouette',()=>{
+ const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
+ const base=one(g,'fncP16CompactGasSightBase');
+ const ears=many(g,'fncP16ChamferedSightGuard');
+ assert.ok(base);
+ assert.equal(ears.length,2);
+ assert.ok(ears.every(e=>e.geometry.type==='ExtrudeGeometry'));
+ assert.ok(ears.every(e=>touch(e,base)));
+ assert.ok(ears.every(e=>near(box(e).max.y,2.44)));
+ assert.ok(ears.every(e=>sz(e,'x')<.85&&sz(e,'y')<1.2));
+ const sorted=ears.slice().sort((a,b)=>box(a).min.z-box(b).min.z);
+ assert.ok(box(sorted[0]).max.z<box(sorted[1]).min.z-.30);
+ assert.ok(box(base).max.y<1.60);
+ assert.ok(!one(g,'fncP11TwinEarFrontSight'));
+ clearWeaponSilhouette(g);m.dispose();
+});
+test('P16 factory device is narrower, slotted, and removed for suppressed path',()=>{
+ const m=new THREE.MeshBasicMaterial(),factory=buildFNCStage1Silhouette(m);
+ const device=one(factory,'fncP16SlenderFNCFlashHider'),
+  slots=one(factory,'fncP16MuzzleSlotStrip'),
+  barrel=one(factory,'fncServiceBarrel');
+ assert.ok(device&&slots&&barrel);
+ assert.ok(near(box(device).max.x,19.50));
+ assert.ok(sz(device,'y')>1.2&&sz(device,'y')<1.45);
+ assert.equal(slots.geometry.getAttribute('position').count,24);
+ assert.ok(box(slots).min.x>=box(device).min.x+.3);
+ assert.ok(box(slots).max.x<=box(device).max.x-.15);
+ assert.ok(touch(device,barrel));
+ const bare=buildFNCStage1Silhouette(m,{},false);
+ assert.ok(!one(bare,'fncP16SlenderFNCFlashHider'));
+ assert.ok(!one(bare,'fncP16MuzzleSlotStrip'));
+ assert.ok(near(box(bare).max.x,FNC_P1.muzzleX));
+ const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
+ const resolved=resolveWeaponAssembly(cfg);
+ assert.equal(resolved.muzzleY,0);assert.ok(near(resolved.muzzleX,19.5));
+ clearWeaponSilhouette(factory);clearWeaponSilhouette(bare);m.dispose();
+});
+test('P16 low-poly factory assembly and approved stock/hands stay stable',()=>{
+ const m=new THREE.MeshBasicMaterial(),
+ cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service'),
+ g=buildWeaponSilhouette('rifle',m,m,cfg);
+ assert.ok(g.children.length<=36);
+ assert.ok(one(g,'fncP10DarkThickButtpad'));
+ assert.ok(one(g,'fncP10ContinuousBareUpperRail'));
+ assert.ok(one(g,'fncGrip'));
+ assert.equal(many(g,'fncP12FALLikeFrontEar').length,2);
+ assert.equal(Boolean(one(g,'fncP8OpenTriggerGuard')),false);
+ assert.ok(near(box(g).min.x,FNC_P1.stockRearX));
+ assert.ok(near(box(g).max.x,FNC_P1.muzzleX));
+ const a=resolveWeaponAssembly(cfg),grip=one(g,'fncGrip');
+ assert.ok(a.primaryX>box(grip).min.x&&a.primaryX<box(grip).max.x);
+ clearWeaponSilhouette(g);m.dispose();
+});

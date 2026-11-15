@@ -91,7 +91,7 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  assert.ok(front.userData.fncP12FALLikeFrontEar,
   'simplified FAL-style twin ears replace sculpted sight');
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
- assert.ok(box(front).max.y>2.55&&box(front).max.y<2.70,
+ assert.ok(box(front).max.y>2.38&&box(front).max.y<2.50,
   'compact FAL-like ears must not remain tall towers');
  assert.ok(box(rear).max.y>2.40);
  assert.ok(box(handle).max.x-box(handle).min.x<1.15,
@@ -99,7 +99,7 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  assert.ok(box(handle).max.z>2.58,
   'charging handle extends boldly out along Z');
  assert.ok(box(handle).max.z>box(of(g,'fncP5CrownedReceiver')[0]).max.z+.6);
- assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.60);
+ assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.20);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  const noFactory=buildFNCStage1Silhouette(m,{},false);
  assert.equal(of(noFactory,'fncMuzzle').length,0);
