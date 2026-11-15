@@ -58,7 +58,8 @@ test('S1-A1 iconic DDR wide rear flare without additional concentric tiers',()=>
  near(m56SurfacePoint(4,6)[1],4.2824,'rear quarter');
  const crown=M56_SHELL_RINGS[0],shoulder=M56_SHELL_RINGS[1],
   wall=M56_SHELL_RINGS[2],edge=M56_SHELL_RINGS[4];
- assert.ok(wall.side>shoulder.side+.8,'one broad continuous bell');
+ assert.ok(wall.side>shoulder.side+.25&&wall.side<shoulder.side+.65,
+  'continuous wall gently widens from shoulder rather than a hard intermediate tier');
  assert.ok(edge.side-wall.side>.75,'single characteristic M56 flare');
  assert.ok(edge.rear-wall.rear>1.2,'long rear protective sweep');
  assert.ok(edge.rear-edge.front>1.2,'profile is unmistakably asymmetrical');
