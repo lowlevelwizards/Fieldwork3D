@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {shouldProbeStationaryCollisionRoute,
  physicalDoorPoseKey} from '../src/breach-recovery-proposal-gate.ts';
-import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe}
+import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe,
+ knownIntelRouteKey}
  from '../src/breach-cold-route-cache.ts';
 const p=(x,y)=>({x,y});
 const actor=()=>({id:'ash',side:'blue',p:p(0,0),
@@ -45,6 +46,14 @@ test('E6 only an ACTUAL failed A* may be cached; retries remain live',()=>{
  assert.equal(shouldPauseNegativeGoalProbe(a,goal,2,1,[door()]),false);
  a.p=p(0,0);a.plan[0].id=22;
  assert.equal(shouldPauseNegativeGoalProbe(a,goal,2,1,[door()]),false);
+ a.plan[0].id=1;
+ noteFailedRouteProbe(a,goal,2,1,[door()],'1:1:1:1');
+ assert.equal(shouldPauseNegativeGoalProbe(a,goal,3,1,[door()],
+   '1:1:1:1'),true);
+ assert.equal(shouldPauseNegativeGoalProbe(a,goal,3,1,[door()],
+   '2:1:1:1'),false,'freshly discovered intel opens a new real probe');
+ assert.equal(knownIntelRouteKey({walls:new Set([1]),doors:new Set(),
+   cover:new Set(),rooms:new Set()}),'1:0:0:0');
 });
 test('E1 recovered stalls remain visible but are not unresolved regressions',()=>{
  const baseline={arrived:false,stallEpisodes:0,retries:0};

@@ -17,8 +17,8 @@ import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld,
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
-import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe}
- from './breach-cold-route-cache.ts';
+import {shouldPauseNegativeGoalProbe,noteFailedRouteProbe,
+ knownIntelRouteKey} from './breach-cold-route-cache.ts';
 // Cache only proven unsuccessful route probes, never a guessed blocked GO.
 // A changed object/door/order or 4 seconds of real time reopens the query.
 import {holdKnownFixedAuthoredGoal}
@@ -281,7 +281,8 @@ export function prepareMotorRoute(
     // and contact/shove opportunities above have already run this tick.
     if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
        !a.doorTraversal&&shouldPauseNegativeGoalProbe(a,p,s.seconds,
-         sessionWorldGeometry(s).revision,s.doors)){
+         sessionWorldGeometry(s).revision,s.doors,
+         knownIntelRouteKey(s.intel))){
        a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
        // A deferred search is NOT an attempted search or retry.
        a.retryRouteAt=s.seconds+.6;
@@ -316,7 +317,8 @@ export function prepareMotorRoute(
       // cached. Do not claim a remote hidden obstacle is player-known.
       if(a.side==='blue'&&a.plan[0]?.kind==='move')
         noteFailedRouteProbe(a,p,s.seconds,
-          sessionWorldGeometry(s).revision,s.doors);
+          sessionWorldGeometry(s).revision,s.doors,
+          knownIntelRouteKey(s.intel));
       // A failed route is a stationary brace, not phantom walking speed.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       a.recoveryAttempts++;
