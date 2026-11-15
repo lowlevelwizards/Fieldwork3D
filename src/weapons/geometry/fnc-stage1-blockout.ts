@@ -129,6 +129,22 @@ export function buildFNCStage1Silhouette(
   muzzle.userData.fncSixFaceMuzzle=true;
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
+  // One batched long dark window per side, offset from the six-sided surface.
+  // No teeth, holes or extra muzzle components; the front stays one hex body.
+  const slots:number[]=[];
+  for(const side of [-1,1] as const){
+   const z=side*.688,a=[18.72,-.14,z],d=[18.72,.14,z],
+    b=[19.28,-.14,z],c=[19.28,.14,z];
+   if(side>0)slots.push(...a,...c,...b,...a,...d,...c);
+   else slots.push(...a,...b,...c,...a,...c,...d);
+  }
+  const slotGeo=new THREE.BufferGeometry();
+  slotGeo.setAttribute('position',new THREE.Float32BufferAttribute(slots,3));
+  slotGeo.computeVertexNormals();
+  const port=new THREE.Mesh(slotGeo,mat('shadow'));
+  port.name='family-barrel-fnc-p3-muzzle-window-'+ids.barrel++;
+  port.userData.fncMuzzleSlot=true;
+  port.castShadow=false;port.receiveShadow=false;root.add(port);
  }
  const gasBlock=b('barrel',14.25,.15,0,.88,1.12,1.30,'steel');
  gasBlock.userData.fncFrontGasBlock=true;

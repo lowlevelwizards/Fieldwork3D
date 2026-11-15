@@ -15,7 +15,7 @@ test('FNC P2: real polymer forearm mesh, broad mirrored grooves, open padded sto
  assert.equal(of(g,'fncCrossSectionFaces')[0].userData.fncCrossSectionFaces,8);
  assert.equal(of(g,'fncGrooveSide').length,2);
  assert.deepEqual(of(g,'fncGrooveSide').map(x=>x.userData.fncGrooveSide).sort(),[-1,1]);
- assert.ok(of(g,'fncGrooveSide').every(x=>x.userData.fncVentCount===2));
+ assert.ok(of(g,'fncGrooveSide').every(x=>x.userData.fncVentCount===3));
  assert.equal(of(g,'fncStockRail').filter(x=>x.userData.fncStockRail===true).length,2);
  assert.equal(of(g,'fncCheekSleeve').length,1);
  assert.equal(of(g,'fncHandguardNoseCollar').length,1);
