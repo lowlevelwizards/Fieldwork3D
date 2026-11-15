@@ -12,6 +12,8 @@ import {createM1HelmetCoverLayers,updateM1HelmetCoverLayers,
 import type {HelmetCoverConfig} from './operator-helmet-cover-policy.ts';
 import {createM1RetentionLayers,updateM1RetentionLayers,type M1RetentionLayers}
  from './operator-m1-retention.ts';
+import {createSsh40RetentionLayers,updateSsh40RetentionLayers,type Ssh40RetentionLayers}
+ from './operator-ssh40-retention.ts';
 import {createModernHelmetCoverLayers,updateModernHelmetCoverLayers,
  type ModernHelmetCoverLayers} from './operator-helmet-cover-geometry.ts';
 import {isH1ModernHelmet,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
@@ -58,6 +60,7 @@ export type WardrobeHeadLayers={
  twoHoleMouthCover?:THREE.Group;
  m1Cover?:M1HelmetCoverLayers;
  m1Retention?:M1RetentionLayers;
+ ssh40Retention?:Ssh40RetentionLayers;
  m56Extras?:M56Extras;
  policeVisor?:PoliceVisorLayers;
  modernCovers:Record<string,ModernHelmetCoverLayers>;
@@ -85,6 +88,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let layersRef:WardrobeHeadLayers|null=null;
  let m1Cover:M1HelmetCoverLayers|undefined;
  let m1Retention:M1RetentionLayers|undefined;
+ let ssh40Retention:Ssh40RetentionLayers|undefined;
  let m56Extras:M56Extras|undefined;
  let policeVisor:PoliceVisorLayers|undefined;
  let pasgtCover:PasgtCoverLayers|undefined;
@@ -158,6 +162,10 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  for(const id of ['boonie','beanie','pasgt','soviet-steel'] as const)
   headModel(id,true,cap=>{
    cap.add(createHeadwearSilhouette(id,detail(id)));
+   if(id==='soviet-steel'){
+    ssh40Retention=createSsh40RetentionLayers(cap);
+    if(layersRef)layersRef.ssh40Retention=ssh40Retention;
+   }
    if(id==='pasgt'){
     pasgtCover=createPasgtCoverLayers(cap);
     helmetField.pasgt=createHelmetFieldLayers(cap,'pasgt');
@@ -288,7 +296,8 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  const layers:WardrobeHeadLayers={headwear,facewear,eyewear,headset,headwearMaterials,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
-  deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m1Retention,m56Extras,policeVisor,
+  deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m1Retention,
+  ssh40Retention,m56Extras,policeVisor,
   modernCovers,achMich,pasgtCover,helmetField};
  layersRef=layers;return layers;
 }
@@ -384,6 +393,8 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   assembly.headwear==='m1-steel'?helmetCover:undefined,camoIdentity,coverRoll);
  if(layers.m1Retention)updateM1RetentionLayers(layers.m1Retention,
   helmetCover?.m1Chinstrap,assembly.facewear);
+ if(layers.ssh40Retention)updateSsh40RetentionLayers(layers.ssh40Retention,
+  helmetCover?.ssh40Chinstrap,assembly.facewear);
  if(layers.m56Extras)updateM56Extras(layers.m56Extras,
   assembly.headwear==='ddr-m56'?helmetCover:undefined);
  if(layers.policeVisor)updatePoliceVisor(layers.policeVisor,
