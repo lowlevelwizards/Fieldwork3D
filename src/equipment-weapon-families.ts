@@ -8,9 +8,9 @@ import {AR_BARREL_ART} from './weapons/geometry/ar-barrel-profiles.ts';
 export const FAMILY_PART_SLOTS=['stock','receiver','grip','magazine',
  'handguard','barrel'] as const;
 export type FamilyPartSlot=typeof FAMILY_PART_SLOTS[number];
-export type WeaponFamily='ar'|'ak'|'hk'|'fal';
+export type WeaponFamily='ar'|'ak'|'hk'|'fal'|'fnc';
 export type FamilyLength='long'|'mid'|'short';
-type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762';
+type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762'|'fnc556';
 export type WeaponFamilyPart={
  id:string;name:string;family:WeaponFamily;slot:FamilyPartSlot;
  receivers?:readonly string[];feed?:Feed;length?:FamilyLength;
@@ -174,7 +174,14 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'fal-vented':add('fal-vented','Classic ventilated FN FAL fore-end','fal','handguard',{receivers:['fal-50-receiver'],length:'long'}),
  'fal-vented-wood':add('fal-vented-wood','Classic vented wooden fore-end','fal','handguard',{receivers:['fal-50-receiver'],length:'long'}),
  'fal-21-service':add('fal-21-service','FN FAL 21-inch service barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'long',role:'rifle',nominalInches:21}),
- 'fal-172-para':add('fal-172-para','FN FAL Para 17.2-inch barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'mid',role:'rifle',nominalInches:17.2})
+ 'fal-172-para':add('fal-172-para','FN FAL Para 17.2-inch barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'mid',role:'rifle',nominalInches:17.2}),
+ // A distinct FN 5.56 rifle, not an interchangeable FAL receiver or caliber.
+ 'fnc-service-receiver':add('fnc-service-receiver','FN FNC 5.56 stamped receiver','fnc','receiver',{feed:'fnc556',role:'rifle'}),
+ 'fnc-tube-folder':add('fnc-tube-folder','FNC two-leg folding stock with cheek sleeve · extended','fnc','stock',{receivers:['fnc-service-receiver'],stockX:-14.85}),
+ 'fnc-service-grip':add('fnc-service-grip','Original FN FNC polymer pistol grip','fnc','grip',{receivers:['fnc-service-receiver']}),
+ 'fnc-mag30':add('fnc-mag30','FNC STANAG-pattern 30-round 5.56 steel magazine','fnc','magazine',{feed:'fnc556'}),
+ 'fnc-service-forearm':add('fnc-service-forearm','Full-length FN FNC ventilated polymer fore-end','fnc','handguard',{receivers:['fnc-service-receiver'],length:'long'}),
+ 'fnc-177-service':add('fnc-177-service','FN FNC full-length 17.7-inch service barrel','fnc','barrel',{receivers:['fnc-service-receiver'],length:'long',role:'rifle',nominalInches:17.7})
 };
 const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg',family:WeaponFamily,
  receiver:string,stock:string,grip:string,magazine:string,handguard:string,
@@ -221,7 +228,9 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('fal-5061','FN FAL 50.61 Para','rifle','fal','fal-50-receiver',
   'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-21-service'),
  p('fal-5063','FN FAL 50.63 Para','rifle','fal','fal-50-receiver',
-  'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-172-para')
+  'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-172-para'),
+ p('fnc-service','FN FNC','rifle','fnc','fnc-service-receiver',
+  'fnc-tube-folder','fnc-service-grip','fnc-mag30','fnc-service-forearm','fnc-177-service')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
