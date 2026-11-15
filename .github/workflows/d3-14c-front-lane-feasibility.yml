@@ -1,10 +1,7 @@
 name: D3.14C FRONT circular full-body lane read-only feasibility
 on:
-  pull_request:
-    paths:
-      - scripts/audit-r7-squad-execution.mjs
-      - .github/workflows/d3-14c-front-lane-feasibility.yml
   workflow_dispatch:
+
 permissions:
   contents: read
 jobs:
