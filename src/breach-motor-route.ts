@@ -22,6 +22,7 @@ import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {sweptRejoinExistingRoute,takeRepeatedDoorEscapeRoute,
  finishDoorEscapeRejoin} from './breach-door-escape-rejoin.ts';
+import {joinedLocalOpenLeafStage} from './breach-door-escape-stage.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
  * world-truth connector past a STABLE fully-open leaf. Otherwise a
@@ -95,8 +96,21 @@ export function restoreRepeatedDoorEscapeRoute(
    rejoined=[...connector.map(clone),...original.slice(i+1).map(clone)];
    break;
   }
+ // G2C: the original route's next grid node may be hundreds of units
+ // beyond this leaf. In that case a world connector *to that node*
+ // cannot help; try a tiny swept-clear physical leaf stage, followed
+ // by an intel continuation with the real authored goal still last.
+ const stageDoor=a.doorTraversal?.doorId?
+   s.doors.find(door=>door.id===a.doorTraversal?.doorId):undefined;
+ if(!rejoined.length&&stageDoor&&
+    pointToSegment(a.p,doorLeafSegment(stageDoor))<OPERATOR_RADIUS+44)
+   rejoined=joinedLocalOpenLeafStage(a.p,goal,stageDoor,sweep,
+     point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
+     (point,destination)=>routeWithSqueezeIntel(s.intel,point,destination));
  if(!rejoined.length||d(rejoined[rejoined.length-1],goal)>3)return false;
- setTransientRoute(s,a,rejoined,'door-escape-world-rejoin');
+ setTransientRoute(s,a,rejoined,
+   stageDoor&&rejoined.length&&d(rejoined[0],original[1]??goal)>1?
+     'door-escape-local-portal':'door-escape-world-rejoin');
  finishDoorEscapeRejoin(a);
  a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;a.recoveryAttempts=0;
  return true;
