@@ -22,7 +22,9 @@ export type ExecutionActor={
  traversal:{kind:string;duration:number}|null;
  traversalRetreating:boolean;traversalElapsed:number;
  motorPause:MotorPause;orderIssue:ExecutionIssue|null;
- completedOrders:number;passageWaitSeconds?:number;
+ completedOrders:number;failedOrders?:number;
+ lastFailedOrder?:{id:number;kind:string;reason:string;at:number}|null;
+ passageWaitSeconds?:number;
 };
 type Peer={health:number;syncReady:string|null;plan:readonly PlanNode[]};
 type DoorView={id:string;open:boolean;openFraction?:number};
