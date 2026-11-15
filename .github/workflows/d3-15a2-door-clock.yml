@@ -1,0 +1,79 @@
+name: D3.15A2 explicit door clock and frozen 45s opening acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-motor-door.ts'
+      - 'tests/release-d3-15a2-explicit-door-clock.test.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-15a2-door-clock.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  real-physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and cold door/clock/invariant regression
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-15a2-explicit-door-clock.test.mjs \
+            tests/release-d3-9-single-opener.test.mjs \
+            tests/release-a-q5-opener-stance.test.mjs \
+            tests/release-d3-14d2-retail-rehearsal.test.mjs
+      - name: Exact restaurant small 9473230 four-person 45-second run
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=7 --audit-seed=9473230 --audit-scale=small \
+            --progress --d315a-door-probe > "$RUNNER_TEMP/d315a2-restaurant.json"
+      - name: Exact townhouse standard 9568385 four-person 45-second run
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=1 --audit-seed=9568385 --audit-scale=standard \
+            --progress --d315a-door-probe > "$RUNNER_TEMP/d315a2-townhouse.json"
+      - name: Historical frozen 11-site real 88 body regression
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+           11 2700 --progress --route-quality > "$RUNNER_TEMP/d315a2-historical.json"
+      - name: Reject corruption, and retain exact physical outcomes
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const load=name=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d315a2-'+name+'.json','utf8'));
+          for(const name of ['restaurant','townhouse']){
+           const r=load(name),m=r.rows[0].modes.find(x=>x.mode==='entry');
+           const a=m.operators.find(x=>x.id==='rook');
+           console.log('D315A2_'+name.toUpperCase(),JSON.stringify({
+            arrivals:m.arrivals,rook:a,door:m.endDoorStates.find(x=>x.id==='FRONT'),
+            samples:m.d315aDoorSamples?.filter(x=>x.seconds%5===0),
+            safety:r.summary}));
+           if(r.summary.exceptions||r.summary.invalidPositions||
+             r.summary.corruptedPlans||r.summary.physicsStepViolations||
+             r.summary.unboundedManeuverAttempts)
+              throw Error(name+' invalid physical movement or order');
+           if(a.activeOrder==='door'&&a.actionTimer===0)
+              throw Error(name+' explicit DOOR still loses its live clock');
+          }
+          const h=load('historical'),s=h.summary,p=h.progressSummary,q=h.routeQualitySummary;
+          console.log('D315A2_HISTORICAL',JSON.stringify({s,p,q}));
+          if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+            s.physicsStepViolations||s.unboundedManeuverAttempts||
+            s.physicalArrivals<80||s.physicalCompletedFour<18||
+            s.completedFour<21||s.stallEpisodes>8||
+            p.suspectedLoops||p.sustainedStill||q.searches>2850)
+             throw Error('historical physical regression');
+          NODE
+      - name: Archive all actual 60Hz motor findings
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d315a2-two-openings-and-historical-45s
+          path: ${{ runner.temp }}/d315a2-*.json
+          retention-days: 90
+          if-no-files-found: ignore
