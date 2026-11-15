@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {generateSite} from '../src/breach-site.ts';
+import {newSession} from '../src/breach-game.ts';
 import {doorSwingBlocked} from '../src/breach-door.ts';
 import {OPERATOR_RADIUS} from '../src/breach-core.ts';
 import {orientGeneratedDoorSwings,GENERATED_DOOR_PASSAGE_FRACTION}
@@ -48,4 +49,22 @@ test('D3.13C changes only procedural hinged orientation, not geometric physicali
       'a door with one passable orientation must choose a passable one');
   }
  }
+});
+
+test('D3.13C generation and runtime keep the same physically clear front swing',()=>{
+ const site=fixture(728413,'house');
+ const front=site.doors.find(d=>d.id==='FRONT');
+ assert.ok(front);
+ assert.equal(front.swing,-1,'generated site corrects the blocked +1 swing');
+ const quiet={...site,training:true,enemies:[],encounter:undefined};
+ const session=newSession(0,728413,'full-view','small','intel',quiet,
+  {enableCivilians:false});
+ const physical=session.doors.find(d=>d.id==='FRONT');
+ assert.ok(physical);
+ assert.equal(physical.swing,front.swing,
+  'session initialization must not silently undo generator hinge correction');
+ const world={site:session.site,walls:session.site.walls,
+  cover:session.coverState,revision:0};
+ assert.equal(doorSwingBlocked(physical,.72,[],OPERATOR_RADIUS,world),false,
+  'the actual live door can clear the 72% angle against current geometry');
 });
