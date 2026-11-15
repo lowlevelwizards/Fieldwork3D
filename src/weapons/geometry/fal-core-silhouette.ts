@@ -7,9 +7,9 @@
  * Live Arsenal and the one-material comparison lab share this same builder.
  */
 import * as THREE from 'three';
-import {addOutline,addCuboid,addFacetedTube,addProfileFrame,
+import {addOutline,addCuboid,
  type Outline,type SlotName} from './profile-primitives.ts';
-import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH} from './fal-magazine-profiles.ts';
+import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH,falMagazineRibOutlines} from './fal-magazine-profiles.ts';
 import {addFALFacetedHandguard} from './fal-handguard-profiles.ts';
 import {addFALCrownedReceiver,addFALAngledCarrySupport} from './fal-receiver-form.ts';
 
@@ -25,7 +25,7 @@ export const FAL_ART:Readonly<{
 });
 
 export type FALCoreOptions={raisedCarryHandle?:boolean;showFactoryMuzzle?:boolean};
-export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material}>;
+export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material}>;
 export type FALCoreIds=Readonly<Record<SlotName,string>>;
 /** One source of geometry for the test lab and production FAL. */
 export function buildFALCoreSilhouette(
@@ -50,38 +50,36 @@ export function buildFALCoreSilhouette(
  // Shell ends inside the broad plate; the plate alone owns X=-15.
  // Preserve the FAL comb/wrist rather than inventing a taller M16-like hump.
  p('stock',[
-  [-14.60,1.04],[-10.30,1.15],
-  [-8.05,.22],[-6.12,.22],[-6.12,-.88],
-  [-8.40,-1.14],[-11.50,-2.76],[-14.60,-3.05]
- ],3.00);
- b('stock',-14.56,-1.00,0,.88,4.32,3.55);
+  // Drooping rear comb and broad butt, narrowed in DEPTH, not side height.
+  [-14.60,.12],[-11.60,.27],[-8.10,.72],[-6.12,.72],
+  [-6.12,-.82],[-8.70,-1.13],[-11.50,-2.64],[-14.60,-2.78]
+ ],2.34);
+ b('stock',-14.56,-1.33,0,.88,3.02,2.66);
 
  // P6: one reduced-triangle upper receiver mesh; broad intentional faceted
  // shoulders taper toward the roof to visually echo the FAL handguard.
  // Not a rectangular extrude and not an AR/G3 imitation.
  addFALCrownedReceiver(root,partIds.receiver,ids.receiver++,materials.receiver);
- // Single angular lower, sculpting the grip/magazine negative space.
- // P4 R1B: broad one-piece LOWER, not a narrow dark strip behind the
- // upper shell. Its sloped belly makes the grip/guard/magwell relationship
- // legible at miniature scale. One silhouette, one material, no seam decals.
+ // Single integrated lower AND FAL magazine shroud. No overlapping well
+ // plate or decorative seam: the front drops directly into the mag lip.
  lower([
-  [-6.30,-1.10],[3.70,-1.10],[3.10,-2.65],
-  [.10,-2.65],[-1.05,-2.35],[-4.55,-2.35],
-  [-6.30,-1.80]
+  [-6.30,-1.12],[3.55,-1.12],[3.06,-3.19],
+  [-.10,-3.19],[-.90,-2.35],[-4.55,-2.35],[-6.30,-1.80]
  ],3.40);
- // Characteristic broad sloped FN magazine shroud. It is a receiver
- // landmark, not a separate functional magazine or insertion socket.
- lower([
-  [-.40,-1.83],[3.16,-1.83],[3.37,-2.37],
-  [2.95,-3.19],[-.10,-3.19]
- ],3.32);
 
  // P5 grip: short, stout, swept back; preserve open trigger/mag gap.
  p('grip',[
-  [-5.22,-2.18],[-3.03,-2.18],[-3.98,-5.92],
-  [-4.38,-6.54],[-6.08,-6.54],[-5.80,-3.67]
+  [-5.38,-2.18],[-3.18,-2.18],[-4.07,-6.48],[-6.12,-6.48]
  ],2.16);
  p('magazine',FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH);
+ // Two thick stamped ribbons follow the same straight magazine centerline
+ // as the silhouette. Metal marks, NOT rows of applied little rectangles.
+ for(const shape of falMagazineRibOutlines()){
+  const rib=addOutline(root,'magazine',partIds.magazine,ids.magazine++,
+   shape,FAL_MAG20_DEPTH+.08,materials.magazineRib??materials.magazine);
+  rib.userData.falStampedRib=true;
+  rib.castShadow=false;rib.receiveShadow=false;
+ }
 
  // Tall six-corner FAL fore-end, with long angular shoulders and no
  // decorative lower chamfers. Simple rectangular vents follow its surface.
@@ -89,61 +87,60 @@ export function buildFALCoreSilhouette(
 
  // One six-sided barrel. The gas-block sight is near the end of the
  // handguard rather than at the muzzle as on the G3.
- const barrel=addFacetedTube(root,'barrel',partIds.barrel,
-  ids.barrel++,13.85,options.showFactoryMuzzle===false?22.00:21.15,.61,materials.barrel);
- barrel.position.y=0;
- // Authentic protected FAL post: one broad gas-block base, two lateral
- // ears and a central post. Ears spread across Z, NOT along barrel X like
- // an M16 A-frame. Large contiguous shapes, no pins or mechanism geometry.
- p('barrel',[
-  [14.02,.20],[14.02,1.62],[15.35,1.62],[15.35,.20]
- ],2.20);
- const earProfile:Outline=[
-  [14.18,1.42],[14.24,2.52],[14.57,2.94],[15.15,1.42]
- ];
- const leftEar=p('barrel',earProfile,.46);
- leftEar.position.z=-.79;
- leftEar.userData.falFrontEar='left';
- const rightEar=p('barrel',earProfile,.46);
- rightEar.position.z=.79;
- rightEar.userData.falFrontEar='right';
- const sightPost=b('barrel',14.70,2.16,0,.22,1.24,.23);
- sightPost.userData.falFrontPost=true;
- // Simple short Belgian factory muzzle; omit when a mounted muzzle replaces it.
- if(options.showFactoryMuzzle!==false)p('barrel',[
-  [20.93,-.58],[21.24,-.74],[22.00,-.58],
-  [22.00,.58],[21.24,.74],[20.93,.58]
- ],1.78);
- // S1C: low chunky rear blade; no knobs, pins or aperture holes.
- p('receiver',[
-  [-5.52,1.82],[-5.42,2.49],[-4.82,2.76],[-4.48,1.82]
- ],1.74);
-
+ const barrelEnd=options.showFactoryMuzzle===false?22.00:21.15;
+ const barrel=b('barrel',(13.85+barrelEnd)/2,0,0,
+  barrelEnd-13.85,.92,.92);
+ barrel.userData.falBoxBarrel=true;
+ // Simplified graphic FAL protective front sight: three upright boxes
+ // and one square base. Deliberately no angled bevels or punched details.
+ const sightBase=b('barrel',14.70,.76,0,1.18,1.42,2.18);
+ sightBase.userData.falFrontBase=true;
+ for(const side of [-1,1] as const){
+  const ear=b('barrel',14.70,2.13,side*.77,.62,1.67,.46);
+  ear.userData.falFrontEar=side<0?'left':'right';
+ }
+ const post=b('barrel',14.70,2.08,0,.24,1.24,.24);
+ post.userData.falFrontPost=true;
+ // Late-pattern FAL-style COMBO device: a long slim square sleeve
+ // immediately after a broad collar. Not a generic short end cap.
+ if(options.showFactoryMuzzle!==false){
+  const collar=b('barrel',20.22,0,0,.34,1.30,1.32);
+  collar.userData.falMuzzleCollar=true;
+  const device=b('barrel',21.12,0,0,1.76,1.00,1.00);
+  device.userData.falMuzzleCombo=true;
+  // Two bold stamped slots batched into one four-triangle graphic.
+  const verts:number[]=[],indices:number[]=[];
+  for(const side of [-1,1] as const){
+   const first=verts.length/3,z=side*.536;
+   for(const [x,y] of [[20.57,-.15],[21.48,-.15],
+                         [21.48,.15],[20.57,.15]])
+    verts.push(x,y,z);
+   if(side===1)indices.push(first,first+1,first+2,first,first+2,first+3);
+   else indices.push(first,first+2,first+1,first,first+3,first+2);
+  }
+  const slotGeometry=new THREE.BufferGeometry();
+  slotGeometry.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+  slotGeometry.setIndex(indices);slotGeometry.computeVertexNormals();
+  const slots=new THREE.Mesh(slotGeometry,materials.muzzleSlot??materials.barrel);
+  slots.name='family-barrel-'+partIds.barrel+'-'+ids.barrel++;
+  slots.userData.falMuzzleSlots=true;
+  slots.castShadow=false;slots.receiveShadow=false;
+  slots.renderOrder=3;root.add(slots);
+ }
+ // A single substantial rear sight blade, no miniature articulated parts.
+ b('receiver',-5.00,2.18,0,.80,.74,1.58);
  // A small offset folding-handle representation: bent steel support with
  // long rearward horizontal polymer grip. Both solids physically overlap;
  // no AR-style upright arch, hollow box, hinges or screws. Factory enabled.
  if(options.raisedCarryHandle){
   addFALAngledCarrySupport(root,partIds.receiver,ids.receiver++,
    materials.receiver);
-  // One contoured handhold instead of a floating cuboid; this is an
-  // offset folding FAL carrying handle, never an AR bridge/arch.
-  const grip=addOutline(root,'receiver',partIds.receiver,ids.receiver++,[
-   [-.72,3.14],[-.40,3.99],[2.51,3.99],
-   [3.05,3.65],[3.05,3.14],[-.31,3.14]
-  ],.90,materials.stock);
-  grip.position.z=-1.61;
+  // One giant RECTANGULAR handhold. No tiny chamfers or floating arch.
+  const grip=addCuboid(root,'receiver',partIds.receiver,ids.receiver++,
+   1.08,3.55,-1.61,4.08,1.05,1.15,materials.stock);
   grip.userData.falCarryGrip=true;
  }
- // P4 R2B: one bold open trigger-guard arch. Intentional negative space
- // BELOW the lower receiver; no tiny curved wires, fake trigger pins or
- // duplicate trigger geometry. Added after carry handle so legacy part IDs
- // and the 0–5 receiver mesh naming contract remain stable.
- const guard=addProfileFrame(root,'receiver',partIds.receiver,
-  ids.receiver++,[
-   [-3.55,-2.20],[-.85,-2.20],[-.85,-3.56],[-3.55,-3.56]
-  ],[
-   [-3.07,-2.68],[-3.07,-3.20],[-1.31,-3.20],[-1.31,-2.68]
-  ],.38,materials.receiver);
- guard.userData.falTriggerGuard=true;
+ // P7: trigger guard intentionally omitted; the negative space stays open.
+
  return root;
 }

@@ -10,10 +10,8 @@ type Station=Readonly<{
  x:number;top:number;bottom:number;sideHalfZ:number;roofHalfZ:number
 }>;
 export const FAL_UPPER_STATIONS:readonly Station[]=[
- {x:-6.60,top:1.08,bottom:-.87,sideHalfZ:1.55,roofHalfZ:.65},
- {x:-5.36,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
- {x:2.42,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
- {x:3.85,top:1.04,bottom:-.62,sideHalfZ:1.51,roofHalfZ:.61}
+ {x:-6.60,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67},
+ {x:3.85,top:1.83,bottom:-1.23,sideHalfZ:1.85,roofHalfZ:.67}
 ];
 /** Center section slopes for roughly two-thirds of its full vertical height.
  * At the short ends a lower shoulder limit prevents inverted rings. */
@@ -76,8 +74,9 @@ export function addFALCrownedReceiver(
   [s.x,(s.top+s.bottom)/2,0];
  for(let j=0;j<6;j++){
   const k=(j+1)%6;
-  tri(center(rear),point(rear,k),point(rear,j));
-  tri(center(front),point(front,j),point(front,k));
+  // P6 had inverted cap windings: they were culled from the outside.
+  tri(center(rear),point(rear,j),point(rear,k));
+  tri(center(front),point(front,k),point(front,j));
  }
  const geometry=new THREE.BufferGeometry();
  geometry.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
@@ -97,7 +96,7 @@ export function addFALCrownedReceiver(
 export function addFALScoopedPort(root:THREE.Group,
  receiverId:string,index:number,material:THREE.Material):THREE.Mesh{
  const outline:readonly (readonly [number,number])[]=[
-  [-.28,.86],[-.28,1.54],[2.30,1.54],[2.30,.86]
+  [.14,.12],[.14,.82],[2.64,.82],[2.64,.12]
  ];
  const vertices:number[]=[];
  for(const [x,y] of outline)
@@ -123,49 +122,16 @@ export function addFALPivotPair(root:THREE.Group,receiverId:string,
  startIndex:number,material:THREE.Material):THREE.Mesh[]{
  const result:THREE.Mesh[]=[];
  for(const side of [-1,1] as const){
-  const geometry=new THREE.CylinderGeometry(.55,.55,.18,6,1);
+  const geometry=new THREE.CylinderGeometry(.79,.79,.22,6,1);
   geometry.rotateX(Math.PI/2);
   const mesh=new THREE.Mesh(geometry,material);
   mesh.name='family-receiver-'+receiverId+'-'+(startIndex+result.length);
-  mesh.position.set(-1.14,-1.83,side*1.74);
+  mesh.position.set(-1.14,-1.84,side*1.80);
   mesh.userData.falPivotSide=side;
   mesh.castShadow=true;mesh.receiveShadow=true;
   root.add(mesh);result.push(mesh);
  }
  return result;
-}
-/** Surface-following angular steel boss / runner: one solid mesh whose
- * inner face intersects the receiver while the exterior follows the tapered
- * top, keeping details attached at ANY silhouette strength. */
-export function addFALLeftSurfacePlate(
- root:THREE.Group,receiverId:string,index:number,
- points:readonly (readonly [number,number])[],
- projection:number,material:THREE.Material,tag:string
-):THREE.Mesh{
- const n=points.length,vertices:number[]=[],indices:number[]=[];
- for(const outside of [true,false]){
-  for(const [x,y] of points){
-   const z=falUpperSideHalfZ(y,x)+(outside?projection:-.08);
-   vertices.push(x,y,-z);
-  }
- }
- for(let i=1;i<n-1;i++){
-  indices.push(0,i+1,i);
-  indices.push(n,n+i,n+i+1);
- }
- for(let i=0;i<n;i++){
-  const j=(i+1)%n;
-  indices.push(i,j,n+j,i,n+j,n+i);
- }
- const geometry=new THREE.BufferGeometry();
- geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
- geometry.setIndex(indices);geometry.computeVertexNormals();
- const mesh=new THREE.Mesh(geometry,material);
- mesh.name='family-receiver-'+receiverId+'-'+index;
- mesh.userData[tag]=true;
- mesh.userData.falSurfaceFitted=true;
- mesh.castShadow=false;mesh.receiveShadow=false;
- root.add(mesh);return mesh;
 }
 /** A single thick angled support, physically connected to receiver's new
  * shoulder below and the existing polymer handle above. */

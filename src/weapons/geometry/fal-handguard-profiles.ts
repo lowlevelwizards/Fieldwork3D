@@ -6,10 +6,8 @@ import * as THREE from 'three';
 
 type Station=Readonly<{x:number;top:number;bottom:number;halfWidth:number}>;
 export const FAL_HANDGUARD_STATIONS:readonly Station[]=[
- {x:3.65,top:1.30,bottom:-1.65,halfWidth:1.72},
- {x:4.48,top:1.90,bottom:-2.14,halfWidth:1.84},
- {x:12.30,top:1.78,bottom:-2.10,halfWidth:1.84},
- {x:14.10,top:1.30,bottom:-1.62,halfWidth:1.54}
+ {x:3.65,top:1.90,bottom:-2.12,halfWidth:1.84},
+ {x:14.10,top:1.90,bottom:-2.12,halfWidth:1.84}
 ];
 export const FAL_HANDGUARD_ROOF_RATIO=.40;
 export function falHandguardShoulderY(station:Station):number{
