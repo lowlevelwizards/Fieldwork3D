@@ -17,7 +17,7 @@ export const FNC_FRONT_P13=Object.freeze({
   bottomHalfZ:.50,sideHalfZ:.68,roofHalfZ:.52,
   ventFirstX:5.56,ventPitch:1.46,ventLength:1.00,
   ventCount:5,ventSideYs:Object.freeze([.075,.275]),
-  ventHeight:.105,ventOffset:.055,ventRoofHalfZ:.25
+  ventHeight:.155,ventOffset:.055,ventRoofHalfZ:.25
  }),
  handstop:Object.freeze({
   centerX:10.54,length:.55,
