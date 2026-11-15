@@ -102,15 +102,17 @@ export function restoreRepeatedDoorEscapeRoute(
  // by an intel continuation with the real authored goal still last.
  const stageDoor=a.doorTraversal?.doorId?
    s.doors.find(door=>door.id===a.doorTraversal?.doorId):undefined;
+ let usedLocalStage=false;
  if(!rejoined.length&&stageDoor&&
-    pointToSegment(a.p,doorLeafSegment(stageDoor))<OPERATOR_RADIUS+44)
+    pointToSegment(a.p,doorLeafSegment(stageDoor))<OPERATOR_RADIUS+44){
    rejoined=joinedLocalOpenLeafStage(a.p,goal,stageDoor,sweep,
      point=>bodyClear(point,s.doors,OPERATOR_RADIUS,world),
      (point,destination)=>routeWithSqueezeIntel(s.intel,point,destination));
+   usedLocalStage=rejoined.length>0;
+ }
  if(!rejoined.length||d(rejoined[rejoined.length-1],goal)>3)return false;
  setTransientRoute(s,a,rejoined,
-   stageDoor&&rejoined.length&&d(rejoined[0],original[1]??goal)>1?
-     'door-escape-local-portal':'door-escape-world-rejoin');
+   usedLocalStage?'door-escape-local-portal':'door-escape-world-rejoin');
  finishDoorEscapeRejoin(a);
  a.lastNavRepairAt=s.seconds;a.retryRouteAt=0;a.recoveryAttempts=0;
  return true;
