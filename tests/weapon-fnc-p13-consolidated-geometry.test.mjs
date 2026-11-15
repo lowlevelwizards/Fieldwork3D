@@ -106,7 +106,7 @@ test('P13: compact integrated sight base and ears; no tall pedestal',()=>{
  assert.equal(ears.length,2);
  assert.ok(near(box(base).min.x,L.sight.baseStartX));
  assert.ok(near(box(base).max.x,L.sight.baseEndX));
- assert.ok(near(box(base).max.y,L.sight.baseTopY));
+ assert.ok(near(box(base).max.y,L.sight.baseRearTopY));
  assert.ok(near(box(base).min.y,L.sight.baseBottomY));
  assert.ok(ears.every(e=>touch(e,base)&&size(e,'y')<1.8));
  assert.ok(ears.every(e=>box(e).max.y<2.7),'ears should no longer tower above entire weapon');
