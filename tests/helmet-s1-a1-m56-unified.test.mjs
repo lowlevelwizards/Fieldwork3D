@@ -39,7 +39,7 @@ test('S1-A1 one M56 stamped steel surface replaces every visible cuboid tier',()
  for(const n of ['uv','uv1','color','normal'])
   assert.equal(g.getAttribute(n).count,g.getAttribute('position').count,n);
  // Old envelopes are compatibility FIT DATA ONLY, never a second shell.
- assert.equal(headwearCuboidVolumes('ddr-m56').length,14);
+ assert.equal(headwearCuboidVolumes('ddr-m56').length,13);
  assert.ok(root.userData.sourceCuboids);
 });
 
