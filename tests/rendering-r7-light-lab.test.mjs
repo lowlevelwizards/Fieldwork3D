@@ -150,11 +150,13 @@ test('R7.15 soft equipment is included without turning lenses into outlines',()=
 
 test('R7.18 shared look reaches Arsenal/live, without tactical shadow-size changes',()=>{
  const live=read('src/breach-3d.ts');
+ const site=read('src/rendering/breach-site-render-composition.ts');
  const arsenal=read('src/arsenal/viewport.ts');
  const world=read('src/breach-graphic-world-lighting.ts');
  const studio=read('src/operator-studio-graphic-lighting.ts');
  assert.match(live,/applyStudioGraphicLighting\(object\.root,APPROVED_GRAPHIC_LIGHTING\)/);
- assert.match(live,/applyWorldGraphicLighting\(this\.root\)/);
+ assert.match(live,/composeBreachSiteRender\(/);
+ assert.match(site,/applyWorldGraphicLighting\(host\.root\)/);
  assert.match(live,/this\.quality\.shadowSize/);
  assert.doesNotMatch(live,/studioShadowSize|studioShadowSizeOverride/);
  assert.match(arsenal,/addArsenalInspectionLighting/);
