@@ -160,7 +160,8 @@ function run(site,seed,kind){
    traceActor:utilityTrace&&seed===31162&&kind==='authored'?'rook':null,
    traceEvery:15}):null;
   const grid=routeQuality?createD311GridObserver():null;
-  const routeWitness=routeTransitions?{counts:{},byActor:{},rejectReasons:{},events:[],
+  const routeWitness=routeTransitions?{counts:{},byActor:{},rejectReasons:{},
+   rejectsByActor:{},events:[],
    escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
   // Offline-only evidence: associate one physical LEAF escape with the
   // next immediate reacquisition for the SAME actor and door. A route that
@@ -168,9 +169,12 @@ function run(site,seed,kind){
   const recentLeafEscapes=routeWitness?new Map():null;
   const recordRoute=routeWitness?(e)=>{
    routeWitness.counts[e.source]=(routeWitness.counts[e.source]??0)+1;
-   if(e.source==='door-handoff-reject')
+   if(e.source==='door-handoff-reject'){
     routeWitness.rejectReasons[e.reason??'unknown']=
       (routeWitness.rejectReasons[e.reason??'unknown']??0)+1;
+    const bucket=e.actorId+':'+(e.reason??'unknown');
+    routeWitness.rejectsByActor[bucket]=(routeWitness.rejectsByActor[bucket]??0)+1;
+   }
    const key=e.actorId+':'+e.source;
    routeWitness.byActor[key]=(routeWitness.byActor[key]??0)+1;
    if(e.source==='door-leaf-escape'){
