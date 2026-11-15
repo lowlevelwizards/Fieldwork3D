@@ -42,24 +42,22 @@ test('FAL P1: single shared art core keeps full-sized datum and lean factory bud
  clearWeaponSilhouette(core);assert.equal(core.children.length,0);
  steel.dispose();poly.dispose();
 });
-test('FAL P1: front sight has centered post and two lateral protective ears',()=>{
+test('FAL P8: one bold U-shaped sight, without a fiddly inner post',()=>{
  const m=new THREE.MeshBasicMaterial();
  const root=buildWeaponSilhouette('rifle',m,m,config());
  const base=find(root,'family-barrel-fal-21-service-1');
  const left=find(root,'family-barrel-fal-21-service-2');
  const right=find(root,'family-barrel-fal-21-service-3');
- const post=find(root,'family-barrel-fal-21-service-4');
  assert.equal(left.userData.falFrontEar,'left');
  assert.equal(right.userData.falFrontEar,'right');
- assert.equal(post.userData.falFrontPost,true);
- const L=bounds(left),R=bounds(right),P=bounds(post),B=bounds(base);
+ assert.ok(!root.children.some(x=>x.userData.falFrontPost));
+ const L=bounds(left),R=bounds(right),B=bounds(base);
  assert.ok(Math.abs(L.min.z+R.max.z)<1e-6);
  assert.ok(Math.abs(L.max.z+R.min.z)<1e-6);
  assert.ok(L.max.z<0&&R.min.z>0);
- assert.ok(P.min.z<0&&P.max.z>0);
- assert.ok(B.max.y>=Math.min(L.min.y,R.min.y),'ear bases embed into gas block');
- assert.ok(B.max.y>P.min.y,'center post embeds into base');
- assert.ok(L.max.y>2.9&&L.max.y<3.05,'maintain current short FAL sight envelope');
+ assert.ok(B.max.y>=Math.min(L.min.y,R.min.y),'ears overlap base');
+ assert.ok(L.max.y>3.1&&L.max.y<3.21);
+ assert.ok(L.max.z-L.min.z>=.77,'ears thick enough for miniature view');
  assert.ok(Math.abs((L.min.x+L.max.x)/2-FAL_ART.frontSightX)<.5);
  assert.equal(root.children.length,26);
  assert.equal(root.children.filter(x=>x.name.startsWith('family-handguard-fal-vented')).length,3);

@@ -6,12 +6,12 @@ import * as THREE from 'three';
 
 type Station=Readonly<{x:number;top:number;bottom:number;halfWidth:number}>;
 export const FAL_HANDGUARD_STATIONS:readonly Station[]=[
- {x:3.65,top:1.90,bottom:-2.12,halfWidth:1.84},
- {x:14.10,top:1.90,bottom:-2.12,halfWidth:1.84}
+ {x:4.20,top:1.90,bottom:-1.56,halfWidth:1.84},
+ {x:14.10,top:1.90,bottom:-1.56,halfWidth:1.84}
 ];
 export const FAL_HANDGUARD_ROOF_RATIO=.40;
 export function falHandguardShoulderY(station:Station):number{
- return Math.max(station.bottom+.45,station.top-2.45);
+ return station.top-2.45;
 }
 export function falHandguardStationAt(x:number):Station{
  const list=FAL_HANDGUARD_STATIONS;
