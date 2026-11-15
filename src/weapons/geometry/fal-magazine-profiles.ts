@@ -7,8 +7,11 @@ export const FAL_MAG20_TOP_Y=-2.98;
 export const FAL_MAG20_LENGTH=5.07;
 /** Shared FAL rifle magazine depth matches the simplified G3 class. */
 export const FAL_MAG20_DEPTH=2.08;
+/** Reference-led side silhouette: deliberately sloped floorplate, rear heel
+ * lower than front heel. One prism, no separate shoe or AK-like curvature.
+ * Max visual drop remains -8.05 for historical pose/camera comparisons. */
 export const FAL_MAG20_OUTLINE:Outline=[
- [-.36,-2.98],[3.10,-2.98],
- [3.12,-7.61],[2.96,-8.05],
- [-.08,-8.05],[-.34,-7.69]
+ [-.26,-2.98],[2.96,-2.98],
+ [2.96,-7.30],[2.80,-7.47],
+ [-.12,-8.05],[-.26,-7.90]
 ];
