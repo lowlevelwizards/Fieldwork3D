@@ -1,0 +1,118 @@
+name: D3.17E productive recovery acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-recovery-proposal-gate.ts'
+      - 'src/breach-cold-route-cache.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-execution-state.ts'
+      - 'src/breach-physical-leaf-rejoin.ts'
+      - 'scripts/report-d3-15b4-blind22.mjs'
+      - 'tests/release-d3-17e-recovery-accounting.test.mjs'
+      - '.github/workflows/d3-17e-recovery.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and known recovery invariants
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-17e-recovery-accounting.test.mjs \
+            tests/release-d3-17d-door-route-join.test.mjs \
+            tests/release-d3-17c-physical-departure.test.mjs \
+            tests/release-d3-17b-route-recurrence.test.mjs \
+            tests/release-d3-14d2-retail-rehearsal.test.mjs
+      - name: Exact 4 persistent cases — physical motor and transitions
+        run: |
+          for case in "motel 8 14136777 small authored ash" \
+                      "retail 3 14299875 standard entry rook" \
+                      "garage 5 14354241 standard authored rook" \
+                      "clinic 10 14490156 standard authored rook"; do
+            set -- $case
+            node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+              11 2700 --site-index="$2" --audit-seed="$3" \
+              --audit-scale="$4" --progress --route-transitions \
+              --trace-actor="$6" --trace-mode="$5" \
+              > "$RUNNER_TEMP/d317e-$1.json"
+          done
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for(const site of ['motel','retail','garage','clinic']){
+            const x=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317e-'+site+'.json','utf8'));
+            const mode=site==='retail'?'entry':'authored';
+            const m=x.rows[0].modes.find(m=>m.mode===mode);
+            console.log('D317E_EXACT '+JSON.stringify({
+              site,mode,seed:x.rows[0].seed,operators:m.operators.map(a=>({
+                id:a.id,arrived:a.arrived,remaining:a.remaining,
+                blocker:a.lastBlocker,stalls:a.stallEpisodes,retries:a.retries,
+                blockedSeconds:a.blockedSeconds,
+                waiting:a.activeOrder,remainingOrders:a.remainingOrders
+              })),
+              transitions:m.routeTransitions.byActor,
+              summary:x.summary,progress:x.progressSummary
+            }));
+            if(x.summary.invalidPositions||x.summary.physicsStepViolations||
+               x.summary.corruptedPlans||x.summary.unboundedManeuverAttempts||
+               x.summary.exceptions)throw Error('D3.17E real-physics regression '+site);
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d317e-four-exact-physical
+          path: ${{ runner.temp }}/d317e-*.json
+          retention-days: 90
+  cohort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Historical 11-site body truth
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress --route-quality > "$RUNNER_TEMP/d317e-history.json"
+      - name: Frozen tenth 22-site physical truth and actual route-search cost
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-quality \
+            > "$RUNNER_TEMP/d317e-frozen.json"
+      - name: Physical and performance safety assertions
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const get=n=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d317e-'+n+'.json','utf8'));
+          const hist=get('history'),cur=get('frozen');
+          console.log('D317E_COHORT',JSON.stringify({
+            hist:hist.summary,current:cur.summary,
+            route:cur.routeQualitySummary,progress:cur.progressSummary
+          }));
+          for(const x of [hist,cur])if(x.summary.exceptions||
+             x.summary.physicsStepViolations||x.summary.invalidPositions||
+             x.summary.corruptedPlans||x.summary.unboundedManeuverAttempts)
+            throw Error('unsafe body or authored plan');
+          if(hist.summary.physicalArrivals<80||hist.summary.physicalCompletedFour<18||
+             hist.progressSummary.suspectedLoops>0)
+            throw Error('historical arrival regression');
+          if(cur.summary.physicalArrivals<140||cur.summary.physicalCompletedFour<29||
+             cur.progressSummary.suspectedLoops>0)
+            throw Error('frozen physical-goal or loop regression');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d317e-physical-performance
+          path: ${{ runner.temp }}/d317e-*.json
+          retention-days: 90
