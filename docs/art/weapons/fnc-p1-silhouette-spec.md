@@ -21,13 +21,13 @@ P1 is deliberately dark flat-material with neutral sage-gray inspection backgrou
 - Handguard ends X = 13.55
 - Front sight X = 15.20
 - Muzzle visual tip X = 19.50 (P1B: ~7% shorter rifle art vs first blockout)
-- Magazine lowest Y = -8.05 (P1B: narrower, rounded/angled 30-round STANAG profile)
+- Magazine lowest Y ≈ -7.80 (P1B: narrowed, swept 30-round STANAG profile using the existing AR curve generator)
 - Exposed barrel width/height = 0.96 art units (P1 was 0.66; muzzle 1.16)
 - Nominal real rifle barrel = 17.7 in (449 mm); art units are not inches
 - Aim for <=25 visible mesh objects and <550 triangles; no animation-loop allocations
 
 ## P1B shape review after first phone capture
-- The 30-round magazine looked like a square, near-vertical oversized slab. Replaced its five-point outline with nine large profile points for a leaner, mildly swept STANAG shape; still one extruded mesh.
+- The 30-round magazine looked like a square, near-vertical oversized slab. Replaced its five-point outline with the existing AR-family 30-round STANAG curve generator, using a 10-point outline adjusted for FNC placement, with one extruded mesh.
 - The exposed barrel was 0.66 art units, ~21% of the fore-end height. Increased its diameter to 0.96 units and modestly widened the muzzle device, without inventing a heavy barrel.
 - The first prototype was 36.4 overall art units against the FAL's 37.0. New FNC overall length is 34.35 vs FAL 37.0, closer to the real-world 997 mm standard rifle vs ~1090 mm FAL. Visual alignment only; true real barrel remains 449 mm.
 
