@@ -48,7 +48,7 @@ export const MP5_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
 /** FN FAL 50.00 visual magazine/port landmarks shared with reload choreography. */
 export const FAL_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  gripShiftX:-4.45,gripDepthZ:2.32,
- magwellCenterX:1.35,magazineWidthX:3.46,magazineDepthZ:2.32,
+ magwellCenterX:1.35,magazineWidthX:3.46,magazineDepthZ:2.08,
  magazineTopY:-2.98,magwellTopY:-1.95,magwellBottomY:-3.19,
  portX:1.05,portY:.61,portWidthX:2.25,portHeightY:.54
 };
