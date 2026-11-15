@@ -76,3 +76,44 @@ jobs:
           name: d318-physical-acceptance
           path: ${{ runner.temp }}/d318-*.json
           retention-days: 60
+
+  fresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: New eleventh 22-site 176-operator physical holdout
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress --route-quality \
+            > "$RUNNER_TEMP/d318-fresh22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          import {D318_FRESH_ID,D318_FRESH_22} from './scripts/lib/d3-18-eleventh-fresh22.mjs';
+          const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d318-fresh22.json'));
+          const s=d.summary,p=d.progressSummary,q=d.routeQualitySummary;
+          if(d.corpus!==D318_FRESH_ID||d.rows.length!==22||d.ticks!==2700)
+            throw Error('wrong independent cohort');
+          for(let i=0;i<22;i++)
+            if(d.rows[i].seed!==D318_FRESH_22[i].seed||
+               d.rows[i].archetype!==D318_FRESH_22[i].archetype||
+               d.rows[i].scale!==D318_FRESH_22[i].scale||
+               d.rows[i].modes?.length!==2)
+              throw Error('mutated or missing fresh scenario '+i);
+          console.log('D318_FRESH22',JSON.stringify({
+            physicalArrivals:s.physicalArrivals,fullSquads:s.physicalCompletedFour,
+            retries:s.retries,stalls:s.stallEpisodes,suspectedLoops:p.suspectedLoops,
+            gridSearches:q.searches,cpuMs:q.cpuMs}));
+          if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts)
+            throw Error('D3.18 fresh seed physical/safety violation');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d318-eleventh-fresh22-motor
+          path: ${{ runner.temp }}/d318-fresh22.json
+          retention-days: 60
