@@ -1,6 +1,6 @@
 /** B2 SSh-40: one purpose-built Soviet steel bell, not a scaled M1.
  * Head local: +Y up, -Z toward face, +X operator right.
- * Eight bold perimeter faces, a gently flared lower roll, and a hollow
+ * Eight bold perimeter faces, a shallow rolled hem, and a hollow
  * visible interior. One prebuilt steel mesh, no runtime reconstruction.
  */
 import * as THREE from 'three';
@@ -13,28 +13,33 @@ export const SSH40_OUTLINE:readonly (readonly [number,number])[]=[
  [-.70,-1],[.70,-1],[1,-.70],[1,.70],
  [.70,1],[-.70,1],[-1,.70],[-1,-.70]
 ] as const;
-/** Distinct from M1's high broad pot and strongly projecting rim:
- * Soviet shell has one smaller domed shoulder flowing into a long bell.
- * The last four rings are the inward rolled lip and deep interior.
- * Exterior dimensions match the established equipment-fit envelope.
+/** B2-A2: LARGE, simple Soviet bell; three exterior masses rather than
+ * four successively bevelled bands. The narrow roll is integrated into the
+ * lower bell, not a projecting M1-style shelf. The high crown gives the
+ * cube skull room without repeating the M1's broad rectangular pot.
+ * Exterior wall is continuous from the shoulder to the swept lower skirt.
  */
 export const SSH40_STEEL_LEVELS:readonly Level[]=[
- {name:'shallow-crown',y:8.605,side:2.92,front:3.08,rear:3.12},
- {name:'round-shoulder',y:8.07,side:3.83,front:3.95,rear:4.00},
- {name:'deep-bell-upper',y:6.78,side:4.63,front:4.70,rear:4.75},
- {name:'deep-bell-wall',y:4.66,side:5.02,front:5.08,rear:5.10},
- {name:'subtle-rolled-edge-top',y:4.11,side:5.40,front:5.53,rear:5.53,
-  frontRise:.35,rearDrop:.30},
- {name:'subtle-rolled-edge-bottom',y:3.70,side:5.40,front:5.53,rear:5.53,
-  frontRise:.35,rearDrop:.30},
- {name:'inward-steel-return',y:3.76,side:5.06,front:5.16,rear:5.16,
-  frontRise:.34,rearDrop:.29},
- {name:'inside-bell-wall',y:6.72,side:4.48,front:4.56,rear:4.58},
- {name:'recessed-interior-roof',y:7.71,side:3.18,front:3.30,rear:3.30}
+ {name:'crown-top',y:9.65,side:3.45,front:3.70,rear:3.82},
+ {name:'dome-to-bell-shoulder',y:8.80,side:4.56,front:4.67,rear:4.79},
+ {name:'single-continuous-bell-wall',y:4.72,side:5.72,front:5.84,rear:6.02,
+  frontRise:.20,rearDrop:.38},
+ {name:'integrated-rolled-edge-top',y:4.18,side:5.86,front:5.92,rear:6.08,
+  frontRise:.20,rearDrop:.40},
+ {name:'integrated-rolled-edge-bottom',y:3.78,side:5.86,front:5.92,rear:6.08,
+  frontRise:.20,rearDrop:.40},
+ {name:'inward-return',y:3.86,side:5.42,front:5.48,rear:5.64,
+  frontRise:.18,rearDrop:.36},
+ {name:'inside-bell-wall',y:7.08,side:4.98,front:5.10,rear:5.24},
+ {name:'recessed-interior-roof',y:8.74,side:3.62,front:3.82,rear:3.92}
 ] as const;
+/** The named fit landmarks are real outer steel bounds; lower hem values
+ * are at the canonical front, mid-side, and back, respectively.
+ * The coarse old cuboids are only wardrobe/fit proxies, never geometry.
+ */
 export const SSH40_FIT_LANDMARKS=Object.freeze({
- top:8.605,outerSide:5.40,frontExtent:-5.53,rearExtent:5.53,
- frontHem:4.05,sideHem:3.70,rearHem:3.40
+ top:9.65,outerSide:5.86,frontExtent:-5.92,rearExtent:6.08,
+ frontHem:3.98,sideHem:3.78,rearHem:3.38
 });
 const point=(l:Level,index:number):Point=>{
  const [x,z]=SSH40_OUTLINE[(index+SSH40_OUTLINE.length)%SSH40_OUTLINE.length];
@@ -83,16 +88,16 @@ export function createSsh40ProfileGeometry():THREE.BufferGeometry{
   face([center,point(roof,i),point(roof,(i+1)%n)],[0,1,0],3,.99);
  for(let j=0;j<SSH40_STEEL_LEVELS.length-1;j++){
   const a=SSH40_STEEL_LEVELS[j],b=SSH40_STEEL_LEVELS[j+1];
-  const region:0|1|2|3=j===3||j===4?2:j>=5?1:0;
-  const tone=j===4?.83:j===5?.87:j===6?.81:j===7?.84:
-   j===3?.91:j===2?.95:j===1?.97:.985;
+  const region:0|1|2|3=j===2||j===3?2:j>=4?1:0;
+  const tone=j===3?.90:j===4?.88:j===5?.84:j===6?.86:
+   j===2?.93:j===1?.955:.985;
   for(let i=0;i<n;i++){
    const k=(i+1)%n,p=point(a,i),q=point(a,k),
     r=point(b,k),s=point(b,i);
    const mx=(p[0]+q[0]+r[0]+s[0])/4,
     mz=(p[2]+q[2]+r[2]+s[2])/4;
-   const facing:Point=j>=6?[-mx,0,-mz]:
-    j===5?[0,-1,0]:[mx,j===0?.6:0,mz];
+   const facing:Point=j>=5?[-mx,0,-mz]:
+    j===4?[0,-1,0]:[mx,j===0?.6:0,mz];
    face([p,q,r,s],facing,region,tone);
   }
  }
@@ -109,11 +114,12 @@ export function createSsh40ProfileGeometry():THREE.BufferGeometry{
  geometry.setIndex(indices);
  geometry.computeVertexNormals();geometry.computeBoundingBox();
  geometry.userData.ssh40FacetedSurface=true;
- geometry.userData.ssh40IdentityRevision=2;
+ geometry.userData.ssh40IdentityRevision=3;
  geometry.userData.ssh40VisibleInterior=true;
  geometry.userData.ssh40OutlineSegments=n;
  geometry.userData.ssh40ProfileStations=SSH40_STEEL_LEVELS.map(l=>l.name);
  geometry.userData.exteriorQuads=quads;
+ geometry.userData.ssh40BroadBellRevision='B2-A2';
  geometry.userData.materialRegions=true;
  geometry.userData.pixelWorldSize=PIXEL_WORLD_SIZE;
  geometry.userData.materialAtlasPixels=64;
