@@ -34,9 +34,10 @@ test('applying a saved preset never invents equipment or incompatible garments',
  const restricted=setEquipmentChoice(base,'head','head-none');
  const wanted=setWardrobeStyle(initialWardrobe(),'headwear','ach');
  const saved=outfitPresetForKit(wanted,restricted);
- assert.equal(saved.styles.headwear,undefined,'helmet not granted by cosmetic preset');
+ assert.equal(saved.styles.headwear,'ach','cosmetic helmet preference survives');
  const outfit=resolvedWardrobe(saved,restricted);
- assert.equal(outfit.headwear,'bare');
+ assert.equal(outfit.headwear,'ach','display is cosmetic, not owned equipment');
+ assert.equal(restricted.slots.head,'head-none','combat protection is unchanged');
  assert.equal(restricted.slots.head,'head-none');
  const w=setWardrobeStyle(initialWardrobe(),'top','combat-shirt');
  const chosen=setWardrobeFabricCamo(w,'top','multicam',resolvedWardrobe(w,base));
@@ -59,12 +60,13 @@ test('Studio has six readable primary categories and contextual controls',()=>{
  assert.match(studio,/outfitPresetForKit\(/);
  assert.match(studio,/last saved look/i);
  assert.match(studio,/canCopyPrint\?'CAMOUFLAGE'/);
- assert.match(studio,/setWardrobeFabricSolid\(current\(\),channel,sourceSolid\)/);
+ assert.match(studio,/setWardrobeFabricSolid\(current\(\),channel,sourceSolid,outfit\)/);
  assert.match(studio,/studioRoot.dataset.comparing/);
  assert.match(css,/\.studio-more-panel/);
  assert.match(grid,/this\.liveContext/);
  assert.match(grid,/this\.previewIdentity/);
- assert.match(grid,/JSON\.stringify\(this\.wardrobe\)/);
+ assert.match(grid,/appearanceThumbnailKey\(/,
+  'Stable content-based thumbnail keys prevent unnecessary card redraws');
  assert.ok(!grid.includes("item.id==='acu-shirt'?'scorpion-w2'"),
   'Studio cards must not inject a demo print');
 });

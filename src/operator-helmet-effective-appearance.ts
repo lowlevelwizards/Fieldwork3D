@@ -5,7 +5,7 @@
 import {readHelmetSetup,resolveHelmetSetup,type HelmetSetupV1} from './operator-helmet-setup-policy.ts';
 import {readHelmetField,resolveHelmetField,isFieldHelmet,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
-import {readPasgtDetails,resolvePasgtDetails,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
+import {readPasgtDetails,resolvePasgtDetails,pasgtConcealmentRequiresSlits,type PasgtDetails} from './operator-pasgt-cover-policy.ts';
 export type HelmetChoiceStatus='active'|'saved-inactive'|'required'|'unavailable';
 export type HelmetChoiceFeedback={
  key:string;status:HelmetChoiceStatus;reason:string;
@@ -76,6 +76,7 @@ export function resolveEffectiveHelmetAppearance(
  if(requestedSetup.cover!==setup.cover&&input.helmetSetup!==undefined)
   feedback.push({key:'cover',status:'saved-inactive',
    reason:'This shell uses a fitted cover'});
+ const savedPasgt=shell==='pasgt'?readPasgtDetails(input.pasgtDetails,input.helmetSetup):undefined;
  const pasgt=shell==='pasgt'?resolvePasgtDetails(input.pasgtDetails,input.helmetSetup,cover):undefined;
  // The PASGT field system takes precedence over the separate PASGT details
  // only when the field preferences are explicitly present.
@@ -83,7 +84,7 @@ export function resolveEffectiveHelmetAppearance(
   ...readPasgtDetails(input.pasgtDetails,input.helmetSetup),
   band:field.band||field.concealment==='net'?'elastic' as const:'none' as const,
   concealment:field.concealment,
-  slits:field.concealment!=='none'
+  slits:!!savedPasgt?.slits||pasgtConcealmentRequiresSlits(field.concealment)
  }:pasgt;
  return {shell,cover,setup,field,fieldActive,pasgt:effectivePasgt,
   feedback,availability};

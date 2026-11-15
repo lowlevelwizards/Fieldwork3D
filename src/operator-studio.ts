@@ -30,11 +30,13 @@ import {readHelmetField,HELMET_FIELD_COLORS,
  HELMET_FIELD_CONCEALMENT,HELMET_FIELD_TILTS,HELMET_FIELD_GOGGLES,
  HELMET_FIELD_SIDES,
  type HelmetFieldOptions} from './operator-helmet-field-policy.ts';
-import {readPasgtDetails,resolvePasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
+import {readPasgtDetails,PASGT_BANDS,PASGT_CONCEALMENTS,
  pasgtConcealmentRequiresSlits} from './operator-pasgt-cover-policy.ts';
 import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup}
  from './operator-helmet-setup-policy.ts';
 import {resolveEffectiveHelmetAppearance} from './operator-helmet-effective-appearance.ts';
+import {editHelmetFieldPreferences,editPasgtFieldDress} from './operator-helmet-appearance-edit.ts';
+import {helmetFieldControlState} from './operator-helmet-control-state.ts';
 import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
  type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
 import {createHelmetAnatomyGuide,HELMET_ANATOMY_GUIDE_NAME}
@@ -96,7 +98,7 @@ import {createCamoBrowseControls,createCamoFavoriteButton,
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 import {STUDIO_PRESET_STORAGE_KEY,STUDIO_PRESET_LIMIT,
  readStudioPresets,saveStudioPreset,deleteStudioPreset,
- serializeStudioPresets,outfitPresetForKit,
+ outfitPresetForKit,commitStudioPresetChange,normalizeStudioPresetName,
  type StudioPreset} from './operator-studio-presets.ts';
 import './operator-appearance-grid.css';
 
@@ -124,6 +126,7 @@ let activeStep:StudioStep='items';
 let identityMode=false;
 let advancedFabricColorsOpen=false;
 const openCamoLibraries=new Set<string>();
+const expandedHelmetHelp=new Set<string>();
 let advancedPouchOpen=false;
 let clothesOnly=true;
 let showWeapon=false;
@@ -838,26 +841,29 @@ function canEquip(slot:WardrobeSlot,id:string){
  const p=member();
  return !!p&&resolvedWardrobe(setWardrobeStyle(current(),slot,id),p.loadout)[slot]===id;
 }
-function changeWardrobe(next:WardrobeOptions){
+function restoreDraft(look:WardrobeOptions,normalized=false){
+ const parsed=normalized?look:readWardrobe(look);
+ const saved=member()?.wardrobe??initialWardrobe();
+ if(JSON.stringify(parsed)===JSON.stringify(saved)){
+  edits.delete(selected);dirty.delete(selected);
+ }else{edits.set(selected,parsed);dirty.add(selected);}
+}
+function changeWardrobe(next:WardrobeOptions,options:{helmetDetailsOnly?:boolean}={}){
  if(saveInFlight)return;
- // Refresh replaces material controls; preserve the user's exact scroll and
- // active selection step instead of jumping them back to item browsing.
  const sheet=materialRoot.closest<HTMLElement>('.studio-sheet');
  const savedScroll=sheet?.scrollTop??0;
  const savedStep=activeStep;
  const oldLook=current();
- const changedFacewear=next.styles.facewear!==oldLook.styles.facewear||
-  next.d2FaceMode!==oldLook.d2FaceMode;
+ const parsed=readWardrobe(next);
+ const changedFacewear=parsed.styles.facewear!==oldLook.styles.facewear||
+  parsed.d2FaceMode!==oldLook.d2FaceMode;
  if(comparingSaved)comparingSaved=false;
  if(readOnly){say('Appearance is locked during an active campaign operation');return;}
- if(JSON.stringify(next)===JSON.stringify(current()))return;
- history.set(selected,[...(history.get(selected)??[]).slice(-24),readWardrobe(current())]);
- const parsed=readWardrobe(next);
- if(JSON.stringify(parsed)===JSON.stringify(member()?.wardrobe)){
-  edits.delete(selected);dirty.delete(selected);
- }else{edits.set(selected,parsed);dirty.add(selected);}
+ if(JSON.stringify(parsed)===JSON.stringify(oldLook))return;
+ history.set(selected,[...(history.get(selected)??[]).slice(-24),readWardrobe(oldLook)]);
+ restoreDraft(parsed,true);
  say(dirty.size+' UNSAVED OPERATOR LOOK'+(dirty.size===1?'':'S'));
- refresh();
+ refresh(options);
  activeStep=savedStep;
  applyStudioStep();
  if(sheet)sheet.scrollTop=savedScroll;
@@ -881,8 +887,11 @@ function undo(){
  comparingSaved=false;
  const stack=history.get(selected)??[],last=stack.pop();
  if(!last)return;
- history.set(selected,stack);edits.set(selected,last);dirty.add(selected);
- say('RESTORED PREVIOUS APPEARANCE');refresh();
+ history.set(selected,stack);
+ restoreDraft(last);
+ say(dirty.has(selected)?'RESTORED PREVIOUS APPEARANCE · UNSAVED':
+  'RESTORED LAST SAVED APPEARANCE');
+ refresh();
 }
 undoButton.addEventListener('click',undo);
 const MATERIAL_LABELS=/^(GLOVES · INDEPENDENT|GLOVE COLOR|SKIN TONE|HAIR COLOR|FACEWEAR FABRIC|MASK BODY|FRAME COLOR|LENS TINT|FABRIC MATERIAL|HEADGEAR FINISH|PASGT SHELL COLOR|PASGT CLOTH COVER|PASGT COVER PATTERN|ACH \/ MICH COVER|ACH \/ MICH SHELL COLOR|FOLIAGE SLITS|COMPATIBLE HEADGEAR PRINTS|GORKA TWO-TONE)/;
@@ -921,6 +930,18 @@ function applyStudioStep(){
   'Optional fit, wear, and equipment coordination settings';
 }
 function setStudioStep(step:StudioStep){
+ // Hidden thumbnail rendering can be deferred during helmet-detail edits.
+ // Catch up only when the player actually returns to the item browser.
+ if(step==='items'&&activeStep!=='items'&&
+    canvas.dataset.helmetThumbnailsDeferred==='true'&&
+    !referenceOpen&&!identityMode){
+  const p=member();
+  if(p){
+   thumbBrowser.setCategory(activeCategory,true);
+   thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
+   canvas.dataset.helmetThumbnailsDeferred='false';
+  }
+ }
  activeStep=step;applyStudioStep();
  if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){
   const sheet=materialRoot.closest('.studio-sheet');
@@ -1448,10 +1469,7 @@ function renderMaterials(){
    }group.append(grid);
   }
   if(item==='pasgt'){
-   const state=resolveHelmetSetup('pasgt',w.helmetSetup,{
-    hasLegacyPrint:!!w.headwearCamo
-   });
-   const details=readPasgtDetails(w.pasgtDetails,w.helmetSetup);
+   const details=resolvedHelmet.pasgt??readPasgtDetails(w.pasgtDetails,w.helmetSetup);
    const updateCover=(covered:boolean)=>changeWardrobe({
     ...current(),helmetSetup:readHelmetSetup({
      ...current().helmetSetup,cover:covered?'fitted':'none'
@@ -1460,9 +1478,8 @@ function renderMaterials(){
    const coverRow=row('PASGT CLOTH COVER',
     'One fitted cover. NO COVER exposes painted composite, never camouflaged shell.');
    addSelect(coverRow,[['none','NO COVER'],['fitted','COVER']] as const,
-    state.setup.cover==='none'?'none':'fitted',id=>updateCover(id==='fitted'));
-   if(state.setup.cover!=='none'){
-    const effective=resolvePasgtDetails(w.pasgtDetails,w.helmetSetup);
+    resolvedHelmet.cover?'fitted':'none',id=>updateCover(id==='fitted'));
+   if(resolvedHelmet.cover){
     const slitRow=row('FOLIAGE SLITS',
      'Simple fabric cuts for leaves or scrim, not protruding sewn loops.');
     if(pasgtConcealmentRequiresSlits(details.concealment)){
@@ -1471,9 +1488,8 @@ function renderMaterials(){
      slitRow.append(explanation);
     }else{
      addSelect(slitRow,[['off','NO SLITS'],['on','FOLIAGE SLITS']] as const,
-      effective.slits?'on':'off',v=>changeWardrobe({...current(),
-       pasgtDetails:{...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
-        slits:v==='on'}}));
+      details.slits?'on':'off',v=>changeWardrobe(
+       editPasgtFieldDress(current(),{slits:v==='on'}),{helmetDetailsOnly:true}));
     }
     if(prints.length){
      const printRow=row('PASGT COVER PATTERN',
@@ -1487,25 +1503,24 @@ function renderMaterials(){
    }
    const bandRow=row('PASGT HELMET BAND',
     'A broad, surface-fitted elastic strip above the brow and around the rear skirt.');
-   const netForcesBand=state.setup.cover!=='none'&&details.concealment==='net';
+   const netForcesBand=resolvedHelmet.cover&&details.concealment==='net';
    if(netForcesBand){
     const explanation=document.createElement('small');
     explanation.textContent='ON · REQUIRED TO SECURE NET';
     bandRow.append(explanation);
    }else addSelect(bandRow,PASGT_BANDS.map(id=>[
     id,id==='none'?'NONE':'ELASTIC BAND'] as const),
-    details.band,id=>changeWardrobe({...current(),pasgtDetails:{
-     ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
-     band:id as typeof details.band}}));
-   if(state.setup.cover!=='none'){
+    details.band,id=>changeWardrobe(editPasgtFieldDress(current(),
+      {band:id as typeof details.band}),{helmetDetailsOnly:true}));
+   if(resolvedHelmet.cover){
     const concealRow=row('PASGT CONCEALMENT',
      'Foliage and scrim require slits; net automatically secures under the elastic band.');
     addSelect(concealRow,PASGT_CONCEALMENTS.filter(id=>
      ['none','scrim','net','foliage'].includes(id)).map(id=>
      [id,id.toUpperCase()] as const),
-     details.concealment.startsWith('foliage')?'foliage':details.concealment,id=>changeWardrobe({...current(),pasgtDetails:{
-      ...readPasgtDetails(current().pasgtDetails,current().helmetSetup),
-      concealment:id as typeof details.concealment}}));
+     details.concealment.startsWith('foliage')?'foliage':details.concealment,
+     id=>changeWardrobe(editPasgtFieldDress(current(),
+      {concealment:id as typeof details.concealment}),{helmetDetailsOnly:true}));
    }
   }
   if(['ach','mich-2001','mich-2002','pasgt'].includes(helmetShell)){
@@ -1513,25 +1528,9 @@ function renderMaterials(){
    const currentField=readHelmetField(w.helmetField);
    const fieldCovered=resolvedHelmet.cover;
    const effective=resolvedHelmet.field;
-   const changeField=(changes:Partial<HelmetFieldOptions>)=>{
-    const before=current();
-    const carry=before.helmetField??{
-     ...readHelmetField(undefined),
-     band:historical&&readPasgtDetails(before.pasgtDetails,before.helmetSetup).band==='elastic'
-    };
-    const next={...carry,...changes};
-    if(changes.counterweight===true)next.battery=false;
-    if(changes.battery===true)next.counterweight=false;
-    // Treat the two ARC rails as distinct sockets: selecting a camera
-    // or light moves the other device to the free side rather than
-    // silently retaining an invisible conflicting device.
-    if(next.light&&next.camera&&next.lightSide===next.cameraSide){
-     if(changes.light===true||changes.lightSide!==undefined)
-      next.cameraSide=next.lightSide==='left'?'right':'left';
-     else next.lightSide=next.cameraSide==='left'?'right':'left';
-    }
-    changeWardrobe({...before,helmetField:readHelmetField(next)});
-   };
+   const changeField=(changes:Partial<HelmetFieldOptions>)=>
+    changeWardrobe(editHelmetFieldPreferences(current(),helmetShell,changes),
+      {helmetDetailsOnly:true});
    const picker=(title:string,key:'bandColor'|'webbingColor',
     help:string)=>{
     const section=row(title,help);
@@ -1542,23 +1541,25 @@ function renderMaterials(){
    };
    const toggle=(section:HTMLElement,key:keyof HelmetFieldOptions,
     title:string,glyph:string,availability=true)=>{
-    const netLocksBand=key==='band'&&currentField.concealment==='net';
-    const on=netLocksBand||effective[key]===true;
-    availability=availability&&!netLocksBand;
-    const requirement=resolvedHelmet.availability[key];
-    availability=availability&&!requirement;
-    const reason=requirement??(!availability?'UNAVAILABLE':null);
-    const b=makeButton(title,on,()=>changeField({[key]:!on}));
+    const control=helmetFieldControlState(key,currentField,effective,
+     resolvedHelmet.availability[key],availability);
+    const b=makeButton(title,control.pressed,()=>
+     changeField({[key]:currentField[key]!==true}));
     b.classList.add('helmet-option-card');
+    b.dataset.helmetOption=key;
+    b.dataset.helmetOptionState=control.status;
+    b.disabled=b.disabled||control.disabled;
     const icon=document.createElement('span');icon.className='helmet-option-glyph';
     icon.textContent=glyph;icon.setAttribute('aria-hidden','true');
     b.prepend(icon);
-    if(reason){
-     b.disabled=true;
-     b.classList.add('helmet-option-unavailable');
-     b.setAttribute('aria-label',title+' — '+reason);
+    if(control.note){
+     if(control.status==='saved-inactive')
+      b.classList.add('helmet-option-saved-inactive');
+     if(control.status==='unavailable')
+      b.classList.add('helmet-option-unavailable');
+     b.setAttribute('aria-label',title+' — '+control.note);
      const note=document.createElement('small');
-     note.className='helmet-option-requirement';note.textContent=reason;
+     note.className='helmet-option-requirement';note.textContent=control.note;
      b.append(note);
     }
     section.append(b);
@@ -1574,30 +1575,41 @@ function renderMaterials(){
       const info=document.createElement('button');
       info.type='button';info.className='helmet-field-help';
       info.textContent='?';info.setAttribute('aria-label','About '+title);
-      info.setAttribute('aria-expanded','false');
+      const expanded=expandedHelmetHelp.has(title);
+      info.setAttribute('aria-expanded',String(expanded));
       info.addEventListener('click',()=>{
        const open=info.getAttribute('aria-expanded')!=='true';
        info.setAttribute('aria-expanded',String(open));
+       if(open)expandedHelmetHelp.add(title);
+       else expandedHelmetHelp.delete(title);
        guidance.hidden=!open;
       });
-      guidance.hidden=true;heading.append(info);
+      guidance.hidden=!expanded;heading.append(info);
      }
      return group;
     };
-   const band=rowOf('FIELD RETAINING BAND',
-    historical?'Period elastic band, including rear cat-eye markers.':
-    'One low-profile elastic band over the helmet cover or painted shell.');
-   toggle(band,'band','ELASTIC BAND','▰');
-   if(currentField.band||(!historical&&currentField.concealment==='net'))
-    picker('BAND COLOR','bandColor',
-     'Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
-   const foliage=rowOf('FIELD CONCEALMENT',
-    'Choose scrim, net, or full-density foliage; cover-dependent options hide without fabric.');
-   addSelect(foliage,(historical||fieldCovered?HELMET_FIELD_CONCEALMENT:
-    HELMET_FIELD_CONCEALMENT.filter(c=>c==='none'||c==='net')).map(c=>[c,
-    c.replaceAll('-',' ').toUpperCase()] as const),
-    effective.concealment,v=>changeField({concealment:
-     v as HelmetFieldOptions['concealment']}));
+   // PASGT's historical band and concealment are edited above once,
+   // not duplicated as a competing generic field-control row.
+   if(!historical){
+    const band=rowOf('FIELD RETAINING BAND',
+     'One low-profile elastic band over the helmet cover or painted shell.');
+    toggle(band,'band','ELASTIC BAND','▰');
+    if(currentField.band||currentField.concealment==='net')
+     picker('BAND COLOR','bandColor',
+      'Auto uses period-appropriate webbing; Match follows shell paint; override stays saved.');
+    const foliage=rowOf('FIELD CONCEALMENT',
+     'Choices without a fitted cover remain saved and reactivate when the cover returns.');
+    addSelect(foliage,HELMET_FIELD_CONCEALMENT.map(c=>
+     [c,c.toUpperCase()] as const),
+     currentField.concealment,v=>changeField({
+      concealment:v as HelmetFieldOptions['concealment']}));
+    if(currentField.concealment!==effective.concealment){
+     const note=document.createElement('small');
+     note.className='helmet-option-requirement';
+     note.textContent='SAVED · INACTIVE · Requires fitted fabric cover';
+     foliage.append(note);
+    }
+   }
    const retention=rowOf('CHINSTRAP & RIDE',
     'Unfastened exposes long loose webbing and buckles; the shell can be level or slightly tilted.');
    toggle(retention,'fastened','FASTENED','⌁');
@@ -1647,7 +1659,10 @@ function renderMaterials(){
    if(currentField.light)
     sidePicker('HELMET LIGHT MOUNT','lightSide',
      'Clip the forward-facing task light to the left or right rail.');
-   const compatibility=resolvedHelmet.feedback;
+   // Controls already show actionable prerequisites inline. Keep only
+   // non-toggle issues here rather than repeating the entire warning list.
+   const compatibility=resolvedHelmet.feedback.filter(x=>
+    x.key==='concealment'||x.key==='cover');
    if(compatibility.length){
     const fit=rowOf('MOUNT COMPATIBILITY',
      'Stored options are preserved, but incompatible hardware is hidden until its mount is free.');
@@ -1987,8 +2002,9 @@ function renderPresetMenu(){
  const selectedName=presetSelect.value;
  presetApply.disabled=readOnly||comparingSaved||saveInFlight||!selectedName;
  presetDelete.disabled=readOnly||comparingSaved||saveInFlight||!selectedName;
- presetSave.disabled=readOnly||comparingSaved||saveInFlight||
-  studioPresets.length>=STUDIO_PRESET_LIMIT;
+ presetSave.disabled=readOnly||comparingSaved||saveInFlight;
+ presetSave.textContent=studioPresets.length>=STUDIO_PRESET_LIMIT?
+  'SAVE / REPLACE PRESET':'SAVE PRESET';
  const p=member();
  const pair=p?pairedUniformFor(activeCategory,current(),p.loadout):null;
  matchSetButton.hidden=!pair;
@@ -1998,10 +2014,15 @@ function renderPresetMenu(){
  if(pair)matchSetButton.textContent='MATCH '+(pair.slot==='top'?'TOP':'TROUSERS')+
   ' · '+(pair.id==='gorka-trousers'?'GORKA':pair.id.includes('acu')?'ACU':'BDU');
 }
-function persistStudioPresets(){
- try{localStorage.setItem(STUDIO_PRESET_STORAGE_KEY,
-  serializeStudioPresets(studioPresets));return true;}
- catch{say('PRESET SAVE BLOCKED BY BROWSER STORAGE');return false;}
+function persistStudioPresets(next:readonly StudioPreset[]){
+ const result=commitStudioPresetChange(studioPresets,next,value=>
+  localStorage.setItem(STUDIO_PRESET_STORAGE_KEY,value));
+ if(!result.saved){
+  say('PRESET SAVE BLOCKED BY BROWSER STORAGE · OLD PRESETS KEPT');
+  return false;
+ }
+ studioPresets=result.presets;
+ return true;
 }
 compareButton.addEventListener('click',()=>{
  if(!dirty.has(selected))return;
@@ -2018,18 +2039,25 @@ resetButton.addEventListener('click',()=>{
 });
 presetSelect.addEventListener('change',renderPresetMenu);
 presetSave.addEventListener('click',()=>{
- if(readOnly||comparingSaved)return;
- const name=window.prompt('Name this appearance-only preset (up to 32 characters):');
- if(name===null||!name.trim())return;
- const next=saveStudioPreset(studioPresets,name,current());
- if(next.length===studioPresets.length&&
-  !studioPresets.some(x=>x.name.toLowerCase()===name.trim().toLowerCase())){
-  say('MAXIMUM OF '+STUDIO_PRESET_LIMIT+' APPEARANCE PRESETS');return;
+ if(readOnly||comparingSaved||saveInFlight)return;
+ const name=window.prompt('Name this appearance-only preset (up to 32 characters):',
+  presetSelect.value||'');
+ if(name===null)return;
+ const normalized=normalizeStudioPresetName(name);
+ if(!normalized)return;
+ const existing=studioPresets.some(x=>x.name.toLowerCase()===normalized.toLowerCase());
+ if(!existing&&studioPresets.length>=STUDIO_PRESET_LIMIT){
+  say('MAXIMUM OF '+STUDIO_PRESET_LIMIT+' APPEARANCE PRESETS · SELECT ONE TO REPLACE');
+  return;
  }
- studioPresets=next;
- if(!persistStudioPresets())return;
- renderPresetMenu();presetSelect.value=name.trim().replace(/\s+/g,' ').slice(0,32);
- renderPresetMenu();say('APPEARANCE PRESET SAVED · NO EQUIPMENT');
+ const next=saveStudioPreset(studioPresets,normalized,current());
+ if(!persistStudioPresets(next))return;
+ renderPresetMenu();
+ presetSelect.value=studioPresets.find(x=>
+  x.name.toLowerCase()===normalized.toLowerCase())?.name??'';
+ renderPresetMenu();
+ say(existing?'APPEARANCE PRESET REPLACED · NO EQUIPMENT':
+  'APPEARANCE PRESET SAVED · NO EQUIPMENT');
 });
 presetApply.addEventListener('click',()=>{
  if(readOnly||comparingSaved)return;
@@ -2043,8 +2071,8 @@ presetDelete.addEventListener('click',()=>{
  if(readOnly||comparingSaved||!presetSelect.value)return;
  const name=presetSelect.value;
  if(!window.confirm('Delete appearance preset "'+name+'"?'))return;
- studioPresets=deleteStudioPreset(studioPresets,name);
- if(!persistStudioPresets())return;
+ const next=deleteStudioPreset(studioPresets,name);
+ if(!persistStudioPresets(next))return;
  renderPresetMenu();say('PRESET DELETED');
 });
 matchSetButton.addEventListener('click',()=>{
@@ -2056,8 +2084,9 @@ matchSetButton.addEventListener('click',()=>{
   ' · FABRIC UNCHANGED · SAVE LOOK TO KEEP IT');
  moreDetails.open=false;
 });
-function refresh(){
+function refresh(options:{helmetDetailsOnly?:boolean}={}){
  const p=member();if(!p)return;
+ const lightweight=options.helmetDetailsOnly===true&&!referenceOpen&&!identityMode;
  studioRoot.dataset.referenceOpen=String(referenceOpen);
  studioRoot.dataset.identityMode=String(identityMode);
  $('studioTitle').textContent=referenceOpen?'REFERENCE KITS / '+p.callsign:identityMode?'IDENTITY MARKINGS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
@@ -2080,16 +2109,23 @@ function refresh(){
   'QUICK PLAY · APPEARANCE')+
   (dirty.size?' · '+dirty.size+' UNSAVED':'');
  undoButton.disabled=readOnly||saveInFlight||!(history.get(selected)?.length);
- renderCategories();
+ if(!lightweight)renderCategories();
  // Reference catalog uses the shared 3D viewport, not the item thumbnail grid.
  if(!referenceOpen){
   if(!identityMode){
    thumbBrowser.setCategory(activeCategory,true);
-   thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
+   if(!lightweight||activeStep==='items'){
+    thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
+    canvas.dataset.helmetThumbnailsDeferred='false';
+   }else canvas.dataset.helmetThumbnailsDeferred='true';
   }
   renderMaterials();
  }
- renderPresetMenu();referenceBrowser.refresh(readOnly);posePreview();
+ if(!lightweight){
+  renderPresetMenu();
+  referenceBrowser.refresh(readOnly);
+ }
+ posePreview();
 }
 function populate(){
  modelSelector.replaceChildren();

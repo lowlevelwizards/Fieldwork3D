@@ -433,6 +433,23 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  grid-column:1/-1;color:#d8bc8d;font:600 11px/1.4 "Work Sans",sans-serif;
 }
 
+/* A2-C: saved but invisible is a removable preference, not a disabled card.
+ * Distinguish it from genuine unavailability without changing the grid size. */
+#studioMaterials .helmet-option-saved-inactive{
+ border-style:dashed;border-color:#cbb285;background:#393a2f;
+ color:#f2dfb9;flex-wrap:wrap;
+}
+#studioMaterials .helmet-option-saved-inactive .helmet-option-requirement{
+ color:#efd3a1;
+}
+#studioMaterials .helmet-option-card[data-helmet-option-state="required"]{
+ border-color:#8fb9a7;background:#263e35;flex-wrap:wrap;
+}
+#studioMaterials .helmet-option-card[data-helmet-option-state="required"]
+ .helmet-option-requirement{color:#b9d8c9}
+#studioMaterials .helmet-option-card[data-helmet-option-state="active"]{
+ border-color:#8da995;
+}
 /* H15 · three shell cuts live in Details, not duplicate headwear cards.
  * Large mobile targets, one shared row, no additional WebGL thumbnail rigs. */
 #studioMaterials .helmet-cut-section{order:-10}
