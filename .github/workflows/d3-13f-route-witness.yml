@@ -47,12 +47,13 @@ jobs:
             const perSource={};
             for(const event of events)
               perSource[event.source]=(perSource[event.source]??0)+1;
+            const rejectionReasons=witness?.rejectReasons??{};
             const actor=mode?.operators.find(a=>a.id==='rook');
             console.log('D313F_SOURCE_EVIDENCE',JSON.stringify({
               file,seed:report.rows[0]?.seed,arrivals:mode?.arrivals,
               remaining:actor?.remaining,doorEpisode:actor?.doorEpisode,
-              captured:events.length,truncated:events.length>=400,
-              perSource,first:events.slice(0,6),last:events.slice(-6)
+              captured:events.length,truncated:events.length>=600,
+              perSource,rejectionReasons,first:events.slice(0,6),last:events.slice(-6)
             }));
             if(!witness||report.summary.exceptions||
               report.summary.invalidPositions||report.summary.corruptedPlans||
