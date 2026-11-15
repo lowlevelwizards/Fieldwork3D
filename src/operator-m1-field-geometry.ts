@@ -19,8 +19,8 @@ const outward=(p:P,push:number):P=>{
  return [p[0]+push*p[0]/n,p[1],p[2]+push*p[2]/n];
 };
 export function createM1RetainingBandGeometry(mode:M1SurfaceMode){
- const yTop=mode==='steel'?5.72:5.53,
-  yBottom=mode==='steel'?5.15:mode==='fitted'?5.08:4.97;
+ const yTop=mode==='steel'?5.74:5.58,
+  yBottom=mode==='steel'?5.15:mode==='fitted'?5.11:5.02;
  const high=m1PerimeterAt(yTop,mode),low=m1PerimeterAt(yBottom,mode);
  const p:number[]=[];
  for(let i=0;i<M1_OUTLINE.length;i++){
@@ -36,11 +36,13 @@ export function createM1RetainingBandGeometry(mode:M1SurfaceMode){
  * Ends tuck beneath the retaining band; no airborne horizontal roof grid.
  */
 export function m1FieldHeight(mode:M1SurfaceMode,x:number,z:number){
- const slack=mode==='loose'?.29:mode==='fitted'?.16:0;
- const radius=Math.max(Math.abs(x)/5.42,Math.abs(z)/5.54);
+ const slack=mode==='loose'?.28:mode==='fitted'?.13:0;
+ // The new broad crown takes up ~81% of the bowl radius. Only one bold
+ // shoulder leads to the wall; avoid the old sequence of tiny angled facets.
+ const radius=Math.max(Math.abs(x)/6.17,Math.abs(z)/6.29);
  const points:[[number,number],[number,number],[number,number],[number,number]]=[
-  [.0,8.74+slack],[.72,8.74+slack],[.84,7.90+slack],
-  [1,5.40+slack*.25]
+  [0,8.98+slack],[.81,8.98+slack],[.975,7.66+slack*.75],
+  [1,5.25+slack*.4]
  ];
  for(let i=1;i<points.length;i++)if(radius<=points[i][0]){
   const lo=points[i-1],hi=points[i],t=(radius-lo[0])/(hi[0]-lo[0]);
@@ -55,9 +57,9 @@ export function createM1NetGeometry(mode:M1SurfaceMode){
  for(const [dx,dz] of directions)
   for(const offset of [-2.85,0,2.85]){
    const path:P[]=[];
-   for(let j=0;j<=30;j++){
-    const t=-6+j*.4,x=dx*t+dz*offset,z=dz*t-dx*offset;
-    if(Math.max(Math.abs(x)/5.42,Math.abs(z)/5.54)>.975)continue;
+   for(let j=0;j<=20;j++){
+    const t=-7+j*.7,x=dx*t+dz*offset,z=dz*t-dx*offset;
+    if(Math.max(Math.abs(x)/6.17,Math.abs(z)/6.29)>.985)continue;
     path.push([x,m1FieldHeight(mode,x,z)+.11,z]);
    }
    for(let j=0;j<path.length-1;j++){
@@ -80,9 +82,9 @@ export function createM1NetGeometry(mode:M1SurfaceMode){
  * Cloth is not another boxy second helmet perched around the lower edge.
  */
 export function createM1ScrimGeometry(mode:M1SurfaceMode,heavy:boolean){
- const indices=heavy?[1,3,5,7,9,11,13]:[1,5,9,12];
+ const indices=heavy?[0,1,2,3,4,5,6,7]:[0,2,4,6];
  const p:number[]=[];
- const top=m1PerimeterAt(mode==='loose'?6.35:6.20,mode);
+ const top=m1PerimeterAt(mode==='loose'?6.31:6.20,mode);
  for(const [order,i] of indices.entries()){
   const at=outward(top[i],.10),sign=i%2===0?1:-1;
   const span=heavy?.73:.91,h=heavy?1.00:.80;
