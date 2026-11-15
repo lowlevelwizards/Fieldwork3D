@@ -57,6 +57,8 @@ jobs:
              r.summary.successfulFour!==16||
              r.summary.terminallyCancelledOrders!==9||
              r.summary.cancelledOperators!==9||
+             r.summary.cancelledAndNotArrived!==7||
+             r.summary.arrivedDespiteCancellation!==2||
              r.summary.physicallyPendingOperators!==1||
              r.summary.unreachedDrainedOperators!==0)
             throw Error('D3.16A historical terminal truth disagrees with real 88-actor physics');
