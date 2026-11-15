@@ -1,0 +1,52 @@
+name: S1-A1 M56 hard-helmet cohesion
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - src/operator-m56-unified-shell.ts
+      - src/operator-headwear-silhouettes.ts
+      - src/operator-ddr-m56-visuals.ts
+      - tests/helmet-s1-a1-m56-unified.test.mjs
+      - docs/headwear-s1-a1-m56-coherence.md
+      - .github/workflows/helmet-s1-a1-m56-review.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: helmet-s1-a1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  m56-coherence:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies and browser
+        run: |
+          npm install --no-audit --no-fund
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Historical M56, wardrobe and material regressions
+        run: |
+          node --experimental-strip-types --test --test-concurrency=1 \
+            tests/helmet-s1-a1-m56-unified.test.mjs \
+            tests/r5-historical-helmet-d.test.mjs \
+            tests/operator-headwear-expansion.test.mjs \
+            tests/operator-headwear-materials.test.mjs
+      - name: Typecheck and production build
+        run: npm run build
+      - name: Identical 44-view helmet family Studio capture
+        run: node scripts/helmet-b0-m1-capture.mjs
+        env:
+          HELMET_CAPTURE_DIR: headwear-s1-a1-m56-comparison
+      - name: Retain actual M56 vs M1 and SSh images
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: headwear-s1-a1-m56-44views
+          path: headwear-s1-a1-m56-comparison/
+          if-no-files-found: error
+          retention-days: 14
