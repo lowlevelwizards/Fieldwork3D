@@ -51,9 +51,11 @@ test('D3.17C: valid full-goal door rescue is evaluated before repeat rejection',
    import.meta.url),'utf8');
  const fn=src.slice(src.indexOf('export function tryRehearsedDoorManeuver('),
    src.indexOf('export function canRehearseJoinedPortalOncePerLeaf('));
- assert.ok(fn.indexOf('const chosen=whole.length?whole:path')>=0);
- assert.ok(fn.indexOf('const chosen=whole.length?whole:path')<
-   fn.indexOf('if(!allowPhysicalRouteReissue'));
+ const chosen=fn.indexOf('const chosen=whole.length?whole:');
+ const suppression=fn.indexOf('if(!allowPhysicalRouteReissue');
+ assert.ok(chosen>=0,'a valid complete-GO world route takes priority');
+ assert.ok(chosen<suppression,
+  'validate actual chosen route before applying any recurrence guard');
 });
 test('D3.17C: no candidate when every microstride or final GO is blocked',()=>{
  assert.deepEqual(selectMotorVerifiedFurnitureDeparture(p(0,0),p(30,0),
