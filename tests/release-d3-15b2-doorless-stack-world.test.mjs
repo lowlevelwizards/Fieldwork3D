@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {shouldProbeDoorlessStackLane,sweptGoalRouteFromStackCycle,
+import {shouldProbeDoorlessStackLane,sweptGoalRouteFromStackCycle,alternateStackWorldRoute,
  noteCircularWorldRoute,ownsCircularWorldRoute}
  from '../src/breach-cycle-lane-recovery.ts';
 const p=(x,y)=>({x,y});
@@ -46,4 +46,26 @@ test('D3.15B2: every full-body leg to the original STACK GO physically validated
  assert.deepEqual(sweptGoalRouteFromStackCycle(from,goal,
   [p(900,900),goal],()=>true),[],'reject unbounded detour');
  assert.deepEqual(sweptGoalRouteFromStackCycle(from,goal,[],()=>true),[]);
+});
+
+test('D3.15B2: selfsame cyclic world A* must not consume cold recovery',()=>{
+ const from=p(569,456.5),goal=p(569.73,426),old=p(560,464);
+ let calls=0;
+ const next=(stage,g)=>{
+  calls++;
+  if(calls===1)return [old,p(560,432),g]; // Original same cyclic route
+  return [p(560,432),g];
+ };
+ const found=alternateStackWorldRoute(from,goal,old,()=>true,next);
+ assert.equal(calls,2,'one local lateral departure is enough');
+ assert.equal(found.length,3,'short physically legal stage + true tail');
+ assert.ok(Math.abs(found[0].y-from.y)<.01,'lateral stage avoids the old bad first cell');
+ assert.ok(Math.hypot(found[0].x-old.x,found[0].y-old.y)>5);
+ assert.deepEqual(found.at(-1),goal);
+});
+test('D3.15B2: fully obstructed or false stack routes are refused',()=>{
+ const from=p(569,456.5),goal=p(569.73,426),old=p(560,464);
+ assert.deepEqual(alternateStackWorldRoute(from,goal,old,()=>false,()=>[goal]),[]);
+ assert.deepEqual(alternateStackWorldRoute(from,goal,old,()=>true,
+  ()=>[p(560,432)]),[]);
 });
