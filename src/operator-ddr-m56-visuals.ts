@@ -1,4 +1,4 @@
-/** R5H2: separately selectable external steel details and sparse helmet net.
+/** S1-A1: sparse period details aligned to the single stamped M56 shell.
  * Positioned in canonical -Z-forward head space. No shared M1 cover shape.
  */
 import * as THREE from 'three';
@@ -14,29 +14,29 @@ function part(g:THREE.Group,m:THREE.Material,x:number,y:number,z:number,
 }
 export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extras{
  const rivets=new THREE.Group();rivets.name='m56-earlier-liner-rivets';parent.add(rivets);
- for(const side of [-1,1]){
-  part(rivets,dark,side*6.39,5.76,-1.95,.42,.42,.40,'m56-rivet-forward');
-  part(rivets,dark,side*6.40,5.48,3.25,.42,.42,.42,'m56-rivet-rear');
- }
+ // Early M56 used three exposed liner fasteners: one per side and one rear.
+ // Later shell remains smooth when early-rivets is not selected.
+ for(const side of [-1,1])
+  part(rivets,dark,side*5.91,5.42,-1.85,.42,.42,.40,'m56-rivet-side');
+ part(rivets,dark,0,5.39,6.92,.42,.42,.40,'m56-rivet-rear');
  const net=new THREE.Group();net.name='m56-period-coarse-net';parent.add(net);
  const cloth=new THREE.MeshStandardMaterial({
   color:OPERATOR_SOLID_FAMILIES['olive-drab'],roughness:.99,
   metalness:0,flatShading:true});
  // Legible open lattice instead of hundreds of coplanar pixel threads.
  for(const x of [-3.2,-1.0,1.0,3.2])
-  part(net,cloth,x,8.86,.20,.35,.28,9.2,'m56-net-crown-longitudinal');
+  part(net,cloth,x,8.83,.20,.35,.28,7.35,'m56-net-crown-longitudinal');
  for(const z of [-3.2,-.35,2.6])
-  part(net,cloth,0,8.87,z,8.8,.28,.34,'m56-net-crown-transverse');
+  part(net,cloth,0,8.83,z,6.8,.28,.34,'m56-net-crown-transverse');
  for(const side of [-1,1]){
-  // Three width steps fit the authored crown/side/flare of DDR M56.
-  // The old single x=5.48 strip was buried inside its broad lower shell.
-  part(net,cloth,side*5.48,7.02,.15,.36,1.68,10.6,'m56-net-upper-side');
-  part(net,cloth,side*6.44,5.78,.35,.35,1.55,12.3,'m56-net-mid-side');
-  part(net,cloth,side*7.04,4.86,.65,.35,.43,14.70,'m56-net-flare-retainer');
+  // Follow the one-piece bell and integral flare; no nested-tier net rings.
+  part(net,cloth,side*5.32,6.95,.15,.34,1.42,10.0,'m56-net-upper-side');
+  part(net,cloth,side*5.90,5.58,.35,.34,1.20,12.3,'m56-net-mid-side');
+  part(net,cloth,side*6.88,4.76,.65,.34,.34,14.70,'m56-net-flare-retainer');
  }
  // True forward/rearward shell extent, not hidden mid-bowl positions.
- part(net,cloth,0,5.00,-6.94,12.4,.33,.34,'m56-net-front-retainer');
- part(net,cloth,0,4.72,8.23,12.6,.33,.34,'m56-net-rear-retainer');
+ part(net,cloth,0,4.80,-6.79,12.4,.33,.34,'m56-net-front-retainer');
+ part(net,cloth,0,4.52,8.10,12.6,.33,.34,'m56-net-rear-retainer');
  consolidateVisualGroup(rivets);consolidateVisualGroup(net);
  rivets.visible=false;net.visible=false;return {rivets,net};
 }
