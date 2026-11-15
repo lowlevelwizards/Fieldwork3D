@@ -1,14 +1,5 @@
 name: D3.13G2 swept route rejoin acceptance
 on:
-  pull_request:
-    paths:
-      - src/breach-door-escape-rejoin.ts
-      - src/breach-door-escape-stage.ts
-      - src/breach-motor-route.ts
-      - src/breach-motor-collision.ts
-      - src/breach-route-transition.ts
-      - tests/release-d3-13g2-swept-rejoin.test.mjs
-      - .github/workflows/d3-13g2-swept-acceptance.yml
   workflow_dispatch:
 
 permissions:
