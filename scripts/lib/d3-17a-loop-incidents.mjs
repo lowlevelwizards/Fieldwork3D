@@ -7,7 +7,7 @@ const r2=n=>Math.round(n*100)/100;
 const episodeWindow=w=>w?.classification==='movement-loop';
 const keyOf=(row,mode,id)=>[row.seed,row.archetype,row.scale,mode.mode,id].join('|');
 function completeEpisode(row,mode,id,bucket,results){
- if(bucket.length<2||!bucket.some(w=>w.suspicious))return;
+ if(!bucket.length||!bucket.some(w=>w.suspicious))return;
  const total=key=>r2(bucket.reduce((sum,w)=>sum+(w[key]??0),0));
  const minNet=bucket.reduce((v,w)=>Math.min(v,w.net??Infinity),Infinity);
  const elapsed=5*bucket.length;
@@ -28,6 +28,8 @@ function completeEpisode(row,mode,id,bucket,results){
   firstWindow:bucket[0].seconds,lastWindow:bucket.at(-1).seconds,
   intervalStart:r2(bucket[0].seconds-5),intervalEnd:bucket.at(-1).seconds,
   elapsedSeconds:elapsed,windows:bucket.length,
+  evidenceClass:bucket.length>=2?'consecutive-loop-windows':
+   'isolated-flagged-window-check-prior-state',
   flaggedWindows:bucket.filter(w=>w.suspicious).length,
   travel:travelled,sumWindowNet:net,minWindowNet:r2(minNet),
   lowNetTravel:r2(Math.max(0,travelled-net)),
@@ -97,7 +99,10 @@ export function analyzeD317LoopIncidents(report){
   corpus:report.corpus??'historical',sites:report.rows.length,
   ticks:report.ticks,flaggedWindows:flagged,
   classifiedLoopWindows:loopWindows,
-  incidents:incidents.length,distinctOperators:new Set(incidents.map(x=>x.key)).size,
+  incidents:incidents.length,
+  consecutiveLoopIncidents:incidents.filter(x=>x.evidenceClass==='consecutive-loop-windows').length,
+  isolatedFlaggedIncidents:incidents.filter(x=>x.evidenceClass!=='consecutive-loop-windows').length,
+  distinctOperators:new Set(incidents.map(x=>x.key)).size,
   affectedSiteModes:siteModes.size,
   flaggedWindowsInIncidents:covered,
   orphanFlaggedWindows:flagged-covered,
