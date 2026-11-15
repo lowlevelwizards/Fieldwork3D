@@ -10,7 +10,7 @@ import {PIXEL_WORLD_SIZE} from './rendering/pixel-recipes.ts';
 
 type Point=readonly [number,number,number];
 type Ring={name:string;y:number;side:number;front:number;rear:number;
- frontRise?:number;rearDrop?:number;earDip?:number};
+ frontRise?:number;rearDrop?:number};
 export const M56_PERIMETER:readonly (readonly [number,number])[]=[
  // Eight coarse corners. The upper shell stays straight; only the lower
  // two rings shape the shallow side-ear relief and descending rear skirt.
@@ -42,8 +42,6 @@ export const M56_SHELL_FIT=Object.freeze({
  * - The side rim rises gently over the ear, then drops to the long nape.
  * A purposeful shallow notch rather than a separate PASGT-shaped panel.
  */
-export const m56EarTransition=(fz:number):number=>
- Math.max(0,1-Math.abs(fz+.05)/.67);
 const sample=(ring:Ring,index:number):Point=>{
  const n=M56_PERIMETER.length,idx=(index+n)%n;
  const [fx,fz]=M56_PERIMETER[idx];
