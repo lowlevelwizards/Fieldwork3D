@@ -16,6 +16,7 @@ import {headwearFaceTone,headwearFaceRegion} from './operator-headwear-materials
 import {softenHeadwearAO} from './operator-baked-gear-ao.ts';
 import {createUnifiedHelmetShellGeometry}
  from './operator-ach-mich-unified-shell.ts';
+import {createM1ProfileGeometry} from './operator-m1-helmet-profile.ts';
 export type HeadSilhouetteId='patrol-cap'|'boonie'|'beanie'|'beret'|'pasgt'|'soviet-steel'|'m1-steel'|'ddr-m56'|'police-helmet'|'ach'|'mich-2001'|'mich-2002';
 export type HeadSilhouetteMetrics={
  id:HeadSilhouetteId;frontExtent:number;rearExtent:number;top:number;
@@ -29,8 +30,8 @@ export const HEAD_SILHOUETTE_METRICS:Readonly<Record<HeadSilhouetteId,HeadSilhou
   top:8.255,earEdge:4.54,foreheadEdge:4.54,billLength:0},
  'beanie':{id:'beanie',frontExtent:-5.00,rearExtent:5.00,
   top:8.65,earEdge:3.745,foreheadEdge:3.745,billLength:0},
- 'm1-steel':{id:'m1-steel',frontExtent:-6.37,rearExtent:6.37,
-  top:8.75,earEdge:4.40,foreheadEdge:4.40,billLength:0},
+ 'm1-steel':{id:'m1-steel',frontExtent:-5.79,rearExtent:5.69,
+  top:8.74,earEdge:4.53,foreheadEdge:4.53,billLength:0},
  'ddr-m56':{id:'ddr-m56',frontExtent:-6.80,rearExtent:8.10,
   top:8.775,earEdge:4.43,foreheadEdge:4.65,billLength:0},
  'police-helmet':{id:'police-helmet',frontExtent:-5.70,rearExtent:5.80,
@@ -209,25 +210,15 @@ const PASGT_CUBOIDS:readonly HeadwearCuboid[]=[
  * strong projecting rim, leaving the operator's lower face fully open.
  * This is never a scaled SSh-40 or a modern PASGT shell.
  */
-const M1_CUBOIDS:readonly HeadwearCuboid[]=[
- {name:'m1-integrated-high-dome',x:0,y:7.86,z:0,
-  width:9.80,height:1.77,depth:10.65},
- {name:'m1-front-bowl',x:0,y:6.17,z:-4.83,
-  width:10.94,height:2.92,depth:1.30},
- {name:'m1-rear-bowl',x:0,y:6.17,z:4.83,
-  width:10.94,height:2.92,depth:1.30},
- ...([-1,1] as const).map(sign=>({
-  name:sign<0?'m1-left-bowl':'m1-right-bowl',
-  x:sign*4.85,y:6.17,z:0,width:1.25,height:2.92,depth:10.96
- })),
- {name:'m1-front-rolled-rim',x:0,y:4.78,z:-5.44,
-  width:11.80,height:.76,depth:1.85},
- {name:'m1-rear-rolled-rim',x:0,y:4.78,z:5.44,
-  width:11.80,height:.76,depth:1.85},
- ...([-1,1] as const).map(sign=>({
-  name:sign<0?'m1-left-rolled-rim':'m1-right-rolled-rim',
-  x:sign*5.44,y:4.78,z:0,width:1.20,height:.76,depth:12.20
- }))
+/** M1 fit/shadow metadata only. The sole rendered shell comes from
+ * operator-m1-helmet-profile.ts, not these deliberately coarse envelopes.
+ */
+const M1_FIT_VOLUMES:readonly HeadwearCuboid[]=[
+ {name:'m1-main-bowl-fit',x:0,y:6.58,z:0,width:10.40,height:4.00,depth:10.52},
+ {name:'m1-front-fit',x:0,y:5.0,z:-5.42,width:11.10,height:.94,depth:1.06},
+ {name:'m1-rear-fit',x:0,y:5.0,z:5.25,width:11.10,height:.94,depth:1.06},
+ {name:'m1-right-rim-fit',x:5.42,y:4.53,z:0,width:.26,height:.19,depth:11.06},
+ {name:'m1-left-rim-fit',x:-5.42,y:4.53,z:0,width:.26,height:.19,depth:11.06}
 ];
 /** R5H1 East German M56: wider shallow swept lower perimeter than M1.
  * Authored ring has real overlap in every axis before cube-union.
@@ -461,7 +452,7 @@ const HEADGEAR_VOLUMES:Readonly<Record<HeadSilhouetteId,readonly HeadwearCuboid[
  'beanie':BEANIE_CUBOIDS,
  'pasgt':PASGT_CUBOIDS,
  'soviet-steel':STEEL_CUBOIDS,
- 'm1-steel':M1_CUBOIDS,
+ 'm1-steel':M1_FIT_VOLUMES,
  'ddr-m56':DDR_M56_CUBOIDS,
  'police-helmet':POLICE_HELMET_CUBOIDS,
  'ach':ACH_CUBOIDS,
@@ -476,7 +467,7 @@ export function headwearCuboidVolumes(id:HeadSilhouetteId):readonly HeadwearCubo
 function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId){
  const volume=headwearCuboidVolumes(id);
  const unified=id==='ach'||id==='mich-2002'||id==='mich-2001';
- const geometry=unified?
+ const geometry=id==='m1-steel'?createM1ProfileGeometry('steel'):unified?
   createUnifiedHelmetShellGeometry(id,
    volume[0].y+volume[0].height/2,ACH_MICH_UPPER_INSET,ACH_MICH_BEVEL_HEIGHT):
   unionCuboids(volume,{faceTone:(part,axis,sign)=>
@@ -517,7 +508,8 @@ function headwearFromVolumes(g:THREE.Group,m:THREE.Material,id:HeadSilhouetteId)
   m.shadowSide=THREE.DoubleSide;
  }
  const mesh=new THREE.Mesh(geometry,m);
- mesh.name=id+(unified?'-unified-lowpoly-shell':'-continuous-cuboid-exterior');
+ mesh.name=id+(id==='m1-steel'?'-one-piece-faceted-steel-shell':
+  unified?'-unified-lowpoly-shell':'-continuous-cuboid-exterior');
  mesh.castShadow=true;
  // Keep its self-shadow noise out of the clean close-up silhouette review.
  mesh.receiveShadow=false;
@@ -537,7 +529,8 @@ export function createHeadwearSilhouette(
  } as const)[id];
  group.userData.modelAxes='-Z-forward,+X-right,+Y-up';
  group.userData.silhouette=id;
- group.userData.primitive=id==='ach'||id==='mich-2002'||id==='mich-2001'? 
+ group.userData.primitive=id==='m1-steel'?'m1-one-piece-faceted-profile':
+  id==='ach'||id==='mich-2002'||id==='mich-2001'?
   'single-extruded-contour':'cuboids-only';
  return group;
 }
