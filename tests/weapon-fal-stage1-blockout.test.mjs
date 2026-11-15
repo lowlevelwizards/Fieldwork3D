@@ -31,9 +31,11 @@ test('FAL S1: minimal body is aligned, named and below existing HK budget',()=>{
  assert.ok(fal.children.length>=10&&fal.children.length<=22);
  assert.ok(fal.children.every(c=>c.name.startsWith('family-')));
  const raised=buildFALStage1Silhouette(material,{raisedCarryHandle:true});
- assert.equal(raised.children.length,fal.children.length+1);
- assert.ok(raised.children.some(c=>c.name==='family-receiver-fal-stage1-receiver-4'),
-  'small FAL handle remains a genuine additional contour');
+ assert.equal(raised.children.length,fal.children.length+2);
+ assert.ok(raised.children.some(c=>c.userData.falCarrySupport),
+  'carry support remains a single simple steel shape');
+ assert.ok(raised.children.some(c=>c.userData.falCarryGrip),
+  'separate horizontal carrying grip, not a rectangular handle frame');
  clearWeaponSilhouette(fal);clearWeaponSilhouette(raised);
  assert.equal(fal.children.length,0);
  material.dispose();
@@ -63,7 +65,7 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
  const stock=byName('family-stock-fal-stage1-stock-0');
  const grip=byName('family-grip-fal-stage1-grip-0');
  const handguard=byName('family-handguard-fal-stage1-handguard-0');
- const ears=byName('family-barrel-fal-stage1-barrel-1');
+ const ears=byName('family-barrel-fal-stage1-barrel-2');
  const receiver=byName('family-receiver-fal-stage1-receiver-0');
  assert.ok(stock.max.y>=1.1&&stock.max.y<=1.3,'full rear comb tapers into a slender FAL wrist');
  assert.ok(stock.min.y>=-3.50&&stock.min.y<=-3.20,'stock heel should not be a triangular M16 wedge');
@@ -74,6 +76,6 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
   'fore-end must stay shallow and gently tapered, not an M16 triangle');
  assert.ok(ears.max.y>=2.90&&ears.max.y<=3.1,'front sight ears must be modest');
  assert.ok(receiver.max.y>=1.8,'upper dust cover should remain long and clear');
- assert.equal(g.children.length,12,'S1C core stays exactly 12 simple shapes');
+ assert.equal(g.children.length,15,'FAL P1: base + two ears + post replace original sight');
  clearWeaponSilhouette(g);material.dispose();
 });
