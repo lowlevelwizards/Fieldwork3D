@@ -4,7 +4,7 @@ import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geome
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
 import {buildFNCStage1Silhouette,type FNCArtFinishes}
  from './weapons/geometry/fnc-stage1-blockout.ts';
-import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MAG_METAL,HK_MUZZLE_METAL,
+import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MUZZLE_METAL,
  AR_STANAG_METAL,AR_STANAG_RIB,FAL_LOWER_METAL,FAL_VENT_SHADOW}
  from './weapons/geometry/weapon-visual-palette.ts';
 
