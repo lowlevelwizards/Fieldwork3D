@@ -13,9 +13,11 @@ are not reached. The exact 60 Hz forensic run `43694255202` showed:
 | Utility standard, seed 31162, authored | Rook, Moss, Ash | Confirmed locked-door MOVE cancellations; GO missed by 357.14, 340.04, 288.15 |
 | Clinic small, seed 31175, generated entry | Ash | Confirmed locked-door MOVE cancellation; GO missed by 102.25 |
 
-All seven canceled operators previously appeared `plan.length===0`, and
+The seven canceled operators **who missed their goals** appeared `plan.length===0`, and
 were counted among 21/22 **queue-drained** squads even though only 18/22
-squads physically reached all four GO coordinates.
+squads physically reached all four GO coordinates. A separate pair of actors
+arrived physically after an earlier terminal cancellation, so strict
+fully-successful squads are 16/22, not 18/22.
 
 ## Correct semantics
 
