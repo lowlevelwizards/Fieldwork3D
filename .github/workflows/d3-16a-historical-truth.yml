@@ -4,6 +4,10 @@ on:
     paths:
       - '.github/workflows/d3-16a-historical-truth.yml'
       - 'scripts/audit-r7-squad-execution.mjs'
+      - 'src/breach-order-lifecycle.ts'
+      - 'src/breach-execution-state.ts'
+      - 'src/breach-order-outcome.ts'
+      - 'tests/release-d3-16a-honest-order-outcomes.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,6 +21,14 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
+      - name: Typecheck and critical order lifecycle, status and new truth contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-16a-honest-order-outcomes.test.mjs \
+            tests/breach-roadmap2-stage8-orders.test.mjs \
+            tests/tactical-integration-13-execution-status.test.mjs \
+            tests/release7-mobile-clarity.test.mjs
       - name: Exact historical baseline 11 sites 2 modes 4 actors x 2700 real ticks
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
@@ -39,6 +51,19 @@ jobs:
             }));
           }
           console.log('D316A_TOTAL',JSON.stringify(r.summary));
+          if(r.summary.physicalArrivals!==80||
+             r.summary.physicalCompletedFour!==18||
+             r.summary.completedFour!==21||
+             r.summary.successfulFour!==18||
+             r.summary.terminallyCancelledOrders!==7||
+             r.summary.cancelledOperators!==7||
+             r.summary.physicallyPendingOperators!==1||
+             r.summary.unreachedDrainedOperators!==0)
+            throw Error('D3.16A historical terminal truth disagrees with real 88-actor physics');
+          if(r.rows.flatMap(x=>x.modes).some(m=>
+             m.successful&&(m.operators.some(o=>o.failedOrders||!o.arrived||o.remainingOrders))))
+            throw Error('false physically successful four-person order result');
+
           if(r.summary.exceptions||r.summary.invalidPositions||
              r.summary.corruptedPlans||r.summary.physicsStepViolations)
              throw Error('invalid physical historical corpus');
