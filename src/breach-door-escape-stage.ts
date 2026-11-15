@@ -44,18 +44,39 @@ export function joinedLocalOpenLeafStage(
   }
  }
  const width=dist(door.a,door.b);
- const portalNormal={x:-(door.b.y-door.a.y)/(width||1),
-   y:(door.b.x-door.a.x)/(width||1)};
- const side=Math.sign(dot({x:goal.x-(door.a.x+door.b.x)/2,
-   y:goal.y-(door.a.y+door.b.y)/2},portalNormal))||1;
+ const frameTangent={x:(door.b.x-door.a.x)/(width||1),
+   y:(door.b.y-door.a.y)/(width||1)};
+ const portalNormal={x:-frameTangent.y,y:frameTangent.x};
+ const frameMid={x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2};
+ const side=Math.sign(dot({x:goal.x-frameMid.x,
+   y:goal.y-frameMid.y},portalNormal))||1;
  for(const offset of [0,OPERATOR_RADIUS*1.5,-OPERATOR_RADIUS*1.5]){
-  const center={x:(door.a.x+door.b.x)/2+
-       (door.b.x-door.a.x)/(width||1)*offset,
-    y:(door.a.y+door.b.y)/2+
-       (door.b.y-door.a.y)/(width||1)*offset};
+  const center={x:frameMid.x+frameTangent.x*offset,
+    y:frameMid.y+frameTangent.y*offset};
   paths.push([{x:center.x+portalNormal.x*side*(OPERATOR_RADIUS+20),
     y:center.y+portalNormal.y*side*(OPERATOR_RADIUS+20)}]);
  }
+ // H2: A person standing BELOW the frame-side hinge cannot always
+ // sweep straight to the LEAF TIP, even with a wide open panel. Approach
+ // on the CURRENT side of the actual door frame first, then cross the
+ // aperture as two separate ordinary physical legs. These are local
+ // waypoints only; the tail still ends at the original authored GO.
+ // Never propose positions outside the frame's usable shoulder width.
+ const ownSide=Math.sign(dot({x:from.x-frameMid.x,
+   y:from.y-frameMid.y},portalNormal))||1;
+ const halfLane=Math.max(0,width/2-OPERATOR_RADIUS-3);
+ const offsets=[0,halfLane*.7,-halfLane*.7];
+ for(const offset of offsets)
+  for(const nearDepth of [OPERATOR_RADIUS+14,OPERATOR_RADIUS+27]){
+   const lane={x:frameMid.x+frameTangent.x*offset,
+     y:frameMid.y+frameTangent.y*offset};
+   const before={x:lane.x+portalNormal.x*ownSide*nearDepth,
+     y:lane.y+portalNormal.y*ownSide*nearDepth};
+   const beyond={x:lane.x+portalNormal.x*side*(OPERATOR_RADIUS+18),
+     y:lane.y+portalNormal.y*side*(OPERATOR_RADIUS+18)};
+   if(ownSide===side)paths.push([before]);
+   else paths.push([before,beyond]);
+  }
  let best:Pt[]=[],bestCost=Infinity;
  let tailProbes=0;
  // Read-only rejection counters, populated only when the audit supplies
