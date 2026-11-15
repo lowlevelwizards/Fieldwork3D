@@ -15,9 +15,9 @@ test('D3.11D: never mistake a portal-only stage for an authored MOVE',()=>{
  const stage=[p(10,0),p(20,0)],goal=p(200,0);
  const frozen=structuredClone(stage);
  let sweeps=0;
- assert.deepEqual(completePortalRouteToAuthoredGoal(stage,goal,[],
+ assert.deepEqual(completePortalRouteToAuthoredGoal(p(0,0),stage,goal,[],
   ()=>{sweeps++;return true;}),[]);
- assert.deepEqual(completePortalRouteToAuthoredGoal(stage,goal,[p(40,0),p(130,0)],
+ assert.deepEqual(completePortalRouteToAuthoredGoal(p(0,0),stage,goal,[p(40,0),p(130,0)],
   ()=>true),[]);
  assert.equal(sweeps,0,'unreachable portal-only destination skips physical joins');
  assert.deepEqual(stage,frozen,'stage is never rewritten');
@@ -25,7 +25,7 @@ test('D3.11D: never mistake a portal-only stage for an authored MOVE',()=>{
 test('D3.11D: physically verified continuation retains original final goal',()=>{
  const stage=[p(10,0),p(20,0)],goal=p(200,0);
  const tail=[p(40,0),goal],sweeps=[];
- const result=completePortalRouteToAuthoredGoal(stage,goal,tail,(a,b)=>{
+ const result=completePortalRouteToAuthoredGoal(p(0,0),stage,goal,tail,(a,b)=>{
   sweeps.push([a,b]);return true;
  });
  assert.deepEqual(result,[...stage,...tail]);
@@ -34,14 +34,14 @@ test('D3.11D: physically verified continuation retains original final goal',()=>
  assert.deepEqual(result.at(-1),goal);
 });
 test('D3.11D: a blocked first continuation is rejected, never ghosted',()=>{
- const route=completePortalRouteToAuthoredGoal([p(10,0),p(20,0)],p(200,0),
+ const route=completePortalRouteToAuthoredGoal(p(0,0),[p(10,0),p(20,0)],p(200,0),
   [p(40,0),p(200,0)],()=>false);
  assert.deepEqual(route,[]);
- assert.deepEqual(completePortalRouteToAuthoredGoal([],p(5,0),[],()=>true),[]);
+ assert.deepEqual(completePortalRouteToAuthoredGoal(p(0,0),[],p(5,0),[],()=>true),[]);
 });
 test('D3.11D: a genuinely goal-reaching staged route never needs intel A*',()=>{
  const goal=p(20,20),stage=[p(10,10),goal];
- assert.deepEqual(completePortalRouteToAuthoredGoal(stage,goal,[],()=>false),stage);
+ assert.deepEqual(completePortalRouteToAuthoredGoal(p(0,0),stage,goal,[],()=>false),stage);
 });
 test('D3.11D: original hinge/body physics validates portal stage',()=>{
  const world={passable:()=>true};
@@ -91,4 +91,15 @@ test('D3.11D2: one accepted handoff per unchanged authored door; new goal resets
   'a different doorway is independent');
  assert.equal(canRehearseJoinedPortalOncePerLeaf(actor,13,'FRONT',p(401,200),.99),true,
   'a revised authored goal is independent');
+});
+
+test('D3.11D2: prolonged remote detour is rejected before stealing MOVE ownership',()=>{
+ const source=p(0,0),goal=p(400,0);
+ const stage=[p(12,25),p(30,30)];
+ const tail=[p(30,300),p(300,300),goal];
+ const result=completePortalRouteToAuthoredGoal(source,stage,goal,tail,()=>true);
+ assert.deepEqual(result,[],'long physically lawful but unproductive detour stays with existing planner');
+ const modest=[p(110,35),p(200,10),goal];
+ const accepted=completePortalRouteToAuthoredGoal(source,stage,goal,modest,()=>true);
+ assert.deepEqual(accepted,[...stage,...modest],'bounded valid continuation remains allowed');
 });
