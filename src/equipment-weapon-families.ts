@@ -167,6 +167,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'fal-50-receiver':add('fal-50-receiver','FN FAL 50.00 metric receiver','fal','receiver',{feed:'fal762',role:'rifle'}),
  'fal-fixed-polymer':add('fal-fixed-polymer','FN FAL fixed humpback stock','fal','stock',{receivers:['fal-50-receiver'],stockX:-15.00}),
  'fal-fixed-wood':add('fal-fixed-wood','Early fixed wooden humpback stock','fal','stock',{receivers:['fal-50-receiver'],stockX:-15.00}),
+ 'fal-para-folder':add('fal-para-folder','FAL Para twin-rail folding stock · extended','fal','stock',{receivers:['fal-50-receiver'],stockX:-15.00}),
  'fal-grip':add('fal-grip','Classic FN FAL pistol grip','fal','grip',{receivers:['fal-50-receiver']}),
  'fal-grip-wood':add('fal-grip-wood','Optional early wooden pistol grip','fal','grip',{receivers:['fal-50-receiver']}),
  'fal-mag20':add('fal-mag20','FAL 20-round steel magazine','fal','magazine',{feed:'fal762'}),
@@ -215,7 +216,9 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('fal-5000','FN FAL 50.00','rifle','fal','fal-50-receiver',
   'fal-fixed-polymer','fal-grip','fal-mag20','fal-vented','fal-21-service'),
  p('fal-5000-classic','FN FAL 50.00 · Wood','rifle','fal','fal-50-receiver',
-  'fal-fixed-wood','fal-grip','fal-mag20','fal-vented-wood','fal-21-service')
+  'fal-fixed-wood','fal-grip','fal-mag20','fal-vented-wood','fal-21-service'),
+ p('fal-5061','FN FAL 50.61 Para','rifle','fal','fal-50-receiver',
+  'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-21-service')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
