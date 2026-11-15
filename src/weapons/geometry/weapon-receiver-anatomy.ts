@@ -51,7 +51,7 @@ export const FAL_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  gripShiftX:-4.45,gripDepthZ:2.16,
  magwellCenterX:1.35,magazineWidthX:3.22,magazineDepthZ:FAL_MAG20_DEPTH,
  magazineTopY:-2.98,magwellTopY:-1.95,magwellBottomY:-3.19,
- portX:1.00,portY:.68,portWidthX:3.00,portHeightY:.95
+ portX:1.43,portY:1.11,portWidthX:2.97,portHeightY:.84
 };
 export const AK_VISUAL_ANATOMY:Readonly<VisualAnatomy>={
  gripShiftX:-2.05,gripDepthZ:2.19,

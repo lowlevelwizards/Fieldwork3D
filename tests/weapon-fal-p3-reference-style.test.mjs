@@ -48,7 +48,7 @@ test('P3 receiver: deeper shaped lower is a dedicated steel tone, not a duplicat
   'FAL lower housing must be a visible structural shape');
  const port=root.children.filter(x=>x.userData.falEjectionPort);
  assert.equal(port.length,1,'only one right-side ejection-port relief');
- assert.ok(box(port[0]).min.z>1.75);
+ assert.ok(box(port[0]).min.z>1.35&&box(port[0]).max.z<1.76);
  const left=root.getObjectByName('family-receiver-fal-50-receiver-7');
  assert.ok(left&&box(left).max.z<0,'charging handle belongs on left');
  assert.equal(left.userData.falChargingHandle,true);
@@ -76,7 +76,7 @@ test('P3 handle and guard: contoured handle supported, six-sided vents follow fr
   assert.equal(v.userData.falFaceAligned,true);
   assert.ok(box(v).max.z-box(v).min.z>.01);
  }
- assert.equal(root.children.length,21,'art should not add renderable objects');
+ assert.equal(root.children.length,25,'P4 identity is bounded to four additional meshes');
  assert.equal(resolveWeaponAssembly(config()).muzzleX,22);
  assert.equal(resolveWeaponAssembly(config()).stockX,-15);
  clearWeaponSilhouette(root);m.dispose();

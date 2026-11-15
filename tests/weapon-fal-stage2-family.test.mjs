@@ -66,7 +66,7 @@ test('FAL S2: FAL-specific geometry, front sight, carry handle, vents and muzzle
  assert.ok(Math.abs(bounds.max.x-a.muzzleX)<.02);
  assert.equal(a.muzzleX,FAL_BARREL_ART['fal-21-service'].muzzleX);
  assert.equal(a.muzzleY,0);
- assert.equal(g.children.length,21,'FAL P2: 17 core shapes plus 4 consolidated identity meshes');
+ assert.equal(g.children.length,25,'FAL P4: crown, guard and three signature landmarks');
  assert.equal(g.children.filter(x=>x.name.startsWith('family-handguard-fal-vented')).length,3);
  assert.ok(g.children.every(x=>x.name.startsWith('family-')));
  assert.equal(g.children.filter(x=>x.name.startsWith('family-magazine-')).length,1);

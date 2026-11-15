@@ -48,19 +48,29 @@ try{
   await capture('m4-g3-fal-factory-side');
   await page.getByRole('button',{name:'THREE-QUARTER'}).click();
   await capture('m4-g3-fal-factory-three-quarter');
+  await page.getByRole('button',{name:'LEFT SIDE'}).click();
+  await capture('m4-g3-fal-factory-left-side');
+  await page.getByRole('button',{name:'THREE-QUARTER'}).click();
   await page.locator('#factory').uncheck();
   await page.locator('#carry').check();
   await capture('fal-core-with-carry-three-quarter');
   await page.locator('#carry').uncheck();
-  await page.getByRole('button',{name:'SIDE'}).click();
+  await page.getByRole('button',{name:'SIDE',exact:true}).click();
   await capture('fal-core-without-carry-side');
   // The factory FAL must also render in a mobile-sized review frame.
   await page.locator('#factory').check();
   await page.setViewportSize({width:430,height:920});
   await page.waitForFunction(()=>document.querySelector('#view')?.width>0);
   await capture('m4-g3-fal-mobile-side');
+  // Distinguish real 3D facets/material hierarchy from a flat silhouette.
+  await page.setViewportSize({width:1280,height:1000});
+  await page.locator('#shaded').check();
+  await page.getByRole('button',{name:'THREE-QUARTER'}).click();
+  await capture('m4-g3-fal-shaded-three-quarter');
+  await page.getByRole('button',{name:'LEFT SIDE'}).click();
+  await capture('m4-g3-fal-shaded-left-side');
   if(errors.length)throw Error('3D FAL lab errors: '+errors.join(' | '));
-  console.log('FAL P1: 5 actual Three.js side/three-quarter/mobile comparison captures passed.');
+  console.log('FAL P4: 8 actual Three.js right/left/shaded/three-quarter/mobile comparison captures passed.');
   await page.close();
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

@@ -28,10 +28,10 @@ const named=(root,name)=>{
  const mesh=root.getObjectByName(name);
  assert.ok(mesh,'missing '+name);return mesh;
 };
-test('FAL P2: distinct family, 21 exterior meshes, and unmodified global anchors',()=>{
+test('FAL P2/P4: distinct family, compact exterior and unmodified global anchors',()=>{
  const mat=new THREE.MeshBasicMaterial();
  const config=choose('fal-5000'),root=buildWeaponSilhouette('rifle',mat,mat,config);
- assert.equal(root.children.length,21);
+ assert.equal(root.children.length,25);
  const groups=['stock','receiver','grip','magazine','handguard','barrel'];
  for(const slot of groups)assert.ok(partVisualBounds(root,slot),'slot '+slot);
  assert.equal(root.children.filter(x=>x.name.startsWith('family-handguard-')).length,3);
@@ -122,10 +122,10 @@ test('FAL P2: restrained receiver port remains right-only and HK model unchanged
  const port=named(fal,'family-receiver-fal-50-receiver-8');
  const p=bounds(port);
  assert.equal(port.userData.falEjectionPort,true);
- approx(p.max.x-p.min.x,3.0);
- assert.ok(p.min.z>1.75&&p.max.z<1.9,'right-side mark sits flush');
+ approx(p.max.x-p.min.x,2.97);
+ assert.ok(p.min.z>1.35&&p.max.z<1.76,'right-side scoop follows crowned upper shoulder');
  const receiver=named(fal,'family-receiver-fal-50-receiver-0');
- assert.ok(bounds(receiver).max.z>=1.75);
+ assert.ok(bounds(receiver).max.z>=1.64&&bounds(receiver).max.z<=1.70);
  const charger=named(fal,'family-receiver-fal-50-receiver-7');
  assert.ok(bounds(charger).max.z<0,'charging lever stays on left');
  const g3=buildWeaponSilhouette('rifle',mat,mat,choose('hk-g3a3'));

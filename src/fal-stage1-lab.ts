@@ -8,15 +8,24 @@ import {buildFALStage1Silhouette} from './weapons/geometry/fal-stage1-blockout.t
 const canvas=document.querySelector<HTMLCanvasElement>('#view');
 const side=document.querySelector<HTMLButtonElement>('#side');
 const quarter=document.querySelector<HTMLButtonElement>('#quarter');
+const left=document.querySelector<HTMLButtonElement>('#left');
 const carry=document.querySelector<HTMLInputElement>('#carry');
 const factory=document.querySelector<HTMLInputElement>('#factory');
-if(!canvas||!side||!quarter||!carry||!factory)
+const shaded=document.querySelector<HTMLInputElement>('#shaded');
+if(!canvas||!side||!quarter||!left||!carry||!factory||!shaded)
  throw new Error('Incomplete FAL stage 1 comparison lab');
 
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
 renderer.setPixelRatio(Math.min(1.75,window.devicePixelRatio||1));
 const scene=new THREE.Scene();
 scene.background=new THREE.Color('#172521');
+scene.add(new THREE.HemisphereLight(0xe6f0e6,0x29372e,2.25));
+const key=new THREE.DirectionalLight(0xffffff,2.8);
+key.position.set(30,55,80);scene.add(key);
+// A symmetric inspection fill makes left-side receiver geometry readable.
+// This is LAB ONLY; production Arsenal lighting remains unchanged.
+const fill=new THREE.DirectionalLight(0xe9f3e9,2.35);
+fill.position.set(-25,35,-80);scene.add(fill);
 const monochrome=new THREE.MeshBasicMaterial({color:0xaebbad,side:THREE.DoubleSide});
 const camera=new THREE.OrthographicCamera(-22,22,26,-26,.1,300);
 const root=new THREE.Group();
@@ -28,7 +37,10 @@ const existing=(weapon:'rifle'|'carbine',preset:string)=>{
  // Existing family art uses authored materials. Override the newly created
  // meshes for silhouette comparison only, without modifying shared palettes.
  model.traverse(node=>{
-  if(node instanceof THREE.Mesh)node.material=monochrome;
+  if(node instanceof THREE.Mesh){
+   node.userData.falShadedMaterial=node.material;
+   if(!shaded.checked)node.material=monochrome;
+  }
  });
  return model;
 };
@@ -41,7 +53,7 @@ carry.disabled=factory.checked;
 let fal=makeFAL();
 fal.position.y=-17.5;
 root.add(fal);
-let isSide=true;
+let currentView:'side'|'quarter'|'left'='side';
 const render=()=>{
  const w=Math.max(1,canvas.clientWidth),h=Math.max(1,canvas.clientHeight);
  renderer.setSize(w,h,false);
@@ -51,19 +63,22 @@ const render=()=>{
  camera.top=halfH;camera.bottom=-halfH;
  camera.updateProjectionMatrix();
  const center=new THREE.Vector3(3.5,-2.6,0);
- camera.position.set(isSide?3.5:28,isSide?-2.6:5.0,80);
+ camera.position.set(currentView==='quarter'?28:3.5,
+  currentView==='quarter'?5:-2.6,currentView==='left'?-80:80);
  camera.lookAt(center);
  camera.updateMatrixWorld();
  renderer.render(scene,camera);
 };
-side.addEventListener('click',()=>{
- isSide=true;side.setAttribute('aria-pressed','true');
- quarter.setAttribute('aria-pressed','false');render();
-});
-quarter.addEventListener('click',()=>{
- isSide=false;side.setAttribute('aria-pressed','false');
- quarter.setAttribute('aria-pressed','true');render();
-});
+const selectView=(view:'side'|'quarter'|'left')=>{
+ currentView=view;
+ side.setAttribute('aria-pressed',String(view==='side'));
+ quarter.setAttribute('aria-pressed',String(view==='quarter'));
+ left.setAttribute('aria-pressed',String(view==='left'));
+ render();
+};
+side.addEventListener('click',()=>selectView('side'));
+quarter.addEventListener('click',()=>selectView('quarter'));
+left.addEventListener('click',()=>selectView('left'));
 const refreshFAL=()=>{
  root.remove(fal);clearWeaponSilhouette(fal);
  carry.disabled=factory.checked;
@@ -71,5 +86,12 @@ const refreshFAL=()=>{
 };
 carry.addEventListener('change',refreshFAL);
 factory.addEventListener('change',refreshFAL);
+shaded.addEventListener('change',()=>{
+ for(const group of [m4,g3,fal])group.traverse(node=>{
+  if(node instanceof THREE.Mesh&&node.userData.falShadedMaterial)
+   node.material=shaded.checked?node.userData.falShadedMaterial:monochrome;
+ });
+ render();
+});
 new ResizeObserver(render).observe(canvas);
 render();

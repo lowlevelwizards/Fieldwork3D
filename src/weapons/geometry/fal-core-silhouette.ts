@@ -7,10 +7,11 @@
  * Live Arsenal and the one-material comparison lab share this same builder.
  */
 import * as THREE from 'three';
-import {addOutline,addCuboid,addFacetedTube,addBar,
+import {addOutline,addCuboid,addFacetedTube,addBar,addProfileFrame,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH} from './fal-magazine-profiles.ts';
 import {addFALFacetedHandguard} from './fal-handguard-profiles.ts';
+import {addFALCrownedReceiver} from './fal-receiver-form.ts';
 
 export const FAL_ART:Readonly<{
  stockRearX:number;receiverRearX:number;receiverFrontX:number;
@@ -56,25 +57,26 @@ export function buildFALCoreSilhouette(
  ],3.00);
  b('stock',-14.56,-1.15,0,.88,4.85,3.55);
 
- // S1C: continuous FAL cover with one angular nose, no invented top notch.
- // cocking tube and NO AR-like split carry-handle upper.
- p('receiver',[
-  [-6.60,-.87],[-6.60,1.08],[-5.86,1.66],
-  [-5.36,1.83],[2.42,1.83],[3.27,1.54],
-  [3.85,1.04],[3.85,-.62],[3.10,-.95],[-5.77,-1.25]
- ],3.50);
+ // P4 R1A: one continuously crowned upper receiver mesh; broad faceted
+ // shoulders taper toward the roof to visually echo the FAL handguard.
+ // Not a rectangular extrude and not an AR/G3 imitation.
+ addFALCrownedReceiver(root,partIds.receiver,ids.receiver++,materials.receiver);
  // Single angular lower, sculpting the grip/magazine negative space.
+ // P4 R1B: broad one-piece LOWER, not a narrow dark strip behind the
+ // upper shell. Its sloped belly makes the grip/guard/magwell relationship
+ // legible at miniature scale. One silhouette, one material, no seam decals.
  lower([
-  [-6.29,-1.04],[-5.80,-1.69],[-4.98,-2.07],
-  [-4.42,-2.43],[-3.07,-2.33],[-2.18,-1.61],
-  [-.47,-1.60],[.29,-2.66],[3.14,-2.77],
-  [3.80,-1.10],[2.95,-1.30]
- ],3.16);
- // Distinct FAL magazine-well wedge projecting down toward the magazine.
+  [-6.30,-1.08],[3.62,-1.03],[3.82,-1.43],
+  [3.18,-2.65],[.14,-2.60],[-.80,-2.24],
+  [-1.34,-2.40],[-2.67,-2.45],[-3.65,-2.69],
+  [-4.60,-2.66],[-5.35,-2.04],[-6.30,-1.70]
+ ],3.40);
+ // Characteristic broad sloped FN magazine shroud. It is a receiver
+ // landmark, not a separate functional magazine or insertion socket.
  lower([
-  [-.45,-1.96],[3.36,-1.96],[3.50,-2.68],
-  [3.09,-3.19],[-.22,-3.19],[-.48,-2.75]
- ],3.28);
+  [-.36,-1.82],[3.16,-1.82],[3.50,-2.50],
+  [3.04,-3.19],[-.12,-3.19],[-.65,-2.48]
+ ],3.32);
 
  // S1C: compact raked FAL grip; preserve open mag/grip gap.
  p('grip',[
@@ -142,5 +144,18 @@ export function buildFALCoreSilhouette(
   grip.position.z=-1.61;
   grip.userData.falCarryGrip=true;
  }
+ // P4 R2B: one bold open trigger-guard arch. Intentional negative space
+ // BELOW the lower receiver; no tiny curved wires, fake trigger pins or
+ // duplicate trigger geometry. Added after carry handle so legacy part IDs
+ // and the 0–5 receiver mesh naming contract remain stable.
+ const guard=addProfileFrame(root,'receiver',partIds.receiver,
+  ids.receiver++,[
+   [-3.53,-2.20],[-.89,-2.20],[-.64,-2.55],
+   [-.74,-3.48],[-1.21,-3.70],[-3.04,-3.64],[-3.55,-3.22]
+  ],[
+   [-3.02,-2.65],[-3.11,-3.06],[-2.86,-3.32],
+   [-1.33,-3.38],[-1.11,-3.18],[-1.08,-2.67]
+  ],.38,materials.receiver);
+ guard.userData.falTriggerGuard=true;
  return root;
 }
