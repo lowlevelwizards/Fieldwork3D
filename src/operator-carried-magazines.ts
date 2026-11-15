@@ -50,7 +50,7 @@ export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
    is556?hk556MagazineOutline(part as HK556MagazineId):HK_MAG20_OUTLINE;
   const center=fal?FAL_MAG20_CENTER_X:is9?MP5_MAG_CENTER_X:is556?HK556_MAG_CENTER_X:HK_MAG20_CENTER_X;
   const topY=fal?FAL_MAG20_TOP_Y:is9?MP5_MAG_TOP_Y:is556?HK556_MAG_TOP_Y:HK_MAG20_TOP_Y;
-  const depth=fal?2.32:is9?1.42:is556?1.90:2.08;
+  const depth=fal?2.08:is9?1.42:is556?1.90:2.08;
   const shape=new THREE.Shape();
   shape.moveTo(points[0][0],points[0][1]);
   for(const [x,y] of points.slice(1))shape.lineTo(x,y);
