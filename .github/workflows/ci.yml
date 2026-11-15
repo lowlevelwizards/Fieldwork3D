@@ -54,13 +54,15 @@ jobs:
             tests/helmet-h31c-cover-shell-penetration.test.mjs \
             tests/operator-wardrobe-headwear.test.mjs \
             tests/operator-studio-main-menu.test.mjs
-      # A2-A/B release gate: validate the touched config and preset contracts
+      # A2-A/D release gate: validate helmet config, feedback, preset and UI contracts
       # without re-running 32 unrelated historical test shards.
       - name: A2 helmet configuration and preset critical regressions
         if: ${{ github.head_ref == 'feature/a2-helmet-config-and-presets-20261114' }}
         run: |
           node --experimental-strip-types --test --test-concurrency=1 \
             tests/helmet-a2-configuration.test.mjs \
+            tests/helmet-a2-feedback.test.mjs \
+            tests/helmet-a2-studio-performance.test.mjs \
             tests/operator-studio-a2-presets.test.mjs \
             tests/helmet-a1-effective-appearance.test.mjs \
             tests/helmet-h7-field-options.test.mjs \

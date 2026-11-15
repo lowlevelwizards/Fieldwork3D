@@ -46,10 +46,38 @@ try{
   const [box,control]=await Promise.all([stage.boundingBox(),editor.boundingBox()]);
   if(!box||!control||box.height<190||control.height<190)
    throw Error('3D model or editor collapsed on phone');
-  // Performance smoke: change a FACE selection after its thumbnails are
-  // present. The card canvases, already-rendered previews and operator rig
-  // must survive this purely cosmetic selection change.
+  // A2-C/D: helmet details are immediately responsive, with a preserved
+  // saved-but-inactive choice the user can still clear. Hidden item thumbnails
+  // should not redraw on each detail change.
   await page.getByRole('button',{name:'Customize head'}).click();
+  const ach=page.locator('[data-appearance-item="ach"]');
+  if(await ach.isDisabled())throw Error('Cosmetic ballistic helmet unavailable');
+  await ach.click();
+  await page.locator('#studioWorkflow button[data-studio-step="details"]').click();
+  const rails=page.locator('[data-helmet-option="rails"]');
+  const light=page.locator('[data-helmet-option="light"]');
+  if(!await rails.isVisible()||!await light.isVisible())
+   throw Error('Helmet mounting controls missing in details');
+  if(await rails.getAttribute('aria-pressed')!=='true')await rails.click();
+  if(await light.getAttribute('aria-pressed')!=='true')await light.click();
+  await rails.click();
+  await page.waitForFunction(()=>
+   document.querySelector('[data-helmet-option="light"]')?.dataset.
+    helmetOptionState==='saved-inactive',null,{timeout:12000});
+  if(await light.isDisabled())throw Error('Saved-inactive light cannot be cleared');
+  if(await page.locator('#studioCanvas').getAttribute(
+   'data-helmet-thumbnails-deferred')!=='true')
+   throw Error('Hidden headwear thumbnails rerendered during detail changes');
+  await light.click();
+  await page.waitForFunction(()=>
+   document.querySelector('[data-helmet-option="light"]')?.dataset.
+    helmetOptionState==='unavailable',null,{timeout:12000});
+  await page.locator('#studioWorkflow button[data-studio-step="items"]').click();
+  if(await page.locator('#studioCanvas').getAttribute(
+   'data-helmet-thumbnails-deferred')!=='false')
+   throw Error('Returning to Items did not refresh deferred thumbnails');
+  // Existing FACE card performance acceptance.
+  await page.locator('#studioSubcategories button').filter({hasText:'FACE'}).click();
   await page.locator('#studioSubcategories button').filter({hasText:'FACE'}).click();
   const one=page.locator('[data-appearance-item="balaclava-one"] canvas');
   const three=page.locator('[data-appearance-item="balaclava-three"]');

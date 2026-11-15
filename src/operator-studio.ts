@@ -932,7 +932,9 @@ function applyStudioStep(){
 function setStudioStep(step:StudioStep){
  // Hidden thumbnail rendering can be deferred during helmet-detail edits.
  // Catch up only when the player actually returns to the item browser.
- if(step==='items'&&activeStep!=='items'&&!referenceOpen&&!identityMode){
+ if(step==='items'&&activeStep!=='items'&&
+    canvas.dataset.helmetThumbnailsDeferred==='true'&&
+    !referenceOpen&&!identityMode){
   const p=member();
   if(p){
    thumbBrowser.setCategory(activeCategory,true);
