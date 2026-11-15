@@ -19,18 +19,18 @@ const size=(o,k)=>box(o).max[k]-box(o).min[k];
 const touch=(a,b)=>box(a).intersectsBox(box(b));
 const close=(a,b,t=.025)=>Math.abs(a-b)<t;
 
-test('P14 rear polymer actually enters both upper and lower receiver envelopes',()=>{
+test('P15 receiver and handguard stay in real 3D contact after body shortening',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const poly=one(g,'fncP14ReceiverSeatedPolymer');
  const upper=one(g,'fncP5CrownedReceiver');
  const lower=one(g,'fncAngularLower');
  assert.ok(poly&&upper&&lower);
- assert.ok(close(box(poly).min.x,3.00));
- assert.ok(close(box(upper).max.x,3.20));
- assert.ok(close(box(lower).max.x,3.28));
- assert.ok(box(upper).max.x-box(poly).min.x>.19,
+ assert.ok(close(box(poly).min.x,2.45));
+ assert.ok(close(box(upper).max.x,2.75));
+ assert.ok(close(box(lower).max.x,2.75));
+ assert.ok(box(upper).max.x-box(poly).min.x>.29,
   'no upper-to-handguard longitudinal gap');
- assert.ok(box(lower).max.x-box(poly).min.x>.27,
+ assert.ok(box(lower).max.x-box(poly).min.x>.29,
   'lower receiver also overlaps handguard longitudinally');
  assert.ok(touch(poly,upper)&&touch(poly,lower),
   'the entire parts must share nonzero volume, not merely touch X');
@@ -41,7 +41,7 @@ test('P14 rear polymer actually enters both upper and lower receiver envelopes',
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('P14 lowered faceted cover nests into polymer but leaves both vent rows legible',()=>{
+test('P15 tall gas cover nests into polymer and exposes both vent rows',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const poly=one(g,'fncP14ReceiverSeatedPolymer');
  const metal=one(g,'fncP14LoweredGasCover');
@@ -49,9 +49,9 @@ test('P14 lowered faceted cover nests into polymer but leaves both vent rows leg
  const roof=one(g,'fncP11TopGasVentRow');
  assert.ok(poly&&metal&&roof);
  assert.ok(close(box(metal).max.y,L.gas.topY));
- assert.ok(box(metal).max.y-box(poly).max.y>.38);
- assert.ok(box(metal).max.y-box(poly).max.y<.47);
- assert.ok(box(metal).min.y<box(poly).max.y-.60,
+ assert.ok(box(metal).max.y-box(poly).max.y>.80);
+ assert.ok(box(metal).max.y-box(poly).max.y<1.10);
+ assert.ok(box(metal).min.y<box(poly).max.y-.80,
   'metal lower flank must sink into polymer');
  assert.ok(size(metal,'z')<size(poly,'z')*.65);
  assert.equal(vents.length,2);
@@ -81,7 +81,7 @@ test('P14 front handstop is tapered, compact, and connects to both polymer and g
   if(close(p.getX(i),frontX))front=Math.max(front,Math.abs(p.getZ(i)));
  }
  assert.ok(rear>front+.05,'collar MUST taper toward the front end');
- assert.ok(size(stop,'x')<.6&&size(stop,'y')<2.15);
+ assert.ok(size(stop,'x')<.6&&size(stop,'y')<2.85);
  assert.equal(stop.geometry.type,'BufferGeometry');
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -94,11 +94,11 @@ test('P14 front base no longer forms a tall pedestal under twin FAL ears',()=>{
  const rear=one(g,'fncP8CompactRearSight');
  assert.ok(base&&gas&&rear&&touch(base,gas));
  assert.equal(ears.length,2);
- assert.ok(close(box(base).max.y,.83));
+ assert.ok(close(box(base).max.y,1.52));
  assert.ok(size(base,'x')<2.8);
- assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.315)));
- assert.ok(box(ears[0]).max.y<box(rear).max.y,
-  'reduce the side-view tower below the rear-ear crown');
+ assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.60)));
+ assert.ok(box(ears[0]).max.y-box(gas).max.y<1.15,
+  'P15 twin ears remain seated within the taller gas/sight structure');
  assert.ok(size(ears[0],'z')<.78);
  clearWeaponSilhouette(g);m.dispose();
 });

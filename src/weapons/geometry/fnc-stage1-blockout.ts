@@ -28,7 +28,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p14-aligned-front-assembly-fieldwork-exterior';
+ root.name='fnc-p15-anatomical-proportions-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -74,8 +74,9 @@ export function buildFNCStage1Silhouette(
   const stations=[
    {x:-6.38,top:1.46,bottom:-.99,side:1.34,roof:.67},
    {x:-5.59,top:1.60,bottom:-.99,side:1.34,roof:.67},
-   {x:2.17,top:1.60,bottom:-.99,side:1.34,roof:.67},
-   {x:3.20,top:.45,bottom:-.99,side:1.24,roof:.66}
+   {x:2.17,top:FNC_FRONT_P13.receiver.roofY,bottom:-.99,side:1.34,roof:.67},
+   {x:FNC_FRONT_P13.receiver.frontX,top:FNC_FRONT_P13.receiver.roofY,
+    bottom:-.99,side:1.34,roof:.67}
   ] as const;
   const mesh=buildFNCrownMesh(stations.map(s=>({
    x:s.x,top:s.top,bottom:s.bottom,
@@ -90,8 +91,9 @@ export function buildFNCStage1Silhouette(
   mesh.userData.fncP5RoofHalfWidth=.67;
   mesh.userData.fncP5UpperSideHalfWidth=1.34;
   mesh.userData.fncP6OutwardReceiverEndcaps=true;
-  mesh.userData.fncP6ShortenedReceiverFrontX=3.20;
-  mesh.userData.fncP7ReceiverLength=9.58;
+  mesh.userData.fncP6ShortenedReceiverFrontX=FNC_FRONT_P13.receiver.frontX;
+  mesh.userData.fncP7ReceiverLength=FNC_FRONT_P13.receiver.frontX+6.38;
+  mesh.userData.fncP15FlatReceiverNose=true;
   mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
   return mesh;
  };
@@ -147,11 +149,13 @@ export function buildFNCStage1Silhouette(
  crownedUpper();
  // Integrate the magwell lip into the lower instead of stacking two almost
  // coplanar full-width extrusions. Broad steel lower edge remains readable.
+ const receiverNoseX=FNC_FRONT_P13.receiver.frontX;
  const lower=p('receiver',[
-  [-6.30,-.98],[3.28,-.98],[3.18,-2.30],
-  [3.00,-3.06],[.18,-3.06],[-.40,-2.70],
+  [-6.30,-.98],[receiverNoseX,-.98],
+  [receiverNoseX,-3.06],[.18,-3.06],[-.40,-2.70],
   [-1.30,-2.35],[-6.30,-2.35]
  ],3.42,'lower');
+ lower.userData.fncP15FlatLowerNose=true;
  lower.userData.fncAngularLower=true;
  lower.userData.fncMagwellLip=true;
  // A single broad dark step makes upper and lower readable as separate
@@ -170,11 +174,14 @@ export function buildFNCStage1Silhouette(
 
  // Preserve P8's narrowed raked polymer grip; the separate P8 trigger
  // frame was too literal for this silhouette and is deliberately removed.
- const grip=p('grip',[
+ const gripBase:Outline=[
   [-5.48,-2.26],[-3.48,-2.26],[-3.72,-2.68],
   [-4.89,-5.62],[-6.42,-5.75],[-6.59,-5.52]
- ],1.99,'grip');
+ ];
+ const grip=p('grip',gripBase.map(([x,y])=>
+  [x+FNC_FRONT_P13.receiver.gripForwardX,y] as const),1.99,'grip');
  grip.userData.fncGrip=true;
+ grip.userData.fncP15GripForwardX=FNC_FRONT_P13.receiver.gripForwardX;
  grip.userData.fncP8NarrowGrip=true;
  // Shared 30-round STANAG centerline/normal math: not another hand-tuned
  // stepped magazine. Two broad pressed ribs track the same curved face.
@@ -205,7 +212,7 @@ export function buildFNCStage1Silhouette(
  // Both factory and suppressed paths retain their original MUZZLE endpoint.
  const barrelStartX=8.55;
  const barrelEndX=showFactoryMuzzle?19.005:FNC_P1.muzzleX;
- const barrel=b('barrel',(barrelStartX+barrelEndX)/2,0,0,
+ const barrel=b('barrel',(barrelStartX+barrelEndX)/2,FNC_FRONT_P13.barrel.axisY,0,
   barrelEndX-barrelStartX,1.00,1.00,'barrel');
  barrel.userData.fncServiceBarrel=true;
  barrel.userData.fncP7BarrelStartX=barrelStartX;
@@ -241,6 +248,7 @@ export function buildFNCStage1Silhouette(
  ],s.baseDepth,'steel');
  front.userData.fncP13CompactIntegratedSightBase=true;
  front.userData.fncP14LowSightBase=true;
+ front.userData.fncP15AlignedGasSightBase=true;
  front.userData.fncP7ContinuousGasSightSeat=true;
  front.userData.fncFrontSightBase=true;
  front.userData.fncP4IntegratedGasSeat=true;
@@ -252,6 +260,7 @@ export function buildFNCStage1Silhouette(
   ear.userData.fncP12FALLikeFrontEar=side<0?'left':'right';
   ear.userData.fncP13CompactFrontEar=true;
   ear.userData.fncP14ReducedFrontEar=true;
+  ear.userData.fncP15IntegratedFrontEar=true;
   ear.userData.fncProtectedFrontSight=true;
   if(side===-1){
    ear.userData.fncP5OversizedFrontSight=true;
