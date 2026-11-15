@@ -93,10 +93,9 @@ export function handleMotorDoor(
   if(!doorAhead&&a.side==='blue'&&pendingDoor?.kind==='move'&&
      a.doorTraversal?.authoredOrderId===pendingDoor.id){
     const episodeDoor=s.doors.find(d=>d.id===a.doorTraversal!.doorId);
-    // Retain a partly opening leaf for ordinary physical clearance only.
-    // An unreached CLOSED episode is not permission to start a remote OPEN.
-    if(episodeDoor&&episodeDoor.open&&
-       (episodeDoor.openFraction??0)<.72&&
+    // Retain the cached doorway for physical movement and handoff even
+    // before handle reach; this is SELECTION only, not OPEN authority.
+    if(episodeDoor&&(episodeDoor.openFraction??0)<.72&&
        d(a.p,doorCenter(episodeDoor))<80)
       doorAhead=episodeDoor;
   }
@@ -231,11 +230,11 @@ export function handleMotorDoor(
       }
       return {paused:true,closed:false};
     }
-    // Episode retention and opener ownership are NOT interaction reach.
-    // If a clearance step moved us beyond the real panel, keep the authored
-    // MOVE under the normal solid-body motor; do not accumulate a remote
-    // OPEN timer or force a closed leaf from the old episode's 66-unit range.
-    if(opening.reason==='out-of-reach'){
+    // Selection through a cached episode grants no remote OPEN. A closed
+    // leaf must be actually reachable to start its 0.36s manipulation.
+    // Once the leaf is already opening, preserve the historical physical
+    // handoff/clearance flow as feet temporarily leave handle reach.
+    if(opening.reason==='out-of-reach'&&!doorAhead.open){
       a.motorPause=null;
       return {paused:false,closed:false,clearingDoorId:doorAhead.id};
     }
