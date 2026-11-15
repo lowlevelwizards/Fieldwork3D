@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {sweptRejoinExistingRoute}
+import {sweptRejoinExistingRoute,noteRepeatedDoorLeafEscape,
+ takeRepeatedDoorEscapeRoute,finishDoorEscapeRejoin}
  from '../src/breach-door-escape-rejoin.ts';
 import {initDoor} from '../src/breach-door.ts';
 import {doorLeafSegment,OPERATOR_RADIUS}
@@ -57,4 +58,44 @@ test('D3.13G2 actual open hinge refuses internal leaf motion, accepts only swept
  assert.deepEqual(route,[stage,goal]);
  assert.deepEqual(nav,[stale,stage,goal]);
  assert.ok(sweep(from,route[0]),'rejoined first step is actually safe');
+});
+
+test('D3.13G2B cold world-rejoin evidence requires repeated same-door physical escapes',()=>{
+ const goal=p(140,100),nav=[p(105,100),p(122,116),goal];
+ const actor={p:p(100,100),plan:[{kind:'move',id:91}]};
+ noteRepeatedDoorLeafEscape(actor,1,goal,'FRONT',nav);
+ assert.equal(takeRepeatedDoorEscapeRoute(actor,1.1,goal),null,
+  'one overlap is not a repeated non-progress cycle');
+ noteRepeatedDoorLeafEscape(actor,1.3,goal,'FRONT',nav);
+ assert.equal(takeRepeatedDoorEscapeRoute(actor,1.31,goal),null);
+ noteRepeatedDoorLeafEscape(actor,1.5,goal,'FRONT',nav);
+ const captured=takeRepeatedDoorEscapeRoute(actor,1.5,goal);
+ assert.deepEqual(captured,nav,'third true overlap exposes the original route');
+ assert.notEqual(captured[0],nav[0],
+  'the saved disposable route cannot be mutated by callers');
+ assert.equal(takeRepeatedDoorEscapeRoute(actor,1.51,goal),null,
+  'cannot cold-probe every motor tick');
+ assert.deepEqual(takeRepeatedDoorEscapeRoute(actor,3.51,goal),nav,
+  'a later repeat can be checked after the two-second budget');
+ finishDoorEscapeRejoin(actor);
+ assert.equal(takeRepeatedDoorEscapeRoute(actor,3.6,goal),null);
+});
+
+test('D3.13G2B changed authored goal or door invalidates prior escape evidence',()=>{
+ const goal=p(140,100),nav=[p(105,100),p(120,120),goal];
+ const actor={p:p(100,100),plan:[{kind:'move',id:91}]};
+ for(const time of [1,1.2,1.4])
+  noteRepeatedDoorLeafEscape(actor,time,goal,'FRONT',nav);
+ assert.equal(takeRepeatedDoorEscapeRoute(actor,1.5,p(150,100)),null,
+  'author edits revoke any previously stored route');
+ for(const time of [2,2.2,2.4])
+  noteRepeatedDoorLeafEscape(actor,time,goal,'FRONT',nav);
+ actor.plan[0]={kind:'move',id:92};
+ assert.equal(takeRepeatedDoorEscapeRoute(actor,2.5,goal),null,
+  'another authored MOVE never inherits an old door route');
+ for(const time of [3,3.2,3.4])
+  noteRepeatedDoorLeafEscape(actor,time,goal,'FRONT',nav);
+ noteRepeatedDoorLeafEscape(actor,3.6,goal,'SIDE',nav);
+ assert.equal(takeRepeatedDoorEscapeRoute(actor,3.7,goal),null,
+  'another door starts a new bounded episode');
 });
