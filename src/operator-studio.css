@@ -481,3 +481,16 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  #studioMaterials .helmet-cut-title{font-size:11px}
  #studioMaterials .helmet-cut-caption{font-size:8px}
 }
+
+/* A3: compact actionable prerequisite repairs, separated from saved toggle. */
+#studioMaterials .helmet-prerequisite-action{
+ grid-column:1/-1;display:block;width:100%;min-height:40px;
+ margin:0;padding:6px 9px;border:1px solid #b5a27e;
+ border-radius:6px;background:#344338;color:#f1d9ab;
+ font:700 11px/1.25 "Work Sans",sans-serif;
+ text-align:left;letter-spacing:.025em;
+}
+#studioMaterials .helmet-prerequisite-action:focus-visible,
+#studioMaterials .helmet-option-card:focus-visible{
+ outline:2px solid #f1d9ab;outline-offset:2px;
+}

@@ -37,6 +37,7 @@ import {isH1ModernHelmet,readHelmetSetup,resolveHelmetSetup}
 import {resolveEffectiveHelmetAppearance} from './operator-helmet-effective-appearance.ts';
 import {editHelmetFieldPreferences,editPasgtFieldDress} from './operator-helmet-appearance-edit.ts';
 import {helmetFieldControlState} from './operator-helmet-control-state.ts';
+import {helmetPrerequisiteAction} from './operator-helmet-prerequisite-actions.ts';
 import {ballisticHelmetCut,BALLISTIC_CUT_SHELL,
  type BallisticHelmetCut} from './operator-ballistic-helmet-cut.ts';
 import {createHelmetAnatomyGuide,HELMET_ANATOMY_GUIDE_NAME}
@@ -853,6 +854,15 @@ function changeWardrobe(next:WardrobeOptions,options:{helmetDetailsOnly?:boolean
  const sheet=materialRoot.closest<HTMLElement>('.studio-sheet');
  const savedScroll=sheet?.scrollTop??0;
  const savedStep=activeStep;
+ // Material sections are rebuilt when changing a helmet setting. Remember
+ // the exact control to keep keyboard and touch workflows from losing place.
+ const focused=document.activeElement instanceof HTMLElement?
+  document.activeElement:null;
+ const focusInEditor=!!focused&&materialRoot.contains(focused);
+ const focusedOption=focusInEditor?focused?.dataset.helmetOption:undefined;
+ const focusedGroup=focusInEditor?focused?.closest<HTMLElement>('.material-group'):null;
+ const focusedTitle=focusedGroup?.querySelector('.material-heading label')?.textContent;
+ const focusedTag=focused?.tagName;
  const oldLook=current();
  const parsed=readWardrobe(next);
  const changedFacewear=parsed.styles.facewear!==oldLook.styles.facewear||
@@ -866,6 +876,19 @@ function changeWardrobe(next:WardrobeOptions,options:{helmetDetailsOnly?:boolean
  refresh(options);
  activeStep=savedStep;
  applyStudioStep();
+ if(focusInEditor){
+  let replacement:HTMLElement|undefined;
+  if(focusedOption)
+   replacement=Array.from(materialRoot.querySelectorAll<HTMLElement>('[data-helmet-option]'))
+    .find(node=>node.dataset.helmetOption===focusedOption&&
+     node.classList.contains('helmet-option-card'));
+  if(!replacement&&focusedTitle&&focusedTag==='SELECT'){
+   const section=Array.from(materialRoot.querySelectorAll<HTMLElement>('.material-group'))
+    .find(node=>node.querySelector('.material-heading label')?.textContent===focusedTitle);
+   replacement=section?.querySelector<HTMLElement>('select')??undefined;
+  }
+  replacement?.focus({preventScroll:true});
+ }
  if(sheet)sheet.scrollTop=savedScroll;
  if(changedFacewear&&activeCategory==='facewear')focusCameraOnCategory('facewear');
 }
@@ -1563,6 +1586,21 @@ function renderMaterials(){
      b.append(note);
     }
     section.append(b);
+    // Recovery actions change only explicitly requested cosmetic mounting.
+    // Never clear a saved device or steal a slot from another accessory.
+    if((control.status==='saved-inactive'||control.status==='unavailable')&&
+       !readOnly&&!comparingSaved&&!saveInFlight){
+     const repair=helmetPrerequisiteAction(key,currentField,effective);
+     if(repair){
+      const action=document.createElement('button');
+      action.type='button';action.className='helmet-prerequisite-action';
+      action.dataset.helmetOption=key;
+      action.textContent=repair.label;
+      action.setAttribute('aria-label',repair.label+' for '+title);
+      action.addEventListener('click',()=>changeField(repair.changes));
+      section.append(action);
+     }
+    }
    };
    const rowOf=(title:string,help:string)=>{
      const group=row(title,help);
