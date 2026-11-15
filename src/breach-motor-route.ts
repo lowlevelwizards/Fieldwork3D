@@ -21,7 +21,8 @@ import {holdKnownFixedAuthoredGoal}
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {sweptRejoinExistingRoute,takeRepeatedDoorEscapeRoute,
- finishDoorEscapeRejoin} from './breach-door-escape-rejoin.ts';
+ finishDoorEscapeRejoin,claimColdFrameApproachProbe}
+ from './breach-door-escape-rejoin.ts';
 import {joinedLocalOpenLeafStage} from './breach-door-escape-stage.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
@@ -114,7 +115,9 @@ export function restoreRepeatedDoorEscapeRoute(
      (point,destination)=>routeWithSqueezeIntel(s.intel,point,destination),
      hasTransientRouteObserver()?
        reason=>noteDoorHandoffRejection(s,a,'h:stage:'+reason):undefined,
-     (from,to)=>routeWithNormalWorld(from,to,s.doors,world));
+     (from,to)=>claimColdFrameApproachProbe(a,stageDoor.id,goal,
+       stageDoor.openFraction??0)?
+         routeWithNormalWorld(from,to,s.doors,world):[]);
    usedLocalStage=rejoined.length>0;
  }else if(!rejoined.length){
    noteDoorHandoffRejection(s,a,'h:leaf-unavailable-or-far');
