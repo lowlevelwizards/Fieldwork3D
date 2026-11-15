@@ -74,7 +74,7 @@ test('FNC P1: equal-scale comparison is real production art, not a replacement',
  assert.ok(all.every(model=>box(model).max.y-box(model).min.y>5));
  assert.ok(width(g)<width(competitors[0])*.95,
   'FNC full-size must read visibly shorter than the standard FAL');
- assert.ok(!FAMILY_PRESETS.some(p=>p.id.startsWith('fnc-')),
-  'review-only blockout must not appear as a live loadout preset');
+ assert.ok(FAMILY_PRESETS.some(p=>p.id==='fnc-service'),
+  'approved P2 FNC must now exist as a genuine factory rifle preset');
  all.forEach(clearWeaponSilhouette);material.dispose();
 });
