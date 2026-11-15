@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+import {fixedGoalCorrectionText} from '../src/breach-authored-goal-block.ts';
+import {recoveryAdviceFor} from '../src/ui/recovery-guidance.ts';
+import {classifyExecutionNotice} from '../src/ui/execution-feedback.ts';
+
+test('D3.16B: known fixture at physical GO identifies action without inventing a new destination',()=>{
+ const text=fixedGoalCorrectionText('furniture');
+ assert.match(text,/MOVE BLOCKED.*GO INSIDE FURNITURE.*DRAG WAYPOINT/);
+ const advice=recoveryAdviceFor(text);
+ assert.equal(advice?.title,'GO INSIDE FURNITURE');
+ assert.equal(advice?.marker,'MOVE');
+ assert.match(advice?.next??'',/select.*MOVE waypoint.*clear floor/);
+ assert.equal(classifyExecutionNotice('ASH '+text+' · ORDER RETAINED').severity,'warning');
+ assert.doesNotMatch(text,/x=|y=|\d{2,}/,
+  'no invented clearance coordinates or unsupported exact correction');
+});
+test('D3.16B: discovered solid wall is distinct from furniture',()=>{
+ const text=fixedGoalCorrectionText('wall'),advice=recoveryAdviceFor(text);
+ assert.match(text,/GO INSIDE WALL/);
+ assert.match(advice?.next??'',/on your side of the wall/);
+ assert.notEqual(text,fixedGoalCorrectionText('furniture'));
+});
+test('D3.16B: physical hold retains authored goal; only known solid fixtures qualify',()=>{
+ const src=readFileSync(new URL('../src/breach-authored-goal-block.ts',import.meta.url),'utf8');
+ assert.match(src,/s\.intel\.cover\.has\(i\)/);
+ assert.match(src,/s\.intel\.walls\.has\(i\)/);
+ assert.match(src,/!canRelocateCover\(cover\)/);
+ assert.match(src,/a\.blockedTime<3\.5/);
+ assert.match(src,/node\.kind==='move'/);
+ assert.match(src,/!node\.entryDoorId&&!node\.stackDoorId/);
+ assert.match(src,/a\.orderIssue=\{nodeId:node!\.id,reason,since:s\.seconds\}/);
+ assert.match(src,/a\.orderIssue\.reason===previous\.reason/);
+ assert.doesNotMatch(src,/a\.plan\.(?:shift|splice|push)\(|n\.p\s*=|node\.p\s*=/);
+});
