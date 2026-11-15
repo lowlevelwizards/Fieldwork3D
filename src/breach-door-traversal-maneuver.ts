@@ -1,4 +1,4 @@
-import {setTransientRoute} from './breach-route-transition.ts';
+import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
 import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
 import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 /** D2 / fixed-action doorway muscle memory.
@@ -226,33 +226,53 @@ export function tryGoalCompleteDoorHandoffAfterEscape(
  a:TeamActor,s:Session,goal:Pt
 ):boolean{
  const e=a.doorTraversal,order=a.plan[0];
- if(a.side!=='blue'||!a.squeeze||!e||!order||
-    order.kind!=='move'||e.authoredOrderId!==order.id||
-    distance(goal,order.p)>.5||e.phase==='release'||
-    (e.maneuver==='outside-leaf'&&e.waypoints.length>0)||
-    s.seconds<e.nextManeuverAt||
-    s.seconds<(e.lastShortEntryProbeAt??-10)+1.25)return false;
+ if(a.side!=='blue'||!e||!order||order.kind!=='move'||
+    e.authoredOrderId!==order.id||distance(goal,order.p)>.5){
+   noteDoorHandoffRejection(s,a,'joined:wrong-order-or-episode');return false;
+ }
+ if(!a.squeeze||e.phase==='release'||
+    (e.maneuver==='outside-leaf'&&e.waypoints.length>0)){
+   noteDoorHandoffRejection(s,a,'joined:profile-or-active-stage');return false;
+ }
+ if(s.seconds<e.nextManeuverAt||
+    s.seconds<(e.lastShortEntryProbeAt??-10)+1.25){
+   noteDoorHandoffRejection(s,a,'joined:cooldown');return false;
+ }
  const door=s.doors.find(d=>d.id===e.doorId);
  if(!door||!door.open||(door.openFraction??0)<.82||
     Math.abs(door.angularVelocity??0)>.16||
-    distance(a.p,doorCenter(door))>65||
-    e.maneuverAttempts>=4)return false;
+    distance(a.p,doorCenter(door))>65){
+   noteDoorHandoffRejection(s,a,'joined:hinge-unavailable');return false;
+ }
+ if(e.maneuverAttempts>=4){
+   noteDoorHandoffRejection(s,a,'joined:attempt-budget');return false;
+ }
  const leafChanged=Math.abs((door.openFraction??0)-
   e.selectedLeafFraction)>.14;
  if(e.maneuverAttempts>=2&&!leafChanged||
     !canRehearseJoinedPortalOncePerLeaf(a,order.id,e.doorId,goal,
-      door.openFraction??0))return false;
+      door.openFraction??0)){
+   noteDoorHandoffRejection(s,a,'joined:leaf-change-budget');return false;
+ }
  e.lastShortEntryProbeAt=s.seconds;
  const world=sessionWorldGeometry(s);
  const clear=(from:Pt,to:Pt)=>
   sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
  const stage=rehearseDoorLeafBypass(a.p,goal,door,clear);
- if(!stage.length)return false;
+ if(!stage.length){
+   noteDoorHandoffRejection(s,a,'joined:no-swept-portal-stage');return false;
+ }
  const end=stage[stage.length-1];
  const tail=distance(end,goal)<=3?[]:
    routeWithSqueezeIntel(s.intel,end,goal);
+ if(distance(end,goal)>3&&
+    (!tail.length||distance(tail[tail.length-1],goal)>3)){
+   noteDoorHandoffRejection(s,a,'joined:missing-intel-tail');return false;
+ }
  const route=completePortalRouteToAuthoredGoal(a.p,stage,goal,tail,clear);
- if(!route.length)return false;
+ if(!route.length){
+   noteDoorHandoffRejection(s,a,'joined:unsafe-or-long-handoff');return false;
+ }
  // Only a fully continuous route toward the actual original goal is
  // permitted to replace the route being recovered after the real escape.
  e.maneuverAttempts++;
