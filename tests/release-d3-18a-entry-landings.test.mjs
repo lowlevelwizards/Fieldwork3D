@@ -33,3 +33,14 @@ test('D3.18A: cold physically verified continuation behind a door leaf',()=>{
  assert.ok(chosen);
  assert.ok(chosen.x>224,'still on original intended side');
 });
+test('D3.18A: verified cold entry route is handed to the authoritative motor',()=>{
+ const from=p(208,169),goal=p(206,185);
+ let accepted=null;
+ const chosen=selectPhysicalEntrySettle(from,goal,door,[],
+  q=>q.x>224,
+  (a,b)=>b.x<=217||a.x>=215,
+  (a,b)=>[p(216,155),b],
+  route=>{accepted=route;});
+ assert.ok(chosen);
+ assert.deepEqual(accepted,[p(216,155),chosen]);
+});

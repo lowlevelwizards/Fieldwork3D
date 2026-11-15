@@ -15,6 +15,8 @@ import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {selectPhysicalEntrySettle} from './breach-entry-target-settle.ts';
 import {bodyClear} from './breach-navigation.ts';
 import {routeWithNormalWorld} from './breach-squeeze-route.ts';
+import {setTransientRoute} from './breach-route-transition.ts';
+import {provisionalRouteAccepted} from './breach-movement-recovery.ts';
 import {autoSidestepFacing} from './breach-auto-sidestep.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
 import {completeOrder,failCurrentOrder,rotate,aimHeading,applyAimNode}
@@ -91,11 +93,13 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   // a roster on every ordinary MOVE tick across the map. A teammate
   // >40 units from the goal cannot affect either settle or arrival gap.
   const friendlyPeers:Pt[]=[];
+  const peerRange=n.kind==='move'&&n.entryDoorId?34:20;
   if(n.kind==='move'&&
-     (a.p.x-n.p.x)**2+(a.p.y-n.p.y)**2<=20*20)
+     (a.p.x-n.p.x)**2+(a.p.y-n.p.y)**2<=peerRange*peerRange)
    for(const peer of s.operators){
     if(peer===a||peer.health<=0||peer.side!==a.side)continue;
-    if((peer.p.x-n.p.x)**2+(peer.p.y-n.p.y)**2<=40*40)
+    if((peer.p.x-n.p.x)**2+(peer.p.y-n.p.y)**2<=
+       (n.entryDoorId?66:40)**2)
      friendlyPeers.push(peer.p);
    }
   // Avoid finishing two authored MOVE destinations inside one friendly
@@ -127,7 +131,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   const nearBlockedEntry=n.kind==='move'&&!retained&&!!n.entryDoorId&&
     a.blockedTime>=.85&&d(a.p,n.p)<=34&&
     (!probe||probe.nodeId!==n.id||s.seconds>=probe.nextAt);
-  let entrySettle:Pt|null=null;
+  let entrySettle:Pt|null=null,entrySettleRoute:Pt[]|null=null;
   if(nearBlockedEntry){
    entrySettleProbe.set(a,{nodeId:n.id,nextAt:s.seconds+1.5});
    const door=s.doors.find(leaf=>leaf.id===n.entryDoorId);
@@ -137,7 +141,8 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
      point=>world.passable(point,OPERATOR_RADIUS)&&
       bodyClear(point,s.doors,OPERATOR_RADIUS,world),
      (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
-     (from,to)=>routeWithNormalWorld(from,to,s.doors,world));
+     (from,to)=>routeWithNormalWorld(from,to,s.doors,world),
+     path=>{entrySettleRoute=path;});
    // Only a GENERATED landing inside a fixed physical wall is irrecoverable.
    // Opening a leaf cannot fix it; do not quietly count this as arrival
    // or repeatedly collide for 30 seconds. Other MOVE orders stay authored.
@@ -154,6 +159,14 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):null;
   if(newlySettled)settledMoveTargets.set(a,{nodeId:n.id,
     point:{...newlySettled}});
+  if(entrySettle){
+    // The chosen world-truth connector must survive the handoff to the
+    // ordinary motor. Otherwise an old intel path can immediately replace
+    // the newly validated physical first leg. Direct steps remain swept.
+    setTransientRoute(s,a,entrySettleRoute??[{...entrySettle}],
+      'generated-entry-settle');
+    provisionalRouteAccepted(a);
+  }
   const settle=retained??newlySettled;
   if(settle&&!settledAt){
     move(a,settle,dt,s,.72);

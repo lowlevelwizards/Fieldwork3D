@@ -14,7 +14,8 @@ function side(p:Pt,door:Door):number{
 export function selectPhysicalEntrySettle(
  from:Pt,goal:Pt,door:Door,peers:readonly Pt[],
  canStand:(p:Pt)=>boolean,sweep:(from:Pt,to:Pt)=>boolean,
- worldRoute?:(from:Pt,to:Pt)=>Pt[]
+ worldRoute?:(from:Pt,to:Pt)=>Pt[],
+ onWorldRoute?:(path:Pt[])=>void
 ):Pt|null{
  const sign=Math.sign(side(goal,door));
  if(!sign)return null;
@@ -47,8 +48,10 @@ export function selectPhysicalEntrySettle(
   for(const candidate of cold.slice(0,3)){
    const path=worldRoute(from,candidate.point);
    if(path.length&&d(path[path.length-1],candidate.point)<=3&&
-      fullBodyMotorRouteClear(from,path,sweep,d(from,candidate.point)*2.1+36))
+      fullBodyMotorRouteClear(from,path,sweep,d(from,candidate.point)*2.1+36)){
+    onWorldRoute?.(path.map(q=>({...q})));
     return candidate.point;
+   }
   }
  }
  return null;
