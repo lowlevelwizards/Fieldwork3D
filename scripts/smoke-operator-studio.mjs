@@ -55,7 +55,7 @@ try{
   await ach.click();
   await page.locator('#studioWorkflow button[data-studio-step="details"]').click();
   const rails=page.locator('[data-helmet-option="rails"]');
-  const light=page.locator('[data-helmet-option="light"]');
+  const light=page.locator('.helmet-option-card[data-helmet-option="light"]');
   if(!await rails.isVisible()||!await light.isVisible())
    throw Error('Helmet mounting controls missing in details');
   if(await rails.getAttribute('aria-pressed')!=='true')await rails.click();
@@ -65,6 +65,21 @@ try{
    document.querySelector('[data-helmet-option="light"]')?.dataset.
     helmetOptionState==='saved-inactive',null,{timeout:12000});
   if(await light.isDisabled())throw Error('Saved-inactive light cannot be cleared');
+  const railRepair=page.locator('.helmet-prerequisite-action[data-helmet-option="light"]');
+  if(!await railRepair.isVisible()||
+     !(await railRepair.textContent())?.includes('ENABLE SIDE RAILS'))
+   throw Error('One-tap light mount repair missing');
+  await railRepair.click();
+  await page.waitForFunction(()=>
+   document.querySelector('[data-helmet-option="light"]')?.dataset.
+    helmetOptionState==='active',null,{timeout:12000});
+  if(await rails.getAttribute('aria-pressed')!=='true')
+   throw Error('Mount prerequisite did not restore original light');
+  // Recreate the suppressed selection before exercising explicit removal.
+  await rails.click();
+  await page.waitForFunction(()=>
+   document.querySelector('[data-helmet-option="light"]')?.dataset.
+    helmetOptionState==='saved-inactive',null,{timeout:12000});
   if(await page.locator('#studioCanvas').getAttribute(
    'data-helmet-thumbnails-deferred')!=='true')
    throw Error('Hidden headwear thumbnails rerendered during detail changes');

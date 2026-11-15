@@ -20,7 +20,7 @@ import {applyStudioGraphicLighting,restoreStudioGraphicLighting,
 import {THUMB_LINEAR_TO_SRGB} from './operator-thumbnail-color.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
-import {appearanceThumbnailContext,appearanceThumbnailKey,
+import {appearanceThumbnailContext,appearanceThumbnailKey,stableThumbnailJSON,
  type AppearanceThumbnailContext} from './operator-appearance-thumbnail-context.ts';
 import {bareLabEquipment} from './operator-lab-baseline.ts';
 import {initialWardrobe,resolvedWardrobe,
@@ -78,6 +78,7 @@ export class OperatorAppearanceGrid{
   depthBuffer:true,stencilBuffer:false});
  private readonly pixels=new Uint8Array(THUMB_SIZE*THUMB_SIZE*4);
  private readonly cache=new Map<string,ImageData>();
+ private refreshFingerprint='';
  /** Cards survive option changes; only changing category resets their DOM. */
  private readonly cards=new Map<string,Entry>();
  private renderedCategory:WardrobeSlot|null=null;
@@ -152,8 +153,19 @@ export class OperatorAppearanceGrid{
  }
  refresh(kit:EquipmentLoadout,wardrobe:WardrobeOptions,
   previewIdentity='rook'){
+  // Repeated Studio save/selection refreshes often refer to the same actual
+  // appearance. Skip DOM churn, queued GPU work and token invalidation.
+  const signature=previewIdentity+'|'+stableThumbnailJSON(kit.slots)+'|'+
+   stableThumbnailJSON(wardrobe);
+  if(this.renderedCategory===this.selected&&
+     this.refreshFingerprint===signature){
+   this.grid.dataset.thumbnailRefreshSkips=String(
+    Number(this.grid.dataset.thumbnailRefreshSkips||0)+1);
+   return;
+  }
   this.kit=kit;this.wardrobe=wardrobe;
   this.previewIdentity=previewIdentity;
+  this.refreshFingerprint=signature;
   this.paint();
  }
  setCategory(slot:WardrobeSlot,deferPaint=false){
@@ -291,6 +303,10 @@ export class OperatorAppearanceGrid{
    entry.canvas.dataset.thumbnailReady='false';
    const cached=this.cache.get(key);
    if(cached){
+    // True LRU: returning to a previously previewed outfit keeps it hot
+    // rather than evicting it simply because it was originally loaded first.
+    this.cache.delete(key);
+    this.cache.set(key,cached);
     entry.canvas.getContext('2d')?.putImageData(cached,0,0);
     entry.readyKey=key;
     entry.canvas.dataset.thumbnailReady='true';
@@ -446,7 +462,7 @@ export class OperatorAppearanceGrid{
   }
  }
  dispose(){
-  this.token++;this.queue=[];this.cache.clear();
+  this.token++;this.queue=[];this.cache.clear();this.refreshFingerprint='';
   this.observer?.disconnect();this.pending.clear();this.cards.clear();
   if(this.thumbnailRig){
    releaseOperatorPreviewRig(this.scene,this.thumbnailRig,()=>{
