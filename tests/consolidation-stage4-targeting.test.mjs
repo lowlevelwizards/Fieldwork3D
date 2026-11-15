@@ -6,6 +6,7 @@ import {createTacticalHudController} from '../src/ui/tactical-hud-controller.ts'
 import {newSession,team,planWatch,planMove} from '../src/breach-game.ts';
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const fake=()=>({hidden:true,textContent:'',dataset:{},attributes:{},
+ getAttribute(key){return this.attributes[key]??null;},
  setAttribute(key,val){this.attributes[key]=String(val);}});
 
 test('A4 one active target: every tool switch atomically replaces the previous intent',()=>{

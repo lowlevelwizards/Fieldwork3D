@@ -3,6 +3,7 @@
  * uses the same validated roster persistence for previews and direct access.
  */
 import * as THREE from 'three';
+import {writeDomText,writeDomAttribute} from './ui/tactical-dom-reconciliation.ts';
 import {configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
@@ -2150,27 +2151,30 @@ matchSetButton.addEventListener('click',()=>{
 function refresh(options:{helmetDetailsOnly?:boolean}={}){
  const p=member();if(!p)return;
  const lightweight=options.helmetDetailsOnly===true&&!referenceOpen&&!identityMode;
- studioRoot.dataset.referenceOpen=String(referenceOpen);
- studioRoot.dataset.identityMode=String(identityMode);
- $('studioTitle').textContent=referenceOpen?'REFERENCE KITS / '+p.callsign:identityMode?'IDENTITY MARKINGS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign;
- $('studioSubheading').textContent=readOnly?'LOCKED DURING ACTIVE OPERATION':
-  'Select a 3D item, then edit materials and details';
+ const referenceState=String(referenceOpen);
+ if(studioRoot.dataset.referenceOpen!==referenceState)studioRoot.dataset.referenceOpen=referenceState;
+ const identityState=String(identityMode);
+ if(studioRoot.dataset.identityMode!==identityState)studioRoot.dataset.identityMode=identityState;
+ writeDomText($('studioTitle'),referenceOpen?'REFERENCE KITS / '+p.callsign:identityMode?'IDENTITY MARKINGS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign);
+ writeDomText($('studioSubheading'),readOnly?'LOCKED DURING ACTIVE OPERATION':
+  'Select a 3D item, then edit materials and details');
  applyButton.disabled=readOnly||!dirty.size||saveInFlight;
- applyButton.textContent=saveInFlight?'SAVING…':dirty.size>1?
-  'SAVE '+dirty.size+' LOOKS':dirty.size===1?'SAVE LOOK':'SAVED';
+ writeDomText(applyButton,saveInFlight?'SAVING…':dirty.size>1?
+  'SAVE '+dirty.size+' LOOKS':dirty.size===1?'SAVE LOOK':'SAVED');
  modelSelector.disabled=saveInFlight;
  for(const option of Array.from(modelSelector.options)){
   const person=people.find(p=>p.id===option.value);
-  if(person)option.textContent=person.callsign.toUpperCase()+
-   (dirty.has(person.id)?' · UNSAVED':'');
+  if(person)writeDomText(option,person.callsign.toUpperCase()+
+   (dirty.has(person.id)?' · UNSAVED':''));
  }
  compareButton.disabled=saveInFlight||!dirty.has(selected);
- compareButton.setAttribute('aria-pressed',String(comparingSaved));
- compareButton.textContent=comparingSaved?'EDITING ↔':'COMPARE';
- studioRoot.dataset.comparing=String(comparingSaved);
- modeLabel.textContent=(mode==='campaign'?'CAMPAIGN · PERSISTENT':
+ writeDomAttribute(compareButton,'aria-pressed',String(comparingSaved));
+ writeDomText(compareButton,comparingSaved?'EDITING ↔':'COMPARE');
+ const comparingState=String(comparingSaved);
+ if(studioRoot.dataset.comparing!==comparingState)studioRoot.dataset.comparing=comparingState;
+ writeDomText(modeLabel,(mode==='campaign'?'CAMPAIGN · PERSISTENT':
   'QUICK PLAY · APPEARANCE')+
-  (dirty.size?' · '+dirty.size+' UNSAVED':'');
+  (dirty.size?' · '+dirty.size+' UNSAVED':''));
  undoButton.disabled=readOnly||saveInFlight||!(history.get(selected)?.length);
  if(!lightweight)renderCategories();
  // Reference catalog uses the shared 3D viewport, not the item thumbnail grid.

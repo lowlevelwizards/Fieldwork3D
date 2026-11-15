@@ -101,10 +101,18 @@ try{
   check(await mount.isEnabled()&&await mount.isVisible()&&
     await page.locator('#replayViewTrigger').isDisabled(),
     'Bodycam should reveal mount and lock incompatible camera mode controls');
-  const chest=await page.waitForFunction(()=>{
+  const initialChest=await page.waitForFunction(()=>{
     const d=window.__fieldworkBodycamQa?.diagnostic();
     return d?.active?d:null;
   },null,{timeout:30000}).then(h=>h.jsonValue());
+  // The 3D chest/helmet comparison must examine the SAME recorded pose:
+  // otherwise a moving actor can cancel the real socket separation.
+  // This QA seek pauses the film but still tests actual player mount controls.
+  const sampledAt=initialChest.at??.1;
+  check(await page.evaluate(at=>
+    window.__fieldworkBodycamQa?.seek(at)===true,sampledAt),
+    'Could not freeze historical Bodycam for mount comparison');
+  const chest=await afterFrame(page,initialChest.frame,initialChest.owner);
   check(chest.owner&&chest.maskRestored,
     'Selected operator and mesh restoration failed');
   await mkdir('artifacts/replay-r43b-bodycam',{recursive:true});
@@ -114,11 +122,16 @@ try{
   await mount.click();
   check((await mount.textContent())?.includes('HEAD'),
     'Direct mount did not change to head position');
+  check(await page.evaluate(at=>
+    window.__fieldworkBodycamQa?.seek(at)===true,sampledAt),
+    'Could not return helmet mount to recorded pose');
   const helmet=await afterFrame(page,chest.frame,chest.owner);
   const dist=Math.hypot(...helmet.position.map(
     (v,i)=>v-chest.position[i]));
   check(dist>1&&helmet.position[1]<41.5,
-    'Helmet mount not physically separated / clips ceiling');
+    'Helmet mount not physically separated / clips ceiling: '+
+    JSON.stringify({dist,at:sampledAt,chestAt:chest.at,helmetAt:helmet.at,
+      chestY:chest.position[1],helmetY:helmet.position[1]}));
   await page.locator('#breach3dCanvas').screenshot({
     path:'artifacts/replay-r43b-bodycam/helmet.png'});
 

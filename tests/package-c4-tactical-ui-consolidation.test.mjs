@@ -125,7 +125,8 @@ test('C4 selection and palette own only presentation state and do not replace ga
  assert.match(main,/selectedActiveWatch=selection\.selectedActiveWatch/);
  assert.match(palette,/context\.dataset\.owner=selected/);
  assert.match(palette,/context\.dataset\.owner=''/);
- assert.match(hud,/quickStates\.dataset\.owner=shown\?actor!\.id:''/);
+ assert.match(hud,/const owner=shown\?actor!\.id:''/);
+ assert.match(hud,/if\(quickStates\.dataset\.owner!==owner\)quickStates\.dataset\.owner=owner/);
  assert.match(hud,/dispatchTacticalContextCommand\(/);
  assert.match(hud,/planWait\(port\.state,port\.selected,1\)/);
  assert.doesNotMatch(source('ui/tactical-command-affordances.ts'),
