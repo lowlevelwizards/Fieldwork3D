@@ -86,6 +86,15 @@ if(traceActorArg&&(!traceActor||traceActor.length>32))
  throw Error('invalid --trace-actor');
 if(traceMode!==null&&traceMode!=='authored'&&traceMode!=='entry')
  throw Error('invalid --trace-mode (authored or entry)');
+// D3.17A: opt-in, bounded route-event traces for exact frozen seed/mode/actor
+// tuples. Read-only evidence; no route generation or motor behavior changes.
+const traceCasesArg=process.argv.find(a=>a.startsWith('--trace-cases='));
+const traceCasesRaw=traceCasesArg?.slice('--trace-cases='.length)??'';
+const traceCases=new Set(traceCasesRaw.split(',').filter(Boolean));
+if(traceCasesArg&&(!routeTransitions||!traceCases.size||traceCases.size>12||
+ traceCases.size!==traceCasesRaw.split(',').length||
+ [...traceCases].some(x=>!/^[1-9]\d*:(?:authored|entry):[a-z][\w-]{0,31}$/.test(x))))
+ throw Error('--trace-cases requires --route-transitions and unique seed:mode:actor tuples');
 const clinicOnly=process.argv.includes('--clinic-only');
 // Exact seeded-site diagnosis, opt-in, does not change any motor paths.
 const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
@@ -243,8 +252,9 @@ function run(site,seed,kind){
    }
    const selectedActor=traceActor??(utilityTrace&&seed===31162&&
      kind==='authored'?'rook':null);
-   if(selectedActor===e.actorId&&
-      (!traceMode||kind===traceMode)&&routeWitness.events.length<600)
+   const chosenCase=traceCases.has(seed+':'+kind+':'+e.actorId);
+   if((chosenCase||(selectedActor===e.actorId&&
+      (!traceMode||kind===traceMode)))&&routeWitness.events.length<600)
      routeWitness.events.push({...e,seconds:round(e.seconds),
       prior:e.prior.slice(0,4),next:e.next.slice(0,4)});
   }:null;
