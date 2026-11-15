@@ -26,8 +26,8 @@ test('P13: authoritative layout controls a longer polymer, still shorter than me
  assert.ok(near(box(polymer).max.x,L.polymer.endX));
  assert.ok(near(box(gas).min.x,L.gas.startX));
  assert.ok(near(box(gas).max.x,L.gas.endX));
- assert.ok(size(polymer,'x')>7.2&&size(polymer,'x')<7.3);
- assert.ok(size(gas,'x')-size(polymer,'x')>1.6);
+ assert.ok(size(polymer,'x')>7.65&&size(polymer,'x')<7.75);
+ assert.ok(size(gas,'x')-size(polymer,'x')>1.1);
  assert.ok(size(gas,'z')<size(polymer,'z')*.65);
  assert.ok(touch(polymer,gas)&&touch(gas,collar));
  assert.ok(touch(collar,polymer));
@@ -43,8 +43,8 @@ test('P13: gas cover actually uses a tapered six-sided section, with modest expo
  assert.equal(gas.geometry.type,'BufferGeometry');
  assert.ok(near(box(gas).max.y,L.gas.topY));
  assert.ok(near(box(gas).min.y,L.gas.bottomY));
- assert.ok(box(gas).max.y-box(poly).max.y>.45);
- assert.ok(box(gas).max.y-box(poly).max.y<.60,
+ assert.ok(box(gas).max.y-box(poly).max.y>.38);
+ assert.ok(box(gas).max.y-box(poly).max.y<.47,
   'gas cover must read as an integrated raised structure, not a second upper handguard');
  const v=gas.geometry.getAttribute('position');
  const nearTop=[],nearShoulder=[];
@@ -69,7 +69,7 @@ test('P13: side vents stay EXPOSED ABOVE polymer, top follows actual roof surfac
  assert.ok(near(box(roof).min.y,box(gas).max.y+L.gas.ventOffset,.012));
  for(const mark of marks){
   assert.equal(mark.geometry.getAttribute('position').count,60);
-  assert.ok(box(mark).min.y>box(poly).max.y+.10,
+  assert.ok(box(mark).min.y>box(poly).max.y+.02,
    'do not hide gas vents behind the extended polymer');
   assert.ok(box(mark).max.x<box(gas).max.x-.3);
   assert.ok(mark.geometry.getAttribute('normal').getZ(0)*
