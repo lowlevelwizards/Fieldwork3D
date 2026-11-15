@@ -1,3 +1,4 @@
+# D3.16 read-only live Pages readiness checkpoint; do not merge this audit PR.
 name: D3.14D2 Pages release preflight
 on:
   pull_request:
