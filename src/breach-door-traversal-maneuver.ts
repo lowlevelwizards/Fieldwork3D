@@ -1,3 +1,6 @@
+import {setTransientRoute} from './breach-route-transition.ts';
+import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
+import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
 /** D2 / fixed-action doorway muscle memory.
  * A crossing chooses ONE short physically swept maneuver when an actual
  * step fails against its identified hinged leaf. Three repeatable tip
@@ -11,7 +14,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {beginAutoSidestep} from './breach-auto-sidestep.ts';
 import {signedDoorSide} from './breach-door-traversal-episode.ts';
-import type {BodyDoorContact} from './breach-door.ts';
+import {doorWouldStrikeActors,doorSwingBlocked,type BodyDoorContact} from './breach-door.ts';
 import {acquireDoorHandContact} from './breach-door-hand-contact.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
@@ -135,7 +138,7 @@ export function preferShortPhysicalEntry(
  episode.maneuver='outside-leaf';
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
- a.nav=candidate.map(clone);
+ setTransientRoute(s,a,candidate.map(clone),'door-short-entry');
  a.retryRouteAt=0;
  a.recoveryAttempts=0;
  return true;
@@ -172,11 +175,97 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  episode.maneuver='outside-leaf';
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
- a.nav=path.map(clone);
+ setTransientRoute(s,a,path.map(clone),'door-rehearsal');
  a.autoSidestep=beginAutoSidestep(a.p,next,path[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
  a.retryRouteAt=0;a.recoveryAttempts=0;
  a.squeeze=false;a.squeezeTime=0;
+ return true;
+}
+/** A transient, actor-owned budget survives replacement of the doorway
+ * episode for the SAME authored move. Without it one actor can repeatedly
+ * accept a full A* tail for the same already-rehearsed hinge and circle the
+ * room without goal progress. Weak keys disappear with the real actor.
+ */
+const joinedPortalHandoffs=new WeakMap<TeamActor,{
+ orderId:number;doorId:string;goalX:number;goalY:number;
+ count:number;lastLeafFraction:number;
+}>();
+export function canRehearseJoinedPortalOncePerLeaf(
+ actor:TeamActor,orderId:number,doorId:string,goal:Pt,
+ leafFraction:number
+):boolean{
+ const used=joinedPortalHandoffs.get(actor);
+ if(!used||used.orderId!==orderId||used.doorId!==doorId||
+    used.goalX!==goal.x||used.goalY!==goal.y)return true;
+ return used.count<2&&
+   Math.abs(leafFraction-used.lastLeafFraction)>.14;
+}
+export function noteJoinedPortalHandoff(
+ actor:TeamActor,orderId:number,doorId:string,goal:Pt,leafFraction:number
+):void{
+ const prior=joinedPortalHandoffs.get(actor);
+ const same=!!prior&&prior.orderId===orderId&&prior.doorId===doorId&&
+  prior.goalX===goal.x&&prior.goalY===goal.y;
+ joinedPortalHandoffs.set(actor,{
+  orderId,doorId,goalX:goal.x,goalY:goal.y,
+  count:same?prior!.count+1:1,lastLeafFraction:leafFraction
+ });
+}
+/** D3.11D: ONLY after actual body-vs-leaf escape, ask whether the
+ * established tiny physical maneuver can connect all the way to the
+ * ORIGINAL MOVE destination. A portal-only proposal is NOT a valid route
+ * replacement: continue with the old known-map recovery instead.
+ *
+ * This never grants permission to move or skip a door: the rehearsed legs
+ * are full-body swept now, the first intel-tail join is swept against the
+ * actual world, and the normal motor checks the entire route as it walks.
+ * On failure only a cold-probe timestamp changes, not maneuver ownership.
+ */
+export function tryGoalCompleteDoorHandoffAfterEscape(
+ a:TeamActor,s:Session,goal:Pt
+):boolean{
+ const e=a.doorTraversal,order=a.plan[0];
+ if(a.side!=='blue'||!a.squeeze||!e||!order||
+    order.kind!=='move'||e.authoredOrderId!==order.id||
+    distance(goal,order.p)>.5||e.phase==='release'||
+    (e.maneuver==='outside-leaf'&&e.waypoints.length>0)||
+    s.seconds<e.nextManeuverAt||
+    s.seconds<(e.lastShortEntryProbeAt??-10)+1.25)return false;
+ const door=s.doors.find(d=>d.id===e.doorId);
+ if(!door||!door.open||(door.openFraction??0)<.82||
+    Math.abs(door.angularVelocity??0)>.16||
+    distance(a.p,doorCenter(door))>65||
+    e.maneuverAttempts>=4)return false;
+ const leafChanged=Math.abs((door.openFraction??0)-
+  e.selectedLeafFraction)>.14;
+ if(e.maneuverAttempts>=2&&!leafChanged||
+    !canRehearseJoinedPortalOncePerLeaf(a,order.id,e.doorId,goal,
+      door.openFraction??0))return false;
+ e.lastShortEntryProbeAt=s.seconds;
+ const world=sessionWorldGeometry(s);
+ const clear=(from:Pt,to:Pt)=>
+  sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+ const stage=rehearseDoorLeafBypass(a.p,goal,door,clear);
+ if(!stage.length)return false;
+ const end=stage[stage.length-1];
+ const tail=distance(end,goal)<=3?[]:
+   routeWithSqueezeIntel(s.intel,end,goal);
+ const route=completePortalRouteToAuthoredGoal(a.p,stage,goal,tail,clear);
+ if(!route.length)return false;
+ // Only a fully continuous route toward the actual original goal is
+ // permitted to replace the route being recovered after the real escape.
+ e.maneuverAttempts++;
+ e.selectedLeafFraction=door.openFraction??0;
+ e.nextManeuverAt=s.seconds+1.5;
+ noteJoinedPortalHandoff(a,order.id,e.doorId,goal,door.openFraction??0);
+ e.waypoints=route.map(clone);
+ e.waypointIndex=0;
+ e.maneuver='outside-leaf';
+ e.phase='clear-leaf';
+ e.lastTransitionAt=s.seconds;
+ setTransientRoute(s,a,route,'door-rehearsal');
+ a.retryRouteAt=0;a.recoveryAttempts=0;
  return true;
 }
 /** A truly wayward approach can be recovered by one deterministic move
@@ -209,7 +298,7 @@ export function recoverDoorApproachDrift(a:TeamActor,s:Session):boolean{
  e.maneuver='outside-leaf';
  e.waypoints=[clone(staging)];
  e.waypointIndex=0;
- a.nav=[clone(staging)];
+ setTransientRoute(s,a,[clone(staging)],'door-drift');
  a.retryRouteAt=0;a.recoveryAttempts=0;
  a.squeeze=false;a.squeezeTime=0;
  return true;
@@ -229,6 +318,58 @@ export function recordDoorManeuverContact(
   if(door)acquireDoorHandContact(s,actor,door,true);
  }else if(contact.advanced&&episode.maneuver==='direct')
   episode.maneuver='push-through';
+}
+/** R2.1: existing physical motor recovery can use ONE legal correction
+ * when an unowned, self-blocked partial hinge cannot advance. No authored
+ * edit, new GO controller, body pushing, or door-angle modification.
+ * This function is never called on a normal frame: only a bounded,
+ * genuine door-collision retry after the existing blocked-time threshold.
+ */
+export function selfBlockingHingeRelief(
+ a:TeamActor,s:Session,goal:Pt,onlyDoor?:Door
+):Pt|null{
+ const world=sessionWorldGeometry(s);
+ const otherPositions=s.operators.filter(other=>other!==a&&other.health>0)
+   .map(other=>other.p);
+ const aim=Math.atan2(goal.y-a.p.y,goal.x-a.p.x);
+ // A known obstruction must not select a different door's escape step.
+ // Generic collision recovery still retains its all-door fallback.
+ for(const door of onlyDoor?[onlyDoor]:s.doors){
+  const fraction=door.openFraction??(door.open?1:0);
+  if(!door.open||door.kind==='sliding'||door.kind==='shutter'||
+     door.locked||door.wedged||door.heldBy||
+     fraction<.15||fraction>=.72||
+     Math.abs(door.angularVelocity??0)>.16)continue;
+  const leaf=doorLeafSegment(door);
+  const initial=pointToSegment(a.p,leaf);
+  if(initial>=OPERATOR_RADIUS+4)continue;
+  const future=Math.min(1,fraction+.025);
+  if(!doorWouldStrikeActors(door,future,[a.p],OPERATOR_RADIUS)||
+     doorSwingBlocked(door,future,[],OPERATOR_RADIUS,world))continue;
+  // Favor forward footwork; fixed small angular offsets permit shoulder
+  // clearance without converting the maneuver into broad pathfinding.
+  // First retain the original eight close, goal-oriented candidates.
+  // If a teammate is already EMBEDDED against the stopped leaf, those
+  // angles can all lie inside its swing. D3.7's exact warehouse witness
+  // showed a swept-clear 14–22-unit step away from the authored goal.
+  // This is a single cold-stall attempt, never a 60 Hz search.
+  for(const radius of [8,14,22,32])
+    for(const turn of [0,Math.PI/8,-Math.PI/8,Math.PI/4,
+      -Math.PI/4,3*Math.PI/8,-3*Math.PI/8,Math.PI,
+      Math.PI/2,-Math.PI/2,5*Math.PI/8,-5*Math.PI/8,
+      3*Math.PI/4,-3*Math.PI/4,7*Math.PI/8,-7*Math.PI/8]){
+      const theta=aim+turn;
+      const p={x:a.p.x+Math.cos(theta)*radius,
+       y:a.p.y+Math.sin(theta)*radius};
+      if(pointToSegment(p,leaf)<initial+3||
+         doorWouldStrikeActors(door,future,[p],OPERATOR_RADIUS)||
+         otherPositions.some(q=>distance(p,q)<OPERATOR_RADIUS*2+1)||
+         !sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,world))
+        continue;
+      return p;
+    }
+ }
+ return null;
 }
 /** When the current motor route is the saved maneuver, its chosen
  * clearance corridor owns navigation until finished or truly stalled.

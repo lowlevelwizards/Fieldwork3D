@@ -13,11 +13,22 @@
 import {generateSite} from '../src/breach-site.ts';
 import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
  from '../src/breach-game.ts';
-import {activateSite} from '../src/breach-core.ts';
+import {activateSite,OPERATOR_RADIUS,doorLeafSegment,
+ setRouteGridAuditObserver} from '../src/breach-core.ts';
+import {setTransientRouteObserver}
+ from '../src/breach-route-transition.ts';
+import {D311RouteSurvey,createD311GridObserver}
+ from './lib/d3-11-route-quality.mjs';
+import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
+import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
+import {sweptBodyClear} from '../src/breach-navigation.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
+import {classifyCProgressWindow} from '../src/breach-d3-c-progress.ts';
 import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
 import {captureD32DoorEvidence,captureD32RecoveryFeasibility,
+ captureD32SelfBlockingHinge,
  dueDoorHoldMilestones,D32_HOLD_MILESTONES,
  dueD32BlockMilestones,D32_BLOCK_MILESTONES}
  from '../src/breach-d3-door-evidence.ts';
@@ -25,7 +36,22 @@ import {captureD32DoorEvidence,captureD32RecoveryFeasibility,
 const names=['house','townhouse','apartment','retail','office','garage',
  'warehouse','restaurant','motel','utility','clinic'];
 const sites=Math.max(1,Math.min(44,Number.parseInt(process.argv[2]??'11',10)||11));
-const ticks=Math.max(120,Math.min(1800,Number.parseInt(process.argv[3]??'600',10)||600));
+const ticks=Math.max(120,Math.min(2700,Number.parseInt(process.argv[3]??'600',10)||600));
+// R3 portal connectivity is costly; run only when explicitly requested.
+const portal=process.argv.includes('--portal');
+// D3.9C read-only five-second evidence, opt-in; NO added live motor work.
+const progress=process.argv.includes('--progress');
+// D3.11A audit is OFFLINE-only and opt-in.
+const routeQuality=process.argv.includes('--route-quality');
+const utilityTrace=process.argv.includes('--utility-trace');
+const routeTransitions=process.argv.includes('--route-transitions');
+const clinicOnly=process.argv.includes('--clinic-only');
+// Exact seeded-site diagnosis, opt-in, does not change any motor paths.
+const requestedSiteArg=process.argv.find(arg=>arg.startsWith('--site-index='));
+const requestedSite=requestedSiteArg?Number(requestedSiteArg.split('=')[1]):null;
+if(requestedSite!==null&&(!Number.isInteger(requestedSite)||
+ requestedSite<0||requestedSite>=names.length))
+ throw Error('invalid --site-index (expected 0..10)');
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const round=n=>Math.round(n*100)/100;
 const signed=(p,d)=>{
@@ -92,7 +118,51 @@ function run(site,seed,kind){
   const planned=kind==='entry'?planEntry(session,actors):
    planFourMoves(session,actors,site);
   const initial=actors.map(a=>new Set(a.plan.map(n=>n.id)));
+  // D3.6: frozen per-run authored targets and entry positions. Endpoints
+  // expose actual arrival, not just plan exhaustion or a 3-second triage.
+  const starting=actors.map(a=>({...a.p}));
+  const startedGoalDistance=actors.map(a=>planned.goals.has(a.id)?
+   round(dist(a.p,planned.goals.get(a.id))):null);
   const survey=new MovementQualitySurvey(actors,planned.goals);
+  const quality=routeQuality?new D311RouteSurvey(actors,planned.goals,{
+   traceActor:utilityTrace&&seed===31162&&kind==='authored'?'rook':null,
+   traceEvery:15}):null;
+  const grid=routeQuality?createD311GridObserver():null;
+  const routeWitness=routeTransitions?{counts:{},byActor:{},events:[],
+   escapeReacquirePairs:0,pairsByDoor:{},pairsByActor:{}}:null;
+  // Offline-only evidence: associate one physical LEAF escape with the
+  // next immediate reacquisition for the SAME actor and door. A route that
+  // was successfully restored from world truth is not an escape/retry pair.
+  const recentLeafEscapes=routeWitness?new Map():null;
+  const recordRoute=routeWitness?(e)=>{
+   routeWitness.counts[e.source]=(routeWitness.counts[e.source]??0)+1;
+   const key=e.actorId+':'+e.source;
+   routeWitness.byActor[key]=(routeWitness.byActor[key]??0)+1;
+   if(e.source==='door-leaf-escape'){
+    if(!e.next.length)
+     recentLeafEscapes.set(e.actorId,{at:e.seconds,doorId:e.doorId});
+    else recentLeafEscapes.delete(e.actorId);
+   }else if(e.source!=='initial-intel')
+    recentLeafEscapes.delete(e.actorId);
+   if(e.source==='initial-intel'){
+    const prior=recentLeafEscapes.get(e.actorId);
+    if(prior&&e.seconds-prior.at<=1&&prior.doorId===e.doorId){
+     routeWitness.escapeReacquirePairs++;
+     routeWitness.pairsByActor[e.actorId]=
+      (routeWitness.pairsByActor[e.actorId]??0)+1;
+     const doorKey=prior.doorId??'unknown';
+     routeWitness.pairsByDoor[doorKey]=
+      (routeWitness.pairsByDoor[doorKey]??0)+1;
+    }
+    recentLeafEscapes.delete(e.actorId);
+   }
+   if(utilityTrace&&seed===31162&&kind==='authored'&&
+      e.actorId==='rook'&&routeWitness.events.length<400)
+     routeWitness.events.push({...e,seconds:round(e.seconds),
+      prior:e.prior.slice(0,4),next:e.next.slice(0,4)});
+  }:null;
+  // Do not include offline forensic world-route probes in live-A* totals.
+  // Register only while the authoritative Session simulation is stepping.
   const crossed=actors.map(()=>null),lastSigned=actors.map(a=>
    planned.door?signed(a.p,planned.door):null);
   const initialSign=lastSigned.map(v=>Math.sign(v??0));
@@ -101,18 +171,45 @@ function run(site,seed,kind){
   let maxPositionStep=0,physicsStepViolations=0;
   let unboundedManeuverAttempts=0,liveHandFrames=0,doorStateFlips=0;
   const openState=new Map(session.doors.map(d=>[d.id,d.open]));
+  // Offline-only attribution: discriminate repeated flipping on ONE hinge
+  // from unrelated expected door manipulations in the same large building.
+  const perDoorFlips=new Map();
   const lastStep=actors.map(()=>({x:0,y:0}));
   const lastP=actors.map(a=>({...a.p}));
   // Read-only final three-second net-displacement witness; not a motor input.
   const windowStart=actors.map(a=>({...a.p}));
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
   const blockWitness=actors.map(()=>({mask:0,events:[]}));
+  const progressEvidence=[];
+  const observed=actors.map(a=>({
+   start:{...a.p},last:{...a.p},travel:0,blocked:0,squeezing:0,
+   passage:0,opening:0,lastRetries:a.recoveryAttempts,
+   retries:0,badWindows:0
+  }));
   if(planned.accepted){enableD32MotorDoorWitness(true);toggling(session);}
   for(let tick=0;tick<ticks&&planned.accepted;tick++){
    if(tick===Math.max(0,ticks-180))
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
-   stepSession(session,1/60);
+   if(grid)setRouteGridAuditObserver(grid.observe);
+   if(recordRoute)setTransientRouteObserver(recordRoute);
+   try{
+    stepSession(session,1/60);
+   }finally{
+    if(grid)setRouteGridAuditObserver(null);
+    if(recordRoute)setTransientRouteObserver(null);
+   }
    survey.sample(actors,1/60);
+   quality?.sample(actors,session.seconds);
+   if(progress)for(let i=0;i<actors.length;i++){
+    const a=actors[i],m=observed[i];
+    m.travel+=dist(a.p,m.last);m.last={...a.p};
+    if(a.blockedTime>=.85)m.blocked+=1/60;
+    if(a.squeeze)m.squeezing+=1/60;
+    if(a.motorPause==='passage')m.passage+=1/60;
+    if(a.motorPause==='door-opening')m.opening+=1/60;
+    m.retries+=Math.max(0,a.recoveryAttempts-m.lastRetries);
+    m.lastRetries=a.recoveryAttempts;
+   }
    // Capture only pause transitions and milestones; offline audit, not live game.
    for(let i=0;i<actors.length;i++){
     const a=actors[i],trace=doorWitness[i];
@@ -143,12 +240,16 @@ function run(site,seed,kind){
         // Two read-only world-route probes, only after genuine sustained
         // physical blockage; not called in the live motor hotpath.
         routeFeasibility:index===1||index===2?
-          captureD32RecoveryFeasibility(a,session):null});
+          captureD32RecoveryFeasibility(a,session,
+            portal&&seed===31175&&kind==='entry'&&a.id==='vale'&&index===1):null,
+        hingeSelfClearance:index===1||index===2?
+          captureD32SelfBlockingHinge(a,session):null});
      }
    }
    for(const d of session.doors){
     if(openState.get(d.id)!==d.open){
      doorStateFlips++;openState.set(d.id,d.open);
+     perDoorFlips.set(d.id,(perDoorFlips.get(d.id)??0)+1);
     }
    }
    for(let i=0;i<actors.length;i++){
@@ -178,12 +279,88 @@ function run(site,seed,kind){
     lastP[i]={...a.p};
     for(let j=0;j<i;j++)minSpacing=Math.min(minSpacing,dist(a.p,actors[j].p));
    }
+   if(progress&&((tick+1)%300===0||tick+1===ticks)){
+    const seconds=round((tick+1)/60);
+    for(let i=0;i<actors.length;i++){
+     const a=actors[i],m=observed[i],goal=planned.goals.get(a.id);
+     const net=round(dist(a.p,m.start));
+     const travel=round(m.travel);
+     const remaining=goal?round(dist(a.p,goal)):null;
+     const kind=a.plan[0]?.kind??null;
+     const intentional=kind==='wait'||kind==='watch'||kind==='sync'||
+      kind==='stack'||kind==='holdClear';
+     const classification=classifyCProgressWindow({
+      active:!!a.plan.length,kind,
+      goalReduction:goal?round(dist(m.start,goal)-dist(a.p,goal)):null,
+      travel,net,blockedSeconds:m.blocked,
+      squeezeSeconds:m.squeezing,
+      passageSeconds:m.passage,
+      openingSeconds:m.opening,orderIssue:a.orderIssue?.reason??null,
+      attempts:m.retries,badWindows:m.badWindows
+     });
+     m.badWindows=classification.consecutivePoorWindows;
+     progressEvidence.push({
+      seconds,actor:a.id,kind,classification:classification.status,
+      suspicious:classification.suspicious,
+      consecutivePoorWindows:m.badWindows,
+      net,travel,
+      goalReduction:goal?round(dist(m.start,goal)-dist(a.p,goal)):null,
+      remaining,blockedSeconds:round(m.blocked),
+      squeezeSeconds:round(m.squeezing),
+      passageSeconds:round(m.passage),
+      openingSeconds:round(m.opening),
+      retries:m.retries,position:{...a.p},
+      nextNav:a.nav[0]??null,
+      motorPause:a.motorPause,orderIssue:a.orderIssue?.reason??null,
+      doorEpisode:a.doorTraversal?.doorId??null
+     });
+     m.start={...a.p};m.travel=0;m.blocked=0;m.squeezing=0;
+     m.passage=0;m.opening=0;m.retries=0;
+    }
+   }
    if(actors.every(a=>!a.plan.length))break;
   }
   const stats=survey.finish(actors);
   const planIntact=actors.every((a,i)=>a.plan.every(n=>initial[i].has(n.id)));
   const orderIssues=actors.map(a=>a.orderIssue?.reason??null);
   const complete=planned.accepted===4&&actors.every(a=>!a.plan.length);
+  // D3.7 forensic warehouse probe, END OF RUN ONLY. Compare leaf swept
+  // against architecture with and without human bodies, and test the
+  // already-existing finite bypass / full-body self-clearance options.
+  // No additional work in the real Session motor or per-actor hotpath.
+  let warehouseHingeWitness=null;
+  if(seed===31123&&kind==='authored'){
+   const door=session.doors.find(d=>d.id==='FRONT');
+   if(door){
+    const world=sessionWorldGeometry(session);
+    const f=door.openFraction??0,next=Math.min(1,f+.025);
+    const nearby=cachedHingeSweepNeighborhood(door,world);
+    warehouseHingeWitness={
+     fraction:round(f),pushTarget:round(door.pushTarget??1),
+     staticBlocksSwing:doorSwingBlocked(door,next,[],undefined,world),
+     anyBodyBlocksSwing:doorWouldStrikeActors(door,next,
+      actors.map(a=>a.p),OPERATOR_RADIUS),
+     // Exact real geometry for offline top-down evidence rendering,
+     // rather than a speculative mock screenshot.
+     physicalDoor:{a:door.a,b:door.b,hinge:door.hinge,
+      swing:door.swing,kind:door.kind,leaf:doorLeafSegment(door)},
+     nearWalls:nearby.walls.map(w=>({a:w.a,b:w.b})),
+     nearCover:nearby.cover.map(o=>({
+      x:o.x,y:o.y,w:o.w,h:o.h,id:o.id??null,fixture:o.fixture??null})),
+     bodyObstruction:actors.map(a=>({
+      id:a.id,p:{...a.p},
+      strikesNext:doorWouldStrikeActors(door,next,[a.p],OPERATOR_RADIUS)})),
+     actors:actors.map(a=>({
+      id:a.id,phase:a.doorTraversal?.phase??null,
+      self: captureD32SelfBlockingHinge(a,session),
+      route: captureD32RecoveryFeasibility(a,session),
+      rehearsed:rehearseDoorLeafBypass(a.p,a.plan[0]?.p??a.p,
+       door,(from,to)=>sweptBodyClear(from,to,session.doors,
+        OPERATOR_RADIUS,world))
+     }))
+    };
+   }
+  }
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -199,6 +376,10 @@ function run(site,seed,kind){
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
+   warehouseHingeWitness,
+   ...(progress?{progressEvidence}:{}),
+   ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
+   ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
@@ -208,7 +389,19 @@ function run(site,seed,kind){
    reversalsNearDoor,maxBlockedSeconds:round(maxBlocked),
    maxPositionStep:round(maxPositionStep),physicsStepViolations,
    unboundedManeuverAttempts,liveHandFrames,doorStateFlips,
+   doorFlipDetails:[...perDoorFlips].map(([id,flips])=>({id,flips}))
+    .sort((a,b)=>b.flips-a.flips||a.id.localeCompare(b.id)),
    simulatedSeconds:round(session.seconds),phase:session.phase,
+   // D3.7 offline incident snapshots: mark which authored gate is actually
+   // active and which hinge may be preventing movement (or a SYNC).
+   endDoorStates:session.doors.map(door=>({
+    id:door.id,open:door.open,fraction:round(door.openFraction??0),
+    angularVelocity:round(door.angularVelocity??0),
+    pushTarget:round(door.pushTarget??0),heldBy:door.heldBy??null,
+    locked:!!door.locked,wedged:!!door.wedged,jammed:!!door.jammed
+   })),
+   orderCancelledEvents:session.events.filter(e=>
+    typeof e==='string'&&e.includes('ORDER CANCELLED')).slice(-12),
    arrivals:stats.arrivals,incomplete:stats.incomplete,
    stallEpisodes:stats.stallEpisodes,retries:stats.retries,
    passageWaitSeconds:stats.passageWaitSeconds,
@@ -216,6 +409,29 @@ function run(site,seed,kind){
    invalidPositions:stats.invalidPositions,
    operators:stats.details.map(d=>({
     id:d.actor,arrived:d.arrived,remaining:d.remaining,
+    activeOrderDetails:actors.find(a=>a.id===d.actor).plan[0]?
+     {kind:actors.find(a=>a.id===d.actor).plan[0].kind,
+      id:actors.find(a=>a.id===d.actor).plan[0].id,
+      doorId:actors.find(a=>a.id===d.actor).plan[0].doorId??null,
+      entryDoorId:actors.find(a=>a.id===d.actor).plan[0].entryDoorId??null,
+      syncCode:actors.find(a=>a.id===d.actor).plan[0].syncCode??null,
+      duration:actors.find(a=>a.id===d.actor).plan[0].duration??null}:null,
+    syncReady:actors.find(a=>a.id===d.actor).syncReady??null,
+    actionTimer:round(actors.find(a=>a.id===d.actor).actionTimer??0),
+    waitRemaining:round(actors.find(a=>a.id===d.actor).waitRemaining??0),
+    doorHand:actors.find(a=>a.id===d.actor).doorHandContact?.doorId??null,
+    // End-state evidence only. Read current authoritative motor state;
+    // no new tick-level probes, authority, or path calculation.
+    goal:planned.goals.get(d.actor)??null,
+    position:{...actors.find(a=>a.id===d.actor).p},
+    start:starting[actors.findIndex(a=>a.id===d.actor)],
+    startingGoalDistance:startedGoalDistance[actors.findIndex(a=>a.id===d.actor)],
+    nextNav:actors.find(a=>a.id===d.actor).nav[0]??null,
+    lastBlocker:actors.find(a=>a.id===d.actor).lastBlocker??null,
+    doorEpisode:actors.find(a=>a.id===d.actor).doorTraversal?
+     {doorId:actors.find(a=>a.id===d.actor).doorTraversal.doorId,
+      phase:actors.find(a=>a.id===d.actor).doorTraversal.phase,
+      maneuver:actors.find(a=>a.id===d.actor).doorTraversal.maneuver}:null,
     stallEpisodes:d.stallEpisodes,blockedSeconds:d.blockedSeconds,
     waitSeconds:d.passageWaitSeconds,retries:d.retries,
     longestStillSeconds:d.longestStillSeconds,
@@ -225,11 +441,16 @@ function run(site,seed,kind){
     motorPause:actors.find(a=>a.id===d.actor)?.motorPause??null,
     orderIssue:d.orderIssue
    }))};
- }finally{enableD32MotorDoorWitness(false);activateSite(null);}
+ }finally{
+  setRouteGridAuditObserver(null);
+  setTransientRouteObserver(null);
+  enableD32MotorDoorWitness(false);activateSite(null);
+ }
 }
 const rows=[];
 let exceptions=0;
-for(let i=0;i<sites;i++){
+for(let i=requestedSite??(clinicOnly?10:0);
+ i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
  const seed=31045+i*13,archetype=names[i%names.length];
  const scale=i%2===0?'small':'standard';
  try{
@@ -253,6 +474,11 @@ const summary={
  triageCounts,sites:rows.length,exceptions,attempted:results.length,
  acceptedFour:results.filter(r=>r.accepted===4).length,
  completedFour:results.filter(r=>r.complete).length,
+ // Unlike logical plan completion, these inspect real FINAL world positions.
+ physicalArrivals:sum('arrivals'),
+ physicalCompletedFour:results.filter(r=>r.accepted===4&&r.arrivals===4).length,
+ logicalDoneButNotArrived:results.reduce((n,r)=>n+(r.operators??[]).filter(o=>
+  o.remainingOrders===0&&!o.arrived).length,0),
  incomplete:sum('incomplete'),rejected:sum('rejected'),
  stallEpisodes:sum('stallEpisodes'),retries:sum('retries'),
  passageWaitSeconds:round(sum('passageWaitSeconds')),
@@ -264,9 +490,45 @@ const summary={
  invalidPositions:sum('invalidPositions'),
  corruptedPlans:results.filter(r=>!r.planIntact).length
 };
+const progressWindows=progress?results.flatMap(mode=>mode.progressEvidence??[]):[];
+const suspicious=progressWindows.filter(w=>w.suspicious);
+const transitionSummary=routeTransitions?{
+ counts:results.reduce((all,mode)=>{
+  for(const [source,count] of Object.entries(mode.routeTransitions?.counts??{}))
+   all[source]=(all[source]??0)+count;
+  return all;},{}),
+ escapeReacquirePairs:results.reduce((n,mode)=>
+  n+(mode.routeTransitions?.escapeReacquirePairs??0),0),
+ pairsByDoor:results.reduce((all,mode)=>{
+  for(const [door,count] of Object.entries(mode.routeTransitions?.pairsByDoor??{}))
+   all[door]=(all[door]??0)+count;
+  return all;},{})
+}:null;
+const qualityResults=routeQuality?results.filter(m=>m.routeQuality):[];
+const routeQualitySummary=routeQuality?{
+ searches:qualityResults.reduce((n,m)=>n+m.gridAudit.searches,0),
+ expanded:qualityResults.reduce((n,m)=>n+m.gridAudit.expanded,0),
+ cpuMs:round(qualityResults.reduce((n,m)=>n+m.gridAudit.elapsedMs,0)),
+ routeSelections:qualityResults.reduce((n,m)=>n+m.routeQuality.actors.reduce(
+  (sum,a)=>sum+a.routeSelections,0),0),
+ waypointAdvances:qualityResults.reduce((n,m)=>n+m.routeQuality.actors.reduce(
+  (sum,a)=>sum+a.waypointAdvances,0),0),
+ revisitedCells:qualityResults.reduce((n,m)=>n+m.routeQuality.actors.reduce(
+  (sum,a)=>sum+a.revisitedCells,0),0)
+}:null;
+const progressSummary=progress?{
+ windows:progressWindows.length,
+ suspiciousWindows:suspicious.length,
+ suspectedLoops:suspicious.filter(w=>w.classification==='movement-loop').length,
+ sustainedStill:suspicious.filter(w=>w.classification==='sustained-still').length,
+ affected:suspicious.map(w=>w.actor),
+ maxObservedSeconds:round(Math.max(0,...progressWindows.map(w=>w.seconds)))
+}:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
- ticks,summary,rows},null,2));
+ ticks,summary,...(progress?{progressSummary}:{}),
+ ...(routeQuality?{routeQualitySummary}:{}),
+ ...(routeTransitions?{transitionSummary}:{}),rows},null,2));
 if(exceptions||summary.invalidPositions||summary.corruptedPlans||
  summary.physicsStepViolations||summary.unboundedManeuverAttempts)
  process.exitCode=1;

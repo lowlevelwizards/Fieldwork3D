@@ -1,0 +1,44 @@
+name: D3.9C 35-second progress and obstruction triage
+on:
+  push:
+    branches: [feature/d3-9-clean-single-opener-20261114]
+    paths:
+      - scripts/audit-r7-squad-execution.mjs
+      - src/breach-d3-c-progress.ts
+      - tests/release-d3-9c-progress.test.mjs
+      - .github/workflows/d3-9c-progress35.yml
+      - src/breach-motor-door.ts
+      - src/breach-motor-collision.ts
+      - src/breach-order-movement.ts
+      - src/breach-passage-coordinator.ts
+      - src/breach-door-traversal-episode.ts
+      - src/breach-door-opening-footwork.ts
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-9c-progress35-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  diagnosis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Validate progress classification
+        run: node --experimental-strip-types --test tests/release-d3-9c-progress.test.mjs
+      - name: 35-second observed real-world corpus
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2100 --progress > "$RUNNER_TEMP/c35.json"
+          node -e 'const r=require(process.argv[1]);const bad=r.rows.flatMap(site=>(site.modes??[]).flatMap(m=>(m.progressEvidence??[]).filter(w=>w.suspicious).map(w=>({site:site.archetype,seed:site.seed,mode:m.mode,actor:w.actor,...w}))));const pending=r.rows.flatMap(site=>(site.modes??[]).flatMap(m=>(m.operators??[]).filter(a=>!a.arrived).map(a=>({site:site.archetype,seed:site.seed,mode:m.mode,id:a.id,remaining:a.remaining,travel:a.progressDistance,blocked:a.blockedSeconds,pause:a.motorPause,nav:a.nextNav,episode:a.doorEpisode}))));const flips=r.rows.flatMap(site=>(site.modes??[]).flatMap(m=>(m.doorFlipDetails??[]).filter(d=>d.flips>=2).map(d=>({site:site.archetype,seed:site.seed,mode:m.mode,...d}))));console.log("D3.9C35",JSON.stringify({summary:r.summary,progress:r.progressSummary,bad,pending,flips},null,2));if(r.summary.invalidPositions||r.summary.physicsStepViolations||r.summary.corruptedPlans)throw Error("unsafe motion or plan corruption")' "$RUNNER_TEMP/c35.json"
+      - name: Retain full per-five-second evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-9c-35s-progress-witness
+          path: ${{ runner.temp }}/c35.json
+          if-no-files-found: ignore

@@ -6,9 +6,11 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {approachingNarrowThreshold} from './breach-passage.ts';
-import {canSmoothMotorCorner} from './breach-motor-cornering.ts';
+import {boundedMotorCornerLookahead} from './breach-motor-cornering.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {releaseEmbeddedMotorActor} from './breach-locomotion-clearance.ts';
+import {localDetourWaypointTolerance,completePreciseLocalDetour}
+ from './breach-motor-local-detour.ts';
 import {sampleActorMotorStride} from './breach-actor-motor-stride.ts';
 import {advanceMotorTraversal,prepareMotorTraversal}
  from './breach-motor-traversal.ts';
@@ -60,18 +62,22 @@ export function advanceActorMotor(
  preferShortPhysicalEntry(a,s,p);
 
  const strideStart=profile?beginMotorCpuMeasurement():0;
- // Tiny grid bends may be redundant once the full shoulder can take a
- // lawful chord. Only transient motor nodes may be skipped. The next
- // position still comes from the ordinary velocity/physical motor.
- if(a.nav.length>=2&&canSmoothMotorCorner(a.p,a.nav[0],a.nav[1],
+ // A maximum two-node lookahead reduces needless shallow steering.
+ // Only transient grid nodes are skipped, never the authored MOVE, a
+ // precise physical detour, or an active action/doorway choreography.
+ // Every proposed chord needs the SAME full-radius world-truth sweep.
+ const canSmoothGrid=a.nav.length>=2&&
    a.side==='blue'&&a.plan[0]?.kind==='move'&&
    !a.plan[0]?.entryDoorId&&a.blockedTime<.2&&
    !a.squeeze&&!a.traversal&&!a.traversalPending&&
-   !a.autoSidestep&&!a.aimInstruction&&
+   !a.autoSidestep&&!a.aimInstruction&&!a.fireRetreatTarget&&
    a.doorTraversal?.maneuver!=='outside-leaf'&&
-   !approachingNarrowThreshold(a.p,p,s.doors),
+   localDetourWaypointTolerance(a,a.nav[0])===3&&
+   !approachingNarrowThreshold(a.p,p,s.doors);
+ const skipped=boundedMotorCornerLookahead(a.p,a.nav,canSmoothGrid,
    (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,
-     sessionWorldGeometry(s))))a.nav.shift();
+     sessionWorldGeometry(s)));
+ for(let i=0;i<skipped;i++)a.nav.shift();
  const next=a.nav[0],gap=d(a.p,next);
  // A3.4's very short corrective destinations need a tighter *motor*
  // waypoint tolerance, not just the order executor's final tolerance.
@@ -80,7 +86,8 @@ export function advanceActorMotor(
  // with feet that barely moved. Ordinary authored routes retain 3 units.
  const correcting=!!a.fireRetreatTarget&&
    d(p,a.fireRetreatTarget)<.5;
- if(gap<(correcting?.9:3)){
+ if(gap<(correcting?.9:localDetourWaypointTolerance(a,next))){
+  completePreciseLocalDetour(a);
   a.nav.shift();
   if(profile)profile('motor-stride',finishMotorCpuMeasurement(strideStart));
   return false;

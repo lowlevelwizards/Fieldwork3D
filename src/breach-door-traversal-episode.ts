@@ -75,6 +75,25 @@ export function syncDoorTraversalEpisode(
   let door:Door|undefined;
   for(const d of doors)if(d.id===episode.doorId){door=d;break;}
   if(!door){actor.doorTraversal=null;return null;}
+  // D3.4: a traversed doorway cannot own a remote actor indefinitely.
+  // A long alternate route may travel tangent to the door frame, keeping
+  // signed-side classification in CROSS even hundreds of units away.
+  // Release only an ordinary direct/push episode that has already crossed
+  // (or is blocked after crossing) and is >110 units from its real frame.
+  // Preserve active outside-leaf rehearsal and the approach/open phases.
+  // The existing 60 Hz episode observation already owns this lifecycle;
+  // no new motor search, timer, physics object or authored-plan mutation.
+  // B0: a fully opened leaf cannot retain a REMOTE approach episode.
+  // At townhouse 31058 a D11 'approach' label persisted far outside
+  // that already-open hinge while operators negotiated later corridors.
+  // Preserve an intentionally active outside-leaf bypass and any partial
+  // or still-closed leaf. This does not edit routes or authored orders.
+  const departed=squared(actor.p,doorCenter(door))>110*110;
+  const opened=door.open&&(door.openFraction??0)>=.98;
+  if(episode.maneuver!=='outside-leaf'&&departed&&
+     (episode.phase==='cross'||episode.phase==='blocked'||opened)){
+    actor.doorTraversal=null;return null;
+  }
   // D4 retains a physical support-hand attachment while the world
   // and hand-availability checks in the authoritative door phase pass.
   if(squared(actor.p,episode.lastPosition)>2.25){

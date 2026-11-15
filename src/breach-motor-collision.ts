@@ -1,3 +1,4 @@
+import {setTransientRoute,prependTransientLeg} from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: authoritative body-collision response and recovery.
  * A full-radius swept motion is preferred; squeeze is only a physical
@@ -11,8 +12,9 @@ import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {beginAutoSidestep,autoSidestepFacing,watchClearanceAllowed} from './breach-auto-sidestep.ts';
 import {friendlyPassingStep} from './breach-friendly-traffic.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
-import {tryRehearsedDoorManeuver,ownsDoorManeuverRoute,
- recordDoorManeuverContact}
+import {tryGoalCompleteDoorHandoffAfterEscape,
+  tryRehearsedDoorManeuver,ownsDoorManeuverRoute,
+ selfBlockingHingeRelief,recordDoorManeuverContact}
  from './breach-door-traversal-maneuver.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
@@ -20,14 +22,17 @@ import {approachingNarrowThreshold} from './breach-passage.ts';
 import {bodyClear,sweptBodyClear,squeezeFacing,squeezeExitClear,
  twoSidedSqueezePressure,sweptProfileClear,escapeOpenDoorOverlap,
  slideAroundStaticCorner,glideAlongStaticWall} from './breach-navigation.ts';
-import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel}
+import {recoverNormalLane,routeWithSqueezeWorld,routeWithSqueezeIntel,
+ routeToNextOperableDoor,repairBlockedTransientWorldLeg}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement,blockedStepCause} from './breach-nav-diagnostics.ts';
 import {recoveryAction,routeRetrySeconds,materiallyDifferentRoute} from './breach-movement-recovery.ts';
 import {localDetour} from './breach-cooperation.ts';
 import {discoverContactCover} from './breach-intel.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
+import {restoreAfterOpenLeafEscape} from './breach-motor-route.ts';
 import {d,clone,angle,clamp,type ActorMotorHooks} from './breach-motor-contract.ts';
+import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
@@ -135,7 +140,12 @@ export function resolveMotorCollision(
       const side=beginAutoSidestep(a.p,next,fullLane[0],a.heading,p,
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
-      a.nav=fullLane;a.retryRouteAt=0;a.recoveryAttempts=0;
+      setTransientRoute(s,a,fullLane,'full-body-lane');a.retryRouteAt=0;a.recoveryAttempts=0;
+      // C1c: the full-width lane repair also begins with a short corner
+      // departure point. It was retired at 3 units before the furniture
+      // actually cleared (motel 31149), then re-entered the same prop.
+      // For furniture contact only, complete this verified leg precisely.
+      notePreciseLocalDetour(a,fullLane[0]);
       // Preserve existing WATCH facing and weapon intention; only the
       // feet choose a different line around the obstruction.
       a.squeeze=false;a.squeezeTime=0;
@@ -241,7 +251,10 @@ export function resolveMotorCollision(
       a.blockedTime=0;a.lastBlocker='door';
       // The current route is still authored and remains active. Replan
       // its transient motor path only after physically leaving the leaf.
-      a.nav=[];a.retryRouteAt=0;return true;
+      setTransientRoute(s,a,[],'door-leaf-escape');
+      if(tryGoalCompleteDoorHandoffAfterEscape(a,s,p))return true;
+      if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
+      return true;
     }
   }
   // Furniture corners should be brushed around, not treated as hard jams.
@@ -266,7 +279,14 @@ export function resolveMotorCollision(
       s.seconds-a.lastNavRepairAt,a.recoveryAttempts)==='detour'){
     const candidate=localDetour(a.p,next,s.doors,s.operators
       .filter(o=>o!==a&&o.health>0).map(o=>o.p),8,world);
-    if(candidate&&d(candidate,p)<d(a.p,p)+12&&
+    // C1: only adopt a furniture detour with a valid next leg.
+    // Motel 31149 was cycling between grid 280 and a blocked 312 waypoint;
+    // these two microsteps made no goalward progress but reset blockedTime.
+    // Reject the blind alley and let the existing bounded world-route
+    // recovery handle it. No collision exception or extra motor authority.
+    const continues=a.lastBlocker!=='furniture'||
+      !candidate||sweptBodyClear(candidate,next,s.doors,OPERATOR_RADIUS,world);
+    if(candidate&&continues&&d(candidate,p)<d(a.p,p)+12&&
       watchClearanceAllowed(a.p,candidate,p,
         !!a.aimInstruction&&a.aimInstruction.mode!=='free',
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
@@ -274,7 +294,9 @@ export function resolveMotorCollision(
       const side=beginAutoSidestep(a.p,next,candidate,a.heading,p,
         s.seconds,canAutoSidestep);
       if(side)a.autoSidestep=side;
-      a.nav.unshift(candidate);a.lastNavRepairAt=s.seconds;
+      prependTransientLeg(s,a,candidate,'local-detour');
+      notePreciseLocalDetour(a,candidate);
+      a.lastNavRepairAt=s.seconds;
       return true;
     }
   }
@@ -321,23 +343,62 @@ export function resolveMotorCollision(
     if((repair==='replan'||repair==='report')&&s.seconds>=a.retryRouteAt&&
        !ownsDoorManeuverRoute(a)){
       a.lastNavRepairAt=s.seconds;
+      // R2.1: when the actor ITSELF blocks a stationary partial hinge,
+      // a tiny fully swept step can free the opening before a broad A*.
+      // Only ordinary MOVE without an active doorway maneuver may use it.
+      // Reuse the existing retry budget and the current physical motor;
+      // do not move or reorient the actor here.
+      if(a.side==='blue'&&a.lastBlocker==='door'&&
+         a.blockedTime>=.85&&a.recoveryAttempts<4&&
+         !a.doorTraversal&&!a.traversal&&!a.traversalPending&&
+         a.plan[0]?.kind==='move'){
+        const relief=selfBlockingHingeRelief(a,s,p);
+        if(relief){
+          prependTransientLeg(s,a,relief,'self-hinge-relief');
+          a.recoveryAttempts++;
+          a.retryRouteAt=s.seconds+routeRetrySeconds(a.recoveryAttempts);
+          return true;
+        }
+      }
+      // D3.4 clinic wall witness: operator drift can make a short,
+      // previously valid TRANSIENT waypoint physically unreachable from
+      // today's exact position. Rejoin that same waypoint through one
+      // bounded world-truth full-body connector BEFORE trying a new global
+      // authored-goal path (which may lie behind several closed portals).
+      // The existing collision retry already paid for this check.
+      if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+         (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
+         !a.doorTraversal&&!a.traversalPending&&a.nav.length){
+        const connected=repairBlockedTransientWorldLeg(
+          a.p,next,a.nav.slice(1),s.doors,world);
+        if(connected.length&&materiallyDifferentRoute(a.nav,connected)){
+          setTransientRoute(s,a,connected,'blocked-leg-connector');a.retryRouteAt=0;a.recoveryAttempts=0;
+          return true;
+        }
+      }
       // Once actual collision is observed, repair against real geometry,
       // not only the incomplete player-intel route that may run through
       // an undiscovered door frame. The authored final goal is unchanged.
       const replanAt=profile?beginMotorCpuMeasurement():0;
-      const repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
+      let repaired=a.side==='red'?hooks.cachedEnemyRoute(s,a.p,p,true):
         routeWithSqueezeWorld(a.p,p,s.doors,world);
+      // D3.3: only a FAILED collision-truth route may request a future
+      // closed-door portal. The motor owns the actual contact/open and
+      // collision; this is a transient, physically swept approach prefix.
+      if(!repaired.length&&a.side==='blue'&&
+         a.plan[0]?.kind==='move'&&!a.doorTraversal&&!a.traversalPending)
+        repaired=routeToNextOperableDoor(a.p,p,s.doors,world);
       if(profile)profile('motor-collision-replan',finishMotorCpuMeasurement(replanAt));
       // A world-truth path that repeats the stuck steps is not progress.
       // Known-intel fallback is allowed only if it materially differs;
       // never replace a route with an empty result while the door moves.
       let adopted=false;
       if(materiallyDifferentRoute(a.nav,repaired)){
-        a.nav=repaired;adopted=true;
+        setTransientRoute(s,a,repaired,'collision-world-replan');adopted=true;
       }else if(a.side==='blue'){
         const known=routeWithSqueezeIntel(s.intel,a.p,p);
         if(materiallyDifferentRoute(a.nav,known)){
-          a.nav=known;adopted=true;
+          setTransientRoute(s,a,known,'collision-intel-replan');adopted=true;
         }
       }
       if(adopted){

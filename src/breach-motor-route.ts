@@ -1,22 +1,51 @@
+import {setTransientRoute} from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
  */
-import {OPERATOR_RADIUS,type Pt} from './breach-core.ts';
+import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment,type Pt}
+ from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import {pressDoorOnBodyAttempt} from './breach-door.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
-import {recordDoorManeuverContact}
+import {recordDoorManeuverContact,tryGoalCompleteDoorHandoffAfterEscape}
  from './breach-door-traversal-maneuver.ts';
 import {escapeOpenDoorOverlap,sweptBodyClear} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds} from './breach-movement-recovery.ts';
+import {holdKnownFixedAuthoredGoal}
+ from './breach-authored-goal-block.ts';
 import {tryAutoClearClutter} from './breach-motor-clutter.ts';
 import {d,clone,type ActorMotorHooks} from './breach-motor-contract.ts';
 
+/** After an ACTUAL swept door overlap escape, prefer one physical
+ * world-truth connector past a STABLE fully-open leaf. Otherwise a
+ * temporary intel route can immediately walk the feet back INTO the
+ * same solid panel, causing endless 0.7-unit reverse/forward motion.
+ * One cold (>=0.7s) route probe; untouched authored GO order; no
+ * second physical movement controller or ghost clearance.
+ */
+export function restoreAfterOpenLeafEscape(
+ a:TeamActor,s:Session,goal:Pt
+):boolean{
+ if(s.seconds-a.lastNavRepairAt<.7)return false;
+ const near=s.doors.some(door=>door.open&&
+  (door.openFraction??0)>=.96&&
+  Math.abs(door.angularVelocity??0)<.16&&
+  pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+13);
+ if(!near)return false;
+ a.lastNavRepairAt=s.seconds;
+ const world=sessionWorldGeometry(s);
+ const route=routeWithSqueezeWorld(a.p,goal,s.doors,world);
+ if(!route.length||!sweptBodyClear(a.p,route[0],s.doors,
+    OPERATOR_RADIUS,world))return false;
+ setTransientRoute(s,a,route,'door-leaf-escape');
+ a.retryRouteAt=0;a.recoveryAttempts=0;
+ return true;
+}
 export type MotorRouteReadiness='ready'|'handled'|'unavailable';
 export function prepareMotorRoute(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks):MotorRouteReadiness{
@@ -27,6 +56,11 @@ export function prepareMotorRoute(
     a.lastNormalLaneProbeAt=-10;
   }
   if(!a.nav.length){
+    // D3.10B: after real retries have established a known, immovable
+    // authored landing, do not run the same A* and contact probes forever.
+    // The issue stays visible, and any authored-goal/cover change wakes it.
+    if(holdKnownFixedAuthoredGoal(s,a,p,goalKey,dt,hooks.notify))
+      return 'unavailable';
     // Completed D2 temporary doorway footwork returns to the original
     // authored destination, not another arbitrary temporary node.
     if(a.doorTraversal?.maneuver==='outside-leaf'){
@@ -40,7 +74,9 @@ export function prepareMotorRoute(
     if(escape){
       a.priorP=clone(a.p);a.p=escape;a.velocity=0;
       a.blockedTime=0;a.lastBlocker='door';
-      a.retryRouteAt=0;return 'handled';
+      if(tryGoalCompleteDoorHandoffAfterEscape(a,s,p))return 'handled';
+      if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
+      return 'handled';
     }
     // Never execute expensive route searches every fixed tick for a proven
     // unreachable destination. Changes of goal or recovered progress reset.
@@ -65,7 +101,8 @@ export function prepareMotorRoute(
       const distance=Math.min(4,goalDistance);
       const contactProbe={x:a.p.x+(p.x-a.p.x)/goalDistance*distance,
         y:a.p.y+(p.y-a.p.y)/goalDistance*distance};
-      if(diagnoseMovement(a.p,contactProbe,s.doors).blocker==='furniture'&&
+      if(diagnoseMovement(a.p,contactProbe,s.doors,[],OPERATOR_RADIUS,
+         sessionWorldGeometry(s)).blocker==='furniture'&&
          tryAutoClearClutter(s,a,contactProbe,hooks))return 'handled';
     }
     // A3.4: a validated 4–10 unit local fire-lane correction is already
@@ -77,13 +114,22 @@ export function prepareMotorRoute(
     if(a.fireRetreatTarget&&d(p,a.fireRetreatTarget)<.5&&
        goalDistance>=.9&&goalDistance<=12&&
        sweptBodyClear(a.p,p,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
-      a.nav=[{...p}];
+      setTransientRoute(s,a,[{...p}],'fire-retreat');
       a.retryRouteAt=0;a.recoveryAttempts=0;
       return 'ready';
     }
-    if(s.seconds<a.retryRouteAt){a.velocity=0;return 'unavailable';}
-    a.nav=a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
-      hooks.cachedEnemyRoute(s,a.p,p,true);
+    if(s.seconds<a.retryRouteAt){
+      // C3: a backoff is still REAL time stationary with an active MOVE.
+      // Previously blockedTime advanced for only one 60Hz tick per A*
+      // attempt, leaving a 20-second unreachable toilet destination
+      // reporting as neither blocked nor awaiting action. Do not repeat
+      // searches during cooldown; keep the authored order for user edits.
+      a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
+      return 'unavailable';
+    }
+    setTransientRoute(s,a,a.side==='blue'?routeWithSqueezeIntel(s.intel,a.p,p):
+      hooks.cachedEnemyRoute(s,a.p,p,true),
+      a.side==='blue'?'initial-intel':'initial-enemy');
     if(!a.nav.length&&a.side==='blue'){
       // A known small object that the player drew THROUGH is a contextual
       // crossing, not a permanently impassable destination. Approach its
@@ -102,7 +148,7 @@ export function prepareMotorRoute(
         const path=d(a.p,staging)<5?[]:
           routeWithSqueezeWorld(a.p,staging,s.doors,sessionWorldGeometry(s));
         if(d(a.p,staging)<5||path.length)
-          a.nav=[...path,p];
+          setTransientRoute(s,a,[...path,p],'shove-stage');
       }
     }
     if(!a.nav.length){

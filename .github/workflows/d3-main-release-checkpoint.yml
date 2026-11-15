@@ -1,0 +1,67 @@
+name: D3 consolidated main release checkpoint
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-*.ts'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'tests/release-d3-*.test.mjs'
+      - '.github/workflows/d3-main-release-checkpoint.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-main-release-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  release-checkpoint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Critical physical door, route, corner and exact collision regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-9-single-opener.test.mjs \
+            tests/release-d3-10a-entry-targets.test.mjs \
+            tests/release-d3-10b-authored-obstruction.test.mjs \
+            tests/release-d3-11d-portal-handoff.test.mjs \
+            tests/release-d3-11e-corner-lookahead.test.mjs \
+            tests/release-d3-12a-swept-parity.test.mjs \
+            tests/release-d3-12b-squeeze-parity.test.mjs \
+            tests/door-traversal-d4-physics.test.mjs \
+            tests/passage-q5-approaches.test.mjs
+      - name: TypeScript and deployable Pages build
+        run: |
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
+      - name: Full 45-second 88-operator mainline merge acceptance
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --progress --route-quality > "$RUNNER_TEMP/release45.json"
+          node --input-type=module -e '
+            import fs from "node:fs";
+            const data=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
+            const s=data.summary,p=data.progressSummary,q=data.routeQualitySummary;
+            console.log("D3_MAIN_RELEASE",JSON.stringify({summary:s,progress:p,route:q},null,2));
+            if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+               s.physicsStepViolations||s.unboundedManeuverAttempts)
+              throw Error("invalid release physicality");
+            if(s.acceptedFour!==22||s.physicalArrivals<79||
+               s.physicalCompletedFour<18||s.completedFour<21)
+              throw Error("physical arrival regression");
+            if(s.stallEpisodes>9||s.retries>6||p.sustainedStill||p.suspectedLoops)
+              throw Error("new stalled or looping movement");
+            if(q.searches>4070)throw Error("A* regression");
+          ' "$RUNNER_TEMP/release45.json"
+      - name: Retain full physical acceptance evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-main-release-45s
+          path: ${{ runner.temp }}/release45.json
+          if-no-files-found: ignore

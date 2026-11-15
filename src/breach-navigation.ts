@@ -34,25 +34,31 @@ export function bodyClear(p:Pt,doors:Door[],radius=OPERATOR_RADIUS,world?:Sessio
 }
 export function sweptBodyClear(from:Pt,to:Pt,doors:Door[],
   radius=OPERATOR_RADIUS,world?:SessionWorldGeometry){
-  const steps=Math.max(1,Math.ceil(distance(from,to)/4));
+  const length=distance(from,to);
+  const steps=Math.max(1,Math.ceil(length/4));
   const candidates=doorsNearSweep(from,to,doors,radius+1);
-  const trapped=candidates.filter(item=>pointToSegment(from,item.leaf)<radius+1);
+  // D3.12A: only the moving leaf position matters, sampled once per
+  // query. Cache the start-to-leaf gap on that transient candidate,
+  // rather than recalculating it for every overlapping sweep sample
+  // and searching a second trapped-doors array. Never persist between
+  // ticks: actual door angles and replay states remain authoritative.
+  const initialGaps=candidates.map(item=>pointToSegment(from,item.leaf));
+  const releaseProgress=Math.min(.04,length*.04);
   for(let i=1;i<=steps;i++){
     const f=i/steps;
     const at={x:from.x+(to.x-from.x)*f,
       y:from.y+(to.y-from.y)*f};
     if(!(world?world.passable(at,radius):passable(at,radius)))return false;
-    for(const item of candidates){
-      const gap=pointToSegment(at,item.leaf);
+    for(let j=0;j<candidates.length;j++){
+      const gap=pointToSegment(at,candidates[j].leaf);
       if(gap>=radius+1)continue;
+      const initial=initialGaps[j];
       // A leaf can close into an actor. Permit movement away from it;
       // never allow a new intrusion or movement deeper into overlap.
-      const initial=pointToSegment(from,item.leaf);
-      if(!trapped.includes(item)||gap+1e-5<initial)return false;
+      if(initial>=radius+1||gap+1e-5<initial)return false;
       // An embedded body must actually move OUT of the leaf, not travel
       // parallel through its interior at the same penetration depth.
-      if(i===steps&&gap<radius+1&&
-         gap<initial+Math.min(.04,distance(from,to)*.04))return false;
+      if(i===steps&&gap<initial+releaseProgress)return false;
     }
   }
   return true;
@@ -162,12 +168,20 @@ export function profileClear(p:Pt,doors:Door[],heading:number,
 export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
   heading:number,profile:BodyProfile='normal',world?:SessionWorldGeometry){
   if(profile==='normal')return sweptBodyClear(from,to,doors,OPERATOR_RADIUS,world);
-  const steps=Math.max(1,Math.ceil(distance(from,to)/2.5));
+  const length=distance(from,to);
+  const steps=Math.max(1,Math.ceil(length/2.5));
   // Every oriented shoulder sample is within 3.25 units of the centerline.
   // Keep the exact narrow-profile test; skip only leaves impossible to hit.
   const candidates=doorsNearSweep(from,to,doors,SQUEEZE_RADIUS+1+3.25);
   const start=profileSamples(from,heading,'squeeze');
-  const finalOverlapProgress=Math.min(.04,distance(from,to)*.04);
+  // D3.12B: cache the three shoulder start gaps for this ONE frozen
+  // leaf snapshot. Previously each swept sample calculated its own
+  // current and start gap for every candidate, including far-clear
+  // samples. Real end-point contact, shoulder radii and all world sweeps
+  // remain identical. No cache can outlive a hinge update or replay seek.
+  const initialGaps=candidates.map(item=>
+    start.map(sample=>pointToSegment(sample.position,item.leaf)));
+  const finalOverlapProgress=Math.min(.04,length*.04);
   for(let i=1;i<=steps;i++){
     const t=i/steps,at={x:from.x+(to.x-from.x)*t,
       y:from.y+(to.y-from.y)*t};
@@ -176,14 +190,14 @@ export function sweptProfileClear(from:Pt,to:Pt,doors:Door[],
     // relax static wall/furniture clearance.
     const current=profileSamples(at,heading,'squeeze');
     for(let j=0;j<current.length;j++){
-      const sample=current[j],startSample=start[j];
+      const sample=current[j];
       if(!(world?world.passable(sample.position,sample.radius):passable(sample.position,sample.radius)))return false;
-      for(const item of candidates){
-        const gap=pointToSegment(sample.position,item.leaf),
-          before=pointToSegment(startSample.position,item.leaf);
-        if(gap<sample.radius+1&&
-           (before>=sample.radius+1||gap+1e-5<before||
-            i===steps&&gap<before+finalOverlapProgress))
+      for(let k=0;k<candidates.length;k++){
+        const gap=pointToSegment(sample.position,candidates[k].leaf);
+        if(gap>=sample.radius+1)continue;
+        const before=initialGaps[k][j];
+        if(before>=sample.radius+1||gap+1e-5<before||
+           i===steps&&gap<before+finalOverlapProgress)
           return false;
       }
     }
@@ -233,7 +247,18 @@ export function glideAlongStaticWall(from:Pt,intended:Pt,
  const step=Math.hypot(dx,dy);
  if(step<.04)return null;
  let best:Pt|null=null,bestMovement=-Infinity;
- for(const wall of (world?.walls??WALLS)){
+ // C6: only nearby walls can touch the failed full-radius stride.
+ // Reuse the already present spatial index, preserving source tie order.
+ const localWalls:typeof WALLS=world?[]:WALLS;
+ if(world){
+   const candidates:{wall:typeof WALLS[number];index:number}[]=[];
+   world.someWallNearPoint(from,OPERATOR_RADIUS+6,(wall,index)=>{
+     candidates.push({wall,index});return false;
+   });
+   if(candidates.length>1)candidates.sort((a,b)=>a.index-b.index);
+   for(const candidate of candidates)localWalls.push(candidate.wall);
+ }
+ for(const wall of localWalls){
    const vx=wall.b.x-wall.a.x,vy=wall.b.y-wall.a.y;
    const len=Math.hypot(vx,vy);
    if(len<.001)continue;

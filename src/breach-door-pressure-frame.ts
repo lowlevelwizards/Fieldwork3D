@@ -11,10 +11,12 @@
  * remain live and exact at the moment a hinge or actor attempts to move.
  */
 import type {Session,TeamActor} from './breach-game.ts';
-import type {Door} from './breach-core.ts';
+import {doorLeafSegment,pointToSegment,OPERATOR_RADIUS,type Door} from './breach-core.ts';
 import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 import type {BodyDoorPressurePolicy} from './breach-door.ts';
 import {canDoorHandAssist} from './breach-door-hand-contact.ts';
+import {mayManipulateOpening,claimContactReadyOpening,claimOpeningIntent}
+ from './breach-door-opening-ownership.ts';
 
 type TickClaims={
  at:number;
@@ -57,6 +59,18 @@ function inspectDoor(s:Session,tick:TickClaims,door:Door):void{
     n.entryDoorId===door.id);
   if(queued)tick.protectedBySide.add(sideKey(door.id,actor.side));
   const n=actor.plan[0];
+  // R2.3: an active operator physically brushing an already OPEN leaf
+  // is occupying that aperture even if a temporary nav leg means
+  // signed-goal crossing recognition has not acquired a D2 episode.
+  // This is evaluated ONLY in the existing touched-door, once-per-tick
+  // actor loop. It prevents body-driven CLOSE while feet clear the panel;
+  // explicit CLOSE and real hinge/body collision remain authoritative.
+  if((n.kind==='move'||n.kind==='pie')&&door.open&&
+     (door.openFraction??0)>.08&&
+     pointToSegment(actor.p,doorLeafSegment(door))<OPERATOR_RADIUS+7){
+    tick.protectedBySide.add(sideKey(door.id,actor.side));
+    tick.occupiedDoors.add(door.id);
+  }
   if(!['move','pie','door','sync'].includes(n.kind)||
      n.kind==='door'&&n.method==='close')continue;
   if(!activeDoorCrossingIntent(actor,door,true)&&
@@ -75,11 +89,17 @@ export function sessionDoorPressurePolicy(
 ):BodyDoorPressurePolicy{
  // Construct arbitration sets only when a touched leaf requests them.
  return {
-  canHandAssist:door=>canDoorHandAssist(s,actor,door),
+  canHandAssist:door=>
+   mayManipulateOpening(s,actor,door)&&canDoorHandAssist(s,actor,door),
   preferOpening:door=>{
    const frame=doorPressureTick(s);
    inspectDoor(s,frame,door);
-   return frame.actorsOpening.has(actorKey(actor.id,door.id));
+   if(!frame.actorsOpening.has(actorKey(actor.id,door.id)))return false;
+   if(claimOpeningIntent(s,actor,door))return true;
+   // Only a truly reachable free support hand can replace an anticipated
+   // implicit opener. Physical leaf contact is still checked by the motor.
+   return canDoorHandAssist(s,actor,door)&&
+     claimContactReadyOpening(s,actor,door);
   },
   deferClosing:door=>{
    const frame=doorPressureTick(s);
@@ -87,6 +107,9 @@ export function sessionDoorPressurePolicy(
    return frame.protectedBySide.has(sideKey(door.id,actor.side));
   },
   claimContact:door=>{
+   // The selected opener alone may inject incidental pressure while the
+   // leaf is incomplete; a follower's real swept feet remain unaffected.
+   if(!claimOpeningIntent(s,actor,door))return false;
    const frame=doorPressureTick(s);
    if(frame.claimedImpulses.has(door.id))return false;
    frame.claimedImpulses.add(door.id);

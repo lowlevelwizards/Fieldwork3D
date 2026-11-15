@@ -38,7 +38,9 @@ export class DisplayRouteCache{
     if(cached)return cached;
     const snapped={x:ox,y:oy};
     const normal=routeWithIntel(intel,snapped,to);
-    const points=normal.length?normal:routeWithSqueezeIntel(intel,snapped,to);
+    // The normal A* was already executed above. Never re-run it inside
+    // the narrower fallback merely because the result was empty.
+    const points=normal.length?normal:routeWithSqueezeIntel(intel,snapped,to,normal);
     const viaWindow=portalRoute?.(snapped,to,points);
     const value={points:viaWindow??points,
       narrowOnly:!viaWindow&&!normal.length&&!!points.length};

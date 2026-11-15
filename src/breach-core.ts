@@ -263,6 +263,17 @@ const sweepPassable=(from:Pt,to:Pt,canStand:(p:Pt)=>boolean)=>{
   }
   return true;
 };
+/** D3.11A: OFFLINE-only A* observer. Disabled by default; never records
+ * or emits data in a game frame unless a deterministic audit opts in.
+ * No geometry, authored order or A* tie-breaking is changed.
+ */
+export type RouteGridAudit={from:Pt;to:Pt;grid:number;expanded:number;
+ elapsedMs:number;found:boolean};
+let routeGridAuditObserver:((event:RouteGridAudit)=>void)|null=null;
+export function setRouteGridAuditObserver(
+ observer:((event:RouteGridAudit)=>void)|null):void{
+ routeGridAuditObserver=observer;
+}
 /** Broad pathfinding remains 16-unit A*, with bounded local 8-unit rescue
  * for a physically valid narrow route missed by the coarse grid. */
 export function route(from:Pt,to:Pt,
@@ -285,9 +296,23 @@ export function route(from:Pt,to:Pt,
   if(broad.length||distance(from,to)>245)return broad;
   return routeGrid(from,to,canStand,GRID/2,3800,76,true,repairBlockedStart);
 }
+/** Cold D3 portal recovery only. The normal 16-unit A* deliberately
+ * bounds its 8-unit fallback to a nearby corridor; that can miss a legal
+ * long walk to an alternate door outside the local padding. This ONE
+ * bounded 8-unit search is never used for routine route acquisition or
+ * inside a frame loop. The caller must still sweep every live step.
+ */
+export function routeExtendedPortalRecovery(from:Pt,to:Pt,
+ canStand:(p:Pt)=>boolean):Pt[]{
+ return routeGrid(from,to,canStand,GRID/2,8000,Infinity,true,true);
+}
 function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   grid:number,budget:number,padding=Infinity,
   alternateGoal=false,repairBlockedStart=false):Pt[]{
+  const observer=routeGridAuditObserver;
+  const started=observer?performance.now():0;
+  let expanded=0,found=false;
+  try{
   const cellAt=(p:Pt)=>({col:Math.round(p.x/grid),
     row:Math.round(p.y/grid)});
   const cellPoint=(col:number,row:number):Pt=>({x:col*grid,
@@ -372,8 +397,8 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   const dirs=[[-1,0],[1,0],[0,-1],[0,1],[-1,-1],[-1,1],[1,-1],[1,1]];
   for(let iter=0;open.length&&iter<budget;iter++){
     const at=open.pop()!,k=key(at.col,at.row);
-    if(visited.has(k))continue;visited.add(k);
-    if(targets.has(k)){reachedKey=k;break;}
+    if(visited.has(k))continue;visited.add(k);expanded++;
+    if(targets.has(k)){reachedKey=k;found=true;break;}
     for(const [dx,dy] of dirs){
       const col=at.col+dx,row=at.row+dy,p=cellPoint(col,row);
       if(padding!==Infinity&&
@@ -429,6 +454,10 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   if(distance(compact.at(-1)??from,to)>2)compact.push({...to});
   else compact[compact.length-1]={...to};
   return compact;
+  }finally{
+    if(observer)observer({from:{...from},to:{...to},grid,expanded,found,
+      elapsedMs:performance.now()-started});
+  }
 }
 const actor=(id:string,name:string,side:Side,x:number,y:number,
   heading=-Math.PI/2):Operator=>({

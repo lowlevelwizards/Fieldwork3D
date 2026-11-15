@@ -23,9 +23,21 @@ export function diagnoseMovement(from:Pt,to:Pt,doors:readonly Door[],
     if(p.x<bounds.minX+13||p.y<bounds.minY+20||
        p.x>bounds.maxX-13||p.y>bounds.maxY-13)
       return {blocker:'bounds',point:p,distance:distance(from,p)};
-    if((world?.walls??WALLS).some(w=>pointToSegment(p,w)<radius+1))
+    // D3.10B: blocked-step diagnostics run only after a rejected physical
+    // stride, but can still run every tick while genuinely obstructed.
+    // Reuse the same owning-session spatial index already used by physics.
+    // This is a conservative broadphase only; exact clearance and the
+    // wall-before-cover-before-door precedence remain unchanged.
+    const wallHit=(w:typeof WALLS[number])=>
+      pointToSegment(p,w)<radius+1;
+    const wallsBlocked=world?
+      world.someWallNearPoint(p,radius+1,wallHit):WALLS.some(wallHit);
+    if(wallsBlocked)
       return {blocker:'wall',point:p,distance:distance(from,p)};
-    if((world?.cover??COVER).some(b=>isFootstepObstacle(b)&&inBox(p,b,radius)))
+    const coverHit=(b:Obstacle)=>isFootstepObstacle(b)&&inBox(p,b,radius);
+    const coverBlocked=world?
+      world.someCoverNearPoint(p,radius,coverHit):COVER.some(coverHit);
+    if(coverBlocked)
       return {blocker:'furniture',point:p,distance:distance(from,p)};
     const blocked=doors.find(d=>
       pointToSegment(p,doorLeafSegment(d))<radius+1);
