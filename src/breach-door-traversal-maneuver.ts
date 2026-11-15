@@ -1,6 +1,8 @@
 import {setTransientRoute,noteDoorHandoffRejection} from './breach-route-transition.ts';
 import {completePortalRouteToAuthoredGoal} from './breach-door-maneuver-handoff.ts';
-import {routeWithSqueezeIntel} from './breach-squeeze-route.ts';
+import {routeWithSqueezeIntel,routeWithSqueezeWorld} from './breach-squeeze-route.ts';
+import {shouldProbeRepeatedDoorRehearsal,fullySweptRehearsalExit}
+ from './breach-retail-rehearsal-recovery.ts';
 /** D2 / fixed-action doorway muscle memory.
  * A crossing chooses ONE short physically swept maneuver when an actual
  * step fails against its identified hinged leaf. Three repeatable tip
@@ -167,16 +169,28 @@ export function tryRehearsedDoorManeuver(a:TeamActor,s:Session,
  episode.selectedLeafFraction=door.openFraction??0;
  episode.nextManeuverAt=s.seconds+1.5;
  const world=sessionWorldGeometry(s);
- const path=rehearseDoorLeafBypass(a.p,episode.destination,door,
-  (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+ const sweep=(from:Pt,to:Pt)=>
+   sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+ const path=rehearseDoorLeafBypass(a.p,episode.destination,door,sweep);
  if(!path.length)return false;
- episode.waypoints=path.map(clone);
+ // D3.14D2: a real open D2 can repeatedly accept the same swept
+ // short rehearsal, then fall back to a stale remembered-map route.
+ // Count only separately accepted physical rehearsals at the same
+ // actor/door/GO anchor; spend ONE cold A* only after the third.
+ const cold=shouldProbeRepeatedDoorRehearsal(a,episode.destination,
+   door.id,door.openFraction??0,s.seconds);
+ const whole=cold?fullySweptRehearsalExit(
+   a.p,episode.destination,
+   routeWithSqueezeWorld(a.p,episode.destination,s.doors,world),sweep):[];
+ const chosen=whole.length?whole:path;
+ episode.waypoints=chosen.map(clone);
  episode.waypointIndex=0;
  episode.maneuver='outside-leaf';
  episode.phase='clear-leaf';
  episode.lastTransitionAt=s.seconds;
- setTransientRoute(s,a,path.map(clone),'door-rehearsal');
- a.autoSidestep=beginAutoSidestep(a.p,next,path[0],
+ setTransientRoute(s,a,chosen.map(clone),
+   whole.length?'door-rehearsal-world':'door-rehearsal');
+ a.autoSidestep=beginAutoSidestep(a.p,next,chosen[0],
   a.heading,episode.destination,s.seconds,canAutoSidestep);
  a.retryRouteAt=0;a.recoveryAttempts=0;
  a.squeeze=false;a.squeezeTime=0;
