@@ -18,6 +18,7 @@ import {selfBlockingHingeRelief} from './breach-door-traversal-maneuver.ts';
 import {shouldStageForOpening,mayManipulateOpening,claimOpeningIntent}
  from './breach-door-opening-ownership.ts';
 import {releaseDoorHandContact} from './breach-door-hand-contact.ts';
+import {openingHasStagnated} from './breach-door-opening-progress.ts';
 import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFootwork,
   openingSweepThreatens,upcomingOpeningSweep,selectGuidedOpeningStep}
  from './breach-door-opening-footwork.ts';
@@ -103,6 +104,9 @@ export function handleMotorDoor(
     // ALSO must be able to vacate the leaf's sweep. Keep the same
     // bounded temporary footstep for opener and followers alike.
     const follower=shouldStageForOpening(s,a,doorAhead);
+    // A physically stationary aperture is stronger evidence than a noisy
+    // angular velocity. One measurement shared by this actual hinge.
+    const stagnant=openingHasStagnated(doorAhead,s.seconds);
     const stopped=doorAhead.open&&
       (doorAhead.openFraction??0)>=.15&&
       (doorAhead.openFraction??0)<.72&&
@@ -111,7 +115,7 @@ export function handleMotorDoor(
       openingSweepThreatens(doorAhead,a.p);
     const ownerRelief=!follower&&a.side==='blue'&&
       pendingDoor?.kind==='move'&&
-      (stopped&&a.actionTimer>=1.5||threatens);
+      ((stopped||stagnant)&&a.actionTimer>=1.5||threatens);
     if(follower||ownerRelief){
       // No follower may open, push, or retain a hand on this partial leaf.
       // All physical clearance still runs through the existing motor.
@@ -167,6 +171,13 @@ export function handleMotorDoor(
         }
       }
       if(follower){
+        if(stagnant){
+          // The opener still owns manipulation, but a stalled leaf cannot
+          // indefinitely suppress a follower's ordinary physical stride.
+          // Full-radius world and teammate collision remain authoritative.
+          a.motorPause=null;
+          return {paused:false,closed:false,clearingDoorId:doorAhead.id};
+        }
         a.velocity=0;a.motorPause='door-opening';
         return {paused:true,closed:false};
       }
@@ -241,7 +252,8 @@ export function handleMotorDoor(
       // its regular bounded route recovery. There is no free passage.
       // Incidental body CLOSE on this exact leaf is deferred ONLY for
       // this motor attempt, preventing the D3.1 277-flip ping-pong.
-      if(a.side==='blue'&&stalledDoorYieldsToMotor(doorAhead,a.actionTimer)){
+      if(a.side==='blue'&&
+         (stalledDoorYieldsToMotor(doorAhead,a.actionTimer)||stagnant)){
         // D3.9's shared owner/follower traffic staging above is the ONLY
         // cold self-clearance authority. Do not separately create a second
         // D3.8 episode retry, whose transient nav could fight the first.
