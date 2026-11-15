@@ -32,10 +32,10 @@ export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extra
  // Side rivets sit forward of each ear, rear rivet on the swept nape.
  for(const [frontSide,ear] of [[2,3],[7,6]]){
   // Between the two side facets: front of ear, on the steel wall.
-  const upperFront=m56SurfacePoint(2,frontSide),
-   upperEar=m56SurfacePoint(2,ear),
-   hemFront=m56SurfacePoint(3,frontSide),
-   hemEar=m56SurfacePoint(3,ear);
+  const upperFront=m56SurfacePoint(1,frontSide),
+   upperEar=m56SurfacePoint(1,ear),
+   hemFront=m56SurfacePoint(2,frontSide),
+   hemEar=m56SurfacePoint(2,ear);
   const midpoint=(axis:number)=>mix(
    mix(upperFront[axis],upperEar[axis],.55),
    mix(hemFront[axis],hemEar[axis],.55),.28);
@@ -44,7 +44,7 @@ export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extra
    .42,.42,.40,'m56-rivet-side');
  }
  // Rear liner fastener, derived from the actual nape and not a prior Y.
- const upperRear=m56SurfacePoint(2,4),hemRear=m56SurfacePoint(3,4);
+ const upperRear=m56SurfacePoint(1,4),hemRear=m56SurfacePoint(2,4);
  part(rivets,dark,0,mix(upperRear[1],hemRear[1],.32),
   mix(upperRear[2],hemRear[2],.32)+.17,
   .42,.42,.40,'m56-rivet-rear');
@@ -59,15 +59,16 @@ export function createM56Extras(parent:THREE.Group,dark:THREE.Material):M56Extra
   part(net,cloth,0,8.83,z,6.15,.28,.34,'m56-net-crown-transverse');
  for(const side of [-1,1]){
   // Follow the one-piece bell and integral flare; no nested-tier net rings.
-  part(net,cloth,side*5.83,6.93,.15,.34,1.42,10.0,'m56-net-upper-side');
-  part(net,cloth,side*6.17,5.40,.35,.34,1.20,12.3,'m56-net-mid-side');
+  // Two restrained side rails, not horizontal faux shell bands.
+  part(net,cloth,side*5.12,7.45,.15,.30,.92,8.7,'m56-net-upper-side');
+  part(net,cloth,side*6.05,5.51,.35,.30,.80,11.4,'m56-net-mid-side');
  }
  // Eight coarse, premerged runs follow the ACTUAL rising brow, ear
  // transition, and lowered nape. A single horizontal bar floated on
  // the old lower apron and obscured the shell's defining silhouette.
  for(let i=0;i<M56_PERIMETER.length;i++)
-  netLine(net,cloth,m56SurfacePoint(3,i),
-   m56SurfacePoint(3,(i+1)%M56_PERIMETER.length));
+  netLine(net,cloth,m56SurfacePoint(2,i),
+   m56SurfacePoint(2,(i+1)%M56_PERIMETER.length));
  consolidateVisualGroup(rivets);consolidateVisualGroup(net);
  rivets.visible=false;net.visible=false;return {rivets,net};
 }
