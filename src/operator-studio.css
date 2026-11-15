@@ -238,6 +238,13 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  letter-spacing:.04em;color:#c0cdbb}
 .reference-detail .reference-status{font-weight:700;color:#edd09a}
 .reference-detail .reference-sources{color:#b7c7b7}
+.reference-weapon-choices{display:grid;gap:6px;padding:8px;
+ border:1px solid #718779;border-radius:6px;background:#2a4136}
+.reference-weapon-choices strong{font:700 12px "Saira Condensed",sans-serif}
+.reference-weapon-choice{width:100%;min-height:44px;min-width:0;padding:8px;
+ border-radius:6px;border:1px solid #a3b6a2;background:#142b24;
+ color:#edf3e8;font:700 13px "Saira Condensed",sans-serif}
+.reference-weapon-choice:focus-visible{outline:2px solid #e9c999;outline-offset:2px}
 .reference-gap-list{display:grid;gap:3px;font:500 11px/1.3 "Work Sans",sans-serif}
 .reference-gap-list strong{font:700 12px "Saira Condensed",sans-serif;color:#d8dcce}
 .reference-gap-list span{color:#c1cfc0}

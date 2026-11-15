@@ -1,7 +1,7 @@
-/** Every dated faction *visual reference* has a curated live AR/AK preview.
- * 'proxy' is deliberately explicit: an AR silhouette must never be described
- * as an actual G36, SA80, FAL, etc. Future families can replace these entries
- * without altering the reference wardrobe or weapons in player inventory. */
+/** Every dated faction visual reference owns an era-curated weapon preview.
+ * 'proxy' is explicit: an AR may not masquerade as a G36 or SA80.
+ * Optional uncommon weapons remain separate from the representative default
+ * and are preview-only; neither changes inventory nor user weapon builds. */
 import {issueWeaponPreset} from './breach-weapon-issue.ts';
 
 export type ReferenceWeaponFidelity='exact'|'representative'|'proxy';
