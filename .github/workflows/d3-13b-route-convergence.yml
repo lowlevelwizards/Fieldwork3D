@@ -1,0 +1,92 @@
+name: D3.13B real-space route convergence — paired 45s acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-route-loop-recovery.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-route-transition.ts'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'tests/release-d3-13b-route-loop.test.mjs'
+      - '.github/workflows/d3-13b-route-convergence.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-13b-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  loop-safety:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Real movement, existing route and collision contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-13b-route-loop.test.mjs \
+            tests/release-d3-11d-portal-handoff.test.mjs \
+            tests/release-d3-10b-authored-obstruction.test.mjs \
+            tests/release-d3-9-single-opener.test.mjs
+      - name: Build production bundle
+        run: npm run build
+      - name: Paired 45s historical and independent development corpora
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d3-baseline" b8ed3d6100582ef8a5a8acd0cc3dee0fff98adbd
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d3-baseline/node_modules"
+          cp scripts/audit-r7-squad-execution.mjs "$RUNNER_TEMP/d3-baseline/scripts/audit-r7-squad-execution.mjs"
+          for label in old dev; do
+            if [[ "$label" == dev ]];then args=(--dev-seed-base=520701 --dev-seed-stride=7013);else args=();fi
+            node --experimental-strip-types "$RUNNER_TEMP/d3-baseline/scripts/audit-r7-squad-execution.mjs" \
+              11 2700 --progress --route-quality "${args[@]}" > "$RUNNER_TEMP/${label}-baseline.json"
+            node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+              11 2700 --progress --route-quality "${args[@]}" > "$RUNNER_TEMP/${label}-candidate.json"
+          done
+      - name: Surface actual loop and arrival deltas, forbid real regressions
+        run: |
+          node --input-type=module -e '
+          import fs from "node:fs";
+          const get=p=>JSON.parse(fs.readFileSync(p,"utf8"));
+          const pick=x=>({arrivals:x.summary.physicalArrivals,
+           squads:x.summary.physicalCompletedFour,
+           logical:x.summary.completedFour,stalls:x.summary.stallEpisodes,
+           retries:x.summary.retries,loopWindows:x.progressSummary.suspectedLoops,
+           still:x.progressSummary.sustainedStill,
+           doorFlips:x.summary.doorStateFlips,
+           searches:x.routeQualitySummary.searches});
+          for(const label of ["old","dev"]){
+           const b=get(process.argv[1]+"/"+label+"-baseline.json");
+           const c=get(process.argv[1]+"/"+label+"-candidate.json");
+           console.log("D313B_PAIRED_"+label.toUpperCase(),
+            JSON.stringify({before:pick(b),after:pick(c)}));
+           for(const x of [b,c])
+            for(const key of ["exceptions","invalidPositions","physicsStepViolations",
+                "corruptedPlans","unboundedManeuverAttempts"])
+             if(x.summary[key])throw Error(label+" invalid "+key);
+           if(c.summary.physicalArrivals<b.summary.physicalArrivals||
+              c.summary.physicalCompletedFour<b.summary.physicalCompletedFour)
+            throw Error("actual arrival regression "+label);
+           if(c.progressSummary.sustainedStill>b.progressSummary.sustainedStill)
+            throw Error("new sustained still "+label);
+           if(c.routeQualitySummary.searches>b.routeQualitySummary.searches*1.1+5)
+            throw Error("new A* search pressure "+label);
+           if(c.summary.doorStateFlips>b.summary.doorStateFlips*1.1+2)
+            throw Error("door oscillation "+label);
+          }' "$RUNNER_TEMP"
+      - name: Retain all comparable input/output physical traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-13b-matched-45s-old-and-development
+          path: |
+            ${{ runner.temp }}/old-baseline.json
+            ${{ runner.temp }}/old-candidate.json
+            ${{ runner.temp }}/dev-baseline.json
+            ${{ runner.temp }}/dev-candidate.json
+          if-no-files-found: ignore
