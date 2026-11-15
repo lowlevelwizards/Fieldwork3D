@@ -229,8 +229,8 @@ export function buildFNCStage1Silhouette(
  // handle slot into the forward ejection opening, like the real FNC.
  // Position is mapped to the actual outside of the crowned receiver side.
  const operatingSlot=p('receiver',[
-  [-.28,.67],[3.07,.67],[3.07,-.28],
-  [1.39,-.28],[1.39,.25],[-.28,.25]
+  [-.28,.54],[2.82,.54],[2.82,-.22],
+  [1.29,-.22],[1.29,.23],[-.28,.23]
  ],.10,'shadow');
  operatingSlot.position.z=1.355;
  operatingSlot.userData.fncRightPort=true;
