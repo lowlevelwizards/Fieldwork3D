@@ -12,6 +12,7 @@ on:
       - 'src/ui/execution-feedback.ts'
       - 'tests/release-d3-16a-honest-order-outcomes.test.mjs'
       - 'tests/release-d3-16b-fixed-goal-feedback.test.mjs'
+      - 'tests/tactical-integration-14-execution-feedback.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
