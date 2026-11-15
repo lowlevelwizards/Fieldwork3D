@@ -1,4 +1,4 @@
-/** S1-A1: the one-piece stamped DDR M56 steel shell.
+/** S1-A1B: refined one-piece stamped DDR M56 steel shell.
  * Boxy Fieldwork interpretation of the real M56's shallow crown,
  * diagonal bell and striking long swept rear flare.
  * NO stacked cuboids, extra ridge bands or M1-style rolled brim.
@@ -23,21 +23,24 @@ export const M56_PERIMETER:readonly (readonly [number,number])[]=[
  * Preserve the historical and existing code's front and rear maxima.
  */
 export const M56_SHELL_RINGS:readonly Ring[]=[
- {name:'broad-flat-crown',y:8.775,side:3.65,front:4.05,rear:4.35},
+ {name:'reduced-angular-crown',y:8.775,side:3.08,front:3.48,rear:3.72},
  {name:'single-upper-shoulder',y:8.07,side:5.60,front:5.70,rear:6.00},
- {name:'continuous-sloping-bell',y:5.52,side:5.95,front:6.00,rear:6.80},
- {name:'integral-flared-edge-top',y:4.78,side:6.78,front:6.75,rear:8.04,
-  frontRise:.19,rearDrop:.20},
+ // Begin the profile flare *above* the edge instead of making a shelf.
+ // The two larger lower bands are continuous steel faces, not attached trim.
+ {name:'flowing-upper-skirt',y:6.35,side:6.03,front:6.15,rear:7.12,
+  frontRise:.08,rearDrop:.15},
+ {name:'integral-flared-edge-top',y:4.73,side:6.74,front:6.75,rear:8.04,
+  frontRise:.23,rearDrop:.37},
  {name:'thin-steel-edge-bottom',y:4.43,side:6.87,front:6.80,rear:8.10,
-  frontRise:.22,rearDrop:.205},
+  frontRise:.31,rearDrop:.46},
  {name:'inward-stamped-return',y:4.51,side:6.38,front:6.34,rear:7.58,
-  frontRise:.19,rearDrop:.18},
+  frontRise:.25,rearDrop:.40},
  {name:'recessed-inner-wall',y:7.40,side:5.50,front:5.58,rear:5.94},
  {name:'recessed-interior-ceiling',y:7.75,side:4.90,front:5.00,rear:5.20}
 ] as const;
 export const M56_SHELL_FIT=Object.freeze({
  top:8.775,outerSide:6.87,frontExtent:-6.80,rearExtent:8.10,
- frontHem:4.65,sideHem:4.43,rearHem:4.225
+ frontHem:4.74,sideHem:4.43,rearHem:3.97
 });
 const sample=(ring:Ring,index:number):Point=>{
  const [fx,fz]=M56_PERIMETER[(index+8)%8];
@@ -50,9 +53,9 @@ export const m56SurfacePoint=(ring:number,index:number):Point=>
 
 export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
  const positions:number[]=[],uv:number[]=[],uv1:number[]=[],colors:number[]=[],
-  index:number[]=[];
+  normals:number[]=[],index:number[]=[];
  let quads=0;
- const put=(p:Point,region:0|1|2|3,tone:number,axis:0|1|2)=>{
+ const put=(p:Point,region:0|1|2|3,tone:number,axis:0|1|2,normal:THREE.Vector3)=>{
   positions.push(...p);
   const u=axis===0?p[2]:p[0],v=axis===1?p[2]:p[1];
   uv.push(((region%2)*32+16+u/PIXEL_WORLD_SIZE)/64,
@@ -65,6 +68,7 @@ export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
   uv1.push(((region%2)*64+2*clamp(cu))/128,
    (Math.floor(region/2)*64+2*clamp(cv))/128);
   colors.push(tone,tone,tone);
+  normals.push(normal.x,normal.y,normal.z);
  };
  const face=(points:readonly Point[],outward:Point,
   region:0|1|2|3,tone:number)=>{
@@ -75,8 +79,23 @@ export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
    points:[points[0],...points.slice(1).reverse()];
   const abs=[Math.abs(normal.x),Math.abs(normal.y),Math.abs(normal.z)];
   const axis=abs.indexOf(Math.max(...abs)) as 0|1|2;
+  // Non-coplanar stamped panels used to shade one triangle noticeably
+  // darker than the other. Use one area-weighted NORMAL per authored quad,
+  // preserving its wide planar Fieldwork read without adding polygons.
+  const vertex=(p:Point)=>new THREE.Vector3(...p);
+  const v0=vertex(ordered[0]),v1=vertex(ordered[1]),v2=vertex(ordered[2]);
+  const faceNormal=new THREE.Vector3().crossVectors(
+   new THREE.Vector3().subVectors(v1,v0),
+   new THREE.Vector3().subVectors(v2,v0));
+  if(ordered.length===4){
+   const v3=vertex(ordered[3]);
+   faceNormal.add(new THREE.Vector3().crossVectors(
+    new THREE.Vector3().subVectors(v2,v0),
+    new THREE.Vector3().subVectors(v3,v0)));
+  }
+  faceNormal.normalize();
   const start=positions.length/3;
-  for(const point of ordered)put(point,region,tone,axis);
+  for(const point of ordered)put(point,region,tone,axis,faceNormal);
   index.push(start,start+1,start+2);
   if(ordered.length===4){index.push(start,start+2,start+3);quads++;}
  };
@@ -108,10 +127,13 @@ export function createM56UnifiedShellGeometry():THREE.BufferGeometry{
  geo.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
  geo.setAttribute('uv1',new THREE.Float32BufferAttribute(uv1,2));
  geo.setAttribute('color',new THREE.Float32BufferAttribute(colors,3));
+ geo.setAttribute('normal',new THREE.Float32BufferAttribute(normals,3));
  geo.setIndex(index);
- geo.computeVertexNormals();geo.computeBoundingBox();
+ geo.computeBoundingBox();
  geo.userData.m56UnifiedStampedShell=true;
- geo.userData.m56ProfileRevision='S1-A1';
+ geo.userData.m56ProfileRevision='S1-A1B';
+ geo.userData.m56ConsistentQuadNormals=true;
+ geo.userData.m56SkirtSwept=true;
  geo.userData.m56VisibleRecessedInterior=true;
  geo.userData.m56ContinuousFlare=true;
  geo.userData.m56ProfileStations=M56_SHELL_RINGS.map(r=>r.name);
