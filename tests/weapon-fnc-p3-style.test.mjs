@@ -14,7 +14,7 @@ import {HK556_MAG_METAL,HK556_MAG_RIB}
 const box=x=>new THREE.Box3().setFromObject(x);
 const of=(g,k)=>g.children.filter(x=>x.userData[k]);
 const factory=()=>selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
-test('P5 stock: no cheek/metal overlap and an actual triangular FNC brace',()=>{
+test('P9 stock: no cheek/metal overlap and a distinct inset FNC bridge plate',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const rails=of(g,'fncStockRail').filter(x=>x.userData.fncStockRail===true);
  const cheek=of(g,'fncCheekSleeve')[0],web=of(g,'fncP5StockMiddleBrace')[0];

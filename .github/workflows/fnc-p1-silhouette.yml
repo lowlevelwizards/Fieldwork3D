@@ -1,4 +1,4 @@
-name: FN FNC P8 shape and shared-family geometry
+name: FN FNC P9 stock and shared-family geometry
 on:
   pull_request:
     branches: [main]
@@ -25,6 +25,7 @@ on:
       - 'tests/weapon-fnc-p6-silhouette.test.mjs'
       - 'tests/weapon-fnc-p7-integration.test.mjs'
       - 'tests/weapon-fnc-p8-iconic-forms.test.mjs'
+      - 'tests/weapon-fnc-p9-stock-silhouette.test.mjs'
       - 'tests/weapon-fnc-arsenal-live.test.mjs'
       - 'scripts/smoke-fnc-arsenal.mjs'
       - 'vite.config.ts'
@@ -40,7 +41,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-p3-style.test.mjs tests/weapon-fnc-p6-silhouette.test.mjs tests/weapon-fnc-p7-integration.test.mjs tests/weapon-fnc-p8-iconic-forms.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/weapon-fal-p5-triangle.test.mjs tests/weapon-fal-p6-geometry-budget.test.mjs tests/arsenal-v2-catalog.test.mjs tests/arsenal-v2-catalog.test.mjs
+      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-p3-style.test.mjs tests/weapon-fnc-p6-silhouette.test.mjs tests/weapon-fnc-p7-integration.test.mjs tests/weapon-fnc-p8-iconic-forms.test.mjs tests/weapon-fnc-p9-stock-silhouette.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/weapon-fal-p5-triangle.test.mjs tests/weapon-fal-p6-geometry-budget.test.mjs tests/arsenal-v2-catalog.test.mjs tests/arsenal-v2-catalog.test.mjs
       - run: npm run check
       - run: npm run build
       - run: npm install --no-save --package-lock=false playwright@1.56.1
@@ -52,7 +53,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fnc-p8-form-and-family-review
+          name: fnc-p9-stock-identity-review
           path: |
             fnc-p1-captures/
             fnc-arsenal-captures/

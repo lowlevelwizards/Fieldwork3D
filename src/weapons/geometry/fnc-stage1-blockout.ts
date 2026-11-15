@@ -1,8 +1,7 @@
-/** FN FNC P7 shared Arsenal/Workbench/operator silhouette.
- * Deliberate five-mass Fieldwork grammar: crowned FAL-like upper narrower
- * than the lower, actual triangular FNC stock brace, hexagonal polymer
- * handguard UNDER a separate upper gas-box, and bold simple rifle hardware.
- * True open trigger guard and legible separate stamped forms.
+/** FN FNC P9 shared Arsenal/Workbench/operator silhouette.
+ * Fieldwork's angular FN receiver and large polymer handguard remain intact.
+ * The stock uses parallel upper/lower beams, one lower-rail knee, a recessed
+ * joining web, a chunky hinge block and a separate buttplate. No trigger guard.
  * +X muzzle, +Y up, +Z right; static geometry on demand.
  */
 import * as THREE from 'three';
@@ -28,7 +27,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p8-iconic-fieldwork-exterior';
+ root.name='fnc-p9-stock-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -95,42 +94,52 @@ export function buildFNCStage1Silhouette(
   mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
   return mesh;
  };
- // The insulated top tube and its metal portion now own DISJOINT lengths.
- // P2 drew the entire metal rail under a larger sleeve: equal-depth faces
- // shimmered in side views. Both terminate at x=-9.46 without overlap.
- rail([-6.45,.03],[-9.46,.01],.69);
- // A straighter, narrower tapered lower brace gives the folding stock
- // its metal skeleton rather than a broad shovel-blade side silhouette.
+ // Keep P2's disjoint top steel and polymer sleeve: no coplanar shimmer.
+ // Both are geometrically straight and together form ONE upper stock rail.
+ const top=rail([-6.45,.03],[-9.46,.01],.69);
+ top.userData.fncP9UpperMetalRail=true;
+ // Lower rail stays parallel for over three art units; at x=-10.18 its
+ // single angular knee descends toward the lower butt connection.
+ // A single six-vertex extrusion avoids separate, z-fighting bar joins.
  const lowerRail=p('stock',[
-  [-6.48,-1.32],[-8.84,-1.82],[-14.12,-2.96],
-  [-14.12,-3.46],[-8.82,-2.36],[-6.48,-1.98]
+  [-6.52,-1.23],[-10.18,-1.23],[-14.38,-3.01],
+  [-14.38,-3.49],[-10.05,-1.84],[-6.52,-1.84]
  ],1.12,'stock');
- lowerRail.userData.fncP8StraightStockBrace=true;
  lowerRail.userData.fncStockRail=true;
  lowerRail.userData.fncKinkedLowerRail=true;
+ lowerRail.userData.fncP8StraightStockBrace=true;
+ lowerRail.userData.fncP9ParallelThenAngled=true;
+ // One broad rectangular hinge bracket owns the rear receiver junction.
+ // It projects slightly in Z beyond the rails, but not beyond the receiver.
  const hinge=p('stock',[
-  [-6.94,.29],[-6.05,.29],[-6.02,-1.83],[-6.94,-1.83]
- ],1.66,'stock');
+  [-7.20,.40],[-6.02,.40],[-6.02,-1.95],[-7.20,-1.95]
+ ],1.88,'stock');
  hinge.userData.fncStockHinge=true;
+ hinge.userData.fncP9BlockHinge=true;
+ // Distinct heavy upright rear pad; unchanged overall x = -14.85.
+ // Front face receives both rails without leaving open-ended gaps.
  const pad=p('stock',[
-  [-14.85,.36],[-14.18,.36],[-14.15,-3.36],
-  [-14.36,-3.56],[-14.85,-3.56]
- ],1.74,'stock');
+  [-14.85,.36],[-14.17,.36],[-14.10,.12],
+  [-14.10,-3.36],[-14.35,-3.56],[-14.85,-3.56]
+ ],1.86,'stock');
  pad.userData.fncP8NarrowButtplate=true;
  pad.userData.fncButtPlate=true;
- const cheek=rail([-9.46,.01],[-14.03,-.04],1.04,'cheek');
+ pad.userData.fncP9ConnectedButtplate=true;
+ const cheek=rail([-9.46,.01],[-14.26,-.04],1.04,'cheek');
  cheek.userData.fncStockRail=false;
  cheek.userData.fncCheekSleeve=true;
  cheek.userData.fncNoCoplanarRail=true;
- // FNC-specific triangular middle web: rests BETWEEN top and lower tube
- // in the rear/middle portion, rather than filling the stock's large void.
- // It is a chunky single gusset, not a false third full-length rail.
+ cheek.userData.fncP9ExtendedCheekConnection=true;
+ // Flat inset joining plate, not a third bar or a full stock sidewall.
+ // Its upper edge meets the sleeve; the shallow lower edge intersects
+ // the diagonal lower beam while leaving the large rear void fully open.
  const web=p('stock',[
-  [-11.95,-.56],[-10.58,-.56],[-11.43,-1.94]
+  [-12.55,-.49],[-10.67,-.49],[-11.76,-2.36],[-12.10,-2.48]
  ],.90,'stock');
  web.userData.fncP5StockMiddleBrace=true;
  web.userData.fncP6BoldStockWeb=true;
  web.userData.fncP7StockWeb=true;
+ web.userData.fncP9RecessedJoiningPlate=true;
 
  // Crowned body is intentionally closer to FAL's stylized 3D shoulders.
  // The lower visibly projects OUTSIDE both upper sides.
@@ -158,18 +167,14 @@ export function buildFNCStage1Silhouette(
  ],3.65,'lower');
  well.userData.fncP8DistinctMagwell=true;
 
- // A narrow, raked polymer grip and truly open, chunky trigger-guard loop.
+ // Preserve P8's narrowed raked polymer grip; the separate P8 trigger
+ // frame was too literal for this silhouette and is deliberately removed.
  const grip=p('grip',[
   [-5.48,-2.26],[-3.48,-2.26],[-3.72,-2.68],
   [-4.89,-5.62],[-6.42,-5.75],[-6.59,-5.52]
  ],1.99,'grip');
  grip.userData.fncGrip=true;
  grip.userData.fncP8NarrowGrip=true;
- const triggerGuard=aperture('grip','trigger-guard',
-  [[-3.67,-2.32],[-.70,-2.38],[-1.11,-3.67],[-3.43,-3.67]],
-  [[-3.21,-3.23],[-1.52,-3.23],[-1.37,-2.77],[-3.30,-2.73]],
-  .79,'steel');
- triggerGuard.userData.fncP8OpenTriggerGuard=true;
  // Shared 30-round STANAG centerline/normal math: not another hand-tuned
  // stepped magazine. Two broad pressed ribs track the same curved face.
  const magazineCurve={
