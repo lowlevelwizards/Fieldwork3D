@@ -38,6 +38,10 @@ jobs:
         run: |
           node scripts/verification/breach-architecture-boundaries.mjs
           node scripts/verification/ci-workflow-contract.mjs
+      - name: E0 integrated read-only refactor evidence and regression contracts
+        run: |
+          node --test tests/refactor-e0-audit.test.mjs
+          node scripts/verification/refactor-e0-audit.mjs --check --out artifacts/refactor-e0
       - name: Typecheck, production build, and Pages build stamp
         run: npm run build
       - name: Retain architecture census evidence
@@ -45,7 +49,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: consolidation-architecture-inventory
-          path: artifacts/consolidation/
+          path: |
+            artifacts/consolidation/
+            artifacts/refactor-e0/
           if-no-files-found: warn
           retention-days: 14
 
