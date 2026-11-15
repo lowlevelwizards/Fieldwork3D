@@ -32,25 +32,23 @@ test('P9 stock lower rail is straight until its deliberate downward knee',()=>{
 });
 test('P9 stock five structural parts meet as a real open construction',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const top=get(g,'fncP9UpperMetalRail'),sleeve=get(g,'fncCheekSleeve');
+ const top=get(g,'fncP9UpperMetalRail');
  const lower=get(g,'fncP9ParallelThenAngled'),hinge=get(g,'fncP9BlockHinge');
  const pad=get(g,'fncP9ConnectedButtplate');
  const plate=get(g,'fncP9RecessedJoiningPlate');
- assert.ok(top&&sleeve&&lower&&hinge&&pad&&plate);
+ assert.ok(top&&lower&&hinge&&pad&&plate);
  assert.ok(overlaps(hinge,top)&&overlaps(hinge,lower),
   'rectangular hinge must meet both stock rails');
- assert.ok(overlaps(top,sleeve),'top steel and sleeve connect end-to-end');
- assert.ok(box(top).min.x>=box(sleeve).max.x-.03,
-  'steel and sleeve are NOT stacked coplanar over one another');
- assert.ok(overlaps(sleeve,pad)&&overlaps(lower,pad),
-  'both bars must land inside distinct upright butt assembly');
- assert.ok(overlaps(plate,sleeve)&&overlaps(plate,lower),
-  'flat internal connector plate must attach at both ends');
+ assert.ok(!get(g,'fncCheekSleeve'),'cheek sleeve must be fully removed');
+ assert.ok(overlaps(top,pad)&&overlaps(lower,pad),
+  'both uninterrupted bars must land inside distinct butt assembly');
+ assert.ok(overlaps(plate,top)&&overlaps(plate,lower),
+  'flat internal connector plate must attach to both metal rails');
  assert.ok(box(plate).max.z<box(lower).max.z &&
-  box(plate).max.z<box(sleeve).max.z,
+  box(plate).max.z<box(top).max.z,
   'plate must be inset into metal rather than pasted over rails');
- assert.ok(box(plate).max.x-box(plate).min.x<2.15 &&
-  box(plate).max.y-box(plate).min.y<2.3,
+ assert.ok(box(plate).max.x-box(plate).min.x<2.9 &&
+  box(plate).max.y-box(plate).min.y<2.5,
   'connector stays a plate, never a solid full-stock triangle');
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();

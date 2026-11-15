@@ -21,7 +21,7 @@ export function addFNCFamily(root:THREE.Group,build:WeaponFamilyBuild,
   throw new Error('Unimplemented FNC factory appearance');
  const form=buildFNCStage1Silhouette(HK_BLACK_METAL,{
   steel:HK_BLACK_METAL,lower:FAL_LOWER_METAL,
-  stock:HK_BLACK_METAL,cheek:HK_DARK_POLYMER,grip:HK_DARK_POLYMER,
+  stock:HK_BLACK_METAL,buttpad:HK_DARK_POLYMER,grip:HK_DARK_POLYMER,
   handguard:HK_DARK_POLYMER,magazine:HK556_MAG_METAL,
   stamp:HK556_MAG_RIB,barrel:HK_BLACK_METAL,
   muzzle:HK_MUZZLE_METAL,shadow:FAL_VENT_SHADOW
