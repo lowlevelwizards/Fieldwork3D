@@ -1,30 +1,49 @@
-/** FAL 50.00 one-piece faceted forearm and six slots batched per side.
- * Its upper shoulders are inset, unlike the older constant-Z extrusion.
- * Unlike the HK/G3 round-tube forearm, the FAL keeps broad central side flats.
- * Meshes are created only on recipe changes, never on render frames.
+/** P5: one deliberately stout triangular fore-end, matching the FAL
+ * receiver crown. Eight cross-section corners, four longitudinal stations,
+ * one mesh: fewer faces, larger planes, stronger silhouette.
  */
 import * as THREE from 'three';
 
 type Station=Readonly<{x:number;top:number;bottom:number;halfWidth:number}>;
-/** Four authored longitudinal stations retain the original XY fore-end. */
 export const FAL_HANDGUARD_STATIONS:readonly Station[]=[
- {x:3.65,top:1.06,bottom:-1.32,halfWidth:1.69},
- {x:4.48,top:1.40,bottom:-1.74,halfWidth:1.73},
- {x:12.30,top:1.39,bottom:-1.53,halfWidth:1.70},
- {x:14.10,top:.96,bottom:-1.05,halfWidth:1.45}
+ {x:3.65,top:1.06,bottom:-1.32,halfWidth:1.72},
+ {x:4.48,top:1.40,bottom:-1.74,halfWidth:1.78},
+ {x:12.30,top:1.39,bottom:-1.53,halfWidth:1.77},
+ {x:14.10,top:.96,bottom:-1.05,halfWidth:1.50}
 ];
-const TOP_INSET=.46;
-const BOTTOM_INSET=.32;
-const TOP_CHAMFER=.55;
-const BOTTOM_CHAMFER=.38;
+export const FAL_HANDGUARD_ROOF_RATIO=.40;
+export function falHandguardShoulderY(station:Station):number{
+ return Math.max(station.bottom+.38,station.top-2.00);
+}
+export function falHandguardStationAt(x:number):Station{
+ const list=FAL_HANDGUARD_STATIONS;
+ for(let i=1;i<list.length;i++)if(x<=list[i].x){
+  const a=list[i-1],b=list[i],t=Math.max(0,Math.min(1,(x-a.x)/(b.x-a.x)));
+  return {x,top:a.top+(b.top-a.top)*t,
+   bottom:a.bottom+(b.bottom-a.bottom)*t,
+   halfWidth:a.halfWidth+(b.halfWidth-a.halfWidth)*t};
+ }
+ return {...list[list.length-1],x};
+}
+/** Actual sloping surface, shared by mesh and dark FN vent markings. */
+export function falHandguardSideHalfZAt(x:number,y:number):number{
+ const s=falHandguardStationAt(x),w=s.halfWidth;
+ const shoulder=falHandguardShoulderY(s);
+ if(y>=shoulder){
+  const t=Math.max(0,Math.min(1,(y-shoulder)/(s.top-shoulder)));
+  return w+(w*FAL_HANDGUARD_ROOF_RATIO-w)*t;
+ }
+ if(y>=s.bottom+.20)return w;
+ return w-.20*Math.max(0,Math.min(1,(s.bottom+.20-y)/.20));
+}
 function ringPoint(station:Station,index:number):[number,number,number]{
- const {x,top,bottom,halfWidth:w}=station;
- // Eight broad planar facets. The top stays wide: never an M16 triangle.
+ const {x,top,bottom,halfWidth:w}=station,shoulder=falHandguardShoulderY(station);
+ const roof=w*FAL_HANDGUARD_ROOF_RATIO;
  const points:readonly (readonly [number,number])[]=[
-  [bottom,-w+BOTTOM_INSET],[bottom,w-BOTTOM_INSET],
-  [bottom+BOTTOM_CHAMFER,w],[top-TOP_CHAMFER,w],
-  [top,w-TOP_INSET],[top,-w+TOP_INSET],
-  [top-TOP_CHAMFER,-w],[bottom+BOTTOM_CHAMFER,-w]
+  [bottom,-w+.20],[bottom,w-.20],
+  [bottom+.20,w],[shoulder,w],
+  [top,roof],[top,-roof],
+  [shoulder,-w],[bottom+.20,-w]
  ];
  return [x,points[index][0],points[index][1]];
 }
@@ -62,37 +81,24 @@ export function addFALFacetedHandguard(root:THREE.Group,id:string,
  root.add(mesh);
  return mesh;
 }
-/** Three substantial, six-sided slots per side, tapered with the actual
- * handguard flats. A single mesh per side means no floating z-offset vents
- * over the nose taper and no per-slot scene objects.
+/** Three oversized FN hexagonal slots; each corner is projected
+ * to the same height-varying surface as the sloped fore-end.
+ * One batched mesh per side, with no new draw calls.
  */
-function handguardHalfWidthAt(x:number):number{
- const stations=FAL_HANDGUARD_STATIONS;
- for(let i=1;i<stations.length;i++){
-  if(x<=stations[i].x){
-   const a=stations[i-1],b=stations[i];
-   const t=Math.max(0,Math.min(1,(x-a.x)/(b.x-a.x)));
-   return a.halfWidth+(b.halfWidth-a.halfWidth)*t;
-  }
- }
- return stations[stations.length-1].halfWidth;
-}
 export function addFALHandguardVents(root:THREE.Group,id:string,
  material:THREE.Material):THREE.Mesh[]{
  const result:THREE.Mesh[]=[];
  for(const side of [-1,1] as const){
   const vertices:number[]=[],indices:number[]=[];
-  for(const x of [6.65,9.25,11.75]){
-   const w=.90,h=.28,cap=.20,y=.36;
-   // Long hexagonal ends evoke the rounded FN openings at miniature size,
-   // instead of duplicating the G3's shorter square ventilation pattern.
+  for(const x of [6.65,9.22,11.50]){
+   const w=.83,h=.29,cap=.24,y=.42;
    const profile:readonly [number,number][]=[
     [x-w+cap,y-h],[x+w-cap,y-h],[x+w,y],
     [x+w-cap,y+h],[x-w+cap,y+h],[x-w,y]
    ];
    const first=vertices.length/3;
    for(const [px,py] of profile)
-    vertices.push(px,py,side*(handguardHalfWidthAt(px)+.018));
+    vertices.push(px,py,side*(falHandguardSideHalfZAt(px,py)+.035));
    for(let i=1;i<5;i++){
     if(side===1)indices.push(first,first+i,first+i+1);
     else indices.push(first,first+i+1,first+i);
@@ -106,8 +112,8 @@ export function addFALHandguardVents(root:THREE.Group,id:string,
   mesh.userData.falVentSide=side;
   mesh.userData.falVentCount=3;
   mesh.userData.falFaceAligned=true;
-  mesh.castShadow=false;mesh.receiveShadow=false;
-  mesh.renderOrder=3;
+  mesh.userData.falTriangularP5=true;
+  mesh.castShadow=false;mesh.receiveShadow=false;mesh.renderOrder=3;
   root.add(mesh);result.push(mesh);
  }
  return result;
