@@ -10,9 +10,17 @@ import {isFootstepObstacle} from './breach-traversal-surfaces.ts';
 import {canRelocateCover} from './breach-movable-cover.ts';
 import type {Blocker} from './breach-nav-diagnostics.ts';
 
-type HeldGoal={orderId:number;goalKey:string;revision:number};
+type HeldGoal={orderId:number;goalKey:string;revision:number;reason:string};
 const held=new WeakMap<TeamActor,HeldGoal>();
-const reason='DESTINATION OBSTRUCTED · EDIT MOVE';
+/** Only describe a FIXED obstruction the actor has physically encountered
+ * and which the squad's intel already knows. This is player guidance,
+ * never a command to retarget or an assertion that some offset is safe.
+ */
+export function fixedGoalCorrectionText(blocker:'wall'|'furniture'):string{
+ return blocker==='wall'?
+  'MOVE BLOCKED · GO INSIDE WALL · DRAG WAYPOINT TO CLEAR FLOOR':
+  'MOVE BLOCKED · GO INSIDE FURNITURE · DRAG WAYPOINT TO CLEAR FLOOR';
+}
 
 /** Use ONLY known and non-relocatable geometry. A closed/opening door,
  * an undiscovered prop, or a temporarily standing teammate is not a fixed
@@ -50,7 +58,7 @@ export function holdKnownFixedAuthoredGoal(
       previous.revision!==sessionWorldGeometry(s).revision){
      held.delete(a);
      if(a.orderIssue?.nodeId===previous.orderId&&
-        a.orderIssue.reason===reason)a.orderIssue=null;
+        a.orderIssue.reason===previous.reason)a.orderIssue=null;
      a.retryRouteAt=0;a.recoveryAttempts=0;
    }else{
      a.velocity=0;
@@ -66,8 +74,9 @@ export function holdKnownFixedAuthoredGoal(
      a.lastBlocker!=='wall'))return false;
  const obstruction=knownFixedGoalBlock(s,goal);
  if(!obstruction)return false;
+ const reason=fixedGoalCorrectionText(obstruction as 'wall'|'furniture');
  held.set(a,{orderId:node!.id,goalKey,
-   revision:sessionWorldGeometry(s).revision});
+   revision:sessionWorldGeometry(s).revision,reason});
  a.orderIssue={nodeId:node!.id,reason,since:s.seconds};
  a.lastBlocker=obstruction;
  a.velocity=0;
