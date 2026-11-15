@@ -41,7 +41,7 @@ test('P8 upper is smaller than handguard and separated by one dark steel block',
 test('P8 retains the tall shoulder wedge but removes the fore-end lower belly',()=>{
  const {root,m}=make(),h=FAL_HANDGUARD_STATIONS[0];
  assert.equal(h.top,1.90);assert.equal(h.bottom,-1.56);
- assert.equal(falHandguardShoulderY(h),-.55);
+ assert.ok(Math.abs(falHandguardShoulderY(h)+.55)<1e-8);
  const shell=root.children.find(x=>x.userData.falFacetedHandguard);
  assert.equal(countGeometry(shell).triangles,24);
  clearWeaponSilhouette(root);m.dispose();
@@ -61,7 +61,7 @@ test('P8 stock heel grows and the grip becomes shorter and more swept',()=>{
 });
 test('P8 wider steel 7.62 magazine, unchanged nominal 20-round mount',()=>{
  const {root,m,c}=make();
- assert.equal(FAL_MAG20_OUTLINE[1][0]-FAL_MAG20_OUTLINE[0][0],3.78);
+ assert.ok(Math.abs(FAL_MAG20_OUTLINE[1][0]-FAL_MAG20_OUTLINE[0][0]-3.78)<1e-8);
  assert.equal((FAL_MAG20_OUTLINE[1][0]+FAL_MAG20_OUTLINE[0][0])/2,FAL_MAG20_CENTER_X);
  assert.equal(Math.min(...FAL_MAG20_OUTLINE.map(x=>x[1])),-8.05);
  assert.equal(root.children.filter(x=>x.userData.falStampedRib).length,2);
