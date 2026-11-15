@@ -1,0 +1,69 @@
+name: D3.13F read-only doorway route forensics
+on:
+  pull_request:
+    paths:
+      - scripts/audit-r7-squad-execution.mjs
+      - .github/workflows/d3-13f-route-witness.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  route-witness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - name: Reproduce independent motel small (read-only 60Hz)
+        run: |
+          mkdir -p ${{ runner.temp }}/d3-13f
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 \
+            --site-index=8 --audit-seed=1855967 --audit-scale=small \
+            --route-transitions --route-quality --progress \
+            --trace-actor=rook --trace-mode=authored \
+            > ${{ runner.temp }}/d3-13f/motel-small-rook.json
+      - name: Reproduce independent motel standard (read-only 60Hz)
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 \
+            --site-index=8 --audit-seed=2069994 --audit-scale=standard \
+            --route-transitions --route-quality --progress \
+            --trace-actor=rook --trace-mode=authored \
+            > ${{ runner.temp }}/d3-13f/motel-standard-rook.json
+      - name: Summarize real transient route sources and safety
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const root=process.env.RUNNER_TEMP+'/d3-13f';
+          for(const file of ['motel-small-rook.json','motel-standard-rook.json']){
+            const report=JSON.parse(fs.readFileSync(root+'/'+file,'utf8'));
+            const mode=report.rows[0]?.modes.find(m=>m.mode==='authored');
+            const witness=mode?.routeTransitions;
+            const events=witness?.events??[];
+            const perSource={};
+            for(const event of events)
+              perSource[event.source]=(perSource[event.source]??0)+1;
+            const actor=mode?.operators.find(a=>a.id==='rook');
+            console.log('D313F_SOURCE_EVIDENCE',JSON.stringify({
+              file,seed:report.rows[0]?.seed,arrivals:mode?.arrivals,
+              remaining:actor?.remaining,doorEpisode:actor?.doorEpisode,
+              captured:events.length,truncated:events.length>=400,
+              perSource,first:events.slice(0,6),last:events.slice(-6)
+            }));
+            if(!witness||report.summary.exceptions||
+              report.summary.invalidPositions||report.summary.corruptedPlans||
+              report.summary.physicsStepViolations)throw Error('invalid forensic audit');
+          }
+          NODE
+      - name: Retain raw read-only route witnesses
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-13f-independent-motel-route-witness
+          path: ${{ runner.temp }}/d3-13f/*.json
+          retention-days: 90
