@@ -7,7 +7,7 @@
  * Live Arsenal and the one-material comparison lab share this same builder.
  */
 import * as THREE from 'three';
-import {addOutline,addCuboid,addFacetedTube,addBar,
+import {addOutline,addCuboid,addFacetedTube,addBar,addProfileFrame,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH} from './fal-magazine-profiles.ts';
 import {addFALFacetedHandguard} from './fal-handguard-profiles.ts';
@@ -144,5 +144,18 @@ export function buildFALCoreSilhouette(
   grip.position.z=-1.61;
   grip.userData.falCarryGrip=true;
  }
+ // P4 R2B: one bold open trigger-guard arch. Intentional negative space
+ // BELOW the lower receiver; no tiny curved wires, fake trigger pins or
+ // duplicate trigger geometry. Added after carry handle so legacy part IDs
+ // and the 0–5 receiver mesh naming contract remain stable.
+ const guard=addProfileFrame(root,'receiver',partIds.receiver,
+  ids.receiver++,[
+   [-3.53,-2.20],[-.89,-2.20],[-.64,-2.55],
+   [-.74,-3.48],[-1.21,-3.70],[-3.04,-3.64],[-3.55,-3.22]
+  ],[
+   [-3.02,-2.65],[-3.11,-3.06],[-2.86,-3.32],
+   [-1.33,-3.38],[-1.11,-3.18],[-1.08,-2.67]
+  ],.38,materials.receiver);
+ guard.userData.falTriggerGuard=true;
  return root;
 }
