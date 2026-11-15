@@ -70,6 +70,9 @@ export function resolveHelmetField(id:string,raw:unknown,
  // rail-mounted hardware. This is *not* enabled on a historical default.
  // Like ACH, any unsupported combination is suppressed without deleting it.
  const r={...s};
+ // A historical PASGT does not have the battery carrier supported by the
+ // modern ACH/MICH field kit. Keep the saved intent for another shell.
+ if(id==='pasgt')r.battery=false;
  // Stored choices are never discarded. Only the effective cosmetic assembly
  // is constrained by the active cover, mount availability and occupied slots.
  if(context.covered===false&&r.concealment!=='net')r.concealment='none';

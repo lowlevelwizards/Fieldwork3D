@@ -45,3 +45,14 @@ test('A2-C Studio uses requested state for its actions, not suppressed visual st
  assert.match(source,/helmet-option-saved-inactive/);
  assert.match(source,/Tap to clear saved preference|control\.note/);
 });
+
+test('A2-C PASGT battery preferences are preserved but never mounted',()=>{
+ const requested=readHelmetField({battery:true,rails:true});
+ const resolved=resolveEffectiveHelmetAppearance({shell:'pasgt',helmetField:requested});
+ const battery=helmetFieldControlState('battery',requested,resolved.field,
+  resolved.availability.battery);
+ assert.equal(resolved.field.battery,false);
+ assert.equal(battery.status,'saved-inactive');
+ assert.equal(battery.disabled,false);
+ assert.match(battery.note,/Not available on PASGT/);
+});
