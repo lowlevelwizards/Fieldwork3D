@@ -39,6 +39,8 @@ import {routeWithSqueezeWorld,routeToNextOperableDoor,
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {physicalOrderOutcome,successfulSquadExecution}
+ from '../src/breach-order-outcome.ts';
 import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.ts';
 import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
@@ -409,6 +411,13 @@ function run(site,seed,kind){
   const planIntact=actors.every((a,i)=>a.plan.every(n=>initial[i].has(n.id)));
   const orderIssues=actors.map(a=>a.orderIssue?.reason??null);
   const complete=planned.accepted===4&&actors.every(a=>!a.plan.length);
+  // Historical 'complete' means QUEUE DRAINED only, for stable old CI.
+  // A new explicit result requires every real body at original GO and
+  // zero terminally cancelled orders in the authoritative actor ledger.
+  const physicalEvidence=actors.map(a=>({
+   arrived:!!stats.details.find(d=>d.actor===a.id)?.arrived,
+   remainingOrders:a.plan.length,failedOrders:a.failedOrders??0}));
+  const successful=planned.accepted===4&&successfulSquadExecution(physicalEvidence);
   // D3.7 forensic warehouse probe, END OF RUN ONLY. Compare leaf swept
   // against architecture with and without human bodies, and test the
   // already-existing finite bypass / full-body self-clearance options.
@@ -684,6 +693,8 @@ function run(site,seed,kind){
     blockedTime:round(actor.blockedTime),navCount:actor.nav.length};
   });
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
+   successful,queueDrained:complete,
+   cancelledOrders:actors.reduce((n,a)=>n+(a.failedOrders??0),0),
    rejected:planned.rejected,reason:planned.reason??null,
    rejectedDoors:planned.rejectedDoors??[],complete,
    warehouseHingeWitness,
@@ -722,6 +733,11 @@ function run(site,seed,kind){
    invalidPositions:stats.invalidPositions,
    operators:stats.details.map(d=>({
     id:d.actor,arrived:d.arrived,remaining:d.remaining,
+    failedOrders:actors.find(a=>a.id===d.actor)?.failedOrders??0,
+    lastFailedOrder:actors.find(a=>a.id===d.actor)?.lastFailedOrder??null,
+    outcome:physicalOrderOutcome({arrived:d.arrived,
+     remainingOrders:actors.find(a=>a.id===d.actor)?.plan.length??0,
+     failedOrders:actors.find(a=>a.id===d.actor)?.failedOrders??0}),
     activeOrderDetails:actors.find(a=>a.id===d.actor).plan[0]?
      {kind:actors.find(a=>a.id===d.actor).plan[0].kind,
       id:actors.find(a=>a.id===d.actor).plan[0].id,
@@ -794,6 +810,17 @@ const summary={
  triageCounts,sites:rows.length,exceptions,attempted:results.length,
  acceptedFour:results.filter(r=>r.accepted===4).length,
  completedFour:results.filter(r=>r.complete).length,
+ // D3.16: 'completedFour' is a backwards-compatible queue-drained count;
+ // only successfulFour additionally rejects any cancelled authored order
+ // and requires four real operators to reach their original world goals.
+ successfulFour:results.filter(r=>r.successful).length,
+ terminallyCancelledOrders:sum('cancelledOrders'),
+ cancelledOperators:results.reduce((n,r)=>n+(r.operators??[])
+  .filter(o=>o.outcome==='cancelled').length,0),
+ physicallyPendingOperators:results.reduce((n,r)=>n+(r.operators??[])
+  .filter(o=>o.outcome==='pending').length,0),
+ unreachedDrainedOperators:results.reduce((n,r)=>n+(r.operators??[])
+  .filter(o=>o.outcome==='unreached').length,0),
  // Unlike logical plan completion, these inspect real FINAL world positions.
  physicalArrivals:sum('arrivals'),
  physicalCompletedFour:results.filter(r=>r.accepted===4&&r.arrivals===4).length,
