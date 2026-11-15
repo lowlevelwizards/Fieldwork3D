@@ -1,10 +1,11 @@
-name: D3.12A exact swept leaf parity and 45-second safety
+name: D3.12A-B exact body and squeeze parity with 45-second safety
 on:
   pull_request:
     branches: [feature/d3-11e-bounded-corner-lookahead-20261114]
     paths:
       - 'src/breach-navigation.ts'
       - 'tests/release-d3-12a-swept-parity.test.mjs'
+      - 'tests/release-d3-12b-squeeze-parity.test.mjs'
       - '.github/workflows/d3-12a-swept-parity.yml'
   workflow_dispatch:
 permissions:
@@ -24,9 +25,9 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - name: Exact hinge-sweep parity and doorway safeguards
+      - name: Exact body and squeeze parity and doorway safeguards
         run: |
-          node --experimental-strip-types --test tests/release-d3-12a-swept-parity.test.mjs tests/door-traversal-d4-physics.test.mjs tests/release-d3-11d-portal-handoff.test.mjs tests/release4-cornering.test.mjs tests/release-d3-11e-corner-lookahead.test.mjs
+          node --experimental-strip-types --test tests/release-d3-12a-swept-parity.test.mjs tests/release-d3-12b-squeeze-parity.test.mjs tests/door-traversal-d4-physics.test.mjs tests/release-d3-11d-portal-handoff.test.mjs tests/release4-cornering.test.mjs tests/release-d3-11e-corner-lookahead.test.mjs
       - name: TypeScript and production build
         run: npm run build
       - name: Paired 45-second authentic physical motor comparison
@@ -66,7 +67,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: d3-12a-paired45
+          name: d3-12ab-paired45
           path: |
             ${{ runner.temp }}/baseline.json
             ${{ runner.temp }}/current.json
