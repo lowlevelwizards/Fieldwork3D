@@ -49,7 +49,7 @@ export function buildFALCoreSilhouette(
   [-6.13,-1.25],[-8.40,-1.58],[-10.50,-2.50],
   [-14.60,-3.39]
  ],3.18);
- b('stock',-14.73,-1.17,0,.54,4.65,3.45);
+ b('stock',-14.73,-1.15,0,.54,4.70,3.45);
 
  // S1C: continuous FAL cover with one angular nose, no invented top notch.
  // cocking tube and NO AR-like split carry-handle upper.
