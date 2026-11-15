@@ -24,11 +24,11 @@ import {applyReplayFrame} from '../src/breach-replay.ts';
 // undo/redo. Compare the actual serialized command contract, not object shape.
 const authoredPlan=plan=>JSON.parse(JSON.stringify(plan));
 const GOLDENS=Object.freeze({
- // D1 accepted rebaseline: the same authored WAIT + crossing now
- // follows physically open parallel lanes instead of an implicit full-width
- // predecessor reservation. Assert identical replayed 60Hz checkpoints,
- // actual door opening, completed WAIT and both operators crossing below.
- door:'dbcdedb63de8a4286ff15f51f5a53cfc4b8c49b33a6d2bc8b791aeff3e10a1ff',
+ // D3.2–D3.12 consolidated rebaseline: deterministic single-opener and
+ // actual physical doorway handoff change the crossing timeline. The
+ // independent repeated 60Hz replay hash, WAIT completion, genuine door
+ // opening, both operator crossings and no-ping-pong tests remain required.
+ door:'2a7842fd010610b57cd542c40069f420c78231d756280e3f90619c1123567236',
  medical:'0166aaa68900f3a0150b3edab263e5c17573c368a2249e85debd6a9f389f6261',
  // A3.11 approved rebaseline: earlier visible-contact point fire changes
  // the genuine deterministic hit timeline; all event/AI invariants below pass.
