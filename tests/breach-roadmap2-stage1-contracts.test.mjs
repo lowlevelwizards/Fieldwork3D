@@ -24,11 +24,11 @@ import {applyReplayFrame} from '../src/breach-replay.ts';
 // undo/redo. Compare the actual serialized command contract, not object shape.
 const authoredPlan=plan=>JSON.parse(JSON.stringify(plan));
 const GOLDENS=Object.freeze({
- // D3.2–D3.12 consolidated rebaseline: deterministic single-opener and
- // actual physical doorway handoff change the crossing timeline. The
- // independent repeated 60Hz replay hash, WAIT completion, genuine door
- // opening, both operator crossings and no-ping-pong tests remain required.
- door:'2a7842fd010610b57cd542c40069f420c78231d756280e3f90619c1123567236',
+ // D3.13E lawful-reach rebaseline: cached doorway episodes no longer
+ // start an out-of-range automatic OPEN. Both 60Hz repetitions still agree,
+ // WAIT executes, both teammates physically cross, and door opening occurs.
+ // Separate direct tests assert a remote closed leaf never opens by itself.
+ door:'c22020dc046d75c042411c7f3a304f2c6880ece5ed9bb24e69f1b78726b734e0',
  medical:'0166aaa68900f3a0150b3edab263e5c17573c368a2249e85debd6a9f389f6261',
  // A3.11 approved rebaseline: earlier visible-contact point fire changes
  // the genuine deterministic hit timeline; all event/AI invariants below pass.
