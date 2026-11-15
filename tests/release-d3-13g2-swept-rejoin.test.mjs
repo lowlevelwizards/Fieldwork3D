@@ -7,6 +7,8 @@ import {initDoor} from '../src/breach-door.ts';
 import {doorLeafSegment,OPERATOR_RADIUS}
  from '../src/breach-core.ts';
 import {sweptBodyClear} from '../src/breach-navigation.ts';
+import {joinedLocalOpenLeafStage}
+ from '../src/breach-door-escape-stage.ts';
 const p=(x,y)=>({x,y});
 
 test('D3.13G2 only drops blocked disposable prefix and retains authored goal',()=>{
@@ -98,4 +100,35 @@ test('D3.13G2B changed authored goal or door invalidates prior escape evidence',
  noteRepeatedDoorLeafEscape(actor,3.6,goal,'SIDE',nav);
  assert.equal(takeRepeatedDoorEscapeRoute(actor,3.7,goal),null,
   'another door starts a new bounded episode');
+});
+
+test('D3.13G2C local portal stage retains exact destination and checks every leg',()=>{
+ const door=initDoor({id:'PORTAL',a:p(290,260),b:p(332,260),
+   kind:'hinged',hinge:'a',swing:-1,open:true,openedAt:0},0);
+ door.openFraction=1;door.angularVelocity=0;
+ const from=p(308,229),goal=p(326,420);
+ let tested=0,joined=0;
+ const route=joinedLocalOpenLeafStage(from,goal,door,
+  (a,b)=>{tested++;if(b===goal)joined++;return true;},
+  ()=>true,
+  (_from,to)=>[{...to}]);
+ assert.ok(route.length>=2,'the local stage always includes authored tail');
+ assert.deepEqual(route.at(-1),goal,'never declare the portal the final GO');
+ assert.ok(tested>=2&&joined>=1,'real stage and first continuation join swept');
+ assert.deepEqual(joinedLocalOpenLeafStage(from,goal,
+  {...door,open:false},()=>true,()=>true,()=>[goal]),[],
+  'a closed door cannot authorize this recovery');
+});
+
+test('D3.13G2C rejects a purported intel tail that cannot be joined physically',()=>{
+ const door=initDoor({id:'PORTAL',a:p(290,260),b:p(332,260),
+   kind:'hinged',hinge:'a',swing:1,open:true,openedAt:0},0);
+ door.openFraction=1;door.angularVelocity=0;
+ const from=p(306,221),goal=p(320,420);
+ assert.deepEqual(joinedLocalOpenLeafStage(from,goal,door,
+   (_a,b)=>b!==goal,()=>true,()=>[goal]),[],
+   'the first join must clear the currently solid world');
+ assert.deepEqual(joinedLocalOpenLeafStage(from,goal,door,
+   ()=>true,()=>true,()=>[p(319,350)]),[],
+   'an incomplete local stage must never count as the player goal');
 });
