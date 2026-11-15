@@ -1,0 +1,99 @@
+name: D3.13A general hinge progress — paired 45s motor acceptance
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-door-opening-progress.ts'
+      - 'src/breach-motor-door.ts'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'tests/release-d3-13a-opening-progress.test.mjs'
+      - '.github/workflows/d3-13a-general-physicality.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-13a-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  paired:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Door progress, genuine collision and single-opener contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-13a-opening-progress.test.mjs \
+            tests/release-d3-9-single-opener.test.mjs \
+            tests/release-d3-2-hinge-arbitrated-release.test.mjs \
+            tests/door-traversal-d4-physics.test.mjs \
+            tests/release-d3-11d-portal-handoff.test.mjs
+      - name: Typecheck + deployable production build
+        run: npm run build
+      - name: Compare old 11-map corpus and distinct 11-map development corpus
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d3-baseline" b8ed3d6100582ef8a5a8acd0cc3dee0fff98adbd
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d3-baseline/node_modules"
+          # Identical forensic instrumentation on both versions; ONLY the
+          # tracked motor code differs. Baseline never imports new motor code.
+          cp scripts/audit-r7-squad-execution.mjs "$RUNNER_TEMP/d3-baseline/scripts/audit-r7-squad-execution.mjs"
+          for label in old dev; do
+            if [[ "$label" == dev ]]; then args=(--dev-seed-base=520701 --dev-seed-stride=7013);else args=();fi
+            node --experimental-strip-types "$RUNNER_TEMP/d3-baseline/scripts/audit-r7-squad-execution.mjs" \
+              11 2700 --progress --route-quality "${args[@]}" > "$RUNNER_TEMP/${label}-baseline.json"
+            node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+              11 2700 --progress --route-quality "${args[@]}" > "$RUNNER_TEMP/${label}-candidate.json"
+          done
+      - name: Surface real physical outcomes and reject regressions
+        run: |
+          node --input-type=module -e '
+          import fs from "node:fs";
+          const load=p=>JSON.parse(fs.readFileSync(p,"utf8"));
+          const safe=(o,label)=>{
+           const s=o.summary;
+           for(const key of ["exceptions","invalidPositions","physicsStepViolations",
+               "corruptedPlans","unboundedManeuverAttempts"])
+            if(s[key])throw Error(label+" unsafe "+key+"="+s[key]);
+          };
+          for(const label of ["old","dev"]){
+           const before=load(process.argv[1]+"/"+label+"-baseline.json");
+           const after=load(process.argv[1]+"/"+label+"-candidate.json");
+           safe(before,label+" before");safe(after,label+" after");
+           const pick=o=>({arrivals:o.summary.physicalArrivals,
+            squads:o.summary.physicalCompletedFour,
+            complete:o.summary.completedFour,
+            stalls:o.summary.stallEpisodes,retries:o.summary.retries,
+            waiting:o.summary.passageWaitSeconds,doorFlips:o.summary.doorStateFlips,
+            loops:o.progressSummary.suspectedLoops,
+            still:o.progressSummary.sustainedStill,
+            routeSearches:o.routeQualitySummary.searches});
+           console.log("D313A_PAIRED_"+label.toUpperCase(),
+            JSON.stringify({before:pick(before),after:pick(after)}));
+           if(after.summary.physicalArrivals<before.summary.physicalArrivals||
+              after.summary.physicalCompletedFour<before.summary.physicalCompletedFour)
+            throw Error("physical arrival regression in "+label);
+           if(after.progressSummary.sustainedStill>before.progressSummary.sustainedStill)
+            throw Error("additional sustained still in "+label);
+           if(after.summary.doorStateFlips>before.summary.doorStateFlips*1.1+2)
+            throw Error("new door oscillation in "+label);
+           if(after.routeQualitySummary.searches>
+              before.routeQualitySummary.searches*1.1+5)
+            throw Error("excess pathfinding in "+label);
+          }' "$RUNNER_TEMP"
+      - name: Keep exact read-only forensic evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-13a-paired-old-and-development-45s
+          path: |
+            ${{ runner.temp }}/old-baseline.json
+            ${{ runner.temp }}/old-candidate.json
+            ${{ runner.temp }}/dev-baseline.json
+            ${{ runner.temp }}/dev-candidate.json
+          if-no-files-found: ignore
