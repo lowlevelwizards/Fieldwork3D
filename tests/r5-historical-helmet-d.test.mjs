@@ -11,15 +11,16 @@ import {initialWardrobe,setWardrobeStyle,resolvedWardrobe} from '../src/operator
 test('R5D: M1 is independent, wider and less ear-wrapping than the SSh-40',()=>{
  const m1=headwearCuboidVolumes('m1-steel');
  const ssh=headwearCuboidVolumes('soviet-steel');
- assert.ok(m1.length>=8);
- assert.ok(m1.some(p=>p.name.includes('rolled-rim')));
+ assert.ok(m1.length>=4,'fit envelopes are derived metadata, not shell geometry');
+ assert.ok(m1.some(p=>p.name.includes('rim-fit')));
  assert.ok(ssh.some(p=>p.name.includes('edge')));
  assert.notDeepEqual(m1,ssh);
  assert.ok(Math.abs(HEAD_SILHOUETTE_METRICS['m1-steel'].frontExtent)>
   Math.abs(HEAD_SILHOUETTE_METRICS['soviet-steel'].frontExtent));
  const built=createHeadwearSilhouette('m1-steel',new THREE.MeshStandardMaterial());
  assert.equal(built.children.length,1);
- assert.equal(built.userData.primitive,'cuboids-only');
+ assert.equal(built.userData.primitive,'m1-one-piece-faceted-profile');
+ assert.equal(built.children[0].geometry.userData.m1FacetedSurface,true);
 });
 test('R5D: M1 retains the real helmet equipment class and curated shell finishes',()=>{
  assert.deepEqual(headwearCamoChoices('m1-steel'),[]);
