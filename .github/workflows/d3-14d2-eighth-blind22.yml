@@ -37,6 +37,7 @@ jobs:
         run: |
           cp candidate/scripts/audit-r7-squad-execution.mjs baseline/scripts/audit-r7-squad-execution.mjs
           cp candidate/scripts/lib/d3-14d-eighth-blind22.mjs baseline/scripts/lib/d3-14d-eighth-blind22.mjs
+          cp candidate/scripts/lib/d3-15a-ninth-blind22.mjs baseline/scripts/lib/d3-15a-ninth-blind22.mjs
           npm --prefix baseline install --no-audit --no-fund
           npm --prefix candidate install --no-audit --no-fund
           mkdir -p "$RUNNER_TEMP/d3-14d"
