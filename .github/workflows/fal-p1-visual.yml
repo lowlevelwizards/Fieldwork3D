@@ -1,4 +1,4 @@
-name: FAL P8 — Proportion rebalance and bold FN landmarks
+name: FAL P9 — Final alignment, finish parity and live-studio lighting
 on:
   pull_request:
     branches: [main]
@@ -22,6 +22,9 @@ on:
       - 'tests/weapon-fal-p5-triangle.test.mjs'
       - 'tests/weapon-fal-p6-geometry-budget.test.mjs'
       - 'tests/weapon-fal-p8-proportions.test.mjs'
+      - 'tests/weapon-fal-p9-final-alignment.test.mjs'
+      - 'tests/arsenal-v2-inspection-presentation.test.mjs'
+      - 'src/arsenal/inspection-lighting.ts'
       - 'scripts/audit-weapon-geometry.mjs'
       - 'scripts/smoke-fal-p1-visual.mjs'
       - '.github/workflows/fal-p1-visual.yml'
@@ -48,7 +51,9 @@ jobs:
             tests/weapon-fal-p4-receiver.test.mjs \
             tests/weapon-fal-p5-triangle.test.mjs \
             tests/weapon-fal-p6-geometry-budget.test.mjs \
-            tests/weapon-fal-p8-proportions.test.mjs
+            tests/weapon-fal-p8-proportions.test.mjs \
+            tests/weapon-fal-p9-final-alignment.test.mjs \
+            tests/arsenal-v2-inspection-presentation.test.mjs
       - name: Quantify emitted triangles against existing weapons
         run: node --experimental-strip-types scripts/audit-weapon-geometry.mjs
       - name: Typecheck and production compile
@@ -57,10 +62,14 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Capture actual shared-scale M4/G3/FAL 3D views
         run: node scripts/smoke-fal-p1-visual.mjs
+      - name: Verify dark-background live-lit Arsenal Workbench on mobile
+        run: FW_F5_CAPTURE=1 node scripts/smoke-arsenal-lighting-r714.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fal-p8-final-3d-comparisons
-          path: fal-p1-captures/
+          name: fal-p9-final-3d-comparisons
+          path: |
+            fal-p1-captures/
+            visual-foundation-f5-captures/
           if-no-files-found: ignore
           retention-days: 14

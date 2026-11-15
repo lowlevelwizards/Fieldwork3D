@@ -35,7 +35,7 @@ test('upper, one-piece lower/magwell and low bore-line ejection rectangle',()=>{
  assert.ok(!root.children.some(x=>x.userData.falTriggerGuard));
  const port=root.children.find(x=>x.userData.falEjectionPort);
  assert.ok(port&&port.userData.falRectangularPort);
- assert.ok(bb(port).min.x>=.10&&bb(port).max.x<=2.68);
+ assert.ok(bb(port).min.x>=-.83&&bb(port).max.x<=2.68);
  assert.ok(bb(port).min.y>=.10&&bb(port).max.y<=.84);
  assert.equal(port.geometry.getIndex().count,6);
  const charger=root.children.find(x=>x.userData.falChargingHandle);

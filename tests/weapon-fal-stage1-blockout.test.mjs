@@ -68,8 +68,8 @@ test('FAL S1C: reference-led proportions preserve key FAL forms',()=>{
  const ears=byName('family-barrel-fal-stage1-barrel-2');
  const receiver=byName('family-receiver-fal-stage1-receiver-0');
  assert.ok(stock.max.y>=.70&&stock.max.y<=.75,'stock comb drops toward the butt');
- assert.ok(stock.min.y>=-4.13&&stock.min.y<=-4.04,'P8 stock heel is broad and extended downward');
- assert.ok(grip.min.x>=-6.56&&grip.min.x<=-6.48,'P8 grip sweeps further backward');
+ assert.ok(stock.min.y>=-4.85&&stock.min.y<=-4.78,'P9 stock grows 15 percent without raising the comb');
+ assert.ok(grip.min.x>=-6.85&&grip.min.x<=-6.78,'P9 grip has one more simple rearward rake');
  assert.ok(grip.min.y>=-5.89&&grip.min.y<=-5.81,'P8 grip is shorter and sharply raked');
  assert.ok(handguard.max.y>=1.85&&handguard.max.y<=1.95&&
   handguard.min.y>=-1.60&&handguard.min.y<=-1.52,

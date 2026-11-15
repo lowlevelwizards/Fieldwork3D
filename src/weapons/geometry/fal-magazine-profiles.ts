@@ -2,7 +2,7 @@
  * silhouette and registration identity, shared with carried reload visuals.
  */
 import type {Outline} from './profile-primitives.ts';
-export const FAL_MAG20_CENTER_X=1.35;
+export const FAL_MAG20_CENTER_X=1.00;
 export const FAL_MAG20_TOP_Y=-2.98;
 export const FAL_MAG20_LENGTH=5.07;
 /** Shared FAL rifle magazine depth matches the simplified G3 class. */
@@ -11,9 +11,9 @@ export const FAL_MAG20_DEPTH=1.62;
  * lower than front heel. One prism, no separate shoe or AK-like curvature.
  * Max visual drop remains -8.05 for historical pose/camera comparisons. */
 export const FAL_MAG20_OUTLINE:Outline=[
- [-.54,-2.98],[3.24,-2.98],
- [3.24,-7.30],[3.08,-7.47],
- [-.40,-8.05],[-.54,-7.90]
+ [-.89,-2.98],[2.89,-2.98],
+ [2.89,-7.30],[2.73,-7.47],
+ [-.75,-8.05],[-.89,-7.90]
 ];
 
 /** Two parallel, restrained steel pressing ribs built from a shared

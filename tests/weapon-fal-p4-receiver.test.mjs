@@ -36,7 +36,7 @@ test('rear receiver cap faces OUTWARD and is not culled in the Workbench',()=>{
 test('ejection port is down at the barrel line without changing actual bore/socket coordinates',()=>{
  const {root,mat}=create();
  const port=root.children.find(x=>x.userData.falEjectionPort);
- assert.equal(FAL_VISUAL_ANATOMY.portX,1.39);
+ assert.equal(FAL_VISUAL_ANATOMY.portX,.92);
  assert.equal(FAL_VISUAL_ANATOMY.portY,.47);
  assert.ok(bb(port).min.y>=.1&&bb(port).max.y<=.85);
  assert.ok(bb(port).min.z>0);

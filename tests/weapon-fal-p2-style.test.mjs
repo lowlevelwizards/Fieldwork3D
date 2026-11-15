@@ -57,7 +57,7 @@ test('FAL P2: balanced stock, slightly slimmer grip, bold seated pad and handle'
  approx(shell.max.z-shell.min.z,2.34);
  approx(grip.max.z-grip.min.z,2.16);
  approx(pad.max.x-pad.min.x,.88);
- approx(pad.max.y-pad.min.y,4.26);
+ approx(pad.max.y-pad.min.y,4.98);
  approx(pad.min.x,-15);
  assert.ok(pad.max.x>shell.min.x+.06);
  assert.ok(pad.min.y<shell.min.y&&pad.max.y>.10);
@@ -122,7 +122,7 @@ test('FAL P2: restrained receiver port remains right-only and HK model unchanged
  const port=named(fal,'family-receiver-fal-50-receiver-8');
  const p=bounds(port);
  assert.equal(port.userData.falEjectionPort,true);
- approx(p.max.x-p.min.x,2.50);
+ approx(p.max.x-p.min.x,3.44);
  assert.ok(p.min.z>.95&&p.max.z<1.50,'right port hugs the narrower receiver face');
  const receiver=named(fal,'family-receiver-fal-50-receiver-0');
  assert.ok(bounds(receiver).max.z>=1.68&&bounds(receiver).max.z<=1.72);

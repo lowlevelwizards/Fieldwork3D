@@ -21,11 +21,11 @@ export const FAL_ART:Readonly<{
  stockRearX:-15.00,receiverRearX:-6.60,receiverFrontX:3.85,
  handguardStartX:4.20,handguardEndX:14.10,
  frontSightX:14.70,muzzleX:22.00,
- magazineCenterX:1.35,magazineBottomY:-8.05
+ magazineCenterX:1.00,magazineBottomY:-8.05
 });
 
 export type FALCoreOptions={raisedCarryHandle?:boolean;showFactoryMuzzle?:boolean};
-export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material;transitionMetal?:THREE.Material}>;
+export type FALCoreMaterials=Readonly<Record<SlotName,THREE.Material>&{receiverLower?:THREE.Material;magazineRib?:THREE.Material;muzzleSlot?:THREE.Material;muzzleMetal?:THREE.Material;transitionMetal?:THREE.Material}>;
 export type FALCoreIds=Readonly<Record<SlotName,string>>;
 /** One source of geometry for the test lab and production FAL. */
 export function buildFALCoreSilhouette(
@@ -54,9 +54,11 @@ export function buildFALCoreSilhouette(
   // Keep the P7 drooping comb and thin depth, but give the heel
   // proper 7.62-stock weight instead of a miniature short butt.
   [-14.60,.12],[-11.60,.27],[-8.10,.72],[-6.12,.72],
-  [-6.12,-.82],[-8.70,-1.47],[-11.50,-3.62],[-14.60,-4.09]
+  [-6.12,-.82],[-8.70,-1.60],[-11.50,-4.20],[-14.60,-4.81]
  ],2.34);
- b('stock',-14.56,-1.99,0,.88,4.26,2.66);
+ // Fifteen percent more stock silhouette comes from the lower heel,
+ // not raising the successful drooping comb or inflating Z depth.
+ b('stock',-14.56,-2.35,0,.88,4.98,2.66);
 
  // P6: one reduced-triangle upper receiver mesh; broad intentional faceted
  // shoulders taper toward the roof to visually echo the FAL handguard.
@@ -66,20 +68,20 @@ export function buildFALCoreSilhouette(
  // plate or decorative seam: the front drops directly into the mag lip.
  lower([
   [-6.30,-1.12],[3.24,-1.12],[3.00,-3.19],
-  [-.10,-3.19],[-.90,-2.35],[-4.55,-2.35],[-6.30,-1.80]
+  [-1.10,-3.19],[-1.45,-2.35],[-4.55,-2.35],[-6.30,-1.80]
  ],3.40);
  // FAL's distinct exposed cubist steel gas/receiver collar: intentionally
  // one dark rectangular bridge in the clear space between the upper shell
  // ending at X=3.10 and the fore-end beginning at X=4.20.
  // Attachment/ballistic muzzle landmarks remain unchanged.
  const transition=addCuboid(root,'receiver',partIds.receiver,ids.receiver++,
-  3.65,.10,0,1.30,2.30,2.46,
+  3.65,.06,0,1.30,2.55,2.16,
   materials.transitionMetal??materials.receiverLower??materials.receiver);
  transition.userData.falReceiverHandguardBridge=true;
 
  // P5 grip: short, stout, swept back; preserve open trigger/mag gap.
  p('grip',[
-  [-5.38,-2.18],[-3.18,-2.18],[-4.67,-5.85],[-6.52,-5.85]
+  [-5.38,-2.18],[-3.18,-2.18],[-4.96,-5.85],[-6.81,-5.85]
  ],2.16);
  p('magazine',FAL_MAG20_OUTLINE,FAL_MAG20_DEPTH);
  // Two thick stamped ribbons follow the same straight magazine centerline
@@ -106,16 +108,18 @@ export function buildFALCoreSilhouette(
  const sightBase=b('barrel',14.70,.80,0,1.35,1.60,2.62);
  sightBase.userData.falFrontBase=true;
  for(const side of [-1,1] as const){
-  const ear=b('barrel',14.70,2.18,side*1.04,.80,1.98,.78);
+  const ear=b('barrel',14.70,2.18,side*.73,.80,1.98,.78);
   ear.userData.falFrontEar=side<0?'left':'right';
  }
  // Exaggerated FN-style combination device: roughly double the P7 length,
  // broad steel collar and one long chunky four-sided body. Preserve X=22
  // as the muzzle for all pose, camera, firing and ballistic contracts.
  if(options.showFactoryMuzzle!==false){
-  const collar=b('barrel',18.59,0,0,.56,1.75,1.76);
+  const collar=addCuboid(root,'barrel',partIds.barrel,ids.barrel++,
+   18.59,0,0,.56,1.75,1.76,materials.muzzleMetal??materials.barrel);
   collar.userData.falMuzzleCollar=true;
-  const device=b('barrel',20.32,0,0,3.36,1.50,1.50);
+  const device=addCuboid(root,'barrel',partIds.barrel,ids.barrel++,
+   20.32,0,0,3.36,1.50,1.50,materials.muzzleMetal??materials.barrel);
   device.userData.falMuzzleCombo=true;
   // A pair of broad simple dark port strokes, four triangles total.
   const verts:number[]=[],indices:number[]=[];
@@ -136,8 +140,10 @@ export function buildFALCoreSilhouette(
   slots.castShadow=false;slots.receiveShadow=false;
   slots.renderOrder=3;root.add(slots);
  }
- // A single substantial rear sight blade, no miniature articulated parts.
- b('receiver',-5.00,2.18,0,.80,.74,1.58);
+ // One tall FAL rear-sight blade seated INSIDE the upper roof.
+ // Narrow enough to belong to the receiver rather than straddling the edges.
+ const rearSight=b('receiver',-5.00,2.18,0,.72,1.55,.90);
+ rearSight.userData.falRearSight=true;
  // A small offset folding-handle representation: bent steel support with
  // long rearward horizontal polymer grip. Both solids physically overlap;
  // no AR-style upright arch, hollow box, hinges or screws. Factory enabled.
