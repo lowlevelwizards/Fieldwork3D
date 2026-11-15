@@ -1,0 +1,60 @@
+name: D3.14C2 independent resolved incidents regression
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  known-incidents:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Retain D3.14B2 generated ENTRY D9 Vale four-person recovery
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=1 --audit-seed=5532875 --audit-scale=standard \
+            --route-quality --progress > "$RUNNER_TEMP/d314c2-d9.json"
+      - name: Retain H4 small motel true Rook physical GO
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=1855967 --audit-scale=small \
+            --route-quality --progress > "$RUNNER_TEMP/d314c2-motel-small.json"
+      - name: Retain G2C/H4 standard motel true Rook GO
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=2069994 --audit-scale=standard \
+            --route-quality --progress > "$RUNNER_TEMP/d314c2-motel-standard.json"
+      - name: Enforce all three actual arrivals and no physics errors
+        run: |
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for(const [file,mode,actorId,expected] of [
+            ['d9','entry','vale',4],
+            ['motel-small','authored','rook',4],
+            ['motel-standard','authored','rook',4]
+          ]){
+            const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+
+              '/d314c2-'+file+'.json','utf8'));
+            const m=r.rows[0].modes.find(x=>x.mode===mode);
+            const a=m.operators.find(x=>x.id===actorId);
+            console.log('D314C2_KNOWN',JSON.stringify({
+              file,arrivals:m.arrivals,remaining:a.remaining,
+              arrived:a.arrived,route:r.routeQualitySummary.searches}));
+            if(r.summary.exceptions||r.summary.invalidPositions||
+               r.summary.corruptedPlans||r.summary.physicsStepViolations||
+               m.arrivals<expected||a.remaining>5)
+               throw Error('C2 regressed existing real physical arrival '+file);
+          }
+          NODE
+      - name: Retain three complete 45s incident runs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-14c2-three-previously-recovered-incident-motors
+          path: ${{ runner.temp }}/d314c2-*.json
+          retention-days: 90

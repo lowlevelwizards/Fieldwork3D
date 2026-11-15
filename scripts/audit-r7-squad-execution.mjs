@@ -25,10 +25,13 @@ import {D313H2_HOLDOUT_22,D313H2_HOLDOUT_ID}
  from './lib/d3-13h2-fresh22-manifest.mjs';
 import {D314B_HOLDOUT_22,D314B_HOLDOUT_ID}
  from './lib/d3-14b-sixth-blind22.mjs';
+import {D314C_HOLDOUT_22,D314C_HOLDOUT_ID}
+ from './lib/d3-14c-seventh-blind22.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing} from '../src/breach-navigation.ts';
-import {routeWithSqueezeWorld,routeToNextOperableDoor}
+import {routeWithSqueezeWorld,routeToNextOperableDoor,
+ recoverNormalLane,routeWithSqueezeIntel}
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
@@ -56,8 +59,10 @@ const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
+const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
 const h2Fresh22=process.argv.includes('--h2-fresh-22');
 const d314bBlind22=process.argv.includes('--d314b-blind22');
+const d314cBlind22=process.argv.includes('--d314c-blind22');
 // D3.13F: bounded *read-only* source-level witness for a chosen motor actor.
 // Run with --route-transitions --site-index=7 --trace-actor=rook
 // and optionally --trace-mode=authored (or entry).
@@ -84,12 +89,17 @@ const requestedSeedArg=process.argv.find(a=>a.startsWith('--audit-seed='));
 const requestedSeed=requestedSeedArg?Number(requestedSeedArg.split('=')[1]):null;
 const requestedScaleArg=process.argv.find(a=>a.startsWith('--audit-scale='));
 const requestedScale=requestedScaleArg?.split('=')[1]??null;
+if(d314cBlind22&&(g2Fresh22||h2Fresh22||d314bBlind22||sites!==22||
+  requestedSite!==null||clinicOnly||requestedSeedArg||requestedScaleArg))
+ throw Error('D3.14C seventh blind holdout needs 22 sites with no overrides');
 if(d314bBlind22&&(g2Fresh22||h2Fresh22||sites!==22||
   requestedSite!==null||clinicOnly||requestedSeedArg||requestedScaleArg))
  throw Error('D3.14B blind holdout needs 22 sites and no overrides');
 if(h2Fresh22&&(g2Fresh22||sites!==22||requestedSite!==null||clinicOnly||
     requestedSeedArg||requestedScaleArg))
  throw Error('H2 holdout requires 22 sites with no overrides or other cohort');
+if(d314cFrontProbe&&requestedSite===null)
+ throw Error('D3.14C FRONT feasibility probe needs one selected site');
 if(d314bClearanceProbe&&requestedSite===null)
  throw Error('D3.14B clearance probe needs one selected site');
 if(g2Fresh22&&(sites!==22||requestedSite!==null||clinicOnly||
@@ -481,6 +491,81 @@ function run(site,seed,kind){
     };
    }
   }
+  // D3.14C: exactly one POST-SIM, read-only comparison of the REAL
+  // physically swept local lane, known-intel tail and existing future
+  // operable-door recovery. No paths are adopted, no actor moved, no
+  // collision relaxed or expensive test run inside a live 60Hz tick.
+  let d314cFrontEvidence=null;
+  if(d314cFrontProbe&&kind==='authored'){
+   const actor=actors.find(a=>a.id==='rook');
+   const goal=actor?planned.goals.get(actor.id):null;
+   if(actor&&goal){
+    const world=sessionWorldGeometry(session);
+    const full=(a,b)=>sweptBodyClear(a,b,session.doors,
+      OPERATOR_RADIUS,world);
+    const plan=route=>{let at=actor.p,length=0,illegal=0;
+     for(const p of route){
+      length+=dist(at,p);
+      if(!full(at,p))illegal++;at=p;
+     }
+     return {nodes:route.length,totalLength:round(length),
+      allLegsFullySwept:illegal===0,illegalLegs:illegal,
+      first:route.slice(0,6),last:route.slice(-3),
+      firstPhysicallyClear:route.length?full(actor.p,route[0]):null,
+      reachesAuthoredGoal:route.length?
+       dist(route[route.length-1],goal)<3:false};
+    };
+    const lane=recoverNormalLane(actor.p,goal,session.doors,world);
+    const actual=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+    const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+    const intel=routeWithSqueezeIntel(session.intel,actor.p,goal);
+    const episode=actor.doorTraversal;
+    const door=episode?session.doors.find(d=>d.id===episode.doorId):null;
+    d314cFrontEvidence={
+     actorId:actor.id,position:{...actor.p},goal:{...goal},
+     remaining:round(dist(actor.p,goal)),squeeze:actor.squeeze,
+     lastBlocker:actor.lastBlocker,blockedTime:round(actor.blockedTime),
+     routeNav:actor.nav.slice(0,6),bodyFullyClear:bodyClear(actor.p,
+      session.doors,OPERATOR_RADIUS,world),
+     episode:episode?{doorId:episode.doorId,phase:episode.phase,
+      maneuver:episode.maneuver,approachSide:episode.approachSide,
+      attempts:episode.maneuverAttempts}:null,
+     leaf:door?{a:door.a,b:door.b,
+      leaf:doorLeafSegment(door),fraction:door.openFraction,
+      angularVelocity:door.angularVelocity}:null,
+     otherActors:actors.filter(a=>a!==actor).map(a=>({
+      id:a.id,p:{...a.p}})),
+     closedOperable:session.doors.filter(d=>!d.locked&&!d.jammed&&
+      !d.wedged&&!d.heldBy&&(d.openFraction??0)<.72).map(d=>d.id),
+     fullBodyLane:plan(lane),actualWorld:plan(actual),
+     firstFutureDoor:plan(future),knownIntel:plan(intel),
+     // Frozen recurrent source-coordinate witness: these coordinates
+     // came from the separately archived H4 real 60Hz route transitions.
+     // Evaluate only after the sim, with the same exact final physical
+     // hinge and static geometry; do not mutate actor positions.
+     frozenLoopCenters:[{x:494.5,y:497.6},{x:493.5,y:511.2},
+       {x:460,y:500}].map(from=>{
+       const route=routeWithSqueezeWorld(from,goal,session.doors,world);
+       const candidate=recoverNormalLane(from,goal,session.doors,world);
+       const summarize=path=>{
+        let at=from,length=0,illegal=0;
+        for(const to of path){
+         if(!full(at,to))illegal++;
+         length+=dist(at,to);at=to;
+        }
+        return {nodes:path.length,length:round(length),illegal,
+         first:path.slice(0,5),last:path.slice(-2)};
+       };
+       return {from,bodyClear:bodyClear(from,session.doors,
+         OPERATOR_RADIUS,world),
+        toSouthCornerFull:full(from,{x:512,y:512}),
+        toFirstOldLaneFull:full(from,{x:460,y:500}),
+        toNorthPortalFull:full(from,{x:496,y:448}),
+        realWorld:summarize(route),normalLane:summarize(candidate)};
+      })
+    };
+   }
+  }
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -498,6 +583,7 @@ function run(site,seed,kind){
    rejectedDoors:planned.rejectedDoors??[],complete,
    warehouseHingeWitness,
    ...(d314bClearanceProbe?{d314bClearanceEvidence}:{}),
+   ...(d314cFrontProbe?{d314cFrontEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
@@ -572,7 +658,8 @@ const rows=[];
 let exceptions=0;
 for(let i=requestedSite??(clinicOnly?10:0);
  i<(requestedSite===null?(clinicOnly?11:sites):requestedSite+1);i++){
- const cohort=d314bBlind22?D314B_HOLDOUT_22[i]:
+ const cohort=d314cBlind22?D314C_HOLDOUT_22[i]:
+   d314bBlind22?D314B_HOLDOUT_22[i]:
    h2Fresh22?D313H2_HOLDOUT_22[i]:
    g2Fresh22?D313G2_HOLDOUT_22[i]:null;
  const seed=requestedSeed??cohort?.seed??31045+i*13;
@@ -655,7 +742,8 @@ const progressSummary=progress?{
 }:null;
 console.log(JSON.stringify({kind:'R7.1 real generated four-operator execution',
  protocol:'read-only observability; no automatic fixes or clearance relaxation',
- ...(d314bBlind22?{corpus:D314B_HOLDOUT_ID}:
+ ...(d314cBlind22?{corpus:D314C_HOLDOUT_ID}:
+   d314bBlind22?{corpus:D314B_HOLDOUT_ID}:
    h2Fresh22?{corpus:D313H2_HOLDOUT_ID}:
    g2Fresh22?{corpus:D313G2_HOLDOUT_ID}:{}),
  ticks,summary,...(progress?{progressSummary}:{}),
