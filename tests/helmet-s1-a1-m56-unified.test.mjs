@@ -76,6 +76,22 @@ test('S1-A1 iconic DDR wide rear flare without additional concentric tiers',()=>
  assert.ok(edge.front>HEAD_SILHOUETTE_METRICS['soviet-steel'].rearExtent);
 });
 
+test('S1-A1B Studio honors authored quad normals only for M56',()=>{
+ const mat=new THREE.MeshStandardMaterial({flatShading:true});
+ const m56=createHeadwearSilhouette('ddr-m56',mat);
+ assert.equal(m56.children.length,1);
+ assert.equal(m56.children[0].material,mat,
+  'retain the authoritative recolorable headwear material');
+ assert.equal(mat.flatShading,false,
+  'do not override M56 authored quad normals with triangle derivative normals');
+ const m1Mat=new THREE.MeshStandardMaterial({flatShading:true});
+ createHeadwearSilhouette('m1-steel',m1Mat);
+ assert.equal(m1Mat.flatShading,true,'approved M1 shading untouched');
+ const sshMat=new THREE.MeshStandardMaterial({flatShading:true});
+ createHeadwearSilhouette('soviet-steel',sshMat);
+ assert.equal(sshMat.flatShading,true,'approved Soviet shading untouched');
+});
+
 test('S1-A1B crown is narrower but remains square and eight-faceted',()=>{
  const top=M56_SHELL_RINGS[0],shoulder=M56_SHELL_RINGS[1];
  near(top.side,3.08,'reduced flat crown half-width');
