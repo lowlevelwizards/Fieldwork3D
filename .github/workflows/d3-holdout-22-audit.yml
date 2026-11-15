@@ -1,0 +1,46 @@
+name: D3 independent 22-map holdout — 45-second squad navigation
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/lib/d3-holdout-22-manifest.mjs'
+      - 'scripts/report-d3-holdout-22.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - 'tests/d3-unseen-22-corpus.test.mjs'
+      - '.github/workflows/d3-holdout-22-audit.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d3-unseen-22-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  blind-holdout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Verify all 22 holdout seeds are untouched and balanced
+        run: node --experimental-strip-types --test tests/d3-unseen-22-corpus.test.mjs
+      - name: Run real 60 Hz physical motor on 22 new buildings, 2 modes, 45 seconds
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --holdout-22 --progress --route-quality \
+            > "$RUNNER_TEMP/holdout22.json"
+      - name: Report ALL unseen cases, including incomplete and rejected orders
+        run: |
+          node scripts/report-d3-holdout-22.mjs "$RUNNER_TEMP/holdout22.json"
+      - name: Archive reproducible raw traces and readable incident summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d3-holdout-22-45s-raw-and-report
+          path: |
+            ${{ runner.temp }}/holdout22.json
+            ${{ runner.temp }}/holdout22-report.json
+          if-no-files-found: warn
