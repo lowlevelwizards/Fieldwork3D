@@ -13,6 +13,7 @@ on:
       - 'tests/release-d3-16a-honest-order-outcomes.test.mjs'
       - 'tests/release-d3-16b-fixed-goal-feedback.test.mjs'
       - 'tests/tactical-integration-14-execution-feedback.test.mjs'
+      - 'tests/release-d3-10b-authored-obstruction.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,7 +36,8 @@ jobs:
             tests/breach-roadmap2-stage8-orders.test.mjs \
             tests/tactical-integration-13-execution-status.test.mjs \
             tests/release7-mobile-clarity.test.mjs \
-            tests/tactical-integration-14-execution-feedback.test.mjs
+            tests/tactical-integration-14-execution-feedback.test.mjs \
+            tests/release-d3-10b-authored-obstruction.test.mjs
       - name: Verify no automated GO editing or alternate actor-physics authority
         run: |
           node --input-type=module <<'NODE'
