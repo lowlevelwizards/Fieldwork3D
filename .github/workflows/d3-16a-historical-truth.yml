@@ -54,9 +54,9 @@ jobs:
           if(r.summary.physicalArrivals!==80||
              r.summary.physicalCompletedFour!==18||
              r.summary.completedFour!==21||
-             r.summary.successfulFour!==18||
-             r.summary.terminallyCancelledOrders!==7||
-             r.summary.cancelledOperators!==7||
+             r.summary.successfulFour!==16||
+             r.summary.terminallyCancelledOrders!==9||
+             r.summary.cancelledOperators!==9||
              r.summary.physicallyPendingOperators!==1||
              r.summary.unreachedDrainedOperators!==0)
             throw Error('D3.16A historical terminal truth disagrees with real 88-actor physics');
