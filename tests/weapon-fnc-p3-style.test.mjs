@@ -63,7 +63,7 @@ test('P3B: signed rear/front guards, hex receiver controls and compact muzzle',(
  assert.equal(where(g,'fncMuzzleSlot').length,1);
  const slot=where(g,'fncMuzzleSlot')[0];
  const normals=slot.geometry.getAttribute('normal');
- assert.ok(normals.getZ(0)<-.5&&normals.getZ(12)>.5,
+ assert.ok(normals.getZ(0)<-.5&&normals.getZ(6)>.5,
   'muzzle windows must face outward on both sides');
  assert.equal(where(g,'fncStampedCover').length,0,'receiver roof must not add a covering box');
  assert.equal(where(g,'fncMagwellLip').length,1,'lower magwell must be integrated');
