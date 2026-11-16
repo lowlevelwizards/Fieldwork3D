@@ -44,7 +44,7 @@ export function buildFNCStage1Silhouette(
  const rail=(a:readonly [number,number],end:readonly [number,number],
   width:number,role:Finish='stock')=>{
   const mesh=addBar(root,'stock','fnc-p5-stock',ids.stock++,
-   a,end,width,1.04,mat(role));
+   a,end,width,.96,mat(role));
   mesh.userData.fncStockRail=true;
   return mesh;
  };
@@ -82,16 +82,16 @@ export function buildFNCStage1Silhouette(
  // Remove the oversized rear cheek sleeve entirely. A continuous
  // metal-colored top rail replaces BOTH old segments, avoiding a gap,
  // doubled faces or additional draw calls.
- const top=rail([-6.45,.03],[-14.26,-.04],1.12);
+ const top=rail([-6.45,.03],[-14.26,-.04],.98);
  top.userData.fncP9UpperMetalRail=true;
  top.userData.fncP10ContinuousBareUpperRail=true;
  // Lower rail stays parallel for over three art units; at x=-10.18 its
  // single angular knee descends toward the lower butt connection.
  // A single six-vertex extrusion avoids separate, z-fighting bar joins.
  const lowerRail=p('stock',[
-  [-6.52,-1.23],[-10.18,-1.23],[-14.38,-3.01],
-  [-14.38,-3.63],[-10.05,-2.06],[-6.52,-2.06]
- ],1.12,'stock');
+  [-6.52,-1.29],[-10.18,-1.29],[-14.38,-3.09],
+  [-14.38,-3.55],[-10.05,-2.00],[-6.52,-2.00]
+ ],.98,'stock');
  lowerRail.userData.fncStockRail=true;
  lowerRail.userData.fncKinkedLowerRail=true;
  lowerRail.userData.fncP8StraightStockBrace=true;
@@ -108,8 +108,8 @@ export function buildFNCStage1Silhouette(
  // P22: shorten only the buttpad vertical envelope; preserve rearmost X,
  // both stock-rail contacts and the large open skeletal frame.
  const pad=p('stock',[
-  [-14.85,.65],[-14.12,.65],[-14.02,.40],
-  [-14.02,-3.75],[-14.35,-4.03],[-14.85,-4.03]
+  [-14.85,.65],[-14.22,.65],[-14.18,.40],
+  [-14.18,-3.75],[-14.35,-4.03],[-14.85,-4.03]
  ],2.18,'buttpad');
  pad.userData.fncP8NarrowButtplate=true;
  pad.userData.fncButtPlate=true;
