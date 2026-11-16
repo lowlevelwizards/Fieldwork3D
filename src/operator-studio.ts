@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import {writeDomText,writeDomAttribute} from './ui/tactical-dom-reconciliation.ts';
 import {configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
+import {activeCampaignStorageKey} from './campaign-save-slots.ts';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {studioLightLabFromQuery,effectiveStudioLightLab,
  studioLightLabLabel,approvedGraphicLighting,
@@ -2300,11 +2301,11 @@ function apply(){
    localStorage.setItem(BREACH_STORAGE_KEYS.quickCosmetics,
     serializeQuickPlayCosmetics(next));
   }else{
-   const campaign=readCampaign(localStorage.getItem(BREACH_STORAGE_KEYS.campaign));
+   const campaign=readCampaign(localStorage.getItem(activeCampaignStorageKey()));
    if(!campaign)throw Error('No saved campaign');
    const updated=applyStudioCampaignEdits(campaign,entries);
    if(!updated)throw Error('Campaign operator or active mission is locked');
-   localStorage.setItem(BREACH_STORAGE_KEYS.campaign,JSON.stringify(updated));
+   localStorage.setItem(activeCampaignStorageKey(),JSON.stringify(updated));
   }
   acknowledgeSave(entries.map(e=>e.id));
  }catch{
@@ -2356,7 +2357,7 @@ if(embedded){
 }else{
  try{
   const campaign=mode==='campaign'?
-   readCampaign(localStorage.getItem(BREACH_STORAGE_KEYS.campaign)):null;
+   readCampaign(localStorage.getItem(activeCampaignStorageKey())):null;
   if(mode==='campaign'&&campaign){
    start({mode,selected,readonly:!!campaign.activeContractId,
     members:campaign.operators.filter(x=>x.status!=='retired'&&x.status!=='lost')
