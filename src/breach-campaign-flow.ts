@@ -28,6 +28,8 @@ import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
 import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
+import {deployedDispatchIncident,validatedDispatchIncident,
+ type DispatchIncidentContext} from './dispatch-incident-context.ts';
 import {validateCampaignDraft,type CampaignCreationDraft} from './campaign-creation.ts';
 import type {CampaignSlot} from './campaign-save-slots.ts';
 import {confirmFieldworkAction,showFieldworkNotice} from './ui/fieldwork-controls.ts';
@@ -128,6 +130,7 @@ function saveFile(campaign:CampaignState){
  window.setTimeout(()=>URL.revokeObjectURL(href),1000);
 }
 function campaignMenu(){
+ deployedIncident=null;
  model.mode='menu';
  campaignScreen.entry(!!config.getCampaignInSlot('legacy'),
   !!config.getCampaignInSlot('sandbox'),config.getCampaignSlot(),
@@ -287,6 +290,7 @@ const campaignScreen=new CampaignScreen({
 });
 function showCampaignHome(){
  if(!model.campaign)return;
+ deployedIncident=null;
  model.mode='home';campaignScreen.home(model.campaign,config.getCampaignSlot());
 }
 function deployCampaignContract(){
@@ -299,6 +303,8 @@ function deployCampaignContract(){
  model.scale=deployment.scale;
  config.siteSize.textContent='MAP SIZE · '+model.scale.toUpperCase();
  config.resetContract(job);
+ // Capture AFTER reset: the reset pathway invalidates prior mission state.
+ deployedIncident=deployedDispatchIncident(model.campaign,job.id);
  campaignScreen.hide();
  config.showBriefing();
 }
@@ -315,6 +321,7 @@ backButton.addEventListener('click',()=>{
 });
 
  return {screen:campaignScreen,operationHistory,recordCompletedOperation,
+   getIncident:currentIncident,
    resetOutcome:()=>{recordedOperation=null;},showHome:showCampaignHome,
    deployContract:deployCampaignContract,
    returnAfterMission:returnAfterCampaignMission};
