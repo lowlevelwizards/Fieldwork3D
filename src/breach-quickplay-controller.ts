@@ -159,6 +159,8 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
       'Generating room meshes, fixtures, materials and static batches');
     await allowQuickPlayPaint();
     const stage=config.getStage();
+    const coldTrace=stage?.coldRendererTrace&&!stage.coldRendererTrace.closed?
+      stage.coldRendererTrace:null;
     const sceneStart=performance.now();
     stage?.applySite(config.getSession().site??null);
     const sceneMs=Math.round(performance.now()-sceneStart);
@@ -199,7 +201,9 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
       if(id!==quickPlayRun)return;
       const shaderStart=performance.now();
       try{
-        await stage.renderer.compileAsync(stage.scene,stage.camera);
+        if(coldTrace)await coldTrace.captureAsync('compileAsync',()=>
+          stage.renderer.compileAsync(stage.scene,stage.camera));
+        else await stage.renderer.compileAsync(stage.scene,stage.camera);
       }catch(error){
         // A failed async warmup must never prevent the ordinary first frame.
         console.warn('[Quick Play shader preparation fallback]',error);
@@ -215,8 +219,18 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     await allowQuickPlayPaint();
     if(id!==quickPlayRun)return;
     const firstFrameStart=performance.now();
-    config.renderFirstFrame();
+    if(coldTrace)coldTrace.capture('firstFrame',()=>config.renderFirstFrame());
+    else config.renderFirstFrame();
     const firstFrameMs=Math.round(performance.now()-firstFrameStart);
+    const coldRendererEvidence=coldTrace?.finish()??null;
+    if(coldRendererEvidence){
+      // Local debug-only readout for fresh-page cold A/B automation. No
+      // upload, no persistent storage and no WebGL instrumentation afterward.
+      const evidence={seed,shaderWarmupEnabled:config.boot.gpuWarmupEnabled,
+        shaderPreparationMs,firstFrameMs,...coldRendererEvidence};
+      (window as Window&{__fieldworkE68?:unknown}).__fieldworkE68=evidence;
+      console.info('[E6.8 cold renderer]',evidence);
+    }
     quickPlayCheckpoint(99,'Revealing tactical scene',
       'First render completed · preparing controls');
     config.hideMenu();

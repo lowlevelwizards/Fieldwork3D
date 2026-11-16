@@ -5,6 +5,7 @@ import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {SiteFixtureLightingPresenter} from './rendering/breach-site-light-presenter.ts';
 import * as THREE from 'three';
+import {ColdRendererTrace} from './rendering/breach-cold-renderer-trace.ts';
 import {stepCameraFocusGlide,type CameraFocusGlide}
   from './breach-camera-focus-glide.ts';
 import {applyWorldSurfaceResponse} from './rendering/material-identity.ts';
@@ -282,6 +283,8 @@ export class TacticalScene3D{
       graphicLookEnabled:this.graphicLookEnabled};
   }
   readonly renderer:THREE.WebGLRenderer;
+  /** E6.8: only created by explicit ?gpuTrace=1 for one cold startup. */
+  readonly coldRendererTrace:ColdRendererTrace|null;
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);
   /** Director lenses share a legal in-room X/Z anchor, but use entirely
@@ -838,8 +841,18 @@ export class TacticalScene3D{
       'pointer-events:none;z-index:0;display:block';
     document.body.insertBefore(canvas,document.body.firstChild);
     this.canvas=canvas;
+    const coldTraceEnabled=new URLSearchParams(window.location.search).
+      get('gpuTrace')==='1';
+    const rendererStarted=coldTraceEnabled?performance.now():0;
     this.renderer=new THREE.WebGLRenderer({canvas,antialias:true,
       alpha:false,powerPreference:'high-performance'});
+    // The GL hook starts *after* renderer construction; this independent
+    // constructor timer includes context creation, without GPU-time claims.
+    this.coldRendererTrace=coldTraceEnabled?new ColdRendererTrace(
+      this.renderer.getContext(),performance.now()-rendererStarted,
+      ()=>({programs:this.renderer.info.programs?.length??0,
+        geometries:this.renderer.info.memory.geometries,
+        textures:this.renderer.info.memory.textures})):null;
     configureGraphicRendererOutput(this.renderer);
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.autoUpdate=false;
