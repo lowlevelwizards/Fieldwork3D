@@ -146,6 +146,8 @@ export class TacticalScene3D{
    studioShadowPalette('plum-plus').fill,.60);
   /** Renderer-only; ?presentationSight=legacy bypasses memo for A/B. */
   private readonly presentationSight=new PresentationSightMemo();
+  /** Reused every 3D frame; occupancy only affects roof presentation. */
+  private readonly occupiedRoofRoomIds=new Set<string>();
   private profileSceneUpdate=
    new URLSearchParams(location.search).has('perf');
   /** In-game PERF arms all scene timings even without ?perf=1 at launch.
@@ -1724,7 +1726,7 @@ export class TacticalScene3D{
     // Hide undiscovered geometry at object level, including its shadows.
     // An operator physically standing in a room can still read that room's
     // structure even when their viewing cone is pointed at one corner.
-    const occupiedRoomIds=new Set(occupiedFogRooms(s).map(room=>room.id));
+    const occupiedRoomIds=occupiedFogRooms(s,this.occupiedRoofRoomIds);
     // An in-room Director keeps structural walls solid but removes
     // ceiling slabs, as in the readable tabletop game. No camera needs
     // to hover outside the building to see a room.
