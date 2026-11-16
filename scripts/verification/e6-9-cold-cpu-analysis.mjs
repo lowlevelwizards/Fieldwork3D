@@ -22,9 +22,9 @@ function classifyStack(stack){
   return 'program-material';
  if(/webgltextures|webglattributes|webglgeometries|webglobjects|uploadtexture/.test(lower))
   return 'geometry-texture';
- if(stack.some(n=>/three(\\.module)?(\\.js)?|node_modules\\/three/.test(n.callFrame?.url??'')))
+ if(stack.some(n=>String(n.callFrame?.url??'').includes('/node_modules/three')||String(n.callFrame?.url??'').includes('/deps/three')))
   return 'three-other';
- if(stack.some(n=>/breach-3d\\.ts|breach-quickplay-controller\\.ts/.test(n.callFrame?.url??'')))
+ if(stack.some(n=>/breach-3d[.]ts|breach-quickplay-controller[.]ts/.test(n.callFrame?.url??'')))
   return 'game-scene';
  if(stack.some(n=>/\/src\//.test(n.callFrame?.url??'')))return 'game-other';
  if(name==='(root)'||name==='(idle)'||!name)return 'other';
