@@ -49,7 +49,9 @@ export class FactionReferenceBrowser{
  private readonly compareYear:HTMLInputElement;
  private generatorMode:GenerationMode='evidence-backed';
  private generatorRole='';private generatorTheater='';
- private generatorSeed=0;private proposal:HistoricalLoadoutProposal|null=null;
+ private generatorSeed=0;private generatorTentative=false;
+ private generatorTrials=false;
+ private proposal:HistoricalLoadoutProposal|null=null;
  private readonly proposalLocks=new Set<string>();
  private readonly proposalAlternatives=new Map<string,string>();
  private timelineMode=false;
@@ -313,6 +315,22 @@ export class FactionReferenceBrowser{
   this.proposal=null;
   this.hooks.onProposalPreview?.(null);
  }
+ private generateNow(timelineId:string,year:number,
+  environment?:FactionReference['environment']){
+  this.proposal=generateHistoricalLoadout({
+   context:{timelineId,year,environment,
+    ...(this.generatorRole?{role:this.generatorRole}:{}),
+    ...(this.generatorTheater?{theater:this.generatorTheater}:{}),
+    ...(this.generatorTentative?{includeTentative:true}:{}),
+    ...(this.generatorTrials?{includeTrials:true}:{})},
+   mode:this.generatorMode,seed:this.generatorSeed,
+   baseline:this.hooks.proposalBaseline?.(),
+   lockedCategories:[...this.proposalLocks],
+   selectedHistoricalIds:Object.fromEntries(this.proposalAlternatives)
+  });
+  this.hooks.onProposalPreview?.(this.proposal);
+  this.renderList();
+ }
  private renderGenerator(timelineId:string,year:number,
   environment?:FactionReference['environment']){
   const panel=el('section','reference-generator');
@@ -338,22 +356,29 @@ export class FactionReferenceBrowser{
    this.generatorTheater=theater.value.trim();this.clearProposal();this.renderList();
   });
   controls.append(mode,role,theater);panel.append(controls);
+  const optional=el('div','reference-generator-options');
+  for(const [name,checked,commit] of [
+   ['Include tentative claims',this.generatorTentative,(v:boolean)=>this.generatorTentative=v],
+   ['Include documented trials',this.generatorTrials,(v:boolean)=>this.generatorTrials=v]
+  ] as const){
+   const label=el('label','reference-generator-lock');
+   const input=el('input');input.type='checkbox';input.checked=checked;
+   input.addEventListener('change',()=>{
+    commit(input.checked);this.clearProposal();this.renderList();
+   });
+   label.append(input,document.createTextNode(name));optional.append(label);
+  }
+  panel.append(optional);
   const generate=el('button','reference-apply','GENERATE PROPOSAL');
   generate.type='button';
-  generate.addEventListener('click',()=>{
-   this.proposal=generateHistoricalLoadout({
-    context:{timelineId,year,environment,
-     ...(this.generatorRole?{role:this.generatorRole}:{}),
-     ...(this.generatorTheater?{theater:this.generatorTheater}:{})},
-    mode:this.generatorMode,seed:this.generatorSeed,
-    baseline:this.hooks.proposalBaseline?.(),
-    lockedCategories:[...this.proposalLocks],
-    selectedHistoricalIds:Object.fromEntries(this.proposalAlternatives)
-   });
-   this.hooks.onProposalPreview?.(this.proposal);
-   this.renderList();
+  generate.addEventListener('click',()=>this.generateNow(timelineId,year,environment));
+  const reroll=el('button','reference-history-year','REGENERATE UNLOCKED');
+  reroll.type='button';reroll.disabled=!this.proposal;
+  reroll.addEventListener('click',()=>{
+   this.generatorSeed=(this.generatorSeed+1)>>>0;
+   this.generateNow(timelineId,year,environment);
   });
-  panel.append(generate);
+  panel.append(generate,reroll);
   const current=this.proposal;
   if(current&&current.context.timelineId===timelineId&&current.context.year===year&&
    current.context.environment===environment){
@@ -378,7 +403,7 @@ export class FactionReferenceBrowser{
      selector.value=choice.historicalId;
      selector.addEventListener('change',()=>{
       this.proposalAlternatives.set(choice.category,selector.value);
-      this.clearProposal();this.renderList();
+      this.generateNow(timelineId,year,environment);
      });
      item.append(selector);
     }
@@ -388,7 +413,7 @@ export class FactionReferenceBrowser{
     checkbox.addEventListener('change',()=>{
      if(checkbox.checked)this.proposalLocks.add(choice.category);
      else this.proposalLocks.delete(choice.category);
-     this.clearProposal();this.renderList();
+     this.generateNow(timelineId,year,environment);
     });
     lock.append(checkbox,document.createTextNode(' Keep current '+choice.category));
     item.append(lock);
