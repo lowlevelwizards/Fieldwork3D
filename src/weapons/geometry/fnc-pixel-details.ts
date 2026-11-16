@@ -151,6 +151,11 @@ export function applyFNCPixelDetails(mesh:THREE.Mesh,region:FNCPixelRegion):void
  mesh.material=pixelMaterial(mesh.material as THREE.Material);
  mesh.userData.fncPixelDetailRegion=region;
  mesh.userData.fncPixelAtlas=fncPixelAtlas().name;
+ // A4.7: integrated surface details share the same cross-family audit
+ // contract without adding an overlay or cloning a material per weapon.
+ mesh.userData.surfaceDetailClass='fnc-integrated-atlas';
+ mesh.userData.surfaceDetailFace=region==='receiver-upper'?'right':
+  region==='gas'?'faceted':'both';
  if(region==='gas'){
   mesh.userData.fncPixelVentCounts={left:4,right:4,top:4};
   mesh.userData.fncPixelLowerGasLines=F.gas.lowerLines.length;
