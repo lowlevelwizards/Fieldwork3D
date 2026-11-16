@@ -31,7 +31,7 @@ async function sample(page,cdp,cycle){
   libraryVisible:document.querySelector('#replayLibraryDialog')?.hidden===false
  }));
  return {cycle,usedHeapBytes:heap.usedSize,totalHeapBytes:heap.totalSize,
-  nodes:dom.nodes,detachedNodes:dom.detachedNodes,documents:dom.documents,
+  nodes:dom.nodes,listeners:dom.jsEventListeners,documents:dom.documents,
   ...pageState};
 }
 try{
@@ -63,18 +63,30 @@ try{
    import('/src/breach-replay-archive.ts'),import('/src/breach-replay-library.ts')
   ]);
   const state=newSession(0,3948),recorder=new MissionRecorder();
+  const observer=state.operators.find(a=>a.side==='blue');
+  check(!!observer,'Missing actual friendly recorder observer');
+  let nextEventId=1;
   recorder.capture(state,true);
   for(let i=1;i<=240;i++){
    state.seconds=i*.05;
+   // Fixture-authored visible action evidence in a REAL indexed saved film.
+   // Avoid simulated combat or fake shots: use the existing battle journal
+   // path to exercise >80 chronological Events panel entries.
+   if(i%2===0)state.battleEvents.push({
+    id:nextEventId++,t:state.seconds,actor:observer.id,
+    kind:i%4===0?'door':'intel',text:'E5.3 RECORDED EVENT '+i,
+    p:{x:observer.p.x,y:observer.p.y}
+   });
    recorder.capture(state,true);
   }
   const archive=captureReplayArchive(recorder,'e5-3-heap-lifecycle',1712345678900);
   await saveReplayArchive(archive);
   return {frames:recorder.frames.length,
-   duration:recorder.duration,
+   duration:recorder.duration,events:recorder.events.length,
    libraryCount:(await listSavedReplays()).length};
  });
- check(film.frames>=200&&film.duration>=10&&film.libraryCount===1,
+ check(film.frames>=200&&film.duration>=10&&film.events>=100&&
+  film.libraryCount===1,
   'E5.3 expected 12-second real 20Hz archived film: '+JSON.stringify(film));
  // Reload frees the test fixture's standalone recorder so the browser
  // measures actual library playback, not the fixture closure.
@@ -113,6 +125,9 @@ try{
   }
   if(cycle>=2){
    const opened=await sample(page,cdp,cycle);
+   check(opened.feedButtons>0&&opened.feedButtons<=80,
+    'Recorded Events panel must render a bounded nonempty event viewport: '+
+      JSON.stringify(opened));
    openSamples.push(opened);
   }
   await page.locator('#replayExit').click();
