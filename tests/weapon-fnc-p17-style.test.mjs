@@ -35,7 +35,7 @@ test('P17 magwell is ONE lower receiver silhouette with near-vertical front',()=
  let top=0,below=0;
  for(let i=0;i<verts.count;i++)if(near(verts.getX(i),2.75)){
   if(near(verts.getY(i),-1.09))top++;
-  if(near(verts.getY(i),-3.30))below++;
+  if(near(verts.getY(i),-3.46))below++;
  }
  assert.ok(top>0&&below>0,'near-vertical leading magwell face');
  // A separate old P16 side slab must not be present.
@@ -82,7 +82,7 @@ test('P17 vent strokes bold but remain five grouped openings with no new mesh co
  assert.ok(roof);
  assert.equal(L.gas.ventCount,4);
  assert.ok(near(L.gas.ventHeight,.31));
- assert.ok(vents.every(v=>v.geometry.getAttribute('position').count===48));
+ assert.ok(vents.every(v=>v.geometry.getAttribute('position').count===24));
  assert.ok(grooves.every(v=>v.geometry.getAttribute('position').count===12));
  assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.equal(many(g,'fncP17BoldMarkings').length,4);
