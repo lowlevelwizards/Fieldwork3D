@@ -66,7 +66,13 @@ test('P29 A: straight nonflared magwell with subtle slanted lip and all STANAGs'
   assert.ok(c.topX-c.width/2-R.magwellRearX>.30,'rear housing material');
   assert.ok(R.magwellFrontX-(c.topX+c.width/2)>.30,'front housing material');
   assert.ok(bb(lower).intersectsBox(bb(mag)));
-  assert.ok(bb(lower).max.x<bb(upper).max.x-.28);
+  assert.ok(close(bb(lower).max.x,bb(upper).max.x));
+  const vertices=lower.geometry.getAttribute('position');
+  let frontLip=-Infinity;
+  for(let i=0;i<vertices.count;i++)if(vertices.getY(i)<-2.58)
+   frontLip=Math.max(frontLip,vertices.getX(i));
+  assert.ok(close(frontLip,R.magwellFrontX));
+  assert.ok(bb(upper).max.x-frontLip>.28);
   assert.ok(close(bb(lower).min.y,R.magwellRearBottomY));
   assert.ok(close(bb(mag).max.y,R.magazineTopY));
   assert.equal(lower.geometry.getAttribute('position').count,84,
@@ -136,7 +142,7 @@ test('P29 C: stock has slimmer rails/pad but full open connected frame',()=>{
  assert.ok(pad&&top&&low&&web&&hinge);
  assert.ok(size(pad,'x')>=.65&&size(pad,'x')<=.70);
  assert.ok(close(bb(pad).min.x,FNC_P1.stockRearX));
- assert.ok(size(top,'y')<1.03&&size(top,'y')>.9);
+ assert.ok(size(top,'y')<1.10&&size(top,'y')>.98);
  assert.ok(size(low,'z')<1.03&&size(top,'z')<1.01);
  assert.ok(bb(pad).intersectsBox(bb(top))&&bb(pad).intersectsBox(bb(low)));
  assert.ok(bb(top).intersectsBox(bb(hinge))&&bb(low).intersectsBox(bb(hinge)));
