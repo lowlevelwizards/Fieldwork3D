@@ -92,6 +92,10 @@ try{
      firstFrameWallMs:first.wallMs,
      shaderFirstFrameSubmitMs:sum(first,['compileShader','linkProgram',
       'getProgramParameter','getShaderParameter']),
+     programInfoLogCpuMs:sum(first,['getProgramInfoLog','getShaderInfoLog']),
+     programInfoLogCalls:(first.calls?.getProgramInfoLog?.count??0)+
+       (first.calls?.getShaderInfoLog?.count??0),
+     getExtensionCpuMs:sum(first,['getExtension']),
      resourceUploadCpuMs:sum(first,['bufferData','bufferSubData',
       'texImage2D','texSubImage2D','texImage3D','texSubImage3D',
       'compressedTexImage2D','compressedTexImage3D']),
