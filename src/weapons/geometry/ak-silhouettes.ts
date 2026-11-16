@@ -9,7 +9,7 @@ import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
 import {akHandguardStart} from '../../breach-weapon-contact-zones.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
-import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark,addWeaponPixelMarkPairBatched} from './weapon-pixel-detail.ts';
 import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
@@ -115,7 +115,8 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
   m.portWidthX,m.portHeightY);
  // Quiet lower receiver construction: two rivets and one broad stamped
  // relief, authored as ONE texture per side. No added trigger guard.
- addWeaponPixelMarkPair(root,'ak-receiver-stamp',
+ // Two quiet mirrored stamps, one owned mesh: not two overlays.
+ addWeaponPixelMarkPairBatched(root,'ak-receiver-stamp',
   -1.08,-1.55,1.98,8.4,.60);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.

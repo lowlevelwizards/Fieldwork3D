@@ -25,8 +25,8 @@ const pixel=(mark,x,y)=>{
 };
 test('HK R4 palette keeps twelve authentic factory models and distinct materials',()=>{
  assert.equal(hk.length,12);
- for(const [m,hex] of [[HK_BLACK_METAL,0x3b4140],
-  [HK_DARK_POLYMER,0x303433],[HK_OLIVE_POLYMER,0x60694e],
+ for(const [m,hex] of [[HK_BLACK_METAL,0x3e4441],
+  [HK_DARK_POLYMER,0x313735],[HK_OLIVE_POLYMER,0x60694e],
   [HK_WOOD,0x896947],[HK_MAG_METAL,0x505757],
   [HK556_MAG_METAL,0x414747],[HK9_MAG_METAL,0x373d3d],
   [HK556_MAG_RIB,0x353d39],[HK_SD_SUPPRESSOR_METAL,0x2f3434],

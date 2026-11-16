@@ -104,7 +104,7 @@ test('A2 canonical accessories survive the actual attachment compatibility path'
 test('A2 complete factory inventory retains exact A1 geometry and saved identifiers',()=>{
  const m=collectArsenalA1Manifest();
  assert.equal(m.totals.presets,35);
- assert.equal(m.totals.meshes,891);
+ assert.equal(m.totals.meshes,881,'A4 shared symmetric mark batching removes ten redundant factory meshes');
  assert.equal(m.totals.triangles,18298);
  assert.deepEqual(Object.values(m.totals.byPlatform).sort((a,b)=>a-b),[1,3,4,6,9,9,3].sort((a,b)=>a-b));
  assert.equal(m.presets.find(p=>p.id==='fnc-service')?.meshes,23);

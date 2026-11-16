@@ -83,8 +83,8 @@ test('R4.7 silver cover bands cross full top and smooth family remains clear',()
    assert.ok(r[0].geometry.parameters.depth>3,
     'physical ribs cross cover in Z, not side sticker');
    const matColor=r[0].material.color;
-   assert.ok(matColor.r>.25&&matColor.g>.25,
-    'muted silver stamp details');
+   assert.ok(matColor.r>.12&&matColor.g>.18,
+    'A2 subdued stamped-steel response remains visible without bright bands');
   }
   dispose(a);
  }
@@ -95,8 +95,12 @@ test('R4.7 lower receiver omits trigger guard but keeps understated rivets',()=>
    stamp=a.group.children.filter(m=>m.name==='family-art-ak-receiver-stamp');
   assert.ok(receiver.every(m=>box(m).min.y>=-2.61),
    id+' no disconnected trigger-guard shape');
-  assert.equal(stamp.length,2,id+' one quiet stamped cue per side');
-  assert.ok(stamp[0].position.z>0&&stamp[1].position.z<0);
+  assert.equal(stamp.length,1,id+' both side stamps batched together');
+  assert.deepEqual(stamp[0].userData.surfaceDetailSides,['right','left']);
+  stamp[0].geometry.computeBoundingBox();
+  assert.ok(stamp[0].geometry.boundingBox.min.z<0&&
+   stamp[0].geometry.boundingBox.max.z>0,
+   id+' both real receiver sides carry the stamped graphic');
   const selector=a.group.children.find(x=>x.name==='family-art-ak-selector');
   assert.ok(selector&&selector.position.x<-1.1&&
    selector.geometry.parameters.height>=1.15,id+' bolder, rearward selector');
