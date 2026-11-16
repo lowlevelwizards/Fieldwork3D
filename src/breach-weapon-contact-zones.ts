@@ -7,6 +7,7 @@ import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './weapons/geometry/ak-barrel-profiles.ts';
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
+import {FNC_FRONT_P13} from './weapons/geometry/fnc-front-layout.ts';
 export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
 export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc';stock:RiflePoint;
@@ -30,9 +31,13 @@ export function riflePoseContacts(
  // Never independently hardcode a number that can silently drift from mesh art.
  const hkArt=hk?hkBarrelArt(b.parts.barrel):undefined;
  const falArt=b.family==='fal'?falBarrelArt(b.parts.barrel):undefined;
- const start=(b.family==='fnc'?3.45:undefined)??falArt?.handguardStartX??hkArt?.handguardStartX??
+ // The FNC's actual grip furniture stops at the polymer, not the longer
+ // exposed gas housing: keeping that distinction avoids grabbing bare steel.
+ const fncNear=FNC_FRONT_P13.polymer.fullStartX+.30;
+ const fncFar=FNC_FRONT_P13.polymer.fullEndX+.05;
+ const start=(b.family==='fnc'?fncNear:undefined)??falArt?.handguardStartX??hkArt?.handguardStartX??
   (ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver));
- const end=(b.family==='fnc'?13.55:undefined)??falArt?.handguardEndX??hkArt?.handguardEndX??
+ const end=(b.family==='fnc'?fncFar:undefined)??falArt?.handguardEndX??hkArt?.handguardEndX??
   (ar?arHandguardEnd(b.parts.handguard):
   (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX);
  // All ordinary two-handed holds must locate the palm on the actual
