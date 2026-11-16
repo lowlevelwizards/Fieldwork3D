@@ -190,6 +190,19 @@ try{
   if(!(await page.locator('.reference-gear-timeline').textContent())?.
    includes('EQUIPMENT CHANGE SNAPSHOTS'))
    throw Error('Faction chronology is missing from mobile Studio');
+  // FT1.6: independent year states and defensive cross-environment compare.
+  if(!await page.locator('.reference-evolution-review').isVisible())
+   throw Error('Individual equipment evolution review is missing');
+  await page.locator('.reference-evolution-compare > summary').click();
+  const firstGear=page.getByRole('combobox',{name:'First gear snapshot'});
+  const secondGear=page.getByRole('combobox',{name:'Second gear snapshot'});
+  if(!await firstGear.isVisible()||!await secondGear.isVisible())
+   throw Error('Dated gear comparison controls did not open');
+  await firstGear.selectOption('bundeswehr-flecktarn-2000');
+  await secondGear.selectOption('bundeswehr-tropentarn-2010');
+  if(!(await page.locator('.reference-evolution-diff').textContent())?.
+   includes('Different environments'))
+   throw Error('Woodland and desert were incorrectly treated as chronological gear replacement');
   await page.getByRole('combobox',{name:'Browse reference mode'}).selectOption('kits');
   if(!await page.locator('.reference-search').isVisible())
    throw Error('Legacy flat search mode is unavailable');
