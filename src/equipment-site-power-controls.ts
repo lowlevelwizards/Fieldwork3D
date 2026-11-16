@@ -63,6 +63,10 @@ export function sitePowerControls(site:Site):readonly SitePowerControl[]{
    controls.push({id:'breaker:'+circuit,kind:'breaker',
     roomId,p:{...p},circuit,sourceDetailId:panel?.id});
  }
+ // The bounded mobile palette offers circuit panels first (including
+ // emergency backup), then the local switch. Stable per-site ordering.
+ controls.sort((a,b)=>
+  Number(a.kind==='switch')-Number(b.kind==='switch'));
  // Always one immutable candidate list per site. It can be reused across
  // context queries, drawing and the order motor without repeated allocations.
  memo.set(site,controls);
