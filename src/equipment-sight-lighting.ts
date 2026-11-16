@@ -18,24 +18,45 @@ export function lightVisibilityGain(illumination:number):number{
 }
 
 type Snapshot={bucket:number;revision:number;mode:LightingMode;
+ site:NonNullable<Session['site']>;powerRevision:number;illuminationRevision:number;
  levels:ReadonlyMap<string,number>};
 const snapshots=new WeakMap<Session,Snapshot>();
 const fixtures=new WeakMap<NonNullable<Session['site']>,
  Map<LightingMode,SiteLightingProgram>>();
+const poweredPrograms=new WeakMap<Session,{site:NonNullable<Session['site']>;
+ mode:LightingMode;revision:number;program:SiteLightingProgram}>();
 const NO_LEVELS:ReadonlyMap<string,number>=new Map();
 /** Shares one eight-Hz field sample across every observer/subject pairing. */
 export function actorLightingLevels(session:Session):ReadonlyMap<string,number>{
  const site=session.site;
  if(!site)return NO_LEVELS;
  const bucket=Math.floor(session.seconds*8);
+ const power=session.sitePower?.mode===session.lightingMode?
+  session.sitePower:undefined;
+ const powerRevision=power?.revision??-1;
+ const illuminationRevision=session.illuminationRevision??0;
  const cached=snapshots.get(session);
- if(cached&&cached.bucket===bucket&&cached.revision===session.objectRevision&&
-   cached.mode===session.lightingMode)return cached.levels;
- let modes=fixtures.get(site);
- if(!modes){modes=new Map();fixtures.set(site,modes);}
- let program=modes.get(session.lightingMode);
- if(!program){program=planSiteLighting(site,session.lightingMode);
-  modes.set(session.lightingMode,program);}
+ if(cached&&cached.site===site&&cached.bucket===bucket&&
+   cached.revision===session.objectRevision&&cached.mode===session.lightingMode&&
+   cached.powerRevision===powerRevision&&
+   cached.illuminationRevision===illuminationRevision)return cached.levels;
+ let program:SiteLightingProgram;
+ if(power){
+  const dynamic=poweredPrograms.get(session);
+  if(dynamic&&dynamic.site===site&&dynamic.mode===session.lightingMode&&
+   dynamic.revision===powerRevision)program=dynamic.program;
+  else{
+   program=planSiteLighting(site,session.lightingMode,power);
+   poweredPrograms.set(session,{site,mode:session.lightingMode,
+    revision:powerRevision,program});
+  }
+ }else{
+  let modes=fixtures.get(site);
+  if(!modes){modes=new Map();fixtures.set(site,modes);}
+  const existing=modes.get(session.lightingMode);
+  program=existing??planSiteLighting(site,session.lightingMode);
+  if(!existing)modes.set(session.lightingMode,program);
+ }
  // Doors and movable tall cover block a light just as they block the beam.
  const blockers=buildIlluminationBlockers(site.walls,session.doors,
   session.coverState);
@@ -46,7 +67,7 @@ export function actorLightingLevels(session:Session):ReadonlyMap<string,number>{
   if(actor.health<=0)continue;
   levels.set(actor.id,illuminationAt(actor.p,sources,blockers,program.ambient));
  }
- snapshots.set(session,{bucket,revision:session.objectRevision,
-  mode:session.lightingMode,levels});
+ snapshots.set(session,{site,bucket,revision:session.objectRevision,
+  mode:session.lightingMode,powerRevision,illuminationRevision,levels});
  return levels;
 }
