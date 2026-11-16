@@ -221,9 +221,9 @@ export class CampaignScreen{
   title.append(node('div','campaign-home-identity',
    'INTELLIGENCE · '+rules.intel.toUpperCase()+
    '  /  MAP SCALE · '+rules.scale.toUpperCase()));
-  const nav=node('nav','campaign-home-nav');
-  nav.append(button('CAMPAIGN MENU',this.handlers.showMenu));
-  title.append(nav);
+  const campaignMenuNav=node('nav','campaign-home-nav');
+  campaignMenuNav.append(button('CAMPAIGN MENU',this.handlers.showMenu));
+  title.append(campaignMenuNav);
   top.append(title,node('div','campaign-funds','DAY '+c.day+' · '+c.funds+' CR'));
   main.append(top);
   const grid=node('div','campaign-grid');
