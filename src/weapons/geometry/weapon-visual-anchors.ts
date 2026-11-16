@@ -3,7 +3,10 @@
  * The authoritative combat socket definitions remain in weapon assemblies.
  */
 import * as THREE from 'three';
-import type {WeaponConfiguration} from '../../equipment-weapon-assemblies.ts';
+import {resolveWeaponAssembly,type WeaponConfiguration}
+ from '../../equipment-weapon-assemblies.ts';
+import {opticVisualSeat} from './optic-visual-seating.ts';
+import {weaponPartMountSurfaces} from './weapon-part-mount-surfaces.ts';
 import {workbenchMounts,type WorkbenchMode,type WorkbenchMount}
  from '../../equipment-weapon-workbench-layout.ts';
 import type {FamilyPartSlot} from '../../equipment-weapon-families.ts';
@@ -51,6 +54,24 @@ export function workbenchVisualAnchors(config:WeaponConfiguration,
    mount.slot==='stock'||mount.slot==='sling'?'stock':null;
   const box=slot?boxes.get(slot):undefined;
   if(!box)return mount;
+  // M1.5: attach the Workbench hotspot to exactly the same installed
+  // Picatinny/adapter surface used by the optic mesh, not to the receiver
+  // bounding box (which incorrectly targets empty space over AK covers).
+  if(mode==='attachments'&&mount.slot==='optic'){
+   const surfaces=weaponPartMountSurfaces(config.build,config.slots.opticMount);
+   if(surfaces.some(s=>s.role==='optic')){
+    const visual=opticVisualSeat(config,
+     resolveWeaponAssembly(config).mounted.optic.mountX);
+    return {...mount,x:visual.x,y:visual.supportY+1.70,
+     z:box.max.z+.6};
+   }
+  }
+  if(mode==='attachments'&&mount.slot==='opticMount'){
+   const socket=weaponPartMountSurfaces(config.build,config.slots.opticMount)
+    .find(s=>s.role==='opticMount'&&s.standard==='hk-claw');
+   if(socket)return {...mount,
+    x:(socket.startX+socket.endX)/2,y:socket.y+1.4,z:box.max.z+.6};
+  }
   const mid=box.getCenter(new THREE.Vector3());
   let x=mid.x,y=mid.y;
   if(mount.slot==='muzzle')x=box.max.x-.55;
