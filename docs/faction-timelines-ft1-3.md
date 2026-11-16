@@ -30,12 +30,17 @@ source evidence.
   researched alternatives, lock categories, and view source/visual status.
   **Apply compatible appearance draft** uses Studio's existing cosmetic-only
   save protocol; it does not issue weapons, gear, ammunition, or stocks.
+  The separately labeled **Equip proposal** action requires an active
+  authorized preparation host and explicit user confirmation.
 - **FT1.3F:** `faction-reference-loadout-apply.ts` offers pure draft and
   authorized host-domain adapters for Quick Play and campaign. Real gear passes
-  only through existing roster/campaign equip handlers. Applying a proposal
-  requires explicit user action by a host; the Studio appearance bridge cannot
-  call or serialize these methods. Campaign application rejects active
-  contracts, missing ownership, unrepresentable weapons and partial changes.
+  only through existing roster/campaign equip handlers. `operator-studio-bridge.ts`
+  validates and regenerates all untrusted iframe claims before attempting a
+  transaction on authoritative game state, then saves or rolls it back.
+  The preexisting appearance-only protocol remains separate. Campaign application
+  rejects active contracts, missing ownership, unrepresentable weapons and
+  invalid partial changes. Proxy/unmapped pieces are skipped while eligible
+  parts can still apply; all omitted gear remains visibly unresolved.
   No automatic buying, stock creation, or class substitution.
 - **FT1.3G:** dedicated deterministic eligibility/provenance/inventory
   regression suite, existing FT1.x reference tests, typecheck/build, Studio
