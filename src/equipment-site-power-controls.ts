@@ -77,8 +77,8 @@ export function powerControlAt(site:Site,id:string):SitePowerControl|undefined{
  return sitePowerControls(site).find(control=>control.id===id);
 }
 export function currentControlState(
- control:SitePowerControl,circuits:Record<string,boolean>,
- switches:Record<string,boolean>):boolean{
+ control:SitePowerControl,circuits:Readonly<Record<SitePowerCircuit,boolean>>,
+ switches:Readonly<Record<string,boolean>>):boolean{
  return control.kind==='breaker'?
   !!circuits[control.circuit!]:switches[control.fixtureId!]!==false;
 }
