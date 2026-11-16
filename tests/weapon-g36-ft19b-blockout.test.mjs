@@ -116,7 +116,7 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.ok(meshCount<=14,'only one necessary optical-face mesh is permitted: '+meshCount);
+ assert.ok(meshCount<=15,'only two optical-face landmarks are permitted: '+meshCount);
  clearWeaponSilhouette(g);m.dispose();
 });
 
