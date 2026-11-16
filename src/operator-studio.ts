@@ -64,6 +64,10 @@ import type {WeaponId} from './breach-combat.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appearance-grid.ts';
 import {FactionReferenceBrowser} from './faction-reference-browser.ts';
+import {createHistoricalLoadoutDraft}
+ from './faction-reference-loadout-apply.ts';
+import type {HistoricalLoadoutProposal}
+ from './faction-reference-loadout-generator.ts';
 import {resolveFactionReference,referenceLookForKit} from './faction-reference-resolver.ts';
 import {readRoster,initialRoster,
  freshQuickPlayRoster,serializeQuickPlayCosmetics} from './breach-roster.ts';
@@ -137,6 +141,7 @@ let advancedPouchOpen=false;
 let clothesOnly=true;
 let showWeapon=false;
 let referenceOpen=false;
+let historicalProposalPreview:HistoricalLoadoutProposal|null=null;
 let previousClothesOnly=true;
 let previousShowWeapon=false;
 let comparingSaved=false;
@@ -523,6 +528,25 @@ const say=(message:string)=>{status.textContent=message;};
 const referenceBrowser=new FactionReferenceBrowser(
  $<HTMLElement>('studioReferencesPanel'),{
   onPreview:()=>{if(referenceOpen)posePreview();},
+  proposalBaseline:()=>member()?.loadout,
+  onProposalPreview:proposal=>{
+   historicalProposalPreview=proposal;
+   if(referenceOpen)posePreview();
+  },
+  onApplyProposedLook:proposal=>{
+   const p=member();
+   if(!p||readOnly||saveInFlight)return;
+   const draft=createHistoricalLoadoutDraft(proposal,p.loadout,current(),
+    p.weaponConfiguration);
+   // Studio's save contract is cosmetic-only; compare against the genuine kit.
+   // Never send weapon or inventory mutations through the appearance bridge.
+   const compatible=outfitPresetForKit(draft.wardrobe,p.loadout);
+   changeWardrobe(compatible);
+   closeReferenceBrowser();
+   say('HISTORICAL APPEARANCE APPLIED TO UNSAVED LOOK · '+
+    draft.appliedHistoricalIds.length+' MAPPED CHOICE(S) · '+
+    draft.blocked.length+' UNPLAYABLE · SAVE LOOK TO KEEP IT');
+  },
   onApply:id=>{
    const p=member();
    if(!p||readOnly||saveInFlight)return;
@@ -753,8 +777,11 @@ function posePreview(){
  // Restore exact unmodified colors before the wardrobe refresh; otherwise
  // a previously disabled debug layer would contaminate the next bake.
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
- const reference=referenceOpen?resolveFactionReference(
+ const reference=referenceOpen&&!historicalProposalPreview?resolveFactionReference(
   referenceBrowser.selectedId,referenceBrowser.selectedWeaponPresetId):null;
+ const historicalDraft=referenceOpen&&historicalProposalPreview?
+  createHistoricalLoadoutDraft(historicalProposalPreview,p.loadout,
+   previewWardrobe(),p.weaponConfiguration):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){
    releaseOperatorPreviewRig(scene,rig,()=>{
@@ -772,11 +799,12 @@ function posePreview(){
  const light=liveLightLabSettings();
  rig.root.userData.fieldworkHeightProfile=light.gradient;
  const issue=issueWeaponPreset(starterWeaponPreset(p.id));
- const configuration=reference?.weapon.weaponConfiguration??
+ const configuration=historicalDraft?.weaponConfiguration??
+  reference?.weapon.weaponConfiguration??
   p.weaponConfiguration??issue.weaponConfiguration;
  const weapon=reference?.weapon.weapon??p.weapon??configuration.weapon;
  const armed=!clothesOnly&&showWeapon;
- const previewEquipment=inspectKit(reference?.kit??p.loadout);
+ const previewEquipment=inspectKit(historicalDraft?.kit??reference?.kit??p.loadout);
  // Studio carries a representative visible spare bank, never phantom ammo
  // in the live game; preview rig count is capped to actual rig capacity later.
  const sampleMagazines=armed&&previewEquipment.slots.rig!=='rig-none'?
@@ -791,7 +819,8 @@ function posePreview(){
   unarmedPreview:!armed,weaponConfiguration:configuration,
   equipment:previewEquipment,
   magazineCarryLocations:sampleMagazines,
-  wardrobe:inspectWardrobe(reference?.wardrobe??previewWardrobe()),
+  wardrobe:inspectWardrobe(historicalDraft?.wardrobe??
+   reference?.wardrobe??previewWardrobe()),
   appearanceSeed:p.appearanceSeed
  };
  poseOperator(rig,armedPose,0);
