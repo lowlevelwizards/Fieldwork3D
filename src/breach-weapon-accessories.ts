@@ -10,9 +10,6 @@ import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {accessoryBox,accessoryTube,accessoryFrame,accessoryProfile,accessoryMergedBoxes}
  from './weapons/geometry/accessory-primitives.ts';
 import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
-const block=(root:THREE.Group,x:number,y:number,z:number,
- w:number,h:number,d:number,m:THREE.Material)=>
- accessoryBox(root,'weapon-accessory-hardware',x,y,z,w,h,d,m);
 export function buildWeaponAccessories(raw:WeaponConfiguration,
  steel:THREE.Material,dark:THREE.Material,
  lensMaterial:THREE.Material=steel):THREE.Group{
