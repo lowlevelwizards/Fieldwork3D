@@ -1,6 +1,6 @@
 /** Post-operation career progression. No XP calculations in the 60Hz simulation. */
-import type {CampaignOperator,SkillName} from './campaign-state.ts';
-import {SKILL_NAMES} from './campaign-state.ts';
+import type {CampaignOperator} from './campaign-state.ts';
+import {SKILL_NAMES,type SkillName} from './campaign-skill-schema.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {readPersistentMagazines,readLoadedMagazineId} from './equipment-magazine-persistence.ts';
