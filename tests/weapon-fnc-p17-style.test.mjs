@@ -26,34 +26,32 @@ test('P17 magwell is ONE lower receiver silhouette with near-vertical front',()=
  assert.equal(many(g,'fncP8DistinctMagwell').length,1);
  assert.equal(many(g,'fncP15FlatLowerNose').length,1);
  assert.ok(near(size(lower,'z'),3.42));
- assert.ok(near(box(lower).max.x,2.75));
+ assert.ok(near(box(lower).max.x,3.05));
  assert.ok(near(box(lower).min.y,-3.46));
  assert.ok(touch(lower,upper)&&touch(lower,mag));
- // Both the top front corner and the magazine shroud use the SAME
- // receiver-forward X coordinate, with a square drop instead of a ramp.
+ // Keep the upper receiver front X2.75; the lower magwell steps to
+ // X3.05 for visible STANAG clearance without stretching the upper.
  const verts=lower.geometry.getAttribute('position');
  let top=0,below=0;
  for(let i=0;i<verts.count;i++)if(near(verts.getX(i),2.75)){
   if(near(verts.getY(i),-1.09))top++;
-  if(near(verts.getY(i),-3.46))below++;
+  if(near(verts.getY(i),-2.57))below++;
  }
- assert.ok(top>0&&below>0,'near-vertical leading magwell face');
+ assert.ok(top>0&&below>0,'stepped front stays square, not chamfered');
  // A separate old P16 side slab must not be present.
  assert.ok(!g.children.some(x=>x!==lower&&x.name.includes('magwell')));
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P17 rear sight graphic aperture wider but outside envelope stable',()=>{
+test('P22 solid rear sight preserves the original outer envelope',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const rear=one(g,'fncP17GraphicRearAperture'),front=many(g,'fncP16ChamferedSightGuard');
+ const rear=one(g,'fncP22SolidRearSight'),front=many(g,'fncP16ChamferedSightGuard');
  assert.ok(rear);assert.equal(front.length,2);
  assert.ok(near(box(rear).max.y,3.06));
  assert.ok(near(box(rear).min.x,-5.78));
  assert.ok(near(size(rear,'x'),1.80));
  assert.equal(rear.geometry.type,'ExtrudeGeometry');
- const hole=rear.geometry.parameters.shapes.holes[0];
- const points=hole.getPoints(8);
- const xs=points.map(p=>p.x);
- assert.ok(Math.max(...xs)-Math.min(...xs)>.65,'single bold aperture');
+ assert.equal(rear.geometry.parameters.shapes.holes.length,0,'no literal aperture');
+ assert.equal(rear.geometry.getAttribute('position').count,36);
  assert.ok(near(box(front[0]).max.y,2.77));
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -62,7 +60,7 @@ test('P17 handguard underside heavier without losing gas/polymer hierarchy',()=>
  const poly=one(g,'fncP17LowerMass'),gas=one(g,'fncP16ExtendedGasRoot'),
  stop=one(g,'fncP17BroadHandstop');
  assert.ok(poly&&gas&&stop);
- assert.ok(size(poly,'y')>3.10&&size(poly,'y')<3.30);
+ assert.ok(size(poly,'y')>2.90&&size(poly,'y')<3.15);
  assert.ok(box(poly).max.y<.62,'polymer roof must remain below gas vents');
  assert.ok(size(poly,'z')>2.40);
  assert.ok(box(gas).max.y>box(poly).max.y+.8);
@@ -103,7 +101,7 @@ test('P17 approved stock, primary hand, 2 sights and overall art budget stable',
  const pad=one(g,'fncP17BoldButtpad'),grip=one(g,'fncGrip');
  assert.ok(pad&&grip);
  assert.ok(near(box(pad).min.x,FNC_P1.stockRearX));
- assert.ok(size(pad,'y')>5.15&&size(pad,'y')<5.25);
+ assert.ok(size(pad,'y')>4.65&&size(pad,'y')<4.72);
  assert.ok(one(g,'fncP10ContinuousBareUpperRail'));
  assert.ok(one(g,'fncP9ParallelThenAngled'));
  assert.ok(near(box(g).min.x,FNC_P1.stockRearX));

@@ -1,4 +1,4 @@
-/** FNC P21: sculptural low-poly polymer, lip and gas cover. Vents and
+/** FNC P22: sculptural polymer, lip and integrated gas block/front sight. Vents and
  * grooves are pixel art mapped onto the three-dimensional surfaces. The P13
  * layout contract owns all relative positions; meshes build on demand only.
  * +X muzzle, +Y up, +Z right. No physical assembly or firing changes.
@@ -88,8 +88,10 @@ export function addFNCFacetedForearm(root:THREE.Group,
  mesh.userData.fncP14ReceiverSeatedPolymer=true;
  mesh.userData.fncP15RaisedPolymer=true;
  mesh.userData.fncP16ConcealedReceiverRoot=true;
+ mesh.userData.fncP22ExposedMetalNeck=true;
  mesh.userData.fncP17TaperedReceiverRoot=true;
  mesh.userData.fncP17LowerMass=true;
+ mesh.userData.fncP22RaisedPolymerBelly=true;
  mesh.userData.fncP18MonumentalPolymer=true;
  mesh.userData.fncP6OutwardEndcaps=true;
  applyFNCPixelDetails(mesh,'polymer');
@@ -114,17 +116,33 @@ export function addFNCHandstopLip(root:THREE.Group,
  mesh.userData.fncP18DeepEndLip=true;
  return mesh;
 }
-const GAS_PROFILE:readonly (readonly [number,number])[]=[
- [GAS.bottomY,-GAS.bottomHalfZ],[GAS.bottomY,GAS.bottomHalfZ],
- [GAS.shoulderY,GAS.sideHalfZ],[GAS.topY,GAS.roofHalfZ],
- [GAS.topY,-GAS.roofHalfZ],[GAS.shoulderY,-GAS.sideHalfZ]
-];
+// One gas-cover root grows into the sight-supporting block. Two nearby
+// shoulder stations establish an intentional change of breadth without
+// separating the actual metal gas housing or adding a second mesh.
+function gasCross(x:number,i:number):readonly [number,number]{
+ const sight=FNC_FRONT_P13.sight;
+ const t=Math.max(0,Math.min(1,
+  (x-GAS.transitionStartX)/(GAS.transitionEndX-GAS.transitionStartX)));
+ const top=GAS.topY+(sight.baseTopY-GAS.topY)*
+  Math.max(0,Math.min(1,(x-GAS.transitionStartX)/
+   (GAS.endX-GAS.transitionStartX)));
+ const bottom=GAS.bottomY+(sight.baseBottomY-GAS.bottomY)*t;
+ const side=GAS.sideHalfZ+(.98-GAS.sideHalfZ)*t;
+ const roof=GAS.roofHalfZ+(.73-GAS.roofHalfZ)*t;
+ const shoulder=GAS.shoulderY+(.50-GAS.shoulderY)*t;
+ const yyzz:readonly (readonly [number,number])[]=[
+  [bottom,-GAS.bottomHalfZ],[bottom,GAS.bottomHalfZ],
+  [shoulder,side],[top,roof],[top,-roof],[shoulder,-side]
+ ];
+ return yyzz[i];
+}
 export function addFNCUpperGasBox(root:THREE.Group,
  material:THREE.Material):THREE.Mesh{
  // One six-face metal envelope; no extra bridge boxes.
  const mesh=makeSixFacePrism(root,material,
   'family-handguard-fnc-p15-upper-gas-spine',
-  [GAS.startX,GAS.endX],(_,i)=>GAS_PROFILE[i]);
+  [GAS.startX,GAS.transitionStartX,GAS.transitionEndX,GAS.endX],
+  gasCross);
  mesh.userData.fncP5UpperGasBox=true;
  mesh.userData.fncP6NarrowGasBox=true;
  mesh.userData.fncP7ConnectedGasHousing=true;
@@ -135,6 +153,15 @@ export function addFNCUpperGasBox(root:THREE.Group,
  mesh.userData.fncP15UpperGasSpine=true;
  mesh.userData.fncP16ExtendedGasRoot=true;
  mesh.userData.fncP18RaisedFourVentSpine=true;
+ mesh.userData.fncP22ContinuousGasBlock=true;
+ mesh.userData.fncP13CompactIntegratedSightBase=true;
+ mesh.userData.fncP14LowSightBase=true;
+ mesh.userData.fncP15AlignedGasSightBase=true;
+ mesh.userData.fncP16CompactGasSightBase=true;
+ mesh.userData.fncP17SimplifiedSightSeat=true;
+ mesh.userData.fncP7ContinuousGasSightSeat=true;
+ mesh.userData.fncFrontSightBase=true;
+ mesh.userData.fncP4IntegratedGasSeat=true;
  applyFNCPixelDetails(mesh,'gas');
  return mesh;
 }

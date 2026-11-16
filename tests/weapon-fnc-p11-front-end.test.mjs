@@ -20,8 +20,8 @@ test('P15 tall polymer still shorter than elevated gas cover, all parts connecte
  const gas=get(g,'fncP11LongSlimVentedCover');
  const lip=get(g,'fncP11HandstopLip'),base=get(g,'fncP7ContinuousGasSightSeat');
  assert.ok(polymer&&gas&&lip&&base);
- assert.ok(size(polymer,'x')>9.70&&size(polymer,'x')<9.76);
- assert.ok(size(gas,'x')>11.97&&size(gas,'x')<12.03);
+ assert.ok(size(polymer,'x')>8.40&&size(polymer,'x')<8.48);
+ assert.ok(size(gas,'x')>13.12&&size(gas,'x')<13.18);
  assert.ok(size(gas,'x')>size(polymer,'x')+2.0);
  assert.ok(size(gas,'z')<size(polymer,'z')*.7);
  assert.ok(meets(polymer,gas)&&meets(gas,base));

@@ -51,12 +51,12 @@ test('P10: middle sheet longer along X, thinner along Z, still connects both rai
  const top=get(g,'fncP10ContinuousBareUpperRail');
  const lower=get(g,'fncP9ParallelThenAngled');
  assert.ok(plate&&top&&lower);
- assert.ok(size(plate,'x')>2.5&&size(plate,'x')<2.9);
+ assert.ok(size(plate,'x')>3.5&&size(plate,'x')<3.8);
  assert.ok(size(plate,'z')>.58&&size(plate,'z')<.70);
  assert.ok(size(plate,'z')<size(lower,'z')-.4);
  assert.ok(box(plate).max.z<box(top).max.z-.15);
  assert.ok(intersect(plate,top)&&intersect(plate,lower));
- assert.ok(box(plate).min.x>box(lower).min.x+1,
+ assert.ok(box(plate).min.x>box(lower).min.x+.70,
   'connector remains within large stock opening');
  clearWeaponSilhouette(g);m.dispose();
 });

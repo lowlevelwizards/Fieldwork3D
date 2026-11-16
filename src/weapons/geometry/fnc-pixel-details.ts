@@ -37,8 +37,6 @@ function pixelValue(tile:Tile,x:number,y:number):number{
  }
  if(tile==='lower-right'||tile==='lower-left'){
   if(inside(x,y,-6.19,2.68,-1.37,-1.22))return 139;
-  if(tile==='lower-right'&&inside(x,y,-5.83,-.96,-2.25,-2.10))
-   return 174;
   return 255;
  }
  if(tile==='polymer'){

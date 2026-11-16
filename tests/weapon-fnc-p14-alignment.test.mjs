@@ -19,21 +19,22 @@ const size=(o,k)=>box(o).max[k]-box(o).min[k];
 const touch=(a,b)=>box(a).intersectsBox(box(b));
 const close=(a,b,t=.025)=>Math.abs(a-b)<t;
 
-test('P15 receiver and handguard stay in real 3D contact after body shortening',()=>{
+test('P22 narrow metal neck bridges a deliberately exposed receiver-handguard gap',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const poly=one(g,'fncP14ReceiverSeatedPolymer');
  const upper=one(g,'fncP5CrownedReceiver');
  const lower=one(g,'fncAngularLower');
- assert.ok(poly&&upper&&lower);
- assert.ok(close(box(poly).min.x,1.95));
+ const gas=one(g,'fncP22ContinuousGasBlock');
+ assert.ok(poly&&upper&&lower&&gas);
+ assert.ok(close(box(poly).min.x,3.25));
  assert.ok(close(box(upper).max.x,2.75));
- assert.ok(close(box(lower).max.x,2.75));
- assert.ok(box(upper).max.x-box(poly).min.x>.29,
-  'no upper-to-handguard longitudinal gap');
- assert.ok(box(lower).max.x-box(poly).min.x>.29,
-  'lower receiver also overlaps handguard longitudinally');
- assert.ok(touch(poly,upper)&&touch(poly,lower),
-  'the entire parts must share nonzero volume, not merely touch X');
+ assert.ok(close(box(lower).max.x,3.05));
+ assert.ok(box(poly).min.x-box(upper).max.x>.45,
+  'the upper-to-polymer gap must be visibly open');
+ assert.ok(box(poly).min.x>box(lower).max.x,
+  'lower is not stretched into the polymer');
+ assert.ok(touch(gas,upper)&&touch(gas,poly),
+  'gas housing physically bridges the separated shapes');
  assert.ok(box(poly).min.y<box(upper).max.y&&
   box(poly).max.y>box(upper).min.y);
  assert.ok(box(poly).min.y<box(lower).max.y&&
@@ -71,7 +72,8 @@ test('P14 front base no longer forms a tall pedestal under twin FAL ears',()=>{
  assert.ok(base&&gas&&rear&&touch(base,gas));
  assert.equal(ears.length,2);
  assert.ok(close(box(base).max.y,1.85));
- assert.ok(size(base,'x')<2.8);
+ assert.equal(base,gas,'no extra sight-base mesh');
+ assert.ok(size(base,'x')>13.0&&size(base,'x')<13.3);
  assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.77)));
  assert.ok(box(ears[0]).max.y-box(gas).max.y<1.15,
   'P15 twin ears remain seated within the taller gas/sight structure');
@@ -83,9 +85,11 @@ test('P14 preserves metal/polymer material hierarchy and both muzzle variants',(
  const m=new THREE.MeshBasicMaterial();
  const preset=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
  const live=buildWeaponSilhouette('rifle',m,m,preset);
- assert.equal(one(live,'fncP14ReceiverSeatedPolymer')?.material,FAL_DARK_POLYMER);
+ assert.equal(one(live,'fncP14ReceiverSeatedPolymer')?.material.color.getHex(),FAL_DARK_POLYMER.color.getHex());
+ assert.ok(one(live,'fncP14ReceiverSeatedPolymer')?.material.map,'polymer remains textured');
  assert.equal(one(live,'fncP14TaperedMoldedCollar')?.material,FAL_DARK_POLYMER);
- assert.equal(one(live,'fncP14LoweredGasCover')?.material,HK_BLACK_METAL);
+ assert.equal(one(live,'fncP14LoweredGasCover')?.material.color.getHex(),HK_BLACK_METAL.color.getHex());
+ assert.ok(one(live,'fncP14LoweredGasCover')?.material.map,'gas retains 12 pixel vents');
  assert.equal(one(live,'fncGrip')?.material,HK_DARK_POLYMER);
  const plain=buildFNCStage1Silhouette(m,{},false);
  assert.ok(!one(plain,'fncMuzzle'));

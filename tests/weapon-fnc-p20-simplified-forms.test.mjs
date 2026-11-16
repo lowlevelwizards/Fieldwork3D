@@ -16,13 +16,14 @@ const bb=x=>new THREE.Box3().setFromObject(x);
 const close=(a,b,t=.03)=>Math.abs(a-b)<t;
 const select=()=>selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
 
-test('P20 front sight uses just two rectangular ears and a four-corner seat',()=>{
+test('P22 front sight uses two rectangular ears on one continuous gas seat',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const ears=all(g,'fncP20SimpleSightEar'),base=one(g,'fncP20FourCornerSightSeat');
+ const ears=all(g,'fncP20SimpleSightEar'),base=one(g,'fncP22ContinuousGasBlock');
  const gas=one(g,'fncP15UpperGasSpine');
  assert.ok(base&&gas);assert.equal(ears.length,2);
  assert.ok(bb(base).intersectsBox(bb(gas)));
  assert.ok(ears.every(x=>bb(x).intersectsBox(bb(base))));
+ assert.equal(base,gas,'one gas and sight-base mesh');
  for(const ear of ears){
   assert.equal(ear.geometry.type,'ExtrudeGeometry');
   assert.equal(ear.geometry.getAttribute('position').count,36,
@@ -32,8 +33,8 @@ test('P20 front sight uses just two rectangular ears and a four-corner seat',()=
    assert.ok(close(pos.getY(i),L.sight.earBottomY)||
     close(pos.getY(i),L.sight.earTopY),'only two heights on rectangular ears');
  }
- assert.equal(base.geometry.getAttribute('position').count,36,
-  'four corners, no intermediate sight seat ledge');
+ assert.equal(base.geometry.getAttribute('position').count,144,
+  'four gas stations and no separate sight base');
  const ordered=ears.slice().sort((a,b)=>bb(a).min.z-bb(b).min.z);
  assert.ok(bb(ordered[0]).max.z<bb(ordered[1]).min.z-.3);
  clearWeaponSilhouette(g);m.dispose();
