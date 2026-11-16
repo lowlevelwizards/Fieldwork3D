@@ -65,8 +65,7 @@ export const HISTORICAL_EQUIPMENT:readonly HistoricalEquipment[]=[
   style('ddr-m56','representative','Dedicated stylized M56 silhouette; historical wear details vary.')),
  record('ddr-strichtarn','East German NVA Strichtarn field uniform','uniform',
   'Strichtarn field dress used by the East German NVA.',
-  camo('east-german-strichtarn','Pattern represented; garment cut not certified.'))
-,
+  camo('east-german-strichtarn','Pattern represented; garment cut not certified.')),
  ...FT12_HISTORICAL_EQUIPMENT
 ];
 export const historicalEquipment=(id:string):HistoricalEquipment|undefined=>
