@@ -36,8 +36,10 @@ test('FT1.0 representative snapshots retain their dated authored ranges',()=>{
   assert.ok(ref.era.start<=snapshot.representativeYear&&
    ref.era.end>=snapshot.representativeYear,snapshot.referenceId);
   assert.equal(snapshot.environment,ref.environment);
-  assert.deepEqual(timeline.equipment,[]);
-  assert.deepEqual(timeline.evidence,[]);
+  assert.ok(Array.isArray(timeline.equipment));
+  assert.ok(Array.isArray(timeline.evidence));
+  for(const record of timeline.equipment)
+   assert.ok(record.evidenceIds.every(id=>timeline.evidence.some(e=>e.id===id)));
  }
 });
 test('FT1.0 year queries preserve overlapping theater references and deterministic ordering',()=>{
