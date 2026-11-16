@@ -66,7 +66,8 @@ export type OperationDossierV1={
   claims:IntelClaim[];
   /** Authored only from an accepted, recorded Campaign contract. */
   campaign?:{
-    contractId:string;title:string;region:string;risk:1|2|3;day:number;
+    contractId:string;title:string;reference?:string;
+    region:string;risk:1|2|3;day:number;
     followUp?:{contractId:string;title:string;outcome:'success'|'failure'};
   };
   contract:{objective:string;condition:string;extraction:string};
