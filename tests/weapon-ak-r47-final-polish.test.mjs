@@ -95,8 +95,12 @@ test('R4.7 lower receiver omits trigger guard but keeps understated rivets',()=>
    stamp=a.group.children.filter(m=>m.name==='family-art-ak-receiver-stamp');
   assert.ok(receiver.every(m=>box(m).min.y>=-2.61),
    id+' no disconnected trigger-guard shape');
-  assert.equal(stamp.length,2,id+' one quiet stamped cue per side');
-  assert.ok(stamp[0].position.z>0&&stamp[1].position.z<0);
+  assert.equal(stamp.length,1,id+' both side stamps batched together');
+  assert.deepEqual(stamp[0].userData.surfaceDetailSides,['right','left']);
+  stamp[0].geometry.computeBoundingBox();
+  assert.ok(stamp[0].geometry.boundingBox.min.z<0&&
+   stamp[0].geometry.boundingBox.max.z>0,
+   id+' both real receiver sides carry the stamped graphic');
   const selector=a.group.children.find(x=>x.name==='family-art-ak-selector');
   assert.ok(selector&&selector.position.x<-1.1&&
    selector.geometry.parameters.height>=1.15,id+' bolder, rearward selector');
