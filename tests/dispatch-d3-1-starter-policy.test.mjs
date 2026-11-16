@@ -4,8 +4,8 @@ import {newCampaign,equipCampaignGear,equipCampaignWeapon,
  equipCampaignWeaponPreset,buyWeapon,equipCampaignWeaponFamilyPart,
  buyWeaponAttachment,equipCampaignWeaponAttachment,
  setCampaignWardrobe,applyCampaignKitPreset} from '../src/campaign-state.ts';
-import {newDispatchPilotCampaign,DISPATCH_PILOT_REFERENCE_ID}
- from '../src/dispatch-campaign-starter.ts';
+import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
+import {DISPATCH_PILOT_REFERENCE_ID} from '../src/dispatch-content-foundation.ts';
 import {isDispatchPilot,mayChooseCampaignContent}
  from '../src/dispatch-campaign-eligibility.ts';
 import {weaponOwnershipIssues} from '../src/equipment-weapon-ownership.ts';
