@@ -9,6 +9,7 @@ import {arBarrelArt,AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profile
 import {akBarrelArt} from './weapons/geometry/ak-barrel-profiles.ts';
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
+import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
@@ -47,6 +48,9 @@ const ids=(a:readonly WeaponId[])=>a;
 export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
  'optic-irons':{id:'optic-irons',name:'Iron Sights',slot:'optic',compatible:ALL,
   massKg:0,massX:0,mountX:0,mountY:2.6,mountZ:0,sightHeight:2.6},
+ 'optic-g36-integrated':{id:'optic-g36-integrated',name:'Original G36 Integral Dual Optic',
+  slot:'optic',compatible:['rifle'],massKg:0,massX:0,
+  mountX:-1.30,mountY:G36.lowerSightY,mountZ:0,sightHeight:G36.lowerSightY},
  'optic-reflex':{id:'optic-reflex',name:'Reflex Sight',slot:'optic',compatible:ALL,
   massKg:.16,massX:2,mountX:0,mountY:2.6,mountZ:0,sightHeight:4.4},
  'optic-magnified':{id:'optic-magnified',name:'Magnified Optic',slot:'optic',compatible:LONG,
@@ -122,6 +126,15 @@ export const compatibleWeaponAttachment=(weapon:WeaponId,slot:WeaponAttachmentSl
  */
 export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  slot:WeaponAttachmentSlot,id:string,mount='optic-mount-none'):boolean{
+ if(build.family==='g36'){
+  if(slot==='stock')return id==='stock-standard';
+  if(slot==='opticMount')return id==='optic-mount-none';
+  if(slot==='optic')return id==='optic-g36-integrated';
+  if(slot==='foregrip')return id==='foregrip-none';
+  if(slot==='light')return id==='light-none';
+  // A barrel/device replacement may suppress the original factory muzzle,
+  // but cannot add a fictitious top/fore-end accessory rail.
+ }
  if(slot==='stock')return id==='stock-standard';
  if(slot==='opticMount')return id==='optic-mount-none'||
   (id==='optic-hk-claw'&&build.family==='hk');
@@ -166,7 +179,9 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
   result.build=build;
   for(const slot of WEAPON_ATTACHMENT_SLOTS)
    if(!familyAccessoryAllowed(build,slot,result.slots[slot],
-    result.slots.opticMount))result.slots[slot]=DEFAULT_IDS[slot];
+    result.slots.opticMount))
+    result.slots[slot]=build.family==='g36'&&slot==='optic'?
+     'optic-g36-integrated':DEFAULT_IDS[slot];
  }else{
   result.slots.opticMount=DEFAULT_IDS.opticMount;
  }
@@ -234,7 +249,9 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   build?.family==='hk'?hkBarrelArt(build.parts.barrel):
   build?.family==='fal'?falBarrelArt(build.parts.barrel):
   build?.family==='fnc'&&build.parts.barrel==='fnc-177-service'?
-  {lengthScale:.94,muzzleX:19.50,muzzleY:0}:undefined;
+  {lengthScale:.94,muzzleX:19.50,muzzleY:0}:
+  build?.family==='g36'&&build.parts.barrel==='g36-barrel-480'?
+  {lengthScale:G36.displayScale,muzzleX:G36.muzzleX,muzzleY:G36.muzzleY}:undefined;
  const mounted={} as Record<WeaponAttachmentSlot,WeaponAttachment>;
  let mass=p.baseMassKg,weighted=p.baseMassKg*p.baseBalanceX;
  let inertia=p.baseMassKg*(18*18/12+p.baseBalanceX*p.baseBalanceX);
@@ -262,16 +279,17 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const hkArt=build?.family==='hk'?hkBarrelArt(build.parts.barrel):undefined;
  // Actual family pistol-grip silhouettes sit behind the receiver midpoint.
  // Earlier AK settings targeted empty space, putting the wrist in the plate.
- const primaryX=build?(build.family==='hk'?-4.20:
-  build.family==='ar'?-4.80:-4.65):p.primaryX;
- const primaryY=build?(build.family==='hk'?-4.00:
-  build.family==='ar'?-4.00:-4.10):p.primaryY;
+ const primaryX=build?(build.family==='g36'?G36.primaryX:
+  build.family==='hk'?-4.20:build.family==='ar'?-4.80:-4.65):p.primaryX;
+ const primaryY=build?(build.family==='g36'?G36.primaryY:
+  build.family==='hk'?-4.00:build.family==='ar'?-4.00:-4.10):p.primaryY;
  const hkSupportX=hkArt?Math.min(7.75,hkArt.handguardStartX+
   .47*(hkArt.handguardEndX-hkArt.handguardStartX)):7.75;
  const mp5k=build?.parts.receiver==='hk-mp5k-stockless';
  const triRailVertical=build?.parts.handguard==='hk-mp5-trirail'&&
   config.slots.foregrip==='foregrip-vertical';
- const supportX=build?.family==='hk'?hkSupportX:
+ const supportX=build?.family==='g36'?(G36.supportNearX+G36.supportFarX)/2:
+  build?.family==='hk'?hkSupportX:
   build?(familyHandguard?.length==='long'?9.10:
   familyHandguard?.length==='mid'?7.70:6.50):p.supportX;
  const resolved:ResolvedWeaponAssembly={weapon:config.weapon,configuration:config,lengthScale,
@@ -285,6 +303,7 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   supportY:(mp5k?-4.20:
    mounted.foregrip.id==='foregrip-vertical'?-3.65:
    mounted.foregrip.id==='foregrip-handstop'?-2.3:
+   build?.family==='g36'?G36.supportY:
    build?.family==='hk'?-1.35:build?-1.65:p.supportY)+
    (build?.family==='ar'?AR_VISUAL_AXIS_Y:0),
   sightHeight:mounted.optic.sightHeight??2.6,

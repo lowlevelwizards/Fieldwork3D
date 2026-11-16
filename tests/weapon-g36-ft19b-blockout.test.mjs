@@ -8,10 +8,14 @@ import {buildG36OriginalBlockout,G36_B_PART_IDS,applyG36FactoryMaterials}
  from '../src/weapons/geometry/g36-silhouettes.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import {weaponVisualLayout} from '../src/weapons/geometry/weapon-visual-layout.ts';
-import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
+import {FAMILY_PRESETS,FAMILY_PARTS,validFamilyBuild,readWeaponFamilyBuild} from '../src/equipment-weapon-families.ts';
+import {ARSENAL_PLATFORMS,arsenalReferencesForPlatform,arsenalCatalogIssues} from '../src/arsenal/catalog.ts';
+import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
+import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
 import {applyG36PixelDetails,g36PixelAtlas,g36PixelAtlasLayout} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {weaponFinish,weaponMaterialCacheSize} from '../src/weapons/geometry/weapon-material-registry.ts';
-import {initialWeaponConfiguration,selectWeaponFamilyPreset}
+import {initialWeaponConfiguration,selectWeaponFamilyPreset,
+ resolveWeaponAssembly,setWeaponAttachment,readWeaponConfiguration}
  from '../src/equipment-weapon-assemblies.ts';
 const mat=()=>new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
 const bb=obj=>new THREE.Box3().setFromObject(obj);
@@ -66,8 +70,9 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  },0);
  assert.ok(meshes.length<=24, 'review excess blockout meshes: '+meshes.length);
  assert.ok(triangles<=500, 'review excess emitted triangles: '+triangles);
- assert.ok(!FAMILY_PRESETS.some(p=>p.family==='g36'||p.id.startsWith('g36')));
- assert.ok(!Object.keys(FAMILY_PARTS).some(id=>id.startsWith('g36-')));
+ assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
+  'only the accepted original full-size model is an authored factory preset');
+ assert.equal(Object.keys(FAMILY_PARTS).filter(id=>id.startsWith('g36-')).length,6);
  const peers=[['rifle','fnc-service'],['rifle','fal-5000'],
   ['rifle','hk-g3a3'],['rifle','ar-m16a2'],['carbine','ar-m4a1'],
   ['rifle','ak-akm']];
@@ -286,4 +291,64 @@ test('G36 E0: shared future hand/grip/magazine/muzzle datums sit on real mesh',(
  assert.ok(Math.abs(bb(g).min.x-f.stockX)<.02);
  assert.ok(f.supportNearX<f.supportFarX&&f.supportFarX<A.handguardFrontX);
  clearWeaponSilhouette(g);m.dispose();
+});
+
+test('G36 E1: exactly one complete valid factory, unique visual feed and Arsenal platform',()=>{
+ const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'g36-service');
+ assert.equal(cfg.build?.family,'g36');
+ assert.ok(validFamilyBuild(cfg.build,'rifle'));
+ assert.equal(cfg.build.parts.magazine,'g36-mag30');
+ assert.equal(cfg.slots.optic,'optic-g36-integrated');
+ assert.equal(arsenalReferencesForPlatform('g36').length,1);
+ assert.ok(ARSENAL_PLATFORMS.some(p=>p.id==='g36'));
+ assert.deepEqual(arsenalCatalogIssues(),[]);
+ const raw=readWeaponFamilyBuild(cfg.build,'rifle');
+ assert.deepEqual(raw,cfg.build);
+ const invalid=readWeaponFamilyBuild({
+  family:'g36',parts:{...cfg.build.parts,magazine:'ar-mag30'}
+ },'rifle');
+ assert.equal(invalid.parts.magazine,'g36-mag30','do not substitute STANAG magazines');
+});
+test('G36 E1: same master geometry builds in the real Arsenal/operator/replay route',()=>{
+ const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'g36-service');
+ const m=mat(),master=buildG36OriginalBlockout(m);
+ const live=buildWeaponSilhouette('rifle',m,m,cfg);
+ const assembly=resolveWeaponAssembly(cfg),contacts=riflePoseContacts('rifle',cfg);
+ assert.ok(live.userData.g36OriginalFactory);
+ assert.ok(live.userData.g36IntegratedDualOptic);
+ assert.ok(Math.abs(bb(master).min.x-bb(live).min.x)<.02);
+ assert.ok(Math.abs(bb(master).max.x-bb(live).max.x)<.02);
+ assert.equal(assembly.lengthScale,A.displayLongitudinalScale);
+ assert.equal(assembly.muzzleX,A.muzzleX);
+ assert.equal(assembly.stockX,A.stockRearX);
+ assert.ok(contacts);
+ assert.equal(contacts.family,'g36');
+ assert.equal(contacts.support.near.x,G36_E0_FACTORY.supportNearX);
+ assert.equal(contacts.support.far.x,G36_E0_FACTORY.supportFarX);
+ assert.equal(contacts.support.near.y,G36_E0_FACTORY.supportY);
+ assert.equal(assembly.primaryX,G36_E0_FACTORY.primaryX);
+ assert.equal(assembly.primaryY,G36_E0_FACTORY.primaryY);
+ assert.equal(assembly.sightHeight,G36_E0_FACTORY.lowerSightY);
+ const accessories=buildWeaponAccessories(cfg,m,m);
+ assert.equal(accessories.children.length,0,'integral factory sight cannot produce a second scope');
+ clearWeaponSilhouette(live);clearWeaponSilhouette(master);
+ accessories.traverse(x=>{if(x instanceof THREE.Mesh)x.geometry.dispose();});
+ m.dispose();
+});
+test('G36 E1: old saves stable, no unsupported rail, optic, handguard or foreign magazine',()=>{
+ const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'g36-service');
+ for(const [slot,part] of [
+  ['optic','optic-reflex'],['optic','optic-magnified'],
+  ['opticMount','optic-hk-claw'],['foregrip','foregrip-vertical'],
+  ['light','light-compact']
+ ]){
+  assert.equal(setWeaponAttachment(cfg,slot,part),cfg,slot+' must not attach without mounting art');
+ }
+ const polluted={...cfg,slots:{...cfg.slots,optic:'optic-magnified',opticMount:'optic-hk-claw'}};
+ const fixed=readWeaponConfiguration(polluted,'rifle');
+ assert.equal(fixed.slots.optic,'optic-g36-integrated');
+ assert.equal(fixed.slots.opticMount,'optic-mount-none');
+ const old=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'ar-m16a2');
+ assert.equal(old.build.family,'ar');
+ assert.equal(old.slots.optic,'optic-irons','existing legacy AR factory optic unchanged');
 });
