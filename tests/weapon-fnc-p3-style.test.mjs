@@ -46,7 +46,7 @@ test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
   const parts=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
   assert.deepEqual(parts.map(x=>x.userData.fncP5GrooveSide).sort(),[-1,1]);
   for(const mark of parts){
-   const count=2;
+   const count=level==='upper'?1:2;
    assert.equal(mark.userData.fncP5GrooveCount,count);
    const segments=level==='upper'?4:1;
    assert.equal(mark.geometry.getAttribute('position').count,count*segments*6);
