@@ -50,16 +50,16 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
  assert.ok(web&&gas);
  assert.ok(web.geometry.getAttribute('position').count>=3,
   'central triangular stock gusset uses one solid bold silhouette');
- assert.ok(box(web).max.x-box(web).min.x>2.5&&
-  box(web).max.x-box(web).min.x<2.9,
-  'P10 longer plate is still compact relative to the open stock void');
+ assert.ok(box(web).max.x-box(web).min.x>3.5&&
+  box(web).max.x-box(web).min.x<3.8,
+  'P22 extended inset web stays bounded by the open stock rails');
  assert.ok(box(gas).min.x<box(by(g,'fncP5LowerHex')[0]).max.x,
   'extended gas cover overlaps shortened fore-end without floating');
  assert.ok(box(front).max.y>2.70&&box(front).max.y<2.85);
  assert.ok(box(rear).max.y>2.40);
  assert.ok(front.userData.fncP12FALLikeFrontEar);
  assert.equal(by(g,'fncP12FALLikeFrontEar').length,2);
- assert.equal(rear.geometry.parameters.shapes.holes.length,1);
+ assert.equal(rear.geometry.parameters.shapes.holes.length,0,'P22 rear sight is solid');
  assert.ok(box(handle).max.x-box(handle).min.x<1.16);
  assert.ok(box(handle).max.z>box(upper).max.z+1.25);
  assert.ok(box(stem).max.z>box(handle).min.z,
