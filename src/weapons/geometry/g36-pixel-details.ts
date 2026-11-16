@@ -82,6 +82,9 @@ export function g36PixelAtlas():THREE.DataTexture{
 }
 const cached=new WeakMap<THREE.Material,THREE.Material>();
 function mappedMaterial(source:THREE.Material):THREE.Material{
+ // Re-applying the factory details must NEVER clone a previously mapped
+ // finish; the same decorated mesh may be previewed many times.
+ if(source.userData.g36PixelMarks)return source;
  let found=cached.get(source);
  if(found)return found;
  if(!(source instanceof THREE.MeshStandardMaterial))return source;
