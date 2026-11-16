@@ -80,7 +80,7 @@ test('E6.12 opt-in path uses real runtime work, no duplicate RAF loop',()=>{
  assert.match(loader,/postReadyRuntimeCapture=null;liveExecutionCapture=null/);
  assert.match(loader,/liveExecutionStarted=false;coldRuntimeEvidence=null/);
  assert.match(loader,/document\.visibilityState==='hidden'/);
- assert.match(loader,/postReadyRuntime=collector\.finish\(\)/);
+ assert.match(loader,/postReadyRuntime=planning\.finish\(\)/);
  const module=src('src/rendering/breach-post-ready-attribution.ts');
  assert.doesNotMatch(module,/requestAnimationFrame\(|stepSession\(|\.render\(/);
  assert.doesNotMatch(module,/fetch\(|sendBeacon\(|localStorage|sessionStorage/);
