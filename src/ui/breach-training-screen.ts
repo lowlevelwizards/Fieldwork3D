@@ -1,6 +1,9 @@
 /** Player-facing training entry and quick tools. The mission and runtime
  * controllers still exclusively own Session creation and simulation. */
 import {trainingTargetProgress} from '../training/training-targets.ts';
+import {TRIAL_IDS,TRIALS,trialConfig} from '../training/training-trials.ts';
+import {assessTrainingTrial,type TrialAssessment} from '../training/training-scoring.ts';
+import {saveTrainingRecord} from '../training/training-records.ts';
 import type {Session} from '../breach-game.ts';
 import {DEFAULT_TRAINING_CONFIG,TRAINING_LAYOUTS,TRAINING_LAYOUT_LABELS,
  normalizeTrainingConfig,type TrainingConfig} from '../training/training-courses.ts';
@@ -24,6 +27,9 @@ const button=(label:string,action:()=>void)=>{
 export function createBreachTrainingScreen(hooks:Hooks){
  let config:TrainingConfig={...DEFAULT_TRAINING_CONFIG};
  let active=false,open=false;
+ const recorded=new WeakSet<Session>();
+ let lastAssessment:TrialAssessment|null=null;
+ const browserStorage=()=>{try{return localStorage;}catch{return null;}};
  const root=document.createElement('section');
  root.id='breachTrainingScreen';root.className='breach-training-screen';
  root.setAttribute('role','dialog');root.setAttribute('aria-modal','true');
@@ -33,14 +39,16 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const summary=document.createElement('p');summary.textContent=
   'Use the actual tactical simulation. Practice runs never change campaign progress.';
  const options=document.createElement('div');options.className='breach-training-options';
- const activity=select('ACTIVITY',['killhouse','range'],
-  {killhouse:'KILLHOUSE',range:'EQUIPMENT RANGE'});
+ const activity=select('ACTIVITY',['killhouse','range','trial'],
+  {killhouse:'KILLHOUSE',range:'EQUIPMENT RANGE',trial:'TACTICAL TRIALS'});
+ const trials=select('TRIAL',TRIAL_IDS,
+  Object.fromEntries(TRIAL_IDS.map(id=>[id,TRIALS[id].name])));
  const layout=select('COURSE',TRAINING_LAYOUTS,TRAINING_LAYOUT_LABELS);
  const squad=select('OPERATORS',['1','2','3','4']);
  const density=select('TARGETS',['none','sparse','standard','dense']);
  const doors=select('DOORS',['open','closed','mixed']);
  const lighting=select('LIGHTING',['day','evening','night','blackout','emergency']);
- for(const field of [activity,layout,squad,density,doors,lighting])
+ for(const field of [activity,trials,layout,squad,density,doors,lighting])
   options.append(field.wrapper);
  const actions=document.createElement('div');actions.className='breach-training-actions';
  const close=()=>{
@@ -48,20 +56,38 @@ export function createBreachTrainingScreen(hooks:Hooks){
   document.body.classList.remove('training-setup-open');
  };
  const begin=()=>{
-  const next=normalizeTrainingConfig({
+  const requested=normalizeTrainingConfig({
    activity:activity.el.value as TrainingConfig['activity'],
+   trial:trials.el.value as NonNullable<TrainingConfig['trial']>,
    layout:layout.el.value as TrainingConfig['layout'],
    squadSize:Number(squad.el.value) as TrainingConfig['squadSize'],
    targetDensity:density.el.value as TrainingConfig['targetDensity'],
    doors:doors.el.value as TrainingConfig['doors'],
    lighting:lighting.el.value as TrainingConfig['lighting']
   });
-  config=next;close();hooks.onStart({...config});
+  const next=requested.activity==='trial'?{
+   ...trialConfig(requested.trial??'discrimination'),activity:'trial' as const,
+   trial:requested.trial??'discrimination' as const}:requested;
+  config=next;lastAssessment=null;close();hooks.onStart({...config});
  };
  const beginButton=button('START TRAINING',begin);
  const closeButton=button('CLOSE',close);
  actions.append(beginButton,closeButton);
- panel.append(title,summary,options,actions);root.append(panel);
+ panel.append(title,summary,options,actions);
+ const resultPanel=document.createElement('div');
+ resultPanel.className='breach-training-panel breach-training-results';
+ resultPanel.hidden=true;
+ const resultTitle=document.createElement('h2');
+ const resultSummary=document.createElement('p');
+ const resultStats=document.createElement('div');resultStats.className='breach-training-result-stats';
+ const resultActions=document.createElement('div');
+ resultActions.className='breach-training-actions';
+ resultActions.append(button('RETRY COURSE',()=>{close();retry();}),
+  button('CHANGE COURSE',()=>show()),
+  button('BACK TO GAME',()=>close()),
+  button('MAIN MENU',()=>{close();hooks.onReturnToMenu();}));
+ resultPanel.append(resultTitle,resultSummary,resultStats,resultActions);
+ root.append(panel,resultPanel);
  document.body.append(root);
  const quick=document.createElement('div');quick.id='breachTrainingQuickTools';
  quick.className='breach-training-quick';quick.hidden=true;
@@ -69,27 +95,56 @@ export function createBreachTrainingScreen(hooks:Hooks){
  progress.className='breach-training-progress';progress.setAttribute('aria-live','off');
  quick.append(progress);
  quick.append(button('TRAINING TOOLS',()=>show()),button('RETRY',()=>retry()),
+  button('RESULTS',()=>{if(lastAssessment)showResult(lastAssessment,false);}),
   button('MAIN MENU',()=>hooks.onReturnToMenu()));
  document.body.append(quick);
  function show():void{
   for(const [field,value] of [
-   [activity.el,config.activity],[layout.el,config.layout],
+   [activity.el,config.activity],[trials.el,config.trial??'discrimination'],
+   [layout.el,config.layout],
    [squad.el,String(config.squadSize)],[density.el,config.targetDensity],
    [doors.el,config.doors],[lighting.el,config.lighting]
   ] as const)field.value=value;
-  const isRange=config.activity==='range';
-  layout.wrapper.hidden=isRange;density.wrapper.hidden=isRange;
-  doors.wrapper.hidden=isRange;
+  panel.hidden=false;resultPanel.hidden=true;
+  syncVisibleOptions();
   open=true;root.hidden=false;
   document.body.classList.add('training-setup-open');
   activity.el.focus();
  }
- function retry():void{if(active)hooks.onStart({...config});}
+ function retry():void{if(active){lastAssessment=null;hooks.onStart({...config});}}
+ function syncVisibleOptions():void{
+  const isRange=activity.el.value==='range';
+  const isTrial=activity.el.value==='trial';
+  trials.wrapper.hidden=!isTrial;
+  for(const field of [layout,squad,density,doors,lighting])
+   field.wrapper.hidden=isRange||isTrial;
+ }
+ function showResult(result:TrialAssessment,personalBest:boolean):void{
+  lastAssessment=result;panel.hidden=true;resultPanel.hidden=false;
+  open=true;root.hidden=false;
+  document.body.classList.add('training-setup-open');
+  resultTitle.textContent=result.outcome==='passed'?'TRIAL COMPLETE':'TRIAL FAILED';
+  resultSummary.textContent=(TRIALS[config.trial??'discrimination']?.name??'TRIAL')+
+   ' · '+result.grade+' · '+result.score+' / 100'+
+   (personalBest?' · NEW PERSONAL BEST':'');
+  resultStats.replaceChildren();
+  for(const [label,value] of [
+   ['TARGETS',result.targetsHit+' / '+result.targetsTotal],
+   ['NO-SHOOT HITS',String(result.noShootHits)],
+   ['SHOTS',String(result.shots)],
+   ['SQUAD SAFE',result.squadSurvived+' / '+result.squadSize],
+   ['EXECUTION',result.elapsed.toFixed(1)+'s']]){
+   const item=document.createElement('div');item.textContent=label+' · '+value;
+   resultStats.append(item);
+  }
+ }
  function sync():void{
   quick.hidden=!active;
   if(!active&&open)close();
  }
- function setActive(value:boolean){active=value;sync();}
+ function setActive(value:boolean){active=value;
+  if(!active)lastAssessment=null;
+  sync();}
  function useEquipmentRange():void{
   config={...DEFAULT_TRAINING_CONFIG,activity:'range'};
   setActive(true);
@@ -98,14 +153,23 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(!active||!s.site?.training)return;
   const p=trainingTargetProgress(s);
   const text=p.targets?('TARGETS '+p.hits+'/'+p.targets+
+   (p.noShootTargets?' · NO-SHOOT '+p.noShootHits:'')+
    ' · SHOTS '+p.shots):('FREE PRACTICE · SHOTS '+p.shots);
   if(progress.textContent!==text)progress.textContent=text;
+  if(!s.site.trainingTrial||!['won','lost'].includes(s.phase)||
+   recorded.has(s))return;
+  recorded.add(s);
+  const t=TRIALS[s.site.trainingTrial.id];
+  const result=assessTrainingTrial(s,t);
+  let personalBest=false;
+  const storage=browserStorage();
+  if(storage){
+   try{personalBest=saveTrainingRecord(t,result,storage).saved;}
+   catch{ /* device storage is optional */ }
+  }
+  showResult(result,personalBest);
  }
- activity.el.addEventListener('change',()=>{
-  const isRange=activity.el.value==='range';
-  layout.wrapper.hidden=isRange;density.wrapper.hidden=isRange;
-  doors.wrapper.hidden=isRange;
- });
+ activity.el.addEventListener('change',syncVisibleOptions);
  root.addEventListener('keydown',e=>{
   if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}
  });
