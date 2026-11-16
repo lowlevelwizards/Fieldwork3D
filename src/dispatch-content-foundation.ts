@@ -7,7 +7,7 @@
  * existing faction reference / timeline systems.
  */
 import {FACTION_REFERENCES} from './faction-reference-catalog.ts';
-import {FACTION_TIMELINES} from './faction-reference-timelines.ts';
+import {FACTION_TIMELINES,TIMELINE_ORGANIZATIONS} from './faction-reference-timelines.ts';
 
 export const CAMPAIGN_CONTENT_DOMAINS=['dispatch','operations','wasteland'] as const;
 export type CampaignContentDomain=typeof CAMPAIGN_CONTENT_DOMAINS[number];
@@ -68,6 +68,65 @@ export function dispatchStarterReferenceContexts():readonly DispatchReferenceCon
  });
 }
 
+/** The generic US references must never impersonate a specific agency.
+ * OMON is a family of police tactical units, not a particular city detachment.
+ * The existing TimelineOrganization remains the authority for display identity.
+ */
+export type DispatchOrganizationScope='agency-neutral'|'unit-family';
+export const DISPATCH_STARTER_ORGANIZATION_SCOPES:
+ Readonly<Record<string,DispatchOrganizationScope>>=Object.freeze({
+ 'us-police-generic':'agency-neutral',
+ 'russian-omon':'unit-family'
+});
+
+export type DispatchStarterRoleGroup=Readonly<{
+ timelineId:string;
+ label:string;
+ role:DispatchReferenceRole;
+ snapshots:readonly Readonly<{referenceId:string;representativeYear:number}>[];
+}>;
+export type DispatchStarterOrganization=Readonly<{
+ id:string;
+ name:string;
+ country:string;
+ classification:'police';
+ scope:DispatchOrganizationScope;
+ roles:readonly DispatchStarterRoleGroup[];
+}>;
+
+/** Group the four existing appearances through their authoritative timeline
+ * owners. No new agencies, dates, gear or faction references are produced.
+ */
+export function dispatchStarterOrganizations():readonly DispatchStarterOrganization[]{
+ const contexts=dispatchStarterReferenceContexts();
+ const organizationIds=[...new Set(contexts.map(x=>x.organizationId))];
+ return Object.freeze(organizationIds.flatMap(organizationId=>{
+  const organization=TIMELINE_ORGANIZATIONS.find(x=>x.id===organizationId);
+  const scope=DISPATCH_STARTER_ORGANIZATION_SCOPES[organizationId];
+  if(!organization||organization.classification!=='police'||!scope)return [];
+  const organizationContexts=contexts.filter(x=>x.organizationId===organizationId);
+  const roleIds=[...new Set(organizationContexts.map(x=>x.timelineId))];
+  const roles=roleIds.flatMap(timelineId=>{
+   const timeline=FACTION_TIMELINES.find(x=>x.id===timelineId);
+   const role=organizationContexts.find(x=>x.timelineId===timelineId)?.role;
+   if(!timeline||!role)return [];
+   const snapshots=organizationContexts.filter(x=>x.timelineId===timelineId)
+    .map(x=>Object.freeze({
+     referenceId:x.referenceId,representativeYear:x.representativeYear
+    })).sort((a,b)=>a.representativeYear-b.representativeYear||
+     a.referenceId.localeCompare(b.referenceId));
+   return [Object.freeze({
+    timelineId,label:timeline.label,role,
+    snapshots:Object.freeze(snapshots)
+   })];
+  });
+  return [Object.freeze({
+   id:organization.id,name:organization.name,country:organization.country,
+   classification:'police' as const,scope,roles:Object.freeze(roles)
+  })];
+ }));
+}
+
 /** Integrity checks are explicit so stale IDs cannot silently disappear. */
 export function auditDispatchStarterReferences():readonly string[]{
  const issues:string[]=[];
@@ -84,6 +143,25 @@ export function auditDispatchStarterReferences():readonly string[]{
   else if(!validRole(owners[0].role))
    issues.push('Unsupported Dispatch timeline role: '+id);
   if(!dispatchReferenceContext(id))issues.push('Unresolvable Dispatch context: '+id);
+  const organizationId=owners.length===1?owners[0].organizationId:null;
+  const organization=TIMELINE_ORGANIZATIONS.find(x=>x.id===organizationId);
+  const reference=referencesById.get(id);
+  if(!organization)issues.push('Missing timeline organization: '+id);
+  else {
+   if(organization.classification!=='police')
+    issues.push('Non-police timeline organization: '+id);
+   if(reference&&organization.country!==reference.country)
+    issues.push('Organization country mismatch: '+id);
+   if(!DISPATCH_STARTER_ORGANIZATION_SCOPES[organization.id])
+    issues.push('Unclassified starter organization scope: '+id);
+  }
  }
+ const grouped=dispatchStarterOrganizations();
+ const groupedIds=grouped.flatMap(x=>x.roles.flatMap(y=>
+  y.snapshots.map(z=>z.referenceId)));
+ if(groupedIds.length!==DISPATCH_STARTER_REFERENCE_IDS.length||
+  new Set(groupedIds).size!==starterIds.size||
+  DISPATCH_STARTER_REFERENCE_IDS.some(id=>!groupedIds.includes(id)))
+  issues.push('Organization/role grouping lost or duplicated starter references');
  return issues;
 }
