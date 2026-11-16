@@ -9,8 +9,9 @@ import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
+import {DISPATCH_PILOT_REFERENCE_ID} from './dispatch-content-foundation.ts';
 
-export const DISPATCH_PILOT_REFERENCE_ID='us-swat-2015' as const;
+
 export function newDispatchPilotCampaign(seed:number):CampaignState{
  const base=newCampaign(seed,createCampaignRules('dispatch'),'Dispatch SWAT Pilot');
  const appearance=resolveFactionReference(DISPATCH_PILOT_REFERENCE_ID);
