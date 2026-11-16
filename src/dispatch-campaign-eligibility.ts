@@ -6,7 +6,7 @@ import type {CampaignState} from './campaign-state.ts';
 import type {EquipmentSlot} from './equipment-catalog.ts';
 import type {DispatchContentKind} from './dispatch-content-policy.ts';
 import {mayChooseDispatchSelection} from './dispatch-selection-projection.ts';
-import {DISPATCH_PILOT_REFERENCE_ID} from './dispatch-campaign-starter.ts';
+import {DISPATCH_PILOT_REFERENCE_ID} from './dispatch-content-foundation.ts';
 
 export const isDispatchPilot=(campaign:CampaignState):boolean=>
  campaign.rules?.template==='dispatch';
