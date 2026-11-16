@@ -117,11 +117,16 @@ export function snapshot(s:Session,seenGround?:string[],
   previouslyDiscovered:ReadonlySet<string>=new Set(),
   observerBodies:Map<string,Set<string>>=new Map(),
   previousActors?:readonly ReplayActorFrame[]):ReplayFrame{
-  const actorBefore=previousActors?
-    new Map(previousActors.map(a=>[a.id,a])):null;
+  // Build the keyed prior-frame lookup directly instead of allocating
+  // a second temporary [id, actor] array on every outcome-film sample.
+  const actorBefore=previousActors?new Map<string,ReplayActorFrame>():null;
+  if(actorBefore)for(const actor of previousActors!)actorBefore.set(actor.id,actor);
   // The immutable observer journal already computes exact current civilian
   // visibility. Reuse it for the 20 Hz frame instead of tracing LOS twice.
   const knowledge=captureReplayKnowledge(s,previouslyDiscovered,observerBodies);
+  // A frame can contain many civilians. Index the captured *historical*
+  // visibility once; never recalculate LOS or consult future observations.
+  const visibleCivilians=new Set(knowledge.visibleCivilianIds);
   return {
     t:s.seconds,phase:s.phase,mission:s.mission,
     actors:s.operators.map(a=>{
@@ -203,7 +208,7 @@ export function snapshot(s:Session,seenGround?:string[],
       rescueTarget:c.rescueTarget,appearanceSeed:c.appearanceSeed,
       role:c.role,persona:c.persona,activity:c.activity,
       homeRoomId:c.homeRoomId,
-      visibleAtCapture:knowledge.visibleCivilianIds.includes(c.id)
+      visibleAtCapture:visibleCivilians.has(c.id)
     })),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
