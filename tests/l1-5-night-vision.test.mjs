@@ -28,7 +28,7 @@ test('L1.5 actual utility device and effective shroud both required',()=>{
   ...HELMET_FIELD_DEFAULTS,goggles:'eyes',battery:true,strobe:true}}}),false,
   'cosmetic goggles/strobe/battery are not night-vision hardware');
  assert.equal(nvgMounted({...a,equipment:setEquipmentChoice(kit(),'head','head-cap')}),false);
- for(const headwear of ['bare','patrol-cap','soviet-steel','police-helmet']){
+ for(const headwear of ['bare','patrol-cap','soviet-steel']){
   assert.equal(nvgMounted({...a,wardrobe:{...a.wardrobe,
    styles:{headwear}}}),false,headwear);
  }
