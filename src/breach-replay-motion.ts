@@ -345,8 +345,13 @@ export class ReplayMotionRecorder{
       travelYaw[id]=travel[this.seekIndex(travel,time)]?.yaw??track.travelYaw;
       const acc=track.accelEvents;
       acceleration[id]=acc[this.seekIndex(acc,time)]?.acceleration??0;
-      momentum[id]=sampleMovementImpulses(track.driveEvents,
-        track.brakeEvents,time);
+      // Reuse the same session-local seek cursors as feet, yaw and doors.
+      // The original impulse envelope, expiry and archive evidence stay
+      // authoritative; no additional per-actor event arrays or pose caches.
+      const drive=track.driveEvents,brake=track.brakeEvents;
+      momentum[id]=sampleMovementImpulses(drive,brake,time,
+        drive.length?this.seekIndex(drive,time):undefined,
+        brake.length?this.seekIndex(brake,time):undefined);
       const samples=track.pelvisYawEvents;
       const lo=this.seekIndex(samples,time);
       const a=samples[lo],b=samples[Math.min(lo+1,samples.length-1)];
