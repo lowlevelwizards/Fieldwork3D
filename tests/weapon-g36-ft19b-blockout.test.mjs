@@ -351,4 +351,9 @@ test('G36 E1: old saves stable, no unsupported rail, optic, handguard or foreign
  const old=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'ar-m16a2');
  assert.equal(old.build.family,'ar');
  assert.equal(old.slots.optic,'optic-irons','existing legacy AR factory optic unchanged');
+ assert.equal(setWeaponAttachment(old,'optic','optic-g36-integrated'),old,
+  'G36 integrated sight cannot appear on an AR factory receiver');
+ const plain=initialWeaponConfiguration('rifle');
+ assert.equal(setWeaponAttachment(plain,'optic','optic-g36-integrated'),plain,
+  'integral G36 sight is not a generic rifle attachment');
 });

@@ -126,6 +126,8 @@ export const compatibleWeaponAttachment=(weapon:WeaponId,slot:WeaponAttachmentSl
  */
 export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  slot:WeaponAttachmentSlot,id:string,mount='optic-mount-none'):boolean{
+ // The integrated factory dual sight is NOT a universal rifle accessory.
+ if(id==='optic-g36-integrated'&&build.family!=='g36')return false;
  if(build.family==='g36'){
   if(slot==='stock')return id==='stock-standard';
   if(slot==='opticMount')return id==='optic-mount-none';
@@ -156,7 +158,8 @@ export function weaponAttachmentAllowed(config:WeaponConfiguration,
  slot:WeaponAttachmentSlot,id:string):boolean{
  return compatibleWeaponAttachment(config.weapon,slot,id)&&
   (config.build?familyAccessoryAllowed(config.build,slot,id,
-   config.slots.opticMount):slot!=='opticMount'||id==='optic-mount-none');
+   config.slots.opticMount):
+   (id!=='optic-g36-integrated'&&(slot!=='opticMount'||id==='optic-mount-none')));
 }
 
 export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfiguration{
@@ -184,6 +187,7 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
      'optic-g36-integrated':DEFAULT_IDS[slot];
  }else{
   result.slots.opticMount=DEFAULT_IDS.opticMount;
+  if(result.slots.optic==='optic-g36-integrated')result.slots.optic=DEFAULT_IDS.optic;
  }
  return result;
 }
