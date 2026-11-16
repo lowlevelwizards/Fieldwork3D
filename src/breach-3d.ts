@@ -157,6 +157,10 @@ export class TacticalScene3D{
    * Hidden PERF continues recording, without changing render behavior. */
   setPerformanceProfilingEnabled(enabled:boolean):void{
    this.profileSceneUpdate=enabled;
+   // The in-game PERF switch may be armed after squad rigs were created.
+   // Flip the existing diagnostic flag on toggle, never inside normal pose.
+   for(const actor of this.actors.values())
+    actor.physical.root.userData.fieldworkProfilePose=enabled;
   }
   private scenePhaseStart=0;
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
