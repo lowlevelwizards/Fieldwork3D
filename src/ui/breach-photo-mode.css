@@ -1,0 +1,80 @@
+/* P1 Photo Mode: isolated DOM surface with no permanent render pass. */
+.photo-entry{min-height:34px;padding:5px 10px;border:1px solid #75968a;
+ background:#1a3030;color:#d2e5d7;border-radius:5px;font:700 12px 'Saira Condensed',sans-serif;
+ letter-spacing:.06em;cursor:pointer}
+#photoToggleReplay{margin-inline-end:9px}
+body.replay-clean .top,body.replay-clean .replay-panel,
+body.replay-clean .replay-rail,body.replay-clean .guidance,
+body.replay-clean .feed,body.replay-clean .tactical-hud,
+body.replay-clean #replayBodycamStatus,body.replay-clean #tacticalFeedback{
+ visibility:hidden!important;pointer-events:none!important}
+body.replay-clean #replayTopHud > :not(#replayCleanToggle){display:none!important}
+body.replay-clean #replayCleanToggle{background:#d8e8d4;color:#122323}
+#photoLibraryAccess{padding:8px;border:1px solid #708f85;background:#19302e;
+ color:#e5e7d8;border-radius:5px;min-height:38px}
+.photo-gesture-surface{position:fixed;inset:0;z-index:30;touch-action:none;
+ cursor:grab;overflow:hidden}
+.photo-gesture-surface:active{cursor:grabbing}
+.photo-gesture-surface[hidden],.photo-hud[hidden],.photo-library-dialog[hidden]{display:none!important}
+.photo-frame-overlay{position:absolute;left:50%;top:50%;
+ transform:translate(-50%,-50%);width:100vw;height:100dvh;
+ pointer-events:none;border:1px solid #e0e3d244;box-shadow:0 0 0 100vmax #060c1099}
+.photo-framing-guide{position:absolute;inset:0;pointer-events:none;opacity:.55}
+.photo-framing-guide[data-guide="thirds"]{background:linear-gradient(90deg,transparent 33.2%,#e5eadb99 33.3%,transparent 33.5%,transparent 66.5%,#e5eadb99 66.6%,transparent 66.8%),
+ linear-gradient(transparent 33.2%,#e5eadb99 33.3%,transparent 33.5%,transparent 66.5%,#e5eadb99 66.6%,transparent 66.8%)}
+.photo-framing-guide[data-guide="center"]{background:linear-gradient(90deg,transparent 49.9%,#e5eadb99 50%,transparent 50.1%),
+ linear-gradient(transparent 49.9%,#e5eadb99 50%,transparent 50.1%)}
+.photo-hud{position:fixed;inset:0;z-index:32;pointer-events:none;
+ font-family:'Saira Condensed',sans-serif;color:#ecf0e4}
+.photo-hud button,.photo-hud select,.photo-hud input{pointer-events:auto;touch-action:manipulation}
+.photo-hud button,.photo-hud select{border:1px solid #82958a;background:#142528e6;
+ color:#eef1e3;border-radius:6px;padding:7px 11px;font:700 12px 'Saira Condensed',sans-serif}
+.photo-topbar{position:absolute;top:calc(8px + env(safe-area-inset-top));left:12px;right:12px;
+ display:flex;align-items:center;justify-content:space-between;gap:12px}
+.photo-topbar strong{font-size:15px;letter-spacing:.09em;text-shadow:0 1px 6px #000}
+.photo-topbar span{color:#a7bcae}
+.photo-bottom{position:absolute;bottom:calc(10px + env(safe-area-inset-bottom));
+ left:10px;right:10px;display:flex;flex-direction:column;align-items:center;gap:9px}
+.photo-options{display:flex;gap:7px;justify-content:center;align-items:end;flex-wrap:wrap;
+ border:1px solid #819d8f55;background:#111f22e6;padding:8px;border-radius:9px;
+ pointer-events:auto;max-width:calc(100vw - 20px)}
+.photo-options label{display:flex;flex-direction:column;gap:2px;font-size:10px;
+ letter-spacing:.07em}
+.photo-options select{min-height:36px}
+.photo-strength-label{min-width:75px}
+.photo-strength-label input{width:75px;min-height:35px}
+.photo-actions{display:flex;align-items:center;justify-content:center;
+ flex-wrap:wrap;gap:9px;pointer-events:auto}
+.photo-actions>button:not(.photo-shutter){min-height:40px}
+#photoMount{min-height:36px}
+.photo-shutter{display:grid;place-items:center!important;width:64px;height:64px;
+ border:3px solid #ecede5!important;border-radius:50%!important;
+ background:#13282999!important;padding:5px!important}
+.photo-shutter span{display:block;width:43px;height:43px;border-radius:50%;background:#f2eeda}
+.photo-shutter:disabled{opacity:.45}
+#photoStatus{font:600 11px 'Work Sans',sans-serif;text-align:center;min-height:14px;
+ text-shadow:0 1px 4px #05090a}
+body.photo-mode > *:not(#breachCanvas):not(#breach3dCanvas):not(#photoGestureSurface):not(#photoHud):not(#photoLibraryDialog){visibility:hidden!important;pointer-events:none!important}
+body.photo-mode{overflow:hidden}
+.photo-library-dialog{position:fixed;inset:0;z-index:60;background:#071012ee;
+ display:flex;align-items:center;justify-content:center;padding:calc(8px + env(safe-area-inset-top)) 10px calc(8px + env(safe-area-inset-bottom))}
+.photo-library-panel{width:min(850px,100%);max-height:90dvh;overflow:auto;
+ background:#182b2c;border:1px solid #788f84;border-radius:10px;padding:12px;
+ color:#ebefe5;font-family:'Work Sans',sans-serif}
+.photo-library-heading{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.photo-library-heading strong{font:700 15px 'Saira Condensed',sans-serif}
+.photo-library-panel button{border:1px solid #708a81;color:#e8eade;
+ background:#20383a;border-radius:5px;padding:9px;min-height:40px}
+#photoGalleryStatus{display:block;padding:10px 0;font-size:12px}
+.photo-gallery-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(125px,1fr));gap:9px}
+.photo-gallery-grid button{padding:0;overflow:hidden;text-align:left}
+.photo-gallery-grid img{display:block;aspect-ratio:4/3;object-fit:cover;width:100%}
+.photo-gallery-grid span{display:block;font-size:10px;padding:5px}
+.photo-gallery-viewer img{display:block;object-fit:contain;width:100%;max-height:65dvh}
+.photo-gallery-actions{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:8px}
+@media(max-width:580px){.photo-options{gap:4px;padding:5px}.photo-options select{padding:5px}
+ .photo-strength-label{display:none!important}.photo-actions{gap:12px}
+ .photo-hud button{font-size:11px}.photo-shutter{height:58px;width:58px}
+ .photo-shutter span{width:37px;height:37px}}
+@media(max-height:460px){.photo-options{max-width:75vw}.photo-bottom{gap:4px}
+ .photo-shutter{width:48px;height:48px}.photo-shutter span{width:31px;height:31px}}

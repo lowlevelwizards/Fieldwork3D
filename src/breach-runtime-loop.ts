@@ -67,6 +67,8 @@ export type BreachRuntimeLoopHooks={
  /** Optional post-round one-frame capture; no live-game GPU work. */
  captureHighlightFrame?:(scene:HTMLCanvasElement|null,
    overlay:HTMLCanvasElement,time:number,perspective:string)=>void;
+ isPhotoModeActive?:()=>boolean;photoNeedsFrame?:()=>boolean;
+ photoFrame?:(scene:HTMLCanvasElement|null,overlay:HTMLCanvasElement)=>void;
  worldToScreen:(point:Pt,offset:number)=>Pt;
  canvas:HTMLCanvasElement;
  playback:ReplayPlaybackController;
@@ -204,7 +206,8 @@ function tick(now:number){
    stage?.setPerformanceProfilingEnabled?.(!!perfOverlay);
    profiledStage=stage;
   }
-  const frameMode=runtimeFrameMode({mode:campaignMode,
+  const photoActive=config.isPhotoModeActive?.()??false;
+  const frameMode=photoActive?'idle':runtimeFrameMode({mode:campaignMode,
     quickPlayBusy:config.isQuickPlayBusy(),replaying,phase:state.phase});
   if(perfTimeline&&perfTimelineSession!==state){
    perfTimeline.reset();perfTimelineSession=state;
@@ -284,7 +287,7 @@ function tick(now:number){
     }
   }
   const runtimeUiStart=performance.now();
-  if(replaying)config.advanceReplayCamera(dt);
+  if(replaying&&!photoActive)config.advanceReplayCamera(dt);
   const uiCameraEnd=perfOverlay?performance.now():0;
   audioController.consumeLiveFrame(state,recorder,selected,replaying);
   const uiAudioEnd=perfOverlay?performance.now():0;
@@ -299,7 +302,7 @@ function tick(now:number){
   // Do not combine its costly DOM reconciliation with the first 3D resume
   // frame. Ordinary live/planning/replay resume paths remain untouched.
   if(terminalHud&&frameGap>1000)hudAt=now;
-  if(now-hudAt>hudPeriod){
+  if(!photoActive&&now-hudAt>hudPeriod){
     config.updateHud();if(replaying)config.updateReplayHud();hudAt=now;
   }
   const uiHudEnd=perfOverlay?performance.now():0;
@@ -326,17 +329,17 @@ function tick(now:number){
   // without a pointer event (e.g. after an automatic mission transition).
   if(idle3dAuto&&frameMode==='idle'&&
      (last3dMode!=='idle'||last3dSession!==state))last3dInputAt=now;
-  const updated3d=stageAvailable&&shouldSubmitIdle3D({
+  const updated3d=stageAvailable&&(photoActive?!!config.photoNeedsFrame?.():shouldSubmitIdle3D({
    enabled:idle3dExperiment,mode:frameMode,viewMode,
    studioOccludes:studioOccludesTactical,now,
    lastSceneAt:last3dUpdateAt,lastSceneMode:last3dMode,
    sameSession:last3dSession===state,lastInputAt:last3dInputAt,
    inputGraceMs:idle3dAuto?1200:undefined
-  });
+  }));
   if(stageAvailable&&!updated3d)idle3dSkipped++;
   // The presentation-only idle clock must advance by actual elapsed wall
   // time since the prior 3D submission, not by one skipped RAF's dt.
-  const sceneDt=idle3dExperiment&&frameMode==='idle'&&
+  const sceneDt=photoActive?0:idle3dExperiment&&frameMode==='idle'&&
    last3dSession===state&&last3dMode==='idle'&&
    Number.isFinite(last3dUpdateAt)?
     Math.min(.08,Math.max(0,(now-last3dUpdateAt)/1000)):dt;
@@ -371,7 +374,9 @@ function tick(now:number){
   const sceneUpdateEnd=performance.now();
   if(!studioOccludesTactical)config.renderFrame(dt);
   const renderEnd=performance.now();
-  if(replaying&&!studioOccludesTactical&&config.captureHighlightFrame)
+  if(photoActive&&!studioOccludesTactical&&config.photoNeedsFrame?.())
+    config.photoFrame?.(stage&&viewMode!=='plan2d'?stage.canvas:null,canvas);
+  if(replaying&&!photoActive&&!studioOccludesTactical&&config.captureHighlightFrame)
     config.captureHighlightFrame(stage&&viewMode!=='plan2d'?stage.canvas:null,
       canvas,replayPlayback.time,
       replayCamera.mode==='director'&&replayCamera.lens==='cam'?
@@ -385,7 +390,7 @@ function tick(now:number){
     if(replayPlayback.time>=recorder.duration)replayQuickVideo.finishAtEnd();
     else if(!replayPlayback.playing)replayQuickVideo.stop();
   }
-  config.drawTacticalFrameFeedback(studioOccludesTactical);
+  if(!photoActive)config.drawTacticalFrameFeedback(studioOccludesTactical);
   config.updateContext();config.advanceContextPalette(dt);
   const diagnosticsStart=performance.now();
   let currentSceneCosts=emptyPerformanceSceneCosts();

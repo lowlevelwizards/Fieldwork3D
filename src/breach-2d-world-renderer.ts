@@ -409,7 +409,7 @@ export type BreachTacticalWorldFrame={
  stage:TacticalScene3D|null;viewMode:ViewMode;
  draw:CanvasRenderingContext2D;dpr:number;cssW:number;cssH:number;
  ox:number;oy:number;viewScale:number;state:Session;replaying:boolean;
- replayAnalysis:boolean;
+ replayAnalysis:boolean;photoClean?:boolean;
  world2D:ReturnType<typeof createBreach2DWorldRenderer>;
  fog2D:ReturnType<typeof createBreach2DVisibilityRenderer>;
  actor2D:ReturnType<typeof createBreach2DActorRenderer>;
@@ -423,6 +423,8 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
    state,replaying,replayAnalysis,world2D,fog2D,actor2D,route2D,replay2D,projected2D}=p;
 
   if(stage&&viewMode!=='plan2d'){
+    if(p.photoClean){draw.setTransform(dpr,0,0,dpr,0,0);
+      draw.clearRect(0,0,cssW,cssH);return;}
     if(stage.isReplayBodycamActive()){
       // Bodycam footage is a clean perspective, not an X-ray tactical HUD.
       // Keep accessible replay transport as DOM, clear only projected plans,
@@ -443,14 +445,16 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   draw.fillRect(bounds.minX-9,bounds.minY-9,
     bounds.maxX-bounds.minX+18,bounds.maxY-bounds.minY+18);
   world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
-  world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();actor2D.missionMarkers();
-  route2D.paths();replay2D.renderReplayMovementHistory(false);
+  world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();
+  if(!p.photoClean)actor2D.missionMarkers();
+  if(!p.photoClean){route2D.paths();replay2D.renderReplayMovementHistory(false);}
   for(const a of state.civilians)actor2D.civilianSprite(a);
   for(const a of state.operators)actor2D.sprite(a);
-  if(!replaying||replayAnalysis)
+  if(!p.photoClean&&(!replaying||replayAnalysis))
     for(const a of team(state))actor2D.drawExecutionProblem(a,false);
-  actor2D.contacts();replay2D.renderReplayGhosts(false);replay2D.renderReplayBallistics(false);
-  replay2D.renderReplayFollowMarker(false);actor2D.endMessage();
+  if(!p.photoClean){actor2D.contacts();replay2D.renderReplayGhosts(false);
+   replay2D.renderReplayBallistics(false);replay2D.renderReplayFollowMarker(false);
+   actor2D.endMessage();}
   draw.strokeStyle='#d4dac64f';draw.lineWidth=2;
   draw.strokeRect(bounds.minX,bounds.minY,
     bounds.maxX-bounds.minX,bounds.maxY-bounds.minY);

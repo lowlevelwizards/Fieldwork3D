@@ -127,6 +127,7 @@ import {interpolatedActor,type RenderFrame}
  * This module may not mutate simulation state. */
 export type ViewMode='iso'|'top'|'plan2d';
 export type ViewState={mode:ViewMode;yaw:number;zoom:number;pitch:number;focus:Pt};
+export type PhotoCameraSnapshot={view:ViewState;anchor:Pt|null;focus:Pt|null;subjects:Pt[];fov:number;lens:'ortho'|'wide';bodycam:BodycamSetting|null;perspective:boolean;};
 const color=(hex:number)=>new THREE.Color(hex);
 const mat=(hex:number,roughness=.9)=>new THREE.MeshStandardMaterial({
   color:hex,roughness,flatShading:true,
@@ -266,6 +267,10 @@ export class TacticalScene3D{
     new THREE.PerspectiveCamera(108,1,.45,2400);
   /** Replay-only perspective camera; default rendering stays orthographic. */
   readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
+  private readonly photoCamera=new THREE.PerspectiveCamera(72,1,.45,2800);
+  private photoPerspective=false;
+  private photoLiveBodycam=false;
+  private photoClean=false;
   private replayBodycam:BodycamSetting|null=null;
   private bodycamSmooth:BodycamSample|null=null;
   private lastBodycamSampleTime:number|null=null;
@@ -279,6 +284,7 @@ export class TacticalScene3D{
     return !!this.replayDirectorCameraAnchor&&this.view.mode==='iso';
   }
   private get projectionCamera():THREE.Camera{
+    if(this.photoPerspective)return this.photoCamera;
     return this.physicalDirectorActive?
       (this.replayDirectorLens==='wide'?
         this.directorCamera:this.directorOrthoCamera):this.camera;
@@ -590,6 +596,31 @@ export class TacticalScene3D{
     // Friendly positions only. Never pass enemy coordinates to the renderer
     // to guide cinematic architecture.
     this.replayDirectorSubjects=subjects.slice(0,4).map(p=>({...p}));
+  }
+  /** Presentation-only photo camera state; the same scene and actor rigs. */
+  capturePhotoCameraSnapshot():PhotoCameraSnapshot{return {
+    view:{...this.view,focus:{...this.view.focus}},
+    anchor:this.replayDirectorCameraAnchor?{...this.replayDirectorCameraAnchor}:null,
+    focus:this.replayDirectorFocus?{...this.replayDirectorFocus}:null,
+    subjects:this.replayDirectorSubjects.map(p=>({...p})),
+    fov:this.replayDirectorLensFov,lens:this.replayDirectorLens,
+    bodycam:this.replayBodycam?{...this.replayBodycam}:null,
+    perspective:this.photoPerspective
+  };}
+  restorePhotoCameraSnapshot(saved:PhotoCameraSnapshot):void{
+    Object.assign(this.view,saved.view,{focus:{...saved.view.focus}});
+    this.replayDirectorCameraAnchor=saved.anchor?{...saved.anchor}:null;
+    this.replayDirectorFocus=saved.focus?{...saved.focus}:null;
+    this.replayDirectorSubjects=saved.subjects.map(p=>({...p}));
+    this.replayDirectorLensFov=saved.fov;this.replayDirectorLens=saved.lens;
+    this.photoPerspective=saved.perspective;
+    this.setReplayBodycam(saved.bodycam);this.updateCamera(0);
+  }
+  setPhotoLiveBodycam(enabled:boolean):void{this.photoLiveBodycam=enabled;}
+  setPhotoClean(enabled:boolean):void{this.photoClean=enabled;}
+  setPhotoPerspective(enabled:boolean):void{
+    if(this.photoPerspective===enabled)return;
+    this.photoPerspective=enabled;this.updateCamera(0);
   }
   /** Presentation-only wall transparency: recorded sight still governs actors. */
   setReplayXray(enabled:boolean):void{
@@ -1393,6 +1424,18 @@ export class TacticalScene3D{
       this.camera.updateProjectionMatrix();
     }
     this.camera.updateMatrixWorld(true);
+    if(this.photoPerspective){
+      const fov=72,distance=(span*.5)/Math.tan(fov*Math.PI/360);
+      this.photoCamera.position.copy(this.camera.position).sub(this.target)
+        .normalize().multiplyScalar(distance).add(this.target);
+      this.photoCamera.up.copy(this.camera.up);
+      this.photoCamera.lookAt(this.target);
+      if(this.photoCamera.aspect!==aspect||this.photoCamera.fov!==fov){
+        this.photoCamera.aspect=aspect;this.photoCamera.fov=fov;
+        this.photoCamera.updateProjectionMatrix();
+      }
+      this.photoCamera.updateMatrixWorld(true);
+    }
     // Camera debug attributes are only needed when input state changes.
     // Keep numerical snapshots so static frames allocate no signature array.
     const previous=this.lastCameraStatus;
@@ -1549,9 +1592,11 @@ export class TacticalScene3D{
     }
     // Personal disclosure is observer-scoped, never camera-mount-scoped.
     const personalDisclosure=replayDisclosurePolicy?.mode==='operator';
-    const bodycamAudition=!!this.replayBodycam&&
+    const bodycamAudition=!!this.replayBodycam&&(
       replayDisclosurePolicy?.mode==='operator'&&
-      replayDisclosurePolicy.observerId===this.replayBodycam.actorId;
+      replayDisclosurePolicy.observerId===this.replayBodycam.actorId||
+      this.photoLiveBodycam&&!replayDisclosurePolicy&&
+      this.replayBodycam.actorId===selected);
     if(this.appliedLightingMode!==s.lightingMode){
       const mood=lightingPresentation(s.lightingMode);
       this.hemisphere.intensity=this.graphicLookEnabled?
@@ -1878,7 +1923,7 @@ export class TacticalScene3D{
         (doorReachable(selectedActor.p,door)||
           (!!selectedEndpoint&&doorReachable(selectedEndpoint,door)));
       const focused=focusedDoorId===door.id;
-      object.halo.visible=!replayDisclosurePolicy&&
+      object.halo.visible=!this.photoClean&&!replayDisclosurePolicy&&
         door.kind!=='shutter'&&door.kind!=='sliding'&&
         object.root.visible&&s.phase==='planning'&&
         (!focused||!!reachable)&&
@@ -1914,7 +1959,8 @@ export class TacticalScene3D{
       }
       // Squad-wide rescue markers cannot appear as a witnessed person
       // within an uncompleted first-person history.
-      this.rescueFigure.visible=presentUnrecordedRescueMarker(s,omniscient,
+      this.rescueFigure.visible=!this.photoClean&&
+        presentUnrecordedRescueMarker(s,omniscient,
         replayDisclosurePolicy);
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
@@ -1948,7 +1994,7 @@ export class TacticalScene3D{
       object.root.visible=visible;
       const hitTime=s.seconds-actor.lastHitAt;
       const down=actor.health<=0;
-      object.status.visible=object.root.visible&&
+      object.status.visible=!this.photoClean&&object.root.visible&&
         !down&&(hitTime>=0&&hitTime<.28);
       if(object.status.visible){
         object.status.position.set(actor.p.x,1.15,actor.p.y);
