@@ -2,7 +2,7 @@
  * No gameplay writes, duplicated models, continuous loops, or experimental lab.
  */
 import * as THREE from 'three';
-import {tagVisualMaterial} from '../rendering/material-identity.ts';
+import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER} from '../weapons/geometry/weapon-visual-palette.ts';
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../breach-weapon-geometry.ts';
@@ -32,8 +32,8 @@ export class ArsenalViewport{
  private dotsRestoreTimer:ReturnType<typeof setTimeout>|null=null;
  private inspecting=false;
  private config:WeaponConfiguration|null=null;
- private readonly steel=tagVisualMaterial(new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true}),'steel');
- private readonly dark=tagVisualMaterial(new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true}),'polymer');
+ private readonly steel=WEAPON_ACCESSORY_STEEL;
+ private readonly dark=WEAPON_ACCESSORY_POLYMER;
  private readonly resizeObserver:ResizeObserver;
  private readonly pointers=new Map<number,{x:number;y:number}>();
  private readonly origins=new Map<number,{x:number;y:number}>();
@@ -319,6 +319,6 @@ export class ArsenalViewport{
   this.canvas.removeEventListener('wheel',this.wheel);
   this.clearParts();this.socketLayer.remove();
   this.renderer?.dispose();this.renderer?.forceContextLoss();
-  this.steel.dispose();this.dark.dispose();
+  // Shared registry-owned materials persist across viewer lifecycles.
  }
 }
