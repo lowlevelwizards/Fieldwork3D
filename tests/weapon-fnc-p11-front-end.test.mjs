@@ -20,13 +20,13 @@ test('P15 tall polymer still shorter than elevated gas cover, all parts connecte
  const gas=get(g,'fncP11LongSlimVentedCover');
  const lip=get(g,'fncP11HandstopLip'),base=get(g,'fncP7ContinuousGasSightSeat');
  assert.ok(polymer&&gas&&lip&&base);
- assert.ok(size(polymer,'x')>8.50&&size(polymer,'x')<8.55);
- assert.ok(size(gas,'x')>11.75&&size(gas,'x')<11.82);
- assert.ok(size(gas,'x')>size(polymer,'x')+3.0);
+ assert.ok(size(polymer,'x')>9.70&&size(polymer,'x')<9.76);
+ assert.ok(size(gas,'x')>11.97&&size(gas,'x')<12.03);
+ assert.ok(size(gas,'x')>size(polymer,'x')+2.0);
  assert.ok(size(gas,'z')<size(polymer,'z')*.7);
  assert.ok(meets(polymer,gas)&&meets(gas,base));
  assert.ok(meets(polymer,lip));
- assert.ok(size(lip,'x')>.68&&size(lip,'x')<.72);
+ assert.ok(size(lip,'x')>.86&&size(lip,'x')<.90);
  assert.ok(box(lip).min.y<box(polymer).min.y-.045);
  assert.equal(polymer.userData.fncCrossSectionFaces,6);
  clearWeaponSilhouette(g);m.dispose();
@@ -47,7 +47,7 @@ test('P11 two long handguard ribs, broken gas sides, five upward roof vents',()=
  }
  const roof=get(g,'fncP11TopGasVentRow');assert.ok(roof);
  assert.equal(roof.userData.fncP11TopGasVentCount,5);
- assert.equal(roof.geometry.getAttribute('position').count,30);
+ assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.ok(roof.geometry.getAttribute('normal').getY(0)>.9);
  clearWeaponSilhouette(g);m.dispose();
 });

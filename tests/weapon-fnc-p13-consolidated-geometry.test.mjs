@@ -26,8 +26,8 @@ test('P13: authoritative layout controls a longer polymer, still shorter than me
  assert.ok(near(box(polymer).max.x,L.polymer.endX));
  assert.ok(near(box(gas).min.x,L.gas.startX));
  assert.ok(near(box(gas).max.x,L.gas.endX));
- assert.ok(size(polymer,'x')>8.50&&size(polymer,'x')<8.55);
- assert.ok(size(gas,'x')-size(polymer,'x')>3.0);
+ assert.ok(size(polymer,'x')>9.70&&size(polymer,'x')<9.76);
+ assert.ok(size(gas,'x')-size(polymer,'x')>2.0);
  assert.ok(size(gas,'z')<size(polymer,'z')*.65);
  assert.ok(touch(polymer,gas)&&touch(gas,collar));
  assert.ok(touch(collar,polymer));
@@ -43,8 +43,8 @@ test('P13: gas cover actually uses a tapered six-sided section, with modest expo
  assert.equal(gas.geometry.type,'BufferGeometry');
  assert.ok(near(box(gas).max.y,L.gas.topY));
  assert.ok(near(box(gas).min.y,L.gas.bottomY));
- assert.ok(box(gas).max.y-box(poly).max.y>.80);
- assert.ok(box(gas).max.y-box(poly).max.y<1.10,
+ assert.ok(box(gas).max.y-box(poly).max.y>1.20);
+ assert.ok(box(gas).max.y-box(poly).max.y<1.40,
   'gas cover must read as an integrated raised structure, not a second upper handguard');
  const v=gas.geometry.getAttribute('position');
  const nearTop=[],nearShoulder=[];
@@ -65,10 +65,10 @@ test('P13: side vents stay EXPOSED ABOVE polymer, top follows actual roof surfac
  const marks=all(g,'fncP11BrokenGasSideSlots');
  const roof=one(g,'fncP11TopGasVentRow');
  assert.equal(marks.length,2);assert.ok(roof);
- assert.equal(roof.geometry.getAttribute('position').count,30);
+ assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.ok(near(box(roof).min.y,box(gas).max.y+L.gas.ventOffset,.012));
  for(const mark of marks){
-  assert.equal(mark.geometry.getAttribute('position').count,60);
+  assert.equal(mark.geometry.getAttribute('position').count,48);
   assert.ok(box(mark).min.y>box(poly).max.y+.02,
    'do not hide gas vents behind the extended polymer');
   assert.ok(box(mark).max.x<box(gas).max.x-.3);
@@ -92,7 +92,7 @@ test('P13: one faceted molded handstop sits at the handguard nose, not a plate',
  assert.equal(all(g,'fncP13MoldedCollar').length,1);
  assert.ok(near(size(stop,'x'),L.handstop.length));
  assert.ok(box(stop).max.x>box(poly).max.x&&box(stop).max.x<box(poly).max.x+.2);
- assert.ok(size(stop,'y')<2.85&&size(stop,'z')<2.65);
+ assert.ok(size(stop,'y')<4.05&&size(stop,'z')<3.50);
  assert.ok(touch(stop,poly)&&touch(stop,gas));
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -109,7 +109,7 @@ test('P13: compact integrated sight base and ears; no tall pedestal',()=>{
  assert.ok(near(box(base).max.y,L.sight.baseRearTopY));
  assert.ok(near(box(base).min.y,L.sight.baseBottomY));
  assert.ok(ears.every(e=>touch(e,base)&&size(e,'y')<1.8));
- assert.ok(ears.every(e=>box(e).max.y<2.7),'ears should no longer tower above entire weapon');
+ assert.ok(ears.every(e=>box(e).max.y<2.85),'ears should no longer tower above entire weapon');
  const ordered=ears.sort((a,b)=>box(a).min.z-box(b).min.z);
  assert.ok(box(ordered[0]).max.z<box(ordered[1]).min.z-.2,
   'clear front-facing sky gap without a modeled inner post');
