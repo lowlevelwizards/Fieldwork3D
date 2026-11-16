@@ -26,6 +26,7 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   type CampaignState} from './campaign-state.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
+import {campaignDeploymentSettings} from './campaign-rules.ts';
 import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
 import type {IntelMode} from './breach-intel.ts';
 import type {SiteScale} from './breach-site.ts';
@@ -221,9 +222,9 @@ function deployCampaignContract(){
  const job=model.campaign.contracts.find(k=>k.id===model.campaign!.activeContractId);
  if(!job)return;
  model.mode='mission';
- model.intel=job.intel==='unknown'?'true-blind':
-  job.intel==='scouted'?'exterior-known':'floor-plan';
- model.scale=job.scale;
+ const deployment=campaignDeploymentSettings(model.campaign,job);
+ model.intel=deployment.intel;
+ model.scale=deployment.scale;
  config.siteSize.textContent='MAP SIZE · '+model.scale.toUpperCase();
  config.resetContract(job);
  campaignScreen.hide();
