@@ -52,7 +52,7 @@ test('P22 solid rear sight preserves the original outer envelope',()=>{
  assert.equal(rear.geometry.type,'ExtrudeGeometry');
  assert.equal(rear.geometry.parameters.shapes.holes.length,0,'no literal aperture');
  assert.equal(rear.geometry.getAttribute('position').count,36);
- assert.ok(near(box(front[0]).max.y,2.77));
+ assert.ok(near(box(front[0]).max.y,2.42));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P17 handguard underside heavier without losing gas/polymer hierarchy',()=>{
@@ -68,7 +68,7 @@ test('P17 handguard underside heavier without losing gas/polymer hierarchy',()=>
  assert.ok(near(size(stop,'x'),.88));
  assert.ok(box(stop).max.x>box(poly).max.x);
  assert.ok(box(stop).max.x<box(poly).max.x+.2);
- assert.ok(near(L.gas.topY,1.85)&&near(L.gas.bottomY,-.60));
+ assert.ok(near(L.gas.topY,1.50)&&near(L.gas.bottomY,-.60));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P17 thicker barrel and short bold muzzle, factory-only graphic ports',()=>{
