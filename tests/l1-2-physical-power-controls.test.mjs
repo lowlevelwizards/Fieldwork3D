@@ -109,8 +109,10 @@ test('L1.2 no ghost toggles: blocked or out-of-reach controls cancel',()=>{
  const s=make(),control=sitePowerControls(s.site).find(c=>c.kind==='breaker');
  const a=near(s,control);
  assert.equal(planSitePowerControl(s,a.id,control.id,false),true);
+ run(s,12); // begin genuine physical contact, but never finish the hold
+ assert.equal(s.sitePower.circuits[control.circuit],true);
  a.p={x:control.p.x+POWER_CONTROL_REACH+10,y:control.p.y};
- run(s,5);
+ run(s,2);
  assert.equal(s.sitePower.circuits[control.circuit],true);
  assert.equal(a.plan.length,0);
  assert.ok((a.failedOrders??0)>=1);
