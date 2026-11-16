@@ -47,6 +47,15 @@ export type HandlingTeammate={
 /** Accept the authoritative actor list directly on the render path.
  * No transient filter/map arrays per frame or actor. The point-only
  * form is retained for tiny pure geometric tests and Lab previews. */
+/** One shared directional predicate for Lab and live single-pass teammates.
+ * Receives already-filtered same-side living peer deltas, with the original
+ * inclusive/strict boundaries and cross-product sign unchanged. */
+export function teammateAheadProjectedOffset(
+ dx:number,dy:number,fx:number,fy:number):boolean{
+ const forward=dx*fx+dy*fy;
+ const across=Math.abs(dx*fy-dy*fx);
+ return forward>=4&&forward<48&&across<8.5;
+}
 export function teammateAheadForHandling(
  p:{x:number;y:number},heading:number,
  others:readonly ({x:number;y:number}|HandlingTeammate)[],
@@ -57,12 +66,10 @@ export function teammateAheadForHandling(
      self!==undefined&&(other.side!==self.side||other.health<=0)))continue;
   const pt='p' in other?other.p:other;
   const dx=pt.x-p.x,dy=pt.y-p.y;
-  const forward=dx*fx+dy*fy;
-  const across=Math.abs(dx*fy-dy*fx);
   // Courtesy is near-body, not a wide 25–30-degree angular exclusion.
   // Only centered close teammates trigger passive high-ready handling.
   // Real shots still use independently verified helmet/torso intersections.
-  if(forward>=4&&forward<48&&across<8.5)return true;
+  if(teammateAheadProjectedOffset(dx,dy,fx,fy))return true;
  }
  return false;
 }
