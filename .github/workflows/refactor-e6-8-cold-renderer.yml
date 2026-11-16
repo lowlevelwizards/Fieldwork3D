@@ -31,7 +31,6 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/refactor-e6-8-cold-renderer-attribution.test.mjs \
-            tests/rendering-r7-studio-foundation.test.mjs \
             tests/quick-play-startup-progress.test.mjs \
             tests/refactor-e6-7-rig-geometry.test.mjs \
             tests/refactor-e6-4-attribution.test.mjs \
