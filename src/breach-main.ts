@@ -347,7 +347,7 @@ const operationsBoardController=createBreachOperationsBoardController({
    reset(state.variant,undefined,undefined,equipmentTrainingSite(),
      undefined,false,undefined,{squadSize:4,lighting:'day'});
    trainingScreen.useEquipmentRange();
-   showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT TARGET PLATES',6500);
+   showUiHelp('TEST RANGE · USE TARGET FIRE TO AIM AT TARGET PLATES',6500);
  },
  openStudio:id=>openOperatorStudio(id,'quick'),
  openArsenal:id=>{void openQuickArsenal(id);},showHelp:showUiHelp
@@ -1307,10 +1307,20 @@ const trainingScreen=createBreachTrainingScreen({
    undefined,false,undefined,{squadSize:config.squadSize,lighting:config.lighting});
   trainingScreen.setActive(true);campaignScreen.hide();
   showUiHelp(config.activity==='trial'?
-   'TRIAL · USE SUPPRESS TO ENGAGE HOSTILE TARGETS · AVOID GREEN NO-SHOOT TARGETS':
-   'TRAINING · AUTHOR A PLAN · USE SUPPRESS FOR TARGETS · RETRY AT ANY TIME',5500);
+   'TRIAL · USE TARGET FIRE TO ENGAGE PLATES · AVOID GREEN NO-SHOOT TARGETS':
+   'TRAINING · AUTHOR A PLAN · USE TARGET FIRE FOR PLATES · RETRY ANY TIME',5500);
  },
  onReplay:()=>enterReplay('debrief'),
+ onArmTargetFire:()=>{
+  if(appFlow.mode!=='training'||replaying||state.phase!=='planning'||
+   !state.operators.some(a=>a.id===selected&&a.side==='blue'&&a.health>0))
+   return false;
+  // K1 targets use the existing authored suppression placement and the
+  // real shot/cover collision pipeline, never a fabricated target hit.
+  targeting.armSuppress();
+  showUiHelp('TARGET FIRE · TAP A PLATE TO PLACE FIRE, THEN GO · REAL HITS COUNT',5500);
+  updateHud();return true;
+ },
  onResetTargets:()=>{
   if(appFlow.mode!=='training'||replaying)return false;
   const ok=resetPracticeTargets(state);

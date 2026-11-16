@@ -5,7 +5,8 @@
   12px calc(12px + env(safe-area-inset-bottom));overflow:auto}
 .breach-training-panel{width:min(660px,100%);border:1px solid #718a7c;
  border-radius:10px;background:#182b2b;color:#e5e9df;
- box-shadow:0 18px 65px #030707aa;padding:clamp(14px,3vw,26px)}
+ box-shadow:0 18px 65px #030707aa;padding:clamp(14px,3vw,26px);
+ max-height:calc(100dvh - 32px);overflow-y:auto;overscroll-behavior:contain}
 .breach-training-panel h2{margin:0 0 6px;font:700 23px 'Saira Condensed',sans-serif;
  letter-spacing:.06em}
 .breach-training-panel p{margin:0 0 16px;font:13px 'Work Sans',sans-serif;
@@ -25,16 +26,22 @@
  font:700 12px 'Saira Condensed',sans-serif;letter-spacing:.04em;
  min-height:40px;padding:9px 13px;touch-action:manipulation}
 .breach-training-actions button:first-child{background:#b4cbb1;color:#142720}
+.breach-training-quick button:disabled{opacity:.50;cursor:not-allowed}
 .breach-training-quick{position:fixed;z-index:24;
  top:calc(54px + env(safe-area-inset-top));right:12px;
  display:flex;gap:6px;flex-wrap:wrap;max-width:calc(100vw - 24px);
  justify-content:flex-end}
 .breach-training-quick button{background:#162a29ed;padding:7px 9px;min-height:35px}
 @media(max-width:540px){.breach-training-options{grid-template-columns:1fr}
- .breach-training-quick{top:calc(50px + env(safe-area-inset-top))}
- .breach-training-quick button{font-size:10px;padding:6px}}
-@media(max-height:475px){.breach-training-screen{place-items:start center}
+ .breach-training-quick{top:calc(50px + env(safe-area-inset-top));
+  left:8px;right:8px;max-width:calc(100vw - 16px);flex-wrap:nowrap;
+  justify-content:flex-start;overflow-x:auto;overflow-y:hidden;
+  padding-bottom:4px;overscroll-behavior-inline:contain}
+ .breach-training-quick button{font-size:11px;padding:6px;min-height:40px;flex:0 0 auto}
+ .breach-training-progress{flex:0 0 auto;max-width:65vw}}
+@media(max-height:475px) and (min-width:700px){
  .breach-training-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-height:475px){.breach-training-panel{max-height:calc(100dvh - 24px)}}
 
 .breach-training-progress{align-self:center;border:1px solid #6d897d;border-radius:5px;padding:7px 9px;background:#142626ed;color:#dce9df;font:700 12px 'Saira Condensed',sans-serif}
 
