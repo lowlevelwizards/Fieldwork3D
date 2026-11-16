@@ -5,6 +5,7 @@ import {newSession,toggleWeaponLight} from '../src/breach-game.ts';
 import {initialRoster,configureRosterWeapon,applyRosterIdentity} from '../src/breach-roster.ts';
 import {snapshot} from '../src/breach-replay.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
+import {initialWeaponConfiguration} from '../src/equipment-weapon-assemblies.ts';
 
 test('20.12 mounted lights can be toggled without granting free light equipment',()=>{
  const s=newSession();const roster=initialRoster();
@@ -33,8 +34,12 @@ test('20.12 weapon lens is a bounded mesh and off until explicitly enabled',()=>
  material.dispose();
 });
 test('20.12 unmounted lens stays absent and incompatible flashlight is refused',()=>{
- const roster=initialRoster();
- const c=roster.members.find(m=>m.weapon==='shotgun').weaponConfiguration;
+ // The saved/default four-person roster may change weapon mix. Test
+ // compatibility with an explicit shotgun, not an inferred VALE loadout.
+ const c=initialWeaponConfiguration('shotgun');
+ const base=initialRoster();
+ const roster={...base,members:base.members.map(m=>m.id==='vale'?
+  {...m,weapon:'shotgun',weaponConfiguration:c}:m)};
  const material=new THREE.MeshStandardMaterial();
  const model=buildWeaponAccessories(c,material,material);
  assert.equal(model.getObjectByName('weapon-light-lens'),undefined);
