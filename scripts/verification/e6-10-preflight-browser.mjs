@@ -74,6 +74,11 @@ try{
     if(errors.length)throw Error('Browser shader/page errors: '+errors.join(' | '));
     const prefix=dir+'/seed-'+seed+'-preflight-'+coldPrewarm;
     writeFileSync(prefix+'.json',JSON.stringify(trace,null,2)+'\n');
+    // The mission briefing overlays the canvas in the normal UI. For QA
+    // capture the actual composited 3D canvas instead of a screenshot of
+    // the modal covering it. This page is an isolated throwaway browser.
+    await page.locator('#breach3dCanvas').evaluate(canvas=>
+      canvas.style.setProperty('z-index','2147483647','important'));
     await page.locator('#breach3dCanvas').screenshot({
      path:prefix+'.png',timeout:20000});
     const sum=(capture,names)=>names.reduce((t,k)=>
