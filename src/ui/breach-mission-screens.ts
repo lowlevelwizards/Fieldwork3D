@@ -19,6 +19,7 @@ import {readStoredText,writeStoredText,saveIntelPreference}
  from '../breach-persistence.ts';
 import type {SiteScale} from '../breach-site.ts';
 import type {LightingMode} from '../equipment-site-lighting.ts';
+import {setSessionLightingMode} from '../equipment-site-power.ts';
 import type {ViewMode} from '../breach-3d.ts';
 import {initialMiniatureFocusMode,MINIATURE_FOCUS_STORAGE_KEY,
  type MiniatureFocusMode} from '../rendering/miniature-focus-config.ts';
@@ -484,7 +485,7 @@ ui.siteLighting.addEventListener('click',()=>{
   }
   const current=config.lightingModes.indexOf(config.getLighting());
   config.setLighting(config.lightingModes[(current+1)%config.lightingModes.length]);
-  config.getSession().lightingMode=config.getLighting();
+  setSessionLightingMode(config.getSession(),config.getLighting());
   ui.siteLighting.textContent='LIGHTING · '+config.getLighting().toUpperCase();
   const url=new URL(location.href);
   if(config.getLighting()==='day')url.searchParams.delete('lighting');
