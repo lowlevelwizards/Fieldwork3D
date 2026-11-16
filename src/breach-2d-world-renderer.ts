@@ -16,6 +16,7 @@ import {spatialSurfaceState,windowPresentationKnown} from './breach-presentation
 import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
+import {fixtureLightingVisuals,fixtureVisualColor} from './equipment-lighting-visuals.ts';
 import {sitePowerControls,currentControlState} from './equipment-site-power-controls.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipment-weapon-light-beam.ts';
@@ -355,6 +356,54 @@ function renderLightingMood2D(){
  draw.fillRect(-9,-9,W+18,H+18);
  draw.restore();
 }
+/** State is shared with ISO; floor fog masks undiscovered geometry.
+ * The radial gradient is clipped to real opaque world blockers, not a
+ * decorative circle that can glow through a closed door.
+ */
+function renderFixtureLighting2D(){
+ const state=getState(),replaying=isReplaying();
+ if(!state.site)return;
+ const view=fixtureLightingVisuals(state);
+ for(const f of view.fixtures){
+  if(spatialSurfaceState(state,'room',f.roomId,
+     replaying&&replayKnowledge.omniscient)==='unknown')continue;
+  const color=fixtureVisualColor(f);
+  const rgb=((color>>16)&255)+','+((color>>8)&255)+','+(color&255);
+  if(f.intensity>0&&f.footprint.length>2){
+   draw.save();draw.beginPath();
+   draw.moveTo(f.footprint[1].x,f.footprint[1].y);
+   for(let i=2;i<f.footprint.length;i++)
+    draw.lineTo(f.footprint[i].x,f.footprint[i].y);
+   draw.closePath();draw.clip();
+   const gradient=draw.createRadialGradient(f.p.x,f.p.y,0,
+    f.p.x,f.p.y,f.range);
+   const weight=f.intensity*(f.status==='backup'?.27:.35);
+   gradient.addColorStop(0,'rgba('+rgb+','+weight.toFixed(3)+')');
+   gradient.addColorStop(.42,'rgba('+rgb+','+(weight*.32).toFixed(3)+')');
+   gradient.addColorStop(1,'rgba('+rgb+',0)');
+   draw.fillStyle=gradient;
+   draw.fillRect(f.p.x-f.range,f.p.y-f.range,f.range*2,f.range*2);
+   draw.restore();
+  }
+  // The fixture itself is equipment, not a beacon revealing an unknown
+  // room; require precise recorded/observed ground in restricted intel.
+  const micro='micro:'+Math.floor(f.p.x/10)+','+Math.floor(f.p.y/10);
+  const fine='fine:'+Math.floor(f.p.x/20)+','+Math.floor(f.p.y/20);
+  const disclosed=replaying&&replayKnowledge.omniscient||
+   state.intel.mode==='full-view'||state.seenGround.has(micro)||
+   state.seenGround.has(fine);
+  if(!disclosed)continue;
+  const width=f.kind==='fluorescent'?12:f.kind==='worklight'?8:6;
+  const height=f.kind==='fluorescent'?3:5;
+  rect(f.p.x-width/2,f.p.y-height/2,width,height,
+   '#222c2b');
+  rect(f.p.x-width/2+1,f.p.y-height/2+1,
+   width-2,Math.max(1,height-2),'#'+color.toString(16).padStart(6,'0'));
+  if(f.status==='failed')
+   line({x:f.p.x-width/2,y:f.p.y+height/2},
+    {x:f.p.x+width/2,y:f.p.y-height/2},'#b97463',1.2);
+ }
+}
 function renderWeaponLights2D(){
  const state=getState(),replaying=isReplaying();
  const active=state.operators.filter(a=>a.health>0&&a.weaponLightOn&&
@@ -438,7 +487,7 @@ function renderGroundMarks(){
    blockers:cache.blockers.length}:null;
  }
  return {terrain,furniture,architecture,renderLightingMood2D,
-   renderWeaponLights2D,renderGroundMarks,inspectLightCache};
+   renderFixtureLighting2D,renderWeaponLights2D,renderGroundMarks,inspectLightCache};
 }
 
 export type BreachTacticalWorldFrame={
@@ -480,7 +529,7 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   draw.fillStyle='#52655b';
   draw.fillRect(bounds.minX-9,bounds.minY-9,
     bounds.maxX-bounds.minX+18,bounds.maxY-bounds.minY+18);
-  world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
+  world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderFixtureLighting2D();world2D.renderWeaponLights2D();
   world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();
   if(!p.photoClean)actor2D.missionMarkers();
   if(!p.photoClean){route2D.paths();replay2D.renderReplayMovementHistory(false);}
