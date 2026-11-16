@@ -42,6 +42,8 @@ jobs:
         run: |
           node --test tests/refactor-e0-audit.test.mjs
           node scripts/verification/refactor-e0-audit.mjs --check --out artifacts/refactor-e0
+      - name: E4 combined replay and event-feed closeout evidence
+        run: node --experimental-strip-types scripts/verification/refactor-e4-closeout.mjs --out artifacts/refactor-e4/closeout.json
       - name: Typecheck, production build, and Pages build stamp
         run: npm run build
       - name: Retain architecture census evidence
@@ -52,6 +54,7 @@ jobs:
           path: |
             artifacts/consolidation/
             artifacts/refactor-e0/
+            artifacts/refactor-e4/
           if-no-files-found: warn
           retention-days: 14
 
