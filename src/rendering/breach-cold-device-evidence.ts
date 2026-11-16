@@ -34,6 +34,8 @@ export type ColdDeviceEvidence={
  postReadyFrames:ColdFrameIntervalSummary|null;
  /** E6.12: real tactical callback attribution for the same cold READY window. */
  postReadyRuntime?:PostReadyRuntimeWindow|null;
+ /** E6.14: first 90 real executing callbacks after user starts a mission. */
+ liveExecutionRuntime?:PostReadyRuntimeWindow|null;
  note:string;
 };
 
@@ -133,7 +135,7 @@ export function createColdDeviceEvidence(input:{
    hardwareConcurrency:nav.hardwareConcurrency??null},
   phases:input.phases,
   glPhases:input.trace?input.trace.captures.map(summarizeColdGlCalls):null,
-  postReadyFrames:null,postReadyRuntime:null,
+  postReadyFrames:null,postReadyRuntime:null,liveExecutionRuntime:null,
   note:'Local opt-in diagnostics only. Startup and WebGL call times are JavaScript/driver wall time, not GPU elapsed time; RAF intervals include scheduler/compositor stalls. With gpuTrace=1 measurement overhead is added. Run a fresh page per comparison, do not compare a warm second run to cold start. The file is never automatically uploaded. E6.12 postReadyRuntime aligns each RAF gap to the PRECEDING tactical callback and reports idle vs live separately.'
  };
 }
