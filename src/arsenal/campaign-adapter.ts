@@ -23,6 +23,7 @@ const denied=(reason:string):CampaignArsenalQuote=>({
 /** Preview only. Does not touch Campaign state, credits or parts stock. */
 export function quoteCampaignArsenalEdit(c:CampaignState,operatorId:string,
  recipe:ArsenalRecipeV2):CampaignArsenalQuote{
+ if(c.rules?.template==='dispatch')return denied('Dispatch pilot does not yet support custom Arsenal builds');
  if(c.activeContractId)return denied('Finish the current contract before editing equipment');
  const operator=c.operators.find(o=>o.id===operatorId);
  if(!operator||operator.status==='lost'||operator.status==='retired')
