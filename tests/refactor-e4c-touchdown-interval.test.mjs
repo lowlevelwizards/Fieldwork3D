@@ -132,3 +132,17 @@ test('E4.C live 60 Hz contact intervals match historical reverse-scan after reco
   assert.deepEqual(restored.touchdownsBetween(from,to,[actor.id]),
    recorder.touchdownsBetween(from,to,[actor.id]));
 });
+
+test('E4.C changing swing duration can reorder touchdowns despite ordered event starts',()=>{
+ // A long planned swing may land after a later short swing. Never infer
+ // contact monotonicity from event.at alone when accepting old V1 films.
+ const feet=[event(0,0),event(.1,.7),event(.2,.02),
+  event(.3,.03),event(.4,.015)];
+ const input=archive([
+  track('rook',[feet,[event(0,0),event(.12,.01)]]),
+  track('moss',[[event(0,0),event(.35,.02)],
+   [event(0,0),event(.15,.02)]])
+ ]);
+ checkIntervals(input,[[0,.2],[0,.3],[.2,.5],[.5,.85],
+  [0,1],[.31,.41],[.8,.86],[.95,2],[2,0]]);
+});
