@@ -6,7 +6,8 @@ import {effectiveCampaignRules} from './campaign-rules.ts';
 import {isDispatchPilot,mayChooseCampaignContent}
  from './dispatch-campaign-eligibility.ts';
 import {renderCampaignCreator} from './ui/campaign-creator.ts';
-import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost} from './campaign-state.ts';
+import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost,
+ canApplyCampaignKitPreset} from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
@@ -622,7 +623,7 @@ export class CampaignScreen{
   const locked=!!c.activeContractId;
   const dispatchPilot=isDispatchPilot(c);
   if(dispatchPilot)editor.append(node('p','campaign-note',
-   'DISPATCH PILOT · Only curated new equipment choices are offered. Existing equipment remains retained; advanced weapon and wardrobe editors are not yet supported.'));
+   'DISPATCH PILOT · Curated equipment choices and policy-validated saved kits are available. Existing items remain retained. Advanced custom weapon parts and wardrobe editing remain restricted.'));
   const presets=node('details','campaign-kit-presets');
   presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
@@ -641,7 +642,9 @@ export class CampaignScreen{
   const blank=node('option','','SELECT PRESET');blank.value='';picker.append(blank);
   for(const preset of c.kitPresets){
    const option=node('option','',preset.name+' · '+preset.weapon.toUpperCase());
-   option.value=preset.id;picker.append(option);
+   option.value=preset.id;
+   if(dispatchPilot&&!canApplyCampaignKitPreset(c,id,preset.id))option.disabled=true;
+   picker.append(option);
   }
   const load=button('APPLY PRESET',()=>{
    if(picker.value){
@@ -663,10 +666,15 @@ export class CampaignScreen{
     confirmLabel:'DELETE PRESET',danger:true
    }))this.handlers.deleteKitPreset(selectedPreset);
   });
-  load.disabled=locked||c.kitPresets.length===0||dispatchPilot;
+  load.disabled=locked||c.kitPresets.length===0||
+   (dispatchPilot&&!c.kitPresets.some(p=>canApplyCampaignKitPreset(c,id,p.id)));
+  picker.addEventListener('change',()=>{
+   load.disabled=locked||!picker.value||!canApplyCampaignKitPreset(c,id,picker.value);
+  });
   remove.disabled=locked||c.kitPresets.length===0;
   presetActions.append(picker,load,remove);
   presets.append(presetActions,node('p','campaign-note',
+   dispatchPilot?'Dispatch validates every saved kit item and prevents unsupported weapon changes. Existing inventory is preserved.':
    'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
   editor.append(presets);
   editor.append(node('h2','','LOADOUT'));
