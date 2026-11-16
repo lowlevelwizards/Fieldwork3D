@@ -40,6 +40,7 @@ import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
 import type {RepeatedFixtureBatches} from './breach-repeated-fixture-batches.ts';
 import {isArchitecturalSillCover} from '../worldgen/architectural-cover-visuals.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
+import {sitePowerControls} from '../equipment-site-power-controls.ts';
 
 export type SiteSceneBuildPort={
  root:THREE.Group;
@@ -527,6 +528,29 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       host.observedDetails.push({obj:prop,position:{x:detail.x,y:detail.y},
         microKey:'micro:'+Math.floor(detail.x/10)+','+Math.floor(detail.y/10),
         fineKey:'fine:'+Math.floor(detail.x/20)+','+Math.floor(detail.y/20)});
+    }
+    // K1/archived authored maps without wall decoration get explicitly
+    // visible training hardware. Generated site controls reuse their
+    // existing real wall-detail meshes above, never duplicate those props.
+    const fallbackPositions=new Set<string>();
+    for(const control of sitePowerControls(site)){
+      if(control.sourceDetailId)continue;
+      const key=control.p.x+','+control.p.y;
+      if(fallbackPositions.has(key))continue;
+      fallbackPositions.add(key);
+      const prop=new THREE.Group();
+      prop.position.set(control.p.x,18,control.p.y);
+      const panel=control.kind==='breaker';
+      host.box(prop,0,0,0,panel?13:5,panel?19:11,2.3,
+        panel?wallMetal:wallPaper,false);
+      host.box(prop,0,0,1.55,panel?5:1.4,panel?9:4,.9,
+        wallDark,false);
+      host.root.add(prop);
+      host.observedDetails.push({obj:prop,position:{...control.p},
+        microKey:'micro:'+Math.floor(control.p.x/10)+','+
+          Math.floor(control.p.y/10),
+        fineKey:'fine:'+Math.floor(control.p.x/20)+','+
+          Math.floor(control.p.y/20)});
     }
     // Story props are discovered individually. Entering a room never
     // reveals its contents outside an operator's observed cone.
