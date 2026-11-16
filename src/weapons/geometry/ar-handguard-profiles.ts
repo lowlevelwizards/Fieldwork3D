@@ -2,6 +2,7 @@
  * Rendering-only miniature art, generated once per family configuration.
  */
 import * as THREE from 'three';
+import {tagVisualMaterial} from '../../rendering/material-identity.ts';
 import type {SlotName} from './profile-primitives.ts';
 export type ARForearmProfile='a1-triangle'|'ribbed-round';
 const rings=8;
@@ -66,10 +67,13 @@ export function addARFacetedForearm(root:THREE.Group,slot:SlotName,id:string,
  */
 const A1_VENT_OFFSET=.018;
 const A1_VENT_COUNT=4;
-const A1_VENT_MATERIAL=new THREE.MeshBasicMaterial({
- color:0x101814,side:THREE.DoubleSide,depthTest:true,depthWrite:false,
+// A4.3: A1 recessed ventilation is matte paint, not unlit black ink.
+// The geometry follows real sloped facets; it stays an opaque, shared mat.
+const A1_VENT_MATERIAL=tagVisualMaterial(new THREE.MeshStandardMaterial({
+ color:0x101814,roughness:.98,metalness:0,
+ side:THREE.DoubleSide,depthTest:true,depthWrite:false,
  polygonOffset:true,polygonOffsetFactor:-1
-});
+}),'paint');
 export function addARA1SurfaceVents(root:THREE.Group,from:number,to:number,
  axisY:number){
  const sections=forearmSections(from,to,'a1-triangle');
