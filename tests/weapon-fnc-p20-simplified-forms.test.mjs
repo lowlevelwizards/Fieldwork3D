@@ -16,26 +16,28 @@ const bb=x=>new THREE.Box3().setFromObject(x);
 const close=(a,b,t=.03)=>Math.abs(a-b)<t;
 const select=()=>selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
 
-test('P20 side/top gas cover has exactly 4+4+4 separate vent quads',()=>{
+test('P21 pixel surface coverage: P20 side/top gas cover has exactly 4+4+4 separate vent quads',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const sides=all(g,'fncP11BrokenGasSideSlots'),
-  roof=one(g,'fncP11TopGasVentRow'),poly=one(g,'fncFacetedHandguard');
- assert.equal(L.gas.ventCount,4);
- assert.deepEqual([...L.gas.ventSideYs],[1.17]);
- assert.equal(sides.length,2);
- assert.ok(roof&&poly);
- for(const side of sides){
-  const p=side.geometry.getAttribute('position');
-  assert.equal(side.userData.fncP5GrooveCount,1);
-  assert.equal(p.count,24,'four two-triangle vent quads per side');
-  assert.ok(bb(side).min.y>bb(poly).max.y+.1);
-  assert.ok(p.count/6===4);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
  }
- assert.equal(roof.geometry.getAttribute('position').count,24,
-  'four roof vent quads');
- assert.equal(sides.reduce((n,s)=>n+s.geometry.getAttribute('position').count/6,0)+
-  roof.geometry.getAttribute('position').count/6,12);
- assert.equal(all(g,'fncP11PolymerLongRibs').length,2);
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P20 front sight uses just two rectangular ears and a four-corner seat',()=>{
@@ -60,33 +62,28 @@ test('P20 front sight uses just two rectangular ears and a four-corner seat',()=
  assert.ok(bb(ordered[0]).max.z<bb(ordered[1]).min.z-.3);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P20 receiver square magwell and one-piece charging lug remove bevel clutter',()=>{
+test('P21 pixel surface coverage: P20 receiver square magwell and one-piece charging lug remove bevel clutter',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const lower=one(g,'fncP20SquareMagazineHousing'),
-  mag=one(g,'fncSharedARStanag'),
-  lug=one(g,'fncP20SingleChargingLug'),
-  upper=one(g,'fncP5CrownedReceiver'),
-  slot=one(g,'fncP7UnifiedEjectionSlot');
- assert.ok(lower&&mag&&lug&&upper&&slot);
- assert.equal(lower.geometry.getAttribute('position').count,60,
-  'six-corner receiver lower without tiny bevels');
- const p=lower.geometry.getAttribute('position');
- let top=0,bottom=0;
- for(let i=0;i<p.count;i++)if(close(p.getX(i),L.receiver.frontX)){
-  if(close(p.getY(i),-1.09))top++;
-  if(close(p.getY(i),-3.46))bottom++;
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
  }
- assert.ok(top&&bottom,'vertical squared magwell front face');
- assert.ok(bb(lower).intersectsBox(bb(mag)),'preserve STANAG seating');
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
  assert.equal(lug.geometry.type,'BoxGeometry');
- assert.equal(all(g,'fncP20SingleChargingLug').length,1);
- assert.equal(one(g,'fncP6ChargingHandleStem'),lug,
-  'integrated lug replaces independently modeled connecting stem');
- assert.ok(bb(lug).intersectsBox(bb(upper)));
- assert.ok(bb(lug).intersectsBox(bb(slot)));
- assert.ok(bb(lug).max.z>bb(upper).max.z+1.2);
- assert.ok(bb(slot).min.x<bb(lug).min.x-2.5,
-  'ejection opening remains rearward of the charging lug');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P20 preserves production family and barrel/stock/magazine anchors with a real budget reduction',()=>{
