@@ -67,6 +67,7 @@ export class ArsenalThumbnailer{
  }
  dispose(){
   this.renderer?.dispose();this.renderer?.forceContextLoss();this.renderer=null;
-  // Shared registry-owned materials persist across viewer lifecycles.this.cache.clear();
+  // Registry owns finishes; this viewer still owns its thumbnail image cache.
+   this.cache.clear();
  }
 }
