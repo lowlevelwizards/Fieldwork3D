@@ -1,10 +1,11 @@
-/** G36 independent visual polymer 30-round magazine; not an AR STANAG clone.
- * FT1.9B monochrome exterior only. Same outline will feed carried mags later.
+/** FT1.9C — G36-specific smoked-polymer magazine silhouette.
+ * Still a single simple exterior profile; translucent materials and lugs deferred.
+ * This curve is NOT AR STANAG geometry or an exaggerated AK magazine.
  */
 import type {Outline} from './profile-primitives.ts';
 export const G36_MAG30_OUTLINE:Outline=[
- [-1.25,-2.64],[1.99,-2.64],[2.25,-3.68],
- [2.85,-5.36],[3.21,-7.71],[2.62,-8.05],
- [-.65,-8.05],[-.96,-5.45]
+ [-1.12,-2.62],[1.96,-2.62],[2.18,-3.30],
+ [2.37,-4.43],[2.88,-6.99],[2.21,-7.26],
+ [-.43,-7.26],[-.92,-5.20]
 ];
-export const G36_MAG30_DEPTH=1.92;
+export const G36_MAG30_DEPTH=2.15;

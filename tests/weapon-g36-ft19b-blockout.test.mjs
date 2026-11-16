@@ -21,7 +21,7 @@ test('G36 B: master consists of six named exterior slots and bounded art landmar
  assert.ok(Math.abs(b.min.x-A.stockRearX)<.02);
  assert.ok(Math.abs(b.max.x-A.muzzleX)<.02);
  assert.ok(Math.abs(b.max.x-b.min.x-34.55)<.02);
- assert.ok(b.max.y>=A.opticTopY-.01);
+ assert.ok(Math.abs(b.max.y-A.opticTopY)<.02);
  for(const [slot,id] of Object.entries(G36_B_PART_IDS))
   assert.ok(g.children.some(x=>x.name.startsWith('family-'+slot+'-'+id+'-')),slot);
  assert.ok(g.children.every(x=>x instanceof THREE.Mesh&&x.material===m));
@@ -73,5 +73,32 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
   assert.ok(bb(old).max.x-bb(old).min.x>20,'missing real peer '+preset);
   clearWeaponSilhouette(old);
  }
+ clearWeaponSilhouette(g);m.dispose();
+});
+
+test('G36 C1: union side view preserves newly emphasized bridge, stock and trigger voids',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ const open=(x,y)=>!g.children.some(mesh=>hit(mesh,x,y));
+ assert.ok(open(3,2.58),'whole-weapon carry handle opening must not be occluded');
+ assert.ok(open(-12.5,-1.4),'large stock hole must survive assembled silhouette');
+ assert.ok(open(-8.15,-.92),'small stock hole must survive assembled silhouette');
+ assert.ok(open(-2.30,-2.82),'trigger gap must be physically empty, not a black decal');
+ const lower=one(g,'g36ReceiverLower');
+ assert.equal(lower.geometry.parameters.shapes.holes.length,1);
+ clearWeaponSilhouette(g);m.dispose();
+});
+test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ const h=one(g,'g36HandleOpening'),s=one(g,'g36MasterStock'),
+  guard=one(g,'g36LongHandguard'),mag=one(g,'g36Magazine'),
+  grip=one(g,'g36Grip'),upper=one(g,'g36ReceiverUpper');
+ assert.ok(h&&s&&guard&&mag&&grip&&upper);
+ assert.ok(bb(h).max.y>4,'raised original G36 bridge');
+ assert.ok(bb(guard).max.z-bb(guard).min.z>3,'substantial polymer shell depth');
+ assert.ok(bb(guard).max.y-bb(guard).min.y>3.4,'front-end wedge has deliberate profile');
+ assert.ok(bb(mag).min.y> -7.4,'magazine should not retain old dangling depth');
+ assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
+ const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
+ assert.ok(meshCount<=13,'major-form changes should simplify visible meshes, not add clutter: '+meshCount);
  clearWeaponSilhouette(g);m.dispose();
 });
