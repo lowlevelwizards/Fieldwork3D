@@ -16,6 +16,8 @@ const tests=[
  'tests/breach-roadmap2-stage4-replay-presentation.test.mjs',
  'tests/replay-r3-movement-history.test.mjs',
  'tests/refactor-e4f-replay-trail-cursors.test.mjs',
+ 'tests/replay-r2-event-index.test.mjs',
+ 'tests/refactor-e4g-replay-hud-event-cursors.test.mjs',
  'tests/breach-roadmap2-stage5-performance.test.mjs',
  'tests/breach-roadmap2-stage7-motor.test.mjs',
  'tests/breach-roadmap2-stage8-orders.test.mjs',
