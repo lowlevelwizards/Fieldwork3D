@@ -45,12 +45,12 @@ export function dispatchPilotAppearanceAllowed(original:WardrobeOptions,
     resolvedWardrobe(after,kit).gloves!==id)return false;
  }
  if(after.gloveSolid!==before.gloveSolid&&
-  (after.gloveSolid!==undefined&&
-   (!isGloveSolid(after.gloveSolid)||!DISPATCH_APPEARANCE_SOLIDS.some(x=>x===after.gloveSolid)||
-    !policy('solid-color',after.gloveSolid))))return false;
+  (!after.gloveSolid||!isGloveSolid(after.gloveSolid)||
+   !DISPATCH_APPEARANCE_SOLIDS.some(x=>x===after.gloveSolid)||
+   !policy('solid-color',after.gloveSolid)))return false;
  for(const channel of ['top','trousers'] as const){
   if(after.fabricSolids?.[channel]!==before.fabricSolids?.[channel]&&
-   (after.fabricCamo?.[channel]||
+   (!after.fabricSolids?.[channel]||after.fabricCamo?.[channel]||
     !allowedSolid(after.fabricSolids?.[channel],channel,after,kit)))return false;
  }
  // Compare canonical copies after stripping ONLY D6-owned fields. This
