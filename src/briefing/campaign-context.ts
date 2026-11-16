@@ -1,5 +1,6 @@
 /** Campaign case continuity from REAL contract and operation history only. */
 import type {CampaignState} from '../campaign-state.ts';
+import {campaignIncidentView} from '../dispatch-incident-view.ts';
 import type {OperationDossierV1} from './briefing-types.ts';
 
 export function attachCampaignDossierContext(
@@ -12,12 +13,14 @@ export function attachCampaignDossierContext(
   const report=previous?
     campaign.history.find(r=>r.contractId===previous.id):undefined;
   const followUp=previous&&report?{
-    contractId:previous.id,title:previous.title,outcome:report.outcome
+    contractId:previous.id,title:campaignIncidentView(campaign,previous).title,
+    outcome:report.outcome
   }:undefined;
   return {
     ...dossier,
     campaign:{
-      contractId:job.id,title:job.title,region:job.region,
+      contractId:job.id,title:campaignIncidentView(campaign,job).title,
+      reference:campaignIncidentView(campaign,job).reference,region:job.region,
       risk:job.risk,day:campaign.day,followUp
     }
   };
