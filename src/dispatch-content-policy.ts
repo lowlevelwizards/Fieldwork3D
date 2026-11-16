@@ -3,6 +3,7 @@
  * A dated visual reference is not independent evidence of official item issue.
  */
 import {factionReference} from './faction-reference-catalog.ts';
+import {dispatchStarterChoiceStatus} from './dispatch-starter-choices.ts';
 import {dispatchReferenceContext} from './dispatch-content-foundation.ts';
 import {itemDefinition} from './equipment-catalog.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
@@ -26,6 +27,8 @@ export type DispatchPolicyContext=Readonly<{
  referenceId?:string;
  /** Optional caller assertions. These must agree with the existing timeline. */
  organizationId?:string;role?:string;year?:number;
+ /** Explicit specialist permit; never inferred from SWAT appearance alone. */
+ specialistAuthorized?:boolean;
 }>;
 export type DispatchPolicyQuery=Readonly<{
  kind:DispatchContentKind;id:string;context:DispatchPolicyContext;
@@ -49,9 +52,11 @@ export function isKnownDispatchContent(kind:DispatchContentKind,id:string):boole
 }
 
 const result=(kind:DispatchContentKind,id:string,status:DispatchAvailability,
- reason:string,provenance:DispatchPolicyDecision['provenance']='none'):
+ reason:string,provenance:DispatchPolicyDecision['provenance']='none',
+ specialistAuthorized=false):
  DispatchPolicyDecision=>Object.freeze({kind,id,status,
- selectable:status==='available'||status==='specialist'||status==='not-applicable',
+ selectable:status==='available'||status==='not-applicable'||
+  (status==='specialist'&&specialistAuthorized),
  reason,provenance});
 
 /** Unknown IDs and contexts fail closed even before authored rules exist.
@@ -81,6 +86,17 @@ export function evaluateDispatchContent(query:DispatchPolicyQuery):
    context.year<reference.era.start||context.year>reference.era.end)
    return result(kind,id,'unclassified','Year outside authored appearance period');
  }
+ const status=dispatchStarterChoiceStatus(matched.referenceId,kind,id);
+ if(status==='available')
+  return result(kind,id,status,'Curated choice for this authored appearance',
+   'authored-starter-policy');
+ if(status==='specialist')
+  return result(kind,id,status,
+   'Optional specialist choice; explicit authorization required',
+   'authored-starter-policy',context.specialistAuthorized===true);
+ if(status==='not-offered')
+  return result(kind,id,status,'Different authored reference; not offered here',
+   'authored-starter-policy');
  return result(kind,id,'unclassified',
-  'No authored Dispatch availability decision for this existing item');
+  'Not assessed for this authored Dispatch appearance');
 }
