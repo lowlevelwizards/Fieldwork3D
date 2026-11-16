@@ -12,6 +12,7 @@ import {tacticalIcon} from './tactical-icons.ts';
 import type {createBreachUiElements} from './breach-ui-elements.ts';
 import type {CampaignMode} from '../breach-app-mode.ts';
 import type {CampaignState} from '../campaign-state.ts';
+import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
 import {lightControlState} from '../equipment-weapon-light-ui.ts';
@@ -64,7 +65,7 @@ export type TacticalSessionPresentation={
  displayRouteCache:DisplayRouteCache;
  reducedMotion:boolean;weaponChooser:HTMLElement;hideWeaponChooser:()=>void;
  favoriteActive:boolean;recorder:MissionRecorder;campaign:CampaignState|null;
- operationsLogged:number;
+ incident?:DispatchIncidentContext|null;operationsLogged:number;
 };
 
 /** UI-only weapon choice overlay; legality stays in equipWeaponChoice. */
@@ -475,7 +476,7 @@ export function createTacticalHudController(
       medicalButton,dragButton,carryButton,retrieveButton,navPanel,
       canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
       reducedMotion,weaponChooser,hideWeaponChooser,favoriteActive,
-      recorder,campaign,operationsLogged}=input;
+      recorder,campaign,incident,operationsLogged}=input;
     // One read-only squad snapshot per HUD reconciliation, never a second
     // simulation or movement authority.
     const friendly=team(state);
@@ -638,7 +639,7 @@ export function createTacticalHudController(
   ui.retry.disabled=mode==='mission';
   if(!ui.debrief.hidden)renderMissionDebrief({
     ui,state,brief,recorder,campaign,campaignMode:mode,
-    operationsLogged:operationsLogged
+    incident,operationsLogged:operationsLogged
   });
   for(const id of ['rook','moss','ash','vale'] as const){
     renderOperatorCard({
