@@ -1,6 +1,7 @@
 /** FT1.8E: first-asset production *draft*, not authorization to model.
  * Reviewers must verify sources, real silhouettes and complexity before FT1.9.
  */
+import {FT17_CANDIDATE_DECISIONS} from './faction-reference-production-decisions.ts';
 import {buildContentCandidates} from './faction-reference-production-candidates.ts';
 export const FT18_FIRST_ASSET_SCOPE={
  id:'ft1-8-g36-draft',
@@ -47,7 +48,7 @@ export const FT18_FIRST_ASSET_SCOPE={
  ]
 } as const;
 export function ft18FirstAssetReadiness(){
- const candidate=buildContentCandidates().find(x=>x.id===FT18_FIRST_ASSET_SCOPE.candidateId);
+ const candidate=buildContentCandidates(FT17_CANDIDATE_DECISIONS).find(x=>x.id===FT18_FIRST_ASSET_SCOPE.candidateId);
  return {
   candidateExists:!!candidate,
   gapMatches:!!candidate?.gapIds.includes(FT18_FIRST_ASSET_SCOPE.gapId),
