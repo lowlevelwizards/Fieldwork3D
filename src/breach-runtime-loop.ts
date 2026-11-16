@@ -8,6 +8,8 @@ import type {Pt} from './breach-core.ts';
 import {fixedStepBudget} from './breach-fixed-clock.ts';
 import {renderSnapshot,type RenderActor} from './breach-frame-interpolation.ts';
 import {FrameMeter} from './breach-perf.ts';
+import type {PostReadyRuntimeFrame}
+ from './rendering/breach-post-ready-attribution.ts';
 import {shouldSubmitIdle3D} from './rendering/breach-idle-3d-cadence.ts';
 import {PerformanceTimeline,emptyPerformanceSceneCosts,
  type PreviousFrameWork}
@@ -79,6 +81,8 @@ export type BreachRuntimeLoopHooks={
  audio:ReturnType<typeof createBreachAudioController>;
  /** Read-only notification for the in-match PERF HUD control. */
  onProfilerChange?:(visible:boolean,recording:boolean)=>void;
+ /** E6.12 coldBench only: real callback slices, no additional RAF draws. */
+ recordColdRuntimeFrame?:(frame:PostReadyRuntimeFrame)=>void;
 };
 export function createBreachRuntimeLoop(config:BreachRuntimeLoopHooks){
  let last=performance.now(),accum=0,hudAt=0,running=false,frameQueued=false;
@@ -655,6 +659,21 @@ function tick(now:number){
     scene:currentSceneCosts,
     actor:currentActorCosts
    };
+  }
+  // Only the explicit benchmark samples these durations. A gap ending now
+  // can be correlated with the PRIOR frame's work, not this frame's work.
+  if(config.boot.coldBenchEnabled&&config.recordColdRuntimeFrame){
+   const callbackEnd=performance.now();
+   config.recordColdRuntimeFrame({
+    at:now,gapMs:frameGap,
+    callbackMs:Math.max(0,callbackEnd-(perfOverlay?perfStart:coarseStart)),
+    simMs:simulationMeasuredMs,recordingMs,
+    uiMs:runtimeUiMs,sceneMs:sceneUpdateEnd-perfRenderStart,
+    canvasMs:renderEnd-sceneUpdateEnd,
+    postMs:diagnosticsStart-renderEnd,
+    diagnosticsMs:callbackEnd-diagnosticsStart,
+    mode:frameMode,viewMode,submitted3D:updated3d
+   });
   }
   scheduleFrame();
 }
