@@ -14,7 +14,8 @@ export function openerThreatensLeaf(door:Door,from:Pt):boolean{
    [from],OPERATOR_RADIUS+1);
 }
 export function selectOpeningStance(door:Door,from:Pt,
- canStep:(from:Pt,to:Pt)=>boolean,occupied:readonly Pt[]):Pt|null{
+ canStep:(from:Pt,to:Pt)=>boolean,occupied:readonly Pt[],
+ preferRetreat=true):Pt|null{
  if(!openerThreatensLeaf(door,from))return null;
  const center=doorCenter(door);
  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
@@ -26,7 +27,7 @@ export function selectOpeningStance(door:Door,from:Pt,
  const preferred=((from.x-center.x)*t.x+(from.y-center.y)*t.y)>=0?1:-1;
  // First try the intuitive small step BACK on the authored side. This
  // avoids sending a near-handle operator around the jamb for clearance.
- for(const retreat of [6,10,16,22,28]){
+ if(preferRetreat)for(const retreat of [6,10,16,22,28]){
   const pos={x:from.x+n.x*side*retreat,
     y:from.y+n.y*side*retreat};
   if(doorReachable(pos,door)&&
