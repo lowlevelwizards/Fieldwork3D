@@ -68,6 +68,10 @@ export function createBreachCampaignFlow(config:CampaignFlowHooks){
    set scale(next:SiteScale){config.setScale(next);}
  };
 let recordedOperation:Session|null=null;
+let deployedIncident:DispatchIncidentContext|null=null;
+/** Only the staged Dispatch mission in its originating career owns this. */
+const currentIncident=()=>config.getMode()==='mission'&&!config.isReplaying()?
+ validatedDispatchIncident(config.getCampaign(),deployedIncident):null;
 const operationHistory=()=>loadOperationHistory();
 function recordCompletedOperation(){
  const state=config.getSession();
