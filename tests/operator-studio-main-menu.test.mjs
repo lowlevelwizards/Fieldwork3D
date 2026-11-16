@@ -8,8 +8,8 @@ test('front menu opens Operator Studio without creating a mission',()=>{
  const ui=read('src/campaign-ui.ts');
  const flow=read('src/breach-campaign-flow.ts');
  const main=read('src/breach-main.ts');
- const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean){'),
-  ui.indexOf(' home(c:CampaignState){'));
+ const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean'),
+  ui.indexOf(' home(c:CampaignState'));
  assert.match(entry,/OPERATOR STUDIO',this\.handlers\.openMenuStudio/);
  assert.match(flow,/openMenuStudio:\(\)=>config\.openMenuStudio\(\)/);
  assert.match(main,/openMenuStudio:\(\)=>openOperatorStudio\(persistentRoster\.members\[0\]\?\.id,'quick'\)/);
