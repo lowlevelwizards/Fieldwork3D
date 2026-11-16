@@ -222,8 +222,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     // E6.9: Chromium DevTools can capture just this synchronous cold
     // scene update and first draw via console.profile; no profiling work
     // or material/render-policy changes occur without ?cpuTrace=1.
-    const cpuTraceEnabled=new URLSearchParams(location.search).
-      get('cpuTrace')==='1';
+    const cpuTraceEnabled=config.boot.cpuTraceEnabled;
     const cdpProfileConsole=console as Console&{
       profile?:(label:string)=>void;profileEnd?:(label:string)=>void
     };
