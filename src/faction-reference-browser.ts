@@ -13,6 +13,9 @@ import {historicalEvidence} from './faction-reference-evidence.ts';
 import {generateHistoricalLoadout,type HistoricalLoadoutProposal,type GenerationMode}
  from './faction-reference-loadout-generator.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {existingVisualProxyForContext} from './faction-reference-visual-proxy.ts';
+import {prioritizeContentDemand} from './faction-reference-content-demand.ts';
+const CONTENT_DEMAND=prioritizeContentDemand();
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
 export type ReferenceBrowserHooks={
  onPreview:(id:string)=>void;onApply:(id:string)=>void;onClose:()=>void;
@@ -380,11 +383,24 @@ export class FactionReferenceBrowser{
   });
   panel.append(generate,reroll);
   const current=this.proposal;
+  const visual=existingVisualProxyForContext({timelineId,year,environment,
+   ...(this.generatorRole?{role:this.generatorRole}:{}),
+   ...(this.generatorTheater?{theater:this.generatorTheater}:{})});
+  panel.append(el('small','reference-sources',
+   'EXISTING VISUAL REFERENCE · '+
+   (visual.referenceId?visual.referenceId+' ('+visual.status+')':'NONE')+
+   ' · '+visual.explanation));
   if(current&&current.context.timelineId===timelineId&&current.context.year===year&&
    current.context.environment===environment){
    panel.append(el('p','reference-meta',
     'STATUS '+current.status.toUpperCase()+' · '+current.choices.length+
     ' RESEARCH CHOICES · '+current.unresolvedCategories.length+' UNRESOLVED CATEGORIES'));
+   panel.append(el('small','reference-sources',
+    'ENSEMBLE · '+current.ensemble.researchedCategoryCount+' RESEARCHED CATEGORIES · '+
+    current.ensemble.visuallyRepresentedCount+' MAPPED · '+
+    current.ensemble.proxyOnlyCount+' PROXY ONLY · '+
+    current.ensemble.historicalOnlyCount+' UNMAPPED · '+current.ensemble.sourceCount+
+    ' SOURCES · NO COMPLETE-KIT CERTIFICATION'));
    for(const choice of current.choices){
     const item=el('div','reference-generator-choice');
     const label=el('strong','',choice.name);
@@ -442,6 +458,32 @@ export class FactionReferenceBrowser{
 
   }
   this.historicalPanel.append(panel);
+  this.renderContentDemandQueue();
+ }
+ private renderContentDemandQueue(){
+  const section=el('details','reference-content-demand');
+  section.append(el('summary','','FUTURE VISUAL CONTENT QUEUE · '+
+   CONTENT_DEMAND.length+' UNRESOLVED NEEDS'));
+  section.append(el('p','reference-sources',
+   'System audit only · no new assets are being added. Scores rank benefit to existing reference kits and documented proxy gaps; novelty is a heuristic requiring silhouette review.'));
+  const items=el('div','reference-content-demand-items');
+  for(const [i,entry] of CONTENT_DEMAND.slice(0,12).entries()){
+   const row=el('div','reference-content-demand-item');
+   row.append(el('strong','',String(i+1)+'. '+entry.label),
+    el('small','reference-meta',
+     entry.category.toUpperCase()+' · SCORE '+entry.priorityScore+
+     ' · '+entry.affectedKitCount+' KITS · '+entry.missingKitCount+
+     ' WITHOUT ACCEPTABLE MODEL · '+entry.definingCount+' DEFINING'),
+    el('small','reference-sources',
+     'Distinctiveness: '+entry.noveltyAssessment.replace(/-/g,' ')+
+     ' (not geometrically measured)'),
+    el('small','reference-sources',
+     'Current representations: '+entry.currentProxies.slice(0,3).join('; ')));
+   items.append(row);
+  }
+  section.append(items,el('p','reference-sources',
+   'The ranking is advisory. A future art review should assess distinctive silhouette, modeling cost and shared use before a content task is approved.'));
+  this.historicalPanel.append(section);
  }
  private renderDetail(){
   const r=FACTION_REFERENCES.find(x=>x.id===this.chosen) as FactionReference;
