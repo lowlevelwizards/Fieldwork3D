@@ -53,6 +53,7 @@ export function toggleWeaponLight(s:Session,id:string):boolean{
  if(!a||s.phase!=='planning'&&s.phase!=='running'||
   a.weaponConfiguration?.slots.light!=='light-compact')return false;
  a.weaponLightOn=!a.weaponLightOn;
+ s.illuminationRevision=(s.illuminationRevision??0)+1;
  return true;
 }
 
