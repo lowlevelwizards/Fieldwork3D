@@ -27,7 +27,9 @@ jobs:
             tests/arsenal-a3-accessory-geometry.test.mjs \
             tests/arsenal-v2-assembly.test.mjs \
             tests/arsenal-a1-baseline.test.mjs \
-            tests/equipment-19-02-weapon-silhouettes.test.mjs
+            tests/equipment-19-02-weapon-silhouettes.test.mjs \
+            tests/equipment-21-01-workbench.test.mjs \
+            tests/weapon-workbench-mobile-sockets.test.mjs
       - name: Typecheck
         run: npm run check
       - name: Build
