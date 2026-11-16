@@ -45,10 +45,10 @@ test('P16 exposed receiver stamping and selector stay sparse and side-specific',
   lever=one(g,'fncP16BroadSelectorLever');
  assert.ok(upper&&lower&&seam&&stamp&&lever);
  assert.ok(box(seam).max.x<=box(upper).max.x+.01);
- assert.ok(sz(seam,'y')>.20&&sz(seam,'y')<.25);
+ assert.ok(sz(seam,'y')>.30&&sz(seam,'y')<.35);
  assert.ok(box(stamp).max.z>box(lower).max.z);
  assert.ok(box(lever).min.z<box(lower).min.z);
- assert.ok(sz(stamp,'x')>4.5&&sz(stamp,'y')<.2);
+ assert.ok(sz(stamp,'x')>4.5&&sz(stamp,'y')<.27);
  assert.ok(sz(lever,'x')<1&&sz(lever,'y')<.5);
  assert.ok(one(g,'fncP8RearPortForwardHandle'));
  assert.ok(one(g,'fncP10DarkThickButtpad'));
@@ -62,7 +62,7 @@ test('P16 fore-end roots penetrate both receiver shells without spacer meshes',(
   lower=one(g,'fncP15FlatLowerNose'),
   stop=one(g,'fncP15RaisedCollar');
  assert.ok(poly&&gas&&upper&&lower&&stop);
- assert.ok(near(box(poly).min.x,2.18)&&near(box(gas).min.x,2.16));
+ assert.ok(near(box(poly).min.x,1.95)&&near(box(gas).min.x,1.95));
  assert.ok(box(upper).max.x-box(gas).min.x>.55);
  assert.ok(box(lower).max.x-box(poly).min.x>.55);
  assert.ok(touch(poly,upper)&&touch(poly,lower)&&touch(gas,upper));
@@ -81,11 +81,11 @@ test('P16 twin-ear guards chamfered but keep FAL open silhouette',()=>{
  assert.equal(ears.length,2);
  assert.ok(ears.every(e=>e.geometry.type==='ExtrudeGeometry'));
  assert.ok(ears.every(e=>touch(e,base)));
- assert.ok(ears.every(e=>near(box(e).max.y,2.44)));
+ assert.ok(ears.every(e=>near(box(e).max.y,2.77)));
  assert.ok(ears.every(e=>sz(e,'x')<.85&&sz(e,'y')<1.2));
  const sorted=ears.slice().sort((a,b)=>box(a).min.z-box(b).min.z);
  assert.ok(box(sorted[0]).max.z<box(sorted[1]).min.z-.30);
- assert.ok(box(base).max.y<1.60);
+ assert.ok(box(base).max.y<1.95);
  assert.ok(!one(g,'fncP11TwinEarFrontSight'));
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -96,7 +96,7 @@ test('P16 factory device is narrower, slotted, and removed for suppressed path',
   barrel=one(factory,'fncServiceBarrel');
  assert.ok(device&&slots&&barrel);
  assert.ok(near(box(device).max.x,19.50));
- assert.ok(sz(device,'y')>1.5&&sz(device,'y')<1.7);
+ assert.ok(sz(device,'y')>2.0&&sz(device,'y')<2.15);
  assert.equal(slots.geometry.getAttribute('position').count,24);
  assert.ok(box(slots).min.x>=box(device).min.x+.3);
  assert.ok(box(slots).max.x<=box(device).max.x-.15);

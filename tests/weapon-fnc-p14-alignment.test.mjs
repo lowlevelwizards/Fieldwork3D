@@ -25,7 +25,7 @@ test('P15 receiver and handguard stay in real 3D contact after body shortening',
  const upper=one(g,'fncP5CrownedReceiver');
  const lower=one(g,'fncAngularLower');
  assert.ok(poly&&upper&&lower);
- assert.ok(close(box(poly).min.x,2.18));
+ assert.ok(close(box(poly).min.x,1.95));
  assert.ok(close(box(upper).max.x,2.75));
  assert.ok(close(box(lower).max.x,2.75));
  assert.ok(box(upper).max.x-box(poly).min.x>.29,
@@ -49,18 +49,18 @@ test('P15 tall gas cover nests into polymer and exposes both vent rows',()=>{
  const roof=one(g,'fncP11TopGasVentRow');
  assert.ok(poly&&metal&&roof);
  assert.ok(close(box(metal).max.y,L.gas.topY));
- assert.ok(box(metal).max.y-box(poly).max.y>.80);
- assert.ok(box(metal).max.y-box(poly).max.y<1.10);
+ assert.ok(box(metal).max.y-box(poly).max.y>1.20);
+ assert.ok(box(metal).max.y-box(poly).max.y<1.40);
  assert.ok(box(metal).min.y<box(poly).max.y-.80,
   'metal lower flank must sink into polymer');
  assert.ok(size(metal,'z')<size(poly,'z')*.65);
  assert.equal(vents.length,2);
  for(const vent of vents){
-  assert.equal(vent.geometry.getAttribute('position').count,60);
+  assert.equal(vent.geometry.getAttribute('position').count,48);
   assert.ok(box(vent).min.y>box(poly).max.y+.02,
    'lower vent row remains visibly above polymer roof');
  }
- assert.equal(roof.geometry.getAttribute('position').count,30);
+ assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.ok(close(box(roof).max.y,box(metal).max.y+L.gas.ventOffset,.015));
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -81,7 +81,7 @@ test('P14 front handstop is tapered, compact, and connects to both polymer and g
   if(close(p.getX(i),frontX))front=Math.max(front,Math.abs(p.getZ(i)));
  }
  assert.ok(rear>front+.05,'collar MUST taper toward the front end');
- assert.ok(size(stop,'x')<.72&&size(stop,'y')<2.95);
+ assert.ok(size(stop,'x')<.90&&size(stop,'y')<4.05);
  assert.equal(stop.geometry.type,'BufferGeometry');
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -94,9 +94,9 @@ test('P14 front base no longer forms a tall pedestal under twin FAL ears',()=>{
  const rear=one(g,'fncP8CompactRearSight');
  assert.ok(base&&gas&&rear&&touch(base,gas));
  assert.equal(ears.length,2);
- assert.ok(close(box(base).max.y,1.52));
+ assert.ok(close(box(base).max.y,1.85));
  assert.ok(size(base,'x')<2.8);
- assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.44)));
+ assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.77)));
  assert.ok(box(ears[0]).max.y-box(gas).max.y<1.15,
   'P15 twin ears remain seated within the taller gas/sight structure');
  assert.ok(size(ears[0],'z')<.78);

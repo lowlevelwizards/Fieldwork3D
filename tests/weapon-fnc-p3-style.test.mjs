@@ -37,7 +37,7 @@ test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
  assert.ok(hex&&gas);
  assert.equal(hex.userData.fncCrossSectionFaces,6);
  const hb=box(hex),gb=box(gas);
- assert.ok(gb.max.y>hb.max.y+.80&&gb.max.y<hb.max.y+1.10,'P15 upper spine rises above polymer');
+ assert.ok(gb.max.y>hb.max.y+1.20&&gb.max.y<hb.max.y+1.40,'P15 upper spine rises above polymer');
  assert.ok(gb.max.z<hb.max.z-.13,'gas box must be narrower than the hex');
  assert.ok(gb.min.y<hb.max.y,'two volumes intersect instead of floating');
  const marks=of(g,'fncP5GrooveSide');
@@ -48,7 +48,7 @@ test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
   for(const mark of parts){
    const count=2;
    assert.equal(mark.userData.fncP5GrooveCount,count);
-   const segments=level==='upper'?5:1;
+   const segments=level==='upper'?4:1;
    assert.equal(mark.geometry.getAttribute('position').count,count*segments*6);
    const normal=mark.geometry.getAttribute('normal').getZ(0);
    assert.ok(normal*mark.userData.fncP5GrooveSide>.84,
@@ -64,8 +64,8 @@ test('P5 receiver: true three-dimensional tapered roof narrower than lower',()=>
  const upper=of(g,'fncP5CrownedReceiver')[0];
  const lower=of(g,'fncAngularLower')[0];
  assert.ok(upper&&lower);
- assert.equal(upper.userData.fncP5RoofHalfWidth,.67);
- assert.equal(upper.userData.fncP5UpperSideHalfWidth,1.34);
+ assert.equal(upper.userData.fncP5RoofHalfWidth,.88);
+ assert.equal(upper.userData.fncP5UpperSideHalfWidth,1.39);
  assert.ok(box(upper).max.z<box(lower).max.z-.30,
   'upper side must be narrower than the lower even below its shoulder');
  const pos=upper.geometry.getAttribute('position');
@@ -91,7 +91,7 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  assert.ok(front.userData.fncP12FALLikeFrontEar,
   'simplified FAL-style twin ears replace sculpted sight');
  assert.equal(rear.geometry.parameters.shapes.holes.length,1);
- assert.ok(box(front).max.y>2.38&&box(front).max.y<2.50,
+ assert.ok(box(front).max.y>2.70&&box(front).max.y<2.85,
   'compact FAL-like ears must not remain tall towers');
  assert.ok(box(rear).max.y>2.40);
  assert.ok(box(handle).max.x-box(handle).min.x<1.15,

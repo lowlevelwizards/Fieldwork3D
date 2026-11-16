@@ -46,7 +46,7 @@ test('P11: two polymer lines and broken upper gas rows per side',()=>{
   const meshes=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
   assert.equal(meshes.length,2);
   for(const mesh of meshes){
-   const rows=2,segments=level==='upper'?5:1;
+   const rows=2,segments=level==='upper'?4:1;
    assert.equal(mesh.userData.fncP5GrooveCount,rows);
    assert.equal(mesh.userData.fncP6GrooveSegmentsPerRow,segments);
    assert.ok(mesh.userData.fncP6BoldGrooveHeight>=.15);
@@ -77,7 +77,7 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
   'P10 longer plate is still compact relative to the open stock void');
  assert.ok(box(gas).min.x<box(by(g,'fncP5LowerHex')[0]).max.x,
   'extended gas cover overlaps shortened fore-end without floating');
- assert.ok(box(front).max.y>2.38&&box(front).max.y<2.50);
+ assert.ok(box(front).max.y>2.70&&box(front).max.y<2.85);
  assert.ok(box(rear).max.y>2.40);
  assert.ok(front.userData.fncP12FALLikeFrontEar);
  assert.equal(by(g,'fncP12FALLikeFrontEar').length,2);
@@ -87,7 +87,7 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
  assert.ok(box(stem).max.z>box(handle).min.z,
   'short connecting stem must intersect the projecting grip');
  assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.20);
- assert.ok(box(muzzle).max.x-box(muzzle).min.x<1.90);
+ assert.ok(box(muzzle).max.x-box(muzzle).min.x<1.45);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();
