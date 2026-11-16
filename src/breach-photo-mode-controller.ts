@@ -11,7 +11,7 @@ import {capturePhotoFrame,photoFilterCss,type PhotoCaptureRequest}
 import {INITIAL_PHOTO_SETTINGS,photographCanEnter,
  type PhotoLens,type PhotoGuide} from './breach-photo-state.ts';
 import {savePhoto,makePhotoThumbnail,listPhotos,readPhoto,deletePhoto,
- type PhotoMetadata,type PhotoStored} from './breach-photo-library.ts';
+ type PhotoMetadata} from './breach-photo-library.ts';
 import {mountBreachPhotoUi} from './ui/breach-photo-ui.ts';
 
 type Ports={
