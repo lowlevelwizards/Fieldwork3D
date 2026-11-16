@@ -94,7 +94,7 @@ export function auditFactionTimelines():{
    issues.push({timelineId:timeline.id,message:'Duplicate evidence ID'});
   for(const item of timeline.equipment){
    if(item.startYear>item.endYear)
-    issues.push({timelineId:timeline.id,message:'Invalid equipment period '+item.assetId});
+    issues.push({timelineId:timeline.id,message:'Invalid equipment period '+item.historicalEquipmentId});
    if(item.confidence==='verified'&&!item.evidenceIds.length)
     issues.push({timelineId:timeline.id,message:'Verified equipment without evidence '+item.assetId});
    for(const id of item.evidenceIds)if(!evidenceIds.has(id))
