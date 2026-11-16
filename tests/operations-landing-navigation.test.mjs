@@ -6,8 +6,8 @@ const source=(name)=>readFileSync(new URL('../src/'+name,import.meta.url),'utf8'
 
 test('landing preserves clear play choices, replay and tools without manufactured labels',()=>{
  const ui=source('campaign-ui.ts');
- const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean){'),
-  ui.indexOf(' home(c:CampaignState){'));
+ const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean'),
+  ui.indexOf(' home(c:CampaignState'));
  assert.match(entry,/campaign-landing-hero/);
  assert.match(entry,/campaign-landing-actions/);
  assert.match(entry,/campaign-landing-card campaign-landing-primary/);
