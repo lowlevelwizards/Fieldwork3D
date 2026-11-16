@@ -2017,33 +2017,59 @@ function selectCategory(slot:WardrobeSlot){
  comparingSaved=false;syncGearToggle();refresh();
  focusCameraOnCategory(slot);
 }
+// E2.B2: persistent category controls across material and preview edits.
+const categoryButtons=new Map<string,HTMLButtonElement>();
+const subcategoryButtons=new Map<string,HTMLButtonElement>();
+let mountedCategoryGroup:string|null=null;
+const referenceCategoryButton=document.createElement('button');
+referenceCategoryButton.type='button';referenceCategoryButton.textContent='REFERENCES';
+referenceCategoryButton.addEventListener('click',()=>openReferenceBrowser());
 function renderCategories(){
- categories.replaceChildren();subcategories.replaceChildren();
- const referenceButton=document.createElement('button');
- referenceButton.type='button';referenceButton.textContent='REFERENCES';
- referenceButton.setAttribute('aria-pressed',String(referenceOpen));
- referenceButton.disabled=saveInFlight;
- referenceButton.addEventListener('click',()=>openReferenceBrowser());
- categories.append(referenceButton);
+ if(!categoryButtons.size){
+  categories.append(referenceCategoryButton);
+  for(const group of categoryGroups){
+   const button=makeButton(group.label,group.slots.includes(activeCategory),()=>
+    selectCategory(group.slots[0]));
+   button.setAttribute('aria-label','Customize '+group.label.toLowerCase());
+   categoryButtons.set(group.label,button);categories.append(button);
+  }
+ }
+ const referencePressed=String(referenceOpen);
+ if(referenceCategoryButton.getAttribute('aria-pressed')!==referencePressed)
+  referenceCategoryButton.setAttribute('aria-pressed',referencePressed);
+ referenceCategoryButton.disabled=saveInFlight;
+ const editorDisabled=readOnly||comparingSaved||saveInFlight;
  for(const group of categoryGroups){
-  const button=makeButton(group.label,group.slots.includes(activeCategory),()=>
-   selectCategory(group.slots[0]));
-  button.setAttribute('aria-label','Customize '+group.label.toLowerCase());
-  categories.append(button);
+  const button=categoryButtons.get(group.label);
+  if(!button)continue;
+  const pressed=String(group.slots.includes(activeCategory));
+  if(button.getAttribute('aria-pressed')!==pressed)
+   button.setAttribute('aria-pressed',pressed);
+  if(button.disabled!==editorDisabled)button.disabled=editorDisabled;
  }
  const group=categoryGroup();
- if(group.label==='DETAILS'){
-  const mark=makeButton('MARKINGS',identityMode,()=>{
-   if(referenceOpen){referenceOpen=false;referenceBrowser.hide();}
-   identityMode=true;activeStep='details';clothesOnly=false;
-   comparingSaved=false;syncGearToggle();refresh();
-  });
-  subcategories.append(mark);
+ if(mountedCategoryGroup!==group.label){
+  mountedCategoryGroup=group.label;
+  subcategoryButtons.clear();subcategories.replaceChildren();
+  if(group.label==='DETAILS'){
+   const mark=makeButton('MARKINGS',identityMode,()=>{
+    if(referenceOpen){referenceOpen=false;referenceBrowser.hide();}
+    identityMode=true;activeStep='details';clothesOnly=false;
+    comparingSaved=false;syncGearToggle();refresh();
+   });
+   subcategoryButtons.set('MARKINGS',mark);subcategories.append(mark);
+  }
+  if(group.slots.length>1)for(const slot of group.slots){
+   const button=makeButton(APPEARANCE_GROUP_LABELS[slot],slot===activeCategory,
+    ()=>selectCategory(slot));
+   subcategoryButtons.set(slot,button);subcategories.append(button);
+  }
  }
- if(group.slots.length>1)for(const slot of group.slots){
-  const button=makeButton(APPEARANCE_GROUP_LABELS[slot],slot===activeCategory,
-   ()=>selectCategory(slot));
-  subcategories.append(button);
+ for(const [id,button] of subcategoryButtons){
+  const pressed=String(id==='MARKINGS'?identityMode:id===activeCategory);
+  if(button.getAttribute('aria-pressed')!==pressed)
+   button.setAttribute('aria-pressed',pressed);
+  if(button.disabled!==editorDisabled)button.disabled=editorDisabled;
  }
 }
 function pairedUniformFor(slot:WardrobeSlot,look:WardrobeOptions,kit:EquipmentLoadout):
