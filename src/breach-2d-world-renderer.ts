@@ -22,7 +22,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipment-weapon-light-beam.ts';
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
-import {presentActor} from './rendering/breach-3d-disclosure-presenter.ts';
+import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import type {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 export type World2DDrawing={
@@ -364,9 +364,19 @@ function renderFixtureLighting2D(){
  const state=getState(),replaying=isReplaying();
  if(!state.site)return;
  const view=fixtureLightingVisuals(state);
+ const observer=replaying&&replayKnowledge.groundLensOn?
+  replayKnowledge.observerId:null;
+ const personal=!!observer;
+ const evidence=observer?
+  replayKnowledge.personalGround?.at(replayPlayback.time,observer)??null:null;
  for(const f of view.fixtures){
   if(spatialSurfaceState(state,'room',f.roomId,
      replaying&&replayKnowledge.omniscient)==='unknown')continue;
+  const micro='micro:'+Math.floor(f.p.x/10)+','+Math.floor(f.p.y/10);
+  const fine='fine:'+Math.floor(f.p.x/20)+','+Math.floor(f.p.y/20);
+  if(!presentDecor(state,{position:f.p,microKey:micro,fineKey:fine},
+     replaying&&replayKnowledge.omniscient,personal,evidence,()=>false))
+   continue;
   const color=fixtureVisualColor(f);
   const rgb=((color>>16)&255)+','+((color>>8)&255)+','+(color&255);
   if(f.intensity>0&&f.footprint.length>2){
@@ -387,12 +397,6 @@ function renderFixtureLighting2D(){
   }
   // The fixture itself is equipment, not a beacon revealing an unknown
   // room; require precise recorded/observed ground in restricted intel.
-  const micro='micro:'+Math.floor(f.p.x/10)+','+Math.floor(f.p.y/10);
-  const fine='fine:'+Math.floor(f.p.x/20)+','+Math.floor(f.p.y/20);
-  const disclosed=replaying&&replayKnowledge.omniscient||
-   state.intel.mode==='full-view'||state.seenGround.has(micro)||
-   state.seenGround.has(fine);
-  if(!disclosed)continue;
   const width=f.kind==='fluorescent'?12:f.kind==='worklight'?8:6;
   const height=f.kind==='fluorescent'?3:5;
   rect(f.p.x-width/2,f.p.y-height/2,width,height,
