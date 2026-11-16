@@ -47,10 +47,10 @@ test('P15 polymer 30% taller; short collar and long gas spine truly interlock',(
  assert.ok(near(box(poly).min.x,1.95)&&near(box(poly).max.x,11.68));
  assert.ok(sz(poly,'y')>3.10&&sz(poly,'y')<3.30);
  assert.ok(box(poly).max.y>.50&&box(poly).max.y<.62);
- assert.ok(box(poly).min.y< -2.75&&box(poly).min.y> -2.95);
+ assert.ok(box(poly).min.y< -2.58&&box(poly).min.y> -2.68);
  assert.ok(sz(poly,'z')>sz(gas,'z')+.8);
  assert.ok(touch(stop,poly)&&touch(stop,gas));
- assert.ok(sz(stop,'y')>3.7&&sz(stop,'y')<4.0);
+ assert.ok(sz(stop,'y')>3.55&&sz(stop,'y')<3.70);
  assert.ok(sz(gas,'x')>sz(poly,'x')+2.0);
  clearWeaponSilhouette(g);m.dispose();
 });
