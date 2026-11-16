@@ -83,7 +83,7 @@ test('FT1.4 independent sources do not claim a complete co-issued kit',()=>{
  assert.equal(validateHistoricalLoadoutProposal(altered,initialEquipmentLoadout()),null);
 });
 test('FT1.4 compatibility audit detects two historical picks mapped to same game slot',()=>{
- const original=make('us-army-infantry',2016);
+ const original=make('usmc-field',2006);
  const mapped=original.choices.find(x=>x.mapping?.gameSlot);
  assert.ok(mapped);
  const clone={...mapped,historicalId:'another-identity',recordId:'another-evidence'};
