@@ -65,3 +65,34 @@ detachment wears the same kit, create faction assets, or activate campaign
 availability filtering. Legacy faction records and roster/saved gear do not
 change. The downstream D1.3 consumer can query these grouped records without
 creating another organization registry.
+
+## D1.3 — factual existing-look coverage (not a checklist of future content)
+
+`src/dispatch-reference-coverage.ts` provides `dispatchReferenceCoverage(id)`,
+`dispatchStarterCoverage()` and `auditDispatchStarterCoverage()` for only
+the same four references. Reports include the timeline-derived role context,
+authored era, representative visual weapon and its existing fidelity, and
+**each existing author-declared gap** with its computed exact/approximate/missing
+status. Gap counts measure only those declared requirements, not every item
+a police operator could use. `visualStatus` reuses the existing FT1.x
+assessment, which is an art approximation indicator, not historical proof.
+
+For example, the 2020 patrol appearance has an explicitly **proxy** AR preview,
+because the gameplay currently requires a long gun. It must never be presented
+as a claim about routine patrol weapon issue or the existence of implemented
+sidearm support. Existing helmet/vest/insignia limitations also remain visible.
+A "covered" individual authored gap does **not** certify a whole kit.
+
+`historicalIssueResearch` identifies whether the associated timeline currently
+has item-issue evidence records at all. Empty research is `no-associated-records`,
+not proof an item was never used. Each report keeps
+`completeHistoricalKitVerified: false` and
+`coverageScope: 'authored-visual-gaps-only'`.
+
+The API is read-only and produces no future asset tickets, automatic missing
+gear, campaign filters, UI controls, saves or equipment changes. D1.4 can
+perform final contract validation and update D2 integration notes without
+making an unsupported horizontal content catalogue.
+
+Focused test:
+`node --experimental-strip-types --test tests/dispatch-reference-coverage.test.mjs`
