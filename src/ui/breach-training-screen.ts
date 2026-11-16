@@ -1,5 +1,7 @@
 /** Player-facing training entry and quick tools. The mission and runtime
  * controllers still exclusively own Session creation and simulation. */
+import {trainingTargetProgress} from '../training/training-targets.ts';
+import type {Session} from '../breach-game.ts';
 import {DEFAULT_TRAINING_CONFIG,TRAINING_LAYOUTS,TRAINING_LAYOUT_LABELS,
  normalizeTrainingConfig,type TrainingConfig} from '../training/training-courses.ts';
 import './breach-training.css';
@@ -63,6 +65,9 @@ export function createBreachTrainingScreen(hooks:Hooks){
  document.body.append(root);
  const quick=document.createElement('div');quick.id='breachTrainingQuickTools';
  quick.className='breach-training-quick';quick.hidden=true;
+ const progress=document.createElement('output');
+ progress.className='breach-training-progress';progress.setAttribute('aria-live','off');
+ quick.append(progress);
  quick.append(button('TRAINING TOOLS',()=>show()),button('RETRY',()=>retry()),
   button('MAIN MENU',()=>hooks.onReturnToMenu()));
  document.body.append(quick);
@@ -85,6 +90,13 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(!active&&open)close();
  }
  function setActive(value:boolean){active=value;sync();}
+ function updateProgress(s:Session):void{
+  if(!active||!s.site?.training)return;
+  const p=trainingTargetProgress(s);
+  const text=p.targets?('TARGETS '+p.hits+'/'+p.targets+
+   ' · SHOTS '+p.shots):('FREE PRACTICE · SHOTS '+p.shots);
+  if(progress.textContent!==text)progress.textContent=text;
+ }
  activity.el.addEventListener('change',()=>{
   const isRange=activity.el.value==='range';
   layout.wrapper.hidden=isRange;density.wrapper.hidden=isRange;
@@ -94,7 +106,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}
  });
  return {
-  show,retry,setActive,
+  show,retry,setActive,updateProgress,
   get active(){return active;},
   get config(){return {...config};}
  };

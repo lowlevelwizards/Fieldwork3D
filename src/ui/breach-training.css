@@ -35,3 +35,5 @@
  .breach-training-quick button{font-size:10px;padding:6px}}
 @media(max-height:475px){.breach-training-screen{place-items:start center}
  .breach-training-options{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.breach-training-progress{align-self:center;border:1px solid #6d897d;border-radius:5px;padding:7px 9px;background:#142626ed;color:#dce9df;font:700 12px 'Saira Condensed',sans-serif}

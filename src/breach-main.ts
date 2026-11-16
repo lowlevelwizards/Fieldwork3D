@@ -759,6 +759,7 @@ function updateHud(){
     operationsLogged:operationHistory().length
   });
   updateContext();
+  if(appFlow.mode==='training')trainingScreen.updateProgress(state);
 }
 function rect(x:number,y:number,w:number,h:number,color:string){
   draw.fillStyle=color;draw.fillRect(x,y,w,h);
