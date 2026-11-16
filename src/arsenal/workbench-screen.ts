@@ -165,37 +165,54 @@ export function openArsenalWorkbench(
   cancel.addEventListener('click',()=>{pending=null;renderPending();});
   buttons.append(confirm,cancel);box.append(label,desc,buttons);pendingHost.append(box);
  }
+ // E2.A2: finish swatches are authored choices, not disposable DOM.
+ const finishButtons=new Map<string,HTMLButtonElement>();
  function renderFinishes(){
-  finishOptions.replaceChildren();finishHelp.hidden=true;finishHelp.textContent='';
+  finishHelp.hidden=true;finishHelp.textContent='';
   const current=currentPartId(activeSlot);
   const family=arsenalFinishFamily(current);
   finishSection.hidden=!family||family.slot!==activeSlot;
-  if(!family||family.slot!==activeSlot)return;
-  for(const item of family.options){
+  const desired:HTMLButtonElement[]=[];
+  if(family&&family.slot===activeSlot)for(const item of family.options){
+   const key=activeSlot+':'+item.partId;
+   let choice=finishButtons.get(key);
+   if(!choice){
+    choice=document.createElement('button');choice.type='button';
+    choice.className='arsenal-wb-finish-choice';
+    const swatch=document.createElement('span');swatch.className='arsenal-wb-finish-swatch';
+    swatch.style.backgroundColor='#'+item.hex;
+    const label=document.createElement('span');label.textContent=item.label;
+    choice.append(swatch,label);
+    choice.addEventListener('click',()=>{
+     const live=proposeArsenalPartChange(draft.working,activeSlot,item.partId);
+     if(item.partId===currentPartId(activeSlot))return;
+     if(!live.valid){
+      finishHelp.hidden=false;
+      finishHelp.textContent=item.label+' · '+arsenalFitFeedback(live).explanation;
+      return;
+     }
+     finishHelp.hidden=true;pending=null;
+     if(live.requiresConfirmation){pending=live;renderPending();return;}
+     draft=commitArsenalProposal(draft,live);
+     viewer.setRecipe(draft.working);renderSelection();
+    });
+    finishButtons.set(key,choice);
+   }
    const proposal=proposeArsenalPartChange(draft.working,activeSlot,item.partId);
    const selected=item.partId===current;
-   const choice=document.createElement('button');choice.type='button';
-   choice.className='arsenal-wb-finish-choice';
-   choice.setAttribute('aria-pressed',String(selected));
-   choice.dataset.fit=selected?'equipped':proposal.valid?'fits':'incompatible';
-   const swatch=document.createElement('span');swatch.className='arsenal-wb-finish-swatch';
-   swatch.style.backgroundColor='#'+item.hex;
-   const label=document.createElement('span');label.textContent=item.label;
-   choice.append(swatch,label);
-   choice.addEventListener('click',()=>{
-    if(selected)return;
-    if(!proposal.valid){
-     finishHelp.hidden=false;
-     finishHelp.textContent=item.label+' · '+arsenalFitFeedback(proposal).explanation;
-     return;
-    }
-    finishHelp.hidden=true;pending=null;
-    if(proposal.requiresConfirmation){pending=proposal;renderPending();return;}
-    draft=commitArsenalProposal(draft,proposal);
-    viewer.setRecipe(draft.working);renderSelection();
-   });
-   finishOptions.append(choice);
+   const pressed=String(selected);
+   if(choice.getAttribute('aria-pressed')!==pressed)
+    choice.setAttribute('aria-pressed',pressed);
+   const fit=selected?'equipped':proposal.valid?'fits':'incompatible';
+   if(choice.dataset.fit!==fit)choice.dataset.fit=fit;
+   desired.push(choice);
   }
+  const visible=new Set<Node>(desired);
+  for(const child of Array.from(finishOptions.children))
+   if(!visible.has(child))child.remove();
+  for(let index=0;index<desired.length;index++)
+   if(finishOptions.children[index]!==desired[index])
+    finishOptions.insertBefore(desired[index],finishOptions.children[index]??null);
  }
  // Reuse physical part controls for the lifetime of this Workbench.
  // Refresh fit and selection without closing focus or remounting stable rows.
