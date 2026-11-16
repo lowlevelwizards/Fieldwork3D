@@ -22,7 +22,8 @@ test('D3.2 new pilot issues one existing SWAT look and consistent firearms',()=>
   assert.equal(o.weapon,'carbine');
   assert.equal(o.weaponConfiguration.build?.family,'ar');
   assert.equal(o.loadout.slots.primary,'primary-carbine');
-  assert.equal(o.wardrobe?.styles.headwear,'police-helmet');
+  assert.equal(o.wardrobe?.styles.headwear,'mich-2001');
+  assert.equal(o.wardrobe?.headwearColor,'black');
   assert.equal(o.wardrobe?.markings?.chest,'label-swat');
  }
  assert.deepEqual(readCampaign(JSON.stringify(c)),c);
