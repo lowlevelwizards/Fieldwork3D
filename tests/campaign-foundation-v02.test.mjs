@@ -106,7 +106,7 @@ test('C0.2 fails closed under denied storage and cannot switch to invalid slot',
  storage.setItem(BREACH_STORAGE_KEYS.sandboxCampaign,'{broken');
  assert.deepEqual(loadActiveCampaign(storage),{slot:'legacy',campaign:legacy});
  assert.equal(readCampaign(JSON.stringify({...legacy,name:''})),null);
- assert.equal(readCampaign(JSON.stringify({...legacy,name:'bad\\u0000name'})),null);
+ assert.equal(readCampaign(JSON.stringify({...legacy,name:'bad'+String.fromCharCode(0)+'name'})),null);
 });
 
 test('C0.2 source boundaries keep Quick Play separate and Studio slot-aware',()=>{
