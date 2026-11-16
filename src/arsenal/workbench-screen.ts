@@ -250,28 +250,51 @@ export function openArsenalWorkbench(
    choiceList.append(empty);
   }
  }
+ // Persistent navigation: recipe/finish changes do not need to allocate
+ // category or slot buttons again, and keyboard focus stays on its control.
+ const categoryButtons=new Map<ArsenalCategory['id'],HTMLButtonElement>();
+ const slotButtons=new Map<ArsenalSlot,HTMLButtonElement>();
+ let mountedSlotCategory:ArsenalCategory['id']|null=null;
+ function syncNavigation(){
+  if(!categoryButtons.size){
+   for(const category of ARSENAL_CATEGORIES){
+    const button=document.createElement('button');button.type='button';
+    button.className='arsenal-wb-category';button.textContent=category.name;
+    button.addEventListener('click',()=>{
+     activeCategory=category;activeSlot=category.slots[0];pending=null;
+     renderSelection();
+    });
+    categoryButtons.set(category.id,button);nav.append(button);
+   }
+  }
+  for(const [id,button] of categoryButtons){
+   const pressed=String(activeCategory.id===id);
+   if(button.getAttribute('aria-pressed')!==pressed)
+    button.setAttribute('aria-pressed',pressed);
+  }
+  if(mountedSlotCategory!==activeCategory.id){
+   mountedSlotCategory=activeCategory.id;
+   slotButtons.clear();
+   slotRow.replaceChildren();
+   if(activeCategory.slots.length>1)for(const slot of activeCategory.slots){
+    const button=document.createElement('button');button.type='button';
+    button.className='arsenal-wb-subslot';button.textContent=formatSlot(slot);
+    button.addEventListener('click',()=>{
+     activeSlot=slot;pending=null;renderSelection();
+    });
+    slotButtons.set(slot,button);slotRow.append(button);
+   }
+  }
+  for(const [slot,button] of slotButtons){
+   const pressed=String(activeSlot===slot);
+   if(button.getAttribute('aria-pressed')!==pressed)
+    button.setAttribute('aria-pressed',pressed);
+  }
+ }
  function renderSelection(){
   fitExplanation.hidden=true;fitExplanation.textContent='';
-  nav.replaceChildren();
-  for(const category of ARSENAL_CATEGORIES){
-   const button=document.createElement('button');button.type='button';
-   button.className='arsenal-wb-category';button.textContent=category.name;
-   button.setAttribute('aria-pressed',String(activeCategory.id===category.id));
-   button.addEventListener('click',()=>{
-    activeCategory=category;activeSlot=category.slots[0];pending=null;
-    renderSelection();
-   });nav.append(button);
-  }
+  syncNavigation();
   panelTitle.textContent=activeCategory.name.toUpperCase();
-  slotRow.replaceChildren();
-  if(activeCategory.slots.length>1)for(const slot of activeCategory.slots){
-   const button=document.createElement('button');button.type='button';
-   button.className='arsenal-wb-subslot';button.textContent=formatSlot(slot);
-   button.setAttribute('aria-pressed',String(activeSlot===slot));
-   button.addEventListener('click',()=>{
-    activeSlot=slot;pending=null;renderSelection();
-   });slotRow.append(button);
-  }
   const current=currentPartId(activeSlot),family=arsenalFinishFamily(current);
   activeLabel.textContent='CURRENT · '+(family?
    family.name+' · '+(arsenalFinishOption(current)?.label??'Standard'):
