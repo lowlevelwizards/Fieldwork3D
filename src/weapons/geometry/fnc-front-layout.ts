@@ -1,4 +1,4 @@
-/** FNC P28 vertically stacked front gas detail pixels. P13 alias retained.
+/** FNC P29 proportion correction. P13 alias retained.
  * One authoritative source for interdependent handguard, gas cover,
  * handstop, groove, and sight placements. Local game-art units ONLY.
  * Existing FNC_P1 world anchors and part IDs are untouched.
@@ -6,9 +6,10 @@
  * No allocations in the render loop.
  */
 export const FNC_FRONT_P13=Object.freeze({
- receiver:Object.freeze({frontX:2.75,roofY:1.93,gripForwardX:.90,
-  seamFrontX:2.68,magwellRearX:-.98,magwellFrontX:3.05,
-  magazineCenterX:1.05,magazineTopY:-2.81}),
+ receiver:Object.freeze({frontX:2.75,roofY:1.50,gripForwardX:.90,
+  seamFrontX:2.68,magwellRearX:-1.58,magwellFrontX:2.45,
+  magwellRearBottomY:-3.46,magwellFrontBottomY:-3.32,
+  magazineCenterX:.45,magazineTopY:-2.81}),
  barrel:Object.freeze({axisY:0}),
  polymer:Object.freeze({
   startX:3.25,fullStartX:3.80,fullEndX:10.85,endX:11.68,
