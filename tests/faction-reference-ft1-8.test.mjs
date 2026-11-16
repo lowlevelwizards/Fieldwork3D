@@ -51,3 +51,14 @@ test('FT1.8D does not fabricate review or approve production',async()=>{
  assert.ok(rows.every(x=>x.requiredViews===FT18_REQUIRED_VIEWS));
  assert.ok(rows.some(x=>x.existingModel==='fnc-service'));
 });
+
+test('FT1.8E first production brief is complete but not falsely authorized',async()=>{
+ const {FT18_FIRST_ASSET_SCOPE,ft18FirstAssetReadiness}=await import('../src/faction-reference-ft1-8-first-asset.ts');
+ const status=ft18FirstAssetReadiness();
+ assert.equal(status.candidateExists,true);
+ assert.equal(status.gapMatches,true);
+ assert.equal(status.authorized,false);
+ assert.equal(FT18_FIRST_ASSET_SCOPE.state,'proposed-primary-awaiting-review');
+ for(const key of ['deliverables','constraints','visualAcceptance','technicalAcceptance','blockers','outOfScope'])
+  assert.ok(FT18_FIRST_ASSET_SCOPE[key].length>=3,key);
+});
