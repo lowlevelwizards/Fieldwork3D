@@ -8,6 +8,7 @@ import type {WeaponFamilyBuild,PartMountFace,PartMountRole,
 import {FAMILY_PARTS} from '../../equipment-weapon-families.ts';
 import {AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {akBarrelArt} from './ak-barrel-profiles.ts';
+import {hkBarrelArt} from './hk-barrel-profiles.ts';
 import {AR_HANDGUARD_START,arHandguardEnd,akHandguardStart}
  from '../../breach-weapon-contact-zones.ts';
 import {HK_CLAW_VISUAL} from './hk-rail-accessories.ts';
@@ -56,7 +57,15 @@ export function weaponPartMountSurfaces(build:WeaponFamilyBuild,
   const upperRear=akHandguardStart(build.parts.receiver)+1.08;
   // AK builder: one box centered halfway between upperRear+.9 and front
   // with actual width front-upperRear-1.2, top at 2.88+.24.
-  add('handguard',[upperRear+1.05,front-.15],3.12,1.5);
+  const part=FAMILY_PARTS[build.parts.handguard];
+  for(const mount of part.mounts??[]){
+   result.push({id:part.id+':'+mount.role+':'+mount.face,
+    ownerPartId:part.id,ownerSlot:'handguard',
+    standard:mount.standard,role:mount.role,face:mount.face,
+    startX:upperRear+1.05,endX:front-.15,
+    y:mount.face==='top'?3.12:mount.face==='bottom'?-1.5:0,
+    z:mount.face==='side'?1.74:0});
+  }
  }
  if(build.family==='ar'&&FAMILY_PARTS[build.parts.handguard]?.mounts?.length){
   const start=AR_HANDGUARD_START,end=arHandguardEnd(build.parts.handguard);
@@ -75,15 +84,18 @@ export function weaponPartMountSurfaces(build:WeaponFamilyBuild,
   }
  }
  if(build.parts.handguard==='hk-mp5-trirail'){
-  // Eligibility and longitudinal envelope are part-owned. The specialized
-  // MP5 renderer remains the visual authority for fore-end brackets.
+  const art=hkBarrelArt(build.parts.barrel);
+  if(!art)throw Error('MP5 tri-rail requires authored fore-end landmarks');
   const part=FAMILY_PARTS[build.parts.handguard];
+  // addMP5TriRail: rails are span-.60 on a real art-derived fore-end;
+  // bottom top surface -1.56+.43/2; side outer ±(1.54+.43/2).
   for(const mount of part.mounts??[])
    result.push({id:part.id+':'+mount.role+':'+mount.face,
     ownerPartId:part.id,ownerSlot:'handguard',
     standard:mount.standard,role:mount.role,face:mount.face,
-    startX:4,endX:10,y:mount.face==='bottom'?-2.35:-.5,
-    z:mount.face==='side'?2.4:0});
+    startX:art.handguardStartX+.30,endX:art.handguardEndX-.30,
+    y:mount.face==='bottom'?-1.775:-.29,
+    z:mount.face==='side'?1.755:0});
  }
  return result;
 }
