@@ -524,3 +524,11 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .reference-history-compare-header label{display:flex;align-items:center;gap:5px}
 .reference-history-compare input{max-width:80px;min-height:36px;background:#294339;
  border:1px solid #83998b;color:#e9eee5;border-radius:6px;padding:5px}
+
+/* FT1.2 researched milestones: horizontal, no extra render surface. */
+.reference-history-jump{display:grid;gap:5px;min-width:0}
+.reference-history-years{display:flex;gap:5px;flex-wrap:wrap}
+.reference-history-year{min-height:32px;min-width:46px;padding:5px 9px;
+ background:#294339;color:#e6e9e1;border:1px solid #83998b;border-radius:6px;
+ font:700 12px "Saira Condensed",sans-serif}
+.reference-history-year[aria-pressed="true"]{border-color:#ddc38e;background:#514d35}
