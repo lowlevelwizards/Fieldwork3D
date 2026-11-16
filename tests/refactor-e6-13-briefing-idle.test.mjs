@@ -38,13 +38,13 @@ test('E6.13 keeps canonical opt-out, existing tactical RAF and cold evidence',()
  const loop=source('src/breach-runtime-loop.ts'),
   main=source('src/breach-main.ts'),
   policy=source('src/rendering/breach-briefing-idle-policy.ts');
- assert.match(loop,/isBriefingVisible:\(\)=>boolean/);
+ assert.match(loop,/isBriefingVisible\?:\(\)=>boolean/);
  assert.match(main,/isBriefingVisible:\(\)=>!ui\.briefingPanel\.hidden/);
  assert.match(loop,/enabled:config\.boot\.briefingIdle3DEnabled/);
- assert.match(loop,/briefingVisible:config\.isBriefingVisible\(\)/);
+ assert.match(loop,/briefingVisible:config\.isBriefingVisible\?\.\(\)\?\?false/);
  assert.match(loop,/last3dSession===state&&last3dMode==='idle'/);
- assert.match(loop,/const updated3d=stageAvailable&&!briefing3d\.hold&&/);
- assert.match(loop,/briefing3d\.forceReveal\|\|/);
+ assert.match(loop,/const updated3d=stageAvailable&&\(photoActive\?/);
+ assert.match(loop,/\|\|briefing3d\.forceReveal\)&&!briefing3d\.hold/);
  assert.match(loop,/briefing3dWasHeld=false/);
  assert.match(loop,/if\(!studioOccludesTactical\)config\.renderFrame\(dt\)/);
  assert.match(loop,/mode:frameMode,viewMode,submitted3D:updated3d/);
