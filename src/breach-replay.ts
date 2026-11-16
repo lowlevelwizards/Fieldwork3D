@@ -363,7 +363,8 @@ export class MissionRecorder{
     if(!span)return null;
     const {previous,next,alpha}=span;
     const t=previous.t+(next.t-previous.t)*alpha;
-    const byId=new Map(next.actors.map(a=>[a.id,a]));
+    const byId=new Map<string,(typeof next.actors)[number]>();
+    for(const a of next.actors)byId.set(a.id,a);
     const actors=previous.actors.map(a=>{
       const b=byId.get(a.id);
       if(!b||!alpha)return {...a,p:position(a.p)};
@@ -392,7 +393,9 @@ export class MissionRecorder{
           mix(a.traversalElapsed,b.traversalElapsed,alpha):
           a.traversalElapsed};
     });
-    const nextCivilians=new Map((next.civilians??[]).map(c=>[c.id,c]));
+    const nextCivilians=new Map<string,
+      NonNullable<ReplayFrame['civilians']>[number]>();
+    for(const c of next.civilians??[])nextCivilians.set(c.id,c);
     const civilians=(previous.civilians??[]).map(c=>{
       const later=nextCivilians.get(c.id);
       if(!later||!alpha)return {...c,p:position(c.p)};
@@ -406,7 +409,8 @@ export class MissionRecorder{
     for(const actor of actors)
       presentation.travelYaw[actor.id]=actor.travelYaw??actor.heading;
     const delta=t-previous.t;
-    const nextDoors=new Map(next.doors.map(d=>[d.id,d]));
+    const nextDoors=new Map<string,(typeof next.doors)[number]>();
+    for(const door of next.doors)nextDoors.set(door.id,door);
     const doors=previous.doors.map(d=>{
       const later=nextDoors.get(d.id);
       return {...d,openFraction:later?mix(

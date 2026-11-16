@@ -42,6 +42,24 @@ test('no personal ground evidence appears for unseen or invalid requests',()=>{
   assert.deepEqual([...h.at(1,'rook')],[]);
 });
 
+test('E3.B missing-observer evidence is reused without leaking discovery across replay seeks',()=>{
+ const history=new PersonalGroundHistory([
+  {at:1,observerId:'rook',keys:['fine:2,3']},
+  {at:3,observerId:'rook',keys:['micro:5,5']}
+ ]);
+ const missing=history.at(0,'moss');
+ assert.equal(missing.size,0);
+ assert.strictEqual(history.at(.5,'moss'),missing,
+  'same missing observer should not allocate an empty Set per frame');
+ assert.strictEqual(history.at(2,'moss'),missing);
+ assert.deepEqual([...history.at(2,'rook')],['fine:2,3']);
+ assert.strictEqual(history.at(3.5,'moss'),missing);
+ assert.deepEqual([...history.at(3.5,'rook')],['fine:2,3','micro:5,5']);
+ // Rewind must reconstruct the recorded observer, not retain future tiles.
+ assert.deepEqual([...history.at(1.5,'rook')],['fine:2,3']);
+ assert.strictEqual(history.at(0,'moss'),missing);
+ assert.deepEqual([...history.at(0,'rook')],[]);
+});
 test('authoritative simulation records per-operator ground as it is actually seen',()=>{
   const session=newSession(0,3411);
   const recorder=new MissionRecorder();
