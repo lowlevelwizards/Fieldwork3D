@@ -34,7 +34,7 @@ export function accessoryTube(root:THREE.Group,name:string,
  mesh.position.set(x,y,z);
  return mesh;
 }
-/** XY outline with a true open center, extruded only along thickness Z. */
+/** Forward-facing sight window: frame spans world Z/Y; opening looks down X. */
 export function accessoryFrame(root:THREE.Group,name:string,
  x:number,y:number,z:number,width:number,height:number,
  thickness:number,edge:number,material:THREE.Material):AccessoryMesh{
@@ -52,6 +52,11 @@ export function accessoryFrame(root:THREE.Group,name:string,
  const geo=new THREE.ExtrudeGeometry(shape,{depth:thickness,steps:1,
   bevelEnabled:false,curveSegments:1});
  geo.translate(0,0,-thickness/2);
+ // Shape is authored in XY. Turn the completed frame to face the weapon's
+ // +X barrel axis: window width becomes world Z, thickness becomes world X.
+ // Without this, the operator sees the edge while the side camera sees
+ // a misleading square "window" (A3 sideways reflex sight regression).
+ geo.rotateY(Math.PI/2);
  const mesh=attach(root,geo,material,name);
  mesh.position.set(x,y,z);
  return mesh;
