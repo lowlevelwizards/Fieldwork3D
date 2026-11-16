@@ -3,6 +3,7 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {surfaceMarkTexture,surfaceMarkMaterial,finishSurfaceOverlay}
  from './weapon-surface-details.ts';
 export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ak-receiver-stamp'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports'|'hk-port'|'hk-selector'|'hk-selector-picto';
@@ -172,4 +173,26 @@ export function addWeaponPixelMarkPair(root:THREE.Group,mark:WeaponMark,
  left.rotation.y=Math.PI;
  left.userData.surfaceDetailFace='left';
  return [right,left] as const;
+}
+
+/** A4.2: exactly two facing side quads in ONE owned geometry/draw submission.
+ * UVs, spacing and mark texture match addWeaponPixelMarkPair. Use only for
+ * symmetric shallow art; mechanical side-only features stay asymmetric.
+ */
+export function addWeaponPixelMarkPairBatched(root:THREE.Group,mark:WeaponMark,
+ x:number,y:number,z:number,w:number,h:number):THREE.Mesh{
+ const right=new THREE.PlaneGeometry(w,h);
+ right.translate(x,y,z);
+ const left=new THREE.PlaneGeometry(w,h);
+ left.rotateY(Math.PI);
+ left.translate(x,y,-z);
+ const geo=mergeGeometries([right,left],false);
+ right.dispose();left.dispose();
+ if(!geo)throw new Error('Unable to batch weapon mark '+mark);
+ const mesh=new THREE.Mesh(geo,materialFor(mark));
+ mesh.name='family-art-'+mark;
+ finishSurfaceOverlay(mesh,mark,'both');
+ mesh.userData.surfaceDetailSides=['right','left'];
+ root.add(mesh);
+ return mesh;
 }
