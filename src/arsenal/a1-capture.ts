@@ -4,12 +4,14 @@
  */
 import * as THREE from 'three';
 import {ARSENAL_REFERENCES} from './catalog.ts';
-import {initialWeaponConfiguration,selectWeaponFamilyPreset}
+import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment}
  from '../equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from '../breach-weapon-accessories.ts';
 import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
+import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER}
+ from '../weapons/geometry/weapon-visual-palette.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 
@@ -43,15 +45,26 @@ const label=(title:string,src:string,gray=false)=>{
  const caption=document.createElement('figcaption');caption.textContent=title;
  frame.append(img,caption);return frame;
 };
+const accessoryReview=new URLSearchParams(location.search).has('a2');
+const reviewIds=new Set(['ar-m4a1','ak-ak74m','hk-g3a3','hk-mp5a3','fal-5000','fnc-service']);
+const reviewRefs=accessoryReview?ARSENAL_REFERENCES.filter(ref=>reviewIds.has(ref.id)):ARSENAL_REFERENCES;
 async function generate(){
- for(const ref of ARSENAL_REFERENCES){
-  const config=selectWeaponFamilyPreset(initialWeaponConfiguration(ref.legacy.weapon),ref.id);
+ if(accessoryReview&&reviewRefs.length!==6)throw Error('A2 sample IDs changed');
+ let mountedModels=0;
+ for(const ref of reviewRefs){
+  let config=selectWeaponFamilyPreset(initialWeaponConfiguration(ref.legacy.weapon),ref.id);
+  if(accessoryReview){
+   if(config.build?.family==='hk')config=setWeaponAttachment(config,'opticMount','optic-hk-claw');
+   for(const [slot,id] of [['optic','optic-reflex'],['muzzle','muzzle-suppressor'],
+    ['light','light-compact'],['foregrip','foregrip-vertical']] as const)
+    config=setWeaponAttachment(config,slot,id);
+  }
   if(!config.build)throw Error('Missing A1 factory geometry '+ref.id);
   const body=buildWeaponSilhouette(config.weapon,
-   new THREE.MeshBasicMaterial(),new THREE.MeshBasicMaterial(),config);
+   WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER,config);
   const accessories=buildWeaponAccessories(config,
-   new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true}),
-   new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true}));
+   WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER);
+  if(accessoryReview&&accessories.children.length>0)mountedModels++;
   const model=new THREE.Group();model.add(body,accessories);
   model.scale.x=weaponVisualLayout(config).longitudinalScale;
   scene.add(model);
@@ -68,14 +81,16 @@ async function generate(){
   cells.append(label('Side',images[0]),label('Three-quarter',images[1]),
    label('Top',images[2]),label('Grayscale side',images[0],true));
   section.append(heading,cells);holder.append(section);
-  status.textContent='Rendered '+holder.children.length+' / '+ARSENAL_REFERENCES.length+' factory presets';
+  status.textContent='Rendered '+holder.children.length+' / '+reviewRefs.length+' '+(accessoryReview?'equipped':'factory')+' presets';
   // Allow progress paint without adding any animation or frame loop to the game.
   if(holder.children.length%6===0)await new Promise(resolve=>requestAnimationFrame(()=>resolve(null)));
  }
  renderer.dispose();renderer.forceContextLoss();
- status.textContent='Baseline complete: '+ARSENAL_REFERENCES.length+' factory presets · 4 fixed views';
+ if(accessoryReview&&mountedModels!==6)throw Error('A2 sample accessory coverage incomplete '+mountedModels);
+ status.textContent='Capture complete: '+reviewRefs.length+' '+(accessoryReview?'equipped':'factory')+' presets · 4 fixed views';
  document.body.dataset.a1Complete='true';
- document.body.dataset.a1Count=String(ARSENAL_REFERENCES.length);
+ document.body.dataset.a1Count=String(reviewRefs.length);
+ document.body.dataset.a2EquippedCount=String(mountedModels);
 }
 generate().catch(error=>{
  console.error(error);
