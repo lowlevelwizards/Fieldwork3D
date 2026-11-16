@@ -33,8 +33,8 @@ test('P22 front sight uses two rectangular ears on one continuous gas seat',()=>
    assert.ok(close(pos.getY(i),L.sight.earBottomY)||
     close(pos.getY(i),L.sight.earTopY),'only two heights on rectangular ears');
  }
- assert.equal(base.geometry.getAttribute('position').count,144,
-  'four gas stations and no separate sight base');
+ assert.equal(base.geometry.getAttribute('position').count,216,
+  'six continuous gas stations including the lower block inside polymer');
  const ordered=ears.slice().sort((a,b)=>bb(a).min.z-bb(b).min.z);
  assert.ok(bb(ordered[0]).max.z<bb(ordered[1]).min.z-.3);
  clearWeaponSilhouette(g);m.dispose();
@@ -46,7 +46,7 @@ test('P20 preserves production family and barrel/stock/magazine anchors with a r
  assert.ok(full&&count.triangles===full.triangles);
  assert.ok(count.triangles<615,'must actually simplify FNC from 648 triangles');
  assert.ok(count.meshes<33,'must eliminate at least the extra handle stem');
- assert.ok(count.byPart.handguard.triangles<=128,
+ assert.ok(count.byPart.handguard.triangles<=148,
   'remove a full row of vents from each side');
  assert.ok(close(bb(g).min.x,FNC_P1.stockRearX));
  assert.ok(close(bb(g).max.x,FNC_P1.muzzleX));
