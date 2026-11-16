@@ -10,6 +10,7 @@ import {confirmFieldworkAction} from './fieldwork-controls.ts';
 import {disposeAfterActionPresentation} from './breach-after-action-controller.ts';
 import {team,operationBriefing,type Session} from '../breach-game.ts';
 import type {CampaignState} from '../campaign-state.ts';
+import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import {createBriefingCardModel,type BriefingReport,type BriefingTab}
  from '../briefing/briefing-view-model.ts';
 import {createTacticalSheetNavigation} from './tactical-sheet-navigation.ts';
@@ -78,6 +79,7 @@ export type MissionScreensHooks={
  boot:BreachBootConfig;
  operationsBoard:HTMLElement;operationsToggle:HTMLButtonElement;
  getSession:()=>Session;getCampaign:()=>CampaignState|null;
+ getIncident?:()=>DispatchIncidentContext|null;
  getMode:()=> CampaignMode;
  isReplaying:()=>boolean;briefingPreviewEnabled:boolean;
  getEntryId:()=>string;hideWeaponChooser:()=>void;
@@ -169,6 +171,11 @@ let briefingRenderedSession:Session|null=null;
 let briefingRenderedDossier:Session['operationDossier'];
 let briefingRenderedRoster='';
 let briefingRenderedEntry='';
+let briefingRenderedIncident:DispatchIncidentContext|null=null;
+const dispatchSettingsReference=document.createElement('p');
+dispatchSettingsReference.className='campaign-note';
+dispatchSettingsReference.hidden=true;
+config.ui.siteSettings.prepend(dispatchSettingsReference);
 function renderBriefingReports(root:HTMLElement,reports:readonly BriefingReport[]):void{
  const fragment=document.createDocumentFragment();
  if(!reports.length){
@@ -189,15 +196,19 @@ function syncBriefingCard():void{
  const state=config.getSession();
  const dossier=config.briefingPreviewEnabled?state.operationDossier:undefined;
  const names=team(state).map(actor=>actor.name).join(' · ');
+ const incident=config.getMode()==='mission'&&!config.isReplaying()?
+  config.getIncident?.()??null:null;
  if(state===briefingRenderedSession&&dossier===briefingRenderedDossier&&
-    names===briefingRenderedRoster&&config.getEntryId()===briefingRenderedEntry)return;
+    names===briefingRenderedRoster&&config.getEntryId()===briefingRenderedEntry&&
+    incident===briefingRenderedIncident)return;
  briefingRenderedSession=state;
  briefingRenderedDossier=dossier;
  briefingRenderedRoster=names;
  briefingRenderedEntry=config.getEntryId();
+ briefingRenderedIncident=incident;
  const brief=operationBriefing(state);
  const model=createBriefingCardModel(state.missionType,brief,dossier);
- ui.briefingTitle.textContent=model.title;
+ ui.briefingTitle.textContent=incident?.title??model.title;
  ui.briefingType.textContent=model.missionLabel.toUpperCase();
  ui.briefingLocation.textContent=model.siteLabel;
  ui.briefingPrimary.textContent=model.primary;
@@ -224,7 +235,12 @@ function syncBriefingCard():void{
  const campaign=config.getCampaign();
  const job=config.getMode()==='mission'&&campaign?.activeContractId?
    campaign.contracts.find(c=>c.id===campaign.activeContractId):undefined;
- ui.briefingCampaignContext.textContent=[
+ ui.briefingCampaignContext.textContent=incident?[
+   incident.reference,
+   incident.region.toUpperCase()+' · RISK '+incident.risk+' · DAY '+incident.day,
+   incident.followUp?
+    'FOLLOW-UP · '+incident.followUp.title+' · '+incident.followUp.outcome.toUpperCase():''
+ ].filter(Boolean).join('\n'):[
    model.campaignLabel??(job?
      job.region.toUpperCase()+' · RISK '+job.risk+' · '+job.title:''),
    model.followUp??''
@@ -386,6 +402,16 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   notifyPresentation();
  }
  function syncNextSiteControls():void{
+  // Reconcile into the existing mission-settings surface on UI transitions.
+  const incident=config.getMode()==='mission'&&!config.isReplaying()?
+   config.getIncident?.()??null:null;
+  const nextRef=incident?.reference??'';
+  if(dispatchSettingsReference.textContent!==nextRef)
+   dispatchSettingsReference.textContent=nextRef;
+  dispatchSettingsReference.hidden=!incident;
+  const settingsTitle=incident?'MISSION · '+nextRef:'MISSION SETTINGS';
+  if(ui.siteSettingsToggle.title!==settingsTitle)
+   ui.siteSettingsToggle.title=settingsTitle;
   const campaignMission=config.getMode()==='mission';
   const quickPlay=config.getMode()==='quick';
   const training=config.getMode()==='training';
