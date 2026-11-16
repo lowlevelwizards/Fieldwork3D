@@ -1,4 +1,4 @@
-/** FNC P25 common gas vent/relief pixel-art proportions. P13 alias retained.
+/** FNC P26 vertically aligned gas-block relief pixels. P13 alias retained.
  * One authoritative source for interdependent handguard, gas cover,
  * handstop, groove, and sight placements. Local game-art units ONLY.
  * Existing FNC_P1 world anchors and part IDs are untouched.
@@ -24,10 +24,11 @@ export const FNC_FRONT_P13=Object.freeze({
   bottomY:-.60,frontBottomY:-1.57,shoulderY:.48,topY:1.85,
   bottomHalfZ:.58,sideHalfZ:.80,roofHalfZ:.62,
   lowerLines:Object.freeze([
-   // Same 1.57-unit length as every side/top vent. Spaced vertically so
-   // they remain separate on the visible front gas-block casting.
-   Object.freeze({startX:12.08,endX:13.65,y:-.86,shade:145}),
-   Object.freeze({startX:12.32,endX:13.89,y:-1.34,shade:171})
+   // Upper line tracks the upper polymer groove world Y (-.34); lower line
+   // centers in the deep lower-gas extension between -.60 and -1.57.
+   // Preserve the P25 1.57 x .31 pixel footprint, stagger and shading.
+   Object.freeze({startX:12.08,endX:13.65,y:-.34,shade:145}),
+   Object.freeze({startX:12.32,endX:13.89,y:-1.085,shade:171})
   ]),
   ventFirstX:3.60,ventPitch:2.35,ventLength:1.57,
   ventCount:4,ventSideYs:Object.freeze([1.17]),
