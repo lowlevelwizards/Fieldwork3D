@@ -76,6 +76,8 @@ import {readCampaign} from './campaign-state.ts';
 import {applyStudioRosterEdits,applyStudioCampaignEdits,
  type StudioAppearanceEdit} from './operator-studio-batch-save.ts';
 import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
+import {dispatchPilotAppearanceAllowed,DISPATCH_APPEARANCE_SOLIDS,
+ DISPATCH_GLOVE_STYLES} from './dispatch-pilot-appearance.ts';
 import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  setWardrobeFabricSolid,setWardrobeFabricCamo,rerollWardrobeFabricCamo,
  sleeveStateOptions,trouserHemOptions,
@@ -115,7 +117,8 @@ type StudioPerson={id:string;callsign:string;appearanceSeed:number;
  loadout:EquipmentLoadout;wardrobe:WardrobeOptions;
  weapon?:WeaponId;weaponConfiguration?:WeaponConfiguration};
 type StudioInit={type:'fw-studio-init';mode:StudioMode;
- selected:string;members:StudioPerson[];readonly:boolean;gearEditable?:boolean};
+ selected:string;members:StudioPerson[];readonly:boolean;gearEditable?:boolean;
+ dispatchPilot?:boolean};
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const params=new URLSearchParams(location.search);
 // Studio lighting experiments are unsaved, presentation-only state.
@@ -131,6 +134,7 @@ const standaloneCampaignKey=!embedded&&mode==='campaign'?activeCampaignStorageKe
 let selected=params.get('operator')??'rook';
 let readOnly=false;
 let equipmentApplyAllowed=false;
+let dispatchPilotMode=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
 type StudioStep='items'|'materials'|'details';
@@ -959,6 +963,10 @@ function changeWardrobe(next:WardrobeOptions,options:{helmetDetailsOnly?:boolean
  if(comparingSaved)comparingSaved=false;
  if(readOnly){say('Appearance is locked during an active campaign operation');return;}
  if(JSON.stringify(parsed)===JSON.stringify(oldLook))return;
+ if(dispatchPilotMode&&member()&&
+  !dispatchPilotAppearanceAllowed(member()!.wardrobe,parsed,member()!.loadout)){
+  say('DISPATCH PILOT · THIS APPEARANCE CHANGE IS NOT OFFERED');return;
+ }
  history.set(selected,[...(history.get(selected)??[]).slice(-24),readWardrobe(oldLook)]);
  restoreDraft(parsed,true);
  say(dirty.size+' UNSAVED OPERATOR LOOK'+(dirty.size===1?'':'S'));
@@ -1194,7 +1202,59 @@ function renderIdentityControls(){
 // Keeping the same DOM on unrelated refreshes preserves the open disclosure,
 // focused control, and browser scroll state without a second UI state owner.
 let materialRenderKey:string|null=null;
+
+/** The D6 Studio is a real 3D preview, but its Dispatch-specific controls
+ * mirror the server-authoritative exact-diff policy. No item/weapon browser.
+ */
+function renderDispatchPilotControls(){
+ const p=member();if(!p)return;
+ materialRoot.replaceChildren();
+ const help=document.createElement('p');help.className='campaign-note';
+ help.textContent='DISPATCH SWAT PILOT · Appearance only. Issued uniform cuts, helmet, visor, armor, insignia and equipment remain unchanged.';
+ materialRoot.append(help);
+ const w=current();
+ const field=(label:string,options:readonly (readonly [string,string])[],
+  active:string,onChange:(value:string)=>void)=>{
+  const host=row(label);host.dataset.studioStep='materials';
+  addSelect(host,options,active,onChange);
+ };
+ field('SKIN TONE',SKIN_TONE_IDS.map(id=>[id,SKIN_TONES[id].label] as const),
+  w.skinTone??seededSkinTone(p.appearanceSeed),
+  id=>changeWardrobe({...current(),skinTone:id as WardrobeOptions['skinTone']}));
+ field('HAIRCUT',HAIR_STYLE_IDS.map(id=>[id,HAIR_STYLES[id].label] as const),
+  w.hairStyle??seededHairStyle(p.appearanceSeed),
+  id=>changeWardrobe({...current(),hairStyle:id as WardrobeOptions['hairStyle']}));
+ field('HAIR COLOR',HAIR_TONE_IDS.map(id=>[id,HAIR_TONES[id].label] as const),
+  w.hairTone??seededHairTone(p.appearanceSeed),
+  id=>changeWardrobe({...current(),hairTone:id as WardrobeOptions['hairTone']}));
+ const colors:readonly (readonly [string,string])[]=DISPATCH_APPEARANCE_SOLIDS.map(id=>
+  [id,GARMENT_SOLID_COLORS[id].label] as const);
+ for(const channel of ['top','trousers'] as const){
+  if(w.fabricCamo?.[channel])continue;
+  field(channel==='top'?'UNIFORM TOP COLOR':'UNIFORM TROUSER COLOR',
+   colors,w.fabricSolids?.[channel]??'black',
+   id=>changeWardrobe({...current(),fabricSolids:{
+    ...current().fabricSolids,[channel]:id}}));
+ }
+ field('GLOVE COLOR',colors,w.gloveSolid??'black',
+  id=>changeWardrobe({...current(),gloveSolid:
+   id as WardrobeOptions['gloveSolid']}));
+ const gloves=DISPATCH_GLOVE_STYLES.filter(id=>canEquip('gloves',id));
+ if(gloves.length>1)field('GLOVE APPEARANCE',
+  gloves.map(id=>[id,id==='gloves-field'?'FIELD GLOVES':'NO GLOVES'] as const),
+  w.styles.gloves??'gloves-field',
+  id=>changeWardrobe(setWardrobeStyle(current(),'gloves',id)));
+ field('SLEEVES',(['unrolled','cuffed','rolled'] as const).map(id=>
+  [id,id.toUpperCase()] as const),w.sleeveState,
+  id=>changeWardrobe({...current(),sleeveState:id as WardrobeOptions['sleeveState']}));
+ field('TROUSER HEM',(['unbloused','bloused','cuffed'] as const).map(id=>
+  [id,id.toUpperCase()] as const),w.trouserHem,
+  id=>changeWardrobe({...current(),trouserHem:id as WardrobeOptions['trouserHem']}));
+ applyStudioStep();
+}
+
 function renderMaterials(){
+ if(dispatchPilotMode){renderDispatchPilotControls();return;}
  const p=member();
  const nextKey=p?JSON.stringify([
   selected,activeCategory,identityMode,readOnly,comparingSaved,saveInFlight,
@@ -2112,6 +2172,11 @@ const referenceCategoryButton=document.createElement('button');
 referenceCategoryButton.type='button';referenceCategoryButton.textContent='REFERENCES';
 referenceCategoryButton.addEventListener('click',()=>openReferenceBrowser());
 function renderCategories(){
+ if(dispatchPilotMode){
+  categories.replaceChildren();subcategories.replaceChildren();
+  categoryButtons.clear();subcategoryButtons.clear();mountedCategoryGroup=null;
+  return;
+ }
  if(!categoryButtons.size){
   categories.append(referenceCategoryButton);
   for(const group of categoryGroups){
@@ -2281,8 +2346,9 @@ function refresh(options:{helmetDetailsOnly?:boolean}={}){
  if(studioRoot.dataset.referenceOpen!==referenceState)studioRoot.dataset.referenceOpen=referenceState;
  const identityState=String(identityMode);
  if(studioRoot.dataset.identityMode!==identityState)studioRoot.dataset.identityMode=identityState;
- writeDomText($('studioTitle'),referenceOpen?'REFERENCE KITS / '+p.callsign:identityMode?'IDENTITY MARKINGS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign);
+ writeDomText($('studioTitle'),dispatchPilotMode?'DISPATCH / SWAT APPEARANCE / '+p.callsign:referenceOpen?'REFERENCE KITS / '+p.callsign:identityMode?'IDENTITY MARKINGS / '+p.callsign:APPEARANCE_GROUP_LABELS[activeCategory]+' / '+p.callsign);
  writeDomText($('studioSubheading'),readOnly?'LOCKED DURING ACTIVE OPERATION':
+  dispatchPilotMode?'Only validated personal details, fabric and glove choices can be saved':
   'Select a 3D item, then edit materials and details');
  applyButton.disabled=readOnly||!dirty.size||saveInFlight;
  writeDomText(applyButton,saveInFlight?'SAVING…':dirty.size>1?
@@ -2305,7 +2371,7 @@ function refresh(options:{helmetDetailsOnly?:boolean}={}){
  if(!lightweight)renderCategories();
  // Reference catalog uses the shared 3D viewport, not the item thumbnail grid.
  if(!referenceOpen){
-  if(!identityMode){
+  if(!identityMode&&!dispatchPilotMode){
    thumbBrowser.setCategory(activeCategory,true);
    if(!lightweight||activeStep==='items'){
     thumbBrowser.refresh(p.loadout,previewWardrobe(),p.id);
@@ -2314,9 +2380,11 @@ function refresh(options:{helmetDetailsOnly?:boolean}={}){
   }
   renderMaterials();
  }
- if(!lightweight){
-  renderPresetMenu();
-  referenceBrowser.refresh(readOnly);
+ if(!dispatchPilotMode){
+  if(!lightweight){
+   renderPresetMenu();
+   referenceBrowser.refresh(readOnly);
+  }
  }
  posePreview();
 }
@@ -2330,13 +2398,22 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];
- readonly:boolean;gearEditable?:boolean}){
+ readonly:boolean;gearEditable?:boolean;dispatchPilot?:boolean}){
  studioSuspended=false;
  thumbBrowser.setSuspended(false);
  identityMode=false;referenceOpen=false;referenceBrowser.hide();
  mode=data.mode;selected=data.selected;readOnly=data.readonly;
- equipmentApplyAllowed=!!data.gearEditable||
-  (!embedded&&data.mode==='campaign'&&!data.readonly);
+ dispatchPilotMode=!!data.dispatchPilot&&mode==='campaign';
+ studioRoot.dataset.dispatchPilot=String(dispatchPilotMode);
+ categories.hidden=dispatchPilotMode;subcategories.hidden=dispatchPilotMode;
+ itemRoot.hidden=dispatchPilotMode;
+ for(const button of workflowButtons)button.hidden=dispatchPilotMode;
+ presetSelect.hidden=dispatchPilotMode;presetSave.hidden=dispatchPilotMode;
+ presetApply.hidden=dispatchPilotMode;presetDelete.hidden=dispatchPilotMode;
+ matchSetButton.hidden=dispatchPilotMode;
+ if(dispatchPilotMode){activeStep='materials';activeCategory='top';}
+ equipmentApplyAllowed=!dispatchPilotMode&&(!!data.gearEditable||
+  (!embedded&&data.mode==='campaign'&&!data.readonly));
  comparingSaved=false;saveInFlight=false;
  people=data.members.map(p=>({...p,wardrobe:readWardrobe(p.wardrobe)}));
  history.clear();edits.clear();dirty.clear();
@@ -2372,6 +2449,12 @@ function acknowledgeSave(ids:readonly string[]){
 function apply(){
  if(readOnly||saveInFlight||!dirty.size)return;
  const entries=pendingStudioEdits();
+ if(dispatchPilotMode&&entries.some(e=>{
+  const p=people.find(p=>p.id===e.id);
+  return !p||!dispatchPilotAppearanceAllowed(p.wardrobe,e.wardrobe,p.loadout);
+ })){
+  say('DISPATCH PILOT · UNSUPPORTED LOOK NOT SAVED');return;
+ }
  if(!entries.length)return;
  saveInFlight=true;refresh();
  if(embedded){
@@ -2424,7 +2507,8 @@ if(embedded){
   }else if(data?.type==='fw-studio-init'){
    const init=data as StudioInit;
    start({mode:init.mode,selected:init.selected,
-    members:init.members,readonly:init.readonly,gearEditable:init.gearEditable});
+    members:init.members,readonly:init.readonly,gearEditable:init.gearEditable,
+     dispatchPilot:init.dispatchPilot});
   }else if(data?.type==='fw-studio-historical-applied'){
    saveInFlight=false;
    say(data.ok?'HISTORICAL EQUIPMENT ISSUED · REFRESHING AUTHORITATIVE KIT':
@@ -2456,6 +2540,7 @@ if(embedded){
    readCampaign(localStorage.getItem(standaloneCampaignKey??activeCampaignStorageKey())):null;
   if(mode==='campaign'&&campaign){
    start({mode,selected,readonly:!!campaign.activeContractId,
+     dispatchPilot:campaign.rules?.template==='dispatch',
     members:campaign.operators.filter(x=>x.status!=='retired'&&x.status!=='lost')
      .map(x=>({id:x.id,callsign:x.callsign,appearanceSeed:x.appearanceSeed,
        wardrobe:readWardrobe(x.wardrobe),loadout:x.loadout,

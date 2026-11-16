@@ -36,7 +36,7 @@ export const DISPATCH_STARTER_CHOICES:
    'utility-none','utility-light','rig-none','belt-light'],
   'weapon-preset':['ar-m4a1'],
   'wardrobe-style':['police-helmet','bdu-shirt','bdu-trousers',
-   'soft-vest','micro-rig','duty-belt','no-pack','gloves-field'],
+   'soft-vest','micro-rig','duty-belt','no-pack','gloves-field','gloves-none'],
   'solid-color':['black','navy','charcoal'],
   'identity-marking':['label-swat','label-police']
  },{

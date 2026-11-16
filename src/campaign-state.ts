@@ -4,6 +4,7 @@ import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
 import {mayChooseCampaignContent,dispatchPilotUnclassifiedEditingEnabled}
  from './dispatch-campaign-eligibility.ts';
 import {issueDispatchPilotOperator} from './dispatch-pilot-operator.ts';
+import {dispatchPilotAppearanceAllowed} from './dispatch-pilot-appearance.ts';
 import {isDispatchPilot as isDispatchPilotCampaign} from './dispatch-campaign-eligibility.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import {SKILL_NAMES,type SkillName} from './campaign-skill-schema.ts';
@@ -720,10 +721,12 @@ export function moveCampaignMagazine(
  */
 export function setCampaignWardrobe(c:CampaignState,id:string,
  raw:unknown):CampaignState{
- if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
+ if(c.activeContractId)return c;
  const member=c.operators.find(x=>x.id===id&&
   x.status!=='retired'&&x.status!=='lost');
  if(!member)return c;
  const wardrobe=readWardrobe(raw);
+ if(isDispatchPilotCampaign(c)&&
+  !dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),wardrobe,member.loadout))return c;
  return {...c,operators:c.operators.map(x=>x.id===id?{...x,wardrobe}:x)};
 }
