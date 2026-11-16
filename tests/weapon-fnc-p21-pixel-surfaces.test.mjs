@@ -93,7 +93,8 @@ test('P21 proves real reductions and unchanged magazine, muzzle and other famili
  const audit=countGeometry(gun),peers=buildAuditReport();
  assert.ok(audit.triangles<=525,'P21 cuts decoration polygons instead of replacing meshes');
  assert.ok(audit.meshes<=24,'no flat detail overlays survive');
- assert.ok(audit.byPart.handguard.triangles<=105);
+ assert.ok(audit.byPart.handguard.triangles<=124,
+  'P22 integrated gas/sight body is now accounted under handguard');
  assert.ok(audit.byPart.receiver.triangles<=165,
   'receiver markings removed; remaining faceted upper/selector are silhouette geometry');
  assert.equal(peers.find(x=>x.name==='FNC').triangles,audit.triangles);
