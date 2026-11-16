@@ -1,4 +1,5 @@
 import {publishSessionCoverToActiveSite} from './breach-world-context.ts';
+import {recordTrainingCoverStrike} from './training/training-targets.ts';
 /** Stage 10: physical environmental damage & evidence after real fired rays.
  * Not a sight/aim evaluator. All mutations are authoritative Session state.
  */
@@ -44,12 +45,17 @@ function emitMaterialEvents(s:Session,from:Pt,to:Pt,
 }
 /** Mutate only struck cover, never the planning ray or visual renderer. */
 function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number}[],
- force:number,maxFraction=1){
+ force:number,maxFraction=1,shooterId?:string){
  const touched=new Set<number>();
  for(const h of hits){
   if(h.fraction>maxFraction+.00001||touched.has(h.index))continue;
   touched.add(h.index);
   const piece=s.coverState[h.index];if(!piece)continue;
+  if(shooterId&&recordTrainingCoverStrike(s,piece,shooterId,s.nextShotId)){
+   const actor=s.operators.find(a=>a.id===shooterId)??null;
+   battleEvent(s,'impact',actor,{x:piece.x,y:piece.y},
+    'TRAINING TARGET STRUCK · '+piece.id);
+  }
   const result=damageCover(piece,force);
   if(result==='immune')continue;
   s.objectRevision++;

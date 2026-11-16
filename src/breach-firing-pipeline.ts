@@ -259,7 +259,7 @@ function fireSuppression(s:Session,a:TeamActor,dt:number){
   });
   shatterStruckWindows(s,reachedPanes,Math.max(1,WEAPONS[a.weapon].damage));
   shatterStruckDoorGlass(s,impact.glassDoorHits,fraction);
-  damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction);
+  damageStruckCover(s,impact.coverHits,WEAPONS[a.weapon].damage*.36,fraction,a.id);
   emitMaterialEvents(s,from,far,impact.materialHits,fraction);
   a.fireCd=WEAPONS[a.weapon].interval*1.6;
   a.magazine--;a.shots++;a.lastShotAt=s.seconds;

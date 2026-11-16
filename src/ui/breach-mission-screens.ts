@@ -378,7 +378,8 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
     ui.briefingPanel.hidden=true;config.operationsBoard.hidden=true;
   }
   config.operationsToggle.hidden=
-    config.getMode()!=='quick'||phase!=='planning'||config.isReplaying();
+    (config.getMode()!=='quick'&&config.getMode()!=='training')||
+    phase!=='planning'||config.isReplaying();
   config.operationsToggle.disabled=config.operationsToggle.hidden;
   if(config.operationsToggle.hidden)config.operationsBoard.hidden=true;
   notifyPresentation();
@@ -386,11 +387,13 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
  function syncNextSiteControls():void{
   const campaignMission=config.getMode()==='mission';
   const quickPlay=config.getMode()==='quick';
+  const training=config.getMode()==='training';
   // Quick Play size and building selection live in the scenario creator.
   // Do not show a competing size control that its worker will not read.
-  ui.siteSize.hidden=quickPlay;
+  ui.siteSize.hidden=quickPlay||training;
+  ui.variant.hidden=training;
   ui.variant.textContent=quickPlay?'MISSION SETUP':'NEW SITE';
-  ui.variant.disabled=campaignMission;
+  ui.variant.disabled=campaignMission||training;
   ui.siteSize.disabled=campaignMission;
   ui.intelMode.disabled=campaignMission;
   ui.restart.disabled=campaignMission;
@@ -399,12 +402,12 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
     campaignMission&&config.getSession().phase==='running';
   ui.intelMode.textContent='NEXT SITE INTEL · '+
     config.getIntel().replaceAll('-', ' ').toUpperCase();
-  ui.intelMode.disabled=campaignMission||config.isReplaying();
+  ui.intelMode.disabled=campaignMission||training||config.isReplaying();
   ui.intelMode.title=campaignMission?
     'Campaign intelligence is defined by the active contract':
     'Applies to your next new site; current mission stays unchanged';
   ui.siteSize.textContent='NEXT SITE SIZE · '+config.getScale().toUpperCase();
-  ui.siteSize.disabled=campaignMission||config.isReplaying();
+  ui.siteSize.disabled=campaignMission||training||config.isReplaying();
  }
  
  let missionActionPorts:MissionActionsHooks|null=null;
@@ -446,6 +449,7 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   ui.next.addEventListener('click',()=>{
    if(port.returnAfterCampaignMission())return;
    if(config.getMode()==='quick')port.returnToQuickPlayGenerator();
+   else if(config.getMode()==='training')port.restartMission();
    else port.resetMission(config.getSession().variant+1);
   });
   const afterActionMainMenu=document.getElementById('afterActionMainMenu') as HTMLButtonElement|null;
@@ -473,7 +477,8 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
  function bindSitePreferences():void{
 ui.siteLighting.textContent='LIGHTING · '+config.getLighting().toUpperCase();
 ui.siteLighting.addEventListener('click',()=>{
-  if(config.isReplaying()||config.getSession().started||config.getSession().phase!=='planning'){
+  if(config.getMode()==='training'||config.isReplaying()||
+   config.getSession().started||config.getSession().phase!=='planning'){
     config.showHelp('CHOOSE LIGHTING BEFORE DEPLOYMENT');return;
   }
   const current=config.lightingModes.indexOf(config.getLighting());

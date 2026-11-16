@@ -158,7 +158,7 @@ export function assembleSession(index=0,siteSeed?:number,
     material:materialForFixture(o.fixture),
     integrity:MATERIALS[materialForFixture(o.fixture)].integrity})));
   const initialDoorRecords=initialDoors(site??null);
-  const state:Session={...seed,operators,civilians,
+  const state:Session={...seed,operators,civilians,trainingHits:{},
     civilianHarmEvents:[],objectRevision:0,
     coverState:initialCover,
     windows:initializeWindows(site?.windows??[]),

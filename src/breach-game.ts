@@ -303,6 +303,7 @@ export type SquadPlanTransaction={
 /** Audio delivery is not the deduplicated 12-line narrative HUD history. */
 export type LiveSemanticAudioEvent={id:number;t:number;text:string};
 export type Session=Omit<TacticalState,'operators'> & {
+  trainingHits?:Record<string,import('./training/training-targets.ts').TrainingTargetStrike>;
   operators:TeamActor[];civilians:CivilianActor[];
   civilianHarmEvents:CivilianHarmEvent[];
   windows:WindowState[];objectRevision:number;

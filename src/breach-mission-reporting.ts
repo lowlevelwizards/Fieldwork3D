@@ -21,6 +21,7 @@ export function operationBriefing(s:Session){
   };
 }
 export function missionText(s:Session){
+ if(s.site?.training)return 'TRAINING · '+s.site.name+' · PRACTICE';
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return 'MISSION FAILED';
   if(s.mission==='clear')return s.missionType==='capture'?

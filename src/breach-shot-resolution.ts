@@ -228,7 +228,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   });
   shatterStruckWindows(s,actualRay,Math.max(1,weapon.damage));
   shatterStruckDoorGlass(s,strike.glassDoorHits,stopFraction);
-  damageStruckCover(s,strike.coverHits,weapon.damage*.45,stopFraction);
+  damageStruckCover(s,strike.coverHits,weapon.damage*.45,stopFraction,a.id);
   emitMaterialEvents(s,muzzlePoint,far,strike.materialHits,stopFraction);
   const end=civilianHit?clone(civilianHit.actor.p):
     hit?clone(target.p):strike.end;

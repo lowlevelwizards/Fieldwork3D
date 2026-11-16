@@ -24,7 +24,7 @@ export function createBreachAppFlow(initialMode:CampaignMode){
  let replayReturn:Exclude<AppSurface,'replay'>|null=null;
  let replayEntry:ReplayEntry|null=null;
  let libraryReturnsToMenu=false;
- const inMission=()=>mode==='quick'||mode==='mission';
+ const inMission=()=>mode==='quick'||mode==='mission'||mode==='training';
  const snapshot=():AppFlowSnapshot=>Object.freeze({
   mode,surface,overlay,replayReturn,replayEntry,libraryReturnsToMenu
  });
