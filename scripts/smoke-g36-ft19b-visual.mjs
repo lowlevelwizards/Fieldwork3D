@@ -22,7 +22,7 @@ try{
   page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});
   await page.goto(origin+'/g36-ft19b-lab.html',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.body.dataset.g36LabReady==='true'&&
-   document.body.dataset.g36LabCount==='7',{timeout:30000});
+   document.body.dataset.g36LabCount==='7',null,{timeout:30000});
   await mkdir('g36-ft19b-captures',{recursive:true});
   const snap=async name=>{
    const b=await page.locator('.lab').screenshot({path:'g36-ft19b-captures/'+name+'.png'});

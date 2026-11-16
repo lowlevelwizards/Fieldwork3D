@@ -1,0 +1,40 @@
+name: G36 FT1.9B — original monochrome silhouette and browser evidence
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/weapons/geometry/g36-*.ts'
+      - 'src/g36-ft19b-lab.ts'
+      - 'g36-ft19b-lab.html'
+      - 'tests/weapon-g36-ft19b-blockout.test.mjs'
+      - 'scripts/smoke-g36-ft19b-visual.mjs'
+      - '.github/workflows/g36-ft19b-visual.yml'
+permissions:
+  contents: read
+jobs:
+  g36-visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Focused genuine mesh and geometry regressions
+        run: node --experimental-strip-types --test tests/weapon-g36-ft19b-blockout.test.mjs
+      - name: TypeScript and build integrity
+        run: npm run build
+      - name: Browser capture tools
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Capture real WebGL peer lab at side / quarter / opposite / top / front / mobile and 64px / 128px
+        run: node scripts/smoke-g36-ft19b-visual.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g36-ft19b-seven-rifle-review
+          path: g36-ft19b-captures/
+          if-no-files-found: ignore
+          retention-days: 21
