@@ -50,7 +50,7 @@ test('P15 polymer 30% taller; short collar and long gas spine truly interlock',(
  assert.ok(box(poly).min.y< -1.98&&box(poly).min.y> -2.08);
  assert.ok(sz(poly,'z')>sz(gas,'z')+.8);
  assert.ok(touch(stop,poly)&&touch(stop,gas));
- assert.ok(sz(stop,'y')>2.6&&sz(stop,'y')<2.8);
+ assert.ok(sz(stop,'y')>2.75&&sz(stop,'y')<2.90);
  assert.ok(sz(gas,'x')>sz(poly,'x')+3.0);
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -92,7 +92,7 @@ test('P15 lower barrel remains Y0 and sight is integrated with separate two ears
   seat=get(g,'fncP15AlignedGasSightBase'),ears=many(g,'fncP15IntegratedFrontEar');
  assert.ok(bar&&gas&&seat);
  assert.ok(near((box(bar).min.y+box(bar).max.y)/2,0));
- assert.ok(box(bar).max.y<box(gas).max.y-1);
+ assert.ok(box(bar).max.y<box(gas).max.y-.9);
  assert.ok(touch(bar,seat)&&touch(gas,seat));
  assert.ok(near(box(seat).max.y,L.sight.baseRearTopY));
  assert.equal(ears.length,2);

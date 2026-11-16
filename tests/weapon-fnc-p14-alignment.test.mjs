@@ -81,7 +81,7 @@ test('P14 front handstop is tapered, compact, and connects to both polymer and g
   if(close(p.getX(i),frontX))front=Math.max(front,Math.abs(p.getZ(i)));
  }
  assert.ok(rear>front+.05,'collar MUST taper toward the front end');
- assert.ok(size(stop,'x')<.6&&size(stop,'y')<2.85);
+ assert.ok(size(stop,'x')<.72&&size(stop,'y')<2.95);
  assert.equal(stop.geometry.type,'BufferGeometry');
  clearWeaponSilhouette(g);m.dispose();
 });

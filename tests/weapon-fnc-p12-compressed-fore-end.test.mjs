@@ -36,9 +36,9 @@ test('P13 handstop has one faceted molded collar and no rectangular fin',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const stop=get(g,'fncP12ChunkyHandstop'),polymer=get(g,'fncP11ShortWidePolymer');
  assert.ok(stop&&polymer);
- assert.ok(size(stop,'x')>.50&&size(stop,'x')<.60);
+ assert.ok(size(stop,'x')>.68&&size(stop,'x')<.72);
  assert.ok(size(stop,'z')>size(polymer,'z')+.11);
- assert.ok(size(stop,'y')>2.60&&size(stop,'y')<2.80);
+ assert.ok(size(stop,'y')>2.75&&size(stop,'y')<2.90);
  assert.equal(stop.geometry.type,'BufferGeometry');
  assert.equal(all(g,'fncP12ChunkyHandstop').length,1);
  clearWeaponSilhouette(g);m.dispose();

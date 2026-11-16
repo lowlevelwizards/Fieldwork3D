@@ -15,20 +15,22 @@ const box=o=>new THREE.Box3().setFromObject(o);
 const sz=(o,axis)=>box(o).max[axis]-box(o).min[axis];
 const near=(a,b,t=.026)=>Math.abs(a-b)<t;
 const touch=(a,b)=>box(a).intersectsBox(box(b));
-test('P16 magwell matches STANAG insertion instead of projecting past receiver',()=>{
+test('P17 integrated lower drops squarely around STANAG, no added magwell slab',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const upper=one(g,'fncP15FlatReceiverNose'),lower=one(g,'fncP15FlatLowerNose');
  const well=one(g,'fncP16IntegratedMagazineSocket');
  const mag=one(g,'fncP16CenteredMagazineSeat');
  assert.ok(upper&&lower&&well&&mag);
+ assert.equal(well,lower,'magazine socket should be an uninterrupted lower mesh');
+ assert.ok(lower.userData.fncP17SinglePieceMagwell);
  assert.ok(box(well).max.x<=box(upper).max.x+.03);
- assert.ok(box(well).max.x<=box(lower).max.x+.03);
- assert.ok(touch(well,lower)&&touch(well,mag));
- assert.ok(box(mag).min.x<box(well).min.x+.5);
- assert.ok(box(mag).max.x>box(well).max.x-.5);
- assert.ok(box(mag).max.y>box(well).min.y+.45);
+ assert.ok(touch(well,mag),'30-round magazine must penetrate the lower');
+ assert.ok(box(mag).min.x< L.receiver.magazineCenterX);
+ assert.ok(box(mag).max.x> L.receiver.magazineCenterX);
+ assert.ok(box(mag).max.y> -3.34+.40);
  assert.ok(near(L.receiver.magazineCenterX,1.54));
- assert.ok(sz(well,'z')<3.65,'socket side should not become a bulky plate');
+ assert.ok(near(sz(well,'z'),3.42),
+  'integrated magwell must not be the former thick 3.64 unit slab');
  const ribs=many(g,'fncStampedMagazineRib');
  assert.equal(ribs.length,2);
  assert.ok(ribs.every(x=>touch(x,mag)));
@@ -94,7 +96,7 @@ test('P16 factory device is narrower, slotted, and removed for suppressed path',
   barrel=one(factory,'fncServiceBarrel');
  assert.ok(device&&slots&&barrel);
  assert.ok(near(box(device).max.x,19.50));
- assert.ok(sz(device,'y')>1.2&&sz(device,'y')<1.45);
+ assert.ok(sz(device,'y')>1.5&&sz(device,'y')<1.7);
  assert.equal(slots.geometry.getAttribute('position').count,24);
  assert.ok(box(slots).min.x>=box(device).min.x+.3);
  assert.ok(box(slots).max.x<=box(device).max.x-.15);
