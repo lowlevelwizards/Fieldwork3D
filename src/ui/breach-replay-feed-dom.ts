@@ -31,7 +31,8 @@ export class ReplayFeedDomWindow<T extends {key:string}>{
  private selectedKey:string|null=null;
  private nodes=new Map<number,HTMLButtonElement>();
  private selectedNodes=new Map<string,HTMLButtonElement[]>();
- constructor(private readonly container:HTMLElement){}
+ private readonly container:HTMLElement;
+ constructor(container:HTMLElement){this.container=container;}
  render(events:readonly T[],start:number,end:number,key:string|null,
    create:(event:T)=>HTMLButtonElement):boolean{
   if(this.source!==events){
