@@ -1,0 +1,63 @@
+/** FT1.1 dated-source records. A verified record supports only its stated
+ * claim, not every assertion about the item, unit or full service interval.
+ */
+export type HistoricalEvidence={
+ id:string;title:string;publisher:string;url:string;
+ kind:'official'|'museum'|'publication';
+ published?:string;claim:string;
+};
+export const HISTORICAL_EVIDENCE:readonly HistoricalEvidence[]=[
+ {id:'us-ocp-2015',title:'Soldiers to field Operational Camouflage Pattern for uniforms',
+  publisher:'U.S. Army',url:'https://www.army.mil/article/149740/soldiers_to_field_operational_camouflage_pattern_for_uniforms',
+  kind:'official',published:'2015-06-02',
+  claim:'UCP-to-OCP transition began July 2015 with a September 2019 wear-out date; concurrent patterns are expected.'},
+ {id:'us-ucp-2019',title:'ACU pattern officially retired',
+  publisher:'U.S. Army',url:'https://www.army.mil/article/228411/acu_pattern_officially_retired_new_uniform_improvements_on_the_way',
+  kind:'official',published:'2019-10-10',
+  claim:'UCP wear ended October 1, 2019; does not establish that all older equipment was retired.'},
+ {id:'us-oefcp-2010',title:'Soldiers deploying to Afghanistan to get new MultiCam uniforms, boots, gear',
+  publisher:'U.S. Army',url:'https://www.army.mil/article/35184/soldiers_deploying_to_afghanistan_to_get_new_multicam_uniforms_boots_gear',
+  kind:'official',published:'2010',
+  claim:'Afghanistan-specific camouflage appeared alongside standard UCP for selected units.'},
+ {id:'us-pasgt-ach-2018',title:'Army researchers headed for development of high performance lightweight helmet',
+  publisher:'U.S. Army',url:'https://www.army.mil/article/206384/army_researchers_headed_for_development_of_high_performance_lightweight_helmet',
+  kind:'official',published:'2018',
+  claim:'PASGT first fielded 1981, ACH first fielded 2003; not proof of continuous universal issue.'},
+ {id:'us-iba-1999',title:'Interceptor body armor overview',
+  publisher:'U.S. Army Infantry Magazine',url:'https://www.benning.army.mil/infantry/magazine/issues/1999/MAY-AUG/pdfs/MAY-AUG99.pdf',
+  kind:'publication',published:'1999',
+  claim:'Army and Marine Corps planned Interceptor to replace PASGT armor; future issue is not assumed.'},
+ {id:'usmc-marpat-2002',title:'Combat Utility Uniform and Boot Guidance',
+  publisher:'U.S. Marine Corps',url:'https://www.marines.mil/News/Messages/Messages-Display/Article/887056/combat-utility-uniform-and-boot-guidance/',
+  kind:'official',published:'2002',
+  claim:'MARPAT woodland and desert combat utility uniforms phased in from 2002 with a four-year transition.'},
+ {id:'usmc-lwh-2006',title:'Lightweight Helmet Suspension System Policy',
+  publisher:'U.S. Marine Corps',url:'https://www.marines.mil/News/Messages/Messages-Display/Article/894856/lightweight-helmet-suspension-system-policy-and-implementationguidance/',
+  kind:'official',published:'2006-08-01',
+  claim:'LWH documented in use by 2006; policy describes authorized suspension variants.'},
+ {id:'usmc-mtv',title:'Systems Command improves Marines combat effectiveness with new Modular Tactical Vest',
+  publisher:'U.S. Marine Corps Systems Command',url:'https://www.hqmc.marines.mil/News/Article/Article/551547/systems-command-improves-marines-combat-effectiveness-with-new-modular-tactical/',
+  kind:'official',
+  claim:'MTV development followed a January 2006 urgent need; does not prove universal issue in 2006.'},
+ {id:'uk-mtp-2010',title:'New camouflage arrives in Afghanistan',
+  publisher:'UK Ministry of Defence',url:'https://www.gov.uk/government/news/new-camouflage-arrives-in-afghanistan',
+  kind:'official',published:'2010-05-21',
+  claim:'MTP appeared with deployed British military personnel in Afghanistan in April 2010; expansion by 2012 planned.'},
+ {id:'uk-osprey-2010',title:'Body armour saves soldier\'s life in Afghanistan',
+  publisher:'UK Ministry of Defence',url:'https://www.gov.uk/government/news/body-armour-saves-soldiers-life-in-afghanistan',
+  kind:'official',published:'2010-10-28',
+  claim:'Osprey armor documented on British deployed troops in Afghanistan in 2010.'},
+ {id:'uk-sa80-2011',title:'Troops in Afghanistan get new lightweight rifle magazines',
+  publisher:'UK Ministry of Defence',url:'https://www.gov.uk/government/news/troops-in-afghanistan-get-new-lightweight-rifle-magazines',
+  kind:'official',published:'2011-01-19',
+  claim:'SA80 rifle family documented with British deployed forces and compatible magazines in 2011.'},
+ {id:'ddr-m56-museum',title:'Stahlhelm M56 der NVA mit Netz',
+  publisher:'DDR Museum Berlin',url:'https://www.ddr-museum.de/de/objects/1017539',
+  kind:'museum',claim:'Museum collection identifies M56 NVA steel helmet with camouflage net; does not date 1980 use.'},
+ {id:'ddr-strichtarn-1981',title:'Felddienstuniform (Winter)',
+  publisher:'DDR Museum Berlin',url:'https://www.ddr-museum.de/de/objects/1028224',
+  kind:'museum',published:'1981',
+  claim:'NVA Strichtarn winter field uniform object dated 1981; not universal 1980 issue proof.'}
+];
+export const historicalEvidence=(id:string):HistoricalEvidence|undefined=>
+ HISTORICAL_EVIDENCE.find(e=>e.id===id);
