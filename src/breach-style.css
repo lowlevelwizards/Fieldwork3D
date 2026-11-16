@@ -4083,3 +4083,14 @@ body:has(.fw-entry-map:not([hidden])) .top{visibility:hidden}
  .fw-entry-map-footer{padding-left:8px;padding-right:8px}
  .fw-entry-map-back{padding:6px 9px}
 }
+
+/* L1.4 — one compact flashlight switch alongside the squad/GO row. */
+.bar .field-light-control{flex:none;align-self:stretch;min-width:47px;
+ max-width:57px;padding:4px 5px;font-size:10px;line-height:1.25;
+ font-weight:700;letter-spacing:.025em;white-space:normal;
+ color:#d1e2d4;border-color:#64867b;touch-action:manipulation}
+.bar .field-light-control[aria-pressed="true"]{background:#304d45;
+ color:#f1ebc5;border-color:#d9c18b;box-shadow:inset 0 0 0 1px #a69b68}
+.bar .field-light-control[hidden]{display:none!important}
+@media(max-width:680px){.bar .field-light-control{min-width:40px;
+ max-width:42px;font-size:9px;padding:3px 2px}}
