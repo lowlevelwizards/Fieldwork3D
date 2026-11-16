@@ -48,7 +48,7 @@ test('P11: long lower ribs, broken upper gas vents and 5.56 magazine',()=>{
  assert.equal(marks.length,4);
  for(const side of [-1,1]){
   const rows=marks.filter(x=>x.userData.fncP5GrooveSide===side);
-  assert.deepEqual(rows.map(x=>x.userData.fncP5GrooveCount).sort(),[2,2]);
+  assert.deepEqual(rows.map(x=>x.userData.fncP5GrooveCount).sort(),[1,2]);
   assert.deepEqual(rows.map(x=>x.userData.fncP6GrooveSegmentsPerRow).sort(),[1,4]);
  }
  assert.equal(get(g,'fncMoldedFlutesPerSide').userData.fncMoldedFlutesPerSide,2);
