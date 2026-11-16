@@ -21,6 +21,7 @@ import {sitePowerControls,currentControlState} from './equipment-site-power-cont
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipment-weapon-light-beam.ts';
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
@@ -422,8 +423,7 @@ function renderFixtureLighting2D(){
 }
 function renderWeaponLights2D(){
  const state=getState(),replaying=isReplaying();
- const active=state.operators.filter(a=>a.health>0&&a.weaponLightOn&&
-  a.weaponConfiguration?.slots.light==='light-compact');
+ const active=state.operators.filter(a=>weaponLightEmitting(a));
  if(!active.length)return;
  const world=sessionWorldGeometry(state);
  const tick=Math.floor(state.seconds*8),revision=world.revision;
@@ -440,7 +440,7 @@ function renderWeaponLights2D(){
  }
  if(cached.tick!==tick||cached.revision!==revision||
     cached.doorSignature!==doorSignature){
-  cached.blockers=lightBeamBlockers(world.walls,state.doors,world.cover);
+  cached.blockers=lightBeamBlockers(world.walls,state.doors,state.coverState);
   cached.tick=tick;cached.revision=revision;
   cached.doorSignature=doorSignature;
   cached.history.clear();
@@ -464,7 +464,7 @@ function renderWeaponLights2D(){
     weaponConfiguration:actor.weaponConfiguration,
     equipment:actor.equipment,aim:actor.aim,
     velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture},
-    state.doors,world.cover,world.walls).muzzle;
+    state.doors,state.coverState,world.walls).muzzle;
    const from=weaponLightEmitter(muzzle,actor.weaponConfiguration!);
    cached.history.set(actor.id,{x:actor.p.x,y:actor.p.y,yaw,tick,
     config:actor.weaponConfiguration,
