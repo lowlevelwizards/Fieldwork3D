@@ -4,6 +4,7 @@ import {resolveFactionReference} from './faction-reference-resolver.ts';
 import {unresolvedReferenceGaps,referenceGapFidelity} from './faction-reference-asset-registry.ts';
 import {auditHistoricalEquipment} from './faction-reference-equipment-resolver.ts';
 import {FACTION_TIMELINES} from './faction-reference-timelines.ts';
+import {prioritizeContentDemand} from './faction-reference-content-demand.ts';
 export type CoverageIssue={referenceId:string;message:string};
 export type AssetDemand={id:string;label:string;referenceCount:number;
  definingCount:number;significantCount:number;referenceIds:string[]};
@@ -58,10 +59,14 @@ export function referenceVisualStatus(reference:FactionReference):
 export function auditFactionResearchCoverage(){
  const art=auditFactionReferences();
  const research=auditHistoricalEquipment();
+ const demand=prioritizeContentDemand();
  return {
   datedAppearanceReferences:art.referenceCount,
   visualAssetGaps:art.assetDemand.length,
   approximatedAssets:art.approximateAssets.length,
+  /** Authored visual needs across existing reference kits; never historical prevalence. */
+  futureContentQueue:demand,
+  visualNeedCount:demand.length,
   researchedTimelines:research.researchedTimelines,
   totalTimelines:research.totalTimelines,
   evidenceRecords:research.sourcedClaims,
