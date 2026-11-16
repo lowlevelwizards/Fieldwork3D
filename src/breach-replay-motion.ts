@@ -87,10 +87,11 @@ const firstTouchdownAfter=(events:readonly FootEvent[],limit:number):number=>{
   }
   return lo;
 };
-export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTarget{
+export function sampleFootEvents(events:readonly FootEvent[],time:number,
+  selectedIndex?:number):FootTarget{
   if(!events.length)throw Error('Replay foot has no initial contact');
-  let lo=0,hi=events.length-1;
-  while(lo<hi){
+  let lo=selectedIndex??0,hi=events.length-1;
+  if(selectedIndex===undefined)while(lo<hi){
     const mid=Math.ceil((lo+hi)/2);
     if(events[mid].at<=time)lo=mid;else hi=mid-1;
   }
@@ -125,9 +126,55 @@ export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTa
     worldYaw:e.toYaw,phase,contact:true,
     progress:p,pitch:motion.pitch};
 }
+type SamplingCursor={index:number;length:number;ordered:boolean};
+/** Cached lookup positions, never rendered poses or replay knowledge. */
 export class ReplayMotionRecorder{
   private actors=new Map<string,ActorTrack>();
   private doors=new Map<string,{at:number;fraction:number}[]>();
+  private samplingCursors=new WeakMap<object,SamplingCursor>();
+  /** Use a previous index only when a locally proven chronological interval
+   * still brackets time. On jumps, rewinds or malformed V1 timelines,
+   * the original right-biased binary seek remains authoritative. */
+  private seekIndex(events:readonly {at:number}[],time:number):number{
+    const length=events.length;
+    let cursor=this.samplingCursors.get(events);
+    if(!cursor){
+      let ordered=true;
+      for(let i=1;i<length;i++)
+        if(!(events[i-1].at<=events[i].at)){ordered=false;break;}
+      cursor={index:0,length,ordered};
+      this.samplingCursors.set(events,cursor);
+    }else if(cursor.length!==length){
+      // Fixed-step recording only appends. A shortened or malformed series
+      // must never reuse the old index; it falls back to the original seek.
+      if(length<cursor.length)cursor.ordered=false;
+      else if(cursor.ordered)for(let i=Math.max(1,cursor.length);i<length;i++)
+        if(!(events[i-1].at<=events[i].at)){cursor.ordered=false;break;}
+      cursor.length=length;
+      cursor.index=Math.min(cursor.index,Math.max(0,length-1));
+    }
+    if(cursor.ordered&&length&&Number.isFinite(time)){
+      const i=cursor.index;
+      // The original seek chooses index zero even before the first event.
+      if(i===0&&!(events[0].at<=time))return 0;
+      if(events[i].at<=time&&
+         (i===length-1||!(events[i+1].at<=time)))return i;
+      if(i>0&&events[i-1].at<=time&&!(events[i].at<=time))
+        return cursor.index=i-1;
+      if(i+1<length&&events[i+1].at<=time&&
+         (i+2===length||!(events[i+2].at<=time)))
+        return cursor.index=i+1;
+    }
+    // Binary fallback preserves duplicate timestamp (last <= time)
+    // semantics and the historical behavior of unordered archives.
+    let lo=0,hi=length-1;
+    while(lo<hi){
+      const mid=Math.ceil((lo+hi)/2);
+      if(events[mid].at<=time)lo=mid;else hi=mid-1;
+    }
+    cursor.index=lo;
+    return lo;
+  }
   record(time:number,actors:readonly TeamActor[],doors:readonly Door[]):void{
     // The foot planner invokes clearance synchronously. Bind its current
     // actor before every advance, instead of allocating one callback per
@@ -287,44 +334,28 @@ export class ReplayMotionRecorder{
     for(const id of ids){
       const track=this.actors.get(id);
       if(!track||!track.events[0].length)continue;
-      feet[id]=[sampleFootEvents(track.events[0],time),
-        sampleFootEvents(track.events[1],time)];
+      feet[id]=[sampleFootEvents(track.events[0],time,
+        this.seekIndex(track.events[0],time)),
+        sampleFootEvents(track.events[1],time,
+        this.seekIndex(track.events[1],time))];
       // Sample historical travel direction at the requested replay time.
       // The previous implementation leaked the final recorded yaw into
       // earlier replay frames after turns and strafing reversals.
       const travel=track.travelYawEvents;
-      let ti=0,tj=travel.length-1;
-      while(ti<tj){
-        const mid=Math.ceil((ti+tj)/2);
-        if(travel[mid].at<=time)ti=mid;else tj=mid-1;
-      }
-      travelYaw[id]=travel[ti]?.yaw??track.travelYaw;
+      travelYaw[id]=travel[this.seekIndex(travel,time)]?.yaw??track.travelYaw;
       const acc=track.accelEvents;
-      let ai=0,aj=acc.length-1;
-      while(ai<aj){
-        const mid=Math.ceil((ai+aj)/2);
-        if(acc[mid].at<=time)ai=mid;else aj=mid-1;
-      }
-      acceleration[id]=acc[ai]?.acceleration??0;
+      acceleration[id]=acc[this.seekIndex(acc,time)]?.acceleration??0;
       momentum[id]=sampleMovementImpulses(track.driveEvents,
         track.brakeEvents,time);
       const samples=track.pelvisYawEvents;
-      let lo=0,hi=samples.length-1;
-      while(lo<hi){
-        const mid=Math.ceil((lo+hi)/2);
-        if(samples[mid].at<=time)lo=mid;else hi=mid-1;
-      }
+      const lo=this.seekIndex(samples,time);
       const a=samples[lo],b=samples[Math.min(lo+1,samples.length-1)];
       const blend=b.at>a.at?clamp((time-a.at)/(b.at-a.at),0,1):0;
       pelvisYaw[id]=a.yaw+angular(a.yaw,b.yaw)*blend;
     }
     const doors:Record<string,number>={};
     if(includeDoors)for(const [id,events] of this.doors){
-      let lo=0,hi=events.length-1;
-      while(lo<hi){
-        const mid=Math.ceil((lo+hi)/2);
-        if(events[mid].at<=time)lo=mid;else hi=mid-1;
-      }
+      const lo=this.seekIndex(events,time);
       const a=events[lo],b=events[Math.min(lo+1,events.length-1)];
       if(!a)continue;
       const alpha=b.at>a.at?clamp((time-a.at)/(b.at-a.at),0,1):0;
@@ -355,6 +386,8 @@ export class ReplayMotionRecorder{
     if(data.schemaVersion!==1||!Array.isArray(data.actors)||
       !Array.isArray(data.doors))throw Error('Unsupported replay motion archive');
     this.actors.clear();this.doors.clear();
+    // Never allow a previous archive's seek cursors into this one.
+    this.samplingCursors=new WeakMap<object,SamplingCursor>();
     for(const actor of data.actors){
       if(!actor?.id||!Array.isArray(actor.feet)||
         actor.feet.length!==2||!actor.feet.every(Array.isArray)||
