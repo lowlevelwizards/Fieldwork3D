@@ -505,3 +505,22 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 #studioMaterials .helmet-option-card:focus-visible{
  outline:2px solid #f1d9ab;outline-offset:2px;
 }
+
+/* FT1.1: research is an expandable text layer, never another WebGL renderer. */
+.reference-historical-panel{display:grid;gap:7px;min-width:0;padding:9px 0;
+ border-block:1px solid #668172;color:#e9eee5}
+.reference-historical-panel[hidden]{display:none}
+.reference-historical-group{display:grid;gap:4px;min-width:0}
+.reference-historical-item{min-width:0;border:1px solid #6e8a78;border-radius:6px;
+ padding:7px;background:#263f35;font:500 12px/1.35 "Work Sans",sans-serif}
+.reference-historical-item summary{cursor:pointer;font-weight:700;overflow-wrap:anywhere}
+.reference-historical-item p{margin:5px 0}
+.reference-source-link{display:block;color:#edd29a;text-decoration:underline;
+ font:600 12px/1.4 "Work Sans",sans-serif;overflow-wrap:anywhere;padding:4px 0}
+.reference-history-compare{display:grid;gap:5px;padding:8px;
+ background:#263f35;border-radius:6px}
+.reference-history-compare-header{display:flex;flex-wrap:wrap;align-items:center;
+ justify-content:space-between;gap:8px}
+.reference-history-compare-header label{display:flex;align-items:center;gap:5px}
+.reference-history-compare input{max-width:80px;min-height:36px;background:#294339;
+ border:1px solid #83998b;color:#e9eee5;border-radius:6px;padding:5px}
