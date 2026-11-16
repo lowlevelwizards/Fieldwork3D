@@ -30,7 +30,7 @@ const bounds=(g,type)=>{
 };
 test('R4.7 all eight ARs keep authentic presets, attachments and muzzle X',()=>{
  const ids=FAMILY_PRESETS.filter(p=>p.family==='ar');
- assert.equal(ids.length,8);
+ assert.equal(ids.length,9,'current AR factory roster includes nine authentic presets');
  for(const p of ids){
   const {c,g,a}=model(p.id);
   assert.ok(g.children.length<=36,p.id+' compact mesh budget');
