@@ -4,7 +4,7 @@
  * The caller's architectural A* rejection remains authoritative.
  */
 import type {Site} from '../breach-site.ts';
-import {seeded} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {pointToSegment,type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 const roles=new Set(['sales','office','stockroom','storage','workshop',

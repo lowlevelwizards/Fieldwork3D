@@ -1,6 +1,7 @@
 /** Localized visual wear. A condition describes a property, not a full-surface filter.
  * These are render-only decals with a small whole-site budget. */
-import {seeded,type Site} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 import {surfaceMood} from './surface-moods.ts';
 import {effectiveCondition} from './condition-visual.ts';

@@ -1,4 +1,5 @@
-import {seeded,type Site} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import type {WearKind} from './environment-wear.ts';
 import {fixturePixelSurface} from './pixel-surface-selection.ts';
 import {canWear,materialProperties} from './material-properties.ts';

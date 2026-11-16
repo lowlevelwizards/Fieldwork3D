@@ -4,7 +4,7 @@
  * civilian, operator and objective envelopes. Bounded to three per site.
  */
 import type {Site} from '../breach-site.ts';
-import {seeded} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import type {Obstacle,Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
