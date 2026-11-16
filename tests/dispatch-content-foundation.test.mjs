@@ -5,6 +5,7 @@ import {FACTION_TIMELINES} from '../src/faction-reference-timelines.ts';
 import {
  CAMPAIGN_CONTENT_DOMAINS,DISPATCH_STARTER_REFERENCE_IDS,
  dispatchReferenceContext,dispatchStarterReferenceContexts,
+ dispatchStarterOrganizations,DISPATCH_STARTER_ORGANIZATION_SCOPES,
  auditDispatchStarterReferences
 } from '../src/dispatch-content-foundation.ts';
 
@@ -55,4 +56,45 @@ test('D1.1 associations read source references without modifying them',()=>{
  assert.equal(JSON.stringify({references:FACTION_REFERENCES,timelines:FACTION_TIMELINES}),
   baseline);
  assert.equal(Object.isFrozen(a[0]),true);
+});
+
+test('D1.2 groups existing looks under only two canonical organization identities',()=>{
+ const organizations=dispatchStarterOrganizations();
+ assert.deepEqual(organizations.map(x=>[x.id,x.country,x.classification,x.scope]),[
+  ['us-police-generic','United States','police','agency-neutral'],
+  ['russian-omon','Russia','police','unit-family']
+ ]);
+ assert.deepEqual(organizations[0].roles.map(x=>[x.timelineId,x.role,x.snapshots.map(s=>s.referenceId)]),[
+  ['us-swat-archetype','tactical-police',['us-swat-mp5-1995','us-swat-2015']],
+  ['us-police-patrol','patrol',['us-police-polo-2020']]
+ ]);
+ assert.deepEqual(organizations[1].roles.map(x=>[x.timelineId,x.role,x.snapshots.map(s=>s.referenceId)]),[
+  ['russian-omon','tactical-police',['russian-omon-2002']]
+ ]);
+ assert.deepEqual(organizations[0].roles[0].snapshots.map(x=>x.representativeYear),
+  [1995,2015]);
+ assert.deepEqual(Object.keys(DISPATCH_STARTER_ORGANIZATION_SCOPES).sort(),
+  ['russian-omon','us-police-generic']);
+});
+
+test('D1.2 uses timeline-authoritative names and remains immutable, stable and read-only',()=>{
+ const before=JSON.stringify({references:FACTION_REFERENCES,timelines:FACTION_TIMELINES});
+ const a=dispatchStarterOrganizations(),b=dispatchStarterOrganizations();
+ assert.deepEqual(a,b);
+ assert.notStrictEqual(a,b);
+ assert.ok(Object.isFrozen(a));
+ for(const org of a){
+  assert.ok(Object.isFrozen(org));
+  assert.ok(Object.isFrozen(org.roles));
+  for(const role of org.roles){
+   assert.ok(Object.isFrozen(role));
+   assert.ok(Object.isFrozen(role.snapshots));
+   for(const snapshot of role.snapshots)assert.ok(Object.isFrozen(snapshot));
+  }
+ }
+ const us=FACTION_TIMELINES.find(x=>x.id==='us-swat-archetype');
+ assert.equal(a[0].roles[0].label,us.label);
+ assert.equal(JSON.stringify({references:FACTION_REFERENCES,timelines:FACTION_TIMELINES}),
+  before);
+ assert.deepEqual(auditDispatchStarterReferences(),[]);
 });
