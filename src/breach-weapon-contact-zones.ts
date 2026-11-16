@@ -8,9 +8,10 @@ import {akBarrelArt,AK_BARREL_ART} from './weapons/geometry/ak-barrel-profiles.t
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {FNC_FRONT_P13} from './weapons/geometry/fnc-front-layout.ts';
+import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
-export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc';stock:RiflePoint;
+export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36';stock:RiflePoint;
  primary:RiflePoint;support:RifleContactRange;scale:number};
 export const AR_HANDGUARD_START=3.55;
 export function arHandguardEnd(id:string):number{
@@ -25,7 +26,7 @@ export function riflePoseContacts(
  id:WeaponId,config?:WeaponConfiguration):RiflePoseContacts|null{
  if(!config||config.weapon!==id||!config.build)return null;
  const b=config.build;
- if(b.family!=='ar'&&b.family!=='ak'&&b.family!=='hk'&&b.family!=='fal'&&b.family!=='fnc')return null;
+ if(b.family!=='ar'&&b.family!=='ak'&&b.family!=='hk'&&b.family!=='fal'&&b.family!=='fnc'&&b.family!=='g36')return null;
  const a=resolveWeaponAssembly(config),ar=b.family==='ar',hk=b.family==='hk';
  // HK reach targets share the fore-end's authoritative barrel-art landmarks.
  // Never independently hardcode a number that can silently drift from mesh art.
@@ -35,9 +36,11 @@ export function riflePoseContacts(
  // exposed gas housing: keeping that distinction avoids grabbing bare steel.
  const fncNear=FNC_FRONT_P13.polymer.fullStartX+.30;
  const fncFar=FNC_FRONT_P13.polymer.fullEndX+.05;
- const start=(b.family==='fnc'?fncNear:undefined)??falArt?.handguardStartX??hkArt?.handguardStartX??
+ const start=(b.family==='g36'?G36.supportNearX:
+  b.family==='fnc'?fncNear:undefined)??falArt?.handguardStartX??hkArt?.handguardStartX??
   (ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver));
- const end=(b.family==='fnc'?fncFar:undefined)??falArt?.handguardEndX??hkArt?.handguardEndX??
+ const end=(b.family==='g36'?G36.supportFarX:
+  b.family==='fnc'?fncFar:undefined)??falArt?.handguardEndX??hkArt?.handguardEndX??
   (ar?arHandguardEnd(b.parts.handguard):
   (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX);
  // All ordinary two-handed holds must locate the palm on the actual
@@ -47,12 +50,15 @@ export function riflePoseContacts(
  const mp5k=hk&&b.parts.receiver==='hk-mp5k-stockless';
  const hkTriVertical=hk&&b.parts.handguard==='hk-mp5-trirail'&&
   config.slots.foregrip==='foregrip-vertical';
- const near=hkTriVertical?6.40:mp5k?Math.max(3.90,start+.32):
+ const near=b.family==='g36'?G36.supportNearX:
+  hkTriVertical?6.40:mp5k?Math.max(3.90,start+.32):
    Math.min(end-.60,start+(hk?.65:ar?.90:.75));
  const hkCompact=hk&&b.parts.barrel==='hk53-short';
- const far=hkTriVertical?7.50:mp5k?4.85:
+ const far=b.family==='g36'?G36.supportFarX:
+  hkTriVertical?7.50:mp5k?4.85:
   Math.max(start+1.4,end-(hk?1.80:ar?1.36:1.17));
- const y=hkTriVertical?-3.65:mp5k?-4.20:
+ const y=b.family==='g36'?G36.supportY:
+  hkTriVertical?-3.65:mp5k?-4.20:
   hk?-1.39:ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
  return {family:b.family,scale:a.lengthScale,
   stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:2.24},
