@@ -62,3 +62,21 @@ test('FT1.8E first production brief is complete but not falsely authorized',asyn
  for(const key of ['deliverables','constraints','visualAcceptance','technicalAcceptance','blockers','outOfScope'])
   assert.ok(FT18_FIRST_ASSET_SCOPE[key].length>=3,key);
 });
+
+test('FT1.8F exports are read-only and carry unapproved first-asset status',async()=>{
+ const {ft18ReviewCsv,ft18ReviewJson,ft18FirstAssetMarkdown}=
+  await import('../src/faction-reference-ft1-8-exports.ts');
+ const csv=ft18ReviewCsv(),payload=JSON.parse(ft18ReviewJson());
+ assert.equal(csv.trim().split('\r\n').length,11);
+ assert.equal(payload.reviews.length,10);
+ assert.equal(payload.readiness.authorized,false);
+ assert.match(ft18FirstAssetMarkdown(),/authorization BLOCKED/);
+});
+test('FT1.8F workbench links review and first-asset planning without game writes',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const ui=readFileSync(new URL('../src/reference-planning.ts',import.meta.url),'utf8');
+ assert.match(ui,/ft18ReviewBoard/);
+ assert.match(ui,/ft18ReviewCsv/);
+ assert.match(ui,/ft18FirstAssetMarkdown/);
+ assert.ok(!ui.includes('localStorage'));
+});
