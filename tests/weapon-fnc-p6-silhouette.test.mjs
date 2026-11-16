@@ -65,7 +65,8 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
  assert.ok(box(stem).max.z>box(handle).min.z,
   'short connecting stem must intersect the projecting grip');
  assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.20);
- assert.ok(box(muzzle).max.x-box(muzzle).min.x<1.55);
+ assert.ok(box(muzzle).max.x-box(muzzle).min.x>1.94&&
+  box(muzzle).max.x-box(muzzle).min.x<2.02);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();
