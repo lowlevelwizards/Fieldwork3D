@@ -1,6 +1,7 @@
 /** FT1.8D: review work queue. Does not invent human observation or art approval.
  * A machine-resolved model is not equivalent to a visually accepted asset.
  */
+import {buildContentCandidates} from './faction-reference-production-candidates.ts';
 import {buildFT18Triage} from './faction-reference-ft1-8-triage.ts';
 import {inspectFT18Catalog} from './faction-reference-ft1-8-asset-checks.ts';
 import {FT17_CANDIDATE_DECISIONS} from './faction-reference-production-decisions.ts';
@@ -18,7 +19,7 @@ export type FT18ReviewRow={
 export function ft18ReviewBoard():readonly FT18ReviewRow[]{
  const inspections=new Map(inspectFT18Catalog().map(x=>[x.candidateId,x]));
  const reviews=new Map(FT17_CANDIDATE_DECISIONS.map(x=>[x.candidateId,x]));
- return buildFT18Triage().map(row=>{
+ return buildFT18Triage(buildContentCandidates(FT17_CANDIDATE_DECISIONS)).map(row=>{
   const candidate=row.candidate;
   const audit=inspections.get(candidate.id);
   const decision=reviews.get(candidate.id);
