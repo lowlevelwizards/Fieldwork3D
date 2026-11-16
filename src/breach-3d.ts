@@ -34,7 +34,8 @@ import {windowShardPose,WINDOW_SHARDS_PER_PANE}
  from './rendering/window-shatter-presentation.ts';
 import {type CivilianRig} from './breach-civilian-visuals.ts';
 import {reconcileSceneActorLifetimes} from './rendering/breach-actor-frame-presenter.ts';
-import {shouldPrewarmContactRig,withPreparedVisibleRoot}
+import {shouldPrewarmContactRig,withinContactPrewarmBudget,
+  withPreparedVisibleRoot}
  from './rendering/breach-contact-rig-prewarm.ts';
 import {ShotVisualPool} from './rendering/breach-shot-visual-pool.ts';
 import {type ReplayDisclosure} from './breach-replay-visibility.ts';
@@ -1984,6 +1985,9 @@ export class TacticalScene3D{
     // when twenty operators are animating this frame.
     const frameShadowDetail=operatorShadowDetail(
       projectedOperatorHeightPx(this.camera,this.height),this.quality.mode);
+    // E6.1: budget cold unseen-hostile kit/rig work across planning RAFs.
+    // A newly visible actor always bypasses this and poses immediately.
+    let coldPrewarmBuilt=0;
     for(const actor of s.operators){
       const visible=presentActor(s,actor,omniscient,replayDisclosurePolicy);
       // Hostile first-contact should not trigger a full rig, costume/lightmap,
@@ -1995,7 +1999,8 @@ export class TacticalScene3D{
         hasRig:this.actors.has(actor.id),
         historical:!!replay||!!replayDisclosurePolicy||!!replayDoorHistory||
           !!replayWindowHistory
-      });
+      })&&withinContactPrewarmBudget(true,coldPrewarmBuilt);
+      if(prewarmHostile)coldPrewarmBuilt++;
       if(!visible&&!this.actors.has(actor.id)&&!prewarmHostile)continue;
       if(!this.actors.has(actor.id)){
        const rigStart=this.profileSceneUpdate?performance.now():0;
