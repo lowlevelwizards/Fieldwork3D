@@ -161,7 +161,7 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // Neither should compete with the uniquely recognizable carry/optic group.
  const barrel=box('barrel',16.12,0,0,5.90,.76,.76);
  barrel.userData.g36Barrel=true;
- const muzzle=box('barrel',19.25,0,0,.50,.99,.99);
+ const muzzle=box('barrel',A.muzzleX-.25,0,0,.50,.99,.99);
  muzzle.userData.g36FactoryMuzzle=true;
  return root;
 }
