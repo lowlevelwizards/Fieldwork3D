@@ -219,9 +219,29 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     await allowQuickPlayPaint();
     if(id!==quickPlayRun)return;
     const firstFrameStart=performance.now();
-    if(coldTrace)coldTrace.capture('firstFrame',()=>config.renderFirstFrame());
-    else config.renderFirstFrame();
+    // E6.9: Chromium DevTools can capture just this synchronous cold
+    // scene update and first draw via console.profile; no profiling work
+    // or material/render-policy changes occur without ?cpuTrace=1.
+    const cpuTraceEnabled=new URLSearchParams(location.search).
+      get('cpuTrace')==='1';
+    if(cpuTraceEnabled)console.profile('fieldwork-e6.9-first-frame');
+    try{
+      if(coldTrace)coldTrace.capture('firstFrame',()=>config.renderFirstFrame());
+      else config.renderFirstFrame();
+    }finally{
+      // End even when the draw throws, so browser automation receives a
+      // finite CPU profile instead of hanging or leaking to later frames.
+      if(cpuTraceEnabled)console.profileEnd('fieldwork-e6.9-first-frame');
+    }
     const firstFrameMs=Math.round(performance.now()-firstFrameStart);
+    if(cpuTraceEnabled){
+      (window as Window&{__fieldworkE69?:unknown}).__fieldworkE69={
+        schema:'fieldwork-e6.9-cold-cpu-v1',
+        seed,shaderWarmupEnabled:config.boot.gpuWarmupEnabled,
+        shaderPreparationMs,firstFrameMs,
+        note:'Chrome DevTools CPU samples, not GPU time or measured iPhone FPS.'
+      };
+    }
     const coldRendererEvidence=coldTrace?.finish()??null;
     if(coldRendererEvidence){
       // Local debug-only readout for fresh-page cold A/B automation. No
