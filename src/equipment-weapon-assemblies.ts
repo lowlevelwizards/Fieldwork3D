@@ -138,19 +138,24 @@ export function familyAccessoryAllowed(build:WeaponFamilyBuild,
   // but cannot add a fictitious top/fore-end accessory rail.
  }
  if(slot==='stock')return id==='stock-standard';
+ // M1.1: physical mount eligibility belongs to the installed parts, not
+ // receiver family names or a second renderer-only whitelist.
+ const receiverMounts=FAMILY_PARTS[build.parts.receiver]?.mounts??[];
+ const handguardMounts=FAMILY_PARTS[build.parts.handguard]?.mounts??[];
+ const supports=(role:'optic'|'opticMount'|'foregrip',
+  standard:'picatinny'|'hk-claw')=>
+  [...receiverMounts,...handguardMounts].some(point=>
+   point.role===role&&point.standard===standard);
  if(slot==='opticMount')return id==='optic-mount-none'||
-  (id==='optic-hk-claw'&&build.family==='hk');
+  (id==='optic-hk-claw'&&supports('opticMount','hk-claw'));
  // The SD is integral: never overlay a second detachable suppressor.
  if(slot==='muzzle'&&build.parts.receiver==='hk-mp5sd-integral')
   return id==='muzzle-bare';
- if(slot==='optic'&&id!=='optic-irons'){
-  return (build.family==='hk'&&mount==='optic-hk-claw')||
-   build.parts.receiver==='ar-flat'||
-   (build.family==='ak'&&build.parts.handguard==='ak-rail-long');
- }
+ if(slot==='optic'&&id!=='optic-irons')
+  return supports('optic','picatinny')||
+   (mount==='optic-hk-claw'&&supports('opticMount','hk-claw'));
  if(slot==='foregrip'&&id!=='foregrip-none')
-  return ['ar-quad','ar-compact-rail','ar-m5-rail','ar-risii',
-   'ak-rail-long','hk-mp5-trirail'].includes(build.parts.handguard);
+  return supports('foregrip','picatinny');
  return true;
 }
 /** Shared for Campaign and Quick Play; ownership is checked separately. */

@@ -11,9 +11,30 @@ export type FamilyPartSlot=typeof FAMILY_PART_SLOTS[number];
 export type WeaponFamily='ar'|'ak'|'hk'|'fal'|'fnc'|'g36';
 export type FamilyLength='long'|'mid'|'short';
 type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762'|'fnc556'|'g36poly556';
+/** M1.0: mount eligibility is authored by the actual installed part.
+ * The renderer derives physical bounds from the same geometry landmarks.
+ * Do not treat these as saved attachment IDs or gameplay/ballistic sockets.
+ */
+export type PartMountStandard='picatinny'|'hk-claw';
+export type PartMountRole='optic'|'opticMount'|'foregrip'|'light';
+export type PartMountFace='top'|'bottom'|'side';
+export type PartMountInterface=Readonly<{
+ standard:PartMountStandard;role:PartMountRole;face:PartMountFace;
+}>;
+const RECEIVER_TOP:readonly PartMountInterface[]=[
+ {standard:'picatinny',role:'optic',face:'top'}];
+const CLAW_RECEIVER:readonly PartMountInterface[]=[
+ {standard:'hk-claw',role:'opticMount',face:'top'}];
+const FOREND_PICATINNY:readonly PartMountInterface[]=[
+ {standard:'picatinny',role:'foregrip',face:'bottom'},
+ {standard:'picatinny',role:'light',face:'side'}];
+const FOREND_WITH_TOP:readonly PartMountInterface[]=[
+ ...FOREND_PICATINNY,{standard:'picatinny',role:'optic',face:'top'}];
 export type WeaponFamilyPart={
  id:string;name:string;family:WeaponFamily;slot:FamilyPartSlot;
  receivers?:readonly string[];feed?:Feed;length?:FamilyLength;
+ /** Fixed by installed receiver or handguard identity, not by weapon family. */
+ mounts?:readonly PartMountInterface[];
  role?:'carbine'|'rifle'|'smg'|'both';stockX?:number;
  /** Canonical factory display only; gameplay ballistics are class-owned. */
  nominalInches?:number;
@@ -31,7 +52,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ar-a1':add('ar-a1','Early carry-handle receiver','ar','receiver',{feed:'stanag',role:'rifle'}),
  'ar-a2':add('ar-a2','A2 carry-handle receiver','ar','receiver',{feed:'stanag',role:'rifle'}),
  'ar-retro':add('ar-retro','Retro carbine receiver','ar','receiver',{feed:'stanag',role:'carbine'}),
- 'ar-flat':add('ar-flat','Flat-top receiver','ar','receiver',{feed:'stanag',role:'both'}),
+ 'ar-flat':add('ar-flat','Flat-top receiver','ar','receiver',{feed:'stanag',role:'both',mounts:RECEIVER_TOP}),
  'akm':add('akm','AKM stamped receiver','ak','receiver',{feed:'ak762',role:'rifle'}),
  'ak74':add('ak74','AK-74 receiver','ak','receiver',{feed:'ak545',role:'rifle'}),
  'ak74m':add('ak74m','AK-74M receiver','ak','receiver',{feed:'ak545',role:'rifle'}),
@@ -39,13 +60,13 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ak105':add('ak105','AK-105 carbine receiver','ak','receiver',{feed:'ak545',role:'carbine'}),
  'ak-rpk74':add('ak-rpk74','RPK-74 support receiver','ak','receiver',{feed:'ak545',role:'rifle'}),
  'akcompact':add('akcompact','AKS-74U compact receiver','ak','receiver',{feed:'ak545',role:'carbine'}),
- 'hk-g3-early':add('hk-g3-early','Early G3 flip-sight stamped receiver','hk','receiver',{feed:'hk762',role:'rifle'}),
- 'hk-g3-drum':add('hk-g3-drum','G3 rotary diopter stamped receiver','hk','receiver',{feed:'hk762',role:'rifle'}),
- 'hk33-556-rifle':add('hk33-556-rifle','HK33 5.56 stamped rifle receiver','hk','receiver',{feed:'hk556',role:'rifle'}),
- 'hk53-556-compact':add('hk53-556-compact','HK53 compact 5.56 stamped receiver','hk','receiver',{feed:'hk556',role:'carbine'}),
- 'hk-mp5-standard':add('hk-mp5-standard','MP5 9mm stamped receiver','hk','receiver',{feed:'hk9',role:'smg'}),
- 'hk-mp5sd-integral':add('hk-mp5sd-integral','MP5SD dedicated integral shroud receiver','hk','receiver',{feed:'hk9',role:'smg'}),
- 'hk-mp5k-stockless':add('hk-mp5k-stockless','MP5K stockless short receiver','hk','receiver',{feed:'hk9',role:'smg'}),
+ 'hk-g3-early':add('hk-g3-early','Early G3 flip-sight stamped receiver','hk','receiver',{feed:'hk762',role:'rifle',mounts:CLAW_RECEIVER}),
+ 'hk-g3-drum':add('hk-g3-drum','G3 rotary diopter stamped receiver','hk','receiver',{feed:'hk762',role:'rifle',mounts:CLAW_RECEIVER}),
+ 'hk33-556-rifle':add('hk33-556-rifle','HK33 5.56 stamped rifle receiver','hk','receiver',{feed:'hk556',role:'rifle',mounts:CLAW_RECEIVER}),
+ 'hk53-556-compact':add('hk53-556-compact','HK53 compact 5.56 stamped receiver','hk','receiver',{feed:'hk556',role:'carbine',mounts:CLAW_RECEIVER}),
+ 'hk-mp5-standard':add('hk-mp5-standard','MP5 9mm stamped receiver','hk','receiver',{feed:'hk9',role:'smg',mounts:CLAW_RECEIVER}),
+ 'hk-mp5sd-integral':add('hk-mp5sd-integral','MP5SD dedicated integral shroud receiver','hk','receiver',{feed:'hk9',role:'smg',mounts:CLAW_RECEIVER}),
+ 'hk-mp5k-stockless':add('hk-mp5k-stockless','MP5K stockless short receiver','hk','receiver',{feed:'hk9',role:'smg',mounts:CLAW_RECEIVER}),
  'ar-fixed':add('ar-fixed','A1 triangular fixed stock','ar','stock',{receivers:['ar-a1','ar-a2','ar-flat'],stockX:-13.74}),
  'ar-fixed-a2':add('ar-fixed-a2','Long A2 triangular fixed stock','ar','stock',{receivers:['ar-a2','ar-flat'],stockX:-14.30}),
  'ar-car':add('ar-car','Retro collapsible carbine stock','ar','stock',{receivers:['ar-retro','ar-flat'],stockX:-14.45}),
@@ -113,15 +134,15 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ar-carbine':add('ar-carbine','Carbine polymer handguard','ar','handguard',{receivers:['ar-retro','ar-flat'],length:'mid'}),
  'ar-car15-ribbed':add('ar-car15-ribbed','Slim CAR-15 handguard','ar','handguard',{receivers:['ar-retro'],length:'mid'}),
  'ar-733-ribbed':add('ar-733-ribbed','Colt 733 short ribbed handguard','ar','handguard',{receivers:['ar-retro'],length:'short'}),
- 'ar-quad':add('ar-quad','Carbine quad rail','ar','handguard',{receivers:['ar-flat'],length:'mid'}),
- 'ar-m5-rail':add('ar-m5-rail','Full-length rifle rail','ar','handguard',{receivers:['ar-flat'],length:'long'}),
+ 'ar-quad':add('ar-quad','Carbine quad rail','ar','handguard',{receivers:['ar-flat'],length:'mid',mounts:FOREND_PICATINNY}),
+ 'ar-m5-rail':add('ar-m5-rail','Full-length rifle rail','ar','handguard',{receivers:['ar-flat'],length:'long',mounts:FOREND_PICATINNY}),
  'ar-pri-tube':add('ar-pri-tube','Mk 12 PRI tubular fore-end','ar','handguard',{receivers:['ar-flat'],length:'long'}),
- 'ar-risii':add('ar-risii','Compact RIS-style rail','ar','handguard',{receivers:['ar-flat'],length:'short'}),
- 'ar-compact-rail':add('ar-compact-rail','Compact free-float rail','ar','handguard',{receivers:['ar-flat'],length:'short'}),
+ 'ar-risii':add('ar-risii','Compact RIS-style rail','ar','handguard',{receivers:['ar-flat'],length:'short',mounts:FOREND_PICATINNY}),
+ 'ar-compact-rail':add('ar-compact-rail','Compact free-float rail','ar','handguard',{receivers:['ar-flat'],length:'short',mounts:FOREND_PICATINNY}),
  'ak-wood-long':add('ak-wood-long','Classic wood handguard','ak','handguard',{receivers:akClassic,length:'long'}),
  'ak-rpk-wood':add('ak-rpk-wood','RPK-74 heavy wooden fore-end','ak','handguard',{receivers:['ak-rpk74'],length:'long'}),
  'ak-poly-long':add('ak-poly-long','Polymer handguard','ak','handguard',{receivers:['akm','ak74','ak74m','ak103'],length:'long'}),
- 'ak-rail-long':add('ak-rail-long','Railed AK handguard','ak','handguard',{receivers:['ak74m','ak103'],length:'long'}),
+ 'ak-rail-long':add('ak-rail-long','Railed AK handguard','ak','handguard',{receivers:['ak74m','ak103'],length:'long',mounts:FOREND_WITH_TOP}),
  'ak-wood-short':add('ak-wood-short','Compact wood handguard','ak','handguard',{receivers:['akcompact'],length:'short'}),
  'ak-poly-short':add('ak-poly-short','Compact polymer handguard','ak','handguard',{receivers:['akcompact'],length:'short'}),
  'ak-poly-mid':add('ak-poly-mid','Carbine polymer handguard','ak','handguard',{receivers:['ak105'],length:'mid'}),
@@ -142,7 +163,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'hk53-poly-short-black':add('hk53-poly-short-black','HK53 compact fore-end · black polymer','hk','handguard',{receivers:['hk53-556-compact'],length:'short'}),
  'hk-mp5-tropical':add('hk-mp5-tropical','MP5A3 smooth tropical fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid'}),
  'hk-mp5-slim':add('hk-mp5-slim','Classic MP5 narrow early fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid'}),
- 'hk-mp5-trirail':add('hk-mp5-trirail','MP5 three-sided accessory rail fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid'}),
+ 'hk-mp5-trirail':add('hk-mp5-trirail','MP5 three-sided accessory rail fore-end','hk','handguard',{receivers:['hk-mp5-standard'],length:'mid',mounts:FOREND_PICATINNY}),
  'hk-mp5sd-shroud':add('hk-mp5sd-shroud','MP5SD3 heavy integral shroud','hk','handguard',{receivers:['hk-mp5sd-integral'],length:'mid'}),
  'hk-mp5k-vertical':add('hk-mp5k-vertical','MP5K integrated vertical foregrip','hk','handguard',{receivers:['hk-mp5k-stockless'],length:'short'}),
  'ar-20':add('ar-20','20\" A1 pencil barrel','ar','barrel',{receivers:['ar-a1','ar-a2','ar-flat'],length:'long',role:'rifle',nominalInches:AR_BARREL_ART['ar-20'].nominalInches}),
