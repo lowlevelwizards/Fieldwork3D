@@ -9,6 +9,7 @@ import {fogFingerprint,fogSessionFingerprint}
 
 const scene=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
 const fogCode=readFileSync(new URL('../src/breach-fog-cache.ts',import.meta.url),'utf8');
+const perfLoop=readFileSync(new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
 const legacy=(s)=>[s.mode,s.seed??'none',s.seenCount,
   s.seenRevision??0,s.revision,
   ...s.actors.map(a=>[
@@ -92,4 +93,8 @@ test('E6.1 contact protections and E6.3 fog render responsibilities remain intac
  assert.match(scene,/fogTextureBytesPerRequest:this\.fogCanvas\.width\*this\.fogCanvas\.height\*4/);
  assert.match(scene,/fogComposeMs:this\.profileSceneUpdate\?this\.fogComposeMs:null/);
  assert.match(scene,/this\.smoothFog\.visible=!omniscient&&!clippedExteriorFog/);
+ assert.ok(perfLoop.includes('E6 POSE PREP/SOLVE'));
+ assert.ok(perfLoop.includes('E6 FOG COMPOSE'));
+ assert.ok(perfLoop.includes('RGBA REQUEST'));
+
 });
