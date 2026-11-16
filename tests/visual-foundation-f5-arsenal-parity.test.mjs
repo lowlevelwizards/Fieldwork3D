@@ -16,7 +16,9 @@ test('Arsenal uses a neutral light matte and matching gallery lighting',()=>{
  assert.match(thumbnail,/addArsenalInspectionLighting\(this\.scene\)/);
  assert.doesNotMatch(source,/STUDIO_INSPECTION_BACKGROUND|studioShadowPalette|Box3Helper/);
  assert.doesNotMatch(source,/applyStudioGraphicLighting|setLighting\(/);
- assert.match(source,/tagVisualMaterial\(new THREE\.MeshStandardMaterial/);
+ assert.match(source,/private readonly steel=WEAPON_ACCESSORY_STEEL/);
+ assert.match(thumbnail,/private readonly dark=WEAPON_ACCESSORY_POLYMER/);
+ assert.doesNotMatch(source,/this\.steel\.dispose\(\)|this\.dark\.dispose\(\)/);
 });
 test('F5.1 original weapon palette and approved materials are unmodified',()=>{
  assert.equal(visualMaterialRole(finishes.AK_WOOD_AMBER),'wood');
