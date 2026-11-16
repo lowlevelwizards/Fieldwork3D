@@ -131,6 +131,7 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
     a.medicalSupplies=kitMedicalSupplies(member.loadout);
     a.wedgeRemaining=issuedWedges(member.loadout);
     a.weaponLightOn=member.weaponConfiguration.slots.light==='light-compact';
+    a.nvgDeployed=false;
    a.flashCharges=equippedFlashCharges(member.loadout);
    const protection=initialArmorIntegrity(member.loadout);
    a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
