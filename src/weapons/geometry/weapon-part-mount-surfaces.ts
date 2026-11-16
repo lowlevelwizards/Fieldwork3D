@@ -1,0 +1,99 @@
+/** M1.2: part-owned visual mounting surfaces. This module never decides
+ * weapon ownership, ballistics, gameplay sights or attachment inventory.
+ * A surface exists only when the installed part advertises the interface.
+ * X spans/Y supports are derived from the same authored geometry constants.
+ */
+import type {WeaponFamilyBuild,PartMountFace,PartMountRole,
+ PartMountStandard,FamilyPartSlot} from '../../equipment-weapon-families.ts';
+import {FAMILY_PARTS} from '../../equipment-weapon-families.ts';
+import {AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
+import {akBarrelArt} from './ak-barrel-profiles.ts';
+import {AR_HANDGUARD_START,arHandguardEnd,akHandguardStart}
+ from '../../breach-weapon-contact-zones.ts';
+import {HK_CLAW_VISUAL} from './hk-rail-accessories.ts';
+export type WeaponMountSurface=Readonly<{
+ id:string;ownerPartId:string;ownerSlot:FamilyPartSlot|'opticMount';
+ standard:PartMountStandard;role:PartMountRole;face:PartMountFace;
+ startX:number;endX:number;y:number;z:number;
+}>;
+/** X/y/z reflect current *visible support* geometry, not tactical aim datum.
+ * Side-facing rails advertise their actual visual Z depth and remain separate
+ * from top/bottom faces. No pose or muzzle socket is modified here.
+ */
+export function weaponPartMountSurfaces(build:WeaponFamilyBuild,
+ opticMount='optic-mount-none'):readonly WeaponMountSurface[]{
+ const result:WeaponMountSurface[]=[];
+ const add=(ownerSlot:FamilyPartSlot,span:readonly [number,number],
+  y:number,z:number)=>{
+  const part=FAMILY_PARTS[build.parts[ownerSlot]];
+  for(const mount of part?.mounts??[]){
+   result.push({id:part.id+':'+mount.role+':'+mount.face,
+    ownerPartId:part.id,ownerSlot,
+    standard:mount.standard,role:mount.role,face:mount.face,
+    startX:span[0],endX:span[1],y,z:mount.face==='side'?z:0});
+  }
+ };
+ if(build.parts.receiver==='ar-flat'){
+  // addARRailSegments: -5.3..2.3, three teeth centred -4.5/-1.5/+1.5
+  // at Y=2.84, each tooth .34 tall.
+  add('receiver',[-5.3,2.3],3.01,0);
+ }
+ if(build.family==='hk'){
+  // Receiver lugs can take the claw *adapter*, not optics directly.
+  add('receiver',[-5.3,2.4],1.75,0);
+  if(opticMount==='optic-hk-claw'&&
+   result.some(s=>s.standard==='hk-claw'&&s.role==='opticMount')){
+   const p=HK_CLAW_VISUAL;
+   result.push({id:'optic-hk-claw:top',ownerPartId:'optic-hk-claw',
+    ownerSlot:'opticMount',standard:'picatinny',role:'optic',face:'top',
+    startX:p.railCenterX-p.railLength/2,
+    endX:p.railCenterX+p.railLength/2,y:p.supportTopY,z:0});
+  }
+ }
+ if(build.parts.handguard==='ak-rail-long'){
+  const front=akBarrelArt(build.parts.barrel)?.handguardFrontX;
+  if(front===undefined)throw Error('AK handguard rail requires authored barrel');
+  const upperRear=akHandguardStart(build.parts.receiver)+1.08;
+  // AK builder: one box centered halfway between upperRear+.9 and front
+  // with actual width front-upperRear-1.2, top at 2.88+.24.
+  add('handguard',[upperRear+1.05,front-.15],3.12,1.5);
+ }
+ if(build.family==='ar'&&FAMILY_PARTS[build.parts.handguard]?.mounts?.length){
+  const start=AR_HANDGUARD_START,end=arHandguardEnd(build.parts.handguard);
+  const ris=build.parts.handguard==='ar-risii';
+  const bottom=ris?-1.47:-1.65;
+  // Handguard builder shifts all rail Y by the AR bore/forearm datum.
+  const part=FAMILY_PARTS[build.parts.handguard];
+  for(const mount of part.mounts??[]){
+   result.push({id:part.id+':'+mount.role+':'+mount.face,
+    ownerPartId:part.id,ownerSlot:'handguard',
+    standard:mount.standard,role:mount.role,face:mount.face,
+    startX:start,endX:end,
+    y:mount.face==='bottom'?bottom-.17+AR_VISUAL_AXIS_Y:
+      .59+AR_VISUAL_AXIS_Y,
+    z:mount.face==='side'?2.39:0});
+  }
+ }
+ if(build.parts.handguard==='hk-mp5-trirail'){
+  // Eligibility and longitudinal envelope are part-owned. The specialized
+  // MP5 renderer remains the visual authority for fore-end brackets.
+  const part=FAMILY_PARTS[build.parts.handguard];
+  for(const mount of part.mounts??[])
+   result.push({id:part.id+':'+mount.role+':'+mount.face,
+    ownerPartId:part.id,ownerSlot:'handguard',
+    standard:mount.standard,role:mount.role,face:mount.face,
+    startX:4,endX:10,y:mount.face==='bottom'?-2.35:-.5,
+    z:mount.face==='side'?2.4:0});
+ }
+ return result;
+}
+export function preferredOpticMountSurface(build:WeaponFamilyBuild,
+ opticMount='optic-mount-none'):WeaponMountSurface|undefined{
+ const surfaces=weaponPartMountSurfaces(build,opticMount);
+ // Receiver top or deliberate adapter is the normal long-eye-relief seat.
+ // AK's railed fore-end is a forward-mount compromise until per-optic
+ // eye-relief/footprint mechanics are added (no silent old save migrations).
+ return surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='opticMount')??
+  surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='receiver')??
+  surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='handguard');
+}
