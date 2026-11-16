@@ -26,7 +26,7 @@ test('P15 tall polymer still shorter than elevated gas cover, all parts connecte
  assert.ok(size(gas,'z')<size(polymer,'z')*.7);
  assert.ok(meets(polymer,gas)&&meets(gas,base));
  assert.ok(meets(polymer,lip));
- assert.ok(size(lip,'x')>.5&&size(lip,'x')<.6);
+ assert.ok(size(lip,'x')>.68&&size(lip,'x')<.72);
  assert.ok(box(lip).min.y<box(polymer).min.y-.045);
  assert.equal(polymer.userData.fncCrossSectionFaces,6);
  clearWeaponSilhouette(g);m.dispose();

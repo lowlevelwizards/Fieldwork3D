@@ -12,7 +12,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 const get=(g,k)=>g.children.find(c=>c.userData[k]);
 const box=g=>new THREE.Box3().setFromObject(g);
 const width=g=>box(g).max.x-box(g).min.x;
-test('P9: stamped hierarchy and raised magwell without standalone trigger frame',()=>{
+test('P17: lower receiver integrates magwell without a standalone hanging frame',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const upper=get(g,'fncP5CrownedReceiver');
  const lower=get(g,'fncAngularLower');
@@ -23,8 +23,8 @@ test('P9: stamped hierarchy and raised magwell without standalone trigger frame'
  assert.ok(g.children.every(x=>!x.name.includes('trigger-guard')));
  assert.ok(box(upper).max.z<box(lower).max.z-.3);
  assert.ok(box(seam).max.z>box(lower).max.z+.05);
- assert.ok(box(well).max.z>box(lower).max.z+.10);
- assert.ok(box(get(g,'fncGrip')).min.x<box(well).min.x);
+ assert.equal(well,lower,'magwell now belongs to ONE contiguous lower receiver mesh');
+ assert.ok(box(get(g,'fncGrip')).max.x<box(get(g,'fnc30RoundCurved')).min.x);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P8: right-side ejection is BEHIND the charging handle, not vice versa',()=>{
