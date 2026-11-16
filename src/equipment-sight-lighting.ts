@@ -61,7 +61,8 @@ export function actorLightingLevels(session:Session):ReadonlyMap<string,number>{
  const blockers=buildIlluminationBlockers(site.walls,session.doors,
   session.coverState);
  const sources=[...program.sources,
-  ...activeWeaponLightSources(session.operators,session.doors)];
+  ...activeWeaponLightSources(session.operators,session.doors,
+   {cover:session.coverState,walls:site.walls})];
  const levels=new Map<string,number>();
  for(const actor of session.operators){
   if(actor.health<=0)continue;
