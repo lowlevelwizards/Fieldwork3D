@@ -9,7 +9,7 @@ import {readWeaponFamilyBuild,initialWeaponFamilyBuild} from './equipment-weapon
 import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts';
 import {measureVisibleStockContact}
  from './breach-stock-contact-surface.ts';
-import {addHKClawRail,addHKRailVerticalGrip} from './weapons/geometry/hk-rail-accessories.ts';
+import {addHKClawRail} from './weapons/geometry/hk-rail-accessories.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 type Part=readonly [number,number,number,number,number,number,0|1];
 /** x, y, z, width, height, depth, material (0=steel, 1=dark). */
@@ -63,8 +63,6 @@ export function buildWeaponSilhouette(id:WeaponId,
    !config||config.slots.muzzle==='muzzle-bare');
   if(familyBuild.family==='hk'&&config?.slots.opticMount==='optic-hk-claw')
    addHKClawRail(root);
-  if(familyBuild.parts.handguard==='hk-mp5-trirail'&&
-   config?.slots.foregrip==='foregrip-vertical')addHKRailVerticalGrip(root);
   // Read-only art datum. Build-time only, never a second shot socket.
   root.userData.visibleStockContact=config?
     measureVisibleStockContact(root,config):null;
