@@ -108,6 +108,8 @@ import type {ActorAwareness} from './breach-awareness.ts';
 import {detectedSight,confirmedSight} from './breach-visual-perception.ts';
 
 import type {LightingMode} from './equipment-site-lighting.ts';
+import {powerControlAt,controlPosition,POWER_CONTROL_REACH}
+ from './equipment-site-power-controls.ts';
 import {type PassageLease} from './breach-passage.ts';
 import type {DoorTraversalEpisode} from './breach-door-traversal-episode.ts';
 import type {DoorHandContact} from './breach-door-hand-contact.ts';
@@ -493,6 +495,32 @@ export function planNearbyInteraction(s:Session,id:string,
  }
  if(!target)return false;
  return queue('window:'+target.id);
+}
+/** Author a single explicit power setting in the existing editable plan.
+ * Player knowledge gates the action; execution later checks real reach/LOS.
+ * Never switch power from a palette click or assume unseen switch positions.
+ */
+export function planSitePowerControl(s:Session,id:string,
+ controlId:string,on:boolean,afterNodeId?:number):boolean{
+ const a=party(s,id),site=s.site,power=s.sitePower;
+ if(!a||a.health<=0||!site||!power||!canEdit(s)||
+   power.mode!==s.lightingMode)return false;
+ const control=powerControlAt(site,controlId);
+ if(!control||!liveVisibility(s,control.p))return false;
+ const insertion=afterNodeId===undefined?-1:
+   a.plan.findIndex(n=>n.id===afterNodeId);
+ if(afterNodeId!==undefined&&insertion<0)return false;
+ const at=insertion>=0?a.plan[insertion].p:finalPoint(a);
+ if(controlPosition(at,control.p)>POWER_CONTROL_REACH)return false;
+ const now=control.kind==='breaker'?
+  power.circuits[control.circuit!]:power.switches[control.fixtureId!];
+ if(now===on)return false;
+ return edit(s,a,()=>{
+  const order:PlanNode={id:s.nextId++,kind:'interact',p:clone(at),
+   objectId:control.id,interaction:on?'power-on':'power-off'};
+  if(insertion>=0)a.plan.splice(insertion+1,0,order);
+  else a.plan.push(order);
+ });
 }
 /** Explicit authored civilian interaction: no distant or fog-granted
  * command. The target's current physical position is rechecked on GO. */

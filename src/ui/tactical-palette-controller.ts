@@ -5,6 +5,8 @@
 import {doorCenter,type Door,type Pt} from '../breach-core.ts';
 const paletteDistance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 import {canRelocateCover} from '../breach-movable-cover.ts';
+import {sitePowerControls,controlPosition,POWER_CONTROL_REACH,
+ currentControlState} from '../equipment-site-power-controls.ts';
 import {interruptsWatch} from '../breach-plan.ts';
 import {equippedEntryMethods} from '../equipment-entry-tools.ts';
 import {entryToolVerdict} from '../breach-entry-tools.ts';
@@ -344,6 +346,25 @@ export function createTacticalPaletteController(config:{
     paletteDistance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
   const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
     paletteDistance(at,{x:w.x,y:w.y})<54);
+  const powerActions:ContextAction[]=[];
+  if(state.site&&state.sitePower&&state.sitePower.mode===state.lightingMode){
+    const power=state.sitePower;
+    // Only physically nearby and currently seen hardware can enter the
+    // palette. Do not offer hidden switches via the floor plan.
+    for(const control of sitePowerControls(state.site)){
+      if(controlPosition(at,control.p)>POWER_CONTROL_REACH||
+         !liveVisibility(state,control.p))continue;
+      const on=currentControlState(control,power.circuits,power.switches);
+      const name=control.kind==='switch'?'ROOM LIGHT':
+        control.circuit==='mains:0'?'MAINS A':
+        control.circuit==='mains:1'?'MAINS B':'EMERGENCY';
+      powerActions.push({id:'ctxPower:'+(on?'off:':'on:')+control.id,
+        label:(on?'CUT ':'RESTORE ')+name,group:'primary',
+        title:'Queue a timed physical '+(on?'OFF':'ON')+
+          ' action at this '+(control.kind==='switch'?'wall switch':'breaker panel')});
+      if(powerActions.length>=4)break; // bounded touch palette
+    }
+  }
   const treatTarget=input.medicalCandidate(at);
   // WATCH remains active through later waypoints until LOOK or RELEASE.
   // Read the authored history, not merely this node's local modifier.
@@ -368,7 +389,7 @@ export function createTacticalPaletteController(config:{
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
   const choices=availableActions(!!selectedWatch,{
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
-    nearMovable,nearWindow,treatTargetName:treatTarget?.name,
+    nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
     nearDoor:!door&&!!nearbyDoor,
     nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
     escortableCivilian:!!civilianAtPlan&&

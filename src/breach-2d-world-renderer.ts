@@ -16,6 +16,7 @@ import {spatialSurfaceState,windowPresentationKnown} from './breach-presentation
 import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
+import {sitePowerControls,currentControlState} from './equipment-site-power-controls.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipment-weapon-light-beam.ts';
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
@@ -38,6 +39,21 @@ export function createBreach2DWorldRenderer({
  draw,rect,line,circle,getState,isReplaying,getDoorFocusId,
  replayKnowledge,replayPlayback
 }:World2DDrawing){
+const controlDiscoveryCache=new WeakMap<Session,{site:NonNullable<Session['site']>;
+ bucket:number;revision:number;ids:ReadonlySet<string>}>();
+function visiblePowerControlIds(state:Session):ReadonlySet<string>{
+ if(!state.site)return new Set();
+ const bucket=Math.floor(state.seconds*8);
+ const entry=controlDiscoveryCache.get(state);
+ if(entry&&entry.site===state.site&&entry.bucket===bucket&&
+    entry.revision===state.objectRevision)return entry.ids;
+ const ids=new Set<string>();
+ for(const c of sitePowerControls(state.site))
+  if(liveVisibility(state,c.p))ids.add(c.id);
+ controlDiscoveryCache.set(state,{site:state.site,bucket,
+  revision:state.objectRevision,ids});
+ return ids;
+}
 function noise(x:number,y:number){const v=Math.sin(x*123.31+y*98.717)*43897.44;return v-Math.floor(v);}
 function terrain(){
   const state=getState();
@@ -274,6 +290,26 @@ function architecture(){
       circle(contact.x,contact.y,3.8,warning);
     }
     draw.restore();
+  }
+  // Small, knowledge-gated physical electrical props; game illumination
+  // remains authoritative and these marks never disclose unvisited rooms.
+  if(state.site&&state.sitePower){
+    const power=state.sitePower;
+    const seenControls=visiblePowerControlIds(state);
+    const drawn=new Set<string>();
+    for(const control of sitePowerControls(state.site)){
+      if(!seenControls.has(control.id))continue;
+      const key=control.p.x+','+control.p.y;
+      if(drawn.has(key))continue;drawn.add(key);
+      const on=currentControlState(control,power.circuits,power.switches);
+      const size=control.kind==='breaker'?6:3.6;
+      rect(control.p.x-size/2,control.p.y-size/2,size,size,
+        on?'#aaad86':'#62584e');
+      if(control.kind==='breaker')
+        line({x:control.p.x-2,y:control.p.y},
+          {x:control.p.x+2,y:control.p.y},
+          '#ded7ba',1.4);
+    }
   }
   // Generated windows use the same real aperture as physical shots and 3D.
   // Unknown interior glass must not be outlined through historical fog.

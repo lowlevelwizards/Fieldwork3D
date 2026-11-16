@@ -7,7 +7,7 @@ import {type Session,type TeamActor,plannedControl,finalPoint,
  setFirePolicy,planCivilianInteraction,planCivilianRelease,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planMedicalTreatment,
- planNearbyInteraction,removeActiveWatch,deletePlanNode,
+ planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
  doorAtNode,planEntryTool,liveVisibility} from './breach-game.ts';
 import type {EntryTool} from './breach-entry-tools.ts';
 
@@ -25,6 +25,15 @@ export function dispatchTacticalContextCommand(input:{
  const {state,selected,actor:a,node,door,action}=input;
  const handled:ContextCommandResult={handled:true};
  const current=plannedControl(state,selected,node?.id);
+ if(action.startsWith('ctxPower:')){
+  const parts=action.split(':');
+  const on=parts[1]==='on';
+  const off=parts[1]==='off';
+  const controlId=parts.slice(2).join(':');
+  if((!on&&!off)||!planSitePowerControl(state,selected,controlId,on,node?.id))
+   state.events.push('POWER CONTROL NOT REACHABLE OR ALREADY SET');
+  return {handled:true,skipFeedback:true};
+ }
  if(door&&action.startsWith('ctxTool-')){
   const method=action.slice('ctxTool-'.length) as EntryTool;
   const nearNode=node&&distance(node.p,doorCenter(door))<=43;

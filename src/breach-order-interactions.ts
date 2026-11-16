@@ -12,6 +12,9 @@ import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {coverTargetIndex} from './worldgen/site-object-identity.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {manipulateWindow} from './breach-windows.ts';
+import {powerControlAt,controlPosition,POWER_CONTROL_REACH,
+ POWER_ACTION_SECONDS} from './equipment-site-power-controls.ts';
+import {setSiteCircuitPower,setSiteFixtureSwitch} from './equipment-site-power.ts';
 import {completeOrder,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
@@ -35,6 +38,12 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       (n.interaction==='secure-civilian'||
        n.interaction==='follow-civilian');
     if(!contactCommand&&!near(a.p,n.p,7)){
+      // Once an electrical action has begun, losing the contact position
+      // cancels it rather than letting an absent hand finish remotely.
+      if((n.interaction==='power-on'||n.interaction==='power-off')&&
+         a.actionTimer>0){
+        failCurrentOrder(s,a,n,'POWER CONTROL CONTACT LOST');return true;
+      }
       approach(a,n.p,dt,s,.65);return true;
     }
     if(n.interaction==='release-civilian'){
@@ -87,6 +96,40 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         if(person.rescueTarget&&s.rescue)s.rescue.following=null;
         notify(s,a.name+' SECURED CIVILIAN');
       }
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
+    if(n.interaction==='power-on'||n.interaction==='power-off'){
+      const control=s.site?powerControlAt(s.site,n.objectId):undefined;
+      if(!control||a.health<=0||!s.sitePower||
+         s.sitePower.mode!==s.lightingMode){
+        failCurrentOrder(s,a,n,'POWER CONTROL UNAVAILABLE');return true;
+      }
+      // Wall fixtures are ~5 units in front of the real wall surface.
+      // A narrow optical/contact sweep prevents through-wall use without
+      // claiming the actor's full collision radius must enter the wall.
+      if(controlPosition(a.p,control.p)>POWER_CONTROL_REACH||
+         !sweptBodyClear(a.p,control.p,s.doors,1.5,sessionWorldGeometry(s))){
+        failCurrentOrder(s,a,n,'POWER CONTROL OUT OF REACH');return true;
+      }
+      a.velocity=0;a.actionTimer+=dt;
+      if(a.actionTimer<POWER_ACTION_SECONDS)return true;
+      const desired=n.interaction==='power-on';
+      const prior=control.kind==='breaker'?
+        s.sitePower.circuits[control.circuit!]:
+        s.sitePower.switches[control.fixtureId!];
+      // Two people reaching the same control in one fixed tick resolve
+      // in the existing stable actor order. Explicit SET requests never
+      // accidentally flip a switch back on the second completion.
+      const changed=control.kind==='breaker'?
+        setSiteCircuitPower(s,control.circuit!,desired):
+        setSiteFixtureSwitch(s,control.fixtureId!,desired);
+      if(!changed&&prior!==desired){
+        failCurrentOrder(s,a,n,'POWER CONTROL NO LONGER AVAILABLE');return true;
+      }
+      notify(s,a.name+' '+(desired?'RESTORED':'CUT')+' '+
+        (control.kind==='breaker'?control.circuit!:control.roomId+' LIGHT'));
+      battleEvent(s,'interaction',a,a.p,
+        a.name+' '+(desired?'RESTORED':'CUT')+' POWER');
       clearCurrentOrderIssue(a);pop(a);return true;
     }
     const [kind,id]=n.objectId.split(':');
