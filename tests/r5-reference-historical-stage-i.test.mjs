@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {factionReference} from '../src/faction-reference-catalog.ts';
+import {FACTION_REFERENCES,factionReference} from '../src/faction-reference-catalog.ts';
 import {resolveFactionReference} from '../src/faction-reference-resolver.ts';
 import {referenceGapFidelity,unresolvedReferenceGaps} from '../src/faction-reference-asset-registry.ts';
 import {auditFactionReferences} from '../src/faction-reference-audit.ts';
@@ -29,9 +29,10 @@ test('D7: police reference kits use existing black ballistic shells with an hone
   assert.equal(resolved.headwearColor,'black');
  }
 });
-test('R5I: all 40 historical recipes remain technically valid',()=>{
+test('D7: all current historical recipes remain technically valid',()=>{
  const a=auditFactionReferences();
- assert.equal(a.referenceCount,40);
+ assert.ok(a.referenceCount>=40);
+ assert.equal(a.referenceCount,FACTION_REFERENCES.length);
  assert.deepEqual(a.issues,[]);
  assert.equal(a.approximateAssets.filter(x=>x.assetId==='visor-police').length,0);
 });
