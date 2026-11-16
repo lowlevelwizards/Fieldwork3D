@@ -46,3 +46,9 @@
 .breach-training-personal-best{display:block;margin-top:5px;color:#bed5c1;font:600 11px 'Work Sans',sans-serif;line-height:1.4}
 
 .breach-training-quick button[hidden]{display:none!important}
+
+.breach-training-breakdown{margin-top:13px;padding:10px;border:1px solid #637e72;border-radius:7px;background:#112322}
+.breach-training-breakdown>strong{font:700 13px 'Saira Condensed',sans-serif;letter-spacing:.07em}
+.breach-training-breakdown>div{display:flex;justify-content:space-between;gap:12px;margin-top:6px;font:12px 'Work Sans',sans-serif}
+.breach-training-breakdown>div output{white-space:nowrap;font-weight:700}
+.breach-training-breakdown p{margin:9px 0 0;color:#e5bcae;font-size:11px}

@@ -89,6 +89,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const resultTitle=document.createElement('h2');
  const resultSummary=document.createElement('p');
  const resultStats=document.createElement('div');resultStats.className='breach-training-result-stats';
+ const breakdown=document.createElement('div');breakdown.className='breach-training-breakdown';
  const resultActions=document.createElement('div');
  resultActions.className='breach-training-actions';
  resultActions.append(button('RETRY COURSE',()=>{close();retry();}),
@@ -96,7 +97,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
   button('CHANGE COURSE',()=>show()),
   button('BACK TO GAME',()=>close()),
   button('MAIN MENU',()=>{close();hooks.onReturnToMenu();}));
- resultPanel.append(resultTitle,resultSummary,resultStats,resultActions);
+ resultPanel.append(resultTitle,resultSummary,resultStats,breakdown,resultActions);
  root.append(panel,resultPanel);
  document.body.append(root);
  const quick=document.createElement('div');quick.id='breachTrainingQuickTools';
@@ -163,7 +164,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
   resultSummary.textContent=(TRIALS[config.trial??'discrimination']?.name??'TRIAL')+
    ' · '+result.grade+' · '+result.score+' / 100'+
    (personalBest?' · NEW PERSONAL BEST':'');
-  resultStats.replaceChildren();
+  resultStats.replaceChildren();breakdown.replaceChildren();
   for(const [label,value] of [
    ['TARGETS',result.targetsHit+' / '+result.targetsTotal],
    ['NO-SHOOT HITS',String(result.noShootHits)],
@@ -172,6 +173,19 @@ export function createBreachTrainingScreen(hooks:Hooks){
    ['EXECUTION',result.elapsed.toFixed(1)+'s']]){
    const item=document.createElement('div');item.textContent=label+' · '+value;
    resultStats.append(item);
+  }
+  const title=document.createElement('strong');title.textContent='SCORING';
+  breakdown.append(title);
+  for(const component of result.components){
+   const row=document.createElement('div');
+   const label=document.createElement('span');label.textContent=component.name;
+   const value=document.createElement('output');value.textContent=component.points+' PTS';
+   row.append(label,value);breakdown.append(row);
+  }
+  if(result.outcome==='failed'){
+   const fail=document.createElement('p');
+   fail.textContent='SAFETY OR TIME FAILURE OVERRIDES PARTIAL POINTS';
+   breakdown.append(fail);
   }
  }
  function sync():void{
