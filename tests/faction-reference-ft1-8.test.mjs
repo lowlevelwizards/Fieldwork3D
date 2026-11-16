@@ -17,3 +17,17 @@ test('FT1.8 never invents a missing candidate',()=>{
  assert.deepEqual(ft18MissingSeedIds(remaining),['gap:fnc-family']);
  assert.ok(!buildFT18Triage(remaining).some(x=>x.candidate.id==='gap:fnc-family'));
 });
+
+test('FT1.8 model audit verifies real FNC/G3 presets, never assumes other models absent',async()=>{
+ const {inspectFT18Catalog,ft18PotentialMappingFixes}=await import('../src/faction-reference-ft1-8-asset-checks.ts');
+ const rows=inspectFT18Catalog();
+ assert.equal(rows.length,10);
+ assert.ok(rows.every(x=>x.verifiedModelAbsence===false));
+ const fnc=rows.find(x=>x.candidateId==='gap:fnc-family');
+ assert.equal(fnc.modelId,'fnc-service');
+ assert.equal(fnc.status,'existing-not-selected');
+ const ag3=rows.find(x=>x.candidateId==='gap:ag3-variant');
+ assert.equal(ag3.modelId,'hk-g3a3');
+ assert.equal(ag3.status,'representative-selected');
+ assert.ok(ft18PotentialMappingFixes().every(x=>x.references.length>0));
+});
