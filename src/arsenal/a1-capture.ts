@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import {ARSENAL_REFERENCES} from './catalog.ts';
-import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment}
+import {initialWeaponConfiguration,selectWeaponFamilyPreset,setWeaponAttachment,setConfiguredFamilyPart}
  from '../equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../breach-weapon-geometry.ts';
@@ -45,15 +45,48 @@ const label=(title:string,src:string,gray=false)=>{
  const caption=document.createElement('figcaption');caption.textContent=title;
  frame.append(img,caption);return frame;
 };
-const accessoryReview=new URLSearchParams(location.search).has('a2');
-const reviewIds=new Set(['ar-m4a1','ak-ak74m','hk-g3a3','hk-mp5a3','fal-5000','fnc-service']);
+const query=new URLSearchParams(location.search);
+const a3Review=query.has('a3'),a2Review=query.has('a2');
+const accessoryReview=a2Review||a3Review;
+const a2Ids=new Set(['ar-m4a1','ak-ak74m','hk-g3a3','hk-mp5a3','fal-5000','fnc-service']);
+const a3Ids=new Set(['ar-m4a1','ak-ak74m','hk-g3a3','hk-hk33a2',
+ 'hk-hk53a3','hk-mp5a3','hk-mp5sd3','fal-5000','fnc-service']);
+const reviewIds=a3Review?a3Ids:a2Ids;
 const reviewRefs=accessoryReview?ARSENAL_REFERENCES.filter(ref=>reviewIds.has(ref.id)):ARSENAL_REFERENCES;
 async function generate(){
- if(accessoryReview&&reviewRefs.length!==6)throw Error('A2 sample IDs changed');
+ if(accessoryReview&&reviewRefs.length!==(a3Review?9:6))
+  throw Error('Accessory sample IDs changed');
  let mountedModels=0;
  for(const ref of reviewRefs){
   let config=selectWeaponFamilyPreset(initialWeaponConfiguration(ref.legacy.weapon),ref.id);
-  if(accessoryReview){
+  if(a3Review){
+   // Capture only actually accepted build choices. Do not show invented
+   // loadouts on FAL/FNC, or a detachable suppressor over an MP5SD.
+   if(ref.id==='ak-ak74m'){
+    config=setConfiguredFamilyPart(config,'handguard','ak-rail-long');
+    if(config.build?.parts.handguard!=='ak-rail-long')throw Error('A3 AK rail refused');
+   }
+   if(ref.id==='hk-mp5a3'){
+    config=setConfiguredFamilyPart(config,'handguard','hk-mp5-trirail');
+    if(config.build?.parts.handguard!=='hk-mp5-trirail')throw Error('A3 MP5 tri-rail refused');
+   }
+   const wanted:[string,string][]=[
+    ['light','light-compact'],['sling','sling-two-point']
+   ];
+   if(ref.platformId==='g3'||ref.platformId==='hk33'||ref.platformId==='mp5')
+    wanted.push(['opticMount','optic-hk-claw']);
+   if(['ar15','ak','g3','hk33','mp5'].includes(ref.platformId))
+    wanted.push(['optic',ref.platformId==='ar15'?'optic-magnified':'optic-reflex']);
+   if(ref.id!=='hk-mp5sd3')wanted.push(['muzzle','muzzle-suppressor']);
+   if(['ar-m4a1','ak-ak74m','hk-mp5a3'].includes(ref.id))
+    wanted.push(['foregrip','foregrip-vertical']);
+   for(const [slot,id] of wanted){
+    const next=setWeaponAttachment(config,slot as 'optic'|'muzzle'|'foregrip'|'light'|'sling'|'opticMount',id);
+    if(next.slots[slot as 'optic'|'muzzle'|'foregrip'|'light'|'sling'|'opticMount']!==id)
+     throw Error('A3 equipped config refused '+ref.id+' / '+slot+'='+id);
+    config=next;
+   }
+  }else if(a2Review){
    if(config.build?.family==='hk')config=setWeaponAttachment(config,'opticMount','optic-hk-claw');
    for(const [slot,id] of [['optic','optic-reflex'],['muzzle','muzzle-suppressor'],
     ['light','light-compact'],['foregrip','foregrip-vertical']] as const)
@@ -74,6 +107,7 @@ async function generate(){
   accessories.traverse(node=>{if(node instanceof THREE.Mesh)node.geometry.dispose();});
   const section=document.createElement('section');section.className='preset';
   section.dataset.presetId=ref.id;
+  section.dataset.acceptedAccessories=Object.values(config.slots).join(',');
   const heading=document.createElement('h2');heading.textContent=ref.name+' ';
   const sub=document.createElement('small');sub.textContent=' / '+ref.id+' / '+ref.platformId;
   heading.append(sub);
@@ -86,11 +120,13 @@ async function generate(){
   if(holder.children.length%6===0)await new Promise(resolve=>requestAnimationFrame(()=>resolve(null)));
  }
  renderer.dispose();renderer.forceContextLoss();
- if(accessoryReview&&mountedModels!==6)throw Error('A2 sample accessory coverage incomplete '+mountedModels);
+ if(accessoryReview&&mountedModels!==(a3Review?9:6))
+  throw Error('Accessory sample coverage incomplete '+mountedModels);
  status.textContent='Capture complete: '+reviewRefs.length+' '+(accessoryReview?'equipped':'factory')+' presets · 4 fixed views';
  document.body.dataset.a1Complete='true';
  document.body.dataset.a1Count=String(reviewRefs.length);
  document.body.dataset.a2EquippedCount=String(mountedModels);
+ document.body.dataset.a3EquippedCount=a3Review?String(mountedModels):'0';
 }
 generate().catch(error=>{
  console.error(error);
