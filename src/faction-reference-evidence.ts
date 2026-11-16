@@ -1,6 +1,7 @@
 /** FT1.1 dated-source records. A verified record supports only its stated
  * claim, not every assertion about the item, unit or full service interval.
  */
+import {FT12_EVIDENCE} from './faction-reference-equipment-ft1-2.ts';
 export type HistoricalEvidence={
  id:string;title:string;publisher:string;url:string;
  kind:'official'|'museum'|'publication';
@@ -65,7 +66,8 @@ export const HISTORICAL_EVIDENCE:readonly HistoricalEvidence[]=[
  {id:'ddr-strichtarn-1981',title:'Felddienstuniform (Winter)',
   publisher:'DDR Museum Berlin',url:'https://www.ddr-museum.de/de/objects/1028224',
   kind:'museum',published:'1981',
-  claim:'NVA Strichtarn winter field uniform object dated 1981; not universal 1980 issue proof.'}
+  claim:'NVA Strichtarn winter field uniform object dated 1981; not universal 1980 issue proof.'},
+ ...FT12_EVIDENCE
 ];
 export const historicalEvidence=(id:string):HistoricalEvidence|undefined=>
  HISTORICAL_EVIDENCE.find(e=>e.id===id);

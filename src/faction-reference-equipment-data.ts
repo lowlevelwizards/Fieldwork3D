@@ -3,6 +3,7 @@
  * Distinct policy/fielding/trial claims are never converted into rarity weights.
  */
 import type {ReferenceEnvironment} from './faction-reference-catalog.ts';
+import {FT12_ASSOCIATIONS} from './faction-reference-equipment-ft1-2.ts';
 export type HistoricalAvailability='experimental'|'emerging'|'standard'|'legacy'|'surplus'|'unknown';
 export type HistoricalIssueStatus='documented-use'|'authorized'|'trial'|'planned';
 export type HistoricalConfidence='verified'|'tentative'|'unverified';
@@ -67,5 +68,6 @@ export const HISTORICAL_ISSUE_RECORDS:readonly HistoricalEquipmentAssociation[]=
   ['ddr-m56-museum'],'Museum identifies this NVA helmet but does not substantiate the selected year 1980.',
   {datePrecision:'approximate',confidence:'tentative'}),
  a('nva-field','nva-strichtarn-1981','ddr-strichtarn',1981,1981,'unknown','documented-use',
-  ['ddr-strichtarn-1981'],'Museum identifies a specifically dated 1981 NVA winter field uniform.')
+  ['ddr-strichtarn-1981'],'Museum identifies a specifically dated 1981 NVA winter field uniform.'),
+ ...FT12_ASSOCIATIONS
 ];
