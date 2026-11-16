@@ -1,5 +1,5 @@
-/** Run manually / in an available Playwright browser environment for FT1.9B art gate.
- * Real Vite WebGL, same model source as the future production path; no image stub.
+/** FT1.9C: actual browser WebGL capture of original G36, production art peers.
+ * Run by the existing G36 dedicated visual workflow; no dummy image generation.
  */
 import {spawn} from 'node:child_process';
 import {mkdir} from 'node:fs/promises';
@@ -13,10 +13,10 @@ try{
   try{if((await fetch(origin+'/g36-ft19b-lab.html')).ok){ready=true;break;}}catch{}
   await new Promise(resolve=>setTimeout(resolve,150));
  }
- if(!ready)throw Error('FT1.9B lab unavailable');
+ if(!ready)throw Error('G36 FT1.9C peer lab unavailable');
  const browser=await chromium.launch({headless:true});
  try{
-  const page=await browser.newPage({viewport:{width:1220,height:1810},deviceScaleFactor:1});
+  const page=await browser.newPage({viewport:{width:1220,height:2120},deviceScaleFactor:1});
   const errors=[];
   page.on('pageerror',err=>errors.push(err.message));
   page.on('console',msg=>{if(msg.type()==='error')errors.push(msg.text());});
@@ -24,27 +24,50 @@ try{
   await page.waitForFunction(()=>document.body.dataset.g36LabReady==='true'&&
    document.body.dataset.g36LabCount==='7',null,{timeout:30000});
   await mkdir('g36-ft19b-captures',{recursive:true});
-  const snap=async name=>{
-   const b=await page.locator('.lab').screenshot({path:'g36-ft19b-captures/'+name+'.png'});
-   if(b.length<10000)throw Error('Blank lab: '+name);
+  const snap=async (selector,name,minimum=2000)=>{
+   const png=await page.locator(selector).screenshot({path:'g36-ft19b-captures/'+name+'.png'});
+   if(png.length<minimum)throw Error('Blank WebGL capture '+name+' ('+png.length+' bytes)');
+   return png;
   };
-  await snap('g36-peers-side');
-  for(const [button,file] of [
-   ['THREE-QUARTER','g36-peers-three-quarter'],
-   ['OPPOSITE SIDE','g36-peers-opposite'],
-   ['TOP','g36-master-top'],['FRONT','g36-master-front']
-  ]){
+  const view=async (button,id)=>{
    await page.getByRole('button',{name:button,exact:true}).click();
-   await snap(file);
+   await page.waitForFunction(expected=>document.body.dataset.g36LabView===expected,id);
+   await page.waitForTimeout(60);
+  };
+  const finish=async (button,id)=>{
+   await page.getByRole('button',{name:button,exact:true}).click();
+   await page.waitForFunction(expected=>document.body.dataset.g36LabFinish===expected,id);
+  };
+  await snap('.lab','g36-peers-side',10000);
+  const side=await snap('#detail','g36-master-side',2000);
+  for(const [button,id] of [
+   ['THREE-QUARTER','three-quarter'],['OPPOSITE SIDE','opposite'],
+   ['TOP','top'],['FRONT','front']
+  ]){
+   await view(button,id==='three-quarter'?'quarter':id);
+   await snap('.lab','g36-peers-'+id,10000);
+   const single=await snap('#detail','g36-master-'+id,1500);
+   if(single.equals(side))throw Error('View '+id+' retained old side silhouette');
   }
-  await page.getByRole('button',{name:'SIDE',exact:true}).click();
+  await finish('LIT CLAY','clay');
+  await view('THREE-QUARTER','quarter');
+  await snap('.lab','g36-peers-clay-three-quarter',10000);
+  await snap('#detail','g36-master-clay-three-quarter',2000);
+  await view('SIDE','side');
+  await snap('#detail','g36-master-clay-side',2000);
+  await view('TOP','top');
+  await snap('#detail','g36-master-clay-top',2000);
+  await view('FRONT','front');
+  await snap('#detail','g36-master-clay-front',1500);
+  await finish('FLAT SILHOUETTE','flat');
+  await view('SIDE','side');
   for(const [id,name] of [['thumb128','g36-master-128px'],['thumb64','g36-master-64px']]){
-   const bytes=await page.locator('#'+id).screenshot({path:'g36-ft19b-captures/'+name+'.png'});
-   if(bytes.length<300)throw Error('Missing small silhouette: '+name);
+   const b=await page.locator('#'+id).screenshot({path:'g36-ft19b-captures/'+name+'.png'});
+   if(b.length<300)throw Error('Missing small silhouette '+name);
   }
   await page.setViewportSize({width:430,height:1260});
-  await snap('g36-peers-mobile');
+  await snap('.lab','g36-peers-mobile',9000);
   if(errors.length)throw Error('G36 browser errors: '+errors.join('; '));
-  console.log('FT1.9B real WebGL images saved. Human art review still required.');
+  console.log('FT1.9C WebGL: seven peers, all five views, isolated and clay / flat captures passed. Review pending.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}

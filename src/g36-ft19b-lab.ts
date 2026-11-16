@@ -1,85 +1,149 @@
-/** FT1.9B: real model, shared camera and monochrome peer reference capture.
- * Isolated development entry only; no factory registration or gameplay writes.
+/** FT1.9C: the same G36 core geometry and six production peer builders.
+ * Fixed orthographic row framing in all views: rotate each mesh at its own
+ * row pivot, never look down the axis used to separate the comparison rows.
+ * One flat black silhouette or shared softly lit clay; only render on events.
  */
 import * as THREE from 'three';
 import {buildG36OriginalBlockout} from './weapons/geometry/g36-silhouettes.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
 import {weaponVisualLayout} from './weapons/geometry/weapon-visual-layout.ts';
+import {addArsenalInspectionLighting} from './arsenal/inspection-lighting.ts';
+
 const canvas=document.querySelector<HTMLCanvasElement>('#view');
+const detail=document.querySelector<HTMLCanvasElement>('#detail');
 const small128=document.querySelector<HTMLCanvasElement>('#thumb128');
 const small64=document.querySelector<HTMLCanvasElement>('#thumb64');
-if(!canvas||!small128||!small64)throw Error('FT1.9B: missing lab canvases');
-const renderer=new THREE.WebGLRenderer({canvas,antialias:false,powerPreference:'low-power'});
-const thumb128=new THREE.WebGLRenderer({canvas:small128,antialias:false,powerPreference:'low-power'});
-const thumb64=new THREE.WebGLRenderer({canvas:small64,antialias:false,powerPreference:'low-power'});
-renderer.setPixelRatio(1);
+if(!canvas||!detail||!small128||!small64)
+ throw Error('FT1.9C: missing comparison, detail, or thumbnail canvases');
+const mainCanvas=canvas,detailCanvas=detail;
+const renderer=new THREE.WebGLRenderer({canvas:mainCanvas,antialias:false,powerPreference:'low-power'});
+const detailRenderer=new THREE.WebGLRenderer({canvas:detailCanvas,antialias:true,powerPreference:'low-power'});
+const thumbnail128=new THREE.WebGLRenderer({canvas:small128,antialias:false,powerPreference:'low-power'});
+const thumbnail64=new THREE.WebGLRenderer({canvas:small64,antialias:false,powerPreference:'low-power'});
+for(const r of [renderer,detailRenderer,thumbnail128,thumbnail64])r.setPixelRatio(1);
+
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0xa1aaa0);
-const mono=new THREE.MeshBasicMaterial({color:0x29392f,side:THREE.DoubleSide});
-const items:{name:string;model:THREE.Group}[]=[];
+addArsenalInspectionLighting(scene);
+const mono=new THREE.MeshBasicMaterial({color:0x27372e,side:THREE.DoubleSide});
+const clay=new THREE.MeshStandardMaterial({
+ color:0x68766a,roughness:.96,metalness:0,flatShading:true,side:THREE.DoubleSide
+});
+type View='side'|'quarter'|'opposite'|'top'|'front';
+type Finish='flat'|'clay';
+const names:[string,'rifle'|'carbine',string][]=[
+ ['FNC service','rifle','fnc-service'],
+ ['FAL 50.00','rifle','fal-5000'],
+ ['G3A3','rifle','hk-g3a3'],
+ ['M16A2','rifle','ar-m16a2'],
+ ['M4A1','carbine','ar-m4a1'],
+ ['AKM','rifle','ak-akm']
+];
+const items:{name:string;model:THREE.Group;pivot:THREE.Group}[]=[];
 const g36=buildG36OriginalBlockout(mono);
 g36.scale.x=.94;
-items.push({name:'G36 original',model:g36});
-for(const [name,weapon,preset] of [
- ['FNC service','rifle','fnc-service'],['FAL 50.00','rifle','fal-5000'],
- ['G3A3','rifle','hk-g3a3'],['M16A2','rifle','ar-m16a2'],
- ['M4A1','carbine','ar-m4a1'],['AKM','rifle','ak-akm']
-] as const){
+items.push({name:'G36 original',model:g36,pivot:new THREE.Group()});
+for(const [name,weapon,preset] of names){
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(weapon),preset);
  const model=buildWeaponSilhouette(weapon,mono,mono,cfg);
- model.traverse(obj=>{if(obj instanceof THREE.Mesh)obj.material=mono;});
+ model.traverse(node=>{if(node instanceof THREE.Mesh)node.material=mono;});
  model.scale.x=weaponVisualLayout(cfg).longitudinalScale;
- items.push({name,model});
+ items.push({name,model,pivot:new THREE.Group()});
 }
-items.forEach(({model},i)=>{model.position.y=69-i*23;scene.add(model);});
-const camera=new THREE.OrthographicCamera(-60,60,83,-83,.1,400);
-const singleCamera=new THREE.OrthographicCamera(-19,19,19,-19,.1,400);
-type View='side'|'quarter'|'opposite'|'top'|'front';
-let view:View='side';
-function poseCamera(camera:THREE.OrthographicCamera,mode:View,targetY:number):void{
- const target=new THREE.Vector3(1,targetY,0);
- const vec=mode==='quarter'?new THREE.Vector3(26,18,90):
-  mode==='opposite'?new THREE.Vector3(1,0,-94):
-  mode==='top'?new THREE.Vector3(1,94,.01):
-  mode==='front'?new THREE.Vector3(94,0,.01):new THREE.Vector3(1,0,94);
- camera.up.set(0,mode==='top'?0:1,mode==='top'?-1:0);
- camera.position.copy(target).add(vec);
- camera.lookAt(target);camera.updateProjectionMatrix();
-}
-function render():void{
- const w=Math.max(canvas!.clientWidth,1),h=Math.max(canvas!.clientHeight,1);
- renderer.setSize(w,h,false);
- const halfH=Math.max(81,28/(w/h));
- camera.top=halfH;camera.bottom=-halfH;
- camera.left=-halfH*w/h;camera.right=halfH*w/h;
- poseCamera(camera,view,0);
- renderer.render(scene,camera);
- for(const [side,preview] of [[128,thumb128],[64,thumb64]] as const){
-  preview.setPixelRatio(1);preview.setSize(side,side,false);
-  singleCamera.left=-19;singleCamera.right=19;
-  singleCamera.top=19;singleCamera.bottom=-19;
-  poseCamera(singleCamera,'side',69);
-  preview.render(scene,singleCamera);
+items.forEach(({model,pivot},i)=>{
+ pivot.position.y=69-i*23;
+ pivot.add(model);
+ scene.add(pivot);
+});
+let view:View='side',finish:Finish='flat';
+const camera=new THREE.OrthographicCamera(-58,58,83,-83,.1,400);
+const oneCamera=new THREE.OrthographicCamera(-21,21,13,-13,.1,400);
+const smallCamera=new THREE.OrthographicCamera(-19,19,19,-19,.1,400);
+function orient():void{
+ // The model rotates in its own row; the Y-stacked comparison row NEVER
+ // disappears in TOP or FRONT (prior FT1.9B camera-axis mistake).
+ for(const {pivot} of items){
+  pivot.rotation.set(0,0,0);
+  if(view==='quarter')pivot.rotation.set(.13,-.30,0);
+  else if(view==='opposite')pivot.rotation.y=Math.PI;
+  else if(view==='top')pivot.rotation.x=Math.PI/2;
+  else if(view==='front')pivot.rotation.y=-Math.PI/2;
  }
 }
-const views:View[]=['side','quarter','opposite','top','front'];
-for(const mode of views){
- const button=document.getElementById(mode);
- if(!(button instanceof HTMLButtonElement))throw Error('Missing G36 view: '+mode);
- button.addEventListener('click',()=>{
-  view=mode;
-  for(const id of views)document.getElementById(id)?.setAttribute('aria-pressed',String(id===mode));
-  render();
- });
+function cameraAt(cam:THREE.OrthographicCamera,y:number):void{
+ cam.position.set(1,y,160);
+ cam.up.set(0,1,0);
+ cam.lookAt(1,y,0);
+ cam.updateProjectionMatrix();
 }
-let resizeObserver:ResizeObserver|undefined;
-resizeObserver=new ResizeObserver(render);resizeObserver.observe(canvas);
+function render():void{
+ orient();
+ const w=Math.max(1,mainCanvas.clientWidth),h=Math.max(1,mainCanvas.clientHeight);
+ renderer.setSize(w,h,false);
+ const halfH=Math.max(83,28/(w/h));
+ camera.top=halfH;camera.bottom=-halfH;
+ camera.left=-halfH*w/h;camera.right=halfH*w/h;
+ cameraAt(camera,0);
+ renderer.render(scene,camera);
+
+ const dw=Math.max(1,detailCanvas.clientWidth);
+ const dh=Math.max(1,detailCanvas.clientHeight);
+ detailRenderer.setSize(dw,dh,false);
+ const halfW=Math.max(19,13*dw/dh);
+ oneCamera.left=-halfW;oneCamera.right=halfW;
+ oneCamera.top=halfW*dh/dw;oneCamera.bottom=-halfW*dh/dw;
+ cameraAt(oneCamera,69);
+ detailRenderer.render(scene,oneCamera);
+
+ // Native 64px/128px comparisons retain SIDE view even when inspector rotates.
+ const restore=items[0].pivot.rotation.clone();
+ items[0].pivot.rotation.set(0,0,0);
+ cameraAt(smallCamera,69);
+ for(const [width,preview] of [[128,thumbnail128],[64,thumbnail64]] as const){
+  preview.setSize(width,width,false);
+  preview.render(scene,smallCamera);
+ }
+ items[0].pivot.rotation.copy(restore);
+}
+function setView(next:View):void{
+ view=next;
+ for(const id of ['side','quarter','opposite','top','front'])
+  document.getElementById(id)?.setAttribute('aria-pressed',String(id===view));
+ document.body.dataset.g36LabView=view;
+ render();
+}
+function setFinish(next:Finish):void{
+ finish=next;
+ const material=finish==='clay'?clay:mono;
+ for(const {model} of items){
+  model.traverse(node=>{if(node instanceof THREE.Mesh)node.material=material;});
+ }
+ for(const id of ['flat','clay'])
+  document.getElementById(id)?.setAttribute('aria-pressed',String(id===finish));
+ document.body.dataset.g36LabFinish=finish;
+ render();
+}
+for(const id of ['side','quarter','opposite','top','front'] as const){
+ const btn=document.getElementById(id);
+ if(!(btn instanceof HTMLButtonElement))throw Error('Missing G36 view '+id);
+ btn.addEventListener('click',()=>setView(id));
+}
+for(const id of ['flat','clay'] as const){
+ const btn=document.getElementById(id);
+ if(!(btn instanceof HTMLButtonElement))throw Error('Missing G36 finish '+id);
+ btn.addEventListener('click',()=>setFinish(id));
+}
+const observer=new ResizeObserver(render);
+observer.observe(mainCanvas);observer.observe(detailCanvas);
 window.addEventListener('pagehide',()=>{
- resizeObserver?.disconnect();
+ observer.disconnect();
  items.forEach(({model})=>clearWeaponSilhouette(model));
- mono.dispose();renderer.dispose();thumb128.dispose();thumb64.dispose();
+ mono.dispose();clay.dispose();
+ renderer.dispose();detailRenderer.dispose();
+ thumbnail128.dispose();thumbnail64.dispose();
 },{once:true});
+document.body.dataset.g36LabView=view;
+document.body.dataset.g36LabFinish=finish;
 render();
 document.body.dataset.g36LabReady='true';
 document.body.dataset.g36LabCount=String(items.length);
