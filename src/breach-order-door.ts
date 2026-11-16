@@ -95,7 +95,9 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
          [...s.operators.filter(other=>other!==a&&other.health>0)
            .map(other=>other.p),
           ...s.civilians.filter(c=>c.health>0).map(c=>c.p)],4.25);
-       if(point&&d(a.p,point)>3.5&&d(a.p,point)<75&&
+       // Never take a distant detour to reach an already targeted handle.
+       // Give the player a short local correction or a clear failed order.
+       if(point&&d(a.p,point)>3.5&&d(a.p,point)<45&&
           a.blockedTime<3.5&&a.recoveryAttempts<5){
          clearCurrentOrderIssue(a);
          approach(a,point,dt,s,.60);return true;
