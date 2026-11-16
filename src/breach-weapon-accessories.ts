@@ -7,14 +7,9 @@ import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER,
  from './weapons/geometry/weapon-visual-palette.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
-import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {accessoryBox,accessoryTube,accessoryFrame,accessoryProfile,accessoryMergedBoxes}
+ from './weapons/geometry/accessory-primitives.ts';
 import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
-const block=(root:THREE.Group,x:number,y:number,z:number,
- w:number,h:number,d:number,m:THREE.Material)=>{
- const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d),m);
- mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
- root.add(mesh);return mesh;
-};
 export function buildWeaponAccessories(raw:WeaponConfiguration,
  steel:THREE.Material,dark:THREE.Material,
  lensMaterial:THREE.Material=steel):THREE.Group{
@@ -25,53 +20,93 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  const polymer=raw.build?WEAPON_ACCESSORY_POLYMER:dark;
  const optic=parts.optic;
  // Claw rail is its own receiver mesh; raise only the separate fitted optic.
- const sightRise=raw.slots.opticMount==='optic-hk-claw'?1.50:0;
+ // A3: seat reflex/magnified base onto actual claw top (rather than hover).
+ const sightRise=raw.slots.opticMount==='optic-hk-claw'?1.15:0;
  if(optic.id==='optic-reflex'){
-  block(g,optic.mountX,3.8+sightRise,0,4,1.1,3,polymer);
-  block(g,optic.mountX,5+sightRise,0,3.3,2.8,.75,metal);
-  block(g,optic.mountX+1.3,5+sightRise,0,.55,2.3,2.9,polymer);
+  // A3: an actual open hood, not a solid sight tower. The sight origin is
+  // still the immutable equipment resolver's mountX/sightHeight.
+  accessoryBox(g,'weapon-accessory-optic-reflex-base',
+   optic.mountX,3.8+sightRise,0,4,1.1,3,metal);
+  accessoryFrame(g,'weapon-accessory-optic-reflex-hood',
+   optic.mountX,5.35+sightRise,0,3.5,2.8,.90,.57,polymer);
  }else if(optic.id==='optic-magnified'){
-  // One overscale objective bell, stout tube and two unmistakable mounts.
-  block(g,optic.mountX,5.10+sightRise,0,7.35,2.40,2.52,polymer);
-  block(g,optic.mountX+3.30,5.10+sightRise,0,1.55,3.48,3.48,metal);
-  block(g,optic.mountX-3.12,5.10+sightRise,0,1.00,2.75,2.85,metal);
-  block(g,optic.mountX-1.75,3.74+sightRise,0,1.00,1.36,1.72,metal);
-  block(g,optic.mountX+1.45,3.74+sightRise,0,1.00,1.36,1.72,metal);
-  block(g,optic.mountX-.42,6.51+sightRise,0,1.32,.96,1.63,metal);
+  // A3: one faceted tube, modest stepped objective/ocular, one grouped
+  // hardware mesh and a single recognisable adjustment cap.
+  accessoryTube(g,'weapon-accessory-optic-magnified-body',
+   optic.mountX,5.10+sightRise,0,7.0,1.11,1.11,polymer);
+  accessoryTube(g,'weapon-accessory-optic-magnified-objective',
+   optic.mountX+2.95,5.10+sightRise,0,1.55,1.12,1.63,metal);
+  accessoryTube(g,'weapon-accessory-optic-magnified-ocular',
+   optic.mountX-3.20,5.10+sightRise,0,.95,1.24,1.34,metal);
+  accessoryMergedBoxes(g,'weapon-accessory-optic-magnified-mounts',[
+   [optic.mountX-1.65,3.80+sightRise,0,.95,1.65,1.60],
+   [optic.mountX+1.45,3.80+sightRise,0,.95,1.65,1.60]
+  ],metal);
+  accessoryBox(g,'weapon-accessory-optic-magnified-turret',
+   optic.mountX-.42,6.49+sightRise,0,1.15,.75,1.38,metal,false);
  }
  const muzzle=parts.muzzle;
  const muzzleY=raw.build?.family==='ar'?AR_VISUAL_AXIS_Y:0;
  const ext=muzzle.muzzleExtension??0;
  if(ext>0){
-  const radius=muzzle.id==='muzzle-suppressor'?2.65:2.05;
-  block(g,muzzle.mountX+ext/2,muzzleY,0,ext,radius,radius,
-   muzzle.id==='muzzle-suppressor'?
-    (raw.build?HK_SD_SUPPRESSOR_METAL:polymer):
-    (raw.build?HK_MUZZLE_METAL:metal));
-  if(muzzle.id==='muzzle-brake'){
-   block(g,muzzle.mountX+ext*.68,muzzleY,0,.32,2.4,2.7,polymer);
+  // Build inside the EXACT existing extension envelope: no new gameplay
+  // muzzle coordinate. Cylinder defaults to Y; shared primitive aligns +X.
+  const cx=muzzle.mountX+ext/2;
+  if(muzzle.id==='muzzle-suppressor'){
+   accessoryTube(g,'weapon-accessory-muzzle-suppressor',cx,muzzleY,0,
+    ext,1.27,1.27,raw.build?HK_SD_SUPPRESSOR_METAL:polymer,8);
+   accessoryTube(g,'weapon-accessory-muzzle-suppressor-front',
+    muzzle.mountX+ext-.17,muzzleY,0,.34,1.18,1.18,
+    raw.build?HK_MUZZLE_METAL:metal,8,false);
+  }else if(muzzle.id==='muzzle-brake'){
+   accessoryTube(g,'weapon-accessory-muzzle-brake',cx,muzzleY,0,
+    ext,.91,1.06,raw.build?HK_MUZZLE_METAL:metal,6);
+   accessoryMergedBoxes(g,'weapon-accessory-muzzle-brake-ports',[
+    [muzzle.mountX+ext*.42,muzzleY,1.01,.19,.72,.085],
+    [muzzle.mountX+ext*.72,muzzleY,1.01,.19,.72,.085],
+    [muzzle.mountX+ext*.42,muzzleY,-1.01,.19,.72,.085],
+    [muzzle.mountX+ext*.72,muzzleY,-1.01,.19,.72,.085]
+   ],polymer);
+  }else{
+   accessoryTube(g,'weapon-accessory-muzzle-hider',cx,muzzleY,0,
+    ext,.77,.87,raw.build?HK_MUZZLE_METAL:metal,6);
   }
  }
- if(parts.foregrip.id==='foregrip-handstop')
-  block(g,assembly.supportX,-2.35+muzzleY,0,2.3,1.9,3.2,polymer);
+ if(parts.foregrip.id==='foregrip-handstop'){
+  accessoryProfile(g,'weapon-accessory-foregrip-handstop',
+   assembly.supportX,-2.35+muzzleY,0,
+   [[-1.16,.78],[1.10,.78],[1.18,-.28],[.36,-1.08],
+    [-.73,-.88],[-1.16,-.16]],3.00,polymer);
+ }
  if(parts.foregrip.id==='foregrip-vertical'){
-  block(g,assembly.supportX,-3.5+muzzleY,0,2.5,5.2,2.5,polymer);
-  block(g,assembly.supportX,-1.2+muzzleY,0,4,1,3.4,metal);
+  // Single visual owner across AR/AK/MP5 tri-rail. No extra HK body grip.
+  accessoryProfile(g,'weapon-accessory-foregrip-vertical',
+   assembly.supportX,-3.5+muzzleY,0,
+   [[-1.09,2.45],[1.07,2.45],[1.01,-2.05],[.68,-2.63],
+    [-.80,-2.63],[-1.08,-2.05]],2.27,polymer);
+  accessoryBox(g,'weapon-accessory-foregrip-vertical-base',
+   assembly.supportX,-1.2+muzzleY,0,3.35,1.00,3.10,metal);
  }
  if(parts.light.id==='light-compact'){
   const light=parts.light;
-  block(g,light.mountX,light.mountY+muzzleY,light.mountZ,4.6,2.2,2.6,polymer);
-  block(g,light.mountX+2.25,light.mountY+muzzleY,light.mountZ,1,2.6,3,metal);
-  const lens=block(g,light.mountX+2.85,light.mountY+muzzleY,light.mountZ,
-   .25,1.5,2.1,lensMaterial);
-  lens.name='weapon-light-lens';lens.visible=false;
-  block(g,light.mountX-2,light.mountY+.9+muzzleY,light.mountZ,2,.8,2.5,metal);
+  const ly=light.mountY+muzzleY,lz=light.mountZ;
+  accessoryTube(g,'weapon-accessory-light-body',
+   light.mountX,ly,lz,4.30,1.08,1.08,polymer,8);
+  accessoryTube(g,'weapon-accessory-light-head',
+   light.mountX+2.22,ly,lz,.82,1.20,1.38,metal,8);
+  const lens=accessoryTube(g,'weapon-light-lens',
+   light.mountX+2.68,ly,lz,.16,.91,.91,lensMaterial,8,false);
+  // Runtime light state owns this exact named, normally hidden mesh.
+  lens.visible=false;
+  accessoryBox(g,'weapon-accessory-light-rail-bracket',
+   light.mountX-1.40,ly+.96,lz,2.25,.80,2.05,metal);
  }
  if(parts.sling.id==='sling-two-point'){
   // Rigid sling mounting hardware stays on the gun. The actual fabric
   // loop is positioned by the shared operator rig, not baked to receiver.
-  block(g,-9,-.5,3,1.4,1,1.2,metal);
-  block(g,10,-.5,3,1.4,1,1.2,metal);
+  accessoryMergedBoxes(g,'weapon-accessory-sling-rigid-mounts',[
+   [-9,-.5,2.0,1.4,1,1.2],[10,-.5,2.0,1.4,1,1.2]
+  ],metal);
  }
  return g;
 }
