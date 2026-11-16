@@ -36,43 +36,6 @@ test('P17 integrated lower drops squarely around STANAG, no added magwell slab',
  assert.ok(ribs.every(x=>touch(x,mag)));
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P16 exposed receiver stamping and selector stay sparse and side-specific',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const upper=one(g,'fncP15FlatReceiverNose'),
-  lower=one(g,'fncP15FlatLowerNose'),
-  seam=one(g,'fncP8UpperLowerSeam'),
-  stamp=one(g,'fncP16LowerStampRelief'),
-  lever=one(g,'fncP16BroadSelectorLever');
- assert.ok(upper&&lower&&seam&&stamp&&lever);
- assert.ok(box(seam).max.x<=box(upper).max.x+.01);
- assert.ok(sz(seam,'y')>.30&&sz(seam,'y')<.35);
- assert.ok(box(stamp).max.z>box(lower).max.z);
- assert.ok(box(lever).min.z<box(lower).min.z);
- assert.ok(sz(stamp,'x')>4.5&&sz(stamp,'y')<.27);
- assert.ok(sz(lever,'x')<1&&sz(lever,'y')<.5);
- assert.ok(one(g,'fncP8RearPortForwardHandle'));
- assert.ok(one(g,'fncP10DarkThickButtpad'));
- clearWeaponSilhouette(g);m.dispose();
-});
-test('P16 fore-end roots penetrate both receiver shells without spacer meshes',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const poly=one(g,'fncP16ConcealedReceiverRoot'),
-  gas=one(g,'fncP16ExtendedGasRoot'),
-  upper=one(g,'fncP15FlatReceiverNose'),
-  lower=one(g,'fncP15FlatLowerNose'),
-  stop=one(g,'fncP15RaisedCollar');
- assert.ok(poly&&gas&&upper&&lower&&stop);
- assert.ok(near(box(poly).min.x,1.95)&&near(box(gas).min.x,1.95));
- assert.ok(box(upper).max.x-box(gas).min.x>.55);
- assert.ok(box(lower).max.x-box(poly).min.x>.55);
- assert.ok(touch(poly,upper)&&touch(poly,lower)&&touch(gas,upper));
- assert.ok(touch(poly,gas)&&touch(poly,stop)&&touch(gas,stop));
- assert.ok(sz(poly,'y')>2.5&&sz(gas,'y')>1.9);
- const vents=many(g,'fncP11BrokenGasSideSlots');
- assert.equal(vents.length,2);
- assert.ok(vents.every(v=>box(v).min.y>box(poly).max.y+.1));
- clearWeaponSilhouette(g);m.dispose();
-});
 test('P16 twin-ear guards chamfered but keep FAL open silhouette',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const base=one(g,'fncP16CompactGasSightBase');

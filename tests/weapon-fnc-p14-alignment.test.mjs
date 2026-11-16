@@ -41,30 +41,6 @@ test('P15 receiver and handguard stay in real 3D contact after body shortening',
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('P15 tall gas cover nests into polymer and exposes both vent rows',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const poly=one(g,'fncP14ReceiverSeatedPolymer');
- const metal=one(g,'fncP14LoweredGasCover');
- const vents=all(g,'fncP11BrokenGasSideSlots');
- const roof=one(g,'fncP11TopGasVentRow');
- assert.ok(poly&&metal&&roof);
- assert.ok(close(box(metal).max.y,L.gas.topY));
- assert.ok(box(metal).max.y-box(poly).max.y>1.20);
- assert.ok(box(metal).max.y-box(poly).max.y<1.40);
- assert.ok(box(metal).min.y<box(poly).max.y-.80,
-  'metal lower flank must sink into polymer');
- assert.ok(size(metal,'z')<size(poly,'z')*.65);
- assert.equal(vents.length,2);
- for(const vent of vents){
-  assert.equal(vent.geometry.getAttribute('position').count,48);
-  assert.ok(box(vent).min.y>box(poly).max.y+.02,
-   'lower vent row remains visibly above polymer roof');
- }
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.ok(close(box(roof).max.y,box(metal).max.y+L.gas.ventOffset,.015));
- clearWeaponSilhouette(g);m.dispose();
-});
-
 test('P14 front handstop is tapered, compact, and connects to both polymer and gas',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const stop=one(g,'fncP14TaperedMoldedCollar');

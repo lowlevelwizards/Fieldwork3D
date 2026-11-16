@@ -35,7 +35,7 @@ test('P17 magwell is ONE lower receiver silhouette with near-vertical front',()=
  let top=0,below=0;
  for(let i=0;i<verts.count;i++)if(near(verts.getX(i),2.75)){
   if(near(verts.getY(i),-1.09))top++;
-  if(near(verts.getY(i),-3.30))below++;
+  if(near(verts.getY(i),-3.46))below++;
  }
  assert.ok(top>0&&below>0,'near-vertical leading magwell face');
  // A separate old P16 side slab must not be present.
@@ -62,7 +62,7 @@ test('P17 handguard underside heavier without losing gas/polymer hierarchy',()=>
  const poly=one(g,'fncP17LowerMass'),gas=one(g,'fncP16ExtendedGasRoot'),
  stop=one(g,'fncP17BroadHandstop');
  assert.ok(poly&&gas&&stop);
- assert.ok(size(poly,'y')>3.35&&size(poly,'y')<3.50);
+ assert.ok(size(poly,'y')>3.10&&size(poly,'y')<3.30);
  assert.ok(box(poly).max.y<.62,'polymer roof must remain below gas vents');
  assert.ok(size(poly,'z')>2.40);
  assert.ok(box(gas).max.y>box(poly).max.y+.8);
@@ -73,30 +73,15 @@ test('P17 handguard underside heavier without losing gas/polymer hierarchy',()=>
  assert.ok(near(L.gas.topY,1.85)&&near(L.gas.bottomY,-.60));
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P17 vent strokes bold but remain five grouped openings with no new mesh count',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const vents=many(g,'fncP11BrokenGasSideSlots');
- const grooves=many(g,'fncP11PolymerLongRibs');
- const roof=one(g,'fncP11TopGasVentRow');
- assert.equal(vents.length,2);assert.equal(grooves.length,2);
- assert.ok(roof);
- assert.equal(L.gas.ventCount,4);
- assert.ok(near(L.gas.ventHeight,.31));
- assert.ok(vents.every(v=>v.geometry.getAttribute('position').count===48));
- assert.ok(grooves.every(v=>v.geometry.getAttribute('position').count===12));
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.equal(many(g,'fncP17BoldMarkings').length,4);
- clearWeaponSilhouette(g);m.dispose();
-});
 test('P17 thicker barrel and short bold muzzle, factory-only graphic ports',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const bar=one(g,'fncP17ChunkyBarrel'),dev=one(g,'fncP17BoldShortFlashHider');
  const ports=one(g,'fncP17ProjectedMuzzleSlots');
  assert.ok(bar&&dev&&ports);
- assert.ok(near(size(bar,'y'),1.34));
+ assert.ok(near(size(bar,'y'),1.24));
  assert.ok(near(size(dev,'y'),2.06));
  assert.ok(near(box(dev).max.x,FNC_P1.muzzleX));
- assert.ok(size(dev,'x')<1.4);
+ assert.ok(size(dev,'x')>1.40&&size(dev,'x')<1.52);
  assert.ok(touch(bar,dev));
  const expectedFacetZ=L.muzzle.radius*Math.cos(Math.PI/6)+.025;
  assert.ok(near(box(ports).max.z,expectedFacetZ));

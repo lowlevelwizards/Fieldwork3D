@@ -58,30 +58,6 @@ test('P13: gas cover actually uses a tapered six-sided section, with modest expo
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('P13: side vents stay EXPOSED ABOVE polymer, top follows actual roof surface',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const poly=one(g,'fncP13ExtendedPolymer');
- const gas=one(g,'fncP13NestedFacetedGasCover');
- const marks=all(g,'fncP11BrokenGasSideSlots');
- const roof=one(g,'fncP11TopGasVentRow');
- assert.equal(marks.length,2);assert.ok(roof);
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.ok(near(box(roof).min.y,box(gas).max.y+L.gas.ventOffset,.012));
- for(const mark of marks){
-  assert.equal(mark.geometry.getAttribute('position').count,48);
-  assert.ok(box(mark).min.y>box(poly).max.y+.02,
-   'do not hide gas vents behind the extended polymer');
-  assert.ok(box(mark).max.x<box(gas).max.x-.3);
-  assert.ok(mark.geometry.getAttribute('normal').getZ(0)*
-   mark.userData.fncP5GrooveSide>.9);
- }
- const longGrooves=all(g,'fncP11PolymerLongRibs');
- assert.equal(longGrooves.length,2);
- assert.ok(longGrooves.every(x=>box(x).max.x>L.polymer.fullEndX-.10),
-  'two polymer strokes must extend with the resized handguard');
- clearWeaponSilhouette(g);m.dispose();
-});
-
 test('P13: one faceted molded handstop sits at the handguard nose, not a plate',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const stop=one(g,'fncP13MoldedCollar');

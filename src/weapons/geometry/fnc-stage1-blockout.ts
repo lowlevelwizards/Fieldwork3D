@@ -11,9 +11,10 @@ import type {SlotName,Outline} from './profile-primitives.ts';
 import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,
  arMagazinePolyBaseplate,addARPolymerMagazineBody}
  from './ar-magazine-profiles.ts';
-import {addFNCFacetedForearm,addFNCHandstopLip,addFNCForearmMarks,addFNCUpperGasBox}
+import {addFNCFacetedForearm,addFNCHandstopLip,addFNCUpperGasBox}
  from './fnc-handguard-profiles.ts';
 import {FNC_FRONT_P13} from './fnc-front-layout.ts';
+import {applyFNCPixelDetails} from './fnc-pixel-details.ts';
 
 export const FNC_P1=Object.freeze({
  stockRearX:-14.85,receiverRearX:-6.38,receiverFrontX:4.12,
@@ -30,7 +31,7 @@ export function buildFNCStage1Silhouette(
  magazinePart='ar-mag30'
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p18-fieldwork-bold-silhouette';
+ root.name='fnc-p20-fieldwork-bold-silhouette';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -151,18 +152,15 @@ export function buildFNCStage1Silhouette(
 
  // Crowned body is intentionally closer to FAL's stylized 3D shoulders.
  // The lower visibly projects OUTSIDE both upper sides.
- crownedUpper();
- // P17: integrate the magazine socket INTO the lower outline, just as
- // the successful FAL draws its lower as one deliberately sculpted body.
- // The front face drops nearly perpendicular to the mag seat. NO extra
- // over-depth well extrusion; this is a single volume with true overlap
- // with the 30-round STANAG neck.
+ const upper=crownedUpper();
+ applyFNCPixelDetails(upper,'receiver-upper');
+ // P20: one uninterrupted six-corner lower body, with a square magazine
+ // socket and zero ornamental lip chamfers. STANAG neck still overlaps.
  const receiverNoseX=FNC_FRONT_P13.receiver.frontX;
  const lower=p('receiver',[
   [-6.30,-1.09],[receiverNoseX,-1.09],
-  [receiverNoseX,-3.30],[2.56,-3.46],
-  [-.67,-3.46],[-.67,-2.78],[-.90,-2.78],
-  [-1.30,-2.58],[-6.30,-2.58]
+  [receiverNoseX,-3.46],[-.67,-3.46],
+  [-.67,-2.58],[-6.30,-2.58]
  ],3.42,'lower');
  lower.userData.fncP15FlatLowerNose=true;
  lower.userData.fncAngularLower=true;
@@ -171,23 +169,10 @@ export function buildFNCStage1Silhouette(
  lower.userData.fncP16IntegratedMagazineSocket=true;
  lower.userData.fncP17SinglePieceMagwell=true;
  lower.userData.fncP18SquaredMagazineHousing=true;
- // A single broad dark step makes upper and lower readable as separate
- // stampings from either side; unlike fine engraved lines it survives zoom.
- const seam=p('receiver',[
-  [-6.19,-1.05],[FNC_FRONT_P13.receiver.seamFrontX,-1.05],
-  [FNC_FRONT_P13.receiver.seamFrontX,-1.38],[-6.19,-1.38]
- ],3.56,'shadow');
- seam.userData.fncP8UpperLowerSeam=true;
- seam.castShadow=false;seam.receiveShadow=false;
- // The lower now owns the magwell silhouette; no second Z-heavy slab.
- // One deliberate stamping on the lower's flank, not decorative rivets.
- const stamp=p('receiver',[
-  [-5.83,-2.02],[-1.02,-2.02],[-.85,-2.25],[-5.83,-2.25]
- ],.075,'shadow');
- stamp.position.z=1.725;
- stamp.userData.fncP16LowerStampRelief=true;
- stamp.castShadow=false;stamp.receiveShadow=false;
-
+ lower.userData.fncP20SquareMagazineHousing=true;
+ applyFNCPixelDetails(lower,'receiver-lower');
+ // Upper/lower seam and stamped relief now live in the same pixel-art
+ // atlas as the right receiver port; no floating extruded stripes.
  // Preserve P8's narrowed raked polymer grip; the separate P8 trigger
  // frame was too literal for this silhouette and is deliberately removed.
  const gripBase:Outline=[
@@ -234,7 +219,6 @@ export function buildFNCStage1Silhouette(
  addFNCFacetedForearm(root,mat('handguard'));
  addFNCHandstopLip(root,mat('handguard'));
  addFNCUpperGasBox(root,mat('steel'));
- addFNCForearmMarks(root,mat('shadow'));
  // Retain corrected P1B barrel diameter and overall muzzle/stock datums.
  // P7: barrel begins INSIDE the existing fore-end and continues through
  // the front-sight base, not hovering beyond the handguard termination.
@@ -242,13 +226,14 @@ export function buildFNCStage1Silhouette(
  const barrelStartX=8.55;
  const barrelEndX=showFactoryMuzzle?19.005:FNC_P1.muzzleX;
  const barrel=b('barrel',(barrelStartX+barrelEndX)/2,FNC_FRONT_P13.barrel.axisY,0,
-  barrelEndX-barrelStartX,1.34,1.34,'barrel');
+  barrelEndX-barrelStartX,1.24,1.24,'barrel');
  barrel.userData.fncServiceBarrel=true;
  barrel.userData.fncP17ChunkyBarrel=true;
  barrel.userData.fncP18HeavyBarrel=true;
+ barrel.userData.fncP19RefinedBarrel=true;
  barrel.userData.fncP7BarrelStartX=barrelStartX;
  if(showFactoryMuzzle){
-  // An elongated but still chunky six-sided factory device. Keep the
+  // A modestly longer, still chunky six-sided factory device. Keep the
   // original 19.50 muzzle-tip art datum and continuous barrel overlap.
   const M=FNC_FRONT_P13.muzzle;
   const geometry=new THREE.CylinderGeometry(M.radius,M.radius,M.length,6,1);
@@ -268,6 +253,7 @@ export function buildFNCStage1Silhouette(
   muzzle.userData.fncP16SlenderFNCFlashHider=true;
   muzzle.userData.fncP17BoldShortFlashHider=true;
  muzzle.userData.fncP18StubbyMuzzle=true;
+  muzzle.userData.fncP19LongerFlashHider=true;
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
   // Single low-poly batched dark port strip, analogous to the FAL's
@@ -297,13 +283,11 @@ export function buildFNCStage1Silhouette(
   ports.castShadow=false;ports.receiveShadow=false;
   root.add(ports);
  }
- // One minimal contoured gas/sight base. Its rear roof begins at the
- // gas-cover roof height, and only climbs gently under the sight ears.
- // It shares the front-layout stations instead of separately tuning them.
+ // P20: one four-corner sloping sight seat, preserving the established
+ // gas-cover junction and separate twin-ear guard gap.
  const s=FNC_FRONT_P13.sight;
  const front=p('barrel',[
   [s.baseStartX,s.baseBottomY],[s.baseStartX,s.baseRearTopY],
-  [s.baseFlatStartX,s.baseTopY],
   [s.baseEndX,s.baseTopY],[s.baseEndX,s.baseBottomY]
  ],s.baseDepth,'steel');
  front.userData.fncP13CompactIntegratedSightBase=true;
@@ -311,24 +295,25 @@ export function buildFNCStage1Silhouette(
  front.userData.fncP15AlignedGasSightBase=true;
  front.userData.fncP16CompactGasSightBase=true;
  front.userData.fncP17SimplifiedSightSeat=true;
+ front.userData.fncP20FourCornerSightSeat=true;
  front.userData.fncP7ContinuousGasSightSeat=true;
  front.userData.fncFrontSightBase=true;
  front.userData.fncP4IntegratedGasSeat=true;
- // Exactly two chamfered six-point FAL-family ears. Real center void;
- // no extra post, no modeled pin, no tall parallel rectangular towers.
+ // Two simple four-corner FAL-family sight ears. No edge chamfers, third
+ // post or extra rail; retain the genuine central negative space.
  for(const side of [-1,1] as const){
   const rearX=s.earX-s.earLength/2,frontX=s.earX+s.earLength/2;
   const ear=p('barrel',[
-   [rearX,s.earBottomY],[rearX,s.earShoulderY],
-   [rearX+.16,s.earTopY],[frontX-.12,s.earTopY],
-   [frontX,s.earShoulderY],[frontX,s.earBottomY]
+   [rearX,s.earBottomY],[rearX,s.earTopY],
+   [frontX,s.earTopY],[frontX,s.earBottomY]
   ],s.earDepth,'steel');
   ear.position.z=side*s.earHalfSpacing;
   ear.userData.fncP12FALLikeFrontEar=side<0?'left':'right';
   ear.userData.fncP13CompactFrontEar=true;
   ear.userData.fncP14ReducedFrontEar=true;
   ear.userData.fncP15IntegratedFrontEar=true;
-  ear.userData.fncP16ChamferedSightGuard=true;
+  ear.userData.fncP16ChamferedSightGuard=true; // legacy test ID
+  ear.userData.fncP20SimpleSightEar=true;
   ear.userData.fncProtectedFrontSight=true;
   if(side===-1){
    ear.userData.fncP5OversizedFrontSight=true;
@@ -349,33 +334,20 @@ export function buildFNCStage1Silhouette(
  rear.userData.fncP5OversizedRearSight=true;
  rear.userData.fncP6BroadProtectedSight=true;
 
- // Correct right-hand relationship: the broad rear ejection opening
- // occupies x -1.22..0.68; a shallow forward track reaches the charging
- // handle around x 2.2. One connected graphic, no tiny floating panels.
- const operatingSlot=p('receiver',[
-  [-1.22,.60],[2.55,.60],[2.55,.29],
-  [.68,.29],[.68,-.20],[-1.22,-.20]
- ],.10,'shadow');
- operatingSlot.position.z=1.355;
- operatingSlot.userData.fncRightPort=true;
- operatingSlot.userData.fncP7UnifiedEjectionSlot=true;
- operatingSlot.userData.fncP8RearPortForwardHandle=true;
- operatingSlot.castShadow=false;operatingSlot.receiveShadow=false;
- // Charging knob lies FORWARD of the ejection cutout, still attached to
- // and projecting from the upper receiver. Preserve the one-piece stem.
- const handleStem=b('receiver',2.16,.69,1.53,.59,.54,.80,'steel');
- handleStem.userData.fncP6ChargingHandleStem=true;
- handleStem.userData.fncP7SlotAnchoredStem=true;
- const handle=p('receiver',[
-  [1.80,.44],[2.50,.44],[2.65,1.08],[1.77,1.08]
- ],1.18,'steel');
- handle.position.z=2.15;
+ // P21: the rear ejection opening and forward track are pixel-art on the
+ // upper's right flank. The charging lug remains real geometry.
+ // P20: one squared charging lug penetrates the upper receiver and
+ // projects from the forward slot. No redundant connecting stem or bevel.
+ const handle=b('receiver',2.16,.765,1.97,.88,.65,1.60,'steel');
+ handle.userData.fncP20SingleChargingLug=true;
  handle.userData.fncRightChargingHandle=true;
  handle.userData.fncSixFacetedHandle=true;
  handle.userData.fncP5LargeChargingHandle=true;
  handle.userData.fncP6ProtrudingChargingHandle=true;
  handle.userData.fncP7PortAlignedHandle=true;
  handle.userData.fncP8ForwardChargingHandle=true;
+ handle.userData.fncP6ChargingHandleStem=true; // legacy integrated anchor
+ handle.userData.fncP7SlotAnchoredStem=true; // legacy integrated anchor
  const selectorGeo=new THREE.CylinderGeometry(.37,.37,.22,6,1);
  selectorGeo.rotateX(Math.PI/2);
  const selector=new THREE.Mesh(selectorGeo,mat('steel'));

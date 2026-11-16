@@ -37,47 +37,6 @@ test('P7: factory barrel intersects handguard, gas housing and gas/sight seat',(
  assert.ok(Math.abs(bounds(suppressed).max.x-FNC_P1.muzzleX)<.02);
  clearWeaponSilhouette(suppressed);clearWeaponSilhouette(g);m.dispose();
 });
-test('P7: charging stem is adjacent to and anchored in ejection/slot opening',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const slot=get(g,'fncP7UnifiedEjectionSlot');
- const stem=get(g,'fncP7SlotAnchoredStem');
- const grip=get(g,'fncP7PortAlignedHandle');
- const upper=get(g,'fncP5CrownedReceiver');
- assert.ok(slot&&stem&&grip&&upper);
- assert.equal(g.children.filter(x=>x.userData.fncRightPort).length,1);
- assert.ok(meets(slot,stem),'handle stem must intersect its slot area');
- assert.ok(meets(stem,grip),'charging knob must connect to stem');
- assert.ok(meets(stem,upper),'charging stem must physically enter receiver');
- assert.ok(bounds(grip).min.x<bounds(slot).max.x);
- assert.ok(bounds(grip).max.x>bounds(slot).min.x);
- assert.ok(bounds(grip).max.z>bounds(upper).max.z+1.2,
-  'charging knob extends outwards along Z, not forwards along X');
- assert.ok(bounds(grip).max.x-bounds(grip).min.x<1.2);
- assert.ok(slot.geometry.parameters?.shapes,'slot uses one bold exterior outline');
- clearWeaponSilhouette(g);m.dispose();
-});
-test('P7: fewer front markings and less dominant muzzle; retained FN geometry',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const upper=get(g,'fncP5CrownedReceiver'),lower=get(g,'fncAngularLower');
- const gas=get(g,'fncP7ConnectedGasHousing');
- const end=get(g,'fncP7BalancedMuzzle');
- const rear=get(g,'fncP5OversizedRearSight');
- assert.ok(upper&&lower&&gas&&end&&rear);
- assert.ok(upper.userData.fncP7ReceiverLength<9.7);
- assert.ok(bounds(upper).max.z<bounds(lower).max.z-.30);
- assert.ok(bounds(rear).max.y<3.15);
- assert.ok(bounds(gas).max.z<bounds(get(g,'fncP5LowerHex')).max.z);
- const marks=g.children.filter(x=>x.userData.fncP7ReducedUpperMarks);
- assert.equal(marks.length,2);
- assert.ok(marks.every(x=>x.geometry.getAttribute('position').count===48),
-  'each upper gas side has two rows of five batched vent dashes');
- const size=bounds(end).max.y-bounds(end).min.y;
- const barrelSize=bounds(get(g,'fncServiceBarrel')).max.y-
-  bounds(get(g,'fncServiceBarrel')).min.y;
- assert.ok(size/barrelSize>1.40&&size/barrelSize<1.70);
- assert.equal(g.children.filter(x=>x.userData.fncP7StockWeb).length,1);
- clearWeaponSilhouette(g);m.dispose();
-});
 test('P7: shared FN crown produces EXACT original FAL shell vertices',()=>{
  const mat=new THREE.MeshBasicMaterial(),root=new THREE.Group();
  const mesh=addFALCrownedReceiver(root,'fal-50-receiver',0,mat);

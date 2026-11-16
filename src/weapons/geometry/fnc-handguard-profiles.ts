@@ -1,10 +1,11 @@
-/** FNC P18: unmistakably exaggerated low-poly fore-end (polymer + molded lip +
- * slim faceted gas cover + batched groove / vent surfaces). The P13
+/** FNC P21: sculptural low-poly polymer, lip and gas cover. Vents and
+ * grooves are pixel art mapped onto the three-dimensional surfaces. The P13
  * layout contract owns all relative positions; meshes build on demand only.
  * +X muzzle, +Y up, +Z right. No physical assembly or firing changes.
  */
 import * as THREE from 'three';
 import {FNC_FRONT_P13} from './fnc-front-layout.ts';
+import {applyFNCPixelDetails} from './fnc-pixel-details.ts';
 type Station=Readonly<{x:number;scale:number}>;
 const POLY=FNC_FRONT_P13.polymer;
 const GAS=FNC_FRONT_P13.gas;
@@ -91,6 +92,7 @@ export function addFNCFacetedForearm(root:THREE.Group,
  mesh.userData.fncP17LowerMass=true;
  mesh.userData.fncP18MonumentalPolymer=true;
  mesh.userData.fncP6OutwardEndcaps=true;
+ applyFNCPixelDetails(mesh,'polymer');
  return mesh;
 }
 export function addFNCHandstopLip(root:THREE.Group,
@@ -133,87 +135,6 @@ export function addFNCUpperGasBox(root:THREE.Group,
  mesh.userData.fncP15UpperGasSpine=true;
  mesh.userData.fncP16ExtendedGasRoot=true;
  mesh.userData.fncP18RaisedFourVentSpine=true;
+ applyFNCPixelDetails(mesh,'gas');
  return mesh;
-}
-const GAS_SLOTS:readonly (readonly [number,number])[]=
- Array.from({length:GAS.ventCount},(_,i)=>{
-  const x=GAS.ventFirstX+i*GAS.ventPitch;
-  return [x,x+GAS.ventLength] as const;
- });
-const quad=(out:number[],a:readonly number[],b:readonly number[],
- c:readonly number[],d:readonly number[],flip=false)=>{
- if(flip)out.push(...a,...c,...b,...a,...d,...c);
- else out.push(...a,...b,...c,...a,...c,...d);
-};
-function gasSurfaceZ(y:number){
- const t=(y-GAS.shoulderY)/(GAS.topY-GAS.shoulderY);
- return GAS.sideHalfZ+(GAS.roofHalfZ-GAS.sideHalfZ)*t;
-}
-function polymerSurfaceZ(y:number){
- // Interpolate the current full-width polymer facets, not the
- // previously hard-coded gas-box side planes.
- const scale=POLY.fullScale;
- const mid=polymerY(POLY.pivotY+(-1.21-POLY.pivotY)*scale);
- const top=polymerY(POLY.pivotY+(-.18-POLY.pivotY)*scale);
- const bottom=polymerY(POLY.pivotY+(-2.04-POLY.pivotY)*scale);
- const zm=1.42*scale,zt=.94*scale,zb=.84*scale;
- return y>=mid
-  ?zm+(y-mid)*(zt-zm)/(top-mid)
-  :zm+(mid-y)*(zb-zm)/(mid-bottom);
-}
-export function addFNCForearmMarks(root:THREE.Group,
- dark:THREE.Material):THREE.Mesh[]{
- const marks:THREE.Mesh[]=[];
- const addSide=(side:-1|1,level:'upper'|'lower')=>{
-  const pos:number[]=[],upper=level==='upper';
-  const ys=upper?GAS.ventSideYs:POLY.grooveYs.map(polymerY);
-  const spans=upper?GAS_SLOTS:[[POLY.grooveStartX,POLY.grooveEndX]] as const;
-  const height=upper?GAS.ventHeight:.38;
-  const depth=(y:number)=>
-   (upper?gasSurfaceZ(y):polymerSurfaceZ(y))+GAS.ventOffset;
-  for(const y of ys)for(const [x0,x1] of spans){
-   const h=height/2;
-   const v=(x:number,yy:number):[number,number,number]=>
-    [x,yy,side*depth(yy)];
-   quad(pos,v(x0,y-h),v(x1,y-h),v(x1,y+h),v(x0,y+h),side<0);
-  }
-  const geometry=new THREE.BufferGeometry();
-  geometry.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
-  geometry.computeVertexNormals();
-  const mesh=new THREE.Mesh(geometry,dark);
-  mesh.name='family-handguard-fnc-p13-'+level+'-marks-'+side;
-  mesh.userData.fncP5GrooveSide=side;
-  mesh.userData.fncP5GrooveLevel=level;
-  mesh.userData.fncP5GrooveCount=ys.length;
-  mesh.userData.fncP6GrooveSegmentsPerRow=spans.length;
-  mesh.userData.fncP7ReducedUpperMarks=upper;
-  mesh.userData.fncP6BoldGrooveHeight=height;
-  mesh.userData.fncP11BrokenGasSideSlots=upper;
-  mesh.userData.fncP11PolymerLongRibs=!upper;
-  mesh.userData.fncP13DerivedSurfaceMarks=true;
- mesh.userData.fncP17BoldMarkings=true;
-  mesh.castShadow=false;mesh.receiveShadow=false;
-  root.add(mesh);marks.push(mesh);
- };
- for(const side of [-1,1] as const){
-  addSide(side,'upper');addSide(side,'lower');
- }
- const roofPosition:number[]=[];
- for(const [x0,x1] of GAS_SLOTS){
-  const y=GAS.topY+GAS.ventOffset,z=GAS.ventRoofHalfZ;
-  quad(roofPosition,[x0,y,-z],[x1,y,-z],
-   [x1,y,z],[x0,y,z],true);
- }
- const geometry=new THREE.BufferGeometry();
- geometry.setAttribute('position',
-  new THREE.Float32BufferAttribute(roofPosition,3));
- geometry.computeVertexNormals();
- const roof=new THREE.Mesh(geometry,dark);
- roof.name='family-handguard-fnc-p13-roof-vent-row';
- roof.userData.fncP11TopGasVentRow=true;
- roof.userData.fncP11TopGasVentCount=GAS.ventCount;
- roof.userData.fncP13DerivedSurfaceMarks=true;
- roof.castShadow=false;roof.receiveShadow=false;
- root.add(roof);marks.push(roof);
- return marks;
 }

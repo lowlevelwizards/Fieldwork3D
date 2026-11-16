@@ -38,7 +38,7 @@ test('P13 handstop has one faceted molded collar and no rectangular fin',()=>{
  assert.ok(stop&&polymer);
  assert.ok(size(stop,'x')>.86&&size(stop,'x')<.90);
  assert.ok(size(stop,'z')>size(polymer,'z')+.11);
- assert.ok(size(stop,'y')>3.7&&size(stop,'y')<4.0);
+ assert.ok(size(stop,'y')>3.55&&size(stop,'y')<3.70);
  assert.equal(stop.geometry.type,'BufferGeometry');
  assert.equal(all(g,'fncP12ChunkyHandstop').length,1);
  clearWeaponSilhouette(g);m.dispose();
@@ -56,22 +56,6 @@ test('P12 front is exactly two cuboid FAL-family ears without central prong',()=
  assert.ok(ears.every(e=>Math.abs((box(e).max.x+box(e).min.x)/2-14.26)<.02));
  assert.ok(ears.every(e=>box(e).max.y<3.12));
  assert.equal(Boolean(get(g,'fncP11TwinEarFrontSight')),false);
- clearWeaponSilhouette(g);m.dispose();
-});
-test('P12 gas slots follow translated cover on top and both sides',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const gas=get(g,'fncP12CompressedGasCover');
- const side=all(g,'fncP11BrokenGasSideSlots');
- const roof=get(g,'fncP11TopGasVentRow');
- assert.ok(gas&&roof);assert.equal(side.length,2);
- for(const slots of [...side,roof]){
-  const r=box(slots);
-  assert.ok(r.min.x>box(gas).min.x+.2 && r.max.x<box(gas).max.x-.3);
- }
- assert.ok(Math.abs(box(roof).min.y-box(gas).max.y)<.07);
- for(const s of side)assert.ok(box(s).min.y>box(gas).min.y&&
-  box(s).max.y<box(gas).max.y);
- assert.equal(roof.geometry.getAttribute('position').count,24);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P12 production and suppressor paths unchanged at outer anchors and stock',()=>{

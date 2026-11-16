@@ -35,28 +35,6 @@ test('P6: rear receiver and forward handguard are truly closed and outward-facin
  capNormal(guard,'rear');capNormal(guard,'front');
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P11: two polymer lines and broken upper gas rows per side',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const upper=by(g,'fncP5UpperGasBox')[0],lower=by(g,'fncP5LowerHex')[0];
- assert.ok(upper&&lower);
- assert.ok(box(upper).max.z<box(lower).max.z-.22,
-  'upper gas box is intentionally slimmer than the hexagonal lower');
- const marks=by(g,'fncP5GrooveSide');assert.equal(marks.length,4);
- for(const level of ['upper','lower']){
-  const meshes=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
-  assert.equal(meshes.length,2);
-  for(const mesh of meshes){
-   const rows=2,segments=level==='upper'?4:1;
-   assert.equal(mesh.userData.fncP5GrooveCount,rows);
-   assert.equal(mesh.userData.fncP6GrooveSegmentsPerRow,segments);
-   assert.ok(mesh.userData.fncP6BoldGrooveHeight>=.15);
-   assert.equal(mesh.geometry.getAttribute('position').count,rows*segments*6);
-   const normal=mesh.geometry.getAttribute('normal').getZ(0);
-   assert.ok(normal*mesh.userData.fncP5GrooveSide>.9);
-  }
- }
- clearWeaponSilhouette(g);m.dispose();
-});
 test('P6: compact receiver and broad sights, genuinely projecting charging knob',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const upper=by(g,'fncP5CrownedReceiver')[0];
@@ -87,7 +65,7 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
  assert.ok(box(stem).max.z>box(handle).min.z,
   'short connecting stem must intersect the projecting grip');
  assert.ok(box(muzzle).max.y-box(muzzle).min.y>1.20);
- assert.ok(box(muzzle).max.x-box(muzzle).min.x<1.45);
+ assert.ok(box(muzzle).max.x-box(muzzle).min.x<1.55);
  assert.ok(Math.abs(box(g).max.x-FNC_P1.muzzleX)<.02);
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();

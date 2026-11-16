@@ -20,7 +20,8 @@ export function countGeometry(root){
  return {triangles,meshes,vertices,geometries:geom.size,byPart};
 }
 export function buildAuditReport(){
- const models=[['FAL','rifle','fal-5000'],['G3A3','rifle','hk-g3a3'],
+ const models=[['FNC','rifle','fnc-service'],['FAL','rifle','fal-5000'],
+  ['G3A3','rifle','hk-g3a3'],
   ['M16A2','rifle','ar-m16a2'],['M4A1','carbine','ar-m4a1'],
   ['AKM','rifle','ak-akm']];
  const mat=new THREE.MeshBasicMaterial();

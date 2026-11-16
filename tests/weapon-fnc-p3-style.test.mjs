@@ -31,34 +31,6 @@ test('P10 stock: continuous upper rail and distinct inset FNC bridge plate',()=>
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const hex=of(g,'fncP5LowerHex')[0],gas=of(g,'fncP5UpperGasBox')[0];
- assert.ok(hex&&gas);
- assert.equal(hex.userData.fncCrossSectionFaces,6);
- const hb=box(hex),gb=box(gas);
- assert.ok(gb.max.y>hb.max.y+1.20&&gb.max.y<hb.max.y+1.40,'P15 upper spine rises above polymer');
- assert.ok(gb.max.z<hb.max.z-.13,'gas box must be narrower than the hex');
- assert.ok(gb.min.y<hb.max.y,'two volumes intersect instead of floating');
- const marks=of(g,'fncP5GrooveSide');
- assert.equal(marks.length,4);
- for(const level of ['upper','lower']){
-  const parts=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
-  assert.deepEqual(parts.map(x=>x.userData.fncP5GrooveSide).sort(),[-1,1]);
-  for(const mark of parts){
-   const count=2;
-   assert.equal(mark.userData.fncP5GrooveCount,count);
-   const segments=level==='upper'?4:1;
-   assert.equal(mark.geometry.getAttribute('position').count,count*segments*6);
-   const normal=mark.geometry.getAttribute('normal').getZ(0);
-   assert.ok(normal*mark.userData.fncP5GrooveSide>.84,
-    'both longitudinal stroke sets must face their visible side');
-  }
- }
- assert.equal(of(g,'fncDistinctGasCover').length,0);
- assert.equal(of(g,'fncP4UnifiedForearm').length,0);
- clearWeaponSilhouette(g);m.dispose();
-});
 test('P5 receiver: true three-dimensional tapered roof narrower than lower',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const upper=of(g,'fncP5CrownedReceiver')[0];

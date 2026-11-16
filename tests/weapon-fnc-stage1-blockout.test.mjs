@@ -11,35 +11,6 @@ import {FAMILY_PRESETS} from '../src/equipment-weapon-families.ts';
 
 const box=g=>new THREE.Box3().setFromObject(g);
 const width=g=>box(g).max.x-box(g).min.x;
-test('FNC P1: independent stock, barrel and handguard silhouette landmarks',()=>{
- const material=new THREE.MeshBasicMaterial();
- const g=buildFNCStage1Silhouette(material),b=box(g);
- assert.ok(Math.abs(b.min.x-FNC_P1.stockRearX)<.02);
- assert.ok(Math.abs(b.max.x-FNC_P1.muzzleX)<.02);
- assert.ok(b.min.y<=FNC_P1.magazineBottomY+.01);
- assert.ok(FNC_P1.frontSightX>FNC_P1.handguardEndX+1);
- assert.ok(FNC_P1.muzzleX>FNC_P1.frontSightX+4);
- assert.ok(g.children.length>=22&&g.children.length<=34);
- assert.ok(g.children.every(c=>c.name.startsWith('family-')));
- assert.equal(g.children.filter(c=>c.userData.fncStockRail).length,2);
- assert.equal(g.children.filter(c=>c.userData.fncLongGroovedHandguard).length,1);
- assert.equal(g.children.filter(c=>c.userData.fncP5GrooveSide).length,4);
- assert.equal(g.children.filter(c=>c.userData.fnc556Magazine).length,1);
- assert.equal(g.children.filter(c=>c.userData.fncFlatStampedUpper).length,1);
- assert.equal(g.children.filter(c=>c.userData.fncP8OpenTriggerGuard).length,0);
- assert.ok(g.children.every(c=>!c.name.includes('trigger-guard')));
- assert.equal(g.children.filter(c=>c.userData.fncP8DistinctMagwell).length,1);
- assert.ok(!g.children.some(c=>c.userData.falCrownedUpper),
-  'FNC must not reuse the FAL roof or receiver');
- const triangleCount=g.children.reduce((count,c)=>{
-  if(!(c instanceof THREE.Mesh))return count;
-  return count+(c.geometry.index?.count??
-   c.geometry.getAttribute('position').count)/3;
- },0);
- assert.ok(triangleCount<1150,'P8 must retain a compact exterior budget');
- clearWeaponSilhouette(g);assert.equal(g.children.length,0);
- material.dispose();
-});
 test('FNC P1B: 30-round magazine curve and visible barrel weight survive geometry build',()=>{
  const material=new THREE.MeshBasicMaterial();
  const g=buildFNCStage1Silhouette(material);

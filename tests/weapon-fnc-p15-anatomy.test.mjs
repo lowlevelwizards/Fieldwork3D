@@ -45,32 +45,13 @@ test('P15 polymer 30% taller; short collar and long gas spine truly interlock',(
   stop=get(g,'fncP15RaisedCollar');
  assert.ok(poly&&gas&&stop);
  assert.ok(near(box(poly).min.x,1.95)&&near(box(poly).max.x,11.68));
- assert.ok(sz(poly,'y')>3.35&&sz(poly,'y')<3.50);
+ assert.ok(sz(poly,'y')>3.10&&sz(poly,'y')<3.30);
  assert.ok(box(poly).max.y>.50&&box(poly).max.y<.62);
- assert.ok(box(poly).min.y< -2.75&&box(poly).min.y> -2.95);
+ assert.ok(box(poly).min.y< -2.58&&box(poly).min.y> -2.68);
  assert.ok(sz(poly,'z')>sz(gas,'z')+.8);
  assert.ok(touch(stop,poly)&&touch(stop,gas));
- assert.ok(sz(stop,'y')>3.7&&sz(stop,'y')<4.0);
+ assert.ok(sz(stop,'y')>3.55&&sz(stop,'y')<3.70);
  assert.ok(sz(gas,'x')>sz(poly,'x')+2.0);
- clearWeaponSilhouette(g);m.dispose();
-});
-test('P15 two broken side vent rows clear polymer roof and follow gas wall',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const gas=get(g,'fncP15UpperGasSpine'),poly=get(g,'fncP15RaisedPolymer');
- const slots=many(g,'fncP11BrokenGasSideSlots'),
-  grooves=many(g,'fncP11PolymerLongRibs');
- assert.equal(slots.length,2);assert.equal(grooves.length,2);
- for(const side of slots){
-  assert.equal(side.geometry.getAttribute('position').count,48);
-  assert.ok(box(side).min.y>box(poly).max.y+.10,
-   'no gas markings concealed behind enlarged polymer');
-  assert.ok(box(side).min.x>box(gas).min.x+.4);
-  assert.ok(box(side).max.x<box(gas).max.x-.5);
- }
- const roof=get(g,'fncP11TopGasVentRow');
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.ok(near(box(roof).min.y,box(gas).max.y+L.gas.ventOffset,.015));
- assert.ok(grooves.every(x=>sz(x,'x')>5.5));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P15 grip moved forward while preserving primary hand anchor',()=>{

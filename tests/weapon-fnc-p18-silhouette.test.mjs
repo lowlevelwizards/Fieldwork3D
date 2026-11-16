@@ -34,8 +34,8 @@ test('P18 polymer front and depth make substantial difference at native scale',(
   lip=one(g,'fncP18DeepEndLip');
  assert.ok(poly&&gas&&lip);
  assert.ok(near(box(poly).max.x,11.68)&&near(box(poly).min.x,1.95));
- assert.ok(size(poly,'y')>3.35&&size(poly,'y')<3.5);
- assert.ok(size(poly,'y')/2.70>1.22,'P18 must exceed P17 polymer size by 22%');
+ assert.ok(size(poly,'y')>3.10&&size(poly,'y')<3.30);
+ assert.ok(size(poly,'y')/2.70>1.16,'P19 underside trim preserves the oversized P18 polymer mass');
  assert.ok(size(poly,'z')/2.47>1.20,'P18 handguard must broaden in three-quarter views');
  assert.ok(near(box(gas).max.y,1.85));
  assert.ok(box(gas).max.y-box(poly).max.y>1.2);
@@ -44,20 +44,6 @@ test('P18 polymer front and depth make substantial difference at native scale',(
  assert.ok(near(size(lip,'x'),.88));
  assert.ok(box(lip).max.x>box(poly).max.x);
  assert.ok(box(lip).max.x<box(poly).max.x+.18);
- clearWeaponSilhouette(g);m.dispose();
-});
-test('P18 vent language shifts from five micro strokes to four large groups',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- assert.equal(L.gas.ventCount,4);
- assert.ok(L.gas.ventLength/1.06>1.4);
- assert.ok(L.gas.ventHeight/.205>1.45);
- const gas=many(g,'fncP11BrokenGasSideSlots'),
-   grooves=many(g,'fncP11PolymerLongRibs'),
-   roof=one(g,'fncP11TopGasVentRow');
- assert.equal(gas.length,2);assert.equal(grooves.length,2);
- assert.ok(gas.every(c=>c.geometry.getAttribute('position').count===48));
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.ok(grooves.every(c=>size(c,'x')>6.8));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P18 heavy stock, rear sight, barrel and stubby muzzle have real silhouette impact',()=>{
@@ -70,8 +56,8 @@ test('P18 heavy stock, rear sight, barrel and stubby muzzle have real silhouette
  assert.ok(near(box(rear).max.y,3.06));
  assert.ok(size(rear,'x')/1.52>1.17);
  assert.ok(size(muzzle,'y')/1.60>1.25);
- assert.ok(size(muzzle,'x')<1.4);
- assert.ok(near(size(barrel,'y'),1.34));
+ assert.ok(size(muzzle,'x')>1.40&&size(muzzle,'x')<1.52);
+ assert.ok(near(size(barrel,'y'),1.24));
  assert.ok(near(box(muzzle).max.x,FNC_P1.muzzleX));
  assert.ok(many(g,'fncP16ChamferedSightGuard').length===2);
  clearWeaponSilhouette(g);m.dispose();

@@ -60,7 +60,7 @@ test('FNC renders the approved P2 geometry in Arsenal and operator rigs',()=>{
  assert.ok(Math.abs(bounds.min.x+14.85)<.02);
  assert.ok(Math.abs(bounds.max.x-19.5)<.02);
  assert.ok(gun.children.some(x=>x.userData.fncFacetedHandguard));
- assert.ok(gun.children.some(x=>x.userData.fncRightPort));
+ assert.ok(gun.children.some(x=>x.userData.fncPixelOperatingSlot));
  assert.ok(gun.children.some(x=>x.userData.fncP10ContinuousBareUpperRail));
  assert.ok(gun.children.some(x=>x.userData.fncP10DarkThickButtpad));
  assert.ok(!gun.children.some(x=>x.userData.fncCheekSleeve));
