@@ -1,7 +1,7 @@
 name: Arsenal A3 accessory geometry (feature branch)
 on:
   push:
-    branches: [feat/arsenal-a3-accessory-unification]
+    branches: [feat/arsenal-a3-accessory-unification, fix/arsenal-a3-reflex-forward-facing]
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,6 +19,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/arsenal-a3-accessory-geometry.test.mjs \
+            tests/arsenal-a3-reflex-axis.test.mjs \
             tests/arsenal-a2-material-unification.test.mjs \
             tests/weapon-fnc-p30-front-sight-inset.test.mjs \
             tests/equipment-20-12-weapon-light.test.mjs \
