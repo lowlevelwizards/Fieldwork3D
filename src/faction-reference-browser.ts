@@ -20,6 +20,8 @@ export type ReferenceBrowserHooks={
  proposalBaseline?:()=>EquipmentLoadout|undefined;
  onProposalPreview?:(proposal:HistoricalLoadoutProposal|null)=>void;
  onApplyProposedLook?:(proposal:HistoricalLoadoutProposal)=>void;
+ onApplyProposedEquipment?:(proposal:HistoricalLoadoutProposal)=>void;
+ canApplyProposedEquipment?:()=>boolean;
 };
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,cls?:string,text?:string)=>{
  const node=document.createElement(tag);
@@ -402,8 +404,17 @@ export class FactionReferenceBrowser{
    apply.type='button';apply.disabled=this.readOnly||!current.choices.length||
     !this.hooks.onApplyProposedLook;
    apply.addEventListener('click',()=>this.hooks.onApplyProposedLook?.(current));
-   panel.append(apply,
-    el('small','reference-sources','Appearance draft only. Campaign gear changes require explicit stock-aware host approval.'));
+   panel.append(apply);
+   const equip=el('button','reference-apply','EQUIP PROPOSAL (EXPLICIT)');
+   equip.type='button';
+   equip.disabled=this.readOnly||!current.choices.length||
+    !this.hooks.onApplyProposedEquipment||
+    !this.hooks.canApplyProposedEquipment?.();
+   equip.addEventListener('click',()=>this.hooks.onApplyProposedEquipment?.(current));
+   panel.append(equip,
+    el('small','reference-sources',
+     'Gear issue is separate from appearance draft. It requires an editable preparation phase and authorized stock-aware host confirmation.'));
+
   }
   this.historicalPanel.append(panel);
  }
