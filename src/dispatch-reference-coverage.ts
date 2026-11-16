@@ -58,7 +58,7 @@ export function dispatchReferenceCoverage(referenceId:string):
   authoredGaps:Object.freeze(gaps),
   counts:Object.freeze(counts),
   historicalIssueResearch:timeline.equipment.length?
-   'has-associated-records':'no-associated-records',
+   'has-associated-records' as const:'no-associated-records' as const,
   sourceNotes:reference.sourceNotes,
   gearFitNote:reference.gearFitNote??null,
   coverageScope:'authored-visual-gaps-only' as const,
