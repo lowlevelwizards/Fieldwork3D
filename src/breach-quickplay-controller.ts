@@ -224,14 +224,17 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     // or material/render-policy changes occur without ?cpuTrace=1.
     const cpuTraceEnabled=new URLSearchParams(location.search).
       get('cpuTrace')==='1';
-    if(cpuTraceEnabled)console.profile('fieldwork-e6.9-first-frame');
+    const cdpProfileConsole=console as Console&{
+      profile?:(label:string)=>void;profileEnd?:(label:string)=>void
+    };
+    if(cpuTraceEnabled)cdpProfileConsole.profile?.('fieldwork-e6.9-first-frame');
     try{
       if(coldTrace)coldTrace.capture('firstFrame',()=>config.renderFirstFrame());
       else config.renderFirstFrame();
     }finally{
       // End even when the draw throws, so browser automation receives a
       // finite CPU profile instead of hanging or leaking to later frames.
-      if(cpuTraceEnabled)console.profileEnd('fieldwork-e6.9-first-frame');
+      if(cpuTraceEnabled)cdpProfileConsole.profileEnd?.('fieldwork-e6.9-first-frame');
     }
     const firstFrameMs=Math.round(performance.now()-firstFrameStart);
     if(cpuTraceEnabled){
