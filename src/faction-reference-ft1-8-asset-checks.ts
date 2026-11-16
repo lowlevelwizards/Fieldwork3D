@@ -19,7 +19,7 @@ const knownWeaponChecks:Readonly<Record<string,{referenceId:string;presetId:stri
 };
 export function inspectFT18Catalog():readonly CatalogInspection[]{
  const triage=buildFT18Triage();
- return triage.map(entry=>{
+ return triage.map((entry):CatalogInspection=>{
   const known=knownWeaponChecks[entry.candidate.id];
   if(known){
    const model=familyPreset(known.presetId);
