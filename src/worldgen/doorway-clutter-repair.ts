@@ -19,7 +19,7 @@ const INCIDENTAL=new Set([
  'cabinet','shelf','bookcase','filing-cabinet','desk'
 ]);
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
-const middle=(door:Door):Pt=>({x:(door.a.x+door.b.x)/2,
+const middle=(door:Pick<Door,'a'|'b'>):Pt=>({x:(door.a.x+door.b.x)/2,
  y:(door.a.y+door.b.y)/2});
 function roomFor(site:Site,o:Obstacle){
  return site.rooms.find(r=>r.kind==='room'&&
@@ -32,7 +32,7 @@ const overlaps=(a:Obstacle,b:Obstacle)=>Math.abs(a.x-b.x)<
  * This strip covers about 40 units on either side of the jamb and is
  * independent of the larger tactical furniture/service arrangement.
  */
-function crowdsDoor(o:Obstacle,door:Door):boolean{
+function crowdsDoor(o:Obstacle,door:Pick<Door,'a'|'b'>):boolean{
  if(!isFootstepObstacle(o))return false;
  const width=dist(door.a,door.b)||1,m=middle(door);
  const tx=(door.b.x-door.a.x)/width,ty=(door.b.y-door.a.y)/width;
@@ -74,7 +74,9 @@ function mayPlace(site:Site,all:readonly Obstacle[],index:number,
  if(site.walls.some(w=>pointToSegment(candidate,w)<radius))return false;
  if(all.some((other,i)=>i!==index&&overlaps(candidate,other)))return false;
  if(site.doors.some(door=>pointToSegment(candidate,door)<radius+4||
-    crowdsDoor(candidate,door)||crowdsLeafSweep(candidate,door)))return false;
+    crowdsDoor(candidate,door)||crowdsLeafSweep(candidate,door))||
+    site.openings?.some(opening=>opening.kind!=='serving'&&
+      crowdsDoor(candidate,opening)))return false;
  return true;
 }
 export type ClearanceRepair={site:Site;moved:number;unresolved:number};
@@ -86,13 +88,17 @@ export function repairDoorwayClutter(site:Site):ClearanceRepair{
  const cover=site.cover.map(o=>({...o}));
  let moved=0,unresolved=0;
  const stable={...site,cover};
- for(const door of site.doors){
+ // Doorless arches are real physical traffic lanes too. Previously only
+ // hinged mouths received furnishing clearance, leaving wide visible
+ // passages blocked by otherwise incidental chairs and loose boxes.
+ for(const door of [...site.doors,...(site.openings??[]).filter(o=>o.kind!=='serving')]){
   const center=middle(door),width=dist(door.a,door.b)||1;
   const tangent={x:(door.b.x-door.a.x)/width,
     y:(door.b.y-door.a.y)/width};
   const blockers=cover.map((o,i)=>({o,i,d:dist(o,center)}))
     .filter(({o})=>INCIDENTAL.has(o.fixture??'')&&
-      o.w<=46&&o.h<=46&&(crowdsDoor(o,door)||crowdsLeafSweep(o,door)))
+      o.w<=46&&o.h<=46&&(crowdsDoor(o,door)||
+        ('open' in door&&crowdsLeafSweep(o,door))))
     .sort((a,b)=>a.d-b.d||a.i-b.i);
   let handled=0;
   for(const {i} of blockers){

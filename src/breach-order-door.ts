@@ -95,7 +95,9 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
          [...s.operators.filter(other=>other!==a&&other.health>0)
            .map(other=>other.p),
           ...s.civilians.filter(c=>c.health>0).map(c=>c.p)],4.25);
-       if(point&&d(a.p,point)>3.5&&d(a.p,point)<75&&
+       // Never take a distant detour to reach an already targeted handle.
+       // Give the player a short local correction or a clear failed order.
+       if(point&&d(a.p,point)>3.5&&d(a.p,point)<45&&
           a.blockedTime<3.5&&a.recoveryAttempts<5){
          clearCurrentOrderIssue(a);
          approach(a,point,dt,s,.60);return true;
@@ -118,10 +120,17 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         const world=sessionWorldGeometry(s);
         target=selectOpeningStance(door,a.p,
           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
-          s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p));
+          s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p),
+          // Generated four-person entry has its own verified jamb-side
+          // stack slots; do not reinterpret those as ad hoc retreat orders.
+          !a.plan.some(order=>order.kind==='move'&&
+            order.entryDoorId===door.id));
         if(target)setOpeningFootstep(a,stance,target);
       }
-      if(target&&d(a.p,target)>1.5){
+      // The regular motor accepts a bounded waypoint within 3.5 units.
+      // Demanding 1.5 here caused an unfinishable stance: the actor would
+      // pause forever with its foot target ~2–3 units away.
+      if(target&&d(a.p,target)>3.5){
         if(!sweptBodyClear(a.p,target,s.doors,OPERATOR_RADIUS,
              sessionWorldGeometry(s))||
            s.operators.some(b=>b!==a&&b.health>0&&

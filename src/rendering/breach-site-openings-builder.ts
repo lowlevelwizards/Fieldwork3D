@@ -71,10 +71,17 @@ export function buildArchitecturalOpenings(site:Site,host:SiteOpeningsHost,
       const p={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
       const group=new THREE.Group();group.position.set(p.x,0,p.y);
       group.rotation.y=Math.abs(opening.a.x-opening.b.x)<1?-Math.PI/2:0;
-      for(const side of [-1,1])host.box(group,side*width/2,DOOR_CLEAR_VISUAL_HEIGHT/2,0,
-        4,DOOR_CLEAR_VISUAL_HEIGHT,10,archMaterial);
-      host.box(group,0,DOOR_CLEAR_VISUAL_HEIGHT+2,0,
-        width+4,4,11,archMaterial);
+      // Face-mounted trim stays outside the physical gap, rather than
+      // centering 10-unit-deep posts over the adjoining wall ends. The
+      // previous coplanar side surfaces fought the wall meshes (and made
+      // a wide opening look narrower than its authoritative collider).
+      for(const face of [-1,1]){
+        for(const side of [-1,1])host.box(group,
+          side*(width/2+3),DOOR_CLEAR_VISUAL_HEIGHT/2,face*5.7,
+          4,DOOR_CLEAR_VISUAL_HEIGHT,1.8,archMaterial);
+        host.box(group,0,DOOR_CLEAR_VISUAL_HEIGHT+2,face*5.7,
+          width+10,4,1.8,archMaterial);
+      }
       if(opening.kind==='serving'){
         // Counter surface sits just below the standing operator's eye line
         // rather than at the old knee-high sill. Upper trim rests on the

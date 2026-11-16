@@ -142,7 +142,9 @@ export function createBreachTrainingScreen(hooks:Hooks){
   syncVisibleOptions();renderPersonalBest();
   open=true;root.hidden=false;
   document.body.classList.add('training-setup-open');
-  activity.el.focus();
+  // Focus a real action, not the native <select>: iOS otherwise presents
+  // its platform picker before the player can see START TRAINING.
+  beginButton.focus({preventScroll:true});
  }
  function retry():void{if(active){lastAssessment=null;
   resultsButton.hidden=true;hooks.onStart({...config});}}

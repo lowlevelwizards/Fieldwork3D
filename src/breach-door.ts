@@ -63,6 +63,25 @@ export function canAutoOpenEnRoute(plan:{
  if(plan?.kind!=='door')return false;
  return candidateDoorId!==plan.doorId||(plan.method??'open')==='open';
 }
+/** A route asks for an automatic OPEN only when its centerline actually
+ * traverses the physical frame aperture. Brushing the swing envelope while
+ * walking parallel to a wall is NOT threshold intent. This is an intent
+ * predicate only; full capsule/world/leaf collision still owns passage.
+ */
+export function crossesDoorThreshold(from:Pt,to:Pt,door:Door):boolean{
+ const width=dist(door.a,door.b)||1;
+ const tx=(door.b.x-door.a.x)/width,ty=(door.b.y-door.a.y)/width;
+ const nx=-ty,ny=tx;
+ const fromSide=(from.x-door.a.x)*nx+(from.y-door.a.y)*ny;
+ const toSide=(to.x-door.a.x)*nx+(to.y-door.a.y)*ny;
+ if(fromSide*toSide>0||Math.abs(fromSide-toSide)<2)return false;
+ const t=fromSide/(fromSide-toSide);
+ if(t<0||t>1)return false;
+ const along=(from.x+(to.x-from.x)*t-door.a.x)*tx+
+   (from.y+(to.y-from.y)*t-door.a.y)*ty;
+ return along>=-2&&along<=width+2;
+}
+
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[],world?:SessionWorldGeometry,
  plan?:{kind:string;doorId?:string;method?:string}|null,
@@ -97,6 +116,10 @@ export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
   const t={x:(d.b.x-d.a.x)/len,y:(d.b.y-d.a.y)/len};
   const n={x:-t.y,y:t.x};
   const side=Math.sign((from.x-m.x)*n.x+(from.y-m.y)*n.y)||1;
+  // A handle-side approach may NEVER circumnavigate the door and return
+  // from its opposite face. The authored DOOR order chose this side.
+  const onChosenSide=(p:Pt)=>
+    ((p.x-m.x)*n.x+(p.y-m.y)*n.y)*side>=-1.5;
   const candidates:Pt[]=[];
   if((d.openFraction??(d.open?1:0))>.15){
     const leaf=doorLeafSegment(d),dx=leaf.b.x-leaf.a.x,dy=leaf.b.y-leaf.a.y;
@@ -123,7 +146,7 @@ export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
        !bodyClear(point,[d],OPERATOR_RADIUS,world)||!doorReachable(point,d)||
         occupied.some(other=>dist(other,point)<27))return [];
     const waypoints=route(from,point,p=>bodyClear(p,[d],OPERATOR_RADIUS,world));
-    if(!waypoints.length)return [];
+    if(!waypoints.length||!waypoints.every(onChosenSide))return [];
     let previous=from,pathLength=0;
     for(const waypoint of waypoints){
       pathLength+=dist(previous,waypoint);previous=waypoint;

@@ -6,7 +6,7 @@ import {nearMotorDoorStroke} from './breach-motor-door-broadphase.ts';
 import {pointToSegment,doorLeafSegment,doorBlocksSegment,doorCenter,
  OPERATOR_RADIUS,type Pt,type Door} from './breach-core.ts';
 import type {TeamActor,Session} from './breach-game.ts';
-import {canAutoOpenEnRoute,autoDoorAtBodyContact,doorApproach,
+import {canAutoOpenEnRoute,autoDoorAtBodyContact,crossesDoorThreshold,doorApproach,
  doorReachable,doorWouldStrikeActors} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
 import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
@@ -82,6 +82,14 @@ export function handleMotorDoor(
        !nearMotorDoorStroke(door,a.p,a.p,56))continue;
     if(door.open&&(door.openFraction??0)>=.72)continue;
     if(!doorReachable(a.p,door))continue;
+    // Nearby parallel wall routes can brush a swung leaf's capsule.
+    // They never authorize an implicit OPEN without an actual doorway
+    // crossing or the active, same-order threshold episode.
+    const crossing=crossesDoorThreshold(a.p,next,door)||
+      (a.nav[1]!==undefined&&crossesDoorThreshold(next,a.nav[1],door))||
+      a.doorTraversal?.doorId===door.id&&
+       a.doorTraversal.authoredOrderId===pendingDoor?.id;
+    if(!crossing)continue;
     if(!doorBlocksSegment(door,{a:a.p,b:next})&&
        !doorBlocksSegment(door,{a:a.p,b:p}))continue;
     const distance=pointToSegment(a.p,doorLeafSegment(door));
@@ -94,8 +102,14 @@ export function handleMotorDoor(
   // Same physical candidate/selection order, no filtered array allocated
   // for every stride through a map full of doors. An explicit KICK/CLOSE/
   // HOLD still excludes its target while allowing intervening leaves.
-  doorAhead??=autoDoorAtBodyContact(a.p,move,
-    s.doors,sessionWorldGeometry(s),pendingDoor,a.side==='red');
+  if(!doorAhead){
+    const touched=autoDoorAtBodyContact(a.p,move,
+      s.doors,sessionWorldGeometry(s),pendingDoor,a.side==='red');
+    if(touched&&(crossesDoorThreshold(a.p,next,touched)||
+      (a.nav[1]!==undefined&&crossesDoorThreshold(next,a.nav[1],touched))||
+      a.doorTraversal?.doorId===touched.id&&
+       a.doorTraversal.authoredOrderId===pendingDoor?.id))doorAhead=touched;
+  }
   // A follower's physical clearing step can take them past the handle's
   // reach. Keep their SAME active threshold in scope until its aperture
   // is traversable; otherwise they immediately walk back into the sweep.

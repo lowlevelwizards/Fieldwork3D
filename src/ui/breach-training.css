@@ -1,6 +1,6 @@
 /* Dedicated Training setup. No special game renderer or RAF subscriber. */
 .breach-training-screen[hidden],.breach-training-quick[hidden]{display:none!important}
-.breach-training-screen{position:fixed;inset:0;z-index:75;background:#07100fe8;
+.breach-training-screen{position:fixed;inset:0;z-index:160;background:#07100fe8;
  display:grid;place-items:center;padding:calc(12px + env(safe-area-inset-top))
   12px calc(12px + env(safe-area-inset-bottom));overflow:auto}
 .breach-training-panel{width:min(660px,100%);border:1px solid #718a7c;
@@ -59,3 +59,6 @@
 .breach-training-breakdown>div{display:flex;justify-content:space-between;gap:12px;margin-top:6px;font:12px 'Work Sans',sans-serif}
 .breach-training-breakdown>div output{white-space:nowrap;font-weight:700}
 .breach-training-breakdown p{margin:9px 0 0;color:#e5bcae;font-size:11px}
+
+/* The training dialog must cover the campaign menu (z-index:120) on iOS. */
+.breach-training-screen{isolation:isolate}
