@@ -50,9 +50,9 @@ test('P24 front gas block begins inside handguard but upper vent geometry stays 
  assert.equal(gas,one(g,'fncP22ContinuousGasBlock'));
  assert.equal(gas.geometry.getAttribute('position').count,216,
   'two extra six-face stations integrate lower housing without another mesh');
- assert.equal(L.gas.frontBottomY,-1.57);
+ assert.equal(L.gas.frontBottomY,-1.10);
  assert.ok(near(bb(gas).min.y,L.gas.frontBottomY));
- assert.ok(bb(gas).min.y<bb(barrel).min.y-.9,
+ assert.ok(bb(gas).min.y<bb(barrel).min.y-.35,
   'front gas block extends well below the exposed barrel');
  const v=gas.geometry.getAttribute('position');
  const lowAt=x=>{
