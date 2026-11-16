@@ -159,6 +159,10 @@ export function buildFALCoreSilhouette(
   const slots=new THREE.Mesh(slotGeometry,materials.muzzleSlot??materials.barrel);
   slots.name='family-barrel-'+partIds.barrel+'-'+ids.barrel++;
   slots.userData.falMuzzleSlots=true;
+  // A4.6: this pair is already batched into one geometry and conforms to
+  // the real muzzle facets; do not replace it with two floating decals.
+  slots.userData.surfaceDetailClass='fal-muzzle-ports';
+  slots.userData.surfaceDetailFace='both';
   slots.castShadow=false;slots.receiveShadow=false;
   slots.renderOrder=3;root.add(slots);
  }
