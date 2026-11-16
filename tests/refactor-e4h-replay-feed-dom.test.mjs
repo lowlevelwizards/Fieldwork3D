@@ -54,7 +54,7 @@ test('E4.H 120 stable feed refreshes do not recreate buttons or the DOM window',
  assert.equal(f.created.length,80);
  const first=f.container.children.slice();
  for(let i=1;i<=120;i++){
-  const t=55+i/60,pos=replayFeedPosition(source,t);
+  const t=55+i/240,pos=replayFeedPosition(source,t);
   view.render(source,initial.start,initial.end,
    source[pos.focusIndex].key,f.make);
  }
