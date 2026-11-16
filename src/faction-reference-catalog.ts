@@ -275,7 +275,7 @@ export const FACTION_REFERENCES:readonly FactionReference[]=([
  styles:{top:'bdu-shirt',trousers:'bdu-trousers',headwear:'pasgt'},
  headwearColor:'black',markings:{chest:'label-omon'},weaponFamily:'AK / compact AK',
  gaps:[patch,weapon('ak-family','AK-family rifle'),gap('visor-police','Visored law-enforcement helmet (not currently modeled)','defining')],
- sourceNotes:'Generic visored protective police helmet is a representative approximation, not a confirmed period OMON model.'},
+ sourceNotes:'Black PASGT-style ballistic helmet is a provisional visual substitute; a period-specific visored police shell is not modeled.'},
  {id:'russian-gorka-leto-2010',name:'Russian Reconnaissance · Gorka/SS-Leto',country:'Russia',
  organization:'special-operations',environment:'woodland',era:{start:2005,end:2018,label:'2000s–2010s'},
  summary:'Mountain suit with summer-pattern reinforcement and light webbing.',
