@@ -1,72 +1,43 @@
-/** Shared immutable finish palette for modular *appearance* only.
- * Each mesh remains a single solid finish. Never allocate per frame/config.
+/** Shared immutable authored weapon finishes for appearance only.
+ * All exported aliases are existing MeshStandardMaterial instances, allocated once
+ * through the exact-spec cache. Safe for rig, Arsenal, thumbnail and replay.
+ * Never dispose these globally owned materials with a weapon mesh.
  */
-import * as THREE from 'three';
-import {tagVisualMaterial,type VisualMaterialRole} from '../../rendering/material-identity.ts';
-const finish=(color:number,roughness=.84,metalness=.05,role:VisualMaterialRole='steel')=>
- tagVisualMaterial(new THREE.MeshStandardMaterial({
-  color,roughness,metalness,flatShading:true
- }),role);
-export const AR_BLACK_METAL=finish(0x414a44,.76,undefined,'steel');
-export const AR_BLACK_POLYMER=finish(0x343e37,.9,undefined,'polymer');
-/** Matte, very low relief molded ribs, not high-contrast glowing decals. */
-export const AR_POLYMER_RIB=finish(0x2c3630,.98,undefined,'polymer');
-/** Slightly lightened stamped steel STANAG; PMAG remains black polymer. */
-export const AR_STANAG_METAL=finish(0x687369,.87,undefined,'steel');
-/** Muted contour rib, light enough to avoid black jagged barcode marks. */
-export const AR_STANAG_RIB=finish(0x526054,.96,undefined,'steel');
-export const AR_MUTED_FDE=finish(0x95836b,.94,undefined,'paint');
-export const AK_BLACK_METAL=finish(0x454b43,.8,undefined,'steel');
-export const AK_BLACK_POLYMER=finish(0x354038,.89,undefined,'polymer');
-export const AK_DARK_WOOD=finish(0x79553b,.94,undefined,'wood');
-export const AK_WARM_RESIN=finish(0x8d5939,.92,undefined,'polymer');
-/** Honey birch laminate, oxblood lacquer and late Soviet dark plum polyamide. */
-export const AK_WOOD_AMBER=finish(0xa07842,.88,undefined,'wood');
-export const AK_WOOD_RED=finish(0x915038,.88,undefined,'wood');
-export const AK_PLUM_POLYMER=finish(0x4e3b4c,.92,undefined,'polymer');
-/** Low-contrast curved stamped ribs on classic steel 7.62 magazines. */
-export const AK_MAG_RIB=finish(0x364238,.93,undefined,'steel');
-
-/** HK blackened steel and molded plastic are related, not the same finish.
- * These colors are appearance targets, not manufacturer paint codes.
- * Steel stays muted to match Fieldwork's chunky 8-facet miniatures.
- */
-export const HK_BLACK_METAL=finish(0x3b4140,.82,.12,'steel');
-export const HK_DARK_POLYMER=finish(0x303433,.95,.02,'polymer');
-export const HK_OLIVE_POLYMER=finish(0x60694e,.94,.02,'polymer');
-export const HK_WOOD=finish(0x896947,.95,.02,'wood');
-/** Magazine steel differs by historical family; never tint it olive plastic. */
-export const HK_MAG_METAL=finish(0x505757,.90,.12,'steel');
-export const HK556_MAG_METAL=finish(0x414747,.91,.12,'steel');
-export const HK9_MAG_METAL=finish(0x373d3d,.92,.11,'steel');
-/** HK33/HK53 low-relief stamp lines must not inherit AK-green ribs. */
-export const HK556_MAG_RIB=finish(0x353d39,.95,.10,'steel');
-/** Integral SD can uses subdued anodized metal, not the polymer shroud. */
-export const HK_SD_SUPPRESSOR_METAL=finish(0x2f3434,.80,.16,'steel');
-/** Muzzle brakes/flash hiders are blackened steel, not rubber furniture. */
-export const HK_MUZZLE_METAL=finish(0x2f3533,.78,.16,'steel');
-
-/** FAL finish identities stay close to existing HK/AR weapon palette. */
-export const FAL_BLACK_METAL=finish(0x414844,.82,.10,'steel');
-/** Slightly subdued lower housing distinguishes the FN's stamped/form
- * hierarchy without adding overlay plates, seams or screws. */
-export const FAL_LOWER_METAL=finish(0x353d39,.87,.08,'steel');
-export const FAL_DARK_POLYMER=finish(0x343d37,.93,.02,'polymer');
-/** Early FAL stock, handguard and optional grip share the approved G3 wood
- * identity, without adding procedural grain or extra geometry. */
+import {weaponFinish} from './weapon-material-registry.ts';
+export const AR_BLACK_METAL=weaponFinish('ar-steel');
+export const AR_BLACK_POLYMER=weaponFinish('ar-polymer');
+export const AR_POLYMER_RIB=weaponFinish('ar-polymer-rib');
+export const AR_STANAG_METAL=weaponFinish('ar-stanag');
+export const AR_STANAG_RIB=weaponFinish('ar-stanag-rib');
+export const AR_MUTED_FDE=weaponFinish('ar-fde');
+export const AK_BLACK_METAL=weaponFinish('ak-steel');
+export const AK_BLACK_POLYMER=weaponFinish('ak-polymer');
+export const AK_DARK_WOOD=weaponFinish('ak-wood-dark');
+export const AK_WARM_RESIN=weaponFinish('ak-resin');
+export const AK_WOOD_AMBER=weaponFinish('ak-wood-amber');
+export const AK_WOOD_RED=weaponFinish('ak-wood-red');
+export const AK_PLUM_POLYMER=weaponFinish('ak-plum-polymer');
+export const AK_MAG_RIB=weaponFinish('ak-mag-rib');
+export const AK_COVER_STAMP_METAL=weaponFinish('ak-cover-stamp');
+export const HK_BLACK_METAL=weaponFinish('hk-steel');
+export const HK_DARK_POLYMER=weaponFinish('hk-polymer');
+export const HK_OLIVE_POLYMER=weaponFinish('hk-olive-polymer');
+export const HK_WOOD=weaponFinish('hk-wood');
+export const HK_MAG_METAL=weaponFinish('hk-mag-steel');
+export const HK556_MAG_METAL=weaponFinish('hk556-mag-steel');
+export const HK9_MAG_METAL=weaponFinish('hk9-mag-steel');
+export const HK556_MAG_RIB=weaponFinish('hk556-mag-rib');
+export const HK_SD_SUPPRESSOR_METAL=weaponFinish('hk-sd-metal');
+export const HK_MUZZLE_METAL=weaponFinish('hk-muzzle-metal');
+export const FAL_BLACK_METAL=weaponFinish('fal-steel');
+export const FAL_LOWER_METAL=weaponFinish('fal-lower-steel');
+export const FAL_DARK_POLYMER=weaponFinish('fal-polymer');
 export const FAL_WOOD=HK_WOOD;
-/** Same neutral steel as the neighboring G3 battle-rifle magazine. */
 export const FAL_MAG_METAL=HK_MAG_METAL;
-/** Minimal, dark, flat graphic vents, not expensive true cut-through slots. */
-export const FAL_VENT_SHADOW=finish(0x232c28,.98,.0,'polymer');
-
-/** Restrained pressed steel line on the FAL's 20-round magazine. */
-export const FAL_MAG_RIB=finish(0x404847,.94,.08,'steel');
-
-/** Exposed, deliberately unadorned steel bridge between FAL upper and fore-end. */
-export const FAL_TRANSITION_METAL=finish(0x2a312e,.86,.13,'steel');
-
-/** G3/FAL factory muzzle steel is deliberately darker than receiver steel. */
+export const FAL_VENT_SHADOW=weaponFinish('fal-vent-shadow');
+export const FAL_MAG_RIB=weaponFinish('fal-mag-rib');
+export const FAL_TRANSITION_METAL=weaponFinish('fal-transition-steel');
 export const FAL_MUZZLE_METAL=HK_MUZZLE_METAL;
-/** Dark port inside the combo device is METAL, not the polymer vent finish. */
-export const FAL_MUZZLE_SLOT=finish(0x202624,.98,.05,'steel');
+export const FAL_MUZZLE_SLOT=weaponFinish('fal-muzzle-slot');
+export const WEAPON_ACCESSORY_STEEL=weaponFinish('accessory-steel');
+export const WEAPON_ACCESSORY_POLYMER=weaponFinish('accessory-polymer');
