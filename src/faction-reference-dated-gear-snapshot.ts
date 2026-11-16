@@ -35,8 +35,11 @@ export type DatedGearSnapshot={
  /** Unknown categories are never filled with fabricated historical facts. */
  completeHistoricalKitVerified:false;
 };
-const blank=()=>Object.fromEntries(GEAR_CATEGORIES.map(x=>[x,[]])) as
- Record<GearCategory,readonly GearSetting[]>;
+const blank=():Record<GearCategory,readonly GearSetting[]>=>{
+ const result={} as Record<GearCategory,readonly GearSetting[]>;
+ for(const category of GEAR_CATEGORIES)result[category]=[];
+ return result;
+};
 const histCategory=(category:string):GearCategory=>
  category==='headwear'?'headgear':
  GEAR_CATEGORIES.includes(category as GearCategory)?category as GearCategory:'accessories';
