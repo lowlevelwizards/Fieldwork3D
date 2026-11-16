@@ -207,7 +207,9 @@ export function snapshot(s:Session,seenGround?:string[],
     })),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
-    sitePower:copySitePowerState(s.sitePower),
+    sitePower:unchangedWorld?.sitePower?.revision===s.sitePower?.revision&&
+      unchangedWorld?.sitePower?.mode===s.sitePower?.mode?
+      unchangedWorld?.sitePower:copySitePowerState(s.sitePower),
     // Replay already shares these immutable samples until objectRevision moves.
     // Avoid allocating copies just to throw them away in capture().
     windows:unchangedWorld?.windows??s.windows.map(w=>({...w})),
