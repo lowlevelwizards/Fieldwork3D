@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {G36_B_ART as A} from '../src/weapons/geometry/g36-art-layout.ts';
+import {G36_E0_FACTORY} from '../src/weapons/geometry/g36-family-contract.ts';
 import {G36_MAG30_OUTLINE} from '../src/weapons/geometry/g36-magazine-profiles.ts';
 import {buildG36OriginalBlockout,G36_B_PART_IDS,applyG36FactoryMaterials}
  from '../src/weapons/geometry/g36-silhouettes.ts';
@@ -254,4 +255,35 @@ test('G36 D1-3: original full-size display length matches M16A2 in the REAL buil
  assert.equal(A.displayLongitudinalScale,1,
   'the final G36 presentation scalar must be shared with future rig/assembly');
  clearWeaponSilhouette(g);clearWeaponSilhouette(peer);m.dispose();
+});
+
+test('G36 E0: exactly six original factory art identities and unique polymer feed',()=>{
+ const f=G36_E0_FACTORY;
+ assert.equal(f.factoryId,'g36-service');
+ assert.equal(f.family,'g36');assert.equal(f.weaponClass,'rifle');
+ assert.equal(Object.keys(f.parts).length,6);
+ assert.equal(f.parts.magazine,'g36-mag30');
+ assert.equal(f.feedVisualId,'g36-polymer-556');
+ assert.equal(f.integratedOptics,'original-dual');
+ assert.equal(f.mountingPolicy,'no-rail-or-duplicate-sights');
+ assert.equal(f.displayScale,A.displayLongitudinalScale);
+ assert.equal(f.muzzleX,A.muzzleX);
+ assert.equal(f.stockX,A.stockRearX);
+});
+test('G36 E0: shared future hand/grip/magazine/muzzle datums sit on real mesh',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m),f=G36_E0_FACTORY;
+ const grip=one(g,'g36Grip'),fore=one(g,'g36LongHandguard'),
+  mag=one(g,'g36Magazine');
+ assert.equal(hit(grip,f.primaryX,f.primaryY),true,
+  'primary hand contact must project into the actual molded grip');
+ assert.equal(hit(fore,f.supportNearX,f.supportY),true,
+  'support-hand start must sit on polymer handguard');
+ assert.equal(hit(fore,f.supportFarX,f.supportY),true,
+  'support-hand end must sit on polymer handguard');
+ assert.equal(hit(mag,f.magazineMouthX,f.magazineMouthY),true,
+  'magazine insertion datum must intersect polymer magazine body');
+ assert.ok(Math.abs(bb(g).max.x-f.muzzleX)<.02);
+ assert.ok(Math.abs(bb(g).min.x-f.stockX)<.02);
+ assert.ok(f.supportNearX<f.supportFarX&&f.supportFarX<A.handguardFrontX);
+ clearWeaponSilhouette(g);m.dispose();
 });

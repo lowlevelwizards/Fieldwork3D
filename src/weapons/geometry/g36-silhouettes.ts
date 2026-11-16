@@ -6,14 +6,11 @@ import * as THREE from 'three';
 import {addOutline,addCuboid,addFacetedTube,addProfileFrame,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {G36_B_ART as A} from './g36-art-layout.ts';
+import {G36_B_PART_IDS} from './g36-family-contract.ts';
 import {G36_MAG30_OUTLINE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
 import {addG36LongHandguard} from './g36-handguard-profiles.ts';
 
-export const G36_B_PART_IDS=Object.freeze({
- stock:'g36-stock',receiver:'g36-dual-receiver',
- grip:'g36-grip',magazine:'g36-mag30',
- handguard:'g36-handguard-long',barrel:'g36-barrel-480'
-});
+export {G36_B_PART_IDS} from './g36-family-contract.ts';
 
 /** Both stock openings are actual holes in ONE solid molded frame. They
  * grow without adding braces, decorative side-plates or independent bars.
