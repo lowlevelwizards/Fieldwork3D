@@ -70,3 +70,14 @@ test('3D fog stays ground-aligned and hides unobserved object details',()=>{
  assert.doesNotMatch(code,/roomFogRoofs|overheadFog/);
  assert.match(code,/if\(!omniscient&&!this\.presentationSight\.query\(/);
 });
+
+test('E2.C2 shares one selected-squad snapshot across 3D presentation',()=>{
+ const three=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ const update=three.slice(three.indexOf('  update(s:Session,'),three.indexOf('  update(s:Session,')+40000);
+ assert.match(update,/const squad=team\(s\)/);
+ assert.match(update,/const selectedActor=squad\.find\(a=>a\.id===selected\)/);
+ assert.match(update,/const shadowPoint=selectedActor\?\.p\?\?this\.view\.focus/);
+ assert.match(update,/squad\.map\(a=>a\.p\)/);
+ assert.match(update,/const selectedEndpoint=selectedActor\?\.plan\.at\(-1\)\?\.p/);
+ assert.doesNotMatch(update,/team\(s\)\.find|team\(s\)\.map/);
+});
