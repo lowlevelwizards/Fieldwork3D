@@ -63,6 +63,25 @@ export function canAutoOpenEnRoute(plan:{
  if(plan?.kind!=='door')return false;
  return candidateDoorId!==plan.doorId||(plan.method??'open')==='open';
 }
+/** A route asks for an automatic OPEN only when its centerline actually
+ * traverses the physical frame aperture. Brushing the swing envelope while
+ * walking parallel to a wall is NOT threshold intent. This is an intent
+ * predicate only; full capsule/world/leaf collision still owns passage.
+ */
+export function crossesDoorThreshold(from:Pt,to:Pt,door:Door):boolean{
+ const width=dist(door.a,door.b)||1;
+ const tx=(door.b.x-door.a.x)/width,ty=(door.b.y-door.a.y)/width;
+ const nx=-ty,ny=tx;
+ const fromSide=(from.x-door.a.x)*nx+(from.y-door.a.y)*ny;
+ const toSide=(to.x-door.a.x)*nx+(to.y-door.a.y)*ny;
+ if(fromSide*toSide>0||Math.abs(fromSide-toSide)<2)return false;
+ const t=fromSide/(fromSide-toSide);
+ if(t<0||t>1)return false;
+ const along=(from.x+(to.x-from.x)*t-door.a.x)*tx+
+   (from.y+(to.y-from.y)*t-door.a.y)*ty;
+ return along>=-2&&along<=width+2;
+}
+
 export function autoDoorAtBodyContact(from:Pt,to:Pt,
  doors:readonly Door[],world?:SessionWorldGeometry,
  plan?:{kind:string;doorId?:string;method?:string}|null,
