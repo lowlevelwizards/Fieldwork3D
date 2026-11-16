@@ -16,6 +16,7 @@ import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import {MissionRecorder} from './breach-replay.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
 import {setSessionLightingMode,copySitePowerState} from './equipment-site-power.ts';
+import {issuePracticeFlashlightKit} from './equipment-training-flashlight-kit.ts';
 import {
   captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot
@@ -43,6 +44,7 @@ export type MissionCreation={
   initial?:boolean;
   trainingSquadSize?:1|2|3|4;
   trainingLighting?:LightingMode;
+  trainingLightKit?:'current'|'flashlight';
 };
 export type MissionTransition={
   session:Session;
@@ -106,6 +108,10 @@ export class BreachMissionController{
       session.operators=session.operators.filter(a=>a.side!=='blue'||
        ++retained<=request.trainingSquadSize!);
     }
+    // Non-scored practice kit is issued only to physically compatible guns.
+    // Historical scored trials, Campaign loadouts and saved rosters are inert.
+    if(request.trainingLightKit==='flashlight'&&!request.restartStart)
+      issuePracticeFlashlightKit(session);
     session.operationDossier=request.restartStart?.dossier?
       structuredClone(request.restartStart.dossier):
       this.hooks.buildDossier(session,request.risk);
