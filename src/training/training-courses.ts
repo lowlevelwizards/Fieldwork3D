@@ -11,6 +11,8 @@ export type TrainingConfig={
  layout:TrainingLayout;squadSize:1|2|3|4;
  targetDensity:TrainingTargetDensity;doors:TrainingDoorPreset;
  lighting:LightingMode;
+ /** Unscored practice only: issue rail lights without changing saved gear. */
+ lightKit?:'current'|'flashlight';
 };
 export const DEFAULT_TRAINING_CONFIG:Readonly<TrainingConfig>=Object.freeze({
  activity:'killhouse',layout:'hall',squadSize:4,
@@ -31,6 +33,8 @@ export function normalizeTrainingConfig(config:Partial<TrainingConfig>):Training
    config.targetDensity!:'standard',
   doors:['open','closed','mixed'].includes(config.doors??'')?config.doors!:'closed',
   lighting:['day','evening','night','blackout','emergency'].includes(config.lighting??'')?
-   config.lighting!:'day'
+   config.lighting!:'day',
+  ...(config.lightKit?{lightKit:config.lightKit==='flashlight'?'flashlight' as const:
+   'current' as const}:{})
  };
 }
