@@ -407,6 +407,9 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
 export function hireRecruit(c:CampaignState):CampaignState{
+ // Recruitment currently creates generic mixed-weapon personnel; keep it
+ // disabled in Dispatch until the starter kit can be issued to new hires.
+ if(!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  if(c.funds<450||c.operators.length>=32||
   c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.activeContractId)return c;
  const i=c.operators.length;
