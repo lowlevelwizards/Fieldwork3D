@@ -20,7 +20,8 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  const polymer=raw.build?WEAPON_ACCESSORY_POLYMER:dark;
  const optic=parts.optic;
  // Claw rail is its own receiver mesh; raise only the separate fitted optic.
- const sightRise=raw.slots.opticMount==='optic-hk-claw'?1.50:0;
+ // A3: seat reflex/magnified base onto actual claw top (rather than hover).
+ const sightRise=raw.slots.opticMount==='optic-hk-claw'?1.15:0;
  if(optic.id==='optic-reflex'){
   // A3: an actual open hood, not a solid sight tower. The sight origin is
   // still the immutable equipment resolver's mountX/sightHeight.
@@ -104,7 +105,7 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   // Rigid sling mounting hardware stays on the gun. The actual fabric
   // loop is positioned by the shared operator rig, not baked to receiver.
   accessoryMergedBoxes(g,'weapon-accessory-sling-rigid-mounts',[
-   [-9,-.5,3,1.4,1,1.2],[10,-.5,3,1.4,1,1.2]
+   [-9,-.5,2.0,1.4,1,1.2],[10,-.5,2.0,1.4,1,1.2]
   ],metal);
  }
  return g;
