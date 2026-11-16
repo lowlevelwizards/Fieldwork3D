@@ -1,5 +1,6 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
+import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import {SKILL_NAMES,type SkillName} from './campaign-skill-schema.ts';
 export {SKILL_NAMES};
@@ -71,6 +72,8 @@ export type CampaignState={
  inventory:{weapons:Record<CampaignOperator['weapon'],number>;
   attachments:Record<string,number>;serializedWeapons?:SerializedWeapon[]};
  kitPresets:EquipmentPreset[];
+ /** Optional v0.1 rules; absent on legacy saves, preserving their semantics. */
+ rules?:CampaignRules;
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -128,7 +131,9 @@ export function createContracts(seed:number,day:number,existing:readonly Contrac
  }
  return [...archive,...offers];
 }
-export function newCampaign(seed:number):CampaignState{
+export function newCampaign(seed:number,rules?:CampaignRules):CampaignState{
+ const parsedRules=rules===undefined?undefined:readCampaignRules(rules);
+ if(rules!==undefined&&!parsedRules)throw Error('Unsupported campaign rules');
  const normalized=(seed>>>0)||1;
  return reconcileCampaignWeaponOwnership({version:1,id:'campaign-'+normalized.toString(16),seed:normalized,day:1,funds:1200,
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
@@ -137,7 +142,8 @@ export function newCampaign(seed:number):CampaignState{
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
   inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
-    attachments:readAttachmentStock(null)},kitPresets:[]});
+    attachments:readAttachmentStock(null)},kitPresets:[],
+  ...(parsedRules?{rules:parsedRules}:{})});
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
@@ -168,6 +174,9 @@ export function readCampaign(raw:string|null):CampaignState|null{
   const x:unknown=JSON.parse(raw);
   if(!x||typeof x!=='object')return null;
   const c=x as CampaignState;
+  const savedRules=(c as {rules?:unknown}).rules;
+  const parsedRules=savedRules===undefined?undefined:readCampaignRules(savedRules);
+  if(savedRules!==undefined&&!parsedRules)return null;
   if(c.version!==1||!Number.isInteger(c.seed)||!Number.isInteger(c.day)||
      c.day<1||c.day>1000000||!Number.isFinite(c.funds)||
      !Array.isArray(c.operators)||c.operators.length>32||!Array.isArray(c.contracts)||
@@ -219,6 +228,7 @@ export function readCampaign(raw:string|null):CampaignState|null{
     supplies:{...c.supplies,flash:Number.isFinite(c.supplies.flash)?
      Math.max(0,Math.min(1000,Math.floor(c.supplies.flash))):4},
     kitPresets:readKitPresets((c as {kitPresets?:unknown}).kitPresets),
+    ...(parsedRules?{rules:parsedRules}:{}),
    regionalPressure:Object.fromEntries(REGIONS.map(region=>
    [region,Math.max(-3,Math.min(3,Number.isFinite(c.regionalPressure?.[region])?
     c.regionalPressure[region]:0))]))});
