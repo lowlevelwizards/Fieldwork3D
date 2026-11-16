@@ -51,13 +51,27 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  const muzzleY=raw.build?.family==='ar'?AR_VISUAL_AXIS_Y:0;
  const ext=muzzle.muzzleExtension??0;
  if(ext>0){
-  const radius=muzzle.id==='muzzle-suppressor'?2.65:2.05;
-  block(g,muzzle.mountX+ext/2,muzzleY,0,ext,radius,radius,
-   muzzle.id==='muzzle-suppressor'?
-    (raw.build?HK_SD_SUPPRESSOR_METAL:polymer):
-    (raw.build?HK_MUZZLE_METAL:metal));
-  if(muzzle.id==='muzzle-brake'){
-   block(g,muzzle.mountX+ext*.68,muzzleY,0,.32,2.4,2.7,polymer);
+  // Build inside the EXACT existing extension envelope: no new gameplay
+  // muzzle coordinate. Cylinder defaults to Y; shared primitive aligns +X.
+  const cx=muzzle.mountX+ext/2;
+  if(muzzle.id==='muzzle-suppressor'){
+   accessoryTube(g,'weapon-accessory-muzzle-suppressor',cx,muzzleY,0,
+    ext,1.27,1.27,raw.build?HK_SD_SUPPRESSOR_METAL:polymer,8);
+   accessoryTube(g,'weapon-accessory-muzzle-suppressor-front',
+    muzzle.mountX+ext-.17,muzzleY,0,.34,1.18,1.18,
+    raw.build?HK_MUZZLE_METAL:metal,8,false);
+  }else if(muzzle.id==='muzzle-brake'){
+   accessoryTube(g,'weapon-accessory-muzzle-brake',cx,muzzleY,0,
+    ext,.91,1.06,raw.build?HK_MUZZLE_METAL:metal,6);
+   accessoryMergedBoxes(g,'weapon-accessory-muzzle-brake-ports',[
+    [muzzle.mountX+ext*.42,muzzleY,1.01,.19,.72,.085],
+    [muzzle.mountX+ext*.72,muzzleY,1.01,.19,.72,.085],
+    [muzzle.mountX+ext*.42,muzzleY,-1.01,.19,.72,.085],
+    [muzzle.mountX+ext*.72,muzzleY,-1.01,.19,.72,.085]
+   ],polymer);
+  }else{
+   accessoryTube(g,'weapon-accessory-muzzle-hider',cx,muzzleY,0,
+    ext,.77,.87,raw.build?HK_MUZZLE_METAL:metal,6);
   }
  }
  if(parts.foregrip.id==='foregrip-handstop')
