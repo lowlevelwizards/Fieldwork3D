@@ -116,6 +116,10 @@ export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
   const t={x:(d.b.x-d.a.x)/len,y:(d.b.y-d.a.y)/len};
   const n={x:-t.y,y:t.x};
   const side=Math.sign((from.x-m.x)*n.x+(from.y-m.y)*n.y)||1;
+  // A handle-side approach may NEVER circumnavigate the door and return
+  // from its opposite face. The authored DOOR order chose this side.
+  const onChosenSide=(p:Pt)=>
+    ((p.x-m.x)*n.x+(p.y-m.y)*n.y)*side>=-1.5;
   const candidates:Pt[]=[];
   if((d.openFraction??(d.open?1:0))>.15){
     const leaf=doorLeafSegment(d),dx=leaf.b.x-leaf.a.x,dy=leaf.b.y-leaf.a.y;
@@ -142,7 +146,7 @@ export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
        !bodyClear(point,[d],OPERATOR_RADIUS,world)||!doorReachable(point,d)||
         occupied.some(other=>dist(other,point)<27))return [];
     const waypoints=route(from,point,p=>bodyClear(p,[d],OPERATOR_RADIUS,world));
-    if(!waypoints.length)return [];
+    if(!waypoints.length||!waypoints.every(onChosenSide))return [];
     let previous=from,pathLength=0;
     for(const waypoint of waypoints){
       pathLength+=dist(previous,waypoint);previous=waypoint;
