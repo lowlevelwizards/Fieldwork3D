@@ -23,7 +23,7 @@ export function activeWeaponLightSources(actors:readonly TeamActor[],
    weaponConfiguration:a.weaponConfiguration,
    aim:a.aim,velocity:a.velocity,recoil:a.recoil,
    posture:a.posture},doors,geometry?.cover,geometry?.walls);
-  const emitter=weaponLightEmitter(clearance.muzzle,a.weaponConfiguration);
+  const emitter=weaponLightEmitter(clearance.muzzle,a.weaponConfiguration!);
   result.push({id:'weapon:'+a.id,p:emitter,
    heading:clearance.muzzle.yaw,halfAngle:LIGHT_BEAM_HALF_ANGLE,
    intensity:.92,range:LIGHT_BEAM_RANGE,enabled:true});
