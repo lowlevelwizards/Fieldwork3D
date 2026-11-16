@@ -23,6 +23,8 @@ type ActorTrack={
   accelEvents:{at:number;acceleration:number}[];
   driveEvents:MotionEvent[];brakeEvents:MotionEvent[];
   events:[FootEvent[],FootEvent[]];last:{x:number;y:number;t:number};
+  /** Replay-only interval lookup. False for old/out-of-order foot history. */
+  orderedTouchdowns:[boolean,boolean];
   travelYaw:number;lastStepAt:number;
   travelYawEvents:{at:number;yaw:number}[];
   pelvisYawEvents:{at:number;yaw:number}[];
@@ -53,6 +55,38 @@ const footMark=(t:number,point:{x:number;y:number},yaw:number):FootEvent=>({
   at:t,from:{...point},to:{...point},fromYaw:yaw,toYaw:yaw,
   unload:0,swing:0,lift:0,landing:0,recovery:0
 });
+/** Touchdown occurs after unloading and swinging, not at the event start. */
+const touchdownAt=(event:FootEvent):number=>
+  event.at+event.unload+event.swing;
+/** Keep the fast seek path only when it has the same stopping semantics as
+ * the original reverse scan, including duplicate contact timestamps. */
+const orderedTouchdowns=(events:readonly FootEvent[]):boolean=>{
+  let last=-Infinity;
+  for(const event of events){
+    const at=touchdownAt(event);
+    if(!Number.isFinite(at)||at<last)return false;
+    last=at;
+  }
+  return true;
+};
+const appendFootEvent=(track:ActorTrack,index:0|1,event:FootEvent):void=>{
+  const events=track.events[index];
+  const at=touchdownAt(event);
+  if(!Number.isFinite(at)||
+     (events.length&&at<touchdownAt(events[events.length-1])))
+    track.orderedTouchdowns[index]=false;
+  events.push(event);
+};
+/** First chronological contact strictly later than limit. */
+const firstTouchdownAfter=(events:readonly FootEvent[],limit:number):number=>{
+  let lo=0,hi=events.length;
+  while(lo<hi){
+    const mid=Math.floor((lo+hi)/2);
+    if(touchdownAt(events[mid])<=limit)lo=mid+1;
+    else hi=mid;
+  }
+  return lo;
+};
 export function sampleFootEvents(events:readonly FootEvent[],time:number):FootTarget{
   if(!events.length)throw Error('Replay foot has no initial contact');
   let lo=0,hi=events.length-1;
@@ -109,6 +143,7 @@ export class ReplayMotionRecorder{
       let track=this.actors.get(actor.id);
       if(!track){
         track={gait:createLiveGait(),events:[[],[]],
+          orderedTouchdowns:[true,true],
           last:{...position,t:time},travelYaw:actor.heading,
           lastStepAt:-100,pelvisYawEvents:[],travelYawEvents:[],
           lastVelocity:actor.velocity,accelEvents:[],
@@ -178,14 +213,16 @@ export class ReplayMotionRecorder{
       if(track.gait.resets!==previousResets){
         for(let i=0;i<2;i++){
           const foot=track.gait.feet[i];
-          track.events[i].push(footMark(time,foot.plantedAt,foot.worldYaw));
+          appendFootEvent(track,i as 0|1,
+            footMark(time,foot.plantedAt,foot.worldYaw));
         }
       }
       if(track.gait.lastStepAt!==previousStep&&
         track.gait.lastStepAt===time){
         const i=track.gait.lastStepFoot;
         const foot=track.gait.feet[i];
-        track.events[i].push({at:time,from:{...foot.swingFrom},
+        appendFootEvent(track,i as 0|1,
+          {at:time,from:{...foot.swingFrom},
           to:{...foot.swingTo},fromYaw:foot.fromYaw,
           toYaw:foot.targetYaw,unload:foot.phaseDuration,
           swing:foot.swingDuration,landing:foot.landingDuration,
@@ -212,11 +249,27 @@ export class ReplayMotionRecorder{
       const track=this.actors.get(id);if(!track)continue;
       for(let foot=0;foot<2;foot++){
         const entries=track.events[foot];
-        for(let n=entries.length-1;n>=0;n--){
-          const event=entries[n],at=event.at+event.unload+event.swing;
-          if(at<=from)break;
-          if(event.swing>0&&at<=to)out.push({
-            id,foot:foot as 0|1,at,position:{...event.to}});
+        if(track.orderedTouchdowns[foot]){
+          // Normal fixed-step streams can skip both the already-heard
+          // prefix and future suffix without walking the entire history.
+          // Iterate backwards as before: equal-time tie ordering is stable.
+          const begin=firstTouchdownAfter(entries,from);
+          const end=firstTouchdownAfter(entries,to);
+          for(let n=end-1;n>=begin;n--){
+            const event=entries[n];
+            if(event.swing>0)out.push({
+              id,foot:foot as 0|1,at:touchdownAt(event),
+              position:{...event.to}});
+          }
+        }else{
+          // Historical/corrupt archives may contain reordered touchdown
+          // times. Preserve the old reverse-scan and early-break behavior.
+          for(let n=entries.length-1;n>=0;n--){
+            const event=entries[n],at=touchdownAt(event);
+            if(at<=from)break;
+            if(event.swing>0&&at<=to)out.push({
+              id,foot:foot as 0|1,at,position:{...event.to}});
+          }
         }
       }
     }
@@ -316,6 +369,8 @@ export class ReplayMotionRecorder{
         gait:createLiveGait(),lastVelocity:0,
         driveEvents:indexed.drive,brakeEvents:indexed.brake,
         events:feet,
+        orderedTouchdowns:[orderedTouchdowns(feet[0]),
+          orderedTouchdowns(feet[1])],
         last:{x:lastFoot?.to.x??0,y:lastFoot?.to.y??0,t:0},
         travelYaw:actor.travelYaw,lastStepAt:-100,
         travelYawEvents:structuredClone(actor.travelYawEvents),
