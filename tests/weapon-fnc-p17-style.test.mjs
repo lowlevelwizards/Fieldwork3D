@@ -73,19 +73,28 @@ test('P17 handguard underside heavier without losing gas/polymer hierarchy',()=>
  assert.ok(near(L.gas.topY,1.85)&&near(L.gas.bottomY,-.60));
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P17 vent strokes bold but remain five grouped openings with no new mesh count',()=>{
+test('P21 pixel surface coverage: P17 vent strokes bold but remain five grouped openings with no new mesh count',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const vents=many(g,'fncP11BrokenGasSideSlots');
- const grooves=many(g,'fncP11PolymerLongRibs');
- const roof=one(g,'fncP11TopGasVentRow');
- assert.equal(vents.length,2);assert.equal(grooves.length,2);
- assert.ok(roof);
- assert.equal(L.gas.ventCount,4);
- assert.ok(near(L.gas.ventHeight,.31));
- assert.ok(vents.every(v=>v.geometry.getAttribute('position').count===24));
- assert.ok(grooves.every(v=>v.geometry.getAttribute('position').count===12));
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.equal(many(g,'fncP17BoldMarkings').length,4);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
+ }
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P17 thicker barrel and short bold muzzle, factory-only graphic ports',()=>{
