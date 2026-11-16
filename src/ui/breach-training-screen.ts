@@ -38,7 +38,8 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const panel=document.createElement('div');panel.className='breach-training-panel';
  const title=document.createElement('h2');title.textContent='FIELDWORK / TRAINING';
  const summary=document.createElement('p');summary.textContent=
-  'Use the actual tactical simulation. Practice runs never change campaign progress.';
+  'Use the real tactical simulation. Use SUPPRESS to fire at targets. '+
+  'Green silhouettes are NO-SHOOT. Practice never changes Campaign progress.';
  const options=document.createElement('div');options.className='breach-training-options';
  const activity=select('ACTIVITY',['killhouse','range','trial'],
   {killhouse:'KILLHOUSE',range:'EQUIPMENT RANGE',trial:'TACTICAL TRIALS'});
@@ -124,8 +125,10 @@ export function createBreachTrainingScreen(hooks:Hooks){
   const isRange=activity.el.value==='range';
   const isTrial=activity.el.value==='trial';
   trials.wrapper.hidden=!isTrial;
-  for(const field of [layout,squad,density,doors,lighting])
+  for(const field of [layout,density,doors])
    field.wrapper.hidden=isRange||isTrial;
+  squad.wrapper.hidden=isTrial;
+  lighting.wrapper.hidden=isTrial;
  }
  function showResult(result:TrialAssessment,personalBest:boolean):void{
   lastAssessment=result;resultsButton.hidden=false;

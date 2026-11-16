@@ -1305,7 +1305,9 @@ const trainingScreen=createBreachTrainingScreen({
   reset(state.variant,undefined,undefined,buildTrainingSite(config),
    undefined,false,undefined,{squadSize:config.squadSize,lighting:config.lighting});
   trainingScreen.setActive(true);campaignScreen.hide();
-  showUiHelp('TRAINING · AUTHOR A PLAN AND EXECUTE · RETRY AT ANY TIME',4300);
+  showUiHelp(config.activity==='trial'?
+   'TRIAL · USE SUPPRESS TO ENGAGE HOSTILE TARGETS · AVOID GREEN NO-SHOOT TARGETS':
+   'TRAINING · AUTHOR A PLAN · USE SUPPRESS FOR TARGETS · RETRY AT ANY TIME',5500);
  },
  onReplay:()=>enterReplay('debrief'),
  onReturnToMenu:()=>{

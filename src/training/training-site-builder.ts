@@ -75,8 +75,11 @@ export function buildTrainingSite(config:TrainingConfig):Site{
  const choices=options.layout==='linear'?[0,1,2,5,4,3]:
   options.layout==='branch'?[0,3,1,4,2,5]:
   options.layout==='compound'?[5,2,3,0,4,1]:[0,3,2,5,1,4];
+ const roomTargets=[{x:151,y:178},{x:207,y:207},{x:165,y:242}] as const;
  const cover:Site['cover']=choices.slice(0,count).map((index,i)=>({
-  id:'kh-target-'+(i+1),x:targets[index].x,y:targets[index].y,
+  id:'kh-target-'+(i+1),
+  x:trial?.id==='room'?roomTargets[i].x:targets[index].x,
+  y:trial?.id==='room'?roomTargets[i].y:targets[index].y,
   w:20,h:30,low:false,
   fixture:trial?.noShootSlots.includes(i)?'target-no-shoot':'target-plate'
  }));
@@ -97,6 +100,7 @@ export function buildTrainingSite(config:TrainingConfig):Site{
   scenarioStyle:'routine',roomCount:rooms.length,rooms,walls,doors,cover,
   bounds:{minX:0,minY:0,maxX:680,maxY:720},
   entrance:p(342,600),spawn:[p(293,655),p(319,658),p(346,658),p(374,655)],
-  enemies:[],enemyHeadings:[],objective:p(340,130),extract:p(340,660)
+  enemies:[],enemyHeadings:[],
+  objective:trial?.id==='room'?p(180,200):p(340,130),extract:p(340,660)
  };
 }
