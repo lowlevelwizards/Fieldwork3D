@@ -126,6 +126,15 @@ export function createTacticalHudController(
  targeting:TacticalInteractionState=createTacticalInteractionState()){
   const feedback=new TacticalFeedback();
   const hudHeight=createTacticalHudHeightSync();
+  // The tactical DOM is persistent between routine HUD updates. Keep the
+  // mounted element while it is connected; re-resolve after screen remounts.
+  // Missing optional controls are retried, never permanently cached as null.
+  const mounted=<T extends Element>(selector:string,current:T|null):T|null=>
+    current?.isConnected?current:document.querySelector<T>(selector);
+  let rangeExit:HTMLButtonElement|null=null;
+  let rangeRepeat:HTMLButtonElement|null=null;
+  let siteHeader:HTMLElement|null=null;
+  let siteSubheading:HTMLElement|null=null;
   const teaching=new ContextualTeaching(
     key=>{try{return localStorage.getItem('fieldwork3d.ui.teach.v2.'+key)==='1';}
       catch{return false;}},
@@ -483,11 +492,10 @@ export function createTacticalHudController(
     (lastRangeTrial?'\n'+rangeTrialLabel(lastRangeTrial):'');
    if(rangeTelemetry.textContent!==line)rangeTelemetry.textContent=line;
   }
-  const leaveRange=document.querySelector<HTMLButtonElement>(
-   '[data-equipment-range-exit]');
-  if(leaveRange)leaveRange.hidden=!state.site?.training;
-  const repeat=document.querySelector<HTMLButtonElement>('[data-range-repeat]');
-  if(repeat)repeat.hidden=!state.site?.training;
+  rangeExit=mounted('[data-equipment-range-exit]',rangeExit);
+  if(rangeExit)rangeExit.hidden=!state.site?.training;
+  rangeRepeat=mounted('[data-range-repeat]',rangeRepeat);
+  if(rangeRepeat)rangeRepeat.hidden=!state.site?.training;
   paintOperatorAccent(ui.quickStates,selected);
   paintOperatorAccent(ui.context,selected);
   paintOperatorAccent(paletteTether,selected);
@@ -622,8 +630,8 @@ export function createTacticalHudController(
     });
   }
   // Show the site as a place, not as a raw procedural generation dump.
-  const siteHeader=document.querySelector<HTMLElement>('.ident strong');
-  const siteSubheading=document.querySelector<HTMLElement>('.ident small');
+  siteHeader=mounted('.ident strong',siteHeader);
+  siteSubheading=mounted('.ident small',siteSubheading);
   if(siteHeader)writeDomText(siteHeader,compactSiteTitle(state.site));
   if(siteSubheading)writeDomText(siteSubheading,state.site?
     friendly.length+' OPERATORS · '+
