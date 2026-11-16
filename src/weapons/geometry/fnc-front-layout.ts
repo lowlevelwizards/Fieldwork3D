@@ -1,4 +1,4 @@
-/** FNC P18 silhouette-first art datums. P13 public alias kept for consumers.
+/** FNC P19 proportion-tuned silhouette art datums. P13 public alias kept for consumers.
  * One authoritative source for interdependent handguard, gas cover,
  * handstop, groove, and sight placements. Local game-art units ONLY.
  * Existing FNC_P1 world anchors, contact zones and part IDs are untouched.
@@ -12,7 +12,7 @@ export const FNC_FRONT_P13=Object.freeze({
  polymer:Object.freeze({
   startX:1.95,fullStartX:3.10,fullEndX:10.85,endX:11.68,
   fullScale:1.065,endScale:.98,
-  pivotY:-1.11,heightScale:1.30,liftY:.38,lowerFlare:.83,
+  pivotY:-1.11,heightScale:1.30,liftY:.38,lowerFlare:.60,
   grooveStartX:4.10,grooveEndX:10.97,
   grooveYs:Object.freeze([-.81,-1.53])
  }),
@@ -36,7 +36,7 @@ export const FNC_FRONT_P13=Object.freeze({
   earX:14.26,earBottomY:1.68,earShoulderY:2.53,earTopY:2.77,
   earHalfSpacing:.65,earLength:.82,earDepth:.76
  }),
- muzzle:Object.freeze({centerX:18.85,length:1.30,
-  radius:1.03,slotFirstX:18.53,slotPitch:.45,slotLength:.33,
+ muzzle:Object.freeze({centerX:18.77,length:1.46,
+  radius:1.03,slotFirstX:18.44,slotPitch:.50,slotLength:.36,
   slotHalfHeight:.19})
 });
