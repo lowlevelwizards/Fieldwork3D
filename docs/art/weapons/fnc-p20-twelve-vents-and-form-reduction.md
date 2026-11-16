@@ -13,4 +13,17 @@ After approved shared AR STANAG magazines and P19 proportions, user requested re
 ## Verification
 Run `node --experimental-strip-types --test tests/weapon-fnc-p20-simplified-forms.test.mjs` plus the existing focused FNC/FAL suite and `node --experimental-strip-types scripts/audit-weapon-geometry.mjs`. Tests assert exact 4+4+4 visible vent quads, rectangular front ears, sight seat, square six-point magwell, one inserted charging lug, STANAG overlap, unchanged muzzle/stock endpoints and lower polygon/mesh counts than the previous P19 baseline of 648 triangles / 33 meshes (144 handguard triangles).
 
+## Measured outcomes (real emitted GPU triangles)
+
+The focused GitHub Actions run passed **108/108 tests**, TypeScript, Vite production build, five-rifle WebGL comparison capture and mobile/desktop Arsenal capture.
+
+| Part | P19 before | P20 after | Saved |
+| --- | ---: | ---: | ---: |
+| Receiver | 216 triangles / 10 meshes | 192 triangles / 9 meshes | 24 triangles / 1 mesh |
+| Handguard (including all gas vents and grooves) | 144 | 128 | 16 triangles |
+| Front sight/base and barrel region | 100 | 80 | 20 triangles |
+| **Whole FNC** | **648 triangles / 33 meshes** | **588 triangles / 32 meshes** | **60 triangles (9.3%) / 1 mesh** |
+
+FAL remains 366 triangles / 26 meshes, G3A3 490 / 24, M16A2 466 / 26, M4A1 478 / 31. The FNC is still intentionally the most detailed among these factory rifles. Its built-in exposed vented gas spine and several distinct open-stock surfaces contribute a legible silhouette at small scale.
+
 P20 is intentionally a reduction pass. If the new geometry savings come at the expense of side-readable silhouette or visible positive/negative forms in mobile Workbench, fix the silhouette rather than adding little mechanical details back.
