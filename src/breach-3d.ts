@@ -3,6 +3,7 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
+import {SiteFixtureLightingPresenter} from './rendering/breach-site-light-presenter.ts';
 import * as THREE from 'three';
 import {stepCameraFocusGlide,type CameraFocusGlide}
   from './breach-camera-focus-glide.ts';
@@ -645,6 +646,7 @@ export class TacticalScene3D{
   private root=new THREE.Group();
   private readonly staticBatches=new StaticSceneBatches();
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
+  private readonly fixtureLights=new SiteFixtureLightingPresenter(this.scene);
   // One shared cosmetic draw rather than two transparent WebGL passes per rig.
   private readonly contactShadowBatch=new BreachContactShadowBatch(this.scene);
   private readonly shadowUpdates=new PausedShadowSceneController();
@@ -1036,6 +1038,7 @@ export class TacticalScene3D{
     this.displayedSite=site;
     this.staticBatches.clear();
     this.repeatedFixtures.clear();
+    this.fixtureLights.reset();
     this.presentationSight.reset();
     // Friendly rigs survive map changes for responsive load-in. Hostile
     // models belong to the outgoing encounter and otherwise accumulate
@@ -1610,6 +1613,8 @@ export class TacticalScene3D{
         G.plumFillBoost*(mood.sun/2.35);
       this.appliedLightingMode=s.lightingMode;
     }
+    this.fixtureLights.update(s,omniscient,personalDisclosure,
+      personalGroundEvidence);
     for(const [index,group] of this.coverGroups){
       const before=s.site?.cover[index],current=s.coverState[index];
       if(!before||!current)continue;
