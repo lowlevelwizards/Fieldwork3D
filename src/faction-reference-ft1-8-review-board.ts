@@ -19,7 +19,7 @@ export type FT18ReviewRow={
 export function ft18ReviewBoard():readonly FT18ReviewRow[]{
  const inspections=new Map(inspectFT18Catalog().map(x=>[x.candidateId,x]));
  const reviews=new Map(FT17_CANDIDATE_DECISIONS.map(x=>[x.candidateId,x]));
- return buildFT18Triage(buildContentCandidates(FT17_CANDIDATE_DECISIONS)).map(row=>{
+ return buildFT18Triage(buildContentCandidates(FT17_CANDIDATE_DECISIONS)).map((row):FT18ReviewRow=>{
   const candidate=row.candidate;
   const audit=inspections.get(candidate.id);
   const decision=reviews.get(candidate.id);
