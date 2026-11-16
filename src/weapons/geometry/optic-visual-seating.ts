@@ -17,7 +17,11 @@ export function opticVisualSeat(config:WeaponConfiguration,
   return {x:resolvedMountX,supportY:HK_CLAW_VISUAL.supportTopY,mount:'hk-claw'};
  if(build?.family==='ar'&&build.parts.receiver==='ar-flat'){
   // AR flat-top Picatinny segments: tooth center Y=2.84, height=.34.
-  return {x:resolvedMountX,supportY:3.01,mount:'ar-top'};
+  // Magnified rings are spaced ~3.1 apart: align each foot with the
+  // -1.5/+1.5 rail teeth (three teeth at -4.5,-1.5,+1.5).
+  // A centered legacy x=-1 would float BOTH rings between those teeth.
+  return {x:config.slots.optic==='optic-magnified'?.15:resolvedMountX,
+   supportY:3.01,mount:'ar-top'};
  }
  if(build?.family==='ak'&&build.parts.handguard==='ak-rail-long'){
   // Unlike ARs, this AK optic sits on the raised FORE-END rail, not an
