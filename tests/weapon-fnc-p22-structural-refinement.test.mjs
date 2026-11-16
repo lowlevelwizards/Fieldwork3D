@@ -72,8 +72,8 @@ test('P22.3: gas box and front sight seat are one true mesh with two open ears',
   ears=all(g,'fncP20SimpleSightEar'),poly=one(g,'fncFacetedHandguard');
  assert.ok(gas&&seat&&poly);
  assert.equal(gas,seat,'no extra sight pedestal');
- assert.equal(gas.geometry.getAttribute('position').count,144,
-  'four six-face gas stations, single contiguous sealed geometry');
+ assert.equal(gas.geometry.getAttribute('position').count,216,
+  'six closed gas stations including lower housing beneath handguard');
  assert.ok(box(gas).max.x>box(poly).max.x+3.3);
  assert.ok(close(box(gas).max.x,15.10));
  assert.equal(ears.length,2);
@@ -87,7 +87,7 @@ test('P22.3: gas box and front sight seat are one true mesh with two open ears',
  assert.ok(lastVent<L.gas.transitionStartX-.35,
   'last vent does not enter widened gas-block transition');
  const x=L.gas.ventFirstX+L.gas.ventPitch+.45;
- assert.ok(pixel(3,0,x,1.17,[L.gas.startX,L.gas.endX,L.gas.bottomY,L.gas.topY])<150);
+ assert.ok(pixel(3,0,x,1.17,[L.gas.startX,L.gas.endX,L.gas.frontBottomY,L.gas.topY])<150);
  assert.ok(pixel(0,1,x,0,[L.gas.startX,L.gas.endX,
   -L.gas.roofHalfZ,L.gas.roofHalfZ])<150);
  clearWeaponSilhouette(g);m.dispose();

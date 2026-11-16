@@ -14,7 +14,7 @@ const TILES:Readonly<Record<Tile,{col:number;row:number;bounds:Bounds}>>={
  'slot':{col:0,row:0,bounds:[-6.40,2.80,-1.20,1.95]},
  'lower-right':{col:1,row:0,bounds:[-6.40,2.80,-3.60,-1.00]},
  'lower-left':{col:2,row:0,bounds:[-6.40,2.80,-3.60,-1.00]},
- 'gas-side':{col:3,row:0,bounds:[F.gas.startX,F.gas.endX,F.gas.bottomY,F.gas.topY]},
+ 'gas-side':{col:3,row:0,bounds:[F.gas.startX,F.gas.endX,F.gas.frontBottomY,F.gas.topY]},
  'gas-roof':{col:0,row:1,bounds:[F.gas.startX,F.gas.endX,-F.gas.roofHalfZ,F.gas.roofHalfZ]},
  'polymer':{col:1,row:1,bounds:[F.polymer.startX,F.polymer.endX,-2.80,.70]},
  'blank':{col:2,row:1,bounds:[0,1,0,1]}
@@ -48,6 +48,12 @@ function pixelValue(tile:Tile,x:number,y:number):number{
   return 255;
  }
  if(tile==='gas-side'||tile==='gas-roof'){
+  // Two subtle longitudinal lines on the exposed lower metal section.
+  // No additional mesh or decal, and no stripes on the polymer or roof.
+  if(tile==='gas-side')for(const line of F.gas.lowerLines){
+   if(inside(x,y,line.startX,line.endX,
+    line.y-line.height/2,line.y+line.height/2))return line.shade;
+  }
   for(let i=0;i<F.gas.ventCount;i++){
    const x0=F.gas.ventFirstX+i*F.gas.ventPitch;
    if(tile==='gas-side'&&inside(x,y,x0,x0+F.gas.ventLength,
@@ -144,7 +150,10 @@ export function applyFNCPixelDetails(mesh:THREE.Mesh,region:FNCPixelRegion):void
  mesh.material=pixelMaterial(mesh.material as THREE.Material);
  mesh.userData.fncPixelDetailRegion=region;
  mesh.userData.fncPixelAtlas=fncPixelAtlas().name;
- if(region==='gas')mesh.userData.fncPixelVentCounts={left:4,right:4,top:4};
+ if(region==='gas'){
+  mesh.userData.fncPixelVentCounts={left:4,right:4,top:4};
+  mesh.userData.fncPixelLowerGasLines=F.gas.lowerLines.length;
+ }
  if(region==='polymer')mesh.userData.fncPixelGroovesPerSide=2;
  if(region==='receiver-upper')mesh.userData.fncPixelOperatingSlot=true;
  if(region==='receiver-lower')mesh.userData.fncPixelReceiverLines=true;

@@ -36,10 +36,10 @@ test('P21 nearest-neighbor RGBA atlas has real authored dark texels for each det
   'no lower stamp on either side');
  for(let k=0;k<4;k++){
   const x=L.gas.ventFirstX+k*L.gas.ventPitch+.45;
-  assert.ok(pixel(3,0,x,1.17,[L.gas.startX,L.gas.endX,-.6,1.85])<150,'side vent '+k);
+  assert.ok(pixel(3,0,x,1.17,[L.gas.startX,L.gas.endX,L.gas.frontBottomY,L.gas.topY])<150,'side vent '+k);
   assert.ok(pixel(0,1,x,0,[L.gas.startX,L.gas.endX,-.62,.62])<150,'roof vent '+k);
  }
- assert.equal(pixel(3,0,2.6,1.17,[L.gas.startX,L.gas.endX,-.6,1.85]),255);
+ assert.equal(pixel(3,0,2.6,1.17,[L.gas.startX,L.gas.endX,L.gas.frontBottomY,L.gas.topY]),255);
  assert.equal(pixel(0,1,2.6,0,[L.gas.startX,L.gas.endX,-.62,.62]),255);
  const p=L.polymer,transformed=y=>{
   const v=p.pivotY+(y-p.pivotY)*p.heightScale+p.liftY;
@@ -91,10 +91,11 @@ test('P21 proves real reductions and unchanged magazine, muzzle and other famili
  const config=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
  const gun=buildWeaponSilhouette('rifle',m,m,config);
  const audit=countGeometry(gun),peers=buildAuditReport();
- assert.ok(audit.triangles<=525,'P21 cuts decoration polygons instead of replacing meshes');
+ assert.ok(audit.triangles<=540,
+  'P24 retains the P21 pixel-detail savings while allowing 24 triangles for the extended gas belly');
  assert.ok(audit.meshes<=24,'no flat detail overlays survive');
- assert.ok(audit.byPart.handguard.triangles<=124,
-  'P22 integrated gas/sight body is now accounted under handguard');
+ assert.ok(audit.byPart.handguard.triangles<=148,
+  'P24 continuous lower gas block contributes 24 triangles without a new mesh');
  assert.ok(audit.byPart.receiver.triangles<=165,
   'receiver markings removed; remaining faceted upper/selector are silhouette geometry');
  assert.equal(peers.find(x=>x.name==='FNC').triangles,audit.triangles);

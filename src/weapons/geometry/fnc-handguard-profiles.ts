@@ -1,4 +1,4 @@
-/** FNC P23: sculptural polymer, lip and vertically deeper gas block/front sight. Vents and
+/** FNC P24: sculptural polymer, lip and deep gas block running into the front handguard. Vents and
  * grooves are pixel art mapped onto the three-dimensional surfaces. The P13
  * layout contract owns all relative positions; meshes build on demand only.
  * +X muzzle, +Y up, +Z right. No physical assembly or firing changes.
@@ -126,9 +126,12 @@ function gasCross(x:number,i:number):readonly [number,number]{
  const top=GAS.topY+(sight.baseTopY-GAS.topY)*
   Math.max(0,Math.min(1,(x-GAS.transitionStartX)/
    (GAS.endX-GAS.transitionStartX)));
- // Only the exposed forward gas-block portion drops below the barrel line;
- // the vented top housing stays narrow, and the drop is part of this mesh.
- const bottom=GAS.bottomY+(GAS.frontBottomY-GAS.bottomY)*t;
+ // Lower gas block begins beneath the polymer handguard, reaches full
+ // depth just beyond its molded lip, and stays joined to the same six-face
+ // vented gas housing. Keep roof/breadth transitions forward and independent.
+ const lowerT=Math.max(0,Math.min(1,
+  (x-GAS.lowerStartX)/(GAS.lowerFullX-GAS.lowerStartX)));
+ const bottom=GAS.bottomY+(GAS.frontBottomY-GAS.bottomY)*lowerT;
  const side=GAS.sideHalfZ+(.98-GAS.sideHalfZ)*t;
  const roof=GAS.roofHalfZ+(.73-GAS.roofHalfZ)*t;
  const shoulder=GAS.shoulderY+(.50-GAS.shoulderY)*t;
@@ -143,7 +146,8 @@ export function addFNCUpperGasBox(root:THREE.Group,
  // One six-face metal envelope; no extra bridge boxes.
  const mesh=makeSixFacePrism(root,material,
   'family-handguard-fnc-p15-upper-gas-spine',
-  [GAS.startX,GAS.transitionStartX,GAS.transitionEndX,GAS.endX],
+  [GAS.startX,GAS.lowerStartX,GAS.lowerFullX,
+   GAS.transitionStartX,GAS.transitionEndX,GAS.endX],
   gasCross);
  mesh.userData.fncP5UpperGasBox=true;
  mesh.userData.fncP6NarrowGasBox=true;
@@ -157,6 +161,7 @@ export function addFNCUpperGasBox(root:THREE.Group,
  mesh.userData.fncP18RaisedFourVentSpine=true;
  mesh.userData.fncP22ContinuousGasBlock=true;
  mesh.userData.fncP23DeepForwardGasBlock=true;
+ mesh.userData.fncP24RearwardLowerGasBlock=true;
  mesh.userData.fncP13CompactIntegratedSightBase=true;
  mesh.userData.fncP14LowSightBase=true;
  mesh.userData.fncP15AlignedGasSightBase=true;
