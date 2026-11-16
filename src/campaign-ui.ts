@@ -358,7 +358,7 @@ export class CampaignScreen{
   }
   logistics.append(inventory);
   const recruit=button('RECRUIT OPERATOR · 450 CR',this.handlers.recruit);
-  recruit.disabled=isDispatchPilot(c)||c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
+  recruit.disabled=c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
   personnel.append(recruit);
   const notice=node('p','campaign-note',c.history.length?
    'LAST OPERATION: '+c.history[c.history.length-1].grade+' · '+c.history[c.history.length-1].outcome.toUpperCase():
