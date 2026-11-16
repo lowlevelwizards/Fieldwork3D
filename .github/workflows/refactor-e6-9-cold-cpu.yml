@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'src/breach-quickplay-controller.ts'
+      - 'src/rendering/breach-cold-renderer-trace.ts'
+      - 'scripts/verification/e6-8-cold-renderer-browser.mjs'
       - 'scripts/verification/e6-9-cold-cpu-analysis.mjs'
       - 'scripts/verification/e6-9-cold-cpu-browser.mjs'
       - 'tests/refactor-e6-9-cold-cpu-profile.test.mjs'
