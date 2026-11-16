@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {summarizeColdCpuProfile}
  from '../scripts/verification/e6-9-cold-cpu-analysis.mjs';
+import {ColdRendererTrace} from '../src/rendering/breach-cold-renderer-trace.ts';
 
 const src=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const node=(id,parent,functionName,url='')=>({id,parent,callFrame:{
@@ -62,4 +63,24 @@ test('E6.9 profiles only the real first frame and does not alter production poli
  assert.match(script,/\['1','0'\]/);
  assert.doesNotMatch(quick,/renderer\.shadowMap\.enabled=false/);
  assert.doesNotMatch(quick,/renderer\.setPixelRatio\(/);
+});
+
+test('E6.9 catches real synchronous info-log query CPU cost omitted by E6.8',()=>{
+ let clock=0;
+ const gl={
+  getProgramInfoLog:()=>{clock+=175;return '';},
+  getShaderInfoLog:()=>{clock+=12;return '';},
+  getExtension:()=>{clock+=9;return null;}
+ };
+ const trace=new ColdRendererTrace(gl,0,()=>({
+  programs:1,geometries:0,textures:0
+ }),()=>clock);
+ trace.capture('firstFrame',()=>{
+  gl.getProgramInfoLog();gl.getShaderInfoLog();gl.getExtension();
+ });
+ const {captures}=trace.finish();
+ assert.equal(captures[0].calls.getProgramInfoLog.cpuWallMs,175);
+ assert.equal(captures[0].calls.getShaderInfoLog.cpuWallMs,12);
+ assert.equal(captures[0].calls.getExtension.cpuWallMs,9);
+ assert.equal(captures[0].calls.getProgramInfoLog.count,1);
 });
