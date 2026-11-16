@@ -182,6 +182,7 @@ let lastSightTotals:SightTotal|null=null;
 let lastFogPaints=0,lastShadowRefreshes=0;
 // Window totals prevent single-frame HUD samples from missing rare fog paints.
 const intervalE6={frames:0,poseCount:0,posePrepMs:0,poseSolveMs:0,
+ allyContextMs:0,allyPeerVisits:0,
  fingerprintMs:0,appearanceInvalidations:0,fogCanvasMs:0,
  uploadRequests:0,submittedUploads:0,submittedBytes:0};
 let lastFogUploadTotals:{requests:number;uploads:number;bytes:number}|null=null;
@@ -420,6 +421,8 @@ function tick(now:number){
      intervalE6.frames++;
      intervalE6.poseCount+=actorCost?.poseCount??0;
      intervalE6.posePrepMs+=actorCost?.posePrepMs??0;
+     intervalE6.allyContextMs+=actorCost?.allyContextMs??0;
+     intervalE6.allyPeerVisits+=actorCost?.allyPeerVisits??0;
      intervalE6.poseSolveMs+=actorCost?.poseMs??0;
      intervalE6.fingerprintMs+=actorCost?.appearanceFingerprintMs??0;
      intervalE6.appearanceInvalidations+=actorCost?.appearanceInvalidations??0;
@@ -534,6 +537,8 @@ function tick(now:number){
           intervalE6.poseCount+' · PREP/SOLVE '+
           intervalE6.posePrepMs.toFixed(2)+'/'+
           intervalE6.poseSolveMs.toFixed(2)+'ms'+
+        '\nE6.5 ALLY CONTEXT '+intervalE6.allyContextMs.toFixed(2)+
+          'ms · PEERS '+intervalE6.allyPeerVisits+' (one scan/pose)'+
         '\nE6.4 APPEARANCE KEY '+intervalE6.fingerprintMs.toFixed(2)+
           'ms · REBUILDS '+intervalE6.appearanceInvalidations+
         '\nE6.4 FOG CANVAS '+intervalE6.fogCanvasMs.toFixed(2)+
