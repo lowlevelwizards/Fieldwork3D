@@ -2,7 +2,7 @@
 
 ## D6.0: asset and state audit
 The existing 2015 SWAT reference is already authored and visibly distinctive:
-police-specific helmet silhouette (with raised visor), dark BDU top/trousers,
+black MICH-2001 high-cut ballistic helmet (D7 replaces the retired police shell), dark BDU top/trousers,
 soft vest, micro-rig, gloves, black textiles, fixed SWAT marking and issued AR.
 The relevant appearance system already supports three selected SWAT-compatible
 solid fabric channels, glove dye, skin tone, haircut, hair color, sleeve and
