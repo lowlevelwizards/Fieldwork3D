@@ -1,4 +1,4 @@
-/** FNC P16 full silhouette articulation; retains P13 alias for integrations.
+/** FNC P17 Fieldwork caricature coordinates; retains P13 alias for integrations.
  * One authoritative source for interdependent handguard, gas cover,
  * handstop, groove, and sight placements. Local game-art units ONLY.
  * Existing FNC_P1 world anchors, contact zones and part IDs are untouched.
@@ -12,7 +12,7 @@ export const FNC_FRONT_P13=Object.freeze({
  polymer:Object.freeze({
   startX:2.18,fullStartX:3.23,fullEndX:10.10,endX:10.70,
   fullScale:1.065,endScale:.98,
-  pivotY:-1.11,heightScale:1.30,liftY:.38,
+  pivotY:-1.11,heightScale:1.30,liftY:.38,lowerFlare:.10,
   grooveStartX:4.49,grooveEndX:10.05,
   grooveYs:Object.freeze([-.81,-1.53])
  }),
@@ -22,10 +22,10 @@ export const FNC_FRONT_P13=Object.freeze({
   bottomHalfZ:.50,sideHalfZ:.68,roofHalfZ:.52,
   ventFirstX:3.65,ventPitch:2.05,ventLength:1.06,
   ventCount:5,ventSideYs:Object.freeze([.82,1.15]),
-  ventHeight:.155,ventOffset:.055,ventRoofHalfZ:.25
+  ventHeight:.205,ventOffset:.055,ventRoofHalfZ:.29
  }),
  handstop:Object.freeze({
-  centerX:10.54,length:.55,
+  centerX:10.48,length:.70,
   rearScale:1.13,frontScale:1.07
  }),
  sight:Object.freeze({
@@ -37,6 +37,6 @@ export const FNC_FRONT_P13=Object.freeze({
   earHalfSpacing:.65,earLength:.82,earDepth:.76
  }),
  muzzle:Object.freeze({centerX:18.73,length:1.54,
-  radius:.66,slotFirstX:18.39,slotPitch:.44,slotLength:.30,
-  slotHalfHeight:.11,slotSideZ:.67})
+  radius:.80,slotFirstX:18.39,slotPitch:.44,slotLength:.35,
+  slotHalfHeight:.145})
 });

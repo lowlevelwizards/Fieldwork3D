@@ -1,4 +1,4 @@
-/** FNC P16: elevated continuous six-sided art front end (polymer + molded lip +
+/** FNC P17: selectively enlarged six-sided art front end (polymer + molded lip +
  * slim faceted gas cover + batched groove / vent surfaces). The P13
  * layout contract owns all relative positions; meshes build on demand only.
  * +X muzzle, +Y up, +Z right. No physical assembly or firing changes.
@@ -12,8 +12,8 @@ const STOP=FNC_FRONT_P13.handstop;
 // Established Fieldwork six-face polymer cross-section. One simple
 // angular silhouette, never a smoothed cylindrical handguard.
 const HEX:readonly (readonly [number,number])[]=[
- [-2.04,-.65],[-2.04,.65],[-1.21,1.10],
- [-.18,.76],[-.18,-.76],[-1.21,-1.10]
+ [-2.04,-.68],[-2.04,.68],[-1.21,1.16],
+ [-.18,.80],[-.18,-.80],[-1.21,-1.16]
 ];
 function makeSixFacePrism(root:THREE.Group,material:THREE.Material,
  name:string,stations:readonly number[],
@@ -47,8 +47,11 @@ function makeSixFacePrism(root:THREE.Group,material:THREE.Material,
  root.add(mesh);return mesh;
 }
 // Reuse the same vertical transform for body, molded stop and side grooves.
-const polymerY=(y:number)=>POLY.pivotY+
- (y-POLY.pivotY)*POLY.heightScale+POLY.liftY;
+const polymerY=(y:number)=>{
+ const yy=POLY.pivotY+(y-POLY.pivotY)*POLY.heightScale+POLY.liftY;
+ // Add mass to the underside only; leave upper gas-cover sightline intact.
+ return yy+Math.min(0,yy+1.0)*POLY.lowerFlare;
+};
 function polymerCross(scale:number,i:number):[number,number]{
  const [y,z]=HEX[i];
  return [polymerY(POLY.pivotY+(y-POLY.pivotY)*scale),z*scale];
@@ -85,6 +88,7 @@ export function addFNCFacetedForearm(root:THREE.Group,
  mesh.userData.fncP15RaisedPolymer=true;
  mesh.userData.fncP16ConcealedReceiverRoot=true;
  mesh.userData.fncP17TaperedReceiverRoot=true;
+ mesh.userData.fncP17LowerMass=true;
  mesh.userData.fncP6OutwardEndcaps=true;
  return mesh;
 }
@@ -103,6 +107,7 @@ export function addFNCHandstopLip(root:THREE.Group,
  mesh.userData.fncP13MoldedCollar=true;
  mesh.userData.fncP14TaperedMoldedCollar=true;
  mesh.userData.fncP15RaisedCollar=true;
+ mesh.userData.fncP17BroadHandstop=true;
  return mesh;
 }
 const GAS_PROFILE:readonly (readonly [number,number])[]=[
@@ -148,7 +153,7 @@ function polymerSurfaceZ(y:number){
  const mid=polymerY(POLY.pivotY+(-1.21-POLY.pivotY)*scale);
  const top=polymerY(POLY.pivotY+(-.18-POLY.pivotY)*scale);
  const bottom=polymerY(POLY.pivotY+(-2.04-POLY.pivotY)*scale);
- const zm=1.10*scale,zt=.76*scale,zb=.65*scale;
+ const zm=1.16*scale,zt=.80*scale,zb=.68*scale;
  return y>=mid
   ?zm+(y-mid)*(zt-zm)/(top-mid)
   :zm+(mid-y)*(zb-zm)/(mid-bottom);
@@ -160,7 +165,7 @@ export function addFNCForearmMarks(root:THREE.Group,
   const pos:number[]=[],upper=level==='upper';
   const ys=upper?GAS.ventSideYs:POLY.grooveYs.map(polymerY);
   const spans=upper?GAS_SLOTS:[[POLY.grooveStartX,POLY.grooveEndX]] as const;
-  const height=upper?GAS.ventHeight:.24;
+  const height=upper?GAS.ventHeight:.29;
   const depth=(y:number)=>
    (upper?gasSurfaceZ(y):polymerSurfaceZ(y))+GAS.ventOffset;
   for(const y of ys)for(const [x0,x1] of spans){
@@ -183,6 +188,7 @@ export function addFNCForearmMarks(root:THREE.Group,
   mesh.userData.fncP11BrokenGasSideSlots=upper;
   mesh.userData.fncP11PolymerLongRibs=!upper;
   mesh.userData.fncP13DerivedSurfaceMarks=true;
+ mesh.userData.fncP17BoldMarkings=true;
   mesh.castShadow=false;mesh.receiveShadow=false;
   root.add(mesh);marks.push(mesh);
  };
