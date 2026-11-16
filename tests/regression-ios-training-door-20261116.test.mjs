@@ -45,6 +45,8 @@ test('implicit motor open is gated, but real physical leaf pressure survives',()
  const motor=readFileSync(new URL('../src/breach-motor-door.ts',import.meta.url),'utf8');
  const collision=readFileSync(new URL('../src/breach-motor-collision.ts',import.meta.url),'utf8');
  assert.match(motor,/crossesDoorThreshold\(a\.p,next,door\)/);
- assert.match(motor,/crossesDoorThreshold\(a\.p,p,touched\)/);
+ assert.match(motor,/crossesDoorThreshold\\(next,a\\.nav\\[1\\],touched\\)/);
+ assert.doesNotMatch(motor,/crossesDoorThreshold\\(a\\.p,p,door\\)/,
+  'a remote authored goal is not proof of a planned door crossing');
  assert.match(collision,/pressDoorOnBodyAttempt\(a\.p,desiredMove/);
 });
