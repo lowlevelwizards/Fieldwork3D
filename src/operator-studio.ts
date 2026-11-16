@@ -1103,10 +1103,23 @@ function renderIdentityControls(){
     markings:setIdentityMarking(current().markings??{},slot as MarkingSlot,id||null)}));
  }
 }
+// E2.B: material controls are derived only from these editor inputs.
+// Keeping the same DOM on unrelated refreshes preserves the open disclosure,
+// focused control, and browser scroll state without a second UI state owner.
+let materialRenderKey:string|null=null;
 function renderMaterials(){
+ const p=member();
+ const nextKey=p?JSON.stringify([
+  selected,activeCategory,identityMode,readOnly,comparingSaved,saveInFlight,
+  current(),p.loadout,p.appearanceSeed
+ ]):null;
+ if(nextKey!==null&&nextKey===materialRenderKey){
+  applyStudioStep();return;
+ }
+ materialRenderKey=nextKey;
  materialRoot.replaceChildren();
  if(identityMode){renderIdentityControls();applyStudioStep();return;}
- const p=member();if(!p)return;
+ if(!p)return;
  const w=current(),outfit=resolvedWardrobe(w,p.loadout);
  const item=outfit[activeCategory];
  if(activeCategory==='facewear'){
