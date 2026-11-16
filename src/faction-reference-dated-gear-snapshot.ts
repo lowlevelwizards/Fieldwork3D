@@ -79,7 +79,8 @@ export function resolveDatedGearSnapshot(context:HistoricalGenerationContext,
   'Historical equipment records do not certify a complete co-issued kit'
  ];
  return {timelineId:context.timelineId,year:context.year,
-  ...(context.environment?{environment:context.environment}:{}),
+  ...((context.environment??selected?.snapshot.environment)?
+   {environment:context.environment??selected?.snapshot.environment}:{}),
   state,visualReferenceId:selected?.reference.id??null,
   visual:selected?referenceGearSettings(selected.reference.id):blank(),
   evidenceStatus:evidence.status,historical,
