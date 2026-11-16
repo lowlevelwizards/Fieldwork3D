@@ -116,7 +116,8 @@ export function snapshot(s:Session,seenGround?:string[],
   unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'|'sitePower'>,
   previouslyDiscovered:ReadonlySet<string>=new Set(),
   observerBodies:Map<string,Set<string>>=new Map(),
-  previousActors?:readonly ReplayActorFrame[]):ReplayFrame{
+  previousActors?:readonly ReplayActorFrame[],
+  priorEffects?:ReplayFrame):ReplayFrame{
   // Build the keyed prior-frame lookup directly instead of allocating
   // a second temporary [id, actor] array on every outcome-film sample.
   const actorBefore=previousActors?new Map<string,ReplayActorFrame>():null;
@@ -198,9 +199,9 @@ export function snapshot(s:Session,seenGround?:string[],
         point:a.aimInstruction.point?position(a.aimInstruction.point):undefined}:null,
       intentKind:a.intent?.kind,awarenessCount:Object.keys(a.awareness.contacts).length};
     }),
-    civilianHarmEvents:s.civilianHarmEvents.map(e=>({
-      ...e,p:position(e.p)
-    })),
+    civilianHarmEvents:reuseFrozenReplayValue(
+      s.civilianHarmEvents,priorEffects?.civilianHarmEvents,
+      ()=>s.civilianHarmEvents.map(e=>({...e,p:position(e.p)}))),
     civilians:s.civilians.map(c=>({
       id:c.id,p:position(c.p),heading:c.heading,health:c.health,
       injuryStage:c.injuryStage,state:c.state,velocity:c.velocity,
@@ -211,7 +212,8 @@ export function snapshot(s:Session,seenGround?:string[],
       homeRoomId:c.homeRoomId,
       visibleAtCapture:visibleCivilians.has(c.id)
     })),
-    doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
+    doors:reuseFrozenReplayValue(s.doors,priorEffects?.doors,
+      ()=>s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}))),
     objectRevision:s.objectRevision,
     sitePower:unchangedWorld?.sitePower?.revision===s.sitePower?.revision&&
       unchangedWorld?.sitePower?.mode===s.sitePower?.mode?
@@ -220,13 +222,19 @@ export function snapshot(s:Session,seenGround?:string[],
     // Avoid allocating copies just to throw them away in capture().
     windows:unchangedWorld?.windows??s.windows.map(w=>({...w})),
     coverState:unchangedWorld?.coverState??s.coverState.map(o=>({...o})),
-    shots:s.shots.map(shotCopy),
-    casings:s.casings.map(x=>({...x})),
-    dropped:s.dropped.map(m=>({...m,p:position(m.p)})),
-    impactMarks:s.impactMarks.map(m=>({...m,p:position(m.p)})),
-    grenades:s.grenades.map(g=>({...g,p:position(g.p),
-      from:position(g.from),to:position(g.to)})),
-    flashBursts:s.flashBursts.map(b=>({...b,p:position(b.p)})),
+    shots:reuseFrozenReplayValue(s.shots,priorEffects?.shots,
+      ()=>s.shots.map(shotCopy)),
+    casings:reuseFrozenReplayValue(s.casings,priorEffects?.casings,
+      ()=>s.casings.map(x=>({...x}))),
+    dropped:reuseFrozenReplayValue(s.dropped,priorEffects?.dropped,
+      ()=>s.dropped.map(m=>({...m,p:position(m.p)}))),
+    impactMarks:reuseFrozenReplayValue(s.impactMarks,priorEffects?.impactMarks,
+      ()=>s.impactMarks.map(m=>({...m,p:position(m.p)}))),
+    grenades:reuseFrozenReplayValue(s.grenades,priorEffects?.grenades,
+      ()=>s.grenades.map(g=>({...g,p:position(g.p),
+        from:position(g.from),to:position(g.to)}))),
+    flashBursts:reuseFrozenReplayValue(s.flashBursts,priorEffects?.flashBursts,
+      ()=>s.flashBursts.map(b=>({...b,p:position(b.p)}))),
     flashRemaining:s.flashRemaining,
     missionType:s.missionType,holdTime:s.holdTime,
     rescue:s.rescue?{p:position(s.rescue.p),following:s.rescue.following}:null,
@@ -337,8 +345,13 @@ export class MissionRecorder{
     // random-access recovery. Between keyframes, reuse only equal values.
     const priorActors=last&&this.frames.length%
       REPLAY_FULL_KEYFRAME_INTERVAL!==0?last.actors:undefined;
+    // E5.1: avoid allocating identical door/effect/casualty snapshots
+    // before sharing discovers they are unchanged. The source is live and
+    // may be mutated in place: compare by VALUE, never array identity.
+    // Every full keyframe remains independently owned, as before.
+    const priorEffects=priorActors?last:undefined;
     const frame=snapshot(s,remembered,unchangedWorld,this.discoveredBodies,
-      this.discoveredByObserver,priorActors);
+      this.discoveredByObserver,priorActors,priorEffects);
     for(const id of frame.knowledge?.discoveredBodyIds??[])
       this.discoveredBodies.add(id);
     for(const actor of frame.actors)
