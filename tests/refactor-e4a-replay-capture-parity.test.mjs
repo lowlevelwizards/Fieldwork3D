@@ -103,6 +103,7 @@ test('E4.A frame civilian visibility uses only recorded knowledge, with stable h
    first.knowledge.visibleCivilianIds.includes(c.id),
    'recorded civilian evidence must not borrow future LOS');
  }
+ s.intel.mode='true-blind';
  s.seconds=.05;civ.p={x:-10000,y:-10000};
  film.capture(s,true);
  const second=film.frames.at(-1);
