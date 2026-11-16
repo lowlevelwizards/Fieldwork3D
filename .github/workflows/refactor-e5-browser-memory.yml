@@ -1,0 +1,52 @@
+name: E5.3 — Replay Chromium Memory Lifecycle
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-replay*.ts'
+      - 'src/ui/breach-replay*.ts'
+      - 'scripts/smoke-refactor-e5-3-replay-memory.mjs'
+      - 'scripts/verification/refactor-e5-browser-memory-contract.mjs'
+      - 'tests/refactor-e5-3-browser-memory-contract.test.mjs'
+      - '.github/workflows/refactor-e5-browser-memory.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: refactor-e5-browser-memory-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  memory-lifecycle:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'refactor/e5-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Verify Chrome is installed
+        run: |
+          if command -v google-chrome >/dev/null 2>&1; then google-chrome --version
+          elif command -v google-chrome-stable >/dev/null 2>&1; then google-chrome-stable --version
+          elif test -x /opt/google/chrome/chrome; then /opt/google/chrome/chrome --version
+          else echo "No preinstalled Chrome" >&2; exit 1
+          fi
+      - name: E5.3 deterministic heap/DOM lifecycle contract
+        run: node --test tests/refactor-e5-3-browser-memory-contract.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs
+      - name: E5.3 six real saved-replay enter/exit cycles and post-GC CDP evidence
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/smoke-refactor-e5-3-replay-memory.mjs
+      - name: Retain replay heap and DOM observations
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: refactor-e5-3-chromium-memory
+          path: artifacts/refactor-e5-3/
+          if-no-files-found: warn
+          retention-days: 14
