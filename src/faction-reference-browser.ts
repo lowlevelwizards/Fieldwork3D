@@ -10,10 +10,16 @@ import {resolveTimelineYear,timelineById} from './faction-reference-timeline-res
 import {equipmentAtYear,compareEquipmentYears,researchTimelineCoverage}
  from './faction-reference-equipment-resolver.ts';
 import {historicalEvidence} from './faction-reference-evidence.ts';
+import {generateHistoricalLoadout,type HistoricalLoadoutProposal,type GenerationMode}
+ from './faction-reference-loadout-generator.ts';
+import type {EquipmentLoadout} from './equipment-loadouts.ts';
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
 export type ReferenceBrowserHooks={
  onPreview:(id:string)=>void;onApply:(id:string)=>void;onClose:()=>void;
  compatibility:(id:string)=>ReferenceCompatibility;
+ proposalBaseline?:()=>EquipmentLoadout|undefined;
+ onProposalPreview?:(proposal:HistoricalLoadoutProposal|null)=>void;
+ onApplyProposedLook?:(proposal:HistoricalLoadoutProposal)=>void;
 };
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,cls?:string,text?:string)=>{
  const node=document.createElement(tag);
@@ -39,6 +45,11 @@ export class FactionReferenceBrowser{
  private readonly timelineStatus:HTMLElement;
  private readonly historicalPanel:HTMLElement;
  private readonly compareYear:HTMLInputElement;
+ private generatorMode:GenerationMode='evidence-backed';
+ private generatorRole='';private generatorTheater='';
+ private generatorSeed=0;private proposal:HistoricalLoadoutProposal|null=null;
+ private readonly proposalLocks=new Set<string>();
+ private readonly proposalAlternatives=new Map<string,string>();
  private timelineMode=false;
  private timelineHasMatch=true;
  private readonly summary:HTMLElement;
@@ -97,6 +108,7 @@ export class FactionReferenceBrowser{
   this.compareYear.value='2010';this.compareYear.setAttribute('aria-label','Compare equipment year');
   this.compareYear.addEventListener('change',()=>this.renderHistorical());
   this.view.addEventListener('change',()=>{
+   this.clearProposal();
    this.timelineMode=this.view.value==='timeline';
    this.timelineControls.hidden=!this.timelineMode;
    for(const control of [this.search,this.organization,this.era,this.country])
@@ -111,13 +123,15 @@ export class FactionReferenceBrowser{
    this.renderList();this.renderDetail();
   });
   this.timeline.addEventListener('change',()=>{
+   this.clearProposal();this.generatorRole=timelineById(this.timeline.value)?.role??'';
+   this.generatorTheater='';
    const first=timelineById(this.timeline.value)?.snapshots[0];
    if(first)this.timelineYear.value=String(first.representativeYear);
    this.timelineEnvironment.value='all';
    this.renderList();
   });
   for(const c of [this.timelineYear,this.timelineEnvironment])
-   c.addEventListener('change',()=>this.renderList());
+   c.addEventListener('change',()=>{this.clearProposal();this.renderList();});
   this.summary=el('small','reference-count');
   this.list=el('div','reference-list');
   this.list.setAttribute('aria-label','Faction reference choices');
@@ -144,10 +158,10 @@ export class FactionReferenceBrowser{
   this.renderList();this.renderDetail();
   this.hooks.onPreview(this.chosen);
  }
- hide(){this.root.hidden=true;}
+ hide(){this.clearProposal();this.root.hidden=true;}
  select(id:string){
   if(!FACTION_REFERENCES.some(x=>x.id===id))return;
-  this.chosen=id;this.renderList();this.renderDetail();
+  this.clearProposal();this.chosen=id;this.renderList();this.renderDetail();
   if(!this.root.hidden)this.hooks.onPreview(id);
  }
  refresh(readonly=false){
@@ -290,6 +304,108 @@ export class FactionReferenceBrowser{
   compare.append(el('small','reference-sources',
    'A missing entry never establishes historical retirement or non-use.'));
   this.historicalPanel.append(compare);
+  this.renderGenerator(active.id,year,context);
+ }
+ private clearProposal(){
+  if(!this.proposal)return;
+  this.proposal=null;
+  this.hooks.onProposalPreview?.(null);
+ }
+ private renderGenerator(timelineId:string,year:number,
+  environment?:FactionReference['environment']){
+  const panel=el('section','reference-generator');
+  panel.append(el('strong','','GENERATE RESEARCH-INFORMED LOADOUT'),
+   el('small','reference-sources',
+    'Sparse proposal only. Independently documented items do not prove a complete historical kit.'));
+  const controls=el('div','reference-generator-controls');
+  const mode=el('select');mode.setAttribute('aria-label','Generation mode');
+  mode.append(option('evidence-backed','EVIDENCE-BACKED ONLY'),
+   option('playable-composite','PLAYABLE COMPOSITE'));
+  mode.value=this.generatorMode;
+  mode.addEventListener('change',()=>{
+   this.generatorMode=mode.value as GenerationMode;this.clearProposal();this.renderList();
+  });
+  const role=el('input');role.type='text';role.placeholder='Role (optional)';
+  role.setAttribute('aria-label','Generation role');role.value=this.generatorRole;
+  role.addEventListener('change',()=>{
+   this.generatorRole=role.value.trim();this.clearProposal();this.renderList();
+  });
+  const theater=el('input');theater.type='text';theater.placeholder='Theater (optional)';
+  theater.setAttribute('aria-label','Generation theater');theater.value=this.generatorTheater;
+  theater.addEventListener('change',()=>{
+   this.generatorTheater=theater.value.trim();this.clearProposal();this.renderList();
+  });
+  controls.append(mode,role,theater);panel.append(controls);
+  const generate=el('button','reference-apply','GENERATE PROPOSAL');
+  generate.type='button';
+  generate.addEventListener('click',()=>{
+   this.proposal=generateHistoricalLoadout({
+    context:{timelineId,year,environment,
+     ...(this.generatorRole?{role:this.generatorRole}:{}),
+     ...(this.generatorTheater?{theater:this.generatorTheater}:{})},
+    mode:this.generatorMode,seed:this.generatorSeed,
+    baseline:this.hooks.proposalBaseline?.(),
+    lockedCategories:[...this.proposalLocks],
+    selectedHistoricalIds:Object.fromEntries(this.proposalAlternatives)
+   });
+   this.hooks.onProposalPreview?.(this.proposal);
+   this.renderList();
+  });
+  panel.append(generate);
+  const current=this.proposal;
+  if(current&&current.context.timelineId===timelineId&&current.context.year===year&&
+   current.context.environment===environment){
+   panel.append(el('p','reference-meta',
+    'STATUS '+current.status.toUpperCase()+' · '+current.choices.length+
+    ' RESEARCH CHOICES · '+current.unresolvedCategories.length+' UNRESOLVED CATEGORIES'));
+   for(const choice of current.choices){
+    const item=el('div','reference-generator-choice');
+    const label=el('strong','',choice.name);
+    const mapping=choice.mapping;
+    item.append(label,el('small','reference-meta',
+     choice.category.toUpperCase()+' · '+choice.confidence.toUpperCase()+' · '+
+     (mapping?mapping.fidelity.toUpperCase()+' MODEL':'NO GAME MODEL')));
+    const sources=el('small','reference-sources','SOURCES · '+choice.sourceIds.join(', '));
+    item.append(sources);
+    const conflict=current.conflicts.find(x=>x.category===choice.category);
+    if(conflict){
+     const selector=el('select');selector.setAttribute('aria-label',
+      'Historical alternative for '+choice.category);
+     for(const value of conflict.alternatives)
+      selector.append(option(value.historicalId,value.name));
+     selector.value=choice.historicalId;
+     selector.addEventListener('change',()=>{
+      this.proposalAlternatives.set(choice.category,selector.value);
+      this.clearProposal();this.renderList();
+     });
+     item.append(selector);
+    }
+    const lock=el('label','reference-generator-lock');
+    const checkbox=el('input');checkbox.type='checkbox';
+    checkbox.checked=this.proposalLocks.has(choice.category);
+    checkbox.addEventListener('change',()=>{
+     if(checkbox.checked)this.proposalLocks.add(choice.category);
+     else this.proposalLocks.delete(choice.category);
+     this.clearProposal();this.renderList();
+    });
+    lock.append(checkbox,document.createTextNode(' Keep current '+choice.category));
+    item.append(lock);
+    panel.append(item);
+   }
+   if(current.unresolvedCategories.length)
+    panel.append(el('p','reference-compat-warning',
+     'NOT RESEARCHED / NOT PLAYABLE: '+current.unresolvedCategories.join(', ')+
+     '. Retaining existing gear does not verify its historical accuracy.'));
+   for(const warning of current.warnings)
+    panel.append(el('small','reference-sources',warning));
+   const apply=el('button','reference-apply','APPLY COMPATIBLE APPEARANCE DRAFT');
+   apply.type='button';apply.disabled=this.readOnly||!current.choices.length||
+    !this.hooks.onApplyProposedLook;
+   apply.addEventListener('click',()=>this.hooks.onApplyProposedLook?.(current));
+   panel.append(apply,
+    el('small','reference-sources','Appearance draft only. Campaign gear changes require explicit stock-aware host approval.'));
+  }
+  this.historicalPanel.append(panel);
  }
  private renderDetail(){
   const r=FACTION_REFERENCES.find(x=>x.id===this.chosen) as FactionReference;
