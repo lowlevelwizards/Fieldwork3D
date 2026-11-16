@@ -66,6 +66,7 @@ import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appeara
 import {FactionReferenceBrowser} from './faction-reference-browser.ts';
 import {createHistoricalLoadoutDraft,applyHistoricalCampaignProposal}
  from './faction-reference-loadout-apply.ts';
+import {existingVisualProxyForContext} from './faction-reference-visual-proxy.ts';
 import type {HistoricalLoadoutProposal}
  from './faction-reference-loadout-generator.ts';
 import {resolveFactionReference,referenceLookForKit} from './faction-reference-resolver.ts';
@@ -821,9 +822,18 @@ function posePreview(){
  if(lightingInspectorOutput&&rig)restoreOperatorLightingPreview(rig.root);
  const reference=referenceOpen&&!historicalProposalPreview?resolveFactionReference(
   referenceBrowser.selectedId,referenceBrowser.selectedWeaponPresetId):null;
+ // The match comes from an existing authored appearance, not new equipment.
+ // A nearest-year reference is advisory only: never borrow its rig silently.
+ const proxy=referenceOpen&&historicalProposalPreview?
+  existingVisualProxyForContext(historicalProposalPreview.context):null;
+ const visualReference=proxy?.compatibleForPreview&&proxy.referenceId?
+  resolveFactionReference(proxy.referenceId):null;
  const historicalDraft=referenceOpen&&historicalProposalPreview?
-  createHistoricalLoadoutDraft(historicalProposalPreview,p.loadout,
-   previewWardrobe(),p.weaponConfiguration??
+  createHistoricalLoadoutDraft(historicalProposalPreview,
+   visualReference?.kit??p.loadout,
+   visualReference?.wardrobe??previewWardrobe(),
+   visualReference?.weapon.weaponConfiguration??
+    p.weaponConfiguration??
     issueWeaponPreset(starterWeaponPreset(p.id)).weaponConfiguration):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){
@@ -845,7 +855,8 @@ function posePreview(){
  const configuration=historicalDraft?.weaponConfiguration??
   reference?.weapon.weaponConfiguration??
   p.weaponConfiguration??issue.weaponConfiguration;
- const weapon=reference?.weapon.weapon??p.weapon??configuration.weapon;
+ const weapon=visualReference?.weapon.weapon??
+  reference?.weapon.weapon??p.weapon??configuration.weapon;
  const armed=!clothesOnly&&showWeapon;
  const previewEquipment=inspectKit(historicalDraft?.kit??reference?.kit??p.loadout);
  // Studio carries a representative visible spare bank, never phantom ammo
