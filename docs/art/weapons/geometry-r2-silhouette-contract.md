@@ -1,5 +1,7 @@
 # Fieldwork Breach — Weapon silhouette rebuild (R2)
 
+> **Current canonical policy:** [Universal Weapon Art & Production Standard](weapon-production-standard.md) (2026-11-16). This R2 document records a historical silhouette milestone. For all new work, follow the universal policy when an old one-size-fits-all rule conflicts with current architecture; in particular, muzzle endpoints are family/variant-owned rather than universally X=19.5.
+
 This is an **art / game-geometry** specification, not a fabrication drawing. No real-world internal mechanisms, machining, or assembly instructions. External reference sizes provide comparative visual proportions only; the existing combat resolver owns the gameplay muzzle, hands, stock and ammunition.
 
 ## Reference index and orthographic evidence
