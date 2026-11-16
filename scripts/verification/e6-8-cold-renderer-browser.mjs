@@ -47,9 +47,18 @@ try{
         test(msg.text()))errors.push(msg.text());
    });
    try{
-    await page.goto(base+'/breach.html?quick=1&seed='+seed+
-     '&gpuTrace=1&gpuWarmup='+gpuWarmup,
+    // Launch through the actual Quick Play creator, not ?quick=1:
+    // the latter boots a legacy world directly and bypasses compileAsync.
+    // Starting from the menu also keeps the renderer cold until setup.
+    await page.goto(base+'/breach.html?gpuTrace=1&gpuWarmup='+gpuWarmup,
      {waitUntil:'domcontentloaded'});
+    await page.getByRole('button',{name:'QUICK PLAY',exact:true}).
+     click({timeout:60000});
+    const dialog=page.getByRole('dialog',{name:'Quick Play mission setup'});
+    await dialog.waitFor({state:'visible',timeout:60000});
+    await dialog.getByRole('spinbutton',{name:'Seed, blank for random'}).
+     fill(String(seed));
+    await dialog.getByRole('button',{name:'GENERATE MISSION'}).click();
     await page.waitForFunction(seed=>
       window.__fieldworkE68?.seed===seed,seed,{timeout:180000});
     const trace=await page.evaluate(()=>window.__fieldworkE68);
