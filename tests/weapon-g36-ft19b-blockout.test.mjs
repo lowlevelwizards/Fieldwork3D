@@ -6,6 +6,7 @@ import {G36_MAG30_OUTLINE} from '../src/weapons/geometry/g36-magazine-profiles.t
 import {buildG36OriginalBlockout,G36_B_PART_IDS,applyG36FactoryMaterials}
  from '../src/weapons/geometry/g36-silhouettes.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
+import {weaponVisualLayout} from '../src/weapons/geometry/weapon-visual-layout.ts';
 import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
 import {applyG36PixelDetails,g36PixelAtlas,g36PixelAtlasLayout} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {weaponFinish,weaponMaterialCacheSize} from '../src/weapons/geometry/weapon-material-registry.ts';
@@ -237,4 +238,20 @@ test('G36 D1-2: single real pixel atlas, side-correct ejection, no extra draw me
  assert.equal(one(g,'g36Magazine').material,originalMagazine,'repeat atlas is cached');
  assert.equal(g.children.length,beforeCount);
  clearWeaponSilhouette(g);m.dispose();
+});
+
+test('G36 D1-3: original full-size display length matches M16A2 in the REAL builders',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ g.scale.x=A.displayLongitudinalScale;
+ const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'ar-m16a2');
+ const peer=buildWeaponSilhouette('rifle',m,m,cfg);
+ peer.scale.x=weaponVisualLayout(cfg).longitudinalScale;
+ const actual=bb(g).getSize(new THREE.Vector3()).x;
+ const comparison=bb(peer).getSize(new THREE.Vector3()).x;
+ const ratio=actual/comparison;
+ assert.ok(ratio>=.97&&ratio<=1.03,
+  'full-length G36 should visually match M16A2, measured ratio '+ratio);
+ assert.equal(A.displayLongitudinalScale,1,
+  'the final G36 presentation scalar must be shared with future rig/assembly');
+ clearWeaponSilhouette(g);clearWeaponSilhouette(peer);m.dispose();
 });

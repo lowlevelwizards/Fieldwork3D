@@ -10,6 +10,8 @@ export const G36_B_ART=Object.freeze({
  handguardRearX:3.75,handguardFullStartX:4.15,handguardFrontX:13.45,
  magazineCenterX:.45,magazineTopY:-2.85,magazineBottomY:-7.26,
  barrelAxisY:0,barrelStartX:13.05,muzzleX:19.50,
+ // D1 measured against production M16A2: scale 1.00 => 99.35% of M16 length.
+ displayLongitudinalScale:1.00,
  handleTopY:4.05,opticTopY:4.70,
  frontStockOpeningX:-8.15,triggerVoidX:-2.28
 });

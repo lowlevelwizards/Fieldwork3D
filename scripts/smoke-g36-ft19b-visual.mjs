@@ -24,7 +24,7 @@ try{
   await page.waitForFunction(()=>document.body.dataset.g36LabReady==='true'&&
    document.body.dataset.g36LabCount==='7',null,{timeout:30000});
   const lengthRatio=Number(await page.locator('body').getAttribute('data-g36-length-ratio'));
-  if(!Number.isFinite(lengthRatio)||lengthRatio<.75||lengthRatio>1.15)
+  if(!Number.isFinite(lengthRatio)||lengthRatio<.97||lengthRatio>1.03)
    throw Error('Unreviewed or implausible G36/M16A2 display scale '+lengthRatio);
   console.log('G36/M16A2 measured art-length ratio:',lengthRatio);
   await mkdir('g36-ft19b-captures',{recursive:true});

@@ -5,6 +5,7 @@
  */
 import * as THREE from 'three';
 import {buildG36OriginalBlockout,applyG36FactoryMaterials} from './weapons/geometry/g36-silhouettes.ts';
+import {G36_B_ART} from './weapons/geometry/g36-art-layout.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
 import {weaponVisualLayout} from './weapons/geometry/weapon-visual-layout.ts';
@@ -44,7 +45,7 @@ const names:[string,'rifle'|'carbine',string][]=[
 ];
 const items:{name:string;model:THREE.Group;pivot:THREE.Group}[]=[];
 const g36=buildG36OriginalBlockout(mono);
-g36.scale.x=.94;
+g36.scale.x=G36_B_ART.displayLongitudinalScale;
 items.push({name:'G36 original',model:g36,pivot:new THREE.Group()});
 for(const [name,weapon,preset] of names){
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(weapon),preset);
