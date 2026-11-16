@@ -60,7 +60,7 @@ test('D1.4 modules cannot become a backdoor for item filtering or save writes',(
  }
  const creator=readFileSync(new URL('../src/ui/campaign-creator.ts',
   import.meta.url),'utf8');
- assert.match(creator,/Dispatch, Operations and Wasteland are planned experiences/);
+ assert.match(creator,/The Dispatch SWAT pilot is separately available/);
  const rules=readFileSync(new URL('../src/campaign-rules.ts',import.meta.url),'utf8');
  assert.match(rules,/Quick Play never reads this module/);
 });

@@ -27,6 +27,7 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
+import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
 import {validateCampaignDraft,type CampaignCreationDraft} from './campaign-creation.ts';
 import type {CampaignSlot} from './campaign-save-slots.ts';
 import {confirmFieldworkAction,showFieldworkNotice} from './ui/fieldwork-controls.ts';
@@ -129,7 +130,8 @@ function saveFile(campaign:CampaignState){
 function campaignMenu(){
  model.mode='menu';
  campaignScreen.entry(!!config.getCampaignInSlot('legacy'),
-  !!config.getCampaignInSlot('sandbox'),config.getCampaignSlot());
+  !!config.getCampaignInSlot('sandbox'),config.getCampaignSlot(),
+  !!config.getCampaignInSlot('dispatch'));
 }
 function resumeSlot(slot:CampaignSlot){
  if(config.getMode()!=='menu'&&config.getMode()!=='home')return;
@@ -155,6 +157,23 @@ const campaignScreen=new CampaignScreen({
  continueCampaign:()=>resumeSlot('legacy'),
  newSandbox:()=>campaignScreen.creator(),
  continueSandbox:()=>resumeSlot('sandbox'),
+ newDispatch:async()=>{
+  if(config.getCampaignInSlot('dispatch')&&!await confirmFieldworkAction({
+   title:'Replace Dispatch SWAT pilot?',
+   message:'This replaces only your saved Dispatch pilot. Export its campaign save first to preserve your operators and mission history.',
+   confirmLabel:'REPLACE DISPATCH',danger:true
+  }))return;
+  // Existing career/contracts are reused; no new police-only missions are
+  // implied by this first explicit Dispatch campaign identity.
+  const next=newDispatchPilotCampaign(config.randomSeed());
+  if(!config.replaceCampaignSlot(next,'dispatch')){
+   void showFieldworkNotice('Save unavailable',
+    'Dispatch pilot could not be saved. Other campaign saves were preserved.');
+   return;
+  }
+  showCampaignHome();
+ },
+ continueDispatch:()=>resumeSlot('dispatch'),
  showMenu:campaignMenu,
  exportSandbox:()=>{const c=config.getCampaignInSlot('sandbox');if(c)saveFile(c);},
  createSandbox:async(draft:CampaignCreationDraft)=>{
@@ -252,6 +271,11 @@ const campaignScreen=new CampaignScreen({
   if(config.getMode()!=='menu'&&config.getMode()!=='home')return;
   const next=importCampaign(raw);
   if(!next){void showFieldworkNotice('Invalid import','This is not a valid Fieldwork campaign save.');return;}
+  if(slot==='dispatch'&&next.rules?.template!=='dispatch'||
+    slot!=='dispatch'&&next.rules?.template==='dispatch'){
+   void showFieldworkNotice('Save belongs to another mode',
+    'Import this save into the matching Dispatch or original campaign slot.');return;
+  }
   if(config.getCampaignInSlot(slot)&&!window.confirm(
    'Replace the '+slot+' campaign save with this import? Export the current save first if needed.'))return;
   if(!config.replaceCampaignSlot(next,slot)){

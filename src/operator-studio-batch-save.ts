@@ -31,7 +31,7 @@ export function applyStudioRosterEdits(roster:RosterState,
 }
 export function applyStudioCampaignEdits(campaign:CampaignState,
  edits:readonly StudioAppearanceEdit[]):CampaignState|null{
- if(campaign.activeContractId||!edits.length||
+ if(campaign.rules?.template==='dispatch'||campaign.activeContractId||!edits.length||
     new Set(edits.map(e=>e.id)).size!==edits.length||
     edits.some(e=>!campaign.operators.some(p=>p.id===e.id&&
       p.status!=='retired'&&p.status!=='lost')))return null;

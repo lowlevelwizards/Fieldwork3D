@@ -1,4 +1,4 @@
-/** C0.2: exactly two persistent campaign slots, no automatic migrations.
+/** D3.0: three isolated persistent campaign slots, no automatic migrations.
  * The legacy key never changes. The active pointer is committed LAST.
  * No browser globals at import, no UI logic and no tactical-loop effects.
  */
@@ -7,30 +7,39 @@ import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
 import {readStoredText,writeStoredText,removeStoredText,browserBreachStorage,
  type BreachStorage} from './breach-persistence.ts';
 
-export type CampaignSlot='legacy'|'sandbox';
+export type CampaignSlot='legacy'|'sandbox'|'dispatch';
+/** Dispatch is playable only from its isolated slot, not by importing a
+ * Dispatch-themed save over legacy or Sandbox ownership. */
+export function campaignMatchesSlot(campaign:CampaignState,slot:CampaignSlot):boolean{
+ const template=campaign.rules?.template;
+ return slot==='dispatch'?template==='dispatch':template!=='dispatch';
+}
 export function campaignSlotKey(slot:CampaignSlot):string{
- return slot==='sandbox'?BREACH_STORAGE_KEYS.sandboxCampaign:BREACH_STORAGE_KEYS.campaign;
+ return slot==='sandbox'?BREACH_STORAGE_KEYS.sandboxCampaign:
+  slot==='dispatch'?BREACH_STORAGE_KEYS.dispatchCampaign:BREACH_STORAGE_KEYS.campaign;
 }
 export function activeCampaignSlot(storage:BreachStorage|null=browserBreachStorage()):CampaignSlot{
- return readStoredText(BREACH_STORAGE_KEYS.activeCampaignSlot,storage)==='sandbox'?
-  'sandbox':'legacy';
+ const stored=readStoredText(BREACH_STORAGE_KEYS.activeCampaignSlot,storage);
+ return stored==='sandbox'||stored==='dispatch'?stored:'legacy';
 }
 export function loadCampaignSlot(slot:CampaignSlot,
  storage:BreachStorage|null=browserBreachStorage()):CampaignState|null{
- return readCampaign(readStoredText(campaignSlotKey(slot),storage));
+ const parsed=readCampaign(readStoredText(campaignSlotKey(slot),storage));
+ return parsed&&campaignMatchesSlot(parsed,slot)?parsed:null;
 }
 export function loadActiveCampaign(
  storage:BreachStorage|null=browserBreachStorage()
 ):{slot:CampaignSlot;campaign:CampaignState|null}{
  const requested=activeCampaignSlot(storage),campaign=loadCampaignSlot(requested,storage);
- // Corrupt/missing sandbox must never silently switch to a non-existent save.
- if(requested==='sandbox'&&!campaign)
+ // Corrupt/missing non-legacy slots fall back to the original campaign.
+ if(requested!=='legacy'&&!campaign)
   return {slot:'legacy',campaign:loadCampaignSlot('legacy',storage)};
  return {slot:requested,campaign};
 }
 export function writeCampaignSlot(campaign:CampaignState,slot:CampaignSlot,
  storage:BreachStorage|null=browserBreachStorage()):boolean{
- return writeStoredText(campaignSlotKey(slot),JSON.stringify(campaign),storage);
+ return campaignMatchesSlot(campaign,slot)&&
+  writeStoredText(campaignSlotKey(slot),JSON.stringify(campaign),storage);
 }
 /** Only valid, fully saved snapshots may become the selected campaign.
  * A pointer write failure does not change the in-memory active slot.
@@ -45,7 +54,7 @@ export function activateCampaignSlot(slot:CampaignSlot,
  */
 export function commitCampaignToSlot(campaign:CampaignState,slot:CampaignSlot,
  storage:BreachStorage|null=browserBreachStorage()):boolean{
- if(!readCampaign(JSON.stringify(campaign)))return false;
+ if(!readCampaign(JSON.stringify(campaign))||!campaignMatchesSlot(campaign,slot))return false;
  const key=campaignSlotKey(slot),previous=readStoredText(key,storage);
  if(!writeCampaignSlot(campaign,slot,storage))return false;
  if(activateCampaignSlot(slot,storage))return true;

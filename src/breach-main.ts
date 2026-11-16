@@ -1032,7 +1032,8 @@ const replayLibrary=createBreachReplayLibraryController({
   onLibraryOpen:fromMenu=>{appFlow.openLibrary(fromMenu);},
   onLibraryClose:restore=>appFlow.closeLibrary(restore),
   returnToCampaignMenu:()=>{
-    appFlow.setMode('menu');campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot);
+    appFlow.setMode('menu');campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),
+     campaignSlot,!!campaignInSlot('dispatch'));
   }
 });
 bindAfterActionReplayNavigation({
@@ -1347,7 +1348,8 @@ const trainingScreen=createBreachTrainingScreen({
  },
  onReturnToMenu:()=>{
   trainingScreen.setActive(false);
-  appFlow.setMode('menu');campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot);
+  appFlow.setMode('menu');campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),
+     campaignSlot,!!campaignInSlot('dispatch'));
  }
 });
 const campaignFlow=createBreachCampaignFlow({
@@ -1400,7 +1402,8 @@ missionScreens.bindMissionActions({
  resetMission:variant=>reset(variant),restartMission,
  setMode:mode=>{if(mode==='menu')trainingScreen.setActive(false);
   appFlow.setMode(mode);},
- campaignEntry:()=>campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot),
+ campaignEntry:()=>campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),
+     campaignSlot,!!campaignInSlot('dispatch')),
  audio:audioController,resetTargeting:()=>targeting.reset(),
  captureBeforeExecution:()=>missionController.captureBeforeExecution(state,recorder),
  toggleExecution:()=>toggling(state)
@@ -1666,7 +1669,8 @@ ui.tacticalHud.append(liveProfilerButton);
 syncLiveProfilerControl(runtimeLoop.isProfilerVisible(),
  runtimeLoop.isProfilerRecording());
 layout();cameraMode(viewMode);updateHud();
-if(appFlow.mode==='menu')campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot);
+if(appFlow.mode==='menu')campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),
+     campaignSlot,!!campaignInSlot('dispatch'));
 runtimeLoop.start();
 // Only the completed bootstrap, not static HTML placeholders, claims readiness.
 document.documentElement.dataset.fieldworkAppReady='1';
