@@ -103,6 +103,7 @@ export type TacticalContextActionPorts={
  showUiHelp:(text:string,duration?:number)=>void;
 };
 export type TacticalShortcutPorts={
+ isPhotoModeActive?:()=>boolean;
  ui:ReturnType<typeof createBreachUiElements>;
  getMode:()=>CampaignMode;isQuickConfiguring:()=>boolean;
  isReplaying:()=>boolean;
@@ -974,6 +975,7 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
    if(shortcutsBound)return;
    shortcutsBound=true;
    window.addEventListener('keydown',e=>{
+     if(config.isPhotoModeActive?.())return;
      // Global game shortcuts must never fire while the player edits a name,
      // operates a dialog, or navigates Campaign / the front menu.
      if(e.isComposing||e.altKey||config.getMode()==='menu'||config.getMode()==='home')return;

@@ -120,6 +120,7 @@ import {createTacticalHudController} from './ui/tactical-hud-controller.ts';
 import {createTacticalInteractionState} from './breach-tactical-interaction-state.ts';
 import {createBreachTacticalFrameFeedbackController} from './ui/breach-tactical-frame-feedback-controller.ts';
 import {createBreachReplayHudController} from './ui/breach-replay-hud-controller.ts';
+import {createBreachPhotoModeController} from './breach-photo-mode-controller.ts';
 import {createTacticalPaletteController} from './ui/tactical-palette-controller.ts';
 
 
@@ -284,6 +285,7 @@ const replayCamera=new ReplayCameraController();
 const replayDirector=replayCamera.director;
 let replayMovementHistory:ReplayMovementHistory|null=null;
 
+let photoMode:ReturnType<typeof createBreachPhotoModeController>|null=null;
 let stage:TacticalScene3D|null=null;
 let viewMode:ViewMode='iso';
 try{stage=new TacticalScene3D();}
@@ -839,6 +841,7 @@ function render(dt=0):void{
  renderBreachTacticalWorldFrame({
   stage,viewMode,draw,dpr,cssW,cssH,ox,oy,viewScale,state,replaying,
   replayAnalysis:replayDisplay.options.replayAnalysis,
+  photoClean:photoMode?.active??false,
   world2D,fog2D,actor2D,route2D,replay2D,projected2D
  });
  // A successful actual frame confirms more than the presence of the HUD.
@@ -1336,7 +1339,8 @@ hudController.bindShortcuts({
  operationsBoard,cancelTargeting,
  onExecute:()=>missionScreens.executePlay(true),
  onUndoRedo:redo=>{if(redo)redoPlan(state,selected);else undoPlan(state,selected);updateHud();},
- getViewMode:()=>viewMode,cameraMode,turnCamera
+ getViewMode:()=>viewMode,cameraMode,turnCamera,
+ isPhotoModeActive:()=>photoMode?.active??false
 });
 function pointerWorld(e:PointerEvent){return toWorld(e.clientX,e.clientY);}
 /** Aim can be placed through the rendered silhouette of a door, enemy,
@@ -1541,6 +1545,9 @@ const runtimeLoop=createBreachRuntimeLoop({
  invalidateFog:()=>fog2D.invalidate(),advanceReplayCamera,
  updateHud,updateReplayHud,updateContext,advanceContextPalette,
  renderFrame:render,drawTacticalFrameFeedback,
+ isPhotoModeActive:()=>photoMode?.active??false,
+ photoNeedsFrame:()=>photoMode?.needsFrame??false,
+ photoFrame:(scene,overlay)=>{void photoMode?.onFrame(scene,overlay);},
  captureHighlightFrame:(scene,overlay,time,perspective)=>{
    // Never save a screenshot of an explicitly omniscient replay view.
    if(!replayKnowledge.omniscient)
@@ -1551,6 +1558,17 @@ const runtimeLoop=createBreachRuntimeLoop({
  knowledge:replayKnowledge,bodycam:replayBodycam,video:replayQuickVideo,
  audio:audioController,
  onProfilerChange:syncLiveProfilerControl
+});
+photoMode=createBreachPhotoModeController({
+ getState:()=>state,getStage:()=>stage,getViewMode:()=>viewMode,
+ isReplaying:()=>replaying,getPlayback:()=>replayPlayback,
+ getCamera:()=>replayCamera,getBodycam:()=>replayBodycam,
+ getKnowledge:()=>replayKnowledge,
+ isLoading:()=>quickPlayController.busy||quickPlayController.configuring,
+ isMenu:()=>appFlow.mode==='menu'||appFlow.mode==='home'||studioBridge.visible,
+ videoActive:()=>replayQuickVideo.active,
+ requestHud:updateHud,invalidateFog:()=>fog2D.invalidate(),
+ restoreReplayCamera:()=>advanceReplayCamera(0,true),showHelp:showUiHelp
 });
 // Keep the control small and touch-accessible without reducing the space
 // available for operator cards or inserting a new HUD row.
