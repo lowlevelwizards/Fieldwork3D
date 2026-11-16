@@ -69,6 +69,10 @@ try{
   await snap('.lab','g36-peers-factory-three-quarter',10000);
   await view('SIDE','side');
   await snap('#detail','g36-master-factory-side',2000);
+  await view('OPPOSITE SIDE','opposite');
+  await snap('#detail','g36-master-factory-opposite',2000);
+  await view('TOP','top');
+  await snap('#detail','g36-master-factory-top',2000);
   await finish('FLAT SILHOUETTE','flat');
   await view('SIDE','side');
   for(const [id,name] of [['thumb128','g36-master-128px'],['thumb64','g36-master-64px']]){

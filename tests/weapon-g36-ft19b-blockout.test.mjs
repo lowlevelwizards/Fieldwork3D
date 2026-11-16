@@ -7,6 +7,7 @@ import {buildG36OriginalBlockout,G36_B_PART_IDS,applyG36FactoryMaterials}
  from '../src/weapons/geometry/g36-silhouettes.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
+import {applyG36PixelDetails,g36PixelAtlas,g36PixelAtlasLayout} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {weaponFinish,weaponMaterialCacheSize} from '../src/weapons/geometry/weapon-material-registry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
@@ -196,5 +197,44 @@ test('G36 D1-1: authored magnified front sight is a single low-facet circle, no 
  assert.ok(bb(face).intersectsBox(bb(lower)),'optic face must physically meet housing');
  assert.ok(face.geometry.getAttribute('position').count<=60,'no high-poly round lens');
  assert.equal(g.children.filter(x=>x.userData.g36OpticFace).length,1);
+ clearWeaponSilhouette(g);m.dispose();
+});
+
+test('G36 D1-2: single real pixel atlas, side-correct ejection, no extra draw meshes',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m),beforeCount=g.children.length;
+ const beforeTriangles=g.children.reduce((n,obj)=>n+
+  ((obj.geometry.index?.count??obj.geometry.getAttribute('position').count)/3),0);
+ const finishes={
+  polymer:weaponFinish('hk-polymer'),steel:weaponFinish('hk-steel'),
+  magazine:weaponFinish('g36-smoked-mag'),buttpad:weaponFinish('fal-vent-shadow'),
+  optic:weaponFinish('hk-polymer'),muzzle:weaponFinish('hk-muzzle-metal')
+ };
+ applyG36FactoryMaterials(g,finishes);
+ applyG36PixelDetails(g);
+ const afterTriangles=g.children.reduce((n,obj)=>n+
+  ((obj.geometry.index?.count??obj.geometry.getAttribute('position').count)/3),0);
+ assert.equal(g.children.length,beforeCount,'pixel features must be surface-only');
+ assert.equal(afterTriangles,beforeTriangles,'atlas UVs must not add triangles');
+ for(const key of ['g36LongHandguard','g36ReceiverUpper','g36ReceiverLower','g36Magazine']){
+  const obj=one(g,key);
+  assert.ok(obj.userData.g36AtlasProjected,key);
+  assert.equal(obj.geometry.getAttribute('uv').count,
+   obj.geometry.getAttribute('position').count,key);
+  assert.equal(obj.material.map,g36PixelAtlas(),key);
+ }
+ assert.equal(g36PixelAtlasLayout().sideTiles.length,8);
+ const img=g36PixelAtlas().image;
+ assert.equal(img.width,384);assert.equal(img.height,192);
+ const bytes=img.data;
+ const sample=(tile,x,y)=>{
+  const col=tile%4,row=Math.floor(tile/4),i=((row*96+y)*384+col*96+x)*4;
+  return bytes[i];
+ };
+ assert.notEqual(sample(2,57,50),sample(3,57,50),
+  'ejection-side and opposite receiver atlas tiles must differ');
+ const originalMagazine=one(g,'g36Magazine').material;
+ applyG36PixelDetails(g);
+ assert.equal(one(g,'g36Magazine').material,originalMagazine,'repeat atlas is cached');
+ assert.equal(g.children.length,beforeCount);
  clearWeaponSilhouette(g);m.dispose();
 });

@@ -9,6 +9,7 @@ import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geome
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
 import {weaponVisualLayout} from './weapons/geometry/weapon-visual-layout.ts';
 import {addArsenalInspectionLighting} from './arsenal/inspection-lighting.ts';
+import {applyG36PixelDetails} from './weapons/geometry/g36-pixel-details.ts';
 import {HK_DARK_POLYMER,HK_BLACK_METAL,HK_MUZZLE_METAL,
  G36_SMOKED_MAGAZINE,FAL_VENT_SHADOW} from './weapons/geometry/weapon-visual-palette.ts';
 
@@ -140,6 +141,7 @@ function setFinish(next:Finish):void{
   magazine:G36_SMOKED_MAGAZINE,buttpad:FAL_VENT_SHADOW,
   optic:HK_DARK_POLYMER,muzzle:HK_MUZZLE_METAL
  });
+ if(finish==='factory')applyG36PixelDetails(g36);
  for(const id of ['flat','clay','factory'])
   document.getElementById(id)?.setAttribute('aria-pressed',String(id===finish));
  document.body.dataset.g36LabFinish=finish;
