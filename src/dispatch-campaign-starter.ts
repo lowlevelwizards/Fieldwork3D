@@ -6,6 +6,7 @@ import {newCampaign,type CampaignState} from './campaign-state.ts';
 import {createCampaignRules} from './campaign-rules.ts';
 import {resolveFactionReference} from './faction-reference-resolver.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
+import {issueWeaponPreset} from './breach-weapon-issue.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
@@ -18,8 +19,10 @@ export function newDispatchPilotCampaign(seed:number):CampaignState{
  if(appearance.technicalIssues.length)
   throw Error('Dispatch starter appearance has invalid equipment: '+
    appearance.technicalIssues.join(', '));
+ // Visual reference owns the preset ID, while issued gameplay weapon data
+ // comes from the existing inventory/assembly authority.
+ const {weapon,weaponConfiguration}=issueWeaponPreset(appearance.weapon.presetId);
  const operators=base.operators.map(person=>{
-  const {weapon,weaponConfiguration}=appearance.weapon;
   const loadout={version:1 as const,slots:{...appearance.kit.slots}};
   return {...person,background:'Tactical Police',
    weapon,weaponConfiguration,weaponSerialId:null,
