@@ -24,6 +24,17 @@ export function selectOpeningStance(door:Door,from:Pt,
   (from.y-center.y)*n.y)||1;
  const lateralBase=width/2+OPERATOR_RADIUS+5;
  const preferred=((from.x-center.x)*t.x+(from.y-center.y)*t.y)>=0?1:-1;
+ // First try the intuitive small step BACK on the authored side. This
+ // avoids sending a near-handle operator around the jamb for clearance.
+ for(const retreat of [6,10,16,22,28]){
+  const pos={x:from.x+n.x*side*retreat,
+    y:from.y+n.y*side*retreat};
+  if(doorReachable(pos,door)&&
+     !doorWouldStrikeActors({...door,openFraction:0},1.03,
+       [pos],OPERATOR_RADIUS+1)&&
+     !occupied.some(p=>dist(p,pos)<OPERATOR_RADIUS*2+3)&&
+     canStep(from,pos))return pos;
+ }
  let best:Pt|null=null,shortest=Infinity;
  // The two free jamb sides at three standard stand-offs. Never choose
  // a stance which needs crossing the closed leaf or another body.
