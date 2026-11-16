@@ -12,8 +12,8 @@ export const FIELDWORK_TERMS=Object.freeze({
  returnToBase:'RETURN TO BASE',mainMenu:'MAIN MENU'
 });
 export function debriefPrimaryActionLabel(
- mode:'menu'|'home'|'mission'|'quick'
+ mode:'menu'|'home'|'mission'|'quick'|'training'
 ):string{
  return mode==='mission'?FIELDWORK_TERMS.returnToBase:
-   FIELDWORK_TERMS.newMission;
+   mode==='training'?'RETRY TRAINING':FIELDWORK_TERMS.newMission;
 }
