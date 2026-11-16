@@ -36,7 +36,7 @@ test('P10: hinge is longer and taller but slimmer than P9; buttpad thicker',()=>
  const lower=get(g,'fncP9ParallelThenAngled');
  assert.ok(hinge&&pad&&lower);
  assert.ok(size(hinge,'x')>1.45&&size(hinge,'x')<1.60);
- assert.ok(size(hinge,'y')>2.55&&size(hinge,'y')<2.70);
+ assert.ok(size(hinge,'y')>3.17&&size(hinge,'y')<3.23);
  assert.ok(size(hinge,'z')>1.60&&size(hinge,'z')<1.75);
  assert.ok(size(hinge,'z')>size(lower,'z')+.4);
  assert.ok(size(pad,'z')>2.15&&size(pad,'z')<2.25);

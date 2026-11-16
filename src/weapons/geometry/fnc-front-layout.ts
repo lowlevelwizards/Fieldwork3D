@@ -1,4 +1,4 @@
-/** FNC P22 unified gas-block and handguard architecture. P13 alias retained.
+/** FNC P23 raised folding stock, deepened forward gas block and longer muzzle. P13 alias retained.
  * One authoritative source for interdependent handguard, gas cover,
  * handstop, groove, and sight placements. Local game-art units ONLY.
  * Existing FNC_P1 world anchors and part IDs are untouched.
@@ -20,7 +20,7 @@ export const FNC_FRONT_P13=Object.freeze({
  gas:Object.freeze({
   startX:1.95,endX:15.10,
   transitionStartX:12.65,transitionEndX:12.96,
-  bottomY:-.60,shoulderY:.48,topY:1.85,
+  bottomY:-.60,frontBottomY:-1.57,shoulderY:.48,topY:1.85,
   bottomHalfZ:.58,sideHalfZ:.80,roofHalfZ:.62,
   ventFirstX:3.60,ventPitch:2.35,ventLength:1.57,
   ventCount:4,ventSideYs:Object.freeze([1.17]),
@@ -38,7 +38,7 @@ export const FNC_FRONT_P13=Object.freeze({
   earX:14.26,earBottomY:1.68,earShoulderY:2.53,earTopY:2.77,
   earHalfSpacing:.65,earLength:.82,earDepth:.76
  }),
- muzzle:Object.freeze({centerX:18.77,length:1.46,
-  radius:1.03,slotFirstX:18.44,slotPitch:.50,slotLength:.36,
+ muzzle:Object.freeze({centerX:18.51,length:1.98,
+  radius:1.03,slotFirstX:17.90,slotPitch:.65,slotLength:.36,
   slotHalfHeight:.19})
 });

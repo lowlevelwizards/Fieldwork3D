@@ -1,4 +1,4 @@
-/** FN FNC P22 connected low-poly structure. Gameplay anchors untouched.
+/** FN FNC P23 raised stock and deep forward gas block. Gameplay anchors untouched.
  * The stock uses one continuous bare upper beam, a kinked lower bar,
  * a thin extended inset plate, compact rectangular hinge and dark butt pad.
  * No cheek sleeve or trigger guard. Visual geometry builds on demand only.
@@ -31,7 +31,7 @@ export function buildFNCStage1Silhouette(
  magazinePart='ar-mag30'
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p22-fieldwork-bold-silhouette';
+ root.name='fnc-p23-fieldwork-bold-silhouette';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -96,14 +96,15 @@ export function buildFNCStage1Silhouette(
  lowerRail.userData.fncKinkedLowerRail=true;
  lowerRail.userData.fncP8StraightStockBrace=true;
  lowerRail.userData.fncP9ParallelThenAngled=true;
- // Slightly longer in X, taller in Y and shallower in Z than P9,
- // still visibly sturdier than either structural rail.
+ // P23: raise the whole stock and grow the connector hinge vertically,
+ // retaining the same X extents and receiver/rail intersections.
  const hinge=p('stock',[
-  [-7.48,.53],[-5.96,.53],[-5.96,-2.10],[-7.48,-2.10]
+  [-7.48,1.00],[-5.96,1.00],[-5.96,-2.20],[-7.48,-2.20]
  ],1.68,'stock');
  hinge.userData.fncStockHinge=true;
  hinge.userData.fncP9BlockHinge=true;
  hinge.userData.fncP10RefinedHinge=true;
+ hinge.userData.fncP23TallerStockHinge=true;
  // P22: shorten only the buttpad vertical envelope; preserve rearmost X,
  // both stock-rail contacts and the large open skeletal frame.
  const pad=p('stock',[
@@ -127,6 +128,14 @@ export function buildFNCStage1Silhouette(
  web.userData.fncP7StockWeb=true;
  web.userData.fncP9RecessedJoiningPlate=true;
  web.userData.fncP10LongThinConnector=true;
+ // Translate the entire skeletal assembly together, not the buttpad or
+ // rails independently. The hinge is also taller in its own profile.
+ const stockRaiseY=.38;
+ for(const part of [top,lowerRail,hinge,pad,web]){
+  part.position.y+=stockRaiseY;
+  part.userData.fncP23RaisedStock=true;
+  part.userData.fncP23StockRaiseY=stockRaiseY;
+ }
 
  // Crowned body is intentionally closer to FAL's stylized 3D shoulders.
  // The lower visibly projects OUTSIDE both upper sides.
@@ -215,7 +224,7 @@ export function buildFNCStage1Silhouette(
  barrel.userData.fncP19RefinedBarrel=true;
  barrel.userData.fncP7BarrelStartX=barrelStartX;
  if(showFactoryMuzzle){
-  // A modestly longer, still chunky six-sided factory device. Keep the
+  // P23 longer, still six-sided factory device. Keep the
   // original 19.50 muzzle-tip art datum and continuous barrel overlap.
   const M=FNC_FRONT_P13.muzzle;
   const geometry=new THREE.CylinderGeometry(M.radius,M.radius,M.length,6,1);
@@ -236,6 +245,7 @@ export function buildFNCStage1Silhouette(
   muzzle.userData.fncP17BoldShortFlashHider=true;
  muzzle.userData.fncP18StubbyMuzzle=true;
   muzzle.userData.fncP19LongerFlashHider=true;
+  muzzle.userData.fncP23ExtendedFlashHider=true;
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
   // Single low-poly batched dark port strip, analogous to the FAL's

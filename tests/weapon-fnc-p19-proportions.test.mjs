@@ -24,8 +24,8 @@ test('P19: thinner barrel and longer, still six-sided, connected muzzle',()=>{
  assert.ok(barrel&&muzzle&&ports);
  assert.ok(near(height(barrel),1.24));
  assert.ok(near(bbox(muzzle).max.x,FNC_P1.muzzleX));
- assert.ok(near(bbox(muzzle).min.x,18.04));
- assert.ok(near(bbox(muzzle).max.x-bbox(muzzle).min.x,1.46));
+ assert.ok(near(bbox(muzzle).min.x,17.52));
+ assert.ok(near(bbox(muzzle).max.x-bbox(muzzle).min.x,1.98));
  assert.ok(bbox(barrel).intersectsBox(bbox(muzzle)));
  assert.ok(ports.geometry.getAttribute('position').count===24);
  assert.ok(bbox(ports).min.x>bbox(muzzle).min.x&&

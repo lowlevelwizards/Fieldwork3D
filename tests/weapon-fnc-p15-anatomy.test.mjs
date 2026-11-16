@@ -28,7 +28,8 @@ test('P15 receiver roof and gas spine nearly level, flat shortened receiver nose
  assert.ok(near(sz(upper,'x'),9.13));
  assert.ok(L.gas.startX<L.receiver.frontX&&L.polymer.startX>L.receiver.frontX);
  assert.ok(touch(upper,gas)&&!touch(lower,poly)&&touch(gas,poly));
- assert.ok(sz(gas,'y')>2.40&&sz(gas,'y')<2.50);
+ assert.ok(sz(gas,'y')>3.38&&sz(gas,'y')<3.46,
+  'P23 lower front gas block extends toward the barrel');
  const v=upper.geometry.getAttribute('position');
  let roof=0,bottom=0;
  for(let i=0;i<v.count;i++)if(near(v.getX(i),L.receiver.frontX)){
