@@ -53,7 +53,7 @@ export function renderCampaignCreator(root:HTMLElement,options:{
   element('p','Operator careers · Persistent injuries · Equipment ownership · Ammunition supplies · Weapon servicing · Contracts'));
  const future=element('details');future.className='campaign-creator-future';
  future.append(element('summary','FUTURE CAMPAIGN FRAMEWORKS'),
-  element('p','Dispatch, Operations and Wasteland are planned experiences, not selectable playable modes yet. Gas, filters, batteries, looting and safehouses are not active campaign settings.'));
+  element('p','The Dispatch SWAT pilot is separately available from the campaign menu with its own save; it currently shares existing mission types. Operations and Wasteland remain planned. Gas, filters, batteries, looting and safehouses are not active campaign settings.'));
  const summary=element('p');summary.className='campaign-creator-summary';
  const error=element('p');error.className='campaign-creator-error';
  error.setAttribute('role','status');
