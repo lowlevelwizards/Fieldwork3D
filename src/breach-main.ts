@@ -1643,6 +1643,7 @@ const runtimeLoop=createBreachRuntimeLoop({
  canvas,playback:replayPlayback,camera:replayCamera,
  knowledge:replayKnowledge,bodycam:replayBodycam,video:replayQuickVideo,
  audio:audioController,
+ recordColdRuntimeFrame:frame=>quickPlayController.recordRuntimeFrame(frame),
  onProfilerChange:syncLiveProfilerControl
 });
 photoMode=createBreachPhotoModeController({
