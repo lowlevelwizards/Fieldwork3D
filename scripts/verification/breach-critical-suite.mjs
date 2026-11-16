@@ -18,6 +18,8 @@ const tests=[
  'tests/refactor-e4f-replay-trail-cursors.test.mjs',
  'tests/replay-r2-event-index.test.mjs',
  'tests/refactor-e4g-replay-hud-event-cursors.test.mjs',
+ 'tests/refactor-e4h-replay-feed-dom.test.mjs',
+ 'tests/refactor-e4i-replay-closeout.test.mjs',
  'tests/breach-roadmap2-stage5-performance.test.mjs',
  'tests/breach-roadmap2-stage7-motor.test.mjs',
  'tests/breach-roadmap2-stage8-orders.test.mjs',
