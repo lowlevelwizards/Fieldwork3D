@@ -548,3 +548,14 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .reference-generator-lock input{width:17px;height:17px}
 @media(max-width:530px){.reference-generator-controls{grid-template-columns:1fr}
  .reference-generator{padding:8px}}
+
+/* FT1.4: compact collapsed future-art demand view, no new rendered assets. */
+.reference-content-demand{display:block;min-width:0;padding:9px;
+ border:1px solid #536c5e;border-radius:7px;background:#24382f}
+.reference-content-demand summary{cursor:pointer;font-size:12px;font-weight:800;
+ letter-spacing:.03em;color:#e5e9db}
+.reference-content-demand-items{display:grid;gap:3px;margin:8px 0}
+.reference-content-demand-item{display:grid;gap:3px;min-width:0;
+ padding:7px 0;border-bottom:1px solid #4b6556}
+.reference-content-demand-item strong{font-size:12px}
+.reference-content-demand-item small{overflow-wrap:anywhere}
