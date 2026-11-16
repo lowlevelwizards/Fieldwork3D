@@ -259,6 +259,7 @@ export function applyCampaignRosterToSession(session:Session,campaign:CampaignSt
     a.medicalSupplies={...m.medicalSupplies};
     a.wedgeRemaining=issuedWedges(m.loadout);
     a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
+    a.nvgDeployed=false;
    a.flashCharges=equippedFlashCharges(m.loadout);
    const protection=initialArmorIntegrity(m.loadout);
    a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
