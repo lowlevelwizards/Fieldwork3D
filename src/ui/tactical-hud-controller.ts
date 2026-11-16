@@ -519,7 +519,10 @@ export function createTacticalHudController(
   if(fieldLightButton){
    const selectedActor=friendly.find(a=>a.id===selected);
    const light=lightControlState(selectedActor,state.phase,replaying);
-   if(fieldLightButton.textContent!==light.text)fieldLightButton.textContent=light.text;
+   fieldLightButton.hidden=!light.fitted;
+   if(fieldLightButton.textContent!==light.shortText)
+     fieldLightButton.textContent=light.shortText;
+   fieldLightButton.title=light.aria+' · F';
    writeDomAttribute(fieldLightButton,'aria-label',light.aria);
    writeDomAttribute(fieldLightButton,'aria-pressed',String(light.pressed));
    fieldLightButton.disabled=light.disabled;
@@ -798,13 +801,22 @@ port.ui.wait.addEventListener('click',()=>{
   port.updateHud();
 });
 fieldLightButton=document.createElement('button');
-fieldLightButton.type='button';fieldLightButton.textContent='WEAPON LIGHT';
+fieldLightButton.type='button';fieldLightButton.className='field-light-control';
+fieldLightButton.textContent='LIGHT OFF';
+fieldLightButton.hidden=true;
 fieldLightButton.setAttribute('aria-label','Toggle selected operator weapon light');
 fieldLightButton.addEventListener('click',()=>{
  if(port.replaying)return;
- toggleWeaponLight(port.state,port.selected);port.audio.playOrderCue('equipment.flashlight_click');port.updateHud();
+ if(toggleWeaponLight(port.state,port.selected))
+  port.audio.playOrderCue('equipment.flashlight_click');
+ port.updateHud();
 });
-port.ui.siteSettings.append(fieldLightButton);
+// Keep fitted-light controls beside the selected squad, accessible in GO
+// and on touch without opening the unrelated mission settings dialog.
+const tacticalBar=port.ui.tacticalHud.querySelector<HTMLElement>('.bar');
+const actionCluster=tacticalBar?.querySelector('.actions');
+if(actionCluster)actionCluster.before(fieldLightButton);
+else tacticalBar?.append(fieldLightButton);
 const leaveRangeButton=document.createElement('button');
 leaveRangeButton.type='button';leaveRangeButton.textContent='LEAVE TEST RANGE';
 leaveRangeButton.dataset.equipmentRangeExit='';
@@ -1019,6 +1031,13 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
      if(e.code==='Digit2')config.selectUnit('moss');
      if(e.code==='Digit3')config.selectUnit('ash');
      if(e.code==='Digit4')config.selectUnit('vale');
+     if(e.code==='KeyF'&&!e.repeat&&!e.ctrlKey&&!e.metaKey){
+       const light=config.ui.tacticalHud.querySelector<HTMLButtonElement>(
+         '.field-light-control');
+       if(light&&!light.hidden&&!light.disabled){
+         e.preventDefault();light.click();
+       }
+     }
      if(e.code==='KeyX'&&!e.repeat){
        e.preventDefault();
        // Keyboard and touch must use the exact same guarded clear-plan workflow.
