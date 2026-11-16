@@ -18,10 +18,10 @@ const policy=(kind:'solid-color'|'wardrobe-style',id:string)=>
   mode:'dispatch',referenceId:DISPATCH_PILOT_REFERENCE_ID
  }}).selectable;
 const same=(left:unknown,right:unknown)=>JSON.stringify(left)===JSON.stringify(right);
-const allowedSolid=(value:string|undefined,channel:'top'|'trousers',look:WardrobeOptions)=>
+const allowedSolid=(value:string|undefined,channel:'top'|'trousers',look:WardrobeOptions,kit:EquipmentLoadout)=>
  value===undefined||(
   DISPATCH_APPEARANCE_SOLIDS.some(id=>id===value)&&
-  solidChoicesFor(channel,resolvedWardrobe(look,{version:1,slots:{}} as EquipmentLoadout)).includes(value)&&
+  solidChoicesFor(channel,resolvedWardrobe(look,kit)).includes(value)&&
   policy('solid-color',value));
 
 /** Exact validated diff; normalize current and candidate, then reject ANY
@@ -51,7 +51,7 @@ export function dispatchPilotAppearanceAllowed(original:WardrobeOptions,
  for(const channel of ['top','trousers'] as const){
   if(after.fabricSolids?.[channel]!==before.fabricSolids?.[channel]&&
    (after.fabricCamo?.[channel]||
-    !allowedSolid(after.fabricSolids?.[channel],channel,after)))return false;
+    !allowedSolid(after.fabricSolids?.[channel],channel,after,kit)))return false;
  }
  // Compare canonical copies after stripping ONLY D6-owned fields. This
  // prevents a partial or malicious Studio save changing helmet setup, patches,
