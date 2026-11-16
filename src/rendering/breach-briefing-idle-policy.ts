@@ -6,7 +6,7 @@
 export type Briefing3DDecisionInput=Readonly<{
  enabled:boolean;briefingVisible:boolean;
  frameMode:'idle'|'live'|'replay'|'suspended';
- phase:'planning'|'running'|'won'|'lost';
+ phase:string;
  replaying:boolean;photoActive:boolean;studioOccludes:boolean;
  viewMode:'iso'|'top'|'plan2d';sceneReady:boolean;previouslyHeld:boolean;
 }>;
