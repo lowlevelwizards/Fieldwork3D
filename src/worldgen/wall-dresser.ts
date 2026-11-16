@@ -1,5 +1,6 @@
 /** MAP 09: deterministic, nonblocking attachments to actual wall segments. */
-import {type Site,seeded} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 export type WallDetailKind='poster'|'picture'|'noticeboard'|'light-switch'|
  'electrical-box'|'breaker-panel'|'exit-sign'|
  'menu-board'|'promotion-sign'|'business-sign'|'wayfinding-sign'|'safety-sign';

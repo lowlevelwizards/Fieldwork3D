@@ -4,7 +4,8 @@
  */
 import {newTacticalState,initialWorldCover,initialWorldWalls,initialDoors,type Pt} from './breach-core.ts';
 import {length,targetAngle} from './breach-plan.ts';
-import {generateSite,seeded,type Site,type SiteScale} from './breach-site.ts';
+import {generateSite,type Site,type SiteScale} from './breach-site.ts';
+import {seeded} from './worldgen/seeded-rng.ts';
 import type {EncounterContext} from './worldgen/encounter-types.ts';
 import type {OperationKind} from './breach-operations.ts';
 import {resolveMissionKind,captureTargetIndex} from './breach-mission-semantics.ts';

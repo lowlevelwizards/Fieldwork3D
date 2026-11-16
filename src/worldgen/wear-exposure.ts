@@ -1,5 +1,6 @@
 /** Directional exposure inferred from real room enclosures, without fake weather. */
-import {seeded,type Site} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import type {ObjectWear} from './object-wear.ts';
 import {wallPixelSurface,fixturePixelSurface} from './pixel-surface-selection.ts';
 import {canWear} from './material-properties.ts';

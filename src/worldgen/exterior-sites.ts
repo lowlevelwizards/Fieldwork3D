@@ -1,7 +1,8 @@
 /** Architectural exterior zones share existing tactical bounds.
  * Does not invent a new world coordinate system or dynamic-bound API.
  */
-import {type Site,type ExteriorZone,seeded} from '../breach-site.ts';
+import {type Site,type ExteriorZone} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {type Obstacle} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {arrivalAccessLane,overlapsArrivalLane} from './property-access-lane.ts';

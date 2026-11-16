@@ -2,7 +2,8 @@
  * Cosmetic only. Every mark is attached to a real doorway and interior room.
  * One whole-site budget protects mobile rendering and high-density floorplans.
  */
-import {seeded,type Site} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import type {WearMark,WearKind} from './environment-wear.ts';
 import {effectiveCondition} from './condition-visual.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';

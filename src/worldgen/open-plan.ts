@@ -1,7 +1,8 @@
 /** Promote purposeful adjacent rooms into genuinely wider, doorless openings.
  * Only alters authoritative wall and door geometry; never leaves a visual-only gap.
  */
-import {type Site,type Room,seeded} from '../breach-site.ts';
+import {type Site,type Room} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {type Pt,type Segment} from '../breach-core.ts';
 const pairs=new Set([
  'dining|kitchen','dining|living','kitchen|living','checkout|sales',

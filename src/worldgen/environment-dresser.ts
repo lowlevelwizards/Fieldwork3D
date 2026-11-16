@@ -1,5 +1,6 @@
 /** Deterministic semantic dressing. Decorations never invent collision. */
-import {type Site,seeded} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {surfaceDetailBudget} from './environment-composition.ts';
 import {compatibleDecoration,visibleSurfaceHeight,surfaceOffset,
   type SurfaceDetail} from './decoration-anchors.ts';

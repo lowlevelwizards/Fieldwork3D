@@ -1,6 +1,7 @@
 /** Allocate guards to believable functional spaces without affecting
  * the mission's required spawn, objective or extraction geometry. */
-import {type Site,seeded} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {type Pt,pointToSegment} from '../breach-core.ts';
 const roomWeights:Record<string,number>={
  living:3,kitchen:2,bedroom:1,studio:2,dining:2,office:3,

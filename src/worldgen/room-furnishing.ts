@@ -1,7 +1,8 @@
 /** Deterministic room composition placement.
  * Keeps door swings, enemy/objective positions and circulation clear.
  * Room-centric layout replaces arbitrary scattered cover boxes. */
-import {type Site,type Room,seeded} from '../breach-site.ts';
+import {type Site,type Room} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {type Obstacle,type Pt} from '../breach-core.ts';
 import {propDefinition} from './asset-catalog.ts';
 import {relatedFurniturePositions} from './room-composition.ts';
