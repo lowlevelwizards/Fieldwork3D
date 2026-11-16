@@ -4,6 +4,7 @@
  */
 import type {debrief,Session} from '../breach-game.ts';
 import type {CampaignState} from '../campaign-state.ts';
+import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import type {CampaignMode} from '../breach-app-mode.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {summarizeMissionPacing} from '../breach-mission-pacing.ts';
@@ -29,14 +30,20 @@ const section=(title:string,items:readonly [string,string][])=>{
 export function renderStructuredMissionDetails(input:{
  name:string;stats:Stats;recorder:MissionRecorder;
  campaign:CampaignState|null;campaignMode:CampaignMode;
+ incident?:DispatchIncidentContext|null;
  operationsLogged:number;phase:Session['phase'];
 }):HTMLElement{
  const {name,stats,recorder,campaign,campaignMode,
-  operationsLogged,phase}=input;
+  incident,operationsLogged,phase}=input;
  const root=make('article','fw-v5-mission-details');
  root.append(make('div','fw-v5-mission-heading',
    (phase==='won'?'MISSION COMPLETE':'MISSION FAILED')+
    ' · '+name.toUpperCase()));
+ if(incident)root.append(section('DISPATCH INCIDENT',[
+  ['CALL REFERENCE',incident.reference],['ASSIGNMENT',incident.title],
+  ['REGION',incident.region],['RISK',String(incident.risk)],
+  ['CAMPAIGN DAY',String(incident.day)]
+ ]));
  root.append(section('OPERATION ASSESSMENT',[
    ['GRADE',stats.grade],['SCORE',String(stats.score)],
    ['TIME',timelineTime(stats.time)],
