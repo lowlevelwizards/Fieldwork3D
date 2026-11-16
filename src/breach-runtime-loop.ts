@@ -57,7 +57,7 @@ export type BreachRuntimeLoopHooks={
  getViewMode:()=>ViewMode;
  isMissionTerminal:(session:Session)=>boolean;
  isStudioVisible:()=>boolean;
- isBriefingVisible:()=>boolean;
+ isBriefingVisible?:()=>boolean;
  getReplayPresentation:()=>ReplayPresentation|null;
  setReplayPresentation:(value:ReplayPresentation|null)=>void;
  invalidateFog:()=>void;
@@ -349,7 +349,7 @@ function tick(now:number){
   // first frame after dismissal; do not affect live/replay/photo/canvas.
   const briefing3d=briefing3DDecision({
    enabled:config.boot.briefingIdle3DEnabled,
-   briefingVisible:config.isBriefingVisible(),
+   briefingVisible:config.isBriefingVisible?.()??false,
    frameMode,phase:state.phase,replaying,photoActive,
    studioOccludes:studioOccludesTactical,viewMode,
    sceneReady:last3dSession===state&&last3dMode==='idle'&&
@@ -361,15 +361,16 @@ function tick(now:number){
   // without a pointer event (e.g. after an automatic mission transition).
   if(idle3dAuto&&frameMode==='idle'&&
      (last3dMode!=='idle'||last3dSession!==state))last3dInputAt=now;
-  const updated3d=stageAvailable&&!briefing3d.hold&&
-   (briefing3d.forceReveal||
-    (photoActive?!!config.photoNeedsFrame?.():shouldSubmitIdle3D({
+  // Preserve the existing idle cadence decision (and its runtime test
+  // contract). The briefing hold only vetoes an otherwise normal 3D draw;
+  // its dismissal overrides a pending idle cadence delay.
+  const updated3d=stageAvailable&&(photoActive?!!config.photoNeedsFrame?.():shouldSubmitIdle3D({
    enabled:idle3dExperiment,mode:frameMode,viewMode,
    studioOccludes:studioOccludesTactical,now,
    lastSceneAt:last3dUpdateAt,lastSceneMode:last3dMode,
    sameSession:last3dSession===state,lastInputAt:last3dInputAt,
    inputGraceMs:idle3dAuto?1200:undefined
-  })));
+  })||briefing3d.forceReveal)&&!briefing3d.hold;
   if(stageAvailable&&!updated3d)idle3dSkipped++;
   // The presentation-only idle clock must advance by actual elapsed wall
   // time since the prior 3D submission, not by one skipped RAF's dt.
