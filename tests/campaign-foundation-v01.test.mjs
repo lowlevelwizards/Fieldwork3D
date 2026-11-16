@@ -26,12 +26,14 @@ test('C0.1 templates describe all four identities without enabling unbuilt mecha
    assert.ok(ids.has(dependency),key+' depends on missing feature '+dependency);
 });
 
-test('C0.1 legacy campaigns retain byte-equivalent semantics on read/export',()=>{
+test('C0.1 legacy campaigns retain equivalent data and no automatic migration',()=>{
  const legacy=newCampaign(4321);
  assert.equal(Object.hasOwn(legacy,'rules'),false);
  const before=JSON.stringify(legacy);
- assert.equal(JSON.stringify(readCampaign(before)),before);
- assert.equal(exportCampaign(importCampaign(exportCampaign(legacy))),exportCampaign(legacy));
+ assert.deepEqual(readCampaign(before),legacy);
+ assert.deepEqual(importCampaign(exportCampaign(legacy)),legacy);
+ assert.equal(JSON.stringify(legacy),before,'reading must not mutate in-memory state');
+ assert.equal(Object.hasOwn(readCampaign(before),'rules'),false);
  const contract=legacy.contracts[0];
  const expectedIntel=contract.intel==='unknown'?'true-blind':
   contract.intel==='scouted'?'exterior-known':'floor-plan';
