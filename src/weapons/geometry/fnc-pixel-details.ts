@@ -48,11 +48,12 @@ function pixelValue(tile:Tile,x:number,y:number):number{
   return 255;
  }
  if(tile==='gas-side'||tile==='gas-roof'){
-  // Two subtle longitudinal lines on the exposed lower metal section.
-  // No additional mesh or decal, and no stripes on the polymer or roof.
+  // Two front-gas-block markings now use the exact same length and
+  // cross-face thickness as the 4+4+4 vents; only shade differs.
+  // All remain authored pixels on the original mesh, never extra quads.
   if(tile==='gas-side')for(const line of F.gas.lowerLines){
    if(inside(x,y,line.startX,line.endX,
-    line.y-line.height/2,line.y+line.height/2))return line.shade;
+    line.y-F.gas.ventHeight/2,line.y+F.gas.ventHeight/2))return line.shade;
   }
   for(let i=0;i<F.gas.ventCount;i++){
    const x0=F.gas.ventFirstX+i*F.gas.ventPitch;
