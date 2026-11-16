@@ -88,6 +88,7 @@ export type OperatorPose={
   reloadSelectedMagazineId?:string|null;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
+  nvgDeployed?:boolean;
   treatmentActive?:boolean;treatmentProgress?:number;
   lockpickActive?:boolean;lockpickProgress?:number;
   interactionCrouch?:number;
