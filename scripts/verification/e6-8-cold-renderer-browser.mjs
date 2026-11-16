@@ -25,18 +25,21 @@ try{
  if(!ready)throw Error('E6.8 Vite server unavailable');
  const binary=['/usr/bin/google-chrome','/usr/bin/google-chrome-stable',
   '/opt/google/chrome/chrome'].find(existsSync);
- browser=await chromium.launch({headless:true,
+ const freshBrowser=()=>chromium.launch({headless:true,
   ...(process.env.FIELDWORK_CI_CHROME&&binary?{executablePath:binary}:{}),
   args:['--use-gl=angle','--use-angle=swiftshader',
    '--enable-unsafe-swiftshader']});
  const evidence={
   schema:'fieldwork-e6.8-browser-cold-ab-v1',
-  runner:'independent mobile-emulated Chromium pages; ANGLE SwiftShader',
-  warning:'All GL call timings and compileAsync wall times are browser/driver CPU wall time. No GPU execution timing or iPhone FPS. Runs are sequential, not a statistical A/B.',
+  runner:'fresh Chromium process and mobile-emulated WebGL context per run; ANGLE SwiftShader',
+  warning:'All GL call timings and compileAsync wall times are browser/driver CPU wall time. Fresh browser processes reduce but cannot eliminate shared OS/GPU shader cache and scheduling confounds. No GPU execution timing or iPhone FPS; not a statistical A/B.',
   runs:[]
  };
  for(const seed of [23,97]){
   for(const gpuWarmup of ['1','0']){
+   // A fresh Chromium process per scenario avoids within-browser shader
+   // caches contaminating warmup-on/off comparisons.
+   browser=await freshBrowser();
    const page=await browser.newPage({viewport:{width:390,height:844},
     deviceScaleFactor:1,hasTouch:true,isMobile:true});
    const errors=[];
@@ -96,7 +99,11 @@ try{
      programsAfterDraw:first.resourcesAfter.programs,
      browserErrors:errors.length,
      capture:path});
-   }finally{await page.close();}
+   }finally{
+    await page.close();
+    await browser.close();
+    browser=undefined;
+   }
   }
  }
  writeFileSync(dir+'/summary.json',JSON.stringify(evidence,null,2)+'\n');
