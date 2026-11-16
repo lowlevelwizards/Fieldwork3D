@@ -24,6 +24,10 @@ Formerly, visual weapon clearance and stacking walked every peer, after which `t
 - Do not assume appearance fingerprint or fog upload is a significant runtime bottleneck without same-device PERF evidence.
 - FPS/RAF claims require comparable in-browser recordings with matching seed/device, phase and viewing configuration.
 
+## CI release blocker repaired
+
+The D2.1 exact-world workflow pinned its comparison to a D1 commit from before D2.3's accepted transient-step recovery fix. It previously allowed the existing `verify-release-d2-3-intent-delta.mjs` only on the historical D2.3 branch, so every unrelated modern PR touching the runtime loop failed on the already-approved `mission-hold` difference. The strict verifier now runs as a fallback **for any branch** only after byte-exact comparison fails. It asserts **exactly one** known mission-hold change; no change to other mission/replay/door/ammo/intel facts, only one short Vale displacement and the single recorded replay step. All other differences remain hard failures. This is a release-gate correction, not a new gameplay acceptance exception.
+
 ## Acceptance and release
 
 - Run E6.5 parity and Node observational A/B, the E6.0–E6.4 contact/pose/fog tests, architecture suite, animation regression and production typecheck/build on the **final PR head**.
