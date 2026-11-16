@@ -230,7 +230,7 @@ test('G36 D1-2: single real pixel atlas, side-correct ejection, no extra draw me
   const col=tile%4,row=Math.floor(tile/4),i=((row*96+y)*384+col*96+x)*4;
   return bytes[i];
  };
- assert.notEqual(sample(2,57,50),sample(3,57,50),
+ assert.notEqual(sample(2,57,63),sample(3,57,63),
   'ejection-side and opposite receiver atlas tiles must differ');
  const originalMagazine=one(g,'g36Magazine').material;
  applyG36PixelDetails(g);

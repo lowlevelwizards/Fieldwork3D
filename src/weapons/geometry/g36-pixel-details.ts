@@ -139,7 +139,6 @@ export function applyG36PixelDetails(root:THREE.Group):void{
     }
     // Non-side faces should remain neutral, without accidental stretched art.
     if(!selected)for(let j=0;j<3;j++){
-     const blank=uv(tileFor(region,normal.z>=0?1:-1),-100,-100);
      // Rather than sample an arbitrary corner of an illustrated tile,
      // use its verified blank upper-right texel.
      const tile=definitions[tileFor(region,normal.z>=0?1:-1)];
