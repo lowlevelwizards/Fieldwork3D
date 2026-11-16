@@ -164,7 +164,7 @@ const campaignScreen=new CampaignScreen({
    title:'Replace Sandbox Campaign?',
    message:'This replaces the saved Sandbox Campaign. Export it first to keep your operators, equipment and history.',
    confirmLabel:'REPLACE SANDBOX',danger:true
-  }))return false;
+  }))return null;
   const next=newCampaign(valid.seed??config.randomSeed(),valid.rules,valid.name);
   if(!config.replaceCampaignSlot(next,'sandbox')){
    void showFieldworkNotice('Save unavailable',
