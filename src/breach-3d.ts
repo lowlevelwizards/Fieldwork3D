@@ -162,7 +162,7 @@ export class TacticalScene3D{
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
    * wardrobe material/shadow generation as well as steady-state posing. */
   private readonly actorPhaseCosts={
-   rigMs:0,rigBuilds:0,poseMs:0,poseCount:0,
+   rigMs:0,rigBuilds:0,poseMs:0,posePrepMs:0,poseCount:0,
    appearanceMs:0,weaponBuildMs:0,otherPoseMs:0,
    visualKitMs:0,receiverAtlasMs:0
   };
@@ -1581,6 +1581,7 @@ export class TacticalScene3D{
       this.actorPhaseCosts.rigMs=0;
       this.actorPhaseCosts.rigBuilds=0;
       this.actorPhaseCosts.poseMs=0;
+      this.actorPhaseCosts.posePrepMs=0;
       this.actorPhaseCosts.poseCount=0;
       this.actorPhaseCosts.appearanceMs=0;
       this.actorPhaseCosts.weaponBuildMs=0;
@@ -2032,6 +2033,7 @@ export class TacticalScene3D{
         continue;
       }
       // Presentation samples do not alter authoritative collision or shot state.
+      const posePrepStart=this.profileSceneUpdate?performance.now():0;
       const drawActor=interpolatedActor(actor,renderFrame);
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
       // miniature at its authored horizontal position, lifted only by the
@@ -2128,10 +2130,16 @@ export class TacticalScene3D{
       nearbyAllies.length=0;
       for(const peer of s.operators){
         if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
+        // E6.2: compare squared radii without two square roots per peer.
+        // Stack proximity uses fixed-tick actor position; safety uses the
+        // interpolated rendering position, exactly as before.
+        const stackX=peer.p.x-actor.p.x;
+        const stackY=peer.p.y-actor.p.y;
         if(stackContext&&!stackCrowded&&
-          Math.hypot(peer.p.x-actor.p.x,peer.p.y-actor.p.y)<40)
-          stackCrowded=true;
-        if(Math.hypot(peer.p.x-drawActor.x,peer.p.y-drawActor.z)<90)
+          stackX*stackX+stackY*stackY<40*40)stackCrowded=true;
+        const safetyX=peer.p.x-drawActor.x;
+        const safetyY=peer.p.y-drawActor.z;
+        if(safetyX*safetyX+safetyY*safetyY<90*90)
           nearbyAllies.push(safetyBodyFor(peer));
       }
       const actuallyAhead=teammateAheadForHandling(
@@ -2211,6 +2219,8 @@ export class TacticalScene3D{
           !!actor.traversal||actor.plan[0]?.kind==='door'
       });
       const poseStart=this.profileSceneUpdate?performance.now():0;
+      if(this.profileSceneUpdate)
+        this.actorPhaseCosts.posePrepMs+=poseStart-posePrepStart;
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.traversal?0:actor.velocity,
