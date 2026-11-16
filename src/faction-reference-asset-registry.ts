@@ -4,7 +4,6 @@
  */
 import type {FactionReference,ReferenceGap} from './faction-reference-catalog.ts';
 import {identityMarking} from './operator-identity-markings.ts';
-import {policeVisorFit} from './operator-police-visor-policy.ts';
 import {referenceWeaponChoice} from './faction-reference-weapons.ts';
 export const referenceHasIdentity=(ref:FactionReference):boolean=>
  Object.entries(ref.markings??{}).some(([slot,id])=>{
@@ -51,17 +50,11 @@ export function referenceGapFidelity(ref:FactionReference,gap:ReferenceGap):
  case 'helmet-m56':
   return ref.styles?.headwear==='ddr-m56'&&
     (ref.kit?.head??'head-helmet')==='head-helmet'?'exact':'missing';
- case 'visor-police':{
-  const selected=ref.styles?.headwear==='police-helmet'&&
-   ref.policeVisorPosition==='lowered'||ref.styles?.headwear==='police-helmet'&&
-   ref.policeVisorPosition==='raised';
-  if(!selected)return 'missing';
-  const fit=policeVisorFit('police-helmet',
-   ref.styles?.facewear??'face-none',
-   ref.styles?.eyewear??'eyes-none',ref.styles?.headset??'comms-none');
-  return fit.compatible?'approximate':'missing';
- }
- case 'red-beret':
+ case 'visor-police':
+  // D7 retired the separate visored police shell. An ordinary black
+  // ballistic helmet must not be credited as a police face shield.
+  return 'missing';
+  case 'red-beret':
   return ref.styles?.headwear==='beret'&&
    ref.kit?.head==='head-cap'&&ref.headwearColor==='beret-scarlet'?
    'exact':'missing';

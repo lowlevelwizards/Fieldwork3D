@@ -22,7 +22,7 @@ export const HEADWEAR_REGION_PIXELS=32;
 export const HEADWEAR_MATERIAL_KIND:Readonly<Record<HeadSilhouetteId,HeadwearMaterialKind>>={
  'patrol-cap':'cotton','boonie':'cotton','beanie':'knit','beret':'cotton',
  'ach':'composite','mich-2001':'composite','mich-2002':'composite',
- 'pasgt':'composite','soviet-steel':'steel','m1-steel':'steel','ddr-m56':'steel','police-helmet':'composite'
+ 'pasgt':'composite','soviet-steel':'steel','m1-steel':'steel','ddr-m56':'steel'
 };
 /** Neutral surface-lighting finish independent of contextual color/camo. */
 export type HeadwearSurfaceProfile={
@@ -41,7 +41,6 @@ export const HEADWEAR_SURFACE_PROFILE:Readonly<Record<HeadSilhouetteId,HeadwearS
  'soviet-steel':{family:'painted-steel',roughness:.77,metalness:.12},
  'm1-steel':{family:'painted-steel',roughness:.84,metalness:.09},
  'ddr-m56':{family:'painted-steel',roughness:.82,metalness:.08},
- 'police-helmet':{family:'matte-composite',roughness:.78,metalness:.02}
 };
 const textureCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
 const finishCache=new Map<HeadSilhouetteId,THREE.DataTexture>();
@@ -104,8 +103,6 @@ export function headwearRegionPixel(id:HeadSilhouetteId,region:0|1|2|3,
    return region===1?244:region===2?216:region===3?251:248;
   case 'ddr-m56':
    return region===1?238:region===2?222:region===3?251:248;
-  case 'police-helmet':
-   return region===1?237:region===2?225:region===3?251:248;
   case 'soviet-steel':
    // Stamped painted bowl: clean roof and a narrow readable rolled lip.
    // B2-A3: the broader dark band was visually too black and shelf-like;
@@ -314,7 +311,6 @@ export function headwearFaceTone(id:HeadSilhouetteId,name:string,
   case 'soviet-steel':value=name.includes('edge')?.80:name.includes('bowl')?.94:1;break;
   case 'm1-steel':value=name.includes('rolled-rim')?.76:name.includes('bowl')?.94:1;break;
   case 'ddr-m56':value=name.includes('flare')?.83:name.includes('middle')?.92:1;break;
-  case 'police-helmet':value=name.includes('brow')?.86:name.includes('ear-guard')?.88:name.includes('hinge')?.82:1;break;
  }
  if(axis===1&&sign===-1&&(name.includes('bill')||name.includes('brim')))
   value*=.89;

@@ -175,7 +175,7 @@ export function headwearCastShadowAtlas(headwear:string):THREE.DataTexture{
  const key='head:'+headwear;
  let boxes:ShadowBox[]=[];
  const ids=['patrol-cap','boonie','beanie','beret','pasgt','soviet-steel',
-  'm1-steel','ddr-m56','police-helmet','ach','mich-2001','mich-2002'] as const;
+  'm1-steel','ddr-m56','ach','mich-2001','mich-2002'] as const;
  const id=(headwear);
  if((ids as readonly string[]).includes(id))
   boxes=cuboidShadowBoxes(id as HeadSilhouetteId);

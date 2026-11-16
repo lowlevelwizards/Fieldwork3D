@@ -182,7 +182,7 @@ export function createOperatorVisualKit(
  // fragment hue or guessed vertex normals. Cloth hats remain unhighlighted.
  const rimHeadwear=new Set([
   'soviet-steel','pasgt','ach','mich-2001','mich-2002',
-  'm1-steel','ddr-m56','police-helmet'
+  'm1-steel','ddr-m56'
  ]);
  for(const [style,group] of Object.entries(wardrobeHead.headwear))
   if(rimHeadwear.has(style))group.userData.fieldworkRimRegion='hard-shell';

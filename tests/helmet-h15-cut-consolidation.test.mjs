@@ -11,7 +11,7 @@ test('A1: only supported, modeled helmets remain registered',()=>{
  const items=wardrobeItemsForSlot('headwear'),ids=items.map(x=>x.id);
  assert.deepEqual(items.filter(x=>x.family==='ballistic').map(x=>x.id),
   ['soviet-steel','pasgt','ach','mich-2001','mich-2002',
-   'm1-steel','ddr-m56','police-helmet']);
+   'm1-steel','ddr-m56']);
  assert.equal(new Set(ids).size,ids.length);
  const cards=activeAppearanceItems('headwear');
  assert.deepEqual(cards.filter(x=>['ach','mich-2001','mich-2002'].includes(x.id))

@@ -3,8 +3,7 @@
  * One group per model family, toggled at pose time and never reallocated.
  */
 import * as THREE from 'three';
-import {createPoliceVisor,updatePoliceVisor,type PoliceVisorLayers} from './operator-police-visor-visuals.ts';
-import {policeVisorFit,type PoliceVisorOptions} from './operator-police-visor-policy.ts';
+import type {PoliceVisorOptions} from './operator-police-visor-policy.ts';
 import {createM56Extras,updateM56Extras,type M56Extras} from './operator-ddr-m56-visuals.ts';
 import type {M56Options} from './operator-ddr-m56-policy.ts';
 import {createM1HelmetCoverLayers,updateM1HelmetCoverLayers,
@@ -62,7 +61,6 @@ export type WardrobeHeadLayers={
  m1Retention?:M1RetentionLayers;
  ssh40Retention?:Ssh40RetentionLayers;
  m56Extras?:M56Extras;
- policeVisor?:PoliceVisorLayers;
  modernCovers:Record<string,ModernHelmetCoverLayers>;
  achMich:Record<string,AchMichDetailLayers>;
  helmetField:Record<string,HelmetFieldLayers>;
@@ -90,7 +88,6 @@ export function createWardrobeHeadLayers(head:THREE.Group,
  let m1Retention:M1RetentionLayers|undefined;
  let ssh40Retention:Ssh40RetentionLayers|undefined;
  let m56Extras:M56Extras|undefined;
- let policeVisor:PoliceVisorLayers|undefined;
  let pasgtCover:PasgtCoverLayers|undefined;
  const modernCovers:Record<string,ModernHelmetCoverLayers>={};
  const achMich:Record<string,AchMichDetailLayers>={};
@@ -172,11 +169,6 @@ export function createWardrobeHeadLayers(head:THREE.Group,
     if(layersRef)layersRef.pasgtCover=pasgtCover;
    }
   });
- headModel('police-helmet',true,model=>{
-  model.add(createHeadwearSilhouette('police-helmet',detail('police-helmet')));
-  policeVisor=createPoliceVisor(model);
-  if(layersRef)layersRef.policeVisor=policeVisor;
- });
  headModel('ddr-m56',true,model=>{
   model.add(createHeadwearSilhouette('ddr-m56',detail('ddr-m56')));
   m56Extras=createM56Extras(model,dark);
@@ -297,7 +289,7 @@ export function createWardrobeHeadLayers(head:THREE.Group,
   faceFabric,faceFabricDefaultHex,eyewearFrame,eyewearLens,
   eyewearStrap,maskRubber,deferredEyewear,deferredHeadwear,
   deferredFacewear,deferredHeadset,twoHoleMouthCover,m1Cover,m1Retention,
-  ssh40Retention,m56Extras,policeVisor,
+  ssh40Retention,m56Extras,
   modernCovers,achMich,pasgtCover,helmetField};
  layersRef=layers;return layers;
 }
@@ -397,9 +389,6 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   helmetCover?.ssh40Chinstrap,assembly.facewear);
  if(layers.m56Extras)updateM56Extras(layers.m56Extras,
   assembly.headwear==='ddr-m56'?helmetCover:undefined);
- if(layers.policeVisor)updatePoliceVisor(layers.policeVisor,
-  helmetCover,assembly.headwear,
-  policeVisorFit(assembly.headwear,facewear,assembly.eyewear,assembly.headset));
  layers.deferredFacewear[facewear]?.();
  layers.deferredHeadset[assembly.headset]?.();
  layers.deferredEyewear[assembly.eyewear]?.();
@@ -417,7 +406,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  // changing fitted/loose/none instantly alters the preview without saving art.
  const bareShellIds=new Set([
   'ach','pasgt','mich-2001','mich-2002','m1-steel','soviet-steel',
-  'ddr-m56','police-helmet'
+  'ddr-m56'
  ]);
  const activeHeadwear=layers.headwear[assembly.headwear];
  const fieldLayers=layers.helmetField[assembly.headwear];

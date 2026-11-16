@@ -1,23 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
-import {createHeadwearSilhouette,headwearCuboidVolumes} from '../src/operator-headwear-silhouettes.ts';
+import {createHeadwearSilhouette,headwearCuboidVolumes}
+ from '../src/operator-headwear-silhouettes.ts';
 import {HEADWEAR_SURFACE_PROFILE} from '../src/operator-headwear-materials.ts';
-import {HEADWEAR_DEFAULT_SOLIDS,headwearColorChoices} from '../src/operator-headwear-colors.ts';
-import {initialWardrobe,readWardrobe,setWardrobeStyle} from '../src/operator-wardrobe-data.ts';
-test('R5H3: protective police helmet is independent of ACH shell',()=>{
- const p=headwearCuboidVolumes('police-helmet'),a=headwearCuboidVolumes('ach');
- assert.notDeepEqual(p,a);
- assert.ok(p.some(x=>x.name.includes('ear-guard')));
- const group=createHeadwearSilhouette('police-helmet',new THREE.MeshStandardMaterial());
- const box=new THREE.Box3().setFromObject(group);
- assert.ok(box.max.y>=8.85);
- assert.ok(box.min.y<=2.2);
+import {HEADWEAR_DEFAULT_SOLIDS,headwearColorChoices}
+ from '../src/operator-headwear-colors.ts';
+import {initialWardrobe,readWardrobe,wardrobeItem}
+ from '../src/operator-wardrobe-data.ts';
+
+test('D7: retired police shell has no selectable item or geometry',()=>{
+ assert.equal(wardrobeItem('headwear','police-helmet'),undefined);
+ assert.deepEqual(headwearColorChoices('police-helmet'),[]);
+ assert.equal('police-helmet' in HEADWEAR_SURFACE_PROFILE,false);
+ assert.equal('police-helmet' in HEADWEAR_DEFAULT_SOLIDS,false);
+ assert.equal(headwearCuboidVolumes('police-helmet'),undefined);
 });
-test('R5H3: police helmet owns restricted solids and head-helmet class',()=>{
- assert.equal(HEADWEAR_DEFAULT_SOLIDS['police-helmet'],'black');
- assert.deepEqual(headwearColorChoices('police-helmet'),['black','navy','charcoal']);
- assert.equal(HEADWEAR_SURFACE_PROFILE['police-helmet'].family,'matte-composite');
- const w=setWardrobeStyle(initialWardrobe(),'headwear','police-helmet');
- assert.equal(readWardrobe(w).styles.headwear,'police-helmet');
+
+test('D7: old wardrobe IDs map to current black high-cut ballistic helmet',()=>{
+ const before={...initialWardrobe(),
+  styles:{...initialWardrobe().styles,headwear:'police-helmet'},
+  headwearColor:'black',policeVisorPosition:'raised'};
+ const next=readWardrobe(before);
+ assert.equal(next.styles.headwear,'mich-2001');
+ assert.equal(next.headwearColor,'black');
+ assert.deepEqual(readWardrobe(next),next);
+ const mesh=createHeadwearSilhouette(next.styles.headwear,
+  new THREE.MeshStandardMaterial());
+ assert.ok(mesh.children.length>0);
 });

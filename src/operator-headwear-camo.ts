@@ -835,8 +835,7 @@ export const HEADWEAR_CAMO_ELIGIBILITY:Readonly<Record<HeadSilhouetteId,readonly
  'mich-2002':['m81-woodland','three-color-desert','multicam','ucp','aor1','aor2','flecktarn','desert-tropentarn'],
  'soviet-steel':[],
  'm1-steel':[],
- 'ddr-m56':[],
- 'police-helmet':[]
+ 'ddr-m56':[]
 };
 export function headwearCamoChoices(model:string):readonly HeadwearCamoId[]{
  const id=model as HeadSilhouetteId;
