@@ -694,7 +694,10 @@ export class CampaignScreen{
     select.setAttribute('aria-label','Choose '+slot+' for '+person.callsign);
     const barrelLength=FAMILY_PARTS[build.parts.barrel]?.length;
     for(const part of Object.values(FAMILY_PARTS)){
-     if(part.slot!==slot||part.family!==build.family)continue;
+     if(part.slot!==slot)continue;
+      if(part.id==='fnc-mag30'&&build.parts[slot]!=='fnc-mag30')continue;
+      if(part.family!==build.family&&!(slot==='magazine'&&
+       build.family==='fnc'&&part.family==='ar'))continue;
      const receiverId=slot==='receiver'?part.id:build.parts.receiver;
      if(!compatibleFamilyPart(receiverId,slot,part.id,person.weapon,
        barrelLength))continue;

@@ -19,7 +19,7 @@ export type CarriedMagProfile={family:'ar'|'ak'|'hk'|'fal'|'fnc';length:number;m
 export function carriedMagazineProfile(part:string|null|undefined):CarriedMagProfile|null{
  if(!part)return null;
  if(part==='fnc-mag30')
-  return {family:'fnc',length:4.65,material:0x687369};
+  return {family:'fnc',length:arMagazineCurve('30').length,material:0x687369};
  if(part==='fal-mag20')
   return {family:'fal',length:FAL_MAG20_LENGTH,material:FAL_MAG_METAL.color.getHex()};
  if(part==='hk-g3-mag20')
@@ -66,8 +66,7 @@ export function carriedMagazineGeometry(part:string):THREE.BufferGeometry|null{
  }
  const ar=profile.family==='ar'||profile.family==='fnc';
  const curve=ar?
-  (part==='fnc-mag30'?{...arMagazineCurve('30',1.65,-2.81,2.55,1.49),length:4.65,sweep:.72}:
-  arMagazineCurve(part==='ar-mag20'?'20':part==='ar-magpoly'?'poly':'30')):
+  arMagazineCurve(part==='ar-mag20'?'20':part==='ar-magpoly'?'poly':'30'):
   akMagazineCurve(part.startsWith('ak-rpk')?'rpk45':
    part.startsWith('ak-mag762')?'762':'545');
  const points=ar?
