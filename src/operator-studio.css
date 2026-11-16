@@ -559,3 +559,20 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  padding:7px 0;border-bottom:1px solid #4b6556}
 .reference-content-demand-item strong{font-size:12px}
 .reference-content-demand-item small{overflow-wrap:anywhere}
+
+/* FT1.5: faction > role > chronological visual/evidence change points. */
+.reference-gear-timeline{display:grid;gap:8px;min-width:0;padding:10px;
+ border:1px solid #536c5e;border-radius:8px;background:#253b31}
+.reference-chronology-items{display:grid;gap:6px;min-width:0}
+.reference-chronology-point{min-width:0;border:1px solid #597366;border-radius:6px;
+ background:#2b4337;padding:7px}
+.reference-chronology-point>summary{cursor:pointer;overflow-wrap:anywhere;
+ font-weight:750;font-size:12px;line-height:1.5}
+.reference-chronology-visual,.reference-chronology-research{display:grid;gap:4px;
+ min-width:0;margin-top:7px;padding:8px;border-top:1px solid #53685d}
+.reference-chronology-category{display:grid;gap:4px;min-width:0;
+ padding:5px;border-left:2px solid #7c9b85;overflow-wrap:anywhere}
+.reference-chronology-category>summary{cursor:pointer;font-size:12px}
+.reference-chronology-category .reference-meta{overflow-wrap:anywhere}
+@media(max-width:520px){.reference-gear-timeline{padding:7px}
+ .reference-chronology-point{padding:6px}}

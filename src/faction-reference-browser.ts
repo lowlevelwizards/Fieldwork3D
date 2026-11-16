@@ -4,7 +4,7 @@ import {referenceVisualStatus} from './faction-reference-audit.ts';
 import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-weapons.ts';
-import {FACTION_TIMELINES,TIMELINE_ORGANIZATIONS,timelineForReference}
+import {FACTION_TIMELINES,timelineForReference}
  from './faction-reference-timelines.ts';
 import {resolveTimelineYear,timelineById} from './faction-reference-timeline-resolver.ts';
 import {equipmentAtYear,compareEquipmentYears,researchTimelineCoverage}
@@ -15,7 +15,10 @@ import {generateHistoricalLoadout,type HistoricalLoadoutProposal,type Generation
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {existingVisualProxyForContext} from './faction-reference-visual-proxy.ts';
 import {prioritizeContentDemand} from './faction-reference-content-demand.ts';
+import {consolidatedFactions,timelineGearMilestones,GEAR_CATEGORIES}
+ from './faction-reference-gear-chronology.ts';
 const CONTENT_DEMAND=prioritizeContentDemand();
+const FACTION_GROUPS=consolidatedFactions();
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
 export type ReferenceBrowserHooks={
  onPreview:(id:string)=>void;onApply:(id:string)=>void;onClose:()=>void;
@@ -44,6 +47,8 @@ export class FactionReferenceBrowser{
  private readonly country:HTMLSelectElement;
  private readonly view:HTMLSelectElement;
  private readonly timelineControls:HTMLElement;
+ private readonly timelineOrganization:HTMLSelectElement;
+ private readonly gearTimelinePanel:HTMLElement;
  private readonly timeline:HTMLSelectElement;
  private readonly timelineYear:HTMLInputElement;
  private readonly timelineEnvironment:HTMLSelectElement;
@@ -57,11 +62,11 @@ export class FactionReferenceBrowser{
  private proposal:HistoricalLoadoutProposal|null=null;
  private readonly proposalLocks=new Set<string>();
  private readonly proposalAlternatives=new Map<string,string>();
- private timelineMode=false;
+ private timelineMode=true;
  private timelineHasMatch=true;
  private readonly summary:HTMLElement;
  private readonly apply:HTMLButtonElement;
- private chosen=FACTION_REFERENCES[0].id;
+ private chosen=FACTION_TIMELINES[0].snapshots[0].referenceId;
  private readonly weaponPreviewOverrides=new Map<string,string>();
  private readOnly=false;
  constructor(root:HTMLElement,hooks:ReferenceBrowserHooks){
@@ -69,8 +74,8 @@ export class FactionReferenceBrowser{
   root.classList.add('studio-reference-panel');
   const heading=el('div','reference-top');
   const title=el('div');
-  title.append(el('strong','reference-heading','REFERENCE KITS'),
-   el('small','reference-intro','Curated dated appearances · preview only until you apply'));
+  title.append(el('strong','reference-heading','FACTION EQUIPMENT TIMELINES'),
+   el('small','reference-intro','Faction → role → gear-change snapshots · visual and historical evidence remain separate'));
   const close=el('button','reference-close','BACK TO CUSTOMIZE');
   close.type='button';close.addEventListener('click',()=>hooks.onClose());
   heading.append(title,close);
@@ -90,14 +95,18 @@ export class FactionReferenceBrowser{
   for(const c of [...new Set(FACTION_REFERENCES.map(x=>x.country))].sort())
    this.country.append(option(c,c.toUpperCase()));
   this.view=el('select');this.view.setAttribute('aria-label','Browse reference mode');
-  this.view.append(option('kits','REFERENCE KITS'),option('timeline','FACTION TIMELINES'));
+  this.view.append(option('timeline','FACTIONS / TIMELINES'),option('kits','ALL REFERENCE LOOKS'));
+  this.view.value='timeline';
   controls.append(this.view,this.search,this.organization,this.era,this.country);
-  this.timelineControls=el('div','reference-controls');this.timelineControls.hidden=true;
-  this.timeline=el('select');this.timeline.setAttribute('aria-label','Faction timeline');
-  for(const item of FACTION_TIMELINES){
-   const org=TIMELINE_ORGANIZATIONS.find(o=>o.id===item.organizationId);
-   this.timeline.append(option(item.id,(org?.name??item.organizationId)+' · '+item.label));
-  }
+  this.timelineControls=el('div','reference-controls');this.timelineControls.hidden=false;
+  this.timelineOrganization=el('select');
+  this.timelineOrganization.setAttribute('aria-label','Choose faction');
+  for(const group of FACTION_GROUPS)
+   this.timelineOrganization.append(option(group.organization.id,
+    group.organization.name+' · '+group.referenceCount+' LOOKS'));
+  this.timelineOrganization.value=FACTION_TIMELINES[0].organizationId;
+  this.timeline=el('select');this.timeline.setAttribute('aria-label','Choose role timeline');
+  this.populateRoleTimelines(FACTION_TIMELINES[0].id);
   this.timelineYear=el('input');this.timelineYear.type='number';
   this.timelineYear.min='1800';this.timelineYear.max='2100';this.timelineYear.step='1';
   this.timelineYear.value='1990';this.timelineYear.setAttribute('aria-label','Reference year');
@@ -106,8 +115,10 @@ export class FactionReferenceBrowser{
   for(const [id,label] of [['all','ALL ENVIRONMENTS'],['woodland','WOODLAND'],
    ['desert','DESERT'],['urban','URBAN'],['mixed','MIXED']])
    this.timelineEnvironment.append(option(id,label));
-  this.timelineControls.append(this.timeline,this.timelineYear,this.timelineEnvironment);
-  this.timelineStatus=el('small','reference-timeline-status');this.timelineStatus.hidden=true;
+  this.timelineControls.append(this.timelineOrganization,this.timeline,
+   this.timelineYear,this.timelineEnvironment);
+  this.timelineStatus=el('small','reference-timeline-status');this.timelineStatus.hidden=false;
+  this.gearTimelinePanel=el('section','reference-gear-timeline');
   this.historicalPanel=el('section','reference-historical-panel');
   this.historicalPanel.hidden=true;
   this.compareYear=el('input');this.compareYear.type='number';
@@ -122,18 +133,33 @@ export class FactionReferenceBrowser{
     control.hidden=this.timelineMode;
    if(this.timelineMode){
     const group=timelineForReference(this.chosen);
-    if(group)this.timeline.value=group.id;
+    if(group){
+     this.timelineOrganization.value=group.organizationId;
+     this.populateRoleTimelines(group.id);
+    }
     const chosen=FACTION_REFERENCES.find(r=>r.id===this.chosen);
     const snap=group?.snapshots.find(x=>x.referenceId===this.chosen);
     this.timelineYear.value=String(snap?.representativeYear??chosen?.era.start??1990);
    }
    this.renderList();this.renderDetail();
   });
+  this.timelineOrganization.addEventListener('change',()=>{
+   this.clearProposal();
+   this.populateRoleTimelines();
+   this.generatorRole=timelineById(this.timeline.value)?.role??'';
+   this.generatorTheater='';
+   const first=timelineById(this.timeline.value)?.snapshots[0];
+   if(first){this.timelineYear.value=String(first.representativeYear);
+    this.chosen=first.referenceId;}
+   this.timelineEnvironment.value='all';
+   this.renderList();
+  });
   this.timeline.addEventListener('change',()=>{
    this.clearProposal();this.generatorRole=timelineById(this.timeline.value)?.role??'';
    this.generatorTheater='';
    const first=timelineById(this.timeline.value)?.snapshots[0];
-   if(first)this.timelineYear.value=String(first.representativeYear);
+   if(first){this.timelineYear.value=String(first.representativeYear);
+    this.chosen=first.referenceId;}
    this.timelineEnvironment.value='all';
    this.renderList();
   });
@@ -149,9 +175,15 @@ export class FactionReferenceBrowser{
   for(const c of [this.search,this.organization,this.era,this.country])
    c.addEventListener(c===this.search?'input':'change',()=>this.renderList());
   root.replaceChildren(heading,controls,this.timelineControls,this.timelineStatus,
-   this.historicalPanel,this.summary,this.list,this.detail,this.apply);
+   this.gearTimelinePanel,this.historicalPanel,this.summary,this.list,this.detail,this.apply);
   root.hidden=true;
   this.renderList();this.renderDetail();
+ }
+ private populateRoleTimelines(preferred?:string){
+  const organizationId=this.timelineOrganization.value;
+  const timelines=FACTION_GROUPS.find(x=>x.organization.id===organizationId)?.timelines??[];
+  this.timeline.replaceChildren(...timelines.map(t=>option(t.id,t.label+' · '+t.role)));
+  if(preferred&&timelines.some(t=>t.id===preferred))this.timeline.value=preferred;
  }
  get selectedId(){return this.chosen;}
  /** Nonpersistent preview variant; applying a look never purchases/issues a rifle. */
@@ -168,7 +200,16 @@ export class FactionReferenceBrowser{
  hide(){this.clearProposal();this.root.hidden=true;}
  select(id:string){
   if(!FACTION_REFERENCES.some(x=>x.id===id))return;
-  this.clearProposal();this.chosen=id;this.renderList();this.renderDetail();
+  this.clearProposal();this.chosen=id;
+  const lineage=timelineForReference(id);
+  if(lineage&&this.timelineMode){
+   this.timelineOrganization.value=lineage.organizationId;
+   this.populateRoleTimelines(lineage.id);
+   const snapshot=lineage.snapshots.find(x=>x.referenceId===id);
+   if(snapshot){this.timelineYear.value=String(snapshot.representativeYear);
+    this.timelineEnvironment.value=snapshot.environment;}
+  }
+  this.renderList();this.renderDetail();
   if(!this.root.hidden)this.hooks.onPreview(id);
  }
  refresh(readonly=false){
@@ -227,11 +268,79 @@ export class FactionReferenceBrowser{
   this.renderHistorical();
   if(this.timelineMode)this.renderDetail();
  }
+ /** Authored appearance changes are separated by environment; a research
+  * boundary is never presented as an actual issue or retirement switch. */
+ private renderGearChronology(active?:typeof FACTION_TIMELINES[number]){
+  this.gearTimelinePanel.hidden=!active;
+  this.gearTimelinePanel.replaceChildren();
+  if(!active)return;
+  const milestones=timelineGearMilestones(active.id);
+  this.gearTimelinePanel.append(el('strong','','EQUIPMENT CHANGE SNAPSHOTS'),
+   el('p','reference-sources',
+    'Authored looks show visible changes by category. Research boundaries show dated evidence, not universal equipment changes.'));
+  const chronology=el('div','reference-chronology-items');
+  for(const point of milestones){
+   const entry=el('details','reference-chronology-point');
+   const changed=[...new Set(point.visualSnapshots.flatMap(x=>x.changes.map(c=>c.category)))];
+   entry.append(el('summary','',
+    point.year+' · '+(point.visualSnapshots.length?
+     point.visualSnapshots.length+' LOOK'+(point.visualSnapshots.length===1?'':'S'):
+     'RESEARCH ONLY')+
+    (changed.length?' · CHANGED: '+changed.join(', '):'')+
+    (point.researchMarkers.length?' · '+point.researchMarkers.length+' SOURCE MARKER(S)':'')));
+   for(const snapshot of point.visualSnapshots){
+    const card=el('div','reference-chronology-visual');
+    card.append(el('strong','',snapshot.label+' · '+snapshot.environment.toUpperCase()),
+     el('small','reference-meta',
+      snapshot.kind.replace(/-/g,' ').toUpperCase()+
+      ' · indexed appearance year, not a proven issue date'));
+    const action=el('button','reference-history-year','VIEW THIS LOOK');
+    action.type='button';action.addEventListener('click',()=>this.select(snapshot.referenceId));
+    card.append(action);
+    if(snapshot.changes.length){
+     for(const category of GEAR_CATEGORIES){
+      const changed=snapshot.changes.filter(x=>x.category===category);
+      if(!changed.length)continue;
+      const group=el('div','reference-chronology-category');
+      group.append(el('strong','',category.toUpperCase()));
+      for(const item of changed)
+       group.append(el('small','reference-meta',
+        item.key+': '+(item.previous??'not specified')+' → '+(item.current??'not specified')));
+      card.append(group);
+     }
+    }else{
+     const group=el('details','reference-chronology-category');
+     group.append(el('summary','',snapshot.kind==='unchanged-appearance'?
+      'NO VISUAL GEAR CHANGES':'SHOW ALL CATEGORIZED GEAR'));
+     for(const category of GEAR_CATEGORIES){
+      const settings=snapshot.settings[category];
+      if(!settings.length)continue;
+      group.append(el('strong','',category.toUpperCase()),
+       el('p','reference-meta',settings.map(x=>x.key+': '+x.value).join(' · ')));
+     }
+     card.append(group);
+    }
+    entry.append(card);
+   }
+   for(const marker of point.researchMarkers){
+    const row=el('div','reference-chronology-research');
+    row.append(el('strong','',marker.label+' · '+marker.category.toUpperCase()),
+     el('small','reference-meta',marker.marker==='research-window-start'?
+      'BEGINNING OF RESEARCHED WINDOW':'END OF RESEARCHED WINDOW (NOT RETIREMENT)'),
+     el('small','reference-sources',
+      marker.issueStatus.replace(/-/g,' ')+' · '+marker.confidence+' · '+marker.note));
+    entry.append(row);
+   }
+   chronology.append(entry);
+  }
+  this.gearTimelinePanel.append(chronology);
+ }
  /** Research coverage does not require a 3D appearance snapshot. */
  private renderHistorical(){
   const active=this.timelineMode?timelineById(this.timeline.value):undefined;
   this.historicalPanel.hidden=!active;
   this.historicalPanel.replaceChildren();
+  this.renderGearChronology(active);
   if(!active)return;
   const year=Number(this.timelineYear.value);
   const environment=this.timelineEnvironment.value;
