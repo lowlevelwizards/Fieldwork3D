@@ -65,9 +65,9 @@ test('E4.A observer sight captures remain byte-equivalent to ordered historical 
     appearanceSeed:seed}));
    // Seeded, distinct observer positions and a visible corpse exercise
    // discovered-body persistence without team/personal truth conflation.
-   for(const downed of [false,true]){
-    red.health=downed?0:2;
-    if(downed)red.p={...blue.p};
+   for(const hostileHealth of [2,0,Number.NaN]){
+    red.health=hostileHealth;
+    if(hostileHealth===0)red.p={...blue.p};
     for(const unconscious of [false,true]){
      blue.health=unconscious?0:2;
      const beforeSeen=new Set(['older-body']);
@@ -77,7 +77,7 @@ test('E4.A observer sight captures remain byte-equivalent to ordered historical 
      const expected=previousCapture(s,beforeSeen,beforeObserver);
      const actual=captureReplayKnowledge(s,afterSeen,afterObserver);
      assert.deepEqual(actual,expected,
-      'seed '+seed+' mode '+mode+' dead '+downed+' down '+unconscious);
+      'seed '+seed+' mode '+mode+' hostileHealth '+hostileHealth+' down '+unconscious);
      assert.deepEqual([...afterObserver].map(([id,ids])=>[id,[...ids]]),
       [...beforeObserver].map(([id,ids])=>[id,[...ids]]));
     }
