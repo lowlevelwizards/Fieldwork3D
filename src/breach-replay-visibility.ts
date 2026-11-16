@@ -57,7 +57,7 @@ export function captureReplayKnowledge(
   for(const actor of s.operators){
     if(actor.side==='blue')continue;
     if(actor.health>0)livingHostiles.push(actor);
-    else bodies.push(actor);
+    else if(actor.health<=0)bodies.push(actor);
   }
   for(const observer of s.operators){
     if(observer.side!=='blue')continue;
