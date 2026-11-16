@@ -49,7 +49,10 @@ for(const [name,weapon,optic,hk,ak] of samples){
    const foot=extras.getObjectByName('weapon-accessory-optic-reflex-base');
    assert.ok(foot instanceof THREE.Mesh);
    assert.ok(nearly(bounds(foot).min.y,seat.supportY,.004));
-   feet=[seat.x];
+   // AR has three raised teeth rather than a continuous upper rail surface.
+   // A broad reflex shoe spans BOTH neighboring teeth even though center X=0
+   // falls over the receiver rail bed (lower by the tooth height).
+   feet=seat.mount==='ar-top'?[seat.x-1.5,seat.x+1.5]:[seat.x];
   }else{
    const supports=extras.getObjectByName('weapon-accessory-optic-magnified-mounts');
    assert.ok(supports instanceof THREE.Mesh);
