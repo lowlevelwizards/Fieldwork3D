@@ -32,7 +32,7 @@ equipment items.
 ## Follow-up
 D1.2 can normalize any additional organizational role information that is
 actually missing, using these four cases as the acceptance fixture.
-D1.3 can expose the same context in a UI if a real consumer needs it.
+D1.3 adds a read-only gap and proxy coverage report; browser integration remains optional.
 D2 may later apply **separate** rules for campaign-only item availability,
 with explicit unknown handling and preserved unrestricted sandbox modes.
 
@@ -96,3 +96,48 @@ making an unsupported horizontal content catalogue.
 
 Focused test:
 `node --experimental-strip-types --test tests/dispatch-reference-coverage.test.mjs`
+
+## D1.4 — integration contract and closeout
+
+D1.4 consolidates the existing audit entry points into
+`auditDispatchFoundation()` without a second registry, new game models,
+persistent state or runtime frame work. The critical tests check exactly four
+authored reference IDs, two organization identities and three role timelines,
+visual-only provenance, deterministic read-only outputs, the continued
+`CampaignRules` template contract and the absence of new campaign enforcement.
+
+**D2 consumers should use:**
+
+- `dispatchStarterOrganizations()`: navigate already-authored looks by
+  organization, role timeline and year.
+- `dispatchReferenceContext(referenceId)`: determine whether a specific
+  existing visual reference is in the small Dispatch starter set; null
+  otherwise. This is **not** an item-eligibility decision.
+- `dispatchReferenceCoverage(referenceId)`: inspect authored gaps, current
+  visual preview and uncertainty. No actual item permission can be derived
+  from a missing or exact visual gap.
+- `auditDispatchFoundation()`: fail a development integration check when
+  an authored reference, organization/timeline mapping or gap record diverges.
+
+**D2 must add a separately typed item/appearance policy.** Only the
+explicitly selected Dispatch campaign context may enforce it. Quick Play,
+Sandbox Campaign, legacy campaigns and the other future presets must not
+infer restrictions from the availability of a Dispatch reference.
+Unsupported item IDs must not turn into modeled equipment or silently
+disappear from existing operator inventory. Keep `campaign-rules.ts` (the
+save schema) authoritative, and avoid adding values to saved rules until a
+migration/compatibility gate is implemented. Any playable Dispatch selector
+must be truthful about which parts of the framework are implemented.
+
+**Performance:** these lookup functions are explicit read-only calls for
+setup / authoring / audit tools. Do not import them into the combat frame loop.
+Visual fidelity is not independently researched issue fidelity. D1 remains
+four looks, and does not create fictional agencies or content.
+
+**Release safety:** run the focused Dispatch tests, existing faction/timeline
+regressions and production check/build on the PR. Because this feature branch
+may lag main, verify mergeability and integration tests against the latest
+main before merging. Run the repository's Pages release preflight and merge
+only if the previous main Pages workflow succeeded, no deploy is pending,
+and the public Pages build stamp matches main. Verify the resulting deployment
+after integration; otherwise keep the PR open and do not queue another release.
