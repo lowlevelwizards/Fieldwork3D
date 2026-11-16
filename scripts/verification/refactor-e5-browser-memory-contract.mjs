@@ -14,7 +14,7 @@ export function summarizeReplayMemory(rows){
  });
  return {cycles:rows.length,dom:series(dom),listeners:series(listeners),
   heap:series(heap),
-  peakFeedButtons:rows.length?Math.max(...rows.map(x=>x.feedButtons)):0,
+  peakPostExitFeedButtons:rows.length?Math.max(...rows.map(x=>x.feedButtons)):0,
   allClosed:rows.every(x=>x.replayClosed===true),
   allFeedClean:rows.every(x=>x.feedButtons===0)};
 }
