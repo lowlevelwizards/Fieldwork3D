@@ -86,7 +86,6 @@ try{
  await page.locator('#replayLibraryList .replay-library-watch').first()
   .waitFor({state:'visible',timeout:20000});
  const cdp=await page.context().newCDPSession(page);
- await cdp.send('Memory.enable');
  const samples=[],openSamples=[];
  const firstClock=await page.locator('#clock').textContent();
  for(let cycle=0;cycle<6;cycle++){
