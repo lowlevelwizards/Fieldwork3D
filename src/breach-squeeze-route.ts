@@ -275,7 +275,7 @@ export function routeToNextOperableDoor(
 ):Pt[]{
  if(!doors.some(d=>!d.locked&&!d.jammed&&!d.wedged&&!d.heldBy&&
     (d.openFraction??(d.open?1:0))<.72))return [];
- const canStand=worldCanStand(doors,world,true);
+ const canStand=memoizeExactRoutePassability(worldCanStand(doors,world,true));
  if(!canStand(from,OPERATOR_RADIUS)||!canStand(to,OPERATOR_RADIUS))
    return [];
  // Unlike a blind local shimmy, this candidate must have an actual
@@ -335,18 +335,7 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorld
  // Share only exact point+radius answers for THIS synchronous search;
  // nothing survives a door swing, cover mutation, simulation tick or replay.
  // This is an exact predicate memo, not a relaxed body/collision shortcut.
- const actual=worldCanStand(doors,world);
- const passes=new Map<number,Map<string,boolean>>();
- const sharedCanStand=(point:Pt,radius:number):boolean=>{
-   let atRadius=passes.get(radius);
-   if(!atRadius){atRadius=new Map();passes.set(radius,atRadius);}
-   const key=point.x+','+point.y;
-   const saved=atRadius.get(key);
-   if(saved!==undefined)return saved;
-   const result=actual(point,radius);
-   atRadius.set(key,result);
-   return result;
- };
+ const sharedCanStand=memoizeExactRoutePassability(worldCanStand(doors,world));
  // Every normal-world route begins with the identical full-radius goal
  // predicate. When the goal itself is blocked, *all* twelve escape-route
  // attempts must fail too. Preserve that result without launching A*.
@@ -379,7 +368,7 @@ export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],world?:SessionW
  // Open hinged leaves are pushable; ordinary motion must remain eligible.
  // Reuse one immutable synchronous leaf/passability snapshot for both
  // normal and narrow passes. No cross-tick caching of moving hinges.
- const canStand=worldCanStand(doors,world);
+ const canStand=memoizeExactRoutePassability(worldCanStand(doors,world));
  const normal=routeWithNormalWorld(from,to,doors,world,canStand);
  if(normal.length)return normal;
  const narrow=narrowRoute(from,to,canStand);
