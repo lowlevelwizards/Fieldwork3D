@@ -38,6 +38,8 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Capture nine actual accepted accessory configurations
         run: node scripts/capture-arsenal-a3.mjs
+      - name: Capture A3.H3 close-up optics and four-claw seating
+        run: node scripts/capture-arsenal-a3-h3.mjs
       - name: Upload A3 visual review
         if: always()
         uses: actions/upload-artifact@v4
@@ -45,6 +47,7 @@ jobs:
           name: arsenal-a3-equipped-visual-review
           path: |
             reports/arsenal-a3-equipped-sheet.png
+            reports/arsenal-a3-h3-optic-sheet.png
             reports/arsenal-a3-cost-inventory.json
           if-no-files-found: ignore
           retention-days: 21
