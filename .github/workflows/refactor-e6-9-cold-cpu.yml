@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'src/breach-quickplay-controller.ts'
+      - 'src/breach-boot-config.ts'
       - 'src/rendering/breach-cold-renderer-trace.ts'
       - 'scripts/verification/e6-8-cold-renderer-browser.mjs'
       - 'scripts/verification/e6-9-cold-cpu-analysis.mjs'
@@ -34,6 +35,7 @@ jobs:
             tests/refactor-e6-9-cold-cpu-profile.test.mjs \
             tests/refactor-e6-8-cold-renderer-attribution.test.mjs \
             tests/quick-play-startup-progress.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs \
             tests/refactor-e6-7-rig-geometry.test.mjs
       - name: Production typecheck and bundle
         run: npm run build
