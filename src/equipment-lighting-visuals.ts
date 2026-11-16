@@ -25,7 +25,7 @@ export type FixtureLightingVisuals={
 type Cache={
  site:NonNullable<Session['site']>;mode:Session['lightingMode'];
  powerIdentity:Session['sitePower'];
- powerRevision:number;objectRevision:number;bucket:number;
+ powerRevision:number;objectRevision:number;
  doorSignature:string;visuals:FixtureLightingVisuals;
 };
 const snapshots=new WeakMap<Session,Cache>();
@@ -43,8 +43,9 @@ export function fixtureLightingVisuals(s:Session):FixtureLightingVisuals{
  if(!site)return {fixtures:[],activeCount:0,revision:-1};
  const power=s.sitePower?.mode===s.lightingMode?s.sitePower:undefined;
  const powerRevision=power?.revision??-1;
+ // Static fixtures do not depend on the simulation clock. A paused site
+ // stays cached until power, physical blockers or authored mode changes.
  const objectRevision=s.objectRevision;
- const bucket=Math.floor(s.seconds*8);
  // A replay seek or an interpolated door can change aperture without
  // advancing the world revision. Never reuse a polygon across that change.
  const doorSignature=s.doors.map(d=>d.id+':'+
@@ -53,7 +54,7 @@ export function fixtureLightingVisuals(s:Session):FixtureLightingVisuals{
  const old=snapshots.get(s);
  if(old&&old.site===site&&old.mode===s.lightingMode&&
    old.powerIdentity===power&&old.powerRevision===powerRevision&&old.objectRevision===objectRevision&&
-   old.bucket===bucket&&old.doorSignature===doorSignature)return old.visuals;
+   old.doorSignature===doorSignature)return old.visuals;
  const program=planSiteLighting(site,s.lightingMode,power);
  const active=new Map(program.fixtures.map(f=>[f.id,f]));
  // Same opaque walls, door leaves and tall cover as sight/weapon lights.
@@ -80,6 +81,6 @@ export function fixtureLightingVisuals(s:Session):FixtureLightingVisuals{
  const visuals={fixtures,activeCount,revision:powerRevision};
  snapshots.set(s,{site,mode:s.lightingMode,powerIdentity:power,
   powerRevision,objectRevision,
-  bucket,doorSignature,visuals});
+  doorSignature,visuals});
  return visuals;
 }
