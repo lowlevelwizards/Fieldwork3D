@@ -54,14 +54,14 @@ test('P15 polymer 30% taller; short collar and long gas spine truly interlock',(
  assert.ok(sz(gas,'x')>sz(poly,'x')+2.0);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P15 two broken side vent rows clear polymer roof and follow gas wall',()=>{
+test('P20 one broken side vent row clears polymer roof and follows gas wall',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const gas=get(g,'fncP15UpperGasSpine'),poly=get(g,'fncP15RaisedPolymer');
  const slots=many(g,'fncP11BrokenGasSideSlots'),
   grooves=many(g,'fncP11PolymerLongRibs');
  assert.equal(slots.length,2);assert.equal(grooves.length,2);
  for(const side of slots){
-  assert.equal(side.geometry.getAttribute('position').count,48);
+  assert.equal(side.geometry.getAttribute('position').count,24);
   assert.ok(box(side).min.y>box(poly).max.y+.10,
    'no gas markings concealed behind enlarged polymer');
   assert.ok(box(side).min.x>box(gas).min.x+.4);
