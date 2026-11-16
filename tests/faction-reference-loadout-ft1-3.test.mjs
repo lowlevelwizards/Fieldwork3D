@@ -5,13 +5,15 @@ import {historicalEquipmentEligibility}
  from '../src/faction-reference-equipment-eligibility.ts';
 import {gameMappingForHistorical,auditHistoricalGameMappings}
  from '../src/faction-reference-game-mapping.ts';
-import {generateHistoricalLoadout} from '../src/faction-reference-loadout-generator.ts';
+import {generateHistoricalLoadout,validateHistoricalLoadoutProposal}
+ from '../src/faction-reference-loadout-generator.ts';
 import {createHistoricalLoadoutDraft,applyHistoricalQuickPlayProposal,
  applyHistoricalCampaignProposal} from '../src/faction-reference-loadout-apply.ts';
 import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 import {initialWardrobe} from '../src/operator-wardrobe-data.ts';
 import {initialWeaponConfiguration} from '../src/equipment-weapon-assemblies.ts';
 import {initialRoster} from '../src/breach-roster.ts';
+import {newCampaign} from '../src/campaign-state.ts';
 
 const make=(timelineId,year,additional={},extra={})=>
  generateHistoricalLoadout({context:{timelineId,year,...additional},
@@ -136,4 +138,38 @@ test('FT1.3 standalone generator is pure across repeated context/seed queries',(
   }
  }
  assert.equal(JSON.stringify(roster),before);
+});
+
+test('FT1.3 canonical host verification rejects forged/altered visual mappings',()=>{
+ const baseline=initialEquipmentLoadout();
+ const p=make('us-army-infantry',2016,{},{baseline});
+ assert.deepEqual(validateHistoricalLoadoutProposal(p,baseline),p);
+ const invalid=JSON.parse(JSON.stringify(p));
+ invalid.choices[0].mapping.value='ar-m4a1';
+ assert.equal(validateHistoricalLoadoutProposal(invalid,baseline),null);
+ assert.equal(validateHistoricalLoadoutProposal({...p,choices:[null]},baseline),null);
+ assert.equal(validateHistoricalLoadoutProposal({...p,context:{...p.context,year:2070}},baseline),null);
+});
+test('FT1.3 campaign source-backed uniform changes use existing stock-safe editor',()=>{
+ const campaign=newCampaign(74231);
+ const before=JSON.stringify(campaign);
+ const proposal=make('us-army-infantry',2016,{},{baseline:campaign.operators[0].loadout});
+ const next=applyHistoricalCampaignProposal(campaign,campaign.operators[0].id,proposal);
+ assert.ok(next);
+ assert.ok(next.operators[0].wardrobe.fabricCamo.top);
+ assert.deepEqual(next.inventory,campaign.inventory);
+ assert.equal(JSON.stringify(campaign),before);
+ assert.equal(applyHistoricalCampaignProposal({...campaign,activeContractId:'mission'},'rook',proposal),null);
+});
+test('FT1.3 historical equipment bridge is separate from cosmetic-only save flow',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const host=readFileSync(new URL('../src/operator-studio-bridge.ts',import.meta.url),'utf8');
+ const studio=readFileSync(new URL('../src/operator-studio.ts',import.meta.url),'utf8');
+ assert.match(host,/msg.type==='fw-studio-apply-historical'/);
+ assert.match(host,/validateHistoricalLoadoutProposal\(msg.proposal/);
+ assert.match(host,/applyHistoricalCampaignProposal\(currentCampaign/);
+ assert.match(host,/applyHistoricalQuickPlayProposal\(current/);
+ assert.match(studio,/onApplyProposedEquipment:/);
+ assert.match(studio,/fw-studio-apply-historical/);
+ assert.match(host,/msg.type==='fw-studio-commit-batch'/);
 });
