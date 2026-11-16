@@ -29,8 +29,8 @@ const a=(timelineId:string,id:string,historicalEquipmentId:string,
 });
 export const HISTORICAL_ISSUE_RECORDS:readonly HistoricalEquipmentAssociation[]=[
  a('us-army-infantry','army-m16a2-1991','us-m16a2',1991,1991,'unknown','documented-use',
-  ['us-m16a2-1991'],'M16A2 spare parts documented supporting Desert Storm; not a unit-by-unit rifle issue count.',
-  {theater:'Persian Gulf'}),
+  ['us-m16a2-1991'],'M16A2 spare parts documented supporting Desert Storm; indirect evidence, not proof of issue to a particular unit.',
+  {theater:'Persian Gulf',confidence:'tentative'}),
  a('us-army-infantry','army-pasgt-1981','us-pasgt',1981,1981,'emerging','documented-use',
   ['us-pasgt-ach-2018'],'First fielding reported in 1981; later fielding years need separate documentation.'),
  a('us-army-infantry','army-ach-2003','us-ach',2003,2003,'emerging','documented-use',
