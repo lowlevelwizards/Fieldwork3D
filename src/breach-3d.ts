@@ -1719,7 +1719,11 @@ export class TacticalScene3D{
     const actorIdleSeconds=s.phase==='planning'&&!replay?
       this.idleLifeSeconds:poseSeconds;
     // The shadow map follows the active encounter to retain contact detail.
-    const shadowPoint=team(s).find(a=>a.id===selected)?.p??this.view.focus;
+    // Share the frame's blue squad snapshot across shadow and Director views.
+    // team(s) filters operators; repeated calls allocate arrays each frame.
+    const squad=team(s);
+    const selectedActor=squad.find(a=>a.id===selected);
+    const shadowPoint=selectedActor?.p??this.view.focus;
     this.sun.position.set(shadowPoint.x-145,250,shadowPoint.y+175);
     this.sun.target.position.set(shadowPoint.x,0,shadowPoint.y);
     this.sun.target.updateMatrixWorld();
@@ -1795,9 +1799,9 @@ export class TacticalScene3D{
     // rather than a potentially unrelated manually selected soldier.
     const fromCamera=this.projectionCamera.position.clone().sub(this.target);
     const pawn=this.replayDirectorFocus??
-      team(s).find(a=>a.id===selected&&a.health>0)?.p;
+      (selectedActor&&selectedActor.health>0?selectedActor.p:undefined);
     const subjects=physicalDirector&&this.replayDirectorLens==='ortho'?
-      team(s).map(a=>a.p):this.replayDirectorSubjects.length?
+      squad.map(a=>a.p):this.replayDirectorSubjects.length?
       this.replayDirectorSubjects:pawn?[pawn]:[];
     const maxCutDistance=Math.max(40,Math.min(150,
       90/Math.tan(Math.max(.38,this.view.pitch))));
@@ -1837,7 +1841,7 @@ export class TacticalScene3D{
     }
     // The selected endpoint is stable across this entire render. Do not
     // rebuild team/plan arrays once per door on large generated sites.
-    const selectedActor=s.operators.find(a=>a.side==='blue'&&a.id===selected);
+    // Selected endpoint reuses the same actor resolved for shadows.
     const selectedEndpoint=selectedActor?.plan.at(-1)?.p;
     for(const door of s.doors){
       const object=this.doors.get(door.id);
