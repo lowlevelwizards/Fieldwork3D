@@ -95,7 +95,7 @@ function pixelMaterial(source:THREE.Material):THREE.Material{
  if(!(source instanceof THREE.MeshStandardMaterial) &&
     !(source instanceof THREE.MeshBasicMaterial))return source;
  material=source.clone();
- material.map=fncPixelAtlas();
+ (material as THREE.MeshStandardMaterial|THREE.MeshBasicMaterial).map=fncPixelAtlas();
  material.userData={...source.userData,fncPixelArt:true};
  material.needsUpdate=true;
  materials.set(source,material);
