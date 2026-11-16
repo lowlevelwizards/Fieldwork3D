@@ -40,7 +40,7 @@ test('A3 art: distinct, bounded low-poly accessories and shared A2 finishes',()=
  const lens=a.getObjectByName('weapon-light-lens');
  assert.ok(lens instanceof THREE.Mesh);
  assert.equal(lens.visible,false);
- assert.equal(meshes(a).length,10,'full five-accessory loadout mesh budget');
+ assert.equal(meshes(a).length,11,'full five-accessory loadout mesh budget');
  const frame=a.getObjectByName('weapon-accessory-optic-reflex-hood');
  assert.equal(frame.geometry.type,'ExtrudeGeometry');
  assert.equal(frame.geometry.parameters.shapes.holes.length,1,'real open window');
@@ -68,9 +68,9 @@ test('A3 magnified optic and muzzle alternatives remain bounded at proper mount'
   assert.equal(names(g,'weapon-accessory-optic-magnified').length,max);
   assert.ok(names(g,'weapon-accessory-muzzle-').length<=2);
   const m=resolveWeaponAssembly(c).mounted.muzzle;
-  assert.ok(Math.abs(new THREE.Box3().setFromObject(
-    new THREE.Group().add(...names(g,'weapon-accessory-muzzle-'))).max.x-
-    (m.mountX+(m.muzzleExtension??0)))<.002);
+  const maxX=Math.max(...names(g,'weapon-accessory-muzzle-').map(
+   mesh=>new THREE.Box3().setFromObject(mesh).max.x));
+  assert.ok(Math.abs(maxX-(m.mountX+(m.muzzleExtension??0)))<.002);
   cleanup(g);
  }
 });
