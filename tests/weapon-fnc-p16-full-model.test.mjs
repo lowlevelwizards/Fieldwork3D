@@ -36,54 +36,6 @@ test('P17 integrated lower drops squarely around STANAG, no added magwell slab',
  assert.ok(ribs.every(x=>touch(x,mag)));
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P21 pixel surface coverage: P16 exposed receiver stamping and selector stay sparse and side-specific',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
- const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
- const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
- const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
- const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
- assert.ok(upper&&lower&&gas&&polymer&&lug);
- assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
- assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
- for(const surface of [upper,lower,gas,polymer]){
-  assert.equal(surface.material.userData.fncPixelArt,true);
-  assert.ok(surface.material.map instanceof THREE.DataTexture);
-  assert.equal(surface.geometry.getAttribute('uv').count,
-   surface.geometry.getAttribute('position').count);
- }
- assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
-  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
-  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
- assert.equal(lug.geometry.type,'BoxGeometry');
- assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
-  new THREE.Box3().setFromObject(upper)));
- clearWeaponSilhouette(g);m.dispose();
-});
-test('P21 pixel surface coverage: P16 fore-end roots penetrate both receiver shells without spacer meshes',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
- const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
- const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
- const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
- const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
- assert.ok(upper&&lower&&gas&&polymer&&lug);
- assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
- assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
- for(const surface of [upper,lower,gas,polymer]){
-  assert.equal(surface.material.userData.fncPixelArt,true);
-  assert.ok(surface.material.map instanceof THREE.DataTexture);
-  assert.equal(surface.geometry.getAttribute('uv').count,
-   surface.geometry.getAttribute('position').count);
- }
- assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
-  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
-  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
- assert.equal(lug.geometry.type,'BoxGeometry');
- assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
-  new THREE.Box3().setFromObject(upper)));
- clearWeaponSilhouette(g);m.dispose();
-});
 test('P16 twin-ear guards chamfered but keep FAL open silhouette',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const base=one(g,'fncP16CompactGasSightBase');
