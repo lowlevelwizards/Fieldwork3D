@@ -362,10 +362,16 @@ function renderLightingMood2D(){
  * The radial gradient is clipped to real opaque world blockers, not a
  * decorative circle that can glow through a closed door.
  */
+let fixtureGradientCache:{
+ visuals:ReturnType<typeof fixtureLightingVisuals>;
+ gradients:Map<string,CanvasGradient>;
+}|null=null;
 function renderFixtureLighting2D(){
  const state=getState(),replaying=isReplaying();
  if(!state.site)return;
  const view=fixtureLightingVisuals(state);
+ if(fixtureGradientCache?.visuals!==view)
+  fixtureGradientCache={visuals:view,gradients:new Map()};
  const observer=replaying&&replayKnowledge.groundLensOn?
   replayKnowledge.observerId:null;
  const personal=!!observer;
@@ -387,12 +393,16 @@ function renderFixtureLighting2D(){
    for(let i=2;i<f.footprint.length;i++)
     draw.lineTo(f.footprint[i].x,f.footprint[i].y);
    draw.closePath();draw.clip();
-   const gradient=draw.createRadialGradient(f.p.x,f.p.y,0,
-    f.p.x,f.p.y,f.range);
-   const weight=f.intensity*(f.status==='backup'?.27:.35);
-   gradient.addColorStop(0,'rgba('+rgb+','+weight.toFixed(3)+')');
-   gradient.addColorStop(.42,'rgba('+rgb+','+(weight*.32).toFixed(3)+')');
-   gradient.addColorStop(1,'rgba('+rgb+',0)');
+   let gradient=fixtureGradientCache!.gradients.get(f.id);
+   if(!gradient){
+    gradient=draw.createRadialGradient(f.p.x,f.p.y,0,
+     f.p.x,f.p.y,f.range);
+    const weight=f.intensity*(f.status==='backup'?.27:.35);
+    gradient.addColorStop(0,'rgba('+rgb+','+weight.toFixed(3)+')');
+    gradient.addColorStop(.42,'rgba('+rgb+','+(weight*.32).toFixed(3)+')');
+    gradient.addColorStop(1,'rgba('+rgb+',0)');
+    fixtureGradientCache!.gradients.set(f.id,gradient);
+   }
    draw.fillStyle=gradient;
    draw.fillRect(f.p.x-f.range,f.p.y-f.range,f.range*2,f.range*2);
    draw.restore();
