@@ -1400,7 +1400,7 @@ missionScreens.bindMissionActions({
  resetMission:variant=>reset(variant),restartMission,
  setMode:mode=>{if(mode==='menu')trainingScreen.setActive(false);
   appFlow.setMode(mode);},
- campaignEntry:active=>campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot),
+ campaignEntry:()=>campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot),
  audio:audioController,resetTargeting:()=>targeting.reset(),
  captureBeforeExecution:()=>missionController.captureBeforeExecution(state,recorder),
  toggleExecution:()=>toggling(state)
