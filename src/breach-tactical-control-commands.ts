@@ -51,7 +51,7 @@ export function setMoveSprint(s:Session,id:string,nodeId:number){
 
 export function toggleWeaponLight(s:Session,id:string):boolean{
  const a=party(s,id);
- if(!weaponLightEditable(a,s.phase))return false;
+ if(!a||!weaponLightEditable(a,s.phase))return false;
  a.weaponLightOn=!a.weaponLightOn;
  s.illuminationRevision=(s.illuminationRevision??0)+1;
  return true;
