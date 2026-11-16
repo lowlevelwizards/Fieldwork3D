@@ -104,10 +104,13 @@ export function validateHistoricalLoadoutProposal(raw:unknown,
  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
  const p=raw as Partial<HistoricalLoadoutProposal>;
  if(p.version!==1||(p.mode!=='evidence-backed'&&p.mode!=='playable-composite')||
-  !p.context||!Array.isArray(p.choices)||!Array.isArray(p.lockedCategories)||
+  !p.context||typeof p.context!=='object'||Array.isArray(p.context)||
+  !Array.isArray(p.choices)||!Array.isArray(p.lockedCategories)||
   !Number.isSafeInteger(p.seed))return null;
  if(p.choices.length>12||p.lockedCategories.length>5||
-  p.lockedCategories.some(x=>typeof x!=='string'))return null;
+  p.lockedCategories.some(x=>typeof x!=='string')||
+  p.choices.some(x=>!x||typeof x!=='object'||
+   typeof x.category!=='string'||typeof x.historicalId!=='string'))return null;
  const selectedHistoricalIds=Object.fromEntries(
   p.choices.map(x=>[x.category,x.historicalId]));
  const candidate=generateHistoricalLoadout({
