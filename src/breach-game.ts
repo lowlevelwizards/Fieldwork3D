@@ -57,6 +57,7 @@ import {sightDiagnosticsEnabled,sightDiagnosticCounts} from './breach-sight-cost
 import {cachedActorGroundView} from './breach-live-visual-candidates.ts';
 import {notePersonalGround} from './breach-replay-personal-ground.ts';
 import {type FireBlock} from './breach-fire-safety.ts';
+import {advanceTrainingTrial} from './training/training-trial-controller.ts';
 
 
 import {coverBlocksOpticalSight} from './breach-optical-occlusion.ts';
@@ -1433,7 +1434,7 @@ const runEnemyAi=createEnemyDecisionController({
 function mission(s:Session,dt:number){
   // The equipment range is an intentionally open-ended live simulation.
   // It cannot accidentally complete a Campaign mission or generate a debrief.
-  if(s.site?.training)return;
+  if(s.site?.training){advanceTrainingTrial(s);return;}
   // Intel is an actual carried mission item. An incapacitated courier
   // drops it at their final observed location for another operator to
   // recover; a different teammate cannot magically extract it.

@@ -54,7 +54,8 @@ function damageStruckCover(s:Session,hits:readonly {index:number;fraction:number
   if(shooterId&&recordTrainingCoverStrike(s,piece,shooterId,s.nextShotId)){
    const actor=s.operators.find(a=>a.id===shooterId)??null;
    battleEvent(s,'impact',actor,{x:piece.x,y:piece.y},
-    'TRAINING TARGET STRUCK · '+piece.id);
+    (piece.fixture==='target-no-shoot'?'NO-SHOOT':'TRAINING')+
+    ' TARGET STRUCK · '+piece.id);
   }
   const result=damageCover(piece,force);
   if(result==='immune')continue;
