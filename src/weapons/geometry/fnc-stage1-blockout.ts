@@ -22,7 +22,7 @@ export const FNC_P1=Object.freeze({
  nominalBarrelInches:17.7
 });
 type Finish='steel'|'lower'|'stock'|'buttpad'|'grip'|'handguard'|
- 'magazine'|'stamp'|'barrel'|'muzzle'|'shadow';
+ 'magazine'|'polymerToe'|'stamp'|'barrel'|'muzzle'|'shadow';
 export type FNCArtFinishes=Readonly<Partial<Record<Finish,THREE.Material>>>;
 
 export function buildFNCStage1Silhouette(
@@ -224,7 +224,7 @@ export function buildFNCStage1Silhouette(
  }
  if(magStyle==='poly'){
   const toe=p('magazine',arMagazinePolyBaseplate(magazineCurve),
-   magazineCurve.depth+.12,'grip');
+   magazineCurve.depth+.12,'polymerToe');
   toe.userData.fncARPolyToe=true;
  }
 
