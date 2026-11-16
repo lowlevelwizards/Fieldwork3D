@@ -15,21 +15,29 @@ const height=x=>bbox(x).max.y-bbox(x).min.y;
 const select=()=>selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
 const one=(g,flag)=>g.children.find(x=>x.userData[flag]);
 
-test('P19: raise only the handguard underside, retaining roof, vents and seating',()=>{
- const mat=new THREE.MeshBasicMaterial();
- const g=buildWeaponSilhouette('rifle',mat,mat,select());
- const poly=one(g,'fncFacetedHandguard'),stop=one(g,'fncP18DeepEndLip');
- const gas=one(g,'fncP18RaisedFourVentSpine');
- assert.ok(poly&&stop&&gas);
- assert.equal(L.polymer.lowerFlare,.60);
- assert.ok(near(bbox(poly).max.y,.558),'do not lower polymer roof or move vent rows');
- assert.ok(near(bbox(poly).min.y,-2.63),'underside raised from the P18 -2.86 envelope');
- assert.ok(height(poly)>3.10&&height(poly)<3.30,'still boldly faceted');
- assert.ok(bbox(poly).intersectsBox(bbox(gas)));
- assert.ok(bbox(poly).intersectsBox(bbox(stop)));
- assert.equal(g.children.filter(x=>x.userData.fncP11BrokenGasSideSlots).length,2);
- assert.equal(g.children.filter(x=>x.userData.fncP11PolymerLongRibs).length,2);
- clearWeaponSilhouette(g);mat.dispose();
+test('P21 pixel surface coverage: P19: raise only the handguard underside, retaining roof, vents and seating',()=>{
+ const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
+ }
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
+ clearWeaponSilhouette(g);m.dispose();
 });
 test('P19: thinner barrel and longer, still six-sided, connected muzzle',()=>{
  const mat=new THREE.MeshBasicMaterial(),cfg=select();
