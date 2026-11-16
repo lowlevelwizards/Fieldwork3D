@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newCampaign,equipCampaignGear,equipCampaignWeapon,
- equipCampaignWeaponPreset,buyWeapon,equipCampaignWeaponFamilyPart,
+ equipCampaignWeaponPreset,buyWeapon,hireRecruit,equipCampaignWeaponFamilyPart,
  buyWeaponAttachment,equipCampaignWeaponAttachment,
  setCampaignWardrobe,applyCampaignKitPreset} from '../src/campaign-state.ts';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
@@ -38,6 +38,7 @@ test('D3.1 new Dispatch selections are guarded while existing saves survive',()=
  assert.equal(equipCampaignWeapon(c,id,'rifle'),c);
  assert.equal(equipCampaignWeaponPreset(c,id,'ak-aks74u'),c);
  assert.equal(buyWeapon(c,'rifle'),c);
+ assert.equal(hireRecruit(c),c,'no generic recruits in SWAT pilot');
  assert.equal(buyWeaponAttachment(c,'optic-reflex'),c);
  assert.equal(equipCampaignWeaponAttachment(c,id,'optic','optic-reflex'),c);
  assert.equal(equipCampaignWeaponFamilyPart(c,id,'receiver','ak103'),c);
