@@ -45,6 +45,8 @@ export class PersonalGroundHistory{
   private cursor=0;
   private atTime=-Infinity;
   private seen=new Map<string,Set<string>>();
+  /** Missing observers have no knowledge; reuse one read-only empty view. */
+  private readonly emptyEvidence:ReadonlySet<string>=new Set<string>();
   private readonly batches:readonly PersonalGroundBatch[];
   constructor(batches:readonly PersonalGroundBatch[]){
     this.batches=batches;
@@ -63,6 +65,6 @@ export class PersonalGroundHistory{
       if(!tiles){tiles=new Set();this.seen.set(batch.observerId,tiles);}
       for(const key of batch.keys)tiles.add(key);
     }
-    return this.seen.get(observerId)??new Set();
+    return this.seen.get(observerId)??this.emptyEvidence;
   }
 }
