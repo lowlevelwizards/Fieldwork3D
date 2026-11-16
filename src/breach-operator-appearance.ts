@@ -26,6 +26,7 @@ import {garmentSolidHex,isGarmentSolidId,solidChoicesFor,resolvedCuffSolid,resol
 import {fabricCamoCompatible,type FabricCamoChannel} from './operator-fabric-camo-policy.ts';
 import {resolveWardrobeDisplayMount} from './operator-wardrobe-mounts.ts';
 import {applyOperatorVisualKit} from './operator-visual-kit.ts';
+import {nvgMounted} from './equipment-night-vision.ts';
 import {updateOperatorEquipmentDetails} from './operator-equipment-details.ts';
 const OPERATOR_CLOTH_PALETTE=[0x6f9185,0x80826b,0x8e846e,0x687c8d,
  0x798a79,0x92816a,0x65867c,0x8a8872] as const;
@@ -53,7 +54,7 @@ const appearanceState=new WeakMap<OperatorRig,{
 export type OperatorAppearanceInputs=Pick<OperatorPose,
  'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|
  'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
- 'flashCharges'|'treatmentActive'|'weaponConfiguration'|'down'|'surrender'>;
+ 'flashCharges'|'treatmentActive'|'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
 export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInputs){
   // Fingerprint only presentation inputs; movement, time and dynamic posing
   // are purposefully excluded. JSON captures in-place Studio edits and
@@ -63,7 +64,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.magazineCarryLocations??null,p.medicalCarryLocation??null,
     p.utilityCarryLocation??null,p.faceStyle??null,
     p.flashCharges??null,p.treatmentActive??null,
-    p.weaponConfiguration?.build?.parts.magazine??null
+    p.weaponConfiguration?.build?.parts.magazine??null,
+    p.nvgDeployed??false
   ]);
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
   const previousAppearance=appearanceState.get(r);
@@ -184,7 +186,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
    garmentSolidHex(p.wardrobe?.gloveSolid??'ranger-green')));
   const kitStart=traceAppearance?performance.now():0;
   applyOperatorVisualKit(r.visualKit,gear,identity,
-    p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration);
+    p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
+    nvgMounted(p),p.nvgDeployed===true);
   if(traceAppearance)visualKitMs=performance.now()-kitStart;
   r.colors.set(r.visualKit.carriedMagazineMaterial,
     r.visualKit.carriedMagazineMaterial.color.clone());
