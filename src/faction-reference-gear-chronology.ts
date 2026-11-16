@@ -15,7 +15,7 @@ import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {LOADOUT_SLOTS} from './equipment-catalog.ts';
 
 export const GEAR_CATEGORIES=[
- 'uniform','headgear','armor','carriage','pack','weapon','accessories','markings'
+ 'uniform','headgear','armor','carriage','pack','footwear','weapon','accessories','markings'
 ] as const;
 export type GearCategory=typeof GEAR_CATEGORIES[number];
 export type GearSetting={key:string;value:string};
@@ -51,13 +51,15 @@ const slotCategory=(slot:string):GearCategory=>
  slot==='armor'?'armor':
  slot==='rig'||slot==='belt'?'carriage':
  slot==='backpack'?'pack':
+ slot==='footwear'?'footwear':
  slot==='primary'?'weapon':'accessories';
 const wardrobeCategory=(slot:string):GearCategory=>
  slot==='top'||slot==='trousers'?'uniform':
  slot==='headwear'||slot==='facewear'||slot==='eyewear'||slot==='headset'?'headgear':
  slot==='armorStyle'?'armor':
  slot==='rigStyle'||slot==='beltStyle'?'carriage':
- slot==='packStyle'?'pack':'accessories';
+ slot==='packStyle'?'pack':
+ slot==='footwear'?'footwear':'accessories';
 const categories=()=>Object.fromEntries(GEAR_CATEGORIES.map(k=>[k,{}])) as
  Record<GearCategory,Record<string,string>>;
 const flatten=(r:Record<GearCategory,Record<string,string>>)=>
@@ -75,7 +77,7 @@ export function referenceGearSettings(referenceId:string):
  const data=categories();
  const put=(category:GearCategory,key:string,value:unknown)=>{
   if(value!==undefined&&value!==null&&String(value).trim())
-   data[category][key]=String(value);
+   data[category][key]=typeof value==='object'?JSON.stringify(value):String(value);
  };
  for(const slot of LOADOUT_SLOTS)
   put(slotCategory(slot),'equipment.'+slot,resolved.kit.slots[slot]);
@@ -96,11 +98,18 @@ export function referenceGearSettings(referenceId:string):
    put('headgear','detail.'+key,JSON.stringify(value));
   else put('headgear','detail.'+key,value);
  }
- for(const key of ['m1956Variant'] as const)
+ for(const key of ['helmetSetup','helmetField','beretDrape','headwearCamoRoll',
+  'd2FaceMode','d2FaceSolid','d2MaskColor','d2Accessories'] as const)
+  put('headgear','detail.'+key,w[key]);
+ for(const key of ['m1956Variant','aliceLoad','strapSolid','pouchSolid'] as const)
   put('carriage','detail.'+key,w[key]);
+ put('carriage','detail.mounts',w.mounts);
+ put('accessories','detail.attachments',w.accessories);
  put('uniform','detail.sleeveState',w.sleeveState);
  put('uniform','detail.trouserHem',w.trouserHem);
  put('uniform','detail.topColorway',w.topColorway);
+ put('uniform','detail.cuffSolid',w.cuffSolid);
+ put('uniform','detail.knitSolid',w.knitSolid);
  put('accessories','detail.gloveSolid',w.gloveSolid);
  for(const [k,v] of Object.entries(w.markings??{}))put('markings','marking.'+k,v);
  put('weapon','preset',resolved.weapon.presetId);
