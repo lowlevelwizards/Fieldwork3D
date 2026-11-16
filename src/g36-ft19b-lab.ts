@@ -1,10 +1,10 @@
-/** FT1.9D0: the same G36 core geometry and six production peer builders.
+/** FT1.9E1: ALL seven meshes now use the real production family builders.
  * Fixed orthographic row framing in all views: rotate each mesh at its own
  * row pivot, never look down the axis used to separate the comparison rows.
  * One flat black silhouette or shared softly lit clay; only render on events.
  */
 import * as THREE from 'three';
-import {buildG36OriginalBlockout,applyG36FactoryMaterials} from './weapons/geometry/g36-silhouettes.ts';
+import {applyG36FactoryMaterials} from './weapons/geometry/g36-silhouettes.ts';
 import {G36_B_ART} from './weapons/geometry/g36-art-layout.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
@@ -44,8 +44,16 @@ const names:[string,'rifle'|'carbine',string][]=[
  ['AKM','rifle','ak-akm']
 ];
 const items:{name:string;model:THREE.Group;pivot:THREE.Group}[]=[];
-const g36=buildG36OriginalBlockout(mono);
-g36.scale.x=G36_B_ART.displayLongitudinalScale;
+// E1: the review's G36 is now the EXACT live production builder path,
+ // just like the other six original peer models. No isolated look-alike.
+const g36Config=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'g36-service');
+if(g36Config.build?.family!=='g36')throw Error('G36 E1 factory configuration unavailable');
+const g36=buildWeaponSilhouette('rifle',mono,mono,g36Config);
+if(!g36.userData.g36OriginalFactory)throw Error('G36 review bypassed production renderer');
+g36.traverse(node=>{if(node instanceof THREE.Mesh)node.material=mono;});
+g36.scale.x=weaponVisualLayout(g36Config).longitudinalScale;
+if(Math.abs(g36.scale.x-G36_B_ART.displayLongitudinalScale)>.001)
+ throw Error('G36 rig presentation scale deviates from authored master');
 items.push({name:'G36 original',model:g36,pivot:new THREE.Group()});
 for(const [name,weapon,preset] of names){
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(weapon),preset);
