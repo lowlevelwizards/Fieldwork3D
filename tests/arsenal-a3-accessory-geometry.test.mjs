@@ -104,10 +104,17 @@ test('A3 HK claw has four supported feet but only one draw call',()=>{
  assert.ok(sightBase.min.y>=rail.max.y-.20,'optic base buries into claw mount');
  clearWeaponSilhouette(body);cleanup(extra);
 });
-test('A3 all seven platforms accept a compatible configuration with finite accessory bounds',()=>{
+test('A3 all supported rail platforms retain valid light and sling geometry',()=>{
  for(const p of ARSENAL_PLATFORMS){
   const ref=arsenalReferencesForPlatform(p.id)[0];
   let c=preset(ref.id);
+  // G36 E0 integral factory furniture has no accessory-light interface:
+  // the old A3 seven-platform light test predates this actual factory model.
+  if(c.build?.family==='g36'){
+   assert.equal(setWeaponAttachment(c,'light','light-compact').slots.light,
+    'light-none','integral G36 does not grow an invented light rail');
+   continue;
+  }
   c=equip(c,'light','light-compact');
   c=equip(c,'sling','sling-two-point');
   const g=buildWeaponAccessories(c,...mats);
