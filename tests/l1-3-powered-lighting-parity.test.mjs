@@ -32,6 +32,10 @@ test('L1.3 all historical presets draw the authoritative active fixtures',()=>{
 test('L1.3 breaker and switch changes immediately rebuild same-tick visuals',()=>{
  const s=make('night'),first=fixtureLightingVisuals(s);
  assert.equal(fixtureLightingVisuals(s),first,'cached scene evidence');
+ // Fixed site lights are static: do not rebuild buffers just because
+ // the game clock advanced into a new visual-acquisition bucket.
+ s.seconds+=.3;
+ assert.equal(fixtureLightingVisuals(s),first);
  const before=first.fixtures.find(f=>f.status==='mains');
  assert.ok(before);
  const topology=siteLightingTopology(s.site).find(f=>f.id===before.id);
