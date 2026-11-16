@@ -341,7 +341,7 @@ function architecture(){
  * Session identity, not seed, tick, actor ID, or whichever site is global.
  * Weak keys ensure that retired missions do not accumulate light history.
  */
-type Beam2DHistory={x:number;y:number;yaw:number;tick:number;
+type Beam2DHistory={x:number;y:number;yaw:number;tick:number;shoulderOffset:number;
  config:TeamActor['weaponConfiguration'];footprint:Pt[]};
 type Beam2DSessionCache={
  tick:number;revision:number;doorSignature:string;blockers:Segment[];
@@ -457,16 +457,19 @@ function renderWeaponLights2D(){
   if(!previous||previous.tick!==tick||
    !sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
    Math.hypot(previous.x-actor.p.x,previous.y-actor.p.y)>.7||
+   previous.shoulderOffset!==(actor.aimSideOffset??0)||
    Math.abs(Math.atan2(Math.sin(previous.yaw-yaw),
      Math.cos(previous.yaw-yaw)))>.025){
    const muzzle=weaponClearance({x:actor.p.x,z:actor.p.y,
-    heading:actor.heading,weaponYaw:yaw,weapon:actor.weapon,
+    heading:actor.heading,weaponYaw:yaw,
+    shoulderOffset:actor.aimSideOffset??0,weapon:actor.weapon,
     weaponConfiguration:actor.weaponConfiguration,
     equipment:actor.equipment,aim:actor.aim,
     velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture},
     state.doors,state.coverState,world.walls).muzzle;
    const from=weaponLightEmitter(muzzle,actor.weaponConfiguration!);
    cached.history.set(actor.id,{x:actor.p.x,y:actor.p.y,yaw,tick,
+    shoulderOffset:actor.aimSideOffset??0,
     config:actor.weaponConfiguration,
     footprint:lightBeamFootprint(from,muzzle.yaw,cached.blockers)});
   }
