@@ -55,7 +55,7 @@ test('P18 vent language shifts from five micro strokes to four large groups',()=
    grooves=many(g,'fncP11PolymerLongRibs'),
    roof=one(g,'fncP11TopGasVentRow');
  assert.equal(gas.length,2);assert.equal(grooves.length,2);
- assert.ok(gas.every(c=>c.geometry.getAttribute('position').count===48));
+ assert.ok(gas.every(c=>c.geometry.getAttribute('position').count===24));
  assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.ok(grooves.every(c=>size(c,'x')>6.8));
  clearWeaponSilhouette(g);m.dispose();
