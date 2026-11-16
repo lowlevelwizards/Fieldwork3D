@@ -25,9 +25,19 @@ test('FT1.8 model audit verifies real FNC/G3 presets, never assumes other models
  assert.ok(rows.every(x=>x.verifiedModelAbsence===false));
  const fnc=rows.find(x=>x.candidateId==='gap:fnc-family');
  assert.equal(fnc.modelId,'fnc-service');
- assert.equal(fnc.status,'existing-not-selected');
+ assert.equal(fnc.status,'representative-selected');
  const ag3=rows.find(x=>x.candidateId==='gap:ag3-variant');
  assert.equal(ag3.modelId,'hk-g3a3');
  assert.equal(ag3.status,'representative-selected');
  assert.ok(ft18PotentialMappingFixes().every(x=>x.references.length>0));
+});
+
+test('FT1.8C Belgian FNC reference uses the modeled family without overclaiming exact issue',async()=>{
+ const {referenceWeaponChoice}=await import('../src/faction-reference-weapons.ts');
+ const {referenceGapFidelity}=await import('../src/faction-reference-asset-registry.ts');
+ const {FACTION_REFERENCES}=await import('../src/faction-reference-catalog.ts');
+ const ref=FACTION_REFERENCES.find(x=>x.id==='belgian-jigsaw-1995');
+ assert.equal(referenceWeaponChoice(ref.id).presetId,'fnc-service');
+ assert.equal(referenceWeaponChoice(ref.id).preset.family,'fnc');
+ assert.equal(referenceGapFidelity(ref,ref.gaps.find(x=>x.id==='fnc-family')),'approximate');
 });
