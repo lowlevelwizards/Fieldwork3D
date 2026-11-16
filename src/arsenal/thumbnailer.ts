@@ -3,6 +3,7 @@
  * No separate, misleading illustration assets or per-card WebGL renderers.
  */
 import * as THREE from 'three';
+import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER} from '../weapons/geometry/weapon-visual-palette.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../breach-weapon-geometry.ts';
@@ -15,8 +16,8 @@ export class ArsenalThumbnailer{
  private renderer:THREE.WebGLRenderer|null=null;
  private readonly scene=new THREE.Scene();
  private readonly camera=new THREE.PerspectiveCamera(37,2.4,.1,300);
- private readonly steel=new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true});
- private readonly dark=new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true});
+ private readonly steel=WEAPON_ACCESSORY_STEEL;
+ private readonly dark=WEAPON_ACCESSORY_POLYMER;
  private readonly cache=new Map<string,string>();
  private unavailable=false;
  constructor(){
@@ -66,6 +67,6 @@ export class ArsenalThumbnailer{
  }
  dispose(){
   this.renderer?.dispose();this.renderer?.forceContextLoss();this.renderer=null;
-  this.steel.dispose();this.dark.dispose();this.cache.clear();
+  // Shared registry-owned materials persist across viewer lifecycles.this.cache.clear();
  }
 }
