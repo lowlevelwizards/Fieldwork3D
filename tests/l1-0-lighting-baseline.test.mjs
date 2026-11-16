@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {l1BaselineSite,l1BaselineCensus,l1BaselineOcclusion,
- L1_BASELINE_LAYOUTS,L1_BASELINE_MODES,checkL1Baseline}
+ L1_BASELINE_LAYOUTS,L1_BASELINE_MODES,checkL1Baseline,benchmarkL1Baseline}
  from '../scripts/audit-l1-lighting-baseline.mjs';
 import {planSiteLighting} from '../src/equipment-site-lighting.ts';
 import {lightingPresentation} from '../src/equipment-lighting-presentation.ts';
@@ -98,4 +98,19 @@ test('L1.0 stage is non-mutating and does not create a second simulator',()=>{
  const blank={...site,rooms:[]};
  assert.equal(planSiteLighting(blank,'night').fixtures.length,0);
  assert.equal(planSiteLighting(blank,'blackout').sources.length,0);
+});
+
+test('L1.0 CPU workload emits reproducible counters without a brittle timing gate',()=>{
+ const report=benchmarkL1Baseline();
+ assert.equal(report.workload.layout,'compound');
+ assert.equal(report.workload.sampledCells,400);
+ assert.ok(report.workload.blockers>0);
+ assert.ok(report.workload.fixtureSources>0);
+ for(const item of Object.values(report.cpu)){
+  assert.equal(item.iterations,24);
+  assert.ok(Number.isFinite(item.medianMs)&&item.medianMs>=0);
+  assert.ok(Number.isFinite(item.worstMs)&&item.worstMs>=item.medianMs);
+ }
+ // Keep numerical observations in CI logs; never fail CI on CPU milliseconds.
+ console.log('L1.0 CPU BASELINE '+JSON.stringify(report));
 });
