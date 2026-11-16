@@ -4,7 +4,7 @@
  */
 import {readCampaign,type CampaignState} from './campaign-state.ts';
 import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
-import {readStoredText,writeStoredText,browserBreachStorage,
+import {readStoredText,writeStoredText,removeStoredText,browserBreachStorage,
  type BreachStorage} from './breach-persistence.ts';
 
 export type CampaignSlot='legacy'|'sandbox';
@@ -46,8 +46,14 @@ export function activateCampaignSlot(slot:CampaignSlot,
 export function commitCampaignToSlot(campaign:CampaignState,slot:CampaignSlot,
  storage:BreachStorage|null=browserBreachStorage()):boolean{
  if(!readCampaign(JSON.stringify(campaign)))return false;
+ const key=campaignSlotKey(slot),previous=readStoredText(key,storage);
  if(!writeCampaignSlot(campaign,slot,storage))return false;
- return activateCampaignSlot(slot,storage);
+ if(activateCampaignSlot(slot,storage))return true;
+ // Best-effort rollback in the unusual case where selection fails after the
+ // campaign payload writes. Never touch the OTHER campaign slot.
+ if(previous===null)removeStoredText(key,storage);
+ else writeStoredText(key,previous,storage);
+ return false;
 }
 /** Standalone Operator Studio must use the same active campaign as the game. */
 export function activeCampaignStorageKey(
