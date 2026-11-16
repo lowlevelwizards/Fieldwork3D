@@ -118,15 +118,18 @@ function metricSegmentGeometry(w:number,d:number,m:THREE.Material,
 }
 function bone(parent:THREE.Group,w:number,depth:number,m:THREE.Material,
  length:number){
- const mesh=block(parent,0,0,0,w,1,depth,m);
- const old=mesh.geometry;
+ // E6.7: the old block() first allocated/unfolded a complete garment box,
+ // only to dispose it immediately after generating these three final cuts.
+ // Build the identical final full/bloused/cuffed geometries directly; each
+ // rig retains its own geometry ownership for Studio edits and disposal.
  const shapes:Record<GarmentSegmentCut,THREE.BoxGeometry>={
   full:metricSegmentGeometry(w,depth,m,length),
   bloused:metricSegmentGeometry(w,depth,m,length,.30),
   cuffed:metricSegmentGeometry(w,depth,m,length,.26)
  };
- old.dispose();
- mesh.geometry=shapes.full;
+ const mesh=new THREE.Mesh(shapes.full,m);
+ mesh.castShadow=true;mesh.receiveShadow=true;
+ parent.add(mesh);
  mesh.userData.garmentMetricLength=length;
  mesh.userData.garmentSegmentGeometries=shapes;
  return mesh;

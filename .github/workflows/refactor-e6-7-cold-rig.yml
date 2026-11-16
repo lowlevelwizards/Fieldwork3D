@@ -1,0 +1,48 @@
+name: E6.7 cold rig construction measured parity
+on:
+  pull_request:
+    paths:
+      - 'src/breach-operator-rig.ts'
+      - 'scripts/verification/e6-7-cold-rig-bench.mjs'
+      - 'scripts/verification/e6-7-compare-rig-bench.mjs'
+      - 'tests/refactor-e6-7-rig-geometry.test.mjs'
+      - '.github/workflows/refactor-e6-7-cold-rig.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rig-parity:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          ref: b2706847eaef1f4a6a67bc600a02c49c5ff892d7
+          path: baseline
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Compare same real rig workload across frozen baseline and optimized branch
+        run: |
+          mkdir -p baseline/scripts/verification artifacts/refactor-e6-7
+          cp scripts/verification/e6-7-cold-rig-bench.mjs baseline/scripts/verification/e6-7-cold-rig-bench.mjs
+          node --experimental-strip-types baseline/scripts/verification/e6-7-cold-rig-bench.mjs --out artifacts/refactor-e6-7/baseline.json
+          node --experimental-strip-types scripts/verification/e6-7-cold-rig-bench.mjs --out artifacts/refactor-e6-7/current.json
+          node scripts/verification/e6-7-compare-rig-bench.mjs artifacts/refactor-e6-7/baseline.json artifacts/refactor-e6-7/current.json artifacts/refactor-e6-7/comparison.json
+      - name: Real rig articulation, pose, appearance, first contact and fog contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-7-rig-geometry.test.mjs \
+            tests/refactor-e6-4-attribution.test.mjs \
+            tests/refactor-e6cd-pose-fog.test.mjs \
+            tests/performance-p2-6-contact-prewarm.test.mjs
+      - name: Production typecheck and asset build
+        run: npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-7-cold-rig-paired-cpu-and-mesh-parity
+          path: artifacts/refactor-e6-7/
+          retention-days: 14
