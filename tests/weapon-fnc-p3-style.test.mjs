@@ -8,7 +8,7 @@ import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
-import {HK556_MAG_METAL,HK556_MAG_RIB}
+import {AR_STANAG_METAL,AR_STANAG_RIB}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 
 const box=x=>new THREE.Box3().setFromObject(x);
@@ -106,12 +106,12 @@ test('P5 landmarks: oversized sight openings, longer charging handle and muzzle'
  assert.ok(Math.abs(box(noFactory).max.x-FNC_P1.muzzleX)<.02);
  clearWeaponSilhouette(noFactory);clearWeaponSilhouette(g);m.dispose();
 });
-test('P5: shared dark magazine and compact low-poly production asset',()=>{
+test('Shared AR steel magazine and compact low-poly FNC production asset',()=>{
  const m=new THREE.MeshBasicMaterial();
  const g=buildWeaponSilhouette('rifle',m,m,factory());
  const mag=of(g,'fnc556Magazine')[0],rib=of(g,'fncStampedMagazineRib')[0];
- assert.equal(mag?.material,HK556_MAG_METAL);
- assert.equal(rib?.material,HK556_MAG_RIB);
+ assert.equal(mag?.material,AR_STANAG_METAL);
+ assert.equal(rib?.material,AR_STANAG_RIB);
  assert.equal(of(g,'fncP5StockMiddleBrace').length,1);
  assert.equal(of(g,'fncP5UpperGasBox').length,1);
  const tri=g.children.reduce((n,x)=>n+

@@ -202,7 +202,13 @@ export function openArsenalWorkbench(
   const receiver=FAMILY_PARTS[draft.working.parts.receiver];
   let displayed=0;
   for(const part of arsenalPartsForSlot(activeSlot)){
-   if(part.kind==='family'&&FAMILY_PARTS[part.id]?.family!==receiver.family)
+   const partFamily=part.kind==='family'?FAMILY_PARTS[part.id]?.family:undefined;
+   const sharedStanag=activeSlot==='magazine'&&receiver.family==='fnc'&&
+    partFamily==='ar';
+   if(part.kind==='family'&&partFamily!==receiver.family&&!sharedStanag)
+    continue;
+   // Legacy saved FNC magazine stays valid, but isn't a duplicate choice.
+   if(part.id==='fnc-mag30'&&currentPartId(activeSlot)!=='fnc-mag30')
     continue;
    // Only one choice per silhouette. Finish-only part IDs live in swatches.
    if(arsenalPhysicalPartId(part.id)!==part.id)continue;

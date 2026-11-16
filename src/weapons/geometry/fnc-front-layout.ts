@@ -7,7 +7,7 @@
 export const FNC_FRONT_P13=Object.freeze({
  receiver:Object.freeze({frontX:2.75,roofY:1.93,gripForwardX:.90,
   seamFrontX:2.68,magwellRearX:.07,magwellFrontX:2.70,
-  magazineCenterX:1.54,magazineTopY:-2.81}),
+  magazineCenterX:1.05,magazineTopY:-2.81}),
  barrel:Object.freeze({axisY:0}),
  polymer:Object.freeze({
   startX:1.95,fullStartX:3.10,fullEndX:10.85,endX:11.68,

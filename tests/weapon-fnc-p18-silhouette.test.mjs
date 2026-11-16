@@ -18,11 +18,11 @@ test('P18 receiver gains a clearly square heavy upper and a single angular mag s
  const mag=one(g,'fnc30RoundCurved');
  assert.ok(upper&&lower&&mag);
  assert.ok(near(box(upper).max.y,1.93));
- assert.ok(near(box(lower).min.y,-3.62));
+ assert.ok(near(box(lower).min.y,-3.46));
  assert.ok(size(upper,'y')>3.0,'receiver vertical envelope must visibly expand');
  assert.ok(near(upper.userData.fncP5RoofHalfWidth,.88));
  assert.ok(size(upper,'z')<size(lower,'z')-.55,'lower must remain proud of upper');
- assert.ok(box(mag).max.y>box(lower).min.y+.7);
+ assert.ok(box(mag).max.y>box(lower).min.y+.5);
  assert.ok(box(mag).intersectsBox(box(lower)));
  assert.equal(many(g,'fncP17SinglePieceMagwell').length,1);
  assert.ok(!g.children.some(x=>x!==lower&&x.name.includes('magwell')));

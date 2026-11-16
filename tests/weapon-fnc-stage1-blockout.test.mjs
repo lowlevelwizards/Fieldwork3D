@@ -47,7 +47,8 @@ test('FNC P1B: 30-round magazine curve and visible barrel weight survive geometr
  const barrel=g.children.find(c=>c.userData.fncServiceBarrel);
  assert.ok(mag&&barrel,'P1B curved STANAG and service barrel must be separate');
  const mb=box(mag),bb=box(barrel);
- assert.ok(mb.max.x-mb.min.x<3.3,'STANAG magazine must not become FAL-wide');
+ assert.ok(mb.max.x-mb.min.x>4.0&&mb.max.x-mb.min.x<4.3,
+  'FNC must use the AR-family 30-round width and lower curve');
  assert.ok(Math.abs(mb.min.y-FNC_P1.magazineBottomY)<.02,'updated magazine extends to authored datum');
  assert.ok(bb.max.y-bb.min.y>.90,'barrel not a .66 pencil-thin wire');
  assert.ok(bb.max.y-bb.min.y<1.42,'still a visually slimmer barrel than handguard');

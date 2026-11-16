@@ -28,7 +28,7 @@ test('P17 integrated lower drops squarely around STANAG, no added magwell slab',
  assert.ok(box(mag).min.x< L.receiver.magazineCenterX);
  assert.ok(box(mag).max.x> L.receiver.magazineCenterX);
  assert.ok(box(mag).max.y> -3.34+.40);
- assert.ok(near(L.receiver.magazineCenterX,1.54));
+ assert.ok(near(L.receiver.magazineCenterX,1.05));
  assert.ok(near(sz(well,'z'),3.42),
   'integrated magwell must not be the former thick 3.64 unit slab');
  const ribs=many(g,'fncStampedMagazineRib');

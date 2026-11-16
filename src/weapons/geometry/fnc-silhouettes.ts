@@ -6,26 +6,28 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild,FamilyPartSlot}
  from '../../equipment-weapon-families.ts';
 import {buildFNCStage1Silhouette} from './fnc-stage1-blockout.ts';
-import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MUZZLE_METAL,HK556_MAG_METAL,HK556_MAG_RIB,
+import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MUZZLE_METAL,AR_STANAG_METAL,AR_STANAG_RIB,AR_MUTED_FDE,
  FAL_LOWER_METAL,FAL_DARK_POLYMER,FAL_VENT_SHADOW}
  from './weapon-visual-palette.ts';
 const REQUIRED:Readonly<Record<FamilyPartSlot,string>>={
  receiver:'fnc-service-receiver',stock:'fnc-tube-folder',
- grip:'fnc-service-grip',magazine:'fnc-mag30',
+ grip:'fnc-service-grip',magazine:'ar-mag30',
  handguard:'fnc-service-forearm',barrel:'fnc-177-service'
 };
 export function addFNCFamily(root:THREE.Group,build:WeaponFamilyBuild,
  showFactoryMuzzle=true):void{
- if(build.family!=='fnc'||Object.entries(REQUIRED).some(([slot,id])=>
+ const magazines=['ar-mag20','ar-mag30','ar-magpoly','fnc-mag30'];
+ if(build.family!=='fnc'||!magazines.includes(build.parts.magazine)||
+  Object.entries(REQUIRED).some(([slot,id])=>slot!=='magazine'&&
    build.parts[slot as FamilyPartSlot]!==id))
   throw new Error('Unimplemented FNC factory appearance');
  const form=buildFNCStage1Silhouette(HK_BLACK_METAL,{
   steel:HK_BLACK_METAL,lower:FAL_LOWER_METAL,
   stock:HK_BLACK_METAL,buttpad:HK_DARK_POLYMER,grip:HK_DARK_POLYMER,
-  handguard:FAL_DARK_POLYMER,magazine:HK556_MAG_METAL,
-  stamp:HK556_MAG_RIB,barrel:HK_BLACK_METAL,
+  handguard:FAL_DARK_POLYMER,magazine:AR_STANAG_METAL,
+  polymerToe:AR_MUTED_FDE,stamp:AR_STANAG_RIB,barrel:HK_BLACK_METAL,
   muzzle:HK_MUZZLE_METAL,shadow:FAL_VENT_SHADOW
- },showFactoryMuzzle);
+ },showFactoryMuzzle,build.parts.magazine);
  const index:Record<FamilyPartSlot,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };

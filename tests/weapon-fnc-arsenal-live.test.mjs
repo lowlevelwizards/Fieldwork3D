@@ -35,7 +35,8 @@ test('FNC is a distinct searchable factory platform with valid 5.56 parts',()=>{
  assert.ok(preset);
  assert.ok(validFamilyBuild({family:preset.family,parts:preset.parts},'rifle'));
  assert.equal(FAMILY_PARTS['fnc-177-service'].nominalInches,17.7);
- assert.equal(FAMILY_PARTS['fnc-mag30'].feed,'fnc556');
+ assert.equal(FAMILY_PARTS['fnc-mag30'].feed,'stanag');
+ assert.equal(FAMILY_PARTS['fnc-service-receiver'].feed,'stanag');
  const factory=arsenalFactoryChoice(refs[0]);
  assert.ok(factory);
  assert.deepEqual(arsenalRecipeIssues(factory.recipe),[]);
@@ -48,8 +49,8 @@ test('FNC renders the approved P2 geometry in Arsenal and operator rigs',()=>{
  assert.equal(a.stockX,-14.85);
  assert.equal(liveMagazineCapacity('rifle',config),30);
  const p=weaponPresentationSockets('rifle',config);
- assert.equal(p.magazinePart,'fnc-mag30');
- assert.ok(Math.abs(p.magazine.x-1.65)<.05);
+ assert.equal(p.magazinePart,'ar-mag30');
+ assert.ok(Math.abs(p.magazine.x-1.05)<.05);
  assert.ok(Math.abs(p.reloadControl.x-.42)<.01);
  const contacts=riflePoseContacts('rifle',config);
  assert.equal(contacts?.family,'fnc');
@@ -74,7 +75,7 @@ test('FNC renders the approved P2 geometry in Arsenal and operator rigs',()=>{
  clearWeaponSilhouette(body);m.dispose();
 });
 test('FNC carried STANAG artwork and rifle class compatibility',()=>{
- assert.equal(carriedMagazineProfile('fnc-mag30')?.length,4.65);
+ assert.equal(carriedMagazineProfile('fnc-mag30')?.length,5.30);
  const geo=carriedMagazineGeometry('fnc-mag30');
  assert.ok(geo&&geo.getAttribute('position').count>0);
  geo.dispose();

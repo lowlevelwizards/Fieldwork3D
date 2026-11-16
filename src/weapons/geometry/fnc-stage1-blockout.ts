@@ -8,7 +8,8 @@ import * as THREE from 'three';
 import {buildFNCrownMesh} from './fn-crowned-shell.ts';
 import {addOutline,addCuboid,addBar} from './profile-primitives.ts';
 import type {SlotName,Outline} from './profile-primitives.ts';
-import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines}
+import {arMagazineCurve,arMagazineOutline,arMagazineRibOutlines,
+ arMagazinePolyBaseplate,addARPolymerMagazineBody}
  from './ar-magazine-profiles.ts';
 import {addFNCFacetedForearm,addFNCHandstopLip,addFNCForearmMarks,addFNCUpperGasBox}
  from './fnc-handguard-profiles.ts';
@@ -17,15 +18,16 @@ import {FNC_FRONT_P13} from './fnc-front-layout.ts';
 export const FNC_P1=Object.freeze({
  stockRearX:-14.85,receiverRearX:-6.38,receiverFrontX:4.12,
  handguardStartX:3.45,handguardEndX:13.55,
- frontSightX:15.20,muzzleX:19.50,magazineBottomY:-7.80,
+ frontSightX:15.20,muzzleX:19.50,magazineBottomY:-8.55,
  nominalBarrelInches:17.7
 });
 type Finish='steel'|'lower'|'stock'|'buttpad'|'grip'|'handguard'|
- 'magazine'|'stamp'|'barrel'|'muzzle'|'shadow';
+ 'magazine'|'polymerToe'|'stamp'|'barrel'|'muzzle'|'shadow';
 export type FNCArtFinishes=Readonly<Partial<Record<Finish,THREE.Material>>>;
 
 export function buildFNCStage1Silhouette(
- material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
+ material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true,
+ magazinePart='ar-mag30'
 ):THREE.Group{
  const root=new THREE.Group();
  root.name='fnc-p18-fieldwork-bold-silhouette';
@@ -158,8 +160,8 @@ export function buildFNCStage1Silhouette(
  const receiverNoseX=FNC_FRONT_P13.receiver.frontX;
  const lower=p('receiver',[
   [-6.30,-1.09],[receiverNoseX,-1.09],
-  [receiverNoseX,-3.30],[2.56,-3.62],
-  [.62,-3.62],[.62,-2.78],[-.75,-2.78],
+  [receiverNoseX,-3.30],[2.56,-3.46],
+  [-.67,-3.46],[-.67,-2.78],[-.90,-2.78],
   [-1.30,-2.58],[-6.30,-2.58]
  ],3.42,'lower');
  lower.userData.fncP15FlatLowerNose=true;
@@ -197,22 +199,33 @@ export function buildFNCStage1Silhouette(
  grip.userData.fncGrip=true;
  grip.userData.fncP15GripForwardX=FNC_FRONT_P13.receiver.gripForwardX;
  grip.userData.fncP8NarrowGrip=true;
- // Shared 30-round STANAG centerline/normal math: not another hand-tuned
- // stepped magazine. Two broad pressed ribs track the same curved face.
- const magazineCurve={
-  ...arMagazineCurve('30',FNC_FRONT_P13.receiver.magazineCenterX,
-   FNC_FRONT_P13.receiver.magazineTopY,2.32,1.40),
-  length:4.68,sweep:.72
- };
- const mag=p('magazine',arMagazineOutline(magazineCurve),
-  magazineCurve.depth,'magazine');
+ // Same AR STANAG 20/30/poly silhouettes, dimensions and ribs, moved
+ // only to the FNC receiver's local insertion datum. Legacy fnc-mag30
+ // uses the AR 30 steel art rather than another profile.
+ const magStyle=magazinePart==='ar-mag20'?'20':
+  magazinePart==='ar-magpoly'?'poly':'30';
+ const magazineCurve=arMagazineCurve(magStyle,
+  FNC_FRONT_P13.receiver.magazineCenterX,
+  FNC_FRONT_P13.receiver.magazineTopY);
+ const mag=magStyle==='poly'?
+  addARPolymerMagazineBody(root,'magazine','fnc-p5-magazine',
+   ids.magazine++,magazineCurve,mat('grip')):
+  p('magazine',arMagazineOutline(magazineCurve),
+   magazineCurve.depth,'magazine');
  mag.userData.fnc556Magazine=true;
- mag.userData.fnc30RoundCurved=true;
+ mag.userData.fnc30RoundCurved=magStyle==='30';
  mag.userData.fncP16CenteredMagazineSeat=true;
+ mag.userData.fncSharedARStanag=true;
+ mag.userData.fncMagazinePart=magazinePart;
  for(const profile of arMagazineRibOutlines(magazineCurve)){
-  const rib=p('magazine',profile,1.45,'stamp');
+  const rib=p('magazine',profile,magazineCurve.depth+.075,'stamp');
   rib.userData.fncStampedMagazineRib=true;
   rib.castShadow=false;rib.receiveShadow=false;
+ }
+ if(magStyle==='poly'){
+  const toe=p('magazine',arMagazinePolyBaseplate(magazineCurve),
+   magazineCurve.depth+.12,'polymerToe');
+  toe.userData.fncARPolyToe=true;
  }
 
  // P13: derive every visual component from one front-layout contract.

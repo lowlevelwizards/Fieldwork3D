@@ -27,7 +27,7 @@ test('P17 magwell is ONE lower receiver silhouette with near-vertical front',()=
  assert.equal(many(g,'fncP15FlatLowerNose').length,1);
  assert.ok(near(size(lower,'z'),3.42));
  assert.ok(near(box(lower).max.x,2.75));
- assert.ok(near(box(lower).min.y,-3.62));
+ assert.ok(near(box(lower).min.y,-3.46));
  assert.ok(touch(lower,upper)&&touch(lower,mag));
  // Both the top front corner and the magazine shroud use the SAME
  // receiver-forward X coordinate, with a square drop instead of a ramp.

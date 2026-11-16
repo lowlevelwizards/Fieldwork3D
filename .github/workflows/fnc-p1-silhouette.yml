@@ -1,4 +1,4 @@
-name: FN FNC P18 silhouette-first art with bold proportions
+name: FN FNC shared AR STANAG magazines and FNC integration
 on:
   pull_request:
     branches: [main]
@@ -37,6 +37,7 @@ on:
       - 'tests/weapon-fnc-p17-style.test.mjs'
       - 'tests/weapon-fnc-p18-silhouette.test.mjs'
       - 'tests/weapon-fnc-arsenal-live.test.mjs'
+      - 'tests/weapon-fnc-shared-stanags.test.mjs'
       - 'scripts/smoke-fnc-arsenal.mjs'
       - 'vite.config.ts'
       - 'scripts/smoke-fnc-p1-visual.mjs'
@@ -51,7 +52,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-p3-style.test.mjs tests/weapon-fnc-p6-silhouette.test.mjs tests/weapon-fnc-p7-integration.test.mjs tests/weapon-fnc-p8-iconic-forms.test.mjs tests/weapon-fnc-p9-stock-silhouette.test.mjs tests/weapon-fnc-p10-stock-finish.test.mjs tests/weapon-fnc-p11-front-end.test.mjs tests/weapon-fnc-p12-compressed-fore-end.test.mjs tests/weapon-fnc-p13-consolidated-geometry.test.mjs tests/weapon-fnc-p14-alignment.test.mjs tests/weapon-fnc-p15-anatomy.test.mjs tests/weapon-fnc-p16-full-model.test.mjs tests/weapon-fnc-p17-style.test.mjs tests/weapon-fnc-p18-silhouette.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/weapon-fal-p5-triangle.test.mjs tests/weapon-fal-p6-geometry-budget.test.mjs tests/arsenal-v2-catalog.test.mjs
+      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-p3-style.test.mjs tests/weapon-fnc-p6-silhouette.test.mjs tests/weapon-fnc-p7-integration.test.mjs tests/weapon-fnc-p8-iconic-forms.test.mjs tests/weapon-fnc-p9-stock-silhouette.test.mjs tests/weapon-fnc-p10-stock-finish.test.mjs tests/weapon-fnc-p11-front-end.test.mjs tests/weapon-fnc-p12-compressed-fore-end.test.mjs tests/weapon-fnc-p13-consolidated-geometry.test.mjs tests/weapon-fnc-p14-alignment.test.mjs tests/weapon-fnc-p15-anatomy.test.mjs tests/weapon-fnc-p16-full-model.test.mjs tests/weapon-fnc-p17-style.test.mjs tests/weapon-fnc-p18-silhouette.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/weapon-fnc-shared-stanags.test.mjs tests/weapon-families-01.test.mjs tests/arsenal-live-magazine-capacity-hud.test.mjs tests/weapon-fal-p5-triangle.test.mjs tests/weapon-fal-p6-geometry-budget.test.mjs tests/arsenal-v2-catalog.test.mjs
       - run: npm run check
       - run: npm run build
       - run: npm install --no-save --package-lock=false playwright@1.56.1
@@ -63,7 +64,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: fnc-p18-silhouette-first-visual-comparison
+          name: fnc-shared-ar-stanags-visual-comparison
           path: |
             fnc-p1-captures/
             fnc-arsenal-captures/

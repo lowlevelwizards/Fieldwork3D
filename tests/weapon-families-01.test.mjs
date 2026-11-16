@@ -23,7 +23,10 @@ test('family 01: all 30 AR/AK/HK presets normalize and survive saves',()=>{
    const id=build.parts[slot],part=FAMILY_PARTS[id];
    assert.ok(part,preset.id+' '+slot);
    assert.equal(part.slot,slot);
-   assert.equal(part.family,preset.family);
+   assert.ok(part.family===preset.family||
+    (preset.family==='fnc'&&slot==='magazine'&&
+     part.family==='ar'&&part.feed==='stanag'),
+    'only FNC/AR magazine identity may cross weapon families');
    assert.equal(compatibleFamilyPart(build.parts.receiver,slot,id,preset.weapon,
     FAMILY_PARTS[build.parts.barrel].length),true,preset.id+' '+slot);
   }
@@ -82,7 +85,7 @@ test('family 01: all modular silhouettes align with physical tip; no per-frame a
   const g=buildWeaponSilhouette(preset.weapon,steel,dark,c);
   const box=new THREE.Box3().setFromObject(g);
   assert.ok(Math.abs(box.max.x-resolveWeaponAssembly(c).muzzleX)<.01,preset.id+' muzzle');
-  assert.ok(g.children.length>=12&&g.children.length<=(preset.family==='ar'?36:28),preset.id+' mesh budget');
+  assert.ok(g.children.length>=12&&g.children.length<=(preset.family==='ar'?36:preset.family==='fnc'?34:28),preset.id+' mesh budget');
   assert.ok(g.children.every(child=>child.name.startsWith('family-')));
   fingerprints.add(g.children.map(child=>child.name+JSON.stringify(child.position.toArray())).join('|'));
   clearWeaponSilhouette(g);

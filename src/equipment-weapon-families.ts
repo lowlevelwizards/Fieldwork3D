@@ -176,10 +176,10 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'fal-21-service':add('fal-21-service','FN FAL 21-inch service barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'long',role:'rifle',nominalInches:21}),
  'fal-172-para':add('fal-172-para','FN FAL Para 17.2-inch barrel','fal','barrel',{receivers:['fal-50-receiver'],length:'mid',role:'rifle',nominalInches:17.2}),
  // A distinct FN 5.56 rifle, not an interchangeable FAL receiver or caliber.
- 'fnc-service-receiver':add('fnc-service-receiver','FN FNC 5.56 stamped receiver','fnc','receiver',{feed:'fnc556',role:'rifle'}),
+ 'fnc-service-receiver':add('fnc-service-receiver','FN FNC 5.56 stamped receiver','fnc','receiver',{feed:'stanag',role:'rifle'}),
  'fnc-tube-folder':add('fnc-tube-folder','FNC two-leg folding stock with cheek sleeve · extended','fnc','stock',{receivers:['fnc-service-receiver'],stockX:-14.85}),
  'fnc-service-grip':add('fnc-service-grip','Original FN FNC polymer pistol grip','fnc','grip',{receivers:['fnc-service-receiver']}),
- 'fnc-mag30':add('fnc-mag30','FNC STANAG-pattern 30-round 5.56 steel magazine','fnc','magazine',{feed:'fnc556'}),
+ 'fnc-mag30':add('fnc-mag30','Legacy FNC 30-round STANAG (shared AR profile)','fnc','magazine',{feed:'stanag'}),
  'fnc-service-forearm':add('fnc-service-forearm','Full-length FN FNC ventilated polymer fore-end','fnc','handguard',{receivers:['fnc-service-receiver'],length:'long'}),
  'fnc-177-service':add('fnc-177-service','FN FNC full-length 17.7-inch service barrel','fnc','barrel',{receivers:['fnc-service-receiver'],length:'long',role:'rifle',nominalInches:17.7})
 };
@@ -230,7 +230,7 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('fal-5063','FN FAL 50.63 Para','rifle','fal','fal-50-receiver',
   'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-172-para'),
  p('fnc-service','FN FNC','rifle','fnc','fnc-service-receiver',
-  'fnc-tube-folder','fnc-service-grip','fnc-mag30','fnc-service-forearm','fnc-177-service')
+  'fnc-tube-folder','fnc-service-grip','ar-mag30','fnc-service-forearm','fnc-177-service')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
@@ -247,7 +247,12 @@ const receiverFor=(id:string,weapon:WeaponId):WeaponFamilyPart|undefined=>{
 export function compatibleFamilyPart(receiverId:string,slot:FamilyPartSlot,
  id:string,weapon:WeaponId,barrelLength?:FamilyLength):boolean{
  const receiver=receiverFor(receiverId,weapon),part=FAMILY_PARTS[id];
- if(!receiver||!part||part.slot!==slot||part.family!==receiver.family)return false;
+ if(!receiver||!part||part.slot!==slot)return false;
+ // FN FNC shares physical STANAG magazine IDs with ARs, but no other
+ // cross-family geometry. Old fnc-mag30 remains a loadable save alias.
+ const sharedFNCStanag=receiver.family==='fnc'&&slot==='magazine'&&
+  part.family==='ar'&&part.feed==='stanag';
+ if(part.family!==receiver.family&&!sharedFNCStanag)return false;
  if(slot==='receiver')return receiverId===id;
  if(part.receivers&&!part.receivers.includes(receiverId))return false;
  if(part.feed&&part.feed!==receiver.feed)return false;

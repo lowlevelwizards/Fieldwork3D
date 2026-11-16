@@ -53,7 +53,8 @@ test('P11: long lower ribs, broken upper gas vents and 5.56 magazine',()=>{
  }
  assert.equal(get(g,'fncMoldedFlutesPerSide').userData.fncMoldedFlutesPerSide,2);
  const mag=get(g,'fnc556Magazine');
- assert.ok(width(mag)<3.10);
+ assert.ok(width(mag)>4.0&&width(mag)<4.3,
+  'FNC should use full-size AR STANAG geometry');
  assert.ok(Math.abs(box(mag).min.y-FNC_P1.magazineBottomY)<.03);
  const rear=get(g,'fncP8CompactRearSight'),front=get(g,'fncProtectedFrontSight');
  assert.ok(box(front).max.y>2.70&&box(front).max.y<2.85);
