@@ -16,16 +16,22 @@ test('R5I: M56 and M1956 are actually selected in date-matched references',()=>{
  assert.equal(erdl.wardrobe.styles.rigStyle,'m1956-lce');
  assert.equal(erdl.wardrobe.m1956Variant,'late');
 });
-test('R5I: generic visor assets improve approximate police references without false exact coverage',()=>{
- for(const id of ['russian-omon-2002','us-swat-2015']){
-  assert.equal(detail(id,'visor-police'),'approximate');
+test('D7: police reference kits use existing black ballistic shells with an honest visor gap',()=>{
+ for(const [id,shell] of [
+  ['russian-omon-2002','pasgt'],
+  ['us-swat-2015','mich-2001'],
+  ['us-swat-mp5-1995','pasgt']
+ ]){
+  assert.equal(detail(id,'visor-police'),'missing');
   assert.ok(unresolvedReferenceGaps(factionReference(id)).some(x=>x.id==='visor-police'));
-  assert.equal(resolveFactionReference(id).wardrobe.styles.headwear,'police-helmet');
+  const resolved=resolveFactionReference(id).wardrobe;
+  assert.equal(resolved.styles.headwear,shell);
+  assert.equal(resolved.headwearColor,'black');
  }
 });
 test('R5I: all 40 historical recipes remain technically valid',()=>{
  const a=auditFactionReferences();
  assert.equal(a.referenceCount,40);
  assert.deepEqual(a.issues,[]);
- assert.equal(a.approximateAssets.filter(x=>x.assetId==='visor-police').length,2);
+ assert.equal(a.approximateAssets.filter(x=>x.assetId==='visor-police').length,0);
 });
