@@ -64,7 +64,7 @@ import type {WeaponId} from './breach-combat.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {OperatorAppearanceGrid,APPEARANCE_GROUP_LABELS} from './operator-appearance-grid.ts';
 import {FactionReferenceBrowser} from './faction-reference-browser.ts';
-import {createHistoricalLoadoutDraft}
+import {createHistoricalLoadoutDraft,applyHistoricalCampaignProposal}
  from './faction-reference-loadout-apply.ts';
 import type {HistoricalLoadoutProposal}
  from './faction-reference-loadout-generator.ts';
@@ -114,7 +114,7 @@ type StudioPerson={id:string;callsign:string;appearanceSeed:number;
  loadout:EquipmentLoadout;wardrobe:WardrobeOptions;
  weapon?:WeaponId;weaponConfiguration?:WeaponConfiguration};
 type StudioInit={type:'fw-studio-init';mode:StudioMode;
- selected:string;members:StudioPerson[];readonly:boolean};
+ selected:string;members:StudioPerson[];readonly:boolean;gearEditable?:boolean};
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const params=new URLSearchParams(location.search);
 // Studio lighting experiments are unsaved, presentation-only state.
@@ -129,6 +129,7 @@ let mode:StudioMode=params.get('mode')==='campaign'?'campaign':'quick';
 const standaloneCampaignKey=!embedded&&mode==='campaign'?activeCampaignStorageKey():null;
 let selected=params.get('operator')??'rook';
 let readOnly=false;
+let equipmentApplyAllowed=false;
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
 type StudioStep='items'|'materials'|'details';
@@ -529,6 +530,46 @@ const referenceBrowser=new FactionReferenceBrowser(
  $<HTMLElement>('studioReferencesPanel'),{
   onPreview:()=>{if(referenceOpen)posePreview();},
   proposalBaseline:()=>member()?.loadout,
+  canApplyProposedEquipment:()=>equipmentApplyAllowed&&!readOnly&&
+   !saveInFlight&&!dirty.size,
+  onApplyProposedEquipment:proposal=>{
+   const p=member();
+   if(!p||readOnly||saveInFlight||!equipmentApplyAllowed)return;
+   if(dirty.size){
+    say('SAVE OR DISCARD UNSAVED APPEARANCE CHANGES BEFORE ISSUING EQUIPMENT');
+    return;
+   }
+   const config=p.weaponConfiguration??
+    issueWeaponPreset(starterWeaponPreset(p.id)).weaponConfiguration;
+   const draft=createHistoricalLoadoutDraft(proposal,p.loadout,current(),config);
+   if(draft.blocked.length||!draft.appliedHistoricalIds.length){
+    say('EQUIPMENT ISSUE BLOCKED · '+draft.blocked.join(' / '));
+    return;
+   }
+   if(!window.confirm('Apply '+draft.appliedHistoricalIds.length+
+    ' research-informed equipment choice(s) to '+p.callsign+
+    '? This kit is not source-certified as a complete issued set.'))return;
+   if(embedded){
+    saveInFlight=true;
+    window.parent.postMessage({type:'fw-studio-apply-historical',id:p.id,proposal},
+     location.origin);
+    say('REQUESTING AUTHORIZED EQUIPMENT ISSUE…');
+    return;
+   }
+   if(mode!=='campaign'||!standaloneCampaignKey||
+      standaloneCampaignKey!==activeCampaignStorageKey()){
+    say('EQUIPMENT ISSUE REQUIRES THE IN-GAME PREPARATION HOST');
+    return;
+   }
+   try{
+    const currentCampaign=readCampaign(localStorage.getItem(standaloneCampaignKey));
+    if(!currentCampaign)throw Error('No campaign');
+    const updated=applyHistoricalCampaignProposal(currentCampaign,p.id,proposal);
+    if(!updated)throw Error('Equipment or stock validation failed');
+    localStorage.setItem(standaloneCampaignKey,JSON.stringify(updated));
+    window.location.reload();
+   }catch{say('EQUIPMENT ISSUE REJECTED · NO CAMPAIGN CHANGES SAVED');}
+  },
   onProposalPreview:proposal=>{
    historicalProposalPreview=proposal;
    if(referenceOpen)posePreview();
@@ -536,8 +577,9 @@ const referenceBrowser=new FactionReferenceBrowser(
   onApplyProposedLook:proposal=>{
    const p=member();
    if(!p||readOnly||saveInFlight)return;
-   const draft=createHistoricalLoadoutDraft(proposal,p.loadout,current(),
-    p.weaponConfiguration);
+   const config=p.weaponConfiguration??
+    issueWeaponPreset(starterWeaponPreset(p.id)).weaponConfiguration;
+   const draft=createHistoricalLoadoutDraft(proposal,p.loadout,current(),config);
    // Studio's save contract is cosmetic-only; compare against the genuine kit.
    // Never send weapon or inventory mutations through the appearance bridge.
    const compatible=outfitPresetForKit(draft.wardrobe,p.loadout);
@@ -781,7 +823,8 @@ function posePreview(){
   referenceBrowser.selectedId,referenceBrowser.selectedWeaponPresetId):null;
  const historicalDraft=referenceOpen&&historicalProposalPreview?
   createHistoricalLoadoutDraft(historicalProposalPreview,p.loadout,
-   previewWardrobe(),p.weaponConfiguration):null;
+   previewWardrobe(),p.weaponConfiguration??
+    issueWeaponPreset(starterWeaponPreset(p.id)).weaponConfiguration):null;
  if(!rig||rig.camoIdentity!==p.id){
   if(rig){
    releaseOperatorPreviewRig(scene,rig,()=>{
@@ -2275,11 +2318,14 @@ function populate(){
  if(!people.some(p=>p.id===selected))selected=people[0]?.id??'';
  modelSelector.value=selected;refresh();
 }
-function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];readonly:boolean}){
+function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];
+ readonly:boolean;gearEditable?:boolean}){
  studioSuspended=false;
  thumbBrowser.setSuspended(false);
  identityMode=false;referenceOpen=false;referenceBrowser.hide();
  mode=data.mode;selected=data.selected;readOnly=data.readonly;
+ equipmentApplyAllowed=!!data.gearEditable||
+  (!embedded&&data.mode==='campaign'&&!data.readonly);
  comparingSaved=false;saveInFlight=false;
  people=data.members.map(p=>({...p,wardrobe:readWardrobe(p.wardrobe)}));
  history.clear();edits.clear();dirty.clear();
@@ -2367,7 +2413,12 @@ if(embedded){
   }else if(data?.type==='fw-studio-init'){
    const init=data as StudioInit;
    start({mode:init.mode,selected:init.selected,
-    members:init.members,readonly:init.readonly});
+    members:init.members,readonly:init.readonly,gearEditable:init.gearEditable});
+  }else if(data?.type==='fw-studio-historical-applied'){
+   saveInFlight=false;
+   say(data.ok?'HISTORICAL EQUIPMENT ISSUED · REFRESHING AUTHORITATIVE KIT':
+    'EQUIPMENT ISSUE REJECTED · STOCK, MISSION OR DOCUMENTATION NOT ELIGIBLE');
+   refresh();
   }else if(data?.type==='fw-studio-batch-saved'){
    const response=data as {type:string;ids?:unknown;ok?:boolean};
    saveInFlight=false;
