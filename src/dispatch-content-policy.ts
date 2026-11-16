@@ -7,7 +7,7 @@ import {dispatchStarterChoiceStatus} from './dispatch-starter-choices.ts';
 import {dispatchReferenceContext} from './dispatch-content-foundation.ts';
 import {itemDefinition} from './equipment-catalog.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
-import {wardrobeItem} from './operator-wardrobe-data.ts';
+import {WARDROBE_ITEMS} from './operator-wardrobe-data.ts';
 import {identityMarking} from './operator-identity-markings.ts';
 import {isGarmentSolidId} from './operator-garment-color-policy.ts';
 import {isHeadwearCamoId} from './operator-headwear-camo.ts';
@@ -44,7 +44,7 @@ export function isKnownDispatchContent(kind:DispatchContentKind,id:string):boole
  case 'reference':return !!factionReference(id);
  case 'equipment':return !!itemDefinition(id);
  case 'weapon-preset':return !!familyPreset(id);
- case 'wardrobe-style':return !!wardrobeItem(id);
+ case 'wardrobe-style':return WARDROBE_ITEMS.some(item=>item.id===id);
  case 'solid-color':return isGarmentSolidId(id);
  case 'camouflage':return isHeadwearCamoId(id);
  case 'identity-marking':return !!identityMarking(id);
