@@ -58,20 +58,28 @@ test('P12 front is exactly two cuboid FAL-family ears without central prong',()=
  assert.equal(Boolean(get(g,'fncP11TwinEarFrontSight')),false);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P12 gas slots follow translated cover on top and both sides',()=>{
+test('P21 pixel surface coverage: P12 gas slots follow translated cover on top and both sides',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const gas=get(g,'fncP12CompressedGasCover');
- const side=all(g,'fncP11BrokenGasSideSlots');
- const roof=get(g,'fncP11TopGasVentRow');
- assert.ok(gas&&roof);assert.equal(side.length,2);
- for(const slots of [...side,roof]){
-  const r=box(slots);
-  assert.ok(r.min.x>box(gas).min.x+.2 && r.max.x<box(gas).max.x-.3);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
  }
- assert.ok(Math.abs(box(roof).min.y-box(gas).max.y)<.07);
- for(const s of side)assert.ok(box(s).min.y>box(gas).min.y&&
-  box(s).max.y<box(gas).max.y);
- assert.equal(roof.geometry.getAttribute('position').count,24);
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P12 production and suppressor paths unchanged at outer anchors and stock',()=>{
