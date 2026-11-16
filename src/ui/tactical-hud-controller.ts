@@ -610,7 +610,7 @@ export function createTacticalHudController(
   ui.redo.disabled=!availability.redo;
   ui.wait.disabled=!availability.wait;
   ui.sync.disabled=!availability.sync;
-  ui.debrief.hidden=replaying||mode==='menu'||mode==='home'||
+  ui.debrief.hidden=replaying||mode==='training'||mode==='menu'||mode==='home'||
     (state.phase!=='won'&&state.phase!=='lost');
   ui.favoriteMission.disabled=!state.site;
   writeDomText(ui.favoriteMission,favoriteActive?

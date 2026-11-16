@@ -759,7 +759,10 @@ function updateHud(){
     operationsLogged:operationHistory().length
   });
   updateContext();
-  if(appFlow.mode==='training')trainingScreen.updateProgress(state);
+  if(appFlow.mode==='training'){
+   trainingScreen.setReplayVisible(replaying);
+   if(!replaying)trainingScreen.updateProgress(state);
+  }
 }
 function rect(x:number,y:number,w:number,h:number,color:string){
   draw.fillStyle=color;draw.fillRect(x,y,w,h);
@@ -1302,8 +1305,11 @@ const trainingScreen=createBreachTrainingScreen({
   reset(state.variant,undefined,undefined,buildTrainingSite(config),
    undefined,false,undefined,{squadSize:config.squadSize,lighting:config.lighting});
   trainingScreen.setActive(true);campaignScreen.hide();
-  showUiHelp('TRAINING · AUTHOR A PLAN AND EXECUTE · RETRY AT ANY TIME',4300);
+  showUiHelp(config.activity==='trial'?
+   'TRIAL · USE SUPPRESS TO ENGAGE HOSTILE TARGETS · AVOID GREEN NO-SHOOT TARGETS':
+   'TRAINING · AUTHOR A PLAN · USE SUPPRESS FOR TARGETS · RETRY AT ANY TIME',5500);
  },
+ onReplay:()=>enterReplay('debrief'),
  onReturnToMenu:()=>{
   trainingScreen.setActive(false);
   appFlow.setMode('menu');campaignScreen.entry(!!campaign);

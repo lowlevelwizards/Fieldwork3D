@@ -38,6 +38,8 @@ export type SiteScale='standard'|'expanded'|'small'|'medium'|'large';
 export type Site={
   /** Nonpersistent authored practice map; ordinary missions never set this. */
   training?:boolean;
+  /** Distinguishes scored training from open-ended practice. */
+  trainingTrial?:{id:import('./training/training-trials.ts').TrialId;version:1};
   /** Seed-derived population plan; site.enemies remains the compatibility view. */
   encounter?:EncounterPlan;
   /** Authored semantic programs bypass index-based purpose assignment. */

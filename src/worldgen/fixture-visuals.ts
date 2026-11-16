@@ -37,11 +37,12 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
       // keep the same tactical footprint, clearance and cover rules.
       if(renderCharacterFixture(group,c,fixture,c.artVariant??i,visualCtx,wood,steel,olive,metal))
         return;
-      if(fixture==='target-plate'){
+      if(fixture==='target-plate'||fixture==='target-no-shoot'){
         // Killhouse silhouettes are actual cover fixtures. This is only a
         // shared low-poly presentation, never a second collision mesh.
-        const board=visualCtx.solid(0xc5b89a,.92,'painted-metal');
-        const ink=visualCtx.solid(0x47544e,.94,'painted-metal');
+        const noShoot=fixture==='target-no-shoot';
+        const board=visualCtx.solid(noShoot?0xc1d2c3:0xc5b89a,.92,'painted-metal');
+        const ink=visualCtx.solid(noShoot?0x9a594b:0x47544e,.94,'painted-metal');
         const frame=visualCtx.solid(0x636e67,.85,'metal');
         ctx.box(group,c.x,1.6,c.y,Math.min(w,22),3.2,Math.min(d,15),frame,false);
         ctx.box(group,c.x,20,c.y,2.5,37,2.5,frame);
@@ -54,6 +55,10 @@ export function renderFixtureVisual(group:THREE.Group,c:Obstacle,i:number,
           ctx.box(group,c.x+side*4.5,12,c.y,6,14,3,board,false);
         }
         ctx.box(group,c.x,30,c.y+2,8,8,.8,ink,false);
+        if(noShoot){
+          ctx.box(group,c.x,36,c.y+2.8,15,2,1,ink,false);
+          ctx.box(group,c.x,25,c.y+2.8,15,2,1,ink,false);
+        }
         return;
       }
       if(fixture==='bar-counter'){

@@ -420,6 +420,7 @@ ui.siteSettingsToggle.addEventListener('click',()=>{
   if(state.phase==='won'||state.phase==='lost'){
    if(!port.returnAfterCampaignMission()){
     if(config.getMode()==='quick')port.returnToQuickPlayGenerator();
+    else if(config.getMode()==='training')port.restartMission();
     else port.resetMission();
    }
   }else{
