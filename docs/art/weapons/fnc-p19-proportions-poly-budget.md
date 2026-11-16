@@ -12,6 +12,18 @@ Review of user-supplied Workbench side and 3/4 screenshots after adopting the co
 ## Polygon and piece audit
 `node --experimental-strip-types scripts/audit-weapon-geometry.mjs` now prints **real submitted triangles, meshes, buffer vertices, geometries and slot breakdown** for factory FNC, FAL, G3A3, M16A2 and M4A1 (and the original AKM baseline). Counts are from actual production `buildWeaponSilhouette` geometry, not estimates from control points or screenshots. These P19 modifications change dimensions but do **not** add vertices, faces or mesh objects. New P19 tests gate the FNC handguard at 160 triangles, overall <=800 triangles and <=34 meshes, while comparing its live counts to peers.
 
+### Measured production geometry (first P19 CI run)
+
+| Factory rifle | Triangles | Meshes | Handguard triangles |
+| --- | ---: | ---: | ---: |
+| FNC | 648 | 33 | 144 |
+| FAL | 366 | 26 | 36 |
+| G3A3 | 490 | 24 | 60 |
+| M16A2 | 466 | 26 | 72 |
+| M4A1 | 478 | 31 | 100 |
+
+FNC's handguard is the largest front-end triangle consumer, but its 144 triangles cover the polymer body, molded stop, gas cover, two pairs of long side grooves and both sides/roof of the signature gas vents. The FNC receiver is 216 triangles vs FAL 158, G3A3 156, M16A2 156, M4A1 132. The FNC is ~32% more triangles than G3, with two more mesh objects than M4A1. P19 intentionally makes **zero new geometric detail**; prioritize a separate silhouette-preserving topology/batching pass if reducing this cost matters. Avoid prematurely removing the signature vent arrangement or thickening unrelated parts just to equalize counts.
+
 ## Acceptance
 - Side: taller underside does not sag as far below the receiver; polymer still distinctly chunky and shorter than gas cover.
 - Three-quarter: same six-face top and broad side facets; side ribs remain anchored, upper metal vent row fully visible.
