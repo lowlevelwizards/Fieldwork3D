@@ -3,7 +3,7 @@
 import {trainingTargetProgress} from '../training/training-targets.ts';
 import {TRIAL_IDS,TRIALS,trialConfig} from '../training/training-trials.ts';
 import {assessTrainingTrial,type TrialAssessment} from '../training/training-scoring.ts';
-import {saveTrainingRecord} from '../training/training-records.ts';
+import {saveTrainingRecord,loadTrainingRecords,trainingRecordKey} from '../training/training-records.ts';
 import type {Session} from '../breach-game.ts';
 import {DEFAULT_TRAINING_CONFIG,TRAINING_LAYOUTS,TRAINING_LAYOUT_LABELS,
  normalizeTrainingConfig,type TrainingConfig} from '../training/training-courses.ts';
@@ -12,6 +12,7 @@ type Hooks={
  onStart:(config:TrainingConfig)=>void;
  onReturnToMenu:()=>void;
  onReplay:()=>boolean;
+ onResetTargets:()=>boolean;
 };
 const select=(label:string,values:readonly string[],names?:Record<string,string>)=>{
  const wrapper=document.createElement('label');wrapper.textContent=label;
@@ -45,6 +46,10 @@ export function createBreachTrainingScreen(hooks:Hooks){
   {killhouse:'KILLHOUSE',range:'EQUIPMENT RANGE',trial:'TACTICAL TRIALS'});
  const trials=select('TRIAL',TRIAL_IDS,
   Object.fromEntries(TRIAL_IDS.map(id=>[id,TRIALS[id].name])));
+ const personalBest=document.createElement('output');
+ personalBest.className='breach-training-personal-best';
+ personalBest.setAttribute('role','status');personalBest.setAttribute('aria-live','polite');
+ trials.wrapper.append(personalBest);
  const layout=select('COURSE',TRAINING_LAYOUTS,TRAINING_LAYOUT_LABELS);
  const squad=select('OPERATORS',['1','2','3','4']);
  const density=select('TARGETS',['none','sparse','standard','dense']);
@@ -71,6 +76,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
    ...trialConfig(requested.trial??'discrimination'),activity:'trial' as const,
    trial:requested.trial??'discrimination' as const}:requested;
   config=next;lastAssessment=null;resultsButton.hidden=true;
+  resetTargetsButton.hidden=next.activity==='trial';
   close();hooks.onStart({...config});
  };
  const beginButton=button('START TRAINING',begin);
@@ -83,6 +89,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const resultTitle=document.createElement('h2');
  const resultSummary=document.createElement('p');
  const resultStats=document.createElement('div');resultStats.className='breach-training-result-stats';
+ const breakdown=document.createElement('div');breakdown.className='breach-training-breakdown';
  const resultActions=document.createElement('div');
  resultActions.className='breach-training-actions';
  resultActions.append(button('RETRY COURSE',()=>{close();retry();}),
@@ -90,7 +97,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
   button('CHANGE COURSE',()=>show()),
   button('BACK TO GAME',()=>close()),
   button('MAIN MENU',()=>{close();hooks.onReturnToMenu();}));
- resultPanel.append(resultTitle,resultSummary,resultStats,resultActions);
+ resultPanel.append(resultTitle,resultSummary,resultStats,breakdown,resultActions);
  root.append(panel,resultPanel);
  document.body.append(root);
  const quick=document.createElement('div');quick.id='breachTrainingQuickTools';
@@ -102,7 +109,12 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(lastAssessment)showResult(lastAssessment,false);
  });
  resultsButton.hidden=true;
- quick.append(button('TRAINING TOOLS',()=>show()),button('RETRY',()=>retry()),
+ const resetTargetsButton=button('RESET TARGETS',()=>{
+  if(!hooks.onResetTargets())progress.textContent=
+   'CANNOT RESET TARGETS IN THIS COURSE OR WHILE OCCUPIED';
+ });
+ quick.append(button('TRAINING TOOLS',()=>show()),resetTargetsButton,
+  button('RETRY',()=>retry()),
   resultsButton,
   button('MAIN MENU',()=>hooks.onReturnToMenu()));
  document.body.append(quick);
@@ -114,13 +126,26 @@ export function createBreachTrainingScreen(hooks:Hooks){
    [doors.el,config.doors],[lighting.el,config.lighting]
   ] as const)field.value=value;
   panel.hidden=false;resultPanel.hidden=true;
-  syncVisibleOptions();
+  syncVisibleOptions();renderPersonalBest();
   open=true;root.hidden=false;
   document.body.classList.add('training-setup-open');
   activity.el.focus();
  }
  function retry():void{if(active){lastAssessment=null;
   resultsButton.hidden=true;hooks.onStart({...config});}}
+ function renderPersonalBest():void{
+  const id=trials.el.value as keyof typeof TRIALS;
+  const trial=TRIALS[id];
+  const storage=browserStorage();
+  if(!trial||!storage){personalBest.textContent='NO RECORD ON THIS DEVICE';return;}
+  try{
+   const key=trainingRecordKey(trial);
+   const best=loadTrainingRecords(storage).find(r=>r.key===key);
+   personalBest.textContent=best?'PERSONAL BEST · '+best.grade+' · '+
+    best.score+'/100 · '+best.elapsed.toFixed(1)+'s':
+    'NO RECORD FOR THIS COURSE';
+  }catch{personalBest.textContent='LOCAL RECORDS UNAVAILABLE';}
+ }
  function syncVisibleOptions():void{
   const isRange=activity.el.value==='range';
   const isTrial=activity.el.value==='trial';
@@ -139,7 +164,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
   resultSummary.textContent=(TRIALS[config.trial??'discrimination']?.name??'TRIAL')+
    ' · '+result.grade+' · '+result.score+' / 100'+
    (personalBest?' · NEW PERSONAL BEST':'');
-  resultStats.replaceChildren();
+  resultStats.replaceChildren();breakdown.replaceChildren();
   for(const [label,value] of [
    ['TARGETS',result.targetsHit+' / '+result.targetsTotal],
    ['NO-SHOOT HITS',String(result.noShootHits)],
@@ -149,6 +174,19 @@ export function createBreachTrainingScreen(hooks:Hooks){
    const item=document.createElement('div');item.textContent=label+' · '+value;
    resultStats.append(item);
   }
+  const title=document.createElement('strong');title.textContent='SCORING';
+  breakdown.append(title);
+  for(const component of result.components){
+   const row=document.createElement('div');
+   const label=document.createElement('span');label.textContent=component.name;
+   const value=document.createElement('output');value.textContent=component.points+' PTS';
+   row.append(label,value);breakdown.append(row);
+  }
+  if(result.outcome==='failed'){
+   const fail=document.createElement('p');
+   fail.textContent='SAFETY OR TIME FAILURE OVERRIDES PARTIAL POINTS';
+   breakdown.append(fail);
+  }
  }
  function sync():void{
   quick.hidden=!active||inReplay;
@@ -156,6 +194,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
  }
  function setActive(value:boolean){active=value;
   if(!active){lastAssessment=null;resultsButton.hidden=true;}
+  resetTargetsButton.hidden=!active||config.activity==='trial';
   sync();}
  function setReplayVisible(value:boolean){
   if(inReplay===value)return;inReplay=value;sync();
@@ -183,8 +222,10 @@ export function createBreachTrainingScreen(hooks:Hooks){
    catch{ /* device storage is optional */ }
   }
   showResult(result,personalBest);
+  renderPersonalBest();
  }
  activity.el.addEventListener('change',syncVisibleOptions);
+ trials.el.addEventListener('change',renderPersonalBest);
  root.addEventListener('keydown',e=>{
   if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}
  });

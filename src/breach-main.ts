@@ -35,6 +35,7 @@ import {nearestEligibleActor} from './ui/tactical-nearest-actor.ts';
 
 import {equipmentTrainingSite} from './equipment-training-range.ts';
 import {buildTrainingSite} from './training/training-site-builder.ts';
+import {resetPracticeTargets} from './training/training-targets.ts';
 import {createBreachTrainingScreen} from './ui/breach-training-screen.ts';
 import type {TrainingConfig} from './training/training-courses.ts';
 import type {RangeTrial} from './equipment-training-diagnostics.ts';
@@ -1310,6 +1311,12 @@ const trainingScreen=createBreachTrainingScreen({
    'TRAINING · AUTHOR A PLAN · USE SUPPRESS FOR TARGETS · RETRY AT ANY TIME',5500);
  },
  onReplay:()=>enterReplay('debrief'),
+ onResetTargets:()=>{
+  if(appFlow.mode!=='training'||replaying)return false;
+  const ok=resetPracticeTargets(state);
+  if(ok){recorder.capture(state,true);fog2D.invalidate();updateHud();}
+  return ok;
+ },
  onReturnToMenu:()=>{
   trainingScreen.setActive(false);
   appFlow.setMode('menu');campaignScreen.entry(!!campaign);
