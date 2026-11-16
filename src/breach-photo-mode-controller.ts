@@ -144,7 +144,7 @@ export function createBreachPhotoModeController(ports:Ports){
     'cam':ports.isReplaying()&&cam.mode==='director'&&cam.lens==='wide'?
     'wide':'ortho';
   settings.lens=originalLens;
-  if(stage)stage.cancelFocusGlide();
+  if(stage){stage.cancelFocusGlide();stage.setPhotoClean(true);}
   active=true;busy=false;pending=null;dirty=true;
   pointerMap.clear();lastMid=null;lastDistance=0;
   ui.lens.value=settings.lens;
@@ -163,6 +163,7 @@ export function createBreachPhotoModeController(ports:Ports){
   document.body.classList.remove('photo-mode');
   const stage=ports.getStage();
   stage?.setPhotoPerspective(false);stage?.setPhotoLiveBodycam(false);
+  stage?.setPhotoClean(false);
   if(cameraSnapshot)stage?.restorePhotoCameraSnapshot(cameraSnapshot);
   cameraSnapshot=null;
   if(originalKnowledge){

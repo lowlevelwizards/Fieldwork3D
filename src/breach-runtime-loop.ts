@@ -339,13 +339,13 @@ function tick(now:number){
   if(stageAvailable&&!updated3d)idle3dSkipped++;
   // The presentation-only idle clock must advance by actual elapsed wall
   // time since the prior 3D submission, not by one skipped RAF's dt.
-  const sceneDt=idle3dExperiment&&frameMode==='idle'&&
+  const sceneDt=photoActive?0:idle3dExperiment&&frameMode==='idle'&&
    last3dSession===state&&last3dMode==='idle'&&
    Number.isFinite(last3dUpdateAt)?
     Math.min(.08,Math.max(0,(now-last3dUpdateAt)/1000)):dt;
   if(updated3d&&stage){
-    stage.setMiniatureFocusContext(replaying,photoActive?0:sceneDt);
-    stage.update(state,selected,photoActive?0:sceneDt,doorFocusId,
+    stage.setMiniatureFocusContext(replaying,sceneDt);
+    stage.update(state,selected,sceneDt,doorFocusId,
       replaying&&replayKnowledge.omniscient&&
         !replayCamera.directorCamDisclosure(),
       replaying?config.getReplayPresentation():null,

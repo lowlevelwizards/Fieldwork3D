@@ -270,6 +270,7 @@ export class TacticalScene3D{
   private readonly photoCamera=new THREE.PerspectiveCamera(72,1,.45,2800);
   private photoPerspective=false;
   private photoLiveBodycam=false;
+  private photoClean=false;
   private replayBodycam:BodycamSetting|null=null;
   private bodycamSmooth:BodycamSample|null=null;
   private lastBodycamSampleTime:number|null=null;
@@ -616,6 +617,7 @@ export class TacticalScene3D{
     this.setReplayBodycam(saved.bodycam);this.updateCamera(0);
   }
   setPhotoLiveBodycam(enabled:boolean):void{this.photoLiveBodycam=enabled;}
+  setPhotoClean(enabled:boolean):void{this.photoClean=enabled;}
   setPhotoPerspective(enabled:boolean):void{
     if(this.photoPerspective===enabled)return;
     this.photoPerspective=enabled;this.updateCamera(0);
@@ -1921,7 +1923,7 @@ export class TacticalScene3D{
         (doorReachable(selectedActor.p,door)||
           (!!selectedEndpoint&&doorReachable(selectedEndpoint,door)));
       const focused=focusedDoorId===door.id;
-      object.halo.visible=!replayDisclosurePolicy&&
+      object.halo.visible=!this.photoClean&&!replayDisclosurePolicy&&
         door.kind!=='shutter'&&door.kind!=='sliding'&&
         object.root.visible&&s.phase==='planning'&&
         (!focused||!!reachable)&&
@@ -1957,7 +1959,8 @@ export class TacticalScene3D{
       }
       // Squad-wide rescue markers cannot appear as a witnessed person
       // within an uncompleted first-person history.
-      this.rescueFigure.visible=presentUnrecordedRescueMarker(s,omniscient,
+      this.rescueFigure.visible=!this.photoClean&&
+        presentUnrecordedRescueMarker(s,omniscient,
         replayDisclosurePolicy);
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
@@ -1991,7 +1994,7 @@ export class TacticalScene3D{
       object.root.visible=visible;
       const hitTime=s.seconds-actor.lastHitAt;
       const down=actor.health<=0;
-      object.status.visible=object.root.visible&&
+      object.status.visible=!this.photoClean&&object.root.visible&&
         !down&&(hitTime>=0&&hitTime<.28);
       if(object.status.visible){
         object.status.position.set(actor.p.x,1.15,actor.p.y);
