@@ -24,7 +24,7 @@ test('P17: lower receiver integrates magwell without a standalone hanging frame'
  assert.ok(box(upper).max.z<box(lower).max.z-.3);
  assert.ok(box(seam).max.z>box(lower).max.z+.05);
  assert.equal(well,lower,'magwell now belongs to ONE contiguous lower receiver mesh');
- assert.ok(box(get(g,'fncGrip')).min.x<box(well).min.x);
+ assert.ok(box(get(g,'fncGrip')).max.x<box(get(g,'fnc30RoundCurved')).min.x);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P8: right-side ejection is BEHIND the charging handle, not vice versa',()=>{
