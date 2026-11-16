@@ -7,6 +7,10 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
 import type {RosterState} from './breach-roster.ts';
 import type {CampaignState} from './campaign-state.ts';
 import type {Session} from './breach-game.ts';
+import {validateHistoricalLoadoutProposal}
+ from './faction-reference-loadout-generator.ts';
+import {applyHistoricalQuickPlayProposal,applyHistoricalCampaignProposal}
+ from './faction-reference-loadout-apply.ts';
 
 export type OperatorStudioBridgeHooks={
  getCampaign:()=>CampaignState|null;setCampaign:(value:CampaignState|null)=>void;
@@ -40,9 +44,9 @@ const canEditQuickAppearance=()=>!config.isReplaying()&&(
  config.getMode()==='menu'||
  (config.getMode()==='quick'&&config.getSession().phase==='planning'));
 let studioReleaseTimer:ReturnType<typeof setTimeout>|null=null;
-function sendStudioInit(){
+function sendStudioInit(force=false){
  if(!studioOverlay||studioOverlay.hidden||
-    studioInitSentEpoch===studioOpenEpoch)return;
+    (!force&&studioInitSentEpoch===studioOpenEpoch))return;
  studioInitSentEpoch=studioOpenEpoch;
  if(!studioFrame?.contentWindow)return;
  const people=studioMode==='campaign'?
@@ -108,11 +112,49 @@ window.addEventListener('message',event=>{
  if(!studioFrame?.contentWindow||event.source!==studioFrame.contentWindow||
     event.origin!==location.origin||!event.data||typeof event.data!=='object')return;
  const msg=event.data as {type?:string;id?:unknown;
-  wardrobe?:unknown;entries?:unknown};
+  wardrobe?:unknown;entries?:unknown;proposal?:unknown};
  if(msg.type==='fw-studio-ready'){
   studioReady=true;sendStudioInit();return;
  }
  if(msg.type==='fw-studio-close'){closeOperatorStudio();return;}
+ if(msg.type==='fw-studio-apply-historical'){
+  // This is a separate, explicitly authorized equipment transaction.
+  // Never route it through the appearance-only batch message.
+  const operatorId=typeof msg.id==='string'?msg.id:'';
+  const currentCampaign=config.getCampaign();
+  let ok=false;
+  if(studioMode==='quick'&&config.getMode()==='menu'&&
+    !config.isReplaying()){
+   const current=config.getRoster();
+   const member=current.members.find(x=>x.id===operatorId);
+   if(member){
+    const proposal=validateHistoricalLoadoutProposal(msg.proposal,member.loadout);
+    const next=proposal?applyHistoricalQuickPlayProposal(current,operatorId,proposal):null;
+    if(next){
+     config.setRoster(next);ok=config.saveRoster();
+     if(ok)config.onQuickSaved();
+     else config.setRoster(current);
+    }
+   }
+  }else if(studioMode==='campaign'&&currentCampaign&&
+   !currentCampaign.activeContractId){
+   const member=currentCampaign.operators.find(x=>x.id===operatorId);
+   if(member){
+    const proposal=validateHistoricalLoadoutProposal(msg.proposal,member.loadout);
+    const next=proposal?applyHistoricalCampaignProposal(currentCampaign,operatorId,proposal):null;
+    if(next){
+     config.setCampaign(next);ok=config.saveCampaign();
+     if(ok)config.onCampaignSaved();
+     else config.setCampaign(currentCampaign);
+    }
+   }
+  }
+  studioFrame.contentWindow.postMessage({
+   type:'fw-studio-historical-applied',id:operatorId,ok
+  },location.origin);
+  if(ok){studioSelected=operatorId;sendStudioInit(true);}
+  return;
+ }
  const batch=msg.type==='fw-studio-commit-batch';
  if(!batch&&msg.type!=='fw-studio-commit')return;
  const edits=validateStudioAppearanceEdits(batch?msg.entries:
