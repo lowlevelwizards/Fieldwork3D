@@ -91,12 +91,17 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  }
  if(parts.light.id==='light-compact'){
   const light=parts.light;
-  block(g,light.mountX,light.mountY+muzzleY,light.mountZ,4.6,2.2,2.6,polymer);
-  block(g,light.mountX+2.25,light.mountY+muzzleY,light.mountZ,1,2.6,3,metal);
-  const lens=block(g,light.mountX+2.85,light.mountY+muzzleY,light.mountZ,
-   .25,1.5,2.1,lensMaterial);
-  lens.name='weapon-light-lens';lens.visible=false;
-  block(g,light.mountX-2,light.mountY+.9+muzzleY,light.mountZ,2,.8,2.5,metal);
+  const ly=light.mountY+muzzleY,lz=light.mountZ;
+  accessoryTube(g,'weapon-accessory-light-body',
+   light.mountX,ly,lz,4.30,1.08,1.08,polymer,8);
+  accessoryTube(g,'weapon-accessory-light-head',
+   light.mountX+2.22,ly,lz,.82,1.20,1.38,metal,8);
+  const lens=accessoryTube(g,'weapon-light-lens',
+   light.mountX+2.68,ly,lz,.16,.91,.91,lensMaterial,8,false);
+  // Runtime light state owns this exact named, normally hidden mesh.
+  lens.visible=false;
+  accessoryBox(g,'weapon-accessory-light-rail-bracket',
+   light.mountX-1.40,ly+.96,lz,2.25,.80,2.05,metal);
  }
  if(parts.sling.id==='sling-two-point'){
   // Rigid sling mounting hardware stays on the gun. The actual fabric
