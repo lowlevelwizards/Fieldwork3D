@@ -717,6 +717,10 @@ export class FactionReferenceBrowser{
   }
   section.append(items,el('p','reference-sources',
    'The ranking is advisory. A future art review should assess distinctive silhouette, modeling cost and shared use before a content task is approved.'));
+  const planning=el('a','reference-source-link','OPEN DEDICATED ASSET PLANNING WORKBENCH');
+  planning.href='./reference-planning.html';
+  planning.target='_blank';planning.rel='noopener noreferrer';
+  section.append(planning);
   this.historicalPanel.append(section);
  }
  private renderDetail(){

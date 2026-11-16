@@ -1,0 +1,60 @@
+:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+ color-scheme:dark;background:#15221c;color:#e3e9de}
+*{box-sizing:border-box}
+body{margin:0;padding:14px}
+#planningRoot{max-width:1400px;margin:auto}
+header{padding:18px;border:1px solid #47604f;border-radius:10px;background:#23382c}
+h1{font-size:clamp(20px,3vw,30px);margin:0 0 8px}
+h2{font-size:18px}
+h1,h2{letter-spacing:.025em}
+header p,.planning-exports p{color:#b5c5b6}
+nav{display:flex;gap:18px}
+a{color:#b9ebc2}
+.planning-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(148px,1fr));
+ gap:9px;margin:12px 0}
+.planning-stats>div,.planning-measures>div{padding:12px;background:#253a2e;
+ border:1px solid #496854;border-radius:8px;display:grid;gap:5px}
+small{display:block;font-size:11px;color:#b2c9b7;overflow-wrap:anywhere}
+.planning-stats strong,.planning-measures strong{font-size:23px}
+.planning-controls{display:flex;flex-wrap:wrap;gap:10px;align-items:end;
+ margin:12px 0;padding:12px;background:#23352b;border-radius:9px}
+.planning-controls label{display:grid;gap:5px;min-width:135px;flex:1 1 140px;
+ font-size:12px;font-weight:700}
+input,select,button{font:inherit;color:inherit}
+input,select{width:100%;max-width:100%;background:#14251b;border:1px solid #58775f;
+ border-radius:6px;padding:9px;min-height:39px}
+button{cursor:pointer;max-width:100%}
+button:focus-visible,input:focus-visible,select:focus-visible{
+ outline:2px solid #afdfb3;outline-offset:2px}
+.planning-main{display:grid;grid-template-columns:minmax(240px,360px) minmax(0,1fr);
+ align-items:start;gap:12px}
+.planning-list,.planning-detail,.planning-exports{border:1px solid #46614f;
+ background:#1e3025;border-radius:10px;padding:13px;min-width:0}
+.planning-list{max-height:75vh;overflow-y:auto}
+.planning-list p{font-size:12px;color:#aec5b0}
+.planning-cards{display:grid;gap:5px}
+.planning-card{display:grid;gap:4px;text-align:left;padding:10px;background:#2b4434;
+ border:1px solid #52715a;border-radius:7px;min-width:0;overflow-wrap:anywhere}
+.planning-card[aria-pressed="true"]{background:#446a4c;border-color:#b5e0b8}
+.planning-card strong{font-size:12px}
+.planning-detail{max-height:75vh;overflow:auto}
+.planning-detail>p{overflow-wrap:anywhere;color:#c0d0c1;font-size:13px}
+.planning-measures{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));
+ gap:8px;margin:15px 0}
+.planning-measures>div{padding:9px}
+.planning-detail details{padding:9px;border:1px solid #486954;
+ border-radius:7px;margin:10px 0}
+.planning-detail summary{cursor:pointer;font-weight:750;font-size:13px}
+.planning-detail details>p{font-size:12px}
+.planning-gap{padding:8px;border-bottom:1px solid #425d4b;overflow-wrap:anywhere}
+.planning-gap strong{display:block;font-size:12px}
+.planning-gap p{font-size:12px;color:#c0cebf}
+.planning-actions,.planning-exports{display:flex;flex-wrap:wrap;gap:8px}
+.planning-actions button,.planning-exports button{
+ padding:10px;border:1px solid #7ea287;border-radius:7px;background:#34523b}
+.planning-exports{margin:12px 0;align-items:center}
+.planning-exports h2,.planning-exports p{flex-basis:100%;margin:5px 0}
+@media(max-width:760px){.planning-main{grid-template-columns:1fr}
+ .planning-list,.planning-detail{max-height:none;overflow:visible}
+ .planning-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .planning-controls label{min-width:calc(50% - 6px)}}
