@@ -123,7 +123,10 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
           s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p));
         if(target)setOpeningFootstep(a,stance,target);
       }
-      if(target&&d(a.p,target)>1.5){
+      // The regular motor accepts a bounded waypoint within 3.5 units.
+      // Demanding 1.5 here caused an unfinishable stance: the actor would
+      // pause forever with its foot target ~2–3 units away.
+      if(target&&d(a.p,target)>3.5){
         if(!sweptBodyClear(a.p,target,s.doors,OPERATOR_RADIUS,
              sessionWorldGeometry(s))||
            s.operators.some(b=>b!==a&&b.health>0&&
