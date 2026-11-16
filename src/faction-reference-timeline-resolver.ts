@@ -45,11 +45,11 @@ export function resolveTimelineYear(timeline:FactionTimeline,year:number,
    'outside-reference-range':'coverage-gap',
   matches:selected,nearest:selected.length?[]:nearest};
 }
-export function timelineById(id:string):FactionTimeline|undefined=>
+export const timelineById=(id:string):FactionTimeline|undefined=>
  FACTION_TIMELINES.find(x=>x.id===id);
-export function timelinesForOrganization(id:string):readonly FactionTimeline[] =>
+export const timelinesForOrganization=(id:string):readonly FactionTimeline[] =>
  FACTION_TIMELINES.filter(x=>x.organizationId===id);
-export function timelinesForReference(referenceId:string):readonly FactionTimeline[] =>
+export const timelinesForReference=(referenceId:string):readonly FactionTimeline[] =>
  FACTION_TIMELINES.filter(x=>x.snapshots.some(s=>s.referenceId===referenceId));
 export type TimelineAuditIssue={timelineId:string;message:string};
 export function auditFactionTimelines():{
