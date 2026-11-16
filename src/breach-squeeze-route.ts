@@ -165,12 +165,33 @@ const worldCanStand=(doors:Door[],world?:SessionWorldGeometry,
     return true;
   };
 };
+/** E3.A1: exact per-query passability memo for physically identical probes.
+ * No actor, world or door state is retained after the synchronous call.
+ * Key contains the precise coordinates AND profile radius; a narrow fit
+ * never becomes evidence that the full operator body can pass. */
+export function memoizeExactRoutePassability(
+ actual:(point:Pt,radius:number)=>boolean
+):(point:Pt,radius:number)=>boolean{
+ const passes=new Map<number,Map<string,boolean>>();
+ return (point:Pt,radius:number):boolean=>{
+  let atRadius=passes.get(radius);
+  if(!atRadius){atRadius=new Map();passes.set(radius,atRadius);}
+  const key=point.x+','+point.y;
+  const saved=atRadius.get(key);
+  if(saved!==undefined)return saved;
+  const result=actual(point,radius);
+  atRadius.set(key,result);
+  return result;
+ };
+}
+
 /** For motor recovery: a true full-body detour, never a narrow fallback.
  * Its result is transient navigation, not an authored path change. */
 export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],
  world?:SessionWorldGeometry,
  sharedCanStand?:(point:Pt,radius:number)=>boolean):Pt[]{
- const canStand=sharedCanStand??worldCanStand(doors,world);
+ const canStand=sharedCanStand??memoizeExactRoutePassability(
+  worldCanStand(doors,world));
  if(!canStand(to,OPERATOR_RADIUS))return [];
  const physical=(a:Pt,b:Pt)=>sweptProfileClear(a,b,doors,0,'normal',world);
  const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS));
