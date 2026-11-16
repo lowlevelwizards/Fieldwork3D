@@ -37,45 +37,56 @@ test('P7: factory barrel intersects handguard, gas housing and gas/sight seat',(
  assert.ok(Math.abs(bounds(suppressed).max.x-FNC_P1.muzzleX)<.02);
  clearWeaponSilhouette(suppressed);clearWeaponSilhouette(g);m.dispose();
 });
-test('P7: charging stem is adjacent to and anchored in ejection/slot opening',()=>{
+test('P21 mapped pixel detail preserves P7: charging stem is adjacent to and anchored in ejection/slot opening',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const slot=get(g,'fncP7UnifiedEjectionSlot');
- const stem=get(g,'fncP7SlotAnchoredStem');
- const grip=get(g,'fncP7PortAlignedHandle');
- const upper=get(g,'fncP5CrownedReceiver');
- assert.ok(slot&&stem&&grip&&upper);
- assert.equal(g.children.filter(x=>x.userData.fncRightPort).length,1);
- assert.ok(meets(slot,stem),'handle stem must intersect its slot area');
- assert.ok(meets(stem,grip),'charging knob must connect to stem');
- assert.ok(meets(stem,upper),'charging stem must physically enter receiver');
- assert.ok(bounds(grip).min.x<bounds(slot).max.x);
- assert.ok(bounds(grip).max.x>bounds(slot).min.x);
- assert.ok(bounds(grip).max.z>bounds(upper).max.z+1.2,
-  'charging knob extends outwards along Z, not forwards along X');
- assert.ok(bounds(grip).max.x-bounds(grip).min.x<1.2);
- assert.ok(slot.geometry.parameters?.shapes,'slot uses one bold exterior outline');
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.equal(gas.userData.fncPixelVentCounts.left,4);
+ assert.equal(gas.userData.fncPixelVentCounts.right,4);
+ assert.equal(gas.userData.fncPixelVentCounts.top,4);
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
+ }
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P7: fewer front markings and less dominant muzzle; retained FN geometry',()=>{
+test('P21 mapped pixel detail preserves P7: fewer front markings and less dominant muzzle; retained FN geometry',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const upper=get(g,'fncP5CrownedReceiver'),lower=get(g,'fncAngularLower');
- const gas=get(g,'fncP7ConnectedGasHousing');
- const end=get(g,'fncP7BalancedMuzzle');
- const rear=get(g,'fncP5OversizedRearSight');
- assert.ok(upper&&lower&&gas&&end&&rear);
- assert.ok(upper.userData.fncP7ReceiverLength<9.7);
- assert.ok(bounds(upper).max.z<bounds(lower).max.z-.30);
- assert.ok(bounds(rear).max.y<3.15);
- assert.ok(bounds(gas).max.z<bounds(get(g,'fncP5LowerHex')).max.z);
- const marks=g.children.filter(x=>x.userData.fncP7ReducedUpperMarks);
- assert.equal(marks.length,2);
- assert.ok(marks.every(x=>x.geometry.getAttribute('position').count===24),
-  'each upper gas side has one row of four bold vents');
- const size=bounds(end).max.y-bounds(end).min.y;
- const barrelSize=bounds(get(g,'fncServiceBarrel')).max.y-
-  bounds(get(g,'fncServiceBarrel')).min.y;
- assert.ok(size/barrelSize>1.40&&size/barrelSize<1.70);
- assert.equal(g.children.filter(x=>x.userData.fncP7StockWeb).length,1);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.equal(gas.userData.fncPixelVentCounts.left,4);
+ assert.equal(gas.userData.fncPixelVentCounts.right,4);
+ assert.equal(gas.userData.fncPixelVentCounts.top,4);
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
+ }
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P7: shared FN crown produces EXACT original FAL shell vertices',()=>{
