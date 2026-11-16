@@ -18,7 +18,7 @@ function classifyStack(stack){
   return 'draw-dispatch';
  if(/projectobject|traversevisible|frustum|sortobjects/.test(lower))
   return 'scene-traversal';
- if(/webglprograms|webgluniforms|setprogram|refreshprogram|compile|onbeforecompile|uniforms/.test(lower))
+ if(/webglprograms|webgluniforms|getprogram|setprogram|refreshprogram|compile|onbeforecompile|uniforms/.test(lower))
   return 'program-material';
  if(/webgltextures|webglattributes|webglgeometries|webglobjects|uploadtexture/.test(lower))
   return 'geometry-texture';
