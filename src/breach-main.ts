@@ -774,6 +774,7 @@ function updateHud(){
     canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
     reducedMotion:reducedMotionMedia.matches,weaponChooser,hideWeaponChooser,
     favoriteActive:!!replayLibrary.activeFavoriteId,recorder,campaign,
+    incident:!replaying?readDispatchIncident():null,
     operationsLogged:operationHistory().length
   });
   updateContext();
