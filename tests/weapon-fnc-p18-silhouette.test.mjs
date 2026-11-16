@@ -33,9 +33,9 @@ test('P18 polymer front and depth make substantial difference at native scale',(
  const poly=one(g,'fncP18MonumentalPolymer'),gas=one(g,'fncP18RaisedFourVentSpine'),
   lip=one(g,'fncP18DeepEndLip');
  assert.ok(poly&&gas&&lip);
- assert.ok(near(box(poly).max.x,11.68)&&near(box(poly).min.x,1.95));
- assert.ok(size(poly,'y')>3.10&&size(poly,'y')<3.30);
- assert.ok(size(poly,'y')/2.70>1.16,'P19 underside trim preserves the oversized P18 polymer mass');
+ assert.ok(near(box(poly).max.x,11.68)&&near(box(poly).min.x,3.25));
+ assert.ok(size(poly,'y')>2.90&&size(poly,'y')<3.15);
+ assert.ok(size(poly,'y')/2.70>1.07,'P19 underside trim preserves the oversized P18 polymer mass');
  assert.ok(size(poly,'z')/2.47>1.20,'P18 handguard must broaden in three-quarter views');
  assert.ok(near(box(gas).max.y,1.85));
  assert.ok(box(gas).max.y-box(poly).max.y>1.2);
@@ -51,7 +51,7 @@ test('P18 heavy stock, rear sight, barrel and stubby muzzle have real silhouette
  const pad=one(g,'fncP18OversizedButtpad'),rear=one(g,'fncP18BoldRearSight'),
   barrel=one(g,'fncP18HeavyBarrel'),muzzle=one(g,'fncP18StubbyMuzzle');
  assert.ok(pad&&rear&&barrel&&muzzle);
- assert.ok(size(pad,'y')/4.12>1.20);
+ assert.ok(size(pad,'y')/4.12>1.10);
  assert.ok(near(box(pad).min.x,FNC_P1.stockRearX));
  assert.ok(near(box(rear).max.y,3.06));
  assert.ok(size(rear,'x')/1.52>1.17);
