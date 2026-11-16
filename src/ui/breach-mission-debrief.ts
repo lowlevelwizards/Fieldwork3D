@@ -7,6 +7,7 @@ import {debrief,team,type Session} from '../breach-game.ts';
 import {sessionIntelligenceReview} from '../briefing/briefing-after-action.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import type {CampaignState} from '../campaign-state.ts';
+import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import {renderAfterActionWorkspace} from './breach-after-action-controller.ts';
 import {renderStructuredMissionDetails} from './breach-after-action-mission-details.ts';
 type DebriefUi={
@@ -17,31 +18,35 @@ type DebriefUi={
 };
 const rendered=new WeakMap<HTMLElement,{
  recorder:MissionRecorder;phase:Session['phase'];operationsLogged:number;
- historyLength:number;campaignMode:string
+ historyLength:number;campaignMode:string;incidentKey:string
 }>();
 export function renderMissionDebrief(input:{
  ui:DebriefUi;state:Session;brief:{name:string};
  recorder:MissionRecorder;campaign:CampaignState|null;
- campaignMode:CampaignMode;operationsLogged:number;
+ campaignMode:CampaignMode;incident?:DispatchIncidentContext|null;
+ operationsLogged:number;
 }):void{
- const {ui,state,brief,recorder,campaign,campaignMode,operationsLogged}=input;
+ const {ui,state,brief,recorder,campaign,campaignMode,operationsLogged,incident}=input;
+ const incidentKey=incident?incident.campaignId+':'+incident.contractId:'';
  const root=ui.debriefStats.closest<HTMLElement>('.debrief');
  if(root){
    const previous=rendered.get(root);
    const historyLength=campaign?.history.length??0;
    if(previous&&previous.recorder===recorder&&previous.phase===state.phase&&
      previous.operationsLogged===operationsLogged&&
-     previous.historyLength===historyLength&&previous.campaignMode===campaignMode)
+     previous.historyLength===historyLength&&previous.campaignMode===campaignMode&&
+     previous.incidentKey===incidentKey)
      return;
    rendered.set(root,{recorder,phase:state.phase,operationsLogged,
-     historyLength,campaignMode});
+     historyLength,campaignMode,incidentKey});
  }
 
     ui.debriefIntelBlock.hidden=!state.operationDossier;
     ui.debriefIntelText.textContent=state.operationDossier?
       sessionIntelligenceReview(state):'';
     const stats=debrief(state);
-    ui.debriefTitle.textContent='DEBRIEF';
+    ui.debriefTitle.textContent=incident?
+      'DISPATCH AFTER ACTION · '+incident.reference:'DEBRIEF';
     // These values are from authoritative mission assessment, never
     // reconstructed from the (possibly incomplete) replay evidence.
     const outcome=root?.querySelector<HTMLElement>('#afterActionOutcome');
@@ -50,7 +55,7 @@ export function renderMissionDebrief(input:{
     const summary=root?.querySelector<HTMLElement>('#afterActionSummary');
     summary?.setAttribute('data-outcome',state.phase==='won'?'complete':'failed');
     const missionName=root?.querySelector<HTMLElement>('#afterActionMissionName');
-    if(missionName)missionName.textContent=brief.name.toUpperCase();
+    if(missionName)missionName.textContent=(incident?.title??brief.name).toUpperCase();
     const missionTime=root?.querySelector<HTMLElement>('#afterActionMissionTime');
     if(missionTime){
       const seconds=Math.max(0,Math.floor(stats.time));
@@ -84,8 +89,8 @@ export function renderMissionDebrief(input:{
     const structured=root?.querySelector<HTMLElement>(
       '#afterActionMissionDetails');
     if(structured)structured.replaceChildren(renderStructuredMissionDetails({
-      name:brief.name,stats,recorder,campaign,campaignMode,
-      operationsLogged,phase:state.phase
+      name:incident?.title??brief.name,stats,recorder,campaign,campaignMode,
+      incident,operationsLogged,phase:state.phase
     }));
     if(root)renderAfterActionWorkspace(root,recorder,
       {showIntel:!!state.operationDossier});
