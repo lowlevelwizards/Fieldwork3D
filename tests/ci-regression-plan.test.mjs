@@ -174,3 +174,15 @@ test('E1 source-domain selection covers UI, CSS, Studio, helmets, and Arsenal wi
   assert.deepEqual(selected.unknown,[],file);
  }
 });
+
+test('FT1.0 faction timeline modules use Studio-owning CI without broad fallback',()=>{
+ const p=selectCiTests([
+  'src/faction-reference-timelines.ts',
+  'src/faction-reference-timeline-resolver.ts',
+  'src/faction-reference-browser.ts'
+ ]);
+ assert.ok(p.domains.includes('studio-controls'));
+ assert.ok(p.tests.includes('tests/operator-studio-main-menu.test.mjs'));
+ assert.deepEqual(p.unknown,[]);
+ assert.equal(p.runBroadCritical,false);
+});

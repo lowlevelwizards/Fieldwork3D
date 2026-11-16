@@ -54,7 +54,7 @@ export const domains=[
    'tests/r5-m1-cover-stage-e.test.mjs',
    'tests/operator-wardrobe-headwear.test.mjs',
    'tests/operator-wardrobe-persistence.test.mjs']},
- {name:'studio-controls',match:/^src\/(?:operator-studio|operator-material-browser)/i,
+ {name:'studio-controls',match:/^src\/(?:operator-studio|operator-material-browser|faction-reference)/i,
   tests:['tests/helmet-a2-configuration.test.mjs',
    'tests/helmet-a2-feedback.test.mjs',
    'tests/helmet-a2-studio-performance.test.mjs',

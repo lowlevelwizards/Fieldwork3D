@@ -4,6 +4,9 @@ import {referenceVisualStatus} from './faction-reference-audit.ts';
 import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-weapons.ts';
+import {FACTION_TIMELINES,TIMELINE_ORGANIZATIONS,timelineForReference}
+ from './faction-reference-timelines.ts';
+import {resolveTimelineYear,timelineById} from './faction-reference-timeline-resolver.ts';
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
 export type ReferenceBrowserHooks={
  onPreview:(id:string)=>void;onApply:(id:string)=>void;onClose:()=>void;
@@ -25,6 +28,14 @@ export class FactionReferenceBrowser{
  private readonly organization:HTMLSelectElement;
  private readonly era:HTMLSelectElement;
  private readonly country:HTMLSelectElement;
+ private readonly view:HTMLSelectElement;
+ private readonly timelineControls:HTMLElement;
+ private readonly timeline:HTMLSelectElement;
+ private readonly timelineYear:HTMLInputElement;
+ private readonly timelineEnvironment:HTMLSelectElement;
+ private readonly timelineStatus:HTMLElement;
+ private timelineMode=false;
+ private timelineHasMatch=true;
  private readonly summary:HTMLElement;
  private readonly apply:HTMLButtonElement;
  private chosen=FACTION_REFERENCES[0].id;
@@ -55,7 +66,47 @@ export class FactionReferenceBrowser{
   this.country.append(option('all','ALL COUNTRIES'));
   for(const c of [...new Set(FACTION_REFERENCES.map(x=>x.country))].sort())
    this.country.append(option(c,c.toUpperCase()));
-  controls.append(this.search,this.organization,this.era,this.country);
+  this.view=el('select');this.view.setAttribute('aria-label','Browse reference mode');
+  this.view.append(option('kits','REFERENCE KITS'),option('timeline','FACTION TIMELINES'));
+  controls.append(this.view,this.search,this.organization,this.era,this.country);
+  this.timelineControls=el('div','reference-controls');this.timelineControls.hidden=true;
+  this.timeline=el('select');this.timeline.setAttribute('aria-label','Faction timeline');
+  for(const item of FACTION_TIMELINES){
+   const org=TIMELINE_ORGANIZATIONS.find(o=>o.id===item.organizationId);
+   this.timeline.append(option(item.id,(org?.name??item.organizationId)+' · '+item.label));
+  }
+  this.timelineYear=el('input');this.timelineYear.type='number';
+  this.timelineYear.min='1800';this.timelineYear.max='2100';this.timelineYear.step='1';
+  this.timelineYear.value='1990';this.timelineYear.setAttribute('aria-label','Reference year');
+  this.timelineEnvironment=el('select');
+  this.timelineEnvironment.setAttribute('aria-label','Reference environment');
+  for(const [id,label] of [['all','ALL ENVIRONMENTS'],['woodland','WOODLAND'],
+   ['desert','DESERT'],['urban','URBAN'],['mixed','MIXED']])
+   this.timelineEnvironment.append(option(id,label));
+  this.timelineControls.append(this.timeline,this.timelineYear,this.timelineEnvironment);
+  this.timelineStatus=el('small','reference-timeline-status');this.timelineStatus.hidden=true;
+  this.view.addEventListener('change',()=>{
+   this.timelineMode=this.view.value==='timeline';
+   this.timelineControls.hidden=!this.timelineMode;
+   for(const control of [this.search,this.organization,this.era,this.country])
+    control.hidden=this.timelineMode;
+   if(this.timelineMode){
+    const group=timelineForReference(this.chosen);
+    if(group)this.timeline.value=group.id;
+    const chosen=FACTION_REFERENCES.find(r=>r.id===this.chosen);
+    const snap=group?.snapshots.find(x=>x.referenceId===this.chosen);
+    this.timelineYear.value=String(snap?.representativeYear??chosen?.era.start??1990);
+   }
+   this.renderList();this.renderDetail();
+  });
+  this.timeline.addEventListener('change',()=>{
+   const first=timelineById(this.timeline.value)?.snapshots[0];
+   if(first)this.timelineYear.value=String(first.representativeYear);
+   this.timelineEnvironment.value='all';
+   this.renderList();
+  });
+  for(const c of [this.timelineYear,this.timelineEnvironment])
+   c.addEventListener('change',()=>this.renderList());
   this.summary=el('small','reference-count');
   this.list=el('div','reference-list');
   this.list.setAttribute('aria-label','Faction reference choices');
@@ -65,7 +116,8 @@ export class FactionReferenceBrowser{
   this.apply.addEventListener('click',()=>hooks.onApply(this.chosen));
   for(const c of [this.search,this.organization,this.era,this.country])
    c.addEventListener(c===this.search?'input':'change',()=>this.renderList());
-  root.replaceChildren(heading,controls,this.summary,this.list,this.detail,this.apply);
+  root.replaceChildren(heading,controls,this.timelineControls,this.timelineStatus,
+   this.summary,this.list,this.detail,this.apply);
   root.hidden=true;
   this.renderList();this.renderDetail();
  }
@@ -93,13 +145,36 @@ export class FactionReferenceBrowser{
  }
  private renderList(){
   const query=this.search.value.trim().toLowerCase();
-  const found=FACTION_REFERENCES.filter(r=>
+  const active=timelineById(this.timeline.value);
+  const year=Number(this.timelineYear.value);
+  const environment=this.timelineEnvironment.value;
+  const timelineResult=active?resolveTimelineYear(active,year,
+   environment==='all'?undefined:environment as FactionReference['environment']):null;
+  const found=this.timelineMode?(timelineResult?.matches.map(x=>x.reference)??[]):
+   FACTION_REFERENCES.filter(r=>
    (this.organization.value==='all'||r.organization===this.organization.value)&&
    (this.country.value==='all'||r.country===this.country.value)&&
    (this.era.value==='all'||(this.era.value==='historic'?r.era.start<2000:r.era.end>=2000))&&
    (!query||[r.name,r.country,r.weaponFamily,r.summary,r.era.label,r.uniformCamo??'']
     .some(x=>x.toLowerCase().includes(query))));
-  this.summary.textContent=found.length+' / '+FACTION_REFERENCES.length+' REFERENCE KITS';
+  this.timelineHasMatch=!this.timelineMode||found.length>0;
+  this.timelineStatus.hidden=!this.timelineMode;
+  if(this.timelineMode){
+   const closest=timelineResult?.nearest.map(x=>String(x.snapshot.representativeYear)).join(', ');
+   this.timelineStatus.textContent=timelineResult?.status==='covered'?
+    'AUTHORED APPEARANCE REFERENCES FOR '+year+
+    ' · these are representative looks, not universal historical issue':
+    'NO AUTHORED REFERENCE FOR '+year+
+    (closest?' · NEAREST SNAPSHOTS: '+closest:'')+
+    ' · a previous preview does not represent the selected year';
+   if(found.length&&!found.some(r=>r.id===this.chosen)){
+    this.chosen=found[0].id;
+    if(!this.root.hidden)this.hooks.onPreview(this.chosen);
+   }
+  }
+  this.summary.textContent=this.timelineMode?
+   found.length+' MATCHING SNAPSHOT(S) · '+year:
+   found.length+' / '+FACTION_REFERENCES.length+' REFERENCE KITS';
   const fragment=document.createDocumentFragment();
   for(const r of found){
    const button=el('button','reference-card');
@@ -117,6 +192,7 @@ export class FactionReferenceBrowser{
   }
   if(!found.length)fragment.append(el('p','reference-empty','No references match those filters.'));
   this.list.replaceChildren(fragment);
+  if(this.timelineMode)this.renderDetail();
  }
  private renderDetail(){
   const r=FACTION_REFERENCES.find(x=>x.id===this.chosen) as FactionReference;
@@ -125,6 +201,9 @@ export class FactionReferenceBrowser{
   const issued=referenceWeaponChoice(r.id,this.selectedWeaponPresetId);
   const fit=this.hooks.compatibility(r.id);
   this.detail.replaceChildren();
+  if(this.timelineMode&&!this.timelineHasMatch)
+   this.detail.append(el('p','reference-compat-warning',
+    'PREVIOUS KIT PREVIEW ONLY · no supported appearance reference for the chosen year.'));
   this.detail.append(
    el('h3','',r.name),
    el('p','reference-meta',r.country+' · '+r.era.label+' · '+r.organization.replace(/-/g,' ')),
@@ -175,7 +254,8 @@ export class FactionReferenceBrowser{
    this.detail.append(warnings);
   }else this.detail.append(el('p','reference-compat-ok',
    'Selected operator kit supports this reference appearance.'));
-  this.apply.disabled=this.readOnly;
-  this.apply.textContent=this.readOnly?'ACTIVE OPERATION · VIEW ONLY':'USE COMPATIBLE LOOK';
+  this.apply.disabled=this.readOnly||!this.timelineHasMatch;
+  this.apply.textContent=this.readOnly?'ACTIVE OPERATION · VIEW ONLY':
+   !this.timelineHasMatch?'NO YEAR MATCH · SELECT A REFERENCE':'USE COMPATIBLE LOOK';
  }
 }
