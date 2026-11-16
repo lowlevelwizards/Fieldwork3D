@@ -152,8 +152,13 @@ export class TacticalScene3D{
   private readonly presentationSight=new PresentationSightMemo();
   /** Reused every 3D frame; occupancy only affects roof presentation. */
   private readonly occupiedRoofRoomIds=new Set<string>();
-  private profileSceneUpdate=
-   new URLSearchParams(location.search).has('perf');
+  // E6.15: reuse existing P1.5 actor/scene phase counters only when the
+  // user explicitly requests a local coldBench capture. Normal gameplay
+  // still leaves pose/phase CPU timing entirely disabled.
+  private profileSceneUpdate=(()=>{
+   const params=new URLSearchParams(location.search);
+   return params.has('perf')||params.get('coldBench')==='1';
+  })();
   /** In-game PERF arms all scene timings even without ?perf=1 at launch.
    * Hidden PERF continues recording, without changing render behavior. */
   setPerformanceProfilingEnabled(enabled:boolean):void{
