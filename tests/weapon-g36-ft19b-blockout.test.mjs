@@ -100,7 +100,7 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
  assert.ok(bb(mag).min.y> -7.4,'magazine should not retain old dangling depth');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.ok(meshCount<=13,'major-form changes should simplify visible meshes, not add clutter: '+meshCount);
+ assert.ok(meshCount<=14,'only one necessary optical-face mesh is permitted: '+meshCount);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -186,5 +186,15 @@ test('G36 D0: shared factory materials preserve silhouette and magazine identity
  applyG36FactoryMaterials(g,parts);
  assert.equal(weaponMaterialCacheSize(),afterCreation,'repeat finish is allocation-free');
  assert.ok(afterCreation>=cacheBefore);
+ clearWeaponSilhouette(g);m.dispose();
+});
+
+test('G36 D1-1: authored magnified front sight is a single low-facet circle, no floating overlay',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ const face=one(g,'g36OpticFace'),lower=one(g,'g36LowerOptic');
+ assert.ok(face&&lower);
+ assert.ok(bb(face).intersectsBox(bb(lower)),'optic face must physically meet housing');
+ assert.ok(face.geometry.getAttribute('position').count<=60,'no high-poly round lens');
+ assert.equal(g.children.filter(x=>x.userData.g36OpticFace).length,1);
  clearWeaponSilhouette(g);m.dispose();
 });

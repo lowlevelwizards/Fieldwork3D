@@ -23,6 +23,10 @@ try{
   await page.goto(origin+'/g36-ft19b-lab.html',{waitUntil:'domcontentloaded'});
   await page.waitForFunction(()=>document.body.dataset.g36LabReady==='true'&&
    document.body.dataset.g36LabCount==='7',null,{timeout:30000});
+  const lengthRatio=Number(await page.locator('body').getAttribute('data-g36-length-ratio'));
+  if(!Number.isFinite(lengthRatio)||lengthRatio<.75||lengthRatio>1.15)
+   throw Error('Unreviewed or implausible G36/M16A2 display scale '+lengthRatio);
+  console.log('G36/M16A2 measured art-length ratio:',lengthRatio);
   await mkdir('g36-ft19b-captures',{recursive:true});
   const snap=async (selector,name,minimum=2000)=>{
    const png=await page.locator(selector).screenshot({path:'g36-ft19b-captures/'+name+'.png'});

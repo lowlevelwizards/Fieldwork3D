@@ -57,6 +57,21 @@ items.forEach(({model,pivot},i)=>{
  pivot.add(model);
  scene.add(pivot);
 });
+// Measured from REAL authored peer builders, at the same display scales.
+// Never normalize individual peers merely to improve a contact sheet.
+const lengthX=(g:THREE.Group)=>new THREE.Box3().setFromObject(g).getSize(new THREE.Vector3()).x;
+const g36Length=lengthX(g36);
+const m16Length=lengthX(items.find(item=>item.name==='M16A2')!.model);
+const fncLength=lengthX(items.find(item=>item.name==='FNC service')!.model);
+const ratio=g36Length/m16Length;
+const dimensionLabel=document.getElementById('dimensions');
+if(dimensionLabel)dimensionLabel.textContent='Displayed art units: G36 '+g36Length.toFixed(2)+
+ ' / M16A2 '+m16Length.toFixed(2)+' / FNC '+fncLength.toFixed(2)+
+ ' · G36:M16A2 '+ratio.toFixed(3)+' (observed, not normalized)';
+document.body.dataset.g36LengthRatio=ratio.toFixed(4);
+console.log('G36 D1 peer scale audit',JSON.stringify({
+ g36:g36Length,m16a2:m16Length,fnc:fncLength,ratio
+}));
 let view:View='side',finish:Finish='flat';
 const camera=new THREE.OrthographicCamera(-58,58,83,-83,.1,400);
 const oneCamera=new THREE.OrthographicCamera(-21,21,13,-13,.1,400);

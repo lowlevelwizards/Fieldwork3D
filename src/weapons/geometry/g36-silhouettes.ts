@@ -113,15 +113,25 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  ],1.64,material);
  handle.userData.g36HandleOpening=true;
  const lowerOptic=outline('receiver',[
-  [-5.94,3.17],[-5.74,3.96],[-1.91,3.96],
-  [-1.64,3.61],[-2.05,3.16]
+  [-5.94,3.17],[-5.74,3.96],[-1.57,3.96],
+  [-1.30,3.61],[-1.75,3.16]
  ],2.08);
  lowerOptic.userData.g36LowerOptic=true;
  const reflex=outline('receiver',[
-  [-4.99,3.93],[-4.81,4.70],[-2.95,4.70],
-  [-2.76,4.46],[-2.86,3.93]
+  [-4.84,3.93],[-4.69,4.70],[-2.87,4.70],
+  [-2.65,4.43],[-2.77,3.93]
  ],2.06);
  reflex.userData.g36UpperReflex=true;
+ // A single faceted circular front face, oriented down the G36 sight axis.
+ // The lens is an art-scale shape cue, not an additional accessory/rail.
+ const opticFaceGeo=new THREE.CylinderGeometry(.37,.37,.15,6,1);
+ opticFaceGeo.rotateZ(-Math.PI/2);
+ const opticFace=new THREE.Mesh(opticFaceGeo,material);
+ opticFace.position.set(-1.31,3.57,0);
+ opticFace.name='family-receiver-'+ids.receiver+'-'+index.receiver++;
+ opticFace.userData.g36OpticFace=true;
+ opticFace.castShadow=true;opticFace.receiveShadow=true;
+ root.add(opticFace);
 
  // Raise trigger void readability by shortening the rear-raked grip
  // and aligning its forward root with the lower housing.
@@ -167,7 +177,7 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
   else if(child.userData.g36Buttpad)material=finishes.buttpad;
   else if(child.userData.g36FactoryMuzzle)material=finishes.muzzle;
   else if(child.userData.g36Barrel||child.userData.g36StockHinge)material=finishes.steel;
-  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic)material=finishes.optic;
+  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic||child.userData.g36OpticFace)material=finishes.optic;
   child.material=material;
  }
 }
