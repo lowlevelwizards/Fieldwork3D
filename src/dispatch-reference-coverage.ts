@@ -10,7 +10,8 @@ import {referenceWeaponChoice,type ReferenceWeaponFidelity}
  from './faction-reference-weapons.ts';
 import {factionTimeline} from './faction-reference-timelines.ts';
 import {DISPATCH_STARTER_REFERENCE_IDS,dispatchReferenceContext,
- type DispatchReferenceContext} from './dispatch-content-foundation.ts';
+ auditDispatchStarterReferences,type DispatchReferenceContext}
+ from './dispatch-content-foundation.ts';
 
 export type DispatchAuthoredGap=Readonly<{
  id:string;label:string;importance:ReferenceGap['importance'];
@@ -94,4 +95,12 @@ export function auditDispatchStarterCoverage():readonly string[]{
    issues.push('Inconsistent visual gap count: '+reference.id);
  }
  return issues;
+}
+
+/** D1.4 single integration audit; no content DB, caching layer or runtime
+ * campaign dependency. CI can call one entry point before D2 consumes data.
+ */
+export function auditDispatchFoundation():readonly string[]{
+ return Object.freeze([...auditDispatchStarterReferences(),
+  ...auditDispatchStarterCoverage()]);
 }
