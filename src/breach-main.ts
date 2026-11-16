@@ -29,6 +29,7 @@ import type {TacticalPick} from './ui/tactical-target-resolver.ts';
 import {pickTacticalTarget,insertTacticalRouteWaypoint} from './breach-tactical-picking.ts';
 import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {reconcileTacticalUiSelection} from './ui/tactical-selection-presentation.ts';
+import {nearestEligibleActor} from './ui/tactical-nearest-actor.ts';
 
 
 
@@ -704,19 +705,19 @@ let dragButton:HTMLButtonElement|null=null;
 let carryButton:HTMLButtonElement|null=null;
 let retrieveButton:HTMLButtonElement|null=null;
 function casualtyCandidate(id:string){
- const operator=team(state).find(o=>o.id===id&&o.health>0);
+ const squad=team(state);
+ const operator=squad.find(o=>o.id===id&&o.health>0);
  if(!operator)return null;
- return team(state).filter(o=>o.health<=0&&!o.surrendered)
-  .sort((a,b)=>distance(operator.p,a.p)-distance(operator.p,b.p))[0]??null;
+ return nearestEligibleActor(squad,operator.p,o=>o.health<=0&&!o.surrendered);
 }
 function medicalCandidate(id:string,origin?:Pt){
- const a=team(state).find(o=>o.id===id&&o.health>0);
+ const squad=team(state);
+ const a=squad.find(o=>o.id===id&&o.health>0);
  if(!a)return null;
- const at=origin??a.p;
- return team(state).filter(o=>{
+ return nearestEligibleActor(squad,origin??a.p,o=>{
   const wound=mostUrgentWound(o.medical);
-  return wound&&treatmentSupplyForWound(wound,a.medicalSupplies);
- }).sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0]??null;
+  return !!wound&&!!treatmentSupplyForWound(wound,a.medicalSupplies);
+ });
 }
 
 function updateHud(){
