@@ -11,8 +11,13 @@ import {briefJson,briefMarkdown,candidateBacklogCsv}
 import {TIMELINE_ORGANIZATIONS} from './faction-reference-timelines.ts';
 import {GEAR_CATEGORIES} from './faction-reference-gear-chronology.ts';
 import {FT17_CANDIDATE_DECISIONS} from './faction-reference-production-decisions.ts';
+import {ft18ReviewBoard} from './faction-reference-ft1-8-review-board.ts';
+import {FT18_FIRST_ASSET_SCOPE,ft18FirstAssetReadiness} from './faction-reference-ft1-8-first-asset.ts';
+import {ft18ReviewCsv,ft18ReviewJson,ft18FirstAssetMarkdown} from './faction-reference-ft1-8-exports.ts';
 const matrix=buildReferenceCoverageMatrix();
 const candidates=buildContentCandidates(FT17_CANDIDATE_DECISIONS);
+const ft18Reviews=ft18ReviewBoard();
+const ft18First=ft18FirstAssetReadiness();
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string)=>{
  const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;
 };
@@ -69,6 +74,23 @@ const lens=makeSelect('Priority lens',[
  ['coverage','Unique kit coverage'],
  ['production-efficiency','Reviewed benefit / effort']
 ]);
+const reviewPanel=node('section');reviewPanel.className='planning-exports';
+reviewPanel.append(node('h2','FT1.8 · VERIFIED CONTENT TRIAGE'));
+reviewPanel.append(node('p','Ten selected gap candidates; catalog inspection is not visual approval. The proposed G36 production brief stays blocked until independently reviewed.'));
+const first=node('p','FIRST ASSET DRAFT: '+FT18_FIRST_ASSET_SCOPE.title+
+ ' · '+(ft18First.authorized?'REVIEWED AND AUTHORIZED':'HUMAN REVIEW REQUIRED'));
+reviewPanel.append(first);
+const reviewDetails=node('details');
+reviewDetails.append(node('summary','Show review queue and existing model checks'));
+for(const item of ft18Reviews){
+ const entry=node('div');entry.className='planning-gap';
+ entry.append(node('strong',item.order+'. '+item.name),
+  node('small',item.status+' · '+item.category),
+  node('p',item.modelAudit));
+ if(item.existingModel)entry.append(node('small','Known catalog model: '+item.existingModel));
+ reviewDetails.append(entry);
+}
+reviewPanel.append(reviewDetails);
 const content=node('main');content.className='planning-main';
 const list=node('section');list.className='planning-list';
 const detail=node('section');detail.className='planning-detail';
@@ -88,6 +110,12 @@ const button=(title:string,fn:()=>void)=>{
 const output=node('section');output.className='planning-exports';
 output.append(node('h2','Audit exports'));
 output.append(node('p','Current candidate metadata is read-only, source-controlled, and unreviewed by default. These exports do not create art tasks or GitHub issues.'));
+output.append(button('EXPORT FT1.8 REVIEW CSV',()=>download('ft1-8-review.csv',
+ ft18ReviewCsv(),'text/csv;charset=utf-8')));
+output.append(button('EXPORT FT1.8 REVIEW JSON',()=>download('ft1-8-review.json',
+ ft18ReviewJson(),'application/json')));
+output.append(button('EXPORT FIRST-ASSET DRAFT',()=>download('ft1-8-first-asset.md',
+ ft18FirstAssetMarkdown(),'text/markdown;charset=utf-8')));
 output.append(button('EXPORT BACKLOG CSV',()=>download('ft1-7-backlog.csv',
  candidateBacklogCsv(candidates),'text/csv;charset=utf-8')));
 output.append(button('EXPORT COVERAGE JSON',()=>download('ft1-7-coverage.json',
@@ -116,6 +144,16 @@ const renderDetail=(item?:ContentCandidate)=>{
  const meta=node('p',item.category.toUpperCase()+' · '+item.readiness.toUpperCase()+
   ' · '+item.delivery.replace(/-/g,' ').toUpperCase());
  detail.append(meta,node('p',item.rationale));
+ const ft18=ft18Reviews.find(x=>x.candidateId===item.id);
+ if(ft18){
+  detail.append(node('h3','FT1.8 verified triage'));
+  detail.append(node('p',ft18.modelAudit));
+  detail.append(node('p','Visual review: '+ft18.status+
+   ' · remaining evidence: '+ft18.pending.join('; ')));
+ }
+ if(item.id===FT18_FIRST_ASSET_SCOPE.candidateId)
+  detail.append(node('p','FIRST PRODUCTION DRAFT · '+FT18_FIRST_ASSET_SCOPE.state+
+   ' · '+(ft18First.authorized?'approved':'approval blocked')));
  if(item.delivery==='variant-family')
   detail.append(node('p','SEPARATE REQUIRED VARIANTS: '+item.distinctVariantIds.join(', ')));
  const measures=node('div');measures.className='planning-measures';
@@ -174,5 +212,5 @@ function render(){
 }
 for(const item of [search,category,faction,era,readiness,lens])
  item.addEventListener(item===search?'input':'change',render);
-root.replaceChildren(header,stats,controls,content,output);
+root.replaceChildren(header,stats,reviewPanel,controls,content,output);
 render();
