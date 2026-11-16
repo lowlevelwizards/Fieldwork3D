@@ -1287,8 +1287,14 @@ const quickPlayController=createBreachQuickPlayController({
   startSession:(seed,site,mission)=>reset(state.variant,seed,mission,site,undefined,true),
   getStage:()=>stage,getViewMode:()=>viewMode,
   layout,refreshHud:updateHud,
-  renderFirstFrame:()=>{
+  prepareFirstFrame:()=>{
     if(stage&&viewMode!=='plan2d')
+      stage.update(state,selected,0,doorFocusId,false,null,null,
+        recorder.motion.presentation(0,state.operators.map(a=>a.id)),
+        null,null,null,null,true);
+  },
+  renderFirstFrame:()=>{
+    if(stage&&viewMode!=='plan2d'&&!stage.drawPreparedColdFrame())
       stage.update(state,selected,0,doorFocusId,false,null,null,
         recorder.motion.presentation(0,state.operators.map(a=>a.id)));
     render();
