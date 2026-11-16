@@ -4094,3 +4094,17 @@ body:has(.fw-entry-map:not([hidden])) .top{visibility:hidden}
 .bar .field-light-control[hidden]{display:none!important}
 @media(max-width:680px){.bar .field-light-control{min-width:40px;
  max-width:42px;font-size:9px;padding:3px 2px}}
+
+/* L1.5 — NVG is a view-only transform over existing fogged pixels. */
+.bar .field-nvg-control{flex:none;align-self:stretch;min-width:47px;
+ max-width:57px;padding:4px 5px;font-size:10px;font-weight:700;
+ line-height:1.25;color:#b6d9bd;border-color:#567c62;touch-action:manipulation}
+.bar .field-nvg-control[aria-pressed="true"]{background:#315140;
+ border-color:#b7df9f;color:#e1f7d7}
+.bar .field-nvg-control[hidden]{display:none!important}
+body.nvg-selected-view #breachCanvas,
+body.nvg-selected-view #breach3dCanvas{
+ filter:grayscale(.72) sepia(.56) hue-rotate(61deg) saturate(1.25)
+  brightness(1.10) contrast(1.06)}
+@media(max-width:680px){.bar .field-nvg-control{min-width:40px;
+ max-width:42px;font-size:9px;padding:3px 2px}}

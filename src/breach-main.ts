@@ -709,6 +709,7 @@ const frameFeedbackController=createBreachTacticalFrameFeedbackController({
  warn:()=>audioController.uiClickTone('warning')
 });
 let fieldLightButton:HTMLButtonElement|null=null;
+let nvgButton:HTMLButtonElement|null=null;
 let medicalButton:HTMLButtonElement|null=null;
 let dragButton:HTMLButtonElement|null=null;
 let carryButton:HTMLButtonElement|null=null;
@@ -753,7 +754,7 @@ function updateHud(){
     ui,siteIdentityOutput,rangeTelemetry,lastRangeTrial,
     medicalCandidate:()=>medicalCandidate(selected),casualty:casualtyCandidate(selected),
     paletteTether:paletteController.tether,paintOperatorAccent,colorFor,
-    fieldLightButton,medicalButton,dragButton,carryButton,retrieveButton,navPanel,
+    fieldLightButton,nvgButton,medicalButton,dragButton,carryButton,retrieveButton,navPanel,
     canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
     reducedMotion:reducedMotionMedia.matches,weaponChooser,hideWeaponChooser,
     favoriteActive:!!replayLibrary.activeFavoriteId,recorder,campaign,
@@ -1372,6 +1373,7 @@ const toolbarButtons=hudController.bindToolbar({
   reset(state.variant,undefined,undefined,equipmentTrainingSite())
 });
 fieldLightButton=toolbarButtons.light;
+nvgButton=toolbarButtons.nvg;
 medicalButton=toolbarButtons.medical;
 dragButton=toolbarButtons.drag;
 carryButton=toolbarButtons.carry;

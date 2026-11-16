@@ -15,6 +15,7 @@ import type {CampaignState} from '../campaign-state.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {activeRangeDiagnostic,rangeDiagnosticLabel,rangeTrialLabel,type RangeTrial} from '../equipment-training-diagnostics.ts';
 import {lightControlState} from '../equipment-weapon-light-ui.ts';
+import {nvgControlState,nvgOperational} from '../equipment-night-vision.ts';
 import type {ViewMode} from '../breach-3d.ts';
 import {doorCenter,type Door,type Pt} from '../breach-core.ts';
 import {dispatchTacticalContextCommand} from '../breach-tactical-context-command.ts';
@@ -23,7 +24,7 @@ import type {DisplayRouteCache} from '../breach-route-cache.ts';
 import type {createBreachReplayAnalysisController} from './breach-replay-analysis-controller.ts';
 import type {createBreachReplayTimelineController} from './breach-replay-timeline-controller.ts';
 import type {ReplayPlaybackController} from '../breach-replay-playback-controller.ts';
-import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,equipWeaponChoice,
+import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,toggleNvg,equipWeaponChoice,
   planMedicalTreatment,planRecoverMedical,planReload,reloadNow,planSync,
   posture,toggleContactRule} from '../breach-game.ts';
 import {captureRangeTrial} from '../equipment-training-diagnostics.ts';
@@ -54,7 +55,8 @@ export type TacticalSessionPresentation={
  medicalCandidate:()=>TeamActor|null;casualty:TeamActor|null;
  paletteTether:HTMLElement;paintOperatorAccent:(node:HTMLElement,id:string)=>void;
  colorFor:(id:string)=>string;
- fieldLightButton:HTMLButtonElement|null;medicalButton:HTMLButtonElement|null;
+ fieldLightButton:HTMLButtonElement|null;nvgButton:HTMLButtonElement|null;
+ medicalButton:HTMLButtonElement|null;
  dragButton:HTMLButtonElement|null;carryButton:HTMLButtonElement|null;
  retrieveButton:HTMLButtonElement|null;navPanel:HTMLOutputElement|null;
  canvas:HTMLCanvasElement;auditRouteMode:boolean;viewMode:ViewMode;
@@ -87,7 +89,7 @@ export type TacticalToolbarPorts={
  resetMission:()=>void;restartRange:()=>void;
 };
 export type TacticalToolbarButtons={
- light:HTMLButtonElement;medical:HTMLButtonElement;
+ light:HTMLButtonElement;nvg:HTMLButtonElement;medical:HTMLButtonElement;
  drag:HTMLButtonElement;carry:HTMLButtonElement;recover:HTMLButtonElement;
 };
 export type TacticalContextActionPorts={
@@ -469,7 +471,7 @@ export function createTacticalHudController(
   function renderSession(input:TacticalSessionPresentation):void{
     const {state,mode,replaying,selected,selectedNode,selectedActiveWatch,ui,
       siteIdentityOutput,rangeTelemetry,lastRangeTrial,medicalCandidate,casualty,
-      paletteTether,paintOperatorAccent,colorFor,fieldLightButton,
+      paletteTether,paintOperatorAccent,colorFor,fieldLightButton,nvgButton,
       medicalButton,dragButton,carryButton,retrieveButton,navPanel,
       canvas,auditRouteMode,viewMode,cssW,cssH,worldToScreen,displayRouteCache,
       reducedMotion,weaponChooser,hideWeaponChooser,favoriteActive,
@@ -530,6 +532,20 @@ export function createTacticalHudController(
    if(fieldLightButton.style.borderColor!==lightBorder)
      fieldLightButton.style.borderColor=lightBorder;
   }
+  if(nvgButton){
+   const selectedActor=friendly.find(a=>a.id===selected);
+   const nvg=nvgControlState(selectedActor,state.phase,replaying);
+   nvgButton.hidden=!nvg.fitted;
+   writeDomText(nvgButton,nvg.text);
+   nvgButton.disabled=nvg.disabled;
+   writeDomAttribute(nvgButton,'aria-label',nvg.aria);
+   writeDomAttribute(nvgButton,'aria-pressed',String(nvg.pressed));
+   nvgButton.title=nvg.aria+' · N';
+  }
+  // Filter only the two world canvases, not controls, labels or game data.
+  // The green treatment never generates sight/fog evidence.
+  document.body.classList.toggle('nvg-selected-view',
+   !replaying&&nvgOperational(friendly.find(a=>a.id===selected)));
   const brief=operationBriefing(state);
   renderPhase({
     phase:state.phase,started:state.started,replaying,seconds:state.seconds,
@@ -721,6 +737,7 @@ function bindWeaponChooser(port:TacticalWeaponChooserPorts){
      });
    };
    let fieldLightButton:HTMLButtonElement|null=null;
+   let nvgButton:HTMLButtonElement|null=null;
    let medicalButton:HTMLButtonElement|null=null;
    let dragButton:HTMLButtonElement|null=null;
    let carryButton:HTMLButtonElement|null=null;
@@ -817,6 +834,18 @@ const tacticalBar=port.ui.tacticalHud.querySelector<HTMLElement>('.bar');
 const actionCluster=tacticalBar?.querySelector('.actions');
 if(actionCluster)actionCluster.before(fieldLightButton);
 else tacticalBar?.append(fieldLightButton);
+nvgButton=document.createElement('button');
+nvgButton.type='button';nvgButton.className='field-nvg-control';
+nvgButton.hidden=true;nvgButton.textContent='NVG UP';
+nvgButton.setAttribute('aria-label','Toggle selected operator night vision');
+nvgButton.addEventListener('click',()=>{
+ if(port.replaying)return;
+ if(toggleNvg(port.state,port.selected))
+  port.audio.playOrderCue('equipment.flashlight_click');
+ port.updateHud();
+});
+if(actionCluster)actionCluster.before(nvgButton);
+else tacticalBar?.append(nvgButton);
 const leaveRangeButton=document.createElement('button');
 leaveRangeButton.type='button';leaveRangeButton.textContent='LEAVE TEST RANGE';
 leaveRangeButton.dataset.equipmentRangeExit='';
@@ -898,7 +927,8 @@ port.ui.stance.addEventListener('click',()=>{
 });
 port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.selected);port.updateHud();});
 
-   toolbarButtons={light:fieldLightButton!,medical:medicalButton!,drag:dragButton!,
+   toolbarButtons={light:fieldLightButton!,nvg:nvgButton!,
+     medical:medicalButton!,drag:dragButton!,
      carry:carryButton!,recover:retrieveButton!};
    return toolbarButtons;
   }
@@ -1031,6 +1061,11 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
      if(e.code==='Digit2')config.selectUnit('moss');
      if(e.code==='Digit3')config.selectUnit('ash');
      if(e.code==='Digit4')config.selectUnit('vale');
+     if(e.code==='KeyN'&&!e.repeat&&!e.ctrlKey&&!e.metaKey){
+       const nvg=config.ui.tacticalHud.querySelector<HTMLButtonElement>(
+         '.field-nvg-control');
+       if(nvg&&!nvg.hidden&&!nvg.disabled){e.preventDefault();nvg.click();}
+     }
      if(e.code==='KeyF'&&!e.repeat&&!e.ctrlKey&&!e.metaKey){
        const light=config.ui.tacticalHud.querySelector<HTMLButtonElement>(
          '.field-light-control');

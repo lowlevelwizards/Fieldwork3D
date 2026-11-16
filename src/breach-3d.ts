@@ -2227,6 +2227,7 @@ export class TacticalScene3D{
         utilityCarryLocation:carried.utility,
          weaponConfiguration:actor.weaponConfiguration,
          weaponLightOn:actor.weaponLightOn,
+         nvgDeployed:actor.nvgDeployed===true,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
         interactionCrouch:actor.treatmentActive?

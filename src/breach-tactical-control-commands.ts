@@ -4,6 +4,7 @@ import type {Session,Posture} from './breach-game.ts';
 import {edit} from './breach-plan-authoring.ts';
 import {party,canEdit} from './breach-session-selectors.ts';
 import {weaponLightEditable} from './equipment-weapon-light-operations.ts';
+import {nvgEditable} from './equipment-night-vision.ts';
 
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 
@@ -47,6 +48,15 @@ export function setMoveSprint(s:Session,id:string,nodeId:number){
   return edit(s,a,()=>{
     node.moveMode=node.moveMode==='sprint'?'advance':'sprint';
   });
+}
+
+/** Flip only a fitted physical NVG. Runtime state remains session-local. */
+export function toggleNvg(s:Session,id:string):boolean{
+ const a=party(s,id);
+ if(!a||!nvgEditable(a,s.phase))return false;
+ a.nvgDeployed=!a.nvgDeployed;
+ s.illuminationRevision=(s.illuminationRevision??0)+1;
+ return true;
 }
 
 export function toggleWeaponLight(s:Session,id:string):boolean{

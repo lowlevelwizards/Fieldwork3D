@@ -63,7 +63,7 @@ export const withActions=(a:Operator):TeamActor=>({
   fireRetreatReason:null,fireRetreatPlanId:null,fireRetreatContactId:null,
   fireRetreatPlanPoint:null,fireRetreatPlanKind:null,
   fireMode:'point',burstCount:0,skills:{...DEFAULT_SKILLS},appearanceSeed:0,
-  weaponLightOn:false,
+  weaponLightOn:false,nvgDeployed:false,
   armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,

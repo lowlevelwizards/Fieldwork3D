@@ -11,7 +11,7 @@ export {planAim,updatePlanFacing,planLook,planWatch,retargetActiveWatch,removeAc
 export {operationBriefing,missionText,debrief} from './breach-mission-reporting.ts';
 import {team,enemies,actor,party,canEdit} from './breach-session-selectors.ts';
 export {team,enemies,actor,canEdit};
-export {setWaitDuration,setNodeControl,setStartPace,plannedControl,setMoveSprint,toggleWeaponLight,toggleContactRule,posture} from './breach-tactical-control-commands.ts';
+export {setWaitDuration,setNodeControl,setStartPace,plannedControl,setMoveSprint,toggleWeaponLight,toggleNvg,toggleContactRule,posture} from './breach-tactical-control-commands.ts';
 import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
 export {OBJECTIVE,EXTRACTION,SCENARIOS};
 import {createCombatFiringPipeline} from './breach-firing-pipeline.ts';
@@ -262,6 +262,8 @@ export type TeamActor=Operator & {
   wardrobe?:WardrobeOptions;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn:boolean;
+  /** L1.5: powered/deployed helmet NVG, never derived from cosmetic goggles. */
+  nvgDeployed?:boolean;
   loadMovementScale?:number;
   armorIntegrity:number;helmetIntegrity:number;
   flashCharges:number;

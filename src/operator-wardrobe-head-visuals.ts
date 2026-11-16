@@ -309,7 +309,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
   helmetSetup?:HelmetSetupV1;headwearCamo?:HeadwearCamoId;
   pasgtDetails?:PasgtDetails;helmetField?:HelmetFieldOptions;
   headwearColor?:string;
- },camoIdentity='',coverRoll=0){
+ },camoIdentity='',coverRoll=0,nvgPresent=false,nvgDeployed=false){
  // Update the already allocated material; do not recreate meshes or geometry.
  layers.faceFabric.color.setHex(faceSolid?
   D2_FACE_SOLID_COLORS[faceSolid].hex:layers.faceFabricDefaultHex);
@@ -424,7 +424,7 @@ export function updateWardrobeHeadLayers(layers:WardrobeHeadLayers,
  if(fieldLayers){
   updateHelmetFieldLayers(fieldLayers,fieldState,
    headwearSolidHex(shell,helmetCover?.headwearColor)??0x65705d,
-   shellCovered,assembly.eyewear,true);
+   shellCovered,assembly.eyewear,true,nvgPresent,nvgDeployed);
   if(!fieldActive)for(const g of Object.values(fieldLayers.modules))g.visible=false;
   if(['gas-gp5','gas-m17','gas-m40','gas-m50'].includes(assembly.facewear))
    fieldLayers.modules.unfastened.visible=false;

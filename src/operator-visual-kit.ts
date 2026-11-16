@@ -335,7 +335,8 @@ const DEFAULT:Slots={
 export function applyOperatorVisualKit(v:OperatorVisualKit,
  slots:Slots|undefined,seed:number,magazineLocations:readonly CarryLocation[]=[],
  faceStyle:'blank'|'quiet'|'graphic'='blank',
- wardrobe?:WardrobeOptions,weaponConfiguration?:WeaponConfiguration){
+ wardrobe?:WardrobeOptions,weaponConfiguration?:WeaponConfiguration,
+ nvgPresent=false,nvgDeployed=false){
  const s=slots??DEFAULT;
  const magazinePart=weaponConfiguration?.build?.parts.magazine??null;
  if(magazinePart!==v.carriedMagazinePart){
@@ -369,7 +370,8 @@ export function applyOperatorVisualKit(v:OperatorVisualKit,
   looks.headwear,looks.facewear,looks.eyewear,looks.headset,
   effectiveFaceMode,wardrobe?.d2FaceSolid,wardrobe?.d2Accessories,
   wardrobe?.d2MaskColor,wardrobe?.beretDrape,wardrobe,
-  String(seed>>>0),wardrobe?.headwearCamoRoll??0);
+  String(seed>>>0),wardrobe?.headwearCamoRoll??0,
+  nvgPresent,nvgDeployed);
  // Rig pose color ledger owns final headwear tint (and reversible injury
  // desaturation). Setting it here was overwritten later in poseOperator.
 

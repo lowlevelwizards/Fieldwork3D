@@ -1,0 +1,44 @@
+name: L1.5 Functional NVG Critical
+on:
+  push:
+    branches: [feature/l1-5-functional-nvg-20261116]
+  pull_request:
+    paths:
+      - 'src/equipment-night-vision.ts'
+      - 'src/operator-mounted-nvg.ts'
+      - 'src/operator-helmet-field-visuals.ts'
+      - 'src/operator-wardrobe-head-visuals.ts'
+      - 'src/operator-visual-kit.ts'
+      - 'src/breach-operator-appearance.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-tactical-control-commands.ts'
+      - 'src/ui/tactical-hud-controller.ts'
+      - 'src/breach-main.ts'
+      - 'tests/l1-5-night-vision.test.mjs'
+      - '.github/workflows/l1-5-nvg-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  nvg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: NVG, legacy equipment, helmet, replay, lighting and control tests
+        run: |
+          node --experimental-strip-types --test \
+            tests/l1-5-night-vision.test.mjs \
+            tests/l1-4-flashlight-usability.test.mjs \
+            tests/helmet-h9-final.test.mjs \
+            tests/helmet-h10-fit.test.mjs \
+            tests/equipment-21-07-light-controls.test.mjs \
+            tests/l1-1-authoritative-site-power.test.mjs \
+            tests/equipment-26-03-sight-lighting.test.mjs
+      - name: TypeScript and release build
+        run: npm run build

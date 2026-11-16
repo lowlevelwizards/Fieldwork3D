@@ -44,7 +44,7 @@ export type ActorFrame=Pick<TeamActor,
   'lastHitSeverity'|'downPose'|'downClearance'|'flashUntil'|'suppression'|
   'wedgeRemaining'|'carryingId'|'carriedById'|
   'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
-  'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
+  'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'nvgDeployed'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'|
@@ -170,6 +170,7 @@ export function snapshot(s:Session,seenGround?:string[],
        carryingId:a.carryingId,carriedById:a.carriedById,
        wedgeRemaining:a.wedgeRemaining,
        weaponLightOn:a.weaponLightOn,
+       nvgDeployed:a.nvgDeployed===true,
       armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
       flashCharges:a.flashCharges,
       morale:a.morale,
@@ -452,6 +453,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
+      // Absent in legacy L1.4 films; do not retain future device state on rewind.
+      nvgDeployed:copy.nvgDeployed===true,
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
       coverStanceDrop:copy.coverStanceDrop??0,
