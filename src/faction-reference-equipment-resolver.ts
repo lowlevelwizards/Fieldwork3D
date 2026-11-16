@@ -43,6 +43,25 @@ export function compareEquipmentYears(timelineId:string,firstYear:number,
   newlyDocumented:b.filter(x=>!first.has(x.equipment.id)),
   notDocumentedInSecond:a.filter(x=>!second.has(x.equipment.id))};
 }
+/** Authored boundaries only. The research catalog never manufactures intermediate dates. */
+export function researchMilestoneYears(timelineId:string):readonly number[]{
+ return [...new Set(HISTORICAL_ISSUE_RECORDS.filter(r=>r.timelineId===timelineId)
+  .flatMap(r=>[r.startYear,r.endYear]))].sort((a,b)=>a-b);
+}
+export function researchTimelineCoverage(timelineId:string){
+ const records=HISTORICAL_ISSUE_RECORDS.filter(r=>r.timelineId===timelineId);
+ const sourceIds=new Set(records.flatMap(r=>[...r.evidenceIds]));
+ return {records:records.length,sourceCount:sourceIds.size,
+  equipmentCount:new Set(records.map(r=>r.historicalEquipmentId)).size,
+  categoryCount:new Set(records.flatMap(r=>{
+   const eq=byId.get(r.historicalEquipmentId);
+   return eq?[eq.category]:[];
+  })).size,
+  milestoneYears:researchMilestoneYears(timelineId),
+  tentativeRecords:records.filter(r=>r.confidence!=='verified').length,
+  plannedRecords:records.filter(r=>r.issueStatus==='planned').length
+ };
+}
 export type HistoricalAuditIssue={id:string;message:string};
 export function auditHistoricalEquipment(){
  const issues:HistoricalAuditIssue[]=[];
@@ -77,6 +96,12 @@ export function auditHistoricalEquipment(){
   for(const id of r.evidenceIds)if(!historicalEvidence(id))
    issues.push({id:r.id,message:'Unresolved source '+id});
   if(!r.note)issues.push({id:r.id,message:'Missing qualification'});
+  if(r.issueStatus==='planned'&&['standard','legacy','surplus'].includes(r.availability))
+   issues.push({id:r.id,message:'Planned equipment cannot be classified as established issue'});
+  if(r.confidence==='verified'&&!r.evidenceIds.length)
+   issues.push({id:r.id,message:'Verified association requires a cited claim'});
+  if(r.datePrecision==='approximate'&&r.confidence==='verified'&&!r.note.includes('approx'))
+   issues.push({id:r.id,message:'Approximate period needs explicit uncertainty explanation'});
  }
  const populated=FACTION_TIMELINES.filter(t=>t.equipment.length).length;
  return {issues,identities:HISTORICAL_EQUIPMENT.length,
