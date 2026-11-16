@@ -32,6 +32,7 @@ export type BreachBootConfig=Readonly<{
  idle3dDisabled:boolean;
  awareness:string|null;
  gpuWarmupEnabled:boolean;
+ cpuTraceEnabled:boolean;
  focusFx:string|null;
 }>;
 
