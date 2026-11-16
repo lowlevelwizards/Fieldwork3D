@@ -6,6 +6,7 @@ export type PhotoMetadata={
  width:number;height:number;bytes:number;
 };
 export type PhotoStored={meta:PhotoMetadata;image:Blob;thumbnail:Blob};
+type PhotoIndex=PhotoMetadata&{thumbnail:Blob};
 export const PHOTO_LIBRARY_LIMIT=60;
 const DB='fieldwork-photo-library',VERSION=1,IMAGES='images',INDEX='index';
 const maxImageBytes=12*1024*1024;
@@ -36,8 +37,19 @@ export async function listPhotos():Promise<PhotoMetadata[]>{
  const db=await database();
  try{
   const tx=db.transaction(INDEX,'readonly'),end=done(tx);
-  const items=await request(tx.objectStore(INDEX).getAll() as IDBRequest<PhotoMetadata[]>);
-  await end;return items.sort((a,b)=>b.createdAt-a.createdAt);
+  const items=await request(tx.objectStore(INDEX).getAll() as IDBRequest<PhotoIndex[]>);
+  await end;return items.map(row=>{
+   const meta={...row};delete (meta as Partial<PhotoIndex>).thumbnail;
+   return meta as PhotoMetadata;
+  }).sort((a,b)=>b.createdAt-a.createdAt);
+ }finally{db.close();}
+}
+export async function readPhotoThumbnail(id:string):Promise<Blob|null>{
+ const db=await database();
+ try{
+  const tx=db.transaction(INDEX,'readonly'),end=done(tx);
+  const item=await request(tx.objectStore(INDEX).get(id) as IDBRequest<PhotoIndex|undefined>);
+  await end;return item?.thumbnail??null;
  }finally{db.close();}
 }
 export async function readPhoto(id:string):Promise<PhotoStored|null>{
@@ -64,7 +76,7 @@ export async function savePhoto(photo:PhotoStored):Promise<void>{
    tx.abort();try{await end;}catch{}
    throw Error('PHOTO LIBRARY FULL — EXPORT OR DELETE PHOTOS');
   }
-  index.put(photo.meta);
+  index.put({...photo.meta,thumbnail:photo.thumbnail});
   tx.objectStore(IMAGES).put({...photo,id:photo.meta.id});
   await end;
  }catch(error){
@@ -83,18 +95,28 @@ export async function deletePhoto(id:string):Promise<void>{
  }finally{db.close();}
 }
 export async function makePhotoThumbnail(image:Blob):Promise<Blob>{
- const bitmap=await createImageBitmap(image);
+ let bitmap:ImageBitmap|null=null;
+ let fallback:HTMLImageElement|null=null;
+ let url:string|null=null;
+ if(typeof createImageBitmap==='function')bitmap=await createImageBitmap(image);
+ else{
+  url=URL.createObjectURL(image);fallback=new Image();fallback.src=url;
+  await new Promise<void>((resolve,reject)=>{
+   fallback!.onload=()=>resolve();fallback!.onerror=()=>reject(Error('PHOTO DECODE FAILED'));
+  });
+ }
  try{
-  const factor=Math.min(1,280/Math.max(bitmap.width,bitmap.height));
+  const source=bitmap??fallback!;
+  const factor=Math.min(1,280/Math.max(source.width,source.height));
   const canvas=document.createElement('canvas');
-  canvas.width=Math.max(1,Math.round(bitmap.width*factor));
-  canvas.height=Math.max(1,Math.round(bitmap.height*factor));
+  canvas.width=Math.max(1,Math.round(source.width*factor));
+  canvas.height=Math.max(1,Math.round(source.height*factor));
   const ctx=canvas.getContext('2d');
   if(!ctx)throw Error('PHOTO THUMBNAIL IS UNAVAILABLE');
-  ctx.drawImage(bitmap,0,0,canvas.width,canvas.height);
+  ctx.drawImage(source,0,0,canvas.width,canvas.height);
   const blob=await new Promise<Blob|null>(resolve=>canvas.toBlob(resolve,'image/jpeg',.72));
   canvas.width=0;canvas.height=0;
   if(!blob)throw Error('PHOTO THUMBNAIL FAILED');
   return blob;
- }finally{bitmap.close();}
+ }finally{bitmap?.close();if(url)URL.revokeObjectURL(url);if(fallback)fallback.src='';}
 }

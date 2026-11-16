@@ -10,7 +10,7 @@ import {capturePhotoFrame,photoFilterCss,type PhotoCaptureRequest}
  from './breach-photo-capture.ts';
 import {INITIAL_PHOTO_SETTINGS,photographCanEnter,
  type PhotoLens,type PhotoGuide} from './breach-photo-state.ts';
-import {savePhoto,makePhotoThumbnail,listPhotos,readPhoto,deletePhoto,
+import {savePhoto,makePhotoThumbnail,listPhotos,readPhotoThumbnail,readPhoto,deletePhoto,
  type PhotoMetadata} from './breach-photo-library.ts';
 import {mountBreachPhotoUi} from './ui/breach-photo-ui.ts';
 
@@ -247,10 +247,10 @@ export function createBreachPhotoModeController(ports:Ports){
     rows.length+' SAVED PHOTOGRAPHS · THIS DEVICE':
     'NO SAVED PHOTOGRAPHS YET';
    for(const meta of rows){
-    const item=await readPhoto(meta.id);
+    const thumbnail=await readPhotoThumbnail(meta.id);
     if(current!==generation||ui.gallery.hidden)return;
-    if(!item)continue;
-    const url=URL.createObjectURL(item.thumbnail);temporaryUrls.add(url);
+    if(!thumbnail)continue;
+    const url=URL.createObjectURL(thumbnail);temporaryUrls.add(url);
     const button=document.createElement('button');button.type='button';
     const img=document.createElement('img');img.src=url;img.loading='lazy';
     img.alt=meta.site+' at '+meta.at.toFixed(1)+' seconds';
