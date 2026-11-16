@@ -7,6 +7,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   watchActive?:boolean;
   nearMovable?:boolean;nearWindow?:boolean;nearDoor?:boolean;
+  powerActions?:readonly ContextAction[];
   treatTargetName?:string;
   nearCivilian?:boolean;escortableCivilian?:boolean;
   nearCivilianCasualty?:boolean;
@@ -42,6 +43,7 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       title:'Queue medical treatment for '+o.treatTargetName}]:[]),
     ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR',group:'primary' as const,
       title:'Show actions for a reachable door'}]:[]),
+    ...(o.powerActions??[]),
     ...(o.nearCivilian?[{id:'ctxSecureCivilian',label:'SECURE',
       group:'primary' as const,
       title:'Queue a physical reassurance and stay command'}]:[]),
