@@ -841,7 +841,7 @@ function render(dt=0):void{
  renderBreachTacticalWorldFrame({
   stage,viewMode,draw,dpr,cssW,cssH,ox,oy,viewScale,state,replaying,
   replayAnalysis:replayDisplay.options.replayAnalysis,
-  photoClean:photoMode?.active??false,
+  photoClean:(photoMode?.active??false)||(photoMode?.replayClean??false),
   world2D,fog2D,actor2D,route2D,replay2D,projected2D
  });
  // A successful actual frame confirms more than the presence of the HUD.

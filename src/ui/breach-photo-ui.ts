@@ -15,6 +15,11 @@ export function mountBreachPhotoUi(){
  replay.type='button';replay.id='photoToggleReplay';replay.className='photo-entry';
  replay.title='Enter replay Photo Mode';replay.textContent='◉ PHOTO';
  document.getElementById('replayTopHud')?.prepend(replay);
+ const clean=document.createElement('button');
+ clean.type='button';clean.id='replayCleanToggle';clean.textContent='◫ CLEAN';
+ clean.className='photo-entry';clean.setAttribute('aria-pressed','false');
+ clean.title='Hide the replay HUD; tap again to restore';
+ document.getElementById('replayTopHud')?.prepend(clean);
  const access=document.createElement('button');
  access.type='button';access.id='photoLibraryAccess';
  access.textContent='PHOTO LIBRARY';
@@ -74,7 +79,7 @@ export function mountBreachPhotoUi(){
     </div>
   </div></div>`;
  document.body.append(gesture,hud,gallery);
- return {live,replay,access,gesture,hud,gallery,
+ return {live,replay,access,clean,gesture,hud,gallery,
   frame:byId<HTMLElement>('photoFrameOverlay'),
   guide:byId<HTMLElement>('photoFramingGuide'),
   close:byId<HTMLButtonElement>('photoClose'),

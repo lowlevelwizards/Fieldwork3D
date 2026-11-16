@@ -38,6 +38,7 @@ export function createBreachPhotoModeController(ports:Ports){
   observerId:string|null;omniscient:boolean;groundLensOn:boolean
  }|null=null;
  let generation=0,selectedPhoto:string|null=null,viewerUrl:string|null=null;
+ let replayClean=false;
  const temporaryUrls=new Set<string>();
  const pointerMap=new Map<number,{x:number;y:number,button:number}>();
  let lastDistance=0;
@@ -312,6 +313,14 @@ export function createBreachPhotoModeController(ports:Ports){
   document.body.append(anchor);anchor.click();anchor.remove();
   setTimeout(()=>URL.revokeObjectURL(url),15000);
  }
+ ui.clean.addEventListener('click',()=>{
+  if(!ports.isReplaying())return;
+  replayClean=!replayClean;
+  document.body.classList.toggle('replay-clean',replayClean);
+  ui.clean.textContent=replayClean?'◫ SHOW HUD':'◫ CLEAN';
+  ui.clean.setAttribute('aria-pressed',String(replayClean));
+  markDirty();ports.requestHud();
+ });
  ui.live.addEventListener('click',enter);
  ui.replay.addEventListener('click',enter);
  ui.access.addEventListener('click',openGallery);
@@ -368,6 +377,9 @@ export function createBreachPhotoModeController(ports:Ports){
   if(e.code==='Escape'||e.code==='KeyP'){e.preventDefault();exit();}
   else if(e.code==='Space'&&!e.repeat){e.preventDefault();shutter();}
  },true);
- return {get active(){return active;},get needsFrame(){return active&&
+ return {get active(){return active;},get replayClean(){return replayClean&&ports.isReplaying();},
+  clearReplayClean(){replayClean=false;document.body.classList.remove('replay-clean');
+   ui.clean.textContent='◫ CLEAN';ui.clean.setAttribute('aria-pressed','false');},
+  get needsFrame(){return active&&
   (dirty||pending!==null);},onFrame,exit,openGallery};
 }

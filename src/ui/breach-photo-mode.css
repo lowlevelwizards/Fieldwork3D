@@ -3,6 +3,13 @@
  background:#1a3030;color:#d2e5d7;border-radius:5px;font:700 12px 'Saira Condensed',sans-serif;
  letter-spacing:.06em;cursor:pointer}
 #photoToggleReplay{margin-inline-end:9px}
+body.replay-clean .top,body.replay-clean .replay-panel,
+body.replay-clean .replay-rail,body.replay-clean .guidance,
+body.replay-clean .feed,body.replay-clean .tactical-hud,
+body.replay-clean #replayBodycamStatus,body.replay-clean #tacticalFeedback{
+ visibility:hidden!important;pointer-events:none!important}
+body.replay-clean #replayTopHud > :not(#replayCleanToggle){display:none!important}
+body.replay-clean #replayCleanToggle{background:#d8e8d4;color:#122323}
 #photoLibraryAccess{padding:8px;border:1px solid #708f85;background:#19302e;
  color:#e5e7d8;border-radius:5px;min-height:38px}
 .photo-gesture-surface{position:fixed;inset:0;z-index:30;touch-action:none;

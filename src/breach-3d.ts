@@ -606,7 +606,7 @@ export class TacticalScene3D{
     perspective:this.photoPerspective
   };}
   restorePhotoCameraSnapshot(saved:PhotoCameraSnapshot):void{
-    this.view={...saved.view,focus:{...saved.view.focus}};
+    Object.assign(this.view,saved.view,{focus:{...saved.view.focus}});
     this.replayDirectorCameraAnchor=saved.anchor?{...saved.anchor}:null;
     this.replayDirectorFocus=saved.focus?{...saved.focus}:null;
     this.replayDirectorSubjects=saved.subjects.map(p=>({...p}));
