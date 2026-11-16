@@ -18,6 +18,7 @@ import {createD2GoggleFieldPose} from './operator-d2-goggle-visuals.ts';
 import {createHelmetFieldGoggleModule,createFittedGoggleSleeve} from './operator-helmet-field-goggles.ts';
 import {addAchMichVelcro,addAchMichIdentifierPatch} from './operator-helmet-field-velcro.ts';
 import {addAchMichFieldAddon} from './operator-helmet-field-addons.ts';
+import {buildMountedNvg} from './operator-mounted-nvg.ts';
 import {addPasgtRetrofitRails,addPasgtPeriodNvgStrap,addPasgtRetrofitBungees,
  addPasgtRetrofitVelcro,addPasgtRetrofitIdentifier,
  updatePasgtRetrofitCover} from './operator-helmet-pasgt-retrofit.ts';
@@ -145,6 +146,8 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
    0,p.top-1.86,front-.43);
   addPasgtPeriodNvgStrap(shroud,webbingMaterial);
  }else addAchMichThreeHoleShroud(id,shroud,metal,dark,reflect);
+ buildMountedNvg(addGroup('nvg-stowed'),id,false,dark,metal,glass);
+ buildMountedNvg(addGroup('nvg-deployed'),id,true,dark,metal,glass);
  const rails=addGroup('rails');
  if(id==='pasgt')addPasgtRetrofitRails(rails,metal,dark,reflect);
  else addAchMichArcRails(id,rails,metal,dark,reflect);
@@ -194,7 +197,7 @@ export function createHelmetFieldLayers(parent:THREE.Group,id:string):HelmetFiel
 }
 export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  shellHex:number,covered:boolean,headEyewear='eyes-none',
- alreadyResolved=false):void{
+ alreadyResolved=false,nvgPresent=false,nvgDeployed=false):void{
  const s=alreadyResolved?raw as HelmetFieldOptions:
   resolveHelmetField(v.shell,raw,{covered}),m=v.modules;
  // Swap between cached, pre-authored cloth and shell ring profiles only
@@ -228,6 +231,9 @@ export function updateHelmetFieldLayers(v:HelmetFieldLayers,raw:unknown,
  const bandHex=resolveHelmetFieldColor(s.bandColor,shellHex,v.shell==='pasgt');
  const webHex=resolveHelmetFieldColor(s.webbingColor,shellHex,v.shell==='pasgt');
  v.bandMaterial.color.setHex(bandHex);v.webbingMaterial.color.setHex(webHex);
+ // Only an issued functional device can occupy the shroud.
+ m['nvg-stowed'].visible=nvgPresent&&s.shroud&&!nvgDeployed;
+ m['nvg-deployed'].visible=nvgPresent&&s.shroud&&nvgDeployed;
  // The net cannot be tied off if its retaining elastic is absent.
  m.band.visible=(s.band||s.concealment==='net')&&v.shell!=='pasgt';
  m.loops.visible=covered&&v.shell!=='pasgt'&&
