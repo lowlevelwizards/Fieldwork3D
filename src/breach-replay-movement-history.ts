@@ -7,8 +7,14 @@ export type ReplayTrailPoint={
   t:number;p:Pt;pace:string;posture:string
 };
 const copy=(p:Pt)=>({x:p.x,y:p.y});
+type TrailWindowCursor={begin:number;end:number;ordered:boolean};
+const precedes=(t:number,limit:number,inclusive:boolean)=>
+  inclusive?t<=limit:t<limit;
 export class ReplayMovementHistory{
   private readonly tracks=new Map<string,ReplayTrailPoint[]>();
+  /** Seek positions belong to this immutable replay history, never the actor ID
+   * globally. No per-frame trail array or rendered geometry is retained. */
+  private readonly windowCursors=new Map<string,TrailWindowCursor>();
   constructor(frames:readonly ReplayFrame[],actorIds:readonly string[]){
     const wanted=new Set(actorIds);
     for(const f of frames){
@@ -23,6 +29,40 @@ export class ReplayMovementHistory{
           posture:actor.posture});
       }
     }
+    // Histories are built once. A malformed V1 film with unordered or
+    // nonfinite dates keeps the exact old binary search on every query.
+    for(const [id,points] of this.tracks){
+      let ordered=Number.isFinite(points[0].t);
+      for(let i=1;ordered&&i<points.length;i++)
+        if(!Number.isFinite(points[i].t)||
+           !(points[i-1].t<=points[i].t))ordered=false;
+      this.windowCursors.set(id,{begin:0,end:0,ordered});
+    }
+  }
+  /** Original lower/upper bound is authoritative on timeline jumps and old
+   * malformed histories. Nearby playback frames reuse only a locally proven
+   * bracket, preserving duplicates and the first preceding trail point. */
+  private windowBound(points:readonly ReplayTrailPoint[],limit:number,
+    inclusive:boolean,cursor:TrailWindowCursor|undefined):number{
+    const length=points.length,side=inclusive?'end':'begin';
+    if(cursor?.ordered&&Number.isFinite(limit)){
+      const i=cursor[side];
+      if((i===0||precedes(points[i-1].t,limit,inclusive))&&
+         (i===length||!precedes(points[i].t,limit,inclusive)))return i;
+      if(i<length&&precedes(points[i].t,limit,inclusive)&&
+         (i+1===length||!precedes(points[i+1].t,limit,inclusive)))
+        return cursor[side]=i+1;
+      if(i>0&&!precedes(points[i-1].t,limit,inclusive)&&
+         (i===1||precedes(points[i-2].t,limit,inclusive)))
+        return cursor[side]=i-1;
+    }
+    let lo=0,hi=length;
+    while(lo<hi){
+      const mid=(lo+hi)>>>1;
+      if(precedes(points[mid].t,limit,inclusive))lo=mid+1;else hi=mid;
+    }
+    if(cursor)cursor[side]=lo;
+    return lo;
   }
   /** Bounded renderer window; never return future positions or mutate film. */
   segment(actorId:string,time:number,seconds:number,
@@ -30,16 +70,9 @@ export class ReplayMovementHistory{
     const all=this.tracks.get(actorId)??[];
     if(!all.length||time<all[0].t)return [];
     const before=Number.isFinite(seconds)?Math.max(0,time-seconds):0;
-    let lo=0,hi=all.length;
-    while(lo<hi){const mid=(lo+hi)>>>1;
-      if(all[mid].t<before)lo=mid+1;else hi=mid;
-    }
-    const start=Math.max(0,lo-1);
-    lo=0;hi=all.length;
-    while(lo<hi){const mid=(lo+hi)>>>1;
-      if(all[mid].t<=time)lo=mid+1;else hi=mid;
-    }
-    const end=lo;
+    const cursor=this.windowCursors.get(actorId);
+    const start=Math.max(0,this.windowBound(all,before,false,cursor)-1);
+    const end=this.windowBound(all,time,true,cursor);
     if(end<=start)return [];
     const count=end-start;
     const step=Math.max(1,Math.ceil(count/Math.max(2,maxPoints)));
