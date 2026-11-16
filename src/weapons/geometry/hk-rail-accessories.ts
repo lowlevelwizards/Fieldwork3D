@@ -8,10 +8,10 @@ import {HK_BLACK_METAL} from './weapon-visual-palette.ts';
 
 export const HK_CLAW_VISUAL=Object.freeze({
   rearX:-4.60,frontX:1.25,footZ:1.13,
-  railCenterX:-1.52,railCenterY:3.35,
-  railLength:7.75,railWidth:2.48,railHeight:.50,
+  railCenterX:-1.52,railCenterY:2.91,
+  railLength:7.75,railWidth:2.48,railHeight:.48,
   /** Visible upper supporting surface, not gameplay sight height. */
-  supportTopY:3.60
+  supportTopY:3.15
 });
 
 function footGeometry(x:number,z:number):THREE.BufferGeometry{
@@ -20,8 +20,8 @@ function footGeometry(x:number,z:number):THREE.BufferGeometry{
  const outline=new THREE.Shape();
  const profile:readonly (readonly [number,number])[]=[
   [-.62,1.66],[.53,1.66],[.64,1.83],
-  [.43,2.29],[.31,2.78],[.65,3.16],
-  [-.49,3.16],[-.28,2.78],[-.43,2.29],[-.68,1.83]
+  [.43,2.14],[.31,2.51],[.65,2.80],
+  [-.49,2.80],[-.28,2.51],[-.43,2.14],[-.68,1.83]
  ];
  outline.moveTo(...profile[0]);
  for(const point of profile.slice(1))outline.lineTo(...point);
@@ -46,7 +46,7 @@ export function addHKClawRail(root:THREE.Group):void{
  // Subtle mounting cheeks, no high micro-ribs or thick floating second rail.
  for(const z of [-1.29,1.29]){
   const lip=new THREE.BoxGeometry(7.48,.30,.22);
-  lip.translate(p.railCenterX,3.36,z);
+  lip.translate(p.railCenterX,2.92,z);
   geometries.push(lip);
  }
  // Extruded claws are unindexed while BoxGeometry is indexed. Normalize
