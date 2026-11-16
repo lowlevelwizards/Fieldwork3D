@@ -1,4 +1,4 @@
-/** FNC P29 proportion correction. P13 alias retained.
+/** FNC P30 inset front sight ear widths; P29 proportions preserved. P13 alias retained.
  * One authoritative source for interdependent handguard, gas cover,
  * handstop, groove, and sight placements. Local game-art units ONLY.
  * Existing FNC_P1 world anchors and part IDs are untouched.
@@ -46,7 +46,7 @@ export const FNC_FRONT_P13=Object.freeze({
   baseBottomY:-.58,baseRearTopY:1.50,
   baseTopY:1.38,baseDepth:1.76,
   earX:14.26,earBottomY:1.33,earShoulderY:2.18,earTopY:2.42,
-  earHalfSpacing:.65,earLength:.82,earDepth:.76
+  earHalfSpacing:.65,earLength:.82,earDepth:.60
  }),
  muzzle:Object.freeze({centerX:18.51,length:1.98,
   radius:1.03,slotFirstX:17.90,slotPitch:.65,slotLength:.36,
