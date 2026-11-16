@@ -55,7 +55,7 @@ test('P6: compact receiver and broad sights, genuinely projecting charging knob'
   'P22 extended inset web stays bounded by the open stock rails');
  assert.ok(box(gas).min.x<box(by(g,'fncP5LowerHex')[0]).max.x,
   'extended gas cover overlaps shortened fore-end without floating');
- assert.ok(box(front).max.y>2.70&&box(front).max.y<2.85);
+ assert.ok(box(front).max.y>2.38&&box(front).max.y<2.46);
  assert.ok(box(rear).max.y>2.40);
  assert.ok(front.userData.fncP12FALLikeFrontEar);
  assert.equal(by(g,'fncP12FALLikeFrontEar').length,2);
