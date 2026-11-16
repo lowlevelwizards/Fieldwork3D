@@ -1,11 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
-import {newCampaign,setCampaignWardrobe,acceptContract,readCampaign}
+import {newCampaign,setCampaignWardrobe,acceptContract,resolveOperation,readCampaign}
  from '../src/campaign-state.ts';
 import {dispatchPilotAppearanceAllowed} from '../src/dispatch-pilot-appearance.ts';
 import {applyStudioCampaignEdits} from '../src/operator-studio-batch-save.ts';
 import {weaponOwnershipIssues} from '../src/equipment-weapon-ownership.ts';
+import {commitCampaignToSlot,loadCampaignSlot}
+ from '../src/campaign-save-slots.ts';
 
 test('D6 supported personal details and uniform finishes preserve SWAT issued kit',()=>{
  const base=newDispatchPilotCampaign(120),p=base.operators[0],before=JSON.stringify(base);
@@ -40,7 +42,9 @@ test('D6 forged helmet, markings, facewear, armor and helmet accessory edits fai
   {...w,helmetField:{...w.helmetField,irStrobe:true}},
   {...w,fabricCamo:{...w.fabricCamo,top:'multicam'}},
   {...w,fabricSolids:{...w.fabricSolids,top:'rust'}},
-  {...w,gloveSolid:'coyote'}
+  {...w,gloveSolid:'coyote'},
+  {...w,gloveSolid:undefined},
+  {...w,fabricSolids:{...w.fabricSolids,top:undefined}}
  ];
  for(const candidate of invalid){
   assert.equal(dispatchPilotAppearanceAllowed(w,candidate,p.loadout),false);
@@ -75,4 +79,32 @@ test('D6 recruited SWAT operators can save supported looks without changing owne
   ...p.wardrobe,gloveSolid:'navy'});
  assert.equal(modified.operators.at(-1).wardrobe.gloveSolid,'navy');
  assert.deepEqual(weaponOwnershipIssues(modified),[]);
+});
+
+test('D6.3 full Dispatch lifecycle retains individualized uniform through an operation',()=>{
+ const original=newDispatchPilotCampaign(880);
+ const member=original.operators[0];
+ const look={...member.wardrobe,skinTone:'deep-neutral',
+  gloveSolid:'navy',fabricSolids:{...member.wardrobe.fabricSolids,top:'charcoal'}};
+ const edited=setCampaignWardrobe(original,member.id,look);
+ assert.equal(edited.operators[0].wardrobe.gloveSolid,'navy');
+ const values=new Map();
+ const storage={getItem:key=>values.get(key)??null,
+  setItem:(key,value)=>values.set(key,value),
+  removeItem:key=>values.delete(key)};
+ assert.equal(commitCampaignToSlot(edited,'dispatch',storage),true);
+ const loaded=loadCampaignSlot('dispatch',storage);
+ const accepted=acceptContract(loaded,loaded.contracts[0].id);
+ const job=accepted.contracts.find(x=>x.id===accepted.activeContractId);
+ const report={id:'d6-sw-1',contractId:job.id,day:accepted.day,
+  outcome:'success',grade:'B',elapsed:33,participatingIds:[member.id],
+  casualties:[],objective:true,events:[]};
+ const continued=resolveOperation(accepted,report);
+ assert.equal(commitCampaignToSlot(continued,'dispatch',storage),true);
+ const after=loadCampaignSlot('dispatch',storage);
+ assert.equal(after.operators[0].wardrobe.skinTone,'deep-neutral');
+ assert.equal(after.operators[0].wardrobe.gloveSolid,'navy');
+ assert.equal(after.operators[0].wardrobe.fabricSolids.top,'charcoal');
+ assert.deepEqual(weaponOwnershipIssues(after),[]);
+ assert.equal(after.history.some(x=>x.id===report.id),true);
 });
