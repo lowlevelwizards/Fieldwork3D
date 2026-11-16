@@ -120,7 +120,11 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         const world=sessionWorldGeometry(s);
         target=selectOpeningStance(door,a.p,
           (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
-          s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p));
+          s.operators.filter(b=>b!==a&&b.health>0).map(b=>b.p),
+          // Generated four-person entry has its own verified jamb-side
+          // stack slots; do not reinterpret those as ad hoc retreat orders.
+          !a.plan.some(order=>order.kind==='move'&&
+            order.entryDoorId===door.id));
         if(target)setOpeningFootstep(a,stance,target);
       }
       // The regular motor accepts a bounded waypoint within 3.5 units.
