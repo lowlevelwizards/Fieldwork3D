@@ -13,6 +13,8 @@ import {createQuickPlayConfigurator} from './ui/quick-play-configurator.ts';
 import type {TacticalScene3D,ViewMode} from './breach-3d.ts';
 import {createColdDeviceEvidence,mountColdDeviceExport,
  captureColdReadyFrameIntervals} from './rendering/breach-cold-device-evidence.ts';
+import {PostReadyRuntimeCapture,type PostReadyRuntimeFrame}
+ from './rendering/breach-post-ready-attribution.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
   from './quick-play-generation.ts';
 
@@ -45,6 +47,19 @@ export function createBreachQuickPlayController(config:QuickPlayControllerHooks)
    return found as T;
  };
 let quickPlayBusy=false;
+let postReadyRuntimeCapture:PostReadyRuntimeCapture|null=null;
+let coldRuntimeEvidence:ReturnType<typeof createColdDeviceEvidence>|null=null;
+/** The tactical runtime calls this only when ?coldBench=1. */
+function recordRuntimeFrame(frame:PostReadyRuntimeFrame):void{
+  const collector=postReadyRuntimeCapture;
+  if(!collector)return;
+  if(document.visibilityState==='hidden')collector.stopForVisibility();
+  else collector.add(frame);
+  if(collector.completed){
+    if(coldRuntimeEvidence)coldRuntimeEvidence.postReadyRuntime=collector.finish();
+    postReadyRuntimeCapture=null;coldRuntimeEvidence=null;
+  }
+}
 let quickPlayRun=0;
 let quickPlayWorker:Worker|null=null;
 let quickPlayReject:((reason:Error)=>void)|null=null;
@@ -109,6 +124,8 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
   }
   const id=++quickPlayRun,priorMode=config.getMode();
   const seed=recipe.seed,scale=recipe.scale;
+  // Never mix samples from different mission startup attempts.
+  postReadyRuntimeCapture=null;coldRuntimeEvidence=null;
   quickPlayBusy=true;quickPlayPercent=0;
   quickPlayPanel.hidden=false;quickPlayPanel.dataset.state='running';
   quickPlayCancelButton.hidden=false;quickPlayCancelButton.textContent='CANCEL';
@@ -315,6 +332,10 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
       });
       (window as Window&{__fieldworkE611?:unknown}).__fieldworkE611=benchmark;
       mountColdDeviceExport(benchmark);
+      // E6.12: align the real tactical loop callbacks with the independent
+      // RAF sampler; no extra game update or canvas submission is scheduled.
+      coldRuntimeEvidence=benchmark;
+      postReadyRuntimeCapture=new PostReadyRuntimeCapture(90);
       void captureColdReadyFrameIntervals(90).then(stats=>{
         benchmark.postReadyFrames=stats;
         console.info('[E6.11 device cold benchmark ready]',benchmark);
@@ -355,7 +376,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
    config.showHelp('FAVORITE LOADED · ORIGINAL MISSION SETUP',3800);
  }
  return {
-   restoreFavorite,
+   restoreFavorite,recordRuntimeFrame,
    launch:launchQuickPlay,
    customize:()=>{if(!quickPlayBusy)configurator.open();},
    get configuring(){return configurator.isOpen;},
