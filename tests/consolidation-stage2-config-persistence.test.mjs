@@ -231,7 +231,8 @@ test('A2: composition has one boot parser and one mode/storage key contract',()=
  for(const path of ['src/breach-main.ts','src/operator-studio.ts',
   'src/breach-campaign-flow.ts'])
   assert.ok(!source(path).includes('fieldwork3d.campaign.v1'),path);
- assert.ok(source('src/operator-studio.ts').includes('BREACH_STORAGE_KEYS.campaign'));
+ assert.ok(source('src/operator-studio.ts').includes('activeCampaignStorageKey()'));
+ assert.ok(source('src/campaign-save-slots.ts').includes('BREACH_STORAGE_KEYS.campaign'));
  assert.ok(source('src/breach-3d.ts').includes("get('lighting')!=='legacy'"));
  assert.ok(source('src/ui/breach-mission-screens.ts')
   .includes('MINIATURE_FOCUS_STORAGE_KEY'));
