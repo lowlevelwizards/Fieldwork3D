@@ -2,6 +2,8 @@
 **Baseline:** main at `ac2989a654d4fcf3410cbf2bf7a941329320ec0f` (2026-11-07).
 **Scope:** Non-breaking foundation for one full-screen weapon gallery and draft-based editor.
 
+> **Current weapon-art policy:** [Universal Weapon Art & Production Standard](art/weapons/weapon-production-standard.md). This document is the historical 2026-11-07 Arsenal V2 stage-zero baseline; it is not an up-to-date part-count inventory or art acceptance checklist.
+
 ## Current authoritative paths
 - `src/equipment-weapon-families.ts`: AR/AK/HK appearances, 29 factory recipes, 133 body components, six family slots; `WeaponFamily` is an art-family label, **not** an interchangeability group.
 - `src/equipment-weapon-assemblies.ts`: `WeaponConfiguration.version=1`, legacy class and seven accessory slots (including a duplicate generic stock); authoritative physical sockets and pose contact resolver.
