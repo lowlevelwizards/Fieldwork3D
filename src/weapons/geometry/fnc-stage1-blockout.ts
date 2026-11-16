@@ -72,11 +72,11 @@ export function buildFNCStage1Silhouette(
  // side walls than the lower body. Not just a narrower front-side polygon.
  const crownedUpper=()=>{
   const stations=[
-   {x:-6.38,top:1.77,bottom:-1.10,side:1.54,roof:.88},
-   {x:-5.59,top:FNC_FRONT_P13.receiver.roofY,bottom:-1.10,side:1.54,roof:.88},
-   {x:2.17,top:FNC_FRONT_P13.receiver.roofY,bottom:-1.10,side:1.54,roof:.88},
+   {x:-6.38,top:1.77,bottom:-1.10,side:1.39,roof:.88},
+   {x:-5.59,top:FNC_FRONT_P13.receiver.roofY,bottom:-1.10,side:1.39,roof:.88},
+   {x:2.17,top:FNC_FRONT_P13.receiver.roofY,bottom:-1.10,side:1.39,roof:.88},
    {x:FNC_FRONT_P13.receiver.frontX,top:FNC_FRONT_P13.receiver.roofY,
-    bottom:-1.10,side:1.54,roof:.88}
+    bottom:-1.10,side:1.39,roof:.88}
   ] as const;
   const mesh=buildFNCrownMesh(stations.map(s=>({
    x:s.x,top:s.top,bottom:s.bottom,
@@ -89,7 +89,7 @@ export function buildFNCStage1Silhouette(
   mesh.userData.fncFlatStampedUpper=true;
   mesh.userData.fncP5CrownedReceiver=true;
   mesh.userData.fncP5RoofHalfWidth=.88;
-  mesh.userData.fncP5UpperSideHalfWidth=1.54;
+  mesh.userData.fncP5UpperSideHalfWidth=1.39;
   mesh.userData.fncP18BroadStampedUpper=true;
   mesh.userData.fncP6OutwardReceiverEndcaps=true;
   mesh.userData.fncP6ShortenedReceiverFrontX=FNC_FRONT_P13.receiver.frontX;
