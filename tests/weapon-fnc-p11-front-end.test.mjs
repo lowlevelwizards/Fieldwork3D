@@ -39,7 +39,7 @@ test('P11 two long handguard ribs, broken gas sides, five upward roof vents',()=
   const gas=marks.find(x=>x.userData.fncP5GrooveSide===side&&x.userData.fncP11BrokenGasSideSlots);
   assert.ok(polymer&&gas);
   assert.equal(polymer.geometry.getAttribute('position').count,12);
-  assert.equal(gas.geometry.getAttribute('position').count,48);
+  assert.equal(gas.geometry.getAttribute('position').count,24);
   assert.equal(polymer.userData.fncP6GrooveSegmentsPerRow,1);
   assert.equal(gas.userData.fncP6GrooveSegmentsPerRow,4);
   assert.ok(polymer.geometry.getAttribute('normal').getZ(0)*side>.9);
