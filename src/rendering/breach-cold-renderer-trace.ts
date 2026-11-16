@@ -47,13 +47,19 @@ export class ColdRendererTrace{
    hadOwn:boolean}>=[];
  readonly installedHooks:string[]=[];
  readonly skippedHooks:string[]=[];
+ readonly rendererConstructorMs:number;
+ private readonly gl:WebGLRenderingContext|WebGL2RenderingContext;
+ private readonly resources:()=>RendererStartupResources;
+ private readonly now:()=>number;
  closed=false;
  constructor(
-  private readonly gl:WebGLRenderingContext|WebGL2RenderingContext,
-  readonly rendererConstructorMs:number,
-  private readonly resources:()=>RendererStartupResources,
-  private readonly now:()=>number=()=>performance.now()
+  gl:WebGLRenderingContext|WebGL2RenderingContext,
+  rendererConstructorMs:number,
+  resources:()=>RendererStartupResources,
+  now:()=>number=()=>performance.now()
  ){
+  this.gl=gl;this.rendererConstructorMs=rendererConstructorMs;
+  this.resources=resources;this.now=now;
   const target=gl as unknown as WebGlMethods;
   for(const name of COLD_GL_METHODS){
    const value=target[name];
