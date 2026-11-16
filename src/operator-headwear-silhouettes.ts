@@ -224,9 +224,6 @@ const M1_FIT_VOLUMES:readonly HeadwearCuboid[]=[
  * The single visible stamped shell is operator-m56-unified-shell.ts.
  * Keeping the saved headwear identity and fit API avoids old wardrobe breaks.
  */
-/** R5H3 protective police shell: reinforced brow, rounded-block crown and
- * deep side ear guards. No modern ACH rails or detached square earcups.
- */
 const DDR_M56_CUBOIDS:readonly HeadwearCuboid[]=[
  {name:'m56-high-crown',x:0,y:8.05,z:.25,
   width:9.55,height:1.45,depth:10.70},
