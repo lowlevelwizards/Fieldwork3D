@@ -3,7 +3,7 @@
 import {trainingTargetProgress} from '../training/training-targets.ts';
 import {TRIAL_IDS,TRIALS,trialConfig} from '../training/training-trials.ts';
 import {assessTrainingTrial,type TrialAssessment} from '../training/training-scoring.ts';
-import {saveTrainingRecord} from '../training/training-records.ts';
+import {saveTrainingRecord,loadTrainingRecords,trainingRecordKey} from '../training/training-records.ts';
 import type {Session} from '../breach-game.ts';
 import {DEFAULT_TRAINING_CONFIG,TRAINING_LAYOUTS,TRAINING_LAYOUT_LABELS,
  normalizeTrainingConfig,type TrainingConfig} from '../training/training-courses.ts';
@@ -45,6 +45,10 @@ export function createBreachTrainingScreen(hooks:Hooks){
   {killhouse:'KILLHOUSE',range:'EQUIPMENT RANGE',trial:'TACTICAL TRIALS'});
  const trials=select('TRIAL',TRIAL_IDS,
   Object.fromEntries(TRIAL_IDS.map(id=>[id,TRIALS[id].name])));
+ const personalBest=document.createElement('output');
+ personalBest.className='breach-training-personal-best';
+ personalBest.setAttribute('role','status');personalBest.setAttribute('aria-live','polite');
+ trials.wrapper.append(personalBest);
  const layout=select('COURSE',TRAINING_LAYOUTS,TRAINING_LAYOUT_LABELS);
  const squad=select('OPERATORS',['1','2','3','4']);
  const density=select('TARGETS',['none','sparse','standard','dense']);
@@ -114,13 +118,26 @@ export function createBreachTrainingScreen(hooks:Hooks){
    [doors.el,config.doors],[lighting.el,config.lighting]
   ] as const)field.value=value;
   panel.hidden=false;resultPanel.hidden=true;
-  syncVisibleOptions();
+  syncVisibleOptions();renderPersonalBest();
   open=true;root.hidden=false;
   document.body.classList.add('training-setup-open');
   activity.el.focus();
  }
  function retry():void{if(active){lastAssessment=null;
   resultsButton.hidden=true;hooks.onStart({...config});}}
+ function renderPersonalBest():void{
+  const id=trials.el.value as keyof typeof TRIALS;
+  const trial=TRIALS[id];
+  const storage=browserStorage();
+  if(!trial||!storage){personalBest.textContent='NO RECORD ON THIS DEVICE';return;}
+  try{
+   const key=trainingRecordKey(trial);
+   const best=loadTrainingRecords(storage).find(r=>r.key===key);
+   personalBest.textContent=best?'PERSONAL BEST · '+best.grade+' · '+
+    best.score+'/100 · '+best.elapsed.toFixed(1)+'s':
+    'NO RECORD FOR THIS COURSE';
+  }catch{personalBest.textContent='LOCAL RECORDS UNAVAILABLE';}
+ }
  function syncVisibleOptions():void{
   const isRange=activity.el.value==='range';
   const isTrial=activity.el.value==='trial';
@@ -183,8 +200,10 @@ export function createBreachTrainingScreen(hooks:Hooks){
    catch{ /* device storage is optional */ }
   }
   showResult(result,personalBest);
+  renderPersonalBest();
  }
  activity.el.addEventListener('change',syncVisibleOptions);
+ trials.el.addEventListener('change',renderPersonalBest);
  root.addEventListener('keydown',e=>{
   if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}
  });

@@ -42,3 +42,5 @@
 .breach-training-result-stats{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;font:700 12px 'Saira Condensed',sans-serif}
 .breach-training-result-stats>div{padding:10px;border:1px solid #738b7e;background:#213635;border-radius:5px}
 @media(max-width:420px){.breach-training-result-stats{grid-template-columns:1fr}}
+
+.breach-training-personal-best{display:block;margin-top:5px;color:#bed5c1;font:600 11px 'Work Sans',sans-serif;line-height:1.4}
