@@ -285,6 +285,8 @@ export class TacticalScene3D{
   readonly renderer:THREE.WebGLRenderer;
   /** E6.8: only created by explicit ?gpuTrace=1 for one cold startup. */
   readonly coldRendererTrace:ColdRendererTrace|null;
+  /** E6.10: already synchronized initial frame, never a second state tick. */
+  private preparedColdFrame:{camera:THREE.Camera;at:number}|null=null;
   readonly scene=new THREE.Scene();
   readonly camera=new THREE.OrthographicCamera(-320,320,370,-370,.1,2800);
   /** Director lenses share a legal in-room X/Z anchor, but use entirely
@@ -1079,6 +1081,8 @@ export class TacticalScene3D{
    * camera remain alive, avoiding a WebGL context restart on each site.
    */
   applySite(site:Site|null){
+    // A new site cannot reuse the previous scene/camera preparation.
+    this.preparedColdFrame=null;
     this.displayedSite=site;
     this.staticBatches.clear();
     this.repeatedFixtures.clear();
@@ -1606,6 +1610,20 @@ export class TacticalScene3D{
     this.actors.set(a.id,{side:a.side,root,flash,pack,weapon,status,
       beam,beamLast:null,physical,contactShadows});
   }
+  /** Draw exactly the prepared scene without re-running poses, fog or AI. */
+  drawPreparedColdFrame():boolean{
+    const prepared=this.preparedColdFrame;
+    if(!prepared)return false;
+    this.preparedColdFrame=null;
+    try{this.renderMiniatureFocus(prepared.camera);}
+    finally{
+      // Mirrors the ordinary default tactical first-draw bookkeeping.
+      this.bodycamLastQa={active:false,owner:null,masked:0,
+        maskRestored:true,frame:++this.renderFrameSerial,at:prepared.at};
+    }
+    this.markScenePhase('gpuSubmit');
+    return true;
+  }
   update(s:Session,selected:string,dt:number,
     focusedDoorId:string|null=null,omniscient=false,
     replay?:ReplayPresentation|null,
@@ -1614,7 +1632,9 @@ export class TacticalScene3D{
     replayDisclosurePolicy:ReplayDisclosure|null=null,
     replayDoorHistory:ReplayDoorKnowledgeHistory|null=null,
     personalGroundEvidence:ReadonlySet<string>|null=null,
-    replayWindowHistory:ReplayWindowKnowledgeHistory|null=null){
+    replayWindowHistory:ReplayWindowKnowledgeHistory|null=null,
+    deferFirstDraw=false){
+    this.preparedColdFrame=null;
     if(this.view.mode==='plan2d')return;
     if(this.profileSceneUpdate){
       this.scenePhaseStart=performance.now();
@@ -2705,6 +2725,13 @@ export class TacticalScene3D{
       cameraOwner.head.traverse(hide);
     }
     this.markScenePhase('postCamera');
+    // Quick Play cold prewarm only: all visibility, fog, lights, camera and
+    // shadow-update flags are now live before compileAsync. Keep the first
+    // WebGL draw for a separate paint turn, without a second state update.
+    if(deferFirstDraw&&camera===this.projectionCamera&&masked.length===0){
+      this.preparedColdFrame={camera,at:s.seconds};
+      return;
+    }
     try{this.renderMiniatureFocus(camera);}
     finally{
       for(const [mesh,visible] of masked)mesh.visible=visible;

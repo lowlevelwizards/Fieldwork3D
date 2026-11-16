@@ -8,7 +8,7 @@ export type RendererStartupResources=Readonly<{
 }>;
 export type RendererStartupCall=Readonly<{count:number;cpuWallMs:number}>;
 export type RendererStartupCapture=Readonly<{
- phase:'compileAsync'|'firstFrame';wallMs:number;
+ phase:'preflight'|'compileAsync'|'firstFrame';wallMs:number;
  resourcesBefore:RendererStartupResources;
  resourcesAfter:RendererStartupResources;
  calls:Readonly<Record<string,RendererStartupCall>>

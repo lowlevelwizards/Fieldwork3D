@@ -27,6 +27,7 @@ export type QuickPlayControllerHooks={
   getViewMode:()=>ViewMode;
   layout:()=>void;
   refreshHud:()=>void;
+  prepareFirstFrame:()=>void;
   renderFirstFrame:()=>void;
   hideMenu:()=>void;
   showBriefing:()=>void;
@@ -192,7 +193,27 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     // Shader preparation can use KHR_parallel_shader_compile on capable
     // browsers. It does not pre-render the game or upload the whole wardrobe.
     // Keep an A/B opt-out: ?gpuWarmup=0 allows identical-seed comparisons.
-    let shaderPreparationMs=0;
+    let shaderPreparationMs=0,preflightMs=0;
+    // E6.10: the old compileAsync saw the unposed, largely invisible scene.
+    // Apply exactly the initial frame's visual state *without drawing* first.
+    // The ordinary final draw reuses this preparation, not a second update.
+    if(stage&&config.getViewMode()!=='plan2d'&&
+       config.boot.gpuWarmupEnabled&&config.boot.coldPrewarmEnabled){
+      quickPlayCheckpoint(95,'Preparing first-frame visibility',
+        'Synchronizing actual operator, fog, light and shadow variants');
+      await allowQuickPlayPaint();
+      if(id!==quickPlayRun)return;
+      const preflightStart=performance.now();
+      try{
+        if(coldTrace)coldTrace.capture('preflight',()=>
+          config.prepareFirstFrame());
+        else config.prepareFirstFrame();
+      }catch(error){
+        // An interrupted preflight must not block the old render path.
+        console.warn('[Quick Play preflight fallback]',error);
+      }
+      preflightMs=Math.round(performance.now()-preflightStart);
+    }
     if(stage&&config.getViewMode()!=='plan2d'&&
        config.boot.gpuWarmupEnabled){
       quickPlayCheckpoint(96,'Preparing GPU programs',
@@ -240,7 +261,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
       (window as Window&{__fieldworkE69?:unknown}).__fieldworkE69={
         schema:'fieldwork-e6.9-cold-cpu-v1',
         seed,shaderWarmupEnabled:config.boot.gpuWarmupEnabled,
-        shaderPreparationMs,firstFrameMs,
+        shaderPreparationMs,preflightMs,firstFrameMs,
         note:'Chrome DevTools CPU samples, not GPU time or measured iPhone FPS.'
       };
     }
@@ -249,7 +270,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
       // Local debug-only readout for fresh-page cold A/B automation. No
       // upload, no persistent storage and no WebGL instrumentation afterward.
       const evidence={seed,shaderWarmupEnabled:config.boot.gpuWarmupEnabled,
-        shaderPreparationMs,firstFrameMs,...coldRendererEvidence};
+        shaderPreparationMs,preflightMs,firstFrameMs,...coldRendererEvidence};
       (window as Window&{__fieldworkE68?:unknown}).__fieldworkE68=evidence;
       console.info('[E6.8 cold renderer]',evidence);
     }
@@ -271,7 +292,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
       seed,scale,building:recipe.archetype,mission:recipe.mission,
       generationMs:generated.generationMs,sessionMs,sceneMs,
       operatorMs,operatorStageMs,hudMs,firstFrameMs,totalMs,
-      shaderPreparationMs
+      shaderPreparationMs,preflightMs
     });
     // Now that an actual complete frame exists behind the overlay, allow
     // live RAF updates. Never declare READY before the render has returned.
