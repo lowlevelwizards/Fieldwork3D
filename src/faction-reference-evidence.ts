@@ -7,6 +7,14 @@ export type HistoricalEvidence={
  published?:string;claim:string;
 };
 export const HISTORICAL_EVIDENCE:readonly HistoricalEvidence[]=[
+ {id:'us-m16a2-1991',title:'RIA celebrates small arms past as future takes off',
+  publisher:'U.S. Army',url:'https://www.army.mil/article/34904/ria_celebrates_small_arms_past_as_future_takes_off_with_opening_of_the_soldier_weapons_readiness_cen',
+  kind:'official',published:'2010',
+  claim:'Rock Island Arsenal documented producing M16A2 spare parts in support of Desert Storm during 1991.'},
+ {id:'us-iba-2003',title:'On Point II: U.S. Army in Operation Iraqi Freedom',
+  publisher:'U.S. Army University Press',url:'https://www.armyupress.army.mil/Portals/7/Primer-on-Urban-Operation/Documents/OnPointII.pdf',
+  kind:'publication',
+  claim:'US Army 2003 Iraq deployment included variable Interceptor body armor coverage; accelerated fielding followed in May 2003.'},
  {id:'us-ocp-2015',title:'Soldiers to field Operational Camouflage Pattern for uniforms',
   publisher:'U.S. Army',url:'https://www.army.mil/article/149740/soldiers_to_field_operational_camouflage_pattern_for_uniforms',
   kind:'official',published:'2015-06-02',
