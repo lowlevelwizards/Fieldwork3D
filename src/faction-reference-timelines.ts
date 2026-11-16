@@ -4,19 +4,14 @@
  */
 import {FACTION_REFERENCES,type ReferenceEnvironment,type ReferenceOrganization}
  from './faction-reference-catalog.ts';
+import {HISTORICAL_ISSUE_RECORDS,type HistoricalEquipmentAssociation}
+ from './faction-reference-equipment-data.ts';
+import {HISTORICAL_EVIDENCE,type HistoricalEvidence}
+ from './faction-reference-evidence.ts';
 
-export type TimelineConfidence='unverified'|'tentative'|'verified';
-export type TimelineEvidence={
- id:string; title:string; kind:'official'|'photograph'|'publication'|'other';
- url?:string; note?:string; confidence:TimelineConfidence;
-};
-/** Reserved for later research. Historical availability is independent of art fidelity. */
-export type TimelineEquipmentAssociation={
- assetId:string; category:'weapon'|'headwear'|'uniform'|'armor'|'carriage'|'other';
- startYear:number;endYear:number;
- availability:'experimental'|'emerging'|'standard'|'legacy'|'surplus';
- evidenceIds:readonly string[]; confidence:TimelineConfidence; role?:string;
-};
+/** Compatibility aliases: FT1.1 separates historical evidence from game assets. */
+export type TimelineEvidence=HistoricalEvidence;
+export type TimelineEquipmentAssociation=HistoricalEquipmentAssociation;
 export type TimelineOrganization={
  id:string; name:string; country:string; classification:ReferenceOrganization;
  /** Successor relationships must be explicitly researched, never inferred from country. */
@@ -122,7 +117,9 @@ export const FACTION_TIMELINES:readonly FactionTimeline[]=DEFINITIONS.map(def=>(
   referenceId,representativeYear,
   environment:referenceById.get(referenceId)?.environment??'mixed'
  })),
- equipment:[],evidence:[]
+ equipment:HISTORICAL_ISSUE_RECORDS.filter(a=>a.timelineId===def.id),
+ evidence:HISTORICAL_EVIDENCE.filter(e=>HISTORICAL_ISSUE_RECORDS.some(a=>
+  a.timelineId===def.id&&a.evidenceIds.includes(e.id)))
 }));
 /** First definition owns broad organization classification; subunits may differ. */
 const organizationRegistry=new Map<string,TimelineOrganization>();
