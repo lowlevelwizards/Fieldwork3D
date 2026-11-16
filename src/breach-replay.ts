@@ -44,7 +44,7 @@ export type ActorFrame=Pick<TeamActor,
   'lastHitSeverity'|'downPose'|'downClearance'|'flashUntil'|'suppression'|
   'wedgeRemaining'|'carryingId'|'carriedById'|
   'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
-  'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
+  'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'nvgDeployed'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
   'weaponYaw'|'stability'|'recoil'|'lastShotAt'|'fireMode'|'burstCount'|'skills'|
   'squeeze'|'squeezeYaw'|'squeezeTime'|
