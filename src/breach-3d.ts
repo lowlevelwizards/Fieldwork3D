@@ -233,6 +233,9 @@ export class TacticalScene3D{
   private readonly nearbyAllyScratch:Pt[]=[];
   private fogMemoryPaints=0;
   private fogSightPaints=0;
+  /** Dirtied CanvasTexture versions, not measured completed GPU uploads. */
+  private fogTextureUpdateRequests=0;
+  private fogComposeMs=0;
   private lastFogSession:Session|null=null;
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
@@ -253,6 +256,9 @@ export class TacticalScene3D{
       shadowMapSize:this.sun.shadow.mapSize.x,
       fogMemoryPaints:this.fogMemoryPaints,
       fogSightPaints:this.fogSightPaints,
+      fogTextureUpdateRequests:this.fogTextureUpdateRequests,
+      fogTextureBytesPerRequest:this.fogCanvas.width*this.fogCanvas.height*4,
+      fogComposeMs:this.profileSceneUpdate?this.fogComposeMs:null,
       presentationSight:this.presentationSight.stats(),
       presentationSightPolicy:this.presentationSightPolicy,
       scenePhases:this.profileSceneUpdate?this.scenePhases:null,
@@ -1110,6 +1116,7 @@ export class TacticalScene3D{
       this.fogMemoryCanvas.height=fogSize.height;
     replaceTacticalFogGeometry(this.smoothFog,this.exteriorKnownFog,site);
     this.fogTexture.needsUpdate=true;
+    this.fogTextureUpdateRequests++;
     this.composeSiteWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
     this.fogAt=-1;this.lastFogSignature='';this.lastFogSession=null;
@@ -1588,6 +1595,7 @@ export class TacticalScene3D{
       this.actorPhaseCosts.otherPoseMs=0;
       this.actorPhaseCosts.visualKitMs=0;
       this.actorPhaseCosts.receiverAtlasMs=0;
+      this.fogComposeMs=0;
     }
     // Never memoize reconstructed current sight during historical replay.
     this.presentationSight.begin(s,allowPresentationSightReuse(
@@ -2556,6 +2564,9 @@ export class TacticalScene3D{
       const fogSignature=fogSessionFingerprint(s);
       // Two sessions may have identical knowledge counts but different sites.
       if(sessionChanged||fogSignature!==this.lastFogSignature){
+        // Attribute Canvas2D composition separately from the later WebGL
+        // upload; needsUpdate only *requests* the latter on renderer render.
+        const fogComposeStart=this.profileSceneUpdate?performance.now():0;
         this.fogAt=0;this.lastFogSignature=fogSignature;
         this.lastFogSession=s;
         // Static exploration memory changes less often than live sight.
@@ -2580,6 +2591,9 @@ export class TacticalScene3D{
         paintFogVisibility(this.fogContext,s);
         this.fogSightPaints++;
         this.fogTexture.needsUpdate=true;
+        this.fogTextureUpdateRequests++;
+        if(this.profileSceneUpdate)
+          this.fogComposeMs=performance.now()-fogComposeStart;
       }
     }else if(omniscient)this.fogAt=-1;
     this.markScenePhase('fog');
