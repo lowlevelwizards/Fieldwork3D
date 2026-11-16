@@ -11,6 +11,7 @@ import {FrameMeter} from './breach-perf.ts';
 import type {PostReadyRuntimeFrame}
  from './rendering/breach-post-ready-attribution.ts';
 import {shouldSubmitIdle3D} from './rendering/breach-idle-3d-cadence.ts';
+import {briefing3DDecision} from './rendering/breach-briefing-idle-policy.ts';
 import {PerformanceTimeline,emptyPerformanceSceneCosts,
  type PreviousFrameWork}
  from './breach-performance-timeline.ts';
@@ -56,6 +57,7 @@ export type BreachRuntimeLoopHooks={
  getViewMode:()=>ViewMode;
  isMissionTerminal:(session:Session)=>boolean;
  isStudioVisible:()=>boolean;
+ isBriefingVisible?:()=>boolean;
  getReplayPresentation:()=>ReplayPresentation|null;
  setReplayPresentation:(value:ReplayPresentation|null)=>void;
  invalidateFog:()=>void;
@@ -167,6 +169,7 @@ let last3dInputAt=idle3dAuto?performance.now():-Infinity;
 let last3dUpdateAt=-Infinity;
 let last3dSession:Session|null=null,last3dMode:RuntimeFrameMode|null=null;
 let idle3dSkipped=0;
+let briefing3dWasHeld=false;
 if(idle3dExperiment){
  const markInput=()=>{last3dInputAt=performance.now();};
  for(const event of ['pointerdown','pointermove','touchstart',
@@ -340,17 +343,34 @@ function tick(now:number){
   const studioOccludesTactical=config.isStudioVisible()&&
    !replayQuickVideo.active;
   const stageAvailable=!studioOccludesTactical&&!!stage&&viewMode!=='plan2d';
+  // E6.13: briefings dim/blur the map. The already prepared first scene
+  // remains visible underneath, but repeating WebGL submissions here
+  // wastes idle phone/SwiftShader work. Never delay the first image or the
+  // first frame after dismissal; do not affect live/replay/photo/canvas.
+  const briefing3d=briefing3DDecision({
+   enabled:config.boot.briefingIdle3DEnabled,
+   briefingVisible:config.isBriefingVisible?.()??false,
+   frameMode,phase:state.phase,replaying,photoActive,
+   studioOccludes:studioOccludesTactical,viewMode,
+   sceneReady:last3dSession===state&&last3dMode==='idle'&&
+    Number.isFinite(last3dUpdateAt),
+   previouslyHeld:briefing3dWasHeld
+  });
+  briefing3dWasHeld=briefing3d.hold;
   // A fresh planning transition gets a full input-grace window, even
   // without a pointer event (e.g. after an automatic mission transition).
   if(idle3dAuto&&frameMode==='idle'&&
      (last3dMode!=='idle'||last3dSession!==state))last3dInputAt=now;
+  // Preserve the existing idle cadence decision (and its runtime test
+  // contract). The briefing hold only vetoes an otherwise normal 3D draw;
+  // its dismissal overrides a pending idle cadence delay.
   const updated3d=stageAvailable&&(photoActive?!!config.photoNeedsFrame?.():shouldSubmitIdle3D({
    enabled:idle3dExperiment,mode:frameMode,viewMode,
    studioOccludes:studioOccludesTactical,now,
    lastSceneAt:last3dUpdateAt,lastSceneMode:last3dMode,
    sameSession:last3dSession===state,lastInputAt:last3dInputAt,
    inputGraceMs:idle3dAuto?1200:undefined
-  }));
+  })||briefing3d.forceReveal)&&!briefing3d.hold;
   if(stageAvailable&&!updated3d)idle3dSkipped++;
   // The presentation-only idle clock must advance by actual elapsed wall
   // time since the prior 3D submission, not by one skipped RAF's dt.
@@ -681,7 +701,7 @@ function tick(now:number){
  function resetPresentation():void{
   accum=0;hudAt=0;
   last3dUpdateAt=-Infinity;last3dSession=null;last3dMode=null;
-  idle3dSkipped=0;
+  idle3dSkipped=0;briefing3dWasHeld=false;
   previousPerfJs=undefined;previousPerfSim=undefined;
   previousPerfMode=undefined;previousPerfWork=undefined;
   previousHotSim=undefined;
