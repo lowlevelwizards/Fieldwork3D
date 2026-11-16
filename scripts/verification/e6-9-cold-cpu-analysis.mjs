@@ -70,6 +70,6 @@ export function summarizeColdCpuProfile(profile,{maxFrames=24}={}){
    (a,b)=>b[1].approxMs-a[1].approxMs)),
   topExclusiveSampleFrames:[...leafCounts.values()].sort(
    (a,b)=>b.approxMs-a.approxMs).slice(0,maxFrames),
-  warning:'DevTools statistical JS sampling and sample intervals; includes idle/native waits and sampling overhead. Frames and buckets are diagnostic, not exclusive GPU cost, FPS, or true CPU utilization.'
+  warning:'DevTools statistical JS sampling and sample intervals; includes idle/native waits and sampling overhead. Frames and buckets are diagnostic, not GPU execution time, FPS, exclusive CPU cost, or true CPU utilization.'
  };
 }
