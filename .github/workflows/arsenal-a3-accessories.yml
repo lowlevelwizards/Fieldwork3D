@@ -1,0 +1,30 @@
+name: Arsenal A3 accessory geometry (feature branch)
+on:
+  push:
+    branches: [feat/arsenal-a3-accessory-unification]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  a3:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Critical accessory, saved equipment, HK and weapon light regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/arsenal-a3-accessory-geometry.test.mjs \
+            tests/arsenal-a2-material-unification.test.mjs \
+            tests/weapon-fnc-p30-front-sight-inset.test.mjs \
+            tests/equipment-20-12-weapon-light.test.mjs \
+            tests/equipment-19-02-weapon-silhouettes.test.mjs \
+            tests/arsenal-v2-assembly.test.mjs
+      - name: Typecheck
+        run: npm run check
+      - name: Build
+        run: npm run build
