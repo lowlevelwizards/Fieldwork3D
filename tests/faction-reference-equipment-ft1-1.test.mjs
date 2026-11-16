@@ -13,7 +13,7 @@ import {auditFactionTimelines,resolveTimelineYear}
 test('FT1.1 all researched records resolve without rewriting FT1.0 appearances',()=>{
  const a=auditHistoricalEquipment();
  assert.deepEqual(a.issues,[]);
- assert.equal(a.researchedTimelines,4);
+ assert.equal(a.researchedTimelines,9);
  assert.ok(a.associations>=15);
  assert.ok(a.sourcedClaims>=10);
  assert.equal(a.totalTimelines,34);
