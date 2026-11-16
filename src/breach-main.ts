@@ -1626,6 +1626,7 @@ const runtimeLoop=createBreachRuntimeLoop({
  getSelected:()=>selected,getSelectedActor:()=>uid(selected),
  getDoorFocusId:()=>doorFocusId,getStage:()=>stage,getViewMode:()=>viewMode,
  isMissionTerminal,isStudioVisible:()=>studioBridge.visible,
+ isBriefingVisible:()=>!ui.briefingPanel.hidden,
  getReplayPresentation:()=>replayPresentation,
  setReplayPresentation:value=>{replayPresentation=value;},
  invalidateFog:()=>fog2D.invalidate(),advanceReplayCamera,

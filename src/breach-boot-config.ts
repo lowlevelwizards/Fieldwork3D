@@ -30,6 +30,7 @@ export type BreachBootConfig=Readonly<{
  perfOverlay:boolean;
  idle3dExperiment:boolean;
  idle3dDisabled:boolean;
+ briefingIdle3DEnabled:boolean;
  awareness:string|null;
  gpuWarmupEnabled:boolean;
  coldPrewarmEnabled:boolean;
@@ -69,6 +70,7 @@ export function parseBreachBootConfig(query:string|URLSearchParams):BreachBootCo
   perfOverlay:params.has('perf'),
   idle3dExperiment:params.get('idle3d')==='30',
   idle3dDisabled:params.get('idle3d')==='60',
+  briefingIdle3DEnabled:params.get('briefingIdle')!=='0',
   awareness:params.get('awareness'),
   gpuWarmupEnabled:params.get('gpuWarmup')!=='0',
   coldPrewarmEnabled:params.get('coldPrewarm')!=='0',
