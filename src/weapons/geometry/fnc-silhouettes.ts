@@ -11,12 +11,14 @@ import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_MUZZLE_METAL,HK556_MAG_METAL,HK556_MAG
  from './weapon-visual-palette.ts';
 const REQUIRED:Readonly<Record<FamilyPartSlot,string>>={
  receiver:'fnc-service-receiver',stock:'fnc-tube-folder',
- grip:'fnc-service-grip',magazine:'fnc-mag30',
+ grip:'fnc-service-grip',magazine:'ar-mag30',
  handguard:'fnc-service-forearm',barrel:'fnc-177-service'
 };
 export function addFNCFamily(root:THREE.Group,build:WeaponFamilyBuild,
  showFactoryMuzzle=true):void{
- if(build.family!=='fnc'||Object.entries(REQUIRED).some(([slot,id])=>
+ const magazines=['ar-mag20','ar-mag30','ar-magpoly','fnc-mag30'];
+ if(build.family!=='fnc'||!magazines.includes(build.parts.magazine)||
+  Object.entries(REQUIRED).some(([slot,id])=>slot!=='magazine'&&
    build.parts[slot as FamilyPartSlot]!==id))
   throw new Error('Unimplemented FNC factory appearance');
  const form=buildFNCStage1Silhouette(HK_BLACK_METAL,{
@@ -25,7 +27,7 @@ export function addFNCFamily(root:THREE.Group,build:WeaponFamilyBuild,
   handguard:FAL_DARK_POLYMER,magazine:HK556_MAG_METAL,
   stamp:HK556_MAG_RIB,barrel:HK_BLACK_METAL,
   muzzle:HK_MUZZLE_METAL,shadow:FAL_VENT_SHADOW
- },showFactoryMuzzle);
+ },showFactoryMuzzle,build.parts.magazine);
  const index:Record<FamilyPartSlot,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
