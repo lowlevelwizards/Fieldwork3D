@@ -24,9 +24,9 @@ promised content or selectable Dispatch campaign agencies.
   and weapon preset choices, not the user's existing owned inventory.
 - Guards run inside campaign-state mutation functions for equipment, weapon
   platform/preset changes and purchases. They are not just disabled UI rows.
-- Generic recruitment remains disabled for the pilot until new hires can be
-  issued a validated SWAT appearance and weapon; current four operators and
-  their career progression remain playable.
+- D4.0 now enables recruitment with a validated SWAT appearance and carbine
+  issued through the same authority as the starting operators. Recruitment
+  still respects normal funds and roster limits.
 - Unsupported custom Arsenal builds, attachment editing, broad wardrobe edits
   and kit-preset applications remain locked for the pilot until proper
   policy-backed flows exist. Standalone Studio batch saves and historical
