@@ -1,0 +1,30 @@
+name: L1.3 Powered Lighting Parity
+on:
+  pull_request:
+    paths:
+      - 'src/equipment-lighting-visuals.ts'
+      - 'src/equipment-site-lighting.ts'
+      - 'src/equipment-site-power.ts'
+      - 'src/breach-2d-world-renderer.ts'
+      - 'src/breach-3d.ts'
+      - 'src/rendering/breach-site-light-presenter.ts'
+      - 'tests/l1-3-powered-lighting-parity.test.mjs'
+      - '.github/workflows/l1-3-powered-lighting-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  l1-3:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Shared visuals, power, occlusion, replay and legacy lighting
+        run: |
+          node --experimental-strip-types --test tests/l1-0-lighting-baseline.test.mjs tests/l1-1-authoritative-site-power.test.mjs tests/l1-2-physical-power-controls.test.mjs tests/l1-3-powered-lighting-parity.test.mjs tests/equipment-26-04-lighting-presentation.test.mjs
+      - name: Production TypeScript and build
+        run: npm run build
