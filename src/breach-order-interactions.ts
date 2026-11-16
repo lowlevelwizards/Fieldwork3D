@@ -38,6 +38,12 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       (n.interaction==='secure-civilian'||
        n.interaction==='follow-civilian');
     if(!contactCommand&&!near(a.p,n.p,7)){
+      // Once an electrical action has begun, losing the contact position
+      // cancels it rather than letting an absent hand finish remotely.
+      if((n.interaction==='power-on'||n.interaction==='power-off')&&
+         a.actionTimer>0){
+        failCurrentOrder(s,a,n,'POWER CONTROL CONTACT LOST');return true;
+      }
       approach(a,n.p,dt,s,.65);return true;
     }
     if(n.interaction==='release-civilian'){
