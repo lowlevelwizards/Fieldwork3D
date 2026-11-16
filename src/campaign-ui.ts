@@ -34,7 +34,7 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;training:()=>void;
  newSandbox:()=>void;continueSandbox:()=>void;
- createSandbox:(draft:CampaignCreationDraft)=>Promise<boolean>;
+ createSandbox:(draft:CampaignCreationDraft)=>Promise<boolean|null>;
  exportSandbox:()=>void;showMenu:()=>void;
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
