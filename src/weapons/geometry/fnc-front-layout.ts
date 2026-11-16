@@ -14,7 +14,7 @@ export const FNC_FRONT_P13=Object.freeze({
  polymer:Object.freeze({
   startX:3.25,fullStartX:3.80,fullEndX:10.85,endX:11.68,
   fullScale:1.065,endScale:.98,
-  pivotY:-1.11,heightScale:1.30,liftY:.38,lowerFlare:.43,
+  pivotY:-1.11,heightScale:1.20,liftY:.38,lowerFlare:.23,
   grooveStartX:4.10,grooveEndX:10.97,
   grooveYs:Object.freeze([-.81,-1.53])
  }),
@@ -22,7 +22,7 @@ export const FNC_FRONT_P13=Object.freeze({
   startX:1.95,endX:15.10,
   lowerStartX:10.85,lowerFullX:11.80,
   transitionStartX:12.65,transitionEndX:12.96,
-  bottomY:-.60,frontBottomY:-1.57,shoulderY:.48,topY:1.85,
+  bottomY:-.60,frontBottomY:-1.10,shoulderY:.48,topY:1.50,
   bottomHalfZ:.58,sideHalfZ:.80,roofHalfZ:.62,
   lowerLines:Object.freeze([
    // The front gas-block markings form one vertically stacked pair,
@@ -43,9 +43,9 @@ export const FNC_FRONT_P13=Object.freeze({
  sight:Object.freeze({
   baseStartX:12.65,baseShoulderX:12.96,
   baseFlatStartX:13.40,baseEndX:15.10,
-  baseBottomY:-.58,baseRearTopY:1.85,
-  baseTopY:1.73,baseDepth:1.76,
-  earX:14.26,earBottomY:1.68,earShoulderY:2.53,earTopY:2.77,
+  baseBottomY:-.58,baseRearTopY:1.50,
+  baseTopY:1.38,baseDepth:1.76,
+  earX:14.26,earBottomY:1.33,earShoulderY:2.18,earTopY:2.42,
   earHalfSpacing:.65,earLength:.82,earDepth:.76
  }),
  muzzle:Object.freeze({centerX:18.51,length:1.98,
