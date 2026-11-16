@@ -1,5 +1,7 @@
 name: L1.4 Flashlight Critical
 on:
+  push:
+    branches: [feature/l1-4-flashlight-usability-20261116]
   pull_request:
     paths:
       - 'src/equipment-weapon-light-operations.ts'
