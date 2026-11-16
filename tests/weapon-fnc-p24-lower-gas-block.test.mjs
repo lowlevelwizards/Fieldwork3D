@@ -56,7 +56,7 @@ test('P24 metal gas block enters the polymer and forms one continuous lower cast
  assert.ok(near(lowerAt(L.gas.lowerFullX),L.gas.frontBottomY));
  assert.ok(near(lowerAt(L.gas.transitionStartX),L.gas.frontBottomY));
  assert.ok(near(lowerAt(L.gas.endX),L.gas.frontBottomY));
- assert.ok(bounds(gas).min.y<bounds(poly).max.y-1.8);
+ assert.ok(bounds(gas).min.y<bounds(poly).max.y-1.40);
  assert.equal(ears.length,2);
  assert.ok(ears.every(x=>bounds(x).intersectsBox(bounds(gas))));
  clearWeaponSilhouette(g);m.dispose();

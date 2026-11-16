@@ -38,7 +38,7 @@ test('P13 handstop has one faceted molded collar and no rectangular fin',()=>{
  assert.ok(stop&&polymer);
  assert.ok(size(stop,'x')>.86&&size(stop,'x')<.90);
  assert.ok(size(stop,'z')>size(polymer,'z')+.11);
- assert.ok(size(stop,'y')>3.30&&size(stop,'y')<3.60);
+ assert.ok(size(stop,'y')>2.75&&size(stop,'y')<3.05);
  assert.equal(stop.geometry.type,'BufferGeometry');
  assert.equal(all(g,'fncP12ChunkyHandstop').length,1);
  clearWeaponSilhouette(g);m.dispose();

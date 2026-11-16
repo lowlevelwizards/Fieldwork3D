@@ -28,7 +28,7 @@ test('P22 narrow metal neck bridges a deliberately exposed receiver-handguard ga
  assert.ok(poly&&upper&&lower&&gas);
  assert.ok(close(box(poly).min.x,3.25));
  assert.ok(close(box(upper).max.x,2.75));
- assert.ok(close(box(lower).max.x,3.05));
+ assert.ok(close(box(lower).max.x,2.75));
  assert.ok(box(poly).min.x-box(upper).max.x>.45,
   'the upper-to-polymer gap must be visibly open');
  assert.ok(box(poly).min.x>box(lower).max.x,
@@ -71,10 +71,10 @@ test('P14 front base no longer forms a tall pedestal under twin FAL ears',()=>{
  const rear=one(g,'fncP8CompactRearSight');
  assert.ok(base&&gas&&rear&&touch(base,gas));
  assert.equal(ears.length,2);
- assert.ok(close(box(base).max.y,1.85));
+ assert.ok(close(box(base).max.y,1.50));
  assert.equal(base,gas,'no extra sight-base mesh');
  assert.ok(size(base,'x')>13.0&&size(base,'x')<13.3);
- assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.77)));
+ assert.ok(ears.every(e=>touch(e,base)&&close(box(e).max.y,2.42)));
  assert.ok(box(ears[0]).max.y-box(gas).max.y<1.15,
   'P15 twin ears remain seated within the taller gas/sight structure');
  assert.ok(size(ears[0],'z')<.78);

@@ -34,7 +34,7 @@ test('P28 both front gas-block markings have one centered X interval',()=>{
 test('P28 preserve distinct row heights, shades and 1.57 x 0.31 proportions',()=>{
  const [top,bottom]=F.gas.lowerLines;
  assert.equal(top.y,F.gas.ventSideYs[0]);
- assert.ok(close(bottom.y,-.34));
+ assert.ok(close(bottom.y,-.37));
  assert.equal(top.shade,145);
  assert.equal(bottom.shade,171);
  assert.ok(close(F.gas.ventHeight,.31));

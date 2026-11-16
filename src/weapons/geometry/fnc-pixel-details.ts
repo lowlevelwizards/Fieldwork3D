@@ -11,7 +11,7 @@ type Tile='slot'|'lower-right'|'lower-left'|'gas-side'|'gas-roof'|'polymer'|'bla
 type Bounds=readonly [number,number,number,number];
 const TILE=128,COLS=4,ROWS=2;
 const TILES:Readonly<Record<Tile,{col:number;row:number;bounds:Bounds}>>={
- 'slot':{col:0,row:0,bounds:[-6.40,2.80,-1.20,1.95]},
+ 'slot':{col:0,row:0,bounds:[-6.40,2.80,-1.20,1.60]},
  'lower-right':{col:1,row:0,bounds:[-6.40,2.80,-3.60,-1.00]},
  'lower-left':{col:2,row:0,bounds:[-6.40,2.80,-3.60,-1.00]},
  'gas-side':{col:3,row:0,bounds:[F.gas.startX,F.gas.endX,F.gas.frontBottomY,F.gas.topY]},
@@ -31,8 +31,8 @@ const polymerY=(v:number)=>{
 function pixelValue(tile:Tile,x:number,y:number):number{
  if(tile==='slot'){
   // Rear opening and its continuous, narrower forward charging track.
-  if(inside(x,y,-1.22,.68,-.20,.60)||
-     inside(x,y,.68,2.55,.29,.60))return 108;
+  if(inside(x,y,-1.22,.68,-.55,.17)||
+     inside(x,y,.68,2.55,-.05,.20))return 108;
   return 255;
  }
  if(tile==='lower-right'||tile==='lower-left'){

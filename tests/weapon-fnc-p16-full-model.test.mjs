@@ -23,14 +23,14 @@ test('P17 integrated lower drops squarely around STANAG, no added magwell slab',
  assert.ok(upper&&lower&&well&&mag);
  assert.equal(well,lower,'magazine socket should be an uninterrupted lower mesh');
  assert.ok(lower.userData.fncP17SinglePieceMagwell);
- assert.ok(box(well).max.x>box(upper).max.x+.25&&
-  box(well).max.x<box(upper).max.x+.35,
-  'P22 square socket projects beyond unchanged upper receiver nose');
+ assert.ok(near(box(well).max.x,box(upper).max.x)&&
+  L.receiver.magwellFrontX<box(upper).max.x-.25,
+  'P29 socket mouth sits behind the unchanged upper receiver nose');
  assert.ok(touch(well,mag),'30-round magazine must penetrate the lower');
  assert.ok(box(mag).min.x< L.receiver.magazineCenterX);
  assert.ok(box(mag).max.x> L.receiver.magazineCenterX);
  assert.ok(box(mag).max.y> -3.34+.40);
- assert.ok(near(L.receiver.magazineCenterX,1.05));
+ assert.ok(near(L.receiver.magazineCenterX,.45));
  assert.ok(near(sz(well,'z'),3.42),
   'integrated magwell must not be the former thick 3.64 unit slab');
  const ribs=many(g,'fncStampedMagazineRib');
@@ -46,7 +46,7 @@ test('P16 twin-ear guards chamfered but keep FAL open silhouette',()=>{
  assert.equal(ears.length,2);
  assert.ok(ears.every(e=>e.geometry.type==='ExtrudeGeometry'));
  assert.ok(ears.every(e=>touch(e,base)));
- assert.ok(ears.every(e=>near(box(e).max.y,2.77)));
+ assert.ok(ears.every(e=>near(box(e).max.y,2.42)));
  assert.ok(ears.every(e=>sz(e,'x')<.85&&sz(e,'y')<1.2));
  const sorted=ears.slice().sort((a,b)=>box(a).min.z-box(b).min.z);
  assert.ok(box(sorted[0]).max.z<box(sorted[1]).min.z-.30);

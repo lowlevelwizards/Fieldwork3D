@@ -53,7 +53,7 @@ test('P10: middle sheet longer along X, thinner along Z, still connects both rai
  assert.ok(plate&&top&&lower);
  assert.ok(size(plate,'x')>3.5&&size(plate,'x')<3.8);
  assert.ok(size(plate,'z')>.58&&size(plate,'z')<.70);
- assert.ok(size(plate,'z')<size(lower,'z')-.4);
+ assert.ok(size(plate,'z')<size(lower,'z')-.25);
  assert.ok(box(plate).max.z<box(top).max.z-.15);
  assert.ok(intersect(plate,top)&&intersect(plate,lower));
  assert.ok(box(plate).min.x>box(lower).min.x+.70,

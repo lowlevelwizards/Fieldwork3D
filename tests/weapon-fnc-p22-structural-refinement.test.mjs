@@ -27,9 +27,9 @@ const pixel=(col,row,x,y,b)=>{
 };
 test('P22.1: the one-piece magwell visibly surrounds AR 20/30/poly magazine mouths',()=>{
  const m=new THREE.MeshBasicMaterial();
- assert.equal(L.receiver.magwellRearX,-.98);
- assert.equal(L.receiver.magwellFrontX,3.05);
- assert.equal(L.receiver.frontX,2.75,'do not stretch receiver upper');
+ assert.equal(L.receiver.magwellRearX,-1.58);
+ assert.equal(L.receiver.magwellFrontX,2.45);
+ assert.equal(L.receiver.frontX,2.75,'keep visible receiver shoulder ahead of mouth');
  for(const magStyle of ['ar-mag20','ar-mag30','ar-magpoly']){
   const g=buildFNCStage1Silhouette(m,{},true,magStyle);
   const well=one(g,'fncP22ComfortableSTANAGHousing'),
@@ -42,7 +42,12 @@ test('P22.1: the one-piece magwell visibly surrounds AR 20/30/poly magazine mout
   assert.ok(box(well).intersectsBox(box(mag)),'magazine remains seated');
   assert.equal(well.geometry.getAttribute('position').count,84,'eight-corner integrated lower');
   assert.ok(close(box(upper).max.x,L.receiver.frontX));
-  assert.ok(close(box(well).max.x,L.receiver.magwellFrontX));
+  assert.ok(close(box(well).max.x,L.receiver.frontX));
+  const pos=well.geometry.getAttribute('position');
+  let lipFront=-Infinity;
+  for(let i=0;i<pos.count;i++)if(pos.getY(i)<-2.58)
+   lipFront=Math.max(lipFront,pos.getX(i));
+  assert.ok(close(lipFront,L.receiver.magwellFrontX));
   assert.equal(all(g,'fncP22ComfortableSTANAGHousing').length,1);
   clearWeaponSilhouette(g);
  }
@@ -61,8 +66,8 @@ test('P22.2: visible steel neck is exposed but solidly connected',()=>{
  assert.ok(box(upper).intersectsBox(box(gas))&&
   box(poly).intersectsBox(box(gas)),'exposed steel bridges both masses');
  assert.ok(box(poly).intersectsBox(box(stop))&&box(stop).intersectsBox(box(gas)));
- assert.equal(L.polymer.lowerFlare,.43);
- assert.ok(size(poly,'y')>2.90&&size(poly,'y')<3.15);
+ assert.equal(L.polymer.lowerFlare,.23);
+ assert.ok(size(poly,'y')>2.54&&size(poly,'y')<2.63);
  assert.ok(box(poly).max.y<.64,'polymer roof does not swallow gas vents');
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -102,7 +107,7 @@ test('P22.4: solid rear sight and open, slimmer butt pad stock',()=>{
  assert.equal(rear.geometry.parameters.shapes.holes.length,0);
  assert.equal(rear.geometry.getAttribute('position').count,36,
   'four corners; no aperture hole or small knobs');
- assert.ok(close(box(rear).max.y,3.06));
+ assert.ok(close(box(rear).max.y,2.63));
  assert.ok(size(pad,'y')>=4.65&&size(pad,'y')<4.72);
  assert.ok(close(box(pad).min.x,FNC_P1.stockRearX));
  assert.ok(size(web,'x')>3.6&&size(web,'x')<3.8);

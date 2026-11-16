@@ -1,4 +1,4 @@
-/** FN FNC P23 raised stock and deep forward gas block. Gameplay anchors untouched.
+/** FN FNC P29 proportion correction. Gameplay anchors untouched.
  * The stock uses one continuous bare upper beam, a kinked lower bar,
  * a thin extended inset plate, compact rectangular hinge and dark butt pad.
  * No cheek sleeve or trigger guard. Visual geometry builds on demand only.
@@ -31,7 +31,7 @@ export function buildFNCStage1Silhouette(
  magazinePart='ar-mag30'
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p23-fieldwork-bold-silhouette';
+ root.name='fnc-p29-fieldwork-bold-silhouette';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -44,7 +44,7 @@ export function buildFNCStage1Silhouette(
  const rail=(a:readonly [number,number],end:readonly [number,number],
   width:number,role:Finish='stock')=>{
   const mesh=addBar(root,'stock','fnc-p5-stock',ids.stock++,
-   a,end,width,1.04,mat(role));
+   a,end,width,.96,mat(role));
   mesh.userData.fncStockRail=true;
   return mesh;
  };
@@ -53,7 +53,7 @@ export function buildFNCStage1Silhouette(
  // side walls than the lower body. Not just a narrower front-side polygon.
  const crownedUpper=()=>{
   const stations=[
-   {x:-6.38,top:1.77,bottom:-1.10,side:1.39,roof:.88},
+   {x:-6.38,top:1.39,bottom:-1.10,side:1.39,roof:.88},
    {x:-5.59,top:FNC_FRONT_P13.receiver.roofY,bottom:-1.10,side:1.39,roof:.88},
    {x:2.17,top:FNC_FRONT_P13.receiver.roofY,bottom:-1.10,side:1.39,roof:.88},
    {x:FNC_FRONT_P13.receiver.frontX,top:FNC_FRONT_P13.receiver.roofY,
@@ -63,7 +63,7 @@ export function buildFNCStage1Silhouette(
    x:s.x,top:s.top,bottom:s.bottom,
    sideHalfZ:s.side,roofHalfZ:s.roof
   })),mat('steel'),{
-   shoulderY:s=>Math.max(s.bottom+.48,s.top-1.20),
+   shoulderY:s=>s.bottom+1.10, // P29 straight wall 1.10, roof planar
    capCenterY:(_,end)=>end==='rear'?0:-.30
   });
   mesh.name='family-receiver-fnc-p5-crowned-upper-'+ids.receiver++;
@@ -82,16 +82,16 @@ export function buildFNCStage1Silhouette(
  // Remove the oversized rear cheek sleeve entirely. A continuous
  // metal-colored top rail replaces BOTH old segments, avoiding a gap,
  // doubled faces or additional draw calls.
- const top=rail([-6.45,.03],[-14.26,-.04],1.12);
+ const top=rail([-6.45,.03],[-14.26,-.04],.98);
  top.userData.fncP9UpperMetalRail=true;
  top.userData.fncP10ContinuousBareUpperRail=true;
  // Lower rail stays parallel for over three art units; at x=-10.18 its
  // single angular knee descends toward the lower butt connection.
  // A single six-vertex extrusion avoids separate, z-fighting bar joins.
  const lowerRail=p('stock',[
-  [-6.52,-1.23],[-10.18,-1.23],[-14.38,-3.01],
-  [-14.38,-3.63],[-10.05,-2.06],[-6.52,-2.06]
- ],1.12,'stock');
+  [-6.52,-1.29],[-10.18,-1.29],[-14.38,-3.09],
+  [-14.38,-3.55],[-10.05,-2.00],[-6.52,-2.00]
+ ],.98,'stock');
  lowerRail.userData.fncStockRail=true;
  lowerRail.userData.fncKinkedLowerRail=true;
  lowerRail.userData.fncP8StraightStockBrace=true;
@@ -108,8 +108,8 @@ export function buildFNCStage1Silhouette(
  // P22: shorten only the buttpad vertical envelope; preserve rearmost X,
  // both stock-rail contacts and the large open skeletal frame.
  const pad=p('stock',[
-  [-14.85,.65],[-14.12,.65],[-14.02,.40],
-  [-14.02,-3.75],[-14.35,-4.03],[-14.85,-4.03]
+  [-14.85,.65],[-14.22,.65],[-14.18,.40],
+  [-14.18,-3.75],[-14.35,-4.03],[-14.85,-4.03]
  ],2.18,'buttpad');
  pad.userData.fncP8NarrowButtplate=true;
  pad.userData.fncButtPlate=true;
@@ -148,8 +148,8 @@ export function buildFNCStage1Silhouette(
   [-6.30,-1.09],[receiverNoseX,-1.09],
   [receiverNoseX,-2.57],
   [FNC_FRONT_P13.receiver.magwellFrontX,-2.57],
-  [FNC_FRONT_P13.receiver.magwellFrontX,-3.46],
-  [FNC_FRONT_P13.receiver.magwellRearX,-3.46],
+  [FNC_FRONT_P13.receiver.magwellFrontX,FNC_FRONT_P13.receiver.magwellFrontBottomY],
+  [FNC_FRONT_P13.receiver.magwellRearX,FNC_FRONT_P13.receiver.magwellRearBottomY],
   [FNC_FRONT_P13.receiver.magwellRearX,-2.58],[-6.30,-2.58]
  ],3.42,'lower');
  lower.userData.fncP15FlatLowerNose=true;
@@ -302,7 +302,7 @@ export function buildFNCStage1Silhouette(
  // Solid four-corner rear sight, slight rearward rake on its upper front.
  // The silhouette is more important than a modeled aperture at this scale.
  const rear=p('receiver',[
-  [-5.78,1.73],[-5.72,3.06],[-4.18,3.06],[-3.98,1.73]
+  [-5.78,1.30],[-5.72,2.63],[-4.18,2.63],[-3.98,1.30]
  ],1.44,'steel');
  rear.userData.fncP8CompactRearSight=true;
  rear.userData.fncP22SolidRearSight=true;
@@ -315,7 +315,7 @@ export function buildFNCStage1Silhouette(
  // upper's right flank. The charging lug remains real geometry.
  // P20: one squared charging lug penetrates the upper receiver and
  // projects from the forward slot. No redundant connecting stem or bevel.
- const handle=b('receiver',2.16,.765,1.97,.88,.65,1.60,'steel');
+ const handle=b('receiver',2.16,.335,1.97,.88,.65,1.60,'steel');
  handle.userData.fncP20SingleChargingLug=true;
  handle.userData.fncRightChargingHandle=true;
  handle.userData.fncSixFacetedHandle=true;
