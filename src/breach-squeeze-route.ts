@@ -145,15 +145,21 @@ export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt,
  * AABB: every possible contact still gets exact pointToSegment clearance. */
 const worldCanStand=(doors:Door[],world?:SessionWorldGeometry,
   portalMode=false)=>{
-  const leaves=doors.filter(d=>d.open&&(d.openFraction??0)>=.72||
-      portalMode&&(d.locked||d.jammed||d.wedged||!!d.heldBy))
-    .map(d=>{
-      const leaf=doorLeafSegment(d);
-      return {leaf,minX:Math.min(leaf.a.x,leaf.b.x),
-        maxX:Math.max(leaf.a.x,leaf.b.x),
-        minY:Math.min(leaf.a.y,leaf.b.y),
-        maxY:Math.max(leaf.a.y,leaf.b.y)};
-    });
+  // Build only one route-local leaf snapshot; the former filter+map
+  // allocated a second door array for every A* recovery query.
+  const leaves:{
+    leaf:ReturnType<typeof doorLeafSegment>;
+    minX:number;maxX:number;minY:number;maxY:number
+  }[]=[];
+  for(const d of doors){
+    if(!(d.open&&(d.openFraction??0)>=.72||
+      portalMode&&(d.locked||d.jammed||d.wedged||!!d.heldBy)))continue;
+    const leaf=doorLeafSegment(d);
+    leaves.push({leaf,minX:Math.min(leaf.a.x,leaf.b.x),
+      maxX:Math.max(leaf.a.x,leaf.b.x),
+      minY:Math.min(leaf.a.y,leaf.b.y),
+      maxY:Math.max(leaf.a.y,leaf.b.y)});
+  }
   return (p:Pt,r:number):boolean=>{
     if(!(world?world.passable(p,r):passable(p,r)))return false;
     const reach=r+1;
@@ -165,12 +171,33 @@ const worldCanStand=(doors:Door[],world?:SessionWorldGeometry,
     return true;
   };
 };
+/** E3.A1: exact per-query passability memo for physically identical probes.
+ * No actor, world or door state is retained after the synchronous call.
+ * Key contains the precise coordinates AND profile radius; a narrow fit
+ * never becomes evidence that the full operator body can pass. */
+export function memoizeExactRoutePassability(
+ actual:(point:Pt,radius:number)=>boolean
+):(point:Pt,radius:number)=>boolean{
+ const passes=new Map<number,Map<string,boolean>>();
+ return (point:Pt,radius:number):boolean=>{
+  let atRadius=passes.get(radius);
+  if(!atRadius){atRadius=new Map();passes.set(radius,atRadius);}
+  const key=point.x+','+point.y;
+  const saved=atRadius.get(key);
+  if(saved!==undefined)return saved;
+  const result=actual(point,radius);
+  atRadius.set(key,result);
+  return result;
+ };
+}
+
 /** For motor recovery: a true full-body detour, never a narrow fallback.
  * Its result is transient navigation, not an authored path change. */
 export function routeWithNormalWorld(from:Pt,to:Pt,doors:Door[],
  world?:SessionWorldGeometry,
  sharedCanStand?:(point:Pt,radius:number)=>boolean):Pt[]{
- const canStand=sharedCanStand??worldCanStand(doors,world);
+ const canStand=sharedCanStand??memoizeExactRoutePassability(
+  worldCanStand(doors,world));
  if(!canStand(to,OPERATOR_RADIUS))return [];
  const physical=(a:Pt,b:Pt)=>sweptProfileClear(a,b,doors,0,'normal',world);
  const standard=route(from,to,p=>canStand(p,OPERATOR_RADIUS));
@@ -254,7 +281,7 @@ export function routeToNextOperableDoor(
 ):Pt[]{
  if(!doors.some(d=>!d.locked&&!d.jammed&&!d.wedged&&!d.heldBy&&
     (d.openFraction??(d.open?1:0))<.72))return [];
- const canStand=worldCanStand(doors,world,true);
+ const canStand=memoizeExactRoutePassability(worldCanStand(doors,world,true));
  if(!canStand(from,OPERATOR_RADIUS)||!canStand(to,OPERATOR_RADIUS))
    return [];
  // Unlike a blind local shimmy, this candidate must have an actual
@@ -314,18 +341,7 @@ export function recoverNormalLane(from:Pt,to:Pt,doors:Door[],world?:SessionWorld
  // Share only exact point+radius answers for THIS synchronous search;
  // nothing survives a door swing, cover mutation, simulation tick or replay.
  // This is an exact predicate memo, not a relaxed body/collision shortcut.
- const actual=worldCanStand(doors,world);
- const passes=new Map<number,Map<string,boolean>>();
- const sharedCanStand=(point:Pt,radius:number):boolean=>{
-   let atRadius=passes.get(radius);
-   if(!atRadius){atRadius=new Map();passes.set(radius,atRadius);}
-   const key=point.x+','+point.y;
-   const saved=atRadius.get(key);
-   if(saved!==undefined)return saved;
-   const result=actual(point,radius);
-   atRadius.set(key,result);
-   return result;
- };
+ const sharedCanStand=memoizeExactRoutePassability(worldCanStand(doors,world));
  // Every normal-world route begins with the identical full-radius goal
  // predicate. When the goal itself is blocked, *all* twelve escape-route
  // attempts must fail too. Preserve that result without launching A*.
@@ -358,7 +374,7 @@ export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],world?:SessionW
  // Open hinged leaves are pushable; ordinary motion must remain eligible.
  // Reuse one immutable synchronous leaf/passability snapshot for both
  // normal and narrow passes. No cross-tick caching of moving hinges.
- const canStand=worldCanStand(doors,world);
+ const canStand=memoizeExactRoutePassability(worldCanStand(doors,world));
  const normal=routeWithNormalWorld(from,to,doors,world,canStand);
  if(normal.length)return normal;
  const narrow=narrowRoute(from,to,canStand);
