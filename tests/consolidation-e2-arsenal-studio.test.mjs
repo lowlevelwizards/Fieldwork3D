@@ -30,3 +30,14 @@ test('E2.B reuses material controls only when identity, kit and editor state mat
  assert.match(scope,/materialRenderKey=nextKey/);
  assert.match(studioSmoke,/E2\.B same-category refresh rebuilt unchanged materials/);
 });
+
+test('E2.B2 retains Studio group controls and updates disabled, pressed states',()=>{
+ const scope=studio.slice(studio.indexOf('const categoryButtons=new Map'),
+  studio.indexOf('function pairedUniformFor(',studio.indexOf('const categoryButtons=new Map')));
+ assert.match(scope,/if\(!categoryButtons\.size\)/);
+ assert.match(scope,/if\(mountedCategoryGroup!==group\.label\)/);
+ assert.match(scope,/subcategoryButtons\.set\(slot,button\)/);
+ assert.match(scope,/button\.disabled!==editorDisabled/);
+ assert.match(scope,/button\.getAttribute\('aria-pressed'\)!==pressed/);
+ assert.match(studioSmoke,/E2\.B2 same-group Studio navigation remounted controls/);
+});
