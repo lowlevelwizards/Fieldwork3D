@@ -39,7 +39,8 @@ export function partVisualBounds(root:THREE.Object3D,slot:FamilyPartSlot):
 export function workbenchVisualAnchors(config:WeaponConfiguration,
  root:THREE.Object3D,mode:WorkbenchMode):WorkbenchMount[]{
  const authored=workbenchMounts(config,mode);
- if(!config.build)return authored;
+ const build=config.build;
+ if(!build)return authored;
  const boxes=new Map<FamilyPartSlot,THREE.Box3>();
  for(const slot of ['stock','receiver','grip','magazine','handguard','barrel'] as const){
   const box=partVisualBounds(root,slot);
@@ -58,7 +59,7 @@ export function workbenchVisualAnchors(config:WeaponConfiguration,
   // Picatinny/adapter surface used by the optic mesh, not to the receiver
   // bounding box (which incorrectly targets empty space over AK covers).
   if(mode==='attachments'&&mount.slot==='optic'){
-   const surfaces=weaponPartMountSurfaces(config.build,config.slots.opticMount);
+   const surfaces=weaponPartMountSurfaces(build,config.slots.opticMount);
    if(surfaces.some(s=>s.role==='optic')){
     const visual=opticVisualSeat(config,
      resolveWeaponAssembly(config).mounted.optic.mountX);
@@ -67,7 +68,7 @@ export function workbenchVisualAnchors(config:WeaponConfiguration,
    }
   }
   if(mode==='attachments'&&mount.slot==='opticMount'){
-   const socket=weaponPartMountSurfaces(config.build,config.slots.opticMount)
+   const socket=weaponPartMountSurfaces(build,config.slots.opticMount)
     .find(s=>s.role==='opticMount'&&s.standard==='hk-claw');
    if(socket)return {...mount,
     x:(socket.startX+socket.endX)/2,y:socket.y+1.4,z:box.max.z+.6};
