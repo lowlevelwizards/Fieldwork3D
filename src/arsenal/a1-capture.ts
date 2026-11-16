@@ -13,8 +13,8 @@ import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 
-const holder=document.getElementById('sheet');
-const status=document.getElementById('status');
+const holder=document.getElementById('sheet')!;
+const status=document.getElementById('status')!;
 if(!holder||!status)throw Error('A1 capture template missing');
 const scene=new THREE.Scene();
 addArsenalInspectionLighting(scene);
