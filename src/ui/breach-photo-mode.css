@@ -43,8 +43,10 @@ body.replay-clean #replayCleanToggle{background:#d8e8d4;color:#122323}
 .photo-options select{min-height:36px}
 .photo-strength-label{min-width:75px}
 .photo-strength-label input{width:75px;min-height:35px}
-.photo-actions{display:flex;align-items:center;gap:20px;pointer-events:auto}
+.photo-actions{display:flex;align-items:center;justify-content:center;
+ flex-wrap:wrap;gap:9px;pointer-events:auto}
 .photo-actions>button:not(.photo-shutter){min-height:40px}
+#photoMount{min-height:36px}
 .photo-shutter{display:grid;place-items:center!important;width:64px;height:64px;
  border:3px solid #ecede5!important;border-radius:50%!important;
  background:#13282999!important;padding:5px!important}

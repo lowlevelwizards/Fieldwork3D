@@ -40,6 +40,8 @@ export function createBreachPhotoModeController(ports:Ports){
  }|null=null;
  let generation=0,selectedPhoto:string|null=null,viewerUrl:string|null=null;
  let replayClean=false;
+ let photoCamId:string|null=null;
+ let photoCamMount:'helmet'|'chest'='helmet';
  const temporaryUrls=new Set<string>();
  const pointerMap=new Map<number,{x:number;y:number,button:number}>();
  let lastDistance=0;
@@ -71,6 +73,7 @@ export function createBreachPhotoModeController(ports:Ports){
     photoFilterCss(settings.filter,settings.strength):'';
  }
  function clearPhotoCam():void{
+  photoCamId=null;ui.mount.hidden=true;
   ports.getStage()?.setPhotoLiveBodycam(false);
   ports.getStage()?.setReplayBodycam(null);
   if(originalKnowledge){
@@ -93,8 +96,10 @@ export function createBreachPhotoModeController(ports:Ports){
      ui.lens.value=settings.lens;return;
     }
     stage.setPhotoPerspective(false);
-    stage.setReplayBodycam({actorId:candidate,mount:'helmet',
+    photoCamId=candidate;photoCamMount='helmet';
+    stage.setReplayBodycam({actorId:candidate,mount:photoCamMount,
      stabilization:'balanced',fov:95});
+    ui.mount.hidden=false;ui.mount.textContent='CAM · HELMET';
     stage.setPhotoLiveBodycam(true);
     settings.lens='cam';ui.lens.value='cam';markDirty();frameGuides();return;
    }
@@ -111,8 +116,10 @@ export function createBreachPhotoModeController(ports:Ports){
    knowledge.observerId=candidate;knowledge.omniscient=false;
    knowledge.groundLensOn=false;
    stage.setPhotoPerspective(false);
-   stage.setReplayBodycam({actorId:candidate,mount:cam.camMount,
+   photoCamId=candidate;photoCamMount=cam.camMount;
+   stage.setReplayBodycam({actorId:candidate,mount:photoCamMount,
     stabilization:'balanced',fov:95});
+   ui.mount.hidden=false;ui.mount.textContent='CAM · '+photoCamMount.toUpperCase();
    ports.invalidateFog();
   }else{
    if(settings.lens==='cam')clearPhotoCam();
@@ -148,6 +155,10 @@ export function createBreachPhotoModeController(ports:Ports){
   active=true;busy=false;pending=null;dirty=true;
   pointerMap.clear();lastMid=null;lastDistance=0;
   ui.lens.value=settings.lens;
+  photoCamId=settings.lens==='cam'?(cameraSnapshot?.bodycam?.actorId??cam.directorCamActor):null;
+  photoCamMount=cameraSnapshot?.bodycam?.mount??cam.camMount;
+  ui.mount.hidden=settings.lens!=='cam';
+  ui.mount.textContent='CAM · '+photoCamMount.toUpperCase();
   ui.lens.querySelector<HTMLOptionElement>('option[value="cam"]')!.disabled=false;
   if(settings.lens==='wide')stage?.setPhotoPerspective(true);
   if(settings.lens==='cam'&&!stage?.isReplayBodycamActive())lens('cam');
@@ -336,6 +347,26 @@ export function createBreachPhotoModeController(ports:Ports){
  ui.access.addEventListener('click',openGallery);
  ui.close.addEventListener('click',exit);
  ui.reset.addEventListener('click',resetCamera);
+ ui.focus.addEventListener('click',()=>{
+  if(!active||settings.lens==='cam')return;
+  const actor=ports.getState().operators.find(a=>a.id===ports.getSelected());
+  const stage=ports.getStage();if(!stage||!actor)return;
+  stage.setReplayDirectorCameraAnchor(null);
+  stage.focusOn(actor.p);markDirty();status('FRAMING SELECTED OPERATOR');
+ });
+ ui.fit.addEventListener('click',()=>{
+  if(!active||settings.lens==='cam')return;
+  const stage=ports.getStage();if(!stage)return;
+  stage.setReplayDirectorCameraAnchor(null);
+  stage.resetCamera();markDirty();status('SITE FIT');
+ });
+ ui.mount.addEventListener('click',()=>{
+  if(!active||settings.lens!=='cam'||!photoCamId)return;
+  photoCamMount=photoCamMount==='helmet'?'chest':'helmet';
+  ports.getStage()?.setReplayBodycam({actorId:photoCamId,mount:photoCamMount,
+   stabilization:'balanced',fov:95});
+  ui.mount.textContent='CAM · '+photoCamMount.toUpperCase();markDirty();
+ });
  ui.shutter.addEventListener('click',shutter);
  ui.galleryOpen.addEventListener('click',openGallery);
  ui.galleryClose.addEventListener('click',closeGallery);

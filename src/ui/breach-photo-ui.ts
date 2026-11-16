@@ -39,6 +39,7 @@ export function mountBreachPhotoUi(){
    <label>LENS <select id="photoLens" aria-label="Photo camera lens">
     <option value="ortho">ORTHO</option><option value="wide">WIDE</option>
     <option value="cam">CAM</option></select></label>
+   <button type="button" id="photoMount" hidden>CAM · HELMET</button>
    <label>FRAME <select id="photoRatio" aria-label="Photo aspect ratio">
     <option value="screen">SCREEN</option><option value="16:9">16:9</option>
     <option value="4:5">4:5</option><option value="1:1">1:1</option></select></label>
@@ -53,7 +54,9 @@ export function mountBreachPhotoUi(){
     type="range" min="0" max="100" step="5" value="100"/></label>
   </div>
   <div class="photo-actions">
-   <button type="button" id="photoReset">RESET CAMERA</button>
+   <button type="button" id="photoFit">FIT SITE</button>
+   <button type="button" id="photoFocus">FOCUS OPERATOR</button>
+   <button type="button" id="photoReset">RESET</button>
    <button type="button" id="photoShutter" class="photo-shutter"
     aria-label="Take photograph"><span></span></button>
    <button type="button" id="photoGalleryOpen">GALLERY</button>
@@ -84,6 +87,9 @@ export function mountBreachPhotoUi(){
   guide:byId<HTMLElement>('photoFramingGuide'),
   close:byId<HTMLButtonElement>('photoClose'),
   reset:byId<HTMLButtonElement>('photoReset'),
+  fit:byId<HTMLButtonElement>('photoFit'),
+  focus:byId<HTMLButtonElement>('photoFocus'),
+  mount:byId<HTMLButtonElement>('photoMount'),
   shutter:byId<HTMLButtonElement>('photoShutter'),
   lens:byId<HTMLSelectElement>('photoLens'),
   ratio:byId<HTMLSelectElement>('photoRatio'),
