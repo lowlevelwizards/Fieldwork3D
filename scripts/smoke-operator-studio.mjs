@@ -50,6 +50,10 @@ try{
   // saved-but-inactive choice the user can still clear. Hidden item thumbnails
   // should not redraw on each detail change.
   await page.getByRole('button',{name:'Customize head'}).click();
+  await page.evaluate(()=>{
+   window.__e2StudioCategoryRefs=[...document.querySelectorAll('#studioCategories button')];
+   window.__e2HeadSubcategoryRefs=[...document.querySelectorAll('#studioSubcategories button')];
+  });
   const ach=page.locator('[data-appearance-item="ach"]');
   if(await ach.isDisabled())throw Error('Cosmetic ballistic helmet unavailable');
   await ach.click();
@@ -93,6 +97,12 @@ try{
    throw Error('Returning to Items did not refresh deferred thumbnails');
   // Existing FACE card performance acceptance.
   await page.locator('#studioSubcategories button').filter({hasText:'FACE'}).click();
+  const stableCategories=await page.evaluate(()=>
+   window.__e2StudioCategoryRefs.every((button,index)=>
+    button===document.querySelectorAll('#studioCategories button')[index])&&
+   window.__e2HeadSubcategoryRefs.every((button,index)=>
+    button===document.querySelectorAll('#studioSubcategories button')[index]));
+  if(!stableCategories)throw Error('E2.B2 same-group Studio navigation remounted controls');
   await page.locator('#studioSubcategories button').filter({hasText:'FACE'}).click();
   const one=page.locator('[data-appearance-item="balaclava-one"] canvas');
   const three=page.locator('[data-appearance-item="balaclava-three"]');
