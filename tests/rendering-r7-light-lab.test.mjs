@@ -93,7 +93,7 @@ test('Arsenal Lighting Lab is removed while Operator Studio remains separate',()
  assert.doesNotMatch(screen,/mountArsenalLightingLab|lightingLab/);
  assert.doesNotMatch(viewer,/setLighting\(|Box3Helper|applyStudioGraphicLighting/);
  assert.match(viewer,/addArsenalInspectionLighting/);
- assert.match(lighting,/ARSENAL_INSPECTION_BACKGROUND=0x182824/);
+ assert.match(lighting,/ARSENAL_INSPECTION_BACKGROUND=0xa1aaa0/);
  assert.doesNotMatch(lighting,/localStorage|sessionStorage|persistArsenal/);
 });
 test('R7.15 hard/gear/skin settings are independent, clamped and preview-only',()=>{
