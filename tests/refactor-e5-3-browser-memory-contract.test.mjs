@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import {summarizeReplayMemory,verifyReplayLifecycleMemory}
  from '../scripts/verification/refactor-e5-browser-memory-contract.mjs';
 
-const cycles=(dom=[1500,1510,1504,1512],detached=[20,22,22,24])=>
- dom.map((nodes,i)=>({cycle:i,nodes,detachedNodes:detached[i],
+const cycles=(dom=[1500,1510,1504,1512],listeners=[320,323,320,325])=>
+ dom.map((nodes,i)=>({cycle:i,nodes,listeners:listeners[i],
   usedHeapBytes:25e6+i*9000,replayClosed:true,feedButtons:0}));
 test('E5.3 Chromium observations separate stable DOM lifecycle from heap sampling',()=>{
  const rows=cycles();
@@ -13,7 +13,7 @@ test('E5.3 Chromium observations separate stable DOM lifecycle from heap samplin
  assert.equal(result.allFeedClean,true);
  assert.equal(result.cycles,4);
  assert.equal(result.dom.delta,12);
- assert.equal(result.detached.delta,4);
+ assert.equal(result.listeners.delta,5);
  assert.equal(result.heap.delta,27000);
 });
 test('E5.3 a retained replay feed or visible replay panel fails the release gate',()=>{
@@ -22,12 +22,12 @@ test('E5.3 a retained replay feed or visible replay panel fails the release gate
  const second=cycles();second[1].replayClosed=false;
  assert.throws(()=>verifyReplayLifecycleMemory(second),/remained visible/);
 });
-test('E5.3 monotonic detached and live DOM accumulation is detected',()=>{
+test('E5.3 monotonic listener and live DOM accumulation is detected',()=>{
  assert.throws(()=>verifyReplayLifecycleMemory(
   cycles([1500,1590,1680,1780])),/post-GC DOM grew/);
  assert.throws(()=>verifyReplayLifecycleMemory(
-  cycles([1500,1510,1510,1510],[20,120,200,260])),
-  /detached DOM grew/);
+  cycles([1500,1510,1510,1510],[320,400,460,520])),
+  /event listeners grew/);
 });
 test('E5.3 heap remains observational; reject too few post-warmup samples',()=>{
  assert.throws(()=>verifyReplayLifecycleMemory(cycles().slice(0,3)),
