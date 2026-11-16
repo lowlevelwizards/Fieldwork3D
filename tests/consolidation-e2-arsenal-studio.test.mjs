@@ -41,3 +41,13 @@ test('E2.B2 retains Studio group controls and updates disabled, pressed states',
  assert.match(scope,/button\.getAttribute\('aria-pressed'\)!==pressed/);
  assert.match(studioSmoke,/E2\.B2 same-group Studio navigation remounted controls/);
 });
+
+test('E2.A2 finish swatches survive refresh and resolve compatibility on click',()=>{
+ const scope=arsenal.slice(arsenal.indexOf('const finishButtons=new Map'),
+  arsenal.indexOf('// Reuse physical part controls'));
+ assert.match(scope,/finishButtons\.get\(key\)/);
+ assert.match(scope,/finishButtons\.set\(key,choice\)/);
+ assert.match(scope,/const live=proposeArsenalPartChange/);
+ assert.match(scope,/finishOptions\.children\[index\]!==desired\[index\]/);
+ assert.doesNotMatch(scope,/finishOptions\.replaceChildren\(/);
+});
