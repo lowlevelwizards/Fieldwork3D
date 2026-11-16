@@ -28,6 +28,9 @@ export type RendererStartupEvidence=Readonly<{
 export const COLD_GL_METHODS=Object.freeze([
  'createShader','shaderSource','compileShader','createProgram',
  'attachShader','linkProgram','getProgramParameter','getShaderParameter',
+ // Info-log reads can synchronize/finish shader compilation, despite a
+ // successful link status; prior E6.8 hooks excluded these query calls.
+ 'getProgramInfoLog','getShaderInfoLog','getExtension',
  'useProgram','createBuffer','bufferData','bufferSubData',
  'createTexture','texImage2D','texSubImage2D','texImage3D','texSubImage3D',
  'compressedTexImage2D','compressedTexImage3D','texStorage2D',
