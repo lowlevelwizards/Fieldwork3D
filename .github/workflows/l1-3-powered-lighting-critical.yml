@@ -25,6 +25,6 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Shared visuals, power, occlusion, replay and legacy lighting
         run: |
-          node --experimental-strip-types --test tests/l1-0-lighting-baseline.test.mjs tests/l1-1-authoritative-site-power.test.mjs tests/l1-2-physical-power-controls.test.mjs tests/l1-3-powered-lighting-parity.test.mjs
+          node --experimental-strip-types --test tests/l1-0-lighting-baseline.test.mjs tests/l1-1-authoritative-site-power.test.mjs tests/l1-2-physical-power-controls.test.mjs tests/l1-3-powered-lighting-parity.test.mjs tests/equipment-26-04-lighting-presentation.test.mjs
       - name: Production TypeScript and build
         run: npm run build
