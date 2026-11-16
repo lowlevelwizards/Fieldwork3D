@@ -124,13 +124,18 @@ export const FACTION_TIMELINES:readonly FactionTimeline[]=DEFINITIONS.map(def=>(
  })),
  equipment:[],evidence:[]
 }));
-export const TIMELINE_ORGANIZATIONS:readonly TimelineOrganization[]=[...new Map(
- DEFINITIONS.map(def=>{
-  const first=referenceById.get(def.refs[0]?.[0]??'');
-  return [def.organizationId,{id:def.organizationId,name:def.organizationName,
-   country:first?.country??'',classification:first?.organization??'military'}] as const;
- })
-).values()];
+/** First definition owns broad organization classification; subunits may differ. */
+const organizationRegistry=new Map<string,TimelineOrganization>();
+for(const def of DEFINITIONS){
+ if(organizationRegistry.has(def.organizationId))continue;
+ const first=referenceById.get(def.refs[0]?.[0]??'');
+ organizationRegistry.set(def.organizationId,{
+  id:def.organizationId,name:def.organizationName,
+  country:first?.country??'',classification:first?.organization??'military'
+ });
+}
+export const TIMELINE_ORGANIZATIONS:readonly TimelineOrganization[]=
+ [...organizationRegistry.values()];
 export const factionTimeline=(id:string):FactionTimeline|undefined=>
  FACTION_TIMELINES.find(x=>x.id===id);
 export const timelineOrganization=(id:string):TimelineOrganization|undefined=>
