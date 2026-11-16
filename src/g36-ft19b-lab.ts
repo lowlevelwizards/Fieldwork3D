@@ -48,7 +48,7 @@ function poseCamera(camera:THREE.OrthographicCamera,mode:View,targetY:number):vo
  camera.lookAt(target);camera.updateProjectionMatrix();
 }
 function render():void{
- const w=Math.max(canvas.clientWidth,1),h=Math.max(canvas.clientHeight,1);
+ const w=Math.max(canvas!.clientWidth,1),h=Math.max(canvas!.clientHeight,1);
  renderer.setSize(w,h,false);
  const halfH=Math.max(81,28/(w/h));
  camera.top=halfH;camera.bottom=-halfH;
