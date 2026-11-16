@@ -83,7 +83,7 @@ import {pixelOverlay,type PixelOverlay} from './rendering/pixel-overlays.ts';
 import {roofShouldShow} from './worldgen/roof-cutaways.ts';
 import {W,H,WALLS,doorCenter,doorLeafSegment,activeSite,type Pt,type Segment} from './breach-core.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
-import {handlingIntentForMovement,teammateAheadForHandling}
+import {handlingIntentForMovement,teammateAheadProjectedOffset}
   from './breach-handling-context.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
@@ -169,7 +169,8 @@ export class TacticalScene3D{
    rigMs:0,rigBuilds:0,poseMs:0,posePrepMs:0,poseCount:0,
    appearanceMs:0,weaponBuildMs:0,otherPoseMs:0,
    visualKitMs:0,receiverAtlasMs:0,
-   appearanceFingerprintMs:0,appearanceInvalidations:0
+   appearanceFingerprintMs:0,appearanceInvalidations:0,
+   allyContextMs:0,allyPeerVisits:0
   };
   /** CPU-only slices of a single 3D update. GPU time is NOT measured. */
   private readonly scenePhases:Record<StagePhaseName,number>={
@@ -1610,6 +1611,8 @@ export class TacticalScene3D{
       this.actorPhaseCosts.rigBuilds=0;
       this.actorPhaseCosts.poseMs=0;
       this.actorPhaseCosts.posePrepMs=0;
+      this.actorPhaseCosts.allyContextMs=0;
+      this.actorPhaseCosts.allyPeerVisits=0;
       this.actorPhaseCosts.poseCount=0;
       this.actorPhaseCosts.appearanceMs=0;
       this.actorPhaseCosts.weaponBuildMs=0;
@@ -2150,31 +2153,37 @@ export class TacticalScene3D{
           actor.aimInstruction.source!=='stack',
         speed:actor.velocity
       });
-      // Both passive stack courtesy and render-frame safety roster need
-      // the SAME live allied actor list. Collect them in one existing
-      // per-actor pass without caching any peer state or changing either
-      // radius / authoritative shot-time safety rule.
+      // E6.5: directional muzzle courtesy shares the existing roster pass
+      // with stack proximity and safety. Previously the separate high-ready
+      // scan repeated the roster walk and live-side/health comparisons.
+      // Keep fixed-tick offsets and the exact shared directional predicate;
+      // the independent shot-time fire-lane rule is not changed.
+      const allyStart=this.profileSceneUpdate?performance.now():0;
       const stackContext=handlingIntent==='stack'||
         handlingIntent==='door'||handlingIntent==='entry';
-      let stackCrowded=false;
+      let stackCrowded=false,actuallyAhead=false;
+      const facingX=Math.cos(actor.heading),facingY=Math.sin(actor.heading);
       const nearbyAllies=this.nearbyAllyScratch;
       nearbyAllies.length=0;
       for(const peer of s.operators){
         if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
-        // E6.2: compare squared radii without two square roots per peer.
-        // Stack proximity uses fixed-tick actor position; safety uses the
-        // interpolated rendering position, exactly as before.
+        // Stack and high-ready use fixed-step actor positions, while weapon
+        // safety still uses the interpolated presentation position.
         const stackX=peer.p.x-actor.p.x;
         const stackY=peer.p.y-actor.p.y;
         if(stackContext&&!stackCrowded&&
           stackX*stackX+stackY*stackY<40*40)stackCrowded=true;
+        if(!actuallyAhead&&teammateAheadProjectedOffset(
+          stackX,stackY,facingX,facingY))actuallyAhead=true;
         const safetyX=peer.p.x-drawActor.x;
         const safetyY=peer.p.y-drawActor.z;
         if(safetyX*safetyX+safetyY*safetyY<90*90)
           nearbyAllies.push(safetyBodyFor(peer));
       }
-      const actuallyAhead=teammateAheadForHandling(
-        actor.p,actor.heading,s.operators,actor);
+      if(this.profileSceneUpdate){
+        this.actorPhaseCosts.allyContextMs+=performance.now()-allyStart;
+        this.actorPhaseCosts.allyPeerVisits+=s.operators.length;
+      }
       const friendlyAhead=stackCrowded||actuallyAhead;
       // Physical contact is queried from the actual interpolated barrel,
       // never from a long ray projected along the feet/body heading.
