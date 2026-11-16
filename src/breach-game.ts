@@ -262,6 +262,8 @@ export type TeamActor=Operator & {
   wardrobe?:WardrobeOptions;
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn:boolean;
+  /** L1.5: powered/deployed helmet NVG, never derived from cosmetic goggles. */
+  nvgDeployed?:boolean;
   loadMovementScale?:number;
   armorIntegrity:number;helmetIntegrity:number;
   flashCharges:number;
