@@ -47,7 +47,8 @@ test('P9 stock five structural parts meet as a real open construction',()=>{
  assert.ok(box(plate).max.z<box(lower).max.z &&
   box(plate).max.z<box(top).max.z,
   'plate must be inset into metal rather than pasted over rails');
- assert.ok(box(plate).max.x-box(plate).min.x<2.9 &&
+ assert.ok(box(plate).max.x-box(plate).min.x>3.5 &&
+   box(plate).max.x-box(plate).min.x<3.8 &&
   box(plate).max.y-box(plate).min.y<2.5,
   'connector stays a plate, never a solid full-stock triangle');
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
