@@ -42,14 +42,14 @@ test('P23 stock rises together; taller hinge remains physically connected, frame
   'inset frame plate cannot turn into a filled stock');
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P23 gas block drops only ahead of handguard, not along vented top cover',()=>{
+test('P24 front gas block begins inside handguard but upper vent geometry stays undisturbed',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const gas=one(g,'fncP23DeepForwardGasBlock'),poly=one(g,'fncFacetedHandguard'),
   ears=all(g,'fncP20SimpleSightEar'),barrel=one(g,'fncServiceBarrel');
  assert.ok(gas&&poly&&barrel);
  assert.equal(gas,one(g,'fncP22ContinuousGasBlock'));
- assert.equal(gas.geometry.getAttribute('position').count,144,
-  'no extra cube and no new geometry for downward gas-block silhouette');
+ assert.equal(gas.geometry.getAttribute('position').count,216,
+  'two extra six-face stations integrate lower housing without another mesh');
  assert.equal(L.gas.frontBottomY,-1.57);
  assert.ok(near(bb(gas).min.y,L.gas.frontBottomY));
  assert.ok(bb(gas).min.y<bb(barrel).min.y-.9,
@@ -61,11 +61,15 @@ test('P23 gas block drops only ahead of handguard, not along vented top cover',(
    min=Math.min(min,v.getY(i));
   return min;
  };
- assert.ok(near(lowAt(L.gas.transitionStartX),L.gas.bottomY));
+ assert.ok(near(lowAt(L.gas.lowerStartX),L.gas.bottomY));
+ assert.ok(near(lowAt(L.gas.lowerFullX),L.gas.frontBottomY));
+ assert.ok(near(lowAt(L.gas.transitionStartX),L.gas.frontBottomY));
  assert.ok(near(lowAt(L.gas.transitionEndX),L.gas.frontBottomY));
  assert.ok(near(lowAt(L.gas.endX),L.gas.frontBottomY));
- assert.ok(L.gas.transitionStartX>bb(poly).max.x+.8,
-  'new lower gas silhouette begins beyond handguard end');
+ assert.ok(L.gas.lowerStartX<bb(poly).max.x-.5,
+  'lower gas silhouette enters the handguard before becoming exposed');
+ assert.ok(L.gas.lowerFullX>bb(poly).max.x,
+  'deep housing reaches full silhouette just outside the handguard');
  assert.equal(ears.length,2);
  assert.ok(ears.every(x=>bb(x).intersectsBox(bb(gas))));
  assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
