@@ -162,7 +162,7 @@ export class TacticalScene3D{
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
    * wardrobe material/shadow generation as well as steady-state posing. */
   private readonly actorPhaseCosts={
-   rigMs:0,rigBuilds:0,poseMs:0,poseCount:0,
+   rigMs:0,rigBuilds:0,poseMs:0,posePrepMs:0,poseCount:0,
    appearanceMs:0,weaponBuildMs:0,otherPoseMs:0,
    visualKitMs:0,receiverAtlasMs:0
   };
@@ -233,6 +233,9 @@ export class TacticalScene3D{
   private readonly nearbyAllyScratch:Pt[]=[];
   private fogMemoryPaints=0;
   private fogSightPaints=0;
+  /** Dirtied CanvasTexture versions, not measured completed GPU uploads. */
+  private fogTextureUpdateRequests=0;
+  private fogComposeMs=0;
   private lastFogSession:Session|null=null;
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
@@ -253,6 +256,9 @@ export class TacticalScene3D{
       shadowMapSize:this.sun.shadow.mapSize.x,
       fogMemoryPaints:this.fogMemoryPaints,
       fogSightPaints:this.fogSightPaints,
+      fogTextureUpdateRequests:this.fogTextureUpdateRequests,
+      fogTextureBytesPerRequest:this.fogCanvas.width*this.fogCanvas.height*4,
+      fogComposeMs:this.profileSceneUpdate?this.fogComposeMs:null,
       presentationSight:this.presentationSight.stats(),
       presentationSightPolicy:this.presentationSightPolicy,
       scenePhases:this.profileSceneUpdate?this.scenePhases:null,
@@ -1110,6 +1116,7 @@ export class TacticalScene3D{
       this.fogMemoryCanvas.height=fogSize.height;
     replaceTacticalFogGeometry(this.smoothFog,this.exteriorKnownFog,site);
     this.fogTexture.needsUpdate=true;
+    this.fogTextureUpdateRequests++;
     this.composeSiteWorld(site);
     this.root.add(this.fogUnknown,this.fogExplored);
     this.fogAt=-1;this.lastFogSignature='';this.lastFogSession=null;
@@ -1581,12 +1588,14 @@ export class TacticalScene3D{
       this.actorPhaseCosts.rigMs=0;
       this.actorPhaseCosts.rigBuilds=0;
       this.actorPhaseCosts.poseMs=0;
+      this.actorPhaseCosts.posePrepMs=0;
       this.actorPhaseCosts.poseCount=0;
       this.actorPhaseCosts.appearanceMs=0;
       this.actorPhaseCosts.weaponBuildMs=0;
       this.actorPhaseCosts.otherPoseMs=0;
       this.actorPhaseCosts.visualKitMs=0;
       this.actorPhaseCosts.receiverAtlasMs=0;
+      this.fogComposeMs=0;
     }
     // Never memoize reconstructed current sight during historical replay.
     this.presentationSight.begin(s,allowPresentationSightReuse(
@@ -2032,6 +2041,7 @@ export class TacticalScene3D{
         continue;
       }
       // Presentation samples do not alter authoritative collision or shot state.
+      const posePrepStart=this.profileSceneUpdate?performance.now():0;
       const drawActor=interpolatedActor(actor,renderFrame);
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
       // miniature at its authored horizontal position, lifted only by the
@@ -2128,10 +2138,16 @@ export class TacticalScene3D{
       nearbyAllies.length=0;
       for(const peer of s.operators){
         if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
+        // E6.2: compare squared radii without two square roots per peer.
+        // Stack proximity uses fixed-tick actor position; safety uses the
+        // interpolated rendering position, exactly as before.
+        const stackX=peer.p.x-actor.p.x;
+        const stackY=peer.p.y-actor.p.y;
         if(stackContext&&!stackCrowded&&
-          Math.hypot(peer.p.x-actor.p.x,peer.p.y-actor.p.y)<40)
-          stackCrowded=true;
-        if(Math.hypot(peer.p.x-drawActor.x,peer.p.y-drawActor.z)<90)
+          stackX*stackX+stackY*stackY<40*40)stackCrowded=true;
+        const safetyX=peer.p.x-drawActor.x;
+        const safetyY=peer.p.y-drawActor.z;
+        if(safetyX*safetyX+safetyY*safetyY<90*90)
           nearbyAllies.push(safetyBodyFor(peer));
       }
       const actuallyAhead=teammateAheadForHandling(
@@ -2211,6 +2227,8 @@ export class TacticalScene3D{
           !!actor.traversal||actor.plan[0]?.kind==='door'
       });
       const poseStart=this.profileSceneUpdate?performance.now():0;
+      if(this.profileSceneUpdate)
+        this.actorPhaseCosts.posePrepMs+=poseStart-posePrepStart;
       poseOperator(object.physical,{
         x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
         velocity:actor.traversal?0:actor.velocity,
@@ -2546,6 +2564,9 @@ export class TacticalScene3D{
       const fogSignature=fogSessionFingerprint(s);
       // Two sessions may have identical knowledge counts but different sites.
       if(sessionChanged||fogSignature!==this.lastFogSignature){
+        // Attribute Canvas2D composition separately from the later WebGL
+        // upload; needsUpdate only *requests* the latter on renderer render.
+        const fogComposeStart=this.profileSceneUpdate?performance.now():0;
         this.fogAt=0;this.lastFogSignature=fogSignature;
         this.lastFogSession=s;
         // Static exploration memory changes less often than live sight.
@@ -2570,6 +2591,9 @@ export class TacticalScene3D{
         paintFogVisibility(this.fogContext,s);
         this.fogSightPaints++;
         this.fogTexture.needsUpdate=true;
+        this.fogTextureUpdateRequests++;
+        if(this.profileSceneUpdate)
+          this.fogComposeMs=performance.now()-fogComposeStart;
       }
     }else if(omniscient)this.fogAt=-1;
     this.markScenePhase('fog');

@@ -9,15 +9,23 @@ export type FogFingerprintInput={
     posture:string;health:number}[];
   doors:readonly {id:string;fraction:number}[];
 };
+/** Preserve the exact historical delimiter/quantization contract without
+ * allocating a temporary array for every actor and door at each repaint. */
+function fogHeader(mode:string,seed:number|null,seenCount:number,
+  seenRevision:number|undefined,revision:number):string{
+  return mode+'|'+(seed??'none')+'|'+seenCount+'|'+
+    (seenRevision??0)+'|'+revision;
+}
 export function fogFingerprint(state:FogFingerprintInput):string{
-  return [state.mode,state.seed??'none',state.seenCount,
-    state.seenRevision??0,state.revision,
-    ...state.actors.map(a=>[
-      a.id,Math.round(a.x*10),Math.round(a.y*10),
-      Math.round(a.heading*100),a.posture,a.health
-    ].join(':')),
-    ...state.doors.map(d=>d.id+':'+Math.round(d.fraction*100))
-  ].join('|');
+  let key=fogHeader(state.mode,state.seed,state.seenCount,
+    state.seenRevision,state.revision);
+  for(const a of state.actors)
+    key+='|'+a.id+':'+Math.round(a.x*10)+':'+
+      Math.round(a.y*10)+':'+Math.round(a.heading*100)+':'+
+      a.posture+':'+a.health;
+  for(const d of state.doors)
+    key+='|'+d.id+':'+Math.round(d.fraction*100);
+  return key;
 }
 
 /** Persistent memories can change much less often than moving sight cones.
@@ -36,15 +44,18 @@ export function fogMemoryFingerprint(state:{
  */
 import type {Session} from './breach-game.ts';
 export function fogSessionFingerprint(s:Session):string{
- return fogFingerprint({
-   mode:s.intel.mode,seed:s.site?.seed??null,
-   seenCount:s.seenGround.size,seenRevision:s.seenGroundRevision,
-   revision:s.objectRevision,
-   actors:s.operators.filter(a=>a.side==='blue'&&a.health>0).map(a=>({
-     id:a.id,x:a.p.x,y:a.p.y,heading:a.heading,
-     posture:a.posture,health:a.health
-   })),
-   doors:s.doors.map(d=>({id:d.id,
-     fraction:d.openFraction??(d.open?1:0)}))
- });
+ let key=fogHeader(s.intel.mode,s.site?.seed??null,
+   s.seenGround.size,s.seenGroundRevision,s.objectRevision);
+ // Iterate the authoritative ordered roster directly: hidden hostiles do not
+ // participate in player sight, and no temporary filter/map arrays are built.
+ for(const a of s.operators){
+   if(a.side!=='blue'||a.health<=0)continue;
+   key+='|'+a.id+':'+Math.round(a.p.x*10)+':'+
+     Math.round(a.p.y*10)+':'+Math.round(a.heading*100)+':'+
+     a.posture+':'+a.health;
+ }
+ for(const d of s.doors)
+   key+='|'+d.id+':'+
+     Math.round((d.openFraction??(d.open?1:0))*100);
+ return key;
 }

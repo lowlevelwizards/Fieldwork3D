@@ -491,6 +491,12 @@ function tick(now:number){
           (stats?.fogSightPaints??0)+' · SHADOW REF/REUSE '+
           (stats?.shadowRefreshes??0)+'/'+(stats?.shadowReuses??0)+
           ' · MAP '+(stats?.shadowMapSize??0)+'px'+
+        '\nE6 POSE PREP/SOLVE '+(actorCost?.posePrepMs??0).toFixed(2)+'/'+
+          (actorCost?.poseMs??0).toFixed(2)+'ms'+
+        '\nE6 FOG COMPOSE '+(stats?.fogComposeMs??0).toFixed(2)+
+          'ms · TEXTURE DIRTY '+(stats?.fogTextureUpdateRequests??0)+
+          ' · RGBA REQUEST '+((stats?.fogTextureBytesPerRequest??0)/
+            1048576).toFixed(2)+'MiB (est)'+
         '\nSIGHT (750ms) '+sight.liveQueries+' Q / '+
           sight.liveOcclusionProbes+' LOS / '+sight.liveHits+
           ' HIT · FULL '+sight.fullViewQueries+
