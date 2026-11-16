@@ -72,11 +72,7 @@ export type Site={
   units?:{id:string;kind:'motel'|'apartment';roomIds:string[]}[];
   layout:'office'|'workshop'|'corridor'|'courtyard';
 };
-export const seeded=(seed:number)=>{
-  let n=seed>>>0;
-  return ()=>{n=(Math.imul(n,1664525)+1013904223)>>>0;
-    return n/4294967296;};
-};
+export {seeded} from './worldgen/seeded-rng.ts';
 /** Every live map now uses the building-specific architectural compiler,
  * regardless of scale. Older square-grid layouts are not in active rotation.
  */

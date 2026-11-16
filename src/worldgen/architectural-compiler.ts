@@ -15,7 +15,8 @@ import {relationshipScore,allowSecondaryConnection} from './room-relationships.t
 import {chooseCirculationTree} from './privacy-aware-circulation.ts';
 import {choosePublicFrontage} from './public-frontage.ts';
 import {circulationFor,circulationScore,loopChance,type CirculationStyle} from './circulation-grammar.ts';
-import {type Site,type Room,type BuildingArchetype,type SiteScale,seeded} from '../breach-site.ts';
+import {type Site,type Room,type BuildingArchetype,type SiteScale} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
 import {ordinaryDoorOpeningWidth} from '../breach-door-proportions.ts';
 import {chooseMissionObjective} from './mission-objective-placement.ts';
