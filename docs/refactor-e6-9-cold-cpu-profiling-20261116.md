@@ -43,3 +43,25 @@ physical mobile GPU. OS cache and scheduling noise remain even with fresh
 processes. These four runs are exploratory, not a statistically robust A/B
 or FPS benchmark. Separate the diagnostic-only E6.9 commit from any eventual
 renderer optimization and compare evidence again before claiming a win.
+
+## Measured CDP first-frame results (CI, first capture)
+
+| Variant | seed 23 | seed 97 |
+| --- | ---: | ---: |
+| Warmup on: sampled getProgramInfoLog interval | ~623ms | ~561ms |
+| Warmup off: sampled getProgramInfoLog interval | ~1213ms | ~1175ms |
+| Warmup on: sampled frame wall (with profiler overhead) | ~1504ms | ~1477ms |
+| Warmup off: sampled frame wall (with profiler overhead) | ~1975ms | ~1981ms |
+
+The `getProgramInfoLog` top leaf dominates all four sampled frames. This
+is a Chromium software WebGL information-log read on the program-preparation
+stack, **not** a mere scene graph traversal. The historical E6.8 GL hook
+list missed `getProgramInfoLog` and `getShaderInfoLog`; E6.9 adds those
+methods (plus `getExtension`) to opt-in GL call timing and reports their
+wall time independently. This second A/B should confirm the cost without
+running a JS CPU profiler simultaneously.
+
+Potential next focused optimization: compile programs ahead of the first draw
+with the actual material/light/shadow variant configuration, reducing
+first-frame late program links/info-log syncs while preserving shader error
+checks. Do not stub or skip `getProgramInfoLog` as a performance shortcut.
