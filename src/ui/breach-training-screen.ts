@@ -13,6 +13,7 @@ type Hooks={
  onReturnToMenu:()=>void;
  onReplay:()=>boolean;
  onResetTargets:()=>boolean;
+ onArmTargetFire:()=>boolean;
 };
 const select=(label:string,values:readonly string[],names?:Record<string,string>)=>{
  const wrapper=document.createElement('label');wrapper.textContent=label;
@@ -39,8 +40,9 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const panel=document.createElement('div');panel.className='breach-training-panel';
  const title=document.createElement('h2');title.textContent='FIELDWORK / TRAINING';
  const summary=document.createElement('p');summary.textContent=
-  'Use the real tactical simulation. Use SUPPRESS to fire at targets. '+
-  'Green silhouettes are NO-SHOOT. Practice never changes Campaign progress.';
+  'Select an operator and use TARGET FIRE to place a firing order. '+
+  'Only real projectile strikes score; green silhouettes are NO-SHOOT. '+
+  'Practice never changes Campaign progress.';
  const options=document.createElement('div');options.className='breach-training-options';
  const activity=select('ACTIVITY',['killhouse','range','trial'],
   {killhouse:'KILLHOUSE',range:'EQUIPMENT RANGE',trial:'TACTICAL TRIALS'});
@@ -93,7 +95,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const resultActions=document.createElement('div');
  resultActions.className='breach-training-actions';
  resultActions.append(button('RETRY COURSE',()=>{close();retry();}),
-  button('WATCH REPLAY',()=>{close();hooks.onReplay();}),
+  button('WATCH REPLAY',()=>{if(hooks.onReplay())close();}),
   button('CHANGE COURSE',()=>show()),
   button('BACK TO GAME',()=>close()),
   button('MAIN MENU',()=>{close();hooks.onReturnToMenu();}));
@@ -113,7 +115,13 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(!hooks.onResetTargets())progress.textContent=
    'CANNOT RESET TARGETS IN THIS COURSE OR WHILE OCCUPIED';
  });
- quick.append(button('TRAINING TOOLS',()=>show()),resetTargetsButton,
+ const targetFireButton=button('TARGET FIRE',()=>{
+  if(hooks.onArmTargetFire()){
+   progress.textContent='TARGET FIRE ARMED · TAP A PLATE, THEN GO';
+  }else progress.textContent='TARGET FIRE IS AVAILABLE WHILE PLANNING';
+ });
+ targetFireButton.title='Place an area-fire order at a target; only physical projectile hits count';
+ quick.append(button('TRAINING TOOLS',()=>show()),targetFireButton,resetTargetsButton,
   button('RETRY',()=>retry()),
   resultsButton,
   button('MAIN MENU',()=>hooks.onReturnToMenu()));
@@ -160,6 +168,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
   panel.hidden=true;resultPanel.hidden=false;
   open=true;root.hidden=false;
   document.body.classList.add('training-setup-open');
+  resultTitle.tabIndex=-1;
   resultTitle.textContent=result.outcome==='passed'?'TRIAL COMPLETE':'TRIAL FAILED';
   resultSummary.textContent=(TRIALS[config.trial??'discrimination']?.name??'TRIAL')+
    ' · '+result.grade+' · '+result.score+' / 100'+
@@ -187,6 +196,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
    fail.textContent='SAFETY OR TIME FAILURE OVERRIDES PARTIAL POINTS';
    breakdown.append(fail);
   }
+  resultTitle.focus();
  }
  function sync():void{
   quick.hidden=!active||inReplay;
@@ -205,6 +215,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
  }
  function updateProgress(s:Session):void{
   if(!active||!s.site?.training)return;
+  targetFireButton.disabled=s.phase!=='planning';
   const p=trainingTargetProgress(s);
   const text=p.targets?('TARGETS '+p.hits+'/'+p.targets+
    (p.noShootTargets?' · NO-SHOOT '+p.noShootHits:'')+
