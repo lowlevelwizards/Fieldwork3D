@@ -71,3 +71,19 @@ test('D2.3 selection projection is stable, immutable and does not change source'
  for(const item of a)assert.equal(Object.isFrozen(item),true);
  assert.deepEqual(a.map(x=>x.status),['available','unclassified']);
 });
+
+test('D2.3 missing equipment slot fails closed even for otherwise offered gear',()=>{
+ const req={context:{mode:'dispatch',referenceId:'us-swat-2015'},
+  kind:'equipment',candidateIds:['head-helmet'],currentId:'head-helmet'};
+ const projection=projectDispatchSelection(req);
+ assert.equal(projection[0].status,'available');
+ assert.equal(projection[0].allowedForNewSelection,false);
+ assert.equal(projection[0].retainedCurrent,true);
+ assert.match(projection[0].reason,/slot required/);
+ assert.equal(mayChooseDispatchSelection({
+  context:req.context,kind:'equipment'
+ },'head-helmet'),false);
+ assert.equal(mayChooseDispatchSelection({
+  context:req.context,kind:'equipment',equipmentSlot:'head'
+ },'head-helmet'),true);
+});
