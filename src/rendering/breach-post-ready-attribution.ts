@@ -25,6 +25,10 @@ export type PostReadyRuntimeWindow=Readonly<{
  medianGapMs:number|null;p95GapMs:number|null;worstGapMs:number|null;
  medianCallbackMs:number|null;p95CallbackMs:number|null;
  worstCallbackMs:number|null;
+ /** E6.14: same 90 actual callbacks, not a second instrumented loop. */
+ p95SimMs?:number|null;p95SceneMs?:number|null;
+ p95UiMs?:number|null;p95CanvasMs?:number|null;
+ callbacksWithSimulation?:number;
  spikeCounts:Readonly<{priorCallback:number;betweenCallbacks:number;mixed:number}>;
  byMode:Readonly<Record<PostReadyRuntimeMode,PostReadyModeCounts>>;
  topGaps:readonly PostReadySpike[];
@@ -70,7 +74,8 @@ export class PostReadyRuntimeCapture{
   this.frames.push(frame);
   return this.frames.length===this.limit;
  }
- stopForVisibility():void{this.stopped=true;this.interrupted=true;}
+ stopForInterruption():void{this.stopped=true;this.interrupted=true;}
+ stopForVisibility():void{this.stopForInterruption();}
  finish():PostReadyRuntimeWindow{
   const frames=this.frames;
   const counts=Object.fromEntries(modes.map(mode=>
@@ -104,6 +109,11 @@ export class PostReadyRuntimeCapture{
    p95CallbackMs:percentile(frames.map(f=>finite(f.callbackMs)),.95),
    worstCallbackMs:frames.length?
     round(Math.max(...frames.map(f=>finite(f.callbackMs)))):null,
+   p95SimMs:percentile(frames.map(f=>finite(f.simMs)),.95),
+   p95SceneMs:percentile(frames.map(f=>finite(f.sceneMs)),.95),
+   p95UiMs:percentile(frames.map(f=>finite(f.uiMs)),.95),
+   p95CanvasMs:percentile(frames.map(f=>finite(f.canvasMs)),.95),
+   callbacksWithSimulation:frames.filter(f=>f.simMs>0).length,
    spikeCounts,byMode:counts,topGaps:gaps.slice(0,8),
    note:'Each gap ends at the current RAF callback; the JS work that can fill it is from the PREVIOUS callback. Outside-preceding-callback time includes browser/other tasks, compositor scheduling, and possible driver waits, but is not proof of GPU cost. Measurements are JavaScript wall time; modes distinguish idle planning from live simulation. No network upload.'
   };
