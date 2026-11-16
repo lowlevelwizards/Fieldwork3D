@@ -33,7 +33,7 @@ import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
 import {recoveryAdviceFor} from './recovery-guidance.ts';
-import {team,enemies,isSeen,missionText,operationBriefing,type Session,type TeamActor} from '../breach-game.ts';
+import {team,isSeen,missionText,operationBriefing,type Session,type TeamActor} from '../breach-game.ts';
 import {injuryOf,WEAPONS} from '../breach-combat.ts';
 import {liveMagazineCapacity,magazineAlert}
   from '../arsenal/live-magazine-capacity.ts';
@@ -288,16 +288,16 @@ export function createTacticalHudController(
     reducedMotion:boolean;
     icon:(key:string)=>SVGSVGElement;
   }):void{
-    config.phaseNode.textContent=config.replaying?'REPLAY':
+    writeDomText(config.phaseNode,config.replaying?'REPLAY':
       config.phase==='planning'?(config.started?'PAUSED':'PLANNING'):
       config.phase==='running'?'EXECUTING':
-      config.phase==='won'?'COMPLETE':'FAILED';
+      config.phase==='won'?'COMPLETE':'FAILED');
     config.phaseNode.classList.toggle('live',config.phase==='running');
     config.phaseNode.classList.toggle('done',
       config.phase==='won'||config.phase==='lost');
     const seconds=Math.floor(config.seconds);
-    config.clock.textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+
-      String(seconds%60).padStart(2,'0');
+    writeDomText(config.clock,String(Math.floor(seconds/60)).padStart(2,'0')+':'+
+      String(seconds%60).padStart(2,'0'));
     const mode=config.phase==='running'?'pause':
       config.phase==='planning'?'go':'reset';
     if(config.play.dataset.mode!==mode){
@@ -472,8 +472,10 @@ export function createTacticalHudController(
   const identity=currentSiteIdentity(state.site,mode==='quick');
   if(siteIdentityOutput.textContent!==identity.text)
     siteIdentityOutput.textContent=identity.text;
-  if(identity.seed!==null)siteIdentityOutput.dataset.siteSeed=identity.seed;
-  else delete siteIdentityOutput.dataset.siteSeed;
+  if(identity.seed!==null&&siteIdentityOutput.dataset.siteSeed!==identity.seed)
+    siteIdentityOutput.dataset.siteSeed=identity.seed;
+  else if(identity.seed===null&&siteIdentityOutput.dataset.siteSeed!==undefined)
+    delete siteIdentityOutput.dataset.siteSeed;
   const telemetry=activeRangeDiagnostic(state,selected);
   rangeTelemetry.hidden=!telemetry;
   if(telemetry){
@@ -492,9 +494,9 @@ export function createTacticalHudController(
   if(medicalButton){
    const patient=medicalCandidate();
    medicalButton.disabled=!patient||state.phase!=='planning'||replaying;
-   medicalButton.textContent=patient?'TREAT · '+patient.name.toUpperCase():
-    'TREAT · NO SUITABLE SUPPLIES';
-   medicalButton.setAttribute('aria-label',patient?
+   writeDomText(medicalButton,patient?'TREAT · '+patient.name.toUpperCase():
+    'TREAT · NO SUITABLE SUPPLIES');
+   writeDomAttribute(medicalButton,'aria-label',patient?
     'Plan medical stabilization for '+patient.name:'No treatable wound with available supplies');
   }
   for(const [button,mode] of [
@@ -503,16 +505,18 @@ export function createTacticalHudController(
    if(!button)continue;
    button.hidden=!casualty;
    button.disabled=!casualty||state.phase!=='planning'||replaying;
-   button.textContent=casualty?mode+' · '+casualty.name.toUpperCase():mode;
+   writeDomText(button,casualty?mode+' · '+casualty.name.toUpperCase():mode);
   }
   if(fieldLightButton){
    const selectedActor=friendly.find(a=>a.id===selected);
    const light=lightControlState(selectedActor,state.phase,replaying);
    if(fieldLightButton.textContent!==light.text)fieldLightButton.textContent=light.text;
-   fieldLightButton.setAttribute('aria-label',light.aria);
-   fieldLightButton.setAttribute('aria-pressed',String(light.pressed));
+   writeDomAttribute(fieldLightButton,'aria-label',light.aria);
+   writeDomAttribute(fieldLightButton,'aria-pressed',String(light.pressed));
    fieldLightButton.disabled=light.disabled;
-   fieldLightButton.style.borderColor=light.pressed?colorFor(selected):'';
+   const lightBorder=light.pressed?colorFor(selected):'';
+   if(fieldLightButton.style.borderColor!==lightBorder)
+     fieldLightButton.style.borderColor=lightBorder;
   }
   const brief=operationBriefing(state);
   renderPhase({
@@ -528,10 +532,14 @@ export function createTacticalHudController(
       'nav '+a.nav.length+'  orders '+a.plan.length+
       '  ('+a.p.x.toFixed(0)+','+a.p.y.toFixed(0)+')').join('\n'));
   }
-  canvas.dataset.navBlock=active?.lastBlocker??'clear';
+  const navBlock=active?.lastBlocker??'clear';
+  if(canvas.dataset.navBlock!==navBlock)canvas.dataset.navBlock=navBlock;
   // Read-only plan status for phone gesture regression tests.
-  canvas.dataset.planNodes=String(active?.plan.length??0);
-  canvas.dataset.selectedNode=selectedNode===null?'':String(selectedNode);
+  const planNodes=String(active?.plan.length??0);
+  if(canvas.dataset.planNodes!==planNodes)canvas.dataset.planNodes=planNodes;
+  const selectedNodeText=selectedNode===null?'':String(selectedNode);
+  if(canvas.dataset.selectedNode!==selectedNodeText)
+    canvas.dataset.selectedNode=selectedNodeText;
   // Explicit browser audit mode exposes ONLY already-authored friendly routes.
   // Use the actual rendered polyline, rather than guessing a touch coordinate
   // from an old screenshot or hardcoded map bounds.
@@ -564,8 +572,8 @@ export function createTacticalHudController(
   if(ui.stance.textContent!==stanceLabel)
     ui.stance.replaceChildren(tacticalIcon(stanceLabel==='STAND'?'stand':'crouch'),
       document.createTextNode(stanceLabel));
-  ui.stance.setAttribute('aria-pressed',String(active?.posture==='crouch'));
-  ui.contact.setAttribute('aria-pressed',String(active?.haltOnContact));
+  writeDomAttribute(ui.stance,'aria-pressed',String(active?.posture==='crouch'));
+  writeDomAttribute(ui.contact,'aria-pressed',String(active?.haltOnContact));
   const flashLabel='FLASH ×'+state.flashRemaining;
   if(ui.flash.textContent!==flashLabel)
     ui.flash.replaceChildren(tacticalIcon('flash'),document.createTextNode(flashLabel));
@@ -596,9 +604,9 @@ export function createTacticalHudController(
   ui.debrief.hidden=replaying||mode==='menu'||mode==='home'||
     (state.phase!=='won'&&state.phase!=='lost');
   ui.favoriteMission.disabled=!state.site;
-  ui.favoriteMission.textContent=favoriteActive?
-    '★ MISSION FAVORITED':'☆ FAVORITE MISSION';
-  ui.next.textContent=debriefPrimaryActionLabel(mode);
+  writeDomText(ui.favoriteMission,favoriteActive?
+    '★ MISSION FAVORITED':'☆ FAVORITE MISSION');
+  writeDomText(ui.next,debriefPrimaryActionLabel(mode));
   ui.retry.disabled=mode==='mission';
   if(!ui.debrief.hidden)renderMissionDebrief({
     ui,state,brief,recorder,campaign,campaignMode:mode,
@@ -616,18 +624,23 @@ export function createTacticalHudController(
   // Show the site as a place, not as a raw procedural generation dump.
   const siteHeader=document.querySelector<HTMLElement>('.ident strong');
   const siteSubheading=document.querySelector<HTMLElement>('.ident small');
-  if(siteHeader)siteHeader.textContent=compactSiteTitle(state.site);
-  if(siteSubheading)siteSubheading.textContent=state.site?
+  if(siteHeader)writeDomText(siteHeader,compactSiteTitle(state.site));
+  if(siteSubheading)writeDomText(siteSubheading,state.site?
     friendly.length+' OPERATORS · '+
     (state.intel.mode==='floor-plan'?state.site.roomCount:'?')+' KNOWN ROOMS':
-    'TACTICAL TRAINING';
-  if(siteHeader)siteHeader.title=state.site?.name??'Cutwoods';
+    'TACTICAL TRAINING');
+  if(siteHeader){
+    const siteTitle=state.site?.name??'Cutwoods';
+    if(siteHeader.title!==siteTitle)siteHeader.title=siteTitle;
+  }
   renderNotice(ui.feed,state.events,state.phase,replaying,state.executionEvents);
   renderGuidance({
     replaying,phase:state.phase,selectedNode,selectedActiveWatch,
     feed:ui.feed,hint:ui.hint
   });
-  const visible=enemies(state).filter(e=>e.health>0&&isSeen(state,e)).length;
+  let visible=0;
+  for(const e of state.operators)
+    if(e.side==='red'&&e.health>0&&isSeen(state,e))visible++;
   writeDomText(ui.mission,(state.phase==='planning'?
       brief.code+' • ':'')+missionText(state)+
     (visible?' • '+visible+' CONTACT'+(visible===1?'':'S'):''));
