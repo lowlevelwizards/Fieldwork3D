@@ -16,8 +16,8 @@ const definitions:Readonly<Record<Tile,{col:number;row:number;bounds:Bounds}>>={
  'receiver-left':{col:3,row:0,bounds:[-6.80,4.0,-1.70,1.52]},
  'lower-right':{col:0,row:1,bounds:[-6.45,3.75,-3.65,-1.0]},
  'lower-left':{col:1,row:1,bounds:[-6.45,3.75,-3.65,-1.0]},
- 'magazine-right':{col:2,row:1,bounds:[-1.35,3.30,-7.93,-2.60]},
- 'magazine-left':{col:3,row:1,bounds:[-1.35,3.30,-7.93,-2.60]}
+ 'magazine-right':{col:2,row:1,bounds:[-1.35,3.30,-8.42,-2.60]},
+ 'magazine-left':{col:3,row:1,bounds:[-1.35,3.30,-8.42,-2.60]}
 };
 const between=(v:number,a:number,b:number)=>v>=a&&v<=b;
 const zone=(x:number,y:number,x0:number,x1:number,y0:number,y1:number)=>
@@ -49,7 +49,7 @@ function ink(tile:Tile,x:number,y:number):number{
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  if(y < -7.75)return 166;
+  if(y < -8.05)return 166;
   const shift=Math.max(0,Math.min(5.0,-y-3.05))*.16;
   for(const base of [-.66,.42,1.50])
    if(Math.abs(x-(base+shift))<.135&&y< -3.3&&y> -7.45)

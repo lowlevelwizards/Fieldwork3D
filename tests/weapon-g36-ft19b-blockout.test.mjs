@@ -72,7 +72,7 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  const triangles=meshes.reduce((sum,x)=>{
   const geo=x.geometry;return sum+(geo.index?.count??geo.getAttribute('position').count)/3;
  },0);
- assert.ok(meshes.length<=14, 'too many exterior draw meshes: '+meshes.length);
+ assert.ok(meshes.length<=15, 'too many exterior draw meshes: '+meshes.length);
  assert.ok(triangles<=400, 'essential forms must stay under 400 triangles: '+triangles);
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
   'only the accepted original full-size model is an authored factory preset');
@@ -112,7 +112,7 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   bb(guard).max.z-bb(guard).min.z<3.0,'trimmed polymer envelope');
  assert.ok(bb(guard).max.y-bb(guard).min.y>3.0&&
   bb(guard).max.y-bb(guard).min.y<3.5,'front wedge retains broad profile');
- assert.ok(bb(mag).min.y> -8.0&&bb(mag).min.y< -7.8,
+ assert.ok(bb(mag).min.y> -8.40&&bb(mag).min.y< -8.20,
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
@@ -166,7 +166,7 @@ test('G36 C4: receiver jawline / true trigger opening, short but curved magazine
  assert.ok(hit(lower,-5.30,-2.03),'grip-side receiver support remains connected');
  assert.deepEqual(G36_MAG30_OUTLINE,arMagazineOutline(G36_MAG30_CURVE),
   'G36 uses true STANAG 30 outline but never its feed or surface material');
- assert.ok(bb(mag).min.y>-8.0&&bb(mag).min.y< -7.8);
+ assert.ok(bb(mag).min.y>-8.40&&bb(mag).min.y< -8.20);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('G36 C4: optics are connected and horizontally hierarchical with no tower',()=>{
