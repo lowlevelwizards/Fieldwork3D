@@ -3,6 +3,8 @@ import type {CampaignState,Contract} from './campaign-state.ts';
 import type {CampaignSlot} from './campaign-save-slots.ts';
 import type {CampaignCreationDraft} from './campaign-creation.ts';
 import {effectiveCampaignRules} from './campaign-rules.ts';
+import {isDispatchPilot,mayChooseCampaignContent}
+ from './dispatch-campaign-eligibility.ts';
 import {renderCampaignCreator} from './ui/campaign-creator.ts';
 import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost} from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
@@ -614,6 +616,9 @@ export class CampaignScreen{
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
+  const dispatchPilot=isDispatchPilot(c);
+  if(dispatchPilot)editor.append(node('p','campaign-note',
+   'DISPATCH PILOT · Only curated new equipment choices are offered. Existing equipment remains retained; advanced weapon and wardrobe editors are not yet supported.'));
   const presets=node('details','campaign-kit-presets');
   presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
@@ -654,7 +659,7 @@ export class CampaignScreen{
     confirmLabel:'DELETE PRESET',danger:true
    }))this.handlers.deleteKitPreset(selectedPreset);
   });
-  load.disabled=locked||c.kitPresets.length===0;
+  load.disabled=locked||c.kitPresets.length===0||dispatchPilot;
   remove.disabled=locked||c.kitPresets.length===0;
   presetActions.append(picker,load,remove);
   presets.append(presetActions,node('p','campaign-note',
@@ -678,7 +683,9 @@ export class CampaignScreen{
       ' · '+c.inventory.weapons[weapon]+' AVAILABLE'));
      option.value='primary-'+weapon;
      option.disabled=(weapon!==person.weapon&&c.inventory.weapons[weapon]<1)||
-       ((weapon==='smg'||weapon==='shotgun')&&weapon!==person.weapon);
+       ((weapon==='smg'||weapon==='shotgun')&&weapon!==person.weapon)||
+       (dispatchPilot&&weapon!==person.weapon&&
+        !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'));
      select.append(option);
     }
     select.value='primary-'+person.weapon;
@@ -689,7 +696,10 @@ export class CampaignScreen{
    }else{
     for(const item of itemsForSlot(slot)){
      const option=node('option','',item.name+' · '+item.massKg.toFixed(2)+' KG');
-     option.value=item.id;select.append(option);
+     option.value=item.id;
+     if(dispatchPilot&&item.id!==person.loadout.slots[slot]&&
+       !mayChooseCampaignContent(c,'equipment',item.id,slot))option.disabled=true;
+     select.append(option);
     }
     select.value=person.loadout.slots[slot];
     select.addEventListener('change',()=>this.handlers.equipGear(
@@ -730,6 +740,8 @@ export class CampaignScreen{
    selectedId:selectedFamilyPreset?.id,selectedFamily:build?.family,
    availability:preset=>{
     if(locked)return 'Deployment locked';
+    if(dispatchPilot&&!mayChooseCampaignContent(c,'weapon-preset',preset.id))
+     return 'Not offered by Dispatch pilot';
     if(preset.weapon!==person.weapon&&(c.inventory.weapons[preset.weapon]??0)<1)
      return 'No '+preset.weapon+' currently owned';
     return null;
@@ -757,7 +769,7 @@ export class CampaignScreen{
      const option=node('option','',part.name);
      option.value=part.id;select.append(option);
     }
-    select.value=build.parts[slot];select.disabled=locked;
+    select.value=build.parts[slot];select.disabled=locked||dispatchPilot;
     select.addEventListener('focus',()=>{
      const socket=('body-'+slot) as WorkbenchSocket;
      this.selectedWorkbenchSocket=socket;
@@ -806,7 +818,7 @@ export class CampaignScreen{
     const option=node('option','',part.name+suffix);
     option.value=part.id;select.append(option);
    }
-   select.value=current;select.disabled=locked;
+   select.value=current;select.disabled=locked||dispatchPilot;
    mountSelectors.set(slot,select);
    select.addEventListener('focus',()=>{this.selectedMount=slot;
     this.selectedWorkbenchSocket=slot;
