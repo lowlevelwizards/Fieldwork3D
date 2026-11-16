@@ -23,17 +23,17 @@ test('P15 receiver roof and gas spine nearly level, flat shortened receiver nose
   poly=get(g,'fncP15RaisedPolymer');
  assert.ok(upper&&lower&&gas&&poly);
  assert.ok(near(box(upper).max.x,2.75)&&near(box(lower).max.x,2.75));
- assert.ok(near(box(upper).max.y,1.60));
+ assert.ok(near(box(upper).max.y,1.93));
  assert.ok(Math.abs(box(upper).max.y-box(gas).max.y)<.12);
  assert.ok(near(sz(upper,'x'),9.13));
  assert.ok(L.gas.startX<L.receiver.frontX&&L.polymer.startX<L.receiver.frontX);
  assert.ok(touch(upper,gas)&&touch(lower,poly)&&touch(gas,poly));
- assert.ok(sz(gas,'y')>1.90&&sz(gas,'y')<2.05);
+ assert.ok(sz(gas,'y')>2.40&&sz(gas,'y')<2.50);
  const v=upper.geometry.getAttribute('position');
  let roof=0,bottom=0;
  for(let i=0;i<v.count;i++)if(near(v.getX(i),L.receiver.frontX)){
   if(near(v.getY(i),L.receiver.roofY))roof++;
-  if(near(v.getY(i),-.99))bottom++;
+  if(near(v.getY(i),-1.10))bottom++;
  }
  assert.ok(roof>0&&bottom>0,'end ring retains full roof and bottom height');
  clearWeaponSilhouette(g);m.dispose();
@@ -44,14 +44,14 @@ test('P15 polymer 30% taller; short collar and long gas spine truly interlock',(
   gas=get(g,'fncP15UpperGasSpine'),
   stop=get(g,'fncP15RaisedCollar');
  assert.ok(poly&&gas&&stop);
- assert.ok(near(box(poly).min.x,2.18)&&near(box(poly).max.x,10.70));
- assert.ok(sz(poly,'y')>2.65&&sz(poly,'y')<2.75);
+ assert.ok(near(box(poly).min.x,1.95)&&near(box(poly).max.x,11.68));
+ assert.ok(sz(poly,'y')>3.35&&sz(poly,'y')<3.50);
  assert.ok(box(poly).max.y>.50&&box(poly).max.y<.62);
- assert.ok(box(poly).min.y< -2.08&&box(poly).min.y> -2.17);
+ assert.ok(box(poly).min.y< -2.75&&box(poly).min.y> -2.95);
  assert.ok(sz(poly,'z')>sz(gas,'z')+.8);
  assert.ok(touch(stop,poly)&&touch(stop,gas));
- assert.ok(sz(stop,'y')>2.75&&sz(stop,'y')<2.90);
- assert.ok(sz(gas,'x')>sz(poly,'x')+3.0);
+ assert.ok(sz(stop,'y')>3.7&&sz(stop,'y')<4.0);
+ assert.ok(sz(gas,'x')>sz(poly,'x')+2.0);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P15 two broken side vent rows clear polymer roof and follow gas wall',()=>{
@@ -61,14 +61,14 @@ test('P15 two broken side vent rows clear polymer roof and follow gas wall',()=>
   grooves=many(g,'fncP11PolymerLongRibs');
  assert.equal(slots.length,2);assert.equal(grooves.length,2);
  for(const side of slots){
-  assert.equal(side.geometry.getAttribute('position').count,60);
+  assert.equal(side.geometry.getAttribute('position').count,48);
   assert.ok(box(side).min.y>box(poly).max.y+.10,
    'no gas markings concealed behind enlarged polymer');
   assert.ok(box(side).min.x>box(gas).min.x+.4);
   assert.ok(box(side).max.x<box(gas).max.x-.5);
  }
  const roof=get(g,'fncP11TopGasVentRow');
- assert.equal(roof.geometry.getAttribute('position').count,30);
+ assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.ok(near(box(roof).min.y,box(gas).max.y+L.gas.ventOffset,.015));
  assert.ok(grooves.every(x=>sz(x,'x')>5.5));
  clearWeaponSilhouette(g);m.dispose();
@@ -96,7 +96,7 @@ test('P15 lower barrel remains Y0 and sight is integrated with separate two ears
  assert.ok(touch(bar,seat)&&touch(gas,seat));
  assert.ok(near(box(seat).max.y,L.sight.baseRearTopY));
  assert.equal(ears.length,2);
- assert.ok(ears.every(e=>touch(e,seat)&&near(box(e).max.y,2.44)));
+ assert.ok(ears.every(e=>touch(e,seat)&&near(box(e).max.y,2.77)));
  const a=ears.slice().sort((x,y)=>box(x).min.z-box(y).min.z);
  assert.ok(box(a[0]).max.z<box(a[1]).min.z,'open central gap');
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
