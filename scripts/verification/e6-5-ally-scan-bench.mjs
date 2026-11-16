@@ -24,7 +24,7 @@ for(const n of scenarios){
   heading:i*.31
  }));
  const blue=actors.filter(a=>a.side==='blue'&&a.health>0);
- const frame=(kind,t)=>{
+ const frame=(kind,t,trackVisits=false)=>{
   let checksum=0,visits=0;
   for(const a of blue){
    const draw={x:a.p.x+Math.sin(t*.02),z:a.p.y+Math.cos(t*.02)};
@@ -41,11 +41,12 @@ for(const n of scenarios){
     if(sx*sx+sy*sy<8100)safety++;
    }
    if(kind==='legacy'){
-    // The existing helper separately scans the roster. It returns early
-    // when it finds a valid teammate, unlike the complete safety pass.
+    // The existing helper separately scans the roster and can exit early.
+    // Count its visits ONLY in parity samples, outside measured frames;
+    // otherwise benchmark bookkeeping would make the baseline slower.
     ahead=teammateAheadForHandling(a.p,a.heading,actors,a);
     let extra=0;
-    for(const peer of actors){
+    if(trackVisits)for(const peer of actors){
      extra++;
      if(peer===a||peer.side!==a.side||peer.health<=0)continue;
      const dx=peer.p.x-a.p.x,dy=peer.p.y-a.p.y;
@@ -58,7 +59,7 @@ for(const n of scenarios){
   return {checksum,visits};
  };
  for(let i=0;i<40;i++){
-  const a=frame('legacy',i),b=frame('fused',i);
+  const a=frame('legacy',i,true),b=frame('fused',i,true);
   if(a.checksum!==b.checksum||b.visits!==n*blue.length||
      a.visits<b.visits)throw Error('E6.5 workload parity / scan count mismatch');
  }
@@ -74,7 +75,7 @@ for(const n of scenarios){
   }
  }
  const medianLegacy=now(legacy,.5),medianFused=now(fused,.5);
- const exampleOld=frame('legacy',40),exampleNew=frame('fused',40);
+ const exampleOld=frame('legacy',40,true),exampleNew=frame('fused',40,true);
  report.scenarios.push({actors:n,liveBlue:blue.length,
   legacyPeerVisitsPerFrame:exampleOld.visits,
   fusedPeerVisitsPerFrame:exampleNew.visits,
