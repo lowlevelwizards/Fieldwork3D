@@ -1,0 +1,40 @@
+/* Compact setup is mounted within the existing non-rendering campaign screen. */
+.campaign-creator{max-width:720px;margin:0 auto;padding:clamp(16px,3vw,30px);
+ color:var(--fw-text);display:grid;gap:18px}
+.campaign-creator header small{color:var(--fw-text-muted);letter-spacing:.11em;font-weight:700}
+.campaign-creator h1{margin:8px 0 0;font:800 clamp(26px,5vw,43px) var(--fw-font-display)}
+.campaign-creator>p{margin:0;line-height:1.5;color:var(--fw-text-muted)}
+.campaign-creator form{display:grid;gap:17px}
+.campaign-creator-field{min-width:0;display:flex;flex-direction:column;gap:6px;
+ font:700 11px var(--fw-font-menu);letter-spacing:.045em}
+.campaign-creator-field input,.campaign-creator-field select{
+ box-sizing:border-box;width:100%;min-width:0;min-height:45px;
+ background:#182822;color:#f2f4ed;border:1px solid #708677;border-radius:3px;
+ padding:9px 12px;font:600 14px var(--fw-font-narrative)}
+.campaign-creator-field input:focus-visible,.campaign-creator-field select:focus-visible{
+ outline:2px solid #e8cd86;outline-offset:2px}
+.campaign-creator-fields{display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.campaign-creator-fixed{border-top:1px solid #50685b;border-bottom:1px solid #50685b;padding:14px 0}
+.campaign-creator-fixed h2{font-size:12px;letter-spacing:.07em;margin:0 0 8px}
+.campaign-creator-fixed p,.campaign-creator-future p{font:500 13px/1.6 var(--fw-font-narrative);color:#b9cabc;margin:0}
+.campaign-creator-future summary{cursor:pointer;font:700 12px var(--fw-font-menu);letter-spacing:.04em}
+.campaign-creator-future p{margin-top:10px}
+.campaign-creator-summary{background:#22382e;padding:12px;line-height:1.5;margin:0}
+.campaign-creator-error{min-height:1.1em;color:#e5bda8;margin:0;font-size:12px}
+.campaign-creator-actions{display:flex;gap:10px;flex-wrap:wrap}
+.campaign-creator-actions button{flex:1;min-height:48px}
+.campaign-creator-restore{display:grid;gap:9px}
+.campaign-creator-restore:empty{display:none}
+.campaign-creator-restore p{margin:0;color:#e5c8b0;font-size:12px}
+.campaign-creator-restore button{min-height:44px}
+.campaign-creator button:disabled{opacity:.45;cursor:default}
+.campaign-creator button:focus-visible{outline:2px solid #e8cd86;outline-offset:3px}
+.campaign-home-identity{font-size:11px;color:var(--fw-text-muted);letter-spacing:.05em;margin-top:7px}
+.campaign-home-nav{display:flex;flex-wrap:wrap;gap:8px;margin-top:9px}
+.campaign-home-nav button{min-height:40px;margin:0;font-size:11px}
+@media(max-width:560px){
+ .campaign-creator{padding:16px 4px;gap:15px}
+ .campaign-creator-fields{grid-template-columns:1fr}
+ .campaign-creator-actions{flex-direction:column}
+ .campaign-creator-actions button{width:100%}
+}

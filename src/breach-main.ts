@@ -49,8 +49,7 @@ import {createBreachOperationsBoardController} from './breach-operations-board-c
 import {createBreachRuntimeLoop} from './breach-runtime-loop.ts';
 import {createBreachAppFlow} from './breach-app-flow.ts';
 import {parseBreachBootConfig,BREACH_LIGHTING_MODES} from './breach-boot-config.ts';
-import {loadIntelPreference,loadQuickPlayRoster,saveQuickPlayRoster,
- loadCampaignFromStorage,saveCampaignToStorage} from './breach-persistence.ts';
+import {loadIntelPreference,loadQuickPlayRoster,saveQuickPlayRoster} from './breach-persistence.ts';
 import {createReplayModeController} from './breach-replay-mode-controller.ts';
 import {bindAfterActionReplayNavigation,disposeAfterActionPresentation}
  from './ui/breach-after-action-controller.ts';
@@ -103,6 +102,9 @@ import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
 import {applyRosterIdentity,freshQuickPlayRoster} from './breach-roster.ts';
 import type {CampaignState} from './campaign-state.ts';
+import {loadActiveCampaign,loadCampaignSlot,writeCampaignSlot,
+ activateCampaignSlot,commitCampaignToSlot,type CampaignSlot}
+ from './campaign-save-slots.ts';
 
 
 
@@ -168,12 +170,24 @@ let persistentRoster=loadQuickPlayRoster();
 function saveRoster():boolean{
  return saveQuickPlayRoster(persistentRoster);
 }
-let campaign:CampaignState|null=loadCampaignFromStorage();
+const initialCampaignSelection=loadActiveCampaign();
+let campaignSlot:CampaignSlot=initialCampaignSelection.slot;
+let campaign:CampaignState|null=initialCampaignSelection.campaign;
+const campaignInSlot=(slot:CampaignSlot)=>loadCampaignSlot(slot);
+function switchCampaignSlot(slot:CampaignSlot):boolean{
+ const next=campaignInSlot(slot);
+ if(!next||!activateCampaignSlot(slot))return false;
+ campaign=next;campaignSlot=slot;return true;
+}
+function replaceCampaignSlot(next:CampaignState,slot:CampaignSlot):boolean{
+ if(!commitCampaignToSlot(next,slot))return false;
+ campaign=next;campaignSlot=slot;return true;
+}
 const appFlow=createBreachAppFlow(
  legacyStudy||bootConfig.quickEntry?'quick':'menu');
 function saveCampaign():boolean{
  if(!campaign)return false;
- const saved=saveCampaignToStorage(campaign);
+ const saved=writeCampaignSlot(campaign,campaignSlot);
  if(!saved)console.warn('Campaign save unavailable');
  return saved;
 }
@@ -1018,7 +1032,7 @@ const replayLibrary=createBreachReplayLibraryController({
   onLibraryOpen:fromMenu=>{appFlow.openLibrary(fromMenu);},
   onLibraryClose:restore=>appFlow.closeLibrary(restore),
   returnToCampaignMenu:()=>{
-    appFlow.setMode('menu');campaignScreen.entry(!!campaign);
+    appFlow.setMode('menu');campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot);
   }
 });
 bindAfterActionReplayNavigation({
@@ -1333,11 +1347,13 @@ const trainingScreen=createBreachTrainingScreen({
  },
  onReturnToMenu:()=>{
   trainingScreen.setActive(false);
-  appFlow.setMode('menu');campaignScreen.entry(!!campaign);
+  appFlow.setMode('menu');campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot);
  }
 });
 const campaignFlow=createBreachCampaignFlow({
   getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},saveCampaign,
+  getCampaignSlot:()=>campaignSlot,getCampaignInSlot:campaignInSlot,
+  switchCampaignSlot,replaceCampaignSlot,
   getMode:()=>appFlow.mode,setMode:mode=>{appFlow.setMode(mode);},
   getIntel:()=>selectedIntelMode,setIntel:value=>{selectedIntelMode=value;},
   getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
@@ -1384,7 +1400,7 @@ missionScreens.bindMissionActions({
  resetMission:variant=>reset(variant),restartMission,
  setMode:mode=>{if(mode==='menu')trainingScreen.setActive(false);
   appFlow.setMode(mode);},
- campaignEntry:active=>campaignScreen.entry(active),
+ campaignEntry:()=>campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot),
  audio:audioController,resetTargeting:()=>targeting.reset(),
  captureBeforeExecution:()=>missionController.captureBeforeExecution(state,recorder),
  toggleExecution:()=>toggling(state)
@@ -1650,7 +1666,7 @@ ui.tacticalHud.append(liveProfilerButton);
 syncLiveProfilerControl(runtimeLoop.isProfilerVisible(),
  runtimeLoop.isProfilerRecording());
 layout();cameraMode(viewMode);updateHud();
-if(appFlow.mode==='menu')campaignScreen.entry(!!campaign);
+if(appFlow.mode==='menu')campaignScreen.entry(!!campaignInSlot('legacy'),!!campaignInSlot('sandbox'),campaignSlot);
 runtimeLoop.start();
 // Only the completed bootstrap, not static HTML placeholders, claims readiness.
 document.documentElement.dataset.fieldworkAppReady='1';

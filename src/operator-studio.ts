@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import {writeDomText,writeDomAttribute} from './ui/tactical-dom-reconciliation.ts';
 import {configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
+import {activeCampaignStorageKey} from './campaign-save-slots.ts';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {studioLightLabFromQuery,effectiveStudioLightLab,
  studioLightLabLabel,approvedGraphicLighting,
@@ -119,6 +120,9 @@ const liveLightLabSettings=()=>effectiveStudioLightLab(
  lightLabSettings,lightLabCompareOriginal);
 const embedded=params.get('embedded')==='1'&&window.parent!==window;
 let mode:StudioMode=params.get('mode')==='campaign'?'campaign':'quick';
+// Standalone Studio is pinned to its original campaign slot. Cross-tab slot
+// switching must never redirect an in-progress draft to a different save.
+const standaloneCampaignKey=!embedded&&mode==='campaign'?activeCampaignStorageKey():null;
 let selected=params.get('operator')??'rook';
 let readOnly=false;
 let people:StudioPerson[]=[];
@@ -2300,11 +2304,13 @@ function apply(){
    localStorage.setItem(BREACH_STORAGE_KEYS.quickCosmetics,
     serializeQuickPlayCosmetics(next));
   }else{
-   const campaign=readCampaign(localStorage.getItem(BREACH_STORAGE_KEYS.campaign));
+   if(!standaloneCampaignKey||standaloneCampaignKey!==activeCampaignStorageKey())
+    throw Error('Active campaign changed while editing');
+   const campaign=readCampaign(localStorage.getItem(standaloneCampaignKey));
    if(!campaign)throw Error('No saved campaign');
    const updated=applyStudioCampaignEdits(campaign,entries);
    if(!updated)throw Error('Campaign operator or active mission is locked');
-   localStorage.setItem(BREACH_STORAGE_KEYS.campaign,JSON.stringify(updated));
+   localStorage.setItem(standaloneCampaignKey,JSON.stringify(updated));
   }
   acknowledgeSave(entries.map(e=>e.id));
  }catch{
@@ -2356,7 +2362,7 @@ if(embedded){
 }else{
  try{
   const campaign=mode==='campaign'?
-   readCampaign(localStorage.getItem(BREACH_STORAGE_KEYS.campaign)):null;
+   readCampaign(localStorage.getItem(standaloneCampaignKey??activeCampaignStorageKey())):null;
   if(mode==='campaign'&&campaign){
    start({mode,selected,readonly:!!campaign.activeContractId,
     members:campaign.operators.filter(x=>x.status!=='retired'&&x.status!=='lost')

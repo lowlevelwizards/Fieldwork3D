@@ -66,6 +66,8 @@ export type CampaignReport={
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
+ /** Cosmetic label; absent on unchanged legacy saves. */
+ name?:string;
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
  supplies:{medical:number;ammo:number;flash:number};regionalPressure:Record<string,number>;
@@ -131,11 +133,14 @@ export function createContracts(seed:number,day:number,existing:readonly Contrac
  }
  return [...archive,...offers];
 }
-export function newCampaign(seed:number,rules?:CampaignRules):CampaignState{
+export function newCampaign(seed:number,rules?:CampaignRules,name?:string):CampaignState{
+ if(name!==undefined&&(!name.trim()||name.trim().length>40||/[\x00-\x1f\x7f]/.test(name)))
+  throw Error('Invalid campaign name');
  const parsedRules=rules===undefined?undefined:readCampaignRules(rules);
  if(rules!==undefined&&!parsedRules)throw Error('Unsupported campaign rules');
  const normalized=(seed>>>0)||1;
  return reconcileCampaignWeaponOwnership({version:1,id:'campaign-'+normalized.toString(16),seed:normalized,day:1,funds:1200,
+  ...(name!==undefined?{name:name.trim()}:{}),
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   squadIds:['rook','moss','ash','vale'],
   contracts:createContracts(normalized,1),activeContractId:null,
@@ -177,6 +182,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
   const savedRules=(c as {rules?:unknown}).rules;
   const parsedRules=savedRules===undefined?undefined:readCampaignRules(savedRules);
   if(savedRules!==undefined&&!parsedRules)return null;
+  if(c.name!==undefined&&(typeof c.name!=='string'||!c.name.trim()||
+   c.name.length>40||/[\x00-\x1f\x7f]/.test(c.name)))return null;
   if(c.version!==1||!Number.isInteger(c.seed)||!Number.isInteger(c.day)||
      c.day<1||c.day>1000000||!Number.isFinite(c.funds)||
      !Array.isArray(c.operators)||c.operators.length>32||!Array.isArray(c.contracts)||

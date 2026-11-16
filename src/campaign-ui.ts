@@ -1,5 +1,9 @@
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import type {CampaignState,Contract} from './campaign-state.ts';
+import type {CampaignSlot} from './campaign-save-slots.ts';
+import type {CampaignCreationDraft} from './campaign-creation.ts';
+import {effectiveCampaignRules} from './campaign-rules.ts';
+import {renderCampaignCreator} from './ui/campaign-creator.ts';
 import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost} from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
@@ -29,6 +33,9 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;training:()=>void;
+ newSandbox:()=>void;continueSandbox:()=>void;
+ createSandbox:(draft:CampaignCreationDraft)=>Promise<boolean|null>;
+ exportSandbox:()=>void;showMenu:()=>void;
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
@@ -51,7 +58,7 @@ export type CampaignHandlers={
  deleteKitPreset:(presetId:string)=>void;
  renameOperator:(id:string,callsign:string)=>void;
  cycleAppearance:(id:string)=>void;
- exportSave:()=>void;importSave:(raw:string)=>void;retire:(id:string)=>void;
+ exportSave:()=>void;importSave:(raw:string,slot:CampaignSlot)=>void;retire:(id:string)=>void;
 };
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
  const el=document.createElement(tag);if(cls)el.className=cls;
@@ -63,6 +70,8 @@ const button=(label:string,action:()=>void,cls='')=>{
 export class CampaignScreen{
  readonly root=node('section','campaign-screen');
  private readonly handlers:CampaignHandlers;
+ private currentSlot:CampaignSlot='legacy';
+ private lastEntry={legacy:false,sandbox:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
  private preview:CampaignKitPreview|null=null;
@@ -98,7 +107,8 @@ export class CampaignScreen{
   document.body.append(this.root);
  }
  hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
- entry(hasSave:boolean){
+ entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy'){
+  this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,active};
   this.armoryOperatorId=null;this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-landing');
@@ -131,6 +141,9 @@ export class CampaignScreen{
    button(hasSave?'CONTINUE CAMPAIGN':'NEW CAMPAIGN',
     hasSave?this.handlers.continueCampaign:this.handlers.newCampaign,
     'campaign-landing-card campaign-landing-primary'),
+   button(sandboxHasSave?'CONTINUE SANDBOX':'SANDBOX CAMPAIGN',
+    sandboxHasSave?this.handlers.continueSandbox:this.handlers.newSandbox,
+    'campaign-landing-card campaign-landing-quick'),
    button('QUICK PLAY',this.handlers.quickPlay,
     'campaign-landing-card campaign-landing-quick'),
    button('TRAINING · KILLHOUSE',this.handlers.training,
@@ -140,6 +153,9 @@ export class CampaignScreen{
   utility.setAttribute('aria-label','Other destinations');
   if(hasSave)utility.append(button('NEW CAMPAIGN',this.handlers.newCampaign,
    'campaign-landing-link'));
+  if(sandboxHasSave)utility.append(button('NEW SANDBOX',this.handlers.newSandbox,
+   'campaign-landing-link'));
+  utility.append(node('p','campaign-note','ACTIVE SLOT · '+active.toUpperCase()));
   utility.append(button('REPLAY LIBRARY',this.handlers.openReplayLibrary,
    'campaign-landing-link'));
   utility.append(button('OPERATOR STUDIO',this.handlers.openMenuStudio,
@@ -165,12 +181,26 @@ export class CampaignScreen{
   saves.append(node('summary','','SAVES / IMPORT'));
   saves.append(node('p','campaign-note',
    'Import an exported campaign save to continue on this device.'));
-  saves.append(this.importPicker());
+  saves.append(node('p','campaign-note','IMPORT TO EXISTING CAMPAIGN'));
+  saves.append(this.importPicker('legacy'));
+  saves.append(node('p','campaign-note','IMPORT TO SANDBOX CAMPAIGN'));
+  saves.append(this.importPicker('sandbox'));
   footer.append(labs,saves);
   main.append(hero,actions,utility,footer);
   this.root.append(main);
  }
- home(c:CampaignState){
+ creator(){
+  this.disposePreview();this.armoryOperatorId=null;
+  this.root.hidden=false;
+  renderCampaignCreator(this.root,{
+   hasSandbox:this.lastEntry.sandbox,
+   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active),
+   onExportSandbox:this.handlers.exportSandbox,
+   onCreate:this.handlers.createSandbox
+  });
+ }
+ home(c:CampaignState,slot?:CampaignSlot){
+  if(slot)this.currentSlot=slot;
   if(this.armoryOperatorId){
    const target=c.operators.find(x=>x.id===this.armoryOperatorId&&x.status!=='lost'&&x.status!=='retired');
    if(target){this.armory(c,target.id);return;}
@@ -184,6 +214,16 @@ export class CampaignScreen{
   const title=node('div');
   title.append(node('div','campaign-eyebrow','FIELDWORK / VERDIGRIS'));
   title.append(node('h1','','OPERATIONS ROOM'));
+  const rules=effectiveCampaignRules(c).mission;
+  title.append(node('div','campaign-home-identity',
+   (this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
+   ' · '+(c.name??'Original Campaign')));
+  title.append(node('div','campaign-home-identity',
+   'INTELLIGENCE · '+rules.intel.toUpperCase()+
+   '  /  MAP SCALE · '+rules.scale.toUpperCase()));
+  const campaignMenuNav=node('nav','campaign-home-nav');
+  campaignMenuNav.append(button('CAMPAIGN MENU',this.handlers.showMenu));
+  title.append(campaignMenuNav);
   top.append(title,node('div','campaign-funds','DAY '+c.day+' · '+c.funds+' CR'));
   main.append(top);
   const grid=node('div','campaign-grid');
@@ -857,14 +897,14 @@ export class CampaignScreen{
    restored?.focus({preventScroll:true});
   }
  }
- private importPicker(){
+ private importPicker(slot:CampaignSlot=this.currentSlot){
   const input=node('input','campaign-import');
   input.type='file';input.accept='.json,application/json';
-  input.setAttribute('aria-label','Import campaign JSON save');
+  input.setAttribute('aria-label','Import '+slot+' campaign JSON save');
   input.addEventListener('change',()=>{
    const file=input.files?.[0];
    if(!file)return;
-   void file.text().then(raw=>this.handlers.importSave(raw))
+   void file.text().then(raw=>this.handlers.importSave(raw,slot))
     .catch(()=>{void showFieldworkNotice('Import failed',
      'Could not read the selected campaign save file.');});
   });
