@@ -24,6 +24,7 @@ export type FixtureLightingVisuals={
 };
 type Cache={
  site:NonNullable<Session['site']>;mode:Session['lightingMode'];
+ powerIdentity:Session['sitePower'];
  powerRevision:number;objectRevision:number;bucket:number;
  doorSignature:string;visuals:FixtureLightingVisuals;
 };
@@ -51,7 +52,7 @@ export function fixtureLightingVisuals(s:Session):FixtureLightingVisuals{
   (d.glassShattered?1:0)).join('|');
  const old=snapshots.get(s);
  if(old&&old.site===site&&old.mode===s.lightingMode&&
-   old.powerRevision===powerRevision&&old.objectRevision===objectRevision&&
+   old.powerIdentity===power&&old.powerRevision===powerRevision&&old.objectRevision===objectRevision&&
    old.bucket===bucket&&old.doorSignature===doorSignature)return old.visuals;
  const program=planSiteLighting(site,s.lightingMode,power);
  const active=new Map(program.fixtures.map(f=>[f.id,f]));
@@ -77,7 +78,8 @@ export function fixtureLightingVisuals(s:Session):FixtureLightingVisuals{
    range:lit?.range??authored.range,footprint});
  }
  const visuals={fixtures,activeCount,revision:powerRevision};
- snapshots.set(s,{site,mode:s.lightingMode,powerRevision,objectRevision,
+ snapshots.set(s,{site,mode:s.lightingMode,powerIdentity:power,
+  powerRevision,objectRevision,
   bucket,doorSignature,visuals});
  return visuals;
 }
