@@ -16,6 +16,7 @@ import {mountBreachPhotoUi} from './ui/breach-photo-ui.ts';
 
 type Ports={
  getState:()=>Session;getStage:()=>TacticalScene3D|null;
+ getSelected:()=>string;
  getViewMode:()=>ViewMode;isReplaying:()=>boolean;
  getPlayback:()=>ReplayPlaybackController;
  getCamera:()=>ReplayCameraController;
@@ -70,6 +71,7 @@ export function createBreachPhotoModeController(ports:Ports){
     photoFilterCss(settings.filter,settings.strength):'';
  }
  function clearPhotoCam():void{
+  ports.getStage()?.setPhotoLiveBodycam(false);
   ports.getStage()?.setReplayBodycam(null);
   if(originalKnowledge){
    const knowledge=ports.getKnowledge();
@@ -85,8 +87,16 @@ export function createBreachPhotoModeController(ports:Ports){
   if(!stage){settings.lens='ortho';ui.lens.value='ortho';return;}
   if(next==='cam'){
    if(!ports.isReplaying()){
-    status('CAM IS AVAILABLE IN RECORDED REPLAYS');
-    ui.lens.value=settings.lens;return;
+    const candidate=ports.getSelected();
+    if(!ports.getState().operators.some(a=>a.id===candidate&&a.health>0)){
+     status('SELECT AN ACTIVE OPERATOR FOR CAM');
+     ui.lens.value=settings.lens;return;
+    }
+    stage.setPhotoPerspective(false);
+    stage.setReplayBodycam({actorId:candidate,mount:'helmet',
+     stabilization:'balanced',fov:95});
+    stage.setPhotoLiveBodycam(true);
+    settings.lens='cam';ui.lens.value='cam';markDirty();frameGuides();return;
    }
    const b=ports.getBodycam();
    const cam=ports.getCamera();
@@ -138,8 +148,7 @@ export function createBreachPhotoModeController(ports:Ports){
   active=true;busy=false;pending=null;dirty=true;
   pointerMap.clear();lastMid=null;lastDistance=0;
   ui.lens.value=settings.lens;
-  ui.lens.querySelector<HTMLOptionElement>('option[value="cam"]')!.disabled=
-   !ports.isReplaying();
+  ui.lens.querySelector<HTMLOptionElement>('option[value="cam"]')!.disabled=false;
   if(settings.lens==='wide')stage?.setPhotoPerspective(true);
   if(settings.lens==='cam'&&!stage?.isReplayBodycamActive())lens('cam');
   document.body.classList.add('photo-mode');
@@ -153,7 +162,7 @@ export function createBreachPhotoModeController(ports:Ports){
   pointerMap.clear();ui.gesture.hidden=true;ui.hud.hidden=true;
   document.body.classList.remove('photo-mode');
   const stage=ports.getStage();
-  stage?.setPhotoPerspective(false);
+  stage?.setPhotoPerspective(false);stage?.setPhotoLiveBodycam(false);
   if(cameraSnapshot)stage?.restorePhotoCameraSnapshot(cameraSnapshot);
   cameraSnapshot=null;
   if(originalKnowledge){
@@ -177,7 +186,7 @@ export function createBreachPhotoModeController(ports:Ports){
   clearPhotoCam();stage.restorePhotoCameraSnapshot(cameraSnapshot);
   settings.lens=originalLens;ui.lens.value=settings.lens;
   if(originalLens==='wide')stage.setPhotoPerspective(true);
-  if(originalLens==='cam'&&!stage.isReplayBodycamActive())lens('cam');
+  if(originalLens==='cam')lens('cam');
   markDirty();status('ORIGINAL CAMERA RESTORED');
  }
  function shutter():void{
@@ -369,13 +378,17 @@ export function createBreachPhotoModeController(ports:Ports){
  window.addEventListener('keydown',e=>{
   if(e.isComposing||e.altKey||e.ctrlKey||e.metaKey||
    e.target instanceof HTMLElement&&e.target.closest('input,select,textarea'))return;
-  if(!ui.gallery.hidden){if(e.code==='Escape'){e.preventDefault();closeGallery();}return;}
+  if(!ui.gallery.hidden){if(e.code==='Escape'){
+   e.preventDefault();e.stopImmediatePropagation();closeGallery();}return;}
   if(!active){
    if(e.code==='KeyP'){e.preventDefault();enter();}
    return;
   }
-  if(e.code==='Escape'||e.code==='KeyP'){e.preventDefault();exit();}
-  else if(e.code==='Space'&&!e.repeat){e.preventDefault();shutter();}
+  if(e.code==='Escape'||e.code==='KeyP'){
+   e.preventDefault();e.stopImmediatePropagation();exit();
+  }else if(e.code==='Space'&&!e.repeat){
+   e.preventDefault();e.stopImmediatePropagation();shutter();
+  }
  },true);
  return {get active(){return active;},get replayClean(){return replayClean&&ports.isReplaying();},
   clearReplayClean(){replayClean=false;document.body.classList.remove('replay-clean');

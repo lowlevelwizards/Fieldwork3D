@@ -269,6 +269,7 @@ export class TacticalScene3D{
   readonly bodycamCamera=new THREE.PerspectiveCamera(95,1,.8,2800);
   private readonly photoCamera=new THREE.PerspectiveCamera(72,1,.45,2800);
   private photoPerspective=false;
+  private photoLiveBodycam=false;
   private replayBodycam:BodycamSetting|null=null;
   private bodycamSmooth:BodycamSample|null=null;
   private lastBodycamSampleTime:number|null=null;
@@ -614,6 +615,7 @@ export class TacticalScene3D{
     this.photoPerspective=saved.perspective;
     this.setReplayBodycam(saved.bodycam);this.updateCamera(0);
   }
+  setPhotoLiveBodycam(enabled:boolean):void{this.photoLiveBodycam=enabled;}
   setPhotoPerspective(enabled:boolean):void{
     if(this.photoPerspective===enabled)return;
     this.photoPerspective=enabled;this.updateCamera(0);
@@ -1588,9 +1590,11 @@ export class TacticalScene3D{
     }
     // Personal disclosure is observer-scoped, never camera-mount-scoped.
     const personalDisclosure=replayDisclosurePolicy?.mode==='operator';
-    const bodycamAudition=!!this.replayBodycam&&
+    const bodycamAudition=!!this.replayBodycam&&(
       replayDisclosurePolicy?.mode==='operator'&&
-      replayDisclosurePolicy.observerId===this.replayBodycam.actorId;
+      replayDisclosurePolicy.observerId===this.replayBodycam.actorId||
+      this.photoLiveBodycam&&!replayDisclosurePolicy&&
+      this.replayBodycam.actorId===selected);
     if(this.appliedLightingMode!==s.lightingMode){
       const mood=lightingPresentation(s.lightingMode);
       this.hemisphere.intensity=this.graphicLookEnabled?

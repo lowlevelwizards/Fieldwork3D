@@ -956,6 +956,7 @@ function exitReplay(){
  const origin=afterActionReturn;
  const exited=replayModeController.exitReplay();
  if(!exited)return;
+ photoMode?.clearReplayClean();
  afterActionReturn=null;
  ui.afterActionClipHud.hidden=true;
  ui.afterActionClipLabel.textContent='INCIDENT · LOOP';
@@ -1561,6 +1562,7 @@ const runtimeLoop=createBreachRuntimeLoop({
 });
 photoMode=createBreachPhotoModeController({
  getState:()=>state,getStage:()=>stage,getViewMode:()=>viewMode,
+ getSelected:()=>selected,
  isReplaying:()=>replaying,getPlayback:()=>replayPlayback,
  getCamera:()=>replayCamera,getBodycam:()=>replayBodycam,
  getKnowledge:()=>replayKnowledge,
