@@ -10,8 +10,9 @@ import {briefJson,briefMarkdown,candidateBacklogCsv}
  from './faction-reference-production-briefs.ts';
 import {TIMELINE_ORGANIZATIONS} from './faction-reference-timelines.ts';
 import {GEAR_CATEGORIES} from './faction-reference-gear-chronology.ts';
+import {FT17_CANDIDATE_DECISIONS} from './faction-reference-production-decisions.ts';
 const matrix=buildReferenceCoverageMatrix();
-const candidates=buildContentCandidates();
+const candidates=buildContentCandidates(FT17_CANDIDATE_DECISIONS);
 const node=<K extends keyof HTMLElementTagNameMap>(tag:K,text?:string)=>{
  const n=document.createElement(tag);if(text!==undefined)n.textContent=text;return n;
 };
