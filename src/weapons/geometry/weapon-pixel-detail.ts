@@ -3,6 +3,8 @@
  * Art-only overlays have no cast shadow and never affect weapon handling.
  */
 import * as THREE from 'three';
+import {surfaceMarkTexture,surfaceMarkMaterial,finishSurfaceOverlay}
+ from './weapon-surface-details.ts';
 export type WeaponMark='ar-port'|'ak-port'|'ak-selector'|'ak-cover-ribs'|'ak-receiver-stamp'|'ris-panel'|'m5-panel'|'ras-panel'|'pri-vents'|'poly-ribs'|'car-ribs'|'ar-mag-stamp20'|'ar-mag-stamp30'|'ar-poly-panel'|'ar-birdcage'|'rail-cover-stripes'|'ar-spr-ports'|'hk-port'|'hk-selector'|'hk-selector-picto';
 const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-port':[16,12],'ak-port':[16,12],
@@ -15,8 +17,8 @@ const dimensions:Record<WeaponMark,readonly [number,number]>={
  'ar-poly-panel':[16,24],'ar-birdcage':[16,8],
  'rail-cover-stripes':[32,8],'ar-spr-ports':[16,8]
 };
-const shared=new Map<WeaponMark,THREE.MeshBasicMaterial>();
-function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
+const shared=new Map<WeaponMark,THREE.MeshStandardMaterial>();
+function materialFor(mark:WeaponMark):THREE.MeshStandardMaterial{
  const cached=shared.get(mark);if(cached)return cached;
  const [w,h]=dimensions[mark],data=new Uint8Array(w*h*4);
  const pixel=(x:number,y:number,light=false,strong=false)=>{
@@ -146,13 +148,8 @@ function materialFor(mark:WeaponMark):THREE.MeshBasicMaterial{
    for(let y=2;y<=5;y++)for(let x=start;x<Math.min(w,start+4);x++)pixel(x,y);
   for(let x=3;x<=26;x++)pixel(x,1,true);
  }
- const texture=new THREE.DataTexture(data,w,h,THREE.RGBAFormat);
- texture.magFilter=THREE.NearestFilter;texture.minFilter=THREE.NearestFilter;
- texture.generateMipmaps=false;texture.needsUpdate=true;
- const material=new THREE.MeshBasicMaterial({
-  map:texture,transparent:true,depthWrite:false,
-  polygonOffset:true,polygonOffsetFactor:-1,side:THREE.DoubleSide
- });
+ const texture=surfaceMarkTexture(data,w,h,mark);
+ const material=surfaceMarkMaterial(texture);
  shared.set(mark,material);return material;
 }
 export function addWeaponPixelMark(root:THREE.Group,mark:WeaponMark,
@@ -160,8 +157,7 @@ export function addWeaponPixelMark(root:THREE.Group,mark:WeaponMark,
  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(w,h),materialFor(mark));
  mesh.name='family-art-'+mark;
  mesh.position.set(x,y,z);
- mesh.userData.weaponPixelArt=true;
- mesh.castShadow=false;mesh.receiveShadow=false;mesh.renderOrder=3;
+ finishSurfaceOverlay(mesh,mark,'right');
  root.add(mesh);
  return mesh;
 }
@@ -174,5 +170,6 @@ export function addWeaponPixelMarkPair(root:THREE.Group,mark:WeaponMark,
  const right=addWeaponPixelMark(root,mark,x,y,z,w,h);
  const left=addWeaponPixelMark(root,mark,x,y,-z,w,h);
  left.rotation.y=Math.PI;
+ left.userData.surfaceDetailFace='left';
  return [right,left] as const;
 }
