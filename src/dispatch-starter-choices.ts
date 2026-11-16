@@ -30,7 +30,8 @@ export const DISPATCH_STARTER_CHOICES:
  }),
  'us-swat-2015':policy({
   equipment:['primary-carbine','head-helmet','armor-soft','rig-light',
-   'belt-standard','backpack-none','utility-radio','tactical-flash'],
+   'belt-standard','backpack-none','utility-radio','tactical-flash',
+   'top-uniform','legs-field','hands-gloves','feet-boots','medical-basic'],
   'weapon-preset':['ar-m4a1'],
   'wardrobe-style':['police-helmet','bdu-shirt','bdu-trousers',
    'soft-vest','micro-rig','duty-belt','no-pack','gloves-field'],
