@@ -34,6 +34,7 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;training:()=>void;
  newSandbox:()=>void;continueSandbox:()=>void;
+ newDispatch:()=>void;continueDispatch:()=>void;
  createSandbox:(draft:CampaignCreationDraft)=>Promise<boolean|null>;
  exportSandbox:()=>void;showMenu:()=>void;
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
@@ -71,7 +72,7 @@ export class CampaignScreen{
  readonly root=node('section','campaign-screen');
  private readonly handlers:CampaignHandlers;
  private currentSlot:CampaignSlot='legacy';
- private lastEntry={legacy:false,sandbox:false,active:'legacy' as CampaignSlot};
+ private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
  private preview:CampaignKitPreview|null=null;
@@ -107,8 +108,8 @@ export class CampaignScreen{
   document.body.append(this.root);
  }
  hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
- entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy'){
-  this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,active};
+ entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false){
+  this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,dispatch:dispatchHasSave,active};
   this.armoryOperatorId=null;this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-landing');
@@ -144,6 +145,9 @@ export class CampaignScreen{
    button(sandboxHasSave?'CONTINUE SANDBOX':'SANDBOX CAMPAIGN',
     sandboxHasSave?this.handlers.continueSandbox:this.handlers.newSandbox,
     'campaign-landing-card campaign-landing-quick'),
+   button(dispatchHasSave?'CONTINUE DISPATCH':'DISPATCH · SWAT PILOT',
+    dispatchHasSave?this.handlers.continueDispatch:this.handlers.newDispatch,
+    'campaign-landing-card campaign-landing-quick'),
    button('QUICK PLAY',this.handlers.quickPlay,
     'campaign-landing-card campaign-landing-quick'),
    button('TRAINING · KILLHOUSE',this.handlers.training,
@@ -155,6 +159,10 @@ export class CampaignScreen{
    'campaign-landing-link'));
   if(sandboxHasSave)utility.append(button('NEW SANDBOX',this.handlers.newSandbox,
    'campaign-landing-link'));
+  if(dispatchHasSave)utility.append(button('NEW DISPATCH PILOT',this.handlers.newDispatch,
+   'campaign-landing-link'));
+  utility.append(node('p','campaign-note',
+   'DISPATCH PILOT · Existing mission types and progression; police-specific scenarios are not yet implemented.'));
   utility.append(node('p','campaign-note','ACTIVE SLOT · '+active.toUpperCase()));
   utility.append(button('REPLAY LIBRARY',this.handlers.openReplayLibrary,
    'campaign-landing-link'));
@@ -185,6 +193,8 @@ export class CampaignScreen{
   saves.append(this.importPicker('legacy'));
   saves.append(node('p','campaign-note','IMPORT TO SANDBOX CAMPAIGN'));
   saves.append(this.importPicker('sandbox'));
+  saves.append(node('p','campaign-note','IMPORT TO DISPATCH PILOT'));
+  saves.append(this.importPicker('dispatch'));
   footer.append(labs,saves);
   main.append(hero,actions,utility,footer);
   this.root.append(main);
@@ -194,7 +204,7 @@ export class CampaignScreen{
   this.root.hidden=false;
   renderCampaignCreator(this.root,{
    hasSandbox:this.lastEntry.sandbox,
-   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active),
+   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active,this.lastEntry.dispatch),
    onExportSandbox:this.handlers.exportSandbox,
    onCreate:this.handlers.createSandbox
   });
@@ -216,7 +226,8 @@ export class CampaignScreen{
   title.append(node('h1','','OPERATIONS ROOM'));
   const rules=effectiveCampaignRules(c).mission;
   title.append(node('div','campaign-home-identity',
-   (this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
+   (this.currentSlot==='dispatch'?'DISPATCH · SWAT PILOT':
+    this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
    ' · '+(c.name??'Original Campaign')));
   title.append(node('div','campaign-home-identity',
    'INTELLIGENCE · '+rules.intel.toUpperCase()+
