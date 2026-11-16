@@ -33,6 +33,8 @@ on:
       - 'tests/performance-p2-2-idle-3d-cadence.test.mjs'
       - 'src/rendering/breach-idle-3d-cadence.ts'
       - 'scripts/smoke-p1-5-performance-history.mjs'
+      - 'scripts/verification/e6-6-live-encounter-browser.mjs'
+      - 'tests/refactor-e6-6-encounter-capture.test.mjs'
       - '.github/workflows/p1-5-performance-history.yml'
 permissions:
   contents: read
@@ -68,15 +70,22 @@ jobs:
             tests/performance-r1-r2-mobile-shadows.test.mjs \
             tests/performance-r3-r4-combat-morale.test.mjs \
             tests/breach-runtime-loop-step12.test.mjs \
-            tests/runtime-perf-diagnostics.test.mjs
+            tests/runtime-perf-diagnostics.test.mjs \
+            tests/refactor-e6-6-encounter-capture.test.mjs
       - name: Three-view mobile history UI and execution policy A/B
         env:
           FIELDWORK_CI_CHROME: '1'
         run: node scripts/smoke-p1-5-performance-history.mjs
+      - name: E6.6 — actual tactical browser JSON captures (planning and live)
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-6-live-encounter-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: p1-5-mobile-performance-evidence
-          path: artifacts/performance-p1-5/
+          path: |
+            artifacts/performance-p1-5/
+            artifacts/refactor-e6/browser-encounter/
           if-no-files-found: ignore
           retention-days: 14
