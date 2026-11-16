@@ -33,7 +33,7 @@ export const REFERENCE_WEAPONS:Readonly<Record<string,ReferenceWeaponChoice>>={
  'finnish-m05-2015':choice('ak-akm','proxy'),
  'polish-pantera-2010':choice('ak-ak74m','proxy'),
  'italian-vegetato-2015':choice('ar-m4a1','proxy'),
- 'belgian-jigsaw-1995':choice('ar-m16a2','proxy'),
+ 'belgian-jigsaw-1995':choice('fnc-service','representative'),
  'french-cce-2005':choice('ar-m16a2','proxy'),
  'norwegian-m98-2005':choice('hk-g3a3','representative'),
  'greek-lizard-1990':choice('hk-g3a3','exact'),
