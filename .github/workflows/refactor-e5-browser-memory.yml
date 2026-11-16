@@ -1,4 +1,4 @@
-name: E5.3 — Replay Chromium Memory Lifecycle
+name: E5 — Replay Chromium Memory Lifecycle
 on:
   pull_request:
     branches: [main]
@@ -6,6 +6,9 @@ on:
       - 'src/breach-replay*.ts'
       - 'src/ui/breach-replay*.ts'
       - 'scripts/smoke-refactor-e5-3-replay-memory.mjs'
+      - 'scripts/smoke-refactor-e5-4-sustained-memory.mjs'
+      - 'scripts/verification/refactor-e5-sustained-contract.mjs'
+      - 'tests/refactor-e5-4-sustained-memory.test.mjs'
       - 'scripts/verification/refactor-e5-browser-memory-contract.mjs'
       - 'tests/refactor-e5-3-browser-memory-contract.test.mjs'
       - '.github/workflows/refactor-e5-browser-memory.yml'
@@ -36,17 +39,23 @@ jobs:
           elif test -x /opt/google/chrome/chrome; then /opt/google/chrome/chrome --version
           else echo "No preinstalled Chrome" >&2; exit 1
           fi
-      - name: E5.3 deterministic heap/DOM lifecycle contract
-        run: node --test tests/refactor-e5-3-browser-memory-contract.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs
+      - name: E5.3–4 deterministic heap/DOM and archive-retention contracts
+        run: node --experimental-strip-types --test tests/refactor-e5-3-browser-memory-contract.test.mjs tests/refactor-e5-4-sustained-memory.test.mjs tests/replay-lifecycle-controller-20261109.test.mjs
       - name: E5.3 six real saved-replay enter/exit cycles and post-GC CDP evidence
         env:
           FIELDWORK_CI_CHROME: '1'
         run: node scripts/smoke-refactor-e5-3-replay-memory.mjs
+      - name: E5.4 same-key archive replacement, sustained 60s playback and post-GC evidence
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/smoke-refactor-e5-4-sustained-memory.mjs
       - name: Retain replay heap and DOM observations
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: refactor-e5-3-chromium-memory
-          path: artifacts/refactor-e5-3/
+          name: refactor-e5-browser-memory
+          path: |
+            artifacts/refactor-e5-3/
+            artifacts/refactor-e5-4/
           if-no-files-found: warn
           retention-days: 14
