@@ -17,6 +17,10 @@ import {existingVisualProxyForContext} from './faction-reference-visual-proxy.ts
 import {prioritizeContentDemand} from './faction-reference-content-demand.ts';
 import {consolidatedFactions,timelineGearMilestones,GEAR_CATEGORIES}
  from './faction-reference-gear-chronology.ts';
+import {gearEvolutionForTimeline,gearEventsAtYear}
+ from './faction-reference-equipment-evolution.ts';
+import {resolveDatedGearSnapshot,compareDatedGearSnapshots}
+ from './faction-reference-dated-gear-snapshot.ts';
 const CONTENT_DEMAND=prioritizeContentDemand();
 const FACTION_GROUPS=consolidatedFactions();
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
@@ -55,6 +59,9 @@ export class FactionReferenceBrowser{
  private readonly timelineStatus:HTMLElement;
  private readonly historicalPanel:HTMLElement;
  private readonly compareYear:HTMLInputElement;
+ private gearCompareTimeline='';
+ private gearCompareFrom='';
+ private gearCompareTo='';
  private generatorMode:GenerationMode='evidence-backed';
  private generatorRole='';private generatorTheater='';
  private generatorSeed=0;private generatorTentative=false;
@@ -320,6 +327,17 @@ export class FactionReferenceBrowser{
      }
      card.append(group);
     }
+    if(snapshot.changes.length){
+     const full=el('details','reference-chronology-category');
+     full.append(el('summary','','SHOW COMPLETE CONFIGURATION BY GEAR CATEGORY'));
+     for(const category of GEAR_CATEGORIES){
+      const settings=snapshot.settings[category];
+      if(!settings.length)continue;
+      full.append(el('strong','',category.toUpperCase()),
+       el('p','reference-meta',settings.map(x=>x.key+': '+x.value).join(' · ')));
+     }
+     card.append(full);
+    }
     entry.append(card);
    }
    for(const marker of point.researchMarkers){
@@ -334,6 +352,113 @@ export class FactionReferenceBrowser{
    chronology.append(entry);
   }
   this.gearTimelinePanel.append(chronology);
+  this.renderGearEvolutionReview(active);
+ }
+ /** Read-only equipment timeline assessment, without issuing historical proxies. */
+ private renderGearEvolutionReview(active:typeof FACTION_TIMELINES[number]){
+  const laneData=gearEvolutionForTimeline(active.id);
+  if(!laneData)return;
+  const year=Number(this.timelineYear.value);
+  const env=this.timelineEnvironment.value==='all'?undefined:
+   this.timelineEnvironment.value as FactionReference['environment'];
+  const selected=resolveDatedGearSnapshot({timelineId:active.id,year,
+   ...(env?{environment:env}:{})});
+  const panel=el('section','reference-evolution-review');
+  panel.append(el('strong','','INDEPENDENT EQUIPMENT EVOLUTION'),
+   el('small','reference-sources',
+    'One event per existing visual gear setting or cited research-window boundary. None automatically becomes a historical issue or withdrawal date.'));
+  const yearEvents=gearEventsAtYear(active.id,year);
+  const counts=laneData.lanes.filter(x=>x.events.length);
+  panel.append(el('small','reference-meta',
+   counts.map(x=>x.category.toUpperCase()+' '+x.events.length).join(' · ')),
+   el('small','reference-sources',
+    'SELECTED '+year+' · '+selected.state.replace(/-/g,' ').toUpperCase()+
+    ' · '+selected.historical.length+' ELIGIBLE RESEARCH ITEMS · '+
+    selected.unknownHistoricalCategories.length+' UNKNOWN HISTORICAL CATEGORIES'));
+  const events=el('details','reference-chronology-category');
+  events.append(el('summary','',yearEvents.length+' INDIVIDUAL EVENTS AT '+year));
+  for(const event of yearEvents){
+   events.append(el('small','reference-meta',
+    event.category.toUpperCase()+' · '+event.itemKey+' · '+
+    event.kind.replace(/-/g,' ')+' · '+
+    (event.kind.startsWith('visual')?
+     (event.from??'baseline')+' → '+(event.to??'not specified'):
+     event.issueStatus+' · '+event.confidence)+
+    (event.sourceIds.length?' · '+event.sourceIds.join(', '):' · appearance only')));
+  }
+  panel.append(events);
+  const visuals=active.snapshots.map(x=>({
+   ...x,label:FACTION_REFERENCES.find(r=>r.id===x.referenceId)?.name??x.referenceId
+  })).sort((a,b)=>a.representativeYear-b.representativeYear||
+   a.referenceId.localeCompare(b.referenceId));
+  if(this.gearCompareTimeline!==active.id){
+   this.gearCompareTimeline=active.id;
+   const last=visuals[visuals.length-1];
+   const same=visuals.filter(x=>x.environment===last?.environment);
+   this.gearCompareFrom=same[0]?.referenceId??'';
+   this.gearCompareTo=last?.referenceId??'';
+  }
+  const compare=el('details','reference-evolution-compare');
+  compare.append(el('summary','','COMPARE TWO AUTHORED EQUIPMENT SNAPSHOTS'));
+  compare.open=false;
+  const controls=el('div','reference-controls');
+  const left=el('select'),right=el('select');
+  left.setAttribute('aria-label','First gear snapshot');
+  right.setAttribute('aria-label','Second gear snapshot');
+  for(const item of visuals){
+   left.append(option(item.referenceId,item.representativeYear+' · '+
+    item.environment+' · '+item.label));
+   right.append(option(item.referenceId,item.representativeYear+' · '+
+    item.environment+' · '+item.label));
+  }
+  left.value=this.gearCompareFrom;right.value=this.gearCompareTo;
+  const result=el('div','reference-evolution-diff');
+  const paint=()=>{
+   const a=visuals.find(x=>x.referenceId===left.value);
+   const b=visuals.find(x=>x.referenceId===right.value);
+   if(!a||!b){result.replaceChildren();return;}
+   const first=resolveDatedGearSnapshot({timelineId:active.id,
+    year:a.representativeYear,environment:a.environment},a.referenceId);
+   const second=resolveDatedGearSnapshot({timelineId:active.id,
+    year:b.representativeYear,environment:b.environment},b.referenceId);
+   const delta=compareDatedGearSnapshots(first,second);
+   result.replaceChildren(el('small','reference-sources',delta.reason));
+   if(!delta.comparable)return;
+   for(const category of GEAR_CATEGORIES){
+    const changes=delta.changes.filter(x=>x.category===category);
+    if(!changes.length)continue;
+    const row=el('div','reference-chronology-category');
+    row.append(el('strong','',category.toUpperCase()+' · '+changes.length+' CHANGES'));
+    for(const change of changes)row.append(el('small','reference-meta',
+     change.key+': '+(change.previous??'none')+' → '+(change.current??'none')));
+    result.append(row);
+   }
+   if(!delta.changes.length)result.append(el('small','reference-meta',
+    'NO AUTHORED GEAR SETTING DIFFERENCES'));
+  };
+  left.addEventListener('change',()=>{
+   this.gearCompareFrom=left.value;paint();
+  });
+  right.addEventListener('change',()=>{
+   this.gearCompareTo=right.value;paint();
+  });
+  controls.append(left,right);compare.append(controls,result);paint();
+  panel.append(compare);
+  if(selected.contentDemand.length){
+   const demand=el('details','reference-evolution-demand');
+   demand.append(el('summary','',
+    selected.contentDemand.length+' FUTURE ASSET NEEDS FOR THIS LOOK'));
+   for(const item of selected.contentDemand.slice(0,10)){
+    demand.append(el('small','reference-meta',
+     item.label+' · '+item.affectedKitCount+' KITS · SCORE '+
+     item.priorityScore+' · '+item.noveltyAssessment+
+     ' · '+item.currentProxies.slice(0,2).join('; ')));
+   }
+   demand.append(el('small','reference-sources',
+    'Priority ranks existing gaps only; actual silhouette difference needs human review.'));
+   panel.append(demand);
+  }
+  this.gearTimelinePanel.append(panel);
  }
  /** Research coverage does not require a 3D appearance snapshot. */
  private renderHistorical(){

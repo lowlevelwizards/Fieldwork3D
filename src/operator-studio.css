@@ -576,3 +576,20 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
 .reference-chronology-category .reference-meta{overflow-wrap:anywhere}
 @media(max-width:520px){.reference-gear-timeline{padding:7px}
  .reference-chronology-point{padding:6px}}
+
+/* FT1.6: equipment lanes, two-snapshot comparisons and deferred content needs. */
+.reference-evolution-review{display:grid;gap:7px;min-width:0;padding:8px;
+ border:1px solid #58705e;border-radius:7px;background:#20392d}
+.reference-evolution-compare,.reference-evolution-demand{min-width:0;
+ border:1px solid #58705e;border-radius:6px;padding:7px}
+.reference-evolution-compare>summary,.reference-evolution-demand>summary{
+ cursor:pointer;font-size:12px;font-weight:750}
+.reference-evolution-compare .reference-controls{display:flex;flex-wrap:wrap;
+ gap:6px;margin:8px 0}
+.reference-evolution-compare select{min-width:0;max-width:100%;flex:1 1 175px}
+.reference-evolution-diff{display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}
+.reference-evolution-demand .reference-meta{display:block;padding:4px 0;
+ overflow-wrap:anywhere}
+@media(max-width:520px){.reference-evolution-compare .reference-controls{
+ flex-direction:column}.reference-evolution-compare select{width:100%;
+ flex:initial}}
