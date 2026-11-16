@@ -18,7 +18,7 @@ import {FNC_FRONT_P13} from './fnc-front-layout.ts';
 export const FNC_P1=Object.freeze({
  stockRearX:-14.85,receiverRearX:-6.38,receiverFrontX:4.12,
  handguardStartX:3.45,handguardEndX:13.55,
- frontSightX:15.20,muzzleX:19.50,magazineBottomY:-8.11,
+ frontSightX:15.20,muzzleX:19.50,magazineBottomY:-8.55,
  nominalBarrelInches:17.7
 });
 type Finish='steel'|'lower'|'stock'|'buttpad'|'grip'|'handguard'|

@@ -23,7 +23,10 @@ test('family 01: all 30 AR/AK/HK presets normalize and survive saves',()=>{
    const id=build.parts[slot],part=FAMILY_PARTS[id];
    assert.ok(part,preset.id+' '+slot);
    assert.equal(part.slot,slot);
-   assert.equal(part.family,preset.family);
+   assert.ok(part.family===preset.family||
+    (preset.family==='fnc'&&slot==='magazine'&&
+     part.family==='ar'&&part.feed==='stanag'),
+    'only FNC/AR magazine identity may cross weapon families');
    assert.equal(compatibleFamilyPart(build.parts.receiver,slot,id,preset.weapon,
     FAMILY_PARTS[build.parts.barrel].length),true,preset.id+' '+slot);
   }
