@@ -1,5 +1,6 @@
 /** Tiny decorative ground fragments; never create collisions or cover. */
-import {seeded,type Site} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {effectiveCondition} from './condition-visual.ts';
 export type DebrisKind='stone'|'leaf'|'weed'|'flake';
 export type Debris={id:string;kind:DebrisKind;x:number;y:number;size:number;angle:number};

@@ -1,5 +1,6 @@
 /** Small reproducible visual histories; independent from combat/save state. */
-import {seeded,type Site} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {roomPixelSurface} from './pixel-surface-selection.ts';
 import {canWear,type WearEffect} from './material-properties.ts';
 import {effectiveCondition} from './condition-visual.ts';

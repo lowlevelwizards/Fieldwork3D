@@ -1,7 +1,8 @@
 /** Deterministic, non-colliding interior fragments concentrated near walls,
  * dirt traps and old equipment. One instanced draw per affected room.
  */
-import {seeded,type Site} from '../breach-site.ts';
+import {type Site} from '../breach-site.ts';
+import {seeded} from './seeded-rng.ts';
 import {effectiveCondition} from './condition-visual.ts';
 export type InteriorFragment={roomId:string;x:number;y:number;size:number;
  kind:'flake'|'dust'|'plaster'|'leaf'|'paper'|'glass';angle:number};
