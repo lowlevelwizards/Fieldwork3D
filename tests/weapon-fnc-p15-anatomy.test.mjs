@@ -54,23 +54,28 @@ test('P15 polymer 30% taller; short collar and long gas spine truly interlock',(
  assert.ok(sz(gas,'x')>sz(poly,'x')+2.0);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P20 one broken side vent row clears polymer roof and follows gas wall',()=>{
+test('P21 pixel surface coverage: P20 one broken side vent row clears polymer roof and follows gas wall',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const gas=get(g,'fncP15UpperGasSpine'),poly=get(g,'fncP15RaisedPolymer');
- const slots=many(g,'fncP11BrokenGasSideSlots'),
-  grooves=many(g,'fncP11PolymerLongRibs');
- assert.equal(slots.length,2);assert.equal(grooves.length,2);
- for(const side of slots){
-  assert.equal(side.geometry.getAttribute('position').count,24);
-  assert.ok(box(side).min.y>box(poly).max.y+.10,
-   'no gas markings concealed behind enlarged polymer');
-  assert.ok(box(side).min.x>box(gas).min.x+.4);
-  assert.ok(box(side).max.x<box(gas).max.x-.5);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
  }
- const roof=get(g,'fncP11TopGasVentRow');
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.ok(near(box(roof).min.y,box(gas).max.y+L.gas.ventOffset,.015));
- assert.ok(grooves.every(x=>sz(x,'x')>5.5));
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P15 grip moved forward while preserving primary hand anchor',()=>{
