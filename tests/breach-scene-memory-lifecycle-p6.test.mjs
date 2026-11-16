@@ -44,6 +44,8 @@ test('opt-in diagnostics report retained actor and civilian rigs',()=>{
 
 test('site swaps discard obsolete weapon-light blockers and pose caches',()=>{
   assert.match(siteSwap,/this\.beamBlockerTick=-1;this\.beamBlockerSite=-1/);
-  assert.match(siteSwap,/this\.beamBlockerRevision=-1;this\.beamBlockers=\[\]/);
+  // L1.4 also invalidates historical same-tick door aperture signatures.
+  assert.match(siteSwap,/this\.beamBlockerRevision=-1;this\.beamBlockerSignature=''/);
+  assert.match(siteSwap,/this\.beamBlockers=\[\]/);
   assert.match(siteSwap,/actor\.beam\.visible=false;actor\.beamLast=null/);
 });
