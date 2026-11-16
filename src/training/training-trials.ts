@@ -8,20 +8,21 @@ export type TrialDefinition=Readonly<{
  squadSize:1|2|3|4;layout:TrainingLayout;
  targetDensity:TrainingTargetDensity;lighting:LightingMode;
  goal:'targets'|'room'|'squad';maxSeconds:number;
+ noShootSlots:readonly number[];
 }>;
 export const TRIALS:Readonly<Record<TrialId,TrialDefinition>>={
  discrimination:{id:'discrimination',version:1,name:'TARGET DISCRIMINATION',
   squadSize:1,layout:'hall',targetDensity:'dense',lighting:'day',
-  goal:'targets',maxSeconds:180},
+  goal:'targets',maxSeconds:180,noShootSlots:[1,4]},
  room:{id:'room',version:1,name:'SINGLE-ROOM EXERCISE',
   squadSize:1,layout:'linear',targetDensity:'sparse',lighting:'day',
-  goal:'room',maxSeconds:180},
+  goal:'room',maxSeconds:180,noShootSlots:[]},
  squad:{id:'squad',version:1,name:'SQUAD COORDINATION',
   squadSize:4,layout:'compound',targetDensity:'dense',lighting:'day',
-  goal:'squad',maxSeconds:300},
+  goal:'squad',maxSeconds:300,noShootSlots:[3]},
  blackout:{id:'blackout',version:1,name:'LOW-LIGHT COURSE',
   squadSize:2,layout:'branch',targetDensity:'standard',lighting:'blackout',
-  goal:'targets',maxSeconds:240}
+  goal:'targets',maxSeconds:240,noShootSlots:[2]}
 };
 export function trialConfig(id:TrialId):TrainingConfig{
  const t=TRIALS[id];return {activity:'killhouse',layout:t.layout,

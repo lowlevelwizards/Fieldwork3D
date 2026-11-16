@@ -3,6 +3,7 @@
 import type {Site,Room} from '../breach-site.ts';
 import {equipmentTrainingSite} from '../equipment-training-range.ts';
 import {TRAINING_LAYOUT_LABELS,type TrainingConfig} from './training-courses.ts';
+import {TRIALS} from './training-trials.ts';
 const p=(x:number,y:number)=>({x,y});
 const wall=(x:number,y:number,u:number,v:number)=>({a:p(x,y),b:p(u,v)});
 const DOOR_Y=[172,342,512] as const;
@@ -12,14 +13,18 @@ const targets=[
 ] as const;
 export function buildTrainingSite(config:TrainingConfig):Site{
  if(config.activity==='range')return equipmentTrainingSite();
+ const trial=config.activity==='trial'?TRIALS[config.trial??'discrimination']:null;
+ const options=trial?{...config,layout:trial.layout,
+  targetDensity:trial.targetDensity,lighting:trial.lighting,
+  squadSize:trial.squadSize,doors:'closed' as const}:config;
  const doors:Site['doors']=[];
  const walls:Site['walls']=[];
  const addDoor=(id:string,x:number,y:number,u:number,v:number,index:number)=>{
-  const open=config.doors==='open'||(config.doors==='mixed'&&index%3===0);
+  const open=options.doors==='open'||(options.doors==='mixed'&&index%3===0);
   doors.push({id,a:p(x,y),b:p(u,v),kind:'hinged',
    style:index%5===0?'glazed':index%4===0?'reinforced':'wood',
    hinge:index%2===0?'a':'b',open,openedAt:open?0:-1,
-   locked:config.doors==='mixed'&&index%5===4});
+   locked:options.doors==='mixed'&&index%5===4});
  };
  // The staging side is fully sealed except for the real entry leaf.
  walls.push(wall(80,100,600,100),wall(80,100,80,600),
@@ -39,12 +44,12 @@ export function buildTrainingSite(config:TrainingConfig):Site{
  }
  // Room subdivisions: compound adds physical inter-room doors, while
  // the other variants retain intact walls; every bay still has a hall entry.
- const openedPartitions=config.layout==='compound'||config.layout==='linear';
+ const openedPartitions=options.layout==='compound'||options.layout==='linear';
  for(const x of [80,400]){
   const end=x===80?280:600;
   for(const [tier,y] of [280,440].entries()){
    if(openedPartitions){
-    const gapX=x+(config.layout==='linear'?
+    const gapX=x+(options.layout==='linear'?
      (x===80?88:62):90);
     walls.push(wall(x,y,gapX,y),wall(gapX+42,y,end,y));
     addDoor('KH LINK '+x+'-'+tier,gapX,y,gapX+42,y,7+tier+(x===80?0:2));
@@ -64,27 +69,29 @@ export function buildTrainingSite(config:TrainingConfig):Site{
     purpose:n===0?'entry drill':n===1?'target discrimination':'room clearing'});
   }
  }
- const count=config.targetDensity==='none'?0:
-  config.targetDensity==='sparse'?3:
-  config.targetDensity==='standard'?4:6;
- const choices=config.layout==='linear'?[0,1,2,5,4,3]:
-  config.layout==='branch'?[0,3,1,4,2,5]:
-  config.layout==='compound'?[5,2,3,0,4,1]:[0,3,2,5,1,4];
+ const count=options.targetDensity==='none'?0:
+  options.targetDensity==='sparse'?3:
+  options.targetDensity==='standard'?4:6;
+ const choices=options.layout==='linear'?[0,1,2,5,4,3]:
+  options.layout==='branch'?[0,3,1,4,2,5]:
+  options.layout==='compound'?[5,2,3,0,4,1]:[0,3,2,5,1,4];
  const cover:Site['cover']=choices.slice(0,count).map((index,i)=>({
   id:'kh-target-'+(i+1),x:targets[index].x,y:targets[index].y,
-  w:20,h:30,low:false,fixture:'target-plate'
+  w:20,h:30,low:false,
+  fixture:trial?.noShootSlots.includes(i)?'target-no-shoot':'target-plate'
  }));
  // Additional low obstacles live away from openings and the hallway.
  cover.push(
   {id:'kh-bench-1',x:225,y:235,w:45,h:18,low:true,fixture:'shooting-bench'},
   {id:'kh-bench-2',x:465,y:475,w:42,h:18,low:true,fixture:'shooting-bench'});
- if(config.layout==='branch'||config.layout==='compound')
+ if(options.layout==='branch'||options.layout==='compound')
   cover.push({id:'kh-box',x:340,y:278,w:24,h:22,low:true,fixture:'tool-workbench'});
  return {
   training:true,programLocked:true,seed:101_000+
-    (['linear','branch','hall','compound'].indexOf(config.layout)*100)+count*10+
-    (config.doors==='open'?1:config.doors==='mixed'?2:0),
-  name:'KILLHOUSE · '+TRAINING_LAYOUT_LABELS[config.layout],
+    (['linear','branch','hall','compound'].indexOf(options.layout)*100)+count*10+
+    (options.doors==='open'?1:options.doors==='mixed'?2:0),
+  name:(trial?'TRIAL · ':'KILLHOUSE · ')+TRAINING_LAYOUT_LABELS[options.layout],
+  ...(trial?{trainingTrial:{id:trial.id,version:1 as const}}:{}),
   archetype:'warehouse',scale:'small',
   layout:'corridor',condition:'occupied',conditionLevel:0,
   scenarioStyle:'routine',roomCount:rooms.length,rooms,walls,doors,cover,
