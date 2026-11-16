@@ -7,6 +7,9 @@ import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-
 import {FACTION_TIMELINES,TIMELINE_ORGANIZATIONS,timelineForReference}
  from './faction-reference-timelines.ts';
 import {resolveTimelineYear,timelineById} from './faction-reference-timeline-resolver.ts';
+import {equipmentAtYear,compareEquipmentYears}
+ from './faction-reference-equipment-resolver.ts';
+import {historicalEvidence} from './faction-reference-evidence.ts';
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
 export type ReferenceBrowserHooks={
  onPreview:(id:string)=>void;onApply:(id:string)=>void;onClose:()=>void;
@@ -34,6 +37,8 @@ export class FactionReferenceBrowser{
  private readonly timelineYear:HTMLInputElement;
  private readonly timelineEnvironment:HTMLSelectElement;
  private readonly timelineStatus:HTMLElement;
+ private readonly historicalPanel:HTMLElement;
+ private readonly compareYear:HTMLInputElement;
  private timelineMode=false;
  private timelineHasMatch=true;
  private readonly summary:HTMLElement;
@@ -85,6 +90,12 @@ export class FactionReferenceBrowser{
    this.timelineEnvironment.append(option(id,label));
   this.timelineControls.append(this.timeline,this.timelineYear,this.timelineEnvironment);
   this.timelineStatus=el('small','reference-timeline-status');this.timelineStatus.hidden=true;
+  this.historicalPanel=el('section','reference-historical-panel');
+  this.historicalPanel.hidden=true;
+  this.compareYear=el('input');this.compareYear.type='number';
+  this.compareYear.min='1800';this.compareYear.max='2100';this.compareYear.step='1';
+  this.compareYear.value='2010';this.compareYear.setAttribute('aria-label','Compare equipment year');
+  this.compareYear.addEventListener('change',()=>this.renderHistorical());
   this.view.addEventListener('change',()=>{
    this.timelineMode=this.view.value==='timeline';
    this.timelineControls.hidden=!this.timelineMode;
@@ -117,7 +128,7 @@ export class FactionReferenceBrowser{
   for(const c of [this.search,this.organization,this.era,this.country])
    c.addEventListener(c===this.search?'input':'change',()=>this.renderList());
   root.replaceChildren(heading,controls,this.timelineControls,this.timelineStatus,
-   this.summary,this.list,this.detail,this.apply);
+   this.historicalPanel,this.summary,this.list,this.detail,this.apply);
   root.hidden=true;
   this.renderList();this.renderDetail();
  }
@@ -192,7 +203,73 @@ export class FactionReferenceBrowser{
   }
   if(!found.length)fragment.append(el('p','reference-empty','No references match those filters.'));
   this.list.replaceChildren(fragment);
+  this.renderHistorical();
   if(this.timelineMode)this.renderDetail();
+ }
+ /** Research coverage does not require a 3D appearance snapshot. */
+ private renderHistorical(){
+  const active=this.timelineMode?timelineById(this.timeline.value):undefined;
+  this.historicalPanel.hidden=!active;
+  this.historicalPanel.replaceChildren();
+  if(!active)return;
+  const year=Number(this.timelineYear.value);
+  const environment=this.timelineEnvironment.value;
+  const context=environment==='all'?undefined:
+   environment as FactionReference['environment'];
+  const records=equipmentAtYear(active.id,year,context);
+  this.historicalPanel.append(el('strong','','HISTORICALLY DOCUMENTED EQUIPMENT'),
+   el('p','reference-sources',
+   'Evidence coverage only · lack of a record does not mean unavailable or retired.'));
+  if(!records.length)this.historicalPanel.append(el('p','reference-empty',
+   'No researched equipment for this year / environment. Existing appearance kits may still be browsed.'));
+  const categories=[...new Set(records.map(x=>x.equipment.category))];
+  for(const category of categories){
+   const group=el('div','reference-historical-group');
+   group.append(el('strong','',category.toUpperCase()));
+   for(const result of records.filter(x=>x.equipment.category===category)){
+    const {record,equipment}=result;
+    const article=el('details','reference-historical-item');
+    const status=record.issueStatus.replace(/-/g,' ')+' · '+
+     record.availability+' · '+record.confidence;
+    article.append(el('summary','',equipment.name+' · '+status),
+     el('p','reference-sources',record.note),
+     el('p','reference-meta',record.startYear===record.endYear?
+      'EVIDENCE YEAR '+record.startYear:
+      'DOCUMENTED RESEARCH WINDOW '+record.startYear+'–'+record.endYear),
+     el('p','reference-meta','FIELDWORK MODEL · '+(equipment.model?
+      equipment.model.fidelity.toUpperCase()+' · '+equipment.model.note:
+      'MISSING / UNMAPPED')));
+    for(const id of record.evidenceIds){
+     const source=historicalEvidence(id);
+     if(!source)continue;
+     const link=el('a','reference-source-link',source.title+' · '+source.publisher);
+     link.href=source.url;link.target='_blank';link.rel='noopener noreferrer';
+     article.append(link,el('p','reference-meta',source.claim));
+    }
+    group.append(article);
+   }
+   this.historicalPanel.append(group);
+  }
+  const compare=el('div','reference-history-compare');
+  const header=el('div','reference-history-compare-header');
+  header.append(el('strong','','COMPARE RESEARCH COVERAGE'),
+   el('label','','OTHER YEAR '));
+  const label=header.lastElementChild as HTMLLabelElement;
+  label.append(this.compareYear);
+  compare.append(header);
+  const target=Number(this.compareYear.value);
+  const delta=compareEquipmentYears(active.id,target,year,context);
+  for(const [caption,items] of [
+   ['ALSO DOCUMENTED IN '+target,delta.continued],
+   ['DOCUMENTED IN '+year+' (NOT '+target+')',delta.newlyDocumented],
+   ['DOCUMENTED IN '+target+' (NOT '+year+')',delta.notDocumentedInSecond]
+  ] as const){
+   compare.append(el('p','reference-meta',caption+' · '+
+    (items.length?items.map(x=>x.equipment.name).join(', '):'none in dataset')));
+  }
+  compare.append(el('small','reference-sources',
+   'A missing entry never establishes historical retirement or non-use.'));
+  this.historicalPanel.append(compare);
  }
  private renderDetail(){
   const r=FACTION_REFERENCES.find(x=>x.id===this.chosen) as FactionReference;

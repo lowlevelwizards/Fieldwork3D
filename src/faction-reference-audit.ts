@@ -2,6 +2,8 @@
 import {FACTION_REFERENCES,type FactionReference} from './faction-reference-catalog.ts';
 import {resolveFactionReference} from './faction-reference-resolver.ts';
 import {unresolvedReferenceGaps,referenceGapFidelity} from './faction-reference-asset-registry.ts';
+import {auditHistoricalEquipment} from './faction-reference-equipment-resolver.ts';
+import {FACTION_TIMELINES} from './faction-reference-timelines.ts';
 export type CoverageIssue={referenceId:string;message:string};
 export type AssetDemand={id:string;label:string;referenceCount:number;
  definingCount:number;significantCount:number;referenceIds:string[]};
@@ -50,4 +52,22 @@ export function referenceVisualStatus(reference:FactionReference):
  'recognizable-approximation'|'missing-defining-assets'{
  return unresolvedReferenceGaps(reference).some(g=>g.importance==='defining')?
   'missing-defining-assets':'recognizable-approximation';
+}
+
+/** Keep three incomparable coverage dimensions independent. Never average them. */
+export function auditFactionResearchCoverage(){
+ const art=auditFactionReferences();
+ const research=auditHistoricalEquipment();
+ return {
+  datedAppearanceReferences:art.referenceCount,
+  visualAssetGaps:art.assetDemand.length,
+  approximatedAssets:art.approximateAssets.length,
+  researchedTimelines:research.researchedTimelines,
+  totalTimelines:research.totalTimelines,
+  evidenceRecords:research.sourcedClaims,
+  historicalAssociations:research.associations,
+  timelinesWithoutEquipmentResearch:FACTION_TIMELINES
+   .filter(t=>t.equipment.length===0).map(t=>t.id),
+  issues:[...art.issues.map(x=>x.message),...research.issues.map(x=>x.message)]
+ };
 }
