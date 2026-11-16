@@ -345,7 +345,7 @@ const operationsBoardController=createBreachOperationsBoardController({
    appFlow.setMode('training');lastRangeTrial=null;
    reset(state.variant,undefined,undefined,equipmentTrainingSite(),
      undefined,false,undefined,{squadSize:4,lighting:'day'});
-   trainingScreen.setActive(true);
+   trainingScreen.useEquipmentRange();
    showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT TARGET PLATES',6500);
  },
  openStudio:id=>openOperatorStudio(id,'quick'),

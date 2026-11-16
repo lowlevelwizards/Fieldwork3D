@@ -90,6 +90,10 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(!active&&open)close();
  }
  function setActive(value:boolean){active=value;sync();}
+ function useEquipmentRange():void{
+  config={...DEFAULT_TRAINING_CONFIG,activity:'range'};
+  setActive(true);
+ }
  function updateProgress(s:Session):void{
   if(!active||!s.site?.training)return;
   const p=trainingTargetProgress(s);
@@ -106,7 +110,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}
  });
  return {
-  show,retry,setActive,updateProgress,
+  show,retry,setActive,useEquipmentRange,updateProgress,
   get active(){return active;},
   get config(){return {...config};}
  };
