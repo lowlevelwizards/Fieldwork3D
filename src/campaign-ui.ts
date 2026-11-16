@@ -304,7 +304,9 @@ export class CampaignScreen{
    for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
     const opt=node('option','',weapon.toUpperCase()+' · '+c.inventory.weapons[weapon]+' SPARE');
     opt.value=weapon;opt.disabled=(weapon!==p.weapon&&c.inventory.weapons[weapon]<1)||
-     ((weapon==='smg'||weapon==='shotgun')&&weapon!==p.weapon);
+     ((weapon==='smg'||weapon==='shotgun')&&weapon!==p.weapon)||
+      (isDispatchPilot(c)&&weapon!==p.weapon&&
+       !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'));
     weaponPick.append(opt);
    }
    weaponPick.value=p.weapon;weaponPick.disabled=!!c.activeContractId;
@@ -314,7 +316,7 @@ export class CampaignScreen{
     this.armoryOperatorId=p.id;this.home(c);
    },'campaign-primary'));
    const look=button('APPEARANCE',()=>this.handlers.openStudio(p.id));
-   look.disabled=!!c.activeContractId;
+   look.disabled=!!c.activeContractId||isDispatchPilot(c);
    look.setAttribute('aria-label','Edit '+p.callsign+' appearance in Operator Studio');
    actions.append(look,weaponPick);
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
@@ -350,7 +352,8 @@ export class CampaignScreen{
    const stock=c.inventory.weapons[weapon],price=WEAPON_PRICES[weapon];
    const buy=button('BUY AR / AK '+weapon.toUpperCase()+' PLATFORM · '+price+' CR · '+stock+' STOCK',
     ()=>this.handlers.buyWeapon(weapon));
-   buy.disabled=c.funds<price||!!c.activeContractId;
+   buy.disabled=c.funds<price||!!c.activeContractId||
+     !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary');
    inventory.append(buy);
   }
   logistics.append(inventory);
@@ -546,9 +549,10 @@ export class CampaignScreen{
    if(name!==null&&name!==person.callsign)this.handlers.renameOperator(id,name);
   });
   const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
-  rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
+  rename.disabled=!!c.activeContractId;
+  appearance.disabled=!!c.activeContractId||isDispatchPilot(c);
   const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
-  arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build;
+  arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build||isDispatchPilot(c);
   identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
   const readiness=node('details','campaign-readiness-details');
   readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
