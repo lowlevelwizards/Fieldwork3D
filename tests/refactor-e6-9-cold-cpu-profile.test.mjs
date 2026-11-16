@@ -4,6 +4,7 @@ import {readFileSync} from 'node:fs';
 import {summarizeColdCpuProfile}
  from '../scripts/verification/e6-9-cold-cpu-analysis.mjs';
 import {ColdRendererTrace} from '../src/rendering/breach-cold-renderer-trace.ts';
+import {parseBreachBootConfig} from '../src/breach-boot-config.ts';
 
 const src=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 const node=(id,parent,functionName,url='')=>({id,parent,callFrame:{
@@ -52,7 +53,10 @@ test('E6.9 summary rejects empty or corrupt Chrome profiles',()=>{
 test('E6.9 profiles only the real first frame and does not alter production policy',()=>{
  const quick=src('src/breach-quickplay-controller.ts');
  const script=src('scripts/verification/e6-9-cold-cpu-browser.mjs');
- assert.match(quick,/get\('cpuTrace'\)==='1'/);
+ assert.match(quick,/config[.]boot[.]cpuTraceEnabled/);
+ assert.equal(parseBreachBootConfig('').cpuTraceEnabled,false);
+ assert.equal(parseBreachBootConfig('?cpuTrace=1').cpuTraceEnabled,true);
+ assert.equal(parseBreachBootConfig('?cpuTrace=0').cpuTraceEnabled,false);
  assert.ok(quick.includes("if(cpuTraceEnabled)cdpProfileConsole.profile?.('fieldwork-e6.9-first-frame')"));
  assert.ok(quick.includes("if(cpuTraceEnabled)cdpProfileConsole.profileEnd?.('fieldwork-e6.9-first-frame')"));
  assert.match(quick,/if\(coldTrace\)coldTrace\.capture\('firstFrame'/);
