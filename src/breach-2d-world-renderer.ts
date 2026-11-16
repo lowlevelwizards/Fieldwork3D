@@ -16,6 +16,7 @@ import {spatialSurfaceState,windowPresentationKnown} from './breach-presentation
 import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
+import {sitePowerControls,currentControlState} from './equipment-site-power-controls.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipment-weapon-light-beam.ts';
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
@@ -274,6 +275,22 @@ function architecture(){
       circle(contact.x,contact.y,3.8,warning);
     }
     draw.restore();
+  }
+  // Small, knowledge-gated physical electrical props; game illumination
+  // remains authoritative and these marks never disclose unvisited rooms.
+  if(state.site&&state.sitePower){
+    const power=state.sitePower;
+    for(const control of sitePowerControls(state.site)){
+      if(!liveVisibility(state,control.p))continue;
+      const on=currentControlState(control,power.circuits,power.switches);
+      const size=control.kind==='breaker'?6:3.6;
+      rect(control.p.x-size/2,control.p.y-size/2,size,size,
+        on?'#aaad86':'#62584e');
+      if(control.kind==='breaker')
+        line({x:control.p.x-2,y:control.p.y},
+          {x:control.p.x+2,y:control.p.y},
+          '#ded7ba',1.4);
+    }
   }
   // Generated windows use the same real aperture as physical shots and 3D.
   // Unknown interior glass must not be outlined through historical fog.
