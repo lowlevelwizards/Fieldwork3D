@@ -1,6 +1,7 @@
 /** FT1.1: real-world reference identities, never the gameplay equipment catalog.
  * A visual proxy cannot change the identity or provenance of historical gear.
  */
+import {FT12_HISTORICAL_EQUIPMENT} from './faction-reference-equipment-ft1-2.ts';
 export type HistoricalEquipmentCategory='weapon'|'headwear'|'uniform'|'armor'|'carriage'|'other';
 export type HistoricalModelMapping={
  kind:'weapon-preset'|'wardrobe-style'|'camouflage'|'equipment';
@@ -65,6 +66,8 @@ export const HISTORICAL_EQUIPMENT:readonly HistoricalEquipment[]=[
  record('ddr-strichtarn','East German NVA Strichtarn field uniform','uniform',
   'Strichtarn field dress used by the East German NVA.',
   camo('east-german-strichtarn','Pattern represented; garment cut not certified.'))
+,
+ ...FT12_HISTORICAL_EQUIPMENT
 ];
 export const historicalEquipment=(id:string):HistoricalEquipment|undefined=>
  HISTORICAL_EQUIPMENT.find(x=>x.id===id);
