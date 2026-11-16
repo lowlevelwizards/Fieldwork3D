@@ -68,7 +68,7 @@ test('P13: side vents stay EXPOSED ABOVE polymer, top follows actual roof surfac
  assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.ok(near(box(roof).min.y,box(gas).max.y+L.gas.ventOffset,.012));
  for(const mark of marks){
-  assert.equal(mark.geometry.getAttribute('position').count,48);
+  assert.equal(mark.geometry.getAttribute('position').count,24);
   assert.ok(box(mark).min.y>box(poly).max.y+.02,
    'do not hide gas vents behind the extended polymer');
   assert.ok(box(mark).max.x<box(gas).max.x-.3);
