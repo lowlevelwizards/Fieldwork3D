@@ -41,7 +41,7 @@ test('P15 receiver and handguard stay in real 3D contact after body shortening',
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('P15 tall gas cover nests into polymer and exposes both vent rows',()=>{
+test('P20 tall gas cover nests into polymer and exposes a single vent row per side',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const poly=one(g,'fncP14ReceiverSeatedPolymer');
  const metal=one(g,'fncP14LoweredGasCover');
@@ -56,9 +56,9 @@ test('P15 tall gas cover nests into polymer and exposes both vent rows',()=>{
  assert.ok(size(metal,'z')<size(poly,'z')*.65);
  assert.equal(vents.length,2);
  for(const vent of vents){
-  assert.equal(vent.geometry.getAttribute('position').count,48);
+  assert.equal(vent.geometry.getAttribute('position').count,24);
   assert.ok(box(vent).min.y>box(poly).max.y+.02,
-   'lower vent row remains visibly above polymer roof');
+   'remaining vent row stays visibly above polymer roof');
  }
  assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.ok(close(box(roof).max.y,box(metal).max.y+L.gas.ventOffset,.015));
