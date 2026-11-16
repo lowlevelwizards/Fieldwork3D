@@ -16,6 +16,27 @@ test('occupied rooms are tracked for roof cutaways, never fog clearing',()=>{
  assert.deepEqual(occupiedFogRooms(scene([{x:150,y:150,health:0}])),[]);
  assert.deepEqual(occupiedFogRooms(scene([{x:90,y:150}])),[]);
 });
+test('E2.C1 reusable roof IDs match room occupancy and clear stale state',()=>{
+ const s=scene([{x:150,y:150},{x:250,y:150}]);
+ const ids=new Set(['stale']);
+ assert.strictEqual(occupiedFogRooms(s,ids),ids);
+ assert.deepEqual([...ids],occupiedFogRooms(s).map(r=>r.id));
+ assert.deepEqual([...ids],['A','B']);
+ // Room geometry, active life and current position are read on every call.
+ s.operators[0].p={x:90,y:150};
+ assert.strictEqual(occupiedFogRooms(s,ids),ids);
+ assert.deepEqual([...ids],['B']);
+ s.operators[1].health=0;
+ occupiedFogRooms(s,ids);
+ assert.deepEqual([...ids],[]);
+ s.site=null;
+ occupiedFogRooms(s,ids);
+ assert.deepEqual([...ids],[]);
+ const three=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
+ assert.match(three,/private readonly occupiedRoofRoomIds=new Set<string>\(\)/);
+ assert.match(three,/occupiedFogRooms\(s,this\.occupiedRoofRoomIds\)/);
+ assert.doesNotMatch(three,/new Set\(occupiedFogRooms\(s\)\.map/);
+});
 test('fog mask clears directional polygons, not complete occupied rooms',()=>{
  const s=scene([{x:150,y:150}]);
  const calls=[],ctx={
