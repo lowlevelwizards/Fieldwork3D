@@ -64,7 +64,7 @@ try{
   ]);
   const state=newSession(0,3948),recorder=new MissionRecorder();
   const observer=state.operators.find(a=>a.side==='blue');
-  check(!!observer,'Missing actual friendly recorder observer');
+  if(!observer)throw Error('Missing actual friendly recorder observer');
   let nextEventId=1;
   recorder.capture(state,true);
   for(let i=1;i<=240;i++){
