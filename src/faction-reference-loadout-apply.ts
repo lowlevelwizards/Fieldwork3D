@@ -63,10 +63,13 @@ export function createHistoricalLoadoutDraft(proposal:HistoricalLoadoutProposal,
    // This is a garment-cut change, not blanket camo on nylon/helmets/packs.
    const camo=mapping.value as Parameters<typeof setWardrobeFabricCamo>[2];
    let next=wardrobe,outfit=resolvedWardrobe(next,kit);
-   if(!uniformCutCamoCompatible(outfit.top as 'bdu-shirt'|'acu-shirt',mapping.value as
-    Parameters<typeof uniformCutCamoCompatible>[1])||
-     !uniformCutCamoCompatible(outfit.trousers as 'bdu-trousers'|'acu-trousers',
-      mapping.value as Parameters<typeof uniformCutCamoCompatible>[1])){
+   const topSupports=(outfit.top==='bdu-shirt'||outfit.top==='acu-shirt')&&
+    uniformCutCamoCompatible(outfit.top,mapping.value as
+     Parameters<typeof uniformCutCamoCompatible>[1]);
+   const legsSupport=(outfit.trousers==='bdu-trousers'||outfit.trousers==='acu-trousers')&&
+    uniformCutCamoCompatible(outfit.trousers,mapping.value as
+     Parameters<typeof uniformCutCamoCompatible>[1]);
+   if(!topSupports||!legsSupport){
     const modern=uniformCutCamoCompatible('acu-shirt',mapping.value as
      Parameters<typeof uniformCutCamoCompatible>[1]);
     const classic=uniformCutCamoCompatible('bdu-shirt',mapping.value as
