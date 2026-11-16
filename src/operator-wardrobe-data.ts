@@ -53,7 +53,6 @@ add('headwear','ballistic',[
  ['soviet-steel','Steel helmet'],['pasgt','PASGT-style helmet'],
  ['ach','Ballistic Helmet'],['mich-2001','MICH High Cut'],['mich-2002','MICH Mid Cut'],
  ['m1-steel','US M1 steel helmet'],['ddr-m56','East German M56 steel helmet'],
- ['police-helmet','Protective police helmet']
 ]);
 add('facewear','face',[
  ['face-none','Uncovered'],['balaclava-one','One-opening balaclava'],
@@ -260,7 +259,10 @@ export function readWardrobe(raw:unknown):WardrobeOptions{
     slot==='eyewear'&&['clear-glasses','sunglasses','safety-glasses',
      'goggles-down','goggles-up'].includes(id??'')?
      migrateD2Eyewear(id).style:id;
-    const mapped=slot==='headwear'&&typeof upgraded==='string'?
+    // D7: old police shell in saves becomes the current high-cut ballistic
+    // helmet. This is visual-only; never change issued protection.
+    const mapped=slot==='headwear'&&upgraded==='police-helmet'?
+     'mich-2001':slot==='headwear'&&typeof upgraded==='string'?
      canonicalBallisticHelmet(upgraded):upgraded;
     if(typeof mapped==='string'&&wardrobeItem(slot,mapped))
      result.styles[slot]=mapped;
