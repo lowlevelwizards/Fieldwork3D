@@ -7,7 +7,7 @@ import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-
 import {FACTION_TIMELINES,TIMELINE_ORGANIZATIONS,timelineForReference}
  from './faction-reference-timelines.ts';
 import {resolveTimelineYear,timelineById} from './faction-reference-timeline-resolver.ts';
-import {equipmentAtYear,compareEquipmentYears}
+import {equipmentAtYear,compareEquipmentYears,researchTimelineCoverage}
  from './faction-reference-equipment-resolver.ts';
 import {historicalEvidence} from './faction-reference-evidence.ts';
 export type ReferenceCompatibility={substituted:readonly string[];lostPrints:readonly string[]};
@@ -220,6 +220,26 @@ export class FactionReferenceBrowser{
   this.historicalPanel.append(el('strong','','HISTORICALLY DOCUMENTED EQUIPMENT'),
    el('p','reference-sources',
    'Evidence coverage only · lack of a record does not mean unavailable or retired.'));
+  const coverage=researchTimelineCoverage(active.id);
+  this.historicalPanel.append(el('small','reference-meta',
+   coverage.records+' RESEARCH RECORDS · '+coverage.sourceCount+' SOURCES · '+
+   coverage.equipmentCount+' EQUIPMENT IDENTITIES'));
+  if(coverage.milestoneYears.length){
+   const jump=el('div','reference-history-jump');
+   jump.append(el('small','reference-meta','RESEARCH MILESTONES · SELECT YEAR'));
+   const years=el('div','reference-history-years');
+   for(const n of coverage.milestoneYears){
+    const control=el('button','reference-history-year',String(n));
+    control.type='button';
+    control.setAttribute('aria-pressed',String(n===year));
+    control.addEventListener('click',()=>{
+     this.timelineYear.value=String(n);
+     this.renderList();
+    });
+    years.append(control);
+   }
+   jump.append(years);this.historicalPanel.append(jump);
+  }
   if(!records.length)this.historicalPanel.append(el('p','reference-empty',
    'No researched equipment for this year / environment. Existing appearance kits may still be browsed.'));
   const categories=[...new Set(records.map(x=>x.equipment.category))];
