@@ -2381,9 +2381,11 @@ function refresh(options:{helmetDetailsOnly?:boolean}={}){
   }
   renderMaterials();
  }
- if(!lightweight&&!dispatchPilotMode){
-  renderPresetMenu();
-  referenceBrowser.refresh(readOnly);
+ if(!dispatchPilotMode){
+  if(!lightweight){
+   renderPresetMenu();
+   referenceBrowser.refresh(readOnly);
+  }
  }
  posePreview();
 }
