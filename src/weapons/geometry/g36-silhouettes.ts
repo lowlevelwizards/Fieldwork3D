@@ -128,6 +128,10 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
   [-2.69,4.43],[-2.79,3.79]
  ],1.82);
  reflex.userData.g36UpperReflex=true;
+ // One dark, frontal sight window: recognize the upper reflex from an
+ // oblique camera without modeling screws, lens stacks or a mounting rail.
+ const reflexWindow=box('receiver',-2.86,4.23,0,.14,.46,1.02);
+ reflexWindow.userData.g36UpperReflexWindow=true;
  // A single faceted circular front face, oriented down the G36 sight axis.
  // The lens is an art-scale shape cue, not an additional accessory/rail.
  const opticFaceGeo=new THREE.CylinderGeometry(.37,.37,.15,6,1);
@@ -182,7 +186,7 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
   else if(child.userData.g36Buttpad)material=finishes.buttpad;
   else if(child.userData.g36FactoryMuzzle)material=finishes.muzzle;
   else if(child.userData.g36Barrel||child.userData.g36StockHinge)material=finishes.steel;
-  else if(child.userData.g36OpticFace)material=finishes.buttpad;
+  else if(child.userData.g36OpticFace||child.userData.g36UpperReflexWindow)material=finishes.buttpad;
   else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic)material=finishes.optic;
   child.material=material;
  }
