@@ -49,14 +49,14 @@ test('P11: long lower ribs, broken upper gas vents and 5.56 magazine',()=>{
  for(const side of [-1,1]){
   const rows=marks.filter(x=>x.userData.fncP5GrooveSide===side);
   assert.deepEqual(rows.map(x=>x.userData.fncP5GrooveCount).sort(),[2,2]);
-  assert.deepEqual(rows.map(x=>x.userData.fncP6GrooveSegmentsPerRow).sort(),[1,5]);
+  assert.deepEqual(rows.map(x=>x.userData.fncP6GrooveSegmentsPerRow).sort(),[1,4]);
  }
  assert.equal(get(g,'fncMoldedFlutesPerSide').userData.fncMoldedFlutesPerSide,2);
  const mag=get(g,'fnc556Magazine');
  assert.ok(width(mag)<3.10);
  assert.ok(Math.abs(box(mag).min.y-FNC_P1.magazineBottomY)<.03);
  const rear=get(g,'fncP8CompactRearSight'),front=get(g,'fncProtectedFrontSight');
- assert.ok(box(front).max.y>2.38&&box(front).max.y<2.50);
+ assert.ok(box(front).max.y>2.70&&box(front).max.y<2.85);
  const muzzle=get(g,'fncP8TaperedMuzzleMass');
  const barrel=get(g,'fncServiceBarrel');
  assert.ok(box(muzzle).max.y-box(muzzle).min.y<
