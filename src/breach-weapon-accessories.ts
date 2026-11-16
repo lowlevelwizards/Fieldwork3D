@@ -106,8 +106,9 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  if(parts.sling.id==='sling-two-point'){
   // Rigid sling mounting hardware stays on the gun. The actual fabric
   // loop is positioned by the shared operator rig, not baked to receiver.
-  block(g,-9,-.5,3,1.4,1,1.2,metal);
-  block(g,10,-.5,3,1.4,1,1.2,metal);
+  accessoryMergedBoxes(g,'weapon-accessory-sling-rigid-mounts',[
+   [-9,-.5,3,1.4,1,1.2],[10,-.5,3,1.4,1,1.2]
+  ],metal);
  }
  return g;
 }
