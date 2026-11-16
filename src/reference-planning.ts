@@ -1,7 +1,7 @@
 /** FT1.7F: standalone developer-only read-only planning surface.
  * No Three.js, campaign state, saved preferences, or equipment writes.
  */
-import {buildReferenceCoverageMatrix,type CoverageStatus}
+import {buildReferenceCoverageMatrix}
  from './faction-reference-coverage-matrix.ts';
 import {buildContentCandidates,prioritizeCandidates,candidateCoverageSummary,
  type ContentCandidate,type PlanningLens,type CandidateReadiness}
