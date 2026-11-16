@@ -5,8 +5,10 @@ import type {CampaignCreationDraft} from './campaign-creation.ts';
 import {effectiveCampaignRules} from './campaign-rules.ts';
 import {isDispatchPilot,mayChooseCampaignContent}
  from './dispatch-campaign-eligibility.ts';
+import {campaignIncidentView} from './dispatch-incident-view.ts';
 import {renderCampaignCreator} from './ui/campaign-creator.ts';
-import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost} from './campaign-state.ts';
+import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost,
+ canApplyCampaignKitPreset} from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
@@ -358,7 +360,7 @@ export class CampaignScreen{
   }
   logistics.append(inventory);
   const recruit=button('RECRUIT OPERATOR · 450 CR',this.handlers.recruit);
-  recruit.disabled=isDispatchPilot(c)||c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
+  recruit.disabled=c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
   personnel.append(recruit);
   const notice=node('p','campaign-note',c.history.length?
    'LAST OPERATION: '+c.history[c.history.length-1].grade+' · '+c.history[c.history.length-1].outcome.toUpperCase():
@@ -373,7 +375,7 @@ export class CampaignScreen{
     region+' '+(n>0?'+'+n:n)).join(' · ')));
   const accepted=c.contracts.find(k=>k.id===c.activeContractId);
   if(accepted){
-   jobs.append(node('p','campaign-note','Deployment committed: '+accepted.title+' / '+accepted.region));
+   jobs.append(node('p','campaign-note','Deployment committed: '+campaignIncidentView(c,accepted).title+' / '+accepted.region));
    jobs.append(node('p','campaign-note','Continuing after reopening starts the same contract at planning.'));
    jobs.append(button('CONTINUE DEPLOYMENT',this.handlers.resumeContract,'campaign-primary'));
   }else{
@@ -389,7 +391,7 @@ export class CampaignScreen{
   for(const report of c.history.slice(-8).reverse()){
    const contract=c.contracts.find(k=>k.id===report.contractId);
    chronicle.append(node('p','campaign-report',
-    'DAY '+report.day+' · '+(contract?.title??'Operation')+' · '+
+    'DAY '+report.day+' · '+(contract?campaignIncidentView(c,contract).title:'Operation')+' · '+
     report.outcome.toUpperCase()+' · '+report.grade+' · '+
     report.participatingIds.length+' OPERATORS'));
   }
@@ -457,7 +459,7 @@ export class CampaignScreen{
     'SQUAD ASSIGNED · BASE RESERVES AVAILABLE'));
   }
   overview.append(readiness);
-  if(accepted)overview.append(button('CONTINUE · '+accepted.title.toUpperCase(),
+  if(accepted)overview.append(button('CONTINUE · '+campaignIncidentView(c,accepted).title.toUpperCase(),
    this.handlers.resumeContract,'campaign-primary'));
   const shortcuts=node('div','campaign-overview-actions');
   for(const [tab,label] of [
@@ -622,7 +624,7 @@ export class CampaignScreen{
   const locked=!!c.activeContractId;
   const dispatchPilot=isDispatchPilot(c);
   if(dispatchPilot)editor.append(node('p','campaign-note',
-   'DISPATCH PILOT · Only curated new equipment choices are offered. Existing equipment remains retained; advanced weapon and wardrobe editors are not yet supported.'));
+   'DISPATCH PILOT · Curated equipment choices and policy-validated saved kits are available. Existing items remain retained. Advanced custom weapon parts and wardrobe editing remain restricted.'));
   const presets=node('details','campaign-kit-presets');
   presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
@@ -641,7 +643,9 @@ export class CampaignScreen{
   const blank=node('option','','SELECT PRESET');blank.value='';picker.append(blank);
   for(const preset of c.kitPresets){
    const option=node('option','',preset.name+' · '+preset.weapon.toUpperCase());
-   option.value=preset.id;picker.append(option);
+   option.value=preset.id;
+   if(dispatchPilot&&!canApplyCampaignKitPreset(c,id,preset.id))option.disabled=true;
+   picker.append(option);
   }
   const load=button('APPLY PRESET',()=>{
    if(picker.value){
@@ -663,10 +667,15 @@ export class CampaignScreen{
     confirmLabel:'DELETE PRESET',danger:true
    }))this.handlers.deleteKitPreset(selectedPreset);
   });
-  load.disabled=locked||c.kitPresets.length===0||dispatchPilot;
+  load.disabled=locked||c.kitPresets.length===0||
+   (dispatchPilot&&!c.kitPresets.some(p=>canApplyCampaignKitPreset(c,id,p.id)));
+  picker.addEventListener('change',()=>{
+   load.disabled=locked||!picker.value||!canApplyCampaignKitPreset(c,id,picker.value);
+  });
   remove.disabled=locked||c.kitPresets.length===0;
   presetActions.append(picker,load,remove);
   presets.append(presetActions,node('p','campaign-note',
+   dispatchPilot?'Dispatch validates every saved kit item and prevents unsupported weapon changes. Existing inventory is preserved.':
    'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
   editor.append(presets);
   editor.append(node('h2','','LOADOUT'));
@@ -938,11 +947,13 @@ export class CampaignScreen{
   return input;
  }
  private contract(c:Contract,campaign:CampaignState){
+  const view=campaignIncidentView(campaign,c);
   const card=node('article','campaign-contract');
-  card.append(node('strong','',c.title));
+  card.append(node('strong','',view.title));
+  if(isDispatchPilot(campaign))card.append(node('small','campaign-note',view.reference));
   card.append(node('div','campaign-muted',c.region+' · '+['','LOW','MODERATE','HIGH'][c.risk]+' RISK'));
   if(c.followUpOf)card.append(node('div','campaign-note','FOLLOW-UP OPERATION'));
-  card.append(node('p','',c.description));
+  card.append(node('p','',view.description));
   const row=node('div','campaign-contract-row');
   row.append(node('span','',c.reward+' CR · DEADLINE DAY '+c.deadline));
   row.append(button('REVIEW DEPLOYMENT',()=>this.reviewContract(c,campaign),'campaign-primary'));
@@ -950,22 +961,24 @@ export class CampaignScreen{
  }
  /** Review only information the contract already reveals. Acceptance is a separate action. */
  private reviewContract(contract:Contract,campaign:CampaignState){
+  const view=campaignIncidentView(campaign,contract);
   const prior=document.activeElement instanceof HTMLElement?document.activeElement:null;
   const overlay=node('div','campaign-preflight-backdrop');
   const panel=node('section','campaign-preflight fw-sheet');
   panel.setAttribute('role','dialog');
   panel.setAttribute('aria-modal','true');
-  const heading=node('h2','',contract.title);
+  const heading=node('h2','',view.title);
   heading.id='campaign-preflight-title';
   panel.setAttribute('aria-labelledby',heading.id);
-  panel.append(node('div','campaign-eyebrow','CONTRACT / PREDEPLOYMENT REVIEW'),heading);
+  panel.append(node('div','campaign-eyebrow',view.category+' / PREDEPLOYMENT REVIEW'),heading);
   const info=node('div','campaign-preflight-fields');
   const add=(label:string,value:string)=>{
    const section=node('div','campaign-preflight-field');
    section.append(node('span','',label),node('p','',value));
    info.append(section);
   };
-  add('OBJECTIVE',contract.description);
+  add('OBJECTIVE',view.description);
+  if(isDispatchPilot(campaign))add('CALL REFERENCE',view.reference);
   add('ASSIGNMENT',contract.kind.replace(/-/g,' ').toUpperCase());
   add('LOCATION',contract.region);
   add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);

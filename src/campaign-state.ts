@@ -3,6 +3,8 @@ import type {OperationKind} from './breach-operations.ts';
 import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
 import {mayChooseCampaignContent,dispatchPilotUnclassifiedEditingEnabled}
  from './dispatch-campaign-eligibility.ts';
+import {issueDispatchPilotOperator} from './dispatch-pilot-operator.ts';
+import {isDispatchPilot as isDispatchPilotCampaign} from './dispatch-campaign-eligibility.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import {SKILL_NAMES,type SkillName} from './campaign-skill-schema.ts';
 export {SKILL_NAMES};
@@ -407,17 +409,15 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
 export function hireRecruit(c:CampaignState):CampaignState{
- // Recruitment currently creates generic mixed-weapon personnel; keep it
- // disabled in Dispatch until the starter kit can be issued to new hires.
- if(!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  if(c.funds<450||c.operators.length>=32||
   c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.activeContractId)return c;
  const i=c.operators.length;
  const id='recruit-'+i;
  const base=startingOperator(id,i,hash(c.seed+i*733+Math.imul(c.day,31)));
  const available=RECRUIT_NAMES.filter(name=>!c.operators.some(o=>o.callsign===name));
- const member={...base,callsign:available[(hash(c.seed+i*59)>>>4)%available.length]??('RECRUIT '+i),
+ const fresh={...base,callsign:available[(hash(c.seed+i*59)>>>4)%available.length]??('RECRUIT '+i),
   joinedDay:c.day,status:'reserve' as const};
+ const member=isDispatchPilotCampaign(c)?issueDispatchPilotOperator(fresh):fresh;
  const event:CareerEvent={id:'join-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'joined',detail:'Joined the unit'};
  return reconcileCampaignWeaponOwnership({...c,funds:c.funds-450,operators:[...c.operators,member],
@@ -566,8 +566,24 @@ export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):Cam
    kit:readEquipmentLoadout(member.loadout,member.weapon),
    weaponConfiguration:readWeaponConfiguration(member.weaponConfiguration,member.weapon)}]};
 }
+/** D4.1 validates a complete saved kit before any Campaign mutation.
+ * Equipment slots and weapon build must remain within the authored pilot.
+ * Legacy/Sandbox campaigns retain existing preset semantics.
+ */
+export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:string):boolean{
+ if(c.activeContractId)return false;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ const preset=c.kitPresets.find(p=>p.id===presetId);
+ if(!member||!preset)return false;
+ if(!isDispatchPilotCampaign(c))return true;
+ if(member.weapon!==preset.weapon||
+  !sameWeaponConfiguration(readWeaponConfiguration(preset.weaponConfiguration,preset.weapon),
+   member.weaponConfiguration))return false;
+ return Object.entries(preset.kit.slots).every(([slot,itemId])=>
+  mayChooseCampaignContent(c,'equipment',itemId,slot as LoadoutSlot));
+}
 export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string):CampaignState{
- if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
+ if(!canApplyCampaignKitPreset(c,id,presetId))return c;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return c;
