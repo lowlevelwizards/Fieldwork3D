@@ -23,7 +23,9 @@ test('P17 integrated lower drops squarely around STANAG, no added magwell slab',
  assert.ok(upper&&lower&&well&&mag);
  assert.equal(well,lower,'magazine socket should be an uninterrupted lower mesh');
  assert.ok(lower.userData.fncP17SinglePieceMagwell);
- assert.ok(box(well).max.x<=box(upper).max.x+.03);
+ assert.ok(box(well).max.x>box(upper).max.x+.25&&
+  box(well).max.x<box(upper).max.x+.35,
+  'P22 square socket projects beyond unchanged upper receiver nose');
  assert.ok(touch(well,mag),'30-round magazine must penetrate the lower');
  assert.ok(box(mag).min.x< L.receiver.magazineCenterX);
  assert.ok(box(mag).max.x> L.receiver.magazineCenterX);
