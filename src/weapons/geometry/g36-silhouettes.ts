@@ -7,6 +7,7 @@ import {addOutline,addCuboid,addFacetedTube,addProfileFrame,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {G36_B_ART as A} from './g36-art-layout.ts';
 import {G36_MAG30_OUTLINE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
+import {addG36LongHandguard} from './g36-handguard-profiles.ts';
 
 export const G36_B_PART_IDS=Object.freeze({
  stock:'g36-stock',receiver:'g36-dual-receiver',
@@ -107,14 +108,14 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  ],1.64,material);
  handle.userData.g36HandleOpening=true;
  const lowerOptic=outline('receiver',[
-  [-5.72,3.01],[-5.49,3.97],[-2.14,3.97],
-  [-1.87,3.58],[-2.20,2.93]
+  [-5.72,3.18],[-5.49,3.99],[-2.22,3.99],
+  [-1.95,3.61],[-2.30,3.12]
  ],2.08);
  lowerOptic.userData.g36LowerOptic=true;
  const reflex=outline('receiver',[
-  [-5.23,3.94],[-5.03,5.05],[-2.87,5.05],
-  [-2.60,4.72],[-2.81,3.94]
- ],2.18);
+  [-5.38,3.92],[-5.16,4.78],[-2.67,4.78],
+  [-2.39,4.48],[-2.61,3.92]
+ ],2.12);
  reflex.userData.g36UpperReflex=true;
 
  // Raise trigger void readability by shortening the rear-raked grip
@@ -132,11 +133,7 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
 
  // One sculpted polymer fore-end, broad at the back with tapered shoulder,
  // sloping forward nose and shallow upward swept underside. No vent meshes.
- const guard=outline('handguard',[
-  [3.75,.94],[4.22,1.41],[8.72,1.51],[11.51,1.27],
-  [13.45,.64],[13.45,-1.23],[12.77,-1.85],
-  [10.81,-1.97],[4.30,-2.11],[3.75,-1.54]
- ],3.24);
+ const guard=addG36LongHandguard(root,ids.handguard,index.handguard++,material);
  guard.userData.g36LongHandguard=true;
 
  // Preserve full-length G36 bare-barrel rhythm; compact, stout terminal.

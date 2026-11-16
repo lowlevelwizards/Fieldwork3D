@@ -102,3 +102,20 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
  assert.ok(meshCount<=13,'major-form changes should simplify visible meshes, not add clutter: '+meshCount);
  clearWeaponSilhouette(g);m.dispose();
 });
+
+test('G36 C3: one faceted tapered fore-end is volumetric in top/front views',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ const shell=one(g,'g36LongHandguard');
+ assert.ok(shell.userData.g36FacetedMoldedShell,'handguard must be a single 3D faceted volume');
+ const geo=shell.geometry,attr=geo.getAttribute('position');
+ assert.ok(attr.count>=32,'multiple authored YZ octagonal cross-sections');
+ const zAt=x=>{
+  const v=[];
+  for(let i=0;i<attr.count;i++)if(Math.abs(attr.getX(i)-x)<.02)v.push(Math.abs(attr.getZ(i)));
+  return Math.max(...v);
+ };
+ assert.ok(zAt(10.81)>zAt(13.45)+.32,'fore-end nose must taper in true 3D depth');
+ assert.ok(zAt(4.22)>zAt(3.75)+.12,'rear connection should flare to main molded shell');
+ assert.ok(bb(shell).max.y>1.4&&bb(shell).min.y< -2.0);
+ clearWeaponSilhouette(g);m.dispose();
+});

@@ -10,7 +10,7 @@ export const G36_B_ART=Object.freeze({
  handguardRearX:3.75,handguardFullStartX:4.15,handguardFrontX:13.45,
  magazineCenterX:.45,magazineTopY:-2.85,magazineBottomY:-7.26,
  barrelAxisY:0,barrelStartX:13.05,muzzleX:19.50,
- handleTopY:4.05,opticTopY:5.05,
+ handleTopY:4.05,opticTopY:4.78,
  frontStockOpeningX:-8.15,triggerVoidX:-2.28
 });
 export type G36BPoint=readonly [number,number];
