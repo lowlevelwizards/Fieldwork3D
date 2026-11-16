@@ -532,3 +532,19 @@ main{flex:1;min-height:0;display:flex;flex-direction:column;overflow:hidden}
  background:#294339;color:#e6e9e1;border:1px solid #83998b;border-radius:6px;
  font:700 12px "Saira Condensed",sans-serif}
 .reference-history-year[aria-pressed="true"]{border-color:#ddc38e;background:#514d35}
+
+/* FT1.3 source-aware generator: reuse the one operator viewport. */
+.reference-generator{display:grid;gap:8px;min-width:0;padding:10px;
+ background:#20372f;border:1px solid #738779;border-radius:8px}
+.reference-generator-controls{display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:6px}
+.reference-generator-controls select,.reference-generator-controls input,
+.reference-generator-choice select{min-width:0;width:100%;min-height:36px;
+ padding:6px;border:1px solid #8b9e91;border-radius:5px;
+ color:#ecf0ea;background:#2b463a;font:600 12px "Work Sans",sans-serif}
+.reference-generator-choice{min-width:0;display:grid;gap:5px;
+ border-top:1px solid #4d6757;padding:8px 0}
+.reference-generator-lock{display:flex;align-items:center;gap:8px;
+ min-height:32px;font:500 12px "Work Sans",sans-serif}
+.reference-generator-lock input{width:17px;height:17px}
+@media(max-width:530px){.reference-generator-controls{grid-template-columns:1fr}
+ .reference-generator{padding:8px}}
