@@ -56,7 +56,7 @@ test('P18 heavy stock, rear sight, barrel and stubby muzzle have real silhouette
  assert.ok(near(box(rear).max.y,3.06));
  assert.ok(size(rear,'x')/1.52>1.17);
  assert.ok(size(muzzle,'y')/1.60>1.25);
- assert.ok(size(muzzle,'x')>1.40&&size(muzzle,'x')<1.52);
+ assert.ok(size(muzzle,'x')>1.94&&size(muzzle,'x')<2.02);
  assert.ok(near(size(barrel,'y'),1.24));
  assert.ok(near(box(muzzle).max.x,FNC_P1.muzzleX));
  assert.ok(many(g,'fncP16ChamferedSightGuard').length===2);
