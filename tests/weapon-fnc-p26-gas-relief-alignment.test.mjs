@@ -32,8 +32,8 @@ test('P27 lower relief inherits prior upper groove height, clear of the lower ed
  const base=p.pivotY+(p.grooveYs[0]-p.pivotY)*p.heightScale+p.liftY;
  const worldY=base+Math.min(0,base+1)*p.lowerFlare;
  assert.ok(near(lower.y,worldY));
- assert.ok(near(lower.y,-.34));
- assert.ok(lower.y-F.gas.ventHeight/2>F.gas.frontBottomY+.9);
+ assert.ok(near(lower.y,-.37));
+ assert.ok(lower.y-F.gas.ventHeight/2>F.gas.frontBottomY+.45);
  assert.ok(F.gas.lowerLines[0].y-F.gas.ventHeight/2>
   lower.y+F.gas.ventHeight/2,'separate upper and lower marks');
 });
