@@ -145,15 +145,21 @@ export function routeWithSqueezeIntel(intel:IntelState,from:Pt,to:Pt,
  * AABB: every possible contact still gets exact pointToSegment clearance. */
 const worldCanStand=(doors:Door[],world?:SessionWorldGeometry,
   portalMode=false)=>{
-  const leaves=doors.filter(d=>d.open&&(d.openFraction??0)>=.72||
-      portalMode&&(d.locked||d.jammed||d.wedged||!!d.heldBy))
-    .map(d=>{
-      const leaf=doorLeafSegment(d);
-      return {leaf,minX:Math.min(leaf.a.x,leaf.b.x),
-        maxX:Math.max(leaf.a.x,leaf.b.x),
-        minY:Math.min(leaf.a.y,leaf.b.y),
-        maxY:Math.max(leaf.a.y,leaf.b.y)};
-    });
+  // Build only one route-local leaf snapshot; the former filter+map
+  // allocated a second door array for every A* recovery query.
+  const leaves:{
+    leaf:ReturnType<typeof doorLeafSegment>;
+    minX:number;maxX:number;minY:number;maxY:number
+  }[]=[];
+  for(const d of doors){
+    if(!(d.open&&(d.openFraction??0)>=.72||
+      portalMode&&(d.locked||d.jammed||d.wedged||!!d.heldBy)))continue;
+    const leaf=doorLeafSegment(d);
+    leaves.push({leaf,minX:Math.min(leaf.a.x,leaf.b.x),
+      maxX:Math.max(leaf.a.x,leaf.b.x),
+      minY:Math.min(leaf.a.y,leaf.b.y),
+      maxY:Math.max(leaf.a.y,leaf.b.y)});
+  }
   return (p:Pt,r:number):boolean=>{
     if(!(world?world.passable(p,r):passable(p,r)))return false;
     const reach=r+1;
