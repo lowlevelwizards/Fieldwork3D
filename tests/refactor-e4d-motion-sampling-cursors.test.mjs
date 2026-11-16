@@ -115,6 +115,14 @@ test('E4.D ordered histories preserve exact 2D/ISO replay presentation through s
 test('E4.D nonchronological V1 histories preserve original binary fallback',()=>{
  assertParity(makeArchive(true));
 });
+test('E4.D sparse timelines with nonfinite archived event dates use old seek results',()=>{
+ const data=makeArchive(true);
+ data.actors[0].travelYawEvents[200].at=Number.NaN;
+ data.actors[1].pelvisYawEvents[240].at=Infinity;
+ data.actors[0].accelEvents[150].at=Number.NaN;
+ data.doors[0].events[220].at=Number.NaN;
+ assertParity(data);
+});
 test('E4.D seek cursors stay fresh after live append and a different archive',()=>{
  const session=newSession(0,212);
  const actor=session.operators[0],rec=new ReplayMotionRecorder();
