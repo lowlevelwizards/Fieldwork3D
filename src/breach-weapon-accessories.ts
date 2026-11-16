@@ -74,11 +74,20 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
     ext,.77,.87,raw.build?HK_MUZZLE_METAL:metal,6);
   }
  }
- if(parts.foregrip.id==='foregrip-handstop')
-  block(g,assembly.supportX,-2.35+muzzleY,0,2.3,1.9,3.2,polymer);
+ if(parts.foregrip.id==='foregrip-handstop'){
+  accessoryProfile(g,'weapon-accessory-foregrip-handstop',
+   assembly.supportX,-2.35+muzzleY,0,
+   [[-1.16,.78],[1.10,.78],[1.18,-.28],[.36,-1.08],
+    [-.73,-.88],[-1.16,-.16]],3.00,polymer);
+ }
  if(parts.foregrip.id==='foregrip-vertical'){
-  block(g,assembly.supportX,-3.5+muzzleY,0,2.5,5.2,2.5,polymer);
-  block(g,assembly.supportX,-1.2+muzzleY,0,4,1,3.4,metal);
+  // Single visual owner across AR/AK/MP5 tri-rail. No extra HK body grip.
+  accessoryProfile(g,'weapon-accessory-foregrip-vertical',
+   assembly.supportX,-3.5+muzzleY,0,
+   [[-1.09,2.45],[1.07,2.45],[1.01,-2.05],[.68,-2.63],
+    [-.80,-2.63],[-1.08,-2.05]],2.27,polymer);
+  accessoryBox(g,'weapon-accessory-foregrip-vertical-base',
+   assembly.supportX,-1.2+muzzleY,0,3.35,1.00,3.10,metal);
  }
  if(parts.light.id==='light-compact'){
   const light=parts.light;
