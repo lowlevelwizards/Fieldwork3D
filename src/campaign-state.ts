@@ -566,8 +566,24 @@ export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):Cam
    kit:readEquipmentLoadout(member.loadout,member.weapon),
    weaponConfiguration:readWeaponConfiguration(member.weaponConfiguration,member.weapon)}]};
 }
+/** D4.1 validates a complete saved kit before any Campaign mutation.
+ * Equipment slots and weapon build must remain within the authored pilot.
+ * Legacy/Sandbox campaigns retain existing preset semantics.
+ */
+export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:string):boolean{
+ if(c.activeContractId)return false;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ const preset=c.kitPresets.find(p=>p.id===presetId);
+ if(!member||!preset)return false;
+ if(!isDispatchPilotCampaign(c))return true;
+ if(member.weapon!==preset.weapon||
+  !sameWeaponConfiguration(readWeaponConfiguration(preset.weaponConfiguration,preset.weapon),
+   member.weaponConfiguration))return false;
+ return Object.entries(preset.kit.slots).every(([slot,itemId])=>
+  mayChooseCampaignContent(c,'equipment',itemId,slot as LoadoutSlot));
+}
 export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string):CampaignState{
- if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
+ if(!canApplyCampaignKitPreset(c,id,presetId))return c;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return c;
