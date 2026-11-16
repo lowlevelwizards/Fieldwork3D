@@ -1,4 +1,4 @@
-/** FN FNC P18 silhouette-first Fieldwork art. Gameplay anchors untouched.
+/** FN FNC P22 connected low-poly structure. Gameplay anchors untouched.
  * The stock uses one continuous bare upper beam, a kinked lower bar,
  * a thin extended inset plate, compact rectangular hinge and dark butt pad.
  * No cheek sleeve or trigger guard. Visual geometry builds on demand only.
@@ -31,7 +31,7 @@ export function buildFNCStage1Silhouette(
  magazinePart='ar-mag30'
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p20-fieldwork-bold-silhouette';
+ root.name='fnc-p22-fieldwork-bold-silhouette';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -46,28 +46,6 @@ export function buildFNCStage1Silhouette(
   const mesh=addBar(root,'stock','fnc-p5-stock',ids.stock++,
    a,end,width,1.04,mat(role));
   mesh.userData.fncStockRail=true;
-  return mesh;
- };
- const aperture=(slot:SlotName,name:string,
-   outer:readonly (readonly [number,number])[],
-   inner:readonly (readonly [number,number])[],
-   depth:number,role:Finish='steel')=>{
-  const shape=new THREE.Shape();
-  shape.moveTo(outer[0][0],outer[0][1]);
-  for(let i=1;i<outer.length;i++)shape.lineTo(outer[i][0],outer[i][1]);
-  shape.closePath();
-  const opening=new THREE.Path();
-  // Trace an opposite winding to form a real negative-space opening.
-  opening.moveTo(inner[0][0],inner[0][1]);
-  for(let i=1;i<inner.length;i++)opening.lineTo(inner[i][0],inner[i][1]);
-  opening.closePath();shape.holes.push(opening);
-  const geometry=new THREE.ExtrudeGeometry(shape,{
-   depth,bevelEnabled:false,steps:1,curveSegments:1
-  });
-  geometry.translate(0,0,-depth/2);
-  const mesh=new THREE.Mesh(geometry,mat(role));
-  mesh.name='family-'+slot+'-fnc-p5-'+name+'-'+ids[slot]++;
-  mesh.castShadow=true;mesh.receiveShadow=true;root.add(mesh);
   return mesh;
  };
  // Two true *3D* width levels. The upper uses FAL-style broad
@@ -126,11 +104,11 @@ export function buildFNCStage1Silhouette(
  hinge.userData.fncStockHinge=true;
  hinge.userData.fncP9BlockHinge=true;
  hinge.userData.fncP10RefinedHinge=true;
- // The same six-point butt profile keeps the original length and vertical
- // silhouette, but gains depth and the former cheek pad's dark finish.
+ // P22: shorten only the buttpad vertical envelope; preserve rearmost X,
+ // both stock-rail contacts and the large open skeletal frame.
  const pad=p('stock',[
-  [-14.85,.92],[-14.12,.92],[-14.02,.58],
-  [-14.02,-3.92],[-14.35,-4.27],[-14.85,-4.27]
+  [-14.85,.65],[-14.12,.65],[-14.02,.40],
+  [-14.02,-3.75],[-14.35,-4.03],[-14.85,-4.03]
  ],2.18,'buttpad');
  pad.userData.fncP8NarrowButtplate=true;
  pad.userData.fncButtPlate=true;
@@ -142,7 +120,7 @@ export function buildFNCStage1Silhouette(
  // Intersections with the continuous upper bar and angled lower bar remain
  // deliberate; it is still a flat plate, not a solid stock sidewall.
  const web=p('stock',[
-  [-12.95,-.34],[-10.39,-.34],[-11.72,-2.30],[-12.37,-2.66]
+  [-13.45,-.34],[-9.75,-.34],[-11.43,-2.30],[-12.74,-2.66]
  ],.64,'stock');
  web.userData.fncP5StockMiddleBrace=true;
  web.userData.fncP6BoldStockWeb=true;
@@ -154,13 +132,16 @@ export function buildFNCStage1Silhouette(
  // The lower visibly projects OUTSIDE both upper sides.
  const upper=crownedUpper();
  applyFNCPixelDetails(upper,'receiver-upper');
- // P20: one uninterrupted six-corner lower body, with a square magazine
- // socket and zero ornamental lip chamfers. STANAG neck still overlaps.
+ // P22: integrated eight-corner stepped lower leaves visible material on
+ // both sides of any AR STANAG without stretching the receiver upper.
  const receiverNoseX=FNC_FRONT_P13.receiver.frontX;
  const lower=p('receiver',[
   [-6.30,-1.09],[receiverNoseX,-1.09],
-  [receiverNoseX,-3.46],[-.67,-3.46],
-  [-.67,-2.58],[-6.30,-2.58]
+  [receiverNoseX,-2.57],
+  [FNC_FRONT_P13.receiver.magwellFrontX,-2.57],
+  [FNC_FRONT_P13.receiver.magwellFrontX,-3.46],
+  [FNC_FRONT_P13.receiver.magwellRearX,-3.46],
+  [FNC_FRONT_P13.receiver.magwellRearX,-2.58],[-6.30,-2.58]
  ],3.42,'lower');
  lower.userData.fncP15FlatLowerNose=true;
  lower.userData.fncAngularLower=true;
@@ -170,9 +151,10 @@ export function buildFNCStage1Silhouette(
  lower.userData.fncP17SinglePieceMagwell=true;
  lower.userData.fncP18SquaredMagazineHousing=true;
  lower.userData.fncP20SquareMagazineHousing=true;
+ lower.userData.fncP22ComfortableSTANAGHousing=true;
  applyFNCPixelDetails(lower,'receiver-lower');
- // Upper/lower seam and stamped relief now live in the same pixel-art
- // atlas as the right receiver port; no floating extruded stripes.
+ // Upper/lower seam stays pixel art. P22 removes only the redundant lower
+ // stamp line; no floating outlines or decorative lower receiver relief.
  // Preserve P8's narrowed raked polymer grip; the separate P8 trigger
  // frame was too literal for this silhouette and is deliberately removed.
  const gripBase:Outline=[
@@ -214,8 +196,8 @@ export function buildFNCStage1Silhouette(
  }
 
  // P13: derive every visual component from one front-layout contract.
- // The polymer extends under the gas cover; the six-sided collar wraps
- // the polymer rather than looking like a full-height blade.
+ // P22: expose the narrower continuous metal neck ahead of the receiver,
+ // leave the polymer and handstop connected, then widen into the gas block.
  addFNCFacetedForearm(root,mat('handguard'));
  addFNCHandstopLip(root,mat('handguard'));
  addFNCUpperGasBox(root,mat('steel'));
@@ -283,22 +265,9 @@ export function buildFNCStage1Silhouette(
   ports.castShadow=false;ports.receiveShadow=false;
   root.add(ports);
  }
- // P20: one four-corner sloping sight seat, preserving the established
- // gas-cover junction and separate twin-ear guard gap.
+ // The front-sight seat is now the same six-face gas-block envelope,
+ // rather than a separately extruded slab with overlapping faces.
  const s=FNC_FRONT_P13.sight;
- const front=p('barrel',[
-  [s.baseStartX,s.baseBottomY],[s.baseStartX,s.baseRearTopY],
-  [s.baseEndX,s.baseTopY],[s.baseEndX,s.baseBottomY]
- ],s.baseDepth,'steel');
- front.userData.fncP13CompactIntegratedSightBase=true;
- front.userData.fncP14LowSightBase=true;
- front.userData.fncP15AlignedGasSightBase=true;
- front.userData.fncP16CompactGasSightBase=true;
- front.userData.fncP17SimplifiedSightSeat=true;
- front.userData.fncP20FourCornerSightSeat=true;
- front.userData.fncP7ContinuousGasSightSeat=true;
- front.userData.fncFrontSightBase=true;
- front.userData.fncP4IntegratedGasSeat=true;
  // Two simple four-corner FAL-family sight ears. No edge chamfers, third
  // post or extra rail; retain the genuine central negative space.
  for(const side of [-1,1] as const){
@@ -320,16 +289,14 @@ export function buildFNCStage1Silhouette(
    ear.userData.fncP6BroadProtectedSight=true;
   }
  }
- // Compact rear ear is deliberately smaller than the tall tapered
- // front shroud: both read at miniature scale without matching towers.
- const rear=aperture('receiver','rear-guard',
-  [[-5.78,1.73],[-5.72,3.06],[-4.02,3.06],[-3.98,1.73]],
-  [[-5.31,2.00],[-4.41,2.00],[-4.54,2.78],[-5.16,2.78]],
-  1.44);
+ // Solid four-corner rear sight, slight rearward rake on its upper front.
+ // The silhouette is more important than a modeled aperture at this scale.
+ const rear=p('receiver',[
+  [-5.78,1.73],[-5.72,3.06],[-4.18,3.06],[-3.98,1.73]
+ ],1.44,'steel');
  rear.userData.fncP8CompactRearSight=true;
- rear.userData.fncP17GraphicRearAperture=true;
+ rear.userData.fncP22SolidRearSight=true;
  rear.userData.fncP18BoldRearSight=true;
- rear.userData.fncRearAperture=true;
  rear.userData.fncProtectedRearSight=true;
  rear.userData.fncP5OversizedRearSight=true;
  rear.userData.fncP6BroadProtectedSight=true;
