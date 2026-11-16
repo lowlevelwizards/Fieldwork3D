@@ -12,6 +12,9 @@ import {FAMILY_PRESETS,FAMILY_PARTS,validFamilyBuild,readWeaponFamilyBuild} from
 import {ARSENAL_PLATFORMS,arsenalReferencesForPlatform,arsenalCatalogIssues} from '../src/arsenal/catalog.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
+import {carriedMagazineProfile,carriedMagazineGeometry} from '../src/operator-carried-magazines.ts';
+import {reloadMechanismFor} from '../src/breach-reload-performance.ts';
+import {v3MagazineRockAngle,v3MagazineBodyGrip} from '../src/breach-pose-v3-reload-choreography.ts';
 import {applyG36PixelDetails,g36PixelAtlas,g36PixelAtlasLayout} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {weaponFinish,weaponMaterialCacheSize} from '../src/weapons/geometry/weapon-material-registry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
@@ -356,4 +359,23 @@ test('G36 E1: old saves stable, no unsupported rail, optic, handguard or foreign
  const plain=initialWeaponConfiguration('rifle');
  assert.equal(setWeaponAttachment(plain,'optic','optic-g36-integrated'),plain,
   'integral G36 sight is not a generic rifle attachment');
+});
+
+test('G36 E1 reload imagery: own polymer magazine and non-roller presentation',()=>{
+ const f=carriedMagazineProfile('g36-mag30');
+ assert.ok(f);
+ assert.equal(f.family,'g36');
+ assert.ok(f.length>=4&&f.length<=5);
+ const geo=carriedMagazineGeometry('g36-mag30');
+ assert.ok(geo);
+ assert.ok(geo.getAttribute('position').count>0);
+ const bounds=new THREE.Box3().setFromBufferAttribute(geo.getAttribute('position'));
+ assert.ok(Number.isFinite(bounds.min.x)&&bounds.max.x>bounds.min.x);
+ geo.dispose();
+ const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'g36-service');
+ assert.equal(reloadMechanismFor('rifle',cfg),'legacy',
+  'G36 must not inherit the unrelated HK roller-delay reload gesture');
+ assert.equal(v3MagazineRockAngle(.72,'emergency','g36'),0,
+  'G36 polymer detachable magazine must not inherit AK rock-in');
+ assert.ok(v3MagazineBodyGrip('g36','upper-body'));
 });

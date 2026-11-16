@@ -17,7 +17,7 @@ export type V3ReloadCorridorProfile='canonical'|'compact'|'outboard';
  * its feed-lip socket. The gun's insertion socket never moves. */
 export type V3MagazinePalm='legacy'|'upper-body'|'mid-body';
 export function v3MagazineBodyGrip(
- family:'ar'|'ak'|'hk'|'fal'|'fnc'|undefined,palm:V3MagazinePalm
+ family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36'|undefined,palm:V3MagazinePalm
 ):THREE.Vector3|null{
  if(palm==='legacy'||!family)return null;
  const mid=palm==='mid-body';
@@ -38,7 +38,7 @@ export type ReloadChoreographyRequest={
  /** Existing on-body magazine socket in chest space; no ammo writes. */
  pickupTarget?:THREE.Vector3;
  /** Only modular rifle previews opt into a family-specific magazine approach. */
- family?:'ar'|'ak'|'hk'|'fal'|'fnc';
+ family?:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36';
  /** Lab audition only. Default uses the proven B14 hand track. */
  corridor?:V3ReloadCorridorProfile;
  /** Deliberate free-hand magazine-body hold, V3 Lab preview only. */
@@ -164,7 +164,7 @@ export function choreographV3ReloadHand(
  * No rotation on mounted/reacquired frames or on shell-loading weapons.
  */
 export function v3MagazineRockAngle(progress:number,mode:ReloadMode,
- family?:'ar'|'ak'|'hk'|'fal'|'fnc'):number{
+ family?:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36'):number{
  if(mode==='shells'||family!=='ak')return 0;
  const t=clamp(progress);
  // Mount must be bit-exact neutral, not a tiny trig residual.
