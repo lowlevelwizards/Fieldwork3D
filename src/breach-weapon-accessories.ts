@@ -45,7 +45,9 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  if(ext>0){
   const radius=muzzle.id==='muzzle-suppressor'?2.65:2.05;
   block(g,muzzle.mountX+ext/2,muzzleY,0,ext,radius,radius,
-   muzzle.id==='muzzle-suppressor'?HK_SD_SUPPRESSOR_METAL:HK_MUZZLE_METAL);
+   muzzle.id==='muzzle-suppressor'?
+    (raw.build?HK_SD_SUPPRESSOR_METAL:polymer):
+    (raw.build?HK_MUZZLE_METAL:metal));
   if(muzzle.id==='muzzle-brake'){
    block(g,muzzle.mountX+ext*.68,muzzleY,0,.32,2.4,2.7,polymer);
   }
