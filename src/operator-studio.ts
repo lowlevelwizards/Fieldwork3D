@@ -2173,7 +2173,11 @@ const referenceCategoryButton=document.createElement('button');
 referenceCategoryButton.type='button';referenceCategoryButton.textContent='REFERENCES';
 referenceCategoryButton.addEventListener('click',()=>openReferenceBrowser());
 function renderCategories(){
- if(dispatchPilotMode){categories.replaceChildren();subcategories.replaceChildren();return;}
+ if(dispatchPilotMode){
+  categories.replaceChildren();subcategories.replaceChildren();
+  categoryButtons.clear();subcategoryButtons.clear();mountedCategoryGroup=null;
+  return;
+ }
  if(!categoryButtons.size){
   categories.append(referenceCategoryButton);
   for(const group of categoryGroups){
