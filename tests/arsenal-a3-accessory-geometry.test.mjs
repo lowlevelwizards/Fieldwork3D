@@ -97,6 +97,11 @@ test('A3 HK claw has four supported feet but only one draw call',()=>{
  assert.equal(names(body,'family-art-hk-claw').length,1);
  assert.equal(names(body,'family-art-hk-claw')[0].userData.hkClawMount,'assembly');
  assert.equal(names(extra,'weapon-accessory-optic-reflex').length,2);
+ const rail=new THREE.Box3().setFromObject(names(body,'family-art-hk-claw')[0]);
+ const sightBase=new THREE.Box3().setFromObject(
+  extra.getObjectByName('weapon-accessory-optic-reflex-base'));
+ assert.ok(sightBase.min.y<=rail.max.y+.02,'optic base floats above HK claw rail');
+ assert.ok(sightBase.min.y>=rail.max.y-.20,'optic base buries into claw mount');
  clearWeaponSilhouette(body);cleanup(extra);
 });
 test('A3 all seven platforms accept a compatible configuration with finite accessory bounds',()=>{
