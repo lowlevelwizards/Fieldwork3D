@@ -242,13 +242,14 @@ export function buildFNCStage1Silhouette(
  const barrelStartX=8.55;
  const barrelEndX=showFactoryMuzzle?19.005:FNC_P1.muzzleX;
  const barrel=b('barrel',(barrelStartX+barrelEndX)/2,FNC_FRONT_P13.barrel.axisY,0,
-  barrelEndX-barrelStartX,1.34,1.34,'barrel');
+  barrelEndX-barrelStartX,1.24,1.24,'barrel');
  barrel.userData.fncServiceBarrel=true;
  barrel.userData.fncP17ChunkyBarrel=true;
  barrel.userData.fncP18HeavyBarrel=true;
+ barrel.userData.fncP19RefinedBarrel=true;
  barrel.userData.fncP7BarrelStartX=barrelStartX;
  if(showFactoryMuzzle){
-  // An elongated but still chunky six-sided factory device. Keep the
+  // A modestly longer, still chunky six-sided factory device. Keep the
   // original 19.50 muzzle-tip art datum and continuous barrel overlap.
   const M=FNC_FRONT_P13.muzzle;
   const geometry=new THREE.CylinderGeometry(M.radius,M.radius,M.length,6,1);
@@ -268,6 +269,7 @@ export function buildFNCStage1Silhouette(
   muzzle.userData.fncP16SlenderFNCFlashHider=true;
   muzzle.userData.fncP17BoldShortFlashHider=true;
  muzzle.userData.fncP18StubbyMuzzle=true;
+  muzzle.userData.fncP19LongerFlashHider=true;
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
   // Single low-poly batched dark port strip, analogous to the FAL's
