@@ -74,6 +74,8 @@ test('E6.4 retains one persistent CanvasTexture and records renderer callback su
  assert.match(scene,/fogTextureSubmittedUploads:this\.fogTextureSubmittedUploads/);
  assert.match(scene,/fogTextureSubmittedBytesEstimate:this\.fogTextureSubmittedBytesEstimate/);
  assert.match(scene,/fogComposeCpuTotalMs:this\.profileSceneUpdate\?/);
+ assert.match(scene,/setPerformanceProfilingEnabled\(enabled:boolean\):void\{/);
+ assert.match(scene,/actor\.physical\.root\.userData\.fieldworkProfilePose=enabled/);
  assert.doesNotMatch(scene,/this\.fogTexture\.dispose\(/);
  assert.doesNotMatch(scene,/this\.renderer\.dispose\(/);
 });
