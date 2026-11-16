@@ -49,23 +49,37 @@ export function captureReplayKnowledge(
   const operatorVisibleCivilianIds:Record<string,string[]>={};
   const operatorVisibleBodyIds:Record<string,string[]>={};
   const operatorDiscoveredBodyIds:Record<string,string[]>={};
-  const bodies=s.operators.filter(a=>a.side!=='blue'&&a.health<=0);
-  const blue=s.operators.filter(a=>a.side==='blue');
-  const livingHostiles=s.operators.filter(a=>
-    a.side!=='blue'&&a.health>0);
-  for(const observer of blue){
-    operatorDetectedActorIds[observer.id]=observer.health>0?
-      livingHostiles.filter(target=>personDetected(observer,target,s))
-        .map(target=>target.id):[];
-    operatorVisibleActorIds[observer.id]=observer.health>0?
-      livingHostiles.filter(target=>inSight(observer,target,s))
-        .map(target=>target.id):[];
-    operatorVisibleCivilianIds[observer.id]=observer.health>0?
-      s.civilians.filter(c=>observerPointVisible(s,observer,c.p))
-        .map(c=>c.id):[];
-    const visibleBodies=observer.health>0?
-      bodies.filter(body=>observerPointVisible(s,observer,body.p))
-        .map(body=>body.id):[];
+  // Keep source-order partitions but avoid filter/map intermediates on
+  // every 20 Hz replay sample. The geometric checks and their evaluation
+  // order remain unchanged: detected, visible, civilian, then downed body.
+  const bodies:TeamActor[]=[];
+  const livingHostiles:TeamActor[]=[];
+  for(const actor of s.operators){
+    if(actor.side==='blue')continue;
+    if(actor.health>0)livingHostiles.push(actor);
+    else bodies.push(actor);
+  }
+  for(const observer of s.operators){
+    if(observer.side!=='blue')continue;
+    const detectedIds:string[]=[];
+    const visibleIds:string[]=[];
+    const civilianIds:string[]=[];
+    const visibleBodies:string[]=[];
+    if(observer.health>0){
+      for(const target of livingHostiles)
+        if(personDetected(observer,target,s))detectedIds.push(target.id);
+      for(const target of livingHostiles)
+        if(inSight(observer,target,s))visibleIds.push(target.id);
+      for(const civilian of s.civilians)
+        if(observerPointVisible(s,observer,civilian.p))
+          civilianIds.push(civilian.id);
+      for(const body of bodies)
+        if(observerPointVisible(s,observer,body.p))
+          visibleBodies.push(body.id);
+    }
+    operatorDetectedActorIds[observer.id]=detectedIds;
+    operatorVisibleActorIds[observer.id]=visibleIds;
+    operatorVisibleCivilianIds[observer.id]=civilianIds;
     operatorVisibleBodyIds[observer.id]=visibleBodies;
     let discovered=observerBodies.get(observer.id);
     if(!discovered){discovered=new Set();observerBodies.set(observer.id,discovered);}
