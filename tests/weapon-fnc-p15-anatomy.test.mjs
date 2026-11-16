@@ -45,7 +45,7 @@ test('P15 polymer 30% taller; short collar and long gas spine truly interlock',(
   stop=get(g,'fncP15RaisedCollar');
  assert.ok(poly&&gas&&stop);
  assert.ok(near(box(poly).min.x,2.18)&&near(box(poly).max.x,10.70));
- assert.ok(sz(poly,'y')>2.50&&sz(poly,'y')<2.62);
+ assert.ok(sz(poly,'y')>2.65&&sz(poly,'y')<2.75);
  assert.ok(box(poly).max.y>.50&&box(poly).max.y<.62);
  assert.ok(box(poly).min.y< -1.98&&box(poly).min.y> -2.08);
  assert.ok(sz(poly,'z')>sz(gas,'z')+.8);
