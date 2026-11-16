@@ -179,6 +179,20 @@ try{
   await page.getByRole('button',{name:'REFERENCES',exact:true}).click();
   if(!await page.locator('#studioReferencesPanel').isVisible())
    throw Error('Reference browser did not open on mobile');
+  // FT1.5: faction -> role -> gear-change chronology is now the default.
+  // Preserve the original flat-search and appearance-apply QA as a secondary mode.
+  const factionPicker=page.getByRole('combobox',{name:'Choose faction'});
+  if(!await factionPicker.isVisible())
+   throw Error('Grouped faction browser did not open by default');
+  await factionPicker.selectOption('bundeswehr');
+  if(await page.getByRole('combobox',{name:'Choose role timeline'}).inputValue()!==
+   'bundeswehr-field')throw Error('Faction did not constrain its role timelines');
+  if(!(await page.locator('.reference-gear-timeline').textContent())?.
+   includes('EQUIPMENT CHANGE SNAPSHOTS'))
+   throw Error('Faction chronology is missing from mobile Studio');
+  await page.getByRole('combobox',{name:'Browse reference mode'}).selectOption('kits');
+  if(!await page.locator('.reference-search').isVisible())
+   throw Error('Legacy flat search mode is unavailable');
   await page.locator('.reference-search').fill('flecktarn');
   await page.locator('.reference-card').first().click();
   if(!(await page.locator('.reference-detail h3').textContent())?.includes('Bundeswehr'))
