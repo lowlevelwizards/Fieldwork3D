@@ -123,6 +123,6 @@ export const REFERENCE_GEAR_PROFILES:Readonly<Record<string,ReferenceGearProfile
    armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},
   appearance:{headwearSolid:'black',armorSolid:'black',rigSolid:'black'},
   note:"Navy field dress and MP5A3 recognizable; helmet and protective kit remain generic period-specific proxies."},
-  'us-swat-2015':{kit:{},styles:{headwear:'mich-2001',armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},appearance:{headwearSolid:'black',armorSolid:'black',rigSolid:'black'},
+  'us-swat-2015':{kit:{},styles:{headwear:'mich-2001',top:'bdu-shirt',trousers:'bdu-trousers',armorStyle:'soft-vest',rigStyle:'micro-rig',packStyle:'no-pack'},appearance:{headwearSolid:'black',armorSolid:'black',rigSolid:'black'},
   note:"Black high-cut ballistic helmet and external armor; no dedicated police visor."},
 };

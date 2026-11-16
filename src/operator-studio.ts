@@ -1209,7 +1209,7 @@ function renderDispatchPilotControls(){
  const p=member();if(!p)return;
  materialRoot.replaceChildren();
  const help=document.createElement('p');help.className='campaign-note';
- help.textContent='DISPATCH SWAT PILOT · Appearance only. Issued uniform cuts, helmet, visor, armor, insignia and equipment remain unchanged.';
+ help.textContent='DISPATCH SWAT PILOT · Appearance only. Issued uniform cuts, black ballistic helmet, armor, insignia and equipment remain unchanged. Police visors are not modeled.';
  materialRoot.append(help);
  const w=current();
  const field=(label:string,options:readonly (readonly [string,string])[],
