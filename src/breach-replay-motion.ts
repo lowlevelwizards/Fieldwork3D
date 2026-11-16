@@ -95,8 +95,17 @@ export class ReplayMotionRecorder{
   private actors=new Map<string,ActorTrack>();
   private doors=new Map<string,{at:number;fraction:number}[]>();
   record(time:number,actors:readonly TeamActor[],doors:readonly Door[]):void{
+    // The foot planner invokes clearance synchronously. Bind its current
+    // actor before every advance, instead of allocating one callback per
+    // actor/tick. Doors remain the live argument to this record() call:
+    // never cache a hinge position or a previous replay seek.
+    let clearanceActor:TeamActor;
+    const footAllowed=(point:{x:number;y:number})=>
+      footAnchorReachable(clearanceActor.p,point,doors);
     for(const actor of actors){
-      const position={x:actor.p.x,y:actor.p.y};
+      // Footstep schedulers read the current point and copy any retained
+      // anchors. They do not mutate the source actor's authoritative pose.
+      const position=actor.p;
       let track=this.actors.get(actor.id);
       if(!track){
         track={gait:createLiveGait(),events:[[],[]],
@@ -142,7 +151,7 @@ export class ReplayMotionRecorder{
             n.kind==='move'||n.kind==='door'||n.kind==='pie')),
         // Teammates are transient traffic, not static blocked ground.
         // One source of foothold validity serves live and replay.
-        footAllowed:pt=>footAnchorReachable(actor.p,pt,doors)};
+        footAllowed};
       const velocityDt=time-track.last.t;
       const acceleration=velocityDt>1e-5?clamp(
         (actor.velocity-track.lastVelocity)/velocityDt,-230,230):0;
@@ -158,6 +167,7 @@ export class ReplayMotionRecorder{
       track.lastVelocity=actor.velocity;
       const previousResets=track.gait.resets;
       const previousStep=track.gait.lastStepAt;
+      clearanceActor=actor;
       advanceLiveGait(track.gait,input);
       const yawEvents=track.pelvisYawEvents;
       const lastYaw=yawEvents.at(-1);
@@ -181,7 +191,8 @@ export class ReplayMotionRecorder{
           swing:foot.swingDuration,landing:foot.landingDuration,
           recovery:foot.recoveryDuration,lift:input.cautious?2.1:3.4});
       }
-      track.last={...position,t:time};
+      // Reuse the track-owned last sample; it must never alias actor.p.
+      track.last.x=position.x;track.last.y=position.y;track.last.t=time;
     }
     for(const door of doors){
       let events=this.doors.get(door.id);
