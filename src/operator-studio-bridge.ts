@@ -60,7 +60,10 @@ function sendStudioInit(force=false){
    weapon:p.weapon,weaponConfiguration:p.weaponConfiguration
   })),
   readonly:studioMode==='campaign'?!!config.getCampaign()?.activeContractId:
-   !canEditQuickAppearance()
+   !canEditQuickAppearance(),
+  gearEditable:studioMode==='campaign'?!!config.getCampaign()&&
+   !config.getCampaign()?.activeContractId:
+   config.getMode()==='menu'&&!config.isReplaying()
  },location.origin);
 }
 function closeOperatorStudio(){
