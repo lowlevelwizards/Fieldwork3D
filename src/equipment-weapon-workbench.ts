@@ -4,6 +4,7 @@
  * open a line-linked replacement panel without obscuring the model.
  */
 import * as THREE from 'three';
+import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER} from './weapons/geometry/weapon-visual-palette.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from './breach-weapon-accessories.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration}
@@ -31,8 +32,8 @@ export class WeaponWorkbenchPreview{
  private socketTapConsumed=false;
  private dotsRestoreTimer:ReturnType<typeof setTimeout>|null=null;
  private readonly reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;
- private readonly steel=new THREE.MeshStandardMaterial({color:0x707875,roughness:.78,flatShading:true});
- private readonly dark=new THREE.MeshStandardMaterial({color:0x303a38,roughness:.84,flatShading:true});
+ private readonly steel=WEAPON_ACCESSORY_STEEL;
+ private readonly dark=WEAPON_ACCESSORY_POLYMER;
  private readonly host:HTMLElement;
  private readonly canvasHost:HTMLDivElement;
  private readonly caption:HTMLParagraphElement;
@@ -563,7 +564,7 @@ export class WeaponWorkbenchPreview{
   if(this.dotsRestoreTimer!==null)clearTimeout(this.dotsRestoreTimer);
   this.clearMounts();
   clearWeaponSilhouette(this.model);
-  this.steel.dispose();this.dark.dispose();
+  // Shared registry-owned materials persist across viewer lifecycles.
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
   this.fallbackCanvas?.remove();this.fallbackCanvas=null;

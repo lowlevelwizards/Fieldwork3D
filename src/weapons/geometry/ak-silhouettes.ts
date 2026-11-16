@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
 import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
- AK_PLUM_POLYMER,AK_MAG_RIB} from './weapon-visual-palette.ts';
+ AK_PLUM_POLYMER,AK_MAG_RIB,AK_COVER_STAMP_METAL} from './weapon-visual-palette.ts';
 import {akHandguardStart} from '../../breach-weapon-contact-zones.ts';
 import {AK_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
@@ -14,12 +14,8 @@ import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
 
-// Single shared muted-silver finish: three actual cross-top stamped bands,
-// not floating side decals. Material is reused for every preview/build.
-const AK_COVER_STAMP_METAL=new THREE.MeshLambertMaterial({
- color:0x90978f
-});
-
+// A2: the three shallow stamped-cover bands share the same tagged steel
+// response and globally owned material as other weapons, never local Lambert.
 export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material){
  const parts=build.parts,material=[steel,dark,wood] as const;

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Fieldwork Arsenal A1 — Factory Visual Baseline</title>
+<style>
+:root{color-scheme:dark;font:13px/1.45 system-ui,sans-serif}
+*{box-sizing:border-box}body{margin:0;padding:24px;background:#101c19;color:#e7ede7}
+header{margin:0 0 18px}h1{font-size:22px;margin:0 0 5px}
+p{margin:0 0 10px;color:#bbc8be}.summary{font-variant-numeric:tabular-nums}
+.sheet{display:grid;gap:12px}.preset{padding:10px;background:#1b2c26;border:1px solid #52675c;break-inside:avoid}
+.preset h2{margin:0 0 8px;font-size:14px;font-weight:650}
+.preset small{color:#aebfb2;font-weight:400}
+.views{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.view{margin:0;padding:5px;background:#a1aaa0;min-width:0}
+.view img{display:block;width:100%;height:auto;aspect-ratio:2/1;object-fit:contain}
+.view.is-gray img{filter:grayscale(1)}
+.view figcaption{color:#25362c;font-size:11px;font-weight:650;padding:3px 0 0}
+@media(max-width:720px){.views{grid-template-columns:repeat(2,minmax(0,1fr))}}
+</style>
+</head>
+<body>
+<header>
+<h1>FIELDWORK / ARSENAL A1</h1>
+<p>Read-only factory comparison. Real production meshes, Arsenal lighting, fixed orthographic camera and equal framing. Grayscale uses the same side render without color.</p>
+<p class="summary" id="status">Rendering factory presets…</p>
+</header>
+<main id="sheet" class="sheet" aria-label="Factory weapon contact sheet"></main>
+<script type="module" src="/src/arsenal/a1-capture.ts"></script>
+</body>
+</html>

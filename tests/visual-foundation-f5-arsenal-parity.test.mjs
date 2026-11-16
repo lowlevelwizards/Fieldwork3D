@@ -6,17 +6,19 @@ import {visualMaterialRole} from '../src/rendering/material-identity.ts';
 import * as finishes from '../src/weapons/geometry/weapon-visual-palette.ts';
 const source=readFileSync(new URL('../src/arsenal/viewport.ts',import.meta.url),'utf8');
 
-test('Arsenal uses its own dark, balanced light rig and matching gallery',()=>{
+test('Arsenal uses a neutral light matte and matching gallery lighting',()=>{
  const lights=readFileSync(new URL('../src/arsenal/inspection-lighting.ts',import.meta.url),'utf8');
  const thumbnail=readFileSync(new URL('../src/arsenal/thumbnailer.ts',import.meta.url),'utf8');
- assert.match(lights,/ARSENAL_INSPECTION_BACKGROUND=0x182824/);
+ assert.match(lights,/ARSENAL_INSPECTION_BACKGROUND=0xa1aaa0/);
  assert.match(lights,/HemisphereLight/);
  assert.match(lights,/DirectionalLight/);
  assert.match(source,/addArsenalInspectionLighting\(this\.scene\)/);
  assert.match(thumbnail,/addArsenalInspectionLighting\(this\.scene\)/);
  assert.doesNotMatch(source,/STUDIO_INSPECTION_BACKGROUND|studioShadowPalette|Box3Helper/);
  assert.doesNotMatch(source,/applyStudioGraphicLighting|setLighting\(/);
- assert.match(source,/tagVisualMaterial\(new THREE\.MeshStandardMaterial/);
+ assert.match(source,/private readonly steel=WEAPON_ACCESSORY_STEEL/);
+ assert.match(thumbnail,/private readonly dark=WEAPON_ACCESSORY_POLYMER/);
+ assert.doesNotMatch(source,/this\.steel\.dispose\(\)|this\.dark\.dispose\(\)/);
 });
 test('F5.1 original weapon palette and approved materials are unmodified',()=>{
  assert.equal(visualMaterialRole(finishes.AK_WOOD_AMBER),'wood');

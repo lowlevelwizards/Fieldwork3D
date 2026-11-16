@@ -2,6 +2,9 @@
  * coordinates. Only built on configuration changes, never per render frame.
  */
 import * as THREE from 'three';
+import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER,
+ HK_SD_SUPPRESSOR_METAL,HK_MUZZLE_METAL}
+ from './weapons/geometry/weapon-visual-palette.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
@@ -16,21 +19,25 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  steel:THREE.Material,dark:THREE.Material,
  lensMaterial:THREE.Material=steel):THREE.Group{
  const assembly=resolveWeaponAssembly(raw),g=new THREE.Group(),parts=assembly.mounted;
+ // All modular families share the same cached accessory finishes regardless of
+ // caller/viewer. Preserve caller materials for the legacy shotgun fallback.
+ const metal=raw.build?WEAPON_ACCESSORY_STEEL:steel;
+ const polymer=raw.build?WEAPON_ACCESSORY_POLYMER:dark;
  const optic=parts.optic;
  // Claw rail is its own receiver mesh; raise only the separate fitted optic.
  const sightRise=raw.slots.opticMount==='optic-hk-claw'?1.50:0;
  if(optic.id==='optic-reflex'){
-  block(g,optic.mountX,3.8+sightRise,0,4,1.1,3,dark);
-  block(g,optic.mountX,5+sightRise,0,3.3,2.8,.75,steel);
-  block(g,optic.mountX+1.3,5+sightRise,0,.55,2.3,2.9,dark);
+  block(g,optic.mountX,3.8+sightRise,0,4,1.1,3,polymer);
+  block(g,optic.mountX,5+sightRise,0,3.3,2.8,.75,metal);
+  block(g,optic.mountX+1.3,5+sightRise,0,.55,2.3,2.9,polymer);
  }else if(optic.id==='optic-magnified'){
   // One overscale objective bell, stout tube and two unmistakable mounts.
-  block(g,optic.mountX,5.10+sightRise,0,7.35,2.40,2.52,dark);
-  block(g,optic.mountX+3.30,5.10+sightRise,0,1.55,3.48,3.48,steel);
-  block(g,optic.mountX-3.12,5.10+sightRise,0,1.00,2.75,2.85,steel);
-  block(g,optic.mountX-1.75,3.74+sightRise,0,1.00,1.36,1.72,steel);
-  block(g,optic.mountX+1.45,3.74+sightRise,0,1.00,1.36,1.72,steel);
-  block(g,optic.mountX-.42,6.51+sightRise,0,1.32,.96,1.63,steel);
+  block(g,optic.mountX,5.10+sightRise,0,7.35,2.40,2.52,polymer);
+  block(g,optic.mountX+3.30,5.10+sightRise,0,1.55,3.48,3.48,metal);
+  block(g,optic.mountX-3.12,5.10+sightRise,0,1.00,2.75,2.85,metal);
+  block(g,optic.mountX-1.75,3.74+sightRise,0,1.00,1.36,1.72,metal);
+  block(g,optic.mountX+1.45,3.74+sightRise,0,1.00,1.36,1.72,metal);
+  block(g,optic.mountX-.42,6.51+sightRise,0,1.32,.96,1.63,metal);
  }
  const muzzle=parts.muzzle;
  const muzzleY=raw.build?.family==='ar'?AR_VISUAL_AXIS_Y:0;
@@ -38,31 +45,33 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  if(ext>0){
   const radius=muzzle.id==='muzzle-suppressor'?2.65:2.05;
   block(g,muzzle.mountX+ext/2,muzzleY,0,ext,radius,radius,
-   muzzle.id==='muzzle-suppressor'?dark:steel);
+   muzzle.id==='muzzle-suppressor'?
+    (raw.build?HK_SD_SUPPRESSOR_METAL:polymer):
+    (raw.build?HK_MUZZLE_METAL:metal));
   if(muzzle.id==='muzzle-brake'){
-   block(g,muzzle.mountX+ext*.68,muzzleY,0,.32,2.4,2.7,dark);
+   block(g,muzzle.mountX+ext*.68,muzzleY,0,.32,2.4,2.7,polymer);
   }
  }
  if(parts.foregrip.id==='foregrip-handstop')
-  block(g,assembly.supportX,-2.35+muzzleY,0,2.3,1.9,3.2,dark);
+  block(g,assembly.supportX,-2.35+muzzleY,0,2.3,1.9,3.2,polymer);
  if(parts.foregrip.id==='foregrip-vertical'){
-  block(g,assembly.supportX,-3.5+muzzleY,0,2.5,5.2,2.5,dark);
-  block(g,assembly.supportX,-1.2+muzzleY,0,4,1,3.4,steel);
+  block(g,assembly.supportX,-3.5+muzzleY,0,2.5,5.2,2.5,polymer);
+  block(g,assembly.supportX,-1.2+muzzleY,0,4,1,3.4,metal);
  }
  if(parts.light.id==='light-compact'){
   const light=parts.light;
-  block(g,light.mountX,light.mountY+muzzleY,light.mountZ,4.6,2.2,2.6,dark);
-  block(g,light.mountX+2.25,light.mountY+muzzleY,light.mountZ,1,2.6,3,steel);
+  block(g,light.mountX,light.mountY+muzzleY,light.mountZ,4.6,2.2,2.6,polymer);
+  block(g,light.mountX+2.25,light.mountY+muzzleY,light.mountZ,1,2.6,3,metal);
   const lens=block(g,light.mountX+2.85,light.mountY+muzzleY,light.mountZ,
    .25,1.5,2.1,lensMaterial);
   lens.name='weapon-light-lens';lens.visible=false;
-  block(g,light.mountX-2,light.mountY+.9+muzzleY,light.mountZ,2,.8,2.5,steel);
+  block(g,light.mountX-2,light.mountY+.9+muzzleY,light.mountZ,2,.8,2.5,metal);
  }
  if(parts.sling.id==='sling-two-point'){
   // Rigid sling mounting hardware stays on the gun. The actual fabric
   // loop is positioned by the shared operator rig, not baked to receiver.
-  block(g,-9,-.5,3,1.4,1,1.2,steel);
-  block(g,10,-.5,3,1.4,1,1.2,steel);
+  block(g,-9,-.5,3,1.4,1,1.2,metal);
+  block(g,10,-.5,3,1.4,1,1.2,metal);
  }
  return g;
 }
