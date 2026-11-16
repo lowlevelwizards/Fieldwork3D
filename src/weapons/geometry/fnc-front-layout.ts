@@ -29,7 +29,7 @@ export const FNC_FRONT_P13=Object.freeze({
    // sharing the same X span on the exposed casting (12.65..15.10).
    // Keep the 1.57 x .31 footprint and P27 vertical alignment intact.
    Object.freeze({startX:13.05,endX:14.62,y:1.17,shade:145}),
-   Object.freeze({startX:13.05,endX:14.62,y:-.34,shade:171})
+   Object.freeze({startX:13.05,endX:14.62,y:-.37,shade:171})
   ]),
   ventFirstX:3.60,ventPitch:2.35,ventLength:1.57,
   ventCount:4,ventSideYs:Object.freeze([1.17]),
