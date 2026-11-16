@@ -319,7 +319,7 @@ export class CampaignScreen{
     this.armoryOperatorId=p.id;this.home(c);
    },'campaign-primary'));
    const look=button('APPEARANCE',()=>this.handlers.openStudio(p.id));
-   look.disabled=!!c.activeContractId||isDispatchPilot(c);
+   look.disabled=!!c.activeContractId;
    look.setAttribute('aria-label','Edit '+p.callsign+' appearance in Operator Studio');
    actions.append(look,weaponPick);
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
@@ -558,7 +558,7 @@ export class CampaignScreen{
   });
   const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
   rename.disabled=!!c.activeContractId;
-  appearance.disabled=!!c.activeContractId||isDispatchPilot(c);
+  appearance.disabled=!!c.activeContractId;
   const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
   arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build||isDispatchPilot(c);
   identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
@@ -630,7 +630,7 @@ export class CampaignScreen{
   const locked=!!c.activeContractId;
   const dispatchPilot=isDispatchPilot(c);
   if(dispatchPilot)editor.append(node('p','campaign-note',
-   'DISPATCH PILOT · Curated equipment choices and policy-validated saved kits are available. Existing items remain retained. Advanced custom weapon parts and wardrobe editing remain restricted.'));
+   'DISPATCH PILOT · Curated equipment and saved kits remain available. Operator Studio permits only verified identity, uniform finish and glove options; helmet and advanced equipment editors remain restricted.'));
   const presets=node('details','campaign-kit-presets');
   presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');

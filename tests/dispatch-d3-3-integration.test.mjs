@@ -13,7 +13,9 @@ const src=file=>readFileSync(new URL('../src/'+file,import.meta.url),'utf8');
 
 test('D3.3 direct Studio and historical-loadout campaign bypasses fail closed',()=>{
  const pilot=newDispatchPilotCampaign(404),member=pilot.operators[0];
- const appearance={id:member.id,wardrobe:member.wardrobe};
+ const appearance={id:member.id,wardrobe:{...member.wardrobe,
+  styles:{...member.wardrobe.styles,top:'polo-shirt'}}};
+ // D6 permits narrow cosmetics but still blocks unsupported uniform cuts.
  assert.equal(applyStudioCampaignEdits(pilot,[appearance]),null);
  assert.equal(applyHistoricalCampaignProposal(pilot,member.id,{}),null);
  const old=newCampaign(405);

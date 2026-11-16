@@ -3,7 +3,8 @@
  * are serialized or changed through this protocol. */
 import {setRosterWardrobe,type RosterState} from './breach-roster.ts';
 import {setCampaignWardrobe,type CampaignState} from './campaign-state.ts';
-import {readWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {readWardrobe,initialWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {dispatchPilotAppearanceAllowed} from './dispatch-pilot-appearance.ts';
 export type StudioAppearanceEdit={id:string;wardrobe:WardrobeOptions};
 export function validateStudioAppearanceEdits(raw:unknown):
  StudioAppearanceEdit[]|null{
@@ -31,10 +32,16 @@ export function applyStudioRosterEdits(roster:RosterState,
 }
 export function applyStudioCampaignEdits(campaign:CampaignState,
  edits:readonly StudioAppearanceEdit[]):CampaignState|null{
- if(campaign.rules?.template==='dispatch'||campaign.activeContractId||!edits.length||
+ if(campaign.activeContractId||!edits.length||
     new Set(edits.map(e=>e.id)).size!==edits.length||
     edits.some(e=>!campaign.operators.some(p=>p.id===e.id&&
       p.status!=='retired'&&p.status!=='lost')))return null;
+ // Every proposed edit must pass before ANY operator is mutated.
+ if(campaign.rules?.template==='dispatch'&&edits.some(e=>{
+  const member=campaign.operators.find(p=>p.id===e.id);
+  return !member||!dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),
+   e.wardrobe,member.loadout);
+ }))return null;
  return edits.reduce((state,e)=>setCampaignWardrobe(state,e.id,e.wardrobe),
   campaign);
 }
