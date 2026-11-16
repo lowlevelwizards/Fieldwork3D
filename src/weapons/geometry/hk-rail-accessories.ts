@@ -49,8 +49,11 @@ export function addHKClawRail(root:THREE.Group):void{
   lip.translate(p.railCenterX,3.36,z);
   geometries.push(lip);
  }
- const geometry=mergeGeometries(geometries,false);
- for(const component of geometries)component.dispose();
+ // Extruded claws are unindexed while BoxGeometry is indexed. Normalize
+ // before merging or Three.js rejects the mixed mesh formats.
+ const normalized=geometries.map(g=>g.index?g.toNonIndexed():g);
+ const geometry=mergeGeometries(normalized,false);
+ for(const component of new Set([...geometries,...normalized]))component.dispose();
  if(!geometry)throw Error('HK claw bridge geometry merge failed');
  const mount=new THREE.Mesh(geometry,HK_BLACK_METAL);
  mount.name='family-art-hk-claw-assembly';
