@@ -46,20 +46,58 @@ const label=(title:string,src:string,gray=false)=>{
  frame.append(img,caption);return frame;
 };
 const query=new URLSearchParams(location.search);
-const a3Review=query.has('a3'),a2Review=query.has('a2');
-const accessoryReview=a2Review||a3Review;
+const a3Review=query.has('a3'),a2Review=query.has('a2'),h3Review=query.has('h3');
+const accessoryReview=a2Review||a3Review||h3Review;
 const a2Ids=new Set(['ar-m4a1','ak-ak74m','hk-g3a3','hk-mp5a3','fal-5000','fnc-service']);
 const a3Ids=new Set(['ar-m4a1','ak-ak74m','hk-g3a3','hk-hk33a2',
  'hk-hk53a3','hk-mp5a3','hk-mp5sd3','fal-5000','fnc-service']);
 const reviewIds=a3Review?a3Ids:a2Ids;
 const reviewRefs=accessoryReview?ARSENAL_REFERENCES.filter(ref=>reviewIds.has(ref.id)):ARSENAL_REFERENCES;
+// A3.H3: inspect *both optic types* on actual compatible host geometry.
+// Explicit cases prevent a default-only sheet from hiding floating scopes.
+const h3Cases=[
+ ['ar-m4a1','optic-reflex',false,false],
+ ['ar-m4a1','optic-magnified',false,false],
+ ['ak-ak74m','optic-reflex',false,true],
+ ['ak-ak74m','optic-magnified',false,true],
+ ['hk-g3a3','optic-reflex',true,false],
+ ['hk-g3a3','optic-magnified',true,false],
+ ['hk-hk33a2','optic-reflex',true,false],
+ ['hk-hk53a3','optic-magnified',true,false],
+ ['hk-mp5a3','optic-reflex',true,false]
+] as const;
+const reviewCases=h3Review?
+ h3Cases.map(([preset,optic,claw,railedAK])=>({
+  ref:ARSENAL_REFERENCES.find(ref=>ref.id===preset)!,
+  id:preset+'-'+optic,optic,claw,railedAK
+ })) :
+ reviewRefs.map(ref=>({ref,id:ref.id,optic:'',claw:false,railedAK:false}));
+if(h3Review){
+ camera.left=-15;camera.right=15;camera.top=7.5;camera.bottom=-7.5;
+ target.set(2.5,2.5,0);
+}
 async function generate(){
- if(accessoryReview&&reviewRefs.length!==(a3Review?9:6))
+ if(accessoryReview&&reviewCases.length!==(a3Review||h3Review?9:6))
   throw Error('Accessory sample IDs changed');
  let mountedModels=0;
- for(const ref of reviewRefs){
+ for(const entry of reviewCases){
+  const ref=entry.ref;
+  if(!ref)throw Error('Missing H3 capture preset');
   let config=selectWeaponFamilyPreset(initialWeaponConfiguration(ref.legacy.weapon),ref.id);
-  if(a3Review){
+  if(h3Review){
+   if(entry.railedAK){
+    config=setConfiguredFamilyPart(config,'handguard','ak-rail-long');
+    if(config.build?.parts.handguard!=='ak-rail-long')
+     throw Error('A3.H3 AK railed handguard refused');
+   }
+   if(entry.claw){
+    config=setWeaponAttachment(config,'opticMount','optic-hk-claw');
+    if(config.slots.opticMount!=='optic-hk-claw')
+     throw Error('A3.H3 claw refused '+ref.id);
+   }
+   config=setWeaponAttachment(config,'optic',entry.optic);
+   if(config.slots.optic!==entry.optic)throw Error('A3.H3 optic refused '+entry.id);
+  }else if(a3Review){
    // Capture only actually accepted build choices. Do not show invented
    // loadouts on FAL/FNC, or a detachable suppressor over an MP5SD.
    if(ref.id==='ak-ak74m'){
@@ -106,27 +144,27 @@ async function generate(){
   clearWeaponSilhouette(body);
   accessories.traverse(node=>{if(node instanceof THREE.Mesh)node.geometry.dispose();});
   const section=document.createElement('section');section.className='preset';
-  section.dataset.presetId=ref.id;
+  section.dataset.presetId=entry.id;
   section.dataset.acceptedAccessories=Object.values(config.slots).join(',');
-  const heading=document.createElement('h2');heading.textContent=ref.name+' ';
+  const heading=document.createElement('h2');heading.textContent=ref.name+(h3Review?' · '+entry.optic:'')+' ';
   const sub=document.createElement('small');sub.textContent=' / '+ref.id+' / '+ref.platformId;
   heading.append(sub);
   const cells=document.createElement('div');cells.className='views';
   cells.append(label('Side',images[0]),label('Three-quarter',images[1]),
    label('Top',images[2]),label('Grayscale side',images[0],true));
   section.append(heading,cells);holder.append(section);
-  status.textContent='Rendered '+holder.children.length+' / '+reviewRefs.length+' '+(accessoryReview?'equipped':'factory')+' presets';
+  status.textContent='Rendered '+holder.children.length+' / '+reviewCases.length+' '+(accessoryReview?'equipped':'factory')+' presets';
   // Allow progress paint without adding any animation or frame loop to the game.
   if(holder.children.length%6===0)await new Promise(resolve=>requestAnimationFrame(()=>resolve(null)));
  }
  renderer.dispose();renderer.forceContextLoss();
- if(accessoryReview&&mountedModels!==(a3Review?9:6))
+ if(accessoryReview&&mountedModels!==(a3Review||h3Review?9:6))
   throw Error('Accessory sample coverage incomplete '+mountedModels);
- status.textContent='Capture complete: '+reviewRefs.length+' '+(accessoryReview?'equipped':'factory')+' presets · 4 fixed views';
+ status.textContent='Capture complete: '+reviewCases.length+' '+(accessoryReview?'equipped':'factory')+' presets · 4 fixed views';
  document.body.dataset.a1Complete='true';
- document.body.dataset.a1Count=String(reviewRefs.length);
+ document.body.dataset.a1Count=String(reviewCases.length);
  document.body.dataset.a2EquippedCount=String(mountedModels);
- document.body.dataset.a3EquippedCount=a3Review?String(mountedModels):'0';
+ document.body.dataset.a3EquippedCount=a3Review||h3Review?String(mountedModels):'0';
 }
 generate().catch(error=>{
  console.error(error);
