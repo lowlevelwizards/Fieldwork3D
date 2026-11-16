@@ -1,4 +1,4 @@
-/** FN FNC P17 shared Arsenal/Workbench/operator silhouette.
+/** FN FNC P18 silhouette-first Fieldwork art. Gameplay anchors untouched.
  * The stock uses one continuous bare upper beam, a kinked lower bar,
  * a thin extended inset plate, compact rectangular hinge and dark butt pad.
  * No cheek sleeve or trigger guard. Visual geometry builds on demand only.
@@ -28,7 +28,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p17-structural-caricature-fieldwork-exterior';
+ root.name='fnc-p18-fieldwork-bold-silhouette';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -72,11 +72,11 @@ export function buildFNCStage1Silhouette(
  // side walls than the lower body. Not just a narrower front-side polygon.
  const crownedUpper=()=>{
   const stations=[
-   {x:-6.38,top:1.46,bottom:-.99,side:1.34,roof:.67},
-   {x:-5.59,top:1.60,bottom:-.99,side:1.34,roof:.67},
-   {x:2.17,top:FNC_FRONT_P13.receiver.roofY,bottom:-.99,side:1.34,roof:.67},
+   {x:-6.38,top:1.77,bottom:-1.10,side:1.54,roof:.88},
+   {x:-5.59,top:FNC_FRONT_P13.receiver.roofY,bottom:-1.10,side:1.54,roof:.88},
+   {x:2.17,top:FNC_FRONT_P13.receiver.roofY,bottom:-1.10,side:1.54,roof:.88},
    {x:FNC_FRONT_P13.receiver.frontX,top:FNC_FRONT_P13.receiver.roofY,
-    bottom:-.99,side:1.34,roof:.67}
+    bottom:-1.10,side:1.54,roof:.88}
   ] as const;
   const mesh=buildFNCrownMesh(stations.map(s=>({
    x:s.x,top:s.top,bottom:s.bottom,
@@ -88,8 +88,9 @@ export function buildFNCStage1Silhouette(
   mesh.name='family-receiver-fnc-p5-crowned-upper-'+ids.receiver++;
   mesh.userData.fncFlatStampedUpper=true;
   mesh.userData.fncP5CrownedReceiver=true;
-  mesh.userData.fncP5RoofHalfWidth=.67;
-  mesh.userData.fncP5UpperSideHalfWidth=1.34;
+  mesh.userData.fncP5RoofHalfWidth=.88;
+  mesh.userData.fncP5UpperSideHalfWidth=1.54;
+  mesh.userData.fncP18BroadStampedUpper=true;
   mesh.userData.fncP6OutwardReceiverEndcaps=true;
   mesh.userData.fncP6ShortenedReceiverFrontX=FNC_FRONT_P13.receiver.frontX;
   mesh.userData.fncP7ReceiverLength=FNC_FRONT_P13.receiver.frontX+6.38;
@@ -100,7 +101,7 @@ export function buildFNCStage1Silhouette(
  // Remove the oversized rear cheek sleeve entirely. A continuous
  // metal-colored top rail replaces BOTH old segments, avoiding a gap,
  // doubled faces or additional draw calls.
- const top=rail([-6.45,.03],[-14.26,-.04],.84);
+ const top=rail([-6.45,.03],[-14.26,-.04],1.12);
  top.userData.fncP9UpperMetalRail=true;
  top.userData.fncP10ContinuousBareUpperRail=true;
  // Lower rail stays parallel for over three art units; at x=-10.18 its
@@ -108,7 +109,7 @@ export function buildFNCStage1Silhouette(
  // A single six-vertex extrusion avoids separate, z-fighting bar joins.
  const lowerRail=p('stock',[
   [-6.52,-1.23],[-10.18,-1.23],[-14.38,-3.01],
-  [-14.38,-3.49],[-10.05,-1.84],[-6.52,-1.84]
+  [-14.38,-3.63],[-10.05,-2.06],[-6.52,-2.06]
  ],1.12,'stock');
  lowerRail.userData.fncStockRail=true;
  lowerRail.userData.fncKinkedLowerRail=true;
@@ -125,14 +126,15 @@ export function buildFNCStage1Silhouette(
  // The same six-point butt profile keeps the original length and vertical
  // silhouette, but gains depth and the former cheek pad's dark finish.
  const pad=p('stock',[
-  [-14.85,.45],[-14.17,.45],[-14.10,.12],
-  [-14.10,-3.42],[-14.35,-3.67],[-14.85,-3.67]
+  [-14.85,.92],[-14.12,.92],[-14.02,.58],
+  [-14.02,-3.92],[-14.35,-4.27],[-14.85,-4.27]
  ],2.18,'buttpad');
  pad.userData.fncP8NarrowButtplate=true;
  pad.userData.fncButtPlate=true;
  pad.userData.fncP9ConnectedButtplate=true;
  pad.userData.fncP10DarkThickButtpad=true;
  pad.userData.fncP17BoldButtpad=true;
+ pad.userData.fncP18OversizedButtpad=true;
  // Lengthen the inset joining plate in X while reducing its Z depth.
  // Intersections with the continuous upper bar and angled lower bar remain
  // deliberate; it is still a flat plate, not a solid stock sidewall.
@@ -155,10 +157,10 @@ export function buildFNCStage1Silhouette(
  // with the 30-round STANAG neck.
  const receiverNoseX=FNC_FRONT_P13.receiver.frontX;
  const lower=p('receiver',[
-  [-6.30,-.98],[receiverNoseX,-.98],
-  [receiverNoseX,-3.18],[2.63,-3.34],
-  [.20,-3.34],[.20,-3.04],[-.40,-2.70],
-  [-1.30,-2.35],[-6.30,-2.35]
+  [-6.30,-1.09],[receiverNoseX,-1.09],
+  [receiverNoseX,-3.30],[2.56,-3.62],
+  [.62,-3.62],[.62,-2.78],[-.75,-2.78],
+  [-1.30,-2.58],[-6.30,-2.58]
  ],3.42,'lower');
  lower.userData.fncP15FlatLowerNose=true;
  lower.userData.fncAngularLower=true;
@@ -166,18 +168,19 @@ export function buildFNCStage1Silhouette(
  lower.userData.fncP8DistinctMagwell=true; // legacy integrated-lip marker
  lower.userData.fncP16IntegratedMagazineSocket=true;
  lower.userData.fncP17SinglePieceMagwell=true;
+ lower.userData.fncP18SquaredMagazineHousing=true;
  // A single broad dark step makes upper and lower readable as separate
  // stampings from either side; unlike fine engraved lines it survives zoom.
  const seam=p('receiver',[
-  [-6.19,-.95],[FNC_FRONT_P13.receiver.seamFrontX,-.95],
-  [FNC_FRONT_P13.receiver.seamFrontX,-1.18],[-6.19,-1.18]
+  [-6.19,-1.05],[FNC_FRONT_P13.receiver.seamFrontX,-1.05],
+  [FNC_FRONT_P13.receiver.seamFrontX,-1.38],[-6.19,-1.38]
  ],3.56,'shadow');
  seam.userData.fncP8UpperLowerSeam=true;
  seam.castShadow=false;seam.receiveShadow=false;
  // The lower now owns the magwell silhouette; no second Z-heavy slab.
  // One deliberate stamping on the lower's flank, not decorative rivets.
  const stamp=p('receiver',[
-  [-5.83,-1.88],[-1.02,-1.88],[-.85,-2.04],[-5.83,-2.04]
+  [-5.83,-2.02],[-1.02,-2.02],[-.85,-2.25],[-5.83,-2.25]
  ],.075,'shadow');
  stamp.position.z=1.725;
  stamp.userData.fncP16LowerStampRelief=true;
@@ -226,9 +229,10 @@ export function buildFNCStage1Silhouette(
  const barrelStartX=8.55;
  const barrelEndX=showFactoryMuzzle?19.005:FNC_P1.muzzleX;
  const barrel=b('barrel',(barrelStartX+barrelEndX)/2,FNC_FRONT_P13.barrel.axisY,0,
-  barrelEndX-barrelStartX,1.14,1.14,'barrel');
+  barrelEndX-barrelStartX,1.34,1.34,'barrel');
  barrel.userData.fncServiceBarrel=true;
  barrel.userData.fncP17ChunkyBarrel=true;
+ barrel.userData.fncP18HeavyBarrel=true;
  barrel.userData.fncP7BarrelStartX=barrelStartX;
  if(showFactoryMuzzle){
   // An elongated but still chunky six-sided factory device. Keep the
@@ -250,6 +254,7 @@ export function buildFNCStage1Silhouette(
   muzzle.userData.fncP8TaperedMuzzleMass=true;
   muzzle.userData.fncP16SlenderFNCFlashHider=true;
   muzzle.userData.fncP17BoldShortFlashHider=true;
+ muzzle.userData.fncP18StubbyMuzzle=true;
   muzzle.castShadow=true;muzzle.receiveShadow=true;
   root.add(muzzle);
   // Single low-poly batched dark port strip, analogous to the FAL's
@@ -320,11 +325,12 @@ export function buildFNCStage1Silhouette(
  // Compact rear ear is deliberately smaller than the tall tapered
  // front shroud: both read at miniature scale without matching towers.
  const rear=aperture('receiver','rear-guard',
-  [[-5.65,1.42],[-5.60,2.48],[-4.18,2.48],[-4.13,1.42]],
-  [[-5.24,1.72],[-4.55,1.72],[-4.65,2.25],[-5.15,2.25]],
-  1.28);
+  [[-5.78,1.73],[-5.72,3.06],[-4.02,3.06],[-3.98,1.73]],
+  [[-5.31,2.00],[-4.41,2.00],[-4.54,2.78],[-5.16,2.78]],
+  1.44);
  rear.userData.fncP8CompactRearSight=true;
  rear.userData.fncP17GraphicRearAperture=true;
+ rear.userData.fncP18BoldRearSight=true;
  rear.userData.fncRearAperture=true;
  rear.userData.fncProtectedRearSight=true;
  rear.userData.fncP5OversizedRearSight=true;
