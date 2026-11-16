@@ -13,11 +13,15 @@ test('26.04 all five settings have coherent 2D and ISO light response',()=>{
 });
 test('26.04 mode is chosen before deployment, preserved in replay and both views',()=>{
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- const html=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
+ const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ const world=readFileSync(new URL('../src/breach-2d-world-renderer.ts',import.meta.url),'utf8');
+ const manifest=readFileSync(new URL('../src/breach-replay-manifest.ts',import.meta.url),'utf8');
  const iso=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  assert.match(html,/id="siteLighting"/);
- assert.match(main,/state\.lightingMode=finishedSession\.lightingMode/);
- assert.match(main,/renderLightingMood2D\(\);renderWeaponLights2D\(\)/);
+ assert.match(main,/lightingModes:BREACH_LIGHTING_MODES/);
+ assert.match(main,/getLighting:\(\)=>selectedLightingMode/);
+ assert.match(manifest,/lightingMode:s\.lightingMode/);
+ assert.match(world,/world2D\.renderLightingMood2D\(\);world2D\.renderFixtureLighting2D\(\);world2D\.renderWeaponLights2D\(\)/);
  assert.match(main,/state\.started\|\|state\.phase!=='planning'/);
  assert.match(iso,/this\.sun\.intensity=mood\.sun/);
 });

@@ -16,12 +16,13 @@ import {spatialSurfaceState,windowPresentationKnown} from './breach-presentation
 import {windowApertureSegment} from './worldgen/window-geometry-contract.ts';
 import {doorKnown} from './breach-intel.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
+import {fixtureLightingVisuals,fixtureVisualColor} from './equipment-lighting-visuals.ts';
 import {sitePowerControls,currentControlState} from './equipment-site-power-controls.ts';
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipment-weapon-light-beam.ts';
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
-import {presentActor} from './rendering/breach-3d-disclosure-presenter.ts';
+import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 import type {ReplayPlaybackController} from './breach-replay-playback-controller.ts';
 export type World2DDrawing={
@@ -352,8 +353,72 @@ function renderLightingMood2D(){
  if(mood.floorTint<=0)return;
  draw.save();
  draw.fillStyle='rgba(2,7,11,'+mood.floorTint+')';
- draw.fillRect(-9,-9,W+18,H+18);
+ const bounds=state.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+ draw.fillRect(bounds.minX-9,bounds.minY-9,
+  bounds.maxX-bounds.minX+18,bounds.maxY-bounds.minY+18);
  draw.restore();
+}
+/** State is shared with ISO; floor fog masks undiscovered geometry.
+ * The radial gradient is clipped to real opaque world blockers, not a
+ * decorative circle that can glow through a closed door.
+ */
+let fixtureGradientCache:{
+ visuals:ReturnType<typeof fixtureLightingVisuals>;
+ gradients:Map<string,CanvasGradient>;
+}|null=null;
+function renderFixtureLighting2D(){
+ const state=getState(),replaying=isReplaying();
+ if(!state.site)return;
+ const view=fixtureLightingVisuals(state);
+ if(fixtureGradientCache?.visuals!==view)
+  fixtureGradientCache={visuals:view,gradients:new Map()};
+ const observer=replaying&&replayKnowledge.groundLensOn?
+  replayKnowledge.observerId:null;
+ const personal=!!observer;
+ const evidence=observer?
+  replayKnowledge.personalGround?.at(replayPlayback.time,observer)??null:null;
+ for(const f of view.fixtures){
+  if(spatialSurfaceState(state,'room',f.roomId,
+     replaying&&replayKnowledge.omniscient)==='unknown')continue;
+  const micro='micro:'+Math.floor(f.p.x/10)+','+Math.floor(f.p.y/10);
+  const fine='fine:'+Math.floor(f.p.x/20)+','+Math.floor(f.p.y/20);
+  if(!presentDecor(state,{position:f.p,microKey:micro,fineKey:fine},
+     replaying&&replayKnowledge.omniscient,personal,evidence,()=>false))
+   continue;
+  const color=fixtureVisualColor(f);
+  const rgb=((color>>16)&255)+','+((color>>8)&255)+','+(color&255);
+  if(f.intensity>0&&f.footprint.length>2){
+   draw.save();draw.beginPath();
+   draw.moveTo(f.footprint[1].x,f.footprint[1].y);
+   for(let i=2;i<f.footprint.length;i++)
+    draw.lineTo(f.footprint[i].x,f.footprint[i].y);
+   draw.closePath();draw.clip();
+   let gradient=fixtureGradientCache!.gradients.get(f.id);
+   if(!gradient){
+    gradient=draw.createRadialGradient(f.p.x,f.p.y,0,
+     f.p.x,f.p.y,f.range);
+    const weight=f.intensity*(f.status==='backup'?.27:.35);
+    gradient.addColorStop(0,'rgba('+rgb+','+weight.toFixed(3)+')');
+    gradient.addColorStop(.42,'rgba('+rgb+','+(weight*.32).toFixed(3)+')');
+    gradient.addColorStop(1,'rgba('+rgb+',0)');
+    fixtureGradientCache!.gradients.set(f.id,gradient);
+   }
+   draw.fillStyle=gradient;
+   draw.fillRect(f.p.x-f.range,f.p.y-f.range,f.range*2,f.range*2);
+   draw.restore();
+  }
+  // The fixture itself is equipment, not a beacon revealing an unknown
+  // room; require precise recorded/observed ground in restricted intel.
+  const width=f.kind==='fluorescent'?12:f.kind==='worklight'?8:6;
+  const height=f.kind==='fluorescent'?3:5;
+  rect(f.p.x-width/2,f.p.y-height/2,width,height,
+   '#222c2b');
+  rect(f.p.x-width/2+1,f.p.y-height/2+1,
+   width-2,Math.max(1,height-2),'#'+color.toString(16).padStart(6,'0'));
+  if(f.status==='failed')
+   line({x:f.p.x-width/2,y:f.p.y+height/2},
+    {x:f.p.x+width/2,y:f.p.y-height/2},'#b97463',1.2);
+ }
 }
 function renderWeaponLights2D(){
  const state=getState(),replaying=isReplaying();
@@ -438,7 +503,7 @@ function renderGroundMarks(){
    blockers:cache.blockers.length}:null;
  }
  return {terrain,furniture,architecture,renderLightingMood2D,
-   renderWeaponLights2D,renderGroundMarks,inspectLightCache};
+   renderFixtureLighting2D,renderWeaponLights2D,renderGroundMarks,inspectLightCache};
 }
 
 export type BreachTacticalWorldFrame={
@@ -480,7 +545,7 @@ export function renderBreachTacticalWorldFrame(p:BreachTacticalWorldFrame):void{
   draw.fillStyle='#52655b';
   draw.fillRect(bounds.minX-9,bounds.minY-9,
     bounds.maxX-bounds.minX+18,bounds.maxY-bounds.minY+18);
-  world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderWeaponLights2D();
+  world2D.terrain();world2D.furniture();world2D.renderGroundMarks();world2D.renderLightingMood2D();world2D.renderFixtureLighting2D();world2D.renderWeaponLights2D();
   world2D.architecture();fog2D.renderFog();fog2D.renderPersonalGround();
   if(!p.photoClean)actor2D.missionMarkers();
   if(!p.photoClean){route2D.paths();replay2D.renderReplayMovementHistory(false);}
