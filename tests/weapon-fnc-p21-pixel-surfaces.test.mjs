@@ -62,6 +62,21 @@ test('P21 all marked surfaces share atlas, preserve native finishes and add UVs 
    body.geometry.getAttribute('position').count);
   assert.equal(body.geometry.getAttribute('position').count%3,0);
  }
+ // These are the actual UV tiles assigned to the visible solid triangles,
+ // not only an atlas stored in memory.
+ const hasTile=(role,col,row)=>{
+  const uv=surface(g,role).geometry.getAttribute('uv');
+  for(let i=0;i<uv.count;i++)
+   if(Math.floor(uv.getX(i)*4)===col&&Math.floor(uv.getY(i)*2)===row)
+    return true;
+  return false;
+ };
+ assert.ok(hasTile('receiver-upper',0,0),'operating slot mapped onto receiver');
+ assert.ok(hasTile('receiver-lower',1,0),'right-side seam/stamp mapped');
+ assert.ok(hasTile('receiver-lower',2,0),'left-side seam mapped');
+ assert.ok(hasTile('polymer',1,1),'grooves mapped onto broad side facets');
+ assert.ok(hasTile('gas',3,0),'side vent pixels on gas cover');
+ assert.ok(hasTile('gas',0,1),'roof vent pixels on gas cover');
  assert.equal(material.map,null,'do not leak maps into other weapons');
  const gas=surface(g,'gas'),poly=surface(g,'polymer');
  assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
@@ -86,7 +101,18 @@ test('P21 proves real reductions and unchanged magazine, muzzle and other famili
  const bounds=new THREE.Box3().setFromObject(gun);
  assert.ok(Math.abs(bounds.min.x-FNC_P1.stockRearX)<.03);
  assert.ok(Math.abs(bounds.max.x-FNC_P1.muzzleX)<.03);
- assert.equal(config.build.parts.magazine,'ar-mag30');
+ const well=gun.children.find(x=>x.userData.fncP20SquareMagazineHousing),
+  mag=gun.children.find(x=>x.userData.fncSharedARStanag),
+  lug=gun.children.find(x=>x.userData.fncP20SingleChargingLug),
+  receiver=surface(gun,'receiver-upper');
+ assert.ok(well&&mag&&lug&&receiver);
+ assert.equal(well.geometry.getAttribute('position').count,60,
+  'retained simple six-corner magwell silhouette');
+ assert.ok(new THREE.Box3().setFromObject(well).intersectsBox(
+  new THREE.Box3().setFromObject(mag)));
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(receiver)));
+  assert.equal(config.build.parts.magazine,'ar-mag30');
  assert.equal(resolveWeaponAssembly(config).muzzleX,19.5);
  const suppressed={...config,slots:{...config.slots,muzzle:'muzzle-suppressor'}};
  const noDevice=buildWeaponSilhouette('rifle',m,m,suppressed);
