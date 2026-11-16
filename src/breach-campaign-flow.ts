@@ -26,7 +26,8 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   type CampaignState} from './campaign-state.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
-import {campaignDeploymentSettings,createCampaignRules} from './campaign-rules.ts';
+import {campaignDeploymentSettings} from './campaign-rules.ts';
+import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
 import {validateCampaignDraft,type CampaignCreationDraft} from './campaign-creation.ts';
 import type {CampaignSlot} from './campaign-save-slots.ts';
 import {confirmFieldworkAction,showFieldworkNotice} from './ui/fieldwork-controls.ts';
@@ -164,7 +165,7 @@ const campaignScreen=new CampaignScreen({
   }))return;
   // Existing career/contracts are reused; no new police-only missions are
   // implied by this first explicit Dispatch campaign identity.
-  const next=newCampaign(config.randomSeed(),createCampaignRules('dispatch'),'Dispatch SWAT Pilot');
+  const next=newDispatchPilotCampaign(config.randomSeed());
   if(!config.replaceCampaignSlot(next,'dispatch')){
    void showFieldworkNotice('Save unavailable',
     'Dispatch pilot could not be saved. Other campaign saves were preserved.');
