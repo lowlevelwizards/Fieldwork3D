@@ -7,14 +7,12 @@ import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER,
  from './weapons/geometry/weapon-visual-palette.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
-import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {accessoryBox,accessoryTube,accessoryFrame,accessoryProfile,accessoryMergedBoxes}
+ from './weapons/geometry/accessory-primitives.ts';
 import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 const block=(root:THREE.Group,x:number,y:number,z:number,
- w:number,h:number,d:number,m:THREE.Material)=>{
- const mesh=new THREE.Mesh(mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d),m);
- mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
- root.add(mesh);return mesh;
-};
+ w:number,h:number,d:number,m:THREE.Material)=>
+ accessoryBox(root,'weapon-accessory-hardware',x,y,z,w,h,d,m);
 export function buildWeaponAccessories(raw:WeaponConfiguration,
  steel:THREE.Material,dark:THREE.Material,
  lensMaterial:THREE.Material=steel):THREE.Group{
@@ -27,17 +25,27 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  // Claw rail is its own receiver mesh; raise only the separate fitted optic.
  const sightRise=raw.slots.opticMount==='optic-hk-claw'?1.50:0;
  if(optic.id==='optic-reflex'){
-  block(g,optic.mountX,3.8+sightRise,0,4,1.1,3,polymer);
-  block(g,optic.mountX,5+sightRise,0,3.3,2.8,.75,metal);
-  block(g,optic.mountX+1.3,5+sightRise,0,.55,2.3,2.9,polymer);
+  // A3: an actual open hood, not a solid sight tower. The sight origin is
+  // still the immutable equipment resolver's mountX/sightHeight.
+  accessoryBox(g,'weapon-accessory-optic-reflex-base',
+   optic.mountX,3.8+sightRise,0,4,1.1,3,metal);
+  accessoryFrame(g,'weapon-accessory-optic-reflex-hood',
+   optic.mountX,5.35+sightRise,0,3.5,2.8,.90,.57,polymer);
  }else if(optic.id==='optic-magnified'){
-  // One overscale objective bell, stout tube and two unmistakable mounts.
-  block(g,optic.mountX,5.10+sightRise,0,7.35,2.40,2.52,polymer);
-  block(g,optic.mountX+3.30,5.10+sightRise,0,1.55,3.48,3.48,metal);
-  block(g,optic.mountX-3.12,5.10+sightRise,0,1.00,2.75,2.85,metal);
-  block(g,optic.mountX-1.75,3.74+sightRise,0,1.00,1.36,1.72,metal);
-  block(g,optic.mountX+1.45,3.74+sightRise,0,1.00,1.36,1.72,metal);
-  block(g,optic.mountX-.42,6.51+sightRise,0,1.32,.96,1.63,metal);
+  // A3: one faceted tube, modest stepped objective/ocular, one grouped
+  // hardware mesh and a single recognisable adjustment cap.
+  accessoryTube(g,'weapon-accessory-optic-magnified-body',
+   optic.mountX,5.10+sightRise,0,7.0,1.11,1.11,polymer);
+  accessoryTube(g,'weapon-accessory-optic-magnified-objective',
+   optic.mountX+2.95,5.10+sightRise,0,1.55,1.12,1.63,metal);
+  accessoryTube(g,'weapon-accessory-optic-magnified-ocular',
+   optic.mountX-3.20,5.10+sightRise,0,.95,1.24,1.34,metal);
+  accessoryMergedBoxes(g,'weapon-accessory-optic-magnified-mounts',[
+   [optic.mountX-1.65,3.80+sightRise,0,.95,1.65,1.60],
+   [optic.mountX+1.45,3.80+sightRise,0,.95,1.65,1.60]
+  ],metal);
+  accessoryBox(g,'weapon-accessory-optic-magnified-turret',
+   optic.mountX-.42,6.49+sightRise,0,1.15,.75,1.38,metal,false);
  }
  const muzzle=parts.muzzle;
  const muzzleY=raw.build?.family==='ar'?AR_VISUAL_AXIS_Y:0;
