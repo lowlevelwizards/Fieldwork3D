@@ -84,6 +84,6 @@ test('completed HUD polling is lower frequency without slowing planning, live or
  assert.match(loop,/const terminalHud=\(state\.phase==='won'\|\|state\.phase==='lost'\)\&\&!replaying/);
  assert.match(loop,/const hudPeriod=state\.phase==='running'\?180:terminalHud\?750:120/);
  assert.match(loop,/if\(terminalHud\&\&frameGap>1000\)hudAt=now/);
- assert.match(loop,/if\(now-hudAt>hudPeriod\)/);
+ assert.match(loop,/if\(!photoActive&&now-hudAt>hudPeriod\)/);
  assert.match(loop,/config\.updateHud\(\);if\(replaying\)config\.updateReplayHud\(\)/);
 });

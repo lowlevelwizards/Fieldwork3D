@@ -2,7 +2,7 @@
  * The fog presentation never changes detection or player intelligence. */
 import {W,H,WALLS,COVER,type Pt} from './breach-core.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
-import type {Site,WorldBounds} from './breach-site.ts';
+import type {Site,Room,WorldBounds} from './breach-site.ts';
 import {team,type Session} from './breach-game.ts';
 import {intelFogLevel} from './breach-intel.ts';
 import {exteriorKnownFogRects} from './breach-fog-domain.ts';
@@ -218,10 +218,25 @@ export function paintFogMask(ctx:CanvasRenderingContext2D,s:Session,
 
 /** Room occupancy is used only to cut away camera roofs where appropriate.
  * It must NEVER erase any fog: discovery is strictly cone/LOS-driven. */
-export function occupiedFogRooms(s:Session){
- if(!s.site)return [];
- const friendly=team(s).filter(a=>a.health>0);
- return s.site.rooms.filter(room=>friendly.some(a=>
-   a.p.x>room.x+4&&a.p.x<room.x+room.w-4&&
-   a.p.y>room.y+4&&a.p.y<room.y+room.h-4));
+/** Read-only occupied rooms for callers needing actual room objects. */
+export function occupiedFogRooms(s:Session):Room[];
+/** Fill a reusable ID set for the 3D roof pass, without per-frame arrays. */
+export function occupiedFogRooms(s:Session,ids:Set<string>):Set<string>;
+export function occupiedFogRooms(s:Session,ids?:Set<string>):Room[]|Set<string>{
+ ids?.clear();
+ const rooms:Room[]|null=ids?null:[];
+ if(!s.site)return ids??rooms!;
+ // One occupancy policy for array and set callers. Iterating the canonical
+ // operator list avoids allocating filtered squad and room arrays per frame.
+ for(const room of s.site.rooms){
+  for(const a of s.operators){
+   if(a.side!=='blue'||a.health<=0)continue;
+   if(a.p.x>room.x+4&&a.p.x<room.x+room.w-4&&
+      a.p.y>room.y+4&&a.p.y<room.y+room.h-4){
+    if(ids)ids.add(room.id);else rooms?.push(room);
+    break;
+   }
+  }
+ }
+ return ids??rooms!;
 }

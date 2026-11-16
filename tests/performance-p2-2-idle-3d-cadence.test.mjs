@@ -92,7 +92,7 @@ test('P2.2 preserves authoritative 60Hz step and avoids stale profiler slices',(
   new URL('../src/breach-runtime-loop.ts',import.meta.url),'utf8');
  assert.match(code,/stepSession\(state,1\/60/);
  assert.match(code,/if\(frameMode==='live'\)/);
- assert.match(code,/const updated3d=stageAvailable&&shouldSubmitIdle3D/);
+ assert.match(code,/const updated3d=stageAvailable&&\(photoActive\?!!config\.photoNeedsFrame\?\.\(\):shouldSubmitIdle3D/);
  assert.match(code,/if\(updated3d&&stage\)/);
  assert.match(code,/if\(!studioOccludesTactical\)config\.renderFrame\(dt\)/);
  assert.match(code,/currentSceneCosts=\{\s*\.\.\.\(updated3d\?/);
