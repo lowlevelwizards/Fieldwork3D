@@ -34,8 +34,8 @@ test('P18 polymer front and depth make substantial difference at native scale',(
   lip=one(g,'fncP18DeepEndLip');
  assert.ok(poly&&gas&&lip);
  assert.ok(near(box(poly).max.x,11.68)&&near(box(poly).min.x,1.95));
- assert.ok(size(poly,'y')>3.35&&size(poly,'y')<3.5);
- assert.ok(size(poly,'y')/2.70>1.22,'P18 must exceed P17 polymer size by 22%');
+ assert.ok(size(poly,'y')>3.10&&size(poly,'y')<3.30);
+ assert.ok(size(poly,'y')/2.70>1.16,'P19 underside trim preserves the oversized P18 polymer mass');
  assert.ok(size(poly,'z')/2.47>1.20,'P18 handguard must broaden in three-quarter views');
  assert.ok(near(box(gas).max.y,1.85));
  assert.ok(box(gas).max.y-box(poly).max.y>1.2);
@@ -70,8 +70,8 @@ test('P18 heavy stock, rear sight, barrel and stubby muzzle have real silhouette
  assert.ok(near(box(rear).max.y,3.06));
  assert.ok(size(rear,'x')/1.52>1.17);
  assert.ok(size(muzzle,'y')/1.60>1.25);
- assert.ok(size(muzzle,'x')<1.4);
- assert.ok(near(size(barrel,'y'),1.34));
+ assert.ok(size(muzzle,'x')>1.40&&size(muzzle,'x')<1.52);
+ assert.ok(near(size(barrel,'y'),1.24));
  assert.ok(near(box(muzzle).max.x,FNC_P1.muzzleX));
  assert.ok(many(g,'fncP16ChamferedSightGuard').length===2);
  clearWeaponSilhouette(g);m.dispose();
