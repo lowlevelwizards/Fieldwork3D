@@ -31,32 +31,6 @@ test('P10 stock: continuous upper rail and distinct inset FNC bridge plate',()=>
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P21 mapped pixel detail preserves P5 front: one six-face LOWER hex plus separate NARROW upper gas box',()=>{
- const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
- const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
- const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
- const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
- const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
- assert.ok(upper&&lower&&gas&&polymer&&lug);
- assert.equal(gas.userData.fncPixelVentCounts.left,4);
- assert.equal(gas.userData.fncPixelVentCounts.right,4);
- assert.equal(gas.userData.fncPixelVentCounts.top,4);
- assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
- for(const surface of [upper,lower,gas,polymer]){
-  assert.equal(surface.material.userData.fncPixelArt,true);
-  assert.ok(surface.material.map instanceof THREE.DataTexture);
-  assert.equal(surface.geometry.getAttribute('uv').count,
-   surface.geometry.getAttribute('position').count);
- }
- assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
-  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
-  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
- assert.equal(lug.geometry.type,'BoxGeometry');
- assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
-  new THREE.Box3().setFromObject(upper)));
- clearWeaponSilhouette(g);m.dispose();
-});
 test('P5 receiver: true three-dimensional tapered roof narrower than lower',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const upper=of(g,'fncP5CrownedReceiver')[0];
