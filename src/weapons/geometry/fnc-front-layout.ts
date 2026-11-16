@@ -37,6 +37,6 @@ export const FNC_FRONT_P13=Object.freeze({
   earHalfSpacing:.65,earLength:.82,earDepth:.76
  }),
  muzzle:Object.freeze({centerX:18.85,length:1.30,
-  radius:1.03,slotFirstX:18.41,slotPitch:.46,slotLength:.36,
+  radius:1.03,slotFirstX:18.53,slotPitch:.45,slotLength:.33,
   slotHalfHeight:.19})
 });
