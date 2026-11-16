@@ -48,16 +48,37 @@ export function createBreachQuickPlayController(config:QuickPlayControllerHooks)
  };
 let quickPlayBusy=false;
 let postReadyRuntimeCapture:PostReadyRuntimeCapture|null=null;
+let liveExecutionCapture:PostReadyRuntimeCapture|null=null;
+let liveExecutionStarted=false;
 let coldRuntimeEvidence:ReturnType<typeof createColdDeviceEvidence>|null=null;
 /** The tactical runtime calls this only when ?coldBench=1. */
 function recordRuntimeFrame(frame:PostReadyRuntimeFrame):void{
-  const collector=postReadyRuntimeCapture;
-  if(!collector)return;
-  if(document.visibilityState==='hidden')collector.stopForVisibility();
-  else collector.add(frame);
-  if(collector.completed){
-    if(coldRuntimeEvidence)coldRuntimeEvidence.postReadyRuntime=collector.finish();
-    postReadyRuntimeCapture=null;coldRuntimeEvidence=null;
+  // Opt-in only: this callback is already invoked by the single real
+  // tactical RAF; never enqueue a separate simulation or renderer pass.
+  const evidence=coldRuntimeEvidence;
+  if(!evidence)return;
+  const hidden=document.visibilityState==='hidden';
+  const planning=postReadyRuntimeCapture;
+  if(planning){
+    if(hidden)planning.stopForVisibility();
+    else planning.add(frame);
+    if(planning.completed){
+      evidence.postReadyRuntime=planning.finish();
+      postReadyRuntimeCapture=null;
+    }
+  }
+  if(!liveExecutionStarted&&!hidden&&frame.mode==='live'){
+    liveExecutionStarted=true;
+    liveExecutionCapture=new PostReadyRuntimeCapture(90);
+  }
+  const live=liveExecutionCapture;
+  if(!live)return;
+  if(hidden)live.stopForVisibility();
+  else if(frame.mode!=='live')live.stopForInterruption();
+  else live.add(frame);
+  if(live.completed){
+    evidence.liveExecutionRuntime=live.finish();
+    liveExecutionCapture=null;
   }
 }
 let quickPlayRun=0;
@@ -125,7 +146,8 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
   const id=++quickPlayRun,priorMode=config.getMode();
   const seed=recipe.seed,scale=recipe.scale;
   // Never mix samples from different mission startup attempts.
-  postReadyRuntimeCapture=null;coldRuntimeEvidence=null;
+  postReadyRuntimeCapture=null;liveExecutionCapture=null;
+  liveExecutionStarted=false;coldRuntimeEvidence=null;
   quickPlayBusy=true;quickPlayPercent=0;
   quickPlayPanel.hidden=false;quickPlayPanel.dataset.state='running';
   quickPlayCancelButton.hidden=false;quickPlayCancelButton.textContent='CANCEL';
