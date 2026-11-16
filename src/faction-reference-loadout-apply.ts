@@ -30,7 +30,7 @@ export function createHistoricalLoadoutDraft(proposal:HistoricalLoadoutProposal,
  for(const choice of proposal.choices){
   const mapping=choice.mapping;
   if(!mapping?.playable){
-   blocked.push(choice.name+': no historically valid game representation');
+   warnings.push(choice.name+': no playable historical model; retained existing gear');
    continue;
   }
   if(mapping.channel==='weapon'){
