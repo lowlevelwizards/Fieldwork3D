@@ -38,7 +38,10 @@ test('D3.1 new Dispatch selections are guarded while existing saves survive',()=
  assert.equal(equipCampaignWeapon(c,id,'rifle'),c);
  assert.equal(equipCampaignWeaponPreset(c,id,'ak-aks74u'),c);
  assert.equal(buyWeapon(c,'rifle'),c);
- assert.equal(hireRecruit(c),c,'no generic recruits in SWAT pilot');
+ const recruit=hireRecruit(c);
+ assert.equal(recruit.operators.at(-1)?.background,'Tactical Police');
+ assert.equal(recruit.operators.at(-1)?.weapon,'carbine');
+ assert.equal(recruit.funds,c.funds-450);
  assert.equal(buyWeaponAttachment(c,'optic-reflex'),c);
  assert.equal(equipCampaignWeaponAttachment(c,id,'optic','optic-reflex'),c);
  assert.equal(equipCampaignWeaponFamilyPart(c,id,'receiver','ak103'),c);
