@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {G36_B_ART as A} from '../src/weapons/geometry/g36-art-layout.ts';
 import {G36_E0_FACTORY} from '../src/weapons/geometry/g36-family-contract.ts';
-import {G36_MAG30_OUTLINE} from '../src/weapons/geometry/g36-magazine-profiles.ts';
+import {G36_MAG30_OUTLINE,G36_MAG30_CURVE} from '../src/weapons/geometry/g36-magazine-profiles.ts';
+import {arMagazineOutline} from '../src/weapons/geometry/ar-magazine-profiles.ts';
 import {buildG36OriginalBlockout,G36_B_PART_IDS,applyG36FactoryMaterials}
  from '../src/weapons/geometry/g36-silhouettes.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
@@ -71,8 +72,8 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  const triangles=meshes.reduce((sum,x)=>{
   const geo=x.geometry;return sum+(geo.index?.count??geo.getAttribute('position').count)/3;
  },0);
- assert.ok(meshes.length<=24, 'review excess blockout meshes: '+meshes.length);
- assert.ok(triangles<=500, 'review excess emitted triangles: '+triangles);
+ assert.ok(meshes.length<=15, 'too many exterior draw meshes: '+meshes.length);
+ assert.ok(triangles<=400, 'essential forms must stay under 400 triangles: '+triangles);
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
   'only the accepted original full-size model is an authored factory preset');
  assert.equal(Object.keys(FAMILY_PARTS).filter(id=>id.startsWith('g36-')).length,6);
@@ -96,7 +97,8 @@ test('G36 C1: union side view preserves newly emphasized bridge, stock and trigg
  assert.ok(open(-8.15,-.92),'small stock hole must survive assembled silhouette');
  assert.ok(open(-2.30,-2.82),'trigger gap must be physically empty, not a black decal');
  const lower=one(g,'g36ReceiverLower');
- assert.equal(lower.geometry.parameters.shapes.holes.length,1);
+ assert.equal(lower.geometry.parameters.shapes.holes.length,0,
+  'no closed trigger guard or extruded opening ring');
  clearWeaponSilhouette(g);m.dispose();
 });
 test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
@@ -106,12 +108,15 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   grip=one(g,'g36Grip'),upper=one(g,'g36ReceiverUpper');
  assert.ok(h&&s&&guard&&mag&&grip&&upper);
  assert.ok(bb(h).max.y>4,'raised original G36 bridge');
- assert.ok(bb(guard).max.z-bb(guard).min.z>3,'substantial polymer shell depth');
- assert.ok(bb(guard).max.y-bb(guard).min.y>3.4,'front-end wedge has deliberate profile');
- assert.ok(bb(mag).min.y> -7.4,'magazine should not retain old dangling depth');
+ assert.ok(bb(guard).max.z-bb(guard).min.z>2.7&&
+  bb(guard).max.z-bb(guard).min.z<3.0,'trimmed polymer envelope');
+ assert.ok(bb(guard).max.y-bb(guard).min.y>3.0&&
+  bb(guard).max.y-bb(guard).min.y<3.5,'front wedge retains broad profile');
+ assert.ok(bb(mag).min.y> -8.40&&bb(mag).min.y< -8.20,
+  'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.ok(meshCount<=14,'only one necessary optical-face mesh is permitted: '+meshCount);
+ assert.ok(meshCount<=15,'only two optical-face landmarks are permitted: '+meshCount);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -120,15 +125,15 @@ test('G36 C3: one faceted tapered fore-end is volumetric in top/front views',()=
  const shell=one(g,'g36LongHandguard');
  assert.ok(shell.userData.g36FacetedMoldedShell,'handguard must be a single 3D faceted volume');
  const geo=shell.geometry,attr=geo.getAttribute('position');
- assert.ok(attr.count>=32,'multiple authored YZ octagonal cross-sections');
+ assert.equal(attr.count,24,'three economical YZ octagonal cross-sections');
  const zAt=x=>{
   const v=[];
   for(let i=0;i<attr.count;i++)if(Math.abs(attr.getX(i)-x)<.02)v.push(Math.abs(attr.getZ(i)));
   return Math.max(...v);
  };
- assert.ok(zAt(10.81)>zAt(13.45)+.15,'fore-end nose must taper modestly in true 3D depth');
- assert.ok(zAt(4.22)>zAt(3.75)+.12,'rear connection should flare to main molded shell');
- assert.ok(bb(shell).max.y>1.4&&bb(shell).min.y< -2.0);
+ assert.ok(zAt(10.81)>zAt(13.45)+.15,'fore-end nose tapers visibly in 3D');
+ assert.ok(zAt(10.81)>zAt(3.75)+.10,'rear joins slim molded body');
+ assert.ok(bb(shell).max.y>1.35&&bb(shell).min.y< -1.9);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -154,15 +159,14 @@ test('G36 C4: fore-end nose stays blunt, thick and factory-polymer-like',()=>{
 test('G36 C4: receiver jawline / true trigger opening, short but curved magazine',()=>{
  const m=mat(),g=buildG36OriginalBlockout(m);
  const lower=one(g,'g36ReceiverLower'),mag=one(g,'g36Magazine');
- assert.ok(lower.geometry.parameters.shapes.holes.length===1);
+ assert.equal(lower.geometry.parameters.shapes.holes.length,0,
+  'trigger-gap must open downward rather than closing into a ring');
  assert.equal(hit(lower,-2.30,-2.82),false);
  assert.ok(hit(lower,2.70,-2.90),'molded magwell cheek must be part of lower');
  assert.ok(hit(lower,-5.30,-2.03),'grip-side receiver support remains connected');
- const contour=G36_MAG30_OUTLINE;
- const topCenter=(contour[0][0]+contour[1][0])/2;
- const bottomCenter=(contour[5][0]+contour[6][0])/2;
- assert.ok(bottomCenter-topCenter>.74,'magazine needs recognizable forward sweep');
- assert.ok(bb(mag).min.y>-7.4,'magazine remains intentionally compact');
+ assert.deepEqual(G36_MAG30_OUTLINE,arMagazineOutline(G36_MAG30_CURVE),
+  'G36 uses true STANAG 30 outline but never its feed or surface material');
+ assert.ok(bb(mag).min.y>-8.40&&bb(mag).min.y< -8.20);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('G36 C4: optics are connected and horizontally hierarchical with no tower',()=>{
@@ -365,7 +369,7 @@ test('G36 E1 reload imagery: own polymer magazine and non-roller presentation',(
  const f=carriedMagazineProfile('g36-mag30');
  assert.ok(f);
  assert.equal(f.family,'g36');
- assert.ok(f.length>=4&&f.length<=5);
+ assert.ok(f.length>=5.2&&f.length<=5.4);
  const geo=carriedMagazineGeometry('g36-mag30');
  assert.ok(geo);
  assert.ok(geo.getAttribute('position').count>0);
@@ -378,4 +382,35 @@ test('G36 E1 reload imagery: own polymer magazine and non-roller presentation',(
  assert.equal(v3MagazineRockAngle(.72,'emergency','g36'),0,
   'G36 polymer detachable magazine must not inherit AK rock-in');
  assert.ok(v3MagazineBodyGrip('g36','upper-body'));
+});
+
+
+// P2: confirm default FrontSide materials really see the INSIDE of the
+// carry-handle hole at three-quarter angles (DoubleSide masks winding bugs).
+test('G36 P2: carry-handle inward faces are visible without double-sided material',()=>{
+ const m=new THREE.MeshBasicMaterial({side:THREE.FrontSide});
+ const g=buildG36OriginalBlockout(m),handle=one(g,'g36HandleOpening');
+ const interiorRay=new THREE.Raycaster(
+  new THREE.Vector3(3,2.55,0),new THREE.Vector3(0,1,0));
+ assert.ok(interiorRay.intersectObject(handle,false).length>0,
+  'underside of bridge must be visible FROM INSIDE the carry channel');
+ const frontRay=new THREE.Raycaster(
+  new THREE.Vector3(5.6,2.20,0),new THREE.Vector3(1,0,0));
+ assert.ok(frontRay.intersectObject(handle,false).length>0,
+  'inside of forward handle support must not be backface-culled');
+ clearWeaponSilhouette(g);m.dispose();
+});
+
+test('G36 P2: remove trigger guard and use two rectangular front primitives',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m),lower=one(g,'g36ReceiverLower');
+ assert.ok(lower.userData.g36OpenTriggerGap);
+ assert.equal(lower.geometry.parameters.shapes.holes.length,0);
+ assert.equal(hit(lower,-2.3,-2.82),false);
+ for(const key of ['g36Barrel','g36FactoryMuzzle']){
+  const part=one(g,key);
+  assert.equal(part.geometry.type,'BoxGeometry',
+   key+' must be a simple flat-sided box, not a tube');
+  assert.ok((part.geometry.index?.count??part.geometry.getAttribute('position').count)/3<=12);
+ }
+ clearWeaponSilhouette(g);m.dispose();
 });

@@ -22,7 +22,7 @@ export function addG36Family(root:THREE.Group,build:WeaponFamilyBuild,
  applyG36FactoryMaterials(form,{
   polymer:HK_DARK_POLYMER,steel:HK_BLACK_METAL,
   magazine:G36_SMOKED_MAGAZINE,buttpad:FAL_VENT_SHADOW,
-  optic:HK_DARK_POLYMER,muzzle:HK_MUZZLE_METAL
+  optic:HK_BLACK_METAL,muzzle:HK_MUZZLE_METAL
  });
  applyG36PixelDetails(form);
  for(const part of [...form.children]){

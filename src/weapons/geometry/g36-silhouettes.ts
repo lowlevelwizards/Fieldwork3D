@@ -3,7 +3,7 @@
  * No gameplay, magazine feed, receiver mechanics, or live Arsenal registration.
  */
 import * as THREE from 'three';
-import {addOutline,addCuboid,addFacetedTube,addProfileFrame,
+import {addOutline,addCuboid,addProfileFrame,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {G36_B_ART as A} from './g36-art-layout.ts';
 import {G36_B_PART_IDS} from './g36-family-contract.ts';
@@ -43,9 +43,9 @@ function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):T
   shape.holes.push(p);
  }
  const geometry=new THREE.ExtrudeGeometry(shape,{
-  depth:2.18,steps:1,bevelEnabled:false,curveSegments:1
+  depth:1.92,steps:1,bevelEnabled:false,curveSegments:1
  });
- geometry.translate(0,0,-1.09);
+ geometry.translate(0,0,-.96);
  const mesh=new THREE.Mesh(geometry,material);
  mesh.name='family-stock-'+G36_B_PART_IDS.stock+'-'+n;
  mesh.castShadow=true;mesh.receiveShadow=true;
@@ -73,9 +73,9 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  const pad=outline('stock',[
   [-15.05,.39],[-14.31,.35],[-14.31,-3.96],
   [-14.69,-4.48],[-15.05,-4.32]
- ],2.59);
+ ],2.25);
  pad.userData.g36Buttpad=true;
- const hinge=box('stock',-6.64,-.73,0,.72,2.43,2.64);
+ const hinge=box('stock',-6.64,-.73,0,.72,2.43,2.30);
  hinge.userData.g36StockHinge=true;
 
  // Molded receiver: broad crown, asymmetric lower step, decisive descending
@@ -84,41 +84,54 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
   [-6.80,.93],[-6.48,1.50],[1.70,1.50],[3.18,1.23],
   [4.00,.86],[4.00,-.91],[3.35,-1.47],
   [.88,-1.76],[-6.80,-1.47]
- ],3.05);
+ ],2.68);
  upper.userData.g36ReceiverUpper=true;
- // Open trigger void is cut from the lower shell itself: no fake black paint.
- const lower=addProfileFrame(root,'receiver',ids.receiver,index.receiver++,[
+ // Open lower contour deliberately stops above the trigger gap.
+ // No lower closing strut and no three-dimensional trigger-guard frame.
+ const lower=outline('receiver',[
   [-6.42,-1.12],[3.72,-1.12],[3.54,-2.38],
   [3.02,-3.52],[-.98,-3.52],[-1.25,-2.98],
-  [-1.66,-3.59],[-4.38,-3.59],[-6.42,-2.15]
- ],[
-  [-3.63,-2.37],[-1.71,-2.37],[-1.59,-2.71],
-  [-1.92,-3.13],[-3.61,-3.13]
- ],2.74,material);
+  [-1.66,-2.37],[-3.63,-2.37],[-4.12,-3.07],
+  [-4.38,-3.59],[-6.42,-2.15]
+ ],2.50);
  lower.userData.g36ReceiverLower=true;
- lower.userData.g36TriggerVoid=true;
+ lower.userData.g36OpenTriggerGap=true;
 
  // Original long bridge, one real cut-out, stronger slanted front leg.
  // Keep the first optical housing inside the rear handle rather than
  // growing a detached tall tower. Upper reflex is short and seated.
- const handle=addProfileFrame(root,'receiver',ids.receiver,index.receiver++,[
+ // The frame's inner and outer contours MUST have opposite winding:
+ // Three.js otherwise culls the inward-facing extrusion walls on mobile.
+ const frameOuter:Outline=[
   [-5.76,1.34],[-5.08,4.05],[5.30,4.05],
   [7.43,2.71],[7.43,1.24]
- ],[
-  [-3.20,1.84],[-2.78,3.42],[4.99,3.42],
-  [6.32,2.42],[6.32,1.84]
- ],1.64,material);
+ ];
+ const frameInner:Outline=[
+  [-3.56,1.86],[-3.12,3.60],[5.10,3.60],
+  [6.92,2.47],[6.92,1.86]
+ ];
+ const signedArea=(poly:Outline)=>poly.reduce((a,p,i)=>{
+  const q=poly[(i+1)%poly.length];return a+p[0]*q[1]-q[0]*p[1];
+ },0);
+ const contour=(poly:Outline,ccw:boolean):Outline=>
+  (signedArea(poly)>0)===ccw?poly:[...poly].reverse();
+ const handle=addProfileFrame(root,'receiver',ids.receiver,index.receiver++,
+  contour(frameOuter,true),contour(frameInner,false),1.50,material);
  handle.userData.g36HandleOpening=true;
  const lowerOptic=outline('receiver',[
-  [-5.94,3.17],[-5.74,3.96],[-1.57,3.96],
-  [-1.30,3.61],[-1.75,3.16]
- ],2.08);
+  [-5.85,3.03],[-5.72,3.82],[-1.56,3.82],
+  [-1.30,3.54],[-1.82,3.04]
+ ],1.84);
  lowerOptic.userData.g36LowerOptic=true;
  const reflex=outline('receiver',[
-  [-4.84,3.93],[-4.69,4.70],[-2.87,4.70],
-  [-2.65,4.43],[-2.77,3.93]
- ],2.06);
+  [-4.82,3.79],[-4.73,4.70],[-2.90,4.70],
+  [-2.69,4.43],[-2.79,3.79]
+ ],1.82);
  reflex.userData.g36UpperReflex=true;
+ // One dark, frontal sight window: recognize the upper reflex from an
+ // oblique camera without modeling screws, lens stacks or a mounting rail.
+ const reflexWindow=box('receiver',-2.86,4.23,0,.14,.46,1.02);
+ reflexWindow.userData.g36UpperReflexWindow=true;
  // A single faceted circular front face, oriented down the G36 sight axis.
  // The lens is an art-scale shape cue, not an additional accessory/rail.
  const opticFaceGeo=new THREE.CylinderGeometry(.37,.37,.15,6,1);
@@ -135,7 +148,7 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  const grip=outline('grip',[
   [-5.51,-2.14],[-3.25,-2.14],[-3.59,-3.04],
   [-4.10,-5.72],[-6.19,-5.72],[-6.32,-5.24]
- ],2.43);
+ ],2.16);
  grip.userData.g36Grip=true;
 
  // One stock G36 polymer magazine. Curvature, width and floor are carried by
@@ -148,12 +161,11 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  const guard=addG36LongHandguard(root,ids.handguard,index.handguard++,material);
  guard.userData.g36LongHandguard=true;
 
- // Preserve full-length G36 bare-barrel rhythm; compact, stout terminal.
- const barrel=addFacetedTube(root,'barrel',ids.barrel,index.barrel++,
-  A.barrelStartX,18.78,.55,material);
+ // A deliberately unremarkable square-section barrel and one blunt muzzle.
+ // Neither should compete with the uniquely recognizable carry/optic group.
+ const barrel=box('barrel',16.12,0,0,5.90,.76,.76);
  barrel.userData.g36Barrel=true;
- const muzzle=addFacetedTube(root,'barrel',ids.barrel,index.barrel++,
-  18.65,A.muzzleX,.77,material);
+ const muzzle=box('barrel',A.muzzleX-.25,0,0,.50,.99,.99);
  muzzle.userData.g36FactoryMuzzle=true;
  return root;
 }
@@ -174,7 +186,8 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
   else if(child.userData.g36Buttpad)material=finishes.buttpad;
   else if(child.userData.g36FactoryMuzzle)material=finishes.muzzle;
   else if(child.userData.g36Barrel||child.userData.g36StockHinge)material=finishes.steel;
-  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic||child.userData.g36OpticFace)material=finishes.optic;
+  else if(child.userData.g36OpticFace||child.userData.g36UpperReflexWindow)material=finishes.buttpad;
+  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic)material=finishes.optic;
   child.material=material;
  }
 }

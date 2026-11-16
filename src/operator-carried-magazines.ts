@@ -21,7 +21,7 @@ export type CarriedMagProfile={family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36';length:nu
 export function carriedMagazineProfile(part:string|null|undefined):CarriedMagProfile|null{
  if(!part)return null;
  if(part==='g36-mag30')
-  return {family:'g36',length:4.64,material:G36_SMOKED_MAGAZINE.color.getHex()};
+  return {family:'g36',length:arMagazineCurve('30').length,material:G36_SMOKED_MAGAZINE.color.getHex()};
  if(part==='fnc-mag30')
   return {family:'fnc',length:arMagazineCurve('30').length,material:0x687369};
  if(part==='fal-mag20')
