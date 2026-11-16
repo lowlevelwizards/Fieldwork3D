@@ -1,6 +1,9 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
 import type {ShootingSkills} from './breach-skills.ts';
+import {SKILL_NAMES,type SkillName} from './campaign-skill-schema.ts';
+export {SKILL_NAMES};
+export type {SkillName};
 import type {RosterState} from './breach-roster.ts';
 import {initialWardrobe,readWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import type {MagazineItem} from './breach-magazines.ts';
@@ -30,8 +33,6 @@ import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts'
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 
-export type SkillName=keyof ShootingSkills;
-export const SKILL_NAMES:SkillName[]=['pointShooting','longRange','precision','recoilControl','composure','handling'];
 export type CareerEvent={id:string;day:number;operatorId:string;operationId?:string;kind:string;detail:string;otherOperatorId?:string};
 export type CampaignOperator={
  id:string;callsign:string;background:string;appearanceSeed:number;
