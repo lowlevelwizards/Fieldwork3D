@@ -4,7 +4,7 @@ import {referenceVisualStatus} from './faction-reference-audit.ts';
 import {unresolvedReferenceGaps} from './faction-reference-asset-registry.ts';
 import {paintCamoPreview} from './operator-camo-preview-cache.ts';
 import {referenceWeaponChoice,referenceWeaponOptions} from './faction-reference-weapons.ts';
-import {FACTION_TIMELINES,TIMELINE_ORGANIZATIONS,timelineForReference}
+import {FACTION_TIMELINES,timelineForReference}
  from './faction-reference-timelines.ts';
 import {resolveTimelineYear,timelineById} from './faction-reference-timeline-resolver.ts';
 import {equipmentAtYear,compareEquipmentYears,researchTimelineCoverage}
