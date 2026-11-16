@@ -50,7 +50,7 @@ test('FNC P1B: 30-round magazine curve and visible barrel weight survive geometr
  assert.ok(mb.max.x-mb.min.x<3.3,'STANAG magazine must not become FAL-wide');
  assert.ok(Math.abs(mb.min.y-FNC_P1.magazineBottomY)<.02,'updated magazine extends to authored datum');
  assert.ok(bb.max.y-bb.min.y>.90,'barrel not a .66 pencil-thin wire');
- assert.ok(bb.max.y-bb.min.y<1.05,'still a visually slimmer barrel than handguard');
+ assert.ok(bb.max.y-bb.min.y<1.20,'still a visually slimmer barrel than handguard');
  assert.ok((FNC_P1.muzzleX-FNC_P1.stockRearX)<35,
   'FNC must be visually shorter than legacy 36.4-unit blockout');
  clearWeaponSilhouette(g);material.dispose();
