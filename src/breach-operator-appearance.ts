@@ -56,6 +56,10 @@ export type OperatorAppearanceInputs=Pick<OperatorPose,
  'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
  'flashCharges'|'treatmentActive'|'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
 export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInputs){
+  // Profile serialization separately from the one-time kit rebuild. In-place
+  // edits in Studio and replay must still invalidate on the very next pose.
+  const traceAppearance=r.root.userData.fieldworkProfilePose===true;
+  const fingerprintStart=traceAppearance?performance.now():0;
   // Fingerprint only presentation inputs; movement, time and dynamic posing
   // are purposefully excluded. JSON captures in-place Studio edits and
   // magazine / medical inventory changes without depending on object identity.
@@ -67,15 +71,16 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.weaponConfiguration?.build?.parts.magazine??null,
     p.nvgDeployed??false
   ]);
+  const fingerprintMs=traceAppearance?performance.now()-fingerprintStart:0;
   r.root.userData.fieldworkLightingAppearanceKey=appearanceKey;
   const previousAppearance=appearanceState.get(r);
   const appearanceChanged=previousAppearance?.key!==appearanceKey;
   // First-use costume costs are separate from steady-state IK. Opt-in only:
   // the normal gameplay pose never invokes a timer or allocates a report.
-  const traceAppearance=r.root.userData.fieldworkProfilePose===true;
   let visualKitMs=0,receiverAtlasMs=0;
   if(traceAppearance)
-   r.root.userData.fieldworkAppearanceCpu={visualKitMs:0,receiverAtlasMs:0};
+   r.root.userData.fieldworkAppearanceCpu={visualKitMs:0,receiverAtlasMs:0,
+    fingerprintMs,appearanceChanged:appearanceChanged?1:0};
   // Resolve once per appearance fingerprint, including in-place Studio edits.
   // No repeated wardrobe normalization in coupled, coordinated or IK paths.
   const clothing=appearanceChanged?
@@ -489,7 +494,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   }
   if(traceAppearance){
    receiverAtlasMs=performance.now()-receiverAtlasStart;
-   r.root.userData.fieldworkAppearanceCpu={visualKitMs,receiverAtlasMs};
+   r.root.userData.fieldworkAppearanceCpu={visualKitMs,receiverAtlasMs,
+    fingerprintMs,appearanceChanged:1};
   }
   for(const [id,material] of Object.entries(r.visualKit.wardrobeHead.headwearMaterials)){
    const selected=id===clothing.headwear;

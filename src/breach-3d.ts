@@ -157,6 +157,10 @@ export class TacticalScene3D{
    * Hidden PERF continues recording, without changing render behavior. */
   setPerformanceProfilingEnabled(enabled:boolean):void{
    this.profileSceneUpdate=enabled;
+   // The in-game PERF switch may be armed after squad rigs were created.
+   // Flip the existing diagnostic flag on toggle, never inside normal pose.
+   for(const actor of this.actors.values())
+    actor.physical.root.userData.fieldworkProfilePose=enabled;
   }
   private scenePhaseStart=0;
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
@@ -164,7 +168,8 @@ export class TacticalScene3D{
   private readonly actorPhaseCosts={
    rigMs:0,rigBuilds:0,poseMs:0,posePrepMs:0,poseCount:0,
    appearanceMs:0,weaponBuildMs:0,otherPoseMs:0,
-   visualKitMs:0,receiverAtlasMs:0
+   visualKitMs:0,receiverAtlasMs:0,
+   appearanceFingerprintMs:0,appearanceInvalidations:0
   };
   /** CPU-only slices of a single 3D update. GPU time is NOT measured. */
   private readonly scenePhases:Record<StagePhaseName,number>={
@@ -235,7 +240,11 @@ export class TacticalScene3D{
   private fogSightPaints=0;
   /** Dirtied CanvasTexture versions, not measured completed GPU uploads. */
   private fogTextureUpdateRequests=0;
+  /** Renderer callback confirms WebGL upload submission, not GPU completion. */
+  private fogTextureSubmittedUploads=0;
+  private fogTextureSubmittedBytesEstimate=0;
   private fogComposeMs=0;
+  private fogComposeCpuTotalMs=0;
   private lastFogSession:Session|null=null;
   /** Counts submitted WebGL work; GPU timings require a separate timer. */
   performanceStats(){
@@ -257,8 +266,12 @@ export class TacticalScene3D{
       fogMemoryPaints:this.fogMemoryPaints,
       fogSightPaints:this.fogSightPaints,
       fogTextureUpdateRequests:this.fogTextureUpdateRequests,
+      fogTextureSubmittedUploads:this.fogTextureSubmittedUploads,
+      fogTextureSubmittedBytesEstimate:this.fogTextureSubmittedBytesEstimate,
       fogTextureBytesPerRequest:this.fogCanvas.width*this.fogCanvas.height*4,
       fogComposeMs:this.profileSceneUpdate?this.fogComposeMs:null,
+      fogComposeCpuTotalMs:this.profileSceneUpdate?
+        this.fogComposeCpuTotalMs:null,
       presentationSight:this.presentationSight.stats(),
       presentationSightPolicy:this.presentationSightPolicy,
       scenePhases:this.profileSceneUpdate?this.scenePhases:null,
@@ -892,6 +905,14 @@ export class TacticalScene3D{
     if(!memoryContext)throw Error('Fog memory canvas unavailable');
     this.fogMemoryContext=memoryContext;
     this.fogTexture=new THREE.CanvasTexture(this.fogCanvas);
+    // The renderer invokes onUpdate after submitting a changed texture.
+    // This is NOT a GPU timer or a completed-transfer measurement. Reuse
+    // one callback and texture through map swaps; no separate renderer hook.
+    this.fogTexture.onUpdate=()=>{
+      this.fogTextureSubmittedUploads++;
+      this.fogTextureSubmittedBytesEstimate+=
+        this.fogCanvas.width*this.fogCanvas.height*4;
+    };
     // Canvas pixels are authored as CSS/sRGB colors. Without this the GPU
     // interprets their values as linear and re-encodes them, turning the
     // intended dark #122022 concealment into a bright blue-grey sheet.
@@ -1595,6 +1616,8 @@ export class TacticalScene3D{
       this.actorPhaseCosts.otherPoseMs=0;
       this.actorPhaseCosts.visualKitMs=0;
       this.actorPhaseCosts.receiverAtlasMs=0;
+      this.actorPhaseCosts.appearanceFingerprintMs=0;
+      this.actorPhaseCosts.appearanceInvalidations=0;
       this.fogComposeMs=0;
     }
     // Never memoize reconstructed current sight during historical replay.
@@ -2326,13 +2349,19 @@ export class TacticalScene3D{
        this.actorPhaseCosts.poseCount++;
        const breakdown=object.physical.root.userData.fieldworkPoseCpu as
         {appearanceMs:number;weaponBuildMs:number;otherMs:number;
-         visualKitMs?:number;receiverAtlasMs?:number}|undefined;
+         visualKitMs?:number;receiverAtlasMs?:number;
+         appearanceFingerprintMs?:number;
+         appearanceInvalidations?:number}|undefined;
        if(breakdown){
         this.actorPhaseCosts.appearanceMs+=breakdown.appearanceMs;
         this.actorPhaseCosts.weaponBuildMs+=breakdown.weaponBuildMs;
         this.actorPhaseCosts.otherPoseMs+=breakdown.otherMs;
         this.actorPhaseCosts.visualKitMs+=breakdown.visualKitMs??0;
         this.actorPhaseCosts.receiverAtlasMs+=breakdown.receiverAtlasMs??0;
+        this.actorPhaseCosts.appearanceFingerprintMs+=
+          breakdown.appearanceFingerprintMs??0;
+        this.actorPhaseCosts.appearanceInvalidations+=
+          breakdown.appearanceInvalidations??0;
        }
       }
       if(this.graphicLookEnabled&&(object.root.visible||prewarmHostile)){
@@ -2592,8 +2621,10 @@ export class TacticalScene3D{
         this.fogSightPaints++;
         this.fogTexture.needsUpdate=true;
         this.fogTextureUpdateRequests++;
-        if(this.profileSceneUpdate)
+        if(this.profileSceneUpdate){
           this.fogComposeMs=performance.now()-fogComposeStart;
+          this.fogComposeCpuTotalMs+=this.fogComposeMs;
+        }
       }
     }else if(omniscient)this.fogAt=-1;
     this.markScenePhase('fog');
