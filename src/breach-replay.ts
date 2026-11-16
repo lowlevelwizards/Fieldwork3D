@@ -113,7 +113,7 @@ function firstUnrecorded(events:readonly {id:number}[],lastId:number):number{
   return lo;
 }
 export function snapshot(s:Session,seenGround?:string[],
-  unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'>,
+  unchangedWorld?:Pick<ReplayFrame,'windows'|'coverState'|'sitePower'>,
   previouslyDiscovered:ReadonlySet<string>=new Set(),
   observerBodies:Map<string,Set<string>>=new Map(),
   previousActors?:readonly ReplayActorFrame[]):ReplayFrame{
