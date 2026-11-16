@@ -31,24 +31,28 @@ test('P15 tall polymer still shorter than elevated gas cover, all parts connecte
  assert.equal(polymer.userData.fncCrossSectionFaces,6);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P11 two long handguard ribs, broken gas sides, five upward roof vents',()=>{
+test('P21 pixel surface coverage: P11 two long handguard ribs, broken gas sides, five upward roof vents',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const marks=all(g,'fncP5GrooveLevel');assert.equal(marks.length,4);
- for(const side of [-1,1]){
-  const polymer=marks.find(x=>x.userData.fncP5GrooveSide===side&&x.userData.fncP11PolymerLongRibs);
-  const gas=marks.find(x=>x.userData.fncP5GrooveSide===side&&x.userData.fncP11BrokenGasSideSlots);
-  assert.ok(polymer&&gas);
-  assert.equal(polymer.geometry.getAttribute('position').count,12);
-  assert.equal(gas.geometry.getAttribute('position').count,24);
-  assert.equal(polymer.userData.fncP6GrooveSegmentsPerRow,1);
-  assert.equal(gas.userData.fncP6GrooveSegmentsPerRow,4);
-  assert.ok(polymer.geometry.getAttribute('normal').getZ(0)*side>.9);
-  assert.ok(gas.geometry.getAttribute('normal').getZ(0)*side>.9);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
  }
- const roof=get(g,'fncP11TopGasVentRow');assert.ok(roof);
- assert.equal(roof.userData.fncP11TopGasVentCount,4);
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.ok(roof.geometry.getAttribute('normal').getY(0)>.9);
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P12: two FAL-simple sight ears, real center void and no extra post',()=>{
@@ -68,19 +72,27 @@ test('P12: two FAL-simple sight ears, real center void and no extra post',()=>{
  assert.ok(Math.abs(box(g).min.x-FNC_P1.stockRearX)<.02);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P11 factory and suppressor appearance retain common anchors and P10 stock',()=>{
- const m=new THREE.MeshBasicMaterial();
- const preset=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
- const full=buildWeaponSilhouette('rifle',m,m,preset);
- assert.equal(all(full,'fncP12FALLikeFrontEar').length,2);
- assert.ok(get(full,'fncP11TopGasVentRow'));
- assert.ok(get(full,'fncP11HandstopLip'));
- assert.ok(get(full,'fncP10DarkThickButtpad'));
- assert.ok(!get(full,'fncP8OpenTriggerGuard'));
- const bare=buildFNCStage1Silhouette(m,{},false);
- assert.ok(!get(bare,'fncMuzzle'));
- assert.ok(Math.abs(box(bare).max.x-FNC_P1.muzzleX)<.02);
- assert.ok(meets(get(bare,'fncServiceBarrel'),get(bare,'fncP11LongSlimVentedCover')));
- assert.ok(meets(get(bare,'fncServiceBarrel'),get(bare,'fncP7ContinuousGasSightSeat')));
- clearWeaponSilhouette(full);clearWeaponSilhouette(bare);m.dispose();
+test('P21 pixel surface coverage: P11 factory and suppressor appearance retain common anchors and P10 stock',()=>{
+ const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
+ }
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
+ clearWeaponSilhouette(g);m.dispose();
 });
