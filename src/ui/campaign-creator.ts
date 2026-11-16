@@ -12,7 +12,7 @@ export function renderCampaignCreator(root:HTMLElement,options:{
  hasSandbox:boolean;
  onCancel:()=>void;
  onExportSandbox:()=>void;
- onCreate:(draft:CampaignCreationDraft)=>Promise<boolean>;
+ onCreate:(draft:CampaignCreationDraft)=>Promise<boolean|null>;
 }):void{
  root.replaceChildren();
  const shell=element('main');
@@ -90,7 +90,7 @@ export function renderCampaignCreator(root:HTMLElement,options:{
   refresh();if(create.disabled)return;
   submitting=true;create.disabled=true;
   void options.onCreate({...draft}).then(ok=>{
-   if(!ok){error.textContent='Campaign was not saved. Your existing campaign is unchanged.';}
+   if(ok===false){error.textContent='Campaign was not saved. Your existing campaign is unchanged.';}
   }).catch(()=>{error.textContent='Could not create campaign. Existing saves are unchanged.';})
    .finally(()=>{submitting=false;refresh();});
  });
