@@ -759,7 +759,10 @@ function updateHud(){
     operationsLogged:operationHistory().length
   });
   updateContext();
-  if(appFlow.mode==='training')trainingScreen.updateProgress(state);
+  if(appFlow.mode==='training'){
+   trainingScreen.setReplayVisible(replaying);
+   if(!replaying)trainingScreen.updateProgress(state);
+  }
 }
 function rect(x:number,y:number,w:number,h:number,color:string){
   draw.fillStyle=color;draw.fillRect(x,y,w,h);
@@ -1304,6 +1307,7 @@ const trainingScreen=createBreachTrainingScreen({
   trainingScreen.setActive(true);campaignScreen.hide();
   showUiHelp('TRAINING · AUTHOR A PLAN AND EXECUTE · RETRY AT ANY TIME',4300);
  },
+ onReplay:()=>enterReplay('debrief'),
  onReturnToMenu:()=>{
   trainingScreen.setActive(false);
   appFlow.setMode('menu');campaignScreen.entry(!!campaign);

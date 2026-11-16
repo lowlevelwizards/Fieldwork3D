@@ -11,6 +11,7 @@ import './breach-training.css';
 type Hooks={
  onStart:(config:TrainingConfig)=>void;
  onReturnToMenu:()=>void;
+ onReplay:()=>boolean;
 };
 const select=(label:string,values:readonly string[],names?:Record<string,string>)=>{
  const wrapper=document.createElement('label');wrapper.textContent=label;
@@ -26,7 +27,7 @@ const button=(label:string,action:()=>void)=>{
 };
 export function createBreachTrainingScreen(hooks:Hooks){
  let config:TrainingConfig={...DEFAULT_TRAINING_CONFIG};
- let active=false,open=false;
+ let active=false,open=false,inReplay=false;
  const recorded=new WeakSet<Session>();
  let lastAssessment:TrialAssessment|null=null;
  const browserStorage=()=>{try{return localStorage;}catch{return null;}};
@@ -68,7 +69,8 @@ export function createBreachTrainingScreen(hooks:Hooks){
   const next=requested.activity==='trial'?{
    ...trialConfig(requested.trial??'discrimination'),activity:'trial' as const,
    trial:requested.trial??'discrimination' as const}:requested;
-  config=next;lastAssessment=null;close();hooks.onStart({...config});
+  config=next;lastAssessment=null;resultsButton.hidden=true;
+  close();hooks.onStart({...config});
  };
  const beginButton=button('START TRAINING',begin);
  const closeButton=button('CLOSE',close);
@@ -83,6 +85,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const resultActions=document.createElement('div');
  resultActions.className='breach-training-actions';
  resultActions.append(button('RETRY COURSE',()=>{close();retry();}),
+  button('WATCH REPLAY',()=>{close();hooks.onReplay();}),
   button('CHANGE COURSE',()=>show()),
   button('BACK TO GAME',()=>close()),
   button('MAIN MENU',()=>{close();hooks.onReturnToMenu();}));
@@ -94,8 +97,12 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const progress=document.createElement('output');
  progress.className='breach-training-progress';progress.setAttribute('aria-live','off');
  quick.append(progress);
+ const resultsButton=button('RESULTS',()=>{
+  if(lastAssessment)showResult(lastAssessment,false);
+ });
+ resultsButton.hidden=true;
  quick.append(button('TRAINING TOOLS',()=>show()),button('RETRY',()=>retry()),
-  button('RESULTS',()=>{if(lastAssessment)showResult(lastAssessment,false);}),
+  resultsButton,
   button('MAIN MENU',()=>hooks.onReturnToMenu()));
  document.body.append(quick);
  function show():void{
@@ -111,7 +118,8 @@ export function createBreachTrainingScreen(hooks:Hooks){
   document.body.classList.add('training-setup-open');
   activity.el.focus();
  }
- function retry():void{if(active){lastAssessment=null;hooks.onStart({...config});}}
+ function retry():void{if(active){lastAssessment=null;
+  resultsButton.hidden=true;hooks.onStart({...config});}}
  function syncVisibleOptions():void{
   const isRange=activity.el.value==='range';
   const isTrial=activity.el.value==='trial';
@@ -120,7 +128,8 @@ export function createBreachTrainingScreen(hooks:Hooks){
    field.wrapper.hidden=isRange||isTrial;
  }
  function showResult(result:TrialAssessment,personalBest:boolean):void{
-  lastAssessment=result;panel.hidden=true;resultPanel.hidden=false;
+  lastAssessment=result;resultsButton.hidden=false;
+  panel.hidden=true;resultPanel.hidden=false;
   open=true;root.hidden=false;
   document.body.classList.add('training-setup-open');
   resultTitle.textContent=result.outcome==='passed'?'TRIAL COMPLETE':'TRIAL FAILED';
@@ -139,12 +148,15 @@ export function createBreachTrainingScreen(hooks:Hooks){
   }
  }
  function sync():void{
-  quick.hidden=!active;
+  quick.hidden=!active||inReplay;
   if(!active&&open)close();
  }
  function setActive(value:boolean){active=value;
-  if(!active)lastAssessment=null;
+  if(!active){lastAssessment=null;resultsButton.hidden=true;}
   sync();}
+ function setReplayVisible(value:boolean){
+  if(inReplay===value)return;inReplay=value;sync();
+ }
  function useEquipmentRange():void{
   config={...DEFAULT_TRAINING_CONFIG,activity:'range'};
   setActive(true);
@@ -174,7 +186,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}
  });
  return {
-  show,retry,setActive,useEquipmentRange,updateProgress,
+  show,retry,setActive,setReplayVisible,useEquipmentRange,updateProgress,
   get active(){return active;},
   get config(){return {...config};}
  };
