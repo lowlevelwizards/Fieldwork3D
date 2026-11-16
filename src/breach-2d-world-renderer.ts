@@ -353,7 +353,9 @@ function renderLightingMood2D(){
  if(mood.floorTint<=0)return;
  draw.save();
  draw.fillStyle='rgba(2,7,11,'+mood.floorTint+')';
- draw.fillRect(-9,-9,W+18,H+18);
+ const bounds=state.site?.bounds??{minX:0,minY:0,maxX:W,maxY:H};
+ draw.fillRect(bounds.minX-9,bounds.minY-9,
+  bounds.maxX-bounds.minX+18,bounds.maxY-bounds.minY+18);
  draw.restore();
 }
 /** State is shared with ISO; floor fog masks undiscovered geometry.
