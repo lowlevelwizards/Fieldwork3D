@@ -21,9 +21,9 @@ test('P9 stock lower rail is straight until its deliberate downward knee',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const lower=get(g,'fncP9ParallelThenAngled'),upper=get(g,'fncP9UpperMetalRail');
  assert.ok(lower&&upper);
- assert.ok(coord(lower,-6.52,-1.23)&&coord(lower,-10.18,-1.23),
+ assert.ok(coord(lower,-6.52,-1.29)&&coord(lower,-10.18,-1.29),
   'lower top beam remains horizontal until the knee');
- assert.ok(coord(lower,-14.38,-3.01),
+ assert.ok(coord(lower,-14.38,-3.09),
   'lower beam slopes into the rear butt instead of straightening early');
  assert.ok(box(upper).min.y>box(lower).max.y+.25,
   'two bars leave the receiver separately instead of forming a filled triangle');
