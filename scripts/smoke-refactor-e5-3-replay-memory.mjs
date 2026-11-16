@@ -147,7 +147,8 @@ try{
  const output={stage:'E5.3',browser:'Chromium via Playwright/CDP',
   device:'390x844 emulated mobile viewport, software WebGL',
   film, warmupCycles:2,measuredCycles:4,
-  summary:report,postExit:samples,insideReplay:openSamples,
+  summary:report,peakOpenFeedButtons:Math.max(...openSamples.map(x=>x.feedButtons)),
+  postExit:samples,insideReplay:openSamples,
   limitation:'Chromium GC samples are observational; does not measure real iOS Safari, device FPS, GPU memory or GC pause latency'};
  await mkdir(root,{recursive:true});
  await writeFile(root+'/replay-memory.json',JSON.stringify(output,null,2)+'\n');
