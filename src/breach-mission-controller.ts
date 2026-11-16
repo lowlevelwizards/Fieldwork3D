@@ -40,6 +40,8 @@ export type MissionCreation={
   withoutSite?:boolean;
   /** Initial boot keeps the already loaded Quick Play wardrobe untouched. */
   initial?:boolean;
+  trainingSquadSize?:1|2|3|4;
+  trainingLighting?:LightingMode;
 };
 export type MissionTransition={
   session:Session;
@@ -89,12 +91,18 @@ export class BreachMissionController{
       request.missionOverride,request.prebuiltSite,
       {risk:request.risk,enableCivilians:prefs.civilianPreview,
        enableIncidentIntent:true});
-    session.lightingMode=request.restartStart?.lightingMode??
-      prefs.selectedLightingMode;
+    session.lightingMode=request.trainingLighting??
+      request.restartStart?.lightingMode??prefs.selectedLightingMode;
     this.applyRequestedCondition(session,prefs.requestedCondition);
     if(!request.initial&&prefs.mode==='quick')this.hooks.refreshQuickRoster();
     this.hooks.applyRoster(session);
     this.hooks.applyCampaign(session);
+    // Actual participating squad size precedes snapshots and replay.
+    if(session.site?.training&&request.trainingSquadSize){
+      let retained=0;
+      session.operators=session.operators.filter(a=>a.side!=='blue'||
+       ++retained<=request.trainingSquadSize!);
+    }
     session.operationDossier=request.restartStart?.dossier?
       structuredClone(request.restartStart.dossier):
       this.hooks.buildDossier(session,request.risk);

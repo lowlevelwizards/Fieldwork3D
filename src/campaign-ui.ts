@@ -28,7 +28,7 @@ import './campaign-style.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
- newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;
+ newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;training:()=>void;
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
@@ -132,7 +132,9 @@ export class CampaignScreen{
     hasSave?this.handlers.continueCampaign:this.handlers.newCampaign,
     'campaign-landing-card campaign-landing-primary'),
    button('QUICK PLAY',this.handlers.quickPlay,
-    'campaign-landing-card campaign-landing-quick')
+    'campaign-landing-card campaign-landing-quick'),
+   button('TRAINING · KILLHOUSE',this.handlers.training,
+    'campaign-landing-card campaign-landing-training')
   );
   const utility=node('nav','campaign-landing-utility');
   utility.setAttribute('aria-label','Other destinations');

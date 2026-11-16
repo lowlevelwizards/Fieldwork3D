@@ -34,6 +34,9 @@ import {nearestEligibleActor} from './ui/tactical-nearest-actor.ts';
 
 
 import {equipmentTrainingSite} from './equipment-training-range.ts';
+import {buildTrainingSite} from './training/training-site-builder.ts';
+import {createBreachTrainingScreen} from './ui/breach-training-screen.ts';
+import type {TrainingConfig} from './training/training-courses.ts';
 import type {RangeTrial} from './equipment-training-diagnostics.ts';
 import type {Site} from './breach-site.ts';
 import {BreachMissionController,type MissionTransition} from './breach-mission-controller.ts';
@@ -338,8 +341,11 @@ const operationsBoardController=createBreachOperationsBoardController({
  syncSheets:()=>missionScreens.syncSheets(),
  history:operationHistory,
  enterTrainingRange:()=>{
-   appFlow.setMode('quick');lastRangeTrial=null;
-   reset(state.variant,undefined,undefined,equipmentTrainingSite());
+   if(replaying)return;
+   appFlow.setMode('training');lastRangeTrial=null;
+   reset(state.variant,undefined,undefined,equipmentTrainingSite(),
+     undefined,false,undefined,{squadSize:4,lighting:'day'});
+   trainingScreen.setActive(true);
    showUiHelp('TEST RANGE · USE SUPPRESS TO FIRE AT TARGET PLATES',6500);
  },
  openStudio:id=>openOperatorStudio(id,'quick'),
@@ -1167,6 +1173,7 @@ function releaseMissionPresentation():void{
   disposeAfterActionPresentation(ui.debrief);
   cancel2DCameraGlide();stage?.cancelFocusGlide();
   if(replayQuickVideo.active)replayQuickVideo.stop();
+  photoMode?.exit();
   if(replaying){
     stopReplayBodycam();
     replayCamera.reset(stage);
@@ -1218,10 +1225,12 @@ function mountMissionSession(transition:MissionTransition):void{
 function reset(next=state.variant,siteSeed?:number,
   missionOverride?:Session['missionType'],prebuiltSite?:Site,
   encounterRisk?:1|2|3,deferScene=false,
-  restartStart?:MissionStartSnapshot):void{
+  restartStart?:MissionStartSnapshot,
+  training?:{squadSize:1|2|3|4;lighting:TrainingConfig['lighting']}):void{
   missionController.transition(state,{
     variant:next,seed:siteSeed,missionOverride,prebuiltSite,
-    risk:encounterRisk,deferScene,restartStart
+    risk:encounterRisk,deferScene,restartStart,
+    trainingSquadSize:training?.squadSize,trainingLighting:training?.lighting
   },{
     beforeReplace:releaseMissionPresentation,
     mount:mountMissionSession
@@ -1231,6 +1240,7 @@ function reset(next=state.variant,siteSeed?:number,
  * insertion snapshot. NEW SITE deliberately creates a new session instead.
  */
 function restartMission():void{
+  if(appFlow.mode==='training'){trainingScreen.retry();return;}
   const start=missionController.restartSnapshot(state);
   const request=missionController.restartRequest(start);
   reset(request.variant,request.seed,request.missionOverride,
@@ -1284,6 +1294,20 @@ ui.quickPlaySetup.addEventListener('click',returnToQuickPlayGenerator);
 /** Campaign Arsenal drafts are always re-quoted against live ownership and credits.
  * The existing editor remains usable until the new UI completes its cutover.
  */
+const trainingScreen=createBreachTrainingScreen({
+ onStart:config=>{
+  if(replaying||quickPlayController.busy)return;
+  appFlow.setMode('training');
+  reset(state.variant,undefined,undefined,buildTrainingSite(config),
+   undefined,false,undefined,{squadSize:config.squadSize,lighting:config.lighting});
+  trainingScreen.setActive(true);campaignScreen.hide();
+  showUiHelp('TRAINING · AUTHOR A PLAN AND EXECUTE · RETRY AT ANY TIME',4300);
+ },
+ onReturnToMenu:()=>{
+  trainingScreen.setActive(false);
+  appFlow.setMode('menu');campaignScreen.entry(!!campaign);
+ }
+});
 const campaignFlow=createBreachCampaignFlow({
   getCampaign:()=>campaign,setCampaign:value=>{campaign=value;},saveCampaign,
   getMode:()=>appFlow.mode,setMode:mode=>{appFlow.setMode(mode);},
@@ -1293,6 +1317,7 @@ const campaignFlow=createBreachCampaignFlow({
   randomSeed:randomSiteSeed,
   resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk),
   launchQuickPlay,
+  launchTraining:()=>trainingScreen.show(),
   openReplayLibrary:()=>replayLibrary.openFromMenu(),
   openMenuStudio:()=>openOperatorStudio(persistentRoster.members[0]?.id,'quick'),
   openStudio:id=>openOperatorStudio(id,'campaign'),
@@ -1315,8 +1340,9 @@ const toolbarButtons=hudController.bindToolbar({
  casualtyCandidate:()=>casualtyCandidate(selected),
  invalidateFog:()=>fog2D.invalidate(),
  setRangeTrial:value=>{lastRangeTrial=value;},
- resetMission:()=>reset(),
- restartRange:()=>reset(state.variant,undefined,undefined,equipmentTrainingSite())
+ resetMission:()=>appFlow.mode==='training'?trainingScreen.retry():reset(),
+ restartRange:()=>appFlow.mode==='training'?trainingScreen.retry():
+  reset(state.variant,undefined,undefined,equipmentTrainingSite())
 });
 fieldLightButton=toolbarButtons.light;
 medicalButton=toolbarButtons.medical;
@@ -1327,7 +1353,8 @@ missionScreens.bindSitePreferences();
 missionScreens.bindMissionActions({
  returnToQuickPlayGenerator,returnAfterCampaignMission,
  resetMission:variant=>reset(variant),restartMission,
- setMode:mode=>appFlow.setMode(mode),
+ setMode:mode=>{if(mode==='menu')trainingScreen.setActive(false);
+  appFlow.setMode(mode);},
  campaignEntry:active=>campaignScreen.entry(active),
  audio:audioController,resetTargeting:()=>targeting.reset(),
  captureBeforeExecution:()=>missionController.captureBeforeExecution(state,recorder),

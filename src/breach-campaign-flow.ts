@@ -41,6 +41,7 @@ export type CampaignFlowHooks={
  siteSize:HTMLButtonElement;siteSettings:HTMLElement;randomSeed:()=>number;
  resetContract:(job:CampaignState['contracts'][number])=>void;
  launchQuickPlay:()=>void|Promise<void>;
+ launchTraining:()=>void;
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
  openStudio:(id:string)=>void;openArsenal:(id:string)=>void;
  showBriefing:()=>void;
@@ -61,7 +62,8 @@ const operationHistory=()=>loadOperationHistory();
 function recordCompletedOperation(){
  const state=config.getSession();
  const currentCampaign=config.getCampaign();
-  if(config.isReplaying()||recordedOperation===state||!state.started||
+  if(config.getMode()==='training'||state.site?.training||
+    config.isReplaying()||recordedOperation===state||!state.started||
     (state.phase!=='won'&&state.phase!=='lost'))return;
   recordedOperation=state;
   if(config.getMode()==='mission'&&currentCampaign?.activeContractId){
@@ -122,6 +124,7 @@ const campaignScreen=new CampaignScreen({
  },
  continueCampaign:()=>showCampaignHome(),
  quickPlay:()=>{void config.launchQuickPlay();},
+ training:()=>config.launchTraining(),
  openReplayLibrary:()=>config.openReplayLibrary(),
  openMenuStudio:()=>config.openMenuStudio(),
  chooseContract:(id)=>{
