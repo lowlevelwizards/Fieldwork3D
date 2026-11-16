@@ -11,6 +11,8 @@ import type {OperationKind} from './breach-operations.ts';
 import {resolveQuickPlaySettings,type QuickPlaySettings} from './quick-play-settings.ts';
 import {createQuickPlayConfigurator} from './ui/quick-play-configurator.ts';
 import type {TacticalScene3D,ViewMode} from './breach-3d.ts';
+import {createColdDeviceEvidence,mountColdDeviceExport,
+ captureColdReadyFrameIntervals} from './rendering/breach-cold-device-evidence.ts';
 import type {QuickPlayGenerationRequest,QuickPlayGenerationResponse}
   from './quick-play-generation.ts';
 
@@ -298,6 +300,26 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     // live RAF updates. Never declare READY before the render has returned.
     quickPlayBusy=false;
     finishQuickPlayClock();
+    // E6.11: only ?coldBench=1 publishes a local device-level benchmark.
+    // No network calls or storage; a download requires a deliberate tap.
+    // A separate bounded RAF sampler starts after the live loop resumes and
+    // does not delay readiness or add overhead to ordinary missions.
+    if(config.boot.coldBenchEnabled){
+      const benchmark=createColdDeviceEvidence({
+        seed,gpuWarmupEnabled:config.boot.gpuWarmupEnabled,
+        prewarmEnabled:config.boot.gpuWarmupEnabled&&
+          config.boot.coldPrewarmEnabled,
+        trace:coldRendererEvidence,
+        phases:{generationMs:generated.generationMs,sessionMs,sceneMs,
+          operatorMs,hudMs,preflightMs,shaderPreparationMs,firstFrameMs,totalMs}
+      });
+      (window as Window&{__fieldworkE611?:unknown}).__fieldworkE611=benchmark;
+      mountColdDeviceExport(benchmark);
+      void captureColdReadyFrameIntervals(90).then(stats=>{
+        benchmark.postReadyFrames=stats;
+        console.info('[E6.11 device cold benchmark ready]',benchmark);
+      }).catch(error=>console.warn('[E6.11 RAF sampling]',error));
+    }
     // The prior 1400ms READY hold made an already prepared game look frozen.
     // Let the resumed gameplay loop paint a frame behind the mask, then
     // release it on the next paint turn with no artificial countdown.
