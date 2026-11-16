@@ -104,7 +104,7 @@ try{
     await import('/src/breach-replay-library.ts');
    const archive=await loadSavedReplay('e5-4-sustained');
    archive.battleEvents=archive.battleEvents.map(e=>({
-    ...e,text:e.text.replace(/E5\\.4 [AB] RECORDED/,'E5.4 '+version+' RECORDED')
+    ...e,text:e.text.replace(/E5\.4 [AB] RECORDED/,'E5.4 '+version+' RECORDED')
    }));
    await saveReplayArchive(archive);
    const restored=await loadSavedReplay('e5-4-sustained');
