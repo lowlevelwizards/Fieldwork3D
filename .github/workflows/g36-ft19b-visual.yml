@@ -1,4 +1,4 @@
-name: G36 FT1.9B — original monochrome silhouette and browser evidence
+name: G36 FT1.9A–D0 — reference, shape and shared finish review
 on:
   pull_request:
     branches: [main]

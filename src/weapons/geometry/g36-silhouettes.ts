@@ -1,4 +1,4 @@
-/** FT1.9C4: selective major-form exaggeration of the original Bundeswehr G36.
+/** FT1.9D0: selective major-form exaggeration of the original Bundeswehr G36.
  * One real exterior builder shared by review and intended future production.
  * No gameplay, magazine feed, receiver mechanics, or live Arsenal registration.
  */
@@ -149,4 +149,25 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
   18.65,A.muzzleX,.77,material);
  muzzle.userData.g36FactoryMuzzle=true;
  return root;
+}
+
+/** FT1.9D0 shared-finish-only assignment. No mesh rebuild and no new material.
+ * Geometry slot ownership remains intact, so future Arsenal material and
+ * saved finish handling can use the same single art source.
+ */
+export type G36FactoryMaterials=Readonly<{
+ polymer:THREE.Material;steel:THREE.Material;magazine:THREE.Material;
+ buttpad:THREE.Material;optic:THREE.Material;muzzle:THREE.Material
+}>;
+export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMaterials):void{
+ for(const child of root.children){
+  if(!(child instanceof THREE.Mesh))continue;
+  let material:THREE.Material=finishes.polymer;
+  if(child.userData.g36Magazine)material=finishes.magazine;
+  else if(child.userData.g36Buttpad)material=finishes.buttpad;
+  else if(child.userData.g36FactoryMuzzle)material=finishes.muzzle;
+  else if(child.userData.g36Barrel||child.userData.g36StockHinge)material=finishes.steel;
+  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic)material=finishes.optic;
+  child.material=material;
+ }
 }

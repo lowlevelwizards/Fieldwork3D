@@ -1,14 +1,16 @@
-/** FT1.9C: the same G36 core geometry and six production peer builders.
+/** FT1.9D0: the same G36 core geometry and six production peer builders.
  * Fixed orthographic row framing in all views: rotate each mesh at its own
  * row pivot, never look down the axis used to separate the comparison rows.
  * One flat black silhouette or shared softly lit clay; only render on events.
  */
 import * as THREE from 'three';
-import {buildG36OriginalBlockout} from './weapons/geometry/g36-silhouettes.ts';
+import {buildG36OriginalBlockout,applyG36FactoryMaterials} from './weapons/geometry/g36-silhouettes.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
 import {weaponVisualLayout} from './weapons/geometry/weapon-visual-layout.ts';
 import {addArsenalInspectionLighting} from './arsenal/inspection-lighting.ts';
+import {HK_DARK_POLYMER,HK_BLACK_METAL,HK_MUZZLE_METAL,
+ G36_SMOKED_MAGAZINE,FAL_VENT_SHADOW} from './weapons/geometry/weapon-visual-palette.ts';
 
 const canvas=document.querySelector<HTMLCanvasElement>('#view');
 const detail=document.querySelector<HTMLCanvasElement>('#detail');
@@ -30,7 +32,7 @@ const clay=new THREE.MeshStandardMaterial({
  color:0x68766a,roughness:.96,metalness:0,flatShading:true,side:THREE.DoubleSide
 });
 type View='side'|'quarter'|'opposite'|'top'|'front';
-type Finish='flat'|'clay';
+type Finish='flat'|'clay'|'factory';
 const names:[string,'rifle'|'carbine',string][]=[
  ['FNC service','rifle','fnc-service'],
  ['FAL 50.00','rifle','fal-5000'],
@@ -114,11 +116,16 @@ function setView(next:View):void{
 }
 function setFinish(next:Finish):void{
  finish=next;
- const material=finish==='clay'?clay:mono;
+ const material=finish==='flat'?mono:clay;
  for(const {model} of items){
   model.traverse(node=>{if(node instanceof THREE.Mesh)node.material=material;});
  }
- for(const id of ['flat','clay'])
+ if(finish==='factory')applyG36FactoryMaterials(g36,{
+  polymer:HK_DARK_POLYMER,steel:HK_BLACK_METAL,
+  magazine:G36_SMOKED_MAGAZINE,buttpad:FAL_VENT_SHADOW,
+  optic:HK_DARK_POLYMER,muzzle:HK_MUZZLE_METAL
+ });
+ for(const id of ['flat','clay','factory'])
   document.getElementById(id)?.setAttribute('aria-pressed',String(id===finish));
  document.body.dataset.g36LabFinish=finish;
  render();
@@ -128,7 +135,7 @@ for(const id of ['side','quarter','opposite','top','front'] as const){
  if(!(btn instanceof HTMLButtonElement))throw Error('Missing G36 view '+id);
  btn.addEventListener('click',()=>setView(id));
 }
-for(const id of ['flat','clay'] as const){
+for(const id of ['flat','clay','factory'] as const){
  const btn=document.getElementById(id);
  if(!(btn instanceof HTMLButtonElement))throw Error('Missing G36 finish '+id);
  btn.addEventListener('click',()=>setFinish(id));

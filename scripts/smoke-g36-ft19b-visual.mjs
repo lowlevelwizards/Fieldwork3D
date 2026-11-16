@@ -59,6 +59,12 @@ try{
   await snap('#detail','g36-master-clay-top',2000);
   await view('FRONT','front');
   await snap('#detail','g36-master-clay-front',1500);
+  await finish('G36 FACTORY FINISH','factory');
+  await view('THREE-QUARTER','quarter');
+  await snap('#detail','g36-master-factory-three-quarter',2000);
+  await snap('.lab','g36-peers-factory-three-quarter',10000);
+  await view('SIDE','side');
+  await snap('#detail','g36-master-factory-side',2000);
   await finish('FLAT SILHOUETTE','flat');
   await view('SIDE','side');
   for(const [id,name] of [['thumb128','g36-master-128px'],['thumb64','g36-master-64px']]){

@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import * as THREE from 'three';
 import {G36_B_ART as A} from '../src/weapons/geometry/g36-art-layout.ts';
 import {G36_MAG30_OUTLINE} from '../src/weapons/geometry/g36-magazine-profiles.ts';
-import {buildG36OriginalBlockout,G36_B_PART_IDS}
+import {buildG36OriginalBlockout,G36_B_PART_IDS,applyG36FactoryMaterials}
  from '../src/weapons/geometry/g36-silhouettes.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import {FAMILY_PRESETS,FAMILY_PARTS} from '../src/equipment-weapon-families.ts';
+import {weaponFinish,weaponMaterialCacheSize} from '../src/weapons/geometry/weapon-material-registry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
 const mat=()=>new THREE.MeshBasicMaterial({side:THREE.DoubleSide});
@@ -161,5 +162,29 @@ test('G36 C4: optics are connected and horizontally hierarchical with no tower',
  assert.ok(bb(upper).max.y<=4.71);
  assert.ok((bb(lower).max.x-bb(lower).min.x)>(bb(upper).max.x-bb(upper).min.x)*1.6,
   'magnified optic should read as horizontal long form, reflex short and squat');
+ clearWeaponSilhouette(g);m.dispose();
+});
+
+test('G36 D0: shared factory materials preserve silhouette and magazine identity',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ const count=g.children.length,dimensions=bb(g).clone();
+ const cacheBefore=weaponMaterialCacheSize();
+ const parts={
+  polymer:weaponFinish('hk-polymer'),steel:weaponFinish('hk-steel'),
+  magazine:weaponFinish('g36-smoked-mag'),buttpad:weaponFinish('fal-vent-shadow'),
+  optic:weaponFinish('hk-polymer'),muzzle:weaponFinish('hk-muzzle-metal')
+ };
+ const afterCreation=weaponMaterialCacheSize();
+ applyG36FactoryMaterials(g,parts);
+ assert.equal(one(g,'g36Magazine').material,parts.magazine);
+ assert.equal(one(g,'g36Barrel').material,parts.steel);
+ assert.equal(one(g,'g36FactoryMuzzle').material,parts.muzzle);
+ assert.equal(one(g,'g36Buttpad').material,parts.buttpad);
+ assert.equal(one(g,'g36LongHandguard').material,parts.polymer);
+ assert.equal(g.children.length,count);
+ assert.ok(bb(g).equals(dimensions),'finish must not affect geometry bounds');
+ applyG36FactoryMaterials(g,parts);
+ assert.equal(weaponMaterialCacheSize(),afterCreation,'repeat finish is allocation-free');
+ assert.ok(afterCreation>=cacheBefore);
  clearWeaponSilhouette(g);m.dispose();
 });
