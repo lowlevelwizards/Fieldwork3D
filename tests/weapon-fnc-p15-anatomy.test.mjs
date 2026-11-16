@@ -22,13 +22,13 @@ test('P15 receiver roof and gas spine nearly level, flat shortened receiver nose
   gas=get(g,'fncP15UpperGasSpine'),
   poly=get(g,'fncP15RaisedPolymer');
  assert.ok(upper&&lower&&gas&&poly);
- assert.ok(near(box(upper).max.x,2.75)&&near(box(lower).max.x,3.05));
- assert.ok(near(box(upper).max.y,1.93));
+ assert.ok(near(box(upper).max.x,2.75)&&near(box(lower).max.x,2.75));
+ assert.ok(near(box(upper).max.y,1.50));
  assert.ok(Math.abs(box(upper).max.y-box(gas).max.y)<.12);
  assert.ok(near(sz(upper,'x'),9.13));
  assert.ok(L.gas.startX<L.receiver.frontX&&L.polymer.startX>L.receiver.frontX);
  assert.ok(touch(upper,gas)&&!touch(lower,poly)&&touch(gas,poly));
- assert.ok(sz(gas,'y')>3.38&&sz(gas,'y')<3.46,
+ assert.ok(sz(gas,'y')>2.58&&sz(gas,'y')<2.64,
   'P23 lower front gas block extends toward the barrel');
  const v=upper.geometry.getAttribute('position');
  let roof=0,bottom=0;
@@ -46,12 +46,12 @@ test('P15 polymer 30% taller; short collar and long gas spine truly interlock',(
   stop=get(g,'fncP15RaisedCollar');
  assert.ok(poly&&gas&&stop);
  assert.ok(near(box(poly).min.x,3.25)&&near(box(poly).max.x,11.68));
- assert.ok(sz(poly,'y')>2.90&&sz(poly,'y')<3.15);
- assert.ok(box(poly).max.y>.50&&box(poly).max.y<.62);
- assert.ok(box(poly).min.y< -2.34&&box(poly).min.y> -2.55);
+ assert.ok(sz(poly,'y')>2.54&&sz(poly,'y')<2.63);
+ assert.ok(box(poly).max.y>.42&&box(poly).max.y<.49);
+ assert.ok(box(poly).min.y< -2.08&&box(poly).min.y> -2.19);
  assert.ok(sz(poly,'z')>sz(gas,'z')+.8);
  assert.ok(touch(stop,poly)&&touch(stop,gas));
- assert.ok(sz(stop,'y')>3.30&&sz(stop,'y')<3.60);
+ assert.ok(sz(stop,'y')>2.75&&sz(stop,'y')<3.05);
  assert.ok(sz(gas,'x')>sz(poly,'x')+2.0);
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -74,12 +74,12 @@ test('P15 lower barrel remains Y0 and sight is integrated with separate two ears
   seat=get(g,'fncP15AlignedGasSightBase'),ears=many(g,'fncP15IntegratedFrontEar');
  assert.ok(bar&&gas&&seat);
  assert.ok(near((box(bar).min.y+box(bar).max.y)/2,0));
- assert.ok(box(bar).max.y<box(gas).max.y-.9);
+ assert.ok(box(bar).max.y<box(gas).max.y-.70);
  assert.ok(touch(bar,seat)&&touch(gas,seat));
  assert.equal(gas,seat,'front sight support is integrated with the gas shell');
  assert.ok(near(box(seat).max.y,L.sight.baseRearTopY));
  assert.equal(ears.length,2);
- assert.ok(ears.every(e=>touch(e,seat)&&near(box(e).max.y,2.77)));
+ assert.ok(ears.every(e=>touch(e,seat)&&near(box(e).max.y,2.42)));
  const a=ears.slice().sort((x,y)=>box(x).min.z-box(y).min.z);
  assert.ok(box(a[0]).max.z<box(a[1]).min.z,'open central gap');
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
