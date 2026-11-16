@@ -83,8 +83,8 @@ test('R4.7 silver cover bands cross full top and smooth family remains clear',()
    assert.ok(r[0].geometry.parameters.depth>3,
     'physical ribs cross cover in Z, not side sticker');
    const matColor=r[0].material.color;
-   assert.ok(matColor.r>.25&&matColor.g>.25,
-    'muted silver stamp details');
+   assert.ok(matColor.r>.12&&matColor.g>.18,
+    'A2 subdued stamped-steel response remains visible without bright bands');
   }
   dispose(a);
  }
