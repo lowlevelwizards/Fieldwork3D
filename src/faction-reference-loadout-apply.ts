@@ -13,6 +13,7 @@ import {equipRosterGear,configureRosterWeaponPreset,setRosterWardrobe,
 import {equipCampaignGear,equipCampaignWeaponPreset,setCampaignWardrobe,
  type CampaignState} from './campaign-state.ts';
 import type {HistoricalLoadoutProposal} from './faction-reference-loadout-generator.ts';
+import {uniformCutCamoCompatible} from './operator-uniform-cut-eligibility.ts';
 
 export type HistoricalLoadoutDraft={
  kit:EquipmentLoadout;wardrobe:WardrobeOptions;weaponConfiguration:WeaponConfiguration;
@@ -58,14 +59,29 @@ export function createHistoricalLoadoutDraft(proposal:HistoricalLoadoutProposal,
    kit=updated;
   }
   if(mapping.channel==='uniform'){
-   const outfit=resolvedWardrobe(wardrobe,kit);
-   let next=wardrobe;
+   // Choose an actual supported BDU/ACU silhouette before printing the cloth.
+   // This is a garment-cut change, not blanket camo on nylon/helmets/packs.
+   const camo=mapping.value as Parameters<typeof setWardrobeFabricCamo>[2];
+   let next=wardrobe,outfit=resolvedWardrobe(next,kit);
+   if(!uniformCutCamoCompatible(outfit.top as 'bdu-shirt'|'acu-shirt',mapping.value as
+    Parameters<typeof uniformCutCamoCompatible>[1])||
+     !uniformCutCamoCompatible(outfit.trousers as 'bdu-trousers'|'acu-trousers',
+      mapping.value as Parameters<typeof uniformCutCamoCompatible>[1])){
+    const modern=uniformCutCamoCompatible('acu-shirt',mapping.value as
+     Parameters<typeof uniformCutCamoCompatible>[1]);
+    const classic=uniformCutCamoCompatible('bdu-shirt',mapping.value as
+     Parameters<typeof uniformCutCamoCompatible>[1]);
+    if(modern||classic){
+     next=setWardrobeStyle(next,'top',modern?'acu-shirt':'bdu-shirt');
+     next=setWardrobeStyle(next,'trousers',modern?'acu-trousers':'bdu-trousers');
+     outfit=resolvedWardrobe(next,kit);
+    }
+   }
    for(const channel of ['top','trousers'] as const)
-    next=setWardrobeFabricCamo(next,channel,mapping.value as
-     Parameters<typeof setWardrobeFabricCamo>[2],outfit);
+    next=setWardrobeFabricCamo(next,channel,camo,outfit);
    if(next.fabricCamo?.top!==mapping.value||
       next.fabricCamo?.trousers!==mapping.value){
-    blocked.push(choice.name+': pattern incompatible with current garment cut');
+    blocked.push(choice.name+': pattern incompatible with available garment cuts');
     continue;
    }
    wardrobe=next;
