@@ -21,7 +21,7 @@ const catalog:Readonly<Record<string,number>>={
  'ak-rpk-mag45':45,'ak-mag762-resin':30,'ak-mag762poly-plum':30,
  'ak-mag545-plum':30,'ak-rpk-mag45-plum':45,
  'hk-g3-mag20':20,'hk556-mag30':30,'hk556-mag25':25,'hk9-mag30':30,
- 'fal-mag20':20,'fnc-mag30':30
+ 'fal-mag20':20,'fnc-mag30':30,'g36-mag30':30
 };
 export const ARSENAL_MAGAZINE_CAPACITIES=catalog;
 /** Strictly use the existing authored magazine and feed identification. */
