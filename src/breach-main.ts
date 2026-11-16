@@ -143,6 +143,7 @@ const ctx=canvas.getContext('2d');
 if(!ctx)throw Error('Canvas 2D unavailable');
 const draw:CanvasRenderingContext2D=ctx;
 const ui=createBreachUiElements();
+let readDispatchIncident:()=>import('./dispatch-incident-context.ts').DispatchIncidentContext|null=()=>null;
 const randomSiteSeed=()=>{
   const bytes=new Uint32Array(1);
   if(typeof crypto!=='undefined'&&crypto.getRandomValues)crypto.getRandomValues(bytes);
@@ -375,6 +376,7 @@ const missionScreens=createBreachMissionScreens({
   appFlow.settingsVisibility(visible.settings);
  },
  getSession:()=>state,getCampaign:()=>campaign,getMode:()=>appFlow.mode,
+ getIncident:()=>readDispatchIncident(),
  isReplaying:()=>replaying,briefingPreviewEnabled,
  getEntryId:()=>missionController.entryId,
  hideWeaponChooser,hideContextPalette,
@@ -1370,6 +1372,7 @@ const campaignFlow=createBreachCampaignFlow({
   openArsenal:id=>{void openCampaignArsenal(id);},
   showBriefing:showMissionBriefing
 });
+readDispatchIncident=campaignFlow.getIncident;
 const campaignScreen=campaignFlow.screen;
 const showCampaignHome=campaignFlow.showHome;
 const returnAfterCampaignMission=campaignFlow.returnAfterMission;
