@@ -93,3 +93,52 @@ are safe.
 Work on a dedicated D2 feature branch; commit individual stages, use critical
 tests, group compatible work for a release checkpoint and do not pile changes
 onto `main` while a Pages release is pending.
+
+## Rolling implementation record: D2.1–D2.4 (policy-only)
+
+The initial content-policy pass now has three pure production modules:
+
+- `dispatch-content-policy.ts` — explicit mode, reference, period and catalog-ID
+  validation; fail-closed `unclassified` for unresearched Dispatch items;
+  `not-applicable` outside Dispatch (existing catalog validity still applies).
+  The policy's status and selectable flag are separate: `specialist` can
+  only be newly selected with explicit `specialistAuthorized` context.
+- `dispatch-starter-choices.ts` — a deliberately small set of existing game
+  options, keyed to the four D1 authored references. It is a **curatorial
+  preview** for fiction/gameplay, not a historically certified unit issue list.
+  It allows the original authored visual weapon in each look and records
+  optional specialist equipment explicitly. An unlisted item remains
+  `unclassified`, not an inferred universal prohibition.
+- `dispatch-selection-projection.ts` — display-only option projection and
+  pure pre-write gate helper. It checks the existing equipment slot where
+  specified, deduplicates options, and preserves an incompatible current
+  selection in the preview without making it selectable as a new choice.
+  The caller still owns real inventory, ownership, budget and persistence
+  validation; **no runtime equipment UI currently calls this gate**.
+
+D2.4 adds a critical integration regression that checks every authored choice
+against the actual equipment/weapon/wardrobe/marking/palette catalogs, detects
+duplicated availability tiers, preserves the original reference weapon and
+markings, verifies legacy Quick Play/Sandbox unrestricted policy, and ensures
+the Dispatch creator remains marked as planned.
+
+**Activation deferred intentionally:** Campaign Foundation v0.2 exposes
+Sandbox Campaign creation; Dispatch is still a defined future template, not a
+playable campaign with its own safe slot and selection/persistence boundary.
+Therefore D2.4 cannot truthfully claim end-to-end enforcement. The next
+independently scoped milestone must implement explicit campaign selection,
+safe storage ownership, real item-pick commit guards and retention/conflict
+resolution before enabling playable Dispatch. D2 does *not* change campaign
+save rules, the simulator or the visible equipment browser.
+
+## Release integration checklist
+
+- Focused tests: `tests/dispatch-d2-policy.test.mjs`,
+  `tests/dispatch-d2-selection.test.mjs`,
+  `tests/dispatch-d2-integration.test.mjs`, plus D1 tests.
+- Production typecheck/build, existing campaign/Quick Play and operator
+  equipment regression in affected-domain CI.
+- Merge at one checkpoint only when the previous Pages release succeeded,
+  no Pages publish is queued/running, the site serves the expected main
+  SHA stamp, and this stacked branch has been integrated against latest main.
+  If preflight cannot be verified, keep the PR open; do not assume success.
