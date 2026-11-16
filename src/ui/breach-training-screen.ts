@@ -12,6 +12,7 @@ type Hooks={
  onStart:(config:TrainingConfig)=>void;
  onReturnToMenu:()=>void;
  onReplay:()=>boolean;
+ onResetTargets:()=>boolean;
 };
 const select=(label:string,values:readonly string[],names?:Record<string,string>)=>{
  const wrapper=document.createElement('label');wrapper.textContent=label;
@@ -75,6 +76,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
    ...trialConfig(requested.trial??'discrimination'),activity:'trial' as const,
    trial:requested.trial??'discrimination' as const}:requested;
   config=next;lastAssessment=null;resultsButton.hidden=true;
+  resetTargetsButton.hidden=next.activity==='trial';
   close();hooks.onStart({...config});
  };
  const beginButton=button('START TRAINING',begin);
@@ -106,7 +108,12 @@ export function createBreachTrainingScreen(hooks:Hooks){
   if(lastAssessment)showResult(lastAssessment,false);
  });
  resultsButton.hidden=true;
- quick.append(button('TRAINING TOOLS',()=>show()),button('RETRY',()=>retry()),
+ const resetTargetsButton=button('RESET TARGETS',()=>{
+  if(!hooks.onResetTargets())progress.textContent=
+   'CANNOT RESET TARGETS IN THIS COURSE OR WHILE OCCUPIED';
+ });
+ quick.append(button('TRAINING TOOLS',()=>show()),resetTargetsButton,
+  button('RETRY',()=>retry()),
   resultsButton,
   button('MAIN MENU',()=>hooks.onReturnToMenu()));
  document.body.append(quick);
@@ -173,6 +180,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
  }
  function setActive(value:boolean){active=value;
   if(!active){lastAssessment=null;resultsButton.hidden=true;}
+  resetTargetsButton.hidden=!active||config.activity==='trial';
   sync();}
  function setReplayVisible(value:boolean){
   if(inReplay===value)return;inReplay=value;sync();

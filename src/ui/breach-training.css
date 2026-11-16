@@ -44,3 +44,5 @@
 @media(max-width:420px){.breach-training-result-stats{grid-template-columns:1fr}}
 
 .breach-training-personal-best{display:block;margin-top:5px;color:#bed5c1;font:600 11px 'Work Sans',sans-serif;line-height:1.4}
+
+.breach-training-quick button[hidden]{display:none!important}
