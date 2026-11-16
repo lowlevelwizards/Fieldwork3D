@@ -26,11 +26,11 @@ test('P17 magwell is ONE lower receiver silhouette with near-vertical front',()=
  assert.equal(many(g,'fncP8DistinctMagwell').length,1);
  assert.equal(many(g,'fncP15FlatLowerNose').length,1);
  assert.ok(near(size(lower,'z'),3.42));
- assert.ok(near(box(lower).max.x,3.05));
+ assert.ok(near(box(lower).max.x,2.75));
  assert.ok(near(box(lower).min.y,-3.46));
  assert.ok(touch(lower,upper)&&touch(lower,mag));
- // Keep the upper receiver front X2.75; the lower magwell steps to
- // X3.05 for visible STANAG clearance without stretching the upper.
+ // The P29 magwell mouth steps back to X2.45; the forward nose still
+ // extends X2.75 as one integrated lower receiver.
  const verts=lower.geometry.getAttribute('position');
  let top=0,below=0;
  for(let i=0;i<verts.count;i++)if(near(verts.getX(i),2.75)){
@@ -46,7 +46,7 @@ test('P22 solid rear sight preserves the original outer envelope',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const rear=one(g,'fncP22SolidRearSight'),front=many(g,'fncP16ChamferedSightGuard');
  assert.ok(rear);assert.equal(front.length,2);
- assert.ok(near(box(rear).max.y,3.06));
+ assert.ok(near(box(rear).max.y,2.63));
  assert.ok(near(box(rear).min.x,-5.78));
  assert.ok(near(size(rear,'x'),1.80));
  assert.equal(rear.geometry.type,'ExtrudeGeometry');
@@ -60,7 +60,7 @@ test('P17 handguard underside heavier without losing gas/polymer hierarchy',()=>
  const poly=one(g,'fncP17LowerMass'),gas=one(g,'fncP16ExtendedGasRoot'),
  stop=one(g,'fncP17BroadHandstop');
  assert.ok(poly&&gas&&stop);
- assert.ok(size(poly,'y')>2.90&&size(poly,'y')<3.15);
+ assert.ok(size(poly,'y')>2.54&&size(poly,'y')<2.63);
  assert.ok(box(poly).max.y<.62,'polymer roof must remain below gas vents');
  assert.ok(size(poly,'z')>2.40);
  assert.ok(box(gas).max.y>box(poly).max.y+.8);
