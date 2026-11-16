@@ -1,0 +1,28 @@
+name: Arsenal A4 surface detail and WebGL review
+on:
+  push:
+    branches: [feat/arsenal-a4-surface-detail-unification]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: arsenal-a4-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  a4:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Audit all factory detail costs
+        run: node --experimental-strip-types scripts/audit-arsenal-a4.mjs
+      - name: Upload current stage inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: arsenal-a4-stage-inventory
+          path: reports/arsenal-a4-surface-census.json
+          retention-days: 21
