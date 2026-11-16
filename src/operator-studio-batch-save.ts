@@ -3,7 +3,7 @@
  * are serialized or changed through this protocol. */
 import {setRosterWardrobe,type RosterState} from './breach-roster.ts';
 import {setCampaignWardrobe,type CampaignState} from './campaign-state.ts';
-import {readWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {readWardrobe,initialWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {dispatchPilotAppearanceAllowed} from './dispatch-pilot-appearance.ts';
 export type StudioAppearanceEdit={id:string;wardrobe:WardrobeOptions};
 export function validateStudioAppearanceEdits(raw:unknown):
@@ -39,7 +39,7 @@ export function applyStudioCampaignEdits(campaign:CampaignState,
  // Every proposed edit must pass before ANY operator is mutated.
  if(campaign.rules?.template==='dispatch'&&edits.some(e=>{
   const member=campaign.operators.find(p=>p.id===e.id);
-  return !member||!dispatchPilotAppearanceAllowed(member.wardrobe,
+  return !member||!dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),
    e.wardrobe,member.loadout);
  }))return null;
  return edits.reduce((state,e)=>setCampaignWardrobe(state,e.id,e.wardrobe),
