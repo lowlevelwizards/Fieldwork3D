@@ -10,7 +10,7 @@ import {evaluateDispatchContent,type DispatchContentKind,
 export type DispatchSelectionRequest=Readonly<{
  context:DispatchPolicyContext;kind:DispatchContentKind;
  candidateIds:readonly string[];
- /** When 'equipment', enforce the authoritative equipment slot. */
+ /** REQUIRED for equipment. Validate the authoritative slot before choosing. */
  equipmentSlot?:EquipmentSlot;
  /** Preserved legacy/current choice, even if unsuitable for new selection. */
  currentId?:string;
@@ -31,11 +31,12 @@ export function projectDispatchSelection(request:DispatchSelectionRequest):
   if(seen.has(id))continue;
   seen.add(id);
   const policy=evaluateDispatchContent({kind:request.kind,id,context:request.context});
-  const validSlot=request.kind!=='equipment'||request.equipmentSlot===undefined||
-   validEquipmentChoice(request.equipmentSlot,id);
+  const validSlot=request.kind!=='equipment'||
+   (request.equipmentSlot!==undefined&&validEquipmentChoice(request.equipmentSlot,id));
   const allowedForNewSelection=policy.selectable&&validSlot;
   const retainedCurrent=id===request.currentId&&!allowedForNewSelection;
-  const reason=validSlot?policy.reason:'Not valid for this equipment slot';
+  const reason=validSlot?policy.reason:request.equipmentSlot===undefined?
+   'Equipment slot required for new selection':'Not valid for this equipment slot';
   options.push(Object.freeze({...policy,
    selectable:allowedForNewSelection,allowedForNewSelection,retainedCurrent,
    reason
@@ -61,6 +62,5 @@ export function mayChooseDispatchSelection(
  id:string):boolean{
  const policy=evaluateDispatchContent({kind:request.kind,id,context:request.context});
  return policy.selectable&&(request.kind!=='equipment'||
-  request.equipmentSlot===undefined||
-  validEquipmentChoice(request.equipmentSlot,id));
+  (request.equipmentSlot!==undefined&&validEquipmentChoice(request.equipmentSlot,id)));
 }
