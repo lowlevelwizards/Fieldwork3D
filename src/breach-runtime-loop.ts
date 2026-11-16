@@ -180,6 +180,11 @@ type SightTotal={queries:number;hits:number;misses:number;
  bypasses:number;invalidations:number};
 let lastSightTotals:SightTotal|null=null;
 let lastFogPaints=0,lastShadowRefreshes=0;
+// Window totals prevent single-frame HUD samples from missing rare fog paints.
+const intervalE6={frames:0,poseCount:0,posePrepMs:0,poseSolveMs:0,
+ fingerprintMs:0,appearanceInvalidations:0,fogCanvasMs:0,
+ uploadRequests:0,submittedUploads:0,submittedBytes:0};
+let lastFogUploadTotals:{requests:number;uploads:number;bytes:number}|null=null;
 const intervalSight={queries:0,hits:0,misses:0,
  bypasses:0,invalidations:0};
 const physicalActionRings=new PhysicalActionRings();
@@ -205,6 +210,9 @@ function tick(now:number){
   if(stage!==profiledStage){
    stage?.setPerformanceProfilingEnabled?.(!!perfOverlay);
    profiledStage=stage;
+   // Scene replacement resets lifetime upload counters; a new session on
+   // the same persistent scene does not and must keep its first upload delta.
+   lastFogUploadTotals=null;
   }
   const photoActive=config.isPhotoModeActive?.()??false;
   const frameMode=photoActive?'idle':runtimeFrameMode({mode:campaignMode,
@@ -217,6 +225,8 @@ function tick(now:number){
    previousCoarseJs=undefined;previousCoarseMode=undefined;
    previousCoarseWork=undefined;previousCoarseSim=undefined;
    lastSightTotals=null;lastFogPaints=0;lastShadowRefreshes=0;
+   for(const key of Object.keys(intervalE6) as Array<keyof typeof intervalE6>)
+    intervalE6[key]=0;
    // Don't carry a previous map's door IDs into the next session.
    previousRenderActors=null;previousRenderDoors=null;
    for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
@@ -406,6 +416,29 @@ function tick(now:number){
     // submitted frame, or profiler samples would falsely claim 3D work.
     const actorCost=updated3d?stats?.actorPhaseCosts:null;
     currentActorCosts=actorCost?{...actorCost}:undefined;
+    if(updated3d){
+     intervalE6.frames++;
+     intervalE6.poseCount+=actorCost?.poseCount??0;
+     intervalE6.posePrepMs+=actorCost?.posePrepMs??0;
+     intervalE6.poseSolveMs+=actorCost?.poseMs??0;
+     intervalE6.fingerprintMs+=actorCost?.appearanceFingerprintMs??0;
+     intervalE6.appearanceInvalidations+=actorCost?.appearanceInvalidations??0;
+     intervalE6.fogCanvasMs+=stats?.fogComposeMs??0;
+    }
+    if(stats){
+     const totals={requests:stats.fogTextureUpdateRequests,
+      uploads:stats.fogTextureSubmittedUploads,
+      bytes:stats.fogTextureSubmittedBytesEstimate};
+     if(lastFogUploadTotals){
+      intervalE6.uploadRequests+=Math.max(0,
+       totals.requests-lastFogUploadTotals.requests);
+      intervalE6.submittedUploads+=Math.max(0,
+       totals.uploads-lastFogUploadTotals.uploads);
+      intervalE6.submittedBytes+=Math.max(0,
+       totals.bytes-lastFogUploadTotals.bytes);
+     }
+     lastFogUploadTotals=totals;
+    }
     const sightTotal=stats?.presentationSight;
     const sightDelta={queries:0,hits:0,misses:0,
      bypasses:0,invalidations:0};
@@ -497,6 +530,16 @@ function tick(now:number){
           'ms · TEXTURE DIRTY '+(stats?.fogTextureUpdateRequests??0)+
           ' · RGBA REQUEST '+((stats?.fogTextureBytesPerRequest??0)/
             1048576).toFixed(2)+'MiB (est)'+
+        '\nE6.4 WINDOW 3D '+intervalE6.frames+' · POSES '+
+          intervalE6.poseCount+' · PREP/SOLVE '+
+          intervalE6.posePrepMs.toFixed(2)+'/'+
+          intervalE6.poseSolveMs.toFixed(2)+'ms'+
+        '\nE6.4 APPEARANCE KEY '+intervalE6.fingerprintMs.toFixed(2)+
+          'ms · REBUILDS '+intervalE6.appearanceInvalidations+
+        '\nE6.4 FOG CANVAS '+intervalE6.fogCanvasMs.toFixed(2)+
+          'ms · DIRTY/SUBMITTED '+intervalE6.uploadRequests+'/'+
+          intervalE6.submittedUploads+' · RGBA SUBMITTED '+
+          (intervalE6.submittedBytes/1048576).toFixed(2)+'MiB (est)'+
         '\nSIGHT (750ms) '+sight.liveQueries+' Q / '+
           sight.liveOcclusionProbes+' LOS / '+sight.liveHits+
           ' HIT · FULL '+sight.fullViewQueries+
@@ -551,6 +594,8 @@ function tick(now:number){
        performanceMatchContext(state,frameMode));
       for(const k of Object.keys(intervalSight) as Array<keyof SightTotal>)
        intervalSight[k]=0;
+      for(const k of Object.keys(intervalE6) as Array<keyof typeof intervalE6>)
+       intervalE6[k]=0;
     }
   }
   if(awarenessPanel&&Math.floor(now/500)!==
