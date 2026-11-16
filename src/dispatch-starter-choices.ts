@@ -21,7 +21,7 @@ export const DISPATCH_STARTER_CHOICES:
   equipment:['primary-smg','head-helmet','armor-soft','rig-light',
    'belt-standard','backpack-none','utility-radio','tactical-flash'],
   'weapon-preset':['hk-mp5a3'],
-  'wardrobe-style':['police-helmet','bdu-shirt','bdu-trousers',
+  'wardrobe-style':['pasgt','bdu-shirt','bdu-trousers',
    'soft-vest','micro-rig','duty-belt','gloves-field','no-pack'],
   'solid-color':['navy','black'],
   'identity-marking':['label-swat']
@@ -35,7 +35,7 @@ export const DISPATCH_STARTER_CHOICES:
    'medical-basic','medical-none','medical-trauma','tactical-none',
    'utility-none','utility-light','rig-none','belt-light'],
   'weapon-preset':['ar-m4a1'],
-  'wardrobe-style':['police-helmet','bdu-shirt','bdu-trousers',
+  'wardrobe-style':['mich-2001','bdu-shirt','bdu-trousers',
    'soft-vest','micro-rig','duty-belt','no-pack','gloves-field','gloves-none'],
   'solid-color':['black','navy','charcoal'],
   'identity-marking':['label-swat','label-police']
@@ -59,7 +59,7 @@ export const DISPATCH_STARTER_CHOICES:
   equipment:['primary-carbine','head-helmet','armor-soft','rig-light',
    'belt-standard','backpack-none','utility-radio'],
   'weapon-preset':['ak-aks74u'],
-  'wardrobe-style':['police-helmet','bdu-shirt','bdu-trousers',
+  'wardrobe-style':['pasgt','bdu-shirt','bdu-trousers',
    'soft-vest','micro-rig','duty-belt','no-pack','gloves-field'],
   'solid-color':['black'],
   camouflage:['urban-kamysh'],
