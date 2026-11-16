@@ -7,6 +7,7 @@
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import type {Site,SiteScale} from './breach-site.ts';
+import {copySitePowerState} from './equipment-site-power.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 
 export type MissionStartSnapshot={
@@ -16,6 +17,8 @@ export type MissionStartSnapshot={
   missionType:Session['missionType'];
   intelMode:Session['intel']['mode'];
   lightingMode:Session['lightingMode'];
+  /** Optional for all pre-L1.1 mission favorites. */
+  sitePower?:Session['sitePower'];
   scale:SiteScale;
   entryId:string;
   squad:TeamActor[];
@@ -31,6 +34,7 @@ export function captureMissionStart(session:Session,
     missionType:session.missionType,
     intelMode:session.intel.mode,
     lightingMode:session.lightingMode,
+    sitePower:copySitePowerState(session.sitePower),
     scale:session.site?.scale??fallbackScale,
     entryId,
     dossier:session.operationDossier?structuredClone(session.operationDossier):undefined,

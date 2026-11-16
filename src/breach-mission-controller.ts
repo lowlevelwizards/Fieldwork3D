@@ -15,6 +15,7 @@ import type {LightingMode} from './equipment-site-lighting.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import {MissionRecorder} from './breach-replay.ts';
 import {applyReplayActorIdentity} from './breach-replay-manifest.ts';
+import {setSessionLightingMode,copySitePowerState} from './equipment-site-power.ts';
 import {
   captureMissionStart,siteForMissionRestart,restoreMissionStartingTeam,
   type MissionStartSnapshot
@@ -91,8 +92,10 @@ export class BreachMissionController{
       request.missionOverride,request.prebuiltSite,
       {risk:request.risk,enableCivilians:prefs.civilianPreview,
        enableIncidentIntent:true});
-    session.lightingMode=request.trainingLighting??
-      request.restartStart?.lightingMode??prefs.selectedLightingMode;
+    setSessionLightingMode(session,request.trainingLighting??
+      request.restartStart?.lightingMode??prefs.selectedLightingMode);
+    if(request.restartStart?.sitePower)
+      session.sitePower=copySitePowerState(request.restartStart.sitePower);
     this.applyRequestedCondition(session,prefs.requestedCondition);
     if(!request.initial&&prefs.mode==='quick')this.hooks.refreshQuickRoster();
     this.hooks.applyRoster(session);
@@ -188,7 +191,8 @@ export class BreachMissionController{
       site?.scale??live.site?.scale??'standard',
       manifest?.missionType,
       site?structuredClone(site):undefined);
-    session.lightingMode=manifest?.lightingMode??live.lightingMode;
+    setSessionLightingMode(session,manifest?.lightingMode??live.lightingMode);
+    if(manifest?.sitePower)session.sitePower=copySitePowerState(manifest.sitePower);
     session.operationDossier=manifest?.dossier?
       structuredClone(manifest.dossier):undefined;
     this.applyRequestedCondition(session,

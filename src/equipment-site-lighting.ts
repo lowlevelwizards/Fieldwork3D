@@ -4,6 +4,7 @@
  */
 import type {Site} from './breach-site.ts';
 import type {IlluminationSource} from './equipment-light-field.ts';
+import type {SitePowerState,SitePowerCircuit} from './equipment-site-power.ts';
 export type LightingMode='day'|'evening'|'night'|'blackout'|'emergency';
 export type SiteLight={id:string;roomId:string;p:{x:number;y:number};
  kind:'ceiling'|'fluorescent'|'worklight'|'emergency';
@@ -14,7 +15,64 @@ export type SiteLightingProgram={
 };
 const LIGHT_CAP=32;
 const mod=(v:number,n:number)=>((v%n)+n)%n;
-export function planSiteLighting(site:Site,mode:LightingMode='day'):SiteLightingProgram{
+/** Stable potential lights, including currently dark/failed fixtures.
+ * The existing planSiteLighting(site,mode) remains byte-for-byte legacy.
+ * L1.1 keeps fixture identity independent of active source selection.
+ */
+export type SiteLightTopology={
+ id:string;roomId:string;p:{x:number;y:number};
+ kind:SiteLight['kind'];mainCircuit:SitePowerCircuit;
+ backupEligible:boolean;failed:boolean;intensity:number;range:number;
+};
+export function siteLightingTopology(site:Site):SiteLightTopology[]{
+ const count=Math.min(LIGHT_CAP,site.rooms.length);
+ const neglected=site.condition==='vacant'||site.condition==='neglected';
+ const result:SiteLightTopology[]=[];
+ for(let index=0;index<count;index++){
+  const room=site.rooms[index];
+  if(room.w<16||room.h<16)continue;
+  const purpose=(room.purpose??'').toLowerCase();
+  const work=/kitchen|work|garage|storage|shop|utility|maintenance|service/.test(purpose);
+  const backup=/hall|corridor|stair|exit|entry|vestibule/.test(purpose)||
+   room.kind==='hall';
+  const kind=backup?'emergency':work?'worklight':
+   /office|retail|clinic|warehouse/.test(site.archetype??'')?'fluorescent':'ceiling';
+  result.push({
+   id:'light:'+room.id,roomId:room.id,
+   p:{x:room.x+room.w/2,y:room.y+room.h/2},
+   kind,mainCircuit:index%2===0?'mains:0':'mains:1',
+   backupEligible:backup,failed:neglected&&mod(site.seed+index*23,7)<3,
+   intensity:work?.66:.56,
+   range:Math.max(55,Math.min(160,Math.max(room.w,room.h)*.62))
+  });
+ }
+ return result;
+}
+function poweredSiteLighting(site:Site,mode:LightingMode,
+ state:SitePowerState):SiteLightingProgram{
+ const ambient=mode==='day'?.85:mode==='evening'?.44:
+  mode==='night'?.10:mode==='blackout'?.035:.055;
+ const fixtures:SiteLight[]=[];
+ for(const f of siteLightingTopology(site)){
+  if(state.switches[f.id]===false)continue;
+  const mains=state.circuits[f.mainCircuit]&&!f.failed;
+  const backup=!mains&&f.backupEligible&&state.circuits['backup:emergency'];
+  if(!mains&&!backup)continue;
+  fixtures.push({
+   id:f.id,roomId:f.roomId,p:f.p,
+   kind:backup?'emergency':f.kind,
+   power:backup?'backup':'mains',
+   intensity:backup?.35:f.intensity,range:f.range
+  });
+ }
+ return {mode,ambient,fixtures,
+  sources:fixtures.map(f=>({id:f.id,p:f.p,range:f.range,
+   intensity:f.intensity,enabled:true}))};
+}
+/** No power override means strictly historical preset-only behavior. */
+export function planSiteLighting(site:Site,mode:LightingMode='day',
+ power?:SitePowerState):SiteLightingProgram{
+ if(power&&power.mode===mode)return poweredSiteLighting(site,mode,power);
  const ambient=mode==='day'?.85:mode==='evening'?.44:
   mode==='night'?.10:mode==='blackout'?.035:.055;
  const fixtureCount=Math.min(LIGHT_CAP,site.rooms.length);

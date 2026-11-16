@@ -24,6 +24,7 @@ import {initDoor} from './breach-door.ts';
 import {registerSessionWorldGeometry,sessionWorldGeometry} from './breach-world-context.ts';
 import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
 import type {Session,TeamActor} from './breach-game.ts';
+import {createSitePowerState} from './equipment-site-power.ts';
 
 const d=(a:Pt,b:Pt)=>length(a,b);
 const clone=(p:Pt):Pt=>({...p});
@@ -176,6 +177,8 @@ export function assembleSession(index=0,siteSeed?:number,
     }),
     intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
+    sitePower:site?createSitePowerState(site,'day'):undefined,
+    illuminationRevision:0,
     dropped:[],grenades:[],flashBursts:[],flashRemaining:2,nextEffectId:1,
     impactMarks:[],battleEvents:[],nextBattleId:1,
     executionEvents:[],nextExecutionId:1,

@@ -305,6 +305,10 @@ export type SquadPlanTransaction={
 export type LiveSemanticAudioEvent={id:number;t:number;text:string};
 export type Session=Omit<TacticalState,'operators'> & {
   trainingHits?:Record<string,import('./training/training-targets.ts').TrainingTargetStrike>;
+  /** L1.1 live electrical authority; absent in historical sessions. */
+  sitePower?:import('./equipment-site-power.ts').SitePowerState;
+  /** Invalidate light samples on portable light/power edits in this 8 Hz bucket. */
+  illuminationRevision:number;
   operators:TeamActor[];civilians:CivilianActor[];
   civilianHarmEvents:CivilianHarmEvent[];
   windows:WindowState[];objectRevision:number;
