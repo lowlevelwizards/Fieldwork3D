@@ -41,30 +41,30 @@ test('P15 receiver and handguard stay in real 3D contact after body shortening',
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('P20 tall gas cover nests into polymer and exposes a single vent row per side',()=>{
+test('P21 pixel surface coverage: P20 tall gas cover nests into polymer and exposes a single vent row per side',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const poly=one(g,'fncP14ReceiverSeatedPolymer');
- const metal=one(g,'fncP14LoweredGasCover');
- const vents=all(g,'fncP11BrokenGasSideSlots');
- const roof=one(g,'fncP11TopGasVentRow');
- assert.ok(poly&&metal&&roof);
- assert.ok(close(box(metal).max.y,L.gas.topY));
- assert.ok(box(metal).max.y-box(poly).max.y>1.20);
- assert.ok(box(metal).max.y-box(poly).max.y<1.40);
- assert.ok(box(metal).min.y<box(poly).max.y-.80,
-  'metal lower flank must sink into polymer');
- assert.ok(size(metal,'z')<size(poly,'z')*.65);
- assert.equal(vents.length,2);
- for(const vent of vents){
-  assert.equal(vent.geometry.getAttribute('position').count,24);
-  assert.ok(box(vent).min.y>box(poly).max.y+.02,
-   'remaining vent row stays visibly above polymer roof');
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
  }
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.ok(close(box(roof).max.y,box(metal).max.y+L.gas.ventOffset,.015));
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
-
 test('P14 front handstop is tapered, compact, and connects to both polymer and gas',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const stop=one(g,'fncP14TaperedMoldedCollar');
