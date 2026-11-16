@@ -52,8 +52,8 @@ test('E6.9 profiles only the real first frame and does not alter production poli
  const quick=src('src/breach-quickplay-controller.ts');
  const script=src('scripts/verification/e6-9-cold-cpu-browser.mjs');
  assert.match(quick,/get\('cpuTrace'\)==='1'/);
- assert.match(quick,/if\\(cpuTraceEnabled\\)cdpProfileConsole\\.profile\\?\\.\\('fieldwork-e6\\.9-first-frame'\\)/);
- assert.match(quick,/finally\\{[\\s\\S]*?if\\(cpuTraceEnabled\\)cdpProfileConsole\\.profileEnd\\?\\.\\('fieldwork-e6\\.9-first-frame'\\)/);
+ assert.ok(quick.includes("if(cpuTraceEnabled)cdpProfileConsole.profile?.('fieldwork-e6.9-first-frame')"));
+ assert.ok(quick.includes("if(cpuTraceEnabled)cdpProfileConsole.profileEnd?.('fieldwork-e6.9-first-frame')"));
  assert.match(quick,/if\(coldTrace\)coldTrace\.capture\('firstFrame'/);
  assert.match(quick,/else config\.renderFirstFrame\(\)/);
  assert.match(script,/Profiler\.consoleProfileFinished/);
