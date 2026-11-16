@@ -3,6 +3,8 @@ import type {OperationKind} from './breach-operations.ts';
 import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
 import {mayChooseCampaignContent,dispatchPilotUnclassifiedEditingEnabled}
  from './dispatch-campaign-eligibility.ts';
+import {issueDispatchPilotOperator} from './dispatch-pilot-operator.ts';
+import {isDispatchPilot as isDispatchPilotCampaign} from './dispatch-campaign-eligibility.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import {SKILL_NAMES,type SkillName} from './campaign-skill-schema.ts';
 export {SKILL_NAMES};
@@ -407,17 +409,15 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
 export function hireRecruit(c:CampaignState):CampaignState{
- // Recruitment currently creates generic mixed-weapon personnel; keep it
- // disabled in Dispatch until the starter kit can be issued to new hires.
- if(!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  if(c.funds<450||c.operators.length>=32||
   c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.activeContractId)return c;
  const i=c.operators.length;
  const id='recruit-'+i;
  const base=startingOperator(id,i,hash(c.seed+i*733+Math.imul(c.day,31)));
  const available=RECRUIT_NAMES.filter(name=>!c.operators.some(o=>o.callsign===name));
- const member={...base,callsign:available[(hash(c.seed+i*59)>>>4)%available.length]??('RECRUIT '+i),
+ const fresh={...base,callsign:available[(hash(c.seed+i*59)>>>4)%available.length]??('RECRUIT '+i),
   joinedDay:c.day,status:'reserve' as const};
+ const member=isDispatchPilotCampaign(c)?issueDispatchPilotOperator(fresh):fresh;
  const event:CareerEvent={id:'join-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'joined',detail:'Joined the unit'};
  return reconcileCampaignWeaponOwnership({...c,funds:c.funds-450,operators:[...c.operators,member],
