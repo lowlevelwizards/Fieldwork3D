@@ -1,4 +1,4 @@
-/** FN FNC P16 shared Arsenal/Workbench/operator silhouette.
+/** FN FNC P17 shared Arsenal/Workbench/operator silhouette.
  * The stock uses one continuous bare upper beam, a kinked lower bar,
  * a thin extended inset plate, compact rectangular hinge and dark butt pad.
  * No cheek sleeve or trigger guard. Visual geometry builds on demand only.
@@ -28,7 +28,7 @@ export function buildFNCStage1Silhouette(
  material:THREE.Material,finishes:FNCArtFinishes={},showFactoryMuzzle=true
 ):THREE.Group{
  const root=new THREE.Group();
- root.name='fnc-p16-complete-iconic-silhouette-fieldwork-exterior';
+ root.name='fnc-p17-structural-caricature-fieldwork-exterior';
  const ids:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -147,17 +147,24 @@ export function buildFNCStage1Silhouette(
  // Crowned body is intentionally closer to FAL's stylized 3D shoulders.
  // The lower visibly projects OUTSIDE both upper sides.
  crownedUpper();
- // Integrate the magwell lip into the lower instead of stacking two almost
- // coplanar full-width extrusions. Broad steel lower edge remains readable.
+ // P17: integrate the magazine socket INTO the lower outline, just as
+ // the successful FAL draws its lower as one deliberately sculpted body.
+ // The front face drops nearly perpendicular to the mag seat. NO extra
+ // over-depth well extrusion; this is a single volume with true overlap
+ // with the 30-round STANAG neck.
  const receiverNoseX=FNC_FRONT_P13.receiver.frontX;
  const lower=p('receiver',[
   [-6.30,-.98],[receiverNoseX,-.98],
-  [receiverNoseX,-3.06],[.18,-3.06],[-.40,-2.70],
+  [receiverNoseX,-3.18],[2.63,-3.34],
+  [.20,-3.34],[.20,-3.04],[-.40,-2.70],
   [-1.30,-2.35],[-6.30,-2.35]
  ],3.42,'lower');
  lower.userData.fncP15FlatLowerNose=true;
  lower.userData.fncAngularLower=true;
  lower.userData.fncMagwellLip=true;
+ lower.userData.fncP8DistinctMagwell=true; // legacy integrated-lip marker
+ lower.userData.fncP16IntegratedMagazineSocket=true;
+ lower.userData.fncP17SinglePieceMagwell=true;
  // A single broad dark step makes upper and lower readable as separate
  // stampings from either side; unlike fine engraved lines it survives zoom.
  const seam=p('receiver',[
@@ -166,16 +173,7 @@ export function buildFNCStage1Silhouette(
  ],3.56,'shadow');
  seam.userData.fncP8UpperLowerSeam=true;
  seam.castShadow=false;seam.receiveShadow=false;
- // One six-corner magazine socket: the top of the STANAG enters below
- // the lower stamping, with a slight beveled heel rather than a large
- // floating rectangle extending ahead of the receiver's vertical nose.
- const well=p('receiver',[
-  [FNC_FRONT_P13.receiver.magwellRearX,-2.24],
-  [FNC_FRONT_P13.receiver.magwellFrontX,-2.24],
-  [2.73,-3.14],[2.59,-3.34],[.20,-3.34],[.07,-3.13]
- ],3.64,'lower');
- well.userData.fncP8DistinctMagwell=true;
- well.userData.fncP16IntegratedMagazineSocket=true;
+ // The lower now owns the magwell silhouette; no second Z-heavy slab.
  // One deliberate stamping on the lower's flank, not decorative rivets.
  const stamp=p('receiver',[
   [-5.83,-1.88],[-1.02,-1.88],[-.85,-2.04],[-5.83,-2.04]

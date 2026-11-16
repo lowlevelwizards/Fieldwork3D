@@ -54,7 +54,7 @@ function polymerCross(scale:number,i:number):[number,number]{
  return [polymerY(POLY.pivotY+(y-POLY.pivotY)*scale),z*scale];
 }
 const POLY_STATIONS:readonly Station[]=[
- {x:POLY.startX,scale:1.01},
+ {x:POLY.startX,scale:.93},
  {x:POLY.fullStartX,scale:POLY.fullScale},
  {x:POLY.fullEndX,scale:POLY.fullScale},
  {x:POLY.endX,scale:POLY.endScale}
@@ -84,6 +84,7 @@ export function addFNCFacetedForearm(root:THREE.Group,
  mesh.userData.fncP14ReceiverSeatedPolymer=true;
  mesh.userData.fncP15RaisedPolymer=true;
  mesh.userData.fncP16ConcealedReceiverRoot=true;
+ mesh.userData.fncP17TaperedReceiverRoot=true;
  mesh.userData.fncP6OutwardEndcaps=true;
  return mesh;
 }
