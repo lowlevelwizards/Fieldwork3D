@@ -8,9 +8,9 @@ import {AR_BARREL_ART} from './weapons/geometry/ar-barrel-profiles.ts';
 export const FAMILY_PART_SLOTS=['stock','receiver','grip','magazine',
  'handguard','barrel'] as const;
 export type FamilyPartSlot=typeof FAMILY_PART_SLOTS[number];
-export type WeaponFamily='ar'|'ak'|'hk'|'fal'|'fnc';
+export type WeaponFamily='ar'|'ak'|'hk'|'fal'|'fnc'|'g36';
 export type FamilyLength='long'|'mid'|'short';
-type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762'|'fnc556';
+type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762'|'fnc556'|'g36poly556';
 export type WeaponFamilyPart={
  id:string;name:string;family:WeaponFamily;slot:FamilyPartSlot;
  receivers?:readonly string[];feed?:Feed;length?:FamilyLength;
@@ -181,7 +181,15 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'fnc-service-grip':add('fnc-service-grip','Original FN FNC polymer pistol grip','fnc','grip',{receivers:['fnc-service-receiver']}),
  'fnc-mag30':add('fnc-mag30','Legacy FNC 30-round STANAG (shared AR profile)','fnc','magazine',{feed:'stanag'}),
  'fnc-service-forearm':add('fnc-service-forearm','Full-length FN FNC ventilated polymer fore-end','fnc','handguard',{receivers:['fnc-service-receiver'],length:'long'}),
- 'fnc-177-service':add('fnc-177-service','FN FNC full-length 17.7-inch service barrel','fnc','barrel',{receivers:['fnc-service-receiver'],length:'long',role:'rifle',nominalInches:17.7})
+ 'fnc-177-service':add('fnc-177-service','FN FNC full-length 17.7-inch service barrel','fnc','barrel',{receivers:['fnc-service-receiver'],length:'long',role:'rifle',nominalInches:17.7}),
+ // Original Bundeswehr G36 is NOT an HK33/G3 receiver, AR STANAG feed,
+ // modern rail-top variant or a scaled-down G36K/G36C clone.
+ 'g36-dual-receiver':add('g36-dual-receiver','G36 original integrated dual-sight polymer receiver','g36','receiver',{feed:'g36poly556',role:'rifle'}),
+ 'g36-stock':add('g36-stock','G36 original skeletal folding stock','g36','stock',{receivers:['g36-dual-receiver'],stockX:-15.05}),
+ 'g36-grip':add('g36-grip','G36 molded integral pistol grip','g36','grip',{receivers:['g36-dual-receiver']}),
+ 'g36-mag30':add('g36-mag30','G36 30-round smoky polymer magazine','g36','magazine',{feed:'g36poly556'}),
+ 'g36-handguard-long':add('g36-handguard-long','G36 original ventilated polymer fore-end','g36','handguard',{receivers:['g36-dual-receiver'],length:'long'}),
+ 'g36-barrel-480':add('g36-barrel-480','G36 original full-length service barrel','g36','barrel',{receivers:['g36-dual-receiver'],length:'long',role:'rifle',nominalInches:18.9})
 };
 const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg',family:WeaponFamily,
  receiver:string,stock:string,grip:string,magazine:string,handguard:string,
@@ -230,7 +238,9 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('fal-5063','FN FAL 50.63 Para','rifle','fal','fal-50-receiver',
   'fal-para-folder','fal-grip','fal-mag20','fal-vented','fal-172-para'),
  p('fnc-service','FN FNC','rifle','fnc','fnc-service-receiver',
-  'fnc-tube-folder','fnc-service-grip','ar-mag30','fnc-service-forearm','fnc-177-service')
+  'fnc-tube-folder','fnc-service-grip','ar-mag30','fnc-service-forearm','fnc-177-service'),
+ p('g36-service','HK G36 · Original Dual Optic','rifle','g36','g36-dual-receiver',
+  'g36-stock','g36-grip','g36-mag30','g36-handguard-long','g36-barrel-480')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
