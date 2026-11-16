@@ -224,8 +224,8 @@ export function occupiedFogRooms(s:Session):Room[];
 export function occupiedFogRooms(s:Session,ids:Set<string>):Set<string>;
 export function occupiedFogRooms(s:Session,ids?:Set<string>):Room[]|Set<string>{
  ids?.clear();
- const rooms:Room[]=[];
- if(!s.site)return ids??rooms;
+ const rooms:Room[]|null=ids?null:[];
+ if(!s.site)return ids??rooms!;
  // One occupancy policy for array and set callers. Iterating the canonical
  // operator list avoids allocating filtered squad and room arrays per frame.
  for(const room of s.site.rooms){
@@ -233,10 +233,10 @@ export function occupiedFogRooms(s:Session,ids?:Set<string>):Room[]|Set<string>{
    if(a.side!=='blue'||a.health<=0)continue;
    if(a.p.x>room.x+4&&a.p.x<room.x+room.w-4&&
       a.p.y>room.y+4&&a.p.y<room.y+room.h-4){
-    if(ids)ids.add(room.id);else rooms.push(room);
+    if(ids)ids.add(room.id);else rooms?.push(room);
     break;
    }
   }
  }
- return ids??rooms;
+ return ids??rooms!;
 }
