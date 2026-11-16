@@ -1,4 +1,4 @@
-/** FT1.9C: selective major-form exaggeration of the original Bundeswehr G36.
+/** FT1.9C4: selective major-form exaggeration of the original Bundeswehr G36.
  * One real exterior builder shared by review and intended future production.
  * No gameplay, magazine feed, receiver mechanics, or live Arsenal registration.
  */
@@ -20,7 +20,7 @@ export const G36_B_PART_IDS=Object.freeze({
  */
 function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):THREE.Mesh{
  const outer:Outline=[
-  [-14.66,.36],[-6.43,.35],[-6.43,-2.02],
+  [-14.66,.51],[-6.43,.50],[-6.43,-2.02],
   [-8.82,-2.35],[-11.80,-4.00],[-14.66,-4.43]
  ];
  const rear:Outline=[
@@ -73,7 +73,10 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // A recognizably molded two-hole stock. Slightly heavier heel, thin open
  // interior and shoulder contact at the same original art X=-15.05.
  addTwoOpeningStock(root,material,index.stock++);
- const pad=box('stock',-14.665,-2.00,0,.77,4.82,2.59);
+ const pad=outline('stock',[
+  [-15.05,.39],[-14.31,.35],[-14.31,-3.96],
+  [-14.69,-4.48],[-15.05,-4.32]
+ ],2.59);
  pad.userData.g36Buttpad=true;
  const hinge=box('stock',-6.64,-.73,0,.72,2.43,2.64);
  hinge.userData.g36StockHinge=true;
@@ -88,10 +91,12 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  upper.userData.g36ReceiverUpper=true;
  // Open trigger void is cut from the lower shell itself: no fake black paint.
  const lower=addProfileFrame(root,'receiver',ids.receiver,index.receiver++,[
-  [-6.42,-1.12],[3.72,-1.12],[3.37,-3.35],
-  [-1.12,-3.35],[-1.48,-3.60],[-4.30,-3.60],[-6.42,-2.15]
+  [-6.42,-1.12],[3.72,-1.12],[3.54,-2.38],
+  [3.02,-3.52],[-.98,-3.52],[-1.25,-2.98],
+  [-1.66,-3.59],[-4.38,-3.59],[-6.42,-2.15]
  ],[
-  [-3.10,-2.45],[-1.72,-2.45],[-1.64,-3.02],[-3.16,-3.08]
+  [-3.63,-2.37],[-1.71,-2.37],[-1.59,-2.71],
+  [-1.92,-3.13],[-3.61,-3.13]
  ],2.74,material);
  lower.userData.g36ReceiverLower=true;
  lower.userData.g36TriggerVoid=true;
@@ -108,21 +113,21 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  ],1.64,material);
  handle.userData.g36HandleOpening=true;
  const lowerOptic=outline('receiver',[
-  [-5.72,3.18],[-5.49,3.99],[-2.22,3.99],
-  [-1.95,3.61],[-2.30,3.12]
+  [-5.94,3.17],[-5.74,3.96],[-1.91,3.96],
+  [-1.64,3.61],[-2.05,3.16]
  ],2.08);
  lowerOptic.userData.g36LowerOptic=true;
  const reflex=outline('receiver',[
-  [-5.38,3.92],[-5.16,4.78],[-2.67,4.78],
-  [-2.39,4.48],[-2.61,3.92]
- ],2.12);
+  [-4.99,3.93],[-4.81,4.70],[-2.95,4.70],
+  [-2.76,4.46],[-2.86,3.93]
+ ],2.06);
  reflex.userData.g36UpperReflex=true;
 
  // Raise trigger void readability by shortening the rear-raked grip
  // and aligning its forward root with the lower housing.
  const grip=outline('grip',[
-  [-5.47,-2.14],[-3.14,-2.14],[-4.08,-5.72],
-  [-6.08,-5.72]
+  [-5.51,-2.14],[-3.25,-2.14],[-3.59,-3.04],
+  [-4.10,-5.72],[-6.19,-5.72],[-6.32,-5.24]
  ],2.43);
  grip.userData.g36Grip=true;
 

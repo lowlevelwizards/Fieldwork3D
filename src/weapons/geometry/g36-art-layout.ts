@@ -1,4 +1,4 @@
-/** FT1.9C — original Bundeswehr G36 exterior game-art landmark contract.
+/** FT1.9C4 — original Bundeswehr G36 exterior game-art landmark contract.
  * One source for the isolated artist blockout, not yet a live weapon family.
  * +X muzzle, +Y up, +Z depth. Local art units are not engineering dimensions.
  * C pass emphasizes negative space, molded shell anatomy and volume rhythm.
@@ -10,7 +10,7 @@ export const G36_B_ART=Object.freeze({
  handguardRearX:3.75,handguardFullStartX:4.15,handguardFrontX:13.45,
  magazineCenterX:.45,magazineTopY:-2.85,magazineBottomY:-7.26,
  barrelAxisY:0,barrelStartX:13.05,muzzleX:19.50,
- handleTopY:4.05,opticTopY:4.78,
+ handleTopY:4.05,opticTopY:4.70,
  frontStockOpeningX:-8.15,triggerVoidX:-2.28
 });
 export type G36BPoint=readonly [number,number];

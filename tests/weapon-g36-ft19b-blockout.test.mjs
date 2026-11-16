@@ -114,8 +114,52 @@ test('G36 C3: one faceted tapered fore-end is volumetric in top/front views',()=
   for(let i=0;i<attr.count;i++)if(Math.abs(attr.getX(i)-x)<.02)v.push(Math.abs(attr.getZ(i)));
   return Math.max(...v);
  };
- assert.ok(zAt(10.81)>zAt(13.45)+.32,'fore-end nose must taper in true 3D depth');
+ assert.ok(zAt(10.81)>zAt(13.45)+.15,'fore-end nose must taper modestly in true 3D depth');
  assert.ok(zAt(4.22)>zAt(3.75)+.12,'rear connection should flare to main molded shell');
  assert.ok(bb(shell).max.y>1.4&&bb(shell).min.y< -2.0);
+ clearWeaponSilhouette(g);m.dispose();
+});
+
+test('G36 C4: fore-end nose stays blunt, thick and factory-polymer-like',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ const guard=one(g,'g36LongHandguard');
+ const p=guard.geometry.getAttribute('position');
+ const ring=x=>{
+  const ys=[],zs=[];
+  for(let i=0;i<p.count;i++)if(Math.abs(p.getX(i)-x)<.015){
+   ys.push(p.getY(i));zs.push(Math.abs(p.getZ(i)));
+  }
+  return {height:Math.max(...ys)-Math.min(...ys),halfDepth:Math.max(...zs)};
+ };
+ const middle=ring(10.81),nose=ring(13.45);
+ assert.ok(nose.height/middle.height>.78&&nose.height/middle.height<.89,
+  'nose height should remain 78–89% of broad polymer midsection');
+ assert.ok(nose.halfDepth/middle.halfDepth>.80,
+  'nose width must stay broad, not end in an aerodynamic point');
+ assert.equal(g.children.filter(x=>x.userData.g36LongHandguard).length,1);
+ clearWeaponSilhouette(g);m.dispose();
+});
+test('G36 C4: receiver jawline / true trigger opening, short but curved magazine',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ const lower=one(g,'g36ReceiverLower'),mag=one(g,'g36Magazine');
+ assert.ok(lower.geometry.parameters.shapes.holes.length===1);
+ assert.equal(hit(lower,-2.30,-2.82),false);
+ assert.ok(hit(lower,2.70,-2.90),'molded magwell cheek must be part of lower');
+ assert.ok(hit(lower,-5.30,-2.03),'grip-side receiver support remains connected');
+ const contour=G36_MAG30_OUTLINE;
+ const topCenter=(contour[0][0]+contour[1][0])/2;
+ const bottomCenter=(contour[5][0]+contour[6][0])/2;
+ assert.ok(bottomCenter-topCenter>.74,'magazine needs recognizable forward sweep');
+ assert.ok(bb(mag).min.y>-7.4,'magazine remains intentionally compact');
+ clearWeaponSilhouette(g);m.dispose();
+});
+test('G36 C4: optics are connected and horizontally hierarchical with no tower',()=>{
+ const m=mat(),g=buildG36OriginalBlockout(m);
+ const lower=one(g,'g36LowerOptic'),upper=one(g,'g36UpperReflex'),frame=one(g,'g36HandleOpening');
+ assert.ok(bb(lower).intersectsBox(bb(upper)));
+ assert.ok(bb(lower).intersectsBox(bb(frame)));
+ assert.ok(bb(upper).max.y<=4.71);
+ assert.ok((bb(lower).max.x-bb(lower).min.x)>(bb(upper).max.x-bb(upper).min.x)*1.6,
+  'magnified optic should read as horizontal long form, reflex short and squat');
  clearWeaponSilhouette(g);m.dispose();
 });
