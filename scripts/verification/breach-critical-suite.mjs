@@ -27,6 +27,7 @@ const tests=[
  'tests/refactor-e5-memory-study.test.mjs',
  'tests/replay-lifecycle-controller-20261109.test.mjs',
  'tests/refactor-e5-3-browser-memory-contract.test.mjs',
+ 'tests/refactor-e5-4-sustained-memory.test.mjs',
  'tests/breach-roadmap2-stage5-performance.test.mjs',
  'tests/breach-roadmap2-stage7-motor.test.mjs',
  'tests/breach-roadmap2-stage8-orders.test.mjs',
