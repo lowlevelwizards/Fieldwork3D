@@ -269,13 +269,28 @@ export class MissionRecorder{
   readonly completeness:{
     complete:boolean;truncatedAt:number|null;reason:string|null
   }={complete:true,truncatedAt:null,reason:null};
-  /** Paused edits do not create redundant world frames. */
-  capturePlanning(s:Session):void{this.plans.capture(s);}
+  /** Paused edits do not create redundant world frames. A capped film must
+   * not continue accumulating revisions after its declared final sample. */
+  capturePlanning(s:Session):void{
+    if(this.frames.length<12000)this.plans.capture(s);
+  }
   /** Optional benchmark counters only; gameplay never reads these. */
   readonly sharingStats:ReplaySharingStats={
     sharedActors:0,sharedFields:0,fullKeyframes:0
   };
   capture(s:Session,force=false):void{
+    // E5.2: all archived writers must stop at the SAME declared film cap.
+    // Previously plan/ballistic/door journals grew after outcome frames
+    // stopped, retaining evidence beyond the advertised replay duration.
+    if(this.frames.length>=12000){
+      drainPersonalGround(s);
+      if(this.completeness.complete){
+        this.completeness.complete=false;
+        this.completeness.truncatedAt=this.duration;
+        this.completeness.reason='memory frame limit';
+      }
+      return;
+    }
     // First capture starts the personal ground journal before simulation GO.
     enablePersonalGroundCapture(s);
     this.plans.capture(s);
@@ -286,16 +301,6 @@ export class MissionRecorder{
     if(!this.manifest||(!this.manifestLocked&&s.started))
       this.manifest=captureReplayManifest(s,this.manifest?.site);
     if(s.started)this.manifestLocked=true;
-    if(this.frames.length>=12000){
-      // Keep capped recordings honest and bounded.
-      drainPersonalGround(s);
-      if(this.completeness.complete){
-        this.completeness.complete=false;
-        this.completeness.truncatedAt=this.duration;
-        this.completeness.reason='memory frame limit';
-      }
-      return;
-    }
     // Do not record future observations after the film has hit its cap.
     this.windowKnowledge.capture(s);
     this.personalGround.push(...drainPersonalGround(s));
