@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {l1BaselineSite} from '../scripts/audit-l1-lighting-baseline.mjs';
-import {newSession,planSitePowerControl,team,step,undoPlan,redoPlan}
+import {newSession,planSitePowerControl,team,stepSession,undoPlan,redoPlan}
  from '../src/breach-game.ts';
 import {sitePowerControls,powerControlAt,POWER_CONTROL_REACH}
  from '../src/equipment-site-power-controls.ts';
@@ -17,7 +17,7 @@ const near=(s,control)=>{const a=team(s)[0];a.p={x:control.p.x+8,y:control.p.y};
  a.priorP={...a.p};a.heading=0;a.weaponYaw=0;return a;};
 const run=(s,count=100)=>{
  s.phase='running';
- for(let i=0;i<count;i++)step(s,1/60);
+ for(let i=0;i<count;i++)stepSession(s,1/60);
 };
 test('L1.2 real wall hardware owns circuit and local switch identities',()=>{
  const s=make(),topology=sitePowerControls(s.site);
