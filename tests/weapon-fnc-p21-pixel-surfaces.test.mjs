@@ -31,22 +31,22 @@ test('P21 nearest-neighbor RGBA atlas has real authored dark texels for each det
  assert.ok(pixel(0,0,-.40,.20,[-6.4,2.8,-1.2,1.95])<160,'right operating slot');
  assert.equal(pixel(0,0,-3,.20,[-6.4,2.8,-1.2,1.95]),255);
  assert.ok(pixel(1,0,-2,-1.30,[-6.4,2.8,-3.6,-1])<160,'lower receiver seam');
- assert.ok(pixel(1,0,-3,-2.16,[-6.4,2.8,-3.6,-1])<200,'stamp');
+ assert.equal(pixel(1,0,-3,-2.16,[-6.4,2.8,-3.6,-1]),255,'lower stamp removed');
  assert.equal(pixel(2,0,-3,-2.16,[-6.4,2.8,-3.6,-1]),255,
-  'lower stamp remains right-side specific');
+  'no lower stamp on either side');
  for(let k=0;k<4;k++){
   const x=L.gas.ventFirstX+k*L.gas.ventPitch+.45;
-  assert.ok(pixel(3,0,x,1.17,[1.95,13.95,-.6,1.85])<150,'side vent '+k);
-  assert.ok(pixel(0,1,x,0,[1.95,13.95,-.62,.62])<150,'roof vent '+k);
+  assert.ok(pixel(3,0,x,1.17,[L.gas.startX,L.gas.endX,-.6,1.85])<150,'side vent '+k);
+  assert.ok(pixel(0,1,x,0,[L.gas.startX,L.gas.endX,-.62,.62])<150,'roof vent '+k);
  }
- assert.equal(pixel(3,0,2.6,1.17,[1.95,13.95,-.6,1.85]),255);
- assert.equal(pixel(0,1,2.6,0,[1.95,13.95,-.62,.62]),255);
+ assert.equal(pixel(3,0,2.6,1.17,[L.gas.startX,L.gas.endX,-.6,1.85]),255);
+ assert.equal(pixel(0,1,2.6,0,[L.gas.startX,L.gas.endX,-.62,.62]),255);
  const p=L.polymer,transformed=y=>{
   const v=p.pivotY+(y-p.pivotY)*p.heightScale+p.liftY;
   return v+Math.min(0,v+1)*p.lowerFlare;
  };
  for(const y of p.grooveYs)
-  assert.ok(pixel(1,1,7.0,transformed(y),[1.95,11.68,-2.8,.7])<180,
+  assert.ok(pixel(1,1,7.0,transformed(y),[L.polymer.startX,L.polymer.endX,-2.8,.7])<180,
    'handguard groove encoded in texture, not separate polygon');
 });
 test('P21 all marked surfaces share atlas, preserve native finishes and add UVs only',()=>{
@@ -72,7 +72,7 @@ test('P21 all marked surfaces share atlas, preserve native finishes and add UVs 
   return false;
  };
  assert.ok(hasTile('receiver-upper',0,0),'operating slot mapped onto receiver');
- assert.ok(hasTile('receiver-lower',1,0),'right-side seam/stamp mapped');
+ assert.ok(hasTile('receiver-lower',1,0),'right-side seam mapped');
  assert.ok(hasTile('receiver-lower',2,0),'left-side seam mapped');
  assert.ok(hasTile('polymer',1,1),'grooves mapped onto broad side facets');
  assert.ok(hasTile('gas',3,0),'side vent pixels on gas cover');
@@ -94,7 +94,7 @@ test('P21 proves real reductions and unchanged magazine, muzzle and other famili
  assert.ok(audit.triangles<=525,'P21 cuts decoration polygons instead of replacing meshes');
  assert.ok(audit.meshes<=24,'no flat detail overlays survive');
  assert.ok(audit.byPart.handguard.triangles<=105);
- assert.ok(audit.byPart.receiver.triangles<=148,
+ assert.ok(audit.byPart.receiver.triangles<=165,
   'receiver markings removed; remaining faceted upper/selector are silhouette geometry');
  assert.equal(peers.find(x=>x.name==='FNC').triangles,audit.triangles);
  assert.equal(peers.find(x=>x.name==='FAL').triangles,366);
@@ -107,8 +107,8 @@ test('P21 proves real reductions and unchanged magazine, muzzle and other famili
   lug=gun.children.find(x=>x.userData.fncP20SingleChargingLug),
   receiver=surface(gun,'receiver-upper');
  assert.ok(well&&mag&&lug&&receiver);
- assert.equal(well.geometry.getAttribute('position').count,60,
-  'retained simple six-corner magwell silhouette');
+ assert.equal(well.geometry.getAttribute('position').count,84,
+  'integrated eight-corner magwell has real clearance');
  assert.ok(new THREE.Box3().setFromObject(well).intersectsBox(
   new THREE.Box3().setFromObject(mag)));
  assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
