@@ -86,8 +86,7 @@ export function handleMotorDoor(
     // They never authorize an implicit OPEN without an actual doorway
     // crossing or the active, same-order threshold episode.
     const crossing=crossesDoorThreshold(a.p,next,door)||
-      crossesDoorThreshold(a.p,p,door)||
-      crossesDoorThreshold(a.p,a.nav[0]??next,door)||
+      (a.nav[1]!==undefined&&crossesDoorThreshold(next,a.nav[1],door))||
       a.doorTraversal?.doorId===door.id&&
        a.doorTraversal.authoredOrderId===pendingDoor?.id;
     if(!crossing)continue;
@@ -107,8 +106,7 @@ export function handleMotorDoor(
     const touched=autoDoorAtBodyContact(a.p,move,
       s.doors,sessionWorldGeometry(s),pendingDoor,a.side==='red');
     if(touched&&(crossesDoorThreshold(a.p,next,touched)||
-      crossesDoorThreshold(a.p,p,touched)||
-      crossesDoorThreshold(a.p,a.nav[0]??move,touched)||
+      (a.nav[1]!==undefined&&crossesDoorThreshold(next,a.nav[1],touched))||
       a.doorTraversal?.doorId===touched.id&&
        a.doorTraversal.authoredOrderId===pendingDoor?.id))doorAhead=touched;
   }
