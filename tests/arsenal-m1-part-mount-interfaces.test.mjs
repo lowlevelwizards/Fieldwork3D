@@ -13,6 +13,8 @@ import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
 import {weaponPartMountSurfaces,preferredOpticMountSurface}
  from '../src/weapons/geometry/weapon-part-mount-surfaces.ts';
 import {opticVisualSeat} from '../src/weapons/geometry/optic-visual-seating.ts';
+import {workbenchVisualAnchors}
+ from '../src/weapons/geometry/weapon-visual-anchors.ts';
 const cfg=id=>{
  const p=FAMILY_PRESETS.find(p=>p.id===id);
  assert.ok(p,id);
@@ -116,3 +118,28 @@ for(const [id,optic,adapter,expectedOwner] of testCases){
   extras.clear();
  });
 }
+
+test('M1.5 Workbench optic hotspots follow actual installed part surface',()=>{
+ for(const [id,optic,adapter] of testCases){
+  let c=cfg(id);
+  if(id.startsWith('ak-'))
+   c=setConfiguredFamilyPart(c,'handguard','ak-rail-long');
+  if(adapter==='optic-hk-claw')
+   c=setWeaponAttachment(c,'opticMount',adapter);
+  c=setWeaponAttachment(c,'optic',optic);
+  const steel=new THREE.MeshBasicMaterial(),dark=new THREE.MeshBasicMaterial();
+  const body=buildWeaponSilhouette(c.weapon,steel,dark,c);
+  const visual=opticVisualSeat(c,resolveWeaponAssembly(c).mounted.optic.mountX);
+  const mounts=workbenchVisualAnchors(c,body,'attachments');
+  const spot=mounts.find(x=>x.slot==='optic');
+  assert.ok(spot);
+  assert.ok(Math.abs(spot.x-visual.x)<.001,id+' Workbench X matches mounted sight');
+  assert.ok(Math.abs(spot.y-visual.supportY-1.70)<.001,
+   id+' Workbench Y uses actual optic support surface');
+  if(adapter==='optic-hk-claw'){
+   const claw=mounts.find(x=>x.slot==='opticMount');
+   assert.ok(claw&&claw.y>0,'HK adapter hotspot on its lugs');
+  }
+  clearWeaponSilhouette(body);steel.dispose();dark.dispose();
+ }
+});
