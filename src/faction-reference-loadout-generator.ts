@@ -4,11 +4,14 @@ import {historicalEquipmentEligibility,type HistoricalGenerationContext,
 import {gameMappingForHistorical,type HistoricalGameMapping}
  from './faction-reference-game-mapping.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import {assessHistoricalEnsemble,type HistoricalEnsembleAssessment}
+ from './faction-reference-ensemble-audit.ts';
 
 export type GenerationMode='evidence-backed'|'playable-composite';
 export type HistoricalChoice={
  historicalId:string;recordId:string;sourceIds:readonly string[];
  name:string;category:string;confidence:'supported'|'tentative';
+ issueStatus:'documented-use'|'authorized'|'trial'|'planned';
  mapping:HistoricalGameMapping|null;notes:readonly string[];
 };
 export type HistoricalKitConflict={category:string;alternatives:readonly HistoricalChoice[]};
@@ -17,6 +20,7 @@ export type HistoricalLoadoutProposal={
  status:'partial'|'proposable'|'no-evidence'|'invalid-context';
  lockedCategories:readonly string[];
  choices:readonly HistoricalChoice[];conflicts:readonly HistoricalKitConflict[];
+ ensemble:HistoricalEnsembleAssessment;
  unresolvedCategories:readonly string[];retainedSlots:readonly string[];
  warnings:readonly string[];
  /** Research supports individual pieces, NOT their combination as a complete kit. */
@@ -29,10 +33,13 @@ export type GenerationOptions={
  baseline?:EquipmentLoadout;
 };
 const CATEGORIES=['uniform','headwear','armor','weapon','carriage'] as const;
+/** Evidence first. Model availability must NEVER change historical selection.
+ * The seed only chooses among genuinely equivalent researched alternatives.
+ */
 const rank=(choice:HistoricalChoice)=>
- (choice.mapping?.playable===true?0:100)+
- (choice.confidence==='supported'?0:20)+
- (choice.mapping?.fidelity==='exact'?0:choice.mapping?.fidelity==='representative'?2:10);
+ (choice.confidence==='supported'?0:100)+
+ (choice.issueStatus==='documented-use'?0:
+  choice.issueStatus==='authorized'?10:20);
 const hash=(seed:number,value:string)=>{
  let n=(seed>>>0)^2166136261;
  for(let i=0;i<value.length;i++)n=Math.imul(n^value.charCodeAt(i),16777619);
@@ -42,6 +49,7 @@ const choiceOf=(item:EligibleHistoricalItem):HistoricalChoice=>({
  historicalId:item.equipment.id,recordId:item.record.id,
  sourceIds:[...item.record.evidenceIds],name:item.equipment.name,
  category:item.equipment.category,confidence:item.certainty,
+ issueStatus:item.record.issueStatus,
  mapping:gameMappingForHistorical(item.equipment),
  notes:[item.record.note,...item.warnings]
 });
@@ -80,19 +88,20 @@ export function generateHistoricalLoadout(options:GenerationOptions):HistoricalL
    if(mode==='playable-composite'&&options.baseline)retainedSlots.push(category);
   }
  }
+ const ensemble=assessHistoricalEnsemble(choices);
  const status=report.status==='invalid-context'?'invalid-context':
   report.status==='no-evidence'?'no-evidence':
   unresolvedCategories.length?'partial':'proposable';
  return {version:1,context:{...context},mode,seed,status,
   lockedCategories:[...new Set(options.lockedCategories??[])].sort(),
-  choices,conflicts,unresolvedCategories,retainedSlots,
+  choices,conflicts,ensemble,unresolvedCategories,retainedSlots,
   warnings:[
    ...report.warnings,
    ...(choices.some(x=>x.mapping?.fidelity==='proxy')?
     ['A visual proxy is not historically correct equipment']:[]),
    ...(report.excluded.some(x=>x.reason.includes('theater-specific'))?
     ['Theater-limited records require an explicit matching theater']:[]),
-   'Individual evidence does not verify this as a complete historical kit'
+   ...ensemble.warnings
   ],completeKitVerified:false};
 }
 
