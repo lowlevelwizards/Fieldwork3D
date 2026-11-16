@@ -497,7 +497,14 @@ function tick(now:number){
        scene:currentSceneCosts,
        draws:updated3d?stats?.calls??0:0,steps:simSteps,phase:frameMode,
        camera:viewMode,hotSim,fogPaints:fogDelta,
-       shadowRefreshes:shadowDelta,sight:sightDelta});
+       shadowRefreshes:shadowDelta,sight:sightDelta,
+       // Current callback submissions/canvas CPU. Previous-frame CPU
+       // attribution remains in previousWork, aligned to the RAF gap.
+       scene3dSubmitted:updated3d,
+       fogComposeMs:updated3d?stats?.fogComposeMs??undefined:undefined,
+       fogTextureUpdateRequests:stats?.fogTextureUpdateRequests,
+       fogTextureSubmittedUploads:stats?.fogTextureSubmittedUploads,
+       fogTextureSubmittedBytesEstimate:stats?.fogTextureSubmittedBytesEstimate});
     }
     frameMeter.add({frame:end-perfStart,cadence:frameGap,sim:perfRenderStart-perfStart,
       scene:overlayBegin-perfRenderStart,

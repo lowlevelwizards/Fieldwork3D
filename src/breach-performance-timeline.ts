@@ -23,7 +23,10 @@ export type PreviousFrameWork=Readonly<{
  uiDetail?:Readonly<{camera:number;audio:number;hud:number;rings:number}>;
  actor?:Readonly<{rigMs:number;rigBuilds:number;poseMs:number;poseCount:number;
   appearanceMs?:number;weaponBuildMs?:number;otherPoseMs?:number;
-  visualKitMs?:number;receiverAtlasMs?:number}>
+  visualKitMs?:number;receiverAtlasMs?:number;
+  posePrepMs?:number;appearanceFingerprintMs?:number;
+  appearanceInvalidations?:number;allyContextMs?:number;
+  allyPeerVisits?:number}>
 }>;
 export type PerformanceTimelineSample=Readonly<{
  /** Only RAF/JS, collected before the player enables detailed profiling. */
@@ -35,6 +38,10 @@ export type PerformanceTimelineSample=Readonly<{
  ui:number;overlay:number;scene:PerformanceSceneCosts;draws:number;
  steps:number;phase:string;camera:string;hotSim:string;
  fogPaints:number;shadowRefreshes:number;sight:PerformanceSightDelta;
+ /** E6.6: Current callback observations, not preceding-RAF causation. */
+ scene3dSubmitted?:boolean;fogComposeMs?:number;
+ fogTextureUpdateRequests?:number;fogTextureSubmittedUploads?:number;
+ fogTextureSubmittedBytesEstimate?:number;
 }>;
 export type PerformancePhase='live'|'idle'|'replay'|'other';
 export type PerformancePhaseCounts={
@@ -277,7 +284,12 @@ export class PerformanceTimeline{
    'prior_rig_build_ms,prior_rig_build_count,'+
    'prior_pose_ms,prior_pose_count,prior_hot_sim_phase,'+
    'prior_pose_appearance_ms,prior_pose_weapon_build_ms,prior_pose_other_ms,'+
-   'prior_visual_kit_ms,prior_receiver_atlas_ms'];
+   'prior_visual_kit_ms,prior_receiver_atlas_ms,'+
+   'prior_pose_prep_ms,prior_appearance_key_ms,'+
+   'prior_appearance_rebuilds,prior_ally_context_ms,prior_ally_visits,'+
+   'scene_3d_submitted,fog_compose_current_ms,'+
+   'fog_texture_dirty_cumulative,fog_upload_submitted_cumulative,'+
+   'fog_rgba_bytes_submitted_est_cumulative'];
   for(const {bucket,peak:p,maxSync} of this.series){
    const fields=[bucket*PERFORMANCE_BUCKET_MS/1000,
     p.raf,p.js,p.sync,maxSync,p.sim,p.scene.actors,p.scene.disclosure,
@@ -303,10 +315,39 @@ export class PerformanceTimeline{
     p.previousWork?.actor?.weaponBuildMs??'',
     p.previousWork?.actor?.otherPoseMs??'',
     p.previousWork?.actor?.visualKitMs??'',
-    p.previousWork?.actor?.receiverAtlasMs??''];
+    p.previousWork?.actor?.receiverAtlasMs??'',
+    p.previousWork?.actor?.posePrepMs??'',
+    p.previousWork?.actor?.appearanceFingerprintMs??'',
+    p.previousWork?.actor?.appearanceInvalidations??'',
+    p.previousWork?.actor?.allyContextMs??'',
+    p.previousWork?.actor?.allyPeerVisits??'',
+    p.scene3dSubmitted===undefined?'':Number(p.scene3dSubmitted),
+    p.fogComposeMs??'',p.fogTextureUpdateRequests??'',
+    p.fogTextureSubmittedUploads??'',
+    p.fogTextureSubmittedBytesEstimate??''];
    lines.push(fields.join(','));
   }
   return lines.join('\n');
+ }
+ /** E6.6: Portable, explicit user opt-in capture for browser/device A/B.
+  * These are *250ms bucket peaks*, not an every-frame trace or GPU timer.
+  * Missing detailed data in earlier basic/light buckets remains absent.
+  * The last-RAF hotspot references preceding callback CPU, not current work.
+  * No network telemetry or hidden actor/gameplay state is included.
+  */
+ encounterJSON(policy:string,view:string,context=''):string{
+  return JSON.stringify({
+   schema:'fieldwork-e6.6-encounter-v1',
+   provenance:'interactive browser RAF / CPU; WebGL upload submissions are not GPU time',
+   limitations:'250ms worst-RAF buckets, last 60s; basic/light phases lack detailed attribution; mobile/SwiftShader captures are not equivalent to iPhone GPU FPS',
+   policy,view,context,modeCounts:this.phaseSummary(),
+   bucketMs:PERFORMANCE_BUCKET_MS,retentionMs:PERFORMANCE_HISTORY_MS,
+   buckets:this.series.map(({bucket,frames,maxSync,maxJs,modes,peak})=>({
+    tSec:bucket*PERFORMANCE_BUCKET_MS/1000,frames,maxSync,maxJs,
+    modes,peak:{...peak,precedingHotspot:previousFrameHotspot(peak),
+     callbackGapInterpretation:performanceHotspot(peak)}
+   }))
+  },null,2);
  }
  /** Short enough to paste into a phone chat. The full history is exported
   * separately as a text file so we do not discard diagnostic detail.

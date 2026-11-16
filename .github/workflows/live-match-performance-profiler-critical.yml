@@ -7,6 +7,7 @@ on:
       - 'src/breach-performance-timeline.ts'
       - 'src/ui/breach-perf-timeline-panel.ts'
       - 'tests/performance-live-profiler.test.mjs'
+      - 'tests/refactor-e6-6-encounter-capture.test.mjs'
       - 'tests/performance-p1-5-runtime-integration.test.mjs'
       - 'tests/runtime-perf-diagnostics.test.mjs'
       - 'tests/sight-cost-overlay-p10.test.mjs'
@@ -28,6 +29,7 @@ jobs:
         run: >
           node --experimental-strip-types --test
           tests/performance-live-profiler.test.mjs
+          tests/refactor-e6-6-encounter-capture.test.mjs
           tests/performance-p1-5-runtime-integration.test.mjs
           tests/performance-p1-5-timeline.test.mjs
           tests/performance-p2-9-ui-attribution.test.mjs

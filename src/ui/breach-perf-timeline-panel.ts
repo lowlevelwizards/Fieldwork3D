@@ -25,6 +25,7 @@ export class BreachPerfTimelinePanel{
  private readonly detailButton:HTMLButtonElement;
  private readonly copyButton:HTMLButtonElement;
  private readonly exportButton:HTMLButtonElement;
+ private readonly jsonButton:HTMLButtonElement;
  private readonly insight:HTMLDivElement;
  private graphVisible=true;
  private expandedDetails=false;
@@ -55,13 +56,15 @@ export class BreachPerfTimelinePanel{
   this.detailButton=button('DETAILS');
   this.copyButton=button('COPY');
   this.exportButton=button('TXT');
+  this.jsonButton=button('JSON');
+  this.jsonButton.title='Export structured 60-second encounter capture; local file only';
   this.hideButton=button('HIDE');
   this.hideButton.title='Hide panel; keep recording detailed performance history';
   this.hideButton.setAttribute('aria-label','Hide performance graph and continue recording');
   this.copyButton.title='Copy short chat summary';
   this.exportButton.title='Download complete 60-second TXT report';
   controls.append(this.graphButton,this.detailButton,this.copyButton,
-   this.exportButton,this.hideButton);
+   this.exportButton,this.jsonButton,this.hideButton);
   bar.append(controls);root.append(bar);
   this.canvas=document.createElement('canvas');
   this.canvas.width=370;this.canvas.height=108;
@@ -117,6 +120,18 @@ export class BreachPerfTimelinePanel{
    document.body.appendChild(link);
    link.click();
    link.remove();
+   window.setTimeout(()=>URL.revokeObjectURL(url),30000);
+  });
+  this.jsonButton.addEventListener('click',()=>{
+   const report=this.timeline?.encounterJSON(this.policy,this.view,
+    this.reportContext)??'{}';
+   const url=URL.createObjectURL(new Blob([report],{
+    type:'application/json;charset=utf-8'}));
+   const link=document.createElement('a');
+   link.href=url;
+   link.download='fieldwork-encounter-'+
+    new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.json';
+   document.body.appendChild(link);link.click();link.remove();
    window.setTimeout(()=>URL.revokeObjectURL(url),30000);
   });
   this.canvas.addEventListener('pointerdown',event=>{
