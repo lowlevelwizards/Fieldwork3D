@@ -32,6 +32,7 @@ export type BreachBootConfig=Readonly<{
  idle3dDisabled:boolean;
  awareness:string|null;
  gpuWarmupEnabled:boolean;
+ coldPrewarmEnabled:boolean;
  cpuTraceEnabled:boolean;
  focusFx:string|null;
 }>;
@@ -69,6 +70,7 @@ export function parseBreachBootConfig(query:string|URLSearchParams):BreachBootCo
   idle3dDisabled:params.get('idle3d')==='60',
   awareness:params.get('awareness'),
   gpuWarmupEnabled:params.get('gpuWarmup')!=='0',
+  coldPrewarmEnabled:params.get('coldPrewarm')!=='0',
   cpuTraceEnabled:params.get('cpuTrace')==='1',
   focusFx:params.get('focusFx')
  });
