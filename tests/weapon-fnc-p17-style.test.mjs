@@ -79,7 +79,7 @@ test('P17 thicker barrel and short bold muzzle, factory-only graphic ports',()=>
  assert.ok(near(size(bar,'y'),1.24));
  assert.ok(near(size(dev,'y'),2.06));
  assert.ok(near(box(dev).max.x,FNC_P1.muzzleX));
- assert.ok(size(dev,'x')>1.40&&size(dev,'x')<1.52);
+ assert.ok(size(dev,'x')>1.94&&size(dev,'x')<2.02);
  assert.ok(touch(bar,dev));
  const expectedFacetZ=L.muzzle.radius*Math.cos(Math.PI/6)+.025;
  assert.ok(near(box(ports).max.z,expectedFacetZ));
