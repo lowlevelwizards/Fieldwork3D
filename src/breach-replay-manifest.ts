@@ -4,6 +4,7 @@
  */
 import type {Session} from './breach-game.ts';
 import type {Site} from './breach-site.ts';
+import {copySitePowerState} from './equipment-site-power.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 
 export type ReplayActorIdentity={
@@ -19,6 +20,7 @@ export type ReplayManifest={
   variant:number;
   intelMode:Session['intel']['mode'];
   lightingMode:Session['lightingMode'];
+  sitePower?:Session['sitePower'];
   missionType:Session['missionType'];
   site:Site|null;
   dossier?:OperationDossierV1;
@@ -30,6 +32,7 @@ export function captureReplayManifest(s:Session,
   return {
     schemaVersion:2,variant:s.variant,
     intelMode:s.intel.mode,lightingMode:s.lightingMode,
+    sitePower:copySitePowerState(s.sitePower),
     missionType:s.missionType,
     dossier:s.operationDossier?structuredClone(s.operationDossier):undefined,
     // Static map geometry does not change during authoring. Reuse its
