@@ -21,10 +21,13 @@ export function indexMovementImpulses(
  return {drive,brake};
 }
 export function movementImpulseSample(
- events:readonly MotionEvent[],time:number,duration:number):number{
+ events:readonly MotionEvent[],time:number,duration:number,
+ selectedIndex?:number):number{
  if(!events.length||time<events[0].at)return 0;
- let lo=0,hi=events.length-1;
- while(lo<hi){
+ let lo=selectedIndex??0,hi=events.length-1;
+ // Direct callers preserve the historical binary seek. Replay can provide
+ // a previously validated index without repeating the same search.
+ if(selectedIndex===undefined)while(lo<hi){
   const mid=Math.ceil((lo+hi)/2);
   if(events[mid].at<=time)lo=mid;else hi=mid-1;
  }
@@ -35,9 +38,9 @@ export function movementImpulseSample(
 }
 export function sampleMovementImpulses(
  drive:readonly MotionEvent[],brake:readonly MotionEvent[],
- time:number):MomentumEnvelope{
- return {drive:movementImpulseSample(drive,time,.26),
-  brake:movementImpulseSample(brake,time,.38)};
+ time:number,driveIndex?:number,brakeIndex?:number):MomentumEnvelope{
+ return {drive:movementImpulseSample(drive,time,.26,driveIndex),
+  brake:movementImpulseSample(brake,time,.38,brakeIndex)};
 }
 export type MotionTransitionInput={
  velocity:number;acceleration?:number;
