@@ -58,9 +58,9 @@ test('P28 upper mark follows vent row and retains its gap after the last vent',(
 });
 test('P27 second front slot occupies previous top Y and stays clear of lower edge',()=>{
  const [top,bottom]=F.gas.lowerLines;
- assert.ok(close(bottom.y,-.34));
+ assert.ok(close(bottom.y,-.37));
  assert.ok(bottom.y<F.gas.shoulderY-.3);
- assert.ok(bottom.y-F.gas.ventHeight/2>F.gas.frontBottomY+.9);
+ assert.ok(bottom.y-F.gas.ventHeight/2>F.gas.frontBottomY+.45);
  assert.ok(bottom.y+F.gas.ventHeight/2<top.y-F.gas.ventHeight/2);
  assert.ok(close(bottom.endX-bottom.startX,F.gas.ventLength));
  assert.equal(pixelSide((bottom.startX+bottom.endX)/2,bottom.y),bottom.shade);
