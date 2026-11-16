@@ -101,6 +101,7 @@ export function buildTrainingSite(config:TrainingConfig):Site{
   bounds:{minX:0,minY:0,maxX:680,maxY:720},
   entrance:p(342,600),spawn:[p(293,655),p(319,658),p(346,658),p(374,655)],
   enemies:[],enemyHeadings:[],
-  objective:trial?.id==='room'?p(180,200):p(340,130),extract:p(340,660)
+  objective:trial?.id==='room'?p(180,200):p(340,130),
+  extract:trial?.id==='squad'?p(340,135):p(340,660)
  };
 }
