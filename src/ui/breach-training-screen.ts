@@ -57,7 +57,10 @@ export function createBreachTrainingScreen(hooks:Hooks){
  const density=select('TARGETS',['none','sparse','standard','dense']);
  const doors=select('DOORS',['open','closed','mixed']);
  const lighting=select('LIGHTING',['day','evening','night','blackout','emergency']);
- for(const field of [activity,trials,layout,squad,density,doors,lighting])
+ const lightKit=select('WEAPON LIGHTS',['current','flashlight'],{
+  current:'KEEP CURRENT KIT',flashlight:'ISSUE COMPATIBLE LIGHTS (START OFF)'});
+ lightKit.wrapper.title='Unscored practice only. Fits compatible weapons without changing your saved roster.';
+ for(const field of [activity,trials,layout,squad,density,doors,lighting,lightKit])
   options.append(field.wrapper);
  const actions=document.createElement('div');actions.className='breach-training-actions';
  const close=()=>{
@@ -72,7 +75,8 @@ export function createBreachTrainingScreen(hooks:Hooks){
    squadSize:Number(squad.el.value) as TrainingConfig['squadSize'],
    targetDensity:density.el.value as TrainingConfig['targetDensity'],
    doors:doors.el.value as TrainingConfig['doors'],
-   lighting:lighting.el.value as TrainingConfig['lighting']
+   lighting:lighting.el.value as TrainingConfig['lighting'],
+   lightKit:lightKit.el.value as TrainingConfig['lightKit']
   });
   const next=requested.activity==='trial'?{
    ...trialConfig(requested.trial??'discrimination'),activity:'trial' as const,
@@ -131,7 +135,8 @@ export function createBreachTrainingScreen(hooks:Hooks){
    [activity.el,config.activity],[trials.el,config.trial??'discrimination'],
    [layout.el,config.layout],
    [squad.el,String(config.squadSize)],[density.el,config.targetDensity],
-   [doors.el,config.doors],[lighting.el,config.lighting]
+   [doors.el,config.doors],[lighting.el,config.lighting],
+   [lightKit.el,config.lightKit??(config.lighting==='day'?'current':'flashlight')]
   ] as const)field.value=value;
   panel.hidden=false;resultPanel.hidden=true;
   syncVisibleOptions();renderPersonalBest();
@@ -162,6 +167,7 @@ export function createBreachTrainingScreen(hooks:Hooks){
    field.wrapper.hidden=isRange||isTrial;
   squad.wrapper.hidden=isTrial;
   lighting.wrapper.hidden=isTrial;
+  lightKit.wrapper.hidden=isTrial||isRange;
  }
  function showResult(result:TrialAssessment,personalBest:boolean):void{
   lastAssessment=result;resultsButton.hidden=false;
@@ -236,6 +242,9 @@ export function createBreachTrainingScreen(hooks:Hooks){
   renderPersonalBest();
  }
  activity.el.addEventListener('change',syncVisibleOptions);
+ lighting.el.addEventListener('change',()=>{
+  lightKit.el.value=lighting.el.value==='day'?'current':'flashlight';
+ });
  trials.el.addEventListener('change',renderPersonalBest);
  root.addEventListener('keydown',e=>{
   if(e.key==='Escape'){e.stopPropagation();e.preventDefault();close();}
