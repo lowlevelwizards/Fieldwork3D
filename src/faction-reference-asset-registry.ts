@@ -20,6 +20,12 @@ export type ReferenceGapFidelity='exact'|'approximate'|'missing';
 export function referenceGapFidelity(ref:FactionReference,gap:ReferenceGap):
  ReferenceGapFidelity{
  switch(gap.id){
+  case 'fnc-family':{
+   // A modeled FN FNC preview is not automatically a historically exact issue.
+   const selected=referenceWeaponChoice(ref.id);
+   if(selected.preset.family!=='fnc'||selected.fidelity==='proxy')return 'missing';
+   return selected.fidelity==='exact'?'exact':'approximate';
+  }
   case 'ar-family':case 'ak-family':{
    const issued=referenceWeaponChoice(ref.id);
    if(issued.fidelity==='proxy')return 'missing';
