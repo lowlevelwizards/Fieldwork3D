@@ -1227,19 +1227,18 @@ function renderDispatchPilotControls(){
  field('HAIR COLOR',HAIR_TONE_IDS.map(id=>[id,HAIR_TONES[id].label] as const),
   w.hairTone??seededHairTone(p.appearanceSeed),
   id=>changeWardrobe({...current(),hairTone:id as WardrobeOptions['hairTone']}));
- const colors:readonly (readonly [string,string])[]=[
-  ['','ISSUED COLOR'],...DISPATCH_APPEARANCE_SOLIDS.map(id=>
-   [id,GARMENT_SOLID_COLORS[id].label] as const)];
+ const colors:readonly (readonly [string,string])[]=DISPATCH_APPEARANCE_SOLIDS.map(id=>
+  [id,GARMENT_SOLID_COLORS[id].label] as const);
  for(const channel of ['top','trousers'] as const){
   if(w.fabricCamo?.[channel])continue;
   field(channel==='top'?'UNIFORM TOP COLOR':'UNIFORM TROUSER COLOR',
-   colors,w.fabricSolids?.[channel]??'',
+   colors,w.fabricSolids?.[channel]??'black',
    id=>changeWardrobe({...current(),fabricSolids:{
-    ...current().fabricSolids,[channel]:id||undefined}}));
+    ...current().fabricSolids,[channel]:id}}));
  }
- field('GLOVE COLOR',colors,w.gloveSolid??'',
+ field('GLOVE COLOR',colors,w.gloveSolid??'black',
   id=>changeWardrobe({...current(),gloveSolid:
-   (id||undefined) as WardrobeOptions['gloveSolid']}));
+   id as WardrobeOptions['gloveSolid']}));
  const gloves=DISPATCH_GLOVE_STYLES.filter(id=>canEquip('gloves',id));
  if(gloves.length>1)field('GLOVE APPEARANCE',
   gloves.map(id=>[id,id==='gloves-field'?'FIELD GLOVES':'NO GLOVES'] as const),
