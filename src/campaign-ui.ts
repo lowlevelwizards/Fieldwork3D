@@ -6,6 +6,7 @@ import {effectiveCampaignRules} from './campaign-rules.ts';
 import {isDispatchPilot,mayChooseCampaignContent}
  from './dispatch-campaign-eligibility.ts';
 import {campaignIncidentView} from './dispatch-incident-view.ts';
+import {historicalDispatchIncident} from './dispatch-incident-context.ts';
 import {renderCampaignCreator} from './ui/campaign-creator.ts';
 import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost,
  canApplyCampaignKitPreset} from './campaign-state.ts';
@@ -390,10 +391,15 @@ export class CampaignScreen{
    'Your unit history will appear here after its first operation.'));
   for(const report of c.history.slice(-8).reverse()){
    const contract=c.contracts.find(k=>k.id===report.contractId);
+   const incident=historicalDispatchIncident(c,report);
+   const fallback=isDispatchPilot(c)?
+    'UNCLASSIFIED DISPATCH OPERATION · '+report.contractId.toUpperCase():'Operation';
    chronicle.append(node('p','campaign-report',
-    'DAY '+report.day+' · '+(contract?campaignIncidentView(c,contract).title:'Operation')+' · '+
+    'DAY '+report.day+' · '+(incident?.title??(contract?
+     campaignIncidentView(c,contract).title:fallback))+' · '+
     report.outcome.toUpperCase()+' · '+report.grade+' · '+
-    report.participatingIds.length+' OPERATORS'));
+    report.participatingIds.length+' OPERATORS'+
+    (incident?' · '+incident.reference:'')));
   }
   const highlights=c.journal.filter(e=>['wounded','first-deployment','first-success','objective','intel','down','distinction'].includes(e.kind)).slice(-6).reverse();
   for(const e of highlights){
