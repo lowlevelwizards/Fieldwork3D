@@ -11,6 +11,9 @@ export type ReplayIndexedEvent={
 const isSignificant=(e:ExecutionEvent)=>
   e.kind==='blocked'||e.kind==='resumed'||e.kind==='completed';
 type EventSeekCursor={index:number;ordered:boolean};
+const eventBefore=(items:readonly ReplayIndexedEvent[],index:number,
+  target:number,strict:boolean)=>strict?
+  items[index].t<target:items[index].t<=target;
 /** Original binary bounds are authoritative on jumps, rewinds, nonfinite
  * queries and unusual historical archives. A cursor only skips them when the
  * exact bound is proven by a local chronological bracket. */
@@ -18,14 +21,15 @@ function eventBound(items:readonly ReplayIndexedEvent[],target:number,
   strict:boolean,cursor:EventSeekCursor):number{
   const length=items.length;
   if(cursor.ordered&&Number.isFinite(target)){
-    const before=(index:number)=>strict?
-      items[index].t<target:items[index].t<=target;
     const i=cursor.index;
-    if((i===0||before(i-1))&&(i===length||!before(i)))return i;
-    if(i<length&&before(i)&&
-       (i+1===length||!before(i+1)))return cursor.index=i+1;
-    if(i>0&&!before(i-1)&&
-       (i===1||before(i-2)))return cursor.index=i-1;
+    if((i===0||eventBefore(items,i-1,target,strict))&&
+       (i===length||!eventBefore(items,i,target,strict)))return i;
+    if(i<length&&eventBefore(items,i,target,strict)&&
+       (i+1===length||!eventBefore(items,i+1,target,strict)))
+      return cursor.index=i+1;
+    if(i>0&&!eventBefore(items,i-1,target,strict)&&
+       (i===1||eventBefore(items,i-2,target,strict)))
+      return cursor.index=i-1;
   }
   let lo=0,hi=length;
   while(lo<hi){
