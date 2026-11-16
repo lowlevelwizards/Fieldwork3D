@@ -21,3 +21,15 @@ Existing owner audit found cleanup on replay exit: `ReplayCameraController.reset
 
 ## Release discipline and interpretation
 This stage is instrumentation and verification **unless a measured failure justifies a scoped runtime fix**. Do not delete evidence, change replay frames, or introduce a second memory owner just to create a performance commit. If Chrome shows a leak, identify owner and add a failing reproducer before fixing. Verify main's previous Pages SHA and all required tests before merging, then verify the new served SHA. The next E5 step uses the report to choose a specific high-allocation replay or tactical scene hot path, with explicit same-device confirmation before claiming mobile gains.
+
+## E5.3 measured Chromium baseline — November 16, 2026
+
+The real-browser E5.3 CI run [43930968521](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/43930968521) completed successfully using Chrome 157.0.8103.50:
+- 241 historical frames spanning 12 seconds, with 120 fixture-authored, properly disclosed `door`/`intel` events recorded through the normal recorder and IndexedDB archive.
+- Six genuine library replay entry/exit cycles (two warmup, four post-GC measurements); the Events panel displayed 80 buttons on each measured entry.
+- All four post-exit samples: **2,844 live DOM nodes and 420 JavaScript listeners** (both first-to-last deltas zero); no event buttons or replay panel remained on exit.
+- Post-GC JS heap: 62,571,040 to 63,636,052 bytes (**+1,065,012 bytes**). This is an observed short-run trend, not proof of either leakage or bounded long-term memory.
+- The live mission clock remained 00:00 and no page runtime errors were observed.
+- Chrome's `Memory.getDOMCounters` does not report a detached-node field here. The gate uses supported live-node and listener counts, **not** detached-node reachability.
+
+**Conclusion:** No DOM/listener accumulation reproduced under this controlled six-cycle workload; no arbitrary runtime cleanup patch is justified. Dedicated longer repeated runs and real-device Safari memory/GC sampling are follow-up performance work, not claims made by CI.
