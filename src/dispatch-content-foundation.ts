@@ -46,8 +46,9 @@ export function dispatchReferenceContext(referenceId:string):DispatchReferenceCo
  if(!reference||reference.organization!=='police')return null;
  const owners=FACTION_TIMELINES.filter(timeline=>
   timeline.snapshots.some(snapshot=>snapshot.referenceId===referenceId));
- if(owners.length!==1||!validRole(owners[0].role))return null;
+ if(owners.length!==1)return null;
  const timeline=owners[0];
+ if(!validRole(timeline.role))return null;
  const snapshot=timeline.snapshots.find(x=>x.referenceId===referenceId);
  if(!snapshot||snapshot.representativeYear<reference.era.start||
   snapshot.representativeYear>reference.era.end)return null;
