@@ -144,7 +144,7 @@ export const FT12_ASSOCIATIONS:readonly HistoricalEquipmentAssociation[]=[
   {environment:'woodland'}),
  a('canadian-field','ca-mt-2024','ca-cadpat-mt',2024,2024,'planned',
   ['ca-cadpat-mt-2024'],'Source documents phased introduction plan in 2024, not universal wear.',
-  {availability:'emerging'}),
+  {availability:'unknown'}),
  a('canadian-field','ca-c7a2-2022','ca-c7a2',2022,2022,'documented-use',
   ['ca-c7a2-2022'],'Contemporaneous Canadian Army equipment page, not evidence of every 2012 infantry rifle.'),
  a('finnish-field','fi-m05-2016','fi-m05',2016,2016,'documented-use',
@@ -172,7 +172,7 @@ export const FT12_ASSOCIATIONS:readonly HistoricalEquipmentAssociation[]=[
   ['fr-cce-bme-2022'],'Official 2022 material describes CE as current while planning its replacement.'),
  a('french-field','fr-bme-plan-2024','fr-bme',2024,2024,'planned',
   ['fr-cce-bme-2022'],'2022 announcement forecast distribution starting 2024; plan is not proof of actual issue.',
-  {availability:'emerging'}),
+  {availability:'unknown'}),
  a('french-field','fr-famas-2022','fr-famas-f1',2022,2022,'documented-use',
   ['fr-famas-2022'],'Official equipment description shows FAMAS F1 alongside an ongoing AIF replacement process.',
   {confidence:'tentative'})
