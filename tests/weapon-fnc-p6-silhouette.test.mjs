@@ -35,26 +35,30 @@ test('P6: rear receiver and forward handguard are truly closed and outward-facin
  capNormal(guard,'rear');capNormal(guard,'front');
  clearWeaponSilhouette(g);m.dispose();
 });
-test('P11: two polymer lines and broken upper gas rows per side',()=>{
+test('P21 mapped pixel detail preserves P11: two polymer lines and broken upper gas rows per side',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const upper=by(g,'fncP5UpperGasBox')[0],lower=by(g,'fncP5LowerHex')[0];
- assert.ok(upper&&lower);
- assert.ok(box(upper).max.z<box(lower).max.z-.22,
-  'upper gas box is intentionally slimmer than the hexagonal lower');
- const marks=by(g,'fncP5GrooveSide');assert.equal(marks.length,4);
- for(const level of ['upper','lower']){
-  const meshes=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
-  assert.equal(meshes.length,2);
-  for(const mesh of meshes){
-   const rows=level==='upper'?1:2,segments=level==='upper'?4:1;
-   assert.equal(mesh.userData.fncP5GrooveCount,rows);
-   assert.equal(mesh.userData.fncP6GrooveSegmentsPerRow,segments);
-   assert.ok(mesh.userData.fncP6BoldGrooveHeight>=.15);
-   assert.equal(mesh.geometry.getAttribute('position').count,rows*segments*6);
-   const normal=mesh.geometry.getAttribute('normal').getZ(0);
-   assert.ok(normal*mesh.userData.fncP5GrooveSide>.9);
-  }
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.equal(gas.userData.fncPixelVentCounts.left,4);
+ assert.equal(gas.userData.fncPixelVentCounts.right,4);
+ assert.equal(gas.userData.fncPixelVentCounts.top,4);
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
  }
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P6: compact receiver and broad sights, genuinely projecting charging knob',()=>{
