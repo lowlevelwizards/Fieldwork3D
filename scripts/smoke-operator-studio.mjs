@@ -50,6 +50,10 @@ try{
   // saved-but-inactive choice the user can still clear. Hidden item thumbnails
   // should not redraw on each detail change.
   await page.getByRole('button',{name:'Customize head'}).click();
+  await page.evaluate(()=>{
+   window.__e2StudioCategoryRefs=[...document.querySelectorAll('#studioCategories button')];
+   window.__e2HeadSubcategoryRefs=[...document.querySelectorAll('#studioSubcategories button')];
+  });
   const ach=page.locator('[data-appearance-item="ach"]');
   if(await ach.isDisabled())throw Error('Cosmetic ballistic helmet unavailable');
   await ach.click();
@@ -93,6 +97,12 @@ try{
    throw Error('Returning to Items did not refresh deferred thumbnails');
   // Existing FACE card performance acceptance.
   await page.locator('#studioSubcategories button').filter({hasText:'FACE'}).click();
+  const stableCategories=await page.evaluate(()=>
+   window.__e2StudioCategoryRefs.every((button,index)=>
+    button===document.querySelectorAll('#studioCategories button')[index])&&
+   window.__e2HeadSubcategoryRefs.every((button,index)=>
+    button===document.querySelectorAll('#studioSubcategories button')[index]));
+  if(!stableCategories)throw Error('E2.B2 same-group Studio navigation remounted controls');
   await page.locator('#studioSubcategories button').filter({hasText:'FACE'}).click();
   const one=page.locator('[data-appearance-item="balaclava-one"] canvas');
   const three=page.locator('[data-appearance-item="balaclava-three"]');
@@ -125,6 +135,14 @@ try{
   await page.waitForFunction(()=>
    document.querySelector('#studioMaterials .solid-swatches button')!==null,
    null,{timeout:15000});
+  // E2.B: selecting the same category refreshes the screen, but the
+  // wardrobe/material inputs did not change. Keep the material controls mounted.
+  await page.evaluate(()=>{window.__e2MaterialRef=document.querySelector(
+   '#studioMaterials .solid-swatches button');});
+  await page.getByRole('button',{name:'Customize tops'}).click();
+  const stableMaterial=await page.evaluate(()=>window.__e2MaterialRef?.isConnected&&
+   document.querySelector('#studioMaterials').contains(window.__e2MaterialRef));
+  if(!stableMaterial)throw Error('E2.B same-category refresh rebuilt unchanged materials');
   // Item choices deliberately keep the ITEM tab active.
   await page.locator('#studioWorkflow button[data-studio-step="materials"]').click();
   await page.locator('#studioMaterials .solid-swatches button').first().click();

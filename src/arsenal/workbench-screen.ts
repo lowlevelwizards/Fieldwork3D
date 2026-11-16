@@ -165,42 +165,64 @@ export function openArsenalWorkbench(
   cancel.addEventListener('click',()=>{pending=null;renderPending();});
   buttons.append(confirm,cancel);box.append(label,desc,buttons);pendingHost.append(box);
  }
+ // E2.A2: finish swatches are authored choices, not disposable DOM.
+ const finishButtons=new Map<string,HTMLButtonElement>();
  function renderFinishes(){
-  finishOptions.replaceChildren();finishHelp.hidden=true;finishHelp.textContent='';
+  finishHelp.hidden=true;finishHelp.textContent='';
   const current=currentPartId(activeSlot);
   const family=arsenalFinishFamily(current);
   finishSection.hidden=!family||family.slot!==activeSlot;
-  if(!family||family.slot!==activeSlot)return;
-  for(const item of family.options){
+  const desired:HTMLButtonElement[]=[];
+  if(family&&family.slot===activeSlot)for(const item of family.options){
+   const key=activeSlot+':'+item.partId;
+   let choice=finishButtons.get(key);
+   if(!choice){
+    choice=document.createElement('button');choice.type='button';
+    choice.className='arsenal-wb-finish-choice';
+    const swatch=document.createElement('span');swatch.className='arsenal-wb-finish-swatch';
+    swatch.style.backgroundColor='#'+item.hex;
+    const label=document.createElement('span');label.textContent=item.label;
+    choice.append(swatch,label);
+    choice.addEventListener('click',()=>{
+     const live=proposeArsenalPartChange(draft.working,activeSlot,item.partId);
+     if(item.partId===currentPartId(activeSlot))return;
+     if(!live.valid){
+      finishHelp.hidden=false;
+      finishHelp.textContent=item.label+' · '+arsenalFitFeedback(live).explanation;
+      return;
+     }
+     finishHelp.hidden=true;pending=null;
+     if(live.requiresConfirmation){pending=live;renderPending();return;}
+     draft=commitArsenalProposal(draft,live);
+     viewer.setRecipe(draft.working);renderSelection();
+    });
+    finishButtons.set(key,choice);
+   }
    const proposal=proposeArsenalPartChange(draft.working,activeSlot,item.partId);
    const selected=item.partId===current;
-   const choice=document.createElement('button');choice.type='button';
-   choice.className='arsenal-wb-finish-choice';
-   choice.setAttribute('aria-pressed',String(selected));
-   choice.dataset.fit=selected?'equipped':proposal.valid?'fits':'incompatible';
-   const swatch=document.createElement('span');swatch.className='arsenal-wb-finish-swatch';
-   swatch.style.backgroundColor='#'+item.hex;
-   const label=document.createElement('span');label.textContent=item.label;
-   choice.append(swatch,label);
-   choice.addEventListener('click',()=>{
-    if(selected)return;
-    if(!proposal.valid){
-     finishHelp.hidden=false;
-     finishHelp.textContent=item.label+' · '+arsenalFitFeedback(proposal).explanation;
-     return;
-    }
-    finishHelp.hidden=true;pending=null;
-    if(proposal.requiresConfirmation){pending=proposal;renderPending();return;}
-    draft=commitArsenalProposal(draft,proposal);
-    viewer.setRecipe(draft.working);renderSelection();
-   });
-   finishOptions.append(choice);
+   const pressed=String(selected);
+   if(choice.getAttribute('aria-pressed')!==pressed)
+    choice.setAttribute('aria-pressed',pressed);
+   const fit=selected?'equipped':proposal.valid?'fits':'incompatible';
+   if(choice.dataset.fit!==fit)choice.dataset.fit=fit;
+   desired.push(choice);
   }
+  const visible=new Set<Node>(desired);
+  for(const child of Array.from(finishOptions.children))
+   if(!visible.has(child))child.remove();
+  for(let index=0;index<desired.length;index++)
+   if(finishOptions.children[index]!==desired[index])
+    finishOptions.insertBefore(desired[index],finishOptions.children[index]??null);
  }
+ // Reuse physical part controls for the lifetime of this Workbench.
+ // Refresh fit and selection without closing focus or remounting stable rows.
+ const choiceButtons=new Map<string,{option:HTMLButtonElement;status:HTMLElement}>();
+ const emptyChoice=document.createElement('p');
+ emptyChoice.className='arsenal-wb-hint';
+ emptyChoice.textContent='No direct replacements. Show unavailable parts for fitment details, or Choose Model to start from another platform.';
  function renderChoices(){
-  choiceList.replaceChildren();
   const receiver=FAMILY_PARTS[draft.working.parts.receiver];
-  let displayed=0;
+  const desired:HTMLElement[]=[];
   for(const part of arsenalPartsForSlot(activeSlot)){
    const partFamily=part.kind==='family'?FAMILY_PARTS[part.id]?.family:undefined;
    const sharedStanag=activeSlot==='magazine'&&receiver.family==='fnc'&&
@@ -210,51 +232,59 @@ export function openArsenalWorkbench(
    // Legacy saved FNC magazine stays valid, but isn't a duplicate choice.
    if(part.id==='fnc-mag30'&&currentPartId(activeSlot)!=='fnc-mag30')
     continue;
-   // Only one choice per silhouette. Finish-only part IDs live in swatches.
    if(arsenalPhysicalPartId(part.id)!==part.id)continue;
    const proposal=proposeArsenalPartChange(draft.working,activeSlot,part.id);
    const equipped=arsenalPhysicalPartId(currentPartId(activeSlot))===part.id;
    if(!equipped&&!proposal.valid&&!showIncompatible)continue;
    const feedback=arsenalFitFeedback(proposal,equipped);
-   const option=document.createElement('button');option.type='button';
-   option.className='arsenal-wb-option';
-   option.dataset.fit=feedback.state;
-   option.setAttribute('aria-pressed',String(equipped));
-   // This button explains a restriction; it is not a disabled control.
-   option.title=part.detail;
-   const name=document.createElement('strong');
-   name.textContent=arsenalFinishFamily(part.id)?.name??part.name;
-   const status=document.createElement('small');status.textContent=feedback.label;
-   option.append(name,status);
-   option.addEventListener('click',()=>{
-    if(!proposal.valid){
-     fitExplanation.hidden=false;
-     fitExplanation.textContent=part.name+' · '+feedback.explanation;
-     // Put the reason beside the tapped option too. On a phone the shared
-     // status above a long grid can otherwise be outside the viewport.
-     for(const old of choiceList.querySelectorAll('.arsenal-wb-fit-inline'))old.remove();
-     const detail=document.createElement('span');
-     detail.className='arsenal-wb-fit-inline';
-     detail.textContent=feedback.explanation;
-     option.append(detail);
-     return;
-    }
-    if(equipped)return;
-    fitExplanation.hidden=true;fitExplanation.textContent='';
-    pending=null;
-    if(proposal.requiresConfirmation){
-     pending=proposal;renderPending();return;
-    }
-    draft=commitArsenalProposal(draft,proposal);
-    viewer.setRecipe(draft.working);renderSelection();
-   });
-   choiceList.append(option);displayed++;
+   const key=activeSlot+':'+part.id;
+   let entry=choiceButtons.get(key);
+   if(!entry){
+    const option=document.createElement('button');option.type='button';
+    option.className='arsenal-wb-option';option.title=part.detail;
+    const name=document.createElement('strong');
+    name.textContent=arsenalFinishFamily(part.id)?.name??part.name;
+    const status=document.createElement('small');option.append(name,status);
+    // The proposal changes after undo, recipe loads or part selections.
+    // Resolve it at activation time, never capture a stale proposal.
+    option.addEventListener('click',()=>{
+     const live=proposeArsenalPartChange(draft.working,activeSlot,part.id);
+     const selected=arsenalPhysicalPartId(currentPartId(activeSlot))===part.id;
+     if(!live.valid){
+      const reason=arsenalFitFeedback(live,selected).explanation;
+      fitExplanation.hidden=false;
+      fitExplanation.textContent=part.name+' · '+reason;
+      for(const old of choiceList.querySelectorAll('.arsenal-wb-fit-inline'))old.remove();
+      const detail=document.createElement('span');
+      detail.className='arsenal-wb-fit-inline';detail.textContent=reason;
+      option.append(detail);
+      return;
+     }
+     if(selected)return;
+     fitExplanation.hidden=true;fitExplanation.textContent='';
+     pending=null;
+     if(live.requiresConfirmation){pending=live;renderPending();return;}
+     draft=commitArsenalProposal(draft,live);
+     viewer.setRecipe(draft.working);renderSelection();
+    });
+    entry={option,status};choiceButtons.set(key,entry);
+   }
+   const {option,status}=entry;
+   if(option.dataset.fit!==feedback.state)option.dataset.fit=feedback.state;
+   const pressed=String(equipped);
+   if(option.getAttribute('aria-pressed')!==pressed)
+    option.setAttribute('aria-pressed',pressed);
+   if(status.textContent!==feedback.label)status.textContent=feedback.label;
+   option.querySelector('.arsenal-wb-fit-inline')?.remove();
+   desired.push(option);
   }
-  if(!displayed){
-   const empty=document.createElement('p');empty.className='arsenal-wb-hint';
-   empty.textContent='No direct replacements. Show unavailable parts for fitment details, or Choose Model to start from another platform.';
-   choiceList.append(empty);
-  }
+  if(!desired.length)desired.push(emptyChoice);
+  const visible=new Set<Node>(desired);
+  for(const child of Array.from(choiceList.children))
+   if(!visible.has(child))child.remove();
+  for(let index=0;index<desired.length;index++)
+   if(choiceList.children[index]!==desired[index])
+    choiceList.insertBefore(desired[index],choiceList.children[index]??null);
  }
  // Persistent navigation: recipe/finish changes do not need to allocate
  // category or slot buttons again, and keyboard focus stays on its control.

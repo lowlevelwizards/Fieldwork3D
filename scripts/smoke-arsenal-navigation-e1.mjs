@@ -46,9 +46,27 @@ try{
    .every((el,i)=>el===window.__e1SlotRefs[i])&&
   window.__e1SlotRefs[1].getAttribute('aria-pressed')==='true');
  if(!subslot)throw Error('Subslot selection rebuilt DOM or lost keyboard focus');
+ // E2.A: capture physical part controls before a compatibility refresh.
+ const initialParts=await page.locator('.arsenal-wb-option').count();
+ if(!initialParts)throw Error('Workbench did not render physical part choices');
+ await page.evaluate(()=>{window.__e2ChoiceRefs=[
+  ...document.querySelectorAll('.arsenal-wb-option')];});
  // Toggling incompatible parts calls renderSelection but does not change
  // the category/slot set; the controls must survive it.
  await page.locator('.arsenal-wb-show-all').click();
+ const stableParts=await page.evaluate(()=>window.__e2ChoiceRefs.every(
+  row=>row.isConnected&&document.querySelector('.arsenal-wb-option-list').contains(row)));
+ if(!stableParts)throw Error('E2.A compatibility refresh remounted an existing part');
+ const fitting=page.locator('.arsenal-wb-option[data-fit="fits"]').first();
+ if(await fitting.count()){
+  await page.evaluate(()=>{window.__e2ClickedRow=document.querySelector(
+   '.arsenal-wb-option[data-fit="fits"]');});
+  await fitting.click();
+  const selectedRow=await page.evaluate(()=>window.__e2ClickedRow?.isConnected&&
+   window.__e2ClickedRow.getAttribute('aria-pressed')==='true'&&
+   document.activeElement===window.__e2ClickedRow);
+  if(!selectedRow)throw Error('E2.A part choice lost identity, fit or focus on commit');
+ }
  const afterToggle=await page.evaluate(()=>
   document.activeElement?.classList.contains('arsenal-wb-show-all')&&
   [...document.querySelectorAll('.arsenal-wb-category')]

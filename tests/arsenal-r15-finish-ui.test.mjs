@@ -25,8 +25,10 @@ test('Workbench separates finished materials from physical parts and retains val
  const code=src('src/arsenal/workbench-screen.ts');
  for(const token of ['FINISH / MATERIAL','arsenalPhysicalPartId','renderFinishes',
   'arsenal-wb-finish-choice','proposeArsenalPartChange(draft.working,activeSlot,item.partId)',
-  'commitArsenalProposal(draft,proposal)'])
+  'const live=proposeArsenalPartChange(draft.working,activeSlot,item.partId)',
+  'commitArsenalProposal(draft,live)'])
   assert.ok(code.includes(token),token);
  assert.match(code,/if\(arsenalPhysicalPartId\(part\.id\)!==part\.id\)continue/);
- assert.match(code,/choice\.dataset\.fit=selected/);
+ assert.match(code,/const fit=selected\?'equipped':proposal\.valid\?'fits':'incompatible'/);
+ assert.match(code,/if\(choice\.dataset\.fit!==fit\)choice\.dataset\.fit=fit/);
 });
