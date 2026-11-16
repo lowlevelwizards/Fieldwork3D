@@ -43,6 +43,15 @@ export async function capturePhotoFrame(input:PhotoCaptureRequest):Promise<Captu
  ctx.filter=photoFilterCss(input.filter,input.strength);
  try{
   ctx.drawImage(source,sx,sy,sw,sh,0,0,width,height);
+  // Guard against a cleared/lost WebGL drawing buffer (not a photograph).
+  const samples=[[.2,.2],[.5,.2],[.8,.2],[.2,.5],[.5,.5],
+   [.8,.5],[.2,.8],[.5,.8],[.8,.8]];
+  const blank=samples.every(([x,y])=>{
+   const rgba=ctx.getImageData(Math.floor(x*(width-1)),
+    Math.floor(y*(height-1)),1,1).data;
+   return rgba[0]<2&&rgba[1]<2&&rgba[2]<2;
+  });
+  if(blank)throw Error('PHOTO BUFFER IS EMPTY — TRY AGAIN');
   // The tactical overlay is intentionally omitted for 3D photos: it carries
   // planning annotations and is not part of the photogenic world.
  }catch{throw Error('COULD NOT READ THE RENDERED FRAME');}

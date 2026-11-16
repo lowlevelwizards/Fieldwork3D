@@ -11,7 +11,7 @@ import {capturePhotoFrame,photoFilterCss,type PhotoCaptureRequest}
 import {INITIAL_PHOTO_SETTINGS,photographCanEnter,
  type PhotoLens,type PhotoGuide} from './breach-photo-state.ts';
 import {savePhoto,makePhotoThumbnail,listPhotos,readPhotoThumbnail,readPhoto,deletePhoto,
- type PhotoMetadata} from './breach-photo-library.ts';
+ type PhotoMetadata,type PhotoStored} from './breach-photo-library.ts';
 import {mountBreachPhotoUi} from './ui/breach-photo-ui.ts';
 
 type Ports={
@@ -39,6 +39,7 @@ export function createBreachPhotoModeController(ports:Ports){
   observerId:string|null;omniscient:boolean;groundLensOn:boolean
  }|null=null;
  let generation=0,selectedPhoto:string|null=null,viewerUrl:string|null=null;
+ let selectedPhotoRecord:PhotoStored|null=null;
  let replayClean=false;
  let photoCamId:string|null=null;
  let photoCamMount:'helmet'|'chest'='helmet';
@@ -259,7 +260,7 @@ export function createBreachPhotoModeController(ports:Ports){
  }
  async function renderGallery():Promise<void>{
   const current=++generation;releaseGalleryUrls();
-  ui.viewer.hidden=true;selectedPhoto=null;
+  ui.viewer.hidden=true;selectedPhoto=null;selectedPhotoRecord=null;
   ui.galleryGrid.replaceChildren();ui.galleryStatus.textContent='LOADING PHOTOS…';
   try{
    const rows=await listPhotos();
@@ -292,7 +293,7 @@ export function createBreachPhotoModeController(ports:Ports){
    if(viewerUrl)URL.revokeObjectURL(viewerUrl);
    viewerUrl=URL.createObjectURL(photo.image);
    ui.viewerImage.src=viewerUrl;
-   selectedPhoto=id;ui.viewer.hidden=false;
+   selectedPhoto=id;selectedPhotoRecord=photo;ui.viewer.hidden=false;
    ui.galleryGrid.hidden=true;
    ui.galleryStatus.textContent=photo.meta.site+' · '+photo.meta.width+
     ' × '+photo.meta.height+' · '+photo.meta.source.toUpperCase();
@@ -304,6 +305,7 @@ export function createBreachPhotoModeController(ports:Ports){
   ++generation;ui.gallery.hidden=true;
   ui.galleryGrid.hidden=false;ui.viewerImage.removeAttribute('src');
   releaseGalleryUrls();ui.viewer.hidden=true;selectedPhoto=null;
+  selectedPhotoRecord=null;
  }
  function openGallery():void{
   ui.gallery.hidden=false;ui.galleryGrid.hidden=false;
@@ -311,7 +313,9 @@ export function createBreachPhotoModeController(ports:Ports){
  }
  async function withSelectedPhoto(action:'export'|'share'|'delete'):Promise<void>{
   if(!selectedPhoto)return;
-  const item=await readPhoto(selectedPhoto);
+  // The viewed Blob is already loaded, so Web Share starts inside the user
+  // activation rather than after an IndexedDB await (important on iOS).
+  const item=selectedPhotoRecord??await readPhoto(selectedPhoto);
   if(!item)return;
   if(action==='delete'){
    if(!confirm('Delete this photograph from this device?'))return;
