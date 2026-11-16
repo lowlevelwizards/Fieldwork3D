@@ -18,6 +18,7 @@ export default defineConfig({
       operatorLab: 'operator-lab.html',
       poseWorkbench: 'pose-workbench.html',
       operatorStudio: 'operator-studio.html',
+      referencePlanning: 'reference-planning.html',
       mapLab: 'map-lab.html',
       physicalityLab: 'physicality-lab.html',
       a3PhysicalityLab: 'a3-physicality-lab.html',
