@@ -58,30 +58,30 @@ test('P13: gas cover actually uses a tapered six-sided section, with modest expo
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('P13: side vents stay EXPOSED ABOVE polymer, top follows actual roof surface',()=>{
+test('P21 pixel surface coverage: P13: side vents stay EXPOSED ABOVE polymer, top follows actual roof surface',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
- const poly=one(g,'fncP13ExtendedPolymer');
- const gas=one(g,'fncP13NestedFacetedGasCover');
- const marks=all(g,'fncP11BrokenGasSideSlots');
- const roof=one(g,'fncP11TopGasVentRow');
- assert.equal(marks.length,2);assert.ok(roof);
- assert.equal(roof.geometry.getAttribute('position').count,24);
- assert.ok(near(box(roof).min.y,box(gas).max.y+L.gas.ventOffset,.012));
- for(const mark of marks){
-  assert.equal(mark.geometry.getAttribute('position').count,24);
-  assert.ok(box(mark).min.y>box(poly).max.y+.02,
-   'do not hide gas vents behind the extended polymer');
-  assert.ok(box(mark).max.x<box(gas).max.x-.3);
-  assert.ok(mark.geometry.getAttribute('normal').getZ(0)*
-   mark.userData.fncP5GrooveSide>.9);
+ const upper=g.children.find(x=>x.userData.fncPixelOperatingSlot);
+ const lower=g.children.find(x=>x.userData.fncPixelReceiverLines);
+ const gas=g.children.find(x=>x.userData.fncPixelVentCounts);
+ const polymer=g.children.find(x=>x.userData.fncPixelGroovesPerSide);
+ const lug=g.children.find(x=>x.userData.fncP20SingleChargingLug);
+ assert.ok(upper&&lower&&gas&&polymer&&lug);
+ assert.deepEqual(gas.userData.fncPixelVentCounts,{left:4,right:4,top:4});
+ assert.equal(polymer.userData.fncPixelGroovesPerSide,2);
+ for(const surface of [upper,lower,gas,polymer]){
+  assert.equal(surface.material.userData.fncPixelArt,true);
+  assert.ok(surface.material.map instanceof THREE.DataTexture);
+  assert.equal(surface.geometry.getAttribute('uv').count,
+   surface.geometry.getAttribute('position').count);
  }
- const longGrooves=all(g,'fncP11PolymerLongRibs');
- assert.equal(longGrooves.length,2);
- assert.ok(longGrooves.every(x=>box(x).max.x>L.polymer.fullEndX-.10),
-  'two polymer strokes must extend with the resized handguard');
+ assert.ok(!g.children.some(x=>x.userData.fncP11BrokenGasSideSlots||
+  x.userData.fncP8UpperLowerSeam||x.userData.fncP7UnifiedEjectionSlot||
+  x.userData.fncP11PolymerLongRibs||x.userData.fncP11TopGasVentRow));
+ assert.equal(lug.geometry.type,'BoxGeometry');
+ assert.ok(new THREE.Box3().setFromObject(lug).intersectsBox(
+  new THREE.Box3().setFromObject(upper)));
  clearWeaponSilhouette(g);m.dispose();
 });
-
 test('P13: one faceted molded handstop sits at the handguard nose, not a plate',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildFNCStage1Silhouette(m);
  const stop=one(g,'fncP13MoldedCollar');
