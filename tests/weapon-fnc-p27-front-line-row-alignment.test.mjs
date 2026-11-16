@@ -1,4 +1,4 @@
-/** P27: front relief really continues the upper side-vent row, then the prior upper height. */
+/** P27/P28: upper front mark continues the vent row, pair is X-aligned. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import * as THREE from 'three';
@@ -42,13 +42,14 @@ function mappedSidePixel(mesh,x,y,shade){
  }
  return false;
 }
-test('P27 first new front slot is one vent pitch past existing four, same exact height',()=>{
+test('P28 upper mark follows vent row and retains its gap after the last vent',()=>{
  const top=F.gas.lowerLines[0], lastX=F.gas.ventFirstX+3*F.gas.ventPitch;
  assert.equal(top.y,F.gas.ventSideYs[0]);
- assert.ok(close(top.startX,lastX+F.gas.ventPitch));
+ assert.ok(Math.abs(top.startX-(lastX+F.gas.ventPitch))<.1,
+  'front marks center on gas block without joining the previous vent');
  assert.ok(close(top.endX-top.startX,F.gas.ventLength));
- assert.ok(close(top.startX-(lastX+F.gas.ventLength),
-  F.gas.ventPitch-F.gas.ventLength));
+ assert.ok(top.startX-(lastX+F.gas.ventLength)>.75,
+  'keep a clean vent-to-block interval');
  assert.ok(top.endX<F.gas.endX-.4);
  const x=(top.startX+top.endX)/2;
  assert.equal(pixelSide(x,top.y),top.shade);

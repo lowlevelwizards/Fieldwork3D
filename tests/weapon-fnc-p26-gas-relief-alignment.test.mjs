@@ -20,7 +20,8 @@ test('P27 upper relief extends the gas vent row without joining the last vent',(
  const upper=F.gas.lowerLines[0];
  const lastX=F.gas.ventFirstX+(F.gas.ventCount-1)*F.gas.ventPitch;
  assert.ok(near(upper.y,F.gas.ventSideYs[0]));
- assert.ok(near(upper.startX,lastX+F.gas.ventPitch));
+ assert.ok(Math.abs(upper.startX-(lastX+F.gas.ventPitch))<.1,
+  'front pair may shift slightly to center on casting while retaining vent-row rhythm');
  assert.ok(near(upper.endX-upper.startX,F.gas.ventLength));
  assert.ok(upper.startX-(lastX+F.gas.ventLength)>.65,
   'fifth slot retains the normal spacing; never merge adjacent vents');
