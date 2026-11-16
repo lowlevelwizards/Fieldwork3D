@@ -85,6 +85,7 @@ import {weaponClearance} from './breach-weapon-clearance.ts';
 import {handlingIntentForMovement,teammateAheadForHandling}
   from './breach-handling-context.ts';
 import {resolveWeaponAssembly} from './equipment-weapon-assemblies.ts';
+import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter,LIGHT_BEAM_SAMPLES}
  from './equipment-weapon-light-beam.ts';
 import {type Site,type Room,type WideOpening} from './breach-site.ts';
@@ -668,7 +669,8 @@ export class TacticalScene3D{
     weapon:THREE.Group;status:THREE.Mesh;physical:OperatorRig;
     contactShadows:THREE.Mesh[]}>();
   private beamBlockerTick=-1;private beamBlockerSite=-1;
-  private beamBlockerRevision=-1;private beamBlockers:Segment[]=[];
+  private beamBlockerRevision=-1;private beamBlockerSignature='';
+  private beamBlockers:Segment[]=[];
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh;
     wedge:THREE.Mesh;glassPane?:THREE.Mesh}>();
@@ -1056,7 +1058,8 @@ export class TacticalScene3D{
     // Drop old beam obstruction geometry and force surviving friendly beams
     // to resample LOS before they appear on the replacement site.
     this.beamBlockerTick=-1;this.beamBlockerSite=-1;
-    this.beamBlockerRevision=-1;this.beamBlockers=[];
+    this.beamBlockerRevision=-1;this.beamBlockerSignature='';
+    this.beamBlockers=[];
     for(const actor of this.actors.values()){
       actor.beam.visible=false;actor.beamLast=null;
     }
@@ -1597,6 +1600,7 @@ export class TacticalScene3D{
     }
     // Personal disclosure is observer-scoped, never camera-mount-scoped.
     const personalDisclosure=replayDisclosurePolicy?.mode==='operator';
+    let beamDoorSignature:string|null=null;
     const bodycamAudition=!!this.replayBodycam&&(
       replayDisclosurePolicy?.mode==='operator'&&
       replayDisclosurePolicy.observerId===this.replayBodycam.actorId||
@@ -2139,15 +2143,22 @@ export class TacticalScene3D{
         posture:actor.posture,coverStanceDrop:actor.coverStanceDrop??0,
         threatRange,friendlyNear:friendlyAhead,
         friendlyAhead:actuallyAhead,handlingIntent
-      },s.doors,undefined,undefined,nearbyAllies);
-      const lightOn=!!actor.weaponLightOn&&actor.health>0&&
-        actor.weaponConfiguration?.slots.light==='light-compact'&&object.root.visible;
+      },s.doors,s.coverState,sessionWorldGeometry(s).walls,nearbyAllies);
+      const lightOn=weaponLightEmitting(actor)&&object.root.visible;
       object.beam.visible=lightOn;
       if(lightOn){
        const tick=Math.floor(s.seconds*8),siteSeed=s.site?.seed??-1;
+       const signature=beamDoorSignature??=(s.doors.map(d=>d.id+':'+
+        (d.openFraction??(d.open?1:0)).toFixed(4)+':'+
+        (d.glassShattered?1:0)).join('|'));
        if(tick!==this.beamBlockerTick||siteSeed!==this.beamBlockerSite||
-          this.beamBlockerRevision!==s.objectRevision){
-        this.beamBlockers=lightBeamBlockers(sessionWorldGeometry(s).walls,s.doors,sessionWorldGeometry(s).cover);
+          this.beamBlockerRevision!==s.objectRevision||
+          this.beamBlockerSignature!==signature){
+        const geometry=sessionWorldGeometry(s);
+        this.beamBlockers=lightBeamBlockers(geometry.walls,s.doors,s.coverState);
+        this.beamBlockerSignature=signature;
+        // Same-tick replay/door updates must not reuse stale actor polygons.
+        for(const visible of this.actors.values())visible.beamLast=null;
         this.beamBlockerTick=tick;this.beamBlockerSite=siteSeed;
         this.beamBlockerRevision=s.objectRevision;
        }

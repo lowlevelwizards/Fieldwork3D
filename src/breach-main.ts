@@ -1231,11 +1231,13 @@ function reset(next=state.variant,siteSeed?:number,
   missionOverride?:Session['missionType'],prebuiltSite?:Site,
   encounterRisk?:1|2|3,deferScene=false,
   restartStart?:MissionStartSnapshot,
-  training?:{squadSize:1|2|3|4;lighting:TrainingConfig['lighting']}):void{
+  training?:{squadSize:1|2|3|4;lighting:TrainingConfig['lighting'];
+   lightKit?:TrainingConfig['lightKit']}):void{
   missionController.transition(state,{
     variant:next,seed:siteSeed,missionOverride,prebuiltSite,
     risk:encounterRisk,deferScene,restartStart,
-    trainingSquadSize:training?.squadSize,trainingLighting:training?.lighting
+    trainingSquadSize:training?.squadSize,trainingLighting:training?.lighting,
+    trainingLightKit:training?.lightKit
   },{
     beforeReplace:releaseMissionPresentation,
     mount:mountMissionSession
@@ -1304,7 +1306,8 @@ const trainingScreen=createBreachTrainingScreen({
   if(replaying||quickPlayController.busy)return;
   appFlow.setMode('training');
   reset(state.variant,undefined,undefined,buildTrainingSite(config),
-   undefined,false,undefined,{squadSize:config.squadSize,lighting:config.lighting});
+   undefined,false,undefined,{squadSize:config.squadSize,lighting:config.lighting,
+    lightKit:config.activity==='trial'?'current':config.lightKit});
   trainingScreen.setActive(true);campaignScreen.hide();
   showUiHelp(config.activity==='trial'?
    'TRIAL · USE TARGET FIRE TO ENGAGE PLATES · AVOID GREEN NO-SHOOT TARGETS':

@@ -21,6 +21,7 @@ import {sitePowerControls,currentControlState} from './equipment-site-power-cont
 import {weaponClearance} from './breach-weapon-clearance.ts';
 import {lightBeamBlockers,lightBeamFootprint,weaponLightEmitter} from './equipment-weapon-light-beam.ts';
 import {sameWeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {weaponLightEmitting} from './equipment-weapon-light-operations.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {presentActor,presentDecor} from './rendering/breach-3d-disclosure-presenter.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
@@ -340,7 +341,7 @@ function architecture(){
  * Session identity, not seed, tick, actor ID, or whichever site is global.
  * Weak keys ensure that retired missions do not accumulate light history.
  */
-type Beam2DHistory={x:number;y:number;yaw:number;tick:number;
+type Beam2DHistory={x:number;y:number;yaw:number;tick:number;shoulderOffset:number;
  config:TeamActor['weaponConfiguration'];footprint:Pt[]};
 type Beam2DSessionCache={
  tick:number;revision:number;doorSignature:string;blockers:Segment[];
@@ -422,8 +423,7 @@ function renderFixtureLighting2D(){
 }
 function renderWeaponLights2D(){
  const state=getState(),replaying=isReplaying();
- const active=state.operators.filter(a=>a.health>0&&a.weaponLightOn&&
-  a.weaponConfiguration?.slots.light==='light-compact');
+ const active=state.operators.filter(a=>weaponLightEmitting(a));
  if(!active.length)return;
  const world=sessionWorldGeometry(state);
  const tick=Math.floor(state.seconds*8),revision=world.revision;
@@ -440,7 +440,7 @@ function renderWeaponLights2D(){
  }
  if(cached.tick!==tick||cached.revision!==revision||
     cached.doorSignature!==doorSignature){
-  cached.blockers=lightBeamBlockers(world.walls,state.doors,world.cover);
+  cached.blockers=lightBeamBlockers(world.walls,state.doors,state.coverState);
   cached.tick=tick;cached.revision=revision;
   cached.doorSignature=doorSignature;
   cached.history.clear();
@@ -457,16 +457,19 @@ function renderWeaponLights2D(){
   if(!previous||previous.tick!==tick||
    !sameWeaponConfiguration(previous.config,actor.weaponConfiguration)||
    Math.hypot(previous.x-actor.p.x,previous.y-actor.p.y)>.7||
+   previous.shoulderOffset!==(actor.aimSideOffset??0)||
    Math.abs(Math.atan2(Math.sin(previous.yaw-yaw),
      Math.cos(previous.yaw-yaw)))>.025){
    const muzzle=weaponClearance({x:actor.p.x,z:actor.p.y,
-    heading:actor.heading,weaponYaw:yaw,weapon:actor.weapon,
+    heading:actor.heading,weaponYaw:yaw,
+    shoulderOffset:actor.aimSideOffset??0,weapon:actor.weapon,
     weaponConfiguration:actor.weaponConfiguration,
     equipment:actor.equipment,aim:actor.aim,
     velocity:actor.velocity,recoil:actor.recoil,posture:actor.posture},
-    state.doors,world.cover,world.walls).muzzle;
+    state.doors,state.coverState,world.walls).muzzle;
    const from=weaponLightEmitter(muzzle,actor.weaponConfiguration!);
    cached.history.set(actor.id,{x:actor.p.x,y:actor.p.y,yaw,tick,
+    shoulderOffset:actor.aimSideOffset??0,
     config:actor.weaponConfiguration,
     footprint:lightBeamFootprint(from,muzzle.yaw,cached.blockers)});
   }

@@ -1,0 +1,49 @@
+name: L1.4 Flashlight Critical
+on:
+  push:
+    branches: [feature/l1-4-flashlight-usability-20261116]
+  pull_request:
+    paths:
+      - 'src/equipment-weapon-light-operations.ts'
+      - 'src/equipment-portable-light-sources.ts'
+      - 'src/equipment-weapon-light-ui.ts'
+      - 'src/equipment-training-flashlight-kit.ts'
+      - 'src/breach-tactical-control-commands.ts'
+      - 'src/equipment-sight-lighting.ts'
+      - 'src/breach-2d-world-renderer.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-mission-controller.ts'
+      - 'src/breach-main.ts'
+      - 'src/ui/tactical-hud-controller.ts'
+      - 'src/ui/breach-training-screen.ts'
+      - 'src/training/training-courses.ts'
+      - 'src/breach-style.css'
+      - 'tests/l1-4-flashlight-usability.test.mjs'
+      - '.github/workflows/l1-4-flashlight-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  flashlight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Real equipment, mounted beam, K1 and L1 power contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/l1-4-flashlight-usability.test.mjs \
+            tests/equipment-20-12-weapon-light.test.mjs \
+            tests/equipment-21-03-weapon-light-beam.test.mjs \
+            tests/equipment-21-05-shared-light-views.test.mjs \
+            tests/equipment-21-07-light-controls.test.mjs \
+            tests/equipment-26-02-portable-lights.test.mjs \
+            tests/l1-1-authoritative-site-power.test.mjs \
+            tests/training-k1-sites.test.mjs \
+            tests/training-k1-final-acceptance.test.mjs
+      - name: TypeScript and production build
+        run: npm run build
