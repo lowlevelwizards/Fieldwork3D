@@ -15,6 +15,7 @@ export type HistoricalKitConflict={category:string;alternatives:readonly Histori
 export type HistoricalLoadoutProposal={
  version:1;context:HistoricalGenerationContext;mode:GenerationMode;seed:number;
  status:'partial'|'proposable'|'no-evidence'|'invalid-context';
+ lockedCategories:readonly string[];
  choices:readonly HistoricalChoice[];conflicts:readonly HistoricalKitConflict[];
  unresolvedCategories:readonly string[];retainedSlots:readonly string[];
  warnings:readonly string[];
@@ -46,7 +47,7 @@ const choiceOf=(item:EligibleHistoricalItem):HistoricalChoice=>({
 });
 export function generateHistoricalLoadout(options:GenerationOptions):HistoricalLoadoutProposal{
  const {context,mode}=options;
- const seed=Number.isSafeInteger(options.seed)?(options.seed!>>>0):0;
+ const seed=Number.isSafeInteger(options.seed)?((options.seed??0)>>>0):0;
  const report=historicalEquipmentEligibility(context);
  const choices:HistoricalChoice[]=[],conflicts:HistoricalKitConflict[]=[];
  const unresolvedCategories:string[]=[],retainedSlots:string[]=[];
@@ -83,6 +84,7 @@ export function generateHistoricalLoadout(options:GenerationOptions):HistoricalL
   report.status==='no-evidence'?'no-evidence':
   unresolvedCategories.length?'partial':'proposable';
  return {version:1,context:{...context},mode,seed,status,
+  lockedCategories:[...new Set(options.lockedCategories??[])].sort(),
   choices,conflicts,unresolvedCategories,retainedSlots,
   warnings:[
    ...report.warnings,
@@ -92,4 +94,26 @@ export function generateHistoricalLoadout(options:GenerationOptions):HistoricalL
     ['Theater-limited records require an explicit matching theater']:[]),
    'Individual evidence does not verify this as a complete historical kit'
   ],completeKitVerified:false};
+}
+
+/** Input from an iframe is not authoritative. Recreate every chosen research
+ * claim from current catalogs and reject mismatched/forged mappings.
+ */
+export function validateHistoricalLoadoutProposal(raw:unknown,
+ baseline?:EquipmentLoadout):HistoricalLoadoutProposal|null{
+ if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
+ const p=raw as Partial<HistoricalLoadoutProposal>;
+ if(p.version!==1||(p.mode!=='evidence-backed'&&p.mode!=='playable-composite')||
+  !p.context||!Array.isArray(p.choices)||!Array.isArray(p.lockedCategories)||
+  !Number.isSafeInteger(p.seed))return null;
+ if(p.choices.length>12||p.lockedCategories.length>5||
+  p.lockedCategories.some(x=>typeof x!=='string'))return null;
+ const selectedHistoricalIds=Object.fromEntries(
+  p.choices.map(x=>[x.category,x.historicalId]));
+ const candidate=generateHistoricalLoadout({
+  context:p.context,mode:p.mode,seed:p.seed,
+  lockedCategories:p.lockedCategories,
+  selectedHistoricalIds,baseline
+ });
+ return JSON.stringify(candidate)===JSON.stringify(p)?candidate:null;
 }
