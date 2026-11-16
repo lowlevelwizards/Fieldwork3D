@@ -41,3 +41,13 @@ test('FT1.8C Belgian FNC reference uses the modeled family without overclaiming 
  assert.equal(referenceWeaponChoice(ref.id).preset.family,'fnc');
  assert.equal(referenceGapFidelity(ref,ref.gaps.find(x=>x.id==='fnc-family')),'approximate');
 });
+
+test('FT1.8D does not fabricate review or approve production',async()=>{
+ const {ft18ReviewBoard,FT18_REQUIRED_VIEWS}=await import('../src/faction-reference-ft1-8-review-board.ts');
+ const rows=ft18ReviewBoard();
+ assert.equal(rows.length,10);
+ assert.ok(rows.every(x=>x.status==='needs-human-review'));
+ assert.ok(rows.every(x=>x.pending.length>=3));
+ assert.ok(rows.every(x=>x.requiredViews===FT18_REQUIRED_VIEWS));
+ assert.ok(rows.some(x=>x.existingModel==='fnc-service'));
+});
