@@ -125,6 +125,14 @@ try{
   await page.waitForFunction(()=>
    document.querySelector('#studioMaterials .solid-swatches button')!==null,
    null,{timeout:15000});
+  // E2.B: selecting the same category refreshes the screen, but the
+  // wardrobe/material inputs did not change. Keep the material controls mounted.
+  await page.evaluate(()=>{window.__e2MaterialRef=document.querySelector(
+   '#studioMaterials .solid-swatches button');});
+  await page.getByRole('button',{name:'Customize tops'}).click();
+  const stableMaterial=await page.evaluate(()=>window.__e2MaterialRef?.isConnected&&
+   document.querySelector('#studioMaterials').contains(window.__e2MaterialRef));
+  if(!stableMaterial)throw Error('E2.B same-category refresh rebuilt unchanged materials');
   // Item choices deliberately keep the ITEM tab active.
   await page.locator('#studioWorkflow button[data-studio-step="materials"]').click();
   await page.locator('#studioMaterials .solid-swatches button').first().click();
