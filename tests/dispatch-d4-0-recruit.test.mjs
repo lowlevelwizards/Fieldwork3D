@@ -44,7 +44,7 @@ test('D4.0 issue factory retains identity and never inherits another operator se
 });
 
 test('D4.0 recruitment still obeys campaign constraints and leaves legacy kits alone',()=>{
- const d=newDispatchPilotCampaign(72);
+ const d={...newDispatchPilotCampaign(72),funds:2700};
  let next=d;
  for(let i=0;i<4;i++)next=hireRecruit(next);
  assert.equal(next.operators.length,8);
