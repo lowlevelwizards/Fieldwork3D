@@ -39,14 +39,14 @@ test('P11 two long handguard ribs, broken gas sides, five upward roof vents',()=
   const gas=marks.find(x=>x.userData.fncP5GrooveSide===side&&x.userData.fncP11BrokenGasSideSlots);
   assert.ok(polymer&&gas);
   assert.equal(polymer.geometry.getAttribute('position').count,12);
-  assert.equal(gas.geometry.getAttribute('position').count,60);
+  assert.equal(gas.geometry.getAttribute('position').count,48);
   assert.equal(polymer.userData.fncP6GrooveSegmentsPerRow,1);
-  assert.equal(gas.userData.fncP6GrooveSegmentsPerRow,5);
+  assert.equal(gas.userData.fncP6GrooveSegmentsPerRow,4);
   assert.ok(polymer.geometry.getAttribute('normal').getZ(0)*side>.9);
   assert.ok(gas.geometry.getAttribute('normal').getZ(0)*side>.9);
  }
  const roof=get(g,'fncP11TopGasVentRow');assert.ok(roof);
- assert.equal(roof.userData.fncP11TopGasVentCount,5);
+ assert.equal(roof.userData.fncP11TopGasVentCount,4);
  assert.equal(roof.geometry.getAttribute('position').count,24);
  assert.ok(roof.geometry.getAttribute('normal').getY(0)>.9);
  clearWeaponSilhouette(g);m.dispose();

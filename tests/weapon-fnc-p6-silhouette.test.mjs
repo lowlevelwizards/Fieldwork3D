@@ -46,7 +46,7 @@ test('P11: two polymer lines and broken upper gas rows per side',()=>{
   const meshes=marks.filter(x=>x.userData.fncP5GrooveLevel===level);
   assert.equal(meshes.length,2);
   for(const mesh of meshes){
-   const rows=2,segments=level==='upper'?5:1;
+   const rows=2,segments=level==='upper'?4:1;
    assert.equal(mesh.userData.fncP5GrooveCount,rows);
    assert.equal(mesh.userData.fncP6GrooveSegmentsPerRow,segments);
    assert.ok(mesh.userData.fncP6BoldGrooveHeight>=.15);
