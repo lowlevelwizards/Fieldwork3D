@@ -27,7 +27,9 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
-import {confirmFieldworkAction} from './ui/fieldwork-controls.ts';
+import {validateCampaignDraft,type CampaignCreationDraft} from './campaign-creation.ts';
+import type {CampaignSlot} from './campaign-save-slots.ts';
+import {confirmFieldworkAction,showFieldworkNotice} from './ui/fieldwork-controls.ts';
 import type {IntelMode} from './breach-intel.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {Session} from './breach-game.ts';
@@ -35,6 +37,10 @@ import type {Session} from './breach-game.ts';
 export type CampaignFlowHooks={
  getCampaign:()=>CampaignState|null;setCampaign:(value:CampaignState|null)=>void;
  saveCampaign:()=>boolean;
+ getCampaignSlot:()=>CampaignSlot;
+ getCampaignInSlot:(slot:CampaignSlot)=>CampaignState|null;
+ switchCampaignSlot:(slot:CampaignSlot)=>boolean;
+ replaceCampaignSlot:(campaign:CampaignState,slot:CampaignSlot)=>boolean;
  getMode:()=>CampaignMode;setMode:(value:CampaignMode)=>void;
  getIntel:()=>IntelMode;setIntel:(value:IntelMode)=>void;
  getScale:()=>SiteScale;setScale:(value:SiteScale)=>void;
@@ -113,17 +119,60 @@ function recordCompletedOperation(){
  backButton.textContent='OPERATIONS ROOM';
  backButton.setAttribute('aria-label','Return to campaign operations room');
  config.siteSettings.append(backButton);
+function saveFile(campaign:CampaignState){
+ const blob=new Blob([exportCampaign(campaign)],{type:'application/json'});
+ const href=URL.createObjectURL(blob),link=document.createElement('a');
+ link.href=href;link.download='fieldwork-'+campaign.id+'.json';
+ document.body.append(link);link.click();link.remove();
+ window.setTimeout(()=>URL.revokeObjectURL(href),1000);
+}
+function campaignMenu(){
+ model.mode='menu';
+ campaignScreen.entry(!!config.getCampaignInSlot('legacy'),
+  !!config.getCampaignInSlot('sandbox'),config.getCampaignSlot());
+}
+function resumeSlot(slot:CampaignSlot){
+ if(config.getMode()!=='menu'&&config.getMode()!=='home')return;
+ if(config.switchCampaignSlot(slot))showCampaignHome();
+ else void showFieldworkNotice('Campaign unavailable',
+  'Could not open the selected campaign. Existing saves were not changed.');
+}
 const campaignScreen=new CampaignScreen({
  newCampaign:async()=>{
-  if(model.campaign&&!await confirmFieldworkAction({
+  if(config.getCampaignInSlot('legacy')&&!await confirmFieldworkAction({
    title:'Start a new campaign?',
    message:'This replaces the active local campaign. Export a save first if you want to preserve it.',
    confirmLabel:'START NEW CAMPAIGN',danger:true
   }))return;
-  model.campaign=newCampaign(config.randomSeed());
-  config.saveCampaign();showCampaignHome();
+  const next=newCampaign(config.randomSeed());
+  if(!config.replaceCampaignSlot(next,'legacy')){
+   void showFieldworkNotice('Save unavailable',
+    'Could not save the new campaign. Your existing campaign was preserved.');
+   return;
+  }
+  showCampaignHome();
  },
- continueCampaign:()=>showCampaignHome(),
+ continueCampaign:()=>resumeSlot('legacy'),
+ newSandbox:()=>campaignScreen.creator(),
+ continueSandbox:()=>resumeSlot('sandbox'),
+ showMenu:campaignMenu,
+ exportSandbox:()=>{const c=config.getCampaignInSlot('sandbox');if(c)saveFile(c);},
+ createSandbox:async(draft:CampaignCreationDraft)=>{
+  const valid=validateCampaignDraft(draft);
+  if(!valid.ok){void showFieldworkNotice('Invalid campaign',valid.error);return false;}
+  if(config.getCampaignInSlot('sandbox')&&!await confirmFieldworkAction({
+   title:'Replace Sandbox Campaign?',
+   message:'This replaces the saved Sandbox Campaign. Export it first to keep your operators, equipment and history.',
+   confirmLabel:'REPLACE SANDBOX',danger:true
+  }))return false;
+  const next=newCampaign(valid.seed??config.randomSeed(),valid.rules,valid.name);
+  if(!config.replaceCampaignSlot(next,'sandbox')){
+   void showFieldworkNotice('Save unavailable',
+    'Sandbox Campaign could not be saved. Existing saves were preserved.');
+   return false;
+  }
+  showCampaignHome();return true;
+ },
  quickPlay:()=>{void config.launchQuickPlay();},
  training:()=>config.launchTraining(),
  openReplayLibrary:()=>config.openReplayLibrary(),
@@ -194,28 +243,27 @@ const campaignScreen=new CampaignScreen({
   config.saveCampaign();showCampaignHome();}},
  openStudio:(id)=>config.openStudio(id),
  openArsenal:(id)=>{void config.openArsenal(id);},
- exportSave:()=>{
-  if(!model.campaign)return;
-  const blob=new Blob([exportCampaign(model.campaign)],{type:'application/json'});
-  const href=URL.createObjectURL(blob),link=document.createElement('a');
-  link.href=href;link.download='fieldwork-'+model.campaign.id+'.json';
-  document.body.append(link);link.click();link.remove();
-  window.setTimeout(()=>URL.revokeObjectURL(href),1000);
- },
+ exportSave:()=>{if(model.campaign)saveFile(model.campaign);},
  retire:(id)=>{
   if(!model.campaign||!window.confirm('Retire this operator from active service? Their career record will remain.'))return;
   model.campaign=retireOperator(model.campaign,id);config.saveCampaign();showCampaignHome();
  },
- importSave:(raw)=>{
+ importSave:(raw,slot)=>{
+  if(config.getMode()!=='menu'&&config.getMode()!=='home')return;
   const next=importCampaign(raw);
-  if(!next){window.alert('The selected file is not a valid Fieldwork campaign save.');return;}
-  if(model.campaign&&!window.confirm('Replace the saved campaign with this import?'))return;
-  model.campaign=next;config.saveCampaign();showCampaignHome();
+  if(!next){void showFieldworkNotice('Invalid import','This is not a valid Fieldwork campaign save.');return;}
+  if(config.getCampaignInSlot(slot)&&!window.confirm(
+   'Replace the '+slot+' campaign save with this import? Export the current save first if needed.'))return;
+  if(!config.replaceCampaignSlot(next,slot)){
+   void showFieldworkNotice('Import not saved','Storage is unavailable. Existing campaign data was preserved.');
+   return;
+  }
+  showCampaignHome();
  }
 });
 function showCampaignHome(){
  if(!model.campaign)return;
- model.mode='home';campaignScreen.home(model.campaign);
+ model.mode='home';campaignScreen.home(model.campaign,config.getCampaignSlot());
 }
 function deployCampaignContract(){
  if(!model.campaign?.activeContractId)return;
@@ -239,7 +287,7 @@ function returnAfterCampaignMission(){
 backButton.addEventListener('click',()=>{
  if(model.mode==='mission'&&config.getSession().phase==='running')return;
  if(model.campaign)showCampaignHome();
- else{model.mode='menu';campaignScreen.entry(false);}
+ else campaignMenu();
 });
 
  return {screen:campaignScreen,operationHistory,recordCompletedOperation,
