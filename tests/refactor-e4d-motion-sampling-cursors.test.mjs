@@ -177,3 +177,21 @@ test('E4.D adjacent frames inspect bounded timestamps rather than binary-search 
  assert.deepEqual(rec.presentation(1.1,['rook'],false),
   oldPresentation(data,1.1,['rook'],false));
 });
+
+test('E4.D independent replay recorders cannot share cursor or pose history',()=>{
+ const first=makeArchive(),second=makeArchive();
+ // Same actor/door IDs, different historical evidence in each instance.
+ second.actors[0].travelYawEvents[300].yaw+=1.1;
+ second.actors[0].pelvisYawEvents[350].yaw-=.7;
+ second.doors[0].events[320].fraction=.99;
+ const a=new ReplayMotionRecorder(),b=new ReplayMotionRecorder();
+ a.loadArchive(first);b.loadArchive(second);
+ for(const time of [0,22.1,22.12,22.14,23.8,1,39.9,22.11]){
+  assert.deepEqual(a.presentation(time,['rook','moss']),
+   oldPresentation(first,time,['rook','moss']));
+  assert.deepEqual(b.presentation(time,['rook','moss']),
+   oldPresentation(second,time,['rook','moss']));
+ }
+ assert.deepEqual(a.toArchive(),first);
+ assert.deepEqual(b.toArchive(),second);
+});
