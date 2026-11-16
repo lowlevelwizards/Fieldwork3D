@@ -131,7 +131,7 @@ export function applyHistoricalQuickPlayProposal(roster:RosterState,id:string,
 export function applyHistoricalCampaignProposal(campaign:CampaignState,id:string,
  proposal:HistoricalLoadoutProposal):CampaignState|null{
  const member=campaign.operators.find(x=>x.id===id&&x.status!=='retired'&&x.status!=='lost');
- if(!member||campaign.activeContractId||proposal.status==='invalid-context'||
+ if(campaign.rules?.template==='dispatch'||!member||campaign.activeContractId||proposal.status==='invalid-context'||
   proposal.status==='no-evidence')return null;
  const draft=createHistoricalLoadoutDraft(proposal,member.loadout,
   member.wardrobe??readWardrobe(null),member.weaponConfiguration);

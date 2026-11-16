@@ -7,6 +7,7 @@ export const BREACH_STORAGE_KEYS={
  legacyRoster:'fieldwork3d.operator-roster.v1',
  campaign:'fieldwork3d.campaign.v1',
  sandboxCampaign:'fieldwork3d.sandbox-campaign.v1',
+ dispatchCampaign:'fieldwork3d.dispatch-campaign.v1',
  activeCampaignSlot:'fieldwork3d.campaign-active-slot.v1',
  operationHistory:'fieldwork3d.operation-history.v1'
 } as const;

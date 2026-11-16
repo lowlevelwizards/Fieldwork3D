@@ -1,6 +1,8 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
 import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
+import {mayChooseCampaignContent,dispatchPilotUnclassifiedEditingEnabled}
+ from './dispatch-campaign-eligibility.ts';
 import type {ShootingSkills} from './breach-skills.ts';
 import {SKILL_NAMES,type SkillName} from './campaign-skill-schema.ts';
 export {SKILL_NAMES};
@@ -405,6 +407,9 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
 export function hireRecruit(c:CampaignState):CampaignState{
+ // Recruitment currently creates generic mixed-weapon personnel; keep it
+ // disabled in Dispatch until the starter kit can be issued to new hires.
+ if(!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  if(c.funds<450||c.operators.length>=32||
   c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.activeContractId)return c;
  const i=c.operators.length;
@@ -423,6 +428,7 @@ export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
  carbine:300,smg:260,rifle:420,shotgun:330
 };
 export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):CampaignState{
+ if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
  const price=WEAPON_PRICES[weapon];
  if(!price||c.activeContractId||c.funds<price)return c;
  return reconcileCampaignWeaponOwnership({...c,funds:c.funds-price,
@@ -430,6 +436,7 @@ export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):Cam
 }
 /** Buying an attachment adds one stock item without silently equipping it. */
 export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState{
+ if(!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  const price=attachmentPrice(partId);
  if(c.activeContractId||price<=0||c.funds<price||
   (c.inventory.attachments[partId]??0)>=999)return c;
@@ -440,7 +447,7 @@ export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState
 /** Single-slot atomic stock transfer; no duplicate equipped copies. */
 export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  slot:WeaponAttachmentSlot,partId:string):CampaignState{
- if(c.activeContractId)return c;
+ if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=setWeaponAttachment(o.weaponConfiguration,slot,partId);
@@ -457,7 +464,7 @@ export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  * Named physical weapon ownership will be a separate campaign migration.
  */
 export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:string):CampaignState{
- if(c.activeContractId)return c;
+ if(c.activeContractId||!mayChooseCampaignContent(c,'weapon-preset',presetId))return c;
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=selectWeaponFamilyPreset(o.weaponConfiguration,presetId);
@@ -469,7 +476,7 @@ export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:str
 }
 export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  slot:FamilyPartSlot,partId:string):CampaignState{
- if(c.activeContractId)return c;
+ if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=setConfiguredFamilyPart(o.weaponConfiguration,slot,partId);
@@ -493,7 +500,8 @@ export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
 }
 export function equipCampaignWeapon(c:CampaignState,id:string,
  weapon:CampaignOperator['weapon']):CampaignState{
- if(c.activeContractId||!WEAPONS.includes(weapon))return c;
+ if(c.activeContractId||!WEAPONS.includes(weapon)||
+  !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
  const m=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!m||m.weapon===weapon||c.inventory.weapons[weapon]<1)return c;
  const targetConfig=resolveIssuedOrLegacy(
@@ -533,7 +541,8 @@ export function retireOperator(c:CampaignState,id:string):CampaignState{
  * stock-aware equipCampaignWeapon path, never through this editor. */
 export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  itemId:string):CampaignState{
- if(c.activeContractId||slot==='primary')return c;
+ if(c.activeContractId||slot==='primary'||
+  !mayChooseCampaignContent(c,'equipment',itemId,slot))return c;
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=setEquipmentChoice(o.loadout,slot,itemId);
@@ -558,7 +567,7 @@ export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):Cam
    weaponConfiguration:readWeaponConfiguration(member.weaponConfiguration,member.weapon)}]};
 }
 export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string):CampaignState{
- if(c.activeContractId)return c;
+ if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return c;
@@ -695,7 +704,7 @@ export function moveCampaignMagazine(
  */
 export function setCampaignWardrobe(c:CampaignState,id:string,
  raw:unknown):CampaignState{
- if(c.activeContractId)return c;
+ if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  const member=c.operators.find(x=>x.id===id&&
   x.status!=='retired'&&x.status!=='lost');
  if(!member)return c;

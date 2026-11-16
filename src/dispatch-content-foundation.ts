@@ -12,6 +12,8 @@ import {FACTION_TIMELINES,TIMELINE_ORGANIZATIONS} from './faction-reference-time
 export const CAMPAIGN_CONTENT_DOMAINS=['dispatch','operations','wasteland'] as const;
 export type CampaignContentDomain=typeof CAMPAIGN_CONTENT_DOMAINS[number];
 export type DispatchReferenceRole='patrol'|'tactical-police';
+/** The only currently selectable Dispatch pilot appearance. */
+export const DISPATCH_PILOT_REFERENCE_ID='us-swat-2015' as const;
 
 /** Small seed set. Expand only when a new authored look merits inclusion.
  * No speculative organizations, timestamps, assets or equipment are created.

@@ -3,6 +3,8 @@ import type {CampaignState,Contract} from './campaign-state.ts';
 import type {CampaignSlot} from './campaign-save-slots.ts';
 import type {CampaignCreationDraft} from './campaign-creation.ts';
 import {effectiveCampaignRules} from './campaign-rules.ts';
+import {isDispatchPilot,mayChooseCampaignContent}
+ from './dispatch-campaign-eligibility.ts';
 import {renderCampaignCreator} from './ui/campaign-creator.ts';
 import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost} from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
@@ -34,6 +36,7 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;training:()=>void;
  newSandbox:()=>void;continueSandbox:()=>void;
+ newDispatch:()=>void;continueDispatch:()=>void;
  createSandbox:(draft:CampaignCreationDraft)=>Promise<boolean|null>;
  exportSandbox:()=>void;showMenu:()=>void;
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
@@ -71,7 +74,7 @@ export class CampaignScreen{
  readonly root=node('section','campaign-screen');
  private readonly handlers:CampaignHandlers;
  private currentSlot:CampaignSlot='legacy';
- private lastEntry={legacy:false,sandbox:false,active:'legacy' as CampaignSlot};
+ private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
  private preview:CampaignKitPreview|null=null;
@@ -107,8 +110,8 @@ export class CampaignScreen{
   document.body.append(this.root);
  }
  hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
- entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy'){
-  this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,active};
+ entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false){
+  this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,dispatch:dispatchHasSave,active};
   this.armoryOperatorId=null;this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-landing');
@@ -144,6 +147,9 @@ export class CampaignScreen{
    button(sandboxHasSave?'CONTINUE SANDBOX':'SANDBOX CAMPAIGN',
     sandboxHasSave?this.handlers.continueSandbox:this.handlers.newSandbox,
     'campaign-landing-card campaign-landing-quick'),
+   button(dispatchHasSave?'CONTINUE DISPATCH':'DISPATCH · SWAT PILOT',
+    dispatchHasSave?this.handlers.continueDispatch:this.handlers.newDispatch,
+    'campaign-landing-card campaign-landing-quick'),
    button('QUICK PLAY',this.handlers.quickPlay,
     'campaign-landing-card campaign-landing-quick'),
    button('TRAINING · KILLHOUSE',this.handlers.training,
@@ -155,6 +161,10 @@ export class CampaignScreen{
    'campaign-landing-link'));
   if(sandboxHasSave)utility.append(button('NEW SANDBOX',this.handlers.newSandbox,
    'campaign-landing-link'));
+  if(dispatchHasSave)utility.append(button('NEW DISPATCH PILOT',this.handlers.newDispatch,
+   'campaign-landing-link'));
+  utility.append(node('p','campaign-note',
+   'DISPATCH PILOT · Existing mission types and progression; police-specific scenarios are not yet implemented.'));
   utility.append(node('p','campaign-note','ACTIVE SLOT · '+active.toUpperCase()));
   utility.append(button('REPLAY LIBRARY',this.handlers.openReplayLibrary,
    'campaign-landing-link'));
@@ -185,6 +195,8 @@ export class CampaignScreen{
   saves.append(this.importPicker('legacy'));
   saves.append(node('p','campaign-note','IMPORT TO SANDBOX CAMPAIGN'));
   saves.append(this.importPicker('sandbox'));
+  saves.append(node('p','campaign-note','IMPORT TO DISPATCH PILOT'));
+  saves.append(this.importPicker('dispatch'));
   footer.append(labs,saves);
   main.append(hero,actions,utility,footer);
   this.root.append(main);
@@ -194,7 +206,7 @@ export class CampaignScreen{
   this.root.hidden=false;
   renderCampaignCreator(this.root,{
    hasSandbox:this.lastEntry.sandbox,
-   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active),
+   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active,this.lastEntry.dispatch),
    onExportSandbox:this.handlers.exportSandbox,
    onCreate:this.handlers.createSandbox
   });
@@ -216,7 +228,8 @@ export class CampaignScreen{
   title.append(node('h1','','OPERATIONS ROOM'));
   const rules=effectiveCampaignRules(c).mission;
   title.append(node('div','campaign-home-identity',
-   (this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
+   (this.currentSlot==='dispatch'?'DISPATCH · SWAT PILOT':
+    this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
    ' · '+(c.name??'Original Campaign')));
   title.append(node('div','campaign-home-identity',
    'INTELLIGENCE · '+rules.intel.toUpperCase()+
@@ -291,7 +304,9 @@ export class CampaignScreen{
    for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
     const opt=node('option','',weapon.toUpperCase()+' · '+c.inventory.weapons[weapon]+' SPARE');
     opt.value=weapon;opt.disabled=(weapon!==p.weapon&&c.inventory.weapons[weapon]<1)||
-     ((weapon==='smg'||weapon==='shotgun')&&weapon!==p.weapon);
+     ((weapon==='smg'||weapon==='shotgun')&&weapon!==p.weapon)||
+      (isDispatchPilot(c)&&weapon!==p.weapon&&
+       !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'));
     weaponPick.append(opt);
    }
    weaponPick.value=p.weapon;weaponPick.disabled=!!c.activeContractId;
@@ -301,7 +316,7 @@ export class CampaignScreen{
     this.armoryOperatorId=p.id;this.home(c);
    },'campaign-primary'));
    const look=button('APPEARANCE',()=>this.handlers.openStudio(p.id));
-   look.disabled=!!c.activeContractId;
+   look.disabled=!!c.activeContractId||isDispatchPilot(c);
    look.setAttribute('aria-label','Edit '+p.callsign+' appearance in Operator Studio');
    actions.append(look,weaponPick);
    actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
@@ -337,12 +352,13 @@ export class CampaignScreen{
    const stock=c.inventory.weapons[weapon],price=WEAPON_PRICES[weapon];
    const buy=button('BUY AR / AK '+weapon.toUpperCase()+' PLATFORM · '+price+' CR · '+stock+' STOCK',
     ()=>this.handlers.buyWeapon(weapon));
-   buy.disabled=c.funds<price||!!c.activeContractId;
+   buy.disabled=c.funds<price||!!c.activeContractId||
+     !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary');
    inventory.append(buy);
   }
   logistics.append(inventory);
   const recruit=button('RECRUIT OPERATOR · 450 CR',this.handlers.recruit);
-  recruit.disabled=c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
+  recruit.disabled=isDispatchPilot(c)||c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
   personnel.append(recruit);
   const notice=node('p','campaign-note',c.history.length?
    'LAST OPERATION: '+c.history[c.history.length-1].grade+' · '+c.history[c.history.length-1].outcome.toUpperCase():
@@ -533,9 +549,10 @@ export class CampaignScreen{
    if(name!==null&&name!==person.callsign)this.handlers.renameOperator(id,name);
   });
   const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
-  rename.disabled=!!c.activeContractId;appearance.disabled=!!c.activeContractId;
+  rename.disabled=!!c.activeContractId;
+  appearance.disabled=!!c.activeContractId||isDispatchPilot(c);
   const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
-  arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build;
+  arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build||isDispatchPilot(c);
   identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
   const readiness=node('details','campaign-readiness-details');
   readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
@@ -603,6 +620,9 @@ export class CampaignScreen{
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
+  const dispatchPilot=isDispatchPilot(c);
+  if(dispatchPilot)editor.append(node('p','campaign-note',
+   'DISPATCH PILOT · Only curated new equipment choices are offered. Existing equipment remains retained; advanced weapon and wardrobe editors are not yet supported.'));
   const presets=node('details','campaign-kit-presets');
   presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
@@ -643,7 +663,7 @@ export class CampaignScreen{
     confirmLabel:'DELETE PRESET',danger:true
    }))this.handlers.deleteKitPreset(selectedPreset);
   });
-  load.disabled=locked||c.kitPresets.length===0;
+  load.disabled=locked||c.kitPresets.length===0||dispatchPilot;
   remove.disabled=locked||c.kitPresets.length===0;
   presetActions.append(picker,load,remove);
   presets.append(presetActions,node('p','campaign-note',
@@ -667,7 +687,9 @@ export class CampaignScreen{
       ' · '+c.inventory.weapons[weapon]+' AVAILABLE'));
      option.value='primary-'+weapon;
      option.disabled=(weapon!==person.weapon&&c.inventory.weapons[weapon]<1)||
-       ((weapon==='smg'||weapon==='shotgun')&&weapon!==person.weapon);
+       ((weapon==='smg'||weapon==='shotgun')&&weapon!==person.weapon)||
+       (dispatchPilot&&weapon!==person.weapon&&
+        !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'));
      select.append(option);
     }
     select.value='primary-'+person.weapon;
@@ -678,7 +700,10 @@ export class CampaignScreen{
    }else{
     for(const item of itemsForSlot(slot)){
      const option=node('option','',item.name+' · '+item.massKg.toFixed(2)+' KG');
-     option.value=item.id;select.append(option);
+     option.value=item.id;
+     if(dispatchPilot&&item.id!==person.loadout.slots[slot]&&
+       !mayChooseCampaignContent(c,'equipment',item.id,slot))option.disabled=true;
+     select.append(option);
     }
     select.value=person.loadout.slots[slot];
     select.addEventListener('change',()=>this.handlers.equipGear(
@@ -719,6 +744,8 @@ export class CampaignScreen{
    selectedId:selectedFamilyPreset?.id,selectedFamily:build?.family,
    availability:preset=>{
     if(locked)return 'Deployment locked';
+    if(dispatchPilot&&!mayChooseCampaignContent(c,'weapon-preset',preset.id))
+     return 'Not offered by Dispatch pilot';
     if(preset.weapon!==person.weapon&&(c.inventory.weapons[preset.weapon]??0)<1)
      return 'No '+preset.weapon+' currently owned';
     return null;
@@ -746,7 +773,7 @@ export class CampaignScreen{
      const option=node('option','',part.name);
      option.value=part.id;select.append(option);
     }
-    select.value=build.parts[slot];select.disabled=locked;
+    select.value=build.parts[slot];select.disabled=locked||dispatchPilot;
     select.addEventListener('focus',()=>{
      const socket=('body-'+slot) as WorkbenchSocket;
      this.selectedWorkbenchSocket=socket;
@@ -795,7 +822,7 @@ export class CampaignScreen{
     const option=node('option','',part.name+suffix);
     option.value=part.id;select.append(option);
    }
-   select.value=current;select.disabled=locked;
+   select.value=current;select.disabled=locked||dispatchPilot;
    mountSelectors.set(slot,select);
    select.addEventListener('focus',()=>{this.selectedMount=slot;
     this.selectedWorkbenchSocket=slot;

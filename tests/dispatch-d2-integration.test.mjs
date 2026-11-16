@@ -67,7 +67,7 @@ test('D2.4 legacy mode is not gated, and Dispatch stays non-playable',()=>{
  }
  const creator=readFileSync(new URL('../src/ui/campaign-creator.ts',import.meta.url),'utf8');
  const creation=readFileSync(new URL('../src/campaign-creation.ts',import.meta.url),'utf8');
- assert.match(creator,/Dispatch, Operations and Wasteland are planned experiences/);
+ assert.match(creator,/The Dispatch SWAT pilot is separately available/);
  assert.match(creation,/template:'custom'/);
  for(const path of ['dispatch-content-policy.ts','dispatch-starter-choices.ts',
   'dispatch-selection-projection.ts']){
