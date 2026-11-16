@@ -12,7 +12,8 @@ import {AR_BARREL_ART,AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {arHandguardEnd,AR_HANDGUARD_START} from '../../breach-weapon-contact-zones.ts';
 import {AR_VISUAL_ANATOMY,shiftProfile}
  from './weapon-receiver-anatomy.ts';
-import {addWeaponPixelMark,addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
+import {addWeaponPixelMark,addWeaponPixelMarkPair,addWeaponPixelMarkPairBatched}
+ from './weapon-pixel-detail.ts';
 
 export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
  steel:THREE.Material,dark:THREE.Material,wood:THREE.Material,
@@ -171,9 +172,11 @@ export function addARFamily(root:THREE.Group,build:WeaponFamilyBuild,
    depth,finish);
  const gb=(x:number,y:number,z:number,w:number,h:number,d:number,
   finish:0|1|2=1)=>b('handguard',x,y+AR_VISUAL_AXIS_Y,z,w,h,d,finish);
+ // Symmetric PRI/rail-cover ink shares one geometry and one front-facing
+ // draw instead of two translucent double-sided planes.
  const gm=(mark:Parameters<typeof addWeaponPixelMarkPair>[1],
   x:number,y:number,z:number,w:number,h:number)=>
-  addWeaponPixelMarkPair(root,mark,x,y+AR_VISUAL_AXIS_Y,z,w,h);
+  addWeaponPixelMarkPairBatched(root,mark,x,y+AR_VISUAL_AXIS_Y,z,w,h);
  const guard=parts.handguard;
  const retro=guard==='ar-car15-ribbed'||guard==='ar-733-ribbed';
  const end=arHandguardEnd(guard);
