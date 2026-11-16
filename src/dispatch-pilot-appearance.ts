@@ -7,7 +7,7 @@ import {readWardrobe,resolvedWardrobe,type WardrobeOptions}
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {evaluateDispatchContent} from './dispatch-content-policy.ts';
 import {DISPATCH_PILOT_REFERENCE_ID} from './dispatch-content-foundation.ts';
-import {isGloveSolid,solidChoicesFor} from './operator-garment-color-policy.ts';
+import {isGloveSolid,isGarmentSolidId,solidChoicesFor} from './operator-garment-color-policy.ts';
 import {isSkinToneId,isHairStyleId,isHairToneId}
  from './operator-identity-palette.ts';
 
@@ -20,7 +20,7 @@ const policy=(kind:'solid-color'|'wardrobe-style',id:string)=>
 const same=(left:unknown,right:unknown)=>JSON.stringify(left)===JSON.stringify(right);
 const allowedSolid=(value:string|undefined,channel:'top'|'trousers',look:WardrobeOptions,kit:EquipmentLoadout)=>
  value===undefined||(
-  DISPATCH_APPEARANCE_SOLIDS.some(id=>id===value)&&
+  isGarmentSolidId(value)&&DISPATCH_APPEARANCE_SOLIDS.some(id=>id===value)&&
   solidChoicesFor(channel,resolvedWardrobe(look,kit)).includes(value)&&
   policy('solid-color',value));
 
