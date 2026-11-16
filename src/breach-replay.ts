@@ -14,6 +14,7 @@ import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-moti
 import {ReplayPlanRecorder} from './breach-replay-plans.ts';
 import {ReplayBallisticsRecorder} from './breach-replay-ballistics.ts';
 import {captureReplayManifest,type ReplayManifest} from './breach-replay-manifest.ts';
+import {copySitePowerState,createSitePowerState} from './equipment-site-power.ts';
 import {withCoverPropIds} from './worldgen/site-object-identity.ts';
 import {copyNodes,type PlanNode} from './breach-plan.ts';
 import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
@@ -81,6 +82,8 @@ export type ReplayFrame={
   civilians?:CivilianFrame[];
   civilianHarmEvents?:CivilianHarmEvent[];
   objectRevision:number;windows:Session['windows'];coverState:Session['coverState'];
+  /** L1.1: optional historical circuit snapshot. Old films omit it. */
+  sitePower?:Session['sitePower'];
   casings:Session['casings'];
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
   flashBursts:FlashBurst[];flashRemaining:number;
@@ -204,6 +207,7 @@ export function snapshot(s:Session,seenGround?:string[],
     })),
     doors:s.doors.map(d=>({...d,a:position(d.a),b:position(d.b)})),
     objectRevision:s.objectRevision,
+    sitePower:copySitePowerState(s.sitePower),
     // Replay already shares these immutable samples until objectRevision moves.
     // Avoid allocating copies just to throw them away in capture().
     windows:unchangedWorld?.windows??s.windows.map(w=>({...w})),
@@ -485,6 +489,11 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   });
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.objectRevision=f.objectRevision??0;
+  // Seek/rewind restores the actual circuit state from this exact film frame.
+  // Pre-L1.1 recordings carry no power data and retain preset-only defaults.
+  s.sitePower=f.sitePower?copySitePowerState(f.sitePower):
+   s.site?createSitePowerState(s.site,s.lightingMode):undefined;
+  s.illuminationRevision=(s.illuminationRevision??0)+1;
   s.windows=(f.windows??[]).map(w=>({...w}));
   if(f.coverState){
     s.coverState.splice(0,s.coverState.length,
