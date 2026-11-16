@@ -91,7 +91,8 @@ test('P21 proves real reductions and unchanged magazine, muzzle and other famili
  const config=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'fnc-service');
  const gun=buildWeaponSilhouette('rifle',m,m,config);
  const audit=countGeometry(gun),peers=buildAuditReport();
- assert.ok(audit.triangles<=525,'P21 cuts decoration polygons instead of replacing meshes');
+ assert.ok(audit.triangles<=540,
+  'P24 retains the P21 pixel-detail savings while allowing 24 triangles for the extended gas belly');
  assert.ok(audit.meshes<=24,'no flat detail overlays survive');
  assert.ok(audit.byPart.handguard.triangles<=148,
   'P24 continuous lower gas block contributes 24 triangles without a new mesh');
