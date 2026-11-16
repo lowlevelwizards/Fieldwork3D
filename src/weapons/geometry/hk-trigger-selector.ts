@@ -20,6 +20,9 @@ export function addHKTriggerSelector(root:THREE.Group,style:HKSelectorStyle,
  for(const m of marks){
   m.userData.hkSelectorMarkings=style;
   m.userData.hkSelectorAlignedToHousing=true;
+  // A4.5: keep left and right marks distinct for SEF/pictogram inspection,
+  // while the real selector lever remains one-sided on the classic lower.
+  m.userData.surfaceDetailClass='hk-fire-mode-identity';
  }
  // The selector is a chunky eight-sided polymer pivot and one broad,
  // low-poly paddle, not a little white dial drawn on the receiver.
