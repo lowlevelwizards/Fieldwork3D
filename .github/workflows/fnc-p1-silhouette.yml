@@ -1,4 +1,4 @@
-name: FN FNC silhouette, STANAG and low-poly simplification
+name: FN FNC pixel-detail atlas and silhouette acceptance
 on:
   pull_request:
     branches: [main]
@@ -18,6 +18,7 @@ on:
       - 'src/operator-carried-magazines.ts'
       - 'src/weapons/geometry/fnc-handguard-profiles.ts'
       - 'src/weapons/geometry/fnc-front-layout.ts'
+      - 'src/weapons/geometry/fnc-pixel-details.ts'
       - 'src/fnc-stage1-lab.ts'
       - 'fnc-stage1-lab.html'
       - 'tests/weapon-fnc-stage1-blockout.test.mjs'
@@ -40,6 +41,7 @@ on:
       - 'tests/weapon-fnc-shared-stanags.test.mjs'
       - 'tests/weapon-fnc-p19-proportions.test.mjs'
       - 'tests/weapon-fnc-p20-simplified-forms.test.mjs'
+      - 'tests/weapon-fnc-p21-pixel-surfaces.test.mjs'
       - 'scripts/audit-weapon-geometry.mjs'
       - 'scripts/smoke-fnc-arsenal.mjs'
       - 'vite.config.ts'
@@ -55,7 +57,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-p3-style.test.mjs tests/weapon-fnc-p6-silhouette.test.mjs tests/weapon-fnc-p7-integration.test.mjs tests/weapon-fnc-p8-iconic-forms.test.mjs tests/weapon-fnc-p9-stock-silhouette.test.mjs tests/weapon-fnc-p10-stock-finish.test.mjs tests/weapon-fnc-p11-front-end.test.mjs tests/weapon-fnc-p12-compressed-fore-end.test.mjs tests/weapon-fnc-p13-consolidated-geometry.test.mjs tests/weapon-fnc-p14-alignment.test.mjs tests/weapon-fnc-p15-anatomy.test.mjs tests/weapon-fnc-p16-full-model.test.mjs tests/weapon-fnc-p17-style.test.mjs tests/weapon-fnc-p18-silhouette.test.mjs tests/weapon-fnc-p19-proportions.test.mjs tests/weapon-fnc-p20-simplified-forms.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/weapon-fnc-shared-stanags.test.mjs tests/weapon-families-01.test.mjs tests/arsenal-live-magazine-capacity-hud.test.mjs tests/weapon-fal-p5-triangle.test.mjs tests/weapon-fal-p6-geometry-budget.test.mjs tests/arsenal-v2-catalog.test.mjs
+      - run: node --experimental-strip-types --test tests/weapon-fnc-stage1-blockout.test.mjs tests/weapon-fnc-p2-forms.test.mjs tests/weapon-fnc-p3-style.test.mjs tests/weapon-fnc-p6-silhouette.test.mjs tests/weapon-fnc-p7-integration.test.mjs tests/weapon-fnc-p8-iconic-forms.test.mjs tests/weapon-fnc-p9-stock-silhouette.test.mjs tests/weapon-fnc-p10-stock-finish.test.mjs tests/weapon-fnc-p11-front-end.test.mjs tests/weapon-fnc-p12-compressed-fore-end.test.mjs tests/weapon-fnc-p13-consolidated-geometry.test.mjs tests/weapon-fnc-p14-alignment.test.mjs tests/weapon-fnc-p15-anatomy.test.mjs tests/weapon-fnc-p16-full-model.test.mjs tests/weapon-fnc-p17-style.test.mjs tests/weapon-fnc-p18-silhouette.test.mjs tests/weapon-fnc-p19-proportions.test.mjs tests/weapon-fnc-p20-simplified-forms.test.mjs tests/weapon-fnc-p21-pixel-surfaces.test.mjs tests/weapon-fnc-arsenal-live.test.mjs tests/weapon-fnc-shared-stanags.test.mjs tests/weapon-families-01.test.mjs tests/arsenal-live-magazine-capacity-hud.test.mjs tests/weapon-fal-p5-triangle.test.mjs tests/weapon-fal-p6-geometry-budget.test.mjs tests/arsenal-v2-catalog.test.mjs
       - run: node --experimental-strip-types scripts/audit-weapon-geometry.mjs
       - run: npm run check
       - run: npm run build
