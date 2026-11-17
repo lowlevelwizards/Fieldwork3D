@@ -42,6 +42,12 @@ try{
    throw Error('Readiness technical data is not available on request');
   if(await page.locator('.campaign-kit-presets').count()!==1)
    throw Error('Saved campaign kit presets were lost');
+  await page.locator('.campaign-kit-presets > summary').click();
+  if(!await page.getByRole('button',{name:'SAVE CURRENT KIT'}).isVisible())
+   throw Error('Equipment preset save action is not reachable');
+  if(!await page.locator('.campaign-kit-preset-list').isVisible())
+   throw Error('Equipment preset list was not exposed');
+  await page.locator('.campaign-kit-presets > summary').click();
   const workbench=armory.locator('.campaign-kit-workbench-entry');
   if(!await workbench.getByRole('button',{name:/OPEN ARSENAL/i}).isVisible())
    throw Error('Weapon category lost its dedicated Arsenal entry');

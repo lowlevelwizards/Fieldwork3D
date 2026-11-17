@@ -110,6 +110,7 @@ export class CampaignScreen{
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
+ private showKitPresets=false;
  private readonly operatorViewAngles=new Map<string,number>();
  /** Keep orbit/zoom only across small cosmetic swaps; refit a new core. */
  private readonly weaponWorkbenchViews=new Map<string,{
@@ -1400,7 +1401,9 @@ export class CampaignScreen{
   if(dispatchPilot)editor.append(node('p','campaign-note campaign-kit-access',
    'DISPATCH PILOT · CURATED EQUIPMENT ACCESS'));
   const presets=node('details','campaign-kit-presets');
-  presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
+  presets.open=this.showKitPresets;
+  presets.addEventListener('toggle',()=>{this.showKitPresets=presets.open;});
+  presets.append(node('summary','','SAVED KITS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
   const save=button('SAVE CURRENT KIT',async()=>{
    const name=await promptFieldworkText({
@@ -1412,46 +1415,55 @@ export class CampaignScreen{
   });
   save.disabled=locked||c.kitPresets.length>=24;
   presetActions.append(save);
-  const picker=node('select','campaign-select');
-  picker.setAttribute('aria-label','Choose saved equipment preset');
-  const blank=node('option','','SELECT PRESET');blank.value='';picker.append(blank);
-  for(const preset of c.kitPresets){
-   const option=node('option','',preset.name+' · '+preset.weapon.toUpperCase());
-   option.value=preset.id;
-   if(dispatchPilot&&!canApplyCampaignKitPreset(c,id,preset.id))option.disabled=true;
-   picker.append(option);
+  if(locked)save.title='Kit presets cannot change during a deployment';
+  else if(c.kitPresets.length>=24)save.title='Maximum 24 saved kits';
+  presets.append(presetActions);
+  const kitList=node('div','campaign-kit-preset-list');
+  if(!c.kitPresets.length){
+   kitList.append(node('p','campaign-note',
+    'No saved kits. Save this operator’s current equipment to reuse it later.'));
   }
-  const load=button('APPLY PRESET',()=>{
-   if(picker.value){
-    const preset=c.kitPresets.find(p=>p.id===picker.value);
-    if(preset&&preset.weapon!==person.weapon&&c.inventory.weapons[preset.weapon]<1){
-     void showFieldworkNotice('Equipment unavailable',
-      'This preset requires a primary weapon not currently available in the armory.');
-     return;
-    }
-    this.handlers.applyKitPreset(id,picker.value);
-   }
-  });
-  const remove=button('DELETE PRESET',async()=>{
-   if(!picker.value)return;
-   const selectedPreset=picker.value;
-   if(await confirmFieldworkAction({
-    title:'Delete saved kit preset?',
-    message:'This deletes the preset, not the equipment you own.',
-    confirmLabel:'DELETE PRESET',danger:true
-   }))this.handlers.deleteKitPreset(selectedPreset);
-  });
-  load.disabled=locked||c.kitPresets.length===0||
-   (dispatchPilot&&!c.kitPresets.some(p=>canApplyCampaignKitPreset(c,id,p.id)));
-  picker.addEventListener('change',()=>{
-   load.disabled=locked||!picker.value||!canApplyCampaignKitPreset(c,id,picker.value);
-  });
-  remove.disabled=locked||c.kitPresets.length===0;
-  presetActions.append(picker,load,remove);
-  presets.append(presetActions,node('p','campaign-note',
-   dispatchPilot?'Dispatch validates every saved kit item and prevents unsupported weapon changes. Existing inventory is preserved.':
-   'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
+  for(const preset of c.kitPresets){
+   const allowed=canApplyCampaignKitPreset(c,id,preset.id);
+   const available=preset.weapon===person.weapon||
+    (c.inventory.weapons[preset.weapon]??0)>0;
+   const card=node('article','campaign-kit-preset-card');
+   const heading=node('div','campaign-kit-preset-heading');
+   heading.append(node('strong','',preset.name),
+    node('small','',preset.weapon.toUpperCase()+' · '+
+     totalEquipmentMass(preset.kit,preset.weaponConfiguration).toFixed(2)+' KG'));
+   const detail=node('p','campaign-kit-preset-summary',
+    (itemDefinition(preset.kit.slots.head)?.name??'No headwear')+' · '+
+    (itemDefinition(preset.kit.slots.armor)?.name??'No armor'));
+   const eligible=allowed&&available&&!locked;
+   const explanation=node('p','campaign-kit-preset-eligibility',
+    locked?'LOCKED DURING DEPLOYMENT':
+    !allowed?'RESTRICTED BY CAMPAIGN EQUIPMENT RULES':
+    !available?'PRIMARY WEAPON NOT AVAILABLE':
+    'READY TO APPLY · USES OWNED EQUIPMENT');
+   if(!eligible)card.dataset.unavailable='true';
+   const actions=node('div','campaign-kit-preset-actions');
+   const apply=button('EQUIP KIT',()=>this.handlers.applyKitPreset(id,preset.id),
+    'campaign-primary');
+   apply.disabled=!eligible;
+   if(!eligible)apply.title=explanation.textContent??'Kit unavailable';
+   const remove=button('DELETE',async()=>{
+    if(await confirmFieldworkAction({
+     title:'Delete saved kit preset?',
+     message:'Delete "'+preset.name+'"? This removes only the preset, never owned equipment.',
+     confirmLabel:'DELETE PRESET',danger:true
+    }))this.handlers.deleteKitPreset(preset.id);
+   });
+   remove.disabled=locked;
+   actions.append(apply,remove);
+   card.append(heading,detail,explanation,actions);
+   kitList.append(card);
+  }
+  presets.append(kitList);
+  presets.append(node('p','campaign-note',
+   'Saved kits store equipment configurations, not duplicate weapons or stock.'));
   editor.append(node('h2','','EQUIPMENT'));
+  editor.append(presets);
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
   const categoryBar=node('div','campaign-kit-categories');
   categoryBar.setAttribute('role','tablist');
@@ -1720,7 +1732,6 @@ export class CampaignScreen{
    }
    grouped.field('carry').append(magazines);
   }
-  editor.append(presets);
   grid.append(editor);main.append(grid);
   this.root.append(main);
   if(this.weaponView){

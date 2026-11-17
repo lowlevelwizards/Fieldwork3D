@@ -1578,3 +1578,34 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-kit-serial-record .campaign-note{overflow-wrap:anywhere}
 @media(max-width:390px){.campaign-kit-condition-panel{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){.campaign-kit-condition-fill{transition:none}}
+
+/* Equipment E5.B: readable saved-kit cards instead of native selector menus. */
+.campaign-armory-screen .campaign-kit-presets{
+ margin:4px 0 12px;border:1px solid var(--fw-panel-border);
+ border-radius:10px;background:var(--fw-panel-deep)}
+.campaign-armory-screen .campaign-kit-presets>summary{
+ min-height:44px;padding:12px 13px;cursor:pointer;
+ font:750 14px var(--fw-font-display)}
+.campaign-armory-screen .campaign-kit-presets>.campaign-kit-actions{
+ padding:3px 12px 12px;margin:0}
+.campaign-kit-preset-list{display:grid;gap:8px;padding:0 12px 12px}
+.campaign-kit-preset-card{min-width:0;padding:12px;
+ background:var(--fw-panel);border:1px solid var(--fw-panel-border);
+ border-radius:8px;display:grid;gap:7px}
+.campaign-kit-preset-heading{display:flex;justify-content:space-between;gap:6px;
+ flex-wrap:wrap;align-items:center}
+.campaign-kit-preset-heading strong{font:750 16px var(--fw-font-action);
+ color:var(--fw-text-warm);overflow-wrap:anywhere}
+.campaign-kit-preset-heading small{font:700 12px var(--fw-font-data);
+ color:var(--fw-text-muted)}
+.campaign-kit-preset-summary{margin:0;color:var(--fw-text-muted);
+ font:500 12px/1.45 var(--fw-font-action)}
+.campaign-kit-preset-eligibility{margin:0;color:var(--fw-sage);
+ font:700 11px/1.35 var(--fw-font-action)}
+.campaign-kit-preset-card[data-unavailable="true"] .campaign-kit-preset-eligibility{
+ color:var(--fw-brass)}
+.campaign-kit-preset-actions{display:flex;gap:7px}
+.campaign-kit-preset-actions button{flex:1;min-width:0;
+ min-height:44px;margin:0;font-size:12px}
+.campaign-kit-presets>.campaign-note{margin:0;padding:0 12px 12px;
+ color:var(--fw-text-muted);font-size:11px}
