@@ -39,3 +39,5 @@ jobs:
         run: node scripts/smoke-equipment-e4-workbench.mjs
       - name: Verify Arsenal editing and mobile CSS contracts
         run: node --test tests/arsenal-r14-mobile-style-isolation.test.mjs tests/arsenal-v2-editing-ui.test.mjs
+      - name: Production typecheck and stamped build
+        run: npm run build
