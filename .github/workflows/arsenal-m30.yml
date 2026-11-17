@@ -6,6 +6,7 @@ on:
       - 'src/breach-weapon-geometry.ts'
       - 'src/weapons/geometry/**'
       - 'src/arsenal/**'
+      - 'src/breach-weapon-geometry.ts'
       - 'scripts/audit-weapon-production-m30.mjs'
       - 'scripts/smoke-arsenal-m30-shotgun-visual.mjs'
       - 'arsenal-m30-shotgun-capture.html'
@@ -30,6 +31,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/arsenal-m30-weapon-quality-audit.test.mjs \
             tests/arsenal-m30-shotgun-rigid-compile.test.mjs \
+            tests/arsenal-m30-rigid-part-pilot.test.mjs \
             tests/arsenal-m28-cross-family-mounting.test.mjs \
             tests/arsenal-m2-accessory-integration.test.mjs \
             tests/equipment-19-02-weapon-silhouettes.test.mjs \
