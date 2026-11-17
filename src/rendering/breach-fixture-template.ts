@@ -21,6 +21,14 @@ const RIGID_BOX_FAMILIES=new Set([
  'porch-post','support-column','privacy-fence','iron-fence',
  'chain-link-fence','fence'
 ]);
+// E6.24: separate opt-in for dense, static service/exterior prop silhouettes.
+// Their visual recipes contain boxes only; no hinges, particles, animation,
+// procedural cylinders or shared mutable pose/material state.
+const SERVICE_BOX_FAMILIES=new Set([
+ 'toilet','bathtub','mailbox','screened-dumpster','vending-machine',
+ 'wayfinding-sign','trash-bin','bollard','utility-cabinet',
+ 'parking-block','parking-sign','street-lamp'
+]);
 type BaseSlot='wood'|'steel'|'olive'|'metal';
 type Slot={base:BaseSlot}|{solid:true;hex:number;
  roughness:number|undefined;surface:Parameters<FixtureVisualContext['solid']>[2]};
@@ -37,8 +45,11 @@ function recipeKey(visual:Obstacle,index:number):string{
 }
 /** Does not mutate a source cover, and does not cache authoring conditions
  * or a fixture family with procedural cylinders, instancing, or animation. */
-export function rigidFixtureTemplateEligible(visual:Obstacle):boolean{
- return RIGID_BOX_FAMILIES.has(visual.fixture??'crate')&&
+export function rigidFixtureTemplateEligible(
+ visual:Obstacle,includeService=false
+):boolean{
+ return (RIGID_BOX_FAMILIES.has(visual.fixture??'crate')||
+  (includeService&&SERVICE_BOX_FAMILIES.has(visual.fixture??'crate')))&&
   visual.artCondition===undefined&&visual.artSurface===undefined&&
   visual.artVariant===undefined&&
   Number.isFinite(visual.w)&&Number.isFinite(visual.h)&&
@@ -95,9 +106,9 @@ function makePrototype(visual:Obstacle,index:number){
 }
 export function acquireRigidFixtureTemplate(
  cache:StaticVisualTemplateLibrary,visual:Obstacle,index:number,
- ctx:FixtureVisualContext,palette:Palette
+ ctx:FixtureVisualContext,palette:Palette,includeService=false
 ):StaticVisualLease|null{
- if(!rigidFixtureTemplateEligible(visual))return null;
+ if(!rigidFixtureTemplateEligible(visual,includeService))return null;
  const resolved=new Map<THREE.Material,THREE.Material>();
  return cache.acquire(recipeKey(visual,index),
   ()=>makePrototype(visual,index),{
