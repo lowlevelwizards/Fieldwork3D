@@ -54,10 +54,10 @@ test('UI.7A reports actual command outcomes without inferring success from event
     {handled:true,outcome:'accepted'});
   assert.equal(dispatch(s,a,'ctxWait').outcome,'accepted');
   const before=s.events.length;
-  const blocked=dispatch(s,a,'ctxReload',{node:{id:-99,kind:'move',p:a.p}});
+  const blocked=dispatch(s,a,'ctxDelete',{node:{id:-99,kind:'move',p:a.p}});
   assert.equal(blocked.handled,true);
   assert.equal(blocked.outcome,'rejected');
-  assert.equal(blocked.failureReason,'CANNOT PLAN RELOAD');
+  assert.equal(blocked.failureReason,'SELECTED ORDER NO LONGER AVAILABLE');
   assert.equal(s.events.length,before+1);
   const missing=dispatch(s,a,'ctxTreat');
   assert.equal(missing.outcome,'rejected');
