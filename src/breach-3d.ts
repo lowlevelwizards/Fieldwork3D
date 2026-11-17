@@ -7,6 +7,7 @@ import {SiteFixtureLightingPresenter} from './rendering/breach-site-light-presen
 import * as THREE from 'three';
 import {ColdRendererTrace} from './rendering/breach-cold-renderer-trace.ts';
 import {LiveShadowSubmitProfiler} from './rendering/breach-live-shadow-submit-profiler.ts';
+import {LiveMainPassProfiler} from './rendering/breach-live-main-pass-profiler.ts';
 import {stepCameraFocusGlide,type CameraFocusGlide}
   from './breach-camera-focus-glide.ts';
 import {applyWorldSurfaceResponse} from './rendering/material-identity.ts';
@@ -171,6 +172,7 @@ export class TacticalScene3D{
   }
   /** E6.16: strictly opt-in shadow-map submission attribution. */
   private readonly liveShadowSubmitProfiler:LiveShadowSubmitProfiler|null;
+  private readonly liveMainPassProfiler:LiveMainPassProfiler|null;
   private scenePhaseStart=0;
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
    * wardrobe material/shadow generation as well as steady-state posing. */
@@ -270,6 +272,7 @@ export class TacticalScene3D{
       actorRigCount:this.actors.size,
       civilianRigCount:this.civilianRigs.size,
       shadowSubmission:this.liveShadowSubmitProfiler?.last??null,
+      mainPassSubmission:this.liveMainPassProfiler?.last??null,
       shadowRefreshes:this.shadowUpdates.refreshes,
       shadowReuses:this.shadowUpdates.reuses,
       shadowLodTransitions:this.shadowLodTransitions,
@@ -873,6 +876,10 @@ export class TacticalScene3D{
       new URLSearchParams(location.search).get('coldBench')==='1'?
        new LiveShadowSubmitProfiler(this.renderer as unknown as
          ConstructorParameters<typeof LiveShadowSubmitProfiler>[0]):null;
+    this.liveMainPassProfiler=this.liveShadowSubmitProfiler?
+      new LiveMainPassProfiler(this.renderer as unknown as
+        ConstructorParameters<typeof LiveMainPassProfiler>[0],
+        ()=>this.liveShadowSubmitProfiler?.isShadowPass??false):null;
     // Atmospheric distance fog was tinting every interior surface in ISO.
     // Visibility is handled separately by authoritative exploration tiles.
     this.scene.background=color(0x182a2a);
@@ -901,6 +908,9 @@ export class TacticalScene3D{
     // exterior terrain without removing contact shadows under operators.
     this.sun.shadow.bias=-.00012;this.sun.shadow.normalBias=.16;
     this.scene.add(this.sun,this.sun.target);
+    // E6.17: semantic debug labels only, never alter rendering.
+    this.root.userData.fieldworkRenderCategory='environment';
+    this.effects.userData.fieldworkRenderCategory='effects';
     this.scene.add(this.root,this.effects);
     // First paint and mission reload now use the same build/batch/grade path.
     this.composeSiteWorld(this.displayedSite);
@@ -919,6 +929,8 @@ export class TacticalScene3D{
     this.mats.push(unknownMat,exploredMat);
     this.fogUnknown=new THREE.InstancedMesh(fgeom,unknownMat,16*19);
     this.fogExplored=new THREE.InstancedMesh(fgeom,exploredMat,16*19);
+    this.fogUnknown.userData.fieldworkRenderCategory='fog';
+    this.fogExplored.userData.fieldworkRenderCategory='fog';
     this.fogUnknown.frustumCulled=this.fogExplored.frustumCulled=false;
     this.fogUnknown.renderOrder=16;this.fogExplored.renderOrder=16;
     this.root.add(this.fogUnknown,this.fogExplored);
@@ -954,6 +966,7 @@ export class TacticalScene3D{
       depthWrite:false,toneMapped:false,side:THREE.DoubleSide});
     this.mats.push(fogMat);
     this.smoothFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),fogMat);
+    this.smoothFog.userData.fieldworkRenderCategory='fog';
     this.smoothFog.rotation.x=-Math.PI/2;
     // Ground-space LOS mask, not a floating translucent roof. Keep ordinary
     // camera depth testing even though the sheet draws late: the prior
@@ -971,6 +984,7 @@ export class TacticalScene3D{
     // the site bounding rectangle. It uses this SAME texture and material,
     // but cannot paint black over grass beyond the building walls.
     this.exteriorKnownFog=new THREE.Mesh(new THREE.BufferGeometry(),fogMat);
+    this.exteriorKnownFog.userData.fieldworkRenderCategory='fog';
     this.exteriorKnownFog.renderOrder=1000;
     this.exteriorKnownFog.frustumCulled=false;
     this.exteriorKnownFog.visible=false;
@@ -1611,11 +1625,14 @@ export class TacticalScene3D{
     const beam=new THREE.Mesh(beamGeometry,new THREE.MeshBasicMaterial({
       color:0xbde9d5,transparent:true,opacity:.15,depthWrite:false,
       side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
+    beam.userData.fieldworkRenderCategory='operator-effects';
     beam.frustumCulled=false;beam.visible=false;beam.renderOrder=4;
     this.scene.add(beam);
     const status=new THREE.Mesh(new THREE.RingGeometry(12,16,30),
       new THREE.MeshBasicMaterial({color:0xdb8d76,transparent:true,
         opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
+    status.userData.fieldworkRenderCategory='operator-effects';
+    root.userData.fieldworkRenderCategory='operator';
     status.rotation.x=-Math.PI/2;status.visible=false;
     this.scene.add(root,status);
     // Subtle cheap foot-contact shadows complement the real shadow map on
@@ -1630,7 +1647,9 @@ export class TacticalScene3D{
     if(!prepared)return false;
     this.preparedColdFrame=null;
     try{
-      if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
+      if(this.liveMainPassProfiler)this.liveMainPassProfiler.capture(()=>
+       this.liveShadowSubmitProfiler!.capture(()=>this.renderMiniatureFocus(prepared.camera)));
+      else if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
        ()=>this.renderMiniatureFocus(prepared.camera));
       else this.renderMiniatureFocus(prepared.camera);
      }
@@ -2050,6 +2069,7 @@ export class TacticalScene3D{
     if(s.rescue&&!s.civilians.some(c=>c.rescueTarget)){
       if(!this.rescueFigure){
         this.rescueFigure=new THREE.Group();
+        this.rescueFigure.userData.fieldworkRenderCategory='civilian';
         const civilian=new THREE.Mesh(new THREE.CapsuleGeometry(4.5,12,4,8),
           new THREE.MeshStandardMaterial({color:0xe0c58d,flatShading:true}));
         civilian.position.y=10;
@@ -2751,7 +2771,9 @@ export class TacticalScene3D{
       return;
     }
     try{
-      if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
+      if(this.liveMainPassProfiler)this.liveMainPassProfiler.capture(()=>
+       this.liveShadowSubmitProfiler!.capture(()=>this.renderMiniatureFocus(camera)));
+      else if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
        ()=>this.renderMiniatureFocus(camera));
       else this.renderMiniatureFocus(camera);
      }
