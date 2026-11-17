@@ -94,11 +94,15 @@ export class CampaignScreen{
  private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
+ /** Keeps the selected case available while preparing squad or supplies. */
+ private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
  /** Temporary UI preference only; no Campaign save mutation. */
  private readonly expandedClassicWeaponControls=new Set<string>();
+ /** UI-only disclosure preference, retained when supplies or treatment refreshes home. */
+ private readonly expandedOperatorCare=new Set<string>();
  private selectedMount:WeaponAttachmentSlot='optic';
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
@@ -361,10 +365,30 @@ export class CampaignScreen{
   const personnel=node('section','campaign-section');
   personnel.append(node('h2','','PERSONNEL'));
   const deployment=node('div','campaign-assignment');
-  deployment.append(node('h2','','DEPLOYMENT TEAM'));
+  const deploymentHeading=node('div','campaign-assignment-heading');
+  const headingCopy=node('div');
+  headingCopy.append(node('h2','','DEPLOYMENT TEAM'),
+   node('p','','Select four operators for your next mission.'));
+  const readyAssigned=c.squadIds.filter(id=>{
+   const o=c.operators.find(p=>p.id===id);
+   return o&&o.recoveryDays===0&&o.status!=='lost'&&o.status!=='retired';
+  }).length;
+  const readinessCount=node('span','campaign-assignment-count',
+   readyAssigned+' / 4 READY');
+  deploymentHeading.append(headingCopy,readinessCount);
+  deployment.append(deploymentHeading);
+  const slotList=node('div','campaign-assignment-slots');
   for(let slot=0;slot<4;slot++){
+   const operator=c.operators.find(p=>p.id===c.squadIds[slot]);
    const line=node('label','campaign-assignment-row');
-   line.append(node('span','','SLOT 0'+(slot+1)));
+   const slotHeading=node('div','campaign-assignment-slot-label');
+   slotHeading.append(node('strong','','SLOT 0'+(slot+1)));
+   if(operator){
+    const state=operator.recoveryDays>0?
+     'RECOVERING · '+operator.recoveryDays+' DAYS':'READY';
+    slotHeading.append(node('small',operator.recoveryDays>0?
+     'is-recovering':'is-ready',state));
+   }else slotHeading.append(node('small','is-unfilled','UNASSIGNED'));
    const picker=node('select','campaign-select');
    picker.setAttribute('aria-label','Choose operator for tactical slot '+(slot+1));
    for(const member of c.operators.filter(p=>p.status!=='lost'&&p.status!=='retired')){
@@ -375,8 +399,10 @@ export class CampaignScreen{
    picker.value=c.squadIds[slot];
    picker.disabled=!!c.activeContractId;
    picker.addEventListener('change',()=>this.handlers.assignSlot(slot,picker.value));
-   line.append(picker);deployment.append(line);
+   line.append(slotHeading,picker);
+   slotList.append(line);
   }
+  deployment.append(slotList);
   personnel.append(deployment);
   const roster=node('div','campaign-roster');
   for(const p of c.operators.filter(p=>p.status!=='retired'&&p.status!=='lost')){
@@ -472,6 +498,11 @@ export class CampaignScreen{
    profile.setAttribute('aria-label','View '+p.callsign+' service dossier');
    const actions=node('div','campaign-person-actions');
    const care=node('details','campaign-person-care');
+   care.open=this.expandedOperatorCare.has(p.id);
+   care.addEventListener('toggle',()=>{
+    if(care.open)this.expandedOperatorCare.add(p.id);
+    else this.expandedOperatorCare.delete(p.id);
+   });
    care.append(node('summary','','EQUIPMENT & CARE'));
    const careActions=node('div','campaign-person-care-actions');
    const weaponPick=node('select','campaign-select');
@@ -497,18 +528,33 @@ export class CampaignScreen{
    careActions.append(weaponPick);
    const resupply=button('RESUPPLY AMMO',()=>this.handlers.resupply(p.id));
    resupply.disabled=!!c.activeContractId||c.supplies.ammo===0;
+   if(resupply.disabled)resupply.title=c.activeContractId?
+    'Finish the current deployment before resupplying':
+    'No ammunition available in Logistics';
    careActions.append(resupply);
    const med=kitMedicalSupplies(p.loadout);
    const replenish=button('REISSUE MEDICAL '+medicalSupplyCount(p.medicalSupplies)+
-    '/'+medicalSupplyCount(med)+' · 1 STOCK',
+    '/'+medicalSupplyCount(med)+' · '+c.supplies.medical+' IN STOCK',
     ()=>this.handlers.resupplyMedical(p.id));
    replenish.disabled=!!c.activeContractId||c.supplies.medical<1||
     medicalSupplyCount(p.medicalSupplies)>=medicalSupplyCount(med)||
     medicalSupplyCount(med)===0;
+   if(replenish.disabled)replenish.title=c.activeContractId?
+    'Finish the current deployment before reissuing supplies':
+    c.supplies.medical<1?'No medical kits available in Logistics':
+    medicalSupplyCount(med)===0?'This loadout has no medical supplies to replenish':
+    'Medical supplies already full';
    careActions.append(replenish);
-   if(p.recoveryDays>0)careActions.append(button(
-    'TREAT · '+p.recoveryDays+' → '+Math.max(0,p.recoveryDays-2)+' DAYS',
-    ()=>this.handlers.treat(p.id)));
+   if(p.recoveryDays>0){
+    const treat=button(
+     'TREAT · '+p.recoveryDays+' → '+Math.max(0,p.recoveryDays-2)+' DAYS',
+     ()=>this.handlers.treat(p.id));
+    treat.disabled=!!c.activeContractId||c.supplies.medical<1;
+    if(treat.disabled)treat.title=c.activeContractId?
+     'Finish the current deployment before treatment':
+     'Buy medical kits in Logistics to treat this operator';
+    careActions.append(treat);
+   }
    if(!c.squadIds.includes(p.id)&&
     c.operators.filter(o=>o.status==='available'||o.status==='reserve').length>4)
     careActions.append(button('RETIRE',()=>this.handlers.retire(p.id)));
@@ -847,6 +893,26 @@ export class CampaignScreen{
   const sections={
    overview,personnel,contracts:jobs,logistics,chronicle
   } as const;
+  if(this.preparationContractId){
+   const pending=c.contracts.find(k=>k.id===this.preparationContractId&&
+    k.status==='available'&&k.deadline>=c.day);
+   if(pending){
+    for(const section of [personnel,logistics]){
+     const returnBanner=node('div','campaign-preparation-return');
+     const returnButton=button(
+      'RETURN TO CASE · '+campaignIncidentView(c,pending).title,
+      ()=>{
+       this.preparationContractId=null;
+       this.homeTab='contracts';
+       this.home(c);
+       this.root.scrollTop=0;
+       this.reviewContract(pending,c);
+      },'campaign-primary');
+     returnBanner.append(returnButton);
+     section.insertBefore(returnBanner,section.firstChild);
+    }
+   }else this.preparationContractId=null;
+  }
   const nav=node('nav','campaign-tabs');
   nav.setAttribute('role','tablist');
   nav.setAttribute('aria-label','Operations Room sections');
@@ -1479,6 +1545,20 @@ export class CampaignScreen{
    const warnings=node('div','campaign-preflight-warning');
    warnings.append(node('strong','','READINESS ADVISORIES'));
    for(const warning of cautions)warnings.append(node('p','',warning));
+   const repairActions=node('div','campaign-preflight-fix-actions');
+   const needsSquad=assigned.length<4||assigned.some(p=>p.recoveryDays>0);
+   const needsSupply=campaign.supplies.ammo<60||campaign.supplies.medical===0;
+   const fix=(tab:'personnel'|'logistics')=>{
+    dismiss();
+    this.preparationContractId=contract.id;
+    this.homeTab=tab;
+    this.home(campaign);
+    // A targeted prep shortcut should land at the start of its new section.
+    this.root.scrollTop=0;
+   };
+   if(needsSquad)repairActions.append(button('REVIEW SQUAD',()=>fix('personnel')));
+   if(needsSupply)repairActions.append(button('CHECK LOGISTICS',()=>fix('logistics')));
+   warnings.append(repairActions);
    panel.append(warnings);
   }
   const actions=node('div','campaign-preflight-actions');

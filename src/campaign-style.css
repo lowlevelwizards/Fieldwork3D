@@ -786,3 +786,45 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   padding:10px 2px;min-height:46px;font-size:clamp(11px,2.8vw,13px);
   text-align:center;white-space:normal;line-height:1.2}
 }
+
+/* R8.1: readable squad assignment board and truthful deployment eligibility. */
+.campaign-assignment{padding:13px;margin:12px 0 18px}
+.campaign-assignment-heading{display:flex;align-items:center;
+ justify-content:space-between;gap:12px;margin-bottom:12px}
+.campaign-assignment-heading h2{font:800 17px/1.2 var(--fw-font-display);margin:0}
+.campaign-assignment-heading p{margin:4px 0 0;color:var(--fw-text-muted);
+ font:500 12px/1.4 var(--fw-font-narrative)}
+.campaign-assignment-count{flex:none;font:700 12px var(--fw-font-menu);
+ color:var(--fw-sage);padding:6px 8px;border-radius:5px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border)}
+.campaign-assignment-slots{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.campaign-assignment-row{display:grid;grid-template-columns:minmax(0,1fr);align-content:start;
+ margin:0;padding:10px;gap:8px;border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);background:var(--fw-panel-deep)}
+.campaign-assignment-slot-label{display:flex;justify-content:space-between;align-items:center;gap:5px}
+.campaign-assignment-slot-label strong{font:700 12px var(--fw-font-menu);color:var(--fw-text)}
+.campaign-assignment-slot-label small{font:650 10px/1.2 var(--fw-font-menu);
+ text-align:right;color:var(--fw-text-muted)}
+.campaign-assignment-slot-label small.is-ready{color:#bddab9}
+.campaign-assignment-slot-label small.is-recovering{color:#eac99e}
+.campaign-assignment-row .campaign-select{max-width:none;width:100%;
+ box-sizing:border-box;min-width:0;min-height:44px;font-size:14px}
+@media(max-width:520px){.campaign-assignment-slots{grid-template-columns:minmax(0,1fr)}
+ .campaign-assignment-slot-label{min-width:0}}
+@media(max-width:360px){.campaign-assignment-heading{align-items:start;flex-direction:column}}
+
+/* R9.1: readiness advisories become directed, non-destructive prep shortcuts. */
+.campaign-preflight-fix-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;margin-top:10px}
+.campaign-preflight-fix-actions button{box-sizing:border-box;min-width:0;
+ min-height:43px;margin:0;padding:8px 9px;border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);background:var(--fw-panel-raised);
+ color:var(--fw-text);font:650 12px/1.3 var(--fw-font-menu);cursor:pointer}
+.campaign-preflight-fix-actions button:hover{background:var(--fw-panel)}
+@media(max-width:400px){.campaign-preflight-fix-actions{grid-template-columns:minmax(0,1fr)}}
+
+/* R9.2: keep the selected case as a return point during squad/stock preparation. */
+.campaign-preparation-return{margin:0 0 12px;padding:0}
+.campaign-shell .campaign-preparation-return button{width:100%;min-height:46px;
+ margin:0;text-align:left;padding:10px 13px;line-height:1.25;
+ overflow-wrap:anywhere}
