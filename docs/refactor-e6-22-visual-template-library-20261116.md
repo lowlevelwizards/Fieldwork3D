@@ -47,3 +47,11 @@ and ultimately long-lived precompiled asset payloads.
 - CI checks actual geometry cache cold/warm reuse and disposal, two
   fixed-seed live screenshot/draw-count parity against default rendering.
 - Node timing is diagnostic only, not browser/mobile FPS.
+
+## Bounded cross-map retention
+The template library defaults to 128 cached versioned recipes. On overflow,
+least-recently-used idle entries are disposed first. If all are in use,
+the oldest live recipe is retired and its buffers remain allocated until
+its final visual instance releases its lease. Cache hit updates recency.
+The budget prevents indefinite retention across randomized map seeds while
+preserving in-round visuals and minimizing repeated authoring work.

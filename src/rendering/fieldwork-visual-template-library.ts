@@ -57,7 +57,11 @@ function assertRigidPrototype(root:THREE.Group){
 export class StaticVisualTemplateLibrary{
  private readonly templates=new Map<string,Entry>();
  private readonly retired=new Set<Entry>();
- private builds=0;private hits=0;
+ private builds=0;private hits=0;private evictions=0;
+ constructor(private readonly maxTemplates=128){
+  if(!Number.isInteger(maxTemplates)||maxTemplates<1)
+   throw Error('Visual template budget must be a positive integer');
+ }
  /** Call with a versioned art recipe key: "window:v3:width=...:style=..." */
  acquire(key:string,build:()=>StaticVisualBuild,
   options:StaticVisualTemplateOptions={}):StaticVisualLease{
@@ -87,8 +91,20 @@ export class StaticVisualTemplateLibrary{
    entry={root:recipe.root,owned,leases:0,
     compiled:compile,retired:false};
    this.templates.set(key,entry);this.builds++;
-  }else this.hits++;
+  }else{
+   this.hits++;
+   // Map insertion order is the LRU order, not geometry creation order.
+   this.templates.delete(key);this.templates.set(key,entry);
+  }
   entry.leases++;
+  // Prefer evicting an idle recipe; if all entries are live, retire the
+  // oldest and defer GPU disposal until its last instance releases.
+  while(this.templates.size>this.maxTemplates){
+   const idle=[...this.templates.entries()].find(([,item])=>
+    item.leases===0);
+   const evict=idle?.[0]??this.templates.keys().next().value!;
+   this.invalidate(evict);this.evictions++;
+  }
   const instance=entry.root.clone(true);
   if(options.resolveMaterial)instance.traverse(node=>{
    if(!(node instanceof THREE.Mesh))return;
@@ -137,12 +153,14 @@ export class StaticVisualTemplateLibrary{
   return geometries;
  }
  stats():Readonly<{templates:number;retired:number;
-   builds:number;hits:number;leases:number;geometries:number}>{
+   builds:number;hits:number;evictions:number;leases:number;
+   geometries:number;maxTemplates:number}>{
   let leases=0;
   for(const item of this.templates.values())leases+=item.leases;
   for(const item of this.retired)leases+=item.leases;
   return {templates:this.templates.size,retired:this.retired.size,
-   builds:this.builds,hits:this.hits,leases,
-   geometries:this.sharedGeometries().size};
+   builds:this.builds,hits:this.hits,evictions:this.evictions,
+   leases,geometries:this.sharedGeometries().size,
+   maxTemplates:this.maxTemplates};
  }
 }
