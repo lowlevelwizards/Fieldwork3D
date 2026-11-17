@@ -1,5 +1,6 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
+import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
 import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
 import {mayChooseCampaignContent,dispatchPilotUnclassifiedEditingEnabled}
  from './dispatch-campaign-eligibility.ts';
@@ -59,6 +60,8 @@ export type Contract={
  region:string;title:string;description:string;risk:1|2|3;
  intel:'floor-plan'|'unknown'|'scouted';reward:number;deadline:number;
  status:'available'|'accepted'|'completed'|'failed'|'expired';followUpOf?:string;
+ /** D8: optional authored incident; missing on all pre-D8 contracts. */
+ dispatchCase?:DispatchCaseV1;
 };
 export type CampaignReport={
  id:string;contractId:string;day:number;outcome:'success'|'failure';
@@ -201,7 +204,10 @@ export function readCampaign(raw:string|null):CampaignState|null{
   }
   for(const contract of c.contracts){
    if(!contract||typeof contract.id!=='string'||!Number.isInteger(contract.seed)||
-     !CONTRACTS.some(k=>k.kind===contract.kind))return null;
+     !CONTRACTS.some(k=>k.kind===contract.kind)||
+     (contract.dispatchCase!==undefined&&
+       (parsedRules?.template!=='dispatch'||
+        !validDispatchCase(contract.dispatchCase,contract.kind))))return null;
   }
   const fallback=c.operators.slice(0,4).map(o=>o.id);
   const chosen=Array.isArray(c.squadIds)&&c.squadIds.length===4&&
