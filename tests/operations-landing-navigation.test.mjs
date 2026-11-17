@@ -434,7 +434,8 @@ test('C9 checks restored full roster, lazy history, low stock and active mission
   'empty stock alerts missing','saved personnel milestones inaccessible',
   'active mission resume action missing',
   'squad slots editable during an active deployment',
-  'accepting a contract altered past reports'
+  'accepting a contract altered recent operation history',
+  'accepting a contract altered older operation access'
  ])assert.ok(script.includes(marker),'Missing C9 acceptance: '+marker);
 });
 
