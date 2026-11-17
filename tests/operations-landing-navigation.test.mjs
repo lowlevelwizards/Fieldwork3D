@@ -131,6 +131,9 @@ test('Cases board orders displayed contracts by campaign day and discloses its l
  assert.match(cases,/node\('p','campaign-contract-board-summary'/);
  assert.match(cases,/node\('div','campaign-contract-board'\)/);
  assert.match(cases,/for\(const contract of visible\)board\.append\(this\.contract\(contract,c\)\)/);
+ assert.match(cases,/if\(sorted\.length>visible\.length\)/);
+ assert.match(cases,/node\('details','campaign-contract-more'\)/);
+ assert.match(cases,/for\(const contract of sorted\.slice\(visible\.length\)\)/);
  assert.match(cases,/button\('CONTINUE DEPLOYMENT'/);
 });
 
@@ -141,4 +144,6 @@ test('Cases board stays single-column on phones and uses desktop columns when wi
  assert.match(cases,/@media\(min-width:900px\)/);
  assert.match(cases,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
  assert.match(cases,/\.campaign-contract:first-child\{grid-column:1\/-1\}/);
+ assert.match(cases,/\.campaign-contract-more>summary\{display:flex/);
+ assert.match(cases,/\.campaign-contract-more>\.campaign-contract-board\{margin-top:13px\}/);
 });
