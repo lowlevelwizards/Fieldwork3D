@@ -62,6 +62,7 @@ export type MissionScreensElements={
  variant:HTMLButtonElement;
  uiHelp:HTMLButtonElement;
  briefingClose:HTMLButtonElement;
+ briefingQuickPlaySetup:HTMLButtonElement;
  cameraFit:HTMLButtonElement;
  view2d:HTMLButtonElement;
  viewTop:HTMLButtonElement;
@@ -285,6 +286,7 @@ function showMissionBriefing(){
   config.refreshHud();
   collapseTacticalSheets('briefing');
   ui.briefingPanel.hidden=false;
+  ui.briefingQuickPlaySetup.hidden=config.getMode()!=='quick';
   ui.briefingToggle.setAttribute('aria-expanded','true');
   tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
   notifyPresentation();

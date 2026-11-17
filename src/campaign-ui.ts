@@ -266,6 +266,9 @@ export class CampaignScreen{
    creationLauncher=create;choices.append(create);
   }
   const quick=option('QUICK PLAY','Create a standalone operation',this.handlers.quickPlay);
+  // Preserve the canonical control name for screen readers and browser tools.
+  // Its visible subtitle still explains the action in the layout.
+  quick.setAttribute('aria-label','QUICK PLAY');
   quick.classList.add('campaign-landing-card','campaign-landing-quick');
   choices.append(quick);
   const training=option('TRAINING','Killhouse · Range · Tactical trials',

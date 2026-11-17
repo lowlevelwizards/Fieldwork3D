@@ -8,10 +8,13 @@ const landing=read('src/campaign-ui.ts');
 const loader=read('src/breach-quickplay-controller.ts');
 const creator=read('src/ui/quick-play-configurator.ts');
 const screens=read('src/ui/breach-mission-screens.ts');
+const hud=read('src/ui/tactical-hud-controller.ts');
+const runtime=read('src/breach-runtime-loop.ts');
 const html=read('index.html');
 
 test('primary Quick Play entry opens the creator, not an immediate worker job',()=>{
- assert.match(landing,/button\('QUICK PLAY',this\.handlers\.quickPlay/);
+ assert.match(landing,/option\('QUICK PLAY',[\s\S]*?this\.handlers\.quickPlay/);
+ assert.match(landing,/quick\.setAttribute\('aria-label','QUICK PLAY'\)/);
  assert.doesNotMatch(landing,/CUSTOMIZE QUICK PLAY/);
  assert.match(flow,/quickPlay:\(\)=>\{void config\.launchQuickPlay\(\);\}/);
  assert.match(main,/const launchQuickPlay=\(\)=>quickPlayController\.customize\(\)/);
@@ -21,11 +24,11 @@ test('primary Quick Play entry opens the creator, not an immediate worker job',(
 
 test('in-mission creator is a reversible overlay; NEXT and NEW SITE use it',()=>{
  assert.match(html,/id="quickPlaySetup"[^>]*>MISSION SETUP/);
- assert.match(main,/ui\.quickPlaySetup\.hidden=appFlow.mode!=='quick'\|\|replaying/);
+ assert.match(hud,/ui\.quickPlaySetup\.hidden=mode!=='quick'\|\|replaying/);
  assert.match(main,/ui\.quickPlaySetup\.addEventListener\('click',returnToQuickPlayGenerator\)/);
  assert.match(main,/function returnToQuickPlayGenerator\(\)\{[\s\S]*?closeMissionSettings\(false\);[\s\S]*?quickPlayController\.customize\(\);/);
- assert.match(main,/if\(appFlow.mode==='quick'\)\{returnToQuickPlayGenerator\(\);return;\}/);
- assert.match(main,/ui\.next\.addEventListener\('click',[\s\S]*?if\(appFlow.mode==='quick'\)returnToQuickPlayGenerator\(\)/);
+ assert.match(screens,/if\(config\.getMode\(\)==='quick'\)\{port\.returnToQuickPlayGenerator\(\);return;\}/);
+ assert.match(screens,/ui\.next\.addEventListener\('click',[\s\S]*?if\(config\.getMode\(\)==='quick'\)port\.returnToQuickPlayGenerator\(\)/);
  assert.match(screens,/ui\.variant\.textContent=quickPlay\?'MISSION SETUP':'NEW SITE'/);
  assert.match(screens,/ui\.siteSize\.hidden=quickPlay/);
 });
@@ -34,8 +37,9 @@ test('live mission simulation and game shortcuts stop under the overlay',()=>{
  assert.match(creator,/get isOpen\(\)\{return !backdrop\.hidden;\}/);
  assert.match(loader,/get configuring\(\)\{return configurator\.isOpen;\}/);
  assert.match(main,/isQuickPlayBusy:\(\)=>quickPlayController\.busy\|\|quickPlayController\.configuring/);
- assert.match(main,/quickPlayController\.configuring\)return;/);
- assert.match(creator,/function hide\(\)\{[\s\S]*?backdrop\.hidden=true;/);
+ assert.match(runtime,/if\(input\.quickPlayBusy\|\|/);
+ assert.match(runtime,/quickPlayBusy:config\.isQuickPlayBusy\(\)/);
+ assert.match(creator,/function hide\(returnFocus=true\)\{[\s\S]*?backdrop\.hidden=true;/);
  // Existing session replacement still happens only after the generator worker
  // reports completion, never as part of opening the settings dialog.
  assert.ok(loader.indexOf("const generated=await new Promise")<
@@ -47,5 +51,31 @@ test('cancel or startup failure returns to the creator without a menu reset',()=
  assert.match(loader,/quickPlayPanel\.hidden=true;\s*\/\/ Cancel returns[\s\S]*?configurator\.open\(\)/);
  assert.match(loader,/quickPlayPanel\.dataset\.state==='error'\)\{\s*quickPlayPanel\.hidden=true;\s*configurator\.open\(\)/);
  assert.match(loader,/Stopped · return to scenario generator/);
- assert.match(main,/if\(appFlow.mode==='quick'\)returnToQuickPlayGenerator\(\);[\s\S]*?else reset\(\);/);
+ assert.match(screens,/if\(config\.getMode\(\)==='quick'\)port\.returnToQuickPlayGenerator\(\);[\s\S]*?else port\.resetMission\(\)/);
+});
+
+test('Quick Play setup presents the essential choices before advanced site options',()=>{
+ assert.match(creator,/fieldGrid\.append\(incident\.group,mission\.group,size\.group\)/);
+ assert.match(creator,/ADVANCED · SITE & CONDITIONS/);
+ assert.match(creator,/advancedBody\.append\(seedGroup,conditions,buildingSection\)/);
+ assert.match(creator,/content\.append\(fieldGrid,advanced,summary,error\)/);
+ assert.match(creator,/if\(!count\|\|!validSeed\|\|!incidentBuildings\)advanced\.open=true/);
+ assert.match(creator,/onGenerate\(recipe\)/);
+});
+
+test('UI.5B–C: briefing links back to preserved setup and prepared briefing precedes mask release',()=>{
+ const uiElements=read('src/ui/breach-ui-elements.ts');
+ const css=read('src/breach-style.css');
+ assert.match(html,/id="briefingQuickPlaySetup" type="button" hidden>CHANGE SETUP/);
+ assert.match(uiElements,/briefingQuickPlaySetup:el<HTMLButtonElement>\('briefingQuickPlaySetup'\)/);
+ assert.match(screens,/ui\.briefingQuickPlaySetup\.hidden=config\.getMode\(\)!=='quick'/);
+ assert.match(screens,/briefingQuickPlaySetup:HTMLButtonElement/);
+ assert.match(main,/ui\.briefingQuickPlaySetup\.addEventListener\('click',returnToQuickPlayGenerator\)/);
+ assert.match(creator,/hide\(false\);options\.onGenerate\(recipe\)/);
+ assert.match(creator,/previouslyFocused\?\.isConnected/);
+ assert.match(creator,/previouslyFocused\.focus\(\{preventScroll:true\}\)/);
+ assert.match(loader,/const quickPlayRecipeText=el<HTMLElement>\('quickPlayRecipe'\)/);
+ assert.match(html,/id="quickPlayRecipe"/);
+ assert.match(css,/fw-brief-v3-actions:has\(#briefingQuickPlaySetup:not\(\[hidden\]\)\)/);
+ assert.match(loader,/config\.showBriefing\(\);\s*quickPlayPanel\.hidden=true/);
 });

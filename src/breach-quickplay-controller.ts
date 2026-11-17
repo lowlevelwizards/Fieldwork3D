@@ -89,6 +89,7 @@ let quickPlayStarted=0,quickPlayLastUpdate=0,quickPlayPercent=0;
 const quickPlayPanel=el<HTMLElement>('quickPlayProgress');
 const quickPlayBar=el<HTMLProgressElement>('quickPlayBar');
 const quickPlayPercentText=el<HTMLOutputElement>('quickPlayPercent');
+const quickPlayRecipeText=el<HTMLElement>('quickPlayRecipe');
 const quickPlayStageText=el<HTMLElement>('quickPlayStage');
 const quickPlayDetailText=el<HTMLElement>('quickPlayDetail');
 const quickPlayClockText=el<HTMLElement>('quickPlayClock');
@@ -97,7 +98,22 @@ function quickPlayCheckpoint(value:number,stageName:string,detail:string){
   quickPlayPercent=Math.max(quickPlayPercent,Math.min(100,Math.round(value)));
   quickPlayBar.value=quickPlayPercent;
   quickPlayPercentText.textContent=quickPlayPercent+'%';
-  quickPlayStageText.textContent=stageName;
+  // Player-facing states are concise; the real checkpoint sequence is unchanged.
+  const friendlyStage:Record<string,string>={
+   'Starting tactical sandbox':'Preparing your operation',
+   'Starting architecture worker':'Generating the site',
+   'Preparing tactical session':'Preparing the mission',
+   'Building 3D environment':'Building the environment',
+   'Preparing operator models':'Preparing your squad',
+   'Preparing tactical controls':'Preparing controls',
+   'Preparing first-frame visibility':'Preparing the first view',
+   'Preparing GPU programs':'Preparing the scene',
+   'Rendering first 3D frame':'Rendering the scene',
+   'Revealing tactical scene':'Opening the mission',
+   'TACTICAL SANDBOX READY':'Mission ready',
+   'TACTICAL SANDBOX FAILED':'Mission could not load'
+  };
+  quickPlayStageText.textContent=friendlyStage[stageName]??stageName;
   quickPlayDetailText.textContent=detail;
   quickPlayLastUpdate=performance.now();
 }
@@ -150,6 +166,13 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
   liveExecutionStarted=false;coldRuntimeEvidence=null;
   quickPlayBusy=true;quickPlayPercent=0;
   quickPlayPanel.hidden=false;quickPlayPanel.dataset.state='running';
+  // Describe only player-selected setup, never unscouted threats or generated rooms.
+  const chosenIncident=settings.incident==='random'?'Random incident':
+   (settings.incident.replaceAll('-',' '));
+  quickPlayRecipeText.textContent=chosenIncident+' · '+
+   (settings.mission==='random'?'Random objective':settings.mission)+
+   ' · '+(settings.size==='random'?'Random size':settings.size)+
+   ' · '+(settings.seed===null?'Fresh seed':'Seed '+settings.seed);
   quickPlayCancelButton.hidden=false;quickPlayCancelButton.textContent='CANCEL';
   quickPlayStarted=performance.now();quickPlayLastUpdate=quickPlayStarted;
   quickPlayCheckpoint(0,'Starting tactical sandbox',
@@ -370,8 +393,10 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
       if(id===quickPlayRun&&!quickPlayBusy&&
          quickPlayPanel.dataset.state==='ready')
         {
-          quickPlayPanel.hidden=true;
+          // Mount the briefing *under* the loading mask first. Hiding the
+          // mask afterward prevents a one-frame flash of the tactical scene.
           config.showBriefing();
+          quickPlayPanel.hidden=true;
         }
     }));
   }catch(error){
@@ -380,7 +405,7 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     config.setMode(priorMode);quickPlayBusy=false;finishQuickPlayClock();
     quickPlayPanel.dataset.state='error';quickPlayCancelButton.hidden=false;
     quickPlayCancelButton.textContent='BACK';
-    quickPlayStageText.textContent='TACTICAL SANDBOX FAILED';
+    quickPlayStageText.textContent='MISSION COULD NOT LOAD';
     quickPlayDetailText.textContent=error instanceof Error?error.message:String(error);
     quickPlayClockText.textContent='Stopped · return to scenario generator';
     console.error('[Quick Play startup]',error);
