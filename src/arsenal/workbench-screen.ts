@@ -509,7 +509,8 @@ export function openArsenalWorkbench(
   statsComparison.textContent=previous?'VS PREVIOUS BUILD':'CURRENT BUILD';
   if(!current){statsBody.textContent='Handling data unavailable for this build.';return;}
   const deltas=arsenalStatDeltas(current,previous);
-  const oldScores=new Map(previous?.map(item=>[item.id,item.score]));
+  const oldScores=new Map<string,number>(previous?.map(item=>
+   [item.id,item.score] as const)??[]);
   const nodes=document.createDocumentFragment();
   for(const stat of current){
    const row=document.createElement('div');row.className='arsenal-wb-stat';
