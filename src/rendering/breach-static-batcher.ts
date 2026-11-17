@@ -13,6 +13,39 @@ type Candidate={owner:THREE.Object3D;
 type Batch={mesh:THREE.InstancedMesh;active:number;total:number};
 type Instance={batch:Batch;index:number;matrix:THREE.Matrix4;visible:boolean};
 const hiddenMatrix=new THREE.Matrix4().makeScale(0,0,0);
+/** E6.25: site decoration box shapes must share geometry deterministically.
+ * The renderer's global box cache is bounded (384 unique shapes); caching
+ * furniture changes when that budget fills. Wall signs/switches must not
+ * gain or lose static instancing merely because furniture was compiled.
+ * Only exact box-factory dimensions/segment layouts are canonicalized.
+ * Uncached, site-owned duplicates can be released immediately; global
+ * geometry remains owned by the renderer, and the chosen site-local
+ * leader remains in the site graph until scene teardown.
+ */
+export function stabilizeStaticDetailBoxGeometries(
+ details:ReadonlyArray<{obj:THREE.Object3D}>,
+ globallyShared:ReadonlySet<THREE.BufferGeometry>
+):ReadonlySet<THREE.BufferGeometry>{
+ const byShape=new Map<string,THREE.BoxGeometry>();
+ const eligible=new Set<THREE.BufferGeometry>();
+ for(const detail of details)for(const child of detail.obj.children){
+  if(!(child instanceof THREE.Mesh)||child instanceof THREE.InstancedMesh||
+     !(child.geometry instanceof THREE.BoxGeometry))continue;
+  const source=child.geometry,p=source.parameters;
+  const key=[p.width,p.height,p.depth,p.widthSegments,
+   p.heightSegments,p.depthSegments].join(':');
+  const reusable=byShape.get(key);
+  if(reusable&&source!==reusable){
+   child.geometry=reusable;
+   // An uncached box was exclusively owned by this decoration node.
+   // Never dispose a box referenced by the renderer's global cache.
+   if(!globallyShared.has(source))source.dispose();
+  }else if(!reusable)byShape.set(key,source);
+  eligible.add(child.geometry);
+ }
+ return eligible;
+}
+
 export class StaticSceneBatches{
   private readonly eligible:Candidate[]=[];
   private readonly owners=new Map<THREE.Object3D,Instance[]>();

@@ -692,8 +692,10 @@ export class TacticalScene3D{
   private readonly useArchitectureTemplates=new URLSearchParams(location.search)
     .get('e622Template')==='1';
   // Independent opt-in; rigid cover geometry is immutable, damage/wear is not.
-  private readonly includeServiceFixtureTemplates=new URLSearchParams(location.search)
-    .get('e624Service')==='1';
+  private readonly includeCharacterFixtureTemplates=new URLSearchParams(location.search)
+    .get('e625Character')==='1';
+  private readonly includeServiceFixtureTemplates=this.includeCharacterFixtureTemplates||
+    new URLSearchParams(location.search).get('e624Service')==='1';
   private readonly useFixtureTemplates=this.includeServiceFixtureTemplates||
     new URLSearchParams(location.search).get('e623Fixture')==='1';
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
@@ -794,6 +796,9 @@ export class TacticalScene3D{
   private pixelTexturesEnabled=true;
   private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
+  // E6.25: site-only decoration leaders detached by static instancing.
+  // Keep them out of the persistent renderer box cache and retire at swap.
+  private siteDetailGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly surfaceWearMaterials=new Map<string,THREE.MeshStandardMaterial>();
@@ -1163,7 +1168,13 @@ export class TacticalScene3D{
     releaseSiteSceneObjects(this.root,
       new Set([this.fogUnknown,this.fogExplored]),
       new Set([...this.sharedBoxGeometries,
+       ...this.siteDetailGeometries,
        ...this.architecturalVisualTemplates.sharedGeometries()]));
+    // Some site-only leaders were removed from their original owners by
+    // instancing; they are not necessarily reachable in the scene graph.
+    // Release exactly once after the outgoing graph and batches are gone.
+    for(const geometry of this.siteDetailGeometries)geometry.dispose();
+    this.siteDetailGeometries.clear();
     for(const lease of this.siteVisualLeases)lease.release();
     this.siteVisualLeases.length=0;
     for(const material of this.wallMaterials)material.dispose();
@@ -1223,11 +1234,13 @@ export class TacticalScene3D{
       staticBatches:scene.staticBatches,
       repeatedFixtures:scene.repeatedFixtures,
       sharedBoxGeometries:scene.sharedBoxGeometries,
+      siteDetailGeometries:scene.siteDetailGeometries,
       visualTemplates:scene.useArchitectureTemplates?
         scene.architecturalVisualTemplates:undefined,
       fixtureTemplates:scene.useFixtureTemplates?
         scene.architecturalVisualTemplates:undefined,
       includeServiceFixtureTemplates:scene.includeServiceFixtureTemplates,
+      includeCharacterFixtureTemplates:scene.includeCharacterFixtureTemplates,
       registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
@@ -1273,7 +1286,9 @@ export class TacticalScene3D{
       elapsedMs:performance.now()-started,
       cache:this.architecturalVisualTemplates.stats(),
       repeated:this.repeatedFixtures.stats,
-      coverCount:this.coverGroups.size
+      coverCount:this.coverGroups.size,
+      fixtureInventory:this.root.userData.fieldworkE625FixtureInventory??[],
+      batchMembership:this.root.userData.fieldworkE625BatchMembership??[]
     }});
   }
   resize(w:number,h:number){

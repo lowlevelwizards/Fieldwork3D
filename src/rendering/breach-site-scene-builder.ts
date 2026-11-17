@@ -13,7 +13,8 @@ import {buildArchitecturalOpenings,buildSiteDoors,buildSiteWindows,doorSweepArc,
 import {buildSiteExterior} from './breach-site-exterior-builder.ts';
 import {buildSiteMicroDebrisMeshes} from './breach-site-micro-debris.ts';
 import {SiteMaterialLifetime} from './site-material-lifetime.ts';
-import {StaticSceneBatches} from './breach-static-batcher.ts';
+import {StaticSceneBatches,stabilizeStaticDetailBoxGeometries}
+ from './breach-static-batcher.ts';
 import {type PixelSurface} from './pixel-materials.ts';
 import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from '../worldgen/pixel-surface-selection.ts';
 import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '../worldgen/building-palettes.ts';
@@ -37,8 +38,8 @@ import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
-import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual}
- from './breach-fixture-template.ts';
+import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual,
+ fixtureTemplateMissesResolvedBatch} from './breach-fixture-template.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
 import {compileRigidVisualOwner} from './fieldwork-model-compiler.ts';
 import {StaticVisualTemplateLibrary,type StaticVisualLease}
@@ -62,9 +63,12 @@ export type SiteSceneBuildPort={
  staticBatches:StaticSceneBatches;
  repeatedFixtures?:RepeatedFixtureBatches;
  sharedBoxGeometries:Set<THREE.BufferGeometry>;
+ /** Site-owned immutable detail leaders, retired on the next site swap. */
+ siteDetailGeometries:Set<THREE.BufferGeometry>;
  visualTemplates?:StaticVisualTemplateLibrary;
  fixtureTemplates?:StaticVisualTemplateLibrary;
  includeServiceFixtureTemplates?:boolean;
+ includeCharacterFixtureTemplates?:boolean;
  registerVisualLease?:(lease:StaticVisualLease)=>void;
  siteMaterials:SiteMaterialLifetime<THREE.Material>;
  mats:THREE.Material[];
@@ -97,9 +101,19 @@ export type SiteSceneBuildPort={
 /** Batch only site-static decoration and door frames, not interactive parts. */
 export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     host.root.updateWorldMatrix(true,true);
+    // Fix the decorative BoxGeometry identity independently of the global
+    // 384-entry cache budget. E6.25 character caching must not change
+    // whether wall signs/switches can use existing static instancing.
+    const stableDetailGeometries=stabilizeStaticDetailBoxGeometries(
+      host.observedDetails,host.sharedBoxGeometries);
+    for(const geometry of stableDetailGeometries)
+      if(!host.sharedBoxGeometries.has(geometry))
+        host.siteDetailGeometries.add(geometry);
+    const stableStaticGeometries=new Set([
+      ...host.sharedBoxGeometries,...stableDetailGeometries]);
     for(const detail of host.observedDetails)
       host.staticBatches.collect(detail.obj,detail.obj,
-        host.sharedBoxGeometries);
+        stableStaticGeometries);
     for(const door of host.doors.values())
       host.staticBatches.collect(door.root,door.frame,
         host.sharedBoxGeometries,new Set([door.threshold,door.wedge]));
@@ -502,6 +516,14 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     };
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();host.root.add(group);
+      // E6.25-only provenance: distinguish every fixture's actual draw
+      // after all later compilation/instancing. Tag parent, never children;
+      // that preserves the existing batching eligibility contract.
+      if(typeof location!=='undefined'&&
+         new URLSearchParams(location.search).get('coldBench')==='1'&&
+         new URLSearchParams(location.search).has('e625Character'))
+        group.userData.fieldworkDrawFamily=
+          'e625-cover-'+i+':'+(c.fixture??'crate');
       host.coverGroups.set(i,group);
       host.intelSurfaces.push({obj:group,kind:'cover',index:i});
       // The aperture renderer already creates the sill/parapet. Its cover
@@ -532,10 +554,18 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         olive:host.solid(age(finish.fabric,'fabric',variant),.9,'fabric'),
         metal:host.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel')
       };
-      const templateLease=host.fixtureTemplates&&host.registerVisualLease?
+      let templateLease=host.fixtureTemplates&&host.registerVisualLease?
         acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
-          host.includeServiceFixtureTemplates===true):
+          host.includeServiceFixtureTemplates===true,
+          host.includeCharacterFixtureTemplates===true):
         null;
+      // Effective site finish quantization can alias prototype slots that
+      // were distinct before materials resolved. Retain the legacy batching
+      // draw count on those instances, while caching unaffected recipes.
+      if(templateLease&&fixtureTemplateMissesResolvedBatch(templateLease.root)){
+        templateLease.release();
+        templateLease=null;
+      }
       if(templateLease){
         // Direct children preserve the existing per-cover instancing and
         // disclosure ownership. The lease only manages shared GPU buffers.
@@ -559,6 +589,27 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         .85,'industrial-steel');
       // Batch only opaque, rigid, site-lifetime fixture pieces.
       if(!templateLease)consolidateStaticFixtureParts(intact);
+      // Browser-only evidence: source versus cached fixture submissions BEFORE
+      // cross-cover instancing. Do not add a profiler walk in normal gameplay.
+      if(typeof location!=='undefined'&&
+         new URLSearchParams(location.search).get('coldBench')==='1'){
+        const inventory=(host.root.userData.fieldworkE625FixtureInventory??=[]) as Array<{
+          index:number;fixture:string;template:boolean;
+            meshes:number;opaque:number;shadow:number;parts:string}>;
+        const meshes:THREE.Mesh[]=[];
+        intact.traverse(node=>{
+          if(node instanceof THREE.Mesh)meshes.push(node);
+        });
+        inventory.push({index:i,fixture:c.fixture??'crate',
+          template:templateLease!==null,
+          meshes:meshes.length,
+          opaque:meshes.filter(m=>!Array.isArray(m.material)&&
+            !m.material.transparent).length,
+          shadow:meshes.filter(m=>m.castShadow).length,
+          parts:meshes.map(m=>[m.geometry.type,m.castShadow?1:0,
+            m.receiveShadow?1:0,
+            Array.isArray(m.material)?'multi':m.material.type].join(':')).sort().join(',')});
+      }
       for(let j=0;j<3;j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
         const width=Math.max(3.2,visual.w*(j%2?.16:.20));

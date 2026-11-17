@@ -1,0 +1,57 @@
+name: E6.25 immutable character model templates
+on:
+  pull_request:
+    paths:
+      - 'src/rendering/breach-fixture-template.ts'
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/refactor-e6-25-character-fixture-template.test.mjs'
+      - 'scripts/verification/e6-25-character-model-node-bench.mjs'
+      - 'scripts/verification/e6-25-character-model-browser.mjs'
+      - '.github/workflows/refactor-e6-25-character-fixture.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: e6-25-character-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  character-models:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Character model geometry, shadow, finish and predecessor regression
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-25-character-fixture-template.test.mjs \
+            tests/refactor-e6-24-service-prop-template.test.mjs \
+            tests/refactor-e6-23-rigid-fixture-template.test.mjs \
+            tests/refactor-e6-22-visual-template-library.test.mjs \
+            tests/refactor-e6-22-template-budget.test.mjs \
+            tests/refactor-e6-22-architecture-template-integration.test.mjs
+      - name: Repeated character model authoring cold/warm diagnostic
+        run: node --experimental-strip-types scripts/verification/e6-25-character-model-node-bench.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Browser prerequisites
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 pngjs@7.0.0
+          node --check scripts/verification/e6-25-character-model-browser.mjs
+      - name: Two fixed character-heavy buildings 90-frame A/B
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-25-character-model-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-25-character-live-ab
+          path: artifacts/refactor-e6-25/character-missions/
+          if-no-files-found: ignore
+          retention-days: 14
