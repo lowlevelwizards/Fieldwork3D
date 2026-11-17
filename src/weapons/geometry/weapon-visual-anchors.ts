@@ -63,8 +63,9 @@ export function workbenchVisualAnchors(config:WeaponConfiguration,
    if(surfaces.some(s=>s.role==='optic')){
     const visual=opticVisualSeat(config,
      resolveWeaponAssembly(config).mounted.optic.mountX);
-    return {...mount,x:visual.x,y:visual.supportY+1.70,
-     z:box.max.z+.6};
+    if(visual.mount!=='unresolved')
+     return {...mount,x:visual.x,y:visual.supportY+1.70,
+      z:box.max.z+.6};
    }
   }
   if(mode==='attachments'&&mount.slot==='opticMount'){
