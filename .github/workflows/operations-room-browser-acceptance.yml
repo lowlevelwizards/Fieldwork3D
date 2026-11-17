@@ -1,0 +1,40 @@
+name: Operations Room — Responsive Browser Acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/campaign-ui.ts'
+      - 'src/campaign-style.css'
+      - 'scripts/smoke-operations-room-responsive.mjs'
+      - '.github/workflows/operations-room-browser-acceptance.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: operations-browser-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  responsive-browser:
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'ui/operations-room-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Install Playwright browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Desktop and phone main-menu / Operations acceptance
+        run: node scripts/smoke-operations-room-responsive.mjs
+      - name: Save desktop and phone screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: operations-room-desktop-phone
+          path: artifacts/operations-room/*.png
+          if-no-files-found: warn
+          retention-days: 7
