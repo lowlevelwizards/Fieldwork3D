@@ -844,8 +844,11 @@ export class CampaignScreen{
   const nextAction=accepted?
    button('CONTINUE DEPLOYMENT · '+campaignIncidentView(c,accepted).title.toUpperCase(),
     this.handlers.resumeContract,'campaign-primary'):
-   button('BROWSE CONTRACTS · '+availableContracts.length+' AVAILABLE',
-    ()=>activateTab('contracts'),'campaign-primary');
+   availableContracts.length?
+    button('BROWSE CONTRACTS · '+availableContracts.length+' AVAILABLE',
+     ()=>activateTab('contracts'),'campaign-primary'):
+    button('REVIEW SQUAD & READINESS',
+     ()=>activateTab('personnel'),'campaign-primary');
   nextAction.classList.add('campaign-overview-primary-action');
   nextCard.append(nextAction);
   overview.append(nextCard);
@@ -897,9 +900,10 @@ export class CampaignScreen{
    stat.append(node('strong','',value),node('span','',label));stats.append(stat);
   }
   overview.append(stats);
-  overview.append(node('p','campaign-note',
+  const suppliesSummary=node('p','campaign-note',
    'SUPPLIES · '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
-   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
+   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS');
+  overview.append(suppliesSummary);
   const readiness=node('div','campaign-readiness');
   readiness.append(node('h2','','DEPLOYMENT READINESS'));
   const assigned=c.operators.filter(o=>c.squadIds.includes(o.id));
@@ -941,9 +945,12 @@ export class CampaignScreen{
    }));
   }
   overview.append(shortcuts,footer);
-  // Actionable readiness and capacity precede optional department details.
-  overview.insertBefore(readiness,nextAction.nextSibling);
+  // Move top-level sections together; nextAction itself is nested in nextCard.
+  // Readiness must be visible above supporting stats and optional profile details.
+  overview.insertBefore(readiness,nextCard.nextSibling);
   overview.insertBefore(stats,readiness.nextSibling);
+  overview.insertBefore(suppliesSummary,stats.nextSibling);
+  overview.insertBefore(shortcuts,suppliesSummary.nextSibling);
   grid.append(overview,logistics);
   const sections={
    overview,personnel,contracts:jobs,logistics,chronicle

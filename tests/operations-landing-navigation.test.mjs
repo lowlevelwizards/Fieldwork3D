@@ -68,3 +68,24 @@ test('replay library retains title-menu provenance through playback',()=>{
  assert.match(library,/if\(entrySource==='library'\)\{[\s\S]*?show\(\);/);
  assert.doesNotMatch(library,/let returnToMenu=false/);
 });
+
+test('Operations first viewport keeps readiness ahead of secondary controls',()=>{
+ const ui=source('campaign-ui.ts');
+ const overview=ui.slice(ui.indexOf("const overview=node('section','campaign-section campaign-overview')"),
+  ui.indexOf('grid.append(overview,logistics)'));
+ assert.match(overview,/overview\.insertBefore\(readiness,nextCard\.nextSibling\)/);
+ assert.match(overview,/overview\.insertBefore\(stats,readiness\.nextSibling\)/);
+ assert.match(overview,/overview\.insertBefore\(suppliesSummary,stats\.nextSibling\)/);
+ assert.match(overview,/overview\.insertBefore\(shortcuts,suppliesSummary\.nextSibling\)/);
+ assert.doesNotMatch(overview,/nextAction\.nextSibling/);
+});
+
+test('Operations primary action does not send an idle squad to an empty case board',()=>{
+ const ui=source('campaign-ui.ts');
+ const overview=ui.slice(ui.indexOf("const overview=node('section','campaign-section campaign-overview')"),
+  ui.indexOf('grid.append(overview,logistics)'));
+ assert.match(overview,/this\.handlers\.resumeContract/);
+ assert.match(overview,/availableContracts\.length\?\s*button\('BROWSE CONTRACTS/);
+ assert.match(overview,/button\('REVIEW SQUAD & READINESS',\s*\(\)=>activateTab\('personnel'\)/);
+ assert.match(overview,/button\('BROWSE CONTRACTS · '/);
+});
