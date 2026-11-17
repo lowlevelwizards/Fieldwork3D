@@ -1,0 +1,34 @@
+name: E6.26 Arsenal immutable part geometry pool
+on:
+  pull_request:
+    paths:
+      - 'src/arsenal/weapon-geometry-pool.ts'
+      - 'src/arsenal/viewport.ts'
+      - 'src/arsenal/thumbnailer.ts'
+      - 'tests/refactor-e6-26-arsenal-geometry-pool.test.mjs'
+      - '.github/workflows/refactor-e6-26-arsenal-geometry-pool.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: e6-26-arsenal-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  arsenal-pool:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Actual M4 part identities, stock sockets, dedup ownership and prior stage regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-26-arsenal-geometry-pool.test.mjs \
+            tests/refactor-e6-25-character-fixture-template.test.mjs \
+            tests/refactor-e6-24-service-prop-template.test.mjs \
+            tests/refactor-e6-23-rigid-fixture-template.test.mjs
+      - name: Production TypeScript and bundle
+        run: npm run build
