@@ -7,6 +7,7 @@ on:
       - 'src/breach-3d.ts'
       - 'tests/refactor-e6-25-character-fixture-template.test.mjs'
       - 'scripts/verification/e6-25-character-model-node-bench.mjs'
+      - 'scripts/verification/e6-25-character-model-browser.mjs'
       - '.github/workflows/refactor-e6-25-character-fixture.yml'
   workflow_dispatch:
 permissions:
@@ -37,3 +38,20 @@ jobs:
         run: node --experimental-strip-types scripts/verification/e6-25-character-model-node-bench.mjs
       - name: Production typecheck and bundle
         run: npm run build
+      - name: Browser prerequisites
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 pngjs@7.0.0
+          node --check scripts/verification/e6-25-character-model-browser.mjs
+      - name: Two fixed character-heavy buildings 90-frame A/B
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-25-character-model-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-25-character-live-ab
+          path: artifacts/refactor-e6-25/character-missions/
+          if-no-files-found: ignore
+          retention-days: 14
