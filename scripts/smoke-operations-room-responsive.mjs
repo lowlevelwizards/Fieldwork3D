@@ -10,6 +10,64 @@ const server=spawn(process.execPath,[
  '--port',String(port),'--strictPort'
 ],{stdio:'ignore'});
 const check=(condition,message)=>{if(!condition)throw Error(message);};
+// C9: build reproducible acceptance data with the published domain transitions.
+// These are synthetic test operation reports, never claims about a real player's
+// campaign. Persist through the actual Dispatch save slot and reload normally.
+async function seedCareerScenario(page){
+ return page.evaluate(async()=>{
+  const domain=await import('/src/campaign-state.ts');
+  const key='fieldwork3d.dispatch-campaign.v1';
+  const raw=localStorage.getItem(key);
+  let campaign=domain.readCampaign(raw);
+  if(!campaign||campaign.rules?.template!=='dispatch')
+   throw Error('C9 requires a valid saved Dispatch campaign');
+  for(let i=0;i<10;i++){
+   const contract=campaign.contracts.find(k=>k.status==='available'&&k.deadline>=campaign.day);
+   if(!contract)throw Error('No open case for simulated operation '+i);
+   const accepted=domain.acceptContract(campaign,contract.id);
+   campaign=domain.resolveOperation(accepted,{
+    id:'c9-acceptance-'+i,contractId:contract.id,day:campaign.day,
+    outcome:'success',grade:i%2?'A':'B',elapsed:90+i*7,
+    participatingIds:[...campaign.squadIds],casualties:[],objective:true,events:[]
+   });
+   if(campaign.history.length!==i+1)
+    throw Error('Domain did not settle simulated operation '+i);
+  }
+  for(let i=0;i<4;i++){
+   const previous=campaign.operators.length;
+   campaign=domain.hireRecruit(campaign);
+   if(campaign.operators.length!==previous+1)
+    throw Error('Could not populate reserves '+i);
+  }
+  campaign={
+   ...campaign,
+   supplies:{...campaign.supplies,ammo:0,medical:0,flash:0},
+   operators:campaign.operators.map((operator,i)=>i===0?
+    {...operator,recoveryDays:3,injuries:1}:operator)
+  };
+  if(!domain.readCampaign(JSON.stringify(campaign)))
+   throw Error('Synthesized C9 campaign failed save validation');
+  localStorage.setItem(key,JSON.stringify(campaign));
+  localStorage.setItem('fieldwork3d.campaign-active-slot.v1','dispatch');
+  return {day:campaign.day,total:campaign.history.length,
+   operators:campaign.operators.length,open:campaign.contracts.filter(c=>
+    c.status==='available'&&c.deadline>=campaign.day).length};
+ });
+}
+async function acceptSavedScenario(page){
+ return page.evaluate(async()=>{
+  const domain=await import('/src/campaign-state.ts');
+  const key='fieldwork3d.dispatch-campaign.v1';
+  const campaign=domain.readCampaign(localStorage.getItem(key));
+  if(!campaign)throw Error('Saved scenario unavailable');
+  const contract=campaign.contracts.find(c=>c.status==='available'&&c.deadline>=campaign.day);
+  if(!contract)throw Error('No open contract to accept');
+  const next=domain.acceptContract(campaign,contract.id);
+  if(next.activeContractId!==contract.id)throw Error('Domain contract acceptance failed');
+  localStorage.setItem(key,JSON.stringify(next));
+  return contract.id;
+ });
+}
 async function assess(browser,{name,width,height,mobile}){
  const context=await browser.newContext({
   viewport:{width,height},deviceScaleFactor:mobile?2:1,
