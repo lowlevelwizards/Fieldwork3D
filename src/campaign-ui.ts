@@ -351,21 +351,35 @@ export class CampaignScreen{
   title.append(node('div','campaign-eyebrow','FIELDWORK / VERDIGRIS'));
   title.append(node('h1','','OPERATIONS ROOM'));
   const rules=effectiveCampaignRules(c).mission;
-  title.append(node('div','campaign-home-identity',
-   (this.currentSlot==='dispatch'?'DISPATCH · '+factionReference(currentDispatchReference(c))?.name:
-    this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
+  // Keep persistent setting and department metadata available without making
+  // players read it above every campaign action on a phone.
+  const campaignContext=node('details','campaign-context');
+  campaignContext.append(node('summary','',
+   (this.currentSlot==='dispatch'?'DISPATCH':
+    this.currentSlot==='sandbox'?'SANDBOX':'FIELD OPERATIONS')+
    ' · '+(c.name??'Original Campaign')));
+  campaignContext.append(node('p','campaign-home-identity',
+   (this.currentSlot==='dispatch'?
+    factionReference(currentDispatchReference(c))?.name??'Dispatch':
+    this.currentSlot==='sandbox'?'Sandbox Campaign':'Field Operations')));
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
-   title.append(node('div','campaign-home-identity',
+   campaignContext.append(node('p','campaign-home-identity',
     identity.preset+' · '+identity.period+' REFERENCE · '+identity.standingTier+
     ' '+identity.standing+'/100'));
   }
+  title.append(campaignContext);
   const campaignMenuNav=node('nav','campaign-home-nav');
   const menuButton=button('MENU',this.handlers.showMenu);
   menuButton.setAttribute('aria-label','Open campaign menu');
   campaignMenuNav.append(menuButton);
-  top.append(title,node('div','campaign-funds','DAY '+c.day+' · '+c.funds+' CR'),campaignMenuNav);
+  const resources=node('div','campaign-funds');
+  resources.append(node('span','campaign-day','DAY '+c.day),
+   node('span','campaign-credits',c.funds+' CR'));
+  if(isDispatchPilot(c))
+   resources.append(node('span','campaign-standing',
+    'STANDING '+(c.dispatchDepartment?.standing??50)+'/100'));
+  top.append(title,resources,campaignMenuNav);
   main.append(top);
   const grid=node('div','campaign-grid');
   const personnel=node('section','campaign-section');
