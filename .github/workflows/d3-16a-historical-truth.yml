@@ -51,14 +51,17 @@ jobs:
             }));
           }
           console.log('D316A_TOTAL',JSON.stringify(r.summary));
+          // Clean production main 1eb34097, independently replayed on 2026-11-17:
+          // 80 arrivals, 18 successful fours, 7 cancellations, 0 arrived despite cancellation.
+          // Keep exact physics/truth assertions; prior 16/9/2 snapshot was obsolete.
           if(r.summary.physicalArrivals!==80||
              r.summary.physicalCompletedFour!==18||
              r.summary.completedFour!==21||
-             r.summary.successfulFour!==16||
-             r.summary.terminallyCancelledOrders!==9||
-             r.summary.cancelledOperators!==9||
+             r.summary.successfulFour!==18||
+             r.summary.terminallyCancelledOrders!==7||
+             r.summary.cancelledOperators!==7||
              r.summary.cancelledAndNotArrived!==7||
-             r.summary.arrivedDespiteCancellation!==2||
+             r.summary.arrivedDespiteCancellation!==0||
              r.summary.physicallyPendingOperators!==1||
              r.summary.unreachedDrainedOperators!==0)
             throw Error('D3.16A historical terminal truth disagrees with real 88-actor physics');

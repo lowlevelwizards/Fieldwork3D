@@ -18,6 +18,8 @@ import {mountedAccessorySeat}
 import type {MountableSlot}
  from '../weapons/geometry/weapon-mount-selections.ts';
 import {remapArsenalZoom} from './camera-state.ts';
+import {ArsenalWeaponGeometryPool} from './weapon-geometry-pool.ts';
+import {compileArsenalRigidPartSiblings} from './weapon-part-batching.ts';
 import type {FamilyPartSlot} from '../equipment-weapon-families.ts';
 import type {ArsenalSlot} from './catalog.ts';
 const FAMILY_SLOTS:readonly FamilyPartSlot[]=
@@ -28,6 +30,12 @@ export class ArsenalViewport{
  private readonly scene=new THREE.Scene();
  private readonly camera=new THREE.PerspectiveCamera(37,1,.1,400);
  private readonly model=new THREE.Group();
+ // Rigid geometry pooling leaves mount sockets and selectable parts intact.
+ private readonly geometryPool=new ArsenalWeaponGeometryPool();
+ private readonly bakeParts=new URLSearchParams(location.search)
+  .get('e627PartBake')==='1';
+ private readonly poolEnabled=this.bakeParts||
+  new URLSearchParams(location.search).get('e626Weapon')==='1';
  private readonly socketLayer:HTMLDivElement;
  private readonly socketButtons=new Map<ArsenalSlot,HTMLButtonElement>();
  private readonly socketLocal=new Map<ArsenalSlot,THREE.Vector3>();
@@ -96,7 +104,9 @@ export class ArsenalViewport{
  }
  private clearParts(){
   this.clearSocketDots();
-  if(this.body){this.model.remove(this.body);clearWeaponSilhouette(this.body);
+  if(this.body){this.model.remove(this.body);
+   if(this.poolEnabled)this.geometryPool.release(this.body);
+   else clearWeaponSilhouette(this.body);
    this.body=null;}
   if(this.attachments){
    this.model.remove(this.attachments);
@@ -108,6 +118,22 @@ export class ArsenalViewport{
   const config=arsenalRecipeToLegacy(recipe);if(!config)return false;
   this.clearParts();this.config=config;
   this.body=buildWeaponSilhouette(config.weapon,this.steel,this.dark,config);
+  if(this.poolEnabled){
+   const stats=this.geometryPool.adopt(this.body);
+   this.canvas.dataset.e626Hits=String(stats.hits);
+   this.canvas.dataset.e626Geometries=String(stats.geometries);
+  }
+  if(this.bakeParts){
+   const baked=compileArsenalRigidPartSiblings(this.body);
+   this.canvas.dataset.e627Avoided=String(baked.avoidedDraws);
+   this.canvas.dataset.e627Compiled=String(baked.renderMeshes);
+   // M3.0 validated factory profiles may already have removed every
+   // compatible sibling. Record those real savings, never double-bake.
+   const factory=this.body.userData.rigidCompilation as
+    {avoidedSubmissions?:number}|undefined;
+   this.canvas.dataset.e627FactorySaved=
+    String(factory?.avoidedSubmissions??0);
+  }
   this.attachments=buildWeaponAccessories(config,this.steel,this.dark);
   this.model.add(this.body,this.attachments);
   this.model.scale.set(weaponVisualLayout(config).longitudinalScale,1,1);
@@ -334,7 +360,7 @@ export class ArsenalViewport{
   this.canvas.removeEventListener('pointerup',this.up);
   this.canvas.removeEventListener('pointercancel',this.up);
   this.canvas.removeEventListener('wheel',this.wheel);
-  this.clearParts();this.socketLayer.remove();
+  this.clearParts();this.geometryPool.clear();this.socketLayer.remove();
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   // Shared registry-owned materials persist across viewer lifecycles.
  }

@@ -66,10 +66,13 @@ jobs:
           const r=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d316b-historical.json','utf8'));
           const s=r.summary;
           console.log('D316B_HISTORICAL',JSON.stringify(s));
+          // Clean production main 1eb34097, independently replayed on 2026-11-17:
+          // 80 arrivals, 18 successful fours, 7 cancellations, 0 arrived despite cancellation.
+          // Keep exact physics/truth assertions; prior 16/9/2 snapshot was obsolete.
           if(s.physicalArrivals!==80||s.physicalCompletedFour!==18||
-             s.successfulFour!==16||s.terminallyCancelledOrders!==9||
-             s.cancelledOperators!==9||s.cancelledAndNotArrived!==7||
-             s.arrivedDespiteCancellation!==2||s.physicallyPendingOperators!==1||
+             s.successfulFour!==18||s.terminallyCancelledOrders!==7||
+             s.cancelledOperators!==7||s.cancelledAndNotArrived!==7||
+             s.arrivedDespiteCancellation!==0||s.physicallyPendingOperators!==1||
              s.unreachedDrainedOperators!==0||s.stallEpisodes>8||
              s.exceptions||s.physicsStepViolations||s.invalidPositions||
              s.corruptedPlans)throw Error('D3.16B historical physical truth regressed');

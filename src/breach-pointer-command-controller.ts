@@ -254,9 +254,16 @@ export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt):void{
   }
   const evacuation=port.targeting.evacMode;
   if(evacuation){
-    port.targeting.reset();
-    if(!planCasualtyTransport(port.state,port.selected,evacuation.patientId,pt,evacuation.mode))
-      port.showUiHelp('CASUALTY ROUTE BLOCKED — CHOOSE A REACHABLE DESTINATION');
+    const accepted=planCasualtyTransport(port.state,port.selected,
+      evacuation.patientId,pt,evacuation.mode);
+    if(!accepted)
+      port.rejectAt(pt,'CASUALTY ROUTE BLOCKED · CHOOSE REACHABLE DESTINATION');
+    else{
+      port.targeting.reset();
+      port.tacticalFeedback.emit('command',pt,
+        evacuation.mode==='carry'?'CARRY':'DRAG');
+      port.audio.uiClickTone('command');
+    }
     port.updateHud();return;
   }
   if(port.targeting.firePlacement){

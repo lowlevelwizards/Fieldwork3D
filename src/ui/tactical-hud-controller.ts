@@ -407,6 +407,15 @@ export function createTacticalHudController(
       node.replaceChildren(label,body);
       node.dataset.noticeKey=key;
     }
+    const locateButton=node.querySelector<HTMLButtonElement>('[data-locate-issue]');
+    if(locateButton){
+      const canEdit=phase==='planning'&&
+        notice.orderId!==null&&notice.orderId!==undefined;
+      writeDomText(locateButton,canEdit?'LOCATE ORDER':'LOCATE OPERATOR');
+      writeDomAttribute(locateButton,'aria-label',canEdit?
+        'Locate blocked waypoint for editing':
+        'Locate affected operator; pause before editing a blocked order');
+    }
     node.dataset.severity=notice.severity;
     node.classList.toggle('critical',notice.severity==='danger');
   }
@@ -783,10 +792,13 @@ port.ui.feed.addEventListener('click',event=>{
  },team(port.state));
  if(!located)return;
  port.selectUnit(located.actorId);
- port.selectedNode=located.orderId;
- port.showUiHelp(located.orderId!==null?
-  'BLOCKED ORDER SELECTED · EDIT OR REPLACE WAYPOINT':
-  'OPERATOR LOCATED · FAILED ORDER MAY ALREADY BE CANCELLED',3200);
+ const canEdit=port.state.phase==='planning';
+ port.selectedNode=canEdit?located.orderId:null;
+ port.showUiHelp(!canEdit?
+  'OPERATOR LOCATED · PAUSE BEFORE EDITING BLOCKED ORDERS':
+  located.orderId!==null?
+    'BLOCKED ORDER SELECTED · EDIT OR REPLACE WAYPOINT':
+    'OPERATOR LOCATED · FAILED ORDER MAY ALREADY BE CANCELLED',3200);
  port.updateHud();
 });
 port.ui.rook.addEventListener('click',()=>port.selectUnit('rook'));
@@ -975,13 +987,19 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         config.ui.context:config.ui.quickStates.contains(button)?
           config.ui.quickStates:null;
       if(!surface||surface.hidden||surface.dataset.owner!==config.selected)return;
+      // The current actor may be unchanged while a waypoint or door
+      // selection moves underneath an old floating-menu button.
+      const node=config.node;
+      const door=config.doorFocusId?config.focusedDoor():undefined;
+      if(surface===config.ui.context){
+        const currentScope=(door?'door:'+door.id:node?'node:'+node.id:
+          config.selectedActiveWatch?'active-watch':'here')+'/'+config.selected;
+        if(surface.dataset.scopeKey!==currentScope)return;
+      }
       const action=button.dataset.action;
       if(action)discoverAction(action,button.title);
       const a=config.actor;
       if(!a)return;
-      const beforeErrors=config.state.events.length;
-      const node=config.node;
-      const door=config.doorFocusId?config.focusedDoor():undefined;
       const result=dispatchTacticalContextCommand({
         state:config.state,selected:config.selected,actor:a,node,door,action:action??'',
         selectedActiveWatch:config.selectedActiveWatch,
@@ -995,15 +1013,31 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         if(result.dismissDoorId!==undefined)
           config.doorMenuDismissedId=result.dismissDoorId;
         if(result.invalidateFog)config.invalidateFog();
-        if(result.skipFeedback){config.updateHud();return;}
-      }else switch(action){
+        // The command API's boolean is authoritative; an event-log append
+        // is not evidence that a command failed or succeeded.
+        completeAction(door?doorCenter(door):node?.p??a.p,
+          result.outcome==='rejected'?
+            result.failureReason??'ACTION BLOCKED':null,
+          button.querySelector('.command-label')?.textContent??'',
+          isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+        config.updateHud();return;
+      }
+      switch(action){
         case 'ctxSuppress':
           targeting.armSuppress();
           feedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
           config.audio.uiClickTone('select');config.updateHud();return;
         case 'ctxFlash':
-          if(config.state.flashRemaining>0)targeting.toggleFlash();
-          break;
+          if(config.state.flashRemaining<=0){
+            completeAction(node?.p??a.p,'NO FLASH GRENADES REMAINING','FLASH',
+              isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+          }else{
+            const armed=targeting.toggleFlash();
+            feedback.emit(armed?'armed':'cancel',node?.p??a.p,
+              armed?'FLASH TARGET':'CANCELLED');
+            config.audio.uiClickTone('select');
+          }
+          config.updateHud();return;
         case 'ctxLook':
           config.armFacing('look');
           if(targeting.isFacing)feedback.emit('armed',
@@ -1011,7 +1045,12 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
           config.audio.uiClickTone('select');return;
         case 'ctxDoor':{
           const available=config.focusedDoor();
-          if(!available){config.state.events.push('NO KNOWN DOOR IN REACH');break;}
+          if(!available){
+            config.state.events.push('NO KNOWN DOOR IN REACH');
+            completeAction(node?.p??a.p,'NO KNOWN DOOR IN REACH','DOOR',
+              isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+            config.updateHud();return;
+          }
           config.doorFocusId=available.id;config.doorMenuDismissedId=null;
           config.audio.uiClickTone('select');config.updateHud();return;
         }
@@ -1026,17 +1065,21 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
           config.showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
           config.audio.uiClickTone('select');config.updateHud();return;
         case 'ctxDoorFlash':
-          if(!door){config.state.events.push('SELECT A DOOR FIRST');break;}
-          targeting.armDoorFlash(door.id);
-          config.doorFocusId=null;config.doorMenuDismissedId=door.id;break;
+          if(!door){
+            config.state.events.push('SELECT A DOOR FIRST');
+            completeAction(a.p,'SELECT A DOOR FIRST','FLASH',
+              isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+          }else{
+            targeting.armDoorFlash(door.id);
+            feedback.emit('armed',doorCenter(door),'FLASH THROUGH DOOR');
+            config.doorFocusId=null;config.doorMenuDismissedId=door.id;
+            config.audio.uiClickTone('select');
+          }
+          config.updateHud();return;
+        default:
+          // Unrecognized actions are not confirmation-worthy commands.
+          return;
       }
-      const failed=config.state.events.length>beforeErrors;
-      completeAction(
-        door?doorCenter(door):node?.p??a.p,
-        failed?config.state.events.at(-1)??'ACTION BLOCKED':null,
-        button.querySelector('.command-label')?.textContent??'',
-        isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
-      config.updateHud();
     };
     config.ui.context.addEventListener('click',handleContextAction);
     config.ui.quickStates.addEventListener('click',handleContextAction);
