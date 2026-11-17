@@ -1,0 +1,55 @@
+name: E6.23 opt-in rigid fixture model templates
+on:
+  pull_request:
+    paths:
+      - 'src/rendering/breach-fixture-template.ts'
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/breach-3d.ts'
+      - 'src/rendering/breach-repeated-fixture-batches.ts'
+      - 'src/rendering/fieldwork-visual-template-library.ts'
+      - 'tests/refactor-e6-23-rigid-fixture-template.test.mjs'
+      - 'scripts/verification/e6-23-fixture-template-node-bench.mjs'
+      - 'scripts/verification/e6-23-fixture-template-browser.mjs'
+      - '.github/workflows/refactor-e6-23-rigid-fixture-template.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: e6-23-fixture-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  rigid-fixture-cache:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1 pngjs@7.0.0
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Immutable fixture parity and geometry lifetime
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-23-rigid-fixture-template.test.mjs \
+            tests/refactor-e6-22-visual-template-library.test.mjs \
+            tests/refactor-e6-22-template-budget.test.mjs \
+            tests/refactor-e6-22-architecture-template-integration.test.mjs \
+            tests/breach-static-batching-performance.test.mjs
+      - name: Repeated recipe authoring cold/warm evidence
+        run: node --experimental-strip-types scripts/verification/e6-23-fixture-template-node-bench.mjs
+      - name: Production TypeScript and bundle
+        run: npm run build
+      - name: Two-seed 90-frame fixture cache on/off browser parity
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-23-fixture-template-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-23-fixture-live-ab-evidence
+          path: artifacts/refactor-e6-23/live-scene/
+          if-no-files-found: ignore
+          retention-days: 14

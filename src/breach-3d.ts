@@ -691,6 +691,9 @@ export class TacticalScene3D{
   private readonly siteVisualLeases:StaticVisualLease[]=[];
   private readonly useArchitectureTemplates=new URLSearchParams(location.search)
     .get('e622Template')==='1';
+  // Independent opt-in; rigid cover geometry is immutable, damage/wear is not.
+  private readonly useFixtureTemplates=new URLSearchParams(location.search)
+    .get('e623Fixture')==='1';
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
   private readonly fixtureLights=new SiteFixtureLightingPresenter(this.scene);
   // One shared cosmetic draw rather than two transparent WebGL passes per rig.
@@ -1220,6 +1223,8 @@ export class TacticalScene3D{
       sharedBoxGeometries:scene.sharedBoxGeometries,
       visualTemplates:scene.useArchitectureTemplates?
         scene.architecturalVisualTemplates:undefined,
+      fixtureTemplates:scene.useFixtureTemplates?
+        scene.architecturalVisualTemplates:undefined,
       registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
@@ -1253,10 +1258,20 @@ export class TacticalScene3D{
     };
   }
   private composeSiteWorld(site:Site|null):void{
+    // E6.23's browser-only timing uses the same full site construction
+    // boundaries for opt-in ON/OFF; this is not a GPU or device FPS metric.
+    const diagnostic=new URLSearchParams(location.search).get('coldBench')==='1';
+    const started=diagnostic?performance.now():0;
     // One build port, one ordered composition for initial and swapped sites.
     const result=composeBreachSiteRender(
       site,this.siteBuildPort(),this.graphicLookEnabled);
     this.graphicWorldMaterialCount=result.graphicMaterials;
+    if(diagnostic)Object.assign(window,{__fieldworkE623SiteBuild:{
+      elapsedMs:performance.now()-started,
+      cache:this.architecturalVisualTemplates.stats(),
+      repeated:this.repeatedFixtures.stats,
+      coverCount:this.coverGroups.size
+    }});
   }
   resize(w:number,h:number){
     this.width=Math.max(1,w);this.height=Math.max(1,h);
