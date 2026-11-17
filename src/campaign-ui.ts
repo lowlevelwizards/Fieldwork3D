@@ -335,6 +335,11 @@ export class CampaignScreen{
   const wasInOperations=!this.root.hidden&&
    !!this.root.querySelector('.campaign-tabs');
   const restoreScroll=wasInOperations?this.root.scrollTop:0;
+  // Capture open, keyed disclosures before the DOM is replaced. This is UI
+  // state only: supply, squad and treatment actions never mutate the save.
+  const openWorkspaceDetails=wasInOperations?
+   new Set(Array.from(this.root.querySelectorAll<HTMLDetailsElement>(
+    'details[data-campaign-detail][open]')).map(el=>el.dataset.campaignDetail)):new Set<string>();
   const focusedControl=wasInOperations&&this.root.contains(document.activeElement)?
    document.activeElement as HTMLElement:null;
   const focusedLabel=focusedControl?.getAttribute('aria-label');
@@ -356,6 +361,7 @@ export class CampaignScreen{
   // Keep persistent setting and department metadata available without making
   // players read it above every campaign action on a phone.
   const campaignContext=node('details','campaign-context');
+  campaignContext.dataset.campaignDetail='campaign-context';
   campaignContext.append(node('summary','',
    (this.currentSlot==='dispatch'?'DISPATCH':
     this.currentSlot==='sandbox'?'SANDBOX':'FIELD OPERATIONS')+
@@ -1191,6 +1197,12 @@ export class CampaignScreen{
   }
   main.insertBefore(nav,grid);
   this.root.append(main);
+  // The same disclosure identities survive in-place rerenders. Native details
+  // keep their own keyboard behavior; re-open only items the user had expanded.
+  for(const detail of this.root.querySelectorAll<HTMLDetailsElement>(
+   'details[data-campaign-detail]')){
+   detail.open=openWorkspaceDetails.has(detail.dataset.campaignDetail);
+  }
   if(restoreScroll>0)this.root.scrollTop=restoreScroll;
   // Purchases, treatment and assignments rebuild this view. Return keyboard
   // focus to the same named control without jumping the saved scroll position.
