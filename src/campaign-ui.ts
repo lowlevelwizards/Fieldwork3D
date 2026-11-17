@@ -872,10 +872,10 @@ export class CampaignScreen{
    tabs[next].focus({preventScroll:true});
    tabs[next].click();
   });
-  for(const [tab,label] of [
-   ['overview','Overview'],['personnel','Personnel'],
-   ['contracts','Contracts'],['logistics','Logistics'],
-   ['chronicle','Chronicle']
+  for(const [tab,label,accessible] of [
+   ['overview','Ops','Overview'],['personnel','Squad','Personnel'],
+   ['contracts','Cases','Contracts'],['logistics','Supply','Logistics'],
+   ['chronicle','Records','Chronicle']
   ] as const){
    const panel=sections[tab];
    panel.id='campaign-panel-'+tab;panel.setAttribute('role','tabpanel');
@@ -884,6 +884,8 @@ export class CampaignScreen{
     activateTab(tab)
    },'campaign-tab');
    trigger.id='campaign-tab-'+tab;
+   trigger.setAttribute('aria-label',accessible);
+   trigger.title=accessible;
    trigger.setAttribute('role','tab');
    trigger.setAttribute('aria-selected',String(this.homeTab===tab));
    trigger.setAttribute('aria-controls',panel.id);

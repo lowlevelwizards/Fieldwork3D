@@ -777,3 +777,12 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-preflight-extra[open]>summary::after{content:'−'}
 .campaign-preflight-extra .campaign-preflight-fields{margin:5px 0 12px}
 @media(max-width:480px){.campaign-preflight-keyfacts{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+/* R6.3 — all campaign destinations fit phone width without horizontal swiping. */
+@media(max-width:640px){
+ .campaign-tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
+  gap:4px;overflow:visible;touch-action:pan-y}
+ .campaign-shell .campaign-tab{box-sizing:border-box;min-width:0;width:100%;
+  padding:10px 2px;min-height:46px;font-size:clamp(11px,2.8vw,13px);
+  text-align:center;white-space:normal;line-height:1.2}
+}
