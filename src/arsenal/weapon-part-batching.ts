@@ -30,11 +30,11 @@ function candidate(node:THREE.Object3D,root:THREE.Group):Candidate|null{
     material.opacity!==1||!material.depthWrite||!material.depthTest||
     material.blending!==THREE.NormalBlending)return null;
  const geo=node.geometry;
- // A partially drawn primitive or explicit geometry material groups have
- // independent render semantics. Merging its *full* buffer would expose
- // hidden triangles or silently discard group/slot draw boundaries.
- if(geo.groups.length>0||geo.drawRange.start!==0||
-    geo.drawRange.count!==Infinity||material.alphaMap!==null)return null;
+ // A partially drawn buffer or alpha-masked surface cannot be flattened.
+ // Geometry groups are harmless when the mesh has ONE opaque material:
+ // THREE.BoxGeometry itself emits six face groups under one material.
+ if(geo.drawRange.start!==0||geo.drawRange.count!==Infinity||
+    material.alphaMap!==null)return null;
  const keys=Object.keys(geo.attributes).sort();
  if(!keys.includes('position')||
     keys.some(k=>!(geo.attributes[k] instanceof THREE.BufferAttribute)))return null;
