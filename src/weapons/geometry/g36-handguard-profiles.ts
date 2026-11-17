@@ -1,12 +1,13 @@
-/** FT1.9C4: one genuine faceted G36 molded fore-end shell.
- * Three broad cross-section stations, eight facets each. Not a cut-and-paste
+/** P5.2: one genuine faceted G36 molded fore-end shell.
+ * Four purposeful cross-section stations, eight facets each. Not a cut-and-paste
  * collection of cubes, and no dedicated vent/detail draw calls.
  * All measurements are exterior miniature art units, not real construction.
  */
 import * as THREE from 'three';
 export const G36_LONG_FOREND_RINGS=Object.freeze([
- {x:3.75,roofY:1.28,bottomY:-1.76,halfDepth:1.32},
- {x:10.81,roofY:1.38,bottomY:-1.95,halfDepth:1.44},
+ {x:3.75,roofY:1.19,bottomY:-1.75,halfDepth:1.30},
+ {x:5.15,roofY:1.58,bottomY:-2.09,halfDepth:1.54},
+ {x:10.81,roofY:1.42,bottomY:-1.94,halfDepth:1.45},
  {x:13.45,roofY:1.10,bottomY:-1.53,halfDepth:1.17}
 ]);
 /** An octagonal YZ section with a flat broad roof, chamfered shoulders,

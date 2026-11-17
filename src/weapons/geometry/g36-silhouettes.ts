@@ -80,19 +80,19 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // Molded receiver: broad crown, asymmetric lower step, decisive descending
  // front and integrated rear grip/magwell shoulders, not a long stamped slab.
  const upper=outline('receiver',[
-  [-6.80,.91],[-6.43,1.43],[-3.90,1.52],[1.52,1.52],
-  [3.06,1.18],[4.00,.76],[4.00,-.91],[3.27,-1.43],
-  [.88,-1.68],[-6.80,-1.47]
- ],2.58);
+  [-6.80,.88],[-6.41,1.52],[-3.86,1.64],[1.30,1.54],
+  [3.08,1.12],[4.00,.68],[4.00,-.98],[3.27,-1.49],
+  [.92,-1.67],[-6.80,-1.47]
+ ],2.52);
  upper.userData.g36ReceiverUpper=true;
  // Open lower contour deliberately stops above the trigger gap.
  // No lower closing strut and no three-dimensional trigger-guard frame.
  const lower=outline('receiver',[
-  [-6.42,-1.12],[3.72,-1.12],[3.48,-2.22],
-  [2.75,-3.08],[.55,-3.13],[-.75,-3.13],[-1.32,-2.73],
+  [-6.42,-1.12],[3.72,-1.12],[3.45,-2.16],
+  [2.73,-3.17],[.55,-3.17],[-.75,-3.13],[-1.32,-2.73],
   [-1.66,-2.37],[-3.63,-2.37],[-4.27,-3.56],
   [-6.42,-2.15]
- ],2.38);
+ ],2.36);
  lower.userData.g36ReceiverLower=true;
  lower.userData.g36OpenTriggerGap=true;
 
@@ -145,9 +145,9 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // Raise trigger void readability by shortening the rear-raked grip
  // and aligning its forward root with the lower housing.
  const grip=outline('grip',[
-  [-5.51,-2.14],[-3.20,-2.14],[-3.66,-3.18],
-  [-4.26,-5.72],[-6.04,-5.72],[-6.20,-5.27]
- ],2.12);
+  [-5.53,-2.14],[-3.20,-2.14],[-3.86,-3.23],
+  [-4.32,-5.72],[-5.88,-5.72],[-6.21,-5.16]
+ ],2.04);
  grip.userData.g36Grip=true;
 
  // One stock G36 polymer magazine. Curvature, width and floor are carried by
