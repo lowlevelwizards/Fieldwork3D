@@ -25,6 +25,6 @@ export function newDispatchPilotCampaign(seed:number,draft?:DispatchCampaignDraf
    funds:1000000,supplies:{medical:999,ammo:9999,flash:999}
   }:{}),
   ...(setup.startingInventory==='all'?{inventory:{...base.inventory,
-   weapons:{carbine:32,smg:32,rifle:32,shotgun:32}}}:{})
+   weapons:{carbine:8,smg:8,rifle:8,shotgun:8}}}:{})
  });
 }
