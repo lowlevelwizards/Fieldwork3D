@@ -80,7 +80,9 @@ test('E6.15 capture is explicit and uses no duplicate simulation or WebGL sync',
  assert.match(scene,/params\.get\('coldBench'\)==='1'/);
  assert.match(scene,/this\.profileSceneUpdate/);
  assert.match(loop,/if\(config\.boot\.coldBenchEnabled&&config\.recordColdRuntimeFrame\)/);
- assert.match(loop,/!!perfOverlay\|\|config\.boot\.coldBenchEnabled/);
+ assert.match(loop,/if\(config\.boot\.coldBenchEnabled\)/);
+ assert.match(loop,/stage\?\.setPerformanceProfilingEnabled\?\.\(true\)/);
+ assert.match(loop,/stage\?\.setPerformanceProfilingEnabled\?\.\(!!perfOverlay\)/);
  assert.match(loop,/sceneBreakdown:coldStats\?\.scenePhases\?\{\.\.\.coldStats\.scenePhases\}:undefined/);
  assert.match(loop,/actorBreakdown:coldStats\?\.actorPhaseCosts\?\{\.\.\.coldStats\.actorPhaseCosts\}:undefined/);
  assert.match(loop,/fogTextureUploads:coldStats\?\.fogTextureSubmittedUploads/);
