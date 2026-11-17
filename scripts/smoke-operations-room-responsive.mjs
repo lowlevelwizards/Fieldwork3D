@@ -180,7 +180,7 @@ async function assessActiveDeployment(page,name,expected){
  const acceptedId=await acceptSavedScenario(page);
  await page.reload({waitUntil:'domcontentloaded'});
  const deploymentNotice=page.locator('.campaign-landing-status')
-  .getByText('Deployment in progress');
+  .filter({hasText:'Deployment in progress'});
  await deploymentNotice.waitFor({state:'visible',timeout:15000});
  check(await deploymentNotice.isVisible(),
   name+' active deployment notice missing');
