@@ -299,6 +299,7 @@ export function createTacticalHudController(
   }
   function renderPhase(config:{
     phase:Session['phase'];started:boolean;replaying:boolean;seconds:number;
+    queuedOrders:number;
     phaseNode:HTMLElement;clock:HTMLElement;play:HTMLButtonElement;
     reducedMotion:boolean;
     icon:(key:string)=>SVGSVGElement;
@@ -322,8 +323,8 @@ export function createTacticalHudController(
       label.textContent=mode==='go'?'GO':mode==='pause'?'PAUSE':'RESET';
       label.className='go-label';
       config.play.replaceChildren(config.icon(mode),label);
-      config.play.setAttribute('aria-label',mode==='go'?'Execute plan':
-        mode==='pause'?'Pause execution':'Reset encounter');
+      // The detailed, live action label is reconciled outside this branch
+      // because orders change even while the button stays in GO mode.
       if(previous&&!config.reducedMotion){
         config.play.animate([
           {transform:'scale(.93)',filter:'brightness(1.14)'},
@@ -338,6 +339,16 @@ export function createTacticalHudController(
       }
     }
     config.play.classList.toggle('running',config.phase==='running');
+    const executionAction=mode==='go'?
+      (config.queuedOrders?
+        'Execute '+config.queuedOrders+' queued '+
+          (config.queuedOrders===1?'order':'orders')+' across squad':
+        'Execute plan · no orders queued'):
+      mode==='pause'?'Pause execution':'Reset encounter';
+    writeDomAttribute(config.play,'aria-label',executionAction);
+    writeDomAttribute(config.play,'title',executionAction);
+    if(config.play.dataset.queuedOrders!==String(config.queuedOrders))
+      config.play.dataset.queuedOrders=String(config.queuedOrders);
   }
   const noticeFeed=new ExecutionNoticeFeed();
   function resetNotices():void{noticeFeed.reset();}
@@ -558,6 +569,7 @@ export function createTacticalHudController(
   const brief=operationBriefing(state);
   renderPhase({
     phase:state.phase,started:state.started,replaying,seconds:state.seconds,
+    queuedOrders:friendly.reduce((sum,actor)=>sum+actor.plan.length,0),
     phaseNode:ui.phase,clock:ui.clock,play:ui.play,
     reducedMotion:reducedMotion,icon:tacticalIcon
   });

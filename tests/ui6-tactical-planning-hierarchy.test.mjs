@@ -13,3 +13,13 @@ test('UI.6A uses authoritative per-operator authored plan length without navigat
  assert.match(css,/\.unit\[data-plan-count\]:not\(\[data-plan-count="0"\]\)::after/);
  assert.match(css,/pointer-events:none/);
 });
+
+test('UI.6B keeps GO executable while updating squad-order feedback on edit',()=>{
+ assert.match(hud,/queuedOrders:friendly\.reduce\(\(sum,actor\)=>sum\+actor\.plan\.length,0\)/);
+ assert.match(hud,/writeDomAttribute\(config\.play,'aria-label',executionAction\)/);
+ assert.match(hud,/writeDomAttribute\(config\.play,'title',executionAction\)/);
+ assert.match(hud,/config\.play\.dataset\.queuedOrders=String\(config\.queuedOrders\)/);
+ assert.match(hud,/Execute plan · no orders queued/);
+ assert.match(css,/#play\[data-mode="go"\]:not\(\[data-queued-orders="0"\]\)/);
+ assert.doesNotMatch(hud,/config\.play\.disabled=config\.queuedOrders===0/);
+});
