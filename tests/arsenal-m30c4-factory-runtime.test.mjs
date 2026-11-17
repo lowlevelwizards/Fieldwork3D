@@ -168,8 +168,13 @@ test('M3.0C4 attachment swaps preserve exact body/optic sockets and replay-style
    assert.deepEqual(measureWeaponVisual(a),measureWeaponVisual(b));
    assert.deepEqual(childMag(live).map(m=>m.name),
     childMag(original).map(m=>m.name));
-   assert.equal(measureWeaponVisual(original).submissions-
-    measureWeaponVisual(live).submissions,8);
+   const saved=measureWeaponVisual(original).submissions-
+    measureWeaponVisual(live).submissions;
+   assert.equal(saved,live.userData.rigidCompilation.avoidedSubmissions,
+    'actual submitted geometry must agree with compiler report');
+   assert.ok(saved>=5&&saved<=8,'unexpected attachment-dependent saving');
+   if(replay.slots.muzzle==='muzzle-bare')assert.equal(saved,8,
+    'bare factory M4A1 must retain its C3-proven saving');
   }finally{
    clearWeaponSilhouette(original);clearWeaponSilhouette(live);
    clearWeaponSilhouette(a);clearWeaponSilhouette(b);
