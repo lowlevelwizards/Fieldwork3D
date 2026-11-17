@@ -23,3 +23,15 @@ test('UI.6B keeps GO executable while updating squad-order feedback on edit',()=
  assert.match(css,/#play\[data-mode="go"\]:not\(\[data-queued-orders="0"\]\)/);
  assert.doesNotMatch(hud,/config\.play\.disabled=config\.queuedOrders===0/);
 });
+
+test('UI.6C names the actual command target, including selected WATCH marker semantics',()=>{
+ assert.match(hud,/const validWaypoint=!!node&&index>0/);
+ assert.match(hud,/const watchSelected=!validWaypoint&&input\.selectedActiveWatch&&/);
+ assert.match(hud,/watchSelected\?'HERE · WATCH SELECTED':'HERE'/);
+ assert.match(hud,/actor\.name\+' at waypoint '\+index/);
+ assert.match(hud,/actor\.name\+' at current position'/);
+ assert.match(hud,/const current=input\.plannedControl\(validWaypoint\?node\?\.id:undefined\)/);
+ assert.match(hud,/writeDomAttribute\(button,'aria-label',\s*scopeTarget\+': '/);
+ assert.match(css,/\.quick-states\[data-scope-kind="waypoint"\]/);
+ assert.match(css,/\.quick-states\[data-scope-kind="watch"\]/);
+});

@@ -239,9 +239,18 @@ export function createTacticalHudController(
     hudHeight.sync(input.tacticalHud);
     if(!shown||!actor)return;
     const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
-    const scope=node?'WAYPOINT '+String(index).padStart(2,'0'):
-      input.selectedActiveWatch&&input.watchTargetPresent?
-        'WATCH TARGET':'OPERATOR / HERE';
+    const validWaypoint=!!node&&index>0;
+    const watchSelected=!validWaypoint&&input.selectedActiveWatch&&
+      input.watchTargetPresent;
+    // The WATCH marker selects a target to move/delete, but the state buttons
+    // still act on the operator HERE; they must not pretend to edit the marker.
+    const scope=validWaypoint?'WAYPOINT '+String(index).padStart(2,'0'):
+      watchSelected?'HERE · WATCH SELECTED':'HERE';
+    const scopeTarget=validWaypoint?
+      actor.name+' at waypoint '+index:
+      actor.name+' at current position';
+    writeDomAttribute(quickStates,'data-scope-kind',
+      validWaypoint?'waypoint':watchSelected?'watch':'operator');
     const quickScope=input.scopeElement;
     // Scope is provided by the existing HUD mount; no duplicate DOM.
     if(quickScope){
@@ -250,14 +259,12 @@ export function createTacticalHudController(
         (queue?' · '+queue+' QUEUED':' · NO ORDERS')+
         (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?
           ' · WATCH ACTIVE':''));
-      quickScope.title=node?
-        'Commands apply when '+actor.name+' reaches waypoint '+index:
-        input.selectedActiveWatch&&input.watchTargetPresent?
-          'The active WATCH point can be dragged or deleted from its marker':
-          'Commands apply to '+actor.name+' at their current position';
+      quickScope.title='These settings apply to '+scopeTarget+
+        (watchSelected?'; the selected WATCH marker is edited on the map':'');
     }
-    writeDomAttribute(quickStates,'aria-label',actor.name+' · '+scope+' commands');
-    const current=input.plannedControl(node?.id);
+    writeDomAttribute(quickStates,'aria-label',
+      'Commands for '+scopeTarget+(watchSelected?'; WATCH marker selected':''));
+    const current=input.plannedControl(validWaypoint?node?.id:undefined);
     const choices=contextActionChoices({
       door:false,node:!!node,flashRemaining:state.flashRemaining,
       posture:current.posture,pace:current.pace,
@@ -278,8 +285,8 @@ export function createTacticalHudController(
       const nextTitle=choice.title??choice.label;
       if(button.title!==nextTitle)button.title=nextTitle;
       input.installHelp(button);
-      writeDomAttribute(button,'aria-label',(node?'Waypoint: ':'Operator: ')+
-        choice.label+'. '+(choice.title??''));
+      writeDomAttribute(button,'aria-label',
+        scopeTarget+': '+choice.label+'. '+(choice.title??''));
       button.disabled=!!choice.disabled;
       if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
       else writeDomAttribute(button,'aria-pressed',String(choice.pressed));

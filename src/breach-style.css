@@ -4153,3 +4153,15 @@ body.nvg-selected-view #breach3dCanvas{
 .tactical-hud .bar #play[data-mode="go"]:not([data-queued-orders="0"]){
  box-shadow:inset 0 -3px 0 #6f9c7c,0 0 0 1px #bed1a855;
 }
+
+/* UI.6C: distinguish waypoint editing from operator state without another row.
+   A selected WATCH marker is not a waypoint-state target. */
+.quick-states[data-scope-kind="waypoint"] .quick-scope{
+ border-left:3px solid #d9bb82;padding-left:7px;
+}
+.quick-states[data-scope-kind="watch"] .quick-scope{
+ border-left:3px solid #a2c9bc;padding-left:7px;
+}
+.quick-states[data-scope-kind="operator"] .quick-scope{
+ border-left:3px solid transparent;padding-left:7px;
+}
