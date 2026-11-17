@@ -38,7 +38,7 @@ export const WEAPON_FINISH_SPECS={
  'hk-sd-metal':{color:0x2f3434,roughness:.80,metalness:.16,role:'steel'},
  'hk-muzzle-metal':{color:0x2f3533,roughness:.78,metalness:.16,role:'steel'},
  // FT1.9D0: inexpensive opaque smoky-polymer approximation of the original G36 magazine.
- 'g36-smoked-mag':{color:0x58675e,roughness:.93,metalness:.012,role:'polymer'},
+ 'g36-smoked-mag':{color:0x515e59,roughness:.95,metalness:.008,role:'polymer'},
  'fal-steel':{color:0x414845,roughness:.82,metalness:.12,role:'steel'},
  'fal-lower-steel':{color:0x363d3a,roughness:.87,metalness:.10,role:'steel'},
  'fal-polymer':{color:0x343d39,roughness:.93,metalness:.015,role:'polymer'},

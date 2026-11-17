@@ -76,6 +76,7 @@ test('G36 P4: larger handguard graphic decisions without new vent meshes',()=>{
  assert.equal(g.children.filter(o=>o.userData.g36LongHandguard).length,1);
  assert.ok(bounds(guard).max.y-bounds(guard).min.y>3.2);
  assert.ok(bounds(guard).max.z-bounds(guard).min.z<3.25);
- assert.equal(bounds(g).max.x,A.muzzleX);
+ assert.ok(Math.abs(bounds(g).max.x-A.muzzleX)<1e-4,
+  'muzzle datum remains within Float32 vertex precision');
  clearWeaponSilhouette(g);m.dispose();
 });

@@ -1,9 +1,11 @@
-name: G36 P7 — production comparison and art review
+name: G36 P8 — HK identity and Fieldwork art audit
 on:
   pull_request:
     branches: [main]
     paths:
       - 'src/weapons/geometry/g36-*.ts'
+      - 'src/weapons/geometry/hk-trigger-selector.ts'
+      - 'src/weapons/geometry/weapon-material-registry.ts'
       - 'src/g36-ft19b-lab.ts'
       - 'g36-ft19b-lab.html'
       - 'tests/weapon-g36-*.test.mjs'
@@ -30,7 +32,8 @@ jobs:
             tests/weapon-g36-p4-essential-form.test.mjs \
             tests/weapon-g36-p5-major-form.test.mjs \
             tests/weapon-g36-p6-interpretive-reset.test.mjs \
-            tests/weapon-g36-p7-calibration.test.mjs
+            tests/weapon-g36-p7-calibration.test.mjs \
+            tests/weapon-g36-p8-hk-identity.test.mjs
       - name: TypeScript and build integrity
         run: npm run build
       - name: Browser capture tools
@@ -42,7 +45,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: g36-p7-production-seven-rifle-review
+          name: g36-p8-production-seven-rifle-review
           path: g36-ft19b-captures/
           if-no-files-found: ignore
           retention-days: 21

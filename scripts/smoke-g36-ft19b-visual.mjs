@@ -49,8 +49,8 @@ try{
   await review('p6');
   await snap('.lab','g36-peers-p6-side',10000);
   const side=await snap('#detail','g36-master-p6-side',2000);
-  // Identical side/three-quarter framings: compare each trial with P6
-  // without changing any of the actual six peer rifle builders.
+  // Identical side/three-quarter framing for review-only P6/P7 optical
+  // arrangements, always using the current P8 stock and receiver builder.
   for(const mode of ['lower','rear','sweep','combined']){
    await review(mode);
    await snap('#detail','g36-p7-'+mode+'-side',2000);
@@ -59,7 +59,7 @@ try{
    await view('SIDE','side');
   }
   await review('production');
-  await snap('#detail','g36-p7-production-side',2000);
+  await snap('#detail','g36-p8-production-side',2000);
   for(const [button,id] of [
    ['THREE-QUARTER','three-quarter'],['OPPOSITE SIDE','opposite'],
    ['TOP','top'],['FRONT','front']
@@ -98,6 +98,6 @@ try{
   await page.setViewportSize({width:430,height:1260});
   await snap('.lab','g36-peers-mobile',9000);
   if(errors.length)throw Error('G36 browser errors: '+errors.join('; '));
-  console.log('FT1.9C WebGL: seven peers, all five views, isolated and clay / flat captures passed. Review pending.');
+  console.log('G36 P8 WebGL: seven actual peers, multi-view and 64/128px captures passed. Human art review pending.');
  }finally{await browser.close();}
 }finally{server.kill('SIGTERM');}
