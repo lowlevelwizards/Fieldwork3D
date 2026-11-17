@@ -4,6 +4,7 @@
 import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
+import {mountedAccessorySeat} from './weapons/geometry/mounted-accessory-layout.ts';
 import {akBarrelArt,AK_BARREL_ART} from './weapons/geometry/ak-barrel-profiles.ts';
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
@@ -60,12 +61,24 @@ export function riflePoseContacts(
  const y=b.family==='g36'?G36.supportY:
   hkTriVertical?-3.65:mp5k?-4.20:
   hk?-1.39:ar?AR_VISUAL_AXIS_Y-1.40:-1.40;
+ const accessory=mountedAccessorySeat(config,'foregrip');
+ const mountedHand=accessory?.hand;
+ // Actual accessory hand anchor is a *preferred* contact only. The V3
+ // support solver still enforces arm reach, clears obstacles, and may
+ // release the hand for reload/door interaction. Invalid legacy mounts
+ // retain the authored handguard range instead of snapping into air.
+ const gripSupport=mountedHand?{
+  near:{x:mountedHand.x-.18,y:mountedHand.y,z:mountedHand.z},
+  far:{x:mountedHand.x+.18,y:mountedHand.y,z:mountedHand.z},
+  preferredFraction:.5
+ }:null;
  return {family:b.family,scale:a.lengthScale,
   stock:{x:a.stockX,y:0,z:0},primary:{x:a.primaryX,y:a.primaryY,z:2.24},
   // Grip targets are HAND CENTERS, not bare receiver surface points:
   // the real 3.9-unit-deep hand must wrap the actual fore-end, with its
   // inner palm touching it rather than its center buried inside the steel.
-  support:{near:{x:near,y,z:-2.68},far:{x:far,y,z:-2.68},
+  support:gripSupport??{near:{x:near,y,z:-2.68},
+   far:{x:far,y,z:-2.68},
    preferredFraction:mp5k?.55:hk?(hkCompact?.48:.60):ar?.64:.58}};
 }
 export function supportContactAt(r:RifleContactRange,t:number):RiflePoint{
