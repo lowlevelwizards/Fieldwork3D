@@ -105,19 +105,24 @@ async function assess(browser,{name,width,height,mobile}){
    }
    if(tab==='chronicle'){
     const history=page.locator('.campaign-operation-record').first();
-    check(await history.count()===1,name+' missing operation history');
-    check(await history.locator('.campaign-operation-outcome').isVisible(),
-     name+' operation outcome invisible');
-    const record=history.locator('.campaign-operation-detail');
-    check(await record.count()===1,name+' operation disclosure missing');
-    check(await record.getAttribute('open')===null,
-     name+' operation details should start collapsed');
-    await record.locator(':scope > summary').click();
-    check(await record.getAttribute('open')!==null,
-     name+' operation details failed to expand');
-    check(await record.locator('.campaign-operation-participants').isVisible(),
-     name+' participating operators missing');
-    await record.locator(':scope > summary').click();
+    if(await history.count()){
+     check(await history.locator('.campaign-operation-outcome').isVisible(),
+      name+' operation outcome invisible');
+     const record=history.locator('.campaign-operation-detail');
+     check(await record.count()===1,name+' operation disclosure missing');
+     check(await record.getAttribute('open')===null,
+      name+' operation details should start collapsed');
+     await record.locator(':scope > summary').click();
+     check(await record.getAttribute('open')!==null,
+      name+' operation details failed to expand');
+     check(await record.locator('.campaign-operation-participants').isVisible(),
+      name+' participating operators missing');
+     await record.locator(':scope > summary').click();
+    }else{
+     check(await page.locator('.campaign-chronicle').getByText(
+      'Your unit history will appear here after its first operation.').isVisible(),
+      name+' empty campaign history state missing');
+    }
     const milestones=page.locator('.campaign-career-timeline');
     if(await milestones.count()){
      check(await milestones.getAttribute('open')===null,
