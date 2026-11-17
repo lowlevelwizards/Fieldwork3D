@@ -260,19 +260,19 @@ const campaignScreen=new CampaignScreen({
   c=>serviceCampaignWeapon(c,id),'Weapon maintenance completed'),
  equipGear:(id,slot,itemId)=>applyVisibleCampaignAction(
   c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
- equipWeaponPreset:(id,presetId)=>{if(model.campaign&&!model.campaign.activeContractId){
+ equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(current=>{
+  if(current.activeContractId)return current;
   const preset=familyPreset(presetId);
-  const member=model.campaign.operators.find(o=>o.id===id);
-  if(!preset||!member)return;
-  let next=model.campaign;
+  const member=current.operators.find(o=>o.id===id);
+  if(!preset||!member)return current;
+  let next=current;
   if(member.weapon!==preset.weapon){
-   if((model.campaign.inventory.weapons[preset.weapon]??0)<1)return;
+   if((current.inventory.weapons[preset.weapon]??0)<1)return current;
    next=equipCampaignWeapon(next,id,preset.weapon);
-   if(next===model.campaign)return;
+   if(next===current)return current;
   }
-  next=equipCampaignWeaponPreset(next,id,presetId);
-  if(next===model.campaign)return;
-  model.campaign=next;config.saveCampaign();showCampaignHome();}},
+  return equipCampaignWeaponPreset(next,id,presetId);
+ },'Weapon family preset equipped'),
  equipWeaponFamilyPart:(id,slot,partId)=>applyVisibleCampaignAction(
   c=>equipCampaignWeaponFamilyPart(c,id,slot,partId),'Weapon component updated'),
  equipAttachment:(id,slot,partId,acquire)=>applyVisibleCampaignAction(
@@ -298,7 +298,7 @@ const campaignScreen=new CampaignScreen({
  exportSave:()=>{if(model.campaign)saveFile(model.campaign);},
  retire:(id)=>{
   if(!model.campaign||!window.confirm('Retire this operator from active service? Their career record will remain.'))return;
-  model.campaign=retireOperator(model.campaign,id);config.saveCampaign();showCampaignHome();
+  applyVisibleCampaignAction(c=>retireOperator(c,id),'Operator retired from active service');
  },
  importSave:(raw,slot)=>{
   if(config.getMode()!=='menu'&&config.getMode()!=='home')return;
