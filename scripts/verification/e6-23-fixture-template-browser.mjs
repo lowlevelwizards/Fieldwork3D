@@ -4,9 +4,32 @@
 import {spawn} from 'node:child_process';
 import {mkdirSync,writeFileSync,readFileSync,existsSync} from 'node:fs';
 import {chromium} from 'playwright';
+import {PNG} from 'pngjs';
 const port=4419,base='http://127.0.0.1:'+port;
 const dir='artifacts/refactor-e6-23/live-scene';
 mkdirSync(dir,{recursive:true});
+function compareImages(aPath,bPath){
+ const a=PNG.sync.read(readFileSync(aPath));
+ const b=PNG.sync.read(readFileSync(bPath));
+ if(a.width!==b.width||a.height!==b.height)
+  throw Error('Screenshot dimensions differ');
+ let changed=0,any=0,totalError=0;
+ const pixels=a.width*a.height;
+ for(let k=0;k<pixels;k++){
+  const offset=k*4;
+  let delta=0;
+  for(let c=0;c<3;c++){
+   const value=Math.abs(a.data[offset+c]-b.data[offset+c]);
+   delta=Math.max(delta,value);totalError+=value;
+  }
+  if(delta>16)changed++;
+  if(delta>4)any++;
+ }
+ return {pixels,changed,changedPct:+(100*changed/pixels).toFixed(3),
+  closeAgreementPct:+(100*(1-changed/pixels)).toFixed(3),
+  anyDifferentPct:+(100*any/pixels).toFixed(3),
+  averageChannelError:+(totalError/(pixels*3)).toFixed(4)};
+}
 const server=spawn(process.execPath,[
  'node_modules/vite/bin/vite.js','--host','127.0.0.1',
  '--port',String(port),'--strictPort'
@@ -50,6 +73,10 @@ try{
     window.__fieldworkE611?.postReadyRuntime?.frames===90,
     seed,{timeout:180000});
    const before=await page.evaluate(()=>window.__fieldworkE611.postReadyRuntime);
+   const siteBuild=await page.evaluate(()=>window.__fieldworkE623SiteBuild);
+   if(!siteBuild||!Number.isFinite(siteBuild.elapsedMs)||
+      !siteBuild.cache||!Number.isFinite(siteBuild.cache.builds))
+    throw Error('Missing E6.23 actual site construction/cache metrics');
    if(before.byMode.idle.frames!==90||before.byMode.live.frames!==0)
     throw Error('Not measuring planning phase prior to execution');
    if(briefingIdle==='1'&&before.byMode.idle.submitted3D>4)
@@ -59,6 +86,8 @@ try{
    await page.locator('#briefingClose').click({timeout:30000});
    await page.waitForFunction(()=>
     document.getElementById('briefingPanel')?.hidden===true);
+   await wait(600);
+   await page.screenshot({path:dir+'/seed-'+seed+'-template-'+templateEnabled+'-planning.png'});
    await page.locator('#play').click({timeout:30000});
    await page.waitForFunction(()=>
     document.getElementById('phase')?.textContent==='EXECUTING',
@@ -124,7 +153,7 @@ try{
    await page.screenshot({path:dir+'/seed-'+seed+'-template-'+templateEnabled+'.png'});
    writeFileSync(path,JSON.stringify(local,null,2)+'\n');
    evidence.runs.push({
-    seed,templateEnabled,briefingIdle,
+    seed,templateEnabled,briefingIdle,siteBuild,
     precedingPlanning3DSubmissions:before.byMode.idle.submitted3D,
     liveFrames:live.byMode.live.frames,live3DSubmissions:live.byMode.live.submitted3D,
     callbacksWithSimulation:live.callbacksWithSimulation,
@@ -158,9 +187,21 @@ try{
   if(saved!==0||!core||!after||core.drawsTotal!==after.drawsTotal)
    throw Error('E6.23 changed rendering submissions for seed '+seed+
     ': '+JSON.stringify({before:off.mainPassAttribution,after:on.mainPassAttribution}));
+  const planningPixels=compareImages(
+   dir+'/seed-'+seed+'-template-0-planning.png',
+   dir+'/seed-'+seed+'-template-1-planning.png');
+  const livePixels=compareImages(
+   dir+'/seed-'+seed+'-template-0.png',
+   dir+'/seed-'+seed+'-template-1.png');
+  if(planningPixels.closeAgreementPct<98)
+   throw Error('E6.23 planning screenshot parity failed for seed '+seed+': '+
+    JSON.stringify(planningPixels));
+  if(on.siteBuild.cache.leases<off.siteBuild.cache.leases)
+   throw Error('E6.23 cache lease regression for seed '+seed);
   if(off.renderSubmission.shadowDrawCallsP95<1||on.renderSubmission.shadowDrawCallsP95<1)
    throw Error('Lost real shadow pass');
-  return {seed,beforeDrawCallsP95:off.mainPassAttribution.drawCallsP95,
+  return {seed,planningPixels,livePixels,offSiteBuild:off.siteBuild,
+   onSiteBuild:on.siteBuild,beforeDrawCallsP95:off.mainPassAttribution.drawCallsP95,
    afterDrawCallsP95:on.mainPassAttribution.drawCallsP95,savedP95:saved,
    beforeEnvironmentTotal:core.drawsTotal,afterEnvironmentTotal:after.drawsTotal};
  });
