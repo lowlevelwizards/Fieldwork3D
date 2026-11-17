@@ -319,9 +319,6 @@ export class CampaignScreen{
    (this.currentSlot==='dispatch'?'DISPATCH · '+factionReference(currentDispatchReference(c))?.name:
     this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
    ' · '+(c.name??'Original Campaign')));
-  title.append(node('div','campaign-home-identity',
-   'INTELLIGENCE · '+rules.intel.toUpperCase()+
-   '  /  MAP SCALE · '+rules.scale.toUpperCase()));
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
    title.append(node('div','campaign-home-identity',
@@ -570,12 +567,26 @@ export class CampaignScreen{
   }
   grid.append(chronicle);
   const footer=node('div','campaign-footer');
-  footer.append(button('EXPORT CAMPAIGN SAVE',this.handlers.exportSave));
-  footer.append(node('p','campaign-note','IMPORT CAMPAIGN SAVE'));
-  footer.append(this.importPicker());
-  footer.append(button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
+  const utilities=node('details','campaign-overview-utilities');
+  utilities.append(node('summary','','SAVES & OTHER MODES'));
+  const utilityContent=node('div','campaign-overview-utility-content');
+  utilityContent.append(
+   node('p','campaign-note','INTELLIGENCE · '+rules.intel.toUpperCase()+
+    ' / MAP SCALE · '+rules.scale.toUpperCase()),
+   button('EXPORT CAMPAIGN SAVE',this.handlers.exportSave),
+   node('p','campaign-note','IMPORT CAMPAIGN SAVE'),
+   this.importPicker(),
+   button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
+  utilities.append(utilityContent);footer.append(utilities);
   const overview=node('section','campaign-section campaign-overview');
   overview.append(node('h2','','UNIT OVERVIEW'));
+  // A clear next action remains visible before records, readiness and statistics.
+  const nextAction=accepted?
+   button('CONTINUE DEPLOYMENT · '+campaignIncidentView(c,accepted).title.toUpperCase(),
+    this.handlers.resumeContract,'campaign-primary'):
+   button('VIEW AVAILABLE CONTRACTS',()=>activateTab('contracts'),'campaign-primary');
+  nextAction.classList.add('campaign-overview-primary-action');
+  overview.append(nextAction);
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
    const department=node('div','campaign-department-identity');
@@ -655,11 +666,9 @@ export class CampaignScreen{
     'SQUAD ASSIGNED · BASE RESERVES AVAILABLE'));
   }
   overview.append(readiness);
-  if(accepted)overview.append(button('CONTINUE · '+campaignIncidentView(c,accepted).title.toUpperCase(),
-   this.handlers.resumeContract,'campaign-primary'));
   const shortcuts=node('div','campaign-overview-actions');
   for(const [tab,label] of [
-   ['contracts','VIEW CONTRACTS'],['personnel','MANAGE PERSONNEL'],
+   ['personnel','MANAGE PERSONNEL'],
    ['logistics','SUPPLIES & ARMORY']
   ] as const){
    shortcuts.append(button(label,()=>{
