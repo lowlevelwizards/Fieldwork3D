@@ -35,7 +35,24 @@ Run `node --experimental-strip-types scripts/audit-weapon-production-m30.mjs`.
 - This is a *candidate inventory*, not an approved optimization or measured
   performance gain.
 
-## M3.0C — Per-owner rigid draw consolidation (NEXT; separately gated)
+## M3.0C1 — Legacy shotgun rigid pilot (implemented, CI pending)
+- First approved candidate is the **legacy shotgun**, not modular rifles.
+  It has 20 unnamed non-moving box meshes in two caller-owned materials,
+  no removable authored magazine and no selectable family body nodes.
+- Production build now runs `compileLegacyShotgunBody()` on shotgun only.
+  Same-material, same-attribute, same-shadow rigid boxes become two meshes.
+  The real expected camera-pass draw reduction is **20 → 2**; not yet a
+  claim of frame-time improvement or production art approval.
+- Source geometry is disposed after baking, output remains weapon-owned,
+  caller materials are preserved; no async caches or per-frame work.
+- A deterministic test compares world-space triangles, normals, pixel UVs,
+  shadow configuration and bounds against the pre-compiled authoring body.
+- A separate **real WebGL** headless Chromium lab captures three views,
+  counts renderer calls and evaluates original-versus-compiled pixel delta.
+  All tests must pass before a release; retained baseline screenshots
+  require art review if visible output differs.
+
+## M3.0C2 — Per-owner modular rigid draw consolidation (NEXT; separately gated)
 - Work **inside a single immutable weapon assembly** at build/change time.
   Cross-weapon pooling and live operator pose animation require separate study.
 - Keep at least `receiver,barrel,handguard,stock,grip,magazine` independently
