@@ -787,11 +787,23 @@ export class CampaignScreen{
    }
    timeline.append(entries);chronicle.append(timeline);
   }
-  const retirees=c.operators.filter(o=>o.status==='retired'||o.status==='lost');
+  const retirees=c.operators.filter(o=>
+   o.status==='retired'||o.status==='lost');
   if(retirees.length){
-   chronicle.append(node('h2','','SERVICE ARCHIVE'));
-   for(const o of retirees)chronicle.append(node('p','campaign-report',
-    o.callsign+' · '+o.missions+' DEPLOYMENTS · '+o.successful+' SUCCESSES · '+o.status.toUpperCase()));
+   const archive=node('section','campaign-career-archive');
+   archive.append(node('h3','','SERVICE ARCHIVE'));
+   for(const operator of retirees){
+    const record=node('article','campaign-archive-record');
+    record.dataset.status=operator.status;
+    const identity=node('div','campaign-archive-identity');
+    identity.append(node('strong','',operator.callsign),
+     node('span','',operator.status.toUpperCase()));
+    const metrics=node('div','campaign-archive-metrics');
+    metrics.append(node('span','',operator.missions+' DEPLOYMENTS'),
+     node('span','',operator.successful+' SUCCESSES'));
+    record.append(identity,metrics);archive.append(record);
+   }
+   chronicle.append(archive);
   }
   if(serviceRecord)chronicle.append(serviceRecord);
   grid.append(chronicle);

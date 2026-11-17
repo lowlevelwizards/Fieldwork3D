@@ -877,3 +877,19 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-career-content strong{font:800 17px/1.2 var(--fw-font-display)}
 .campaign-career-content p{margin:0;color:var(--fw-text-muted);
  font:500 13px/1.5 var(--fw-font-narrative);overflow-wrap:anywhere}
+
+/* R11.2: retained careers are readable archival records, not compressed logs. */
+.campaign-career-archive{display:grid;gap:9px;margin:16px 0}
+.campaign-career-archive h3{font:800 17px/1.2 var(--fw-font-display);margin:0}
+.campaign-archive-record{display:grid;gap:9px;padding:12px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep)}
+.campaign-archive-identity{display:flex;justify-content:space-between;align-items:center;
+ gap:8px;flex-wrap:wrap}
+.campaign-archive-identity strong{font:800 18px/1.2 var(--fw-font-display)}
+.campaign-archive-identity span{font:700 11px var(--fw-font-menu);
+ color:var(--fw-text-muted)}
+.campaign-archive-record[data-status="lost"] .campaign-archive-identity span{color:var(--fw-brass)}
+.campaign-archive-metrics{display:flex;gap:6px;flex-wrap:wrap}
+.campaign-archive-metrics span{font:600 11px/1.35 var(--fw-font-menu);
+ padding:5px 7px;background:var(--fw-panel);border-radius:4px}
