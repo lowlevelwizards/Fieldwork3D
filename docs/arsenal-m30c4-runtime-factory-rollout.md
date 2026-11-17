@@ -39,7 +39,10 @@ legacy class fallbacks, and shotgun remain outside this rollout.
 
 Focused real-builder tests must pass:
 1. Exact 11/11/8 submission reductions, equal triangles and whole/per-part
-   bounds, real mesh raycasts, Workbench anchors and stock contact
+   bounds, real mesh raycasts, Workbench anchors and stock contact.
+   The factory muzzle may be hidden when a suppressor is installed, so
+   the M4A1 savings are 8 with its bare muzzle and 6 with suppressor;
+   count against the actual built body and the compiler report
 2. Magazine mesh identity and visibility control, saved loadout preservation,
    alternative magazine and part rejection, and legacy model opt-out
 3. Accessory mounting swaps including optic, grip, light and muzzle,
