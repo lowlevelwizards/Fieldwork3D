@@ -64,6 +64,11 @@ async function assess(browser,{name,width,height,mobile}){
      name+' campaign settings must start collapsed');
     check(await page.locator('.campaign-funds .campaign-day').count()===1,
      name+' current day must remain visible');
+    // A campaign context opened by the player must survive later purchases.
+    const contextDisclosure=page.locator('.campaign-context');
+    await contextDisclosure.locator(':scope > summary').click();
+    check(await contextDisclosure.getAttribute('open')!==null,
+     name+' campaign context did not expand');
    }
    if(tab==='personnel'){
     const row=page.locator('.campaign-person-expand').first();
@@ -81,7 +86,7 @@ async function assess(browser,{name,width,height,mobile}){
     check(await caseInfo.getAttribute('open')===null,name+' case starts expanded');
     await caseInfo.locator('summary').click();
     check(await caseInfo.getAttribute('open')!==null,name+' case intelligence did not expand');
-    await caseInfo.locator('summary').click();
+    // Keep the case open so the logistics action can test persistent state.
    }
    if(tab==='logistics'){
     check(await page.locator('.campaign-logistics-stat').count()===3,
@@ -101,7 +106,18 @@ async function assess(browser,{name,width,height,mobile}){
      name+' requirements did not expand');
     check(await requirements.locator('.campaign-procurement-status').isVisible(),
      name+' purchase authorization explanation inaccessible');
-    await requirements.locator(':scope > summary').click();
+    const purchase=page.locator('.campaign-supply-offer button:enabled').first();
+    if(await purchase.count()){
+     await purchase.click();
+     check(await page.locator('.campaign-context').getAttribute('open')!==null,
+      name+' campaign context collapsed after purchase');
+     check(await page.locator('.campaign-contract-intelligence').first().getAttribute('open')!==null,
+      name+' case information collapsed after purchase');
+     check(await page.locator('.campaign-procurement-eligibility').first().getAttribute('open')!==null,
+      name+' armory requirements collapsed after purchase');
+    }
+    await page.locator('.campaign-procurement-eligibility').first()
+     .locator(':scope > summary').click();
    }
    if(tab==='chronicle'){
     const history=page.locator('.campaign-operation-record').first();
