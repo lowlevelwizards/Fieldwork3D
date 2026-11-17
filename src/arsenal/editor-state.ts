@@ -1,5 +1,7 @@
 /** Arsenal V2: immutable draft and bounded, transaction-level undo/redo. */
 import {copyArsenalRecipe,sameArsenalRecipe,type ArsenalRecipeV2} from './recipes.ts';
+import {alternateStockPosition,type WeaponStockPosition}
+ from '../weapon-stock-position.ts';
 import {proposeArsenalPartChange,type ArsenalEditProposal} from './compatibility.ts';
 import type {ArsenalSlot} from './catalog.ts';
 import {arsenalRecipeToLegacy} from './recipes.ts';
@@ -70,5 +72,21 @@ export function editArsenalMountPosition(draft:ArsenalDraft,slot:MountableSlot,
  return commitArsenalProposal(draft,{
   valid:true,requestedSlot:slot,requestedPartId:location?.attachmentId??'automatic',
   changes:[],requiresConfirmation:false,reasons:[],nextRecipe
+ });
+}
+
+/** A supported physical stock change is one normal reversible draft edit.
+ * No gameplay/campaign state is touched before an explicit Apply.
+ */
+export function editArsenalStockPosition(draft:ArsenalDraft,
+ requested:WeaponStockPosition):ArsenalDraft{
+ const allowed=alternateStockPosition(draft.working.parts.stock);
+ if(requested!=='deployed'&&requested!==allowed)return draft;
+ const next=copyArsenalRecipe(draft.working);
+ if(requested==='deployed')delete next.stockPosition;
+ else next.stockPosition=requested;
+ return commitArsenalProposal(draft,{
+  valid:true,requestedSlot:'stock',requestedPartId:next.parts.stock,
+  changes:[],requiresConfirmation:false,reasons:[],nextRecipe:next
  });
 }

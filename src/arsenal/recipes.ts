@@ -3,6 +3,7 @@
  * Only authored family builds are migrated; class-only legacy weapons remain untouched.
  */
 import type {WeaponId} from '../breach-combat.ts';
+import {normalizedStockPosition} from '../weapon-stock-position.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,validFamilyBuild,matchingFamilyPreset,
  type WeaponFamilyBuild,type FamilyPartSlot} from '../equipment-weapon-families.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,
@@ -26,9 +27,12 @@ export interface ArsenalRecipeV2{
  sourcePresetId?:string;
  /** Positions are free user choices, not equipment items or ownership. */
  mountSelections?:MountSelections;
+ /** Missing means fully deployed; never fold factory weapons implicitly. */
+ stockPosition?:'folded'|'collapsed';
 }
 export const copyArsenalRecipe=(recipe:ArsenalRecipeV2):ArsenalRecipeV2=>({
  ...recipe,parts:{...recipe.parts},accessories:{...recipe.accessories},
+ ...(recipe.stockPosition?{stockPosition:recipe.stockPosition}:{}),
  ...(recipe.mountSelections?{mountSelections:copyMountSelections(recipe.mountSelections)}:{})
 });
 /** This adapter deliberately cannot represent an old abstract attachment-stock overlay. */
@@ -41,7 +45,8 @@ export function arsenalRecipeFromLegacy(config:WeaponConfiguration):ArsenalRecip
  for(const slot of ARSENAL_ACCESSORY_SLOTS)accessories[slot]=config.slots[slot];
  const recipe:ArsenalRecipeV2={version:2,platformId,weapon:config.weapon,
   parts:{...build.parts},accessories,
-  ...(config.mountSelections?{mountSelections:copyMountSelections(config.mountSelections)}:{})};
+  ...(config.mountSelections?{mountSelections:copyMountSelections(config.mountSelections)}:{}),
+  ...(config.stockPosition?{stockPosition:config.stockPosition}:{})};
  const exact=matchingFamilyPreset(build);
  if(exact)recipe.sourcePresetId=exact.id;
  return arsenalRecipeIssues(recipe).length?undefined:recipe;
@@ -52,7 +57,8 @@ function legacyCandidate(recipe:ArsenalRecipeV2):WeaponConfiguration{
  const build:WeaponFamilyBuild={family:receiver.family,parts:{...recipe.parts}};
  return {version:1,weapon:recipe.weapon,build,
   slots:{...base.slots,...recipe.accessories,stock:'stock-standard'},
-  ...(recipe.mountSelections?{mountSelections:copyMountSelections(recipe.mountSelections)}:{})};
+  ...(recipe.mountSelections?{mountSelections:copyMountSelections(recipe.mountSelections)}:{}),
+  ...(recipe.stockPosition?{stockPosition:recipe.stockPosition}:{})};
 }
 /** Produce a valid V1 configuration, never a silently repaired/partially lost one. */
 export function arsenalRecipeToLegacy(recipe:ArsenalRecipeV2):WeaponConfiguration|undefined{
@@ -66,6 +72,7 @@ export function arsenalRecipeToLegacy(recipe:ArsenalRecipeV2):WeaponConfiguratio
   if(normalized.slots[slot]!==recipe.accessories[slot])return undefined;
  // Existing normalized equipment must never silently discard an explicit
  // location during Apply, stock accounting or replay materialization.
+ if((normalized.stockPosition??'deployed')!==(recipe.stockPosition??'deployed'))return undefined;
  if(!sameMountSelections(normalized.mountSelections,recipe.mountSelections))
   return undefined;
  return normalized;
@@ -80,6 +87,8 @@ export function arsenalRecipeIssues(recipe:ArsenalRecipeV2):string[]{
  if(!receiver||receiver.slot!=='receiver')return ['Unknown receiver'];
  if(arsenalPlatformForReceiver(receiver.id)!==recipe.platformId)
   issues.push('Receiver belongs to another Arsenal platform');
+ if(normalizedStockPosition(recipe.parts.stock,recipe.stockPosition)!==
+   (recipe.stockPosition??'deployed'))issues.push('Invalid physical stock position');
  const build:WeaponFamilyBuild={family:receiver.family,parts:recipe.parts};
  if(!validFamilyBuild(build,recipe.weapon))
   issues.push('Incompatible body components');
@@ -115,6 +124,8 @@ export function readArsenalRecipe(raw:unknown):ArsenalRecipeV2|undefined{
   version:2,platformId:obj.platformId as ArsenalPlatformId,
   weapon:obj.weapon as WeaponId,parts,accessories
  };
+ if(obj.stockPosition==='folded'||obj.stockPosition==='collapsed')
+  recipe.stockPosition=obj.stockPosition;
  if(typeof obj.sourcePresetId==='string'&&obj.sourcePresetId.length<=96)
   recipe.sourcePresetId=obj.sourcePresetId;
  // Invalid or stale mounting metadata is discarded, not the paid recipe.
@@ -125,6 +136,7 @@ export function readArsenalRecipe(raw:unknown):ArsenalRecipeV2|undefined{
 }
 export function sameArsenalRecipe(a:ArsenalRecipeV2,b:ArsenalRecipeV2):boolean{
  if(a.platformId!==b.platformId||a.weapon!==b.weapon||
+  (a.stockPosition??'deployed')!==(b.stockPosition??'deployed')||
   a.sourcePresetId!==b.sourcePresetId||
   !sameMountSelections(a.mountSelections,b.mountSelections))return false;
  for(const slot of FAMILY_PART_SLOTS)if(a.parts[slot]!==b.parts[slot])return false;
