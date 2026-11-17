@@ -11,9 +11,13 @@ on:
       - 'src/weapons/geometry/mounted-accessory-layout.ts'
       - 'src/campaign-state.ts'
       - 'tests/arsenal-m26-*.test.mjs'
+      - 'arsenal-m26-capture.html'
+      - 'src/arsenal-m26-capture.ts'
+      - 'scripts/smoke-arsenal-m26-visual.mjs'
       - '.github/workflows/arsenal-m26.yml'
 permissions:
   contents: read
+  actions: read
 jobs:
   critical:
     runs-on: ubuntu-24.04
@@ -42,3 +46,40 @@ jobs:
         run: npm run check
       - name: Production compile
         run: npm run build
+  visual:
+    needs: critical
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: M2.6 real WebGL persisted right/left optic and light positions
+        run: node scripts/smoke-arsenal-m26-visual.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arsenal-m26-saved-mounts-webgl-acceptance
+          path: |
+            reports/arsenal-m26-mounted-desktop.png
+            reports/arsenal-m26-mounted-mobile.png
+            reports/arsenal-m26-mesh-stats.json
+          if-no-files-found: ignore
+          retention-days: 14
+  release-preflight:
+    needs: [critical, visual]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify no pending Pages, last publish success and served build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
