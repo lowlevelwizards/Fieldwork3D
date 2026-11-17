@@ -6,6 +6,7 @@ import {lightingPresentation} from './equipment-lighting-presentation.ts';
 import {SiteFixtureLightingPresenter} from './rendering/breach-site-light-presenter.ts';
 import * as THREE from 'three';
 import {ColdRendererTrace} from './rendering/breach-cold-renderer-trace.ts';
+import {LiveShadowSubmitProfiler} from './rendering/breach-live-shadow-submit-profiler.ts';
 import {stepCameraFocusGlide,type CameraFocusGlide}
   from './breach-camera-focus-glide.ts';
 import {applyWorldSurfaceResponse} from './rendering/material-identity.ts';
@@ -168,6 +169,8 @@ export class TacticalScene3D{
    for(const actor of this.actors.values())
     actor.physical.root.userData.fieldworkProfilePose=enabled;
   }
+  /** E6.16: strictly opt-in shadow-map submission attribution. */
+  private readonly liveShadowSubmitProfiler:LiveShadowSubmitProfiler|null;
   private scenePhaseStart=0;
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
    * wardrobe material/shadow generation as well as steady-state posing. */
@@ -266,6 +269,7 @@ export class TacticalScene3D{
       siteMaterialCount:this.siteMaterials.size,
       actorRigCount:this.actors.size,
       civilianRigCount:this.civilianRigs.size,
+      shadowSubmission:this.liveShadowSubmitProfiler?.last??null,
       shadowRefreshes:this.shadowUpdates.refreshes,
       shadowReuses:this.shadowUpdates.reuses,
       shadowLodTransitions:this.shadowLodTransitions,
@@ -864,6 +868,11 @@ export class TacticalScene3D{
     this.renderer.shadowMap.enabled=true;
     this.renderer.shadowMap.autoUpdate=false;
     this.renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+    // E6.16 does not install hooks in normal gameplay.
+    this.liveShadowSubmitProfiler=
+      new URLSearchParams(location.search).get('coldBench')==='1'?
+       new LiveShadowSubmitProfiler(this.renderer as unknown as
+         ConstructorParameters<typeof LiveShadowSubmitProfiler>[0]):null;
     // Atmospheric distance fog was tinting every interior surface in ISO.
     // Visibility is handled separately by authoritative exploration tiles.
     this.scene.background=color(0x182a2a);
@@ -1620,7 +1629,11 @@ export class TacticalScene3D{
     const prepared=this.preparedColdFrame;
     if(!prepared)return false;
     this.preparedColdFrame=null;
-    try{this.renderMiniatureFocus(prepared.camera);}
+    try{
+      if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
+       ()=>this.renderMiniatureFocus(prepared.camera));
+      else this.renderMiniatureFocus(prepared.camera);
+     }
     finally{
       // Mirrors the ordinary default tactical first-draw bookkeeping.
       this.bodycamLastQa={active:false,owner:null,masked:0,
@@ -2737,7 +2750,11 @@ export class TacticalScene3D{
       this.preparedColdFrame={camera,at:s.seconds};
       return;
     }
-    try{this.renderMiniatureFocus(camera);}
+    try{
+      if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
+       ()=>this.renderMiniatureFocus(camera));
+      else this.renderMiniatureFocus(camera);
+     }
     finally{
       for(const [mesh,visible] of masked)mesh.visible=visible;
       this.bodycamLastQa={

@@ -4,6 +4,7 @@
  */
 import {PERFORMANCE_SCENE_PHASES,type PerformanceSceneCosts,
  type PreviousFrameWork} from '../breach-performance-timeline.ts';
+import type {LiveShadowSubmissionSample} from './breach-live-shadow-submit-profiler.ts';
 export type PostReadyRuntimeMode='live'|'idle'|'replay'|'suspended';
 export type PostReadyRuntimeFrame=Readonly<{
  at:number;gapMs:number;callbackMs:number;
@@ -17,6 +18,8 @@ export type PostReadyRuntimeFrame=Readonly<{
  /** Cumulative stage counters, differenced only within this capture. */
  shadowRefreshes?:number;fogTextureUploads?:number;
  gpuDrawCalls?:number;
+ /** Actual current submitted frame, only with opt-in E6.16. */
+ shadowSubmission?:LiveShadowSubmissionSample;
 }>;
 export type PostReadySpike=Readonly<{
  gapMs:number;precedingCallbackMs:number;
@@ -27,9 +30,18 @@ export type PostReadySpike=Readonly<{
  precedingSubmitted3D:boolean;kind:'prior-callback'|'between-callbacks'|'mixed';
  precedingDominantScenePhase?:keyof PerformanceSceneCosts;
  precedingDominantScenePhaseMs?:number;
+ precedingShadowRenderWallMs?:number;
+ precedingNonShadowWallMs?:number;
 }>;
 export type PostReadyModeCounts=Readonly<{
  frames:number;over50ms:number;over100ms:number;submitted3D:number;
+}>;
+export type LiveShadowSubmissionAttribution=Readonly<{
+ frames:number;shadowRenderP95Ms:number|null;shadowRenderWorstMs:number|null;
+ nonShadowP95Ms:number|null;nonShadowWorstMs:number|null;
+ shadowDrawCallsP95:number|null;nonShadowDrawCallsP95:number|null;
+ framesWithShadowDraws:number;shadowMapRenderInvocations:number;
+ framesWithReliableDrawCounts:number;note:string;
 }>;
 export type LiveSceneAttribution=Readonly<{
  frames:number;
@@ -41,6 +53,7 @@ export type LiveSceneAttribution=Readonly<{
  fogComposeP95Ms:number|null;
  shadowRefreshesDuringSample:number;fogUploadsDuringSample:number;
  gpuDrawCallsP95:number|null;
+ renderSubmission:LiveShadowSubmissionAttribution|null;
  note:string;
 }>;
 export type PostReadyRuntimeWindow=Readonly<{
@@ -89,7 +102,10 @@ export function classifyPostReadyGap(
   precedingPostMs:round(finite(previous.postMs)),
   precedingSubmitted3D:previous.submitted3D,kind,
   ...(dominant&&phases?{precedingDominantScenePhase:dominant,
-   precedingDominantScenePhaseMs:round(finite(phases[dominant]))}:{})
+   precedingDominantScenePhaseMs:round(finite(phases[dominant]))}:{}),
+  ...(previous.shadowSubmission?{
+   precedingShadowRenderWallMs:round(finite(previous.shadowSubmission.shadowRenderWallMs)),
+   precedingNonShadowWallMs:round(finite(previous.shadowSubmission.nonShadowWallMs))}:{})
  };
 }
 /** Captures exactly N runtime callbacks. Retains only the eight worst gaps,
@@ -149,6 +165,22 @@ export class PostReadyRuntimeCapture{
    }
    return total;
   };
+  const submissions=detailed.flatMap(f=>f.shadowSubmission?[f.shadowSubmission]:[]);
+  const reliable=submissions.filter(s=>s.drawCountsReliable);
+  const submissionAttribution:LiveShadowSubmissionAttribution|null=
+   submissions.length?{
+    frames:submissions.length,
+    shadowRenderP95Ms:percentile(submissions.map(s=>finite(s.shadowRenderWallMs)),.95),
+    shadowRenderWorstMs:percentile(submissions.map(s=>finite(s.shadowRenderWallMs)),1),
+    nonShadowP95Ms:percentile(submissions.map(s=>finite(s.nonShadowWallMs)),.95),
+    nonShadowWorstMs:percentile(submissions.map(s=>finite(s.nonShadowWallMs)),1),
+    shadowDrawCallsP95:percentile(reliable.map(s=>finite(s.shadowDrawCalls)),.95),
+    nonShadowDrawCallsP95:percentile(reliable.map(s=>finite(s.nonShadowDrawCalls)),.95),
+    framesWithShadowDraws:reliable.filter(s=>s.shadowDrawCalls>0).length,
+    shadowMapRenderInvocations:submissions.reduce((n,s)=>n+s.shadowMapRenderInvocations,0),
+    framesWithReliableDrawCounts:reliable.length,
+    note:'Shadow-map render is synchronous CPU/driver wall time, not GPU timestamp duration. Other rendering includes main scene and possible post-effects. Draw calls count submissions, not GPU completion.'
+   }:null;
   const sceneAttribution:LiveSceneAttribution|null=detailed.length?{
    frames:detailed.length,
    phaseP95Ms:sceneCost(.95,'p95'),
@@ -161,6 +193,7 @@ export class PostReadyRuntimeCapture{
    shadowRefreshesDuringSample:counterDelta('shadowRefreshes'),
    fogUploadsDuringSample:counterDelta('fogTextureUploads'),
    gpuDrawCallsP95:percentile(detailed.map(f=>finite(f.gpuDrawCalls??0)),.95),
+   renderSubmission:submissionAttribution,
    note:'CPU only. The shadows phase prepares shadow update flags; shadow-map rasterization and GPU submission remain inside gpuSubmit wall time. No GPU timestamp or iPhone FPS measurement.'
   }:null;
   return {
