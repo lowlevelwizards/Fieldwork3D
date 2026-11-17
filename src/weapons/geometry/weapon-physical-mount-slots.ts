@@ -14,9 +14,10 @@ import {weaponPartMountSurfaces,type WeaponMountSurface}
 import {AR_HANDGUARD_START,arHandguardEnd}
  from '../../breach-weapon-contact-zones.ts';
 import {HK_CLAW_VISUAL} from './hk-rail-accessories.ts';
+import {AK_SIDE_MOUNT_ART} from './ak-side-mount-geometry.ts';
 
 export type PhysicalMountFace='top'|'bottom'|'left'|'right';
-export type PhysicalMountSupport='rail-tooth'|'continuous-rail'|'claw-foot';
+export type PhysicalMountSupport='rail-tooth'|'continuous-rail'|'claw-foot'|'dovetail-bar';
 export type PhysicalMountSlot=Readonly<{
  /** Stable across save-independent queries, never array-indexed by the UI. */
  id:string;
@@ -127,6 +128,29 @@ function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
     result.push(...arToothSlots(source,face,count,start,end,
      .59,sideSign(face)*2.57,start+.60,end-.60));
   }
+  return;
+ }
+ if(source.standard==='ak-side-dovetail'&&
+  source.ownerSlot==='receiver'&&build.family==='ak'){
+  // The receiver dovetail is left-only (negative Z), independent of
+  // anything under the fore-end. Proprietary direct-fit sight variants
+  // can use this interface later without an invented Picatinny adapter.
+  const d=AK_SIDE_MOUNT_ART;
+  if(source.role==='opticMount')
+   result.push(slot(source,'left','dovetail-bar',0,
+    d.centerX,d.contactY,d.contactZ,
+    d.startX,d.endX,d.startX,d.endX));
+  else if(source.role==='optic')
+   result.push(...continuousSlots(source,'left',d.startX,
+    d.endX,d.contactY,d.contactZ));
+  return;
+ }
+ if(part==='optic-ak-side-picatinny'&&
+  source.ownerSlot==='opticMount'&&source.role==='optic'&&
+  source.face==='top'){
+  const d=AK_SIDE_MOUNT_ART;
+  result.push(...continuousSlots(source,'top',d.bridgeStartX,
+   d.bridgeEndX,d.bridgeTopY,0));
   return;
  }
  if(part==='ak-rail-long'&&source.role==='optic'&&source.face==='top'){
