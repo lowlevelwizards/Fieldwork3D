@@ -4,10 +4,13 @@
  */
 import {dispatchSetupDisplayLabel,validDispatchSetup,
  type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
+import {STARTING_DISPATCH_STANDING} from './dispatch-department.ts';
+import {dispatchWeaponAccess,DISPATCH_WEAPON_CLASSES}
+ from './dispatch-weapon-access.ts';
 
 export type DispatchCreationReview=Readonly<{
  valid:boolean;title:string;reference:string;time:string;
- access:string;procurement:string;armory:string;note:string;problem:string;
+ access:string;weaponAccess:string;procurement:string;armory:string;note:string;problem:string;
 }>;
 
 export function dispatchCreationReview(draft:DispatchCampaignDraft):DispatchCreationReview{
@@ -32,6 +35,11 @@ export function dispatchCreationReview(draft:DispatchCampaignDraft):DispatchCrea
   draft.unlockMode==='both'?
   'Reference and career authorization in '+catalog:
   'All eligible choices immediately offered in '+catalog;
+ const weaponStatus={offered:'OFFERED','standing-locked':'STANDING 70',
+  'reference-locked':'RESTRICTED','not-assessed':'NOT ASSESSED'} as const;
+ const weaponAccess=DISPATCH_WEAPON_CLASSES.map(weapon=>
+  weapon.toUpperCase()+' · '+weaponStatus[dispatchWeaponAccess(draft,
+   draft.referenceId,STARTING_DISPATCH_STANDING,weapon)]).join('  /  ');
  const procurement=draft.economy==='unlimited'?
   'No-charge procurement; ownership, compatibility and finite stock still apply':
   'Normal funds and purchases; equipment must still be acquired';
@@ -50,5 +58,5 @@ export function dispatchCreationReview(draft:DispatchCampaignDraft):DispatchCrea
   'This is an authored appearance and equipment reference, not verified agency issue history.':
   'Unrestricted time does not invent missing equipment, sidearms, or historical references.';
  return Object.freeze({valid,title:dispatchSetupDisplayLabel(draft),
-  reference,time,access,procurement,armory,note,problem});
+  reference,time,access,weaponAccess,procurement,armory,note,problem});
 }
