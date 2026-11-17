@@ -122,3 +122,28 @@ that an offer means free stock, a historic agency issue, or a ready-to-apply gun
   progressive 1995 → 2015 reference and retained old weapon ownership.
 - Stage and release independently after successful production D13C Pages
   verification and current PR critical CI. Do not pile merges during publishing.
+
+## D13 release F — D13.9 Creative Arsenal authorization
+
+Operations Room already enables `OPEN ARSENAL` for Dispatch campaigns with
+global equipment scope and an authored physical weapon build. However, the
+Workbench's campaign quote adapter denied **every** Dispatch campaign,
+including global Creative, even though the narrower direct attachment route
+and parts editing honor its global equipment authorization.
+
+- Permit actual Workbench quote and commit only when a Dispatch campaign has
+  `equipmentScope=global`; all restricted references still fail closed.
+  Keep the existing physical build, operator, deployment and mount checks.
+- Treat `economy=unlimited` independently: use unconstrained purchasing
+  power to generate a **real** finite stock transfer, then report `cost=0`
+  and leave campaign funds unchanged. The quote still retains the nominal
+  individual purchase prices for provenance, not as payable deductions.
+- The same global setup with `economy=standard` still pays normally and
+  cannot buy without sufficient funds.
+- Preserve legacy Campaign and existing narrow Dispatch access tests.
+  Test both quote and commit, zero-fund Creative, normal global payments,
+  restricted profiles, active deployment, serial/magazine conservation and
+  readCampaign save round-trip.
+- Keep this independent of D13E (direct buy-and-equip), as it affects a
+  different adapter. Merge only after the prior production Pages release is
+  confirmed and the associated critical PR checks are green.
