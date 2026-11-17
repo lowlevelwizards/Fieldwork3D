@@ -19,6 +19,7 @@ import type {MountableSlot}
  from '../weapons/geometry/weapon-mount-selections.ts';
 import {remapArsenalZoom} from './camera-state.ts';
 import {ArsenalWeaponGeometryPool} from './weapon-geometry-pool.ts';
+import {compileArsenalRigidPartSiblings} from './weapon-part-batching.ts';
 import type {FamilyPartSlot} from '../equipment-weapon-families.ts';
 import type {ArsenalSlot} from './catalog.ts';
 const FAMILY_SLOTS:readonly FamilyPartSlot[]=
@@ -31,8 +32,10 @@ export class ArsenalViewport{
  private readonly model=new THREE.Group();
  // Rigid geometry pooling leaves mount sockets and selectable parts intact.
  private readonly geometryPool=new ArsenalWeaponGeometryPool();
- private readonly poolEnabled=new URLSearchParams(location.search)
-  .get('e626Weapon')==='1';
+ private readonly bakeParts=new URLSearchParams(location.search)
+  .get('e627PartBake')==='1';
+ private readonly poolEnabled=this.bakeParts||
+  new URLSearchParams(location.search).get('e626Weapon')==='1';
  private readonly socketLayer:HTMLDivElement;
  private readonly socketButtons=new Map<ArsenalSlot,HTMLButtonElement>();
  private readonly socketLocal=new Map<ArsenalSlot,THREE.Vector3>();
@@ -119,6 +122,11 @@ export class ArsenalViewport{
    const stats=this.geometryPool.adopt(this.body);
    this.canvas.dataset.e626Hits=String(stats.hits);
    this.canvas.dataset.e626Geometries=String(stats.geometries);
+  }
+  if(this.bakeParts){
+   const baked=compileArsenalRigidPartSiblings(this.body);
+   this.canvas.dataset.e627Avoided=String(baked.avoidedDraws);
+   this.canvas.dataset.e627Compiled=String(baked.renderMeshes);
   }
   this.attachments=buildWeaponAccessories(config,this.steel,this.dark);
   this.model.add(this.body,this.attachments);
