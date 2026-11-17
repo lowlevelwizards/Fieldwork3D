@@ -58,7 +58,8 @@ export function arsenalHandlingStats(recipe:ArsenalRecipeV2):readonly ArsenalHan
 }
 export function arsenalStatDeltas(current:readonly ArsenalHandlingStat[],
  previous:readonly ArsenalHandlingStat[]|null):ReadonlyMap<ArsenalStatId,number>{
- const prior=new Map(previous?.map(stat=>[stat.id,stat.score]));
- return new Map(current.map(stat=>[stat.id,
-  prior.has(stat.id)?stat.score-prior.get(stat.id)!:0]));
+ const prior=new Map<ArsenalStatId,number>(previous?.map(stat=>
+  [stat.id,stat.score] as const)??[]);
+ return new Map<ArsenalStatId,number>(current.map(stat=>[stat.id,
+  prior.has(stat.id)?stat.score-prior.get(stat.id)!:0] as const));
 }
