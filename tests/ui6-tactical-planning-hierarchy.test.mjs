@@ -15,7 +15,7 @@ test('UI.6A uses authoritative per-operator authored plan length without navigat
 });
 
 test('UI.6B keeps GO executable while updating squad-order feedback on edit',()=>{
- assert.match(hud,/queuedOrders:friendly\.reduce\(\(sum,actor\)=>sum\+actor\.plan\.length,0\)/);
+ assert.match(hud,/queuedOrders:friendly\.reduce\(\(sum,actor\)=>\s*sum\+\(actor\.health>0\?actor\.plan\.length:0\),0\)/);
  assert.match(hud,/writeDomAttribute\(config\.play,'aria-label',executionAction\)/);
  assert.match(hud,/writeDomAttribute\(config\.play,'title',executionAction\)/);
  assert.match(hud,/config\.play\.dataset\.queuedOrders=String\(config\.queuedOrders\)/);
@@ -40,4 +40,11 @@ test('UI.6D limits readiness decoration to planning and target authoring, omitti
  assert.match(css,/:is\(body\[data-hud-phase="planning"\],body\[data-hud-phase="targeting"\]\) \.tactical-hud \.bar \.unit:not\(\.down\)/);
  assert.match(css,/:is\(body\[data-hud-phase="planning"\],body\[data-hud-phase="targeting"\]\) \.tactical-hud \.bar #play/);
  assert.doesNotMatch(css,/^\.tactical-hud \.bar \.unit\[data-plan-count\]/m);
+});
+
+test('UI.6E execution readiness excludes incapacitated operators without discarding plans',()=>{
+ assert.match(hud,/actor\.health>0\?actor\.plan\.length:0/);
+ assert.match(hud,/Execute plan · '\+config\.queuedOrders\+' queued '/);
+ assert.match(hud,/on available operators/);
+ assert.match(hud,/const queued=a\?\.plan\.length\?\?0/);
 });

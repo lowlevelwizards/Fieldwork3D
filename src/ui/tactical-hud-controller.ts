@@ -348,8 +348,8 @@ export function createTacticalHudController(
     config.play.classList.toggle('running',config.phase==='running');
     const executionAction=mode==='go'?
       (config.queuedOrders?
-        'Execute '+config.queuedOrders+' queued '+
-          (config.queuedOrders===1?'order':'orders')+' across squad':
+        'Execute plan · '+config.queuedOrders+' queued '+
+          (config.queuedOrders===1?'order':'orders')+' on available operators':
         'Execute plan · no orders queued'):
       mode==='pause'?'Pause execution':'Reset encounter';
     writeDomAttribute(config.play,'aria-label',executionAction);
@@ -576,7 +576,8 @@ export function createTacticalHudController(
   const brief=operationBriefing(state);
   renderPhase({
     phase:state.phase,started:state.started,replaying,seconds:state.seconds,
-    queuedOrders:friendly.reduce((sum,actor)=>sum+actor.plan.length,0),
+    queuedOrders:friendly.reduce((sum,actor)=>
+      sum+(actor.health>0?actor.plan.length:0),0),
     phaseNode:ui.phase,clock:ui.clock,play:ui.play,
     reducedMotion:reducedMotion,icon:tacticalIcon
   });
