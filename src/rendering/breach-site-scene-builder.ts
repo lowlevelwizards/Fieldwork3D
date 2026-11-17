@@ -103,11 +103,10 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
       new URLSearchParams(location.search).get('e618Batch')!=='0';
     if(e618Enabled)consolidateOwnedStaticSiteDetails(
       host.observedDetails,host.doors);
-    // E6.20 pilot is strictly opt-in until verified by scene A/B and visual
-    // parity. Only already-known exterior window trims and fixed door frames
-    // share a disclosure owner. Keep glass, hinge, leaf and threshold intact.
-    const e620Enabled=typeof location!=='undefined'&&
-      new URLSearchParams(location.search).get('e620Bake')==='1';
+    // E6.20: verified fixed-seed production default. URL =0 is an
+    // emergency rollback flag; all source draw/fog ownership stays intact.
+    const e620Enabled=typeof location==='undefined'||
+      new URLSearchParams(location.search).get('e620Bake')!=='0';
     if(e620Enabled){
       let source=0,compiled=0,windows=0,frames=0;
       for(const glass of host.windowGlass.values()){
@@ -129,12 +128,12 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
       host.root.userData.fieldworkE620Pilot={source,compiled,
         avoided:source-compiled,windows,frames};
     }
-    // E6.21: second opt-in domain pilot. These groups move as one rigid
+    // E6.21: second verified domain, enabled by default. These groups move as one rigid
     // assembly or remain under their independent disclosure owner. A door
     // leaf's parent may rotate, but its local submesh geometry is rigid.
     // Never bake independently animated glass, thresholds or door hinges.
-    const e621Enabled=typeof location!=='undefined'&&
-      new URLSearchParams(location.search).get('e621Bake')==='1';
+    const e621Enabled=typeof location==='undefined'||
+      new URLSearchParams(location.search).get('e621Bake')!=='0';
     if(e621Enabled){
       let source=0,compiled=0,arches=0,interiorWindows=0;
       let interiorFrames=0,rigidLeaves=0;
