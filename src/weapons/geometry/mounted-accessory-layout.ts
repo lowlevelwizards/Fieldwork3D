@@ -30,7 +30,7 @@ export type AccessoryLayout=Readonly<{
 }>;
 const cache=new WeakMap<WeaponConfiguration,AccessoryLayout>();
 const positive=(face:string)=>face==='right'?1:face==='left'?-1:0;
-function seatOf(p:PhysicalAttachmentPlacement):MountedAccessorySeat{
+export function mountedSeatFromPlacement(p:PhysicalAttachmentPlacement):MountedAccessorySeat{
  const id=p.attachmentId,s=positive(p.face);
  const bottom=id==='foregrip-vertical'||id==='foregrip-handstop';
  const light=id==='light-compact';
@@ -98,7 +98,7 @@ export function resolveMountedAccessoryLayout(c:WeaponConfiguration):AccessoryLa
  const unresolved:PhysicalAttachmentFit[]=[];
  for(const id of ids){
   const fit=physicalAttachmentFitOptions(c,id,[]);
-  const candidates=fit.options.map(seatOf);
+  const candidates=fit.options.map(mountedSeatFromPlacement);
   const selected=candidates.find(candidate=>result.every(existing=>
    !accessorySeatsConflict(candidate,existing)));
   if(selected)result.push(selected);
