@@ -15,8 +15,12 @@ customized magazine or other nonfactory loadout.
 | `ar-m16a4` | 8 |
 | **Cohort total** | **35** |
 
-These are audit estimates, not a frame-rate promise. Production live
-GPU data must match candidate claims.
+**C5A Chromium results:** 12/12 camera comparisons passed. Real WebGL
+body calls: AK-74 **23 → 14**, AKS-74 **24 → 15**, RPK-74 **23 → 14**,
+M16A4 **31 → 23**. Triangles unchanged and zero pixels over the
+visible-difference threshold; mean RGB drift was effectively zero.
+These prove actual render submissions, not a measured FPS uplift.
+The C5B live-default-builder comparison must independently repeat them.
 
 - Run the actual `buildWeaponSilhouette` constructor twice with factory
   configs; disable production batching for both as independent baselines.
@@ -30,8 +34,8 @@ GPU data must match candidate claims.
 
 ## C5B conditional activation
 
-Only after C5A succeeds, add exactly those four IDs to the C4 factory
-allowlist and rerun a second browser pass using **live default builder**
+C5A passed. Exactly those four IDs were added to the C4 factory
+allowlist and CI now runs a second browser pass using **live default builder**
 versus explicit `{rigidCompilation:'disabled'}` baselines.
 Maintain exact per-preset identity; no changes to gameplay ballistics,
 poses, reload hand-off, accessory geometry, metadata or save format.
