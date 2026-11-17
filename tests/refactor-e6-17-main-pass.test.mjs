@@ -64,6 +64,23 @@ test('E6.17 excludes shadow draw submissions and handles transparency',()=>{
  assert.equal(shadow.last.shadowDrawCalls,1);
  assert.equal(shadow.last.nonShadowDrawCalls,2);
 });
+test('E6.17 accounts for Three r180 renderer.info reset between shadow and main',()=>{
+ let clock=0;
+ const renderer={info:{autoReset:true,render:{calls:0}},shadowMap:{
+  render(){renderer.info.render.calls+=3;clock+=2;}
+ }};
+ const profiler=new LiveShadowSubmitProfiler(renderer,()=>clock);
+ profiler.capture(()=>{
+  renderer.shadowMap.render();
+  // Three.WebGLRenderer.render calls info.reset after shadowMap.render.
+  renderer.info.render.calls=0;
+  renderer.info.render.calls+=7;clock+=5;
+ });
+ assert.equal(profiler.last.shadowDrawCalls,3);
+ assert.equal(profiler.last.nonShadowDrawCalls,7);
+ assert.equal(profiler.last.totalDrawCalls,10);
+ assert.equal(profiler.last.drawCountsReliable,true);
+});
 test('E6.17 never suppresses original thrown render exception',()=>{
  const renderer={info:{render:{calls:0}},renderBufferDirect(){
   throw Error('original render failure');}};

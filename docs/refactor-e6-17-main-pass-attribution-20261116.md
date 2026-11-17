@@ -24,8 +24,12 @@ adds `sceneAttribution.mainPassAttribution`:
 - Top 12 **per-frame** material instances, pooled into a bounded
   12-item observed-draw list (lower bound for instances outside
   each frame's top 12)
-- Frame counts with trustworthy draw deltas and reconciliation with
-  E6.16 nonshadow totals; missing/unreliable values are not zeros
+- Frame counts with trustworthy draw deltas and **required reconciliation**
+  with E6.16 nonshadow totals; missing/unreliable values are not zeros.
+  Three r180 resets renderer.info after the shadow map pass, so the
+  end-of-render counter is main-pass-only when info.autoReset=true.
+  E6.17 corrects the E6.16-derived nonshadow draw accounting and
+  reports combined total as the sum of shadow plus main-pass draws.
 
 The wrapper preserves the original method's receiver, arguments,
 return value and thrown exception. Zero additional WebGL submissions,

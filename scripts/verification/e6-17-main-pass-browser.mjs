@@ -108,8 +108,11 @@ try{
       !Number.isFinite(main.uniqueMaterialsP95)||main.uniqueMaterialsP95<=0||
       !main.dominantMaterialTypes?.length||
       !main.dominantOwners?.length||
-      !main.topMaterialInstances?.length)
-     throw Error('Missing E6.17 main-pass material attribution: '+JSON.stringify(main));
+      !main.topMaterialInstances?.length||
+      main.reconciledWithNonShadowFrames<85||
+      main.drawCallsP95!==submit.nonShadowDrawCallsP95)
+     throw Error('Missing or unreconciled E6.17 main-pass evidence: '+
+      JSON.stringify({main,submit}));
    if(live.topGaps.some(spike=>spike.precedingSubmitted3D&&
       spike.precedingDominantScenePhase===undefined))
       throw Error('Worst live gaps missing preceding 3D phase attribution');

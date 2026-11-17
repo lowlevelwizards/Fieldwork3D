@@ -8,7 +8,7 @@ export type LiveShadowSubmissionSample=Readonly<{
  nonShadowDrawCalls:number;totalDrawCalls:number;drawCountsReliable:boolean;
 }>;
 type RendererLike={shadowMap:{render?:(...args:unknown[])=>unknown};
- info:{render:{calls:number}}};
+ info:{autoReset?:boolean;render:{calls:number}}};
 const elapsed=(end:number,start:number)=>Math.max(0,end-start);
 export class LiveShadowSubmitProfiler{
  readonly installed:boolean=false;
@@ -56,14 +56,23 @@ export class LiveShadowSubmitProfiler{
   finally{
    const total=elapsed(this.now(),started);
    const calls=this.renderer.info.render.calls;
-   const valid=Number.isFinite(calls)&&calls>=0&&
-    this.reliable&&calls>=this.shadowDraws;
+   // Three r180 WebGLRenderer.render resets renderer.info AFTER the
+   // shadow-map render and BEFORE drawing the main scene when autoReset
+   // is enabled. The final 'calls' value therefore already excludes
+   // shadows; subtracting shadow draws again is incorrect.
+   // autoReset=false retains the old accumulating-counter contract.
+   const resetAfterShadow=this.renderer.info.autoReset===true;
+   const valid=Number.isFinite(calls)&&calls>=0&&this.reliable&&
+    (resetAfterShadow||calls>=this.shadowDraws);
+   const mainDraws=valid?
+    (resetAfterShadow?calls:calls-this.shadowDraws):0;
    this.last={totalWallMs:total,shadowRenderWallMs:this.shadowWall,
     nonShadowWallMs:Math.max(0,total-this.shadowWall),
     shadowMapRenderInvocations:this.invocations,
     shadowDrawCalls:this.shadowDraws,
-    nonShadowDrawCalls:valid?calls-this.shadowDraws:0,
-    totalDrawCalls:Number.isFinite(calls)?Math.max(0,calls):0,
+    nonShadowDrawCalls:mainDraws,
+    totalDrawCalls:Number.isFinite(calls)?
+     Math.max(0,resetAfterShadow?calls+this.shadowDraws:calls):0,
     drawCountsReliable:valid};
    this.capturing=false;
   }
