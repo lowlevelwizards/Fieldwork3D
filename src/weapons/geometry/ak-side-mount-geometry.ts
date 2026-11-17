@@ -12,7 +12,7 @@ export const AK_SIDE_MOUNT_ART=Object.freeze({
  // Receiver (left side = -Z). The rail stays on the outer stamped face.
  centerX:-1.80,centerY:-.07,centerZ:-2.24,
  length:5.70,
- contactY:-.07,contactZ:-2.54,
+ contactY:-.07,contactZ:-2.55,
  startX:-4.65,endX:1.05,
  // Distinct aft, elevated adapter bridge. It sits above the dust cover,
  // not on it; this is deliberately a rear optic position.
