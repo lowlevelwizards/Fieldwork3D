@@ -626,7 +626,8 @@ export class CampaignScreen{
   rename.disabled=!!c.activeContractId;
   appearance.disabled=!!c.activeContractId;
   const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
-  arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build||isDispatchPilot(c);
+  arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build||
+   (isDispatchPilot(c)&&effectiveDispatchSetup(c).equipmentScope!=='global');
   identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
   const readiness=node('details','campaign-readiness-details');
   readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
@@ -694,7 +695,8 @@ export class CampaignScreen{
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
-  const dispatchPilot=isDispatchPilot(c);
+  const dispatchPilot=isDispatchPilot(c)&&
+   effectiveDispatchSetup(c).equipmentScope!=='global';
   if(dispatchPilot)editor.append(node('p','campaign-note',
    'DISPATCH PILOT · Curated equipment and saved kits remain available. Operator Studio permits only verified identity, uniform finish and glove options; helmet and advanced equipment editors remain restricted.'));
   const presets=node('details','campaign-kit-presets');
