@@ -76,7 +76,11 @@ test('M3.0C1 compiles real shotgun from 20 submissions to two',()=>{
  assert.equal(newStats.submissions,2);
  assert.equal(origStats.triangles,240);
  assert.equal(newStats.triangles,origStats.triangles);
- assert.deepEqual(bounds(optimized),bounds(original));
+ const optimizedBounds=bounds(optimized),originalBounds=bounds(original);
+ for(let end=0;end<2;end++)for(let axis=0;axis<3;axis++)
+  assert.ok(Math.abs(optimizedBounds[end][axis]-
+   originalBounds[end][axis])<.00001,
+   'baking f32 geometry should preserve world bounds within 1e-5');
  for(const mat of [steel,dark])
   assert.deepEqual(triangleSignature(optimized,mat),triangleSignature(original,mat),
    'all world-space triangles, outward normals and pixel UVs must match');
