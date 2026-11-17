@@ -1,12 +1,14 @@
-name: Arsenal M2.8 cross-family integration and exact mount parity
+name: Arsenal M2.8–M2.9 physical mount and recovery contracts
 on:
   pull_request:
     branches: [main]
     paths:
       - 'src/arsenal/**'
+      - 'scripts/smoke-arsenal-m28-apply.mjs'
       - 'src/weapons/geometry/mounted-accessory-layout.ts'
       - 'src/weapons/geometry/weapon-mount-position*.ts'
       - 'tests/arsenal-m28-*.test.mjs'
+      - 'tests/arsenal-m29-*.test.mjs'
       - 'scripts/smoke-arsenal-m28-*.mjs'
       - 'src/arsenal-m28-apply-smoke.ts'
       - 'arsenal-m28-apply-smoke.html'
@@ -28,6 +30,7 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/arsenal-m28-cross-family-mounting.test.mjs \
+            tests/arsenal-m29-multi-mount-recovery.test.mjs \
             tests/arsenal-m27-mount-picker.test.mjs \
             tests/arsenal-m26-persistent-mounts.test.mjs \
             tests/arsenal-m26-transactions.test.mjs \
@@ -55,7 +58,7 @@ jobs:
         run: node scripts/smoke-arsenal-m27-touch.mjs
       - name: M2.6 real physical left/right optics/lights
         run: node scripts/smoke-arsenal-m26-visual.mjs
-      - name: M2.8 real Campaign/Quick Play Apply and save roundtrip
+      - name: M2.9 four-way Campaign/Quick Play desktop/mobile Apply and save roundtrip
         run: node scripts/smoke-arsenal-m28-apply.mjs
       - uses: actions/upload-artifact@v4
         if: always()
