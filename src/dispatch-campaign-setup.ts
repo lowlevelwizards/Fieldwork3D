@@ -2,7 +2,7 @@
  * A campaign preset is a starting configuration, not a different game engine.
  * Only supported, authored tactical-police looks may start a restricted career.
  */
-import {DISPATCH_PILOT_REFERENCE_ID,dispatchReferenceContext} from './dispatch-content-foundation.ts';
+import {dispatchReferenceContext} from './dispatch-content-foundation.ts';
 import {factionReference} from './faction-reference-catalog.ts';
 
 export const DISPATCH_PRESETS=['career','historical','decades','open','creative'] as const;
