@@ -8,7 +8,7 @@ on:
       - 'src/rendering/breach-live-shadow-submit-profiler.ts'
       - 'tests/refactor-e6-16-shadow-submission.test.mjs'
       - 'scripts/verification/e6-16-shadow-submit-browser.mjs'
-      - '.github/workflows/refactor-e6-16-live-scene.yml'
+      - '.github/workflows/refactor-e6-16-render-submit.yml'
   workflow_dispatch:
 permissions:
   contents: read
