@@ -381,8 +381,8 @@ test('G36 E1 reload imagery: own polymer magazine and non-roller presentation',(
  assert.ok(Number.isFinite(bounds.min.x)&&bounds.max.x>bounds.min.x);
  geo.dispose();
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'g36-service');
- assert.equal(reloadMechanismFor('rifle',cfg),'legacy',
-  'G36 must not inherit the unrelated HK roller-delay reload gesture');
+ assert.equal(reloadMechanismFor('rifle',cfg),'g36-top-charge',
+  'G36 uses its own top handle, never the unrelated HK roller-delay gesture');
  assert.equal(v3MagazineRockAngle(.72,'emergency','g36'),0,
   'G36 polymer detachable magazine must not inherit AK rock-in');
  assert.ok(v3MagazineBodyGrip('g36','upper-body'));
