@@ -128,7 +128,8 @@ export class CampaignScreen{
  }
  hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
  entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false,
-  initialPane:'main'|'new'='main'){
+  initialPane:'main'|'new'='main',
+  savedCampaigns:Partial<Record<CampaignSlot,CampaignState|null>>={}){
   this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,dispatch:dispatchHasSave,active};
   this.armoryOperatorId=null;this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
@@ -142,6 +143,7 @@ export class CampaignScreen{
   const available=slots.filter(([, ,saved])=>saved);
   // Favor the actual active slot, not the historically first (legacy) handler.
   const selected=available.find(([slot])=>slot===active)??available[0];
+  const selectedCampaign=selected?savedCampaigns[selected[0]]:null;
   const main=node('main','campaign-shell campaign-landing');
   main.setAttribute('aria-label','Fieldwork main menu');
   const subpage=node('section','campaign-shell campaign-landing campaign-landing-subpage');
@@ -249,7 +251,18 @@ export class CampaignScreen{
    selected?'ACTIVE CAMPAIGN · '+selected[1]:'BEGIN FIELD OPERATIONS'),
    node('strong','',selected?'CONTINUE':'NEW CAMPAIGN'),
    node('span','campaign-landing-card-detail',
+    selectedCampaign?'Day '+selectedCampaign.day+' · '+selectedCampaign.funds+' CR':
     selected?'Open your Operations Room':'Choose a campaign experience'));
+  if(selectedCampaign){
+   const recovering=selectedCampaign.operators.filter(o=>
+    selectedCampaign.squadIds.includes(o.id)&&o.recoveryDays>0).length;
+   if(selectedCampaign.activeContractId)
+    primary.append(node('span','campaign-landing-status',
+     'Deployment in progress'));
+   else if(recovering)
+    primary.append(node('span','campaign-landing-status is-warning',
+     recovering+' assigned operator'+(recovering===1?'':'s')+' recovering'));
+  }
   primary.setAttribute('aria-label',selected?
    'Continue '+selected[1]:'Create a new campaign');
   resume.append(primary);
@@ -343,9 +356,6 @@ export class CampaignScreen{
   const grid=node('div','campaign-grid');
   const personnel=node('section','campaign-section');
   personnel.append(node('h2','','PERSONNEL'));
-  personnel.append(node('p','campaign-note',
-   'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
-   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
   const deployment=node('div','campaign-assignment');
   deployment.append(node('h2','','DEPLOYMENT TEAM'));
   for(let slot=0;slot<4;slot++){
@@ -454,9 +464,17 @@ export class CampaignScreen{
   personnel.append(roster);
   const logistics=node('section','campaign-section');
   logistics.append(node('h2','','SUPPLIES & LOGISTICS'));
-  logistics.append(node('p','campaign-note',
-   'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
-   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
+  const stock=node('div','campaign-logistics-stats');
+  for(const [count,label] of [
+   [c.supplies.ammo,'ROUNDS'],
+   [c.supplies.medical,'MEDICAL KITS'],
+   [c.supplies.flash,'FLASHBANGS']
+  ] as const){
+   const fact=node('div','campaign-logistics-stat');
+   fact.append(node('strong','',String(count)),node('span','',label));
+   stock.append(fact);
+  }
+  logistics.append(stock);
   const purchases=node('div','campaign-purchases');
   for(const [label,cost,action] of [
    ['60 ROUNDS',120,this.handlers.buyAmmo],
@@ -465,10 +483,14 @@ export class CampaignScreen{
   ] as const){
    const price=isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?
     'NO CHARGE':cost+' CR';
-   const buy=button('BUY '+label+' · '+price,action);
+   const item=node('div','campaign-supply-offer');
+   const desc=node('div','campaign-supply-offer-title');
+   desc.append(node('strong','',label),node('span','',price));
+   const buy=button('BUY',action);
+   buy.setAttribute('aria-label','Buy '+label+' for '+price);
    buy.disabled=!canAffordCampaignPurchase(c,cost)||
     (label==='2 FLASHBANGS'&&(!!c.activeContractId||c.supplies.flash>998));
-   purchases.append(buy);
+   item.append(desc,buy);purchases.append(item);
   }
   logistics.append(purchases);
   const inventory=node('div','campaign-armory');
