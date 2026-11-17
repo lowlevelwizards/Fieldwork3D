@@ -61,6 +61,7 @@ export function openArsenalWorkbench(
  let activeSlot:ArsenalSlot='receiver';
  let showIncompatible=false;
  let pending:ArsenalEditProposal|null=null;
+ let previewProposal:ArsenalEditProposal|null=null;
  const priorBodyOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');overlay.className='arsenal-wb-screen';
  if(context)overlay.classList.add('arsenal-wb-has-apply');
@@ -184,6 +185,8 @@ export function openArsenalWorkbench(
  fitExplanation.hidden=true;
  const choiceList=document.createElement('div');choiceList.className='arsenal-wb-option-list';
  const pendingHost=document.createElement('div');pendingHost.className='arsenal-wb-pending-host';
+ const previewHost=document.createElement('div');previewHost.className='arsenal-wb-proposal-host';
+ previewHost.setAttribute('role','status');
  const hint=document.createElement('p');hint.className='arsenal-wb-hint';
  hint.textContent=context?.mode==='campaign'?
   'Preview changes freely. Credits and stock change only after Equip.':
@@ -193,7 +196,7 @@ export function openArsenalWorkbench(
  const applyQuote=document.createElement('p');applyQuote.className='arsenal-wb-apply-quote';
  applyQuote.setAttribute('role','status');
  panel.append(panelTitle,slotRow,activeLabel,mounting,finishSection,optionsHeader,
-  fitExplanation,choiceList,pendingHost,applyQuote,hint);
+  fitExplanation,previewHost,choiceList,pendingHost,applyQuote,hint);
  main.append(stage,nav,panel);
  overlay.append(head,main);
  if(context)overlay.append(commitHint);
@@ -213,6 +216,34 @@ export function openArsenalWorkbench(
   return BODY_SLOTS.includes(slot as FamilyPartSlot)?
    draft.working.parts[slot as FamilyPartSlot]:
    draft.working.accessories[slot as ArsenalAccessorySlot];
+ }
+ function renderPreviewProposal(){
+  previewHost.replaceChildren();
+  const candidate=previewProposal;
+  if(!candidate?.valid||!candidate.nextRecipe)return;
+  const wrap=document.createElement('div');wrap.className='arsenal-wb-proposal';
+  const caption=document.createElement('strong');
+  caption.textContent='PREVIEW · NOT INSTALLED';
+  const name=document.createElement('p');
+  name.textContent=(arsenalPart(candidate.requestedPartId)?.name??candidate.requestedPartId)+
+   (candidate.requiresConfirmation?' · includes required dependent changes':'');
+  const controls=document.createElement('div');controls.className='arsenal-wb-pending-actions';
+  const accept=document.createElement('button');accept.type='button';
+  accept.className='arsenal-wb-accept';accept.textContent='APPLY PART';
+  const cancel=document.createElement('button');cancel.type='button';
+  cancel.className='arsenal-wb-action';cancel.textContent='CANCEL PREVIEW';
+  accept.addEventListener('click',()=>{
+   if(previewProposal!==candidate)return;
+   const changed=commitArsenalProposal(draft,candidate,true);
+   if(changed===draft)return;
+   draft=changed;previewProposal=null;pending=null;
+   viewer.setRecipe(draft.working);renderSelection();
+  });
+  cancel.addEventListener('click',()=>{
+   previewProposal=null;renderPreviewProposal();renderPerformance();
+  });
+  controls.append(accept,cancel);wrap.append(caption,name,controls);
+  previewHost.append(wrap);
  }
  function renderPending(){
   pendingHost.replaceChildren();
@@ -334,9 +365,9 @@ export function openArsenalWorkbench(
      if(selected)return;
      fitExplanation.hidden=true;fitExplanation.textContent='';
      pending=null;
-     if(live.requiresConfirmation){pending=live;renderPending();return;}
-     draft=commitArsenalProposal(draft,live);
-     viewer.setRecipe(draft.working);renderSelection();
+     // Choosing a component is now non-destructive. Apply Part is the
+     // explicit second step on touch, mouse, and keyboard alike.
+     previewProposal=live;renderPreviewProposal();renderPerformance();
     });
     entry={option,status};choiceButtons.set(key,entry);
    }
@@ -503,10 +534,14 @@ export function openArsenalWorkbench(
   if(!sameArsenalRecipe(lastStatsRecipe,draft.working)){
    previousStatsRecipe=lastStatsRecipe;
    lastStatsRecipe=draft.working;
+   previewProposal=null;
   }
-  const current=arsenalHandlingStats(draft.working);
-  const previous=previousStatsRecipe?arsenalHandlingStats(previousStatsRecipe):null;
-  statsComparison.textContent=previous?'VS PREVIOUS BUILD':'CURRENT BUILD';
+  const projected=previewProposal?.valid?previewProposal.nextRecipe:null;
+  const current=arsenalHandlingStats(projected??draft.working);
+  const previous=projected?arsenalHandlingStats(draft.working):
+   previousStatsRecipe?arsenalHandlingStats(previousStatsRecipe):null;
+  statsComparison.textContent=projected?'PROPOSED VS EQUIPPED':
+   previous?'VS PREVIOUS BUILD':'CURRENT BUILD';
   if(!current){statsBody.textContent='Handling data unavailable for this build.';return;}
   const deltas=arsenalStatDeltas(current,previous);
   const oldScores=new Map<string,number>(previous?.map(item=>
@@ -578,7 +613,7 @@ export function openArsenalWorkbench(
   showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
   viewer.setVisibleSlots(activeCategory.slots);
   viewer.setSelectedSlot(activeSlot);
-  renderPerformance();renderChoices();renderPending();renderMounting();
+  renderPerformance();renderChoices();renderPreviewProposal();renderPending();renderMounting();
  }
  const loadDialog=document.createElement('dialog');
  loadDialog.className='arsenal-wb-load-dialog';
