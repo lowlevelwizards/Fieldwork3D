@@ -2,12 +2,21 @@
  * with the RAF interval ending at the NEXT callback.
  * Callbacks are wall times, not CPU utilization or GPU execution time.
  */
+import {PERFORMANCE_SCENE_PHASES,type PerformanceSceneCosts,
+ type PreviousFrameWork} from '../breach-performance-timeline.ts';
 export type PostReadyRuntimeMode='live'|'idle'|'replay'|'suspended';
 export type PostReadyRuntimeFrame=Readonly<{
  at:number;gapMs:number;callbackMs:number;
  simMs:number;recordingMs:number;uiMs:number;
  sceneMs:number;canvasMs:number;postMs:number;diagnosticsMs:number;
  mode:PostReadyRuntimeMode;viewMode:string;submitted3D:boolean;
+ /** E6.15: phase snapshots collected ONLY from the real opt-in 3D frame. */
+ sceneBreakdown?:PerformanceSceneCosts;
+ actorBreakdown?:PreviousFrameWork['actor'];
+ fogComposeMs?:number;
+ /** Cumulative stage counters, differenced only within this capture. */
+ shadowRefreshes?:number;fogTextureUploads?:number;
+ gpuDrawCalls?:number;
 }>;
 export type PostReadySpike=Readonly<{
  gapMs:number;precedingCallbackMs:number;
@@ -16,9 +25,23 @@ export type PostReadySpike=Readonly<{
  precedingSceneMs:number;precedingSimMs:number;precedingUiMs:number;
  precedingCanvasMs:number;precedingPostMs:number;
  precedingSubmitted3D:boolean;kind:'prior-callback'|'between-callbacks'|'mixed';
+ precedingDominantScenePhase?:keyof PerformanceSceneCosts;
+ precedingDominantScenePhaseMs?:number;
 }>;
 export type PostReadyModeCounts=Readonly<{
  frames:number;over50ms:number;over100ms:number;submitted3D:number;
+}>;
+export type LiveSceneAttribution=Readonly<{
+ frames:number;
+ /** All phases are CPU wall times, including native WebGL blocking. */
+ phaseP95Ms:PerformanceSceneCosts;
+ phaseWorstMs:PerformanceSceneCosts;
+ actorPoseP95Ms:number|null;actorPosePrepP95Ms:number|null;
+ actorAppearanceP95Ms:number|null;actorAllyContextP95Ms:number|null;
+ fogComposeP95Ms:number|null;
+ shadowRefreshesDuringSample:number;fogUploadsDuringSample:number;
+ gpuDrawCallsP95:number|null;
+ note:string;
 }>;
 export type PostReadyRuntimeWindow=Readonly<{
  frames:number;gapsWithPrecedingFrame:number;interrupted:boolean;
@@ -29,6 +52,8 @@ export type PostReadyRuntimeWindow=Readonly<{
  p95SimMs?:number|null;p95SceneMs?:number|null;
  p95UiMs?:number|null;p95CanvasMs?:number|null;
  callbacksWithSimulation?:number;
+ /** E6.15: present only when fine-grained scene profiling is enabled. */
+ sceneAttribution?:LiveSceneAttribution|null;
  spikeCounts:Readonly<{priorCallback:number;betweenCallbacks:number;mixed:number}>;
  byMode:Readonly<Record<PostReadyRuntimeMode,PostReadyModeCounts>>;
  topGaps:readonly PostReadySpike[];
@@ -50,6 +75,10 @@ export function classifyPostReadyGap(
  const kind:PostReadySpike['kind']=prior>=Math.max(33.3,gap*.65)?
   'prior-callback':outside>=Math.max(33.3,gap*.5)?
    'between-callbacks':'mixed';
+ const phases=previous.sceneBreakdown;
+ const dominant=phases?PERFORMANCE_SCENE_PHASES.reduce((best,key)=>
+  finite(phases[key])>finite(phases[best])?key:best,
+  PERFORMANCE_SCENE_PHASES[0]):undefined;
  return {gapMs:round(gap),precedingCallbackMs:round(prior),
   outsidePrecedingCallbackMs:round(outside),
   precedingMode:previous.mode,currentMode:current.mode,
@@ -58,7 +87,10 @@ export function classifyPostReadyGap(
   precedingUiMs:round(finite(previous.uiMs)),
   precedingCanvasMs:round(finite(previous.canvasMs)),
   precedingPostMs:round(finite(previous.postMs)),
-  precedingSubmitted3D:previous.submitted3D,kind};
+  precedingSubmitted3D:previous.submitted3D,kind,
+  ...(dominant&&phases?{precedingDominantScenePhase:dominant,
+   precedingDominantScenePhaseMs:round(finite(phases[dominant]))}:{})
+ };
 }
 /** Captures exactly N runtime callbacks. Retains only the eight worst gaps,
  * never an unbounded trace or a per-frame replay of user input. */
@@ -99,6 +131,38 @@ export class PostReadyRuntimeCapture{
    gaps.push(spike);
   }
   gaps.sort((a,b)=>b.gapMs-a.gapMs);
+  // Reuse snapshots from the existing, bounded actual tactical callback.
+  // Never mistake cumulative texture or shadow counters for per-frame work.
+  const detailed=frames.filter(f=>f.submitted3D&&!!f.sceneBreakdown);
+  const sceneCost=(p:number,which:'p95'|'worst')=>
+   Object.fromEntries(PERFORMANCE_SCENE_PHASES.map(key=>[key,
+    which==='p95'?percentile(detailed.map(f=>finite(f.sceneBreakdown?.[key]??0)),p)??0:
+     round(Math.max(0,...detailed.map(f=>finite(f.sceneBreakdown?.[key]??0))))
+   ])) as PerformanceSceneCosts;
+  const counterDelta=(key:'shadowRefreshes'|'fogTextureUploads')=>{
+   let previous:number|undefined,total=0;
+   for(const frame of detailed){
+    const raw=frame[key];
+    if(raw===undefined||!Number.isFinite(raw))continue;
+    if(previous!==undefined&&raw>=previous)total+=raw-previous;
+    previous=raw;
+   }
+   return total;
+  };
+  const sceneAttribution:LiveSceneAttribution|null=detailed.length?{
+   frames:detailed.length,
+   phaseP95Ms:sceneCost(.95,'p95'),
+   phaseWorstMs:sceneCost(1,'worst'),
+   actorPoseP95Ms:percentile(detailed.map(f=>finite(f.actorBreakdown?.poseMs??0)),.95),
+   actorPosePrepP95Ms:percentile(detailed.map(f=>finite(f.actorBreakdown?.posePrepMs??0)),.95),
+   actorAppearanceP95Ms:percentile(detailed.map(f=>finite(f.actorBreakdown?.appearanceMs??0)),.95),
+   actorAllyContextP95Ms:percentile(detailed.map(f=>finite(f.actorBreakdown?.allyContextMs??0)),.95),
+   fogComposeP95Ms:percentile(detailed.map(f=>finite(f.fogComposeMs??0)),.95),
+   shadowRefreshesDuringSample:counterDelta('shadowRefreshes'),
+   fogUploadsDuringSample:counterDelta('fogTextureUploads'),
+   gpuDrawCallsP95:percentile(detailed.map(f=>finite(f.gpuDrawCalls??0)),.95),
+   note:'CPU only. The shadows phase prepares shadow update flags; shadow-map rasterization and GPU submission remain inside gpuSubmit wall time. No GPU timestamp or iPhone FPS measurement.'
+  }:null;
   return {
    frames:frames.length,gapsWithPrecedingFrame:Math.max(0,frames.length-1),
    interrupted:this.interrupted,
@@ -114,6 +178,7 @@ export class PostReadyRuntimeCapture{
    p95UiMs:percentile(frames.map(f=>finite(f.uiMs)),.95),
    p95CanvasMs:percentile(frames.map(f=>finite(f.canvasMs)),.95),
    callbacksWithSimulation:frames.filter(f=>f.simMs>0).length,
+   sceneAttribution,
    spikeCounts,byMode:counts,topGaps:gaps.slice(0,8),
    note:'Each gap ends at the current RAF callback; the JS work that can fill it is from the PREVIOUS callback. Outside-preceding-callback time includes browser/other tasks, compositor scheduling, and possible driver waits, but is not proof of GPU cost. Measurements are JavaScript wall time; modes distinguish idle planning from live simulation. No network upload.'
   };
