@@ -40,7 +40,8 @@ export function assembleSession(index=0,siteSeed?:number,
   encounterContext:EncounterContext={}):Session{
   const loadedSite=prebuiltSite??(siteSeed===undefined?undefined:
     generateSite(siteSeed>>>0,scale,undefined,
-      {...encounterContext,mission:missionOverride??encounterContext.mission}));
+      {...encounterContext,mission:missionOverride??encounterContext.mission},
+      {archetype:encounterContext.archetype}));
   // Normalize archived or authored sites once at session creation. No
   // extra work in collision, rendering or the 60 Hz simulation loop.
   const site=loadedSite?withSitePropIds(loadedSite):undefined;
