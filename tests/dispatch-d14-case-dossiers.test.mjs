@@ -17,7 +17,7 @@ const settle=(campaign,id,reportId,outcome='success')=>{
   events:[]});
 };
 
-test('D14.1 all seven authored cases use only validated real mission and site facts',()=>{
+test('D14.1 all nineteen authored cases use only validated real mission and site facts',()=>{
  const campaign=newDispatchPilotCampaign(14001);
  for(const id of DISPATCH_D8_INCIDENT_IDS){
   const def=dispatchIncidentDefinition(id);
