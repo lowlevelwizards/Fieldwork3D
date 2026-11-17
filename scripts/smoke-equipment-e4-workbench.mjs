@@ -46,6 +46,27 @@ try{
  assert.equal(layout.dock,'fixed','campaign Apply must remain accessible');
  assert.equal(layout.context,true,'campaign commit state missing');
  assert.equal(layout.modelCount,1,'workbench duplicated weapon canvas');
+ // Factory browsing must filter by platform and inspect changes without
+ // committing to Campaign or discarding the current live draft.
+ await page.getByRole('button',{name:'CHOOSE MODEL',exact:true}).click();
+ const factory=page.getByRole('dialog',{name:'CHOOSE FACTORY MODEL'});
+ await factory.waitFor({state:'visible'});
+ assert.equal(await factory.locator('.arsenal-wb-platform-chip[aria-pressed="true"]')
+  .getAttribute('data-platform'),'ar15','Factory platform default drifted');
+ await factory.locator('.arsenal-wb-platform-chip[data-platform="g36"]').click();
+ assert.equal(await factory.locator('.arsenal-wb-platform-chip[aria-pressed="true"]')
+  .getAttribute('data-platform'),'g36','Platform filter failed');
+ if(!await factory.locator('.arsenal-wb-load-option').count())
+  throw Error('G36 factory variants are not discoverable');
+ await factory.locator('.arsenal-wb-platform-chip[data-platform="ar15"]').click();
+ const alternate=factory.locator('.arsenal-wb-load-option').filter({hasText:/CHANGES/}).first();
+ await alternate.waitFor({state:'visible'});
+ await alternate.click();
+ assert.match(await factory.locator('.arsenal-wb-load-changes').innerText(),
+  /REVIEW [0-9]+ CHANGES/,'Factory chooser does not explain modifications');
+ assert.equal(await page.evaluate(()=>document.body.dataset.m28Applied),undefined,
+  'Factory model preview mutated Campaign');
+ await factory.getByRole('button',{name:'CANCEL',exact:true}).click();
  await page.getByRole('button',{name:'Accessories',exact:true}).click();
  await page.getByRole('button',{name:'Light',exact:true}).click();
  const mount=page.locator('.arsenal-wb-mounting');
