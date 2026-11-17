@@ -19,7 +19,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   equipment-phone:
-    if: ${{ startsWith(github.head_ref, 'ui/equipment-') }}
+    if: ${{ startsWith(github.head_ref, 'ui/equipment-') || startsWith(github.head_ref, 'release/equipment-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

@@ -1619,3 +1619,40 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(prefers-reduced-motion:reduce){
  .campaign-gear-picker-option{transition:none}
 }
+
+/* E6.B: confirm only Campaign-committed equipment changes, never previews. */
+.campaign-kit-commit-feedback{display:flex;flex-wrap:wrap;align-items:center;
+ gap:5px 11px;border:1px solid var(--fw-sage);border-left:3px solid var(--fw-sage);
+ border-radius:7px;padding:9px 11px;background:var(--fw-panel-deep);
+ animation:campaign-kit-commit-appear .22s ease-out both}
+.campaign-kit-commit-feedback strong{font:750 12px/1.4 var(--fw-font-action);
+ letter-spacing:.035em;color:var(--fw-text-warm)}
+.campaign-kit-commit-feedback span{font:500 12px/1.4 var(--fw-font-action);
+ color:var(--fw-text-muted)}
+.campaign-kit-commit-feedback small{font:700 11px/1.4 var(--fw-font-data);
+ color:var(--fw-sage)}
+.campaign-armory-screen .campaign-kit-choice[data-changed="true"]{
+ border-left:2px solid var(--fw-sage);padding-left:8px;
+ background:linear-gradient(90deg,rgba(174,200,163,.08),transparent 80%)}
+@keyframes campaign-kit-commit-appear{
+ from{opacity:0;transform:translateY(4px)}
+ to{opacity:1;transform:translateY(0)}
+}
+@media(prefers-reduced-motion:reduce){
+ .campaign-kit-commit-feedback{animation:none}
+}
+
+/* Equipment E6.B2: full-width compact category rail and predictable focus. */
+.campaign-armory-screen .campaign-kit-categories{
+ scroll-padding-inline:12px;scroll-behavior:smooth}
+.campaign-armory-screen .campaign-kit-category[aria-selected="true"]{
+ box-shadow:inset 0 -2px 0 var(--fw-text-warm)}
+.campaign-armory-screen .campaign-kit-category:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:-2px}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-categories{margin:0 -2px 4px}
+ .campaign-armory-screen .campaign-kit-category{flex-shrink:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .campaign-armory-screen .campaign-kit-categories{scroll-behavior:auto}
+}
