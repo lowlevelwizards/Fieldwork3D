@@ -12,9 +12,13 @@ export type DispatchLinkedOperation=Readonly<{
  contractId:string;title:string;outcome:'success'|'failure'|'unrecorded'|'unknown';
  grade:string|null;day:number|null;
 }>;
+/** D14.6: contract-backed triage facts, not a forecast of actual combatants. */
+export type DispatchSituation=Readonly<{
+ emphasis:string;riskAssessment:string;siteScale:string;due:string;
+}>;
 export type DispatchCaseDossier=Readonly<{
  lead:string;context:string;objective:string;site:string;
- intelligence:string;uncertainty:string;
+ intelligence:string;uncertainty:string;situation:DispatchSituation;
  related:readonly DispatchLinkedOperation[];
  relatedLabel:string;
 }>;
@@ -29,6 +33,16 @@ const INTELLIGENCE:Readonly<Record<Contract['intel'],string>>={
  unknown:'Layout not supplied; discover the site and its threats in the mission',
  scouted:'Exterior intelligence available; interior positions remain uncertain',
  'floor-plan':'Floor plan available; occupant and hostile positions remain unknown'
+};
+const EMPHASIS:Readonly<Record<Contract['kind'],string>>={
+ clear:'SITE CONTROL · Secure the designated location',
+ intel:'ITEM RECOVERY · Retrieve the marked intelligence package',
+ rescue:'PERSON RECOVERY · Escort the designated person to extraction',
+ hold:'POSITION CONTROL · Complete the assigned hold',
+ capture:'TARGET RECOVERY · Secure the designated target'
+};
+const RISK:Readonly<Record<Contract['risk'],string>>={
+ 1:'LOW',2:'MODERATE',3:'HIGH'
 };
 const MAX_LINKS=6;
 
@@ -75,6 +89,12 @@ export function dispatchCaseDossier(campaign:CampaignState,
    'SITE TYPE NOT RECORDED',
   intelligence:INTELLIGENCE[current.intel],
   uncertainty:'Briefing details are provisional. Occupant numbers, intent and positions are not confirmed.',
+  situation:Object.freeze({
+   emphasis:EMPHASIS[current.kind],
+   riskAssessment:RISK[current.risk]+' CONTRACT RISK · not a verified threat count',
+   siteScale:current.scale==='expanded'?'EXPANDED MISSION FOOTPRINT':'STANDARD MISSION FOOTPRINT',
+   due:'REGION '+current.region+' · DEADLINE DAY '+current.deadline
+  }),
   related:Object.freeze(related),
   relatedLabel:current.followUpOf?
    incomplete||related.some(row=>row.outcome==='unknown')?
