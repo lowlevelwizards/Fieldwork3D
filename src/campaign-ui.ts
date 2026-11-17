@@ -399,7 +399,13 @@ export class CampaignScreen{
      campaignIncidentView(c,contract).title:fallback))+' · '+
     report.outcome.toUpperCase()+' · '+report.grade+' · '+
     report.participatingIds.length+' OPERATORS'+
-    (incident?' · '+incident.reference:'')));
+    (incident?' · '+incident.reference:'')+
+    (incident&&report.dispatchForce?
+      ' · '+(report.dispatchForce.blueCivilianInjured+
+       report.dispatchForce.blueCivilianDown>0?
+       'CIVILIAN HARM RECORDED':'NO SQUAD CIVILIAN HARM RECORDED')+
+      ' · '+report.dispatchForce.surrenders+' SURRENDERS':'')
+    ));
   }
   const highlights=c.journal.filter(e=>['wounded','first-deployment','first-success','objective','intel','down','distinction'].includes(e.kind)).slice(-6).reverse();
   for(const e of highlights){
