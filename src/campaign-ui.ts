@@ -111,6 +111,11 @@ export class CampaignScreen{
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
  private showKitPresets=false;
+ /** Snapshot of successfully rendered Campaign equipment; never a pending draft. */
+ private lastRenderedKit:{
+  operatorId:string;slots:Record<LoadoutSlot,string>;weapon:string;
+  mass:number;mobility:number
+ }|null=null;
  private readonly operatorViewAngles=new Map<string,number>();
  /** Keep orbit/zoom only across small cosmetic swaps; refit a new core. */
  private readonly weaponWorkbenchViews=new Map<string,{
@@ -1238,6 +1243,23 @@ export class CampaignScreen{
   this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
+  // Compare two confirmed Campaign renders, not a speculative gear picker
+  // choice. Only active same-operator edits produce equipment change feedback.
+  const previouslyInArmory=!!this.root.querySelector('.campaign-armory-screen');
+  const prior=this.lastRenderedKit;
+  const changedSlots=previouslyInArmory&&sameOperator&&prior?.operatorId===id?
+   LOADOUT_SLOTS.filter(slot=>prior.slots[slot]!==person.loadout.slots[slot]):[];
+  const changedWeapon=previouslyInArmory&&sameOperator&&prior?.operatorId===id&&
+   prior.weapon!==person.weapon;
+  const currentMass=totalEquipmentMass(person.loadout,person.weaponConfiguration);
+  const currentMobility=Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100);
+  const committedKitChange=changedSlots.length>0||!!changedWeapon;
+  this.lastRenderedKit={
+   operatorId:id,weapon:person.weapon,
+   slots:Object.fromEntries(LOADOUT_SLOTS.map(slot=>[slot,person.loadout.slots[slot]]))
+    as Record<LoadoutSlot,string>,
+   mass:currentMass,mobility:currentMobility
+  };
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide campaign-armory-screen');
   const top=node('div','campaign-head campaign-armory-head');
@@ -1299,6 +1321,28 @@ export class CampaignScreen{
    metric.append(node('small','',name),node('strong','',value));stats.append(metric);
   }
   summary.append(stats);
+  if(committedKitChange){
+   const feedback=node('div','campaign-kit-commit-feedback');
+   feedback.setAttribute('role','status');
+   feedback.setAttribute('aria-live','polite');
+   const lastSlot=changedSlots[0];
+   const single=changedSlots.length===1&&!changedWeapon;
+   const changedName=lastSlot?
+    itemDefinition(person.loadout.slots[lastSlot])?.name??lastSlot.toUpperCase():null;
+   const heading=single?lastSlot.replace(/-/g,' ').toUpperCase()+' EQUIPPED':
+    'KIT UPDATED · '+(changedSlots.length+(changedWeapon?1:0))+' CHANGES';
+   feedback.append(node('strong','',heading),
+    node('span','',single&&changedName?changedName:'Campaign equipment updated'));
+   if(prior&&Math.abs(currentMass-prior.mass)>0.005){
+    const delta=currentMass-prior.mass;
+    feedback.append(node('small','',
+     'LOAD '+(delta>0?'+':'')+delta.toFixed(2)+' KG · '+
+     currentMass.toFixed(2)+' KG TOTAL'));
+   }
+   if(prior&&prior.mobility!==currentMobility)
+    feedback.append(node('small','','MOBILITY '+prior.mobility+'% → '+currentMobility+'%'));
+   summary.append(feedback);
+  }
   const conditionPanel=node('div','campaign-kit-condition-panel');
   for(const [label,condition,limit] of [
    ['BODY ARMOR',person.armorCondition.torso,maximum.torso],
@@ -1557,6 +1601,10 @@ export class CampaignScreen{
    const info=node('small','campaign-kit-description',selected?.description??'');
    const wrap=node('div','campaign-kit-choice');
    wrap.append(row,info);
+   if(changedSlots.includes(slot)){
+    wrap.dataset.changed='true';
+    wrap.setAttribute('aria-label',slot.replace(/-/g,' ')+' changed');
+   }
    grouped.field(loadoutGroupForSlot(slot)).append(wrap);
   }
   const workbenchEntry=node('section','campaign-kit-workbench-entry');

@@ -118,6 +118,10 @@ try{
    }
    if(await armory.locator('[data-loadout-group="carry"][open]').count()!==1)
     throw Error('Gear change lost the selected equipment category');
+   if(!await page.locator('.campaign-kit-commit-feedback').isVisible())
+    throw Error('Committed gear change has no visible confirmation');
+   if(!await page.locator('[data-loadout-group="carry"] .campaign-kit-choice[data-changed="true"]').count())
+    throw Error('Committed equipment slot was not highlighted');
    if(!await page.evaluate(()=>
     document.activeElement?.getAttribute('aria-label')?.includes('Choose rig')))
     throw Error('Equipment swap failed to return focus to its replacement slot');
