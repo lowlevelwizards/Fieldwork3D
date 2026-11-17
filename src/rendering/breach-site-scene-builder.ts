@@ -37,7 +37,8 @@ import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
-import {acquireRigidFixtureTemplate} from './breach-fixture-template.ts';
+import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual}
+ from './breach-fixture-template.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
 import {compileRigidVisualOwner} from './fieldwork-model-compiler.ts';
 import {StaticVisualTemplateLibrary,type StaticVisualLease}
@@ -536,8 +537,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       if(templateLease){
         // Direct children preserve the existing per-cover instancing and
         // disclosure ownership. The lease only manages shared GPU buffers.
-        intact.add(...[...templateLease.root.children]);
-        host.registerVisualLease?.(templateLease);
+        host.registerVisualLease?.(
+          adoptRigidFixtureVisual(intact,templateLease));
       }else renderFixtureVisual(intact,visual,i,localCtx,
         palette.wood,palette.steel,palette.olive,palette.metal);
       for(const mark of marksOn('fixture',i)){
