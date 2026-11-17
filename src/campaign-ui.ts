@@ -366,6 +366,7 @@ export class CampaignScreen{
   const grid=node('div','campaign-grid');
   const personnel=node('section','campaign-section');
   personnel.append(node('h2','','PERSONNEL'));
+  const personnelWorkspace=node('div','campaign-personnel-workspace');
   const deployment=node('div','campaign-assignment');
   const deploymentHeading=node('div','campaign-assignment-heading');
   const headingCopy=node('div');
@@ -405,9 +406,19 @@ export class CampaignScreen{
    slotList.append(line);
   }
   deployment.append(slotList);
-  personnel.append(deployment);
+  personnelWorkspace.append(deployment);
+  const rosterPanel=node('section','campaign-personnel-roster-panel');
+  const activeOperators=c.operators.filter(p=>
+   p.status!=='retired'&&p.status!=='lost');
+  const rosterHeading=node('div','campaign-roster-heading');
+  rosterHeading.append(node('h2','','ACTIVE ROSTER'),
+   node('span','campaign-roster-count',
+    activeOperators.length+' OPERATOR'+(activeOperators.length===1?'':'S')));
+  rosterPanel.append(rosterHeading);
   const roster=node('div','campaign-roster');
-  for(const p of c.operators.filter(p=>p.status!=='retired'&&p.status!=='lost')){
+  if(!activeOperators.length)roster.append(node('p','campaign-note',
+   'No active operators. Recruit personnel to prepare your next deployment.'));
+  for(const p of activeOperators){
    const card=node('article','campaign-person');
    const identity=node('div','campaign-person-head');
    const monogram=node('div','campaign-person-avatar',p.callsign.slice(0,2).toUpperCase());
@@ -564,7 +575,9 @@ export class CampaignScreen{
    card.append(profile,actions,care);
    roster.append(card);
   }
-  personnel.append(roster);
+  rosterPanel.append(roster);
+  personnelWorkspace.append(rosterPanel);
+  personnel.append(personnelWorkspace);
   const logistics=node('section','campaign-section');
   logistics.append(node('h2','','SUPPLIES & LOGISTICS'));
   const stock=node('div','campaign-logistics-stats');

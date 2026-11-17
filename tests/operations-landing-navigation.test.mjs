@@ -147,3 +147,32 @@ test('Cases board stays single-column on phones and uses desktop columns when wi
  assert.match(cases,/\.campaign-contract-more>summary\{display:flex/);
  assert.match(cases,/\.campaign-contract-more>\.campaign-contract-board\{margin-top:13px\}/);
 });
+
+test('Squad workspace keeps deployment assignment before active roster and existing actions',()=>{
+ const ui=source('campaign-ui.ts');
+ const personnel=ui.slice(ui.indexOf("const personnel=node('section','campaign-section')"),
+  ui.indexOf("const logistics=node('section','campaign-section')"));
+ assert.match(personnel,/const personnelWorkspace=node\('div','campaign-personnel-workspace'\)/);
+ assert.match(personnel,/personnelWorkspace\.append\(deployment\)/);
+ assert.match(personnel,/const activeOperators=c\.operators\.filter\(p=>/);
+ assert.match(personnel,/p\.status!=='retired'&&p\.status!=='lost'/);
+ assert.match(personnel,/node\('h2','','ACTIVE ROSTER'\)/);
+ assert.match(personnel,/if\(!activeOperators\.length\)roster\.append/);
+ assert.match(personnel,/for\(const p of activeOperators\)/);
+ assert.match(personnel,/rosterPanel\.append\(roster\)/);
+ assert.match(personnel,/personnelWorkspace\.append\(rosterPanel\)/);
+ assert.match(personnel,/personnel\.append\(personnelWorkspace\)/);
+ assert.match(personnel,/this\.handlers\.assignSlot\(slot,picker\.value\)/);
+ assert.match(personnel,/this\.handlers\.openStudio\(p\.id\)/);
+});
+
+test('Squad desktop columns keep slot selectors usable and phone roster full width',()=>{
+ const css=source('campaign-style.css');
+ const layout=css.slice(css.indexOf('/* UI R16: Squad preparation'));
+ assert.match(layout,/\.campaign-personnel-workspace\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(layout,/@media\(min-width:1000px\)/);
+ assert.match(layout,/grid-template-columns:minmax\(308px,\.82fr\) minmax\(0,1\.55fr\)/);
+ assert.match(layout,/\.campaign-personnel-workspace \.campaign-assignment-slots\{/);
+ assert.match(layout,/\.campaign-personnel-roster-panel \.campaign-roster\{/);
+ assert.match(css,/@media\(max-width:600px\)\{[\s\S]*?\.campaign-roster,\.campaign-armory/);
+});
