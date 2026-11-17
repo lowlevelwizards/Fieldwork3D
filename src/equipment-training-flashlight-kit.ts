@@ -6,6 +6,8 @@ import type {Session} from './breach-game.ts';
 import {setWeaponAttachment,weaponAttachmentAllowed}
  from './equipment-weapon-assemblies.ts';
 import {fittedWeaponLight} from './equipment-weapon-light-operations.ts';
+import {physicalAttachmentFitOptions}
+ from './weapons/geometry/weapon-physical-mount-fit.ts';
 export function issuePracticeFlashlightKit(session:Session):number{
  if(!session.site?.training||session.site.trainingTrial)return 0;
  let issued=0;
@@ -13,7 +15,9 @@ export function issuePracticeFlashlightKit(session:Session):number{
   if(actor.side!=='blue'||actor.health<=0||!actor.weaponConfiguration)continue;
   const config=actor.weaponConfiguration;
   if(!fittedWeaponLight(actor)&&
-    !weaponAttachmentAllowed(config,'light','light-compact'))continue;
+    (!weaponAttachmentAllowed(config,'light','light-compact')||
+     (config.build&&
+      !physicalAttachmentFitOptions(config,'light-compact').feasible)))continue;
   if(!fittedWeaponLight(actor))
    actor.weaponConfiguration=setWeaponAttachment(config,'light','light-compact');
   if(!fittedWeaponLight(actor))continue;
