@@ -7,6 +7,8 @@ import {mapBoxPixelUV} from '../src/rendering/pixel-materials.ts';
 import {shadowEligibleBox} from '../src/rendering/breach-shadow-controller.ts';
 import {stabilizeStaticDetailBoxGeometries}
  from '../src/rendering/breach-static-batcher.ts';
+import {releaseSiteSceneObjects}
+ from '../src/rendering/site-scene-lifecycle.ts';
 import {consolidateStaticFixtureParts}
  from '../src/rendering/breach-fixture-draw-batching.ts';
 import {StaticVisualTemplateLibrary}
@@ -160,6 +162,31 @@ test('E6.25 wall-detail box batching is independent of renderer box cache headro
  assert.equal(localPool.size,1);
  assert.equal(duplicateDisposal,1);
  leader.dispose();global.dispose();unique.dispose();material.dispose();
+});
+
+test('E6.25 detached site-only decoration geometry retires once at site teardown',()=>{
+ const root=new THREE.Group();
+ const material=new THREE.MeshStandardMaterial();
+ const siteOnly=new THREE.BoxGeometry(6,7,2);
+ const global=new THREE.BoxGeometry(8,4,2);
+ let retired=0,globalDisposals=0;
+ siteOnly.addEventListener('dispose',()=>retired++);
+ global.addEventListener('dispose',()=>globalDisposals++);
+ const fixture=new THREE.Group();root.add(fixture);
+ fixture.add(new THREE.Mesh(siteOnly,material));
+ const transient=new Set([siteOnly]);
+ // The static instancing pass may detach the original owner; its
+ // geometry is still site-owned even after the batch GPU buffer clears.
+ const batches=new THREE.InstancedMesh(siteOnly,material,2);
+ root.add(batches);fixture.remove(fixture.children[0]);
+ releaseSiteSceneObjects(root,new Set(),new Set([...transient,global]));
+ assert.equal(retired,0);
+ assert.equal(globalDisposals,0);
+ for(const geometry of transient)geometry.dispose();
+ transient.clear();
+ assert.equal(retired,1);
+ assert.equal(globalDisposals,0);
+ global.dispose();material.dispose();
 });
 
 test('E6.25 site-resolved material aliasing does not increase legacy opaque draws',()=>{

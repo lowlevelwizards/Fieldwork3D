@@ -796,6 +796,9 @@ export class TacticalScene3D{
   private pixelTexturesEnabled=true;
   private boxGeometryCache=new Map<string,THREE.BoxGeometry>();
   private sharedBoxGeometries=new Set<THREE.BufferGeometry>();
+  // E6.25: site-only decoration leaders detached by static instancing.
+  // Keep them out of the persistent renderer box cache and retire at swap.
+  private siteDetailGeometries=new Set<THREE.BufferGeometry>();
   private windowPaneMaterial:THREE.MeshStandardMaterial|null=null;
   private readonly wearMaterials=new Map<string,THREE.MeshBasicMaterial>();
   private readonly surfaceWearMaterials=new Map<string,THREE.MeshStandardMaterial>();
@@ -1165,7 +1168,13 @@ export class TacticalScene3D{
     releaseSiteSceneObjects(this.root,
       new Set([this.fogUnknown,this.fogExplored]),
       new Set([...this.sharedBoxGeometries,
+       ...this.siteDetailGeometries,
        ...this.architecturalVisualTemplates.sharedGeometries()]));
+    // Some site-only leaders were removed from their original owners by
+    // instancing; they are not necessarily reachable in the scene graph.
+    // Release exactly once after the outgoing graph and batches are gone.
+    for(const geometry of this.siteDetailGeometries)geometry.dispose();
+    this.siteDetailGeometries.clear();
     // Scene nodes are gone; now release instance leases. Template GPU data
     // stays cached across missions and cannot be freed by site teardown.
     for(const lease of this.siteVisualLeases)lease.release();
@@ -1227,6 +1236,7 @@ export class TacticalScene3D{
       staticBatches:scene.staticBatches,
       repeatedFixtures:scene.repeatedFixtures,
       sharedBoxGeometries:scene.sharedBoxGeometries,
+      siteDetailGeometries:scene.siteDetailGeometries,
       visualTemplates:scene.useArchitectureTemplates?
         scene.architecturalVisualTemplates:undefined,
       fixtureTemplates:scene.useFixtureTemplates?

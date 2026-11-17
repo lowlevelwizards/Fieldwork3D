@@ -63,6 +63,8 @@ export type SiteSceneBuildPort={
  staticBatches:StaticSceneBatches;
  repeatedFixtures?:RepeatedFixtureBatches;
  sharedBoxGeometries:Set<THREE.BufferGeometry>;
+ /** Site-owned immutable detail leaders, retired on the next site swap. */
+ siteDetailGeometries:Set<THREE.BufferGeometry>;
  visualTemplates?:StaticVisualTemplateLibrary;
  fixtureTemplates?:StaticVisualTemplateLibrary;
  includeServiceFixtureTemplates?:boolean;
@@ -104,6 +106,9 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     // whether wall signs/switches can use existing static instancing.
     const stableDetailGeometries=stabilizeStaticDetailBoxGeometries(
       host.observedDetails,host.sharedBoxGeometries);
+    for(const geometry of stableDetailGeometries)
+      if(!host.sharedBoxGeometries.has(geometry))
+        host.siteDetailGeometries.add(geometry);
     const stableStaticGeometries=new Set([
       ...host.sharedBoxGeometries,...stableDetailGeometries]);
     for(const detail of host.observedDetails)
