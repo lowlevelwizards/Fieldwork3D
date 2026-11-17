@@ -2,6 +2,10 @@
 import type {OperationKind} from './breach-operations.ts';
 import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
 import {assignDispatchCase} from './dispatch-case-selection.ts';
+import {advanceDispatchDepartment,initialDispatchDepartment,
+ validDispatchDepartment,validDispatchCareerReceipt,
+ type DispatchDepartmentV1,type DispatchCareerReceiptV1}
+ from './dispatch-department.ts';
 import {validDispatchForceHistory,type DispatchForceHistoryV1}
  from './dispatch-force-review.ts';
 import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
@@ -74,6 +78,8 @@ export type CampaignReport={
  flashUsed?:number;
  /** D10: optional evidence-only incident closeout; no extra score rule. */
  dispatchForce?:DispatchForceHistoryV1;
+ /** D11: Dispatch-only standing and operating-support receipt. */
+ dispatchCareer?:DispatchCareerReceiptV1;
  stabilizedIds?:string[];criticalIds?:string[];evacuatedIds?:string[];
  medicalRemaining?:Record<string,FieldMedicalSupplies>;
 };
@@ -89,6 +95,8 @@ export type CampaignState={
  kitPresets:EquipmentPreset[];
  /** Optional v0.1 rules; absent on legacy saves, preserving their semantics. */
  rules?:CampaignRules;
+ /** D11: optional standing ledger; missing on pre-D11 Dispatch saves. */
+ dispatchDepartment?:DispatchDepartmentV1;
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -163,7 +171,9 @@ export function newCampaign(seed:number,rules?:CampaignRules,name?:string):Campa
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
   inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
     attachments:readAttachmentStock(null)},kitPresets:[],
-  ...(parsedRules?{rules:parsedRules}:{})});
+  ...(parsedRules?{rules:parsedRules}:{}),
+  ...(parsedRules?.template==='dispatch'?{
+   dispatchDepartment:initialDispatchDepartment()}: {})});
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
@@ -209,8 +219,16 @@ export function readCampaign(raw:string|null):CampaignState|null{
    if(!o||typeof o.id!=='string'||typeof o.callsign!=='string'||
      !SKILL_NAMES.every(k=>Number.isFinite(o.skills?.[k])&&Number.isFinite(o.experience?.[k])&&Number.isFinite(o.aptitudes?.[k])))return null;
   }
+  if(c.dispatchDepartment!==undefined&&
+    (parsedRules?.template!=='dispatch'||
+     !validDispatchDepartment(c.dispatchDepartment)))return null;
   for(const report of c.history){
+   if(!report||typeof report!=='object')return null;
+   if(report.dispatchCareer!==undefined&&
+     (parsedRules?.template!=='dispatch'||
+      !validDispatchCareerReceipt(report.dispatchCareer)))return null;
    if(report?.dispatchForce!==undefined&&
+
      (parsedRules?.template!=='dispatch'||
       !validDispatchForceHistory(report.dispatchForce)))return null;
   }
@@ -276,6 +294,10 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const contract=c.contracts.find(k=>k.id===r.contractId&&k.status==='accepted');
  if(!contract)return c;
  const gained=r.outcome==='success'?contract.reward:0;
+ // Dispatch service settlement is pure and opt-in. Unreviewed historical
+ // evidence never becomes a fictitious clean-force finding.
+ const departmentCycle=c.rules?.template==='dispatch'?
+  advanceDispatchDepartment(c.dispatchDepartment,r):null;
  const participants=new Set(r.participatingIds);
  const casualties=new Set(r.casualties);
  const stabilized=new Set(r.stabilizedIds??[]);
@@ -327,6 +349,20 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
     day:c.day,operatorId:o.id,operationId:r.id,kind:'distinction',
     detail:'Earned distinction: '+milestone.label});
   }
+  // D11 service awards require the operator to participate in actual
+  // successful Dispatch settlements; no purely cosmetic auto-promotion.
+  if(departmentCycle&&r.outcome==='success'){
+   for(const award of [
+    {key:'dispatch-response',label:'Dispatch Response Citation',at:3},
+    {key:'dispatch-senior',label:'Dispatch Senior Service',at:8}
+   ]){
+    if(o.successful<award.at||distinctions.includes(award.label))continue;
+    distinctions.push(award.label);
+    careerEvents.push({id:r.id+'-'+o.id+'-'+award.key,day:c.day,
+     operatorId:o.id,operationId:r.id,kind:'distinction',
+     detail:'Earned distinction: '+award.label});
+   }
+  }
   return {...o,distinctions};
  });
  const day=c.day+1;
@@ -357,10 +393,15 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   const actual=r.performance?.find(p=>p.id===owner.id)?.shots??0;
   return recordWeaponRounds(w,actual,c.day,r.id);
  });
- return {...c,day,funds:c.funds+gained,operators:developed,regionalPressure:pressure,
+ return {...c,day,
+  funds:c.funds+gained+(departmentCycle?.receipt.operatingSupport??0),
+  ...(departmentCycle?{dispatchDepartment:departmentCycle.state}:{}),
+  operators:developed,regionalPressure:pressure,
   inventory:{...c.inventory,serializedWeapons:serials},
   supplies:{...c.supplies,flash:Math.max(0,(c.supplies.flash??4)-clampFlashUse(r.flashUsed))},
-  activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
+  activeContractId:null,
+  history:[...c.history,{...r,gains:gainedSkills,
+   ...(departmentCycle?{dispatchCareer:departmentCycle.receipt}:{})}].slice(-200),
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
   contracts:createContracts(c.seed,day,contracts,pressure,
