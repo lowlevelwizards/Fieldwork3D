@@ -3,6 +3,7 @@
  */
 import {weaponAttachmentAllowed,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
+import {mountedAccessorySeat} from './weapons/geometry/mounted-accessory-layout.ts';
 export type WeaponLightOwner={
  health:number;weaponLightOn:boolean;weaponConfiguration?:WeaponConfiguration;
 };
@@ -12,7 +13,9 @@ export type WeaponLightOwner={
 export function fittedWeaponLight(actor:Pick<WeaponLightOwner,'weaponConfiguration'>|undefined):boolean{
  const config=actor?.weaponConfiguration;
  return !!config&&config.slots.light==='light-compact'&&
-  weaponAttachmentAllowed(config,'light','light-compact');
+  weaponAttachmentAllowed(config,'light','light-compact')&&
+  // Preserve a stale owned item without letting it emit on a phantom rail.
+  (!config.build||!!mountedAccessorySeat(config,'light'));
 }
 export function weaponLightEmitting(actor:WeaponLightOwner|undefined):boolean{
  return !!actor&&actor.health>0&&actor.weaponLightOn&&fittedWeaponLight(actor);
