@@ -360,7 +360,9 @@ export function openArsenalWorkbench(
   mountingPosition.hidden=false;mountingTools.hidden=false;
   const active=state.rails.find(r=>r.key===state.selectedKey)??state.rails[0];
   mountingActiveRail=active;
-  mountingStatus.textContent=state.automatic?
+  mountingStatus.textContent=!state.automatic&&!state.selectedKey?
+   'Saved mount no longer fits. Choose a real rail or reset to Automatic.':
+   state.automatic?
    'Auto chooses a clear rail. Choose a side or position to pin it.':
    'Saved to this draft · Undo restores the previous position.';
   for(const rail of state.rails){
