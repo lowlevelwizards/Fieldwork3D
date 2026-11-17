@@ -343,3 +343,42 @@ test('C5 Logistics compact rows respect phone and desktop layout',()=>{
  assert.match(c5,/@media\(max-width:420px\)/);
  assert.match(css,/@media\(min-width:1000px\)[\s\S]*?\.campaign-logistics-workspace>/);
 });
+
+
+test('C6 Operations preserve visible outcomes and full optional evidence',()=>{
+ const ui=source('campaign-ui.ts');
+ const records=ui.slice(ui.indexOf("const chronicle=node('section','campaign-section campaign-chronicle')"),
+  ui.indexOf("const footer=node('div','campaign-footer')"));
+ assert.match(records,/heading\.append\(identity,node\('span','campaign-operation-outcome'/);
+ assert.match(records,/article\.append\(facts\)/);
+ assert.match(records,/const recordDetail=node\('details','campaign-operation-detail'\)/);
+ assert.match(records,/const recordSummary=node\('summary','','OPERATION DETAILS'\)/);
+ assert.match(records,/recordSummary\.setAttribute\('aria-label'/);
+ assert.match(records,/const involved=report\.participatingIds\.map\(id=>/);
+ assert.match(records,/recordDetail\.append\(detail\)/);
+ assert.match(records,/article\.append\(recordDetail\)/);
+ assert.match(records,/const timeline=node\('details','campaign-career-timeline'\)/);
+ assert.match(records,/PERSONNEL MILESTONES · '\+highlights\.length/);
+ assert.match(records,/item\.dataset\.kind=event\.kind/);
+ assert.match(records,/timeline\.append\(entries\);chronicle\.append\(timeline\)/);
+});
+test('C6 Records detail and milestone summaries stay keyboard reachable',()=>{
+ const css=source('campaign-style.css');
+ const c6=css.slice(css.indexOf('/* Campaign C6.4'));
+ assert.ok(c6.length>400);
+ assert.match(c6,/\.campaign-operation-detail>summary\{/);
+ assert.match(c6,/min-height:40px/);
+ assert.match(c6,/\.campaign-operation-detail>summary:focus-visible\{/);
+ assert.match(c6,/\.campaign-career-timeline>summary\{/);
+ assert.match(c6,/min-height:46px/);
+ assert.match(c6,/@media\(max-width:480px\)/);
+});
+
+test('C7 disclosure labels identify their individual case, weapon and operation',()=>{
+ const ui=source('campaign-ui.ts');
+ assert.match(ui,/caseSummary\.setAttribute\('aria-label','Case information: '\+view\.title/);
+ assert.match(ui,/eligibilitySummary\.setAttribute\('aria-label'/);
+ assert.match(ui,/for '\+weapon\.toUpperCase\(\)\+' platform'/);
+ assert.match(ui,/recordSummary\.setAttribute\('aria-label'/);
+ assert.match(ui,/\+' · DAY '\+report\.day/);
+});

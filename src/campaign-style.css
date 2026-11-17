@@ -1360,3 +1360,61 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  }
  .campaign-logistics-supply-panel .campaign-logistics-stat strong{font-size:22px}
 }
+
+/* Campaign C6.4 — operation history is a compact scan, evidence opt-in.
+   Outcomes and grades remain visible; no historical evidence is discarded. */
+.campaign-chronicle .campaign-operation-board{gap:8px}
+.campaign-chronicle .campaign-operation-record{
+ display:grid;gap:6px;padding:11px 12px;
+}
+.campaign-chronicle .campaign-operation-record-identity{gap:3px}
+.campaign-chronicle .campaign-operation-record-identity strong{
+ font-size:clamp(16px,1.8vw,18px);line-height:1.17;
+}
+.campaign-chronicle .campaign-operation-facts{gap:5px}
+.campaign-chronicle .campaign-operation-facts span{
+ padding:3px 6px;font-size:11px;
+}
+.campaign-operation-detail{margin:0;border-top:1px solid var(--fw-panel-border)}
+.campaign-operation-detail>summary{
+ display:flex;align-items:center;justify-content:space-between;
+ min-height:40px;gap:8px;list-style:none;cursor:pointer;
+ color:var(--fw-text-muted);font:700 11px/1.3 var(--fw-font-menu);
+}
+.campaign-operation-detail>summary::-webkit-details-marker{display:none}
+.campaign-operation-detail>summary::after{
+ content:'+';color:var(--fw-sage);font-size:16px;flex:none;
+}
+.campaign-operation-detail[open]>summary::after{content:'−'}
+.campaign-operation-detail>summary:focus-visible{
+ outline:2px solid var(--fw-brass);outline-offset:2px;
+}
+.campaign-operation-detail>.campaign-operation-reference{
+ display:block;margin:5px 0 8px;
+}
+.campaign-operation-participants{
+ margin:5px 0 8px;color:var(--fw-text-muted);
+ font:550 12px/1.4 var(--fw-font-narrative);overflow-wrap:anywhere;
+}
+.campaign-career-timeline{
+ margin:11px 0 8px;border-top:1px solid var(--fw-panel-border);
+}
+.campaign-career-timeline>summary{
+ display:flex;align-items:center;justify-content:space-between;
+ min-height:46px;gap:8px;cursor:pointer;list-style:none;
+ color:var(--fw-sage);font:750 12px/1.3 var(--fw-font-menu);
+}
+.campaign-career-timeline>summary::-webkit-details-marker{display:none}
+.campaign-career-timeline>summary::after{
+ content:'+';color:var(--fw-sage);font-size:18px;flex:none;
+}
+.campaign-career-timeline[open]>summary::after{content:'−'}
+.campaign-career-timeline>summary:focus-visible{
+ outline:2px solid var(--fw-brass);outline-offset:2px;
+}
+.campaign-career-timeline .campaign-career-events{margin:8px 0 12px}
+@media(max-width:480px){
+ .campaign-chronicle .campaign-operation-record{padding:9px 10px}
+ .campaign-chronicle .campaign-operation-record-heading{gap:7px}
+ .campaign-chronicle .campaign-operation-outcome{font-size:10px}
+}

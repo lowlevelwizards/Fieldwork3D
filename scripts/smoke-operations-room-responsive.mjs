@@ -103,6 +103,36 @@ async function assess(browser,{name,width,height,mobile}){
      name+' purchase authorization explanation inaccessible');
     await requirements.locator(':scope > summary').click();
    }
+   if(tab==='chronicle'){
+    const history=page.locator('.campaign-operation-record').first();
+    if(await history.count()){
+     check(await history.locator('.campaign-operation-outcome').isVisible(),
+      name+' operation outcome invisible');
+     const record=history.locator('.campaign-operation-detail');
+     check(await record.count()===1,name+' operation disclosure missing');
+     check(await record.getAttribute('open')===null,
+      name+' operation details should start collapsed');
+     await record.locator(':scope > summary').click();
+     check(await record.getAttribute('open')!==null,
+      name+' operation details failed to expand');
+     check(await record.locator('.campaign-operation-participants').isVisible(),
+      name+' participating operators missing');
+     await record.locator(':scope > summary').click();
+    }else{
+     check(await page.locator('.campaign-chronicle').getByText(
+      'Your unit history will appear here after its first operation.').isVisible(),
+      name+' empty campaign history state missing');
+    }
+    const milestones=page.locator('.campaign-career-timeline');
+    if(await milestones.count()){
+     check(await milestones.getAttribute('open')===null,
+      name+' milestones should start collapsed');
+     await milestones.locator(':scope > summary').click();
+     check(await milestones.locator('.campaign-career-event').count()>0,
+      name+' milestone history inaccessible');
+     await milestones.locator(':scope > summary').click();
+    }
+   }
    await page.screenshot({path:out+'/'+name+'-'+tab+'.png',animations:'disabled'});
   }
   const last=page.locator('#campaign-tab-chronicle');

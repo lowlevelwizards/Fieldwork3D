@@ -685,8 +685,12 @@ export class CampaignScreen{
    const metrics=node('small','campaign-procurement-metrics',
     quote.stock+' SPARE IN ARMORY · '+quote.issued+' ISSUED');
    const eligibility=node('details','campaign-procurement-eligibility');
-   eligibility.append(node('summary','',
-    quote.canPurchase?'PURCHASE ELIGIBILITY':'UNAVAILABLE · VIEW REQUIREMENTS'));
+   const eligibilitySummary=node('summary','',
+    quote.canPurchase?'PURCHASE ELIGIBILITY':'UNAVAILABLE · VIEW REQUIREMENTS');
+   eligibilitySummary.setAttribute('aria-label',
+    (quote.canPurchase?'Purchase eligibility':'Purchase restrictions')+
+    ' for '+weapon.toUpperCase()+' platform');
+   eligibility.append(eligibilitySummary);
    const status=node('p','campaign-procurement-status',quote.authorization);
    const reasonId='campaign-procurement-reason-'+weapon;
    status.id=reasonId;
@@ -804,7 +808,19 @@ export class CampaignScreen{
    facts.append(node('span','','GRADE '+report.grade),
     node('span','',report.participatingIds.length+' OPERATORS'));
    article.append(facts);
-   if(incident)article.append(node('small','campaign-operation-reference',incident.reference));
+   // Technical references and after-action evidence remain accessible
+   // without forcing eight separate expanded report bodies into the log.
+   const recordDetail=node('details','campaign-operation-detail');
+   const recordSummary=node('summary','','OPERATION DETAILS');
+   recordSummary.setAttribute('aria-label',
+    'Operation details: '+(incident?.title??(contract?
+     campaignIncidentView(c,contract).title:fallback))+' · DAY '+report.day);
+   recordDetail.append(recordSummary);
+   const involved=report.participatingIds.map(id=>
+    c.operators.find(o=>o.id===id)?.callsign??id);
+   recordDetail.append(node('p','campaign-operation-participants',
+    'PARTICIPATING · '+(involved.join(' · ')||'NONE RECORDED')));
+   if(incident)recordDetail.append(node('small','campaign-operation-reference',incident.reference));
    if(incident&&(report.dispatchForce||report.dispatchCareer)){
     const detail=node('details','campaign-operation-evidence');
     detail.append(node('summary','','AFTER-ACTION RECORD'));
@@ -816,8 +832,9 @@ export class CampaignScreen{
      'STANDING '+(report.dispatchCareer.standingDelta>0?'+':'')+
      report.dispatchCareer.standingDelta+' → '+report.dispatchCareer.standingAfter+
      ' · SUPPORT +'+report.dispatchCareer.operatingSupport+' CR'));
-    article.append(detail);
+    recordDetail.append(detail);
    }
+   article.append(recordDetail);
    return article;
   };
   for(const report of recentReports)operationBoard.append(renderOperation(report));
@@ -899,8 +916,9 @@ export class CampaignScreen{
    ['wounded','first-deployment','first-success','objective','intel','down','distinction']
     .includes(e.kind)).slice(-6).reverse();
   if(highlights.length){
-   const timeline=node('section','campaign-career-timeline');
-   timeline.append(node('h3','','PERSONNEL MILESTONES'));
+   const timeline=node('details','campaign-career-timeline');
+   timeline.append(node('summary','',
+    'PERSONNEL MILESTONES · '+highlights.length+' RECENT · DAY '+highlights[0].day));
    const entries=node('div','campaign-career-events');
    for(const event of highlights){
     const person=c.operators.find(o=>o.id===event.operatorId);
@@ -1652,7 +1670,9 @@ export class CampaignScreen{
   if(c.followUpOf)card.append(node('div','campaign-contract-related',
    dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
   const intelligence=node('details','campaign-contract-intelligence');
-  intelligence.append(node('summary','','CASE INFORMATION'));
+  const caseSummary=node('summary','','CASE INFORMATION');
+  caseSummary.setAttribute('aria-label','Case information: '+view.title+' · '+c.region);
+  intelligence.append(caseSummary);
   if(isDispatchPilot(campaign)){
    intelligence.append(node('small','campaign-contract-reference',view.reference));
    if(c.dispatchCase)intelligence.append(node('p','campaign-contract-emphasis',
