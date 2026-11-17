@@ -6,6 +6,7 @@ import {validateStudioAppearanceEdits,applyStudioRosterEdits,
   applyStudioCampaignEdits} from './operator-studio-batch-save.ts';
 import type {RosterState} from './breach-roster.ts';
 import type {CampaignState} from './campaign-state.ts';
+import {currentDispatchReference,effectiveDispatchSetup} from './dispatch-campaign-setup.ts';
 import type {Session} from './breach-game.ts';
 import {validateHistoricalLoadoutProposal}
  from './faction-reference-loadout-generator.ts';
@@ -54,7 +55,10 @@ function sendStudioInit(force=false){
   config.getRoster().members;
  studioFrame.contentWindow.postMessage({
   type:'fw-studio-init',mode:studioMode,selected:studioSelected,
-  dispatchPilot:studioMode==='campaign'&&config.getCampaign()?.rules?.template==='dispatch',
+  dispatchPilot:studioMode==='campaign'&&config.getCampaign()?.rules?.template==='dispatch'&&
+   effectiveDispatchSetup(config.getCampaign()!).equipmentScope!=='global',
+  dispatchReferenceId:studioMode==='campaign'&&config.getCampaign()?.rules?.template==='dispatch'?
+   currentDispatchReference(config.getCampaign()!):undefined,
   members:people.map(p=>({
    id:p.id,callsign:p.callsign,appearanceSeed:p.appearanceSeed,
    loadout:p.loadout,wardrobe:p.wardrobe,
@@ -63,7 +67,8 @@ function sendStudioInit(force=false){
   readonly:studioMode==='campaign'?!!config.getCampaign()?.activeContractId:
    !canEditQuickAppearance(),
   gearEditable:studioMode==='campaign'?!!config.getCampaign()&&
-   config.getCampaign()?.rules?.template!=='dispatch'&&
+    (config.getCampaign()?.rules?.template!=='dispatch'||
+    effectiveDispatchSetup(config.getCampaign()!).equipmentScope==='global')&&
    !config.getCampaign()?.activeContractId:
    config.getMode()==='menu'&&!config.isReplaying()
  },location.origin);
