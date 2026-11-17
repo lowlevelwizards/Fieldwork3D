@@ -8,6 +8,7 @@ on:
       - 'src/rendering/breach-live-shadow-submit-profiler.ts'
       - 'src/rendering/breach-live-main-pass-profiler.ts'
       - 'tests/refactor-e6-17-main-pass.test.mjs'
+      - 'tests/refactor-e6-18a-mesh-provenance.test.mjs'
       - 'scripts/verification/e6-17-main-pass-browser.mjs'
       - '.github/workflows/refactor-e6-17-main-pass.yml'
   workflow_dispatch:
@@ -32,6 +33,7 @@ jobs:
       - name: Actual scene costs, prior callback, opt-in and startup regression tests
         run: |
           node --experimental-strip-types --test \
+            tests/refactor-e6-18a-mesh-provenance.test.mjs \
             tests/refactor-e6-17-main-pass.test.mjs \
             tests/refactor-e6-16-shadow-submission.test.mjs \
             tests/refactor-e6-15-live-scene-attribution.test.mjs \
