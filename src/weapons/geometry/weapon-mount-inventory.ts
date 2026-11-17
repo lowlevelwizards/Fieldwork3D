@@ -113,6 +113,7 @@ export function auditWeaponMountInventory(config:WeaponConfiguration):WeaponMoun
  if(config.build.parts.handguard==='ak-rail-long'&&
   weaponAttachmentAllowed(config,'optic','optic-magnified')&&
   !surfaces.some(x=>x.surface.role==='optic'&&
+   x.surface.standard==='picatinny'&&x.surface.face==='top'&&
    (x.surface.ownerSlot==='receiver'||x.surface.ownerSlot==='opticMount')))
   findings.push({code:'forward-magnified-unchecked',
    ownerPartId:config.build.parts.handguard});
