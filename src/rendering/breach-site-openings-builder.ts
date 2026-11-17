@@ -183,7 +183,10 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
           if(style==='french'){
             const pane=host.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
               length-8,DOOR_LEAF_VISUAL_HEIGHT-8,1,doorGlass,false);
-            pane.castShadow=false;glassPane=pane;
+            pane.castShadow=false;
+        pane.userData.fieldworkDrawFamily='door-glass';
+        pane.userData.fieldworkTransparencyRole='door-glass';
+        glassPane=pane;
             for(const y of [15,32])host.box(leaf,middle,y,0,length-5,2,3,metal,false);
             host.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,2,
               DOOR_LEAF_VISUAL_HEIGHT-7,3,metal,false);
@@ -195,7 +198,10 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
         }else if(style==='glazed'){
           const pane=host.box(leaf,middle,DOOR_LEAF_VISUAL_HEIGHT/2,0,
               length-8,DOOR_LEAF_VISUAL_HEIGHT-8,1,doorGlass,false);
-          pane.castShadow=false;glassPane=pane;
+          pane.castShadow=false;
+        pane.userData.fieldworkDrawFamily='door-glass';
+        pane.userData.fieldworkTransparencyRole='door-glass';
+        glassPane=pane;
           for(const sign of [-1,1])
             host.box(leaf,middle+sign*(length/2-3),
               DOOR_LEAF_VISUAL_HEIGHT/2,0,
@@ -309,6 +315,8 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
       const glass=host.box(group,0,baseTop+glassHeight/2,0,
         opening.width-3,glassHeight,1,paneMat,false);
       glass.castShadow=false;
+      glass.userData.fieldworkDrawFamily='window-glass';
+      glass.userData.fieldworkTransparencyRole='window-glass';
       host.registerGlass(opening.id,glass);
       if(opening.treatment==='bars'){
         const bars=host.solid(0x586866,.64,'metal');
