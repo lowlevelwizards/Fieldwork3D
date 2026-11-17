@@ -1,6 +1,7 @@
 /** Arsenal V2: atomic, side-effect-free proposed part changes.
  * Keep authored V1 family/attachment validators authoritative until art migration.
  */
+import {normalizedStockPosition} from '../weapon-stock-position.ts';
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,proposeFamilyPartChange,
  type FamilyPartSlot,type WeaponFamilyBuild} from '../equipment-weapon-families.ts';
 import {WEAPON_ATTACHMENTS,initialWeaponConfiguration,selectWeaponFamilyPreset,readWeaponConfiguration,
@@ -55,7 +56,7 @@ export function arsenalReferenceIdentity(recipe:ArsenalRecipeV2):{
   initialWeaponConfiguration(recipe.weapon),ref.legacy.id);
  const accessoriesChanged=ARSENAL_ACCESSORY_SLOTS.some(slot=>
   recipe.accessories[slot]!==factory.slots[slot]);
- const modified=bodyChanged||accessoriesChanged;
+ const modified=bodyChanged||accessoriesChanged||!!recipe.stockPosition;
  return {name:ref.name+(modified?' · Modified':''),referenceId:ref.id,
   modified,ambiguous:false};
 }
@@ -103,6 +104,8 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
   if(platformId!==recipe.platformId)
    return rejected(slot,id,'Receiver belongs to another platform');
   next.parts={...proposal.build.parts};
+  if(normalizedStockPosition(next.parts.stock,next.stockPosition)==='deployed')
+   delete next.stockPosition;
  }else{
   const attachmentSlot=slot as ArsenalAccessorySlot;
   if(!ARSENAL_ACCESSORY_SLOTS.includes(attachmentSlot)||
@@ -128,7 +131,8 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
  const candidate:WeaponConfiguration={version:1,weapon:recipe.weapon,
   build:{family:(prior.build as WeaponFamilyBuild).family,parts:{...next.parts}},
   slots:{...prior.slots,...next.accessories,stock:'stock-standard'},
-  mountSelections:copyMountSelections(next.mountSelections)};
+  mountSelections:copyMountSelections(next.mountSelections),
+  ...(next.stockPosition?{stockPosition:next.stockPosition}:{})};
  const normalized=readWeaponConfiguration(candidate,recipe.weapon);
  if(!normalized.build)return rejected(slot,id,'Unable to resolve the new assembly');
  next.parts={...normalized.build.parts};
