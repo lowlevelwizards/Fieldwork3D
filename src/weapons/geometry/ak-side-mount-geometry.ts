@@ -68,7 +68,7 @@ export function addAKSidePicatinnyAdapter(root:THREE.Group):void{
   block(-1.80,-.07,-2.67,4.95,1.08,.56),
   // Rearward side tower and substantial offset elbow.
   block(-2.93,1.34,-2.79,1.34,2.25,.72),
-  block(-1.46,2.44,-1.90,3.35,.69,1.74),
+  block(-1.46,2.56,-1.90,3.35,.83,1.74),
   // A single, thick upper rail (no microscopic repeated teeth).
   block(a.bridgeCenterX,a.bridgeCenterY,0,
    a.bridgeLength,a.bridgeHeight,a.bridgeWidth),
