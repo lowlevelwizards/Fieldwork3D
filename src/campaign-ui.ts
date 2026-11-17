@@ -934,9 +934,12 @@ export class CampaignScreen{
   // The first viewport describes a decision instead of showing a lone button.
   const availableContracts=c.contracts.filter(k=>
    k.status==='available'&&k.deadline>=c.day);
+  const leadCase=[...availableContracts].sort((a,b)=>
+   a.deadline-b.deadline||a.id.localeCompare(b.id))[0];
   const nextCard=node('section','campaign-next-action');
   nextCard.append(node('div','campaign-next-action-eyebrow',
-   accepted?'DEPLOYMENT IN PROGRESS':'NEXT ASSIGNMENT'));
+   accepted?'DEPLOYMENT IN PROGRESS':
+    leadCase?'EARLIEST DEADLINE · '+availableContracts.length+' OPEN':'NO OPEN ASSIGNMENTS'));
   if(accepted){
    const current=campaignIncidentView(c,accepted);
    nextCard.append(node('h3','',current.title),
@@ -944,11 +947,9 @@ export class CampaignScreen{
      accepted.region+' · Assignment accepted · Return to mission planning'));
   }else{
    nextCard.append(node('h3','',
-    availableContracts.length?availableContracts.length+
-     ' CONTRACT'+(availableContracts.length===1?'':'S')+' AVAILABLE':
-     'NO OPEN CONTRACTS'),
-    node('p','campaign-note',availableContracts.length?
-     'Review case details, check your team, then choose an assignment.':
+    leadCase?campaignIncidentView(c,leadCase).title:'NO OPEN CONTRACTS'),
+    node('p','campaign-note',leadCase?
+     leadCase.region+' · '+leadCase.reward+' CR · DUE DAY '+leadCase.deadline:
      'No current assignments to accept. Review records or prepare the team.'));
   }
   const nextAction=accepted?
@@ -1018,9 +1019,7 @@ export class CampaignScreen{
   readiness.append(node('h2','','DEPLOYMENT READINESS'));
   const assigned=c.operators.filter(o=>c.squadIds.includes(o.id));
   const recovering=assigned.filter(o=>o.recoveryDays>0);
-  const rosterStatus=node('p','campaign-readiness-label',
-   assigned.map(o=>o.callsign).join(' · ')||'NO OPERATORS ASSIGNED');
-  readiness.append(rosterStatus);
+  // Callsigns are shown in Squad; keep the home readiness view actionable.
   const checks=[
    {attention:assigned.length<4,label:assigned.length+' / 4 SQUAD SLOTS FILLED',
     action:'personnel' as const},
