@@ -64,6 +64,10 @@ export function arsenalRecipeToLegacy(recipe:ArsenalRecipeV2):WeaponConfiguratio
   if(normalized.build.parts[slot]!==recipe.parts[slot])return undefined;
  for(const slot of ARSENAL_ACCESSORY_SLOTS)
   if(normalized.slots[slot]!==recipe.accessories[slot])return undefined;
+ // Existing normalized equipment must never silently discard an explicit
+ // location during Apply, stock accounting or replay materialization.
+ if(!sameMountSelections(normalized.mountSelections,recipe.mountSelections))
+  return undefined;
  return normalized;
 }
 export function arsenalRecipeIssues(recipe:ArsenalRecipeV2):string[]{
