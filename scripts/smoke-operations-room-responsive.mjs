@@ -100,6 +100,37 @@ async function assessEstablishedCareer(page,name,mobile){
   if(tab==='contracts'){
    check(await page.locator('.campaign-contract-review').count()>0,
     name+' continuing campaign has no reviewable cases');
+   // C10: preflight has more focusable content than Cancel and Deploy. Make
+   // the real case-to-logistics-to-case loop and focus trap part of acceptance.
+   await page.locator('.campaign-contract-review').first().click();
+   const sheet=page.locator('.campaign-preflight[role="dialog"]');
+   check(await sheet.count()===1,name+' preflight dialog unavailable');
+   const warnings=sheet.locator('.campaign-preflight-warning');
+   check(await warnings.count()===1,name+' readiness advisories absent');
+   const warnBeforeRoster=await sheet.evaluate(el=>{
+    const warn=el.querySelector('.campaign-preflight-warning');
+    const roster=el.querySelector('.campaign-preflight-roster');
+    return !!warn&&!!roster&&!!(warn.compareDocumentPosition(roster)&Node.DOCUMENT_POSITION_FOLLOWING);
+   });
+   check(warnBeforeRoster,name+' preflight advisories buried after roster');
+   const summary=sheet.locator('.campaign-preflight-extra > summary');
+   const deploy=sheet.getByRole('button',{name:'ACCEPT & DEPLOY'});
+   await deploy.focus();
+   await deploy.press('Tab');
+   check(await summary.evaluate(el=>el===document.activeElement),
+    name+' preflight forward Tab escaped interactive sheet');
+   await summary.press('Shift+Tab');
+   check(await deploy.evaluate(el=>el===document.activeElement),
+    name+' preflight reverse Tab escaped interactive sheet');
+   await sheet.getByRole('button',{name:'CHECK LOGISTICS'}).click();
+   check(await page.locator('#campaign-tab-logistics').getAttribute('aria-selected')==='true',
+    name+' check logistics did not open Supply');
+   await page.locator('#campaign-panel-logistics .campaign-preparation-return button').click();
+   check(await page.locator('.campaign-preflight[role="dialog"]').count()===1,
+    name+' return-to-case did not restore briefing');
+   await page.getByRole('button',{name:'RETURN TO CONTRACTS'}).click();
+   check(await page.locator('.campaign-preflight[role="dialog"]').count()===0,
+    name+' closing case review failed');
   }
   if(tab==='logistics'){
    const stock=await page.locator('.campaign-logistics-stat strong')
