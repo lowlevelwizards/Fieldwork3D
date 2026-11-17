@@ -684,11 +684,18 @@ export class CampaignScreen{
     node('small','',quote.priceLabel));
    const metrics=node('small','campaign-procurement-metrics',
     quote.stock+' SPARE IN ARMORY · '+quote.issued+' ISSUED');
+   const eligibility=node('details','campaign-procurement-eligibility');
+   eligibility.append(node('summary','',
+    quote.canPurchase?'PURCHASE ELIGIBILITY':'UNAVAILABLE · VIEW REQUIREMENTS'));
    const status=node('p','campaign-procurement-status',quote.authorization);
+   const reasonId='campaign-procurement-reason-'+weapon;
+   status.id=reasonId;
+   eligibility.append(status);
    const buy=button('PURCHASE '+weapon.toUpperCase(),()=>this.handlers.buyWeapon(weapon));
    buy.disabled=!quote.canPurchase;
    buy.title=quote.authorization;
-   row.append(heading,metrics,status,buy);inventory.append(row);
+   buy.setAttribute('aria-describedby',reasonId);
+   row.append(heading,metrics,buy,eligibility);inventory.append(row);
   }
   logisticsWorkspace.append(inventory);
   logistics.append(logisticsWorkspace);
