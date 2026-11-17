@@ -24,6 +24,7 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  // mountX, sightHeight or the weapon assembly's ballistic optic settings.
  const seat=opticVisualSeat(raw,optic.mountX);
  const opticX=seat.x,baseY=seat.supportY;
+ const opticZ=seat.z??0;
  if(optic.id==='optic-reflex'){
   // A3: an actual open hood, not a solid sight tower. The sight origin is
   // still the immutable equipment resolver's mountX/sightHeight.
@@ -46,6 +47,36 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   ],metal);
   accessoryBox(g,'weapon-accessory-optic-magnified-turret',
    opticX-.42,baseY+3.515,0,1.15,.75,1.38,metal,false);
+ }else if(optic.id==='optic-kashtan-ak'||optic.id==='optic-kashtan-p'){
+  const direct=optic.id==='optic-kashtan-ak';
+  const y=baseY+1.55;
+  // One squat, memorable Kashtan body; two completely different physical
+  // brackets. No generic floating magnified-scope rings or fake picatinny
+  // hardware on the integrated Russian side-mounted version.
+  accessoryTube(g,'weapon-accessory-optic-kashtan-main',
+   opticX,y,opticZ,4.65,1.00,1.13,polymer,8);
+  accessoryTube(g,'weapon-accessory-optic-kashtan-objective',
+   opticX+1.87,y,opticZ,1.12,1.14,1.36,metal,8);
+  accessoryTube(g,'weapon-accessory-optic-kashtan-eyecup',
+   opticX-2.08,y,opticZ,.86,1.21,1.06,polymer,8);
+  accessoryBox(g,'weapon-accessory-optic-kashtan-housing',
+   opticX-.30,y+.94,opticZ,2.70,.45,1.60,metal,false);
+  if(direct){
+   // Rail contact is (-Z) on the actual receiver at Y=-.07.
+   // The leg/elbow intersects both the clamping cheek and optic cradle.
+   accessoryMergedBoxes(g,'weapon-accessory-optic-kashtan-side-bracket',[
+    [opticX,-.07,-2.55,3.05,.84,.56],
+    [opticX-.28,1.28,-2.42,1.18,2.74,.80],
+    [opticX-.23,2.82,-1.51,2.85,.77,2.12],
+    [opticX,baseY+.44,opticZ,2.58,.88,2.02]
+   ],metal);
+  }else{
+   accessoryMergedBoxes(g,'weapon-accessory-optic-kashtan-rail-bracket',[
+    [opticX,baseY+.42,opticZ,2.65,.84,2.05],
+    [opticX-1.08,baseY+.10,opticZ,.46,.20,2.22],
+    [opticX+1.07,baseY+.10,opticZ,.46,.20,2.22]
+   ],metal);
+  }
  }
  const muzzle=parts.muzzle;
  const muzzleY=raw.build?.family==='ar'?AR_VISUAL_AXIS_Y:0;
