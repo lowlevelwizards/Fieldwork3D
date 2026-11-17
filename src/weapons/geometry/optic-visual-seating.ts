@@ -5,12 +5,13 @@
  */
 import type {WeaponConfiguration} from '../../equipment-weapon-assemblies.ts';
 import {physicalAttachmentFitOptions} from './weapon-physical-mount-fit.ts';
+import {mountedAccessorySeat} from './mounted-accessory-layout.ts';
 import {opticProfile} from './optic-profiles.ts';
 import {preferredOpticMountSurface} from './weapon-part-mount-surfaces.ts';
 export type OpticVisualSeat=Readonly<{
  x:number;supportY:number;z?:number;
  mount:'hk-claw'|'ar-top'|'ak-handguard'|'ak-side-bridge'|
-  'ak-direct-side'|'legacy';
+  'ak-direct-side'|'legacy'|'unresolved';
 }>;
 export function opticVisualSeat(config:WeaponConfiguration,
  resolvedMountX:number):OpticVisualSeat{
@@ -19,8 +20,15 @@ export function opticVisualSeat(config:WeaponConfiguration,
   const optic=opticProfile(config.slots.optic);
   if(optic&&optic.mount.standard!=='integrated'){
    const fit=physicalAttachmentFitOptions(config,config.slots.optic);
-   if(fit.feasible&&fit.options[0]){
-    const point=fit.options[0],owner=point.ownerPartId;
+   const resolved=mountedAccessorySeat(config,'optic')?.placement;
+   // The renderer and Workbench socket must use the same user-selected
+   // layout as the optic/grip/light clearance solver. Explicitly invalid
+   // choices may not silently jump to another support surface.
+   if(config.mountSelections?.optic&&!resolved)
+    return {x:resolvedMountX,supportY:0,mount:'unresolved'};
+   const point=resolved??fit.options[0];
+   if(fit.feasible&&point){
+    const owner=point.ownerPartId;
     return {x:point.x,
      supportY:point.y+optic.visual.supportRiseY,
      z:optic.mount.standard==='ak-side-dovetail'?
