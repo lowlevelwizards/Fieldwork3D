@@ -18,7 +18,7 @@ function build(){
  for(let i=0;i<N;i++){
   const kind=fixtures[i%fixtures.length];
   const lease=acquireRigidFixtureTemplate(cache,
-   {fixture:kind,x:0,y:0,w:48,h:26},i%3,ctx,palette,true);
+   {fixture:kind,x:0,y:0,w:48,h:26},Math.floor(i/fixtures.length)%3,ctx,palette,true);
   if(!lease)throw Error('Expected fixture recipe cache');
   leases.push(lease);
  }
