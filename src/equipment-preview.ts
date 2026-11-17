@@ -29,6 +29,11 @@ export class CampaignKitPreview{
  private focusRadius=110;
  private focusRise=35;
  private focusFrame:number|null=null;
+ /** The camera projection and WebGL backing surface change only on resize. */
+ private renderedWidth=0;
+ private renderedHeight=0;
+ /** Coalesce bursty pointermove events to one render per display frame. */
+ private dragFrame:number|null=null;
  constructor(host:HTMLElement,id:string,weapon:WeaponId,
   appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,
@@ -94,7 +99,8 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
-  this.pointerId=null;this.host=host;
+  if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
+  this.dragFrame=null;this.pointerId=null;this.host=host;
   host.dataset.previewFocus=this.focusArea;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
@@ -116,13 +122,21 @@ export class CampaignKitPreview{
  };
  private pointerMove=(event:PointerEvent)=>{
   if(event.pointerId!==this.pointerId)return;
-  this.azimuth+=(event.clientX-this.lastX)*.012;
+  const delta=event.clientX-this.lastX;
+  if(!delta)return;
+  this.azimuth+=delta*.012;
   this.lastX=event.clientX;
-  this.draw();
+  if(this.dragFrame===null)this.dragFrame=requestAnimationFrame(()=>{
+   this.dragFrame=null;this.draw();
+  });
  };
  private pointerUp=(event:PointerEvent)=>{
   if(event.pointerId!==this.pointerId)return;
   this.pointerId=null;
+  // Commit any final rotation immediately, including before a quick release.
+  if(this.dragFrame!==null){
+   cancelAnimationFrame(this.dragFrame);this.dragFrame=null;this.draw();
+  }
   try{this.host.releasePointerCapture(event.pointerId);}catch{/* optional */}
  };
  /** One 220 ms context transition, with no recurring animation while idle. */
@@ -165,15 +179,20 @@ export class CampaignKitPreview{
   if(!this.renderer)return;
   const width=Math.max(160,this.host.clientWidth);
   const height=Math.max(180,this.host.clientHeight);
-  this.renderer.setSize(width,height,false);
-  this.camera.aspect=width/height;
-  this.camera.updateProjectionMatrix();
+  if(width!==this.renderedWidth||height!==this.renderedHeight){
+   this.renderer.setSize(width,height,false);
+   this.camera.aspect=width/height;
+   this.camera.updateProjectionMatrix();
+   this.renderedWidth=width;this.renderedHeight=height;
+  }
   this.camera.position.set(this.focusRadius*Math.cos(this.azimuth),
    this.focusHeight+this.focusRise,this.focusRadius*Math.sin(this.azimuth));
   this.camera.lookAt(0,this.focusHeight,0);
   this.renderer.render(this.scene,this.camera);
  }
  dispose(){
+  if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
+  this.dragFrame=null;
   if(this.focusFrame!==null)cancelAnimationFrame(this.focusFrame);
   this.focusFrame=null;
   this.observer?.disconnect();this.observer=null;
