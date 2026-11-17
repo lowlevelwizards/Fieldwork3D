@@ -1623,26 +1623,35 @@ export class CampaignScreen{
   const head=node('div','campaign-contract-head');
   const identity=node('div','campaign-contract-identity');
   identity.append(node('strong','',view.title));
-  if(isDispatchPilot(campaign))identity.append(node('small','campaign-note',view.reference));
+  // Technical case references are discoverable under CASE INFORMATION.
   const risk=node('span','campaign-contract-risk',
    ['','LOW','MODERATE','HIGH'][c.risk]+' RISK');
   risk.dataset.level=String(c.risk);
   head.append(identity,risk);card.append(head);
-  const location=node('div','campaign-contract-location',
-   c.region+(isDispatchPilot(campaign)&&c.dispatchCase?
-   ' · '+c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase():''));
+  const location=node('div','campaign-contract-location',c.region);
   card.append(location);
-  if(dossier)card.append(node('small','campaign-contract-emphasis',
+  // Keep contract choice concise. The actionable comparison facts remain
+  // visible; technical reference, incident text and prior-response specifics
+  // are available without committing to a briefing.
+  if(c.followUpOf)card.append(node('div','campaign-contract-related',
+   dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
+  const intelligence=node('details','campaign-contract-intelligence');
+  intelligence.append(node('summary','','CASE INFORMATION'));
+  if(isDispatchPilot(campaign)){
+   intelligence.append(node('small','campaign-contract-reference',view.reference));
+   if(c.dispatchCase)intelligence.append(node('p','campaign-contract-emphasis',
+    c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase()));
+  }
+  if(dossier)intelligence.append(node('p','campaign-contract-emphasis',
    dossier.situation.emphasis+' · '+dossier.situation.siteScale));
   if(c.followUpOf){
-   card.append(node('div','campaign-contract-related',
-    dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
    const last=dossier?.related.at(-1);
    if(last&&last.outcome!=='unknown')
-    card.append(node('small','campaign-contract-prior',
+    intelligence.append(node('p','campaign-contract-prior',
      'PRIOR RESPONSE · '+last.title+' · '+last.outcome.toUpperCase()));
   }
-  card.append(node('p','campaign-contract-description',view.description));
+  intelligence.append(node('p','campaign-contract-description',view.description));
+  card.append(intelligence);
   const terms=node('div','campaign-contract-terms');
   const reward=node('div','campaign-contract-term');
   reward.append(node('small','','REWARD'),node('strong','',c.reward+' CR'));
