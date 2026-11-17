@@ -60,6 +60,10 @@ export function dispatchCaseDossier(campaign:CampaignState,
   }));
   parentId=parent.followUpOf;
  }
+ // An archived gap, a cycle or a chain longer than the preview remains
+ // explicitly partial; never present six displayed links as a full record.
+ const incomplete=!!parentId&&
+  (related.length>=MAX_LINKS||visited.has(parentId));
  related.reverse();
  return Object.freeze({
   lead:def?.leads[0]??'No detailed reported lead retained for this assignment.',
@@ -71,8 +75,8 @@ export function dispatchCaseDossier(campaign:CampaignState,
   uncertainty:'Briefing details are provisional. Occupant numbers, intent and positions are not confirmed.',
   related:Object.freeze(related),
   relatedLabel:current.followUpOf?
-   related.some(row=>row.outcome==='unknown')?
-    'RELATED OPERATION · PRIOR RECORD INCOMPLETE':
+   incomplete||related.some(row=>row.outcome==='unknown')?
+    'RELATED OPERATION · PRIOR HISTORY INCOMPLETE':
     'RELATED OPERATION · '+related.length+' PRIOR RESPONSE'+
      (related.length===1?'':'S'):
    'NEW INCIDENT RECORD'
