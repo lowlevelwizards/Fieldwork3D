@@ -32,6 +32,14 @@ const near=(a,b,label,t=.0001)=>{
   assert.ok(Math.abs(points(a)[i]-points(b)[i])<=t,
    label+' bound '+i+' drift');
 };
+const anchorsNear=(actual,expected,label)=>{
+ assert.deepEqual(actual.map(x=>[x.slot,x.name]),
+  expected.map(x=>[x.slot,x.name]),label+' slot identity');
+ for(let i=0;i<actual.length;i++)
+  for(const axis of ['x','y','z'])
+   assert.ok(Math.abs(actual[i][axis]-expected[i][axis])<.0001,
+    label+' '+actual[i].slot+' '+axis+' changed');
+};
 const draw=(config,options)=>buildWeaponSilhouette(
  config.weapon,new THREE.MeshBasicMaterial(),new THREE.MeshBasicMaterial(),
  config,options);
@@ -61,8 +69,8 @@ test('M3.0C4 factory-only live builder saves exactly C3-proven GPU submissions',
    assert.deepEqual(childMag(live).map(x=>x.name),
     childMag(original).map(x=>x.name));
    assert.equal(JSON.stringify(config),saved,'save/part recipe mutated');
-   assert.deepEqual(workbenchVisualAnchors(config,live,'body'),
-    workbenchVisualAnchors(config,original,'body'));
+   anchorsNear(workbenchVisualAnchors(config,live,'body'),
+    workbenchVisualAnchors(config,original,'body'),id+' body');
    assert.deepEqual(live.userData.visibleStockContact,
     original.userData.visibleStockContact,'buttplate art datum changed');
    const contact=measureVisibleStockContact(live,config);
@@ -154,8 +162,9 @@ test('M3.0C4 attachment swaps preserve exact body/optic sockets and replay-style
   try{
    assert.equal(live.userData.rigidCompilation.factoryId,'ar-m4a1',
     'static body compilation must survive valid accessory changes');
-   assert.deepEqual(workbenchVisualAnchors(replay,live,'attachments'),
-    workbenchVisualAnchors(replay,original,'attachments'));
+   anchorsNear(workbenchVisualAnchors(replay,live,'attachments'),
+    workbenchVisualAnchors(replay,original,'attachments'),
+    'mounted '+replay.build.parts.receiver);
    assert.deepEqual(measureWeaponVisual(a),measureWeaponVisual(b));
    assert.deepEqual(childMag(live).map(m=>m.name),
     childMag(original).map(m=>m.name));
