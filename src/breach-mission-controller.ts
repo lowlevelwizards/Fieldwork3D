@@ -37,6 +37,9 @@ export type MissionCreation={
   missionOverride?:Session['missionType'];
   prebuiltSite?:Site;
   risk?:1|2|3;
+  /** Optional D8 Dispatch contract-owned generation inputs. */
+  incidentId?:string;
+  archetype?:import('./breach-site.ts').BuildingArchetype;
   restartStart?:MissionStartSnapshot;
   /** The menu and fixed study intentionally start without generated sites. */
   withoutSite?:boolean;
@@ -93,7 +96,8 @@ export class BreachMissionController{
       request.restartStart?.scale??prefs.requestedSiteScale,
       request.missionOverride,request.prebuiltSite,
       {risk:request.risk,enableCivilians:prefs.civilianPreview,
-       enableIncidentIntent:true});
+       enableIncidentIntent:true,incidentId:request.incidentId,
+       archetype:request.archetype,strictIncident:!!request.incidentId});
     setSessionLightingMode(session,request.trainingLighting??
       request.restartStart?.lightingMode??prefs.selectedLightingMode);
     if(request.restartStart?.sitePower)

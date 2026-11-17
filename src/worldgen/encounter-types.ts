@@ -30,6 +30,10 @@ export type EncounterContext = {
   /** Experimental B5: only set by the Briefing Lab. */
   enableIncidentIntent?:boolean;
   incidentId?:string;
+  /** D8: only a saved Dispatch contract requests a hard incident match. */
+  strictIncident?:boolean;
+  /** D8: architectural selection is fixed at contract-creation time. */
+  archetype?:BuildingArchetype;
 };
 export type EncounterActorSpec = {
   id:string;groupId:string;role:EncounterRole;activity:EncounterActivity;

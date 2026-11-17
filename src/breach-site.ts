@@ -93,6 +93,9 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    {...encounterContext,incidentId:chooseGenerationIncidentIntent(
      seed,kind,mission,encounterContext.incidentId)??undefined}:
    {...encounterContext,incidentId:undefined};
+ if(encounterContext.strictIncident&&
+    contextWithIntent.incidentId!==encounterContext.incidentId)
+  throw new Error('Dispatch incident incompatible with selected building');
  let failures:string[]=[];
  let best:Site|undefined;
  let bestGrade:ReturnType<typeof measureSiteCompleteness>|undefined;

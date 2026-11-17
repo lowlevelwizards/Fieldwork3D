@@ -29,6 +29,8 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  const incidentIntentId=context.enableIncidentIntent?
    resolveGenerationIncidentIntent(seed,site.archetype??'house',mission,
      premise,context.incidentId):null;
+ if(context.strictIncident&&incidentIntentId!==context.incidentId)
+  throw new Error('Dispatch incident incompatible with resolved encounter');
  const profile=chooseEncounterProfile(premise,seed,mission,
    incidentIntentId??undefined);
  const target=chooseHostileBudget(site,resolved,premise);
