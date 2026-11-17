@@ -12,6 +12,7 @@ import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
 import {workbenchFitDistance} from '../weapons/geometry/weapon-workbench-camera-fit.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {MOUNTABLE_SLOTS} from '../weapons/geometry/weapon-mount-selections.ts';
+import {ArsenalWeaponGeometryPool} from './weapon-geometry-pool.ts';
 
 export class ArsenalThumbnailer{
  private renderer:THREE.WebGLRenderer|null=null;
@@ -20,6 +21,9 @@ export class ArsenalThumbnailer{
  private readonly steel=WEAPON_ACCESSORY_STEEL;
  private readonly dark=WEAPON_ACCESSORY_POLYMER;
  private readonly cache=new Map<string,string>();
+ private readonly geometryPool=new ArsenalWeaponGeometryPool();
+ private readonly poolEnabled=new URLSearchParams(location.search)
+  .get('e626Weapon')==='1';
  private unavailable=false;
  constructor(){
   addArsenalInspectionLighting(this.scene);
@@ -35,6 +39,7 @@ export class ArsenalThumbnailer{
   const cached=this.cache.get(id);if(cached)return cached;
   const config=arsenalRecipeToLegacy(recipe);
   if(!config||this.unavailable)return undefined;
+  let body:THREE.Group|null=null,extras:THREE.Group|null=null,gun:THREE.Group|null=null;
   try{
    if(!this.renderer){
     this.renderer=new THREE.WebGLRenderer({alpha:false,antialias:false,
@@ -45,9 +50,14 @@ export class ArsenalThumbnailer{
    const width=size==='hero'?900:400,height=size==='hero'?350:160;
    this.renderer.setSize(width,height,false);
    this.camera.aspect=width/height;this.camera.updateProjectionMatrix();
-   const body=buildWeaponSilhouette(config.weapon,this.steel,this.dark,config);
-   const extras=buildWeaponAccessories(config,this.steel,this.dark);
-   const gun=new THREE.Group();
+   body=buildWeaponSilhouette(config.weapon,this.steel,this.dark,config);
+   if(this.poolEnabled){
+    const stats=this.geometryPool.adopt(body);
+    document.body.dataset.e626GalleryHits=String(stats.hits);
+    document.body.dataset.e626GalleryGeometries=String(stats.geometries);
+   }
+   extras=buildWeaponAccessories(config,this.steel,this.dark);
+   gun=new THREE.Group();
    gun.add(body,extras);
    gun.scale.x=weaponVisualLayout(config).longitudinalScale;
    this.scene.add(gun);gun.updateMatrixWorld(true);
@@ -59,21 +69,28 @@ export class ArsenalThumbnailer{
    this.camera.lookAt(center);this.camera.updateProjectionMatrix();
    this.renderer.render(this.scene,this.camera);
    const encoded=this.renderer.domElement.toDataURL('image/webp',.74);
-   this.scene.remove(gun);
-   clearWeaponSilhouette(body);
-   extras.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
-   extras.clear();
    if(this.cache.size>100)this.cache.clear();
    this.cache.set(id,encoded);
    return encoded;
   }catch{
    this.unavailable=true;
    return undefined;
+  }finally{
+   // Release every geometry lease even when the GPU readback fails.
+   if(gun)this.scene.remove(gun);
+   if(body){
+    if(this.poolEnabled)this.geometryPool.release(body);
+    else clearWeaponSilhouette(body);
+   }
+   if(extras){
+    extras.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+    extras.clear();
+   }
   }
  }
  dispose(){
   this.renderer?.dispose();this.renderer?.forceContextLoss();this.renderer=null;
-  // Registry owns finishes; this viewer still owns its thumbnail image cache.
-   this.cache.clear();
+  // Finish materials belong to the registry, buffers to this viewer.
+  this.geometryPool.clear();this.cache.clear();
  }
 }
