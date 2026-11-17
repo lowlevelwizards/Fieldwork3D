@@ -76,12 +76,12 @@ jobs:
         run: |
           # The pinned D1 reference predates D2.3's committed single
           # abandoned-step correction. First demand exact equality; if it
-          # differs, accept ONLY the fully audited mission-hold delta using
-          # the strict verifier. It rejects any other world/replay change.
-          # The gate must not depend on the historical feature branch name:
-          # every modern PR inherits the intentional D2.3 behavior.
+          # differs, run the strict H1/D2.3 fingerprint-and-truth audit.
+          # This accepts only the reviewed contact change and bounded Vale
+          # correction; all other world/replay outcomes stay byte-exact.
+          # The stable pinned references remain unchanged.
           node scripts/compare-release-d0-workloads.mjs d2-1-before.json d2-1-after.json d2-1-comparison.json ||
-            node scripts/verify-release-d2-3-intent-delta.mjs d2-1-before.json d2-1-after.json
+            node scripts/verify-arsenal-h1-intent-delta.mjs d2-1-before.json d2-1-after.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:

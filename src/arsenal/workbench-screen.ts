@@ -5,7 +5,7 @@ import {ARSENAL_CATEGORIES,arsenalPart,arsenalPartsForSlot,
  type ArsenalCategory,type ArsenalSlot,type ArsenalReference}
  from './catalog.ts';
 import {FAMILY_PARTS,type FamilyPartSlot} from '../equipment-weapon-families.ts';
-import {arsenalRecipeFromLegacy,readArsenalRecipe,type ArsenalAccessorySlot,
+import {arsenalRecipeFromLegacy,readArsenalRecipe,sameArsenalRecipe,type ArsenalAccessorySlot,
  type ArsenalRecipeV2} from './recipes.ts';
 import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
  createSavedArsenalBuild,overwriteSavedArsenalBuild} from './saved-builds.ts';
@@ -19,6 +19,7 @@ import type {MountableSlot} from '../weapons/geometry/weapon-mount-selections.ts
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../equipment-weapon-assemblies.ts';
 import {ArsenalViewport} from './viewport.ts';
+import {arsenalHandlingStats,arsenalStatDeltas} from './handling-stats.ts';
 import {proposeArsenalRecipeLoad,acceptArsenalRecipeLoad,arsenalRecipeDifferenceLabel,
  type ArsenalRecipeLoadProposal} from './recipe-loading.ts';
 import {ARSENAL_PLATFORMS,type ArsenalPlatformId} from './catalog.ts';
@@ -52,6 +53,8 @@ export function openArsenalWorkbench(
    initialWeaponConfiguration(source.legacy.weapon),source.id));
  if(!loadedRecipe)return;
  let draft=createArsenalDraft(loadedRecipe);
+ let lastStatsRecipe:ArsenalRecipeV2=draft.working;
+ let previousStatsRecipe:ArsenalRecipeV2|null=null;
  let savedId:string|null='recipe' in source&&/^arsenal-[1-9][0-9]*$/.test(source.id)?
   source.id:null;
  let activeCategory:ArsenalCategory=ARSENAL_CATEGORIES[0];
@@ -104,6 +107,20 @@ export function openArsenalWorkbench(
  head.append(back,identity,actions);
  const main=document.createElement('div');main.className='arsenal-wb-main';
  const viewportHost=document.createElement('div');viewportHost.className='arsenal-wb-viewport';
+ // Read-only gameplay comparisons stay beside the model, above the parts list.
+ const stage=document.createElement('div');stage.className='arsenal-wb-stage';
+ const stats=document.createElement('section');stats.className='arsenal-wb-stats';
+ stats.setAttribute('aria-label','Weapon handling and comparison statistics');
+ const statsHeading=document.createElement('div');statsHeading.className='arsenal-wb-stats-head';
+ const statsTitle=document.createElement('strong');statsTitle.textContent='WEAPON PERFORMANCE';
+ const statsComparison=document.createElement('small');
+ statsComparison.className='arsenal-wb-stats-comparison';
+ statsHeading.append(statsTitle,statsComparison);
+ const statsBody=document.createElement('div');statsBody.className='arsenal-wb-stats-grid';
+ const statsNote=document.createElement('p');statsNote.className='arsenal-wb-stats-note';
+ statsNote.textContent='Relative handling · higher is better · not damage or hit chance';
+ stats.append(statsHeading,statsBody,statsNote);
+ stage.append(viewportHost,stats);
  const nav=document.createElement('nav');nav.className='arsenal-wb-nav';
  nav.setAttribute('aria-label','Weapon component categories');
  const panel=document.createElement('section');panel.className='arsenal-wb-panel';
@@ -177,7 +194,7 @@ export function openArsenalWorkbench(
  applyQuote.setAttribute('role','status');
  panel.append(panelTitle,slotRow,activeLabel,mounting,finishSection,optionsHeader,
   fitExplanation,choiceList,pendingHost,applyQuote,hint);
- main.append(viewportHost,nav,panel);
+ main.append(stage,nav,panel);
  overlay.append(head,main);
  if(context)overlay.append(commitHint);
  document.body.append(overlay);
@@ -481,6 +498,58 @@ export function openArsenalWorkbench(
     button.setAttribute('aria-pressed',pressed);
   }
  }
+ /** Compare only accepted editor changes, not category browsing or pending edits. */
+ function renderPerformance(){
+  if(!sameArsenalRecipe(lastStatsRecipe,draft.working)){
+   previousStatsRecipe=lastStatsRecipe;
+   lastStatsRecipe=draft.working;
+  }
+  const current=arsenalHandlingStats(draft.working);
+  const previous=previousStatsRecipe?arsenalHandlingStats(previousStatsRecipe):null;
+  statsComparison.textContent=previous?'VS PREVIOUS BUILD':'CURRENT BUILD';
+  if(!current){statsBody.textContent='Handling data unavailable for this build.';return;}
+  const deltas=arsenalStatDeltas(current,previous);
+  const oldScores=new Map<string,number>(previous?.map(item=>
+   [item.id,item.score] as const)??[]);
+  const nodes=document.createDocumentFragment();
+  for(const stat of current){
+   const row=document.createElement('div');row.className='arsenal-wb-stat';
+   row.title=stat.explanation;
+   const heading=document.createElement('div');heading.className='arsenal-wb-stat-heading';
+   const name=document.createElement('strong');name.textContent=stat.label;
+   const value=document.createElement('span');value.className='arsenal-wb-stat-value';
+   value.textContent=String(stat.score);
+   const delta=deltas.get(stat.id)??0;
+   if(previous&&delta!==0){
+    const change=document.createElement('small');
+    change.className='arsenal-wb-stat-change';
+    change.dataset.direction=delta>0?'up':'down';
+    change.textContent=(delta>0?'▲ +':'▼ ')+String(delta);
+    value.append(' ',change);
+   }
+   heading.append(name,value);
+   const track=document.createElement('div');track.className='arsenal-wb-stat-track';
+   track.setAttribute('role','meter');
+   track.setAttribute('aria-label',stat.label);
+   track.setAttribute('aria-valuemin','0');
+   track.setAttribute('aria-valuemax','100');
+   track.setAttribute('aria-valuenow',String(stat.score));
+   track.setAttribute('aria-valuetext',stat.score+' out of 100 relative score'+
+    (previous&&delta!==0?', changed '+delta+' points since previous build':''));
+   const fill=document.createElement('span');fill.className='arsenal-wb-stat-fill';
+   fill.style.width=stat.score+'%';track.append(fill);
+   const old=oldScores.get(stat.id);
+   if(old!==undefined&&old!==stat.score){
+    const marker=document.createElement('span');
+    marker.className='arsenal-wb-stat-previous';
+    marker.style.left=old+'%';track.append(marker);
+   }
+   const detail=document.createElement('small');detail.className='arsenal-wb-stat-detail';
+   detail.textContent=stat.detail;
+   row.append(heading,track,detail);nodes.append(row);
+  }
+  statsBody.replaceChildren(nodes);
+ }
  function renderSelection(){
   fitExplanation.hidden=true;fitExplanation.textContent='';
   syncNavigation();
@@ -509,7 +578,7 @@ export function openArsenalWorkbench(
   showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
   viewer.setVisibleSlots(activeCategory.slots);
   viewer.setSelectedSlot(activeSlot);
-  renderChoices();renderPending();renderMounting();
+  renderPerformance();renderChoices();renderPending();renderMounting();
  }
  const loadDialog=document.createElement('dialog');
  loadDialog.className='arsenal-wb-load-dialog';
@@ -598,6 +667,34 @@ export function openArsenalWorkbench(
      (proposal.changes.length?
       'REVIEW '+proposal.changes.length+' CHANGES':'ALREADY MATCHES');
     loadChanges.append(summary);
+    // Choose a model and see the projected handling consequences before
+    // committing a new draft or spending any Campaign resources.
+    if(proposal.nextRecipe){
+     const proposed=arsenalHandlingStats(proposal.nextRecipe);
+     const baseline=arsenalHandlingStats(draft.working);
+     if(proposed&&baseline){
+      const changes=arsenalStatDeltas(proposed,baseline);
+      const statPreview=document.createElement('div');
+      statPreview.className='arsenal-wb-load-stats';
+      const heading=document.createElement('strong');
+      heading.textContent='HANDLING VS CURRENT BUILD';
+      const statChips=document.createElement('div');
+      statChips.className='arsenal-wb-load-stat-chips';
+      let differences=0;
+      for(const row of proposed){
+       const delta=changes.get(row.id)??0;
+       if(delta===0)continue;
+       differences++;
+       const chip=document.createElement('span');
+       chip.className='arsenal-wb-load-stat-chip';
+       chip.dataset.direction=delta>0?'up':'down';
+       chip.textContent=row.label+' '+(delta>0?'▲ +':'▼ ')+delta;
+       statChips.append(chip);
+      }
+      if(!differences)statChips.textContent='No handling difference';
+      statPreview.append(heading,statChips);loadChanges.append(statPreview);
+     }
+    }
     if(proposal.changes.length){
      const list=document.createElement('ul');
      for(const change of proposal.changes){

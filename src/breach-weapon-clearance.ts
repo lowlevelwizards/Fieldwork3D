@@ -10,6 +10,7 @@ import {combatCostDiagnosticsEnabled,combatCostCounts}
 import type {Handling} from './breach-weapon-pose.ts';
 import {muzzleAtShot,type MuzzleInput,type MuzzleSample}
   from './breach-muzzle.ts';
+import {weaponHandlingModifiers} from './equipment-weapon-handling.ts';
 export type ClearanceResult={
   obstruction:boolean;blocked:boolean;retraction:number;
   /** 0..1 wall-proximity-driven rifle fold: same as visible short-stock. */
@@ -53,7 +54,12 @@ export function weaponClearance(input:MuzzleInput,
   if(barrel<.001)return {obstruction:false,blocked:false,
     compression:0,retraction:0,blocker:'clear',muzzle:ready};
   const dx=vx/barrel,dy=vy/barrel;
-  const horizon=barrel+SHORT_STOCK_APPROACH_LEAD;
+  // Anticipate the physically modeled muzzle's approach, without inferring
+  // that a drawn, deployed folding stock has been folded.
+  const approachLead=input.weaponConfiguration?.build?
+    weaponHandlingModifiers(input.weaponConfiguration).clearanceLead:
+    SHORT_STOCK_APPROACH_LEAD;
+  const horizon=barrel+approachLead;
   const at=(d:number):Pt=>({x:from.x+dx*d,y:from.y+dy*d});
   const horizonHit=check(at(horizon),ready.y);
   if(horizonHit==='clear')
@@ -68,8 +74,8 @@ export function weaponClearance(input:MuzzleInput,
     else high=middle;
   }
   const distanceToObstacle=high;
-  const start=barrel+SHORT_STOCK_APPROACH_LEAD;
-  const total=SHORT_STOCK_APPROACH_LEAD+SHORT_STOCK_REAR_MARGIN;
+  const start=barrel+approachLead;
+  const total=approachLead+SHORT_STOCK_REAR_MARGIN;
   const proximity=clamp((start-distanceToObstacle)/total);
   // A very far contact inside the approximation tolerance is not a pose
   // change. Once contact approaches, progress changes continuously rather
