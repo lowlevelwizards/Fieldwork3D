@@ -42,7 +42,7 @@ test('D3.3 menu and runtime route Dispatch without changing Quick Play contracts
  assert.match(ui,/DISPATCH CAMPAIGN/);
  assert.match(ui,/Choose a tactical-police career/);
  assert.match(main,/campaignInSlot\('dispatch'\)/);
- assert.match(flow,/newDispatchPilotCampaign\\(config.randomSeed\\(\\),draft\\)/);
+ assert.match(flow,/newDispatchPilotCampaign\(config.randomSeed\(\),draft\)/);
  assert.match(flow,/continueDispatch:\(\)=>resumeSlot\('dispatch'\)/);
  assert.match(state,/mayChooseCampaignContent\(c,'equipment',itemId,slot\)/);
  assert.match(state,/mayChooseCampaignContent\(c,'weapon-preset',presetId\)/);
