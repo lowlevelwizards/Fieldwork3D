@@ -7,6 +7,7 @@ import {SiteFixtureLightingPresenter} from './rendering/breach-site-light-presen
 import * as THREE from 'three';
 import {ColdRendererTrace} from './rendering/breach-cold-renderer-trace.ts';
 import {LiveShadowSubmitProfiler} from './rendering/breach-live-shadow-submit-profiler.ts';
+import {LiveMainPassProfiler} from './rendering/breach-live-main-pass-profiler.ts';
 import {stepCameraFocusGlide,type CameraFocusGlide}
   from './breach-camera-focus-glide.ts';
 import {applyWorldSurfaceResponse} from './rendering/material-identity.ts';
@@ -171,6 +172,7 @@ export class TacticalScene3D{
   }
   /** E6.16: strictly opt-in shadow-map submission attribution. */
   private readonly liveShadowSubmitProfiler:LiveShadowSubmitProfiler|null;
+  private readonly liveMainPassProfiler:LiveMainPassProfiler|null;
   private scenePhaseStart=0;
   /** Opt-in cold-rig vs pose timing. The actor phase can contain first-use
    * wardrobe material/shadow generation as well as steady-state posing. */
@@ -270,6 +272,7 @@ export class TacticalScene3D{
       actorRigCount:this.actors.size,
       civilianRigCount:this.civilianRigs.size,
       shadowSubmission:this.liveShadowSubmitProfiler?.last??null,
+      mainPassSubmission:this.liveMainPassProfiler?.last??null,
       shadowRefreshes:this.shadowUpdates.refreshes,
       shadowReuses:this.shadowUpdates.reuses,
       shadowLodTransitions:this.shadowLodTransitions,
@@ -873,6 +876,10 @@ export class TacticalScene3D{
       new URLSearchParams(location.search).get('coldBench')==='1'?
        new LiveShadowSubmitProfiler(this.renderer as unknown as
          ConstructorParameters<typeof LiveShadowSubmitProfiler>[0]):null;
+    this.liveMainPassProfiler=this.liveShadowSubmitProfiler?
+      new LiveMainPassProfiler(this.renderer as unknown as
+        ConstructorParameters<typeof LiveMainPassProfiler>[0],
+        ()=>this.liveShadowSubmitProfiler?.isShadowPass??false):null;
     // Atmospheric distance fog was tinting every interior surface in ISO.
     // Visibility is handled separately by authoritative exploration tiles.
     this.scene.background=color(0x182a2a);
@@ -1630,7 +1637,9 @@ export class TacticalScene3D{
     if(!prepared)return false;
     this.preparedColdFrame=null;
     try{
-      if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
+      if(this.liveMainPassProfiler)this.liveMainPassProfiler.capture(()=>
+       this.liveShadowSubmitProfiler!.capture(()=>this.renderMiniatureFocus(prepared.camera)));
+      else if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
        ()=>this.renderMiniatureFocus(prepared.camera));
       else this.renderMiniatureFocus(prepared.camera);
      }
@@ -2751,7 +2760,9 @@ export class TacticalScene3D{
       return;
     }
     try{
-      if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
+      if(this.liveMainPassProfiler)this.liveMainPassProfiler.capture(()=>
+       this.liveShadowSubmitProfiler!.capture(()=>this.renderMiniatureFocus(camera)));
+      else if(this.liveShadowSubmitProfiler)this.liveShadowSubmitProfiler.capture(
        ()=>this.renderMiniatureFocus(camera));
       else this.renderMiniatureFocus(camera);
      }

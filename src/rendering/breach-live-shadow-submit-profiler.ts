@@ -15,6 +15,8 @@ export class LiveShadowSubmitProfiler{
  last:LiveShadowSubmissionSample|null=null;
  private capturing=false;private shadowWall=0;private shadowDraws=0;
  private invocations=0;private reliable=true;
+ private shadowPassDepth=0;
+ get isShadowPass():boolean{return this.shadowPassDepth>0;}
  private readonly renderer:RendererLike;
  private readonly now:()=>number;
  constructor(renderer:RendererLike,now:()=>number=()=>performance.now()){
@@ -26,8 +28,10 @@ export class LiveShadowSubmitProfiler{
    target.render=function(this:unknown,...args:unknown[]){
     if(!profiler.capturing)return Reflect.apply(original,this,args);
     const started=profiler.now(),before=renderer.info.render.calls;
+    profiler.shadowPassDepth++;
     try{return Reflect.apply(original,this,args);}
     finally{
+     profiler.shadowPassDepth--;
      profiler.shadowWall+=elapsed(profiler.now(),started);
      profiler.invocations++;
      const after=renderer.info.render.calls;
