@@ -1,6 +1,6 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
-import {currentDispatchReference,validDispatchSetup,type DispatchCampaignSetupV1} from './dispatch-campaign-setup.ts';
+import {currentDispatchReference,effectiveDispatchSetup,validDispatchSetup,type DispatchCampaignSetupV1} from './dispatch-campaign-setup.ts';
 import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
 import {assignDispatchCase} from './dispatch-case-selection.ts';
 import {advanceDispatchDepartment,initialDispatchDepartment,
@@ -795,6 +795,7 @@ export function setCampaignWardrobe(c:CampaignState,id:string,
  if(!member)return c;
  const wardrobe=readWardrobe(raw);
  if(isDispatchPilotCampaign(c)&&
+  effectiveDispatchSetup(c).equipmentScope!=='global'&&
   !dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),wardrobe,member.loadout,
    currentDispatchReference(c)))return c;
  return {...c,operators:c.operators.map(x=>x.id===id?{...x,wardrobe}:x)};
