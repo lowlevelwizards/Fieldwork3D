@@ -16,7 +16,7 @@ test('D3.0 creator, menu and flow route to dedicated Dispatch campaign',()=>{
  const ui=source('src/campaign-ui.ts'),main=source('src/breach-main.ts');
  const flow=source('src/breach-campaign-flow.ts');
  assert.match(ui,/CONTINUE DISPATCH/);
- assert.match(ui,/DISPATCH · SWAT PILOT/);
+ assert.match(ui,/DISPATCH CAMPAIGN/);
  assert.match(ui,/this\.importPicker\('dispatch'\)/);
  assert.match(main,/campaignInSlot\('dispatch'\)/);
  assert.match(flow,/newDispatchPilotCampaign\(config.randomSeed\(\)\)/);
