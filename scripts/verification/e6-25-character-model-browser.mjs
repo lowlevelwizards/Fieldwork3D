@@ -188,6 +188,25 @@ try{
   const off=evidence.runs.find(r=>r.seed===seed&&r.templateEnabled==='0');
   const on=evidence.runs.find(r=>r.seed===seed&&r.templateEnabled==='1');
   if(!off||!on)throw Error('Missing ON/OFF batch pair for seed '+seed);
+  const inventory=(off.siteBuild.fixtureInventory??[]).map(before=>{
+   const after=on.siteBuild.fixtureInventory?.find(v=>v.index===before.index);
+   return {index:before.index,fixture:before.fixture,
+    before:before.meshes,after:after?.meshes,
+    delta:(after?.meshes??0)-before.meshes,
+    beforeTypes:before.parts,afterTypes:after?.parts,
+    cached:after?.template};
+  }).filter(x=>x.delta!==0||x.beforeTypes!==x.afterTypes);
+  console.log('E6_25_FIXTURE_INVENTORY_DIFFERENCES',
+   JSON.stringify({seed,building,total:inventory.length,
+    mismatches:inventory.slice(0,70)}));
+  const planningPrecheck=compareImages(
+    dir+'/seed-'+seed+'-template-0-planning.png',
+    dir+'/seed-'+seed+'-template-1-planning.png');
+  const livePrecheck=compareImages(
+    dir+'/seed-'+seed+'-template-0.png',
+    dir+'/seed-'+seed+'-template-1.png');
+  console.log('E6_25_VISUAL_PRECHECK',
+    JSON.stringify({seed,building,planningPrecheck,livePrecheck}));
   const saved=off.mainPassAttribution.drawCallsP95-on.mainPassAttribution.drawCallsP95;
   const core=off.mainPassAttribution.dominantOwners.find(x=>x.owner==='environment');
   const after=on.mainPassAttribution.dominantOwners.find(x=>x.owner==='environment');
