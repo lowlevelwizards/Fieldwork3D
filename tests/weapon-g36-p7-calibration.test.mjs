@@ -18,13 +18,14 @@ const box=o=>new THREE.Box3().setFromObject(o);
 const tris=g=>g.children.reduce((n,o)=>n+(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3,0);
 const close=(a,b)=>Math.abs(a-b)<.02;
 
-test('P7 selection: rear-integrated reflex is production, P6 remains explicit art reference',()=>{
+test('O2 factory selection: new volumetric dual optic, P6/P7 remain explicit historical art references',()=>{
  const m=new THREE.MeshBasicMaterial({side:THREE.FrontSide});
  const selected=buildG36OriginalBlockout(m);
  const p6=buildG36OriginalBlockout(m,{optic:'p6',magazine:'p6'});
  const rear=buildG36OriginalBlockout(m,{optic:'rear-integrated',magazine:'p6'});
  assert.deepEqual(G36_OPTIC_REVIEW_FORMS.p6.lower,[-3.37,3.35,0,4.95,1.30,1.96]);
- assert.ok(box(find(selected,'g36UpperReflex')).equals(box(find(rear,'g36UpperReflex'))));
+ assert.equal(find(selected,'g36UpperReflex').userData.g36OpticArtVersion,'o2-simplified-125-125-55');
+ assert.ok(!box(find(selected,'g36UpperReflex')).equals(box(find(rear,'g36UpperReflex'))));
  assert.ok(!box(find(selected,'g36UpperReflex')).equals(box(find(p6,'g36UpperReflex'))));
  assert.ok(box(find(selected,'g36Magazine')).equals(box(find(p6,'g36Magazine'))),
   'unapproved magazine sweep is NOT a silent production change');
