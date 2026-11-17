@@ -26,6 +26,15 @@ Run `node --experimental-strip-types scripts/audit-weapon-production-m30.mjs`.
 - Tests assert one instanced-buffer disposal event, owned geometry disposal,
   material preservation and repeated production geometry parity.
 
+## M3.0C0 — Conservative rigid candidate map (committed)
+- The read-only production audit now groups only same installed part owner,
+  material, opaque rendering state, compatible vertex layout and shadows.
+  It reports potential submission savings without merging a single mesh.
+- Exclude the animation-controlled magazine, instanced rail teeth, transparent
+  markings, special metadata, independently visible attachments and children.
+- This is a *candidate inventory*, not an approved optimization or measured
+  performance gain.
+
 ## M3.0C — Per-owner rigid draw consolidation (NEXT; separately gated)
 - Work **inside a single immutable weapon assembly** at build/change time.
   Cross-weapon pooling and live operator pose animation require separate study.
