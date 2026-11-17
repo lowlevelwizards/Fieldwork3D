@@ -125,7 +125,7 @@ test('G36 C3: one faceted tapered fore-end is volumetric in top/front views',()=
  const shell=one(g,'g36LongHandguard');
  assert.ok(shell.userData.g36FacetedMoldedShell,'handguard must be a single 3D faceted volume');
  const geo=shell.geometry,attr=geo.getAttribute('position');
- assert.equal(attr.count,12,'three planar four-corner sections; no cosmetic octagonal bevels');
+ assert.equal(attr.count,60,'three hard-normal four-corner sections, expanded for flat shading');
  const zAt=x=>{
   const v=[];
   for(let i=0;i<attr.count;i++)if(Math.abs(attr.getX(i)-x)<.02)v.push(Math.abs(attr.getZ(i)));

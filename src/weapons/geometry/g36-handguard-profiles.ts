@@ -29,8 +29,11 @@ export function addG36LongHandguard(root:THREE.Group,id:string,n:number,
  triangles.push(last,last+1,last+2,last,last+2,last+3);
  const geom=new THREE.BufferGeometry();
  geom.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
- geom.setIndex(triangles);geom.computeVertexNormals();
- const mesh=new THREE.Mesh(geom,material);
+ geom.setIndex(triangles);
+ // Never average normals across hard prism corners. Smooth normals create
+ // precisely the pillow-shading the interpretive reset is meant to remove.
+ const flat=geom.toNonIndexed();geom.dispose();flat.computeVertexNormals();
+ const mesh=new THREE.Mesh(flat,material);
  mesh.name='family-handguard-'+id+'-'+n;
  mesh.castShadow=true;mesh.receiveShadow=true;
  mesh.userData.g36LongHandguard=true;

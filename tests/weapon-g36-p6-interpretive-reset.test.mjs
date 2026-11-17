@@ -16,7 +16,7 @@ const triangles=o=>(o.geometry.index?.count??o.geometry.getAttribute('position')
 test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const guard=one(g,'g36LongHandguard');
- assert.equal(guard.geometry.getAttribute('position').count,12);
+ assert.equal(guard.geometry.getAttribute('position').count,60);
  assert.equal(G36_LONG_FOREND_RINGS.length,3);
  assert.equal(triangles(guard),20,'exactly 16 flat side and four cap triangles');
  for(const key of ['g36LowerOptic','g36UpperReflex','g36OpticFace','g36UpperReflexWindow']){

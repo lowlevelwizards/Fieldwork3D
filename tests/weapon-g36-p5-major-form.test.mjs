@@ -61,7 +61,7 @@ test('P5.2: four sculpted guard sections and broad receiver shoulder with fixed 
  const guard=one(g,'g36LongHandguard'),upper=one(g,'g36ReceiverUpper');
  const lower=one(g,'g36ReceiverLower'),grip=one(g,'g36Grip');
  assert.equal(G36_LONG_FOREND_RINGS.length,3);
- assert.equal(guard.geometry.getAttribute('position').count,12);
+ assert.equal(guard.geometry.getAttribute('position').count,60);
  assert.equal(G36_LONG_FOREND_RINGS[1].halfDepth,G36_LONG_FOREND_RINGS[0].halfDepth,
   'P6 removes pillowing between the first two cross-sections');
  assert.ok(box(guard).intersectsBox(box(upper)));
