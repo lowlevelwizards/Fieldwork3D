@@ -1832,7 +1832,9 @@ export class CampaignScreen{
    if(needsSquad)repairActions.append(button('REVIEW SQUAD',()=>fix('personnel')));
    if(needsSupply)repairActions.append(button('CHECK LOGISTICS',()=>fix('logistics')));
    warnings.append(repairActions);
-   panel.append(warnings);
+   // A warning must be seen before the full squad roster on a phone; retain
+   // the existing squad details immediately afterwards for an informed choice.
+   panel.insertBefore(warnings,roster);
   }
   const actions=node('div','campaign-preflight-actions');
   const cancel=button('RETURN TO CONTRACTS',()=>dismiss());
