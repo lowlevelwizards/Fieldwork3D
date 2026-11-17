@@ -957,3 +957,28 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   top:14px;right:14px;
  }
 }
+
+
+/* UI R14: Operations Room uses its width on desktop but keeps a single
+   sequential reading and keyboard order at phone/tablet widths. */
+.campaign-overview-workspace{display:grid;grid-template-columns:minmax(0,1fr);
+ gap:12px;align-items:start;min-width:0}
+.campaign-overview-priority,.campaign-overview-support{display:grid;
+ grid-template-columns:minmax(0,1fr);align-content:start;gap:13px;min-width:0}
+.campaign-overview-priority .campaign-next-action{margin:0}
+.campaign-overview-priority .campaign-readiness{margin:0}
+.campaign-overview-support>.campaign-note{margin:0}
+.campaign-overview-support .campaign-overview-actions{margin:0}
+.campaign-overview-support>.campaign-department-identity{margin:0}
+@media(min-width:900px){
+ .campaign-shell.campaign-wide:has(.campaign-tabs){max-width:1140px}
+ .campaign-overview-workspace{
+  grid-template-columns:minmax(0,1.1fr) minmax(340px,.9fr);
+  gap:clamp(16px,2.2vw,28px)}
+ .campaign-overview-support{gap:16px}
+ .campaign-overview-support .campaign-overview-actions{
+  grid-template-columns:repeat(2,minmax(0,1fr))}
+ .campaign-overview-support .campaign-overview-actions button{
+  min-height:52px}
+ .campaign-overview-stats .campaign-stat{min-height:72px;justify-content:center}
+}
