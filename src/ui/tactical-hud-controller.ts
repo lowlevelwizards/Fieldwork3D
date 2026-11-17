@@ -245,7 +245,9 @@ export function createTacticalHudController(
     const quickScope=input.scopeElement;
     // Scope is provided by the existing HUD mount; no duplicate DOM.
     if(quickScope){
+      const queue=actor.plan.length;
       writeDomText(quickScope,actor.name.toUpperCase()+' · '+scope+
+        (queue?' · '+queue+' QUEUED':' · NO ORDERS')+
         (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?
           ' · WATCH ACTIVE':''));
       quickScope.title=node?
@@ -398,6 +400,11 @@ export function createTacticalHudController(
   }):void{
     const {state,replaying,selected,id,button,ammo,hp}=input;
     const a=input.actor;
+    // Read-only authoring status: the count belongs to the actual operator
+    // plan, never a predicted or reconstructed navigation route.
+    const queued=a?.plan.length??0;
+    if(button.dataset.planCount!==String(queued))
+      button.dataset.planCount=String(queued);
     input.paintAccent(button,id);
     button.hidden=!a;
     const title=button.querySelector('strong');
@@ -466,6 +473,7 @@ export function createTacticalHudController(
     writeDomAttribute(button,'aria-label',a?
       a.name+', '+condition+', '+a.magazine+' of '+capacity+
       ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':'')+
+      '. '+queued+' queued '+(queued===1?'order':'orders')+
       '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
       id+', unavailable');
   }

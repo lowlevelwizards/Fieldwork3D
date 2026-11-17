@@ -4125,3 +4125,25 @@ body.nvg-selected-view #breach3dCanvas{
 
 /* UI.5C — the selected recipe survives the loading-to-briefing handoff. */
 .quick-play-recipe{margin:5px 0 12px;color:#c6d9c8;font:600 12px/1.4 var(--fw-font-narrative);overflow-wrap:anywhere}
+
+/* UI.6A: a tiny truthful queued-order count on each squad member.
+   No extra HUD row, visual redraw loop, or effect when the count is zero. */
+.tactical-hud .bar .unit[data-plan-count]:not([data-plan-count="0"])::after{
+ content:attr(data-plan-count);
+ position:absolute;top:2px;right:3px;
+ min-width:12px;height:14px;padding:0 2px;
+ display:grid;place-items:center;box-sizing:border-box;
+ border-radius:3px;border:1px solid #b3c8b3;
+ background:#1a3028;color:#f3edcf;
+ font:750 10px/1 var(--fw-font-menu);
+ pointer-events:none;
+}
+.tactical-hud .bar .unit.selected[data-plan-count]:not([data-plan-count="0"])::after{
+ border-color:var(--operator-accent,#bdd0b8);
+ color:#fff7e1;
+}
+@media(max-width:650px){
+ .tactical-hud .bar .unit[data-plan-count]:not([data-plan-count="0"])::after{
+  top:1px;right:2px;font-size:9px;min-width:11px;height:12px;
+ }
+}
