@@ -1,0 +1,85 @@
+name: Arsenal M2.8 cross-family integration and exact mount parity
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/arsenal/**'
+      - 'src/weapons/geometry/mounted-accessory-layout.ts'
+      - 'src/weapons/geometry/weapon-mount-position*.ts'
+      - 'tests/arsenal-m28-*.test.mjs'
+      - 'scripts/smoke-arsenal-m28-*.mjs'
+      - 'src/arsenal-m28-apply-smoke.ts'
+      - 'arsenal-m28-apply-smoke.html'
+      - '.github/workflows/arsenal-m28.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  critical:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Exact rail contacts, save/pose/light, transactions and workbench
+        run: |
+          node --experimental-strip-types --test \
+            tests/arsenal-m28-cross-family-mounting.test.mjs \
+            tests/arsenal-m27-mount-picker.test.mjs \
+            tests/arsenal-m26-persistent-mounts.test.mjs \
+            tests/arsenal-m26-transactions.test.mjs \
+            tests/arsenal-m26-stock-transfer.test.mjs \
+            tests/arsenal-m26-kit-quickplay.test.mjs \
+            tests/arsenal-m2-accessory-integration.test.mjs \
+            tests/arsenal-m2-optic-identities-eye-box.test.mjs
+      - name: Typecheck
+        run: npm run check
+      - name: Production build
+        run: npm run build
+  visual:
+    needs: critical
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: M2.7 real Workbench on desktop and mobile
+        run: node scripts/smoke-arsenal-m27-touch.mjs
+      - name: M2.6 real physical left/right optics/lights
+        run: node scripts/smoke-arsenal-m26-visual.mjs
+      - name: M2.8 real Campaign/Quick Play Apply and save roundtrip
+        run: node scripts/smoke-arsenal-m28-apply.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arsenal-m28-cross-family-and-workbench-evidence
+          path: |
+            reports/arsenal-m27-*.png
+            reports/arsenal-m27-acceptance.json
+            reports/arsenal-m26-mounted-*.png
+            reports/arsenal-m26-mesh-stats.json
+            reports/arsenal-m28-*-apply.png
+            reports/arsenal-m28-apply.json
+          if-no-files-found: ignore
+          retention-days: 14
+  release-preflight:
+    needs: [critical,visual]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Previous Pages succeeded, site matches main, no queued publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs

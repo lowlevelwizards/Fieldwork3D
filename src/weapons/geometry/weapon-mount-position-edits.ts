@@ -32,7 +32,12 @@ export function chooseWeaponMountPosition(c:WeaponConfiguration,slot:MountableSl
  const layout=resolveMountedAccessoryLayout(next);
  // Never commit a position change that leaves an owned attachment
  // physically unresolved or displaces an already explicitly placed one.
+ const seated=chosen?mountedAccessorySeat(next,slot)?.placement:undefined;
  if(layout.unresolved.length||
-  (chosen&&!mountedAccessorySeat(next,slot)))return c;
+  (chosen&&(!seated||
+   seated.ownerPartId!==chosen.ownerPartId||
+   seated.surfaceId!==chosen.surfaceId||
+   seated.face!==chosen.face||
+   Math.abs(seated.x-chosen.x)>.001)))return c;
  return sameWeaponConfiguration(c,next)?c:next;
 }
