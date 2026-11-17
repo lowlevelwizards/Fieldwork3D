@@ -182,6 +182,8 @@ try{
  // draws are expected and welcome; no extra draws, transparency changes or
  // altered tactical owner submissions are permitted. CPU timing is diagnostic,
  // never an uninstrumented FPS or hardware GPU claim.
+ // Preserve actual browser trace even when an acceptance assertion fails.
+ writeFileSync(dir+'/raw-runs.json',JSON.stringify(evidence,null,2)+'\n');
  const pairs=scenarios.map(({seed,building})=>{
   const off=evidence.runs.find(r=>r.seed===seed&&r.templateEnabled==='0');
   const on=evidence.runs.find(r=>r.seed===seed&&r.templateEnabled==='1');
@@ -192,6 +194,16 @@ try{
   const envSaved=(core?.drawsTotal??NaN)-(after?.drawsTotal??NaN);
   // Compiled static character models may reduce opaque draws. Reject only
   // actual regressions; new caching must not change transparency work.
+  console.log('E6_25_DRAW_DIAGNOSTIC',JSON.stringify({
+   seed,building,off:off.siteBuild,on:on.siteBuild,
+   saved,envSaved,
+   before:{draws:off.mainPassAttribution.drawCallsP95,
+    opaque:off.mainPassAttribution.opaqueDrawsP95,
+    transparent:off.mainPassAttribution.transparentDrawsP95},
+   after:{draws:on.mainPassAttribution.drawCallsP95,
+    opaque:on.mainPassAttribution.opaqueDrawsP95,
+    transparent:on.mainPassAttribution.transparentDrawsP95}
+  }));
   if(!core||!after||saved<0||envSaved<0||
      off.mainPassAttribution.transparentDrawsP95!==
       on.mainPassAttribution.transparentDrawsP95||
