@@ -979,7 +979,6 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
       if(action)discoverAction(action,button.title);
       const a=config.actor;
       if(!a)return;
-      const beforeErrors=config.state.events.length;
       const node=config.node;
       const door=config.doorFocusId?config.focusedDoor():undefined;
       const result=dispatchTacticalContextCommand({
@@ -995,15 +994,31 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         if(result.dismissDoorId!==undefined)
           config.doorMenuDismissedId=result.dismissDoorId;
         if(result.invalidateFog)config.invalidateFog();
-        if(result.skipFeedback){config.updateHud();return;}
-      }else switch(action){
+        // The command API's boolean is authoritative; an event-log append
+        // is not evidence that a command failed or succeeded.
+        completeAction(door?doorCenter(door):node?.p??a.p,
+          result.outcome==='rejected'?
+            result.failureReason??'ACTION BLOCKED':null,
+          button.querySelector('.command-label')?.textContent??'',
+          isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+        config.updateHud();return;
+      }
+      switch(action){
         case 'ctxSuppress':
           targeting.armSuppress();
           feedback.emit('armed',node?.p??a.p,'SUPPRESS READY');
           config.audio.uiClickTone('select');config.updateHud();return;
         case 'ctxFlash':
-          if(config.state.flashRemaining>0)targeting.toggleFlash();
-          break;
+          if(config.state.flashRemaining<=0){
+            completeAction(node?.p??a.p,'NO FLASH GRENADES REMAINING','FLASH',
+              isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+          }else{
+            const armed=targeting.toggleFlash();
+            feedback.emit(armed?'armed':'cancel',node?.p??a.p,
+              armed?'FLASH TARGET':'CANCELLED');
+            config.audio.uiClickTone('select');
+          }
+          config.updateHud();return;
         case 'ctxLook':
           config.armFacing('look');
           if(targeting.isFacing)feedback.emit('armed',
@@ -1011,7 +1026,12 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
           config.audio.uiClickTone('select');return;
         case 'ctxDoor':{
           const available=config.focusedDoor();
-          if(!available){config.state.events.push('NO KNOWN DOOR IN REACH');break;}
+          if(!available){
+            config.state.events.push('NO KNOWN DOOR IN REACH');
+            completeAction(node?.p??a.p,'NO KNOWN DOOR IN REACH','DOOR',
+              isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+            config.updateHud();return;
+          }
           config.doorFocusId=available.id;config.doorMenuDismissedId=null;
           config.audio.uiClickTone('select');config.updateHud();return;
         }
@@ -1026,17 +1046,21 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
           config.showUiHelp('TAP OR DRAG AWAY FROM THE OBJECT TO CHOOSE PUSH DIRECTION',3600);
           config.audio.uiClickTone('select');config.updateHud();return;
         case 'ctxDoorFlash':
-          if(!door){config.state.events.push('SELECT A DOOR FIRST');break;}
-          targeting.armDoorFlash(door.id);
-          config.doorFocusId=null;config.doorMenuDismissedId=door.id;break;
+          if(!door){
+            config.state.events.push('SELECT A DOOR FIRST');
+            completeAction(a.p,'SELECT A DOOR FIRST','FLASH',
+              isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
+          }else{
+            targeting.armDoorFlash(door.id);
+            feedback.emit('armed',doorCenter(door),'FLASH THROUGH DOOR');
+            config.doorFocusId=null;config.doorMenuDismissedId=door.id;
+            config.audio.uiClickTone('select');
+          }
+          config.updateHud();return;
+        default:
+          // Unrecognized actions are not confirmation-worthy commands.
+          return;
       }
-      const failed=config.state.events.length>beforeErrors;
-      completeAction(
-        door?doorCenter(door):node?.p??a.p,
-        failed?config.state.events.at(-1)??'ACTION BLOCKED':null,
-        button.querySelector('.command-label')?.textContent??'',
-        isFailure=>config.audio.uiClickTone(isFailure?'warning':'command'));
-      config.updateHud();
     };
     config.ui.context.addEventListener('click',handleContextAction);
     config.ui.quickStates.addEventListener('click',handleContextAction);

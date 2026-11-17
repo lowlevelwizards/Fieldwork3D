@@ -67,3 +67,13 @@ test('UI.7A reports actual command outcomes without inferring success from event
   assert.equal(nothing.outcome,undefined);
  }finally{activateSite(null);}
 });
+
+test('UI.7B contextual feedback reads the authoritative outcome, not event-log growth',()=>{
+ const source=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
+ assert.match(source,/result\.outcome==='rejected'/);
+ assert.match(source,/result\.failureReason\?\?'ACTION BLOCKED'/);
+ assert.doesNotMatch(source,/const failed=config\.state\.events\.length>beforeErrors/);
+ assert.match(source,/case 'ctxFlash':[\s\S]*?targeting\.toggleFlash\(\)/);
+ assert.match(source,/case 'ctxDoorFlash':[\s\S]*?feedback\.emit\('armed',doorCenter\(door\)/);
+ assert.match(source,/Unrecognized actions are not confirmation-worthy commands/);
+});
