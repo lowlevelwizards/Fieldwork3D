@@ -150,6 +150,7 @@ import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type Reload
 import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
 
 
+import {weaponHandlingModifiers} from './equipment-weapon-handling.ts';
 import {type EjectedCasing} from './breach-effects.ts';
 import {type WoundRegion,type FallPose} from './breach-wounds.ts';
 import {mostUrgentWound,type MedicalCondition} from './breach-medical-wounds.ts';
@@ -1117,7 +1118,9 @@ export function beginReload(s:Session,a:TeamActor):boolean{
   a.reloadSelectedMagazineId=selected>=0?a.spareMagazines[selected].id:null;
   const source=selected>=0?a.spareMagazines[selected]:undefined;
   a.reloadDuration=reloadTiming(w.reload,injuryReload(a.injuryStage),
-    mode,capacity-a.magazine)+reloadMagazineDelay(source);
+    mode,capacity-a.magazine)*
+    weaponHandlingModifiers(a.weaponConfiguration).manipulation+
+    reloadMagazineDelay(source);
   a.reload=a.reloadDuration;a.reloadRemoved=false;
   a.reloadInserted=false;a.reloadFromRounds=a.magazine;
   a.reloadTargetRounds=Math.min(capacity-a.magazine,a.reserve);
