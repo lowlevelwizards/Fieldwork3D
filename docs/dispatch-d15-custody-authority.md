@@ -24,3 +24,12 @@
 ## Hard exclusions and safety
 
 No new warrants or automatic lawfulness rulings, no guaranteed compliance, no remote restraint, no tactical teleportation, no rewrites of stored D9/D10 outcomes, no change to non-Dispatch campaign rules through a briefing label, and no unconditional actor health changes to represent a verbal surrender. The full custody interaction is **not implemented** at D15.1.
+
+## D15.2A–C — Surrender-aware operational policy (staged, not yet enabled)
+
+- A shared, pure operational predicate marks only living, non-submitted actors as active combatants. A specific surrendered *or* downed hostile can satisfy the original capture-target resolution, but this is **not a completed custody interaction**; the existing operator proximity/physical LOS secure step remains necessary. Invalid health does not create a successful capture.
+- The five existing objectives preserve prior behavior for legacy D9 surrendered/down actors. Hypothetically living-submitted hostiles no longer block clear or hold clocks, or require being shot to enable the original capture objective.
+- Firing acquisition excludes surrendered targets, the authoritative shot commit refuses a surrendered shooter or target, and fixed-tick actor intent does not turn a living-submitted hostile back into an AI agent. The surrendered person remains a physical live body for collision.
+- Focused tests cover a manually constructed living-submitted actor through real fixed-step capture/clear/hold progression, no remote capture completion, the shooter/target guards, malformed data, and D9 legacy semantics.
+
+**Scope boundary:** This stage deliberately leaves `commitSuspectSurrender` (D9) unchanged, including its legacy downed representation. No gameplay creates a living-submitted actor yet; no handcuff action, custody state, replay schema, or legal arrest record has been implemented. D15.2D must perform an explicit isolated live-transition and replay/pose acceptance pass before activation in Dispatch. This PR remains draft; do not merge on green tests alone.
