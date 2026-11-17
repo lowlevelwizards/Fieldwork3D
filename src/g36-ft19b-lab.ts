@@ -56,14 +56,14 @@ if(Math.abs(g36.scale.x-G36_B_ART.displayLongitudinalScale)>.001)
  throw Error('G36 rig presentation scale deviates from authored master');
 items.push({name:'G36 original',model:g36,pivot:new THREE.Group()});
 // P7 alternatives invoke the same actual source builder, not painted lookalikes.
-type ReviewMode='p6'|'lower'|'rear'|'sweep'|'combined';
-const reviewOptions:Readonly<Record<Exclude<ReviewMode,'p6'>,G36ArtReview>>={
+type ReviewMode='production'|'p6'|'lower'|'rear'|'sweep'|'combined';
+const reviewOptions:Readonly<Record<Exclude<ReviewMode,'production'|'p6'>,G36ArtReview>>={
  lower:{optic:'lower-emphasis'},rear:{optic:'rear-integrated'},
  sweep:{magazine:'curve'},
  combined:{optic:'rear-integrated',magazine:'curve'}
 };
-const reviewModels=new Map<ReviewMode,THREE.Group>([['p6',g36]]);
-let review:ReviewMode='p6';
+const reviewModels=new Map<ReviewMode,THREE.Group>([['production',g36]]);
+let review:ReviewMode='production';
 for(const [name,weapon,preset] of names){
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(weapon),preset);
  const model=buildWeaponSilhouette(weapon,mono,mono,cfg);
@@ -175,7 +175,9 @@ function setReview(mode:ReviewMode):void{
  const slot=items[0];
  let next=reviewModels.get(mode);
  if(!next){
-  next=buildG36OriginalBlockout(mono,reviewOptions[mode as Exclude<ReviewMode,'p6'>]);
+  next=buildG36OriginalBlockout(mono,mode==='p6'
+   ?{optic:'p6',magazine:'p6'}
+   :reviewOptions[mode as Exclude<ReviewMode,'production'|'p6'>]);
   next.scale.x=g36.scale.x;
   reviewModels.set(mode,next);
  }
@@ -184,11 +186,11 @@ function setReview(mode:ReviewMode):void{
  slot.pivot.add(next);
  review=mode;
  document.body.dataset.g36LabReview=mode;
- for(const id of ['p6','lower','rear','sweep','combined'] as const)
+ for(const id of ['production','p6','lower','rear','sweep','combined'] as const)
   document.getElementById('review-'+id)?.setAttribute('aria-pressed',String(id===mode));
  setFinish(finish);
 }
-for(const id of ['p6','lower','rear','sweep','combined'] as const){
+for(const id of ['production','p6','lower','rear','sweep','combined'] as const){
  const btn=document.getElementById('review-'+id);
  if(!(btn instanceof HTMLButtonElement))throw Error('Missing G36 review '+id);
  btn.addEventListener('click',()=>setReview(id));
