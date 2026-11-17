@@ -148,8 +148,11 @@ async function assessEstablishedCareer(page,name,mobile){
 async function assessActiveDeployment(page,name,expected){
  const acceptedId=await acceptSavedScenario(page);
  await page.reload({waitUntil:'domcontentloaded'});
- check(await page.locator('.campaign-landing-status').getByText(
-  'Deployment in progress').isVisible(),name+' active deployment notice missing');
+ const deploymentNotice=page.locator('.campaign-landing-status')
+  .getByText('Deployment in progress');
+ await deploymentNotice.waitFor({state:'visible',timeout:15000});
+ check(await deploymentNotice.isVisible(),
+  name+' active deployment notice missing');
  await page.getByRole('button',{name:'Continue DISPATCH CAMPAIGN'}).click();
  await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
  check((await page.locator('.campaign-overview-primary-action').textContent())
