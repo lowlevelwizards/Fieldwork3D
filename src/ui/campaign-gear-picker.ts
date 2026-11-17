@@ -18,6 +18,12 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):H
  trigger.addEventListener('click',()=>{
   if(trigger.disabled)return;
   const prior=document.activeElement instanceof HTMLElement?document.activeElement:trigger;
+  const scroller=trigger.closest<HTMLElement>('.campaign-screen');
+  const originalScrollerOverflow=scroller?.style.overflow??'';
+  const originalBodyOverflow=document.body.style.overflow;
+  if(scroller)scroller.style.overflow='hidden';
+  document.body.style.overflow='hidden';
+  const originalItem=itemDefinition(source.value);
   const backdrop=document.createElement('div');
   backdrop.className='campaign-gear-picker-backdrop';
   const panel=document.createElement('section');
@@ -30,9 +36,18 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):H
   const closeButton=document.createElement('button');
   closeButton.type='button';closeButton.className='campaign-gear-picker-close';
   closeButton.textContent='CLOSE';
+  let closed=false;
   const close=()=>{
-   backdrop.remove();
-   if(prior.isConnected)prior.focus({preventScroll:true});
+   if(closed)return;
+   closed=true;backdrop.remove();
+   if(scroller)scroller.style.overflow=originalScrollerOverflow;
+   document.body.style.overflow=originalBodyOverflow;
+   // The equip callback may rebuild the entire equipment page synchronously.
+   // Restore focus to its new corresponding slot, never a detached button.
+   const target=prior.isConnected?prior:
+    Array.from(document.querySelectorAll<HTMLButtonElement>('.campaign-kit-picker-trigger'))
+     .find(button=>button.getAttribute('aria-label')===label);
+   target?.focus({preventScroll:true});
   };
   closeButton.addEventListener('click',close);
   const header=document.createElement('header');
@@ -49,8 +64,11 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):H
    entry.setAttribute('aria-current',chosen?'true':'false');
    const name=document.createElement('strong');name.textContent=def?.name||display(option.value);
    const detail=document.createElement('small');
-   detail.textContent=(def?def.massKg.toFixed(2)+' KG':'')+
-    (chosen?' · EQUIPPED':option.disabled?' · UNAVAILABLE':'');
+   const difference=def&&originalItem?def.massKg-originalItem.massKg:null;
+   const weightDelta=difference!==null&&!chosen&&Math.abs(difference)>.005?
+    ' · '+(difference>0?'+':'')+difference.toFixed(2)+' KG ITEM MASS':'';
+   detail.textContent=(def?'ITEM '+def.massKg.toFixed(2)+' KG':'')+
+    weightDelta+(chosen?' · EQUIPPED':option.disabled?' · UNAVAILABLE':'');
    const description=document.createElement('span');
    description.textContent=def?.description||option.textContent||'';
    entry.append(name,detail,description);
