@@ -119,6 +119,6 @@ export function dispatchSetupDisplayLabel(draft:DispatchCampaignDraft):string{
 }
 
 export function dispatchSetupDescription(setup:DispatchCampaignSetupV1){
- return DISPATCH_PRESET_LABELS[setup.preset]+' · '+setup.timeMode.toUpperCase()+
+ return dispatchSetupDisplayLabel(setup)+' · '+setup.timeMode.toUpperCase()+
   ' TIME · '+setup.equipmentScope.toUpperCase()+' EQUIPMENT';
 }
