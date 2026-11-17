@@ -254,13 +254,12 @@ const campaignScreen=new CampaignScreen({
   c=>buyWeapon(c,weapon),weapon.toUpperCase()+' weapon added to armory'),
  equipWeapon:(id,weapon)=>applyVisibleCampaignAction(
   c=>equipCampaignWeapon(c,id,weapon),'Operator primary weapon updated'),
- repairArmor:(id)=>{if(model.campaign){model.campaign=repairCampaignArmor(model.campaign,id);
-  config.saveCampaign();showCampaignHome();}},
- serviceWeapon:(id)=>{if(model.campaign){model.campaign=serviceCampaignWeapon(model.campaign,id);
-  config.saveCampaign();showCampaignHome();}},
- equipGear:(id,slot,itemId)=>{if(model.campaign){
-  model.campaign=equipCampaignGear(model.campaign,id,slot,itemId);
-  config.saveCampaign();showCampaignHome();}},
+ repairArmor:(id)=>applyVisibleCampaignAction(
+  c=>repairCampaignArmor(c,id),'Operator armor repaired'),
+ serviceWeapon:(id)=>applyVisibleCampaignAction(
+  c=>serviceCampaignWeapon(c,id),'Weapon maintenance completed'),
+ equipGear:(id,slot,itemId)=>applyVisibleCampaignAction(
+  c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
  equipWeaponPreset:(id,presetId)=>{if(model.campaign&&!model.campaign.activeContractId){
   const preset=familyPreset(presetId);
   const member=model.campaign.operators.find(o=>o.id===id);
