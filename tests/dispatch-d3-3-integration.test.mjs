@@ -39,8 +39,8 @@ test('D3.3 menu and runtime route Dispatch without changing Quick Play contracts
  const main=src('breach-main.ts'),ui=src('campaign-ui.ts'),
   flow=src('breach-campaign-flow.ts'),state=src('campaign-state.ts');
  assert.match(ui,/CONTINUE DISPATCH/);
- assert.match(ui,/DISPATCH · SWAT PILOT/);
- assert.match(ui,/DISPATCH PILOT · Existing mission types and progression/);
+ assert.match(ui,/DISPATCH CAMPAIGN/);
+ assert.match(ui,/Choose a tactical-police career/);
  assert.match(main,/campaignInSlot\('dispatch'\)/);
  assert.match(flow,/newDispatchPilotCampaign\(config.randomSeed\(\)\)/);
  assert.match(flow,/continueDispatch:\(\)=>resumeSlot\('dispatch'\)/);
