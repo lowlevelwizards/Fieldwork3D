@@ -94,6 +94,9 @@ export class CampaignScreen{
  private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
+ /** C13: UI-only scroll history per section, never serialized into Campaign saves. */
+ private readonly operationsScrollByTab=new Map<typeof this.homeTab,number>();
+ private operationsScrollCampaign:string|null=null;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
@@ -132,11 +135,13 @@ export class CampaignScreen{
   this.root.hidden=true;
   document.body.append(this.root);
  }
- hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
+ hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;
+  this.operationsScrollByTab.clear();this.operationsScrollCampaign=null;}
  entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false,
   initialPane:'main'|'new'='main',
   savedCampaigns:Partial<Record<CampaignSlot,CampaignState|null>>={}){
   this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,dispatch:dispatchHasSave,active};
+  this.operationsScrollByTab.clear();this.operationsScrollCampaign=null;
   this.armoryOperatorId=null;this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const slots:[
@@ -334,7 +339,15 @@ export class CampaignScreen{
   // Opening the campaign from a menu, briefing or loadout still starts at the top.
   const wasInOperations=!this.root.hidden&&
    !!this.root.querySelector('.campaign-tabs');
-  const restoreScroll=wasInOperations?this.root.scrollTop:0;
+  if(slot)this.currentSlot=slot;
+  const scrollCampaignKey=this.currentSlot+':'+c.id;
+  if(this.operationsScrollCampaign!==scrollCampaignKey){
+   this.operationsScrollByTab.clear();
+   this.operationsScrollCampaign=scrollCampaignKey;
+  }
+  if(wasInOperations)this.operationsScrollByTab.set(this.homeTab,this.root.scrollTop);
+  const restoreScroll=wasInOperations?this.root.scrollTop:
+   this.operationsScrollByTab.get(this.homeTab)??0;
   // Capture open, keyed disclosures before the DOM is replaced. This is UI
   // state only: supply, squad and treatment actions never mutate the save.
   const openWorkspaceDetails=wasInOperations?
@@ -343,7 +356,6 @@ export class CampaignScreen{
   const focusedControl=wasInOperations&&this.root.contains(document.activeElement)?
    document.activeElement as HTMLElement:null;
   const focusedLabel=focusedControl?.getAttribute('aria-label');
-  if(slot)this.currentSlot=slot;
   if(this.armoryOperatorId){
    const target=c.operators.find(x=>x.id===this.armoryOperatorId&&x.status!=='lost'&&x.status!=='retired');
    if(target){this.armory(c,target.id);return;}
@@ -1146,7 +1158,13 @@ export class CampaignScreen{
   // Keep the five already-built sections alive while changing only visibility.
   // This avoids rebuilding every roster, contract and logistics control per tap.
   const activateTab=(tab:typeof tabOrder[number])=>{
-   if(this.homeTab===tab)return;
+   if(this.homeTab===tab){
+    // Re-tap the selected sticky tab to return to that section's beginning.
+    this.operationsScrollByTab.set(tab,0);
+    this.root.scrollTop=0;
+    return;
+   }
+   this.operationsScrollByTab.set(this.homeTab,this.root.scrollTop);
    this.homeTab=tab;
    for(const [id,panel] of Object.entries(sections))
     panel.hidden=id!==tab;
@@ -1155,7 +1173,7 @@ export class CampaignScreen{
     trigger.setAttribute('aria-selected',String(selected));
     trigger.tabIndex=selected?0:-1;
    }
-   this.root.scrollTop=0;
+   this.root.scrollTop=this.operationsScrollByTab.get(tab)??0;
   };
   nav.addEventListener('keydown',event=>{
    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
