@@ -62,7 +62,7 @@ test('D11.1 success, objective and clean *reviewed* evidence award bounded stand
  });
  assert.equal(first.state.reviewed,1);
  const unknown=advanceDispatchDepartment(undefined,{
-  outcome:'success',objective:true,grade:'A',casualties[]
+  outcome:'success',objective:true,grade:'A',casualties:[]
  });
  assert.equal(unknown.receipt.standingDelta,8,
   'no D10 harm evidence is not proof of clean force');
