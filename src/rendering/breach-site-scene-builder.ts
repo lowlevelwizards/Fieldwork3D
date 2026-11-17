@@ -13,7 +13,8 @@ import {buildArchitecturalOpenings,buildSiteDoors,buildSiteWindows,doorSweepArc,
 import {buildSiteExterior} from './breach-site-exterior-builder.ts';
 import {buildSiteMicroDebrisMeshes} from './breach-site-micro-debris.ts';
 import {SiteMaterialLifetime} from './site-material-lifetime.ts';
-import {StaticSceneBatches} from './breach-static-batcher.ts';
+import {StaticSceneBatches,stabilizeStaticDetailBoxGeometries}
+ from './breach-static-batcher.ts';
 import {type PixelSurface} from './pixel-materials.ts';
 import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from '../worldgen/pixel-surface-selection.ts';
 import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '../worldgen/building-palettes.ts';
@@ -98,9 +99,16 @@ export type SiteSceneBuildPort={
 /** Batch only site-static decoration and door frames, not interactive parts. */
 export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     host.root.updateWorldMatrix(true,true);
+    // Fix the decorative BoxGeometry identity independently of the global
+    // 384-entry cache budget. E6.25 character caching must not change
+    // whether wall signs/switches can use existing static instancing.
+    const stableDetailGeometries=stabilizeStaticDetailBoxGeometries(
+      host.observedDetails,host.sharedBoxGeometries);
+    const stableStaticGeometries=new Set([
+      ...host.sharedBoxGeometries,...stableDetailGeometries]);
     for(const detail of host.observedDetails)
       host.staticBatches.collect(detail.obj,detail.obj,
-        host.sharedBoxGeometries);
+        stableStaticGeometries);
     for(const door of host.doors.values())
       host.staticBatches.collect(door.root,door.frame,
         host.sharedBoxGeometries,new Set([door.threshold,door.wedge]));

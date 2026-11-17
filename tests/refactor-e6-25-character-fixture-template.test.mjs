@@ -5,6 +5,8 @@ import {renderFixtureVisual} from '../src/worldgen/fixture-visuals.ts';
 import {CHARACTER_FIXTURE_IDS} from '../src/worldgen/asset-character-visuals.ts';
 import {mapBoxPixelUV} from '../src/rendering/pixel-materials.ts';
 import {shadowEligibleBox} from '../src/rendering/breach-shadow-controller.ts';
+import {stabilizeStaticDetailBoxGeometries}
+ from '../src/rendering/breach-static-batcher.ts';
 import {consolidateStaticFixtureParts}
  from '../src/rendering/breach-fixture-draw-batching.ts';
 import {StaticVisualTemplateLibrary}
@@ -110,6 +112,54 @@ test('E6.25 first character model authoring is reused but site finishes and visi
  one.release();assert.ok(cache.stats().geometries>0);
  two.release();assert.equal(cache.stats().geometries,0);
  finish(a);finish(b);
+});
+
+test('E6.25 wall-detail box batching is independent of renderer box cache headroom',()=>{
+ const global=new THREE.BoxGeometry(12,8,.8);
+ const shared=new Set([global]);
+ const box=(geometry,material)=>{
+  const mesh=new THREE.Mesh(geometry,material);
+  mesh.castShadow=false;mesh.receiveShadow=true;
+  return mesh;
+ };
+ const material=new THREE.MeshStandardMaterial();
+ const one=new THREE.Group(),two=new THREE.Group(),three=new THREE.Group();
+ const localA=new THREE.BoxGeometry(12,8,.8);
+ const localB=new THREE.BoxGeometry(12,8,.8);
+ const unique=new THREE.BoxGeometry(5,2,1);
+ one.add(box(global,material));
+ two.add(box(localA,material));
+ three.add(box(localB,material),box(unique,material));
+ let disposedA=0,disposedB=0,disposedGlobal=0;
+ localA.addEventListener('dispose',()=>disposedA++);
+ localB.addEventListener('dispose',()=>disposedB++);
+ global.addEventListener('dispose',()=>disposedGlobal++);
+ const pool=stabilizeStaticDetailBoxGeometries(
+  [{obj:one},{obj:two},{obj:three}],shared);
+ assert.equal(one.children[0].geometry,global);
+ assert.equal(two.children[0].geometry,global);
+ assert.equal(three.children[0].geometry,global);
+ assert.equal(pool.size,2);
+ assert.ok(pool.has(global));
+ assert.ok(pool.has(unique));
+ assert.equal(disposedA,1);
+ assert.equal(disposedB,1);
+ assert.equal(disposedGlobal,0);
+ // Repeat with no global cache capacity: site-owned leader remains live,
+ // and only duplicate geometry is retired, even across distinct owners.
+ const uncachedOne=new THREE.Group(),uncachedTwo=new THREE.Group();
+ const leader=new THREE.BoxGeometry(11,4,.7);
+ const duplicate=new THREE.BoxGeometry(11,4,.7);
+ uncachedOne.add(box(leader,material));
+ uncachedTwo.add(box(duplicate,material));
+ let duplicateDisposal=0;
+ duplicate.addEventListener('dispose',()=>duplicateDisposal++);
+ const localPool=stabilizeStaticDetailBoxGeometries(
+  [{obj:uncachedOne},{obj:uncachedTwo}],new Set());
+ assert.equal(uncachedTwo.children[0].geometry,leader);
+ assert.equal(localPool.size,1);
+ assert.equal(duplicateDisposal,1);
+ leader.dispose();global.dispose();unique.dispose();material.dispose();
 });
 
 test('E6.25 site-resolved material aliasing does not increase legacy opaque draws',()=>{
