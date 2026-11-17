@@ -12,8 +12,14 @@ import {matchingFamilyPreset,type WeaponFamilyBuild}
 import {compileRigidWeaponPartPilot}
  from './rigid-weapon-part-pilot.ts';
 
+/** Both cohorts passed independent GPU framebuffer parity and exact
+ * factory identity / reload / Workbench tests. Do not include custom builds.
+ */
 export const VERIFIED_RIGID_FACTORY_IDS=Object.freeze([
- 'ak-akms','ak-aks74u','ar-m4a1'
+ // M3.0C4: first release, preserve existing production behavior.
+ 'ak-akms','ak-aks74u','ar-m4a1',
+ // M3.0C5: 12 browser views, 35 additional measured draw calls removed.
+ 'ak-ak74','ak-aks74','ak-rpk74','ar-m16a4'
 ] as const);
 const allowed=new Set<string>(VERIFIED_RIGID_FACTORY_IDS);
 const staticSlots=['receiver','barrel','handguard','stock','grip'] as const;
