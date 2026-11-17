@@ -11,7 +11,6 @@ import type {FamilyPartSlot,PartMountRole,PartMountStandard,WeaponFamilyBuild}
  from '../../equipment-weapon-families.ts';
 import {weaponPartMountSurfaces,type WeaponMountSurface}
  from './weapon-part-mount-surfaces.ts';
-import {AR_VISUAL_AXIS_Y} from './ar-barrel-profiles.ts';
 import {AR_HANDGUARD_START,arHandguardEnd}
  from '../../breach-weapon-contact-zones.ts';
 import {HK_CLAW_VISUAL} from './hk-rail-accessories.ts';
@@ -111,7 +110,7 @@ function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
   const count=part==='ar-m5-rail'?5:4;
   const ris=part==='ar-risii';
   if(source.role==='foregrip'&&source.face==='bottom'){
-   const bottomY=(ris?-1.47:-1.65)-.17+AR_VISUAL_AXIS_Y;
+   const bottomY=(ris?-1.47:-1.65)-.17;
    result.push(...arToothSlots(source,'bottom',count,start,end,bottomY,0));
   }else if(source.role==='light'&&source.face==='side'&&
    part!=='ar-compact-rail'){
@@ -120,7 +119,7 @@ function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
    // the *outer* face 2.39+.18, not the tooth center from M1.
    for(const face of sides)
     result.push(...arToothSlots(source,face,count,start,end,
-     .59+AR_VISUAL_AXIS_Y,sideSign(face)*2.57));
+     .59,sideSign(face)*2.57));
   }
   return;
  }
