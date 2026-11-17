@@ -60,6 +60,7 @@ export function openArsenalWorkbench(
  let pending:ArsenalEditProposal|null=null;
  const priorBodyOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');overlay.className='arsenal-wb-screen';
+ if(context)overlay.classList.add('arsenal-wb-has-apply');
  overlay.setAttribute('aria-label','Weapon workbench');
  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
  const head=document.createElement('header');head.className='arsenal-wb-head';
@@ -94,6 +95,8 @@ export function openArsenalWorkbench(
  const primaryActions=document.createElement('div');
  primaryActions.className='arsenal-wb-primary-actions';
  primaryActions.append(chooseModel,load,save,apply);
+ const commitHint=document.createElement('p');commitHint.className='arsenal-wb-commit-hint';
+ commitHint.setAttribute('role','status');
  const utilityActions=document.createElement('div');
  utilityActions.className='arsenal-wb-utility-actions';
  utilityActions.append(undo,redo,saveCopy,fit,side);
@@ -175,7 +178,9 @@ export function openArsenalWorkbench(
  panel.append(panelTitle,slotRow,activeLabel,mounting,finishSection,optionsHeader,
   fitExplanation,choiceList,pendingHost,applyQuote,hint);
  main.append(viewportHost,nav,panel);
- overlay.append(head,main);document.body.append(overlay);
+ overlay.append(head,main);
+ if(context)overlay.append(commitHint);
+ document.body.append(overlay);
  const viewer=new ArsenalViewport(viewportHost,draft.working,slot=>{
   const category=ARSENAL_CATEGORIES.find(c=>c.slots.includes(slot));
   if(category){
@@ -494,6 +499,11 @@ export function openArsenalWorkbench(
    const quote=context.quote?.(draft.working);
    apply.disabled=quote!==undefined&&(!quote.valid||quote.canCommit===false);
    applyQuote.textContent=quote?arsenalApplyMessage(quote):'';
+   commitHint.textContent=quote&&(!quote.valid||quote.canCommit===false)?
+    'CANNOT EQUIP · '+(quote.reason??'Configuration unavailable'):
+    arsenalDraftDirty(draft)?
+     'PREVIEW ONLY · APPLY TO EQUIP CHANGES':
+     'PREVIEW READY · APPLY TO EQUIP';
   }
   undo.disabled=draft.undo.length===0;redo.disabled=draft.redo.length===0;
   showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
