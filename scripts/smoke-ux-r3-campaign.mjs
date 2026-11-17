@@ -42,6 +42,11 @@ try{
    throw Error('Readiness technical data is not available on request');
   if(await page.locator('.campaign-kit-presets').count()!==1)
    throw Error('Saved campaign kit presets were lost');
+  const workbench=armory.locator('.campaign-kit-workbench-entry');
+  if(!await workbench.getByRole('button',{name:/OPEN ARSENAL/i}).isVisible())
+   throw Error('Weapon category lost its dedicated Arsenal entry');
+  if(!await workbench.getByRole('button',{name:/OPEN ARSENAL/i}).isDisabled())
+   throw Error('Curated Dispatch workbench access was unintentionally unlocked');
   const tabs=armory.locator('.campaign-kit-categories [role="tab"]');
   if(await tabs.count()!==5)throw Error('Equipment category navigation incomplete');
   await tabs.filter({hasText:'PROTECTION'}).click();

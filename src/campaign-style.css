@@ -1530,3 +1530,25 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-gear-picker-backdrop{padding:6px}
  .campaign-gear-picker-panel{max-height:86dvh;border-radius:16px 16px 10px 10px}
 }
+
+/* Equipment E4.A — single clear weapon workbench entry in the weapon section. */
+.campaign-armory-screen .campaign-kit-workbench-entry{
+ display:grid;gap:8px;padding:14px;margin:12px 0 8px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:10px}
+.campaign-armory-screen .campaign-kit-workbench-entry>strong{
+ font:700 16px/1.2 var(--fw-font-display);
+ color:var(--fw-text-warm);letter-spacing:.03em}
+.campaign-armory-screen .campaign-kit-workbench-entry>.campaign-note{
+ margin:0;color:var(--fw-text-muted);
+ font:400 13px/1.45 var(--fw-font-narrative)}
+.campaign-armory-screen .campaign-kit-arsenal-launch{
+ width:100%;min-height:46px;margin:2px 0 0;font-size:14px}
+.campaign-armory-screen .campaign-kit-arsenal-launch:disabled{opacity:.48}
+.campaign-armory-screen .campaign-legacy-weapons{
+ border:1px solid var(--fw-panel-border);border-radius:8px;
+ padding:8px 10px;margin:10px 0;background:var(--fw-panel-deep)}
+.campaign-armory-screen .campaign-legacy-weapons>summary{
+ min-height:42px;display:flex;align-items:center;
+ font:700 12px/1.35 var(--fw-font-display);color:var(--fw-text-muted);
+ cursor:pointer;touch-action:manipulation}

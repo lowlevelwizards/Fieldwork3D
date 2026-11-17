@@ -1260,7 +1260,7 @@ export class CampaignScreen{
   const summary=node('section','campaign-section campaign-kit-summary');
   summary.append(node('h2','','OPERATOR'));
   const preview=node('div','campaign-kit-preview');
-  const viewToggle=button(this.weaponView?'SHOW FULL OPERATOR':'CLASSIC SOCKET PREVIEW',()=>{
+  const viewToggle=button(this.weaponView?'RETURN TO OPERATOR':'INSPECT WEAPON MODEL',()=>{
    this.weaponView=!this.weaponView;this.armory(c,id);
   });
   summary.append(preview,node('p','campaign-note campaign-preview-hint',
@@ -1276,11 +1276,12 @@ export class CampaignScreen{
   const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
   rename.disabled=!!c.activeContractId;
   appearance.disabled=!!c.activeContractId;
-  const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
+  const arsenal=button('OPEN ARSENAL · FULL WORKBENCH',
+   ()=>this.handlers.openArsenal(id),'campaign-primary campaign-kit-arsenal-launch');
   arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build||
    (isDispatchPilot(c)&&effectiveDispatchSetup(c).equipmentScope!=='global');
   if(arsenal.disabled)arsenal.title='Arsenal restricted for this campaign or deployment';
-  identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
+  identityActions.append(rename,appearance);summary.append(identityActions);
   const maximum=initialArmorIntegrity(person.loadout);
   const repairCost=armorRepairCost(person);
   const firearm=c.inventory.serializedWeapons?.find(w=>w.id===person.weaponSerialId);
@@ -1517,6 +1518,15 @@ export class CampaignScreen{
    wrap.append(row,info);
    grouped.field(loadoutGroupForSlot(slot)).append(wrap);
   }
+  const workbenchEntry=node('section','campaign-kit-workbench-entry');
+  workbenchEntry.append(node('strong','','MODULAR WEAPON WORKBENCH'));
+  workbenchEntry.append(node('p','campaign-note',arsenal.disabled?
+   locked?'Finish the active deployment to edit your weapon.':
+   dispatchPilot?'Advanced weapon editing is restricted in this Dispatch campaign.':
+   'This issued weapon does not have a modular workbench.':
+   'Inspect the weapon and change compatible parts in the dedicated Arsenal.'));
+  workbenchEntry.append(arsenal);
+  grouped.field('weapon').append(workbenchEntry);
   // Cosmetics have one authoritative editor: Operator Studio.
   // Campaign equipment stock, purchase costs and protection remain here.
   // The family prototype sits above legacy accessory mounts: modular body
@@ -1531,9 +1541,9 @@ export class CampaignScreen{
    if(legacyControls.open)this.expandedClassicWeaponControls.add(id);
    else this.expandedClassicWeaponControls.delete(id);
   });
-  legacyControls.append(node('summary','','ADVANCED · CLASSIC WEAPON CONTROLS'),
+  legacyControls.append(node('summary','','LEGACY WEAPON CONTROLS · TROUBLESHOOTING'),
    node('p','campaign-note',
-    'Use OPEN ARSENAL to build modular weapons. These direct controls remain available for unsupported weapons and troubleshooting.'),
+    'Direct configuration remains available for unsupported weapons. Use the dedicated Arsenal for modular builds.'),
    viewToggle);
   familyEditor.open=true;
   familyEditor.append(node('summary','','WEAPON FAMILY / MODULAR FURNITURE'));
