@@ -407,6 +407,15 @@ export function createTacticalHudController(
       node.replaceChildren(label,body);
       node.dataset.noticeKey=key;
     }
+    const locateButton=node.querySelector<HTMLButtonElement>('[data-locate-issue]');
+    if(locateButton){
+      const canEdit=phase==='planning'&&
+        notice.orderId!==null&&notice.orderId!==undefined;
+      writeDomText(locateButton,canEdit?'LOCATE ORDER':'LOCATE OPERATOR');
+      writeDomAttribute(locateButton,'aria-label',canEdit?
+        'Locate blocked waypoint for editing':
+        'Locate affected operator; pause before editing a blocked order');
+    }
     node.dataset.severity=notice.severity;
     node.classList.toggle('critical',notice.severity==='danger');
   }
@@ -783,10 +792,13 @@ port.ui.feed.addEventListener('click',event=>{
  },team(port.state));
  if(!located)return;
  port.selectUnit(located.actorId);
- port.selectedNode=located.orderId;
- port.showUiHelp(located.orderId!==null?
-  'BLOCKED ORDER SELECTED · EDIT OR REPLACE WAYPOINT':
-  'OPERATOR LOCATED · FAILED ORDER MAY ALREADY BE CANCELLED',3200);
+ const canEdit=port.state.phase==='planning';
+ port.selectedNode=canEdit?located.orderId:null;
+ port.showUiHelp(!canEdit?
+  'OPERATOR LOCATED · PAUSE BEFORE EDITING BLOCKED ORDERS':
+  located.orderId!==null?
+    'BLOCKED ORDER SELECTED · EDIT OR REPLACE WAYPOINT':
+    'OPERATOR LOCATED · FAILED ORDER MAY ALREADY BE CANCELLED',3200);
  port.updateHud();
 });
 port.ui.rook.addEventListener('click',()=>port.selectUnit('rook'));
