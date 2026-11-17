@@ -40,6 +40,8 @@ try{
    throw Error('Legacy duplicate campaign wardrobe remains present');
   if(await page.locator('.campaign-readiness-details').count()!==1)
    throw Error('Readiness technical data is not available on request');
+  if(await page.getByRole('progressbar',{name:'BODY ARMOR condition'}).count()!==1)
+   throw Error('Armor condition and protection rating are not distinguishable');
   if(await page.locator('.campaign-kit-presets').count()!==1)
    throw Error('Saved campaign kit presets were lost');
   await page.locator('.campaign-kit-presets > summary').click();
@@ -47,6 +49,16 @@ try{
    throw Error('Equipment preset save action is not reachable');
   if(!await page.locator('.campaign-kit-preset-list').isVisible())
    throw Error('Equipment preset list was not exposed');
+  await page.getByRole('button',{name:'SAVE CURRENT KIT'}).click();
+  const savePrompt=page.locator('.fw-confirm-dialog');
+  await savePrompt.locator('.fw-text-prompt').fill('Mobile Test Kit');
+  await savePrompt.getByRole('button',{name:'SAVE PRESET'}).click();
+  await page.locator('.campaign-kit-preset-card').waitFor({timeout:15000});
+  if(!await page.locator('.campaign-kit-presets').evaluate(el=>el.open))
+   throw Error('Saved preset disclosure closed after campaign update');
+  if(!await page.locator('.campaign-kit-preset-card').getByRole('button',
+   {name:'EQUIP KIT'}).isEnabled())
+   throw Error('New Dispatch equipment preset unexpectedly unavailable');
   await page.locator('.campaign-kit-presets > summary').click();
   const workbench=armory.locator('.campaign-kit-workbench-entry');
   if(!await workbench.getByRole('button',{name:/OPEN ARSENAL/i}).isVisible())
@@ -71,6 +83,7 @@ try{
   const carry=armory.locator('[data-loadout-group="carry"]');
   const rigChoice=carry.getByRole('button',{name:/Choose rig for/i});
   if(!await rigChoice.isVisible())throw Error('Carry equipment chooser is not reachable');
+  const originalRig=await rigChoice.textContent();
   // E3: The same WebGL canvas must survive actual kit mutation / DOM rebuild.
   const canvasBefore=await page.evaluate(()=>{
    const canvas=document.querySelector('.campaign-kit-preview canvas');
@@ -96,6 +109,23 @@ try{
    }
    if(await armory.locator('[data-loadout-group="carry"][open]').count()!==1)
     throw Error('Gear change lost the selected equipment category');
+   await page.locator('.campaign-kit-presets > summary').click();
+   await page.locator('.campaign-kit-preset-card').getByRole('button',
+    {name:'EQUIP KIT'}).click();
+   await page.waitForFunction(expected=>
+    [...document.querySelectorAll('.campaign-kit-picker-trigger')].some(el=>
+      el.getAttribute('aria-label')?.includes('rig')&&el.textContent===expected),
+    originalRig,{timeout:15000});
+   if(!await page.locator('.campaign-kit-presets').evaluate(el=>el.open))
+    throw Error('Preset panel closed after applying saved gear');
+   await page.locator('.campaign-kit-preset-card').getByRole('button',
+    {name:'DELETE'}).click();
+   await page.getByRole('alertdialog').getByRole('button',
+    {name:'DELETE PRESET'}).click();
+   await page.waitForFunction(()=>
+    document.querySelectorAll('.campaign-kit-preset-card').length===0,
+    null,{timeout:15000});
+   await page.locator('.campaign-kit-presets > summary').click();
   }else{
    await rigSheet.getByRole('button',{name:'CLOSE'}).click();
    throw Error('Expected selectable alternate rig to exercise saved kit mutation');
