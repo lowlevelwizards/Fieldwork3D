@@ -11,11 +11,15 @@ import {initialDispatchDepartment,dispatchStandingTier}
  from './dispatch-department.ts';
 import {renderCampaignCreator} from './ui/campaign-creator.ts';
 import {renderDispatchCampaignCreator} from './ui/dispatch-campaign-creator.ts';
-import {effectiveDispatchSetup,currentDispatchReference,dispatchSetupDescription,
+import {effectiveDispatchSetup,currentDispatchReference,
  type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
 import {factionReference} from './faction-reference-catalog.ts';
-import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost,
- canApplyCampaignKitPreset} from './campaign-state.ts';
+import {dispatchDepartmentView} from './dispatch-department-view.ts';
+import {campaignWeaponQuote,CAMPAIGN_WEAPON_PLATFORMS}
+ from './campaign-weapon-procurement.ts';
+import {SKILL_NAMES,canAffordCampaignPurchase,
+ armorRepairCost,weaponServiceCost,canApplyCampaignKitPreset}
+ from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
@@ -256,9 +260,12 @@ export class CampaignScreen{
   title.append(node('div','campaign-home-identity',
    'INTELLIGENCE · '+rules.intel.toUpperCase()+
    '  /  MAP SCALE · '+rules.scale.toUpperCase()));
-  if(isDispatchPilot(c))title.append(node('div','campaign-home-identity',
-   dispatchSetupDescription(effectiveDispatchSetup(c))+
-   ' · CURRENT LOOK '+currentDispatchReference(c).toUpperCase()));
+  if(isDispatchPilot(c)){
+   const identity=dispatchDepartmentView(c);
+   title.append(node('div','campaign-home-identity',
+    identity.preset+' · '+identity.period+' REFERENCE · '+identity.standingTier+
+    ' '+identity.standing+'/100'));
+  }
   const campaignMenuNav=node('nav','campaign-home-nav');
   campaignMenuNav.append(button('CAMPAIGN MENU',this.handlers.showMenu));
   title.append(campaignMenuNav);
@@ -367,23 +374,43 @@ export class CampaignScreen{
    'STOCK: '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
    ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS'));
   const purchases=node('div','campaign-purchases');
-  purchases.append(button('BUY 60 ROUNDS · 120 CR',this.handlers.buyAmmo),
-   button('BUY MEDICAL KIT · 170 CR',this.handlers.buyMedical),
-   button('BUY 2 FLASHBANGS · 150 CR',this.handlers.buyFlash));
+  for(const [label,cost,action] of [
+   ['60 ROUNDS',120,this.handlers.buyAmmo],
+   ['MEDICAL KIT',170,this.handlers.buyMedical],
+   ['2 FLASHBANGS',150,this.handlers.buyFlash]
+  ] as const){
+   const price=isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?
+    'NO CHARGE':cost+' CR';
+   const buy=button('BUY '+label+' · '+price,action);
+   buy.disabled=!canAffordCampaignPurchase(c,cost)||
+    (label==='2 FLASHBANGS'&&(!!c.activeContractId||c.supplies.flash>998));
+   purchases.append(buy);
+  }
   logistics.append(purchases);
   const inventory=node('div','campaign-armory');
   inventory.append(node('h2','','FIELD ARMORY'));
-  for(const weapon of ['carbine','rifle'] as const){
-   const stock=c.inventory.weapons[weapon],price=WEAPON_PRICES[weapon];
-   const buy=button('BUY AR / AK '+weapon.toUpperCase()+' PLATFORM · '+price+' CR · '+stock+' STOCK',
-    ()=>this.handlers.buyWeapon(weapon));
-   buy.disabled=c.funds<price||!!c.activeContractId||
-     !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary');
-   inventory.append(buy);
+  const offerings=isDispatchPilot(c)?CAMPAIGN_WEAPON_PLATFORMS:
+   (['carbine','rifle'] as const);
+  for(const weapon of offerings){
+   const quote=campaignWeaponQuote(c,weapon);
+   const row=node('div','campaign-procurement-item');
+   const heading=node('div','campaign-procurement-heading');
+   heading.append(node('strong','',weapon.toUpperCase()+' PLATFORM'),
+    node('small','',quote.priceLabel));
+   const metrics=node('small','campaign-procurement-metrics',
+    quote.stock+' SPARE IN ARMORY · '+quote.issued+' ISSUED');
+   const status=node('p','campaign-procurement-status',quote.authorization);
+   const buy=button('PURCHASE '+weapon.toUpperCase(),()=>this.handlers.buyWeapon(weapon));
+   buy.disabled=!quote.canPurchase;
+   buy.title=quote.authorization;
+   row.append(heading,metrics,status,buy);inventory.append(row);
   }
   logistics.append(inventory);
-  const recruit=button('RECRUIT OPERATOR · 450 CR',this.handlers.recruit);
-  recruit.disabled=c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.funds<450||!!c.activeContractId;
+  const recruit=button('RECRUIT OPERATOR · '+
+   (isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?
+    'NO CHARGE':'450 CR'),this.handlers.recruit);
+  recruit.disabled=c.operators.length>=32||c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||
+   !canAffordCampaignPurchase(c,450)||!!c.activeContractId;
   personnel.append(recruit);
   const notice=node('p','campaign-note',c.history.length?
    'LAST OPERATION: '+c.history[c.history.length-1].grade+' · '+c.history[c.history.length-1].outcome.toUpperCase():
@@ -487,6 +514,41 @@ export class CampaignScreen{
   footer.append(button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
   const overview=node('section','campaign-section campaign-overview');
   overview.append(node('h2','','UNIT OVERVIEW'));
+  if(isDispatchPilot(c)){
+   const identity=dispatchDepartmentView(c);
+   const department=node('div','campaign-department-identity');
+   department.append(node('div','campaign-department-eyebrow',
+    'DISPATCH · '+identity.organization.toUpperCase()),
+    node('h3','',identity.unit),
+    node('p','campaign-note',
+     identity.preset+' · '+identity.period+' REFERENCE · '+
+     identity.scope+' · '+identity.access));
+   const service=node('div','campaign-department-facts');
+   for(const [label,value] of [
+    ['STANDING',identity.standing+' / 100 · '+identity.standingTier],
+    ['RESPONSES',String(identity.responses)],
+    ['PROCUREMENT',identity.economy]
+   ] as const){
+    const entry=node('div','campaign-department-fact');
+    entry.append(node('small','',label),node('strong','',value));
+    service.append(entry);
+   }
+   department.append(service);
+   const progress=node('div','campaign-department-chapter');
+   progress.append(node('strong','',identity.chapterLabel),
+    node('p','campaign-note',identity.chapterDetail));
+   if(identity.chapterGoal!==null){
+    const meter=node('progress','');
+    meter.max=identity.chapterGoal;meter.value=identity.chapterProgress;
+    meter.setAttribute('aria-label','Completed responses toward the 2015 chapter');
+    progress.append(meter,node('small','',
+     identity.chapterProgress+' / '+identity.chapterGoal+' COMPLETED RESPONSES'));
+   }else if(identity.chapterJustUnlocked){
+    progress.append(node('small','','CHAPTER MILESTONE REACHED'));
+   }
+   department.append(progress);
+   overview.append(department);
+  }
   const stats=node('div','campaign-overview-stats');
   const available=c.operators.filter(o=>o.status==='available'||o.status==='reserve').length;
   for(const [value,label] of [
