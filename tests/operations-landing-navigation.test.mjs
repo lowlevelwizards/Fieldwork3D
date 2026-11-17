@@ -382,3 +382,30 @@ test('C7 disclosure labels identify their individual case, weapon and operation'
  assert.match(ui,/recordSummary\.setAttribute\('aria-label'/);
  assert.match(ui,/\+' · DAY '\+report\.day/);
 });
+
+
+test('C8 UI-only disclosure continuity survives in-place campaign refresh',()=>{
+ const ui=source('campaign-ui.ts');
+ const home=ui.slice(ui.indexOf(' home(c:CampaignState,slot?:CampaignSlot)'),
+  ui.indexOf(' private armory(c:CampaignState,id:string)'));
+ assert.match(home,/const openWorkspaceDetails=wasInOperations\?/);
+ assert.match(home,/details\[data-campaign-detail\]\[open\]/);
+ assert.match(home,/for\(const detail of this\.root\.querySelectorAll<HTMLDetailsElement>\(/);
+ assert.match(home,/detail\.open=openWorkspaceDetails\.has/);
+ for(const key of [
+  'campaign-context','more-cases','more-history','personnel-milestones',
+  'service-record','related-cases','closeout-notes',
+  'save-utilities','department-profile'
+ ])assert.ok(home.includes("dataset.campaignDetail='"+key+"'"),
+  'Disclosure missing persistence identity: '+key);
+ assert.match(home,/recordDetail\.dataset\.campaignDetail='operation:'\+report\.id/);
+ assert.match(home,/eligibility\.dataset\.campaignDetail='weapon:'\+weapon/);
+ assert.match(ui,/intelligence\.dataset\.campaignDetail='case:'\+c\.id/);
+});
+test('C8 browser smoke tests continuity after a real campaign purchase',()=>{
+ const script=readFileSync(new URL('../scripts/smoke-operations-room-responsive.mjs',import.meta.url),'utf8');
+ assert.match(script,/const purchase=page\.locator\('\.campaign-supply-offer button:enabled'\)/);
+ assert.match(script,/campaign context collapsed after purchase/);
+ assert.match(script,/case information collapsed after purchase/);
+ assert.match(script,/armory requirements collapsed after purchase/);
+});
