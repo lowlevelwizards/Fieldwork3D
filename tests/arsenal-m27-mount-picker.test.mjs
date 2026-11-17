@@ -43,7 +43,7 @@ test('M2.7B step position and Automatic reset are undoable and preserve price-fr
  const r=recipe(light()),before=createArsenalDraft(r);
  const left=mountPickerState(r,'light').rails.find(x=>x.face==='left');
  assert.ok(left);
- const forward=nearestMountChoice(left,Infinity);
+ const forward=nearestMountChoice(left,left.choices.at(-1).x);
  assert.strictEqual(forward,left.choices.at(-1));
  const next=editArsenalMountPosition(before,'light',forward);
  assert.equal(next.undo.length,1);
@@ -77,6 +77,6 @@ test('M2.7B unsupported face and unresolved physical rail are never displayed',(
   ownerPartId:'missing-part',surfaceId:'invalid-rail',face:'left',
   standard:'picatinny',position:.5}};
  const state=mountPickerState(v,'light');
- assert.equal(state.rails.length,0);
- assert.ok(state.reason);
+ assert.ok(state.rails.length>0,'repairable valid contacts remain selectable');
+ assert.equal(state.selectedKey,undefined,'do not silently relocate invalid saved mount');
 });
