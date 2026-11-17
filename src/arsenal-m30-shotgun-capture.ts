@@ -65,7 +65,8 @@ const views=[
 ] as const;
 const stats=[];
 for(const view of views){
- camera.position.set(...view.position);camera.lookAt(2,0,0);
+ camera.position.set(view.position[0],view.position[1],view.position[2]);
+ camera.lookAt(2,0,0);
  camera.updateProjectionMatrix();
  const before=capture(raw),after=capture(compiled);
  let differing=0,sum=0,max=0;
