@@ -204,11 +204,15 @@ test('G36 D0: shared factory materials preserve silhouette and magazine identity
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('G36 D1-1: authored magnified front sight is a single low-facet circle, no floating overlay',()=>{
+test('G36 D1-1: O2 rear-facing lower optic is a single low-facet dark circle, seated in the ocular',()=>{
  const m=mat(),g=buildG36OriginalBlockout(m);
  const face=one(g,'g36OpticFace'),lower=one(g,'g36LowerOptic');
  assert.ok(face&&lower);
- assert.ok(bb(face).intersectsBox(bb(lower)),'optic face must physically meet housing');
+ const ocular=one(g,'g36LowerOpticBarrel');
+ assert.ok(ocular&&bb(ocular).intersectsBox(bb(lower)),
+  'O2 projecting lower ocular is physically seated in the main optical pod');
+ assert.ok(bb(face).intersectsBox(bb(ocular)),
+  'dark optical face must remain seated inside its actual eight-sided ocular');
  assert.ok(face.geometry.getAttribute('position').count<=60,'no high-poly round lens');
  assert.equal(g.children.filter(x=>x.userData.g36OpticFace).length,1);
  clearWeaponSilhouette(g);m.dispose();
