@@ -6,6 +6,8 @@ import {assignDispatchCase} from '../src/dispatch-case-selection.ts';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
 import {newCampaign,readCampaign} from '../src/campaign-state.ts';
 import {INCIDENTS} from '../src/briefing/incident-catalog.ts';
+import {generateSite} from '../src/breach-site.ts';
+import {activateSite} from '../src/breach-core.ts';
 
 const KINDS=['capture','rescue','intel','clear','hold'];
 
@@ -68,4 +70,24 @@ test('D14.4 stale or fabricated incident data cannot be imported',()=>{
   {...x,dispatchCase:{version:1,incidentId:'not-an-authored-incident',archetype:'house'}}:x)};
  assert.equal(readCampaign(JSON.stringify(bad)),null);
  assert.equal(dispatchIncidentDefinition('generic-clear'),undefined);
+});
+
+test('D14.4 one newly enabled authored case per objective compiles a real strict incident site',()=>{
+ const cases=[
+  {id:'fugitive-lead',kind:'capture',building:'house',seed:102},
+  {id:'welfare-response',kind:'rescue',building:'house',seed:103},
+  {id:'records-review',kind:'intel',building:'office',seed:104},
+  {id:'facility-reclamation',kind:'clear',building:'office',seed:105},
+  {id:'site-preservation',kind:'hold',building:'office',seed:106}
+ ];
+ try{
+  for(const sample of cases){
+   const site=generateSite(sample.seed,'small',undefined,{
+    mission:sample.kind,risk:2,enableIncidentIntent:true,
+    incidentId:sample.id,strictIncident:true,archetype:sample.building
+   },{archetype:sample.building});
+   assert.equal(site.archetype,sample.building,sample.id);
+   assert.equal(site.encounter?.incidentIntentId,sample.id,sample.id);
+  }
+ }finally{activateSite(null);}
 });
