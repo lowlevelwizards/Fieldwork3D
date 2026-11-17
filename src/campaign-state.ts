@@ -1,6 +1,7 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
 import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
+import {assignDispatchCase} from './dispatch-case-selection.ts';
 import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
 import {mayChooseCampaignContent,dispatchPilotUnclassifiedEditingEnabled}
  from './dispatch-campaign-eligibility.ts';
@@ -122,7 +123,7 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
    weaponConfiguration:issue.weaponConfiguration,
    armorCondition:initialArmorIntegrity(initialEquipmentLoadout(weapon))};
 }
-export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={}):Contract[]{
+export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={},dispatch=false):Contract[]{
  const archive=existing.filter(c=>c.status!=='available'&&c.status!=='accepted').slice(-80);
  const active=existing.filter(c=>c.status==='available'||c.status==='accepted');
  const offers:Contract[]=[...active];
@@ -134,10 +135,12 @@ export function createContracts(seed:number,day:number,existing:readonly Contrac
   const region=REGIONS[(s>>>5)%REGIONS.length];
   const intensity=(pressure[region]??0)>1?1:0;
   const risk=Math.max(1,Math.min(3,1+(s%3)+intensity)) as 1|2|3;
-  offers.push({id,seed:s,kind:kind.kind,scale:s%4===0?'expanded':'standard',
+  const offer:Contract={id,seed:s,kind:kind.kind,scale:s%4===0?'expanded':'standard',
    region,title:kind.title,
    description:kind.description,risk,intel:s%3===0?'unknown':'floor-plan',
-   reward:240+risk*230,deadline:day+2+(s%3),status:'available'});
+   reward:240+risk*230,deadline:day+2+(s%3),status:'available'};
+  offers.push(dispatch?assignDispatchCase(offer,
+   [...archive,...offers].map(k=>k.dispatchCase?.incidentId).filter((id):id is string=>!!id)):offer);
  }
  return [...archive,...offers];
 }
@@ -151,7 +154,7 @@ export function newCampaign(seed:number,rules?:CampaignRules,name?:string):Campa
   ...(name!==undefined?{name:name.trim()}:{}),
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   squadIds:['rook','moss','ash','vale'],
-  contracts:createContracts(normalized,1),activeContractId:null,
+  contracts:createContracts(normalized,1,[],{},parsedRules?.template==='dispatch'),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
   inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
@@ -329,12 +332,14 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const nextKind=r.outcome==='success'?followupKind[contract.kind]:undefined;
  if(nextKind){
   const template=CONTRACTS.find(k=>k.kind===nextKind)!;
-  contracts.push({id:contract.id+'-followup-'+nextKind,
+  const followup:Contract={id:contract.id+'-followup-'+nextKind,
    followUpOf:contract.id,seed:hash(contract.seed^day^0x69e433a1)||1,
    kind:nextKind,scale:contract.scale,region:contract.region,
    title:template.title,description:template.description,
    risk:Math.min(3,contract.risk+1) as 1|2|3,
-   intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'});
+   intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'};
+  contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(followup,
+   contracts.map(k=>k.dispatchCase?.incidentId).filter((id):id is string=>!!id)):followup);
  }
  // The appliedResults gate above prevents replay/debrief double charging.
  const serials=c.inventory.serializedWeapons?.map(w=>{
@@ -349,7 +354,8 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
-  contracts:createContracts(c.seed,day,contracts,pressure)};
+  contracts:createContracts(c.seed,day,contracts,pressure,
+    c.rules?.template==='dispatch')};
 }
 
 /** Supplies are counted in actual rounds; no infinite free resupply. */
