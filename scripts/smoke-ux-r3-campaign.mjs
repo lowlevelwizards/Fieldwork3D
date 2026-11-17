@@ -23,9 +23,11 @@ try{
   const errors=[];
   page.on('pageerror',e=>errors.push(e.message));
   await page.goto(origin+'/index.html',{waitUntil:'domcontentloaded'});
-  await page.getByRole('button',{name:'NEW CAMPAIGN'}).waitFor({timeout:30000});
-  await page.getByRole('button',{name:'NEW CAMPAIGN'}).click();
-  await page.locator('#campaign-tab-personnel').waitFor({timeout:15000});
+  await page.locator('.campaign-landing-primary').waitFor({timeout:30000});
+  await page.locator('.campaign-landing-primary').click();
+  await page.getByRole('button',{name:/^DISPATCH —/}).click();
+  await page.getByRole('button',{name:'CREATE DISPATCH',exact:true}).click();
+  await page.locator('#campaign-tab-personnel').waitFor({timeout:30000});
   await page.locator('#campaign-tab-personnel').click();
   const person=page.locator('.campaign-person').first();
   await person.getByRole('button',{name:'LOADOUT'}).click();
