@@ -309,7 +309,9 @@ export function buildSiteWindows(site:Site,host:SiteOpeningsHost,
       const glass=host.box(group,0,baseTop+glassHeight/2,0,
         opening.width-3,glassHeight,1,paneMat,false);
       glass.castShadow=false;
-      host.registerGlass(opening.id,glass);
+      glass.userData.fieldworkDrawFamily='site-window-glass';
+       glass.userData.fieldworkTransparencyCause='glass';
+       host.registerGlass(opening.id,glass);
       if(opening.treatment==='bars'){
         const bars=host.solid(0x586866,.64,'metal');
         for(const frac of [-.32,-.1,.12,.34])

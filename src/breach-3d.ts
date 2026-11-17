@@ -67,6 +67,7 @@ import {wearFinish} from './rendering/wear-finish.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
+import {setWallMaterialPassFlags} from './rendering/breach-cutaway-depth-policy.ts';
 import {BreachContactShadowBatch} from './rendering/breach-contact-shadow-batch.ts';
 import {RepeatedFixtureBatches} from './rendering/breach-repeated-fixture-batches.ts';
 import {PausedShadowSceneController,shadowEligibleBox}
@@ -1079,6 +1080,8 @@ export class TacticalScene3D{
     decal.position.set(x,y,z);
     if(mark.face==='back')decal.rotation.y=Math.PI;
     decal.castShadow=false;decal.receiveShadow=false;
+     decal.userData.fieldworkDrawFamily='site-surface-wear';
+     decal.userData.fieldworkTransparencyCause='weather-overlay';
     parent.add(decal);
   }
   private plane(parent:THREE.Object3D,x:number,z:number,w:number,d:number,
@@ -1943,11 +1946,12 @@ export class TacticalScene3D{
       const knownFacade=wall.exterior&&!omniscient&&!bodycamAudition&&
         spatialSurfaceKnown(s,'wall',wall.index);
       const surfaceTransparent=translucent||knownFacade;
+       // Cause-only diagnostic, enabled by the opt-in coldBench profiler.
+       if(this.liveMainPassProfiler)
+        wall.mesh.userData.fieldworkTransparencyCause=translucent?
+         'camera-cutaway':knownFacade?'known-facade-foreground':'opaque';
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
-      if(material.transparent!==surfaceTransparent){
-        material.transparent=surfaceTransparent;
-        material.depthWrite=!translucent;material.needsUpdate=true;
-      }
+      setWallMaterialPassFlags(material,surfaceTransparent,!translucent);
       material.opacity=opacity;
       const patina=wall.mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
       if(patina)patina.opacity=Math.max(physicalDirector?.08:.24,
