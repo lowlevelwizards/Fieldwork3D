@@ -78,6 +78,7 @@ import {applyStudioRosterEdits,applyStudioCampaignEdits,
 import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
 import {dispatchPilotAppearanceAllowed,dispatchAppearanceSolids,
  DISPATCH_GLOVE_STYLES} from './dispatch-pilot-appearance.ts';
+import {DISPATCH_STARTER_CHOICES} from './dispatch-starter-choices.ts';
 import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  setWardrobeFabricSolid,setWardrobeFabricCamo,rerollWardrobeFabricCamo,
  sleeveStateOptions,trouserHemOptions,
@@ -1241,7 +1242,8 @@ function renderDispatchPilotControls(){
  field('GLOVE COLOR',colors,w.gloveSolid??'black',
   id=>changeWardrobe({...current(),gloveSolid:
    id as WardrobeOptions['gloveSolid']}));
- const gloves=DISPATCH_GLOVE_STYLES.filter(id=>canEquip('gloves',id));
+ const gloves=DISPATCH_GLOVE_STYLES.filter(id=>canEquip('gloves',id)&&
+  !!DISPATCH_STARTER_CHOICES[dispatchStudioReferenceId]?.available['wardrobe-style']?.includes(id));
  if(gloves.length>1)field('GLOVE APPEARANCE',
   gloves.map(id=>[id,id==='gloves-field'?'FIELD GLOVES':'NO GLOVES'] as const),
   w.styles.gloves??'gloves-field',
