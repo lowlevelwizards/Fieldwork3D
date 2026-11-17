@@ -373,7 +373,9 @@ export function openArsenalWorkbench(
     rail.ownerPartId.replace(/^(ar-|hk-|ak-)/,'').replace(/-/g,' ');
    button.textContent=face+' · '+owner;
    button.dataset.rail=rail.key;
-   button.setAttribute('aria-pressed',String(active.key===rail.key));
+   // A stale saved mount has no active rail, even when the picker offers
+   // repair candidates. Do not falsely highlight the first fallback rail.
+   button.setAttribute('aria-pressed',String(!!state.selectedKey&&active.key===rail.key));
    button.setAttribute('aria-label','Mount on '+rail.face+' of '+owner);
    button.addEventListener('click',()=>{
     if(mountUpdate(slot,nearestMountChoice(rail,state.selectedX))){
