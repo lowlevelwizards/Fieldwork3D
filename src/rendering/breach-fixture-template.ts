@@ -82,10 +82,16 @@ function makePrototype(visual:Obstacle,index:number){
  // The legacy scene batches these SAME rigid parts after authoring.
  // Perform the equivalent work once per model recipe, not per cover.
  consolidateStaticFixtureParts(root);
+ const retained=new Set<THREE.BufferGeometry>();
  root.traverse(node=>{
-  if(node instanceof THREE.Mesh)geometries.add(node.geometry);
+  if(node instanceof THREE.Mesh)retained.add(node.geometry);
  });
- return {root,ownedGeometries:[...geometries]};
+ // The legacy batcher detaches source meshes and replaces them with merged
+ // buffers. Do not retain the now-unreachable authoring boxes in every cached
+ // recipe: only GPU buffers referenced by the final template are reusable.
+ for(const geometry of geometries)
+  if(!retained.has(geometry))geometry.dispose();
+ return {root,ownedGeometries:[...retained]};
 }
 export function acquireRigidFixtureTemplate(
  cache:StaticVisualTemplateLibrary,visual:Obstacle,index:number,
