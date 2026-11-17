@@ -181,9 +181,8 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
  for(const contacts of groups.values()){
   contacts.sort((a,b)=>a.x-b.x);
   const first=contacts[0],face=first.face;
-  const starts=contacts.map(c=>c.contactStartX);
-  const ends=contacts.map(c=>c.contactEndX);
-  const minX=Math.min(...starts),maxX=Math.max(...ends);
+  const minX=Math.max(...contacts.map(c=>c.railStartX));
+  const maxX=Math.min(...contacts.map(c=>c.railEndX));
   if(first.support==='continuous-rail'){
    // Each M2.1 continuous slot is a coarse X candidate on one modeled
    // span. Do not mistake repeated overlapping full spans for three rails.
@@ -217,9 +216,13 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
     if(matched.length!==profile.contactOffsets.length){
      errors.push('insufficient-support');continue;
     }
+    const clampFits=profile.contactOffsets.every(offset=>
+     center+offset-profile.clampHalfX>=minX-.001&&
+     center+offset+profile.clampHalfX<=maxX+.001);
     const baseFits=!profile.requireBaseWithinRail||
      (center-profile.baseHalfX>=minX-.001&&
       center+profile.baseHalfX<=maxX+.001);
+    if(!clampFits){errors.push('insufficient-support');continue;}
     if(!baseFits){errors.push('insufficient-clearance');continue;}
     const p=option(profile,attachmentId,matched,center,face,occupied);
     if(p.blocked)errors.push('occupied');
