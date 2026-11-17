@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {newSession,team,planMove,plannedControl} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {dispatchTacticalContextCommand} from '../src/breach-tactical-context-command.ts';
