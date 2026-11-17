@@ -9,7 +9,8 @@ import {consolidateStaticFixtureParts}
  from '../src/rendering/breach-fixture-draw-batching.ts';
 import {StaticVisualTemplateLibrary}
  from '../src/rendering/fieldwork-visual-template-library.ts';
-import {acquireRigidFixtureTemplate,rigidFixtureTemplateEligible}
+import {acquireRigidFixtureTemplate,rigidFixtureTemplateEligible,
+ fixtureTemplateMissesResolvedBatch}
  from '../src/rendering/breach-fixture-template.ts';
 
 const families=[
@@ -109,4 +110,28 @@ test('E6.25 first character model authoring is reused but site finishes and visi
  one.release();assert.ok(cache.stats().geometries>0);
  two.release();assert.equal(cache.stats().geometries,0);
  finish(a);finish(b);
+});
+
+test('E6.25 site-resolved material aliasing does not increase legacy opaque draws',()=>{
+ const root=new THREE.Group();
+ const m=new THREE.MeshStandardMaterial({color:0x65746e});
+ const other=new THREE.MeshStandardMaterial({color:0xaabbcc});
+ const make=(x,mat)=>{
+  const node=new THREE.Mesh(new THREE.BoxGeometry(2,2,2),mat);
+  node.position.x=x;node.castShadow=true;node.receiveShadow=true;
+  root.add(node);return node;
+ };
+ const a=make(0,m),b=make(4,other);
+ assert.equal(fixtureTemplateMissesResolvedBatch(root),false);
+ // A site-specific ageing/palette quantizer can make two template slots
+ // resolve to the SAME physical material even when original placeholders
+ // were distinct. Legacy batching would then combine these two draws.
+ b.material=m;
+ assert.equal(fixtureTemplateMissesResolvedBatch(root),true);
+ b.castShadow=false;
+ assert.equal(fixtureTemplateMissesResolvedBatch(root),false);
+ b.castShadow=true;b.userData.keepSeparate=true;
+ assert.equal(fixtureTemplateMissesResolvedBatch(root),false);
+ b.userData={};
+ a.geometry.dispose();b.geometry.dispose();m.dispose();other.dispose();
 });
