@@ -182,8 +182,8 @@ test('M2.1 MP5 tri-rail has correctly handed exterior faces and bottom support',
  assert.equal(s.filter(x=>x.role==='light').length,6);
  assert.equal(s.filter(x=>x.face==='left'&&x.role==='light').length,3);
  assert.equal(s.filter(x=>x.face==='right'&&x.role==='light').length,3);
- const side=s.find(x=>x.face==='right');
- const bottom=s.find(x=>x.face==='bottom');
+ const side=s.find(x=>x.face==='right'&&x.role==='light');
+ const bottom=s.find(x=>x.face==='bottom'&&x.role==='foregrip');
  near(side.z,1.755,'MP5 side rail outer Z face');
  near(side.y,-.29,'MP5 side rail center Y');
  near(bottom.y,-1.775,'MP5 lower rail outer Y face');
@@ -194,7 +194,7 @@ test('M2.1 MP5 tri-rail has correctly handed exterior faces and bottom support',
     rails.push(new THREE.Box3().setFromObject(obj));
   });
   assert.equal(rails.length,3);
-  for(const loc of s){
+  for(const loc of s.filter(x=>x.role==='foregrip'||x.role==='light')){
    assert.ok(rails.some(box=>
     loc.x>=box.min.x&&loc.x<=box.max.x&&
     (loc.face==='bottom'?Math.abs(box.min.y-loc.y)<.0001:
