@@ -83,6 +83,26 @@ async function assess(browser,{name,width,height,mobile}){
     check(await caseInfo.getAttribute('open')!==null,name+' case intelligence did not expand');
     await caseInfo.locator('summary').click();
    }
+   if(tab==='logistics'){
+    check(await page.locator('.campaign-logistics-stat').count()===3,
+     name+' logistics stock ledger missing');
+    check(await page.locator('.campaign-supply-offer button').count()===3,
+     name+' replenishment actions missing');
+    const procurement=page.locator('.campaign-procurement-item').first();
+    check(await procurement.count()===1,name+' procurement item missing');
+    check(await procurement.locator('button').count()===1,
+     name+' purchase action missing');
+    const requirements=procurement.locator('.campaign-procurement-eligibility');
+    check(await requirements.count()===1,name+' requirements disclosure missing');
+    check(await requirements.getAttribute('open')===null,
+     name+' requirements should start collapsed');
+    await requirements.locator(':scope > summary').click();
+    check(await requirements.getAttribute('open')!==null,
+     name+' requirements did not expand');
+    check(await requirements.locator('.campaign-procurement-status').isVisible(),
+     name+' purchase authorization explanation inaccessible');
+    await requirements.locator(':scope > summary').click();
+   }
    await page.screenshot({path:out+'/'+name+'-'+tab+'.png',animations:'disabled'});
   }
   const last=page.locator('#campaign-tab-chronicle');

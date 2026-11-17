@@ -315,3 +315,31 @@ test('Operations browser acceptance owns phone, desktop and keyboard behavior',(
  assert.match(workflow,/scripts\/smoke-operations-room-responsive\.mjs/);
  assert.match(workflow,/actions\/upload-artifact@v4/);
 });
+
+
+test('C5 Logistics preserves purchases, shows truthful low stock and discloses weapon eligibility',()=>{
+ const ui=source('campaign-ui.ts');
+ const logistics=ui.slice(ui.indexOf("const logistics=node('section','campaign-section')"),
+  ui.indexOf("const recruit=button('RECRUIT OPERATOR"));
+ assert.match(logistics,/count===0\|\|\(label==='ROUNDS'&&count<60\)/);
+ assert.match(logistics,/fact\.classList\.add\('is-low'\)/);
+ assert.match(logistics,/buy\.disabled=!canAffordCampaignPurchase\(c,cost\)/);
+ assert.match(logistics,/buy\.setAttribute\('aria-description',why\)/);
+ assert.match(logistics,/const eligibility=node\('details','campaign-procurement-eligibility'\)/);
+ assert.match(logistics,/quote\.canPurchase\?'PURCHASE ELIGIBILITY':'UNAVAILABLE · VIEW REQUIREMENTS'/);
+ assert.match(logistics,/eligibility\.append\(status\)/);
+ assert.match(logistics,/buy\.setAttribute\('aria-describedby',reasonId\)/);
+ assert.match(logistics,/buy\.disabled=!quote\.canPurchase/);
+ assert.match(logistics,/this\.handlers\.buyWeapon\(weapon\)/);
+});
+test('C5 Logistics compact rows respect phone and desktop layout',()=>{
+ const css=source('campaign-style.css');
+ const c5=css.slice(css.indexOf('/* Campaign C5.3'));
+ assert.ok(c5.length>100);
+ assert.match(c5,/\.campaign-logistics-supply-panel \.campaign-supply-offer\{/);
+ assert.match(c5,/flex-direction:row;align-items:center/);
+ assert.match(c5,/\.campaign-procurement-eligibility>summary\{/);
+ assert.match(c5,/min-height:40px/);
+ assert.match(c5,/@media\(max-width:420px\)/);
+ assert.match(css,/@media\(min-width:1000px\)[\s\S]*?\.campaign-logistics-workspace>/);
+});
