@@ -125,7 +125,8 @@ export class CampaignScreen{
   document.body.append(this.root);
  }
  hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
- entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false){
+ entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false,
+  initialPane:'main'|'new'='main'){
   this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,dispatch:dispatchHasSave,active};
   this.armoryOperatorId=null;this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
@@ -239,6 +240,7 @@ export class CampaignScreen{
   const actions=node('nav','campaign-landing-actions');
   actions.setAttribute('aria-label','Play Fieldwork');
   const resume=node('div','campaign-landing-resume');
+  let creationLauncher:HTMLButtonElement|null=null;
   const primary=button('',selected?selected[3]:()=>openNew(primary),
    'campaign-landing-card campaign-landing-primary');
   primary.append(node('span','campaign-landing-eyebrow',
@@ -249,6 +251,7 @@ export class CampaignScreen{
   primary.setAttribute('aria-label',selected?
    'Continue '+selected[1]:'Create a new campaign');
   resume.append(primary);
+  if(!selected)creationLauncher=primary;
   if(available.length>1){
    const switchButton=button('SWITCH',()=>openSwitch(switchButton),
     'campaign-landing-switch');
@@ -259,7 +262,7 @@ export class CampaignScreen{
   if(selected){
    const create=option('NEW CAMPAIGN','Choose an experience',()=>openNew(create));
    create.classList.add('campaign-landing-card','campaign-landing-quick');
-   choices.append(create);
+   creationLauncher=create;choices.append(create);
   }
   const quick=option('QUICK PLAY','Create a standalone operation',this.handlers.quickPlay);
   quick.classList.add('campaign-landing-card','campaign-landing-quick');
@@ -277,6 +280,7 @@ export class CampaignScreen{
    button('REPLAYS',this.handlers.openReplayLibrary,'campaign-landing-link'));
   main.append(hero,actions,utility);
   this.root.append(main,subpage);
+  if(initialPane==='new'&&creationLauncher)openNew(creationLauncher);
  }
  dispatchCreator(){
   this.disposePreview();this.armoryOperatorId=null;
@@ -284,7 +288,7 @@ export class CampaignScreen{
   renderDispatchCampaignCreator(this.root,{
    hasDispatch:this.lastEntry.dispatch,
    onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,
-    this.lastEntry.active,this.lastEntry.dispatch),
+    this.lastEntry.active,this.lastEntry.dispatch,'new'),
    onExport:this.handlers.exportDispatch,
    onCreate:this.handlers.createDispatch
   });
@@ -294,7 +298,7 @@ export class CampaignScreen{
   this.root.hidden=false;
   renderCampaignCreator(this.root,{
    hasSandbox:this.lastEntry.sandbox,
-   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active,this.lastEntry.dispatch),
+   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active,this.lastEntry.dispatch,'new'),
    onExportSandbox:this.handlers.exportSandbox,
    onCreate:this.handlers.createSandbox
   });
