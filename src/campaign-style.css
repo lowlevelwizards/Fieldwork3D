@@ -982,3 +982,22 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   min-height:52px}
  .campaign-overview-stats .campaign-stat{min-height:72px;justify-content:center}
 }
+
+
+/* UI R15: fit the Cases board to the available desktop width.
+   Deadline order comes from campaign days, not wall-clock timestamps. */
+.campaign-contract-board{display:grid;grid-template-columns:minmax(0,1fr);
+ gap:12px;min-width:0}
+.campaign-contract-board-summary{margin:3px 0 13px;
+ color:var(--fw-text-muted);font:700 11px/1.4 var(--fw-font-menu);
+ letter-spacing:.04em;overflow-wrap:anywhere}
+.campaign-contract-board>.campaign-contract{box-sizing:border-box;
+ margin:0;min-width:0;align-content:start}
+.campaign-contract-board .campaign-contract-description{overflow-wrap:anywhere}
+@media(min-width:900px){
+ .campaign-contract-board{grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+ .campaign-contract-board:has(> .campaign-contract:nth-child(3))
+  > .campaign-contract:first-child{grid-column:1/-1}
+ .campaign-contract-board>.campaign-contract{padding:17px}
+ .campaign-contract-board .campaign-contract-review{align-self:end}
+}
