@@ -463,3 +463,51 @@ test('C10 browser covers keyboard and return-to-case workflow on saved missions'
   'closing case review failed'
  ])assert.ok(script.includes(marker),'Missing predeployment acceptance: '+marker);
 });
+
+test('C11 campaign actions reuse save-aware feedback for squad, procurement and kit edits',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const helper=flow.slice(flow.indexOf('function applyVisibleCampaignAction('),
+  flow.indexOf('const campaignScreen=new CampaignScreen('));
+ assert.match(helper,/if\(after===before\)return/);
+ assert.match(helper,/const saved=config\.saveCampaign\(\)/);
+ assert.match(helper,/if\(saved\)showFieldworkActionFeedback\(message\)/);
+ assert.match(helper,/else void showFieldworkNotice\('Save unavailable'/);
+ const actions=flow.slice(flow.indexOf('assignSlot:(slot,id)=>'),
+  flow.indexOf('equipWeaponPreset:(id,presetId)=>'));
+ for(const [handler,mutator] of [
+  ['assignSlot','assignOperatorToSlot'],
+  ['buyWeapon','buyWeapon'],
+  ['equipWeapon','equipCampaignWeapon'],
+  ['repairArmor','repairCampaignArmor'],
+  ['serviceWeapon','serviceCampaignWeapon'],
+  ['equipGear','equipCampaignGear']
+ ]){
+  assert.ok(actions.includes(handler+':'),handler+' handler missing');
+  assert.ok(actions.includes('c=>'+mutator+'(c,'),handler+' bypasses the saved-action helper');
+ }
+ assert.doesNotMatch(actions,/config\.saveCampaign\(\);showCampaignHome\(\)/);
+});
+
+test('C11 kit and attachment feedback never bypasses save-aware action handling',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const start=flow.indexOf('equipWeaponFamilyPart:(id,slot,partId)=>');
+ const end=flow.indexOf('openStudio:(id)=>',start);
+ assert.ok(start>=0&&end>start);
+ const actions=flow.slice(start,end);
+ for(const [handler,mutation] of [
+  ['equipWeaponFamilyPart','equipCampaignWeaponFamilyPart'],
+  ['equipAttachment','purchaseAndEquipWeaponAttachment'],
+  ['moveMagazine','moveCampaignMagazine'],
+  ['saveKitPreset','saveCampaignKitPreset'],
+  ['applyKitPreset','applyCampaignKitPreset'],
+  ['deleteKitPreset','deleteCampaignKitPreset'],
+  ['renameOperator','renameCampaignOperator'],
+  ['cycleAppearance','cycleCampaignAppearance'],
+  ['setWardrobe','setCampaignWardrobe']
+ ]){
+  assert.ok(actions.includes(handler+':'),handler+' missing');
+  assert.ok(actions.includes(mutation+'(c,'),handler+' no longer uses authoritative state');
+ }
+ assert.match(actions,/acquire\?'Attachment acquired and equipped':'Weapon attachment updated'/);
+ assert.doesNotMatch(actions,/config\.saveCampaign\(\);showCampaignHome\(\)/);
+});

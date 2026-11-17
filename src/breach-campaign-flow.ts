@@ -248,18 +248,18 @@ const campaignScreen=new CampaignScreen({
  treat:(id)=>applyVisibleCampaignAction(c=>treatOperator(c,id),
   'Treatment completed · recovery time reduced'),
  recruit:()=>applyVisibleCampaignAction(hireRecruit,'New operator joined the roster'),
- assignSlot:(slot,id)=>{if(model.campaign){model.campaign=assignOperatorToSlot(model.campaign,slot,id);
-  config.saveCampaign();showCampaignHome();}},
- buyWeapon:(weapon)=>{if(model.campaign){model.campaign=buyWeapon(model.campaign,weapon);config.saveCampaign();showCampaignHome();}},
- equipWeapon:(id,weapon)=>{if(model.campaign){model.campaign=equipCampaignWeapon(model.campaign,id,weapon);
-  config.saveCampaign();showCampaignHome();}},
- repairArmor:(id)=>{if(model.campaign){model.campaign=repairCampaignArmor(model.campaign,id);
-  config.saveCampaign();showCampaignHome();}},
- serviceWeapon:(id)=>{if(model.campaign){model.campaign=serviceCampaignWeapon(model.campaign,id);
-  config.saveCampaign();showCampaignHome();}},
- equipGear:(id,slot,itemId)=>{if(model.campaign){
-  model.campaign=equipCampaignGear(model.campaign,id,slot,itemId);
-  config.saveCampaign();showCampaignHome();}},
+ assignSlot:(slot,id)=>applyVisibleCampaignAction(
+  c=>assignOperatorToSlot(c,slot,id),'Deployment squad updated'),
+ buyWeapon:(weapon)=>applyVisibleCampaignAction(
+  c=>buyWeapon(c,weapon),weapon.toUpperCase()+' weapon added to armory'),
+ equipWeapon:(id,weapon)=>applyVisibleCampaignAction(
+  c=>equipCampaignWeapon(c,id,weapon),'Operator primary weapon updated'),
+ repairArmor:(id)=>applyVisibleCampaignAction(
+  c=>repairCampaignArmor(c,id),'Operator armor repaired'),
+ serviceWeapon:(id)=>applyVisibleCampaignAction(
+  c=>serviceCampaignWeapon(c,id),'Weapon maintenance completed'),
+ equipGear:(id,slot,itemId)=>applyVisibleCampaignAction(
+  c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
  equipWeaponPreset:(id,presetId)=>{if(model.campaign&&!model.campaign.activeContractId){
   const preset=familyPreset(presetId);
   const member=model.campaign.operators.find(o=>o.id===id);
@@ -273,30 +273,26 @@ const campaignScreen=new CampaignScreen({
   next=equipCampaignWeaponPreset(next,id,presetId);
   if(next===model.campaign)return;
   model.campaign=next;config.saveCampaign();showCampaignHome();}},
- equipWeaponFamilyPart:(id,slot,partId)=>{if(model.campaign){
-  model.campaign=equipCampaignWeaponFamilyPart(model.campaign,id,slot,partId);
-  config.saveCampaign();showCampaignHome();}},
- equipAttachment:(id,slot,partId,acquire)=>{if(model.campaign){
-  model.campaign=acquire?
-   purchaseAndEquipWeaponAttachment(model.campaign,id,slot,partId):
-   equipCampaignWeaponAttachment(model.campaign,id,slot,partId);
-  config.saveCampaign();showCampaignHome();}},
- moveMagazine:(id,magazineId,location)=>{if(model.campaign){
-  model.campaign=moveCampaignMagazine(model.campaign,id,magazineId,location);
-  config.saveCampaign();showCampaignHome();}},
- saveKitPreset:(id,name)=>{if(model.campaign){model.campaign=saveCampaignKitPreset(model.campaign,id,name);
-  config.saveCampaign();showCampaignHome();}},
- applyKitPreset:(id,presetId)=>{if(model.campaign){model.campaign=applyCampaignKitPreset(model.campaign,id,presetId);
-  config.saveCampaign();showCampaignHome();}},
- deleteKitPreset:(presetId)=>{if(model.campaign){model.campaign=deleteCampaignKitPreset(model.campaign,presetId);
-  config.saveCampaign();showCampaignHome();}},
- renameOperator:(id,callsign)=>{if(model.campaign){model.campaign=renameCampaignOperator(model.campaign,id,callsign);
-  config.saveCampaign();showCampaignHome();}},
- cycleAppearance:(id)=>{if(model.campaign){model.campaign=cycleCampaignAppearance(model.campaign,id);
-  config.saveCampaign();showCampaignHome();}},
- setWardrobe:(id,look)=>{if(model.campaign){
-  model.campaign=setCampaignWardrobe(model.campaign,id,look);
-  config.saveCampaign();showCampaignHome();}},
+ equipWeaponFamilyPart:(id,slot,partId)=>applyVisibleCampaignAction(
+  c=>equipCampaignWeaponFamilyPart(c,id,slot,partId),'Weapon component updated'),
+ equipAttachment:(id,slot,partId,acquire)=>applyVisibleCampaignAction(
+  c=>acquire?purchaseAndEquipWeaponAttachment(c,id,slot,partId):
+   equipCampaignWeaponAttachment(c,id,slot,partId),
+  acquire?'Attachment acquired and equipped':'Weapon attachment updated'),
+ moveMagazine:(id,magazineId,location)=>applyVisibleCampaignAction(
+  c=>moveCampaignMagazine(c,id,magazineId,location),'Magazine placement updated'),
+ saveKitPreset:(id,name)=>applyVisibleCampaignAction(
+  c=>saveCampaignKitPreset(c,id,name),'Operator kit preset saved'),
+ applyKitPreset:(id,presetId)=>applyVisibleCampaignAction(
+  c=>applyCampaignKitPreset(c,id,presetId),'Operator kit preset applied'),
+ deleteKitPreset:(presetId)=>applyVisibleCampaignAction(
+  c=>deleteCampaignKitPreset(c,presetId),'Operator kit preset deleted'),
+ renameOperator:(id,callsign)=>applyVisibleCampaignAction(
+  c=>renameCampaignOperator(c,id,callsign),'Operator callsign updated'),
+ cycleAppearance:(id)=>applyVisibleCampaignAction(
+  c=>cycleCampaignAppearance(c,id),'Operator appearance updated'),
+ setWardrobe:(id,look)=>applyVisibleCampaignAction(
+  c=>setCampaignWardrobe(c,id,look),'Operator wardrobe updated'),
  openStudio:(id)=>config.openStudio(id),
  openArsenal:(id)=>{void config.openArsenal(id);},
  exportSave:()=>{if(model.campaign)saveFile(model.campaign);},
