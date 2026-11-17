@@ -683,6 +683,10 @@ function tick(now:number){
   // Only the explicit benchmark samples these durations. A gap ending now
   // can be correlated with the PRIOR frame's work, not this frame's work.
   if(config.boot.coldBenchEnabled&&config.recordColdRuntimeFrame){
+   // E6.15: borrow P1.5's actual scene/pose timings only for the local
+   // diagnostic capture. Snapshot mutable stage counters now, so later
+   // renders cannot rewrite the preceding callback's evidence.
+   const coldStats=updated3d?stage?.performanceStats():null;
    const callbackEnd=performance.now();
    config.recordColdRuntimeFrame({
     at:now,gapMs:frameGap,
@@ -692,7 +696,13 @@ function tick(now:number){
     canvasMs:renderEnd-sceneUpdateEnd,
     postMs:diagnosticsStart-renderEnd,
     diagnosticsMs:callbackEnd-diagnosticsStart,
-    mode:frameMode,viewMode,submitted3D:updated3d
+    mode:frameMode,viewMode,submitted3D:updated3d,
+    sceneBreakdown:coldStats?.scenePhases?{...coldStats.scenePhases}:undefined,
+    actorBreakdown:coldStats?.actorPhaseCosts?{...coldStats.actorPhaseCosts}:undefined,
+    fogComposeMs:coldStats?.fogComposeMs??undefined,
+    shadowRefreshes:coldStats?.shadowRefreshes,
+    fogTextureUploads:coldStats?.fogTextureSubmittedUploads,
+    gpuDrawCalls:coldStats?.calls
    });
   }
   scheduleFrame();
