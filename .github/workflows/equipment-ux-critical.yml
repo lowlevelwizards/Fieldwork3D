@@ -5,6 +5,7 @@ on:
       - 'src/campaign-ui.ts'
       - 'src/campaign-style.css'
       - 'src/ui/campaign-gear-picker.ts'
+      - 'src/equipment-preview.ts'
       - 'src/ui/quick-loadout-groups.ts'
       - 'scripts/smoke-ux-r3-campaign.mjs'
       - '.github/workflows/equipment-ux-critical.yml'

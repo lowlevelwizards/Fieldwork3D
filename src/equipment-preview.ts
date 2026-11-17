@@ -24,6 +24,7 @@ export class CampaignKitPreview{
  private azimuth=.72;
  private pointerId:number|null=null;
  private lastX=0;
+ private focusArea:EquipmentPreviewFocus='full';
  private focusHeight=26;
  private focusRadius=110;
  private focusRise=35;
@@ -94,6 +95,7 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
   this.pointerId=null;this.host=host;
+  host.dataset.previewFocus=this.focusArea;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
   host.setAttribute('aria-label','Rotatable 3D preview of '+
@@ -130,6 +132,7 @@ export class CampaignKitPreview{
    weapon:[35,90,31],carry:[29,91,32]
   };
   const [height,radius,rise]=targets[area];
+  this.focusArea=area;this.host.dataset.previewFocus=area;
   if(this.focusFrame!==null){
    cancelAnimationFrame(this.focusFrame);this.focusFrame=null;
   }

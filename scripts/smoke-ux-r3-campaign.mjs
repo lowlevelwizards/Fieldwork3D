@@ -49,6 +49,8 @@ try{
   const armorChoice=protection.getByRole('button',{name:/Choose armor for/i});
   if(!await armorChoice.isVisible())throw Error('Armor equipment chooser is not reachable');
   await armorChoice.click();
+  const focus=await page.locator('.campaign-kit-preview').getAttribute('data-preview-focus');
+  if(focus!=='torso')throw Error('Armor choice did not focus the operator torso');
   const gearSheet=page.getByRole('dialog',{name:'CHOOSE ARMOR'});
   await gearSheet.waitFor();
   if(!await gearSheet.getByRole('button',{name:/Soft Armor Vest/i}).count())
@@ -56,8 +58,37 @@ try{
   await gearSheet.getByRole('button',{name:'CLOSE'}).click();
   await tabs.filter({hasText:'CARRY'}).click();
   const carry=armory.locator('[data-loadout-group="carry"]');
-  if(!await carry.getByRole('button',{name:/Choose rig for/i}).isVisible())
-   throw Error('Carry equipment chooser is not reachable');
+  const rigChoice=carry.getByRole('button',{name:/Choose rig for/i});
+  if(!await rigChoice.isVisible())throw Error('Carry equipment chooser is not reachable');
+  // E3: The same WebGL canvas must survive actual kit mutation / DOM rebuild.
+  const canvasBefore=await page.evaluate(()=>{
+   const canvas=document.querySelector('.campaign-kit-preview canvas');
+   if(canvas)window.__fieldworkKitCanvas=canvas;
+   return !!canvas;
+  });
+  await rigChoice.click();
+  const rigSheet=page.getByRole('dialog',{name:'CHOOSE RIG'});
+  await rigSheet.waitFor();
+  const currentRig=await rigSheet.locator('[aria-current="true"]').textContent();
+  const swap=rigSheet.getByRole('button',{name:/No Chest Rig/i});
+  if(!currentRig?.includes('No Chest Rig')&&!await swap.isDisabled()){
+   await swap.click();
+   await page.getByRole('button',{name:/Choose rig for/i}).waitFor();
+   const changed=await page.getByRole('button',{name:/Choose rig for/i}).textContent();
+   if(!changed?.includes('No Chest Rig'))
+    throw Error('Campaign gear change failed to update the active loadout');
+   if(canvasBefore){
+    const stillSame=await page.evaluate(()=>
+     document.querySelector('.campaign-kit-preview canvas')===
+      window.__fieldworkKitCanvas);
+    if(!stillSame)throw Error('Operator preview WebGL canvas recreated after gear change');
+   }
+   if(await armory.locator('[data-loadout-group="carry"][open]').count()!==1)
+    throw Error('Gear change lost the selected equipment category');
+  }else{
+   await rigSheet.getByRole('button',{name:'CLOSE'}).click();
+   throw Error('Expected selectable alternate rig to exercise saved kit mutation');
+  }
   await page.getByRole('button',{name:'APPEARANCE · OPEN STUDIO'}).click();
   await page.locator('#operatorStudioOverlay:visible').waitFor({timeout:15000});
   const frame=await page.locator('#operatorStudioOverlay iframe').getAttribute('src');
