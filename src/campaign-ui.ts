@@ -320,7 +320,7 @@ export class CampaignScreen{
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide');
   const top=node('div','campaign-head');
-  const title=node('div');
+  const title=node('div','campaign-heading');
   title.append(node('div','campaign-eyebrow','FIELDWORK / VERDIGRIS'));
   title.append(node('h1','','OPERATIONS ROOM'));
   const rules=effectiveCampaignRules(c).mission;
@@ -335,9 +335,10 @@ export class CampaignScreen{
     ' '+identity.standing+'/100'));
   }
   const campaignMenuNav=node('nav','campaign-home-nav');
-  campaignMenuNav.append(button('CAMPAIGN MENU',this.handlers.showMenu));
-  title.append(campaignMenuNav);
-  top.append(title,node('div','campaign-funds','DAY '+c.day+' · '+c.funds+' CR'));
+  const menuButton=button('MENU',this.handlers.showMenu);
+  menuButton.setAttribute('aria-label','Open campaign menu');
+  campaignMenuNav.append(menuButton);
+  top.append(title,node('div','campaign-funds','DAY '+c.day+' · '+c.funds+' CR'),campaignMenuNav);
   main.append(top);
   const grid=node('div','campaign-grid');
   const personnel=node('section','campaign-section');
@@ -635,17 +636,21 @@ export class CampaignScreen{
    button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
   utilities.append(utilityContent);footer.append(utilities);
   const overview=node('section','campaign-section campaign-overview');
-  overview.append(node('h2','','UNIT OVERVIEW'));
+  overview.append(node('h2','','OPERATIONS DASHBOARD'));
   // A clear next action remains visible before records, readiness and statistics.
   const nextAction=accepted?
    button('CONTINUE DEPLOYMENT · '+campaignIncidentView(c,accepted).title.toUpperCase(),
     this.handlers.resumeContract,'campaign-primary'):
-   button('VIEW AVAILABLE CONTRACTS',()=>activateTab('contracts'),'campaign-primary');
+   button('BROWSE CONTRACTS · '+c.contracts.filter(k=>
+    k.status==='available'&&k.deadline>=c.day).length+' AVAILABLE',
+    ()=>activateTab('contracts'),'campaign-primary');
   nextAction.classList.add('campaign-overview-primary-action');
   overview.append(nextAction);
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
-   const department=node('div','campaign-department-identity');
+   const department=node('details','campaign-department-identity');
+   department.append(node('summary','campaign-department-summary',
+    'DEPARTMENT PROFILE · '+identity.standing+'/100 · '+identity.standingTier));
    department.append(node('div','campaign-department-eyebrow',
     'DISPATCH · '+identity.organization.toUpperCase()),
     node('h3','',identity.unit),
@@ -733,6 +738,9 @@ export class CampaignScreen{
    }));
   }
   overview.append(shortcuts,footer);
+  // Actionable readiness and capacity precede optional department details.
+  overview.insertBefore(readiness,nextAction.nextSibling);
+  overview.insertBefore(stats,readiness.nextSibling);
   grid.append(overview,logistics);
   const sections={
    overview,personnel,contracts:jobs,logistics,chronicle
