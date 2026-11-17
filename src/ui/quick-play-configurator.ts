@@ -82,7 +82,7 @@ export function createQuickPlayConfigurator(options:{
  const close=command('✕ CLOSE',()=>hide(),'fw-quick-config-close');
  header.append(identity,close);
  const intro=node('p','fw-quick-config-intro',
-  'Choose only what matters. Random keeps the unknowns; the same seed and settings recreate the scenario.');
+  'Build a standalone operation. Leave options on Random for fresh scenarios.');
  const content=node('div','fw-quick-config-content');
  const seedGroup=node('label','fw-quick-config-field fw-quick-config-seed');
  seedGroup.append(node('span','','SITE SEED'));
@@ -128,9 +128,13 @@ export function createQuickPlayConfigurator(options:{
   ['scenario','Scenario appropriate'],['on','Allowed where appropriate'],
   ['off','Off (rescue targets remain)']
  ],v=>{settings.civilians=v as QuickPlayCivilians;update();});
- const fieldGrid=node('div','fw-quick-config-grid');
- fieldGrid.append(size.group,mission.group,incident.group,
-  presence.group,civilians.group);
+ const fieldGrid=node('div','fw-quick-config-grid fw-quick-config-primary');
+ fieldGrid.append(incident.group,mission.group,size.group);
+ const advanced=node('details','fw-quick-config-advanced');
+ advanced.append(node('summary','','ADVANCED · SITE & CONDITIONS'));
+ const advancedBody=node('div','fw-quick-config-advanced-content');
+ const conditions=node('div','fw-quick-config-grid');
+ conditions.append(presence.group,civilians.group);
  const buildingSection=node('section','fw-quick-config-buildings');
  const buildingHeader=node('div','fw-quick-config-building-header');
  const buildingHeading=node('strong','','ALLOWED BUILDINGS');
@@ -164,6 +168,8 @@ export function createQuickPlayConfigurator(options:{
   checks.append(label);
  }
  buildingSection.append(buildingHeader,checks);
+ advancedBody.append(seedGroup,conditions,buildingSection);
+ advanced.append(advancedBody);
  const summary=node('p','fw-quick-config-summary');
  const error=node('p','fw-quick-config-error');error.setAttribute('role','status');
  const footer=node('footer','fw-quick-config-footer');
@@ -171,7 +177,7 @@ export function createQuickPlayConfigurator(options:{
  footer.append(command('SURPRISE ME',()=>{
    settings=defaultQuickPlaySettings();render();generate();
  }),start);
- content.append(seedGroup,fieldGrid,buildingSection,summary,error);
+ content.append(fieldGrid,advanced,summary,error);
  dialog.append(header,intro,content,footer);
  backdrop.append(dialog);document.body.append(backdrop);
  backdrop.addEventListener('click',e=>{
@@ -201,11 +207,11 @@ export function createQuickPlayConfigurator(options:{
    selectedIncident.missions.includes(settings.mission);
   const validSeed=settings.seed===null||
    (Number.isInteger(settings.seed)&&settings.seed>=1&&settings.seed<=0xffffffff);
-  summary.textContent=count+' building types enabled · '+
-   (settings.size==='random'?'Random size':settings.size)+
+  summary.textContent=(selectedIncident?selectedIncident.name:'Random incident')+
    ' · '+(settings.mission==='random'?'Random objective':settings.mission)+
-   ' · '+(selectedIncident?selectedIncident.name:'Random incident')+
-   ' · '+(settings.seed===null?'Fresh seed each launch':'Seed '+settings.seed);
+   ' · '+(settings.size==='random'?'Random size':settings.size)+
+   (settings.seed===null?'':' · Seed '+settings.seed);
+  if(!count||!validSeed||!incidentBuildings)advanced.open=true;
   start.disabled=count===0||!validSeed||!incidentBuildings||!incidentMission;
   if(!count)error.textContent='Enable at least one building type.';
   else if(!validSeed)error.textContent='Seed must be a whole number from 1 to 4294967295.';

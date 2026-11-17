@@ -11,7 +11,7 @@ const screens=read('src/ui/breach-mission-screens.ts');
 const html=read('index.html');
 
 test('primary Quick Play entry opens the creator, not an immediate worker job',()=>{
- assert.match(landing,/button\('QUICK PLAY',this\.handlers\.quickPlay/);
+ assert.match(landing,/option\('QUICK PLAY',[\s\S]*?this\.handlers\.quickPlay/);
  assert.doesNotMatch(landing,/CUSTOMIZE QUICK PLAY/);
  assert.match(flow,/quickPlay:\(\)=>\{void config\.launchQuickPlay\(\);\}/);
  assert.match(main,/const launchQuickPlay=\(\)=>quickPlayController\.customize\(\)/);
@@ -48,4 +48,13 @@ test('cancel or startup failure returns to the creator without a menu reset',()=
  assert.match(loader,/quickPlayPanel\.dataset\.state==='error'\)\{\s*quickPlayPanel\.hidden=true;\s*configurator\.open\(\)/);
  assert.match(loader,/Stopped · return to scenario generator/);
  assert.match(main,/if\(appFlow.mode==='quick'\)returnToQuickPlayGenerator\(\);[\s\S]*?else reset\(\);/);
+});
+
+test('Quick Play setup presents the essential choices before advanced site options',()=>{
+ assert.match(creator,/fieldGrid\.append\(incident\.group,mission\.group,size\.group\)/);
+ assert.match(creator,/ADVANCED · SITE & CONDITIONS/);
+ assert.match(creator,/advancedBody\.append\(seedGroup,conditions,buildingSection\)/);
+ assert.match(creator,/content\.append\(fieldGrid,advanced,summary,error\)/);
+ assert.match(creator,/if\(!count\|\|!validSeed\|\|!incidentBuildings\)advanced\.open=true/);
+ assert.match(creator,/onGenerate\(recipe\)/);
 });
