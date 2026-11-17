@@ -8,6 +8,8 @@ import type {PlanNode} from './breach-plan.ts';
 import {setCivilianState} from './breach-civilian-types.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
+import {SUSPECT_CHALLENGE_RANGE,SUSPECT_CHALLENGE_SECONDS,
+ challengeSuspectDecision,commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
 import {coverTargetIndex} from './worldgen/site-object-identity.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -45,6 +47,35 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'POWER CONTROL CONTACT LOST');return true;
       }
       approach(a,n.p,dt,s,.65);return true;
+    }
+    if(n.interaction==='challenge-suspect'){
+      const suspect=s.operators.find(e=>e.side==='red'&&
+        n.objectId==='suspect:'+e.id);
+      if(!suspect||suspect.health<=0||a.health<=0||
+         d(a.p,suspect.p)>SUSPECT_CHALLENGE_RANGE||
+         !port.inSight(a,suspect,s)||
+         !sweptBodyClear(a.p,suspect.p,s.doors,5.5,sessionWorldGeometry(s))){
+        failCurrentOrder(s,a,n,'SUSPECT NOT VISIBLE OR IN SPEAKING RANGE');
+        return true;
+      }
+      // Fixed GO-time voice duration. Revalidate physical sight on every
+      // tick; no automatic surrender or unseen/through-wall effect.
+      a.velocity=0;a.actionTimer+=dt;
+      if(a.actionTimer<SUSPECT_CHALLENGE_SECONDS)return true;
+      const decision=challengeSuspectDecision(suspect,s.seconds);
+      if(decision==='cooldown'){
+        failCurrentOrder(s,a,n,'SUSPECT WAS RECENTLY CHALLENGED');return true;
+      }
+      if(decision==='ineligible'){
+        failCurrentOrder(s,a,n,'SUSPECT NO LONGER ACTIVE');return true;
+      }
+      suspect.lastChallengeAt=s.seconds;
+      hear(s,a.p,100,'warning');
+      battleEvent(s,'interaction',a,a.p,a.name+' CHALLENGED '+suspect.name);
+      if(decision==='surrender')
+        commitSuspectSurrender(s,suspect,notify,battleEvent,'challenge');
+      else notify(s,suspect.name+' REFUSED CHALLENGE');
+      clearCurrentOrderIssue(a);pop(a);return true;
     }
     if(n.interaction==='release-civilian'){
       const person=s.civilians.find(c=>c.id===n.objectId);
