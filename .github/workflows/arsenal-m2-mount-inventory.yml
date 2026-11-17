@@ -1,4 +1,4 @@
-name: Arsenal M2.0 mount inventory (feature)
+name: Arsenal M2.0–M2.1 physical mount contracts (feature)
 on:
   push:
     branches: [feat/arsenal-m2-mount-inventory]
@@ -13,17 +13,18 @@ concurrency:
 jobs:
   inventory:
     runs-on: ubuntu-24.04
-    timeout-minutes: 14
+    timeout-minutes: 18
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: M2.0 inventory and M1 part-owned interface regression
+      - name: M2.0–M2.1 physical contacts and M1 part-owned interfaces
         run: |
           node --experimental-strip-types --test \
             tests/arsenal-m2-mount-inventory.test.mjs \
+            tests/arsenal-m2-physical-mount-slots.test.mjs \
             tests/arsenal-m1-part-mount-interfaces.test.mjs
       - name: Typecheck
         run: npm run check
