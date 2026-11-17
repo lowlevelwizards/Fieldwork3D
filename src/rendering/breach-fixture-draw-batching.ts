@@ -8,7 +8,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 export type FixtureBatchStats={original:number;batched:number;avoided:number};
 
-export function consolidateStaticFixtureParts(root:THREE.Group,
+export function consolidateStaticFixtureParts(root:THREE.Object3D,
  options:{recursive?:boolean;cellSize?:number;
   exclude?:ReadonlySet<THREE.Object3D>}={}):FixtureBatchStats{
  const stats:FixtureBatchStats={original:0,batched:0,avoided:0};
