@@ -339,7 +339,7 @@ export class CampaignScreen{
   // state only: supply, squad and treatment actions never mutate the save.
   const openWorkspaceDetails=wasInOperations?
    new Set(Array.from(this.root.querySelectorAll<HTMLDetailsElement>(
-    'details[data-campaign-detail][open]')).map(el=>el.dataset.campaignDetail)):new Set<string>();
+    'details[data-campaign-detail][open]')).map(el=>el.dataset.campaignDetail??'')):new Set<string>();
   const focusedControl=wasInOperations&&this.root.contains(document.activeElement)?
    document.activeElement as HTMLElement:null;
   const focusedLabel=focusedControl?.getAttribute('aria-label');
@@ -691,6 +691,7 @@ export class CampaignScreen{
    const metrics=node('small','campaign-procurement-metrics',
     quote.stock+' SPARE IN ARMORY · '+quote.issued+' ISSUED');
    const eligibility=node('details','campaign-procurement-eligibility');
+   eligibility.dataset.campaignDetail='weapon:'+weapon;
    const eligibilitySummary=node('summary','',
     quote.canPurchase?'PURCHASE ELIGIBILITY':'UNAVAILABLE · VIEW REQUIREMENTS');
    eligibilitySummary.setAttribute('aria-label',
@@ -756,6 +757,7 @@ export class CampaignScreen{
     jobs.append(board);
     if(sorted.length>visible.length){
      const more=node('details','campaign-contract-more');
+     more.dataset.campaignDetail='more-cases';
      more.append(node('summary','',
       'VIEW '+(sorted.length-visible.length)+' ADDITIONAL CASES'));
      const remaining=node('div','campaign-contract-board');
@@ -817,6 +819,7 @@ export class CampaignScreen{
    // Technical references and after-action evidence remain accessible
    // without forcing eight separate expanded report bodies into the log.
    const recordDetail=node('details','campaign-operation-detail');
+   recordDetail.dataset.campaignDetail='operation:'+report.id;
    const recordSummary=node('summary','','OPERATION DETAILS');
    recordSummary.setAttribute('aria-label',
     'Operation details: '+(incident?.title??(contract?
@@ -851,6 +854,7 @@ export class CampaignScreen{
   }
   if(c.history.length>recentReports.length){
    const older=node('details','campaign-operation-more');
+   older.dataset.campaignDetail='more-history';
    older.append(node('summary','',
     'VIEW '+(c.history.length-recentReports.length)+' EARLIER OPERATION'+
     (c.history.length-recentReports.length===1?'':'S')));
@@ -923,6 +927,7 @@ export class CampaignScreen{
     .includes(e.kind)).slice(-6).reverse();
   if(highlights.length){
    const timeline=node('details','campaign-career-timeline');
+   timeline.dataset.campaignDetail='personnel-milestones';
    timeline.append(node('summary','',
     'PERSONNEL MILESTONES · '+highlights.length+' RECENT · DAY '+highlights[0].day));
    const entries=node('div','campaign-career-events');
@@ -1201,7 +1206,7 @@ export class CampaignScreen{
   // keep their own keyboard behavior; re-open only items the user had expanded.
   for(const detail of this.root.querySelectorAll<HTMLDetailsElement>(
    'details[data-campaign-detail]')){
-   detail.open=openWorkspaceDetails.has(detail.dataset.campaignDetail);
+   detail.open=openWorkspaceDetails.has(detail.dataset.campaignDetail??'');
   }
   if(restoreScroll>0)this.root.scrollTop=restoreScroll;
   // Purchases, treatment and assignments rebuild this view. Return keyboard
@@ -1682,6 +1687,7 @@ export class CampaignScreen{
   if(c.followUpOf)card.append(node('div','campaign-contract-related',
    dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
   const intelligence=node('details','campaign-contract-intelligence');
+  intelligence.dataset.campaignDetail='case:'+c.id;
   const caseSummary=node('summary','','CASE INFORMATION');
   caseSummary.setAttribute('aria-label','Case information: '+view.title+' · '+c.region);
   intelligence.append(caseSummary);
