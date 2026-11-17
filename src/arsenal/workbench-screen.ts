@@ -60,6 +60,7 @@ export function openArsenalWorkbench(
  let pending:ArsenalEditProposal|null=null;
  const priorBodyOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');overlay.className='arsenal-wb-screen';
+ if(context)overlay.classList.add('arsenal-wb-has-apply');
  overlay.setAttribute('aria-label','Weapon workbench');
  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
  const head=document.createElement('header');head.className='arsenal-wb-head';
@@ -94,6 +95,8 @@ export function openArsenalWorkbench(
  const primaryActions=document.createElement('div');
  primaryActions.className='arsenal-wb-primary-actions';
  primaryActions.append(chooseModel,load,save,apply);
+ const commitHint=document.createElement('p');commitHint.className='arsenal-wb-commit-hint';
+ commitHint.setAttribute('role','status');
  const utilityActions=document.createElement('div');
  utilityActions.className='arsenal-wb-utility-actions';
  utilityActions.append(undo,redo,saveCopy,fit,side);
@@ -104,9 +107,12 @@ export function openArsenalWorkbench(
  const nav=document.createElement('nav');nav.className='arsenal-wb-nav';
  nav.setAttribute('aria-label','Weapon component categories');
  const panel=document.createElement('section');panel.className='arsenal-wb-panel';
+ panel.id='arsenal-wb-active-part';
+ panel.setAttribute('aria-label','Selected weapon component and compatible replacements');
  const panelTitle=document.createElement('h3');
  const slotRow=document.createElement('div');slotRow.className='arsenal-wb-slots';
  const activeLabel=document.createElement('p');activeLabel.className='arsenal-wb-current';
+ activeLabel.setAttribute('aria-live','polite');
  // M2.7: one compact rail picker attached to the selected fitted accessory.
  // The range only selects authored physical candidates, never arbitrary mesh X.
  const mounting=document.createElement('section');mounting.className='arsenal-wb-mounting';
@@ -172,10 +178,19 @@ export function openArsenalWorkbench(
  panel.append(panelTitle,slotRow,activeLabel,mounting,finishSection,optionsHeader,
   fitExplanation,choiceList,pendingHost,applyQuote,hint);
  main.append(viewportHost,nav,panel);
- overlay.append(head,main);document.body.append(overlay);
+ overlay.append(head,main);
+ if(context)overlay.append(commitHint);
+ document.body.append(overlay);
  const viewer=new ArsenalViewport(viewportHost,draft.working,slot=>{
   const category=ARSENAL_CATEGORIES.find(c=>c.slots.includes(slot));
-  if(category){activeCategory=category;activeSlot=slot;pending=null;renderSelection();}
+  if(category){
+   activeCategory=category;activeSlot=slot;pending=null;renderSelection();
+   // A tap on the physical weapon reveals its matching part controls.
+   panel.scrollIntoView({
+    behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?
+     'instant':'smooth',block:'start'
+   });
+  }
  });
  function currentPartId(slot:ArsenalSlot):string{
   return BODY_SLOTS.includes(slot as FamilyPartSlot)?
@@ -484,6 +499,11 @@ export function openArsenalWorkbench(
    const quote=context.quote?.(draft.working);
    apply.disabled=quote!==undefined&&(!quote.valid||quote.canCommit===false);
    applyQuote.textContent=quote?arsenalApplyMessage(quote):'';
+   commitHint.textContent=quote&&(!quote.valid||quote.canCommit===false)?
+    'CANNOT EQUIP · '+(quote.reason??'Configuration unavailable'):
+    arsenalDraftDirty(draft)?
+     'PREVIEW ONLY · APPLY TO EQUIP CHANGES':
+     'PREVIEW READY · APPLY TO EQUIP';
   }
   undo.disabled=draft.undo.length===0;redo.disabled=draft.redo.length===0;
   showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
@@ -498,6 +518,9 @@ export function openArsenalWorkbench(
  const loadNote=document.createElement('p');loadNote.className='arsenal-wb-hint';
  loadNote.textContent='Replace the working draft. No weapon is purchased or equipped yet.';
  const modelControls=document.createElement('div');modelControls.className='arsenal-wb-model-controls';
+ const platformChips=document.createElement('div');platformChips.className='arsenal-wb-platform-chips';
+ platformChips.setAttribute('role','group');
+ platformChips.setAttribute('aria-label','Factory weapon platforms');
  const modelPlatform=document.createElement('select');
  modelPlatform.setAttribute('aria-label','Filter factory weapon platform');
  modelPlatform.add(new Option('ALL PLATFORMS','all'));
@@ -506,6 +529,16 @@ export function openArsenalWorkbench(
  const modelSearch=document.createElement('input');modelSearch.type='search';
  modelSearch.placeholder='Find a model';modelSearch.setAttribute('aria-label','Search factory weapon models');
  modelControls.append(modelPlatform,modelSearch);
+ for(const platform of [{id:'all',name:'ALL'},...ARSENAL_PLATFORMS]){
+  const chip=document.createElement('button');chip.type='button';
+  chip.className='arsenal-wb-platform-chip';
+  chip.dataset.platform=platform.id;chip.textContent=platform.name;
+  chip.addEventListener('click',()=>{
+   modelPlatform.value=platform.id;
+   showLoadChoices();
+  });
+  platformChips.append(chip);
+ }
  const loadChoices=document.createElement('div');loadChoices.className='arsenal-wb-load-choices';
  const loadChanges=document.createElement('div');loadChanges.className='arsenal-wb-load-changes';
  loadChanges.setAttribute('role','status');
@@ -516,13 +549,15 @@ export function openArsenalWorkbench(
  const loadCancel=document.createElement('button');loadCancel.type='button';
  loadCancel.className='arsenal-wb-action';loadCancel.textContent='CANCEL';
  loadActions.append(loadConfirm,loadCancel);
- loadDialog.append(loadHeading,loadNote,modelControls,loadChoices,loadChanges,loadActions);
+ loadDialog.append(loadHeading,loadNote,modelControls,platformChips,loadChoices,loadChanges,loadActions);
  overlay.append(loadDialog);
  let selectedRecipeLoad:ArsenalRecipeLoadProposal|null=null;
  let loadMode:'saved'|'model'='saved';
  function showLoadChoices(){
   loadChoices.replaceChildren();
   loadChanges.replaceChildren();selectedRecipeLoad=null;loadConfirm.disabled=true;
+  for(const chip of platformChips.querySelectorAll<HTMLButtonElement>('button'))
+   chip.setAttribute('aria-pressed',String(chip.dataset.platform===modelPlatform.value));
   const choices=loadMode==='model'?
    arsenalFactoryChoices(modelPlatform.value as ArsenalPlatformId|'all',modelSearch.value):
    loadArsenalBuildLibrary().builds;
@@ -547,16 +582,21 @@ export function openArsenalWorkbench(
    const sub=document.createElement('small');
    const platform=ARSENAL_PLATFORMS.find(p=>p.id===build.recipe.platformId);
    sub.textContent=(platform?.name??build.recipe.platformId)+' · '+
-    build.recipe.weapon.toUpperCase()+' · '+proposal.changes.length+' CHANGES';
-   option.append(name,sub);
+    build.recipe.weapon.toUpperCase()+' · '+
+    (proposal.changes.length?proposal.changes.length+' CHANGES':'ALREADY MATCHES');
+   const status=document.createElement('span');status.className='arsenal-wb-model-status';
+   status.textContent=!proposal.valid?'CANNOT PREVIEW':
+    proposal.changes.length?'STARTING POINT':'CURRENT CONFIGURATION';
+   option.append(name,sub,status);
    option.addEventListener('click',()=>{
     selectedRecipeLoad=proposal;loadConfirm.disabled=!proposal.valid;
     for(const button of loadChoices.querySelectorAll('button'))
      button.setAttribute('aria-pressed',String(button===option));
     loadChanges.replaceChildren();
     const summary=document.createElement('strong');
-    summary.textContent=proposal.changes.length?
-     'REPLACE '+proposal.changes.length+' COMPONENTS / PROPERTIES':'ALREADY MATCHES';
+    summary.textContent=build.name.toUpperCase()+' · '+
+     (proposal.changes.length?
+      'REVIEW '+proposal.changes.length+' CHANGES':'ALREADY MATCHES');
     loadChanges.append(summary);
     if(proposal.changes.length){
      const list=document.createElement('ul');
@@ -579,7 +619,9 @@ export function openArsenalWorkbench(
  }
  function openRecipePicker(mode:'saved'|'model'){
   pending=null;renderPending();loadMode=mode;
-  modelControls.hidden=mode!=='model';modelSearch.value='';modelPlatform.value='all';
+  modelControls.hidden=mode!=='model';platformChips.hidden=mode!=='model';
+  modelSearch.value='';
+  modelPlatform.value=mode==='model'?draft.working.platformId:'all';
   loadHeading.textContent=mode==='model'?'CHOOSE FACTORY MODEL':'LOAD SAVED BUILD';
   loadDialog.setAttribute('aria-label',loadHeading.textContent);
   loadNote.textContent=mode==='model'?

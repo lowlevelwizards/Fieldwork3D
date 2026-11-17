@@ -1418,3 +1418,194 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-chronicle .campaign-operation-record-heading{gap:7px}
  .campaign-chronicle .campaign-operation-outcome{font-size:10px}
 }
+
+/* Equipment E1: compact readout without changing campaign kit rules. */
+.campaign-armory-screen{max-width:1200px}
+.campaign-armory-head{display:flex;align-items:center;justify-content:flex-start;
+ gap:12px;margin-bottom:10px}
+.campaign-armory-head .campaign-armory-back{flex:0 0 auto;width:auto;min-height:42px;
+ margin:0;padding:8px 12px;font-size:12px}
+.campaign-armory-head h1{margin:2px 0 0}
+.campaign-armory-screen .campaign-kit-nav{margin:0 0 10px;padding:1px 0 3px}
+.campaign-armory-screen .campaign-kit-nav button{min-height:42px}
+.campaign-armory-screen .campaign-kit-grid{align-items:start}
+.campaign-armory-screen .campaign-kit-summary{gap:8px}
+.campaign-armory-screen .campaign-kit-summary h2{margin:0}
+.campaign-armory-screen .campaign-kit-preview{height:260px;min-height:230px}
+.campaign-armory-screen .campaign-preview-hint{margin:0;color:var(--fw-text-muted);
+ font-size:11px;letter-spacing:.045em}
+.campaign-armory-screen .campaign-kit-actions{margin:2px 0 4px;gap:6px}
+.campaign-armory-screen .campaign-kit-actions button{flex:1 1 110px}
+.campaign-kit-at-a-glance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px}
+.campaign-kit-stat{display:flex;flex-direction:column;gap:3px;min-width:0;
+ padding:10px 8px;background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:7px}
+.campaign-kit-stat small{font:600 10px var(--fw-font-action);
+ color:var(--fw-text-muted);letter-spacing:.04em}
+.campaign-kit-stat strong{font:700 16px var(--fw-font-data);
+ font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:var(--fw-text-warm)}
+.campaign-kit-maintenance{display:flex;flex-wrap:wrap;gap:6px}
+.campaign-kit-maintenance button{flex:1 1 140px;margin:0;min-height:40px;font-size:12px}
+.campaign-armory-screen .campaign-readiness-details{margin:2px 0}
+.campaign-armory-screen .campaign-kit-editor>h2{margin:0 0 8px}
+.campaign-kit-access{border-left:2px solid var(--fw-brass);padding:6px 9px;
+ margin:0 0 8px;font-size:11px}
+@media(min-width:850px){
+ .campaign-armory-screen .campaign-kit-summary{position:sticky;top:12px}
+ .campaign-armory-screen .campaign-kit-preview{height:330px}
+}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-head{margin-bottom:8px}
+ .campaign-armory-head .campaign-armory-back{font-size:11px;min-height:40px}
+ .campaign-armory-head h1{font-size:clamp(21px,5.4vw,29px)}
+ .campaign-armory-screen .campaign-section{padding:12px}
+ .campaign-armory-screen .campaign-kit-preview{height:230px;min-height:210px}
+ .campaign-armory-screen .campaign-kit-nav button{min-width:78px}
+ .campaign-armory-screen .campaign-kit-actions button{min-height:42px}
+}
+
+/* Equipment E1.B: single active category, roving-keyboard tab navigation. */
+.campaign-armory-screen .campaign-kit-categories{display:flex;gap:6px;max-width:100%;
+ overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;
+ padding:2px 0 9px;scroll-snap-type:x proximity}
+.campaign-armory-screen .campaign-kit-category{flex:0 0 auto;min-height:44px;
+ margin:0;width:auto;padding:10px 13px;scroll-snap-align:start;
+ font:700 13px var(--fw-font-display);letter-spacing:.035em;
+ border:1px solid var(--fw-panel-border);border-radius:8px;
+ background:var(--fw-panel-raised);color:var(--fw-text-warm)}
+.campaign-armory-screen .campaign-kit-category[aria-selected="true"]{
+ background:var(--fw-sage);color:var(--fw-bg);border-color:var(--fw-sage)}
+.campaign-armory-screen .fw-loadout-group:not([open]){display:none}
+.campaign-armory-screen .fw-loadout-group>summary{display:none}
+.campaign-armory-screen .fw-loadout-group[open]{border:0;margin:0;background:transparent}
+.campaign-armory-screen .fw-loadout-group .fw-loadout-fields{padding:0;gap:4px}
+.campaign-armory-screen .campaign-kit-editor .campaign-kit-choice{padding:10px 0}
+
+/* Equipment E2.A: theme-native, keyboard accessible gear chooser. */
+.campaign-armory-screen .campaign-kit-native-select{display:none}
+.campaign-armory-screen .campaign-kit-picker-trigger{
+ flex:1 1 auto;max-width:70%;min-width:0;min-height:44px;margin:0;
+ padding:9px 30px 9px 12px;text-align:left;
+ font:600 14px var(--fw-font-action);white-space:normal;
+ border:1px solid #829e88;border-radius:8px;
+ background:var(--fw-control-bg);color:var(--fw-text-warm);
+ position:relative;overflow-wrap:anywhere}
+.campaign-armory-screen .campaign-kit-picker-trigger:after{
+ content:'⌄';position:absolute;right:12px;top:50%;transform:translateY(-56%);
+ color:var(--fw-text-muted);font-size:19px}
+.campaign-armory-screen .campaign-kit-picker-trigger:disabled{opacity:.48}
+.campaign-gear-picker-backdrop{position:fixed;inset:0;z-index:20010;
+ background:rgba(4,13,11,.78);display:flex;align-items:flex-end;
+ justify-content:center;padding:12px;box-sizing:border-box}
+.campaign-gear-picker-panel{width:min(100%,540px);max-height:min(82dvh,780px);
+ min-height:140px;display:flex;flex-direction:column;overflow:hidden;
+ color:#e9eee0;background:#1a3028;border:1px solid #829d8b;
+ border-radius:15px;box-shadow:0 18px 50px #0009}
+.campaign-gear-picker-head{display:flex;align-items:center;justify-content:space-between;
+ padding:16px 16px 12px;gap:10px;border-bottom:1px solid #405d50}
+.campaign-gear-picker-head h2{font:700 19px var(--fw-font-display);margin:0}
+.campaign-gear-picker-close{width:auto;min-height:40px;margin:0;
+ padding:8px 12px;font:700 12px var(--fw-font-action)}
+.campaign-gear-picker-list{overflow-y:auto;overscroll-behavior:contain;
+ display:grid;gap:6px;padding:10px 12px max(16px,env(safe-area-inset-bottom))}
+.campaign-gear-picker-option{text-align:left;display:grid;gap:3px;min-height:66px;
+ padding:12px 14px;margin:0;width:100%;
+ border:1px solid #506c5b;border-radius:10px;
+ background:#2a4336;color:#eaf0df}
+.campaign-gear-picker-option strong{font:700 16px var(--fw-font-action)}
+.campaign-gear-picker-option small{font:600 12px var(--fw-font-data);color:#d5c196}
+.campaign-gear-picker-option span{font:400 13px/1.35 var(--fw-font-narrative);color:#bacabb}
+.campaign-gear-picker-option em{font:400 12px var(--fw-font-action);
+ color:#c6aca0;font-style:normal}
+.campaign-gear-picker-option[aria-current="true"]{border-color:#c5d7aa;
+ background:#3a5948}
+.campaign-gear-picker-option:disabled{opacity:.52}
+.campaign-gear-picker-panel button:focus-visible{outline:2px solid #eed2a0;outline-offset:2px}
+@media(min-width:720px){
+ .campaign-gear-picker-backdrop{align-items:center}
+}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-picker-trigger{max-width:65%}
+ .campaign-gear-picker-backdrop{padding:6px}
+ .campaign-gear-picker-panel{max-height:86dvh;border-radius:16px 16px 10px 10px}
+}
+
+/* Equipment E4.A — single clear weapon workbench entry in the weapon section. */
+.campaign-armory-screen .campaign-kit-workbench-entry{
+ display:grid;gap:8px;padding:14px;margin:12px 0 8px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:10px}
+.campaign-armory-screen .campaign-kit-workbench-entry>strong{
+ font:700 16px/1.2 var(--fw-font-display);
+ color:var(--fw-text-warm);letter-spacing:.03em}
+.campaign-armory-screen .campaign-kit-workbench-entry>.campaign-note{
+ margin:0;color:var(--fw-text-muted);
+ font:400 13px/1.45 var(--fw-font-narrative)}
+.campaign-armory-screen .campaign-kit-arsenal-launch{
+ width:100%;min-height:46px;margin:2px 0 0;font-size:14px}
+.campaign-armory-screen .campaign-kit-arsenal-launch:disabled{opacity:.48}
+.campaign-armory-screen .campaign-legacy-weapons{
+ border:1px solid var(--fw-panel-border);border-radius:8px;
+ padding:8px 10px;margin:10px 0;background:var(--fw-panel-deep)}
+.campaign-armory-screen .campaign-legacy-weapons>summary{
+ min-height:42px;display:flex;align-items:center;
+ font:700 12px/1.35 var(--fw-font-display);color:var(--fw-text-muted);
+ cursor:pointer;touch-action:manipulation}
+
+/* Equipment E5.A: durable protection condition is NOT protection rating. */
+.campaign-kit-condition-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px}
+.campaign-kit-condition{min-width:0;padding:10px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:8px;display:grid;gap:8px}
+.campaign-kit-condition-head{display:flex;align-items:center;
+ justify-content:space-between;flex-wrap:wrap;gap:5px;
+ font:700 11px/1.3 var(--fw-font-action)}
+.campaign-kit-condition-head span{color:var(--fw-text-muted)}
+.campaign-kit-condition-head strong{color:var(--fw-text-warm);font-variant-numeric:tabular-nums}
+.campaign-kit-condition-track{height:7px;width:100%;border-radius:5px;
+ background:var(--fw-control-bg);border:1px solid var(--fw-panel-border);overflow:hidden}
+.campaign-kit-condition-fill{display:block;height:100%;background:var(--fw-sage);
+ transition:width .2s ease}
+.campaign-kit-condition[data-condition="worn"] .campaign-kit-condition-fill{background:var(--fw-brass)}
+.campaign-kit-service-funds{margin:4px 0 0;color:var(--fw-text-muted);
+ font:700 11px var(--fw-font-action)}
+.campaign-kit-serial-record{border-top:1px solid var(--fw-panel-border);
+ padding:9px 0;font:600 12px var(--fw-font-action)}
+.campaign-kit-serial-record summary{cursor:pointer;min-height:35px;
+ display:flex;align-items:center;color:var(--fw-text-muted)}
+.campaign-kit-serial-record .campaign-note{overflow-wrap:anywhere}
+@media(max-width:390px){.campaign-kit-condition-panel{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.campaign-kit-condition-fill{transition:none}}
+
+/* Equipment E5.B: readable saved-kit cards instead of native selector menus. */
+.campaign-armory-screen .campaign-kit-presets{
+ margin:4px 0 12px;border:1px solid var(--fw-panel-border);
+ border-radius:10px;background:var(--fw-panel-deep)}
+.campaign-armory-screen .campaign-kit-presets>summary{
+ min-height:44px;padding:12px 13px;cursor:pointer;
+ font:750 14px var(--fw-font-display)}
+.campaign-armory-screen .campaign-kit-presets>.campaign-kit-actions{
+ padding:3px 12px 12px;margin:0}
+.campaign-kit-preset-list{display:grid;gap:8px;padding:0 12px 12px}
+.campaign-kit-preset-card{min-width:0;padding:12px;
+ background:var(--fw-panel);border:1px solid var(--fw-panel-border);
+ border-radius:8px;display:grid;gap:7px}
+.campaign-kit-preset-heading{display:flex;justify-content:space-between;gap:6px;
+ flex-wrap:wrap;align-items:center}
+.campaign-kit-preset-heading strong{font:750 16px var(--fw-font-action);
+ color:var(--fw-text-warm);overflow-wrap:anywhere}
+.campaign-kit-preset-heading small{font:700 12px var(--fw-font-data);
+ color:var(--fw-text-muted)}
+.campaign-kit-preset-summary{margin:0;color:var(--fw-text-muted);
+ font:500 12px/1.45 var(--fw-font-action)}
+.campaign-kit-preset-eligibility{margin:0;color:var(--fw-sage);
+ font:700 11px/1.35 var(--fw-font-action)}
+.campaign-kit-preset-card[data-unavailable="true"] .campaign-kit-preset-eligibility{
+ color:var(--fw-brass)}
+.campaign-kit-preset-actions{display:flex;gap:7px}
+.campaign-kit-preset-actions button{flex:1;min-width:0;
+ min-height:44px;margin:0;font-size:12px}
+.campaign-kit-presets>.campaign-note{margin:0;padding:0 12px 12px;
+ color:var(--fw-text-muted);font-size:11px}

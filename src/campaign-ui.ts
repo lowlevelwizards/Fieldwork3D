@@ -27,7 +27,7 @@ import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
-import {CampaignKitPreview} from './equipment-preview.ts';
+import {CampaignKitPreview,type EquipmentPreviewFocus} from './equipment-preview.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState}
@@ -45,8 +45,9 @@ import {kitMedicalSupplies,medicalSupplyCount} from './equipment-medical-supplie
 import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
+import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import './campaign-style.css';
-import {buildQuickLoadoutGroups,loadoutGroupForSlot,
+import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;training:()=>void;
@@ -109,6 +110,7 @@ export class CampaignScreen{
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
+ private showKitPresets=false;
  private readonly operatorViewAngles=new Map<string,number>();
  /** Keep orbit/zoom only across small cosmetic swaps; refit a new core. */
  private readonly weaponWorkbenchViews=new Map<string,{
@@ -1229,23 +1231,23 @@ export class CampaignScreen{
   const restoreScroll=sameOperator?this.root.scrollTop:0;
   const previousFocus=this.root.contains(document.activeElement)?
     document.activeElement?.getAttribute('aria-label'):null;
-  this.disposePreview();
+  // The same operator keeps one preview renderer while HTML controls refresh.
+  const retainOperatorPreview=sameOperator&&!this.weaponView&&!!this.preview?.isReady();
+  if(!retainOperatorPreview)this.disposePreview();
   if(!sameOperator){this.activeKitGroup='weapon';this.selectedWorkbenchSocket=null;}
   this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
   this.root.hidden=false;this.root.replaceChildren();
-  const main=node('main','campaign-shell campaign-wide');
-  const top=node('div','campaign-head');
+  const main=node('main','campaign-shell campaign-wide campaign-armory-screen');
+  const top=node('div','campaign-head campaign-armory-head');
   const identity=node('div');
   identity.append(node('div','campaign-eyebrow','PERSONNEL / FIELD ARMORY'),
    node('h1','',person.callsign+' / EQUIPMENT'));
-  top.append(identity,node('div','campaign-funds',
-   totalEquipmentMass(person.loadout,person.weaponConfiguration).toFixed(2)+' KG · ASSIGNED KIT'));
-  main.append(top);
-  main.append(button('← BACK TO OPERATIONS',()=>{
+  top.append(button('← OPERATIONS',()=>{
    this.armoryOperatorId=null;this.home(c);
-  }));
+  },'campaign-armory-back'),identity);
+  main.append(top);
   const nav=node('div','campaign-kit-nav');
   for(const member of c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired')){
    const choose=button(member.callsign,()=>{
@@ -1259,12 +1261,11 @@ export class CampaignScreen{
   const summary=node('section','campaign-section campaign-kit-summary');
   summary.append(node('h2','','OPERATOR'));
   const preview=node('div','campaign-kit-preview');
-  const viewToggle=button(this.weaponView?'SHOW FULL OPERATOR':'CLASSIC SOCKET PREVIEW',()=>{
+  const viewToggle=button(this.weaponView?'RETURN TO OPERATOR':'INSPECT WEAPON MODEL',()=>{
    this.weaponView=!this.weaponView;this.armory(c,id);
   });
-  summary.append(preview,node('p','campaign-note',
+  summary.append(preview,node('p','campaign-note campaign-preview-hint',
    this.weaponView?'DRAG TO ROTATE · TAP A MOUNT TO SELECT ITS SLOT':'DRAG THE SOLDIER TO ROTATE'));
-  summary.append(node('strong','campaign-kit-name',person.callsign));
   const identityActions=node('div','campaign-kit-actions');
   const rename=button('EDIT CALLSIGN',async()=>{
    const name=await promptFieldworkText({
@@ -1276,12 +1277,72 @@ export class CampaignScreen{
   const appearance=button('APPEARANCE · OPEN STUDIO',()=>this.handlers.openStudio(id));
   rename.disabled=!!c.activeContractId;
   appearance.disabled=!!c.activeContractId;
-  const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
+  const arsenal=button('OPEN ARSENAL · FULL WORKBENCH',
+   ()=>this.handlers.openArsenal(id),'campaign-primary campaign-kit-arsenal-launch');
   arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build||
    (isDispatchPilot(c)&&effectiveDispatchSetup(c).equipmentScope!=='global');
-  identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
+  if(arsenal.disabled)arsenal.title='Arsenal restricted for this campaign or deployment';
+  identityActions.append(rename,appearance);summary.append(identityActions);
+  const maximum=initialArmorIntegrity(person.loadout);
+  const repairCost=armorRepairCost(person);
+  const firearm=c.inventory.serializedWeapons?.find(w=>w.id===person.weaponSerialId);
+  const serviceCost=firearm?weaponServiceCost(firearm):0;
+  const stats=node('div','campaign-kit-at-a-glance');
+  for(const [name,value] of [
+   ['LOAD',totalEquipmentMass(person.loadout,person.weaponConfiguration).toFixed(2)+' KG'],
+   ['MOBILITY',Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100)+'%'],
+   ['LOADED',person.magazine+' RDS'],
+   ['RESERVE',person.reserve+' RDS'],
+   ['MEDICAL',String(medicalSupplyCount(person.medicalSupplies))]
+  ]){
+   const metric=node('div','campaign-kit-stat');
+   metric.append(node('small','',name),node('strong','',value));stats.append(metric);
+  }
+  summary.append(stats);
+  const conditionPanel=node('div','campaign-kit-condition-panel');
+  for(const [label,condition,limit] of [
+   ['BODY ARMOR',person.armorCondition.torso,maximum.torso],
+   ['HEAD PROTECTION',person.armorCondition.head,maximum.head]
+  ] as const){
+   const entry=node('div','campaign-kit-condition');
+   const header=node('div','campaign-kit-condition-head');
+   header.append(node('span','',label),
+    node('strong','',limit>0?condition+' / '+limit+' CONDITION':'NONE EQUIPPED'));
+   entry.append(header);
+   const track=node('div','campaign-kit-condition-track');
+   track.setAttribute('role','progressbar');
+   track.setAttribute('aria-label',label+' condition');
+   track.setAttribute('aria-valuemin','0');
+   track.setAttribute('aria-valuemax',String(limit||1));
+   track.setAttribute('aria-valuenow',String(limit?condition:0));
+   const fill=node('span','campaign-kit-condition-fill');
+   fill.style.width=(limit>0?Math.max(0,Math.min(100,condition/limit*100)):0)+'%';
+   if(limit>0&&condition<limit)entry.dataset.condition='worn';
+   track.append(fill);entry.append(track);conditionPanel.append(entry);
+  }
+  summary.append(conditionPanel);
+  const maintenance=node('div','campaign-kit-maintenance');
+  if(repairCost>0){
+   const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
+    ()=>this.handlers.repairArmor(person.id));
+   repair.disabled=!!c.activeContractId||c.funds<repairCost;
+   if(repair.disabled)repair.title=c.activeContractId?
+    'Locked during deployment':'Insufficient credits';
+   maintenance.append(repair);
+  }
+  if(firearm&&serviceCost>0){
+   const service=button('SERVICE WEAPON · '+serviceCost+' CR',
+    ()=>this.handlers.serviceWeapon(person.id));
+   service.disabled=!!c.activeContractId||c.funds<serviceCost;
+   if(service.disabled)service.title=c.activeContractId?
+    'Locked during deployment':'Insufficient credits';
+   maintenance.append(service);
+  }
+  if(maintenance.childElementCount)summary.append(
+   node('p','campaign-kit-service-funds','SERVICE FUNDS · '+c.funds+' CR AVAILABLE'),
+   maintenance);
   const readiness=node('details','campaign-readiness-details');
-  readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
+  readiness.append(node('summary','','SERVICE RECORD & DETAILED READINESS'));
   const carrying=carryCapacityReport(person.loadout,person.magazines);
   const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
   if(carryItems.length)readiness.append(node('p','campaign-note',
@@ -1296,16 +1357,14 @@ export class CampaignScreen{
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
-  const firearm=c.inventory.serializedWeapons?.find(w=>w.id===person.weaponSerialId);
   if(firearm){
-   const serviceCost=weaponServiceCost(firearm);
-   const service=button('SERVICE WEAPON · '+serviceCost+' CR',
-    ()=>this.handlers.serviceWeapon(person.id));
-   service.disabled=!!c.activeContractId||serviceCost===0||c.funds<serviceCost;
-   readiness.append(service);
    readiness.append(node('p','campaign-kit-metrics',
-    'SERIAL · '+firearm.id+' · CONDITION '+firearm.condition+'% · '+
+    'WEAPON CONDITION · '+firearm.condition+'% · '+
     firearm.roundsFired+' ROUNDS FIRED'));
+    const serialDetails=node('details','campaign-kit-serial-record');
+    serialDetails.append(node('summary','','WEAPON RECORD IDENTIFIER'),
+     node('p','campaign-note',firearm.id));
+    readiness.append(serialDetails);
    const recent=firearm.history.slice(-3).map(e=>
     'DAY '+e.day+' '+e.kind.toUpperCase()+
     (e.rounds?' · '+e.rounds+' RDS':'')).join(' / ');
@@ -1322,36 +1381,29 @@ export class CampaignScreen{
    ' · STOWED '+magSlots.overflow));
   readiness.append(node('p','campaign-note',
    'Spare magazines can be individually placed below. Chest and belt magazines reload faster; backpack and overflow retrievals take longer.'));
-  const maximum=initialArmorIntegrity(person.loadout);
-  const repairCost=armorRepairCost(person);
   readiness.append(node('p','campaign-kit-metrics',
    'ARMOR · '+person.armorCondition.torso+'/'+maximum.torso+
    '     HELMET · '+person.armorCondition.head+'/'+maximum.head));
-  const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
-   ()=>this.handlers.repairArmor(person.id));
-  repair.disabled=!!c.activeContractId||repairCost===0||c.funds<repairCost;
-  readiness.append(repair);
   const capacity=kitMedicalSupplies(person.loadout);
   readiness.append(node('p','campaign-kit-metrics',
    'FIELD MEDICAL · '+medicalSupplyCount(person.medicalSupplies)+' / '+
     medicalSupplyCount(capacity)+' · HQ RESERVE '+c.supplies.medical));
-  readiness.append(node('p','campaign-kit-metrics',
-   'WEAPON CONFIG · '+Object.values(person.weaponConfiguration.slots)
-    .map(v=>v.replace(/^[^-]+-/,'')).join(' / ')));
-  readiness.append(node('p','campaign-note',
-   'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Coarse armor coverage and durability are now simulated; detailed ballistic hitboxes, retrieval times, tools and attachment handling are still in development.'));
-  readiness.append(node('p','campaign-note',
-   'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
+  const configuration=node('details','campaign-kit-serial-record');
+  configuration.append(node('summary','','TECHNICAL WEAPON CONFIGURATION'),
+   node('p','campaign-kit-metrics',Object.values(person.weaponConfiguration.slots).join(' / ')));
+  readiness.append(configuration);
   summary.append(readiness);
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
   const dispatchPilot=isDispatchPilot(c)&&
    effectiveDispatchSetup(c).equipmentScope!=='global';
-  if(dispatchPilot)editor.append(node('p','campaign-note',
-   'DISPATCH PILOT · Curated equipment and saved kits remain available. Operator Studio permits only verified identity, uniform finish and glove options; helmet and advanced equipment editors remain restricted.'));
+  if(dispatchPilot)editor.append(node('p','campaign-note campaign-kit-access',
+   'DISPATCH PILOT · CURATED EQUIPMENT ACCESS'));
   const presets=node('details','campaign-kit-presets');
-  presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
+  presets.open=this.showKitPresets;
+  presets.addEventListener('toggle',()=>{this.showKitPresets=presets.open;});
+  presets.append(node('summary','','SAVED KITS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
   const save=button('SAVE CURRENT KIT',async()=>{
    const name=await promptFieldworkText({
@@ -1363,53 +1415,100 @@ export class CampaignScreen{
   });
   save.disabled=locked||c.kitPresets.length>=24;
   presetActions.append(save);
-  const picker=node('select','campaign-select');
-  picker.setAttribute('aria-label','Choose saved equipment preset');
-  const blank=node('option','','SELECT PRESET');blank.value='';picker.append(blank);
-  for(const preset of c.kitPresets){
-   const option=node('option','',preset.name+' · '+preset.weapon.toUpperCase());
-   option.value=preset.id;
-   if(dispatchPilot&&!canApplyCampaignKitPreset(c,id,preset.id))option.disabled=true;
-   picker.append(option);
+  if(locked)save.title='Kit presets cannot change during a deployment';
+  else if(c.kitPresets.length>=24)save.title='Maximum 24 saved kits';
+  presets.append(presetActions);
+  const kitList=node('div','campaign-kit-preset-list');
+  if(!c.kitPresets.length){
+   kitList.append(node('p','campaign-note',
+    'No saved kits. Save this operator’s current equipment to reuse it later.'));
   }
-  const load=button('APPLY PRESET',()=>{
-   if(picker.value){
-    const preset=c.kitPresets.find(p=>p.id===picker.value);
-    if(preset&&preset.weapon!==person.weapon&&c.inventory.weapons[preset.weapon]<1){
-     void showFieldworkNotice('Equipment unavailable',
-      'This preset requires a primary weapon not currently available in the armory.');
-     return;
-    }
-    this.handlers.applyKitPreset(id,picker.value);
-   }
-  });
-  const remove=button('DELETE PRESET',async()=>{
-   if(!picker.value)return;
-   const selectedPreset=picker.value;
-   if(await confirmFieldworkAction({
-    title:'Delete saved kit preset?',
-    message:'This deletes the preset, not the equipment you own.',
-    confirmLabel:'DELETE PRESET',danger:true
-   }))this.handlers.deleteKitPreset(selectedPreset);
-  });
-  load.disabled=locked||c.kitPresets.length===0||
-   (dispatchPilot&&!c.kitPresets.some(p=>canApplyCampaignKitPreset(c,id,p.id)));
-  picker.addEventListener('change',()=>{
-   load.disabled=locked||!picker.value||!canApplyCampaignKitPreset(c,id,picker.value);
-  });
-  remove.disabled=locked||c.kitPresets.length===0;
-  presetActions.append(picker,load,remove);
-  presets.append(presetActions,node('p','campaign-note',
-   dispatchPilot?'Dispatch validates every saved kit item and prevents unsupported weapon changes. Existing inventory is preserved.':
-   'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
+  for(const preset of c.kitPresets){
+   const allowed=canApplyCampaignKitPreset(c,id,preset.id);
+   const available=preset.weapon===person.weapon||
+    (c.inventory.weapons[preset.weapon]??0)>0;
+   const card=node('article','campaign-kit-preset-card');
+   const heading=node('div','campaign-kit-preset-heading');
+   heading.append(node('strong','',preset.name),
+    node('small','',preset.weapon.toUpperCase()+' · '+
+     totalEquipmentMass(preset.kit,preset.weaponConfiguration).toFixed(2)+' KG'));
+   const detail=node('p','campaign-kit-preset-summary',
+    (itemDefinition(preset.kit.slots.head)?.name??'No headwear')+' · '+
+    (itemDefinition(preset.kit.slots.armor)?.name??'No armor'));
+   const eligible=allowed&&available&&!locked;
+   const explanation=node('p','campaign-kit-preset-eligibility',
+    locked?'LOCKED DURING DEPLOYMENT':
+    !allowed?'RESTRICTED BY CAMPAIGN EQUIPMENT RULES':
+    !available?'PRIMARY WEAPON NOT AVAILABLE':
+    'READY TO APPLY · USES OWNED EQUIPMENT');
+   if(!eligible)card.dataset.unavailable='true';
+   const actions=node('div','campaign-kit-preset-actions');
+   const apply=button('EQUIP KIT',()=>this.handlers.applyKitPreset(id,preset.id),
+    'campaign-primary');
+   apply.disabled=!eligible;
+   if(!eligible)apply.title=explanation.textContent??'Kit unavailable';
+   const remove=button('DELETE',async()=>{
+    if(await confirmFieldworkAction({
+     title:'Delete saved kit preset?',
+     message:'Delete "'+preset.name+'"? This removes only the preset, never owned equipment.',
+     confirmLabel:'DELETE PRESET',danger:true
+    }))this.handlers.deleteKitPreset(preset.id);
+   });
+   remove.disabled=locked;
+   actions.append(apply,remove);
+   card.append(heading,detail,explanation,actions);
+   kitList.append(card);
+  }
+  presets.append(kitList);
+  presets.append(node('p','campaign-note',
+   'Saved kits store equipment configurations, not duplicate weapons or stock.'));
+  editor.append(node('h2','','EQUIPMENT'));
   editor.append(presets);
-  editor.append(node('h2','','LOADOUT'));
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
-  const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,group=>{
+  const categoryBar=node('div','campaign-kit-categories');
+  categoryBar.setAttribute('role','tablist');
+  categoryBar.setAttribute('aria-label','Equipment categories');
+  const categoryTabs=new Map<QuickLoadoutGroup,HTMLButtonElement>();
+  const setCategory=(group:QuickLoadoutGroup)=>{
    this.activeKitGroup=group;
+   const focus:Record<QuickLoadoutGroup,EquipmentPreviewFocus>={
+    weapon:'weapon',protection:'torso',carry:'carry',
+    utilities:'carry',issued:'full'
+   };
+   this.preview?.focusOn(focus[group]);
+   for(const [key,control] of categoryTabs){
+    control.setAttribute('aria-selected',String(key===group));
+    control.tabIndex=key===group?0:-1;
+   }
+  };
+  const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,setCategory);
+  for(const definition of QUICK_LOADOUT_GROUPS){
+   const group=definition.id;
+   const select=button(definition.title,()=>{
+    grouped.group[group].open=true;
+    setCategory(group);
+   },'campaign-kit-category');
+   select.setAttribute('role','tab');
+   select.setAttribute('aria-controls','campaign-kit-section-'+group);
+   select.setAttribute('aria-selected',String(group===this.activeKitGroup));
+   select.tabIndex=group===this.activeKitGroup?0:-1;
+   grouped.group[group].id='campaign-kit-section-'+group;
+   grouped.group[group].setAttribute('role','tabpanel');
+   grouped.group[group].setAttribute('aria-label',definition.title+' equipment');
+   categoryTabs.set(group,select);categoryBar.append(select);
+  }
+  categoryBar.addEventListener('keydown',event=>{
+   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+   const keys=QUICK_LOADOUT_GROUPS.map(g=>g.id);
+   const index=keys.indexOf(this.activeKitGroup);
+   const next=event.key==='Home'?0:event.key==='End'?keys.length-1:
+    (index+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length;
+   event.preventDefault();categoryTabs.get(keys[next])?.click();
+   categoryTabs.get(keys[next])?.focus({preventScroll:true});
   });
+  editor.insertBefore(categoryBar,grouped.group.weapon);
   for(const slot of LOADOUT_SLOTS){
-   const row=node('label','campaign-kit-row');
+   const row=node('div','campaign-kit-row');
    const title=node('span','',slot.replace(/-/g,' ').toUpperCase());
    const select=node('select','campaign-select');
    select.setAttribute('aria-label','Select '+slot+' for '+person.callsign);
@@ -1445,13 +1544,30 @@ export class CampaignScreen{
      id,slot,select.value));
    }
    select.disabled=locked;
-   row.append(title,select);
+   select.classList.add('campaign-kit-native-select');
+   const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '));
+   picker.addEventListener('click',()=>{
+    const focus:EquipmentPreviewFocus=slot==='head'?'head':
+     slot==='armor'?'torso':slot==='primary'?'weapon':
+     slot==='rig'||slot==='belt'||slot==='backpack'?'carry':'full';
+    this.preview?.focusOn(focus);
+   });
+   row.append(title,select,picker);
    const selected=itemDefinition(person.loadout.slots[slot]);
    const info=node('small','campaign-kit-description',selected?.description??'');
    const wrap=node('div','campaign-kit-choice');
    wrap.append(row,info);
    grouped.field(loadoutGroupForSlot(slot)).append(wrap);
   }
+  const workbenchEntry=node('section','campaign-kit-workbench-entry');
+  workbenchEntry.append(node('strong','','MODULAR WEAPON WORKBENCH'));
+  workbenchEntry.append(node('p','campaign-note',arsenal.disabled?
+   locked?'Finish the active deployment to edit your weapon.':
+   dispatchPilot?'Advanced weapon editing is restricted in this Dispatch campaign.':
+   'This issued weapon does not have a modular workbench.':
+   'Inspect the weapon and change compatible parts in the dedicated Arsenal.'));
+  workbenchEntry.append(arsenal);
+  grouped.field('weapon').append(workbenchEntry);
   // Cosmetics have one authoritative editor: Operator Studio.
   // Campaign equipment stock, purchase costs and protection remain here.
   // The family prototype sits above legacy accessory mounts: modular body
@@ -1466,9 +1582,9 @@ export class CampaignScreen{
    if(legacyControls.open)this.expandedClassicWeaponControls.add(id);
    else this.expandedClassicWeaponControls.delete(id);
   });
-  legacyControls.append(node('summary','','ADVANCED · CLASSIC WEAPON CONTROLS'),
+  legacyControls.append(node('summary','','LEGACY WEAPON CONTROLS · TROUBLESHOOTING'),
    node('p','campaign-note',
-    'Use OPEN ARSENAL to build modular weapons. These direct controls remain available for unsupported weapons and troubleshooting.'),
+    'Direct configuration remains available for unsupported weapons. Use the dedicated Arsenal for modular builds.'),
    viewToggle);
   familyEditor.open=true;
   familyEditor.append(node('summary','','WEAPON FAMILY / MODULAR FURNITURE'));
@@ -1646,11 +1762,17 @@ export class CampaignScreen{
     this.workbench.showSocketChoices(remembered,savedSelect);
    else this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
   }else{
-   this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
-    person.appearanceSeed,person.loadout,person.weaponConfiguration,
-    person.magazines,person.wardrobe);
-   const azimuth=this.operatorViewAngles.get(id);
-   if(azimuth!==undefined)this.preview.setAzimuth(azimuth);
+   if(retainOperatorPreview&&this.preview){
+    this.preview.attachHost(preview);
+    this.preview.updateEquipment(person.weapon,person.appearanceSeed,person.loadout,
+     person.weaponConfiguration,person.magazines,person.wardrobe);
+   }else{
+    this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
+     person.appearanceSeed,person.loadout,person.weaponConfiguration,
+     person.magazines,person.wardrobe);
+    const azimuth=this.operatorViewAngles.get(id);
+    if(azimuth!==undefined)this.preview.setAzimuth(azimuth);
+   }
   }
   this.root.scrollTop=restoreScroll;
   if(previousFocus){
