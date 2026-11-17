@@ -785,15 +785,34 @@ export class CampaignScreen{
   utilities.append(utilityContent);footer.append(utilities);
   const overview=node('section','campaign-section campaign-overview');
   overview.append(node('h2','','OPERATIONS DASHBOARD'));
-  // A clear next action remains visible before records, readiness and statistics.
+  // The first viewport describes a decision instead of showing a lone button.
+  const availableContracts=c.contracts.filter(k=>
+   k.status==='available'&&k.deadline>=c.day);
+  const nextCard=node('section','campaign-next-action');
+  nextCard.append(node('div','campaign-next-action-eyebrow',
+   accepted?'DEPLOYMENT IN PROGRESS':'NEXT ASSIGNMENT'));
+  if(accepted){
+   const current=campaignIncidentView(c,accepted);
+   nextCard.append(node('h3','',current.title),
+    node('p','campaign-note',
+     accepted.region+' · Assignment accepted · Return to mission planning'));
+  }else{
+   nextCard.append(node('h3','',
+    availableContracts.length?availableContracts.length+
+     ' CONTRACT'+(availableContracts.length===1?'':'S')+' AVAILABLE':
+     'NO OPEN CONTRACTS'),
+    node('p','campaign-note',availableContracts.length?
+     'Review case details, check your team, then choose an assignment.':
+     'No current assignments to accept. Review records or prepare the team.'));
+  }
   const nextAction=accepted?
    button('CONTINUE DEPLOYMENT · '+campaignIncidentView(c,accepted).title.toUpperCase(),
     this.handlers.resumeContract,'campaign-primary'):
-   button('BROWSE CONTRACTS · '+c.contracts.filter(k=>
-    k.status==='available'&&k.deadline>=c.day).length+' AVAILABLE',
+   button('BROWSE CONTRACTS · '+availableContracts.length+' AVAILABLE',
     ()=>activateTab('contracts'),'campaign-primary');
   nextAction.classList.add('campaign-overview-primary-action');
-  overview.append(nextAction);
+  nextCard.append(nextAction);
+  overview.append(nextCard);
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
    const department=node('details','campaign-department-identity');
