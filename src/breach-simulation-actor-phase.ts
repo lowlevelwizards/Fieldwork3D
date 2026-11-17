@@ -5,7 +5,7 @@
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
-import {wallSafeFall} from './breach-ground-geometry.ts';
+import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
 import {idleYieldAllowed,commitIdleYield} from './breach-passage-yield.ts';
@@ -80,16 +80,8 @@ export function advanceSimulationActors(s:Session,h:number,
           if(a.retreatPoint){a.alert='retreat';a.nav=[];}
         }
       }
-      if(resolve==='surrender'){
-        a.surrendered=true;a.health=0;a.injuryStage=3;
-        a.lastDownAt=s.seconds;
-        const fall=wallSafeFall(a.p,a.heading,'slump',sessionWorldGeometry(s).walls);
-        a.downPose=fall.pose;a.downClearance=fall.space;
-        a.velocity=0;a.nav=[];a.plan=[];
-        a.reload=0;a.reloadMode=null;
-        notify(s,a.name+' SURRENDERED');
-        battleEvent(s,'surrender',a,a.p,a.name+' SURRENDERED');
-      }
+      if(resolve==='surrender')
+        commitSuspectSurrender(s,a,notify,battleEvent);
     }
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
