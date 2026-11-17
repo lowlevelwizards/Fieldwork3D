@@ -36,6 +36,11 @@ export type WeaponMountInventory=Readonly<{
  */
 function contactEvidence(s:WeaponMountSurface):
  Pick<MountInventoryEntry,'contact'|'evidenceSource'>{
+ if(s.standard==='ak-side-dovetail'||
+    s.ownerPartId==='optic-ak-side-picatinny'){
+  return {contact:'authored',
+   evidenceSource:'src/weapons/geometry/ak-side-mount-geometry.ts'};
+ }
  if(s.ownerPartId==='ak-rail-long'){
   // AK builder only adds the TOP block: no lower or lateral rails exist.
   return {contact:s.face==='top'?'authored':'declared-only',
@@ -90,7 +95,9 @@ export function auditWeaponMountInventory(config:WeaponConfiguration):WeaponMoun
   if(contact==='unreviewed')
    findings.push({code:'unknown-geometry',ownerPartId:surface.ownerPartId,
     surfaceId:surface.id});
-  if(surface.face==='side')
+  // M2.3's left-only AK receiver dovetail is unambiguous; M1 generic
+  // handguard side declarations still need physical handedness resolution.
+  if(surface.face==='side'&&surface.standard!=='ak-side-dovetail')
    findings.push({code:'ambiguous-side',ownerPartId:surface.ownerPartId,
     surfaceId:surface.id});
  }
