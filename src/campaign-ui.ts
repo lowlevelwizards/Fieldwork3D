@@ -94,6 +94,8 @@ export class CampaignScreen{
  private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
+ /** Keeps the selected case available while preparing squad or supplies. */
+ private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
@@ -891,6 +893,26 @@ export class CampaignScreen{
   const sections={
    overview,personnel,contracts:jobs,logistics,chronicle
   } as const;
+  if(this.preparationContractId){
+   const pending=c.contracts.find(k=>k.id===this.preparationContractId&&
+    k.status==='available'&&k.deadline>=c.day);
+   if(pending){
+    for(const section of [personnel,logistics]){
+     const returnBanner=node('div','campaign-preparation-return');
+     const returnButton=button(
+      'RETURN TO CASE · '+campaignIncidentView(c,pending).title,
+      ()=>{
+       this.preparationContractId=null;
+       this.homeTab='contracts';
+       this.home(c);
+       this.root.scrollTop=0;
+       this.reviewContract(pending,c);
+      },'campaign-primary');
+     returnBanner.append(returnButton);
+     section.insertBefore(returnBanner,section.firstChild);
+    }
+   }else this.preparationContractId=null;
+  }
   const nav=node('nav','campaign-tabs');
   nav.setAttribute('role','tablist');
   nav.setAttribute('aria-label','Operations Room sections');
@@ -1528,6 +1550,7 @@ export class CampaignScreen{
    const needsSupply=campaign.supplies.ammo<60||campaign.supplies.medical===0;
    const fix=(tab:'personnel'|'logistics')=>{
     dismiss();
+    this.preparationContractId=contract.id;
     this.homeTab=tab;
     this.home(campaign);
     // A targeted prep shortcut should land at the start of its new section.

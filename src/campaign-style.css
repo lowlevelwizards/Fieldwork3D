@@ -822,3 +822,9 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  color:var(--fw-text);font:650 12px/1.3 var(--fw-font-menu);cursor:pointer}
 .campaign-preflight-fix-actions button:hover{background:var(--fw-panel)}
 @media(max-width:400px){.campaign-preflight-fix-actions{grid-template-columns:minmax(0,1fr)}}
+
+/* R9.2: keep the selected case as a return point during squad/stock preparation. */
+.campaign-preparation-return{margin:0 0 12px;padding:0}
+.campaign-shell .campaign-preparation-return button{width:100%;min-height:46px;
+ margin:0;text-align:left;padding:10px 13px;line-height:1.25;
+ overflow-wrap:anywhere}
