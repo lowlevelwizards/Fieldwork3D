@@ -64,6 +64,7 @@ export type SiteSceneBuildPort={
  sharedBoxGeometries:Set<THREE.BufferGeometry>;
  visualTemplates?:StaticVisualTemplateLibrary;
  fixtureTemplates?:StaticVisualTemplateLibrary;
+ includeServiceFixtureTemplates?:boolean;
  registerVisualLease?:(lease:StaticVisualLease)=>void;
  siteMaterials:SiteMaterialLifetime<THREE.Material>;
  mats:THREE.Material[];
@@ -532,7 +533,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         metal:host.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel')
       };
       const templateLease=host.fixtureTemplates&&host.registerVisualLease?
-        acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette):
+        acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
+          host.includeServiceFixtureTemplates===true):
         null;
       if(templateLease){
         // Direct children preserve the existing per-cover instancing and

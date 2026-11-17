@@ -692,8 +692,10 @@ export class TacticalScene3D{
   private readonly useArchitectureTemplates=new URLSearchParams(location.search)
     .get('e622Template')==='1';
   // Independent opt-in; rigid cover geometry is immutable, damage/wear is not.
-  private readonly useFixtureTemplates=new URLSearchParams(location.search)
-    .get('e623Fixture')==='1';
+  private readonly includeServiceFixtureTemplates=new URLSearchParams(location.search)
+    .get('e624Service')==='1';
+  private readonly useFixtureTemplates=this.includeServiceFixtureTemplates||
+    new URLSearchParams(location.search).get('e623Fixture')==='1';
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
   private readonly fixtureLights=new SiteFixtureLightingPresenter(this.scene);
   // One shared cosmetic draw rather than two transparent WebGL passes per rig.
@@ -1225,6 +1227,7 @@ export class TacticalScene3D{
         scene.architecturalVisualTemplates:undefined,
       fixtureTemplates:scene.useFixtureTemplates?
         scene.architecturalVisualTemplates:undefined,
+      includeServiceFixtureTemplates:scene.includeServiceFixtureTemplates,
       registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
