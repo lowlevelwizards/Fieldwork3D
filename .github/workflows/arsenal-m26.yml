@@ -6,6 +6,7 @@ on:
       - 'src/arsenal/**'
       - 'src/equipment-weapon-assemblies.ts'
       - 'src/equipment-weapon-inventory.ts'
+      - 'src/equipment-weapon-transactions.ts'
       - 'src/weapons/geometry/weapon-mount-*.ts'
       - 'src/weapons/geometry/mounted-accessory-layout.ts'
       - 'src/campaign-state.ts'
@@ -28,6 +29,9 @@ jobs:
           node --experimental-strip-types --test \
             tests/arsenal-m26-persistent-mounts.test.mjs \
             tests/arsenal-m26-transactions.test.mjs \
+            tests/arsenal-m26-stock-transfer.test.mjs \
+            tests/equipment-19-09-campaign-armory.test.mjs \
+            tests/arsenal-v2-assembly.test.mjs \
             tests/arsenal-m2-accessory-integration.test.mjs \
             tests/arsenal-m2-optic-identities-eye-box.test.mjs \
             tests/arsenal-v2-campaign-adapter.test.mjs \
