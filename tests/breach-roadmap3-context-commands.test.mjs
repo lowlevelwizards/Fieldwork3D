@@ -45,3 +45,25 @@ test('presentation-only modes and unknown actions are not executed by command di
   assert.equal(a.plan.length,0);
  }finally{activateSite(null);}
 });
+
+test('UI.7A reports actual command outcomes without inferring success from event count',()=>{
+ const {s,a}=setup();
+ try{
+  const fire=dispatch(s,a,'ctxFire');
+  assert.deepEqual({handled:fire.handled,outcome:fire.outcome},
+    {handled:true,outcome:'accepted'});
+  assert.equal(dispatch(s,a,'ctxWait').outcome,'accepted');
+  const before=s.events.length;
+  const blocked=dispatch(s,a,'ctxReload',{node:{id:-99,kind:'move',p:a.p}});
+  assert.equal(blocked.handled,true);
+  assert.equal(blocked.outcome,'rejected');
+  assert.equal(blocked.failureReason,'CANNOT PLAN RELOAD');
+  assert.equal(s.events.length,before+1);
+  const missing=dispatch(s,a,'ctxTreat');
+  assert.equal(missing.outcome,'rejected');
+  assert.equal(missing.failureReason,'NO REACHABLE PATIENT WITH SUITABLE SUPPLIES');
+  const nothing=dispatch(s,a,'not-a-command');
+  assert.equal(nothing.handled,false);
+  assert.equal(nothing.outcome,undefined);
+ }finally{activateSite(null);}
+});
