@@ -33,6 +33,7 @@ test('E6.17 wraps actual main draw, preserves receiver/args, categories and coun
  assert.equal(profiler.last.opaqueDraws,2);
  assert.equal(profiler.last.instancedDraws,2);
  assert.equal(profiler.last.uniqueMaterials,1);
+ assert.deepEqual(profiler.last.ownerDraws,[{owner:'unclassified',draws:2}]);
  assert.equal(profiler.last.wallMs,5);
  assert.deepEqual(profiler.last.materialTypes,[{type:'MeshStandardMaterial',draws:2}]);
  assert.equal(profiler.last.topMaterials[0].label,'Fixture');
@@ -51,12 +52,15 @@ test('E6.17 excludes shadow draw submissions and handles transparency',()=>{
   renderer.renderBufferDirect(null,null,null,
    {id:2,type:'MeshBasicMaterial',transparent:true},{});
   renderer.renderBufferDirect(null,null,null,
-   {id:3,type:'MeshStandardMaterial',alphaTest:.5},{isSkinnedMesh:true});
+   {id:3,type:'MeshStandardMaterial',alphaTest:.5},
+   {isSkinnedMesh:true,parent:{userData:{fieldworkRenderCategory:'operator'}}});
  }));
  assert.equal(main.last.drawCalls,2);
  assert.equal(main.last.transparentDraws,1);
  assert.equal(main.last.alphaTestDraws,1);
  assert.equal(main.last.skinnedDraws,1);
+ assert.deepEqual(main.last.ownerDraws,[{owner:'operator',draws:1},
+  {owner:'unclassified',draws:1}]);
  assert.equal(shadow.last.shadowDrawCalls,1);
  assert.equal(shadow.last.nonShadowDrawCalls,2);
 });
@@ -74,6 +78,7 @@ test('E6.17 bounded live summary preserves 90-frame counts and no skipped work',
   opaqueDraws:3,transparentDraws:1,alphaTestDraws:1,
   instancedDraws:2,skinnedDraws:1,wallMs:4,reliable:true,
   materialTypes:[{type:'MeshBasicMaterial',draws:5}],
+  ownerDraws:[{owner:'environment',draws:5}],
   topMaterials:[{id:'42',label:'Basic',type:'MeshBasicMaterial',
    draws:4,wallMs:2}]};
  const shadow={totalWallMs:6,shadowRenderWallMs:1,nonShadowWallMs:5,
@@ -91,6 +96,7 @@ test('E6.17 bounded live summary preserves 90-frame counts and no skipped work',
  assert.deepEqual(v.dominantMaterialTypes,
   [{type:'MeshBasicMaterial',drawsTotal:10}]);
  assert.equal(v.topMaterialInstances[0].observedDraws,8);
+ assert.deepEqual(v.dominantOwners,[{owner:'environment',drawsTotal:10}]);
  const absent=new PostReadyRuntimeCapture(1);
  absent.add(mkFrame(undefined,undefined));
  assert.equal(absent.finish().sceneAttribution.mainPassAttribution,null);

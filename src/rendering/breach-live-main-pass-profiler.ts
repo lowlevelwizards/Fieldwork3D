@@ -12,11 +12,21 @@ export type MainPassFrame=Readonly<{
  instancedDraws:number;skinnedDraws:number;
  wallMs:number;reliable:boolean;
  materialTypes:readonly MainPassMaterialType[];
+ ownerDraws:readonly {owner:string;draws:number}[];
  topMaterials:readonly MainPassMaterialInstance[];
 }>;
 type MaterialLike={id?:number;name?:string;type?:string;
  transparent?:boolean;alphaTest?:number};
-type ObjectLike={isInstancedMesh?:boolean;isSkinnedMesh?:boolean};
+type ObjectLike={isInstancedMesh?:boolean;isSkinnedMesh?:boolean;
+ userData?:Record<string,unknown>;parent?:ObjectLike|null};
+function renderOwner(object:ObjectLike):string{
+ let current:ObjectLike|null|undefined=object;
+ for(let depth=0;depth<20&&current;depth++,current=current.parent){
+  const label=current.userData?.fieldworkRenderCategory;
+  if(typeof label==='string'&&label.length)return label;
+ }
+ return 'unclassified';
+}
 type RendererLike={
  renderBufferDirect?:(...args:unknown[])=>unknown;
  info:{render:{calls:number}};
@@ -35,6 +45,7 @@ export class LiveMainPassProfiler{
  private reliable=true;
  private readonly materials=new Map<string,MutableMaterial>();
  private readonly types=new Map<string,number>();
+ private readonly owners=new Map<string,number>();
  constructor(renderer:RendererLike,inShadowPass:()=>boolean,
   now:()=>number=()=>performance.now()){
   this.renderer=renderer;this.inShadowPass=inShadowPass;this.now=now;
@@ -62,6 +73,8 @@ export class LiveMainPassProfiler{
      }else if(after>before){
      const draws=after-before;
      profiler.drawCalls+=draws;
+     const owner=renderOwner(object);
+     profiler.owners.set(owner,(profiler.owners.get(owner)??0)+draws);
      const type=material.type||'UnknownMaterial';
      const id=String(material.id??'unknown-'+type);
      const entry=profiler.materials.get(id)??{
@@ -88,10 +101,13 @@ export class LiveMainPassProfiler{
   this.opaque=0;this.transparent=0;this.alphaTest=0;
   this.instanced=0;this.skinned=0;this.elapsed=0;
   this.reliable=true;this.materials.clear();this.types.clear();
+  this.owners.clear();
   try{return render();}
   finally{
    const materialTypes=[...this.types].map(([type,draws])=>({type,draws}))
     .sort((a,b)=>b.draws-a.draws||a.type.localeCompare(b.type));
+   const ownerDraws=[...this.owners].map(([owner,draws])=>({owner,draws}))
+    .sort((a,b)=>b.draws-a.draws||a.owner.localeCompare(b.owner));
    const topMaterials=[...this.materials.values()]
     .sort((a,b)=>b.draws-a.draws||a.id.localeCompare(b.id))
     .slice(0,12).map(m=>({...m,wallMs:Math.round(m.wallMs*10)/10}));
@@ -101,7 +117,7 @@ export class LiveMainPassProfiler{
     transparentDraws:this.transparent,alphaTestDraws:this.alphaTest,
     instancedDraws:this.instanced,skinnedDraws:this.skinned,
     wallMs:Math.round(this.elapsed*10)/10,reliable:this.reliable,
-    materialTypes,topMaterials
+    materialTypes,ownerDraws,topMaterials
    };
    this.active=false;
   }

@@ -52,6 +52,7 @@ export type MainPassAttribution=Readonly<{
  instancedDrawsP95:number|null;skinnedDrawsP95:number|null;
  bufferCallsP95:number|null;reconciledWithNonShadowFrames:number;
  dominantMaterialTypes:readonly {type:string;drawsTotal:number}[];
+ dominantOwners:readonly {owner:string;drawsTotal:number}[];
  topMaterialInstances:readonly {
   id:string;label:string;type:string;observedDraws:number
  }[];
@@ -198,11 +199,14 @@ export class PostReadyRuntimeCapture{
    }:null;
   const mainFrames=detailed.flatMap(f=>f.mainPassSubmission?[f.mainPassSubmission]:[]);
   const types=new Map<string,number>();
+  const owners=new Map<string,number>();
   const materials=new Map<string,{
    id:string;label:string;type:string;observedDraws:number}>();
   for(const frame of mainFrames){
    for(const item of frame.materialTypes)
     types.set(item.type,(types.get(item.type)??0)+item.draws);
+   for(const owner of frame.ownerDraws)
+    owners.set(owner.owner,(owners.get(owner.owner)??0)+owner.draws);
    for(const material of frame.topMaterials){
     const old=materials.get(material.id);
     if(old)old.observedDraws+=material.draws;
@@ -228,6 +232,8 @@ export class PostReadyRuntimeCapture{
    dominantMaterialTypes:[...types].map(([type,drawsTotal])=>({type,drawsTotal}))
     .sort((a,b)=>b.drawsTotal-a.drawsTotal||a.type.localeCompare(b.type))
     .slice(0,10),
+   dominantOwners:[...owners].map(([owner,drawsTotal])=>({owner,drawsTotal}))
+    .sort((a,b)=>b.drawsTotal-a.drawsTotal||a.owner.localeCompare(b.owner)),
    topMaterialInstances:[...materials.values()].sort((a,b)=>
     b.observedDraws-a.observedDraws||a.id.localeCompare(b.id)).slice(0,12),
    note:'E6.17 opt-in material buckets count actual nonshadow renderBufferDirect draw deltas. Individual material totals sample the top 12 materials per frame, not all. Observer adds CPU timing overhead; these frames are NOT an uninstrumented FPS A/B or hardware GPU timing.'

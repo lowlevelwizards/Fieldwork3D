@@ -107,6 +107,7 @@ try{
       !Number.isFinite(main.drawCallsP95)||main.drawCallsP95<=0||
       !Number.isFinite(main.uniqueMaterialsP95)||main.uniqueMaterialsP95<=0||
       !main.dominantMaterialTypes?.length||
+      !main.dominantOwners?.length||
       !main.topMaterialInstances?.length)
      throw Error('Missing E6.17 main-pass material attribution: '+JSON.stringify(main));
    if(live.topGaps.some(spike=>spike.precedingSubmitted3D&&

@@ -908,6 +908,9 @@ export class TacticalScene3D{
     // exterior terrain without removing contact shadows under operators.
     this.sun.shadow.bias=-.00012;this.sun.shadow.normalBias=.16;
     this.scene.add(this.sun,this.sun.target);
+    // E6.17: semantic debug labels only, never alter rendering.
+    this.root.userData.fieldworkRenderCategory='environment';
+    this.effects.userData.fieldworkRenderCategory='effects';
     this.scene.add(this.root,this.effects);
     // First paint and mission reload now use the same build/batch/grade path.
     this.composeSiteWorld(this.displayedSite);
@@ -926,6 +929,8 @@ export class TacticalScene3D{
     this.mats.push(unknownMat,exploredMat);
     this.fogUnknown=new THREE.InstancedMesh(fgeom,unknownMat,16*19);
     this.fogExplored=new THREE.InstancedMesh(fgeom,exploredMat,16*19);
+    this.fogUnknown.userData.fieldworkRenderCategory='fog';
+    this.fogExplored.userData.fieldworkRenderCategory='fog';
     this.fogUnknown.frustumCulled=this.fogExplored.frustumCulled=false;
     this.fogUnknown.renderOrder=16;this.fogExplored.renderOrder=16;
     this.root.add(this.fogUnknown,this.fogExplored);
@@ -961,6 +966,7 @@ export class TacticalScene3D{
       depthWrite:false,toneMapped:false,side:THREE.DoubleSide});
     this.mats.push(fogMat);
     this.smoothFog=new THREE.Mesh(new THREE.PlaneGeometry(W,H),fogMat);
+    this.smoothFog.userData.fieldworkRenderCategory='fog';
     this.smoothFog.rotation.x=-Math.PI/2;
     // Ground-space LOS mask, not a floating translucent roof. Keep ordinary
     // camera depth testing even though the sheet draws late: the prior
@@ -978,6 +984,7 @@ export class TacticalScene3D{
     // the site bounding rectangle. It uses this SAME texture and material,
     // but cannot paint black over grass beyond the building walls.
     this.exteriorKnownFog=new THREE.Mesh(new THREE.BufferGeometry(),fogMat);
+    this.exteriorKnownFog.userData.fieldworkRenderCategory='fog';
     this.exteriorKnownFog.renderOrder=1000;
     this.exteriorKnownFog.frustumCulled=false;
     this.exteriorKnownFog.visible=false;
@@ -1618,11 +1625,14 @@ export class TacticalScene3D{
     const beam=new THREE.Mesh(beamGeometry,new THREE.MeshBasicMaterial({
       color:0xbde9d5,transparent:true,opacity:.15,depthWrite:false,
       side:THREE.DoubleSide,blending:THREE.AdditiveBlending}));
+    beam.userData.fieldworkRenderCategory='operator-effects';
     beam.frustumCulled=false;beam.visible=false;beam.renderOrder=4;
     this.scene.add(beam);
     const status=new THREE.Mesh(new THREE.RingGeometry(12,16,30),
       new THREE.MeshBasicMaterial({color:0xdb8d76,transparent:true,
         opacity:.9,depthWrite:false,side:THREE.DoubleSide}));
+    status.userData.fieldworkRenderCategory='operator-effects';
+    root.userData.fieldworkRenderCategory='operator';
     status.rotation.x=-Math.PI/2;status.visible=false;
     this.scene.add(root,status);
     // Subtle cheap foot-contact shadows complement the real shadow map on
@@ -2059,6 +2069,7 @@ export class TacticalScene3D{
     if(s.rescue&&!s.civilians.some(c=>c.rescueTarget)){
       if(!this.rescueFigure){
         this.rescueFigure=new THREE.Group();
+        this.rescueFigure.userData.fieldworkRenderCategory='civilian';
         const civilian=new THREE.Mesh(new THREE.CapsuleGeometry(4.5,12,4,8),
           new THREE.MeshStandardMaterial({color:0xe0c58d,flatShading:true}));
         civilian.position.y=10;
