@@ -8,7 +8,7 @@ import {addOutline,addCuboid,addProfileFrame,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {G36_B_ART as A} from './g36-art-layout.ts';
 import {G36_B_PART_IDS} from './g36-family-contract.ts';
-import {G36_MAG30_OUTLINE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
+import {G36_MAG30_OUTLINE,G36_MAG30_OUTLINE_CANDIDATE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
 import {addG36LongHandguard} from './g36-handguard-profiles.ts';
 
 export {G36_B_PART_IDS} from './g36-family-contract.ts';
@@ -156,7 +156,7 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  ],2.02);
  grip.userData.g36Grip=true;
 
- const mag=outline('magazine',G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
+ const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;
 
  const guard=addG36LongHandguard(root,ids.handguard,i.handguard++,material);
