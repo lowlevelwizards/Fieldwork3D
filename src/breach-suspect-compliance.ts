@@ -29,7 +29,7 @@ export function commitSuspectSurrender(
  notify:(s:Session,message:string)=>void,
  battleEvent:(s:Session,kind:BattleEvent['kind'],actor:TeamActor|null,
   p:{x:number;y:number},text:string,meta?:BattleEvent['meta'])=>void,
- source:'morale'|'challenge'='morale'):boolean{
+ source:'morale'|'challenge'='morale',challengerId?:string):boolean{
  if(target.health<=0||target.surrendered)return false;
  target.surrendered=true;target.health=0;target.injuryStage=3;
  target.lastDownAt=s.seconds;
@@ -41,6 +41,8 @@ export function commitSuspectSurrender(
  const message=target.name+' SURRENDERED'+
    (source==='challenge'?' AFTER CHALLENGE':'');
  notify(s,message);
- battleEvent(s,'surrender',target,target.p,message);
+ battleEvent(s,'surrender',target,target.p,message,
+  {action:source==='challenge'?'suspect-compliance':'suspect-surrender',
+   targetId:target.id,...(challengerId?{contributorId:challengerId}:{})});
  return true;
 }

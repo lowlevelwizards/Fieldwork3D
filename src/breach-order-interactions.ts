@@ -71,10 +71,16 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       }
       suspect.lastChallengeAt=s.seconds;
       hear(s,a.p,100,'warning');
-      battleEvent(s,'interaction',a,a.p,a.name+' CHALLENGED '+suspect.name);
+      battleEvent(s,'interaction',a,a.p,a.name+' CHALLENGED '+suspect.name,
+        {action:'suspect-challenge',targetId:suspect.id,contributorId:a.id});
       if(decision==='surrender')
-        commitSuspectSurrender(s,suspect,notify,battleEvent,'challenge');
-      else notify(s,suspect.name+' REFUSED CHALLENGE');
+        commitSuspectSurrender(s,suspect,notify,battleEvent,'challenge',a.id);
+      else{
+        const text=suspect.name+' REFUSED CHALLENGE';
+        notify(s,text);
+        battleEvent(s,'interaction',a,a.p,text,
+          {action:'suspect-refusal',targetId:suspect.id,contributorId:a.id});
+      }
       clearCurrentOrderIssue(a);pop(a);return true;
     }
     if(n.interaction==='release-civilian'){
