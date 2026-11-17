@@ -33,7 +33,8 @@ jobs:
             tests/weapon-g36-p5-major-form.test.mjs \
             tests/weapon-g36-p6-interpretive-reset.test.mjs \
             tests/weapon-g36-p7-calibration.test.mjs \
-            tests/weapon-g36-p8-hk-identity.test.mjs
+            tests/weapon-g36-p8-hk-identity.test.mjs \
+            tests/weapon-g36-v13-stock.test.mjs
       - name: TypeScript and build integrity
         run: npm run build
       - name: Browser capture tools
