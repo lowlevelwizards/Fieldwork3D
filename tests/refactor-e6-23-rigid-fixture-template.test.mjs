@@ -123,3 +123,20 @@ test('E6.23 repeated fixture instancing cannot dispose live cache-owned buffers'
  cache.clear();assert.equal(disposed,1);
  for(const m of s.materials.values())m.dispose();
 });
+
+test('E6.23 throwing custom palette resolver rolls back lease and frees template',()=>{
+ const cache=new StaticVisualTemplateLibrary(),root=new THREE.Group();
+ const geometry=new THREE.BoxGeometry(3,4,5);
+ const material=new THREE.MeshStandardMaterial();
+ root.add(new THREE.Mesh(geometry,material));
+ let disposed=0;geometry.addEventListener('dispose',()=>disposed++);
+ assert.throws(()=>cache.acquire('failing-palette:v1',
+  ()=>({root,ownedGeometries:[geometry]}),{
+   resolveMaterial:()=>{throw Error('bad palette');}
+  }),/bad palette/);
+ assert.equal(cache.stats().leases,0);
+ cache.clear();
+ assert.equal(cache.stats().geometries,0);
+ assert.equal(disposed,1);
+ material.dispose();
+});
