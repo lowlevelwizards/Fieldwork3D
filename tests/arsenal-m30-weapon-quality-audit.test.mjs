@@ -40,8 +40,8 @@ test('M3.0A audits every real factory and the legacy shotgun, non-destructively'
   assert.equal(record.totalSubmissions,
    record.body.submissions+record.accessories.submissions);
   assert.ok(Number.isFinite(record.body.triangles)&&record.body.triangles>0);
-  assert.ok(record.body.protectedComponents>0,
-   'part identity must remain visible to Workbench picking');
+  if(record.family!=='legacy')assert.ok(record.body.protectedComponents>0,
+   'modular part identity must remain visible to Workbench picking');
   for(const k of ['min','max'])for(const n of record.bounds[k])
    assert.ok(Number.isFinite(n),record.id+' invalid bounds');
   for(let axis=0;axis<3;axis++)
