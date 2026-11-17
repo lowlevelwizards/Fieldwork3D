@@ -47,6 +47,9 @@ function compatible(a:THREE.BufferGeometry,b:THREE.BufferGeometry){
 }
 export function compileRigidWeaponPartPilot(root:THREE.Group,
  slot:RigidSlot,partId:string):RigidPartPilotResult{
+ // JS callers still exist; the TS exclusion alone cannot protect live reload.
+ if((slot as FamilyPartSlot)==='magazine')
+  throw new Error('Dynamic magazine bodies cannot be rigid-compiled');
  const buckets=new Map<THREE.MeshStandardMaterial,Map<string,Candidate[]>>();
  for(const child of root.children){
   const item=candidate(child,slot,partId);
