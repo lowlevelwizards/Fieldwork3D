@@ -27,7 +27,7 @@ import {sharedService} from './campaign-history.ts';
 import {LOADOUT_SLOTS,itemsForSlot,itemDefinition} from './equipment-catalog.ts';
 import {totalEquipmentMass,loadMobilityDescription,loadMovementScale,
  type LoadoutSlot} from './equipment-loadouts.ts';
-import {CampaignKitPreview} from './equipment-preview.ts';
+import {CampaignKitPreview,type EquipmentPreviewFocus} from './equipment-preview.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState}
@@ -1429,6 +1429,11 @@ export class CampaignScreen{
   const categoryTabs=new Map<QuickLoadoutGroup,HTMLButtonElement>();
   const setCategory=(group:QuickLoadoutGroup)=>{
    this.activeKitGroup=group;
+   const focus:Record<QuickLoadoutGroup,EquipmentPreviewFocus>={
+    weapon:'weapon',protection:'torso',carry:'carry',
+    utilities:'carry',issued:'full'
+   };
+   this.preview?.focusOn(focus[group]);
    for(const [key,control] of categoryTabs){
     control.setAttribute('aria-selected',String(key===group));
     control.tabIndex=key===group?0:-1;
@@ -1499,6 +1504,12 @@ export class CampaignScreen{
    select.disabled=locked;
    select.classList.add('campaign-kit-native-select');
    const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '));
+   picker.addEventListener('click',()=>{
+    const focus:EquipmentPreviewFocus=slot==='head'?'head':
+     slot==='armor'?'torso':slot==='primary'?'weapon':
+     slot==='rig'||slot==='belt'||slot==='backpack'?'carry':'full';
+    this.preview?.focusOn(focus);
+   });
    row.append(title,select,picker);
    const selected=itemDefinition(person.loadout.slots[slot]);
    const info=node('small','campaign-kit-description',selected?.description??'');

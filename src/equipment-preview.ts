@@ -12,6 +12,7 @@ import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 
+export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
 export class CampaignKitPreview{
  private host:HTMLElement;
  private readonly operatorId:string;
@@ -23,6 +24,10 @@ export class CampaignKitPreview{
  private azimuth=.72;
  private pointerId:number|null=null;
  private lastX=0;
+ private focusHeight=26;
+ private focusRadius=110;
+ private focusRise=35;
+ private focusFrame:number|null=null;
  constructor(host:HTMLElement,id:string,weapon:WeaponId,
   appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,
@@ -118,6 +123,35 @@ export class CampaignKitPreview{
   this.pointerId=null;
   try{this.host.releasePointerCapture(event.pointerId);}catch{/* optional */}
  };
+ /** One 220 ms context transition, with no recurring animation while idle. */
+ focusOn(area:EquipmentPreviewFocus,animate=true):void{
+  const targets:Record<EquipmentPreviewFocus,[number,number,number]>={
+   full:[26,110,35],head:[57,72,26],torso:[38,82,31],
+   weapon:[35,90,31],carry:[29,91,32]
+  };
+  const [height,radius,rise]=targets[area];
+  if(this.focusFrame!==null){
+   cancelAnimationFrame(this.focusFrame);this.focusFrame=null;
+  }
+  const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  if(instant){
+   this.focusHeight=height;this.focusRadius=radius;this.focusRise=rise;
+   this.draw();return;
+  }
+  const from=[this.focusHeight,this.focusRadius,this.focusRise];
+  const start=performance.now(),duration=220;
+  const animateFrame=(time:number)=>{
+   this.focusFrame=null;
+   const t=Math.max(0,Math.min(1,(time-start)/duration));
+   const eased=t*t*(3-2*t);
+   this.focusHeight=from[0]+(height-from[0])*eased;
+   this.focusRadius=from[1]+(radius-from[1])*eased;
+   this.focusRise=from[2]+(rise-from[2])*eased;
+   this.draw();
+   if(t<1)this.focusFrame=requestAnimationFrame(animateFrame);
+  };
+  this.focusFrame=requestAnimationFrame(animateFrame);
+ }
  getAzimuth(){return this.azimuth;}
  setAzimuth(value:number){
   if(!Number.isFinite(value))return;
@@ -131,12 +165,14 @@ export class CampaignKitPreview{
   this.renderer.setSize(width,height,false);
   this.camera.aspect=width/height;
   this.camera.updateProjectionMatrix();
-  this.camera.position.set(110*Math.cos(this.azimuth),
-   61,110*Math.sin(this.azimuth));
-  this.camera.lookAt(0,26,0);
+  this.camera.position.set(this.focusRadius*Math.cos(this.azimuth),
+   this.focusHeight+this.focusRise,this.focusRadius*Math.sin(this.azimuth));
+  this.camera.lookAt(0,this.focusHeight,0);
   this.renderer.render(this.scene,this.camera);
  }
  dispose(){
+  if(this.focusFrame!==null)cancelAnimationFrame(this.focusFrame);
+  this.focusFrame=null;
   this.observer?.disconnect();this.observer=null;
   this.host.removeEventListener('pointerdown',this.pointerDown);
   this.host.removeEventListener('pointermove',this.pointerMove);
