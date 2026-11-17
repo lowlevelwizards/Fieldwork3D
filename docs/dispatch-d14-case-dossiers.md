@@ -59,3 +59,24 @@ closed. D14.1 dossier projections automatically use the expanded authored pool.
 
 Ship D14.4 independently after D14.0–D14.3 public Pages verification, focused
 Dispatch incident/case tests and production typecheck/build.
+
+## D14.5 — One seeded reported lead across briefing surfaces
+
+The predeployment dossier previously displayed the first lead/context in
+the shared incident catalog while the tactical briefing deterministically
+selected one of its authored variants. That could make the same operation
+appear to have different reports depending on the screen.
+
+- Extract the existing B4 seeded lead/context selector into the small
+  `briefing/incident-wording.ts` leaf. Do not change the seed mix, authored
+  corpus, narrative RNG draw order, report quality, tactical facts or save.
+- Reuse the selector for the actual predeployment dossier, offer-card context,
+  and the tactical briefing. The same contract seed and incident ID now choose
+  identical report wording in both layers; repeated screens remain stable.
+- Do not claim that a reported lead is verified operational intelligence;
+  the D14 uncertainty language and intel disclosure remain unchanged.
+- Test an authored capture, intel and hold case end-to-end through the
+  tactical dossier composer, plus deterministic variation and untouched
+  authored catalog.
+- Stage on a separate feature branch; defer all merging until D14B's Pages
+  release is verified and this stage's own critical checks pass.
