@@ -352,9 +352,15 @@ export function createTacticalPaletteController(config:{
       width:cssW,height:cssH,lastAuthoringAt}=input;
   const current=plannedControl(state,selected,node?.id);
   const at=node?.p??finalPoint(a);
-  const nearMovable=state.coverState.some(o=>canRelocateCover(o)&&
+  // A nearby object is not automatically known to the squad.
+  // Match the known-cover gate already used by the physical PUSH preview.
+  const nearMovable=state.coverState.some((o,i)=>
+    state.intel.cover.has(i)&&canRelocateCover(o)&&
     paletteDistance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
+  // Window interactions may be offered only for currently observed panes;
+  // an unrevealed room/window cannot advertise its operability in the menu.
   const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
+    liveVisibility(state,{x:w.x,y:w.y})&&
     paletteDistance(at,{x:w.x,y:w.y})<54);
   const powerActions:ContextAction[]=[];
   if(state.site&&state.sitePower&&state.sitePower.mode===state.lightingMode){

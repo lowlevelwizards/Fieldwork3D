@@ -17,3 +17,9 @@ test('UI.7E accessibility description refreshes when context tooltip changes',()
  assert.match(palette,/button\.setAttribute\('aria-description'/);
  assert.match(palette,/button\.title=choice\.title\?\?choice\.label/);
 });
+
+test('UI.7F contextual object affordances cannot disclose unknown cover or windows',()=>{
+ assert.match(palette,/state\.coverState\.some\(\(o,i\)=>\s*state\.intel\.cover\.has\(i\)&&canRelocateCover\(o\)/);
+ assert.match(palette,/state\.windows\.some\(w=>w\.operable&&!w\.shattered&&\s*liveVisibility\(state,\{x:w\.x,y:w\.y\}\)/);
+ assert.match(palette,/if\(!liveVisibility\(state,control\.p\)\)/);
+});
