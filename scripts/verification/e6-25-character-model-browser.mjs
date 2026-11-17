@@ -232,6 +232,20 @@ try{
    sourcesBefore:offSources.size,sourcesAfter:onSources.size,
    differences:changedSources
   }));
+  const beforeMeshes=new Map((off.fullDrawTrace.details??[])
+   .map(s=>[s.source,s.draws]));
+  const afterMeshes=new Map((on.fullDrawTrace.details??[])
+   .map(s=>[s.source,s.draws]));
+  const meshDeltas=[...new Set([...beforeMeshes.keys(),...afterMeshes.keys()])]
+   .map(source=>({source,before:beforeMeshes.get(source)??0,
+     after:afterMeshes.get(source)??0,
+     delta:(afterMeshes.get(source)??0)-(beforeMeshes.get(source)??0)}))
+   .filter(x=>x.delta!==0).sort((a,b)=>b.delta-a.delta||
+    a.source.localeCompare(b.source));
+  console.log('E6_25_MESH_SIGNATURE_DIFF',JSON.stringify({
+   seed,building,offMeshes:beforeMeshes.size,onMeshes:afterMeshes.size,
+   differences:meshDeltas.slice(0,100)
+  }));
   const planningPrecheck=compareImages(
     dir+'/seed-'+seed+'-template-0-planning.png',
     dir+'/seed-'+seed+'-template-1-planning.png');
