@@ -330,8 +330,12 @@ export class CampaignScreen{
  home(c:CampaignState,slot?:CampaignSlot){
   // Preserve the user's place when a purchase or treatment refreshes this view.
   // Opening the campaign from a menu, briefing or loadout still starts at the top.
-  const restoreScroll=!this.root.hidden&&
-   !!this.root.querySelector('.campaign-tabs')?this.root.scrollTop:0;
+  const wasInOperations=!this.root.hidden&&
+   !!this.root.querySelector('.campaign-tabs');
+  const restoreScroll=wasInOperations?this.root.scrollTop:0;
+  const focusedControl=wasInOperations&&this.root.contains(document.activeElement)?
+   document.activeElement as HTMLElement:null;
+  const focusedLabel=focusedControl?.getAttribute('aria-label');
   if(slot)this.currentSlot=slot;
   if(this.armoryOperatorId){
    const target=c.operators.find(x=>x.id===this.armoryOperatorId&&x.status!=='lost'&&x.status!=='retired');
@@ -531,15 +535,18 @@ export class CampaignScreen{
    weaponPick.value=p.weapon;weaponPick.disabled=!!c.activeContractId;
    weaponPick.addEventListener('change',()=>this.handlers.equipWeapon(p.id,
     weaponPick.value as 'carbine'|'smg'|'rifle'|'shotgun'));
-   actions.append(button('LOADOUT',()=>{
+   const loadoutButton=button('LOADOUT',()=>{
     this.armoryOperatorId=p.id;this.home(c);
-   },'campaign-primary'));
+   },'campaign-primary');
+   loadoutButton.setAttribute('aria-label','Open '+p.callsign+' loadout');
+   actions.append(loadoutButton);
    const look=button('APPEARANCE',()=>this.handlers.openStudio(p.id));
    look.disabled=!!c.activeContractId;
    look.setAttribute('aria-label','Edit '+p.callsign+' appearance in Operator Studio');
    actions.append(look);
    careActions.append(weaponPick);
    const resupply=button('RESUPPLY AMMO',()=>this.handlers.resupply(p.id));
+   resupply.setAttribute('aria-label','Resupply ammunition for '+p.callsign);
    resupply.disabled=!!c.activeContractId||c.supplies.ammo===0;
    if(resupply.disabled)resupply.title=c.activeContractId?
     'Finish the current deployment before resupplying':
@@ -549,6 +556,7 @@ export class CampaignScreen{
    const replenish=button('REISSUE MEDICAL '+medicalSupplyCount(p.medicalSupplies)+
     '/'+medicalSupplyCount(med)+' · '+c.supplies.medical+' IN STOCK',
     ()=>this.handlers.resupplyMedical(p.id));
+   replenish.setAttribute('aria-label','Reissue medical supplies for '+p.callsign);
    replenish.disabled=!!c.activeContractId||c.supplies.medical<1||
     medicalSupplyCount(p.medicalSupplies)>=medicalSupplyCount(med)||
     medicalSupplyCount(med)===0;
@@ -562,6 +570,7 @@ export class CampaignScreen{
     const treat=button(
      'TREAT · '+p.recoveryDays+' → '+Math.max(0,p.recoveryDays-2)+' DAYS',
      ()=>this.handlers.treat(p.id));
+    treat.setAttribute('aria-label','Treat '+p.callsign);
     treat.disabled=!!c.activeContractId||c.supplies.medical<1;
     if(treat.disabled)treat.title=c.activeContractId?
      'Finish the current deployment before treatment':
@@ -570,7 +579,11 @@ export class CampaignScreen{
    }
    if(!c.squadIds.includes(p.id)&&
     c.operators.filter(o=>o.status==='available'||o.status==='reserve').length>4)
-    careActions.append(button('RETIRE',()=>this.handlers.retire(p.id)));
+   {
+    const retire=button('RETIRE',()=>this.handlers.retire(p.id));
+    retire.setAttribute('aria-label','Retire '+p.callsign);
+    careActions.append(retire);
+   }
    care.append(careActions);
    card.append(profile,actions,care);
    roster.append(card);
@@ -1110,6 +1123,15 @@ export class CampaignScreen{
   main.insertBefore(nav,grid);
   this.root.append(main);
   if(restoreScroll>0)this.root.scrollTop=restoreScroll;
+  // Purchases, treatment and assignments rebuild this view. Return keyboard
+  // focus to the same named control without jumping the saved scroll position.
+  if(focusedLabel){
+   const restored=Array.from(this.root.querySelectorAll<HTMLElement>('[aria-label]'))
+    .find(control=>control.getAttribute('aria-label')===focusedLabel&&
+     !control.matches(':disabled'));
+   (restored??nav.querySelector<HTMLElement>('[aria-selected="true"]'))
+    ?.focus({preventScroll:true});
+  }
  }
  private armory(c:CampaignState,id:string){
   const sameOperator=this.lastArmoryRenderedId===id;
