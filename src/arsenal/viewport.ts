@@ -116,7 +116,7 @@ export class ArsenalViewport{
   const config=arsenalRecipeToLegacy(recipe);if(!config)return false;
   this.clearParts();this.config=config;
   this.body=buildWeaponSilhouette(config.weapon,this.steel,this.dark,config);
-  if(this.poolEnabled&&config.build)this.geometryPool.adopt(this.body);
+  if(this.poolEnabled)this.geometryPool.adopt(this.body);
   this.attachments=buildWeaponAccessories(config,this.steel,this.dark);
   this.model.add(this.body,this.attachments);
   this.model.scale.set(weaponVisualLayout(config).longitudinalScale,1,1);
