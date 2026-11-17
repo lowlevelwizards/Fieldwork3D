@@ -118,27 +118,29 @@ export function weaponHandlingModifiers(configuration?:WeaponConfiguration):Weap
   a.mounted.optic.id==='optic-magnified'||
   a.mounted.optic.id.startsWith('optic-kashtan')?'magnified':'irons';
  const platform=a.configuration.build?platformResponse(a.configuration.build):null;
+ const folded=a.configuration.stockPosition==='folded';
+ const collapsed=a.configuration.stockPosition==='collapsed';
  const sightSystem=configuredSight(a.mounted.optic.id,platform?.sight??'irons');
  const handling:WeaponHandlingModifiers={
   turn:clamp(1/(1+(i-1)*.24)*(stock==='stock-compact'?1.055:
-   stock==='stock-extended'?.975:1)*(platform?.turn??1),.82,1.15),
+   stock==='stock-extended'?.975:1)*(platform?.turn??1)*(folded?1.105:collapsed?1.045:1),.82,1.23),
   acquisition:clamp((1+(i-1)*.22)*(stock==='stock-compact'?.97:
    stock==='stock-extended'?1.035:1)*
-   (platform?.acquisition??1),.84,1.22),
+   (platform?.acquisition??1)*(folded?1.105:collapsed?1.025:1),.84,1.30),
   recovery:clamp((muzzle==='muzzle-brake'?1.17:1)*
    (grip==='foregrip-vertical'?1.075:grip==='foregrip-handstop'?1.035:1)*
    (stock==='stock-extended'?1.035:1)*
-   (platform?.recovery??1),.82,1.35),
+   (platform?.recovery??1)*(folded?.87:collapsed?.965:1),.77,1.35),
   recoilKick:clamp((muzzle==='muzzle-brake'?.86:
    muzzle==='muzzle-suppressor'?.96:1)*
    (stock==='stock-compact'?1.035:stock==='stock-extended'?.96:1)*
-   (platform?.recoilKick??1),.77,1.23),
+   (platform?.recoilKick??1)*(folded?1.15:collapsed?1.055:1),.77,1.35),
   noise:muzzle==='muzzle-suppressor'?.65:muzzle==='muzzle-brake'?1.10:1,
   optic,stable:clamp(
    (grip==='foregrip-vertical'?.97:grip==='foregrip-handstop'?.985:1)*
-   (platform?.stable??1),.94,1.12),
-  manipulation:clamp(platform?.manipulation??1,.90,1.24),
-  clearanceLead:platform?.clearanceLead??14,sightSystem
+   (platform?.stable??1)*(folded?1.085:collapsed?1.015:1),.94,1.23),
+  manipulation:clamp((platform?.manipulation??1)*(folded?1.065:1),.90,1.32),
+  clearanceLead:(platform?.clearanceLead??14)*(folded?.81:collapsed?.93:1),sightSystem
  };
  cache.set(configuration,handling);return handling;
 }
