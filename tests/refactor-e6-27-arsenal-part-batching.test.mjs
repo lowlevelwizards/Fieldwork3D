@@ -123,7 +123,7 @@ test('E6.27 custom draw ranges and grouped geometry cannot become visible baked 
  assert.equal(bake.avoidedDraws,0);
  assert.equal(root.children.length,3);
  assert.equal(partial.geometry.drawRange.count,6);
- assert.equal(grouped.geometry.groups.length,1);
+ assert.equal(grouped.geometry.groups.length,7); // BoxGeometry's six face groups plus this extra distinct material group
  partial.geometry.dispose();grouped.geometry.dispose();common.geometry.dispose();
 });
 
