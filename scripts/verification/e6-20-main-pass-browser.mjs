@@ -37,7 +37,7 @@ try{
   page.on('pageerror',e=>errors.push(e.message));
   try{
    await page.goto(base+'/breach.html?coldBench=1&briefingIdle='+briefingIdle+
-    '&gpuWarmup=1&coldPrewarm=1&e620Bake='+compileEnabled,
+    '&gpuWarmup=1&coldPrewarm=1&e621Bake=0&e620Bake='+compileEnabled,
      {waitUntil:'domcontentloaded'});
    await page.getByRole('button',{name:'QUICK PLAY',exact:true})
     .click({timeout:60000});
