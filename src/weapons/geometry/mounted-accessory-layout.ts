@@ -94,18 +94,43 @@ export function resolveMountedAccessoryLayout(c:WeaponConfiguration):AccessoryLa
  const prior=cache.get(c);
  if(prior)return prior;
  const ids=active(c);
- const result:MountedAccessorySeat[]=[];
- const unresolved:PhysicalAttachmentFit[]=[];
- for(const id of ids){
+ const choices=ids.map(id=>{
   const fit=physicalAttachmentFitOptions(c,id,[]);
-  const candidates=fit.options.map(mountedSeatFromPlacement);
-  const selected=candidates.find(candidate=>result.every(existing=>
-   !accessorySeatsConflict(candidate,existing)));
-  if(selected)result.push(selected);
-  else unresolved.push(fit.feasible?{
-   attachmentId:id,feasible:false,options:[],
-   reasons:['occupied']
-  }:fit);
+  return {id,fit,candidates:fit.options.map(mountedSeatFromPlacement).slice(0,8)};
+ });
+ // Bounded search, at most 4 slots x 8 candidates. Preserve prior optic
+ // before grip, then light. When equally feasible, preserve preferred
+ // candidate order rather than an arbitrary mesh build order.
+ const weight=(slot:WeaponAttachmentSlot)=>slot==='opticMount'?10000:
+  slot==='optic'?1000:slot==='foregrip'?100:slot==='light'?10:0;
+ let best:MountedAccessorySeat[]=[];
+ let bestScore=-1,visited=0;
+ const search=(index:number,picked:MountedAccessorySeat[],score:number):void=>{
+  if(++visited>12000)return;
+  if(index===choices.length){
+   if(score>bestScore){best=[...picked];bestScore=score;}
+   return;
+  }
+  const choice=choices[index];
+  for(const candidate of choice.candidates){
+   if(picked.every(existing=>!accessorySeatsConflict(candidate,existing))){
+    picked.push(candidate);
+    search(index+1,picked,score+weight(candidate.slot));
+    picked.pop();
+   }
+  }
+  // Legacy invalid accessories remain unresolved but owned. Skipping one
+  // must never win over preserving a valid already installed optic.
+  search(index+1,picked,score);
+ };
+ search(0,[],0);
+ const result=best;
+ const unresolved:PhysicalAttachmentFit[]=[];
+ for(const choice of choices){
+  if(result.some(m=>m.attachmentId===choice.id))continue;
+  unresolved.push(choice.fit.feasible?{
+   attachmentId:choice.id,feasible:false,options:[],reasons:['occupied']
+  }:choice.fit);
  }
  const output:AccessoryLayout={mounts:result,unresolved};
  cache.set(c,output);return output;
