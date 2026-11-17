@@ -218,8 +218,11 @@ function tick(now:number){
   if(stage!==profiledStage){
    // E6.15: a newly installed scene must retain explicitly requested
    // coldBench phase instrumentation, not just the visible PERF overlay.
-   stage?.setPerformanceProfilingEnabled?.(
-    !!perfOverlay||config.boot.coldBenchEnabled);
+   // Preserve the original normal-play PERF path exactly; coldBench is
+   // a separate, explicit diagnostic override for its own captured site.
+   if(config.boot.coldBenchEnabled)
+    stage?.setPerformanceProfilingEnabled?.(true);
+   else stage?.setPerformanceProfilingEnabled?.(!!perfOverlay);
    profiledStage=stage;
    // Scene replacement resets lifetime upload counters; a new session on
    // the same persistent scene does not and must keep its first upload delta.
