@@ -217,7 +217,7 @@ export function openArsenalWorkbench(
  const viewer=new ArsenalViewport(viewportHost,draft.working,slot=>{
   const category=ARSENAL_CATEGORIES.find(c=>c.slots.includes(slot));
   if(category){
-   activeCategory=category;activeSlot=slot;pending=null;renderSelection();
+   activeCategory=category;activeSlot=slot;pending=null;previewProposal=null;renderSelection();
    // A tap on the physical weapon reveals its matching part controls.
    panel.scrollIntoView({
     behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?
@@ -513,7 +513,7 @@ export function openArsenalWorkbench(
     button.className='arsenal-wb-category';button.textContent=category.name;
     button.addEventListener('click',()=>{
      activeCategory=category;activeSlot=category.slots[0];pending=null;
-     renderSelection();
+     previewProposal=null;renderSelection();
     });
     categoryButtons.set(category.id,button);nav.append(button);
    }
@@ -531,7 +531,7 @@ export function openArsenalWorkbench(
     const button=document.createElement('button');button.type='button';
     button.className='arsenal-wb-subslot';button.textContent=formatSlot(slot);
     button.addEventListener('click',()=>{
-     activeSlot=slot;pending=null;renderSelection();
+     activeSlot=slot;pending=null;previewProposal=null;renderSelection();
     });
     slotButtons.set(slot,button);slotRow.append(button);
    }
