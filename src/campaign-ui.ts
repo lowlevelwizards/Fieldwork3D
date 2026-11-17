@@ -429,7 +429,10 @@ export class CampaignScreen{
   personnelWorkspace.append(deployment);
   const rosterPanel=node('section','campaign-personnel-roster-panel');
   const activeOperators=c.operators.filter(p=>
-   p.status!=='retired'&&p.status!=='lost');
+   p.status!=='retired'&&p.status!=='lost').sort((a,b)=>{
+    const ai=c.squadIds.indexOf(a.id),bi=c.squadIds.indexOf(b.id);
+    return (ai<0?99:ai)-(bi<0?99:bi);
+   });
   const rosterHeading=node('div','campaign-roster-heading');
   rosterHeading.append(node('h2','','ACTIVE ROSTER'),
    node('span','campaign-roster-count',
@@ -440,12 +443,13 @@ export class CampaignScreen{
    'No active operators. Recruit personnel to prepare your next deployment.'));
   const deployed=activeOperators.filter(p=>c.squadIds.includes(p.id));
   const reserves=activeOperators.filter(p=>!c.squadIds.includes(p.id));
-  for(const [group,members] of [
-   ['DEPLOYMENT TEAM',deployed],['RESERVES',reserves]
-  ] as const){
-   if(!members.length)continue;
-   roster.append(node('h3','campaign-roster-group-label',group+' · '+members.length));
-   for(const p of members){
+  for(const p of activeOperators){
+   if(p===deployed[0])
+    roster.append(node('h3','campaign-roster-group-label',
+     'DEPLOYMENT TEAM · '+deployed.length));
+   if(p===reserves[0])
+    roster.append(node('h3','campaign-roster-group-label',
+     'RESERVES · '+reserves.length));
    const card=node('article','campaign-person');
    const tools=node('details','campaign-person-expand');
    tools.open=this.expandedOperatorTools.has(p.id);
@@ -618,7 +622,6 @@ export class CampaignScreen{
    care.append(careActions);
    tools.append(profile,actions,care);
    roster.append(card);
-   }
   }
   rosterPanel.append(roster);
   personnelWorkspace.append(rosterPanel);
