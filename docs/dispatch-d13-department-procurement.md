@@ -31,7 +31,7 @@ Source of truth: deployed D12 on main `4177410`.
 8. Existing mission incident, debrief, force reviews, named operator records,
    quick play, non-Dispatch campaigns, and save serialization must be untouched.
 
-## D13 release A (this branch)
+## D13 release A (merged via PR #1619)
 - D13.1: Pure department presentation model and compact Operations Room
   identity and two-snapshot service milestone. Visible in Overview and
   Operations Room header. Missing legacy D11 record remains correctly labeled.
@@ -56,3 +56,47 @@ require separate research and gameplay milestones, not UI claims.
 Commit completed stages to feature branch. Group changes into one release
 checkpoint; merge only on green CI, no pending prior Pages build, and previous
 public Pages expected-build verification. Verify new Pages build after merge.
+
+## D13 release B — D13.4 creator review and D13.5 continuity
+
+- D13.4: Treat presets as editable starting bundles. Review each selected axis
+  before destructive save replacement: authored starting unit, fixed/progressive/
+  unrestricted time, actual eligible catalog, career gates, payment policy and
+  finite starting stock. Preserve current selections on invalid combinations,
+  explain the exact constraint, and disable creation until valid.
+- D13.4: Show **Customized <preset>** after any axis differs from the selected
+  baseline, both in creator and Operations Room. Do not rewrite the preset ID
+  or invent a new save schema. Revert all axes to baseline to restore its
+  unmodified label.
+- D13.5: A customized campaign name must not claim an unchanged preset; ensure
+  the displayed department identity survives save/reload. Continue to use the
+  existing post-operation report, Dispatch standing, operator history, retained
+  weapon serials and explicitly two-chapter chronology. No retirement or
+  personnel-aging simulation added.
+- Test presets and custom edits, incompatible choices, two-chapter transition
+  and round-trip preservation of old operators, serials and service records.
+- New work is isolated to campaign setup, read-only presentation and tests.
+  Keep the prior D13 procurement mutations, Quick Play and non-Dispatch
+  campaign behavior unchanged. Release from a feature branch only after the
+  relevant critical CI, build, previous successful Pages verification and an
+  idle production deployment queue.
+
+## D13 release C — D13.6 procurement policy truth
+
+The D2 curated table intentionally omits unassessed choices. An omitted
+class is **not** proof that every Dispatch reference explicitly rejects it.
+D13.2 incorrectly collapsed both cases into `reference-locked`.
+
+- Evaluate whether any of the **three playable tactical-police references**
+  explicitly offers the weapon class as standard or specialist. The unplayable
+  2020 patrol preview must never count as an active procurement option.
+- When the current setup restricts a class offered under another reference,
+  label it `reference-locked`. When no playable authored reference assesses
+  that class, show `not-assessed`, not a false definitive refusal.
+- Keep standing-only restriction, deployment freeze, budget, stock capacity,
+  global Creative bypass, physical ownership and non-Dispatch behavior exactly
+  as before. The authoritative purchase function still validates new choices.
+- Update the D13 expectations and add a focused matrix covering all presets,
+  OMON, historical MP5, standing 70, creative and original campaign.
+- Release from its own branch only after the preceding D13B Pages verification,
+  the D13C critical PR checks and a clear deployment queue.

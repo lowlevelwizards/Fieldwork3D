@@ -104,7 +104,21 @@ export function currentDispatchReference(campaign:{
  return completed>=DISPATCH_TIMELINE_CHAPTERS[1].minimumOperations?
   'us-swat-2015':'us-swat-mp5-1995';
 }
+
+/** Presets are starting points; an edited bundle retains its original preset ID
+ * for save compatibility, but must never present itself as an untouched preset.
+ */
+export function dispatchSetupCustomized(draft:DispatchCampaignDraft):boolean{
+ const baseline=defined(draft.preset);
+ return (['referenceId','timeMode','equipmentScope','unlockMode','economy',
+  'startingInventory'] as const).some(key=>draft[key]!==baseline[key]);
+}
+export function dispatchSetupDisplayLabel(draft:DispatchCampaignDraft):string{
+ const label=DISPATCH_PRESET_LABELS[draft.preset];
+ return dispatchSetupCustomized(draft)?'Customized '+label:label;
+}
+
 export function dispatchSetupDescription(setup:DispatchCampaignSetupV1){
- return DISPATCH_PRESET_LABELS[setup.preset]+' · '+setup.timeMode.toUpperCase()+
+ return dispatchSetupDisplayLabel(setup)+' · '+setup.timeMode.toUpperCase()+
   ' TIME · '+setup.equipmentScope.toUpperCase()+' EQUIPMENT';
 }

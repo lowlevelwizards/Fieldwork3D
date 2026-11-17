@@ -1,6 +1,7 @@
 /** D3/D4 narrow pilot: the one authored 2015 SWAT appearance.
  * Uses normal Campaign career and ownership, no new incident mechanics. */
 import {createDispatchSetup,effectiveDispatchSetup,
+ dispatchSetupCustomized,dispatchSetupDisplayLabel,
  type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
 import {newCampaign,type CampaignState} from './campaign-state.ts';
 import {createCampaignRules} from './campaign-rules.ts';
@@ -14,6 +15,7 @@ export function newDispatchPilotCampaign(seed:number,draft?:DispatchCampaignDraf
   economy:'standard',startingInventory:'issued'
  });
  const base=newCampaign(seed,createCampaignRules('dispatch'),
+  dispatchSetupCustomized(setup)?'Dispatch '+dispatchSetupDisplayLabel(setup):
   setup.preset==='historical'?'Dispatch Historical':
   setup.preset==='decades'?'Dispatch Through the Decades':
   setup.preset==='open'?'Dispatch Open Department':

@@ -22,7 +22,8 @@ test('D13 curated procurement surfaces all four supported classes without claimi
  assert.equal(mp5.stock,0);
  assert.equal(mp5.price,260);
  const modern=campaignWeaponQuote(c,'rifle');
- assert.equal(modern.status,'reference-locked');
+ assert.equal(modern.status,'not-assessed');
+ assert.match(modern.authorization,/No playable Dispatch reference/);
  assert.strictEqual(buyWeapon(c,'rifle'),c);
  const shotgun=campaignWeaponQuote(c,'shotgun');
  assert.equal(shotgun.status,'ready',
@@ -54,7 +55,7 @@ test('D13 Open Department offers Dispatch inventory; creative is no-charge yet f
  const open=newDispatchPilotCampaign(133,dispatchPresetDraft('open'));
  assert.equal(campaignWeaponQuote(open,'smg').status,'ready');
  assert.equal(campaignWeaponQuote(open,'shotgun').status,'ready');
- assert.equal(campaignWeaponQuote(open,'rifle').status,'reference-locked');
+ assert.equal(campaignWeaponQuote(open,'rifle').status,'not-assessed');
  assert.equal(canAffordCampaignPurchase(open,open.funds+1),false);
  const creative=newDispatchPilotCampaign(133,dispatchPresetDraft('creative'));
  assert.equal(campaignWeaponQuote(creative,'shotgun').priceLabel,'NO CHARGE');

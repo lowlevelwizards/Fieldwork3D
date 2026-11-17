@@ -5,7 +5,7 @@ import type {CampaignState} from './campaign-state.ts';
 import {dispatchReferenceContext} from './dispatch-content-foundation.ts';
 import {factionReference} from './faction-reference-catalog.ts';
 import {currentDispatchReference,effectiveDispatchSetup,
- DISPATCH_PRESET_LABELS,DISPATCH_TIMELINE_CHAPTERS}
+ dispatchSetupDisplayLabel,DISPATCH_TIMELINE_CHAPTERS}
  from './dispatch-campaign-setup.ts';
 import {initialDispatchDepartment,dispatchStandingTier}
  from './dispatch-department.ts';
@@ -41,7 +41,7 @@ export function dispatchDepartmentView(campaign:CampaignState):DispatchDepartmen
    'The chosen reference stays fixed; career development and purchases continue.':
    'Equipment selection is not tied to a progressing calendar.';
  return {
-  preset:DISPATCH_PRESET_LABELS[setup.preset],unit:reference?.name??referenceId,
+  preset:dispatchSetupDisplayLabel(setup),unit:reference?.name??referenceId,
   organization:org,period:context?String(context.representativeYear):'REFERENCE',
   standing:department.standing,standingTier:dispatchStandingTier(department.standing),
   responses:department.responses,completed,
