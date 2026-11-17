@@ -27,7 +27,7 @@ function contour(poly:Outline,ccw:boolean):Outline{
 function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):THREE.Mesh{
  const outside:Outline=[
   [-14.69,.50],[-6.43,.50],[-6.43,-2.08],
-  [-8.75,-2.35],[-14.69,-5.24]
+  [-8.75,-2.35],[-12.35,-4.72],[-14.69,-5.24]
  ];
  const largeHole:Outline=[
   [-14.00,-.42],[-10.31,-.42],[-9.62,-1.55],
