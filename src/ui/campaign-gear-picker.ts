@@ -8,7 +8,6 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):H
  trigger.type='button';trigger.className='campaign-kit-picker-trigger';
  const label=source.getAttribute('aria-label')?.replace(/^Select /,'Choose ')||
   'Choose '+slot+' equipment';
- const selected=source.selectedOptions[0];
  const display=(value:string)=>itemDefinition(value)?.name||
   source.querySelector<HTMLOptionElement>('option[value="'+CSS.escape(value)+'"]')
    ?.textContent?.split(' · ')[0]||value;
