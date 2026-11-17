@@ -10,6 +10,7 @@ import {G36_B_ART as A} from './g36-art-layout.ts';
 import {G36_B_PART_IDS} from './g36-family-contract.ts';
 import {G36_MAG30_OUTLINE,G36_MAG30_OUTLINE_CANDIDATE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
 import {addG36LongHandguard} from './g36-handguard-profiles.ts';
+import {addHKSelectorLeverArt} from './hk-trigger-selector.ts';
 
 export {G36_B_PART_IDS} from './g36-family-contract.ts';
 
@@ -53,17 +54,18 @@ function area(poly:Outline):number{
 function contour(poly:Outline,ccw:boolean):Outline{
  return (area(poly)>0)===ccw?poly:[...poly].reverse();
 }
-/** Stock silhouette: two deliberate openings, a single descending lower
- * diagonal, a strong horizontal upper bar. No inset frame or cosmetic struts.
+/** P8: simplified original G36 molded stock — two real openings,
+ * one strong upper member and a decisive sweeping lower contour.
+ * The 3D depth remains restrained; never a tubular folding-stock clone.
  */
 function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):THREE.Mesh{
  const outside:Outline=[
   [-14.69,.50],[-6.43,.50],[-6.43,-2.08],
-  [-8.75,-2.35],[-12.35,-4.72],[-14.69,-5.24]
+  [-8.75,-2.35],[-11.22,-4.18],[-13.12,-4.96],[-14.69,-5.24]
  ];
  const largeHole:Outline=[
   [-14.00,-.42],[-10.31,-.42],[-9.62,-1.55],
-  [-12.12,-4.23],[-14.00,-4.58]
+  [-11.62,-3.85],[-13.10,-4.45],[-14.00,-4.58]
  ];
  const smallHole:Outline=[
   [-9.42,-.40],[-7.13,-.40],[-7.09,-1.72],[-8.60,-1.72]
@@ -104,10 +106,10 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
 
  addTwoOpeningStock(root,material,i.stock++);
  const pad=outline('stock',[
-  [-15.05,.40],[-14.60,.40],[-14.60,-4.93],[-15.05,-5.22]
- ],1.72);
+  [-15.05,.40],[-14.63,.40],[-14.63,-5.04],[-15.05,-5.22]
+ ],1.44);
  pad.userData.g36Buttpad=true;
- const hinge=box('stock',-6.64,-.74,0,.72,2.43,1.80);
+ const hinge=box('stock',-6.64,-.74,0,.84,2.43,1.80);
  hinge.userData.g36StockHinge=true;
 
  // Two bold shells: the upper is an almost unbroken polymer slab; the
@@ -118,7 +120,7 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  ],2.50);
  upper.userData.g36ReceiverUpper=true;
  const lower=outline('receiver',[
-  [-6.42,-1.13],[3.70,-1.13],[2.85,-3.12],
+  [-6.42,-1.13],[3.70,-1.13],[2.35,-3.12],
   [-.45,-3.12],[-1.46,-2.28],[-3.76,-2.28],
   [-4.36,-3.56],[-6.42,-2.14]
  ],2.28);
@@ -139,11 +141,19 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
   contour(outside,true),contour(inside,false),1.50,material);
  bridge.userData.g36HandleOpening=true;
 
- // Two bold optical forms, not an assembly of mechanical accessories.
- // Experimental outlines are review-only and do not alter optic datums.
+ // P8 production: one decisive lower optical casing with a raised rear
+ // shoulder. The reflex crown intersects this shape, so the two read as
+ // one original integrated unit, not detached scopes on a Picatinny rail.
+ // Historical P6/P7 alternatives stay available ONLY in the comparison lab.
  const optics=G36_OPTIC_REVIEW_FORMS[review.optic??'rear-integrated'];
- const magnified=box('receiver',...optics.lower);
+ const magnified=review.optic
+  ?box('receiver',...optics.lower)
+  :outline('receiver',[
+   [-5.83,2.71],[-5.83,3.78],[-5.15,4.15],
+   [-2.52,4.15],[-2.36,4.06],[-.88,4.06],[-.88,2.71]
+  ],1.96);
  magnified.userData.g36LowerOptic=true;
+ magnified.userData.g36IntegratedOpticShell=true;
  const reflex=box('receiver',...optics.upper);
  reflex.userData.g36UpperReflex=true;
  const bigLens=box('receiver',...optics.lowerFace);
@@ -151,11 +161,27 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  const smallLens=box('receiver',...optics.upperFace);
  smallLens.userData.g36UpperReflexWindow=true;
 
- // Four-sided wedge, no physical trigger-guard frame or micro-controls.
+ // One strongly rear-raked HK polymer wedge, no trigger guard.
+ // Maintain the primary-hand landmark (-4.65,-4.10) inside its projected face.
  const grip=outline('grip',[
-  [-5.70,-2.12],[-3.39,-2.12],[-4.26,-5.72],[-5.83,-5.72]
+  [-5.70,-2.12],[-3.39,-2.12],[-4.60,-5.72],[-6.25,-5.72]
  ],2.02);
  grip.userData.g36Grip=true;
+
+ // One chunky charging-handle tab. Intersects the upper shell, visible
+ // between receiver roof and bridge without blocking the handle opening.
+ const charging=box('receiver',-.65,1.51,0,1.20,.58,2.68);
+ charging.userData.g36ChargingHandle=true;
+
+ // Exact shared HK selector geometry language, but positioned for this
+ // rifle and bound to the same six-slot receiver identity. No control text.
+ for(const side of [-1,1] as const){
+  const [hub,lever]=addHKSelectorLeverArt(root,-5.20,-1.96,1.14,side,material);
+  hub.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
+  lever.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
+  hub.userData.g36SelectorHub=true;
+  lever.userData.g36SelectorLever=true;
+ }
 
  const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;
@@ -166,7 +192,7 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  // One stout barrel and one nearly invisible terminal block.
  const barrel=box('barrel',16.12,0,0,5.90,1.14,1.14);
  barrel.userData.g36Barrel=true;
- const muzzle=box('barrel',A.muzzleX-.25,0,0,.50,1.00,1.00);
+ const muzzle=box('barrel',A.muzzleX-.325,0,0,.65,1.10,1.10);
  muzzle.userData.g36FactoryMuzzle=true;
  return root;
 }
@@ -181,9 +207,11 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
   if(!(child instanceof THREE.Mesh))continue;
   let result:THREE.Material=finishes.polymer;
   if(child.userData.g36Magazine)result=finishes.magazine;
-  else if(child.userData.g36Buttpad)result=finishes.buttpad;
+  else if(child.userData.g36Buttpad||child.userData.g36SelectorHub||
+   child.userData.g36SelectorLever)result=finishes.buttpad;
   else if(child.userData.g36FactoryMuzzle)result=finishes.muzzle;
-  else if(child.userData.g36Barrel||child.userData.g36StockHinge)result=finishes.steel;
+  else if(child.userData.g36Barrel||child.userData.g36StockHinge||
+   child.userData.g36ChargingHandle)result=finishes.steel;
   else if(child.userData.g36OpticFace||child.userData.g36UpperReflexWindow)result=finishes.buttpad;
   else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic)result=finishes.optic;
   child.material=result;

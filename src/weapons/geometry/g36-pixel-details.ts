@@ -1,5 +1,5 @@
-/** G36 P6: deliberately minimal 384x192 atlas: four bold fore-end vents
- * and one smoky magazine facet. NO receiver construction markings.
+/** G36 P8: game-scale identity marks in a single shared 384x192 atlas:
+ * four fore-end vents, a one-sided ejector port and broad polymer-mag facets.
  * No added overlays, side mirrored ejection details, geometry count changes,
  * transparency, per-frame materials, per-instance texture uploads or shaders.
  * The same live-intended original G36 meshes are UV projected in place.
@@ -23,28 +23,32 @@ const definitions:Readonly<Record<Tile,{col:number;row:number;bounds:Bounds}>>={
 const between=(v:number,a:number,b:number)=>v>=a&&v<=b;
 const zone=(x:number,y:number,x0:number,x1:number,y0:number,y1:number)=>
  between(x,x0,x1)&&between(y,y0,y1);
-/** Graphic marks, not functional features. White is neutral and multiplies
- * the normal shared material tint and lighting. The right-side receiver
- * feature is deliberately NOT copied onto the other face.
+/** Art-only marks (no simulated mechanism). White retains the factory
+ * material and lighting. A port belongs on ONE exterior side only.
  */
 function ink(tile:Tile,x:number,y:number):number{
  if(tile==='guard-right'||tile==='guard-left'){
   // Only four large, black side voids. One decision each; no fake rims.
-  for(const center of [5.42,7.45,9.48,11.51])
-   if(zone(x,y,center-.80,center+.80,-.27,.61))return 96;
+  for(const center of [5.35,7.40,9.45,11.50])
+   if(zone(x,y,center-.85,center+.85,-.30,.64))return 89;
   return 255;
  }
- if(tile==='receiver-right'||tile==='receiver-left'){
-  // Flat Fieldwork upper shell. No trace-derived panel seams or ejection art.
+ if(tile==='receiver-right'){
+  // One major asymmetrical ejection landmark, never a traced mechanics kit.
+  if(zone(x,y,-1.45,1.72,.03,.80))return 76;
   return 255;
  }
+ if(tile==='receiver-left')return 255;
  if(tile==='lower-right'||tile==='lower-left'){
   // No selector dots, copied lower seams or hidden micro markings.
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  // A single large light/value facet; no rounds, ribs or floorplate ink.
-  if(zone(x,y,-.45,1.55,-7.90,-3.20))return 225;
+  // Two large color-value regions describe smoked polymer, not ammunition,
+  // couplers or individual molded ribs. Opaque, no alpha-sort dependencies.
+  if(y < -7.83)return 188;
+  if(zone(x,y,-.28,1.12,-7.63,-3.32))return 210;
+  if(zone(x,y,1.12,1.75,-7.63,-3.32))return 238;
  }
  return 255;
 }
@@ -63,7 +67,7 @@ export function g36PixelAtlas():THREE.DataTexture{
   }
  }
  const tex=new THREE.DataTexture(data,width,height,THREE.RGBAFormat,THREE.UnsignedByteType);
- tex.name='G36 P6 essential graphic atlas';
+ tex.name='G36 P8 broad HK identity atlas';
  tex.colorSpace=THREE.SRGBColorSpace;
  tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;
  tex.magFilter=tex.minFilter=THREE.NearestFilter;
@@ -95,8 +99,7 @@ function uv(tile:Tile,x:number,y:number):readonly [number,number]{
  return [(t.col+u)/COLS,(t.row+v)/ROWS];
 }
 /** Per-mesh projection is run once on FIRST factory detail application.
- * Handguard's intentional indexed octagonal station geometry is expanded
- * once to allow independent UVs on the side/chamfer triangles. Triangle
+ * Any indexed geometry is expanded once for independent face UVs. Triangle
  * count and the number of meshes/material roles do not increase.
  */
 export function applyG36PixelDetails(root:THREE.Group):void{
@@ -149,5 +152,5 @@ export function applyG36PixelDetails(root:THREE.Group):void{
 }
 export function g36PixelAtlasLayout(){
  return {width:TILE*COLS,height:TILE*ROWS,sideTiles:Object.keys(definitions),
-  ventsPerSide:4,magRibsPerSide:0,rightReceiverEjectionOnly:false};
+  ventsPerSide:4,magRibsPerSide:0,rightReceiverEjectionOnly:true};
 }

@@ -72,8 +72,8 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  const triangles=meshes.reduce((sum,x)=>{
   const geo=x.geometry;return sum+(geo.index?.count??geo.getAttribute('position').count)/3;
  },0);
- assert.ok(meshes.length<=16, 'too many exterior draw meshes: '+meshes.length);
- assert.ok(triangles<=550, 'P5 production peer budget exceeded: '+triangles);
+ assert.ok(meshes.length<=22, 'HK selector/charging features exceed the peer draw budget: '+meshes.length);
+ assert.ok(triangles<=600, 'P8 geometry exceeded production audit trigger: '+triangles);
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
   'only the accepted original full-size model is an authored factory preset');
  assert.equal(Object.keys(FAMILY_PARTS).filter(id=>id.startsWith('g36-')).length,6);
@@ -116,7 +116,7 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.ok(meshCount<=16,'only three optical-face landmarks are permitted: '+meshCount);
+ assert.ok(meshCount<=22,'identity geometry exceeded HK peer mesh budget: '+meshCount);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -162,7 +162,7 @@ test('G36 C4: receiver jawline / true trigger opening, short but curved magazine
  assert.equal(lower.geometry.parameters.shapes.holes.length,0,
   'trigger-gap must open downward rather than closing into a ring');
  assert.equal(hit(lower,-2.30,-2.82),false);
- assert.ok(hit(lower,2.70,-2.90),'molded magwell cheek must be part of lower');
+ assert.ok(hit(lower,2.05,-2.90),'angled G36 magwell cheek remains part of lower');
  assert.ok(hit(lower,-5.30,-2.03),'grip-side receiver support remains connected');
  assert.deepEqual(G36_MAG30_OUTLINE,arMagazineOutline(G36_MAG30_CURVE),
   'G36 reuses centerline mathematics but owns distinct polymer proportions');
@@ -244,8 +244,8 @@ test('G36 D1-2: single real pixel atlas, side-correct ejection, no extra draw me
   const col=tile%4,row=Math.floor(tile/4),i=((row*96+y)*384+col*96+x)*4;
   return bytes[i];
  };
- assert.equal(sample(2,57,63),sample(3,57,63),
-  'no obsolete receiver ejection-port graphics in P6');
+ assert.notEqual(sample(2,55,63),sample(3,55,63),
+  'P8 port must appear on the correct receiver side only');
  const originalMagazine=one(g,'g36Magazine').material;
  applyG36PixelDetails(g);
  assert.equal(one(g,'g36Magazine').material,originalMagazine,'repeat atlas is cached');
