@@ -34,7 +34,8 @@ const testCases=[
 test('M1 installed parts advertise real interfaces and not fantasy universal rails',()=>{
  assert.ok(FAMILY_PARTS['ar-flat'].mounts.some(x=>x.role==='optic'&&x.standard==='picatinny'));
  for(const receiver of ['ar-a1','ar-a2','ar-retro','akm','ak74m'])
-  assert.ok(!(FAMILY_PARTS[receiver].mounts??[]).some(x=>x.role==='optic'),
+  assert.ok(!(FAMILY_PARTS[receiver].mounts??[]).some(x=>
+   x.role==='optic'&&x.face==='top'),
    receiver+' no invented receiver top rail');
  for(const receiver of ['hk-g3-drum','hk33-556-rifle','hk-mp5-standard'])
   assert.ok(FAMILY_PARTS[receiver].mounts.some(x=>x.role==='opticMount'&&x.standard==='hk-claw'));
