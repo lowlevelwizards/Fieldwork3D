@@ -67,6 +67,8 @@ import {wearFinish} from './rendering/wear-finish.ts';
 import {fixtureFrameTransform} from './rendering/fixture-frame-transform.ts';
 import {exteriorBriefedAt} from './breach-site-footprint.ts';
 import {StaticSceneBatches} from './rendering/breach-static-batcher.ts';
+import {StaticVisualTemplateLibrary,type StaticVisualLease}
+ from './rendering/fieldwork-visual-template-library.ts';
 import {BreachContactShadowBatch} from './rendering/breach-contact-shadow-batch.ts';
 import {RepeatedFixtureBatches} from './rendering/breach-repeated-fixture-batches.ts';
 import {PausedShadowSceneController,shadowEligibleBox}
@@ -266,6 +268,7 @@ export class TacticalScene3D{
     return {calls:info.calls,triangles:info.triangles,
       geometryCount:memory.geometries,textureCount:memory.textures,
       staticBatch:this.staticBatches.stats(),
+      staticModelTemplates:this.architecturalVisualTemplates.stats(),
       contactShadowBatch:this.contactShadowBatch.stats,
       repeatedFixtureBatch:this.repeatedFixtures.stats,
       siteMaterialCount:this.siteMaterials.size,
@@ -684,6 +687,10 @@ export class TacticalScene3D{
   readonly canvas:HTMLCanvasElement;
   private root=new THREE.Group();
   private readonly staticBatches=new StaticSceneBatches();
+  private readonly architecturalVisualTemplates=new StaticVisualTemplateLibrary();
+  private readonly siteVisualLeases:StaticVisualLease[]=[];
+  private readonly useArchitectureTemplates=new URLSearchParams(location.search)
+    .get('e622Template')==='1';
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
   private readonly fixtureLights=new SiteFixtureLightingPresenter(this.scene);
   // One shared cosmetic draw rather than two transparent WebGL passes per rig.
@@ -1149,7 +1156,11 @@ export class TacticalScene3D{
     // retain shared box geometry, fog resources, actors and live renderer.
     // StaticSceneBatches already released its own instance buffers above.
     releaseSiteSceneObjects(this.root,
-      new Set([this.fogUnknown,this.fogExplored]),this.sharedBoxGeometries);
+      new Set([this.fogUnknown,this.fogExplored]),
+      new Set([...this.sharedBoxGeometries,
+       ...this.architecturalVisualTemplates.sharedGeometries()]));
+    for(const lease of this.siteVisualLeases)lease.release();
+    this.siteVisualLeases.length=0;
     for(const material of this.wallMaterials)material.dispose();
     this.wallMaterials.clear();
     this.walls.length=0;this.wallFade.clear();
@@ -1207,6 +1218,9 @@ export class TacticalScene3D{
       staticBatches:scene.staticBatches,
       repeatedFixtures:scene.repeatedFixtures,
       sharedBoxGeometries:scene.sharedBoxGeometries,
+      visualTemplates:scene.useArchitectureTemplates?
+        scene.architecturalVisualTemplates:undefined,
+      registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
       walls:scene.walls,

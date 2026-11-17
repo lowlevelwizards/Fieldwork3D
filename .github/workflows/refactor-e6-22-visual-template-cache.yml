@@ -1,0 +1,57 @@
+name: E6.22 immutable visual template cache
+on:
+  pull_request:
+    paths:
+      - 'src/rendering/fieldwork-visual-template-library.ts'
+      - 'src/rendering/breach-site-openings-builder.ts'
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/refactor-e6-22-visual-template-library.test.mjs'
+      - 'tests/refactor-e6-22-template-budget.test.mjs'
+      - 'tests/refactor-e6-22-architecture-template-integration.test.mjs'
+      - 'scripts/verification/e6-22-architectural-template-browser.mjs'
+      - 'scripts/verification/e6-22-architectural-template-node-bench.mjs'
+      - '.github/workflows/refactor-e6-22-visual-template-cache.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: e6-22-template-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  compiled-templates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Template identity, compiled scene parity, owner/fog contracts and resource lifetime
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-22-visual-template-library.test.mjs \
+            tests/refactor-e6-22-template-budget.test.mjs \
+            tests/refactor-e6-22-architecture-template-integration.test.mjs \
+            tests/refactor-e6-21-owner-assembly.test.mjs \
+            tests/refactor-e6-20-universal-model-compiler.test.mjs \
+            tests/breach-static-batching-performance.test.mjs
+      - name: Real architecture cold/warm build-once evidence
+        run: node --experimental-strip-types scripts/verification/e6-22-architectural-template-node-bench.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Browser fixed-seed 90-frame render parity with templates on/off
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-22-architectural-template-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-22-architectural-template-ab-and-screenshots
+          path: artifacts/refactor-e6-22/live-scene/
+          if-no-files-found: ignore
+          retention-days: 14
