@@ -152,7 +152,7 @@ test('M2.5G prohibit new phantom light/grip without discarding older saved items
   assert.ok(recipe);
   assert.equal(proposeArsenalPartChange(recipe,'light','light-compact').valid,false);
  }
- const g=preset('g36-g36-service');
+ const g=preset('g36-service');
  assert.equal(setWeaponAttachment(g,'light','light-compact').slots.light,'light-none');
 });
 
