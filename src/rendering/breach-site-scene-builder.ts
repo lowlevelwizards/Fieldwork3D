@@ -13,8 +13,7 @@ import {buildArchitecturalOpenings,buildSiteDoors,buildSiteWindows,doorSweepArc,
 import {buildSiteExterior} from './breach-site-exterior-builder.ts';
 import {buildSiteMicroDebrisMeshes} from './breach-site-micro-debris.ts';
 import {SiteMaterialLifetime} from './site-material-lifetime.ts';
-import {StaticSceneBatches,stabilizeStaticDetailBoxGeometries}
- from './breach-static-batcher.ts';
+import {StaticSceneBatches} from './breach-static-batcher.ts';
 import {type PixelSurface} from './pixel-materials.ts';
 import {roomPixelSurface,wallPixelSurface,fixturePixelSurface} from '../worldgen/pixel-surface-selection.ts';
 import {buildingTheme,roomFloor,roomFixtureFinishes,roomAccessoryColor} from '../worldgen/building-palettes.ts';
@@ -63,8 +62,8 @@ export type SiteSceneBuildPort={
  staticBatches:StaticSceneBatches;
  repeatedFixtures?:RepeatedFixtureBatches;
  sharedBoxGeometries:Set<THREE.BufferGeometry>;
- /** Site-owned immutable detail leaders, retired on the next site swap. */
- siteDetailGeometries:Set<THREE.BufferGeometry>;
+ /** Replay original host.box cache accesses for compiled fixtures. */
+ reserveBoxGeometry?:(w:number,h:number,d:number)=>void;
  visualTemplates?:StaticVisualTemplateLibrary;
  fixtureTemplates?:StaticVisualTemplateLibrary;
  includeServiceFixtureTemplates?:boolean;
@@ -101,19 +100,9 @@ export type SiteSceneBuildPort={
 /** Batch only site-static decoration and door frames, not interactive parts. */
 export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     host.root.updateWorldMatrix(true,true);
-    // Fix the decorative BoxGeometry identity independently of the global
-    // 384-entry cache budget. E6.25 character caching must not change
-    // whether wall signs/switches can use existing static instancing.
-    const stableDetailGeometries=stabilizeStaticDetailBoxGeometries(
-      host.observedDetails,host.sharedBoxGeometries);
-    for(const geometry of stableDetailGeometries)
-      if(!host.sharedBoxGeometries.has(geometry))
-        host.siteDetailGeometries.add(geometry);
-    const stableStaticGeometries=new Set([
-      ...host.sharedBoxGeometries,...stableDetailGeometries]);
     for(const detail of host.observedDetails)
       host.staticBatches.collect(detail.obj,detail.obj,
-        stableStaticGeometries);
+        host.sharedBoxGeometries);
     for(const door of host.doors.values())
       host.staticBatches.collect(door.root,door.frame,
         host.sharedBoxGeometries,new Set([door.threshold,door.wedge]));
@@ -567,6 +556,16 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         templateLease=null;
       }
       if(templateLease){
+        // A cached prototype bypasses host.box while its legacy authoring
+        // would have touched the bounded site geometry cache. Replay only
+        // those primitive shape lookups, in the original order; otherwise
+        // later wall detail batching changes between opt-in OFF and ON.
+        const boxRecipes=templateLease.root.userData
+          .fieldworkFixtureLegacyBoxRecipes as Array<[number,number,number]>|undefined;
+        if(host.includeCharacterFixtureTemplates===true&&
+           templateLease.root.userData.fieldworkE625CharacterTemplate===true)
+          for(const recipe of boxRecipes??[])
+            host.reserveBoxGeometry?.(...recipe);
         // Direct children preserve the existing per-cover instancing and
         // disclosure ownership. The lease only manages shared GPU buffers.
         host.registerVisualLease?.(

@@ -254,6 +254,12 @@ try{
     dir+'/seed-'+seed+'-template-1.png');
   console.log('E6_25_VISUAL_PRECHECK',
     JSON.stringify({seed,building,planningPrecheck,livePrecheck}));
+  // Frozen seed-97 source control, independently recorded before E6.25's
+  // draw-parity repair: 854 actual main-pass draws. A misleading fix that
+  // increases BOTH OFF and ON to 855 must fail, not pass A/B equality.
+  if(seed===97&&off.mainPassAttribution.drawCallsP95!==854)
+   throw Error('E6.25 OFF control changed from frozen retail baseline 854: '+
+    off.mainPassAttribution.drawCallsP95);
   const saved=off.mainPassAttribution.drawCallsP95-on.mainPassAttribution.drawCallsP95;
   const core=off.mainPassAttribution.dominantOwners.find(x=>x.owner==='environment');
   const after=on.mainPassAttribution.dominantOwners.find(x=>x.owner==='environment');
