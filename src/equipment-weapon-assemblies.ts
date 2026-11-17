@@ -5,6 +5,8 @@
  * This module does not depend on Three.js, rendering or DOM state.
  */
 import type {WeaponId} from './breach-combat.ts';
+import {normalizedStockPosition,positionedStockX}
+ from './weapon-stock-position.ts';
 import {arBarrelArt,AR_VISUAL_AXIS_Y} from './weapons/geometry/ar-barrel-profiles.ts';
 import {akBarrelArt} from './weapons/geometry/ak-barrel-profiles.ts';
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
@@ -30,6 +32,8 @@ export type WeaponConfiguration={
  build?:WeaponFamilyBuild;
  /** Optional stable physical intent; absent on all pre-M2.6 saves. */
  mountSelections?:MountSelections;
+ /** Absent means deployed for every pre-H2 save. */
+ stockPosition?:'folded'|'collapsed';
 };
 export type WeaponAttachment={
  id:string;name:string;slot:WeaponAttachmentSlot;
@@ -229,6 +233,11 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
  const positions=readMountSelections(
   (raw as {mountSelections?:unknown}).mountSelections,result.slots);
  if(positions)result.mountSelections=positions;
+ if(result.build){
+  const state=normalizedStockPosition(result.build.parts.stock,
+   (raw as {stockPosition?:unknown}).stockPosition);
+  if(state!=='deployed')result.stockPosition=state;
+ }
  return result;
 }
 export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttachmentSlot,
@@ -279,6 +288,7 @@ export function sameWeaponConfiguration(a?:WeaponConfiguration,b?:WeaponConfigur
  for(const slot of WEAPON_ATTACHMENT_SLOTS)
   if(a.slots[slot]!==b.slots[slot])return false;
  if(!sameMountSelections(a.mountSelections,b.mountSelections))return false;
+ if((a.stockPosition??'deployed')!==(b.stockPosition??'deployed'))return false;
  if(a.build?.family!==b.build?.family)return false;
  for(const slot of FAMILY_PART_SLOTS)
   if(a.build?.parts[slot]!==b.build?.parts[slot])return false;
@@ -332,13 +342,24 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   mass+=part.massKg;weighted+=part.massKg*part.massX;
   inertia+=part.massKg*part.massX*part.massX;
  }
+ // Moving the physical stock closer to the receiver shifts a bounded
+ // portion of its actual mass. The visible geometry uses this same position.
+ if(build&&config.stockPosition){
+  const rear=FAMILY_PARTS[build.parts.stock].stockX??p.stockX;
+  const moved=positionedStockX(build.parts.stock,rear,config.stockPosition);
+  const shiftedMass=.38;
+  inertia+=shiftedMass*(moved*moved-rear*rear);
+  weighted+=shiftedMass*(moved-rear);
+ }
  const balance=weighted/mass;
  const familyBarrel=build?FAMILY_PARTS[build.parts.barrel]:undefined;
  const familyHandguard=build?FAMILY_PARTS[build.parts.handguard]:undefined;
  const lengthScale=art?.lengthScale??(familyBarrel?.length==='long'?.94:
   familyBarrel?.length==='mid'?.86:
   familyBarrel?.length==='short'?.73:p.lengthScale);
- const stockX=build?(FAMILY_PARTS[build.parts.stock].stockX??p.stockX):p.stockX;
+ const baseStockX=build?(FAMILY_PARTS[build.parts.stock].stockX??p.stockX):p.stockX;
+ const stockX=build?positionedStockX(build.parts.stock,baseStockX,
+  config.stockPosition??'deployed'):baseStockX;
  const hkArt=build?.family==='hk'?hkBarrelArt(build.parts.barrel):undefined;
  // Actual family pistol-grip silhouettes sit behind the receiver midpoint.
  // Earlier AK settings targeted empty space, putting the wrist in the plate.
