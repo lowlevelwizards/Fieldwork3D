@@ -487,6 +487,26 @@ export class CampaignScreen{
     ));
   }
   if(isDispatchPilot(c)){
+   // Recent linked operations are optional, compact, and derived from real reports.
+   const linked=c.contracts.filter(k=>k.followUpOf&&
+    c.history.some(report=>report.contractId===k.id)).slice(-8).reverse();
+   if(linked.length){
+    const trail=node('details','campaign-case-history');
+    trail.append(node('summary','',
+     'RELATED CASE HISTORY · '+linked.length+' RECENT OPERATION'+
+     (linked.length===1?'':'S')));
+    for(const operation of linked){
+     const dossier=dispatchCaseDossier(c,operation);
+     const report=c.history.find(row=>row.contractId===operation.id);
+     const prior=dossier?.related.at(-1);
+     trail.append(node('p','campaign-note',
+      'DAY '+(report?.day??'?')+' · '+campaignIncidentView(c,operation).title+
+      ' · '+(report?.outcome.toUpperCase()??'OUTCOME UNRECORDED')+
+      ' · PRIOR: '+(prior?.title??'RECORD UNAVAILABLE')+
+      ' ('+(prior?.outcome.toUpperCase()??'UNKNOWN')+')'));
+    }
+    chronicle.append(trail);
+   }
    const awarded=c.history.slice(-8).flatMap(h=>
     h.dispatchCareer?.recognitions.map(name=>({
      id:h.id,name,day:h.day
