@@ -10,6 +10,207 @@ const server=spawn(process.execPath,[
  '--port',String(port),'--strictPort'
 ],{stdio:'ignore'});
 const check=(condition,message)=>{if(!condition)throw Error(message);};
+// C9: build reproducible acceptance data with the published domain transitions.
+// These are synthetic test operation reports, never claims about a real player's
+// campaign. Persist through the actual Dispatch save slot and reload normally.
+async function seedCareerScenario(page){
+ return page.evaluate(async()=>{
+  const domain=await import('/src/campaign-state.ts');
+  const key='fieldwork3d.dispatch-campaign.v1';
+  const raw=localStorage.getItem(key);
+  let campaign=domain.readCampaign(raw);
+  if(!campaign||campaign.rules?.template!=='dispatch')
+   throw Error('C9 requires a valid saved Dispatch campaign');
+  for(let i=0;i<10;i++){
+   const contract=campaign.contracts.find(k=>k.status==='available'&&k.deadline>=campaign.day);
+   if(!contract)throw Error('No open case for simulated operation '+i);
+   const accepted=domain.acceptContract(campaign,contract.id);
+   campaign=domain.resolveOperation(accepted,{
+    id:'c9-acceptance-'+i,contractId:contract.id,day:campaign.day,
+    outcome:'success',grade:i%2?'A':'B',elapsed:90+i*7,
+    participatingIds:[...campaign.squadIds],casualties:[],objective:true,events:[]
+   });
+   if(campaign.history.length!==i+1)
+    throw Error('Domain did not settle simulated operation '+i);
+  }
+  for(let i=0;i<4;i++){
+   const previous=campaign.operators.length;
+   campaign=domain.hireRecruit(campaign);
+   if(campaign.operators.length!==previous+1)
+    throw Error('Could not populate reserves '+i);
+  }
+  campaign={
+   ...campaign,
+   supplies:{...campaign.supplies,ammo:0,medical:0,flash:0},
+   operators:campaign.operators.map((operator,i)=>i===0?
+    {...operator,recoveryDays:3,injuries:1}:operator)
+  };
+  if(!domain.readCampaign(JSON.stringify(campaign)))
+   throw Error('Synthesized C9 campaign failed save validation');
+  localStorage.setItem(key,JSON.stringify(campaign));
+  localStorage.setItem('fieldwork3d.campaign-active-slot.v1','dispatch');
+  return {day:campaign.day,total:campaign.history.length,
+   operators:campaign.operators.length,open:campaign.contracts.filter(c=>
+    c.status==='available'&&c.deadline>=campaign.day).length};
+ });
+}
+async function acceptSavedScenario(page){
+ return page.evaluate(async()=>{
+  const domain=await import('/src/campaign-state.ts');
+  const key='fieldwork3d.dispatch-campaign.v1';
+  const campaign=domain.readCampaign(localStorage.getItem(key));
+  if(!campaign)throw Error('Saved scenario unavailable');
+  const contract=campaign.contracts.find(c=>c.status==='available'&&c.deadline>=campaign.day);
+  if(!contract)throw Error('No open contract to accept');
+  const next=domain.acceptContract(campaign,contract.id);
+  if(next.activeContractId!==contract.id)throw Error('Domain contract acceptance failed');
+  localStorage.setItem(key,JSON.stringify(next));
+  return contract.id;
+ });
+}
+// C9.2: exercise a saved, nonempty campaign after full-page reload.
+async function assessEstablishedCareer(page,name,mobile){
+ const expected=await seedCareerScenario(page);
+ check(expected.total===10&&expected.operators===8,
+  name+' fixture should contain ten resolved operations and eight operators');
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.getByRole('button',{name:'Continue DISPATCH CAMPAIGN'}).click();
+ await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
+ check((await page.locator('.campaign-day').textContent())?.includes(String(expected.day)),
+  name+' saved campaign day did not survive reload');
+ for(const tab of ['overview','personnel','contracts','logistics','chronicle']){
+  await page.locator('#campaign-tab-'+tab).click();
+  const dimensions=await page.locator('.campaign-screen').evaluate(el=>({
+   width:el.clientWidth,scroll:el.scrollWidth
+  }));
+  check(dimensions.scroll<=dimensions.width+3,
+   name+' established '+tab+' horizontal overflow');
+  if(tab==='overview'){
+   check(await page.locator('.campaign-readiness-warning').count()>=2,
+    name+' depleted supplies or recovery warnings missing');
+  }
+  if(tab==='personnel'){
+   check(await page.locator('.campaign-person-expand').count()===8,
+    name+' full roster did not render');
+   check(await page.locator('.campaign-person-expand').first()
+    .locator(':scope > summary').isVisible(),name+' roster summary unreachable');
+   check(await page.locator('.campaign-assignment select').count()===4,
+    name+' tactical slot pickers missing');
+  }
+  if(tab==='contracts'){
+   check(await page.locator('.campaign-contract-review').count()>0,
+    name+' continuing campaign has no reviewable cases');
+   // C10: preflight has more focusable content than Cancel and Deploy. Make
+   // the real case-to-logistics-to-case loop and focus trap part of acceptance.
+   await page.locator('.campaign-contract-review').first().click();
+   const sheet=page.locator('.campaign-preflight[role="dialog"]');
+   check(await sheet.count()===1,name+' preflight dialog unavailable');
+   const warnings=sheet.locator('.campaign-preflight-warning');
+   check(await warnings.count()===1,name+' readiness advisories absent');
+   const warnBeforeRoster=await sheet.evaluate(el=>{
+    const warn=el.querySelector('.campaign-preflight-warning');
+    const roster=el.querySelector('.campaign-preflight-roster');
+    return !!warn&&!!roster&&!!(warn.compareDocumentPosition(roster)&Node.DOCUMENT_POSITION_FOLLOWING);
+   });
+   check(warnBeforeRoster,name+' preflight advisories buried after roster');
+   const summary=sheet.locator('.campaign-preflight-extra > summary');
+   const deploy=sheet.getByRole('button',{name:'ACCEPT & DEPLOY'});
+   await deploy.focus();
+   await deploy.press('Tab');
+   check(await summary.evaluate(el=>el===document.activeElement),
+    name+' preflight forward Tab escaped interactive sheet');
+   await summary.press('Shift+Tab');
+   check(await deploy.evaluate(el=>el===document.activeElement),
+    name+' preflight reverse Tab escaped interactive sheet');
+   await sheet.getByRole('button',{name:'CHECK LOGISTICS'}).click();
+   check(await page.locator('#campaign-tab-logistics').getAttribute('aria-selected')==='true',
+    name+' check logistics did not open Supply');
+   await page.locator('#campaign-panel-logistics .campaign-preparation-return button').click();
+   check(await page.locator('.campaign-preflight[role="dialog"]').count()===1,
+    name+' return-to-case did not restore briefing');
+   await page.getByRole('button',{name:'RETURN TO CONTRACTS'}).click();
+   check(await page.locator('.campaign-preflight[role="dialog"]').count()===0,
+    name+' closing case review failed');
+  }
+  if(tab==='logistics'){
+   const stock=await page.locator('.campaign-logistics-stat strong')
+    .allTextContents();
+   check(stock.length===3&&stock.every(count=>count.trim()==='0'),
+    name+' exhausted reserves were not restored');
+   check(await page.locator('.campaign-logistics-stat.is-low').count()===3,
+    name+' empty stock alerts missing');
+  }
+  if(tab==='chronicle'){
+   const recent=page.locator('.campaign-chronicle>.campaign-operation-board');
+   check(await recent.locator('.campaign-operation-record').count()===8,
+    name+' Records should show only eight recent operations');
+   const earlier=page.locator('.campaign-operation-more');
+   check(await earlier.count()===1,name+' missing older record disclosure');
+   check(await earlier.locator('.campaign-operation-record').count()===0,
+    name+' earlier records should be lazy before opening');
+   await earlier.locator(':scope > summary').click();
+   // Native details toggles dispatch asynchronously after the click. Await the
+   // lazy-rendered cards rather than reading the DOM in the same event turn.
+   await earlier.locator('.campaign-operation-record').nth(1)
+    .waitFor({state:'attached',timeout:5000});
+   check(await earlier.locator('.campaign-operation-record').count()===2,
+    name+' earlier history failed to load remaining two records');
+   const detail=recent.locator('.campaign-operation-detail').first();
+   await detail.locator(':scope > summary').click();
+   check(await detail.locator('.campaign-operation-participants').isVisible(),
+    name+' saved operation participants inaccessible');
+   await detail.locator(':scope > summary').click();
+   const milestones=page.locator('.campaign-career-timeline');
+   check(await milestones.count()===1,name+' recorded milestones missing');
+   await milestones.locator(':scope > summary').click();
+   check(await milestones.locator('.campaign-career-event').count()>0,
+    name+' saved personnel milestones inaccessible');
+  }
+  if(mobile){
+   const tabs=page.locator('.campaign-tab');
+   const heights=await tabs.evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height));
+   check(heights.every(h=>h>=44),name+' established tab target below 44px');
+  }
+ }
+ await page.screenshot({path:out+'/'+name+'-established-records.png',animations:'disabled'});
+ return expected;
+}
+// C9.3: a second reload must resume an accepted case without unlocking squad edits.
+async function assessActiveDeployment(page,name,expected){
+ const acceptedId=await acceptSavedScenario(page);
+ await page.reload({waitUntil:'domcontentloaded'});
+ // The cold-start menu intentionally receives save-availability flags only;
+ // campaign metadata/status is rendered when an explicit savedCampaigns map is
+ // passed. Verify persistence from the authoritative save, then enter normally.
+ await page.locator('.campaign-landing-primary').waitFor({state:'visible'});
+ const persisted=await page.evaluate(async()=>{
+  const {readCampaign}=await import('/src/campaign-state.ts');
+  const saved=readCampaign(localStorage.getItem('fieldwork3d.dispatch-campaign.v1'));
+  return {active:saved?.activeContractId??null,history:saved?.history.length??0};
+ });
+ check(persisted.active===acceptedId,
+  name+' accepted deployment was not retained in saved campaign');
+ check(persisted.history===expected.total,
+  name+' accepting a case unexpectedly changed saved operation history');
+ await page.getByRole('button',{name:'Continue DISPATCH CAMPAIGN'}).click();
+ await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
+ check((await page.locator('.campaign-overview-primary-action').textContent())
+  ?.includes('CONTINUE DEPLOYMENT'),name+' active mission resume action missing');
+ await page.locator('#campaign-tab-personnel').click();
+ const disabled=await page.locator('.campaign-assignment select')
+  .evaluateAll(els=>els.length===4&&els.every(el=>el.disabled));
+ check(disabled,name+' squad slots editable during an active deployment');
+ await page.locator('#campaign-tab-chronicle').click();
+ check(await page.locator('.campaign-chronicle>.campaign-operation-board .campaign-operation-record')
+  .count()===Math.min(8,expected.total),
+  name+' accepting a contract altered recent operation history');
+ check(await page.locator('.campaign-operation-more').count()===(expected.total>8?1:0),
+  name+' accepting a contract altered older operation access');
+ check((await page.locator('.campaign-funds .campaign-day').textContent())
+  ?.includes(String(expected.day)),name+' active deployment changed saved day');
+ await page.screenshot({path:out+'/'+name+'-active-deployment.png',animations:'disabled'});
+ console.log(name+' passed: 8-operator saved career, 10 reports, depleted reserves, active '+acceptedId);
+}
 async function assess(browser,{name,width,height,mobile}){
  const context=await browser.newContext({
   viewport:{width,height},deviceScaleFactor:mobile?2:1,
@@ -161,6 +362,8 @@ async function assess(browser,{name,width,height,mobile}){
   check(await last.getAttribute('aria-selected')==='true',name+' End navigation failed');
   await last.press('ArrowRight');
   check(await first.getAttribute('aria-selected')==='true',name+' Arrow wrap failed');
+  const established=await assessEstablishedCareer(page,name,mobile);
+  await assessActiveDeployment(page,name,established);
   check(!errors.length,name+' runtime errors: '+errors.join('; '));
   console.log(name+' passed: main menu, five Operations panels, responsive layout, navigation');
  }finally{await context.close();}

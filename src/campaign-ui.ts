@@ -1832,7 +1832,9 @@ export class CampaignScreen{
    if(needsSquad)repairActions.append(button('REVIEW SQUAD',()=>fix('personnel')));
    if(needsSupply)repairActions.append(button('CHECK LOGISTICS',()=>fix('logistics')));
    warnings.append(repairActions);
-   panel.append(warnings);
+   // A warning must be seen before the full squad roster on a phone; retain
+   // the existing squad details immediately afterwards for an informed choice.
+   panel.insertBefore(warnings,roster);
   }
   const actions=node('div','campaign-preflight-actions');
   const cancel=button('RETURN TO CONTRACTS',()=>dismiss());
@@ -1848,11 +1850,21 @@ export class CampaignScreen{
    if(e.target===overlay)dismiss();
   });
   overlay.addEventListener('keydown',e=>{
-   if(e.key==='Escape'){e.preventDefault();dismiss();}
-   else if(e.key==='Tab'){
-    const active=document.activeElement;
-    if(active===cancel&&e.shiftKey){e.preventDefault();deploy.focus();}
-    else if(active===deploy&&!e.shiftKey){e.preventDefault();cancel.focus();}
+   if(e.key==='Escape'){e.preventDefault();dismiss();return;}
+   if(e.key!=='Tab')return;
+   // The sheet may include case intelligence and squad/supply repair actions.
+   // Trap the actual visible controls, not just Cancel and Deploy, so keyboard
+   // navigation cannot escape a modal with extra interactive content.
+   const focusable=Array.from(panel.querySelectorAll<HTMLElement>(
+    'button:not(:disabled),summary,a[href],select:not(:disabled),[tabindex]:not([tabindex="-1"])'
+   )).filter(el=>el.getClientRects().length>0);
+   const first=focusable[0],last=focusable[focusable.length-1];
+   if(!first||!last)return;
+   const active=document.activeElement;
+   if(e.shiftKey&&(active===first||!panel.contains(active))){
+    e.preventDefault();last.focus({preventScroll:true});
+   }else if(!e.shiftKey&&(active===last||!panel.contains(active))){
+    e.preventDefault();first.focus({preventScroll:true});
    }
   });
   actions.append(cancel,deploy);
