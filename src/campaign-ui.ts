@@ -1290,14 +1290,36 @@ export class CampaignScreen{
   for(const [name,value] of [
    ['LOAD',totalEquipmentMass(person.loadout,person.weaponConfiguration).toFixed(2)+' KG'],
    ['MOBILITY',Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100)+'%'],
-   ['ARMOR',person.armorCondition.torso+'/'+maximum.torso],
-   ['HELMET',person.armorCondition.head+'/'+maximum.head],
-   ['AMMO',person.magazine+' + '+person.reserve]
+   ['LOADED',person.magazine+' RDS'],
+   ['RESERVE',person.reserve+' RDS'],
+   ['MEDICAL',String(medicalSupplyCount(person.medicalSupplies))]
   ]){
    const metric=node('div','campaign-kit-stat');
    metric.append(node('small','',name),node('strong','',value));stats.append(metric);
   }
   summary.append(stats);
+  const conditionPanel=node('div','campaign-kit-condition-panel');
+  for(const [label,condition,limit] of [
+   ['BODY ARMOR',person.armorCondition.torso,maximum.torso],
+   ['HEAD PROTECTION',person.armorCondition.head,maximum.head]
+  ] as const){
+   const entry=node('div','campaign-kit-condition');
+   const header=node('div','campaign-kit-condition-head');
+   header.append(node('span','',label),
+    node('strong','',limit>0?condition+' / '+limit+' CONDITION':'NONE EQUIPPED'));
+   entry.append(header);
+   const track=node('div','campaign-kit-condition-track');
+   track.setAttribute('role','progressbar');
+   track.setAttribute('aria-label',label+' condition');
+   track.setAttribute('aria-valuemin','0');
+   track.setAttribute('aria-valuemax',String(limit||1));
+   track.setAttribute('aria-valuenow',String(limit?condition:0));
+   const fill=node('span','campaign-kit-condition-fill');
+   fill.style.width=(limit>0?Math.max(0,Math.min(100,condition/limit*100)):0)+'%';
+   if(limit>0&&condition<limit)entry.dataset.condition='worn';
+   track.append(fill);entry.append(track);conditionPanel.append(entry);
+  }
+  summary.append(conditionPanel);
   const maintenance=node('div','campaign-kit-maintenance');
   if(repairCost>0){
    const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
@@ -1315,7 +1337,9 @@ export class CampaignScreen{
     'Locked during deployment':'Insufficient credits';
    maintenance.append(service);
   }
-  if(maintenance.childElementCount)summary.append(maintenance);
+  if(maintenance.childElementCount)summary.append(
+   node('p','campaign-kit-service-funds','SERVICE FUNDS · '+c.funds+' CR AVAILABLE'),
+   maintenance);
   const readiness=node('details','campaign-readiness-details');
   readiness.append(node('summary','','SERVICE RECORD & DETAILED READINESS'));
   const carrying=carryCapacityReport(person.loadout,person.magazines);
@@ -1334,8 +1358,12 @@ export class CampaignScreen{
    '    /    RESERVE · '+person.reserve));
   if(firearm){
    readiness.append(node('p','campaign-kit-metrics',
-    'SERIAL · '+firearm.id+' · CONDITION '+firearm.condition+'% · '+
+    'WEAPON CONDITION · '+firearm.condition+'% · '+
     firearm.roundsFired+' ROUNDS FIRED'));
+    const serialDetails=node('details','campaign-kit-serial-record');
+    serialDetails.append(node('summary','','WEAPON RECORD IDENTIFIER'),
+     node('p','campaign-note',firearm.id));
+    readiness.append(serialDetails);
    const recent=firearm.history.slice(-3).map(e=>
     'DAY '+e.day+' '+e.kind.toUpperCase()+
     (e.rounds?' · '+e.rounds+' RDS':'')).join(' / ');
@@ -1359,9 +1387,10 @@ export class CampaignScreen{
   readiness.append(node('p','campaign-kit-metrics',
    'FIELD MEDICAL · '+medicalSupplyCount(person.medicalSupplies)+' / '+
     medicalSupplyCount(capacity)+' · HQ RESERVE '+c.supplies.medical));
-  readiness.append(node('p','campaign-kit-metrics',
-   'WEAPON CONFIG · '+Object.values(person.weaponConfiguration.slots)
-    .map(v=>v.replace(/^[^-]+-/,'')).join(' / ')));
+  const configuration=node('details','campaign-kit-serial-record');
+  configuration.append(node('summary','','TECHNICAL WEAPON CONFIGURATION'),
+   node('p','campaign-kit-metrics',Object.values(person.weaponConfiguration.slots).join(' / ')));
+  readiness.append(configuration);
   summary.append(readiness);
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');

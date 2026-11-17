@@ -1552,3 +1552,29 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  min-height:42px;display:flex;align-items:center;
  font:700 12px/1.35 var(--fw-font-display);color:var(--fw-text-muted);
  cursor:pointer;touch-action:manipulation}
+
+/* Equipment E5.A: durable protection condition is NOT protection rating. */
+.campaign-kit-condition-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px}
+.campaign-kit-condition{min-width:0;padding:10px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:8px;display:grid;gap:8px}
+.campaign-kit-condition-head{display:flex;align-items:center;
+ justify-content:space-between;flex-wrap:wrap;gap:5px;
+ font:700 11px/1.3 var(--fw-font-action)}
+.campaign-kit-condition-head span{color:var(--fw-text-muted)}
+.campaign-kit-condition-head strong{color:var(--fw-text-warm);font-variant-numeric:tabular-nums}
+.campaign-kit-condition-track{height:7px;width:100%;border-radius:5px;
+ background:var(--fw-control-bg);border:1px solid var(--fw-panel-border);overflow:hidden}
+.campaign-kit-condition-fill{display:block;height:100%;background:var(--fw-sage);
+ transition:width .2s ease}
+.campaign-kit-condition[data-condition="worn"] .campaign-kit-condition-fill{background:var(--fw-brass)}
+.campaign-kit-service-funds{margin:4px 0 0;color:var(--fw-text-muted);
+ font:700 11px var(--fw-font-action)}
+.campaign-kit-serial-record{border-top:1px solid var(--fw-panel-border);
+ padding:9px 0;font:600 12px var(--fw-font-action)}
+.campaign-kit-serial-record summary{cursor:pointer;min-height:35px;
+ display:flex;align-items:center;color:var(--fw-text-muted)}
+.campaign-kit-serial-record .campaign-note{overflow-wrap:anywhere}
+@media(max-width:390px){.campaign-kit-condition-panel{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.campaign-kit-condition-fill{transition:none}}
