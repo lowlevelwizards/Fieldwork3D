@@ -1418,3 +1418,16 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-chronicle .campaign-operation-record-heading{gap:7px}
  .campaign-chronicle .campaign-operation-outcome{font-size:10px}
 }
+
+
+/* C13.4 — sticky Operations tabs remain below the iPhone safe area.
+   No second navigation row or horizontal tab scroll is introduced. */
+@media(max-width:640px){
+ .campaign-shell.campaign-wide:has(.campaign-tabs) .campaign-tabs{
+  top:env(safe-area-inset-top,0px);
+  border-bottom:1px solid var(--fw-panel-border);
+ }
+ .campaign-shell .campaign-tab:focus-visible{
+  outline:2px solid var(--fw-focus);outline-offset:-2px;
+ }
+}
