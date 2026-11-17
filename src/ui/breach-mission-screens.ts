@@ -285,6 +285,7 @@ function showMissionBriefing(){
   config.refreshHud();
   collapseTacticalSheets('briefing');
   ui.briefingPanel.hidden=false;
+  ui.briefingQuickPlaySetup.hidden=config.getMode()!=='quick';
   ui.briefingToggle.setAttribute('aria-expanded','true');
   tacticalSheetNavigation.sync();tacticalSheetNavigation.focusFirst();
   notifyPresentation();

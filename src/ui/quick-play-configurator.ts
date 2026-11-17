@@ -230,15 +230,17 @@ export function createQuickPlayConfigurator(options:{
   presence.select.value=settings.presence;
   civilians.select.value=settings.civilians;update();
  }
- function hide(){
+ function hide(returnFocus=true){
   backdrop.hidden=true;
   options.onVisibilityChange?.(false);
-  previouslyFocused?.focus();previouslyFocused=null;
+  if(returnFocus&&previouslyFocused?.isConnected&&!previouslyFocused.hidden)
+   previouslyFocused.focus({preventScroll:true});
+  previouslyFocused=null;
  }
  function generate(){
   update();if(start.disabled)return;
   const recipe:QuickPlaySettings={...settings,buildings:[...settings.buildings]};
-  hide();options.onGenerate(recipe);
+  hide(false);options.onGenerate(recipe);
  }
  render();
  return {

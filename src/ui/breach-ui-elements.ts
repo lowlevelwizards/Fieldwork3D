@@ -33,6 +33,7 @@ const ui={
   briefingIntel:el<HTMLElement>('briefingIntel'),
   briefingRoster:el<HTMLElement>('briefingRoster'),
   briefingClose:el<HTMLButtonElement>('briefingClose'),
+  briefingQuickPlaySetup:el<HTMLButtonElement>('briefingQuickPlaySetup'),
   briefingPrimary:el<HTMLElement>('briefingPrimary'),
   briefingType:el<HTMLElement>('briefingType'),
   briefingLocation:el<HTMLElement>('briefingLocation'),
