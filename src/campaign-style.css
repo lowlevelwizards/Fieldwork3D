@@ -565,3 +565,9 @@
 @media(max-width:520px){.campaign-department-facts{grid-template-columns:1fr}
  .campaign-department-fact{grid-template-columns:92px minmax(0,1fr);align-items:baseline}
  .campaign-department-identity h3{font-size:17px}}
+
+/* D14.3: collapsible case lineage; never expand the chronicle by default. */
+.campaign-case-history{border-top:1px solid #496158;margin:8px 0;padding:8px 0}
+.campaign-case-history summary{cursor:pointer;touch-action:manipulation;
+ font:700 11px/1.5 var(--fw-font-menu);color:#d1dfcc}
+.campaign-case-history p{margin:7px 0 0;overflow-wrap:anywhere}
