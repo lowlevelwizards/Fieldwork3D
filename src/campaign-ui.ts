@@ -1070,6 +1070,11 @@ export class CampaignScreen{
    tabs[next].focus({preventScroll:true});
    tabs[next].click();
   });
+  // Counts come from the same campaign snapshot as the visible panel.
+  // They are navigation hints, not a second contract/record source of truth.
+  const openCaseCount=c.contracts.filter(k=>
+   k.status==='available'&&k.deadline>=c.day).length;
+  const recordedOperationCount=c.history.length;
   for(const [tab,label,accessible] of [
    ['overview','Ops','Overview'],['personnel','Squad','Personnel'],
    ['contracts','Cases','Contracts'],['logistics','Supply','Logistics'],
@@ -1082,8 +1087,18 @@ export class CampaignScreen{
     activateTab(tab)
    },'campaign-tab');
    trigger.id='campaign-tab-'+tab;
-   trigger.setAttribute('aria-label',accessible);
-   trigger.title=accessible;
+   const count=tab==='contracts'?openCaseCount:
+    tab==='chronicle'?recordedOperationCount:0;
+   const context=tab==='contracts'?' available':
+    tab==='chronicle'?' recorded operations':'';
+   const accessibleLabel=count?accessible+' · '+count+context:accessible;
+   trigger.setAttribute('aria-label',accessibleLabel);
+   trigger.title=accessibleLabel;
+   if(count){
+    const counter=node('span','campaign-tab-count',String(count));
+    counter.setAttribute('aria-hidden','true');
+    trigger.append(counter);
+   }
    trigger.setAttribute('role','tab');
    trigger.setAttribute('aria-selected',String(this.homeTab===tab));
    trigger.setAttribute('aria-controls',panel.id);
