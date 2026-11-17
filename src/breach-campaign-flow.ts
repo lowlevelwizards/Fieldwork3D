@@ -28,6 +28,7 @@ import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
 import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
+import {createDispatchSetup,type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
 import {isDispatchPilot} from './dispatch-campaign-eligibility.ts';
 import {dispatchForceHistory} from './dispatch-force-review.ts';
 import {deployedDispatchIncident,validatedDispatchIncident,
@@ -168,22 +169,27 @@ const campaignScreen=new CampaignScreen({
  continueCampaign:()=>resumeSlot('legacy'),
  newSandbox:()=>campaignScreen.creator(),
  continueSandbox:()=>resumeSlot('sandbox'),
- newDispatch:async()=>{
+ newDispatch:()=>campaignScreen.dispatchCreator(),
+ createDispatch:async(draft:DispatchCampaignDraft)=>{
+  try{createDispatchSetup(draft);}catch{
+   void showFieldworkNotice('Invalid Dispatch setup',
+    'Choose a supported agency, era and compatible campaign rules.');
+   return false;
+  }
   if(config.getCampaignInSlot('dispatch')&&!await confirmFieldworkAction({
-   title:'Replace Dispatch SWAT pilot?',
-   message:'This replaces only your saved Dispatch pilot. Export its campaign save first to preserve your operators and mission history.',
+   title:'Replace existing Dispatch campaign?',
+   message:'This replaces only the Dispatch save. Export it to keep the existing team and operation history.',
    confirmLabel:'REPLACE DISPATCH',danger:true
-  }))return;
-  // Existing career/contracts are reused; no new police-only missions are
-  // implied by this first explicit Dispatch campaign identity.
-  const next=newDispatchPilotCampaign(config.randomSeed());
+  }))return null;
+  const next=newDispatchPilotCampaign(config.randomSeed(),draft);
   if(!config.replaceCampaignSlot(next,'dispatch')){
    void showFieldworkNotice('Save unavailable',
-    'Dispatch pilot could not be saved. Other campaign saves were preserved.');
-   return;
+    'Dispatch campaign could not be saved. Other campaign saves were preserved.');
+   return false;
   }
-  showCampaignHome();
+  showCampaignHome();return true;
  },
+ exportDispatch:()=>{const c=config.getCampaignInSlot('dispatch');if(c)saveFile(c);},
  continueDispatch:()=>resumeSlot('dispatch'),
  showMenu:campaignMenu,
  exportSandbox:()=>{const c=config.getCampaignInSlot('sandbox');if(c)saveFile(c);},

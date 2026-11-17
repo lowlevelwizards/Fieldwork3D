@@ -11,13 +11,14 @@ import {initialArmorIntegrity} from './equipment-armor.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {readWardrobe} from './operator-wardrobe-data.ts';
 
-export function issueDispatchPilotOperator(person:CampaignOperator):CampaignOperator{
- const appearance=resolveFactionReference(DISPATCH_PILOT_REFERENCE_ID);
+export function issueDispatchPilotOperator(person:CampaignOperator,
+ referenceId:string=DISPATCH_PILOT_REFERENCE_ID):CampaignOperator{
+ const appearance=resolveFactionReference(referenceId);
  if(appearance.technicalIssues.length)throw Error(
   'Dispatch starter appearance has invalid equipment: '+
   appearance.technicalIssues.join(', '));
  const {weapon,weaponConfiguration}=issueWeaponPreset(appearance.weapon.presetId);
- if(weapon!=='carbine'||appearance.kit.slots.primary!=='primary-carbine')
+ if(appearance.kit.slots.primary!=='primary-'+weapon)
   throw Error('Dispatch starter weapon and equipment class mismatch');
  const loadout={version:1 as const,slots:{...appearance.kit.slots}};
  const wardrobe=readWardrobe({...appearance.wardrobe,

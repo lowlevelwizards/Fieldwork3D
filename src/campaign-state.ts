@@ -1,5 +1,6 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
+import {currentDispatchReference,effectiveDispatchSetup,validDispatchSetup,type DispatchCampaignSetupV1} from './dispatch-campaign-setup.ts';
 import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
 import {assignDispatchCase} from './dispatch-case-selection.ts';
 import {advanceDispatchDepartment,initialDispatchDepartment,
@@ -97,6 +98,8 @@ export type CampaignState={
  rules?:CampaignRules;
  /** D11: optional standing ledger; missing on pre-D11 Dispatch saves. */
  dispatchDepartment?:DispatchDepartmentV1;
+ /** D12: optional independent experience settings; missing preserves the original pilot. */
+ dispatchSetup?:DispatchCampaignSetupV1;
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -219,6 +222,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
    if(!o||typeof o.id!=='string'||typeof o.callsign!=='string'||
      !SKILL_NAMES.every(k=>Number.isFinite(o.skills?.[k])&&Number.isFinite(o.experience?.[k])&&Number.isFinite(o.aptitudes?.[k])))return null;
   }
+  if(c.dispatchSetup!==undefined&&
+    (parsedRules?.template!=='dispatch'||!validDispatchSetup(c.dispatchSetup)))return null;
   if(c.dispatchDepartment!==undefined&&
     (parsedRules?.template!=='dispatch'||
      !validDispatchDepartment(c.dispatchDepartment)))return null;
@@ -411,13 +416,13 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
 /** Supplies are counted in actual rounds; no infinite free resupply. */
 export function purchaseAmmo(c:CampaignState):CampaignState{
  const cost=120,rounds=60;
- if(c.funds<cost)return c;
- return {...c,funds:c.funds-cost,supplies:{...c.supplies,ammo:c.supplies.ammo+rounds}};
+ if(!canSpend(c,cost))return c;
+ return {...c,funds:charge(c,cost),supplies:{...c.supplies,ammo:c.supplies.ammo+rounds}};
 }
 export function purchaseMedical(c:CampaignState):CampaignState{
  const cost=170;
- if(c.funds<cost)return c;
- return {...c,funds:c.funds-cost,supplies:{...c.supplies,medical:c.supplies.medical+1}};
+ if(!canSpend(c,cost))return c;
+ return {...c,funds:charge(c,cost),supplies:{...c.supplies,medical:c.supplies.medical+1}};
 }
 export function treatOperator(c:CampaignState,id:string):CampaignState{
  const o=c.operators.find(m=>m.id===id&&m.recoveryDays>0);
@@ -472,7 +477,7 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
 export function hireRecruit(c:CampaignState):CampaignState{
- if(c.funds<450||c.operators.length>=32||
+ if(!canSpend(c,450)||c.operators.length>=32||
   c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired').length>=8||c.activeContractId)return c;
  const i=c.operators.length;
  const id='recruit-'+i;
@@ -480,30 +485,36 @@ export function hireRecruit(c:CampaignState):CampaignState{
  const available=RECRUIT_NAMES.filter(name=>!c.operators.some(o=>o.callsign===name));
  const fresh={...base,callsign:available[(hash(c.seed+i*59)>>>4)%available.length]??('RECRUIT '+i),
   joinedDay:c.day,status:'reserve' as const};
- const member=isDispatchPilotCampaign(c)?issueDispatchPilotOperator(fresh):fresh;
+ const member=isDispatchPilotCampaign(c)?issueDispatchPilotOperator(fresh,
+  currentDispatchReference(c)):fresh;
  const event:CareerEvent={id:'join-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'joined',detail:'Joined the unit'};
- return reconcileCampaignWeaponOwnership({...c,funds:c.funds-450,operators:[...c.operators,member],
+ return reconcileCampaignWeaponOwnership({...c,funds:charge(c,450),operators:[...c.operators,member],
   journal:[...c.journal,event].slice(-1000)});
 }
 
+/** Economy is independent of eligible catalog and unlocked equipment. */
+const unlimitedDispatch=(c:CampaignState)=>
+ c.rules?.template==='dispatch'&&effectiveDispatchSetup(c).economy==='unlimited';
+const canSpend=(c:CampaignState,cost:number)=>unlimitedDispatch(c)||c.funds>=cost;
+const charge=(c:CampaignState,cost:number)=>unlimitedDispatch(c)?c.funds:c.funds-cost;
 export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
  carbine:300,smg:260,rifle:420,shotgun:330
 };
 export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):CampaignState{
  if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
  const price=WEAPON_PRICES[weapon];
- if(!price||c.activeContractId||c.funds<price)return c;
- return reconcileCampaignWeaponOwnership({...c,funds:c.funds-price,
+ if(!price||c.activeContractId||!canSpend(c,price))return c;
+ return reconcileCampaignWeaponOwnership({...c,funds:charge(c,price),
   inventory:{...c.inventory,weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}});
 }
 /** Buying an attachment adds one stock item without silently equipping it. */
 export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState{
  if(!dispatchPilotUnclassifiedEditingEnabled(c))return c;
  const price=attachmentPrice(partId);
- if(c.activeContractId||price<=0||c.funds<price||
+ if(c.activeContractId||price<=0||!canSpend(c,price)||
   (c.inventory.attachments[partId]??0)>=999)return c;
- return {...c,funds:c.funds-price,inventory:{...c.inventory,
+ return {...c,funds:charge(c,price),inventory:{...c.inventory,
   attachments:{...c.inventory.attachments,
    [partId]:(c.inventory.attachments[partId]??0)+1}}};
 }
@@ -555,7 +566,7 @@ export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
  const direct=equipCampaignWeaponAttachment(c,id,slot,partId);
  if(direct!==c)return direct;
  const price=attachmentPrice(partId);
- if(price<=0||c.activeContractId||c.funds<price)return c;
+ if(price<=0||c.activeContractId||!canSpend(c,price))return c;
  const purchased=buyWeaponAttachment(c,partId);
  if(purchased===c)return c;
  const equipped=equipCampaignWeaponAttachment(purchased,id,slot,partId);
@@ -638,7 +649,8 @@ export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:str
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return false;
- if(!isDispatchPilotCampaign(c))return true;
+ if(!isDispatchPilotCampaign(c)||
+  effectiveDispatchSetup(c).equipmentScope==='global')return true;
  if(member.weapon!==preset.weapon||
   !sameWeaponConfiguration(readWeaponConfiguration(preset.weaponConfiguration,preset.weapon),
    member.weaponConfiguration))return false;
@@ -737,8 +749,8 @@ export function serviceCampaignWeapon(c:CampaignState,id:string):CampaignState{
  if(!operator)return c;
  const weapon=c.inventory.serializedWeapons?.find(w=>w.id===operator.weaponSerialId);
  const cost=weaponServiceCost(weapon);
- if(!weapon||cost===0||c.funds<cost)return c;
- return {...c,funds:c.funds-cost,inventory:{...c.inventory,
+ if(!weapon||cost===0||!canSpend(c,cost))return c;
+ return {...c,funds:charge(c,cost),inventory:{...c.inventory,
   serializedWeapons:c.inventory.serializedWeapons?.map(w=>w.id===weapon.id?
    serviceSerializedWeapon(w,c.day,100-w.condition):w)}};
 }
@@ -747,15 +759,15 @@ export function repairCampaignArmor(c:CampaignState,id:string):CampaignState{
  const member=c.operators.find(o=>o.id===id&&o.status!=='retired'&&o.status!=='lost');
  if(!member)return c;
  const cost=armorRepairCost(member);
- if(cost===0||cost>c.funds)return c;
- return {...c,funds:c.funds-cost,operators:c.operators.map(o=>o.id===id?
+ if(cost===0||!canSpend(c,cost))return c;
+ return {...c,funds:charge(c,cost),operators:c.operators.map(o=>o.id===id?
   {...o,armorCondition:initialArmorIntegrity(o.loadout)}:o)};
 }
 
 /** Flashbang resupply is a paid transaction, never hidden kit duplication. */
 export function purchaseFlash(c:CampaignState):CampaignState{
- if(c.activeContractId||c.funds<150||c.supplies.flash>998)return c;
- return {...c,funds:c.funds-150,supplies:{...c.supplies,flash:c.supplies.flash+2}};
+ if(c.activeContractId||!canSpend(c,150)||c.supplies.flash>998)return c;
+ return {...c,funds:charge(c,150),supplies:{...c.supplies,flash:c.supplies.flash+2}};
 }
 
 /** Manual pouch assignment changes one owned instance, not ammunition.
@@ -789,6 +801,8 @@ export function setCampaignWardrobe(c:CampaignState,id:string,
  if(!member)return c;
  const wardrobe=readWardrobe(raw);
  if(isDispatchPilotCampaign(c)&&
-  !dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),wardrobe,member.loadout))return c;
+  effectiveDispatchSetup(c).equipmentScope!=='global'&&
+  !dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),wardrobe,member.loadout,
+   currentDispatchReference(c)))return c;
  return {...c,operators:c.operators.map(x=>x.id===id?{...x,wardrobe}:x)};
 }

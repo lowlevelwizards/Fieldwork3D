@@ -5,6 +5,7 @@ import {setRosterWardrobe,type RosterState} from './breach-roster.ts';
 import {setCampaignWardrobe,type CampaignState} from './campaign-state.ts';
 import {readWardrobe,initialWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {dispatchPilotAppearanceAllowed} from './dispatch-pilot-appearance.ts';
+import {currentDispatchReference,effectiveDispatchSetup} from './dispatch-campaign-setup.ts';
 export type StudioAppearanceEdit={id:string;wardrobe:WardrobeOptions};
 export function validateStudioAppearanceEdits(raw:unknown):
  StudioAppearanceEdit[]|null{
@@ -37,10 +38,11 @@ export function applyStudioCampaignEdits(campaign:CampaignState,
     edits.some(e=>!campaign.operators.some(p=>p.id===e.id&&
       p.status!=='retired'&&p.status!=='lost')))return null;
  // Every proposed edit must pass before ANY operator is mutated.
- if(campaign.rules?.template==='dispatch'&&edits.some(e=>{
+ if(campaign.rules?.template==='dispatch'&&
+ effectiveDispatchSetup(campaign).equipmentScope!=='global'&&edits.some(e=>{
   const member=campaign.operators.find(p=>p.id===e.id);
   return !member||!dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),
-   e.wardrobe,member.loadout);
+   e.wardrobe,member.loadout,currentDispatchReference(campaign));
  }))return null;
  return edits.reduce((state,e)=>setCampaignWardrobe(state,e.id,e.wardrobe),
   campaign);
