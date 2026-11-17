@@ -12,7 +12,10 @@ import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrar
 import {proposeArsenalPartChange,arsenalReferenceIdentity,
  type ArsenalEditProposal} from './compatibility.ts';
 import {createArsenalDraft,commitArsenalProposal,undoArsenalDraft,redoArsenalDraft,
- arsenalDraftDirty} from './editor-state.ts';
+ arsenalDraftDirty,editArsenalMountPosition} from './editor-state.ts';
+import {mountPickerState,nearestMountChoice}
+ from './mount-picker-model.ts';
+import type {MountableSlot} from '../weapons/geometry/weapon-mount-selections.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../equipment-weapon-assemblies.ts';
 import {ArsenalViewport} from './viewport.ts';
@@ -104,6 +107,42 @@ export function openArsenalWorkbench(
  const panelTitle=document.createElement('h3');
  const slotRow=document.createElement('div');slotRow.className='arsenal-wb-slots';
  const activeLabel=document.createElement('p');activeLabel.className='arsenal-wb-current';
+ // M2.7: one compact rail picker attached to the selected fitted accessory.
+ // The range only selects authored physical candidates, never arbitrary mesh X.
+ const mounting=document.createElement('section');mounting.className='arsenal-wb-mounting';
+ mounting.setAttribute('aria-label','Accessory mounting position');
+ mounting.hidden=true;
+ const mountingHeader=document.createElement('div');mountingHeader.className='arsenal-wb-mount-head';
+ const mountingTitle=document.createElement('strong');mountingTitle.textContent='MOUNT POSITION';
+ const mountingMode=document.createElement('small');
+ mountingHeader.append(mountingTitle,mountingMode);
+ const mountingStatus=document.createElement('p');mountingStatus.className='arsenal-wb-mount-status';
+ mountingStatus.setAttribute('role','status');
+ const mountingRails=document.createElement('div');mountingRails.className='arsenal-wb-mount-rails';
+ mountingRails.setAttribute('role','group');mountingRails.setAttribute('aria-label','Physical rail and side');
+ const mountingPosition=document.createElement('div');mountingPosition.className='arsenal-wb-mount-position';
+ const mountingPositionHeader=document.createElement('div');
+ mountingPositionHeader.className='arsenal-wb-mount-position-head';
+ const mountingPositionLabel=document.createElement('label');
+ const mountingPositionValue=document.createElement('span');
+ const mountingSlider=document.createElement('input');mountingSlider.type='range';
+ mountingSlider.className='arsenal-wb-mount-slider';mountingSlider.min='0';mountingSlider.step='1';
+ mountingSlider.setAttribute('aria-label','Position along mounted rail, rear to front');
+ mountingPositionHeader.append(mountingPositionLabel,mountingPositionValue);
+ const mountingStepper=document.createElement('div');mountingStepper.className='arsenal-wb-mount-stepper';
+ const mountingRear=document.createElement('button');mountingRear.type='button';
+ mountingRear.textContent='◀ REAR';
+ const mountingFront=document.createElement('button');mountingFront.type='button';
+ mountingFront.textContent='FRONT ▶';
+ mountingStepper.append(mountingRear,mountingSlider,mountingFront);
+ mountingPosition.append(mountingPositionHeader,mountingStepper);
+ const mountingTools=document.createElement('div');mountingTools.className='arsenal-wb-mount-tools';
+ const mountingAutomatic=document.createElement('button');mountingAutomatic.type='button';
+ mountingAutomatic.textContent='AUTO POSITION';
+ const mountingView=document.createElement('button');mountingView.type='button';
+ mountingView.textContent='VIEW MOUNT';
+ mountingTools.append(mountingAutomatic,mountingView);
+ mounting.append(mountingHeader,mountingStatus,mountingRails,mountingPosition,mountingTools);
  const finishSection=document.createElement('section');
  finishSection.className='arsenal-wb-finish-section';finishSection.hidden=true;
  const finishHeading=document.createElement('strong');finishHeading.textContent='FINISH / MATERIAL';
@@ -130,8 +169,8 @@ export function openArsenalWorkbench(
   'Edits are a reversible preview. No equipment is purchased or equipped here.';
  const applyQuote=document.createElement('p');applyQuote.className='arsenal-wb-apply-quote';
  applyQuote.setAttribute('role','status');
- panel.append(panelTitle,slotRow,activeLabel,finishSection,optionsHeader,fitExplanation,choiceList,
-  pendingHost,applyQuote,hint);
+ panel.append(panelTitle,slotRow,activeLabel,mounting,finishSection,optionsHeader,
+  fitExplanation,choiceList,pendingHost,applyQuote,hint);
  main.append(viewportHost,nav,panel);
  overlay.append(head,main);document.body.append(overlay);
  const viewer=new ArsenalViewport(viewportHost,draft.working,slot=>{
@@ -286,6 +325,104 @@ export function openArsenalWorkbench(
    if(choiceList.children[index]!==desired[index])
     choiceList.insertBefore(desired[index],choiceList.children[index]??null);
  }
+ // M2.7A–C: mount selection is an ordinary preview edit, never a purchase.
+ // Recompute candidates only on actual editor changes, not during render RAF.
+ const mountable=(slot:ArsenalSlot):slot is MountableSlot=>
+  slot==='optic'||slot==='foregrip'||slot==='light';
+ let mountingChoices:ReturnType<typeof mountPickerState>|null=null;
+ let mountingActiveRail:ReturnType<typeof mountPickerState>['rails'][number]|undefined;
+ const mountUpdate=(slot:MountableSlot,
+  choice:Parameters<typeof editArsenalMountPosition>[2])=>{
+  if(pending){mountingStatus.textContent='Resolve required part changes first.';return false;}
+  const updated=editArsenalMountPosition(draft,slot,choice);
+  if(updated===draft){mountingStatus.textContent='This position conflicts with other mounted equipment.';return false;}
+  draft=updated;
+  viewer.setRecipe(draft.working);renderSelection();
+  return true;
+ };
+ const positionText=(index:number,total:number)=>{
+  if(total<=1)return 'ONE CONTACT';
+  return 'CONTACT '+(index+1)+' / '+total+' · REAR → FRONT';
+ };
+ function renderMounting(){
+  const slot=activeSlot;
+  mounting.hidden=!mountable(slot)||pending!==null;
+  if(mounting.hidden||!mountable(slot))return;
+  const state=mountPickerState(draft.working,slot);
+  mountingChoices=state;
+  mountingMode.textContent=state.automatic?'AUTOMATIC · FREE':'CUSTOM · FREE';
+  mountingRails.replaceChildren();
+  if(state.reason){
+   mountingStatus.textContent=state.reason;
+   mountingPosition.hidden=true;mountingTools.hidden=true;
+   return;
+  }
+  mountingPosition.hidden=false;mountingTools.hidden=false;
+  const active=state.rails.find(r=>r.key===state.selectedKey)??state.rails[0];
+  mountingActiveRail=active;
+  mountingStatus.textContent=!state.automatic&&!state.selectedKey?
+   'Saved mount no longer fits. Choose a real rail or reset to Automatic.':
+   state.automatic?
+   'Auto chooses a clear rail. Choose a side or position to pin it.':
+   'Saved to this draft · Undo restores the previous position.';
+  for(const rail of state.rails){
+   const button=document.createElement('button');button.type='button';
+   button.className='arsenal-wb-mount-rail';
+   const face=rail.face.toUpperCase();
+   const owner=arsenalPart(rail.ownerPartId)?.name??
+    rail.ownerPartId.replace(/^(ar-|hk-|ak-)/,'').replace(/-/g,' ');
+   button.textContent=face+' · '+owner;
+   button.dataset.rail=rail.key;
+   button.setAttribute('aria-pressed',String(active.key===rail.key));
+   button.setAttribute('aria-label','Mount on '+rail.face+' of '+owner);
+   button.addEventListener('click',()=>{
+    if(mountUpdate(slot,nearestMountChoice(rail,state.selectedX))){
+     mountingRails.querySelector<HTMLButtonElement>('[data-rail="'+rail.key+'"]')?.focus();
+     viewer.viewMount(slot);
+    }
+   });
+   mountingRails.append(button);
+  }
+  mountingPositionLabel.textContent=active.face.toUpperCase()+' RAIL · POSITION';
+  mountingSlider.max=String(active.choices.length-1);
+  mountingSlider.value=String(state.selectedIndex);
+  mountingSlider.disabled=active.choices.length<2;
+  mountingPositionValue.textContent=positionText(state.selectedIndex,active.choices.length);
+  mountingRear.disabled=state.selectedIndex<=0;
+  mountingFront.disabled=state.selectedIndex>=active.choices.length-1;
+  mountingAutomatic.disabled=state.automatic;
+ }
+ // Slider input is visual preview text only; one release/change is one
+ // undo step and one model rebuild, even after many iOS pointer movements.
+ mountingSlider.addEventListener('input',()=>{
+  const choices=mountingActiveRail?.choices??[];
+  const index=Math.min(choices.length-1,Math.max(0,Number(mountingSlider.value)));
+  mountingPositionValue.textContent=positionText(index,choices.length);
+ });
+ mountingSlider.addEventListener('change',()=>{
+  if(!mountingChoices||!mountingActiveRail)return;
+  const slot=mountingChoices.slot;
+  const next=mountingActiveRail.choices[Number(mountingSlider.value)];
+  if(next&&mountUpdate(slot,next))mountingSlider.focus();
+ });
+ const stepPosition=(direction:-1|1)=>{
+  if(!mountingActiveRail||!mountingChoices)return;
+  const choices=mountingActiveRail.choices;
+  const index=Math.max(0,Math.min(choices.length-1,
+   Number(mountingSlider.value)+direction));
+  const next=choices[index];
+  if(next&&mountUpdate(mountingChoices.slot,next)){
+   (direction===-1?mountingRear:mountingFront).focus();
+  }
+ };
+ mountingRear.addEventListener('click',()=>stepPosition(-1));
+ mountingFront.addEventListener('click',()=>stepPosition(1));
+ mountingAutomatic.addEventListener('click',()=>{
+  if(mountable(activeSlot)&&mountUpdate(activeSlot,null))mountingAutomatic.focus();
+ });
+ mountingView.addEventListener('click',()=>{
+  if(mountable(activeSlot))viewer.viewMount(activeSlot);
+ });
  // Persistent navigation: recipe/finish changes do not need to allocate
  // category or slot buttons again, and keyboard focus stays on its control.
  const categoryButtons=new Map<ArsenalCategory['id'],HTMLButtonElement>();
@@ -350,7 +487,7 @@ export function openArsenalWorkbench(
   showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
   viewer.setVisibleSlots(activeCategory.slots);
   viewer.setSelectedSlot(activeSlot);
-  renderChoices();renderPending();
+  renderChoices();renderPending();renderMounting();
  }
  const loadDialog=document.createElement('dialog');
  loadDialog.className='arsenal-wb-load-dialog';

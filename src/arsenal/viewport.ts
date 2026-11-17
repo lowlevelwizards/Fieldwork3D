@@ -13,6 +13,10 @@ import {partVisualBounds,workbenchVisualAnchors}
 import type {WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {workbenchFitDistance} from '../weapons/geometry/weapon-workbench-camera-fit.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
+import {mountedAccessorySeat}
+ from '../weapons/geometry/mounted-accessory-layout.ts';
+import type {MountableSlot}
+ from '../weapons/geometry/weapon-mount-selections.ts';
 import {remapArsenalZoom} from './camera-state.ts';
 import type {FamilyPartSlot} from '../equipment-weapon-families.ts';
 import type {ArsenalSlot} from './catalog.ts';
@@ -216,6 +220,19 @@ export class ArsenalViewport{
   this.invalidate();
  }
  sideView(){this.yaw=0;this.pitch=0;this.invalidate();}
+ /** M2.7: inspect the selected rail face without altering mount geometry.
+  * Deliberately on-demand, no new continuous animation or render loop.
+  */
+ viewMount(slot:MountableSlot){
+  if(!this.config)return;
+  const mounted=mountedAccessorySeat(this.config,slot);
+  if(!mounted)return;
+  this.yaw=mounted.placement.face==='left'?Math.PI:0;
+  this.pitch=mounted.placement.face==='top'?.46:
+   mounted.placement.face==='bottom'?-0.35:0.07;
+  this.invalidate();
+ }
+
  private invalidate(){
   if(this.queued||this.disposed)return;
   this.queued=true;this.frame=requestAnimationFrame(()=>{

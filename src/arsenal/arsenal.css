@@ -323,3 +323,50 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
 @media(prefers-reduced-motion:reduce){
  .arsenal-wb-socket,.arsenal-wb-socket-dot{transition:none}
 }
+
+/* M2.7 touch-first physical mounting. One compact, contextual editor;
+ * unlike part purchases, moving an already-owned mount is always free. */
+.arsenal-wb-mounting{display:flex;flex-direction:column;gap:9px;padding:12px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm)}
+.arsenal-wb-mounting[hidden],.arsenal-wb-mount-position[hidden],
+.arsenal-wb-mount-tools[hidden]{display:none}
+.arsenal-wb-mount-head,.arsenal-wb-mount-position-head{
+ display:flex;justify-content:space-between;align-items:center;gap:9px}
+.arsenal-wb-mount-head strong{font:750 13px var(--fw-font-menu);letter-spacing:.04em}
+.arsenal-wb-mount-head small{font:700 10px var(--fw-font-action);color:var(--fw-sage)}
+.arsenal-wb-mount-status{font:500 12px/1.35 var(--fw-font-action);
+ color:var(--fw-text-muted);margin:0}
+.arsenal-wb-mount-rails{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.arsenal-wb-mount-rail,.arsenal-wb-mount-tools button,.arsenal-wb-mount-stepper button{
+ min-height:44px;border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel);color:var(--fw-text);padding:8px 10px;
+ font:750 11px/1.3 var(--fw-font-action)}
+.arsenal-wb-mount-rail{text-align:left;overflow-wrap:anywhere}
+.arsenal-wb-mount-rail[aria-pressed="true"]{
+ background:var(--fw-control-active);border-color:var(--fw-sage)}
+.arsenal-wb-mount-position{display:flex;flex-direction:column;gap:7px}
+.arsenal-wb-mount-position-head{font:700 11px var(--fw-font-action);
+ color:var(--fw-text-muted)}
+.arsenal-wb-mount-position-head span{text-align:right;color:var(--fw-text)}
+.arsenal-wb-mount-stepper{display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+ gap:8px;align-items:center}
+.arsenal-wb-mount-slider{width:100%;min-width:0;min-height:44px;
+ accent-color:var(--fw-sage);touch-action:pan-y}
+.arsenal-wb-mount-tools{display:flex;gap:7px;flex-wrap:wrap}
+.arsenal-wb-mount-tools button{flex:1 1 110px}
+.arsenal-wb-mounting button:disabled,.arsenal-wb-mount-slider:disabled{
+ opacity:.5;cursor:not-allowed}
+.arsenal-wb-mounting :is(button,input):focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px}
+@media(max-width:760px){
+ .arsenal-wb-mounting{padding:10px;gap:8px}
+ .arsenal-wb-mount-rail{min-height:48px}
+ .arsenal-wb-mount-slider{min-height:48px}
+ .arsenal-wb-mount-stepper button{min-height:48px;padding:7px}
+}
+@media(max-width:360px){
+ .arsenal-wb-mount-rails{grid-template-columns:1fr}
+ .arsenal-wb-mount-stepper{gap:4px}
+ .arsenal-wb-mount-stepper button{padding:6px;font-size:10px}
+}
