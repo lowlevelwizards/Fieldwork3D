@@ -28,9 +28,24 @@ export function renderDispatchCampaignCreator(root:HTMLElement,options:{
   el('h1','CREATE DISPATCH CAMPAIGN'));
  main.append(header,el('p','Choose a career preset, or customize its rules. Dispatch determines the incident and department setting; sandbox freedom is independent.'));
  const form=el('form');form.noValidate=true;
- const preset=makeSelect('EXPERIENCE PRESET',DISPATCH_PRESETS.map(id=>
-  [id,DISPATCH_PRESET_LABELS[id]] as const),form);
- const description=el('p');description.className='campaign-creator-summary';form.append(description);
+ // A visible choice communicates the five real experiences better than an opaque select.
+ // Native radios retain accessible selection and ordinary keyboard navigation.
+ const presets=el('fieldset');presets.className='campaign-creator-presets';
+ presets.append(el('legend','CHOOSE YOUR EXPERIENCE'));
+ const presetGrid=el('div');presetGrid.className='campaign-creator-preset-grid';
+ const presetInputs=new Map<DispatchPreset,HTMLInputElement>();
+ for(const id of DISPATCH_PRESETS){
+  const card=el('label');card.className='campaign-creator-preset';
+  const input=el('input');input.type='radio';input.name='dispatch-experience';
+  input.value=id;input.checked=id==='career';
+  const copy=el('span');copy.className='campaign-creator-preset-copy';
+  copy.append(el('strong',DISPATCH_PRESET_LABELS[id]),
+   el('span',DISPATCH_PRESET_DESCRIPTIONS[id]));
+  card.append(input,copy);presetGrid.append(card);presetInputs.set(id,input);
+ }
+ presets.append(presetGrid);form.append(presets);
+ const chosenPreset=():DispatchPreset=>
+  DISPATCH_PRESETS.find(id=>presetInputs.get(id)?.checked)??'career';
  const settings=el('details');settings.className='campaign-creator-future';
  settings.append(el('summary','CUSTOMIZE CAMPAIGN RULES'));
  const fields=el('div');fields.className='campaign-creator-fields';
@@ -62,6 +77,10 @@ export function renderDispatchCampaignCreator(root:HTMLElement,options:{
  const review=el('section');review.className='campaign-creator-review';
  review.setAttribute('aria-label','Campaign configuration review');
  const reviewTitle=el('h2','CAMPAIGN REVIEW');review.append(reviewTitle);
+ const reviewSummary=el('p');reviewSummary.className='campaign-creator-review-summary';
+ review.append(reviewSummary);
+ const reviewDetails=el('details');reviewDetails.className='campaign-creator-review-details';
+ reviewDetails.append(el('summary','FULL RULE REVIEW'));
  const reviewRows=([
   ['STARTING UNIT','reference'],['SERVICE TIME','time'],
   ['CATALOG & ACCESS','access'],['WEAPON ACCESS · STANDING 50','weaponAccess'],
@@ -70,13 +89,11 @@ export function renderDispatchCampaignCreator(root:HTMLElement,options:{
  ] as const).map(([label,key])=>{
   const line=el('div');line.className='campaign-creator-review-row';
   const heading=el('strong',label),value=el('span');
-  line.append(heading,value);review.append(line);return {key,value};
+  line.append(heading,value);reviewDetails.append(line);return {key,value};
  });
- form.append(review);
+ review.append(reviewDetails);form.append(review);
  const warning=el('p');warning.className='campaign-creator-error';
  warning.setAttribute('role','status');form.append(warning);
- const notes=el('p');notes.className='campaign-creator-summary';
- form.append(notes);
  const actions=el('div');actions.className='campaign-creator-actions';
  const cancel=el('button','CANCEL');cancel.type='button';cancel.addEventListener('click',options.onCancel);
  const create=el('button','CREATE DISPATCH');create.type='submit';
@@ -90,7 +107,7 @@ export function renderDispatchCampaignCreator(root:HTMLElement,options:{
  }
  const selects=[appearance,time,scope,unlock,economy,inventory];
  const read=():DispatchCampaignDraft=>({
-  preset:preset.value as DispatchPreset,referenceId:appearance.value as DispatchCampaignDraft['referenceId'],
+  preset:chosenPreset(),referenceId:appearance.value as DispatchCampaignDraft['referenceId'],
   timeMode:time.value as DispatchCampaignDraft['timeMode'],
   equipmentScope:scope.value as DispatchCampaignDraft['equipmentScope'],
   unlockMode:unlock.value as DispatchCampaignDraft['unlockMode'],
@@ -103,25 +120,25 @@ export function renderDispatchCampaignCreator(root:HTMLElement,options:{
   // explains the selections and never modifies the campaign or user choices.
   let valid=projection.valid;
   try{createDispatchSetup(draft);}catch{valid=false;}
-  create.disabled=!valid;warning.textContent=valid?'':projection.problem;
-  reviewTitle.textContent=projection.title.toUpperCase()+' · REVIEW';
+  create.disabled=!valid||submitting;warning.textContent=valid?'':projection.problem;
+  reviewTitle.textContent=projection.title.toUpperCase();
+  reviewSummary.textContent=projection.note;
   for(const row of reviewRows)row.value.textContent=projection[row.key];
-  description.textContent=DISPATCH_PRESET_DESCRIPTIONS[draft.preset]+
-   (projection.title.startsWith('Customized ')?' · Rules customized below.':'');
-  notes.textContent=projection.note;
  };
  const presetChanged=()=>{
-  const draft=dispatchPresetDraft(preset.value as DispatchPreset);
+  const draft=dispatchPresetDraft(chosenPreset());
   const vals=[draft.referenceId,draft.timeMode,draft.equipmentScope,
    draft.unlockMode,draft.economy,draft.startingInventory];
   selects.forEach((select,i)=>{select.value=vals[i];});
   refresh();
  };
- preset.addEventListener('change',presetChanged);
+ for(const input of presetInputs.values())
+  input.addEventListener('change',presetChanged);
  for(const select of selects)select.addEventListener('change',refresh);
  let submitting=false;
  form.addEventListener('submit',event=>{
-  event.preventDefault();refresh();if(create.disabled||submitting)return;
+  event.preventDefault();if(submitting)return;
+  refresh();if(create.disabled)return;
   submitting=true;create.disabled=true;
   void options.onCreate(read()).then(ok=>{
    if(ok===false)warning.textContent='Dispatch campaign could not be saved. Existing saves are unchanged.';

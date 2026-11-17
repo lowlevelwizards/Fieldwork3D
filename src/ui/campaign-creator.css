@@ -49,3 +49,40 @@
  .campaign-creator-actions{flex-direction:column}
  .campaign-creator-actions button{width:100%}
 }
+
+/* UI.4C — Dispatch experience choices have a clear primary scan path.
+   The preset radios remain native and keyboard-accessible. */
+.campaign-creator-presets{min-width:0;border:0;margin:0;padding:0}
+.campaign-creator-presets>legend{
+ margin:0 0 10px;color:var(--fw-text-muted);
+ font:700 12px var(--fw-font-menu);letter-spacing:.08em;
+}
+.campaign-creator-preset-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.campaign-creator-preset{
+ position:relative;min-width:0;display:flex;align-items:flex-start;gap:10px;
+ padding:13px;background:var(--fw-panel-deep);
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ cursor:pointer;touch-action:manipulation;
+ transition:background-color var(--fw-fast),border-color var(--fw-fast);
+}
+.campaign-creator-preset:has(input:checked){background:#304b3e;border-color:var(--fw-sage)}
+.campaign-creator-preset:has(input:focus-visible){outline:2px solid var(--fw-focus);outline-offset:2px}
+.campaign-creator-preset input{flex:0 0 auto;margin:2px 0 0;accent-color:var(--fw-sage);width:17px;height:17px}
+.campaign-creator-preset-copy{display:grid;gap:5px;min-width:0}
+.campaign-creator-preset-copy strong{font:750 17px/1.05 var(--fw-font-display)}
+.campaign-creator-preset-copy>span{font:450 12px/1.4 var(--fw-font-narrative);color:var(--fw-text-muted)}
+.campaign-creator-review-summary{font:500 13px/1.5 var(--fw-font-narrative);color:var(--fw-text-muted);margin:3px 0}
+.campaign-creator-review-details{border-top:1px solid #50685b;padding-top:8px;margin-top:4px}
+.campaign-creator-review-details>summary{cursor:pointer;min-height:40px;display:flex;align-items:center;
+ font:700 12px var(--fw-font-menu);color:var(--fw-text-warm);letter-spacing:.04em}
+.campaign-creator-review-details[open]>.campaign-creator-review-row{margin-top:8px}
+@media(max-width:560px){
+ .campaign-creator-preset-grid{grid-template-columns:1fr}
+ .campaign-creator-actions{position:sticky;bottom:0;z-index:4;
+  padding:10px 0 calc(10px + env(safe-area-inset-bottom));
+  background:linear-gradient(0deg,var(--fw-bg) 78%,#111d1c00);}
+ .campaign-creator-actions .campaign-primary{order:-1}
+}
+@media(prefers-reduced-motion:reduce){
+ .campaign-creator-preset{transition:none}
+}
