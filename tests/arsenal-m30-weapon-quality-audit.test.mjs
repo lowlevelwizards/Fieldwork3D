@@ -6,8 +6,8 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../src/equipment-weapon-assemblies.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
-import {measureWeaponVisual,auditWeaponProduction,auditAllFactoryWeapons}
- from '../scripts/audit-weapon-production-m30.mjs';
+import {measureWeaponVisual,auditWeaponProduction,auditAllFactoryWeapons,
+ auditRigidPartCandidates} from '../scripts/audit-weapon-production-m30.mjs';
 
 test('M3.0A counts instance-buffer rails as one submission, not one per tooth',()=>{
  const root=new THREE.Group(),material=new THREE.MeshStandardMaterial();
@@ -80,5 +80,40 @@ test('M3.0B clearing weapon releases instanced buffer but not shared materials',
  assert.equal(materialDisposed,0,'registry material remains shared');
  assert.equal(group.children.length,0);
  assert.equal(group.userData.visibleStockContact,null);
+ material.dispose();
+});
+
+test('M3.0C0 proposes same-part opaque candidates but protects controls',()=>{
+ const root=new THREE.Group(),material=new THREE.MeshStandardMaterial();
+ const add=(name,options={})=>{
+  const mesh=new THREE.Mesh(new THREE.BoxGeometry(1,2,3),material);
+  mesh.name=name;
+  if(options.metadata)mesh.userData.liveSelector=true;
+  if(options.transparent)mesh.material=new THREE.MeshStandardMaterial({
+   transparent:true,opacity:.5});
+  root.add(mesh);return mesh;
+ };
+ add('family-handguard-ar-quad-0');
+ add('family-handguard-ar-quad-1');
+ add('family-handguard-ar-quad-2');
+ add('family-handguard-ar-quad-3',{metadata:true});
+ add('family-magazine-ar-mag-0');
+ add('family-magazine-ar-mag-1');
+ add('family-receiver-ar-flat-0',{transparent:true});
+ const instanced=new THREE.InstancedMesh(
+  new THREE.BoxGeometry(1,1,1),material,6);
+ instanced.name='family-handguard-ar-quad-4';root.add(instanced);
+ const before=measureWeaponVisual(root);
+ const candidates=auditRigidPartCandidates(root);
+ assert.equal(candidates.groups.length,1);
+ assert.equal(candidates.groups[0].slot,'handguard');
+ assert.equal(candidates.groups[0].partId,'ar-quad');
+ assert.equal(candidates.groups[0].meshes,3);
+ assert.equal(candidates.potentialSavedSubmissions,2);
+ assert.deepEqual(measureWeaponVisual(root),before,'inventory never bakes');
+ root.traverse(o=>{
+  if(o instanceof THREE.InstancedMesh)o.dispose();
+  if(o instanceof THREE.Mesh)o.geometry.dispose();
+ });
  material.dispose();
 });
