@@ -14,6 +14,10 @@ export function recoveryAdviceFor(message:string):RecoveryAdvice|null{
     return {title:'GO INSIDE WALL',
       next:'Pause, select the blocked MOVE waypoint and drag it to visible clear floor on your side of the wall.',
       marker:'MOVE'};
+  if(/CASUALTY ROUTE BLOCKED|CIVILIAN TRANSPORT ROUTE NOT AVAILABLE/.test(s))
+    return {title:'TRANSPORT ROUTE NOT AVAILABLE',
+      next:'Choose a reachable transport destination, or cancel the active DRAG / CARRY target.',
+      marker:'TRANSPORT'};
   if(/LATER WAYPOINT|REMAINING PLAN/.test(s))
     return {title:'ROUTE CONFLICT',next:'Move the later waypoint or undo this edit first.',marker:'ROUTE'};
   if(/INSUFFICIENT CLEARANCE|DESTINATION BLOCKED|INVALID ORDER DESTINATION/.test(s))
