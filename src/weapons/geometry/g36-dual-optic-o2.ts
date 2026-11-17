@@ -92,7 +92,7 @@ export function addG36O2DualOptic(
   return barrel;
  };
  ocular(-6.38,-5.76,3.57,.625,8,'g36LowerOpticBarrel');
- ocular(-5.92,-5.49,4.30,.38,6,'g36UpperReflexBarrel');
+ ocular(-5.92,-5.49,4.30,.395,6,'g36UpperReflexBarrel');
 
  // One recessed-looking matte-black circle per eyepiece, no stacked rings.
  // Visible from the rear (-X); inherited shared materials are set by caller.
@@ -103,6 +103,6 @@ export function addG36O2DualOptic(
   return add(geometry,key);
  };
  lens(-6.378,3.57,.625,8,'g36OpticFace');
- lens(-5.918,4.30,.38,6,'g36UpperReflexWindow');
+ lens(-5.918,4.30,.395,6,'g36UpperReflexWindow');
  return index;
 }
