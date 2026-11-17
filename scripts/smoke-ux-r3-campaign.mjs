@@ -30,7 +30,8 @@ try{
   await page.locator('#campaign-tab-personnel').waitFor({timeout:30000});
   await page.locator('#campaign-tab-personnel').click();
   const person=page.locator('.campaign-person').first();
-  await person.getByRole('button',{name:'LOADOUT'}).click();
+  await person.locator('.campaign-person-expand > summary').click();
+  await person.getByRole('button',{name:/^Open .* loadout$/}).click();
   const armory=page.locator('.campaign-kit-editor');
   await armory.waitFor({timeout:15000});
   const groups=armory.locator(':scope > .fw-loadout-group');
