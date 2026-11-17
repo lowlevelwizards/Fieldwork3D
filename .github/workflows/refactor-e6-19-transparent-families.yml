@@ -1,0 +1,56 @@
+name: E6.19 classify real transparent environment draw families
+on:
+  pull_request:
+    paths:
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/rendering/breach-site-openings-builder.ts'
+      - 'src/breach-3d.ts'
+      - 'src/rendering/breach-live-main-pass-profiler.ts'
+      - 'src/rendering/breach-post-ready-attribution.ts'
+      - 'tests/refactor-e6-19-transparent-families.test.mjs'
+      - 'scripts/verification/e6-19-transparent-families-browser.mjs'
+      - '.github/workflows/refactor-e6-19-transparent-families.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: e6-19-transparent-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  transparency:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+      - name: Transparent cause and existing draw/visibility regression tests
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-19-transparent-families.test.mjs \
+            tests/refactor-e6-18a-mesh-provenance.test.mjs \
+            tests/refactor-e6-18-owner-static-merge.test.mjs \
+            tests/refactor-e6-17-main-pass.test.mjs \
+            tests/refactor-e6-16-shadow-submission.test.mjs \
+            tests/refactor-e6-15-live-scene-attribution.test.mjs \
+            tests/performance-p6-furniture-batching.test.mjs \
+            tests/breach-static-batching-performance.test.mjs \
+            tests/consolidation-stage2-config-persistence.test.mjs
+      - name: Production TypeScript and Vite bundle
+        run: npm run build
+      - name: Four real 90-frame transparent family captures
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-19-transparent-families-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-19-transparent-family-evidence
+          path: artifacts/refactor-e6-19/live-scene/
+          if-no-files-found: ignore
+          retention-days: 14
