@@ -8,8 +8,9 @@ import {resolveWeaponAssembly} from '../equipment-weapon-assemblies.ts';
 import {weaponHandlingModifiers,sightAcquisitionScale,sightSpreadScale}
  from '../equipment-weapon-handling.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
+import {liveMagazineCapacity} from './live-magazine-capacity.ts';
 
-export type ArsenalStatId='near'|'precision'|'turn'|'control'|'reload'|'compact';
+export type ArsenalStatId='near'|'precision'|'turn'|'control'|'reload'|'compact'|'noise'|'capacity';
 export type ArsenalHandlingStat=Readonly<{
  id:ArsenalStatId;label:string;score:number;detail:string;explanation:string;
 }>;
@@ -32,6 +33,8 @@ export function arsenalHandlingStats(recipe:ArsenalRecipeV2):readonly ArsenalHan
  const recovery=ballistics.recover*mods.recovery;
  const control=recovery/recoil;
  const reload=weapon.reload*mods.manipulation;
+ const audibleRadius=weapon.noise*mods.noise;
+ const capacity=liveMagazineCapacity(config.weapon,config);
  // Forward-facing physical muzzle, not a substitute for shot-time
  // clearance. Stock, armor, context and furniture remain live checks.
  const muzzleReach=assembly.muzzleX*assembly.lengthScale;
@@ -53,7 +56,13 @@ export function arsenalHandlingStats(recipe:ArsenalRecipeV2):readonly ArsenalHan
    explanation:'Base simulation reload duration. Injury, magazine placement and retention or shells add separate timing.'},
   {id:'compact',label:'COMPACTNESS',score:lower(muzzleReach,10,26),
    detail:decimals(muzzleReach,1)+' u · muzzle reach',
-   explanation:'Physical forward-muzzle projection from the installed geometry. Live door/wall clearance still uses full rigid poses.'}
+   explanation:'Physical forward-muzzle projection from the installed geometry. Live door/wall clearance still uses full rigid poses.'},
+  {id:'noise',label:'QUIETNESS',score:lower(audibleRadius,180,550),
+   detail:Math.round(audibleRadius)+' u · audible',
+   explanation:'Real gunshot noise radius seen by enemy hearing. Higher score means quieter; no stealth or discovery immunity.'},
+  {id:'capacity',label:'CAPACITY',score:higher(capacity,5,46),
+   detail:capacity+' rounds · magazine',
+   explanation:'Actual magazine capacity used by the mission. This does not add rounds or change owned inventory.'}
  ];
 }
 export function arsenalStatDeltas(current:readonly ArsenalHandlingStat[],
