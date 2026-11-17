@@ -148,11 +148,19 @@ async function assessEstablishedCareer(page,name,mobile){
 async function assessActiveDeployment(page,name,expected){
  const acceptedId=await acceptSavedScenario(page);
  await page.reload({waitUntil:'domcontentloaded'});
- const deploymentNotice=page.locator('.campaign-landing-status')
-  .filter({hasText:'Deployment in progress'});
- await deploymentNotice.waitFor({state:'visible',timeout:15000});
- check(await deploymentNotice.isVisible(),
-  name+' active deployment notice missing');
+ // The cold-start menu intentionally receives save-availability flags only;
+ // campaign metadata/status is rendered when an explicit savedCampaigns map is
+ // passed. Verify persistence from the authoritative save, then enter normally.
+ await page.locator('.campaign-landing-primary').waitFor({state:'visible'});
+ const persisted=await page.evaluate(async()=>{
+  const {readCampaign}=await import('/src/campaign-state.ts');
+  const saved=readCampaign(localStorage.getItem('fieldwork3d.dispatch-campaign.v1'));
+  return {active:saved?.activeContractId??null,history:saved?.history.length??0};
+ });
+ check(persisted.active===acceptedId,
+  name+' accepted deployment was not retained in saved campaign');
+ check(persisted.history===expected.total,
+  name+' accepting a case unexpectedly changed saved operation history');
  await page.getByRole('button',{name:'Continue DISPATCH CAMPAIGN'}).click();
  await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
  check((await page.locator('.campaign-overview-primary-action').textContent())
@@ -163,7 +171,10 @@ async function assessActiveDeployment(page,name,expected){
  check(disabled,name+' squad slots editable during an active deployment');
  await page.locator('#campaign-tab-chronicle').click();
  check(await page.locator('.campaign-chronicle>.campaign-operation-board .campaign-operation-record')
-  .count()===expected.total,name+' accepting a contract altered past reports');
+  .count()===Math.min(8,expected.total),
+  name+' accepting a contract altered recent operation history');
+ check(await page.locator('.campaign-operation-more').count()===(expected.total>8?1:0),
+  name+' accepting a contract altered older operation access');
  check((await page.locator('.campaign-funds .campaign-day').textContent())
   ?.includes(String(expected.day)),name+' active deployment changed saved day');
  await page.screenshot({path:out+'/'+name+'-active-deployment.png',animations:'disabled'});
