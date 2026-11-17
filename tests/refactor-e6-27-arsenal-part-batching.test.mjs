@@ -114,6 +114,9 @@ test('E6.27 custom draw ranges and grouped geometry cannot become visible baked 
  partial.geometry.setDrawRange(0,6);
  const grouped=create('family-handguard-x-1',4);
  grouped.geometry.addGroup(0,12,0);
+ // Multi-material submesh groups have different GPU submissions and cannot
+ // be batched into a single standard opaque material.
+ grouped.material=[metal,dark];
  const common=create('family-handguard-x-2',8);
  root.add(partial,grouped,common);
  const bake=compileArsenalRigidPartSiblings(root);
