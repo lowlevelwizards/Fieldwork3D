@@ -115,6 +115,9 @@ export class ArsenalWeaponGeometryPool{
   const pooled=new Set([...this.all].map(e=>e.geometry));
   const standalone=new Set<THREE.BufferGeometry>();
   root.traverse(node=>{
+   // Instanced rails/ribs stay unpooled and need their per-instance GPU
+   // resources released when a Workbench owner is retired.
+   if(node instanceof THREE.InstancedMesh)node.dispose();
    if(node instanceof THREE.Mesh&&!pooled.has(node.geometry))
     standalone.add(node.geometry);
   });
