@@ -13,6 +13,8 @@ import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {opticProfile} from './weapons/geometry/optic-profiles.ts';
 import {physicalWeaponMountSlots} from './weapons/geometry/weapon-physical-mount-slots.ts';
+import {readMountSelections,copyMountSelections,sameMountSelections,
+ type MountSelections} from './weapons/geometry/weapon-mount-selections.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
  type FamilyPartSlot,type WeaponFamilyBuild}
@@ -26,6 +28,8 @@ export type WeaponConfiguration={
  version:1;weapon:WeaponId;slots:Record<WeaponAttachmentSlot,string>;
  /** Authored visual family. Missing builds resolve to a real current family. */
  build?:WeaponFamilyBuild;
+ /** Optional stable physical intent; absent on all pre-M2.6 saves. */
+ mountSelections?:MountSelections;
 };
 export type WeaponAttachment={
  id:string;name:string;slot:WeaponAttachmentSlot;
@@ -222,6 +226,9 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
   result.slots.opticMount=DEFAULT_IDS.opticMount;
   if(result.slots.optic==='optic-g36-integrated')result.slots.optic=DEFAULT_IDS.optic;
  }
+ const positions=readMountSelections(
+  (raw as {mountSelections?:unknown}).mountSelections,result.slots);
+ if(positions)result.mountSelections=positions;
  return result;
 }
 export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttachmentSlot,
@@ -238,8 +245,11 @@ export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttach
    s.role===slot&&s.standard==='picatinny'))return config;
  // Removing a mount makes its optic invalid: reset just that dependency.
  // Keep this as one immutable transaction without introducing V2 saves.
+ const mounts=copyMountSelections(config.mountSelections);
+ if(mounts&&(slot==='optic'||slot==='foregrip'||slot==='light'))
+  delete mounts[slot];
  return readWeaponConfiguration({...config,
-  slots:{...config.slots,[slot]:id}},config.weapon);
+  mountSelections:mounts,slots:{...config.slots,[slot]:id}},config.weapon);
 }
 /** Select an authored model using the currently owned gameplay class.
  * It never buys or converts a physical Campaign gun behind the player's back.
@@ -268,6 +278,7 @@ export function sameWeaponConfiguration(a?:WeaponConfiguration,b?:WeaponConfigur
  if(!a||!b||a.weapon!==b.weapon||a.version!==b.version)return false;
  for(const slot of WEAPON_ATTACHMENT_SLOTS)
   if(a.slots[slot]!==b.slots[slot])return false;
+ if(!sameMountSelections(a.mountSelections,b.mountSelections))return false;
  if(a.build?.family!==b.build?.family)return false;
  for(const slot of FAMILY_PART_SLOTS)
   if(a.build?.parts[slot]!==b.build?.parts[slot])return false;

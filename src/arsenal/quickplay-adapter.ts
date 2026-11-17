@@ -7,6 +7,8 @@ import {freshMagazineIssue} from './live-magazine-capacity.ts';
 import {equipRoster,type RosterState} from '../breach-roster.ts';
 import {sameWeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
+import {resolveMountedAccessoryLayout}
+ from '../weapons/geometry/mounted-accessory-layout.ts';
 
 export interface QuickPlayArsenalQuote{
  valid:boolean;
@@ -21,6 +23,8 @@ export function quoteQuickPlayArsenalEdit(roster:RosterState,operatorId:string,
   return {valid:false,reason:'Unknown weapon class',changesClass:false};
  const resolved=arsenalRecipeToLegacy(recipe);
  if(!resolved)return {valid:false,reason:'Invalid weapon assembly',changesClass:false};
+ if(resolveMountedAccessoryLayout(resolved).unresolved.length)
+  return {valid:false,reason:'Mounting location requires repair',changesClass:false};
  return {valid:true,changesClass:member.weapon!==recipe.weapon};
 }
 /** Quick Play starts every newly selected physical magazine profile full.

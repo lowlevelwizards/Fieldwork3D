@@ -10,6 +10,7 @@ import {physicalAttachmentFitOptions}
  from '../weapons/geometry/weapon-physical-mount-fit.ts';
 import {mountedAccessorySeat,resolveMountedAccessoryLayout}
  from '../weapons/geometry/mounted-accessory-layout.ts';
+import {copyMountSelections} from '../weapons/geometry/weapon-mount-selections.ts';
 import {ARSENAL_REFERENCES,arsenalPlatformForReceiver,type ArsenalSlot}
  from './catalog.ts';
 import {arsenalPhysicalPartId} from './finishes.ts';
@@ -126,16 +127,24 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
  }
  const candidate:WeaponConfiguration={version:1,weapon:recipe.weapon,
   build:{family:(prior.build as WeaponFamilyBuild).family,parts:{...next.parts}},
-  slots:{...prior.slots,...next.accessories,stock:'stock-standard'}};
+  slots:{...prior.slots,...next.accessories,stock:'stock-standard'},
+  mountSelections:copyMountSelections(next.mountSelections)};
  const normalized=readWeaponConfiguration(candidate,recipe.weapon);
  if(!normalized.build)return rejected(slot,id,'Unable to resolve the new assembly');
  next.parts={...normalized.build.parts};
+ next.mountSelections=copyMountSelections(normalized.mountSelections);
  for(const key of ARSENAL_ACCESSORY_SLOTS)next.accessories[key]=normalized.slots[key];
  if((FAMILY_PART_SLOTS.includes(slot as FamilyPartSlot)?
   next.parts[slot as FamilyPartSlot]:next.accessories[slot as ArsenalAccessorySlot])!==id)
   return rejected(slot,id,'This part requires a different core or mount');
  if(arsenalRecipeIssues(next).length)
   return rejected(slot,id,'The proposed assembly did not validate');
+ // A modified handguard, mount or adapter must not silently move an explicit
+ // position or strip a paid accessory just because its rail has changed.
+ const unresolved=resolveMountedAccessoryLayout(normalized).unresolved;
+ if(unresolved.length)
+  return rejected(slot,id,'Saved mounting position or accessory needs resolution: '+
+   unresolved.map(x=>x.attachmentId+' ('+x.reasons.join('/')+')').join(', '));
  // Recheck against the committed candidate, not a temporary mount probe.
  if(slot==='optic'&&id!=='optic-irons'&&
   id!=='optic-g36-integrated'&&

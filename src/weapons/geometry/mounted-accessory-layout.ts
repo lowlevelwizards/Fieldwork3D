@@ -8,6 +8,8 @@ import type {WeaponConfiguration,WeaponAttachmentSlot}
 import {physicalAttachmentFitOptions,
  type PhysicalAttachmentPlacement,type PhysicalAttachmentFit}
  from './weapon-physical-mount-fit.ts';
+import {mountSelectionCandidate} from './weapon-mount-position.ts';
+import type {MountableSlot} from './weapon-mount-selections.ts';
 
 export type AccessoryVolume=Readonly<{
  minX:number;maxX:number;minY:number;maxY:number;minZ:number;maxZ:number;
@@ -96,7 +98,14 @@ export function resolveMountedAccessoryLayout(c:WeaponConfiguration):AccessoryLa
  const ids=active(c);
  const choices=ids.map(id=>{
   const fit=physicalAttachmentFitOptions(c,id,[]);
-  return {id,fit,candidates:fit.options.map(mountedSeatFromPlacement).slice(0,8)};
+  const slot=fit.options[0]?.attachmentSlot as MountableSlot|undefined;
+  const chosen=slot?c.mountSelections?.[slot]:undefined;
+  const options=chosen?fit.options.filter(p=>
+   mountSelectionCandidate(c,chosen,p)):fit.options;
+  // Explicit placements are constraints, not suggestions to overwrite.
+  // Filter before slicing, otherwise a rear-mounted light may disappear.
+  return {id,fit,locked:!!chosen,
+   candidates:options.map(mountedSeatFromPlacement).slice(0,8)};
  });
  // Bounded search, at most 4 slots x 8 candidates. Preserve prior optic
  // before grip, then light. When equally feasible, preserve preferred
@@ -129,7 +138,8 @@ export function resolveMountedAccessoryLayout(c:WeaponConfiguration):AccessoryLa
  for(const choice of choices){
   if(result.some(m=>m.attachmentId===choice.id))continue;
   unresolved.push(choice.fit.feasible?{
-   attachmentId:choice.id,feasible:false,options:[],reasons:['occupied']
+   attachmentId:choice.id,feasible:false,options:[],
+   reasons:[choice.locked&&!choice.candidates.length?'mount-conflict':'occupied']
   }:choice.fit);
  }
  const output:AccessoryLayout={mounts:result,unresolved};

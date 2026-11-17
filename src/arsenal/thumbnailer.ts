@@ -11,6 +11,7 @@ import {buildWeaponAccessories} from '../breach-weapon-accessories.ts';
 import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
 import {workbenchFitDistance} from '../weapons/geometry/weapon-workbench-camera-fit.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
+import {MOUNTABLE_SLOTS} from '../weapons/geometry/weapon-mount-selections.ts';
 
 export class ArsenalThumbnailer{
  private renderer:THREE.WebGLRenderer|null=null;
@@ -25,7 +26,12 @@ export class ArsenalThumbnailer{
  }
  render(recipe:ArsenalRecipeV2,size:'card'|'hero'='card'):string|undefined{
   const id=[recipe.platformId,recipe.weapon,...Object.values(recipe.parts),
-   ...Object.values(recipe.accessories),size].join('/');
+   ...Object.values(recipe.accessories),
+   ...MOUNTABLE_SLOTS.map(slot=>{
+    const m=recipe.mountSelections?.[slot];
+    return m?[m.attachmentId,m.ownerPartId,m.surfaceId,m.face,
+     m.standard,m.position].join(':'):'auto';
+   }),size].join('/');
   const cached=this.cache.get(id);if(cached)return cached;
   const config=arsenalRecipeToLegacy(recipe);
   if(!config||this.unavailable)return undefined;

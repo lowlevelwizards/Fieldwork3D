@@ -2,6 +2,13 @@
 import {copyArsenalRecipe,sameArsenalRecipe,type ArsenalRecipeV2} from './recipes.ts';
 import {proposeArsenalPartChange,type ArsenalEditProposal} from './compatibility.ts';
 import type {ArsenalSlot} from './catalog.ts';
+import {arsenalRecipeToLegacy} from './recipes.ts';
+import {chooseWeaponMountPosition}
+ from '../weapons/geometry/weapon-mount-position-edits.ts';
+import {copyMountSelections,type MountableSlot}
+ from '../weapons/geometry/weapon-mount-selections.ts';
+import type {PhysicalAttachmentPlacement}
+ from '../weapons/geometry/weapon-physical-mount-fit.ts';
 
 const HISTORY_LIMIT=40;
 export interface ArsenalDraft{
@@ -45,4 +52,23 @@ export function redoArsenalDraft(draft:ArsenalDraft):ArsenalDraft{
 }
 export function arsenalDraftDirty(draft:ArsenalDraft):boolean{
  return !sameArsenalRecipe(draft.original,draft.working);
+}
+
+/** M2.6G: a position selection is one undoable and entirely free edit.
+ * M2.7 adds the visual rail picker; this API is already mode-neutral.
+ */
+export function editArsenalMountPosition(draft:ArsenalDraft,slot:MountableSlot,
+ location:PhysicalAttachmentPlacement|null):ArsenalDraft{
+ const current=arsenalRecipeToLegacy(draft.working);
+ if(!current)return draft;
+ const edited=chooseWeaponMountPosition(current,slot,location);
+ if(edited===current)return draft;
+ const nextRecipe:ArsenalRecipeV2={
+  ...copyArsenalRecipe(draft.working),
+  mountSelections:copyMountSelections(edited.mountSelections)
+ };
+ return commitArsenalProposal(draft,{
+  valid:true,requestedSlot:slot,requestedPartId:location?.attachmentId??'automatic',
+  changes:[],requiresConfirmation:false,reasons:[],nextRecipe
+ });
 }

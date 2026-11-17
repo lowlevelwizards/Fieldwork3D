@@ -9,6 +9,8 @@ import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,
  initialWeaponConfiguration,readWeaponConfiguration,weaponAttachmentAllowed,
  type WeaponAttachmentSlot,type WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {arsenalPlatformForReceiver,type ArsenalPlatformId} from './catalog.ts';
+import {readMountSelections,copyMountSelections,sameMountSelections,
+ type MountSelections} from '../weapons/geometry/weapon-mount-selections.ts';
 
 export type ArsenalAccessorySlot=Exclude<WeaponAttachmentSlot,'stock'>;
 export const ARSENAL_ACCESSORY_SLOTS:readonly ArsenalAccessorySlot[]=
@@ -22,9 +24,12 @@ export interface ArsenalRecipeV2{
  accessories:Record<ArsenalAccessorySlot,string>;
  /** Origin metadata only; never claim this is the current factory identity. */
  sourcePresetId?:string;
+ /** Positions are free user choices, not equipment items or ownership. */
+ mountSelections?:MountSelections;
 }
 export const copyArsenalRecipe=(recipe:ArsenalRecipeV2):ArsenalRecipeV2=>({
- ...recipe,parts:{...recipe.parts},accessories:{...recipe.accessories}
+ ...recipe,parts:{...recipe.parts},accessories:{...recipe.accessories},
+ ...(recipe.mountSelections?{mountSelections:copyMountSelections(recipe.mountSelections)}:{})
 });
 /** This adapter deliberately cannot represent an old abstract attachment-stock overlay. */
 export function arsenalRecipeFromLegacy(config:WeaponConfiguration):ArsenalRecipeV2|undefined{
@@ -35,7 +40,8 @@ export function arsenalRecipeFromLegacy(config:WeaponConfiguration):ArsenalRecip
  const accessories={} as Record<ArsenalAccessorySlot,string>;
  for(const slot of ARSENAL_ACCESSORY_SLOTS)accessories[slot]=config.slots[slot];
  const recipe:ArsenalRecipeV2={version:2,platformId,weapon:config.weapon,
-  parts:{...build.parts},accessories};
+  parts:{...build.parts},accessories,
+  ...(config.mountSelections?{mountSelections:copyMountSelections(config.mountSelections)}:{})};
  const exact=matchingFamilyPreset(build);
  if(exact)recipe.sourcePresetId=exact.id;
  return arsenalRecipeIssues(recipe).length?undefined:recipe;
@@ -45,7 +51,8 @@ function legacyCandidate(recipe:ArsenalRecipeV2):WeaponConfiguration{
  const receiver=FAMILY_PARTS[recipe.parts.receiver];
  const build:WeaponFamilyBuild={family:receiver.family,parts:{...recipe.parts}};
  return {version:1,weapon:recipe.weapon,build,
-  slots:{...base.slots,...recipe.accessories,stock:'stock-standard'}};
+  slots:{...base.slots,...recipe.accessories,stock:'stock-standard'},
+  ...(recipe.mountSelections?{mountSelections:copyMountSelections(recipe.mountSelections)}:{})};
 }
 /** Produce a valid V1 configuration, never a silently repaired/partially lost one. */
 export function arsenalRecipeToLegacy(recipe:ArsenalRecipeV2):WeaponConfiguration|undefined{
@@ -57,6 +64,10 @@ export function arsenalRecipeToLegacy(recipe:ArsenalRecipeV2):WeaponConfiguratio
   if(normalized.build.parts[slot]!==recipe.parts[slot])return undefined;
  for(const slot of ARSENAL_ACCESSORY_SLOTS)
   if(normalized.slots[slot]!==recipe.accessories[slot])return undefined;
+ // Existing normalized equipment must never silently discard an explicit
+ // location during Apply, stock accounting or replay materialization.
+ if(!sameMountSelections(normalized.mountSelections,recipe.mountSelections))
+  return undefined;
  return normalized;
 }
 export function arsenalRecipeIssues(recipe:ArsenalRecipeV2):string[]{
@@ -106,11 +117,16 @@ export function readArsenalRecipe(raw:unknown):ArsenalRecipeV2|undefined{
  };
  if(typeof obj.sourcePresetId==='string'&&obj.sourcePresetId.length<=96)
   recipe.sourcePresetId=obj.sourcePresetId;
+ // Invalid or stale mounting metadata is discarded, not the paid recipe.
+ const positions=readMountSelections(obj.mountSelections,
+  {...initialWeaponConfiguration(recipe.weapon).slots,...accessories});
+ if(positions)recipe.mountSelections=positions;
  return arsenalRecipeIssues(recipe).length?undefined:recipe;
 }
 export function sameArsenalRecipe(a:ArsenalRecipeV2,b:ArsenalRecipeV2):boolean{
  if(a.platformId!==b.platformId||a.weapon!==b.weapon||
-  a.sourcePresetId!==b.sourcePresetId)return false;
+  a.sourcePresetId!==b.sourcePresetId||
+  !sameMountSelections(a.mountSelections,b.mountSelections))return false;
  for(const slot of FAMILY_PART_SLOTS)if(a.parts[slot]!==b.parts[slot])return false;
  for(const slot of ARSENAL_ACCESSORY_SLOTS)
   if(a.accessories[slot]!==b.accessories[slot])return false;

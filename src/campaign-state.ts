@@ -35,7 +35,7 @@ import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from '
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
- setWeaponAttachment,WEAPON_ATTACHMENT_SLOTS,
+ setWeaponAttachment,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
@@ -43,6 +43,10 @@ import type {FamilyPartSlot} from './equipment-weapon-families.ts';
 import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
+import {resolveMountedAccessoryLayout}
+ from './weapons/geometry/mounted-accessory-layout.ts';
+import {quoteAttachmentTransfer}
+ from './equipment-weapon-transactions.ts';
 import {recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
 import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
@@ -518,6 +522,11 @@ export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState
   attachments:{...c.inventory.attachments,
    [partId]:(c.inventory.attachments[partId]??0)+1}}};
 }
+/** Shared M2.6 physical guard for direct Armory and saved kit routes.
+ * Class-only legacy weapons still use their existing abstract equipment.
+ */
+const hasValidPhysicalLayout=(c:WeaponConfiguration):boolean=>
+ !c.build||resolveMountedAccessoryLayout(c).unresolved.length===0;
 /** Single-slot atomic stock transfer; no duplicate equipped copies. */
 export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  slot:WeaponAttachmentSlot,partId:string):CampaignState{
@@ -525,13 +534,12 @@ export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=setWeaponAttachment(o.weaponConfiguration,slot,partId);
- if(next===o.weaponConfiguration)return c;
- const paid=attachmentPrice(partId)>0;
- if(paid&&(c.inventory.attachments[partId]??0)<1)return c;
- const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
- if(paid)attachments[partId]--;
- return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>
-  m.id===id?{...m,weaponConfiguration:next}:m)};
+ if(next===o.weaponConfiguration||!hasValidPhysicalLayout(next))return c;
+ const quote=quoteAttachmentTransfer(c.inventory.attachments,
+  o.weaponConfiguration,next,Math.max(0,c.funds),false);
+ if(!quote.canCommit||!quote.stockAfter)return c;
+ return {...c,inventory:{...c.inventory,attachments:quote.stockAfter},
+  operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next}:m)};
 }
 /** Family builds are an appearance-only prototype on owned gameplay classes.
  * No fabricated magazines, ammunition, serialized guns or attachment stock.
@@ -542,10 +550,13 @@ export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:str
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=selectWeaponFamilyPreset(o.weaponConfiguration,presetId);
- if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
- const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
- return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
-  {...m,weaponConfiguration:next,
+ if(sameWeaponConfiguration(next,o.weaponConfiguration)||
+  !hasValidPhysicalLayout(next))return c;
+ const transfer=quoteAttachmentTransfer(c.inventory.attachments,
+  o.weaponConfiguration,next,Math.max(0,c.funds),false);
+ if(!transfer.canCommit||!transfer.stockAfter)return c;
+ return {...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
+  operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next,
    ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)};
 }
 export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
@@ -554,23 +565,30 @@ export function equipCampaignWeaponFamilyPart(c:CampaignState,id:string,
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=setConfiguredFamilyPart(o.weaponConfiguration,slot,partId);
- if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
- const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
- return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
-  {...m,weaponConfiguration:next,
+ if(sameWeaponConfiguration(next,o.weaponConfiguration)||
+  !hasValidPhysicalLayout(next))return c;
+ const transfer=quoteAttachmentTransfer(c.inventory.attachments,
+  o.weaponConfiguration,next,Math.max(0,c.funds),false);
+ if(!transfer.canCommit||!transfer.stockAfter)return c;
+ return {...c,inventory:{...c.inventory,attachments:transfer.stockAfter},
+  operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next,
    ...fitMagazineInventory(m.id,m.weapon,next,m.magazine,m.reserve,m.magazines)}:m)};
 }
 /** Player-authorized buy-and-equip is all-or-nothing. */
 export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
  slot:WeaponAttachmentSlot,partId:string):CampaignState{
- const direct=equipCampaignWeaponAttachment(c,id,slot,partId);
- if(direct!==c)return direct;
- const price=attachmentPrice(partId);
- if(price<=0||c.activeContractId||!canSpend(c,price))return c;
- const purchased=buyWeaponAttachment(c,partId);
- if(purchased===c)return c;
- const equipped=equipCampaignWeaponAttachment(purchased,id,slot,partId);
- return equipped===purchased?c:equipped;
+ if(c.activeContractId||!dispatchPilotUnclassifiedEditingEnabled(c))return c;
+ const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!o)return c;
+ const next=setWeaponAttachment(o.weaponConfiguration,slot,partId);
+ if(next===o.weaponConfiguration||!hasValidPhysicalLayout(next))return c;
+ const quote=quoteAttachmentTransfer(c.inventory.attachments,
+  o.weaponConfiguration,next,
+  unlimitedDispatch(c)?Number.MAX_SAFE_INTEGER:c.funds,true);
+ if(!quote.canCommit||!quote.stockAfter||!canSpend(c,quote.cost))return c;
+ return {...c,funds:c.funds-quote.cost,
+  inventory:{...c.inventory,attachments:quote.stockAfter},
+  operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next}:m)};
 }
 export function equipCampaignWeapon(c:CampaignState,id:string,
  weapon:CampaignOperator['weapon']):CampaignState{
@@ -581,9 +599,12 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
  const targetConfig=resolveIssuedOrLegacy(
   changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
   starterWeaponPreset(m.id));
- const attachments=returnAttachments(c.inventory.attachments,
-  m.weaponConfiguration,targetConfig);
- return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,attachments,weapons:{
+ if(!hasValidPhysicalLayout(targetConfig))return c;
+ const transfer=quoteAttachmentTransfer(c.inventory.attachments,
+  m.weaponConfiguration,targetConfig,Math.max(0,c.funds),false);
+ if(!transfer.canCommit||!transfer.stockAfter)return c;
+ return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,
+  attachments:transfer.stockAfter,weapons:{
    ...c.inventory.weapons,
    [weapon]:c.inventory.weapons[weapon]-1,
    [m.weapon]:c.inventory.weapons[m.weapon]+1
@@ -665,17 +686,12 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  // Entire recipe is atomic. Never silently skip a missing primary weapon.
  if(member.weapon!==preset.weapon&&c.inventory.weapons[preset.weapon]<1)return c;
  const desired=readWeaponConfiguration(preset.weaponConfiguration,preset.weapon);
- // Return obsolete paid parts before checking whether the saved recipe fits
- // finite workshop stock. Refuse the entire preset if any part is unavailable.
- const attachments=returnAttachments(c.inventory.attachments,
-  member.weaponConfiguration,desired);
- for(const slot of WEAPON_ATTACHMENT_SLOTS){
-  const part=desired.slots[slot];
-  if(part===member.weaponConfiguration.slots[slot]||attachmentPrice(part)<=0)
-   continue;
-  if((attachments[part]??0)<1)return c;
-  attachments[part]--;
- }
+ if(!hasValidPhysicalLayout(desired))return c;
+ // Apply one return-before-acquire transaction, independent of UI entry.
+ const transfer=quoteAttachmentTransfer(c.inventory.attachments,
+  member.weaponConfiguration,desired,Math.max(0,c.funds),false);
+ if(!transfer.canCommit||!transfer.stockAfter)return c;
+ const attachments=transfer.stockAfter;
  const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
  if(swapped===c&&member.weapon!==preset.weapon)return c;
  return {...swapped,inventory:{...swapped.inventory,attachments},
