@@ -71,15 +71,9 @@ export function stackApproachPositions(door:Door,from:Pt):Pt[]{
  // A door swinging toward the team makes the two near-center stack slots
  // unsafe. Keep the front two off the leaf arc; stage the next two behind
  // its swept envelope. These are actual MOVE goals, not per-tick retreats.
- // The previous -14/+14 at 53 and -25/+25 at 62 produced
- // same-side pockets only ~14 units apart: two full-size operators
- // physically cannot hold those two slots simultaneously. The rear four
- // must be pairwise >23 apart while remaining inside the existing 68-unit
- // handle-reach envelope. Actual leaf sweep and intel route validation
- // are still owned by planStack; these are only candidate positions.
- const rear=[-32,32,-13,13].map((lateral,i)=>({
-  x:center.x+tx*lateral+nx*approach*(i<2?48:66),
-  y:center.y+ty*lateral+ny*approach*(i<2?48:66)
+ const rear=[-14,14,-25,25].map((lateral,i)=>({
+  x:center.x+tx*lateral+nx*approach*(i<2?53:62),
+  y:center.y+ty*lateral+ny*approach*(i<2?53:62)
  }));
  // Q5: pre-opened leaves can be body-pushed all the way to the actual
  // 118-degree hinge stop DURING formation. Keep two fixed outer pockets
