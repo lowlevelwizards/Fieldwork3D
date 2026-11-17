@@ -80,3 +80,23 @@ public Pages expected-build verification. Verify new Pages build after merge.
   campaign behavior unchanged. Release from a feature branch only after the
   relevant critical CI, build, previous successful Pages verification and an
   idle production deployment queue.
+
+## D13 release C — D13.6 procurement policy truth
+
+The D2 curated table intentionally omits unassessed choices. An omitted
+class is **not** proof that every Dispatch reference explicitly rejects it.
+D13.2 incorrectly collapsed both cases into `reference-locked`.
+
+- Evaluate whether any of the **three playable tactical-police references**
+  explicitly offers the weapon class as standard or specialist. The unplayable
+  2020 patrol preview must never count as an active procurement option.
+- When the current setup restricts a class offered under another reference,
+  label it `reference-locked`. When no playable authored reference assesses
+  that class, show `not-assessed`, not a false definitive refusal.
+- Keep standing-only restriction, deployment freeze, budget, stock capacity,
+  global Creative bypass, physical ownership and non-Dispatch behavior exactly
+  as before. The authoritative purchase function still validates new choices.
+- Update the D13 expectations and add a focused matrix covering all presets,
+  OMON, historical MP5, standing 70, creative and original campaign.
+- Release from its own branch only after the preceding D13B Pages verification,
+  the D13C critical PR checks and a clear deployment queue.
