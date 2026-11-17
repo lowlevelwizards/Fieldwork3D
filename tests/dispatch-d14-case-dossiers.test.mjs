@@ -5,6 +5,7 @@ import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
 import {DISPATCH_D8_INCIDENT_IDS,dispatchIncidentDefinition,validDispatchCase}
  from '../src/dispatch-case-contract.ts';
 import {dispatchCaseDossier} from '../src/dispatch-case-dossier.ts';
+import {selectAuthoredIncidentWording} from '../src/briefing/incident-wording.ts';
 import {newCampaign,readCampaign,acceptContract,resolveOperation}
  from '../src/campaign-state.ts';
 const read=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
@@ -28,8 +29,9 @@ test('D14.1 all nineteen authored cases use only validated real mission and site
   const c={...campaign,contracts:[contract]};
   const dossier=dispatchCaseDossier(c,contract);
   assert.ok(dossier,id);
-  assert.equal(dossier.lead,def.leads[0]);
-  assert.equal(dossier.context,def.contexts[0]);
+  const reported=selectAuthoredIncidentWording(def,contract.seed);
+  assert.equal(dossier.lead,reported.lead);
+  assert.equal(dossier.context,reported.context);
   assert.equal(dossier.site,def.buildings[0].toUpperCase().replace(/-/g,' '));
   assert.ok(dossier.objective.length>15);
   assert.equal(dossier.related.length,0);
