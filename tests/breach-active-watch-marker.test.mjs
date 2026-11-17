@@ -87,7 +87,8 @@ test('2D and projected 3D use persistent WATCH marker; pointer retargets and con
   assert.match(picking,/kind:'activeWatch'/);
   assert.match(pointer,/p.mode==='activeWatch'/);
   assert.match(pointer,/retargetActiveWatch\(port.state,port.selected,target\)/);
-  assert.match(commands,/if\(input.selectedActiveWatch\)removeActiveWatch\(state,selected\)/);
+  assert.match(commands,/const accepted=input.selectedActiveWatch\?\s*removeActiveWatch\(state,selected\)/);
+  assert.match(commands,/return finish\(accepted,'SELECTED ORDER NO LONGER AVAILABLE'/);
   assert.match(palette,/label:'DELETE WATCH'/);
 
 });
