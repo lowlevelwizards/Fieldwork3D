@@ -1,4 +1,4 @@
-/** G36 FT1.9D1: one 384x192 nearest-pixel atlas for readable exterior marks.
+/** G36 P5.3: one shared 384x192 pixel atlas for major exterior marks.
  * No added overlays, side mirrored ejection details, geometry count changes,
  * transparency, per-frame materials, per-instance texture uploads or shaders.
  * The same live-intended original G36 meshes are UV projected in place.
@@ -28,9 +28,14 @@ const zone=(x:number,y:number,x0:number,x1:number,y0:number,y1:number)=>
  */
 function ink(tile:Tile,x:number,y:number):number{
  if(tile==='guard-right'||tile==='guard-left'){
-  // Four substantial readable polymer vents, not microscopic pips.
-  for(const center of [5.42,7.45,9.48,11.51])
-   if(zone(x,y,center-.72,center+.72,-.23,.60))return 105;
+  // Large molded recess illusion: one thick dark inset plus a broad
+  // shoulder/rim from existing UVs. No added geometry or draw calls.
+  for(const center of [5.42,7.45,9.48,11.51]){
+   if(zone(x,y,center-.81,center+.81,-.33,.72)){
+    if(zone(x,y,center-.65,center+.65,-.20,.55))return 91;
+    return 175;
+   }
+  }
   return 255;
  }
  if(tile==='receiver-right'){
@@ -41,17 +46,17 @@ function ink(tile:Tile,x:number,y:number):number{
  if(tile==='receiver-left'){
   // Opposite side should remain a clean polymer shell.
   return 255;
-  return 255;
  }
  if(tile==='lower-right'||tile==='lower-left'){
   // No selector dots, copied lower seams or hidden micro markings.
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  // A single broad translucent-looking panel. No three tiny ribs.
-  if(y < -8.04)return 210;
-  const lean=Math.max(0,Math.min(5,-y-3.1))*.14;
-  if(zone(x-lean,y,-.38,1.28,-7.50,-3.25))return 226;
+  // Smoky-polymer illusion: one wide translucent body facet, slightly
+  // darker foot and no tiny ribs, coupling lug meshes or alpha sorting.
+  if(y < -8.03)return 206;
+  const lean=Math.max(0,Math.min(5,-y-3.1))*.12;
+  if(zone(x-lean,y,-.50,1.34,-7.50,-3.18))return 222;
  }
  return 255;
 }
