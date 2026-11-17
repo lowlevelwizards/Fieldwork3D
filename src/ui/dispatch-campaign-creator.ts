@@ -4,6 +4,7 @@
 import {DISPATCH_PRESETS,DISPATCH_PRESET_LABELS,DISPATCH_PRESET_DESCRIPTIONS,
  dispatchPresetDraft,createDispatchSetup,type DispatchCampaignDraft,
  type DispatchPreset} from '../dispatch-campaign-setup.ts';
+import {dispatchCreationReview} from '../dispatch-campaign-review.ts';
 import '../ui/campaign-creator.css';
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,text='')=>{
  const e=document.createElement(tag);if(text)e.textContent=text;return e;
@@ -57,10 +58,23 @@ export function renderDispatchCampaignCreator(root:HTMLElement,options:{
   ['issued','Issued squad equipment'],['all','Full basic weapon-class stock']
  ],fields);
  settings.append(fields);form.append(settings);
+ // Review the effective rule bundle, not the name of its original preset.
+ const review=el('section');review.className='campaign-creator-review';
+ review.setAttribute('aria-label','Campaign configuration review');
+ const reviewTitle=el('h2','CAMPAIGN REVIEW');review.append(reviewTitle);
+ const reviewRows=([
+  ['STARTING UNIT','reference'],['SERVICE TIME','time'],
+  ['CATALOG & ACCESS','access'],['PROCUREMENT','procurement'],
+  ['STARTING ARMORY','armory']
+ ] as const).map(([label,key])=>{
+  const line=el('div');line.className='campaign-creator-review-row';
+  const heading=el('strong',label),value=el('span');
+  line.append(heading,value);review.append(line);return {key,value};
+ });
+ form.append(review);
  const warning=el('p');warning.className='campaign-creator-error';
  warning.setAttribute('role','status');form.append(warning);
  const notes=el('p');notes.className='campaign-creator-summary';
- notes.textContent='Era progression currently supports two authored US SWAT snapshots (1995 → 2015), advancing after 10 completed operations. It does not simulate every historical year. Older gear stays owned. Patrol gameplay and named agency issue records are not implemented.';
  form.append(notes);
  const actions=el('div');actions.className='campaign-creator-actions';
  const cancel=el('button','CANCEL');cancel.type='button';cancel.addEventListener('click',options.onCancel);
@@ -83,16 +97,23 @@ export function renderDispatchCampaignCreator(root:HTMLElement,options:{
   startingInventory:inventory.value as DispatchCampaignDraft['startingInventory']
  });
  const refresh=()=>{
-  const draft=read();let valid=true;
+  const draft=read(),projection=dispatchCreationReview(draft);
+  // The domain validator remains the creation gate; this projection only
+  // explains the selections and never modifies the campaign or user choices.
+  let valid=projection.valid;
   try{createDispatchSetup(draft);}catch{valid=false;}
-  create.disabled=!valid;warning.textContent=valid?'':'Progressive time requires the 1995 US SWAT starting reference; a full starting armory requires global equipment.';
+  create.disabled=!valid;warning.textContent=valid?'':projection.problem;
+  reviewTitle.textContent=projection.title.toUpperCase()+' · REVIEW';
+  for(const row of reviewRows)row.value.textContent=projection[row.key];
+  description.textContent=DISPATCH_PRESET_DESCRIPTIONS[draft.preset]+
+   (projection.title.startsWith('Customized ')?' · Rules customized below.':'');
+  notes.textContent=projection.note;
  };
  const presetChanged=()=>{
   const draft=dispatchPresetDraft(preset.value as DispatchPreset);
   const vals=[draft.referenceId,draft.timeMode,draft.equipmentScope,
    draft.unlockMode,draft.economy,draft.startingInventory];
   selects.forEach((select,i)=>{select.value=vals[i];});
-  description.textContent=DISPATCH_PRESET_DESCRIPTIONS[draft.preset];
   refresh();
  };
  preset.addEventListener('change',presetChanged);

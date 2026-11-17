@@ -20,6 +20,16 @@
 .campaign-creator-future summary{cursor:pointer;font:700 12px var(--fw-font-menu);letter-spacing:.04em}
 .campaign-creator-future p{margin-top:10px}
 .campaign-creator-summary{background:#22382e;padding:12px;line-height:1.5;margin:0}
+.campaign-creator-review{display:grid;gap:7px;padding:12px 14px;
+ border:1px solid #50685b;background:#1e3028;min-width:0}
+.campaign-creator-review h2{font:800 12px var(--fw-font-menu);
+ letter-spacing:.06em;margin:0 0 3px}
+.campaign-creator-review-row{display:grid;grid-template-columns:minmax(112px,31%) 1fr;
+ align-items:baseline;gap:10px;font:500 12px/1.45 var(--fw-font-narrative);
+ overflow-wrap:anywhere}
+.campaign-creator-review-row strong{font:700 10px/1.5 var(--fw-font-menu);
+ letter-spacing:.035em;color:#afc4b7}
+.campaign-creator-review-row span{color:#ebf1e7}
 .campaign-creator-error{min-height:1.1em;color:#e5bda8;margin:0;font-size:12px}
 .campaign-creator-actions{display:flex;gap:10px;flex-wrap:wrap}
 .campaign-creator-actions button{flex:1;min-height:48px}
@@ -35,6 +45,7 @@
 @media(max-width:560px){
  .campaign-creator{padding:16px 4px;gap:15px}
  .campaign-creator-fields{grid-template-columns:1fr}
+ .campaign-creator-review-row{grid-template-columns:1fr;gap:1px}
  .campaign-creator-actions{flex-direction:column}
  .campaign-creator-actions button{width:100%}
 }
