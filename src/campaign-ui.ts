@@ -908,8 +908,9 @@ export class CampaignScreen{
    ['wounded','first-deployment','first-success','objective','intel','down','distinction']
     .includes(e.kind)).slice(-6).reverse();
   if(highlights.length){
-   const timeline=node('section','campaign-career-timeline');
-   timeline.append(node('h3','','PERSONNEL MILESTONES'));
+   const timeline=node('details','campaign-career-timeline');
+   timeline.append(node('summary','',
+    'PERSONNEL MILESTONES · '+highlights.length+' RECENT · DAY '+highlights[0].day));
    const entries=node('div','campaign-career-events');
    for(const event of highlights){
     const person=c.operators.find(o=>o.id===event.operatorId);
