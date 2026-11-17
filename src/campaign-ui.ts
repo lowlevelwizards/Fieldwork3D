@@ -242,7 +242,9 @@ export class CampaignScreen{
   ].join('');
   const copy=node('div','campaign-landing-copy');
   copy.append(node('h1','','FIELDWORK'),
-   node('div','campaign-landing-subtitle','FIELD OPERATIONS'));
+   node('div','campaign-landing-subtitle','FIELD OPERATIONS'),
+   node('p','campaign-landing-intro',
+    'Plan your approach. Adapt to contact. Make every decision count.'));
   const more=button('MORE',()=>openTools(more),'campaign-landing-more');
   hero.append(plan,copy,more);
   const actions=node('nav','campaign-landing-actions');

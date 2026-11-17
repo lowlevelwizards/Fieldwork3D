@@ -89,3 +89,21 @@ test('Operations primary action does not send an idle squad to an empty case boa
  assert.match(overview,/button\('REVIEW SQUAD & READINESS',\s*\(\)=>activateTab\('personnel'\)/);
  assert.match(overview,/button\('BROWSE CONTRACTS · '/);
 });
+
+test('desktop title scene uses available screen space without changing phone navigation',()=>{
+ const css=source('campaign-style.css');
+ const entry=source('campaign-ui.ts').slice(
+  source('campaign-ui.ts').indexOf(' entry(hasSave:boolean'),
+  source('campaign-ui.ts').indexOf(' dispatchCreator(){'));
+ const desktop=css.slice(css.indexOf('/* UI R13: desktop-first title composition'));
+ assert.match(desktop,/@media\(min-width:820px\) and \(min-height:620px\)/);
+ assert.match(desktop,/\.campaign-landing:not\(\.campaign-landing-subpage\)/);
+ assert.match(desktop,/grid-template-columns:minmax\(0,1\.06fr\) minmax\(350px,\.94fr\)/);
+ assert.match(desktop,/\.campaign-landing-hero\{[\s\S]*?grid-area:1 \/ 1/);
+ assert.match(desktop,/\.campaign-landing-actions\{[\s\S]*?grid-area:1 \/ 2/);
+ assert.match(desktop,/\.campaign-landing-utility\{[\s\S]*?grid-area:2 \/ 1 \/ 3 \/ 3/);
+ assert.match(css,/\.campaign-landing-intro\{display:none\}/);
+ assert.match(entry,/node\('p','campaign-landing-intro'/);
+ assert.match(entry,/main\.append\(hero,actions,utility\)/);
+ assert.match(entry,/subpage\.hidden=true;main\.hidden=false/);
+});
