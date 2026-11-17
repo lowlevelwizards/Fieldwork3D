@@ -92,8 +92,16 @@ export function buildWeaponSilhouette(id:WeaponId,
  }
  return g;
 }
+/** Release per-build geometry AND instance buffers when a weapon changes.
+ * Materials are shared registry assets, never owned by the silhouette.
+ * Instanced rails also allocate GPU instance attributes, which a geometry
+ * dispose alone does not release when the preview is rebuilt repeatedly.
+ */
 export function clearWeaponSilhouette(g:THREE.Group){
- g.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+ g.traverse(o=>{
+  if(o instanceof THREE.InstancedMesh)o.dispose();
+  if(o instanceof THREE.Mesh)o.geometry.dispose();
+ });
  g.clear();
  g.userData.visibleStockContact=null;
 }
