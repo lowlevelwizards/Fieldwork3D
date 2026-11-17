@@ -4,25 +4,43 @@ import {readFileSync} from 'node:fs';
 
 const source=(name)=>readFileSync(new URL('../src/'+name,import.meta.url),'utf8');
 
-test('landing preserves clear play choices, replay and tools without manufactured labels',()=>{
+test('landing routes the active saved campaign through one primary action',()=>{
  const ui=source('campaign-ui.ts');
  const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean'),
-  ui.indexOf(' home(c:CampaignState'));
- assert.match(entry,/campaign-landing-hero/);
- assert.match(entry,/campaign-landing-actions/);
- assert.match(entry,/campaign-landing-card campaign-landing-primary/);
- assert.match(entry,/campaign-landing-card campaign-landing-quick/);
+  ui.indexOf(' dispatchCreator(){'));
+ assert.match(entry,/available\.find\(\(\[slot\]\)=>slot===active\)/);
+ assert.match(entry,/selected\?selected\[3\]/);
+ assert.match(entry,/available\.length>1/);
+ assert.match(entry,/SWITCH CAMPAIGN/);
+ assert.match(entry,/this\.handlers\.continueDispatch/);
+ assert.match(entry,/this\.handlers\.continueSandbox/);
+ assert.match(entry,/this\.handlers\.continueCampaign/);
+ assert.match(entry,/this\.handlers\.newDispatch/);
+ assert.match(entry,/this\.handlers\.newSandbox/);
+ assert.match(entry,/this\.handlers\.newCampaign/);
+ assert.match(entry,/this\.handlers\.quickPlay/);
+ assert.match(entry,/this\.handlers\.training/);
  assert.match(entry,/this\.handlers\.openReplayLibrary/);
+ assert.match(entry,/this\.handlers\.openMenuStudio/);
+ assert.match(entry,/DATA & SAVES/);
  assert.match(entry,/OPERATOR LAB','\.\/operator-lab\.html/);
- assert.match(entry,/MAP LAB','\.\/map-lab\.html/);
- assert.match(entry,/SAVES \/ IMPORT/);
- assert.match(entry,/hasSave\?'CONTINUE CAMPAIGN':'NEW CAMPAIGN'/);
- assert.doesNotMatch(entry,/TACTICAL \/ PERSISTENT \/ HUMAN/);
- assert.doesNotMatch(entry,/FIELD OPERATIONS · 001/);
- assert.doesNotMatch(entry,/↗|campaign-landing-arrow/);
- assert.doesNotMatch(entry,/campaign-landing-card-caption|campaign-landing-card-index/);
- assert.doesNotMatch(entry,/SELECT OPERATION|01 — 02|Start another unit/);
- assert.doesNotMatch(entry,/d9cb8d|134 206|ROOM 0/);
+ assert.doesNotMatch(entry,/One unit\. Every deployment leaves a history\./);
+ assert.doesNotMatch(entry,/ACTIVE SLOT/);
+});
+
+test('compact title keeps safe accessibility and nested menu navigation',()=>{
+ const ui=source('campaign-ui.ts');
+ const css=source('campaign-style.css');
+ const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean'),
+  ui.indexOf(' dispatchCreator(){'));
+ assert.match(entry,/subpage\.addEventListener\('keydown'/);
+ assert.match(entry,/event\.key!=='Escape'/);
+ assert.match(entry,/trigger\.focus\(\{preventScroll:true\}\)/);
+ assert.match(entry,/arsenal\.href='\.\/arsenal\.html'/);
+ assert.match(css,/height:100dvh/);
+ assert.match(css,/max-height:540px/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(css,/campaign-landing-choices:has\(> :only-child\)/);
 });
 
 test('restart from Settings dismisses the sheet then reopens the briefing',()=>{
