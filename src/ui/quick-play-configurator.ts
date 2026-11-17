@@ -135,9 +135,10 @@ export function createQuickPlayConfigurator(options:{
  const advancedBody=node('div','fw-quick-config-advanced-content');
  const conditions=node('div','fw-quick-config-grid');
  conditions.append(presence.group,civilians.group);
+ const buildingDisclosure=node('details','fw-quick-config-building-details');
+ const buildingDisclosureSummary=node('summary','','BUILDING TYPES');
  const buildingSection=node('section','fw-quick-config-buildings');
  const buildingHeader=node('div','fw-quick-config-building-header');
- const buildingHeading=node('strong','','ALLOWED BUILDINGS');
  const buildingActions=node('div','fw-quick-config-building-actions');
  const checks=node('div','fw-quick-config-checks');
  const checkInputs=new Map<BuildingArchetype,HTMLInputElement>();
@@ -154,7 +155,7 @@ export function createQuickPlayConfigurator(options:{
    chooseBuildings(enabled.length?enabled:[QUICK_PLAY_BUILDINGS[seed%QUICK_PLAY_BUILDINGS.length]]);
   })
  );
- buildingHeader.append(buildingHeading,buildingActions);
+ buildingHeader.append(buildingActions);
  for(const kind of QUICK_PLAY_BUILDINGS){
   const label=node('label','fw-quick-config-building');
   const checkbox=node('input');checkbox.type='checkbox';checkbox.value=kind;
@@ -168,7 +169,8 @@ export function createQuickPlayConfigurator(options:{
   checks.append(label);
  }
  buildingSection.append(buildingHeader,checks);
- advancedBody.append(seedGroup,conditions,buildingSection);
+ buildingDisclosure.append(buildingDisclosureSummary,buildingSection);
+ advancedBody.append(seedGroup,conditions,buildingDisclosure);
  advanced.append(advancedBody);
  const summary=node('p','fw-quick-config-summary');
  const error=node('p','fw-quick-config-error');error.setAttribute('role','status');
@@ -200,6 +202,8 @@ export function createQuickPlayConfigurator(options:{
  function update(){
   error.textContent='';
   const count=settings.buildings.length;
+  buildingDisclosureSummary.textContent='ALLOWED BUILDINGS · '+count+
+   ' / '+QUICK_PLAY_BUILDINGS.length+' SELECTED';
   const selectedIncident=quickPlayIncidentDefinition(settings.incident);
   const incidentBuildings=!selectedIncident?.buildings||
    settings.buildings.some(b=>selectedIncident.buildings!.includes(b));
@@ -211,7 +215,10 @@ export function createQuickPlayConfigurator(options:{
    ' · '+(settings.mission==='random'?'Random objective':settings.mission)+
    ' · '+(settings.size==='random'?'Random size':settings.size)+
    (settings.seed===null?'':' · Seed '+settings.seed);
-  if(!count||!validSeed||!incidentBuildings)advanced.open=true;
+  if(!count||!validSeed||!incidentBuildings){
+   advanced.open=true;
+   if(!count||!incidentBuildings)buildingDisclosure.open=true;
+  }
   start.disabled=count===0||!validSeed||!incidentBuildings||!incidentMission;
   if(!count)error.textContent='Enable at least one building type.';
   else if(!validSeed)error.textContent='Seed must be a whole number from 1 to 4294967295.';
