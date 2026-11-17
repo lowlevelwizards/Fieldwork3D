@@ -89,6 +89,8 @@ test('M3.0C2 refuses animated magazines, metadata and instanced rail teeth',()=>
   const m=new THREE.Mesh(new THREE.BoxGeometry(1,2,1),metal);
   m.name='family-magazine-ar-mag-0';g.add(m);
  }
+ assert.throws(()=>compileRigidWeaponPartPilot(g,'magazine','ar-mag'),
+  /Dynamic magazine bodies/,'JS call cannot bypass live reload ownership');
  const c=compileRigidWeaponPartPilot(g,'receiver','ar-flat');
  assert.equal(c.avoidedSubmissions,0);
  c.commit();c.restore();
