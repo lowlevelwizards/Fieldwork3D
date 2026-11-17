@@ -531,3 +531,20 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  letter-spacing:.04em}
 .arsenal-wb-proposal p{margin:0;font:500 12px/1.45 var(--fw-font-action)}
 .arsenal-wb-proposal .arsenal-wb-pending-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+/* H2.3 physical stock controls are deliberately shown ONLY for supported parts. */
+.arsenal-wb-stock-position{display:flex;flex-direction:column;gap:7px;
+ padding:11px;border:1px solid var(--fw-panel-border);
+ background:var(--fw-panel-deep);border-radius:var(--fw-radius-sm)}
+.arsenal-wb-stock-position[hidden]{display:none}
+.arsenal-wb-stock-position>strong{font:750 12px/1.2 var(--fw-font-menu);
+ letter-spacing:.045em}
+.arsenal-wb-stock-position-buttons{display:flex;flex-wrap:wrap;gap:7px}
+.arsenal-wb-stock-position-button{min-height:44px;flex:1;min-width:100px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ color:var(--fw-text);background:var(--fw-panel);
+ padding:9px 11px;font:700 12px var(--fw-font-action)}
+.arsenal-wb-stock-position-button[aria-pressed="true"]{
+ color:var(--fw-bg);background:var(--fw-sage);border-color:var(--fw-sage)}
+.arsenal-wb-stock-position-button:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px}
