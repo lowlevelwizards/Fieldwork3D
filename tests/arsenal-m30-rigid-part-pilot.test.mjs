@@ -43,8 +43,9 @@ test('M3.0C2 opt-in compiler preserves slot picking and independent magazines',(
  const camera=new THREE.PerspectiveCamera(50,1,.1,100);
  camera.position.set(3,0,20);camera.lookAt(3,0,0);
  camera.updateProjectionMatrix();root.updateWorldMatrix(true,true);
- const hits=new THREE.Raycaster().setFromCamera(new THREE.Vector2(0,0),camera)
-  .intersectObject(root,true);
+ const raycaster=new THREE.Raycaster();
+ raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+ const hits=raycaster.intersectObject(root,true);
  assert.ok(hits.some(x=>x.object.name.startsWith('family-receiver-ar-flat-')),
   'Workbench must still ray-pick a canonical receiver part');
  change.restore();
