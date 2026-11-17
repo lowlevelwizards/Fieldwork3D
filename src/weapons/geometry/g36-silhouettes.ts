@@ -15,7 +15,8 @@ export {G36_B_PART_IDS} from './g36-family-contract.ts';
 
 /** Review-only visual alternatives, all use the same real factory geometry.
  * They never become save data, alternate weapon presets or accessory slots.
- * P6 stays the default until a matched-angle comparison approves a candidate.
+ * The rear-biased reflex is the selected production interpretation; P6
+ * remains an explicit reference in the review lab.
  */
 export type G36OpticArtReview='p6'|'lower-emphasis'|'rear-integrated';
 export type G36ArtReview=Readonly<{optic?:G36OpticArtReview;magazine?:'p6'|'curve'}>;
@@ -91,7 +92,7 @@ function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):T
 }
 export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtReview={}):THREE.Group{
  const root=new THREE.Group();
- root.name='g36-p6-fieldwork-interpretive-master';
+ root.name='g36-p7-calibrated-fieldwork-master';
  const i:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -140,7 +141,7 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
 
  // Two bold optical forms, not an assembly of mechanical accessories.
  // Experimental outlines are review-only and do not alter optic datums.
- const optics=G36_OPTIC_REVIEW_FORMS[review.optic??'p6'];
+ const optics=G36_OPTIC_REVIEW_FORMS[review.optic??'rear-integrated'];
  const magnified=box('receiver',...optics.lower);
  magnified.userData.g36LowerOptic=true;
  const reflex=box('receiver',...optics.upper);

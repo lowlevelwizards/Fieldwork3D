@@ -22,7 +22,21 @@ Status: **feature branch / not user art approved**. P6 commit `8cea6fb` is the l
 
 ## Release decision record (to fill from actual tests)
 
-- P7.1 optic selected: **unresolved until peer captures and contact tests**.
-- P7.2 magazine selected: **unresolved until shape/capture comparisons**.
-- Conditional receiver/guard/stock changes: **not authorized by default**.
-- P6 reference must stay available in review tooling without introducing saved gameplay customization.
+- **P7.1 production selection:** rear-integrated upper reflex. It translates the short
+  crown about half an art unit rearward within the existing integrated carrying
+  handle, but does not increase optic height, move the lower optic, hide the
+  long handle opening, or add mesh details. The alternative larger lower scope
+  was not selected: it deepens the rear mass and sacrifices valuable opening.
+  Matching WebGL comparison captures remain an art-review aid, **not proof of
+  user approval**.
+- **P7.2 production selection:** no change from P6 magazine. The sweep
+  candidate retained the same centerline length but changed the absolute
+  lower corner envelope through tangent-normal geometry. It is available
+  for comparison only; without affirmative visual evidence, retaining P6
+  protects the silhouette/contact assumptions. No claim that this candidate
+  is historically inferior or visually rejected by the user.
+- **P7.3 structural changes:** none. P6 receiver, stock, buttpad, planar
+  handguard, grip, barrel and muzzle remain untouched.
+- **P7.4:** critical browser/geometry/build validation required on final commit.
+  Human on-device aesthetic approval remains pending.
+- P6 stays available in review tooling without creating any saved weapon variants.
