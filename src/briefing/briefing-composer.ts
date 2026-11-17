@@ -1,6 +1,6 @@
 /** B4: Three authored report structures around ONE validated scenario. */
 import type {MissionTruth,OperationDossierV1,ReportQuality,NarrativeStyle} from './briefing-types.ts';
-import {briefingRng,mixBriefingSeed} from './briefing-seed.ts';
+import {selectAuthoredIncidentWording} from './incident-wording.ts';
 import {selectIncident,type IncidentSelection} from './incident-director.ts';
 import {intelligenceClaims} from './intelligence-director.ts';
 import {validateOperationDossier} from './briefing-validation.ts';
@@ -44,13 +44,8 @@ export function createOperationDossier(
     forceIncidentId:opts.forceIncidentId??truth.encounterIncidentId??undefined});
   // R4: incident identity also influences title and wording. Same site seed,
   // different case family => a genuinely different stable narrative identity.
-  const incidentHash=[...incident.id].reduce((n,ch)=>
-    (Math.imul(n,33)+ch.charCodeAt(0))>>>0,5381);
-  const narrativeSeed=mixBriefingSeed(truth.seed,
-    (opts.narrativeSalt??0)^0x4b54a129^incidentHash);
-  const rand=briefingRng(narrativeSeed);
-  const lead=incident.leads[Math.floor(rand()*incident.leads.length)];
-  const context=incident.contexts[Math.floor(rand()*incident.contexts.length)];
+  const {narrativeSeed,lead,context,random:rand}=
+    selectAuthoredIncidentWording(incident,truth.seed,opts.narrativeSalt??0);
   // Report quality remains independent of the selected architectural intel mode.
   const quality:ReportQuality=opts.quality??
     (rand()<.28?'low':rand()<.72?'medium':'high');
