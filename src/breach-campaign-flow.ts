@@ -273,17 +273,14 @@ const campaignScreen=new CampaignScreen({
   next=equipCampaignWeaponPreset(next,id,presetId);
   if(next===model.campaign)return;
   model.campaign=next;config.saveCampaign();showCampaignHome();}},
- equipWeaponFamilyPart:(id,slot,partId)=>{if(model.campaign){
-  model.campaign=equipCampaignWeaponFamilyPart(model.campaign,id,slot,partId);
-  config.saveCampaign();showCampaignHome();}},
- equipAttachment:(id,slot,partId,acquire)=>{if(model.campaign){
-  model.campaign=acquire?
-   purchaseAndEquipWeaponAttachment(model.campaign,id,slot,partId):
-   equipCampaignWeaponAttachment(model.campaign,id,slot,partId);
-  config.saveCampaign();showCampaignHome();}},
- moveMagazine:(id,magazineId,location)=>{if(model.campaign){
-  model.campaign=moveCampaignMagazine(model.campaign,id,magazineId,location);
-  config.saveCampaign();showCampaignHome();}},
+ equipWeaponFamilyPart:(id,slot,partId)=>applyVisibleCampaignAction(
+  c=>equipCampaignWeaponFamilyPart(c,id,slot,partId),'Weapon component updated'),
+ equipAttachment:(id,slot,partId,acquire)=>applyVisibleCampaignAction(
+  c=>acquire?purchaseAndEquipWeaponAttachment(c,id,slot,partId):
+   equipCampaignWeaponAttachment(c,id,slot,partId),
+  acquire?'Attachment acquired and equipped':'Weapon attachment updated'),
+ moveMagazine:(id,magazineId,location)=>applyVisibleCampaignAction(
+  c=>moveCampaignMagazine(c,id,magazineId,location),'Magazine placement updated'),
  saveKitPreset:(id,name)=>{if(model.campaign){model.campaign=saveCampaignKitPreset(model.campaign,id,name);
   config.saveCampaign();showCampaignHome();}},
  applyKitPreset:(id,presetId)=>{if(model.campaign){model.campaign=applyCampaignKitPreset(model.campaign,id,presetId);
