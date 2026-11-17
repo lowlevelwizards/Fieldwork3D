@@ -596,7 +596,8 @@ export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
   o.weaponConfiguration,next,
   unlimitedDispatch(c)?Number.MAX_SAFE_INTEGER:c.funds,true);
  if(!quote.canCommit||!quote.stockAfter||!canSpend(c,quote.cost))return c;
- return {...c,funds:c.funds-quote.cost,
+ // Creative's unlimited spending never creates infinite physical stock.
+ return {...c,funds:charge(c,quote.cost),
   inventory:{...c.inventory,attachments:quote.stockAfter},
   operators:c.operators.map(m=>m.id===id?{...m,weaponConfiguration:next}:m)};
 }
