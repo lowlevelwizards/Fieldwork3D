@@ -844,8 +844,11 @@ export class CampaignScreen{
   const nextAction=accepted?
    button('CONTINUE DEPLOYMENT · '+campaignIncidentView(c,accepted).title.toUpperCase(),
     this.handlers.resumeContract,'campaign-primary'):
-   button('BROWSE CONTRACTS · '+availableContracts.length+' AVAILABLE',
-    ()=>activateTab('contracts'),'campaign-primary');
+   availableContracts.length?
+    button('BROWSE CONTRACTS · '+availableContracts.length+' AVAILABLE',
+     ()=>activateTab('contracts'),'campaign-primary'):
+    button('REVIEW SQUAD & READINESS',
+     ()=>activateTab('personnel'),'campaign-primary');
   nextAction.classList.add('campaign-overview-primary-action');
   nextCard.append(nextAction);
   overview.append(nextCard);
