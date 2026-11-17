@@ -126,13 +126,97 @@ export class CampaignScreen{
   document.body.append(this.root);
  }
  hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
- entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false){
+ entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false,
+  initialPane:'main'|'new'='main'){
   this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,dispatch:dispatchHasSave,active};
   this.armoryOperatorId=null;this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
+  const slots:[
+   CampaignSlot,string,boolean,()=>void
+  ][]=[
+   ['legacy','CLASSIC CAMPAIGN',hasSave,this.handlers.continueCampaign],
+   ['sandbox','CLASSIC SANDBOX',sandboxHasSave,this.handlers.continueSandbox],
+   ['dispatch','DISPATCH CAMPAIGN',dispatchHasSave,this.handlers.continueDispatch]
+  ];
+  const available=slots.filter(([, ,saved])=>saved);
+  // Favor the actual active slot, not the historically first (legacy) handler.
+  const selected=available.find(([slot])=>slot===active)??available[0];
   const main=node('main','campaign-shell campaign-landing');
+  main.setAttribute('aria-label','Fieldwork main menu');
+  const subpage=node('section','campaign-shell campaign-landing campaign-landing-subpage');
+  subpage.setAttribute('aria-label','Menu details');
+  subpage.hidden=true;
+  // Escape reverses local menu navigation without leaving the current game.
+  subpage.addEventListener('keydown',event=>{
+   if(event.key!=='Escape')return;
+   const back=subpage.querySelector<HTMLButtonElement>('.campaign-landing-back');
+   if(!back)return;
+   event.preventDefault();back.click();
+  });
+  const showSubpage=(title:string,lead:string,trigger:HTMLElement,
+   populate:(target:HTMLElement)=>void)=>{
+   const back=button('BACK',()=>{subpage.hidden=true;main.hidden=false;
+    trigger.focus({preventScroll:true});},'campaign-landing-back');
+   const head=node('header','campaign-landing-subhead');
+   head.append(back,node('h2','',title),node('p','',lead));
+   const content=node('div','campaign-landing-subcontent');
+   populate(content);
+   subpage.replaceChildren(head,content);
+   main.hidden=true;subpage.hidden=false;
+   back.focus({preventScroll:true});
+  };
+  const option=(title:string,detail:string,action:()=>void)=>{
+   const item=button('',action,'campaign-landing-option');
+   item.append(node('strong','',title),node('span','',detail));
+   item.setAttribute('aria-label',title+' — '+detail);
+   return item;
+  };
+  const openNew=(trigger:HTMLElement)=>showSubpage('NEW CAMPAIGN',
+   'Choose a setting, then configure the experience.',trigger,target=>{
+    target.append(
+     option('DISPATCH','Police tactical career, historical and creative profiles',
+      this.handlers.newDispatch),
+     option('CLASSIC CAMPAIGN','Original persistent Field Operations',
+      this.handlers.newCampaign),
+     option('CLASSIC SANDBOX','Original campaign with configurable mission rules',
+      this.handlers.newSandbox));
+   });
+  const openSwitch=(trigger:HTMLElement)=>showSubpage('SWITCH CAMPAIGN',
+   'Choose an existing local campaign. Nothing will be overwritten.',trigger,target=>{
+    for(const [slot,label,saved,action] of slots){
+     if(!saved)continue;
+     target.append(option(label+(slot===active?' · ACTIVE':''),
+      'Continue this saved campaign',action));
+    }
+   });
+  const openTools=(trigger:HTMLElement)=>showSubpage('MORE',
+   'Save management and development utilities.',trigger,target=>{
+    const saves=node('details','campaign-landing-saves');
+    saves.append(node('summary','','DATA & SAVES'));
+    saves.append(node('p','campaign-note',
+     'Import to a specific campaign slot. Existing saves are protected by confirmation.'));
+    for(const [slot,label] of [
+     ['legacy','CLASSIC CAMPAIGN'],['sandbox','CLASSIC SANDBOX'],
+     ['dispatch','DISPATCH CAMPAIGN']
+    ] as const){
+     saves.append(node('p','campaign-note','IMPORT TO '+label));
+     saves.append(this.importPicker(slot));
+    }
+    const labs=node('details','campaign-landing-labs');
+    labs.append(node('summary','','DEVELOPER LABS'));
+    const links=node('div','campaign-landing-lab-links');
+    for(const [name,href] of [
+     ['OPERATOR LAB','./operator-lab.html'],
+     ['MAP LAB','./map-lab.html'],
+     ['ASSET LAB','./asset-lab.html'],
+     ['BRIEFING LAB','./briefing-lab.html'],
+     ['POSE WORKBENCH','./pose-workbench.html']
+    ]){
+     const link=node('a','',name);link.href=href;links.append(link);
+    }
+    labs.append(links);target.append(saves,labs);
+   });
   const hero=node('header','campaign-landing-hero');
-  const masthead=node('div','campaign-landing-masthead','VERDIGRIS');
   const plan=node('div','campaign-landing-plan');
   plan.setAttribute('aria-hidden','true');
   // Quiet architectural texture, not a pretend tactical route or mission intel.
@@ -151,71 +235,53 @@ export class CampaignScreen{
   ].join('');
   const copy=node('div','campaign-landing-copy');
   copy.append(node('h1','','FIELDWORK'),
-   node('div','campaign-landing-subtitle','FIELD OPERATIONS'),
-   node('p','','One unit. Every deployment leaves a history.'));
-  hero.append(masthead,plan,copy);
+   node('div','campaign-landing-subtitle','FIELD OPERATIONS'));
+  const more=button('MORE',()=>openTools(more),'campaign-landing-more');
+  hero.append(plan,copy,more);
   const actions=node('nav','campaign-landing-actions');
-  actions.setAttribute('aria-label','Start playing');
-  actions.append(
-   button(hasSave?'CONTINUE CAMPAIGN':'NEW CAMPAIGN',
-    hasSave?this.handlers.continueCampaign:this.handlers.newCampaign,
-    'campaign-landing-card campaign-landing-primary'),
-   button(sandboxHasSave?'CONTINUE SANDBOX':'SANDBOX CAMPAIGN',
-    sandboxHasSave?this.handlers.continueSandbox:this.handlers.newSandbox,
-    'campaign-landing-card campaign-landing-quick'),
-   button(dispatchHasSave?'CONTINUE DISPATCH':'DISPATCH CAMPAIGN',
-    dispatchHasSave?this.handlers.continueDispatch:this.handlers.newDispatch,
-    'campaign-landing-card campaign-landing-quick'),
-   button('QUICK PLAY',this.handlers.quickPlay,
-    'campaign-landing-card campaign-landing-quick'),
-   button('TRAINING · KILLHOUSE',this.handlers.training,
-    'campaign-landing-card campaign-landing-training')
-  );
+  actions.setAttribute('aria-label','Play Fieldwork');
+  const resume=node('div','campaign-landing-resume');
+  let creationLauncher:HTMLButtonElement|null=null;
+  const primary=button('',selected?selected[3]:()=>openNew(primary),
+   'campaign-landing-card campaign-landing-primary');
+  primary.append(node('span','campaign-landing-eyebrow',
+   selected?'ACTIVE CAMPAIGN · '+selected[1]:'BEGIN FIELD OPERATIONS'),
+   node('strong','',selected?'CONTINUE':'NEW CAMPAIGN'),
+   node('span','campaign-landing-card-detail',
+    selected?'Open your Operations Room':'Choose a campaign experience'));
+  primary.setAttribute('aria-label',selected?
+   'Continue '+selected[1]:'Create a new campaign');
+  resume.append(primary);
+  if(!selected)creationLauncher=primary;
+  if(available.length>1){
+   const switchButton=button('SWITCH',()=>openSwitch(switchButton),
+    'campaign-landing-switch');
+   switchButton.setAttribute('aria-label','Switch saved campaign');
+   resume.append(switchButton);
+  }
+  const choices=node('div','campaign-landing-choices');
+  if(selected){
+   const create=option('NEW CAMPAIGN','Choose an experience',()=>openNew(create));
+   create.classList.add('campaign-landing-card','campaign-landing-quick');
+   creationLauncher=create;choices.append(create);
+  }
+  const quick=option('QUICK PLAY','Create a standalone operation',this.handlers.quickPlay);
+  quick.classList.add('campaign-landing-card','campaign-landing-quick');
+  choices.append(quick);
+  const training=option('TRAINING','Killhouse · Range · Tactical trials',
+   this.handlers.training);
+  training.classList.add('campaign-landing-training');
+  actions.append(resume,choices,training);
   const utility=node('nav','campaign-landing-utility');
-  utility.setAttribute('aria-label','Other destinations');
-  if(hasSave)utility.append(button('NEW CAMPAIGN',this.handlers.newCampaign,
-   'campaign-landing-link'));
-  if(sandboxHasSave)utility.append(button('NEW SANDBOX',this.handlers.newSandbox,
-   'campaign-landing-link'));
-  if(dispatchHasSave)utility.append(button('NEW DISPATCH CAMPAIGN',this.handlers.newDispatch,
-   'campaign-landing-link'));
-  utility.append(node('p','campaign-note',
-   'DISPATCH · Choose a tactical-police career, historical campaign, timeline progression, open department or creative sandbox. Authored eras are limited to supported reference kits.'));
-  utility.append(node('p','campaign-note','ACTIVE SLOT · '+active.toUpperCase()));
-  utility.append(button('REPLAY LIBRARY',this.handlers.openReplayLibrary,
-   'campaign-landing-link'));
-  utility.append(button('OPERATOR STUDIO',this.handlers.openMenuStudio,
-   'campaign-landing-link'));
+  utility.setAttribute('aria-label','Creative tools and replays');
   const arsenal=node('a','campaign-landing-link','ARSENAL');
   arsenal.href='./arsenal.html';
-  utility.append(arsenal);
-  const footer=node('footer','campaign-landing-footer');
-  const labs=node('details','campaign-landing-labs');
-  labs.append(node('summary','','LABS'));
-  const labLinks=node('div','campaign-landing-lab-links');
-  for(const [name,href] of [
-   ['OPERATOR LAB','./operator-lab.html'],
-   ['MAP LAB','./map-lab.html'],
-   ['ASSET LAB','./asset-lab.html'],
-   ['BRIEFING LAB','./briefing-lab.html'],
-   ['POSE WORKBENCH','./pose-workbench.html']
-  ]){
-   const link=node('a','',name);link.href=href;labLinks.append(link);
-  }
-  labs.append(labLinks);
-  const saves=node('details','campaign-save-management campaign-landing-saves');
-  saves.append(node('summary','','SAVES / IMPORT'));
-  saves.append(node('p','campaign-note',
-   'Import an exported campaign save to continue on this device.'));
-  saves.append(node('p','campaign-note','IMPORT TO EXISTING CAMPAIGN'));
-  saves.append(this.importPicker('legacy'));
-  saves.append(node('p','campaign-note','IMPORT TO SANDBOX CAMPAIGN'));
-  saves.append(this.importPicker('sandbox'));
-  saves.append(node('p','campaign-note','IMPORT TO DISPATCH CAMPAIGN'));
-  saves.append(this.importPicker('dispatch'));
-  footer.append(labs,saves);
-  main.append(hero,actions,utility,footer);
-  this.root.append(main);
+  utility.append(arsenal,
+   button('OPERATOR STUDIO',this.handlers.openMenuStudio,'campaign-landing-link'),
+   button('REPLAYS',this.handlers.openReplayLibrary,'campaign-landing-link'));
+  main.append(hero,actions,utility);
+  this.root.append(main,subpage);
+  if(initialPane==='new'&&creationLauncher)openNew(creationLauncher);
  }
  dispatchCreator(){
   this.disposePreview();this.armoryOperatorId=null;
@@ -223,7 +289,7 @@ export class CampaignScreen{
   renderDispatchCampaignCreator(this.root,{
    hasDispatch:this.lastEntry.dispatch,
    onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,
-    this.lastEntry.active,this.lastEntry.dispatch),
+    this.lastEntry.active,this.lastEntry.dispatch,'new'),
    onExport:this.handlers.exportDispatch,
    onCreate:this.handlers.createDispatch
   });
@@ -233,7 +299,7 @@ export class CampaignScreen{
   this.root.hidden=false;
   renderCampaignCreator(this.root,{
    hasSandbox:this.lastEntry.sandbox,
-   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active,this.lastEntry.dispatch),
+   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,this.lastEntry.active,this.lastEntry.dispatch,'new'),
    onExportSandbox:this.handlers.exportSandbox,
    onCreate:this.handlers.createSandbox
   });
@@ -258,9 +324,6 @@ export class CampaignScreen{
    (this.currentSlot==='dispatch'?'DISPATCH · '+factionReference(currentDispatchReference(c))?.name:
     this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
    ' · '+(c.name??'Original Campaign')));
-  title.append(node('div','campaign-home-identity',
-   'INTELLIGENCE · '+rules.intel.toUpperCase()+
-   '  /  MAP SCALE · '+rules.scale.toUpperCase()));
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
    title.append(node('div','campaign-home-identity',
@@ -529,12 +592,26 @@ export class CampaignScreen{
   }
   grid.append(chronicle);
   const footer=node('div','campaign-footer');
-  footer.append(button('EXPORT CAMPAIGN SAVE',this.handlers.exportSave));
-  footer.append(node('p','campaign-note','IMPORT CAMPAIGN SAVE'));
-  footer.append(this.importPicker());
-  footer.append(button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
+  const utilities=node('details','campaign-overview-utilities');
+  utilities.append(node('summary','','SAVES & OTHER MODES'));
+  const utilityContent=node('div','campaign-overview-utility-content');
+  utilityContent.append(
+   node('p','campaign-note','INTELLIGENCE · '+rules.intel.toUpperCase()+
+    ' / MAP SCALE · '+rules.scale.toUpperCase()),
+   button('EXPORT CAMPAIGN SAVE',this.handlers.exportSave),
+   node('p','campaign-note','IMPORT CAMPAIGN SAVE'),
+   this.importPicker(),
+   button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
+  utilities.append(utilityContent);footer.append(utilities);
   const overview=node('section','campaign-section campaign-overview');
   overview.append(node('h2','','UNIT OVERVIEW'));
+  // A clear next action remains visible before records, readiness and statistics.
+  const nextAction=accepted?
+   button('CONTINUE DEPLOYMENT · '+campaignIncidentView(c,accepted).title.toUpperCase(),
+    this.handlers.resumeContract,'campaign-primary'):
+   button('VIEW AVAILABLE CONTRACTS',()=>activateTab('contracts'),'campaign-primary');
+  nextAction.classList.add('campaign-overview-primary-action');
+  overview.append(nextAction);
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
    const department=node('div','campaign-department-identity');
@@ -605,7 +682,7 @@ export class CampaignScreen{
   for(const check of checks){
    if(!check.attention)continue;
    const item=button(check.label,()=>{
-    this.homeTab=check.action;this.root.scrollTop=0;this.home(c);
+    activateTab(check.action)
    },'campaign-readiness-warning');
    readiness.append(item);
   }
@@ -614,15 +691,13 @@ export class CampaignScreen{
     'SQUAD ASSIGNED · BASE RESERVES AVAILABLE'));
   }
   overview.append(readiness);
-  if(accepted)overview.append(button('CONTINUE · '+campaignIncidentView(c,accepted).title.toUpperCase(),
-   this.handlers.resumeContract,'campaign-primary'));
   const shortcuts=node('div','campaign-overview-actions');
   for(const [tab,label] of [
-   ['contracts','VIEW CONTRACTS'],['personnel','MANAGE PERSONNEL'],
+   ['personnel','MANAGE PERSONNEL'],
    ['logistics','SUPPLIES & ARMORY']
   ] as const){
    shortcuts.append(button(label,()=>{
-    this.homeTab=tab;this.root.scrollTop=0;this.home(c);
+    activateTab(tab)
    }));
   }
   overview.append(shortcuts,footer);
@@ -633,6 +708,32 @@ export class CampaignScreen{
   const nav=node('nav','campaign-tabs');
   nav.setAttribute('role','tablist');
   nav.setAttribute('aria-label','Operations Room sections');
+  const tabOrder=['overview','personnel','contracts','logistics','chronicle'] as const;
+  // Keep the five already-built sections alive while changing only visibility.
+  // This avoids rebuilding every roster, contract and logistics control per tap.
+  const activateTab=(tab:typeof tabOrder[number])=>{
+   if(this.homeTab===tab)return;
+   this.homeTab=tab;
+   for(const [id,panel] of Object.entries(sections))
+    panel.hidden=id!==tab;
+   for(const trigger of nav.querySelectorAll<HTMLButtonElement>('.campaign-tab')){
+    const selected=trigger.id==='campaign-tab-'+tab;
+    trigger.setAttribute('aria-selected',String(selected));
+    trigger.tabIndex=selected?0:-1;
+   }
+   this.root.scrollTop=0;
+  };
+  nav.addEventListener('keydown',event=>{
+   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+   const tabs=Array.from(nav.querySelectorAll<HTMLButtonElement>('.campaign-tab'));
+   const current=tabs.indexOf(document.activeElement as HTMLButtonElement);
+   if(current<0)return;
+   const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+    (current+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+   event.preventDefault();
+   tabs[next].focus({preventScroll:true});
+   tabs[next].click();
+  });
   for(const [tab,label] of [
    ['overview','Overview'],['personnel','Personnel'],
    ['contracts','Contracts'],['logistics','Logistics'],
@@ -642,14 +743,14 @@ export class CampaignScreen{
    panel.id='campaign-panel-'+tab;panel.setAttribute('role','tabpanel');
    panel.hidden=this.homeTab!==tab;
    const trigger=button(label,()=>{
-    this.homeTab=tab;this.root.scrollTop=0;this.home(c);
+    activateTab(tab)
    },'campaign-tab');
    trigger.id='campaign-tab-'+tab;
    trigger.setAttribute('role','tab');
    trigger.setAttribute('aria-selected',String(this.homeTab===tab));
    trigger.setAttribute('aria-controls',panel.id);
-   // Each tab remains keyboard-reachable; arrow-key navigation is optional.
-   trigger.tabIndex=0;
+   // One tab is in the sequential Tab order; arrows move between the others.
+   trigger.tabIndex=this.homeTab===tab?0:-1;
    panel.setAttribute('aria-labelledby',trigger.id);
    nav.append(trigger);
   }
