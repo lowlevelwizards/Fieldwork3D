@@ -2,6 +2,8 @@
 import type {OperationKind} from './breach-operations.ts';
 import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
 import {assignDispatchCase} from './dispatch-case-selection.ts';
+import {validDispatchForceHistory,type DispatchForceHistoryV1}
+ from './dispatch-force-review.ts';
 import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
 import {mayChooseCampaignContent,dispatchPilotUnclassifiedEditingEnabled}
  from './dispatch-campaign-eligibility.ts';
@@ -70,6 +72,8 @@ export type CampaignReport={
  objective:boolean;events:CareerEvent[];
  performance?:OperatorPerformance[];gains?:SkillGains[];
  flashUsed?:number;
+ /** D10: optional evidence-only incident closeout; no extra score rule. */
+ dispatchForce?:DispatchForceHistoryV1;
  stabilizedIds?:string[];criticalIds?:string[];evacuatedIds?:string[];
  medicalRemaining?:Record<string,FieldMedicalSupplies>;
 };
@@ -204,6 +208,11 @@ export function readCampaign(raw:string|null):CampaignState|null{
   for(const o of c.operators){
    if(!o||typeof o.id!=='string'||typeof o.callsign!=='string'||
      !SKILL_NAMES.every(k=>Number.isFinite(o.skills?.[k])&&Number.isFinite(o.experience?.[k])&&Number.isFinite(o.aptitudes?.[k])))return null;
+  }
+  for(const report of c.history){
+   if(report?.dispatchForce!==undefined&&
+     (parsedRules?.template!=='dispatch'||
+      !validDispatchForceHistory(report.dispatchForce)))return null;
   }
   for(const contract of c.contracts){
    if(!contract||typeof contract.id!=='string'||!Number.isInteger(contract.seed)||
