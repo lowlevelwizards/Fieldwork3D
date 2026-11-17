@@ -71,7 +71,7 @@ export function auditRigidPartCandidates(root){
    !(node.material instanceof THREE.MeshStandardMaterial)||
    node.material.transparent||node.material.alphaTest!==0||
    !node.material.depthTest||!node.material.depthWrite||
-   node.renderOrder!==0||node.geometry.groups.length)continue;
+   node.renderOrder!==0)continue;
   const match=/^family-(receiver|barrel|handguard|stock|grip|magazine)-(.+)-(\d+)$/
    .exec(node.name);
   if(!match||!allowed.has(match[1]))continue;
