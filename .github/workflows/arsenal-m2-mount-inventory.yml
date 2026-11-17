@@ -1,4 +1,4 @@
-name: Arsenal M2.0–M2.3 physical mount contracts (feature)
+name: Arsenal M2.0–M2.4 physical mount contracts (feature)
 on:
   push:
     branches: [feat/arsenal-m2-mount-inventory]
@@ -20,13 +20,14 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: M2.0–M2.3 AK side mounting, footprints and M1 regression
+      - name: M2.0–M2.4 optic profiles, eye relief, geometry and M1 regression
         run: |
           node --experimental-strip-types --test \
             tests/arsenal-m2-mount-inventory.test.mjs \
             tests/arsenal-m2-physical-mount-slots.test.mjs \
             tests/arsenal-m2-attachment-footprints.test.mjs \
             tests/arsenal-m2-ak-side-dovetail.test.mjs \
+            tests/arsenal-m2-optic-identities-eye-box.test.mjs \
             tests/arsenal-m1-part-mount-interfaces.test.mjs
       - name: Typecheck
         run: npm run check
