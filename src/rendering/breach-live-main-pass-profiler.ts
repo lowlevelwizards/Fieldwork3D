@@ -36,7 +36,6 @@ const clean=(n:number)=>Number.isFinite(n)?Math.max(0,n):0;
 export class LiveMainPassProfiler{
  readonly installed:boolean=false;
  last:MainPassFrame|null=null;
- private readonly renderer:RendererLike;
  private readonly inShadowPass:()=>boolean;
  private readonly now:()=>number;
  private active=false;private calls=0;private drawCalls=0;
@@ -48,7 +47,7 @@ export class LiveMainPassProfiler{
  private readonly owners=new Map<string,number>();
  constructor(renderer:RendererLike,inShadowPass:()=>boolean,
   now:()=>number=()=>performance.now()){
-  this.renderer=renderer;this.inShadowPass=inShadowPass;this.now=now;
+  this.inShadowPass=inShadowPass;this.now=now;
   const original=renderer.renderBufferDirect;
   if(typeof original!=='function')return;
   const profiler=this;
