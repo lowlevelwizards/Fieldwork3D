@@ -9,6 +9,8 @@
 import {WEAPON_ATTACHMENTS,compatibleWeaponAttachment,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from '../../equipment-weapon-assemblies.ts';
+import {opticProfile} from './optic-profiles.ts';
+import {opticEyeBoxCheck} from './weapon-optic-eye-box.ts';
 import {physicalWeaponMountSlots,
  type PhysicalMountSlot,type PhysicalMountFace}
  from './weapon-physical-mount-slots.ts';
@@ -16,7 +18,7 @@ import {physicalWeaponMountSlots,
 export type MountFitReason=
  'unknown-attachment'|'no-physical-interface'|'missing-adapter'|
  'missing-four-claw-contact'|'insufficient-support'|'insufficient-clearance'|
- 'forward-eye-relief'|'occupied';
+ 'forward-eye-relief'|'eye-alignment'|'mount-conflict'|'occupied';
 export type PhysicalAttachmentPlacement=Readonly<{
  attachmentId:string;attachmentSlot:WeaponAttachmentSlot;
  /** Owner and exact face are stable even if candidate order changes. */
@@ -64,12 +66,6 @@ type Footprint=Readonly<{
  * Avoid a per-optic or per-family hardcoded geometry guess elsewhere.
  */
 const FOOTPRINTS:Readonly<Record<string,Footprint>>={
- 'optic-reflex':{slot:'optic',role:'optic',standard:'picatinny',
-  faces:['top'],contactOffsets:[-1.5,1.5],clampHalfX:.30,
-  requireBaseWithinRail:false,baseHalfX:2.0,bodyHalfX:2.0},
- 'optic-magnified':{slot:'optic',role:'optic',standard:'picatinny',
-  faces:['top'],contactOffsets:[-1.65,1.45],clampHalfX:.48,
-  requireBaseWithinRail:false,baseHalfX:3.65,bodyHalfX:3.75},
  'foregrip-handstop':{slot:'foregrip',role:'foregrip',standard:'picatinny',
   faces:['bottom'],contactOffsets:[0],clampHalfX:.40,
   requireBaseWithinRail:true,baseHalfX:1.18,bodyHalfX:1.18},
@@ -87,8 +83,18 @@ const FOOTPRINTS:Readonly<Record<string,Footprint>>={
   clampHalfX:1.35,requireBaseWithinRail:true,
   baseHalfX:2.45,bodyHalfX:0}
 };
-export const physicalAttachmentFootprint=(id:string):Footprint|undefined=>
- FOOTPRINTS[id];
+/** Optic footprints come from M2.4 identity, never a second solver catalog. */
+export const physicalAttachmentFootprint=(id:string):Footprint|undefined=>{
+ const optic=opticProfile(id);
+ if(optic&&optic.mount.standard!=='integrated')
+  return {slot:'optic',role:'optic',standard:optic.mount.standard,
+   faces:optic.mount.standard==='ak-side-dovetail'?['left']:['top'],
+   contactOffsets:optic.mount.clampOffsetsX,
+   clampHalfX:optic.mount.clampHalfX,
+   requireBaseWithinRail:optic.mount.standard==='ak-side-dovetail',
+   baseHalfX:optic.mount.baseHalfX,bodyHalfX:optic.visual.bodyHalfX};
+ return FOOTPRINTS[id];
+};
 
 function samePlaceOccupied(place:PhysicalAttachmentPlacement,
  existing:readonly PhysicalAttachmentPlacement[]):boolean{
@@ -144,11 +150,20 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
  const basic=WEAPON_ATTACHMENTS[attachmentId];
  const fail=(reason:MountFitReason):PhysicalAttachmentFit=>({
   attachmentId,feasible:false,options:[],reasons:[reason]});
- if(!basic||!FOOTPRINTS[attachmentId]||
+ const profile=physicalAttachmentFootprint(attachmentId);
+ if(!basic||!profile||
   !compatibleWeaponAttachment(config.weapon,basic.slot,attachmentId))
   return fail('unknown-attachment');
  if(!config.build)return fail('no-physical-interface');
- const profile=FOOTPRINTS[attachmentId];
+ const optic=opticProfile(attachmentId);
+ // One receiver dovetail, one occupant: an integral Russian side sight
+ // and the separate side bridge are mutually exclusive.
+ if(optic?.mount.standard==='ak-side-dovetail'&&
+  config.slots.opticMount!=='optic-mount-none')
+  return fail('mount-conflict');
+ if(attachmentId==='optic-ak-side-picatinny'&&
+  opticProfile(config.slots.optic)?.mount.standard==='ak-side-dovetail')
+  return fail('mount-conflict');
  const mounted=physicalWeaponMountSlots(config.build,config.slots.opticMount);
  const support=mounted.filter(s=>s.role===profile.role&&
   s.standard===profile.standard&&profile.faces.includes(s.face));
@@ -222,6 +237,8 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
     if(!baseFits){errors.push('insufficient-clearance');continue;}
     physicallySupportable++;
     const p=option(profile,attachmentId,[c],center,face,occupied);
+    const eye=optic?opticEyeBoxCheck(config,optic,p.placement):null;
+    if(eye&&!eye.valid){errors.push(eye.reason??'eye-alignment');continue;}
     if(p.blocked)errors.push('occupied');
     else results.push(p.placement);
    }
@@ -251,34 +268,17 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
     if(!baseFits){errors.push('insufficient-clearance');continue;}
     physicallySupportable++;
     const p=option(profile,attachmentId,matched,center,face,occupied);
+    const eye=optic?opticEyeBoxCheck(config,optic,p.placement):null;
+    if(eye&&!eye.valid){errors.push(eye.reason??'eye-alignment');continue;}
     if(p.blocked)errors.push('occupied');
     else results.push(p.placement);
    }
   }
  }
- // A common rear-eye-relief requirement: a generic long magnified tube
- // cannot be attached as a scout scope on the AK's forward handguard.
- // M2.4 will replace this coarse rule with optic-specific eye boxes.
- if(profile.role==='optic'&&attachmentId==='optic-magnified'&&
-  results.some(x=>x.ownerPartId==='ak-rail-long')){
-  const rear=results.filter(x=>x.ownerPartId!=='ak-rail-long');
-  if(rear.length===0)return fail('forward-eye-relief');
-  // A rear AK side adapter takes precedence, and the unsuitable forward
-  // magnified position must never appear in the available choices.
-  results.splice(0,results.length,...rear);
- }
  if(results.length){
   // Stable, reversible default preference; a user-facing position choice
   // is M2.7 and saved location identity is M2.6.
-  const preferredX=attachmentId==='optic-magnified'&&
-   config.slots.opticMount==='optic-ak-side-picatinny'?-3.02:
-   attachmentId==='optic-magnified'&&
-   config.slots.opticMount==='optic-hk-claw'?-2.60:
-   attachmentId==='optic-magnified'?.15:
-   attachmentId==='optic-reflex'&&
-   config.slots.opticMount==='optic-ak-side-picatinny'?-2.02:
-   attachmentId==='optic-reflex'&&
-   config.slots.opticMount==='optic-hk-claw'?-1.60:
+  const preferredX=optic?.preferredX[config.build.family]??
    WEAPON_ATTACHMENTS[attachmentId]?.mountX??0;
   results.sort((a,b)=>
    Math.abs(a.x-preferredX)-Math.abs(b.x-preferredX)||
@@ -287,8 +287,8 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
   return {attachmentId,feasible:true,options:results,reasons:[]};
  }
  return {attachmentId,feasible:false,options:[],
-  reasons:physicallySupportable?['occupied']:
-   uniqueReasons(errors.length?errors:['insufficient-support'])};
+  reasons:physicallySupportable&&errors.every(x=>x==='occupied')?
+   ['occupied']:uniqueReasons(errors.length?errors:['insufficient-support'])};
 }
 
 /** Preview only: resolve existing equipped accessories against authored
