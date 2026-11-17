@@ -378,7 +378,7 @@
  letter-spacing:.17em;
 }
 .campaign-shell.campaign-landing .campaign-landing-more{
- position:absolute;z-index:3;right:0;top:0;
+ width:auto;position:absolute;z-index:3;right:0;top:0;
  min-width:54px;min-height:44px;margin:0;padding:8px 10px;
  border:1px solid #6c88767a;border-radius:3px;
  background:#172b24a8;color:#d5e2d6;
@@ -571,3 +571,15 @@
 .campaign-case-history summary{cursor:pointer;touch-action:manipulation;
  font:700 11px/1.5 var(--fw-font-menu);color:#d1dfcc}
 .campaign-case-history p{margin:7px 0 0;overflow-wrap:anywhere}
+
+/* UX R4.1 — phone-width ownership and readable campaign controls. */
+.campaign-contract>strong{display:block;line-height:1.2}
+.campaign-contract>small{display:block;margin-top:5px;line-height:1.45;overflow-wrap:anywhere}
+.campaign-contract-row{min-width:0}
+@media(max-width:600px){
+ .campaign-roster,.campaign-armory{grid-template-columns:minmax(0,1fr)}
+ .campaign-contract-row{flex-direction:column;align-items:stretch}
+ .campaign-contract-row button{width:100%;font-size:13px}
+ .campaign-overview-actions{grid-template-columns:minmax(0,1fr)}
+}
+@media(max-width:380px){.campaign-person-actions{grid-template-columns:minmax(0,1fr)}}

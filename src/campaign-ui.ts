@@ -502,6 +502,7 @@ export class CampaignScreen{
    }
   }
   grid.append(jobs);
+  let serviceRecord:HTMLElement|null=null;
   if(isDispatchPilot(c)){
    const dept=c.dispatchDepartment??initialDispatchDepartment();
    const record=node('section','campaign-section campaign-dispatch-service');
@@ -523,7 +524,7 @@ export class CampaignScreen{
    record.append(node('p','campaign-note',
     'Standing reflects operational results, not a legal finding. '+
     'Unreviewed incidents are not counted as civilian-harm-free.'));
-   grid.append(record);
+   serviceRecord=record;
   }
   main.append(grid);
   const chronicle=node('section','campaign-section campaign-chronicle');
@@ -619,6 +620,7 @@ export class CampaignScreen{
    for(const o of retirees)chronicle.append(node('p','campaign-report',
     o.callsign+' · '+o.missions+' DEPLOYMENTS · '+o.successful+' SUCCESSES · '+o.status.toUpperCase()));
   }
+  if(serviceRecord)chronicle.append(serviceRecord);
   grid.append(chronicle);
   const footer=node('div','campaign-footer');
   const utilities=node('details','campaign-overview-utilities');
@@ -677,9 +679,10 @@ export class CampaignScreen{
    overview.append(department);
   }
   const stats=node('div','campaign-overview-stats');
-  const available=c.operators.filter(o=>o.status==='available'||o.status==='reserve').length;
+  const available=c.operators.filter(o=>
+   (o.status==='available'||o.status==='reserve')&&o.recoveryDays===0).length;
   for(const [value,label] of [
-   [String(available),'AVAILABLE'],[String(c.squadIds.length),'ASSIGNED'],
+   [String(available),'READY'],[String(c.squadIds.length),'ASSIGNED'],
    [String(c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).length),'CONTRACTS']
   ]){
    const stat=node('div','campaign-stat');
