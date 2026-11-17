@@ -51,6 +51,11 @@ test('E6.23 selected rigid fixtures have exact legacy dimensions and shadow grou
   consolidateStaticFixtureParts(legacy);
   const lease=acquireRigidFixtureTemplate(cache,fixture,3,s.ctx,s.palette);
   assert.ok(lease,kind);
+  // After the source boxes are merged, cache ownership must exclude all
+  // detached authoring-only geometries; otherwise the 128 recipe budget
+  // accumulates unused CPU arrays and unnecessary cleanup work.
+  assert.equal(cache.stats().geometries,
+   new Set(meshes(lease.root).map(mesh=>mesh.geometry)).size,kind);
   const a=bounds(legacy),b=bounds(lease.root);
   assert.ok(a.min.distanceTo(b.min)<1e-4,kind+' min');
   assert.ok(a.max.distanceTo(b.max)<1e-4,kind+' max');
