@@ -109,7 +109,7 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
   [-15.05,.40],[-14.63,.40],[-14.63,-5.04],[-15.05,-5.22]
  ],1.44);
  pad.userData.g36Buttpad=true;
- const hinge=box('stock',-6.64,-.74,0,.72,2.43,1.80);
+ const hinge=box('stock',-6.64,-.74,0,.84,2.43,1.80);
  hinge.userData.g36StockHinge=true;
 
  // Two bold shells: the upper is an almost unbroken polymer slab; the
@@ -192,7 +192,7 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  // One stout barrel and one nearly invisible terminal block.
  const barrel=box('barrel',16.12,0,0,5.90,1.14,1.14);
  barrel.userData.g36Barrel=true;
- const muzzle=box('barrel',A.muzzleX-.25,0,0,.50,1.00,1.00);
+ const muzzle=box('barrel',A.muzzleX-.325,0,0,.65,1.10,1.10);
  muzzle.userData.g36FactoryMuzzle=true;
  return root;
 }
