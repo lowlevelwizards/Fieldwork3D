@@ -19,7 +19,7 @@ test('D3.0 creator, menu and flow route to dedicated Dispatch campaign',()=>{
  assert.match(ui,/DISPATCH CAMPAIGN/);
  assert.match(ui,/this\.importPicker\('dispatch'\)/);
  assert.match(main,/campaignInSlot\('dispatch'\)/);
- assert.match(flow,/newDispatchPilotCampaign\(config.randomSeed\(\)\)/);
+ assert.match(flow,/newDispatchPilotCampaign\\(config.randomSeed\\(\\),draft\\)/);
  assert.match(flow,/replaceCampaignSlot\(next,'dispatch'\)/);
  assert.match(flow,/continueDispatch:\(\)=>resumeSlot\('dispatch'\)/);
  assert.match(flow,/Save belongs to another mode/);
