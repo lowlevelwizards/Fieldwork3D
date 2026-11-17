@@ -107,13 +107,22 @@ export class StaticVisualTemplateLibrary{
    const evict=idle?.[0]??this.templates.keys().next().value!;
    this.invalidate(evict);this.evictions++;
   }
-  const instance=entry.root.clone(true);
-  if(options.resolveMaterial)instance.traverse(node=>{
-   if(!(node instanceof THREE.Mesh))return;
-   if(Array.isArray(node.material))
-    throw Error('Rigid template material arrays require explicit recipe slots');
-   node.material=options.resolveMaterial!(node.material,node);
-  });
+  // Resolve all per-site material slots transactionally. A bad custom
+  // resolver must not strand a live lease or permanently pin GPU geometry.
+  let instance:THREE.Group;
+  try{
+   instance=entry.root.clone(true);
+   if(options.resolveMaterial)instance.traverse(node=>{
+    if(!(node instanceof THREE.Mesh))return;
+    if(Array.isArray(node.material))
+     throw Error('Rigid template material arrays require explicit recipe slots');
+    node.material=options.resolveMaterial!(node.material,node);
+   });
+  }catch(error){
+   entry.leases--;
+   if(entry.retired&&entry.leases===0)this.retireGeometry(entry);
+   throw error;
+  }
   let released=false;
   const selected=entry;
   return {root:instance,templateKey:key,release:()=>{
