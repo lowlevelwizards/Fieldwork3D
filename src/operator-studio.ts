@@ -7,6 +7,7 @@ import {writeDomText,writeDomAttribute} from './ui/tactical-dom-reconciliation.t
 import {configureGraphicRendererOutput} from './rendering/graphic-lighting-profile.ts';
 import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
 import {activeCampaignStorageKey} from './campaign-save-slots.ts';
+import {currentDispatchReference,effectiveDispatchSetup} from './dispatch-campaign-setup.ts';
 import {applyOperatorHeightLighting} from './operator-height-lighting.ts';
 import {studioLightLabFromQuery,effectiveStudioLightLab,
  studioLightLabLabel,approvedGraphicLighting,
@@ -75,7 +76,7 @@ import {readCampaign} from './campaign-state.ts';
 import {applyStudioRosterEdits,applyStudioCampaignEdits,
  type StudioAppearanceEdit} from './operator-studio-batch-save.ts';
 import {setEquipmentChoice,type EquipmentLoadout} from './equipment-loadouts.ts';
-import {dispatchPilotAppearanceAllowed,DISPATCH_APPEARANCE_SOLIDS,
+import {dispatchPilotAppearanceAllowed,dispatchAppearanceSolids,
  DISPATCH_GLOVE_STYLES} from './dispatch-pilot-appearance.ts';
 import {readWardrobe,initialWardrobe,resolvedWardrobe,setWardrobeStyle,
  setWardrobeFabricSolid,setWardrobeFabricCamo,rerollWardrobeFabricCamo,
@@ -117,7 +118,7 @@ type StudioPerson={id:string;callsign:string;appearanceSeed:number;
  weapon?:WeaponId;weaponConfiguration?:WeaponConfiguration};
 type StudioInit={type:'fw-studio-init';mode:StudioMode;
  selected:string;members:StudioPerson[];readonly:boolean;gearEditable?:boolean;
- dispatchPilot?:boolean};
+ dispatchPilot?:boolean;dispatchReferenceId?:string};
 const $=<T extends HTMLElement>(id:string)=>document.getElementById(id) as T;
 const params=new URLSearchParams(location.search);
 // Studio lighting experiments are unsaved, presentation-only state.
@@ -134,6 +135,7 @@ let selected=params.get('operator')??'rook';
 let readOnly=false;
 let equipmentApplyAllowed=false;
 let dispatchPilotMode=false;
+let dispatchStudioReferenceId='us-swat-2015';
 let people:StudioPerson[]=[];
 let activeCategory:WardrobeSlot='top';
 type StudioStep='items'|'materials'|'details';
@@ -963,7 +965,8 @@ function changeWardrobe(next:WardrobeOptions,options:{helmetDetailsOnly?:boolean
  if(readOnly){say('Appearance is locked during an active campaign operation');return;}
  if(JSON.stringify(parsed)===JSON.stringify(oldLook))return;
  if(dispatchPilotMode&&member()&&
-  !dispatchPilotAppearanceAllowed(member()!.wardrobe,parsed,member()!.loadout)){
+  !dispatchPilotAppearanceAllowed(member()!.wardrobe,parsed,member()!.loadout,
+   dispatchStudioReferenceId)){
   say('DISPATCH PILOT · THIS APPEARANCE CHANGE IS NOT OFFERED');return;
  }
  history.set(selected,[...(history.get(selected)??[]).slice(-24),readWardrobe(oldLook)]);
@@ -1209,7 +1212,7 @@ function renderDispatchPilotControls(){
  const p=member();if(!p)return;
  materialRoot.replaceChildren();
  const help=document.createElement('p');help.className='campaign-note';
- help.textContent='DISPATCH SWAT PILOT · Appearance only. Issued uniform cuts, black ballistic helmet, armor, insignia and equipment remain unchanged. Police visors are not modeled.';
+ help.textContent='DISPATCH · '+dispatchStudioReferenceId.toUpperCase()+' · Appearance only. Issued helmet, armor, insignia and equipment remain unchanged. Police visors are not modeled.';
  materialRoot.append(help);
  const w=current();
  const field=(label:string,options:readonly (readonly [string,string])[],
@@ -1226,8 +1229,8 @@ function renderDispatchPilotControls(){
  field('HAIR COLOR',HAIR_TONE_IDS.map(id=>[id,HAIR_TONES[id].label] as const),
   w.hairTone??seededHairTone(p.appearanceSeed),
   id=>changeWardrobe({...current(),hairTone:id as WardrobeOptions['hairTone']}));
- const colors:readonly (readonly [string,string])[]=DISPATCH_APPEARANCE_SOLIDS.map(id=>
-  [id,GARMENT_SOLID_COLORS[id].label] as const);
+ const colors:readonly (readonly [string,string])[]=dispatchAppearanceSolids(dispatchStudioReferenceId).map(id=>
+  [id,GARMENT_SOLID_COLORS[id as keyof typeof GARMENT_SOLID_COLORS].label] as const);
  for(const channel of ['top','trousers'] as const){
   if(w.fabricCamo?.[channel])continue;
   field(channel==='top'?'UNIFORM TOP COLOR':'UNIFORM TROUSER COLOR',
@@ -2376,12 +2379,14 @@ function populate(){
  modelSelector.value=selected;refresh();
 }
 function start(data:{mode:StudioMode;selected:string;members:StudioPerson[];
- readonly:boolean;gearEditable?:boolean;dispatchPilot?:boolean}){
+ readonly:boolean;gearEditable?:boolean;dispatchPilot?:boolean;
+ dispatchReferenceId?:string}){
  studioSuspended=false;
  thumbBrowser.setSuspended(false);
  identityMode=false;referenceOpen=false;referenceBrowser.hide();
  mode=data.mode;selected=data.selected;readOnly=data.readonly;
  dispatchPilotMode=!!data.dispatchPilot&&mode==='campaign';
+ dispatchStudioReferenceId=data.dispatchReferenceId??'us-swat-2015';
  studioRoot.dataset.dispatchPilot=String(dispatchPilotMode);
  categories.hidden=dispatchPilotMode;subcategories.hidden=dispatchPilotMode;
  itemRoot.hidden=dispatchPilotMode;
@@ -2429,7 +2434,8 @@ function apply(){
  const entries=pendingStudioEdits();
  if(dispatchPilotMode&&entries.some(e=>{
   const p=people.find(p=>p.id===e.id);
-  return !p||!dispatchPilotAppearanceAllowed(p.wardrobe,e.wardrobe,p.loadout);
+  return !p||!dispatchPilotAppearanceAllowed(p.wardrobe,e.wardrobe,p.loadout,
+    dispatchStudioReferenceId);
  })){
   say('DISPATCH PILOT · UNSUPPORTED LOOK NOT SAVED');return;
  }
@@ -2486,7 +2492,7 @@ if(embedded){
    const init=data as StudioInit;
    start({mode:init.mode,selected:init.selected,
     members:init.members,readonly:init.readonly,gearEditable:init.gearEditable,
-     dispatchPilot:init.dispatchPilot});
+     dispatchPilot:init.dispatchPilot,dispatchReferenceId:init.dispatchReferenceId});
   }else if(data?.type==='fw-studio-historical-applied'){
    saveInFlight=false;
    say(data.ok?'HISTORICAL EQUIPMENT ISSUED · REFRESHING AUTHORITATIVE KIT':
@@ -2518,7 +2524,10 @@ if(embedded){
    readCampaign(localStorage.getItem(standaloneCampaignKey??activeCampaignStorageKey())):null;
   if(mode==='campaign'&&campaign){
    start({mode,selected,readonly:!!campaign.activeContractId,
-     dispatchPilot:campaign.rules?.template==='dispatch',
+     dispatchPilot:campaign.rules?.template==='dispatch'&&
+      effectiveDispatchSetup(campaign).equipmentScope!=='global',
+     dispatchReferenceId:campaign.rules?.template==='dispatch'?
+      currentDispatchReference(campaign):undefined,
     members:campaign.operators.filter(x=>x.status!=='retired'&&x.status!=='lost')
      .map(x=>({id:x.id,callsign:x.callsign,appearanceSeed:x.appearanceSeed,
        wardrobe:readWardrobe(x.wardrobe),loadout:x.loadout,
