@@ -30,6 +30,7 @@ jobs:
             tests/arsenal-m26-persistent-mounts.test.mjs \
             tests/arsenal-m26-transactions.test.mjs \
             tests/arsenal-m26-stock-transfer.test.mjs \
+            tests/arsenal-m26-kit-quickplay.test.mjs \
             tests/equipment-19-09-campaign-armory.test.mjs \
             tests/arsenal-v2-assembly.test.mjs \
             tests/arsenal-m2-accessory-integration.test.mjs \
