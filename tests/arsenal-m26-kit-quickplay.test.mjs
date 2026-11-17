@@ -12,7 +12,8 @@ import {physicalAttachmentFitOptions}
  from '../src/weapons/geometry/weapon-physical-mount-fit.ts';
 import {commitCampaignArsenalEdit}
  from '../src/arsenal/campaign-adapter.ts';
-import {applyQuickPlayArsenalEdit} from '../src/arsenal/quickplay-adapter.ts';
+import {applyQuickPlayArsenalEdit,quoteQuickPlayArsenalEdit}
+ from '../src/arsenal/quickplay-adapter.ts';
 import {mountedAccessorySeat} from '../src/weapons/geometry/mounted-accessory-layout.ts';
 const leftLocation=config=>{
  const choices=physicalAttachmentFitOptions(config,'light-compact').options;
@@ -63,4 +64,8 @@ test('M2.6G Quick Play applies and reloads selected light side without Campaign 
  assert.equal(reloaded.members.find(x=>x.id==='rook').weaponConfiguration.mountSelections?.light?.face,
   'left');
  assert.deepEqual(readRoster(JSON.stringify(reloaded)),reloaded);
+ const invalid={...chosen,mountSelections:{light:{...chosen.mountSelections.light,
+  ownerPartId:'phantom-rail'}}};
+ assert.equal(quoteQuickPlayArsenalEdit(roster,'rook',invalid).valid,false);
+ assert.strictEqual(applyQuickPlayArsenalEdit(roster,'rook',invalid),roster);
 });
