@@ -66,7 +66,11 @@ for(const item of cases){
  group.add(weapon,extras);
  scene.add(group);
  const camera=new THREE.OrthographicCamera(-24,24,13.5,-13.5,.1,200);
- camera.position.set(item.side?2:27,item.side?5:15,item.side?75:57);
+ // Review from the actual installed face; a left-mounted light should
+ // not disappear behind the receiver in the acceptance screenshot.
+ const fromLeft=item.cfg.mountSelections?.light?.face==='left';
+ camera.position.set(item.side?2:27,item.side?5:15,
+  (item.side?75:57)*(fromLeft?-1:1));
  camera.lookAt(2,0,0);camera.updateProjectionMatrix();
  const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
  renderer.setSize(720,405);renderer.setPixelRatio(1);
