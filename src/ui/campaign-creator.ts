@@ -18,9 +18,9 @@ export function renderCampaignCreator(root:HTMLElement,options:{
  const shell=element('main');
  shell.className='campaign-shell campaign-creator';
  const header=element('header');
- header.append(element('small','FIELDWORK / SANDBOX CAMPAIGN'),
-  element('h1','CREATE CAMPAIGN'));
- const intro=element('p','Choose a few working rules. Careers, equipment, supplies and mission consequences persist. Other systems remain fixed until they can be configured safely.');
+ header.append(element('small','FIELDWORK / CLASSIC SANDBOX'),
+  element('h1','CREATE SANDBOX CAMPAIGN'));
+ const intro=element('p','Keep a persistent squad and campaign career. Choose your mission intelligence and map scale; other existing game rules remain in effect.');
  const form=element('form');
  form.noValidate=true;
  let draft=defaultCampaignDraft();
@@ -30,10 +30,13 @@ export function renderCampaignCreator(root:HTMLElement,options:{
  const name=element('input');name.type='text';name.maxLength=40;
  name.value=draft.name;name.setAttribute('aria-label','Campaign name');
  nameField.append(name);
+ const advanced=element('details');advanced.className='campaign-creator-future';
+ advanced.append(element('summary','ADVANCED · REPRODUCIBLE SEED'));
  const seedField=field('CAMPAIGN SEED');
  const seed=element('input');seed.type='text';seed.inputMode='numeric';
  seed.placeholder='RANDOM';seed.setAttribute('aria-label','Campaign seed, blank for random');
  seedField.append(seed);
+ advanced.append(seedField,element('p','Leave blank for a random seed. Set a positive whole number to reproduce campaign generation.'));
  const selectors=element('div');selectors.className='campaign-creator-fields';
  const makeChoice=(label:string,choices:readonly [string,string][],initial:string)=>{
   const row=field(label),select=element('select');select.setAttribute('aria-label',label);
@@ -48,13 +51,14 @@ export function renderCampaignCreator(root:HTMLElement,options:{
   ['contract','Follow contract'],['standard','Standard'],
   ['expanded','Expanded']
  ],draft.scale);
- const fixed=element('section');fixed.className='campaign-creator-fixed';
- fixed.append(element('h2','EXISTING CAMPAIGN SYSTEMS'),
-  element('p','Operator careers · Persistent injuries · Equipment ownership · Ammunition supplies · Weapon servicing · Contracts'));
- const future=element('details');future.className='campaign-creator-future';
- future.append(element('summary','FUTURE CAMPAIGN FRAMEWORKS'),
-  element('p','The Dispatch SWAT pilot is separately available from the campaign menu with its own save; it currently shares existing mission types. Operations and Wasteland remain planned. Gas, filters, batteries, looting and safehouses are not active campaign settings.'));
- const summary=element('p');summary.className='campaign-creator-summary';
+ const fixed=element('details');fixed.className='campaign-creator-future';
+ fixed.append(element('summary','WHAT PERSISTS?'),
+  element('p','Operator careers, injuries, owned equipment, ammunition, weapon servicing and contracts persist. These systems are not customizable in Classic Sandbox.'));
+ const review=element('section');review.className='campaign-creator-review';
+ review.setAttribute('aria-label','Sandbox campaign review');
+ const reviewTitle=element('h2','CAMPAIGN REVIEW');
+ const summary=element('p');summary.className='campaign-creator-review-summary';
+ review.append(reviewTitle,summary);
  const error=element('p');error.className='campaign-creator-error';
  error.setAttribute('role','status');
  const actions=element('div');actions.className='campaign-creator-actions';
@@ -77,10 +81,10 @@ export function renderCampaignCreator(root:HTMLElement,options:{
  });
  const refresh=()=>{
   draft=read();const validation=validateCampaignDraft(draft);
-  create.disabled=!validation.ok;
-  summary.textContent='RULES · '+(intel.selectedOptions[0]?.textContent??'')+
-   ' · '+(scale.selectedOptions[0]?.textContent??'')+
-   ' · '+(seed.value.trim()?'Seed '+seed.value.trim():'Random seed');
+  create.disabled=!validation.ok||submitting;
+  summary.textContent='INTELLIGENCE · '+(intel.selectedOptions[0]?.textContent??'')+
+   ' · MAP · '+(scale.selectedOptions[0]?.textContent??'')+
+   ' · '+(seed.value.trim()?'Fixed seed '+seed.value.trim():'Random seed');
   error.textContent=validation.ok?'':validation.error;
  };
  for(const input of [name,seed,intel,scale])input.addEventListener('input',refresh);
@@ -94,7 +98,7 @@ export function renderCampaignCreator(root:HTMLElement,options:{
   }).catch(()=>{error.textContent='Could not create campaign. Existing saves are unchanged.';})
    .finally(()=>{submitting=false;refresh();});
  });
- form.append(nameField,seedField,selectors,fixed,future,summary,error,restore,actions);
+ form.append(nameField,selectors,advanced,review,fixed,error,restore,actions);
  shell.append(header,intro,form);root.append(shell);
  refresh();name.focus({preventScroll:true});
 }
