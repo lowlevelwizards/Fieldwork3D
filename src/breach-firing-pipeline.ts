@@ -24,6 +24,7 @@ import {WEAPONS} from './breach-combat.ts';
 import {aimHeight,effectiveAimHeight} from './breach-cover-height.ts';
 import {assessFireLane,assessFriendlyLane,fireLaneReachable} from './breach-fire-safety.ts';
 import {selectFireableContact} from './breach-target-selection.ts';
+import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {acquisitionSeconds} from './breach-firing-cadence.ts';
 
 
@@ -458,7 +459,7 @@ function fire(s:Session,a:TeamActor,dt:number){
  updateContextualCrouch(s,a);
  // A3.2: only simulation time moves the tactical rifle accommodation.
  // Renderer/replay cannot initiate an offset or authorize a shot.
- if(a.health<=0||a.reload>0||a.traversal||a.squeeze||
+ if(!activeCombatant(a)||a.reload>0||a.traversal||a.squeeze||
     (a.firePolicy==='hold'||a.firePolicy==='suppress')&&
        (!a.aimInstruction||a.aimInstruction.source==='stack')||
     a.pace==='run'||a.plan[0]?.kind==='tool'||
@@ -467,8 +468,9 @@ function fire(s:Session,a:TeamActor,dt:number){
  a.aimSideOffset=approachMicroAimOffset(
    a.aimSideOffset??0,a.aimSideTarget??0,dt);
  updatePassiveWatchMicroAim(s,a);
-  if(a.health<=0){
-    a.reload=0;a.reloadMode=null;return;
+  if(!activeCombatant(a)){
+    // Living submission is still a living physical person, never a shooter.
+    a.reload=0;a.reloadMode=null;a.aim=0;return;
   }
   // Reload independently of sprint/no-target exits. An empty gun begins
   // its emergency reload as soon as both hands are available.
@@ -530,7 +532,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   const enemiesOf=a.side==='blue'?enemies(s):team(s);
   const visible:TeamActor[]=[];
-  for(const enemy of enemiesOf)if(inSight(a,enemy,s))visible.push(enemy);
+  for(const enemy of enemiesOf)if(activeCombatant(enemy)&&inSight(a,enemy,s))visible.push(enemy);
   // Legacy FOCUS saves use ordinary acquisition rather than an
   // inaccessible exclusive lock after FOCUS is removed from the interface.
   // Acquisition tests the SAME actual muzzle origin, height and friendly
