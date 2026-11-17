@@ -286,9 +286,15 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
    a.x-b.x||a.groupId.localeCompare(b.groupId));
   return {attachmentId,feasible:true,options:results,reasons:[]};
  }
+ // Invalid edge teeth should never obscure a *genuinely supportable*
+ // position that was rejected only for occupancy or eye-box reasons.
+ const primary:MountFitReason|undefined=physicallySupportable?
+  errors.includes('occupied')?'occupied':
+  errors.includes('forward-eye-relief')?'forward-eye-relief':
+  errors.includes('eye-alignment')?'eye-alignment':undefined:undefined;
  return {attachmentId,feasible:false,options:[],
-  reasons:physicallySupportable&&errors.every(x=>x==='occupied')?
-   ['occupied']:uniqueReasons(errors.length?errors:['insufficient-support'])};
+  reasons:primary?[primary]:
+   uniqueReasons(errors.length?errors:['insufficient-support'])};
 }
 
 /** Preview only: resolve existing equipped accessories against authored
