@@ -85,6 +85,12 @@ test('D14.1 missing records and missing report do not invent outcomes or scene d
  const cyclic=dispatchCaseDossier(cycle,child);
  assert.ok(cyclic.related.length<=6);
  assert.equal(cyclic.related.some(x=>x.contractId===child.id),false);
+ assert.match(cyclic.relatedLabel,/INCOMPLETE/);
+ const long=Array.from({length:9},(_,i)=>({...root,
+  id:'chain-'+i,...(i?{followUpOf:'chain-'+(i-1)}:{followUpOf:undefined})}));
+ const bounded=dispatchCaseDossier({...baseline,contracts:long},long.at(-1));
+ assert.equal(bounded.related.length,6);
+ assert.match(bounded.relatedLabel,/INCOMPLETE/);
  assert.equal(dispatchCaseDossier(newCampaign(14005),newCampaign(14005).contracts[0]),null);
  assert.equal(dispatchCaseDossier(baseline,{...root,id:'forged'}),null);
 });
@@ -98,4 +104,7 @@ test('D14.2 UI only extends Dispatch contract briefing and does not change objec
  assert.match(ui,/REPORTING LIMITS/);
  assert.match(ui,/this\.handlers\.chooseContract\(contract\.id\)/);
  assert.match(read('src/dispatch-case-dossier.ts'),/MAX_LINKS=6/);
+ assert.match(ui,/RELATED CASE HISTORY/);
+ assert.match(ui,/const linked=c.contracts.filter/);
+ assert.match(read('src/campaign-style.css'),/campaign-case-history summary/);
 });
