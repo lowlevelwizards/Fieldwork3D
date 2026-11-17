@@ -1235,17 +1235,15 @@ export class CampaignScreen{
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
   this.root.hidden=false;this.root.replaceChildren();
-  const main=node('main','campaign-shell campaign-wide');
-  const top=node('div','campaign-head');
+  const main=node('main','campaign-shell campaign-wide campaign-armory-screen');
+  const top=node('div','campaign-head campaign-armory-head');
   const identity=node('div');
   identity.append(node('div','campaign-eyebrow','PERSONNEL / FIELD ARMORY'),
    node('h1','',person.callsign+' / EQUIPMENT'));
-  top.append(identity,node('div','campaign-funds',
-   totalEquipmentMass(person.loadout,person.weaponConfiguration).toFixed(2)+' KG · ASSIGNED KIT'));
-  main.append(top);
-  main.append(button('← BACK TO OPERATIONS',()=>{
+  top.append(button('← OPERATIONS',()=>{
    this.armoryOperatorId=null;this.home(c);
-  }));
+  },'campaign-armory-back'),identity);
+  main.append(top);
   const nav=node('div','campaign-kit-nav');
   for(const member of c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired')){
    const choose=button(member.callsign,()=>{
@@ -1262,9 +1260,8 @@ export class CampaignScreen{
   const viewToggle=button(this.weaponView?'SHOW FULL OPERATOR':'CLASSIC SOCKET PREVIEW',()=>{
    this.weaponView=!this.weaponView;this.armory(c,id);
   });
-  summary.append(preview,node('p','campaign-note',
+  summary.append(preview,node('p','campaign-note campaign-preview-hint',
    this.weaponView?'DRAG TO ROTATE · TAP A MOUNT TO SELECT ITS SLOT':'DRAG THE SOLDIER TO ROTATE'));
-  summary.append(node('strong','campaign-kit-name',person.callsign));
   const identityActions=node('div','campaign-kit-actions');
   const rename=button('EDIT CALLSIGN',async()=>{
    const name=await promptFieldworkText({
@@ -1279,9 +1276,44 @@ export class CampaignScreen{
   const arsenal=button('OPEN ARSENAL',()=>this.handlers.openArsenal(id));
   arsenal.disabled=!!c.activeContractId||!person.weaponConfiguration.build||
    (isDispatchPilot(c)&&effectiveDispatchSetup(c).equipmentScope!=='global');
+  if(arsenal.disabled)arsenal.title='Arsenal restricted for this campaign or deployment';
   identityActions.append(rename,appearance,arsenal);summary.append(identityActions);
+  const maximum=initialArmorIntegrity(person.loadout);
+  const repairCost=armorRepairCost(person);
+  const firearm=c.inventory.serializedWeapons?.find(w=>w.id===person.weaponSerialId);
+  const serviceCost=firearm?weaponServiceCost(firearm):0;
+  const stats=node('div','campaign-kit-at-a-glance');
+  for(const [name,value] of [
+   ['LOAD',totalEquipmentMass(person.loadout,person.weaponConfiguration).toFixed(2)+' KG'],
+   ['MOBILITY',Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100)+'%'],
+   ['ARMOR',person.armorCondition.torso+'/'+maximum.torso],
+   ['HELMET',person.armorCondition.head+'/'+maximum.head],
+   ['AMMO',person.magazine+' + '+person.reserve]
+  ]){
+   const metric=node('div','campaign-kit-stat');
+   metric.append(node('small','',name),node('strong','',value));stats.append(metric);
+  }
+  summary.append(stats);
+  const maintenance=node('div','campaign-kit-maintenance');
+  if(repairCost>0){
+   const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
+    ()=>this.handlers.repairArmor(person.id));
+   repair.disabled=!!c.activeContractId||c.funds<repairCost;
+   if(repair.disabled)repair.title=c.activeContractId?
+    'Locked during deployment':'Insufficient credits';
+   maintenance.append(repair);
+  }
+  if(firearm&&serviceCost>0){
+   const service=button('SERVICE WEAPON · '+serviceCost+' CR',
+    ()=>this.handlers.serviceWeapon(person.id));
+   service.disabled=!!c.activeContractId||c.funds<serviceCost;
+   if(service.disabled)service.title=c.activeContractId?
+    'Locked during deployment':'Insufficient credits';
+   maintenance.append(service);
+  }
+  if(maintenance.childElementCount)summary.append(maintenance);
   const readiness=node('details','campaign-readiness-details');
-  readiness.append(node('summary','','READINESS DETAILS · ARMOR / AMMO / MOBILITY'));
+  readiness.append(node('summary','','SERVICE RECORD & DETAILED READINESS'));
   const carrying=carryCapacityReport(person.loadout,person.magazines);
   const carryItems=carrying.placements.filter(p=>p.kind!=='magazine');
   if(carryItems.length)readiness.append(node('p','campaign-note',
@@ -1296,13 +1328,7 @@ export class CampaignScreen{
    'PRIMARY · '+person.weapon.toUpperCase()+
    '    /    MAGAZINE · '+person.magazine+
    '    /    RESERVE · '+person.reserve));
-  const firearm=c.inventory.serializedWeapons?.find(w=>w.id===person.weaponSerialId);
   if(firearm){
-   const serviceCost=weaponServiceCost(firearm);
-   const service=button('SERVICE WEAPON · '+serviceCost+' CR',
-    ()=>this.handlers.serviceWeapon(person.id));
-   service.disabled=!!c.activeContractId||serviceCost===0||c.funds<serviceCost;
-   readiness.append(service);
    readiness.append(node('p','campaign-kit-metrics',
     'SERIAL · '+firearm.id+' · CONDITION '+firearm.condition+'% · '+
     firearm.roundsFired+' ROUNDS FIRED'));
@@ -1322,15 +1348,9 @@ export class CampaignScreen{
    ' · STOWED '+magSlots.overflow));
   readiness.append(node('p','campaign-note',
    'Spare magazines can be individually placed below. Chest and belt magazines reload faster; backpack and overflow retrievals take longer.'));
-  const maximum=initialArmorIntegrity(person.loadout);
-  const repairCost=armorRepairCost(person);
   readiness.append(node('p','campaign-kit-metrics',
    'ARMOR · '+person.armorCondition.torso+'/'+maximum.torso+
    '     HELMET · '+person.armorCondition.head+'/'+maximum.head));
-  const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
-   ()=>this.handlers.repairArmor(person.id));
-  repair.disabled=!!c.activeContractId||repairCost===0||c.funds<repairCost;
-  readiness.append(repair);
   const capacity=kitMedicalSupplies(person.loadout);
   readiness.append(node('p','campaign-kit-metrics',
    'FIELD MEDICAL · '+medicalSupplyCount(person.medicalSupplies)+' / '+
@@ -1338,18 +1358,14 @@ export class CampaignScreen{
   readiness.append(node('p','campaign-kit-metrics',
    'WEAPON CONFIG · '+Object.values(person.weaponConfiguration.slots)
     .map(v=>v.replace(/^[^-]+-/,'')).join(' / ')));
-  readiness.append(node('p','campaign-note',
-   'Equipment is issued as a saved preparation kit. Carried weight now influences movement speed. Coarse armor coverage and durability are now simulated; detailed ballistic hitboxes, retrieval times, tools and attachment handling are still in development.'));
-  readiness.append(node('p','campaign-note',
-   'The preview uses the same 3D operator rig as the mission. Some equipment slots are metadata-only until their gameplay systems are implemented.'));
   summary.append(readiness);
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
   const dispatchPilot=isDispatchPilot(c)&&
    effectiveDispatchSetup(c).equipmentScope!=='global';
-  if(dispatchPilot)editor.append(node('p','campaign-note',
-   'DISPATCH PILOT · Curated equipment and saved kits remain available. Operator Studio permits only verified identity, uniform finish and glove options; helmet and advanced equipment editors remain restricted.'));
+  if(dispatchPilot)editor.append(node('p','campaign-note campaign-kit-access',
+   'DISPATCH PILOT · CURATED EQUIPMENT ACCESS'));
   const presets=node('details','campaign-kit-presets');
   presets.append(node('summary','','SAVED KIT PRESETS · '+c.kitPresets.length));
   const presetActions=node('div','campaign-kit-actions');
@@ -1402,8 +1418,7 @@ export class CampaignScreen{
   presets.append(presetActions,node('p','campaign-note',
    dispatchPilot?'Dispatch validates every saved kit item and prevents unsupported weapon changes. Existing inventory is preserved.':
    'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
-  editor.append(presets);
-  editor.append(node('h2','','LOADOUT'));
+  editor.append(node('h2','','EQUIPMENT'));
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
   const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,group=>{
    this.activeKitGroup=group;
@@ -1616,6 +1631,7 @@ export class CampaignScreen{
    }
    grouped.field('carry').append(magazines);
   }
+  editor.append(presets);
   grid.append(editor);main.append(grid);
   this.root.append(main);
   if(this.weaponView){

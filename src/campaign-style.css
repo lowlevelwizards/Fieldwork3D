@@ -1418,3 +1418,49 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-chronicle .campaign-operation-record-heading{gap:7px}
  .campaign-chronicle .campaign-operation-outcome{font-size:10px}
 }
+
+/* Equipment E1: compact readout without changing campaign kit rules. */
+.campaign-armory-screen{max-width:1200px}
+.campaign-armory-head{display:flex;align-items:center;justify-content:flex-start;
+ gap:12px;margin-bottom:10px}
+.campaign-armory-head .campaign-armory-back{flex:0 0 auto;width:auto;min-height:42px;
+ margin:0;padding:8px 12px;font-size:12px}
+.campaign-armory-head h1{margin:2px 0 0}
+.campaign-armory-screen .campaign-kit-nav{margin:0 0 10px;padding:1px 0 3px}
+.campaign-armory-screen .campaign-kit-nav button{min-height:42px}
+.campaign-armory-screen .campaign-kit-grid{align-items:start}
+.campaign-armory-screen .campaign-kit-summary{gap:8px}
+.campaign-armory-screen .campaign-kit-summary h2{margin:0}
+.campaign-armory-screen .campaign-kit-preview{height:260px;min-height:230px}
+.campaign-armory-screen .campaign-preview-hint{margin:0;color:var(--fw-text-muted);
+ font-size:11px;letter-spacing:.045em}
+.campaign-armory-screen .campaign-kit-actions{margin:2px 0 4px;gap:6px}
+.campaign-armory-screen .campaign-kit-actions button{flex:1 1 110px}
+.campaign-kit-at-a-glance{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px}
+.campaign-kit-stat{display:flex;flex-direction:column;gap:3px;min-width:0;
+ padding:10px 8px;background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:7px}
+.campaign-kit-stat small{font:600 10px var(--fw-font-action);
+ color:var(--fw-text-muted);letter-spacing:.04em}
+.campaign-kit-stat strong{font:700 16px var(--fw-font-data);
+ font-variant-numeric:tabular-nums;overflow-wrap:anywhere;color:var(--fw-text-warm)}
+.campaign-kit-maintenance{display:flex;flex-wrap:wrap;gap:6px}
+.campaign-kit-maintenance button{flex:1 1 140px;margin:0;min-height:40px;font-size:12px}
+.campaign-armory-screen .campaign-readiness-details{margin:2px 0}
+.campaign-armory-screen .campaign-kit-editor>h2{margin:0 0 8px}
+.campaign-kit-access{border-left:2px solid var(--fw-brass);padding:6px 9px;
+ margin:0 0 8px;font-size:11px}
+@media(min-width:850px){
+ .campaign-armory-screen .campaign-kit-summary{position:sticky;top:12px}
+ .campaign-armory-screen .campaign-kit-preview{height:330px}
+}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-head{margin-bottom:8px}
+ .campaign-armory-head .campaign-armory-back{font-size:11px;min-height:40px}
+ .campaign-armory-head h1{font-size:clamp(21px,5.4vw,29px)}
+ .campaign-armory-screen .campaign-section{padding:12px}
+ .campaign-armory-screen .campaign-kit-preview{height:230px;min-height:210px}
+ .campaign-armory-screen .campaign-kit-nav button{min-width:78px}
+ .campaign-armory-screen .campaign-kit-actions button{min-height:42px}
+}
