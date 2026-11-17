@@ -1,0 +1,38 @@
+name: Arsenal M2.6 persistent mounting and transaction contracts
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/arsenal/**'
+      - 'src/equipment-weapon-assemblies.ts'
+      - 'src/equipment-weapon-inventory.ts'
+      - 'src/weapons/geometry/weapon-mount-*.ts'
+      - 'src/weapons/geometry/mounted-accessory-layout.ts'
+      - 'src/campaign-state.ts'
+      - 'tests/arsenal-m26-*.test.mjs'
+      - '.github/workflows/arsenal-m26.yml'
+permissions:
+  contents: read
+jobs:
+  critical:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: M2.6 saves, physical choice, Arsenal transactions and legacy gates
+        run: |
+          node --experimental-strip-types --test \
+            tests/arsenal-m26-persistent-mounts.test.mjs \
+            tests/arsenal-m2-accessory-integration.test.mjs \
+            tests/arsenal-m2-optic-identities-eye-box.test.mjs \
+            tests/arsenal-v2-campaign-adapter.test.mjs \
+            tests/arsenal-v2-saved-builds.test.mjs \
+            tests/equipment-19-08-campaign-attachment-stock.test.mjs
+      - name: TypeScript
+        run: npm run check
+      - name: Production compile
+        run: npm run build
