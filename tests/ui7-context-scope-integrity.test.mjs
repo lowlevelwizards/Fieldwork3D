@@ -20,6 +20,6 @@ test('UI.7E accessibility description refreshes when context tooltip changes',()
 
 test('UI.7F contextual object affordances cannot disclose unknown cover or windows',()=>{
  assert.match(palette,/state\.coverState\.some\(\(o,i\)=>\s*state\.intel\.cover\.has\(i\)&&canRelocateCover\(o\)/);
- assert.match(palette,/state\.windows\.some\(w=>w\.operable&&!w\.shattered&&\s*liveVisibility\(state,\{x:w\.x,y:w\.y\}\)/);
- assert.match(palette,/if\(!liveVisibility\(state,control\.p\)\)/);
+ assert.match(palette,/state\.windows\.some\(w=>w\.operable&&!w\.shattered&&\s*paletteDistance\(at,\{x:w\.x,y:w\.y\}\)<54&&\s*liveVisibility\(state,\{x:w\.x,y:w\.y\}\)/);
+ assert.match(palette,/!liveVisibility\(state,control\.p\)\)continue/);
 });

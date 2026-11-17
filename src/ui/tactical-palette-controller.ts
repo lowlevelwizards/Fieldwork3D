@@ -360,8 +360,8 @@ export function createTacticalPaletteController(config:{
   // Window interactions may be offered only for currently observed panes;
   // an unrevealed room/window cannot advertise its operability in the menu.
   const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
-    liveVisibility(state,{x:w.x,y:w.y})&&
-    paletteDistance(at,{x:w.x,y:w.y})<54);
+    paletteDistance(at,{x:w.x,y:w.y})<54&&
+    liveVisibility(state,{x:w.x,y:w.y}));
   const powerActions:ContextAction[]=[];
   if(state.site&&state.sitePower&&state.sitePower.mode===state.lightingMode){
     const power=state.sitePower;
