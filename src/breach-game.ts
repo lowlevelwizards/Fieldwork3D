@@ -269,6 +269,8 @@ export type TeamActor=Operator & {
   flashCharges:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
+ /** D9: authoritative interval since last resolved spoken challenge. */
+ lastChallengeAt?:number;
   lastFireRepositionAt:number;lastMissionEvadeAt:number;
   lastEnemyDoorCloseAt:number;
 };
