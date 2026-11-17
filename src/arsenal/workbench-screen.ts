@@ -104,9 +104,12 @@ export function openArsenalWorkbench(
  const nav=document.createElement('nav');nav.className='arsenal-wb-nav';
  nav.setAttribute('aria-label','Weapon component categories');
  const panel=document.createElement('section');panel.className='arsenal-wb-panel';
+ panel.id='arsenal-wb-active-part';
+ panel.setAttribute('aria-label','Selected weapon component and compatible replacements');
  const panelTitle=document.createElement('h3');
  const slotRow=document.createElement('div');slotRow.className='arsenal-wb-slots';
  const activeLabel=document.createElement('p');activeLabel.className='arsenal-wb-current';
+ activeLabel.setAttribute('aria-live','polite');
  // M2.7: one compact rail picker attached to the selected fitted accessory.
  // The range only selects authored physical candidates, never arbitrary mesh X.
  const mounting=document.createElement('section');mounting.className='arsenal-wb-mounting';
@@ -175,7 +178,14 @@ export function openArsenalWorkbench(
  overlay.append(head,main);document.body.append(overlay);
  const viewer=new ArsenalViewport(viewportHost,draft.working,slot=>{
   const category=ARSENAL_CATEGORIES.find(c=>c.slots.includes(slot));
-  if(category){activeCategory=category;activeSlot=slot;pending=null;renderSelection();}
+  if(category){
+   activeCategory=category;activeSlot=slot;pending=null;renderSelection();
+   // A tap on the physical weapon reveals its matching part controls.
+   panel.scrollIntoView({
+    behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?
+     'instant':'smooth',block:'start'
+   });
+  }
  });
  function currentPartId(slot:ArsenalSlot):string{
   return BODY_SLOTS.includes(slot as FamilyPartSlot)?
