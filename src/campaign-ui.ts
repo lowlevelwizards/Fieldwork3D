@@ -322,6 +322,10 @@ export class CampaignScreen{
   });
  }
  home(c:CampaignState,slot?:CampaignSlot){
+  // Preserve the user's place when a purchase or treatment refreshes this view.
+  // Opening the campaign from a menu, briefing or loadout still starts at the top.
+  const restoreScroll=!this.root.hidden&&
+   !!this.root.querySelector('.campaign-tabs')?this.root.scrollTop:0;
   if(slot)this.currentSlot=slot;
   if(this.armoryOperatorId){
    const target=c.operators.find(x=>x.id===this.armoryOperatorId&&x.status!=='lost'&&x.status!=='retired');
@@ -415,6 +419,57 @@ export class CampaignScreen{
     details.append(node('p','campaign-note',
      'Served with '+(person?.callsign??friend.id)+' on '+friend.count+' operations'));
    }
+   const profile=button('VIEW PROFILE',()=>{
+    const overlay=node('div','campaign-operator-profile-backdrop');
+    const panel=node('section','campaign-operator-profile fw-sheet');
+    panel.setAttribute('role','dialog');
+    panel.setAttribute('aria-modal','true');
+    const heading=node('h2','',p.callsign+' / SERVICE DOSSIER');
+    heading.id='campaign-operator-profile-heading';
+    panel.setAttribute('aria-labelledby',heading.id);
+    const dismiss=()=>{
+     overlay.remove();
+     if(profile.isConnected)profile.focus({preventScroll:true});
+    };
+    const close=button('CLOSE',dismiss,'campaign-operator-profile-close');
+    const header=node('header','campaign-operator-profile-header');
+    header.append(heading,close);
+    const stats=node('div','campaign-operator-profile-stats');
+    for(const [label,value] of [
+     ['STATUS',p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':
+      c.squadIds.includes(p.id)?'ASSIGNED':'RESERVE'],
+     ['PRIMARY',p.weapon.toUpperCase()],
+     ['OPERATIONS',String(p.missions)]
+    ] as const){
+     const cell=node('div','campaign-operator-profile-stat');
+     cell.append(node('small','',label),node('strong','',value));
+     stats.append(cell);
+    }
+    details.open=true;
+    panel.append(header,stats,details);
+    const actions=node('div','campaign-operator-profile-actions');
+    const loadout=button('OPEN LOADOUT',()=>{
+     overlay.remove();this.armoryOperatorId=p.id;this.home(c);
+    },'campaign-primary');
+    const look=button('OPERATOR STUDIO',()=>{
+     overlay.remove();this.handlers.openStudio(p.id);
+    });
+    look.disabled=!!c.activeContractId;
+    actions.append(loadout,look);panel.append(actions);
+    overlay.append(panel);this.root.append(overlay);
+    overlay.addEventListener('click',e=>{if(e.target===overlay)dismiss();});
+    overlay.addEventListener('keydown',e=>{
+     if(e.key==='Escape'){e.preventDefault();dismiss();return;}
+     if(e.key!=='Tab')return;
+     const items=Array.from(panel.querySelectorAll<HTMLElement>(
+      'button:not(:disabled),summary')).filter(el=>el.getClientRects().length>0);
+     const first=items[0],last=items[items.length-1];
+     if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+     else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+    });
+    close.focus({preventScroll:true});
+   },'campaign-person-profile');
+   profile.setAttribute('aria-label','View '+p.callsign+' service dossier');
    const actions=node('div','campaign-person-actions');
    const care=node('details','campaign-person-care');
    care.append(node('summary','','EQUIPMENT & CARE'));
@@ -458,7 +513,7 @@ export class CampaignScreen{
     c.operators.filter(o=>o.status==='available'||o.status==='reserve').length>4)
     careActions.append(button('RETIRE',()=>this.handlers.retire(p.id)));
    care.append(careActions);
-   card.append(actions,care,details);
+   card.append(profile,actions,care);
    roster.append(card);
   }
   personnel.append(roster);
@@ -821,10 +876,10 @@ export class CampaignScreen{
    tabs[next].focus({preventScroll:true});
    tabs[next].click();
   });
-  for(const [tab,label] of [
-   ['overview','Overview'],['personnel','Personnel'],
-   ['contracts','Contracts'],['logistics','Logistics'],
-   ['chronicle','Chronicle']
+  for(const [tab,label,accessible] of [
+   ['overview','Ops','Overview'],['personnel','Squad','Personnel'],
+   ['contracts','Cases','Contracts'],['logistics','Supply','Logistics'],
+   ['chronicle','Records','Chronicle']
   ] as const){
    const panel=sections[tab];
    panel.id='campaign-panel-'+tab;panel.setAttribute('role','tabpanel');
@@ -833,6 +888,8 @@ export class CampaignScreen{
     activateTab(tab)
    },'campaign-tab');
    trigger.id='campaign-tab-'+tab;
+   trigger.setAttribute('aria-label',accessible);
+   trigger.title=accessible;
    trigger.setAttribute('role','tab');
    trigger.setAttribute('aria-selected',String(this.homeTab===tab));
    trigger.setAttribute('aria-controls',panel.id);
@@ -843,6 +900,7 @@ export class CampaignScreen{
   }
   main.insertBefore(nav,grid);
   this.root.append(main);
+  if(restoreScroll>0)this.root.scrollTop=restoreScroll;
  }
  private armory(c:CampaignState,id:string){
   const sameOperator=this.lastArmoryRenderedId===id;
@@ -1343,18 +1401,19 @@ export class CampaignScreen{
   panel.setAttribute('aria-labelledby',heading.id);
   panel.append(node('div','campaign-eyebrow',view.category+' / PREDEPLOYMENT REVIEW'),heading);
   const info=node('div','campaign-preflight-fields');
-  const add=(label:string,value:string)=>{
+  const primaryInfo=node('div','campaign-preflight-primary');
+  const add=(label:string,value:string,primary=false)=>{
    const section=node('div','campaign-preflight-field');
    section.append(node('span','',label),node('p','',value));
-   info.append(section);
+   (primary?primaryInfo:info).append(section);
   };
   if(dossier){
-   add('REPORTED LEAD · UNCONFIRMED',dossier.lead);
-   add('TACTICAL OBJECTIVE',dossier.objective);
+   add('REPORTED LEAD · UNCONFIRMED',dossier.lead,true);
+   add('TACTICAL OBJECTIVE',dossier.objective,true);
    add('ASSIGNMENT CONTEXT',dossier.context);
    add('OPERATIONAL EMPHASIS',
     dossier.situation.emphasis+' · '+dossier.situation.siteScale);
-  }else add('OBJECTIVE',view.description);
+  }else add('OBJECTIVE',view.description,true);
   if(isDispatchPilot(campaign))add('CALL REFERENCE',view.reference);
   if(isDispatchPilot(campaign)&&contract.dispatchCase)
    add('PROPERTY TYPE',contract.dispatchCase.archetype.replace(/-/g,' ').toUpperCase());
@@ -1383,7 +1442,21 @@ export class CampaignScreen{
    }
    add('REPORTING LIMITS',dossier.uncertainty);
   }
-  panel.append(info);
+  const caseFacts=node('div','campaign-preflight-keyfacts');
+  for(const [label,value] of [
+   ['AREA',contract.region],
+   ['RISK',['','LOW','MODERATE','HIGH'][contract.risk]],
+   ['REWARD',contract.reward+' CR'],
+   ['DEADLINE','DAY '+contract.deadline]
+  ] as const){
+   const fact=node('div','campaign-preflight-keyfact');
+   fact.append(node('small','',label),node('strong','',value));
+   caseFacts.append(fact);
+  }
+  panel.append(primaryInfo,caseFacts);
+  const extra=node('details','campaign-preflight-extra');
+  extra.append(node('summary','','CASE INTELLIGENCE & TERMS'),info);
+  panel.append(extra);
   const roster=node('div','campaign-preflight-roster');
   roster.append(node('h3','','ASSIGNED OPERATORS'));
   const assigned=campaign.squadIds.map(id=>campaign.operators.find(o=>o.id===id))
