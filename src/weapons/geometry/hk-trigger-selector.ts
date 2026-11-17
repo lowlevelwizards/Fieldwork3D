@@ -7,6 +7,24 @@ import {addWeaponPixelMarkPair} from './weapon-pixel-detail.ts';
 import {HK_DARK_POLYMER} from './weapon-visual-palette.ts';
 
 export type HKSelectorStyle='sef'|'pictogram';
+/** Shared game-art selector pivot/paddle, not a separate firing mechanism.
+ * Reused by classic HK rifles and the G36 with its own local location.
+ * Returning the meshes lets each family retain its own saved part naming.
+ */
+export function addHKSelectorLeverArt(root:THREE.Group,x:number,y:number,
+ lowerHalfDepth:number,side:-1|1,material:THREE.Material):readonly [THREE.Mesh,THREE.Mesh]{
+ const pivot=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,.26,8,1),material);
+ pivot.rotation.x=Math.PI/2;
+ pivot.position.set(x,y,side*(lowerHalfDepth+.14));
+ pivot.name='family-art-hk-selector-hub';
+ pivot.castShadow=true;pivot.receiveShadow=false;root.add(pivot);
+ const lever=new THREE.Mesh(new THREE.BoxGeometry(1.10,.32,.30),material);
+ lever.rotation.z=-.22;
+ lever.position.set(x+.46,y+.10,side*(lowerHalfDepth+.31));
+ lever.name='family-art-hk-selector-lever';
+ lever.castShadow=true;lever.receiveShadow=false;root.add(lever);
+ return [pivot,lever];
+}
 export function addHKTriggerSelector(root:THREE.Group,style:HKSelectorStyle,
  outerDepth:number,lowerHalfDepth:number):void{
  // Markings are a single cached nearest-neighbor texture on each face.
@@ -28,19 +46,9 @@ export function addHKTriggerSelector(root:THREE.Group,style:HKSelectorStyle,
  // low-poly paddle, not a little white dial drawn on the receiver.
  // The classic SEF layout only has a left lever; later pictogram is ambi.
  for(const side of (style==='pictogram'?[-1,1]:[-1])){
-  const pivot=new THREE.Mesh(
-   new THREE.CylinderGeometry(.55,.55,.26,8,1),HK_DARK_POLYMER);
-  pivot.rotation.x=Math.PI/2;
-  pivot.position.set(-3.98,-1.58,side*(lowerHalfDepth+.14));
-  pivot.name='family-art-hk-selector-hub';
+  const [pivot,lever]=addHKSelectorLeverArt(root,-3.98,-1.58,
+   lowerHalfDepth,side as -1|1,HK_DARK_POLYMER);
   pivot.userData.hkSelectorHub=style;
-  pivot.castShadow=true;pivot.receiveShadow=false;root.add(pivot);
-  const lever=new THREE.Mesh(
-   new THREE.BoxGeometry(1.10,.32,.30),HK_DARK_POLYMER);
-  lever.rotation.z=-.22;
-  lever.position.set(-3.52,-1.48,side*(lowerHalfDepth+.31));
-  lever.name='family-art-hk-selector-lever';
   lever.userData.hkSelectorLever=style;
-  lever.castShadow=true;lever.receiveShadow=false;root.add(lever);
  }
 }
