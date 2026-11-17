@@ -56,8 +56,10 @@ for(const id of trials){
  const config=selectWeaponFamilyPreset(
   initialWeaponConfiguration(preset.legacy.weapon),preset.id);
  if(!config.build)throw Error('Missing installed parts '+id);
- const baseline=buildWeaponSilhouette(config.weapon,steel,polymer,config);
- const optimized=buildWeaponSilhouette(config.weapon,steel,polymer,config);
+ const baseline=buildWeaponSilhouette(config.weapon,steel,polymer,config,
+  {rigidCompilation:'disabled'});
+ const optimized=buildWeaponSilhouette(config.weapon,steel,polymer,config,
+  {rigidCompilation:'disabled'});
  try{
   const originalAnchors=workbenchVisualAnchors(config,baseline,'body');
   const originalMagazine=baseline.children.filter(x=>
