@@ -661,3 +661,35 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-person-care-actions{grid-template-columns:1fr}
  .campaign-contract-head{flex-wrap:wrap}
 }
+
+/* UX R4.4 — visual operation history with truthful opt-in detail. */
+.campaign-operation-record{display:grid;gap:9px;margin:10px 0;padding:14px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-md);
+ background:var(--fw-panel-deep)}
+.campaign-operation-record-heading{display:flex;align-items:flex-start;
+ justify-content:space-between;gap:12px}
+.campaign-operation-record-identity{display:grid;gap:4px;min-width:0}
+.campaign-operation-record-identity small{font:700 11px var(--fw-font-menu);
+ letter-spacing:.08em;color:var(--fw-brass)}
+.campaign-operation-record-identity strong{font:750 19px/1.2 var(--fw-font-display)}
+.campaign-operation-outcome{flex:none;border:1px solid var(--fw-panel-border);border-radius:5px;
+ padding:5px 7px;color:var(--fw-text);font:750 11px/1.25 var(--fw-font-menu)}
+.campaign-operation-facts{display:flex;flex-wrap:wrap;gap:8px}
+.campaign-operation-facts span{padding:5px 7px;background:var(--fw-panel-raised);
+ border-radius:4px;font:650 11px var(--fw-font-menu)}
+.campaign-operation-reference{overflow-wrap:anywhere;color:var(--fw-text-muted);
+ font:500 11px/1.5 var(--fw-font-narrative)}
+.campaign-operation-evidence{border-top:1px solid var(--fw-panel-border);padding-top:7px}
+.campaign-operation-evidence>summary,.campaign-dispatch-service>summary{
+ min-height:44px;display:flex;align-items:center;cursor:pointer;
+ list-style:none;color:var(--fw-text-muted);font:700 13px/1.4 var(--fw-font-menu)}
+.campaign-operation-evidence>summary::-webkit-details-marker,
+.campaign-dispatch-service>summary::-webkit-details-marker{display:none}
+.campaign-operation-evidence>summary::after,.campaign-dispatch-service>summary::after{
+ content:'+';margin-left:auto;padding-left:8px;font-size:19px}
+.campaign-operation-evidence[open]>summary::after,
+.campaign-dispatch-service[open]>summary::after{content:'−'}
+.campaign-dispatch-service{margin-top:17px}
+.campaign-dispatch-service>summary{color:var(--fw-text)}
+.campaign-dispatch-service .campaign-note{margin:10px 0}
+@media(max-width:420px){.campaign-operation-record-heading{flex-wrap:wrap}}

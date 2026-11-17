@@ -521,8 +521,8 @@ export class CampaignScreen{
   let serviceRecord:HTMLElement|null=null;
   if(isDispatchPilot(c)){
    const dept=c.dispatchDepartment??initialDispatchDepartment();
-   const record=node('section','campaign-section campaign-dispatch-service');
-   record.append(node('h2','','DEPARTMENT SERVICE RECORD'));
+   const record=node('details','campaign-section campaign-dispatch-service');
+   record.append(node('summary','','DEPARTMENT SERVICE RECORD · '+dept.standing+'/100'));
    record.append(node('p','campaign-note',
     'OPERATIONAL STANDING · '+dept.standing+' / 100 · '+
     dispatchStandingTier(dept.standing)));
@@ -552,23 +552,33 @@ export class CampaignScreen{
    const incident=historicalDispatchIncident(c,report);
    const fallback=isDispatchPilot(c)?
     'UNCLASSIFIED DISPATCH OPERATION · '+report.contractId.toUpperCase():'Operation';
-   chronicle.append(node('p','campaign-report',
-    'DAY '+report.day+' · '+(incident?.title??(contract?
-     campaignIncidentView(c,contract).title:fallback))+' · '+
-    report.outcome.toUpperCase()+' · '+report.grade+' · '+
-    report.participatingIds.length+' OPERATORS'+
-    (incident?' · '+incident.reference:'')+
-    (incident&&report.dispatchForce?
-      ' · '+(report.dispatchForce.blueCivilianInjured+
-       report.dispatchForce.blueCivilianDown>0?
-       'CIVILIAN HARM RECORDED':'NO SQUAD CIVILIAN HARM RECORDED')+
-      ' · '+report.dispatchForce.surrenders+' SURRENDERS':'')+
-    (incident&&report.dispatchCareer?
-     ' · STANDING '+(report.dispatchCareer.standingDelta>0?'+':'')+
-     report.dispatchCareer.standingDelta+
-     ' → '+report.dispatchCareer.standingAfter+
-     ' · SUPPORT +'+report.dispatchCareer.operatingSupport+' CR':'')
-    ));
+   const article=node('article','campaign-operation-record');
+   const heading=node('div','campaign-operation-record-heading');
+   const identity=node('div','campaign-operation-record-identity');
+   identity.append(node('small','','DAY '+report.day),
+    node('strong','',incident?.title??(contract?
+     campaignIncidentView(c,contract).title:fallback)));
+   heading.append(identity,node('span','campaign-operation-outcome',report.outcome.toUpperCase()));
+   article.append(heading);
+   const facts=node('div','campaign-operation-facts');
+   facts.append(node('span','','GRADE '+report.grade),
+    node('span','',report.participatingIds.length+' OPERATORS'));
+   article.append(facts);
+   if(incident)article.append(node('small','campaign-operation-reference',incident.reference));
+   if(incident&&(report.dispatchForce||report.dispatchCareer)){
+    const detail=node('details','campaign-operation-evidence');
+    detail.append(node('summary','','AFTER-ACTION RECORD'));
+    if(report.dispatchForce)detail.append(node('p','campaign-note',
+     (report.dispatchForce.blueCivilianInjured+report.dispatchForce.blueCivilianDown>0?
+      'CIVILIAN HARM RECORDED':'NO SQUAD CIVILIAN HARM RECORDED')+
+      ' · '+report.dispatchForce.surrenders+' SURRENDERS'));
+    if(report.dispatchCareer)detail.append(node('p','campaign-note',
+     'STANDING '+(report.dispatchCareer.standingDelta>0?'+':'')+
+     report.dispatchCareer.standingDelta+' → '+report.dispatchCareer.standingAfter+
+     ' · SUPPORT +'+report.dispatchCareer.operatingSupport+' CR'));
+    article.append(detail);
+   }
+   chronicle.append(article);
   }
   if(isDispatchPilot(c)){
    // Recent linked operations are optional, compact, and derived from real reports.
