@@ -361,10 +361,30 @@ export class CampaignScreen{
   const personnel=node('section','campaign-section');
   personnel.append(node('h2','','PERSONNEL'));
   const deployment=node('div','campaign-assignment');
-  deployment.append(node('h2','','DEPLOYMENT TEAM'));
+  const deploymentHeading=node('div','campaign-assignment-heading');
+  const headingCopy=node('div');
+  headingCopy.append(node('h2','','DEPLOYMENT TEAM'),
+   node('p','','Select four operators for your next mission.'));
+  const readyAssigned=c.squadIds.filter(id=>{
+   const o=c.operators.find(p=>p.id===id);
+   return o&&o.recoveryDays===0&&o.status!=='lost'&&o.status!=='retired';
+  }).length;
+  const readinessCount=node('span','campaign-assignment-count',
+   readyAssigned+' / 4 READY');
+  deploymentHeading.append(headingCopy,readinessCount);
+  deployment.append(deploymentHeading);
+  const slotList=node('div','campaign-assignment-slots');
   for(let slot=0;slot<4;slot++){
+   const operator=c.operators.find(p=>p.id===c.squadIds[slot]);
    const line=node('label','campaign-assignment-row');
-   line.append(node('span','','SLOT 0'+(slot+1)));
+   const slotHeading=node('div','campaign-assignment-slot-label');
+   slotHeading.append(node('strong','','SLOT 0'+(slot+1)));
+   if(operator){
+    const state=operator.recoveryDays>0?
+     'RECOVERING · '+operator.recoveryDays+' DAYS':'READY';
+    slotHeading.append(node('small',operator.recoveryDays>0?
+     'is-recovering':'is-ready',state));
+   }else slotHeading.append(node('small','is-unfilled','UNASSIGNED'));
    const picker=node('select','campaign-select');
    picker.setAttribute('aria-label','Choose operator for tactical slot '+(slot+1));
    for(const member of c.operators.filter(p=>p.status!=='lost'&&p.status!=='retired')){
@@ -375,8 +395,10 @@ export class CampaignScreen{
    picker.value=c.squadIds[slot];
    picker.disabled=!!c.activeContractId;
    picker.addEventListener('change',()=>this.handlers.assignSlot(slot,picker.value));
-   line.append(picker);deployment.append(line);
+   line.append(slotHeading,picker);
+   slotList.append(line);
   }
+  deployment.append(slotList);
   personnel.append(deployment);
   const roster=node('div','campaign-roster');
   for(const p of c.operators.filter(p=>p.status!=='retired'&&p.status!=='lost')){
