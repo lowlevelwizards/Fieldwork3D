@@ -636,9 +636,20 @@ export class CampaignScreen{
    jobs.append(node('p','campaign-note','Continuing after reopening starts the same contract at planning.'));
    jobs.append(button('CONTINUE DEPLOYMENT',this.handlers.resumeContract,'campaign-primary'));
   }else{
-   for(const contract of c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).slice(0,3)){
+   const openContracts=c.contracts.filter(k=>
+    k.status==='available'&&k.deadline>=c.day);
+   if(!openContracts.length){
+    const empty=node('div','campaign-contract-empty');
+    empty.append(node('strong','','NO ACTIVE CASES'),
+     node('p','campaign-note',
+      'No assignments are currently available. You can review the squad, supplies, or service history.'));
+    const links=node('div','campaign-contract-empty-actions');
+    links.append(
+     button('REVIEW SQUAD',()=>activateTab('personnel')),
+     button('CHECK SUPPLIES',()=>activateTab('logistics')));
+    empty.append(links);jobs.append(empty);
+   }else for(const contract of openContracts.slice(0,3))
     jobs.append(this.contract(contract,c));
-   }
   }
   grid.append(jobs);
   let serviceRecord:HTMLElement|null=null;
@@ -757,17 +768,42 @@ export class CampaignScreen{
     chronicle.append(node('p','campaign-note',
      'DAY '+earned.day+' · UNIT RECOGNITION: '+earned.name));
   }
-  const highlights=c.journal.filter(e=>['wounded','first-deployment','first-success','objective','intel','down','distinction'].includes(e.kind)).slice(-6).reverse();
-  for(const e of highlights){
-   const person=c.operators.find(o=>o.id===e.operatorId);
-   chronicle.append(node('p','campaign-note',
-    'DAY '+e.day+' · '+(person?.callsign??e.operatorId)+' — '+e.detail));
+  const highlights=c.journal.filter(e=>
+   ['wounded','first-deployment','first-success','objective','intel','down','distinction']
+    .includes(e.kind)).slice(-6).reverse();
+  if(highlights.length){
+   const timeline=node('section','campaign-career-timeline');
+   timeline.append(node('h3','','PERSONNEL MILESTONES'));
+   const entries=node('div','campaign-career-events');
+   for(const event of highlights){
+    const person=c.operators.find(o=>o.id===event.operatorId);
+    const item=node('article','campaign-career-event');
+    item.dataset.kind=event.kind;
+    const date=node('span','campaign-career-day','DAY '+event.day);
+    const body=node('div','campaign-career-content');
+    body.append(node('strong','',person?.callsign??event.operatorId),
+     node('p','',event.detail));
+    item.append(date,body);entries.append(item);
+   }
+   timeline.append(entries);chronicle.append(timeline);
   }
-  const retirees=c.operators.filter(o=>o.status==='retired'||o.status==='lost');
+  const retirees=c.operators.filter(o=>
+   o.status==='retired'||o.status==='lost');
   if(retirees.length){
-   chronicle.append(node('h2','','SERVICE ARCHIVE'));
-   for(const o of retirees)chronicle.append(node('p','campaign-report',
-    o.callsign+' · '+o.missions+' DEPLOYMENTS · '+o.successful+' SUCCESSES · '+o.status.toUpperCase()));
+   const archive=node('section','campaign-career-archive');
+   archive.append(node('h3','','SERVICE ARCHIVE'));
+   for(const operator of retirees){
+    const record=node('article','campaign-archive-record');
+    record.dataset.status=operator.status;
+    const identity=node('div','campaign-archive-identity');
+    identity.append(node('strong','',operator.callsign),
+     node('span','',operator.status.toUpperCase()));
+    const metrics=node('div','campaign-archive-metrics');
+    metrics.append(node('span','',operator.missions+' DEPLOYMENTS'),
+     node('span','',operator.successful+' SUCCESSES'));
+    record.append(identity,metrics);archive.append(record);
+   }
+   chronicle.append(archive);
   }
   if(serviceRecord)chronicle.append(serviceRecord);
   grid.append(chronicle);
@@ -785,15 +821,34 @@ export class CampaignScreen{
   utilities.append(utilityContent);footer.append(utilities);
   const overview=node('section','campaign-section campaign-overview');
   overview.append(node('h2','','OPERATIONS DASHBOARD'));
-  // A clear next action remains visible before records, readiness and statistics.
+  // The first viewport describes a decision instead of showing a lone button.
+  const availableContracts=c.contracts.filter(k=>
+   k.status==='available'&&k.deadline>=c.day);
+  const nextCard=node('section','campaign-next-action');
+  nextCard.append(node('div','campaign-next-action-eyebrow',
+   accepted?'DEPLOYMENT IN PROGRESS':'NEXT ASSIGNMENT'));
+  if(accepted){
+   const current=campaignIncidentView(c,accepted);
+   nextCard.append(node('h3','',current.title),
+    node('p','campaign-note',
+     accepted.region+' · Assignment accepted · Return to mission planning'));
+  }else{
+   nextCard.append(node('h3','',
+    availableContracts.length?availableContracts.length+
+     ' CONTRACT'+(availableContracts.length===1?'':'S')+' AVAILABLE':
+     'NO OPEN CONTRACTS'),
+    node('p','campaign-note',availableContracts.length?
+     'Review case details, check your team, then choose an assignment.':
+     'No current assignments to accept. Review records or prepare the team.'));
+  }
   const nextAction=accepted?
    button('CONTINUE DEPLOYMENT · '+campaignIncidentView(c,accepted).title.toUpperCase(),
     this.handlers.resumeContract,'campaign-primary'):
-   button('BROWSE CONTRACTS · '+c.contracts.filter(k=>
-    k.status==='available'&&k.deadline>=c.day).length+' AVAILABLE',
+   button('BROWSE CONTRACTS · '+availableContracts.length+' AVAILABLE',
     ()=>activateTab('contracts'),'campaign-primary');
   nextAction.classList.add('campaign-overview-primary-action');
-  overview.append(nextAction);
+  nextCard.append(nextAction);
+  overview.append(nextCard);
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
    const department=node('details','campaign-department-identity');
@@ -1447,7 +1502,12 @@ export class CampaignScreen{
   const reward=node('div','campaign-contract-term');
   reward.append(node('small','','REWARD'),node('strong','',c.reward+' CR'));
   const deadline=node('div','campaign-contract-term');
-  deadline.append(node('small','','DEADLINE'),node('strong','','DAY '+c.deadline));
+  const daysLeft=Math.max(0,c.deadline-campaign.day);
+  const dueLabel=daysLeft===0?'DUE TODAY':
+   daysLeft===1?'1 DAY LEFT':daysLeft+' DAYS LEFT';
+  const due=node('small','campaign-contract-due'+
+   (daysLeft<=1?' is-urgent':''),dueLabel);
+  deadline.append(node('small','','DEADLINE'),node('strong','','DAY '+c.deadline),due);
   terms.append(reward,deadline);card.append(terms);
   card.append(button('REVIEW DEPLOYMENT',()=>this.reviewContract(c,campaign),
    'campaign-primary campaign-contract-review'));

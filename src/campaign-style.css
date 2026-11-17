@@ -828,3 +828,68 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-shell .campaign-preparation-return button{width:100%;min-height:46px;
  margin:0;text-align:left;padding:10px 13px;line-height:1.25;
  overflow-wrap:anywhere}
+
+/* R10.1: deliberate first-view campaign decision hierarchy. */
+.campaign-next-action{display:grid;gap:8px;min-width:0;
+ padding:16px;margin:3px 0 14px;border-radius:var(--fw-radius-md);
+ background:linear-gradient(135deg,#2d453a,#1b3029);
+ border:1px solid #617d67}
+.campaign-next-action-eyebrow{color:var(--fw-sage);font:700 11px/1.25 var(--fw-font-menu);
+ letter-spacing:.12em}
+.campaign-next-action h3{margin:0;font:800 clamp(19px,3.4vw,25px)/1.13 var(--fw-font-display);
+ color:var(--fw-text);overflow-wrap:anywhere}
+.campaign-next-action>.campaign-note{margin:0 0 6px;font:500 13px/1.45 var(--fw-font-narrative)}
+.campaign-shell .campaign-next-action .campaign-overview-primary-action{
+ box-sizing:border-box;width:100%;min-height:50px;margin:6px 0 0;
+ padding:10px 12px;text-align:center;overflow-wrap:anywhere}
+@media(min-width:850px){.campaign-next-action{padding:20px;gap:11px}
+ .campaign-next-action .campaign-overview-primary-action{max-width:520px}}
+
+/* R10.2: contextual urgency without introducing fabricated countdown times. */
+.campaign-contract-term .campaign-contract-due{font:700 11px/1.3 var(--fw-font-menu);
+ color:var(--fw-text-muted);letter-spacing:0}
+.campaign-contract-term .campaign-contract-due.is-urgent{color:var(--fw-brass)}
+
+/* R10.3: useful case-board empty state instead of an unlabelled blank panel. */
+.campaign-contract-empty{display:grid;gap:11px;padding:20px 14px;
+ border:1px dashed var(--fw-panel-border);border-radius:var(--fw-radius-md);
+ background:var(--fw-panel-deep)}
+.campaign-contract-empty>strong{font:800 20px/1.15 var(--fw-font-display)}
+.campaign-contract-empty .campaign-note{margin:0}
+.campaign-contract-empty-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.campaign-shell .campaign-contract-empty-actions button{margin:0;min-height:46px}
+@media(max-width:420px){.campaign-contract-empty-actions{grid-template-columns:1fr}}
+
+/* R11.1: unit achievements are a readable chronological record, not long paragraphs. */
+.campaign-career-timeline{margin:16px 0 9px}
+.campaign-career-timeline h3{font:800 17px/1.2 var(--fw-font-display);margin:0 0 12px}
+.campaign-career-events{display:grid;gap:0;border-left:2px solid var(--fw-panel-border);
+ margin-left:6px;padding-left:18px}
+.campaign-career-event{position:relative;display:grid;gap:5px;
+ padding:0 0 15px;min-width:0}
+.campaign-career-event::before{content:'';position:absolute;top:4px;
+ left:-24px;width:9px;height:9px;border-radius:50%;
+ background:var(--fw-sage);border:2px solid var(--fw-bg)}
+.campaign-career-event[data-kind="wounded"]::before,
+.campaign-career-event[data-kind="down"]::before{background:var(--fw-brass)}
+.campaign-career-day{font:700 10px/1.2 var(--fw-font-menu);letter-spacing:.08em;color:var(--fw-brass)}
+.campaign-career-content{display:grid;gap:3px}
+.campaign-career-content strong{font:800 17px/1.2 var(--fw-font-display)}
+.campaign-career-content p{margin:0;color:var(--fw-text-muted);
+ font:500 13px/1.5 var(--fw-font-narrative);overflow-wrap:anywhere}
+
+/* R11.2: retained careers are readable archival records, not compressed logs. */
+.campaign-career-archive{display:grid;gap:9px;margin:16px 0}
+.campaign-career-archive h3{font:800 17px/1.2 var(--fw-font-display);margin:0}
+.campaign-archive-record{display:grid;gap:9px;padding:12px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ background:var(--fw-panel-deep)}
+.campaign-archive-identity{display:flex;justify-content:space-between;align-items:center;
+ gap:8px;flex-wrap:wrap}
+.campaign-archive-identity strong{font:800 18px/1.2 var(--fw-font-display)}
+.campaign-archive-identity span{font:700 11px var(--fw-font-menu);
+ color:var(--fw-text-muted)}
+.campaign-archive-record[data-status="lost"] .campaign-archive-identity span{color:var(--fw-brass)}
+.campaign-archive-metrics{display:flex;gap:6px;flex-wrap:wrap}
+.campaign-archive-metrics span{font:600 11px/1.35 var(--fw-font-menu);
+ padding:5px 7px;background:var(--fw-panel);border-radius:4px}
