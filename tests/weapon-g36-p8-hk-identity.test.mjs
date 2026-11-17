@@ -41,10 +41,11 @@ test('P8 integrated optic remains one casing plus compact reflex crown',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const lower=one(g,'g36LowerOptic'),upper=one(g,'g36UpperReflex');
  const face=one(g,'g36OpticFace'),handle=one(g,'g36HandleOpening');
- assert.equal(lower.geometry.type,'ExtrudeGeometry');
+ assert.equal(lower.geometry.type,'BufferGeometry');
+ assert.equal(lower.userData.g36OpticArtVersion,'o2-simplified-125-125-55');
  assert.equal(lower.userData.g36IntegratedOpticShell,true);
  assert.ok(bounds(lower).intersectsBox(bounds(upper)));
- assert.ok(bounds(face).intersectsBox(bounds(lower)));
+ assert.ok(bounds(face).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
  assert.equal(handle.geometry.parameters.shapes.holes.length,1);
  near(bounds(g).max.y,A.opticTopY,'optic crown');
  assert.equal(F.lowerSightY,3.57);
