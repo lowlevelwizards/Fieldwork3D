@@ -8,8 +8,9 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 
 export type FixtureBatchStats={original:number;batched:number;avoided:number};
 
-export function consolidateStaticFixtureParts(root:THREE.Group,
- options:{recursive?:boolean;cellSize?:number}={}):FixtureBatchStats{
+export function consolidateStaticFixtureParts(root:THREE.Object3D,
+ options:{recursive?:boolean;cellSize?:number;
+  exclude?:ReadonlySet<THREE.Object3D>}={}):FixtureBatchStats{
  const stats:FixtureBatchStats={original:0,batched:0,avoided:0};
  function visit(parent:THREE.Object3D):void{
   // Recursion respects the existing transforms and visibility boundaries.
@@ -19,6 +20,7 @@ export function consolidateStaticFixtureParts(root:THREE.Group,
   const groups=new Map<THREE.Material,Map<string,THREE.Mesh[]>>();
   for(const child of parent.children){
    if(!(child instanceof THREE.Mesh)||child instanceof THREE.InstancedMesh||
+      options.exclude?.has(child)||
       !(child.geometry instanceof THREE.BufferGeometry)||
       !(child.material instanceof THREE.MeshStandardMaterial)||
       child.material.transparent||child.children.length||!child.visible||
