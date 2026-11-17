@@ -667,6 +667,34 @@ export function openArsenalWorkbench(
      (proposal.changes.length?
       'REVIEW '+proposal.changes.length+' CHANGES':'ALREADY MATCHES');
     loadChanges.append(summary);
+    // Choose a model and see the projected handling consequences before
+    // committing a new draft or spending any Campaign resources.
+    if(proposal.nextRecipe){
+     const proposed=arsenalHandlingStats(proposal.nextRecipe);
+     const baseline=arsenalHandlingStats(draft.working);
+     if(proposed&&baseline){
+      const changes=arsenalStatDeltas(proposed,baseline);
+      const statPreview=document.createElement('div');
+      statPreview.className='arsenal-wb-load-stats';
+      const heading=document.createElement('strong');
+      heading.textContent='HANDLING VS CURRENT BUILD';
+      const statChips=document.createElement('div');
+      statChips.className='arsenal-wb-load-stat-chips';
+      let differences=0;
+      for(const row of proposed){
+       const delta=changes.get(row.id)??0;
+       if(delta===0)continue;
+       differences++;
+       const chip=document.createElement('span');
+       chip.className='arsenal-wb-load-stat-chip';
+       chip.dataset.direction=delta>0?'up':'down';
+       chip.textContent=row.label+' '+(delta>0?'▲ +':'▼ ')+delta;
+       statChips.append(chip);
+      }
+      if(!differences)statChips.textContent='No handling difference';
+      statPreview.append(heading,statChips);loadChanges.append(statPreview);
+     }
+    }
     if(proposal.changes.length){
      const list=document.createElement('ul');
      for(const change of proposal.changes){
