@@ -43,7 +43,7 @@ must achieve bigger gains safely, rather than just simplifying artwork.
 ## Rollout
 - **E6.20 Foundation**: One shared rigid-owner compiler, exact material
   buckets, object-identity exclusions, archive/restore for source lifetime,
-  metrics, strict opt-in. Demonstrate on known-exterior fixed window trim
+  metrics, reversible diagnostic flags. Demonstrate on known-exterior fixed window trim
   and door frames without touching their glass/door leaves.
 - **E6.21 Static site models**: Compile wall and floor chunks per fog-
   disclosure boundary and camera-frustum cell; bake rigid architectural
@@ -79,3 +79,15 @@ No blanket draw-call target is guaranteed; each migration must produce
 measured savings that outweigh compile startup time and memory cost.
 Aspirational aggregate 30–60% static-environment main-pass draw reduction
 only if evidence supports it, not a verified prediction.
+
+## Verified first production checkpoint, E6.20–E6.21
+- Both compiler stages are on by default; `?e620Bake=0&e621Bake=0`
+  disables both without rebuilding the release. The controls are independent
+  for binary-searching regressions by family.
+- Real browser (software GL) seeded A/B: E6.20 alone saves 90/80
+  p95 main draws, E6.21 adds 68/90, total 158/170 from 1083/1233.
+- Fixed captures on two seeds show 99.979%/99.988% pixel agreement
+  in E6.21 incremental A/B and no JS errors. This checks one executing
+  view per seed, not every camera/cutaway arrangement.
+- No real iOS hardware FPS improvement claimed; monitor cold build and
+  site-swap memory as the renderer expands into other asset families.
