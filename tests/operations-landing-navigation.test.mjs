@@ -352,7 +352,8 @@ test('C6 Operations preserve visible outcomes and full optional evidence',()=>{
  assert.match(records,/heading\.append\(identity,node\('span','campaign-operation-outcome'/);
  assert.match(records,/article\.append\(facts\)/);
  assert.match(records,/const recordDetail=node\('details','campaign-operation-detail'\)/);
- assert.match(records,/recordDetail\.append\(node\('summary','','OPERATION DETAILS'\)\)/);
+ assert.match(records,/const recordSummary=node\('summary','','OPERATION DETAILS'\)/);
+ assert.match(records,/recordSummary\.setAttribute\('aria-label'/);
  assert.match(records,/const involved=report\.participatingIds\.map\(id=>/);
  assert.match(records,/recordDetail\.append\(detail\)/);
  assert.match(records,/article\.append\(recordDetail\)/);
@@ -371,4 +372,13 @@ test('C6 Records detail and milestone summaries stay keyboard reachable',()=>{
  assert.match(c6,/\.campaign-career-timeline>summary\{/);
  assert.match(c6,/min-height:46px/);
  assert.match(c6,/@media\(max-width:480px\)/);
+});
+
+test('C7 disclosure labels identify their individual case, weapon and operation',()=>{
+ const ui=source('campaign-ui.ts');
+ assert.match(ui,/caseSummary\.setAttribute\('aria-label','Case information: '\+view\.title/);
+ assert.match(ui,/eligibilitySummary\.setAttribute\('aria-label'/);
+ assert.match(ui,/for '\+weapon\.toUpperCase\(\)\+' platform'/);
+ assert.match(ui,/recordSummary\.setAttribute\('aria-label'/);
+ assert.match(ui,/\+' · DAY '\+report\.day/);
 });
