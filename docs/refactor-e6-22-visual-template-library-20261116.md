@@ -30,3 +30,20 @@ Follow-up stages should adopt architectural opening templates first,
 then static room/furniture subassemblies, rigid Arsenal part families,
 operator rigid gear at each animation bone, shared Studio/gallery previews,
 and ultimately long-lived precompiled asset payloads.
+
+## Architectural opening integration (E6.22 C–E)
+- `?e622Template=1` opt-in. Ordinary site construction remains default.
+- All fixed opening trims use one pure recipe for both legacy `host.box`
+  and compiled model template geometry, preserving UV repeats, physical
+  aperture, shadow cast flags, material palette, positions and rotation.
+- Template key version+opening kind+full-precision width. Builds once on a
+  miss; clones one owner-scoped compiled node on future hits. Caller replaces
+  the inert authoring placeholder with current site's real trim material.
+- Current BreachScene holds the cache across map resets, but independently
+  tracks each site's lease. Teardown excludes cached shared geometry from
+  scene disposal; releases the former site's leases after detachment.
+- Existing E6.20/E6.21 assembly compiler sees the trim as already compiled
+  and does not run the authoring mesh merge a second time.
+- CI checks actual geometry cache cold/warm reuse and disposal, two
+  fixed-seed live screenshot/draw-count parity against default rendering.
+- Node timing is diagnostic only, not browser/mobile FPS.
