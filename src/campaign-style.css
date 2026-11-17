@@ -693,3 +693,12 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-dispatch-service>summary{color:var(--fw-text)}
 .campaign-dispatch-service .campaign-note{margin:10px 0}
 @media(max-width:420px){.campaign-operation-record-heading{flex-wrap:wrap}}
+
+/* UX R5.1 — the continue action shows true saved campaign context. */
+.campaign-landing-status{display:flex;align-items:center;gap:7px;min-width:0;
+ font:650 11px/1.3 var(--fw-font-narrative);color:#334f42}
+.campaign-landing-status::before{content:'';width:7px;height:7px;flex:none;
+ border-radius:100%;background:#668875}
+.campaign-landing-status.is-warning{color:#684931}
+.campaign-landing-status.is-warning::before{background:#a2764b}
+.campaign-landing:not(.campaign-landing-subpage) .campaign-landing-primary{min-height:125px}
