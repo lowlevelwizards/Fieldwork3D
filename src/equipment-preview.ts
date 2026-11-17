@@ -43,7 +43,9 @@ export class CampaignKitPreview{
   this.host=host;this.operatorId=id;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
-  host.setAttribute('aria-label','Rotatable 3D preview of '+id+' with equipped gear');
+  host.tabIndex=0;
+  host.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight');
+  this.updateOrientationLabel();
   try{
    this.renderer=new THREE.WebGLRenderer({
     antialias:false,alpha:false,powerPreference:'low-power'});
@@ -62,6 +64,7 @@ export class CampaignKitPreview{
    host.addEventListener('pointermove',this.pointerMove);
    host.addEventListener('pointerup',this.pointerUp);
    host.addEventListener('pointercancel',this.pointerUp);
+   host.addEventListener('keydown',this.keyDown);
    this.observer=new ResizeObserver(()=>this.scheduleResize());
    this.observer.observe(host);
    this.draw();
@@ -103,24 +106,44 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
+  this.host.removeEventListener('keydown',this.keyDown);
   if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
   this.dragFrame=null;this.pointerId=null;this.host=host;
   host.dataset.previewFocus=this.focusArea;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
-  host.setAttribute('aria-label','Rotatable 3D preview of '+
-   this.operatorId+' with equipped gear');
+  host.tabIndex=0;
+  host.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight');
+  this.updateOrientationLabel();
   if(this.renderer)host.append(this.renderer.domElement);
   host.addEventListener('pointerdown',this.pointerDown);
   host.addEventListener('pointermove',this.pointerMove);
   host.addEventListener('pointerup',this.pointerUp);
   host.addEventListener('pointercancel',this.pointerUp);
+  host.addEventListener('keydown',this.keyDown);
   this.observer?.observe(host);
   // Campaign updates the rig immediately after a host swap; avoid a stale
   // pre-update render while preserving the default standalone behavior.
   if(drawImmediately)this.draw();
  }
  isReady():boolean{return this.renderer!==null&&this.rig!==null;}
+ /** Keep rotation discoverable and usable without touch or a mouse. */
+ private updateOrientationLabel():void{
+  const degrees=((Math.round(this.azimuth*180/Math.PI)%360)+360)%360;
+  this.host.setAttribute('aria-label','Rotatable 3D preview of '+
+   this.operatorId+' with equipped gear. View angle '+degrees+
+   ' degrees. Use Left and Right arrow keys to rotate.');
+ }
+ private keyDown=(event:KeyboardEvent)=>{
+  if(!this.renderer||!['ArrowLeft','ArrowRight'].includes(event.key))return;
+  event.preventDefault();
+  const step=(event.shiftKey?15:5)*Math.PI/180;
+  this.azimuth+=(event.key==='ArrowRight'?step:-step);
+  if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
+  this.dragFrame=null;
+  this.updateOrientationLabel();
+  this.draw();
+ };
  private pointerDown=(event:PointerEvent)=>{
   if(this.pointerId!==null)return;
   this.pointerId=event.pointerId;this.lastX=event.clientX;
@@ -220,6 +243,7 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
+  this.host.removeEventListener('keydown',this.keyDown);
   if(this.rig){releaseOperatorPreviewRig(this.scene,this.rig);this.rig=null;}
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
