@@ -7,6 +7,9 @@ on:
       - 'src/weapons/geometry/**'
       - 'src/arsenal/**'
       - 'scripts/audit-weapon-production-m30.mjs'
+      - 'scripts/smoke-arsenal-m30-shotgun-visual.mjs'
+      - 'arsenal-m30-shotgun-capture.html'
+      - 'src/arsenal-m30-shotgun-capture.ts'
       - 'tests/arsenal-m30-*.test.mjs'
       - '.github/workflows/arsenal-m30.yml'
 permissions:
@@ -50,6 +53,8 @@ jobs:
       - run: npx playwright install --with-deps chromium
       - name: Real physical left/right optics and lights WebGL capture
         run: node scripts/smoke-arsenal-m26-visual.mjs
+      - name: Production shotgun original/compiled draw and pixel parity
+        run: node scripts/smoke-arsenal-m30-shotgun-visual.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -57,5 +62,7 @@ jobs:
           path: |
             reports/arsenal-m26-mounted-*.png
             reports/arsenal-m26-mesh-stats.json
+            reports/arsenal-m30-shotgun-parity.png
+            reports/arsenal-m30-shotgun-parity.json
           if-no-files-found: ignore
           retention-days: 14
