@@ -37,6 +37,8 @@ import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
+import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual}
+ from './breach-fixture-template.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
 import {compileRigidVisualOwner} from './fieldwork-model-compiler.ts';
 import {StaticVisualTemplateLibrary,type StaticVisualLease}
@@ -61,6 +63,8 @@ export type SiteSceneBuildPort={
  repeatedFixtures?:RepeatedFixtureBatches;
  sharedBoxGeometries:Set<THREE.BufferGeometry>;
  visualTemplates?:StaticVisualTemplateLibrary;
+ fixtureTemplates?:StaticVisualTemplateLibrary;
+ includeServiceFixtureTemplates?:boolean;
  registerVisualLease?:(lease:StaticVisualLease)=>void;
  siteMaterials:SiteMaterialLifetime<THREE.Material>;
  mats:THREE.Material[];
@@ -179,7 +183,9 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
     // Bake immobile exterior/ground fixtures per spatial cell. Keep owner-
     // scoped doors, cover and fog groups independent; never touch descendants.
     consolidateStaticFixtureParts(host.root,{recursive:false,cellSize:220});
-    host.repeatedFixtures?.flush(host.root,host.sharedBoxGeometries);
+    host.repeatedFixtures?.flush(host.root,new Set([
+      ...host.sharedBoxGeometries,
+      ...(host.fixtureTemplates?.sharedGeometries()??[])]));
 }
 
 /** Own no resources; renderer's material/scene lifetime remains authoritative. */
@@ -520,11 +526,23 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const finish=roomFixtureFinishes(theme,fixtureRoom?.purpose,fixtureRoom?.tone);
       const localCtx:FixtureVisualContext={...fixtureCtx,
         solid:(hex,roughness,surface)=>host.solid(age(hex,surface,variant),roughness,surface)};
-      renderFixtureVisual(intact,visual,i,localCtx,
-        host.solid(age(finish.wood,'furniture-wood',variant),.9,'furniture-wood'),
-        host.solid(age(finish.metal,'metal',variant),.8,'metal'),
-        host.solid(age(finish.fabric,'fabric',variant),.9,'fabric'),
-        host.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel'));
+      const palette={
+        wood:host.solid(age(finish.wood,'furniture-wood',variant),.9,'furniture-wood'),
+        steel:host.solid(age(finish.metal,'metal',variant),.8,'metal'),
+        olive:host.solid(age(finish.fabric,'fabric',variant),.9,'fabric'),
+        metal:host.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel')
+      };
+      const templateLease=host.fixtureTemplates&&host.registerVisualLease?
+        acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
+          host.includeServiceFixtureTemplates===true):
+        null;
+      if(templateLease){
+        // Direct children preserve the existing per-cover instancing and
+        // disclosure ownership. The lease only manages shared GPU buffers.
+        host.registerVisualLease?.(
+          adoptRigidFixtureVisual(intact,templateLease));
+      }else renderFixtureVisual(intact,visual,i,localCtx,
+        palette.wood,palette.steel,palette.olive,palette.metal);
       for(const mark of marksOn('fixture',i)){
         const height=visibleSurfaceHeight(c.fixture??'crate');
         if(height<8)continue;
@@ -540,7 +558,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const slag=host.solid(age(0x4c5955,'industrial-steel',variant),
         .85,'industrial-steel');
       // Batch only opaque, rigid, site-lifetime fixture pieces.
-      consolidateStaticFixtureParts(intact);
+      if(!templateLease)consolidateStaticFixtureParts(intact);
       for(let j=0;j<3;j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
         const width=Math.max(3.2,visual.w*(j%2?.16:.20));
