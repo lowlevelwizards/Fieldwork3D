@@ -32,7 +32,8 @@ jobs:
             tests/arsenal-m30-shotgun-rigid-compile.test.mjs \
             tests/arsenal-m28-cross-family-mounting.test.mjs \
             tests/arsenal-m2-accessory-integration.test.mjs \
-            tests/equipment-19-02-weapon-silhouettes.test.mjs
+            tests/equipment-19-02-weapon-silhouettes.test.mjs \
+            tests/breach-weapon-magazine-idle.test.mjs
       - name: Emit factory draw and geometry baseline
         run: node --experimental-strip-types scripts/audit-weapon-production-m30.mjs > /tmp/weapon-m30-baseline.log && tail -n 2 /tmp/weapon-m30-baseline.log
       - name: TypeScript
