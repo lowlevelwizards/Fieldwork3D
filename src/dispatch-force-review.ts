@@ -7,7 +7,7 @@ import {attributableCivilianHarm} from './breach-civilian-harm.ts';
 import type {BattleEvent} from './breach-combat.ts';
 
 export type DispatchHarmEvidence=Readonly<{
- shotId:number;at:number;officerId:string;victimId:string;
+ shotId:number;at:number;actorId:string;victimId:string;
  sourceSide:'blue'|'red';severity:'injured'|'incapacitated';
 }>;
 export type DispatchChallengeEvidence=Readonly<{
@@ -62,14 +62,15 @@ export function assessDispatchForce(
  for(const e of harms){
   if(shots.has(e.shotId)||e.after>=e.before)continue;
   shots.add(e.shotId);
-  harm.push({shotId:e.shotId,at:e.at,officerId:e.actorId,
+  harm.push({shotId:e.shotId,at:e.at,actorId:e.actorId,
    victimId:e.victimId,sourceSide:e.sourceSide,severity:e.severity});
  }
  harm.sort((a,b)=>a.at-b.at||a.shotId-b.shotId);
  const blue=attributableCivilianHarm(harm
   .filter(e=>e.sourceSide==='blue')
   .map(e=>({...e,id:e.shotId,before:2,after:1,p:{x:0,y:0}})));
- const red=afterSide(harms.filter(e=>shots.has(e.shotId)), 'red');
+ const red=afterSide(harm.map(e=>({...e,id:e.shotId,before:2,after:1,
+  p:{x:0,y:0}})), 'red');
  const contacts:DispatchChallengeEvidence[]=[];
  let challenges=0,refusals=0,surrenders=0;
  const seenEvents=new Set<number>();
