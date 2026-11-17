@@ -34,6 +34,8 @@ export class CampaignKitPreview{
  private renderedHeight=0;
  /** Coalesce bursty pointermove events to one render per display frame. */
  private dragFrame:number|null=null;
+ /** ResizeObserver can fire several times while the armory layout settles. */
+ private resizeFrame:number|null=null;
  constructor(host:HTMLElement,id:string,weapon:WeaponId,
   appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,
@@ -60,7 +62,7 @@ export class CampaignKitPreview{
    host.addEventListener('pointermove',this.pointerMove);
    host.addEventListener('pointerup',this.pointerUp);
    host.addEventListener('pointercancel',this.pointerUp);
-   this.observer=new ResizeObserver(()=>this.draw());
+   this.observer=new ResizeObserver(()=>this.scheduleResize());
    this.observer.observe(host);
    this.draw();
   }catch{
@@ -95,6 +97,8 @@ export class CampaignKitPreview{
  attachHost(host:HTMLElement,drawImmediately=true):void{
   if(host===this.host)return;
   this.observer?.disconnect();
+  if(this.resizeFrame!==null)cancelAnimationFrame(this.resizeFrame);
+  this.resizeFrame=null;
   this.host.removeEventListener('pointerdown',this.pointerDown);
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
@@ -171,6 +175,18 @@ export class CampaignKitPreview{
   };
   this.focusFrame=requestAnimationFrame(animateFrame);
  }
+ /** Collapse same-frame resize notifications; projection stays stable on drags. */
+ private scheduleResize():void{
+  if(!this.renderer||!this.host.isConnected)return;
+  const width=Math.max(160,this.host.clientWidth);
+  const height=Math.max(180,this.host.clientHeight);
+  if(width===this.renderedWidth&&height===this.renderedHeight)return;
+  if(this.resizeFrame!==null)return;
+  this.resizeFrame=requestAnimationFrame(()=>{
+   this.resizeFrame=null;
+   if(this.renderer&&this.host.isConnected)this.draw();
+  });
+ }
  getAzimuth(){return this.azimuth;}
  setAzimuth(value:number){
   if(!Number.isFinite(value))return;
@@ -193,6 +209,8 @@ export class CampaignKitPreview{
   this.renderer.render(this.scene,this.camera);
  }
  dispose(){
+  if(this.resizeFrame!==null)cancelAnimationFrame(this.resizeFrame);
+  this.resizeFrame=null;
   if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
   this.dragFrame=null;
   if(this.focusFrame!==null)cancelAnimationFrame(this.focusFrame);
