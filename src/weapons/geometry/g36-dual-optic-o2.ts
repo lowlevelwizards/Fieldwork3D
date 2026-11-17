@@ -102,7 +102,7 @@ export function addG36O2DualOptic(
   geometry.translate(x,y,0);
   return add(geometry,key);
  };
- lens(-6.387,3.57,.625,8,'g36OpticFace');
- lens(-5.927,4.30,.38,6,'g36UpperReflexWindow');
+ lens(-6.378,3.57,.625,8,'g36OpticFace');
+ lens(-5.918,4.30,.38,6,'g36UpperReflexWindow');
  return index;
 }
