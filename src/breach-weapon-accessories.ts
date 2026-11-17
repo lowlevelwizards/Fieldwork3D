@@ -26,14 +26,14 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  const seat=opticVisualSeat(raw,optic.mountX);
  const opticX=seat.x,baseY=seat.supportY;
  const opticZ=seat.z??0;
- if(optic.id==='optic-reflex'){
+ if(seat.mount!=='unresolved'&&optic.id==='optic-reflex'){
   // A3: an actual open hood, not a solid sight tower. The sight origin is
   // still the immutable equipment resolver's mountX/sightHeight.
   accessoryBox(g,'weapon-accessory-optic-reflex-base',
    opticX,baseY+.55,0,4,1.1,3,metal);
   accessoryFrame(g,'weapon-accessory-optic-reflex-hood',
    opticX,baseY+2.10,0,3.5,2.8,.90,.57,polymer);
- }else if(optic.id==='optic-magnified'){
+ }else if(seat.mount!=='unresolved'&&optic.id==='optic-magnified'){
   // A3: one faceted tube, modest stepped objective/ocular, one grouped
   // hardware mesh and a single recognisable adjustment cap.
   accessoryTube(g,'weapon-accessory-optic-magnified-body',
@@ -48,7 +48,8 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
   ],metal);
   accessoryBox(g,'weapon-accessory-optic-magnified-turret',
    opticX-.42,baseY+3.515,0,1.15,.75,1.38,metal,false);
- }else if(optic.id==='optic-kashtan-ak'||optic.id==='optic-kashtan-p'){
+ }else if(seat.mount!=='unresolved'&&
+  (optic.id==='optic-kashtan-ak'||optic.id==='optic-kashtan-p')){
   const direct=optic.id==='optic-kashtan-ak';
   const y=baseY+1.55;
   // One squat, memorable Kashtan body; two completely different physical
