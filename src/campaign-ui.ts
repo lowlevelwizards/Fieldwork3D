@@ -638,6 +638,8 @@ export class CampaignScreen{
    [c.supplies.flash,'FLASHBANGS']
   ] as const){
    const fact=node('div','campaign-logistics-stat');
+   if(count===0||(label==='ROUNDS'&&count<60))
+    fact.classList.add('is-low');
    fact.append(node('strong','',String(count)),node('span','',label));
    stock.append(fact);
   }
@@ -658,6 +660,14 @@ export class CampaignScreen{
    buy.setAttribute('aria-label','Buy '+label+' for '+price);
    buy.disabled=!canAffordCampaignPurchase(c,cost)||
     (label==='2 FLASHBANGS'&&(!!c.activeContractId||c.supplies.flash>998));
+   if(buy.disabled){
+    const why=label==='2 FLASHBANGS'&&!!c.activeContractId?
+     'Unavailable during an active deployment':
+     label==='2 FLASHBANGS'&&c.supplies.flash>998?
+      'Flashbang reserve at capacity':'Insufficient campaign funds';
+    buy.title=why;
+    buy.setAttribute('aria-description',why);
+   }
    item.append(desc,buy);purchases.append(item);
   }
   supplyPanel.append(purchases);
