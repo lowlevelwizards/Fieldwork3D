@@ -216,7 +216,10 @@ function tick(now:number){
   // A new map can install its own scene after PERF was armed. Configure
   // that scene once; never re-arm or allocate during each steady RAF.
   if(stage!==profiledStage){
-   stage?.setPerformanceProfilingEnabled?.(!!perfOverlay);
+   // E6.15: a newly installed scene must retain explicitly requested
+   // coldBench phase instrumentation, not just the visible PERF overlay.
+   stage?.setPerformanceProfilingEnabled?.(
+    !!perfOverlay||config.boot.coldBenchEnabled);
    profiledStage=stage;
    // Scene replacement resets lifetime upload counters; a new session on
    // the same persistent scene does not and must keep its first upload delta.
