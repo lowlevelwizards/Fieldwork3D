@@ -72,6 +72,12 @@ try{
   const armorChoice=protection.getByRole('button',{name:/Choose armor for/i});
   if(!await armorChoice.isVisible())throw Error('Armor equipment chooser is not reachable');
   await armorChoice.click();
+  const lockedScroll=await page.evaluate(()=>
+   document.querySelector('.campaign-screen')?.style.overflow==='hidden');
+  if(!lockedScroll)throw Error('Gear choice sheet allowed background page scrolling');
+  const hasMassComparison=await page.locator('.campaign-gear-picker-option small')
+   .evaluateAll(items=>items.some(item=>item.textContent?.includes('ITEM MASS')));
+  if(!hasMassComparison)throw Error('Equipment choice hides item weight tradeoffs');
   const focus=await page.locator('.campaign-kit-preview').getAttribute('data-preview-focus');
   if(focus!=='torso')throw Error('Armor choice did not focus the operator torso');
   const gearSheet=page.getByRole('dialog',{name:'CHOOSE ARMOR'});
@@ -79,6 +85,9 @@ try{
   if(!await gearSheet.getByRole('button',{name:/Soft Armor Vest/i}).count())
    throw Error('Current armor missing from equipment chooser');
   await gearSheet.getByRole('button',{name:'CLOSE'}).click();
+  if(await page.evaluate(()=>
+   document.querySelector('.campaign-screen')?.style.overflow==='hidden'))
+   throw Error('Equipment chooser failed to restore scrolling');
   await tabs.filter({hasText:'CARRY'}).click();
   const carry=armory.locator('[data-loadout-group="carry"]');
   const rigChoice=carry.getByRole('button',{name:/Choose rig for/i});
@@ -109,6 +118,9 @@ try{
    }
    if(await armory.locator('[data-loadout-group="carry"][open]').count()!==1)
     throw Error('Gear change lost the selected equipment category');
+   if(!await page.evaluate(()=>
+    document.activeElement?.getAttribute('aria-label')?.includes('Choose rig')))
+    throw Error('Equipment swap failed to return focus to its replacement slot');
    await page.locator('.campaign-kit-presets > summary').click();
    await page.locator('.campaign-kit-preset-card').getByRole('button',
     {name:'EQUIP KIT'}).click();
