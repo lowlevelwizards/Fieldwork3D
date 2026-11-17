@@ -52,7 +52,23 @@ Run `node --experimental-strip-types scripts/audit-weapon-production-m30.mjs`.
   All tests must pass before a release; retained baseline screenshots
   require art review if visible output differs.
 
-## M3.0C2 — Per-owner modular rigid draw consolidation (NEXT; separately gated)
+## M3.0C2 — Reversible modular prototype (committed; NOT enabled in production)
+- Expose a manual `compileRigidWeaponPartPilot(root,slot,partId)` helper.
+  It only consolidates direct sibling rigid meshes of the **same installed
+  part**, material, vertex format, shader, shadow and visibility contract.
+- Preserve the canonical `family-{slot}-{partId}-` raycast/bounds identity
+  on the compiled mesh. Leave magazines, rails with per-instance transforms,
+  configured attachments, metadata-bearing and transparent meshes untouched.
+- Provide `restore()` for interactive audit and `commit()` for a future
+  separately verified integration (both idempotent). Sources are detached
+  from the scene before visual comparison and are never silently discarded.
+- Tests cover a real factory reference, part bounds, untouched configuration,
+  Workbench ray picking, restoration, and independently controlled magazines.
+- **No normal renderer invokes the prototype.** Further work requires
+  a real WebGL selected-part comparison, GPU submission measurements and
+  regression tests for named per-mesh family art/animation before enabling.
+
+## M3.0C3 — Modular opt-in visual acceptance (NEXT)
 - Work **inside a single immutable weapon assembly** at build/change time.
   Cross-weapon pooling and live operator pose animation require separate study.
 - Keep at least `receiver,barrel,handguard,stock,grip,magazine` independently
