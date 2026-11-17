@@ -87,15 +87,16 @@ const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
 const button=(label:string,action:()=>void,cls='')=>{
  const b=node('button',cls,label);b.type='button';b.addEventListener('click',action);return b;
 };
+type OperationsTab='overview'|'personnel'|'contracts'|'logistics'|'chronicle';
 export class CampaignScreen{
  readonly root=node('section','campaign-screen');
  private readonly handlers:CampaignHandlers;
  private currentSlot:CampaignSlot='legacy';
  private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
- private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
+ private homeTab:OperationsTab='overview';
  /** C13: UI-only scroll history per section, never serialized into Campaign saves. */
- private readonly operationsScrollByTab=new Map<typeof this.homeTab,number>();
+ private readonly operationsScrollByTab=new Map<OperationsTab,number>();
  private operationsScrollCampaign:string|null=null;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
