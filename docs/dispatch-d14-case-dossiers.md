@@ -35,3 +35,27 @@ new journal entries or expand the scroll height without a deliberate tap.
 ## Release discipline
 
 Feature branch commits per stage; only affected Dispatch/campaign UI regression checks and production typecheck/build; release D14 as one logical batch after D13E–F's public Pages build is verified and no Pages publish is queued. No feature branch should merge over a running production deployment.
+
+## D14.4 — Broadened authored incident variety (separate release branch)
+
+Previously Dispatch sampled seven curated incident IDs even though the
+shared briefing catalog contains nineteen fully authored, building-compatible
+variants covering the existing five playable objectives. Reuse all nineteen
+without adding mission mechanics or claiming new police capabilities:
+- Capture: High-Risk Warrant, Fugitive Lead, Organizer Apprehension
+- Rescue: Missing Person, Urgent Welfare Response, Isolated Worker, Witness Recovery
+- Intel: Evidence Seizure, Records Retrieval, Concealed Cache, Equipment Trace
+- Clear: After-Hours Security Sweep, Compromised Hideout, Shipment-Site Security,
+  Facility Reclamation
+- Hold: Access-Control Detail, Perimeter Recovery, Site Preservation, Observation Post
+
+The existing deterministic and recency-weighted selector remains authoritative.
+Already-created contracts retain their exact `dispatchCase`, seed, objective,
+site class, risk, funds and follow-up links. Newly offered cases gain variety
+only within existing compatible authored incident/building data. The historical
+`DISPATCH_D8_INCIDENT_IDS` export name is unchanged to avoid consumer migration.
+Older saves continue loading; malformed and generic incident IDs still fail
+closed. D14.1 dossier projections automatically use the expanded authored pool.
+
+Ship D14.4 independently after D14.0–D14.3 public Pages verification, focused
+Dispatch incident/case tests and production typecheck/build.
