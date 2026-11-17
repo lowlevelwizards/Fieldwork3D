@@ -75,6 +75,11 @@ export class LiveMainPassProfiler{
  private readonly inShadowPass:()=>boolean;
  private readonly now:()=>number;
  private active=false;private calls=0;private drawCalls=0;
+ // This full actual-submission census is only for explicit E6.25 cold QA.
+ // Avoid array/DOM work in production or other profiling configurations.
+ private readonly e625Census=typeof location!=='undefined'&&
+  new URLSearchParams(location.search).get('coldBench')==='1'&&
+  new URLSearchParams(location.search).has('e625Character');
  private opaque=0;private transparent=0;private alphaTest=0;
  private instanced=0;private skinned=0;private elapsed=0;
  private reliable=true;
@@ -163,6 +168,17 @@ export class LiveMainPassProfiler{
    const topMaterials=[...this.materials.values()]
     .sort((a,b)=>b.draws-a.draws||a.id.localeCompare(b.id))
     .slice(0,12).map(m=>({...m,wallMs:Math.round(m.wallMs*10)/10}));
+   // Unlike top-16 sampled attribution, this includes EVERY actual
+   // non-shadow renderBufferDirect source in the last reliable 3D frame.
+   // Parent fixture labels are only attached by the E6.25 cold benchmark.
+   if(this.e625Census&&typeof window!=='undefined')Object.assign(window,{
+    __fieldworkE625DrawTrace:{
+     total:this.drawCalls,opaque:this.opaque,transparent:this.transparent,
+     alphaTest:this.alphaTest,instanced:this.instanced,reliable:this.reliable,
+     sources:[...this.sources].map(([source,draws])=>({source,draws}))
+      .sort((a,b)=>a.source.localeCompare(b.source))
+    }
+   });
    this.last={
     renderBufferCalls:this.calls,drawCalls:this.drawCalls,
     uniqueMaterials:this.materials.size,opaqueDraws:this.opaque,

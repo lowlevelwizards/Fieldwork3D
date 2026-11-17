@@ -503,6 +503,14 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     };
     site.cover.forEach((c,i)=>{
       const group=new THREE.Group();host.root.add(group);
+      // E6.25-only provenance: distinguish every fixture's actual draw
+      // after all later compilation/instancing. Tag parent, never children;
+      // that preserves the existing batching eligibility contract.
+      if(typeof location!=='undefined'&&
+         new URLSearchParams(location.search).get('coldBench')==='1'&&
+         new URLSearchParams(location.search).has('e625Character'))
+        group.userData.fieldworkDrawFamily=
+          'e625-cover-'+i+':'+(c.fixture??'crate');
       host.coverGroups.set(i,group);
       host.intelSurfaces.push({obj:group,kind:'cover',index:i});
       // The aperture renderer already creates the sill/parapet. Its cover

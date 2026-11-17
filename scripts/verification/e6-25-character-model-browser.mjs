@@ -114,6 +114,11 @@ try{
     live.p95SceneMs===null||live.p95CallbackMs===null)
     throw Error('Actual live tactical callback evidence incomplete: '+
      JSON.stringify(live?.byMode));
+   const fullDrawTrace=await page.evaluate(()=>
+     window.__fieldworkE625DrawTrace??null);
+   if(!fullDrawTrace||!fullDrawTrace.reliable||
+      fullDrawTrace.total<=0||!fullDrawTrace.sources?.length)
+      throw Error('Missing E6.25 exact-frame source census');
    const scene=live.sceneAttribution;
    const keys=['environment','camera','disclosure','actors',
     'effects','fog','shadows','postCamera','gpuSubmit'];
@@ -156,7 +161,7 @@ try{
    await page.screenshot({path:dir+'/seed-'+seed+'-template-'+templateEnabled+'.png'});
    writeFileSync(path,JSON.stringify(local,null,2)+'\n');
    evidence.runs.push({
-    seed,templateEnabled,briefingIdle,siteBuild,
+    seed,templateEnabled,briefingIdle,siteBuild,fullDrawTrace,
     precedingPlanning3DSubmissions:before.byMode.idle.submitted3D,
     liveFrames:live.byMode.live.frames,live3DSubmissions:live.byMode.live.submitted3D,
     callbacksWithSimulation:live.callbacksWithSimulation,
@@ -212,6 +217,20 @@ try{
     seed,building,offGroups:offGroups.size,onGroups:onGroups.size,
     offOnly:changedOff.slice(0,70).map(summarize),
     onOnly:changedOn.slice(0,70).map(summarize)
+  }));
+  const offSources=new Map(off.fullDrawTrace.sources.map(s=>[s.source,s.draws]));
+  const onSources=new Map(on.fullDrawTrace.sources.map(s=>[s.source,s.draws]));
+  const changedSources=[...new Set([...offSources.keys(),...onSources.keys()])]
+    .map(source=>({source,off:offSources.get(source)??0,
+      on:onSources.get(source)??0,
+      delta:(onSources.get(source)??0)-(offSources.get(source)??0)}))
+    .filter(s=>s.delta!==0).sort((a,b)=>b.delta-a.delta||
+      a.source.localeCompare(b.source));
+  console.log('E6_25_EXACT_SOURCE_DIFF',JSON.stringify({
+   seed,building,before:off.fullDrawTrace.total,
+   after:on.fullDrawTrace.total,
+   sourcesBefore:offSources.size,sourcesAfter:onSources.size,
+   differences:changedSources
   }));
   const planningPrecheck=compareImages(
     dir+'/seed-'+seed+'-template-0-planning.png',
