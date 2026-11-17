@@ -708,7 +708,9 @@ function tick(now:number){
     fogComposeMs:coldStats?.fogComposeMs??undefined,
     shadowRefreshes:coldStats?.shadowRefreshes,
     fogTextureUploads:coldStats?.fogTextureSubmittedUploads,
-    gpuDrawCalls:coldStats?.calls
+    gpuDrawCalls:coldStats?.calls,
+     shadowSubmission:coldStats?.shadowSubmission?
+      {...coldStats.shadowSubmission}:undefined
    });
   }
   scheduleFrame();
