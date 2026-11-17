@@ -156,3 +156,18 @@ test('known reachable door tap enters exactly one contextual door selection',()=
  dispatchTacticalPointerRelease(f.port,f.event,pointer,true,1);
  assert.deepEqual(f.actions,[],'cancel cannot focus a door or issue a command');
 });
+
+test('UI.7C keeps casualty targeting armed after rejected destination and confirms only acceptance',()=>{
+ const source=readFileSync(new URL('../src/breach-pointer-command-controller.ts',import.meta.url),'utf8');
+ const guidance=readFileSync(new URL('../src/ui/recovery-guidance.ts',import.meta.url),'utf8');
+ const begin=source.indexOf('  if(evacuation){');
+ const end=source.indexOf('  if(port.targeting.firePlacement)',begin);
+ assert.ok(begin>=0&&end>begin);
+ const section=source.slice(begin,end);
+ assert.match(section,/const accepted=planCasualtyTransport/);
+ assert.match(section,/if\(!accepted\)\s*port\.rejectAt/);
+ assert.match(section,/else\{\s*port\.targeting\.reset\(\)/);
+ assert.match(section,/port\.tacticalFeedback\.emit\('command'/);
+ assert.match(guidance,/CASUALTY ROUTE BLOCKED/);
+ assert.match(guidance,/cancel the active DRAG \/ CARRY target/);
+});
