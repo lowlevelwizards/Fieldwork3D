@@ -36,6 +36,7 @@ import {deployedDispatchIncident,validatedDispatchIncident,
 import {validateCampaignDraft,type CampaignCreationDraft} from './campaign-creation.ts';
 import type {CampaignSlot} from './campaign-save-slots.ts';
 import {confirmFieldworkAction,showFieldworkNotice} from './ui/fieldwork-controls.ts';
+import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
 import type {IntelMode} from './breach-intel.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {Session} from './breach-game.ts';
@@ -155,6 +156,19 @@ function resumeSlot(slot:CampaignSlot){
  else void showFieldworkNotice('Campaign unavailable',
   'Could not open the selected campaign. Existing saves were not changed.');
 }
+/** Only acknowledge a campaign action when authoritative state actually changed. */
+function applyVisibleCampaignAction(change:(current:CampaignState)=>CampaignState,message:string){
+ const before=model.campaign;
+ if(!before)return;
+ const after=change(before);
+ if(after===before)return;
+ model.campaign=after;
+ const saved=config.saveCampaign();
+ showCampaignHome();
+ if(saved)showFieldworkActionFeedback(message);
+ else void showFieldworkNotice('Save unavailable',
+  'The change is not yet saved. Export your campaign before leaving this session.');
+}
 const campaignScreen=new CampaignScreen({
  newCampaign:async()=>{
   if(config.getCampaignInSlot('legacy')&&!await confirmFieldworkAction({
@@ -224,14 +238,16 @@ const campaignScreen=new CampaignScreen({
   model.campaign=next;config.saveCampaign();deployCampaignContract();
  },
  resumeContract:()=>deployCampaignContract(),
- buyAmmo:()=>{if(model.campaign){model.campaign=purchaseAmmo(model.campaign);config.saveCampaign();showCampaignHome();}},
- buyMedical:()=>{if(model.campaign){model.campaign=purchaseMedical(model.campaign);config.saveCampaign();showCampaignHome();}},
- buyFlash:()=>{if(model.campaign){model.campaign=purchaseFlash(model.campaign);config.saveCampaign();showCampaignHome();}},
- resupply:(id)=>{if(model.campaign){model.campaign=resupplyOperator(model.campaign,id);config.saveCampaign();showCampaignHome();}},
- resupplyMedical:(id)=>{if(model.campaign){
-  model.campaign=resupplyMedicalOperator(model.campaign,id);config.saveCampaign();showCampaignHome();}},
- treat:(id)=>{if(model.campaign){model.campaign=treatOperator(model.campaign,id);config.saveCampaign();showCampaignHome();}},
- recruit:()=>{if(model.campaign){model.campaign=hireRecruit(model.campaign);config.saveCampaign();showCampaignHome();}},
+ buyAmmo:()=>applyVisibleCampaignAction(purchaseAmmo,'60 rounds added to supplies'),
+ buyMedical:()=>applyVisibleCampaignAction(purchaseMedical,'Medical kit added to supplies'),
+ buyFlash:()=>applyVisibleCampaignAction(purchaseFlash,'2 flashbangs added to supplies'),
+ resupply:(id)=>applyVisibleCampaignAction(c=>resupplyOperator(c,id),
+  'Operator ammunition replenished'),
+ resupplyMedical:(id)=>applyVisibleCampaignAction(c=>resupplyMedicalOperator(c,id),
+  'Operator medical supplies replenished'),
+ treat:(id)=>applyVisibleCampaignAction(c=>treatOperator(c,id),
+  'Treatment completed · recovery time reduced'),
+ recruit:()=>applyVisibleCampaignAction(hireRecruit,'New operator joined the roster'),
  assignSlot:(slot,id)=>{if(model.campaign){model.campaign=assignOperatorToSlot(model.campaign,slot,id);
   config.saveCampaign();showCampaignHome();}},
  buyWeapon:(weapon)=>{if(model.campaign){model.campaign=buyWeapon(model.campaign,weapon);config.saveCampaign();showCampaignHome();}},
