@@ -4,12 +4,16 @@
  */
 import {doorCenter,type Door,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,plannedControl,finalPoint,
- setFirePolicy,planCivilianInteraction,planCivilianRelease,
+ setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,
+ inSight,team,enemies,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planMedicalTreatment,
  planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
  doorAtNode,planEntryTool,liveVisibility} from './breach-game.ts';
 import type {EntryTool} from './breach-entry-tools.ts';
+import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
+import {sweptBodyClear} from './breach-navigation.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 
 export type ContextCommandResult={
  handled:boolean;clearDoorFocus?:boolean;dismissDoorId?:string|null;
@@ -49,6 +53,17 @@ export function dispatchTacticalContextCommand(input:{
    const policy=active==='engage'?'hold':
      active==='hold'?'return':'engage';
    setFirePolicy(state,selected,policy,node?.id);return handled;
+  }
+  case 'ctxChallengeSuspect':{
+   const from=finalPoint(a);
+   const target=enemies(state).filter(e=>e.health>0&&
+      distance(from,e.p)<SUSPECT_CHALLENGE_RANGE&&
+      team(state).some(observer=>inSight(observer,e,state))&&
+      sweptBodyClear(from,e.p,state.doors,5.5,sessionWorldGeometry(state)))
+     .sort((x,y)=>distance(from,x.p)-distance(from,y.p))[0];
+   if(!target||!planSuspectChallenge(state,selected,target.id))
+     state.events.push('SUSPECT CHALLENGE NOT AVAILABLE');
+   return handled;
   }
   case 'ctxSecureCivilian':
   case 'ctxFollowCivilian':{
