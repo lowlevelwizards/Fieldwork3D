@@ -17,6 +17,7 @@ import {chooseCarry,type CarryFacts} from './breach-carry-policy.ts';
 import {lowReadyFamilyFit,lowReadyPocket} from './breach-low-ready-family-fit.ts';
 import {riflePoseContacts,supportContactAt}
  from './breach-weapon-contact-zones.ts';
+import {mountedAccessorySeat} from './weapons/geometry/mounted-accessory-layout.ts';
 export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
@@ -51,7 +52,7 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  const contact=riflePoseContacts(id,configuration);
  const baseline=contact?supportContactAt(contact.support,.32):null;
  const mountedGrip=contact&&configuration.slots.foregrip!=='foregrip-none'?
-  baseline:null;
+  mountedAccessorySeat(configuration,'foregrip')?.hand:null;
  const supportX=low?Math.max(low.minSupportX,
    a.supportX-low.supportBack*w):
    handling==='short'?Math.min(a.supportX,-3.0):
