@@ -226,8 +226,9 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
   result.slots.opticMount=DEFAULT_IDS.opticMount;
   if(result.slots.optic==='optic-g36-integrated')result.slots.optic=DEFAULT_IDS.optic;
  }
- result.mountSelections=readMountSelections(
+ const positions=readMountSelections(
   (raw as {mountSelections?:unknown}).mountSelections,result.slots);
+ if(positions)result.mountSelections=positions;
  return result;
 }
 export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttachmentSlot,
