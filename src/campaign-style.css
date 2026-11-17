@@ -1111,3 +1111,190 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   height:12px;padding:0 2px;border:0;border-radius:3px;
   font-size:9px;line-height:1}
 }
+
+/* Campaign C1.2 — compact command header. Stable campaign metadata lives in
+   an optional disclosure; the two live resources remain readable at a glance. */
+.campaign-shell.campaign-wide:has(.campaign-tabs) .campaign-head{
+ gap:2px 12px;margin-bottom:8px;
+}
+.campaign-head .campaign-heading h1{
+ margin:2px 0 2px;font-size:clamp(25px,4.4vw,32px);
+}
+.campaign-context{margin:0;min-width:0}
+.campaign-context>summary{
+ display:flex;align-items:center;gap:6px;min-height:36px;
+ font:600 12px/1.3 var(--fw-font-narrative);color:var(--fw-text-muted);
+ cursor:pointer;list-style:none;overflow-wrap:anywhere;
+}
+.campaign-context>summary::-webkit-details-marker{display:none}
+.campaign-context>summary::after{content:'⌄';flex:none;color:var(--fw-sage)}
+.campaign-context[open]>summary::after{content:'⌃'}
+.campaign-context>.campaign-home-identity{margin:4px 0 8px;line-height:1.4}
+.campaign-context>summary:focus-visible{
+ outline:2px solid var(--fw-brass);outline-offset:2px;border-radius:3px;
+}
+.campaign-head .campaign-funds{
+ display:flex;align-items:center;flex-wrap:wrap;gap:5px 14px;
+ margin:0;font-size:14px;line-height:1.3;
+}
+.campaign-head .campaign-day,.campaign-head .campaign-standing{
+ color:var(--fw-text-muted);font:700 12px/1.3 var(--fw-font-menu);
+}
+.campaign-head .campaign-credits{color:#d8cba2;font-weight:750}
+.campaign-shell .campaign-home-nav button{min-height:44px}
+.campaign-shell.campaign-wide:has(.campaign-tabs) .campaign-tabs{
+ gap:5px;padding-top:5px;padding-bottom:5px;
+}
+@media(max-width:680px){
+ .campaign-shell.campaign-wide:has(.campaign-tabs) .campaign-head{
+  grid-template-areas:'heading menu' 'funds funds';gap:0 8px;
+ }
+ .campaign-context>summary{min-height:44px;max-width:100%}
+ .campaign-head .campaign-heading h1{font-size:clamp(24px,6.8vw,30px)}
+ .campaign-head .campaign-funds{gap:5px 12px;font-size:14px}
+}
+
+/* Campaign C2.2 — operator roster is a scanable list, not seven fully-open
+   dossiers. Native disclosure preserves direct touch and keyboard operation. */
+.campaign-personnel-roster-panel .campaign-roster-group-label{
+ grid-column:1/-1;margin:10px 0 2px;min-width:0;
+ font:750 12px/1.3 var(--fw-font-menu);letter-spacing:.06em;
+ color:var(--fw-text-muted);
+}
+.campaign-personnel-roster-panel .campaign-person{
+ display:block;min-width:0;padding:0;overflow:visible;
+}
+.campaign-person-expand{min-width:0}
+.campaign-person-expand>summary{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:7px;
+ min-height:68px;padding:10px 12px 11px;cursor:pointer;
+ position:relative;list-style:none;
+}
+.campaign-person-expand>summary::-webkit-details-marker{display:none}
+.campaign-person-expand>summary::after{
+ content:'+';position:absolute;right:12px;bottom:9px;
+ font:700 18px/1 var(--fw-font-menu);color:var(--fw-sage);
+}
+.campaign-person-expand[open]>summary::after{content:'−'}
+.campaign-person-expand>summary:focus-visible{
+ outline:2px solid var(--fw-brass);outline-offset:-3px;border-radius:8px;
+}
+.campaign-person-expand>summary:hover{background:#324840}
+.campaign-person-expand .campaign-person-head{gap:9px;padding-right:0}
+.campaign-person-expand .campaign-person-avatar{
+ width:40px;height:44px;font-size:17px;
+}
+.campaign-person-expand .campaign-person-identity{gap:2px}
+.campaign-person-expand .campaign-person-identity strong{font-size:19px}
+.campaign-person-expand .campaign-person-performance{
+ display:flex;gap:5px;flex-wrap:nowrap;min-width:0;padding-right:24px;
+}
+.campaign-person-expand .campaign-person-performance span{
+ font-size:11px;line-height:1.3;padding:3px 6px;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.campaign-person-expand .campaign-person-performance span:last-child{
+ flex:0 1 auto;min-width:0;
+}
+.campaign-person-expand>.campaign-person-profile,
+.campaign-person-expand>.campaign-person-actions,
+.campaign-person-expand>.campaign-person-care{
+ margin:0 11px 10px;
+}
+.campaign-person-expand>.campaign-person-profile{width:calc(100% - 22px)}
+@media(max-width:520px){
+ .campaign-personnel-roster-panel .campaign-roster{gap:7px}
+ .campaign-person-expand>summary{padding:9px 10px 10px}
+ .campaign-person-expand .campaign-person-avatar{width:36px;height:40px;font-size:16px}
+ .campaign-person-expand .campaign-person-identity strong{font-size:18px}
+ .campaign-person-expand .campaign-person-identity>span{display:none}
+ .campaign-person-expand .campaign-person-state{font-size:10px}
+ .campaign-person-expand .campaign-person-performance span{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .campaign-person-expand>summary{scroll-behavior:auto}
+}
+
+/* Campaign C3.2 — mission comparison shows only deciding facts by default.
+   Full briefing and raw case evidence retain their own explicit destinations. */
+.campaign-contract-board .campaign-contract{
+ gap:7px;padding:11px 12px;align-content:start;
+}
+.campaign-contract-board .campaign-contract-identity strong{
+ font-size:clamp(17px,2vw,20px);line-height:1.15;
+}
+.campaign-contract-board .campaign-contract-location{margin:0}
+.campaign-contract-intelligence{
+ min-width:0;border-top:1px solid var(--fw-panel-border);
+ border-bottom:1px solid var(--fw-panel-border);
+}
+.campaign-contract-intelligence>summary{
+ display:flex;align-items:center;justify-content:space-between;gap:8px;
+ min-height:40px;list-style:none;cursor:pointer;
+ color:var(--fw-text-muted);font:700 11px/1.3 var(--fw-font-menu);
+}
+.campaign-contract-intelligence>summary::-webkit-details-marker{display:none}
+.campaign-contract-intelligence>summary::after{
+ content:'+';font-size:16px;color:var(--fw-sage)
+}
+.campaign-contract-intelligence[open]>summary::after{content:'−'}
+.campaign-contract-intelligence>summary:focus-visible{
+ outline:2px solid var(--fw-brass);outline-offset:2px;
+}
+.campaign-contract-intelligence>.campaign-contract-reference,
+.campaign-contract-intelligence>p{
+ display:block;margin:5px 0 9px;
+ overflow-wrap:anywhere;
+}
+.campaign-contract-board .campaign-contract-terms{
+ border:0;padding:0;margin-top:1px;
+}
+.campaign-contract-board .campaign-contract-review{
+ margin:0;min-height:44px;font-size:13px;
+}
+@media(max-width:600px){
+ .campaign-contract-board .campaign-contract{padding:11px}
+ .campaign-contract-board .campaign-contract-review{min-height:46px}
+}
+
+/* Campaign C4.2 — task-first Operations dashboard at phone widths. */
+.campaign-overview .campaign-overview-workspace{gap:10px}
+.campaign-overview .campaign-overview-priority,
+.campaign-overview .campaign-overview-support{gap:9px}
+.campaign-overview .campaign-next-action{
+ padding:12px;gap:6px;margin:0;
+}
+.campaign-overview .campaign-next-action h3{font-size:21px}
+.campaign-overview .campaign-next-action>.campaign-note{
+ font-size:12px;line-height:1.4;margin:0;
+}
+.campaign-shell .campaign-next-action .campaign-overview-primary-action{
+ min-height:46px;margin:2px 0 0;padding:8px 10px;font-size:13px;
+}
+.campaign-overview .campaign-readiness{
+ padding:10px 12px;margin:0;
+}
+.campaign-overview .campaign-readiness h2{margin:0 0 4px}
+.campaign-overview .campaign-readiness-ok{margin:4px 0 0}
+.campaign-overview .campaign-overview-stats{gap:6px}
+.campaign-overview .campaign-overview-stats .campaign-stat{
+ display:flex;flex-direction:row;align-items:center;
+ justify-content:center;gap:6px;min-height:44px;
+ padding:7px 5px;text-align:left;
+}
+.campaign-overview .campaign-overview-stats .campaign-stat strong{font-size:20px}
+.campaign-overview .campaign-overview-stats .campaign-stat span{font-size:10px}
+.campaign-overview .campaign-overview-actions{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;
+}
+.campaign-overview .campaign-overview-actions button{
+ min-width:0;min-height:44px;padding:6px;
+ font:700 11px/1.2 var(--fw-font-menu);white-space:normal;
+}
+@media(max-width:420px){
+ .campaign-overview .campaign-overview-stats .campaign-stat{
+  flex-direction:column;gap:2px;text-align:center;
+ }
+ .campaign-overview .campaign-overview-stats .campaign-stat strong{font-size:19px}
+ .campaign-overview .campaign-overview-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+}

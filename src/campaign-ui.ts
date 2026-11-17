@@ -103,6 +103,8 @@ export class CampaignScreen{
  private readonly expandedClassicWeaponControls=new Set<string>();
  /** UI-only disclosure preference, retained when supplies or treatment refreshes home. */
  private readonly expandedOperatorCare=new Set<string>();
+ /** Preserve which operator rows are expanded across in-place campaign actions. */
+ private readonly expandedOperatorTools=new Set<string>();
  private selectedMount:WeaponAttachmentSlot='optic';
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
@@ -351,21 +353,35 @@ export class CampaignScreen{
   title.append(node('div','campaign-eyebrow','FIELDWORK / VERDIGRIS'));
   title.append(node('h1','','OPERATIONS ROOM'));
   const rules=effectiveCampaignRules(c).mission;
-  title.append(node('div','campaign-home-identity',
-   (this.currentSlot==='dispatch'?'DISPATCH · '+factionReference(currentDispatchReference(c))?.name:
-    this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
+  // Keep persistent setting and department metadata available without making
+  // players read it above every campaign action on a phone.
+  const campaignContext=node('details','campaign-context');
+  campaignContext.append(node('summary','',
+   (this.currentSlot==='dispatch'?'DISPATCH':
+    this.currentSlot==='sandbox'?'SANDBOX':'FIELD OPERATIONS')+
    ' · '+(c.name??'Original Campaign')));
+  campaignContext.append(node('p','campaign-home-identity',
+   (this.currentSlot==='dispatch'?
+    factionReference(currentDispatchReference(c))?.name??'Dispatch':
+    this.currentSlot==='sandbox'?'Sandbox Campaign':'Field Operations')));
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
-   title.append(node('div','campaign-home-identity',
+   campaignContext.append(node('p','campaign-home-identity',
     identity.preset+' · '+identity.period+' REFERENCE · '+identity.standingTier+
     ' '+identity.standing+'/100'));
   }
+  title.append(campaignContext);
   const campaignMenuNav=node('nav','campaign-home-nav');
   const menuButton=button('MENU',this.handlers.showMenu);
   menuButton.setAttribute('aria-label','Open campaign menu');
   campaignMenuNav.append(menuButton);
-  top.append(title,node('div','campaign-funds','DAY '+c.day+' · '+c.funds+' CR'),campaignMenuNav);
+  const resources=node('div','campaign-funds');
+  resources.append(node('span','campaign-day','DAY '+c.day),
+   node('span','campaign-credits',c.funds+' CR'));
+  if(isDispatchPilot(c))
+   resources.append(node('span','campaign-standing',
+    'STANDING '+(c.dispatchDepartment?.standing??50)+'/100'));
+  top.append(title,resources,campaignMenuNav);
   main.append(top);
   const grid=node('div','campaign-grid');
   const personnel=node('section','campaign-section');
@@ -413,7 +429,10 @@ export class CampaignScreen{
   personnelWorkspace.append(deployment);
   const rosterPanel=node('section','campaign-personnel-roster-panel');
   const activeOperators=c.operators.filter(p=>
-   p.status!=='retired'&&p.status!=='lost');
+   p.status!=='retired'&&p.status!=='lost').sort((a,b)=>{
+    const ai=c.squadIds.indexOf(a.id),bi=c.squadIds.indexOf(b.id);
+    return (ai<0?99:ai)-(bi<0?99:bi);
+   });
   const rosterHeading=node('div','campaign-roster-heading');
   rosterHeading.append(node('h2','','ACTIVE ROSTER'),
    node('span','campaign-roster-count',
@@ -422,21 +441,37 @@ export class CampaignScreen{
   const roster=node('div','campaign-roster');
   if(!activeOperators.length)roster.append(node('p','campaign-note',
    'No active operators. Recruit personnel to prepare your next deployment.'));
+  const deployed=activeOperators.filter(p=>c.squadIds.includes(p.id));
+  const reserves=activeOperators.filter(p=>!c.squadIds.includes(p.id));
   for(const p of activeOperators){
+   if(p===deployed[0])
+    roster.append(node('h3','campaign-roster-group-label',
+     'DEPLOYMENT TEAM · '+deployed.length));
+   if(p===reserves[0])
+    roster.append(node('h3','campaign-roster-group-label',
+     'RESERVES · '+reserves.length));
    const card=node('article','campaign-person');
-   const identity=node('div','campaign-person-head');
-   const monogram=node('div','campaign-person-avatar',p.callsign.slice(0,2).toUpperCase());
+   const tools=node('details','campaign-person-expand');
+   tools.open=this.expandedOperatorTools.has(p.id);
+   tools.addEventListener('toggle',()=>{
+    if(tools.open)this.expandedOperatorTools.add(p.id);
+    else this.expandedOperatorTools.delete(p.id);
+   });
+   const summary=node('summary','campaign-person-summary');
+   summary.setAttribute('aria-label','Manage '+p.callsign+' operator record and equipment');
+   const identity=node('span','campaign-person-head');
+   const monogram=node('span','campaign-person-avatar',p.callsign.slice(0,2).toUpperCase());
    monogram.setAttribute('aria-hidden','true');
-   const copy=node('div','campaign-person-identity');
+   const copy=node('span','campaign-person-identity');
    copy.append(node('strong','',p.callsign),node('span','',p.background));
    const status=node('span','campaign-person-state'+(p.recoveryDays?' is-recovering':''),
     p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':
      c.squadIds.includes(p.id)?'ASSIGNED':'RESERVE');
-   identity.append(monogram,copy,status);card.append(identity);
-   const performance=node('div','campaign-person-performance');
+   identity.append(monogram,copy,status);
+   const performance=node('span','campaign-person-performance');
    performance.append(node('span','','HANDLING '+Math.round(p.skills.handling*100)+'/100'),
     node('span','',p.missions+' OPS'),node('span','',p.trait));
-   card.append(performance);
+   summary.append(identity,performance);tools.append(summary);card.append(tools);
    const details=node('details','campaign-dossier');
    details.append(node('summary','','DOSSIER / SKILLS'));
    details.append(node('p','campaign-note','BACKGROUND · '+p.background));
@@ -585,7 +620,7 @@ export class CampaignScreen{
     careActions.append(retire);
    }
    care.append(careActions);
-   card.append(profile,actions,care);
+   tools.append(profile,actions,care);
    roster.append(card);
   }
   rosterPanel.append(roster);
@@ -899,9 +934,12 @@ export class CampaignScreen{
   // The first viewport describes a decision instead of showing a lone button.
   const availableContracts=c.contracts.filter(k=>
    k.status==='available'&&k.deadline>=c.day);
+  const leadCase=[...availableContracts].sort((a,b)=>
+   a.deadline-b.deadline||a.id.localeCompare(b.id))[0];
   const nextCard=node('section','campaign-next-action');
   nextCard.append(node('div','campaign-next-action-eyebrow',
-   accepted?'DEPLOYMENT IN PROGRESS':'NEXT ASSIGNMENT'));
+   accepted?'DEPLOYMENT IN PROGRESS':
+    leadCase?'EARLIEST DEADLINE · '+availableContracts.length+' OPEN':'NO OPEN ASSIGNMENTS'));
   if(accepted){
    const current=campaignIncidentView(c,accepted);
    nextCard.append(node('h3','',current.title),
@@ -909,11 +947,9 @@ export class CampaignScreen{
      accepted.region+' · Assignment accepted · Return to mission planning'));
   }else{
    nextCard.append(node('h3','',
-    availableContracts.length?availableContracts.length+
-     ' CONTRACT'+(availableContracts.length===1?'':'S')+' AVAILABLE':
-     'NO OPEN CONTRACTS'),
-    node('p','campaign-note',availableContracts.length?
-     'Review case details, check your team, then choose an assignment.':
+    leadCase?campaignIncidentView(c,leadCase).title:'NO OPEN CONTRACTS'),
+    node('p','campaign-note',leadCase?
+     leadCase.region+' · '+leadCase.reward+' CR · DUE DAY '+leadCase.deadline:
      'No current assignments to accept. Review records or prepare the team.'));
   }
   const nextAction=accepted?
@@ -983,9 +1019,7 @@ export class CampaignScreen{
   readiness.append(node('h2','','DEPLOYMENT READINESS'));
   const assigned=c.operators.filter(o=>c.squadIds.includes(o.id));
   const recovering=assigned.filter(o=>o.recoveryDays>0);
-  const rosterStatus=node('p','campaign-readiness-label',
-   assigned.map(o=>o.callsign).join(' · ')||'NO OPERATORS ASSIGNED');
-  readiness.append(rosterStatus);
+  // Callsigns are shown in Squad; keep the home readiness view actionable.
   const checks=[
    {attention:assigned.length<4,label:assigned.length+' / 4 SQUAD SLOTS FILLED',
     action:'personnel' as const},
@@ -1588,26 +1622,35 @@ export class CampaignScreen{
   const head=node('div','campaign-contract-head');
   const identity=node('div','campaign-contract-identity');
   identity.append(node('strong','',view.title));
-  if(isDispatchPilot(campaign))identity.append(node('small','campaign-note',view.reference));
+  // Technical case references are discoverable under CASE INFORMATION.
   const risk=node('span','campaign-contract-risk',
    ['','LOW','MODERATE','HIGH'][c.risk]+' RISK');
   risk.dataset.level=String(c.risk);
   head.append(identity,risk);card.append(head);
-  const location=node('div','campaign-contract-location',
-   c.region+(isDispatchPilot(campaign)&&c.dispatchCase?
-   ' · '+c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase():''));
+  const location=node('div','campaign-contract-location',c.region);
   card.append(location);
-  if(dossier)card.append(node('small','campaign-contract-emphasis',
+  // Keep contract choice concise. The actionable comparison facts remain
+  // visible; technical reference, incident text and prior-response specifics
+  // are available without committing to a briefing.
+  if(c.followUpOf)card.append(node('div','campaign-contract-related',
+   dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
+  const intelligence=node('details','campaign-contract-intelligence');
+  intelligence.append(node('summary','','CASE INFORMATION'));
+  if(isDispatchPilot(campaign)){
+   intelligence.append(node('small','campaign-contract-reference',view.reference));
+   if(c.dispatchCase)intelligence.append(node('p','campaign-contract-emphasis',
+    c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase()));
+  }
+  if(dossier)intelligence.append(node('p','campaign-contract-emphasis',
    dossier.situation.emphasis+' · '+dossier.situation.siteScale));
   if(c.followUpOf){
-   card.append(node('div','campaign-contract-related',
-    dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
    const last=dossier?.related.at(-1);
    if(last&&last.outcome!=='unknown')
-    card.append(node('small','campaign-contract-prior',
+    intelligence.append(node('p','campaign-contract-prior',
      'PRIOR RESPONSE · '+last.title+' · '+last.outcome.toUpperCase()));
   }
-  card.append(node('p','campaign-contract-description',view.description));
+  intelligence.append(node('p','campaign-contract-description',view.description));
+  card.append(intelligence);
   const terms=node('div','campaign-contract-terms');
   const reward=node('div','campaign-contract-term');
   reward.append(node('small','','REWARD'),node('strong','',c.reward+' CR'));
