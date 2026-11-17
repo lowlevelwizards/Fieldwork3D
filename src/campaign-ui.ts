@@ -1254,10 +1254,10 @@ export class CampaignScreen{
   const currentMass=totalEquipmentMass(person.loadout,person.weaponConfiguration);
   const currentMobility=Math.round(loadMovementScale(person.loadout,person.weaponConfiguration)*100);
   const committedKitChange=changedSlots.length>0||!!changedWeapon;
+  const slotSnapshot={} as Record<LoadoutSlot,string>;
+  for(const slot of LOADOUT_SLOTS)slotSnapshot[slot]=person.loadout.slots[slot];
   this.lastRenderedKit={
-   operatorId:id,weapon:person.weapon,
-   slots:Object.fromEntries(LOADOUT_SLOTS.map(slot=>[slot,person.loadout.slots[slot]]))
-    as Record<LoadoutSlot,string>,
+   operatorId:id,weapon:person.weapon,slots:slotSnapshot,
    mass:currentMass,mobility:currentMobility
   };
   this.root.hidden=false;this.root.replaceChildren();
