@@ -65,6 +65,7 @@ export type SiteSceneBuildPort={
  visualTemplates?:StaticVisualTemplateLibrary;
  fixtureTemplates?:StaticVisualTemplateLibrary;
  includeServiceFixtureTemplates?:boolean;
+ includeCharacterFixtureTemplates?:boolean;
  registerVisualLease?:(lease:StaticVisualLease)=>void;
  siteMaterials:SiteMaterialLifetime<THREE.Material>;
  mats:THREE.Material[];
@@ -534,7 +535,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       };
       const templateLease=host.fixtureTemplates&&host.registerVisualLease?
         acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
-          host.includeServiceFixtureTemplates===true):
+          host.includeServiceFixtureTemplates===true,
+          host.includeCharacterFixtureTemplates===true):
         null;
       if(templateLease){
         // Direct children preserve the existing per-cover instancing and
