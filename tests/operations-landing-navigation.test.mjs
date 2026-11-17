@@ -206,3 +206,32 @@ test('Logistics keeps one-column phones and separates supply and armory on deskt
  assert.match(layout,/\.campaign-logistics-workspace>\.campaign-armory\{/);
  assert.match(css,/@media\(max-width:600px\)\{\.campaign-purchases\{grid-template-columns:minmax\(0,1fr\)/);
 });
+
+test('Records preserve eight recent reports and disclose earlier history on demand',()=>{
+ const ui=source('campaign-ui.ts');
+ const records=ui.slice(ui.indexOf("const chronicle=node('section','campaign-section campaign-chronicle')"),
+  ui.indexOf('const footer=node(\'div\',\'campaign-footer\')'));
+ assert.match(records,/const recentReports=c\.history\.slice\(-8\)\.reverse\(\)/);
+ assert.match(records,/const renderOperation=\(report:\(typeof c\.history\)\[number\]\)=>/);
+ assert.match(records,/const operationBoard=node\('div','campaign-operation-board'\)/);
+ assert.match(records,/for\(const report of recentReports\)operationBoard\.append\(renderOperation\(report\)\)/);
+ assert.match(records,/LATEST '\+recentReports\.length\+' OF '\+c\.history\.length/);
+ assert.match(records,/if\(c\.history\.length>recentReports\.length\)/);
+ assert.match(records,/const older=node\('details','campaign-operation-more'\)/);
+ assert.match(records,/older\.addEventListener\('toggle',\(\)=>\{/);
+ assert.match(records,/if\(!older\.open\|\|olderBoard\.childElementCount\)return/);
+ assert.match(records,/for\(const report of c\.history\.slice\(0,-8\)\.reverse\(\)\)/);
+ assert.match(records,/return article/);
+ assert.match(records,/AFTER-ACTION RECORD/);
+ assert.match(records,/chronicle\.append\(older\)/);
+});
+
+test('Records cards use a responsive grid with accessible history disclosure',()=>{
+ const css=source('campaign-style.css');
+ const records=css.slice(css.indexOf('/* UI R18: the Records tab'));
+ assert.match(records,/\.campaign-operation-board\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(records,/@media\(min-width:900px\)/);
+ assert.match(records,/\.campaign-operation-board\{grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(records,/\.campaign-operation-more>summary\{display:flex/);
+ assert.match(records,/\.campaign-operation-more>summary::after\{content:'\+'/);
+});
