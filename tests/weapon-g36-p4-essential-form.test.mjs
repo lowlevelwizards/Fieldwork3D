@@ -36,11 +36,13 @@ test('G36 P4: two essential optic housings and no tiny rear eyepiece',()=>{
   face=one(g,'g36OpticFace'),window=one(g,'g36UpperReflexWindow');
  assert.ok(lower&&upper&&face&&window);
  assert.ok(!one(g,'g36LowerEyepiece'));
- assert.ok(bounds(lower).intersectsBox(bounds(face)));
- assert.ok(bounds(upper).intersectsBox(bounds(window)));
- assert.ok(bounds(window).max.y-bounds(window).min.y>=.67);
+ assert.ok(bounds(lower).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
+ assert.ok(bounds(face).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
+ assert.ok(bounds(upper).intersectsBox(bounds(one(g,'g36UpperReflexBarrel'))));
+ assert.ok(bounds(window).intersectsBox(bounds(one(g,'g36UpperReflexBarrel'))));
+ assert.ok(bounds(window).max.y-bounds(window).min.y>=.48);
  assert.ok(bounds(lower).max.y-bounds(lower).min.y>=1.1);
- assert.ok(bounds(face).max.z-bounds(face).min.z>=.95);
+ assert.ok(bounds(face).max.z-bounds(face).min.z>=.80);
  assert.ok(Math.abs(bounds(g).max.y-A.opticTopY)<.01);
  assert.equal(G36_E0_FACTORY.lowerSightY,3.57);
  clearWeaponSilhouette(g);m.dispose();

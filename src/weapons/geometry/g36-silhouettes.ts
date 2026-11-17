@@ -11,6 +11,7 @@ import {G36_B_PART_IDS} from './g36-family-contract.ts';
 import {G36_MAG30_OUTLINE,G36_MAG30_OUTLINE_CANDIDATE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
 import {addG36LongHandguard} from './g36-handguard-profiles.ts';
 import {addHKSelectorLeverArt} from './hk-trigger-selector.ts';
+import {addG36O2DualOptic} from './g36-dual-optic-o2.ts';
 
 export {G36_B_PART_IDS} from './g36-family-contract.ts';
 
@@ -147,25 +148,23 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
   contour(outside,true),contour(inside,false),1.50,material);
  bridge.userData.g36HandleOpening=true;
 
- // P8 production: one decisive lower optical casing with a raised rear
- // shoulder. The reflex crown intersects this shape, so the two read as
- // one original integrated unit, not detached scopes on a Picatinny rail.
- // Historical P6/P7 alternatives stay available ONLY in the comparison lab.
- const optics=G36_OPTIC_REVIEW_FORMS[review.optic??'rear-integrated'];
- const magnified=review.optic
-  ?box('receiver',...optics.lower)
-  :outline('receiver',[
-   [-5.83,2.71],[-5.83,3.78],[-5.15,4.15],
-   [-2.52,4.15],[-2.36,4.06],[-.88,4.06],[-.88,2.71]
-  ],1.96);
- magnified.userData.g36LowerOptic=true;
- magnified.userData.g36IntegratedOpticShell=true;
- const reflex=box('receiver',...optics.upper);
- reflex.userData.g36UpperReflex=true;
- const bigLens=box('receiver',...optics.lowerFace);
- bigLens.userData.g36OpticFace=true;
- const smallLens=box('receiver',...optics.upperFace);
- smallLens.userData.g36UpperReflexWindow=true;
+ // O2 production: user-approved 125 / 125 / 55 six-facet optical pod.
+ // The two rear-facing eyepieces are true low-facet volumetric cylinders.
+ // Historical P6/P7 presets are review-only alternatives, not save data.
+ if(!review.optic){
+  i.receiver=addG36O2DualOptic(root,material,ids.receiver,i.receiver);
+ }else{
+  const optics=G36_OPTIC_REVIEW_FORMS[review.optic];
+  const magnified=box('receiver',...optics.lower);
+  magnified.userData.g36LowerOptic=true;
+  magnified.userData.g36IntegratedOpticShell=true;
+  const reflex=box('receiver',...optics.upper);
+  reflex.userData.g36UpperReflex=true;
+  const bigLens=box('receiver',...optics.lowerFace);
+  bigLens.userData.g36OpticFace=true;
+  const smallLens=box('receiver',...optics.upperFace);
+  smallLens.userData.g36UpperReflexWindow=true;
+ }
 
  // One strongly rear-raked HK polymer wedge, no trigger guard.
  // Maintain the primary-hand landmark (-4.65,-4.10) inside its projected face.
@@ -219,7 +218,8 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
   else if(child.userData.g36Barrel||child.userData.g36StockHinge||
    child.userData.g36ChargingHandle)result=finishes.steel;
   else if(child.userData.g36OpticFace||child.userData.g36UpperReflexWindow)result=finishes.buttpad;
-  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic)result=finishes.optic;
+  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic||
+   child.userData.g36LowerOpticBarrel||child.userData.g36UpperReflexBarrel)result=finishes.optic;
   child.material=result;
  }
 }

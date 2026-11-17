@@ -43,14 +43,16 @@ test('P3 dark dual-optic faces are seated on the FRONT and REAR of real housings
  const lower=one(g,'g36LowerOptic'),magnified=one(g,'g36OpticFace');
  const upper=one(g,'g36UpperReflex'),front=one(g,'g36UpperReflexWindow');
  assert.ok(lower&&magnified&&upper&&front);
- assert.ok(bounds(magnified).intersectsBox(bounds(lower)));
- assert.ok(bounds(front).intersectsBox(bounds(upper)));
- assert.ok(bounds(front).max.x>bounds(upper).max.x,
-  'upper reflex window must not be buried in the housing');
+ assert.ok(bounds(one(g,'g36LowerOpticBarrel')).intersectsBox(bounds(lower)));
+ assert.ok(bounds(magnified).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
+ assert.ok(bounds(one(g,'g36UpperReflexBarrel')).intersectsBox(bounds(upper)));
+ assert.ok(bounds(front).intersectsBox(bounds(one(g,'g36UpperReflexBarrel'))));
+ assert.ok(bounds(front).min.x<bounds(upper).min.x,
+  'O2 upper rear optical face is visible outside the hood');
  assert.ok(!one(g,'g36LowerEyepiece'),
   'remove the imperceptible P3 rear eyepiece mesh');
- assert.ok(bounds(front).max.y-bounds(front).min.y>=.65,
-  'enlarge the primary upper optic face rather than adding micro shapes');
+ assert.ok(bounds(front).max.y-bounds(front).min.y>=.48,
+  'six-facet O2 upper aperture remains legible without nested rings');
  const finishes={
   polymer:weaponFinish('hk-polymer'),steel:weaponFinish('hk-steel'),
   magazine:weaponFinish('g36-smoked-mag'),

@@ -19,10 +19,11 @@ test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',(
  assert.equal(guard.geometry.getAttribute('position').count,60);
  assert.equal(G36_LONG_FOREND_RINGS.length,3);
  assert.equal(triangles(guard),20,'exactly 16 flat side and four cap triangles');
- assert.equal(one(g,'g36LowerOptic').geometry.type,'ExtrudeGeometry',
-  'P8 production optic is one profile housing rather than a stacked box');
- for(const key of ['g36UpperReflex','g36OpticFace','g36UpperReflexWindow']){
-  assert.equal(one(g,key).geometry.type,'BoxGeometry',key+' retains simple face/crown');
+ assert.equal(one(g,'g36LowerOptic').geometry.type,'BufferGeometry',
+  'O2 production optic is one low-facet volumetric housing');
+ assert.equal(one(g,'g36UpperReflex').geometry.type,'BufferGeometry');
+ for(const key of ['g36OpticFace','g36UpperReflexWindow']){
+  assert.equal(one(g,key).geometry.type,'CircleGeometry',key+' has one low-facet dark face');
  }
  const counts=Object.fromEntries(['g36ReceiverUpper','g36ReceiverLower','g36Grip'].map(k=>[k,triangles(one(g,k))]));
  assert.ok(counts.g36ReceiverUpper<=18);

@@ -49,10 +49,10 @@ test('P5.1: dual optic is one coherent tall stack, not separate floating rails',
  for(const part of [low,high,hiFace,lowFace])assert.ok(part);
  assert.ok(box(low).intersectsBox(box(frame)));
  assert.ok(box(high).intersectsBox(box(low)));
- assert.ok(box(hiFace).intersectsBox(box(high)));
- assert.ok(box(lowFace).intersectsBox(box(low)));
+ assert.ok(box(hiFace).intersectsBox(box(one(g,'g36UpperReflexBarrel'))));
+ assert.ok(box(lowFace).intersectsBox(box(one(g,'g36LowerOpticBarrel'))));
  assert.ok(box(frame).max.z-box(frame).min.z>1.45);
- assert.ok(box(hiFace).max.x>=box(high).max.x-.05);
+ assert.ok(box(hiFace).min.x<box(high).min.x,'O2 has rear-facing oculars');
  assert.ok(Math.abs(box(g).max.y-A.opticTopY)<.01);
  clearWeaponSilhouette(g);m.dispose();
 });
