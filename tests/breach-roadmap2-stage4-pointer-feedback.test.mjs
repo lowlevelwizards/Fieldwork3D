@@ -1,6 +1,7 @@
 /** Stage 4: the new controllers exercise actual pointer/event boundaries. */
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
 import {dispatchTacticalPointerRelease}
  from '../src/breach-pointer-command-controller.ts';
 import {createBreachTacticalFrameFeedbackController}
