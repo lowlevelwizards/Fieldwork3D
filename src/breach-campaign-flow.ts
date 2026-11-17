@@ -143,7 +143,11 @@ function campaignMenu(){
  model.mode='menu';
  campaignScreen.entry(!!config.getCampaignInSlot('legacy'),
   !!config.getCampaignInSlot('sandbox'),config.getCampaignSlot(),
-  !!config.getCampaignInSlot('dispatch'));
+  !!config.getCampaignInSlot('dispatch'),'main',{
+   legacy:config.getCampaignInSlot('legacy'),
+   sandbox:config.getCampaignInSlot('sandbox'),
+   dispatch:config.getCampaignInSlot('dispatch')
+  });
 }
 function resumeSlot(slot:CampaignSlot){
  if(config.getMode()!=='menu'&&config.getMode()!=='home')return;
