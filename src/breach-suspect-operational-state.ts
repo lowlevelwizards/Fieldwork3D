@@ -12,11 +12,10 @@ export type HostileState=CombatantState&Pick<TeamActor,'side'>;
 
 /** Never permits firing at or by an actor whose surrender is recorded. */
 export function activeCombatant(actor:CombatantState):boolean{
- return Number.isFinite(actor.health)&&actor.health>0&&actor.surrendered===false;
+ return Number.isFinite(actor.health)&&actor.health>0&&actor.surrendered!==true;
 }
 /** Only a specific hostile target can satisfy an existing capture objective. */
 export function captureTargetResolved(actor:HostileState):boolean{
- return actor.side==='red'&&(
-  Number.isFinite(actor.health)&&actor.health<=0||actor.surrendered===true
- );
+ return actor.side==='red'&&Number.isFinite(actor.health)&&
+  (actor.health<=0||actor.surrendered===true);
 }
