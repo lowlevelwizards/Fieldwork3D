@@ -8,10 +8,42 @@ import {addOutline,addCuboid,addProfileFrame,
  type Outline,type SlotName} from './profile-primitives.ts';
 import {G36_B_ART as A} from './g36-art-layout.ts';
 import {G36_B_PART_IDS} from './g36-family-contract.ts';
-import {G36_MAG30_OUTLINE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
+import {G36_MAG30_OUTLINE,G36_MAG30_OUTLINE_CANDIDATE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
 import {addG36LongHandguard} from './g36-handguard-profiles.ts';
 
 export {G36_B_PART_IDS} from './g36-family-contract.ts';
+
+/** Review-only visual alternatives, all use the same real factory geometry.
+ * They never become save data, alternate weapon presets or accessory slots.
+ * The rear-biased reflex is the selected production interpretation; P6
+ * remains an explicit reference in the review lab.
+ */
+export type G36OpticArtReview='p6'|'lower-emphasis'|'rear-integrated';
+export type G36ArtReview=Readonly<{optic?:G36OpticArtReview;magazine?:'p6'|'curve'}>;
+type Prism=readonly [number,number,number,number,number,number];
+type OpticForms=Readonly<{lower:Prism;upper:Prism;lowerFace:Prism;upperFace:Prism}>;
+export const G36_OPTIC_REVIEW_FORMS:Readonly<Record<G36OpticArtReview,OpticForms>>=Object.freeze({
+ p6:{
+  lower:[-3.37,3.35,0,4.95,1.30,1.96],
+  upper:[-3.63,4.31,0,2.35,.78,1.78],
+  lowerFace:[-.86,3.57,0,.22,.94,1.16],
+  upperFace:[-2.41,4.32,0,.22,.70,1.18]
+ },
+ 'lower-emphasis':{
+  // A: make the magnified housing dominate in height, without a taller tower.
+  lower:[-3.37,3.25,0,4.95,1.48,1.96],
+  upper:[-3.63,4.31,0,2.35,.78,1.78],
+  lowerFace:[-.86,3.51,0,.22,1.05,1.16],
+  upperFace:[-2.41,4.32,0,.22,.70,1.18]
+ },
+ 'rear-integrated':{
+  // B: shift only the upper reflex rearward to sit in the handle's rear crown.
+  lower:[-3.37,3.35,0,4.95,1.30,1.96],
+  upper:[-4.11,4.31,0,2.20,.78,1.78],
+  lowerFace:[-.86,3.57,0,.22,.94,1.16],
+  upperFace:[-2.96,4.32,0,.22,.70,1.18]
+ }
+});
 
 function area(poly:Outline):number{
  return poly.reduce((sum,p,i)=>{
@@ -58,9 +90,9 @@ function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):T
  mesh.userData.g36StockOpeningCount=2;
  root.add(mesh);return mesh;
 }
-export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
+export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtReview={}):THREE.Group{
  const root=new THREE.Group();
- root.name='g36-p6-fieldwork-interpretive-master';
+ root.name='g36-p7-calibrated-fieldwork-master';
  const i:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -107,15 +139,16 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
   contour(outside,true),contour(inside,false),1.50,material);
  bridge.userData.g36HandleOpening=true;
 
- // The dual sight is TWO geometric headlines, not a miniature mechanical
- // scope model. Each receives exactly one large dark frontal face.
- const magnified=box('receiver',-3.37,3.35,0,4.95,1.30,1.96);
+ // Two bold optical forms, not an assembly of mechanical accessories.
+ // Experimental outlines are review-only and do not alter optic datums.
+ const optics=G36_OPTIC_REVIEW_FORMS[review.optic??'rear-integrated'];
+ const magnified=box('receiver',...optics.lower);
  magnified.userData.g36LowerOptic=true;
- const reflex=box('receiver',-3.63,4.31,0,2.35,.78,1.78);
+ const reflex=box('receiver',...optics.upper);
  reflex.userData.g36UpperReflex=true;
- const bigLens=box('receiver',-.86,3.57,0,.22,.94,1.16);
+ const bigLens=box('receiver',...optics.lowerFace);
  bigLens.userData.g36OpticFace=true;
- const smallLens=box('receiver',-2.41,4.32,0,.22,.70,1.18);
+ const smallLens=box('receiver',...optics.upperFace);
  smallLens.userData.g36UpperReflexWindow=true;
 
  // Four-sided wedge, no physical trigger-guard frame or micro-controls.
@@ -124,7 +157,7 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  ],2.02);
  grip.userData.g36Grip=true;
 
- const mag=outline('magazine',G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
+ const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;
 
  const guard=addG36LongHandguard(root,ids.handguard,i.handguard++,material);
