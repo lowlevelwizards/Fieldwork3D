@@ -8,7 +8,8 @@ import type {WeaponConfiguration,WeaponAttachmentSlot}
 import {physicalAttachmentFitOptions,
  type PhysicalAttachmentPlacement,type PhysicalAttachmentFit}
  from './weapon-physical-mount-fit.ts';
-import {mountSelectionCandidate} from './weapon-mount-position.ts';
+import {mountSelectionCandidate,mountSelectionDistance}
+ from './weapon-mount-position.ts';
 import type {MountableSlot} from './weapon-mount-selections.ts';
 
 export type AccessoryVolume=Readonly<{
@@ -101,11 +102,15 @@ export function resolveMountedAccessoryLayout(c:WeaponConfiguration):AccessoryLa
   const slot=fit.options[0]?.attachmentSlot as MountableSlot|undefined;
   const chosen=slot?c.mountSelections?.[slot]:undefined;
   const options=chosen?fit.options.filter(p=>
-   mountSelectionCandidate(c,chosen,p)):fit.options;
-  // Explicit placements are constraints, not suggestions to overwrite.
-  // Filter before slicing, otherwise a rear-mounted light may disappear.
+   mountSelectionCandidate(c,chosen,p)).sort((a,b)=>
+    mountSelectionDistance(c,chosen,a)-mountSelectionDistance(c,chosen,b))
+   .slice(0,1):fit.options.slice(0,8);
+  // One user-selected contact means ONE physical location. Retaining every
+  // candidate inside a broad migration tolerance made slider steps jump
+  // backwards, and could quietly resolve onto an adjacent rail tooth.
+  // If the closest contact collides, report a conflict, never auto-reposition.
   return {id,fit,locked:!!chosen,
-   candidates:options.map(mountedSeatFromPlacement).slice(0,8)};
+   candidates:options.map(mountedSeatFromPlacement)};
  });
  // Bounded search, at most 4 slots x 8 candidates. Preserve prior optic
  // before grip, then light. When equally feasible, preserve preferred
