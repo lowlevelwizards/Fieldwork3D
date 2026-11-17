@@ -7,6 +7,7 @@ import {isDispatchPilot,mayChooseCampaignContent}
  from './dispatch-campaign-eligibility.ts';
 import {campaignIncidentView} from './dispatch-incident-view.ts';
 import {dispatchCaseDossier} from './dispatch-case-dossier.ts';
+import {dispatchCaseCloseout} from './dispatch-case-closeout.ts';
 import {historicalDispatchIncident} from './dispatch-incident-context.ts';
 import {initialDispatchDepartment,dispatchStandingTier}
  from './dispatch-department.ts';
@@ -572,6 +573,31 @@ export class CampaignScreen{
       ' ('+(prior?.outcome.toUpperCase()??'UNKNOWN')+')'));
     }
     chronicle.append(trail);
+   }
+   // A read-only comparison of reported leads and settled outcome evidence.
+   // Closed by default: the primary eight-operation log stays compact.
+   const closeouts=c.history.slice(-4).reverse()
+    .map(report=>dispatchCaseCloseout(c,report))
+    .filter((entry):entry is NonNullable<typeof entry>=>!!entry);
+   if(closeouts.length){
+    const notes=node('details','campaign-case-history');
+    notes.append(node('summary','',
+     'OPERATION CLOSEOUT NOTES · '+closeouts.length+' RECENT'));
+    for(const entry of closeouts){
+     const item=node('div','campaign-case-closeout');
+     item.append(node('strong','',
+      'DAY '+entry.day+' · '+entry.title));
+     item.append(node('p','campaign-note',
+      'REPORTED / UNCONFIRMED · '+entry.reported));
+     item.append(node('p','campaign-note',
+      'RECORDED OUTCOME · '+entry.recorded));
+     item.append(node('p','campaign-note',
+      'FORCE EVIDENCE · '+entry.forceEvidence));
+     item.append(node('p','campaign-note',
+      'CASE RELATIONSHIP · '+entry.relationship));
+     notes.append(item);
+    }
+    chronicle.append(notes);
    }
    const awarded=c.history.slice(-8).flatMap(h=>
     h.dispatchCareer?.recognitions.map(name=>({
