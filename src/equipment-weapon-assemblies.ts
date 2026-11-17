@@ -11,6 +11,7 @@ import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
+import {opticProfile} from './weapons/geometry/optic-profiles.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
  type FamilyPartSlot,type WeaponFamilyBuild}
@@ -55,6 +56,12 @@ export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
   massKg:.16,massX:2,mountX:0,mountY:2.6,mountZ:0,sightHeight:4.4},
  'optic-magnified':{id:'optic-magnified',name:'Magnified Optic',slot:'optic',compatible:LONG,
   massKg:.46,massX:1,mountX:-1,mountY:2.6,mountZ:0,sightHeight:4.8},
+ 'optic-kashtan-ak':{id:'optic-kashtan-ak',name:'1P78 Kashtan · AK Side Mount',
+  slot:'optic',compatible:LONG,massKg:.49,massX:-1.80,
+  mountX:-1.80,mountY:4.72,mountZ:-.48,sightHeight:4.72},
+ 'optic-kashtan-p':{id:'optic-kashtan-p',name:'1P78 Kashtan P · Picatinny',
+  slot:'optic',compatible:LONG,massKg:.41,massX:-1.52,
+  mountX:-1.52,mountY:4.55,mountZ:0,sightHeight:4.55},
  /** Factory rail (AR/railed AK) is still integral; none means no added mount. */
  'optic-mount-none':{id:'optic-mount-none',name:'No Added Optic Mount',
   slot:'opticMount',compatible:ALL,massKg:0,massX:0,
@@ -160,11 +167,20 @@ export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  // The SD is integral: never overlay a second detachable suppressor.
  if(slot==='muzzle'&&build.parts.receiver==='hk-mp5sd-integral')
   return id==='muzzle-bare';
- if(slot==='optic'&&id!=='optic-irons')
+ if(slot==='optic'&&id!=='optic-irons'){
+  const optic=opticProfile(id);
+  if(!optic||optic.mount.standard==='integrated')return false;
+  // A direct side optic consumes the receiver dovetail; it cannot coexist
+  // with an independent Picatinny bridge on that same physical interface.
+  if(optic.mount.standard==='ak-side-dovetail')
+   return mount==='optic-mount-none'&&build.family==='ak'&&
+    supports('optic','ak-side-dovetail');
+  if(optic.mount.standard!=='picatinny')return false;
   return supports('optic','picatinny')||
    (mount==='optic-hk-claw'&&supports('opticMount','hk-claw'))||
    (mount==='optic-ak-side-picatinny'&&
     supports('opticMount','ak-side-dovetail'));
+ }
  if(slot==='foregrip'&&id!=='foregrip-none')
   return supports('foregrip','picatinny');
  return true;
