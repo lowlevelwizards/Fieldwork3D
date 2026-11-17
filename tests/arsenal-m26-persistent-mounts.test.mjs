@@ -13,6 +13,8 @@ import {arsenalRecipeFromLegacy,arsenalRecipeToLegacy,readArsenalRecipe,
 import {createSavedArsenalBuild,readArsenalBuildLibrary,
  emptyArsenalBuildLibrary} from '../src/arsenal/saved-builds.ts';
 import {weaponLightEmitter} from '../src/equipment-weapon-light-beam.ts';
+import {opticVisualSeat} from '../src/weapons/geometry/optic-visual-seating.ts';
+import {resolveWeaponAssembly} from '../src/equipment-weapon-assemblies.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 const ar=()=>selectWeaponFamilyPreset(initialWeaponConfiguration('carbine'),'ar-m4a1');
 const light=()=>setWeaponAttachment(ar(),'light','light-compact');
@@ -95,4 +97,24 @@ test('M2.6B rejects phantom or unrelated mount without changing ownership',()=>{
  assert.strictEqual(chooseWeaponMountPosition(c,'light',wrong),c);
  const unmounted=ar();
  assert.strictEqual(chooseWeaponMountPosition(unmounted,'light',left),unmounted);
+});
+
+test('M2.6C optic renderer consumes exact saved physical layout, not default first candidate',()=>{
+ let c=setWeaponAttachment(ar(),'optic','optic-reflex');
+ assert.equal(c.slots.optic,'optic-reflex');
+ const available=physicalAttachmentFitOptions(c,'optic-reflex').options;
+ assert.ok(available.length>0);
+ const at=available[available.length-1];
+ const selected=chooseWeaponMountPosition(c,'optic',at);
+ assert.ok(selected.mountSelections?.optic);
+ const resolved=mountedAccessorySeat(selected,'optic');
+ assert.ok(resolved);
+ const visual=opticVisualSeat(selected,resolveWeaponAssembly(selected).mounted.optic.mountX);
+ assert.equal(visual.x,resolved.x);
+ assert.equal(visual.mount,'ar-top');
+ const invalid=readWeaponConfiguration({...selected,
+  mountSelections:{optic:{...selected.mountSelections.optic,
+   ownerPartId:'fictional-receiver'}}},selected.weapon);
+ assert.equal(opticVisualSeat(invalid,
+  resolveWeaponAssembly(invalid).mounted.optic.mountX).mount,'unresolved');
 });
