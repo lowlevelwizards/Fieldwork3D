@@ -7,7 +7,8 @@ import {DISPATCH_PRESETS,createDispatchSetup,dispatchPresetDraft,
 import {dispatchCreationReview} from '../src/dispatch-campaign-review.ts';
 import {dispatchDepartmentView} from '../src/dispatch-department-view.ts';
 import {newDispatchPilotCampaign} from '../src/dispatch-campaign-starter.ts';
-import {readCampaign} from '../src/campaign-state.ts';
+import {readCampaign,acceptContract,resolveOperation,hireRecruit} from '../src/campaign-state.ts';
+import {weaponOwnershipIssues} from '../src/equipment-weapon-ownership.ts';
 
 const source=path=>readFileSync(new URL('../'+path,import.meta.url),'utf8');
 
@@ -40,6 +41,7 @@ test('D13.4 individual edits are not reset or mislabeled as unchanged presets',(
  assert.match(view.time,/Fixed starting reference/);
  const campaign=newDispatchPilotCampaign(4242,customized);
  assert.equal(dispatchDepartmentView(campaign).preset,view.title);
+ assert.equal(campaign.name,'Dispatch Customized Department Career');
  const restored=readCampaign(JSON.stringify(campaign));
  assert.ok(restored);
  assert.equal(dispatchDepartmentView(restored).preset,view.title);
@@ -72,4 +74,34 @@ test('D13.4 creator previews choices before save without altering the rule autho
  assert.match(ui,/for\(const select of selects\)select\.addEventListener\('change',refresh\)/);
  assert.match(css,/campaign-creator-review-row/);
  assert.match(source('src/dispatch-department-view.ts'),/dispatchSetupDisplayLabel\(setup\)/);
+});
+
+test('D13.5 two-chapter service continuity survives round-trip with original owners intact',()=>{
+ let c=newDispatchPilotCampaign(1342,dispatchPresetDraft('decades'));
+ const oldSerials=c.operators.map(o=>o.weaponSerialId);
+ const startingIds=c.operators.map(o=>o.id);
+ for(let i=0;i<10;i++){
+  const job=c.contracts.find(x=>x.status==='available'&&x.deadline>=c.day);
+  assert.ok(job);
+  const accepted=acceptContract(c,job.id);
+  c=resolveOperation(accepted,{id:'d13b-'+i,contractId:job.id,
+   day:accepted.day,outcome:'success',grade:'B',elapsed:45,
+   participatingIds:startingIds.slice(0,1),casualties:[],objective:true,events:[]});
+ }
+ const before=dispatchDepartmentView(c);
+ assert.equal(before.completed,10);
+ assert.equal(before.chapterJustUnlocked,true);
+ assert.match(before.chapterLabel,/2015/);
+ const saved=readCampaign(JSON.stringify(c));
+ assert.ok(saved);
+ assert.equal(saved.history.length,10);
+ assert.deepEqual(saved.operators.map(o=>o.weaponSerialId),oldSerials);
+ assert.deepEqual(saved.dispatchDepartment,c.dispatchDepartment);
+ assert.equal(dispatchDepartmentView(saved).chapterLabel,before.chapterLabel);
+ const recruit=hireRecruit({...saved,funds:5000});
+ assert.equal(recruit.operators.at(-1).weapon,'carbine');
+ assert.equal(recruit.operators[0].weapon,'smg');
+ assert.deepEqual(recruit.operators.slice(0,oldSerials.length).map(o=>o.weaponSerialId),
+  oldSerials);
+ assert.deepEqual(weaponOwnershipIssues(recruit),[]);
 });
