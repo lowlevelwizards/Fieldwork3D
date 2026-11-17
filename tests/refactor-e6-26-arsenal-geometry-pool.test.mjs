@@ -119,4 +119,20 @@ test('E6.26 idle eviction reclaims only unused compiled geometry',()=>{
  assert.equal(pool.stats().geometries,0);
  assert.equal(pool.stats().evictions,1);
 });
+test('E6.26 overflowing budget evicts idle LRU, never a live part',()=>{
+ const pool=new ArsenalWeaponGeometryPool(1);
+ const a=group(3),b=group(5),c=group(7);
+ pool.adopt(a.root);pool.adopt(b.root);
+ // No unleased slot: a is still in a visible owner, so b must remain local.
+ assert.equal(pool.stats().geometries,1);
+ assert.notEqual(a.mesh.geometry,b.mesh.geometry);
+ pool.release(a.root);
+ pool.adopt(c.root);
+ assert.equal(pool.stats().geometries,1);
+ assert.equal(pool.stats().evictions,1);
+ assert.ok(pool.stats().misses>=2);
+ pool.release(b.root);pool.release(c.root);pool.clear();
+ assert.equal(pool.stats().geometries,0);
+});
+
 steel.dispose();dark.dispose();
