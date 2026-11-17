@@ -54,9 +54,15 @@ export function mountPickerState(recipe:ArsenalRecipeV2,
   // Bounded evaluation only on Workbench state changes, never in RAF.
   // A physical foot may fit individually but collide with another mount.
   const viable=items.filter(choice=>{
+   const current=mountedAccessorySeat(config,slot)?.placement;
+   if(current&&current.ownerPartId===choice.ownerPartId&&
+    current.surfaceId===choice.surfaceId&&current.face===choice.face&&
+    Math.abs(current.x-choice.x)<.04)return true;
    const next=chooseWeaponMountPosition(config,slot,choice);
-   return next!==config&&
-    mountedAccessorySeat(next,slot)?.placement.face===choice.face;
+   const seated=mountedAccessorySeat(next,slot)?.placement;
+   return next!==config&&!!seated&&seated.face===choice.face&&
+    seated.ownerPartId===choice.ownerPartId&&
+    Math.abs(seated.x-choice.x)<.72;
   });
   if(viable.length)rails.push({
    key,face:viable[0].face,ownerPartId:viable[0].ownerPartId,
