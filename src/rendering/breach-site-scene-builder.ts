@@ -37,6 +37,7 @@ import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
+import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
 import type {RepeatedFixtureBatches} from './breach-repeated-fixture-batches.ts';
 import {isArchitecturalSillCover} from '../worldgen/architectural-cover-visuals.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
@@ -94,6 +95,13 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
       host.staticBatches.collect(door.root,door.frame,
         host.sharedBoxGeometries,new Set([door.threshold,door.wedge]));
     host.staticBatches.flush(host.root);
+    // E6.18: preserve the existing cross-owner instancing first, then
+    // merge ONLY residual rigid geometry under the same disclosure owner.
+    // Diagnostic URL override is used solely for deterministic A/B evidence.
+    const e618Enabled=typeof location==='undefined'||
+      new URLSearchParams(location.search).get('e618Batch')!=='0';
+    if(e618Enabled)consolidateOwnedStaticSiteDetails(
+      host.observedDetails,host.doors);
     // Bake immobile exterior/ground fixtures per spatial cell. Keep owner-
     // scoped doors, cover and fog groups independent; never touch descendants.
     consolidateStaticFixtureParts(host.root,{recursive:false,cellSize:220});
