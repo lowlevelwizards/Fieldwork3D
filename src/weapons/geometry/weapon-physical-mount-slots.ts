@@ -36,6 +36,10 @@ export type PhysicalMountSlot=Readonly<{
   * of an accessory or permission to bridge onto neighboring geometry.
   */
  contactStartX:number;contactEndX:number;
+ /** The continuous structural rail body or bridge supporting this tooth.
+  * Unlike the decorative tooth's X span, this is the clamp clearance bound.
+  */
+ railStartX:number;railEndX:number;
  /** Locations on one continuous support share this owner/face group. */
  groupId:string;
  /** Four HK claw feet form a single inseparable adapter mount. */
@@ -54,6 +58,7 @@ function slot(source:WeaponMountSurface,
  face:PhysicalMountFace,support:PhysicalMountSupport,
  index:number,x:number,y:number,z:number,
  contactStartX:number,contactEndX:number,
+ railStartX:number,railEndX:number,
  requiresGroup?:'hk-claw-four-foot'):PhysicalMountSlot{
  const surfaceId=source.id;
  const groupId=surfaceId+':'+face;
@@ -64,7 +69,7 @@ function slot(source:WeaponMountSurface,
   x,y,z,
   normalX:0,normalY:face==='top'?1:face==='bottom'?-1:0,
   normalZ:face==='left'?-1:face==='right'?1:0,
-  contactStartX,contactEndX,groupId,
+  contactStartX,contactEndX,railStartX,railEndX,groupId,
   ...(requiresGroup?{requiresGroup}:{})
  };
 }
@@ -72,14 +77,14 @@ function slot(source:WeaponMountSurface,
 /** Instanced AR teeth use the exact formula in addARRailSegments. */
 function arToothSlots(source:WeaponMountSurface,face:PhysicalMountFace,
  count:number,startX:number,endX:number,
- y:number,z:number):PhysicalMountSlot[]{
+ y:number,z:number,railStartX:number,railEndX:number):PhysicalMountSlot[]{
  const result:PhysicalMountSlot[]=[];
  const span=endX-startX;
  for(let i=0;i<count;i++){
   const x=startX+.80+i*(span-1.60)/(count-1);
   // addARRailSegments authors teeth with X width .66.
   result.push(slot(source,face,'rail-tooth',i,x,y,z,
-   x-.33,x+.33));
+   x-.33,x+.33,railStartX,railEndX));
  }
  return result;
 }
@@ -94,7 +99,7 @@ function continuousSlots(source:WeaponMountSurface,face:PhysicalMountFace,
  const span=endX-startX;
  return [.25,.5,.75].map((fraction,i)=>
   slot(source,face,'continuous-rail',i,
-   startX+span*fraction,y,z,startX,endX));
+   startX+span*fraction,y,z,startX,endX,startX,endX));
 }
 
 function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
@@ -102,7 +107,7 @@ function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
  const part=source.ownerPartId;
  if(part==='ar-flat'&&source.role==='optic'&&source.face==='top'){
   // Receiver builder: [-5.3,2.3], three teeth, topY=2.84.
-  result.push(...arToothSlots(source,'top',3,-5.3,2.3,3.01,0));
+  result.push(...arToothSlots(source,'top',3,-5.3,2.3,3.01,0,-5.65,2.65));
   return;
  }
  if(AR_RAIL_HANDGUARDS.has(part)&&source.ownerSlot==='handguard'){
@@ -111,7 +116,8 @@ function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
   const ris=part==='ar-risii';
   if(source.role==='foregrip'&&source.face==='bottom'){
    const bottomY=(ris?-1.47:-1.65)-.17;
-   result.push(...arToothSlots(source,'bottom',count,start,end,bottomY,0));
+   result.push(...arToothSlots(source,'bottom',count,start,end,bottomY,0,
+    start+.35,end-.35));
   }else if(source.role==='light'&&source.face==='side'&&
    part!=='ar-compact-rail'){
    // Compact rail is fully covered on both sides; no teeth are generated.
@@ -119,7 +125,7 @@ function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
    // the *outer* face 2.39+.18, not the tooth center from M1.
    for(const face of sides)
     result.push(...arToothSlots(source,face,count,start,end,
-     .59,sideSign(face)*2.57));
+     .59,sideSign(face)*2.57,start+.60,end-.60));
   }
   return;
  }
@@ -150,7 +156,7 @@ function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
    for(const face of sides)
     result.push(slot(source,face,'claw-foot',index,x,1.75,
      sideSign(face)*HK_CLAW_VISUAL.footZ,x-.62,x+.64,
-     'hk-claw-four-foot'));
+     x-.62,x+.64,'hk-claw-four-foot'));
   return;
  }
  if(part==='optic-hk-claw'&&source.ownerSlot==='opticMount'&&
