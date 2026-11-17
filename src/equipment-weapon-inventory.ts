@@ -8,6 +8,8 @@ import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,
 export const ATTACHMENT_PRICES:Readonly<Record<string,number>>={
  'optic-mount-none':0,'optic-irons':0,'optic-reflex':120,'optic-magnified':220,
  'optic-hk-claw':110,
+ 'optic-ak-side-picatinny':125,
+ 'optic-kashtan-ak':285,'optic-kashtan-p':285,
  'muzzle-bare':0,'muzzle-hider':70,'muzzle-brake':95,'muzzle-suppressor':280,
  'foregrip-none':0,'foregrip-handstop':45,'foregrip-vertical':75,
  'stock-standard':0,'stock-compact':90,'stock-extended':110,

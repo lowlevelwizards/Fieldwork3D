@@ -11,6 +11,8 @@ import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
+import {opticProfile} from './weapons/geometry/optic-profiles.ts';
+import {physicalWeaponMountSlots} from './weapons/geometry/weapon-physical-mount-slots.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
  type FamilyPartSlot,type WeaponFamilyBuild}
@@ -55,6 +57,12 @@ export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
   massKg:.16,massX:2,mountX:0,mountY:2.6,mountZ:0,sightHeight:4.4},
  'optic-magnified':{id:'optic-magnified',name:'Magnified Optic',slot:'optic',compatible:LONG,
   massKg:.46,massX:1,mountX:-1,mountY:2.6,mountZ:0,sightHeight:4.8},
+ 'optic-kashtan-ak':{id:'optic-kashtan-ak',name:'1P78 Kashtan · AK Side Mount',
+  slot:'optic',compatible:LONG,massKg:.49,massX:-1.80,
+  mountX:-1.80,mountY:4.72,mountZ:-.48,sightHeight:4.72},
+ 'optic-kashtan-p':{id:'optic-kashtan-p',name:'1P78 Kashtan P · Picatinny',
+  slot:'optic',compatible:LONG,massKg:.41,massX:-1.52,
+  mountX:-1.52,mountY:4.55,mountZ:0,sightHeight:4.55},
  /** Factory rail (AR/railed AK) is still integral; none means no added mount. */
  'optic-mount-none':{id:'optic-mount-none',name:'No Added Optic Mount',
   slot:'opticMount',compatible:ALL,massKg:0,massX:0,
@@ -63,6 +71,13 @@ export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
  'optic-hk-claw':{id:'optic-hk-claw',name:'HK Claw Top Rail',
   slot:'opticMount',compatible:RAIL,massKg:.14,massX:-1.60,
   mountX:-1.60,mountY:4.05,mountZ:0,sightHeight:4.35},
+ /** Receiver-specific Soviet/Russian-style side bracket; neither a factory
+  * optic nor an adapter fitted automatically to every AK.
+  */
+ 'optic-ak-side-picatinny':{id:'optic-ak-side-picatinny',
+  name:'AK Side-Dovetail Picatinny Bridge',slot:'opticMount',
+  compatible:LONG,massKg:.18,massX:-2.02,
+  mountX:-2.02,mountY:3.36,mountZ:0,sightHeight:4.50},
  'muzzle-bare':{id:'muzzle-bare',name:'Bare Muzzle',slot:'muzzle',compatible:ALL,
   massKg:0,massX:19.5,mountX:19.5,mountY:0,mountZ:0,muzzleExtension:0},
  'muzzle-hider':{id:'muzzle-hider',name:'Flash Hider',slot:'muzzle',compatible:ALL,
@@ -143,17 +158,30 @@ export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  const receiverMounts=FAMILY_PARTS[build.parts.receiver]?.mounts??[];
  const handguardMounts=FAMILY_PARTS[build.parts.handguard]?.mounts??[];
  const supports=(role:'optic'|'opticMount'|'foregrip',
-  standard:'picatinny'|'hk-claw')=>
+  standard:'picatinny'|'hk-claw'|'ak-side-dovetail')=>
   [...receiverMounts,...handguardMounts].some(point=>
    point.role===role&&point.standard===standard);
  if(slot==='opticMount')return id==='optic-mount-none'||
-  (id==='optic-hk-claw'&&supports('opticMount','hk-claw'));
+  (id==='optic-hk-claw'&&supports('opticMount','hk-claw'))||
+  (id==='optic-ak-side-picatinny'&&
+   supports('opticMount','ak-side-dovetail'));
  // The SD is integral: never overlay a second detachable suppressor.
  if(slot==='muzzle'&&build.parts.receiver==='hk-mp5sd-integral')
   return id==='muzzle-bare';
- if(slot==='optic'&&id!=='optic-irons')
+ if(slot==='optic'&&id!=='optic-irons'){
+  const optic=opticProfile(id);
+  if(!optic||optic.mount.standard==='integrated')return false;
+  // A direct side optic consumes the receiver dovetail; it cannot coexist
+  // with an independent Picatinny bridge on that same physical interface.
+  if(optic.mount.standard==='ak-side-dovetail')
+   return mount==='optic-mount-none'&&build.family==='ak'&&
+    supports('optic','ak-side-dovetail');
+  if(optic.mount.standard!=='picatinny')return false;
   return supports('optic','picatinny')||
-   (mount==='optic-hk-claw'&&supports('opticMount','hk-claw'));
+   (mount==='optic-hk-claw'&&supports('opticMount','hk-claw'))||
+   (mount==='optic-ak-side-picatinny'&&
+    supports('opticMount','ak-side-dovetail'));
+ }
  if(slot==='foregrip'&&id!=='foregrip-none')
   return supports('foregrip','picatinny');
  return true;
@@ -201,6 +229,13 @@ export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttach
  if(!WEAPON_ATTACHMENT_SLOTS.includes(slot)||
   !weaponAttachmentAllowed(config,slot,id))return config;
  if(config.slots[slot]===id)return config;
+ // Tighten NEW installations only. The V1 reader still retains historical
+ // items without destructively rewriting saves or Campaign stock.
+ if(config.build&&
+  ((slot==='light'&&id!=='light-none')||
+   (slot==='foregrip'&&id!=='foregrip-none'))&&
+  !physicalWeaponMountSlots(config.build,config.slots.opticMount).some(s=>
+   s.role===slot&&s.standard==='picatinny'))return config;
  // Removing a mount makes its optic invalid: reset just that dependency.
  // Keep this as one immutable transaction without introducing V2 saves.
  return readWeaponConfiguration({...config,
@@ -273,7 +308,15 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
    slot==='optic'&&build?.family==='hk'&&
     config.slots.opticMount==='optic-hk-claw'&&original.id!=='optic-irons'?
     {...original,mountX:original.mountX-1.60,mountY:original.mountY+1.50,
-     sightHeight:(original.sightHeight??2.6)+1.50}:original;
+     sightHeight:(original.sightHeight??2.6)+1.50}:
+   slot==='optic'&&build?.family==='ak'&&
+    config.slots.opticMount==='optic-ak-side-picatinny'&&
+    original.id!=='optic-irons'?
+    // Preserve gameplay optic type; its rearward side bridge is visible
+    // only with the separately selected adapter.
+    {...original,mountX:original.mountX-2.02,
+     mountY:original.mountY+.76}:
+    original;
   mounted[slot]=part;
   mass+=part.massKg;weighted+=part.massKg*part.massX;
   inertia+=part.massKg*part.massX*part.massX;

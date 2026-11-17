@@ -10,6 +10,7 @@ import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts'
 import {measureVisibleStockContact}
  from './breach-stock-contact-surface.ts';
 import {addHKClawRail} from './weapons/geometry/hk-rail-accessories.ts';
+import {addAKSidePicatinnyAdapter} from './weapons/geometry/ak-side-mount-geometry.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
 type Part=readonly [number,number,number,number,number,number,0|1];
 /** x, y, z, width, height, depth, material (0=steel, 1=dark). */
@@ -63,6 +64,9 @@ export function buildWeaponSilhouette(id:WeaponId,
    !config||config.slots.muzzle==='muzzle-bare');
   if(familyBuild.family==='hk'&&config?.slots.opticMount==='optic-hk-claw')
    addHKClawRail(root);
+  if(familyBuild.family==='ak'&&
+   config?.slots.opticMount==='optic-ak-side-picatinny')
+   addAKSidePicatinnyAdapter(root);
   // Read-only art datum. Build-time only, never a second shot socket.
   root.userData.visibleStockContact=config?
     measureVisibleStockContact(root,config):null;

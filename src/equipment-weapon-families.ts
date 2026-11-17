@@ -15,7 +15,7 @@ type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762'|'fnc556'|'g36p
  * The renderer derives physical bounds from the same geometry landmarks.
  * Do not treat these as saved attachment IDs or gameplay/ballistic sockets.
  */
-export type PartMountStandard='picatinny'|'hk-claw';
+export type PartMountStandard='picatinny'|'hk-claw'|'ak-side-dovetail';
 export type PartMountRole='optic'|'opticMount'|'foregrip'|'light';
 export type PartMountFace='top'|'bottom'|'side';
 export type PartMountInterface=Readonly<{
@@ -25,6 +25,12 @@ const RECEIVER_TOP:readonly PartMountInterface[]=[
  {standard:'picatinny',role:'optic',face:'top'}];
 const CLAW_RECEIVER:readonly PartMountInterface[]=[
  {standard:'hk-claw',role:'opticMount',face:'top'}];
+/** Direct-fit side optics may later reuse this interface without forcing an
+ * extra Picatinny adapter. Neither optic identity nor adapter is implicit.
+ */
+const AK_SIDE_RECEIVER:readonly PartMountInterface[]=[
+ {standard:'ak-side-dovetail',role:'opticMount',face:'side'},
+ {standard:'ak-side-dovetail',role:'optic',face:'side'}];
 const FOREND_PICATINNY:readonly PartMountInterface[]=[
  {standard:'picatinny',role:'foregrip',face:'bottom'},
  {standard:'picatinny',role:'light',face:'side'}];
@@ -55,9 +61,9 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'ar-flat':add('ar-flat','Flat-top receiver','ar','receiver',{feed:'stanag',role:'both',mounts:RECEIVER_TOP}),
  'akm':add('akm','AKM stamped receiver','ak','receiver',{feed:'ak762',role:'rifle'}),
  'ak74':add('ak74','AK-74 receiver','ak','receiver',{feed:'ak545',role:'rifle'}),
- 'ak74m':add('ak74m','AK-74M receiver','ak','receiver',{feed:'ak545',role:'rifle'}),
- 'ak103':add('ak103','AK-103 receiver','ak','receiver',{feed:'ak762',role:'rifle'}),
- 'ak105':add('ak105','AK-105 carbine receiver','ak','receiver',{feed:'ak545',role:'carbine'}),
+ 'ak74m':add('ak74m','AK-74M receiver','ak','receiver',{feed:'ak545',role:'rifle',mounts:AK_SIDE_RECEIVER}),
+ 'ak103':add('ak103','AK-103 receiver','ak','receiver',{feed:'ak762',role:'rifle',mounts:AK_SIDE_RECEIVER}),
+ 'ak105':add('ak105','AK-105 carbine receiver','ak','receiver',{feed:'ak545',role:'carbine',mounts:AK_SIDE_RECEIVER}),
  'ak-rpk74':add('ak-rpk74','RPK-74 support receiver','ak','receiver',{feed:'ak545',role:'rifle'}),
  'akcompact':add('akcompact','AKS-74U compact receiver','ak','receiver',{feed:'ak545',role:'carbine'}),
  'hk-g3-early':add('hk-g3-early','Early G3 flip-sight stamped receiver','hk','receiver',{feed:'hk762',role:'rifle',mounts:CLAW_RECEIVER}),

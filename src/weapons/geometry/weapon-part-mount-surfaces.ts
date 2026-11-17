@@ -12,6 +12,7 @@ import {hkBarrelArt} from './hk-barrel-profiles.ts';
 import {AR_HANDGUARD_START,arHandguardEnd,akHandguardStart}
  from '../../breach-weapon-contact-zones.ts';
 import {HK_CLAW_VISUAL} from './hk-rail-accessories.ts';
+import {AK_SIDE_MOUNT_ART} from './ak-side-mount-geometry.ts';
 export type WeaponMountSurface=Readonly<{
  id:string;ownerPartId:string;ownerSlot:FamilyPartSlot|'opticMount';
  standard:PartMountStandard;role:PartMountRole;face:PartMountFace;
@@ -38,6 +39,27 @@ export function weaponPartMountSurfaces(build:WeaponFamilyBuild,
   // addARRailSegments: -5.3..2.3, three teeth centred -4.5/-1.5/+1.5
   // at Y=2.84, each tooth .34 tall.
   add('receiver',[-5.3,2.3],3.01,0);
+ }
+ if(build.family==='ak'){
+  const owner=FAMILY_PARTS[build.parts.receiver];
+  const d=AK_SIDE_MOUNT_ART;
+  const side=owner?.mounts?.filter(m=>m.standard==='ak-side-dovetail')??[];
+  // A real, receiver-owned left dovetail. A classic AK without this
+  // declared physical geometry must not gain an imaginary adapter point.
+  for(const mount of side){
+   result.push({id:owner.id+':'+mount.role+':left',
+    ownerPartId:owner.id,ownerSlot:'receiver',
+    standard:mount.standard,role:mount.role,face:'side',
+    startX:d.startX,endX:d.endX,y:d.contactY,z:d.contactZ});
+  }
+  if(opticMount==='optic-ak-side-picatinny'&&
+   side.some(m=>m.role==='opticMount')){
+   result.push({id:'optic-ak-side-picatinny:top',
+    ownerPartId:'optic-ak-side-picatinny',ownerSlot:'opticMount',
+    standard:'picatinny',role:'optic',face:'top',
+    startX:d.bridgeStartX,endX:d.bridgeEndX,
+    y:d.bridgeTopY,z:0});
+  }
  }
  if(build.family==='hk'){
   // Receiver lugs can take the claw *adapter*, not optics directly.
@@ -106,6 +128,9 @@ export function preferredOpticMountSurface(build:WeaponFamilyBuild,
  // AK's railed fore-end is a forward-mount compromise until per-optic
  // eye-relief/footprint mechanics are added (no silent old save migrations).
  return surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='opticMount')??
-  surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='receiver')??
+  // A receiver side dovetail is for a *direct-fit* proprietary optic,
+  // never an uninstalled generic Picatinny reflex sight.
+  surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='receiver'&&
+   s.face==='top'&&s.standard==='picatinny')??
   surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='handguard');
 }
