@@ -808,6 +808,10 @@ export class CampaignScreen{
    // without forcing eight separate expanded report bodies into the log.
    const recordDetail=node('details','campaign-operation-detail');
    recordDetail.append(node('summary','','OPERATION DETAILS'));
+   const involved=report.participatingIds.map(id=>
+    c.operators.find(o=>o.id===id)?.callsign??id);
+   recordDetail.append(node('p','campaign-operation-participants',
+    'PARTICIPATING · '+(involved.join(' · ')||'NONE RECORDED')));
    if(incident)recordDetail.append(node('small','campaign-operation-reference',incident.reference));
    if(incident&&(report.dispatchForce||report.dispatchCareer)){
     const detail=node('details','campaign-operation-evidence');
