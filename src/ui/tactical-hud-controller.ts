@@ -239,23 +239,32 @@ export function createTacticalHudController(
     hudHeight.sync(input.tacticalHud);
     if(!shown||!actor)return;
     const index=node?actor.plan.findIndex(n=>n.id===node.id)+1:0;
-    const scope=node?'WAYPOINT '+String(index).padStart(2,'0'):
-      input.selectedActiveWatch&&input.watchTargetPresent?
-        'WATCH TARGET':'OPERATOR / HERE';
+    const validWaypoint=!!node&&index>0;
+    const watchSelected=!validWaypoint&&input.selectedActiveWatch&&
+      input.watchTargetPresent;
+    // The WATCH marker selects a target to move/delete, but the state buttons
+    // still act on the operator HERE; they must not pretend to edit the marker.
+    const scope=validWaypoint?'WAYPOINT '+String(index).padStart(2,'0'):
+      watchSelected?'HERE · WATCH SELECTED':'HERE';
+    const scopeTarget=validWaypoint?
+      actor.name+' at waypoint '+index:
+      actor.name+' at current position';
+    writeDomAttribute(quickStates,'data-scope-kind',
+      validWaypoint?'waypoint':watchSelected?'watch':'operator');
     const quickScope=input.scopeElement;
     // Scope is provided by the existing HUD mount; no duplicate DOM.
     if(quickScope){
+      const queue=actor.plan.length;
       writeDomText(quickScope,actor.name.toUpperCase()+' · '+scope+
+        (queue?' · '+queue+' QUEUED':' · NO ORDERS')+
         (actor.aimInstruction?.mode==='track'&&actor.pace!=='run'?
           ' · WATCH ACTIVE':''));
-      quickScope.title=node?
-        'Commands apply when '+actor.name+' reaches waypoint '+index:
-        input.selectedActiveWatch&&input.watchTargetPresent?
-          'The active WATCH point can be dragged or deleted from its marker':
-          'Commands apply to '+actor.name+' at their current position';
+      quickScope.title='These settings apply to '+scopeTarget+
+        (watchSelected?'; the selected WATCH marker is edited on the map':'');
     }
-    writeDomAttribute(quickStates,'aria-label',actor.name+' · '+scope+' commands');
-    const current=input.plannedControl(node?.id);
+    writeDomAttribute(quickStates,'aria-label',
+      'Commands for '+scopeTarget+(watchSelected?'; WATCH marker selected':''));
+    const current=input.plannedControl(validWaypoint?node?.id:undefined);
     const choices=contextActionChoices({
       door:false,node:!!node,flashRemaining:state.flashRemaining,
       posture:current.posture,pace:current.pace,
@@ -276,8 +285,8 @@ export function createTacticalHudController(
       const nextTitle=choice.title??choice.label;
       if(button.title!==nextTitle)button.title=nextTitle;
       input.installHelp(button);
-      writeDomAttribute(button,'aria-label',(node?'Waypoint: ':'Operator: ')+
-        choice.label+'. '+(choice.title??''));
+      writeDomAttribute(button,'aria-label',
+        scopeTarget+': '+choice.label+'. '+(choice.title??''));
       button.disabled=!!choice.disabled;
       if(choice.pressed===undefined)button.removeAttribute('aria-pressed');
       else writeDomAttribute(button,'aria-pressed',String(choice.pressed));
@@ -297,6 +306,7 @@ export function createTacticalHudController(
   }
   function renderPhase(config:{
     phase:Session['phase'];started:boolean;replaying:boolean;seconds:number;
+    queuedOrders:number;
     phaseNode:HTMLElement;clock:HTMLElement;play:HTMLButtonElement;
     reducedMotion:boolean;
     icon:(key:string)=>SVGSVGElement;
@@ -320,8 +330,8 @@ export function createTacticalHudController(
       label.textContent=mode==='go'?'GO':mode==='pause'?'PAUSE':'RESET';
       label.className='go-label';
       config.play.replaceChildren(config.icon(mode),label);
-      config.play.setAttribute('aria-label',mode==='go'?'Execute plan':
-        mode==='pause'?'Pause execution':'Reset encounter');
+      // The detailed, live action label is reconciled outside this branch
+      // because orders change even while the button stays in GO mode.
       if(previous&&!config.reducedMotion){
         config.play.animate([
           {transform:'scale(.93)',filter:'brightness(1.14)'},
@@ -336,6 +346,16 @@ export function createTacticalHudController(
       }
     }
     config.play.classList.toggle('running',config.phase==='running');
+    const executionAction=mode==='go'?
+      (config.queuedOrders?
+        'Execute plan · '+config.queuedOrders+' queued '+
+          (config.queuedOrders===1?'order':'orders')+' on available operators':
+        'Execute plan · no orders queued'):
+      mode==='pause'?'Pause execution':'Reset encounter';
+    writeDomAttribute(config.play,'aria-label',executionAction);
+    writeDomAttribute(config.play,'title',executionAction);
+    if(config.play.dataset.queuedOrders!==String(config.queuedOrders))
+      config.play.dataset.queuedOrders=String(config.queuedOrders);
   }
   const noticeFeed=new ExecutionNoticeFeed();
   function resetNotices():void{noticeFeed.reset();}
@@ -398,6 +418,11 @@ export function createTacticalHudController(
   }):void{
     const {state,replaying,selected,id,button,ammo,hp}=input;
     const a=input.actor;
+    // Read-only authoring status: the count belongs to the actual operator
+    // plan, never a predicted or reconstructed navigation route.
+    const queued=a?.plan.length??0;
+    if(button.dataset.planCount!==String(queued))
+      button.dataset.planCount=String(queued);
     input.paintAccent(button,id);
     button.hidden=!a;
     const title=button.querySelector('strong');
@@ -466,6 +491,7 @@ export function createTacticalHudController(
     writeDomAttribute(button,'aria-label',a?
       a.name+', '+condition+', '+a.magazine+' of '+capacity+
       ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':'')+
+      '. '+queued+' queued '+(queued===1?'order':'orders')+
       '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
       id+', unavailable');
   }
@@ -550,6 +576,8 @@ export function createTacticalHudController(
   const brief=operationBriefing(state);
   renderPhase({
     phase:state.phase,started:state.started,replaying,seconds:state.seconds,
+    queuedOrders:friendly.reduce((sum,actor)=>
+      sum+(actor.health>0?actor.plan.length:0),0),
     phaseNode:ui.phase,clock:ui.clock,play:ui.play,
     reducedMotion:reducedMotion,icon:tacticalIcon
   });
