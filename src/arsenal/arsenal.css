@@ -522,3 +522,12 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  font-variant-numeric:tabular-nums}
 .arsenal-wb-load-stat-chip[data-direction="up"]{color:var(--fw-sage)}
 .arsenal-wb-load-stat-chip[data-direction="down"]{color:var(--fw-brass)}
+
+/* H2.1: deliberate touch/keyboard compare before changing fitted equipment. */
+.arsenal-wb-proposal{padding:10px;display:flex;flex-direction:column;gap:7px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-brass);
+ border-radius:var(--fw-radius-sm)}
+.arsenal-wb-proposal strong{font:750 12px/1.2 var(--fw-font-menu);
+ letter-spacing:.04em}
+.arsenal-wb-proposal p{margin:0;font:500 12px/1.45 var(--fw-font-action)}
+.arsenal-wb-proposal .arsenal-wb-pending-actions{display:flex;gap:8px;flex-wrap:wrap}
