@@ -5,6 +5,7 @@
 import {PERFORMANCE_SCENE_PHASES,type PerformanceSceneCosts,
  type PreviousFrameWork} from '../breach-performance-timeline.ts';
 import type {LiveShadowSubmissionSample} from './breach-live-shadow-submit-profiler.ts';
+import type {MainPassFrame} from './breach-live-main-pass-profiler.ts';
 export type PostReadyRuntimeMode='live'|'idle'|'replay'|'suspended';
 export type PostReadyRuntimeFrame=Readonly<{
  at:number;gapMs:number;callbackMs:number;
@@ -20,6 +21,7 @@ export type PostReadyRuntimeFrame=Readonly<{
  gpuDrawCalls?:number;
  /** Actual current submitted frame, only with opt-in E6.16. */
  shadowSubmission?:LiveShadowSubmissionSample;
+ mainPassSubmission?:MainPassFrame;
 }>;
 export type PostReadySpike=Readonly<{
  gapMs:number;precedingCallbackMs:number;
@@ -43,6 +45,18 @@ export type LiveShadowSubmissionAttribution=Readonly<{
  framesWithShadowDraws:number;shadowMapRenderInvocations:number;
  framesWithReliableDrawCounts:number;note:string;
 }>;
+export type MainPassAttribution=Readonly<{
+ frames:number;reliableFrames:number;drawCallsP95:number|null;
+ uniqueMaterialsP95:number|null;opaqueDrawsP95:number|null;
+ transparentDrawsP95:number|null;alphaTestDrawsP95:number|null;
+ instancedDrawsP95:number|null;skinnedDrawsP95:number|null;
+ bufferCallsP95:number|null;reconciledWithNonShadowFrames:number;
+ dominantMaterialTypes:readonly {type:string;drawsTotal:number}[];
+ topMaterialInstances:readonly {
+  id:string;label:string;type:string;observedDraws:number
+ }[];
+ note:string;
+}>;
 export type LiveSceneAttribution=Readonly<{
  frames:number;
  /** All phases are CPU wall times, including native WebGL blocking. */
@@ -54,6 +68,7 @@ export type LiveSceneAttribution=Readonly<{
  shadowRefreshesDuringSample:number;fogUploadsDuringSample:number;
  gpuDrawCallsP95:number|null;
  renderSubmission:LiveShadowSubmissionAttribution|null;
+ mainPassAttribution:MainPassAttribution|null;
  note:string;
 }>;
 export type PostReadyRuntimeWindow=Readonly<{
@@ -181,6 +196,42 @@ export class PostReadyRuntimeCapture{
     framesWithReliableDrawCounts:reliable.length,
     note:'Shadow-map render is synchronous CPU/driver wall time, not GPU timestamp duration. Other rendering includes main scene and possible post-effects. Draw calls count submissions, not GPU completion.'
    }:null;
+  const mainFrames=detailed.flatMap(f=>f.mainPassSubmission?[f.mainPassSubmission]:[]);
+  const types=new Map<string,number>();
+  const materials=new Map<string,{
+   id:string;label:string;type:string;observedDraws:number}>();
+  for(const frame of mainFrames){
+   for(const item of frame.materialTypes)
+    types.set(item.type,(types.get(item.type)??0)+item.draws);
+   for(const material of frame.topMaterials){
+    const old=materials.get(material.id);
+    if(old)old.observedDraws+=material.draws;
+    else materials.set(material.id,{id:material.id,
+      label:material.label,type:material.type,observedDraws:material.draws});
+   }
+  }
+  const mainReliable=mainFrames.filter(f=>f.reliable);
+  const reconciled=detailed.filter(f=>f.mainPassSubmission?.reliable&&
+   f.shadowSubmission?.drawCountsReliable&&
+   f.mainPassSubmission.drawCalls===f.shadowSubmission.nonShadowDrawCalls).length;
+  const mainPassAttribution:MainPassAttribution|null=mainFrames.length?{
+   frames:mainFrames.length,reliableFrames:mainReliable.length,
+   drawCallsP95:percentile(mainReliable.map(f=>finite(f.drawCalls)),.95),
+   uniqueMaterialsP95:percentile(mainReliable.map(f=>finite(f.uniqueMaterials)),.95),
+   opaqueDrawsP95:percentile(mainReliable.map(f=>finite(f.opaqueDraws)),.95),
+   transparentDrawsP95:percentile(mainReliable.map(f=>finite(f.transparentDraws)),.95),
+   alphaTestDrawsP95:percentile(mainReliable.map(f=>finite(f.alphaTestDraws)),.95),
+   instancedDrawsP95:percentile(mainReliable.map(f=>finite(f.instancedDraws)),.95),
+   skinnedDrawsP95:percentile(mainReliable.map(f=>finite(f.skinnedDraws)),.95),
+   bufferCallsP95:percentile(mainReliable.map(f=>finite(f.renderBufferCalls)),.95),
+   reconciledWithNonShadowFrames:reconciled,
+   dominantMaterialTypes:[...types].map(([type,drawsTotal])=>({type,drawsTotal}))
+    .sort((a,b)=>b.drawsTotal-a.drawsTotal||a.type.localeCompare(b.type))
+    .slice(0,10),
+   topMaterialInstances:[...materials.values()].sort((a,b)=>
+    b.observedDraws-a.observedDraws||a.id.localeCompare(b.id)).slice(0,12),
+   note:'E6.17 opt-in material buckets count actual nonshadow renderBufferDirect draw deltas. Individual material totals sample the top 12 materials per frame, not all. Observer adds CPU timing overhead; these frames are NOT an uninstrumented FPS A/B or hardware GPU timing.'
+  }:null;
   const sceneAttribution:LiveSceneAttribution|null=detailed.length?{
    frames:detailed.length,
    phaseP95Ms:sceneCost(.95,'p95'),
@@ -194,6 +245,7 @@ export class PostReadyRuntimeCapture{
    fogUploadsDuringSample:counterDelta('fogTextureUploads'),
    gpuDrawCallsP95:percentile(detailed.map(f=>finite(f.gpuDrawCalls??0)),.95),
    renderSubmission:submissionAttribution,
+   mainPassAttribution,
    note:'CPU only. The shadows phase prepares shadow update flags; shadow-map rasterization and GPU submission remain inside gpuSubmit wall time. No GPU timestamp or iPhone FPS measurement.'
   }:null;
   return {

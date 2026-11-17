@@ -58,10 +58,9 @@ export class LiveMainPassProfiler{
      profiler.calls++;
      profiler.elapsed+=wall;
      if(!Number.isFinite(before)||!Number.isFinite(after)||after<before){
-      profiler.reliable=false;return;
-     }
+      profiler.reliable=false;
+     }else if(after>before){
      const draws=after-before;
-     if(!draws)return;
      profiler.drawCalls+=draws;
      const type=material.type||'UnknownMaterial';
      const id=String(material.id??'unknown-'+type);
@@ -76,6 +75,7 @@ export class LiveMainPassProfiler{
      else profiler.opaque+=draws;
      if(object.isInstancedMesh)profiler.instanced+=draws;
      if(object.isSkinnedMesh)profiler.skinned+=draws;
+     }
     }
    };
    this.installed=renderer.renderBufferDirect!==original;

@@ -710,7 +710,8 @@ function tick(now:number){
     fogTextureUploads:coldStats?.fogTextureSubmittedUploads,
     gpuDrawCalls:coldStats?.calls,
      shadowSubmission:coldStats?.shadowSubmission?
-      {...coldStats.shadowSubmission}:undefined
+      {...coldStats.shadowSubmission}:undefined,
+     mainPassSubmission:coldStats?.mainPassSubmission??undefined
    });
   }
   scheduleFrame();
