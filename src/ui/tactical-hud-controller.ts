@@ -987,12 +987,19 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         config.ui.context:config.ui.quickStates.contains(button)?
           config.ui.quickStates:null;
       if(!surface||surface.hidden||surface.dataset.owner!==config.selected)return;
+      // The current actor may be unchanged while a waypoint or door
+      // selection moves underneath an old floating-menu button.
+      const node=config.node;
+      const door=config.doorFocusId?config.focusedDoor():undefined;
+      if(surface===config.ui.context){
+        const currentScope=(door?'door:'+door.id:node?'node:'+node.id:
+          config.selectedActiveWatch?'active-watch':'here')+'/'+config.selected;
+        if(surface.dataset.scopeKey!==currentScope)return;
+      }
       const action=button.dataset.action;
       if(action)discoverAction(action,button.title);
       const a=config.actor;
       if(!a)return;
-      const node=config.node;
-      const door=config.doorFocusId?config.focusedDoor():undefined;
       const result=dispatchTacticalContextCommand({
         state:config.state,selected:config.selected,actor:a,node,door,action:action??'',
         selectedActiveWatch:config.selectedActiveWatch,
