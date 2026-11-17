@@ -134,6 +134,8 @@ test('M2.5E/F light emitter projects from rendered lens and support hand follows
  const actualGun=resolveWeaponAssembly(c);
  close(source.x,-(actualGun.muzzleX-light.lens.x)*actualGun.lengthScale,
   'light emitter uses physical lens X');
+ close(source.y,light.lens.z*actualGun.lengthScale,
+  'beam follows mounted lens lateral Z (weapon right)');
 });
 
 test('M2.5G prohibit new phantom light/grip without discarding older saved items',()=>{
