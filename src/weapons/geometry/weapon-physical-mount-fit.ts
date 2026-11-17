@@ -42,7 +42,7 @@ export type PhysicalMountBuildPlan=Readonly<{
 type Footprint=Readonly<{
  slot:WeaponAttachmentSlot;
  role:'opticMount'|'optic'|'foregrip'|'light';
- standard:'picatinny'|'hk-claw';
+ standard:'picatinny'|'hk-claw'|'ak-side-dovetail';
  faces:readonly PhysicalMountFace[];
  /** Clamp support X relative to the *visual attachment center*.
   * Rails are simplified at miniature scale; teeth are contact anchors,
