@@ -122,3 +122,26 @@ that an offer means free stock, a historic agency issue, or a ready-to-apply gun
   progressive 1995 → 2015 reference and retained old weapon ownership.
 - Stage and release independently after successful production D13C Pages
   verification and current PR critical CI. Do not pile merges during publishing.
+
+## D13 release E — D13.8 Creative atomic attachment purchase
+
+The existing `purchaseAndEquipWeaponAttachment` already lets Creative
+Dispatch quote even when funds are zero, but its **commit** unconditionally
+deducted `quote.cost`. This violates D12's economy axis and could make an
+otherwise legal no-charge transaction leave negative credits.
+
+- Reuse the authoritative `charge(c, cost)` economy helper at this one
+  mutation boundary. Standard campaigns still pay exactly the quoted cost;
+  Creative Dispatch keeps the same balance.
+- Preserve atomic transaction authority, physical placement, single-instance
+  attachment stock, deployed armory freeze, class/serial preservation and
+  normal curated Dispatch editing restrictions.
+- Verify the no-charge purchase with zero funds, a stocked no-charge transfer,
+  magazine and serial conservation, a save round-trip, normal paid purchase,
+  insufficient-funds rejection and active-deployment refusal.
+- Do **not** silently grant custom Arsenal editor access to Dispatch in this
+  stage. That separate capability is explicitly denied in the Arsenal
+  campaign adapter and requires its own policy/UX audit rather than a partial
+  bypass.
+- Merge only after D13D's public Pages build is verified, D13E critical CI
+  passes and no Pages deployment is queued or running.
