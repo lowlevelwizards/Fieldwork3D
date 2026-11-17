@@ -6,6 +6,8 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,setConfiguredFamilyP
 import {ARSENAL_PLATFORMS,arsenalReferencesForPlatform} from '../src/arsenal/catalog.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from '../src/breach-weapon-accessories.ts';
+import {physicalAttachmentFitOptions}
+ from '../src/weapons/geometry/weapon-physical-mount-fit.ts';
 import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER}
  from '../src/weapons/geometry/weapon-visual-palette.ts';
 
@@ -108,11 +110,11 @@ test('A3 all supported rail platforms retain valid light and sling geometry',()=
  for(const p of ARSENAL_PLATFORMS){
   const ref=arsenalReferencesForPlatform(p.id)[0];
   let c=preset(ref.id);
-  // G36 E0 integral factory furniture has no accessory-light interface:
-  // the old A3 seven-platform light test predates this actual factory model.
-  if(c.build?.family==='g36'){
+  // M2.5 strict new installs require actually modeled, exposed side teeth.
+  // Never add a phantom rail to historical AK/FAL/FNC/G36 furniture.
+  if(!physicalAttachmentFitOptions(c,'light-compact').feasible){
    assert.equal(setWeaponAttachment(c,'light','light-compact').slots.light,
-    'light-none','integral G36 does not grow an invented light rail');
+    'light-none',p.id+' does not gain an invented side rail');
    continue;
   }
   c=equip(c,'light','light-compact');

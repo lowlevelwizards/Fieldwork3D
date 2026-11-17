@@ -6,6 +6,10 @@ import {FAMILY_PART_SLOTS,FAMILY_PARTS,proposeFamilyPartChange,
 import {WEAPON_ATTACHMENTS,initialWeaponConfiguration,selectWeaponFamilyPreset,readWeaponConfiguration,
  compatibleWeaponAttachment,weaponAttachmentAllowed,
  type WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
+import {physicalAttachmentFitOptions}
+ from '../weapons/geometry/weapon-physical-mount-fit.ts';
+import {mountedAccessorySeat,resolveMountedAccessoryLayout}
+ from '../weapons/geometry/mounted-accessory-layout.ts';
 import {ARSENAL_REFERENCES,arsenalPlatformForReceiver,type ArsenalSlot}
  from './catalog.ts';
 import {arsenalPhysicalPartId} from './finishes.ts';
@@ -45,8 +49,7 @@ export function arsenalReferenceIdentity(recipe:ArsenalRecipeV2):{
  const ref=recognized[0];
  const bodyChanged=FAMILY_PART_SLOTS.some(slot=>
   recipe.parts[slot]!==ref.legacy.parts[slot]);
- // Compare with the selected AUTHORED factory, not generic class sights:
- // G36 includes its integrated dual optic as part of the untouched preset.
+ // Main's factory-authored default prevents pristine G36 being marked modified.
  const factory=selectWeaponFamilyPreset(
   initialWeaponConfiguration(recipe.weapon),ref.legacy.id);
  const accessoriesChanged=ARSENAL_ACCESSORY_SLOTS.some(slot=>
@@ -64,13 +67,18 @@ const rejected=(slot:ArsenalSlot,id:string,reason:string):ArsenalEditProposal=>(
  */
 function opticMountRequirement(config:WeaponConfiguration,opticId:string):
  string|undefined{
- if(weaponAttachmentAllowed(config,'optic',opticId))return undefined;
- const candidates=Object.values(WEAPON_ATTACHMENTS).filter(part=>
-  part.slot==='opticMount'&&part.id!=='optic-mount-none'&&
+ // A new optic must physically fit, not merely pass M1's permissive
+ // catalog-level eligibility. The same code validates proposed alternatives.
+ const fits=(candidate:WeaponConfiguration)=>weaponAttachmentAllowed(candidate,
+  'optic',opticId)&&physicalAttachmentFitOptions(candidate,opticId).feasible;
+ if(fits(config))return config.slots.opticMount;
+ const options=Object.values(WEAPON_ATTACHMENTS).filter(part=>
+  part.slot==='opticMount'&&part.id!==config.slots.opticMount&&
   weaponAttachmentAllowed(config,'opticMount',part.id)&&
-  weaponAttachmentAllowed({...config,slots:{...config.slots,opticMount:part.id}},
-   'optic',opticId));
- return candidates.length===1?candidates[0].id:undefined;
+  fits({...config,slots:{...config.slots,opticMount:part.id}}));
+ // Can explicitly remove an already owned bridge for a *direct-fit*
+ // side optic. Never buy, replace or refund anything during proposal.
+ return options.length===1?options[0].id:undefined;
 }
 export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
  slot:ArsenalSlot,id:string):ArsenalEditProposal{
@@ -103,14 +111,16 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
   if(next.accessories[attachmentSlot]===id)
    return {valid:true,requestedSlot:slot,requestedPartId:id,changes:[],
     requiresConfirmation:false,reasons:[],nextRecipe:next};
-  if(!weaponAttachmentAllowed(prior,attachmentSlot,id)){
-   if(attachmentSlot==='optic'){
-    const required=opticMountRequirement(prior,id);
-    if(!required)
-     return rejected(slot,id,'This sight needs a compatible mount or rail');
-    next.accessories.opticMount=required;
-   }else
-    return rejected(slot,id,'This accessory does not fit the current assembly');
+  if(attachmentSlot==='optic'&&id!=='optic-irons'&&
+   id!=='optic-g36-integrated'){
+   const required=opticMountRequirement(prior,id);
+   if(!required)
+    return rejected(slot,id,
+     'This sight has no physically compatible mount and eye position');
+   // A dependent installation OR removal is always an explicit change.
+   next.accessories.opticMount=required;
+  }else if(!weaponAttachmentAllowed(prior,attachmentSlot,id)){
+   return rejected(slot,id,'This accessory does not fit the current assembly');
   }
   next.accessories[attachmentSlot]=id;
  }
@@ -126,6 +136,20 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
   return rejected(slot,id,'This part requires a different core or mount');
  if(arsenalRecipeIssues(next).length)
   return rejected(slot,id,'The proposed assembly did not validate');
+ // Recheck against the committed candidate, not a temporary mount probe.
+ if(slot==='optic'&&id!=='optic-irons'&&
+  id!=='optic-g36-integrated'&&
+  !physicalAttachmentFitOptions(normalized,id).feasible)
+  return rejected(slot,id,'Optic mount or eye-box clearance is invalid');
+ // New furniture accessories must have a real free rail and compatible
+ // three-dimensional body/hand clearance, not merely a legacy role flag.
+ if((slot==='foregrip'&&id!=='foregrip-none')||
+    (slot==='light'&&id!=='light-none')){
+  const s=mountedAccessorySeat(normalized,slot);
+  if(!s||s.attachmentId!==id||
+   resolveMountedAccessoryLayout(normalized).unresolved.some(x=>x.attachmentId===id))
+   return rejected(slot,id,'No clear modeled rail, contact, or hand clearance');
+ }
  const changes:ArsenalPartChange[]=[];
  for(const key of FAMILY_PART_SLOTS)if(recipe.parts[key]!==next.parts[key])
   changes.push({slot:key,from:recipe.parts[key],to:next.parts[key]});

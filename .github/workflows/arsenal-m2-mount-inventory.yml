@@ -1,0 +1,78 @@
+name: Arsenal M2.0–M2.5 physical mount contracts (feature)
+on:
+  push:
+    branches: [feat/arsenal-m2-mount-inventory]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: arsenal-m2-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: M2.0–M2.5 accessory mounts, hands, lights and M1 regression
+        run: |
+          node --experimental-strip-types --test \
+            tests/arsenal-m2-mount-inventory.test.mjs \
+            tests/arsenal-m2-physical-mount-slots.test.mjs \
+            tests/arsenal-m2-attachment-footprints.test.mjs \
+            tests/arsenal-m2-ak-side-dovetail.test.mjs \
+            tests/arsenal-m2-optic-identities-eye-box.test.mjs \
+            tests/arsenal-m2-accessory-integration.test.mjs \
+            tests/arsenal-a3-accessory-geometry.test.mjs \
+            tests/equipment-20-12-weapon-light.test.mjs \
+            tests/equipment-21-05-shared-light-views.test.mjs \
+            tests/l1-4-flashlight-usability.test.mjs \
+            tests/arsenal-m1-part-mount-interfaces.test.mjs
+      - name: Typecheck
+        run: npm run check
+      - name: Production build
+        run: npm run build
+  visual:
+    needs: inventory
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: M2.5 real WebGL AR/MP5 accessory contacts desktop and mobile
+        run: node scripts/smoke-arsenal-m25-visual.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arsenal-m25-rail-grip-light-visual-acceptance
+          path: |
+            reports/arsenal-m25-mounted-desktop.png
+            reports/arsenal-m25-mounted-mobile.png
+            reports/arsenal-m25-mesh-stats.json
+          if-no-files-found: ignore
+          retention-days: 14
+  release-preflight:
+    needs: [inventory, visual]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 4
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify no pending Pages, last publish success and served build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs

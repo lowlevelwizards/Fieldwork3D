@@ -7,6 +7,7 @@ import {type Door,type Segment,type Pt,type Obstacle}
 import {opticalBlockerSegments} from './breach-optical-occlusion.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration}
  from './equipment-weapon-assemblies.ts';
+import {mountedAccessorySeat} from './weapons/geometry/mounted-accessory-layout.ts';
 export const LIGHT_BEAM_HALF_ANGLE=.34;
 export const LIGHT_BEAM_RANGE=155;
 export const LIGHT_BEAM_SAMPLES=11;
@@ -14,9 +15,17 @@ export const LIGHT_BEAM_SAMPLES=11;
 export function weaponLightEmitter(muzzle:{x:number;z:number;yaw:number},
  configuration:WeaponConfiguration):Pt{
  const gun=resolveWeaponAssembly(configuration);
- const offset=(gun.muzzleX-gun.mounted.light.mountX)*gun.lengthScale;
- return {x:muzzle.x-Math.cos(muzzle.yaw)*offset,
-  y:muzzle.z-Math.sin(muzzle.yaw)*offset};
+ // Visible lens and emitted cone share the same longitudinal origin.
+ const seat=mountedAccessorySeat(configuration,'light');
+ const x=seat?.lens?.x??gun.mounted.light.mountX;
+ const offset=(gun.muzzleX-x)*gun.lengthScale;
+ // Weapon-local +Z is right of barrel: rotate the actual outboard lens
+ // offset into the same 2D ground frame used by both gameplay and 3D beams.
+ // Class-only legacy lights retain the zero-lateral fallback.
+ const side=(seat?.lens?.z??0)*gun.lengthScale;
+ const cs=Math.cos(muzzle.yaw),sn=Math.sin(muzzle.yaw);
+ return {x:muzzle.x-cs*offset-sn*side,
+  y:muzzle.z-sn*offset+cs*side};
 }
 export function lightRayDistance(from:Pt,angle:number,maximum:number,
  blockers:readonly Segment[]):number{

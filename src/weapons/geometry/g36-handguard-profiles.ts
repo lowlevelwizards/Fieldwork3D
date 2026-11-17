@@ -1,54 +1,42 @@
-/** P5.2: one genuine faceted G36 molded fore-end shell.
- * Four purposeful cross-section stations, eight facets each. Not a cut-and-paste
- * collection of cubes, and no dedicated vent/detail draw calls.
- * All measurements are exterior miniature art units, not real construction.
+/** G36 P6: a confident molded polymer fore-end.
+ * Flat roof, planar sides, flat floor; precisely one short blunt nose taper.
+ * No octagonal rounding, intermediate pillow/chamfer stations or vent meshes.
  */
 import * as THREE from 'three';
 export const G36_LONG_FOREND_RINGS=Object.freeze([
- {x:3.75,roofY:1.19,bottomY:-1.75,halfDepth:1.30},
- {x:5.15,roofY:1.58,bottomY:-2.09,halfDepth:1.54},
- {x:10.81,roofY:1.42,bottomY:-1.94,halfDepth:1.45},
- {x:13.45,roofY:1.10,bottomY:-1.53,halfDepth:1.17}
+ {x:3.75,roofY:1.35,bottomY:-1.88,halfDepth:1.45},
+ {x:11.75,roofY:1.35,bottomY:-1.88,halfDepth:1.45},
+ {x:13.45,roofY:1.17,bottomY:-1.64,halfDepth:1.32}
 ]);
-/** An octagonal YZ section with a flat broad roof, chamfered shoulders,
- * planar sides and a confident lower sweep. Both height and breadth taper.
- */
-function section(top:number,bottom:number,half:number):[number,number][]{
- return [
-  [top,-half*.55],[top,half*.55],
-  [top-.37,half],[bottom+.34,half],
-  [bottom,half*.55],[bottom,-half*.55],
-  [bottom+.34,-half],[top-.37,-half]
- ];
-}
+const section=(r:typeof G36_LONG_FOREND_RINGS[number]):[number,number][]=>[
+ [r.roofY,-r.halfDepth],[r.roofY,r.halfDepth],
+ [r.bottomY,r.halfDepth],[r.bottomY,-r.halfDepth]
+];
 export function addG36LongHandguard(root:THREE.Group,id:string,n:number,
  material:THREE.Material):THREE.Mesh{
- const pos:number[]=[],tri:number[]=[];
- const count=8;
- for(const ring of G36_LONG_FOREND_RINGS){
-  for(const [y,z] of section(ring.roofY,ring.bottomY,ring.halfDepth))
-   pos.push(ring.x,y,z);
- }
- for(let ring=0;ring<G36_LONG_FOREND_RINGS.length-1;ring++){
-  for(let j=0;j<count;j++){
-   const a=ring*count+j,b=ring*count+(j+1)%count,
-    c=(ring+1)*count+j,d=(ring+1)*count+(j+1)%count;
-   tri.push(a,b,c,b,d,c);
+ const positions:number[]=[],triangles:number[]=[],sides=4;
+ for(const r of G36_LONG_FOREND_RINGS)
+  for(const [y,z] of section(r))positions.push(r.x,y,z);
+ for(let ring=0;ring<G36_LONG_FOREND_RINGS.length-1;ring++)
+  for(let j=0;j<sides;j++){
+   const a=ring*sides+j,b=ring*sides+(j+1)%sides;
+   const c=(ring+1)*sides+j,d=(ring+1)*sides+(j+1)%sides;
+   triangles.push(a,b,c,b,d,c);
   }
- }
- // Closing end caps: back faces toward -X; muzzle-facing cap toward +X.
- for(let j=1;j<count-1;j++)tri.push(0,j+1,j);
- const last=(G36_LONG_FOREND_RINGS.length-1)*count;
- for(let j=1;j<count-1;j++)tri.push(last,last+j,last+j+1);
+ // Two end caps, no bevel.
+ triangles.push(0,2,1,0,3,2);
+ const last=(G36_LONG_FOREND_RINGS.length-1)*sides;
+ triangles.push(last,last+1,last+2,last,last+2,last+3);
  const geom=new THREE.BufferGeometry();
- geom.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
- geom.setIndex(tri);
- geom.computeVertexNormals();
- const mesh=new THREE.Mesh(geom,material);
+ geom.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));
+ geom.setIndex(triangles);
+ // Never average normals across hard prism corners. Smooth normals create
+ // precisely the pillow-shading the interpretive reset is meant to remove.
+ const flat=geom.toNonIndexed();geom.dispose();flat.computeVertexNormals();
+ const mesh=new THREE.Mesh(flat,material);
  mesh.name='family-handguard-'+id+'-'+n;
  mesh.castShadow=true;mesh.receiveShadow=true;
  mesh.userData.g36LongHandguard=true;
  mesh.userData.g36FacetedMoldedShell=true;
- root.add(mesh);
- return mesh;
+ root.add(mesh);return mesh;
 }

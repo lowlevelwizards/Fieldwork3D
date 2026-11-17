@@ -2,7 +2,7 @@
  * not miniature mechanical hardware. Game-only muzzle/contact remain elsewhere.
  */
 import * as THREE from 'three';
-import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
+import {FAMILY_PARTS,type WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addBar,type Outline,type SlotName} from './profile-primitives.ts';
 import {AK_WARM_RESIN,AK_WOOD_AMBER,AK_WOOD_RED,
  AK_PLUM_POLYMER,AK_MAG_RIB,AK_COVER_STAMP_METAL} from './weapon-visual-palette.ts';
@@ -13,6 +13,7 @@ import {addWeaponPixelMark,addWeaponPixelMarkPairBatched} from './weapon-pixel-d
 import {akMagazineCurve,akMagazineOutline,akMagazineRibOutlines}
  from './ak-magazine-profiles.ts';
 import {akBarrelArt,AK_BARREL_ART} from './ak-barrel-profiles.ts';
+import {addAKReceiverSideDovetail} from './ak-side-mount-geometry.ts';
 
 // A2: the three shallow stamped-cover bands share the same tagged steel
 // response and globally owned material as other weapons, never local Lambert.
@@ -118,6 +119,11 @@ export function addAKFamily(root:THREE.Group,build:WeaponFamilyBuild,
  // Two quiet mirrored stamps, one owned mesh: not two overlays.
  addWeaponPixelMarkPairBatched(root,'ak-receiver-stamp',
   -1.08,-1.55,1.98,8.4,.60);
+ // A real receiver-owned left-side dovetail, not an invisible automatic
+ // retrofit or a fake accessory rail on every AK handguard.
+ if(FAMILY_PARTS[parts.receiver]?.mounts?.some(
+  m=>m.standard==='ak-side-dovetail'))
+  addAKReceiverSideDovetail(root);
 
  // Stock types are visually disparate; the skeletal type MUST stay hollow.
  const stock=parts.stock;

@@ -1,4 +1,5 @@
-/** G36 P5.3: one shared 384x192 pixel atlas for major exterior marks.
+/** G36 P6: deliberately minimal 384x192 atlas: four bold fore-end vents
+ * and one smoky magazine facet. NO receiver construction markings.
  * No added overlays, side mirrored ejection details, geometry count changes,
  * transparency, per-frame materials, per-instance texture uploads or shaders.
  * The same live-intended original G36 meshes are UV projected in place.
@@ -28,23 +29,13 @@ const zone=(x:number,y:number,x0:number,x1:number,y0:number,y1:number)=>
  */
 function ink(tile:Tile,x:number,y:number):number{
  if(tile==='guard-right'||tile==='guard-left'){
-  // Large molded recess illusion: one thick dark inset plus a broad
-  // shoulder/rim from existing UVs. No added geometry or draw calls.
-  for(const center of [5.42,7.45,9.48,11.51]){
-   if(zone(x,y,center-.81,center+.81,-.33,.72)){
-    if(zone(x,y,center-.65,center+.65,-.20,.55))return 91;
-    return 175;
-   }
-  }
+  // Only four large, black side voids. One decision each; no fake rims.
+  for(const center of [5.42,7.45,9.48,11.51])
+   if(zone(x,y,center-.80,center+.80,-.27,.61))return 96;
   return 255;
  }
- if(tile==='receiver-right'){
-  // One oversized receiver port, instead of a fine seam and controls.
-  if(zone(x,y,-.76,1.92,-.04,.81))return 125;
-  return 255;
- }
- if(tile==='receiver-left'){
-  // Opposite side should remain a clean polymer shell.
+ if(tile==='receiver-right'||tile==='receiver-left'){
+  // Flat Fieldwork upper shell. No trace-derived panel seams or ejection art.
   return 255;
  }
  if(tile==='lower-right'||tile==='lower-left'){
@@ -52,11 +43,8 @@ function ink(tile:Tile,x:number,y:number):number{
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  // Smoky-polymer illusion: one wide translucent body facet, slightly
-  // darker foot and no tiny ribs, coupling lug meshes or alpha sorting.
-  if(y < -8.03)return 206;
-  const lean=Math.max(0,Math.min(5,-y-3.1))*.12;
-  if(zone(x-lean,y,-.50,1.34,-7.50,-3.18))return 222;
+  // A single large light/value facet; no rounds, ribs or floorplate ink.
+  if(zone(x,y,-.45,1.55,-7.90,-3.20))return 225;
  }
  return 255;
 }
@@ -75,7 +63,7 @@ export function g36PixelAtlas():THREE.DataTexture{
   }
  }
  const tex=new THREE.DataTexture(data,width,height,THREE.RGBAFormat,THREE.UnsignedByteType);
- tex.name='G36 D1 exterior graphic atlas';
+ tex.name='G36 P6 essential graphic atlas';
  tex.colorSpace=THREE.SRGBColorSpace;
  tex.wrapS=tex.wrapT=THREE.ClampToEdgeWrapping;
  tex.magFilter=tex.minFilter=THREE.NearestFilter;
@@ -161,5 +149,5 @@ export function applyG36PixelDetails(root:THREE.Group):void{
 }
 export function g36PixelAtlasLayout(){
  return {width:TILE*COLS,height:TILE*ROWS,sideTiles:Object.keys(definitions),
-  ventsPerSide:4,magRibsPerSide:0,rightReceiverEjectionOnly:true};
+  ventsPerSide:4,magRibsPerSide:0,rightReceiverEjectionOnly:false};
 }
