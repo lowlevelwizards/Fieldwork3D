@@ -636,9 +636,20 @@ export class CampaignScreen{
    jobs.append(node('p','campaign-note','Continuing after reopening starts the same contract at planning.'));
    jobs.append(button('CONTINUE DEPLOYMENT',this.handlers.resumeContract,'campaign-primary'));
   }else{
-   for(const contract of c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).slice(0,3)){
+   const openContracts=c.contracts.filter(k=>
+    k.status==='available'&&k.deadline>=c.day);
+   if(!openContracts.length){
+    const empty=node('div','campaign-contract-empty');
+    empty.append(node('strong','','NO ACTIVE CASES'),
+     node('p','campaign-note',
+      'No assignments are currently available. You can review the squad, supplies, or service history.'));
+    const links=node('div','campaign-contract-empty-actions');
+    links.append(
+     button('REVIEW SQUAD',()=>activateTab('personnel')),
+     button('CHECK SUPPLIES',()=>activateTab('logistics')));
+    empty.append(links);jobs.append(empty);
+   }else for(const contract of openContracts.slice(0,3))
     jobs.append(this.contract(contract,c));
-   }
   }
   grid.append(jobs);
   let serviceRecord:HTMLElement|null=null;
