@@ -62,6 +62,7 @@ export type MissionScreensElements={
  variant:HTMLButtonElement;
  uiHelp:HTMLButtonElement;
  briefingClose:HTMLButtonElement;
+ briefingQuickPlaySetup:HTMLButtonElement;
  cameraFit:HTMLButtonElement;
  view2d:HTMLButtonElement;
  viewTop:HTMLButtonElement;

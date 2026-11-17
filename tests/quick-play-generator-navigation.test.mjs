@@ -65,6 +65,7 @@ test('UI.5B–C: briefing links back to preserved setup and prepared briefing pr
  assert.match(html,/id="briefingQuickPlaySetup" type="button" hidden>CHANGE SETUP/);
  assert.match(uiElements,/briefingQuickPlaySetup:el<HTMLButtonElement>\('briefingQuickPlaySetup'\)/);
  assert.match(screens,/ui\.briefingQuickPlaySetup\.hidden=config\.getMode\(\)!=='quick'/);
+ assert.match(screens,/briefingQuickPlaySetup:HTMLButtonElement/);
  assert.match(main,/ui\.briefingQuickPlaySetup\.addEventListener\('click',returnToQuickPlayGenerator\)/);
  assert.match(creator,/hide\(false\);options\.onGenerate\(recipe\)/);
  assert.match(creator,/previouslyFocused\?\.isConnected/);
