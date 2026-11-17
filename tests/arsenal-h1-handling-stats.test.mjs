@@ -11,16 +11,16 @@ const recipe=(id,weapon)=>arsenalRecipeFromLegacy(selectWeaponFamilyPreset(
  initialWeaponConfiguration(weapon),id));
 const profile=(id,weapon)=>arsenalHandlingStats(recipe(id,weapon));
 const stat=(rows,id)=>rows.find(row=>row.id===id);
-test('H1 Workbench projects six bounded, inspectable, consistent metrics',()=>{
+test('H1 Workbench projects eight bounded, inspectable, consistent metrics',()=>{
  for(const [id,weapon] of [
   ['ar-m4a1','carbine'],['ar-m16a2','rifle'],['hk-mp5a3','smg'],
   ['hk-mp5k','smg'],['ak-aks74u','carbine'],['hk-g3a3','rifle'],
   ['fal-5000','rifle'],['fnc-service','rifle'],['g36-service','rifle']
  ]){
   const rows=profile(id,weapon);
-  assert.equal(rows.length,6,id);
+  assert.equal(rows.length,8,id);
   assert.deepEqual(rows.map(r=>r.id),
-   ['near','precision','turn','control','reload','compact']);
+   ['near','precision','turn','control','reload','compact','noise','capacity']);
   for(const row of rows){
    assert.ok(Number.isInteger(row.score)&&row.score>=0&&row.score<=100,
     id+'/'+row.id);
@@ -46,6 +46,7 @@ test('H1 attachment change shows favorable and unfavorable deltas',()=>{
  const changes=arsenalStatDeltas(after,before);
  assert.ok(changes.get('compact')<0,'added muzzle length reduces compactness');
  assert.ok(changes.get('turn')<0,'suppressor balance reduces swing speed');
+ assert.ok(changes.get('noise')>0,'suppressor actually reduces hearing radius');
  assert.equal(arsenalStatDeltas(before,before).get('compact'),0);
  assert.equal(arsenalStatDeltas(before,null).get('compact'),0);
 });
