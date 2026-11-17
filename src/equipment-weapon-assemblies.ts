@@ -12,6 +12,7 @@ import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {opticProfile} from './weapons/geometry/optic-profiles.ts';
+import {physicalWeaponMountSlots} from './weapons/geometry/weapon-physical-mount-slots.ts';
 import {FAMILY_PARTS,FAMILY_PART_SLOTS,familyPreset,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,setWeaponFamilyPart as changeFamilyPart,
  type FamilyPartSlot,type WeaponFamilyBuild}
@@ -228,6 +229,13 @@ export function setWeaponAttachment(config:WeaponConfiguration,slot:WeaponAttach
  if(!WEAPON_ATTACHMENT_SLOTS.includes(slot)||
   !weaponAttachmentAllowed(config,slot,id))return config;
  if(config.slots[slot]===id)return config;
+ // Tighten NEW installations only. The V1 reader still retains historical
+ // items without destructively rewriting saves or Campaign stock.
+ if(config.build&&
+  ((slot==='light'&&id!=='light-none')||
+   (slot==='foregrip'&&id!=='foregrip-none'))&&
+  !physicalWeaponMountSlots(config.build,config.slots.opticMount).some(s=>
+   s.role===slot&&s.standard==='picatinny'))return config;
  // Removing a mount makes its optic invalid: reset just that dependency.
  // Keep this as one immutable transaction without introducing V2 saves.
  return readWeaponConfiguration({...config,
