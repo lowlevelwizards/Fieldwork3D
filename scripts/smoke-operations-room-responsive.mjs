@@ -26,7 +26,11 @@ async function assess(browser,{name,width,height,mobile}){
   check(mobile?hero.y+hero.height<=actions.y+8:
    hero.x+hero.width<=actions.x+8,name+' main-menu panels overlap');
   await page.screenshot({path:out+'/'+name+'-menu.png',animations:'disabled'});
-  await page.getByRole('button',{name:'NEW CAMPAIGN',exact:true}).click();
+  // Main menu's accessible primary name is deliberately 'Create a new campaign';
+  // the visible NEW CAMPAIGN heading is not the button's accessible name.
+  await page.locator('.campaign-landing-primary').click();
+  await page.getByRole('button',{name:/^DISPATCH —/}).click();
+  await page.getByRole('button',{name:'CREATE DISPATCH',exact:true}).click();
   await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
   for(const tab of ['overview','personnel','contracts','logistics','chronicle']){
    const trigger=page.locator('#campaign-tab-'+tab);
