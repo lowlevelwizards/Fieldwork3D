@@ -99,6 +99,8 @@ export class CampaignScreen{
  private weaponView=false;
  /** Temporary UI preference only; no Campaign save mutation. */
  private readonly expandedClassicWeaponControls=new Set<string>();
+ /** UI-only disclosure preference, retained when supplies or treatment refreshes home. */
+ private readonly expandedOperatorCare=new Set<string>();
  private selectedMount:WeaponAttachmentSlot='optic';
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
@@ -494,6 +496,11 @@ export class CampaignScreen{
    profile.setAttribute('aria-label','View '+p.callsign+' service dossier');
    const actions=node('div','campaign-person-actions');
    const care=node('details','campaign-person-care');
+   care.open=this.expandedOperatorCare.has(p.id);
+   care.addEventListener('toggle',()=>{
+    if(care.open)this.expandedOperatorCare.add(p.id);
+    else this.expandedOperatorCare.delete(p.id);
+   });
    care.append(node('summary','','EQUIPMENT & CARE'));
    const careActions=node('div','campaign-person-care-actions');
    const weaponPick=node('select','campaign-select');
