@@ -1039,3 +1039,33 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
  .campaign-personnel-roster-panel .campaign-person{min-width:0}
 }
+
+
+/* UI R17: the stock and purchase decision stays before hardware procurement,
+   with a balanced desktop work area and an unbroken phone reading order. */
+.campaign-logistics-workspace{display:grid;grid-template-columns:minmax(0,1fr);
+ gap:16px;align-items:start;min-width:0}
+.campaign-logistics-supply-panel{min-width:0;display:grid;gap:12px;
+ align-content:start}
+.campaign-logistics-supply-panel>h2,
+.campaign-logistics-workspace>.campaign-armory>h2{margin:0}
+.campaign-logistics-buy-heading{margin:3px 0 0;color:var(--fw-text-muted);
+ font:750 12px/1.3 var(--fw-font-menu);letter-spacing:.06em}
+.campaign-logistics-supply-panel .campaign-logistics-stats,
+.campaign-logistics-supply-panel .campaign-purchases,
+.campaign-logistics-workspace>.campaign-armory{margin:0}
+@media(min-width:1000px){
+ .campaign-logistics-workspace{
+  grid-template-columns:minmax(330px,.9fr) minmax(0,1.1fr);
+  gap:clamp(16px,2.3vw,28px)}
+ .campaign-logistics-supply-panel .campaign-purchases{
+  grid-template-columns:minmax(0,1fr)}
+ .campaign-logistics-supply-panel .campaign-supply-offer{
+  flex-direction:row;align-items:center;gap:12px}
+ .campaign-logistics-supply-panel .campaign-supply-offer button{
+  flex:none;width:auto;min-width:94px}
+ .campaign-logistics-workspace>.campaign-armory{
+  grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+ .campaign-logistics-workspace .campaign-procurement-item{
+  min-width:0;align-content:start}
+}

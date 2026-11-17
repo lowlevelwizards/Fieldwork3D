@@ -580,6 +580,9 @@ export class CampaignScreen{
   personnel.append(personnelWorkspace);
   const logistics=node('section','campaign-section');
   logistics.append(node('h2','','SUPPLIES & LOGISTICS'));
+  const logisticsWorkspace=node('div','campaign-logistics-workspace');
+  const supplyPanel=node('section','campaign-logistics-supply-panel');
+  supplyPanel.append(node('h2','','RESERVE SUPPLIES'));
   const stock=node('div','campaign-logistics-stats');
   for(const [count,label] of [
    [c.supplies.ammo,'ROUNDS'],
@@ -590,7 +593,8 @@ export class CampaignScreen{
    fact.append(node('strong','',String(count)),node('span','',label));
    stock.append(fact);
   }
-  logistics.append(stock);
+  supplyPanel.append(stock,node('h3','campaign-logistics-buy-heading',
+   'REPLENISH RESERVES'));
   const purchases=node('div','campaign-purchases');
   for(const [label,cost,action] of [
    ['60 ROUNDS',120,this.handlers.buyAmmo],
@@ -608,7 +612,8 @@ export class CampaignScreen{
     (label==='2 FLASHBANGS'&&(!!c.activeContractId||c.supplies.flash>998));
    item.append(desc,buy);purchases.append(item);
   }
-  logistics.append(purchases);
+  supplyPanel.append(purchases);
+  logisticsWorkspace.append(supplyPanel);
   const inventory=node('div','campaign-armory');
   inventory.append(node('h2','','FIELD ARMORY'));
   const offerings=isDispatchPilot(c)?CAMPAIGN_WEAPON_PLATFORMS:
@@ -627,7 +632,8 @@ export class CampaignScreen{
    buy.title=quote.authorization;
    row.append(heading,metrics,status,buy);inventory.append(row);
   }
-  logistics.append(inventory);
+  logisticsWorkspace.append(inventory);
+  logistics.append(logisticsWorkspace);
   const recruit=button('RECRUIT OPERATOR · '+
    (isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?
     'NO CHARGE':'450 CR'),this.handlers.recruit);

@@ -176,3 +176,33 @@ test('Squad desktop columns keep slot selectors usable and phone roster full wid
  assert.match(layout,/\.campaign-personnel-roster-panel \.campaign-roster\{/);
  assert.match(css,/@media\(max-width:600px\)\{[\s\S]*?\.campaign-roster,\.campaign-armory/);
 });
+
+test('Logistics has stock, replenish actions and armory in task-first DOM order',()=>{
+ const ui=source('campaign-ui.ts');
+ const logistics=ui.slice(ui.indexOf("const logistics=node('section','campaign-section')"),
+  ui.indexOf("const recruit=button('RECRUIT OPERATOR"));
+ assert.match(logistics,/const logisticsWorkspace=node\('div','campaign-logistics-workspace'\)/);
+ assert.match(logistics,/const supplyPanel=node\('section','campaign-logistics-supply-panel'\)/);
+ assert.match(logistics,/node\('h2','','RESERVE SUPPLIES'\)/);
+ assert.match(logistics,/supplyPanel\.append\(stock,node\('h3','campaign-logistics-buy-heading'/);
+ assert.match(logistics,/supplyPanel\.append\(purchases\)/);
+ assert.match(logistics,/logisticsWorkspace\.append\(supplyPanel\)/);
+ assert.match(logistics,/logisticsWorkspace\.append\(inventory\)/);
+ assert.match(logistics,/logistics\.append\(logisticsWorkspace\)/);
+ assert.match(logistics,/this\.handlers\.buyAmmo/);
+ assert.match(logistics,/this\.handlers\.buyMedical/);
+ assert.match(logistics,/this\.handlers\.buyFlash/);
+ assert.match(logistics,/this\.handlers\.buyWeapon\(weapon\)/);
+ assert.match(logistics,/buy\.disabled=!quote\.canPurchase/);
+});
+
+test('Logistics keeps one-column phones and separates supply and armory on desktops',()=>{
+ const css=source('campaign-style.css');
+ const layout=css.slice(css.indexOf('/* UI R17: the stock and purchase'));
+ assert.match(layout,/\.campaign-logistics-workspace\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(layout,/@media\(min-width:1000px\)/);
+ assert.match(layout,/grid-template-columns:minmax\(330px,\.9fr\) minmax\(0,1\.1fr\)/);
+ assert.match(layout,/\.campaign-logistics-supply-panel \.campaign-purchases\{/);
+ assert.match(layout,/\.campaign-logistics-workspace>\.campaign-armory\{/);
+ assert.match(css,/@media\(max-width:600px\)\{\.campaign-purchases\{grid-template-columns:minmax\(0,1fr\)/);
+});
