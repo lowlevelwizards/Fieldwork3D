@@ -313,6 +313,8 @@ async function assess(browser,{name,width,height,mobile}){
   check(await last.getAttribute('aria-selected')==='true',name+' End navigation failed');
   await last.press('ArrowRight');
   check(await first.getAttribute('aria-selected')==='true',name+' Arrow wrap failed');
+  const established=await assessEstablishedCareer(page,name,mobile);
+  await assessActiveDeployment(page,name,established);
   check(!errors.length,name+' runtime errors: '+errors.join('; '));
   console.log(name+' passed: main menu, five Operations panels, responsive layout, navigation');
  }finally{await context.close();}
