@@ -233,6 +233,7 @@ async function assess(browser,{name,width,height,mobile}){
   await page.getByRole('button',{name:/^DISPATCH —/}).click();
   await page.getByRole('button',{name:'CREATE DISPATCH',exact:true}).click();
   await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
+  let c12SavedProcurement=null;
   for(const tab of ['overview','personnel','contracts','logistics','chronicle']){
    const trigger=page.locator('#campaign-tab-'+tab);
    await trigger.click();
@@ -309,7 +310,15 @@ async function assess(browser,{name,width,height,mobile}){
      name+' purchase authorization explanation inaccessible');
     const purchase=page.locator('.campaign-supply-offer button:enabled').first();
     if(await purchase.count()){
+     const before=await page.evaluate(()=>
+      localStorage.getItem('fieldwork3d.dispatch-campaign.v1'));
      await purchase.click();
+     c12SavedProcurement=await page.evaluate(()=>
+      localStorage.getItem('fieldwork3d.dispatch-campaign.v1'));
+     check(c12SavedProcurement!==before,
+      name+' procurement action did not update its authoritative campaign save');
+     check(await page.locator('#fieldworkActionToast').isVisible(),
+      name+' saved procurement action had no visible acknowledgement');
      check(await page.locator('.campaign-context').getAttribute('open')!==null,
       name+' campaign context collapsed after purchase');
      check(await page.locator('.campaign-contract-intelligence').first().getAttribute('open')!==null,
@@ -362,6 +371,20 @@ async function assess(browser,{name,width,height,mobile}){
   check(await last.getAttribute('aria-selected')==='true',name+' End navigation failed');
   await last.press('ArrowRight');
   check(await first.getAttribute('aria-selected')==='true',name+' Arrow wrap failed');
+  // C12: the real procurement action, not an injected test save, survives cold reload.
+  if(c12SavedProcurement!==null){
+   await page.reload({waitUntil:'domcontentloaded'});
+   await page.locator('.campaign-landing-primary').waitFor({state:'visible'});
+   const reloaded=await page.evaluate(async()=>{
+    const {readCampaign}=await import('/src/campaign-state.ts');
+    const raw=localStorage.getItem('fieldwork3d.dispatch-campaign.v1');
+    return {raw,valid:!!readCampaign(raw)};
+   });
+   check(reloaded.raw===c12SavedProcurement&&reloaded.valid,
+    name+' saved procurement did not survive an actual browser reload');
+   await page.getByRole('button',{name:'Continue DISPATCH CAMPAIGN'}).click();
+   await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
+  }
   const established=await assessEstablishedCareer(page,name,mobile);
   await assessActiveDeployment(page,name,established);
   check(!errors.length,name+' runtime errors: '+errors.join('; '));
