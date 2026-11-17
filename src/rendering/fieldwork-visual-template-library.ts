@@ -58,9 +58,11 @@ export class StaticVisualTemplateLibrary{
  private readonly templates=new Map<string,Entry>();
  private readonly retired=new Set<Entry>();
  private builds=0;private hits=0;private evictions=0;
- constructor(private readonly maxTemplates=128){
+ private readonly maxTemplates:number;
+ constructor(maxTemplates=128){
   if(!Number.isInteger(maxTemplates)||maxTemplates<1)
    throw Error('Visual template budget must be a positive integer');
+  this.maxTemplates=maxTemplates;
  }
  /** Call with a versioned art recipe key: "window:v3:width=...:style=..." */
  acquire(key:string,build:()=>StaticVisualBuild,
