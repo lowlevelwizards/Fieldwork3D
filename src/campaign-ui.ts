@@ -519,18 +519,33 @@ export class CampaignScreen{
    careActions.append(weaponPick);
    const resupply=button('RESUPPLY AMMO',()=>this.handlers.resupply(p.id));
    resupply.disabled=!!c.activeContractId||c.supplies.ammo===0;
+   if(resupply.disabled)resupply.title=c.activeContractId?
+    'Finish the current deployment before resupplying':
+    'No ammunition available in Logistics';
    careActions.append(resupply);
    const med=kitMedicalSupplies(p.loadout);
    const replenish=button('REISSUE MEDICAL '+medicalSupplyCount(p.medicalSupplies)+
-    '/'+medicalSupplyCount(med)+' · 1 STOCK',
+    '/'+medicalSupplyCount(med)+' · '+c.supplies.medical+' IN STOCK',
     ()=>this.handlers.resupplyMedical(p.id));
    replenish.disabled=!!c.activeContractId||c.supplies.medical<1||
     medicalSupplyCount(p.medicalSupplies)>=medicalSupplyCount(med)||
     medicalSupplyCount(med)===0;
+   if(replenish.disabled)replenish.title=c.activeContractId?
+    'Finish the current deployment before reissuing supplies':
+    c.supplies.medical<1?'No medical kits available in Logistics':
+    medicalSupplyCount(med)===0?'This loadout has no medical supplies to replenish':
+    'Medical supplies already full';
    careActions.append(replenish);
-   if(p.recoveryDays>0)careActions.append(button(
-    'TREAT · '+p.recoveryDays+' → '+Math.max(0,p.recoveryDays-2)+' DAYS',
-    ()=>this.handlers.treat(p.id)));
+   if(p.recoveryDays>0){
+    const treat=button(
+     'TREAT · '+p.recoveryDays+' → '+Math.max(0,p.recoveryDays-2)+' DAYS',
+     ()=>this.handlers.treat(p.id));
+    treat.disabled=!!c.activeContractId||c.supplies.medical<1;
+    if(treat.disabled)treat.title=c.activeContractId?
+     'Finish the current deployment before treatment':
+     'Buy medical kits in Logistics to treat this operator';
+    careActions.append(treat);
+   }
    if(!c.squadIds.includes(p.id)&&
     c.operators.filter(o=>o.status==='available'||o.status==='reserve').length>4)
     careActions.append(button('RETIRE',()=>this.handlers.retire(p.id)));
