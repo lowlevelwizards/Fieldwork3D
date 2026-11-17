@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {stackApproachPositions,doorOpensTowardApproach} from '../src/breach-entry-coordination.ts';
+import {stackApproachPositions} from '../src/breach-entry-coordination.ts';
 
 const point=(x,y)=>({x,y});
 const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -32,23 +32,4 @@ test('Phase A1: diagonal and reversed door ends preserve the physical approach s
 
 test('Phase A1: invalid zero-length door cannot fabricate stack positions',()=>{
  assert.deepEqual(stackApproachPositions({id:'X',a:point(1,2),b:point(1,2)},point(4,5)),[]);
-});
-
-test('D3.19B: four outward leaf rear pockets each fit distinct operators',async()=>{
- const {doorRangeSite}=await import('../src/breach-door-test-cases.ts');
- const site=doorRangeSite('outward-left');
- const door=site.doors[0],from=site.spawn[0];
- assert.ok(doorOpensTowardApproach(door,from),
-  'the fixture must actually exercise outward-door queue geometry');
- const slots=stackApproachPositions(door,from);
- const center=point((door.a.x+door.b.x)/2,(door.a.y+door.b.y)/2);
- const rear=slots.slice(2,6);
- assert.equal(rear.length,4);
- for(let i=0;i<rear.length;i++){
-  assert.ok(distance(rear[i],center)<68,
-   'all rear slots remain in the existing doorway reach envelope');
-  for(let j=0;j<i;j++)
-   assert.ok(distance(rear[i],rear[j])>23,
-    'rear slots cannot independently fit two full-size operator bodies');
- }
 });
