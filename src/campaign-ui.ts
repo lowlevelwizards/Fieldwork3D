@@ -1217,8 +1217,10 @@ export class CampaignScreen{
    card.append(node('small','campaign-note','SITE · '+
     c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase()));
   card.append(node('div','campaign-muted',c.region+' · '+['','LOW','MODERATE','HIGH'][c.risk]+' RISK'));
+  const dossier=dispatchCaseDossier(campaign,c);
+  if(dossier)card.append(node('small','campaign-note',
+   dossier.situation.emphasis+' · '+dossier.situation.siteScale));
   if(c.followUpOf){
-   const dossier=dispatchCaseDossier(campaign,c);
    card.append(node('div','campaign-note',
     dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
    const last=dossier?.related.at(-1);
@@ -1255,14 +1257,21 @@ export class CampaignScreen{
    add('REPORTED LEAD · UNCONFIRMED',dossier.lead);
    add('TACTICAL OBJECTIVE',dossier.objective);
    add('ASSIGNMENT CONTEXT',dossier.context);
+   add('OPERATIONAL EMPHASIS',
+    dossier.situation.emphasis+' · '+dossier.situation.siteScale);
   }else add('OBJECTIVE',view.description);
   if(isDispatchPilot(campaign))add('CALL REFERENCE',view.reference);
   if(isDispatchPilot(campaign)&&contract.dispatchCase)
    add('PROPERTY TYPE',contract.dispatchCase.archetype.replace(/-/g,' ').toUpperCase());
   add('ASSIGNMENT',contract.kind.replace(/-/g,' ').toUpperCase());
-  add('LOCATION',contract.region);
-  add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);
-  add('REWARD / DEADLINE',contract.reward+' CR · DAY '+contract.deadline);
+  if(dossier){
+   add('ASSIGNMENT TERMS',dossier.situation.due+' · '+contract.reward+' CR');
+   add('RISK ASSESSMENT',dossier.situation.riskAssessment);
+  }else{
+   add('LOCATION',contract.region);
+   add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);
+   add('REWARD / DEADLINE',contract.reward+' CR · DAY '+contract.deadline);
+  }
   add('INTELLIGENCE',dossier?.intelligence??{
    unknown:'Site layout and threats are unknown until discovered',
    scouted:'Exterior intelligence available; interior remains uncertain',
