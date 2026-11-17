@@ -4128,7 +4128,7 @@ body.nvg-selected-view #breach3dCanvas{
 
 /* UI.6A: a tiny truthful queued-order count on each squad member.
    No extra HUD row, visual redraw loop, or effect when the count is zero. */
-.tactical-hud .bar .unit[data-plan-count]:not([data-plan-count="0"])::after{
+body[data-hud-phase="planning"] .tactical-hud .bar .unit:not(.down)[data-plan-count]:not([data-plan-count="0"])::after{
  content:attr(data-plan-count);
  position:absolute;top:2px;right:3px;
  min-width:12px;height:14px;padding:0 2px;
@@ -4138,19 +4138,19 @@ body.nvg-selected-view #breach3dCanvas{
  font:750 10px/1 var(--fw-font-menu);
  pointer-events:none;
 }
-.tactical-hud .bar .unit.selected[data-plan-count]:not([data-plan-count="0"])::after{
+body[data-hud-phase="planning"] .tactical-hud .bar .unit.selected:not(.down)[data-plan-count]:not([data-plan-count="0"])::after{
  border-color:var(--operator-accent,#bdd0b8);
  color:#fff7e1;
 }
 @media(max-width:650px){
- .tactical-hud .bar .unit[data-plan-count]:not([data-plan-count="0"])::after{
+ body[data-hud-phase="planning"] .tactical-hud .bar .unit:not(.down)[data-plan-count]:not([data-plan-count="0"])::after{
   top:1px;right:2px;font-size:9px;min-width:11px;height:12px;
  }
 }
 
 /* UI.6B: a quiet readiness edge on GO when authored orders exist.
    Never disable execution, alter gameplay, or flash per frame. */
-.tactical-hud .bar #play[data-mode="go"]:not([data-queued-orders="0"]){
+body[data-hud-phase="planning"] .tactical-hud .bar #play[data-mode="go"]:not([data-queued-orders="0"]){
  box-shadow:inset 0 -3px 0 #6f9c7c,0 0 0 1px #bed1a855;
 }
 
