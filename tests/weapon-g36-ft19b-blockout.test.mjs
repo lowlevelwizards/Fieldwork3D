@@ -108,10 +108,10 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   grip=one(g,'g36Grip'),upper=one(g,'g36ReceiverUpper');
  assert.ok(h&&s&&guard&&mag&&grip&&upper);
  assert.ok(bb(h).max.y>4,'raised original G36 bridge');
- assert.ok(bb(guard).max.z-bb(guard).min.z>3.0&&
-  bb(guard).max.z-bb(guard).min.z<3.25,'purposefully broad fore-end shoulder');
- assert.ok(bb(guard).max.y-bb(guard).min.y>3.55&&
-  bb(guard).max.y-bb(guard).min.y<3.85,'molded shoulder has useful vertical hierarchy');
+ assert.ok(bb(guard).max.z-bb(guard).min.z>2.75&&
+  bb(guard).max.z-bb(guard).min.z<3.0,'flat-sided fore-end width');
+ assert.ok(bb(guard).max.y-bb(guard).min.y>3.20&&
+  bb(guard).max.y-bb(guard).min.y<3.30,'a deliberate flat roof and floor');
  assert.ok(bb(mag).min.y> -8.40&&bb(mag).min.y< -8.20,
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
@@ -125,15 +125,15 @@ test('G36 C3: one faceted tapered fore-end is volumetric in top/front views',()=
  const shell=one(g,'g36LongHandguard');
  assert.ok(shell.userData.g36FacetedMoldedShell,'handguard must be a single 3D faceted volume');
  const geo=shell.geometry,attr=geo.getAttribute('position');
- assert.equal(attr.count,32,'four intentional YZ octagonal cross-sections');
+ assert.equal(attr.count,12,'three planar four-corner sections; no cosmetic octagonal bevels');
  const zAt=x=>{
   const v=[];
   for(let i=0;i<attr.count;i++)if(Math.abs(attr.getX(i)-x)<.02)v.push(Math.abs(attr.getZ(i)));
   return Math.max(...v);
  };
- assert.ok(zAt(10.81)>zAt(13.45)+.15,'fore-end nose tapers visibly in 3D');
- assert.ok(zAt(10.81)>zAt(3.75)+.10,'rear joins slim molded body');
- assert.ok(bb(shell).max.y>1.35&&bb(shell).min.y< -1.9);
+ assert.ok(zAt(11.75)>zAt(13.45)+.10,'a single intentional short nose taper');
+ assert.ok(Math.abs(zAt(11.75)-zAt(3.75))<.01,'body sides must stay flat');
+ assert.ok(bb(shell).max.y>=1.34&&bb(shell).min.y< -1.85);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -148,7 +148,7 @@ test('G36 C4: fore-end nose stays blunt, thick and factory-polymer-like',()=>{
   }
   return {height:Math.max(...ys)-Math.min(...ys),halfDepth:Math.max(...zs)};
  };
- const middle=ring(10.81),nose=ring(13.45);
+ const middle=ring(11.75),nose=ring(13.45);
  assert.ok(nose.height/middle.height>.78&&nose.height/middle.height<.89,
   'nose height should remain 78–89% of broad polymer midsection');
  assert.ok(nose.halfDepth/middle.halfDepth>.80,
@@ -244,8 +244,8 @@ test('G36 D1-2: single real pixel atlas, side-correct ejection, no extra draw me
   const col=tile%4,row=Math.floor(tile/4),i=((row*96+y)*384+col*96+x)*4;
   return bytes[i];
  };
- assert.notEqual(sample(2,57,63),sample(3,57,63),
-  'ejection-side and opposite receiver atlas tiles must differ');
+ assert.equal(sample(2,57,63),sample(3,57,63),
+  'no obsolete receiver ejection-port graphics in P6');
  const originalMagazine=one(g,'g36Magazine').material;
  applyG36PixelDetails(g);
  assert.equal(one(g,'g36Magazine').material,originalMagazine,'repeat atlas is cached');
