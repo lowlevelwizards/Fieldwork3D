@@ -90,6 +90,9 @@ function samePlaceOccupied(place:PhysicalAttachmentPlacement,
  existing:readonly PhysicalAttachmentPlacement[]):boolean{
  return existing.some(other=>
   other.attachmentSlot!==place.attachmentSlot&&
+  // The four-foot HK claw is structural hardware beneath the optic,
+  // not an accessory body competing for its own bridge top.
+  other.attachmentSlot!=='opticMount'&&
   // Only physically coincident outward faces can overlap in this first
   // conservative rail-level solver. Per-accessory 3D volumes come in M2.5.
   other.face===place.face&&
@@ -154,6 +157,7 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
  }
  const results:PhysicalAttachmentPlacement[]=[];
  const errors:MountFitReason[]=[];
+ let physicallySupportable=0;
  if(profile.role==='opticMount'){
   // The four distinct HK feet are one inseparable bridge. A single foot
   // must never imply that a complete claw adapter is supported.
@@ -196,6 +200,7 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
       center+profile.baseHalfX<=maxX+.001);
     if(!fits){errors.push('insufficient-support');continue;}
     if(!baseFits){errors.push('insufficient-clearance');continue;}
+    physicallySupportable++;
     const p=option(profile,attachmentId,[c],center,face,occupied);
     if(p.blocked)errors.push('occupied');
     else results.push(p.placement);
@@ -224,6 +229,7 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
       center+profile.baseHalfX<=maxX+.001);
     if(!clampFits){errors.push('insufficient-support');continue;}
     if(!baseFits){errors.push('insufficient-clearance');continue;}
+    physicallySupportable++;
     const p=option(profile,attachmentId,matched,center,face,occupied);
     if(p.blocked)errors.push('occupied');
     else results.push(p.placement);
@@ -253,7 +259,8 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
   return {attachmentId,feasible:true,options:results,reasons:[]};
  }
  return {attachmentId,feasible:false,options:[],
-  reasons:uniqueReasons(errors.length?errors:['insufficient-support'])};
+  reasons:physicallySupportable?['occupied']:
+   uniqueReasons(errors.length?errors:['insufficient-support'])};
 }
 
 /** Preview only: resolve existing equipped accessories against authored
