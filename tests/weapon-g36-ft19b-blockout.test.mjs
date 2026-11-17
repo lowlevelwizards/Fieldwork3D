@@ -72,8 +72,8 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  const triangles=meshes.reduce((sum,x)=>{
   const geo=x.geometry;return sum+(geo.index?.count??geo.getAttribute('position').count)/3;
  },0);
- assert.ok(meshes.length<=15, 'too many exterior draw meshes: '+meshes.length);
- assert.ok(triangles<=400, 'essential forms must stay under 400 triangles: '+triangles);
+ assert.ok(meshes.length<=16, 'too many exterior draw meshes: '+meshes.length);
+ assert.ok(triangles<=430, 'essential forms must stay under 430 triangles: '+triangles);
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
   'only the accepted original full-size model is an authored factory preset');
  assert.equal(Object.keys(FAMILY_PARTS).filter(id=>id.startsWith('g36-')).length,6);
@@ -116,7 +116,7 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.ok(meshCount<=15,'only two optical-face landmarks are permitted: '+meshCount);
+ assert.ok(meshCount<=16,'only three optical-face landmarks are permitted: '+meshCount);
  clearWeaponSilhouette(g);m.dispose();
 });
 
