@@ -129,6 +129,50 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
       host.root.userData.fieldworkE620Pilot={source,compiled,
         avoided:source-compiled,windows,frames};
     }
+    // E6.21: second opt-in domain pilot. These groups move as one rigid
+    // assembly or remain under their independent disclosure owner. A door
+    // leaf's parent may rotate, but its local submesh geometry is rigid.
+    // Never bake independently animated glass, thresholds or door hinges.
+    const e621Enabled=typeof location!=='undefined'&&
+      new URLSearchParams(location.search).get('e621Bake')==='1';
+    if(e621Enabled){
+      let source=0,compiled=0,arches=0,interiorWindows=0;
+      let interiorFrames=0,rigidLeaves=0;
+      const record=(result:ReturnType<typeof compileRigidVisualOwner>,
+       domain:'arch'|'window'|'frame'|'leaf')=>{
+        if(result.avoidedDraws<=0)return;
+        source+=result.sourceMeshes;compiled+=result.compiledMeshes;
+        if(domain==='arch')arches++;
+        else if(domain==='window')interiorWindows++;
+        else if(domain==='frame')interiorFrames++;
+        else rigidLeaves++;
+      };
+      // One room-opening group is independently discovered, not a global
+      // structural mesh. Its parts share one material and stay rigid.
+      for(const opening of host.architecturalOpenings)
+        record(compileRigidVisualOwner(opening.obj,{mode:'opaque'}),'arch');
+      for(const glass of host.windowGlass.values()){
+        const owner=glass.parent;
+        if(!owner||owner.userData.fogFacade===true)continue;
+        record(compileRigidVisualOwner(owner,{mode:'opaque',
+          exclude:new Set([glass])}),'window');
+      }
+      for(const door of host.doors.values()){
+        const exterior=door.frame.children.some(child=>
+          child.userData.fogFacade===true);
+        if(!exterior)record(compileRigidVisualOwner(door.frame,{
+          mode:'opaque',exclude:new Set([door.threshold,door.wedge])}),'frame');
+        // Parts of an open/closed door travel together WITH the leaf pivot.
+        // The glass pane retains its independent shattered/hidden state.
+        record(compileRigidVisualOwner(door.leaf,{
+          mode:exterior?'opaque-facade':'opaque',
+          exclude:door.glassPane?new Set([door.glassPane]):undefined
+        }),'leaf');
+      }
+      host.root.userData.fieldworkE621Pilot={source,compiled,
+        avoided:source-compiled,arches,interiorWindows,
+        interiorFrames,rigidLeaves};
+    }
     // Bake immobile exterior/ground fixtures per spatial cell. Keep owner-
     // scoped doors, cover and fog groups independent; never touch descendants.
     consolidateStaticFixtureParts(host.root,{recursive:false,cellSize:220});
