@@ -692,8 +692,10 @@ export class TacticalScene3D{
   private readonly useArchitectureTemplates=new URLSearchParams(location.search)
     .get('e622Template')==='1';
   // Independent opt-in; rigid cover geometry is immutable, damage/wear is not.
-  private readonly includeServiceFixtureTemplates=new URLSearchParams(location.search)
-    .get('e624Service')==='1';
+  private readonly includeCharacterFixtureTemplates=new URLSearchParams(location.search)
+    .get('e625Character')==='1';
+  private readonly includeServiceFixtureTemplates=this.includeCharacterFixtureTemplates||
+    new URLSearchParams(location.search).get('e624Service')==='1';
   private readonly useFixtureTemplates=this.includeServiceFixtureTemplates||
     new URLSearchParams(location.search).get('e623Fixture')==='1';
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
@@ -1230,6 +1232,7 @@ export class TacticalScene3D{
       fixtureTemplates:scene.useFixtureTemplates?
         scene.architecturalVisualTemplates:undefined,
       includeServiceFixtureTemplates:scene.includeServiceFixtureTemplates,
+      includeCharacterFixtureTemplates:scene.includeCharacterFixtureTemplates,
       registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
