@@ -38,6 +38,7 @@ import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
+import {compileRigidVisualOwner} from './fieldwork-model-compiler.ts';
 import type {RepeatedFixtureBatches} from './breach-repeated-fixture-batches.ts';
 import {isArchitecturalSillCover} from '../worldgen/architectural-cover-visuals.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
@@ -102,6 +103,32 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
       new URLSearchParams(location.search).get('e618Batch')!=='0';
     if(e618Enabled)consolidateOwnedStaticSiteDetails(
       host.observedDetails,host.doors);
+    // E6.20 pilot is strictly opt-in until verified by scene A/B and visual
+    // parity. Only already-known exterior window trims and fixed door frames
+    // share a disclosure owner. Keep glass, hinge, leaf and threshold intact.
+    const e620Enabled=typeof location!=='undefined'&&
+      new URLSearchParams(location.search).get('e620Bake')==='1';
+    if(e620Enabled){
+      let source=0,compiled=0,windows=0,frames=0;
+      for(const glass of host.windowGlass.values()){
+        const owner=glass.parent;
+        if(!owner||owner.userData.fogFacade!==true)continue;
+        const result=compileRigidVisualOwner(owner,{
+          mode:'opaque-facade',exclude:new Set([glass])});
+        if(result.avoidedDraws>0){
+          windows++;source+=result.sourceMeshes;compiled+=result.compiledMeshes;
+        }
+      }
+      for(const door of host.doors.values()){
+        const result=compileRigidVisualOwner(door.frame,{
+          mode:'opaque-facade',exclude:new Set([door.threshold,door.wedge])});
+        if(result.avoidedDraws>0){
+          frames++;source+=result.sourceMeshes;compiled+=result.compiledMeshes;
+        }
+      }
+      host.root.userData.fieldworkE620Pilot={source,compiled,
+        avoided:source-compiled,windows,frames};
+    }
     // Bake immobile exterior/ground fixtures per spatial cell. Keep owner-
     // scoped doors, cover and fog groups independent; never touch descendants.
     consolidateStaticFixtureParts(host.root,{recursive:false,cellSize:220});
