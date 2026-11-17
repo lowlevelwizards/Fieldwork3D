@@ -322,6 +322,10 @@ export class CampaignScreen{
   });
  }
  home(c:CampaignState,slot?:CampaignSlot){
+  // Preserve the user's place when a purchase or treatment refreshes this view.
+  // Opening the campaign from a menu, briefing or loadout still starts at the top.
+  const restoreScroll=!this.root.hidden&&
+   !!this.root.querySelector('.campaign-tabs')?this.root.scrollTop:0;
   if(slot)this.currentSlot=slot;
   if(this.armoryOperatorId){
    const target=c.operators.find(x=>x.id===this.armoryOperatorId&&x.status!=='lost'&&x.status!=='retired');
@@ -896,6 +900,7 @@ export class CampaignScreen{
   }
   main.insertBefore(nav,grid);
   this.root.append(main);
+  if(restoreScroll>0)this.root.scrollTop=restoreScroll;
  }
  private armory(c:CampaignState,id:string){
   const sameOperator=this.lastArmoryRenderedId===id;
