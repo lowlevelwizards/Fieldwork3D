@@ -67,8 +67,8 @@ test('E6.21 keeps independently hidden interior architectural room owners distin
 });
 test('E6.21 source keeps dynamic and independently controlled boundaries',()=>{
  const s=code();
- assert.match(s,/get\\('e621Bake'\\)!=='0'/);
- assert.match(s,/get\\('e620Bake'\\)!=='0'/);
+ assert.ok(s.includes("get('e621Bake')!=='0'"));
+ assert.ok(s.includes("get('e620Bake')!=='0'"));
  assert.match(s,/for\(const opening of host\.architecturalOpenings\)/);
  assert.match(s,/owner\.userData\.fogFacade===true/);
  assert.match(s,/exclude:new Set\(\[glass\]\)/);
