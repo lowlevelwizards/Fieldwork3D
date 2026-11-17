@@ -330,8 +330,12 @@ export class CampaignScreen{
  home(c:CampaignState,slot?:CampaignSlot){
   // Preserve the user's place when a purchase or treatment refreshes this view.
   // Opening the campaign from a menu, briefing or loadout still starts at the top.
-  const restoreScroll=!this.root.hidden&&
-   !!this.root.querySelector('.campaign-tabs')?this.root.scrollTop:0;
+  const wasInOperations=!this.root.hidden&&
+   !!this.root.querySelector('.campaign-tabs');
+  const restoreScroll=wasInOperations?this.root.scrollTop:0;
+  const focusedControl=wasInOperations&&this.root.contains(document.activeElement)?
+   document.activeElement as HTMLElement:null;
+  const focusedLabel=focusedControl?.getAttribute('aria-label');
   if(slot)this.currentSlot=slot;
   if(this.armoryOperatorId){
    const target=c.operators.find(x=>x.id===this.armoryOperatorId&&x.status!=='lost'&&x.status!=='retired');
@@ -1110,6 +1114,15 @@ export class CampaignScreen{
   main.insertBefore(nav,grid);
   this.root.append(main);
   if(restoreScroll>0)this.root.scrollTop=restoreScroll;
+  // Purchases, treatment and assignments rebuild this view. Return keyboard
+  // focus to the same named control without jumping the saved scroll position.
+  if(focusedLabel){
+   const restored=Array.from(this.root.querySelectorAll<HTMLElement>('[aria-label]'))
+    .find(control=>control.getAttribute('aria-label')===focusedLabel&&
+     !control.matches(':disabled'));
+   (restored??nav.querySelector<HTMLElement>('[aria-selected="true"]'))
+    ?.focus({preventScroll:true});
+  }
  }
  private armory(c:CampaignState,id:string){
   const sameOperator=this.lastArmoryRenderedId===id;
