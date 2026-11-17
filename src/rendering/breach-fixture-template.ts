@@ -107,3 +107,21 @@ export function acquireRigidFixtureTemplate(
    }
   });
 }
+
+/** The owner-scoped fixture batcher expects direct child meshes. Adopt them
+ * without transferring ownership of their shared GPU buffers. Releasing the
+ * lease must still detach any remaining adopted visual nodes, even if a
+ * caller releases before full site teardown. */
+export function adoptRigidFixtureVisual(
+ owner:THREE.Group,lease:StaticVisualLease
+):StaticVisualLease{
+ const adopted=[...lease.root.children];
+ owner.add(...adopted);
+ let released=false;
+ return {root:lease.root,templateKey:lease.templateKey,release:()=>{
+  if(released)return;
+  released=true;
+  for(const child of adopted)child.parent?.remove(child);
+  lease.release();
+ }};
+}
