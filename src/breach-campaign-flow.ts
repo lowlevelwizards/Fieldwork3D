@@ -232,10 +232,18 @@ const campaignScreen=new CampaignScreen({
  openReplayLibrary:()=>config.openReplayLibrary(),
  openMenuStudio:()=>config.openMenuStudio(),
  chooseContract:(id)=>{
-  if(!model.campaign)return;
-  const next=acceptContract(model.campaign,id);
-  if(next===model.campaign)return;
-  model.campaign=next;config.saveCampaign();deployCampaignContract();
+  const previous=model.campaign;
+  if(!previous)return;
+  const next=acceptContract(previous,id);
+  if(next===previous)return;
+  model.campaign=next;
+  if(!config.saveCampaign()){
+   model.campaign=previous;
+   void showFieldworkNotice('Save unavailable',
+    'The contract was not accepted. Free up storage or export your campaign, then try again.');
+   return;
+  }
+  deployCampaignContract();
  },
  resumeContract:()=>deployCampaignContract(),
  buyAmmo:()=>applyVisibleCampaignAction(purchaseAmmo,'60 rounds added to supplies'),
