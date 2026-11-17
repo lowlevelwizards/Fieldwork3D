@@ -12,7 +12,10 @@ import {windowVisualHeadHeight,SERVING_COUNTER_VISUAL_HEIGHT}
  from '../breach-opening-proportions.ts';
 import type {Site,WideOpening} from '../breach-site.ts';
 import type {ObjectWear} from '../worldgen/object-wear.ts';
-import type {PixelSurface} from './pixel-materials.ts';
+import {mapBoxPixelUV,type PixelSurface} from './pixel-materials.ts';
+import {shadowEligibleBox} from './breach-shadow-controller.ts';
+import {StaticVisualTemplateLibrary,type StaticVisualLease}
+ from './fieldwork-visual-template-library.ts';
 
 export type SiteOpeningsHost={
  root:THREE.Object3D;
@@ -26,6 +29,8 @@ export type SiteOpeningsHost={
  marksOn:(owner:ObjectWear['owner'],index:number)=>ObjectWear[];
  promoteFacadeDetails:(group:THREE.Object3D)=>void;
  registerArch:(opening:WideOpening,obj:THREE.Group)=>void;
+ visualTemplates?:StaticVisualTemplateLibrary;
+ registerVisualLease?:(lease:StaticVisualLease)=>void;
  registerDoor:(id:string,visual:{root:THREE.Group;leaf:THREE.Group;
   frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh;wedge:THREE.Mesh;
   glassPane?:THREE.Mesh})=>void;
@@ -63,37 +68,73 @@ export function doorSweepArc(door:Door,length:number,
   return group;
 }
 
+/** E6.22: the pure miniature trim recipe is shared by the legacy scene
+ * builder and the immutable compiled asset builder. The aperture remains
+ * authoritative in worldgen, never flattened into a render collision. */
+type ArchPiece=readonly [x:number,y:number,z:number,
+ w:number,h:number,d:number,cast:boolean];
+export function architecturalOpeningVisualPieces(width:number,
+ kind:WideOpening['kind']):readonly ArchPiece[]{
+ const parts:ArchPiece[]=[];
+ // These face-mounted trims intentionally stay outside the physical gap.
+ for(const face of [-1,1]){
+  for(const side of [-1,1])
+   parts.push([side*(width/2+3),DOOR_CLEAR_VISUAL_HEIGHT/2,
+    face*5.7,4,DOOR_CLEAR_VISUAL_HEIGHT,1.8,true]);
+  parts.push([0,DOOR_CLEAR_VISUAL_HEIGHT+2,face*5.7,
+   width+10,4,1.8,true]);
+ }
+ if(kind==='serving'){
+  const height=SERVING_COUNTER_VISUAL_HEIGHT;
+  parts.push([0,height/2,0,width,height,10,true]);
+  parts.push([0,height+1.15,6.2,width+3,2,10,false]);
+ }
+ return parts;
+}
+// Template color never participates in a scene; the current site's trim
+// material is applied to each clone BEFORE being attached to the scene.
+const ARCH_AUTHORING_MATERIAL=new THREE.MeshStandardMaterial();
+export function buildArchitecturalOpeningTemplate(
+ width:number,kind:WideOpening['kind']
+):{root:THREE.Group;ownedGeometries:THREE.BufferGeometry[]}{
+ const root=new THREE.Group();
+ const ownedGeometries:THREE.BufferGeometry[]=[];
+ for(const [x,y,z,w,h,d,cast] of architecturalOpeningVisualPieces(width,kind)){
+  const geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
+  ownedGeometries.push(geometry);
+  const mesh=new THREE.Mesh(geometry,ARCH_AUTHORING_MATERIAL);
+  mesh.position.set(x,y,z);
+  mesh.castShadow=cast&&shadowEligibleBox(w,h,d);
+  mesh.receiveShadow=true;
+  root.add(mesh);
+ }
+ return {root,ownedGeometries};
+}
 export function buildArchitecturalOpenings(site:Site,host:SiteOpeningsHost,
  trimMaterial:THREE.Material):void{
-    const archMaterial=trimMaterial;
-    for(const opening of site.openings??[]){
-      const width=Math.hypot(opening.a.x-opening.b.x,opening.a.y-opening.b.y);
-      const p={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
-      const group=new THREE.Group();group.position.set(p.x,0,p.y);
-      group.rotation.y=Math.abs(opening.a.x-opening.b.x)<1?-Math.PI/2:0;
-      // Face-mounted trim stays outside the physical gap, rather than
-      // centering 10-unit-deep posts over the adjoining wall ends. The
-      // previous coplanar side surfaces fought the wall meshes (and made
-      // a wide opening look narrower than its authoritative collider).
-      for(const face of [-1,1]){
-        for(const side of [-1,1])host.box(group,
-          side*(width/2+3),DOOR_CLEAR_VISUAL_HEIGHT/2,face*5.7,
-          4,DOOR_CLEAR_VISUAL_HEIGHT,1.8,archMaterial);
-        host.box(group,0,DOOR_CLEAR_VISUAL_HEIGHT+2,face*5.7,
-          width+10,4,1.8,archMaterial);
-      }
-      if(opening.kind==='serving'){
-        // Counter surface sits just below the standing operator's eye line
-        // rather than at the old knee-high sill. Upper trim rests on the
-        // slab without coincident faces or a duplicate cover render mesh.
-        const height=SERVING_COUNTER_VISUAL_HEIGHT;
-        host.box(group,0,height/2,0,width,height,10,archMaterial);
-        host.box(group,0,height+1.15,6.2,width+3,2,10,
-          archMaterial,false);
-      }
-      host.root.add(group);
-      host.registerArch(opening,group);
-    }
+ for(const opening of site.openings??[]){
+  const width=Math.hypot(opening.a.x-opening.b.x,opening.a.y-opening.b.y);
+  const p={x:(opening.a.x+opening.b.x)/2,y:(opening.a.y+opening.b.y)/2};
+  let group:THREE.Group;
+  if(host.visualTemplates&&host.registerVisualLease){
+   const key='architectural-opening:v1:'+opening.kind+':'+String(width);
+   const lease=host.visualTemplates.acquire(key,
+    ()=>buildArchitecturalOpeningTemplate(width,opening.kind),{
+     compile:true,resolveMaterial:()=>trimMaterial
+    });
+   group=lease.root;
+   host.registerVisualLease(lease);
+  }else{
+   group=new THREE.Group();
+   for(const [x,y,z,w,h,d,cast] of architecturalOpeningVisualPieces(
+    width,opening.kind))
+    host.box(group,x,y,z,w,h,d,trimMaterial,cast);
+  }
+  group.position.set(p.x,0,p.y);
+  group.rotation.y=Math.abs(opening.a.x-opening.b.x)<1?-Math.PI/2:0;
+  host.root.add(group);
+  host.registerArch(opening,group);
+ }
 }
 export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
  materials:{theme:ReturnType<typeof buildingTheme>;
