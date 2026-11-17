@@ -859,3 +859,21 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-contract-empty-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .campaign-shell .campaign-contract-empty-actions button{margin:0;min-height:46px}
 @media(max-width:420px){.campaign-contract-empty-actions{grid-template-columns:1fr}}
+
+/* R11.1: unit achievements are a readable chronological record, not long paragraphs. */
+.campaign-career-timeline{margin:16px 0 9px}
+.campaign-career-timeline h3{font:800 17px/1.2 var(--fw-font-display);margin:0 0 12px}
+.campaign-career-events{display:grid;gap:0;border-left:2px solid var(--fw-panel-border);
+ margin-left:6px;padding-left:18px}
+.campaign-career-event{position:relative;display:grid;gap:5px;
+ padding:0 0 15px;min-width:0}
+.campaign-career-event::before{content:'';position:absolute;top:4px;
+ left:-24px;width:9px;height:9px;border-radius:50%;
+ background:var(--fw-sage);border:2px solid var(--fw-bg)}
+.campaign-career-event[data-kind="wounded"]::before,
+.campaign-career-event[data-kind="down"]::before{background:var(--fw-brass)}
+.campaign-career-day{font:700 10px/1.2 var(--fw-font-menu);letter-spacing:.08em;color:var(--fw-brass)}
+.campaign-career-content{display:grid;gap:3px}
+.campaign-career-content strong{font:800 17px/1.2 var(--fw-font-display)}
+.campaign-career-content p{margin:0;color:var(--fw-text-muted);
+ font:500 13px/1.5 var(--fw-font-narrative);overflow-wrap:anywhere}

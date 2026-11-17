@@ -768,11 +768,24 @@ export class CampaignScreen{
     chronicle.append(node('p','campaign-note',
      'DAY '+earned.day+' · UNIT RECOGNITION: '+earned.name));
   }
-  const highlights=c.journal.filter(e=>['wounded','first-deployment','first-success','objective','intel','down','distinction'].includes(e.kind)).slice(-6).reverse();
-  for(const e of highlights){
-   const person=c.operators.find(o=>o.id===e.operatorId);
-   chronicle.append(node('p','campaign-note',
-    'DAY '+e.day+' · '+(person?.callsign??e.operatorId)+' — '+e.detail));
+  const highlights=c.journal.filter(e=>
+   ['wounded','first-deployment','first-success','objective','intel','down','distinction']
+    .includes(e.kind)).slice(-6).reverse();
+  if(highlights.length){
+   const timeline=node('section','campaign-career-timeline');
+   timeline.append(node('h3','','PERSONNEL MILESTONES'));
+   const entries=node('div','campaign-career-events');
+   for(const event of highlights){
+    const person=c.operators.find(o=>o.id===event.operatorId);
+    const item=node('article','campaign-career-event');
+    item.dataset.kind=event.kind;
+    const date=node('span','campaign-career-day','DAY '+event.day);
+    const body=node('div','campaign-career-content');
+    body.append(node('strong','',person?.callsign??event.operatorId),
+     node('p','',event.detail));
+    item.append(date,body);entries.append(item);
+   }
+   timeline.append(entries);chronicle.append(timeline);
   }
   const retirees=c.operators.filter(o=>o.status==='retired'||o.status==='lost');
   if(retirees.length){
