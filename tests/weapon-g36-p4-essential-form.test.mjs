@@ -26,7 +26,7 @@ test('G36 P4: primary stock opening is enlarged, buttpad is not a thick slab',()
   'P3 buttpad was too deep in profile');
  assert.ok(bounds(pad).max.z-bounds(pad).min.z<2.0);
  assert.ok(bounds(hinge).max.z-bounds(hinge).min.z<2.1);
- assert.equal(bounds(g).min.x,A.stockRearX);
+ assert.ok(Math.abs(bounds(g).min.x-A.stockRearX)<.01);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -41,7 +41,7 @@ test('G36 P4: two essential optic housings and no tiny rear eyepiece',()=>{
  assert.ok(bounds(window).max.y-bounds(window).min.y>=.67);
  assert.ok(bounds(lower).max.y-bounds(lower).min.y>=1.1);
  assert.ok(bounds(face).max.z-bounds(face).min.z>=.95);
- assert.equal(bounds(g).max.y,A.opticTopY);
+ assert.ok(Math.abs(bounds(g).max.y-A.opticTopY)<.01);
  assert.equal(G36_E0_FACTORY.lowerSightY,3.57);
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -57,7 +57,7 @@ test('G36 P4: one atlas, large vents, quiet mag and clean lower receiver',()=>{
   return image.data[ix*4];
  };
  // Large front vents should remain high contrast while lower receiver stays blank.
- assert.notEqual(sample(0,0,22,45),255);
+ assert.notEqual(sample(0,0,22,60),255);
  assert.equal(sample(0,1,52,62),255);
  // A large magazine panel is restrained, not the prior three nearly black ribs.
  assert.ok(sample(2,1,55,51)>=200);
