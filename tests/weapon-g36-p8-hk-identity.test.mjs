@@ -13,6 +13,10 @@ import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 const one=(g,k)=>g.children.find(x=>x.userData[k]);
 const all=(g,k)=>g.children.filter(x=>x.userData[k]);
 const bounds=x=>new THREE.Box3().setFromObject(x);
+// Three.js buffer positions are Float32; compare bounds in model units.
+const near=(actual,expected,part)=>assert.ok(Number.isFinite(actual)&&
+ Math.abs(actual-expected)<1e-4,
+ `${part}: expected ${expected}, actual ${actual}`);
 const intersects=(mesh,x,y)=>new THREE.Raycaster(new THREE.Vector3(x,y,10),
  new THREE.Vector3(0,0,-1)).intersectObject(mesh,false).length>0;
 test('P8 stock, grip, magwell and long fore-end carry strong deliberate contours',()=>{
@@ -29,8 +33,8 @@ test('P8 stock, grip, magwell and long fore-end carry strong deliberate contours
  assert.ok(intersects(lower,2.05,-2.9));
  assert.ok(!intersects(lower,2.75,-2.9),
   'angle of front magwell cheek must be visible in silhouette');
- assert.equal(bounds(g).min.x,A.stockRearX);
- assert.equal(bounds(g).max.x,A.muzzleX);
+ near(bounds(g).min.x,A.stockRearX,'stock rear');
+ near(bounds(g).max.x,A.muzzleX,'muzzle datum');
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P8 integrated optic remains one casing plus compact reflex crown',()=>{
@@ -42,7 +46,7 @@ test('P8 integrated optic remains one casing plus compact reflex crown',()=>{
  assert.ok(bounds(lower).intersectsBox(bounds(upper)));
  assert.ok(bounds(face).intersectsBox(bounds(lower)));
  assert.equal(handle.geometry.parameters.shapes.holes.length,1);
- assert.equal(bounds(g).max.y,A.opticTopY);
+ near(bounds(g).max.y,A.opticTopY,'optic crown');
  assert.equal(F.lowerSightY,3.57);
  assert.equal(F.upperSightY,4.46);
  clearWeaponSilhouette(g);m.dispose();
