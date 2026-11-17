@@ -1260,10 +1260,20 @@ export class TacticalScene3D{
     };
   }
   private composeSiteWorld(site:Site|null):void{
+    // E6.23's browser-only timing uses the same full site construction
+    // boundaries for opt-in ON/OFF; this is not a GPU or device FPS metric.
+    const diagnostic=new URLSearchParams(location.search).get('coldBench')==='1';
+    const started=diagnostic?performance.now():0;
     // One build port, one ordered composition for initial and swapped sites.
     const result=composeBreachSiteRender(
       site,this.siteBuildPort(),this.graphicLookEnabled);
     this.graphicWorldMaterialCount=result.graphicMaterials;
+    if(diagnostic)Object.assign(window,{__fieldworkE623SiteBuild:{
+      elapsedMs:performance.now()-started,
+      cache:this.architecturalVisualTemplates.stats(),
+      repeated:this.repeatedFixtures.stats,
+      coverCount:this.coverGroups.size
+    }});
   }
   resize(w:number,h:number){
     this.width=Math.max(1,w);this.height=Math.max(1,h);
