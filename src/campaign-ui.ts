@@ -320,7 +320,7 @@ export class CampaignScreen{
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide');
   const top=node('div','campaign-head');
-  const title=node('div');
+  const title=node('div','campaign-heading');
   title.append(node('div','campaign-eyebrow','FIELDWORK / VERDIGRIS'));
   title.append(node('h1','','OPERATIONS ROOM'));
   const rules=effectiveCampaignRules(c).mission;
@@ -335,9 +335,10 @@ export class CampaignScreen{
     ' '+identity.standing+'/100'));
   }
   const campaignMenuNav=node('nav','campaign-home-nav');
-  campaignMenuNav.append(button('CAMPAIGN MENU',this.handlers.showMenu));
-  title.append(campaignMenuNav);
-  top.append(title,node('div','campaign-funds','DAY '+c.day+' · '+c.funds+' CR'));
+  const menuButton=button('MENU',this.handlers.showMenu);
+  menuButton.setAttribute('aria-label','Open campaign menu');
+  campaignMenuNav.append(menuButton);
+  top.append(title,node('div','campaign-funds','DAY '+c.day+' · '+c.funds+' CR'),campaignMenuNav);
   main.append(top);
   const grid=node('div','campaign-grid');
   const personnel=node('section','campaign-section');
@@ -366,12 +367,19 @@ export class CampaignScreen{
   const roster=node('div','campaign-roster');
   for(const p of c.operators.filter(p=>p.status!=='retired'&&p.status!=='lost')){
    const card=node('article','campaign-person');
-   card.append(node('strong','',p.callsign),node('span','',p.background));
-   card.append(node('small','',p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':
-    c.squadIds.includes(p.id)?'DEPLOYMENT TEAM':'RESERVE'));
-   const skill=p.skills.handling;
-   card.append(node('small','','HANDLING '+Math.round(skill*100)+' / 100 · '+p.missions+' OPS'));
-   card.append(node('small','',p.trait));
+   const identity=node('div','campaign-person-head');
+   const monogram=node('div','campaign-person-avatar',p.callsign.slice(0,2).toUpperCase());
+   monogram.setAttribute('aria-hidden','true');
+   const copy=node('div','campaign-person-identity');
+   copy.append(node('strong','',p.callsign),node('span','',p.background));
+   const status=node('span','campaign-person-state'+(p.recoveryDays?' is-recovering':''),
+    p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':
+     c.squadIds.includes(p.id)?'ASSIGNED':'RESERVE');
+   identity.append(monogram,copy,status);card.append(identity);
+   const performance=node('div','campaign-person-performance');
+   performance.append(node('span','','HANDLING '+Math.round(p.skills.handling*100)+'/100'),
+    node('span','',p.missions+' OPS'),node('span','',p.trait));
+   card.append(performance);
    const details=node('details','campaign-dossier');
    details.append(node('summary','','DOSSIER / SKILLS'));
    details.append(node('p','campaign-note','BACKGROUND · '+p.background));
@@ -397,8 +405,10 @@ export class CampaignScreen{
     details.append(node('p','campaign-note',
      'Served with '+(person?.callsign??friend.id)+' on '+friend.count+' operations'));
    }
-   card.append(details);
    const actions=node('div','campaign-person-actions');
+   const care=node('details','campaign-person-care');
+   care.append(node('summary','','EQUIPMENT & CARE'));
+   const careActions=node('div','campaign-person-care-actions');
    const weaponPick=node('select','campaign-select');
    weaponPick.setAttribute('aria-label','Select weapon for '+p.callsign);
    for(const weapon of ['carbine','smg','rifle','shotgun'] as const){
@@ -418,8 +428,11 @@ export class CampaignScreen{
    const look=button('APPEARANCE',()=>this.handlers.openStudio(p.id));
    look.disabled=!!c.activeContractId;
    look.setAttribute('aria-label','Edit '+p.callsign+' appearance in Operator Studio');
-   actions.append(look,weaponPick);
-   actions.append(button('RESUPPLY',()=>this.handlers.resupply(p.id)));
+   actions.append(look);
+   careActions.append(weaponPick);
+   const resupply=button('RESUPPLY AMMO',()=>this.handlers.resupply(p.id));
+   resupply.disabled=!!c.activeContractId||c.supplies.ammo===0;
+   careActions.append(resupply);
    const med=kitMedicalSupplies(p.loadout);
    const replenish=button('REISSUE MEDICAL '+medicalSupplyCount(p.medicalSupplies)+
     '/'+medicalSupplyCount(med)+' · 1 STOCK',
@@ -427,12 +440,15 @@ export class CampaignScreen{
    replenish.disabled=!!c.activeContractId||c.supplies.medical<1||
     medicalSupplyCount(p.medicalSupplies)>=medicalSupplyCount(med)||
     medicalSupplyCount(med)===0;
-   actions.append(replenish);
-   if(p.recoveryDays>0)actions.append(button('TREAT',()=>this.handlers.treat(p.id)));
+   careActions.append(replenish);
+   if(p.recoveryDays>0)careActions.append(button(
+    'TREAT · '+p.recoveryDays+' → '+Math.max(0,p.recoveryDays-2)+' DAYS',
+    ()=>this.handlers.treat(p.id)));
    if(!c.squadIds.includes(p.id)&&
     c.operators.filter(o=>o.status==='available'||o.status==='reserve').length>4)
-    actions.append(button('RETIRE',()=>this.handlers.retire(p.id)));
-   card.append(actions);
+    careActions.append(button('RETIRE',()=>this.handlers.retire(p.id)));
+   care.append(careActions);
+   card.append(actions,care,details);
    roster.append(card);
   }
   personnel.append(roster);
@@ -502,10 +518,11 @@ export class CampaignScreen{
    }
   }
   grid.append(jobs);
+  let serviceRecord:HTMLElement|null=null;
   if(isDispatchPilot(c)){
    const dept=c.dispatchDepartment??initialDispatchDepartment();
-   const record=node('section','campaign-section campaign-dispatch-service');
-   record.append(node('h2','','DEPARTMENT SERVICE RECORD'));
+   const record=node('details','campaign-section campaign-dispatch-service');
+   record.append(node('summary','','DEPARTMENT SERVICE RECORD · '+dept.standing+'/100'));
    record.append(node('p','campaign-note',
     'OPERATIONAL STANDING · '+dept.standing+' / 100 · '+
     dispatchStandingTier(dept.standing)));
@@ -523,7 +540,7 @@ export class CampaignScreen{
    record.append(node('p','campaign-note',
     'Standing reflects operational results, not a legal finding. '+
     'Unreviewed incidents are not counted as civilian-harm-free.'));
-   grid.append(record);
+   serviceRecord=record;
   }
   main.append(grid);
   const chronicle=node('section','campaign-section campaign-chronicle');
@@ -535,23 +552,33 @@ export class CampaignScreen{
    const incident=historicalDispatchIncident(c,report);
    const fallback=isDispatchPilot(c)?
     'UNCLASSIFIED DISPATCH OPERATION · '+report.contractId.toUpperCase():'Operation';
-   chronicle.append(node('p','campaign-report',
-    'DAY '+report.day+' · '+(incident?.title??(contract?
-     campaignIncidentView(c,contract).title:fallback))+' · '+
-    report.outcome.toUpperCase()+' · '+report.grade+' · '+
-    report.participatingIds.length+' OPERATORS'+
-    (incident?' · '+incident.reference:'')+
-    (incident&&report.dispatchForce?
-      ' · '+(report.dispatchForce.blueCivilianInjured+
-       report.dispatchForce.blueCivilianDown>0?
-       'CIVILIAN HARM RECORDED':'NO SQUAD CIVILIAN HARM RECORDED')+
-      ' · '+report.dispatchForce.surrenders+' SURRENDERS':'')+
-    (incident&&report.dispatchCareer?
-     ' · STANDING '+(report.dispatchCareer.standingDelta>0?'+':'')+
-     report.dispatchCareer.standingDelta+
-     ' → '+report.dispatchCareer.standingAfter+
-     ' · SUPPORT +'+report.dispatchCareer.operatingSupport+' CR':'')
-    ));
+   const article=node('article','campaign-operation-record');
+   const heading=node('div','campaign-operation-record-heading');
+   const identity=node('div','campaign-operation-record-identity');
+   identity.append(node('small','','DAY '+report.day),
+    node('strong','',incident?.title??(contract?
+     campaignIncidentView(c,contract).title:fallback)));
+   heading.append(identity,node('span','campaign-operation-outcome',report.outcome.toUpperCase()));
+   article.append(heading);
+   const facts=node('div','campaign-operation-facts');
+   facts.append(node('span','','GRADE '+report.grade),
+    node('span','',report.participatingIds.length+' OPERATORS'));
+   article.append(facts);
+   if(incident)article.append(node('small','campaign-operation-reference',incident.reference));
+   if(incident&&(report.dispatchForce||report.dispatchCareer)){
+    const detail=node('details','campaign-operation-evidence');
+    detail.append(node('summary','','AFTER-ACTION RECORD'));
+    if(report.dispatchForce)detail.append(node('p','campaign-note',
+     (report.dispatchForce.blueCivilianInjured+report.dispatchForce.blueCivilianDown>0?
+      'CIVILIAN HARM RECORDED':'NO SQUAD CIVILIAN HARM RECORDED')+
+      ' · '+report.dispatchForce.surrenders+' SURRENDERS'));
+    if(report.dispatchCareer)detail.append(node('p','campaign-note',
+     'STANDING '+(report.dispatchCareer.standingDelta>0?'+':'')+
+     report.dispatchCareer.standingDelta+' → '+report.dispatchCareer.standingAfter+
+     ' · SUPPORT +'+report.dispatchCareer.operatingSupport+' CR'));
+    article.append(detail);
+   }
+   chronicle.append(article);
   }
   if(isDispatchPilot(c)){
    // Recent linked operations are optional, compact, and derived from real reports.
@@ -619,6 +646,7 @@ export class CampaignScreen{
    for(const o of retirees)chronicle.append(node('p','campaign-report',
     o.callsign+' · '+o.missions+' DEPLOYMENTS · '+o.successful+' SUCCESSES · '+o.status.toUpperCase()));
   }
+  if(serviceRecord)chronicle.append(serviceRecord);
   grid.append(chronicle);
   const footer=node('div','campaign-footer');
   const utilities=node('details','campaign-overview-utilities');
@@ -633,17 +661,21 @@ export class CampaignScreen{
    button('QUICK PLAY (NO CAMPAIGN PROGRESS)',this.handlers.quickPlay));
   utilities.append(utilityContent);footer.append(utilities);
   const overview=node('section','campaign-section campaign-overview');
-  overview.append(node('h2','','UNIT OVERVIEW'));
+  overview.append(node('h2','','OPERATIONS DASHBOARD'));
   // A clear next action remains visible before records, readiness and statistics.
   const nextAction=accepted?
    button('CONTINUE DEPLOYMENT · '+campaignIncidentView(c,accepted).title.toUpperCase(),
     this.handlers.resumeContract,'campaign-primary'):
-   button('VIEW AVAILABLE CONTRACTS',()=>activateTab('contracts'),'campaign-primary');
+   button('BROWSE CONTRACTS · '+c.contracts.filter(k=>
+    k.status==='available'&&k.deadline>=c.day).length+' AVAILABLE',
+    ()=>activateTab('contracts'),'campaign-primary');
   nextAction.classList.add('campaign-overview-primary-action');
   overview.append(nextAction);
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
-   const department=node('div','campaign-department-identity');
+   const department=node('details','campaign-department-identity');
+   department.append(node('summary','campaign-department-summary',
+    'DEPARTMENT PROFILE · '+identity.standing+'/100 · '+identity.standingTier));
    department.append(node('div','campaign-department-eyebrow',
     'DISPATCH · '+identity.organization.toUpperCase()),
     node('h3','',identity.unit),
@@ -677,9 +709,10 @@ export class CampaignScreen{
    overview.append(department);
   }
   const stats=node('div','campaign-overview-stats');
-  const available=c.operators.filter(o=>o.status==='available'||o.status==='reserve').length;
+  const available=c.operators.filter(o=>
+   (o.status==='available'||o.status==='reserve')&&o.recoveryDays===0).length;
   for(const [value,label] of [
-   [String(available),'AVAILABLE'],[String(c.squadIds.length),'ASSIGNED'],
+   [String(available),'READY'],[String(c.squadIds.length),'ASSIGNED'],
    [String(c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).length),'CONTRACTS']
   ]){
    const stat=node('div','campaign-stat');
@@ -730,6 +763,9 @@ export class CampaignScreen{
    }));
   }
   overview.append(shortcuts,footer);
+  // Actionable readiness and capacity precede optional department details.
+  overview.insertBefore(readiness,nextAction.nextSibling);
+  overview.insertBefore(stats,readiness.nextSibling);
   grid.append(overview,logistics);
   const sections={
    overview,personnel,contracts:jobs,logistics,chronicle
@@ -1236,29 +1272,40 @@ export class CampaignScreen{
  }
  private contract(c:Contract,campaign:CampaignState){
   const view=campaignIncidentView(campaign,c);
-  const card=node('article','campaign-contract');
-  card.append(node('strong','',view.title));
-  if(isDispatchPilot(campaign))card.append(node('small','campaign-note',view.reference));
-  if(isDispatchPilot(campaign)&&c.dispatchCase)
-   card.append(node('small','campaign-note','SITE · '+
-    c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase()));
-  card.append(node('div','campaign-muted',c.region+' · '+['','LOW','MODERATE','HIGH'][c.risk]+' RISK'));
   const dossier=dispatchCaseDossier(campaign,c);
-  if(dossier)card.append(node('small','campaign-note',
+  const card=node('article','campaign-contract');
+  const head=node('div','campaign-contract-head');
+  const identity=node('div','campaign-contract-identity');
+  identity.append(node('strong','',view.title));
+  if(isDispatchPilot(campaign))identity.append(node('small','campaign-note',view.reference));
+  const risk=node('span','campaign-contract-risk',
+   ['','LOW','MODERATE','HIGH'][c.risk]+' RISK');
+  risk.dataset.level=String(c.risk);
+  head.append(identity,risk);card.append(head);
+  const location=node('div','campaign-contract-location',
+   c.region+(isDispatchPilot(campaign)&&c.dispatchCase?
+   ' · '+c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase():''));
+  card.append(location);
+  if(dossier)card.append(node('small','campaign-contract-emphasis',
    dossier.situation.emphasis+' · '+dossier.situation.siteScale));
   if(c.followUpOf){
-   card.append(node('div','campaign-note',
+   card.append(node('div','campaign-contract-related',
     dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
    const last=dossier?.related.at(-1);
    if(last&&last.outcome!=='unknown')
-    card.append(node('small','campaign-note',
+    card.append(node('small','campaign-contract-prior',
      'PRIOR RESPONSE · '+last.title+' · '+last.outcome.toUpperCase()));
   }
-  card.append(node('p','',view.description));
-  const row=node('div','campaign-contract-row');
-  row.append(node('span','',c.reward+' CR · DEADLINE DAY '+c.deadline));
-  row.append(button('REVIEW DEPLOYMENT',()=>this.reviewContract(c,campaign),'campaign-primary'));
-  card.append(row);return card;
+  card.append(node('p','campaign-contract-description',view.description));
+  const terms=node('div','campaign-contract-terms');
+  const reward=node('div','campaign-contract-term');
+  reward.append(node('small','','REWARD'),node('strong','',c.reward+' CR'));
+  const deadline=node('div','campaign-contract-term');
+  deadline.append(node('small','','DEADLINE'),node('strong','','DAY '+c.deadline));
+  terms.append(reward,deadline);card.append(terms);
+  card.append(button('REVIEW DEPLOYMENT',()=>this.reviewContract(c,campaign),
+   'campaign-primary campaign-contract-review'));
+  return card;
  }
  /** Review only information the contract already reveals. Acceptance is a separate action. */
  private reviewContract(contract:Contract,campaign:CampaignState){
