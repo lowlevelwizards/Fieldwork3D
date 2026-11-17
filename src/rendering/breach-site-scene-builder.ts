@@ -568,6 +568,27 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         .85,'industrial-steel');
       // Batch only opaque, rigid, site-lifetime fixture pieces.
       if(!templateLease)consolidateStaticFixtureParts(intact);
+      // Browser-only evidence: source versus cached fixture submissions BEFORE
+      // cross-cover instancing. Do not add a profiler walk in normal gameplay.
+      if(typeof location!=='undefined'&&
+         new URLSearchParams(location.search).get('coldBench')==='1'){
+        const inventory=(host.root.userData.fieldworkE625FixtureInventory??=[])
+          as Array<{index:number;fixture:string;template:boolean;
+            meshes:number;opaque:number;shadow:number;parts:string}>;
+        const meshes:THREE.Mesh[]=[];
+        intact.traverse(node=>{
+          if(node instanceof THREE.Mesh)meshes.push(node);
+        });
+        inventory.push({index:i,fixture:c.fixture??'crate',
+          template:templateLease!==null,
+          meshes:meshes.length,
+          opaque:meshes.filter(m=>!Array.isArray(m.material)&&
+            !m.material.transparent).length,
+          shadow:meshes.filter(m=>m.castShadow).length,
+          parts:meshes.map(m=>[m.geometry.type,m.castShadow?1:0,
+            m.receiveShadow?1:0,
+            Array.isArray(m.material)?'multi':m.material.type].join(':')).sort().join(',')});
+      }
       for(let j=0;j<3;j++){
         const sx=(j%3-1)*visual.w*.105,sz=(Math.floor(j/3)-.5)*visual.h*.15;
         const width=Math.max(3.2,visual.w*(j%2?.16:.20));
