@@ -96,7 +96,8 @@ test('TF3 carries typed actor and order, then validates before locating',()=>{
  const source=readFileSync(new URL('../src/ui/tactical-hud-controller.ts',import.meta.url),'utf8');
  assert.match(source,/data-locate-issue/);
  assert.match(source,/port\.selectUnit\(located\.actorId\)/);
- assert.match(source,/port\.selectedNode=located\.orderId/);
+ // Live running mode locates the operator without selecting a noneditable waypoint.
+  assert.match(source,/port\.selectedNode=canEdit\?located\.orderId:null/);
 });
 
 test('UI.7D blocked warning locator distinguishes live inspection from paused editing',()=>{
