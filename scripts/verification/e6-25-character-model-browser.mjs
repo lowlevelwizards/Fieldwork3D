@@ -67,6 +67,11 @@ try{
     .click({timeout:60000});
    const setup=page.getByRole('dialog',{name:'Quick Play mission setup'});
    await setup.waitFor({state:'visible',timeout:60000});
+   // UI.7 presents site filters in a collapsed Advanced section. Open it
+   // through the public user flow before changing building and seed.
+   const advanced=setup.locator('details.fw-quick-config-advanced');
+   if(!(await advanced.evaluate(element=>element.open)))
+    await advanced.locator('summary').click();
    await setup.getByRole('button',{name:'NONE',exact:true}).click();
    await setup.locator('input[type="checkbox"][value="'+building+'"]').check();
    await setup.getByRole('spinbutton',{name:'Seed, blank for random'})
