@@ -76,7 +76,8 @@ test('P3 stout 2-prism barrel exceeds muzzle cross-section; contacts are unchang
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P3 shared STANAG silhouette is distinct G36 polymer with quiet markings',()=>{
- assert.deepEqual(G36_MAG30_OUTLINE,arMagazineOutline(G36_MAG30_CURVE));
+ assert.deepEqual(G36_MAG30_OUTLINE,arMagazineOutline(G36_MAG30_CURVE),
+  'shared mathematical method with own G36 width and sweep');
  const base=weaponFinish('hk-polymer'),mag=weaponFinish('g36-smoked-mag');
  assert.ok(mag.color.getHex()>base.color.getHex());
  assert.equal(mag.metalness<.1,true);

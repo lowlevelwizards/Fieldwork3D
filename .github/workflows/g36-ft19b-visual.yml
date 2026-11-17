@@ -1,4 +1,4 @@
-name: G36 FT1.9A–D0 — reference, shape and shared finish review
+name: G36 P5 — production form and WebGL peer review
 on:
   pull_request:
     branches: [main]
@@ -6,7 +6,7 @@ on:
       - 'src/weapons/geometry/g36-*.ts'
       - 'src/g36-ft19b-lab.ts'
       - 'g36-ft19b-lab.html'
-      - 'tests/weapon-g36-ft19b-blockout.test.mjs'
+      - 'tests/weapon-g36-*.test.mjs'
       - 'scripts/smoke-g36-ft19b-visual.mjs'
       - '.github/workflows/g36-ft19b-visual.yml'
 permissions:
@@ -22,7 +22,13 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Focused genuine mesh and geometry regressions
-        run: node --experimental-strip-types --test tests/weapon-g36-ft19b-blockout.test.mjs
+        run: |
+          node --experimental-strip-types --test \
+            tests/weapon-g36-ft19b-blockout.test.mjs \
+            tests/weapon-g36-p2-census.test.mjs \
+            tests/weapon-g36-p3-refinement.test.mjs \
+            tests/weapon-g36-p4-essential-form.test.mjs \
+            tests/weapon-g36-p5-major-form.test.mjs
       - name: TypeScript and build integrity
         run: npm run build
       - name: Browser capture tools
@@ -34,7 +40,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: g36-ft19b-seven-rifle-review
+          name: g36-p5-production-seven-rifle-review
           path: g36-ft19b-captures/
           if-no-files-found: ignore
           retention-days: 21

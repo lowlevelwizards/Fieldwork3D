@@ -1,6 +1,5 @@
-/** FT1.9D0: selective major-form exaggeration of the original Bundeswehr G36.
- * One real exterior builder shared by review and intended future production.
- * No gameplay, magazine feed, receiver mechanics, or live Arsenal registration.
+/** G36 P5: shared production shape source for the original Bundeswehr-style
+ * full-length G36 with integrated dual optic. Art-only; no ballistics/feed changes.
  */
 import * as THREE from 'three';
 import {addOutline,addCuboid,addProfileFrame,
@@ -18,14 +17,14 @@ export {G36_B_PART_IDS} from './g36-family-contract.ts';
 function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):THREE.Mesh{
  const outer:Outline=[
   [-14.69,.51],[-6.43,.50],[-6.43,-2.04],
-  [-8.89,-2.48],[-11.85,-4.47],[-14.69,-5.24]
+  [-8.79,-2.43],[-12.20,-4.61],[-14.69,-5.24]
  ];
  const rear:Outline=[
-  [-14.02,-.43],[-10.38,-.43],[-9.70,-1.54],
-  [-11.88,-4.17],[-14.02,-4.56]
+  [-14.02,-.40],[-10.47,-.40],[-9.65,-1.53],
+  [-12.18,-4.19],[-14.02,-4.60]
  ];
  const forward:Outline=[
-  [-9.51,-.38],[-7.14,-.38],[-7.08,-1.69],[-8.66,-1.68]
+  [-9.45,-.36],[-7.13,-.36],[-7.06,-1.69],[-8.64,-1.68]
  ];
  const area=(points:Outline)=>points.reduce((v,p,i)=>{
   const q=points[(i+1)%points.length];return v+p[0]*q[1]-q[0]*p[1];
@@ -55,7 +54,7 @@ function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):T
 }
 export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  const root=new THREE.Group();
- root.name='g36-p4-original-essential-forms';
+ root.name='g36-p5-original-service-major-forms';
  const index:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -71,29 +70,29 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // interior and shoulder contact at the same original art X=-15.05.
  addTwoOpeningStock(root,material,index.stock++);
  const pad=outline('stock',[
-  [-15.05,.39],[-14.57,.34],[-14.57,-4.83],
-  [-14.72,-5.27],[-15.05,-5.09]
- ],1.94);
+  [-15.05,.39],[-14.59,.34],[-14.59,-4.83],
+  [-14.76,-5.27],[-15.05,-5.09]
+ ],1.78);
  pad.userData.g36Buttpad=true;
- const hinge=box('stock',-6.64,-.73,0,.72,2.43,2.02);
+ const hinge=box('stock',-6.64,-.73,0,.72,2.43,1.88);
  hinge.userData.g36StockHinge=true;
 
  // Molded receiver: broad crown, asymmetric lower step, decisive descending
  // front and integrated rear grip/magwell shoulders, not a long stamped slab.
  const upper=outline('receiver',[
-  [-6.80,.91],[-6.43,1.43],[-3.90,1.52],[1.52,1.52],
-  [3.06,1.18],[4.00,.76],[4.00,-.91],[3.27,-1.43],
-  [.88,-1.68],[-6.80,-1.47]
- ],2.58);
+  [-6.80,.88],[-6.41,1.52],[-3.86,1.64],[1.30,1.54],
+  [3.08,1.12],[4.00,.68],[4.00,-.98],[3.27,-1.49],
+  [.92,-1.67],[-6.80,-1.47]
+ ],2.52);
  upper.userData.g36ReceiverUpper=true;
  // Open lower contour deliberately stops above the trigger gap.
  // No lower closing strut and no three-dimensional trigger-guard frame.
  const lower=outline('receiver',[
-  [-6.42,-1.12],[3.72,-1.12],[3.48,-2.22],
-  [2.75,-3.08],[.55,-3.13],[-.75,-3.13],[-1.32,-2.73],
+  [-6.42,-1.12],[3.72,-1.12],[3.45,-2.16],
+  [2.73,-3.17],[.55,-3.17],[-.75,-3.13],[-1.32,-2.73],
   [-1.66,-2.37],[-3.63,-2.37],[-4.27,-3.56],
   [-6.42,-2.15]
- ],2.38);
+ ],2.36);
  lower.userData.g36ReceiverLower=true;
  lower.userData.g36OpenTriggerGap=true;
 
@@ -103,12 +102,12 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // The frame's inner and outer contours MUST have opposite winding:
  // Three.js otherwise culls the inward-facing extrusion walls on mobile.
  const frameOuter:Outline=[
-  [-5.76,1.34],[-5.08,4.05],[5.30,4.05],
+  [-5.76,1.34],[-5.13,4.05],[5.30,4.05],
   [7.43,2.71],[7.43,1.24]
  ];
  const frameInner:Outline=[
-  [-3.56,1.86],[-3.12,3.60],[5.10,3.60],
-  [7.12,2.47],[7.12,1.86]
+  [-3.51,1.90],[-3.04,3.34],[4.98,3.34],
+  [7.00,2.44],[7.00,1.90]
  ];
  const signedArea=(poly:Outline)=>poly.reduce((a,p,i)=>{
   const q=poly[(i+1)%poly.length];return a+p[0]*q[1]-q[0]*p[1];
@@ -116,21 +115,21 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  const contour=(poly:Outline,ccw:boolean):Outline=>
   (signedArea(poly)>0)===ccw?poly:[...poly].reverse();
  const handle=addProfileFrame(root,'receiver',ids.receiver,index.receiver++,
-  contour(frameOuter,true),contour(frameInner,false),1.34,material);
+  contour(frameOuter,true),contour(frameInner,false),1.50,material);
  handle.userData.g36HandleOpening=true;
  const lowerOptic=outline('receiver',[
-  [-5.88,2.91],[-5.71,4.02],[-1.39,4.02],
-  [-.90,3.53],[-1.44,2.91]
- ],1.92);
+  [-5.88,2.76],[-5.72,4.00],[-1.32,4.00],
+  [-.74,3.53],[-1.46,2.76]
+ ],1.94);
  lowerOptic.userData.g36LowerOptic=true;
  const reflex=outline('receiver',[
-  [-4.87,3.95],[-4.78,4.70],[-2.62,4.70],
-  [-2.33,4.40],[-2.45,3.95]
- ],1.92);
+  [-4.92,3.96],[-4.80,4.70],[-2.51,4.70],
+  [-2.18,4.37],[-2.34,3.96]
+ ],1.84);
  reflex.userData.g36UpperReflex=true;
  // One dark, frontal sight window: recognize the upper reflex from an
  // oblique camera without modeling screws, lens stacks or a mounting rail.
- const reflexWindow=box('receiver',-2.31,4.34,0,.34,.68,1.30);
+ const reflexWindow=box('receiver',-2.22,4.32,0,.42,.72,1.36);
  reflexWindow.userData.g36UpperReflexWindow=true;
  // A single faceted circular front face, oriented down the G36 sight axis.
  // The lens is an art-scale shape cue, not an additional accessory/rail.
@@ -146,9 +145,9 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // Raise trigger void readability by shortening the rear-raked grip
  // and aligning its forward root with the lower housing.
  const grip=outline('grip',[
-  [-5.51,-2.14],[-3.20,-2.14],[-3.66,-3.18],
-  [-4.26,-5.72],[-6.04,-5.72],[-6.20,-5.27]
- ],2.12);
+  [-5.53,-2.14],[-3.20,-2.14],[-3.86,-3.23],
+  [-4.32,-5.72],[-5.88,-5.72],[-6.21,-5.16]
+ ],2.04);
  grip.userData.g36Grip=true;
 
  // One stock G36 polymer magazine. Curvature, width and floor are carried by
