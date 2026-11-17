@@ -51,7 +51,12 @@ export class ArsenalThumbnailer{
    this.renderer.setSize(width,height,false);
    this.camera.aspect=width/height;this.camera.updateProjectionMatrix();
    body=buildWeaponSilhouette(config.weapon,this.steel,this.dark,config);
-   if(this.poolEnabled)this.geometryPool.adopt(body);
+   if(this.poolEnabled){
+    const stats=this.geometryPool.adopt(body);
+    // Browser A/B evidence only. No new DOM panels or persistent controls.
+    document.body.dataset.e626GalleryHits=String(stats.hits);
+    document.body.dataset.e626GalleryGeometries=String(stats.geometries);
+   }
    extras=buildWeaponAccessories(config,this.steel,this.dark);
    gun=new THREE.Group();
    gun.add(body,extras);
