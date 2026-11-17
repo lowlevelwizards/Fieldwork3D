@@ -29,11 +29,18 @@ export function chooseWeaponMountPosition(c:WeaponConfiguration,slot:MountableSl
   delete mounts[slot];
  }
  const next=readWeaponConfiguration({...c,mountSelections:mounts},c.weapon);
+ const before=resolveMountedAccessoryLayout(c);
  const layout=resolveMountedAccessoryLayout(next);
- // Never commit a position change that leaves an owned attachment
- // physically unresolved or displaces an already explicitly placed one.
+ // M2.9: repair damaged/obsolete multi-mount saves one slot at a time.
+ // Preserve unrelated unresolved legacy equipment in place, but never let
+ // a position edit create a new unresolved accessory or displace a valid one.
+ const previouslyUnresolved=new Set(before.unresolved.map(f=>f.attachmentId));
+ const introducesConflict=layout.unresolved.some(f=>
+  !previouslyUnresolved.has(f.attachmentId));
+ const targetStillUnresolved=layout.unresolved.some(f=>
+  f.attachmentId===c.slots[slot]);
  const seated=chosen?mountedAccessorySeat(next,slot)?.placement:undefined;
- if(layout.unresolved.length||
+ if(introducesConflict||targetStillUnresolved||
   (chosen&&(!seated||
    seated.ownerPartId!==chosen.ownerPartId||
    seated.surfaceId!==chosen.surfaceId||
