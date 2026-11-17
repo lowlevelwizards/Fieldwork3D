@@ -893,3 +893,67 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-archive-metrics{display:flex;gap:6px;flex-wrap:wrap}
 .campaign-archive-metrics span{font:600 11px/1.35 var(--fw-font-menu);
  padding:5px 7px;background:var(--fw-panel);border-radius:4px}
+
+
+/* UI R13: desktop-first title composition. Preserve the compact, phone-first stack
+   and only use the two-column scene when both width and height permit it. */
+.campaign-landing-intro{display:none}
+@media(min-width:820px) and (min-height:620px){
+ .campaign-landing:not(.campaign-landing-subpage){
+  box-sizing:border-box;width:100%;max-width:1320px;height:100dvh;
+  display:grid;grid-template-columns:minmax(0,1.06fr) minmax(350px,.94fr);
+  grid-template-rows:minmax(0,1fr) auto;
+  align-items:stretch;justify-content:stretch;
+  gap:clamp(16px,2.8vw,40px);
+  padding:clamp(20px,3.5vw,52px);
+ }
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-hero{
+  grid-area:1 / 1;align-self:stretch;height:auto;min-height:0;
+  display:flex;align-items:flex-end;
+  padding:0;background:linear-gradient(150deg,#22372c63,#14251e24);
+  border:1px solid #536d5b89;overflow:hidden;
+ }
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-plan{
+  top:-4%;right:-24%;width:125%;height:110%;opacity:.66;
+ }
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-hero::after{
+  background:linear-gradient(0deg,#101c19ed 0%,#101c1959 46%,transparent 87%);
+ }
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-copy{
+  padding:clamp(22px,3vw,39px);max-width:100%;
+ }
+ .campaign-shell.campaign-landing:not(.campaign-landing-subpage) h1{
+  font-size:clamp(55px,5.8vw,89px);
+ }
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-subtitle{
+  font-size:clamp(12px,1.1vw,15px);
+ }
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-intro{
+  display:block;max-width:30ch;margin:clamp(18px,3vh,29px) 0 0;
+  color:#c0d3c4;font:500 clamp(14px,1.22vw,17px)/1.55 var(--fw-font-narrative);
+  text-wrap:pretty;
+ }
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-actions{
+  grid-area:1 / 2;align-self:center;justify-content:center;min-width:0;
+  gap:clamp(11px,1.8vh,19px);
+ }
+ .campaign-shell.campaign-landing:not(.campaign-landing-subpage) .campaign-landing-primary{
+  min-height:clamp(122px,17dvh,174px);padding:19px 22px;
+ }
+ .campaign-shell.campaign-landing:not(.campaign-landing-subpage) .campaign-landing-quick{
+  min-height:clamp(94px,13dvh,121px);
+ }
+ .campaign-shell.campaign-landing:not(.campaign-landing-subpage) .campaign-landing-training{
+  min-height:clamp(62px,9dvh,84px);
+ }
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-utility{
+  grid-area:2 / 1 / 3 / 3;margin:0;padding-top:8px;
+  border-top:1px solid #607b6b99;
+ }
+ .campaign-shell.campaign-landing:not(.campaign-landing-subpage) .campaign-landing-link{
+  min-height:52px;
+ }
+ .campaign-shell.campaign-landing:not(.campaign-landing-subpage) .campaign-landing-more{
+  top:14px;right:14px;
+ }
+}
