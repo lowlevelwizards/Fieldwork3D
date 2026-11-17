@@ -437,3 +437,28 @@ test('C9 checks restored full roster, lazy history, low stock and active mission
   'accepting a contract altered past reports'
  ])assert.ok(script.includes(marker),'Missing C9 acceptance: '+marker);
 });
+
+test('C10 predeployment modal traps keyboard across all visible controls',()=>{
+ const ui=source('campaign-ui.ts');
+ const preflight=ui.slice(ui.indexOf(' private reviewContract(contract:Contract,campaign:CampaignState)'));
+ assert.match(preflight,/const focusable=Array\.from\(panel\.querySelectorAll<HTMLElement>\(/);
+ assert.match(preflight,/button:not\(:disabled\),summary,a\[href\],select:not\(:disabled\)/);
+ assert.match(preflight,/\.filter\(el=>el\.getClientRects\(\)\.length>0\)/);
+ assert.match(preflight,/if\(e\.shiftKey&&\(active===first\|\|!panel\.contains\(active\)\)\)/);
+ assert.match(preflight,/else if\(!e\.shiftKey&&\(active===last\|\|!panel\.contains\(active\)\)\)/);
+ assert.match(preflight,/panel\.insertBefore\(warnings,roster\)/);
+ assert.match(preflight,/const fix=\(tab:'personnel'\|'logistics'\)=>/);
+ assert.match(preflight,/this\.preparationContractId=contract\.id/);
+ assert.match(preflight,/this\.handlers\.chooseContract\(contract\.id\)/);
+});
+test('C10 browser covers keyboard and return-to-case workflow on saved missions',()=>{
+ const script=readFileSync(new URL('../scripts/smoke-operations-room-responsive.mjs',import.meta.url),'utf8');
+ for(const marker of [
+  'preflight forward Tab escaped interactive sheet',
+  'preflight reverse Tab escaped interactive sheet',
+  'preflight advisories buried after roster',
+  'check logistics did not open Supply',
+  'return-to-case did not restore briefing',
+  'closing case review failed'
+ ])assert.ok(script.includes(marker),'Missing predeployment acceptance: '+marker);
+});
