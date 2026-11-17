@@ -55,6 +55,42 @@ export function measureWeaponVisual(root){
   geometries:geometries.size,materials:materialIds.size,
   protectedComponents,unnamedOpaqueCandidates,parts};
 }
+/** M3.0C reconnaissance only. Named slots remain selectable; no geometry
+ * merges happen here. Only direct siblings of one rigid, non-magazine slot
+ * with matching material and shadow/depth state are potential candidates.
+ */
+export function auditRigidPartCandidates(root){
+ const matches=new Map(),allowed=new Set([
+  'receiver','barrel','handguard','stock','grip'
+ ]);
+ for(const node of root.children){
+  if(!(node instanceof THREE.Mesh)||
+   node instanceof THREE.InstancedMesh||node instanceof THREE.SkinnedMesh||
+   !node.visible||node.children.length||Object.keys(node.userData).length||
+   node.customDepthMaterial||node.customDistanceMaterial||
+   !(node.material instanceof THREE.MeshStandardMaterial)||
+   node.material.transparent||node.material.alphaTest!==0||
+   !node.material.depthTest||!node.material.depthWrite||
+   node.renderOrder!==0||node.geometry.groups.length)continue;
+  const match=/^family-(receiver|barrel|handguard|stock|grip|magazine)-(.+)-(\\d+)$/
+   .exec(node.name);
+  if(!match||!allowed.has(match[1]))continue;
+  const names=Object.keys(node.geometry.attributes).sort();
+  const layout=names.map(name=>{
+   const attribute=node.geometry.attributes[name];
+   return name+':'+attribute.itemSize+':'+attribute.normalized;
+  }).join('/');
+  const key=[match[1],match[2],node.material.uuid,
+   node.castShadow,node.receiveShadow,node.layers.mask,
+   node.frustumCulled,Boolean(node.geometry.index),layout].join('|');
+  const group=matches.get(key)??{slot:match[1],partId:match[2],meshes:0};
+  group.meshes++;matches.set(key,group);
+ }
+ const groups=[...matches.values()].filter(g=>g.meshes>=2)
+  .sort((a,b)=>b.meshes-a.meshes||a.partId.localeCompare(b.partId));
+ return {groups,mergeableMeshes:groups.reduce((n,g)=>n+g.meshes,0),
+  potentialSavedSubmissions:groups.reduce((n,g)=>n+g.meshes-1,0)};
+}
 function boundingSummary(body,accessories){
  const root=new THREE.Group();root.add(body,accessories);
  root.updateMatrixWorld(true);
@@ -73,6 +109,7 @@ export function auditWeaponProduction(config,id){
   const accessoryStats=measureWeaponVisual(accessories);
   return {id,family:config.build?.family??'legacy',
    body:bodyStats,accessories:accessoryStats,
+   rigidPartCandidates:auditRigidPartCandidates(body),
    totalSubmissions:bodyStats.submissions+accessoryStats.submissions,
    bounds:boundingSummary(body,accessories)};
  }finally{
