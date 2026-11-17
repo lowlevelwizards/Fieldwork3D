@@ -50,16 +50,19 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  // This is shared with the shot-time rigid assembly, never visual-only.
  const contact=riflePoseContacts(id,configuration);
  const baseline=contact?supportContactAt(contact.support,.32):null;
+ const mountedGrip=contact&&configuration.slots.foregrip!=='foregrip-none'?
+  baseline:null;
  const supportX=low?Math.max(low.minSupportX,
    a.supportX-low.supportBack*w):
    handling==='short'?Math.min(a.supportX,-3.0):
+   mountedGrip?mountedGrip.x:
    Math.max(a.supportX,baseline?.x??a.supportX);
  return {lengthScale:a.lengthScale,stockX:a.stockX,
   primaryX:a.primaryX,primaryY:a.primaryY,
   supportX,supportY:low?
     a.supportY-(low?.supportDown??0)*w:
     handling==='short'?a.supportY:
-    baseline?.y??a.supportY};
+    mountedGrip?.y??baseline?.y??a.supportY};
 };
 // Cache exact and adapted stock/arm endpoints together: the rig, rendered
 // weapon and shot-time muzzle MUST read the same recipe. The heavy transfer
