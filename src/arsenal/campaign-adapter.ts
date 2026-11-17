@@ -9,6 +9,8 @@ import {WEAPON_ATTACHMENT_SLOTS,sameWeaponConfiguration,
  type WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {attachmentPrice,returnAttachments} from '../equipment-weapon-inventory.ts';
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
+import {resolveMountedAccessoryLayout}
+ from '../weapons/geometry/mounted-accessory-layout.ts';
 
 export interface CampaignArsenalPurchase{partId:string;price:number;}
 export interface CampaignArsenalQuote{
@@ -32,6 +34,11 @@ export function quoteCampaignArsenalEdit(c:CampaignState,operatorId:string,
   return denied('Switch weapon class in Campaign Armory first, then reopen Arsenal');
  const next=arsenalRecipeToLegacy(recipe);
  if(!next)return denied('The assembled weapon is not valid');
+ // An explicit saved location must fit on this actual equipped family.
+ // Preview and commit both fail atomically; never spend for a phantom mount.
+ const unresolved=resolveMountedAccessoryLayout(next).unresolved;
+ if(unresolved.length)return denied('Mount placement needs repair: '+
+  unresolved.map(x=>x.attachmentId).join(', '));
  // The pre-existing Campaign attachment store remains authoritative.
  const stock=returnAttachments(c.inventory.attachments,operator.weaponConfiguration,next);
  const purchases:CampaignArsenalPurchase[]=[];
