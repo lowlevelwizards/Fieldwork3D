@@ -42,7 +42,7 @@ test('D8.1: only versioned compatible Dispatch cases can load, old saves remain 
 });
 
 test('D8.2: authored Dispatch cases are deterministic, compatible, and only assigned once',()=>{
- assert.equal(DISPATCH_D8_INCIDENT_IDS.length,7);
+ assert.equal(DISPATCH_D8_INCIDENT_IDS.length,19);
  const a=newDispatchPilotCampaign(813),b=newDispatchPilotCampaign(813);
  assert.deepEqual(a.contracts,b.contracts);
  for(const job of a.contracts){

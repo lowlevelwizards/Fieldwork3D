@@ -10,11 +10,16 @@ export type DispatchCaseV1=Readonly<{
  version:1;incidentId:string;archetype:BuildingArchetype;
 }>;
 
-/** Seven playable authored cases; five objective kinds, no invented systems. */
+/** D14.4: nineteen existing authored, building-compatible cases across
+ * the five supported mission objectives. No new gameplay or police powers.
+ * Keep the D8 export stable for existing consumers and saved case IDs.
+ */
 export const DISPATCH_D8_INCIDENT_IDS=[
- 'warrant-service','missing-person','evidence-seizure',
- 'after-hours-sweep','compromised-hideout',
- 'access-control','perimeter-recovery'
+ 'warrant-service','fugitive-lead','organizer-apprehension',
+ 'missing-person','welfare-response','isolated-employee','witness-recovery',
+ 'evidence-seizure','records-review','concealed-cache','equipment-trace',
+ 'after-hours-sweep','compromised-hideout','shipment-security','facility-reclamation',
+ 'access-control','perimeter-recovery','site-preservation','observation-post'
 ] as const;
 
 export function dispatchIncidentDefinition(id:string){

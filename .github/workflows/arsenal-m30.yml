@@ -1,0 +1,85 @@
+name: Arsenal M3.0 production weapon geometry audit and resource lifecycle
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-weapon-geometry.ts'
+      - 'src/weapons/geometry/**'
+      - 'src/arsenal/**'
+      - 'src/breach-weapon-geometry.ts'
+      - 'scripts/audit-weapon-production-m30.mjs'
+      - 'scripts/smoke-arsenal-m30-shotgun-visual.mjs'
+      - 'arsenal-m30-shotgun-capture.html'
+      - 'src/arsenal-m30-shotgun-capture.ts'
+      - 'src/arsenal-m30c3-modular-capture.ts'
+      - 'arsenal-m30c3-modular-capture.html'
+      - 'scripts/smoke-arsenal-m30c3-modular-visual.mjs'
+      - 'scripts/smoke-arsenal-m30c4-runtime-visual.mjs'
+      - 'tests/arsenal-m30-*.test.mjs'
+      - '.github/workflows/arsenal-m30.yml'
+permissions:
+  contents: read
+  actions: read
+jobs:
+  critical:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Real production silhouettes, mount parity and instanced cleanup
+        run: |
+          node --experimental-strip-types --test \
+            tests/arsenal-m30-weapon-quality-audit.test.mjs \
+            tests/arsenal-m30-shotgun-rigid-compile.test.mjs \
+            tests/arsenal-m30-rigid-part-pilot.test.mjs \
+            tests/arsenal-m30-modular-visual-contract.test.mjs \
+            tests/arsenal-m30c4-factory-runtime.test.mjs \
+            tests/arsenal-m28-cross-family-mounting.test.mjs \
+            tests/arsenal-m2-accessory-integration.test.mjs \
+            tests/equipment-19-02-weapon-silhouettes.test.mjs \
+            tests/breach-weapon-magazine-idle.test.mjs
+      - name: Emit factory draw and geometry baseline
+        run: node --experimental-strip-types scripts/audit-weapon-production-m30.mjs > /tmp/weapon-m30-baseline.log && tail -n 2 /tmp/weapon-m30-baseline.log
+      - name: TypeScript
+        run: npm run check
+      - name: Production build
+        run: npm run build
+  production-visual:
+    needs: critical
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: Real physical left/right optics and lights WebGL capture
+        run: node scripts/smoke-arsenal-m26-visual.mjs
+      - name: Production shotgun original/compiled draw and pixel parity
+        run: node scripts/smoke-arsenal-m30-shotgun-visual.mjs
+      - name: M3.0C3 real AK/AR original-vs-compiled WebGL comparison
+        run: node scripts/smoke-arsenal-m30c3-modular-visual.mjs
+      - name: M3.0C4 actual shared-builder WebGL runtime parity
+        run: node scripts/smoke-arsenal-m30c4-runtime-visual.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: arsenal-m30-physical-visual-smoke
+          path: |
+            reports/arsenal-m26-mounted-*.png
+            reports/arsenal-m26-mesh-stats.json
+            reports/arsenal-m30-shotgun-parity.png
+            reports/arsenal-m30-shotgun-parity.json
+            reports/arsenal-m30c3-modular-parity.png
+            reports/arsenal-m30c3-modular-parity.json
+            reports/arsenal-m30c4-production-parity.png
+            reports/arsenal-m30c4-production-parity.json
+          if-no-files-found: ignore
+          retention-days: 14

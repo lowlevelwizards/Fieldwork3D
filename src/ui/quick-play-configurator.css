@@ -66,3 +66,26 @@
  .fw-quick-config-checks{grid-template-columns:repeat(2,minmax(0,1fr))}
  .fw-quick-config-grid{gap:9px}
 }
+
+/* UI.5A — gameplay choices first; site parameters remain a discoverable disclosure. */
+.fw-quick-config-primary>.fw-quick-config-field:first-child{grid-column:1/-1}
+.fw-quick-config-advanced{border-top:1px solid #60776d;border-bottom:1px solid #60776d}
+.fw-quick-config-advanced>summary{
+ box-sizing:border-box;display:flex;align-items:center;min-height:48px;cursor:pointer;
+ color:#dae7dc;letter-spacing:.045em;font:700 13px var(--fw-font-menu);
+}
+.fw-quick-config-advanced>summary:focus-visible,
+.fw-quick-config-dialog button:focus-visible,
+.fw-quick-config-dialog input:focus-visible,
+.fw-quick-config-dialog select:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px;
+}
+.fw-quick-config-advanced-content{display:grid;gap:13px;padding:0 0 14px}
+.fw-quick-config-dialog select{font-size:14px;min-height:46px}
+.fw-quick-config-start{min-height:48px!important}
+@media(max-width:520px){
+ .fw-quick-config-primary{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .fw-quick-config-advanced-content{gap:12px}
+ .fw-quick-config-footer .fw-quick-config-start{order:-1;flex:1}
+ .fw-quick-config-footer button:not(.fw-quick-config-start){flex:0 0 auto}
+}

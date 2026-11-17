@@ -1770,6 +1770,20 @@ html,body{font-family:var(--fw-font-menu)}
  background:#2a3e37;color:#e6e7d7;border:1px solid #738b78;border-radius:7px;
  font:700 12px/1.15 var(--fw-font-action);text-align:center;white-space:normal}
 .fw-brief-v3-actions{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.35fr);gap:8px}
+.fw-brief-v3-actions:has(#briefingQuickPlaySetup:not([hidden])){
+ grid-template-columns:repeat(3,minmax(0,1fr));
+}
+#briefingPanel.fw-mission-dossier #briefingQuickPlaySetup{
+ background:#263d34;color:#e0e8db;border:1px solid #708a76;
+}
+@media(max-width:560px){
+ .fw-brief-v3-actions:has(#briefingQuickPlaySetup:not([hidden])){
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+ #briefingPanel.fw-mission-dossier .fw-brief-v3-actions:has(#briefingQuickPlaySetup:not([hidden])) #briefingClose{
+  grid-column:1/-1;
+ }
+}
 #briefingPanel.fw-mission-dossier .fw-brief-v3-actions button{
  position:static;min-width:0;width:100%;min-height:48px;margin:0;padding:10px 8px;
  border-radius:8px;font:750 13px/1.15 var(--fw-font-action);
@@ -4108,3 +4122,46 @@ body.nvg-selected-view #breach3dCanvas{
   brightness(1.10) contrast(1.06)}
 @media(max-width:680px){.bar .field-nvg-control{min-width:40px;
  max-width:42px;font-size:9px;padding:3px 2px}}
+
+/* UI.5C — the selected recipe survives the loading-to-briefing handoff. */
+.quick-play-recipe{margin:5px 0 12px;color:#c6d9c8;font:600 12px/1.4 var(--fw-font-narrative);overflow-wrap:anywhere}
+
+/* UI.6A: a tiny truthful queued-order count on each squad member.
+   No extra HUD row, visual redraw loop, or effect when the count is zero. */
+:is(body[data-hud-phase="planning"],body[data-hud-phase="targeting"]) .tactical-hud .bar .unit:not(.down)[data-plan-count]:not([data-plan-count="0"])::after{
+ content:attr(data-plan-count);
+ position:absolute;top:2px;right:3px;
+ min-width:12px;height:14px;padding:0 2px;
+ display:grid;place-items:center;box-sizing:border-box;
+ border-radius:3px;border:1px solid #b3c8b3;
+ background:#1a3028;color:#f3edcf;
+ font:750 10px/1 var(--fw-font-menu);
+ pointer-events:none;
+}
+:is(body[data-hud-phase="planning"],body[data-hud-phase="targeting"]) .tactical-hud .bar .unit.selected:not(.down)[data-plan-count]:not([data-plan-count="0"])::after{
+ border-color:var(--operator-accent,#bdd0b8);
+ color:#fff7e1;
+}
+@media(max-width:650px){
+ :is(body[data-hud-phase="planning"],body[data-hud-phase="targeting"]) .tactical-hud .bar .unit:not(.down)[data-plan-count]:not([data-plan-count="0"])::after{
+  top:1px;right:2px;font-size:9px;min-width:11px;height:12px;
+ }
+}
+
+/* UI.6B: a quiet readiness edge on GO when authored orders exist.
+   Never disable execution, alter gameplay, or flash per frame. */
+:is(body[data-hud-phase="planning"],body[data-hud-phase="targeting"]) .tactical-hud .bar #play[data-mode="go"]:not([data-queued-orders="0"]){
+ box-shadow:inset 0 -3px 0 #6f9c7c,0 0 0 1px #bed1a855;
+}
+
+/* UI.6C: distinguish waypoint editing from operator state without another row.
+   A selected WATCH marker is not a waypoint-state target. */
+.quick-states[data-scope-kind="waypoint"] .quick-scope{
+ border-left:3px solid #d9bb82;padding-left:7px;
+}
+.quick-states[data-scope-kind="watch"] .quick-scope{
+ border-left:3px solid #a2c9bc;padding-left:7px;
+}
+.quick-states[data-scope-kind="operator"] .quick-scope{
+ border-left:3px solid transparent;padding-left:7px;
+}

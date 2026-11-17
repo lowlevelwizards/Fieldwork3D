@@ -12,6 +12,9 @@ import {measureVisibleStockContact}
 import {addHKClawRail} from './weapons/geometry/hk-rail-accessories.ts';
 import {addAKSidePicatinnyAdapter} from './weapons/geometry/ak-side-mount-geometry.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {compileLegacyShotgunBody} from './weapons/geometry/legacy-shotgun-rigid-compile.ts';
+import {compileValidatedFactoryRigidBody}
+ from './weapons/geometry/validated-factory-rigid-compile.ts';
 type Part=readonly [number,number,number,number,number,number,0|1];
 /** x, y, z, width, height, depth, material (0=steel, 1=dark). */
 const PARTS:Partial<Record<WeaponId,readonly Part[]>>={
@@ -49,9 +52,16 @@ export const weaponSignatureParts=(id:WeaponId):readonly Part[]=>SIGNATURES[id]?
 export const weaponDetailParts=(id:WeaponId):readonly Part[]=>DETAILS[id]??[];
 
 export function weaponSilhouetteParts(id:WeaponId):readonly Part[]{return PARTS[id]??[];}
+/** Set rigidCompilation:'disabled' for independent baseline/diagnostic builds.
+ * Defaults to C3-verified exact-factory builds only; never custom part sets.
+ */
+export type WeaponGeometryOptions=Readonly<{
+ rigidCompilation?:'validated-factory'|'disabled'
+}>;
 export function buildWeaponSilhouette(id:WeaponId,
  steel:THREE.Material,dark:THREE.Material,
- config?:WeaponConfiguration):THREE.Group{
+ config?:WeaponConfiguration,
+ options:WeaponGeometryOptions={}):THREE.Group{
  // No class-only placeholder silhouette may appear in live play or replay.
  // Keep the category as a ballistics tier, never an obsolete 3D model.
  const fallback=id==='smg'?'hk-mp5a3':
@@ -67,9 +77,15 @@ export function buildWeaponSilhouette(id:WeaponId,
   if(familyBuild.family==='ak'&&
    config?.slots.opticMount==='optic-ak-side-picatinny')
    addAKSidePicatinnyAdapter(root);
-  // Read-only art datum. Build-time only, never a second shot socket.
-  root.userData.visibleStockContact=config?
-    measureVisibleStockContact(root,config):null;
+  // Preserve the original authored stock measurement, even if static
+  // submeshes are subsequently baked into larger vertex buffers.
+  const stockContact=config?measureVisibleStockContact(root,config):null;
+  if(config?.weapon===id&&config.build&&
+   options.rigidCompilation!=='disabled'){
+   const report=compileValidatedFactoryRigidBody(root,familyBuild);
+   if(report)root.userData.rigidCompilation=report;
+  }
+  root.userData.visibleStockContact=stockContact;
   return root;
  }
  const g=new THREE.Group();
@@ -90,10 +106,23 @@ export function buildWeaponSilhouette(id:WeaponId,
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
   g.add(mesh);
  }
+ // The legacy shotgun has no independently selectable family or removable
+ // magazine meshes. M3.0C1 folds its rigid boxes by material at build time.
+ // Modular rifle/SMG silhouettes intentionally keep all named parts intact.
+ if(id==='shotgun')compileLegacyShotgunBody(g);
  return g;
 }
+/** Release per-build geometry AND instance buffers when a weapon changes.
+ * Materials are shared registry assets, never owned by the silhouette.
+ * Instanced rails also allocate GPU instance attributes, which a geometry
+ * dispose alone does not release when the preview is rebuilt repeatedly.
+ */
 export function clearWeaponSilhouette(g:THREE.Group){
- g.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+ g.traverse(o=>{
+  if(o instanceof THREE.InstancedMesh)o.dispose();
+  if(o instanceof THREE.Mesh)o.geometry.dispose();
+ });
  g.clear();
  g.userData.visibleStockContact=null;
+ g.userData.rigidCompilation=null;
 }

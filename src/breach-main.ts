@@ -1325,6 +1325,7 @@ function returnToQuickPlayGenerator(){
   quickPlayController.customize();
 }
 ui.quickPlaySetup.addEventListener('click',returnToQuickPlayGenerator);
+ui.briefingQuickPlaySetup.addEventListener('click',returnToQuickPlayGenerator);
 /** Campaign Arsenal drafts are always re-quoted against live ownership and credits.
  * The existing editor remains usable until the new UI completes its cutover.
  */

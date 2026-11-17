@@ -6,6 +6,7 @@ import {effectiveCampaignRules} from './campaign-rules.ts';
 import {isDispatchPilot,mayChooseCampaignContent}
  from './dispatch-campaign-eligibility.ts';
 import {campaignIncidentView} from './dispatch-incident-view.ts';
+import {dispatchCaseDossier} from './dispatch-case-dossier.ts';
 import {historicalDispatchIncident} from './dispatch-incident-context.ts';
 import {initialDispatchDepartment,dispatchStandingTier}
  from './dispatch-department.ts';
@@ -265,6 +266,9 @@ export class CampaignScreen{
    creationLauncher=create;choices.append(create);
   }
   const quick=option('QUICK PLAY','Create a standalone operation',this.handlers.quickPlay);
+  // Preserve the canonical control name for screen readers and browser tools.
+  // Its visible subtitle still explains the action in the layout.
+  quick.setAttribute('aria-label','QUICK PLAY');
   quick.classList.add('campaign-landing-card','campaign-landing-quick');
   choices.append(quick);
   const training=option('TRAINING','Killhouse · Range · Tactical trials',
@@ -549,6 +553,26 @@ export class CampaignScreen{
     ));
   }
   if(isDispatchPilot(c)){
+   // Recent linked operations are optional, compact, and derived from real reports.
+   const linked=c.contracts.filter(k=>k.followUpOf&&
+    c.history.some(report=>report.contractId===k.id)).slice(-8).reverse();
+   if(linked.length){
+    const trail=node('details','campaign-case-history');
+    trail.append(node('summary','',
+     'RELATED CASE HISTORY · '+linked.length+' RECENT OPERATION'+
+     (linked.length===1?'':'S')));
+    for(const operation of linked){
+     const dossier=dispatchCaseDossier(c,operation);
+     const report=c.history.find(row=>row.contractId===operation.id);
+     const prior=dossier?.related.at(-1);
+     trail.append(node('p','campaign-note',
+      'DAY '+(report?.day??'?')+' · '+campaignIncidentView(c,operation).title+
+      ' · '+(report?.outcome.toUpperCase()??'OUTCOME UNRECORDED')+
+      ' · PRIOR: '+(prior?.title??'RECORD UNAVAILABLE')+
+      ' ('+(prior?.outcome.toUpperCase()??'UNKNOWN')+')'));
+    }
+    chronicle.append(trail);
+   }
    const awarded=c.history.slice(-8).flatMap(h=>
     h.dispatchCareer?.recognitions.map(name=>({
      id:h.id,name,day:h.day
@@ -1193,7 +1217,15 @@ export class CampaignScreen{
    card.append(node('small','campaign-note','SITE · '+
     c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase()));
   card.append(node('div','campaign-muted',c.region+' · '+['','LOW','MODERATE','HIGH'][c.risk]+' RISK'));
-  if(c.followUpOf)card.append(node('div','campaign-note','FOLLOW-UP OPERATION'));
+  if(c.followUpOf){
+   const dossier=dispatchCaseDossier(campaign,c);
+   card.append(node('div','campaign-note',
+    dossier?.relatedLabel??'FOLLOW-UP OPERATION'));
+   const last=dossier?.related.at(-1);
+   if(last&&last.outcome!=='unknown')
+    card.append(node('small','campaign-note',
+     'PRIOR RESPONSE · '+last.title+' · '+last.outcome.toUpperCase()));
+  }
   card.append(node('p','',view.description));
   const row=node('div','campaign-contract-row');
   row.append(node('span','',c.reward+' CR · DEADLINE DAY '+c.deadline));
@@ -1203,6 +1235,7 @@ export class CampaignScreen{
  /** Review only information the contract already reveals. Acceptance is a separate action. */
  private reviewContract(contract:Contract,campaign:CampaignState){
   const view=campaignIncidentView(campaign,contract);
+  const dossier=dispatchCaseDossier(campaign,contract);
   const prior=document.activeElement instanceof HTMLElement?document.activeElement:null;
   const overlay=node('div','campaign-preflight-backdrop');
   const panel=node('section','campaign-preflight fw-sheet');
@@ -1218,7 +1251,11 @@ export class CampaignScreen{
    section.append(node('span','',label),node('p','',value));
    info.append(section);
   };
-  add('OBJECTIVE',view.description);
+  if(dossier){
+   add('REPORTED LEAD · UNCONFIRMED',dossier.lead);
+   add('TACTICAL OBJECTIVE',dossier.objective);
+   add('ASSIGNMENT CONTEXT',dossier.context);
+  }else add('OBJECTIVE',view.description);
   if(isDispatchPilot(campaign))add('CALL REFERENCE',view.reference);
   if(isDispatchPilot(campaign)&&contract.dispatchCase)
    add('PROPERTY TYPE',contract.dispatchCase.archetype.replace(/-/g,' ').toUpperCase());
@@ -1226,11 +1263,22 @@ export class CampaignScreen{
   add('LOCATION',contract.region);
   add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);
   add('REWARD / DEADLINE',contract.reward+' CR · DAY '+contract.deadline);
-  add('INTELLIGENCE',{
+  add('INTELLIGENCE',dossier?.intelligence??{
    unknown:'Site layout and threats are unknown until discovered',
    scouted:'Exterior intelligence available; interior remains uncertain',
    'floor-plan':'Floor plan known; hostile positions remain unknown'
   }[contract.intel]);
+  if(dossier){
+   if(contract.followUpOf){
+    add('RELATED RESPONSE HISTORY',dossier.related.length?
+     dossier.related.map(row=>row.title+' · '+
+      (row.outcome==='unknown'?'RECORD UNAVAILABLE':
+       row.outcome==='unrecorded'?'OUTCOME UNRECORDED':
+       row.outcome.toUpperCase()+(row.grade?' · '+row.grade:'')))
+      .join(' / '):'Earlier link unavailable');
+   }
+   add('REPORTING LIMITS',dossier.uncertainty);
+  }
   panel.append(info);
   const roster=node('div','campaign-preflight-roster');
   roster.append(node('h3','','ASSIGNED OPERATORS'));

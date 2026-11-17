@@ -32,11 +32,16 @@ test('all modular AR/AK variants own exactly one named magazine set and real gri
  }
 });
 
-test('spare-mag curves match all issued AR/AK magazines, without changing inventory',()=>{
+test('spare-mag curves match issued modular magazines, including shared FNC STANAG',()=>{
  for(const preset of FAMILY_PRESETS){
   const id=preset.parts.magazine,profile=carriedMagazineProfile(id);
   assert.ok(profile,preset.id);
-  assert.equal(profile.family,preset.family);
+  // The FNC factory intentionally owns the actual AR STANAG part ID.
+  // A carried magazine's art profile follows its installed part, not
+  // necessarily the weapon's appearance family.
+  const expectedFamily=preset.family==='fnc'&&id.startsWith('ar-')?
+   'ar':preset.family;
+  assert.equal(profile.family,expectedFamily,preset.id+' carried magazine identity');
   const geometry=carriedMagazineGeometry(id);
   assert.ok(geometry,preset.id);
   geometry.computeBoundingBox();
