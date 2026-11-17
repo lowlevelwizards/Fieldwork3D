@@ -18,8 +18,11 @@ try{
  try{
   await mkdir('reports',{recursive:true});
   const summary=[];
+  // M2.9C: both real adapters on both form factors, not diagonal coverage.
   for(const item of [
    {mode:'campaign',width:390,height:844},
+   {mode:'campaign',width:1360,height:900},
+   {mode:'quick',width:390,height:844},
    {mode:'quick',width:1360,height:900}
   ]){
    const page=await browser.newPage({viewport:{width:item.width,height:item.height},
@@ -62,7 +65,7 @@ try{
    }));
    assert.ok(dims.width<=dims.viewport+2,'unwanted horizontal scroll');
    assert.deepEqual(errors,[],'runtime/browser errors');
-   await page.screenshot({path:'reports/arsenal-m28-'+item.mode+'-apply.png',
+   await page.screenshot({path:'reports/arsenal-m28-'+item.mode+'-'+item.width+'-apply.png',
     fullPage:true,animations:'disabled'});
    summary.push({mode:item.mode,viewport:dims.viewport,
     pageWidth:dims.width,before,after,errors});
