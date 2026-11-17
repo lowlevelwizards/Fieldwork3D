@@ -41,7 +41,7 @@ const isExplicitButtplate=(mesh:THREE.Mesh)=>Boolean(
 export function measureVisibleStockContact(root:THREE.Object3D,
  configuration:WeaponConfiguration):VisibleStockContact|null{
   const build=configuration.build;
-  if(!build)return null;
+  if(!build||configuration.stockPosition==='folded')return null;
   // The bare MP5K receiver cap cannot be shouldered like a PDW buttplate.
   if(build.parts.receiver==='hk-mp5k-stockless'&&
      build.parts.stock!=='hk-mp5k-pdw-stock')return null;
