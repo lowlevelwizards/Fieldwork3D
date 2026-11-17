@@ -48,6 +48,9 @@ const views=[
  {name:'three-quarter',xyz:[29,21,60]}
 ] as const;
 const trials=['ak-akms','ak-aks74u','ar-m4a1'] as const;
+// C3 continues proving the isolated compiler; C4 additionally proves the
+// default live shared-builder path with two independent production builds.
+const liveMode=new URLSearchParams(location.search).get('mode')==='production';
 const slots=['receiver','barrel','handguard','stock','grip'] as const;
 const records=[];
 for(const id of trials){
@@ -56,8 +59,10 @@ for(const id of trials){
  const config=selectWeaponFamilyPreset(
   initialWeaponConfiguration(preset.legacy.weapon),preset.id);
  if(!config.build)throw Error('Missing installed parts '+id);
- const baseline=buildWeaponSilhouette(config.weapon,steel,polymer,config);
- const optimized=buildWeaponSilhouette(config.weapon,steel,polymer,config);
+ const baseline=buildWeaponSilhouette(config.weapon,steel,polymer,config,
+  {rigidCompilation:'disabled'});
+ const optimized=buildWeaponSilhouette(config.weapon,steel,polymer,config,
+  liveMode?{}:{rigidCompilation:'disabled'});
  try{
   const originalAnchors=workbenchVisualAnchors(config,baseline,'body');
   const originalMagazine=baseline.children.filter(x=>
@@ -65,9 +70,14 @@ for(const id of trials){
   const originalBounds=new THREE.Box3().setFromObject(baseline);
   const slotBoxes=new Map(slots.map(slot=>[
    slot,partVisualBounds(baseline,slot)] as const));
-  const changes=slots.map(slot=>
+  const changes=liveMode?[]:slots.map(slot=>
    compileRigidWeaponPartPilot(optimized,slot,config.build!.parts[slot]));
-  const predictedSaved=changes.reduce((n,c)=>n+c.avoidedSubmissions,0);
+  const report=optimized.userData.rigidCompilation;
+  const predictedSaved=liveMode?
+   report?.avoidedSubmissions??0:
+   changes.reduce((n,c)=>n+c.avoidedSubmissions,0);
+  if(liveMode&&report?.factoryId!==id)
+   throw Error('Shared production builder did not compile '+id);
   if(predictedSaved<5)throw Error('Insufficient opt-in saving for '+id);
   const magazine=optimized.children.filter(x=>
    x.name.startsWith('family-magazine-')).map(x=>x.name);
@@ -122,13 +132,21 @@ for(const id of trials){
    }
   }
   // Validate original references can still be reattached after every render.
-  changes.slice().reverse().forEach(x=>x.restore());
-  if(optimized.children.length!==baseline.children.length)
-   throw Error('Restore did not recover every authored part: '+id);
+  if(!liveMode){
+   changes.slice().reverse().forEach(x=>x.restore());
+   if(optimized.children.length!==baseline.children.length)
+    throw Error('Restore did not recover every authored part: '+id);
+  }else if(optimized.userData.rigidCompilation?.avoidedSubmissions!==
+   predictedSaved)throw Error('Live compilation was not retained: '+id);
  }finally{
   clearWeaponSilhouette(baseline);clearWeaponSilhouette(optimized);
  }
 }
-document.body.dataset.m30C3Stats=JSON.stringify(records);
-document.body.dataset.m30C3Complete='true';
+if(liveMode){
+ document.body.dataset.m30C4Stats=JSON.stringify(records);
+ document.body.dataset.m30C4Complete='true';
+}else{
+ document.body.dataset.m30C3Stats=JSON.stringify(records);
+ document.body.dataset.m30C3Complete='true';
+}
 target.dispose();renderer.dispose();steel.dispose();polymer.dispose();
