@@ -660,6 +660,15 @@ export class CampaignScreen{
     const board=node('div','campaign-contract-board');
     for(const contract of visible)board.append(this.contract(contract,c));
     jobs.append(board);
+    if(sorted.length>visible.length){
+     const more=node('details','campaign-contract-more');
+     more.append(node('summary','',
+      'VIEW '+(sorted.length-visible.length)+' ADDITIONAL CASES'));
+     const remaining=node('div','campaign-contract-board');
+     for(const contract of sorted.slice(visible.length))
+      remaining.append(this.contract(contract,c));
+     more.append(remaining);jobs.append(more);
+    }
    }
   }
   grid.append(jobs);
