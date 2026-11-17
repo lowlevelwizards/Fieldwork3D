@@ -54,21 +54,26 @@ function area(poly:Outline):number{
 function contour(poly:Outline,ccw:boolean):Outline{
  return (area(poly)>0)===ccw?poly:[...poly].reverse();
 }
-/** P8: simplified original G36 molded stock — two real openings,
- * one strong upper member and a decisive sweeping lower contour.
- * The 3D depth remains restrained; never a tubular folding-stock clone.
+/** V13: reference-derived original G36 folding stock, not a revised P8 frame.
+ * This is the user-approved photo-derived silhouette mirrored into game art
+ * coordinates (+X muzzle, +Y up). A single solid molded frame has two actual
+ * through-openings; the rear heel sweeps steeply below a shallow lower rail.
+ * Preserve the factory stock mount/rear extent and restrained 1.72-unit depth.
+ * The rear upper corner overlaps the pre-existing slim buttpad on purpose.
  */
 function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):THREE.Mesh{
  const outside:Outline=[
-  [-14.69,.50],[-6.43,.50],[-6.43,-2.08],
-  [-8.75,-2.35],[-11.22,-4.18],[-13.12,-4.96],[-14.69,-5.24]
+  [-6.568,1.200],[-6.430,-1.555],[-6.831,-1.877],
+  [-9.527,-1.936],[-11.628,-2.445],[-12.630,-3.038],
+  [-13.397,-4.055],[-13.736,-5.233],[-14.379,-5.250],
+  [-14.690,-4.970],[-14.640,.259],[-8.773,.403]
  ];
  const largeHole:Outline=[
-  [-14.00,-.42],[-10.31,-.42],[-9.62,-1.55],
-  [-11.62,-3.85],[-13.10,-4.45],[-14.00,-4.58]
+  [-10.045,-.317],[-13.515,-.292],[-13.480,-1.758],
+  [-13.024,-2.106],[-10.066,-1.300]
  ];
  const smallHole:Outline=[
-  [-9.42,-.40],[-7.13,-.40],[-7.09,-1.72],[-8.60,-1.72]
+  [-7.958,-.334],[-9.444,-.309],[-9.534,-1.097],[-7.958,-1.190]
  ];
  const trace=(poly:Outline,path:THREE.Shape|THREE.Path)=>{
   path.moveTo(poly[0][0],poly[0][1]);
@@ -90,6 +95,7 @@ function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):T
  mesh.castShadow=true;mesh.receiveShadow=true;
  mesh.userData.g36MasterStock=true;
  mesh.userData.g36StockOpeningCount=2;
+ mesh.userData.g36StockArtVersion='v13-reference';
  root.add(mesh);return mesh;
 }
 export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtReview={}):THREE.Group{
