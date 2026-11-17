@@ -505,3 +505,17 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
 @media(prefers-reduced-motion:reduce){
  .arsenal-wb-stat-fill{transition:none}
 }
+
+/* Factory/saved model selection: inspect projected deltas before loading. */
+.arsenal-wb-load-stats{display:flex;flex-direction:column;gap:7px;
+ margin:10px 0;padding:9px;background:var(--fw-panel-deep);
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm)}
+.arsenal-wb-load-stats>strong{font:750 11px/1.2 var(--fw-font-menu);
+ letter-spacing:.05em}
+.arsenal-wb-load-stat-chips{display:flex;flex-wrap:wrap;gap:5px;
+ font:600 11px/1.35 var(--fw-font-action)}
+.arsenal-wb-load-stat-chip{border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);padding:4px 7px;
+ font-variant-numeric:tabular-nums}
+.arsenal-wb-load-stat-chip[data-direction="up"]{color:var(--fw-sage)}
+.arsenal-wb-load-stat-chip[data-direction="down"]{color:var(--fw-brass)}
