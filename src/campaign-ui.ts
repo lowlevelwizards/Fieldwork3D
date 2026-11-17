@@ -804,7 +804,11 @@ export class CampaignScreen{
    facts.append(node('span','','GRADE '+report.grade),
     node('span','',report.participatingIds.length+' OPERATORS'));
    article.append(facts);
-   if(incident)article.append(node('small','campaign-operation-reference',incident.reference));
+   // Technical references and after-action evidence remain accessible
+   // without forcing eight separate expanded report bodies into the log.
+   const recordDetail=node('details','campaign-operation-detail');
+   recordDetail.append(node('summary','','OPERATION DETAILS'));
+   if(incident)recordDetail.append(node('small','campaign-operation-reference',incident.reference));
    if(incident&&(report.dispatchForce||report.dispatchCareer)){
     const detail=node('details','campaign-operation-evidence');
     detail.append(node('summary','','AFTER-ACTION RECORD'));
@@ -816,8 +820,9 @@ export class CampaignScreen{
      'STANDING '+(report.dispatchCareer.standingDelta>0?'+':'')+
      report.dispatchCareer.standingDelta+' → '+report.dispatchCareer.standingAfter+
      ' · SUPPORT +'+report.dispatchCareer.operatingSupport+' CR'));
-    article.append(detail);
+    recordDetail.append(detail);
    }
+   article.append(recordDetail);
    return article;
   };
   for(const report of recentReports)operationBoard.append(renderOperation(report));
