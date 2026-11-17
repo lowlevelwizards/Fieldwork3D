@@ -23,7 +23,9 @@ export function selectPhysicalEntrySettle(
  // ring is only for genuinely obstructed GENERATED endpoints (Retail D1).
  // No hidden geometry is read while the plan is being authored.
  let best:Pt|null=null,bestScore=Infinity;
- const cold: {point:Pt;score:number}[]=[];
+ // Three cold connector probes must cover distinct distances from the
+ // blocked template, not spend all three in the same near-goal pocket.
+ const cold: {point:Pt;score:number;band:number}[]=[];
  for(const radius of [4,8,12,15,20,26]){
   for(let i=0;i<16;i++){
    const theta=i*Math.PI/8;
@@ -34,7 +36,7 @@ export function selectPhysicalEntrySettle(
    const score=d(p,goal)+d(from,p)*.24;
    if(sweep(from,p)){
     if(score<bestScore){bestScore=score;best=p;}
-   }else if(worldRoute) cold.push({point:p,score});
+   }else if(worldRoute) cold.push({point:p,score,band:radius<=8?0:radius<=15?1:2});
   }
   if(best)break;
  }
@@ -45,7 +47,21 @@ export function selectPhysicalEntrySettle(
  // The ordinary motor executes the resulting route; this grants no motion.
  if(worldRoute){
   cold.sort((a,b)=>a.score-b.score);
-  for(const candidate of cold.slice(0,3)){
+  // A local detour often cannot reach the closest standable footprint
+  // around a swung leaf. Reserve one query per near/middle/outer band
+  // before filling any unused budget with the next-best candidate.
+  // This changes proposal order only; the real capsule sweep below and
+  // the authoritative motor still decide every physical stride.
+  const probes:typeof cold=[];
+  for(const band of [0,1,2]){
+   const candidate=cold.find(item=>item.band===band);
+   if(candidate)probes.push(candidate);
+  }
+  for(const candidate of cold){
+   if(probes.length>=3)break;
+   if(!probes.includes(candidate))probes.push(candidate);
+  }
+  for(const candidate of probes){
    const path=worldRoute(from,candidate.point);
    if(path.length&&d(path[path.length-1],candidate.point)<=3&&
       fullBodyMotorRouteClear(from,path,sweep,d(from,candidate.point)*2.1+36)){
