@@ -1466,7 +1466,12 @@ export class CampaignScreen{
   const reward=node('div','campaign-contract-term');
   reward.append(node('small','','REWARD'),node('strong','',c.reward+' CR'));
   const deadline=node('div','campaign-contract-term');
-  deadline.append(node('small','','DEADLINE'),node('strong','','DAY '+c.deadline));
+  const daysLeft=Math.max(0,c.deadline-campaign.day);
+  const dueLabel=daysLeft===0?'DUE TODAY':
+   daysLeft===1?'1 DAY LEFT':daysLeft+' DAYS LEFT';
+  const due=node('small','campaign-contract-due'+
+   (daysLeft<=1?' is-urgent':''),dueLabel);
+  deadline.append(node('small','','DEADLINE'),node('strong','','DAY '+c.deadline),due);
   terms.append(reward,deadline);card.append(terms);
   card.append(button('REVIEW DEPLOYMENT',()=>this.reviewContract(c,campaign),
    'campaign-primary campaign-contract-review'));
