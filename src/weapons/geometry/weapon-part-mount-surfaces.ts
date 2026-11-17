@@ -128,6 +128,9 @@ export function preferredOpticMountSurface(build:WeaponFamilyBuild,
  // AK's railed fore-end is a forward-mount compromise until per-optic
  // eye-relief/footprint mechanics are added (no silent old save migrations).
  return surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='opticMount')??
-  surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='receiver')??
+  // A receiver side dovetail is for a *direct-fit* proprietary optic,
+  // never an uninstalled generic Picatinny reflex sight.
+  surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='receiver'&&
+   s.face==='top'&&s.standard==='picatinny')??
   surfaces.find(s=>s.role==='optic'&&s.ownerSlot==='handguard');
 }
