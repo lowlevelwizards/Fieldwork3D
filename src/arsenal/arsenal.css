@@ -421,3 +421,33 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
   font:650 11px/1.3 var(--fw-font-action)
  }
 }
+
+/* Equipment E4.F: platform-first factory browser with reviewable choices. */
+.arsenal-wb-platform-chips{display:flex;gap:6px;overflow-x:auto;
+ overscroll-behavior-x:contain;scrollbar-width:thin;padding:3px 0 8px;
+ margin-bottom:4px;scroll-snap-type:x proximity}
+.arsenal-wb-platform-chips[hidden]{display:none}
+.arsenal-wb-platform-chip{flex:0 0 auto;min-height:44px;
+ padding:8px 13px;border-radius:7px;
+ border:1px solid var(--fw-panel-border);background:var(--fw-panel-deep);
+ color:var(--fw-text);font:700 12px var(--fw-font-action);
+ white-space:nowrap;scroll-snap-align:start}
+.arsenal-wb-platform-chip[aria-pressed="true"]{
+ background:var(--fw-sage);border-color:var(--fw-sage);color:var(--fw-bg)}
+.arsenal-wb-platform-chip:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}
+.arsenal-wb-load-option .arsenal-wb-model-status{
+ font:700 10px var(--fw-font-action);color:var(--fw-brass);
+ letter-spacing:.03em}
+.arsenal-wb-load-dialog .arsenal-wb-load-choices{
+ max-height:min(38dvh,360px);overscroll-behavior:contain;min-height:110px}
+.arsenal-wb-load-dialog .arsenal-wb-save-actions{
+ position:sticky;bottom:-17px;z-index:2;background:var(--fw-panel);
+ padding:12px 0 17px;margin-top:4px;border-top:1px solid var(--fw-panel-border)}
+.arsenal-wb-load-dialog .arsenal-wb-save-actions button{flex:1 1 130px}
+@media(max-width:760px){
+ .arsenal-wb-model-controls select{display:none}
+ .arsenal-wb-load-dialog{padding:13px}
+ .arsenal-wb-load-dialog .arsenal-wb-save-actions{
+  bottom:-13px;padding:11px 0 calc(13px + env(safe-area-inset-bottom,0px))}
+ .arsenal-wb-load-dialog .arsenal-wb-load-choices{max-height:42dvh}
+}
