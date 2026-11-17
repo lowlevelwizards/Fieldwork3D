@@ -566,7 +566,7 @@ export function purchaseAndEquipWeaponAttachment(c:CampaignState,id:string,
  const direct=equipCampaignWeaponAttachment(c,id,slot,partId);
  if(direct!==c)return direct;
  const price=attachmentPrice(partId);
- if(price<=0||c.activeContractId||c.funds<price)return c;
+ if(price<=0||c.activeContractId||!canSpend(c,price))return c;
  const purchased=buyWeaponAttachment(c,partId);
  if(purchased===c)return c;
  const equipped=equipCampaignWeaponAttachment(purchased,id,slot,partId);
