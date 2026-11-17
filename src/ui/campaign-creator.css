@@ -86,3 +86,15 @@
 @media(prefers-reduced-motion:reduce){
  .campaign-creator-preset{transition:none}
 }
+
+/* UI.4D — Classic Sandbox uses the same short setup / review rhythm as Dispatch. */
+.campaign-creator form>.campaign-creator-field{font-size:12px}
+.campaign-creator .campaign-creator-review{gap:5px}
+.campaign-creator-future{border-top:1px solid #50685b;padding:9px 0 0}
+.campaign-creator-future>summary{
+ display:flex;align-items:center;min-height:44px;cursor:pointer;
+ color:var(--fw-text-muted);font:700 12px var(--fw-font-menu);
+ letter-spacing:.045em;
+}
+.campaign-creator-future[open]>.campaign-creator-field{margin:8px 0}
+.campaign-creator-future p{margin:6px 0 8px}
