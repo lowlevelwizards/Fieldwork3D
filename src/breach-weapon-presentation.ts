@@ -44,6 +44,9 @@ export function weaponPresentationSockets(id:WeaponId,
    x:.42,y:.61,z:2.00
   }:build?.family==='hk'?{
    x:(hkArt?.handguardStartX??4)+.20,y:1.45,z:-2.70
+  }:build?.family==='g36'?{
+   // Receiver-top ambidextrous cocking handle below the carry handle.
+   x:1.65,y:2.28,z:-.75
   }:{x:1,y:2.2,z:-2.7},
   muzzle:{x:a.muzzleX,y:'muzzleY' in a?a.muzzleY:0,z:0},
   sight:{x:-1,y:'sightHeight' in a?a.sightHeight:2.6,z:0},
