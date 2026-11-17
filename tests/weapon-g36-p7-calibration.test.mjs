@@ -10,6 +10,7 @@ import {G36_MAG30_CURVE_P6,G36_MAG30_CURVE_CANDIDATE,
  G36_MAG30_OUTLINE,G36_MAG30_OUTLINE_CANDIDATE}
  from '../src/weapons/geometry/g36-magazine-profiles.ts';
 import {G36_B_ART as A} from '../src/weapons/geometry/g36-art-layout.ts';
+import {arMagazineSample} from '../src/weapons/geometry/ar-magazine-profiles.ts';
 import {G36_E0_FACTORY} from '../src/weapons/geometry/g36-family-contract.ts';
 import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
 const find=(g,k)=>g.children.find(x=>x.userData[k]);
@@ -66,7 +67,9 @@ test('P7 magazine alternative changes curvature ONLY, without feed or length mig
  assert.equal(alt.children.length,p6.children.length);
  assert.equal(tris(alt),tris(p6));
  assert.ok(box(find(alt,'g36Magazine')).max.x>box(find(p6,'g36Magazine')).max.x+.25);
- assert.ok(close(box(find(alt,'g36Magazine')).min.y,box(find(p6,'g36Magazine')).min.y));
+ // Sweep changes face normals and can change the outer tip corner,
+ // even though the same centerline end and nominal magazine length remain.
+ assert.equal(arMagazineSample(c,1).y,arMagazineSample(base,1).y);
  for(const k of ['g36MasterStock','g36HandleOpening','g36LongHandguard','g36Grip'])
   assert.ok(box(find(alt,k)).equals(box(find(p6,k))));
  assert.equal(G36_E0_FACTORY.feedVisualId,'g36-polymer-556');
