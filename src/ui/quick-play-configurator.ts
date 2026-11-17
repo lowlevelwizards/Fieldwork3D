@@ -139,7 +139,6 @@ export function createQuickPlayConfigurator(options:{
  const buildingDisclosureSummary=node('summary','','BUILDING TYPES');
  const buildingSection=node('section','fw-quick-config-buildings');
  const buildingHeader=node('div','fw-quick-config-building-header');
- const buildingHeading=node('strong','','ALLOWED BUILDINGS');
  const buildingActions=node('div','fw-quick-config-building-actions');
  const checks=node('div','fw-quick-config-checks');
  const checkInputs=new Map<BuildingArchetype,HTMLInputElement>();
@@ -156,7 +155,7 @@ export function createQuickPlayConfigurator(options:{
    chooseBuildings(enabled.length?enabled:[QUICK_PLAY_BUILDINGS[seed%QUICK_PLAY_BUILDINGS.length]]);
   })
  );
- buildingHeader.append(buildingHeading,buildingActions);
+ buildingHeader.append(buildingActions);
  for(const kind of QUICK_PLAY_BUILDINGS){
   const label=node('label','fw-quick-config-building');
   const checkbox=node('input');checkbox.type='checkbox';checkbox.value=kind;

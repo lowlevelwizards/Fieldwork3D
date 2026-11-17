@@ -102,5 +102,4 @@
  font:700 20px var(--fw-font-menu)}
 .fw-quick-config-building-details[open]>summary::after{content:'−'}
 .fw-quick-config-building-details .fw-quick-config-buildings{padding:0 11px 12px}
-.fw-quick-config-building-header>strong{font-size:0;line-height:0}
 .fw-quick-config-building-details>summary:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}
