@@ -19,7 +19,8 @@ import {VERIFIED_RIGID_FACTORY_IDS}
  from '../src/weapons/geometry/validated-factory-rigid-compile.ts';
 
 const slots=['receiver','barrel','handguard','stock','grip','magazine'];
-const expected={'ak-akms':11,'ak-aks74u':11,'ar-m4a1':8};
+const expected={'ak-akms':11,'ak-aks74u':11,'ar-m4a1':8,
+ 'ak-ak74':9,'ak-aks74':9,'ak-rpk74':9,'ar-m16a4':8};
 const load=id=>{
  const ref=ARSENAL_REFERENCES.find(x=>x.id===id);
  assert.ok(ref,id+' reference');
@@ -74,8 +75,10 @@ test('M3.0C4 factory-only live builder saves exactly C3-proven GPU submissions',
    assert.deepEqual(live.userData.visibleStockContact,
     original.userData.visibleStockContact,'buttplate art datum changed');
    const contact=measureVisibleStockContact(live,config);
-   assert.ok(contact&&Math.abs(contact.rearX-
-    original.userData.visibleStockContact.rearX)<.0001,
+   const untouched=original.userData.visibleStockContact;
+   if(!untouched)assert.equal(contact,null,
+    'compiler must not invent a shoulder contact on a stockless profile');
+   else assert.ok(contact&&Math.abs(contact.rearX-untouched.rearX)<.0001,
     'merged factory stock must still measure same shoulder contact');
    // Standalone raycasts target real geometry, not synthetic slot labels.
    for(const slot of ['receiver','handguard','stock']){
