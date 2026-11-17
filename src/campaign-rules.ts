@@ -28,7 +28,9 @@ type CampaignPreset={
 const currentMissionDefaults:Readonly<CampaignMissionRules>=Object.freeze({
  intel:'contract',scale:'contract'
 });
-/** No economy or simulation differences are applied by these identities yet. */
+/** Campaign template identities configure mission defaults; Dispatch's
+ * separately owned D11 post-operation service ledger is opt-in by template.
+ * Other presets preserve their shared economy and gameplay. */
 export const CAMPAIGN_PRESETS:Readonly<Record<CampaignTemplateId,CampaignPreset>>=
  Object.freeze({
   dispatch:Object.freeze({label:'Dispatch',intent:'Law enforcement and accountable incident response',
