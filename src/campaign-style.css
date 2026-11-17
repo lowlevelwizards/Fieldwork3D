@@ -1153,3 +1153,64 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-head .campaign-heading h1{font-size:clamp(24px,6.8vw,30px)}
  .campaign-head .campaign-funds{gap:5px 12px;font-size:14px}
 }
+
+/* Campaign C2.2 — operator roster is a scanable list, not seven fully-open
+   dossiers. Native disclosure preserves direct touch and keyboard operation. */
+.campaign-personnel-roster-panel .campaign-roster-group-label{
+ grid-column:1/-1;margin:10px 0 2px;min-width:0;
+ font:750 12px/1.3 var(--fw-font-menu);letter-spacing:.06em;
+ color:var(--fw-text-muted);
+}
+.campaign-personnel-roster-panel .campaign-person{
+ display:block;min-width:0;padding:0;overflow:visible;
+}
+.campaign-person-expand{min-width:0}
+.campaign-person-expand>summary{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:7px;
+ min-height:68px;padding:10px 12px 11px;cursor:pointer;
+ position:relative;list-style:none;
+}
+.campaign-person-expand>summary::-webkit-details-marker{display:none}
+.campaign-person-expand>summary::after{
+ content:'+';position:absolute;right:12px;bottom:9px;
+ font:700 18px/1 var(--fw-font-menu);color:var(--fw-sage);
+}
+.campaign-person-expand[open]>summary::after{content:'−'}
+.campaign-person-expand>summary:focus-visible{
+ outline:2px solid var(--fw-brass);outline-offset:-3px;border-radius:8px;
+}
+.campaign-person-expand>summary:hover{background:#324840}
+.campaign-person-expand .campaign-person-head{gap:9px;padding-right:0}
+.campaign-person-expand .campaign-person-avatar{
+ width:40px;height:44px;font-size:17px;
+}
+.campaign-person-expand .campaign-person-identity{gap:2px}
+.campaign-person-expand .campaign-person-identity strong{font-size:19px}
+.campaign-person-expand .campaign-person-performance{
+ display:flex;gap:5px;flex-wrap:nowrap;min-width:0;padding-right:24px;
+}
+.campaign-person-expand .campaign-person-performance span{
+ font-size:11px;line-height:1.3;padding:3px 6px;
+ white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.campaign-person-expand .campaign-person-performance span:last-child{
+ flex:0 1 auto;min-width:0;
+}
+.campaign-person-expand>.campaign-person-profile,
+.campaign-person-expand>.campaign-person-actions,
+.campaign-person-expand>.campaign-person-care{
+ margin:0 11px 10px;
+}
+.campaign-person-expand>.campaign-person-profile{width:calc(100% - 22px)}
+@media(max-width:520px){
+ .campaign-personnel-roster-panel .campaign-roster{gap:7px}
+ .campaign-person-expand>summary{padding:9px 10px 10px}
+ .campaign-person-expand .campaign-person-avatar{width:36px;height:40px;font-size:16px}
+ .campaign-person-expand .campaign-person-identity strong{font-size:18px}
+ .campaign-person-expand .campaign-person-identity>span{display:none}
+ .campaign-person-expand .campaign-person-state{font-size:10px}
+ .campaign-person-expand .campaign-person-performance span{font-size:10px}
+}
+@media(prefers-reduced-motion:reduce){
+ .campaign-person-expand>summary{scroll-behavior:auto}
+}
