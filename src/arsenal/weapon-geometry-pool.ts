@@ -91,15 +91,18 @@ export class ArsenalWeaponGeometryPool{
    let entry=bucket.find(item=>equal(item.geometry,geometry));
    if(entry){
     this.hits++;
+    // LRU: a re-used part belongs at the back of the eviction queue.
+    this.all.delete(entry);this.all.add(entry);
     if(entry.geometry!==geometry){
      for(const mesh of consumers)mesh.geometry=entry.geometry;
      geometry.dispose();
     }
-   }else if(this.all.size<this.budget){
+   }else{
+    if(this.all.size>=this.budget&&!this.evictOldestIdle())continue;
     entry={geometry,signature:key,leases:0,retired:false};
     bucket.push(entry);this.buckets.set(key,bucket);
     this.all.add(entry);this.misses++;
-   }else continue;
+   }
    if(!leases.has(entry)){entry.leases++;leases.add(entry);}
   }
   this.owners.set(root,leases);
@@ -125,6 +128,19 @@ export class ArsenalWeaponGeometryPool{
  }
  private retire(entry:Entry){
   entry.geometry.dispose();this.all.delete(entry);
+ }
+ private evictOldestIdle():boolean{
+  for(const entry of this.all){
+   if(entry.leases!==0||entry.retired)continue;
+   const bucket=this.buckets.get(entry.signature);
+   if(!bucket)continue;
+   const remaining=bucket.filter(item=>item!==entry);
+   if(remaining.length)this.buckets.set(entry.signature,remaining);
+   else this.buckets.delete(entry.signature);
+   entry.retired=true;this.retire(entry);this.evictions++;
+   return true;
+  }
+  return false;
  }
  /** Drop idle geometry before saturating the budget. Live owners are untouched. */
  evictIdle(){
