@@ -297,3 +297,21 @@ test('Operator action labels are unique by callsign while retaining existing han
   'this.handlers.assignSlot(slot,picker.value)'
  ])assert.ok(personnel.includes(handler),'Existing action changed '+handler);
 });
+
+test('Operations browser acceptance owns phone, desktop and keyboard behavior',()=>{
+ const script=readFileSync(new URL('../scripts/smoke-operations-room-responsive.mjs',import.meta.url),'utf8');
+ const workflow=readFileSync(new URL('../.github/workflows/operations-room-browser-acceptance.yml',import.meta.url),'utf8');
+ assert.match(script,/width:1440,height:900,mobile:false/);
+ assert.match(script,/width:390,height:844,mobile:true/);
+ assert.match(script,/for\(const tab of \['overview','personnel','contracts','logistics','chronicle'\]\)/);
+ assert.match(script,/d\.scroll<=d\.width\+3/);
+ assert.match(script,/rect\.height>=44/);
+ assert.match(script,/await last\.press\('Home'\)/);
+ assert.match(script,/await first\.press\('End'\)/);
+ assert.match(script,/await last\.press\('ArrowRight'\)/);
+ assert.match(script,/page\.screenshot/);
+ assert.match(workflow,/operations-room-browser-acceptance/);
+ assert.match(workflow,/npx playwright install --with-deps chromium/);
+ assert.match(workflow,/scripts\/smoke-operations-room-responsive\.mjs/);
+ assert.match(workflow,/actions\/upload-artifact@v4/);
+});
