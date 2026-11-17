@@ -38,6 +38,7 @@ import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
+import {compileRigidVisualOwner} from './fieldwork-model-compiler.ts';
 import type {RepeatedFixtureBatches} from './breach-repeated-fixture-batches.ts';
 import {isArchitecturalSillCover} from '../worldgen/architectural-cover-visuals.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
@@ -102,6 +103,75 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
       new URLSearchParams(location.search).get('e618Batch')!=='0';
     if(e618Enabled)consolidateOwnedStaticSiteDetails(
       host.observedDetails,host.doors);
+    // E6.20: verified fixed-seed production default. URL =0 is an
+    // emergency rollback flag; all source draw/fog ownership stays intact.
+    const e620Enabled=typeof location==='undefined'||
+      new URLSearchParams(location.search).get('e620Bake')!=='0';
+    if(e620Enabled){
+      let source=0,compiled=0,windows=0,frames=0;
+      for(const glass of host.windowGlass.values()){
+        const owner=glass.parent;
+        if(!owner||owner.userData.fogFacade!==true)continue;
+        const result=compileRigidVisualOwner(owner,{
+          mode:'opaque-facade',exclude:new Set([glass])});
+        if(result.avoidedDraws>0){
+          windows++;source+=result.sourceMeshes;compiled+=result.compiledMeshes;
+        }
+      }
+      for(const door of host.doors.values()){
+        const result=compileRigidVisualOwner(door.frame,{
+          mode:'opaque-facade',exclude:new Set([door.threshold,door.wedge])});
+        if(result.avoidedDraws>0){
+          frames++;source+=result.sourceMeshes;compiled+=result.compiledMeshes;
+        }
+      }
+      host.root.userData.fieldworkE620Pilot={source,compiled,
+        avoided:source-compiled,windows,frames};
+    }
+    // E6.21: second verified domain, enabled by default. These groups move as one rigid
+    // assembly or remain under their independent disclosure owner. A door
+    // leaf's parent may rotate, but its local submesh geometry is rigid.
+    // Never bake independently animated glass, thresholds or door hinges.
+    const e621Enabled=typeof location==='undefined'||
+      new URLSearchParams(location.search).get('e621Bake')!=='0';
+    if(e621Enabled){
+      let source=0,compiled=0,arches=0,interiorWindows=0;
+      let interiorFrames=0,rigidLeaves=0;
+      const record=(result:ReturnType<typeof compileRigidVisualOwner>,
+       domain:'arch'|'window'|'frame'|'leaf')=>{
+        if(result.avoidedDraws<=0)return;
+        source+=result.sourceMeshes;compiled+=result.compiledMeshes;
+        if(domain==='arch')arches++;
+        else if(domain==='window')interiorWindows++;
+        else if(domain==='frame')interiorFrames++;
+        else rigidLeaves++;
+      };
+      // One room-opening group is independently discovered, not a global
+      // structural mesh. Its parts share one material and stay rigid.
+      for(const opening of host.architecturalOpenings)
+        record(compileRigidVisualOwner(opening.obj,{mode:'opaque'}),'arch');
+      for(const glass of host.windowGlass.values()){
+        const owner=glass.parent;
+        if(!owner||owner.userData.fogFacade===true)continue;
+        record(compileRigidVisualOwner(owner,{mode:'opaque',
+          exclude:new Set([glass])}),'window');
+      }
+      for(const door of host.doors.values()){
+        const exterior=door.frame.children.some(child=>
+          child.userData.fogFacade===true);
+        if(!exterior)record(compileRigidVisualOwner(door.frame,{
+          mode:'opaque',exclude:new Set([door.threshold,door.wedge])}),'frame');
+        // Parts of an open/closed door travel together WITH the leaf pivot.
+        // The glass pane retains its independent shattered/hidden state.
+        record(compileRigidVisualOwner(door.leaf,{
+          mode:exterior?'opaque-facade':'opaque',
+          exclude:door.glassPane?new Set([door.glassPane]):undefined
+        }),'leaf');
+      }
+      host.root.userData.fieldworkE621Pilot={source,compiled,
+        avoided:source-compiled,arches,interiorWindows,
+        interiorFrames,rigidLeaves};
+    }
     // Bake immobile exterior/ground fixtures per spatial cell. Keep owner-
     // scoped doors, cover and fog groups independent; never touch descendants.
     consolidateStaticFixtureParts(host.root,{recursive:false,cellSize:220});
