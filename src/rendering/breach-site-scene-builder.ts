@@ -572,8 +572,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       // cross-cover instancing. Do not add a profiler walk in normal gameplay.
       if(typeof location!=='undefined'&&
          new URLSearchParams(location.search).get('coldBench')==='1'){
-        const inventory=(host.root.userData.fieldworkE625FixtureInventory??=[])
-          as Array<{index:number;fixture:string;template:boolean;
+        const inventory=(host.root.userData.fieldworkE625FixtureInventory??=[]) as Array<{
+          index:number;fixture:string;template:boolean;
             meshes:number;opaque:number;shadow:number;parts:string}>;
         const meshes:THREE.Mesh[]=[];
         intact.traverse(node=>{
