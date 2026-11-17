@@ -15,6 +15,9 @@ on:
       - 'arsenal-m30c3-modular-capture.html'
       - 'scripts/smoke-arsenal-m30c3-modular-visual.mjs'
       - 'scripts/smoke-arsenal-m30c4-runtime-visual.mjs'
+      - 'src/arsenal-m30c5-factory-capture.ts'
+      - 'arsenal-m30c5-factory-capture.html'
+      - 'scripts/smoke-arsenal-m30c5-candidate-visual.mjs'
       - 'tests/arsenal-m30-*.test.mjs'
       - '.github/workflows/arsenal-m30.yml'
 permissions:
@@ -38,6 +41,7 @@ jobs:
             tests/arsenal-m30-rigid-part-pilot.test.mjs \
             tests/arsenal-m30-modular-visual-contract.test.mjs \
             tests/arsenal-m30c4-factory-runtime.test.mjs \
+            tests/arsenal-m30c5-factory-candidates.test.mjs \
             tests/arsenal-m28-cross-family-mounting.test.mjs \
             tests/arsenal-m2-accessory-integration.test.mjs \
             tests/equipment-19-02-weapon-silhouettes.test.mjs \
@@ -68,6 +72,8 @@ jobs:
         run: node scripts/smoke-arsenal-m30c3-modular-visual.mjs
       - name: M3.0C4 actual shared-builder WebGL runtime parity
         run: node scripts/smoke-arsenal-m30c4-runtime-visual.mjs
+      - name: M3.0C5A candidate original-versus-compiled WebGL proof
+        run: node scripts/smoke-arsenal-m30c5-candidate-visual.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -81,5 +87,7 @@ jobs:
             reports/arsenal-m30c3-modular-parity.json
             reports/arsenal-m30c4-production-parity.png
             reports/arsenal-m30c4-production-parity.json
+            reports/arsenal-m30c5-candidate-parity.png
+            reports/arsenal-m30c5-candidate-parity.json
           if-no-files-found: ignore
           retention-days: 14
