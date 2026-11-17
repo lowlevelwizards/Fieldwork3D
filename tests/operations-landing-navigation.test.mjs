@@ -511,3 +511,37 @@ test('C11 kit and attachment feedback never bypasses save-aware action handling'
  assert.match(actions,/acquire\?'Attachment acquired and equipped':'Weapon attachment updated'/);
  assert.doesNotMatch(actions,/config\.saveCampaign\(\);showCampaignHome\(\)/);
 });
+
+
+test('C12: remaining weapon-preset and retirement edits use save-aware feedback',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const preset=flow.slice(flow.indexOf(' equipWeaponPreset:(id,presetId)=>'),
+  flow.indexOf(' equipWeaponFamilyPart:(id,slot,partId)=>'));
+ assert.match(preset,/equipWeaponPreset:\(id,presetId\)=>applyVisibleCampaignAction\(current=>/);
+ assert.match(preset,/if\(current\.activeContractId\)return current/);
+ assert.match(preset,/if\(!preset\|\|!member\)return current/);
+ assert.match(preset,/return equipCampaignWeaponPreset\(next,id,presetId\)/);
+ assert.match(preset,/Weapon family preset equipped/);
+ assert.doesNotMatch(preset,/config\.saveCampaign\(\)|model\.campaign=next/);
+ const retire=flow.slice(flow.indexOf(' retire:(id)=>{'),
+  flow.indexOf(' importSave:(raw,slot)=>'));
+ assert.match(retire,/window\.confirm\('Retire this operator from active service\?/);
+ assert.match(retire,/applyVisibleCampaignAction\(c=>retireOperator\(c,id\)/);
+ assert.match(retire,/Operator retired from active service/);
+ assert.doesNotMatch(retire,/config\.saveCampaign\(\)|model\.campaign=retireOperator/);
+});
+
+test('C12: deployment is impossible when accepting a contract could not be saved',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const accept=flow.slice(flow.indexOf(' chooseContract:(id)=>{'),
+  flow.indexOf(' resumeContract:()=>',flow.indexOf(' chooseContract:(id)=>{')));
+ assert.match(accept,/const previous=model\.campaign/);
+ assert.match(accept,/const next=acceptContract\(previous,id\)/);
+ assert.match(accept,/if\(next===previous\)return/);
+ assert.match(accept,/model\.campaign=next/);
+ assert.match(accept,/if\(!config\.saveCampaign\(\)\)\{\s*model\.campaign=previous/);
+ assert.match(accept,/showFieldworkNotice\('Save unavailable'/);
+ assert.match(accept,/try again\.'\);\s*return;\s*\}\s*deployCampaignContract\(\)/);
+ assert.equal((accept.match(/deployCampaignContract\(\)/g)??[]).length,1);
+ assert.doesNotMatch(accept,/config\.saveCampaign\(\);deployCampaignContract\(\)/);
+});
