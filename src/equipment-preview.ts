@@ -13,7 +13,8 @@ import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 
 export class CampaignKitPreview{
- private readonly host:HTMLElement;
+ private host:HTMLElement;
+ private readonly operatorId:string;
  private readonly scene=new THREE.Scene();
  private readonly camera=new THREE.PerspectiveCamera(34,1,.1,700);
  private renderer:THREE.WebGLRenderer|null=null;
@@ -26,7 +27,7 @@ export class CampaignKitPreview{
   appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,
   magazines:readonly MagazineItem[]=[],wardrobe?:WardrobeOptions){
-  this.host=host;
+  this.host=host;this.operatorId=id;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
   host.setAttribute('aria-label','Rotatable 3D preview of '+id+' with equipped gear');
@@ -42,19 +43,8 @@ export class CampaignKitPreview{
    this.scene.add(ambient,key);
    this.rig=createOperatorRig(id,'blue');
    this.scene.add(this.rig.root);
-   poseOperator(this.rig,{x:0,z:0,heading:0,velocity:0,seconds:0,
-    stride:0,posture:'stand',injury:0,weapon,
-    reload:0,reloadDuration:0,lastThrowAt:-100,lastDoorAt:-100,
-    down:false,surrender:false,aiming:false,firing:false,turning:0,
-    appearanceSeed,equipment,weaponConfiguration,wardrobe,
-    magazineCarryLocations:carryPlacementLedger(equipment,magazines)
-      .filter(item=>item.kind==='magazine').map(item=>item.location),
-    medicalCarryLocation:carryPlacementLedger(equipment,magazines)
-      .find(item=>item.kind==='medical')?.location,
-    utilityCarryLocation:carryPlacementLedger(equipment,magazines)
-      .find(item=>item.kind==='utility')?.location,
-    flashCharges:equipment.slots.tactical==='tactical-flash'?1:0,
-    deterministic:true},0);
+   this.updateEquipment(weapon,appearanceSeed,equipment,weaponConfiguration,
+    magazines,wardrobe);
    host.addEventListener('pointerdown',this.pointerDown);
    host.addEventListener('pointermove',this.pointerMove);
    host.addEventListener('pointerup',this.pointerUp);
@@ -71,6 +61,47 @@ export class CampaignKitPreview{
    host.append(note);
   }
  }
+ /** A kit change updates the existing rig, without creating another WebGL context. */
+ updateEquipment(weapon:WeaponId,appearanceSeed:number,equipment:EquipmentLoadout,
+  weaponConfiguration?:WeaponConfiguration,magazines:readonly MagazineItem[]=[],
+  wardrobe?:WardrobeOptions):void{
+  if(!this.rig)return;
+  const placements=carryPlacementLedger(equipment,magazines);
+  poseOperator(this.rig,{x:0,z:0,heading:0,velocity:0,seconds:0,
+   stride:0,posture:'stand',injury:0,weapon,
+   reload:0,reloadDuration:0,lastThrowAt:-100,lastDoorAt:-100,
+   down:false,surrender:false,aiming:false,firing:false,turning:0,
+   appearanceSeed,equipment,weaponConfiguration,wardrobe,
+   magazineCarryLocations:placements.filter(item=>item.kind==='magazine')
+    .map(item=>item.location),
+   medicalCarryLocation:placements.find(item=>item.kind==='medical')?.location,
+   utilityCarryLocation:placements.find(item=>item.kind==='utility')?.location,
+   flashCharges:equipment.slots.tactical==='tactical-flash'?1:0,
+   deterministic:true},0);
+  this.draw();
+ }
+ /** Move one canvas between rebuilt HTML hosts while maintaining its view state. */
+ attachHost(host:HTMLElement):void{
+  if(host===this.host)return;
+  this.observer?.disconnect();
+  this.host.removeEventListener('pointerdown',this.pointerDown);
+  this.host.removeEventListener('pointermove',this.pointerMove);
+  this.host.removeEventListener('pointerup',this.pointerUp);
+  this.host.removeEventListener('pointercancel',this.pointerUp);
+  this.pointerId=null;this.host=host;
+  host.classList.add('campaign-kit-preview');
+  host.setAttribute('role','img');
+  host.setAttribute('aria-label','Rotatable 3D preview of '+
+   this.operatorId+' with equipped gear');
+  if(this.renderer)host.append(this.renderer.domElement);
+  host.addEventListener('pointerdown',this.pointerDown);
+  host.addEventListener('pointermove',this.pointerMove);
+  host.addEventListener('pointerup',this.pointerUp);
+  host.addEventListener('pointercancel',this.pointerUp);
+  this.observer?.observe(host);
+  this.draw();
+ }
+ isReady():boolean{return this.renderer!==null&&this.rig!==null;}
  private pointerDown=(event:PointerEvent)=>{
   if(this.pointerId!==null)return;
   this.pointerId=event.pointerId;this.lastX=event.clientX;

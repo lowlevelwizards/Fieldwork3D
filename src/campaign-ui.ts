@@ -1230,7 +1230,9 @@ export class CampaignScreen{
   const restoreScroll=sameOperator?this.root.scrollTop:0;
   const previousFocus=this.root.contains(document.activeElement)?
     document.activeElement?.getAttribute('aria-label'):null;
-  this.disposePreview();
+  // The same operator keeps one preview renderer while HTML controls refresh.
+  const retainOperatorPreview=sameOperator&&!this.weaponView&&!!this.preview?.isReady();
+  if(!retainOperatorPreview)this.disposePreview();
   if(!sameOperator){this.activeKitGroup='weapon';this.selectedWorkbenchSocket=null;}
   this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
@@ -1699,11 +1701,17 @@ export class CampaignScreen{
     this.workbench.showSocketChoices(remembered,savedSelect);
    else this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
   }else{
-   this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
-    person.appearanceSeed,person.loadout,person.weaponConfiguration,
-    person.magazines,person.wardrobe);
-   const azimuth=this.operatorViewAngles.get(id);
-   if(azimuth!==undefined)this.preview.setAzimuth(azimuth);
+   if(retainOperatorPreview&&this.preview){
+    this.preview.attachHost(preview);
+    this.preview.updateEquipment(person.weapon,person.appearanceSeed,person.loadout,
+     person.weaponConfiguration,person.magazines,person.wardrobe);
+   }else{
+    this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
+     person.appearanceSeed,person.loadout,person.weaponConfiguration,
+     person.magazines,person.wardrobe);
+    const azimuth=this.operatorViewAngles.get(id);
+    if(azimuth!==undefined)this.preview.setAzimuth(azimuth);
+   }
   }
   this.root.scrollTop=restoreScroll;
   if(previousFocus){
