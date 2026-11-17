@@ -1523,6 +1523,19 @@ export class CampaignScreen{
    const warnings=node('div','campaign-preflight-warning');
    warnings.append(node('strong','','READINESS ADVISORIES'));
    for(const warning of cautions)warnings.append(node('p','',warning));
+   const repairActions=node('div','campaign-preflight-fix-actions');
+   const needsSquad=assigned.length<4||assigned.some(p=>p.recoveryDays>0);
+   const needsSupply=campaign.supplies.ammo<60||campaign.supplies.medical===0;
+   const fix=(tab:'personnel'|'logistics')=>{
+    dismiss();
+    this.homeTab=tab;
+    this.home(campaign);
+    // A targeted prep shortcut should land at the start of its new section.
+    this.root.scrollTop=0;
+   };
+   if(needsSquad)repairActions.append(button('REVIEW SQUAD',()=>fix('personnel')));
+   if(needsSupply)repairActions.append(button('CHECK LOGISTICS',()=>fix('logistics')));
+   warnings.append(repairActions);
    panel.append(warnings);
   }
   const actions=node('div','campaign-preflight-actions');
