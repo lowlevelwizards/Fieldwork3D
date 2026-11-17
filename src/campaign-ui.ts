@@ -1394,18 +1394,19 @@ export class CampaignScreen{
   panel.setAttribute('aria-labelledby',heading.id);
   panel.append(node('div','campaign-eyebrow',view.category+' / PREDEPLOYMENT REVIEW'),heading);
   const info=node('div','campaign-preflight-fields');
-  const add=(label:string,value:string)=>{
+  const primaryInfo=node('div','campaign-preflight-primary');
+  const add=(label:string,value:string,primary=false)=>{
    const section=node('div','campaign-preflight-field');
    section.append(node('span','',label),node('p','',value));
-   info.append(section);
+   (primary?primaryInfo:info).append(section);
   };
   if(dossier){
-   add('REPORTED LEAD · UNCONFIRMED',dossier.lead);
-   add('TACTICAL OBJECTIVE',dossier.objective);
+   add('REPORTED LEAD · UNCONFIRMED',dossier.lead,true);
+   add('TACTICAL OBJECTIVE',dossier.objective,true);
    add('ASSIGNMENT CONTEXT',dossier.context);
    add('OPERATIONAL EMPHASIS',
     dossier.situation.emphasis+' · '+dossier.situation.siteScale);
-  }else add('OBJECTIVE',view.description);
+  }else add('OBJECTIVE',view.description,true);
   if(isDispatchPilot(campaign))add('CALL REFERENCE',view.reference);
   if(isDispatchPilot(campaign)&&contract.dispatchCase)
    add('PROPERTY TYPE',contract.dispatchCase.archetype.replace(/-/g,' ').toUpperCase());
@@ -1434,7 +1435,21 @@ export class CampaignScreen{
    }
    add('REPORTING LIMITS',dossier.uncertainty);
   }
-  panel.append(info);
+  const caseFacts=node('div','campaign-preflight-keyfacts');
+  for(const [label,value] of [
+   ['AREA',contract.region],
+   ['RISK',['','LOW','MODERATE','HIGH'][contract.risk]],
+   ['REWARD',contract.reward+' CR'],
+   ['DEADLINE','DAY '+contract.deadline]
+  ] as const){
+   const fact=node('div','campaign-preflight-keyfact');
+   fact.append(node('small','',label),node('strong','',value));
+   caseFacts.append(fact);
+  }
+  panel.append(primaryInfo,caseFacts);
+  const extra=node('details','campaign-preflight-extra');
+  extra.append(node('summary','','CASE INTELLIGENCE & TERMS'),info);
+  panel.append(extra);
   const roster=node('div','campaign-preflight-roster');
   roster.append(node('h3','','ASSIGNED OPERATORS'));
   const assigned=campaign.squadIds.map(id=>campaign.operators.find(o=>o.id===id))

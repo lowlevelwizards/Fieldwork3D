@@ -753,3 +753,27 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-operator-profile-stat{display:flex;justify-content:space-between;align-items:center;gap:12px}
  .campaign-operator-profile-actions{grid-template-columns:1fr}
 }
+
+/* R6.2: actionable case dossier, with source-truth secondary intelligence. */
+.campaign-preflight-primary{display:grid;gap:8px}
+.campaign-preflight-primary .campaign-preflight-field{
+ background:var(--fw-panel);border-color:var(--fw-panel-border)}
+.campaign-preflight-primary .campaign-preflight-field p{font-size:14px;color:var(--fw-text)}
+.campaign-preflight-keyfacts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:6px;margin:11px 0}
+.campaign-preflight-keyfact{display:grid;gap:4px;min-width:0;
+ padding:8px;background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm)}
+.campaign-preflight-keyfact small{font:700 10px/1.1 var(--fw-font-menu);
+ letter-spacing:.06em;color:var(--fw-text-muted)}
+.campaign-preflight-keyfact strong{font:750 14px/1.2 var(--fw-font-display);
+ overflow-wrap:anywhere}
+.campaign-preflight-extra{margin:8px 0 11px;border-top:1px solid var(--fw-panel-border);
+ border-bottom:1px solid var(--fw-panel-border)}
+.campaign-preflight-extra>summary{display:flex;align-items:center;min-height:45px;
+ cursor:pointer;list-style:none;font:700 13px var(--fw-font-menu);color:var(--fw-text-muted)}
+.campaign-preflight-extra>summary::-webkit-details-marker{display:none}
+.campaign-preflight-extra>summary::after{content:'+';margin-left:auto;font-size:18px}
+.campaign-preflight-extra[open]>summary::after{content:'−'}
+.campaign-preflight-extra .campaign-preflight-fields{margin:5px 0 12px}
+@media(max-width:480px){.campaign-preflight-keyfacts{grid-template-columns:repeat(2,minmax(0,1fr))}}
