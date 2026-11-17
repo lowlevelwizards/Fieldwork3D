@@ -11,6 +11,8 @@ export type MainPassFrame=Readonly<{
  opaqueDraws:number;transparentDraws:number;alphaTestDraws:number;
  instancedDraws:number;skinnedDraws:number;
  wallMs:number;reliable:boolean;
+ /** E6.19 bounded transparency cause and source family counts. */
+ transparentFamilies:readonly {family:string;draws:number}[];
  materialTypes:readonly MainPassMaterialType[];
  ownerDraws:readonly {owner:string;draws:number}[];
  /** Top 16 actual non-shadow draw-source families per frame; sampled lower bound. */
@@ -18,7 +20,7 @@ export type MainPassFrame=Readonly<{
  topMaterials:readonly MainPassMaterialInstance[];
 }>;
 type MaterialLike={id?:number;name?:string;type?:string;
- transparent?:boolean;alphaTest?:number};
+ transparent?:boolean;alphaTest?:number;opacity?:number;depthWrite?:boolean};
 type ObjectLike={isInstancedMesh?:boolean;isSkinnedMesh?:boolean;
  name?:string;geometry?:{type?:string};
  userData?:Record<string,unknown>;parent?:ObjectLike|null};
@@ -35,6 +37,20 @@ function renderOwner(object:ObjectLike):string{
  * meshes remain visibly marked instead of being assigned invented names.
  * This observer runs only under the existing coldBench opt-in.
  */
+function transparencyFamily(object:ObjectLike,material:MaterialLike):string{
+ let current:ObjectLike|null|undefined=object;
+ let family='[untagged]',cause='unspecified-transparent';
+ for(let depth=0;depth<20&&current;depth++,current=current.parent){
+  if(family==='[untagged]'&&typeof current.userData?.fieldworkDrawFamily==='string')
+   family=current.userData.fieldworkDrawFamily as string;
+  if(cause==='unspecified-transparent'&&
+    typeof current.userData?.fieldworkTransparencyCause==='string')
+   cause=current.userData.fieldworkTransparencyCause as string;
+ }
+ const alpha=(material.opacity??1)>=.995?'full-opacity':'blended';
+ const depth=material.depthWrite===true?'writes-depth':'no-depth-write';
+ return [cause,family,material.type??'unknown-material',alpha,depth].join('/');
+}
 function renderSource(object:ObjectLike):string{
  const owner=renderOwner(object);
  let current:ObjectLike|null|undefined=object;
@@ -69,6 +85,7 @@ export class LiveMainPassProfiler{
  private readonly types=new Map<string,number>();
  private readonly owners=new Map<string,number>();
  private readonly sources=new Map<string,number>();
+ private readonly transparentFamilies=new Map<string,number>();
  constructor(renderer:RendererLike,inShadowPass:()=>boolean,
   now:()=>number=()=>performance.now()){
   this.inShadowPass=inShadowPass;this.now=now;
@@ -110,7 +127,12 @@ export class LiveMainPassProfiler{
      entry.draws+=draws;entry.wallMs+=wall;
      profiler.materials.set(id,entry);
      profiler.types.set(type,(profiler.types.get(type)??0)+draws);
-     if(material.transparent)profiler.transparent+=draws;
+     if(material.transparent){
+      profiler.transparent+=draws;
+      const family=transparencyFamily(object,material);
+      profiler.transparentFamilies.set(family,
+       (profiler.transparentFamilies.get(family)??0)+draws);
+     }
      else if((material.alphaTest??0)>0)profiler.alphaTest+=draws;
      else profiler.opaque+=draws;
      if(object.isInstancedMesh)profiler.instanced+=draws;
@@ -128,7 +150,7 @@ export class LiveMainPassProfiler{
   this.opaque=0;this.transparent=0;this.alphaTest=0;
   this.instanced=0;this.skinned=0;this.elapsed=0;
   this.reliable=true;this.materials.clear();this.types.clear();
-  this.owners.clear();this.sources.clear();
+  this.owners.clear();this.sources.clear();this.transparentFamilies.clear();
   try{return render();}
   finally{
    const materialTypes=[...this.types].map(([type,draws])=>({type,draws}))
@@ -138,6 +160,10 @@ export class LiveMainPassProfiler{
    const sourceDraws=[...this.sources].map(([source,draws])=>({source,draws}))
     .sort((a,b)=>b.draws-a.draws||a.source.localeCompare(b.source))
     .slice(0,16);
+   const transparentFamilies=[...this.transparentFamilies]
+    .map(([family,draws])=>({family,draws}))
+    .sort((a,b)=>b.draws-a.draws||a.family.localeCompare(b.family))
+    .slice(0,24);
    const topMaterials=[...this.materials.values()]
     .sort((a,b)=>b.draws-a.draws||a.id.localeCompare(b.id))
     .slice(0,12).map(m=>({...m,wallMs:Math.round(m.wallMs*10)/10}));
@@ -147,7 +173,7 @@ export class LiveMainPassProfiler{
     transparentDraws:this.transparent,alphaTestDraws:this.alphaTest,
     instancedDraws:this.instanced,skinnedDraws:this.skinned,
     wallMs:Math.round(this.elapsed*10)/10,reliable:this.reliable,
-    materialTypes,ownerDraws,sourceDraws,topMaterials
+    materialTypes,ownerDraws,sourceDraws,transparentFamilies,topMaterials
    };
    this.active=false;
   }

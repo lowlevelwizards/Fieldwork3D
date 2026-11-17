@@ -55,6 +55,8 @@ export type MainPassAttribution=Readonly<{
  dominantOwners:readonly {owner:string;drawsTotal:number}[];
  /** E6.18a: bounded source-family sample, not a full census. */
  dominantSources:readonly {source:string;observedDraws:number}[];
+  /** E6.19 measured per-frame top 24 transparent cause/families. */
+  dominantTransparentFamilies:readonly {family:string;observedDraws:number}[];
  topMaterialInstances:readonly {
   id:string;label:string;type:string;observedDraws:number
  }[];
@@ -203,6 +205,7 @@ export class PostReadyRuntimeCapture{
   const types=new Map<string,number>();
   const owners=new Map<string,number>();
   const sources=new Map<string,number>();
+   const transparentFamilies=new Map<string,number>();
   const materials=new Map<string,{
    id:string;label:string;type:string;observedDraws:number}>();
   for(const frame of mainFrames){
@@ -212,7 +215,10 @@ export class PostReadyRuntimeCapture{
     owners.set(owner.owner,(owners.get(owner.owner)??0)+owner.draws);
    for(const source of frame.sourceDraws??[])
     sources.set(source.source,(sources.get(source.source)??0)+source.draws);
-   for(const material of frame.topMaterials){
+   for(const family of frame.transparentFamilies??[])
+     transparentFamilies.set(family.family,
+      (transparentFamilies.get(family.family)??0)+family.draws);
+    for(const material of frame.topMaterials){
     const old=materials.get(material.id);
     if(old)old.observedDraws+=material.draws;
     else materials.set(material.id,{id:material.id,
@@ -242,9 +248,13 @@ export class PostReadyRuntimeCapture{
    dominantSources:[...sources].map(([source,observedDraws])=>({source,observedDraws}))
     .sort((a,b)=>b.observedDraws-a.observedDraws||a.source.localeCompare(b.source))
     .slice(0,16),
-   topMaterialInstances:[...materials.values()].sort((a,b)=>
+   dominantTransparentFamilies:[...transparentFamilies]
+     .map(([family,observedDraws])=>({family,observedDraws}))
+     .sort((a,b)=>b.observedDraws-a.observedDraws||a.family.localeCompare(b.family))
+     .slice(0,24),
+    topMaterialInstances:[...materials.values()].sort((a,b)=>
     b.observedDraws-a.observedDraws||a.id.localeCompare(b.id)).slice(0,12),
-   note:'E6.17 main-pass counts are actual nonshadow submissions. E6.18a source families use nearest named object/group, explicit fieldworkDrawFamily, or an unknown marker; dominantSources pool only each frame top 16, not a complete scene census. No material/object identity from one run is assumed stable in another. Observer adds CPU timing overhead; these are NOT uninstrumented FPS or GPU timings.'
+   note:'E6.19 separates measured transparent draw-source families by full-opacity façade foreground, cutaway, weather overlays, glass and roofs. Family counts pool top 24 per 90 frames and are sampled lower bounds. Full transparent draw count and shadow/main reconciliation remain unchanged. Diagnostic overhead prevents FPS or GPU timing claims.'
   }:null;
   const sceneAttribution:LiveSceneAttribution|null=detailed.length?{
    frames:detailed.length,

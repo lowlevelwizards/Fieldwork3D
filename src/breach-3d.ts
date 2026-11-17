@@ -1079,6 +1079,8 @@ export class TacticalScene3D{
     decal.position.set(x,y,z);
     if(mark.face==='back')decal.rotation.y=Math.PI;
     decal.castShadow=false;decal.receiveShadow=false;
+     decal.userData.fieldworkDrawFamily='site-surface-wear';
+     decal.userData.fieldworkTransparencyCause='weather-overlay';
     parent.add(decal);
   }
   private plane(parent:THREE.Object3D,x:number,z:number,w:number,d:number,
@@ -1943,6 +1945,10 @@ export class TacticalScene3D{
       const knownFacade=wall.exterior&&!omniscient&&!bodycamAudition&&
         spatialSurfaceKnown(s,'wall',wall.index);
       const surfaceTransparent=translucent||knownFacade;
+       // Cause-only diagnostic, enabled by the opt-in coldBench profiler.
+       if(this.liveMainPassProfiler)
+        wall.mesh.userData.fieldworkTransparencyCause=translucent?
+         'camera-cutaway':knownFacade?'known-facade-foreground':'opaque';
       const material=wall.mesh.material as THREE.MeshStandardMaterial;
       if(material.transparent!==surfaceTransparent){
         material.transparent=surfaceTransparent;
