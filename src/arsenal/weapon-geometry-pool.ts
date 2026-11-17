@@ -69,9 +69,11 @@ export class ArsenalWeaponGeometryPool{
  private readonly all=new Set<Entry>();
  private readonly owners=new WeakMap<THREE.Group,Set<Entry>>();
  private hits=0;private misses=0;private evictions=0;
- constructor(private readonly budget=512){
+ private readonly budget:number;
+ constructor(budget=512){
   if(!Number.isInteger(budget)||budget<1)
    throw Error('Weapon geometry cache budget must be positive');
+  this.budget=budget;
  }
  adopt(root:THREE.Group){
   if(this.owners.has(root))throw Error('Weapon owner already adopted');
