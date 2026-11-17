@@ -7,7 +7,7 @@ import * as THREE from 'three';
 export const G36_LONG_FOREND_RINGS=Object.freeze([
  {x:3.75,roofY:1.28,bottomY:-1.76,halfDepth:1.32},
  {x:10.81,roofY:1.38,bottomY:-1.95,halfDepth:1.44},
- {x:13.45,roofY:1.08,bottomY:-1.66,halfDepth:1.18}
+ {x:13.45,roofY:1.10,bottomY:-1.53,halfDepth:1.17}
 ]);
 /** An octagonal YZ section with a flat broad roof, chamfered shoulders,
  * planar sides and a confident lower sweep. Both height and breadth taper.

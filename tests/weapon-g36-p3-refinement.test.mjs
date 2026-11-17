@@ -40,15 +40,17 @@ test('P3 stock heel descends at rear while preserving two genuinely open stock v
 test('P3 dark dual-optic faces are seated on the FRONT and REAR of real housings',()=>{
  const mat=new THREE.MeshBasicMaterial({side:THREE.FrontSide});
  const g=buildG36OriginalBlockout(mat);
- const rear=one(g,'g36LowerEyepiece'),lower=one(g,'g36LowerOptic');
+ const lower=one(g,'g36LowerOptic'),magnified=one(g,'g36OpticFace');
  const upper=one(g,'g36UpperReflex'),front=one(g,'g36UpperReflexWindow');
- assert.ok(rear&&lower&&upper&&front);
- assert.ok(bounds(rear).intersectsBox(bounds(lower)));
+ assert.ok(lower&&magnified&&upper&&front);
+ assert.ok(bounds(magnified).intersectsBox(bounds(lower)));
  assert.ok(bounds(front).intersectsBox(bounds(upper)));
- assert.ok(bounds(rear).min.x<bounds(lower).min.x);
  assert.ok(bounds(front).max.x>bounds(upper).max.x,
   'upper reflex window must not be buried in the housing');
- assert.equal(rear.geometry.type,'BoxGeometry');
+ assert.ok(!one(g,'g36LowerEyepiece'),
+  'remove the imperceptible P3 rear eyepiece mesh');
+ assert.ok(bounds(front).max.y-bounds(front).min.y>=.65,
+  'enlarge the primary upper optic face rather than adding micro shapes');
  const finishes={
   polymer:weaponFinish('hk-polymer'),steel:weaponFinish('hk-steel'),
   magazine:weaponFinish('g36-smoked-mag'),
@@ -56,7 +58,7 @@ test('P3 dark dual-optic faces are seated on the FRONT and REAR of real housings
   optic:weaponFinish('hk-polymer'),muzzle:weaponFinish('hk-muzzle-metal')
  };
  applyG36FactoryMaterials(g,finishes);
- assert.equal(rear.material,finishes.buttpad);
+ assert.equal(magnified.material,finishes.buttpad);
  assert.equal(front.material,finishes.buttpad);
  clearWeaponSilhouette(g);mat.dispose();
 });
