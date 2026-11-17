@@ -20,13 +20,19 @@ export function mountSelectionFromPlacement(config:WeaponConfiguration,
   surfaceId:p.surfaceId,face:p.face,standard:p.standard,
   position:Math.max(0,Math.min(1,(p.x-lo)/(hi-lo)))};
 }
-export function mountSelectionCandidate(config:WeaponConfiguration,
- wanted:MountSelection,p:PhysicalAttachmentPlacement):boolean{
+/** Smaller is closer. A candidate on another owner/face can never be
+ * 'close enough', even when its longitudinal X matches. */
+export function mountSelectionDistance(config:WeaponConfiguration,
+ wanted:MountSelection,p:PhysicalAttachmentPlacement):number{
  if(wanted.attachmentId!==p.attachmentId||wanted.ownerPartId!==p.ownerPartId||
   wanted.surfaceId!==p.surfaceId||wanted.face!==p.face||
-  wanted.standard!==p.standard)return false;
+  wanted.standard!==p.standard)return Infinity;
  const candidate=mountSelectionFromPlacement(config,p);
- // The chosen indexed tooth may shift slightly as authored art improves.
- // No arbitrary jumps to a different rail region or side.
- return !!candidate&&Math.abs(candidate.position-wanted.position)<=.13;
+ return candidate?Math.abs(candidate.position-wanted.position):Infinity;
+}
+export function mountSelectionCandidate(config:WeaponConfiguration,
+ wanted:MountSelection,p:PhysicalAttachmentPlacement):boolean{
+ // An authored rail refinement may shift a single contact slightly.
+ // Reject larger jumps; the UI must ask for a new explicit position.
+ return mountSelectionDistance(config,wanted,p)<=.13;
 }
