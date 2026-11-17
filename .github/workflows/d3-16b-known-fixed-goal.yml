@@ -1,4 +1,5 @@
 name: D3.16B Ash motel fixed GO correction and real motor acceptance
+# Baseline QA probe: execute unchanged historical test against released main (no logic edits).
 on:
   pull_request:
     paths:
