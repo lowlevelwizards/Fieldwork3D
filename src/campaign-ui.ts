@@ -770,7 +770,8 @@ export class CampaignScreen{
       ' · '+c.inventory.weapons[weapon]+' AVAILABLE'));
      option.value='primary-'+weapon;
      option.disabled=(weapon!==person.weapon&&c.inventory.weapons[weapon]<1)||
-       ((weapon==='smg'||weapon==='shotgun')&&weapon!==person.weapon)||
+       ((weapon==='smg'||weapon==='shotgun')&&weapon!==person.weapon&&
+        !isDispatchPilot(c))||
        (dispatchPilot&&weapon!==person.weapon&&
         !mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'));
      select.append(option);
