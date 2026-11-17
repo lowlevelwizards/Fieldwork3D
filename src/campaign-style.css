@@ -1092,3 +1092,22 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-operation-board{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
  .campaign-operation-board>.campaign-operation-record{padding:16px}
 }
+
+
+/* UI R19: contextual tab counters show actual available cases and completed
+   operations; they don't crowd out the five tabs on phone-sized screens. */
+.campaign-shell .campaign-tab{position:relative;display:flex;align-items:center;
+ justify-content:center;gap:7px}
+.campaign-tab-count{display:inline-flex;align-items:center;justify-content:center;
+ min-width:18px;height:19px;box-sizing:border-box;padding:0 4px;
+ border:1px solid var(--fw-panel-border);border-radius:4px;
+ color:var(--fw-text-muted);background:var(--fw-bg);
+ font:750 10px/1 var(--fw-font-menu);font-variant-numeric:tabular-nums}
+.campaign-shell .campaign-tab[aria-selected="true"] .campaign-tab-count{
+ color:var(--fw-bg);background:#b7c8ad;border-color:#405e49}
+@media(max-width:640px){
+ .campaign-shell .campaign-tab:has(.campaign-tab-count){padding-top:14px}
+ .campaign-tab-count{position:absolute;right:2px;top:2px;min-width:13px;
+  height:12px;padding:0 2px;border:0;border-radius:3px;
+  font-size:9px;line-height:1}
+}

@@ -235,3 +235,32 @@ test('Records cards use a responsive grid with accessible history disclosure',()
  assert.match(records,/\.campaign-operation-more>summary\{display:flex/);
  assert.match(records,/\.campaign-operation-more>summary::after\{content:'\+'/);
 });
+
+test('Operations tabs show only real open-case and recorded-operation counters',()=>{
+ const ui=source('campaign-ui.ts');
+ const tabs=ui.slice(ui.indexOf("const nav=node('nav','campaign-tabs')"),
+  ui.indexOf('main.insertBefore(nav,grid)'));
+ assert.match(tabs,/const openCaseCount=c\.contracts\.filter\(k=>/);
+ assert.match(tabs,/k\.status==='available'&&k\.deadline>=c\.day\)\.length/);
+ assert.match(tabs,/const recordedOperationCount=c\.history\.length/);
+ assert.match(tabs,/const count=tab==='contracts'\?openCaseCount:/);
+ assert.match(tabs,/tab==='chronicle'\?recordedOperationCount:0/);
+ assert.match(tabs,/if\(count\)\{/);
+ assert.match(tabs,/node\('span','campaign-tab-count',String\(count\)\)/);
+ assert.match(tabs,/counter\.setAttribute\('aria-hidden','true'\)/);
+ assert.match(tabs,/trigger\.setAttribute\('aria-label',accessibleLabel\)/);
+ assert.match(tabs,/trigger\.setAttribute\('aria-controls',panel\.id\)/);
+ assert.match(tabs,/trigger\.setAttribute\('aria-selected',String\(this\.homeTab===tab\)\)/);
+ assert.match(tabs,/trigger\.tabIndex=this\.homeTab===tab\?0:-1/);
+});
+
+test('Counter layout preserves five evenly fitting phone tabs and selected contrast',()=>{
+ const css=source('campaign-style.css');
+ const layout=css.slice(css.indexOf('/* UI R19: contextual tab counters'));
+ assert.match(css,/@media\(max-width:640px\)\{\s*\.campaign-tabs\{display:grid;grid-template-columns:repeat\(5,minmax\(0,1fr\)\)/);
+ assert.match(layout,/\.campaign-shell \.campaign-tab\{position:relative;display:flex/);
+ assert.match(layout,/\.campaign-tab-count\{display:inline-flex/);
+ assert.match(layout,/\.campaign-shell \.campaign-tab\[aria-selected="true"\] \.campaign-tab-count/);
+ assert.match(layout,/@media\(max-width:640px\)/);
+ assert.match(layout,/\.campaign-tab-count\{position:absolute;right:2px;top:2px/);
+});
