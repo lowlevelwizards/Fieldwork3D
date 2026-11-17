@@ -828,3 +828,19 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-shell .campaign-preparation-return button{width:100%;min-height:46px;
  margin:0;text-align:left;padding:10px 13px;line-height:1.25;
  overflow-wrap:anywhere}
+
+/* R10.1: deliberate first-view campaign decision hierarchy. */
+.campaign-next-action{display:grid;gap:8px;min-width:0;
+ padding:16px;margin:3px 0 14px;border-radius:var(--fw-radius-md);
+ background:linear-gradient(135deg,#2d453a,#1b3029);
+ border:1px solid #617d67}
+.campaign-next-action-eyebrow{color:var(--fw-sage);font:700 11px/1.25 var(--fw-font-menu);
+ letter-spacing:.12em}
+.campaign-next-action h3{margin:0;font:800 clamp(19px,3.4vw,25px)/1.13 var(--fw-font-display);
+ color:var(--fw-text);overflow-wrap:anywhere}
+.campaign-next-action>.campaign-note{margin:0 0 6px;font:500 13px/1.45 var(--fw-font-narrative)}
+.campaign-shell .campaign-next-action .campaign-overview-primary-action{
+ box-sizing:border-box;width:100%;min-height:50px;margin:6px 0 0;
+ padding:10px 12px;text-align:center;overflow-wrap:anywhere}
+@media(min-width:850px){.campaign-next-action{padding:20px;gap:11px}
+ .campaign-next-action .campaign-overview-primary-action{max-width:520px}}
