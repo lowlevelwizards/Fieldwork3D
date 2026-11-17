@@ -1,4 +1,4 @@
-name: Equipment E1–E2 — Phone Gear Flow
+name: Equipment E1–E4 — Phone Gear & Arsenal Flow
 on:
   pull_request:
     paths:
@@ -6,6 +6,9 @@ on:
       - 'src/campaign-style.css'
       - 'src/ui/campaign-gear-picker.ts'
       - 'src/equipment-preview.ts'
+      - 'src/arsenal/workbench-screen.ts'
+      - 'src/arsenal/arsenal.css'
+      - 'scripts/smoke-equipment-e4-workbench.mjs'
       - 'src/ui/quick-loadout-groups.ts'
       - 'scripts/smoke-ux-r3-campaign.mjs'
       - '.github/workflows/equipment-ux-critical.yml'
@@ -32,3 +35,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Verify phone roster, categories, gear chooser and Studio handoff
         run: node scripts/smoke-ux-r3-campaign.mjs
+      - name: Verify phone Arsenal sticky model, preview and Campaign Apply
+        run: node scripts/smoke-equipment-e4-workbench.mjs
+      - name: Verify Arsenal editing and mobile CSS contracts
+        run: node --test tests/arsenal-r14-mobile-style-isolation.test.mjs tests/arsenal-v2-editing-ui.test.mjs
