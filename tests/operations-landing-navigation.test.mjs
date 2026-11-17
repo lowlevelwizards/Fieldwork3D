@@ -463,3 +463,85 @@ test('C10 browser covers keyboard and return-to-case workflow on saved missions'
   'closing case review failed'
  ])assert.ok(script.includes(marker),'Missing predeployment acceptance: '+marker);
 });
+
+test('C11 campaign actions reuse save-aware feedback for squad, procurement and kit edits',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const helper=flow.slice(flow.indexOf('function applyVisibleCampaignAction('),
+  flow.indexOf('const campaignScreen=new CampaignScreen('));
+ assert.match(helper,/if\(after===before\)return/);
+ assert.match(helper,/const saved=config\.saveCampaign\(\)/);
+ assert.match(helper,/if\(saved\)showFieldworkActionFeedback\(message\)/);
+ assert.match(helper,/else void showFieldworkNotice\('Save unavailable'/);
+ const actions=flow.slice(flow.indexOf('assignSlot:(slot,id)=>'),
+  flow.indexOf('equipWeaponPreset:(id,presetId)=>'));
+ for(const [handler,mutator] of [
+  ['assignSlot','assignOperatorToSlot'],
+  ['buyWeapon','buyWeapon'],
+  ['equipWeapon','equipCampaignWeapon'],
+  ['repairArmor','repairCampaignArmor'],
+  ['serviceWeapon','serviceCampaignWeapon'],
+  ['equipGear','equipCampaignGear']
+ ]){
+  assert.ok(actions.includes(handler+':'),handler+' handler missing');
+  assert.ok(actions.includes('c=>'+mutator+'(c,'),handler+' bypasses the saved-action helper');
+ }
+ assert.doesNotMatch(actions,/config\.saveCampaign\(\);showCampaignHome\(\)/);
+});
+
+test('C11 kit and attachment feedback never bypasses save-aware action handling',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const start=flow.indexOf('equipWeaponFamilyPart:(id,slot,partId)=>');
+ const end=flow.indexOf('openStudio:(id)=>',start);
+ assert.ok(start>=0&&end>start);
+ const actions=flow.slice(start,end);
+ for(const [handler,mutation] of [
+  ['equipWeaponFamilyPart','equipCampaignWeaponFamilyPart'],
+  ['equipAttachment','purchaseAndEquipWeaponAttachment'],
+  ['moveMagazine','moveCampaignMagazine'],
+  ['saveKitPreset','saveCampaignKitPreset'],
+  ['applyKitPreset','applyCampaignKitPreset'],
+  ['deleteKitPreset','deleteCampaignKitPreset'],
+  ['renameOperator','renameCampaignOperator'],
+  ['cycleAppearance','cycleCampaignAppearance'],
+  ['setWardrobe','setCampaignWardrobe']
+ ]){
+  assert.ok(actions.includes(handler+':'),handler+' missing');
+  assert.ok(actions.includes(mutation+'(c,'),handler+' no longer uses authoritative state');
+ }
+ assert.match(actions,/acquire\?'Attachment acquired and equipped':'Weapon attachment updated'/);
+ assert.doesNotMatch(actions,/config\.saveCampaign\(\);showCampaignHome\(\)/);
+});
+
+
+test('C12: remaining weapon-preset and retirement edits use save-aware feedback',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const preset=flow.slice(flow.indexOf(' equipWeaponPreset:(id,presetId)=>'),
+  flow.indexOf(' equipWeaponFamilyPart:(id,slot,partId)=>'));
+ assert.match(preset,/equipWeaponPreset:\(id,presetId\)=>applyVisibleCampaignAction\(current=>/);
+ assert.match(preset,/if\(current\.activeContractId\)return current/);
+ assert.match(preset,/if\(!preset\|\|!member\)return current/);
+ assert.match(preset,/return equipCampaignWeaponPreset\(next,id,presetId\)/);
+ assert.match(preset,/Weapon family preset equipped/);
+ assert.doesNotMatch(preset,/config\.saveCampaign\(\)|model\.campaign=next/);
+ const retire=flow.slice(flow.indexOf(' retire:(id)=>{'),
+  flow.indexOf(' importSave:(raw,slot)=>'));
+ assert.match(retire,/window\.confirm\('Retire this operator from active service\?/);
+ assert.match(retire,/applyVisibleCampaignAction\(c=>retireOperator\(c,id\)/);
+ assert.match(retire,/Operator retired from active service/);
+ assert.doesNotMatch(retire,/config\.saveCampaign\(\)|model\.campaign=retireOperator/);
+});
+
+test('C12: deployment is impossible when accepting a contract could not be saved',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const accept=flow.slice(flow.indexOf(' chooseContract:(id)=>{'),
+  flow.indexOf(' resumeContract:()=>',flow.indexOf(' chooseContract:(id)=>{')));
+ assert.match(accept,/const previous=model\.campaign/);
+ assert.match(accept,/const next=acceptContract\(previous,id\)/);
+ assert.match(accept,/if\(next===previous\)return/);
+ assert.match(accept,/model\.campaign=next/);
+ assert.match(accept,/if\(!config\.saveCampaign\(\)\)\{\s*model\.campaign=previous/);
+ assert.match(accept,/showFieldworkNotice\('Save unavailable'/);
+ assert.match(accept,/try again\.'\);\s*return;\s*\}\s*deployCampaignContract\(\)/);
+ assert.equal((accept.match(/deployCampaignContract\(\)/g)??[]).length,1);
+ assert.doesNotMatch(accept,/config\.saveCampaign\(\);deployCampaignContract\(\)/);
+});

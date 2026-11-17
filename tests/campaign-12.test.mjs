@@ -4,6 +4,7 @@ import {newCampaign,acceptContract,resolveOperation,hireRecruit,assignOperatorTo
  purchaseAmmo,resupplyOperator} from '../src/campaign-state.ts';
 import {exportCampaign,importCampaign} from '../src/campaign-persistence.ts';
 import {sharedService} from '../src/campaign-history.ts';
+import {saveCampaignToStorage,loadCampaignFromStorage} from '../src/breach-persistence.ts';
 test('long campaign across 16 operations preserves contracts, recruits, resources and history',()=>{
  let c=newCampaign(672);
  c=hireRecruit(c);
@@ -44,4 +45,36 @@ test('campaign overlay avoids running tactical frame work while browsing managem
  const screen=readFileSync(new URL('../src/ui/breach-mission-screens.ts',import.meta.url),'utf8');
  assert.match(src,/missionScreens\.syncNextSiteControls\(\)/);
  assert.match(screen,/campaignReturnButton/);
+});
+
+test('C12 campaign edits restore from saved storage and failed acceptance leaves last save intact',()=>{
+ const entries=new Map();
+ let rejectWrites=false;
+ const storage={
+  getItem:key=>entries.get(key)??null,
+  setItem:(key,value)=>{
+   if(rejectWrites)throw Error('Storage quota exceeded');
+   entries.set(key,value);
+  },
+  removeItem:key=>entries.delete(key)
+ };
+ let career=newCampaign(20261117);
+ assert.equal(saveCampaignToStorage(career,storage),true);
+ const original=loadCampaignFromStorage(storage);
+ assert.deepEqual(original,career);
+ career=purchaseAmmo(career);
+ assert.notStrictEqual(career,original,'purchase should produce a new authoritative state');
+ assert.equal(saveCampaignToStorage(career,storage),true);
+ const restored=loadCampaignFromStorage(storage);
+ assert.deepEqual(restored,career,'procurement must survive a simulated page reload');
+ const contract=career.contracts.find(k=>k.status==='available'&&k.deadline>=career.day);
+ assert.ok(contract,'expected a viable case');
+ const accepted=acceptContract(career,contract.id);
+ assert.equal(accepted.activeContractId,contract.id);
+ rejectWrites=true;
+ assert.equal(saveCampaignToStorage(accepted,storage),false);
+ assert.deepEqual(loadCampaignFromStorage(storage),restored,
+  'an unsuccessful contract write must not clobber the last confirmed saved career');
+ assert.equal(restored.activeContractId,null,
+  'the previous career remains eligible to reattempt contract acceptance');
 });
