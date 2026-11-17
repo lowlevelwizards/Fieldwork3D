@@ -199,6 +199,20 @@ try{
   console.log('E6_25_FIXTURE_INVENTORY_DIFFERENCES',
    JSON.stringify({seed,building,total:inventory.length,
     mismatches:inventory.slice(0,70)}));
+  // A post-instancing rendered +1 draw can have identical pre-batch owner
+  // inventories. Compare exact group members and geometry draw sections.
+  const canonical=site=>new Set((site.batchMembership??[])
+   .map(g=>JSON.stringify(g)));
+  const offGroups=canonical(off.siteBuild),onGroups=canonical(on.siteBuild);
+  const changedOff=[...offGroups].filter(x=>!onGroups.has(x)).map(JSON.parse);
+  const changedOn=[...onGroups].filter(x=>!offGroups.has(x)).map(JSON.parse);
+  const fixtureFor=index=>off.siteBuild.fixtureInventory?.find(x=>x.index===index)?.fixture;
+  const summarize=g=>({...g,fixtures:g.indices.map(fixtureFor)});
+  console.log('E6_25_BATCH_MEMBERSHIP_DIFF',JSON.stringify({
+    seed,building,offGroups:offGroups.size,onGroups:onGroups.size,
+    offOnly:changedOff.slice(0,70).map(summarize),
+    onOnly:changedOn.slice(0,70).map(summarize)
+  }));
   const planningPrecheck=compareImages(
     dir+'/seed-'+seed+'-template-0-planning.png',
     dir+'/seed-'+seed+'-template-1-planning.png');

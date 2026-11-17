@@ -57,6 +57,13 @@ export class RepeatedFixtureBatches{
  flush(root:THREE.Group,
   shared:ReadonlySet<THREE.BufferGeometry>=new Set()):void{
   root.updateWorldMatrix(true,true);
+  // Only collect per-instance batch membership in explicit E6.25 cold QA.
+  // Production scene updates and memory remain entirely unchanged.
+  const diagnostic=typeof location!=='undefined'&&
+    new URLSearchParams(location.search).get('coldBench')==='1'&&
+    new URLSearchParams(location.search).has('e625Character');
+  const evidence:Array<{indices:number[];shape:string;geo:string;
+    groupCount:number;drawRange:number;material:string;flags:string}>=[];
   const buckets=new Map<string,Candidate[]>();
   for(const c of this.candidates){
    const mesh=c.mesh,geo=c.geometry;
@@ -76,6 +83,15 @@ export class RepeatedFixtureBatches{
       matching.push(unmatched.splice(i,1)[0]);
     if(matching.length<2)continue;
     const first=leader.mesh;
+    if(diagnostic)evidence.push({
+      indices:matching.map(c=>c.index).sort((a,b)=>a-b),
+      shape:geometryHint(leader.geometry),
+      geo:leader.geometry.type,
+      groupCount:leader.geometry.groups.length,
+      drawRange:leader.geometry.drawRange.count,
+      material:leader.material.color.getHexString()+'/'+leader.material.roughness,
+      flags:[first.castShadow,first.receiveShadow,first.layers.mask].join('/')
+    });
     const instanced=new THREE.InstancedMesh(leader.geometry,
       leader.material,matching.length);
     instanced.castShadow=first.castShadow;
@@ -101,6 +117,7 @@ export class RepeatedFixtureBatches{
     this.originalMeshes+=matching.length;
    }
   }
+  if(diagnostic)root.userData.fieldworkE625BatchMembership=evidence;
   this.candidates.length=0;
   // Only unique duplicate geometries detached from their owner may be
   // disposed; reusable box geometries belong to the site's shared cache.

@@ -1279,7 +1279,8 @@ export class TacticalScene3D{
       cache:this.architecturalVisualTemplates.stats(),
       repeated:this.repeatedFixtures.stats,
       coverCount:this.coverGroups.size,
-      fixtureInventory:this.root.userData.fieldworkE625FixtureInventory??[]
+      fixtureInventory:this.root.userData.fieldworkE625FixtureInventory??[],
+      batchMembership:this.root.userData.fieldworkE625BatchMembership??[]
     }});
   }
   resize(w:number,h:number){
