@@ -145,4 +145,12 @@ if(process.argv[1]?.endsWith('audit-weapon-production-m30.mjs')){
   instancedBodies:s.instancedBodies+item.body.instancedMeshes
  }),{models:0,bodyMeshes:0,accessoryMeshes:0,submissions:0,instancedBodies:0});
  console.log('WEAPON_M30_SUMMARY '+JSON.stringify(totals));
+ const ranked=report.map(x=>({id:x.id,family:x.family,
+  candidateGroups:x.rigidPartCandidates.groups.length,
+  eligibleMeshes:x.rigidPartCandidates.mergeableMeshes,
+  potentialSavedSubmissions:x.rigidPartCandidates.potentialSavedSubmissions,
+  bodySubmissions:x.body.submissions}))
+  .sort((a,b)=>b.potentialSavedSubmissions-a.potentialSavedSubmissions||
+   a.id.localeCompare(b.id));
+ console.log('WEAPON_M30_CANDIDATES '+JSON.stringify(ranked.slice(0,15)));
 }
