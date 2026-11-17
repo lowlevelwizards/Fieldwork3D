@@ -50,8 +50,8 @@ try{
     null,{timeout:90000});
    await page.locator('.arsenal-hero').screenshot({
     path:dir+'/mode-'+mode+'-m4-hero.png'});
-   // Real M4A1 is the known rigid multi-sibling art pilot; the FNC may
-   // already be one submission per part, so a zero saving there is valid.
+   // M3.0C4 may already compile the validated M4A1 factory profile;
+   // E6.27 must not duplicate that work. FNC remains an independent check.
    await page.locator('.arsenal-hero-open').click();
    await page.locator('.arsenal-wb-category').first().waitFor(
     {state:'visible',timeout:30000});
@@ -62,11 +62,15 @@ try{
     const canvas=document.querySelector('.arsenal-wb-canvas');
     return {avoidedDraws:Number(canvas?.dataset.e627Avoided??0),
      compiledMeshes:Number(canvas?.dataset.e627Compiled??0),
+     factorySaved:Number(canvas?.dataset.e627FactorySaved??0),
      sockets:document.querySelectorAll('.arsenal-wb-socket').length};
    });
+   // Require genuine net model draw savings. After M3.0, the factory
+   // compiler may have already eliminated all remaining compatible siblings.
    if(m4.sockets<3||(mode==='1'&&
-      (m4.avoidedDraws<1||m4.compiledMeshes<1)))
-    throw Error('E6.27 actual M4A1 did not compile safely '+JSON.stringify(m4));
+      m4.factorySaved+m4.avoidedDraws<5))
+    throw Error('E6.27 actual M4A1 lost verified net draw savings '+
+      JSON.stringify(m4));
    await page.locator('.arsenal-wb-back').click();
    await page.locator('.arsenal-search').fill('FNC');
    await page.getByRole('button',{name:'Select FN FNC'}).click();

@@ -127,6 +127,12 @@ export class ArsenalViewport{
    const baked=compileArsenalRigidPartSiblings(this.body);
    this.canvas.dataset.e627Avoided=String(baked.avoidedDraws);
    this.canvas.dataset.e627Compiled=String(baked.renderMeshes);
+   // M3.0 validated factory profiles may already have removed every
+   // compatible sibling. Record those real savings, never double-bake.
+   const factory=this.body.userData.rigidCompilation as
+    {avoidedSubmissions?:number}|undefined;
+   this.canvas.dataset.e627FactorySaved=
+    String(factory?.avoidedSubmissions??0);
   }
   this.attachments=buildWeaponAccessories(config,this.steel,this.dark);
   this.model.add(this.body,this.attachments);

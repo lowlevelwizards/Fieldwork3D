@@ -69,17 +69,31 @@ test('E6.27 different finishes/shadow passes, custom metadata and transparent sh
 test('E6.27 actual M4A1 retains six named part classes, stock sockets, and a lower rendered opaque part count',()=>{
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('carbine'),'ar-m4a1');
  assert.ok(cfg.build);
+ const raw=buildWeaponSilhouette(cfg.weapon,metal,dark,cfg,
+  {rigidCompilation:'disabled'});
+ const originalRawDraws=meshList(raw).filter(m=>m.visible).length;
  const root=buildWeaponSilhouette(cfg.weapon,metal,dark,cfg);
+ // M3.0C4 has already compiled this exact M4 factory profile. Require
+ // the actual net improvement rather than demanding duplicate batching.
+ const verified=root.userData.rigidCompilation;
+ assert.equal(verified?.factoryId,'ar-m4a1');
+ assert.ok(verified.avoidedSubmissions>=5);
  const preBounds=new THREE.Box3().setFromObject(root);
  const preStock=partVisualBounds(root,'stock');
  const preBySlot=Object.fromEntries(['receiver','barrel','handguard','stock','grip','magazine']
   .map(slot=>[slot,partVisualBounds(root,slot)]));
  const before=meshList(root).filter(m=>m.visible).length;
  const bake=compileArsenalRigidPartSiblings(root);
- assert.ok(bake.avoidedDraws>0,'M4 must have at least one compatible rigid sibling group');
+ assert.ok(originalRawDraws>before,
+  'verified factory M4 must actually reduce source render meshes');
+ assert.ok(originalRawDraws-before>=5,
+  'factory M4 must preserve its existing 5+ real draw savings');
+ assert.ok(bake.avoidedDraws>=0,
+  'optional residual E6.27 batching may not add render submissions');
  const actual=root.children.filter(n=>n instanceof THREE.Mesh&&n.visible).length+
   meshList(root).filter(m=>m.parent!==root&&m.visible&&m.parent?.visible).length;
- assert.ok(actual<before,'expected fewer visible authoring meshes after batching');
+ assert.ok(actual<=before,
+  'E6.27 must not reverse the preceding M3.0 M4 draw savings');
  assert.ok(new THREE.Box3().setFromObject(root).equals(preBounds));
  assert.ok(partVisualBounds(root,'stock').equals(preStock));
  for(const [slot,beforeBounds] of Object.entries(preBySlot)){
@@ -93,6 +107,7 @@ test('E6.27 actual M4A1 retains six named part classes, stock sockets, and a low
  // Mixed source/archive and compiled geometries must be reclaimed exactly
  // once without treating compiled output as permanently pooled geometry.
  pool.release(root);pool.clear();assert.equal(pool.stats().geometries,0);
+ clearWeaponSilhouette(raw);
 });
 test('E6.27 stand-alone pilot leaves dynamic and instanced geometry unchanged',()=>{
  const root=new THREE.Group();
