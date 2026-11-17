@@ -45,6 +45,7 @@ import {kitMedicalSupplies,medicalSupplyCount} from './equipment-medical-supplie
 import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
+import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import './campaign-style.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
@@ -1458,7 +1459,7 @@ export class CampaignScreen{
   });
   editor.insertBefore(categoryBar,grouped.group.weapon);
   for(const slot of LOADOUT_SLOTS){
-   const row=node('label','campaign-kit-row');
+   const row=node('div','campaign-kit-row');
    const title=node('span','',slot.replace(/-/g,' ').toUpperCase());
    const select=node('select','campaign-select');
    select.setAttribute('aria-label','Select '+slot+' for '+person.callsign);
@@ -1494,7 +1495,9 @@ export class CampaignScreen{
      id,slot,select.value));
    }
    select.disabled=locked;
-   row.append(title,select);
+   select.classList.add('campaign-kit-native-select');
+   const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '));
+   row.append(title,select,picker);
    const selected=itemDefinition(person.loadout.slots[slot]);
    const info=node('small','campaign-kit-description',selected?.description??'');
    const wrap=node('div','campaign-kit-choice');

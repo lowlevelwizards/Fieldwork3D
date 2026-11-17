@@ -43,12 +43,18 @@ try{
   if(await tabs.count()!==5)throw Error('Equipment category navigation incomplete');
   await tabs.filter({hasText:'PROTECTION'}).click();
   const protection=armory.locator('[data-loadout-group="protection"]');
-  if(!await protection.getByLabel(/Select armor for/i).isVisible())
-   throw Error('Armor equipment selector is not reachable');
+  const armorChoice=protection.getByRole('button',{name:/Choose armor for/i});
+  if(!await armorChoice.isVisible())throw Error('Armor equipment chooser is not reachable');
+  await armorChoice.click();
+  const gearSheet=page.getByRole('dialog',{name:'CHOOSE ARMOR'});
+  await gearSheet.waitFor();
+  if(!await gearSheet.getByRole('button',{name:/Soft Armor Vest/i}).count())
+   throw Error('Current armor missing from equipment chooser');
+  await gearSheet.getByRole('button',{name:'CLOSE'}).click();
   await tabs.filter({hasText:'CARRY'}).click();
   const carry=armory.locator('[data-loadout-group="carry"]');
-  if(!await carry.getByLabel(/Select rig for/i).isVisible())
-   throw Error('Carry equipment selector is not reachable');
+  if(!await carry.getByRole('button',{name:/Choose rig for/i}).isVisible())
+   throw Error('Carry equipment chooser is not reachable');
   await page.getByRole('button',{name:'APPEARANCE · OPEN STUDIO'}).click();
   await page.locator('#operatorStudioOverlay:visible').waitFor({timeout:15000});
   const frame=await page.locator('#operatorStudioOverlay iframe').getAttribute('src');

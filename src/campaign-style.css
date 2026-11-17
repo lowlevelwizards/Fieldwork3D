@@ -1481,3 +1481,52 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-armory-screen .fw-loadout-group[open]{border:0;margin:0;background:transparent}
 .campaign-armory-screen .fw-loadout-group .fw-loadout-fields{padding:0;gap:4px}
 .campaign-armory-screen .campaign-kit-editor .campaign-kit-choice{padding:10px 0}
+
+/* Equipment E2.A: theme-native, keyboard accessible gear chooser. */
+.campaign-armory-screen .campaign-kit-native-select{display:none}
+.campaign-armory-screen .campaign-kit-picker-trigger{
+ flex:1 1 auto;max-width:70%;min-width:0;min-height:44px;margin:0;
+ padding:9px 30px 9px 12px;text-align:left;
+ font:600 14px var(--fw-font-action);white-space:normal;
+ border:1px solid #829e88;border-radius:8px;
+ background:var(--fw-control-bg);color:var(--fw-text-warm);
+ position:relative;overflow-wrap:anywhere}
+.campaign-armory-screen .campaign-kit-picker-trigger:after{
+ content:'⌄';position:absolute;right:12px;top:50%;transform:translateY(-56%);
+ color:var(--fw-text-muted);font-size:19px}
+.campaign-armory-screen .campaign-kit-picker-trigger:disabled{opacity:.48}
+.campaign-gear-picker-backdrop{position:fixed;inset:0;z-index:20010;
+ background:rgba(4,13,11,.78);display:flex;align-items:flex-end;
+ justify-content:center;padding:12px;box-sizing:border-box}
+.campaign-gear-picker-panel{width:min(100%,540px);max-height:min(82dvh,780px);
+ min-height:140px;display:flex;flex-direction:column;overflow:hidden;
+ color:#e9eee0;background:#1a3028;border:1px solid #829d8b;
+ border-radius:15px;box-shadow:0 18px 50px #0009}
+.campaign-gear-picker-head{display:flex;align-items:center;justify-content:space-between;
+ padding:16px 16px 12px;gap:10px;border-bottom:1px solid #405d50}
+.campaign-gear-picker-head h2{font:700 19px var(--fw-font-display);margin:0}
+.campaign-gear-picker-close{width:auto;min-height:40px;margin:0;
+ padding:8px 12px;font:700 12px var(--fw-font-action)}
+.campaign-gear-picker-list{overflow-y:auto;overscroll-behavior:contain;
+ display:grid;gap:6px;padding:10px 12px max(16px,env(safe-area-inset-bottom))}
+.campaign-gear-picker-option{text-align:left;display:grid;gap:3px;min-height:66px;
+ padding:12px 14px;margin:0;width:100%;
+ border:1px solid #506c5b;border-radius:10px;
+ background:#2a4336;color:#eaf0df}
+.campaign-gear-picker-option strong{font:700 16px var(--fw-font-action)}
+.campaign-gear-picker-option small{font:600 12px var(--fw-font-data);color:#d5c196}
+.campaign-gear-picker-option span{font:400 13px/1.35 var(--fw-font-narrative);color:#bacabb}
+.campaign-gear-picker-option em{font:400 12px var(--fw-font-action);
+ color:#c6aca0;font-style:normal}
+.campaign-gear-picker-option[aria-current="true"]{border-color:#c5d7aa;
+ background:#3a5948}
+.campaign-gear-picker-option:disabled{opacity:.52}
+.campaign-gear-picker-panel button:focus-visible{outline:2px solid #eed2a0;outline-offset:2px}
+@media(min-width:720px){
+ .campaign-gear-picker-backdrop{align-items:center}
+}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-picker-trigger{max-width:65%}
+ .campaign-gear-picker-backdrop{padding:6px}
+ .campaign-gear-picker-panel{max-height:86dvh;border-radius:16px 16px 10px 10px}
+}
