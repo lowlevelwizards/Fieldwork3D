@@ -5,7 +5,7 @@
 import type {WeaponConfiguration} from '../../equipment-weapon-assemblies.ts';
 import {preferredOpticMountSurface} from './weapon-part-mount-surfaces.ts';
 export type OpticVisualSeat=Readonly<{
- x:number;supportY:number;mount:'hk-claw'|'ar-top'|'ak-handguard'|'legacy';
+ x:number;supportY:number;mount:'hk-claw'|'ar-top'|'ak-handguard'|'ak-side-bridge'|'legacy';
 }>;
 export function opticVisualSeat(config:WeaponConfiguration,
  resolvedMountX:number):OpticVisualSeat{
@@ -13,6 +13,8 @@ export function opticVisualSeat(config:WeaponConfiguration,
  if(build){
   const surface=preferredOpticMountSurface(build,config.slots.opticMount);
   if(surface){
+   if(surface.ownerPartId==='optic-ak-side-picatinny')
+    return {x:resolvedMountX,supportY:surface.y,mount:'ak-side-bridge'};
    if(surface.ownerPartId==='optic-hk-claw')
     return {x:resolvedMountX,supportY:surface.y,mount:'hk-claw'};
    if(surface.ownerPartId==='ar-flat'){
