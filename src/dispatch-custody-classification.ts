@@ -11,8 +11,8 @@ export type SuspectCustodyDisposition=
  'incapacitated'|'living-compliant'|'invalid-state';
 export type SuspectCustodyReadiness=Readonly<{
  disposition:SuspectCustodyDisposition;
- /** Capability precondition only; never a custody event or completed arrest. */
- physicallyRestrainable:boolean;
+ /** Living submission evidence only; physical reach, LOS, timer and tools are NOT checked. */
+ custodyCandidate:boolean;
 }>;
 export type SuspectContactFacts=Pick<TeamActor,
  'side'|'health'|'injuryStage'|'surrendered'>;
@@ -20,7 +20,7 @@ export type SuspectContactFacts=Pick<TeamActor,
 export function classifySuspectCustody(
  target:SuspectContactFacts):SuspectCustodyReadiness{
  const result=(disposition:SuspectCustodyDisposition):SuspectCustodyReadiness=>
-  Object.freeze({disposition,physicallyRestrainable:disposition==='living-compliant'});
+  Object.freeze({disposition,custodyCandidate:disposition==='living-compliant'});
  if(target.side!=='red')return result('not-suspect');
  if(!Number.isFinite(target.health)||!Number.isInteger(target.injuryStage)||
     target.injuryStage<0||target.injuryStage>3||
