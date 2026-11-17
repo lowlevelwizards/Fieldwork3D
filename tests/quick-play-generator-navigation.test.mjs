@@ -35,7 +35,7 @@ test('live mission simulation and game shortcuts stop under the overlay',()=>{
  assert.match(loader,/get configuring\(\)\{return configurator\.isOpen;\}/);
  assert.match(main,/isQuickPlayBusy:\(\)=>quickPlayController\.busy\|\|quickPlayController\.configuring/);
  assert.match(main,/quickPlayController\.configuring\)return;/);
- assert.match(creator,/function hide\(\)\{[\s\S]*?backdrop\.hidden=true;/);
+ assert.match(creator,/function hide\(returnFocus=true\)\{[\s\S]*?backdrop\.hidden=true;/);
  // Existing session replacement still happens only after the generator worker
  // reports completion, never as part of opening the settings dialog.
  assert.ok(loader.indexOf("const generated=await new Promise")<
@@ -57,4 +57,20 @@ test('Quick Play setup presents the essential choices before advanced site optio
  assert.match(creator,/content\.append\(fieldGrid,advanced,summary,error\)/);
  assert.match(creator,/if\(!count\|\|!validSeed\|\|!incidentBuildings\)advanced\.open=true/);
  assert.match(creator,/onGenerate\(recipe\)/);
+});
+
+test('UI.5B–C: briefing links back to preserved setup and prepared briefing precedes mask release',()=>{
+ const uiElements=read('src/ui/breach-ui-elements.ts');
+ const css=read('src/breach-style.css');
+ assert.match(html,/id="briefingQuickPlaySetup" type="button" hidden>CHANGE SETUP/);
+ assert.match(uiElements,/briefingQuickPlaySetup:el<HTMLButtonElement>\('briefingQuickPlaySetup'\)/);
+ assert.match(screens,/ui\.briefingQuickPlaySetup\.hidden=config\.getMode\(\)!=='quick'/);
+ assert.match(main,/ui\.briefingQuickPlaySetup\.addEventListener\('click',returnToQuickPlayGenerator\)/);
+ assert.match(creator,/hide\(false\);options\.onGenerate\(recipe\)/);
+ assert.match(creator,/previouslyFocused\?\.isConnected/);
+ assert.match(creator,/previouslyFocused\.focus\(\{preventScroll:true\}\)/);
+ assert.match(loader,/const quickPlayRecipeText=el<HTMLElement>\('quickPlayRecipe'\)/);
+ assert.match(html,/id="quickPlayRecipe"/);
+ assert.match(css,/fw-brief-v3-actions:has\(#briefingQuickPlaySetup:not\(\[hidden\]\)\)/);
+ assert.match(loader,/config\.showBriefing\(\);\s*quickPlayPanel\.hidden=true/);
 });
