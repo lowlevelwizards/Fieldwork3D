@@ -68,6 +68,100 @@ async function acceptSavedScenario(page){
   return contract.id;
  });
 }
+// C9.2: exercise a saved, nonempty campaign after full-page reload.
+async function assessEstablishedCareer(page,name,mobile){
+ const expected=await seedCareerScenario(page);
+ check(expected.total===10&&expected.operators===8,
+  name+' fixture should contain ten resolved operations and eight operators');
+ await page.reload({waitUntil:'domcontentloaded'});
+ await page.getByRole('button',{name:'Continue DISPATCH CAMPAIGN'}).click();
+ await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
+ check((await page.locator('.campaign-day').textContent())?.includes(String(expected.day)),
+  name+' saved campaign day did not survive reload');
+ for(const tab of ['overview','personnel','contracts','logistics','chronicle']){
+  await page.locator('#campaign-tab-'+tab).click();
+  const dimensions=await page.locator('.campaign-screen').evaluate(el=>({
+   width:el.clientWidth,scroll:el.scrollWidth
+  }));
+  check(dimensions.scroll<=dimensions.width+3,
+   name+' established '+tab+' horizontal overflow');
+  if(tab==='overview'){
+   check(await page.locator('.campaign-readiness-warning').count()>=2,
+    name+' depleted supplies or recovery warnings missing');
+  }
+  if(tab==='personnel'){
+   check(await page.locator('.campaign-person-expand').count()===8,
+    name+' full roster did not render');
+   check(await page.locator('.campaign-person-expand').first()
+    .locator(':scope > summary').isVisible(),name+' roster summary unreachable');
+   check(await page.locator('.campaign-assignment select').count()===4,
+    name+' tactical slot pickers missing');
+  }
+  if(tab==='contracts'){
+   check(await page.locator('.campaign-contract-review').count()>0,
+    name+' continuing campaign has no reviewable cases');
+  }
+  if(tab==='logistics'){
+   const stock=await page.locator('.campaign-logistics-stat strong')
+    .allTextContents();
+   check(stock.length===3&&stock.every(count=>count.trim()==='0'),
+    name+' exhausted reserves were not restored');
+   check(await page.locator('.campaign-logistics-stat.is-low').count()===3,
+    name+' empty stock alerts missing');
+  }
+  if(tab==='chronicle'){
+   const recent=page.locator('.campaign-chronicle>.campaign-operation-board');
+   check(await recent.locator('.campaign-operation-record').count()===8,
+    name+' Records should show only eight recent operations');
+   const earlier=page.locator('.campaign-operation-more');
+   check(await earlier.count()===1,name+' missing older record disclosure');
+   check(await earlier.locator('.campaign-operation-record').count()===0,
+    name+' earlier records should be lazy before opening');
+   await earlier.locator(':scope > summary').click();
+   check(await earlier.locator('.campaign-operation-record').count()===2,
+    name+' earlier history failed to load remaining two records');
+   const detail=recent.locator('.campaign-operation-detail').first();
+   await detail.locator(':scope > summary').click();
+   check(await detail.locator('.campaign-operation-participants').isVisible(),
+    name+' saved operation participants inaccessible');
+   await detail.locator(':scope > summary').click();
+   const milestones=page.locator('.campaign-career-timeline');
+   check(await milestones.count()===1,name+' recorded milestones missing');
+   await milestones.locator(':scope > summary').click();
+   check(await milestones.locator('.campaign-career-event').count()>0,
+    name+' saved personnel milestones inaccessible');
+  }
+  if(mobile){
+   const tabs=page.locator('.campaign-tab');
+   const heights=await tabs.evaluateAll(els=>els.map(el=>el.getBoundingClientRect().height));
+   check(heights.every(h=>h>=44),name+' established tab target below 44px');
+  }
+ }
+ await page.screenshot({path:out+'/'+name+'-established-records.png',animations:'disabled'});
+ return expected;
+}
+// C9.3: a second reload must resume an accepted case without unlocking squad edits.
+async function assessActiveDeployment(page,name,expected){
+ const acceptedId=await acceptSavedScenario(page);
+ await page.reload({waitUntil:'domcontentloaded'});
+ check(await page.locator('.campaign-landing-status').getByText(
+  'Deployment in progress').isVisible(),name+' active deployment notice missing');
+ await page.getByRole('button',{name:'Continue DISPATCH CAMPAIGN'}).click();
+ await page.locator('#campaign-tab-overview').waitFor({timeout:30000});
+ check((await page.locator('.campaign-overview-primary-action').textContent())
+  ?.includes('CONTINUE DEPLOYMENT'),name+' active mission resume action missing');
+ await page.locator('#campaign-tab-personnel').click();
+ const disabled=await page.locator('.campaign-assignment select')
+  .evaluateAll(els=>els.length===4&&els.every(el=>el.disabled));
+ check(disabled,name+' squad slots editable during an active deployment');
+ await page.locator('#campaign-tab-chronicle').click();
+ check(await page.locator('.campaign-chronicle>.campaign-operation-board .campaign-operation-record')
+  .count()===expected.total,name+' accepting a contract altered past reports');
+ check((await page.locator('.campaign-funds .campaign-day').textContent())
+  ?.includes(String(expected.day)),name+' active deployment changed saved day');
+ await page.screenshot({path:out+'/'+name+'-active-deployment.png',animations:'disabled'});
+ console.log(name+' passed: 8-operator saved career, 10 reports, depleted reserves, active '+acceptedId);
+}
 async function assess(browser,{name,width,height,mobile}){
  const context=await browser.newContext({
   viewport:{width,height},deviceScaleFactor:mobile?2:1,
