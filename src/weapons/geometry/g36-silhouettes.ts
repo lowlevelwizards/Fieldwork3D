@@ -72,7 +72,7 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
 
  addTwoOpeningStock(root,material,i.stock++);
  const pad=outline('stock',[
-  [-15.05,.40],[-14.60,.40],[-14.60,-4.90],[-15.05,-5.12]
+  [-15.05,.40],[-14.60,.40],[-14.60,-4.93],[-15.05,-5.22]
  ],1.72);
  pad.userData.g36Buttpad=true;
  const hinge=box('stock',-6.64,-.74,0,.72,2.43,1.80);
