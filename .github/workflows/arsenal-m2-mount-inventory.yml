@@ -2,6 +2,8 @@ name: Arsenal M2.0 mount inventory (feature)
 on:
   push:
     branches: [feat/arsenal-m2-mount-inventory]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
