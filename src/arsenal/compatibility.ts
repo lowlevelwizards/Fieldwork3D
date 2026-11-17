@@ -8,6 +8,8 @@ import {WEAPON_ATTACHMENTS,initialWeaponConfiguration,readWeaponConfiguration,
  type WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {physicalAttachmentFitOptions}
  from '../weapons/geometry/weapon-physical-mount-fit.ts';
+import {mountedAccessorySeat,resolveMountedAccessoryLayout}
+ from '../weapons/geometry/mounted-accessory-layout.ts';
 import {ARSENAL_REFERENCES,arsenalPlatformForReceiver,type ArsenalSlot}
  from './catalog.ts';
 import {arsenalPhysicalPartId} from './finishes.ts';
@@ -137,6 +139,15 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
   id!=='optic-g36-integrated'&&
   !physicalAttachmentFitOptions(normalized,id).feasible)
   return rejected(slot,id,'Optic mount or eye-box clearance is invalid');
+ // New furniture accessories must have a real free rail and compatible
+ // three-dimensional body/hand clearance, not merely a legacy role flag.
+ if((slot==='foregrip'&&id!=='foregrip-none')||
+    (slot==='light'&&id!=='light-none')){
+  const s=mountedAccessorySeat(normalized,slot);
+  if(!s||s.attachmentId!==id||
+   resolveMountedAccessoryLayout(normalized).unresolved.some(x=>x.attachmentId===id))
+   return rejected(slot,id,'No clear modeled rail, contact, or hand clearance');
+ }
  const changes:ArsenalPartChange[]=[];
  for(const key of FAMILY_PART_SLOTS)if(recipe.parts[key]!==next.parts[key])
   changes.push({slot:key,from:recipe.parts[key],to:next.parts[key]});
