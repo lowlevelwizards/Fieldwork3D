@@ -487,3 +487,27 @@ test('C11 campaign actions reuse save-aware feedback for squad, procurement and 
  }
  assert.doesNotMatch(actions,/config\.saveCampaign\(\);showCampaignHome\(\)/);
 });
+
+test('C11 kit and attachment feedback never bypasses save-aware action handling',()=>{
+ const flow=source('breach-campaign-flow.ts');
+ const start=flow.indexOf('equipWeaponFamilyPart:(id,slot,partId)=>');
+ const end=flow.indexOf('openStudio:(id)=>',start);
+ assert.ok(start>=0&&end>start);
+ const actions=flow.slice(start,end);
+ for(const [handler,mutation] of [
+  ['equipWeaponFamilyPart','equipCampaignWeaponFamilyPart'],
+  ['equipAttachment','purchaseAndEquipWeaponAttachment'],
+  ['moveMagazine','moveCampaignMagazine'],
+  ['saveKitPreset','saveCampaignKitPreset'],
+  ['applyKitPreset','applyCampaignKitPreset'],
+  ['deleteKitPreset','deleteCampaignKitPreset'],
+  ['renameOperator','renameCampaignOperator'],
+  ['cycleAppearance','cycleCampaignAppearance'],
+  ['setWardrobe','setCampaignWardrobe']
+ ]){
+  assert.ok(actions.includes(handler+':'),handler+' missing');
+  assert.ok(actions.includes(mutation+'(c,'),handler+' no longer uses authoritative state');
+ }
+ assert.match(actions,/acquire\?'Attachment acquired and equipped':'Weapon attachment updated'/);
+ assert.doesNotMatch(actions,/config\.saveCampaign\(\);showCampaignHome\(\)/);
+});
