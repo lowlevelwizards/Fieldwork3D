@@ -5,9 +5,11 @@ on:
       - 'src/rendering/breach-site-scene-builder.ts'
       - 'src/rendering/breach-site-openings-builder.ts'
       - 'src/breach-3d.ts'
+      - 'src/rendering/breach-cutaway-depth-policy.ts'
       - 'src/rendering/breach-live-main-pass-profiler.ts'
       - 'src/rendering/breach-post-ready-attribution.ts'
       - 'tests/refactor-e6-19-transparent-families.test.mjs'
+      - 'tests/refactor-e6-19-cutaway-depth-policy.test.mjs'
       - 'scripts/verification/e6-19-transparent-families-browser.mjs'
       - '.github/workflows/refactor-e6-19-transparent-families.yml'
   workflow_dispatch:
@@ -33,6 +35,10 @@ jobs:
         run: |
           node --experimental-strip-types --test \
             tests/refactor-e6-19-transparent-families.test.mjs \
+            tests/refactor-e6-19-cutaway-depth-policy.test.mjs \
+            tests/fog-physical-depth-regression.test.mjs \
+            tests/visibility-07-cutaway.test.mjs \
+            tests/replay-r7-cutaway.test.mjs \
             tests/refactor-e6-18a-mesh-provenance.test.mjs \
             tests/refactor-e6-18-owner-static-merge.test.mjs \
             tests/refactor-e6-17-main-pass.test.mjs \

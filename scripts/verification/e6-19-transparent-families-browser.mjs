@@ -117,6 +117,13 @@ try{
       main.drawCallsP95!==submit.nonShadowDrawCallsP95)
      throw Error('Missing or unreconciled E6.19 main-pass evidence: '+
       JSON.stringify({main,submit}));
+   // E6.19.B: genuinely faded walls never write depth, even if they
+   // were already in the foreground/transparent queue before cutaway.
+   const staleDepth=(main.dominantTransparentFamilies??[])
+    .filter(x=>x.family.startsWith('camera-cutaway/')&&
+     x.family.endsWith('/writes-depth'));
+   if(staleDepth.length)
+    throw Error('Cutaway still writes depth: '+JSON.stringify(staleDepth));
    if(live.topGaps.some(spike=>spike.precedingSubmitted3D&&
       spike.precedingDominantScenePhase===undefined))
       throw Error('Worst live gaps missing preceding 3D phase attribution');

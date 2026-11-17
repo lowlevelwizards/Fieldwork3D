@@ -39,3 +39,9 @@ Prioritize genuine redundant *translucent* render submissions only
 when their visibility, depth semantics, sorting, and object ownership
 can be proven equivalent. Do not merge unrelated weather layers,
 cutaway geometry or transparent window panels based on material alone.
+
+## E6.19.B — synchronize depth writing across cutaway transitions
+
+The Stage A real-browser evidence exposed `camera-cutaway/site-wall-*/blended/writes-depth` submissions. When a fully opaque known façade (rendered in the transparent foreground queue for fog layering) starts fading, the material stays transparent, so the previous code never refreshed depthWrite. This leaves a partially faded wall incorrectly masking geometry behind it.
+
+The narrow Stage B fix applies `depthWrite=!translucent` independently of whether `material.transparent` changes. Keep opacity, shader, fog layer and renderOrder exactly as before. Test the exact full-opacity known façade → blended cutaway → full-opacity restored transition; do not recompile shader programs unnecessarily. The real-browser gate now forbids any observed `camera-cutaway/*/writes-depth` draw. **This is a correctness repair, not a draw reduction or FPS claim.**
