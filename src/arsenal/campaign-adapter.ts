@@ -4,6 +4,9 @@
  * a smaller authored magazine conservatively repacks the current rounds.
  */
 import type {CampaignState} from '../campaign-state.ts';
+import {isDispatchPilot,dispatchPilotUnclassifiedEditingEnabled}
+ from '../dispatch-campaign-eligibility.ts';
+import {effectiveDispatchSetup} from '../dispatch-campaign-setup.ts';
 import {fitMagazineInventory} from './live-magazine-capacity.ts';
 import {sameWeaponConfiguration,type WeaponConfiguration}
  from '../equipment-weapon-assemblies.ts';
@@ -26,7 +29,9 @@ const denied=(reason:string):CampaignArsenalQuote=>({
 /** Preview only. Does not touch Campaign state, credits or parts stock. */
 export function quoteCampaignArsenalEdit(c:CampaignState,operatorId:string,
  recipe:ArsenalRecipeV2):CampaignArsenalQuote{
- if(c.rules?.template==='dispatch')return denied('Dispatch pilot does not yet support custom Arsenal builds');
+ if(isDispatchPilot(c)&&!dispatchPilotUnclassifiedEditingEnabled(c))
+  return denied('Dispatch pilot requires global equipment scope for custom Arsenal builds');
+ const noCharge=isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited';
  if(c.activeContractId)return denied('Finish the current contract before editing equipment');
  const operator=c.operators.find(o=>o.id===operatorId);
  if(!operator||operator.status==='lost'||operator.status==='retired')
@@ -42,8 +47,12 @@ export function quoteCampaignArsenalEdit(c:CampaignState,operatorId:string,
   unresolved.map(x=>x.attachmentId).join(', '));
  // Same pure inventory mathematics as direct Armory and saved kits.
  const transfer=quoteAttachmentTransfer(c.inventory.attachments,
-  operator.weaponConfiguration,next,c.funds,true);
- return {...transfer,nextConfiguration:transfer.valid?next:undefined};
+  operator.weaponConfiguration,next,
+  noCharge?Number.MAX_SAFE_INTEGER:c.funds,true);
+ // Only the bill changes in Creative. Preserve the exact finite attachment
+ // stock/purchase ledger and all mount validation from the common quote.
+ return {...transfer,cost:noCharge?0:transfer.cost,
+  nextConfiguration:transfer.valid?next:undefined};
 }
 /** Re-quotes against CURRENT authority; stale previews cannot spend stale stock. */
 export function commitCampaignArsenalEdit(c:CampaignState,operatorId:string,
