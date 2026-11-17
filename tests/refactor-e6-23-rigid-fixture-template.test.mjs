@@ -6,7 +6,7 @@ import {mapBoxPixelUV} from '../src/rendering/pixel-materials.ts';
 import {shadowEligibleBox} from '../src/rendering/breach-shadow-controller.ts';
 import {consolidateStaticFixtureParts}
  from '../src/rendering/breach-fixture-draw-batching.ts';
-import {acquireRigidFixtureTemplate,rigidFixtureTemplateEligible}
+import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual,rigidFixtureTemplateEligible}
  from '../src/rendering/breach-fixture-template.ts';
 import {StaticVisualTemplateLibrary}
  from '../src/rendering/fieldwork-visual-template-library.ts';
@@ -139,4 +139,21 @@ test('E6.23 throwing custom palette resolver rolls back lease and frees template
  assert.equal(cache.stats().geometries,0);
  assert.equal(disposed,1);
  material.dispose();
+});
+
+test('E6.23 adopted direct meshes detach on lease retirement without site teardown',()=>{
+ const cache=new StaticVisualTemplateLibrary(),s=site(),owner=new THREE.Group();
+ const lease=acquireRigidFixtureTemplate(cache,visual('entry-bench',41,21),
+  0,s.ctx,s.palette);
+ assert.ok(lease);
+ const adopted=adoptRigidFixtureVisual(owner,lease);
+ assert.ok(owner.children.length>0);
+ assert.equal(lease.root.children.length,0);
+ assert.equal(cache.stats().leases,1);
+ adopted.release();adopted.release();
+ assert.equal(owner.children.length,0);
+ assert.equal(cache.stats().leases,0);
+ cache.clear();
+ assert.equal(cache.stats().geometries,0);
+ for(const m of s.materials.values())m.dispose();
 });
