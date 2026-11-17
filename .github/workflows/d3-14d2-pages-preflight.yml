@@ -3,6 +3,12 @@ on:
   pull_request:
     paths:
       - '.github/workflows/d3-14d2-pages-preflight.yml'
+      - 'src/campaign-ui.ts'
+      - 'src/campaign-style.css'
+      - 'src/equipment-preview.ts'
+      - 'src/ui/campaign-gear-picker.ts'
+      - 'src/arsenal/workbench-screen.ts'
+      - 'src/arsenal/arsenal.css'
   workflow_dispatch:
 permissions:
   contents: read
