@@ -946,13 +946,17 @@ export class CampaignScreen{
     activateTab(tab)
    }));
   }
-  overview.append(shortcuts,footer);
-  // Move top-level sections together; nextAction itself is nested in nextCard.
-  // Readiness must be visible above supporting stats and optional profile details.
-  overview.insertBefore(readiness,nextCard.nextSibling);
-  overview.insertBefore(stats,readiness.nextSibling);
-  overview.insertBefore(suppliesSummary,stats.nextSibling);
-  overview.insertBefore(shortcuts,suppliesSummary.nextSibling);
+  // Keep action and readiness together in both DOM order and screen layout.
+  // Supplementary status, shortcuts and department details form a separate area.
+  const workspace=node('div','campaign-overview-workspace');
+  const priority=node('div','campaign-overview-priority');
+  const support=node('div','campaign-overview-support');
+  priority.append(nextCard,readiness);
+  support.append(stats,suppliesSummary,shortcuts);
+  const department=overview.querySelector<HTMLElement>('.campaign-department-identity');
+  if(department)support.append(department);
+  workspace.append(priority,support);
+  overview.append(workspace,footer);
   grid.append(overview,logistics);
   const sections={
    overview,personnel,contracts:jobs,logistics,chronicle
