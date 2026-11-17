@@ -35,7 +35,7 @@ import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from '
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
- setWeaponAttachment,WEAPON_ATTACHMENT_SLOTS,
+ setWeaponAttachment,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
  type WeaponConfiguration,type WeaponAttachmentSlot}
  from './equipment-weapon-assemblies.ts';
