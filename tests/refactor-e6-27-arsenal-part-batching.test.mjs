@@ -108,4 +108,20 @@ test('E6.27 stand-alone pilot leaves dynamic and instanced geometry unchanged',(
  rail.dispose();rail.geometry.dispose();
  hand.geometry.dispose();hand2.geometry.dispose();
 });
+test('E6.27 custom draw ranges and grouped geometry cannot become visible baked triangles',()=>{
+ const root=new THREE.Group();
+ const partial=create('family-handguard-x-0',0);
+ partial.geometry.setDrawRange(0,6);
+ const grouped=create('family-handguard-x-1',4);
+ grouped.geometry.addGroup(0,12,0);
+ const common=create('family-handguard-x-2',8);
+ root.add(partial,grouped,common);
+ const bake=compileArsenalRigidPartSiblings(root);
+ assert.equal(bake.avoidedDraws,0);
+ assert.equal(root.children.length,3);
+ assert.equal(partial.geometry.drawRange.count,6);
+ assert.equal(grouped.geometry.groups.length,1);
+ partial.geometry.dispose();grouped.geometry.dispose();common.geometry.dispose();
+});
+
 metal.dispose();dark.dispose();
