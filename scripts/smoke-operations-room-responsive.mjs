@@ -368,15 +368,18 @@ async function assess(browser,{name,width,height,mobile}){
    el.scrollTop=Math.min(320,Math.max(0,el.scrollHeight-el.clientHeight));
    return el.scrollTop;
   });
-  check(squadScroll>40,name+' squad was too short to exercise section scroll memory');
-  await page.locator('#campaign-tab-logistics').click();
-  await page.locator('#campaign-tab-personnel').click();
-  const recoveredScroll=await page.locator('.campaign-screen').evaluate(el=>el.scrollTop);
-  check(Math.abs(recoveredScroll-squadScroll)<3,
-   name+' Squad scroll position was lost after visiting Supply');
-  await page.locator('#campaign-tab-personnel').click();
-  check(await page.locator('.campaign-screen').evaluate(el=>el.scrollTop)===0,
-   name+' tapping the selected Squad tab did not return to its beginning');
+  // At wide desktop widths the Squad workspace may fit on one screen.
+  // The phone must still exercise a meaningful scroll restoration.
+  if(squadScroll>40){
+   await page.locator('#campaign-tab-logistics').click();
+   await page.locator('#campaign-tab-personnel').click();
+   const recoveredScroll=await page.locator('.campaign-screen').evaluate(el=>el.scrollTop);
+   check(Math.abs(recoveredScroll-squadScroll)<3,
+    name+' Squad scroll position was lost after visiting Supply');
+   await page.locator('#campaign-tab-personnel').click();
+   check(await page.locator('.campaign-screen').evaluate(el=>el.scrollTop)===0,
+    name+' tapping the selected Squad tab did not return to its beginning');
+  }else check(!mobile,name+' phone Squad should be tall enough to test scroll memory');
   const last=page.locator('#campaign-tab-chronicle');
   await last.focus();
   await last.press('Home');
