@@ -175,8 +175,10 @@ try{
    });
   }finally{await page.close();await browser.close();browser=undefined;}
  }
- // E6.23 geometry reuse must preserve existing rendering submissions.
- // speculative FPS improvement. Identical seed and briefing controls.
+ // E6.23 compiles and batches fixture parts. Fewer opaque environment
+ // draws are expected and welcome; no extra draws, transparency changes or
+ // altered tactical owner submissions are permitted. CPU timing is diagnostic,
+ // never an uninstrumented FPS or hardware GPU claim.
  const pairs=[23,97].map(seed=>{
   const off=evidence.runs.find(r=>r.seed===seed&&r.templateEnabled==='0');
   const on=evidence.runs.find(r=>r.seed===seed&&r.templateEnabled==='1');
@@ -184,9 +186,17 @@ try{
   const saved=off.mainPassAttribution.drawCallsP95-on.mainPassAttribution.drawCallsP95;
   const core=off.mainPassAttribution.dominantOwners.find(x=>x.owner==='environment');
   const after=on.mainPassAttribution.dominantOwners.find(x=>x.owner==='environment');
-  if(saved!==0||!core||!after||core.drawsTotal!==after.drawsTotal)
-   throw Error('E6.23 changed rendering submissions for seed '+seed+
-    ': '+JSON.stringify({before:off.mainPassAttribution,after:on.mainPassAttribution}));
+  const envSaved=(core?.drawsTotal??NaN)-(after?.drawsTotal??NaN);
+  // Measured seed 97 saves 4 p95 draws (1063 -> 1059); requiring zero
+  // would reject an actual batching improvement, unlike E6.22 caching.
+  if(!core||!after||saved<0||envSaved<0||
+     off.mainPassAttribution.transparentDrawsP95!==
+      on.mainPassAttribution.transparentDrawsP95||
+     off.mainPassAttribution.alphaTestDrawsP95!==
+      on.mainPassAttribution.alphaTestDrawsP95)
+   throw Error('E6.23 draw-count/transparent owner regression for seed '+seed+
+    ': '+JSON.stringify({saved,envSaved,
+     before:off.mainPassAttribution,after:on.mainPassAttribution}));
   const planningPixels=compareImages(
    dir+'/seed-'+seed+'-template-0-planning.png',
    dir+'/seed-'+seed+'-template-1-planning.png');
@@ -203,7 +213,8 @@ try{
   return {seed,planningPixels,livePixels,offSiteBuild:off.siteBuild,
    onSiteBuild:on.siteBuild,beforeDrawCallsP95:off.mainPassAttribution.drawCallsP95,
    afterDrawCallsP95:on.mainPassAttribution.drawCallsP95,savedP95:saved,
-   beforeEnvironmentTotal:core.drawsTotal,afterEnvironmentTotal:after.drawsTotal};
+   beforeEnvironmentTotal:core.drawsTotal,afterEnvironmentTotal:after.drawsTotal,
+   savedEnvironmentDrawsTotal:envSaved};
  });
 
  evidence.pairs=pairs;
