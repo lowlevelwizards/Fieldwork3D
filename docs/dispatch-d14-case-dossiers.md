@@ -80,3 +80,36 @@ appear to have different reports depending on the screen.
   authored catalog.
 - Stage on a separate feature branch; defer all merging until D14B's Pages
   release is verified and this stage's own critical checks pass.
+
+## D14.6–D14.9 — next situation/closeout feature branch (draft checkpoint)
+
+**D14.6 — contract-backed situation.** The pure dossier now projects a
+five-objective operational emphasis, exact contract risk assessment (explicitly
+not a count of enemies), actual standard/expanded mission scale, and retained
+region/deadline. All nineteen authored cases keep their original deterministic
+leads, authored identity, site, mission kind and seed. No guessed premises,
+incident-specific hazards, suspect numbers or newly generated encounter truth.
+
+**D14.7 — low-scroll briefing.** The Operations Room contract card exposes
+operational emphasis and footprint in one compact line. The predeployment
+review reuses existing fields, combines deadline/region/reward and labels risk
+as a contract assessment. The original acceptance boundary remains untouched.
+Legacy non-Dispatch presentations retain their prior fields.
+
+**D14.8 — read-only after-action reconciliation.** A pure settled-report
+projection distinguishes original *reported/unconfirmed* lead from recorded
+mission outcome, objective status and grade. Missing D10 force evidence is
+explicitly unassessed; recorded zero squad civilian harm is not presented as
+legal justification. Missing/pruned contract history remains unknown. A
+closed-by-default Operations Room chronicle section displays only the latest
+four saved closeouts; existing eight-operation log and related-case trail remain
+primary. No inferred shared suspects, scenes, detention or investigations.
+
+**D14.9 — critical regression/release guard.** Focused tests cover nineteen
+authored cases, both risk/scale profiles, malformed and legacy incidents,
+projection purity, saved history/outcome/evidence, missing links, Quick Play
+separation and the original deployment acceptance boundary. Run only affected
+Dispatch tests plus typecheck/build via feature PR critical CI. Do not release
+without green CI and an explicit verified public Pages predecessor; do not
+queue another merge over a production deployment. This stage creates no new
+save fields or gameplay rules.
