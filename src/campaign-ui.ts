@@ -720,7 +720,9 @@ export class CampaignScreen{
   chronicle.append(node('h2','','UNIT CHRONICLE'));
   if(c.history.length===0)chronicle.append(node('p','campaign-note',
    'Your unit history will appear here after its first operation.'));
-  for(const report of c.history.slice(-8).reverse()){
+  const recentReports=c.history.slice(-8).reverse();
+  const operationBoard=node('div','campaign-operation-board');
+  const renderOperation=(report:(typeof c.history)[number])=>{
    const contract=c.contracts.find(k=>k.id===report.contractId);
    const incident=historicalDispatchIncident(c,report);
    const fallback=isDispatchPilot(c)?
@@ -751,7 +753,28 @@ export class CampaignScreen{
      ' · SUPPORT +'+report.dispatchCareer.operatingSupport+' CR'));
     article.append(detail);
    }
-   chronicle.append(article);
+   return article;
+  };
+  for(const report of recentReports)operationBoard.append(renderOperation(report));
+  if(recentReports.length){
+   chronicle.append(node('p','campaign-operation-count',
+    'LATEST '+recentReports.length+' OF '+c.history.length+' RECORDED OPERATION'+
+    (c.history.length===1?'':'S')),operationBoard);
+  }
+  if(c.history.length>recentReports.length){
+   const older=node('details','campaign-operation-more');
+   older.append(node('summary','',
+    'VIEW '+(c.history.length-recentReports.length)+' EARLIER OPERATION'+
+    (c.history.length-recentReports.length===1?'':'S')));
+   const olderBoard=node('div','campaign-operation-board');
+   older.append(olderBoard);
+   // Build older cards only when requested. Large campaigns keep a light first view.
+   older.addEventListener('toggle',()=>{
+    if(!older.open||olderBoard.childElementCount)return;
+    for(const report of c.history.slice(0,-8).reverse())
+     olderBoard.append(renderOperation(report));
+   });
+   chronicle.append(older);
   }
   if(isDispatchPilot(c)){
    // Recent linked operations are optional, compact, and derived from real reports.
