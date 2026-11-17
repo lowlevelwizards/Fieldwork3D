@@ -26,7 +26,7 @@ test('P7 selection: rear-integrated reflex is production, P6 remains explicit ar
  assert.deepEqual(G36_OPTIC_REVIEW_FORMS.p6.lower,[-3.37,3.35,0,4.95,1.30,1.96]);
  assert.ok(box(find(selected,'g36UpperReflex')).equals(box(find(rear,'g36UpperReflex'))));
  assert.ok(!box(find(selected,'g36UpperReflex')).equals(box(find(p6,'g36UpperReflex'))));
- assert.ok(box(find(selected,'g36Magazine')).equals(box(find(p6,'g36Magazine')),
+ assert.ok(box(find(selected,'g36Magazine')).equals(box(find(p6,'g36Magazine'))),
   'unapproved magazine sweep is NOT a silent production change');
  assert.equal(find(selected,'g36HandleOpening').geometry.parameters.shapes.holes.length,1);
  assert.equal(find(selected,'g36MasterStock').geometry.parameters.shapes.holes.length,2);
@@ -35,7 +35,7 @@ test('P7 selection: rear-integrated reflex is production, P6 remains explicit ar
  clearWeaponSilhouette(rear);m.dispose();
 });
 test('P7 isolated optic alternatives hold roof, sight datums, handle span and mesh count',()=>{
- const m=new THREE.MeshBasicMaterial(),p6=buildG36OriginalBlockout(m);
+ const m=new THREE.MeshBasicMaterial(),p6=buildG36OriginalBlockout(m,{optic:'p6',magazine:'p6'});
  for(const variant of ['lower-emphasis','rear-integrated']){
   const alt=buildG36OriginalBlockout(m,{optic:variant});
   assert.equal(alt.children.length,p6.children.length);
