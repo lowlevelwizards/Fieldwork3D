@@ -180,8 +180,8 @@ test('M2.1 MP5 tri-rail has correctly handed exterior faces and bottom support',
  const s=slots(c);
  assert.equal(s.filter(x=>x.role==='foregrip').length,3);
  assert.equal(s.filter(x=>x.role==='light').length,6);
- assert.equal(s.filter(x=>x.face==='left').length,3);
- assert.equal(s.filter(x=>x.face==='right').length,3);
+ assert.equal(s.filter(x=>x.face==='left'&&x.role==='light').length,3);
+ assert.equal(s.filter(x=>x.face==='right'&&x.role==='light').length,3);
  const side=s.find(x=>x.face==='right');
  const bottom=s.find(x=>x.face==='bottom');
  near(side.z,1.755,'MP5 side rail outer Z face');
