@@ -248,11 +248,12 @@ const campaignScreen=new CampaignScreen({
  treat:(id)=>applyVisibleCampaignAction(c=>treatOperator(c,id),
   'Treatment completed · recovery time reduced'),
  recruit:()=>applyVisibleCampaignAction(hireRecruit,'New operator joined the roster'),
- assignSlot:(slot,id)=>{if(model.campaign){model.campaign=assignOperatorToSlot(model.campaign,slot,id);
-  config.saveCampaign();showCampaignHome();}},
- buyWeapon:(weapon)=>{if(model.campaign){model.campaign=buyWeapon(model.campaign,weapon);config.saveCampaign();showCampaignHome();}},
- equipWeapon:(id,weapon)=>{if(model.campaign){model.campaign=equipCampaignWeapon(model.campaign,id,weapon);
-  config.saveCampaign();showCampaignHome();}},
+ assignSlot:(slot,id)=>applyVisibleCampaignAction(
+  c=>assignOperatorToSlot(c,slot,id),'Deployment squad updated'),
+ buyWeapon:(weapon)=>applyVisibleCampaignAction(
+  c=>buyWeapon(c,weapon),weapon.toUpperCase()+' weapon added to armory'),
+ equipWeapon:(id,weapon)=>applyVisibleCampaignAction(
+  c=>equipCampaignWeapon(c,id,weapon),'Operator primary weapon updated'),
  repairArmor:(id)=>{if(model.campaign){model.campaign=repairCampaignArmor(model.campaign,id);
   config.saveCampaign();showCampaignHome();}},
  serviceWeapon:(id)=>{if(model.campaign){model.campaign=serviceCampaignWeapon(model.campaign,id);
