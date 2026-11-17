@@ -112,6 +112,7 @@ export function createTacticalPaletteController(config:{
     lastPlacementKey='';
     // An exiting floating palette must not accept late clicks.
     context.dataset.owner='';
+    context.dataset.scopeKey='';
     const exclusive=!config.siteSettings.hidden||!config.briefingPanel.hidden;
     if(placement!=='floating'||!motion.active){
       exiting?.cancel();exiting=null;motion.hide();tether.hidden=true;
@@ -163,6 +164,7 @@ export function createTacticalPaletteController(config:{
     context.dataset.owner=selected;
     const identity=(door?'door:'+door.id:node?'node:'+node.id:
       selectedWatch?'active-watch':'here')+'/'+selected;
+    context.dataset.scopeKey=identity;
     const changed=contextSignature!==identity;
     if(changed){
       actionSignature='';contextSignature=identity;
@@ -191,7 +193,8 @@ export function createTacticalPaletteController(config:{
       heading.title=scope;
     }
     const signature=placement+'/'+identity+'/'+paletteChoices.map(c=>
-      c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed).join('|');
+      c.id+':'+c.label+':'+c.group+':'+!!c.disabled+':'+!!c.pressed+
+        ':'+(c.title??'')).join('|');
     const actionsChanged=actionSignature!==signature;
     if(actionsChanged){
       actionSignature=signature;
@@ -221,6 +224,10 @@ export function createTacticalPaletteController(config:{
         }
         if(label.textContent!==choice.label)label.textContent=choice.label;
         button.setAttribute('aria-label',choice.label);
+        button.setAttribute('aria-description',
+          a.name+' · '+(door?'door':node?'waypoint':
+            selectedWatch?'watch target':'current position')+' · '+
+          (choice.title??choice.label));
         button.title=choice.title??choice.label;
         config.installHelp(button);
         button.disabled=!!choice.disabled;
@@ -345,10 +352,16 @@ export function createTacticalPaletteController(config:{
       width:cssW,height:cssH,lastAuthoringAt}=input;
   const current=plannedControl(state,selected,node?.id);
   const at=node?.p??finalPoint(a);
-  const nearMovable=state.coverState.some(o=>canRelocateCover(o)&&
+  // A nearby object is not automatically known to the squad.
+  // Match the known-cover gate already used by the physical PUSH preview.
+  const nearMovable=state.coverState.some((o,i)=>
+    state.intel.cover.has(i)&&canRelocateCover(o)&&
     paletteDistance(at,{x:o.x,y:o.y})<Math.max(o.w,o.h)/2+43);
+  // Window interactions may be offered only for currently observed panes;
+  // an unrevealed room/window cannot advertise its operability in the menu.
   const nearWindow=state.windows.some(w=>w.operable&&!w.shattered&&
-    paletteDistance(at,{x:w.x,y:w.y})<54);
+    paletteDistance(at,{x:w.x,y:w.y})<54&&
+    liveVisibility(state,{x:w.x,y:w.y}));
   const powerActions:ContextAction[]=[];
   if(state.site&&state.sitePower&&state.sitePower.mode===state.lightingMode){
     const power=state.sitePower;
