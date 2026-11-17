@@ -29,6 +29,21 @@ const SERVICE_BOX_FAMILIES=new Set([
  'wayfinding-sign','trash-bin','bollard','utility-cabinet',
  'parking-block','parking-sign','street-lamp'
 ]);
+// E6.25: immutable "character" furniture/industrial silhouettes authored by
+// the existing shared game/Asset Lab path. They include box, cylinder, torus,
+// and prism parts; all are static and have independent site-owned finishes.
+// Vehicles (may move) and planters (alpha foliage) remain explicitly excluded.
+const CHARACTER_RIGID_FAMILIES=new Set([
+ 'bed','exam-bed','sofa','armchair','chair',
+ 'dining-table','meeting-table','coffee-table','desk','workbench',
+ 'counter','kitchen-island','cart',
+ 'wardrobe','dresser','cabinet','locker','filing-cabinet',
+ 'bookcase','shelf','rack','gondola-shelf','wall-shelf','display-rack',
+ 'fridge','cooler','stove','sink','microwave','laundry-machine',
+ 'generator','control-panel','tool-chest','vehicle-lift',
+ 'tank','barrel','tire-stack','tv-stand',
+ 'shed','dumpster','grill','shipping-container','picnic-table','lamp'
+]);
 type BaseSlot='wood'|'steel'|'olive'|'metal';
 type Slot={base:BaseSlot}|{solid:true;hex:number;
  roughness:number|undefined;surface:Parameters<FixtureVisualContext['solid']>[2]};
@@ -46,10 +61,11 @@ function recipeKey(visual:Obstacle,index:number):string{
 /** Does not mutate a source cover, and does not cache authoring conditions
  * or a fixture family with procedural cylinders, instancing, or animation. */
 export function rigidFixtureTemplateEligible(
- visual:Obstacle,includeService=false
+ visual:Obstacle,includeService=false,includeCharacter=false
 ):boolean{
  return (RIGID_BOX_FAMILIES.has(visual.fixture??'crate')||
-  (includeService&&SERVICE_BOX_FAMILIES.has(visual.fixture??'crate')))&&
+  (includeService&&SERVICE_BOX_FAMILIES.has(visual.fixture??'crate'))||
+  (includeCharacter&&CHARACTER_RIGID_FAMILIES.has(visual.fixture??'crate')))&&
   visual.artCondition===undefined&&visual.artSurface===undefined&&
   visual.artVariant===undefined&&
   Number.isFinite(visual.w)&&Number.isFinite(visual.h)&&
@@ -90,6 +106,12 @@ function makePrototype(visual:Obstacle,index:number){
  };
  renderFixtureVisual(root,visual,index,ctx,
   base.wood,base.steel,base.olive,base.metal);
+ // Character silhouettes may create cylinders, tori and prisms directly,
+ // rather than through ctx.box. Record EVERY authored source buffer before
+ // the compiler replaces siblings, so orphaned geometry cannot leak.
+ root.traverse(node=>{
+  if(node instanceof THREE.Mesh)geometries.add(node.geometry);
+ });
  // The legacy scene batches these SAME rigid parts after authoring.
  // Perform the equivalent work once per model recipe, not per cover.
  consolidateStaticFixtureParts(root);
@@ -106,9 +128,10 @@ function makePrototype(visual:Obstacle,index:number){
 }
 export function acquireRigidFixtureTemplate(
  cache:StaticVisualTemplateLibrary,visual:Obstacle,index:number,
- ctx:FixtureVisualContext,palette:Palette,includeService=false
+ ctx:FixtureVisualContext,palette:Palette,includeService=false,
+ includeCharacter=false
 ):StaticVisualLease|null{
- if(!rigidFixtureTemplateEligible(visual,includeService))return null;
+ if(!rigidFixtureTemplateEligible(visual,includeService,includeCharacter))return null;
  const resolved=new Map<THREE.Material,THREE.Material>();
  return cache.acquire(recipeKey(visual,index),
   ()=>makePrototype(visual,index),{
