@@ -119,3 +119,26 @@ test('Operations uses wide workspace columns without narrowing mobile fallback',
  assert.match(desktop,/grid-template-columns:minmax\(0,1\.1fr\) minmax\(340px,\.9fr\)/);
  assert.match(desktop,/\.campaign-overview-support\{gap:16px\}/);
 });
+
+test('Cases board orders displayed contracts by campaign day and discloses its limit',()=>{
+ const ui=source('campaign-ui.ts');
+ const cases=ui.slice(ui.indexOf("const jobs=node('section','campaign-section')"),
+  ui.indexOf('grid.append(jobs)'));
+ assert.match(cases,/const openContracts=c\.contracts\.filter/);
+ assert.match(cases,/const sorted=\[\.\.\.openContracts\]\.sort\(\(a,b\)=>/);
+ assert.match(cases,/a\.deadline-b\.deadline\|\|a\.id\.localeCompare\(b\.id\)/);
+ assert.match(cases,/const visible=sorted\.slice\(0,3\)/);
+ assert.match(cases,/node\('p','campaign-contract-board-summary'/);
+ assert.match(cases,/node\('div','campaign-contract-board'\)/);
+ assert.match(cases,/for\(const contract of visible\)board\.append\(this\.contract\(contract,c\)\)/);
+ assert.match(cases,/button\('CONTINUE DEPLOYMENT'/);
+});
+
+test('Cases board stays single-column on phones and uses desktop columns when wide',()=>{
+ const css=source('campaign-style.css');
+ const cases=css.slice(css.indexOf('/* UI R15: fit the Cases board'));
+ assert.match(cases,/\.campaign-contract-board\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(cases,/@media\(min-width:900px\)/);
+ assert.match(cases,/grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
+ assert.match(cases,/\.campaign-contract:first-child\{grid-column:1\/-1\}/);
+});
