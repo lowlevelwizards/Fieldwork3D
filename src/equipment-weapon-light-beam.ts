@@ -7,6 +7,7 @@ import {type Door,type Segment,type Pt,type Obstacle}
 import {opticalBlockerSegments} from './breach-optical-occlusion.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration}
  from './equipment-weapon-assemblies.ts';
+import {mountedAccessorySeat} from './weapons/geometry/mounted-accessory-layout.ts';
 export const LIGHT_BEAM_HALF_ANGLE=.34;
 export const LIGHT_BEAM_RANGE=155;
 export const LIGHT_BEAM_SAMPLES=11;
@@ -14,7 +15,10 @@ export const LIGHT_BEAM_SAMPLES=11;
 export function weaponLightEmitter(muzzle:{x:number;z:number;yaw:number},
  configuration:WeaponConfiguration):Pt{
  const gun=resolveWeaponAssembly(configuration);
- const offset=(gun.muzzleX-gun.mounted.light.mountX)*gun.lengthScale;
+ // Visible lens and emitted cone share the same longitudinal origin.
+ const x=mountedAccessorySeat(configuration,'light')?.lens?.x??
+  gun.mounted.light.mountX;
+ const offset=(gun.muzzleX-x)*gun.lengthScale;
  return {x:muzzle.x-Math.cos(muzzle.yaw)*offset,
   y:muzzle.z-Math.sin(muzzle.yaw)*offset};
 }
