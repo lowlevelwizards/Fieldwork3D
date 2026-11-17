@@ -63,6 +63,13 @@ export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
  'optic-hk-claw':{id:'optic-hk-claw',name:'HK Claw Top Rail',
   slot:'opticMount',compatible:RAIL,massKg:.14,massX:-1.60,
   mountX:-1.60,mountY:4.05,mountZ:0,sightHeight:4.35},
+ /** Receiver-specific Soviet/Russian-style side bracket; neither a factory
+  * optic nor an adapter fitted automatically to every AK.
+  */
+ 'optic-ak-side-picatinny':{id:'optic-ak-side-picatinny',
+  name:'AK Side-Dovetail Picatinny Bridge',slot:'opticMount',
+  compatible:LONG,massKg:.18,massX:-2.02,
+  mountX:-2.02,mountY:3.36,mountZ:0,sightHeight:4.50},
  'muzzle-bare':{id:'muzzle-bare',name:'Bare Muzzle',slot:'muzzle',compatible:ALL,
   massKg:0,massX:19.5,mountX:19.5,mountY:0,mountZ:0,muzzleExtension:0},
  'muzzle-hider':{id:'muzzle-hider',name:'Flash Hider',slot:'muzzle',compatible:ALL,
@@ -143,17 +150,21 @@ export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  const receiverMounts=FAMILY_PARTS[build.parts.receiver]?.mounts??[];
  const handguardMounts=FAMILY_PARTS[build.parts.handguard]?.mounts??[];
  const supports=(role:'optic'|'opticMount'|'foregrip',
-  standard:'picatinny'|'hk-claw')=>
+  standard:'picatinny'|'hk-claw'|'ak-side-dovetail')=>
   [...receiverMounts,...handguardMounts].some(point=>
    point.role===role&&point.standard===standard);
  if(slot==='opticMount')return id==='optic-mount-none'||
-  (id==='optic-hk-claw'&&supports('opticMount','hk-claw'));
+  (id==='optic-hk-claw'&&supports('opticMount','hk-claw'))||
+  (id==='optic-ak-side-picatinny'&&
+   supports('opticMount','ak-side-dovetail'));
  // The SD is integral: never overlay a second detachable suppressor.
  if(slot==='muzzle'&&build.parts.receiver==='hk-mp5sd-integral')
   return id==='muzzle-bare';
  if(slot==='optic'&&id!=='optic-irons')
   return supports('optic','picatinny')||
-   (mount==='optic-hk-claw'&&supports('opticMount','hk-claw'));
+   (mount==='optic-hk-claw'&&supports('opticMount','hk-claw'))||
+   (mount==='optic-ak-side-picatinny'&&
+    supports('opticMount','ak-side-dovetail'));
  if(slot==='foregrip'&&id!=='foregrip-none')
   return supports('foregrip','picatinny');
  return true;
@@ -273,7 +284,15 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
    slot==='optic'&&build?.family==='hk'&&
     config.slots.opticMount==='optic-hk-claw'&&original.id!=='optic-irons'?
     {...original,mountX:original.mountX-1.60,mountY:original.mountY+1.50,
-     sightHeight:(original.sightHeight??2.6)+1.50}:original;
+     sightHeight:(original.sightHeight??2.6)+1.50}:
+   slot==='optic'&&build?.family==='ak'&&
+    config.slots.opticMount==='optic-ak-side-picatinny'&&
+    original.id!=='optic-irons'?
+    // Preserve gameplay optic type; its rearward side bridge is visible
+    // only with the separately selected adapter.
+    {...original,mountX:original.mountX-2.02,
+     mountY:original.mountY+.76,sightHeight:(original.sightHeight??2.6)+.76}:
+    original;
   mounted[slot]=part;
   mass+=part.massKg;weighted+=part.massKg*part.massX;
   inertia+=part.massKg*part.massX*part.massX;
