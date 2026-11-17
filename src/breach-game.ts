@@ -94,6 +94,7 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 
 import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
+import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 
 
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
@@ -269,6 +270,8 @@ export type TeamActor=Operator & {
   flashCharges:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
+ /** D9: authoritative interval since last resolved spoken challenge. */
+ lastChallengeAt?:number;
   lastFireRepositionAt:number;lastMissionEvadeAt:number;
   lastEnemyDoorCloseAt:number;
 };
@@ -542,6 +545,23 @@ export function planCivilianInteraction(s:Session,id:string,
  });
  if(queued)notify(s,(action==='secure'?'SECURE':'FOLLOW')+
    ' QUEUED — EXECUTES ON GO');
+ return queued;
+}
+/** D9: issue a spoken contact order only for a currently observed target.
+ * Planning never changes the enemy; physical sight is rechecked on GO. */
+export function planSuspectChallenge(s:Session,id:string,targetId:string):boolean{
+ const a=party(s,id),suspect=enemies(s).find(e=>e.id===targetId);
+ if(!a||!suspect||!canEdit(s)||a.health<=0||suspect.health<=0||
+    suspect.surrendered||!team(s).some(observer=>inSight(observer,suspect,s)))
+   return false;
+ const from=finalPoint(a);
+ if(d(from,suspect.p)>SUSPECT_CHALLENGE_RANGE||
+    !sweptBodyClear(from,suspect.p,s.doors,5.5,sessionWorldGeometry(s)))
+   return false;
+ const queued=addNode(s,id,'interact',from,{
+   objectId:'suspect:'+suspect.id,interaction:'challenge-suspect'
+ });
+ if(queued)notify(s,'CHALLENGE QUEUED — EXECUTES ON GO');
  return queued;
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){

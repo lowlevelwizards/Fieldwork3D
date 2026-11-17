@@ -1,5 +1,13 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
+import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
+import {assignDispatchCase} from './dispatch-case-selection.ts';
+import {advanceDispatchDepartment,initialDispatchDepartment,
+ validDispatchDepartment,validDispatchCareerReceipt,
+ type DispatchDepartmentV1,type DispatchCareerReceiptV1}
+ from './dispatch-department.ts';
+import {validDispatchForceHistory,type DispatchForceHistoryV1}
+ from './dispatch-force-review.ts';
 import {readCampaignRules,type CampaignRules} from './campaign-rules.ts';
 import {mayChooseCampaignContent,dispatchPilotUnclassifiedEditingEnabled}
  from './dispatch-campaign-eligibility.ts';
@@ -59,6 +67,8 @@ export type Contract={
  region:string;title:string;description:string;risk:1|2|3;
  intel:'floor-plan'|'unknown'|'scouted';reward:number;deadline:number;
  status:'available'|'accepted'|'completed'|'failed'|'expired';followUpOf?:string;
+ /** D8: optional authored incident; missing on all pre-D8 contracts. */
+ dispatchCase?:DispatchCaseV1;
 };
 export type CampaignReport={
  id:string;contractId:string;day:number;outcome:'success'|'failure';
@@ -66,6 +76,10 @@ export type CampaignReport={
  objective:boolean;events:CareerEvent[];
  performance?:OperatorPerformance[];gains?:SkillGains[];
  flashUsed?:number;
+ /** D10: optional evidence-only incident closeout; no extra score rule. */
+ dispatchForce?:DispatchForceHistoryV1;
+ /** D11: Dispatch-only standing and operating-support receipt. */
+ dispatchCareer?:DispatchCareerReceiptV1;
  stabilizedIds?:string[];criticalIds?:string[];evacuatedIds?:string[];
  medicalRemaining?:Record<string,FieldMedicalSupplies>;
 };
@@ -81,6 +95,8 @@ export type CampaignState={
  kitPresets:EquipmentPreset[];
  /** Optional v0.1 rules; absent on legacy saves, preserving their semantics. */
  rules?:CampaignRules;
+ /** D11: optional standing ledger; missing on pre-D11 Dispatch saves. */
+ dispatchDepartment?:DispatchDepartmentV1;
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -119,7 +135,7 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
    weaponConfiguration:issue.weaponConfiguration,
    armorCondition:initialArmorIntegrity(initialEquipmentLoadout(weapon))};
 }
-export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={}):Contract[]{
+export function createContracts(seed:number,day:number,existing:readonly Contract[]=[],pressure:Record<string,number>={},dispatch=false):Contract[]{
  const archive=existing.filter(c=>c.status!=='available'&&c.status!=='accepted').slice(-80);
  const active=existing.filter(c=>c.status==='available'||c.status==='accepted');
  const offers:Contract[]=[...active];
@@ -131,10 +147,12 @@ export function createContracts(seed:number,day:number,existing:readonly Contrac
   const region=REGIONS[(s>>>5)%REGIONS.length];
   const intensity=(pressure[region]??0)>1?1:0;
   const risk=Math.max(1,Math.min(3,1+(s%3)+intensity)) as 1|2|3;
-  offers.push({id,seed:s,kind:kind.kind,scale:s%4===0?'expanded':'standard',
+  const offer:Contract={id,seed:s,kind:kind.kind,scale:s%4===0?'expanded':'standard',
    region,title:kind.title,
    description:kind.description,risk,intel:s%3===0?'unknown':'floor-plan',
-   reward:240+risk*230,deadline:day+2+(s%3),status:'available'});
+   reward:240+risk*230,deadline:day+2+(s%3),status:'available'};
+  offers.push(dispatch?assignDispatchCase(offer,
+   [...archive,...offers].map(k=>k.dispatchCase?.incidentId).filter((id):id is string=>!!id)):offer);
  }
  return [...archive,...offers];
 }
@@ -148,12 +166,14 @@ export function newCampaign(seed:number,rules?:CampaignRules,name?:string):Campa
   ...(name!==undefined?{name:name.trim()}:{}),
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   squadIds:['rook','moss','ash','vale'],
-  contracts:createContracts(normalized,1),activeContractId:null,
+  contracts:createContracts(normalized,1,[],{},parsedRules?.template==='dispatch'),activeContractId:null,
   history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
   inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
     attachments:readAttachmentStock(null)},kitPresets:[],
-  ...(parsedRules?{rules:parsedRules}:{})});
+  ...(parsedRules?{rules:parsedRules}:{}),
+  ...(parsedRules?.template==='dispatch'?{
+   dispatchDepartment:initialDispatchDepartment()}: {})});
 }
 export function migrateLegacyRoster(campaign:CampaignState,legacy:RosterState):CampaignState{
  if(!legacy||legacy.version!==1||!Array.isArray(legacy.members))return campaign;
@@ -199,9 +219,25 @@ export function readCampaign(raw:string|null):CampaignState|null{
    if(!o||typeof o.id!=='string'||typeof o.callsign!=='string'||
      !SKILL_NAMES.every(k=>Number.isFinite(o.skills?.[k])&&Number.isFinite(o.experience?.[k])&&Number.isFinite(o.aptitudes?.[k])))return null;
   }
+  if(c.dispatchDepartment!==undefined&&
+    (parsedRules?.template!=='dispatch'||
+     !validDispatchDepartment(c.dispatchDepartment)))return null;
+  for(const report of c.history){
+   if(!report||typeof report!=='object')return null;
+   if(report.dispatchCareer!==undefined&&
+     (parsedRules?.template!=='dispatch'||
+      !validDispatchCareerReceipt(report.dispatchCareer)))return null;
+   if(report?.dispatchForce!==undefined&&
+
+     (parsedRules?.template!=='dispatch'||
+      !validDispatchForceHistory(report.dispatchForce)))return null;
+  }
   for(const contract of c.contracts){
    if(!contract||typeof contract.id!=='string'||!Number.isInteger(contract.seed)||
-     !CONTRACTS.some(k=>k.kind===contract.kind))return null;
+     !CONTRACTS.some(k=>k.kind===contract.kind)||
+     (contract.dispatchCase!==undefined&&
+       (parsedRules?.template!=='dispatch'||
+        !validDispatchCase(contract.dispatchCase,contract.kind))))return null;
   }
   const fallback=c.operators.slice(0,4).map(o=>o.id);
   const chosen=Array.isArray(c.squadIds)&&c.squadIds.length===4&&
@@ -258,6 +294,10 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const contract=c.contracts.find(k=>k.id===r.contractId&&k.status==='accepted');
  if(!contract)return c;
  const gained=r.outcome==='success'?contract.reward:0;
+ // Dispatch service settlement is pure and opt-in. Unreviewed historical
+ // evidence never becomes a fictitious clean-force finding.
+ const departmentCycle=c.rules?.template==='dispatch'?
+  advanceDispatchDepartment(c.dispatchDepartment,r):null;
  const participants=new Set(r.participatingIds);
  const casualties=new Set(r.casualties);
  const stabilized=new Set(r.stabilizedIds??[]);
@@ -309,6 +349,20 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
     day:c.day,operatorId:o.id,operationId:r.id,kind:'distinction',
     detail:'Earned distinction: '+milestone.label});
   }
+  // D11 service awards require the operator to participate in actual
+  // successful Dispatch settlements; no purely cosmetic auto-promotion.
+  if(departmentCycle&&r.outcome==='success'){
+   for(const award of [
+    {key:'dispatch-response',label:'Dispatch Response Citation',at:3},
+    {key:'dispatch-senior',label:'Dispatch Senior Service',at:8}
+   ]){
+    if(o.successful<award.at||distinctions.includes(award.label))continue;
+    distinctions.push(award.label);
+    careerEvents.push({id:r.id+'-'+o.id+'-'+award.key,day:c.day,
+     operatorId:o.id,operationId:r.id,kind:'distinction',
+     detail:'Earned distinction: '+award.label});
+   }
+  }
   return {...o,distinctions};
  });
  const day=c.day+1;
@@ -323,12 +377,14 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
  const nextKind=r.outcome==='success'?followupKind[contract.kind]:undefined;
  if(nextKind){
   const template=CONTRACTS.find(k=>k.kind===nextKind)!;
-  contracts.push({id:contract.id+'-followup-'+nextKind,
+  const followup:Contract={id:contract.id+'-followup-'+nextKind,
    followUpOf:contract.id,seed:hash(contract.seed^day^0x69e433a1)||1,
    kind:nextKind,scale:contract.scale,region:contract.region,
    title:template.title,description:template.description,
    risk:Math.min(3,contract.risk+1) as 1|2|3,
-   intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'});
+   intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'};
+  contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(followup,
+   contracts.map(k=>k.dispatchCase?.incidentId).filter((id):id is string=>!!id)):followup);
  }
  // The appliedResults gate above prevents replay/debrief double charging.
  const serials=c.inventory.serializedWeapons?.map(w=>{
@@ -337,13 +393,19 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   const actual=r.performance?.find(p=>p.id===owner.id)?.shots??0;
   return recordWeaponRounds(w,actual,c.day,r.id);
  });
- return {...c,day,funds:c.funds+gained,operators:developed,regionalPressure:pressure,
+ return {...c,day,
+  funds:c.funds+gained+(departmentCycle?.receipt.operatingSupport??0),
+  ...(departmentCycle?{dispatchDepartment:departmentCycle.state}:{}),
+  operators:developed,regionalPressure:pressure,
   inventory:{...c.inventory,serializedWeapons:serials},
   supplies:{...c.supplies,flash:Math.max(0,(c.supplies.flash??4)-clampFlashUse(r.flashUsed))},
-  activeContractId:null,history:[...c.history,{...r,gains:gainedSkills}].slice(-200),
+  activeContractId:null,
+  history:[...c.history,{...r,gains:gainedSkills,
+   ...(departmentCycle?{dispatchCareer:departmentCycle.receipt}:{})}].slice(-200),
   journal:[...c.journal,...r.events,...careerEvents].slice(-1000),
   appliedResults:[...c.appliedResults,r.id].slice(-500),
-  contracts:createContracts(c.seed,day,contracts,pressure)};
+  contracts:createContracts(c.seed,day,contracts,pressure,
+    c.rules?.template==='dispatch')};
 }
 
 /** Supplies are counted in actual rounds; no infinite free resupply. */

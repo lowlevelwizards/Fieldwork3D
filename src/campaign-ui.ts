@@ -7,6 +7,8 @@ import {isDispatchPilot,mayChooseCampaignContent}
  from './dispatch-campaign-eligibility.ts';
 import {campaignIncidentView} from './dispatch-incident-view.ts';
 import {historicalDispatchIncident} from './dispatch-incident-context.ts';
+import {initialDispatchDepartment,dispatchStandingTier}
+ from './dispatch-department.ts';
 import {renderCampaignCreator} from './ui/campaign-creator.ts';
 import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost,
  canApplyCampaignKitPreset} from './campaign-state.ts';
@@ -384,7 +386,31 @@ export class CampaignScreen{
     jobs.append(this.contract(contract,c));
    }
   }
-  grid.append(jobs);main.append(grid);
+  grid.append(jobs);
+  if(isDispatchPilot(c)){
+   const dept=c.dispatchDepartment??initialDispatchDepartment();
+   const record=node('section','campaign-section campaign-dispatch-service');
+   record.append(node('h2','','DEPARTMENT SERVICE RECORD'));
+   record.append(node('p','campaign-note',
+    'OPERATIONAL STANDING · '+dept.standing+' / 100 · '+
+    dispatchStandingTier(dept.standing)));
+   record.append(node('p','campaign-note',
+    'RESPONSES '+dept.responses+' · COMPLETED '+dept.successful+
+    ' · DOCUMENTED REVIEWS '+dept.reviewed+' · HARM INCIDENTS '+
+    dept.harmResponses));
+   record.append(node('p','campaign-note',
+    'RECORDED SURRENDERS '+dept.surrenders+
+    ' · SUPPLEMENTAL OPERATING SUPPORT '+dept.operatingSupport+' CR'));
+   if(dept.recognitions.length)record.append(node('p','campaign-note',
+    'SERVICE RECOGNITIONS · '+dept.recognitions.join(' · ')));
+   if(!c.dispatchDepartment)record.append(node('p','campaign-note',
+    'PRE-D11 DISPATCH SAVE · service tracking begins after the next resolved operation.'));
+   record.append(node('p','campaign-note',
+    'Standing reflects operational results, not a legal finding. '+
+    'Unreviewed incidents are not counted as civilian-harm-free.'));
+   grid.append(record);
+  }
+  main.append(grid);
   const chronicle=node('section','campaign-section campaign-chronicle');
   chronicle.append(node('h2','','UNIT CHRONICLE'));
   if(c.history.length===0)chronicle.append(node('p','campaign-note',
@@ -399,7 +425,27 @@ export class CampaignScreen{
      campaignIncidentView(c,contract).title:fallback))+' · '+
     report.outcome.toUpperCase()+' · '+report.grade+' · '+
     report.participatingIds.length+' OPERATORS'+
-    (incident?' · '+incident.reference:'')));
+    (incident?' · '+incident.reference:'')+
+    (incident&&report.dispatchForce?
+      ' · '+(report.dispatchForce.blueCivilianInjured+
+       report.dispatchForce.blueCivilianDown>0?
+       'CIVILIAN HARM RECORDED':'NO SQUAD CIVILIAN HARM RECORDED')+
+      ' · '+report.dispatchForce.surrenders+' SURRENDERS':'')+
+    (incident&&report.dispatchCareer?
+     ' · STANDING '+(report.dispatchCareer.standingDelta>0?'+':'')+
+     report.dispatchCareer.standingDelta+
+     ' → '+report.dispatchCareer.standingAfter+
+     ' · SUPPORT +'+report.dispatchCareer.operatingSupport+' CR':'')
+    ));
+  }
+  if(isDispatchPilot(c)){
+   const awarded=c.history.slice(-8).flatMap(h=>
+    h.dispatchCareer?.recognitions.map(name=>({
+     id:h.id,name,day:h.day
+    }))??[]);
+   for(const earned of awarded.slice(-3).reverse())
+    chronicle.append(node('p','campaign-note',
+     'DAY '+earned.day+' · UNIT RECOGNITION: '+earned.name));
   }
   const highlights=c.journal.filter(e=>['wounded','first-deployment','first-success','objective','intel','down','distinction'].includes(e.kind)).slice(-6).reverse();
   for(const e of highlights){
@@ -957,6 +1003,9 @@ export class CampaignScreen{
   const card=node('article','campaign-contract');
   card.append(node('strong','',view.title));
   if(isDispatchPilot(campaign))card.append(node('small','campaign-note',view.reference));
+  if(isDispatchPilot(campaign)&&c.dispatchCase)
+   card.append(node('small','campaign-note','SITE · '+
+    c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase()));
   card.append(node('div','campaign-muted',c.region+' · '+['','LOW','MODERATE','HIGH'][c.risk]+' RISK'));
   if(c.followUpOf)card.append(node('div','campaign-note','FOLLOW-UP OPERATION'));
   card.append(node('p','',view.description));
@@ -985,6 +1034,8 @@ export class CampaignScreen{
   };
   add('OBJECTIVE',view.description);
   if(isDispatchPilot(campaign))add('CALL REFERENCE',view.reference);
+  if(isDispatchPilot(campaign)&&contract.dispatchCase)
+   add('PROPERTY TYPE',contract.dispatchCase.archetype.replace(/-/g,' ').toUpperCase());
   add('ASSIGNMENT',contract.kind.replace(/-/g,' ').toUpperCase());
   add('LOCATION',contract.region);
   add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);

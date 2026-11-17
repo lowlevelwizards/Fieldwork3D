@@ -216,7 +216,13 @@ function tick(now:number){
   // A new map can install its own scene after PERF was armed. Configure
   // that scene once; never re-arm or allocate during each steady RAF.
   if(stage!==profiledStage){
-   stage?.setPerformanceProfilingEnabled?.(!!perfOverlay);
+   // E6.15: a newly installed scene must retain explicitly requested
+   // coldBench phase instrumentation, not just the visible PERF overlay.
+   // Preserve the original normal-play PERF path exactly; coldBench is
+   // a separate, explicit diagnostic override for its own captured site.
+   if(config.boot.coldBenchEnabled)
+    stage?.setPerformanceProfilingEnabled?.(true);
+   else stage?.setPerformanceProfilingEnabled?.(!!perfOverlay);
    profiledStage=stage;
    // Scene replacement resets lifetime upload counters; a new session on
    // the same persistent scene does not and must keep its first upload delta.
@@ -683,6 +689,10 @@ function tick(now:number){
   // Only the explicit benchmark samples these durations. A gap ending now
   // can be correlated with the PRIOR frame's work, not this frame's work.
   if(config.boot.coldBenchEnabled&&config.recordColdRuntimeFrame){
+   // E6.15: borrow P1.5's actual scene/pose timings only for the local
+   // diagnostic capture. Snapshot mutable stage counters now, so later
+   // renders cannot rewrite the preceding callback's evidence.
+   const coldStats=updated3d?stage?.performanceStats():null;
    const callbackEnd=performance.now();
    config.recordColdRuntimeFrame({
     at:now,gapMs:frameGap,
@@ -692,7 +702,16 @@ function tick(now:number){
     canvasMs:renderEnd-sceneUpdateEnd,
     postMs:diagnosticsStart-renderEnd,
     diagnosticsMs:callbackEnd-diagnosticsStart,
-    mode:frameMode,viewMode,submitted3D:updated3d
+    mode:frameMode,viewMode,submitted3D:updated3d,
+    sceneBreakdown:coldStats?.scenePhases?{...coldStats.scenePhases}:undefined,
+    actorBreakdown:coldStats?.actorPhaseCosts?{...coldStats.actorPhaseCosts}:undefined,
+    fogComposeMs:coldStats?.fogComposeMs??undefined,
+    shadowRefreshes:coldStats?.shadowRefreshes,
+    fogTextureUploads:coldStats?.fogTextureSubmittedUploads,
+    gpuDrawCalls:coldStats?.calls,
+     shadowSubmission:coldStats?.shadowSubmission?
+      {...coldStats.shadowSubmission}:undefined,
+     mainPassSubmission:coldStats?.mainPassSubmission??undefined
    });
   }
   scheduleFrame();

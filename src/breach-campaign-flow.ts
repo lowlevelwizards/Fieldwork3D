@@ -28,6 +28,8 @@ import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
 import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
+import {isDispatchPilot} from './dispatch-campaign-eligibility.ts';
+import {dispatchForceHistory} from './dispatch-force-review.ts';
 import {deployedDispatchIncident,validatedDispatchIncident,
  type DispatchIncidentContext} from './dispatch-incident-context.ts';
 import {validateCampaignDraft,type CampaignCreationDraft} from './campaign-creation.ts';
@@ -89,6 +91,8 @@ function recordCompletedOperation(){
     id:'operation-'+currentCampaign.activeContractId,contractId:currentCampaign.activeContractId,
     day:currentCampaign.day,outcome:state.phase==='won'?'success':'failure',
     grade:stats.grade,elapsed:stats.time,
+    ...(isDispatchPilot(currentCampaign)?
+      {dispatchForce:dispatchForceHistory(stats.forceReview)}:{}),
     participatingIds:members.map(a=>careerId(a.id)),
     casualties:members.filter(a=>a.health<=0).map(a=>careerId(a.id)),
     stabilizedIds:stats.stabilizedCasualties.map(careerId),

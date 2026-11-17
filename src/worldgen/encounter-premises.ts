@@ -31,6 +31,9 @@ export function chooseEncounterPremise(site:Site,context:EncounterContext={}):En
  if(mission==='rescue'){w.incident+=5;w.disturbance+=2;}
  if(mission==='hold'){w.defensive+=5;w.guarded+=2;}
  if(mission==='intel'){w.hideout+=2;w['after-hours']+=1;}
+ if(risk===2){w.guarded+=1.5;w.hideout+=1;}
+ if(risk===3){w.defensive+=5;w.guarded+=4;w.hideout+=2;w.routine*=.65;}
+ // Apply authored restrictions LAST so risk cannot resurrect excluded premises.
  if(context.enableIncidentIntent&&context.incidentId){
    const intent=INCIDENTS.find(i=>i.id===context.incidentId);
    if(intent?.premises?.length&&intent.missions.includes(mission)&&
@@ -41,8 +44,6 @@ export function chooseEncounterPremise(site:Site,context:EncounterContext={}):En
        // silently swap case families. Never sample that incompatible world.
        w[key]=intent.premises.includes(key)?w[key]*3:0;
  }
- if(risk===2){w.guarded+=1.5;w.hideout+=1;}
- if(risk===3){w.defensive+=5;w.guarded+=4;w.hideout+=2;w.routine*=.65;}
  const total=options.reduce((sum,key)=>sum+w[key],0);
  let roll=encounterRng(context.seed??site.seed,1)()*total;
  for(const key of options){roll-=w[key];if(roll<=0&&w[key]>0)return key;}

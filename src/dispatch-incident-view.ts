@@ -4,6 +4,7 @@
  */
 import type {CampaignState,Contract} from './campaign-state.ts';
 import {isDispatchPilot} from './dispatch-campaign-eligibility.ts';
+import {dispatchIncidentDefinition,validDispatchCase} from './dispatch-case-contract.ts';
 
 const LABELS:Partial<Record<Contract['kind'],Readonly<{
  title:string;context:string;
@@ -26,9 +27,11 @@ export function campaignIncidentView(campaign:CampaignState,contract:Contract):
   return {title:contract.title,description:contract.description,
    category:'CONTRACT',reference:contract.id,originalTitle:contract.title};
  const label=LABELS[contract.kind];
+ const def=validDispatchCase(contract.dispatchCase,contract.kind)?
+  dispatchIncidentDefinition(contract.dispatchCase.incidentId):undefined;
  return Object.freeze({
-  title:label?.title??contract.title,
-  description:label?.context??contract.description,
+  title:def?.name??label?.title??contract.title,
+  description:def?.contexts[0]??label?.context??contract.description,
   category:'DISPATCH / PILOT INCIDENT',
   reference:'DISPATCH · '+contract.id.toUpperCase(),
   originalTitle:contract.title

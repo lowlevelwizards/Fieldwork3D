@@ -72,6 +72,44 @@ export function renderStructuredMissionDetails(input:{
     'Accuracy and pauses are recorded statistics, not scoring modifiers.'));
   root.append(breakdown);
  }
+ if(incident){
+  const review=stats.forceReview;
+  root.append(section('DISPATCH FORCE & CONTACT REVIEW',[
+   ['EVIDENCE',review.status==='civilian-harm-documented'?
+     'BLUE-ATTRIBUTED CIVILIAN HARM RECORDED':
+     'NO BLUE-ATTRIBUTED CIVILIAN HARM IN RETAINED EVIDENCE'],
+   ['CIVILIANS INJURED BY SQUAD',String(review.blueCivilianInjured)],
+   ['CIVILIANS INCAPACITATED BY SQUAD',String(review.blueCivilianDown)],
+   ['OTHER-SIDE CIVILIAN INJURIES',String(review.redCivilianInjured)],
+   ['OTHER-SIDE CIVILIAN INCAPACITATIONS',String(review.redCivilianDown)],
+   ['SUSPECT CHALLENGES',String(review.challenges)],
+   ['RECORDED REFUSALS',String(review.refusals)],
+   ['RECORDED SURRENDERS',String(review.surrenders)]
+  ]));
+  // Incident entries are derived from physics and simulation event IDs;
+  // no unseen threat geometry, legal conclusion or guessed evidence.
+  if(review.harm.length){
+   const harm=make('section','fw-v5-mission-section');
+   harm.append(make('h3','','DOCUMENTED CIVILIAN IMPACTS'));
+   const rows=make('dl','fw-v5-mission-grid');
+   for(const hit of review.harm.slice(0,12)){
+    const officer=stats.squad.find(o=>o.id===hit.actorId);
+    rows.append(field('SHOT '+hit.shotId+' · '+timelineTime(hit.at),
+     (hit.sourceSide==='blue'?'SQUAD · '+(officer?.name??hit.actorId):
+      'OTHER SIDE · '+hit.actorId)+' / '+hit.victimId+
+      ' / '+hit.severity.toUpperCase()));
+   }
+   harm.append(rows);
+   if(review.harm.length>12)harm.append(make('p','fw-v5-mission-note',
+    'Showing 12 of '+review.harm.length+' retained impact records.'));
+   root.append(harm);
+  }
+  root.append(make('p','fw-v5-mission-note',
+   'Evidence review, not a legal ruling. Civilian-harm deductions above are '+
+   'the existing score penalty; no second penalty is applied.'));
+  root.append(make('p','fw-v5-mission-note',
+   'A lack of recorded civilian harm does not establish that every use of force was justified.'));
+ }
  root.append(section('FIRE & TEMPO',[
    ['SHOTS',String(stats.shots)],['HITS',String(stats.hits)],
    ['ACCURACY',stats.shots>0?stats.accuracy+'%':'—'],

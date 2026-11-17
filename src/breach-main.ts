@@ -1251,10 +1251,12 @@ function reset(next=state.variant,siteSeed?:number,
   encounterRisk?:1|2|3,deferScene=false,
   restartStart?:MissionStartSnapshot,
   training?:{squadSize:1|2|3|4;lighting:TrainingConfig['lighting'];
-   lightKit?:TrainingConfig['lightKit']}):void{
+   lightKit?:TrainingConfig['lightKit']},
+  dispatchCase?:import('./dispatch-case-contract.ts').DispatchCaseV1):void{
   missionController.transition(state,{
     variant:next,seed:siteSeed,missionOverride,prebuiltSite,
     risk:encounterRisk,deferScene,restartStart,
+    incidentId:dispatchCase?.incidentId,archetype:dispatchCase?.archetype,
     trainingSquadSize:training?.squadSize,trainingLighting:training?.lighting,
     trainingLightKit:training?.lightKit
   },{
@@ -1370,7 +1372,8 @@ const campaignFlow=createBreachCampaignFlow({
   getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
   getSession:()=>state,isReplaying:()=>replaying,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
   randomSeed:randomSiteSeed,
-  resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk),
+  resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk,
+    false,undefined,undefined,job.dispatchCase),
   launchQuickPlay,
   launchTraining:()=>trainingScreen.show(),
   openReplayLibrary:()=>replayLibrary.openFromMenu(),

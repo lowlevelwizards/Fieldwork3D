@@ -8,6 +8,7 @@ import {team,enemies} from './breach-session-selectors.ts';
 import {operationBrief,assessOperation,type OperationKind} from './breach-operations.ts';
 import {stabilizationSummary} from './breach-casualty-status.ts';
 import {attributableCivilianHarm} from './breach-civilian-harm.ts';
+import {assessDispatchForce} from './dispatch-force-review.ts';
 
 const near=(a:Pt,b:Pt,range:number)=>Math.hypot(a.x-b.x,a.y-b.y)<=range;
 
@@ -58,6 +59,8 @@ export function debrief(s:Session){
     c.injuryStage>0).length;
   const civilianDown=s.civilians.filter(c=>c.health<=0).length;
   const attributable=attributableCivilianHarm(s.civilianHarmEvents);
+  // Retrospective only: the reviewer never feeds AI, fog, or score rules.
+  const forceReview=assessDispatchForce(s.civilianHarmEvents,s.battleEvents);
   const assessment=assessOperation({
     outcome:s.phase==='won'?'success':'failure',
     kind:s.missionType as OperationKind,
@@ -83,6 +86,7 @@ export function debrief(s:Session){
     type:s.missionType,
     grade:assessment.grade,score:assessment.score,
     scoreComponents:assessment.scoreComponents,
+    forceReview,
     accuracy:assessment.accuracy,survived:assessment.survived,
     squad:own.map(a=>({id:a.id,name:a.name,
       survived:a.health>0,injury:a.injuryStage,

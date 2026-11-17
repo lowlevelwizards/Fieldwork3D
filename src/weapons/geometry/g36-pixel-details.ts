@@ -1,4 +1,4 @@
-/** G36 FT1.9D1: one 384x192 nearest-pixel atlas for readable exterior marks.
+/** G36 P5.3: one shared 384x192 pixel atlas for major exterior marks.
  * No added overlays, side mirrored ejection details, geometry count changes,
  * transparency, per-frame materials, per-instance texture uploads or shaders.
  * The same live-intended original G36 meshes are UV projected in place.
@@ -28,32 +28,35 @@ const zone=(x:number,y:number,x0:number,x1:number,y0:number,y1:number)=>
  */
 function ink(tile:Tile,x:number,y:number):number{
  if(tile==='guard-right'||tile==='guard-left'){
-  for(const center of [5.42,7.45,9.48,11.51])
-   if(zone(x,y,center-.64,center+.64,-.06,.44))return 105;
-  if(zone(x,y,4.92,12.45,-1.48,-1.35))return 206;
+  // Large molded recess illusion: one thick dark inset plus a broad
+  // shoulder/rim from existing UVs. No added geometry or draw calls.
+  for(const center of [5.42,7.45,9.48,11.51]){
+   if(zone(x,y,center-.81,center+.81,-.33,.72)){
+    if(zone(x,y,center-.65,center+.65,-.20,.55))return 91;
+    return 175;
+   }
+  }
   return 255;
  }
  if(tile==='receiver-right'){
-  if(zone(x,y,-.81,1.75,.12,.67))return 99;
-  if(zone(x,y,-5.35,2.38,-1.18,-1.08))return 205;
+  // One oversized receiver port, instead of a fine seam and controls.
+  if(zone(x,y,-.76,1.92,-.04,.81))return 125;
   return 255;
  }
  if(tile==='receiver-left'){
-  if(zone(x,y,-5.44,-1.30,.30,.43))return 213;
-  if(zone(x,y,-5.35,2.38,-1.18,-1.08))return 210;
+  // Opposite side should remain a clean polymer shell.
   return 255;
  }
  if(tile==='lower-right'||tile==='lower-left'){
-  if(zone(x,y,-5.40,2.50,-1.57,-1.44))return 208;
-  if(Math.hypot(x+4.95,y+2.16)<.38)return 124;
+  // No selector dots, copied lower seams or hidden micro markings.
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  if(y < -8.05)return 166;
-  const shift=Math.max(0,Math.min(5.0,-y-3.05))*.16;
-  for(const base of [-.66,.42,1.50])
-   if(Math.abs(x-(base+shift))<.135&&y< -3.3&&y> -7.45)
-    return 167;
+  // Smoky-polymer illusion: one wide translucent body facet, slightly
+  // darker foot and no tiny ribs, coupling lug meshes or alpha sorting.
+  if(y < -8.03)return 206;
+  const lean=Math.max(0,Math.min(5,-y-3.1))*.12;
+  if(zone(x-lean,y,-.50,1.34,-7.50,-3.18))return 222;
  }
  return 255;
 }
@@ -158,5 +161,5 @@ export function applyG36PixelDetails(root:THREE.Group):void{
 }
 export function g36PixelAtlasLayout(){
  return {width:TILE*COLS,height:TILE*ROWS,sideTiles:Object.keys(definitions),
-  ventsPerSide:4,magRibsPerSide:3,rightReceiverEjectionOnly:true};
+  ventsPerSide:4,magRibsPerSide:0,rightReceiverEjectionOnly:true};
 }

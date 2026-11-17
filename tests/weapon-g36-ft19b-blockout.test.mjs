@@ -72,8 +72,8 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  const triangles=meshes.reduce((sum,x)=>{
   const geo=x.geometry;return sum+(geo.index?.count??geo.getAttribute('position').count)/3;
  },0);
- assert.ok(meshes.length<=15, 'too many exterior draw meshes: '+meshes.length);
- assert.ok(triangles<=400, 'essential forms must stay under 400 triangles: '+triangles);
+ assert.ok(meshes.length<=16, 'too many exterior draw meshes: '+meshes.length);
+ assert.ok(triangles<=550, 'P5 production peer budget exceeded: '+triangles);
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
   'only the accepted original full-size model is an authored factory preset');
  assert.equal(Object.keys(FAMILY_PARTS).filter(id=>id.startsWith('g36-')).length,6);
@@ -108,15 +108,15 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   grip=one(g,'g36Grip'),upper=one(g,'g36ReceiverUpper');
  assert.ok(h&&s&&guard&&mag&&grip&&upper);
  assert.ok(bb(h).max.y>4,'raised original G36 bridge');
- assert.ok(bb(guard).max.z-bb(guard).min.z>2.7&&
-  bb(guard).max.z-bb(guard).min.z<3.0,'trimmed polymer envelope');
- assert.ok(bb(guard).max.y-bb(guard).min.y>3.0&&
-  bb(guard).max.y-bb(guard).min.y<3.5,'front wedge retains broad profile');
+ assert.ok(bb(guard).max.z-bb(guard).min.z>3.0&&
+  bb(guard).max.z-bb(guard).min.z<3.25,'purposefully broad fore-end shoulder');
+ assert.ok(bb(guard).max.y-bb(guard).min.y>3.55&&
+  bb(guard).max.y-bb(guard).min.y<3.85,'molded shoulder has useful vertical hierarchy');
  assert.ok(bb(mag).min.y> -8.40&&bb(mag).min.y< -8.20,
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.ok(meshCount<=15,'only two optical-face landmarks are permitted: '+meshCount);
+ assert.ok(meshCount<=16,'only three optical-face landmarks are permitted: '+meshCount);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -125,7 +125,7 @@ test('G36 C3: one faceted tapered fore-end is volumetric in top/front views',()=
  const shell=one(g,'g36LongHandguard');
  assert.ok(shell.userData.g36FacetedMoldedShell,'handguard must be a single 3D faceted volume');
  const geo=shell.geometry,attr=geo.getAttribute('position');
- assert.equal(attr.count,24,'three economical YZ octagonal cross-sections');
+ assert.equal(attr.count,32,'four intentional YZ octagonal cross-sections');
  const zAt=x=>{
   const v=[];
   for(let i=0;i<attr.count;i++)if(Math.abs(attr.getX(i)-x)<.02)v.push(Math.abs(attr.getZ(i)));
@@ -165,7 +165,7 @@ test('G36 C4: receiver jawline / true trigger opening, short but curved magazine
  assert.ok(hit(lower,2.70,-2.90),'molded magwell cheek must be part of lower');
  assert.ok(hit(lower,-5.30,-2.03),'grip-side receiver support remains connected');
  assert.deepEqual(G36_MAG30_OUTLINE,arMagazineOutline(G36_MAG30_CURVE),
-  'G36 uses true STANAG 30 outline but never its feed or surface material');
+  'G36 reuses centerline mathematics but owns distinct polymer proportions');
  assert.ok(bb(mag).min.y>-8.40&&bb(mag).min.y< -8.20);
  clearWeaponSilhouette(g);m.dispose();
 });

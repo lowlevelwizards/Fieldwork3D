@@ -16,7 +16,8 @@ test('campaign menu and results settlement remain delegated; Quick Play still op
  assert.match(main,/createBreachCampaignFlow/);
  assert.match(flow,/new CampaignScreen/);
  assert.match(flow,/resolveOperation\(currentCampaign,result\)/);
- assert.match(main,/reset\(0,job.seed,job.kind,undefined,job.risk\)/);
+ assert.match(main,/reset\(0,job.seed,job.kind,undefined,job.risk,/);
+ assert.match(main,/job\.dispatchCase\)/);
  // A6 moved after-mission action binding into its presentation owner.
  assert.match(screens,/port\.returnAfterCampaignMission\(\)/);
  assert.match(main,/const launchQuickPlay=\(\)=>quickPlayController\.customize\(\)/);

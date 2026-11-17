@@ -10,7 +10,10 @@ import {sitePowerControls,controlPosition,POWER_CONTROL_REACH,
 import {interruptsWatch} from '../breach-plan.ts';
 import {equippedEntryMethods} from '../equipment-entry-tools.ts';
 import {entryToolVerdict} from '../breach-entry-tools.ts';
-import {team,enemies,isSeen,plannedControl,liveVisibility,type Session,type TeamActor} from '../breach-game.ts';
+import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,type Session,type TeamActor} from '../breach-game.ts';
+import {SUSPECT_CHALLENGE_RANGE} from '../breach-suspect-compliance.ts';
+import {sweptBodyClear} from '../breach-navigation.ts';
+import {sessionWorldGeometry} from '../breach-world-context.ts';
 import {finalPoint} from '../breach-game.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from '../breach-context-placement.ts';
@@ -384,6 +387,11 @@ export function createTacticalPaletteController(config:{
   const civilianAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(state.civilians,at,c=>
       c.health>0&&liveVisibility(state,c.p)):null;
+  const suspectAtPlan=routeEndCivilianActions?
+    nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
+      team(state).some(observer=>inSight(observer,e,state))&&
+      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),
+      SUSPECT_CHALLENGE_RANGE):null;
   const casualtyAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(state.civilians,at,c=>
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
@@ -392,6 +400,7 @@ export function createTacticalPaletteController(config:{
     nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
     nearDoor:!door&&!!nearbyDoor,
     nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
+    nearSuspect:!!suspectAtPlan,
     escortableCivilian:!!civilianAtPlan&&
       civilianAtPlan.rescueTarget&&state.mission==='extract',
     nearCivilianCasualty:!!casualtyAtPlan,

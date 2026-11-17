@@ -1,7 +1,5 @@
-/** FT1.9E0: ONE pure-data entry contract for eventual integrated original G36.
- * This file intentionally registers nothing into live equipment/catalog until
- * explicit E-stage compatibility and game-scale operator evidence passes.
- * Art-only geometry coordinates, not mechanical manufacture or ballistic data.
+/** P5: authoritative live original-G36 service-art factory contract.
+ * Local art extents and animation presentation; no ballistic/feed migration.
  */
 import {G36_B_ART as A} from './g36-art-layout.ts';
 /** Stable shared identifiers; the blockout and eventual six-slot factory

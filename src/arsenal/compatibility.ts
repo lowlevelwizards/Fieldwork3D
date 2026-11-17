@@ -3,7 +3,7 @@
  */
 import {FAMILY_PART_SLOTS,FAMILY_PARTS,proposeFamilyPartChange,
  type FamilyPartSlot,type WeaponFamilyBuild} from '../equipment-weapon-families.ts';
-import {WEAPON_ATTACHMENTS,initialWeaponConfiguration,readWeaponConfiguration,
+import {WEAPON_ATTACHMENTS,initialWeaponConfiguration,selectWeaponFamilyPreset,readWeaponConfiguration,
  compatibleWeaponAttachment,weaponAttachmentAllowed,
  type WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {physicalAttachmentFitOptions}
@@ -49,9 +49,11 @@ export function arsenalReferenceIdentity(recipe:ArsenalRecipeV2):{
  const ref=recognized[0];
  const bodyChanged=FAMILY_PART_SLOTS.some(slot=>
   recipe.parts[slot]!==ref.legacy.parts[slot]);
- const defaults=initialWeaponConfiguration(recipe.weapon).slots;
+ // Main's factory-authored default prevents pristine G36 being marked modified.
+ const factory=selectWeaponFamilyPreset(
+  initialWeaponConfiguration(recipe.weapon),ref.legacy.id);
  const accessoriesChanged=ARSENAL_ACCESSORY_SLOTS.some(slot=>
-  recipe.accessories[slot]!==defaults[slot]);
+  recipe.accessories[slot]!==factory.slots[slot]);
  const modified=bodyChanged||accessoriesChanged;
  return {name:ref.name+(modified?' · Modified':''),referenceId:ref.id,
   modified,ambiguous:false};

@@ -1,0 +1,48 @@
+/** D9.1: one authoritative surrender transition for morale and spoken commands.
+ * Only previously observed physical threats can receive a voiced challenge.
+ * A refusal is not a reroll on each simulation tick.
+ */
+import type {Session,TeamActor} from './breach-game.ts';
+import type {BattleEvent} from './breach-combat.ts';
+import {wallSafeFall} from './breach-ground-geometry.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
+
+export const SUSPECT_CHALLENGE_RANGE=100;
+export const SUSPECT_CHALLENGE_SECONDS=.48;
+export const SUSPECT_CHALLENGE_COOLDOWN=6;
+
+export function challengeSuspectDecision(target:Pick<TeamActor,
+ 'health'|'surrendered'|'morale'|'suppression'|'injuryStage'|
+ 'lastChallengeAt'>,now:number):'ineligible'|'cooldown'|'surrender'|'refuse'{
+ if(target.health<=0||target.surrendered)return 'ineligible';
+ if(target.lastChallengeAt!==undefined&&
+    now-target.lastChallengeAt<SUSPECT_CHALLENGE_COOLDOWN)return 'cooldown';
+ // A verbal order is not a guaranteed arrest. An actively resisting,
+ // calm, unsupported civilian-safety situation cannot be coerced magically.
+ // Morale is existing defender authority, suppression is witnessed pressure.
+ const pressure=target.suppression+Math.min(2,target.injuryStage)*.11;
+ return target.morale<=.28&&pressure>=.24||
+   target.morale<=.48&&pressure>=.74?'surrender':'refuse';
+}
+export function commitSuspectSurrender(
+ s:Session,target:TeamActor,
+ notify:(s:Session,message:string)=>void,
+ battleEvent:(s:Session,kind:BattleEvent['kind'],actor:TeamActor|null,
+  p:{x:number;y:number},text:string,meta?:BattleEvent['meta'])=>void,
+ source:'morale'|'challenge'='morale',challengerId?:string):boolean{
+ if(target.health<=0||target.surrendered)return false;
+ target.surrendered=true;target.health=0;target.injuryStage=3;
+ target.lastDownAt=s.seconds;
+ const fall=wallSafeFall(target.p,target.heading,'slump',
+  sessionWorldGeometry(s).walls);
+ target.downPose=fall.pose;target.downClearance=fall.space;
+ target.velocity=0;target.nav=[];target.plan=[];
+ target.reload=0;target.reloadMode=null;
+ const message=target.name+' SURRENDERED'+
+   (source==='challenge'?' AFTER CHALLENGE':'');
+ notify(s,message);
+ battleEvent(s,'surrender',target,target.p,message,
+  {action:source==='challenge'?'suspect-compliance':'suspect-surrender',
+   targetId:target.id,...(challengerId?{contributorId:challengerId}:{})});
+ return true;
+}
