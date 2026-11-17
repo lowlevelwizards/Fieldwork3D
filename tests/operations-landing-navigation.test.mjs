@@ -69,15 +69,17 @@ test('replay library retains title-menu provenance through playback',()=>{
  assert.doesNotMatch(library,/let returnToMenu=false/);
 });
 
-test('Operations first viewport keeps readiness ahead of secondary controls',()=>{
+test('Operations first viewport keeps priority ahead of secondary controls',()=>{
  const ui=source('campaign-ui.ts');
  const overview=ui.slice(ui.indexOf("const overview=node('section','campaign-section campaign-overview')"),
   ui.indexOf('grid.append(overview,logistics)'));
- assert.match(overview,/overview\.insertBefore\(readiness,nextCard\.nextSibling\)/);
- assert.match(overview,/overview\.insertBefore\(stats,readiness\.nextSibling\)/);
- assert.match(overview,/overview\.insertBefore\(suppliesSummary,stats\.nextSibling\)/);
- assert.match(overview,/overview\.insertBefore\(shortcuts,suppliesSummary\.nextSibling\)/);
- assert.doesNotMatch(overview,/nextAction\.nextSibling/);
+ assert.match(overview,/const workspace=node\('div','campaign-overview-workspace'\)/);
+ assert.match(overview,/priority\.append\(nextCard,readiness\)/);
+ assert.match(overview,/support\.append\(stats,suppliesSummary,shortcuts\)/);
+ assert.match(overview,/if\(department\)support\.append\(department\)/);
+ assert.match(overview,/workspace\.append\(priority,support\)/);
+ assert.match(overview,/overview\.append\(workspace,footer\)/);
+ assert.doesNotMatch(overview,/overview\.insertBefore\(readiness/);
 });
 
 test('Operations primary action does not send an idle squad to an empty case board',()=>{
@@ -106,4 +108,14 @@ test('desktop title scene uses available screen space without changing phone nav
  assert.match(entry,/node\('p','campaign-landing-intro'/);
  assert.match(entry,/main\.append\(hero,actions,utility\)/);
  assert.match(entry,/subpage\.hidden=true;main\.hidden=false/);
+});
+
+test('Operations uses wide workspace columns without narrowing mobile fallback',()=>{
+ const css=source('campaign-style.css');
+ const desktop=css.slice(css.indexOf('/* UI R14: Operations Room uses its width'));
+ assert.match(desktop,/\.campaign-overview-workspace\{display:grid;grid-template-columns:minmax\(0,1fr\)/);
+ assert.match(desktop,/@media\(min-width:900px\)/);
+ assert.match(desktop,/\.campaign-shell\.campaign-wide:has\(\.campaign-tabs\)\{max-width:1140px\}/);
+ assert.match(desktop,/grid-template-columns:minmax\(0,1\.1fr\) minmax\(340px,\.9fr\)/);
+ assert.match(desktop,/\.campaign-overview-support\{gap:16px\}/);
 });
