@@ -29,7 +29,7 @@ type ObjectLike={isInstancedMesh?:boolean;isSkinnedMesh?:boolean;
   computeBoundingBox?:()=>void};
  matrixWorld?:{elements:ArrayLike<number>};
  castShadow?:boolean;receiveShadow?:boolean;
- name?:string;userData?:Record<string,unknown>;parent?:ObjectLike|null};
+ userData?:Record<string,unknown>;parent?:ObjectLike|null};
 function renderOwner(object:ObjectLike):string{
  let current:ObjectLike|null|undefined=object;
  for(let depth=0;depth<20&&current;depth++,current=current.parent){
