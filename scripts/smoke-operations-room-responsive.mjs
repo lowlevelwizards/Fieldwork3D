@@ -57,6 +57,32 @@ async function assess(browser,{name,width,height,mobile}){
     check(mobile?b.y>=a.y+a.height-8:b.x>=a.x+a.width-8,
      name+' '+tab+' layout is not '+(mobile?'stacked':'two-column'));
    }
+   // C1–C4 progressive-disclosure regressions: information stays accessible
+   // without forcing every roster and case detail into the initial scroll.
+   if(tab==='overview'){
+    check(await page.locator('.campaign-context:not([open])').count()===1,
+     name+' campaign settings must start collapsed');
+    check(await page.locator('.campaign-funds .campaign-day').count()===1,
+     name+' current day must remain visible');
+   }
+   if(tab==='personnel'){
+    const row=page.locator('.campaign-person-expand').first();
+    check(await row.count()===1,name+' missing operator disclosures');
+    check(await row.getAttribute('open')===null,name+' operator starts expanded');
+    await row.locator('summary').click();
+    check(await row.getAttribute('open')!==null,name+' operator did not expand');
+    check(await row.locator('.campaign-person-actions button').first().isVisible(),
+     name+' operator loadout action inaccessible');
+    await row.locator('summary').click();
+   }
+   if(tab==='contracts'){
+    const caseInfo=page.locator('.campaign-contract-intelligence').first();
+    check(await caseInfo.count()===1,name+' no case intelligence disclosure');
+    check(await caseInfo.getAttribute('open')===null,name+' case starts expanded');
+    await caseInfo.locator('summary').click();
+    check(await caseInfo.getAttribute('open')!==null,name+' case intelligence did not expand');
+    await caseInfo.locator('summary').click();
+   }
    await page.screenshot({path:out+'/'+name+'-'+tab+'.png',animations:'disabled'});
   }
   const last=page.locator('#campaign-tab-chronicle');
