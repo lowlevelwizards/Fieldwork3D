@@ -92,7 +92,7 @@ export class CampaignKitPreview{
   this.draw();
  }
  /** Move one canvas between rebuilt HTML hosts while maintaining its view state. */
- attachHost(host:HTMLElement):void{
+ attachHost(host:HTMLElement,drawImmediately=true):void{
   if(host===this.host)return;
   this.observer?.disconnect();
   this.host.removeEventListener('pointerdown',this.pointerDown);
@@ -112,7 +112,9 @@ export class CampaignKitPreview{
   host.addEventListener('pointerup',this.pointerUp);
   host.addEventListener('pointercancel',this.pointerUp);
   this.observer?.observe(host);
-  this.draw();
+  // Campaign updates the rig immediately after a host swap; avoid a stale
+  // pre-update render while preserving the default standalone behavior.
+  if(drawImmediately)this.draw();
  }
  isReady():boolean{return this.renderer!==null&&this.rig!==null;}
  private pointerDown=(event:PointerEvent)=>{

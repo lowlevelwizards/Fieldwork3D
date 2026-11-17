@@ -1825,7 +1825,7 @@ export class CampaignScreen{
    else this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
   }else{
    if(retainOperatorPreview&&this.preview){
-    this.preview.attachHost(preview);
+    this.preview.attachHost(preview,false);
     this.preview.updateEquipment(person.weapon,person.appearanceSeed,person.loadout,
      person.weaponConfiguration,person.magazines,person.wardrobe);
    }else{
