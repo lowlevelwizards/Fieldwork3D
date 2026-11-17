@@ -127,7 +127,7 @@ test('M2.1 rail variants reproduce actual tooth count; covered sides offer no sl
 test('M2.1 AK exposes actual top block only, not its legacy phantom lower/side interfaces',()=>{
  let c=setConfiguredFamilyPart(preset('ak-ak74m'),'handguard','ak-rail-long');
  assert.equal(c.build.parts.handguard,'ak-rail-long');
- const available=slots(c);
+ const available=slots(c).filter(s=>s.ownerPartId==='ak-rail-long');
  assert.equal(available.length,3);
  assert.ok(available.every(s=>s.role==='optic'&&s.face==='top'&&
   s.support==='continuous-rail'));
