@@ -53,6 +53,8 @@ export type MainPassAttribution=Readonly<{
  bufferCallsP95:number|null;reconciledWithNonShadowFrames:number;
  dominantMaterialTypes:readonly {type:string;drawsTotal:number}[];
  dominantOwners:readonly {owner:string;drawsTotal:number}[];
+ /** E6.18a: bounded source-family sample, not a full census. */
+ dominantSources:readonly {source:string;observedDraws:number}[];
  topMaterialInstances:readonly {
   id:string;label:string;type:string;observedDraws:number
  }[];
@@ -200,6 +202,7 @@ export class PostReadyRuntimeCapture{
   const mainFrames=detailed.flatMap(f=>f.mainPassSubmission?[f.mainPassSubmission]:[]);
   const types=new Map<string,number>();
   const owners=new Map<string,number>();
+  const sources=new Map<string,number>();
   const materials=new Map<string,{
    id:string;label:string;type:string;observedDraws:number}>();
   for(const frame of mainFrames){
@@ -207,6 +210,8 @@ export class PostReadyRuntimeCapture{
     types.set(item.type,(types.get(item.type)??0)+item.draws);
    for(const owner of frame.ownerDraws)
     owners.set(owner.owner,(owners.get(owner.owner)??0)+owner.draws);
+   for(const source of frame.sourceDraws??[])
+    sources.set(source.source,(sources.get(source.source)??0)+source.draws);
    for(const material of frame.topMaterials){
     const old=materials.get(material.id);
     if(old)old.observedDraws+=material.draws;
@@ -234,9 +239,12 @@ export class PostReadyRuntimeCapture{
     .slice(0,10),
    dominantOwners:[...owners].map(([owner,drawsTotal])=>({owner,drawsTotal}))
     .sort((a,b)=>b.drawsTotal-a.drawsTotal||a.owner.localeCompare(b.owner)),
+   dominantSources:[...sources].map(([source,observedDraws])=>({source,observedDraws}))
+    .sort((a,b)=>b.observedDraws-a.observedDraws||a.source.localeCompare(b.source))
+    .slice(0,16),
    topMaterialInstances:[...materials.values()].sort((a,b)=>
     b.observedDraws-a.observedDraws||a.id.localeCompare(b.id)).slice(0,12),
-   note:'E6.17 opt-in material buckets count actual nonshadow renderBufferDirect draw deltas. Individual material totals sample the top 12 materials per frame, not all. Observer adds CPU timing overhead; these frames are NOT an uninstrumented FPS A/B or hardware GPU timing.'
+   note:'E6.17 main-pass counts are actual nonshadow submissions. E6.18a source families use nearest named object/group, explicit fieldworkDrawFamily, or an unknown marker; dominantSources pool only each frame top 16, not a complete scene census. No material/object identity from one run is assumed stable in another. Observer adds CPU timing overhead; these are NOT uninstrumented FPS or GPU timings.'
   }:null;
   const sceneAttribution:LiveSceneAttribution|null=detailed.length?{
    frames:detailed.length,
