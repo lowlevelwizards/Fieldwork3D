@@ -15,8 +15,10 @@ export class LiveShadowSubmitProfiler{
  last:LiveShadowSubmissionSample|null=null;
  private capturing=false;private shadowWall=0;private shadowDraws=0;
  private invocations=0;private reliable=true;
- constructor(private readonly renderer:RendererLike,
-  private readonly now:()=>number=()=>performance.now()){
+ private readonly renderer:RendererLike;
+ private readonly now:()=>number;
+ constructor(renderer:RendererLike,now:()=>number=()=>performance.now()){
+  this.renderer=renderer;this.now=now;
   const target=renderer.shadowMap,original=target.render;
   if(typeof original!=='function')return;
   const profiler=this;
