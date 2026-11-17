@@ -649,7 +649,8 @@ export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:str
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return false;
- if(!isDispatchPilotCampaign(c))return true;
+ if(!isDispatchPilotCampaign(c)||
+  effectiveDispatchSetup(c).equipmentScope==='global')return true;
  if(member.weapon!==preset.weapon||
   !sameWeaponConfiguration(readWeaponConfiguration(preset.weaponConfiguration,preset.weapon),
    member.weaponConfiguration))return false;
