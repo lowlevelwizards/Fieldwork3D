@@ -4,7 +4,7 @@
  * One flat black silhouette or shared softly lit clay; only render on events.
  */
 import * as THREE from 'three';
-import {applyG36FactoryMaterials} from './weapons/geometry/g36-silhouettes.ts';
+import {applyG36FactoryMaterials,buildG36OriginalBlockout,type G36ArtReview} from './weapons/geometry/g36-silhouettes.ts';
 import {G36_B_ART} from './weapons/geometry/g36-art-layout.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from './breach-weapon-geometry.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-weapon-assemblies.ts';
@@ -55,6 +55,15 @@ g36.scale.x=weaponVisualLayout(g36Config).longitudinalScale;
 if(Math.abs(g36.scale.x-G36_B_ART.displayLongitudinalScale)>.001)
  throw Error('G36 rig presentation scale deviates from authored master');
 items.push({name:'G36 original',model:g36,pivot:new THREE.Group()});
+// P7 alternatives invoke the same actual source builder, not painted lookalikes.
+type ReviewMode='p6'|'lower'|'rear'|'sweep'|'combined';
+const reviewOptions:Readonly<Record<Exclude<ReviewMode,'p6'>,G36ArtReview>>={
+ lower:{optic:'lower-emphasis'},rear:{optic:'rear-integrated'},
+ sweep:{magazine:'curve'},
+ combined:{optic:'rear-integrated',magazine:'curve'}
+};
+const reviewModels=new Map<ReviewMode,THREE.Group>([['p6',g36]]);
+let review:ReviewMode='p6';
 for(const [name,weapon,preset] of names){
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration(weapon),preset);
  const model=buildWeaponSilhouette(weapon,mono,mono,cfg);
@@ -145,12 +154,12 @@ function setFinish(next:Finish):void{
  for(const {model} of items){
   model.traverse(node=>{if(node instanceof THREE.Mesh)node.material=material;});
  }
- if(finish==='factory')applyG36FactoryMaterials(g36,{
+ if(finish==='factory')applyG36FactoryMaterials(items[0].model,{
   polymer:HK_DARK_POLYMER,steel:HK_BLACK_METAL,
   magazine:G36_SMOKED_MAGAZINE,buttpad:FAL_VENT_SHADOW,
   optic:HK_DARK_POLYMER,muzzle:HK_MUZZLE_METAL
  });
- if(finish==='factory')applyG36PixelDetails(g36);
+ if(finish==='factory')applyG36PixelDetails(items[0].model);
  for(const id of ['flat','clay','factory'])
   document.getElementById(id)?.setAttribute('aria-pressed',String(id===finish));
  document.body.dataset.g36LabFinish=finish;
@@ -161,6 +170,29 @@ for(const id of ['side','quarter','opposite','top','front'] as const){
  if(!(btn instanceof HTMLButtonElement))throw Error('Missing G36 view '+id);
  btn.addEventListener('click',()=>setView(id));
 }
+function setReview(mode:ReviewMode):void{
+ if(mode===review)return;
+ const slot=items[0];
+ let next=reviewModels.get(mode);
+ if(!next){
+  next=buildG36OriginalBlockout(mono,reviewOptions[mode as Exclude<ReviewMode,'p6'>]);
+  next.scale.x=g36.scale.x;
+  reviewModels.set(mode,next);
+ }
+ slot.pivot.remove(slot.model);
+ slot.model=next;
+ slot.pivot.add(next);
+ review=mode;
+ document.body.dataset.g36LabReview=mode;
+ for(const id of ['p6','lower','rear','sweep','combined'] as const)
+  document.getElementById('review-'+id)?.setAttribute('aria-pressed',String(id===mode));
+ setFinish(finish);
+}
+for(const id of ['p6','lower','rear','sweep','combined'] as const){
+ const btn=document.getElementById('review-'+id);
+ if(!(btn instanceof HTMLButtonElement))throw Error('Missing G36 review '+id);
+ btn.addEventListener('click',()=>setReview(id));
+}
 for(const id of ['flat','clay','factory'] as const){
  const btn=document.getElementById(id);
  if(!(btn instanceof HTMLButtonElement))throw Error('Missing G36 finish '+id);
@@ -170,13 +202,15 @@ const observer=new ResizeObserver(render);
 observer.observe(mainCanvas);observer.observe(detailCanvas);
 window.addEventListener('pagehide',()=>{
  observer.disconnect();
- items.forEach(({model})=>clearWeaponSilhouette(model));
+ items.slice(1).forEach(({model})=>clearWeaponSilhouette(model));
+ for(const model of reviewModels.values())clearWeaponSilhouette(model);
  mono.dispose();clay.dispose();
  renderer.dispose();detailRenderer.dispose();
  thumbnail128.dispose();thumbnail64.dispose();
 },{once:true});
 document.body.dataset.g36LabView=view;
 document.body.dataset.g36LabFinish=finish;
+document.body.dataset.g36LabReview=review;
 render();
 document.body.dataset.g36LabReady='true';
 document.body.dataset.g36LabCount=String(items.length);

@@ -38,12 +38,26 @@ try{
    await page.waitForFunction(expected=>document.body.dataset.g36LabView===expected,id);
    await page.waitForTimeout(60);
   };
+  const review=async(id)=>{
+   await page.locator('#review-'+id).click();
+   await page.waitForFunction(expected=>document.body.dataset.g36LabReview===expected,id);
+  };
   const finish=async (button,id)=>{
    await page.getByRole('button',{name:button,exact:true}).click();
    await page.waitForFunction(expected=>document.body.dataset.g36LabFinish===expected,id);
   };
   await snap('.lab','g36-peers-side',10000);
   const side=await snap('#detail','g36-master-side',2000);
+  // Identical side/three-quarter framings: compare each trial with P6
+  // without changing any of the actual six peer rifle builders.
+  for(const mode of ['lower','rear','sweep','combined']){
+   await review(mode);
+   await snap('#detail','g36-p7-'+mode+'-side',2000);
+   await view('THREE-QUARTER','quarter');
+   await snap('#detail','g36-p7-'+mode+'-quarter',2000);
+   await view('SIDE','side');
+  }
+  await review('p6');
   for(const [button,id] of [
    ['THREE-QUARTER','three-quarter'],['OPPOSITE SIDE','opposite'],
    ['TOP','top'],['FRONT','front']
