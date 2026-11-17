@@ -21,7 +21,7 @@ export type PhysicalAttachmentPlacement=Readonly<{
  attachmentId:string;attachmentSlot:WeaponAttachmentSlot;
  /** Owner and exact face are stable even if candidate order changes. */
  ownerPartId:string;surfaceId:string;face:PhysicalMountFace;
- groupId:string;standard:'picatinny'|'hk-claw';
+ groupId:string;standard:'picatinny'|'hk-claw'|'ak-side-dovetail';
  supportIds:readonly string[];
  /** Center of actual visible accessory; attachment feet may be offset in X. */
  x:number;y:number;z:number;
@@ -81,7 +81,11 @@ const FOOTPRINTS:Readonly<Record<string,Footprint>>={
   requireBaseWithinRail:false,baseHalfX:2.65,bodyHalfX:2.68},
  'optic-hk-claw':{slot:'opticMount',role:'opticMount',standard:'hk-claw',
   faces:['left','right'],contactOffsets:[],clampHalfX:0,
-  requireBaseWithinRail:false,baseHalfX:0,bodyHalfX:0}
+  requireBaseWithinRail:false,baseHalfX:0,bodyHalfX:0},
+ 'optic-ak-side-picatinny':{slot:'opticMount',role:'opticMount',
+  standard:'ak-side-dovetail',faces:['left'],contactOffsets:[0],
+  clampHalfX:1.35,requireBaseWithinRail:true,
+  baseHalfX:2.45,bodyHalfX:0}
 };
 export const physicalAttachmentFootprint=(id:string):Footprint|undefined=>
  FOOTPRINTS[id];
@@ -150,14 +154,30 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
   s.standard===profile.standard&&profile.faces.includes(s.face));
  if(support.length===0){
   if(profile.role==='optic'&&
-   mounted.some(s=>s.role==='opticMount'&&s.standard==='hk-claw')&&
-   config.slots.opticMount!=='optic-hk-claw')
+   mounted.some(s=>s.role==='opticMount'&&
+    (s.standard==='hk-claw'||s.standard==='ak-side-dovetail'))&&
+   !['optic-hk-claw','optic-ak-side-picatinny'].includes(config.slots.opticMount))
    return fail('missing-adapter');
   return fail('no-physical-interface');
  }
  const results:PhysicalAttachmentPlacement[]=[];
  const errors:MountFitReason[]=[];
  let physicallySupportable=0;
+ if(profile.role==='opticMount'&&profile.standard==='ak-side-dovetail'){
+  // One continuous left-side receiver dovetail is the physical foundation.
+  // Its bridge is structural, so it does not obstruct its own top optic.
+  const bar=support.find(s=>s.support==='dovetail-bar'&&s.face==='left'&&
+   s.railEndX-s.railStartX>=4.90);
+  if(!bar)return fail('insufficient-support');
+  const center=bar.x;
+  if(center-profile.baseHalfX<bar.railStartX-.001||
+   center+profile.baseHalfX>bar.railEndX+.001)
+   return fail('insufficient-clearance');
+  const p=option(profile,attachmentId,[bar],center,'left',occupied);
+  return {attachmentId,feasible:!p.blocked,
+   options:p.blocked?[]:[p.placement],
+   reasons:p.blocked?['occupied']:[]};
+ }
  if(profile.role==='opticMount'){
   // The four distinct HK feet are one inseparable bridge. A single foot
   // must never imply that a complete claw adapter is supported.
@@ -241,14 +261,22 @@ export function physicalAttachmentFitOptions(config:WeaponConfiguration,
  // M2.4 will replace this coarse rule with optic-specific eye boxes.
  if(profile.role==='optic'&&attachmentId==='optic-magnified'&&
   results.some(x=>x.ownerPartId==='ak-rail-long')){
-  return fail('forward-eye-relief');
+  const rear=results.filter(x=>x.ownerPartId!=='ak-rail-long');
+  if(rear.length===0)return fail('forward-eye-relief');
+  // A rear AK side adapter takes precedence, and the unsuitable forward
+  // magnified position must never appear in the available choices.
+  results.splice(0,results.length,...rear);
  }
  if(results.length){
   // Stable, reversible default preference; a user-facing position choice
   // is M2.7 and saved location identity is M2.6.
   const preferredX=attachmentId==='optic-magnified'&&
+   config.slots.opticMount==='optic-ak-side-picatinny'?-3.02:
+   attachmentId==='optic-magnified'&&
    config.slots.opticMount==='optic-hk-claw'?-2.60:
    attachmentId==='optic-magnified'?.15:
+   attachmentId==='optic-reflex'&&
+   config.slots.opticMount==='optic-ak-side-picatinny'?-2.02:
    attachmentId==='optic-reflex'&&
    config.slots.opticMount==='optic-hk-claw'?-1.60:
    WEAPON_ATTACHMENTS[attachmentId]?.mountX??0;
