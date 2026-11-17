@@ -42,6 +42,8 @@ import type {FamilyPartSlot} from './equipment-weapon-families.ts';
 import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
 import {attachmentPrice,readAttachmentStock,returnAttachments}
  from './equipment-weapon-inventory.ts';
+import {resolveMountedAccessoryLayout}
+ from './weapons/geometry/mounted-accessory-layout.ts';
 import {recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
 import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
@@ -507,6 +509,11 @@ export function buyWeaponAttachment(c:CampaignState,partId:string):CampaignState
   attachments:{...c.inventory.attachments,
    [partId]:(c.inventory.attachments[partId]??0)+1}}};
 }
+/** Shared M2.6 physical guard for direct Armory and saved kit routes.
+ * Class-only legacy weapons still use their existing abstract equipment.
+ */
+const hasValidPhysicalLayout=(c:WeaponConfiguration):boolean=>
+ !c.build||resolveMountedAccessoryLayout(c).unresolved.length===0;
 /** Single-slot atomic stock transfer; no duplicate equipped copies. */
 export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  slot:WeaponAttachmentSlot,partId:string):CampaignState{
@@ -514,7 +521,7 @@ export function equipCampaignWeaponAttachment(c:CampaignState,id:string,
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=setWeaponAttachment(o.weaponConfiguration,slot,partId);
- if(next===o.weaponConfiguration)return c;
+ if(next===o.weaponConfiguration||!hasValidPhysicalLayout(next))return c;
  const paid=attachmentPrice(partId)>0;
  if(paid&&(c.inventory.attachments[partId]??0)<1)return c;
  const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
@@ -531,7 +538,8 @@ export function equipCampaignWeaponPreset(c:CampaignState,id:string,presetId:str
  const o=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!o)return c;
  const next=selectWeaponFamilyPreset(o.weaponConfiguration,presetId);
- if(sameWeaponConfiguration(next,o.weaponConfiguration))return c;
+ if(sameWeaponConfiguration(next,o.weaponConfiguration)||
+  !hasValidPhysicalLayout(next))return c;
  const attachments=returnAttachments(c.inventory.attachments,o.weaponConfiguration,next);
  return {...c,inventory:{...c.inventory,attachments},operators:c.operators.map(m=>m.id===id?
   {...m,weaponConfiguration:next,
@@ -570,6 +578,7 @@ export function equipCampaignWeapon(c:CampaignState,id:string,
  const targetConfig=resolveIssuedOrLegacy(
   changeWeaponPlatform(m.weaponConfiguration,weapon),weapon,
   starterWeaponPreset(m.id));
+ if(!hasValidPhysicalLayout(targetConfig))return c;
  const attachments=returnAttachments(c.inventory.attachments,
   m.weaponConfiguration,targetConfig);
  return reconcileCampaignWeaponOwnership({...c,inventory:{...c.inventory,attachments,weapons:{
@@ -653,6 +662,7 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  // Entire recipe is atomic. Never silently skip a missing primary weapon.
  if(member.weapon!==preset.weapon&&c.inventory.weapons[preset.weapon]<1)return c;
  const desired=readWeaponConfiguration(preset.weaponConfiguration,preset.weapon);
+ if(!hasValidPhysicalLayout(desired))return c;
  // Return obsolete paid parts before checking whether the saved recipe fits
  // finite workshop stock. Refuse the entire preset if any part is unavailable.
  const attachments=returnAttachments(c.inventory.attachments,
