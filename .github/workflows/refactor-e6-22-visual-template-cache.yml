@@ -1,0 +1,34 @@
+name: E6.22 immutable visual template cache
+on:
+  pull_request:
+    paths:
+      - 'src/rendering/fieldwork-visual-template-library.ts'
+      - 'src/rendering/fieldwork-model-compiler.ts'
+      - 'src/rendering/site-scene-lifecycle.ts'
+      - 'tests/refactor-e6-22-visual-template-library.test.mjs'
+      - '.github/workflows/refactor-e6-22-visual-template-cache.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: e6-22-template-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  compiled-templates:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Template lease/refcount, model compiler and site lifetime contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-22-visual-template-library.test.mjs \
+            tests/refactor-e6-21-owner-assembly.test.mjs \
+            tests/refactor-e6-20-universal-model-compiler.test.mjs \
+            tests/breach-static-batching-performance.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
