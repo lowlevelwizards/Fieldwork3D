@@ -66,6 +66,7 @@ if(quick){
    if(committed.state===campaign)return {ok:false,message:'Campaign Apply did not change'};
    campaign=committed.state;
    const persisted=readCampaign(JSON.stringify(campaign));
+   if(!persisted)throw Error('Campaign save failed to deserialize');
    const current=persisted.operators.find(o=>o.id==='rook');
    body.dataset.m28Applied=JSON.stringify({
     funds:persisted.funds,lightStock:persisted.inventory.attachments['light-compact']??0,
