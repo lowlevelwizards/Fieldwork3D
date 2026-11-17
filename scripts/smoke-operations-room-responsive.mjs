@@ -69,11 +69,11 @@ async function assess(browser,{name,width,height,mobile}){
     const row=page.locator('.campaign-person-expand').first();
     check(await row.count()===1,name+' missing operator disclosures');
     check(await row.getAttribute('open')===null,name+' operator starts expanded');
-    await row.locator('summary').click();
+    await row.locator(':scope > summary').click();
     check(await row.getAttribute('open')!==null,name+' operator did not expand');
     check(await row.locator('.campaign-person-actions button').first().isVisible(),
      name+' operator loadout action inaccessible');
-    await row.locator('summary').click();
+    await row.locator(':scope > summary').click();
    }
    if(tab==='contracts'){
     const caseInfo=page.locator('.campaign-contract-intelligence').first();
