@@ -55,6 +55,11 @@ export type MainPassAttribution=Readonly<{
  dominantOwners:readonly {owner:string;drawsTotal:number}[];
  /** E6.18a: bounded source-family sample, not a full census. */
  dominantSources:readonly {source:string;observedDraws:number}[];
+ /** E6.19: all actual transparent draws grouped by authoring reason. */
+ dominantTransparencyRoles:readonly {role:string;drawsTotal:number}[];
+ transparentRoleReconciledFrames:number;
+ transparentTaggedDrawsTotal:number;
+ transparentDrawsTotal:number;
  topMaterialInstances:readonly {
   id:string;label:string;type:string;observedDraws:number
  }[];
@@ -203,6 +208,7 @@ export class PostReadyRuntimeCapture{
   const types=new Map<string,number>();
   const owners=new Map<string,number>();
   const sources=new Map<string,number>();
+  const transparentRoles=new Map<string,number>();
   const materials=new Map<string,{
    id:string;label:string;type:string;observedDraws:number}>();
   for(const frame of mainFrames){
@@ -212,6 +218,9 @@ export class PostReadyRuntimeCapture{
     owners.set(owner.owner,(owners.get(owner.owner)??0)+owner.draws);
    for(const source of frame.sourceDraws??[])
     sources.set(source.source,(sources.get(source.source)??0)+source.draws);
+   for(const item of frame.transparentRoles??[])
+    transparentRoles.set(item.role,
+     (transparentRoles.get(item.role)??0)+item.draws);
    for(const material of frame.topMaterials){
     const old=materials.get(material.id);
     if(old)old.observedDraws+=material.draws;
@@ -220,6 +229,12 @@ export class PostReadyRuntimeCapture{
    }
   }
   const mainReliable=mainFrames.filter(f=>f.reliable);
+  const transparentRoleReconciledFrames=mainReliable.filter(f=>
+   f.transparentDraws===(f.transparentRoles??[]).reduce((n,r)=>n+r.draws,0)).length;
+  const transparentDrawsTotal=mainReliable.reduce((n,f)=>n+f.transparentDraws,0);
+  const transparentTaggedDrawsTotal=mainReliable.reduce((n,f)=>n+
+   (f.transparentRoles??[]).filter(r=>r.role!=='unclassified')
+    .reduce((m,r)=>m+r.draws,0),0);
   const reconciled=detailed.filter(f=>f.mainPassSubmission?.reliable&&
    f.shadowSubmission?.drawCountsReliable&&
    f.mainPassSubmission.drawCalls===f.shadowSubmission.nonShadowDrawCalls).length;
@@ -242,9 +257,15 @@ export class PostReadyRuntimeCapture{
    dominantSources:[...sources].map(([source,observedDraws])=>({source,observedDraws}))
     .sort((a,b)=>b.observedDraws-a.observedDraws||a.source.localeCompare(b.source))
     .slice(0,16),
+   dominantTransparencyRoles:[...transparentRoles]
+    .map(([role,drawsTotal])=>({role,drawsTotal}))
+    .sort((a,b)=>b.drawsTotal-a.drawsTotal||a.role.localeCompare(b.role))
+    .slice(0,24),
+   transparentRoleReconciledFrames,transparentTaggedDrawsTotal,
+   transparentDrawsTotal,
    topMaterialInstances:[...materials.values()].sort((a,b)=>
     b.observedDraws-a.observedDraws||a.id.localeCompare(b.id)).slice(0,12),
-   note:'E6.17 main-pass counts are actual nonshadow submissions. E6.18a source families use nearest named object/group, explicit fieldworkDrawFamily, or an unknown marker; dominantSources pool only each frame top 16, not a complete scene census. No material/object identity from one run is assumed stable in another. Observer adds CPU timing overhead; these are NOT uninstrumented FPS or GPU timings.'
+   note:'E6.19 reports transparent draws in exhaustive authoring-reason buckets (including unclassified) and reconciles these against actual transparent renderBufferDirect draws. E6.18a source families remain a per-frame top-16 sample, not a full census. No visual, fog, material, renderer or simulation changes. Instrumentation wall time is not GPU timing or an uninstrumented FPS benchmark.'
   }:null;
   const sceneAttribution:LiveSceneAttribution|null=detailed.length?{
    frames:detailed.length,

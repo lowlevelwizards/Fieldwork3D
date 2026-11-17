@@ -174,6 +174,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         const overlay=host.plane(group,room.x+room.w/2,room.y+room.h/2,
           room.w-floorInset,room.h-floorInset,.04,material);
         overlay.castShadow=false;overlay.receiveShadow=false;
+        overlay.userData.fieldworkDrawFamily='room-floor-weathering';
+        overlay.userData.fieldworkTransparencyRole='room-floor-weathering';
       }
       // Pixel tile/board joints are already in the shared repeating texture.
       // Avoid redundant grout meshes and draw calls.
@@ -272,9 +274,12 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const roof=new THREE.Group();
       roof.visible=false;host.root.add(roof);
       host.roofGroups.set(room.id,roof);
-      host.box(roof,room.x+room.w/2,WALL_VISUAL_HEIGHT+3,room.y+room.h/2,
+      const slab=host.box(roof,room.x+room.w/2,WALL_VISUAL_HEIGHT+3,room.y+room.h/2,
         Math.max(12,room.w+2),2,Math.max(12,room.h+2),
-        host.roofMaterial,false).receiveShadow=false;
+        host.roofMaterial,false);
+      slab.receiveShadow=false;
+      slab.userData.fieldworkDrawFamily='room-roof';
+      slab.userData.fieldworkTransparencyRole='room-roof';
     }
     const wallMat=host.solid(age(theme.wall,wallPixelSurface(site.archetype)),.94,wallPixelSurface(site.archetype)),
       capMat=host.solid(theme.cap,.94,'concrete');
@@ -299,6 +304,9 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
           node.material=material;
         }
         node.userData.fogFacade=true;
+        node.userData.fieldworkDrawFamily='known-exterior-detail';
+        node.userData.fieldworkTransparencyRole=original.transparent?
+          'facade-existing-translucent':'known-exterior-detail';
         node.renderOrder=1002;
       });
     };
@@ -318,6 +326,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const body=host.box(group,x,WALL_VISUAL_HEIGHT/2,z,
         len,WALL_VISUAL_HEIGHT,9,individualWall);
       body.rotation.y=angle;
+      body.userData.fieldworkDrawFamily='structural-wall-body';
+      // Dynamic reason is assigned by the existing cutaway loop.
       // Whole-wall weathering follows the actual structural wall mesh.
       // Both faces share one deterministic texture, while a single instance
       // controls opacity during close-camera cutaways.
@@ -343,6 +353,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         // transparent planes this submits one WebGL draw for each wall.
         const wearMesh=new THREE.Mesh(doubleSidedWallWear(len,WALL_VISUAL_HEIGHT-.4),material);
         wearMesh.castShadow=false;wearMesh.receiveShadow=false;
+        wearMesh.userData.fieldworkDrawFamily='wall-weathering';
+        wearMesh.userData.fieldworkTransparencyRole='wall-weathering';
         body.add(wearMesh);
       }
       host.walls.push({mesh:body,mid:{x,y:z},segment:wall,index,exterior});
@@ -358,6 +370,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
        host.wallMaterials.add(individualFoot);
        const foot=host.box(group,x,2,z,len,4,12,individualFoot,false);
        foot.rotation.y=angle;
+       foot.userData.fieldworkDrawFamily='structural-wall-skirting';
        host.walls.push({mesh:foot,mid:{x,y:z},segment:wall,index,exterior});
       const individualCap=capMat.clone();
       host.wallMaterials.add(individualCap);
@@ -371,6 +384,7 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
       const cap=host.box(group,capX,WALL_VISUAL_HEIGHT+.3,capZ,
         capLength,2,11,individualCap,false);
       cap.rotation.y=angle;
+      cap.userData.fieldworkDrawFamily='structural-wall-cap';
       host.walls.push({mesh:cap,mid:{x,y:z},segment:wall,index,exterior});
     }
     for(const joint of capJoins.junctions){
