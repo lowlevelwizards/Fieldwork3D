@@ -34,7 +34,7 @@ const afterSide=(events:readonly CivilianHarmEvent[],side:'blue'|'red')=>
  attributableCivilianHarm(events.filter(e=>e.sourceSide===side)
   .map(e=>({...e,sourceSide:'blue' as const})));
 const isSafeCount=(v:unknown):v is number=>
- Number.isSafeInteger(v)&&typeof v==='number'&&v>=0&&v<=100000;
+ typeof v==='number'&&Number.isSafeInteger(v)&&v>=0&&v<=100000;
 
 export function validDispatchForceHistory(value:unknown):
  value is DispatchForceHistoryV1{
