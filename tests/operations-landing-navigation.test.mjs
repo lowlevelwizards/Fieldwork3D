@@ -28,6 +28,21 @@ test('landing routes the active saved campaign through one primary action',()=>{
  assert.doesNotMatch(entry,/ACTIVE SLOT/);
 });
 
+test('compact title keeps safe accessibility and nested menu navigation',()=>{
+ const ui=source('campaign-ui.ts');
+ const css=source('campaign-style.css');
+ const entry=ui.slice(ui.indexOf(' entry(hasSave:boolean'),
+  ui.indexOf(' dispatchCreator(){'));
+ assert.match(entry,/subpage\.addEventListener\('keydown'/);
+ assert.match(entry,/event\.key!=='Escape'/);
+ assert.match(entry,/trigger\.focus\(\{preventScroll:true\}\)/);
+ assert.match(entry,/arsenal\.href='\.\/arsenal\.html'/);
+ assert.match(css,/height:100dvh/);
+ assert.match(css,/max-height:540px/);
+ assert.match(css,/prefers-reduced-motion:reduce/);
+ assert.match(css,/campaign-landing-choices:has\(> :only-child\)/);
+});
+
 test('restart from Settings dismisses the sheet then reopens the briefing',()=>{
  const main=source('breach-main.ts');
  const screens=source('ui/breach-mission-screens.ts');

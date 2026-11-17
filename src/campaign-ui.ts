@@ -140,8 +140,17 @@ export class CampaignScreen{
   // Favor the actual active slot, not the historically first (legacy) handler.
   const selected=available.find(([slot])=>slot===active)??available[0];
   const main=node('main','campaign-shell campaign-landing');
+  main.setAttribute('aria-label','Fieldwork main menu');
   const subpage=node('section','campaign-shell campaign-landing campaign-landing-subpage');
+  subpage.setAttribute('aria-label','Menu details');
   subpage.hidden=true;
+  // Escape reverses local menu navigation without leaving the current game.
+  subpage.addEventListener('keydown',event=>{
+   if(event.key!=='Escape')return;
+   const back=subpage.querySelector<HTMLButtonElement>('.campaign-landing-back');
+   if(!back)return;
+   event.preventDefault();back.click();
+  });
   const showSubpage=(title:string,lead:string,trigger:HTMLElement,
    populate:(target:HTMLElement)=>void)=>{
    const back=button('BACK',()=>{subpage.hidden=true;main.hidden=false;
@@ -261,12 +270,11 @@ export class CampaignScreen{
   actions.append(resume,choices,training);
   const utility=node('nav','campaign-landing-utility');
   utility.setAttribute('aria-label','Creative tools and replays');
-  utility.append(
-   button('ARSENAL',()=>{window.location.href='./arsenal.html';},
-    'campaign-landing-link'),
+  const arsenal=node('a','campaign-landing-link','ARSENAL');
+  arsenal.href='./arsenal.html';
+  utility.append(arsenal,
    button('OPERATOR STUDIO',this.handlers.openMenuStudio,'campaign-landing-link'),
-   button('REPLAYS',this.handlers.openReplayLibrary,'campaign-landing-link')
-  );
+   button('REPLAYS',this.handlers.openReplayLibrary,'campaign-landing-link'));
   main.append(hero,actions,utility);
   this.root.append(main,subpage);
  }

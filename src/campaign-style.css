@@ -394,6 +394,7 @@
  font:750 11px var(--fw-font-menu);letter-spacing:.04em;
 }
 .campaign-landing-choices{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.campaign-landing-choices:has(> :only-child){grid-template-columns:minmax(0,1fr)}
 .campaign-shell.campaign-landing .campaign-landing-option{
  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
  gap:6px;padding:14px 15px;
@@ -437,6 +438,11 @@
 }
 .campaign-landing-subpage{
  justify-content:flex-start;height:auto;min-height:100dvh;gap:18px;
+}
+.campaign-landing-subpage:not([hidden]){animation:fw-landing-enter .17s ease-out both}
+@keyframes fw-landing-enter{
+ from{opacity:.35;transform:translateY(7px)}
+ to{opacity:1;transform:translateY(0)}
 }
 .campaign-landing-subhead{display:grid;gap:10px;border-bottom:1px solid #50685b9c;padding-bottom:14px}
 .campaign-shell.campaign-landing .campaign-landing-back{
@@ -496,6 +502,7 @@
  .campaign-shell.campaign-landing .campaign-landing-card,
  .campaign-shell.campaign-landing .campaign-landing-option,
  .campaign-shell.campaign-landing .campaign-landing-switch{transition:none}
+ .campaign-landing-subpage:not([hidden]){animation:none}
 }
 
 /* D13: compact department identity and truthful procurement; no game-loop work. */
