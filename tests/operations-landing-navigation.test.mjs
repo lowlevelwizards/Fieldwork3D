@@ -264,3 +264,36 @@ test('Counter layout preserves five evenly fitting phone tabs and selected contr
  assert.match(layout,/@media\(max-width:640px\)/);
  assert.match(layout,/\.campaign-tab-count\{position:absolute;right:2px;top:2px/);
 });
+
+test('Operations preserves focused controls through purchase, treatment and assignment refreshes',()=>{
+ const ui=source('campaign-ui.ts');
+ const home=ui.slice(ui.indexOf(' home(c:CampaignState,slot?:CampaignSlot)'),
+  ui.indexOf(' private armory(c:CampaignState,id:string)'));
+ assert.match(home,/const wasInOperations=!this\.root\.hidden&&/);
+ assert.match(home,/const focusedControl=wasInOperations&&this\.root\.contains\(document\.activeElement\)\?/);
+ assert.match(home,/const focusedLabel=focusedControl\?\.getAttribute\('aria-label'\)/);
+ assert.match(home,/if\(restoreScroll>0\)this\.root\.scrollTop=restoreScroll/);
+ assert.match(home,/if\(focusedLabel\)\{/);
+ assert.match(home,/\.find\(control=>control\.getAttribute\('aria-label'\)===focusedLabel&&/);
+ assert.match(home,/!control\.matches\(':disabled'\)/);
+ assert.match(home,/restored\?\?nav\.querySelector<HTMLElement>\('\[aria-selected="true"\]'\)/);
+ assert.match(home,/\.focus\(\{preventScroll:true\}\)/);
+});
+
+test('Operator action labels are unique by callsign while retaining existing handlers',()=>{
+ const ui=source('campaign-ui.ts');
+ const personnel=ui.slice(ui.indexOf("const personnel=node('section','campaign-section')"),
+  ui.indexOf("const logistics=node('section','campaign-section')"));
+ for(const label of [
+  "Open '+p.callsign+' loadout",
+  "Resupply ammunition for '+p.callsign",
+  "Reissue medical supplies for '+p.callsign",
+  "Treat '+p.callsign",
+  "Retire '+p.callsign"
+ ])assert.ok(personnel.includes(label),'Missing operator-scoped control '+label);
+ for(const handler of [
+  'this.handlers.resupply(p.id)','this.handlers.resupplyMedical(p.id)',
+  'this.handlers.treat(p.id)','this.handlers.retire(p.id)',
+  'this.handlers.assignSlot(slot,picker.value)'
+ ])assert.ok(personnel.includes(handler),'Existing action changed '+handler);
+});
