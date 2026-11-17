@@ -115,7 +115,7 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  reflex.userData.g36UpperReflex=true;
  const bigLens=box('receiver',-.86,3.57,0,.22,.94,1.16);
  bigLens.userData.g36OpticFace=true;
- const smallLens=box('receiver',-2.41,4.32,0,.22,.63,1.18);
+ const smallLens=box('receiver',-2.41,4.32,0,.22,.70,1.18);
  smallLens.userData.g36UpperReflexWindow=true;
 
  // Four-sided wedge, no physical trigger-guard frame or micro-controls.
