@@ -35,7 +35,8 @@ test('M3.0C3 real AKMS, AKS-74U and M4 remain fully selectable with isolated mag
  for(const id of ids){
   const config=load(id),saved=structuredClone(config);
   const steel=new THREE.MeshBasicMaterial(),polymer=new THREE.MeshBasicMaterial();
-  const root=buildWeaponSilhouette(config.weapon,steel,polymer,config);
+  const root=buildWeaponSilhouette(config.weapon,steel,polymer,config,
+   {rigidCompilation:'disabled'});
   try{
    const base=measureWeaponVisual(root);
    const bodyBounds=new THREE.Box3().setFromObject(root);
