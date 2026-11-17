@@ -1855,7 +1855,7 @@ export class CampaignScreen{
    // navigation cannot escape a modal with extra interactive content.
    const focusable=Array.from(panel.querySelectorAll<HTMLElement>(
     'button:not(:disabled),summary,a[href],select:not(:disabled),[tabindex]:not([tabindex="-1"])'
-   )).filter(el=>el.getClientRects().length>0&&!el.closest('details:not([open])'));
+   )).filter(el=>el.getClientRects().length>0);
    const first=focusable[0],last=focusable[focusable.length-1];
    if(!first||!last)return;
    const active=document.activeElement;
