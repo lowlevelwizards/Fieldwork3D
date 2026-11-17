@@ -39,12 +39,14 @@ try{
    throw Error('Readiness technical data is not available on request');
   if(await page.locator('.campaign-kit-presets').count()!==1)
    throw Error('Saved campaign kit presets were lost');
+  const tabs=armory.locator('.campaign-kit-categories [role="tab"]');
+  if(await tabs.count()!==5)throw Error('Equipment category navigation incomplete');
+  await tabs.filter({hasText:'PROTECTION'}).click();
   const protection=armory.locator('[data-loadout-group="protection"]');
-  await protection.locator(':scope > summary').click();
   if(!await protection.getByLabel(/Select armor for/i).isVisible())
    throw Error('Armor equipment selector is not reachable');
+  await tabs.filter({hasText:'CARRY'}).click();
   const carry=armory.locator('[data-loadout-group="carry"]');
-  await carry.locator(':scope > summary').click();
   if(!await carry.getByLabel(/Select rig for/i).isVisible())
    throw Error('Carry equipment selector is not reachable');
   await page.getByRole('button',{name:'APPEARANCE · OPEN STUDIO'}).click();

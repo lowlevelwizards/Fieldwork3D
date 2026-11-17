@@ -46,7 +46,7 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import './campaign-style.css';
-import {buildQuickLoadoutGroups,loadoutGroupForSlot,
+import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
  newCampaign:()=>void;continueCampaign:()=>void;quickPlay:()=>void;training:()=>void;
@@ -1420,9 +1420,43 @@ export class CampaignScreen{
    'Presets save a configuration, not copies of purchased equipment. Applying one requires an available primary weapon.'));
   editor.append(node('h2','','EQUIPMENT'));
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
-  const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,group=>{
+  const categoryBar=node('div','campaign-kit-categories');
+  categoryBar.setAttribute('role','tablist');
+  categoryBar.setAttribute('aria-label','Equipment categories');
+  const categoryTabs=new Map<QuickLoadoutGroup,HTMLButtonElement>();
+  const setCategory=(group:QuickLoadoutGroup)=>{
    this.activeKitGroup=group;
+   for(const [key,control] of categoryTabs){
+    control.setAttribute('aria-selected',String(key===group));
+    control.tabIndex=key===group?0:-1;
+   }
+  };
+  const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,setCategory);
+  for(const definition of QUICK_LOADOUT_GROUPS){
+   const group=definition.id;
+   const select=button(definition.title,()=>{
+    grouped.group[group].open=true;
+    setCategory(group);
+   },'campaign-kit-category');
+   select.setAttribute('role','tab');
+   select.setAttribute('aria-controls','campaign-kit-section-'+group);
+   select.setAttribute('aria-selected',String(group===this.activeKitGroup));
+   select.tabIndex=group===this.activeKitGroup?0:-1;
+   grouped.group[group].id='campaign-kit-section-'+group;
+   grouped.group[group].setAttribute('role','tabpanel');
+   grouped.group[group].setAttribute('aria-label',definition.title+' equipment');
+   categoryTabs.set(group,select);categoryBar.append(select);
+  }
+  categoryBar.addEventListener('keydown',event=>{
+   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+   const keys=QUICK_LOADOUT_GROUPS.map(g=>g.id);
+   const index=keys.indexOf(this.activeKitGroup);
+   const next=event.key==='Home'?0:event.key==='End'?keys.length-1:
+    (index+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length;
+   event.preventDefault();categoryTabs.get(keys[next])?.click();
+   categoryTabs.get(keys[next])?.focus({preventScroll:true});
   });
+  editor.insertBefore(categoryBar,grouped.group.weapon);
   for(const slot of LOADOUT_SLOTS){
    const row=node('label','campaign-kit-row');
    const title=node('span','',slot.replace(/-/g,' ').toUpperCase());

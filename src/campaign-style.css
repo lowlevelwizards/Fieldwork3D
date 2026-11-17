@@ -1464,3 +1464,20 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-armory-screen .campaign-kit-nav button{min-width:78px}
  .campaign-armory-screen .campaign-kit-actions button{min-height:42px}
 }
+
+/* Equipment E1.B: single active category, roving-keyboard tab navigation. */
+.campaign-armory-screen .campaign-kit-categories{display:flex;gap:6px;max-width:100%;
+ overflow-x:auto;overscroll-behavior-x:contain;scrollbar-width:thin;
+ padding:2px 0 9px;scroll-snap-type:x proximity}
+.campaign-armory-screen .campaign-kit-category{flex:0 0 auto;min-height:44px;
+ margin:0;width:auto;padding:10px 13px;scroll-snap-align:start;
+ font:700 13px var(--fw-font-display);letter-spacing:.035em;
+ border:1px solid var(--fw-panel-border);border-radius:8px;
+ background:var(--fw-panel-raised);color:var(--fw-text-warm)}
+.campaign-armory-screen .campaign-kit-category[aria-selected="true"]{
+ background:var(--fw-sage);color:var(--fw-bg);border-color:var(--fw-sage)}
+.campaign-armory-screen .fw-loadout-group:not([open]){display:none}
+.campaign-armory-screen .fw-loadout-group>summary{display:none}
+.campaign-armory-screen .fw-loadout-group[open]{border:0;margin:0;background:transparent}
+.campaign-armory-screen .fw-loadout-group .fw-loadout-fields{padding:0;gap:4px}
+.campaign-armory-screen .campaign-kit-editor .campaign-kit-choice{padding:10px 0}
