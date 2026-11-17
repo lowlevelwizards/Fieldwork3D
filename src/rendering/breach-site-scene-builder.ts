@@ -39,6 +39,8 @@ import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
 import {compileRigidVisualOwner} from './fieldwork-model-compiler.ts';
+import {StaticVisualTemplateLibrary,type StaticVisualLease}
+ from './fieldwork-visual-template-library.ts';
 import type {RepeatedFixtureBatches} from './breach-repeated-fixture-batches.ts';
 import {isArchitecturalSillCover} from '../worldgen/architectural-cover-visuals.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
@@ -58,6 +60,8 @@ export type SiteSceneBuildPort={
  staticBatches:StaticSceneBatches;
  repeatedFixtures?:RepeatedFixtureBatches;
  sharedBoxGeometries:Set<THREE.BufferGeometry>;
+ visualTemplates?:StaticVisualTemplateLibrary;
+ registerVisualLease?:(lease:StaticVisualLease)=>void;
  siteMaterials:SiteMaterialLifetime<THREE.Material>;
  mats:THREE.Material[];
  walls:Array<{mesh:THREE.Mesh;mid:Pt;segment:Segment;index:number;exterior:boolean}>;
@@ -466,6 +470,8 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
     }
     const openingHost:SiteOpeningsHost={
       root:host.root,
+      visualTemplates:host.visualTemplates,
+      registerVisualLease:host.registerVisualLease,
       box:(...args)=>host.box(...args),
       solid:(...args)=>host.solid(...args),
       age:(hex,surface)=>age(hex,surface),
