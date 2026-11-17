@@ -812,3 +812,19 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(max-width:520px){.campaign-assignment-slots{grid-template-columns:minmax(0,1fr)}
  .campaign-assignment-slot-label{min-width:0}}
 @media(max-width:360px){.campaign-assignment-heading{align-items:start;flex-direction:column}}
+
+/* R9.1: readiness advisories become directed, non-destructive prep shortcuts. */
+.campaign-preflight-fix-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;margin-top:10px}
+.campaign-preflight-fix-actions button{box-sizing:border-box;min-width:0;
+ min-height:43px;margin:0;padding:8px 9px;border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);background:var(--fw-panel-raised);
+ color:var(--fw-text);font:650 12px/1.3 var(--fw-font-menu);cursor:pointer}
+.campaign-preflight-fix-actions button:hover{background:var(--fw-panel)}
+@media(max-width:400px){.campaign-preflight-fix-actions{grid-template-columns:minmax(0,1fr)}}
+
+/* R9.2: keep the selected case as a return point during squad/stock preparation. */
+.campaign-preparation-return{margin:0 0 12px;padding:0}
+.campaign-shell .campaign-preparation-return button{width:100%;min-height:46px;
+ margin:0;text-align:left;padding:10px 13px;line-height:1.25;
+ overflow-wrap:anywhere}
