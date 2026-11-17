@@ -43,6 +43,9 @@ try{
     .click({timeout:60000});
    const setup=page.getByRole('dialog',{name:'Quick Play mission setup'});
    await setup.waitFor({state:'visible',timeout:60000});
+   // Current Quick Play moves the reproducible seed into a closed
+   // ADVANCED details section. Exercise the actual UI before filling it.
+   await setup.locator('details.fw-quick-config-advanced > summary').click();
    await setup.getByRole('spinbutton',{name:'Seed, blank for random'})
     .fill(String(seed));
    await setup.getByRole('button',{name:'GENERATE MISSION'}).click();
