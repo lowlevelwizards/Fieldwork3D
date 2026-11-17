@@ -10,6 +10,10 @@ import {historicalDispatchIncident} from './dispatch-incident-context.ts';
 import {initialDispatchDepartment,dispatchStandingTier}
  from './dispatch-department.ts';
 import {renderCampaignCreator} from './ui/campaign-creator.ts';
+import {renderDispatchCampaignCreator} from './ui/dispatch-campaign-creator.ts';
+import {effectiveDispatchSetup,currentDispatchReference,dispatchSetupDescription,
+ type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
+import {factionReference} from './faction-reference-catalog.ts';
 import {SKILL_NAMES,WEAPON_PRICES,armorRepairCost,weaponServiceCost,
  canApplyCampaignKitPreset} from './campaign-state.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
@@ -43,6 +47,8 @@ export type CampaignHandlers={
  newSandbox:()=>void;continueSandbox:()=>void;
  newDispatch:()=>void;continueDispatch:()=>void;
  createSandbox:(draft:CampaignCreationDraft)=>Promise<boolean|null>;
+ createDispatch:(draft:DispatchCampaignDraft)=>Promise<boolean|null>;
+ exportDispatch:()=>void;
  exportSandbox:()=>void;showMenu:()=>void;
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
@@ -152,7 +158,7 @@ export class CampaignScreen{
    button(sandboxHasSave?'CONTINUE SANDBOX':'SANDBOX CAMPAIGN',
     sandboxHasSave?this.handlers.continueSandbox:this.handlers.newSandbox,
     'campaign-landing-card campaign-landing-quick'),
-   button(dispatchHasSave?'CONTINUE DISPATCH':'DISPATCH · SWAT PILOT',
+   button(dispatchHasSave?'CONTINUE DISPATCH':'DISPATCH CAMPAIGN',
     dispatchHasSave?this.handlers.continueDispatch:this.handlers.newDispatch,
     'campaign-landing-card campaign-landing-quick'),
    button('QUICK PLAY',this.handlers.quickPlay,
@@ -166,10 +172,10 @@ export class CampaignScreen{
    'campaign-landing-link'));
   if(sandboxHasSave)utility.append(button('NEW SANDBOX',this.handlers.newSandbox,
    'campaign-landing-link'));
-  if(dispatchHasSave)utility.append(button('NEW DISPATCH PILOT',this.handlers.newDispatch,
+  if(dispatchHasSave)utility.append(button('NEW DISPATCH CAMPAIGN',this.handlers.newDispatch,
    'campaign-landing-link'));
   utility.append(node('p','campaign-note',
-   'DISPATCH PILOT · Existing mission types and progression; police-specific scenarios are not yet implemented.'));
+   'DISPATCH · Choose a tactical-police career, historical campaign, timeline progression, open department or creative sandbox. Authored eras are limited to supported reference kits.'));
   utility.append(node('p','campaign-note','ACTIVE SLOT · '+active.toUpperCase()));
   utility.append(button('REPLAY LIBRARY',this.handlers.openReplayLibrary,
    'campaign-landing-link'));
@@ -200,11 +206,22 @@ export class CampaignScreen{
   saves.append(this.importPicker('legacy'));
   saves.append(node('p','campaign-note','IMPORT TO SANDBOX CAMPAIGN'));
   saves.append(this.importPicker('sandbox'));
-  saves.append(node('p','campaign-note','IMPORT TO DISPATCH PILOT'));
+  saves.append(node('p','campaign-note','IMPORT TO DISPATCH CAMPAIGN'));
   saves.append(this.importPicker('dispatch'));
   footer.append(labs,saves);
   main.append(hero,actions,utility,footer);
   this.root.append(main);
+ }
+ dispatchCreator(){
+  this.disposePreview();this.armoryOperatorId=null;
+  this.root.hidden=false;
+  renderDispatchCampaignCreator(this.root,{
+   hasDispatch:this.lastEntry.dispatch,
+   onCancel:()=>this.entry(this.lastEntry.legacy,this.lastEntry.sandbox,
+    this.lastEntry.active,this.lastEntry.dispatch),
+   onExport:this.handlers.exportDispatch,
+   onCreate:this.handlers.createDispatch
+  });
  }
  creator(){
   this.disposePreview();this.armoryOperatorId=null;
@@ -233,12 +250,15 @@ export class CampaignScreen{
   title.append(node('h1','','OPERATIONS ROOM'));
   const rules=effectiveCampaignRules(c).mission;
   title.append(node('div','campaign-home-identity',
-   (this.currentSlot==='dispatch'?'DISPATCH · SWAT PILOT':
+   (this.currentSlot==='dispatch'?'DISPATCH · '+factionReference(currentDispatchReference(c))?.name:
     this.currentSlot==='sandbox'?'SANDBOX CAMPAIGN':'FIELD OPERATIONS')+
    ' · '+(c.name??'Original Campaign')));
   title.append(node('div','campaign-home-identity',
    'INTELLIGENCE · '+rules.intel.toUpperCase()+
    '  /  MAP SCALE · '+rules.scale.toUpperCase()));
+  if(isDispatchPilot(c))title.append(node('div','campaign-home-identity',
+   dispatchSetupDescription(effectiveDispatchSetup(c))+
+   ' · CURRENT LOOK '+currentDispatchReference(c).toUpperCase()));
   const campaignMenuNav=node('nav','campaign-home-nav');
   campaignMenuNav.append(button('CAMPAIGN MENU',this.handlers.showMenu));
   title.append(campaignMenuNav);
