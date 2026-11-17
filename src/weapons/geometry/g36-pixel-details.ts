@@ -49,11 +49,11 @@ function ink(tile:Tile,x:number,y:number):number{
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  if(y < -8.05)return 166;
+  if(y < -8.05)return 194;
   const shift=Math.max(0,Math.min(5.0,-y-3.05))*.16;
   for(const base of [-.66,.42,1.50])
-   if(Math.abs(x-(base+shift))<.135&&y< -3.3&&y> -7.45)
-    return 167;
+   if(Math.abs(x-(base+shift))<.105&&y< -3.3&&y> -7.45)
+    return 208;
  }
  return 255;
 }

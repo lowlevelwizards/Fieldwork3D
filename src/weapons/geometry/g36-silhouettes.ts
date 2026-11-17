@@ -17,12 +17,12 @@ export {G36_B_PART_IDS} from './g36-family-contract.ts';
  */
 function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):THREE.Mesh{
  const outer:Outline=[
-  [-14.66,.51],[-6.43,.50],[-6.43,-2.02],
-  [-8.82,-2.35],[-11.80,-4.00],[-14.66,-4.43]
+  [-14.69,.51],[-6.43,.50],[-6.43,-2.04],
+  [-8.89,-2.48],[-11.85,-4.47],[-14.69,-5.24]
  ];
  const rear:Outline=[
-  [-13.97,-.45],[-10.35,-.45],[-9.75,-1.60],
-  [-11.90,-3.28],[-13.97,-3.43]
+  [-13.99,-.45],[-10.47,-.45],[-9.87,-1.60],
+  [-11.95,-3.68],[-13.99,-4.13]
  ];
  const forward:Outline=[
   [-9.63,-.35],[-7.19,-.35],[-7.12,-1.60],[-8.70,-1.65]
@@ -43,9 +43,9 @@ function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):T
   shape.holes.push(p);
  }
  const geometry=new THREE.ExtrudeGeometry(shape,{
-  depth:1.92,steps:1,bevelEnabled:false,curveSegments:1
+  depth:1.78,steps:1,bevelEnabled:false,curveSegments:1
  });
- geometry.translate(0,0,-.96);
+ geometry.translate(0,0,-.89);
  const mesh=new THREE.Mesh(geometry,material);
  mesh.name='family-stock-'+G36_B_PART_IDS.stock+'-'+n;
  mesh.castShadow=true;mesh.receiveShadow=true;
@@ -71,9 +71,9 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // interior and shoulder contact at the same original art X=-15.05.
  addTwoOpeningStock(root,material,index.stock++);
  const pad=outline('stock',[
-  [-15.05,.39],[-14.31,.35],[-14.31,-3.96],
-  [-14.69,-4.48],[-15.05,-4.32]
- ],2.25);
+  [-15.05,.39],[-14.36,.35],[-14.36,-4.78],
+  [-14.70,-5.28],[-15.05,-5.12]
+ ],2.12);
  pad.userData.g36Buttpad=true;
  const hinge=box('stock',-6.64,-.73,0,.72,2.43,2.30);
  hinge.userData.g36StockHinge=true;
@@ -89,11 +89,11 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  // Open lower contour deliberately stops above the trigger gap.
  // No lower closing strut and no three-dimensional trigger-guard frame.
  const lower=outline('receiver',[
-  [-6.42,-1.12],[3.72,-1.12],[3.54,-2.38],
-  [3.02,-3.52],[-.98,-3.52],[-1.25,-2.98],
+  [-6.42,-1.12],[3.72,-1.12],[3.48,-2.31],
+  [2.75,-3.12],[.55,-3.29],[-.75,-3.29],[-1.32,-2.73],
   [-1.66,-2.37],[-3.63,-2.37],[-4.12,-3.07],
   [-4.38,-3.59],[-6.42,-2.15]
- ],2.50);
+ ],2.43);
  lower.userData.g36ReceiverLower=true;
  lower.userData.g36OpenTriggerGap=true;
 
@@ -108,7 +108,7 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  ];
  const frameInner:Outline=[
   [-3.56,1.86],[-3.12,3.60],[5.10,3.60],
-  [6.92,2.47],[6.92,1.86]
+  [7.12,2.47],[7.12,1.86]
  ];
  const signedArea=(poly:Outline)=>poly.reduce((a,p,i)=>{
   const q=poly[(i+1)%poly.length];return a+p[0]*q[1]-q[0]*p[1];
@@ -116,7 +116,7 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  const contour=(poly:Outline,ccw:boolean):Outline=>
   (signedArea(poly)>0)===ccw?poly:[...poly].reverse();
  const handle=addProfileFrame(root,'receiver',ids.receiver,index.receiver++,
-  contour(frameOuter,true),contour(frameInner,false),1.50,material);
+  contour(frameOuter,true),contour(frameInner,false),1.34,material);
  handle.userData.g36HandleOpening=true;
  const lowerOptic=outline('receiver',[
   [-5.85,3.03],[-5.72,3.82],[-1.56,3.82],
@@ -130,8 +130,12 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  reflex.userData.g36UpperReflex=true;
  // One dark, frontal sight window: recognize the upper reflex from an
  // oblique camera without modeling screws, lens stacks or a mounting rail.
- const reflexWindow=box('receiver',-2.86,4.23,0,.14,.46,1.02);
+ const reflexWindow=box('receiver',-2.66,4.23,0,.22,.50,.96);
  reflexWindow.userData.g36UpperReflexWindow=true;
+ // Rearward-facing magnified eyepiece: a single dark, inset rectangular lens
+ // instead of a screw/rail assembly. Visible from rear three-quarter views.
+ const rearEyepiece=box('receiver',-5.88,3.48,0,.24,.52,.86);
+ rearEyepiece.userData.g36LowerEyepiece=true;
  // A single faceted circular front face, oriented down the G36 sight axis.
  // The lens is an art-scale shape cue, not an additional accessory/rail.
  const opticFaceGeo=new THREE.CylinderGeometry(.37,.37,.15,6,1);
@@ -161,11 +165,11 @@ export function buildG36OriginalBlockout(material:THREE.Material):THREE.Group{
  const guard=addG36LongHandguard(root,ids.handguard,index.handguard++,material);
  guard.userData.g36LongHandguard=true;
 
- // A deliberately unremarkable square-section barrel and one blunt muzzle.
- // Neither should compete with the uniquely recognizable carry/optic group.
- const barrel=box('barrel',16.12,0,0,5.90,.76,.76);
+ // Stout square silhouette, with a smaller quiet muzzle termination.
+ // Keep 12 triangles per part; no cylinder, steps, machining or flash-hider cuts.
+ const barrel=box('barrel',16.12,0,0,5.90,1.14,1.14);
  barrel.userData.g36Barrel=true;
- const muzzle=box('barrel',A.muzzleX-.25,0,0,.50,.99,.99);
+ const muzzle=box('barrel',A.muzzleX-.25,0,0,.50,1.00,1.00);
  muzzle.userData.g36FactoryMuzzle=true;
  return root;
 }
@@ -186,7 +190,8 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
   else if(child.userData.g36Buttpad)material=finishes.buttpad;
   else if(child.userData.g36FactoryMuzzle)material=finishes.muzzle;
   else if(child.userData.g36Barrel||child.userData.g36StockHinge)material=finishes.steel;
-  else if(child.userData.g36OpticFace||child.userData.g36UpperReflexWindow)material=finishes.buttpad;
+  else if(child.userData.g36OpticFace||
+   child.userData.g36UpperReflexWindow||child.userData.g36LowerEyepiece)material=finishes.buttpad;
   else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic)material=finishes.optic;
   child.material=material;
  }
