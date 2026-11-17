@@ -281,19 +281,18 @@ const campaignScreen=new CampaignScreen({
   acquire?'Attachment acquired and equipped':'Weapon attachment updated'),
  moveMagazine:(id,magazineId,location)=>applyVisibleCampaignAction(
   c=>moveCampaignMagazine(c,id,magazineId,location),'Magazine placement updated'),
- saveKitPreset:(id,name)=>{if(model.campaign){model.campaign=saveCampaignKitPreset(model.campaign,id,name);
-  config.saveCampaign();showCampaignHome();}},
- applyKitPreset:(id,presetId)=>{if(model.campaign){model.campaign=applyCampaignKitPreset(model.campaign,id,presetId);
-  config.saveCampaign();showCampaignHome();}},
- deleteKitPreset:(presetId)=>{if(model.campaign){model.campaign=deleteCampaignKitPreset(model.campaign,presetId);
-  config.saveCampaign();showCampaignHome();}},
- renameOperator:(id,callsign)=>{if(model.campaign){model.campaign=renameCampaignOperator(model.campaign,id,callsign);
-  config.saveCampaign();showCampaignHome();}},
- cycleAppearance:(id)=>{if(model.campaign){model.campaign=cycleCampaignAppearance(model.campaign,id);
-  config.saveCampaign();showCampaignHome();}},
- setWardrobe:(id,look)=>{if(model.campaign){
-  model.campaign=setCampaignWardrobe(model.campaign,id,look);
-  config.saveCampaign();showCampaignHome();}},
+ saveKitPreset:(id,name)=>applyVisibleCampaignAction(
+  c=>saveCampaignKitPreset(c,id,name),'Operator kit preset saved'),
+ applyKitPreset:(id,presetId)=>applyVisibleCampaignAction(
+  c=>applyCampaignKitPreset(c,id,presetId),'Operator kit preset applied'),
+ deleteKitPreset:(presetId)=>applyVisibleCampaignAction(
+  c=>deleteCampaignKitPreset(c,presetId),'Operator kit preset deleted'),
+ renameOperator:(id,callsign)=>applyVisibleCampaignAction(
+  c=>renameCampaignOperator(c,id,callsign),'Operator callsign updated'),
+ cycleAppearance:(id)=>applyVisibleCampaignAction(
+  c=>cycleCampaignAppearance(c,id),'Operator appearance updated'),
+ setWardrobe:(id,look)=>applyVisibleCampaignAction(
+  c=>setCampaignWardrobe(c,id,look),'Operator wardrobe updated'),
  openStudio:(id)=>config.openStudio(id),
  openArsenal:(id)=>{void config.openArsenal(id);},
  exportSave:()=>{if(model.campaign)saveFile(model.campaign);},
