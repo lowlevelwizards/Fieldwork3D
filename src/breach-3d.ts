@@ -1079,6 +1079,8 @@ export class TacticalScene3D{
     decal.position.set(x,y,z);
     if(mark.face==='back')decal.rotation.y=Math.PI;
     decal.castShadow=false;decal.receiveShadow=false;
+    decal.userData.fieldworkDrawFamily='surface-wear-decal';
+    decal.userData.fieldworkTransparencyRole='surface-wear-decal';
     parent.add(decal);
   }
   private plane(parent:THREE.Object3D,x:number,z:number,w:number,d:number,
@@ -1949,6 +1951,8 @@ export class TacticalScene3D{
         material.depthWrite=!translucent;material.needsUpdate=true;
       }
       material.opacity=opacity;
+      wall.mesh.userData.fieldworkTransparencyRole=surfaceTransparent?
+        (translucent?'camera-wall-cutaway':'known-exterior-wall'):'opaque';
       const patina=wall.mesh.userData.patinaMaterial as THREE.MeshBasicMaterial|undefined;
       if(patina)patina.opacity=Math.max(physicalDirector?.08:.24,
         1-(1-opacity)*1.226);
