@@ -9,7 +9,7 @@ export type OwnerMergeSiteStats=Readonly<{
  ownerGroups:number;sourceMeshes:number;mergedMeshes:number;
  avoidedDraws:number
 }>;
-type Detail={obj:THREE.Group};
+type Detail={obj:THREE.Object3D};
 type Door={frame:THREE.Group;threshold:THREE.Object3D;
  wedge:THREE.Object3D};
 
