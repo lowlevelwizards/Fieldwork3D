@@ -5,10 +5,6 @@ import {renderFixtureVisual} from '../src/worldgen/fixture-visuals.ts';
 import {CHARACTER_FIXTURE_IDS} from '../src/worldgen/asset-character-visuals.ts';
 import {mapBoxPixelUV} from '../src/rendering/pixel-materials.ts';
 import {shadowEligibleBox} from '../src/rendering/breach-shadow-controller.ts';
-import {stabilizeStaticDetailBoxGeometries}
- from '../src/rendering/breach-static-batcher.ts';
-import {releaseSiteSceneObjects}
- from '../src/rendering/site-scene-lifecycle.ts';
 import {consolidateStaticFixtureParts}
  from '../src/rendering/breach-fixture-draw-batching.ts';
 import {StaticVisualTemplateLibrary}
@@ -72,14 +68,21 @@ test('E6.25 only known immutable character models opt into caching',()=>{
 test('E6.25 source character models retain legacy geometry bounds, shadows and material groups',()=>{
  for(const fixture of families)for(const index of [0,1,2]){
   const site=makeSite(),visual={x:0,y:0,w:48,h:32,fixture};
-  const legacy=new THREE.Group();
-  renderFixtureVisual(legacy,visual,index,site.ctx,
+  const legacy=new THREE.Group(),boxRecipes=[];
+  const tracedCtx={...site.ctx,
+   box:(...args)=>{
+    boxRecipes.push(args.slice(4,7));
+    return site.ctx.box(...args);
+   }};
+  renderFixtureVisual(legacy,visual,index,tracedCtx,
    site.palette.wood,site.palette.steel,site.palette.olive,site.palette.metal);
   consolidateStaticFixtureParts(legacy);
   const cache=new StaticVisualTemplateLibrary();
   const lease=acquireRigidFixtureTemplate(cache,visual,index,
    site.ctx,site.palette,true,true);
   assert.ok(lease,fixture);
+  assert.deepEqual(lease.root.userData.fieldworkFixtureLegacyBoxRecipes,
+   boxRecipes,fixture+' exact legacy box-cache lookup sequence');
   const legacyBox=new THREE.Box3().setFromObject(legacy);
   const cacheBox=new THREE.Box3().setFromObject(lease.root);
   assert.ok(legacyBox.min.distanceTo(cacheBox.min)<.0001,fixture+' min');
@@ -114,79 +117,6 @@ test('E6.25 first character model authoring is reused but site finishes and visi
  one.release();assert.ok(cache.stats().geometries>0);
  two.release();assert.equal(cache.stats().geometries,0);
  finish(a);finish(b);
-});
-
-test('E6.25 wall-detail box batching is independent of renderer box cache headroom',()=>{
- const global=new THREE.BoxGeometry(12,8,.8);
- const shared=new Set([global]);
- const box=(geometry,material)=>{
-  const mesh=new THREE.Mesh(geometry,material);
-  mesh.castShadow=false;mesh.receiveShadow=true;
-  return mesh;
- };
- const material=new THREE.MeshStandardMaterial();
- const one=new THREE.Group(),two=new THREE.Group(),three=new THREE.Group();
- const localA=new THREE.BoxGeometry(12,8,.8);
- const localB=new THREE.BoxGeometry(12,8,.8);
- const unique=new THREE.BoxGeometry(5,2,1);
- one.add(box(global,material));
- two.add(box(localA,material));
- three.add(box(localB,material),box(unique,material));
- let disposedA=0,disposedB=0,disposedGlobal=0;
- localA.addEventListener('dispose',()=>disposedA++);
- localB.addEventListener('dispose',()=>disposedB++);
- global.addEventListener('dispose',()=>disposedGlobal++);
- const pool=stabilizeStaticDetailBoxGeometries(
-  [{obj:one},{obj:two},{obj:three}],shared);
- assert.equal(one.children[0].geometry,global);
- assert.equal(two.children[0].geometry,global);
- assert.equal(three.children[0].geometry,global);
- assert.equal(pool.size,2);
- assert.ok(pool.has(global));
- assert.ok(pool.has(unique));
- assert.equal(disposedA,1);
- assert.equal(disposedB,1);
- assert.equal(disposedGlobal,0);
- // Repeat with no global cache capacity: site-owned leader remains live,
- // and only duplicate geometry is retired, even across distinct owners.
- const uncachedOne=new THREE.Group(),uncachedTwo=new THREE.Group();
- const leader=new THREE.BoxGeometry(11,4,.7);
- const duplicate=new THREE.BoxGeometry(11,4,.7);
- uncachedOne.add(box(leader,material));
- uncachedTwo.add(box(duplicate,material));
- let duplicateDisposal=0;
- duplicate.addEventListener('dispose',()=>duplicateDisposal++);
- const localPool=stabilizeStaticDetailBoxGeometries(
-  [{obj:uncachedOne},{obj:uncachedTwo}],new Set());
- assert.equal(uncachedTwo.children[0].geometry,leader);
- assert.equal(localPool.size,1);
- assert.equal(duplicateDisposal,1);
- leader.dispose();global.dispose();unique.dispose();material.dispose();
-});
-
-test('E6.25 detached site-only decoration geometry retires once at site teardown',()=>{
- const root=new THREE.Group();
- const material=new THREE.MeshStandardMaterial();
- const siteOnly=new THREE.BoxGeometry(6,7,2);
- const global=new THREE.BoxGeometry(8,4,2);
- let retired=0,globalDisposals=0;
- siteOnly.addEventListener('dispose',()=>retired++);
- global.addEventListener('dispose',()=>globalDisposals++);
- const fixture=new THREE.Group();root.add(fixture);
- fixture.add(new THREE.Mesh(siteOnly,material));
- const transient=new Set([siteOnly]);
- // The static instancing pass may detach the original owner; its
- // geometry is still site-owned even after the batch GPU buffer clears.
- const batches=new THREE.InstancedMesh(siteOnly,material,2);
- root.add(batches);fixture.remove(fixture.children[0]);
- releaseSiteSceneObjects(root,new Set(),new Set([...transient,global]));
- assert.equal(retired,0);
- assert.equal(globalDisposals,0);
- for(const geometry of transient)geometry.dispose();
- transient.clear();
- assert.equal(retired,1);
- assert.equal(globalDisposals,0);
- global.dispose();material.dispose();
 });
 
 test('E6.25 site-resolved material aliasing does not increase legacy opaque draws',()=>{

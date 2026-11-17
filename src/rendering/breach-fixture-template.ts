@@ -75,6 +75,10 @@ function makePrototype(visual:Obstacle,index:number){
  const root=new THREE.Group();
  const geometries=new Set<THREE.BufferGeometry>();
  const bySize=new Map<string,THREE.BufferGeometry>();
+ // E6.25: replay the exact host.box shape-cache access order when leasing
+ // a compiled character, without rebuilding its Mesh nodes. This preserves
+ // the bounded 384-shape global cache's legacy behavior for later decoration.
+ const legacyBoxRecipes:Array<[number,number,number]>=[];
  const solidSlots=new Map<string,THREE.MeshStandardMaterial>();
  const base:Palette={
   wood:placeholder({base:'wood'}),steel:placeholder({base:'steel'}),
@@ -82,6 +86,7 @@ function makePrototype(visual:Obstacle,index:number){
  };
  const ctx:FixtureVisualContext={
   box:(parent,x,y,z,w,h,d,material,cast=true)=>{
+   legacyBoxRecipes.push([w,h,d]);
    const key=[w,h,d].join(':');
    let geo=bySize.get(key);
    if(!geo){
@@ -106,6 +111,9 @@ function makePrototype(visual:Obstacle,index:number){
  };
  renderFixtureVisual(root,visual,index,ctx,
   base.wood,base.steel,base.olive,base.metal);
+ root.userData.fieldworkFixtureLegacyBoxRecipes=legacyBoxRecipes;
+ root.userData.fieldworkE625CharacterTemplate=
+  CHARACTER_RIGID_FAMILIES.has(visual.fixture??'crate');
  // Character silhouettes may create cylinders, tori and prisms directly,
  // rather than through ctx.box. Record EVERY authored source buffer before
  // the compiler replaces siblings, so orphaned geometry cannot leak.
