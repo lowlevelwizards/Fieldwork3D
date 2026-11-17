@@ -95,6 +95,7 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
+import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
 
 
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
@@ -1559,9 +1560,9 @@ function mission(s:Session,dt:number){
     s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
   }
   const captured=s.missionType==='capture'&&s.captureTarget?
-    enemies(s).some(a=>a.id===s.captureTarget&&a.health<=0):false;
+    enemies(s).some(a=>a.id===s.captureTarget&&captureTargetResolved(a)):false;
   if(s.mission==='clear'&&
-    (captured||(s.missionType!=='capture'&&enemies(s).every(a=>a.health<=0)))){
+    (captured||(s.missionType!=='capture'&&enemies(s).every(a=>!activeCombatant(a))))){
     s.mission='secure';
     if(captured){
       const target=enemies(s).find(a=>a.id===s.captureTarget);
@@ -1583,7 +1584,7 @@ function mission(s:Session,dt:number){
     if(s.missionType==='hold'){
       // A contested position is not secured merely by standing on its
       // marker. Nearby active defenders arrest the actual hold clock.
-      const contested=enemies(s).some(e=>e.health>0&&
+      const contested=enemies(s).some(e=>activeCombatant(e)&&
         near(e.p,s.scenario.objective,74));
       if(contested){
         s.holdTime=Math.max(0,s.holdTime-dt*.6);
@@ -1603,7 +1604,7 @@ function mission(s:Session,dt:number){
     }
     if(s.missionType==='capture'){
       const target=enemies(s).find(e=>e.id===s.captureTarget);
-      if(!target||target.health>0)return;
+      if(!target||!captureTargetResolved(target))return;
       s.captureSecured=true;
     }
     s.mission='extract';
