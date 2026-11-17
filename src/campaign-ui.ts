@@ -1524,6 +1524,20 @@ export class CampaignScreen{
     control.setAttribute('aria-selected',String(key===group));
     control.tabIndex=key===group?0:-1;
    }
+   // Only pan the category rail horizontally. Calling scrollIntoView here
+   // would move the entire armory vertically whenever a category changes.
+   const selectedTab=categoryTabs.get(group);
+   if(selectedTab){
+    const rail=categoryBar.getBoundingClientRect();
+    const tab=selectedTab.getBoundingClientRect();
+    if(tab.left<rail.left+4||tab.right>rail.right-4){
+     const target=categoryBar.scrollLeft+tab.left-rail.left-
+      (categoryBar.clientWidth-tab.width)/2;
+     categoryBar.scrollTo({left:Math.max(0,target),
+      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?
+       'instant':'smooth'});
+    }
+   }
   };
   const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,setCategory);
   for(const definition of QUICK_LOADOUT_GROUPS){

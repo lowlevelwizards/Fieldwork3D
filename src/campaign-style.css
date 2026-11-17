@@ -1641,3 +1641,18 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(prefers-reduced-motion:reduce){
  .campaign-kit-commit-feedback{animation:none}
 }
+
+/* Equipment E6.B2: full-width compact category rail and predictable focus. */
+.campaign-armory-screen .campaign-kit-categories{
+ scroll-padding-inline:12px;scroll-behavior:smooth}
+.campaign-armory-screen .campaign-kit-category[aria-selected="true"]{
+ box-shadow:inset 0 -2px 0 var(--fw-text-warm)}
+.campaign-armory-screen .campaign-kit-category:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:-2px}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-categories{margin:0 -2px 4px}
+ .campaign-armory-screen .campaign-kit-category{flex-shrink:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .campaign-armory-screen .campaign-kit-categories{scroll-behavior:auto}
+}

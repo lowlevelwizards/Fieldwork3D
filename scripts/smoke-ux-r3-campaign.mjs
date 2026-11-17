@@ -67,6 +67,16 @@ try{
    throw Error('Curated Dispatch workbench access was unintentionally unlocked');
   const tabs=armory.locator('.campaign-kit-categories [role="tab"]');
   if(await tabs.count()!==5)throw Error('Equipment category navigation incomplete');
+  await tabs.filter({hasText:'ISSUED BASICS'}).click();
+  await page.waitForFunction(()=>{
+   const rail=document.querySelector('.campaign-kit-categories');
+   const selected=rail?.querySelector('[aria-selected="true"]');
+   if(!rail||!selected)return false;
+   const bounds=rail.getBoundingClientRect(),tab=selected.getBoundingClientRect();
+   return tab.left>=bounds.left-2&&tab.right<=bounds.right+2;
+  },null,{timeout:4000});
+  if(!await armory.locator('[data-loadout-group="issued"][open]').count())
+   throw Error('Issued gear panel did not activate from the category rail');
   await tabs.filter({hasText:'PROTECTION'}).click();
   const protection=armory.locator('[data-loadout-group="protection"]');
   const armorChoice=protection.getByRole('button',{name:/Choose armor for/i});
