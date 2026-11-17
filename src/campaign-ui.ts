@@ -646,7 +646,7 @@ export class CampaignScreen{
   for(const check of checks){
    if(!check.attention)continue;
    const item=button(check.label,()=>{
-    this.homeTab=check.action;this.root.scrollTop=0;this.home(c);
+    activateTab(check.action)
    },'campaign-readiness-warning');
    readiness.append(item);
   }
@@ -663,7 +663,7 @@ export class CampaignScreen{
    ['logistics','SUPPLIES & ARMORY']
   ] as const){
    shortcuts.append(button(label,()=>{
-    this.homeTab=tab;this.root.scrollTop=0;this.home(c);
+    activateTab(tab)
    }));
   }
   overview.append(shortcuts,footer);
@@ -674,6 +674,32 @@ export class CampaignScreen{
   const nav=node('nav','campaign-tabs');
   nav.setAttribute('role','tablist');
   nav.setAttribute('aria-label','Operations Room sections');
+  const tabOrder=['overview','personnel','contracts','logistics','chronicle'] as const;
+  // Keep the five already-built sections alive while changing only visibility.
+  // This avoids rebuilding every roster, contract and logistics control per tap.
+  const activateTab=(tab:typeof tabOrder[number])=>{
+   if(this.homeTab===tab)return;
+   this.homeTab=tab;
+   for(const [id,panel] of Object.entries(sections))
+    panel.hidden=id!==tab;
+   for(const trigger of nav.querySelectorAll<HTMLButtonElement>('.campaign-tab')){
+    const selected=trigger.id==='campaign-tab-'+tab;
+    trigger.setAttribute('aria-selected',String(selected));
+    trigger.tabIndex=selected?0:-1;
+   }
+   this.root.scrollTop=0;
+  };
+  nav.addEventListener('keydown',event=>{
+   if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
+   const tabs=Array.from(nav.querySelectorAll<HTMLButtonElement>('.campaign-tab'));
+   const current=tabs.indexOf(document.activeElement as HTMLButtonElement);
+   if(current<0)return;
+   const next=event.key==='Home'?0:event.key==='End'?tabs.length-1:
+    (current+(event.key==='ArrowRight'?1:-1)+tabs.length)%tabs.length;
+   event.preventDefault();
+   tabs[next].focus({preventScroll:true});
+   tabs[next].click();
+  });
   for(const [tab,label] of [
    ['overview','Overview'],['personnel','Personnel'],
    ['contracts','Contracts'],['logistics','Logistics'],
@@ -683,14 +709,14 @@ export class CampaignScreen{
    panel.id='campaign-panel-'+tab;panel.setAttribute('role','tabpanel');
    panel.hidden=this.homeTab!==tab;
    const trigger=button(label,()=>{
-    this.homeTab=tab;this.root.scrollTop=0;this.home(c);
+    activateTab(tab)
    },'campaign-tab');
    trigger.id='campaign-tab-'+tab;
    trigger.setAttribute('role','tab');
    trigger.setAttribute('aria-selected',String(this.homeTab===tab));
    trigger.setAttribute('aria-controls',panel.id);
-   // Each tab remains keyboard-reachable; arrow-key navigation is optional.
-   trigger.tabIndex=0;
+   // One tab is in the sequential Tab order; arrows move between the others.
+   trigger.tabIndex=this.homeTab===tab?0:-1;
    panel.setAttribute('aria-labelledby',trigger.id);
    nav.append(trigger);
   }
