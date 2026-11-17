@@ -415,6 +415,57 @@ export class CampaignScreen{
     details.append(node('p','campaign-note',
      'Served with '+(person?.callsign??friend.id)+' on '+friend.count+' operations'));
    }
+   const profile=button('VIEW PROFILE',()=>{
+    const overlay=node('div','campaign-operator-profile-backdrop');
+    const panel=node('section','campaign-operator-profile fw-sheet');
+    panel.setAttribute('role','dialog');
+    panel.setAttribute('aria-modal','true');
+    const heading=node('h2','',p.callsign+' / SERVICE DOSSIER');
+    heading.id='campaign-operator-profile-heading';
+    panel.setAttribute('aria-labelledby',heading.id);
+    const dismiss=()=>{
+     overlay.remove();
+     if(profile.isConnected)profile.focus({preventScroll:true});
+    };
+    const close=button('CLOSE',dismiss,'campaign-operator-profile-close');
+    const header=node('header','campaign-operator-profile-header');
+    header.append(heading,close);
+    const stats=node('div','campaign-operator-profile-stats');
+    for(const [label,value] of [
+     ['STATUS',p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':
+      c.squadIds.includes(p.id)?'ASSIGNED':'RESERVE'],
+     ['PRIMARY',p.weapon.toUpperCase()],
+     ['OPERATIONS',String(p.missions)]
+    ] as const){
+     const cell=node('div','campaign-operator-profile-stat');
+     cell.append(node('small','',label),node('strong','',value));
+     stats.append(cell);
+    }
+    details.open=true;
+    panel.append(header,stats,details);
+    const actions=node('div','campaign-operator-profile-actions');
+    const loadout=button('OPEN LOADOUT',()=>{
+     overlay.remove();this.armoryOperatorId=p.id;this.home(c);
+    },'campaign-primary');
+    const look=button('OPERATOR STUDIO',()=>{
+     overlay.remove();this.handlers.openStudio(p.id);
+    });
+    look.disabled=!!c.activeContractId;
+    actions.append(loadout,look);panel.append(actions);
+    overlay.append(panel);this.root.append(overlay);
+    overlay.addEventListener('click',e=>{if(e.target===overlay)dismiss();});
+    overlay.addEventListener('keydown',e=>{
+     if(e.key==='Escape'){e.preventDefault();dismiss();return;}
+     if(e.key!=='Tab')return;
+     const items=Array.from(panel.querySelectorAll<HTMLElement>(
+      'button:not(:disabled),summary')).filter(el=>el.getClientRects().length>0);
+     const first=items[0],last=items[items.length-1];
+     if(e.shiftKey&&document.activeElement===first){e.preventDefault();last?.focus();}
+     else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}
+    });
+    close.focus({preventScroll:true});
+   },'campaign-person-profile');
+   profile.setAttribute('aria-label','View '+p.callsign+' service dossier');
    const actions=node('div','campaign-person-actions');
    const care=node('details','campaign-person-care');
    care.append(node('summary','','EQUIPMENT & CARE'));
@@ -458,7 +509,7 @@ export class CampaignScreen{
     c.operators.filter(o=>o.status==='available'||o.status==='reserve').length>4)
     careActions.append(button('RETIRE',()=>this.handlers.retire(p.id)));
    care.append(careActions);
-   card.append(actions,care,details);
+   card.append(profile,actions,care);
    roster.append(card);
   }
   personnel.append(roster);
