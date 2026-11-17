@@ -1,5 +1,6 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
+import {currentDispatchReference,validDispatchSetup,type DispatchCampaignSetupV1} from './dispatch-campaign-setup.ts';
 import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
 import {assignDispatchCase} from './dispatch-case-selection.ts';
 import {advanceDispatchDepartment,initialDispatchDepartment,
@@ -97,6 +98,8 @@ export type CampaignState={
  rules?:CampaignRules;
  /** D11: optional standing ledger; missing on pre-D11 Dispatch saves. */
  dispatchDepartment?:DispatchDepartmentV1;
+ /** D12: optional independent experience settings; missing preserves the original pilot. */
+ dispatchSetup?:DispatchCampaignSetupV1;
 };
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
@@ -219,6 +222,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
    if(!o||typeof o.id!=='string'||typeof o.callsign!=='string'||
      !SKILL_NAMES.every(k=>Number.isFinite(o.skills?.[k])&&Number.isFinite(o.experience?.[k])&&Number.isFinite(o.aptitudes?.[k])))return null;
   }
+  if(c.dispatchSetup!==undefined&&
+    (parsedRules?.template!=='dispatch'||!validDispatchSetup(c.dispatchSetup)))return null;
   if(c.dispatchDepartment!==undefined&&
     (parsedRules?.template!=='dispatch'||
      !validDispatchDepartment(c.dispatchDepartment)))return null;
@@ -480,7 +485,8 @@ export function hireRecruit(c:CampaignState):CampaignState{
  const available=RECRUIT_NAMES.filter(name=>!c.operators.some(o=>o.callsign===name));
  const fresh={...base,callsign:available[(hash(c.seed+i*59)>>>4)%available.length]??('RECRUIT '+i),
   joinedDay:c.day,status:'reserve' as const};
- const member=isDispatchPilotCampaign(c)?issueDispatchPilotOperator(fresh):fresh;
+ const member=isDispatchPilotCampaign(c)?issueDispatchPilotOperator(fresh,
+  currentDispatchReference(c)):fresh;
  const event:CareerEvent={id:'join-'+id+'-'+c.day,day:c.day,operatorId:id,
   kind:'joined',detail:'Joined the unit'};
  return reconcileCampaignWeaponOwnership({...c,funds:c.funds-450,operators:[...c.operators,member],
@@ -789,6 +795,7 @@ export function setCampaignWardrobe(c:CampaignState,id:string,
  if(!member)return c;
  const wardrobe=readWardrobe(raw);
  if(isDispatchPilotCampaign(c)&&
-  !dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),wardrobe,member.loadout))return c;
+  !dispatchPilotAppearanceAllowed(member.wardrobe??initialWardrobe(),wardrobe,member.loadout,
+   currentDispatchReference(c)))return c;
  return {...c,operators:c.operators.map(x=>x.id===id?{...x,wardrobe}:x)};
 }
