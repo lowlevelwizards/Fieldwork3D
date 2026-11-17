@@ -1,5 +1,12 @@
 name: D3.19C four-site physical failure triage
 on:
+  push:
+    branches: [feature/d3-19c-four-site-physical-triage-20261117]
+    paths:
+      - 'scripts/lib/d3-19c-four-site-triage.mjs'
+      - 'scripts/report-d3-19c-four-site-triage.mjs'
+      - 'tests/release-d3-19c-four-site-triage.test.mjs'
+      - '.github/workflows/d3-19c-four-site-triage.yml'
   pull_request:
     branches: [main]
     paths:
