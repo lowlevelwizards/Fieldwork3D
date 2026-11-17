@@ -118,6 +118,10 @@ async function assessEstablishedCareer(page,name,mobile){
    check(await earlier.locator('.campaign-operation-record').count()===0,
     name+' earlier records should be lazy before opening');
    await earlier.locator(':scope > summary').click();
+   // Native details toggles dispatch asynchronously after the click. Await the
+   // lazy-rendered cards rather than reading the DOM in the same event turn.
+   await earlier.locator('.campaign-operation-record').nth(1)
+    .waitFor({state:'attached',timeout:5000});
    check(await earlier.locator('.campaign-operation-record').count()===2,
     name+' earlier history failed to load remaining two records');
    const detail=recent.locator('.campaign-operation-detail').first();
