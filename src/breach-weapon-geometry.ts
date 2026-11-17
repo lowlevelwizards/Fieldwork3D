@@ -12,6 +12,7 @@ import {measureVisibleStockContact}
 import {addHKClawRail} from './weapons/geometry/hk-rail-accessories.ts';
 import {addAKSidePicatinnyAdapter} from './weapons/geometry/ak-side-mount-geometry.ts';
 import {mapBoxPixelUV} from './rendering/pixel-materials.ts';
+import {compileLegacyShotgunBody} from './weapons/geometry/legacy-shotgun-rigid-compile.ts';
 type Part=readonly [number,number,number,number,number,number,0|1];
 /** x, y, z, width, height, depth, material (0=steel, 1=dark). */
 const PARTS:Partial<Record<WeaponId,readonly Part[]>>={
@@ -90,10 +91,22 @@ export function buildWeaponSilhouette(id:WeaponId,
   mesh.position.set(x,y,z);mesh.castShadow=true;mesh.receiveShadow=true;
   g.add(mesh);
  }
+ // The legacy shotgun has no independently selectable family or removable
+ // magazine meshes. M3.0C1 folds its rigid boxes by material at build time.
+ // Modular rifle/SMG silhouettes intentionally keep all named parts intact.
+ if(id==='shotgun')compileLegacyShotgunBody(g);
  return g;
 }
+/** Release per-build geometry AND instance buffers when a weapon changes.
+ * Materials are shared registry assets, never owned by the silhouette.
+ * Instanced rails also allocate GPU instance attributes, which a geometry
+ * dispose alone does not release when the preview is rebuilt repeatedly.
+ */
 export function clearWeaponSilhouette(g:THREE.Group){
- g.traverse(o=>{if(o instanceof THREE.Mesh)o.geometry.dispose();});
+ g.traverse(o=>{
+  if(o instanceof THREE.InstancedMesh)o.dispose();
+  if(o instanceof THREE.Mesh)o.geometry.dispose();
+ });
  g.clear();
  g.userData.visibleStockContact=null;
 }
