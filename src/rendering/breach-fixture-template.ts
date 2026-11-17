@@ -148,6 +148,34 @@ export function acquireRigidFixtureTemplate(
   });
 }
 
+/** E6.25: per-site palette/condition can collapse distinct authored material
+ * slots onto the very same resolved material (e.g. quantized ageing tones).
+ * The immutable prototype was consolidated BEFORE those materials resolved,
+ * so such pieces might now be batchable even though they were in separate
+ * template groups. Do not cost the scene an extra draw just to share a buffer:
+ * fall back to legacy authoring for that one cover. Geometry stays cached
+ * for other sites/conditions where no material-slot aliasing occurs.
+ *
+ * Match the exact eligibility contract of consolidateStaticFixtureParts. The
+ * caller must invoke this after resolveMaterial, before adoption to the site.
+ */
+export function fixtureTemplateMissesResolvedBatch(root:THREE.Group):boolean{
+ const groups=new Map<THREE.Material,Set<string>>();
+ for(const child of root.children){
+  if(!(child instanceof THREE.Mesh)||child instanceof THREE.InstancedMesh||
+     !(child.geometry instanceof THREE.BufferGeometry)||
+     !(child.material instanceof THREE.MeshStandardMaterial)||
+     child.material.transparent||child.children.length||!child.visible||
+     child.renderOrder!==0||Object.keys(child.userData).length>0)continue;
+  const flags=[child.castShadow,child.receiveShadow,
+    child.layers.mask,child.frustumCulled].join('/');
+  const seen=groups.get(child.material)??new Set<string>();
+  if(seen.has(flags))return true;
+  seen.add(flags);groups.set(child.material,seen);
+ }
+ return false;
+}
+
 /** The owner-scoped fixture batcher expects direct child meshes. Adopt them
  * without transferring ownership of their shared GPU buffers. Releasing the
  * lease must still detach any remaining adopted visual nodes, even if a
