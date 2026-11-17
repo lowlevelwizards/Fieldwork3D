@@ -103,6 +103,8 @@ export class CampaignScreen{
  private readonly expandedClassicWeaponControls=new Set<string>();
  /** UI-only disclosure preference, retained when supplies or treatment refreshes home. */
  private readonly expandedOperatorCare=new Set<string>();
+ /** Preserve which operator rows are expanded across in-place campaign actions. */
+ private readonly expandedOperatorTools=new Set<string>();
  private selectedMount:WeaponAttachmentSlot='optic';
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
@@ -436,21 +438,36 @@ export class CampaignScreen{
   const roster=node('div','campaign-roster');
   if(!activeOperators.length)roster.append(node('p','campaign-note',
    'No active operators. Recruit personnel to prepare your next deployment.'));
-  for(const p of activeOperators){
+  const deployed=activeOperators.filter(p=>c.squadIds.includes(p.id));
+  const reserves=activeOperators.filter(p=>!c.squadIds.includes(p.id));
+  for(const [group,members] of [
+   ['DEPLOYMENT TEAM',deployed],['RESERVES',reserves]
+  ] as const){
+   if(!members.length)continue;
+   roster.append(node('h3','campaign-roster-group-label',group+' · '+members.length));
+   for(const p of members){
    const card=node('article','campaign-person');
-   const identity=node('div','campaign-person-head');
-   const monogram=node('div','campaign-person-avatar',p.callsign.slice(0,2).toUpperCase());
+   const tools=node('details','campaign-person-expand');
+   tools.open=this.expandedOperatorTools.has(p.id);
+   tools.addEventListener('toggle',()=>{
+    if(tools.open)this.expandedOperatorTools.add(p.id);
+    else this.expandedOperatorTools.delete(p.id);
+   });
+   const summary=node('summary','campaign-person-summary');
+   summary.setAttribute('aria-label','Manage '+p.callsign+' operator record and equipment');
+   const identity=node('span','campaign-person-head');
+   const monogram=node('span','campaign-person-avatar',p.callsign.slice(0,2).toUpperCase());
    monogram.setAttribute('aria-hidden','true');
-   const copy=node('div','campaign-person-identity');
+   const copy=node('span','campaign-person-identity');
    copy.append(node('strong','',p.callsign),node('span','',p.background));
    const status=node('span','campaign-person-state'+(p.recoveryDays?' is-recovering':''),
     p.recoveryDays?'RECOVERING · '+p.recoveryDays+' DAYS':
      c.squadIds.includes(p.id)?'ASSIGNED':'RESERVE');
-   identity.append(monogram,copy,status);card.append(identity);
-   const performance=node('div','campaign-person-performance');
+   identity.append(monogram,copy,status);
+   const performance=node('span','campaign-person-performance');
    performance.append(node('span','','HANDLING '+Math.round(p.skills.handling*100)+'/100'),
     node('span','',p.missions+' OPS'),node('span','',p.trait));
-   card.append(performance);
+   summary.append(identity,performance);tools.append(summary);card.append(tools);
    const details=node('details','campaign-dossier');
    details.append(node('summary','','DOSSIER / SKILLS'));
    details.append(node('p','campaign-note','BACKGROUND · '+p.background));
@@ -599,8 +616,9 @@ export class CampaignScreen{
     careActions.append(retire);
    }
    care.append(careActions);
-   card.append(profile,actions,care);
+   tools.append(profile,actions,care);
    roster.append(card);
+   }
   }
   rosterPanel.append(roster);
   personnelWorkspace.append(rosterPanel);
