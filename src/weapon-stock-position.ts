@@ -17,7 +17,8 @@ export function alternateStockPosition(stockId:string):'folded'|'collapsed'|null
 }
 export function normalizedStockPosition(stockId:string,requested:unknown):
  WeaponStockPosition{
- return requested===alternateStockPosition(stockId)?requested:'deployed';
+ const allowed=alternateStockPosition(stockId);
+ return allowed!==null&&requested===allowed?allowed:'deployed';
 }
 /** Unscaled rear solid-body/receiver extension for clearance and shoulder
  * pose. Folded stocks are not shouldered; this value is a receiver endcap.
