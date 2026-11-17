@@ -16,11 +16,16 @@ export function weaponLightEmitter(muzzle:{x:number;z:number;yaw:number},
  configuration:WeaponConfiguration):Pt{
  const gun=resolveWeaponAssembly(configuration);
  // Visible lens and emitted cone share the same longitudinal origin.
- const x=mountedAccessorySeat(configuration,'light')?.lens?.x??
-  gun.mounted.light.mountX;
+ const seat=mountedAccessorySeat(configuration,'light');
+ const x=seat?.lens?.x??gun.mounted.light.mountX;
  const offset=(gun.muzzleX-x)*gun.lengthScale;
- return {x:muzzle.x-Math.cos(muzzle.yaw)*offset,
-  y:muzzle.z-Math.sin(muzzle.yaw)*offset};
+ // Weapon-local +Z is right of barrel: rotate the actual outboard lens
+ // offset into the same 2D ground frame used by both gameplay and 3D beams.
+ // Class-only legacy lights retain the zero-lateral fallback.
+ const side=(seat?.lens?.z??0)*gun.lengthScale;
+ const cs=Math.cos(muzzle.yaw),sn=Math.sin(muzzle.yaw);
+ return {x:muzzle.x-cs*offset-sn*side,
+  y:muzzle.z-sn*offset+cs*side};
 }
 export function lightRayDistance(from:Pt,angle:number,maximum:number,
  blockers:readonly Segment[]):number{
