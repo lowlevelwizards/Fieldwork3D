@@ -1,0 +1,29 @@
+name: Arsenal M2.0 mount inventory (feature)
+on:
+  push:
+    branches: [feat/arsenal-m2-mount-inventory]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: arsenal-m2-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: M2.0 inventory and M1 part-owned interface regression
+        run: |
+          node --experimental-strip-types --test \
+            tests/arsenal-m2-mount-inventory.test.mjs \
+            tests/arsenal-m1-part-mount-interfaces.test.mjs
+      - name: Typecheck
+        run: npm run check
+      - name: Production build
+        run: npm run build
