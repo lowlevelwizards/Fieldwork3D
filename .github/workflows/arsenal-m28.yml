@@ -8,6 +8,8 @@ on:
       - 'src/weapons/geometry/weapon-mount-position*.ts'
       - 'tests/arsenal-m28-*.test.mjs'
       - 'scripts/smoke-arsenal-m28-*.mjs'
+      - 'src/arsenal-m28-apply-smoke.ts'
+      - 'arsenal-m28-apply-smoke.html'
       - '.github/workflows/arsenal-m28.yml'
 permissions:
   contents: read
@@ -53,6 +55,8 @@ jobs:
         run: node scripts/smoke-arsenal-m27-touch.mjs
       - name: M2.6 real physical left/right optics/lights
         run: node scripts/smoke-arsenal-m26-visual.mjs
+      - name: M2.8 real Campaign/Quick Play Apply and save roundtrip
+        run: node scripts/smoke-arsenal-m28-apply.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -62,6 +66,8 @@ jobs:
             reports/arsenal-m27-acceptance.json
             reports/arsenal-m26-mounted-*.png
             reports/arsenal-m26-mesh-stats.json
+            reports/arsenal-m28-*-apply.png
+            reports/arsenal-m28-apply.json
           if-no-files-found: ignore
           retention-days: 14
   release-preflight:
