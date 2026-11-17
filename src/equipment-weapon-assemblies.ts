@@ -291,7 +291,7 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
     // Preserve gameplay optic type; its rearward side bridge is visible
     // only with the separately selected adapter.
     {...original,mountX:original.mountX-2.02,
-     mountY:original.mountY+.76,sightHeight:(original.sightHeight??2.6)+.76}:
+     mountY:original.mountY+.76}:
     original;
   mounted[slot]=part;
   mass+=part.massKg;weighted+=part.massKg*part.massX;
