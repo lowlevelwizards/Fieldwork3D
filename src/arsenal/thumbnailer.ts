@@ -13,6 +13,7 @@ import {workbenchFitDistance} from '../weapons/geometry/weapon-workbench-camera-
 import {arsenalRecipeToLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {MOUNTABLE_SLOTS} from '../weapons/geometry/weapon-mount-selections.ts';
 import {ArsenalWeaponGeometryPool} from './weapon-geometry-pool.ts';
+import {compileArsenalRigidPartSiblings} from './weapon-part-batching.ts';
 
 export class ArsenalThumbnailer{
  private renderer:THREE.WebGLRenderer|null=null;
@@ -22,8 +23,10 @@ export class ArsenalThumbnailer{
  private readonly dark=WEAPON_ACCESSORY_POLYMER;
  private readonly cache=new Map<string,string>();
  private readonly geometryPool=new ArsenalWeaponGeometryPool();
- private readonly poolEnabled=new URLSearchParams(location.search)
-  .get('e626Weapon')==='1';
+ private readonly bakeParts=new URLSearchParams(location.search)
+  .get('e627PartBake')==='1';
+ private readonly poolEnabled=this.bakeParts||
+  new URLSearchParams(location.search).get('e626Weapon')==='1';
  private unavailable=false;
  constructor(){
   addArsenalInspectionLighting(this.scene);
@@ -56,6 +59,10 @@ export class ArsenalThumbnailer{
     // Browser A/B evidence only. No new DOM panels or persistent controls.
     document.body.dataset.e626GalleryHits=String(stats.hits);
     document.body.dataset.e626GalleryGeometries=String(stats.geometries);
+   }
+   if(this.bakeParts){
+    const baked=compileArsenalRigidPartSiblings(body);
+    document.body.dataset.e627GalleryAvoided=String(baked.avoidedDraws);
    }
    extras=buildWeaponAccessories(config,this.steel,this.dark);
    gun=new THREE.Group();

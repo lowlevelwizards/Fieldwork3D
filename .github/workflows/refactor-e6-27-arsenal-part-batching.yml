@@ -1,0 +1,51 @@
+name: E6.27 Arsenal selectable rigid part draw batching
+on:
+  pull_request:
+    paths:
+      - 'src/arsenal/weapon-part-batching.ts'
+      - 'src/arsenal/viewport.ts'
+      - 'src/arsenal/thumbnailer.ts'
+      - 'tests/refactor-e6-27-arsenal-part-batching.test.mjs'
+      - 'scripts/verification/e6-27-arsenal-part-browser.mjs'
+      - '.github/workflows/refactor-e6-27-arsenal-part-batching.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: e6-27-batching-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  rigid-components:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Rigid component draw grouping and cache/fixture regression
+        run: |
+          node --experimental-strip-types --test \
+            tests/refactor-e6-27-arsenal-part-batching.test.mjs \
+            tests/refactor-e6-26-arsenal-geometry-pool.test.mjs \
+            tests/refactor-e6-25-character-fixture-template.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
+      - name: Browser prerequisites
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1 pngjs@7.0.0
+          node --check scripts/verification/e6-27-arsenal-part-browser.mjs
+      - name: Same Arsenal M4 and FNC geometry, exact mobile screenshot and part socket A/B
+        env:
+          FIELDWORK_CI_CHROME: '1'
+        run: node scripts/verification/e6-27-arsenal-part-browser.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e6-27-arsenal-part-batching-visuals
+          path: artifacts/refactor-e6-27/arsenal-ab/
+          if-no-files-found: ignore
+          retention-days: 14
