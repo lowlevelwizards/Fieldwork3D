@@ -1,0 +1,28 @@
+/** D13.7: initial and active policy-only access for the four real gun classes.
+ * This does not grant stock, quote a price, create operators or touch saves.
+ * The three tactical-police references alone define assessed playable content.
+ */
+import {DISPATCH_PLAYABLE_REFERENCE_IDS,
+ type DispatchCampaignDraft,type DispatchReferenceId}
+ from './dispatch-campaign-setup.ts';
+import {mayChooseDispatchSetupContent} from './dispatch-campaign-eligibility.ts';
+import {dispatchStarterChoiceStatus} from './dispatch-starter-choices.ts';
+
+export const DISPATCH_WEAPON_CLASSES=['carbine','smg','rifle','shotgun'] as const;
+export type DispatchWeaponClass=typeof DISPATCH_WEAPON_CLASSES[number];
+export type DispatchWeaponAccess='offered'|'standing-locked'|
+ 'reference-locked'|'not-assessed';
+export function dispatchWeaponAccess(
+ setup:Pick<DispatchCampaignDraft,'equipmentScope'|'unlockMode'>,
+ referenceId:DispatchReferenceId,standing:number,weapon:DispatchWeaponClass
+):DispatchWeaponAccess{
+ const id='primary-'+weapon;
+ const offered=mayChooseDispatchSetupContent(setup,referenceId,standing,
+  'equipment',id,'primary');
+ if(offered)return 'offered';
+ if(standing<70&&mayChooseDispatchSetupContent(setup,referenceId,100,
+  'equipment',id,'primary'))return 'standing-locked';
+ const assessed=DISPATCH_PLAYABLE_REFERENCE_IDS.some(ref=>
+  dispatchStarterChoiceStatus(ref,'equipment',id)!==null);
+ return assessed?'reference-locked':'not-assessed';
+}

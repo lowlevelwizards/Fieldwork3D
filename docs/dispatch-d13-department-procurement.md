@@ -100,3 +100,25 @@ D13.2 incorrectly collapsed both cases into `reference-locked`.
   OMON, historical MP5, standing 70, creative and original campaign.
 - Release from its own branch only after the preceding D13B Pages verification,
   the D13C critical PR checks and a clear deployment queue.
+
+## D13 release D — D13.7 pre-creation armory access preview
+
+Campaigns currently choose an authored unit look, time setting and equipment
+access before a player can visit the Operations Room. Show the **initial access
+policy** at starting standing 50 *before replacing a save*, without pretending
+that an offer means free stock, a historic agency issue, or a ready-to-apply gun.
+
+- Extract the exact D12 setup/reference/standing eligibility into one pure
+  `mayChooseDispatchSetupContent` helper used by **both** live mutation guard
+  and pre-creation projection. Keep the original source list and special
+  authorization logic intact (including Open Department content).
+- Project all four supported weapon classes at initial standing 50. Display
+  `OFFERED`, `STANDING 70`, `RESTRICTED` or `NOT ASSESSED` based on the
+  same authorized choices as active procurement and D13C policy attribution.
+- Keep budget, stock and deployment checks inside the actual armory quote.
+  Preview never starts a simulated campaign, creates an operator, purchases
+  equipment, writes a save, or changes accepted equipment.
+- Test parity of five presets, a custom OMON reference, standing change,
+  progressive 1995 → 2015 reference and retained old weapon ownership.
+- Stage and release independently after successful production D13C Pages
+  verification and current PR critical CI. Do not pile merges during publishing.

@@ -6,9 +6,9 @@ import {WEAPON_PRICES,canAffordCampaignPurchase,
  campaignWeaponStockAtCapacity} from './campaign-state.ts';
 import {isDispatchPilot,mayChooseCampaignContent}
  from './dispatch-campaign-eligibility.ts';
-import {effectiveDispatchSetup,DISPATCH_PLAYABLE_REFERENCE_IDS}
+import {effectiveDispatchSetup,currentDispatchReference}
  from './dispatch-campaign-setup.ts';
-import {dispatchStarterChoiceStatus} from './dispatch-starter-choices.ts';
+import {dispatchWeaponAccess} from './dispatch-weapon-access.ts';
 import {initialDispatchDepartment} from './dispatch-department.ts';
 
 export const CAMPAIGN_WEAPON_PLATFORMS=[
@@ -32,16 +32,10 @@ export function campaignWeaponQuote(c:CampaignState,
  const department=c.dispatchDepartment??initialDispatchDepartment();
  // Ask the existing policy whether standing is the *only* missing condition.
  // This is a quote, never a bypass of the mutation-time authorization check.
- const withStanding={...c,dispatchDepartment:{...department,standing:100}};
- const standingOnly=dispatch&&!offered&&department.standing<70&&
-  mayChooseCampaignContent(withStanding,'equipment','primary-'+weapon,'primary');
- // A gap in all playable authored references is NOT an explicit refusal.
- // Keep this distinct from a valid item offered by another reference but
- // unavailable under the current time, scope or access settings.
- const assessedElsewhere=DISPATCH_PLAYABLE_REFERENCE_IDS.some(referenceId=>
-  dispatchStarterChoiceStatus(referenceId,'equipment','primary-'+weapon)!==null);
+ const access=dispatch?dispatchWeaponAccess(effectiveDispatchSetup(c),
+  currentDispatchReference(c),department.standing,weapon):'offered';
  const status:CampaignWeaponProcurementStatus=!offered?
-  standingOnly?'standing-locked':assessedElsewhere?'reference-locked':'not-assessed':
+  access==='offered'?'reference-locked':access:
   c.activeContractId?'deployment-locked':
   campaignWeaponStockAtCapacity(c)?'armory-full':
   !canAffordCampaignPurchase(c,price)?'funds-locked':'ready';

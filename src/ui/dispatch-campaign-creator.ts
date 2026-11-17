@@ -64,7 +64,8 @@ export function renderDispatchCampaignCreator(root:HTMLElement,options:{
  const reviewTitle=el('h2','CAMPAIGN REVIEW');review.append(reviewTitle);
  const reviewRows=([
   ['STARTING UNIT','reference'],['SERVICE TIME','time'],
-  ['CATALOG & ACCESS','access'],['PROCUREMENT','procurement'],
+  ['CATALOG & ACCESS','access'],['WEAPON ACCESS · STANDING 50','weaponAccess'],
+  ['PROCUREMENT','procurement'],
   ['STARTING ARMORY','armory']
  ] as const).map(([label,key])=>{
   const line=el('div');line.className='campaign-creator-review-row';
