@@ -150,6 +150,10 @@ test('M2.5G prohibit new phantom light/grip without discarding older saved items
    'phantom rail cannot emit');
   assert.ok(resolveMountedAccessoryLayout(stale).unresolved.some(x=>
    x.attachmentId==='light-compact'));
+  const oldArt=draw(stale);
+  assert.equal(oldArt.getObjectByName('weapon-light-lens'),undefined,
+   'unmounted historical light remains an owned record, not a phantom mesh');
+  dispose(oldArt);
   const recipe=arsenalRecipeFromLegacy(c);
   assert.ok(recipe);
   assert.equal(proposeArsenalPartChange(recipe,'light','light-compact').valid,false);
