@@ -29,7 +29,7 @@ export interface ArsenalRecipeV2{
 }
 export const copyArsenalRecipe=(recipe:ArsenalRecipeV2):ArsenalRecipeV2=>({
  ...recipe,parts:{...recipe.parts},accessories:{...recipe.accessories},
- mountSelections:copyMountSelections(recipe.mountSelections)
+ ...(recipe.mountSelections?{mountSelections:copyMountSelections(recipe.mountSelections)}:{})
 });
 /** This adapter deliberately cannot represent an old abstract attachment-stock overlay. */
 export function arsenalRecipeFromLegacy(config:WeaponConfiguration):ArsenalRecipeV2|undefined{
@@ -41,7 +41,7 @@ export function arsenalRecipeFromLegacy(config:WeaponConfiguration):ArsenalRecip
  for(const slot of ARSENAL_ACCESSORY_SLOTS)accessories[slot]=config.slots[slot];
  const recipe:ArsenalRecipeV2={version:2,platformId,weapon:config.weapon,
   parts:{...build.parts},accessories,
-  mountSelections:copyMountSelections(config.mountSelections)};
+  ...(config.mountSelections?{mountSelections:copyMountSelections(config.mountSelections)}:{})};
  const exact=matchingFamilyPreset(build);
  if(exact)recipe.sourcePresetId=exact.id;
  return arsenalRecipeIssues(recipe).length?undefined:recipe;
@@ -52,7 +52,7 @@ function legacyCandidate(recipe:ArsenalRecipeV2):WeaponConfiguration{
  const build:WeaponFamilyBuild={family:receiver.family,parts:{...recipe.parts}};
  return {version:1,weapon:recipe.weapon,build,
   slots:{...base.slots,...recipe.accessories,stock:'stock-standard'},
-  mountSelections:copyMountSelections(recipe.mountSelections)};
+  ...(recipe.mountSelections?{mountSelections:copyMountSelections(recipe.mountSelections)}:{})};
 }
 /** Produce a valid V1 configuration, never a silently repaired/partially lost one. */
 export function arsenalRecipeToLegacy(recipe:ArsenalRecipeV2):WeaponConfiguration|undefined{
@@ -114,8 +114,9 @@ export function readArsenalRecipe(raw:unknown):ArsenalRecipeV2|undefined{
  if(typeof obj.sourcePresetId==='string'&&obj.sourcePresetId.length<=96)
   recipe.sourcePresetId=obj.sourcePresetId;
  // Invalid or stale mounting metadata is discarded, not the paid recipe.
- recipe.mountSelections=readMountSelections(obj.mountSelections,
+ const positions=readMountSelections(obj.mountSelections,
   {...initialWeaponConfiguration(recipe.weapon).slots,...accessories});
+ if(positions)recipe.mountSelections=positions;
  return arsenalRecipeIssues(recipe).length?undefined:recipe;
 }
 export function sameArsenalRecipe(a:ArsenalRecipeV2,b:ArsenalRecipeV2):boolean{
