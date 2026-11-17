@@ -47,7 +47,7 @@ import {resolveMountedAccessoryLayout}
  from './weapons/geometry/mounted-accessory-layout.ts';
 import {quoteAttachmentTransfer}
  from './equipment-weapon-transactions.ts';
-import {recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
+import {MAX_OWNED_WEAPONS,recordWeaponRounds,serviceSerializedWeapon,type SerializedWeapon} from './equipment-weapon-identity.ts';
 import {reconcileCampaignWeaponOwnership} from './equipment-weapon-ownership.ts';
 import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
@@ -500,7 +500,16 @@ export function hireRecruit(c:CampaignState):CampaignState{
 /** Economy is independent of eligible catalog and unlocked equipment. */
 const unlimitedDispatch=(c:CampaignState)=>
  c.rules?.template==='dispatch'&&effectiveDispatchSetup(c).economy==='unlimited';
-const canSpend=(c:CampaignState,cost:number)=>unlimitedDispatch(c)||c.funds>=cost;
+export const canAffordCampaignPurchase=(c:CampaignState,cost:number)=>
+ unlimitedDispatch(c)||c.funds>=cost;
+const canSpend=canAffordCampaignPurchase;
+/** Prevent deductions when reconciliation would discard a newly purchased gun. */
+export const campaignWeaponStockAtCapacity=(c:CampaignState):boolean=>{
+ const serialized=c.inventory.serializedWeapons?.length;
+ const accounted=c.operators.filter(o=>o.status!=='retired'&&o.status!=='lost').length+
+  Object.values(c.inventory.weapons).reduce((sum,count)=>sum+count,0);
+ return Math.max(serialized??0,accounted)>=MAX_OWNED_WEAPONS;
+};
 const charge=(c:CampaignState,cost:number)=>unlimitedDispatch(c)?c.funds:c.funds-cost;
 export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
  carbine:300,smg:260,rifle:420,shotgun:330
@@ -508,7 +517,8 @@ export const WEAPON_PRICES:Record<CampaignOperator['weapon'],number>={
 export function buyWeapon(c:CampaignState,weapon:CampaignOperator['weapon']):CampaignState{
  if(!mayChooseCampaignContent(c,'equipment','primary-'+weapon,'primary'))return c;
  const price=WEAPON_PRICES[weapon];
- if(!price||c.activeContractId||!canSpend(c,price))return c;
+ if(!price||c.activeContractId||!canSpend(c,price)||
+  campaignWeaponStockAtCapacity(c))return c;
  return reconcileCampaignWeaponOwnership({...c,funds:charge(c,price),
   inventory:{...c.inventory,weapons:{...c.inventory.weapons,[weapon]:c.inventory.weapons[weapon]+1}}});
 }
