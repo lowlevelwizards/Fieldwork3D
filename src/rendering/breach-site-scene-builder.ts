@@ -37,8 +37,8 @@ import {planInteriorFragments,type InteriorFragment} from '../worldgen/interior-
 import {visibleSurfaceHeight} from '../worldgen/decoration-anchors.ts';
 import {renderFixtureVisual,type FixtureVisualContext} from '../worldgen/fixture-visuals.ts';
 import {consolidateStaticFixtureParts} from './breach-fixture-draw-batching.ts';
-import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual}
- from './breach-fixture-template.ts';
+import {acquireRigidFixtureTemplate,adoptRigidFixtureVisual,
+ fixtureTemplateMissesResolvedBatch} from './breach-fixture-template.ts';
 import {consolidateOwnedStaticSiteDetails} from './breach-owner-static-merge.ts';
 import {compileRigidVisualOwner} from './fieldwork-model-compiler.ts';
 import {StaticVisualTemplateLibrary,type StaticVisualLease}
@@ -533,11 +533,18 @@ export function buildGeneratedSite(site:Site,host:SiteSceneBuildPort):void {
         olive:host.solid(age(finish.fabric,'fabric',variant),.9,'fabric'),
         metal:host.solid(age(0x586665,'industrial-steel',variant),.78,'industrial-steel')
       };
-      const templateLease=host.fixtureTemplates&&host.registerVisualLease?
+      let templateLease=host.fixtureTemplates&&host.registerVisualLease?
         acquireRigidFixtureTemplate(host.fixtureTemplates,visual,i,localCtx,palette,
           host.includeServiceFixtureTemplates===true,
           host.includeCharacterFixtureTemplates===true):
         null;
+      // Effective site finish quantization can alias prototype slots that
+      // were distinct before materials resolved. Retain the legacy batching
+      // draw count on those instances, while caching unaffected recipes.
+      if(templateLease&&fixtureTemplateMissesResolvedBatch(templateLease.root)){
+        templateLease.release();
+        templateLease=null;
+      }
       if(templateLease){
         // Direct children preserve the existing per-cover instancing and
         // disclosure ownership. The lease only manages shared GPU buffers.
