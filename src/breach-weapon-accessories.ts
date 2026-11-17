@@ -110,13 +110,13 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
  const gripSeat=mountedAccessorySeat(raw,'foregrip');
  const gripX=gripSeat?.x??assembly.supportX;
  const gripContactY=gripSeat?.placement.y;
- if(parts.foregrip.id==='foregrip-handstop'){
+ if(parts.foregrip.id==='foregrip-handstop'&&(!raw.build||gripSeat)){
   accessoryProfile(g,'weapon-accessory-foregrip-handstop',
    gripX,gripContactY!==undefined?gripContactY-1.0:-2.35+muzzleY,0,
    [[-1.16,.78],[1.10,.78],[1.18,-.28],[.36,-1.08],
     [-.73,-.88],[-1.16,-.16]],3.00,polymer);
  }
- if(parts.foregrip.id==='foregrip-vertical'){
+ if(parts.foregrip.id==='foregrip-vertical'&&(!raw.build||gripSeat)){
   // Single visual owner across AR/AK/MP5 tri-rail. No extra HK body grip.
   accessoryProfile(g,'weapon-accessory-foregrip-vertical',
    gripX,gripContactY!==undefined?gripContactY-2.60:-3.5+muzzleY,0,
@@ -126,9 +126,12 @@ export function buildWeaponAccessories(raw:WeaponConfiguration,
    gripX,gripContactY!==undefined?gripContactY-.50:-1.2+muzzleY,0,
    3.35,1.00,3.10,metal);
  }
- if(parts.light.id==='light-compact'){
+ const fittedLight=mountedAccessorySeat(raw,'light');
+ // Invalid *legacy* fitted items remain owned but never float or illuminate
+ // on an unmodeled rail; they are reported by the read-only layout audit.
+ if(parts.light.id==='light-compact'&&(!raw.build||fittedLight)){
   const light=parts.light;
-  const mount=mountedAccessorySeat(raw,'light');
+  const mount=fittedLight;
   const lx=mount?.x??light.mountX;
   const ly=mount?.y??(light.mountY+muzzleY);
   const lz=mount?.z??light.mountZ;
