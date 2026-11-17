@@ -409,3 +409,31 @@ test('C8 browser smoke tests continuity after a real campaign purchase',()=>{
  assert.match(script,/case information collapsed after purchase/);
  assert.match(script,/armory requirements collapsed after purchase/);
 });
+
+test('C9 browser acceptance includes domain-settled campaign persistence scenarios',()=>{
+ const script=readFileSync(new URL('../scripts/smoke-operations-room-responsive.mjs',import.meta.url),'utf8');
+ assert.match(script,/async function seedCareerScenario\(page\)/);
+ assert.match(script,/await import\('\/src\/campaign-state\.ts'\)/);
+ assert.match(script,/domain\.acceptContract\(campaign,contract\.id\)/);
+ assert.match(script,/domain\.resolveOperation\(accepted,/);
+ assert.match(script,/domain\.hireRecruit\(campaign\)/);
+ assert.match(script,/domain\.readCampaign\(JSON\.stringify\(campaign\)\)/);
+ assert.match(script,/localStorage\.setItem\(key,JSON\.stringify\(campaign\)\)/);
+ assert.match(script,/await page\.reload\(\{waitUntil:'domcontentloaded'\}\)/);
+ assert.match(script,/async function assessEstablishedCareer\(page,name,mobile\)/);
+ assert.match(script,/async function assessActiveDeployment\(page,name,expected\)/);
+ assert.match(script,/await assessEstablishedCareer\(page,name,mobile\)/);
+ assert.match(script,/await assessActiveDeployment\(page,name,established\)/);
+});
+test('C9 checks restored full roster, lazy history, low stock and active mission guards',()=>{
+ const script=readFileSync(new URL('../scripts/smoke-operations-room-responsive.mjs',import.meta.url),'utf8');
+ for(const marker of [
+  'full roster did not render','earlier records should be lazy before opening',
+  'earlier history failed to load remaining two records',
+  'exhausted reserves were not restored',
+  'empty stock alerts missing','saved personnel milestones inaccessible',
+  'active mission resume action missing',
+  'squad slots editable during an active deployment',
+  'accepting a contract altered past reports'
+ ])assert.ok(script.includes(marker),'Missing C9 acceptance: '+marker);
+});
