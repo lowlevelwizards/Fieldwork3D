@@ -46,7 +46,13 @@ test('M2.6F kit preset saves and restores the same paid light and selected side'
  assert.equal(current.weaponSerialId,operator.weaponSerialId);
  assert.equal(current.weaponConfiguration.mountSelections?.light?.face,'left');
  assert.equal(mountedAccessorySeat(current.weaponConfiguration,'light')?.placement.face,'left');
- assert.strictEqual(applyCampaignKitPreset(restored,'rook',preset.id),restored);
+ const again=applyCampaignKitPreset(restored,'rook',preset.id);
+ assert.equal(again.funds,restored.funds,'repeat Apply must not charge credits');
+ assert.deepEqual(again.inventory.attachments,restored.inventory.attachments,
+  'repeat Apply cannot consume or duplicate owned stock');
+ assert.deepEqual(again.operators.find(x=>x.id==='rook').weaponConfiguration,
+  current.weaponConfiguration,'repeat Apply retains precise mounting');
+
 });
 test('M2.6G Quick Play applies and reloads selected light side without Campaign ownership',()=>{
  const roster=initialRoster();
