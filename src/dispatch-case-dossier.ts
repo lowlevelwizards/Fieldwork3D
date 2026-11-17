@@ -6,6 +6,7 @@ import type {CampaignState,Contract} from './campaign-state.ts';
 import {isDispatchPilot} from './dispatch-campaign-eligibility.ts';
 import {campaignIncidentView} from './dispatch-incident-view.ts';
 import {dispatchIncidentDefinition,validDispatchCase} from './dispatch-case-contract.ts';
+import {selectAuthoredIncidentWording} from './briefing/incident-wording.ts';
 
 export type DispatchLinkedOperation=Readonly<{
  contractId:string;title:string;outcome:'success'|'failure'|'unrecorded'|'unknown';
@@ -40,6 +41,7 @@ export function dispatchCaseDossier(campaign:CampaignState,
  if(!current)return null;
  const def=validDispatchCase(current.dispatchCase,current.kind)?
   dispatchIncidentDefinition(current.dispatchCase.incidentId):undefined;
+ const wording=def?selectAuthoredIncidentWording(def,current.seed):undefined;
  const related:DispatchLinkedOperation[]=[];
  const visited=new Set<string>([current.id]);
  let parentId=current.followUpOf;
@@ -66,8 +68,8 @@ export function dispatchCaseDossier(campaign:CampaignState,
   (related.length>=MAX_LINKS||visited.has(parentId));
  related.reverse();
  return Object.freeze({
-  lead:def?.leads[0]??'No detailed reported lead retained for this assignment.',
-  context:def?.contexts[0]??'Only the existing contract objective is confirmed.',
+  lead:wording?.lead??'No detailed reported lead retained for this assignment.',
+  context:wording?.context??'Only the existing contract objective is confirmed.',
   objective:OBJECTIVES[current.kind],
   site:current.dispatchCase?.archetype?.replace(/-/g,' ').toUpperCase()??
    'SITE TYPE NOT RECORDED',
