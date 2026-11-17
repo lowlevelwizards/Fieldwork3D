@@ -545,3 +545,18 @@ test('C12: deployment is impossible when accepting a contract could not be saved
  assert.equal((accept.match(/deployCampaignContract\(\)/g)??[]).length,1);
  assert.doesNotMatch(accept,/config\.saveCampaign\(\);deployCampaignContract\(\)/);
 });
+
+
+test('C13 operations tabs remember scroll within the career and reset on re-tap',()=>{
+ const ui=source('campaign-ui.ts');
+ const tabs=ui.slice(ui.indexOf('const activateTab=(tab:typeof tabOrder[number])=>'),
+  ui.indexOf("nav.addEventListener('keydown'",ui.indexOf('const activateTab=(tab:typeof tabOrder[number])=>')));
+ assert.match(tabs,/if\(this\.homeTab===tab\)\{/);
+ assert.match(tabs,/this\.operationsScrollByTab\.set\(tab,0\)/);
+ assert.match(tabs,/this\.operationsScrollByTab\.set\(this\.homeTab,this\.root\.scrollTop\)/);
+ assert.match(tabs,/this\.root\.scrollTop=this\.operationsScrollByTab\.get\(tab\)\?\?0/);
+ assert.match(ui,/const scrollCampaignKey=this\.currentSlot\+'\:'\+c\.id/);
+ assert.match(ui,/if\(this\.operationsScrollCampaign!==scrollCampaignKey\)/);
+ assert.match(ui,/this\.operationsScrollByTab\.clear\(\)/);
+ assert.match(ui,/this\.operationsScrollByTab\.set\(this\.homeTab,this\.root\.scrollTop\)/);
+});
