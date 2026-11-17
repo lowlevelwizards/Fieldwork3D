@@ -1,0 +1,37 @@
+# Dispatch D14 — incident dossiers and continuing cases
+
+## D14.0 — Source-of-truth audit (2026-11-16)
+
+Existing systems already provide:
+- Five simulation-owned objectives: `clear`, `intel`, `rescue`, `hold`, `capture`. Do not introduce an arrest/warrant/negotiation objective on the strength of briefing copy.
+- Seven curated playable D8 Dispatch incident IDs, validated against authored mission/building compatibility. `dispatchCase` is a version-1 contract snapshot; first authored lead and context come from the existing shared `INCIDENTS` catalog.
+- `createContracts` retains its mission kind, seed, risk, region, deadline and budget, and only assigns a validated presentation case.
+- `resolveOperation` already creates one successful `followUpOf` contract for eligible mission kinds (intel → capture → hold; clear → rescue → hold). The next contract may have a different authored incident ID. A shared contract lineage therefore means **related operations**, not the same location, suspect, agency, or event.
+- `CampaignReport` holds authoritative outcome and grade. D10 evidence and D11 standing are already settled. Archived contracts and reports are bounded and older records may be missing.
+- Current predeployment modal already distinguishes floor-plan / scouted / unknown intelligence, but shows only the first generic case context. The offer card calls links simply "FOLLOW-UP OPERATION".
+
+## D14.1–D14.2 — Read-only case dossier (this release batch)
+
+- Project each available or accepted Dispatch contract's factual starting assignment, authored **reported** lead, objective, site and intelligence limitations from existing fields only. Do not promise dynamic enemy counts, hostage behavior, offsite surveillance, reinforcement, or police powers not in the game.
+- Project a bounded, cycle-safe follow-up trail from actual `followUpOf` links; use real `history` outcomes only. Missing/pruned parent contract or report must be visibly unresolved, never inferred. Preserve the original immutable incident and save facts.
+- Show a compact dossier in the predeployment review; make the offer card identify a verified prior operation's outcome. Reuse the existing modal, no extra scrolling-heavy management surface or WebGL.
+- Leave original non-Dispatch campaign cards, missions, economy, AI, ROE, force reviews, career settlement, and save schema unchanged.
+- Test all seven authored D8 incidents, the five objectives, failure and success lineage, corrupted/missing/pruned history handling, and real save reload where supported.
+
+## D14.3 — compact, opt-in related-case chronicle (this release batch)
+
+The existing last-eight operation log remains primary and unchanged. When
+completed related cases exist, a closed-by-default `details` section shows up
+to eight genuinely settled follow-ups, their recorded outcomes, and the
+closest retained parent from the D14.1 projection. Older or pruned parent
+records are explicitly unknown. Do not invent retrospective cases, write
+new journal entries or expand the scroll height without a deliberate tap.
+
+## Later D14 candidates (require independent authority)
+
+- D14.4: incident variety within the existing mission mechanics, including briefing uncertainty and site hazards **only when backed by true generated mission data**.
+- D14.5+: researched dedicated police gameplay (arrest, negotiation, barricade / warrant mechanics) must not be simulated by new words alone.
+
+## Release discipline
+
+Feature branch commits per stage; only affected Dispatch/campaign UI regression checks and production typecheck/build; release D14 as one logical batch after D13E–F's public Pages build is verified and no Pages publish is queued. No feature branch should merge over a running production deployment.
