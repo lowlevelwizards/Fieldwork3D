@@ -13,11 +13,14 @@ export type MainPassFrame=Readonly<{
  wallMs:number;reliable:boolean;
  materialTypes:readonly MainPassMaterialType[];
  ownerDraws:readonly {owner:string;draws:number}[];
+ /** Top 16 actual non-shadow draw-source families per frame; sampled lower bound. */
+ sourceDraws:readonly {source:string;draws:number}[];
  topMaterials:readonly MainPassMaterialInstance[];
 }>;
 type MaterialLike={id?:number;name?:string;type?:string;
  transparent?:boolean;alphaTest?:number};
 type ObjectLike={isInstancedMesh?:boolean;isSkinnedMesh?:boolean;
+ name?:string;geometry?:{type?:string};
  userData?:Record<string,unknown>;parent?:ObjectLike|null};
 function renderOwner(object:ObjectLike):string{
  let current:ObjectLike|null|undefined=object;
@@ -26,6 +29,26 @@ function renderOwner(object:ObjectLike):string{
   if(typeof label==='string'&&label.length)return label;
  }
  return 'unclassified';
+}
+/** E6.18a: stable provenance, not Three runtime IDs. Named fixture/
+ * group ownership or an explicit fieldworkDrawFamily wins; unknown
+ * meshes remain visibly marked instead of being assigned invented names.
+ * This observer runs only under the existing coldBench opt-in.
+ */
+function renderSource(object:ObjectLike):string{
+ const owner=renderOwner(object);
+ let current:ObjectLike|null|undefined=object;
+ let nearest='';
+ for(let depth=0;depth<20&&current;depth++,current=current.parent){
+  const tagged=current.userData?.fieldworkDrawFamily;
+  if(typeof tagged==='string'&&tagged.trim()){
+   nearest=tagged.trim();break;
+  }
+  if(!nearest&&typeof current.name==='string'&&current.name.trim())
+   nearest=current.name.trim();
+ }
+ return [owner,nearest||'[unnamed]',object.geometry?.type||'unknown-geometry']
+  .join('/');
 }
 type RendererLike={
  renderBufferDirect?:(...args:unknown[])=>unknown;
@@ -45,6 +68,7 @@ export class LiveMainPassProfiler{
  private readonly materials=new Map<string,MutableMaterial>();
  private readonly types=new Map<string,number>();
  private readonly owners=new Map<string,number>();
+ private readonly sources=new Map<string,number>();
  constructor(renderer:RendererLike,inShadowPass:()=>boolean,
   now:()=>number=()=>performance.now()){
   this.inShadowPass=inShadowPass;this.now=now;
@@ -75,6 +99,10 @@ export class LiveMainPassProfiler{
      const owner=renderOwner(object);
      profiler.owners.set(owner,(profiler.owners.get(owner)??0)+draws);
      const type=material.type||'UnknownMaterial';
+     const surface=material.transparent?'transparent':
+      (material.alphaTest??0)>0?'alpha-test':'opaque';
+     const source=[renderSource(object),type,surface].join('/');
+     profiler.sources.set(source,(profiler.sources.get(source)??0)+draws);
      const id=String(material.id??'unknown-'+type);
      const entry=profiler.materials.get(id)??{
       id,label:material.name||type,type,draws:0,wallMs:0
@@ -100,13 +128,16 @@ export class LiveMainPassProfiler{
   this.opaque=0;this.transparent=0;this.alphaTest=0;
   this.instanced=0;this.skinned=0;this.elapsed=0;
   this.reliable=true;this.materials.clear();this.types.clear();
-  this.owners.clear();
+  this.owners.clear();this.sources.clear();
   try{return render();}
   finally{
    const materialTypes=[...this.types].map(([type,draws])=>({type,draws}))
     .sort((a,b)=>b.draws-a.draws||a.type.localeCompare(b.type));
    const ownerDraws=[...this.owners].map(([owner,draws])=>({owner,draws}))
     .sort((a,b)=>b.draws-a.draws||a.owner.localeCompare(b.owner));
+   const sourceDraws=[...this.sources].map(([source,draws])=>({source,draws}))
+    .sort((a,b)=>b.draws-a.draws||a.source.localeCompare(b.source))
+    .slice(0,16);
    const topMaterials=[...this.materials.values()]
     .sort((a,b)=>b.draws-a.draws||a.id.localeCompare(b.id))
     .slice(0,12).map(m=>({...m,wallMs:Math.round(m.wallMs*10)/10}));
@@ -116,7 +147,7 @@ export class LiveMainPassProfiler{
     transparentDraws:this.transparent,alphaTestDraws:this.alphaTest,
     instancedDraws:this.instanced,skinnedDraws:this.skinned,
     wallMs:Math.round(this.elapsed*10)/10,reliable:this.reliable,
-    materialTypes,ownerDraws,topMaterials
+    materialTypes,ownerDraws,sourceDraws,topMaterials
    };
    this.active=false;
   }
