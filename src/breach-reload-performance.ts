@@ -10,11 +10,13 @@ import type {WeaponFit} from './breach-weapon-pose.ts';
 import * as THREE from 'three';
 
 export type ReloadMechanism='ar-bolt-catch'|'ak-rocking'|
- 'hk-roller'|'shell-tube'|'legacy';
+ 'hk-roller'|'fal-side-charge'|'fnc-side-charge'|'g36-top-charge'|
+ 'shell-tube'|'legacy';
 export type ReloadBeat='present'|'remove'|'retrieve'|'insert'|
  'operate'|'recover'|'shell-load';
 export type ReloadGesture='none'|'hk-cock-lock'|'hk-slap'|
- 'ar-bolt-release'|'ak-operating-handle';
+ 'ar-bolt-release'|'ak-operating-handle'|
+ 'fal-charge'|'fnc-charge'|'g36-charge';
 export type ReloadAnimationCue={
  mechanism:ReloadMechanism;beat:ReloadBeat;gesture:ReloadGesture;
  /** 0..1 visual pose weight; never an inventory clock. */
@@ -35,9 +37,10 @@ export function reloadMechanismFor(weapon:WeaponId,
  if(family==='ar')return 'ar-bolt-catch';
  if(family==='ak')return 'ak-rocking';
  if(family==='hk')return 'hk-roller';
- // FAL receives straight-magazine legacy choreography, never an HK slap.
- // A dedicated FAL control gesture is a later, separately validated stage.
- if(family==='fal')return 'legacy';
+ // These use distinct receiver controls, never an HK roller-delay slap.
+ if(family==='fal')return 'fal-side-charge';
+ if(family==='fnc')return 'fnc-side-charge';
+ if(family==='g36')return 'g36-top-charge';
  return 'legacy';
 }
 export function reloadAnimationCue(mechanism:ReloadMechanism,
@@ -58,7 +61,10 @@ export function reloadAnimationCue(mechanism:ReloadMechanism,
   }else if(t>=.82&&t<.96){
    gesture=mechanism==='ar-bolt-catch'?'ar-bolt-release':
     mechanism==='ak-rocking'?'ak-operating-handle':
-    mechanism==='hk-roller'?'hk-slap':'none';
+    mechanism==='hk-roller'?'hk-slap':
+    mechanism==='fal-side-charge'?'fal-charge':
+    mechanism==='fnc-side-charge'?'fnc-charge':
+    mechanism==='g36-top-charge'?'g36-charge':'none';
    gestureWeight=ease((t-.82)/.055)*
     (1-ease((t-.90)/.06));
   }
@@ -82,6 +88,12 @@ const ART:Record<ReloadMechanism,ReloadWeaponPresentationTarget>={
   forward:1.45,up:.25,side:-.78},
  'hk-roller':{yaw:-.14,pitch:-.06,roll:.20,
   forward:1.48,up:.45,side:-.85},
+ 'fal-side-charge':{yaw:-.14,pitch:-.055,roll:.12,
+  forward:1.45,up:.28,side:-.65},
+ 'fnc-side-charge':{yaw:-.12,pitch:-.04,roll:-.13,
+  forward:1.35,up:.30,side:-.60},
+ 'g36-top-charge':{yaw:-.10,pitch:-.03,roll:.08,
+  forward:1.23,up:.45,side:-.55},
  'shell-tube':{yaw:0,pitch:0,roll:0,forward:0,up:0,side:0},
  'legacy':{yaw:-.12,pitch:-.05,roll:0,
   forward:1.10,up:.20,side:-.50}
@@ -154,6 +166,12 @@ export function v4ReloadControlPose(
   if(t<.82||t>=.96)return still;
   const phase=ease((t-.82)/.14);
   return {visible:true,travel:0,press:.72*Math.sin(phase*Math.PI)};
+ }
+ if(mechanism==='fal-side-charge'||mechanism==='fnc-side-charge'||
+    mechanism==='g36-top-charge'){
+  if(t<.82||t>=.96)return still;
+  const phase=ease((t-.82)/.14);
+  return {visible:true,travel:-1.2*Math.sin(phase*Math.PI),press:0};
  }
  return still;
 }

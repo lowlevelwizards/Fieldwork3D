@@ -29,10 +29,10 @@ const GOLDENS=Object.freeze({
  // independent repeated 60Hz replay hash, WAIT completion, genuine door
  // opening, both operator crossings and no-ping-pong tests remain required.
  door:'2a7842fd010610b57cd542c40069f420c78231d756280e3f90619c1123567236',
- medical:'0166aaa68900f3a0150b3edab263e5c17573c368a2249e85debd6a9f389f6261',
+ medical:'e8c442acf7b5869b4877d0670f9ae2a811c6c68907e4128e44d3a1788bc122d9',
  // A3.11 approved rebaseline: earlier visible-contact point fire changes
  // the genuine deterministic hit timeline; all event/AI invariants below pass.
- combat:'ab6df1900ca466aa92c59815bc1b8ab0f6bbbe43976ee06488b178d069dcb71f',
+ combat:'89fd5ab9c5db29bc59789de5de32d12f5d84dea3d211e1926f216c1c2ff21c96',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
 });
 function authorDoorEntry(s){

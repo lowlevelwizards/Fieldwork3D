@@ -451,3 +451,74 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
   bottom:-13px;padding:11px 0 calc(13px + env(safe-area-inset-bottom,0px))}
  .arsenal-wb-load-dialog .arsenal-wb-load-choices{max-height:42dvh}
 }
+
+/* H1.8: performance stays next to the actual 3D rifle on all breakpoints.
+ * Not a new gameplay authority. Fixed scales compare one build to another. */
+.arsenal-wb-stage{grid-column:1;grid-row:1/3;display:flex;flex-direction:column;
+ gap:9px;min-width:0;min-height:0}
+.arsenal-wb-stage .arsenal-wb-viewport{grid-column:auto;grid-row:auto;
+ flex:1 1 auto;min-height:270px}
+.arsenal-wb-stats{background:var(--fw-panel);border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-md);padding:11px 12px;min-width:0;flex:none}
+.arsenal-wb-stats-head{display:flex;align-items:baseline;justify-content:space-between;
+ flex-wrap:wrap;gap:3px 10px;margin-bottom:9px}
+.arsenal-wb-stats-head strong{font:750 13px/1.15 var(--fw-font-menu);
+ letter-spacing:.08em}
+.arsenal-wb-stats-comparison{font:650 10px/1.2 var(--fw-font-action);
+ color:var(--fw-text-muted);letter-spacing:.06em}
+.arsenal-wb-stats-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+ gap:10px 13px}
+.arsenal-wb-stat{min-width:0;display:flex;flex-direction:column;gap:4px}
+.arsenal-wb-stat-heading{display:flex;justify-content:space-between;
+ align-items:baseline;gap:5px;min-width:0}
+.arsenal-wb-stat-heading strong{font:700 11px/1.2 var(--fw-font-menu);
+ letter-spacing:.035em;overflow-wrap:anywhere}
+.arsenal-wb-stat-value{display:inline-flex;align-items:center;gap:3px;
+ white-space:nowrap;font:750 12px/1 var(--fw-font-action);
+ font-variant-numeric:tabular-nums}
+.arsenal-wb-stat-change{font:700 10px/1 var(--fw-font-action);
+ font-variant-numeric:tabular-nums}
+.arsenal-wb-stat-change[data-direction="up"]{color:var(--fw-sage)}
+.arsenal-wb-stat-change[data-direction="down"]{color:var(--fw-brass)}
+.arsenal-wb-stat-track{height:7px;border-radius:6px;background:var(--fw-panel-deep);
+ position:relative;overflow:hidden;box-shadow:inset 0 0 0 1px var(--fw-panel-border)}
+.arsenal-wb-stat-fill{display:block;height:100%;background:var(--fw-sage);
+ border-radius:inherit;transition:width .16s ease}
+.arsenal-wb-stat-previous{position:absolute;top:0;height:100%;width:2px;
+ transform:translateX(-1px);background:var(--fw-brass);box-shadow:0 0 0 1px var(--fw-panel-deep)}
+.arsenal-wb-stat-detail{font:500 10px/1.2 var(--fw-font-action);
+ color:var(--fw-text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arsenal-wb-stats-note{margin:9px 0 0;color:var(--fw-text-muted);
+ font:500 10px/1.25 var(--fw-font-action)}
+@media(max-width:1350px){
+ .arsenal-wb-stats-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:1100px){
+ .arsenal-wb-stats-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+ .arsenal-wb-stage{flex:none}
+ .arsenal-wb-stage .arsenal-wb-viewport{flex:none;min-height:220px;
+  height:clamp(220px,39dvh,360px)}
+ .arsenal-wb-stats{padding:10px}
+ .arsenal-wb-stats-grid{gap:9px 11px}
+ .arsenal-wb-stats-head{margin-bottom:7px}
+ .arsenal-wb-stats-note{margin-top:7px}
+}
+@media(prefers-reduced-motion:reduce){
+ .arsenal-wb-stat-fill{transition:none}
+}
+
+/* Factory/saved model selection: inspect projected deltas before loading. */
+.arsenal-wb-load-stats{display:flex;flex-direction:column;gap:7px;
+ margin:10px 0;padding:9px;background:var(--fw-panel-deep);
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm)}
+.arsenal-wb-load-stats>strong{font:750 11px/1.2 var(--fw-font-menu);
+ letter-spacing:.05em}
+.arsenal-wb-load-stat-chips{display:flex;flex-wrap:wrap;gap:5px;
+ font:600 11px/1.35 var(--fw-font-action)}
+.arsenal-wb-load-stat-chip{border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);padding:4px 7px;
+ font-variant-numeric:tabular-nums}
+.arsenal-wb-load-stat-chip[data-direction="up"]{color:var(--fw-sage)}
+.arsenal-wb-load-stat-chip[data-direction="down"]{color:var(--fw-brass)}

@@ -88,7 +88,8 @@ test('FAL S2: stock, gripping, magazine sockets, carried magazine and safe poses
  assert.equal(sockets.muzzle.x,a.muzzleX);
  assert.ok(lowReadyFamilyFit(c),"reuse G3 long-rifle posture, not its silhouette");
  assert.ok(lowReadyArchetype(c),'FAL explicitly opts into long-rifle archetype');
- assert.equal(reloadMechanismFor('rifle',c),'legacy','must not perform an HK slap');
+ assert.equal(reloadMechanismFor('rifle',c),'fal-side-charge',
+   'FAL must manipulate its own side handle, not an HK slap');
  const carried=carriedMagazineProfile('fal-mag20');
  assert.equal(carried?.family,'fal');assert.ok(carried?.length>4.9);
  const mesh=carriedMagazineGeometry('fal-mag20');

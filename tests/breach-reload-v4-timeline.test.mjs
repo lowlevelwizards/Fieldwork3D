@@ -19,7 +19,9 @@ test('B24 mechanism belongs to the receiver, not the HK brand name',()=>{
     initialWeaponConfiguration(p.weapon),p.id);
   const m=reloadMechanismFor(p.weapon,config);
   assert.equal(m,p.family==='ar'?'ar-bolt-catch':
-   p.family==='ak'?'ak-rocking':p.family==='hk'?'hk-roller':'legacy',p.id);
+   p.family==='ak'?'ak-rocking':p.family==='hk'?'hk-roller':
+    p.family==='fal'?'fal-side-charge':p.family==='fnc'?'fnc-side-charge':
+    p.family==='g36'?'g36-top-charge':'legacy',p.id);
  }
  assert.ok(FAMILY_PRESETS.some(p=>p.id==='hk-mp5a3'));
  assert.ok(FAMILY_PRESETS.some(p=>p.id==='hk-hk53a3'));
@@ -43,6 +45,7 @@ test('B24 family signatures fire only for empty magazine actions',()=>{
 });
 test('B24 visual presentation is pure and returns exactly to stock at ends',()=>{
  for(const family of ['ar-bolt-catch','ak-rocking','hk-roller',
+  'fal-side-charge','fnc-side-charge','g36-top-charge',
   'legacy','shell-tube']){
   for(const mode of ['emergency','retention','shells']){
    for(const time of [0,1]){
