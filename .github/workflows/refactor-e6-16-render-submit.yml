@@ -7,7 +7,7 @@ on:
       - 'src/rendering/breach-post-ready-attribution.ts'
       - 'src/rendering/breach-live-shadow-submit-profiler.ts'
       - 'tests/refactor-e6-16-shadow-submission.test.mjs'
-      - 'scripts/verification/e6-16-scene-phase-browser.mjs'
+      - 'scripts/verification/e6-16-shadow-submit-browser.mjs'
       - '.github/workflows/refactor-e6-16-live-scene.yml'
   workflow_dispatch:
 permissions:
@@ -44,7 +44,7 @@ jobs:
       - name: Four fresh real browser 90-live shadow-map submission samples
         env:
           FIELDWORK_CI_CHROME: '1'
-        run: node scripts/verification/e6-16-scene-phase-browser.mjs
+        run: node scripts/verification/e6-16-shadow-submit-browser.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
