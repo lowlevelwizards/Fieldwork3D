@@ -957,6 +957,9 @@ export class CampaignScreen{
   const card=node('article','campaign-contract');
   card.append(node('strong','',view.title));
   if(isDispatchPilot(campaign))card.append(node('small','campaign-note',view.reference));
+  if(isDispatchPilot(campaign)&&c.dispatchCase)
+   card.append(node('small','campaign-note','SITE · '+
+    c.dispatchCase.archetype.replace(/-/g,' ').toUpperCase()));
   card.append(node('div','campaign-muted',c.region+' · '+['','LOW','MODERATE','HIGH'][c.risk]+' RISK'));
   if(c.followUpOf)card.append(node('div','campaign-note','FOLLOW-UP OPERATION'));
   card.append(node('p','',view.description));
@@ -985,6 +988,8 @@ export class CampaignScreen{
   };
   add('OBJECTIVE',view.description);
   if(isDispatchPilot(campaign))add('CALL REFERENCE',view.reference);
+  if(isDispatchPilot(campaign)&&contract.dispatchCase)
+   add('PROPERTY TYPE',contract.dispatchCase.archetype.replace(/-/g,' ').toUpperCase());
   add('ASSIGNMENT',contract.kind.replace(/-/g,' ').toUpperCase());
   add('LOCATION',contract.region);
   add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);
