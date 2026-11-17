@@ -772,6 +772,7 @@ export class CampaignScreen{
   if(isDispatchPilot(c)){
    const dept=c.dispatchDepartment??initialDispatchDepartment();
    const record=node('details','campaign-section campaign-dispatch-service');
+   record.dataset.campaignDetail='service-record';
    record.append(node('summary','','DEPARTMENT SERVICE RECORD · '+dept.standing+'/100'));
    record.append(node('p','campaign-note',
     'OPERATIONAL STANDING · '+dept.standing+' / 100 · '+
@@ -874,6 +875,7 @@ export class CampaignScreen{
     c.history.some(report=>report.contractId===k.id)).slice(-8).reverse();
    if(linked.length){
     const trail=node('details','campaign-case-history');
+    trail.dataset.campaignDetail='related-cases';
     trail.append(node('summary','',
      'RELATED CASE HISTORY · '+linked.length+' RECENT OPERATION'+
      (linked.length===1?'':'S')));
@@ -896,6 +898,7 @@ export class CampaignScreen{
     .filter((entry):entry is NonNullable<typeof entry>=>!!entry);
    if(closeouts.length){
     const notes=node('details','campaign-case-history');
+    notes.dataset.campaignDetail='closeout-notes';
     notes.append(node('summary','',
      'OPERATION CLOSEOUT NOTES · '+closeouts.length+' RECENT'));
     for(const entry of closeouts){
@@ -965,6 +968,7 @@ export class CampaignScreen{
   grid.append(chronicle);
   const footer=node('div','campaign-footer');
   const utilities=node('details','campaign-overview-utilities');
+  utilities.dataset.campaignDetail='save-utilities';
   utilities.append(node('summary','','SAVES & OTHER MODES'));
   const utilityContent=node('div','campaign-overview-utility-content');
   utilityContent.append(
@@ -1012,6 +1016,7 @@ export class CampaignScreen{
   if(isDispatchPilot(c)){
    const identity=dispatchDepartmentView(c);
    const department=node('details','campaign-department-identity');
+   department.dataset.campaignDetail='department-profile';
    department.append(node('summary','campaign-department-summary',
     'DEPARTMENT PROFILE · '+identity.standing+'/100 · '+identity.standingTier));
    department.append(node('div','campaign-department-eyebrow',
