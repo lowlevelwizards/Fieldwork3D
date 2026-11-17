@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   responsive-browser:
-    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'ui/operations-room-') }}
+    if: ${{ github.event_name == 'workflow_dispatch' || startsWith(github.head_ref, 'ui/operations-room-') || startsWith(github.head_ref, 'ui/campaign-') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
