@@ -18,9 +18,17 @@ Existing systems already provide:
 - Leave original non-Dispatch campaign cards, missions, economy, AI, ROE, force reviews, career settlement, and save schema unchanged.
 - Test all seven authored D8 incidents, the five objectives, failure and success lineage, corrupted/missing/pruned history handling, and real save reload where supported.
 
+## D14.3 — compact, opt-in related-case chronicle (this release batch)
+
+The existing last-eight operation log remains primary and unchanged. When
+completed related cases exist, a closed-by-default `details` section shows up
+to eight genuinely settled follow-ups, their recorded outcomes, and the
+closest retained parent from the D14.1 projection. Older or pruned parent
+records are explicitly unknown. Do not invent retrospective cases, write
+new journal entries or expand the scroll height without a deliberate tap.
+
 ## Later D14 candidates (require independent authority)
 
-- D14.3: coherent case-lineage chronicle and completion summary in the Operations Room.
 - D14.4: incident variety within the existing mission mechanics, including briefing uncertainty and site hazards **only when backed by true generated mission data**.
 - D14.5+: researched dedicated police gameplay (arrest, negotiation, barricade / warrant mechanics) must not be simulated by new words alone.
 
