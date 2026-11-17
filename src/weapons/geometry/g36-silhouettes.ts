@@ -53,17 +53,18 @@ function area(poly:Outline):number{
 function contour(poly:Outline,ccw:boolean):Outline{
  return (area(poly)>0)===ccw?poly:[...poly].reverse();
 }
-/** Stock silhouette: two deliberate openings, a single descending lower
- * diagonal, a strong horizontal upper bar. No inset frame or cosmetic struts.
+/** P8: simplified original G36 molded stock — two real openings,
+ * one strong upper member and a decisive sweeping lower contour.
+ * The 3D depth remains restrained; never a tubular folding-stock clone.
  */
 function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):THREE.Mesh{
  const outside:Outline=[
   [-14.69,.50],[-6.43,.50],[-6.43,-2.08],
-  [-8.75,-2.35],[-12.35,-4.72],[-14.69,-5.24]
+  [-8.75,-2.35],[-11.22,-4.18],[-13.12,-4.96],[-14.69,-5.24]
  ];
  const largeHole:Outline=[
   [-14.00,-.42],[-10.31,-.42],[-9.62,-1.55],
-  [-12.12,-4.23],[-14.00,-4.58]
+  [-11.62,-3.85],[-13.10,-4.45],[-14.00,-4.58]
  ];
  const smallHole:Outline=[
   [-9.42,-.40],[-7.13,-.40],[-7.09,-1.72],[-8.60,-1.72]
@@ -104,8 +105,8 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
 
  addTwoOpeningStock(root,material,i.stock++);
  const pad=outline('stock',[
-  [-15.05,.40],[-14.60,.40],[-14.60,-4.93],[-15.05,-5.22]
- ],1.72);
+  [-15.05,.40],[-14.63,.40],[-14.63,-5.04],[-15.05,-5.22]
+ ],1.44);
  pad.userData.g36Buttpad=true;
  const hinge=box('stock',-6.64,-.74,0,.72,2.43,1.80);
  hinge.userData.g36StockHinge=true;
@@ -118,7 +119,7 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  ],2.50);
  upper.userData.g36ReceiverUpper=true;
  const lower=outline('receiver',[
-  [-6.42,-1.13],[3.70,-1.13],[2.85,-3.12],
+  [-6.42,-1.13],[3.70,-1.13],[2.35,-3.12],
   [-.45,-3.12],[-1.46,-2.28],[-3.76,-2.28],
   [-4.36,-3.56],[-6.42,-2.14]
  ],2.28);
@@ -151,9 +152,10 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  const smallLens=box('receiver',...optics.upperFace);
  smallLens.userData.g36UpperReflexWindow=true;
 
- // Four-sided wedge, no physical trigger-guard frame or micro-controls.
+ // One strongly rear-raked HK polymer wedge, no trigger guard.
+ // Maintain the primary-hand landmark (-4.65,-4.10) inside its projected face.
  const grip=outline('grip',[
-  [-5.70,-2.12],[-3.39,-2.12],[-4.26,-5.72],[-5.83,-5.72]
+  [-5.70,-2.12],[-3.39,-2.12],[-4.60,-5.72],[-6.25,-5.72]
  ],2.02);
  grip.userData.g36Grip=true;
 

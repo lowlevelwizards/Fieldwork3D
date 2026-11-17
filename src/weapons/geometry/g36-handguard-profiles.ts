@@ -1,12 +1,12 @@
 /** G36 P6: a confident molded polymer fore-end.
- * Flat roof, planar sides, flat floor; precisely one short blunt nose taper.
+ * Flat roof, planar sides, flat floor; one purposeful forward descending nose.
  * No octagonal rounding, intermediate pillow/chamfer stations or vent meshes.
  */
 import * as THREE from 'three';
 export const G36_LONG_FOREND_RINGS=Object.freeze([
  {x:3.75,roofY:1.35,bottomY:-1.88,halfDepth:1.45},
  {x:11.75,roofY:1.35,bottomY:-1.88,halfDepth:1.45},
- {x:13.45,roofY:1.17,bottomY:-1.64,halfDepth:1.32}
+ {x:13.45,roofY:.96,bottomY:-1.64,halfDepth:1.32}
 ]);
 const section=(r:typeof G36_LONG_FOREND_RINGS[number]):[number,number][]=>[
  [r.roofY,-r.halfDepth],[r.roofY,r.halfDepth],
