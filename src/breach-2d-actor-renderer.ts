@@ -2,7 +2,7 @@
  * Uses the supplied observation/selection state; never updates game truth.
  */
 import {W,H,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,enemies,lastKnown,liveVisibility,isSeen} from './breach-game.ts';
+import {type Session,type TeamActor,enemies,lastKnown,isSeen} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
