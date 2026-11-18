@@ -10,6 +10,8 @@ import {g36FrontEnd,g36SupportRange,g36HandguardEnd}
  from '../src/weapons/geometry/g36-variant-parts.ts';
 import {g36PixelAtlas} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
+import {alternateStockPosition,normalizedStockPosition,stockHingeX}
+ from '../src/weapon-stock-position.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  setConfiguredFamilyPart,setWeaponAttachment,readWeaponConfiguration,
  resolveWeaponAssembly,familyAccessoryAllowed}
@@ -130,6 +132,20 @@ test('rail mounts exist only where actual model contains rails; optics and light
  const reflex=setWeaponAttachment(c,'optic','optic-reflex');
  assert.equal(reflex.slots.optic,'optic-reflex');
 });
+test('G36 short and adjustable folders keep inherited physical folding/save semantics',()=>{
+ for(const id of ['g36-stock','g36-stock-short','g36-stock-adjustable']){
+  assert.equal(alternateStockPosition(id),'folded');
+  assert.equal(normalizedStockPosition(id,'folded'),'folded');
+  assert.equal(stockHingeX(id),-5.3);
+ }
+ for(const id of ['g36-c-classic','g36-ka4']){
+  const c=preset(id);
+  const folded=readWeaponConfiguration({...c,stockPosition:'folded'},c.weapon);
+  assert.equal(folded.stockPosition,'folded');
+  assert.ok(resolveWeaponAssembly(folded).stockX>-7,'folded stock clears rear weapon');
+ }
+});
+
 test('single-scope upper is an optional part, never another preset, and cannot turn into G36C',()=>{
  const k=preset('g36-k-dual');
  const result=proposeFamilyPartChange(k.build,k.weapon,'receiver','g36-single-receiver');
