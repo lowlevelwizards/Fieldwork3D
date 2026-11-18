@@ -28,9 +28,11 @@ const zone=(x:number,y:number,x0:number,x1:number,y0:number,y1:number)=>
  */
 function ink(tile:Tile,x:number,y:number):number{
  if(tile==='guard-right'||tile==='guard-left'){
-  // Only four large, black side voids. One decision each; no fake rims.
+  // H1: four long, shallow graphic vent slots, never four black squares.
+  // Single cached pixel atlas: no extra mesh, bevel, frame or seam.
+  // Keep all slots below the new upper shoulder (Y about +.85).
   for(const center of [5.35,7.40,9.45,11.50])
-   if(zone(x,y,center-.85,center+.85,-.30,.64))return 89;
+   if(zone(x,y,center-.85,center+.85,-.17,.39))return 89;
   return 255;
  }
  if(tile==='receiver-right'){
