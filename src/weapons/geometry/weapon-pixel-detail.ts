@@ -213,7 +213,7 @@ export const G36_SEF_INDEX_MARKS=Object.freeze([
  {letter:'E',x:-6.03,y:-2.00,z:1.185,atlasBottom:8},
  {letter:'F',x:-6.03,y:-1.66,z:1.185,atlasBottom:1}
 ] as const);
-export const G36_SEF_GLYPH_SIZE=Object.freeze({width:.34,height:.30});
+export const G36_SEF_GLYPH_SIZE=Object.freeze({width:.38,height:.32});
 export function addG36SEFIndexMarks(root:THREE.Group):THREE.Mesh{
  const geoms:THREE.BufferGeometry[]=[];
  for(const side of [1,-1] as const){
