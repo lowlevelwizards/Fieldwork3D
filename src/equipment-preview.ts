@@ -240,6 +240,12 @@ export class CampaignKitPreview{
   });
  }
  getAzimuth(){return this.azimuth;}
+ /** Discrete, touch-accessible orbit controls share keyboard/drag camera state. */
+ rotateBy(degrees:number):void{
+  if(Number.isFinite(degrees))this.setAzimuth(this.azimuth+degrees*Math.PI/180);
+ }
+ /** Reset rotation only; retain the equipment category's current focus. */
+ resetOrientation():void{this.setAzimuth(.72);}
  setAzimuth(value:number){
   if(!Number.isFinite(value)||Math.abs(this.azimuth-value)<1e-7)return;
   this.azimuth=value;
