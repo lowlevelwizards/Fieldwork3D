@@ -46,7 +46,9 @@ export function setObjectiveIntelLevel(
  state:{site?:Site;objectiveIntel?:ObjectiveKnowledge},
  level:ObjectiveIntelLevel
 ):void{
+ const observed=state.objectiveIntel?.discovered===true;
  state.objectiveIntel=createObjectiveKnowledge(state.site,level);
+ if(observed)state.objectiveIntel.discovered=true;
 }
 export function discoverObjective(
  state:{objectiveIntel?:ObjectiveKnowledge},observed:boolean):boolean{
