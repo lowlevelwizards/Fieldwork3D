@@ -16,9 +16,9 @@ const triangles=o=>(o.geometry.index?.count??o.geometry.getAttribute('position')
 test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const guard=one(g,'g36LongHandguard');
- assert.equal(guard.geometry.getAttribute('position').count,258);
+ assert.equal(guard.geometry.getAttribute('position').count,60);
  assert.equal(G36_LONG_FOREND_RINGS.length,3);
- assert.equal(triangles(guard),86,'H2.1 angled shell: 64 sides, six rear-cap and 16 front-rim triangles');
+ assert.equal(triangles(guard),20,'H3: 12 long side and eight planar end-cap triangles');
  assert.equal(one(g,'g36LowerOptic').geometry.type,'BufferGeometry',
   'O2 production optic is one low-facet volumetric housing');
  assert.equal(one(g,'g36UpperReflex').geometry.type,'BufferGeometry');
@@ -29,7 +29,7 @@ test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',(
  assert.ok(counts.g36ReceiverUpper<=18);
  assert.ok(counts.g36ReceiverLower<=30);
  assert.ok(counts.g36Grip<=16);
- assert.ok(g.children.length<=24,'one mouth face and one lug added, no traced mesh layers');
+ assert.ok(g.children.length===22,'one solid handguard and no cavity/lug extras');
  assert.ok(g.children.reduce((n,x)=>n+triangles(x),0)<760,
   'the small number of iconic forms must not be disguised trace meshes');
  clearWeaponSilhouette(g);m.dispose();
