@@ -34,6 +34,26 @@ import {sweptProfileClear,squeezeFacing} from './breach-navigation.ts';
 import {findBoundedNarrowLeafExit,claimNarrowLeafExitProbe,
  ownNarrowExitWaypoints} from './breach-squeeze-leaf-exit.ts';
 
+/** D3.25C: the Townhouse FRONT leaf settles at .944 (stationary),
+ * repeatedly producing real leaf-overlap escapes while the old >=.96
+ * route gate rejects every cold world connector. Treat ONLY the current
+ * generated ENTRY in an existing grab-and-hold episode as eligible at
+ * >=.90. This grants a route PROBE, not physical clearance or a move.
+ * The ordinary world route and every fixed-step body sweep still veto
+ * any impossible segment; closed/moving/locked panels never qualify. */
+export function stableEntryLeafRecoveryEligible(
+ actor:Pick<TeamActor,'plan'|'doorTraversal'>,
+ door:Session['doors'][number]):boolean{
+ const fraction=door.openFraction??(door.open?1:0);
+ if(!door.open||Math.abs(door.angularVelocity??0)>=.16)return false;
+ if(fraction>=.96)return true;
+ const order=actor.plan[0];
+ return fraction>=.90&&!door.locked&&!door.jammed&&!door.wedged&&
+   !door.heldBy&&order?.kind==='move'&&
+   order.entryDoorId===door.id&&
+   actor.doorTraversal?.doorId===door.id&&
+   actor.doorTraversal.maneuver==='grab-and-hold';
+}
 /** After an ACTUAL swept door overlap escape, prefer one physical
  * world-truth connector past a STABLE fully-open leaf. Otherwise a
  * temporary intel route can immediately walk the feet back INTO the
@@ -47,9 +67,8 @@ export function restoreAfterOpenLeafEscape(
  if(s.seconds-a.lastNavRepairAt<.7){
   noteDoorHandoffRejection(s,a,'world:cooldown');return false;
  }
- const near=s.doors.some(door=>door.open&&
-  (door.openFraction??0)>=.96&&
-  Math.abs(door.angularVelocity??0)<.16&&
+ const near=s.doors.some(door=>
+  stableEntryLeafRecoveryEligible(a,door)&&
   pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+13);
  if(!near){
   noteDoorHandoffRejection(s,a,'world:no-stable-open-leaf');return false;
