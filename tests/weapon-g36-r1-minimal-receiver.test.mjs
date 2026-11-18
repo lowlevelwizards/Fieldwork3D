@@ -21,8 +21,9 @@ test('R1 receiver has precisely two bold continuous polymer masses, no new trim'
  const mat=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(mat);
  const upper=one(g,'g36ReceiverUpper'),lower=one(g,'g36ReceiverLower');
  assert.equal(upper.userData.g36ReceiverArtVersion,'r1-simple-two-masses');
- assert.equal(upper.geometry.parameters.shapes.getPoints().length,6);
- assert.equal(lower.geometry.parameters.shapes.getPoints().length,8);
+ // THREE Shape.getPoints includes its repeated closing vertex.
+ assert.equal(upper.geometry.parameters.shapes.getPoints().length-1,6);
+ assert.equal(lower.geometry.parameters.shapes.getPoints().length-1,8);
  assert.ok(triangles(upper)<=20&&triangles(lower)<=30);
  assert.equal(lower.userData.g36OpenTriggerGap,true);
  assert.ok(bb(upper).intersectsBox(bb(lower)));
