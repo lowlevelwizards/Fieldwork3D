@@ -44,16 +44,38 @@ try{
     throw Error('Operator 3D preview is not keyboard rotatable');
    const gesture=await operatorPreview.evaluate(element=>{
     const first=element.getAttribute('aria-label');
-    const dispatch=(kind,x)=>element.dispatchEvent(new PointerEvent(kind,{
-     bubbles:true,pointerId:41,pointerType:'touch',clientX:x,clientY:170
-    }));
+    const dispatch=(kind,x,id=41,isPrimary=true)=>
+     element.dispatchEvent(new PointerEvent(kind,{
+      bubbles:true,pointerId:id,pointerType:'touch',isPrimary,button:0,
+      clientX:x,clientY:170
+     }));
+    // Secondary fingers must never steal a later primary interaction.
+    dispatch('pointerdown',120,40,false);
+    dispatch('pointermove',200,40,false);
+    dispatch('pointerup',200,40,false);
+    const ignoredSecondary=element.getAttribute('aria-label')===first;
     dispatch('pointerdown',120);
     dispatch('pointermove',200);
     dispatch('pointerup',200);
-    return {first,last:element.getAttribute('aria-label')};
+    const last=element.getAttribute('aria-label');
+    // A browser can lose capture without delivering pointerup; the next
+    // gesture must still rotate and commit its accessible orientation.
+    dispatch('pointerdown',210,42);
+    dispatch('pointermove',245,42);
+    dispatch('lostpointercapture',245,42);
+    const afterLoss=element.getAttribute('aria-label');
+    dispatch('pointerdown',245,43);
+    dispatch('pointermove',280,43);
+    dispatch('pointerup',280,43);
+    return {first,last,ignoredSecondary,afterLoss,
+     afterRecovery:element.getAttribute('aria-label')};
    });
+   if(!gesture.ignoredSecondary)
+    throw Error('Secondary touch moved the preview or captured its gesture');
    if(gesture.last===gesture.first)
     throw Error('Completed preview drag failed to update accessible view angle');
+   if(gesture.afterLoss===gesture.last||gesture.afterRecovery===gesture.afterLoss)
+    throw Error('Lost pointer capture left the preview stuck or orientation stale');
   }
   const groups=armory.locator(':scope > .fw-loadout-group');
   if(await groups.count()!==5)throw Error('Campaign kit must have five clear groups');
@@ -124,7 +146,8 @@ try{
   const rigChoice=carry.getByRole('button',{name:/Choose rig for/i});
   if(!await rigChoice.isVisible())throw Error('Carry equipment chooser is not reachable');
   const originalRig=await rigChoice.textContent();
-  // E3: The same WebGL canvas must survive actual kit mutation / DOM rebuild.
+  const orientationBeforeKitMutation=await operatorPreview.getAttribute('aria-label');
+  // E3: The same WebGL canvas and user-selected view must survive mutation.
   const canvasBefore=await page.evaluate(()=>{
    const canvas=document.querySelector('.campaign-kit-preview canvas');
    if(canvas)window.__fieldworkKitCanvas=canvas;
@@ -146,6 +169,8 @@ try{
      document.querySelector('.campaign-kit-preview canvas')===
       window.__fieldworkKitCanvas);
     if(!stillSame)throw Error('Operator preview WebGL canvas recreated after gear change');
+    if(await operatorPreview.getAttribute('aria-label')!==orientationBeforeKitMutation)
+     throw Error('Equipment mutation reset the user-selected preview orientation');
    }
    if(await armory.locator('[data-loadout-group="carry"][open]').count()!==1)
     throw Error('Gear change lost the selected equipment category');
@@ -165,6 +190,14 @@ try{
     originalRig,{timeout:15000});
    if(!await page.locator('.campaign-kit-presets').evaluate(el=>el.open))
     throw Error('Preset panel closed after applying saved gear');
+   if(canvasBefore){
+    const preserved=await page.evaluate(()=>({
+     canvas:document.querySelector('.campaign-kit-preview canvas')===window.__fieldworkKitCanvas,
+     orientation:document.querySelector('.campaign-kit-preview')?.getAttribute('aria-label')
+    }));
+    if(!preserved.canvas||preserved.orientation!==orientationBeforeKitMutation)
+     throw Error('Saved kit restore recreated or reset the operator preview');
+   }
    await page.locator('.campaign-kit-preset-card').getByRole('button',
     {name:'DELETE'}).click();
    await page.getByRole('alertdialog').getByRole('button',
