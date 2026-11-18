@@ -1,4 +1,4 @@
-/** Curated AR/AK relaxed low-ready game-art fit, never a ballistic change. */
+/** Curated family-specific relaxed low-ready game-art fit, never a ballistic change. */
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {Anchor3} from './breach-anatomy.ts';
 export type LowReadyFamilyFit={
@@ -36,10 +36,20 @@ const AK:Readonly<LowReadyFamilyFit>={
  minSupportX:4.35,carryYaw:.115,torsoTurn:-.065,
  elbowForward:9.0,elbowDown:-2.85,elbowOutboard:10.1
 };
+const G36:Readonly<LowReadyFamilyFit>={
+ stockBack:.68,stockIn:.17,supportBack:1.60,supportDown:.62,
+ minSupportX:4.70,carryYaw:.065,torsoTurn:-.040,
+ elbowForward:8.8,elbowDown:-2.35,elbowOutboard:9.40
+};
+const FNC:Readonly<LowReadyFamilyFit>={
+ ...AR,supportBack:1.80,supportDown:.72,minSupportX:4.65,
+ carryYaw:.070,torsoTurn:-.040
+};
 export function lowReadyFamilyFit(
  configuration?:WeaponConfiguration):Readonly<LowReadyFamilyFit>|null{
  const family=configuration?.build?.family;
- return family==='ar'?AR:family==='ak'?AK:family==='fal'?HK:family==='hk'?
+ return family==='ar'?AR:family==='ak'?AK:family==='fal'?HK:
+  family==='fnc'?FNC:family==='g36'?G36:family==='hk'?
   (configuration?.build?.parts.receiver==='hk-mp5k-stockless'&&
    configuration.build.parts.stock==='hk-mp5k-cap'?HK_SMG_K:
    configuration?.weapon==='smg'?HK_SMG:
