@@ -38,3 +38,7 @@ jobs:
         run: |
           npm run check
           node --experimental-strip-types --test tests/release-d3-29-broken-latch.test.mjs tests/lw-mechanical-locks.test.mjs tests/breach-roadmap2-stage6-site-builder.test.mjs tests/breach-door-order-lockpick-regressions.test.mjs
+      - name: Real frozen22 movement and locked-leaf integrity
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d329i-fresh22.json"
+          node scripts/report-d3-29-terminal-cancellations.mjs "$RUNNER_TEMP/d329i-fresh22.json"
