@@ -2,7 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {snapshotDoorInterruption} from '../src/breach-door-interruption.ts';
 import {failCurrentOrder} from '../src/breach-order-lifecycle.ts';
-import {newSession,team,resumeInterruptedDoorPlan} from '../src/breach-game.ts';
+import {newSession,team,resumeInterruptedDoorPlan,canResumeInterruptedDoorPlan} from '../src/breach-game.ts';
+import {contextActionChoices} from '../src/ui/context-actions.ts';
+import {dispatchTacticalContextCommand} from '../src/breach-tactical-context-command.ts';
 
 const pt=(x,y)=>({x,y});
 const wait={id:3,kind:'wait',p:pt(20,22),duration:0,doorId:'D8'};
@@ -100,4 +102,34 @@ test('D3.30B: resuming is prohibited outside planning and without physical door'
  s.phase='running';s.doors[0].locked=false;
  assert.equal(resumeInterruptedDoorPlan(s,a.id),false);
  assert.equal(a.interruptedDoorPlan?.sourceOrderId,1);
+});
+
+test('D3.30C: resume control appears only when an actual recoverable incident exists',()=>{
+ const base={door:false,node:false,flashRemaining:2,
+  posture:'stand',pace:'walk',firePolicy:'engage',reserve:20,magazine:20};
+ assert.equal(contextActionChoices({...base,resumeAvailable:false})
+  .some(x=>x.id==='ctxResumeEntry'),false);
+ const available=contextActionChoices({...base,resumeAvailable:true});
+ assert.equal(available[0].id,'ctxResumeEntry');
+ assert.equal(contextActionChoices({...base,door:true,resumeAvailable:true})
+  .some(x=>x.id==='ctxResumeEntry'),true);
+});
+test('D3.30C: palette action refuses locked door and explicitly restores after unlock',()=>{
+ const s=newSession(0,undefined,'full-view'),a=team(s)[0],door=s.doors[0];
+ a.interruptedDoorPlan={sourceOrderId:1,doorId:door.id,at:1,
+   reason:'locked',original:[{id:1,kind:'move',p:{...a.p}}]};
+ const click=()=>dispatchTacticalContextCommand({
+   state:s,selected:a.id,actor:a,node:undefined,door:undefined,
+   action:'ctxResumeEntry',selectedActiveWatch:false,
+   medicalCandidate:()=>null
+ });
+ door.locked=true;door.lockSide='both';
+ assert.equal(canResumeInterruptedDoorPlan(s,a.id),false);
+ assert.equal(click().outcome,'rejected');
+ assert.ok(a.interruptedDoorPlan);
+ door.locked=false;
+ assert.equal(canResumeInterruptedDoorPlan(s,a.id),true);
+ assert.equal(click().outcome,'accepted');
+ assert.equal(a.plan[0]?.kind,'move');
+ assert.equal(a.interruptedDoorPlan,null);
 });
