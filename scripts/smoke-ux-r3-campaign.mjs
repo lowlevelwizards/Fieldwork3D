@@ -39,6 +39,8 @@ try{
    // The default active WEAPON category is framed on the first WebGL paint.
    if(await operatorPreview.getAttribute('data-preview-focus')!=='weapon')
     throw Error('Fresh campaign armory preview ignored the active Weapon category');
+   if(!await operatorPreview.getAttribute('aria-label')?.then(label=>label?.includes('Weapon view.')))
+    throw Error('Initial preview accessibility label omitted the Weapon focus');
    await operatorPreview.focus();
    const before=await operatorPreview.getAttribute('aria-label');
    await operatorPreview.press('ArrowRight');
@@ -136,6 +138,8 @@ try{
   if(!hasMassComparison)throw Error('Equipment choice hides item weight tradeoffs');
   const focus=await page.locator('.campaign-kit-preview').getAttribute('data-preview-focus');
   if(focus!=='torso')throw Error('Armor choice did not focus the operator torso');
+  if(!await operatorPreview.getAttribute('aria-label')?.then(label=>label?.includes('Torso view.')))
+   throw Error('Changing preview focus did not announce the selected torso region');
   const gearSheet=page.getByRole('dialog',{name:'CHOOSE ARMOR'});
   await gearSheet.waitFor();
   if(!await gearSheet.getByRole('button',{name:/Soft Armor Vest/i}).count())
@@ -177,6 +181,8 @@ try{
    }
    if(await operatorPreview.getAttribute('data-preview-focus')!=='carry')
     throw Error('Gear rebuild lost the selected category camera framing');
+   if(!await operatorPreview.getAttribute('aria-label')?.then(label=>label?.includes('Carried equipment view.')))
+    throw Error('Gear rebuild failed to preserve the accessible Carry focus');
    if(await armory.locator('[data-loadout-group="carry"][open]').count()!==1)
     throw Error('Gear change lost the selected equipment category');
    if(!await page.locator('.campaign-kit-commit-feedback').isVisible())
