@@ -36,7 +36,7 @@ test('H3 factory is ONE sealed six-sided, two-end shell with no hollow sculpt pa
  assert.equal((guard.geometry.getAttribute('position').count)/3,20);
  assert.equal(g.children.filter(x=>x.name.startsWith('family-handguard-')).length,1);
  assert.ok(!one(g,'g36H21MouthRecess')&&!one(g,'g36H21MountingLug'));
- assert.equal(g.children.length,22,'H2 extra cavity and mounting lug removed');
+ assert.equal(g.children.length,23,'one small batched HK identity mark, no handguard extras');
  assert.ok(triangles(g)<=650);
  assert.ok(box(guard).intersectsBox(box(one(g,'g36ReceiverUpper'))));
  assert.ok(box(guard).intersectsBox(box(one(g,'g36Barrel'))));
@@ -108,7 +108,7 @@ test('H3 actual Arsenal adapter preserves original part ID, factory palette and 
  assert.equal(guard.userData.g36HandguardArtVersion,'h3-six-sided-solid');
  assert.equal(guard.material.color.getHex(),G36_DARK_POLYMER.color.getHex());
  assert.strictEqual(guard.material.map,g36PixelAtlas());
- assert.equal(g.children.length,22);
+ assert.equal(g.children.length,23);
  assert.ok(triangles(g)<=650);
  clearWeaponSilhouette(g);
 });
