@@ -34,11 +34,11 @@ export function stockPocket(mode:Handling,forwardPush=0):Anchor3{
   switch(mode){
     case 'high':return {x:3.9+xPush,y:-2.3,z:6.6};
     case 'low':return {x:3.45+xPush,y:4.45,z:4.8};
-    case 'ready':return {x:4.85+xPush,y:4.45,z:5.20};
+    case 'ready':return {x:5.10+xPush,y:4.45,z:5.38};
     // SHORT disengages the front shoulder socket entirely.
     case 'short':return shortStockUnderarmPocket(xPush);
-    case 'point':return {x:5.05+xPush,y:5.20,z:5.25};
-    case 'ads':return {x:5.10+xPush,y:5.65,z:5.30};
+    case 'point':return {x:5.30+xPush,y:5.20,z:5.42};
+    case 'ads':return {x:5.38+xPush,y:5.65,z:5.48};
   }
 }
 /** Target for a two-bone elbow. The rig converts this anatomical point to a
