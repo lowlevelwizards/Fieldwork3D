@@ -11,7 +11,7 @@ import {interruptsWatch} from '../breach-plan.ts';
 import {equippedEntryMethods} from '../equipment-entry-tools.ts';
 import {entryToolVerdict} from '../breach-entry-tools.ts';
 import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,
- type Session,type TeamActor} from '../breach-game.ts';
+ hasInterruptedSquadEntry,type Session,type TeamActor} from '../breach-game.ts';
 import {SUSPECT_CHALLENGE_RANGE} from '../breach-suspect-compliance.ts';
 import {sweptBodyClear} from '../breach-navigation.ts';
 import {sessionWorldGeometry} from '../breach-world-context.ts';
@@ -414,6 +414,7 @@ export function createTacticalPaletteController(config:{
     // the OPTION regardless of any unseen subsequent lock state; only the
     // deliberate command checks present access, avoiding an intel leak.
     resumeAvailable:!!a.interruptedDoorPlan,
+    resumeSquadAvailable:hasInterruptedSquadEntry(state,a.id),
     resumeReason:a.interruptedDoorPlan?.reason,
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
