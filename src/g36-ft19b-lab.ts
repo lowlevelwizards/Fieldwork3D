@@ -11,8 +11,9 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset} from './equipment-w
 import {weaponVisualLayout} from './weapons/geometry/weapon-visual-layout.ts';
 import {addArsenalInspectionLighting} from './arsenal/inspection-lighting.ts';
 import {applyG36PixelDetails} from './weapons/geometry/g36-pixel-details.ts';
-import {HK_DARK_POLYMER,HK_BLACK_METAL,HK_MUZZLE_METAL,
- G36_SMOKED_MAGAZINE,FAL_VENT_SHADOW} from './weapons/geometry/weapon-visual-palette.ts';
+import {HK_BLACK_METAL,HK_MUZZLE_METAL,
+ G36_DARK_POLYMER,G36_OPTIC_RIM,G36_LENS_BLACK,G36_RUBBER,
+ G36_SMOKED_MAGAZINE} from './weapons/geometry/weapon-visual-palette.ts';
 
 const canvas=document.querySelector<HTMLCanvasElement>('#view');
 const detail=document.querySelector<HTMLCanvasElement>('#detail');
@@ -155,9 +156,10 @@ function setFinish(next:Finish):void{
   model.traverse(node=>{if(node instanceof THREE.Mesh)node.material=material;});
  }
  if(finish==='factory')applyG36FactoryMaterials(items[0].model,{
-  polymer:HK_DARK_POLYMER,steel:HK_BLACK_METAL,
-  magazine:G36_SMOKED_MAGAZINE,buttpad:FAL_VENT_SHADOW,
-  optic:HK_DARK_POLYMER,muzzle:HK_MUZZLE_METAL
+  polymer:G36_DARK_POLYMER,steel:HK_BLACK_METAL,
+  magazine:G36_SMOKED_MAGAZINE,buttpad:G36_RUBBER,
+  optic:G36_DARK_POLYMER,opticRim:G36_OPTIC_RIM,lens:G36_LENS_BLACK,
+  muzzle:HK_MUZZLE_METAL
  });
  if(finish==='factory')applyG36PixelDetails(items[0].model);
  for(const id of ['flat','clay','factory'])
