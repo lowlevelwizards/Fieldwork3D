@@ -64,7 +64,7 @@ test('P3 dark dual-optic faces are seated on the FRONT and REAR of real housings
  assert.equal(front.material,finishes.buttpad);
  clearWeaponSilhouette(g);mat.dispose();
 });
-test('P3 stout 2-prism barrel exceeds muzzle cross-section; contacts are unchanged',()=>{
+test('R2 muzzle is a longer chunky 2-prism device, still fixed at muzzle contact',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const barrel=one(g,'g36Barrel'),muzzle=one(g,'g36FactoryMuzzle');
  assert.ok(barrel&&muzzle);
@@ -72,7 +72,8 @@ test('P3 stout 2-prism barrel exceeds muzzle cross-section; contacts are unchang
  const b=bounds(barrel),end=bounds(muzzle);
  assert.ok(b.max.y-b.min.y>=1.1);
  assert.ok(b.max.z-b.min.z>=1.1);
- assert.ok(b.max.y-b.min.y>end.max.y-end.min.y);
+ assert.ok(end.max.y-end.min.y>b.max.y-b.min.y+.3,'chunky muzzle is readable');
+ assert.ok(end.max.x-end.min.x>1.5,'device long enough to read from side');
  assert.ok(b.intersectsBox(end));
  assert.ok(Math.abs(bounds(g).max.x-G36_B_ART.muzzleX)<.01);
  clearWeaponSilhouette(g);m.dispose();
