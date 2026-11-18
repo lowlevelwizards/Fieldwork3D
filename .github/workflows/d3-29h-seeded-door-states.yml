@@ -1,0 +1,40 @@
+name: D3.29H deterministic initial door poses
+on:
+  push:
+    branches: [feature/d3-29h-seeded-door-states-20261118]
+    paths:
+      - '.github/workflows/d3-29h-seeded-door-states.yml'
+      - 'src/worldgen/door-initial-states.ts'
+      - 'src/breach-door.ts'
+      - 'src/breach-session-factory.ts'
+      - 'tests/release-d3-29-seeded-door-starts.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d329h-seeded-doors-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  seeded-hinge-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and critical seeded physical door regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/release-d3-29-seeded-door-starts.test.mjs tests/release-d3-29-directional-locks.test.mjs tests/breach-door-order-lockpick-regressions.test.mjs
+      - name: Frozen22 full physical smoke and lock classification
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d329h-fresh22.json"
+          node scripts/report-d3-29-terminal-cancellations.mjs "$RUNNER_TEMP/d329h-fresh22.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d329h-frozen22-initial-door-poses
+          path: ${{ runner.temp }}/d329h-fresh22.json
+          retention-days: 14
