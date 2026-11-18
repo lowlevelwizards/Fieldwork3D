@@ -42,7 +42,7 @@ test('P8 integrated optic remains one casing plus compact reflex crown',()=>{
  const lower=one(g,'g36LowerOptic'),upper=one(g,'g36UpperReflex');
  const face=one(g,'g36OpticFace'),handle=one(g,'g36HandleOpening');
  assert.equal(lower.geometry.type,'BufferGeometry');
- assert.equal(lower.userData.g36OpticArtVersion,'o2-simplified-125-125-55');
+ assert.equal(lower.userData.g36OpticArtVersion,'o3-compact-integrated-125-125-55');
  assert.equal(lower.userData.g36IntegratedOpticShell,true);
  assert.ok(bounds(lower).intersectsBox(bounds(upper)));
  assert.ok(bounds(face).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
