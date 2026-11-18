@@ -7,6 +7,7 @@ import {activateSite,OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {sweptBodyClear,bodyClear} from '../src/breach-navigation.ts';
 import {fullBodyMotorStrideClear} from '../src/breach-stack-micro-corner.ts';
+import {selectBlockedHingeStepback} from '../src/breach-partial-hinge-stepback.ts';
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departure sweep',()=>{
  const seed=19285501;
@@ -27,6 +28,9 @@ test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departur
    'Garage geometry changed; do not trust the historical leaf witness');
   const world=sessionWorldGeometry(s);
   const sweep=(a,b)=>sweptBodyClear(a,b,s.doors,OPERATOR_RADIUS,world);
+  const chosen=selectBlockedHingeStepback(from,goal,door,
+   at=>world.passable(at,OPERATOR_RADIUS)&&
+    bodyClear(at,s.doors,OPERATOR_RADIUS,world),sweep);
   const candidates=[];
   for(const length of [1.25,2.5,4,6,8,12])
    for(let i=0;i<16;i++){
@@ -45,9 +49,13 @@ test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departur
   console.log('D321B_GARAGE_FRONT_REAL_SWEEP',JSON.stringify({
    seed,from,goal,fraction:door.openFraction,
    actualLeafGap:gap,leaf,validSweepCount:candidates.length,
-   best:candidates.slice(0,12)
+   best:candidates.slice(0,12),chosen
   }));
   assert.ok(Number.isFinite(gap)&&gap<OPERATOR_RADIUS+8);
+  assert.ok(chosen,'a physically swept bounded step-back exists');
+  assert.ok(dist(from,chosen)<=12.001);
+  assert.ok(pointToSegment(chosen,leaf)>=OPERATOR_RADIUS+7);
+  assert.ok(fullBodyMotorStrideClear(from,chosen,sweep));
   // A valid departure is diagnostic evidence only, NOT proof that the
   // authoritative door motor can complete the whole four-person route.
  }finally{activateSite(null);}

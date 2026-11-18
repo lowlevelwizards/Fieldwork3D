@@ -10,7 +10,7 @@ export type RouteSource=
  'door-rehearsal-joined-waypoint'|'door-drift'|'door-leaf-escape'|
  'full-body-lane'|'blocked-leg-connector'|'collision-world-replan'|
  'collision-intel-replan'|'self-hinge-relief'|'local-detour'|
- 'generated-entry-settle'|'initial-portal-recovery'|'passage-retreat'|'door-handoff-reject'|'door-escape-swept-rejoin'|'door-escape-world-rejoin'|'door-escape-local-portal'|'door-escape-future-portal'|'door-squeeze-leaf-exit'|'lane-cycle-world'|'stack-micro-corner'|'cold-micro-departure'|'open-leaf-local-rejoin';
+ 'generated-entry-settle'|'initial-portal-recovery'|'partial-hinge-stepback'|'passage-retreat'|'door-handoff-reject'|'door-escape-swept-rejoin'|'door-escape-world-rejoin'|'door-escape-local-portal'|'door-escape-future-portal'|'door-squeeze-leaf-exit'|'lane-cycle-world'|'stack-micro-corner'|'cold-micro-departure'|'open-leaf-local-rejoin';
 export type TransientRouteTransition={
  seconds:number;actorId:string;source:RouteSource;
  prior:readonly Pt[];next:readonly Pt[];

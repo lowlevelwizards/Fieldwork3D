@@ -1,4 +1,8 @@
 import {setTransientRoute,noteDoorHandoffRejection,hasTransientRouteObserver} from './breach-route-transition.ts';
+import {claimBlockedHingeStepback,selectBlockedHingeStepback}
+ from './breach-partial-hinge-stepback.ts';
+import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
+import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
@@ -224,6 +228,27 @@ export function prepareMotorRoute(
       if(tryGoalCompleteDoorHandoffAfterEscape(a,s,p))return 'handled';
       if(!restoreAfterOpenLeafEscape(a,s,p))a.retryRouteAt=0;
       return 'handled';
+    }
+    // D3.21B: exact Garage FRONT failure. A motionless authored MOVE at
+    // a stalled, PARTIALLY OPEN leaf cannot acquire even its first route.
+    // One strictly bounded, 0.3-unit swept retreat increases leaf clearance
+    // before the SAME authoritative motor resumes the original GO.
+    // This is not a teleport, swing bypass, second controller or new order.
+    const trappedLeaf=a.doorTraversal?.doorId?
+      s.doors.find(door=>door.id===a.doorTraversal?.doorId):undefined;
+    if(trappedLeaf&&claimBlockedHingeStepback(a,trappedLeaf)){
+      const world=sessionWorldGeometry(s);
+      const retreat=selectBlockedHingeStepback(a.p,p,trappedLeaf,
+        at=>world.passable(at,OPERATOR_RADIUS)&&
+         bodyClear(at,s.doors,OPERATOR_RADIUS,world),
+        (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
+      if(retreat){
+        setTransientRoute(s,a,[retreat],'partial-hinge-stepback');
+        notePreciseLocalDetour(a,retreat);
+        a.lastNavRepairAt=s.seconds;
+        provisionalRouteAccepted(a);
+        return 'ready';
+      }
     }
     if(restoreRepeatedDoorEscapeRoute(a,s,p))return 'ready';
     // Never execute expensive route searches every fixed tick for a proven
