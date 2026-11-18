@@ -29,12 +29,14 @@ test('D3.29B: actual locked interior door differs from open briefing FRONT',()=>
   d329CancelDoorWitness:[{actor:'moss',seconds:20,
    failedOrder:{id:22,kind:'open',reason:'PATH BLOCKED · DOOR LOCKED',at:20},
    selectedDoorId:'D5',
+   initialSelectedDoor:{id:'D5',locked:true,open:false,fraction:0},
    actualSelectedDoor:{id:'D5',locked:true,open:false,fraction:0},
    lockedNearby:[{id:'D5',distance:2}]}]};
  const row=classifyD329Cancellation(mode,a);
  assert.equal(row.family,'entry-cancelled-after-open-door');
  assert.equal(row.interveningDoor,true);
  assert.equal(row.lockedMotorDoorVerified,true);
+ assert.equal(row.lockedLeafMovedAfterClosedStart,false);
  assert.equal(row.selectedMotorDoor.id,'D5');
  assert.equal(row.door.id,'FRONT');
  assert.equal(row.physicallyArrived,false);
@@ -93,4 +95,18 @@ test('D3.29A: never accept fabricated arrivals or invalid physics',()=>{
  assert.throws(()=>analyzeD329CancellationAudit(data),/disagree/);
  const invalid=fixture();invalid.summary.invalidPositions=1;
  assert.throws(()=>analyzeD329CancellationAudit(invalid),/integrity/);
+});
+
+test('D3.29C: an originally closed locked leaf becoming ajar and still locked is flagged',()=>{
+ const a=actor('vale');
+ const mode={mode:'authored',doorId:null,endDoorStates:[],
+  d329CancelDoorWitness:[{actor:'vale',seconds:20,
+   failedOrder:{id:22,kind:'move',reason:'PATH BLOCKED · DOOR LOCKED',at:20},
+   selectedDoorId:'D7',
+   initialSelectedDoor:{id:'D7',locked:true,open:false,fraction:0},
+   actualSelectedDoor:{id:'D7',locked:true,open:true,fraction:.43}}]};
+ const row=classifyD329Cancellation(mode,a);
+ assert.equal(row.lockedMotorDoorVerified,true);
+ assert.equal(row.lockedLeafMovedAfterClosedStart,true);
+ assert.equal(row.physicallyArrived,false);
 });
