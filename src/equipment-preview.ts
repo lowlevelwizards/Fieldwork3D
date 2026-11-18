@@ -175,11 +175,18 @@ export class CampaignKitPreview{
    weapon:[35,90,31],carry:[29,91,32]
   };
   const [height,radius,rise]=targets[area];
+  const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  // Re-selecting a focus target must not restart an identical transition,
+  // especially when a category and its equipment picker both request it.
+  if(area===this.focusArea){
+   if(!instant&&this.focusFrame!==null)return;
+   if(this.focusFrame===null&&this.focusHeight===height&&
+    this.focusRadius===radius&&this.focusRise===rise)return;
+  }
   this.focusArea=area;this.host.dataset.previewFocus=area;
   if(this.focusFrame!==null){
    cancelAnimationFrame(this.focusFrame);this.focusFrame=null;
   }
-  const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if(instant){
    this.focusHeight=height;this.focusRadius=radius;this.focusRise=rise;
    this.draw();return;
@@ -212,8 +219,9 @@ export class CampaignKitPreview{
  }
  getAzimuth(){return this.azimuth;}
  setAzimuth(value:number){
-  if(!Number.isFinite(value))return;
+  if(!Number.isFinite(value)||Math.abs(this.azimuth-value)<1e-7)return;
   this.azimuth=value;
+  this.updateOrientationLabel();
   this.draw();
  }
  private draw(){
