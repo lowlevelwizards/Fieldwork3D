@@ -4,6 +4,7 @@ on:
     branches: [feature/d3-25-entry-stall-witness-20261118]
     paths:
       - 'scripts/report-d3-25-entry-stalls.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
       - 'src/breach-order-wait.ts'
       - 'tests/release-d3-25b-terminal-entry-gate.test.mjs'
       - '.github/workflows/d3-25-entry-stall-witness.yml'
@@ -33,7 +34,7 @@ jobs:
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --site-index=1 --audit-seed=19018816 --audit-scale=small \
             --progress --route-quality --route-transitions \
-            --entry-settle-witness --queue-motion-witness \
+            --entry-settle-witness --queue-motion-witness --d325-stall-feasibility \
             > "$RUNNER_TEMP/d325-townhouse.json"
           node scripts/report-d3-25-entry-stalls.mjs "$RUNNER_TEMP/d325-townhouse.json"
       - name: Clinic small · 19178827 · real four-person 45-second entry
@@ -41,7 +42,7 @@ jobs:
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --site-index=10 --audit-seed=19178827 --audit-scale=small \
             --progress --route-quality --route-transitions \
-            --entry-settle-witness --queue-motion-witness \
+            --entry-settle-witness --queue-motion-witness --d325-stall-feasibility \
             > "$RUNNER_TEMP/d325-clinic.json"
           node scripts/report-d3-25-entry-stalls.mjs "$RUNNER_TEMP/d325-clinic.json"
       - uses: actions/upload-artifact@v4
