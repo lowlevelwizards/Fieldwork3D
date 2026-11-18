@@ -53,3 +53,33 @@ test('D3.29H: generated physical doors preserve coherent open fraction',()=>{
   if(door.locked)assert.equal(door.open,false);
  }
 });
+
+test('D3.29H: real generated missions seed actual initial leaf poses without fake open events',()=>{
+ const archetypes=['house','townhouse','apartment','retail','office',
+  'garage','warehouse','restaurant','motel','utility','clinic'];
+ let newlyOpen=0,closed=0,ajar=0,locked=0;
+ for(let i=0;i<archetypes.length;i++){
+  const seed=26000000+i*97;
+  const config={archetype:archetypes[i]};
+  const first=newSession(0,seed,'floor-plan','standard','intel',undefined,config);
+  const again=newSession(0,seed,'floor-plan','standard','intel',undefined,config);
+  const byId=new Map(first.site.doors.map(d=>[d.id,d]));
+  assert.deepEqual(first.doors.map(d=>[d.id,d.open,d.openFraction,d.locked]),
+   again.doors.map(d=>[d.id,d.open,d.openFraction,d.locked]),
+   'same seed must reproduce the exact initial poses');
+  for(const d of first.doors){
+   if(d.locked){locked++;assert.equal(d.open,false);}
+   if(!d.open){closed++;continue;}
+   if(!byId.get(d.id)?.open) {
+    newlyOpen++;
+    assert.equal(d.openedAt,-1,
+     'sampled open door is initial scenery, not an invented AI interaction');
+   }
+   if((d.openFraction??1)<.98)ajar++;
+  }
+ }
+ assert.ok(newlyOpen>0,'real site generation must exercise new open poses');
+ assert.ok(ajar>0,'real site generation must exercise intermediate ajar poses');
+ assert.ok(closed>newlyOpen,'most doors should remain closed');
+ assert.ok(locked>0,'security exclusions should still be physically represented');
+});
