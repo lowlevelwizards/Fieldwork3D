@@ -35,10 +35,13 @@ import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} fro
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing,escapeOpenDoorOverlap} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeToNextOperableDoor,
- recoverNormalLane,routeWithSqueezeIntel,routeWithNormalWorld}
+ recoverNormalLane,routeWithSqueezeIntel,routeWithNormalWorld,
+ coldFineMotorWorldRoute}
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {fullBodyMotorRouteClear} from '../src/breach-recovery-route-validation.ts';
+import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
 import {physicalOrderOutcome,successfulSquadExecution}
  from '../src/breach-order-outcome.ts';
 import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.ts';
@@ -69,6 +72,14 @@ const d325StallFeasibility=process.argv.includes('--d325-stall-feasibility');
 // D3.26B: strictly cold end-state microstride truth for the three physical
 // non-arrivals. Off by default and never part of the authoritative motor.
 const d326LastStallProbe=process.argv.includes('--d326-last-stall-probe');
+// D3.27A: exact Garage final-contact geometry; read-only, off by default.
+const d327GarageProbe=process.argv.includes('--d327-garage-probe');
+const d327Exact=d327GarageProbe?
+ await import('../src/breach-d327-exact-motor-grid.ts'):null;
+const d327Stride=d327GarageProbe?
+ await import('../src/breach-stack-micro-corner.ts'):null;
+const d327Passage=d327GarageProbe?
+ await import('../src/breach-d327-cold-passage.ts'):null;
 const d326Micro=d326LastStallProbe?
  await import('../src/breach-stack-micro-corner.ts'):null;
 const d326Fine=d326LastStallProbe?
@@ -240,6 +251,15 @@ function run(site,seed,kind){
   if(actors.length!==4)throw Error('squad does not have four operators');
   const planned=kind==='entry'?planEntry(session,actors):
    planFourMoves(session,actors,site);
+  // D3.27E exact original committed GO, captured before orders advance.
+  // The frozen R7 candidate-goal denominator remains intentionally
+  // unchanged; this is a separate real physical-arrival witness.
+  const d327OriginalMove=new Map(actors.map(actor=>{
+    const node=actor.plan.find(n=>n.kind==='move');
+    return [actor.id,node?{id:node.id,kind:node.kind,
+      point:{...node.p},entryDoorId:node.entryDoorId??null,
+      stackDoorId:node.stackDoorId??null}:null];
+  }));
   if(entryLandingModule&&kind==='entry')
    entryLandingModule.setEntryLandingWitness(event=>{
     if(entryLandingEvidence.length<100)
@@ -847,6 +867,421 @@ function run(site,seed,kind){
        session.doors,world).length,
      candidates:previews};
    }).filter(Boolean):null;
+  // D3.27A: the one remaining frozen physical non-arrival is Garage
+  // 19285501 / Moss. Observe REAL full-body and oriented squeeze clearance
+  // in the current world. No route, actor, door or cover mutation occurs.
+  const d327GarageEvidence=d327GarageProbe&&kind==='authored'?
+   (() => {
+    const actor=actors.find(a=>a.id==='moss');
+    const goal=actor?planned.goals.get(actor.id):null;
+    if(!actor||!goal)return null;
+    const world=sessionWorldGeometry(session),next=actor.nav[0]??goal;
+    const full=(a,b)=>sweptBodyClear(a,b,session.doors,
+      OPERATOR_RADIUS,world);
+    const narrow=(a,b)=>sweptProfileClear(a,b,session.doors,
+      squeezeFacing(Math.atan2(b.y-a.y,b.x-a.x)),'squeeze',world);
+    const length=dist(actor.p,next);
+    const motor=length>.01?{
+      x:actor.p.x+(next.x-actor.p.x)*Math.min(length,.3)/length,
+      y:actor.p.y+(next.y-actor.p.y)*Math.min(length,.3)/length
+    }:next;
+    const samples=[];
+    for(const length of [0.3,2,5,10,20]){
+     const headings=[];
+     for(let i=0;i<16;i++){
+      const t=i*Math.PI/8;
+      const p={x:actor.p.x+length*Math.cos(t),
+        y:actor.p.y+length*Math.sin(t)};
+      headings.push({i,x:round(p.x),y:round(p.y),
+       normal:full(actor.p,p),narrow:narrow(actor.p,p),
+       towardGoal:dist(p,goal)<dist(actor.p,goal)});
+     }
+     samples.push({length,
+      normal:headings.filter(x=>x.normal).map(x=>x.i),
+      narrow:headings.filter(x=>x.narrow).map(x=>x.i),
+      normalToward:headings.filter(x=>x.normal&&x.towardGoal).map(x=>x.i),
+      narrowToward:headings.filter(x=>x.narrow&&x.towardGoal).map(x=>x.i)});
+    }
+    const originalOrder=d327OriginalMove.get(actor.id);
+    const authored=originalOrder?.point??null;
+    const actualWorld=authored?routeWithSqueezeWorld(
+       actor.p,authored,session.doors,world):[];
+    const actualFine=authored?coldFineMotorWorldRoute(
+       actor.p,authored,session.doors,world):[];
+    const actualNormal=authored?routeWithNormalWorld(
+       actor.p,authored,session.doors,world):[];
+    const actualPortal=authored?routeToNextOperableDoor(
+       actor.p,authored,session.doors,world):[];
+    const guardedPassage=authored?d327Passage.coldExactPassageWorldRoute(
+      actor.p,authored,site.openings??[],session.doors,world,
+      ()=>true,3500):[];
+    // Offline counterfactual: test only route topology if real closed
+    // doors were opened. These CLONES are never applied to session doors.
+    const allOpenDoors=session.doors.map(door=>({...door,open:true,
+      locked:false,jammed:false,wedged:false,heldBy:null,
+      openFraction:1.55,angularVelocity:0}));
+    const hypotheticalAllOpen=authored?routeWithSqueezeWorld(
+      actor.p,authored,allOpenDoors,world):[];
+    const hypotheticalNoDoors=authored?routeWithSqueezeWorld(
+      actor.p,authored,[],world):[];
+    const perDoor=authored?session.doors.filter(door=>!door.open).map(door=>{
+      const doors=session.doors.map(d=>d.id===door.id?{...d,
+        open:true,locked:false,jammed:false,wedged:false,
+        heldBy:null,openFraction:1.55,angularVelocity:0}:d);
+      const route=routeWithSqueezeWorld(actor.p,authored,doors,world);
+      return {id:door.id,nodes:route.length,first:route.slice(0,3)};
+    }).filter(item=>item.nodes>0).slice(0,20):[];
+    // End-to-end real swept stages around the close window sill and
+    // fixed workshop fixtures. Reference geometry is audit-only.
+    const paths=authored?[
+      [{x:540,y:608},{x:565,y:608},{x:584,y:595},authored],
+      [{x:535,y:607},{x:567,y:607},{x:582,y:590},authored],
+      [{x:533,y:600},{x:568,y:604},{x:591,y:590},authored],
+      [{x:530,y:614},{x:527,y:597},{x:567,y:600},authored],
+      [{x:535,y:620},{x:526,y:602},{x:577,y:599},authored],
+      [{x:529,y:639},{x:529,y:608},{x:565,y:608},authored],
+      [{x:525,y:639},{x:525,y:608},{x:565,y:608},authored],
+      [{x:521,y:639},{x:521,y:606},{x:562,y:607},authored],
+      [{x:529,y:639},{x:529,y:601},{x:572,y:604},authored]
+    ]:[];
+    // Read-only witness: can a 12/16/24-unit full-body swept retreat
+    // find a fine physical path where starting directly against the sill
+    // caused the 4-unit grid to return no path?
+    const coldRetreats=[];
+    if(authored)for(const radius of [12,16,24,32]){
+      for(const angleIndex of [3,4,5,2,6]){
+        const theta=angleIndex*Math.PI/4;
+        const candidate={x:actor.p.x+radius*Math.cos(theta),
+          y:actor.p.y+radius*Math.sin(theta)};
+        if(!full(actor.p,candidate))continue;
+        const fine=coldFineMotorWorldRoute(candidate,authored,
+          session.doors,world);
+        const coarse=routeWithSqueezeWorld(candidate,authored,
+          session.doors,world);
+        coldRetreats.push({radius,angleIndex,point:candidate,
+          fineNodes:fine.length,coarseNodes:coarse.length,
+          fineFirst:fine.slice(0,4),
+          fineLast:fine.at(-1)??null});
+      }
+    }
+    const nearestWalls=world.walls.map((wall,index)=>({
+      index,a:wall.a,b:wall.b,
+      gap:round(pointToSegment(actor.p,wall))
+    })).sort((a,b)=>a.gap-b.gap).slice(0,18);
+    const goalRoom=authored?site.rooms.find(room=>
+      room.kind==='room'&&
+      authored.x>=room.x&&authored.x<=room.x+room.w&&
+      authored.y>=room.y&&authored.y<=room.y+room.h):null;
+    const nearRoomBoundary=(p)=>{
+      if(!goalRoom)return false;
+      const {x,y,w,h}=goalRoom;
+      return (p.x>=x-2&&p.x<=x+w+2&&
+        (Math.abs(p.y-y)<3||Math.abs(p.y-y-h)<3))||
+        (p.y>=y-2&&p.y<=y+h+2&&
+         (Math.abs(p.x-x)<3||Math.abs(p.x-x-w)<3));
+    };
+    const goalRoomAccess=goalRoom?{
+      id:goalRoom.id,purpose:goalRoom.purpose??null,
+      x:goalRoom.x,y:goalRoom.y,w:goalRoom.w,h:goalRoom.h,
+      doors:session.doors.filter(d=>nearRoomBoundary({
+        x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2
+      })).map(d=>({id:d.id,open:d.open,locked:d.locked,
+        center:{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}})),
+      openings:(site.openings??[]).filter(o=>nearRoomBoundary({
+        x:(o.a.x+o.b.x)/2,y:(o.a.y+o.b.y)/2
+      })).map(o=>({a:o.a,b:o.b})),
+      windows:(site.windows??[]).filter(o=>nearRoomBoundary({
+        x:o.x,y:o.y
+      })).map(o=>({x:o.x,y:o.y,w:o.w??null})),
+      northSideProbe:(()=> {
+        const opening=(site.openings??[]).find(o=>nearRoomBoundary({
+          x:(o.a.x+o.b.x)/2,y:(o.a.y+o.b.y)/2
+        }));
+        if(!opening||!authored)return null;
+        const mid={x:(opening.a.x+opening.b.x)/2,
+          y:(opening.a.y+opening.b.y)/2};
+        const north={x:mid.x,y:mid.y-18},south={x:mid.x,y:mid.y+18};
+        const otherRoom=site.rooms.find(r=>r.kind==='room'&&
+          r.id!==goalRoom.id&&
+          north.x>=r.x&&north.x<=r.x+r.w&&
+          north.y>=r.y&&north.y<=r.y+r.h);
+        const route=(from,to)=>routeWithSqueezeWorld(from,to,[],world);
+        const liveRoute=(from,to)=>routeWithSqueezeWorld(from,to,
+          session.doors,world);
+        const first=liveRoute(actor.p,north);
+        const physicalNoDoorsFirst=route(actor.p,north);
+        const physicalNoDoorsFine=coldFineMotorWorldRoute(
+          actor.p,north,[],world);
+        const exactWorldSweep=(from,to)=>sweptBodyClear(from,to,[],
+          OPERATOR_RADIUS,world);
+        const exactMotor=(from,to)=>d327Stride.fullBodyMotorStrideClear(
+          from,to,exactWorldSweep);
+        const exactWorldNorth=d327Exact.coldExactMotorGridRoute(
+          actor.p,north,
+          point=>bodyClear(point,[],OPERATOR_RADIUS,world),
+          exactMotor,{step:4,maxExpansions:8500,padding:250,
+            maxDistance:1100,maxWaypoints:130});
+        const exactWorldBridge=[...exactWorldNorth,south,authored];
+        const exactFullBridge=exactWorldNorth.length>0&&
+          fullBodyMotorRouteClear(actor.p,exactWorldBridge,
+            exactWorldSweep,1100);
+        const exactFirstLive=exactWorldNorth[0]?
+          d327Stride.fullBodyMotorStrideClear(actor.p,exactWorldNorth[0],
+            (from,to)=>sweptBodyClear(from,to,session.doors,
+              OPERATOR_RADIUS,world)):false;
+        const exactDoorContactSteps=(()=>{
+          const legs=[];let prior=actor.p;
+          for(const [index,p] of exactWorldBridge.entries()){
+            const real=d327Stride.fullBodyMotorStrideClear(
+              prior,p,(from,to)=>sweptBodyClear(
+                from,to,session.doors,OPERATOR_RADIUS,world));
+            const staticClear=d327Stride.fullBodyMotorStrideClear(
+              prior,p,(from,to)=>sweptBodyClear(
+                from,to,[],OPERATOR_RADIUS,world));
+            if(!real||!staticClear)legs.push({
+              index,from:prior,to:p,real,staticClear,
+              nearDoors:session.doors.map(d=>({
+                id:d.id,open:d.open,locked:!!d.locked,
+                fraction:d.openFraction,
+                fromGap:pointToSegment(prior,doorLeafSegment(d)),
+                toGap:pointToSegment(p,doorLeafSegment(d))
+              })).filter(d=>Math.min(d.fromGap,d.toGap)<100)
+               .sort((a,b)=>
+                 Math.min(a.fromGap,a.toGap)-Math.min(b.fromGap,b.toGap))
+               .slice(0,8)
+            });
+            prior=p;
+          }
+          return legs.slice(0,10);
+        })();
+        const exactRealDoorsBridge=exactWorldNorth.length>0&&
+          fullBodyMotorRouteClear(actor.p,exactWorldBridge,
+            (from,to)=>sweptBodyClear(from,to,session.doors,
+              OPERATOR_RADIUS,world),1100);
+        const exactRealDoorsNorth=exactWorldNorth.length>0&&
+          fullBodyMotorRouteClear(actor.p,exactWorldNorth,
+            (from,to)=>sweptBodyClear(from,to,session.doors,
+              OPERATOR_RADIUS,world),1100);
+        const physicalNoDoorsLast=route(south,authored);
+        const noDoorBridge=[...physicalNoDoorsFirst,south,
+          ...physicalNoDoorsLast];
+        const noDoorMicroLegal=physicalNoDoorsFirst.length>0&&
+          physicalNoDoorsLast.length>0&&
+          fullBodyMotorRouteClear(actor.p,noDoorBridge,
+            (from,to)=>sweptBodyClear(from,to,[],
+              OPERATOR_RADIUS,world),950);
+        const noDoorFirstLive=physicalNoDoorsFirst[0]?sweptBodyClear(
+          actor.p,physicalNoDoorsFirst[0],session.doors,
+          OPERATOR_RADIUS,world):false;
+        const intelFirst=routeWithSqueezeIntel(
+          session.intel,actor.p,north);
+        const intelSecond=routeWithSqueezeIntel(
+          session.intel,south,authored);
+        const intelBridge=[...intelFirst,south,...intelSecond];
+        const intelStaticClear=intelFirst.length>0&&
+          intelSecond.length>0&&
+          fullBodyMotorRouteClear(actor.p,intelBridge,
+            (from,to)=>sweptBodyClear(from,to,[],
+              OPERATOR_RADIUS,world),950);
+        const intelFirstLive=intelFirst[0]?sweptBodyClear(
+          actor.p,intelFirst[0],session.doors,
+          OPERATOR_RADIUS,world):false;
+        const portalPrefix=routeToNextOperableDoor(
+          actor.p,north,session.doors,world);
+        const portalPrefixSwept=portalPrefix.length>0&&
+          fullBodyMotorRouteClear(actor.p,portalPrefix,
+            (from,to)=>sweptBodyClear(from,to,
+              session.doors,OPERATOR_RADIUS,world),950);
+        const second=liveRoute(south,authored);
+        const rawBridge=[...first,south,...second];
+        const split=(points)=>{
+          let at=actor.p;const result=[];
+          for(const point of points){
+            const length=dist(at,point);
+            const n=Math.max(1,Math.ceil(length/96));
+            for(let i=1;i<=n;i++){
+              const t=i/n;
+              result.push({x:at.x+(point.x-at.x)*t,
+                y:at.y+(point.y-at.y)*t});
+            }
+            at=point;
+          }
+          return result;
+        };
+        const bridge=split(rawBridge);
+        const swept=(from,to)=>sweptBodyClear(from,to,
+          session.doors,OPERATOR_RADIUS,world);
+        const legal=first.length>0&&second.length>0&&
+          swept(north,south)&&
+          fullBodyMotorRouteClear(actor.p,bridge,swept,950);
+        return {opening,mid,north,south,
+          exactMotorNorth:{nodes:exactWorldNorth.length,
+            first:exactWorldNorth.slice(0,8),
+            last:exactWorldNorth.at(-1)??null,
+            fullStaticBridgeClear:exactFullBridge,
+            fullCurrentDoorsNorthClear:exactRealDoorsNorth,
+            fullCurrentDoorsBridgeClear:exactRealDoorsBridge,
+            blockedLegs:exactDoorContactSteps,
+            firstRealDoorStrideClear:exactFirstLive},
+          noDoorNorth:{firstNodes:physicalNoDoorsFirst.length,
+            fineNodes:physicalNoDoorsFine.length,
+            lastNodes:physicalNoDoorsLast.length,
+            first:physicalNoDoorsFirst.slice(0,6),
+            fineFirst:physicalNoDoorsFine.slice(0,6),
+            staticMotorCertified:noDoorMicroLegal,
+            firstStepCurrentDoorsClear:noDoorFirstLive},
+          intelNorth:{firstNodes:intelFirst.length,
+            secondNodes:intelSecond.length,
+            totalNodes:intelBridge.length,
+            first:intelFirst.slice(0,6),last:intelBridge.at(-1)??null,
+            staticMotorCertified:intelStaticClear,
+            firstStepCurrentDoorsClear:intelFirstLive},
+          portalNorth:{nodes:portalPrefix.length,
+            allSweptAtMotorResolution:portalPrefixSwept,
+            first:portalPrefix.slice(0,5),
+            last:portalPrefix.at(-1)??null},
+          bridge:{firstNodes:first.length,secondNodes:second.length,
+            totalNodes:bridge.length,
+            first:first.slice(0,5),
+            second:second.slice(0,5),
+            last:bridge.at(-1)??null,fullyMotorLegal:legal},
+
+          northStand:bodyClear(north,[],OPERATOR_RADIUS,world),
+          southStand:bodyClear(south,[],OPERATOR_RADIUS,world),
+          openingSweep:sweptBodyClear(north,south,[],OPERATOR_RADIUS,world),
+          northToGoalNodes:route(north,authored).length,
+          actorToNorthDoorlessNodes:route(actor.p,north).length,
+          actorToNorthAllDoorsOpenNodes:routeWithSqueezeWorld(
+            actor.p,north,allOpenDoors,world).length,
+          actorToEntranceDoorlessNodes:route(actor.p,site.entrance).length,
+          actorToEntranceAllDoorsOpenNodes:routeWithSqueezeWorld(
+            actor.p,site.entrance,allOpenDoors,world).length,
+          actorToOtherActors:actors.filter(a=>a!==actor).map(a=>({
+            id:a.id,
+            noDoorsNodes:route(actor.p,a.p).length,
+            allOpenNodes:routeWithSqueezeWorld(
+              actor.p,a.p,allOpenDoors,world).length
+          })),
+          actorCurrentRoom:site.rooms.filter(r=>r.kind==='room'&&
+            actor.p.x>=r.x&&actor.p.x<=r.x+r.w&&
+            actor.p.y>=r.y&&actor.p.y<=r.y+r.h).map(r=>r.id),
+          otherRoom:{id:otherRoom?.id??null,purpose:otherRoom?.purpose??null},
+          otherActorNorth:actors.filter(a=>a!==actor).map(a=>({
+            id:a.id,nodes:route(a.p,north).length
+          }))
+        };
+      })()
+    }:null;
+    const otherActorReachability=authored?actors.filter(other=>other!==actor)
+      .map(other=>({
+        id:other.id,at:{...other.p},
+        worldNodes:routeWithSqueezeWorld(other.p,authored,
+          session.doors,world).length,
+        fineNodes:coldFineMotorWorldRoute(other.p,authored,
+          session.doors,world).length
+      })):[];
+    const stageProbes=paths.map((route,index)=>{
+      let prior=actor.p,total=0;const legTruth=[];
+      for(const point of route){
+        const ok=sweptBodyClear(prior,point,session.doors,
+          OPERATOR_RADIUS,world);
+        const d=dist(prior,point);total+=d;
+        let firstFailed=null;
+        if(!ok){
+          const steps=Math.ceil(d/.3);
+          let last=prior;
+          for(let k=1;k<=steps;k++){
+            const t=k/steps;
+            const test={x:prior.x+(point.x-prior.x)*t,
+              y:prior.y+(point.y-prior.y)*t};
+            if(!sweptBodyClear(last,test,session.doors,
+              OPERATOR_RADIUS,world)){
+              firstFailed={at:test,
+                from:last,staticClear:world.passable(test,OPERATOR_RADIUS),
+                nearestWalls:world.walls.map((wall,index)=>({
+                  index,gap:round(pointToSegment(test,wall)),a:wall.a,b:wall.b
+                })).sort((a,b)=>a.gap-b.gap).slice(0,3),
+                nearestCover:world.cover.map((o,index)=>({
+                  index,fixture:o.fixture??null,
+                  dx:round(Math.max(0,Math.abs(test.x-o.x)-o.w/2)),
+                  dy:round(Math.max(0,Math.abs(test.y-o.y)-o.h/2))
+                })).sort((a,b)=>
+                  Math.hypot(a.dx,a.dy)-Math.hypot(b.dx,b.dy)).slice(0,3)};
+              break;
+            }
+            last=test;
+          }
+        }
+        legTruth.push({point,full:ok,length:round(d),
+          ...(firstFailed?{firstFailed}:{})});
+        prior=point;
+      }
+      return {index,total:round(total),allFull:legTruth.every(x=>x.full),
+        legTruth};
+    });
+    const route=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+    const portal=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+    return {actor:actor.id,position:{...actor.p},goal:{...goal},
+     next:{...next},distanceToGoal:round(dist(actor.p,goal)),
+     blockedTime:round(actor.blockedTime),lastBlocker:actor.lastBlocker,
+     orderIssue:actor.orderIssue?.reason??null,
+     authoredGoalIntact:!!authored&&actor.plan.every(node=>
+       node.id!==originalOrder?.id||dist(node.p,authored)<.001),
+     actualOrder:originalOrder,
+     physicalCommittedArrival:!!authored&&
+       dist(actor.p,authored)<=5&&
+       !actor.plan.some(node=>node.id===originalOrder?.id),
+     originalGoalDistance:authored?round(dist(actor.p,authored)):null,
+     actualOrderFixedBlock:authored?
+       knownFixedGoalBlock(session,authored):null,
+     actualOrderFullBodyClear:authored?
+       bodyClear(authored,session.doors,OPERATOR_RADIUS,world):null,
+     actualGoalRoutes:{
+       world:{nodes:actualWorld.length,first:actualWorld.slice(0,5)},
+       normal:{nodes:actualNormal.length,first:actualNormal.slice(0,5)},
+       fine:{nodes:actualFine.length,first:actualFine.slice(0,7),
+         last:actualFine.at(-1)??null},
+       portal:{nodes:actualPortal.length,first:actualPortal.slice(0,5)},
+       guardedPassage:{nodes:guardedPassage.length,
+         first:guardedPassage.slice(0,8),
+         last:guardedPassage.at(-1)??null,
+         startsMotorClear:guardedPassage.length?
+           d327Stride.fullBodyMotorStrideClear(actor.p,guardedPassage[0],
+             (a,b)=>sweptBodyClear(a,b,session.doors,
+               OPERATOR_RADIUS,world)):false},
+       allOpen:{nodes:hypotheticalAllOpen.length,
+         first:hypotheticalAllOpen.slice(0,5)},
+       noDoors:{nodes:hypotheticalNoDoors.length,
+         first:hypotheticalNoDoors.slice(0,5)},
+       singleOpenDoors:perDoor,
+       coldRetreats,
+       nearestWalls,
+       otherActorReachability,
+       goalRoomAccess,
+       stageProbes
+     },
+     remainingNavNodes:actor.nav.length,
+     normalAtCurrent:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
+     normalAtGoal:bodyClear(goal,session.doors,OPERATOR_RADIUS,world),
+     goalStaticPassable:world.passable(goal,OPERATOR_RADIUS),
+     goalKnownFixedBlocker:knownFixedGoalBlock(session,goal),
+     immediateFull:full(actor.p,motor),immediateNarrow:narrow(actor.p,motor),
+     fullToNext:full(actor.p,next),narrowToNext:narrow(actor.p,next),
+     normalWorldNodes:route.length,portalNodes:portal.length,
+     samples,
+     nearestCover:world.cover.map((obstacle,i)=>({
+      index:i,x:obstacle.x,y:obstacle.y,w:obstacle.w,h:obstacle.h,
+      fixture:obstacle.fixture??null,kind:obstacle.kind??null,
+      discovered:session.intel.cover.has(i),
+      movable:obstacle.movable??null,
+      gap:round(Math.hypot(obstacle.x-actor.p.x,obstacle.y-actor.p.y))
+     })).sort((a,b)=>a.gap-b.gap).slice(0,18),
+     doors:session.doors.map(door=>({
+      id:door.id,locked:!!door.locked,open:!!door.open,
+      fraction:round(door.openFraction??0),
+      gap:round(pointToSegment(actor.p,doorLeafSegment(door)))
+     })).sort((a,b)=>a.gap-b.gap).slice(0,10)};
+   })():null;
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -960,6 +1395,7 @@ function run(site,seed,kind){
    ...(d325Feasibility?{d325Feasibility}:{}),
    ...(d326StallEvidence?{d326StallEvidence}:{}),
    ...(d326LastStallProbe?{d326MicroTrace}:{}),
+   ...(d327GarageProbe?{d327GarageEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),

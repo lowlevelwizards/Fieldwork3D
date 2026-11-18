@@ -1,0 +1,128 @@
+name: D3.27 Garage final physical contact truth
+on:
+  push:
+    branches: [feature/d3-27-garage-contact-recovery-20261118]
+    paths:
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-27-garage-contact.yml'
+      - 'src/breach-d327*.ts'
+      - 'src/breach-authored-goal-block.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-route-transition.ts'
+      - 'tests/release-d3-27*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d327-garage-contact-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-garage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Type check and focused known-goal regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-10b-authored-obstruction.test.mjs \
+            tests/release-d3-26f-cold-fine-route-gate.test.mjs \
+            tests/release-d3-27d-exact-motor-grid.test.mjs \
+            tests/release-d3-27e-cold-passage.test.mjs
+      - name: Exact unchanged authored Garage motor and geometry witness
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=5 --audit-seed=19285501 \
+            --audit-scale=standard --d327-garage-probe \
+            --route-transitions --trace-actor=moss --trace-mode=authored \
+            > "$RUNNER_TEMP/d327-garage.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const data=JSON.parse(fs.readFileSync(
+            process.env.RUNNER_TEMP+'/d327-garage.json','utf8'));
+          if(data.summary.exceptions||data.summary.invalidPositions||
+             data.summary.physicsStepViolations||data.summary.corruptedPlans)
+            throw Error('D3.27 physical integrity regression');
+          const witness=data.rows[0].modes.find(x=>x.mode==='authored')
+            ?.d327GarageEvidence;
+          if(!witness||witness.actor!=='moss'||!witness.samples?.length)
+            throw Error('D3.27 missing exact frozen Garage physical witness');
+          if(!witness.actualOrder||witness.actualOrder.kind!=='move')
+            throw Error('D3.27 original motor MOVE unexpectedly missing');
+          if(!witness.actualOrderFullBodyClear||
+             witness.actualOrderFixedBlock)
+            throw Error('D3.27 actual authored GO unexpectedly obstructed');
+          // Physical reference candidate and player projection differ:
+          // do not force an unverified warning for the WRONG endpoint.
+          console.log('D327_REAL_GO',JSON.stringify({
+            candidate:witness.goal,actual:witness.actualOrder,
+            knownObstruction:witness.actualOrderFixedBlock,
+            actualBodyClear:witness.actualOrderFullBodyClear,
+            warning:witness.orderIssue
+          }));
+          console.log('D327_GARAGE_CONTACT',JSON.stringify({
+            actual:witness.actualOrder,position:witness.position,
+            originalGoalDistance:witness.originalGoalDistance,
+            physicalCommittedArrival:witness.physicalCommittedArrival,
+            authoredGoalIntact:witness.authoredGoalIntact,
+            firstRoute:witness.actualGoalRoutes.guardedPassage.first,
+            originalGoalRoutes:witness.actualGoalRoutes.guardedPassage.nodes
+          }));
+          const events=data.rows[0].modes.find(x=>x.mode==='authored')
+            ?.routeTransitions?.events??[];
+          for(const event of events.filter(x=>x.actorId==='moss'&&
+            ['motor-exact-passage','initial-intel','full-body-lane',
+             'collision-world-replan','door-rehearsal'].includes(x.source)))
+            console.log('D327_ROUTE',JSON.stringify({
+              seconds:event.seconds,source:event.source,
+              first:event.next[0]??null,position:event.position,
+              doorId:event.doorId,doorPhase:event.doorPhase
+            }));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d327-exact-garage-physical-contact
+          path: ${{ runner.temp }}/d327-garage.json
+          retention-days: 14
+
+  frozen22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D3.27 no-loss independent 22-site physical truth
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress --route-quality > "$RUNNER_TEMP/d327-fresh22.json"
+          node scripts/report-d3-26-last-failures.mjs "$RUNNER_TEMP/d327-fresh22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const result=JSON.parse(fs.readFileSync(
+            process.env.RUNNER_TEMP+'/d327-fresh22.json','utf8'));
+          const s=result.summary,p=result.progressSummary;
+          if(s.physicalArrivals<160||s.physicalCompletedFour<36||
+             p.suspectedLoops>1||s.invalidPositions||
+             s.physicsStepViolations||s.corruptedPlans)
+            throw Error('D3.27 regressed merged D3.26 22-site physical acceptance');
+          console.log('D327_FROZEN_ACCEPTANCE',JSON.stringify({
+            arrivals:s.physicalArrivals,completeSquads:s.physicalCompletedFour,
+            loops:p.suspectedLoops
+          }));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d327-frozen22-physical-witness
+          path: ${{ runner.temp }}/d327-fresh22.json
+          retention-days: 14
