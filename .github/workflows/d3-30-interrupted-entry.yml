@@ -1,4 +1,4 @@
-name: D3.30A-C interruption, explicit retry and tactical palette
+name: D3.30 interruption, explicit retry and squad coordination
 on:
   push:
     branches: [feature/d3-30-interrupted-entry-recovery-20261118]
@@ -14,6 +14,10 @@ on:
       - 'src/breach-order-lifecycle.ts'
       - 'src/breach-motor-door.ts'
       - 'src/breach-order-wait.ts'
+      - 'src/breach-entry-interruption-group.ts'
+      - 'scripts/lib/d3-30-physical-gate.mjs'
+      - 'tests/release-d3-30-physical-gate.test.mjs'
+      - 'tests/release-d3-30-threshold-coordination.test.mjs'
       - 'tests/release-d3-30-interrupted-entry.test.mjs'
   workflow_dispatch:
 permissions:
@@ -34,4 +38,4 @@ jobs:
       - name: Typecheck and critical capture/explicit-resume regressions
         run: |
           npm run check
-          node --experimental-strip-types --test tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-25b-terminal-entry-gate.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs
+          node --experimental-strip-types --test tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-30-physical-gate.test.mjs tests/release-d3-30-threshold-coordination.test.mjs tests/release-d3-25b-terminal-entry-gate.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs

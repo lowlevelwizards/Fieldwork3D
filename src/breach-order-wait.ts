@@ -5,6 +5,7 @@
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {entryDoorState,leaderBeyondOpenEntry} from './breach-entry-coordination.ts';
+import {generatedEntryInterruptedByTeammate} from './breach-entry-interruption-group.ts';
 import {doorSwingBlocked} from './breach-door.ts';
 import {doorSecuredFrom} from './breach-door-security.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -27,18 +28,25 @@ export function advanceWaitOrder(
   // authored entry instead of waiting forever on a false-negative
   // straight-line gate. Every real movement still runs the same body
   // sweep; this does not declare the aperture universally passable.
-  const entry=n.duration===0?a.plan.find(next=>
-    next.kind==='move'&&next.entryDoorId===n.doorId):undefined;
+  const entry=n.duration===0&&a.plan[1]?.kind==='move'&&
+    a.plan[1].entryDoorId===n.doorId?a.plan[1]:undefined;
   // D3.25B: an automatic zero-duration follower gate must not outlive
   // its physically impossible locked/jammed doorway. Cancel only the
   // linked generated gate and its immediate generated ENTRY MOVE as
   // genuine failures, not successful arrivals. Player WAIT, WATCH and
   // unrelated later orders keep their normal authority.
   const locked=!!doorway&&doorSecuredFrom(doorway,a.p);
-  const terminal=entry&&(!doorway||locked||doorway.jammed);
-  if(terminal){
+  const terminal=!!entry&&(!doorway||locked||doorway.jammed);
+  // A teammate's recorded, terminal interruption of THIS generated
+  // threshold cannot be silently forgotten if another system opens the
+  // door later. The remaining operators need an explicit authored resume.
+  // No live secret door state or extra collision authority is consulted.
+  const linked=!!entry&&!terminal&&
+    generatedEntryInterruptedByTeammate(s,a,n.doorId);
+  if(terminal||linked){
     const failure=!doorway?'DOOR MISSING':
-      locked?'DOOR LOCKED':'DOOR JAMMED';
+      locked?'DOOR LOCKED':doorway?.jammed?'DOOR JAMMED':
+      'TEAM ENTRY INTERRUPTED';
     const reason='SQUAD ENTRY CANCELLED · '+failure;
     failCurrentOrder(s,a,n,reason,notify,doorway?.id);
     if(a.plan[0]?.id===entry.id)
