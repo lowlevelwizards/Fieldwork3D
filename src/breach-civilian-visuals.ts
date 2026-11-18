@@ -148,7 +148,9 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  r.character.droppedGun.visible=false;
  // The operator skeleton owns gait, planted feet, full-body crouching,
  // hands-up compliance and fall. Keep neutral carrying offset render-only.
- r.root.position.y=pose==='carried'?10:pose==='dragged'?2:0;
+ // Tactical renderers place armed actor roots from the Session *outside*
+ // poseOperator; do the same here for neutral-owned 3D presentation.
+ r.root.position.set(c.p.x,pose==='carried'?10:pose==='dragged'?2:0,c.p.y);
  r.lastTime=now;
 }
 export function disposeCivilianRig(r:CivilianRig):void{
