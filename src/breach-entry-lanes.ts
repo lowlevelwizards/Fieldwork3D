@@ -4,6 +4,23 @@
 import {doorCenter,type Pt,type Door} from './breach-core.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type EntrySlot={point:Pt;look:Pt;side:'left'|'right';depth:number};
+/** D3.24B2: share a leader's known route ONLY when the assigned operator
+ * can reach that exact leader anchor along a full-body clear KNOWN stroke.
+ * This is a proof of connectivity, not an assumption that proximity or a
+ * same squad makes a route legal. No hidden world, A* or gameplay mutation. */
+export function sharedEntryRouteOrigin(
+ from:Pt,lead:Pt,knownStand:(p:Pt)=>boolean,maxDistance=64):boolean{
+ const span=dist(from,lead);
+ if(span>maxDistance||!Number.isFinite(span))return false;
+ const steps=Math.max(1,Math.ceil(span/2.5));
+ for(let i=0;i<=steps;i++){
+  const t=i/steps;
+  if(!knownStand({x:from.x+(lead.x-from.x)*t,
+    y:from.y+(lead.y-from.y)*t}))return false;
+ }
+ return true;
+}
+
 export function entryLanes(door:Door,from:Pt,count:number,
  canStand:(p:Pt)=>boolean,
  canReachSlot:(index:number,p:Pt)=>boolean=()=>true):EntrySlot[]{
