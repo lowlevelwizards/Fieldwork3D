@@ -13,7 +13,7 @@ import {recordDoorManeuverContact,tryGoalCompleteDoorHandoffAfterEscape}
  from './breach-door-traversal-maneuver.ts';
 import {escapeOpenDoorOverlap,sweptBodyClear,bodyClear} from './breach-navigation.ts';
 import {routeWithSqueezeIntel,routeWithSqueezeWorld,routeWithNormalWorld,
- routeToNextOperableDoor}
+ routeToNextOperableDoor,coldFineMotorWorldRoute}
  from './breach-squeeze-route.ts';
 import {diagnoseMovement} from './breach-nav-diagnostics.ts';
 import {routeRetrySeconds,provisionalRouteAccepted} from './breach-movement-recovery.ts';
@@ -34,6 +34,8 @@ import {sweptProfileClear,squeezeFacing} from './breach-navigation.ts';
 import {findBoundedNarrowLeafExit,claimNarrowLeafExitProbe,
  ownNarrowExitWaypoints} from './breach-squeeze-leaf-exit.ts';
 import {coldSweptEntryEscapeJoin} from './breach-d325-escape-join.ts';
+import {claimD326ColdFineProbe} from './breach-d326-fine-route-gate.ts';
+import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
  * world-truth connector past a STABLE fully-open leaf. Otherwise a
@@ -307,6 +309,29 @@ export function prepareMotorRoute(
       // searches during cooldown; keep the authored order for user edits.
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       return 'unavailable';
+    }
+    // D3.26F3: a genuinely stalled plain authored MOVE with NO nav
+    // never reaches the collision recovery branch (Motel 19143269 Moss).
+    // Once normal intel, door pressure, shove and failed-route backoff
+    // have already run repeatedly, allow ONE bounded cold 4-unit A*.
+    // A returned route must pass EVERY real 0.3-unit full-body motor
+    // stride, terminate at the SAME GO, and travel through the ordinary
+    // motor on later frames. No early move, door bypass or intel reveal.
+    if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       !a.plan[0].stackDoorId&&!a.plan[0].entryDoorId&&
+       !a.doorTraversal&&!a.traversal&&!a.traversalPending&&
+       !a.squeeze&&!a.fireRetreatTarget&&
+       a.recoveryAttempts>=2&&a.blockedTime>=2.5&&
+       claimD326ColdFineProbe(a,p,s.seconds)){
+      const world=sessionWorldGeometry(s);
+      const fine=coldFineMotorWorldRoute(a.p,p,s.doors,world);
+      if(fine.length){
+        setTransientRoute(s,a,fine,'motor-cold-fine-world');
+        notePreciseLocalDetour(a,fine[0]);
+        provisionalRouteAccepted(a);
+        a.lastNavRepairAt=s.seconds;
+        return 'ready';
+      }
     }
     // D3.17E6: replay a short *negative* result only if the prior
     // actual route query failed at this same actor/GO and every real door
