@@ -1,0 +1,39 @@
+name: EQA3.1 forensic review of frozen 8-case run
+on:
+  push:
+    branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
+    paths:
+      - '.github/workflows/eqa3-forensic-collate.yml'
+      - 'scripts/audit-eqa3-forensic-collate.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Download original exact sight / motor / civilian traces
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44421635232
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: eqa3-forensic-*
+          merge-multiple: true
+          path: artifacts/eqa3/
+      - name: Produce concise static review of actual source snapshots
+        run: |
+          node scripts/audit-eqa3-forensic-collate.mjs > artifacts/eqa3/forensic-console.txt
+          head -c 55000 artifacts/eqa3/forensic-console.txt
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-forensic-consolidated
+          path: |
+            artifacts/eqa3/forensic-review.json
+            artifacts/eqa3/forensic-console.txt
