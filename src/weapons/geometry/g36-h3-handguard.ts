@@ -6,10 +6,10 @@
 import * as THREE from 'three';
 
 type End=Readonly<{roofX:number;floorX:number;roofY:number;floorY:number;halfDepth:number}>;
-export const G36_H3_ENDS:readonly [End,End]=Object.freeze([
+export const G36_H3_ENDS=Object.freeze([
  Object.freeze({roofX:4.35,floorX:3.75,roofY:1.35,floorY:-1.88,halfDepth:1.50}),
  Object.freeze({roofX:12.94,floorX:13.45,roofY:1.28,floorY:-1.80,halfDepth:1.42})
-]);
+] as const);
 export const G36_H3_VENT_CENTERS=Object.freeze([6.175,7.8919,9.6088,11.3257]);
 export const G36_H3_VENT_SIZE=Object.freeze({length:1.28,height:.42,centerY:.2372});
 
