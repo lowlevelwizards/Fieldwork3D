@@ -29,7 +29,27 @@ jobs:
       - name: Produce concise static review of actual source snapshots
         run: |
           node scripts/audit-eqa3-forensic-collate.mjs > artifacts/eqa3/forensic-console.txt
-          head -c 55000 artifacts/eqa3/forensic-console.txt
+          node - <<'NODE'
+          const j=require('./artifacts/eqa3/forensic-review.json');
+          console.log('CASE_COUNT',j.summary);
+          for(const r of j.rows){
+            const q={seed:r.seed,mission:r.mission,intel:r.intel,entry:r.entry,
+              stage:r.stage,contact:r.firstContactAt,initialSight:r.initialActiveEnemySight,
+              firstSight:r.firstSight&&{t:r.firstSight.t,who:r.firstSight.firstThreat},
+              firstEnemySight:r.firstEnemySight&&{t:r.firstEnemySight.t,who:r.firstEnemySight.firstThreat},
+              aborts:r.aborts,firstAbort:r.firstAbort,
+              rejected:r.rejected,reason:r.rejectedKinds,
+              transitions:r.personTransitions.map(x=>({t:x.t,kind:x.kind,stage:x.stage,
+               person:x.person,escort:x.escort,p:x.p,order:x.order})).slice(0,9),
+              late:r.timed.filter(x=>x.time===40||x.time===80).map(x=>({
+               t:x.t,p:x.p,stage:x.stage,person:x.person,escort:x.escort,
+               blocker:x.blocker,order:x.order})),
+              ending:r.ending&&{t:r.ending.t,p:r.ending.p,
+               stage:r.ending.stage,person:r.ending.person,escort:r.ending.escort,
+               order:r.ending.order,blocker:r.ending.blocker}};
+            console.log('CASE',JSON.stringify(q));
+          }
+          NODE
       - if: always()
         uses: actions/upload-artifact@v4
         with:
