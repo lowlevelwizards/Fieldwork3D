@@ -39,11 +39,9 @@ export function riflePoseContacts(
  const fncNear=FNC_FRONT_P13.polymer.fullStartX+.30;
  const fncFar=FNC_FRONT_P13.polymer.fullEndX+.05;
  const g36Reach=b.family==='g36'?g36SupportRange(b.parts.handguard):null;
- const start=(g36Reach?.[0]??
-  b.family==='fnc'?fncNear:undefined)??falArt?.handguardStartX??hkArt?.handguardStartX??
+ const start=(g36Reach?.[0]??(b.family==='fnc'?fncNear:undefined))??falArt?.handguardStartX??hkArt?.handguardStartX??
   (ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver));
- const end=(g36Reach?.[1]??
-  b.family==='fnc'?fncFar:undefined)??falArt?.handguardEndX??hkArt?.handguardEndX??
+ const end=(g36Reach?.[1]??(b.family==='fnc'?fncFar:undefined))??falArt?.handguardEndX??hkArt?.handguardEndX??
   (ar?arHandguardEnd(b.parts.handguard):
   (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX);
  // All ordinary two-handed holds must locate the palm on the actual
