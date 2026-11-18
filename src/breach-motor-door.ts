@@ -9,6 +9,7 @@ import type {TeamActor,Session} from './breach-game.ts';
 import {canAutoOpenEnRoute,autoDoorAtBodyContact,crossesDoorThreshold,doorApproach,
  doorReachable,doorWouldStrikeActors} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
+import {doorSecuredFrom,releasePrivacyLockOnOpen} from './breach-door-security.ts';
 import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
@@ -50,10 +51,13 @@ export function preserveExplicitDoorActionClock(
  * swing the leaf. No remote manipulation or collision exemption.
  */
 export function implicitOpenDenial(
- door:Pick<Door,'locked'|'jammed'|'wedged'|'heldBy'>,
- verdict:{allowed:boolean;reason:string|null},actorId:string
+ door:Pick<Door,'locked'|'jammed'|'wedged'|'heldBy'> &
+  Partial<Pick<Door,'a'|'b'|'lockSide'>>, 
+ verdict:{allowed:boolean;reason:string|null},actorId:string,
+ actorPosition?:Pt
 ):string|null{
- if(door.locked)return 'locked';
+ if(door.locked&&(!actorPosition||!door.a||!door.b||
+     doorSecuredFrom(door as Door,actorPosition)))return 'locked';
  if(door.jammed||door.wedged)return 'obstructed';
  if(door.heldBy&&door.heldBy!==actorId)return 'held';
  // A real threshold crossing on an otherwise unlocked operable panel
@@ -251,7 +255,7 @@ export function handleMotorDoor(
     noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
-    const denial=implicitOpenDenial(doorAhead,opening,a.id);
+    const denial=implicitOpenDenial(doorAhead,opening,a.id,a.p);
     if(denial==='held'||denial==='locked'||denial==='obstructed'){
       a.motorPause=denial==='held'?'door-held':
         denial==='locked'?'door-locked':'door-obstructed';
@@ -282,6 +286,7 @@ export function handleMotorDoor(
     }
     a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=.36&&!doorAhead.open){
+      releasePrivacyLockOnOpen(doorAhead,a.p);
       doorAhead.open=true;doorAhead.openedAt=s.seconds;
       hooks.hear(s,doorCenter(doorAhead),125,'door');
       hooks.notify(s,a.name+' OPENED '+doorAhead.id);
