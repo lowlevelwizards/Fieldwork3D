@@ -249,6 +249,10 @@ function run(site,seed,kind){
   {enableCivilians:false});
  const entryLandingEvidence=[],queueMotionEvidence=[];
  try{
+  const initialD329Doors=d329CancellationDoorWitness?
+   new Map(session.doors.map(d=>[d.id,{id:d.id,open:!!d.open,
+    fraction:round(d.openFraction??0),locked:!!d.locked,
+    jammed:!!d.jammed,wedged:!!d.wedged}])):null;
   const actors=team(session).slice(0,4);
   if(actors.length!==4)throw Error('squad does not have four operators');
   const planned=kind==='entry'?planEntry(session,actors):
@@ -393,6 +397,7 @@ function run(site,seed,kind){
       actor:a.id,seconds:round(session.seconds),
       failedOrder:failure,failedCount:a.failedOrders,
       selectedDoorId:selected??null,
+      initialSelectedDoor:selected?initialD329Doors?.get(selected)??null:null,
       actualSelectedDoor:leaf?{id:leaf.id,open:leaf.open,
        fraction:round(leaf.openFraction??0),
        locked:!!leaf.locked,jammed:!!leaf.jammed,
