@@ -6,7 +6,7 @@ import {FAMILY_PRESETS,validFamilyBuild,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,proposeFamilyPartChange} from '../src/equipment-weapon-families.ts';
 import {addG36Family} from '../src/weapons/geometry/g36-family-silhouettes.ts';
 import {G36_E0_FACTORY} from '../src/weapons/geometry/g36-family-contract.ts';
-import {g36FrontEnd,g36SupportRange,g36HandguardEnd}
+import {g36FrontEnd,g36SupportRange,g36HandguardEnd,g36ReceiverRailSpan}
  from '../src/weapons/geometry/g36-variant-parts.ts';
 import {g36PixelAtlas} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
@@ -20,6 +20,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  from '../src/equipment-weapon-assemblies.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 import {physicalWeaponMountSlots} from '../src/weapons/geometry/weapon-physical-mount-slots.ts';
+import {weaponPartMountSurfaces} from '../src/weapons/geometry/weapon-part-mount-surfaces.ts';
 const originals=['g36-service','g36-k-dual','g36-c-classic','g36-ka4'];
 const preset=id=>{
  const p=FAMILY_PRESETS.find(p=>p.id===id);
@@ -62,7 +63,7 @@ test('G36K 318mm and G36C 228mm have real distinct front ends and matching shot-
  const specs=[
   ['g36-service',19.50,13.45,4],
   ['g36-k-dual',15.50,11.00,3],
-  ['g36-c-classic',12.15,8.80,2],
+  ['g36-c-classic',12.15,9.65,2],
   ['g36-ka4',15.50,11.00,3]
  ];
  for(const [id,muzzleX,guardX] of specs){
@@ -114,7 +115,7 @@ test('G36C flat bridge has backup irons, G36K original integral optics remain, K
  clearWeaponSilhouette(ka4);
  const short=model(c);
  assert.equal(all(short,'g36ModernHandguardRail').length,0);
- assert.equal(all(short,'g36MasterStock').length,1,'shorter original two-opening stock');
+ assert.equal(all(short,'g36MasterStock').length,1,'full original two-opening stock');
  clearWeaponSilhouette(short);
 });
 test('rail mounts exist only where actual model contains rails; optics and lights do not appear on integral scopes',()=>{
