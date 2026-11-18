@@ -1,7 +1,6 @@
 import {setTransientRoute,noteDoorHandoffRejection,hasTransientRouteObserver} from './breach-route-transition.ts';
 import {claimBlockedHingeStepback,selectBlockedHingeStepback}
  from './breach-partial-hinge-stepback.ts';
-import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
