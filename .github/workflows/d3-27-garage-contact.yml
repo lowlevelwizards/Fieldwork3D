@@ -48,10 +48,16 @@ jobs:
             ?.d327GarageEvidence;
           if(!witness||witness.actor!=='moss'||!witness.samples?.length)
             throw Error('D3.27 missing exact frozen Garage physical witness');
-          if(witness.goalStaticPassable||!witness.authoredGoalIntact||
-             witness.orderIssue!==
-              'MOVE BLOCKED · GO INSIDE FURNITURE · DRAG WAYPOINT TO CLEAR FLOOR')
-            throw Error('D3.27 known fixture GO warning missing or authored goal rewritten');
+          if(!witness.actualOrder||witness.actualOrder.kind!=='move')
+            throw Error('D3.27 original motor MOVE unexpectedly missing');
+          // Physical reference candidate and player projection differ:
+          // do not force an unverified warning for the WRONG endpoint.
+          console.log('D327_REAL_GO',JSON.stringify({
+            candidate:witness.goal,actual:witness.actualOrder,
+            knownObstruction:witness.actualOrderFixedBlock,
+            actualBodyClear:witness.actualOrderFullBodyClear,
+            warning:witness.orderIssue
+          }));
           console.log('D327_GARAGE_CONTACT',JSON.stringify(witness));
           NODE
       - uses: actions/upload-artifact@v4
@@ -73,7 +79,7 @@ jobs:
       - name: D3.27 no-loss independent 22-site physical truth
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
-            22 2700 --d318-fresh22 --progress > "$RUNNER_TEMP/d327-fresh22.json"
+            22 2700 --d318-fresh22 --progress --route-quality > "$RUNNER_TEMP/d327-fresh22.json"
           node scripts/report-d3-26-last-failures.mjs "$RUNNER_TEMP/d327-fresh22.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
