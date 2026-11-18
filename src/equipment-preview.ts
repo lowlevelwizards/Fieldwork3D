@@ -145,8 +145,13 @@ export class CampaignKitPreview{
  /** Keep rotation discoverable and usable without touch or a mouse. */
  private updateOrientationLabel():void{
   const degrees=((Math.round(this.azimuth*180/Math.PI)%360)+360)%360;
+  const target:Record<EquipmentPreviewFocus,string>={
+   full:'Full operator',head:'Head',torso:'Torso',
+   weapon:'Weapon',carry:'Carried equipment'
+  };
   this.host.setAttribute('aria-label','Rotatable 3D preview of '+
-   this.operatorId+' with equipped gear. View angle '+degrees+
+   this.operatorId+' with equipped gear. '+target[this.focusArea]+
+   ' view. View angle '+degrees+
    ' degrees. Use Left and Right arrow keys to rotate.');
  }
  private keyDown=(event:KeyboardEvent)=>{
@@ -199,6 +204,8 @@ export class CampaignKitPreview{
     this.focusRadius===radius&&this.focusRise===rise)return;
   }
   this.focusArea=area;this.host.dataset.previewFocus=area;
+  // Announce category changes once, not during the 220 ms interpolation.
+  this.updateOrientationLabel();
   if(this.focusFrame!==null){
    cancelAnimationFrame(this.focusFrame);this.focusFrame=null;
   }
