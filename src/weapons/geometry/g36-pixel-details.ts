@@ -196,7 +196,7 @@ export function applyG36PixelDetails(root:THREE.Group):void{
      // while vent #3 (atlas start 8.9688) never starts on this shorter shell.
      // No per-variant atlas or overlay geometry, even at 64px thumbnail scale.
      const compactX=region==='guard'&&mesh.userData.g36GuardLength==='short'?
-      4.23+(x-3.75)*.75:x;
+      4.23+(x-3.75)*.72:x;
      const tx=region==='muzzle'&&selected?
       5.45+(x-muzzleStart)/(muzzleEnd-muzzleStart)*3.95:compactX;
      const ty=region==='muzzle'&&selected?
