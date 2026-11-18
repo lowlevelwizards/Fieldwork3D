@@ -948,6 +948,32 @@ function run(site,seed,kind){
       index,a:wall.a,b:wall.b,
       gap:round(pointToSegment(actor.p,wall))
     })).sort((a,b)=>a.gap-b.gap).slice(0,18);
+    const goalRoom=authored?site.rooms.find(room=>
+      room.kind==='room'&&
+      authored.x>=room.x&&authored.x<=room.x+room.w&&
+      authored.y>=room.y&&authored.y<=room.y+room.h):null;
+    const nearRoomBoundary=(p)=>{
+      if(!goalRoom)return false;
+      const {x,y,w,h}=goalRoom;
+      return (p.x>=x-2&&p.x<=x+w+2&&
+        (Math.abs(p.y-y)<3||Math.abs(p.y-y-h)<3))||
+        (p.y>=y-2&&p.y<=y+h+2&&
+         (Math.abs(p.x-x)<3||Math.abs(p.x-x-w)<3));
+    };
+    const goalRoomAccess=goalRoom?{
+      id:goalRoom.id,purpose:goalRoom.purpose??null,
+      x:goalRoom.x,y:goalRoom.y,w:goalRoom.w,h:goalRoom.h,
+      doors:session.doors.filter(d=>nearRoomBoundary({
+        x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2
+      })).map(d=>({id:d.id,open:d.open,locked:d.locked,
+        center:{x:(d.a.x+d.b.x)/2,y:(d.a.y+d.b.y)/2}})),
+      openings:(site.openings??[]).filter(o=>nearRoomBoundary({
+        x:(o.a.x+o.b.x)/2,y:(o.a.y+o.b.y)/2
+      })).map(o=>({a:o.a,b:o.b})),
+      windows:(site.windows??[]).filter(o=>nearRoomBoundary({
+        x:o.x,y:o.y
+      })).map(o=>({x:o.x,y:o.y,w:o.w??null}))
+    }:null;
     const otherActorReachability=authored?actors.filter(other=>other!==actor)
       .map(other=>({
         id:other.id,at:{...other.p},
@@ -1024,6 +1050,7 @@ function run(site,seed,kind){
        coldRetreats,
        nearestWalls,
        otherActorReachability,
+       goalRoomAccess,
        stageProbes
      },
      remainingNavNodes:actor.nav.length,
