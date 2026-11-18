@@ -14,13 +14,20 @@ export type G36H2Options={
 export const G36_H2_DEFAULTS:Readonly<G36H2Options>=Object.freeze({
  width:1,showMouth:true,showVents:true,showBoss:true
 });
-type Ring=Readonly<{x:number;top:number;bottom:number;half:number}>;
+type Ring=Readonly<{
+ x:number;top:number;bottom:number;half:number;
+ /** Only terminal stations lean in X. The middle remains straight and thick. */
+ roofShift?:number;floorShift?:number
+}>;
+/** H2.1 A: two visibly angled ends, deliberately parallel fat center.
+ * Roof/floor shifts create *true angled end faces*, not only tapered stations.
+ */
 export const G36_H2_STATIONS:ReadonlyArray<Ring>=Object.freeze([
- {x:0,top:1.20,bottom:-1.38,half:1.34},    // receiver/root, low and broad
- {x:.45,top:1.48,bottom:-1.58,half:1.50},  // chunky moulded main body
- {x:7.90,top:1.48,bottom:-1.58,half:1.50},// almost parallel long body
- {x:9.20,top:1.43,bottom:-1.54,half:1.44},// start of blunt nose transition
- {x:10,top:1.06,bottom:-1.32,half:1.30}   // recognizable clipped front
+ {x:0,top:.95,bottom:-1.12,half:1.30,roofShift:.62,floorShift:0},
+ {x:1.25,top:1.50,bottom:-1.62,half:1.52},
+ {x:7.75,top:1.50,bottom:-1.62,half:1.52},
+ {x:8.80,top:1.39,bottom:-1.46,half:1.45},
+ {x:9.85,top:.81,bottom:-1.01,half:1.31,roofShift:-.26,floorShift:.15}
 ]);
 
 // Eight perimeter landmarks, NOT a rounded tube: broad roof / sloping shoulder
@@ -36,11 +43,24 @@ export function h2Section(r:Ring,width=1):readonly (readonly [number,number])[]{
   [lower,-half*.96],[shoulder,-half]
  ];
 }
+/** Shift vertices across the terminal ring according to height so the
+ * rear and front end planes visibly lean, while the body keeps five stations.
+ * Top corners bend forward at the rear; at the nose the top ends earlier than
+ * the lower lip. Side silhouette stays readable with all details disabled.
+ */
+export function h2StationVertices(r:Ring,width=1):readonly (readonly [number,number,number])[]{
+ const center=(r.top+r.bottom)/2,halfHeight=(r.top-r.bottom)/2;
+ return h2Section(r,width).map(([y,z])=>{
+  const t=(y-center)/halfHeight;
+  const shift=t>=0?(r.roofShift??0)*t:(r.floorShift??0)*(-t);
+  return [r.x+shift,y,z] as const;
+ });
+}
 const addTriangle=(a:number[],...v:number[])=>{a.push(...v)};
 function makeShell(mat:THREE.Material,width:number,withMouth:boolean):THREE.Mesh{
  const positions:number[]=[],faces:number[]=[];
  for(const r of G36_H2_STATIONS)
-  for(const [y,z] of h2Section(r,width))positions.push(r.x,y,z);
+  for(const [x,y,z] of h2StationVertices(r,width))positions.push(x,y,z);
  const sides=8,ringCount=G36_H2_STATIONS.length;
  for(let r=0;r<ringCount-1;r++)for(let j=0;j<sides;j++){
   const a=r*sides+j,b=r*sides+(j+1)%sides,
@@ -53,13 +73,15 @@ function makeShell(mat:THREE.Material,width:number,withMouth:boolean):THREE.Mesh
  const front=(ringCount-1)*sides;
  if(withMouth){
   const last=G36_H2_STATIONS[ringCount-1],mid=(last.top+last.bottom)/2;
+  const outer=h2StationVertices(last,width);
   const innerStart=positions.length/3;
-  for(const [y,z] of h2Section(last,width)){
-   positions.push(last.x,mid+(y-mid)*.63,z*.67);
+  // Keep the mouth on the same *inclined front plane* as the shell rim.
+  for(const [x,y,z] of outer){
+   positions.push(x,mid+(y-mid)*.68,z*.68);
   }
   const throatStart=positions.length/3;
-  for(const [y,z] of h2Section(last,width)){
-   positions.push(last.x-.45,mid+(y-mid)*.63,z*.67);
+  for(const [x,y,z] of outer){
+   positions.push(x-.42,mid+(y-mid)*.68,z*.68);
   }
   for(let j=0;j<sides;j++){
    const k=(j+1)%sides;
@@ -83,9 +105,10 @@ function makeShell(mat:THREE.Material,width:number,withMouth:boolean):THREE.Mesh
 }
 function openingBack(width:number,mat:THREE.Material):THREE.Mesh{
  const r=G36_H2_STATIONS[G36_H2_STATIONS.length-1],
-   mid=(r.top+r.bottom)/2,section=h2Section(r,width);
+   mid=(r.top+r.bottom)/2,section=h2StationVertices(r,width);
  const vertices:number[]=[],triangles:number[]=[];
- for(const [y,z] of section)vertices.push(9.52,mid+(y-mid)*.63,z*.67);
+ for(const [x,y,z] of section)
+  vertices.push(x-.415,mid+(y-mid)*.68,z*.68);
  for(let j=1;j<7;j++)triangles.push(0,j,j+1);
  const geom=new THREE.BufferGeometry();
  geom.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
