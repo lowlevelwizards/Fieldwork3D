@@ -56,7 +56,13 @@ export function implicitOpenDenial(
  if(door.locked)return 'locked';
  if(door.jammed||door.wedged)return 'obstructed';
  if(door.heldBy&&door.heldBy!==actorId)return 'held';
- return verdict.allowed?null:verdict.reason;
+ // A real threshold crossing on an otherwise unlocked operable panel
+ // may be outside the narrow handle reach at this exact motor microstep.
+ // Preserve the D3.28 opening/physical passage behavior for that case:
+ // the motor still requires its crossing/contact gates and swept motion.
+ // Only physical latch/brace prohibitions may veto the opening here.
+ return verdict.reason==='out-of-reach'?null:
+   verdict.allowed?null:verdict.reason;
 }
 
 export function handleMotorDoor(
