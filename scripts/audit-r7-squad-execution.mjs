@@ -251,6 +251,15 @@ function run(site,seed,kind){
   if(actors.length!==4)throw Error('squad does not have four operators');
   const planned=kind==='entry'?planEntry(session,actors):
    planFourMoves(session,actors,site);
+  // D3.27E exact original committed GO, captured before orders advance.
+  // The frozen R7 candidate-goal denominator remains intentionally
+  // unchanged; this is a separate real physical-arrival witness.
+  const d327OriginalMove=new Map(actors.map(actor=>{
+    const node=actor.plan.find(n=>n.kind==='move');
+    return [actor.id,node?{id:node.id,kind:node.kind,
+      point:{...node.p},entryDoorId:node.entryDoorId??null,
+      stackDoorId:node.stackDoorId??null}:null];
+  }));
   if(entryLandingModule&&kind==='entry')
    entryLandingModule.setEntryLandingWitness(event=>{
     if(entryLandingEvidence.length<100)
@@ -893,7 +902,8 @@ function run(site,seed,kind){
       normalToward:headings.filter(x=>x.normal&&x.towardGoal).map(x=>x.i),
       narrowToward:headings.filter(x=>x.narrow&&x.towardGoal).map(x=>x.i)});
     }
-    const authored=actor.plan[0]?.kind==='move'?actor.plan[0].p:null;
+    const originalOrder=d327OriginalMove.get(actor.id);
+    const authored=originalOrder?.point??null;
     const actualWorld=authored?routeWithSqueezeWorld(
        actor.p,authored,session.doors,world):[];
     const actualFine=authored?coldFineMotorWorldRoute(
@@ -1215,15 +1225,17 @@ function run(site,seed,kind){
      next:{...next},distanceToGoal:round(dist(actor.p,goal)),
      blockedTime:round(actor.blockedTime),lastBlocker:actor.lastBlocker,
      orderIssue:actor.orderIssue?.reason??null,
-     authoredGoalIntact:actor.plan[0]?.kind==='move'&&
-      dist(actor.plan[0].p,goal)<.001,
-     actualOrder:actor.plan[0]?{id:actor.plan[0].id,kind:actor.plan[0].kind,
-       point:{...actor.plan[0].p},entryDoorId:actor.plan[0].entryDoorId??null,
-       stackDoorId:actor.plan[0].stackDoorId??null}:null,
-     actualOrderFixedBlock:actor.plan[0]?.kind==='move'?
-       knownFixedGoalBlock(session,actor.plan[0].p):null,
-     actualOrderFullBodyClear:actor.plan[0]?.kind==='move'?
-       bodyClear(actor.plan[0].p,session.doors,OPERATOR_RADIUS,world):null,
+     authoredGoalIntact:!!authored&&actor.plan.every(node=>
+       node.id!==originalOrder!.id||dist(node.p,authored)<.001),
+     actualOrder:originalOrder,
+     physicalCommittedArrival:!!authored&&
+       dist(actor.p,authored)<=5&&
+       !actor.plan.some(node=>node.id===originalOrder!.id),
+     originalGoalDistance:authored?round(dist(actor.p,authored)):null,
+     actualOrderFixedBlock:authored?
+       knownFixedGoalBlock(session,authored):null,
+     actualOrderFullBodyClear:authored?
+       bodyClear(authored,session.doors,OPERATOR_RADIUS,world):null,
      actualGoalRoutes:{
        world:{nodes:actualWorld.length,first:actualWorld.slice(0,5)},
        normal:{nodes:actualNormal.length,first:actualNormal.slice(0,5)},
