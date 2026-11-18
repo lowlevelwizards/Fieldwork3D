@@ -2,6 +2,7 @@
  * Execution, physical collision and the 60 Hz clock stay in breach-game/motor.
  */
 import {type Door,type Pt,doorCenter,segmentsCross} from './breach-core.ts';
+import type {InterruptedDoorPlan} from './breach-door-interruption.ts';
 import {copyNodes,record,undo,redo,makeHistory,type PlanNode,
   type PlanHistory,type PlanControlSnapshot} from './breach-plan.ts';
 import {routeWithSqueezeWorld,routeWithSqueezeIntel} from './breach-squeeze-route.ts';
@@ -13,6 +14,8 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {Session,TeamActor,SquadPlanTransaction} from './breach-game.ts';
 
 const same=(a:unknown,b:unknown)=>JSON.stringify(a)===JSON.stringify(b);
+const copyInterruption=(x:InterruptedDoorPlan|null|undefined):InterruptedDoorPlan|null=>
+ x?{...x,original:copyNodes(x.original)}:null;
 const clonePt=(p:Pt|null|undefined)=>p?{...p}:null;
 export function capturePlanControls(a:TeamActor):PlanControlSnapshot{
  return {
@@ -63,26 +66,39 @@ function pushControlUndo(h:PlanHistory,before:PlanControlSnapshot){
  if(h.undoControls.length>40)h.undoControls.shift();
  h.redoControls=[];
 }
+function pushInterruptedUndo(h:PlanHistory,before:InterruptedDoorPlan|null){
+ const length=h.undo.length;
+ h.undoInterruptions??=[];
+ while(h.undoInterruptions.length<length-1)
+  h.undoInterruptions.push(copyInterruption(before));
+ h.undoInterruptions.push(copyInterruption(before));
+ if(h.undoInterruptions.length>40)h.undoInterruptions.shift();
+ h.redoInterruptions=[];
+}
 /** A commit is either one real change or none. No-op commands neither burn
  * IDs nor pollute undo history. Non-route actions do not reset motor state. */
 export function edit(s:Session,a:TeamActor,fn:()=>void):boolean{
  if(s.phase!=='planning')return false;
  const before=copyNodes(a.plan),controls=capturePlanControls(a);
+ const beforeInterruption=copyInterruption(a.interruptedDoorPlan);
  const nextId=s.nextId,syncCode=s.syncCode;
  try{fn();}
  catch(error){
   a.plan=before;restoreControls(a,controls);
+  a.interruptedDoorPlan=copyInterruption(beforeInterruption);
   s.nextId=nextId;s.syncCode=syncCode;
   throw error;
  }
  const planChanged=!same(before,a.plan);
  const controlChanged=!same(controls,capturePlanControls(a));
- if(!planChanged&&!controlChanged){
+ const interruptionChanged=!same(beforeInterruption,a.interruptedDoorPlan);
+ if(!planChanged&&!controlChanged&&!interruptionChanged){
   s.nextId=nextId;s.syncCode=syncCode;
   return false;
  }
  record(a.history,before);
  pushControlUndo(a.history,controls);
+ pushInterruptedUndo(a.history,beforeInterruption);
  if(planChanged)pathFor(a,s);
  // Keep a prior group eligible after unrelated per-actor edits are undone.
  // A fresh edit always branches away from any prior REDO timeline.
@@ -164,17 +180,22 @@ type PartyLookup=(s:Session,id:string)=>TeamActor|undefined;
 function cloneHistory(h:PlanHistory):PlanHistory{
  return {undo:h.undo.map(copyNodes),redo:h.redo.map(copyNodes),
   undoControls:h.undoControls?.map(copyControls),
-  redoControls:h.redoControls?.map(copyControls)};
+  redoControls:h.redoControls?.map(copyControls),
+  undoInterruptions:h.undoInterruptions?.map(copyInterruption),
+  redoInterruptions:h.redoInterruptions?.map(copyInterruption)};
 }
 type SavedActor={
  actor:TeamActor;plan:PlanNode[];controls:PlanControlSnapshot;
- history:PlanHistory;path:Pt[];nav:Pt[];activeNode:number;
+ history:PlanHistory;interruption:InterruptedDoorPlan|null;
+ path:Pt[];nav:Pt[];activeNode:number;
  autoSidestep:TeamActor['autoSidestep'];waitRemaining:number;
  actionTimer:number;syncReady:TeamActor['syncReady'];pieIndex:number;
 };
 function saveActor(actor:TeamActor):SavedActor{
  return {actor,plan:copyNodes(actor.plan),controls:capturePlanControls(actor),
-  history:cloneHistory(actor.history),path:actor.path.map(p=>({...p})),
+  history:cloneHistory(actor.history),
+  interruption:copyInterruption(actor.interruptedDoorPlan),
+  path:actor.path.map(p=>({...p})),
   nav:actor.nav.map(p=>({...p})),activeNode:actor.activeNode,
   autoSidestep:actor.autoSidestep,waitRemaining:actor.waitRemaining,
   actionTimer:actor.actionTimer,syncReady:actor.syncReady,pieIndex:actor.pieIndex};
@@ -182,6 +203,7 @@ function saveActor(actor:TeamActor):SavedActor{
 function restoreActor(saved:SavedActor){
  const a=saved.actor;
  a.plan=copyNodes(saved.plan);a.history=cloneHistory(saved.history);
+ a.interruptedDoorPlan=copyInterruption(saved.interruption);
  restoreControls(a,saved.controls);
  a.path=saved.path.map(p=>({...p}));a.nav=saved.nav.map(p=>({...p}));
  a.activeNode=saved.activeNode;a.autoSidestep=saved.autoSidestep;
@@ -208,13 +230,17 @@ export function atomicTeamEdit(s:Session,members:readonly TeamActor[],
  try{accepted=perform();}catch(error){rollback();throw error;}
  if(!accepted)return rollback();
  const changed=saved.filter(b=>!same(b.plan,b.actor.plan)||
-   !same(b.controls,capturePlanControls(b.actor)));
+   !same(b.controls,capturePlanControls(b.actor))||
+   !same(b.interruption,b.actor.interruptedDoorPlan));
  if(!changed.length)return rollback();
  for(const before of changed){
   const a=before.actor;
   a.history={undo:[...before.history.undo,copyNodes(before.plan)].slice(-40),
    redo:[],undoControls:[...(before.history.undoControls??[]),
-     copyControls(before.controls)].slice(-40),redoControls:[]};
+     copyControls(before.controls)].slice(-40),redoControls:[],
+   undoInterruptions:[...(before.history.undoInterruptions??
+      Array.from({length:before.history.undo.length},()=>copyInterruption(before.interruption))),
+     copyInterruption(before.interruption)].slice(-40),redoInterruptions:[]};
   if(!same(before.plan,a.plan))pathFor(a,s);
  }
  const group:SquadPlanTransaction={
@@ -223,7 +249,11 @@ export function atomicTeamEdit(s:Session,members:readonly TeamActor[],
   after:Object.fromEntries(changed.map(b=>[b.actor.id,copyNodes(b.actor.plan)])),
   controlsBefore:Object.fromEntries(changed.map(b=>[b.actor.id,copyControls(b.controls)])),
   controlsAfter:Object.fromEntries(changed.map(b=>[b.actor.id,capturePlanControls(b.actor)])),
-  undoDepth:Object.fromEntries(changed.map(b=>[b.actor.id,b.actor.history.undo.length]))
+  undoDepth:Object.fromEntries(changed.map(b=>[b.actor.id,b.actor.history.undo.length])),
+  interruptionsBefore:Object.fromEntries(changed.map(b=>
+    [b.actor.id,copyInterruption(b.interruption)])),
+  interruptionsAfter:Object.fromEntries(changed.map(b=>
+    [b.actor.id,copyInterruption(b.actor.interruptedDoorPlan)]))
  };
  s.squadEntryUndo=group;s.squadEntryRedo=null;
  return true;
@@ -236,7 +266,10 @@ function plansMatch(s:Session,group:SquadPlanTransaction,party:PartyLookup,
    same(capturePlanControls(a),group[key==='before'?
      'controlsBefore':'controlsAfter']?.[id]??capturePlanControls(a))&&
    (direction==='undo'?a.history.undo.length===(group.undoDepth?.[id]??a.history.undo.length)&&a.history.undo.length>0:
-     a.history.redo.length===1);
+     a.history.redo.length===1)&&
+   (group[key==='before'?'interruptionsBefore':'interruptionsAfter']?.[id]===undefined||
+      same(copyInterruption(a.interruptedDoorPlan),
+           group[key==='before'?'interruptionsBefore':'interruptionsAfter']?.[id]));
  });
 }
 function historyStep(s:Session,a:TeamActor,direction:'undo'|'redo'):boolean{
@@ -251,6 +284,15 @@ function historyStep(s:Session,a:TeamActor,direction:'undo'|'redo'):boolean{
   const restored=h.redoControls?.pop();
   h.undoControls??=[];h.undoControls.push(prior);
   if(restored)restoreControls(a,restored);
+ }
+ const currentInterruption=copyInterruption(a.interruptedDoorPlan);
+ const from=direction==='undo'?h.undoInterruptions:h.redoInterruptions;
+ const restoredInterruption=from?.pop();
+ if(restoredInterruption!==undefined){
+  const target=direction==='undo'?'redoInterruptions':'undoInterruptions';
+  h[target]??=[];
+  h[target]!.push(currentInterruption);
+  a.interruptedDoorPlan=copyInterruption(restoredInterruption);
  }
  const planChanged=!same(a.plan,nodes);
  a.plan=nodes;

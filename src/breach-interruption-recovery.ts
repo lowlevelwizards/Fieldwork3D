@@ -42,8 +42,8 @@ export function resumeInterruptedDoorPlan(s:Session,actorId:string):boolean{
  const accepted=edit(s,a,()=>{
   const restored=copyNodes(snap.original).map(n=>({...n,id:s.nextId++}));
   a.plan.unshift(...restored);
+  a.interruptedDoorPlan=null;
  });
- if(accepted)a.interruptedDoorPlan=null;
  return accepted;
 }
 
@@ -90,9 +90,9 @@ export function resumeInterruptedSquadEntry(s:Session,actorId:string):boolean{
    const original=a.interruptedDoorPlan!.original;
    const restored=copyNodes(original).map(n=>({...n,id:s.nextId++}));
    a.plan.unshift(...restored);
+   a.interruptedDoorPlan=null;
   }
   return true;
  });
- if(committed)for(const a of members)a.interruptedDoorPlan=null;
  return committed;
 }
