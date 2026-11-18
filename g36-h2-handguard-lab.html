@@ -22,11 +22,11 @@ small{display:block;color:#a6c0ac;line-height:1.5}
 @media(max-width:620px){body{padding:7px}#render{height:365px}button{padding:9px;font-size:12px}}
 </style></head>
 <body><main>
-<h1>G36 H2 / ORIGINAL HANDGUARD — ISOLATED STUDY</h1>
-<p><strong>Not in Arsenal.</strong> H1 vs H2, same camera, model-only. Judge the overall shape before details. The larger front opening, high vent row, raised boss and sculpted shell are all intentionally exaggerated at game scale.</p>
+<h1>G36 H2.1 / ANGLED HANDGUARD — ISOLATED STUDY</h1>
+<p><strong>Not in Arsenal.</strong> H1 vs H2.1, same camera, model-only. New slanted rear and nose faces, substantial straight central body, four bold graphic vents, one simplified mouth and one mounting lug. Judge the outer silhouette first.</p>
 <section class="panel">
 <div class="toolbar" aria-label="Select model">
-<button id="h2" aria-pressed="true">H2 REBUILD</button>
+<button id="h2" aria-pressed="true">H2.1 · ANGLED</button>
 <button id="h1" aria-pressed="false">H1 LIVE BASELINE</button>
 </div>
 <div class="toolbar" aria-label="Camera angle">
@@ -37,22 +37,22 @@ small{display:block;color:#a6c0ac;line-height:1.5}
 <button id="opposite" aria-pressed="false">OTHER SIDE</button>
 </div>
 <canvas id="render" aria-label="Rotatable 3D G36 handguard isolated prototype. Drag to rotate."></canvas>
-<div class="info"><small id="status">H2 • original-style major forms</small><small>Drag to orbit / use camera presets</small></div>
+<div class="info"><small id="status">H2.1 • angled ends / four bold vents</small><small>Drag to orbit / use camera presets</small></div>
 </section>
 <section class="panel">
-<strong>H2 ONLY · EXTREME SIMPLIFICATION / SILHOUETTE CONTROLS</strong>
+<strong>H2.1 ONLY · SILHOUETTE FIRST</strong>
 <div class="toolbar">
 <label>WIDTH <input id="width" type="range" min="0.85" max="1.2" step="0.05" value="1"/><output id="width-label">100%</output></label>
 <label><input id="mouth" type="checkbox" checked/> RECESSED FRONT</label>
 <label><input id="boss" type="checkbox" checked/> MOUNTING LUG</label>
-<label><input id="vents" type="checkbox" checked/> FIVE UPPER VENTS</label>
+<label><input id="vents" type="checkbox" checked/> FOUR BOLD UPPER VENTS</label>
 </div>
 <div class="previews"><canvas id="thumb128" width="128" height="128" aria-label="H2 128px view"></canvas><canvas id="thumb64" width="64" height="64" aria-label="H2 64px view"></canvas><small>These thumbnails stay in SIDE view<br/>to judge normal game-size legibility.</small></div>
 </section>
 <section class="panel"><strong>REFERENCE PRIORITIES</strong>
-<p>1. Strong continuous shell volume, not H1's regular hexagonal box. 2. Distinct blunt front mouth. 3. Five upper elongated slots, not four mid-height square stamps. 4. A single raised mounting feature. No seams, rails, screw farms or micro-detail.</p>
+<p>1. Angled rear root and angled front nose, including real inclined end planes. 2. Broad, parallel center mass. 3. Four enlarged upper rectangular graphic vents. 4. One simple front mouth and one raised lug. No seams, rails, extra bevel stacks, screws or micro-detail.</p>
 <div class="references"><a href="https://hkparts.net/all-parts/h-k-g36-sl8-5-56-223-forearm-original-version/" target="_blank" rel="noopener">Original oblique handguard reference</a><a href="https://hkparts.net/all-parts/h-k-g36-5-56-223-handguard-original-style-incomplete/" target="_blank" rel="noopener">Original-style side reference</a></div>
-<small>H2 lives in its own study source. Nothing replaces the Arsenal H1 geometry until the isolated silhouette is accepted.</small>
+<small>H2.1 remains in its isolated study source. The deployed Arsenal H1 geometry is unchanged and will not be replaced until the revised handguard is approved.</small>
 </section>
 <script type="module" src="./src/g36-h2-handguard-lab.ts"></script>
 </main></body></html>
