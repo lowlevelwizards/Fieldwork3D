@@ -214,7 +214,13 @@ export function solveUnifiedFallbackArm(req:FallbackArmRequest):
      solved=solveTwoBone(shoulder,wrist,10,10,pole,ARM_LIMITS,
        previousBend,scratch.arms[armIndex]);
    }
-   return finish(solved,null,'authored');
+   // A short-stock elbow may begin behind the ordinary carry hemisphere.
+   // Running finish() mid-bridge abruptly changes its bend plane at the
+   // first nonzero frame. This authored, preview-only arm is already
+   // following the shortest safe circular path to its settled valid pose.
+   // Preserve that path until the transition completes; the settled frame
+   // restores normal carry/armor correction without moving the actual gun.
+   return {solution:solved,dynamic:null,used:'authored'};
  }
  let dynamicAccepted=false;
  if(req.sourceContinuity&&envelope&&solved.reached){

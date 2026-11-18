@@ -133,3 +133,77 @@ test('elbow sweep uses downward/outboard arc without straight-arm singularity',(
   }
  }
 });
+
+
+test('release from settled short-stock to ready and ADS never flips elbow bend branches',()=>{
+ // Covers the exact phone/Studio repro: an explicitly selected short-stock
+ // pose exits to a normal two-handed carry. The source is the *displayed*
+ // pose, including the outboard firing elbow, not an idealized preset.
+ const fixtures=[
+  ['ar-m4a1','carbine'],
+  ['g36-service','rifle'],
+  ['g36-k-dual','carbine'],
+  ['g36-c-classic','carbine'],
+  ['g36-ka4','carbine'],
+ ];
+ for(const [id,weapon] of fixtures){
+  const configuration=selectWeaponFamilyPreset(
+   initialWeaponConfiguration(weapon),id);
+  for(const destination of ['ready','ads']){
+   const rig=createOperatorRig('short-release-'+id+'-'+destination,'blue');
+   const input={...pose,weapon,weaponConfiguration:configuration,
+    aiming:false,aimBlend:0};
+   const show=(handling,seconds,blend)=> {
+    poseOperator(rig,{...input,seconds,handlingOverride:handling,
+     aiming:destination==='ads'&&handling==='ads',
+     aimBlend:destination==='ads'&&handling==='ads'?1:0,
+     handlingTransition:blend},0);
+    return {gun:rig.weapon.position.clone(),
+     elbows:rig.arms.map(arm=>arm.lower.position.clone()
+      .multiplyScalar(2).sub(arm.hand.position)),
+     bends:rig.arms.map(arm=>arm.bend.clone()),
+     hands:rig.arms.map(arm=>arm.hand.position.clone())};
+   };
+   try{
+    show('short',2,null);
+    const source=snapshot(rig);
+    const first=show(destination,2.01,transition('short',destination,source,0));
+    for(let side=0;side<2;side++){
+     assert.ok(first.elbows[side].distanceTo(source.arms[side].elbow)<.0001,
+      id+'/'+destination+' alpha 0 must preserve visible elbow');
+    }
+    let previous=first,maxJump=0,minBendDot=1,worstStep=-1,worstPart='';
+    for(let i=1;i<=64;i++){
+     const alpha=i/64;
+     const f=show(destination,2.01+alpha*.32,
+      transition('short',destination,source,alpha));
+     const d=distance(previous,f);
+     if(d>maxJump){
+      maxJump=d;worstStep=i;
+      const parts=[['gun',previous.gun.distanceTo(f.gun)],
+       ...[0,1].flatMap(side=>[
+        ['hand'+side,previous.hands[side].distanceTo(f.hands[side])],
+        ['elbow'+side,previous.elbows[side].distanceTo(f.elbows[side])]])];
+      parts.sort((a,b)=>b[1]-a[1]);worstPart=parts[0][0];
+     }
+     for(let side=0;side<2;side++)
+      minBendDot=Math.min(minBendDot,
+       previous.bends[side].dot(f.bends[side]));
+     previous=f;
+    }
+    assert.ok(maxJump<3.5,
+     id+'/'+destination+' backward elbow flip, max jump '+maxJump+' at step '+worstStep+' component '+worstPart);
+    assert.ok(minBendDot>.15,
+     id+'/'+destination+' flipped the elbow bend hemisphere '+minBendDot);
+    const settled=show(destination,2.45,null);
+    assert.ok(distance(previous,settled)<.75,
+     id+'/'+destination+' snapped from blended arm to settled solver');
+    for(let side=0;side<2;side++){
+     const elbow=settled.elbows[side],shoulder=snapshot(rig).arms[side].shoulder;
+     assert.ok(elbow.x>=shoulder.x-.8,
+      id+'/'+destination+' elbow settled behind shoulder');
+    }
+   }finally{rig.dispose();}
+  }
+ }
+});
