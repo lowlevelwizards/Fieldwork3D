@@ -4,6 +4,7 @@ on:
     branches: [feature/d3-26-last-entry-failures-20261118]
     paths:
       - 'scripts/report-d3-26-last-failures.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
       - '.github/workflows/d3-26-last-entry-failures.yml'
       - 'src/breach-*.ts'
       - 'tests/release-d3-26*.test.mjs'
@@ -77,6 +78,7 @@ jobs:
             for(const actor of mode.d326StallEvidence??[]){
               console.log('D326_STALL_MICRO',JSON.stringify({
                 site,seed:report.rows[0].seed,...actor,
+                fineRoute:actor.fineRoute,
                 candidates:actor.candidates.map(c=>({
                   radius:c.radius,heading:c.heading,point:c.point,
                   tailNodes:c.tailNodes,tailFirstMicro:c.tailFirstMicro,
