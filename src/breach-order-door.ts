@@ -163,7 +163,8 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         door.lastKickAt=s.seconds;
         if(outcome.opened&&door.latchBroken&&
            door.hardwareDetachedAt===undefined)
-          door.hardwareDetachedAt=s.seconds;
+          {door.hardwareDetachedAt=s.seconds;
+           door.hardwareDetachedFraction=impactStart;}
         if(outcome.opened){
           door.openedAt=s.seconds;
           // One bounded, real-footprint shove of loose furniture touched
