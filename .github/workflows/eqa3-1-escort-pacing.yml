@@ -1,0 +1,35 @@
+name: EQA3.1 active civilian FOLLOW pacing and 60Hz physical regressions
+on:
+  push:
+    branches: [feature/eqa3-1-rescue-escort-pacing-20261118]
+    paths:
+      - '.github/workflows/eqa3-1-escort-pacing.yml'
+      - 'src/breach-civilian-mission.ts'
+      - 'src/breach-order-movement.ts'
+      - 'tests/eqa3-1-rescue-escort-pacing.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  focused-physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and real civilian follow, prior rescue, physical order regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-1-rescue-escort-pacing.test.mjs \
+            tests/civilian-b7-rescue-session.test.mjs \
+            tests/civilian-contact-flow-regression.test.mjs \
+            tests/civilian-c1a-animation-reset.test.mjs \
+            tests/civilian-c5-unified-pose.test.mjs \
+            tests/mission-deployment-r2.test.mjs \
+            tests/release-d3-31f-kick-open-recovery.test.mjs
+      - name: Production Vite bundle, no deployment
+        run: npm run build
