@@ -34,6 +34,15 @@ try{
   await person.getByRole('button',{name:/^Open .* loadout$/}).click();
   const armory=page.locator('.campaign-kit-editor');
   await armory.waitFor({timeout:15000});
+  const operatorPreview=page.locator('.campaign-kit-preview');
+  if(await operatorPreview.locator('canvas').count()){
+   await operatorPreview.focus();
+   const before=await operatorPreview.getAttribute('aria-label');
+   await operatorPreview.press('ArrowRight');
+   const after=await operatorPreview.getAttribute('aria-label');
+   if(!before?.includes('Left and Right arrow keys')||after===before)
+    throw Error('Operator 3D preview is not keyboard rotatable');
+  }
   const groups=armory.locator(':scope > .fw-loadout-group');
   if(await groups.count()!==5)throw Error('Campaign kit must have five clear groups');
   if(await page.locator('.campaign-wardrobe').count())
