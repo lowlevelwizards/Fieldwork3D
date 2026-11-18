@@ -21,7 +21,7 @@ test('O2 production pod: two six-facet housings and retained handle/sight contra
  const lower=one(g,'g36LowerOptic'),hood=one(g,'g36UpperReflex'),
   handle=one(g,'g36HandleOpening');
  for(const mesh of [lower,hood]){
-  assert.equal(mesh.userData.g36OpticArtVersion,'o2-simplified-125-125-55');
+  assert.equal(mesh.userData.g36OpticArtVersion,'o3-compact-integrated-125-125-55');
   assert.equal(mesh.userData.g36OpticCrossSectionSides,6);
   assert.equal(mesh.geometry.getAttribute('position').count,60,
    'two six-sided stations with flat cap triangles; no micro-detail ladders');
@@ -52,7 +52,7 @@ test('O2 lower eight-sided ocular extends further rearward than upper six-sided 
  assert.ok(bounds(low).intersectsBox(bounds(lowShell)));
  assert.ok(bounds(high).intersectsBox(bounds(highShell)));
  assert.ok(bounds(lowShell).max.z-bounds(lowShell).min.z>2.0,
-  '125% O2 housing reads as broad in end-on view');
+  '125% O3 housing reads as broad in end-on view');
  assert.ok(bounds(low).max.y<4.3,'lower ocular remains below upper hood');
  clearWeaponSilhouette(g);mat.dispose();
 });
@@ -65,7 +65,7 @@ test('O2 has exactly two rear-facing dark optical faces, no nested disks or dial
   assert.equal(face.geometry.type,'CircleGeometry');
   assert.ok(face.geometry.parameters.segments<=8);
   assert.ok(hitRear(face,face.position.x-8,
-   face===low?3.57:4.30),'the optical disc must face the stock/rear');
+   face===low?3.57:4.54),'the optical disc must face the stock/rear');
  }
  assert.ok(bounds(low).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
  assert.ok(bounds(high).intersectsBox(bounds(one(g,'g36UpperReflexBarrel'))));
@@ -98,6 +98,6 @@ test('O2 legacy art comparisons remain review-only and do not replace factory op
   clearWeaponSilhouette(lab);
  }
  assert.equal(one(original,'g36LowerOptic').userData.g36OpticArtVersion,
-  'o2-simplified-125-125-55');
+  'o3-compact-integrated-125-125-55');
  clearWeaponSilhouette(original);mat.dispose();
 });

@@ -1656,3 +1656,8 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(prefers-reduced-motion:reduce){
  .campaign-armory-screen .campaign-kit-categories{scroll-behavior:auto}
 }
+
+/* Equipment E6.D2: keyboard-accessible rotation without continual rendering. */
+.campaign-armory-screen .campaign-kit-preview:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:3px;
+}

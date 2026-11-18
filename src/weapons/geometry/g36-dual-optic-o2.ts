@@ -9,7 +9,7 @@ import * as THREE from 'three';
 type Section=readonly (readonly [number,number])[];
 type PartKind='g36LowerOptic'|'g36UpperReflex'|'g36LowerOpticBarrel'|
  'g36UpperReflexBarrel'|'g36OpticFace'|'g36UpperReflexWindow';
-const STYLE='o2-simplified-125-125-55';
+const STYLE='o3-compact-integrated-125-125-55';
 
 function sixFacetPrism(x0:number,x1:number,rear:Section,front:Section):THREE.BufferGeometry{
  if(rear.length!==6||front.length!==6||x1<=x0)
@@ -62,21 +62,25 @@ export function addG36O2DualOptic(
   root.add(mesh);
   return mesh;
  };
- // O2 housing: 125% breadth with an intentional 9% taper toward the nose.
- // Positioned inside the original G36 optical/handle art envelope.
+ // O3 Stages 1/4: keep the approved 125% transverse mass, but shorten
+ // the overall optical assembly and use two matching six-sided stations.
+ // Straight broad planes take priority over delicate forward tapering.
  const bodyWidth=.91*1.25;
- const lower=add(sixFacetPrism(-5.83,-.88,
-  section(2.69,3.06,4.08,bodyWidth),
-  section(2.69,3.06,4.08,bodyWidth*.91)), 'g36LowerOptic');
+ // O3 Stage 3: extend the REAR of the same housing into the carry-handle
+ // root. The bottom rises slightly towards the nose: a single molded shell,
+ // never an extra pedestal or an opaque slab over the handle opening.
+ const lower=add(sixFacetPrism(-5.83,-1.50,
+  section(1.94,3.08,4.12,bodyWidth),
+  section(2.24,3.08,4.12,bodyWidth)), 'g36LowerOptic');
  lower.userData.g36IntegratedOpticShell=true;
  lower.userData.g36OpticCrossSectionSides=6;
 
- // O2 upper hood: 125% prominence, but the top remains exactly 4.70,
- // the existing production sight/weapon envelope landmark.
+ // O3 Stage 2: raise the independent upper ocular above the lower roof.
+ // Keep factory aiming contact (4.46) unchanged; this is visual geometry.
  const hoodWidth=.73*1.25;
- const upper=add(sixFacetPrism(-5.57,-2.57,
-  hoodSection(3.68,3.94,4.70,hoodWidth),
-  hoodSection(3.68,3.94,4.70,hoodWidth*.90)), 'g36UpperReflex');
+ const upper=add(sixFacetPrism(-5.57,-3.14,
+  hoodSection(3.94,4.24,5.03,hoodWidth),
+  hoodSection(3.94,4.24,5.03,hoodWidth)), 'g36UpperReflex');
  upper.userData.g36OpticCrossSectionSides=6;
 
  // O2 55% projection: lower ocular projects farther than the upper.
@@ -91,10 +95,11 @@ export function addG36O2DualOptic(
   barrel.userData.g36OpticOcularSides=radialSegments;
   return barrel;
  };
- ocular(-6.38,-5.76,3.57,.625,8,'g36LowerOpticBarrel');
- ocular(-5.92,-5.49,4.30,.395,6,'g36UpperReflexBarrel');
+ ocular(-6.27,-5.76,3.57,.625,8,'g36LowerOpticBarrel');
+ ocular(-5.79,-5.49,4.54,.395,6,'g36UpperReflexBarrel');
 
- // One recessed-looking matte-black circle per eyepiece, no stacked rings.
+ // O3 Stage 4: a short sleeve and ONE flat dark disc per optical face.
+ // No nested lens rings, knobs, mechanical seams, translucent glass or ribs.
  // Visible from the rear (-X); inherited shared materials are set by caller.
  const lens=(x:number,y:number,radius:number,segments:number,key:PartKind)=>{
   const geometry=new THREE.CircleGeometry(radius*.72,segments);
@@ -102,7 +107,7 @@ export function addG36O2DualOptic(
   geometry.translate(x,y,0);
   return add(geometry,key);
  };
- lens(-6.378,3.57,.625,8,'g36OpticFace');
- lens(-5.918,4.30,.395,6,'g36UpperReflexWindow');
+ lens(-6.268,3.57,.625,8,'g36OpticFace');
+ lens(-5.788,4.54,.395,6,'g36UpperReflexWindow');
  return index;
 }
