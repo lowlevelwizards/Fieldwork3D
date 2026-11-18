@@ -168,22 +168,27 @@ export function resolveMotorCollision(
        !a.squeeze&&!a.traversal&&!a.traversalPending&&
        !a.fireRetreatTarget&&remoteEpisode&&
        a.blockedTime>=1.6&&
-       (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
-       claimColdMotorMicroDeparture(a,p,s.seconds)){
+       (a.lastBlocker==='wall'||a.lastBlocker==='furniture')){
       const sweep=(from:Pt,to:Pt)=>
         sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
-      const corrected=selectColdMotorMicroDeparture(
-        a.p,p,next,sweep,
-        pt=>bodyClear(pt,s.doors,OPERATOR_RADIUS,world),
-        (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
-      if(corrected.length&&watchClearanceAllowed(a.p,corrected[0],p,
-        !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
-        setTransientRoute(s,a,corrected,'motor-micro-departure');
-        notePreciseLocalDetour(a,corrected[0]);
-        a.lastNavRepairAt=s.seconds;
-        provisionalRouteAccepted(a);
-        a.squeeze=false;a.squeezeTime=0;
-        return true;
+      // D3.26G1: cold fine-world entitlement must NOT depend on this
+      // independent 2/5-unit coarse-tail experiment succeeding or even
+      // retaining retry budget. Apartment 19036595 consumed two failed
+      // short-stage probes before the fine recovery could run.
+      if(claimColdMotorMicroDeparture(a,p,s.seconds)){
+        const corrected=selectColdMotorMicroDeparture(
+          a.p,p,next,sweep,
+          pt=>bodyClear(pt,s.doors,OPERATOR_RADIUS,world),
+          (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
+        if(corrected.length&&watchClearanceAllowed(a.p,corrected[0],p,
+          !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+          setTransientRoute(s,a,corrected,'motor-micro-departure');
+          notePreciseLocalDetour(a,corrected[0]);
+          a.lastNavRepairAt=s.seconds;
+          provisionalRouteAccepted(a);
+          a.squeeze=false;a.squeezeTime=0;
+          return true;
+        }
       }
       // D3.26F2: the D3.26D whole-route verifier rejected all coarse
       // continuations on Apartment 19036595. A COLD, 4-unit world route
