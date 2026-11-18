@@ -990,6 +990,19 @@ function run(site,seed,kind){
         const liveRoute=(from,to)=>routeWithSqueezeWorld(from,to,
           session.doors,world);
         const first=liveRoute(actor.p,north);
+        const intelFirst=routeWithSqueezeIntel(
+          session.intel,actor.p,north);
+        const intelSecond=routeWithSqueezeIntel(
+          session.intel,south,authored);
+        const intelBridge=[...intelFirst,south,...intelSecond];
+        const intelStaticClear=intelFirst.length>0&&
+          intelSecond.length>0&&
+          fullBodyMotorRouteClear(actor.p,intelBridge,
+            (from,to)=>sweptBodyClear(from,to,[],
+              OPERATOR_RADIUS,world),950);
+        const intelFirstLive=intelFirst[0]?sweptBodyClear(
+          actor.p,intelFirst[0],session.doors,
+          OPERATOR_RADIUS,world):false;
         const portalPrefix=routeToNextOperableDoor(
           actor.p,north,session.doors,world);
         const portalPrefixSwept=portalPrefix.length>0&&
@@ -1019,6 +1032,12 @@ function run(site,seed,kind){
           swept(north,south)&&
           fullBodyMotorRouteClear(actor.p,bridge,swept,950);
         return {opening,mid,north,south,
+          intelNorth:{firstNodes:intelFirst.length,
+            secondNodes:intelSecond.length,
+            totalNodes:intelBridge.length,
+            first:intelFirst.slice(0,6),last:intelBridge.at(-1)??null,
+            staticMotorCertified:intelStaticClear,
+            firstStepCurrentDoorsClear:intelFirstLive},
           portalNorth:{nodes:portalPrefix.length,
             allSweptAtMotorResolution:portalPrefixSwept,
             first:portalPrefix.slice(0,5),
