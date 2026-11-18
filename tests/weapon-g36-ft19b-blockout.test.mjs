@@ -36,7 +36,9 @@ test('G36 B: master consists of six named exterior slots and bounded art landmar
  assert.ok(Math.abs(b.max.y-A.opticTopY)<.02);
  for(const [slot,id] of Object.entries(G36_B_PART_IDS))
   assert.ok(g.children.some(x=>x.name.startsWith('family-'+slot+'-'+id+'-')),slot);
- assert.ok(g.children.every(x=>x instanceof THREE.Mesh&&x.material===m));
+ assert.ok(g.children.every(x=>x instanceof THREE.Mesh));
+ assert.ok(g.children.filter(x=>!x.userData.g36SelectorMarkings).every(x=>x.material===m),
+  'only graphic HK selector is a justified separate pooled material');
  clearWeaponSilhouette(g);m.dispose();
 });
 test('G36 B: physical frame has two real stock voids and handle has a real void',()=>{
@@ -116,7 +118,7 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.equal(meshCount,22,'H3 is one shell and no separate lug/mouth');
+ assert.equal(meshCount,23,'one HK marking batch, no handguard cavity or lug');
  clearWeaponSilhouette(g);m.dispose();
 });
 
