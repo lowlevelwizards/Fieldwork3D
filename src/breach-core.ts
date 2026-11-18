@@ -24,6 +24,8 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   latchBroken?:boolean;
   /** Simulation timestamp of the real impact that detached the hardware. */
   hardwareDetachedAt?:number;
+  /** Exact hinge fraction at the latch-breaking kick, for deterministic debris. */
+  hardwareDetachedFraction?:number;
   /** Frame-relative locked face, independent of swing and hinge orientation. */
   lockSide?:'positive'|'negative'|'both';
   /** Missing kind retains legacy two-sided mechanical lock semantics. */
