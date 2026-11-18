@@ -7,6 +7,7 @@ import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {readWeaponFamilyBuild,initialWeaponFamilyBuild} from './equipment-weapon-families.ts';
 import {buildModularWeaponSilhouette} from './breach-modular-weapon-geometry.ts';
+import {poseConfiguredStock} from './weapon-stock-geometry.ts';
 import {measureVisibleStockContact}
  from './breach-stock-contact-surface.ts';
 import {addHKClawRail} from './weapons/geometry/hk-rail-accessories.ts';
@@ -77,11 +78,13 @@ export function buildWeaponSilhouette(id:WeaponId,
   if(familyBuild.family==='ak'&&
    config?.slots.opticMount==='optic-ak-side-picatinny')
    addAKSidePicatinnyAdapter(root);
+  // Use exactly the saved physical state in live, replay and Workbench.
+  if(config?.weapon===id)poseConfiguredStock(root,config);
   // Preserve the original authored stock measurement, even if static
   // submeshes are subsequently baked into larger vertex buffers.
   const stockContact=config?measureVisibleStockContact(root,config):null;
   if(config?.weapon===id&&config.build&&
-   options.rigidCompilation!=='disabled'){
+   options.rigidCompilation!=='disabled'&&!config.stockPosition){
    const report=compileValidatedFactoryRigidBody(root,familyBuild);
    if(report)root.userData.rigidCompilation=report;
   }

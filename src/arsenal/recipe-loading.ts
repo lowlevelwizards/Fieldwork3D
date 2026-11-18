@@ -10,7 +10,7 @@ import {type ArsenalDraft} from './editor-state.ts';
 
 const MAX_HISTORY=40;
 export interface ArsenalRecipeDifference{
- key:ArsenalSlot|'weapon'|'platform';
+ key:ArsenalSlot|'weapon'|'platform'|'stockPosition';
  from:string;to:string;
 }
 export interface ArsenalRecipeLoadProposal{
@@ -25,6 +25,9 @@ export function proposeArsenalRecipeLoad(current:ArsenalRecipeV2,
  const next=readArsenalRecipe(raw);
  if(!next)return {valid:false,reason:'This saved build is invalid or outdated',changes:[]};
  const changes:ArsenalRecipeDifference[]=[];
+ if((current.stockPosition??'deployed')!==(next.stockPosition??'deployed'))
+  changes.push({key:'stockPosition',from:current.stockPosition??'deployed',
+   to:next.stockPosition??'deployed'});
  if(current.platformId!==next.platformId)changes.push({
   key:'platform',from:current.platformId,to:next.platformId});
  if(current.weapon!==next.weapon)changes.push({
@@ -43,6 +46,7 @@ export function arsenalRecipeDifferenceLabel(change:ArsenalRecipeDifference):str
  const name=(id:string)=>arsenalPart(id)?.name??id;
  if(change.key==='platform')return 'Platform: '+change.from+' → '+change.to;
  if(change.key==='weapon')return 'Weapon class: '+change.from+' → '+change.to;
+ if(change.key==='stockPosition')return 'Stock: '+change.from+' → '+change.to;
  return change.key+': '+name(change.from)+' → '+name(change.to);
 }
 /** Accept once; all changed components share ONE undo step.

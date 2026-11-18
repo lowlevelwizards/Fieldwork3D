@@ -37,7 +37,7 @@ export function arsenalHandlingStats(recipe:ArsenalRecipeV2):readonly ArsenalHan
  const capacity=liveMagazineCapacity(config.weapon,config);
  // Forward-facing physical muzzle, not a substitute for shot-time
  // clearance. Stock, armor, context and furniture remain live checks.
- const muzzleReach=assembly.muzzleX*assembly.lengthScale;
+ const totalLength=(assembly.muzzleX-assembly.stockX)*assembly.lengthScale;
  return [
   {id:'near',label:'QUICK AIM',score:lower(nearTime,.18,.67),
    detail:decimals(nearTime)+' s · near',
@@ -54,9 +54,9 @@ export function arsenalHandlingStats(recipe:ArsenalRecipeV2):readonly ArsenalHan
   {id:'reload',label:'RELOAD',score:lower(reload,1.25,3.3),
    detail:decimals(reload)+' s · base',
    explanation:'Base simulation reload duration. Injury, magazine placement and retention or shells add separate timing.'},
-  {id:'compact',label:'COMPACTNESS',score:lower(muzzleReach,10,26),
-   detail:decimals(muzzleReach,1)+' u · muzzle reach',
-   explanation:'Physical forward-muzzle projection from the installed geometry. Live door/wall clearance still uses full rigid poses.'},
+  {id:'compact',label:'COMPACTNESS',score:lower(totalLength,15,41),
+   detail:decimals(totalLength,1)+' u · overall',
+   explanation:'Actual forward muzzle to rear receiver/stock endpoint including folding or collapsing. Muzzle fire-lane safety remains separate.'},
   {id:'noise',label:'QUIETNESS',score:lower(audibleRadius,180,550),
    detail:Math.round(audibleRadius)+' u · audible',
    explanation:'Real gunshot noise radius seen by enemy hearing. Higher score means quieter; no stealth or discovery immunity.'},

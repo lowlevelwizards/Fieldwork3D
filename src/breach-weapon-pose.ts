@@ -22,10 +22,10 @@ export type Handling='low'|'high'|'ready'|'point'|'ads'|'short';
 export type WeaponGrip={lengthScale:number;stockX:number;
   primaryX:number;primaryY:number;supportX:number;supportY:number};
 /** Shared authored weapon metadata; no duplicate geometry offsets. */
-/** The K's real rear cap must never be shouldered like a buttplate. */
+/** A folded stock or the MP5K rear cap cannot shoulder like a buttplate. */
 export const stocklessMP5K=(config?:WeaponConfiguration):boolean=>
- config?.weapon==='smg'&&config.build?.parts.receiver==='hk-mp5k-stockless'&&
- config.build.parts.stock==='hk-mp5k-cap';
+ config?.stockPosition==='folded'||(config?.weapon==='smg'&&config.build?.parts.receiver==='hk-mp5k-stockless'&&
+ config.build.parts.stock==='hk-mp5k-cap');
 export const GRIPS:Record<WeaponId,WeaponGrip>=Object.fromEntries(
  (Object.keys(WEAPON_PLATFORMS) as WeaponId[]).map(id=>{
   const p=WEAPON_PLATFORMS[id];

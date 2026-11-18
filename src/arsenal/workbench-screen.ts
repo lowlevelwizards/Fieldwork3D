@@ -5,6 +5,7 @@ import {ARSENAL_CATEGORIES,arsenalPart,arsenalPartsForSlot,
  type ArsenalCategory,type ArsenalSlot,type ArsenalReference}
  from './catalog.ts';
 import {FAMILY_PARTS,type FamilyPartSlot} from '../equipment-weapon-families.ts';
+import {alternateStockPosition,type WeaponStockPosition} from '../weapon-stock-position.ts';
 import {arsenalRecipeFromLegacy,readArsenalRecipe,sameArsenalRecipe,type ArsenalAccessorySlot,
  type ArsenalRecipeV2} from './recipes.ts';
 import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
@@ -12,7 +13,7 @@ import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrar
 import {proposeArsenalPartChange,arsenalReferenceIdentity,
  type ArsenalEditProposal} from './compatibility.ts';
 import {createArsenalDraft,commitArsenalProposal,undoArsenalDraft,redoArsenalDraft,
- arsenalDraftDirty,editArsenalMountPosition} from './editor-state.ts';
+ arsenalDraftDirty,editArsenalMountPosition,editArsenalStockPosition} from './editor-state.ts';
 import {mountPickerState,nearestMountChoice}
  from './mount-picker-model.ts';
 import type {MountableSlot} from '../weapons/geometry/weapon-mount-selections.ts';
@@ -61,6 +62,7 @@ export function openArsenalWorkbench(
  let activeSlot:ArsenalSlot='receiver';
  let showIncompatible=false;
  let pending:ArsenalEditProposal|null=null;
+ let previewProposal:ArsenalEditProposal|null=null;
  const priorBodyOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');overlay.className='arsenal-wb-screen';
  if(context)overlay.classList.add('arsenal-wb-has-apply');
@@ -132,6 +134,18 @@ export function openArsenalWorkbench(
  activeLabel.setAttribute('aria-live','polite');
  // M2.7: one compact rail picker attached to the selected fitted accessory.
  // The range only selects authored physical candidates, never arbitrary mesh X.
+ const stockPositionSection=document.createElement('section');
+ stockPositionSection.className='arsenal-wb-stock-position';
+ stockPositionSection.hidden=true;
+ stockPositionSection.setAttribute('aria-label','Physical stock position');
+ const stockPositionHeading=document.createElement('strong');
+ stockPositionHeading.textContent='STOCK POSITION';
+ const stockPositionChoices=document.createElement('div');
+ stockPositionChoices.className='arsenal-wb-stock-position-buttons';
+ const stockPositionNote=document.createElement('p');
+ stockPositionNote.className='arsenal-wb-hint';
+ stockPositionNote.textContent='Changes the actual stock geometry, shoulder fit and handling. Undo is available.';
+ stockPositionSection.append(stockPositionHeading,stockPositionChoices,stockPositionNote);
  const mounting=document.createElement('section');mounting.className='arsenal-wb-mounting';
  mounting.setAttribute('aria-label','Accessory mounting position');
  mounting.hidden=true;
@@ -184,6 +198,8 @@ export function openArsenalWorkbench(
  fitExplanation.hidden=true;
  const choiceList=document.createElement('div');choiceList.className='arsenal-wb-option-list';
  const pendingHost=document.createElement('div');pendingHost.className='arsenal-wb-pending-host';
+ const previewHost=document.createElement('div');previewHost.className='arsenal-wb-proposal-host';
+ previewHost.setAttribute('role','status');
  const hint=document.createElement('p');hint.className='arsenal-wb-hint';
  hint.textContent=context?.mode==='campaign'?
   'Preview changes freely. Credits and stock change only after Equip.':
@@ -192,8 +208,8 @@ export function openArsenalWorkbench(
   'Edits are a reversible preview. No equipment is purchased or equipped here.';
  const applyQuote=document.createElement('p');applyQuote.className='arsenal-wb-apply-quote';
  applyQuote.setAttribute('role','status');
- panel.append(panelTitle,slotRow,activeLabel,mounting,finishSection,optionsHeader,
-  fitExplanation,choiceList,pendingHost,applyQuote,hint);
+ panel.append(panelTitle,slotRow,activeLabel,stockPositionSection,mounting,finishSection,optionsHeader,
+  fitExplanation,previewHost,choiceList,pendingHost,applyQuote,hint);
  main.append(stage,nav,panel);
  overlay.append(head,main);
  if(context)overlay.append(commitHint);
@@ -201,7 +217,7 @@ export function openArsenalWorkbench(
  const viewer=new ArsenalViewport(viewportHost,draft.working,slot=>{
   const category=ARSENAL_CATEGORIES.find(c=>c.slots.includes(slot));
   if(category){
-   activeCategory=category;activeSlot=slot;pending=null;renderSelection();
+   activeCategory=category;activeSlot=slot;pending=null;previewProposal=null;renderSelection();
    // A tap on the physical weapon reveals its matching part controls.
    panel.scrollIntoView({
     behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?
@@ -213,6 +229,34 @@ export function openArsenalWorkbench(
   return BODY_SLOTS.includes(slot as FamilyPartSlot)?
    draft.working.parts[slot as FamilyPartSlot]:
    draft.working.accessories[slot as ArsenalAccessorySlot];
+ }
+ function renderPreviewProposal(){
+  previewHost.replaceChildren();
+  const candidate=previewProposal;
+  if(!candidate?.valid||!candidate.nextRecipe)return;
+  const wrap=document.createElement('div');wrap.className='arsenal-wb-proposal';
+  const caption=document.createElement('strong');
+  caption.textContent='PREVIEW · NOT INSTALLED';
+  const name=document.createElement('p');
+  name.textContent=(arsenalPart(candidate.requestedPartId)?.name??candidate.requestedPartId)+
+   (candidate.requiresConfirmation?' · includes required dependent changes':'');
+  const controls=document.createElement('div');controls.className='arsenal-wb-pending-actions';
+  const accept=document.createElement('button');accept.type='button';
+  accept.className='arsenal-wb-accept';accept.textContent='APPLY PART';
+  const cancel=document.createElement('button');cancel.type='button';
+  cancel.className='arsenal-wb-action';cancel.textContent='CANCEL PREVIEW';
+  accept.addEventListener('click',()=>{
+   if(previewProposal!==candidate)return;
+   const changed=commitArsenalProposal(draft,candidate,true);
+   if(changed===draft)return;
+   draft=changed;previewProposal=null;pending=null;
+   viewer.setRecipe(draft.working);renderSelection();
+  });
+  cancel.addEventListener('click',()=>{
+   previewProposal=null;renderPreviewProposal();renderPerformance();
+  });
+  controls.append(accept,cancel);wrap.append(caption,name,controls);
+  previewHost.append(wrap);
  }
  function renderPending(){
   pendingHost.replaceChildren();
@@ -334,9 +378,9 @@ export function openArsenalWorkbench(
      if(selected)return;
      fitExplanation.hidden=true;fitExplanation.textContent='';
      pending=null;
-     if(live.requiresConfirmation){pending=live;renderPending();return;}
-     draft=commitArsenalProposal(draft,live);
-     viewer.setRecipe(draft.working);renderSelection();
+     // Choosing a component is now non-destructive. Apply Part is the
+     // explicit second step on touch, mouse, and keyboard alike.
+     previewProposal=live;renderPreviewProposal();renderPerformance();
     });
     entry={option,status};choiceButtons.set(key,entry);
    }
@@ -469,7 +513,7 @@ export function openArsenalWorkbench(
     button.className='arsenal-wb-category';button.textContent=category.name;
     button.addEventListener('click',()=>{
      activeCategory=category;activeSlot=category.slots[0];pending=null;
-     renderSelection();
+     previewProposal=null;renderSelection();
     });
     categoryButtons.set(category.id,button);nav.append(button);
    }
@@ -487,7 +531,7 @@ export function openArsenalWorkbench(
     const button=document.createElement('button');button.type='button';
     button.className='arsenal-wb-subslot';button.textContent=formatSlot(slot);
     button.addEventListener('click',()=>{
-     activeSlot=slot;pending=null;renderSelection();
+     activeSlot=slot;pending=null;previewProposal=null;renderSelection();
     });
     slotButtons.set(slot,button);slotRow.append(button);
    }
@@ -503,10 +547,14 @@ export function openArsenalWorkbench(
   if(!sameArsenalRecipe(lastStatsRecipe,draft.working)){
    previousStatsRecipe=lastStatsRecipe;
    lastStatsRecipe=draft.working;
+   previewProposal=null;
   }
-  const current=arsenalHandlingStats(draft.working);
-  const previous=previousStatsRecipe?arsenalHandlingStats(previousStatsRecipe):null;
-  statsComparison.textContent=previous?'VS PREVIOUS BUILD':'CURRENT BUILD';
+  const projected=previewProposal?.valid?previewProposal.nextRecipe:null;
+  const current=arsenalHandlingStats(projected??draft.working);
+  const previous=projected?arsenalHandlingStats(draft.working):
+   previousStatsRecipe?arsenalHandlingStats(previousStatsRecipe):null;
+  statsComparison.textContent=projected?'PROPOSED VS EQUIPPED':
+   previous?'VS PREVIOUS BUILD':'CURRENT BUILD';
   if(!current){statsBody.textContent='Handling data unavailable for this build.';return;}
   const deltas=arsenalStatDeltas(current,previous);
   const oldScores=new Map<string,number>(previous?.map(item=>
@@ -550,6 +598,26 @@ export function openArsenalWorkbench(
   }
   statsBody.replaceChildren(nodes);
  }
+ function renderStockPosition(){
+  const allowed=alternateStockPosition(draft.working.parts.stock);
+  stockPositionSection.hidden=activeSlot!=='stock'||!allowed;
+  if(stockPositionSection.hidden||!allowed)return;
+  stockPositionChoices.replaceChildren();
+  for(const position of ['deployed',allowed] as WeaponStockPosition[]){
+   const control=document.createElement('button');
+   control.type='button';control.className='arsenal-wb-stock-position-button';
+   control.textContent=position.toUpperCase();
+   control.setAttribute('aria-pressed',String(
+    (draft.working.stockPosition??'deployed')===position));
+   control.addEventListener('click',()=>{
+    const next=editArsenalStockPosition(draft,position);
+    if(next===draft)return;
+    draft=next;previewProposal=null;pending=null;
+    viewer.setRecipe(draft.working);renderSelection();
+   });
+   stockPositionChoices.append(control);
+  }
+ }
  function renderSelection(){
   fitExplanation.hidden=true;fitExplanation.textContent='';
   syncNavigation();
@@ -578,7 +646,7 @@ export function openArsenalWorkbench(
   showAll.textContent=showIncompatible?'HIDE UNAVAILABLE':'SHOW UNAVAILABLE';
   viewer.setVisibleSlots(activeCategory.slots);
   viewer.setSelectedSlot(activeSlot);
-  renderPerformance();renderChoices();renderPending();renderMounting();
+  renderStockPosition();renderPerformance();renderChoices();renderPreviewProposal();renderPending();renderMounting();
  }
  const loadDialog=document.createElement('dialog');
  loadDialog.className='arsenal-wb-load-dialog';
