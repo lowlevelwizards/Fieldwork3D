@@ -42,6 +42,18 @@ try{
    const after=await operatorPreview.getAttribute('aria-label');
    if(!before?.includes('Left and Right arrow keys')||after===before)
     throw Error('Operator 3D preview is not keyboard rotatable');
+   const gesture=await operatorPreview.evaluate(element=>{
+    const first=element.getAttribute('aria-label');
+    const dispatch=(kind,x)=>element.dispatchEvent(new PointerEvent(kind,{
+     bubbles:true,pointerId:41,pointerType:'touch',clientX:x,clientY:170
+    }));
+    dispatch('pointerdown',120);
+    dispatch('pointermove',200);
+    dispatch('pointerup',200);
+    return {first,last:element.getAttribute('aria-label')};
+   });
+   if(gesture.last===gesture.first)
+    throw Error('Completed preview drag failed to update accessible view angle');
   }
   const groups=armory.locator(':scope > .fw-loadout-group');
   if(await groups.count()!==5)throw Error('Campaign kit must have five clear groups');

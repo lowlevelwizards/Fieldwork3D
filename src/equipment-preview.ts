@@ -67,7 +67,8 @@ export class CampaignKitPreview{
    host.addEventListener('keydown',this.keyDown);
    this.observer=new ResizeObserver(()=>this.scheduleResize());
    this.observer.observe(host);
-   this.draw();
+   // updateEquipment already painted the initial pose. Subsequent resize
+   // notifications redraw only when dimensions actually change.
   }catch{
    // WebGL may be unavailable or its context limit already reached.
    this.dispose();
@@ -166,6 +167,8 @@ export class CampaignKitPreview{
   if(this.dragFrame!==null){
    cancelAnimationFrame(this.dragFrame);this.dragFrame=null;this.draw();
   }
+  // One announcement per completed gesture, not on every high-frequency move.
+  this.updateOrientationLabel();
   try{this.host.releasePointerCapture(event.pointerId);}catch{/* optional */}
  };
  /** One 220 ms context transition, with no recurring animation while idle. */
