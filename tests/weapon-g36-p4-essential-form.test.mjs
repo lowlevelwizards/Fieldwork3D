@@ -44,7 +44,7 @@ test('G36 P4: two essential optic housings and no tiny rear eyepiece',()=>{
  assert.ok(bounds(lower).max.y-bounds(lower).min.y>=1.1);
  assert.ok(bounds(face).max.z-bounds(face).min.z>=.80);
  assert.ok(Math.abs(bounds(g).max.y-A.opticTopY)<.01);
- assert.equal(G36_E0_FACTORY.lowerSightY,3.57);
+ assert.equal(G36_E0_FACTORY.lowerSightY,3.99);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -62,7 +62,7 @@ test('G36 P4: one atlas, large vents, quiet mag and clean lower receiver',()=>{
  assert.notEqual(sample(0,0,24,60),255);
  assert.equal(sample(0,1,52,62),255);
  // A large magazine panel is restrained, not the prior three nearly black ribs.
- assert.ok(sample(2,1,55,51)>=200);
+ assert.equal(sample(2,1,55,51),255,'solid magazine cannot have a rectangular atlas panel');
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const before=g.children.length;
  applyG36PixelDetails(g);

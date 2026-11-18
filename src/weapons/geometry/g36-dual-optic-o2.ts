@@ -1,7 +1,7 @@
 /** G36 O2 — user-selected 125 / 125 / 55 dual-optic miniature.
  * Production-only factory art, derived from the approved O2 three-angle JS
- * study. No simulated mechanisms, sight-coordinate migrations or runtime
- * geometry mutation. Main and hood use six broad facets; ocular sleeves use
+ * study. No simulated mechanisms or runtime geometry mutation. R1 intentionally
+ * lifts the factory visual housings and matching sight contact datums together. Main and hood use six broad facets; ocular sleeves use
  * eight (lower) and six (upper), with just one dark face each.
  */
 import * as THREE from 'three';
@@ -10,6 +10,7 @@ type Section=readonly (readonly [number,number])[];
 type PartKind='g36LowerOptic'|'g36UpperReflex'|'g36LowerOpticBarrel'|
  'g36UpperReflexBarrel'|'g36OpticFace'|'g36UpperReflexWindow';
 const STYLE='o3-compact-integrated-125-125-55';
+export const G36_R1_OPTIC_LIFT_Y=.42;
 
 function sixFacetPrism(x0:number,x1:number,rear:Section,front:Section):THREE.BufferGeometry{
  if(rear.length!==6||front.length!==6||x1<=x0)
@@ -54,11 +55,14 @@ export function addG36O2DualOptic(
 ):number{
  let index=startIndex;
  const add=(geometry:THREE.BufferGeometry,key:PartKind)=>{
+  // Move every optic housing, ocular sleeve and lens as one rigid assembly.
+  geometry.translate(0,G36_R1_OPTIC_LIFT_Y,0);
   const mesh=new THREE.Mesh(geometry,material);
   mesh.name='family-receiver-'+receiverId+'-'+index++;
   mesh.castShadow=true;mesh.receiveShadow=true;
   mesh.userData[key]=true;
   mesh.userData.g36OpticArtVersion=STYLE;
+  mesh.userData.g36OpticVerticalRevision='r1-raised';
   root.add(mesh);
   return mesh;
  };
@@ -75,8 +79,8 @@ export function addG36O2DualOptic(
  lower.userData.g36IntegratedOpticShell=true;
  lower.userData.g36OpticCrossSectionSides=6;
 
- // O3 Stage 2: raise the independent upper ocular above the lower roof.
- // Keep factory aiming contact (4.46) unchanged; this is visual geometry.
+ // O3 independent upper ocular stays above the lower roof; the R1 lift
+ // changes both lens geometry and the matching factory sight contacts.
  const hoodWidth=.73*1.25;
  const upper=add(sixFacetPrism(-5.57,-3.14,
   hoodSection(3.94,4.24,5.03,hoodWidth),

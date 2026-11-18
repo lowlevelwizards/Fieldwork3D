@@ -1,5 +1,5 @@
 /** G36 P8: game-scale identity marks in a single shared 384x192 atlas:
- * four fore-end vents, a one-sided ejector port and broad polymer-mag facets.
+ * four fore-end vents and a one-sided ejection port; solid magazine finish.
  * No added overlays, side mirrored ejection details, geometry count changes,
  * transparency, per-frame materials, per-instance texture uploads or shaders.
  * The same live-intended original G36 meshes are UV projected in place.
@@ -51,11 +51,10 @@ function ink(tile:Tile,x:number,y:number):number{
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  // Two large color-value regions describe smoked polymer, not ammunition,
-  // couplers or individual molded ribs. Opaque, no alpha-sort dependencies.
-  if(y < -7.83)return 188;
-  if(zone(x,y,-.28,1.12,-7.63,-3.32))return 210;
-  if(zone(x,y,1.12,1.75,-7.63,-3.32))return 238;
+  // R1: no large UV-projected interior bars or mismatched translucent-look
+  // rectangles. Uniform unprinted opaque G36 smoky-polymer finish; the
+  // physical magazine profile and single shared material carry the shape.
+  return 255;
  }
  return 255;
 }

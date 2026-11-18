@@ -119,17 +119,20 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  const hinge=box('stock',-6.64,-.74,0,.84,2.43,1.80);
  hinge.userData.g36StockHinge=true;
 
- // Two bold shells: the upper is an almost unbroken polymer slab; the
- // lower is ONE angled magwell/hand junction with a real open trigger gap.
+ // R1: two continuous, chunky polymer masses, deliberately as economical
+ // as H3's shell. The broad flat upper has ONE rear shoulder and ONE
+ // front taper; the compact lower reads as a supported magwell cheek.
+ // Keep the open trigger void and original grip/magazine interfaces.
  const upper=outline('receiver',[
-  [-6.80,1.36],[3.35,1.36],[4.00,.69],
-  [4.00,-1.62],[-6.80,-1.62]
+  [-6.80,1.27],[-6.30,1.49],[3.15,1.49],
+  [4.00,.83],[4.00,-1.49],[-6.80,-1.49]
  ],2.50);
  upper.userData.g36ReceiverUpper=true;
+ upper.userData.g36ReceiverArtVersion='r1-simple-two-masses';
  const lower=outline('receiver',[
-  [-6.42,-1.13],[3.70,-1.13],[2.35,-3.12],
-  [-.45,-3.12],[-1.46,-2.28],[-3.76,-2.28],
-  [-4.36,-3.56],[-6.42,-2.14]
+  [-6.35,-1.28],[3.58,-1.28],[2.15,-2.92],
+  [-.55,-2.92],[-1.43,-2.17],[-3.78,-2.17],
+  [-4.28,-3.43],[-6.35,-2.18]
  ],2.28);
  lower.userData.g36ReceiverLower=true;
  lower.userData.g36OpenTriggerGap=true;
@@ -173,15 +176,18 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  ],2.02);
  grip.userData.g36Grip=true;
 
- // One chunky charging-handle tab. Intersects the upper shell, visible
- // between receiver roof and bridge without blocking the handle opening.
- const charging=box('receiver',-.65,1.51,0,1.20,.58,2.68);
+ // R1: the charging tab is on the port-facing side, aligned in X with
+ // the right-only ejection landmark (atlas x=-1.45..1.72). Its Y is just
+ // above the dark port; no roof-floating, full-width transverse block.
+ const charging=box('receiver',.12,.92,1.25,.96,.32,.38);
  charging.userData.g36ChargingHandle=true;
+ charging.userData.g36ChargingAlignedPortX=.135;
 
  // Exact shared HK selector geometry language, but positioned for this
  // rifle and bound to the same six-slot receiver identity. No control text.
  for(const side of [-1,1] as const){
-  const [hub,lever]=addHKSelectorLeverArt(root,-5.20,-1.96,1.14,side,material);
+  // Move the selector forward/up into the lower receiver's readable flank.
+  const [hub,lever]=addHKSelectorLeverArt(root,-3.95,-1.14,1.14,side,material);
   hub.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   lever.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   hub.userData.g36SelectorHub=true;

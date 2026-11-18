@@ -26,7 +26,7 @@ test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',(
   assert.equal(one(g,key).geometry.type,'CircleGeometry',key+' has one low-facet dark face');
  }
  const counts=Object.fromEntries(['g36ReceiverUpper','g36ReceiverLower','g36Grip'].map(k=>[k,triangles(one(g,k))]));
- assert.ok(counts.g36ReceiverUpper<=18);
+ assert.ok(counts.g36ReceiverUpper<=20,'R1 six-corner upper stays within one simple extrusion');
  assert.ok(counts.g36ReceiverLower<=30);
  assert.ok(counts.g36Grip<=16);
  assert.ok(g.children.length===22,'one solid handguard and no cavity/lug extras');
@@ -70,5 +70,5 @@ test('P6 graphical content is ONLY vents and a polymer facet',()=>{
  assert.notEqual(sample(2,0,55,63),255,'one bold right-only ejection port');
  assert.equal(sample(3,0,55,63),255,'opposite receiver remains neutral');
  assert.notEqual(sample(0,0,24,60),255,'one of four large H2.1 upper vent graphics');
- assert.ok(sample(2,1,55,51)>=185,'smoked polymer has broad restrained value facets');
+ assert.equal(sample(2,1,55,51),255,'smoked magazine is solid with no projected panels');
 });
