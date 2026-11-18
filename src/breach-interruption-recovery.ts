@@ -63,12 +63,14 @@ function interruptedSquad(s:Session,actorId:string):TeamActor[]{
  if(!doorId||!initiator||!generatedIncidentAt(initiator,doorId))return [];
  // The physical incident's approach side is immutable. Never group
  // opposite-side entries simply because their saved door ID matches.
- // Older snapshots without side provenance retain the legacy fallback.
+ // Missing provenance (old saves) and on-plane encounters (0) are
+ // separate, internally compatible groups. Neither can bridge + and -.
+ // No present position or door security is consulted by this offer.
  const side=initiator.interruptedDoorPlan?.approachSide;
  return team(s).filter(a=>{
   if(a.health<=0||!generatedIncidentAt(a,doorId))return false;
   const otherSide=a.interruptedDoorPlan?.approachSide;
-  return !side||!otherSide||side===otherSide;
+  return side===otherSide;
  });
 }
 export function hasInterruptedSquadEntry(s:Session,actorId:string):boolean{
