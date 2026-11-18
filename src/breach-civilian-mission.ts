@@ -36,7 +36,17 @@ export function escortWalkMultiplier(
  return base*.45;
 }
 export function rescueFollowGoal(
- rescuer:{p:Pt;heading:number}):Pt{
- return {x:rescuer.p.x-23*Math.cos(rescuer.heading),
-   y:rescuer.p.y-23*Math.sin(rescuer.heading)};
+ rescuer:{p:Pt;heading:number;priorP?:Pt;velocity?:number}):Pt{
+ // EQA3.1: a tactical actor can WATCH a hostile while traversing sideways.
+ // The civilian should follow their ACTUAL travelled corridor, not a point
+ // behind the barrel. Otherwise a long sideways MOVE zigzags the civilian
+ // into fixtures while the leader pulls farther away. An idle escort has
+ // no observed movement: retain the original stable facing-based fallback.
+ const dx=rescuer.priorP?rescuer.p.x-rescuer.priorP.x:0;
+ const dy=rescuer.priorP?rescuer.p.y-rescuer.priorP.y:0;
+ const moved=Math.hypot(dx,dy);
+ const dir=rescuer.velocity!==undefined&&rescuer.velocity>3&&
+   moved>.025?Math.atan2(dy,dx):rescuer.heading;
+ return {x:rescuer.p.x-23*Math.cos(dir),
+   y:rescuer.p.y-23*Math.sin(dir)};
 }
