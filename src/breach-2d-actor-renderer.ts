@@ -2,12 +2,13 @@
  * Uses the supplied observation/selection state; never updates game truth.
  */
 import {W,H,type Pt} from './breach-core.ts';
-import {type Session,type TeamActor,enemies,lastKnown,liveVisibility,isSeen} from './breach-game.ts';
+import {type Session,type TeamActor,enemies,lastKnown,isSeen} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
 import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {shotVisibility,contactFade} from './breach-presentation.ts';
+import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 export type Actor2DFrame={
  state:Session;replaying:boolean;selected:string;
@@ -69,6 +70,7 @@ function missionMarkers(){
   const {state,replaying,replayObjectiveMarkers}=getFrame();
   if(replaying&&!replayObjectiveMarkers)return;
   if(state.rescue&&!state.civilians.some(c=>c.rescueTarget)&&
+     objectiveLocationKnown(state,replaying,replayKnowledge.omniscient)&&
      presentUnrecordedRescueMarker(state,replaying&&replayKnowledge.omniscient,
        replaying?replayKnowledge.disclosure():null)){
     const p=state.rescue.p;
@@ -77,9 +79,26 @@ function missionMarkers(){
     draw.fillStyle='#ebdfc0';draw.textAlign='center';
     draw.font='700 12px "Saira Condensed",sans-serif';draw.fillText('CIV',p.x,p.y-18);
   }
+  const bounds=!replaying&&state.mission==='secure'?
+    approximateObjectiveBounds(state):null;
+  if(bounds){
+    draw.save();draw.strokeStyle='#d9bf83';draw.lineWidth=2;
+    draw.fillStyle='rgba(202,175,105,.07)';
+    draw.setLineDash([8,6]);
+    draw.fillRect(bounds.minX,bounds.minY,bounds.maxX-bounds.minX,
+      bounds.maxY-bounds.minY);
+    draw.strokeRect(bounds.minX,bounds.minY,bounds.maxX-bounds.minX,
+      bounds.maxY-bounds.minY);
+    draw.setLineDash([]);
+    draw.fillStyle='#ddc991';draw.font='600 11px "Work Sans",sans-serif';
+    draw.textAlign='left';
+    draw.fillText('POSSIBLE OBJECTIVE AREA',bounds.minX+8,bounds.minY+16);
+    draw.restore();
+  }
   const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
   if(state.mission==='clear'||state.mission==='done'||
-    !liveVisibility(state,p))return;
+    (state.mission==='secure'&&!objectiveLocationKnown(
+      state,replaying,replayKnowledge.omniscient)))return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
   draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
   draw.fillStyle='#e1d1a2';draw.font='600 12px "Work Sans",sans-serif';

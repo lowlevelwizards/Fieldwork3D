@@ -2,6 +2,7 @@
  * In particular, physical camera cutaways cannot reveal unseen objects.
  */
 import {liveVisibility,isDetected,type Session,type TeamActor} from '../breach-game.ts';
+import {objectiveLocationKnown} from '../breach-objective-intel.ts';
 import type {Door,Pt} from '../breach-core.ts';
 import type {CivilianActor} from '../breach-civilian-types.ts';
 import {replayActorDisclosed,replayCivilianDisclosed,recordedReplayKnowledge,
@@ -100,7 +101,10 @@ export function presentArchitecturalOpening(s:Session,opening:WideOpening,
 export function presentUnrecordedRescueMarker(s:Session,omniscient:boolean,
  policy:ReplayDisclosure|null):boolean{
  if(policy)return policy.mode==='full';
- return omniscient||liveVisibility(s,s.rescue!.p);
+ // Omniscient building visibility does not grant mission-target intel.
+ // A missing field is an archived/legacy session, retaining live LOS behavior.
+ return (objectiveLocationKnown(s)||(!s.objectiveIntel&&liveVisibility(s,s.rescue!.p)))&&
+   (omniscient||liveVisibility(s,s.rescue!.p));
 }
 /** Shared transient-geometry disclosure for all Three.js camera modes. */
 export function presentTransientEvidence(p:Pt,omniscient:boolean,

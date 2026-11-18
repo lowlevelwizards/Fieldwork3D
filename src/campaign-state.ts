@@ -1,5 +1,6 @@
 /** Campaign domain. Nothing here advances in the render/simulation loop. */
 import type {OperationKind} from './breach-operations.ts';
+import type {ObjectiveIntelLevel} from './breach-objective-intel.ts';
 import {currentDispatchReference,effectiveDispatchSetup,validDispatchSetup,type DispatchCampaignSetupV1} from './dispatch-campaign-setup.ts';
 import {validDispatchCase,type DispatchCaseV1} from './dispatch-case-contract.ts';
 import {assignDispatchCase} from './dispatch-case-selection.ts';
@@ -72,6 +73,8 @@ export type Contract={
  region:string;title:string;description:string;risk:1|2|3;
  intel:'floor-plan'|'unknown'|'scouted';reward:number;deadline:number;
  status:'available'|'accepted'|'completed'|'failed'|'expired';followUpOf?:string;
+ /** Optional recon outcome, independent of floor-plan intelligence. */
+ objectiveIntel?:ObjectiveIntelLevel;
  /** D8: optional authored incident; missing on all pre-D8 contracts. */
  dispatchCase?:DispatchCaseV1;
 };
@@ -90,6 +93,8 @@ export type CampaignReport={
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
+ /** Reusable case intelligence earned in completed missions; absent in legacy saves. */
+ intelligence?:number;
  /** Cosmetic label; absent on unchanged legacy saves. */
  name?:string;
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
@@ -105,6 +110,23 @@ export type CampaignState={
  /** D12: optional independent experience settings; missing preserves the original pilot. */
  dispatchSetup?:DispatchCampaignSetupV1;
 };
+/** Site/architectural intel is distinct from actionable objective location intel.
+ * Previous successful cases contribute leads, not a guaranteed room. */
+export function contractObjectiveIntel(c:Contract):ObjectiveIntelLevel{
+ return c.objectiveIntel??(c.followUpOf?'approximate':'unknown');
+}
+export const campaignIntelBalance=(c:CampaignState)=>Math.max(0,c.intelligence??0);
+export function reconContract(c:CampaignState,id:string):CampaignState{
+ const job=c.contracts.find(k=>k.id===id);
+ if(!job||job.status!=='available'||c.activeContractId)return c;
+ const level=contractObjectiveIntel(job);
+ if(level==='confirmed')return c;
+ const cost=level==='unknown'?1:2;
+ if(campaignIntelBalance(c)<cost)return c;
+ const next:ObjectiveIntelLevel=level==='unknown'?'approximate':'confirmed';
+ return {...c,intelligence:campaignIntelBalance(c)-cost,
+  contracts:c.contracts.map(k=>k.id===id?{...k,objectiveIntel:next}:k)};
+}
 const WEAPONS=['carbine','smg','rifle','shotgun'] as const;
 const REGIONS=['Cutwoods','Breadlands','Flooded Belt','Verdigris City','Timberline'] as const;
 const CONTRACTS:{kind:OperationKind;title:string;description:string}[]=[
@@ -170,6 +192,7 @@ export function newCampaign(seed:number,rules?:CampaignRules,name?:string):Campa
  if(rules!==undefined&&!parsedRules)throw Error('Unsupported campaign rules');
  const normalized=(seed>>>0)||1;
  return reconcileCampaignWeaponOwnership({version:1,id:'campaign-'+normalized.toString(16),seed:normalized,day:1,funds:1200,
+  intelligence:1,
   ...(name!==undefined?{name:name.trim()}:{}),
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   squadIds:['rook','moss','ash','vale'],
@@ -216,6 +239,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
   if(savedRules!==undefined&&!parsedRules)return null;
   if(c.name!==undefined&&(typeof c.name!=='string'||!c.name.trim()||
    c.name.length>40||/[\x00-\x1f\x7f]/.test(c.name)))return null;
+  if(c.intelligence!==undefined&&(!Number.isInteger(c.intelligence)||
+     c.intelligence<0||c.intelligence>9))return null;
   if(c.version!==1||!Number.isInteger(c.seed)||!Number.isInteger(c.day)||
      c.day<1||c.day>1000000||!Number.isFinite(c.funds)||
      !Array.isArray(c.operators)||c.operators.length>32||!Array.isArray(c.contracts)||
@@ -244,6 +269,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
   for(const contract of c.contracts){
    if(!contract||typeof contract.id!=='string'||!Number.isInteger(contract.seed)||
      !CONTRACTS.some(k=>k.kind===contract.kind)||
+     (contract.objectiveIntel!==undefined&&
+       !(['unknown','approximate','confirmed'] as string[]).includes(contract.objectiveIntel))||
      (contract.dispatchCase!==undefined&&
        (parsedRules?.template!=='dispatch'||
         !validDispatchCase(contract.dispatchCase,contract.kind))))return null;
@@ -391,7 +418,8 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    kind:nextKind,scale:contract.scale,region:contract.region,
    title:template.title,description:template.description,
    risk:Math.min(3,contract.risk+1) as 1|2|3,
-   intel:'scouted',reward:contract.reward+180,deadline:day+3,status:'available'};
+   intel:'scouted',objectiveIntel:'approximate',
+   reward:contract.reward+180,deadline:day+3,status:'available'};
   contracts.push(c.rules?.template==='dispatch'?assignDispatchCase(followup,
    contracts.map(k=>k.dispatchCase?.incidentId).filter((id):id is string=>!!id)):followup);
  }
@@ -403,6 +431,9 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
   return recordWeaponRounds(w,actual,c.day,r.id);
  });
  return {...c,day,
+  // No intel reward for failures; replayed reports cannot grant it twice.
+  intelligence:Math.min(9,campaignIntelBalance(c)+
+   (r.outcome==='success'?(contract.kind==='intel'?2:1):0)),
   funds:c.funds+gained+(departmentCycle?.receipt.operatingSupport??0),
   ...(departmentCycle?{dispatchDepartment:departmentCycle.state}:{}),
   operators:developed,regionalPressure:pressure,

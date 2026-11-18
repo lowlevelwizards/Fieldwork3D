@@ -6,11 +6,13 @@ import type {BuildingArchetype,SiteScale} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
 import {BUILDING_ARCHETYPES} from './breach-archetypes.ts';
 import {INCIDENTS} from './briefing/incident-catalog.ts';
+import type {ObjectiveIntelLevel} from './breach-objective-intel.ts';
 
 export type QuickPlaySize='random'|'small'|'medium'|'large';
 export type QuickPlayMission='random'|OperationKind;
 export type QuickPlayPresence='random'|'light'|'typical'|'heavy';
 export type QuickPlayCivilians='scenario'|'on'|'off';
+export type QuickPlayObjectiveIntel='random'|ObjectiveIntelLevel;
 /** Three curated, physically distinct operations; other cases stay random. */
 export const QUICK_PLAY_INCIDENTS=[
  'warrant-service','missing-person','evidence-seizure'] as const;
@@ -25,19 +27,22 @@ export type QuickPlaySettings={
  incident:QuickPlayIncident;
  presence:QuickPlayPresence;
  civilians:QuickPlayCivilians;
+ objectiveIntel:QuickPlayObjectiveIntel;
 };
 export type ResolvedQuickPlay={
  seed:number;scale:SiteScale;archetype:BuildingArchetype;
  mission:OperationKind;incidentId?:string;
  presence:Exclude<QuickPlayPresence,'random'>;
  civilians:QuickPlayCivilians;
+ objectiveIntel:ObjectiveIntelLevel;
 };
 export const QUICK_PLAY_BUILDINGS:readonly BuildingArchetype[]=BUILDING_ARCHETYPES;
 export const QUICK_PLAY_MISSIONS:readonly OperationKind[]=
  ['clear','intel','rescue','hold','capture'];
 export function defaultQuickPlaySettings():QuickPlaySettings{
  return {seed:null,size:'random',buildings:[...QUICK_PLAY_BUILDINGS],
-   mission:'random',incident:'random',presence:'random',civilians:'scenario'};
+   mission:'random',incident:'random',presence:'random',civilians:'scenario',
+   objectiveIntel:'unknown'};
 }
 function pick(seed:number,salt:number,count:number):number{
  let x=(seed^salt)>>>0;
@@ -70,7 +75,11 @@ export function resolveQuickPlaySettings(
  const presence=settings.presence==='random'?
   (['light','typical','heavy'] as const)[pick(seed,0x9f57,3)]:
   settings.presence;
+ const objectiveIntel=settings.objectiveIntel==='random'?
+   (['unknown','unknown','approximate','approximate','confirmed'] as const)
+     [pick(seed,0x4a31,5)]:settings.objectiveIntel??'unknown';
  return {seed,scale:size,
    archetype:compatible[pick(seed,0x30e3,compatible.length)],
-   mission,incidentId:incident?.id,presence,civilians:settings.civilians};
+   mission,incidentId:incident?.id,presence,civilians:settings.civilians,
+   objectiveIntel};
 }

@@ -46,6 +46,7 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
+import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
 import './campaign-style.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
@@ -59,6 +60,7 @@ export type CampaignHandlers={
  exportSandbox:()=>void;showMenu:()=>void;
  openReplayLibrary:()=>void;openMenuStudio:()=>void;
  chooseContract:(id:string)=>void;resumeContract:()=>void;
+ reconContract:(id:string)=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
  resupply:(id:string)=>void;resupplyMedical:(id:string)=>void;
  treat:(id:string)=>void;
@@ -757,7 +759,7 @@ export class CampaignScreen{
      a.deadline-b.deadline||a.id.localeCompare(b.id));
     const visible=sorted.slice(0,3);
     jobs.append(node('p','campaign-contract-board-summary',
-     'SHOWING '+visible.length+' OF '+openContracts.length+
+     'INTELLIGENCE RESERVE '+campaignIntelBalance(c)+' · SHOWING '+visible.length+' OF '+openContracts.length+
      ' OPEN CASE'+(openContracts.length===1?'':'S')+' · EARLIEST DEADLINE FIRST'));
     const board=node('div','campaign-contract-board');
     for(const contract of visible)board.append(this.contract(contract,c));
@@ -1928,6 +1930,19 @@ export class CampaignScreen{
    (daysLeft<=1?' is-urgent':''),dueLabel);
   deadline.append(node('small','','DEADLINE'),node('strong','','DAY '+c.deadline),due);
   terms.append(reward,deadline);card.append(terms);
+  const objectiveLevel=contractObjectiveIntel(c);
+  card.append(node('p','campaign-note',
+   'OBJECTIVE INTEL · '+objectiveLevel.toUpperCase()+
+   (c.followUpOf?' · LINKED CASE LEAD':'')));
+  const cost=objectiveLevel==='unknown'?1:objectiveLevel==='approximate'?2:0;
+  if(cost&&c.status==='available'&&!campaign.activeContractId){
+   const recon=button('RECON + '+(objectiveLevel==='unknown'?
+    'APPROXIMATE AREA':'CONFIRMED ROOM')+' · '+cost+' INTEL',
+    ()=>this.handlers.reconContract(c.id));
+   recon.disabled=campaignIntelBalance(campaign)<cost;
+   recon.title='AVAILABLE INTEL: '+campaignIntelBalance(campaign);
+   card.append(recon);
+  }
   card.append(button('REVIEW DEPLOYMENT',()=>this.reviewContract(c,campaign),
    'campaign-primary campaign-contract-review'));
   return card;
@@ -1971,6 +1986,11 @@ export class CampaignScreen{
    add('RISK',['','LOW','MODERATE','HIGH'][contract.risk]);
    add('REWARD / DEADLINE',contract.reward+' CR · DAY '+contract.deadline);
   }
+  add('OBJECTIVE WHEREABOUTS',({
+   unknown:'Unknown · team must search the building',
+   approximate:'Approximate section · several possible rooms',
+   confirmed:'Confirmed objective room · exact marker authorized'
+  } as const)[contractObjectiveIntel(contract)]);
   add('INTELLIGENCE',dossier?.intelligence??{
    unknown:'Site layout and threats are unknown until discovered',
    scouted:'Exterior intelligence available; interior remains uncertain',

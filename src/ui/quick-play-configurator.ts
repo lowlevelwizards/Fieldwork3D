@@ -5,7 +5,7 @@ import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
  QUICK_PLAY_MISSIONS,QUICK_PLAY_INCIDENTS,quickPlayIncidentDefinition,
  type QuickPlaySettings,type QuickPlayIncident,
  type QuickPlaySize,type QuickPlayMission,type QuickPlayPresence,
- type QuickPlayCivilians} from '../quick-play-settings.ts';
+ type QuickPlayCivilians,type QuickPlayObjectiveIntel} from '../quick-play-settings.ts';
 import type {BuildingArchetype} from '../breach-site.ts';
 import './quick-play-configurator.css';
 
@@ -32,7 +32,9 @@ function readSettings():QuickPlaySettings{
     presence:['random','light','typical','heavy'].includes(saved.presence??'')?
       saved.presence!:fallback.presence,
     civilians:['scenario','on','off'].includes(saved.civilians??'')?
-      saved.civilians!:fallback.civilians
+      saved.civilians!:fallback.civilians,
+    objectiveIntel:['unknown','approximate','confirmed','random'].includes(
+      saved.objectiveIntel??'')?saved.objectiveIntel!:fallback.objectiveIntel
   };
  }catch{return fallback;}
 }
@@ -128,13 +130,19 @@ export function createQuickPlayConfigurator(options:{
   ['scenario','Scenario appropriate'],['on','Allowed where appropriate'],
   ['off','Off (rescue targets remain)']
  ],v=>{settings.civilians=v as QuickPlayCivilians;update();});
+ const objectiveIntel=picker('OBJECTIVE INTELLIGENCE',[
+  ['unknown','Unknown · search required'],
+  ['approximate','Approximate · broad area'],
+  ['confirmed','Confirmed · exact location'],
+  ['random','Random · seed-determined']
+ ],v=>{settings.objectiveIntel=v as QuickPlayObjectiveIntel;update();});
  const fieldGrid=node('div','fw-quick-config-grid fw-quick-config-primary');
  fieldGrid.append(incident.group,mission.group,size.group);
  const advanced=node('details','fw-quick-config-advanced');
  advanced.append(node('summary','','ADVANCED · SITE & CONDITIONS'));
  const advancedBody=node('div','fw-quick-config-advanced-content');
  const conditions=node('div','fw-quick-config-grid');
- conditions.append(presence.group,civilians.group);
+ conditions.append(presence.group,civilians.group,objectiveIntel.group);
  const buildingDisclosure=node('details','fw-quick-config-building-details');
  const buildingDisclosureSummary=node('summary','','BUILDING TYPES');
  const buildingSection=node('section','fw-quick-config-buildings');
@@ -214,6 +222,7 @@ export function createQuickPlayConfigurator(options:{
   summary.textContent=(selectedIncident?selectedIncident.name:'Random incident')+
    ' · '+(settings.mission==='random'?'Random objective':settings.mission)+
    ' · '+(settings.size==='random'?'Random size':settings.size)+
+   ' · Objective intel: '+settings.objectiveIntel+
    (settings.seed===null?'':' · Seed '+settings.seed);
   if(!count||!validSeed||!incidentBuildings){
    advanced.open=true;
@@ -235,7 +244,8 @@ export function createQuickPlayConfigurator(options:{
   size.select.value=settings.size;mission.select.value=settings.mission;
   incident.select.value=settings.incident;
   presence.select.value=settings.presence;
-  civilians.select.value=settings.civilians;update();
+  civilians.select.value=settings.civilians;
+  objectiveIntel.select.value=settings.objectiveIntel;update();
  }
  function hide(returnFocus=true){
   backdrop.hidden=true;
