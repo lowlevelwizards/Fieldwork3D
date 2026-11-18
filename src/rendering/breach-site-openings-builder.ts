@@ -14,6 +14,8 @@ import type {Site,WideOpening} from '../breach-site.ts';
 import type {ObjectWear} from '../worldgen/object-wear.ts';
 import {mapBoxPixelUV,type PixelSurface} from './pixel-materials.ts';
 import {shadowEligibleBox} from './breach-shadow-controller.ts';
+import {buildDoorHardwareVisual,type BrokenDoorHardwareVisual}
+ from './breach-door-broken-hardware-visual.ts';
 import {StaticVisualTemplateLibrary,type StaticVisualLease}
  from './fieldwork-visual-template-library.ts';
 
@@ -33,7 +35,7 @@ export type SiteOpeningsHost={
  registerVisualLease?:(lease:StaticVisualLease)=>void;
  registerDoor:(id:string,visual:{root:THREE.Group;leaf:THREE.Group;
   frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh;wedge:THREE.Mesh;
-  glassPane?:THREE.Mesh})=>void;
+  glassPane?:THREE.Mesh}&BrokenDoorHardwareVisual)=>void;
  recordDoorGlass:(id:string,value:boolean)=>void;
  recordDoorOpen:(id:string,value:number)=>void;
  registerGlass:(id:string,glass:THREE.Mesh)=>void;
@@ -177,6 +179,7 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
         profile.thresholdHeight,profile.thresholdDepth,doorTrim,false);
       const leaf=new THREE.Group();
       let glassPane:THREE.Mesh|undefined;
+      let hardware:BrokenDoorHardwareVisual|undefined;
       const invert=door.hinge==='b';
       leaf.position.x=door.kind==='shutter'||door.kind==='sliding'?0:invert?length/2:-length/2;
       // Actual hinge barrels identify the swing side without requiring
@@ -265,14 +268,10 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
                 profile.leafThickness/2+.24,1,10,.7,doorTrim,false);
           }
         }
-        for(const sign of [-1,1]){
-          // Hardware sits against the panel face, not at the old slab depth.
-          const z=sign*(profile.leafThickness/2+1.05);
-          const handleX=(invert?-1:1)*length*.70;
-          host.box(leaf,handleX,18,z,3,5,1.9,metal,false);
-          host.box(leaf,handleX+(invert?2:-2),18,z*1.12,4,1.4,1.6,metal,false);
-          host.box(leaf,handleX,13,z,1,1.3,1.7,metal,false);
-        }
+        // Handles and detached hardware are separate from the slab.
+        // Their visibility and fall use the actual recorded latch state.
+        hardware=buildDoorHardwareVisual(root,leaf,length,door.hinge,
+          profile.leafThickness,metal,host.box);
         if(style==='steel'||style==='reinforced'){
           for(const y of style==='reinforced'?[6,17,28]:[8,28])
             host.box(leaf,middle,y,2.5,length*.78,2.2,1.2,metal,false);
@@ -317,7 +316,10 @@ export function buildSiteDoors(site:Site,host:SiteOpeningsHost,
         host.promoteFacadeDetails(frame);
         host.promoteFacadeDetails(leaf);
       }
-      host.registerDoor(door.id,{root,leaf,frame,halo,threshold,wedge,glassPane});
+      if(!hardware)hardware=buildDoorHardwareVisual(root,leaf,length,
+        door.hinge,profile.leafThickness,metal,host.box);
+      host.registerDoor(door.id,{root,leaf,frame,halo,threshold,wedge,
+        glassPane,...hardware});
       host.recordDoorGlass(door.id,!!door.glassShattered);
       host.recordDoorOpen(door.id,door.openFraction??0);
     }
