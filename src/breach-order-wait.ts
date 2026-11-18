@@ -42,7 +42,7 @@ export function advanceWaitOrder(
     const reason='SQUAD ENTRY CANCELLED · '+failure;
     failCurrentOrder(s,a,n,reason,notify,doorway?.id);
     if(a.plan[0]?.id===entry.id)
-      failCurrentOrder(s,a,entry,reason,notify);
+      failCurrentOrder(s,a,entry,reason,notify,doorway?.id);
     return;
   }
   const lead=entry?s.operators.find(other=>
