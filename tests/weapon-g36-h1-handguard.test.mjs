@@ -41,7 +41,9 @@ test('H3 factory is ONE sealed six-sided, two-end shell with no hollow sculpt pa
  assert.ok(box(guard).intersectsBox(box(one(g,'g36ReceiverUpper'))));
  assert.ok(box(guard).intersectsBox(box(one(g,'g36Barrel'))));
  assert.ok(near(box(g).max.x,A.muzzleX,.02));
- assert.ok(g.children.every(x=>x.material===m));
+ assert.ok(g.children.filter(x=>!x.userData.g36SelectorMarkings).every(x=>x.material===m));
+ assert.equal(g.children.filter(x=>x.userData.g36SelectorMarkings).length,1,
+  'only the dedicated HK colored pictogram gets its own pooled material');
  clearWeaponSilhouette(g);m.dispose();
 });
 
