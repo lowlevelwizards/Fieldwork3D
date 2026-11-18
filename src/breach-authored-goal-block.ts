@@ -67,17 +67,8 @@ export function holdKnownFixedAuthoredGoal(
  }
  // Never infer obstruction from distance alone. The operator must have
  // genuinely failed to move, close enough to have approached the landing.
- // D3.27B: a stale transient nav does not make the authored endpoint
- // physically reachable. The frozen Garage operator is wall/furniture
- // blocked 92.8 units from an already DISCOVERED immovable tool chest,
- // with 34s of real stall and a nonempty grid path. Only after 5.5s of
- // genuine blockage and within 110 units allow that same existing
- // KNOWN-only hold. No auto-retarget, no fabricated arrival, no intel leak.
- const hasNav=a.nav.length>0;
- const stallRequired=hasNav?5.5:3.5;
- const maxGoalDistance=hasNav?110:64;
- if(!active||a.blockedTime<stallRequired||
-    Math.hypot(a.p.x-goal.x,a.p.y-goal.y)>maxGoalDistance||
+ if(!active||a.blockedTime<3.5||
+    Math.hypot(a.p.x-goal.x,a.p.y-goal.y)>64||
     (a.lastBlocker!=='route'&&a.lastBlocker!=='furniture'&&
      a.lastBlocker!=='wall'))return false;
  const obstruction=knownFixedGoalBlock(s,goal);
