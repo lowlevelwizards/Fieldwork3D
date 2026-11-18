@@ -31,7 +31,7 @@ test('P8 stock, grip, magwell and long fore-end carry strong deliberate contours
   'slim actual polymer buttpad rather than a slab');
  assert.ok(intersects(grip,F.primaryX,F.primaryY));
  assert.ok(intersects(lower,2.05,-2.9));
- assert.ok(!intersects(lower,2.75,-2.9),
+ assert.ok(!intersects(lower,3.15,-2.9),
   'angle of front magwell cheek must be visible in silhouette');
  near(bounds(g).min.x,A.stockRearX,'stock rear');
  near(bounds(g).max.x,A.muzzleX,'muzzle datum');
@@ -48,8 +48,8 @@ test('P8 integrated optic remains one casing plus compact reflex crown',()=>{
  assert.ok(bounds(face).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
  assert.equal(handle.geometry.parameters.shapes.holes.length,1);
  near(bounds(g).max.y,A.opticTopY,'optic crown');
- assert.equal(F.lowerSightY,3.99);
- assert.equal(F.upperSightY,4.88);
+ assert.equal(F.lowerSightY,4.19);
+ assert.equal(F.upperSightY,5.16);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P8 actual shared HK pivot/paddle, charging tab and six factory part slots',()=>{
@@ -58,7 +58,7 @@ test('P8 actual shared HK pivot/paddle, charging tab and six factory part slots'
  assert.equal(all(g,'g36SelectorLever').length,2);
  for(const hub of all(g,'g36SelectorHub')){
   assert.equal(hub.geometry.type,'CylinderGeometry');
-  assert.equal(hub.geometry.parameters.radialSegments,8);
+  assert.equal(hub.geometry.parameters.radialSegments,6);
   assert.ok(hub.name.startsWith('family-receiver-'));
  }
  assert.equal(all(g,'g36ChargingHandle').length,1);

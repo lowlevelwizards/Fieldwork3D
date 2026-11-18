@@ -36,7 +36,9 @@ test('G36 B: master consists of six named exterior slots and bounded art landmar
  assert.ok(Math.abs(b.max.y-A.opticTopY)<.02);
  for(const [slot,id] of Object.entries(G36_B_PART_IDS))
   assert.ok(g.children.some(x=>x.name.startsWith('family-'+slot+'-'+id+'-')),slot);
- assert.ok(g.children.every(x=>x instanceof THREE.Mesh&&x.material===m));
+ assert.ok(g.children.every(x=>x instanceof THREE.Mesh));
+ assert.ok(g.children.filter(x=>!x.userData.g36SelectorMarkings).every(x=>x.material===m),
+  'only graphic HK selector is a justified separate pooled material');
  clearWeaponSilhouette(g);m.dispose();
 });
 test('G36 B: physical frame has two real stock voids and handle has a real void',()=>{
@@ -72,7 +74,7 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  const triangles=meshes.reduce((sum,x)=>{
   const geo=x.geometry;return sum+(geo.index?.count??geo.getAttribute('position').count)/3;
  },0);
- assert.equal(meshes.length,22, 'H3 replaces lug and mouth with one solid shell');
+ assert.equal(meshes.length,23, 'R2 adds one indispensable dual-sided HK marking mesh');
  assert.ok(triangles<=650, 'H3 should reduce production triangle count: '+triangles);
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
   'only the accepted original full-size model is an authored factory preset');
@@ -116,7 +118,7 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.equal(meshCount,22,'H3 is one shell and no separate lug/mouth');
+ assert.equal(meshCount,23,'one HK marking batch, no handguard cavity or lug');
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -199,7 +201,7 @@ test('G36 D1-1: O2 rear-facing lower optic is a single low-facet dark circle, se
  assert.ok(ocular&&bb(ocular).intersectsBox(bb(lower)),
   'O2 projecting lower ocular is physically seated in the main optical pod');
  assert.ok(bb(face).intersectsBox(bb(ocular)),
-  'dark optical face must remain seated inside its actual eight-sided ocular');
+  'dark optical face must remain seated inside its six-sided ocular');
  assert.ok(face.geometry.getAttribute('position').count<=60,'no high-poly round lens');
  assert.equal(g.children.filter(x=>x.userData.g36OpticFace).length,1);
  clearWeaponSilhouette(g);m.dispose();

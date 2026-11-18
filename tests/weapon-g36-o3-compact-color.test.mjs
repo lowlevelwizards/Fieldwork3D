@@ -37,14 +37,14 @@ test('O3-S2: proud upper module and distinct oculars, not nested into one rectan
  const mat=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(mat);
  const main=bb(one(g,'g36LowerOptic')),upper=bb(one(g,'g36UpperReflex'));
  const hi=bb(one(g,'g36UpperReflexBarrel')),lo=bb(one(g,'g36LowerOpticBarrel'));
- assert.ok(close(upper.max.y,5.45)&&close(upper.max.y,A.opticTopY));
+ assert.ok(close(upper.max.y,5.65)&&close(upper.max.y,A.opticTopY));
  assert.ok(upper.max.y-main.max.y>.85,'upper rises proud above lower housing');
  assert.ok(hi.min.y>main.max.y,'entire upper ocular clears lower roof');
  assert.ok(hi.min.y>lo.max.y-.06,'upper/lower ocular rims are separately readable');
  assert.ok(bb(one(g,'g36UpperReflexWindow')).min.x<
   bb(one(g,'g36UpperReflex')).min.x,'upper optical face remains rear-visible');
- assert.equal(F.upperSightY,4.88,'raised visual lens and aiming contact stay aligned');
- assert.equal(F.lowerSightY,3.99);
+ assert.equal(F.upperSightY,5.16,'upper contact matches actual raised ocular center');
+ assert.equal(F.lowerSightY,4.19);
  clearWeaponSilhouette(g);mat.dispose();
 });
 
@@ -53,9 +53,9 @@ test('O3-S3: lower optic extends into handle root without closing the carry void
  g=buildG36OriginalBlockout(mat),main=one(g,'g36LowerOptic'),
  handle=one(g,'g36HandleOpening');
  const b=bb(main);
- assert.ok(b.min.y<2.50,'raised pod still overlaps the actual carry handle root');
+ assert.ok(b.min.y<2.70,'raised pod still overlaps the actual carry handle root');
  assert.ok(bb(main).intersectsBox(bb(handle)),'main lower pod actually meets frame');
- assert.ok(close(b.max.y,4.54),'raised lower body roof remains a short broad plane');
+ assert.ok(close(b.max.y,4.74),'raised lower body roof remains a short broad plane');
  assert.equal(handle.geometry.parameters.shapes.holes.length,1);
  const through=(x,y)=>g.children.some(mesh=>new THREE.Raycaster(
   new THREE.Vector3(x,y,10),new THREE.Vector3(0,0,-1)
@@ -72,7 +72,7 @@ test('O3-S4: six main/upper facets, short ocular sleeves, two simple opaque face
   assert.equal(x.userData.g36OpticCrossSectionSides,6);
   assert.equal(x.geometry.getAttribute('position').count,60);
  }
- assert.equal(one(g,'g36LowerOpticBarrel').geometry.parameters.radialSegments,8);
+ assert.equal(one(g,'g36LowerOpticBarrel').geometry.parameters.radialSegments,6);
  assert.equal(one(g,'g36UpperReflexBarrel').geometry.parameters.radialSegments,6);
  assert.ok(span(bb(one(g,'g36UpperReflexBarrel')),'x')<.31,
   'short upper sleeve removes unnecessary projected ring depth');
@@ -81,7 +81,7 @@ test('O3-S4: six main/upper facets, short ocular sleeves, two simple opaque face
   assert.ok(one(g,k).geometry.parameters.segments<=8);
   assert.equal(g.children.filter(x=>x.userData[k]).length,1);
  }
- assert.equal(g.children.length,22,'H3 drops cavity/lug; O3 optic unchanged');
+ assert.equal(g.children.length,23,'R2 adds one batched HK pictogram, no lens detail');
  assert.ok(triangles(g)<=760,'H2.1 adds only major sculptural forms');
  clearWeaponSilhouette(g);mat.dispose();
 });

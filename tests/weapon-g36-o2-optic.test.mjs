@@ -32,8 +32,8 @@ test('O2 production pod: two six-facet housings and retained handle/sight contra
  assert.ok(approx(bounds(g).max.y,A.opticTopY,.001));
  assert.equal(F.integratedOptics,'original-dual');
  assert.equal(F.mountingPolicy,'no-rail-or-duplicate-sights');
- assert.equal(F.lowerSightY,3.99);
- assert.equal(F.upperSightY,4.88);
+ assert.equal(F.lowerSightY,4.19);
+ assert.equal(F.upperSightY,5.16);
  assert.ok(approx(bounds(g).min.x,A.stockRearX));
  assert.ok(approx(bounds(g).max.x,A.muzzleX));
  clearWeaponSilhouette(g);mat.dispose();
@@ -46,14 +46,14 @@ test('O2 lower eight-sided ocular extends further rearward than upper six-sided 
  const lowShell=one(g,'g36LowerOptic'),highShell=one(g,'g36UpperReflex');
  assert.equal(low.geometry.type,'CylinderGeometry');
  assert.equal(high.geometry.type,'CylinderGeometry');
- assert.equal(low.geometry.parameters.radialSegments,8);
+ assert.equal(low.geometry.parameters.radialSegments,6);
  assert.equal(high.geometry.parameters.radialSegments,6);
  assert.ok(bounds(low).min.x<bounds(high).min.x-.4);
  assert.ok(bounds(low).intersectsBox(bounds(lowShell)));
  assert.ok(bounds(high).intersectsBox(bounds(highShell)));
  assert.ok(bounds(lowShell).max.z-bounds(lowShell).min.z>2.0,
   '125% O3 housing reads as broad in end-on view');
- assert.ok(bounds(low).max.y<4.75,'raised lower ocular remains below upper hood');
+ assert.ok(bounds(low).max.y<4.95,'raised lower ocular remains below upper hood');
  clearWeaponSilhouette(g);mat.dispose();
 });
 
@@ -65,7 +65,7 @@ test('O2 has exactly two rear-facing dark optical faces, no nested disks or dial
   assert.equal(face.geometry.type,'CircleGeometry');
   assert.ok(face.geometry.parameters.segments<=8);
   assert.ok(hitRear(face,face.position.x-8,
-   face===low?3.99:4.96),'the optical disc must face the stock/rear');
+   face===low?4.19:5.16),'the optical disc must face the stock/rear');
  }
  assert.ok(bounds(low).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
  assert.ok(bounds(high).intersectsBox(bounds(one(g,'g36UpperReflexBarrel'))));
@@ -82,7 +82,7 @@ test('O2 has exactly two rear-facing dark optical faces, no nested disks or dial
  assert.equal(high.material,finishes.buttpad);
  assert.equal(one(g,'g36LowerOpticBarrel').material,finishes.optic);
  assert.equal(one(g,'g36UpperReflexBarrel').material,finishes.optic);
- assert.equal(g.children.length,22,'H3 uses one shell; optic unchanged');
+ assert.equal(g.children.length,23,'R2 adds one batched two-face selector marking');
  clearWeaponSilhouette(g);mat.dispose();
 });
 

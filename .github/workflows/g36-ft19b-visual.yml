@@ -38,7 +38,8 @@ jobs:
             tests/weapon-g36-o2-optic.test.mjs \
             tests/weapon-g36-o3-compact-color.test.mjs \
             tests/weapon-g36-h1-handguard.test.mjs \
-            tests/weapon-g36-r1-minimal-receiver.test.mjs
+            tests/weapon-g36-r1-minimal-receiver.test.mjs \
+            tests/weapon-g36-r2-structure-economy.test.mjs
       - name: TypeScript and build integrity
         run: |
           npm run check

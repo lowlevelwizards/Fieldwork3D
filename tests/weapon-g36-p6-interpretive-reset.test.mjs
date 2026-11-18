@@ -29,7 +29,7 @@ test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',(
  assert.ok(counts.g36ReceiverUpper<=20,'R1 six-corner upper stays within one simple extrusion');
  assert.ok(counts.g36ReceiverLower<=30);
  assert.ok(counts.g36Grip<=16);
- assert.ok(g.children.length===22,'one solid handguard and no cavity/lug extras');
+ assert.equal(g.children.length,23,'one shell and one dual-sided pixel mark batch, no cavity');
  assert.ok(g.children.reduce((n,x)=>n+triangles(x),0)<760,
   'the small number of iconic forms must not be disguised trace meshes');
  clearWeaponSilhouette(g);m.dispose();
