@@ -161,3 +161,34 @@ test('construction and runtime have explicit ownership and site lifecycle',()=>{
  assert.doesNotMatch(builder,/\bstepSession\(/);
  assert.doesNotMatch(builder,/\bnewSession\(/);
 });
+
+test('D3.29I: both architectural and legacy door meshes support physically detached handles',()=>{
+ for(const seed of [null,17]){
+  const site=seed===null?null:generateSite(seed,'small');
+  const h=harness();
+  try{
+   buildSiteWorld(site,h);
+   assert.ok(h.doors.size>0);
+   for(const visual of h.doors.values()){
+    assert.ok(visual.intactHardware instanceof THREE.Group);
+    assert.ok(visual.fallenHardware instanceof THREE.Group);
+    assert.equal(visual.intactHardware.parent,visual.leaf,
+      'handle must follow the hinged leaf until destroyed');
+    assert.equal(visual.fallenHardware.parent,visual.root,
+      'fallen hardware must not continue rotating with the hinge');
+    assert.equal(visual.fallenHardware.visible,false);
+    assert.ok(visual.intactHardware.children.length>=2);
+    assert.ok(visual.fallenHardware.children.length>=2);
+   }
+   finalizeStaticSiteBatches(h);
+   for(const visual of h.doors.values()){
+    assert.equal(visual.intactHardware.parent,visual.leaf,
+      'rigid compilation must never bake the detachable handle');
+    visual.intactHardware.visible=false;
+    visual.fallenHardware.visible=true;
+    assert.equal(visual.intactHardware.visible,false);
+    assert.equal(visual.fallenHardware.visible,true);
+   }
+  }finally{activateSite(null);}
+ }
+});
