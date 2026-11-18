@@ -71,12 +71,12 @@ export function addG36O2DualOptic(
  lower.userData.g36IntegratedOpticShell=true;
  lower.userData.g36OpticCrossSectionSides=6;
 
- // O2 upper hood: 125% prominence, but the top remains exactly 4.70,
- // the existing production sight/weapon envelope landmark.
+ // O3 Stage 2: raise the independent upper ocular above the lower roof.
+ // Keep factory aiming contact (4.46) unchanged; this is visual geometry.
  const hoodWidth=.73*1.25;
  const upper=add(sixFacetPrism(-5.57,-3.14,
-  hoodSection(3.68,3.94,4.70,hoodWidth),
-  hoodSection(3.68,3.94,4.70,hoodWidth*.97)), 'g36UpperReflex');
+  hoodSection(3.94,4.24,5.03,hoodWidth),
+  hoodSection(3.94,4.24,5.03,hoodWidth*.97)), 'g36UpperReflex');
  upper.userData.g36OpticCrossSectionSides=6;
 
  // O2 55% projection: lower ocular projects farther than the upper.
@@ -92,7 +92,7 @@ export function addG36O2DualOptic(
   return barrel;
  };
  ocular(-6.27,-5.76,3.57,.625,8,'g36LowerOpticBarrel');
- ocular(-5.86,-5.49,4.30,.395,6,'g36UpperReflexBarrel');
+ ocular(-5.86,-5.49,4.54,.395,6,'g36UpperReflexBarrel');
 
  // One recessed-looking matte-black circle per eyepiece, no stacked rings.
  // Visible from the rear (-X); inherited shared materials are set by caller.
@@ -103,6 +103,6 @@ export function addG36O2DualOptic(
   return add(geometry,key);
  };
  lens(-6.268,3.57,.625,8,'g36OpticFace');
- lens(-5.858,4.30,.395,6,'g36UpperReflexWindow');
+ lens(-5.858,4.54,.395,6,'g36UpperReflexWindow');
  return index;
 }
