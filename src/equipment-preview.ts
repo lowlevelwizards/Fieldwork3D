@@ -13,6 +13,10 @@ import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
+const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
+ full:[26,110,35],head:[57,72,26],torso:[38,82,31],
+ weapon:[35,90,31],carry:[29,91,32]
+};
 export class CampaignKitPreview{
  private host:HTMLElement;
  private readonly operatorId:string;
@@ -39,8 +43,15 @@ export class CampaignKitPreview{
  constructor(host:HTMLElement,id:string,weapon:WeaponId,
   appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,
-  magazines:readonly MagazineItem[]=[],wardrobe?:WardrobeOptions){
+  magazines:readonly MagazineItem[]=[],wardrobe?:WardrobeOptions,
+  initialFocus:EquipmentPreviewFocus='full'){
   this.host=host;this.operatorId=id;
+  // Apply the selected category framing before the first WebGL paint.
+  // Setting it after construction would submit an unnecessary full-body frame.
+  const [height,radius,rise]=PREVIEW_FOCUS_TARGETS[initialFocus];
+  this.focusArea=initialFocus;
+  this.focusHeight=height;this.focusRadius=radius;this.focusRise=rise;
+  host.dataset.previewFocus=initialFocus;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
   host.tabIndex=0;
@@ -178,11 +189,7 @@ export class CampaignKitPreview{
  };
  /** One 220 ms context transition, with no recurring animation while idle. */
  focusOn(area:EquipmentPreviewFocus,animate=true):void{
-  const targets:Record<EquipmentPreviewFocus,[number,number,number]>={
-   full:[26,110,35],head:[57,72,26],torso:[38,82,31],
-   weapon:[35,90,31],carry:[29,91,32]
-  };
-  const [height,radius,rise]=targets[area];
+  const [height,radius,rise]=PREVIEW_FOCUS_TARGETS[area];
   const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Re-selecting a focus target must not restart an identical transition,
   // especially when a category and its equipment picker both request it.
