@@ -263,6 +263,29 @@ const sweepPassable=(from:Pt,to:Pt,canStand:(p:Pt)=>boolean)=>{
   }
   return true;
 };
+/** Exact endpoints inside the same snapped grid cell can straddle thin
+ * known walls. Test the chord, then at most 32 units of deterministic
+ * single-bend sidesteps. No hidden world queries or runtime motor changes.
+ * Also used before the fine-grid early route in route(), since the fine
+ * snap may be a different cell even when the ordinary coarse snap matches. */
+function boundedShortRoute(from:Pt,to:Pt,
+ canStand:(p:Pt)=>boolean,grid:number):Pt[]{
+ if(!canStand(to))return [];
+ if(sweepPassable(from,to,canStand))return [{...to}];
+ const offsets=[[0,1],[0,-1],[1,0],[-1,0],
+   [1,1],[1,-1],[-1,1],[-1,-1]] as const;
+ for(const radius of [grid/2,grid,grid*1.5,grid*2]){
+   for(const [dx,dy] of offsets){
+     const length=Math.hypot(dx,dy);
+     const mid={x:from.x+dx/length*radius,
+       y:from.y+dy/length*radius};
+     if(!canStand(mid)||!sweepPassable(from,mid,canStand)||
+        !sweepPassable(mid,to,canStand))continue;
+     return [mid,{...to}];
+   }
+ }
+ return [];
+}
 /** D3.11A: OFFLINE-only A* observer. Disabled by default; never records
  * or emits data in a game frame unless a deterministic audit opts in.
  * No geometry, authored order or A* tie-breaking is changed.
@@ -278,6 +301,14 @@ export function setRouteGridAuditObserver(
  * for a physically valid narrow route missed by the coarse grid. */
 export function route(from:Pt,to:Pt,
   canStand:(p:Pt)=>boolean=passable,repairBlockedStart=false):Pt[]{
+  // The coarse cell may match while a blocked snapped target causes
+  // route() to switch to a finer grid. Catch that case before grid
+  // selection, without relaxing or changing the exact destination.
+  if(Math.round(from.x/GRID)===Math.round(to.x/GRID)&&
+     Math.round(from.y/GRID)===Math.round(to.y/GRID)){
+    const local=boundedShortRoute(from,to,canStand,GRID);
+    if(local.length)return local;
+  }
   // Most routes have a legal snapped endpoint. Preserve the single cheap
   // A* path in that overwhelmingly common case. A disconnected map must not
   // pay for another full search on every attempted door or actor route.
@@ -330,29 +361,8 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   if(!canStand(to))return [];
   const st=cellAt(from),goal=cellAt(to);
   const startKey=key(st.col,st.row),goalKey=key(goal.col,goal.row);
-  // D3.24A: exact endpoints can round to the SAME 16/8-unit grid cell
-  // while a thin wall or furniture corner lies between them. Grid
-  // identity is not physical clearance: validate the actual segment.
-  // A rejected short chord can still have a legal, bounded one-bend walk
-  // around the nearby corner. This is authoring-time A* logic, not a
-  // new motor, collision allowance, or remote destination rewrite.
-  if(startKey===goalKey){
-    if(sweepPassable(from,to,canStand))return [{...to}];
-    const offsets=[[0,1],[0,-1],[1,0],[-1,0],
-      [1,1],[1,-1],[-1,1],[-1,-1]] as const;
-    for(const radius of [grid/2,grid,grid*1.5,grid*2]){
-      for(const [dx,dy] of offsets){
-        const length=Math.hypot(dx,dy);
-        const mid={x:from.x+dx/length*radius,
-          y:from.y+dy/length*radius};
-        if(!canStand(mid)||!sweepPassable(from,mid,canStand)||
-           !sweepPassable(mid,to,canStand))continue;
-        return [mid,{...to}];
-      }
-    }
-    // Never report a physically blocked shortcut as a valid MOVE.
-    return [];
-  }
+  // A sub-grid destination never authorizes an unswept chord.
+  if(startKey===goalKey)return boundedShortRoute(from,to,canStand,grid);
   // Endpoint rescue: an exact walkable location can snap to an illegal
   // grid vertex. Find a nearby legal vertex with a swept final connector.
   // Do this only after the inexpensive ordinary A* has failed.
