@@ -1,0 +1,44 @@
+name: D3.25 exact four-person entry stall witness
+on:
+  push:
+    branches: [feature/d3-25-entry-stall-witness-20261118]
+    paths:
+      - 'scripts/report-d3-25-entry-stalls.mjs'
+      - '.github/workflows/d3-25-entry-stall-witness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d325-entry-witness-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Townhouse small · 19018816 · real four-person 45-second entry
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=1 --audit-seed=19018816 --audit-scale=small \
+            --progress --route-quality --route-transitions \
+            --entry-settle-witness --queue-motion-witness \
+            > "$RUNNER_TEMP/d325-townhouse.json"
+          node scripts/report-d3-25-entry-stalls.mjs "$RUNNER_TEMP/d325-townhouse.json"
+      - name: Clinic small · 19178827 · real four-person 45-second entry
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=10 --audit-seed=19178827 --audit-scale=small \
+            --progress --route-quality --route-transitions \
+            --entry-settle-witness --queue-motion-witness \
+            > "$RUNNER_TEMP/d325-clinic.json"
+          node scripts/report-d3-25-entry-stalls.mjs "$RUNNER_TEMP/d325-clinic.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d325-two-accepted-no-arrival-entry-traces
+          path: ${{ runner.temp }}/d325-*.json
+          retention-days: 30
