@@ -30,7 +30,7 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/release-d3-10b-authored-obstruction.test.mjs \
-            tests/release-d3-27b-garage-known-footprint.test.mjs
+            tests/release-d3-26f-cold-fine-route-gate.test.mjs
       - name: Exact unchanged authored Garage motor and geometry witness
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
@@ -50,6 +50,9 @@ jobs:
             throw Error('D3.27 missing exact frozen Garage physical witness');
           if(!witness.actualOrder||witness.actualOrder.kind!=='move')
             throw Error('D3.27 original motor MOVE unexpectedly missing');
+          if(!witness.actualOrderFullBodyClear||
+             witness.actualOrderFixedBlock)
+            throw Error('D3.27 actual authored GO unexpectedly obstructed');
           // Physical reference candidate and player projection differ:
           // do not force an unverified warning for the WRONG endpoint.
           console.log('D327_REAL_GO',JSON.stringify({
