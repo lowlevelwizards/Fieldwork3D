@@ -98,6 +98,6 @@ test('O2 legacy art comparisons remain review-only and do not replace factory op
   clearWeaponSilhouette(lab);
  }
  assert.equal(one(original,'g36LowerOptic').userData.g36OpticArtVersion,
-  'o2-simplified-125-125-55');
+  'o3-compact-integrated-125-125-55');
  clearWeaponSilhouette(original);mat.dispose();
 });
