@@ -53,6 +53,8 @@ import {stackMicroRecoveryEligible,claimStackMicroAttempt,selectStackMicroCorner
  from './breach-stack-micro-corner.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
+import {selectColdMotorMicroDeparture,claimColdMotorMicroDeparture}
+ from './breach-d326-micro-departure.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -146,6 +148,41 @@ export function resolveMotorCollision(
     // route recovery repeatedly discard its chosen shoulder-clear path.
     if(ownsDoorManeuverRoute(a)&&
        s.seconds-a.doorTraversal!.lastProgressAt<1.8)return true;
+    // D3.26C Apartment 19036595: a 23-unit grid route was marked
+    // physically clear at its coarse 4-unit samples even though the
+    // real first 0.3-unit stride immediately hit a wall. After actual
+    // sustained blockage, try at most two COLD 2/5-unit departures.
+    // Each departure and the new first world-route leg use the SAME
+    // full-body 0.3-unit motor sweep; the original authored GO is kept.
+    // Near an active hinge, the existing doorway maneuver remains owner.
+    const moveOrder=a.plan[0];
+    const episodeDoor=a.doorTraversal?.doorId?
+      s.doors.find(door=>door.id===a.doorTraversal?.doorId):undefined;
+    const remoteEpisode=!a.doorTraversal||!!episodeDoor&&
+      pointToSegment(a.p,doorLeafSegment(episodeDoor))>OPERATOR_RADIUS+28;
+    if(a.side==='blue'&&moveOrder?.kind==='move'&&
+       !moveOrder.stackDoorId&&!moveOrder.entryDoorId&&
+       !a.squeeze&&!a.traversal&&!a.traversalPending&&
+       !a.fireRetreatTarget&&remoteEpisode&&
+       a.blockedTime>=1.6&&
+       (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
+       claimColdMotorMicroDeparture(a,p,s.seconds)){
+      const sweep=(from:Pt,to:Pt)=>
+        sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+      const corrected=selectColdMotorMicroDeparture(
+        a.p,p,next,sweep,
+        pt=>bodyClear(pt,s.doors,OPERATOR_RADIUS,world),
+        (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
+      if(corrected.length&&watchClearanceAllowed(a.p,corrected[0],p,
+        !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+        setTransientRoute(s,a,corrected,'motor-micro-departure');
+        notePreciseLocalDetour(a,corrected[0]);
+        a.lastNavRepairAt=s.seconds;
+        provisionalRouteAccepted(a);
+        a.squeeze=false;a.squeezeTime=0;
+        return true;
+      }
+    }
     const laneAt=profile?beginMotorCpuMeasurement():0;
     const fullLane=recoverNormalLane(a.p,p,s.doors,world);
     if(profile)profile('motor-collision-lane',finishMotorCpuMeasurement(laneAt));
