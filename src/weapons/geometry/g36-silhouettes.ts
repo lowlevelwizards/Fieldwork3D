@@ -204,7 +204,9 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
 
 export type G36FactoryMaterials=Readonly<{
  polymer:THREE.Material;steel:THREE.Material;magazine:THREE.Material;
- buttpad:THREE.Material;optic:THREE.Material;muzzle:THREE.Material
+ buttpad:THREE.Material;optic:THREE.Material;muzzle:THREE.Material;
+ /** Optional for legacy P6/P7 lab / tests; supplied in O3 live factory. */
+ opticRim?:THREE.Material;lens?:THREE.Material
 }>;
 /** One shared finish per meaningful material. No material allocations here. */
 export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMaterials):void{
@@ -217,9 +219,14 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
   else if(child.userData.g36FactoryMuzzle)result=finishes.muzzle;
   else if(child.userData.g36Barrel||child.userData.g36StockHinge||
    child.userData.g36ChargingHandle)result=finishes.steel;
-  else if(child.userData.g36OpticFace||child.userData.g36UpperReflexWindow)result=finishes.buttpad;
-  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic||
-   child.userData.g36LowerOpticBarrel||child.userData.g36UpperReflexBarrel)result=finishes.optic;
+  // One optical *housing* finish shared with the receiver and handle.
+  // Separate dark lens aperture from subtle rim; no painted-on micro rings.
+  else if(child.userData.g36OpticFace||child.userData.g36UpperReflexWindow)
+   result=finishes.lens??finishes.buttpad;
+  else if(child.userData.g36LowerOpticBarrel||child.userData.g36UpperReflexBarrel)
+   result=finishes.opticRim??finishes.optic;
+  else if(child.userData.g36UpperReflex||child.userData.g36LowerOptic)
+   result=finishes.optic;
   child.material=result;
  }
 }
