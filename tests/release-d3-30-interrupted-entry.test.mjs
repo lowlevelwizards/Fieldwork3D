@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {snapshotDoorInterruption} from '../src/breach-door-interruption.ts';
 import {failCurrentOrder} from '../src/breach-order-lifecycle.ts';
-import {newSession,team} from '../src/breach-game.ts';
+import {newSession,team,resumeInterruptedDoorPlan} from '../src/breach-game.ts';
 
 const pt=(x,y)=>({x,y});
 const wait={id:3,kind:'wait',p:pt(20,22),duration:0,doorId:'D8'};
@@ -60,4 +60,44 @@ test('D3.30A: live terminal cancellation stores offer but never silently resumes
  assert.equal(a.failedOrders,2);
  assert.equal(notes.length,2);
  assert.equal(a.interruptedDoorPlan?.at,5);
+});
+
+test('D3.30B: no door opening or plan edit occurs before explicit RESUME',()=>{
+ const s=newSession(0,undefined,'full-view'),a=team(s)[0],door=s.doors[0];
+ const original={id:900,kind:'move',p:{...a.p}};
+ a.plan=[{id:901,kind:'look',p:{...a.p},facing:.5}];
+ a.interruptedDoorPlan={
+  sourceOrderId:900,doorId:door.id,at:4,reason:'locked',
+  original:[original]
+ };
+ door.locked=true;door.lockSide='both';
+ const oldId=s.nextId,oldPlan=a.plan.map(n=>n.id);
+ assert.equal(resumeInterruptedDoorPlan(s,a.id),false);
+ assert.deepEqual(a.plan.map(n=>n.id),oldPlan);
+ assert.equal(s.nextId,oldId);
+ door.locked=false;door.jammed=true;
+ assert.equal(resumeInterruptedDoorPlan(s,a.id),false);
+ door.jammed=false;
+ assert.equal(a.plan[0].id,901,
+  'unlock alone never starts the preserved destination');
+ assert.equal(resumeInterruptedDoorPlan(s,a.id),true,
+  'only the explicit player action restores the original move');
+ assert.equal(a.plan.length,2);
+ assert.equal(a.plan[0].kind,'move');
+ assert.deepEqual(a.plan[0].p,original.p);
+ assert.equal(a.plan[1].id,901,'independent later orders survive');
+ assert.notEqual(a.plan[0].id,900,'retry must get a fresh order identity');
+ assert.equal(a.interruptedDoorPlan,null);
+});
+test('D3.30B: resuming is prohibited outside planning and without physical door',()=>{
+ const s=newSession(0,undefined,'full-view'),a=team(s)[0];
+ a.interruptedDoorPlan={
+  sourceOrderId:1,doorId:'GHOST',at:1,reason:'locked',
+  original:[{id:1,kind:'move',p:{...a.p}}]
+ };
+ assert.equal(resumeInterruptedDoorPlan(s,a.id),false);
+ a.interruptedDoorPlan.doorId=s.doors[0].id;
+ s.phase='running';s.doors[0].locked=false;
+ assert.equal(resumeInterruptedDoorPlan(s,a.id),false);
+ assert.equal(a.interruptedDoorPlan?.sourceOrderId,1);
 });
