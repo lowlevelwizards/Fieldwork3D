@@ -13,6 +13,10 @@ import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
+const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
+ full:[26,110,35],head:[57,72,26],torso:[38,82,31],
+ weapon:[35,90,31],carry:[29,91,32]
+};
 export class CampaignKitPreview{
  private host:HTMLElement;
  private readonly operatorId:string;
@@ -39,8 +43,15 @@ export class CampaignKitPreview{
  constructor(host:HTMLElement,id:string,weapon:WeaponId,
   appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,
-  magazines:readonly MagazineItem[]=[],wardrobe?:WardrobeOptions){
+  magazines:readonly MagazineItem[]=[],wardrobe?:WardrobeOptions,
+  initialFocus:EquipmentPreviewFocus='full'){
   this.host=host;this.operatorId=id;
+  // Apply the selected category framing before the first WebGL paint.
+  // Setting it after construction would submit an unnecessary full-body frame.
+  const [height,radius,rise]=PREVIEW_FOCUS_TARGETS[initialFocus];
+  this.focusArea=initialFocus;
+  this.focusHeight=height;this.focusRadius=radius;this.focusRise=rise;
+  host.dataset.previewFocus=initialFocus;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
   host.tabIndex=0;
@@ -64,10 +75,12 @@ export class CampaignKitPreview{
    host.addEventListener('pointermove',this.pointerMove);
    host.addEventListener('pointerup',this.pointerUp);
    host.addEventListener('pointercancel',this.pointerUp);
+   host.addEventListener('lostpointercapture',this.pointerUp);
    host.addEventListener('keydown',this.keyDown);
    this.observer=new ResizeObserver(()=>this.scheduleResize());
    this.observer.observe(host);
-   this.draw();
+   // updateEquipment already painted the initial pose. Subsequent resize
+   // notifications redraw only when dimensions actually change.
   }catch{
    // WebGL may be unavailable or its context limit already reached.
    this.dispose();
@@ -106,6 +119,7 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
+  this.host.removeEventListener('lostpointercapture',this.pointerUp);
   this.host.removeEventListener('keydown',this.keyDown);
   if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
   this.dragFrame=null;this.pointerId=null;this.host=host;
@@ -120,6 +134,7 @@ export class CampaignKitPreview{
   host.addEventListener('pointermove',this.pointerMove);
   host.addEventListener('pointerup',this.pointerUp);
   host.addEventListener('pointercancel',this.pointerUp);
+  host.addEventListener('lostpointercapture',this.pointerUp);
   host.addEventListener('keydown',this.keyDown);
   this.observer?.observe(host);
   // Campaign updates the rig immediately after a host swap; avoid a stale
@@ -130,8 +145,13 @@ export class CampaignKitPreview{
  /** Keep rotation discoverable and usable without touch or a mouse. */
  private updateOrientationLabel():void{
   const degrees=((Math.round(this.azimuth*180/Math.PI)%360)+360)%360;
+  const target:Record<EquipmentPreviewFocus,string>={
+   full:'Full operator',head:'Head',torso:'Torso',
+   weapon:'Weapon',carry:'Carried equipment'
+  };
   this.host.setAttribute('aria-label','Rotatable 3D preview of '+
-   this.operatorId+' with equipped gear. View angle '+degrees+
+   this.operatorId+' with equipped gear. '+target[this.focusArea]+
+   ' view. View angle '+degrees+
    ' degrees. Use Left and Right arrow keys to rotate.');
  }
  private keyDown=(event:KeyboardEvent)=>{
@@ -145,7 +165,9 @@ export class CampaignKitPreview{
   this.draw();
  };
  private pointerDown=(event:PointerEvent)=>{
-  if(this.pointerId!==null)return;
+  // Ignore secondary touch contacts and non-primary mouse/pen buttons.
+  // An ignored press must not capture the preview or block the next drag.
+  if(this.pointerId!==null||!event.isPrimary||event.button!==0)return;
   this.pointerId=event.pointerId;this.lastX=event.clientX;
   try{this.host.setPointerCapture(event.pointerId);}catch{/* optional */}
  };
@@ -166,20 +188,27 @@ export class CampaignKitPreview{
   if(this.dragFrame!==null){
    cancelAnimationFrame(this.dragFrame);this.dragFrame=null;this.draw();
   }
+  // One announcement per completed gesture, not on every high-frequency move.
+  this.updateOrientationLabel();
   try{this.host.releasePointerCapture(event.pointerId);}catch{/* optional */}
  };
  /** One 220 ms context transition, with no recurring animation while idle. */
  focusOn(area:EquipmentPreviewFocus,animate=true):void{
-  const targets:Record<EquipmentPreviewFocus,[number,number,number]>={
-   full:[26,110,35],head:[57,72,26],torso:[38,82,31],
-   weapon:[35,90,31],carry:[29,91,32]
-  };
-  const [height,radius,rise]=targets[area];
+  const [height,radius,rise]=PREVIEW_FOCUS_TARGETS[area];
+  const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  // Re-selecting a focus target must not restart an identical transition,
+  // especially when a category and its equipment picker both request it.
+  if(area===this.focusArea){
+   if(!instant&&this.focusFrame!==null)return;
+   if(this.focusFrame===null&&this.focusHeight===height&&
+    this.focusRadius===radius&&this.focusRise===rise)return;
+  }
   this.focusArea=area;this.host.dataset.previewFocus=area;
+  // Announce category changes once, not during the 220 ms interpolation.
+  this.updateOrientationLabel();
   if(this.focusFrame!==null){
    cancelAnimationFrame(this.focusFrame);this.focusFrame=null;
   }
-  const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   if(instant){
    this.focusHeight=height;this.focusRadius=radius;this.focusRise=rise;
    this.draw();return;
@@ -212,8 +241,9 @@ export class CampaignKitPreview{
  }
  getAzimuth(){return this.azimuth;}
  setAzimuth(value:number){
-  if(!Number.isFinite(value))return;
+  if(!Number.isFinite(value)||Math.abs(this.azimuth-value)<1e-7)return;
   this.azimuth=value;
+  this.updateOrientationLabel();
   this.draw();
  }
  private draw(){
@@ -243,6 +273,7 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
+  this.host.removeEventListener('lostpointercapture',this.pointerUp);
   this.host.removeEventListener('keydown',this.keyDown);
   if(this.rig){releaseOperatorPreviewRig(this.scene,this.rig);this.rig=null;}
   this.renderer?.dispose();this.renderer?.forceContextLoss();

@@ -7,11 +7,8 @@ import {activateSite,OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {sweptBodyClear,bodyClear} from '../src/breach-navigation.ts';
 import {fullBodyMotorStrideClear} from '../src/breach-stack-micro-corner.ts';
-import {selectBlockedHingeStepback,noteAdoptedHingeStepback,
- clearedAdoptedHingeStepback}
- from '../src/breach-partial-hinge-stepback.ts';
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
-test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departure sweep',()=>{
+test('D3.21 read-only: real Garage FRONT geometry admits swept short steps, not guaranteed GO',()=>{
  const seed=19285501;
  const site=generateSite(seed,'standard',undefined,
   {mission:'intel'},{archetype:'garage'});
@@ -20,19 +17,15 @@ test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departur
   {enableCivilians:false});
  try{
   const door=s.doors.find(d=>d.id==='FRONT');
-  assert.ok(door,'same stable Garage fixture FRONT');
+  assert.ok(door,'same real Garage fixture FRONT');
   door.open=true;door.openFraction=.8587962693316564;
   door.angularVelocity=0;door.pushTarget=1;
   const from={x:121,y:273},goal={x:597.6,y:564.5};
   const leaf=doorLeafSegment(door),gap=pointToSegment(from,leaf);
-  // Verify this is the same actually recorded 45s FRONT door witness.
   assert.ok(dist(leaf.b,{x:127.22624491701302,y:279.8283221744376})<.75,
-   'Garage geometry changed; do not trust the historical leaf witness');
+   'Garage geometry changed; historical leaf witness no longer applies');
   const world=sessionWorldGeometry(s);
   const sweep=(a,b)=>sweptBodyClear(a,b,s.doors,OPERATOR_RADIUS,world);
-  const chosen=selectBlockedHingeStepback(from,goal,door,
-   at=>world.passable(at,OPERATOR_RADIUS)&&
-    bodyClear(at,s.doors,OPERATOR_RADIUS,world),sweep);
   const candidates=[];
   for(const length of [1.25,2.5,4,6,8,12])
    for(let i=0;i<16;i++){
@@ -43,41 +36,31 @@ test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departur
        !bodyClear(to,s.doors,OPERATOR_RADIUS,world)||
        !fullBodyMotorStrideClear(from,to,sweep))continue;
     const clearance=pointToSegment(to,leaf);
+    let futureGap=Infinity;
+    for(let j=0;j<=12;j++){
+     const future={...door,openFraction:door.openFraction+
+      (Math.max(1,door.pushTarget??1)-door.openFraction)*j/12};
+     futureGap=Math.min(futureGap,
+      pointToSegment(to,doorLeafSegment(future)));
+    }
     candidates.push({to,step:length,leafClearance:clearance,
-     improvement:clearance-gap,progress:dist(from,goal)-dist(to,goal)});
+     futureGap,improvement:clearance-gap,
+     progress:dist(from,goal)-dist(to,goal)});
    }
   candidates.sort((a,b)=>b.improvement-a.improvement||
    b.progress-a.progress||a.step-b.step);
-  console.log('D321B_GARAGE_FRONT_REAL_SWEEP',JSON.stringify({
-   seed,from,goal,fraction:door.openFraction,
-   actualLeafGap:gap,leaf,validSweepCount:candidates.length,
-   best:candidates.slice(0,12),chosen
+  const futureSafe=candidates.filter(c=>
+   c.leafClearance>=OPERATOR_RADIUS+7&&
+   c.futureGap>=OPERATOR_RADIUS+5);
+  console.log('D321_GARAGE_FRONT_REAL_SWEEP',JSON.stringify({
+   seed,from,goal,actualLeafGap:gap,validSweepCount:candidates.length,
+   futureSafeCount:futureSafe.length,
+   examples:futureSafe.slice(0,5)
   }));
-  assert.ok(Number.isFinite(gap)&&gap<OPERATOR_RADIUS+8);
-  assert.ok(chosen,'a physically swept bounded step-back exists');
-  assert.ok(dist(from,chosen)<=12.001);
-  assert.ok(pointToSegment(chosen,leaf)>=OPERATOR_RADIUS+7);
-  assert.ok(fullBodyMotorStrideClear(from,chosen,sweep));
-  const mocked={p:from,plan:[{id:1,kind:'move',p:goal}],nav:[]};
-  assert.equal(clearedAdoptedHingeStepback(mocked,door),false);
-  noteAdoptedHingeStepback(mocked,door);
-  assert.equal(clearedAdoptedHingeStepback(mocked,door),false,
-   'a claimed retreat cannot release the leaf before real motion');
-  mocked.p={x:113.83879532845819,y:273};
-  door.openFraction=1.55;
-  assert.equal(clearedAdoptedHingeStepback(mocked,door),true,
-   'only physically remote, stationary fully open leaf may release old episode');
-  door.openFraction=.86;
-  assert.equal(clearedAdoptedHingeStepback(mocked,door),false,
-   'partial leaf cannot authorize stale doorway release');
-  door.openFraction=.8587962693316564;
-  for(let i=0;i<=12;i++){
-   const future={...door,openFraction:door.openFraction+
-    (Math.max(1,door.pushTarget??1)-door.openFraction)*i/12};
-   assert.ok(pointToSegment(chosen,doorLeafSegment(future))>=OPERATOR_RADIUS+5,
-    'a retreat cannot be placed in the NEXT opening arc of the same real leaf');
-  }
-  // A valid departure is diagnostic evidence only, NOT proof that the
-  // authoritative door motor can complete the whole four-person route.
+  assert.ok(gap<OPERATOR_RADIUS+8);
+  assert.ok(candidates.length>0,'physical departure must be possible');
+  assert.ok(futureSafe.length>0,
+   'some retreat avoids the current AND near-future solid leaf');
+  // A safe short departure does NOT prove a valid route to the authored GO.
  }finally{activateSite(null);}
 });

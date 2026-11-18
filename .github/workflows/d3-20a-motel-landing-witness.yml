@@ -1,0 +1,51 @@
+name: D3.20A Motel generated entry landing truth witness
+on:
+  push:
+    branches: [feature/d3-20a-motel-entry-landing-witness-20261117]
+    paths:
+      - 'src/breach-order-movement.ts'
+      - 'src/breach-completed-entry-leaf-yield.ts'
+      - 'src/breach-simulation-medical-door-phase.ts'
+      - 'tests/release-d3-20b-completed-leaf-hold.test.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-20a-motel-landing-witness.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-order-movement.ts'
+      - 'src/breach-completed-entry-leaf-yield.ts'
+      - 'src/breach-simulation-medical-door-phase.ts'
+      - 'tests/release-d3-20b-completed-leaf-hold.test.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-20a-motel-landing-witness.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d320a-motel-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  witness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D3.20B exact completed generated-entry and door-swing guards
+        run: node --experimental-strip-types --test tests/release-d3-20b-completed-leaf-hold.test.mjs
+      - name: Real 45s Motel, exact source/alternative landing positions
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=19143269 \
+            --audit-scale=small --entry-settle-witness --queue-motion-witness --progress \
+            > "$RUNNER_TEMP/d320a-motel.json"
+          node -e 'const r=require(process.argv[1]);const m=r.rows[0]?.modes.find(x=>x.mode==="entry");const moss=m?.operators.find(x=>x.id==="moss");const events=m?.entryLandingEvidence||[];console.log("D320A_MOTEL_LANDING",JSON.stringify({seed:r.rows[0].seed,summary:r.summary,moss,events,queueMotion:m?.queueMotionEvidence},null,2));if(r.rows[0]?.seed!==19143269||!m||!moss||!Array.isArray(events))throw Error("missing physical witness");if(!moss.arrived||r.summary.physicalArrivals<6)throw Error("D3.20B Motel completed entry was displaced from real GO");if(r.summary.invalidPositions||r.summary.corruptedPlans||r.summary.physicsStepViolations||r.summary.unboundedManeuverAttempts)throw Error("physical safety violation");for(const e of events){if(!e.originalGoal||!e.executedSettle||!e.from||!Number.isFinite(e.seconds))throw Error("malformed provenance");}' "$RUNNER_TEMP/d320a-motel.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d320a-motel-final-landing-physical-witness
+          path: ${{ runner.temp }}/d320a-motel.json
+          retention-days: 30

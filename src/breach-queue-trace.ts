@@ -22,16 +22,16 @@ export function noteQueueDecision(s:Session,a:TeamActor,
 }
 export type QueueMotionSource='opening-leaf-yield'|'idle-yield'|'deadlock-retreat-request';
 export type QueueMotionEvent={time:number;actor:string;source:QueueMotionSource;
- from:Pt;to:Pt;distance:number};
+ from:Pt;to:Pt;distance:number;doorId?:string};
 const listeners=new WeakMap<Session,(event:QueueMotionEvent)=>void>();
 export function listenQueueMotion(s:Session,listener:((e:QueueMotionEvent)=>void)|null){
  if(listener)listeners.set(s,listener);
  else listeners.delete(s);
 }
-export function noteQueueMotion(s:Session,a:TeamActor,source:QueueMotionSource,from:Pt,to:Pt){
+export function noteQueueMotion(s:Session,a:TeamActor,source:QueueMotionSource,from:Pt,to:Pt,doorId?:string){
  const listener=listeners.get(s);
  if(listener)listener({time:s.seconds,actor:a.id,source,
-  from:{...from},to:{...to},distance:Math.hypot(to.x-from.x,to.y-from.y)});
+  from:{...from},to:{...to},distance:Math.hypot(to.x-from.x,to.y-from.y),...(doorId?{doorId}:{})});
 }
 const signed=(p:Pt,d:Door)=>{
  const width=Math.hypot(d.b.x-d.a.x,d.b.y-d.a.y)||1;
