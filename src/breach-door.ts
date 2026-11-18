@@ -260,7 +260,9 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
  const opened=(d.latchIntegrity??1)<=0;
  if(opened){
    d.heldBy=null;d.locked=false;d.jammed=false;
-   d.forced=true;d.open=true;d.kickImpulse=1;
+   d.latchBroken=true; // Hardware is gone, not just temporarily unlocked.
+   d.forced=true;d.open=true;d.pushTarget=PUSHED_OPEN_LIMIT;
+   d.kickImpulse=1;
    d.angularVelocity=Math.max(9,d.angularVelocity??0);
  }
  return {opened,pushSide};
@@ -364,7 +366,11 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], act
 }
 export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[],
  world?:SessionWorldGeometry){
-  if(d.wedged)d.open=false;
+  // A severed latch cannot make a closed, secured door again. The panel
+  // remains governed by the same real hinge/world/actor sweep.
+  if(d.latchBroken){d.locked=false;d.open=true;
+    d.pushTarget=Math.max(1,d.pushTarget??1);}
+  else if(d.wedged)d.open=false;
   // Fixed internal substeps prevent a paused or coarse test tick from
   // overshooting a hinge and keep old half-second door timings intact.
   let remaining=Math.max(0,Math.min(dt,.5));
@@ -449,6 +455,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
       (policy.canHandAssist?.(door)??
        dist(from,handlePoint(door))<=DOOR_HAND_ACQUIRE_REACH);
     const closing=pressure<0&&!assist;
+    if(closing&&door.latchBroken)continue;
     if(crossing&&closing)continue;
     // Two friendlies can press opposite faces on consecutive motor ticks.
     // Refuse a *body-driven* CLOSE while another squad member is actively
