@@ -40,6 +40,7 @@ import {routeWithSqueezeWorld,routeToNextOperableDoor,
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {fullBodyMotorRouteClear} from '../src/breach-recovery-route-validation.ts';
 import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
 import {physicalOrderOutcome,successfulSquadExecution}
  from '../src/breach-order-outcome.ts';
@@ -986,7 +987,38 @@ function run(site,seed,kind){
           north.x>=r.x&&north.x<=r.x+r.w&&
           north.y>=r.y&&north.y<=r.y+r.h);
         const route=(from,to)=>routeWithSqueezeWorld(from,to,[],world);
+        const liveRoute=(from,to)=>routeWithSqueezeWorld(from,to,
+          session.doors,world);
+        const first=liveRoute(actor.p,north);
+        const second=liveRoute(south,authored);
+        const rawBridge=[...first,south,...second];
+        const split=(points)=>{
+          let at=actor.p;const result=[];
+          for(const point of points){
+            const length=dist(at,point);
+            const n=Math.max(1,Math.ceil(length/96));
+            for(let i=1;i<=n;i++){
+              const t=i/n;
+              result.push({x:at.x+(point.x-at.x)*t,
+                y:at.y+(point.y-at.y)*t});
+            }
+            at=point;
+          }
+          return result;
+        };
+        const bridge=split(rawBridge);
+        const swept=(from,to)=>sweptBodyClear(from,to,
+          session.doors,OPERATOR_RADIUS,world);
+        const legal=first.length>0&&second.length>0&&
+          swept(north,south)&&
+          fullBodyMotorRouteClear(actor.p,bridge,swept,950);
         return {opening,mid,north,south,
+          bridge:{firstNodes:first.length,secondNodes:second.length,
+            totalNodes:bridge.length,
+            first:first.slice(0,5),
+            second:second.slice(0,5),
+            last:bridge.at(-1)??null,fullyMotorLegal:legal},
+
           northStand:bodyClear(north,[],OPERATOR_RADIUS,world),
           southStand:bodyClear(south,[],OPERATOR_RADIUS,world),
           openingSweep:sweptBodyClear(north,south,[],OPERATOR_RADIUS,world),
