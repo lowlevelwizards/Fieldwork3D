@@ -5,7 +5,8 @@ import {doorCenter,type Pt,type Door} from './breach-core.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export type EntrySlot={point:Pt;look:Pt;side:'left'|'right';depth:number};
 export function entryLanes(door:Door,from:Pt,count:number,
- canStand:(p:Pt)=>boolean):EntrySlot[]{
+ canStand:(p:Pt)=>boolean,
+ canReachSlot:(index:number,p:Pt)=>boolean=()=>true):EntrySlot[]{
  const center=doorCenter(door);
  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
  const size=Math.hypot(dx,dy)||1;
@@ -32,7 +33,8 @@ export function entryLanes(door:Door,from:Pt,count:number,
     for(const direction of [sign,-sign]){
      const p={x:center.x+inward.x*depth+tangent.x*lateral*direction,
       y:center.y+inward.y*depth+tangent.y*lateral*direction};
-     if(!canStand(p)||slots.some(s=>dist(s.point,p)<23))continue;
+     if(!canStand(p)||!canReachSlot(i,p)||
+       slots.some(s=>dist(s.point,p)<23))continue;
      chosen=p;break;
     }
     if(chosen)break;
@@ -105,7 +107,7 @@ export function entryLanes(door:Door,from:Pt,count:number,
    for(const slot of candidates[index]){
     if(++examined>BUDGET)return false;
     if(chosen.some(x=>dist(x.point,slot.point)<23)||
-       !available(slot.point))continue;
+       !available(slot.point)||!canReachSlot(index,slot.point))continue;
     chosen.push(slot);
     if(visit(index+1))return true;
     chosen.pop();
