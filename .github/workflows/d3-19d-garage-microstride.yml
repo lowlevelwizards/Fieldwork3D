@@ -22,4 +22,22 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - run: npm install --no-audit --no-fund
-      - run: node --experimental-strip-types --test tests/release-d3-19d-garage-open-leaf-microstride.test.mjs
+      - name: Exact garage open-leaf and existing recovery guards
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-19d-garage-open-leaf-microstride.test.mjs \
+            tests/release-d3-18c-targeted-joins.test.mjs \
+            tests/release-d3-17e-physical-leaf-rejoin.test.mjs
+      - name: Actual Garage 19089932 four-person 45-second fixed-step outcome
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=5 --audit-seed=19089932 \
+            --audit-scale=small --progress \
+            > "$RUNNER_TEMP/d319d-garage45.json"
+          node -e 'const r=require(process.argv[1]);const m=r.rows[0]?.modes.find(x=>x.mode==="entry");const rook=m?.operators.find(o=>o.id==="rook");console.log("D319D_GARAGE45",JSON.stringify({summary:r.summary,entryArrivals:m?.arrivals,entryAccepted:m?.accepted,rook,team:m?.operators.map(o=>({id:o.id,arrived:o.arrived,remaining:o.remaining,active:o.activeOrder,blocker:o.lastBlocker}))},null,2));if(r.summary.invalidPositions||r.summary.corruptedPlans||r.summary.physicsStepViolations||r.summary.unboundedManeuverAttempts)throw Error("real motor/physics safety regression")' "$RUNNER_TEMP/d319d-garage45.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d319d-garage45-motor
+          path: ${{ runner.temp }}/d319d-garage45.json
+          retention-days: 60
