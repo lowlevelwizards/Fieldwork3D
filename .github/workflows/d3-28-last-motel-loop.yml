@@ -1,4 +1,4 @@
-name: D3.28 final Motel entry loop exact forensic witness
+name: D3.28 last Motel entry loop release acceptance
 on:
   push:
     branches: [feature/d3-28-last-motel-entry-loop-20261118]
@@ -6,6 +6,8 @@ on:
       - '.github/workflows/d3-28-last-motel-loop.yml'
       - 'scripts/report-d3-28-motel-loop.mjs'
       - 'src/breach-d328*.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-route-transition.ts'
       - 'tests/release-d3-28*.test.mjs'
   workflow_dispatch:
 permissions:
@@ -70,7 +72,7 @@ jobs:
             loops:p.suspectedLoops,invalid:s.invalidPositions,
             violations:s.physicsStepViolations,corrupt:s.corruptedPlans}));
           if(s.physicalArrivals<161||s.physicalCompletedFour<37||
-             p.suspectedLoops>1||s.invalidPositions||
+             p.suspectedLoops!==0||s.invalidPositions||
              s.physicsStepViolations||s.corruptedPlans||s.exceptions)
             throw Error('D3.28 independent frozen physical no-loss gate');
           NODE
