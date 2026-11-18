@@ -1,0 +1,37 @@
+name: D3.29 read-only terminal cancellation classification
+on:
+  push:
+    branches: [feature/d3-29-terminal-cancellation-triage-20261118]
+    paths:
+      - '.github/workflows/d3-29-cancellation-triage.yml'
+      - 'scripts/report-d3-29-terminal-cancellations.mjs'
+      - 'scripts/lib/d3-29-cancellation-classifier.mjs'
+      - 'tests/release-d3-29-terminal-cancellations.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d329-terminal-cancellations-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  frozen22-cancellation-triage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D3.29 read-only cancellation census and integrity tests
+        run: node --experimental-strip-types --test tests/release-d3-29-terminal-cancellations.test.mjs
+      - name: Replay exact unchanged independent 22-map motor
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality > "$RUNNER_TEMP/d329-fresh22.json"
+          node scripts/report-d3-29-terminal-cancellations.mjs "$RUNNER_TEMP/d329-fresh22.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d329-frozen22-readonly-cancellations
+          path: ${{ runner.temp }}/d329-fresh22.json
+          retention-days: 14
