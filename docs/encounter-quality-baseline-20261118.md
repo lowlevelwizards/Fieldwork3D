@@ -35,14 +35,16 @@
 
 ## Reproducible problems / targeted review queue
 
-### P1 — silent contact with unlocked FRONT leaf (probable high-impact gameplay defect)
+### P1 — squeeze-only final MOVE landing at a known closed FRONT leaf (confirmed gameplay defect)
 
 - `seed 20 / capture / floor-plan`: Moss remains beside CLOSED **unlocked** `FRONT` for ~10.8s, `319` frames classed as door blocking with `motorPause=none`; 6 route repairs; MOVE not completed. Observed motor position (485.02, 284.87), next and goal (482.70, 299.54), `FRONT` open fraction 0, no wedge, holder or lock. No confirmed visual contact. `doorCases` witness in artifact.
 - `seed 26 / clear / floor-plan`: Rook similarly at CLOSED **unlocked** `FRONT` for ~10.83s, `320` door-blocked frames without pause, 6 route repairs; actor position (467.15, 299.90), next/goal (453.78, 301.69), open fraction 0. Firefight still occurs (first contact 0.3s, first shot 0.53s).
 - `seed 25 / capture / floor-plan`: only 15 silent door frames, followed by 96 route and 182 wall-block frames; also genuine contact. Treat as separate mixed-cause route/clearance episode.
 - `seed 11 / clear / floor-plan`: 277 wall-block frames, no contact; `seed 29 / hold / floor-plan`: 273 furniture-block frames despite confirmed contact. **Do not** classify these as locked-door failures.
 
-**Next implementation scope:** exact physical repro of seeds 20/26 with full door and near-motor intent witness; fix the implicit opening eligibility only if it is safe for a real chosen threshold approach. Preserve `crossesDoorThreshold`, explicit DOOR priority, locks, actor physical reach, hinge collision, knowledge and authored MOVE goal. Test parallel wall brushing and intentional locked or jammed door separately. Do not patch by remote opening or passing through the leaf. Run frozen D3.29–31 11/22-map physical acceptance on any gameplay change.
+**Forensic correction (EQA1, 18 Nov):** The problem is **not** a missed auto-open: for both seeds the chosen MOVE endpoint is on the **same side** of the closed FRONT leaf as the actor, and `crossesDoorThreshold` correctly returns false. The existing drag planner accepted terminal points with squeeze-only clearance to the real door leaf. Its ordinary `intelPassable` full-radius wall/cover check does **not** check the player's known closed door-frame clearance. The authoritative swept motor correctly refuses the too-close sideways stride. Attempts to fix this by opening an unrelated door would be physically wrong. Exact witness: https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44412849073.
+
+**Next implementation scope:** keep all intermediate squeeze transit, and only verify/correct the **final drawn MOVE landing** against a full-size operator and the visible *remembered closed* door-frame geometry (never hidden live leaf state), with bounded in-line retreat or atomic rejection. Retain actual hinge, lock, collision, fog, WATCH and undo authority. Independently reproduce both seeds; changing ordinary door opening is out of scope. Run full physical acceptance on any gameplay merge.
 
 ### P2 — objective defense occasionally absent even in prepared scenarios
 
@@ -69,7 +71,7 @@ The existing mode probe cannot evaluate a true Unknown-objective room search, mu
 
 ## Prioritized follow-on (no new general AI)
 
-1. **Fix only proven physical unlocked FRONT-door non-opening**, repro 20/26 and matched physical regression. Evaluate whether a player actually sees an indefinite stalled move.
+1. **Fix only proven squeeze-only final drag landings against known FRONT frames**, repro 20/26 and matched physical regression. The normal closed-door motor opening must not be expanded.
 2. **Improve prepared mission placement** for the exact defensively empty Retail HOLD / Warehouse INTEL/RESCUE cases if legal positions exist. Retain legitimate quiet cases.
 3. **Polish civilian command/readability** following full rescue interaction QA, not by new intelligence or auto-compliance.
 4. **Assess room cover and choice quality** under rendered player-controlled missions with real fog. Optimize existing placement, not arbitrary clutter.
