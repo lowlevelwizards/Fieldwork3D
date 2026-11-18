@@ -10,6 +10,8 @@ import type {Pt} from './breach-core.ts';
 import type {TeamActor} from './breach-game.ts';
 import {fullBodyMotorStrideClear}
  from './breach-stack-micro-corner.ts';
+import {fullBodyMotorRouteClear}
+ from './breach-recovery-route-validation.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
 
@@ -40,7 +42,7 @@ export function selectColdMotorMicroDeparture(
       !fullBodyMotorStrideClear(from,stage,sweep))continue;
    const tail=routeTo(stage,goal);
    if(!tail.length||dist(tail.at(-1)!,goal)>.05||
-      !fullBodyMotorStrideClear(stage,tail[0],sweep))continue;
+      !fullBodyMotorRouteClear(stage,tail,sweep,remaining*2+90))continue;
    let cost=radius,at=stage;
    for(const point of tail){cost+=dist(at,point);at=point;}
    if(!Number.isFinite(cost)||cost>=bestCost||
