@@ -58,7 +58,7 @@ export class CampaignKitPreview{
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
   host.tabIndex=0;
-  host.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight');
+  host.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight Home');
   this.updateOrientationLabel();
   try{
    this.renderer=new THREE.WebGLRenderer({
@@ -130,7 +130,7 @@ export class CampaignKitPreview{
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
   host.tabIndex=0;
-  host.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight');
+  host.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight Home');
   this.updateOrientationLabel();
   if(this.renderer)host.append(this.renderer.domElement);
   host.addEventListener('pointerdown',this.pointerDown);
@@ -155,17 +155,17 @@ export class CampaignKitPreview{
   this.host.setAttribute('aria-label','Rotatable 3D preview of '+
    this.operatorId+' with equipped gear. '+target[this.focusArea]+
    ' view. View angle '+degrees+
-   ' degrees. Use Left and Right arrow keys to rotate.');
+   ' degrees. Use Left and Right arrow keys to rotate; Home resets the angle.');
  }
  private keyDown=(event:KeyboardEvent)=>{
-  if(!this.renderer||!['ArrowLeft','ArrowRight'].includes(event.key))return;
+  if(!this.renderer||!['ArrowLeft','ArrowRight','Home'].includes(event.key))return;
   event.preventDefault();
-  const step=(event.shiftKey?15:5)*Math.PI/180;
-  this.azimuth+=(event.key==='ArrowRight'?step:-step);
   if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
   this.dragFrame=null;
-  this.updateOrientationLabel();
-  this.draw();
+  // The same idempotent camera path powers buttons and keyboard. Home
+  // restores the original angle but never discards the active kit focus.
+  if(event.key==='Home'){this.resetOrientation();return;}
+  this.rotateBy((event.key==='ArrowRight'?1:-1)*(event.shiftKey?15:5));
  };
  private pointerDown=(event:PointerEvent)=>{
   // Ignore secondary touch contacts and non-primary mouse/pen buttons.
