@@ -43,3 +43,52 @@ jobs:
           name: d326-independent-22-physical-witness
           path: ${{ runner.temp }}/d326-fresh22.json
           retention-days: 14
+
+  exact-three:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Exact Apartment, Motel, Garage last physical non-arrivals
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=2 --audit-seed=19036595 --audit-scale=small \
+            --d326-last-stall-probe > "$RUNNER_TEMP/d326-apartment.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=19143269 --audit-scale=small \
+            --d326-last-stall-probe > "$RUNNER_TEMP/d326-motel.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=5 --audit-seed=19285501 --audit-scale=standard \
+            --d326-last-stall-probe > "$RUNNER_TEMP/d326-garage.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for(const site of ['apartment','motel','garage']){
+            const report=JSON.parse(fs.readFileSync(
+              process.env.RUNNER_TEMP+'/d326-'+site+'.json','utf8'));
+            if(report.summary.exceptions||report.summary.invalidPositions||
+              report.summary.physicsStepViolations||
+              report.summary.corruptedPlans)throw Error(site+' physical integrity');
+            const mode=report.rows[0].modes.find(m=>m.mode==='authored');
+            for(const actor of mode.d326StallEvidence??[]){
+              console.log('D326_STALL_MICRO',JSON.stringify({
+                site,seed:report.rows[0].seed,...actor,
+                candidates:actor.candidates.map(c=>({
+                  radius:c.radius,heading:c.heading,point:c.point,
+                  tailNodes:c.tailNodes,tailFirstMicro:c.tailFirstMicro,
+                  futureNodes:c.futureNodes,futureFirstMicro:c.futureFirstMicro,
+                  nextNavMicro:c.nextNavMicro
+                }))
+              }));
+            }
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d326-exact-three-cold-microstride-evidence
+          path: ${{ runner.temp }}/d326-*.json
+          retention-days: 14
