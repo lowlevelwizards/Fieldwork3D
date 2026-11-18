@@ -72,8 +72,8 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  const triangles=meshes.reduce((sum,x)=>{
   const geo=x.geometry;return sum+(geo.index?.count??geo.getAttribute('position').count)/3;
  },0);
- assert.ok(meshes.length<=24, 'H2.1 adds only one lug and one inset mouth: '+meshes.length);
- assert.ok(triangles<=760, 'H2.1 major sculpt exceed revised production audit: '+triangles);
+ assert.equal(meshes.length,22, 'H3 replaces lug and mouth with one solid shell');
+ assert.ok(triangles<=650, 'H3 should reduce production triangle count: '+triangles);
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
   'only the accepted original full-size model is an authored factory preset');
  assert.equal(Object.keys(FAMILY_PARTS).filter(id=>id.startsWith('g36-')).length,6);
@@ -108,56 +108,38 @@ test('G36 C1: shape hierarchy changes without adding cosmetic mesh layers',()=>{
   grip=one(g,'g36Grip'),upper=one(g,'g36ReceiverUpper');
  assert.ok(h&&s&&guard&&mag&&grip&&upper);
  assert.ok(bb(h).max.y>4,'raised original G36 bridge');
- assert.ok(bb(guard).max.z-bb(guard).min.z>3.0&&
-  bb(guard).max.z-bb(guard).min.z<3.1,'H2.1 broad faceted fore-end width');
+ assert.ok(bb(guard).max.z-bb(guard).min.z>=2.99&&
+  bb(guard).max.z-bb(guard).min.z<=3.01,'H3 broad faceted six-sided fore-end width');
  assert.ok(bb(guard).max.y-bb(guard).min.y>3.20&&
   bb(guard).max.y-bb(guard).min.y<3.30,'a deliberate flat roof and floor');
  assert.ok(bb(mag).min.y> -8.40&&bb(mag).min.y< -8.20,
   'factory mag now shares the common STANAG 30 profile length');
  assert.ok(bb(grip).min.y> -5.8,'grip should be short and stout');
  const meshCount=g.children.filter(x=>x instanceof THREE.Mesh).length;
- assert.ok(meshCount<=24,'H2.1 adds exactly the mouth and rear lug: '+meshCount);
+ assert.equal(meshCount,22,'H3 is one shell and no separate lug/mouth');
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('G36 C3: H2.1 real five-station sculpt has sloped front/rear planes',()=>{
+test('G36 C3: H3 single solid hexagon has precisely two visibly angled ends',()=>{
  const m=mat(),g=buildG36OriginalBlockout(m);
  const shell=one(g,'g36LongHandguard');
  assert.ok(shell.userData.g36FacetedMoldedShell);
- assert.equal(shell.userData.g36HandguardArtVersion,'h2.1-angled-four-vents');
- assert.equal(shell.userData.g36HandguardSectionSides,8);
+ assert.equal(shell.userData.g36HandguardArtVersion,'h3-six-sided-solid');
+ assert.equal(shell.userData.g36HandguardSectionSides,6);
+ assert.equal(shell.userData.g36HandguardStations,2);
  const attr=shell.geometry.getAttribute('position');
- assert.equal(attr.count,258,'H2.1 86 triangles including one open front rim');
+ assert.equal(attr.count,60,'H3 has 20 triangles, no throat/lug');
  const b=bb(shell);
- assert.ok(b.max.z-b.min.z>3,'fatter handguard, still graphic');
+ assert.ok(b.max.z-b.min.z>=2.99&&b.max.z-b.min.z<=3.01);
  assert.ok(b.max.y>=1.34&&b.min.y< -1.85);
- const xAt=(x)=>Array.from({length:attr.count},(_,i)=>i)
-  .filter(i=>Math.abs(attr.getX(i)-x)<.01)
-  .map(i=>attr.getY(i));
- assert.ok(xAt(4.35).length>0,'rear face top leans forward');
- assert.ok(xAt(13.45).length>0,'front lower lip carries to original muzzle-side datum');
- assert.ok(bb(one(g,'g36H21MouthRecess')).intersectsBox(b));
- assert.ok(bb(one(g,'g36H21MountingLug')).intersectsBox(b));
- clearWeaponSilhouette(g);m.dispose();
-});
-
-test('G36 C4: H2.1 angled nose remains a broad molded body, not a point',()=>{
- const m=mat(),g=buildG36OriginalBlockout(m);
- const guard=one(g,'g36LongHandguard');
- const p=guard.geometry.getAttribute('position');
- const stations=(min,max)=>{
-  const points=[];
-  for(let i=0;i<p.count;i++)
-   if(p.getX(i)>=min&&p.getX(i)<=max)
-    points.push([p.getY(i),Math.abs(p.getZ(i))]);
-  return {height:Math.max(...points.map(x=>x[0]))-
-   Math.min(...points.map(x=>x[0])),
-   half:Math.max(...points.map(x=>x[1]))};
- };
- const center=stations(5.0,11.3),nose=stations(13.0,13.5);
- assert.ok(nose.height/center.height>.52&&nose.height/center.height<.82,
-  'front intentionally cut down at a visible steep angle');
- assert.ok(nose.half/center.half>.80,'front still broad and chunky');
+ const atY=(y)=>Array.from({length:attr.count},(_,i)=>i)
+  .filter(i=>Math.abs(attr.getY(i)-y)<.01)
+  .map(i=>attr.getX(i));
+ assert.ok(atY(1.35).some(x=>Math.abs(x-4.35)<.01),'rear end roof leans forward');
+ assert.ok(atY(-1.88).some(x=>Math.abs(x-3.75)<.01),'rear end floor at old datum');
+ assert.ok(atY(1.28).some(x=>Math.abs(x-12.94)<.01),'front roof slopes back');
+ assert.ok(atY(-1.80).some(x=>Math.abs(x-13.45)<.01),'front floor at old datum');
+ assert.ok(!one(g,'g36H21MouthRecess')&&!one(g,'g36H21MountingLug'));
  assert.equal(g.children.filter(x=>x.userData.g36LongHandguard).length,1);
  clearWeaponSilhouette(g);m.dispose();
 });
