@@ -895,6 +895,43 @@ function run(site,seed,kind){
        actor.p,authored,session.doors,world):[];
     const actualPortal=authored?routeToNextOperableDoor(
        actor.p,authored,session.doors,world):[];
+    // Offline counterfactual: test only route topology if real closed
+    // doors were opened. These CLONES are never applied to session doors.
+    const allOpenDoors=session.doors.map(door=>({...door,open:true,
+      locked:false,jammed:false,wedged:false,heldBy:null,
+      openFraction:1.55,angularVelocity:0}));
+    const hypotheticalAllOpen=authored?routeWithSqueezeWorld(
+      actor.p,authored,allOpenDoors,world):[];
+    const hypotheticalNoDoors=authored?routeWithSqueezeWorld(
+      actor.p,authored,[],world):[];
+    const perDoor=authored?session.doors.filter(door=>!door.open).map(door=>{
+      const doors=session.doors.map(d=>d.id===door.id?{...d,
+        open:true,locked:false,jammed:false,wedged:false,
+        heldBy:null,openFraction:1.55,angularVelocity:0}:d);
+      const route=routeWithSqueezeWorld(actor.p,authored,doors,world);
+      return {id:door.id,nodes:route.length,first:route.slice(0,3)};
+    }).filter(item=>item.nodes>0).slice(0,20):[];
+    // End-to-end real swept stages around the close window sill and
+    // fixed workshop fixtures. Reference geometry is audit-only.
+    const paths=authored?[
+      [{x:540,y:608},{x:565,y:608},{x:584,y:595},authored],
+      [{x:535,y:607},{x:567,y:607},{x:582,y:590},authored],
+      [{x:533,y:600},{x:568,y:604},{x:591,y:590},authored],
+      [{x:530,y:614},{x:527,y:597},{x:567,y:600},authored],
+      [{x:535,y:620},{x:526,y:602},{x:577,y:599},authored]
+    ]:[];
+    const stageProbes=paths.map((route,index)=>{
+      let prior=actor.p,total=0;const legTruth=[];
+      for(const point of route){
+        const ok=sweptBodyClear(prior,point,session.doors,
+          OPERATOR_RADIUS,world);
+        const d=dist(prior,point);total+=d;
+        legTruth.push({point,full:ok,length:round(d)});
+        prior=point;
+      }
+      return {index,total:round(total),allFull:legTruth.every(x=>x.full),
+        legTruth};
+    });
     const route=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
     const portal=routeToNextOperableDoor(actor.p,goal,session.doors,world);
     return {actor:actor.id,position:{...actor.p},goal:{...goal},
@@ -915,7 +952,13 @@ function run(site,seed,kind){
        normal:{nodes:actualNormal.length,first:actualNormal.slice(0,5)},
        fine:{nodes:actualFine.length,first:actualFine.slice(0,7),
          last:actualFine.at(-1)??null},
-       portal:{nodes:actualPortal.length,first:actualPortal.slice(0,5)}
+       portal:{nodes:actualPortal.length,first:actualPortal.slice(0,5)},
+       allOpen:{nodes:hypotheticalAllOpen.length,
+         first:hypotheticalAllOpen.slice(0,5)},
+       noDoors:{nodes:hypotheticalNoDoors.length,
+         first:hypotheticalNoDoors.slice(0,5)},
+       singleOpenDoors:perDoor,
+       stageProbes
      },
      remainingNavNodes:actor.nav.length,
      normalAtCurrent:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
