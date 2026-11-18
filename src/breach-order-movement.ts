@@ -49,6 +49,17 @@ export function mayHandoffOpenedDoorOrder(
 // waypoint or an excuse to shift a teammate who is already stationary.
 const settledMoveTargets=new WeakMap<TeamActor,{nodeId:number;point:Pt}>();
 const entrySettleProbe=new WeakMap<TeamActor,{nodeId:number;nextAt:number}>();
+// Optional audit-only provenance. Off in the live game, never participates in
+// choosing a destination, modifying an order or moving the physical motor.
+export type EntryLandingWitness={
+ actorId:string;seconds:number;orderId:number;entryDoorId:string;
+ from:Pt;originalGoal:Pt;executedSettle:Pt;
+ source:'blocked-physical-entry'|'friendly-arrival';
+};
+let entryLandingWitness:((event:EntryLandingWitness)=>void)|null=null;
+export function setEntryLandingWitness(
+ observer:((event:EntryLandingWitness)=>void)|null
+):void{entryLandingWitness=observer;}
 export function createMovementOrderHandler(port:OrderExecutionPort){
  const {approach}=port;
  return function executeMovementOrder(s:Session,a:TeamActor,n:PlanNode,dt:number,
@@ -157,8 +168,15 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     entrySettle??friendlyArrivalSettleTarget(a.p,n.p,friendlyPeers,(from,to)=>
       sessionWorldGeometry(s).passable(to,OPERATOR_RADIUS)&&
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):null;
-  if(newlySettled)settledMoveTargets.set(a,{nodeId:n.id,
-    point:{...newlySettled}});
+  if(newlySettled){
+    settledMoveTargets.set(a,{nodeId:n.id,
+      point:{...newlySettled}});
+    if(entryLandingWitness&&n.kind==='move'&&n.entryDoorId)
+      entryLandingWitness({actorId:a.id,seconds:s.seconds,orderId:n.id,
+        entryDoorId:n.entryDoorId,from:{...a.p},originalGoal:{...n.p},
+        executedSettle:{...newlySettled},
+        source:entrySettle?'blocked-physical-entry':'friendly-arrival'});
+  }
   if(entrySettle){
     // The chosen world-truth connector must survive the handoff to the
     // ordinary motor. Otherwise an old intel path can immediately replace
