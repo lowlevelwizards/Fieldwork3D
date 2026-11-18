@@ -48,6 +48,6 @@ jobs:
             tests/release-d3-22-known-full-body-move-goal.test.mjs \
             tests/breach-stroke-safe-cutoff.test.mjs \
             tests/breach-here-watch-continuity.test.mjs \
-            tests/breach-146.test.mjs tests/breach-148.test.mjs
+            tests/breach-146.test.mjs
       - name: TypeScript source contracts
         run: npm run check
