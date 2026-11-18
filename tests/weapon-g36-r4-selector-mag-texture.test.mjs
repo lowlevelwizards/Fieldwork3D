@@ -19,7 +19,7 @@ const sample=(col,row,x,y)=>{
  return d[i];
 };
 test('R5 keeps HK SEF F/E left and S right, all on lower housing above trigger guard',()=>{
- const pivot={x:-5.20,y:-1.96};
+ const pivot={x:-5.20,y:-1.68};
  const expected=['S','E','F'];
  assert.deepEqual(G36_SEF_INDEX_MARKS.map(x=>x.letter),expected);
  const [s,e,f]=G36_SEF_INDEX_MARKS;
@@ -36,7 +36,7 @@ test('R5 keeps HK SEF F/E left and S right, all on lower housing above trigger g
  }
  const m=new THREE.MeshBasicMaterial(),root=buildG36OriginalBlockout(m),
   glyphs=one(root,'g36SelectorMarkings');
- assert.equal(glyphs.userData.g36SelectorArtVersion,'r5-sef-trigger-housing');
+ assert.equal(glyphs.userData.g36SelectorArtVersion,'r6-raised-indexed-sef');
  assert.equal(glyphs.userData.surfaceDetailKind,'hk-selector');
  assert.equal(tris(glyphs),12,'six quads in ONE mesh, not one mesh per letter');
  assert.equal(root.children.filter(x=>x.userData.g36SelectorMarkings).length,1);
@@ -83,7 +83,7 @@ test('R5 magazine uses five low-contrast warped rounds on both opaque faces',()=
    shades.add(value);
    if(value<250)subtle++;
   }
-  assert.ok(shades.has(230)&&shades.has(234)&&shades.has(220));
+  assert.ok(shades.has(226)&&shades.has(230)&&shades.has(220));
   assert.ok(subtle>50&&subtle<1400,
    'subtle rounds visible, but majority of mag remains undecorated');
   assert.equal(sample(col,1,94,90),255,'blank outside silhouette');
