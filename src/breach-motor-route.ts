@@ -238,6 +238,14 @@ export function prepareMotorRoute(
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
     a.lastNormalLaneProbeAt=-10;
   }
+  // D3.27B: one known, non-relocatable destination can trap the actor
+  // behind a permanently blocked stale grid leg. Do not wait for nav=[]
+  // before showing the EXISTING known-only warning. Real >=5.5s blocked
+  // and a nearby original GO are independently enforced by the helper.
+  // A changed GO or world revision lifts the hold; no authored edit here.
+  if(a.nav.length&&a.side==='blue'&&a.blockedTime>=5.5&&
+     holdKnownFixedAuthoredGoal(s,a,p,goalKey,dt,hooks.notify))
+    return 'unavailable';
   if(!a.nav.length){
     // D3.10B: after real retries have established a known, immovable
     // authored landing, do not run the same A* and contact probes forever.
