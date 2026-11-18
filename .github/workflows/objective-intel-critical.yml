@@ -1,0 +1,35 @@
+name: Objective intelligence O6 — critical acceptance
+on:
+  pull_request:
+    paths:
+      - 'src/breach-objective-intel.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-session-factory.ts'
+      - 'src/quick-play-settings.ts'
+      - 'src/campaign-state.ts'
+      - 'src/worldgen/objective-entry-topology.ts'
+      - 'src/worldgen/architectural-compiler.ts'
+      - 'tests/objective-intel-campaign.test.mjs'
+      - '.github/workflows/objective-intel-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  objective-intel-critical:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Objective knowledge, intel economy, entry graph and existing mission contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/objective-intel-campaign.test.mjs \
+            tests/quick-play-scenario-generator.test.mjs \
+            tests/release-b-quickplay-incident-selection.test.mjs \
+            tests/tactical-mission-quality-operations.test.mjs \
+            tests/campaign-12.test.mjs
+      - name: Production typecheck and bundle
+        run: npm run build
