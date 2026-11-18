@@ -1,5 +1,7 @@
 /** 2D authored-order route and marker presentation. No movement authority. */
 import {W,H,type Pt} from './breach-core.ts';
+import {interruptedEntryPoint,paintInterruptedEntryMarker}
+ from './ui/interrupted-entry-marker.ts';
 import {type Session,type TeamActor,team,flashTrajectory} from './breach-game.ts';
 import type {MissionRecorder} from './breach-replay.ts';
 import type {DisplayRouteCache} from './breach-route-cache.ts';
@@ -278,6 +280,12 @@ function paths(){
   // The tiny per-session preview is cached and never runs a new route
   // search until the player changes a plan.
   paintPassageRanks(state,draw,p=>p,colorFor,selected,replaying);
+  // The selected operator has already witnessed this precise obstruction.
+  // This never queries present lock, jam or opening state.
+  if(!replaying){
+    const a=uid(selected),point=a?interruptedEntryPoint(state,a):null;
+    if(point)paintInterruptedEntryMarker(draw,point);
+  }
   const draft=draftRouteNeighbors();
   if(draft){
     draw.save();draw.strokeStyle='#d5cb9d';draw.globalAlpha=.75;

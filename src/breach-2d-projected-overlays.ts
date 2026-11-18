@@ -2,6 +2,8 @@
  * presentation; hit testing, order execution and depth belong elsewhere.
  */
 import {doorCenter,type Pt} from './breach-core.ts';
+import {interruptedEntryPoint,paintInterruptedEntryMarker}
+ from './ui/interrupted-entry-marker.ts';
 import {type Session,type TeamActor,team,enemies,isSeen,lastKnown,
  plannedWindowRoute,flashTrajectory} from './breach-game.ts';
 import type {TacticalScene3D} from './breach-3d.ts';
@@ -257,6 +259,11 @@ function renderProjectedPlans(){
   // A marker is a screen-space annotation, never 3D world geometry.
   paintPassageRanks(state,draw,p=>worldToScreen(p,12),
    colorFor,selected,replaying);
+  // Same witnessed door marker in projected 3D planning, screen-space only.
+  if(!replaying){
+    const a=uid(selected),point=a?interruptedEntryPoint(state,a):null;
+    if(point)paintInterruptedEntryMarker(draw,worldToScreen(point,12));
+  }
   // Recorded operator labels are independent of route visibility.
   if(replaying&&replayNameTags)for(const member of team(state)){
     const pawn=worldToScreen(member.p,32);
