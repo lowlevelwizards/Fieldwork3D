@@ -58,6 +58,8 @@ import {selectColdMotorMicroDeparture,claimColdMotorMicroDeparture}
  from './breach-d326-micro-departure.ts';
 import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
+import {claimD327ColdPassage,coldExactPassageWorldRoute}
+ from './breach-d327-cold-passage.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -210,6 +212,48 @@ export function resolveMotorCollision(
           a.squeeze=false;a.squeezeTime=0;
           return true;
         }
+      }
+    }
+    // D3.27E4: only after 5.5 seconds of REAL repeated obstruction
+    // may an ordinary blue authored MOVE inspect a KNOWN already-open
+    // architectural passage. Each static path edge is certified at
+    // full-body 0.3-unit resolution; doors along it are real, reachable
+    // unlocked panels which the existing motor STILL must operate.
+    // Never grant clearance through closed doors, walls or window sills,
+    // never replace the authored GO, and do not touch ENTRY/STACK.
+    if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       !a.plan[0].entryDoorId&&!a.plan[0].stackDoorId&&
+       !a.squeeze&&!a.doorTraversal&&!a.traversal&&
+       !a.traversalPending&&!a.fireRetreatTarget&&
+       a.blockedTime>=5.5&&
+       (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
+       !!s.site?.openings?.length&&
+       claimD327ColdPassage(a,p,s.seconds)){
+      const known=(_op:{a:Pt;b:Pt},approach:Pt,inside:Pt)=>{
+       if(s.intel.mode==='full-view')return true;
+       const roomFor=(pos:Pt)=>s.site?.rooms.find(room=>
+         room.kind==='room'&&
+         pos.x>=room.x&&pos.x<=room.x+room.w&&
+         pos.y>=room.y&&pos.y<=room.y+room.h);
+       const outside=roomFor(approach),target=roomFor(inside);
+       return !!outside&&!!target&&
+         s.intel.rooms.has(outside.id)&&s.intel.rooms.has(target.id);
+      };
+      const exactAt=profile?beginMotorCpuMeasurement():0;
+      const route=coldExactPassageWorldRoute(a.p,p,
+        s.site?.openings??[],s.doors,world,known,3500);
+      if(profile)profile('motor-collision-exact-passage',
+        finishMotorCpuMeasurement(exactAt));
+      if(route.length&&watchClearanceAllowed(a.p,route[0],p,
+          !!a.aimInstruction&&a.aimInstruction.mode!=='free',
+          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))){
+        setTransientRoute(s,a,route,'motor-exact-passage');
+        markD326FineMotorRoute(a);
+        notePreciseLocalDetour(a,route[0]);
+        a.lastNavRepairAt=s.seconds;
+        provisionalRouteAccepted(a);
+        a.squeeze=false;a.squeezeTime=0;
+        return true;
       }
     }
     const laneAt=profile?beginMotorCpuMeasurement():0;
