@@ -41,7 +41,10 @@ export const DISPATCH_STARTER_CHOICES:
   'identity-marking':['label-swat','label-police']
  },{
   equipment:['primary-smg','primary-shotgun','armor-carrier','utility-breach'],
-  'weapon-preset':['hk-mp5a3']
+  // Optional specialist armory choice, NOT a statement that generic US
+  // tactical-police agencies routinely issued the G36C. The D11 career
+  // standing policy gates this preset at 70; global creative stays open.
+  'weapon-preset':['hk-mp5a3','g36-c-classic']
  }),
  'us-police-polo-2020':policy({
   equipment:['head-cap','armor-soft','rig-none','belt-standard',
