@@ -9,7 +9,7 @@ import * as THREE from 'three';
 type Section=readonly (readonly [number,number])[];
 type PartKind='g36LowerOptic'|'g36UpperReflex'|'g36LowerOpticBarrel'|
  'g36UpperReflexBarrel'|'g36OpticFace'|'g36UpperReflexWindow';
-const STYLE='o2-simplified-125-125-55';
+const STYLE='o3-compact-integrated-125-125-55';
 
 function sixFacetPrism(x0:number,x1:number,rear:Section,front:Section):THREE.BufferGeometry{
  if(rear.length!==6||front.length!==6||x1<=x0)
@@ -62,21 +62,21 @@ export function addG36O2DualOptic(
   root.add(mesh);
   return mesh;
  };
- // O2 housing: 125% breadth with an intentional 9% taper toward the nose.
- // Positioned inside the original G36 optical/handle art envelope.
+ // O3 Stage 1: retain approved 125% width but compress length by 12.5%.
+ // The rear stays at its original mount datum; only the front moves rearward.
  const bodyWidth=.91*1.25;
- const lower=add(sixFacetPrism(-5.83,-.88,
+ const lower=add(sixFacetPrism(-5.83,-1.50,
   section(2.69,3.06,4.08,bodyWidth),
-  section(2.69,3.06,4.08,bodyWidth*.91)), 'g36LowerOptic');
+  section(2.69,3.06,4.08,bodyWidth*.97)), 'g36LowerOptic');
  lower.userData.g36IntegratedOpticShell=true;
  lower.userData.g36OpticCrossSectionSides=6;
 
  // O2 upper hood: 125% prominence, but the top remains exactly 4.70,
  // the existing production sight/weapon envelope landmark.
  const hoodWidth=.73*1.25;
- const upper=add(sixFacetPrism(-5.57,-2.57,
+ const upper=add(sixFacetPrism(-5.57,-3.14,
   hoodSection(3.68,3.94,4.70,hoodWidth),
-  hoodSection(3.68,3.94,4.70,hoodWidth*.90)), 'g36UpperReflex');
+  hoodSection(3.68,3.94,4.70,hoodWidth*.97)), 'g36UpperReflex');
  upper.userData.g36OpticCrossSectionSides=6;
 
  // O2 55% projection: lower ocular projects farther than the upper.
@@ -91,8 +91,8 @@ export function addG36O2DualOptic(
   barrel.userData.g36OpticOcularSides=radialSegments;
   return barrel;
  };
- ocular(-6.38,-5.76,3.57,.625,8,'g36LowerOpticBarrel');
- ocular(-5.92,-5.49,4.30,.395,6,'g36UpperReflexBarrel');
+ ocular(-6.27,-5.76,3.57,.625,8,'g36LowerOpticBarrel');
+ ocular(-5.86,-5.49,4.30,.395,6,'g36UpperReflexBarrel');
 
  // One recessed-looking matte-black circle per eyepiece, no stacked rings.
  // Visible from the rear (-X); inherited shared materials are set by caller.
@@ -102,7 +102,7 @@ export function addG36O2DualOptic(
   geometry.translate(x,y,0);
   return add(geometry,key);
  };
- lens(-6.378,3.57,.625,8,'g36OpticFace');
- lens(-5.918,4.30,.395,6,'g36UpperReflexWindow');
+ lens(-6.268,3.57,.625,8,'g36OpticFace');
+ lens(-5.858,4.30,.395,6,'g36UpperReflexWindow');
  return index;
 }
