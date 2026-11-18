@@ -258,7 +258,9 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
    child.userData.g36SelectorLever)result=finishes.buttpad;
   else if(child.userData.g36FactoryMuzzle)result=finishes.muzzle;
   else if(child.userData.g36Barrel||child.userData.g36StockHinge||
-   child.userData.g36ChargingHandle)result=finishes.steel;
+   child.userData.g36ChargingHandle||child.userData.g36PicatinnyTop||
+   child.userData.g36BackupIron||child.userData.g36ModernHandguardRail)
+   result=finishes.steel;
   // One optical *housing* finish shared with the receiver and handle.
   // Separate dark lens aperture from subtle rim; no painted-on micro rings.
   else if(child.userData.g36OpticFace||child.userData.g36UpperReflexWindow)
