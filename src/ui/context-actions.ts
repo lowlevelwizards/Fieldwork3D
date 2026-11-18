@@ -14,12 +14,12 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nearCivilianCasualty?:boolean;
   carryingCivilian?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;
-  /** Only visible after this operator physically encountered and resolved an obstruction. */
+  /** A prior witnessed interruption exists; not a query of current hidden lock state. */
   resumeAvailable?:boolean;};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
  if(o.resumeAvailable)return [
   {id:'ctxResumeEntry',label:'RESUME ENTRY',group:'primary',
-   title:'Explicitly restore the interrupted orders after resolving the door'},
+   title:'Retry your previously blocked entry after resolving its obstruction'},
   ...contextActionChoices({...o,resumeAvailable:false})
  ];
   if(o.door)return o.doorPartial?[
