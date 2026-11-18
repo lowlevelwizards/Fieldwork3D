@@ -65,11 +65,11 @@ function makeShell(mat:THREE.Material,width:number,withMouth:boolean):THREE.Mesh
  for(let r=0;r<ringCount-1;r++)for(let j=0;j<sides;j++){
   const a=r*sides+j,b=r*sides+(j+1)%sides,
    c=(r+1)*sides+j,d=(r+1)*sides+(j+1)%sides;
-  addTriangle(faces,a,c,b,b,c,d);
+  addTriangle(faces,a,b,c,b,d,c);
  }
  // Flat back face, invisible when mounted to the receiver but essential for
  // checking the object alone. The FRONT is deliberately an actual open rim.
- for(let j=1;j<sides-1;j++)addTriangle(faces,0,j,j+1);
+ for(let j=1;j<sides-1;j++)addTriangle(faces,0,j+1,j);
  const front=(ringCount-1)*sides;
  if(withMouth){
   const last=G36_H2_STATIONS[ringCount-1],mid=(last.top+last.bottom)/2;
