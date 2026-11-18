@@ -4,6 +4,8 @@ on:
     branches: [feature/d3-25-entry-stall-witness-20261118]
     paths:
       - 'scripts/report-d3-25-entry-stalls.mjs'
+      - 'src/breach-order-wait.ts'
+      - 'tests/release-d3-25b-terminal-entry-gate.test.mjs'
       - '.github/workflows/d3-25-entry-stall-witness.yml'
   workflow_dispatch:
 permissions:
@@ -20,6 +22,11 @@ jobs:
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - run: npm install --no-audit --no-fund
+      - name: Locked follower order-lifecycle and existing gate contract
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-25b-terminal-entry-gate.test.mjs \
+            tests/tactical-integration-10-entry-gate.test.mjs
       - name: Townhouse small · 19018816 · real four-person 45-second entry
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
