@@ -69,6 +69,8 @@ const d325StallFeasibility=process.argv.includes('--d325-stall-feasibility');
 // D3.26B: strictly cold end-state microstride truth for the three physical
 // non-arrivals. Off by default and never part of the authoritative motor.
 const d326LastStallProbe=process.argv.includes('--d326-last-stall-probe');
+// D3.27A: exact Garage final-contact geometry; read-only, off by default.
+const d327GarageProbe=process.argv.includes('--d327-garage-probe');
 const d326Micro=d326LastStallProbe?
  await import('../src/breach-stack-micro-corner.ts'):null;
 const d326Fine=d326LastStallProbe?
@@ -847,6 +849,64 @@ function run(site,seed,kind){
        session.doors,world).length,
      candidates:previews};
    }).filter(Boolean):null;
+  // D3.27A: the one remaining frozen physical non-arrival is Garage
+  // 19285501 / Moss. Observe REAL full-body and oriented squeeze clearance
+  // in the current world. No route, actor, door or cover mutation occurs.
+  const d327GarageEvidence=d327GarageProbe&&kind==='authored'?
+   (() => {
+    const actor=actors.find(a=>a.id==='moss');
+    const goal=actor?planned.goals.get(actor.id):null;
+    if(!actor||!goal)return null;
+    const world=sessionWorldGeometry(session),next=actor.nav[0]??goal;
+    const full=(a,b)=>sweptBodyClear(a,b,session.doors,
+      OPERATOR_RADIUS,world);
+    const narrow=(a,b)=>sweptProfileClear(a,b,session.doors,
+      squeezeFacing(Math.atan2(b.y-a.y,b.x-a.x)),'squeeze',world);
+    const length=dist(actor.p,next);
+    const motor=length>.01?{
+      x:actor.p.x+(next.x-actor.p.x)*Math.min(length,.3)/length,
+      y:actor.p.y+(next.y-actor.p.y)*Math.min(length,.3)/length
+    }:next;
+    const samples=[];
+    for(const length of [0.3,2,5,10,20]){
+     const headings=[];
+     for(let i=0;i<16;i++){
+      const t=i*Math.PI/8;
+      const p={x:actor.p.x+length*Math.cos(t),
+        y:actor.p.y+length*Math.sin(t)};
+      headings.push({i,x:round(p.x),y:round(p.y),
+       normal:full(actor.p,p),narrow:narrow(actor.p,p),
+       towardGoal:dist(p,goal)<dist(actor.p,goal)});
+     }
+     samples.push({length,
+      normal:headings.filter(x=>x.normal).map(x=>x.i),
+      narrow:headings.filter(x=>x.narrow).map(x=>x.i),
+      normalToward:headings.filter(x=>x.normal&&x.towardGoal).map(x=>x.i),
+      narrowToward:headings.filter(x=>x.narrow&&x.towardGoal).map(x=>x.i)});
+    }
+    const route=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
+    const portal=routeToNextOperableDoor(actor.p,goal,session.doors,world);
+    return {actor:actor.id,position:{...actor.p},goal:{...goal},
+     next:{...next},distanceToGoal:round(dist(actor.p,goal)),
+     blockedTime:round(actor.blockedTime),lastBlocker:actor.lastBlocker,
+     normalAtCurrent:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
+     normalAtGoal:bodyClear(goal,session.doors,OPERATOR_RADIUS,world),
+     immediateFull:full(actor.p,motor),immediateNarrow:narrow(actor.p,motor),
+     fullToNext:full(actor.p,next),narrowToNext:narrow(actor.p,next),
+     normalWorldNodes:route.length,portalNodes:portal.length,
+     samples,
+     nearestCover:world.cover.map((obstacle,i)=>({
+      index:i,x:obstacle.x,y:obstacle.y,w:obstacle.w,h:obstacle.h,
+      fixture:obstacle.fixture??null,kind:obstacle.kind??null,
+      movable:obstacle.movable??null,
+      gap:round(Math.hypot(obstacle.x-actor.p.x,obstacle.y-actor.p.y))
+     })).sort((a,b)=>a.gap-b.gap).slice(0,18),
+     doors:session.doors.map(door=>({
+      id:door.id,locked:!!door.locked,open:!!door.open,
+      fraction:round(door.openFraction??0),
+      gap:round(pointToSegment(actor.p,doorLeafSegment(door)))
+     })).sort((a,b)=>a.gap-b.gap).slice(0,10)};
+   })():null;
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -960,6 +1020,7 @@ function run(site,seed,kind){
    ...(d325Feasibility?{d325Feasibility}:{}),
    ...(d326StallEvidence?{d326StallEvidence}:{}),
    ...(d326LastStallProbe?{d326MicroTrace}:{}),
+   ...(d327GarageProbe?{d327GarageEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
