@@ -35,7 +35,8 @@ import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} fro
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
 import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing,escapeOpenDoorOverlap} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeToNextOperableDoor,
- recoverNormalLane,routeWithSqueezeIntel,routeWithNormalWorld}
+ recoverNormalLane,routeWithSqueezeIntel,routeWithNormalWorld,
+ coldFineMotorWorldRoute}
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
@@ -581,6 +582,15 @@ function run(site,seed,kind){
     }
     const episode=actor.doorTraversal;
     const door=episode?session.doors.find(d=>d.id===episode.doorId):null;
+    const authored=actor.plan[0]?.kind==='move'?actor.plan[0].p:null;
+    const actualWorld=authored?routeWithSqueezeWorld(
+       actor.p,authored,session.doors,world):[];
+    const actualFine=authored?coldFineMotorWorldRoute(
+       actor.p,authored,session.doors,world):[];
+    const actualNormal=authored?routeWithNormalWorld(
+       actor.p,authored,session.doors,world):[];
+    const actualPortal=authored?routeToNextOperableDoor(
+       actor.p,authored,session.doors,world):[];
     const route=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
     const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
     d314bClearanceEvidence={
@@ -900,6 +910,13 @@ function run(site,seed,kind){
        knownFixedGoalBlock(session,actor.plan[0].p):null,
      actualOrderFullBodyClear:actor.plan[0]?.kind==='move'?
        bodyClear(actor.plan[0].p,session.doors,OPERATOR_RADIUS,world):null,
+     actualGoalRoutes:{
+       world:{nodes:actualWorld.length,first:actualWorld.slice(0,5)},
+       normal:{nodes:actualNormal.length,first:actualNormal.slice(0,5)},
+       fine:{nodes:actualFine.length,first:actualFine.slice(0,7),
+         last:actualFine.at(-1)??null},
+       portal:{nodes:actualPortal.length,first:actualPortal.slice(0,5)}
+     },
      remainingNavNodes:actor.nav.length,
      normalAtCurrent:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
      normalAtGoal:bodyClear(goal,session.doors,OPERATOR_RADIUS,world),
