@@ -56,7 +56,7 @@ test('R1 selectors shift forward and up on BOTH sides without changing shared se
   assert.ok(near(hub.position.x,-3.95,.01));
   assert.ok(near(hub.position.y,-1.14,.01));
   assert.ok(hub.position.x>-5.20&&hub.position.y>-1.96);
-  assert.equal(hub.geometry.parameters.radialSegments,8);
+  assert.equal(hub.geometry.parameters.radialSegments,6);
  }
  for(const lever of levers)assert.ok(lever.position.x>-4.00&&lever.position.y>-1.25);
  clearWeaponSilhouette(g);mat.dispose();
