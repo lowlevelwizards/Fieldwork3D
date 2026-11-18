@@ -177,18 +177,6 @@ test('release from settled short-stock to ready and ADS never flips elbow bend b
      const alpha=i/64;
      const f=show(destination,2.01+alpha*.32,
       transition('short',destination,source,alpha));
-     if(id==='ar-m4a1'&&destination==='ready'&&i>=40&&i<=46){
-      const elbows=rig.arms.map((arm,side)=>{
-       const wrist=arm.hand.position.clone();
-       const elbow=arm.lower.position.clone().multiplyScalar(2).sub(wrist);
-       const shoulder=arm.upper.position.clone().multiplyScalar(2).sub(elbow);
-       return {side,armReach:shoulder.distanceTo(wrist),
-        bend:arm.bend.toArray(),elbow:elbow.toArray(),
-        shoulder:shoulder.toArray(),wrist:wrist.toArray(),
-        outOfReach:arm.outOfReach};
-      });
-      console.log('SHORT_RELEASE_DIAGNOSTIC',JSON.stringify({step:i,alpha,elbows}));
-     }
      const d=distance(previous,f);
      if(d>maxJump){
       maxJump=d;worstStep=i;
