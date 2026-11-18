@@ -5,8 +5,8 @@
  * The same live-intended original G36 meshes are UV projected in place.
  */
 import * as THREE from 'three';
-import {G36_H2_VENT_CENTERS,G36_H2_VENT_SIZE,h21FactoryX,h21FactoryY}
- from './g36-h2-handguard-study.ts';
+import {G36_H3_VENT_CENTERS,G36_H3_VENT_SIZE}
+ from './g36-h3-handguard.ts';
 type Region='guard'|'receiver'|'lower'|'magazine';
 type Tile='guard-right'|'guard-left'|'receiver-right'|'receiver-left'|
  'lower-right'|'lower-left'|'magazine-right'|'magazine-left';
@@ -30,14 +30,11 @@ const zone=(x:number,y:number,x0:number,x1:number,y0:number,y1:number)=>
  */
 function ink(tile:Tile,x:number,y:number):number{
  if(tile==='guard-right'||tile==='guard-left'){
-  // H2.1: SAME four bold high side slots as the isolated approved study.
-  // Preserve the single shared atlas / pooled factory material; do not add
-  // transparent vent decals or a separate per-frame InstancedMesh.
-  const halfLength=G36_H2_VENT_SIZE.length*.97/2;
-  const middle=h21FactoryY(G36_H2_VENT_SIZE.centerY);
-  const halfHeight=G36_H2_VENT_SIZE.height*1.04/2;
-  for(const localX of G36_H2_VENT_CENTERS){
-   const center=h21FactoryX(localX);
+  // Four unchanged large graphic side vents; no vent geometry.
+  const halfLength=G36_H3_VENT_SIZE.length/2;
+  const middle=G36_H3_VENT_SIZE.centerY;
+  const halfHeight=G36_H3_VENT_SIZE.height/2;
+  for(const center of G36_H3_VENT_CENTERS){
    if(zone(x,y,center-halfLength,center+halfLength,
     middle-halfHeight,middle+halfHeight))return 89;
   }
@@ -76,6 +73,10 @@ export function g36PixelAtlas():THREE.DataTexture{
    data[i]=shade;data[i+1]=shade;data[i+2]=shade;data[i+3]=255;
   }
  }
+ // One reusable slightly dark front-cap swatch in the otherwise blank corner
+ // of the guard atlas. No extra material, mesh, texture, or front cavity.
+ const swatch=((2)*width+2)*4;
+ data[swatch]=181;data[swatch+1]=181;data[swatch+2]=181;
  const tex=new THREE.DataTexture(data,width,height,THREE.RGBAFormat,THREE.UnsignedByteType);
  tex.name='G36 P8 broad HK identity atlas';
  tex.colorSpace=THREE.SRGBColorSpace;
@@ -138,14 +139,20 @@ export function applyG36PixelDetails(root:THREE.Group):void{
     c.fromBufferAttribute(pos,i+2);
     normal.crossVectors(u.subVectors(b,a),v.subVectors(c,a)).normalize();
     const selected=Math.abs(normal.z)>.72?tileFor(region,normal.z):null;
+    const solidFront=region==='guard'&&normal.x>.85;
     for(let j=0;j<3;j++){
      const x=pos.getX(i+j),y=pos.getY(i+j);
      const tile=selected??tileFor(region,normal.z>=0?1:-1);
      const [uu,vv]=uv(tile,x,y);
      coords[(i+j)*2]=uu;coords[(i+j)*2+1]=vv;
     }
-    // Non-side faces should remain neutral, without accidental stretched art.
-    if(!selected)for(let j=0;j<3;j++){
+    // All non-side faces remain plain, except the front's darker solid cap.
+    // The slanted front is part of THIS SAME mesh, not an inset or overlay.
+    if(solidFront)for(let j=0;j<3;j++){
+     coords[(i+j)*2]=2.5/(COLS*TILE);
+     coords[(i+j)*2+1]=2.5/(ROWS*TILE);
+    }
+    else if(!selected)for(let j=0;j<3;j++){
      // Rather than sample an arbitrary corner of an illustrated tile,
      // use its verified blank upper-right texel.
      const tile=definitions[tileFor(region,normal.z>=0?1:-1)];
