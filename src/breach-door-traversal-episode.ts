@@ -5,8 +5,6 @@
 import {doorCenter,doorLeafSegment,pointToSegment,OPERATOR_RADIUS,
  type Door,type Pt} from './breach-core.ts';
 import {crossingDoor} from './breach-passage.ts';
-import {clearedAdoptedHingeStepback}
- from './breach-partial-hinge-stepback.ts';
 import type {TeamActor} from './breach-game.ts';
 
 export type DoorManeuver='direct'|'push-through'|'outside-leaf'|'grab-and-hold';
@@ -48,11 +46,6 @@ function candidate(actor:TeamActor,doors:readonly Door[],goal:Pt,
  let best:Door|null=null,bestDistance=66*66;
  for(const door of doors){
   if(explicitId&&door.id!==explicitId)continue;
-  // A physically completed hinge retreat should not immediately reacquire
-  // the SAME stale blocked episode from well outside the fully opened leaf.
-  // Once actual movement returns near that solid leaf, normal D2 ownership
-  // may be established again; this never crosses a door or edits a GO.
-  if(clearedAdoptedHingeStepback(actor,door))continue;
   const d=squared(actor.p,doorCenter(door));
   if(d>bestDistance)continue;
   if(!crossingDoor({id:actor.id,p:actor.p,goal,health:actor.health,
@@ -82,16 +75,6 @@ export function syncDoorTraversalEpisode(
   let door:Door|undefined;
   for(const d of doors)if(d.id===episode.doorId){door=d;break;}
   if(!door){actor.doorTraversal=null;return null;}
-  // D3.21C: after an actually executed, fully swept short step-back and
-  // a genuinely FULLY OPEN stationary leaf, the old blocked grab-and-hold
-  // context must release when the body is already out of the leaf sweep.
-  // Otherwise it masks the ordinary initial-portal route retry forever.
-  // No remote door action, collision exemption or authored plan mutation.
-  if(episode.phase==='blocked'&&episode.maneuver==='grab-and-hold'&&
-     actor.blockedTime>=2.5&&!actor.nav.length&&
-     clearedAdoptedHingeStepback(actor,door)){
-    actor.doorTraversal=null;return null;
-  }
   // D3.4: a traversed doorway cannot own a remote actor indefinitely.
   // A long alternate route may travel tangent to the door frame, keeping
   // signed-side classification in CROSS even hundreds of units away.
