@@ -29,6 +29,11 @@ export function escortWalkMultiplier(
  if(!person||person.following!==rescuer.id||
     person.state!=='escorted'||person.health<=0)return 1;
  const separation=dist(rescuer.p,person.p);
+ // A real follower on a valid but circuitous route can take longer than
+ // the escort to round a door. Stop *ordinary walking* before the fixed
+ // 125-unit custody break; do not let the default MOVE outrun FOLLOW.
+ // Explicit RUN/sprint still uses its original independent authority.
+ if(separation>=108)return 0;
  if(separation<=30)return 1;
  const base=person.health<2||person.injuryStage>0?.39:.78;
  if(separation<=62)return base;
@@ -36,7 +41,9 @@ export function escortWalkMultiplier(
  return base*.45;
 }
 export function rescueFollowGoal(
- rescuer:{p:Pt;heading:number;priorP?:Pt;velocity?:number}):Pt{
+ rescuer:{p:Pt;heading:number;priorP?:Pt;velocity?:number},
+ follower?:Pick<CivilianActor,'p'>|null
+):Pt{
  // EQA3.1: a tactical actor can WATCH a hostile while traversing sideways.
  // The civilian should follow their ACTUAL travelled corridor, not a point
  // behind the barrel. Otherwise a long sideways MOVE zigzags the civilian
@@ -45,8 +52,19 @@ export function rescueFollowGoal(
  const dx=rescuer.priorP?rescuer.p.x-rescuer.priorP.x:0;
  const dy=rescuer.priorP?rescuer.p.y-rescuer.priorP.y:0;
  const moved=Math.hypot(dx,dy);
- const dir=rescuer.velocity!==undefined&&rescuer.velocity>3&&
-   moved>.025?Math.atan2(dy,dx):rescuer.heading;
- return {x:rescuer.p.x-23*Math.cos(dir),
-   y:rescuer.p.y-23*Math.sin(dir)};
+ if(rescuer.velocity!==undefined&&rescuer.velocity>3&&moved>.025){
+  const dir=Math.atan2(dy,dx);
+  return {x:rescuer.p.x-23*Math.cos(dir),
+    y:rescuer.p.y-23*Math.sin(dir)};
+ }
+ // When a walking escort brakes to let a trailing civilian catch up,
+ // aim their next real route toward the operator, not a point behind
+ // a potentially unrelated WATCH/combat-facing heading.
+ const gap=follower?dist(rescuer.p,follower.p):0;
+ if(follower&&gap>30)return {
+  x:rescuer.p.x+(follower.p.x-rescuer.p.x)*23/gap,
+  y:rescuer.p.y+(follower.p.y-rescuer.p.y)*23/gap
+ };
+ return {x:rescuer.p.x-23*Math.cos(rescuer.heading),
+   y:rescuer.p.y-23*Math.sin(rescuer.heading)};
 }
