@@ -1,0 +1,38 @@
+name: EQA3.0 consolidated paired decision evidence
+on:
+  push:
+    branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
+    paths:
+      - '.github/workflows/eqa3-collate.yml'
+      - 'scripts/audit-eqa3-collate.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  frozen-paired-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Download ALL five frozen read-only artifacts from baseline run 44420688664
+        uses: actions/download-artifact@v4
+        with:
+          run-id: 44420688664
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          pattern: eqa3-*
+          merge-multiple: true
+          path: artifacts/eqa3
+      - name: Cross-compare paired entry & intel with actual run data
+        run: node scripts/audit-eqa3-collate.mjs
+      - name: Upload consolidated dataset and review CSV
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-consolidated-review
+          path: |
+            artifacts/eqa3/consolidated.json
+            artifacts/eqa3/paired-entry.csv
