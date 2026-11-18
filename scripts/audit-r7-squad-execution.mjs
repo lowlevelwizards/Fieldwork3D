@@ -990,6 +990,12 @@ function run(site,seed,kind){
         const liveRoute=(from,to)=>routeWithSqueezeWorld(from,to,
           session.doors,world);
         const first=liveRoute(actor.p,north);
+        const portalPrefix=routeToNextOperableDoor(
+          actor.p,north,session.doors,world);
+        const portalPrefixSwept=portalPrefix.length>0&&
+          fullBodyMotorRouteClear(actor.p,portalPrefix,
+            (from,to)=>sweptBodyClear(from,to,
+              session.doors,OPERATOR_RADIUS,world),950);
         const second=liveRoute(south,authored);
         const rawBridge=[...first,south,...second];
         const split=(points)=>{
@@ -1013,6 +1019,10 @@ function run(site,seed,kind){
           swept(north,south)&&
           fullBodyMotorRouteClear(actor.p,bridge,swept,950);
         return {opening,mid,north,south,
+          portalNorth:{nodes:portalPrefix.length,
+            allSweptAtMotorResolution:portalPrefixSwept,
+            first:portalPrefix.slice(0,5),
+            last:portalPrefix.at(-1)??null},
           bridge:{firstNodes:first.length,secondNodes:second.length,
             totalNodes:bridge.length,
             first:first.slice(0,5),
