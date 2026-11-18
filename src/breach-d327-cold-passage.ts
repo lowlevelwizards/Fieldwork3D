@@ -62,6 +62,18 @@ export function coldExactPassageWorldRoute(
    a,b,doors,OPERATOR_RADIUS,world);
  const motorStatic=(a:Pt,b:Pt)=>
    fullBodyMotorStrideClear(a,b,staticSweep);
+ // Static geometry is mandatory. A blocked CURRENT door may be a future
+ // physically operated gate, but never count it as already traversed.
+ const onlyOperableDoorBlocks=(a:Pt,b:Pt):boolean=>{
+  if(fullBodyMotorStrideClear(a,b,liveSweep))return true;
+  if(!motorStatic(a,b))return false;
+  const blocked=doors.filter(door=>
+    !fullBodyMotorStrideClear(a,b,(x,y)=>
+      sweptBodyClear(x,y,[door],OPERATOR_RADIUS,world)));
+  return blocked.length>0&&blocked.every(door=>
+    !door.locked&&!door.jammed&&!door.wedged&&!door.heldBy&&
+    canAutoOpenEnRoute({kind:'move'},door.id));
+ };
  if(!bodyClear(from,doors,OPERATOR_RADIUS,world)||
     !bodyClear(goal,doors,OPERATOR_RADIUS,world)||
     !Number.isFinite(goal.x+goal.y+from.x+from.y))return [];
@@ -78,7 +90,8 @@ export function coldExactPassageWorldRoute(
   if(!known(op,approach,interior)||
      !bodyClear(approach,doors,OPERATOR_RADIUS,world)||
      !bodyClear(interior,doors,OPERATOR_RADIUS,world)||
-     !motorStatic(approach,interior)||!liveSweep(approach,interior))
+     !motorStatic(approach,interior)||
+     !onlyOperableDoorBlocks(approach,interior))
     return [];
   return [{op,i,approach,interior,
     score:dist(from,approach)+dist(interior,goal)}];
