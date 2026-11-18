@@ -40,7 +40,8 @@ jobs:
             tests/weapon-g36-h1-handguard.test.mjs \
             tests/weapon-g36-r1-minimal-receiver.test.mjs \
             tests/weapon-g36-r2-structure-economy.test.mjs \
-            tests/weapon-g36-r3-sef-magwell-flashhider.test.mjs
+            tests/weapon-g36-r3-sef-magwell-flashhider.test.mjs \
+            tests/weapon-g36-r4-selector-mag-texture.test.mjs
       - name: TypeScript and build integrity
         run: |
           npm run check
