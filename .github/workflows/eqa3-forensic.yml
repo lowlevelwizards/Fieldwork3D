@@ -1,0 +1,46 @@
+name: EQA3.1 read-only exact-scenario contact / objective / escort forensics
+on:
+  push:
+    branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
+    paths:
+      - '.github/workflows/eqa3-forensic.yml'
+      - 'scripts/audit-eqa3-scout.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: eqa3-forensic-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  contact-and-flow:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - {seed: 14, intel: unknown}
+          - {seed: 20, intel: unknown}
+          - {seed: 13, intel: unknown}
+          - {seed: 25, intel: unknown}
+          - {seed: 17, intel: unknown}
+          - {seed: 17, intel: confirmed}
+          - {seed: 12, intel: confirmed}
+          - {seed: 23, intel: confirmed}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Actual real motor/civilian/AI state snapshots at contact and mission transitions
+        run: |
+          mkdir -p artifacts/eqa3
+          EQA3_OUTPUT=artifacts/eqa3/forensic-${{ matrix.seed }}-${{ matrix.intel }}.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --forensic --seed=${{ matrix.seed }} --intel=${{ matrix.intel }} --seconds=90 > artifacts/eqa3/console-${{ matrix.seed }}-${{ matrix.intel }}.txt
+          node -e "let a=require('./artifacts/eqa3/forensic-${{ matrix.seed }}-${{ matrix.intel }}.json'); console.log(JSON.stringify({summary:a.summary,rows:a.rows.map(r=>({seed:r.seed,entry:r.insertion,mission:r.mission,stage:r.missionStage,routeAborts:r.routeAbort,rejected:r.rejected,firstContact:r.firstContactAt,events:r.forensic.filter(x=>x.type!=='tick').slice(0,35).map(x=>({at:x.at,type:x.type,stage:x.stage,player:x.player,escort:x.escort,person:x.person,firstEnemy:x.hostiles[0]})),late:r.forensic.slice(-4).map(x=>({at:x.at,type:x.type,stage:x.stage,player:x.player,person:x.person,escort:x.escort}))}))},null,2))" > artifacts/eqa3/summary-${{ matrix.seed }}-${{ matrix.intel }}.json
+          head -c 14000 artifacts/eqa3/summary-${{ matrix.seed }}-${{ matrix.intel }}.json
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-forensic-${{ matrix.seed }}-${{ matrix.intel }}
+          path: artifacts/eqa3/
