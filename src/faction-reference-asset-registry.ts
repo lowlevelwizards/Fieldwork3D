@@ -19,6 +19,14 @@ export type ReferenceGapFidelity='exact'|'approximate'|'missing';
 export function referenceGapFidelity(ref:FactionReference,gap:ReferenceGap):
  ReferenceGapFidelity{
  switch(gap.id){
+  case 'g36-family':{
+   // Closing the G36-specific *visual* gap requires an actually selected
+   // G36 family model, not an available unselected asset or AR proxy.
+   // The curated German look remains representative, not exact issue evidence.
+   const selected=referenceWeaponChoice(ref.id);
+   if(selected.preset.family!=='g36'||selected.fidelity==='proxy')return 'missing';
+   return selected.fidelity==='exact'?'exact':'approximate';
+  }
   case 'fnc-family':{
    // A modeled FN FNC preview is not automatically a historically exact issue.
    const selected=referenceWeaponChoice(ref.id);
