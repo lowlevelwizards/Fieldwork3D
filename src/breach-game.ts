@@ -144,6 +144,7 @@ import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployme
 import type {OperationKind} from './breach-operations.ts';
 
 import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
+import {discoverObjective,type ObjectiveKnowledge} from './breach-objective-intel.ts';
 
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
 import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type ReloadMode} from './breach-magazines.ts';
@@ -325,6 +326,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   squadEntryUndo:SquadPlanTransaction|null;
   squadEntryRedo:SquadPlanTransaction|null;
   variant:number;scenario:Scenario;
+  /** Mission-target knowledge is independent of map/fog settings. */
+  objectiveIntel?:ObjectiveKnowledge;
   mission:MissionStage;nextId:number;noise:NoiseEvent[];nextNoiseId:number;
   reports:TacticalReport[];nextReportId:number;
   shots:ShotEvent[];casings:EjectedCasing[];nextShotId:number;
@@ -1399,6 +1402,12 @@ function observe(s:Session){
     observeIntel(s.intel,s.site,s.doors,p=>liveVisibility(s,p),
       sessionWorldGeometry(s));
     s.intelObservedAt=s.seconds;
+    // Even full architectural visibility never reveals an objective until
+    // a squad member actually observes it. Confirmation is persistent.
+    if(s.objectiveIntel&&!s.objectiveIntel.discovered){
+      discoverObjective(s,team(s).some(a=>
+        observerPointVisible(s,a,s.scenario.objective)));
+    }
   }
   // Site knowledge persists, current knowledge does not. Sight has geometry,
   // distance and facing: invisible opponents never leak through the UI.
