@@ -10,7 +10,10 @@ import {implicitOpenDenial,handleMotorDoor}
 const verdict=(allowed,reason)=>({allowed,reason});
 test('D3.29D: a rejected OPEN never gains automatic hinge authority',()=>{
  const normal={locked:false,jammed:false,wedged:false,heldBy:null};
- for(const reason of ['out-of-reach','already-open','unsupported']){
+ // Out-of-reach on an otherwise operable unlocked leaf is normal
+ // while a physical threshold crossing is in progress, not a lock.
+ assert.equal(implicitOpenDenial(normal,verdict(false,'out-of-reach'),'ash'),null);
+ for(const reason of ['already-open','unsupported']){
   assert.equal(implicitOpenDenial(normal,verdict(false,reason),'ash'),reason);
  }
  assert.equal(implicitOpenDenial(normal,verdict(true,null),'ash'),null);
