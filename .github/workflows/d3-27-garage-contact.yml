@@ -48,6 +48,10 @@ jobs:
             ?.d327GarageEvidence;
           if(!witness||witness.actor!=='moss'||!witness.samples?.length)
             throw Error('D3.27 missing exact frozen Garage physical witness');
+          if(witness.goalStaticPassable||!witness.authoredGoalIntact||
+             witness.orderIssue!==
+              'MOVE BLOCKED · GO INSIDE FURNITURE · DRAG WAYPOINT TO CLEAR FLOOR')
+            throw Error('D3.27 known fixture GO warning missing or authored goal rewritten');
           console.log('D327_GARAGE_CONTACT',JSON.stringify(witness));
           NODE
       - uses: actions/upload-artifact@v4
@@ -55,4 +59,39 @@ jobs:
         with:
           name: d327-exact-garage-physical-contact
           path: ${{ runner.temp }}/d327-garage.json
+          retention-days: 14
+
+  frozen22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D3.27 no-loss independent 22-site physical truth
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress > "$RUNNER_TEMP/d327-fresh22.json"
+          node scripts/report-d3-26-last-failures.mjs "$RUNNER_TEMP/d327-fresh22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const result=JSON.parse(fs.readFileSync(
+            process.env.RUNNER_TEMP+'/d327-fresh22.json','utf8'));
+          const s=result.summary,p=result.progressSummary;
+          if(s.physicalArrivals<160||s.physicalCompletedFour<36||
+             p.suspectedLoops>1||s.invalidPositions||
+             s.physicsStepViolations||s.corruptedPlans)
+            throw Error('D3.27 regressed merged D3.26 22-site physical acceptance');
+          console.log('D327_FROZEN_ACCEPTANCE',JSON.stringify({
+            arrivals:s.physicalArrivals,completeSquads:s.physicalCompletedFour,
+            loops:p.suspectedLoops
+          }));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d327-frozen22-physical-witness
+          path: ${{ runner.temp }}/d327-fresh22.json
           retention-days: 14
