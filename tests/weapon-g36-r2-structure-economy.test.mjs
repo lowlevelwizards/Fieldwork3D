@@ -67,14 +67,14 @@ test('R2 charging handle is top-center forward under carry-handle, NOT fake side
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('R3 shares genuine HK SEF letters: white S + muted red E/F, two faces ONE mesh',()=>{
+test('R4 indexes genuine HK SEF letters around pivot in ONE batched mesh',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const mark=one(g,'g36SelectorMarkings');
  assert.ok(mark);
  assert.equal(all(g,'g36SelectorMarkings').length,1);
  assert.equal(mark.userData.g36SelectorMarkCount,2);
  assert.equal(mark.userData.surfaceDetailKind,'hk-selector');
- assert.equal(tris(mark),4,'indexed two-plane marker remains exactly four triangles');
+ assert.equal(tris(mark),12,'three letter positions on each side in one mesh');
  assert.equal(mark.castShadow,false);
  assert.equal(mark.material.transparent,true);
  assert.ok(mark.material.map?.image?.data,'reuse common genuine SEF lettering texture');
@@ -129,7 +129,7 @@ test('R2 polygon economy: one ONLY new mesh for colored pictograms, no redundant
  assert.ok(tris(one(g,'g36ReceiverUpper'))<=20);
  assert.ok(tris(one(g,'g36ReceiverLower'))<=30);
  assert.equal(tris(one(g,'g36FactoryMuzzle')),28);
- assert.equal(tris(one(g,'g36SelectorMarkings')),4);
+ assert.equal(tris(one(g,'g36SelectorMarkings')),12);
  assert.equal(all(g,'g36ChargingHandle').length,1);
  const live=new THREE.Group();
  addG36Family(live,{family:'g36',parts:F.parts});

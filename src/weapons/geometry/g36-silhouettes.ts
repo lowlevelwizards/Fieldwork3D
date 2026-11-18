@@ -11,7 +11,7 @@ import {G36_B_PART_IDS} from './g36-family-contract.ts';
 import {G36_MAG30_OUTLINE,G36_MAG30_OUTLINE_CANDIDATE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
 import {addG36H3FactoryHandguard} from './g36-h3-handguard.ts';
 import {addHKSelectorLeverArt} from './hk-trigger-selector.ts';
-import {addWeaponPixelMarkPairBatched} from './weapon-pixel-detail.ts';
+import {addG36SEFIndexMarks} from './weapon-pixel-detail.ts';
 import {addG36O2DualOptic} from './g36-dual-optic-o2.ts';
 
 export {G36_B_PART_IDS} from './g36-family-contract.ts';
@@ -205,15 +205,15 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
   hub.userData.g36SelectorHub=true;
   lever.userData.g36SelectorLever=true;
  }
- // SEF glyphs occupy the rightmost 3px of the shared 24px atlas.
- // Move the quad left so actual letters sit directly above the pivot
- // rather than appearing far ahead of the lever.
- const selectorMarks=addWeaponPixelMarkPairBatched(
-  root,'hk-selector',-5.75,-.77,1.278,2.30,1.72);
+ // R4: SEF represents three actual selector index positions, not a
+ // vertical stack. S is horizontal from pivot, E is 45 degrees down,
+ // F is vertical down. The letters sit on real housing/grip surfaces
+ // in ONE pooled 12-triangle graphic (no added mesh or material).
+ const selectorMarks=addG36SEFIndexMarks(root);
  selectorMarks.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
  selectorMarks.userData.g36SelectorMarkings=true;
  selectorMarks.userData.g36SelectorMarkCount=2;
- selectorMarks.userData.g36SelectorArtVersion='r3-sef-rear-low';
+ selectorMarks.userData.g36SelectorArtVersion='r4-sef-indexed-arc';
 
  const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;

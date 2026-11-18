@@ -81,13 +81,18 @@ test('R1 both lens planes and aiming contacts rise together, with no new optic m
  clearWeaponSilhouette(g);mat.dispose();
 });
 
-test('R1 magazine tile is uniformly unprinted on BOTH faces; reused one pooled finish',()=>{
+test('R4 magazine tile uses subtle rounds on both faces, reuses one pooled finish',()=>{
  const data=g36PixelAtlas().image.data;
- for(const col of [2,3])for(const y of [5,32,50,76,90])
-  for(const x of [3,25,55,75,94]){
+ for(const col of [2,3]){
+  const shades=new Set();
+  for(let y=0;y<96;y++)for(let x=0;x<96;x++){
    const i=((96+y)*384+col*96+x)*4;
-   assert.equal(data[i],255,'no rectangular overlays or banding');
+   shades.add(data[i]);
+   assert.equal(data[i+3],255,'smoke finish remains fully opaque');
   }
+  assert.ok(shades.has(226)&&shades.has(233),'subtle two-value canted rounds');
+  assert.ok(shades.has(255)&&shades.size<=5,'mostly blank polymer, no band clutter');
+ }
  const mat=new THREE.MeshStandardMaterial(),g=buildG36OriginalBlockout(mat);
  const mag=one(g,'g36Magazine');
  applyG36PixelDetails(g);

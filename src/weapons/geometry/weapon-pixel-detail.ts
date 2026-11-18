@@ -196,3 +196,44 @@ export function addWeaponPixelMarkPairBatched(root:THREE.Group,mark:WeaponMark,
  root.add(mesh);
  return mesh;
 }
+
+/** G36 SEF dial art: S / E / F must follow the selector's real indexed
+ * horizontal, 45-degree-down and vertical-down positions, NOT be a
+ * decorative column above the pivot. Each letter crops the EXISTING shared
+ * HK SEF atlas: 3 glyphs x 2 faces = 6 quads / 12 triangles in ONE draw.
+ * S is painted on the lower housing, E and F on the slightly recessed grip;
+ * a different z per letter prevents floating from the molded plastic.
+ */
+export const G36_SEF_INDEX_MARKS=Object.freeze([
+ {letter:'S',x:-4.04,y:-1.84,z:1.167,atlasBottom:15},
+ {letter:'E',x:-4.36,y:-2.57,z:1.035,atlasBottom:8},
+ {letter:'F',x:-5.17,y:-3.12,z:1.035,atlasBottom:1}
+] as const);
+export function addG36SEFIndexMarks(root:THREE.Group):THREE.Mesh{
+ const geoms:THREE.BufferGeometry[]=[];
+ for(const side of [1,-1] as const){
+  for(const mark of G36_SEF_INDEX_MARKS){
+   const plane=new THREE.PlaneGeometry(.42,.51);
+   const uv=plane.getAttribute('uv');
+   for(let i=0;i<uv.count;i++){
+    // Source glyph occupies x=17..19 and y=(base)..(base+4),
+    // sampled with a half-pixel border against bleeding.
+    uv.setXY(i,(16.5+uv.getX(i)*3)/24,
+     (mark.atlasBottom-.5+uv.getY(i)*5)/20);
+   }
+   if(side<0)plane.rotateY(Math.PI);
+   plane.translate(mark.x,mark.y,side*mark.z);
+   geoms.push(plane);
+  }
+ }
+ const merged=mergeGeometries(geoms,false);
+ geoms.forEach(g=>g.dispose());
+ if(!merged)throw new Error('Unable to batch G36 indexed SEF letters');
+ const mesh=new THREE.Mesh(merged,materialFor('hk-selector'));
+ mesh.name='family-art-g36-sef-index';
+ finishSurfaceOverlay(mesh,'hk-selector','both');
+ mesh.userData.surfaceDetailSides=['right','left'];
+ mesh.userData.g36SEFIndexPositions=G36_SEF_INDEX_MARKS;
+ root.add(mesh);
+ return mesh;
+}
