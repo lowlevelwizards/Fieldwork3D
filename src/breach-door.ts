@@ -195,8 +195,10 @@ export function lockpickApproach(from:Pt,d:Door,world?:SessionWorldGeometry):Pt|
   return reachable[0]?.point??null;
 }
 export function initDoor(d:Door,i:number):Door{
- const prepared:Door={...d,pushTarget:1,hinge:d.hinge??(i%3===0?'b':'a'),
-   swing:d.swing??(d.id==='FRONT'?-1:i%2===0?1:-1),openFraction:d.open?1:0,
+ const prepared:Door={...d,pushTarget:d.open?
+   Math.max(.08,d.openFraction??1):1,hinge:d.hinge??(i%3===0?'b':'a'),
+   swing:d.swing??(d.id==='FRONT'?-1:i%2===0?1:-1),
+   openFraction:d.open?(d.openFraction??1):0,
    angularVelocity:0,resistance:d.resistance??1,
    latchIntegrity:d.locked?Math.max(2.2,d.latchIntegrity??0):
      d.latchIntegrity??1.05,frameIntegrity:d.frameIntegrity??2.5,
@@ -258,7 +260,9 @@ export function kickDoor(d:Door,from?:Pt):{opened:boolean;pushSide:boolean}{
  const opened=(d.latchIntegrity??1)<=0;
  if(opened){
    d.heldBy=null;d.locked=false;d.jammed=false;
-   d.forced=true;d.open=true;d.kickImpulse=1;
+   d.latchBroken=true; // Hardware is gone, not just temporarily unlocked.
+   d.forced=true;d.open=true;d.pushTarget=PUSHED_OPEN_LIMIT;
+   d.kickImpulse=1;
    d.angularVelocity=Math.max(9,d.angularVelocity??0);
  }
  return {opened,pushSide};
@@ -362,13 +366,19 @@ export function doorSwingBlocked(d:Door,next:number,actors:readonly Pt[]=[], act
 }
 export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[],
  world?:SessionWorldGeometry){
-  if(d.wedged)d.open=false;
+  // A severed latch cannot make a closed, secured door again. The panel
+  // remains governed by the same real hinge/world/actor sweep.
+  if(d.latchBroken){d.locked=false;d.open=true;
+    d.pushTarget=Math.max(1,d.pushTarget??1);}
+  else if(d.wedged)d.open=false;
   // Fixed internal substeps prevent a paused or coarse test tick from
   // overshooting a hinge and keep old half-second door timings intact.
   let remaining=Math.max(0,Math.min(dt,.5));
   while(remaining>1e-8){
     const h=Math.min(1/60,remaining);
-    const target=d.open?Math.max(1,d.pushTarget??1):0;
+    // A seeded ajar door rests at its actual angle until someone touches it.
+    // Any deliberate OPEN or body PUSH raises pushTarget normally.
+    const target=d.open?Math.max(.08,d.pushTarget??1):0;
     const current=d.openFraction??(d.open?1:0);
     // Hinge orientation stays fixed throughout the mission.
     const v=d.angularVelocity??0;
@@ -445,6 +455,7 @@ export function pressDoorOnBodyAttempt(from:Pt,to:Pt,doors:Door[],
       (policy.canHandAssist?.(door)??
        dist(from,handlePoint(door))<=DOOR_HAND_ACQUIRE_REACH);
     const closing=pressure<0&&!assist;
+    if(closing&&door.latchBroken)continue;
     if(crossing&&closing)continue;
     // Two friendlies can press opposite faces on consecutive motor ticks.
     // Refuse a *body-driven* CLOSE while another squad member is actively

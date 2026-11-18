@@ -16,6 +16,10 @@ export function doorInteraction(request:InteractionRequest):InteractionVerdict{
  const {action,actorId,actorPosition,target:d}=request;
  if(!doorReachable(actorPosition,d))return deny('out-of-reach');
  if(action==='inspect')return allowed;
+ // No intact handle/latch remains for normal operating or securing orders.
+ // Physical PUSH/KICK and swept body contact can still widen the aperture.
+ if(d.latchBroken&&(action==='open'||action==='close'||action==='hold'))
+   return deny('unsupported');
  if(action==='kick'&&d.kind==='shutter')return deny('unsupported');
  if(action==='open'&&d.open&&((d.openFraction??1)<.08||
      (d.openFraction??1)>=.98))return deny('already-open');

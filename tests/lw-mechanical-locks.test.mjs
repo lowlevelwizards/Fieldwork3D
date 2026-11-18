@@ -12,7 +12,8 @@ test('locked door rejects normal opening and supports cumulative forced entry',(
  for(let i=0;i<12&&!d.open;i++)kickDoor(d,{x:224,y:202});
  assert.equal(d.open,true);
  assert.equal(d.locked,false);
- assert.equal(doorInteraction(request).reason,'already-open');
+ assert.equal(d.latchBroken,true);
+ assert.equal(doorInteraction(request).reason,'unsupported');
 });
 test('industrial shutters cannot be kicked open',()=>{
  const d=initDoor({...door,kind:'shutter'},0);

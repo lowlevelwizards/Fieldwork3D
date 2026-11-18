@@ -9,9 +9,12 @@ import type {Door} from './breach-core.ts';
 export type ReplayDoorObservation={
   at:number;observerId:string;doorId:string;
   openFraction:number;glassShattered:boolean;wedged:boolean;locked:boolean;
+  /** Optional to preserve archived films; truth sampled only on actual LOS. */
+  latchBroken?:boolean;hardwareDetachedAt?:number;
 };
 const signature=(o:ReplayDoorObservation)=>
-  [Math.round(o.openFraction*20),+o.glassShattered,+o.wedged,+o.locked].join(':');
+  [Math.round(o.openFraction*20),+o.glassShattered,+o.wedged,+o.locked,
+   +(o.latchBroken??false),o.hardwareDetachedAt??-1].join(':');
 /** At most one LOS pass per 0.12 simulation seconds; no extra render queries. */
 export class ReplayDoorObservationRecorder {
   readonly observations:ReplayDoorObservation[]=[];
@@ -33,7 +36,9 @@ export class ReplayDoorObservationRecorder {
           at:s.seconds,observerId:observer.id,doorId:door.id,
           openFraction:door.openFraction??(door.open?1:0),
           glassShattered:!!door.glassShattered,
-          wedged:!!door.wedged,locked:!!door.locked
+          wedged:!!door.wedged,locked:!!door.locked,
+          latchBroken:!!door.latchBroken,
+          hardwareDetachedAt:door.hardwareDetachedAt
         };
         const key=observer.id+'\u0000'+door.id,now=signature(record);
         if(this.prior.get(key)===now)continue;

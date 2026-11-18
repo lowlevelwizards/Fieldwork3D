@@ -1,0 +1,44 @@
+name: D3.29I permanent latch and falling hardware
+on:
+  push:
+    branches: [feature/d3-29i-broken-door-hardware-20261118]
+    paths:
+      - '.github/workflows/d3-29i-broken-latch.yml'
+      - 'src/breach-core.ts'
+      - 'src/breach-door.ts'
+      - 'src/breach-interactions.ts'
+      - 'src/breach-order-door.ts'
+      - 'src/breach-ai-door-response.ts'
+      - 'tests/release-d3-29-broken-latch.test.mjs'
+      - 'tests/lw-mechanical-locks.test.mjs'
+      - 'src/breach-3d.ts'
+      - 'src/breach-replay-door-knowledge.ts'
+      - 'src/rendering/breach-site-openings-builder.ts'
+      - 'src/rendering/breach-site-scene-builder.ts'
+      - 'src/rendering/breach-door-broken-hardware-pose.ts'
+      - 'src/rendering/breach-door-broken-hardware-visual.ts'
+      - 'tests/breach-roadmap2-stage6-site-builder.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d329i-broken-latch-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  broken-latch-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and critical latch/replay/renderer regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/release-d3-29-broken-latch.test.mjs tests/lw-mechanical-locks.test.mjs tests/breach-roadmap2-stage6-site-builder.test.mjs tests/breach-door-order-lockpick-regressions.test.mjs
+      - name: Real frozen22 movement and locked-leaf integrity
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d329i-fresh22.json"
+          node scripts/report-d3-29-terminal-cancellations.mjs "$RUNNER_TEMP/d329i-fresh22.json"

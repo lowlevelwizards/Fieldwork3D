@@ -16,6 +16,8 @@ import {GRAPHIC_LIGHT_PROFILE as G,configureGraphicRendererOutput} from './rende
 import {SiteMaterialLifetime} from './rendering/site-material-lifetime.ts';
 import {releaseSiteSceneObjects} from './rendering/site-scene-lifecycle.ts';
 import type {SiteSceneBuildPort} from './rendering/breach-site-scene-builder.ts';
+import type {BrokenDoorHardwareVisual} from './rendering/breach-door-broken-hardware-visual.ts';
+import {fallenDoorHardwarePose} from './rendering/breach-door-broken-hardware-pose.ts';
 import {composeBreachSiteRender} from './rendering/breach-site-render-composition.ts';
 import {replaceTacticalFogGeometry} from './rendering/breach-fog-mesh-composition.ts';
 
@@ -723,8 +725,9 @@ export class TacticalScene3D{
   private beamBlockers:Segment[]=[];
   private doors=new Map<string,{root:THREE.Group;leaf:THREE.Group;
     frame:THREE.Group;halo:THREE.Group;threshold:THREE.Mesh;
-    wedge:THREE.Mesh;glassPane?:THREE.Mesh}>();
+    wedge:THREE.Mesh;glassPane?:THREE.Mesh}&BrokenDoorHardwareVisual>();
   private observedDoorGlass=new Map<string,boolean>();
+  private observedDoorBroken=new Map<string,boolean>();
   private observedDoorOpen=new Map<string,number>();
   private effectCache=new Map<number,ShotEffectVisual>();
   private readonly shotEffectPool=new ShotVisualPool<ShotEffectVisual>(20);
@@ -1172,7 +1175,7 @@ export class TacticalScene3D{
     this.doors.clear();this.windowGlass.clear();
     this.frameWindowsById.clear();
     if(this.windowShards)this.windowShards.count=0;
-    this.observedDoorGlass.clear();
+    this.observedDoorGlass.clear();this.observedDoorBroken.clear();
     this.currentWear=[];this.objectWear=[];
     this.roofGroups.clear();
     this.coverGroups.clear();this.coverFrameValues.clear();
@@ -2020,6 +2023,25 @@ export class TacticalScene3D{
       if(visual.remember){
         this.observedDoorOpen.set(door.id,door.openFraction??(door.open?1:0));
         this.observedDoorGlass.set(door.id,!!door.glassShattered);
+        this.observedDoorBroken.set(door.id,!!door.latchBroken);
+      }
+      // The personal replay observer may only see damage after the first
+      // actual sighting; do not leak the live latch state into a past clip.
+      const broken=personal?!!observed?.latchBroken:
+        (omniscient||directlyObserved)?!!door.latchBroken:
+        !!this.observedDoorBroken.get(door.id);
+      object.intactHardware.visible=!broken;
+      const separation=fallenDoorHardwarePose({
+        ...door,
+        hardwareDetachedAt:personal?observed?.hardwareDetachedAt:
+          door.hardwareDetachedAt
+      },s.seconds,Math.hypot(door.b.x-door.a.x,door.b.y-door.a.y));
+      object.fallenHardware.visible=broken&&separation.visible;
+      if(object.fallenHardware.visible){
+        object.fallenHardware.position.set(
+          separation.x,separation.y,separation.z);
+        object.fallenHardware.rotation.set(
+          separation.tilt,separation.roll,.16*separation.tilt);
       }
       if(object.glassPane)object.glassPane.visible=visual.glassVisible;
       object.wedge.visible=visual.wedgeVisible;
