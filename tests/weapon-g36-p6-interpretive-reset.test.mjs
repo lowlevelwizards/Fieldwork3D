@@ -70,5 +70,5 @@ test('P6 graphical content is ONLY vents and a polymer facet',()=>{
  assert.notEqual(sample(2,0,55,63),255,'one bold right-only ejection port');
  assert.equal(sample(3,0,55,63),255,'opposite receiver remains neutral');
  assert.notEqual(sample(0,0,24,60),255,'one of four large H2.1 upper vent graphics');
- assert.ok(sample(2,1,55,51)>=185,'smoked polymer has broad restrained value facets');
+ assert.equal(sample(2,1,55,51),255,'smoked magazine is solid with no projected panels');
 });
