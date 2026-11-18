@@ -694,6 +694,35 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
     }
   }
   if(!proposed.length)return false;
+  // D3.23A: the finger may draw THROUGH a known squeeze-only passage,
+  // but the final move node must park a whole operator, not only a squeeze
+  // capsule. Preserve every intermediate narrow waypoint and the exact
+  // gesture direction; never use hidden world-truth to adjust the stroke.
+  const landing=proposed[proposed.length-1];
+  if(!intelPassable(landing.p,s.intel,OPERATOR_RADIUS)){
+    const anchor=proposed.length>1?proposed[proposed.length-2].p:
+      replaceExisting?a.p:finalPoint(a);
+    const original={...landing.p},span=d(anchor,original);
+    let corrected:Pt|null=null;
+    // A maximum 13-unit retreat ON the final drawn segment (not a jump
+    // across a wall or into an adjacent room). Verify known full-body
+    // clearance AND a legal route from the preceding authored waypoint.
+    for(let back=.75;back<=Math.min(13,span)+.001;back+=.75){
+      const f=span>0?Math.min(1,back/span):1;
+      const trial={x:original.x+(anchor.x-original.x)*f,
+        y:original.y+(anchor.y-original.y)*f};
+      if(d(anchor,trial)<3)continue;
+      if(!intelPassable(trial,s.intel,OPERATOR_RADIUS)||
+         !legalMoveRoute(s,anchor,trial).length)continue;
+      corrected=trial;break;
+    }
+    if(!corrected){
+      notify(s,'MOVE REJECTED · DRAG ENDPOINT TOO NARROW TO STAND');
+      return false; // No partial plan, no damaged HERE or WATCH edit.
+    }
+    landing.p=corrected;
+    clipped=true; // The user sees exactly where the route stopped.
+  }
   // Door actions inserted during one stroke remain one undoable edit.
   const expanded:PlanNode[]=[];let prior=replaceExisting?a.p:finalPoint(a);
   const opened=new Set((replaceExisting?[]:a.plan).filter(n=>
