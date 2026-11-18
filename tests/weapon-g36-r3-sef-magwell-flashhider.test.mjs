@@ -49,9 +49,9 @@ test('R3 switches to real HK S/E/F, uses one batched mesh, restores control posi
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const ink=one(g,'g36SelectorMarkings');
  assert.equal(ink.userData.surfaceDetailKind,'hk-selector');
- assert.equal(ink.userData.g36SelectorArtVersion,'r3-sef-rear-low');
+ assert.equal(ink.userData.g36SelectorArtVersion,'r4-sef-indexed-arc');
  assert.equal(ink.userData.g36SelectorMarkCount,2);
- assert.equal(tris(ink),4,'2 quads with just 4 triangles');
+ assert.equal(tris(ink),12,'three index glyphs per side: 12 triangles in one batch');
  assert.equal(ink.castShadow,false);
  assert.equal(ink.material.transparent,true);
  for(const hub of of(g,'g36SelectorHub')){
@@ -111,16 +111,16 @@ test('R3 flash hider: one eight-corner faceted collar/body, 28 triangles, two at
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('R3 production G36 remains 23 meshes, at most 470 triangles, with unchanged mount contracts',()=>{
+test('R4 production G36 remains 23 meshes, at most 480 triangles, with unchanged mount contracts',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  assert.equal(g.children.length,23);
- assert.ok(total(g)<=470,`R3 budget exceeded: ${total(g)}`);
+ assert.ok(total(g)<=480,`R4 budget exceeded: ${total(g)}`);
  assert.equal(tris(one(g,'g36LongHandguard')),20);
  assert.equal(tris(one(g,'g36FactoryMuzzle')),28);
  const live=new THREE.Group();
  addG36Family(live,{family:'g36',parts:F.parts});
  assert.equal(live.children.length,23);
- assert.ok(total(live)<=470);
+ assert.ok(total(live)<=480);
  assert.equal(one(live,'g36SelectorMarkings').userData.surfaceDetailKind,'hk-selector');
  assert.equal(one(live,'g36ReceiverLower').userData.g36MagwellArtVersion,'r3-556-vertical-rear');
  assert.equal(F.lowerSightY,4.19);
