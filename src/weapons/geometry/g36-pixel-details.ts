@@ -83,8 +83,8 @@ function ink(tile:Tile,x:number,y:number):number{
    const center=stations[i]-.065*u;
    const half=.02625*(.6+.4*Math.sin(Math.PI*relative));
    const distance=Math.abs(t-center);
-   if(distance<half*.60)return i%2?230:226;
-   if(distance<half)return 242;
+   if(distance<half*.60)return i%2?231:227;
+   if(distance<half)return 243;
   }
   // Couple points are also anchored in curved magazine coordinates,
   // rather than two floating world-space dots. Keep subtle dark rims.
