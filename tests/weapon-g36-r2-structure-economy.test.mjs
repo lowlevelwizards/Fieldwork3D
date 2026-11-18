@@ -74,7 +74,7 @@ test('R2 shares the actual HK selector pictograms: white safe + muted red, two f
  assert.equal(all(g,'g36SelectorMarkings').length,1);
  assert.equal(mark.userData.g36SelectorMarkCount,2);
  assert.equal(mark.userData.surfaceDetailKind,'hk-selector-picto');
- assert.ok(mark.geometry.getAttribute('position').count===12,'exactly four triangles');
+ assert.equal(tris(mark),4,'indexed two-plane marker remains exactly four triangles');
  assert.equal(mark.castShadow,false);
  assert.equal(mark.material.transparent,true);
  assert.ok(mark.material.map?.image?.data,'reuse common HK selector graphic texture');
