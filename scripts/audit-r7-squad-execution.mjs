@@ -1014,6 +1014,14 @@ function run(site,seed,kind){
           d327Stride.fullBodyMotorStrideClear(actor.p,exactWorldNorth[0],
             (from,to)=>sweptBodyClear(from,to,session.doors,
               OPERATOR_RADIUS,world)):false;
+        const exactRealDoorsBridge=exactWorldNorth.length>0&&
+          fullBodyMotorRouteClear(actor.p,exactWorldBridge,
+            (from,to)=>sweptBodyClear(from,to,session.doors,
+              OPERATOR_RADIUS,world),1100);
+        const exactRealDoorsNorth=exactWorldNorth.length>0&&
+          fullBodyMotorRouteClear(actor.p,exactWorldNorth,
+            (from,to)=>sweptBodyClear(from,to,session.doors,
+              OPERATOR_RADIUS,world),1100);
         const physicalNoDoorsLast=route(south,authored);
         const noDoorBridge=[...physicalNoDoorsFirst,south,
           ...physicalNoDoorsLast];
@@ -1071,6 +1079,8 @@ function run(site,seed,kind){
             first:exactWorldNorth.slice(0,8),
             last:exactWorldNorth.at(-1)??null,
             fullStaticBridgeClear:exactFullBridge,
+            fullCurrentDoorsNorthClear:exactRealDoorsNorth,
+            fullCurrentDoorsBridgeClear:exactRealDoorsBridge,
             firstRealDoorStrideClear:exactFirstLive},
           noDoorNorth:{firstNodes:physicalNoDoorsFirst.length,
             fineNodes:physicalNoDoorsFine.length,
