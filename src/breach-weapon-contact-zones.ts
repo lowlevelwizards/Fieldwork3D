@@ -15,6 +15,15 @@ export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
 export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36';stock:RiflePoint;
  primary:RiflePoint;support:RifleContactRange;scale:number};
+/** Underhand hold calibration: the fore-end shell is NOT the wrist center.
+ * Move the unmounted palm below polymer/metal rather than to its side.
+ * Values are small, family-authored hand-centre offsets, not new geometry.
+ * A real foregrip/handstop retains its explicit physical socket.
+ */
+export const UNDERHAND_PALM_DROP=Object.freeze({
+ ar:.60,ak:.65,hk:.48,fal:.65,fnc:.60,g36:.78
+} as const);
+export const UNDERHAND_PALM_Z=-1.60;
 export const AR_HANDGUARD_START=3.55;
 export function arHandguardEnd(id:string):number{
  const long=['ar-triangle','ar-round','ar-m5-rail','ar-pri-tube'].includes(id);
@@ -77,8 +86,10 @@ export function riflePoseContacts(
   // Grip targets are HAND CENTERS, not bare receiver surface points:
   // the real 3.9-unit-deep hand must wrap the actual fore-end, with its
   // inner palm touching it rather than its center buried inside the steel.
-  support:gripSupport??{near:{x:near,y,z:-2.68},
-   far:{x:far,y,z:-2.68},
+  support:gripSupport??{near:{x:near,y:y-UNDERHAND_PALM_DROP[b.family],
+     z:UNDERHAND_PALM_Z},
+   far:{x:far,y:y-UNDERHAND_PALM_DROP[b.family],
+     z:UNDERHAND_PALM_Z},
    preferredFraction:mp5k?.55:hk?(hkCompact?.48:.60):ar?.64:.58}};
 }
 export function supportContactAt(r:RifleContactRange,t:number):RiflePoint{
