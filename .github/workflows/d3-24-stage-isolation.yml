@@ -1,0 +1,85 @@
+name: D3.24 independent stage-isolation physical attribution
+on:
+  push:
+    branches: [feature/d3-24-navigation-entry-hardening-20261117]
+    paths:
+      - '.github/workflows/d3-24-stage-isolation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d324-stage-isolation-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        variant: [baseline, a-short-route, b-entry-only, full-d324]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Reconstruct exact isolated variant
+        env:
+          BASE_SHA: ad6b17d109b1dae85a1b4920053b15d0c7e2666d
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          dir="$RUNNER_TEMP/d324-slice"
+          echo "D324_SLICE=$dir" >> "$GITHUB_ENV"
+          if [[ "$VARIANT" == "full-d324" ]]; then
+            echo "D324_SLICE=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+            exit 0
+          fi
+          git worktree add --detach "$dir" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$dir/node_modules"
+          if [[ "$VARIANT" == "a-short-route" ]]; then
+            git show "${GITHUB_SHA}:src/breach-core.ts" > "$dir/src/breach-core.ts"
+          elif [[ "$VARIANT" == "b-entry-only" ]]; then
+            for path in src/breach-game.ts src/breach-entry-lanes.ts src/breach-entry-landing.ts; do
+              git show "c14444bc1bae86eebd0e7a3697369c09c6d1d993:$path" > "$dir/$path"
+            done
+          fi
+      - name: Same independent seed corpus, exact 45-second physical motor
+        env:
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          cd "$D324_SLICE"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress --route-quality \
+            > "$RUNNER_TEMP/d324-${VARIANT}.json"
+          D324_RESULT_PATH="$RUNNER_TEMP/d324-${VARIANT}.json" node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const audit=JSON.parse(fs.readFileSync(process.env.D324_RESULT_PATH));
+          const s=audit.summary,p=audit.progressSummary,q=audit.routeQualitySummary;
+          const details={
+            variant:process.env.VARIANT,arrivals:s.physicalArrivals,
+            fullSquads:s.physicalCompletedFour,loops:p.suspectedLoops,
+            searchCount:q.searches,routeCpuMs:q.cpuMs,
+            retries:s.retries,stalls:s.stallEpisodes,
+            bySite:audit.rows.map(row=>({
+              archetype:row.archetype,seed:row.seed,scale:row.scale,
+              modes:row.modes.map(m=>({
+                mode:m.mode,accepted:m.accepted,arrivals:m.arrivals,
+                outcome:m.operators.map(o=>o.arrived?'A':o.lastBlocker||'?').join(',')
+              }))
+            }))
+          };
+          console.log('D324_VARIANT_RESULT',JSON.stringify(details));
+          if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts)
+            throw Error('invalid physical step or plans in '+process.env.VARIANT);
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d324-isolation-${{ matrix.variant }}
+          path: ${{ runner.temp }}/d324-${{ matrix.variant }}.json
+          retention-days: 14

@@ -37,7 +37,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  */
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
 import {type PlanNode,type PlanKind,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
-import {entryLanes} from './breach-entry-lanes.ts';
+import {entryLanes,sharedEntryRouteOrigin} from './breach-entry-lanes.ts';
 import {settleKnownEntryLandings} from './breach-entry-landing.ts';
 import {stackApproachPositions,doorOpensTowardApproach} from './breach-entry-coordination.ts';
 import type {Site,SiteScale} from './breach-site.ts';
@@ -143,7 +143,7 @@ import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
 import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
 import type {OperationKind} from './breach-operations.ts';
 
-import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
+import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,intelNudgeSegmentClear,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
 import {discoverObjective,type ObjectiveKnowledge} from './breach-objective-intel.ts';
 
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
@@ -583,6 +583,7 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const target=projectReachableGoal(finalPoint(a),p,{
     canStand:at=>intelPassable(at,s.intel,OPERATOR_RADIUS),
     routeTo:(from,to)=>legalMoveRoute(s,from,to),
+    canNudgeAcross:(from,to)=>intelNudgeSegmentClear(s.intel,from,to),
   });
   if(!target){
     if(intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
@@ -794,8 +795,9 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   if(changed.kind==='move'){
     const from=index>0?proposed[index-1].p:a.p;
     const target=projectReachableGoal(from,p,{
-      canStand:at=>intelPassable(at,s.intel,SQUEEZE_RADIUS),
+      canStand:at=>intelPassable(at,s.intel,OPERATOR_RADIUS),
       routeTo:(origin,goal)=>routeWithSqueezeIntel(s.intel,origin,goal),
+      canNudgeAcross:(from,to)=>intelNudgeSegmentClear(s.intel,from,to),
     });
     if(!target)return false;
     point=target.point;
@@ -927,39 +929,68 @@ export function planSquadEntry(s:Session,doorId:string){
  if(!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
  const alive=team(s).filter(a=>a.health>0);
  if(!alive.length)return false;
- const start=finalPoint(alive[0]);
- // Preserve the familiar tactical lane choices from D3.9, including a
- // narrow *route* where it is physically possible to turn sideways.
- // Only a generated DESTINATION must support an upright full-body stand.
- // Correct a known-unsafe landing locally (max 14 units) instead of
- // selecting an unrelated far-interior gallery, which can create loops.
+ const starts=alive.map(a=>finalPoint(a));
+ const start=starts[0];
+ // D3.24B: a lane reachable by the LEAD actor is not necessarily
+ // reachable by its assigned squadmate. Search the same deterministic
+ // tactical layouts, but evaluate each slot against THAT operator's
+ // authored starting point. Only discovered geometry is used here.
+ // These searches happen on explicit SQUAD ENTRY authoring, never 60 Hz.
  const knownLeaf=doorLeafSegment(door);
+ // D3.24B2: a full-shoulder known-clear connector to the leader's
+ // starting point proves that the lead's existing route is also
+ // reachable from this squadmate. Reuse that ONE A* result per candidate.
+ // Never share routes across a wall or from a distant/unknown anchor.
+ // If a direct full-body link is not clear, pay for ONE cold, known
+ // route from this operator to the leader. Concatenating two proven
+ // player-known routes is enough to establish slot reachability; A* does
+ // not need to be repeated for every candidate lane. A truly disconnected
+ // member still receives independent candidate route testing below.
+ const canShare=starts.map((from,index)=>index===0||
+   sharedEntryRouteOrigin(from,start,
+     p=>intelPassable(p,s.intel,OPERATOR_RADIUS))||
+   routeWithSqueezeIntel(s.intel,from,start).length>0);
  const routeCache=new Map<string,boolean>();
- const routeTo=(p:Pt)=>{
+ const leadRouteCache=new Map<string,boolean>();
+ const leadRouteTo=(p:Pt):boolean=>{
    const key=p.x.toFixed(3)+':'+p.y.toFixed(3);
+   const cached=leadRouteCache.get(key);
+   if(cached!==undefined)return cached;
+   const accepted=routeWithSqueezeIntel(s.intel,start,p).length>0;
+   leadRouteCache.set(key,accepted);
+   return accepted;
+ };
+ const reachable=(index:number,p:Pt):boolean=>{
+   const from=starts[index];
+   if(!from)return false;
+   if(canShare[index])return leadRouteTo(p);
+   const key=index+':'+p.x.toFixed(3)+':'+p.y.toFixed(3);
    const cached=routeCache.get(key);
    if(cached!==undefined)return cached;
-   const reachable=routeWithSqueezeIntel(s.intel,start,p).length>0;
-   routeCache.set(key,reachable);
-   return reachable;
+   // Disconnected operators keep independent, intel-only route proof.
+   const accepted=routeWithSqueezeIntel(s.intel,from,p).length>0;
+   routeCache.set(key,accepted);
+   return accepted;
  };
- const candidateLanes=entryLanes(door,start,alive.length,p=>
-   intelPassable(p,s.intel,SQUEEZE_RADIUS)&&routeTo(p));
- const standing=(p:Pt)=>intelPassable(p,s.intel,OPERATOR_RADIUS)&&
-   pointToSegment(p,knownLeaf)>=OPERATOR_RADIUS+1&&routeTo(p);
+ // A squeeze is legal THROUGH the doorway, but not as a terminal
+ // clearing footprint. Repair generated candidates only inside the
+ // bounded original sector; preserve separate operator assignments.
+ const candidateLanes=entryLanes(door,start,alive.length,
+   p=>intelPassable(p,s.intel,SQUEEZE_RADIUS),reachable);
+ const standing=(p:Pt,index:number)=>intelPassable(p,s.intel,OPERATOR_RADIUS)&&
+   pointToSegment(p,knownLeaf)>=OPERATOR_RADIUS+1&&reachable(index,p);
  const corrected=candidateLanes.length===alive.length?
    settleKnownEntryLandings(door,candidateLanes,standing):null;
- // If one lane cannot be moved by a physically small, known-safe amount,
- // let the original deterministic generator search alternative legal
- // full-body layouts. All selection runs only on explicit authoring.
- const slots=corrected??entryLanes(door,start,alive.length,standing);
+ const slots=corrected??entryLanes(door,start,alive.length,
+   p=>intelPassable(p,s.intel,OPERATOR_RADIUS)&&
+     pointToSegment(p,knownLeaf)>=OPERATOR_RADIUS+1,reachable);
  if(slots.length!==alive.length){
-  notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
+  notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT REACHABLE INTERIOR LANES');
   return false;
  }
  for(let i=0;i<alive.length;i++){
-  if(!routeWithSqueezeIntel(s.intel,finalPoint(alive[i]),slots[i].point).length){
-   notify(s,'SQUAD ENTRY BLOCKED · CHECK ROUTE');
+  if(!standing(slots[i].point,i)){
+   notify(s,'SQUAD ENTRY BLOCKED · CHECK OPERATOR ROUTE');
    return false;
   }
  }
@@ -986,7 +1017,7 @@ export function planSquadEntry(s:Session,doorId:string){
    }
    if(!planMove(s,a.id,slot.point))return false;
    const arrival=a.plan.at(-1);
-   if(arrival?.kind!=='move'||
+   if(arrival?.kind!=='move'||d(arrival.p,slot.point)>.01||
      !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))return false;
    const assigned=a.plan.find(n=>n.id===arrival.id);
    if(!assigned)return false;

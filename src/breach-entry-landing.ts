@@ -14,7 +14,8 @@ function interiorSign(point:Pt,door:Door):number{
 const RADII=[3,5,8,11,14] as const;
 const CIRCLE=16;
 export function settleKnownEntryLandings(
- door:Door,slots:readonly EntrySlot[],isReachableStandingPoint:(p:Pt)=>boolean
+ door:Door,slots:readonly EntrySlot[],
+ isReachableStandingPoint:(p:Pt,index:number)=>boolean
 ):EntrySlot[]|null{
  const chosen:EntrySlot[]=[];
  for(let index=0;index<slots.length;index++){
@@ -27,7 +28,7 @@ export function settleKnownEntryLandings(
    // a rear operator into a previous/next operator's intended footprint.
    if(slots.some((other,j)=>j>index&&distance(p,other.point)<23))
      return false;
-   return isReachableStandingPoint(p);
+   return isReachableStandingPoint(p,index);
   };
   let point=viable(original.point)?original.point:null;
   if(!point){

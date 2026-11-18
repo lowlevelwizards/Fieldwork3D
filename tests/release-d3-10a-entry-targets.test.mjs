@@ -116,6 +116,10 @@ test('D3.10A planning uses full body, without changing authored MOVE goals',asyn
    game.indexOf('/** Tactical WAIT:',game.indexOf('export function planSquadEntry')));
  assert.match(block,/intelPassable\(p,s\.intel,OPERATOR_RADIUS\)/);
  assert.match(block,/pointToSegment\(p,knownLeaf\)>=OPERATOR_RADIUS\+1/);
- assert.match(block,/routeWithSqueezeIntel\(s\.intel,start,p\)/);
+ // D3.24B: the physically assigned operator, not merely the lead,
+ // must have a known reachable route to each generated landing.
+ assert.match(block,/const starts=alive\.map\(a=>finalPoint\(a\)\)/);
+ assert.match(block,/const from=starts\[index\]/);
+ assert.match(block,/routeWithSqueezeIntel\(s\.intel,from,p\)/);
  assert.doesNotMatch(block,/sessionWorldGeometry\(s\)/);
 });

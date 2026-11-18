@@ -1,0 +1,53 @@
+name: D3.24 targeted navigation and entry acceptance
+on:
+  push:
+    branches: [feature/d3-24-navigation-entry-hardening-20261117]
+    paths:
+      - 'src/breach-core.ts'
+      - 'src/breach-entry-lanes.ts'
+      - 'src/breach-entry-landing.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-intel.ts'
+      - 'src/breach-nav-diagnostics.ts'
+      - 'src/breach-plan-utility-commands.ts'
+      - 'tests/release-d3-24*.test.mjs'
+      - '.github/workflows/d3-24-navigation-entry.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-core.ts'
+      - 'src/breach-entry-lanes.ts'
+      - 'src/breach-entry-landing.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-intel.ts'
+      - 'src/breach-nav-diagnostics.ts'
+      - 'src/breach-plan-utility-commands.ts'
+      - 'tests/release-d3-24*.test.mjs'
+      - '.github/workflows/d3-24-navigation-entry.yml'
+permissions:
+  contents: read
+concurrency:
+  group: d324-navigation-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Exact navigation, entry and known-intel contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-24a-same-cell-physical-route.test.mjs \
+            tests/release-d3-24b-operator-entry-reachability.test.mjs \
+            tests/release-d3-24c-intel-nudge-privacy.test.mjs \
+            tests/release-d3-22-known-full-body-move-goal.test.mjs \
+            tests/breach-stroke-safe-cutoff.test.mjs \
+            tests/breach-here-watch-continuity.test.mjs \
+            tests/breach-146.test.mjs
+      - name: TypeScript source contracts
+        run: npm run check

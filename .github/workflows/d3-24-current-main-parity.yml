@@ -1,0 +1,58 @@
+name: D3.24 exact current-main workload parity
+on:
+  push:
+    branches: [feature/d3-24-navigation-entry-hardening-20261117]
+    paths:
+      - '.github/workflows/d3-24-current-main-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d324-current-main-parity-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Compare identical 10 motor/gameplay workloads to current main
+        env:
+          BASE_SHA: 6ca0c5e33cb0ffd48df4db4b08ce0f50742533c9
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d324-current-main" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d324-current-main/node_modules"
+          node --experimental-strip-types \
+            "$RUNNER_TEMP/d324-current-main/scripts/audit-release-d0-workloads.mjs" \
+            "$RUNNER_TEMP/d324-main-workloads.json" > /dev/null
+          node --experimental-strip-types scripts/audit-release-d0-workloads.mjs \
+            "$RUNNER_TEMP/d324-feature-workloads.json" > /dev/null
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const read=f=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/'+f,'utf8'));
+          const base=read('d324-main-workloads.json'),candidate=read('d324-feature-workloads.json');
+          const a=base.workloads??[],b=candidate.workloads??[];
+          const compared=a.map((entry,i)=>({
+            label:entry.label,changed:entry.fingerprint!==b[i]?.fingerprint,
+            main:entry.fingerprint,feature:b[i]?.fingerprint,
+            mainMission:entry.mission,featureMission:b[i]?.mission
+          }));
+          const mismatches=compared.filter(x=>x.changed);
+          console.log('D324_CURRENT_MAIN_PARITY',JSON.stringify({
+            base:process.env.BASE_SHA,candidate:process.env.GITHUB_SHA,
+            count:compared.length,changed:mismatches
+          }));
+          if(compared.length!==10||b.length!==10||mismatches.length||
+             base.summary?.nonfinite||candidate.summary?.nonfinite)
+            throw Error('D3.24 current main gameplay delta or incomplete workload coverage');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d324-current-main-parity
+          path: ${{ runner.temp }}/d324-*-workloads.json
+          retention-days: 21
