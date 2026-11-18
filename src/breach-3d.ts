@@ -1142,12 +1142,11 @@ export class TacticalScene3D{
     }
     // Civilians share module-level geometry/material resources; retire only
     // the scene nodes, never the shared resources themselves.
-    for(const rig of this.civilianRigs.values()){
-      this.scene.remove(rig.root);
-      // Shared character assets are rig-owned, unlike legacy module-level
-      // cuboid materials; site swaps must release their GPU allocations.
+    for(const rig of this.civilianRigs.values())this.scene.remove(rig.root);
+    // Shared character assets are rig-owned, unlike legacy module-level
+    // cuboid materials; site swaps must release their GPU allocations.
+    for(const rig of this.civilianRigs.values())
       if('character' in rig)rig.character.dispose();
-    }
     this.civilianRigs.clear();
     if(this.rescueFigure)this.rescueFigure.visible=false;
     // A new layout can reuse the same seed, object revision and light tick.
