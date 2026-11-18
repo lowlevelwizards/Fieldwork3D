@@ -209,14 +209,24 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'fnc-mag30':add('fnc-mag30','Legacy FNC 30-round STANAG (shared AR profile)','fnc','magazine',{feed:'stanag'}),
  'fnc-service-forearm':add('fnc-service-forearm','Full-length FN FNC ventilated polymer fore-end','fnc','handguard',{receivers:['fnc-service-receiver'],length:'long'}),
  'fnc-177-service':add('fnc-177-service','FN FNC full-length 17.7-inch service barrel','fnc','barrel',{receivers:['fnc-service-receiver'],length:'long',role:'rifle',nominalInches:17.7}),
- // Original Bundeswehr G36 is NOT an HK33/G3 receiver, AR STANAG feed,
- // modern rail-top variant or a scaled-down G36K/G36C clone.
- 'g36-dual-receiver':add('g36-dual-receiver','G36 original integrated dual-sight polymer receiver','g36','receiver',{feed:'g36poly556',role:'rifle'}),
- 'g36-stock':add('g36-stock','G36 original skeletal folding stock','g36','stock',{receivers:['g36-dual-receiver'],stockX:-15.05}),
- 'g36-grip':add('g36-grip','G36 molded integral pistol grip','g36','grip',{receivers:['g36-dual-receiver']}),
+ // Three G36 length families, two distinct upper assemblies and one
+ // optional single-scope unit. These are parts, NOT extra factory presets.
+ // The receiver shell, grip and non-STANAG smoked polymer feed are shared.
+ 'g36-dual-receiver':add('g36-dual-receiver','G36 original integrated dual-sight receiver','g36','receiver',{feed:'g36poly556',role:'both'}),
+ 'g36-rail-receiver':add('g36-rail-receiver','G36 low Picatinny sight bridge and folding irons','g36','receiver',{feed:'g36poly556',role:'both',mounts:RECEIVER_TOP}),
+ 'g36-single-receiver':add('g36-single-receiver','G36 single-scope factory carry handle','g36','receiver',{feed:'g36poly556',role:'both'}),
+ 'g36-stock':add('g36-stock','G36 original skeletal folding stock','g36','stock',{stockX:-15.05}),
+ 'g36-stock-short':add('g36-stock-short','Short skeletal folding stock','g36','stock',{stockX:-13.96}),
+ 'g36-stock-adjustable':add('g36-stock-adjustable','Adjustable folding stock and cheek rest','g36','stock',{stockX:-14.88}),
+ 'g36-grip':add('g36-grip','G36 molded integral pistol grip','g36','grip'),
  'g36-mag30':add('g36-mag30','G36 30-round smoky polymer magazine','g36','magazine',{feed:'g36poly556'}),
- 'g36-handguard-long':add('g36-handguard-long','G36 original ventilated polymer fore-end','g36','handguard',{receivers:['g36-dual-receiver'],length:'long'}),
- 'g36-barrel-480':add('g36-barrel-480','G36 original full-length service barrel','g36','barrel',{receivers:['g36-dual-receiver'],length:'long',role:'rifle',nominalInches:18.9})
+ 'g36-handguard-long':add('g36-handguard-long','G36 original ventilated polymer fore-end','g36','handguard',{length:'long'}),
+ 'g36-handguard-k':add('g36-handguard-k','G36K shortened ventilated fore-end','g36','handguard',{length:'mid'}),
+ 'g36-handguard-c':add('g36-handguard-c','G36C compact ventilated fore-end','g36','handguard',{length:'short'}),
+ 'g36-handguard-k-rail':add('g36-handguard-k-rail','G36K A4 railed polymer fore-end','g36','handguard',{length:'mid',mounts:FOREND_PICATINNY}),
+ 'g36-barrel-480':add('g36-barrel-480','G36 original 480mm service barrel','g36','barrel',{length:'long',role:'rifle',nominalInches:18.9}),
+ 'g36-barrel-318':add('g36-barrel-318','G36K 318mm carbine barrel','g36','barrel',{length:'mid',role:'carbine',nominalInches:12.5}),
+ 'g36-barrel-228':add('g36-barrel-228','G36C 228mm compact barrel','g36','barrel',{length:'short',role:'carbine',nominalInches:9.0})
 };
 const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg',family:WeaponFamily,
  receiver:string,stock:string,grip:string,magazine:string,handguard:string,
@@ -267,7 +277,13 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('fnc-service','FN FNC','rifle','fnc','fnc-service-receiver',
   'fnc-tube-folder','fnc-service-grip','ar-mag30','fnc-service-forearm','fnc-177-service'),
  p('g36-service','HK G36 · Original Dual Optic','rifle','g36','g36-dual-receiver',
-  'g36-stock','g36-grip','g36-mag30','g36-handguard-long','g36-barrel-480')
+  'g36-stock','g36-grip','g36-mag30','g36-handguard-long','g36-barrel-480'),
+ p('g36-k-dual','HK G36K · Classic Carbine','carbine','g36','g36-dual-receiver',
+  'g36-stock','g36-grip','g36-mag30','g36-handguard-k','g36-barrel-318'),
+ p('g36-c-classic','HK G36C · Compact','carbine','g36','g36-rail-receiver',
+  'g36-stock-short','g36-grip','g36-mag30','g36-handguard-c','g36-barrel-228'),
+ p('g36-ka4','HK G36K A4 · Modernized','carbine','g36','g36-rail-receiver',
+  'g36-stock-adjustable','g36-grip','g36-mag30','g36-handguard-k-rail','g36-barrel-318')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
@@ -291,6 +307,10 @@ export function compatibleFamilyPart(receiverId:string,slot:FamilyPartSlot,
   part.family==='ar'&&part.feed==='stanag';
  if(part.family!==receiver.family&&!sharedFNCStanag)return false;
  if(slot==='receiver')return receiverId===id;
+ // The C's 228mm front only exists with the flat sight bridge. A
+ // dual/single optical carry handle is not a factory G36C configuration.
+ if(slot==='barrel'&&id==='g36-barrel-228'&&
+  receiver.family==='g36'&&receiverId!=='g36-rail-receiver')return false;
  if(part.receivers&&!part.receivers.includes(receiverId))return false;
  if(part.feed&&part.feed!==receiver.feed)return false;
  if(part.role&&part.role!==weapon&&part.role!=='both')return false;
@@ -310,9 +330,13 @@ export function readWeaponFamilyBuild(raw:unknown,weapon:WeaponId):WeaponFamilyB
  if(typeof receiverId!=='string')return undefined;
  const receiver=receiverFor(receiverId,weapon);
  if(!receiver||source.family!==receiver.family)return undefined;
- const defaultPreset=FAMILY_PRESETS.find(x=>x.weapon===weapon&&x.parts.receiver===receiverId);
+ // Optional single-scope receiver deliberately has NO fifth factory preset.
+ // Seed it from an existing rifle/carbine of the same family instead.
+ const defaultPreset=FAMILY_PRESETS.find(x=>x.weapon===weapon&&x.parts.receiver===receiverId) ??
+  (receiver.family==='g36'?FAMILY_PRESETS.find(x=>x.family==='g36'&&x.weapon===weapon):undefined);
  if(!defaultPreset)return undefined;
- const next:WeaponFamilyBuild={family:receiver.family,parts:{...defaultPreset.parts}};
+ const next:WeaponFamilyBuild={family:receiver.family,
+  parts:{...defaultPreset.parts,receiver:receiverId}};
  for(const slot of ['stock','grip','magazine','barrel'] as const){
   const id=parts[slot];
   if(typeof id==='string'&&compatibleFamilyPart(receiverId,slot,id,weapon))
