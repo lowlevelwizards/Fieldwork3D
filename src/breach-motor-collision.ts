@@ -417,7 +417,23 @@ export function resolveMotorCollision(
     // 2 cold local micro-corner episodes. EVERY suggested sub-unit stride
     // is full-capsule swept and the original stack GO remains untouched.
     // A temporary first leg is motor-executed normally, never teleported.
-    if(stackMicroRecoveryEligible(a)&&
+    // D3.19D Garage 19089932: a coarse 10.8-unit full-body chord can
+    // report clear while the next real motor-sized stride touches the
+    // stable, fully open D8 leaf. Permit the EXISTING 2/4-unit micro-corner
+    // only on real stationary open-leaf contact. A closed/locked/jammed or
+    // advancing door retains normal physical hinge and passage authority.
+    // This cold gate never moves an actor, changes STACK GO or alters
+    // collision: selectStackMicroCorner must certify every 0.3-unit step.
+    let stableOpenLeafContact=false;
+    if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
+       a.plan[0].stackDoorId&&a.lastBlocker==='door'&&
+       a.blockedTime>=1.1&&!closed&&!blocking){
+      const leaf=relevantStableOpenLeaf(a.p,s.doors);
+      stableOpenLeafContact=!!leaf&&!leaf.locked&&!leaf.jammed&&
+        pointToSegment(desiredMove,doorLeafSegment(leaf))<
+          OPERATOR_RADIUS+2;
+    }
+    if(stackMicroRecoveryEligible(a,stableOpenLeafContact)&&
        claimStackMicroAttempt(a,s.seconds)){
       const sideRoute=selectStackMicroCorner(a.p,p,
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
