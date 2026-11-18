@@ -1620,7 +1620,7 @@ function mission(s:Session,dt:number){
        s.seconds-rescuePerson.lastEscortRouteAt>=.55){
       // Plan from actual civilian location to just behind the real escort.
       // The existing geometry-aware route is bounded and never teleports.
-      const desired=rescueFollowGoal(escort);
+      const desired=rescueFollowGoal(escort,rescuePerson);
       const path=cachedEnemyRoute(s,rescuePerson.p,desired,true);
       const next=path.find(p=>d(p,rescuePerson.p)>10);
       if(next&&sweptBodyClear(rescuePerson.p,next,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))){
