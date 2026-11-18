@@ -30,7 +30,7 @@ test('H2 is an independent four-component art study, not a factory override',()=
  assert.equal(info.stations,5);
  assert.equal(info.corners,8);
  assert.equal(info.ventsPerSide,5);
- assert.ok(info.triangles<350,'major volumes, no microscopic detail');
+ assert.ok(info.triangles<500,'broad forms and paired instanced vents, no microscopic detail');
  const factory=buildG36OriginalBlockout(new THREE.MeshBasicMaterial());
  const h1=mesh(factory,'g36LongHandguard');
  assert.equal(h1.userData.g36HandguardArtVersion,'h1-six-plane-original');
