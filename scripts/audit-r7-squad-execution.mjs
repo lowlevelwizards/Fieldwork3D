@@ -991,6 +991,21 @@ function run(site,seed,kind){
           southStand:bodyClear(south,[],OPERATOR_RADIUS,world),
           openingSweep:sweptBodyClear(north,south,[],OPERATOR_RADIUS,world),
           northToGoalNodes:route(north,authored).length,
+          actorToNorthDoorlessNodes:route(actor.p,north).length,
+          actorToNorthAllDoorsOpenNodes:routeWithSqueezeWorld(
+            actor.p,north,allOpenDoors,world).length,
+          actorToEntranceDoorlessNodes:route(actor.p,site.entrance).length,
+          actorToEntranceAllDoorsOpenNodes:routeWithSqueezeWorld(
+            actor.p,site.entrance,allOpenDoors,world).length,
+          actorToOtherActors:actors.filter(a=>a!==actor).map(a=>({
+            id:a.id,
+            noDoorsNodes:route(actor.p,a.p).length,
+            allOpenNodes:routeWithSqueezeWorld(
+              actor.p,a.p,allOpenDoors,world).length
+          })),
+          actorCurrentRoom:site.rooms.filter(r=>r.kind==='room'&&
+            actor.p.x>=r.x&&actor.p.x<=r.x+r.w&&
+            actor.p.y>=r.y&&actor.p.y<=r.y+r.h).map(r=>r.id),
           otherRoom:{id:otherRoom?.id??null,purpose:otherRoom?.purpose??null},
           otherActorNorth:actors.filter(a=>a!==actor).map(a=>({
             id:a.id,nodes:route(a.p,north).length
