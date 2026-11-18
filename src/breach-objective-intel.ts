@@ -64,6 +64,25 @@ export function objectiveLocationKnown(
    state.objectiveIntel?.level==='confirmed'||
    state.objectiveIntel?.discovered===true;
 }
+/** Broad, non-interactive uncertainty envelope. Never a target pin or
+ * newly disclosed individual room. Call only from presentation code. */
+export function approximateObjectiveBounds(
+ state:{site?:Site;objectiveIntel?:ObjectiveKnowledge}
+):{minX:number;minY:number;maxX:number;maxY:number}|null{
+ const info=state.objectiveIntel;
+ if(info?.level!=='approximate'||info.discovered||!info.area||!state.site)
+   return null;
+ const ids=new Set(info.area.roomIds);
+ const rooms=state.site.rooms.filter(r=>ids.has(r.id));
+ if(rooms.length<3)return null;
+ const pad=8;
+ return {
+   minX:Math.min(...rooms.map(r=>r.x))-pad,
+   minY:Math.min(...rooms.map(r=>r.y))-pad,
+   maxX:Math.max(...rooms.map(r=>r.x+r.w))+pad,
+   maxY:Math.max(...rooms.map(r=>r.y+r.h))+pad
+ };
+}
 export function objectiveIntelDescription(
  state:{objectiveIntel?:ObjectiveKnowledge}
 ):string{
