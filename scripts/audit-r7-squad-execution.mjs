@@ -76,6 +76,9 @@ const leafRejoinHelpers=leafRejoinDiagnostic?
 const entryLandingWitnessEnabled=process.argv.includes('--entry-settle-witness');
 const entryLandingModule=entryLandingWitnessEnabled?
  await import('../src/breach-order-movement.ts'):null;
+const queueMotionWitnessEnabled=process.argv.includes('--queue-motion-witness');
+const queueMotionModule=queueMotionWitnessEnabled?
+ await import('../src/breach-queue-trace.ts'):null;
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
 const d314cFrontProbe=process.argv.includes('--d314c-front-probe');
@@ -220,7 +223,7 @@ function run(site,seed,kind){
  const quiet={...site,training:true,enemies:[],encounter:undefined};
  const session=newSession(0,seed,'full-view',site.scale??'small','intel',quiet,
   {enableCivilians:false});
- const entryLandingEvidence=[];
+ const entryLandingEvidence=[],queueMotionEvidence=[];
  try{
   const actors=team(session).slice(0,4);
   if(actors.length!==4)throw Error('squad does not have four operators');
@@ -230,6 +233,11 @@ function run(site,seed,kind){
    entryLandingModule.setEntryLandingWitness(event=>{
     if(entryLandingEvidence.length<100)
      entryLandingEvidence.push({...event,seconds:round(event.seconds)});
+   });
+  if(queueMotionModule&&kind==='entry')
+   queueMotionModule.listenQueueMotion(session,event=>{
+    if(queueMotionEvidence.length<200)
+     queueMotionEvidence.push({...event,time:round(event.time)});
    });
   const initial=actors.map(a=>new Set(a.plan.map(n=>n.id)));
   // D3.6: frozen per-run authored targets and entry positions. Endpoints
@@ -766,6 +774,7 @@ function run(site,seed,kind){
    ...(progress?{progressEvidence}:{}),
    ...(leafRejoinDiagnostic?{leafRecoveryEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
+   ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
@@ -836,6 +845,7 @@ function run(site,seed,kind){
    }))};
  }finally{
   entryLandingModule?.setEntryLandingWitness(null);
+  queueMotionModule?.listenQueueMotion(session,null);
   setRouteGridAuditObserver(null);
   setTransientRouteObserver(null);
   enableD32MotorDoorWitness(false);activateSite(null);
