@@ -1,7 +1,7 @@
 /** G36 O2 — user-selected 125 / 125 / 55 dual-optic miniature.
  * Production-only factory art, derived from the approved O2 three-angle JS
- * study. No simulated mechanisms, sight-coordinate migrations or runtime
- * geometry mutation. Main and hood use six broad facets; ocular sleeves use
+ * study. No simulated mechanisms or runtime geometry mutation. R1 intentionally
+ * lifts the factory visual housings and matching sight contact datums together. Main and hood use six broad facets; ocular sleeves use
  * eight (lower) and six (upper), with just one dark face each.
  */
 import * as THREE from 'three';
@@ -79,8 +79,8 @@ export function addG36O2DualOptic(
  lower.userData.g36IntegratedOpticShell=true;
  lower.userData.g36OpticCrossSectionSides=6;
 
- // O3 Stage 2: raise the independent upper ocular above the lower roof.
- // Keep factory aiming contact (4.46) unchanged; this is visual geometry.
+ // O3 independent upper ocular stays above the lower roof; the R1 lift
+ // changes both lens geometry and the matching factory sight contacts.
  const hoodWidth=.73*1.25;
  const upper=add(sixFacetPrism(-5.57,-3.14,
   hoodSection(3.94,4.24,5.03,hoodWidth),
