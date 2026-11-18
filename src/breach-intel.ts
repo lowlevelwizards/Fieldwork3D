@@ -151,6 +151,24 @@ export function intelPassable(p:Pt,intel:IntelState,clearance=8,
    someCoverNearPoint(p,clearance,coverTest))return false;
  return true;
 }
+/** User-authored MOVE nudge must not test world-truth hidden geometry.
+ * Check ONLY discovered walls/cover along the short original-to-candidate
+ * adjustment. If the thumb-tap is inside known geometry, the existing
+ * reachable-candidate test chooses a small valid nearby landing. This
+ * helper neither discovers objects nor edits player intel. */
+export function intelNudgeSegmentClear(
+ intel:IntelState,from:Pt,to:Pt):boolean{
+ if(!intelPassable(from,intel,0))return true;
+ const span=Math.hypot(to.x-from.x,to.y-from.y);
+ const steps=Math.max(1,Math.ceil(span/.75));
+ for(let i=1;i<=steps;i++){
+  const t=i/steps;
+  const p={x:from.x+(to.x-from.x)*t,
+   y:from.y+(to.y-from.y)*t};
+  if(!intelPassable(p,intel,0))return false;
+ }
+ return true;
+}
 /** A known physical prop can cover the nearest grid START even though
  * the actor is fully clear at its precise coordinates. Only this known
  * furniture condition enables the bounded, swept start-anchor rescue.
