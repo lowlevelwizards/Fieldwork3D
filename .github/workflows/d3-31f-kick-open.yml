@@ -1,0 +1,36 @@
+name: D3.31F kicked-open door and stale route recovery
+on:
+  push:
+    branches: [feature/d3-31f-forced-door-recovery-20261118]
+    paths:
+      - '.github/workflows/d3-31f-kick-open.yml'
+      - 'src/breach-order-wait.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-route-transition.ts'
+      - 'tests/release-d3-31f-kick-open-recovery.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  door:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and real door aftermath regression
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-31f-kick-open-recovery.test.mjs \
+            tests/release-d3-30-threshold-coordination.test.mjs \
+            tests/release-d3-30-interrupted-entry.test.mjs \
+            tests/release-d3-25b-terminal-entry-gate.test.mjs \
+            tests/release-d3-29-broken-latch.test.mjs \
+            tests/release-d3-29-motor-lock-gate.test.mjs \
+            tests/encounter-eqa1-front-door.test.mjs
+      - name: Deployable production artifact (no deployment)
+        run: npm run build
