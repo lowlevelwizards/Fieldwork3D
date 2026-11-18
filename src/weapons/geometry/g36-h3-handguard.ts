@@ -35,13 +35,13 @@ export type G36GuardLength='long'|'mid'|'short'|'mid-rail';
 /** Same approved H3 six-facet shell, three real front-end lengths.
  * No scale operation touches the receiver: only the forward end moves.
  */
-export const G36_GUARD_FRONT_X=Object.freeze({long:13.45,mid:11.0,short:10.10,'mid-rail':11.0});
+export const G36_GUARD_FRONT_X=Object.freeze({long:13.45,mid:11.0,short:10.40,'mid-rail':11.0});
 export function addG36H3FactoryHandguard(root:THREE.Group,id:string,n:number,
  material:THREE.Material,length:G36GuardLength='long'):THREE.Mesh{
  const endX=G36_GUARD_FRONT_X[length];
- // G36C only: the second screenshot-approved modest forward extension.
- // Keep the larger six-facet H3 mass and its pronounced nose rake.
- // Keep the same six-sided H3 shell and BOTH K/service shapes untouched.
+ // G36C only: fill the last visual gap toward the muzzle shoulder.
+ // At X=10.40 the polymer leaves 0.10 before the flash-hider at X=10.50.
+ // Preserve the angled six-sided H3 nose; K/service stay untouched.
  const points=G36_H3_ENDS.flatMap((end,index)=>g36H3Section(index===0?
   (length==='short'?{...end,roofX:end.roofX+.10}:end):{
    ...end,roofX:endX-(length==='short'?.67:.51),floorX:endX
