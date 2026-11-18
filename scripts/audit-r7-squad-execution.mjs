@@ -71,6 +71,8 @@ const d325StallFeasibility=process.argv.includes('--d325-stall-feasibility');
 const d326LastStallProbe=process.argv.includes('--d326-last-stall-probe');
 const d326Micro=d326LastStallProbe?
  await import('../src/breach-stack-micro-corner.ts'):null;
+const d326Fine=d326LastStallProbe?
+ await import('../src/breach-squeeze-route.ts'):null;
 // D3.17E: offline-only, post-run real geometry witness for blocked bodies.
 // It never runs in live movement, advances the simulation, or adopts a route.
 const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
@@ -781,7 +783,13 @@ function run(site,seed,kind){
        nextNavMicro:first?micro(candidate,first):null});
      }
     }
+    const fineRoute=d326Fine.coldFineMotorWorldRoute(
+      actor.p,goal,session.doors,world);
     return {actor:actor.id,position:{...actor.p},goal:{...goal},
+     fineRoute:{nodes:fineRoute.length,
+       first:fineRoute[0]??null,
+       last:fineRoute.at(-1)??null,
+       firstSix:fineRoute.slice(0,6)},
      doorEpisode:actor.doorTraversal?.doorId??null,
      nearestDoors:session.doors.map(d=>({id:d.id,
        fromGap:pointToSegment(actor.p,doorLeafSegment(d)),
