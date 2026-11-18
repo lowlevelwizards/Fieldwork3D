@@ -45,7 +45,8 @@ import {shouldProbeStationaryCollisionRoute}
  from './breach-recovery-proposal-gate.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
  selectPhysicalOpenLeafRejoin} from './breach-physical-leaf-rejoin.ts';
-import {routeWithNormalWorld} from './breach-squeeze-route.ts';
+import {routeWithNormalWorld,coldFineMotorWorldRoute}
+ from './breach-squeeze-route.ts';
 import {claimRepeatedFurnitureDeparture,
  selectMotorVerifiedFurnitureDeparture}
  from './breach-d317c-micro-departure.ts';
@@ -53,6 +54,10 @@ import {stackMicroRecoveryEligible,claimStackMicroAttempt,selectStackMicroCorner
  from './breach-stack-micro-corner.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
+import {selectColdMotorMicroDeparture,claimColdMotorMicroDeparture}
+ from './breach-d326-micro-departure.ts';
+import {claimD326ColdFineProbe,markD326FineMotorRoute}
+ from './breach-d326-fine-route-gate.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -146,6 +151,67 @@ export function resolveMotorCollision(
     // route recovery repeatedly discard its chosen shoulder-clear path.
     if(ownsDoorManeuverRoute(a)&&
        s.seconds-a.doorTraversal!.lastProgressAt<1.8)return true;
+    // D3.26C Apartment 19036595: a 23-unit grid route was marked
+    // physically clear at its coarse 4-unit samples even though the
+    // real first 0.3-unit stride immediately hit a wall. After actual
+    // sustained blockage, try at most two COLD 2/5-unit departures.
+    // Each departure and the new first world-route leg use the SAME
+    // full-body 0.3-unit motor sweep; the original authored GO is kept.
+    // Near an active hinge, the existing doorway maneuver remains owner.
+    const moveOrder=a.plan[0];
+    const episodeDoor=a.doorTraversal?.doorId?
+      s.doors.find(door=>door.id===a.doorTraversal?.doorId):undefined;
+    const remoteEpisode=!a.doorTraversal||!!episodeDoor&&
+      pointToSegment(a.p,doorLeafSegment(episodeDoor))>OPERATOR_RADIUS+28;
+    if(a.side==='blue'&&moveOrder?.kind==='move'&&
+       !moveOrder.stackDoorId&&!moveOrder.entryDoorId&&
+       !a.squeeze&&!a.traversal&&!a.traversalPending&&
+       !a.fireRetreatTarget&&remoteEpisode&&
+       a.blockedTime>=1.6&&
+       (a.lastBlocker==='wall'||a.lastBlocker==='furniture')){
+      const sweep=(from:Pt,to:Pt)=>
+        sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+      // D3.26G1: cold fine-world entitlement must NOT depend on this
+      // independent 2/5-unit coarse-tail experiment succeeding or even
+      // retaining retry budget. Apartment 19036595 consumed two failed
+      // short-stage probes before the fine recovery could run.
+      if(claimColdMotorMicroDeparture(a,p,s.seconds)){
+        const corrected=selectColdMotorMicroDeparture(
+          a.p,p,next,sweep,
+          pt=>bodyClear(pt,s.doors,OPERATOR_RADIUS,world),
+          (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
+        if(corrected.length&&watchClearanceAllowed(a.p,corrected[0],p,
+          !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+          setTransientRoute(s,a,corrected,'motor-micro-departure');
+          notePreciseLocalDetour(a,corrected[0]);
+          a.lastNavRepairAt=s.seconds;
+          provisionalRouteAccepted(a);
+          a.squeeze=false;a.squeezeTime=0;
+          return true;
+        }
+      }
+      // D3.26F2: the D3.26D whole-route verifier rejected all coarse
+      // continuations on Apartment 19036595. A COLD, 4-unit world route
+      // WAS fully legal at every 0.3-unit physical stride. Only after
+      // genuine wall/furniture blockage and an exhausted short departure
+      // may this same ordinary MOVE use that complete certified path.
+      // Door episodes nearby, ENTRY, STACK, squeeze and live traversal
+      // stay on their previous motor/queue authority. This selects route
+      // nodes; it NEVER moves the body or changes its authored GO.
+      if(a.blockedTime>=2&&claimD326ColdFineProbe(a,p,s.seconds)){
+        const fine=coldFineMotorWorldRoute(a.p,p,s.doors,world);
+        if(fine.length&&watchClearanceAllowed(a.p,fine[0],p,
+          !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+          setTransientRoute(s,a,fine,'motor-cold-fine-world');
+          markD326FineMotorRoute(a);
+          notePreciseLocalDetour(a,fine[0]);
+          a.lastNavRepairAt=s.seconds;
+          provisionalRouteAccepted(a);
+          a.squeeze=false;a.squeezeTime=0;
+          return true;
+        }
+      }
+    }
     const laneAt=profile?beginMotorCpuMeasurement():0;
     const fullLane=recoverNormalLane(a.p,p,s.doors,world);
     if(profile)profile('motor-collision-lane',finishMotorCpuMeasurement(laneAt));

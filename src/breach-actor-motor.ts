@@ -20,6 +20,7 @@ import {handleMotorDoor} from './breach-motor-door.ts';
 import {resolveMotorCollision} from './breach-motor-collision.ts';
 import {d,angle,type ActorMotorHooks} from './breach-motor-contract.ts';
 import {syncDoorTraversalEpisode} from './breach-door-traversal-episode.ts';
+import {ownsD326FineMotorRoute} from './breach-d326-fine-route-gate.ts';
 import {recoverDoorApproachDrift,preferShortPhysicalEntry} from './breach-door-traversal-maneuver.ts';
 import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
@@ -68,6 +69,7 @@ export function advanceActorMotor(
  // Every proposed chord needs the SAME full-radius world-truth sweep.
  const canSmoothGrid=a.nav.length>=2&&
    a.side==='blue'&&a.plan[0]?.kind==='move'&&
+   !ownsD326FineMotorRoute(a)&&
    !a.plan[0]?.entryDoorId&&a.blockedTime<.2&&
    !a.squeeze&&!a.traversal&&!a.traversalPending&&
    !a.autoSidestep&&!a.aimInstruction&&!a.fireRetreatTarget&&

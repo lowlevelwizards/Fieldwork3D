@@ -1,0 +1,130 @@
+name: D3.26 independent last-failure physical witness
+on:
+  push:
+    branches: [feature/d3-26-last-entry-failures-20261118]
+    paths:
+      - 'scripts/report-d3-26-last-failures.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-26-last-entry-failures.yml'
+      - 'src/breach-*.ts'
+      - 'tests/release-d3-26*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d326-last-physical-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  fresh22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Critical type and entry regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-25b-terminal-entry-gate.test.mjs \
+            tests/release-d3-25f-cold-swept-entry-escape.test.mjs \
+            tests/release-d3-26c-cold-motor-micro-departure.test.mjs \
+            tests/release-d3-26f-cold-fine-route-gate.test.mjs \
+            tests/tactical-integration-10-entry-gate.test.mjs
+      - name: Physical 45-second independent 22-map evidence
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress --route-quality \
+            --route-transitions > "$RUNNER_TEMP/d326-fresh22.json"
+          node scripts/report-d3-26-last-failures.mjs \
+            "$RUNNER_TEMP/d326-fresh22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const a=JSON.parse(fs.readFileSync(
+            process.env.RUNNER_TEMP+'/d326-fresh22.json','utf8'));
+          const s=a.summary,p=a.progressSummary;
+          if(s.physicalArrivals<158||s.physicalCompletedFour<34||
+             p.suspectedLoops>1||s.arrivedDespiteCancellation||
+             s.unreachedDrainedOperators||s.invalidPositions||
+             s.physicsStepViolations||s.corruptedPlans)
+            throw Error('D3.26 regressed frozen 22-map physical acceptance');
+          console.log('D326_FROZEN_ACCEPTANCE',JSON.stringify({
+            arrived:s.physicalArrivals,completed:s.physicalCompletedFour,
+            loops:p.suspectedLoops,routeSearches:a.routeQualitySummary.searches
+          }));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d326-independent-22-physical-witness
+          path: ${{ runner.temp }}/d326-fresh22.json
+          retention-days: 14
+
+  exact-three:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Exact Apartment, Motel, Garage last physical non-arrivals
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=2 --audit-seed=19036595 --audit-scale=small \
+            --d326-last-stall-probe --route-transitions \
+            --trace-actor=ash --trace-mode=authored \
+            > "$RUNNER_TEMP/d326-apartment.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=19143269 --audit-scale=small \
+            --d326-last-stall-probe --route-transitions \
+            --trace-actor=moss --trace-mode=authored \
+            > "$RUNNER_TEMP/d326-motel.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=5 --audit-seed=19285501 --audit-scale=standard \
+            --d326-last-stall-probe > "$RUNNER_TEMP/d326-garage.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for(const site of ['apartment','motel','garage']){
+            const report=JSON.parse(fs.readFileSync(
+              process.env.RUNNER_TEMP+'/d326-'+site+'.json','utf8'));
+            if(report.summary.exceptions||report.summary.invalidPositions||
+              report.summary.physicsStepViolations||
+              report.summary.corruptedPlans)throw Error(site+' physical integrity');
+            const mode=report.rows[0].modes.find(m=>m.mode==='authored');
+            for(const event of mode.routeTransitions?.events??[]){
+              console.log('D326_ROUTE_TRACE',JSON.stringify({
+                site,actor:event.actorId,seconds:event.seconds,
+                source:event.source,blocked:event.blockedTime,
+                blocker:event.blocker,doorId:event.doorId,
+                doorPhase:event.doorPhase,doorManeuver:event.doorManeuver,
+                first:event.next[0]??null,position:event.position
+              }));
+            }
+            for(const step of mode.d326MicroTrace??[]){
+              if(site!=='garage')
+                console.log('D326_MOTOR_MICRO',JSON.stringify({site,...step}));
+            }
+            for(const actor of mode.d326StallEvidence??[]){
+              console.log('D326_STALL_MICRO',JSON.stringify({
+                site,seed:report.rows[0].seed,...actor,
+                fineRoute:actor.fineRoute,
+                candidates:actor.candidates.map(c=>({
+                  radius:c.radius,heading:c.heading,point:c.point,
+                  tailNodes:c.tailNodes,tailFirstMicro:c.tailFirstMicro,
+                  futureNodes:c.futureNodes,futureFirstMicro:c.futureFirstMicro,
+                  nextNavMicro:c.nextNavMicro
+                }))
+              }));
+            }
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d326-exact-three-cold-microstride-evidence
+          path: ${{ runner.temp }}/d326-*.json
+          retention-days: 14

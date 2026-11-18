@@ -1,7 +1,8 @@
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 /** Normal routes win when available. Narrow fallback remains constrained
  * by the known map: never reveal hidden walls or furniture while planning. */
-import {type Pt,route,routeExtendedPortalRecovery,passable,type Door,OPERATOR_RADIUS,
+import {type Pt,route,routeExtendedPortalRecovery,routeColdFineGrid,
+ passable,type Door,OPERATOR_RADIUS,
   pointToSegment,doorLeafSegment} from './breach-core.ts';
 import {canAutoOpenEnRoute} from './breach-door.ts';
 import {type IntelState,intelPassable,routeWithIntel} from './breach-intel.ts';
@@ -387,4 +388,38 @@ export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],world?:SessionW
    previous=point;
  }
  return narrow;
+}
+
+/** D3.26E/F: COLD-only finer world-route feasibility. The fine grid
+ * itself is not physical authority; each leg, including the START and
+ * the final exact authored GO, must pass full-body 0.3-unit motor sweeps.
+ * Split long straight edges into ordinary transient motor waypoints.
+ * Offline audits inspect it; D3.26F allows only a rate-limited failed\n * motor to adopt the fully verified transient route without moving the actor. 
+ */
+export function coldFineMotorWorldRoute(from:Pt,to:Pt,doors:Door[],
+ world?:SessionWorldGeometry):Pt[]{
+ const canStand=memoizeExactRoutePassability(worldCanStand(doors,world));
+ if(!canStand(from,OPERATOR_RADIUS)||!canStand(to,OPERATOR_RADIUS))
+   return [];
+ const coarse=routeColdFineGrid(from,to,
+   point=>canStand(point,OPERATOR_RADIUS));
+ if(!coarse.length||Math.hypot(
+   coarse.at(-1)!.x-to.x,coarse.at(-1)!.y-to.y)>.05)return [];
+ const broken:Pt[]=[];
+ let at=from;
+ for(const point of coarse){
+  const length=Math.hypot(point.x-at.x,point.y-at.y);
+  const steps=Math.max(1,Math.ceil(length/96));
+  for(let i=1;i<=steps;i++){
+   const t=i/steps;
+   broken.push({x:at.x+(point.x-at.x)*t,
+     y:at.y+(point.y-at.y)*t});
+  }
+  at=point;
+  if(broken.length>80)return [];
+ }
+ const sweep=(a:Pt,b:Pt)=>
+  sweptBodyClear(a,b,doors,OPERATOR_RADIUS,world);
+ const maxTravel=Math.hypot(from.x-to.x,from.y-to.y)*3+150;
+ return fullBodyMotorRouteClear(from,broken,sweep,maxTravel)?broken:[];
 }

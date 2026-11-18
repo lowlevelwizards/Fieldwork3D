@@ -66,6 +66,15 @@ const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
 // D3.25D: strictly read-only endpoint feasibility for known failed entry.
 const d325StallFeasibility=process.argv.includes('--d325-stall-feasibility');
+// D3.26B: strictly cold end-state microstride truth for the three physical
+// non-arrivals. Off by default and never part of the authoritative motor.
+const d326LastStallProbe=process.argv.includes('--d326-last-stall-probe');
+const d326Micro=d326LastStallProbe?
+ await import('../src/breach-stack-micro-corner.ts'):null;
+const d326Fine=d326LastStallProbe?
+ await import('../src/breach-squeeze-route.ts'):null;
+const d326Gate=d326LastStallProbe?
+ await import('../src/breach-d326-fine-route-gate.ts'):null;
 // D3.17E: offline-only, post-run real geometry witness for blocked bodies.
 // It never runs in live movement, advances the simulation, or adopts a route.
 const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
@@ -319,6 +328,10 @@ function run(site,seed,kind){
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
   const blockWitness=actors.map(()=>({mask:0,events:[]}));
   const progressEvidence=[];
+  // D3.26F7 exact-seed read-only motor handoff witness, sampled only
+  // for one actor and short time windows. Zero impact in normal audits.
+  const d326MicroTrace=[];
+  let d326LastMicroKey='';
   const observed=actors.map(a=>({
    start:{...a.p},last:{...a.p},travel:0,blocked:0,squeezing:0,
    passage:0,opening:0,lastRetries:a.recoveryAttempts,
@@ -335,6 +348,33 @@ function run(site,seed,kind){
    }finally{
     if(grid)setRouteGridAuditObserver(null);
     if(recordRoute)setTransientRouteObserver(null);
+   }
+   if(d326LastStallProbe&&kind==='authored'){
+    const chosen=seed===19036595?'ash':seed===19143269?'moss':null;
+    const lower=seed===19036595?6:34;
+    const upper=seed===19036595?20:40;
+    const actor=chosen?actors.find(a=>a.id===chosen):null;
+    if(actor&&session.seconds>=lower&&session.seconds<=upper&&
+       d326MicroTrace.length<500){
+      const next=actor.nav[0];
+      const owned=d326Gate.ownsD326FineMotorRoute(actor);
+      const key=[actor.nav.length,owned,actor.squeeze,
+        actor.doorTraversal?.maneuver??'none',
+        Math.round(actor.blockedTime*2)].join(':');
+      if(key!==d326LastMicroKey||tick%12===0){
+       d326MicroTrace.push({
+        seconds:round(session.seconds),actor:chosen,
+        position:{x:round(actor.p.x),y:round(actor.p.y)},
+        navLength:actor.nav.length,
+        first:next?{x:round(next.x),y:round(next.y)}:null,
+        fineOwned:owned,squeeze:actor.squeeze,
+        blocked:round(actor.blockedTime),velocity:round(actor.velocity),
+        door:actor.doorTraversal?.doorId??null,
+        maneuver:actor.doorTraversal?.maneuver??null,
+        motorPause:actor.motorPause});
+       d326LastMicroKey=key;
+      }
+    }
    }
    survey.sample(actors,1/60);
    quality?.sample(actors,session.seconds);
@@ -731,6 +771,82 @@ function run(site,seed,kind){
        .map(d=>({id:d.id,open:!!d.open,locked:!!d.locked,fraction:round(d.openFraction??0)}))};
    }
   }
+  // D3.26B: compare the real stuck operator's *first 0.3-unit motor stride*
+  // against coarse 4-unit swept route validation. All probes inspect the
+  // final immutable world only; no actor position, GO, door or nav changes.
+  const d326StallEvidence=d326LastStallProbe&&kind==='authored'?
+   actors.filter(a=>a.plan[0]?.kind==='move'&&
+     stats.details.some(v=>v.actor===a.id&&!v.arrived)).map(actor=>{
+    const world=sessionWorldGeometry(session),goal=planned.goals.get(actor.id);
+    if(!goal)return null;
+    const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+    const sweep=(from,to)=>sweptBodyClear(from,to,
+      session.doors,OPERATOR_RADIUS,world);
+    const micro=(from,to)=>d326Micro.fullBodyMotorStrideClear(from,to,sweep);
+    const first=actor.nav[0]??null;
+    const direction=first??goal;
+    const gap=distance(actor.p,direction);
+    const immediate=gap>.001?{
+      x:actor.p.x+(direction.x-actor.p.x)/gap*.3,
+      y:actor.p.y+(direction.y-actor.p.y)/gap*.3}:null;
+    const previews=[];
+    for(const radius of [2,5,10]){
+     for(let j=0;j<8;j++){
+      const theta=j*Math.PI/4;
+      const candidate={x:actor.p.x+Math.cos(theta)*radius,
+        y:actor.p.y+Math.sin(theta)*radius};
+      if(!micro(actor.p,candidate))continue;
+      const tail=routeWithSqueezeWorld(candidate,goal,
+        session.doors,world);
+      const firstTail=tail[0]??null;
+      const future=tail.length?[]:routeToNextOperableDoor(
+        candidate,goal,session.doors,world);
+      let tailFailIndex=-1,at=candidate;
+      for(let k=0;k<tail.length;k++){
+       if(!micro(at,tail[k])){tailFailIndex=k;break;}
+       at=tail[k];
+      }
+      previews.push({radius,heading:j,point:candidate,
+       tailNodes:tail.length,tailFirst:firstTail,
+       tailFirstMicro:firstTail?micro(candidate,firstTail):null,
+       tailAllMicro:tail.length>0&&tailFailIndex<0,
+       tailFailIndex,
+       futureNodes:future.length,futureFirst:future[0]??null,
+       futureFirstMicro:future[0]?micro(candidate,future[0]):null,
+       nextNavMicro:first?micro(candidate,first):null});
+     }
+    }
+    const fineRoute=d326Fine.coldFineMotorWorldRoute(
+      actor.p,goal,session.doors,world);
+    return {actor:actor.id,position:{...actor.p},goal:{...goal},
+     fineRoute:{nodes:fineRoute.length,
+       first:fineRoute[0]??null,
+       last:fineRoute.at(-1)??null,
+       firstSix:fineRoute.slice(0,6)},
+     doorEpisode:actor.doorTraversal?.doorId??null,
+     nearestDoors:session.doors.map(d=>({id:d.id,
+       fromGap:pointToSegment(actor.p,doorLeafSegment(d)),
+       fraction:d.openFraction??0,locked:!!d.locked}))
+       .sort((a,b)=>a.fromGap-b.fromGap).slice(0,4),
+     blocker:actor.lastBlocker,blockedSeconds:actor.blockedTime,
+     squeeze:actor.squeeze,squeezeYaw:actor.squeezeYaw,
+     motorPause:actor.motorPause,recoveryAttempts:actor.recoveryAttempts,
+     lastNormalLaneProbeAt:actor.lastNormalLaneProbeAt,
+     lastNavRepairAt:actor.lastNavRepairAt,
+     doorEpisodePhase:actor.doorTraversal?.phase??null,
+     doorManeuver:actor.doorTraversal?.maneuver??null,
+     doorEpisodeAttempts:actor.doorTraversal?.maneuverAttempts??null,
+     firstNav:first,nextNavFullSweep:first?sweep(actor.p,first):null,
+     nextNavMicro:first?micro(actor.p,first):null,
+     nextImmediate:immediate,immediateSweep:immediate?sweep(actor.p,immediate):null,
+     positionFullBody:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
+     goalFullBody:bodyClear(goal,session.doors,OPERATOR_RADIUS,world),
+     currentWorldRouteNodes:routeWithSqueezeWorld(actor.p,goal,
+       session.doors,world).length,
+     currentFuturePortalNodes:routeToNextOperableDoor(actor.p,goal,
+       session.doors,world).length,
+     candidates:previews};
+   }).filter(Boolean):null;
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -842,6 +958,8 @@ function run(site,seed,kind){
    ...(progress?{progressEvidence}:{}),
    ...(leafRejoinDiagnostic?{leafRecoveryEvidence}:{}),
    ...(d325Feasibility?{d325Feasibility}:{}),
+   ...(d326StallEvidence?{d326StallEvidence}:{}),
+   ...(d326LastStallProbe?{d326MicroTrace}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),

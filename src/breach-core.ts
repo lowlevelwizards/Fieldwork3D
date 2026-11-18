@@ -337,6 +337,16 @@ export function routeExtendedPortalRecovery(from:Pt,to:Pt,
  canStand:(p:Pt)=>boolean):Pt[]{
  return routeGrid(from,to,canStand,GRID/2,8000,Infinity,true,true);
 }
+/** D3.26E/F: strictly COLD final-obstruction analysis. A 4-unit grid may
+ * identify a genuinely connected corridor hidden by the ordinary 16/8
+ * grid's snapped corners. This produces navigation candidates ONLY;
+ * caller must certify every leg with real motor-stride body collision.
+ * Never invoked by routine path planning or a live movement tick.
+ */
+export function routeColdFineGrid(from:Pt,to:Pt,
+ canStand:(p:Pt)=>boolean):Pt[]{
+ return routeGrid(from,to,canStand,GRID/4,14000,Infinity,true,true);
+}
 function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   grid:number,budget:number,padding=Infinity,
   alternateGoal=false,repairBlockedStart=false):Pt[]{
