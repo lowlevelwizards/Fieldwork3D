@@ -59,7 +59,7 @@ test('G36 P4: one atlas, large vents, quiet mag and clean lower receiver',()=>{
   return image.data[ix*4];
  };
  // Large front vents should remain high contrast while lower receiver stays blank.
- assert.notEqual(sample(0,0,22,60),255);
+ assert.notEqual(sample(0,0,24,60),255);
  assert.equal(sample(0,1,52,62),255);
  // A large magazine panel is restrained, not the prior three nearly black ribs.
  assert.ok(sample(2,1,55,51)>=200);
@@ -74,9 +74,9 @@ test('G36 P4: larger handguard graphic decisions without new vent meshes',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const guard=one(g,'g36LongHandguard');
  const p=guard.geometry.getAttribute('position');
- assert.equal(p.count,96,'H1: flat-shaded six-sided shell, 32 triangles with hard corners');
+ assert.equal(p.count,258,'H2.1: five eight-corner stations, rear cap and inset mouth');
  assert.equal(g.children.filter(o=>o.userData.g36LongHandguard).length,1);
- assert.ok(bounds(guard).max.y-bounds(guard).min.y>3.2);
+ assert.ok(bounds(guard).max.y-bounds(guard).min.y>3.20);
  assert.ok(bounds(guard).max.z-bounds(guard).min.z<3.25);
  assert.ok(Math.abs(bounds(g).max.x-A.muzzleX)<1e-4,
   'muzzle datum remains within Float32 vertex precision');

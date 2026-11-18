@@ -60,9 +60,9 @@ test('P5.2: four sculpted guard sections and broad receiver shoulder with fixed 
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const guard=one(g,'g36LongHandguard'),upper=one(g,'g36ReceiverUpper');
  const lower=one(g,'g36ReceiverLower'),grip=one(g,'g36Grip');
- assert.equal(G36_LONG_FOREND_RINGS.length,3);
- assert.equal(guard.geometry.getAttribute('position').count,96,
-  'H1 six-corner 3-station shell: 32 triangles, not rectangular P6');
+ assert.equal(G36_LONG_FOREND_RINGS.length,3,'H1 baseline remains archived for isolated comparison');
+ assert.equal(guard.geometry.getAttribute('position').count,258,
+  'Live H2.1 eight-corner, five-station angled shell with inset front mouth');
  assert.equal(G36_LONG_FOREND_RINGS[1].halfDepth,G36_LONG_FOREND_RINGS[0].halfDepth,
   'P6 removes pillowing between the first two cross-sections');
  assert.ok(box(guard).intersectsBox(box(upper)));

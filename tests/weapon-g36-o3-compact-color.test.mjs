@@ -81,8 +81,8 @@ test('O3-S4: six main/upper facets, short ocular sleeves, two simple opaque face
   assert.ok(one(g,k).geometry.parameters.segments<=8);
   assert.equal(g.children.filter(x=>x.userData[k]).length,1);
  }
- assert.equal(g.children.length,22,'no extra detail meshes beyond O2');
- assert.ok(triangles(g)<=600,'maintain G36 peer triangle budget');
+ assert.equal(g.children.length,24,'H2.1 adds one front cavity and one lug, O3 unchanged');
+ assert.ok(triangles(g)<=760,'H2.1 adds only major sculptural forms');
  clearWeaponSilhouette(g);mat.dispose();
 });
 

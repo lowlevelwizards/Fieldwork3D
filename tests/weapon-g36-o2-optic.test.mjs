@@ -82,7 +82,7 @@ test('O2 has exactly two rear-facing dark optical faces, no nested disks or dial
  assert.equal(high.material,finishes.buttpad);
  assert.equal(one(g,'g36LowerOpticBarrel').material,finishes.optic);
  assert.equal(one(g,'g36UpperReflexBarrel').material,finishes.optic);
- assert.equal(g.children.length,22);
+ assert.equal(g.children.length,24,'H2.1 adds a mouth cavity and one rear lug, optic unchanged');
  clearWeaponSilhouette(g);mat.dispose();
 });
 

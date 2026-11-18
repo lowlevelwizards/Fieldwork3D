@@ -5,6 +5,8 @@
  * The same live-intended original G36 meshes are UV projected in place.
  */
 import * as THREE from 'three';
+import {G36_H2_VENT_CENTERS,G36_H2_VENT_SIZE,h21FactoryX,h21FactoryY}
+ from './g36-h2-handguard-study.ts';
 type Region='guard'|'receiver'|'lower'|'magazine';
 type Tile='guard-right'|'guard-left'|'receiver-right'|'receiver-left'|
  'lower-right'|'lower-left'|'magazine-right'|'magazine-left';
@@ -28,11 +30,17 @@ const zone=(x:number,y:number,x0:number,x1:number,y0:number,y1:number)=>
  */
 function ink(tile:Tile,x:number,y:number):number{
  if(tile==='guard-right'||tile==='guard-left'){
-  // H1: four long, shallow graphic vent slots, never four black squares.
-  // Single cached pixel atlas: no extra mesh, bevel, frame or seam.
-  // Keep all slots below the new upper shoulder (Y about +.85).
-  for(const center of [5.35,7.40,9.45,11.50])
-   if(zone(x,y,center-.85,center+.85,-.17,.39))return 89;
+  // H2.1: SAME four bold high side slots as the isolated approved study.
+  // Preserve the single shared atlas / pooled factory material; do not add
+  // transparent vent decals or a separate per-frame InstancedMesh.
+  const halfLength=G36_H2_VENT_SIZE.length*.97/2;
+  const middle=h21FactoryY(G36_H2_VENT_SIZE.centerY);
+  const halfHeight=G36_H2_VENT_SIZE.height*1.04/2;
+  for(const localX of G36_H2_VENT_CENTERS){
+   const center=h21FactoryX(localX);
+   if(zone(x,y,center-halfLength,center+halfLength,
+    middle-halfHeight,middle+halfHeight))return 89;
+  }
   return 255;
  }
  if(tile==='receiver-right'){
