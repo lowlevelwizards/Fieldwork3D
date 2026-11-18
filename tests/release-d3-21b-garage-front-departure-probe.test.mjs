@@ -56,6 +56,12 @@ test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departur
   assert.ok(dist(from,chosen)<=12.001);
   assert.ok(pointToSegment(chosen,leaf)>=OPERATOR_RADIUS+7);
   assert.ok(fullBodyMotorStrideClear(from,chosen,sweep));
+  for(let i=0;i<=12;i++){
+   const future={...door,openFraction:door.openFraction+
+    (Math.max(1,door.pushTarget??1)-door.openFraction)*i/12};
+   assert.ok(pointToSegment(chosen,doorLeafSegment(future))>=OPERATOR_RADIUS+5,
+    'a retreat cannot be placed in the NEXT opening arc of the same real leaf');
+  }
   // A valid departure is diagnostic evidence only, NOT proof that the
   // authoritative door motor can complete the whole four-person route.
  }finally{activateSite(null);}

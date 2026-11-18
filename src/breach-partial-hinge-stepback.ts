@@ -43,6 +43,14 @@ export function selectBlockedHingeStepback(
  const leaf=doorLeafSegment(door);
  const before=pointToSegment(from,leaf);
  if(before<OPERATOR_RADIUS-.6||before>OPERATOR_RADIUS+5)return null;
+ // A step that clears the leaf at this instant can STILL be struck by its
+ // NEXT few degrees of opening (Garage FRONT at 0.858 -> 1.0). Account for
+ // the actual rotating solid panel along the permitted future opening
+ // range. The door motor remains authoritative and collision is unchanged.
+ const start=door.openFraction??0;
+ const finish=Math.max(start,Math.min(1.55,Math.max(1,door.pushTarget??1)));
+ const futureLeafSegments=Array.from({length:13},(_,i)=>
+  doorLeafSegment({...door,openFraction:start+(finish-start)*i/12}));
  let best:Pt|null=null,score=Infinity;
  for(const radius of [6,8,10,12]){
   for(let i=0;i<16;i++){
@@ -50,7 +58,12 @@ export function selectBlockedHingeStepback(
    const p={x:from.x+Math.cos(theta)*radius,
     y:from.y+Math.sin(theta)*radius};
    const clearance=pointToSegment(p,leaf);
+   const futureGap=Math.min(...futureLeafSegments.map(leaf=>
+     pointToSegment(p,leaf)));
+   // Margin exceeds the motor's 1-unit precise-detour arrival tolerance;
+   // the actual resting center must remain out of the predicted leaf sweep.
    if(clearance<OPERATOR_RADIUS+7||
+      futureGap<OPERATOR_RADIUS+5||
       clearance<before+5||!canStand(p)||
       !fullBodyMotorStrideClear(from,p,sweep))continue;
    const setback=Math.max(0,distance(p,goal)-distance(from,goal));
