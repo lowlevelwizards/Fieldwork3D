@@ -44,8 +44,8 @@ test('G36 P2 production-wide geometry census: rifle peers and per-mesh attributi
  assert.equal(grouped.handguard.meshes,1,'one capped hex shell only');
  assert.ok(grouped.handguard.triangles,20,'one twelve-side-triangle shell and two four-triangle end caps');
  assert.equal(grouped.barrel.meshes,2);
- assert.equal(grouped.barrel.triangles,24,
-  'barrel and muzzle are precisely two 12-triangle boxes');
+ assert.equal(grouped.barrel.triangles,40,
+  'barrel is 12 triangles and the single stepped flash hider is 28');
  assert.ok(grouped.receiver.triangles>grouped.barrel.triangles,
   'art budget should emphasize receiver/optics rather than barrel');
  clearWeaponSilhouette(root);material.dispose();

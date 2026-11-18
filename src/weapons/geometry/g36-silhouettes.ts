@@ -129,17 +129,20 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  ],2.50);
  upper.userData.g36ReceiverUpper=true;
  upper.userData.g36ReceiverArtVersion='r2-broad-interlocking-upper';
- // The lower is ONE angular 5.56 magazine funnel: bottom width 4.10 vs
- // 3.32 magazine mouth; depth 2.28 vs 1.83 mag, i.e. clearance on 4 sides.
- // Its steep front face and open rear trigger void provide G36 identity
- // without a second magwell collar or any modeled interior walls.
+ // R3: the magwell has precisely THREE graphic outside relationships:
+ // (1) straight vertical REAR (-1.70 at both heights), (2) bottom drops
+ // toward the rear, and (3) an angled FRONT. One eight-corner lower
+ // extrusion retains the open trigger gap and 5.56 magazine clearances.
+ // The 3.32-wide magazine center x=.45 extends x [-1.21,2.11],
+ // leaving .49 behind and >.5 at the well front (y=-3.0).
  const lower=outline('receiver',[
-  [-6.35,-1.28],[4.05,-1.28],[2.65,-3.28],
-  [-1.45,-3.28],[-2.05,-2.18],[-3.78,-2.17],
+  [-6.35,-1.28],[4.05,-1.28],[2.72,-3.13],
+  [-1.70,-3.49],[-1.70,-2.18],[-3.78,-2.17],
   [-4.28,-3.43],[-6.35,-2.18]
  ],2.28);
- lower.userData.g36MagwellArtVersion='r2-556-angled-funnel';
- lower.userData.g36MagwellMouthWidth=4.10;
+ lower.userData.g36MagwellArtVersion='r3-556-vertical-rear';
+ lower.userData.g36MagwellMouthWidth=4.42;
+ lower.userData.g36MagwellRearX=-1.70;
  lower.userData.g36MagwellDepth=2.28;
  lower.userData.g36ReceiverLower=true;
  lower.userData.g36OpenTriggerGap=true;
@@ -191,24 +194,26 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  charging.userData.g36ChargingHandle=true;
  charging.userData.g36ChargePosition='r2-front-top-under-handle';
 
- // Shared HK pictogram selector marks. Both side quads are merged into
- // ONE non-shadow-casting 4-triangle graphic, with a cached shared material.
- // White safe and muted red fire modes remain legible on the upper slab.
- // This must be added after the physical selector and kept out of factory
- // finish replacement (it has its own transparent pixel material).
+ // HK's G36 was offered with a genuine SEF trigger group as well as
+ // pictograms. Restore the selector's rear/down pivot near the top of
+ // the grip while preserving two-sided factory controls and six facets.
+ // One batched four-triangle white S / red E-F graphic survives finish swaps.
  for(const side of [-1,1] as const){
-  // Move the selector forward/up into the lower receiver's readable flank.
-  const [hub,lever]=addHKSelectorLeverArt(root,-3.95,-1.14,1.14,side,material,6);
+  const [hub,lever]=addHKSelectorLeverArt(root,-5.20,-1.96,1.14,side,material,6);
   hub.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   lever.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   hub.userData.g36SelectorHub=true;
   lever.userData.g36SelectorLever=true;
  }
+ // SEF glyphs occupy the rightmost 3px of the shared 24px atlas.
+ // Move the quad left so actual letters sit directly above the pivot
+ // rather than appearing far ahead of the lever.
  const selectorMarks=addWeaponPixelMarkPairBatched(
-  root,'hk-selector-picto',-3.82,-.29,1.278,2.30,1.72);
+  root,'hk-selector',-5.75,-.77,1.278,2.30,1.72);
  selectorMarks.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
  selectorMarks.userData.g36SelectorMarkings=true;
  selectorMarks.userData.g36SelectorMarkCount=2;
+ selectorMarks.userData.g36SelectorArtVersion='r3-sef-rear-low';
 
  const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;
@@ -218,14 +223,20 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  const guard=addG36H3FactoryHandguard(root,ids.handguard,i.handguard++,material);
  guard.userData.g36LongHandguard=true;
 
- // R2: same total two meshes, but an intentionally oversized longer
- // terminal muzzle block is visible at gameplay distance. The barrel
- // overlaps the rear of the device; no micro slots, rings or extra facets.
+ // R3: ONE integrated eight-corner flash-hider silhouette, NOT a blunt
+ // square cap or a stack of collar/ring meshes. Collar bulges at x=18.26,
+ // then narrows into the long working body while remaining slightly
+ // thicker than the 1.14-wide barrel. Two graphic side slots come from
+ // the ALREADY pooled G36 atlas and need ZERO additional triangles.
  const barrel=box('barrel',16.12,0,0,5.90,1.14,1.14);
  barrel.userData.g36Barrel=true;
- const muzzle=box('barrel',A.muzzleX-.80,0,0,1.60,1.52,1.52);
+ const muzzle=outline('barrel',[
+  [17.85,.60],[18.26,.77],[18.51,.64],
+  [A.muzzleX,.64],[A.muzzleX,-.64],
+  [18.51,-.64],[18.26,-.77],[17.85,-.60]
+ ],1.42);
  muzzle.userData.g36FactoryMuzzle=true;
- muzzle.userData.g36MuzzleArtVersion='r2-bold-long-device';
+ muzzle.userData.g36MuzzleArtVersion='r3-faceted-flash-hider';
  return root;
 }
 

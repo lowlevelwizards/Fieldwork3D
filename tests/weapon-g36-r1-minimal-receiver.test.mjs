@@ -48,17 +48,17 @@ test('R1 charging tab is at right ejection port x and sits above port, not on ro
  clearWeaponSilhouette(g);mat.dispose();
 });
 
-test('R1 selectors shift forward and up on BOTH sides without changing shared selector tool',()=>{
+test('R3 selectors restored beside grip on BOTH sides without changing shared selector tool',()=>{
  const mat=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(mat);
  const hubs=all(g,'g36SelectorHub'),levers=all(g,'g36SelectorLever');
  assert.equal(hubs.length,2);assert.equal(levers.length,2);
  for(const hub of hubs){
-  assert.ok(near(hub.position.x,-3.95,.01));
-  assert.ok(near(hub.position.y,-1.14,.01));
-  assert.ok(hub.position.x>-5.20&&hub.position.y>-1.96);
+  assert.ok(near(hub.position.x,-5.20,.01));
+  assert.ok(near(hub.position.y,-1.96,.01));
+  assert.ok(hub.position.x<-4.8&&hub.position.y<-1.7);
   assert.equal(hub.geometry.parameters.radialSegments,6);
  }
- for(const lever of levers)assert.ok(lever.position.x>-4.00&&lever.position.y>-1.25);
+ for(const lever of levers)assert.ok(lever.position.x<-4.5&&lever.position.y<-1.75);
  clearWeaponSilhouette(g);mat.dispose();
 });
 

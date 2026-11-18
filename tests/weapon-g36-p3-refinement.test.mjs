@@ -64,11 +64,11 @@ test('P3 dark dual-optic faces are seated on the FRONT and REAR of real housings
  assert.equal(front.material,finishes.buttpad);
  clearWeaponSilhouette(g);mat.dispose();
 });
-test('R2 muzzle is a longer chunky 2-prism device, still fixed at muzzle contact',()=>{
+test('R3 muzzle has one faceted stepped flash hider while preserving muzzle datum',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const barrel=one(g,'g36Barrel'),muzzle=one(g,'g36FactoryMuzzle');
  assert.ok(barrel&&muzzle);
- assert.equal(count(barrel)+count(muzzle),24);
+ assert.equal(count(barrel)+count(muzzle),40,'one barrel box and one 8-corner, 28-triangle flash hider');
  const b=bounds(barrel),end=bounds(muzzle);
  assert.ok(b.max.y-b.min.y>=1.1);
  assert.ok(b.max.z-b.min.z>=1.1);

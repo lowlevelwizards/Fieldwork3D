@@ -222,7 +222,7 @@ test('G36 D1-2: single real pixel atlas, side-correct ejection, no extra draw me
   ((obj.geometry.index?.count??obj.geometry.getAttribute('position').count)/3),0);
  assert.equal(g.children.length,beforeCount,'pixel features must be surface-only');
  assert.equal(afterTriangles,beforeTriangles,'atlas UVs must not add triangles');
- for(const key of ['g36LongHandguard','g36ReceiverUpper','g36ReceiverLower','g36Magazine']){
+ for(const key of ['g36LongHandguard','g36ReceiverUpper','g36ReceiverLower','g36Magazine','g36FactoryMuzzle']){
   const obj=one(g,key);
   assert.ok(obj.userData.g36AtlasProjected,key);
   assert.equal(obj.geometry.getAttribute('uv').count,
@@ -394,16 +394,16 @@ test('G36 P2: carry-handle inward faces are visible without double-sided materia
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('G36 P2: remove trigger guard and use two rectangular front primitives',()=>{
+test('G36 P2/R3: open trigger gap with box barrel and sculpted one-piece flash hider',()=>{
  const m=mat(),g=buildG36OriginalBlockout(m),lower=one(g,'g36ReceiverLower');
  assert.ok(lower.userData.g36OpenTriggerGap);
  assert.equal(lower.geometry.parameters.shapes.holes.length,0);
  assert.equal(hit(lower,-2.3,-2.82),false);
  for(const key of ['g36Barrel','g36FactoryMuzzle']){
   const part=one(g,key);
-  assert.equal(part.geometry.type,'BoxGeometry',
-   key+' must be a simple flat-sided box, not a tube');
-  assert.ok((part.geometry.index?.count??part.geometry.getAttribute('position').count)/3<=12);
+  assert.equal(part.geometry.type,key==='g36Barrel'?'BoxGeometry':'ExtrudeGeometry');
+  assert.equal((part.geometry.index?.count??part.geometry.getAttribute('position').count)/3,
+   key==='g36Barrel'?12:28,'one box barrel and one purposeful flash-hider profile');
  }
  clearWeaponSilhouette(g);m.dispose();
 });

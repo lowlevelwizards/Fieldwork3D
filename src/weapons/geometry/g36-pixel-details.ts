@@ -7,7 +7,7 @@
 import * as THREE from 'three';
 import {G36_H3_VENT_CENTERS,G36_H3_VENT_SIZE}
  from './g36-h3-handguard.ts';
-type Region='guard'|'receiver'|'lower'|'magazine';
+type Region='guard'|'receiver'|'lower'|'magazine'|'muzzle';
 type Tile='guard-right'|'guard-left'|'receiver-right'|'receiver-left'|
  'lower-right'|'lower-left'|'magazine-right'|'magazine-left';
 type Bounds=readonly [number,number,number,number];
@@ -117,7 +117,10 @@ export function applyG36PixelDetails(root:THREE.Group):void{
   {key:'g36LongHandguard',region:'guard'},
   {key:'g36ReceiverUpper',region:'receiver'},
   {key:'g36ReceiverLower',region:'lower'},
-  {key:'g36Magazine',region:'magazine'}
+  {key:'g36Magazine',region:'magazine'},
+  // Reuse two full-size guard vents as the flash-hider's longitudinal cuts.
+  // No new atlas tile, texture allocation, mesh or separate decal.
+  {key:'g36FactoryMuzzle',region:'muzzle'}
  ];
  for(const {key,region} of configs){
   const mesh=root.children.find(n=>n instanceof THREE.Mesh&&n.userData[key]);
@@ -137,12 +140,19 @@ export function applyG36PixelDetails(root:THREE.Group):void{
     a.fromBufferAttribute(pos,i);b.fromBufferAttribute(pos,i+1);
     c.fromBufferAttribute(pos,i+2);
     normal.crossVectors(u.subVectors(b,a),v.subVectors(c,a)).normalize();
-    const selected=Math.abs(normal.z)>.72?tileFor(region,normal.z):null;
+    const surfaceRegion=region==='muzzle'?'guard':region;
+    const selected=Math.abs(normal.z)>.72?tileFor(surfaceRegion,normal.z):null;
     const solidFront=region==='guard'&&normal.x>.85;
     for(let j=0;j<3;j++){
      const x=pos.getX(i+j),y=pos.getY(i+j);
-     const tile=selected??tileFor(region,normal.z>=0?1:-1);
-     const [uu,vv]=uv(tile,x,y);
+     const tile=selected??tileFor(surfaceRegion,normal.z>=0?1:-1);
+     // Spread two existing big vent shapes across the slimmer device
+     // using ONLY UVs. No modeling of tiny real-life flash-hider cuts.
+     const tx=region==='muzzle'&&selected?
+      5.45+(x-17.85)/(19.50-17.85)*3.95:x;
+     const ty=region==='muzzle'&&selected?
+      G36_H3_VENT_SIZE.centerY+y*.78:y;
+     const [uu,vv]=uv(tile,tx,ty);
      coords[(i+j)*2]=uu;coords[(i+j)*2+1]=vv;
     }
     // All non-side faces remain plain, except the front's darker solid cap.
@@ -154,7 +164,7 @@ export function applyG36PixelDetails(root:THREE.Group):void{
     else if(!selected)for(let j=0;j<3;j++){
      // Rather than sample an arbitrary corner of an illustrated tile,
      // use its verified blank upper-right texel.
-     const tile=definitions[tileFor(region,normal.z>=0?1:-1)];
+     const tile=definitions[tileFor(surfaceRegion,normal.z>=0?1:-1)];
      coords[(i+j)*2]=(tile.col+.985)/COLS;
      coords[(i+j)*2+1]=(tile.row+.985)/ROWS;
     }
