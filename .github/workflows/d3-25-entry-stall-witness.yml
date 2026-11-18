@@ -6,6 +6,9 @@ on:
       - 'scripts/report-d3-25-entry-stalls.mjs'
       - 'scripts/audit-r7-squad-execution.mjs'
       - 'src/breach-order-wait.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-d325-escape-join.ts'
+      - 'tests/release-d3-25f-cold-swept-entry-escape.test.mjs'
       - 'tests/release-d3-25b-terminal-entry-gate.test.mjs'
       - '.github/workflows/d3-25-entry-stall-witness.yml'
   workflow_dispatch:
@@ -28,6 +31,7 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/release-d3-25b-terminal-entry-gate.test.mjs \
+            tests/release-d3-25f-cold-swept-entry-escape.test.mjs \
             tests/tactical-integration-10-entry-gate.test.mjs
       - name: Townhouse small · 19018816 · real four-person 45-second entry
         run: |
