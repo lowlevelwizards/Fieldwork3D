@@ -81,7 +81,7 @@ test('O3-S4: six main/upper facets, short ocular sleeves, two simple opaque face
   assert.ok(one(g,k).geometry.parameters.segments<=8);
   assert.equal(g.children.filter(x=>x.userData[k]).length,1);
  }
- assert.equal(g.children.length,24,'H2.1 adds one front cavity and one lug, O3 unchanged');
+ assert.equal(g.children.length,22,'H3 drops cavity/lug; O3 optic unchanged');
  assert.ok(triangles(g)<=760,'H2.1 adds only major sculptural forms');
  clearWeaponSilhouette(g);mat.dispose();
 });
