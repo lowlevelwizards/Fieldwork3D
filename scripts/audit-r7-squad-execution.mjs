@@ -33,7 +33,7 @@ import {D315B4_HOLDOUT_22,D315B4_HOLDOUT_ID}
  from './lib/d3-15b4-tenth-blind22.mjs';
 import {doorSwingBlocked,doorWouldStrikeActors,cachedHingeSweepNeighborhood} from '../src/breach-door.ts';
 import {rehearseDoorLeafBypass} from '../src/breach-door-traversal-maneuver.ts';
-import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing} from '../src/breach-navigation.ts';
+import {sweptBodyClear,bodyClear,sweptProfileClear,squeezeFacing,escapeOpenDoorOverlap} from '../src/breach-navigation.ts';
 import {routeWithSqueezeWorld,routeToNextOperableDoor,
  recoverNormalLane,routeWithSqueezeIntel,routeWithNormalWorld}
  from '../src/breach-squeeze-route.ts';
@@ -64,6 +64,8 @@ const progress=process.argv.includes('--progress');
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
+// D3.25D: strictly read-only endpoint feasibility for known failed entry.
+const d325StallFeasibility=process.argv.includes('--d325-stall-feasibility');
 // D3.17E: offline-only, post-run real geometry witness for blocked bodies.
 // It never runs in live movement, advances the simulation, or adopts a route.
 const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
@@ -766,6 +768,40 @@ function run(site,seed,kind){
       leaf:leaf?.id??null,nearestOpenLeaves:nearby,
       selectedJoin:physical.slice(0,5),selectedNodeCount:physical.length};
    }):[];
+  // D3.25D: purely hypothetical stepped escape from the ACTUAL
+  // end-state position. Never modify actors, doors, route ownership, or
+  // physical arrival counts. Each tiny step is certified by the SAME
+  // swept body helper as the runtime; no hidden teleport to a free site.
+  const d325Feasibility=d325StallFeasibility&&kind==='entry'?
+   actors.map(a=>{
+    const world=sessionWorldGeometry(session);
+    const goal=planned.goals.get(a.id)??a.plan.at(-1)?.p??a.p;
+    const chosen=session.doors.find(d=>d.id===planned.door?.id);
+    let point={...a.p},steps=0,distance=0;
+    const sequence=[];
+    const startClear=bodyClear(point,session.doors,OPERATOR_RADIUS,world);
+    while(!bodyClear(point,session.doors,OPERATOR_RADIUS,world)&&steps<32){
+      const next=escapeOpenDoorOverlap(point,goal,session.doors,1.35,world);
+      if(!next||!sweptBodyClear(point,next,session.doors,OPERATOR_RADIUS,world))
+        break;
+      distance+=dist(point,next);steps++;
+      sequence.push({...next});point=next;
+    }
+    const clear=bodyClear(point,session.doors,OPERATOR_RADIUS,world);
+    const route=clear?routeWithSqueezeWorld(point,goal,session.doors,world):[];
+    const first=route[0]??null;
+    const firstSwept=!!first&&
+      sweptBodyClear(point,first,session.doors,OPERATOR_RADIUS,world);
+    return {id:a.id,started:{...a.p},goal:{...goal},
+      startClear,steps,escapeDistance:round(distance),
+      escapePoint:point,clearAfterEscape:clear,
+      escapeSequence:sequence.slice(0,12),
+      door:chosen?{id:chosen.id,open:chosen.open,
+       fraction:round(chosen.openFraction??0),
+       angularVelocity:round(chosen.angularVelocity??0)}:null,
+      navNext:a.nav[0]??null,routeLength:route.length,
+      routeFirst:first,routeFirstSwept:firstSwept};
+   }):null;
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
    successful,queueDrained:complete,
    cancelledOrders:actors.reduce((n,a)=>n+(a.failedOrders??0),0),
@@ -777,6 +813,7 @@ function run(site,seed,kind){
    ...(d315bRouteProbe?{d315bRouteEvidence}:{}),
    ...(progress?{progressEvidence}:{}),
    ...(leafRejoinDiagnostic?{leafRecoveryEvidence}:{}),
+   ...(d325Feasibility?{d325Feasibility}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
