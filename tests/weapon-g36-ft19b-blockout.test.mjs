@@ -68,7 +68,7 @@ test('G36 B: receiver, stock, handguard, magwell and muzzle physically connect',
  assert.ok(G36_MAG30_OUTLINE.length>=7);
  clearWeaponSilhouette(g);m.dispose();
 });
-test('G36 B: mesh/triangle economy plus no premature production catalog registration',()=>{
+test('G36 B: mesh/triangle economy plus curated family catalog registration',()=>{
  const m=mat(),g=buildG36OriginalBlockout(m);
  const meshes=g.children.filter(x=>x instanceof THREE.Mesh);
  const triangles=meshes.reduce((sum,x)=>{
@@ -76,9 +76,9 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  },0);
  assert.equal(meshes.length,23, 'R2 adds one indispensable dual-sided HK marking mesh');
  assert.ok(triangles<=650, 'H3 should reduce production triangle count: '+triangles);
- assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
-  'only the accepted original full-size model is an authored factory preset');
- assert.equal(Object.keys(FAMILY_PARTS).filter(id=>id.startsWith('g36-')).length,6);
+ assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,4,
+  'original, K, C and KA4 only');
+ assert.equal(Object.keys(FAMILY_PARTS).filter(id=>id.startsWith('g36-')).length,15);
  const peers=[['rifle','fnc-service'],['rifle','fal-5000'],
   ['rifle','hk-g3a3'],['rifle','ar-m16a2'],['carbine','ar-m4a1'],
   ['rifle','ak-akm']];
@@ -293,13 +293,13 @@ test('G36 E0: shared future hand/grip/magazine/muzzle datums sit on real mesh',(
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('G36 E1: exactly one complete valid factory, unique visual feed and Arsenal platform',()=>{
+test('G36 E1: original factory remains valid with three new presets, unique visual feed and Arsenal platform',()=>{
  const cfg=selectWeaponFamilyPreset(initialWeaponConfiguration('rifle'),'g36-service');
  assert.equal(cfg.build?.family,'g36');
  assert.ok(validFamilyBuild(cfg.build,'rifle'));
  assert.equal(cfg.build.parts.magazine,'g36-mag30');
  assert.equal(cfg.slots.optic,'optic-g36-integrated');
- assert.equal(arsenalReferencesForPlatform('g36').length,1);
+ assert.equal(arsenalReferencesForPlatform('g36').length,4);
  assert.ok(ARSENAL_PLATFORMS.some(p=>p.id==='g36'));
  assert.deepEqual(arsenalCatalogIssues(),[]);
  const raw=readWeaponFamilyBuild(cfg.build,'rifle');
