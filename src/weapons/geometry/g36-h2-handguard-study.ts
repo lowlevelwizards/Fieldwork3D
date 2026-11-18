@@ -75,19 +75,14 @@ function makeShell(mat:THREE.Material,width:number,withMouth:boolean):THREE.Mesh
   const last=G36_H2_STATIONS[ringCount-1],mid=(last.top+last.bottom)/2;
   const outer=h2StationVertices(last,width);
   const innerStart=positions.length/3;
-  // Keep the mouth on the same *inclined front plane* as the shell rim.
-  for(const [x,y,z] of outer){
-   positions.push(x,mid+(y-mid)*.68,z*.68);
-  }
-  const throatStart=positions.length/3;
-  for(const [x,y,z] of outer){
-   positions.push(x-.42,mid+(y-mid)*.68,z*.68);
-  }
+  // One heavy beveled rim ONLY. No second bevel, throat ring or fake hardware.
+  // The inner face is recessed 0.27 along X behind the slanted nose.
+  for(const [x,y,z] of outer)
+   positions.push(x-.27,mid+(y-mid)*.68,z*.68);
   for(let j=0;j<sides;j++){
    const k=(j+1)%sides;
-   addTriangle(faces,front+j,front+k,innerStart+j,front+k,innerStart+k,innerStart+j);
-   addTriangle(faces,innerStart+j,innerStart+k,throatStart+j,
-    innerStart+k,throatStart+k,throatStart+j);
+   addTriangle(faces,front+j,front+k,innerStart+j,
+    front+k,innerStart+k,innerStart+j);
   }
  }else{
   for(let j=1;j<sides-1;j++)addTriangle(faces,front,front+j+1,front+j);
@@ -108,7 +103,7 @@ function openingBack(width:number,mat:THREE.Material):THREE.Mesh{
    mid=(r.top+r.bottom)/2,section=h2StationVertices(r,width);
  const vertices:number[]=[],triangles:number[]=[];
  for(const [x,y,z] of section)
-  vertices.push(x-.415,mid+(y-mid)*.68,z*.68);
+  vertices.push(x-.272,mid+(y-mid)*.68,z*.68);
  for(let j=1;j<7;j++)triangles.push(0,j,j+1);
  const geom=new THREE.BufferGeometry();
  geom.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
@@ -119,18 +114,18 @@ function openingBack(width:number,mat:THREE.Material):THREE.Mesh{
  return face;
 }
 function bossShape(material:THREE.Material):THREE.Mesh{
- // A single bold silhouette block on the upper rear portion, with one genuine
- // void. This is not detailed fastening hardware.
+ // H2.1 C: preserve only one chunky raised rear boss with one six-sided
+ // punch-out. No duplicate mounts, fastener geometry, seams or screws.
  const path=new THREE.Shape();
  path.moveTo(1.15,1.46);path.lineTo(1.15,1.96);
  path.lineTo(1.42,2.10);path.lineTo(2.03,2.10);
  path.lineTo(2.20,1.90);path.lineTo(2.20,1.46);
  path.closePath();
  const hole=new THREE.Path();
- hole.absarc(1.67,1.79,.115,0,Math.PI*2,true);
+ hole.absarc(1.67,1.79,.12,0,Math.PI*2,true);
  path.holes.push(hole);
  const geo=new THREE.ExtrudeGeometry(path,{
-  depth:.53,steps:1,bevelEnabled:false,curveSegments:8
+  depth:.53,steps:1,bevelEnabled:false,curveSegments:6
  });
  geo.translate(0,0,-.265);
  const mesh=new THREE.Mesh(geo,material);mesh.name='H2 · raised HK mounting lug';
