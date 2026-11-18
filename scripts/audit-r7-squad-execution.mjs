@@ -792,6 +792,33 @@ function run(site,seed,kind){
     const first=route[0]??null;
     const firstSwept=!!first&&
       sweptBodyClear(point,first,session.doors,OPERATOR_RADIUS,world);
+    // D3.25E diagnostic ONLY: if the grid's first leg is unswept
+    // despite a clear body, examine a fixed 5-radius/16-heading set
+    // of physically legal cold one-bend departures. No actor moves.
+    let localJoin=null,joinProbes=0;
+    if(clear&&route.length&&!firstSwept&&a.plan[0]?.kind==='move'){
+      outer:for(const radius of [3,5,8,12,18]){
+        for(let i=0;i<16;i++){
+          const t=i*Math.PI/8;
+          const candidate={x:point.x+Math.cos(t)*radius,
+            y:point.y+Math.sin(t)*radius};
+          if(!sweptBodyClear(point,candidate,
+             session.doors,OPERATOR_RADIUS,world)||
+             !bodyClear(candidate,session.doors,OPERATOR_RADIUS,world))
+            continue;
+          joinProbes++;
+          const continuation=routeWithSqueezeWorld(
+            candidate,goal,session.doors,world);
+          if(!continuation.length||
+             !sweptBodyClear(candidate,continuation[0],
+              session.doors,OPERATOR_RADIUS,world))continue;
+          localJoin={candidate,routeFirst:continuation[0],
+            routeLength:continuation.length,
+            distance:round(dist(point,candidate))};
+          break outer;
+        }
+      }
+    }
     return {id:a.id,started:{...a.p},goal:{...goal},
       startClear,steps,escapeDistance:round(distance),
       escapePoint:point,clearAfterEscape:clear,
@@ -800,7 +827,8 @@ function run(site,seed,kind){
        fraction:round(chosen.openFraction??0),
        angularVelocity:round(chosen.angularVelocity??0)}:null,
       navNext:a.nav[0]??null,routeLength:route.length,
-      routeFirst:first,routeFirstSwept:firstSwept};
+      routeFirst:first,routeFirstSwept:firstSwept,
+      joinProbes,localJoin};
    }):null;
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
    successful,queueDrained:complete,
