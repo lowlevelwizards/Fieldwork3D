@@ -39,7 +39,7 @@ export function selectColdMotorMicroDeparture(
    if(!bodyClear(stage)||
       !fullBodyMotorStrideClear(from,stage,sweep))continue;
    const tail=routeTo(stage,goal);
-   if(!tail.length||dist(tail.at(-1)!,goal)>3||
+   if(!tail.length||dist(tail.at(-1)!,goal)>.05||
       !fullBodyMotorStrideClear(stage,tail[0],sweep))continue;
    let cost=radius,at=stage;
    for(const point of tail){cost+=dist(at,point);at=point;}
