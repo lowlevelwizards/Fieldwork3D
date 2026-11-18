@@ -43,11 +43,15 @@ export function createObjectiveKnowledge(site:Site|undefined,
      {area:approximateObjectiveArea(site)}:{})};
 }
 export function setObjectiveIntelLevel(
- state:{site?:Site;objectiveIntel?:ObjectiveKnowledge},
+ state:{site?:Site;scenario?:{objective:Pt};objectiveIntel?:ObjectiveKnowledge},
  level:ObjectiveIntelLevel
 ):void{
  const observed=state.objectiveIntel?.discovered===true;
- state.objectiveIntel=createObjectiveKnowledge(state.site,level);
+ // Capture targets can be instantiated in another room after the authored
+ // architectural objective was chosen. Clues track the physical target.
+ const actualSite=state.site&&state.scenario?
+   {...state.site,objective:state.scenario.objective}:state.site;
+ state.objectiveIntel=createObjectiveKnowledge(actualSite,level);
  if(observed)state.objectiveIntel.discovered=true;
 }
 export function discoverObjective(
