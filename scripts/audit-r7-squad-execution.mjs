@@ -972,7 +972,31 @@ function run(site,seed,kind){
       })).map(o=>({a:o.a,b:o.b})),
       windows:(site.windows??[]).filter(o=>nearRoomBoundary({
         x:o.x,y:o.y
-      })).map(o=>({x:o.x,y:o.y,w:o.w??null}))
+      })).map(o=>({x:o.x,y:o.y,w:o.w??null})),
+      northSideProbe:(()=> {
+        const opening=(site.openings??[]).find(o=>nearRoomBoundary({
+          x:(o.a.x+o.b.x)/2,y:(o.a.y+o.b.y)/2
+        }));
+        if(!opening||!authored)return null;
+        const mid={x:(opening.a.x+opening.b.x)/2,
+          y:(opening.a.y+opening.b.y)/2};
+        const north={x:mid.x,y:mid.y-18},south={x:mid.x,y:mid.y+18};
+        const otherRoom=site.rooms.find(r=>r.kind==='room'&&
+          r.id!==goalRoom.id&&
+          north.x>=r.x&&north.x<=r.x+r.w&&
+          north.y>=r.y&&north.y<=r.y+r.h);
+        const route=(from,to)=>routeWithSqueezeWorld(from,to,[],world);
+        return {opening,mid,north,south,
+          northStand:bodyClear(north,[],OPERATOR_RADIUS,world),
+          southStand:bodyClear(south,[],OPERATOR_RADIUS,world),
+          openingSweep:sweptBodyClear(north,south,[],OPERATOR_RADIUS,world),
+          northToGoalNodes:route(north,authored).length,
+          otherRoom:{id:otherRoom?.id??null,purpose:otherRoom?.purpose??null},
+          otherActorNorth:actors.filter(a=>a!==actor).map(a=>({
+            id:a.id,nodes:route(a.p,north).length
+          }))
+        };
+      })()
     }:null;
     const otherActorReachability=authored?actors.filter(other=>other!==actor)
       .map(other=>({
