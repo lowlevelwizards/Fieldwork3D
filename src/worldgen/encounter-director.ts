@@ -46,7 +46,7 @@ export function attachEncounterPlan(site:Site,context:EncounterContext={}):Site{
  }));
  const composition=composeEncounterGroups(site,provisional,premise,seed);
  const placement=placeEncounterActors(site,composition.actors,composition.groups,
-   seed,profile);
+   seed,profile,mission);
  const spatial=stabilizeEncounterReachability(site,
    assignExteriorOccupants(site,assignEncounterRoles(site,
      placement.actors,placement.groups,premise,mission,seed,false),premise,seed));
