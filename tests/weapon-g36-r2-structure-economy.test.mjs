@@ -73,7 +73,7 @@ test('R2 shares the actual HK selector pictograms: white safe + muted red, two f
  assert.ok(mark);
  assert.equal(all(g,'g36SelectorMarkings').length,1);
  assert.equal(mark.userData.g36SelectorMarkCount,2);
- assert.equal(mark.userData.surfaceDetailClass!==undefined,true);
+ assert.equal(mark.userData.surfaceDetailKind,'hk-selector-picto');
  assert.ok(mark.geometry.getAttribute('position').count===12,'exactly four triangles');
  assert.equal(mark.castShadow,false);
  assert.equal(mark.material.transparent,true);
@@ -134,7 +134,7 @@ test('R2 polygon economy: one ONLY new mesh for colored pictograms, no redundant
  const live=new THREE.Group();
  addG36Family(live,{family:'g36',parts:F.parts});
  assert.equal(live.children.length,23,'actual Arsenal path must use the economical R2 mesh set');
- assert.equal(one(live,'g36MagwellArtVersion'),undefined);
+ assert.equal(one(live,'g36ReceiverLower').userData.g36MagwellArtVersion,'r2-556-angled-funnel');
  assert.ok(one(live,'g36SelectorMarkings').material.map);
  clearWeaponSilhouette(g);clearWeaponSilhouette(live);m.dispose();
 });
