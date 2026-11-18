@@ -40,9 +40,9 @@ jobs:
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --site-index=8 --audit-seed=19143269 \
-            --audit-scale=small --entry-settle-witness --progress \
+            --audit-scale=small --entry-settle-witness --queue-motion-witness --progress \
             > "$RUNNER_TEMP/d320a-motel.json"
-          node -e 'const r=require(process.argv[1]);const m=r.rows[0]?.modes.find(x=>x.mode==="entry");const moss=m?.operators.find(x=>x.id==="moss");const events=m?.entryLandingEvidence||[];console.log("D320A_MOTEL_LANDING",JSON.stringify({seed:r.rows[0].seed,summary:r.summary,moss,events},null,2));if(r.rows[0]?.seed!==19143269||!m||!moss||!Array.isArray(events))throw Error("missing physical witness");if(r.summary.invalidPositions||r.summary.corruptedPlans||r.summary.physicsStepViolations||r.summary.unboundedManeuverAttempts)throw Error("physical safety violation");for(const e of events){if(!e.originalGoal||!e.executedSettle||!e.from||!Number.isFinite(e.seconds))throw Error("malformed provenance");}' "$RUNNER_TEMP/d320a-motel.json"
+          node -e 'const r=require(process.argv[1]);const m=r.rows[0]?.modes.find(x=>x.mode==="entry");const moss=m?.operators.find(x=>x.id==="moss");const events=m?.entryLandingEvidence||[];console.log("D320A_MOTEL_LANDING",JSON.stringify({seed:r.rows[0].seed,summary:r.summary,moss,events,queueMotion:m?.queueMotionEvidence},null,2));if(r.rows[0]?.seed!==19143269||!m||!moss||!Array.isArray(events))throw Error("missing physical witness");if(r.summary.invalidPositions||r.summary.corruptedPlans||r.summary.physicsStepViolations||r.summary.unboundedManeuverAttempts)throw Error("physical safety violation");for(const e of events){if(!e.originalGoal||!e.executedSettle||!e.from||!Number.isFinite(e.seconds))throw Error("malformed provenance");}' "$RUNNER_TEMP/d320a-motel.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
