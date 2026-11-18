@@ -1,0 +1,30 @@
+name: D3.31C recovery undo restores original interruption witnesses
+on:
+  push:
+    branches: [feature/d3-31c-recovery-undo-20261118]
+    paths:
+      - '.github/workflows/d3-31c-recovery-undo.yml'
+      - 'src/breach-game.ts'
+      - 'src/breach-plan.ts'
+      - 'src/breach-plan-authoring.ts'
+      - 'src/breach-interruption-recovery.ts'
+      - 'tests/release-d3-31c-recovery-undo.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d331c-recovery-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  undo-recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and critical interrupted-retry undo history
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/release-d3-31c-recovery-undo.test.mjs tests/release-d3-31b-ambiguous-side.test.mjs tests/release-d3-31a-entry-side.test.mjs tests/release-d3-30-atomic-squad-resume.test.mjs tests/release-d3-30-interrupted-entry.test.mjs

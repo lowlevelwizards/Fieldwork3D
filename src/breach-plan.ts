@@ -1,4 +1,5 @@
 /** 053: Player-authored instructions are not generated navigation vertices. */
+import type {InterruptedDoorPlan} from './breach-door-interruption.ts';
 export type Pt={x:number;y:number};
 export type PlanKind='tool'|'recover-medical'|'evacuate'|'treat'|'move'|'door'|'wait'|'holdClear'|'look'|'sync'|'pie'|'reload'|'flash'|'interact';
 export type MoveMode='advance'|'strafe'|'sprint';
@@ -39,6 +40,8 @@ export type PlanHistory={
   undo:PlanNode[][];redo:PlanNode[][];
   /** Optional for archived/legacy history objects; aligned with undo/redo. */
   undoControls?:PlanControlSnapshot[];redoControls?:PlanControlSnapshot[];
+  undoInterruptions?:(InterruptedDoorPlan|null)[];
+  redoInterruptions?:(InterruptedDoorPlan|null)[];
 };
 export const copyNodes=(nodes:PlanNode[]):PlanNode[]=>
   nodes.map(n=>({...n,p:{...n.p},

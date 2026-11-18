@@ -314,6 +314,8 @@ export type SquadPlanTransaction={
  controlsBefore?:Record<string,PlanControlSnapshot>;
  controlsAfter?:Record<string,PlanControlSnapshot>;
  undoDepth?:Record<string,number>;
+ interruptionsBefore?:Record<string,import('./breach-door-interruption.ts').InterruptedDoorPlan|null>;
+ interruptionsAfter?:Record<string,import('./breach-door-interruption.ts').InterruptedDoorPlan|null>;
 };
 /** Audio delivery is not the deduplicated 12-line narrative HUD history. */
 export type LiveSemanticAudioEvent={id:number;t:number;text:string};

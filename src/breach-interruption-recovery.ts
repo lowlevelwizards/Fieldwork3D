@@ -42,8 +42,8 @@ export function resumeInterruptedDoorPlan(s:Session,actorId:string):boolean{
  const accepted=edit(s,a,()=>{
   const restored=copyNodes(snap.original).map(n=>({...n,id:s.nextId++}));
   a.plan.unshift(...restored);
+  a.interruptedDoorPlan=null;
  });
- if(accepted)a.interruptedDoorPlan=null;
  return accepted;
 }
 
@@ -63,12 +63,14 @@ function interruptedSquad(s:Session,actorId:string):TeamActor[]{
  if(!doorId||!initiator||!generatedIncidentAt(initiator,doorId))return [];
  // The physical incident's approach side is immutable. Never group
  // opposite-side entries simply because their saved door ID matches.
- // Older snapshots without side provenance retain the legacy fallback.
+ // Missing provenance (old saves) and on-plane encounters (0) are
+ // separate, internally compatible groups. Neither can bridge + and -.
+ // No present position or door security is consulted by this offer.
  const side=initiator.interruptedDoorPlan?.approachSide;
  return team(s).filter(a=>{
   if(a.health<=0||!generatedIncidentAt(a,doorId))return false;
   const otherSide=a.interruptedDoorPlan?.approachSide;
-  return !side||!otherSide||side===otherSide;
+  return side===otherSide;
  });
 }
 export function hasInterruptedSquadEntry(s:Session,actorId:string):boolean{
@@ -88,9 +90,9 @@ export function resumeInterruptedSquadEntry(s:Session,actorId:string):boolean{
    const original=a.interruptedDoorPlan!.original;
    const restored=copyNodes(original).map(n=>({...n,id:s.nextId++}));
    a.plan.unshift(...restored);
+   a.interruptedDoorPlan=null;
   }
   return true;
  });
- if(committed)for(const a of members)a.interruptedDoorPlan=null;
  return committed;
 }
