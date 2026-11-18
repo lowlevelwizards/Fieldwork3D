@@ -13,8 +13,10 @@ test('D3.20B accepts genuine physical entry, limits repeated same-leaf displacem
  assert.equal(allowOpeningYieldAtCompletedEntry(moss,'FRONT',{x:332,y:570}),true);
  assert.equal(allowOpeningYieldAtCompletedEntry(moss,'FRONT',{x:332.078400773506,y:583.9473184970544}),false);
  assert.equal(allowOpeningYieldAtCompletedEntry(moss,'FRONT',{x:319+COMPLETED_ENTRY_REST_RADIUS,y:570}),true);
- assert.equal(allowOpeningYieldAtCompletedEntry(moss,'OTHER',{x:500,y:500}),true,
-  'unrelated door arbitration remains untouched');
+ assert.equal(allowOpeningYieldAtCompletedEntry(moss,'D5',{x:500,y:500}),false,
+  'an interior opening leaf cannot undo a completed FRONT landing');
+ assert.equal(allowOpeningYieldAtCompletedEntry(moss,'D5',{x:330,y:570}),true,
+  'safe local physical yielding remains permitted for any door');
  assert.equal(moss.plan.length,0);
 });
 

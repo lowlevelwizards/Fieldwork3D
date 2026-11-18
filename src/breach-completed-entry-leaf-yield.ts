@@ -32,8 +32,11 @@ export function allowOpeningYieldAtCompletedEntry(
   completeEntry.delete(actor);
   return true;
  }
- // Other doors use the existing physical swing arbitration. The specific
- // entry door may remain blocked by a soldier who has reached their sector.
- if(doorId!==prior.doorId)return true;
+ // Every opening door must respect a legitimately achieved entry sector.
+ // An unrelated interior leaf (Motel D5) can otherwise undo the completed
+ // FRONT landing even though it has no authority to move an idle operator
+ // indefinitely. If the legal yield would leave arrival range, the leaf
+ // waits against the actual stationary actor collision.
+ void doorId;
  return gap(candidate,prior.goal)<=COMPLETED_ENTRY_REST_RADIUS;
 }
