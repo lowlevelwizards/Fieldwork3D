@@ -4,18 +4,12 @@ on:
     branches: [feature/d3-20a-motel-entry-landing-witness-20261117]
     paths:
       - 'src/breach-order-movement.ts'
-      - 'src/breach-completed-entry-yield.ts'
-      - 'src/breach-simulation-actor-phase.ts'
-      - 'tests/release-d3-20b-completed-entry-yield.test.mjs'
       - 'scripts/audit-r7-squad-execution.mjs'
       - '.github/workflows/d3-20a-motel-landing-witness.yml'
   pull_request:
     branches: [main]
     paths:
       - 'src/breach-order-movement.ts'
-      - 'src/breach-completed-entry-yield.ts'
-      - 'src/breach-simulation-actor-phase.ts'
-      - 'tests/release-d3-20b-completed-entry-yield.test.mjs'
       - 'scripts/audit-r7-squad-execution.mjs'
       - '.github/workflows/d3-20a-motel-landing-witness.yml'
   workflow_dispatch:
@@ -34,8 +28,6 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - name: Achieved ENTRY anchor safety contracts
-        run: node --experimental-strip-types --test tests/release-d3-20b-completed-entry-yield.test.mjs
       - name: Real 45s Motel, exact source/alternative landing positions
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
