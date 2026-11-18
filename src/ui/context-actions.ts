@@ -13,8 +13,15 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nearSuspect?:boolean;
   nearCivilianCasualty?:boolean;
   carryingCivilian?:boolean;
-  availableTools?:readonly string[];doorWedged?:boolean;};
+  availableTools?:readonly string[];doorWedged?:boolean;
+  /** Only visible after this operator physically encountered and resolved an obstruction. */
+  resumeAvailable?:boolean;};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
+ if(o.resumeAvailable)return [
+  {id:'ctxResumeEntry',label:'RESUME ENTRY',group:'primary',
+   title:'Explicitly restore the interrupted orders after resolving the door'},
+  ...contextActionChoices({...o,resumeAvailable:false})
+ ];
   if(o.door)return o.doorPartial?[
      {id:'ctxOpen',label:'OPEN MORE',group:'primary',title:'Continue swinging this partially open door'},
      {id:'ctxClose',label:'CLOSE',group:'primary',title:'Swing this door toward its frame'},
