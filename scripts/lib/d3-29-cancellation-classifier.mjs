@@ -102,3 +102,40 @@ export function analyzeD329CancellationAudit(audit){
    routeSearches:audit.routeQualitySummary.searches},
    cases};
 }
+
+/** D3.29F: explicitly version the physically honest baseline.
+ * The earlier 161 / 37 counted seven physically prohibited locked-door
+ * crossings. This gate preserves all 154 genuinely reached goals, all 35
+ * complete squads, zero loops, and requires every non-arrival to be a real,
+ * terminal lock encounter. No cancelled order is credited as an arrival.
+ */
+export const D329_PHYSICAL_BASELINE=Object.freeze({
+  operators:176,arrivals:154,fullSquads:35,
+  maxLockCancellations:22,suspectedLoops:0
+});
+export function validateD329PhysicalRelease(result){
+ const s=result.summary??{},cases=result.cases??[];
+ const errors=[];
+ if(s.operators!==D329_PHYSICAL_BASELINE.operators)
+  errors.push('operator corpus changed');
+ if(s.arrivals<D329_PHYSICAL_BASELINE.arrivals)
+  errors.push('physically valid arrivals regressed');
+ if(s.fullSquads<D329_PHYSICAL_BASELINE.fullSquads)
+  errors.push('complete squads regressed');
+ if(s.suspectedLoops!==0)
+  errors.push('movement loops detected');
+ if(cases.length>D329_PHYSICAL_BASELINE.maxLockCancellations)
+  errors.push('new operator non-arrivals beyond the documented locked-door set');
+ for(const c of cases){
+  if(c.outcome!=='cancelled'||c.physicallyArrived!==false)
+   errors.push('non-arrival lacks authoritative terminal cancellation: '+c.id);
+  if(!/DOOR LOCKED/.test(c.reason))
+   errors.push('non-lock cancellation: '+c.site+'/'+c.id+'/'+c.reason);
+  if(!c.lockedMotorDoorVerified&&!c.door?.locked&&
+     !(c.lockedDoorAtFailure?.length>0))
+   errors.push('locked obstruction has no physical door witness: '+c.site+'/'+c.id);
+  if(c.lockedLeafMovedAfterClosedStart)
+   errors.push('closed locked leaf illegally opened: '+c.site+'/'+c.id);
+ }
+ return {ok:errors.length===0,errors,expected:D329_PHYSICAL_BASELINE};
+}
