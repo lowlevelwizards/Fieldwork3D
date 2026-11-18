@@ -65,3 +65,46 @@ An isolated width slider varies transverse volume without moving its side/longit
 - `.github/workflows/g36-h2-isolated-study.yml`: test and capture only, **no deployment**
 
 **Next review question:** Is the fundamental chunky shell / front mouth / high vent row the right shape language, or does the lower-body silhouette need another rebuild before any production integration?
+
+---
+
+## H2.1 revision — 2026-11-17 — approved next study brief, not yet approved for factory
+
+The user reviewed H2 and requested **strongly angled front AND rear** and a return to **fewer, bigger, more graphic vents**. The above H2 values document the superseded initial study for comparison. The following H2.1 table is now authoritative.
+
+### H2.1 S1 — terminal angle and stable center
+
+| Station | X base | Roof Y | Floor Y | Half-width Z | X roof lean | X floor lean |
+|---|---:|---:|---:|---:|---:|---:|
+| Rear root | 0.00 | +0.95 | -1.12 | 1.30 | +0.62 | 0.00 |
+| Rear-main | 1.25 | +1.50 | -1.62 | 1.52 | 0.00 | 0.00 |
+| Full center | 7.75 | +1.50 | -1.62 | 1.52 | 0.00 | 0.00 |
+| Front transition | 8.80 | +1.39 | -1.46 | 1.45 | 0.00 | 0.00 |
+| Angled nose | 9.85 | +0.81 | -1.01 | 1.31 | -0.26 | +0.15 |
+
+The **rear top plane terminates at X=0.62 and rear floor at X=0.00**; the **front top stops at X=9.59 while the bottom lip extends to X=10.00**. These are actual non-perpendicular end planes; changing only the ring heights would have retained flat cutoff faces. Upper and lower envelope gradients make one strong slope at each end, and the entire X=1.25…7.75 (65% of the total 10-unit length) remains fully broad and parallel. Five stations and eight landmarks each are retained, but with only clear silhouette planes, not a smoothed tube.
+
+### H2.1 S2 — four enlarged graphic side vents
+
+Replace the H2 five small rounded vents (center X=2.70, 4.02, 5.34, 6.66, 7.98; dimensions 1.0×0.23) with **four bold slots per side**:
+
+- Centers: X=**2.50, 4.27, 6.04, 7.81**.
+- Size: **1.32 long × 0.40 tall**, upper-side center Y=**+0.43**.
+- Squared-off profile with a tiny corner radius 0.045, not obvious rounded pill ends.
+- Dark matte graphic marks, one instanced mesh for both sides (8 instances total). No vent trim, through-cut mesh, rivets, or frames.
+- Layout has 1.84 units rear margin from X=0 before first vent, and 1.38 units of front margin from last vent to terminal base X=9.85. Equal center spacing 1.77 units, leaving a substantial 0.45 unit break between slots.
+
+### H2.1 S3 — detail restraint
+
+Keep the existing one raised rear lug with a small six-sided hole, without added screws/seams. The front mouth remains an actual **eight-sided recessed opening**, but remove the extra inner ring: it now has one large angled annular rim, with one dark face 0.272 units behind the outer angled nose. No fake technical detail.
+
+### H2.1 S4 — review and test gate
+
+- Reuse isolated H1/H2 comparison and five camera presets; mobile 390px capture, plus 64/128px thumbnail views, standalone HTML study build.
+- New tests specifically enforce both inclined termination planes, floor/roof slope directions, central 65% flat width/height, four high vent centers/sizes/spacing, two-sided instancing, one front rim, and untouched deployed H1.
+- The updated viewer names **H2.1** and the vent control **four bold upper vents**. Original H2 screenshots are superseded for aesthetic decisions.
+- **Do not integrate or merge H2.1 into live factory** until user reviews the H2.1 screenshot/viewer. The existing PR remains draft and study-only; the actual H1 Arsenal model, O3 optic, V13 stock, gameplay, saves, stats, and material palette are unchanged.
+
+### Acceptance criteria
+
+A side view, with vents/lug/mouth disabled, should still clearly show a down-sloping angled nose and a rear wedge instead of two vertical brick ends; top and bottom contours should visibly converge toward both ends. With the four high vents enabled, the read must be large graphic slits, not five repeated tiny slots. The opened front must remain a single bold sculptural shape when viewed three-quarter. If any criterion is only readable at zoom but disappears at 64px, iterate the isolated study instead of adding details.
