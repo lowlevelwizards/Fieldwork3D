@@ -32,8 +32,8 @@ test('O2 production pod: two six-facet housings and retained handle/sight contra
  assert.ok(approx(bounds(g).max.y,A.opticTopY,.001));
  assert.equal(F.integratedOptics,'original-dual');
  assert.equal(F.mountingPolicy,'no-rail-or-duplicate-sights');
- assert.equal(F.lowerSightY,3.57);
- assert.equal(F.upperSightY,4.46);
+ assert.equal(F.lowerSightY,3.99);
+ assert.equal(F.upperSightY,4.88);
  assert.ok(approx(bounds(g).min.x,A.stockRearX));
  assert.ok(approx(bounds(g).max.x,A.muzzleX));
  clearWeaponSilhouette(g);mat.dispose();
@@ -53,7 +53,7 @@ test('O2 lower eight-sided ocular extends further rearward than upper six-sided 
  assert.ok(bounds(high).intersectsBox(bounds(highShell)));
  assert.ok(bounds(lowShell).max.z-bounds(lowShell).min.z>2.0,
   '125% O3 housing reads as broad in end-on view');
- assert.ok(bounds(low).max.y<4.3,'lower ocular remains below upper hood');
+ assert.ok(bounds(low).max.y<4.75,'raised lower ocular remains below upper hood');
  clearWeaponSilhouette(g);mat.dispose();
 });
 
@@ -65,7 +65,7 @@ test('O2 has exactly two rear-facing dark optical faces, no nested disks or dial
   assert.equal(face.geometry.type,'CircleGeometry');
   assert.ok(face.geometry.parameters.segments<=8);
   assert.ok(hitRear(face,face.position.x-8,
-   face===low?3.57:4.54),'the optical disc must face the stock/rear');
+   face===low?3.99:4.96),'the optical disc must face the stock/rear');
  }
  assert.ok(bounds(low).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
  assert.ok(bounds(high).intersectsBox(bounds(one(g,'g36UpperReflexBarrel'))));
