@@ -5,7 +5,7 @@ import * as THREE from 'three';
 import type {Session} from '../breach-game.ts';
 import type {ReplayDisclosure} from '../breach-replay-visibility.ts';
 import {presentCivilian} from './breach-3d-disclosure-presenter.ts';
-import {createCivilianRig,updateCivilianRig,type CivilianRig}
+import {createCivilianRig,updateCivilianRig,disposeCivilianRig,type CivilianRig}
  from '../breach-civilian-visuals.ts';
 export type FrameActorVisual={
  root:THREE.Group;status:THREE.Mesh;contactShadows:THREE.Mesh[];
@@ -37,14 +37,14 @@ export function reconcileSceneActorLifetimes<T extends FrameActorVisual>(
  for(const civil of s.civilians)present.add(civil.id);
  for(const [id,rig] of civilianRigs){
    if(present.has(id))continue;
-   scene.remove(rig.root);civilianRigs.delete(id);
+   scene.remove(rig.root);disposeCivilianRig(rig);civilianRigs.delete(id);
  }
  for(const civil of s.civilians){
    const visible=presentCivilian(s,civil,omniscient,replayDisclosurePolicy);
    let rig=civilianRigs.get(civil.id);
    if(!visible&&!rig)continue;
    if(!rig){
-     rig=createCivilianRig(civil);
+     rig=createCivilianRig(civil,true);
      civilianRigs.set(civil.id,rig);
      scene.add(rig.root);
    }
