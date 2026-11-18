@@ -35,6 +35,7 @@ const target={
   escapeReacquirePairs:entry.routeTransitions?.escapeReacquirePairs??0,
   finalEvents:(entry.routeTransitions?.events??[]).slice(-35)
  },
+ feasibility:entry.d325Feasibility??null,
  entrySettles:entry.entryLandingEvidence?.slice(-16)??[],
  queueMoves:entry.queueMotionEvidence?.slice(-20)??[],
  doorBlocks:entry.physicalBlockEvidence?.slice(-22)??[],
