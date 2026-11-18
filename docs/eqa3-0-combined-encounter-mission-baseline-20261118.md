@@ -71,6 +71,20 @@ The **376** rejected planning commands are **not 376 independent failures**.
 - **495 blocked-actor frames** (NOT all necessarily regressions; need per-actor/door evidence), compared with earlier EQA2 script on an older main at 357 frames. This is a cross-commit diagnostic, not a controlled causal comparison and should not be blamed on D3.31F without a frozen paired run.
 - **18/40** first-contact cases, 22 no-contact; the true-blind pilot only routes to a briefed entrance and is not a complete blind-map search.
 
+## Extended 90-second boundary check (three exact priority cases)
+
+Successful independently stored 90-second scripted-scout follow-up:
+https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44421161639
+([Unknown raw artifact](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44421161639),
+same workflow has separately downloadable Confirmed raw artifact).
+
+- **Unknown intel**: six actual entry-paired trials across Retail seed 14 HOLD, Warehouse seed 17 RESCUE and Retail seed 25 CAPTURE; **2 completed**, **3 secured the objective**, 6 first contacts/shots, **12 script-directed route aborts**, 77 repeated rejections, **0** recorded final-state rescue escort.
+- **Confirmed intel**: same six cases, **2 completed**, **4 secured the objective**, 6 first contacts/shots, **13 scripted route aborts**, 82 repeated rejections, **0** final-state escort.
+- Both cohorts remain replay/position valid with zero exceptions.
+- **Retail 25 CAPTURE SERVICE** still reaches ZERO room centers and **11 scripted route aborts at 90s** under BOTH intel settings, compared with five aborts at 45s. Its FRONT pair succeeds. High-priority route/physical-clearance investigation; not attributable to AI or a new timer without per-step witnesses.
+- **Warehouse 17 RESCUE** reaches `EXTRACT` stage under both entrances with Confirmed intel, and SERVICE reaches `EXTRACT` with Unknown intel, but none finishes by 90 seconds. The final-state `rescueSecured`/`rescueEscorted` fields are false, despite earlier objective-stage transition. **Do not interpret final state as proof that the civilian was never secured earlier**; inspect full state and FOLLOW order timeline, escort separation and reachability.
+- Doubling from 45 to 90 seconds does **not** remove these repeatable mission-flow deficiencies in this particular scripted driver. The driver itself may be mishandling commands, so exact investigation comes before fixes.
+
 ## Ranked EQA3.1–3.4 targets
 
 **P0: Early insertion-contact shape** — sample actual first sighting origin/door and who spotted whom in Retail 14 SERVICE, Utility 20 SHUTTER, Retail 25 SERVICE, Apartment 13 RESCUE. Prefer physical, varied room occupation and believable first orientation over simply delaying target acquisition or adding defenders. Preserve justified sentries at entrances.
