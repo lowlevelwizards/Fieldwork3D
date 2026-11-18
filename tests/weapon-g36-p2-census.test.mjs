@@ -39,7 +39,7 @@ test('G36 P2 production-wide geometry census: rifle peers and per-mesh attributi
  assert.equal(g36.meshes,rows.length,
   'production master must not create extra hidden accessory meshes');
  assert.ok(g36.triangles<=650,'minimal H3 sculpt must stay inside the 650-triangle peer gate');
- assert.ok(g36.meshes===22,'H3 drops both H2 cavity and mounting lug');
+ assert.equal(g36.meshes,23,'H3 shell + one 2-sided HK marking batch, no extra trim');
  assert.ok(all.length>=20,'audit must cover the full Arsenal, not just a handpicked list');
  assert.equal(grouped.handguard.meshes,1,'one capped hex shell only');
  assert.ok(grouped.handguard.triangles,20,'one twelve-side-triangle shell and two four-triangle end caps');
