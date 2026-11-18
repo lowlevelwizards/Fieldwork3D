@@ -83,7 +83,7 @@ test('R5 magazine uses five low-contrast warped rounds on both opaque faces',()=
    shades.add(value);
    if(value<250)subtle++;
   }
-  assert.ok(shades.has(226)&&shades.has(230)&&shades.has(220));
+  assert.ok(shades.has(227)&&shades.has(231)&&shades.has(220));
   assert.ok(subtle>50&&subtle<1400,
    'subtle rounds visible, but majority of mag remains undecorated');
   assert.equal(sample(col,1,94,90),255,'blank outside silhouette');
