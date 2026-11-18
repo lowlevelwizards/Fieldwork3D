@@ -4,6 +4,7 @@
  * No independent cloned rifle builder or per-frame geometry.
  */
 import * as THREE from 'three';
+import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addCuboid,addOutline} from './profile-primitives.ts';
 import {addG36H3FactoryHandguard,G36_GUARD_FRONT_X,type G36GuardLength}
@@ -61,15 +62,59 @@ export function g36ReceiverRailSpan(barrelId:string):readonly [number,number]{
  // on the previously approved original rail span. Used by real optic mounts.
  return [-5.855,barrelId==='g36-barrel-228'?7.695:6.295];
 }
+/** The low-rise C rail is not the chunky K A4 sight bridge.
+ * Its base is flush with the receiver roof and its seven broad teeth are
+ * batched into ONE geometry: side-view readability without extra draw calls.
+ * The same top datum is consumed by physical optic-mount contact surfaces.
+ */
+export const G36_COMPACT_RAIL_TOP_Y=1.96;
+function addCompactRailSight(root:THREE.Group,mat:THREE.Material,id:string){
+ const [rear,front]=g36ReceiverRailSpan('g36-barrel-228');
+ const sections:THREE.BufferGeometry[]=[];
+ const base=new THREE.BoxGeometry(front-rear,.30,1.16);
+ base.translate((rear+front)/2,1.67,0);sections.push(base);
+ for(let i=0;i<7;i++){
+  const tooth=new THREE.BoxGeometry(.72,.14,1.08);
+  tooth.translate(rear+1.70+i*1.70,1.89,0);
+  sections.push(tooth);
+ }
+ const geometry=mergeGeometries(sections);
+ sections.forEach(part=>part.dispose());
+ if(!geometry)throw Error('G36C low rail geometry could not be batched');
+ const rail=new THREE.Mesh(geometry,mat);
+ rail.name='family-receiver-'+id+'-100';
+ rail.castShadow=true;rail.receiveShadow=true;
+ rail.userData.g36PicatinnyTop=true;
+ rail.userData.g36CompactLowRail=true;
+ rail.userData.g36CompactRailTeeth=7;
+ rail.userData.g36CompactRailTopY=G36_COMPACT_RAIL_TOP_Y;
+ root.add(rail);
+ // Integrated, folded-down silhouette: short tapered ears emerge from the
+ // existing rail, instead of large separate cuboid towers.
+ const contours:readonly (readonly (readonly [number,number])[])[]=[
+  [[-5.25,1.80],[-5.23,2.00],[-5.05,2.19],
+   [-4.87,2.19],[-4.65,1.98],[-4.65,1.80]],
+  [[6.69,1.80],[6.83,2.00],[6.91,2.19],
+   [7.09,2.19],[7.25,1.99],[7.31,1.80]]
+ ];
+ for(const [i,profile] of contours.entries()){
+  const iron=addOutline(root,'receiver',id,101+i,profile,.82,mat);
+  iron.userData.g36BackupIron=true;
+  iron.userData.g36CompactIntegratedIron=true;
+ }
+}
 function addRailSight(root:THREE.Group,mat:THREE.Material,id:string,
  barrelId:string){
- // Flat bridge with two legible folding iron posts. No fake integral
- // optical carry handle, duplicate lens or seven-slot schema.
+ if(barrelId==='g36-barrel-228'){
+  addCompactRailSight(root,mat,id);
+  return;
+ }
+ // Previously approved K A4 remains byte-for-byte unchanged.
  const [rear,front]=g36ReceiverRailSpan(barrelId);
  const rail=addCuboid(root,'receiver',id,100,(rear+front)/2,1.96,0,
   front-rear,.53,1.35,mat);
  rail.userData.g36PicatinnyTop=true;
- for(const [i,x] of [-4.95,barrelId==='g36-barrel-228'?7.00:5.14].entries()){
+ for(const [i,x] of [-4.95,5.14].entries()){
   const iron=addCuboid(root,'receiver',id,101+i,x,2.39,0,.60,.55,1.0,mat);
   iron.userData.g36BackupIron=true;
  }
