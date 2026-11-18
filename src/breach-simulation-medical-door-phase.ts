@@ -10,6 +10,8 @@ import {advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-d
 import {maintainDoorHandContact} from './breach-door-hand-contact.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
 import {openingYieldBudget,commitOpeningYield} from './breach-passage-yield.ts';
+import {allowOpeningYieldAtCompletedEntry}
+ from './breach-completed-entry-leaf-yield.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import type {BattleEvent} from './breach-combat.ts';
@@ -90,7 +92,12 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
         if(budget<.03)continue;
         const candidate=initialOpeningYieldCandidate(door,actor.p,
           Math.min(1.25,budget));
-        if(!candidate||!sweptBodyClear(actor.p,candidate,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))||
+        // A finished generated entry may physically hold its sector when
+        // the same opening leaf would otherwise push it out of arrival range.
+        // Never move the leaf through the stationary body: ordinary hinge
+        // collision blocks it until the space is genuinely clear.
+        if(!candidate||!allowOpeningYieldAtCompletedEntry(actor,door.id,candidate)||
+           !sweptBodyClear(actor.p,candidate,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))||
            s.operators.some(other=>{
              if(other===actor||other.health<=0)return false;
              const before=d(other.p,actor.p),after=d(other.p,candidate);
@@ -101,7 +108,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
              return after<11;
            }))continue;
         commitOpeningYield(s,door,actor.id,actor.p,candidate);
-        noteQueueMotion(s,actor,'opening-leaf-yield',actor.p,candidate);
+        noteQueueMotion(s,actor,'opening-leaf-yield',actor.p,candidate,door.id);
         actor.priorP=clone(actor.p);
         actor.p=candidate;
         yielded=true;

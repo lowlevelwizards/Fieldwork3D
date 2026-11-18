@@ -13,6 +13,8 @@ import {friendlyArrivalSettleTarget,nearOccupiedFriendlyGoal}
  from './breach-friendly-traffic.ts';
 import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {selectPhysicalEntrySettle} from './breach-entry-target-settle.ts';
+import {recordCompletedGeneratedEntry,clearCompletedEntryOnNewOrder}
+ from './breach-completed-entry-leaf-yield.ts';
 import {bodyClear} from './breach-navigation.ts';
 import {routeWithNormalWorld} from './breach-squeeze-route.ts';
 import {setTransientRoute} from './breach-route-transition.ts';
@@ -49,6 +51,17 @@ export function mayHandoffOpenedDoorOrder(
 // waypoint or an excuse to shift a teammate who is already stationary.
 const settledMoveTargets=new WeakMap<TeamActor,{nodeId:number;point:Pt}>();
 const entrySettleProbe=new WeakMap<TeamActor,{nodeId:number;nextAt:number}>();
+// Optional audit-only provenance. Off in the live game, never participates in
+// choosing a destination, modifying an order or moving the physical motor.
+export type EntryLandingWitness={
+ actorId:string;seconds:number;orderId:number;entryDoorId:string;
+ from:Pt;originalGoal:Pt;executedSettle:Pt;
+ source:'blocked-physical-entry'|'friendly-arrival'|'order-completed';
+};
+let entryLandingWitness:((event:EntryLandingWitness)=>void)|null=null;
+export function setEntryLandingWitness(
+ observer:((event:EntryLandingWitness)=>void)|null
+):void{entryLandingWitness=observer;}
 export function createMovementOrderHandler(port:OrderExecutionPort){
  const {approach}=port;
  return function executeMovementOrder(s:Session,a:TeamActor,n:PlanNode,dt:number,
@@ -56,6 +69,7 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   profile?:((section:string,elapsedMs:number)=>void)):boolean{
   // Only opt-in perf probes allocate the wrapper. Normal fixed-step movement
   // continues using the original motor callback without extra timing work.
+  clearCompletedEntryOnNewOrder(a,n.id);
   const move=profile?
    ((actor:TeamActor,point:Pt,step:number,session:Session,
      scale?:number)=>{
@@ -157,8 +171,15 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     entrySettle??friendlyArrivalSettleTarget(a.p,n.p,friendlyPeers,(from,to)=>
       sessionWorldGeometry(s).passable(to,OPERATOR_RADIUS)&&
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))):null;
-  if(newlySettled)settledMoveTargets.set(a,{nodeId:n.id,
-    point:{...newlySettled}});
+  if(newlySettled){
+    settledMoveTargets.set(a,{nodeId:n.id,
+      point:{...newlySettled}});
+    if(entryLandingWitness&&n.kind==='move'&&n.entryDoorId)
+      entryLandingWitness({actorId:a.id,seconds:s.seconds,orderId:n.id,
+        entryDoorId:n.entryDoorId,from:{...a.p},originalGoal:{...n.p},
+        executedSettle:{...newlySettled},
+        source:entrySettle?'blocked-physical-entry':'friendly-arrival'});
+  }
   if(entrySettle){
     // The chosen world-truth connector must survive the handoff to the
     // ordinary motor. Otherwise an old intel path can immediately replace
@@ -276,6 +297,18 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
       if(held!==null)rotate(a,held,dt,s);
     }
+    // A completed generated ENTRY order may be treated as logically done
+    // without reaching its original physical goal. Report the real body
+    // center and the current node target at the instant of retirement.
+    // Actual reached GO is the only event that can anchor an entry sector.
+    if(n.kind==='move'&&n.entryDoorId)
+      recordCompletedGeneratedEntry(a,{
+       id:n.id,entryDoorId:n.entryDoorId,p:n.p});
+    // This witness does not change the reason, tolerance or order itself.
+    if(entryLandingWitness&&n.kind==='move'&&n.entryDoorId)
+      entryLandingWitness({actorId:a.id,seconds:s.seconds,orderId:n.id,
+        entryDoorId:n.entryDoorId,from:{...a.p},originalGoal:{...n.p},
+        executedSettle:{...a.p},source:'order-completed'});
     pop(a);return true;
   }
   if(n.facing!==undefined&&!rotate(a,n.facing,dt,s))return true;
