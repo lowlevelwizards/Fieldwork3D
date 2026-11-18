@@ -3,6 +3,7 @@
  * selection, player orders, or any persistent actor state.
  */
 import type {Session,TeamActor} from './breach-game.ts';
+import {observeD328EntryRoute} from './breach-d328-entry-loop.ts';
 import {doorLeafSegment,type Pt} from './breach-core.ts';
 export type RouteSource=
  'initial-intel'|'initial-enemy'|'shove-stage'|'fire-retreat'|
@@ -11,7 +12,7 @@ export type RouteSource=
  'full-body-lane'|'blocked-leg-connector'|'collision-world-replan'|
  'collision-intel-replan'|'self-hinge-relief'|'local-detour'|
  'generated-entry-settle'|'initial-portal-recovery'|'passage-retreat'|'door-handoff-reject'|'door-escape-swept-rejoin'|'door-escape-world-rejoin'|'door-escape-local-portal'|'door-escape-future-portal'|'door-squeeze-leaf-exit'|'lane-cycle-world'|'stack-micro-corner'|'cold-micro-departure'|'motor-micro-departure'|'motor-cold-fine-world'|'motor-exact-passage'|
- 'open-leaf-local-rejoin';
+ 'open-leaf-local-rejoin'|'d328-entry-fine-world';
 export type TransientRouteTransition={
  seconds:number;actorId:string;source:RouteSource;
  prior:readonly Pt[];next:readonly Pt[];
@@ -49,6 +50,7 @@ function report(s:Session,a:TeamActor,source:RouteSource,next:readonly Pt[],
 export function setTransientRoute(
  s:Session,a:TeamActor,route:Pt[],source:RouteSource):void{
  if(listener)report(s,a,source,route);
+ if(route.length)observeD328EntryRoute(a,source,route[0],s.seconds);
  a.nav=route;
 }
 export function prependTransientLeg(

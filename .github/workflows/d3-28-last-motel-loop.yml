@@ -1,0 +1,108 @@
+name: D3.28 last Motel entry loop release acceptance
+on:
+  push:
+    branches: [feature/d3-28-last-motel-entry-loop-20261118]
+    paths:
+      - '.github/workflows/d3-28-last-motel-loop.yml'
+      - 'scripts/report-d3-28-motel-loop.mjs'
+      - 'src/breach-d328*.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-route-transition.ts'
+      - 'tests/release-d3-28*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: d328-motel-loop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-motel-entry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and source-independent recurrence / physical gates
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-28-entry-loop.test.mjs \
+            tests/release-d3-17b-route-recurrence.test.mjs \
+            tests/release-d3-26f-cold-fine-route-gate.test.mjs \
+            tests/release-d3-27e-cold-passage.test.mjs
+      - name: Frozen Motel entry Ash route and 5s 60Hz witness
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=19143269 \
+            --audit-scale=small --progress --route-quality \
+            --route-transitions --trace-actor=ash --trace-mode=entry \
+            > "$RUNNER_TEMP/d328-motel-entry.json"
+          node scripts/report-d3-28-motel-loop.mjs \
+            "$RUNNER_TEMP/d328-motel-entry.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d328-motel-entry-ash-physical-witness
+          path: ${{ runner.temp }}/d328-motel-entry.json
+          retention-days: 14
+
+  frozen22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Independent frozen physical motor no-loss checkpoint
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress --route-quality > "$RUNNER_TEMP/d328-fresh22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const r=JSON.parse(fs.readFileSync(
+            process.env.RUNNER_TEMP+'/d328-fresh22.json','utf8'));
+          const s=r.summary,p=r.progressSummary;
+          console.log('D328_FROZEN',JSON.stringify({
+            arrivals:s.physicalArrivals,squads:s.physicalCompletedFour,
+            loops:p.suspectedLoops,invalid:s.invalidPositions,
+            violations:s.physicsStepViolations,corrupt:s.corruptedPlans}));
+          if(s.physicalArrivals<161||s.physicalCompletedFour<37||
+             p.suspectedLoops!==0||s.invalidPositions||
+             s.physicsStepViolations||s.corruptedPlans||s.exceptions)
+            throw Error('D3.28 independent frozen physical no-loss gate');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d328-frozen22-physical-witness
+          path: ${{ runner.temp }}/d328-fresh22.json
+          retention-days: 14
+
+  integration-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Integrated G36 R5 plus tactical module regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/weapon-g36-r5-sef-housing-curved-mag.test.mjs \
+            tests/weapon-g36-r4-selector-mag-texture.test.mjs \
+            tests/weapon-g36-r3-sef-magwell-flashhider.test.mjs \
+            tests/release-d3-28-entry-loop.test.mjs
+      - name: Production build of reconciled D3.28 and G36 R5 tree
+        run: npm run build
+      - name: Verify previous main Pages release is successful and served
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
