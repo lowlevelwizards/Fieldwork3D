@@ -10,6 +10,7 @@ import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {FNC_FRONT_P13} from './weapons/geometry/fnc-front-layout.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
+import {g36SupportRange} from './weapons/geometry/g36-variant-parts.ts';
 export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
 export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36';stock:RiflePoint;
@@ -37,10 +38,11 @@ export function riflePoseContacts(
  // exposed gas housing: keeping that distinction avoids grabbing bare steel.
  const fncNear=FNC_FRONT_P13.polymer.fullStartX+.30;
  const fncFar=FNC_FRONT_P13.polymer.fullEndX+.05;
- const start=(b.family==='g36'?G36.supportNearX:
+ const g36Reach=b.family==='g36'?g36SupportRange(b.parts.handguard):null;
+ const start=(g36Reach?.[0]??
   b.family==='fnc'?fncNear:undefined)??falArt?.handguardStartX??hkArt?.handguardStartX??
   (ar?AR_HANDGUARD_START:akHandguardStart(b.parts.receiver));
- const end=(b.family==='g36'?G36.supportFarX:
+ const end=(g36Reach?.[1]??
   b.family==='fnc'?fncFar:undefined)??falArt?.handguardEndX??hkArt?.handguardEndX??
   (ar?arHandguardEnd(b.parts.handguard):
   (akBarrelArt(b.parts.barrel)??AK_BARREL_ART['ak-long']).handguardFrontX);
@@ -51,11 +53,11 @@ export function riflePoseContacts(
  const mp5k=hk&&b.parts.receiver==='hk-mp5k-stockless';
  const hkTriVertical=hk&&b.parts.handguard==='hk-mp5-trirail'&&
   config.slots.foregrip==='foregrip-vertical';
- const near=b.family==='g36'?G36.supportNearX:
+ const near=b.family==='g36'?g36Reach![0]:
   hkTriVertical?6.40:mp5k?Math.max(3.90,start+.32):
    Math.min(end-.60,start+(hk?.65:ar?.90:.75));
  const hkCompact=hk&&b.parts.barrel==='hk53-short';
- const far=b.family==='g36'?G36.supportFarX:
+ const far=b.family==='g36'?g36Reach![1]:
   hkTriVertical?7.50:mp5k?4.85:
   Math.max(start+1.4,end-(hk?1.80:ar?1.36:1.17));
  const y=b.family==='g36'?G36.supportY:
