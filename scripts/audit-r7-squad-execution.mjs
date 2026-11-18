@@ -1226,11 +1226,11 @@ function run(site,seed,kind){
      blockedTime:round(actor.blockedTime),lastBlocker:actor.lastBlocker,
      orderIssue:actor.orderIssue?.reason??null,
      authoredGoalIntact:!!authored&&actor.plan.every(node=>
-       node.id!==originalOrder!.id||dist(node.p,authored)<.001),
+       node.id!==originalOrder?.id||dist(node.p,authored)<.001),
      actualOrder:originalOrder,
      physicalCommittedArrival:!!authored&&
        dist(actor.p,authored)<=5&&
-       !actor.plan.some(node=>node.id===originalOrder!.id),
+       !actor.plan.some(node=>node.id===originalOrder?.id),
      originalGoalDistance:authored?round(dist(actor.p,authored)):null,
      actualOrderFixedBlock:authored?
        knownFixedGoalBlock(session,authored):null,
