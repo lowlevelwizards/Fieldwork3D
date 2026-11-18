@@ -268,7 +268,8 @@ export function handleMotorDoor(
       // Enemy AI retains its separate re-route/cover behavior below.
       if(a.side!=='red'&&pendingDoor){
         failCurrentOrder(s,a,pendingDoor,
-          'PATH BLOCKED · DOOR '+denial.toUpperCase(),hooks.notify);
+          'PATH BLOCKED · DOOR '+denial.toUpperCase(),hooks.notify,
+          doorAhead.id);
         a.blockedTime=0;
         return {paused:true,closed:false};
       }
