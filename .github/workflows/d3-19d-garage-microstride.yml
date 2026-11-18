@@ -1,0 +1,25 @@
+name: D3.19D garage open-leaf exact motor witness
+on:
+  push:
+    branches: [feature/d3-19d-garage-open-leaf-microstride-20261117]
+    paths:
+      - 'tests/release-d3-19d-garage-open-leaf-microstride.test.mjs'
+      - '.github/workflows/d3-19d-garage-microstride.yml'
+      - 'src/breach-stack-micro-corner.ts'
+      - 'src/breach-motor-collision.ts'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d319d-garage-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  witness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - run: node --experimental-strip-types --test tests/release-d3-19d-garage-open-leaf-microstride.test.mjs
