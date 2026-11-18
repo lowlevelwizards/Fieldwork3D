@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addCuboid,addOutline} from './profile-primitives.ts';
-import {addG36H3FactoryHandguard,type G36GuardLength,G36_GUARD_FRONT_X}
+import {addG36H3FactoryHandguard,type G36GuardLength}
  from './g36-h3-handguard.ts';
 import {buildG36OriginalBlockout} from './g36-silhouettes.ts';
 
@@ -78,9 +78,14 @@ function addShortFront(root:THREE.Group,mat:THREE.Material,
   const rail=addCuboid(root,'handguard',guardId,1,
    7.64,1.48,0,6.30,.39,1.40,mat);
   rail.userData.g36ModernHandguardRail=true;
-  const side=addCuboid(root,'handguard',guardId,2,
-   7.75,-.20,1.47,4.65,.35,.28,mat);
-  side.userData.g36ModernHandguardRail=true;
+  const bottom=addCuboid(root,'handguard',guardId,2,
+   7.64,-1.98,0,6.30,.34,1.42,mat);
+  bottom.userData.g36ModernHandguardRail=true;
+  for(const [index,sign] of [-1,1].entries()){
+   const side=addCuboid(root,'handguard',guardId,3+index,
+    7.75,-.20,sign*1.47,4.65,.35,.28,mat);
+   side.userData.g36ModernHandguardRail=true;
+  }
  }
  dispose(root,m=>Boolean(m.userData.g36Barrel||m.userData.g36FactoryMuzzle));
  const tip=front.muzzleX;
