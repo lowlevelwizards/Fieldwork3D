@@ -1661,3 +1661,11 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 .campaign-armory-screen .campaign-kit-preview:focus-visible{
  outline:2px solid var(--fw-focus);outline-offset:3px;
 }
+
+/* Equipment E6.G: compact touch rotation for the operator preview only. */
+.campaign-kit-preview-controls{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px;width:100%;min-width:0}
+.campaign-shell .campaign-kit-preview-controls button{width:100%;min-width:0;
+ min-height:44px;margin:0;padding:8px 4px;font-size:10px;line-height:1.2;
+ touch-action:manipulation;white-space:nowrap}
+.campaign-shell .campaign-kit-preview-controls button:disabled{opacity:.5;cursor:default}
