@@ -330,7 +330,29 @@ function routeGrid(from:Pt,to:Pt,canStand:(p:Pt)=>boolean,
   if(!canStand(to))return [];
   const st=cellAt(from),goal=cellAt(to);
   const startKey=key(st.col,st.row),goalKey=key(goal.col,goal.row);
-  if(startKey===goalKey)return [{...to}];
+  // D3.24A: exact endpoints can round to the SAME 16/8-unit grid cell
+  // while a thin wall or furniture corner lies between them. Grid
+  // identity is not physical clearance: validate the actual segment.
+  // A rejected short chord can still have a legal, bounded one-bend walk
+  // around the nearby corner. This is authoring-time A* logic, not a
+  // new motor, collision allowance, or remote destination rewrite.
+  if(startKey===goalKey){
+    if(sweepPassable(from,to,canStand))return [{...to}];
+    const offsets=[[0,1],[0,-1],[1,0],[-1,0],
+      [1,1],[1,-1],[-1,1],[-1,-1]] as const;
+    for(const radius of [grid/2,grid,grid*1.5,grid*2]){
+      for(const [dx,dy] of offsets){
+        const length=Math.hypot(dx,dy);
+        const mid={x:from.x+dx/length*radius,
+          y:from.y+dy/length*radius};
+        if(!canStand(mid)||!sweepPassable(from,mid,canStand)||
+           !sweepPassable(mid,to,canStand))continue;
+        return [mid,{...to}];
+      }
+    }
+    // Never report a physically blocked shortcut as a valid MOVE.
+    return [];
+  }
   // Endpoint rescue: an exact walkable location can snap to an illegal
   // grid vertex. Find a nearby legal vertex with a swept final connector.
   // Do this only after the inexpensive ordinary A* has failed.
