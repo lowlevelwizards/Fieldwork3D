@@ -29,8 +29,11 @@ const cases=[
  [16,'clear'],[17,'intel'],[18,'rescue'],[19,'hold'],[20,'capture'],
  [21,'clear'],[14,'hold'],[17,'rescue'],[25,'capture'],[23,'rescue']
 ];
-const chosen=process.argv.includes('--smoke')?
+const forensic=process.argv.includes('--forensic');
+const forensicSeedArg=params.get('seed');
+const chosenBeforeSeed=process.argv.includes('--smoke')?
  [[14,'hold'],[17,'rescue'],[25,'capture']]:cases;
+const chosen=forensicSeedArg?chosenBeforeSeed.filter(c=>c[0]===Number(forensicSeedArg)):chosenBeforeSeed;
 const round=n=>Math.round(n*100)/100;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const center=r=>({x:r.x+r.w/2,y:r.y+r.h/2});
@@ -71,6 +74,42 @@ for(const [seed,mission] of chosen){
     });
     const visited=new Set(),failed=new Set(),attempted=new Set();
     const decisions=[],stages=[],civilianStates=[],firstViews=[];
+    const forensicEvents=[];
+    let lastForensicSignature='';
+    const forensicCapture=(type)=>{
+      if(!forensic||forensicEvents.length>=380)return;
+      const person=s.civilians.find(c=>c.rescueTarget)??null;
+      const cur=scout.plan[0];
+      const hostile=enemies(s).filter(e=>e.health>0).map(e=>({
+        id:e.id,position:{x:round(e.p.x),y:round(e.p.y)},
+        distance:round(dist(e.p,scout.p)),visible:inSight(scout,e,s),
+        enemySight:inSight(e,scout,s),heading:round(e.heading),
+        activity:e.encounterActivity,readiness:e.encounterReadiness,
+        alert:e.alert,lastShotAt:e.lastShotAt
+      }));
+      const snapshot={at:round(s.seconds),type,stage:s.mission,
+        phase:s.phase,player:{p:{x:round(scout.p.x),y:round(scout.p.y)},
+          hp:scout.health,heading:round(scout.heading),blockedTime:round(scout.blockedTime),
+          blocker:scout.lastBlocker,motorPause:scout.motorPause,
+          failedOrders:scout.failedOrders,nav:scout.nav?.length,
+          plan:cur?{id:cur.id,kind:cur.kind,p:cur.p,interaction:cur.interaction}:null},
+        person:person?{p:{x:round(person.p.x),y:round(person.p.y)},
+          state:person.state,following:person.following,distance:round(dist(scout.p,person.p)),
+          carrier:person.carriedById,lastEscortRouteAt:round(person.lastEscortRouteAt)}:null,
+        escort:s.rescue?.following??null,
+        hostiles:hostile.slice(0,8),
+        event:s.events?.at(-1)??null};
+      if(type==='tick'){
+        const key=JSON.stringify([snapshot.stage,snapshot.player.plan?.id,
+          snapshot.player.blocker,snapshot.player.motorPause,
+          snapshot.person?.state,snapshot.person?.following,snapshot.escort,
+          snapshot.hostiles.map(h=>h.visible+':'+h.enemySight+':'+h.alert)]);
+        if(key===lastForensicSignature)return;
+        lastForensicSignature=key;
+      }
+      forensicEvents.push(snapshot);
+    };
+    forensicCapture('initial');
     let current=null,issuedAt=-1,issueDistance=0,accepted=0,
      rejected=0,routeAbort=0,firstContactAt=null,firstShotAt=null,
      firstCivilianAt=null,discoveredAt=null,firstRoomAt=null,
@@ -80,6 +119,7 @@ for(const [seed,mission] of chosen){
     const tickFrames=Math.round(seconds*30);
     let previousStage=s.mission,lastDecisionAt=-1;
     const recordAction=(name,point,result)=>{
+      if(forensic)forensicCapture('attempt-'+name+'-'+(result?'accepted':'rejected'));
       if(decisions.length<80)decisions.push({at:round(s.seconds),action:name,
        target:point?{x:round(point.x),y:round(point.y)}:null,ok:result});
       if(result)accepted++;else rejected++;
@@ -148,6 +188,7 @@ for(const [seed,mission] of chosen){
       stepSession(s,1/30);
       if(tick%6===0){
         film.capture(s);
+        if(forensic)forensicCapture('tick');
         if(firstContactAt===null&&film.events.some(e=>e.kind==='intel'&&
             e.text.includes('SPOTTED')))firstContactAt=s.seconds;
         if(firstShotAt===null&&s.nextShotId>1)firstShotAt=s.seconds;
@@ -185,6 +226,7 @@ for(const [seed,mission] of chosen){
            dist(scout.p,current.p)>20&&
            dist(scout.p,current.p)>issueDistance-14);
         if(noProgress&&scout.plan.length){
+          if(forensic)forensicCapture('route-abort');
           toggling(s);
           clearPlan(s,scout.id);
           routeAbort++;
@@ -230,6 +272,7 @@ for(const [seed,mission] of chosen){
       roomsVisited:visited.size,roomVisitOrder:firstViews,
       roomsUnreachable:failed.size,roomsAttempted:attempted.size,
       civilianStates,stages,decisions,
+      forensic:forensic?forensicEvents:undefined,
       eventCounts:{battle:film.events.length,shots:s.nextShotId-1,
        objective:film.events.filter(e=>e.kind==='objective').length},
       rescue:{exists:!!s.rescue,
@@ -267,6 +310,8 @@ if(process.env.EQA3_OUTPUT){
  writeFileSync(process.env.EQA3_OUTPUT,JSON.stringify(report,null,2)+'\n');
 }
 console.log(JSON.stringify({summary,errors:exceptions,
+ forensic:forensic?valid.map(r=>({seed:r.seed,mission:r.mission,intel:r.intel,
+  insertion:r.insertion,stage:r.missionStage,events:r.forensic?.slice(0,120)})):undefined,
  highInterest:valid.filter(x=>x.routeAbort||x.objectiveAt!==null||
   x.integrity.length).slice(0,20).map(x=>({seed:x.seed,
   mission:x.mission,insertion:x.insertion,archetype:x.archetype,
