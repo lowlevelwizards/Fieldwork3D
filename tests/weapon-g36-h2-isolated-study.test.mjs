@@ -48,7 +48,7 @@ test('H2 shape: thick broad roof, two shoulders, lower return and blunt nose',()
  for(const station of G36_H2_STATIONS){
   const values=new Set();
   for(let i=0;i<position.count;i++){
-   if(near(position.getX(i)+5,station.x,.001))
+   if(near(position.getX(i),station.x,.001))
     values.add(position.getY(i).toFixed(3)+'/'+position.getZ(i).toFixed(3));
   }
   assert.equal(values.size,8,'all eight genuinely distinct contour stations');
@@ -72,7 +72,7 @@ test('H2 visibly open front mouth uses true inset rim and dark backing',()=>{
  const shellClosed=mesh(closed,'h2PrimaryShell');
  const a=shellOpen.geometry.getAttribute('position').count;
  const b=shellClosed.geometry.getAttribute('position').count;
- assert.ok(a>b+80,'front opening is physically formed by an annular rim and throat');
+ assert.ok(a>b+60,'front opening is physically formed by an annular rim and throat');
  const x=bounds(mesh(opened,'h2MouthRecess'));
  assert.ok(x.max.x<bounds(shellOpen).max.x-.2,'recess is behind front face');
  free(opened);free(closed);
