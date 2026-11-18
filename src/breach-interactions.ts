@@ -3,6 +3,7 @@
  */
 import type {Door,Pt} from './breach-core.ts';
 import {doorReachable} from './breach-door.ts';
+import {doorSecuredFrom} from './breach-door-security.ts';
 export type InteractionAction='open'|'close'|'hold'|'kick'|'push'|'inspect';
 export type InteractionFailure='out-of-reach'|'already-open'|'already-closed'|
  'held'|'unsupported'|'locked'|'obstructed';
@@ -20,7 +21,7 @@ export function doorInteraction(request:InteractionRequest):InteractionVerdict{
      (d.openFraction??1)>=.98))return deny('already-open');
  if((action==='open'||action==='kick')&&d.wedged)return deny('obstructed');
  if(action==='open'&&d.jammed)return deny('obstructed');
- if(action==='open'&&d.locked)return deny('locked');
+ if(action==='open'&&doorSecuredFrom(d,actorPosition))return deny('locked');
  if(action==='close'&&!d.open&&(d.openFraction??0)<.08)return deny('already-closed');
  if(action==='hold'&&d.open)return deny('already-open');
  if((action==='open'||action==='push')&&d.heldBy&&d.heldBy!==actorId)

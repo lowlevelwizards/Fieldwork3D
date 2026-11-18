@@ -6,6 +6,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {entryDoorState,leaderBeyondOpenEntry} from './breach-entry-coordination.ts';
 import {doorSwingBlocked} from './breach-door.ts';
+import {doorSecuredFrom} from './breach-door-security.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {failCurrentOrder} from './breach-order-lifecycle.ts';
 
@@ -33,10 +34,11 @@ export function advanceWaitOrder(
   // linked generated gate and its immediate generated ENTRY MOVE as
   // genuine failures, not successful arrivals. Player WAIT, WATCH and
   // unrelated later orders keep their normal authority.
-  const terminal=entry&&(!doorway||doorway.locked||doorway.jammed);
+  const locked=!!doorway&&doorSecuredFrom(doorway,a.p);
+  const terminal=entry&&(!doorway||locked||doorway.jammed);
   if(terminal){
     const failure=!doorway?'DOOR MISSING':
-      doorway.locked?'DOOR LOCKED':'DOOR JAMMED';
+      locked?'DOOR LOCKED':'DOOR JAMMED';
     const reason='SQUAD ENTRY CANCELLED · '+failure;
     failCurrentOrder(s,a,n,reason,notify);
     if(a.plan[0]?.id===entry.id)

@@ -9,6 +9,7 @@ import type {TeamActor,Session} from './breach-game.ts';
 import {canAutoOpenEnRoute,autoDoorAtBodyContact,crossesDoorThreshold,doorApproach,
  doorReachable,doorWouldStrikeActors} from './breach-door.ts';
 import {doorInteraction} from './breach-interactions.ts';
+import {doorSecuredFrom,releasePrivacyLockOnOpen} from './breach-door-security.ts';
 import {operatorCrossingDoor} from './breach-door-pressure-arbitration.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
@@ -28,9 +29,11 @@ import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFoot
  * closing. This is not a collision exemption or a forced movement.
  * The hinge remains solely responsible for actual leaf rotation.
  */
-export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number):boolean{
+export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number,
+ actorPosition?:Pt):boolean{
  const fraction=door.openFraction??(door.open?1:0);
- return door.open&&!door.locked&&!door.heldBy&&!door.wedged&&
+ return door.open&&(!door.locked||actorPosition!==undefined&&
+   !doorSecuredFrom(door,actorPosition))&&!door.heldBy&&!door.wedged&&
    fraction>=.15&&fraction<.72&&openingSeconds>=.9&&
    Math.abs(door.angularVelocity??0)<.16;
 }
@@ -43,6 +46,30 @@ export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number):boolea
 export function preserveExplicitDoorActionClock(
  pending:{kind:string}|null|undefined
 ):boolean{return pending?.kind==='door';}
+
+/** D3.29D: the implicit hinge motor may never interpret ANY rejected
+ * OPEN capability as permission to animate. A physically encountered lock
+ * takes precedence over an earlier out-of-reach rejection; neither may
+ * swing the leaf. No remote manipulation or collision exemption.
+ */
+export function implicitOpenDenial(
+ door:Pick<Door,'locked'|'jammed'|'wedged'|'heldBy'> &
+  Partial<Pick<Door,'a'|'b'|'lockSide'>>, 
+ verdict:{allowed:boolean;reason:string|null},actorId:string,
+ actorPosition?:Pt
+):string|null{
+ if(door.locked&&(!actorPosition||!door.a||!door.b||
+     doorSecuredFrom(door as Door,actorPosition)))return 'locked';
+ if(door.jammed||door.wedged)return 'obstructed';
+ if(door.heldBy&&door.heldBy!==actorId)return 'held';
+ // A real threshold crossing on an otherwise unlocked operable panel
+ // may be outside the narrow handle reach at this exact motor microstep.
+ // Preserve the D3.28 opening/physical passage behavior for that case:
+ // the motor still requires its crossing/contact gates and swept motion.
+ // Only physical latch/brace prohibitions may veto the opening here.
+ return verdict.reason==='out-of-reach'?null:
+   verdict.allowed?null:verdict.reason;
+}
 
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -230,10 +257,10 @@ export function handleMotorDoor(
     noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
-    if(opening.reason==='held'||opening.reason==='locked'||
-       opening.reason==='obstructed'){
-      a.motorPause=opening.reason==='held'?'door-held':
-        opening.reason==='locked'?'door-locked':'door-obstructed';
+    const denial=implicitOpenDenial(doorAhead,opening,a.id,a.p);
+    if(denial==='held'||denial==='locked'||denial==='obstructed'){
+      a.motorPause=denial==='held'?'door-held':
+        denial==='locked'?'door-locked':'door-obstructed';
       a.lastBlocker='door';
       a.velocity=0;a.blockedTime+=dt;
       // An authored MOVE/OPEN cannot proceed through a known blocked
@@ -241,7 +268,7 @@ export function handleMotorDoor(
       // Enemy AI retains its separate re-route/cover behavior below.
       if(a.side!=='red'&&pendingDoor){
         failCurrentOrder(s,a,pendingDoor,
-          'PATH BLOCKED · DOOR '+opening.reason.toUpperCase(),hooks.notify);
+          'PATH BLOCKED · DOOR '+denial.toUpperCase(),hooks.notify);
         a.blockedTime=0;
         return {paused:true,closed:false};
       }
@@ -251,8 +278,17 @@ export function handleMotorDoor(
       }
       return {paused:true,closed:false};
     }
+    // Out-of-reach / already-open and every other refused implicit OPEN
+    // must yield to the unchanged swept-body motor. Previously this path
+    // incremented the OPEN timer and could animate a CLOSED LOCKED leaf.
+    if(denial){
+      if(!preserveExplicitDoorActionClock(pendingDoor))a.actionTimer=0;
+      a.motorPause=null;
+      return {paused:false,closed:false};
+    }
     a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=.36&&!doorAhead.open){
+      releasePrivacyLockOnOpen(doorAhead,a.p);
       doorAhead.open=true;doorAhead.openedAt=s.seconds;
       hooks.hear(s,doorCenter(doorAhead),125,'door');
       hooks.notify(s,a.name+' OPENED '+doorAhead.id);
@@ -264,7 +300,7 @@ export function handleMotorDoor(
       // its regular bounded route recovery. There is no free passage.
       // Incidental body CLOSE on this exact leaf is deferred ONLY for
       // this motor attempt, preventing the D3.1 277-flip ping-pong.
-      if(a.side==='blue'&&stalledDoorYieldsToMotor(doorAhead,a.actionTimer)){
+      if(a.side==='blue'&&stalledDoorYieldsToMotor(doorAhead,a.actionTimer,a.p)){
         // D3.9's shared owner/follower traffic staging above is the ONLY
         // cold self-clearance authority. Do not separately create a second
         // D3.8 episode retry, whose transient nav could fight the first.

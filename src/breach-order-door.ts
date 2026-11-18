@@ -8,6 +8,7 @@ import {OPERATOR_RADIUS,doorCenter,doorLeafSegment,type Pt}
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {doorInteraction} from './breach-interactions.ts';
+import {releasePrivacyLockOnOpen} from './breach-door-security.ts';
 import {doorClosingContested} from './breach-door-pressure-frame.ts';
 import {claimOpeningIntent} from './breach-door-opening-ownership.ts';
 import {kickDoor,doorWouldStrikeActors,doorApproach,doorReachable,doorClear,
@@ -289,6 +290,7 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
         }
         for(const leaf of pairedLeaves(s,door)){
           const wasOpening=leaf.open;
+          releasePrivacyLockOnOpen(leaf,a.p);
           leaf.open=true;leaf.openedAt=s.seconds;
           // Reopening an ajar leaf must continue from its physical angle.
           // Never zero moving hinge velocity or rewind the panel.

@@ -20,6 +20,10 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;heldBy?:string|null;latchIntegrity?:number;frameIntegrity?:number;
   kicks?:number;lastKickAt?:number;forced?:boolean;locked?:boolean;jammed?:boolean;
+  /** Frame-relative locked face, independent of swing and hinge orientation. */
+  lockSide?:'positive'|'negative'|'both';
+  /** Missing kind retains legacy two-sided mechanical lock semantics. */
+  securityKind?:'privacy'|'security'|'restricted';
   /** Pressure may request a wider-than-normal door swing. */
   pushTarget?:number;
   /** A glass leaf keeps its frame after the glazing has shattered. */

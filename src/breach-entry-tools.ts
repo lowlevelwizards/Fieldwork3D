@@ -1,7 +1,8 @@
 /** Build 23.00: physical compatibility contract for specialized entry tools.
  * This pure gate does not mutate door state, inventory or visibility.
  */
-import type {Door} from './breach-core.ts';
+import type {Door,Pt} from './breach-core.ts';
+import {doorSecuredFrom} from './breach-door-security.ts';
 export type EntryTool='pick'|'pry'|'cut'|'wedge'|'unwedge'|'breach';
 export type EntryToolVerdict={allowed:boolean;reason:string;seconds:number;
  noise:number;damage:number};
@@ -9,7 +10,7 @@ const allow=(seconds:number,noise:number,damage=0):EntryToolVerdict=>
  ({allowed:true,reason:'',seconds,noise,damage});
 const deny=(reason:string):EntryToolVerdict=>
  ({allowed:false,reason,seconds:0,noise:0,damage:0});
-export function entryToolVerdict(door:Door,tool:EntryTool):EntryToolVerdict{
+export function entryToolVerdict(door:Door,tool:EntryTool,actorPosition?:Pt):EntryToolVerdict{
  const style=door.style??'wood';
  const kind=door.kind??'hinged';
  const gated=style==='mesh-gate'||style==='screen';
@@ -20,7 +21,8 @@ export function entryToolVerdict(door:Door,tool:EntryTool):EntryToolVerdict{
     if(kind!=='hinged')return deny('NO MECHANICAL HANDLE LOCK');
     if(open)return deny('ALREADY OPEN');
     if(door.wedged||door.jammed)return deny('DOOR PHYSICALLY OBSTRUCTED');
-    return door.locked?allow(reinforced?8.5:5.5,18):deny('NOT LOCKED');
+    return door.locked&&(!actorPosition||doorSecuredFrom(door,actorPosition))?
+      allow(reinforced?8.5:5.5,18):deny('NOT LOCKED FROM THIS SIDE');
   }
  if(tool==='wedge'){
   if(kind!=='hinged')return deny('DOOR DOES NOT SWING');
