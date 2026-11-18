@@ -236,8 +236,12 @@ function run(site,seed,kind){
    });
   if(queueMotionModule&&kind==='entry')
    queueMotionModule.listenQueueMotion(session,event=>{
-    if(queueMotionEvidence.length<200)
-     queueMotionEvidence.push({...event,time:round(event.time)});
+    if(queueMotionEvidence.length<200){
+     const mover=actors.find(a=>a.id===event.actor);
+     queueMotionEvidence.push({...event,time:round(event.time),
+      activePlan:mover?.plan.slice(0,4).map(n=>({id:n.id,kind:n.kind,
+       entryDoorId:n.entryDoorId??null,doorId:n.doorId??null}))??[]});
+    }
    });
   const initial=actors.map(a=>new Set(a.plan.map(n=>n.id)));
   // D3.6: frozen per-run authored targets and entry positions. Endpoints

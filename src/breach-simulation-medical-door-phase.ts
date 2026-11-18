@@ -108,7 +108,7 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
              return after<11;
            }))continue;
         commitOpeningYield(s,door,actor.id,actor.p,candidate);
-        noteQueueMotion(s,actor,'opening-leaf-yield',actor.p,candidate);
+        noteQueueMotion(s,actor,'opening-leaf-yield',actor.p,candidate,door.id);
         actor.priorP=clone(actor.p);
         actor.p=candidate;
         yielded=true;
