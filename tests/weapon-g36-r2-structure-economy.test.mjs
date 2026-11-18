@@ -36,16 +36,16 @@ test('R2 receiver closes H3 notch with an overlapping single upper, not a filler
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('R2 angled 5.56 magwell physically surrounds the EXISTING 30-round mouth',()=>{
+test('R3 vertical-rear 5.56 magwell physically surrounds the existing 30-round mouth',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const well=one(g,'g36ReceiverLower'),mag=one(g,'g36Magazine');
  const pts=well.geometry.parameters.shapes.getPoints().slice(0,-1);
  assert.equal(pts.length,8,'only eight purposeful contour corners');
- assert.equal(well.userData.g36MagwellArtVersion,'r2-556-angled-funnel');
+ assert.equal(well.userData.g36MagwellArtVersion,'r3-556-vertical-rear');
  assert.ok(well.userData.g36MagwellMouthWidth>=G36_MAG30_CURVE.width+.5);
  assert.ok(well.userData.g36MagwellDepth>=G36_MAG30_DEPTH+.3);
- assert.ok(pts.some(p=>approx(p.x,2.65)&&approx(p.y,-3.28)));
- assert.ok(pts.some(p=>approx(p.x,-1.45)&&approx(p.y,-3.28)));
+ assert.ok(pts.some(p=>approx(p.x,2.72)&&approx(p.y,-3.13)));
+ assert.ok(pts.some(p=>approx(p.x,-1.70)&&approx(p.y,-3.49)));
  assert.ok(box(well).intersectsBox(box(mag)));
  assert.equal(F.feedVisualId,'g36-polymer-556');
  assert.equal(F.parts.magazine,'g36-mag30');
@@ -67,42 +67,42 @@ test('R2 charging handle is top-center forward under carry-handle, NOT fake side
  clearWeaponSilhouette(g);m.dispose();
 });
 
-test('R2 shares the actual HK selector pictograms: white safe + muted red, two faces ONE mesh',()=>{
+test('R3 shares genuine HK SEF letters: white S + muted red E/F, two faces ONE mesh',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const mark=one(g,'g36SelectorMarkings');
  assert.ok(mark);
  assert.equal(all(g,'g36SelectorMarkings').length,1);
  assert.equal(mark.userData.g36SelectorMarkCount,2);
- assert.equal(mark.userData.surfaceDetailKind,'hk-selector-picto');
+ assert.equal(mark.userData.surfaceDetailKind,'hk-selector');
  assert.equal(tris(mark),4,'indexed two-plane marker remains exactly four triangles');
  assert.equal(mark.castShadow,false);
  assert.equal(mark.material.transparent,true);
- assert.ok(mark.material.map?.image?.data,'reuse common HK selector graphic texture');
+ assert.ok(mark.material.map?.image?.data,'reuse common genuine SEF lettering texture');
  const source=mark.material, finish={
   polymer:new THREE.MeshStandardMaterial(),steel:new THREE.MeshStandardMaterial(),
   magazine:new THREE.MeshStandardMaterial(),buttpad:new THREE.MeshStandardMaterial(),
   optic:new THREE.MeshStandardMaterial(),muzzle:new THREE.MeshStandardMaterial()
  };
  applyG36FactoryMaterials(g,finish);
- assert.strictEqual(mark.material,source,'do not overwrite cached pictogram with polymer');
+ assert.strictEqual(mark.material,source,'do not overwrite cached SEF with polymer');
  assert.equal(all(g,'g36SelectorHub').length,2);
  assert.equal(all(g,'g36SelectorLever').length,2);
  clearWeaponSilhouette(g);m.dispose();
  for(const f of Object.values(finish))f.dispose();
 });
 
-test('R2 muzzle is genuinely longer/thicker using the same sole end mesh',()=>{
+test('R3 one sculpted long flash-hider has raised collar, slim body and no added mesh',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const muzzle=one(g,'g36FactoryMuzzle'),barrel=one(g,'g36Barrel');
  const b=box(muzzle),c=box(barrel),span=(x,k)=>x.max[k]-x.min[k];
  assert.equal(all(g,'g36FactoryMuzzle').length,1);
- assert.ok(approx(span(b,'x'),1.60));
- assert.ok(approx(span(b,'y'),1.52));
- assert.ok(approx(span(b,'z'),1.52));
+ assert.ok(approx(span(b,'x'),1.65));
+ assert.ok(approx(span(b,'y'),1.54));
+ assert.ok(approx(span(b,'z'),1.42));
  assert.ok(span(b,'y')>span(c,'y')+.3);
  assert.ok(b.intersectsBox(c),'muzzle slides over existing barrel');
  assert.ok(approx(b.max.x,A.muzzleX));
- assert.equal(tris(muzzle),12);
+ assert.equal(tris(muzzle),28);
  clearWeaponSilhouette(g);m.dispose();
 });
 
@@ -128,13 +128,13 @@ test('R2 polygon economy: one ONLY new mesh for colored pictograms, no redundant
  assert.equal(tris(one(g,'g36LongHandguard')),20);
  assert.ok(tris(one(g,'g36ReceiverUpper'))<=20);
  assert.ok(tris(one(g,'g36ReceiverLower'))<=30);
- assert.equal(tris(one(g,'g36FactoryMuzzle')),12);
+ assert.equal(tris(one(g,'g36FactoryMuzzle')),28);
  assert.equal(tris(one(g,'g36SelectorMarkings')),4);
  assert.equal(all(g,'g36ChargingHandle').length,1);
  const live=new THREE.Group();
  addG36Family(live,{family:'g36',parts:F.parts});
  assert.equal(live.children.length,23,'actual Arsenal path must use the economical R2 mesh set');
- assert.equal(one(live,'g36ReceiverLower').userData.g36MagwellArtVersion,'r2-556-angled-funnel');
+ assert.equal(one(live,'g36ReceiverLower').userData.g36MagwellArtVersion,'r3-556-vertical-rear');
  assert.ok(one(live,'g36SelectorMarkings').material.map);
  clearWeaponSilhouette(g);clearWeaponSilhouette(live);m.dispose();
 });
