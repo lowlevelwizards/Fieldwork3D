@@ -54,11 +54,11 @@ test('R3 selectors restored beside grip on BOTH sides without changing shared se
  assert.equal(hubs.length,2);assert.equal(levers.length,2);
  for(const hub of hubs){
   assert.ok(near(hub.position.x,-5.20,.01));
-  assert.ok(near(hub.position.y,-1.96,.01));
-  assert.ok(hub.position.x<-4.8&&hub.position.y<-1.7);
+  assert.ok(near(hub.position.y,-1.68,.01));
+  assert.ok(hub.position.x<-4.8&&hub.position.y<-1.6);
   assert.equal(hub.geometry.parameters.radialSegments,6);
  }
- for(const lever of levers)assert.ok(lever.position.x<-4.5&&lever.position.y<-1.75);
+ for(const lever of levers)assert.ok(lever.position.x<-4.5&&lever.position.y<-1.45);
  clearWeaponSilhouette(g);mat.dispose();
 });
 
@@ -90,7 +90,7 @@ test('R4 magazine tile uses subtle rounds on both faces, reuses one pooled finis
    shades.add(data[i]);
    assert.equal(data[i+3],255,'smoke finish remains fully opaque');
   }
-  assert.ok(shades.has(230)&&shades.has(234),'quiet curve-following cartridge shades');
+  assert.ok(shades.has(226)&&shades.has(230),'heavier but restrained curve-following cartridge shades');
   assert.ok(shades.has(255)&&shades.size<=7,'mostly blank smoke polymer, no band clutter');
  }
  const mat=new THREE.MeshStandardMaterial(),g=buildG36OriginalBlockout(mat);
