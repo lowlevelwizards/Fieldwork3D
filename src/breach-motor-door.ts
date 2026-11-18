@@ -44,6 +44,21 @@ export function preserveExplicitDoorActionClock(
  pending:{kind:string}|null|undefined
 ):boolean{return pending?.kind==='door';}
 
+/** D3.29D: the implicit hinge motor may never interpret ANY rejected
+ * OPEN capability as permission to animate. A physically encountered lock
+ * takes precedence over an earlier out-of-reach rejection; neither may
+ * swing the leaf. No remote manipulation or collision exemption.
+ */
+export function implicitOpenDenial(
+ door:Pick<Door,'locked'|'jammed'|'wedged'|'heldBy'>,
+ verdict:{allowed:boolean;reason:string|null},actorId:string
+):string|null{
+ if(door.locked)return 'locked';
+ if(door.jammed||door.wedged)return 'obstructed';
+ if(door.heldBy&&door.heldBy!==actorId)return 'held';
+ return verdict.allowed?null:verdict.reason;
+}
+
 export function handleMotorDoor(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;closed:boolean;clearingDoorId?:string}{
@@ -230,10 +245,10 @@ export function handleMotorDoor(
     noteD32MotorDoorSelection(a,doorAhead.id,s.seconds);
     const opening=doorInteraction({target:doorAhead,actorId:a.id,
       actorPosition:a.p,action:'open'});
-    if(opening.reason==='held'||opening.reason==='locked'||
-       opening.reason==='obstructed'){
-      a.motorPause=opening.reason==='held'?'door-held':
-        opening.reason==='locked'?'door-locked':'door-obstructed';
+    const denial=implicitOpenDenial(doorAhead,opening,a.id);
+    if(denial==='held'||denial==='locked'||denial==='obstructed'){
+      a.motorPause=denial==='held'?'door-held':
+        denial==='locked'?'door-locked':'door-obstructed';
       a.lastBlocker='door';
       a.velocity=0;a.blockedTime+=dt;
       // An authored MOVE/OPEN cannot proceed through a known blocked
@@ -241,7 +256,7 @@ export function handleMotorDoor(
       // Enemy AI retains its separate re-route/cover behavior below.
       if(a.side!=='red'&&pendingDoor){
         failCurrentOrder(s,a,pendingDoor,
-          'PATH BLOCKED · DOOR '+opening.reason.toUpperCase(),hooks.notify);
+          'PATH BLOCKED · DOOR '+denial.toUpperCase(),hooks.notify);
         a.blockedTime=0;
         return {paused:true,closed:false};
       }
@@ -250,6 +265,14 @@ export function handleMotorDoor(
         a.nav=[];a.alert='cover';a.contact=null;
       }
       return {paused:true,closed:false};
+    }
+    // Out-of-reach / already-open and every other refused implicit OPEN
+    // must yield to the unchanged swept-body motor. Previously this path
+    // incremented the OPEN timer and could animate a CLOSED LOCKED leaf.
+    if(denial){
+      if(!preserveExplicitDoorActionClock(pendingDoor))a.actionTimer=0;
+      a.motorPause=null;
+      return {paused:false,closed:false};
     }
     a.velocity=0;a.actionTimer+=dt;
     if(a.actionTimer>=.36&&!doorAhead.open){
