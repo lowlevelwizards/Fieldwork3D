@@ -143,7 +143,7 @@ import {advanceRescueEscort,type RescueEscort} from './breach-rescue-escort.ts';
 import {verifiedDeploymentChoices,type DeploymentChoice} from './breach-deployment.ts';
 import type {OperationKind} from './breach-operations.ts';
 
-import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
+import {initialIntel,bindIntelWorld,observeIntel,routeWithIntel,intelPassable,intelNudgeSegmentClear,doorKnown,type IntelMode,type IntelState} from './breach-intel.ts';
 import {discoverObjective,type ObjectiveKnowledge} from './breach-objective-intel.ts';
 
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
@@ -583,6 +583,7 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   const target=projectReachableGoal(finalPoint(a),p,{
     canStand:at=>intelPassable(at,s.intel,OPERATOR_RADIUS),
     routeTo:(from,to)=>legalMoveRoute(s,from,to),
+    canNudgeAcross:(from,to)=>intelNudgeSegmentClear(s.intel,from,to),
   });
   if(!target){
     if(intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
@@ -794,8 +795,9 @@ export function movePlanNode(s:Session,id:string,nodeId:number,p:Pt){
   if(changed.kind==='move'){
     const from=index>0?proposed[index-1].p:a.p;
     const target=projectReachableGoal(from,p,{
-      canStand:at=>intelPassable(at,s.intel,SQUEEZE_RADIUS),
+      canStand:at=>intelPassable(at,s.intel,OPERATOR_RADIUS),
       routeTo:(origin,goal)=>routeWithSqueezeIntel(s.intel,origin,goal),
+      canNudgeAcross:(from,to)=>intelNudgeSegmentClear(s.intel,from,to),
     });
     if(!target)return false;
     point=target.point;
