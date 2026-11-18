@@ -59,7 +59,8 @@ const RECEIVER_PLATFORMS:Readonly<Record<string,ArsenalPlatformId>>={
  'hk-mp5k-stockless':'mp5',
  'fal-50-receiver':'fal',
  'fnc-service-receiver':'fnc',
- 'g36-dual-receiver':'g36'
+ 'g36-dual-receiver':'g36','g36-rail-receiver':'g36',
+ 'g36-single-receiver':'g36'
 };
 export function arsenalPlatformForReceiver(receiverId:string):ArsenalPlatformId|undefined{
  return RECEIVER_PLATFORMS[receiverId];
