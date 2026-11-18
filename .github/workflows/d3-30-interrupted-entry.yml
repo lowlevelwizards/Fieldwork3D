@@ -1,10 +1,11 @@
-name: D3.30A safe interrupted entry order snapshots
+name: D3.30A/B interrupted door capture and explicit retry
 on:
   push:
     branches: [feature/d3-30-interrupted-entry-recovery-20261118]
     paths:
       - '.github/workflows/d3-30-interrupted-entry.yml'
       - 'src/breach-door-interruption.ts'
+      - 'src/breach-interruption-recovery.ts'
       - 'src/breach-game.ts'
       - 'src/breach-order-lifecycle.ts'
       - 'src/breach-motor-door.ts'
@@ -26,7 +27,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - name: Typecheck and critical door entry preservation
+      - name: Typecheck and critical capture/explicit-resume regressions
         run: |
           npm run check
           node --experimental-strip-types --test tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-25b-terminal-entry-gate.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs
