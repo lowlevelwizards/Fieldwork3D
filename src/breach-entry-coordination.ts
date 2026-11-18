@@ -3,6 +3,7 @@
  * move an actor, or replace collision/doorway reservations.
  */
 import {doorClear,doorWouldStrikeActors} from './breach-door.ts';
+import {doorSecuredFrom} from './breach-door-security.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 import {OPERATOR_RADIUS,doorCenter,type Pt} from './breach-core.ts';
 import type {Door} from './breach-core.ts';
@@ -25,7 +26,7 @@ export function leaderBeyondOpenEntry(
  waiting:Pt,interiorGoal:Pt|undefined
 ):boolean{
  if(!door||!leader||!interiorGoal||!door.open||
-    door.locked||door.wedged||door.jammed||door.heldBy||
+    doorSecuredFrom(door,waiting)||door.wedged||door.jammed||door.heldBy||
     (door.openFraction??0)<.72)return false;
  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
  const width=Math.hypot(dx,dy);
