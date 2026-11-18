@@ -1,0 +1,53 @@
+name: EQA2 encounter quality + unified civilian character release gate
+on:
+  push:
+    branches: [feature/eqa2-encounter-civilians-unified-20261118]
+    paths:
+      - '.github/workflows/encounter-eqa2-release.yml'
+      - 'src/breach-civilian-visuals.ts'
+      - 'src/rendering/breach-actor-frame-presenter.ts'
+      - 'src/breach-3d.ts'
+      - 'src/worldgen/encounter-placement.ts'
+      - 'src/worldgen/encounter-director.ts'
+      - 'src/breach-game.ts'
+      - 'tests/encounter-eqa2-unified-civilian.test.mjs'
+      - 'tests/encounter-eqa1-front-door.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: eqa2-encounter-quality-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  integrated-encounters-and-civilians:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript + actual shared civilian models and exact EQA1 movement regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/encounter-eqa2-unified-civilian.test.mjs tests/encounter-eqa1-front-door.test.mjs tests/civilian-b6-visuals.test.mjs tests/civilian-r3-anatomy-proportions.test.mjs tests/civilian-r2-presentation.test.mjs tests/civilian-c5-unified-pose.test.mjs tests/civilian-c1a-animation-reset.test.mjs tests/civilian-contact-flow-regression.test.mjs tests/breach-scene-memory-lifecycle-p6.test.mjs tests/breach-roadmap4-actor-presentation.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs
+      - name: Fresh 55-case real-world mission and defender matrix
+        run: |
+          mkdir -p artifacts/encounter-eqa2
+          node --experimental-strip-types scripts/audit-g4-diversity.mjs --matrix --rows > artifacts/encounter-eqa2/diversity.json
+          node -e "const a=require('./artifacts/encounter-eqa2/diversity.json');console.log(JSON.stringify({summary:a.summary,prepared:a.observations.filter(r=>r.profile==='prepared'&&r.mission!=='clear').map(r=>({seed:r.seed,building:r.archetype,mission:r.mission,hostiles:r.hostiles,guards:r.objectiveGuards,profile:r.profile}))},null,2))"
+      - name: Live AI/civilian 22-case response QA and scripted 40-trial contact
+        run: |
+          node --experimental-strip-types scripts/audit-mission-quality.mjs 22 --living --doctrine-matrix > artifacts/encounter-eqa2/living.json
+          node -e "const a=require('./artifacts/encounter-eqa2/living.json');console.log(JSON.stringify({summary:a.summary,matrix:a.encounterBehavior?.matrix},null,2))"
+          node --experimental-strip-types scripts/audit-g4-flow.mjs --full > artifacts/encounter-eqa2/contact.json
+          node -e "const a=require('./artifacts/encounter-eqa2/contact.json');console.log(JSON.stringify({summary:a.summary,exceptions:a.exceptions,failures:a.failures},null,2))"
+      - name: Deployable Vite bundle, no deployment
+        run: npm run build
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: encounter-eqa2-qa
+          path: artifacts/encounter-eqa2/
+          if-no-files-found: warn
