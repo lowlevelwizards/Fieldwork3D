@@ -1296,12 +1296,14 @@ export class CampaignScreen{
    orbitControls.setAttribute('role','group');
    orbitControls.setAttribute('aria-label','Operator preview rotation');
    const left=button('LEFT 45°',()=>this.preview?.rotateBy(-45));
-   const reset=button('RESET ANGLE',()=>this.preview?.resetOrientation());
+   const reset=button('RESET',()=>this.preview?.resetOrientation());
+   const flip=button('FLIP 180°',()=>this.preview?.rotateBy(180));
    const right=button('RIGHT 45°',()=>this.preview?.rotateBy(45));
    left.setAttribute('aria-label','Rotate operator 45 degrees left');
    reset.setAttribute('aria-label','Reset operator preview angle');
+   flip.setAttribute('aria-label','Turn operator 180 degrees to inspect the rear');
    right.setAttribute('aria-label','Rotate operator 45 degrees right');
-   orbitControls.append(left,reset,right);
+   orbitControls.append(left,reset,flip,right);
    summary.append(orbitControls);
   }
   const identityActions=node('div','campaign-kit-actions');
