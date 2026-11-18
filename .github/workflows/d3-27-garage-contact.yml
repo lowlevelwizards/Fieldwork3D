@@ -8,6 +8,8 @@ on:
       - 'src/breach-d327*.ts'
       - 'src/breach-authored-goal-block.ts'
       - 'src/breach-motor-route.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-route-transition.ts'
       - 'tests/release-d3-27*.test.mjs'
   workflow_dispatch:
 permissions:
