@@ -81,6 +81,29 @@ try{
     throw Error('Completed preview drag failed to update accessible view angle');
    if(gesture.afterLoss===gesture.last||gesture.afterRecovery===gesture.afterLoss)
     throw Error('Lost pointer capture left the preview stuck or orientation stale');
+   const orbit=page.getByRole('group',{name:'Operator preview rotation'});
+   const left=orbit.getByRole('button',{name:'Rotate operator 45 degrees left'});
+   const right=orbit.getByRole('button',{name:'Rotate operator 45 degrees right'});
+   const reset=orbit.getByRole('button',{name:'Reset operator preview angle'});
+   if(await orbit.locator('button').count()!==3)
+    throw Error('Phone preview rotation controls are not available');
+   const touchTargets=await orbit.locator('button').evaluateAll(buttons=>
+    buttons.map(button=>button.getBoundingClientRect().height));
+   if(touchTargets.some(height=>height<43))
+    throw Error('Preview rotation control touch targets are too small');
+   const angleBeforeButtons=await operatorPreview.getAttribute('aria-label');
+   await left.click();
+   const rotatedLeft=await operatorPreview.getAttribute('aria-label');
+   if(rotatedLeft===angleBeforeButtons)
+    throw Error('Preview left rotation control did not move the camera');
+   await right.click();
+   if(await operatorPreview.getAttribute('aria-label')!==angleBeforeButtons)
+    throw Error('Left and right preview rotation did not round-trip');
+   await reset.click();
+   if(await operatorPreview.getAttribute('aria-label')!==before)
+    throw Error('Reset angle did not restore the initial operator orientation');
+   if(await operatorPreview.getAttribute('data-preview-focus')!=='weapon')
+    throw Error('Reset angle unexpectedly discarded current equipment focus');
   }
   const groups=armory.locator(':scope > .fw-loadout-group');
   if(await groups.count()!==5)throw Error('Campaign kit must have five clear groups');
