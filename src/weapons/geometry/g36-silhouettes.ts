@@ -198,14 +198,14 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  // finish replacement (it has its own transparent pixel material).
  for(const side of [-1,1] as const){
   // Move the selector forward/up into the lower receiver's readable flank.
-  const [hub,lever]=addHKSelectorLeverArt(root,-3.95,-1.14,1.14,side,material);
+  const [hub,lever]=addHKSelectorLeverArt(root,-3.95,-1.14,1.14,side,material,6);
   hub.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   lever.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   hub.userData.g36SelectorHub=true;
   lever.userData.g36SelectorLever=true;
  }
  const selectorMarks=addWeaponPixelMarkPairBatched(
-  root,'hk-selector-picto',-4.35,-.29,1.278,2.30,1.72);
+  root,'hk-selector-picto',-3.82,-.29,1.278,2.30,1.72);
  selectorMarks.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
  selectorMarks.userData.g36SelectorMarkings=true;
  selectorMarks.userData.g36SelectorMarkCount=2;
