@@ -29,6 +29,13 @@ export const HK9_MAG_METAL=weaponFinish('hk9-mag-steel');
 export const HK556_MAG_RIB=weaponFinish('hk556-mag-rib');
 export const HK_SD_SUPPRESSOR_METAL=weaponFinish('hk-sd-metal');
 export const HK_MUZZLE_METAL=weaponFinish('hk-muzzle-metal');
+/** G36 O3: scoped factory poly/rim/lens/rubber finish hierarchy.
+ * Other HK families intentionally keep their existing shared colors.
+ */
+export const G36_DARK_POLYMER=weaponFinish('g36-polymer');
+export const G36_OPTIC_RIM=weaponFinish('g36-optic-rim');
+export const G36_LENS_BLACK=weaponFinish('g36-lens');
+export const G36_RUBBER=weaponFinish('g36-rubber');
 /** G36 FT1.9D0 shared opaque smoky-polymer magazine; no transparency sorting. */
 export const G36_SMOKED_MAGAZINE=weaponFinish('g36-smoked-mag');
 export const FAL_BLACK_METAL=weaponFinish('fal-steel');

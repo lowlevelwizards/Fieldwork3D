@@ -174,7 +174,7 @@ test('G36 C4: optics are connected and horizontally hierarchical with no tower',
  const lower=one(g,'g36LowerOptic'),upper=one(g,'g36UpperReflex'),frame=one(g,'g36HandleOpening');
  assert.ok(bb(lower).intersectsBox(bb(upper)));
  assert.ok(bb(lower).intersectsBox(bb(frame)));
- assert.ok(bb(upper).max.y<=4.71);
+ assert.ok(bb(upper).max.y<=A.opticTopY+.01);
  assert.ok((bb(lower).max.x-bb(lower).min.x)>(bb(upper).max.x-bb(upper).min.x)*1.6,
   'magnified optic should read as horizontal long form, reflex short and squat');
  clearWeaponSilhouette(g);m.dispose();
