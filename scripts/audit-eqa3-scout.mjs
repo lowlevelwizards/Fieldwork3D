@@ -110,7 +110,7 @@ for(const [seed,mission] of chosen){
       forensicEvents.push(snapshot);
     };
     forensicCapture('initial');
-    let current=null,issuedAt=-1,issueDistance=0,accepted=0,
+    let current=null,issuedAt=-1,issueDistance=0,issuedTravel=0,totalTravel=0,accepted=0,
      rejected=0,routeAbort=0,firstContactAt=null,firstShotAt=null,
      firstCivilianAt=null,discoveredAt=null,firstRoomAt=null,
      objectiveAt=null,atExtraction=null,firstPlanAt=null;
@@ -164,7 +164,7 @@ for(const [seed,mission] of chosen){
         if(gap>14){
          issued=recordAction(action,target,planMove(s,rescuer.id,target));
          if(issued){current={name:action,p:{...target}};
-          issuedAt=s.seconds;issueDistance=gap;
+          issuedAt=s.seconds;issueDistance=gap;issuedTravel=totalTravel;
           if(firstPlanAt===null)firstPlanAt=s.seconds;
          }else if(action==='explore-briefed-room'){
           const room=ordered.find(r=>dist(center(r),target)<1);
@@ -186,6 +186,7 @@ for(const [seed,mission] of chosen){
     executeOrder();
     for(let tick=0;tick<tickFrames&&s.phase==='running';tick++){
       stepSession(s,1/30);
+      totalTravel+=dist(scout.priorP,scout.p);
       if(tick%6===0){
         film.capture(s);
         if(forensic)forensicCapture('tick');
@@ -221,10 +222,17 @@ for(const [seed,mission] of chosen){
       if(tick%15===0&&s.phase==='running'){
         // Short route failure is measured and recorded; no teleport,
         // automatic collision bypass, goal truth or script-owned movement.
+        // EQA3.1 audit correction: Euclidean objective distance can RISE
+        // while a valid A* leg tours around a real wall or closed portal.
+        // A healthy nav with real travelled footsteps is not a stall.
+        // Abort only when there is physically reported blockage or
+        // negligible actual travel, never after merely taking a detour.
         const noProgress=!!current&&
-          (s.seconds-issuedAt>7&&
-           dist(scout.p,current.p)>20&&
-           dist(scout.p,current.p)>issueDistance-14);
+          s.seconds-issuedAt>7&&
+          dist(scout.p,current.p)>20&&
+          dist(scout.p,current.p)>issueDistance-14&&
+          (scout.blockedTime>=1.5||
+           (totalTravel-issuedTravel<12&&scout.velocity<4));
         if(noProgress&&scout.plan.length){
           if(forensic)forensicCapture('route-abort');
           toggling(s);
