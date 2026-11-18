@@ -73,6 +73,8 @@ const d326Micro=d326LastStallProbe?
  await import('../src/breach-stack-micro-corner.ts'):null;
 const d326Fine=d326LastStallProbe?
  await import('../src/breach-squeeze-route.ts'):null;
+const d326Gate=d326LastStallProbe?
+ await import('../src/breach-d326-fine-route-gate.ts'):null;
 // D3.17E: offline-only, post-run real geometry witness for blocked bodies.
 // It never runs in live movement, advances the simulation, or adopts a route.
 const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
@@ -326,6 +328,10 @@ function run(site,seed,kind){
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
   const blockWitness=actors.map(()=>({mask:0,events:[]}));
   const progressEvidence=[];
+  // D3.26F7 exact-seed read-only motor handoff witness, sampled only
+  // for one actor and short time windows. Zero impact in normal audits.
+  const d326MicroTrace=[];
+  let d326LastMicroKey='';
   const observed=actors.map(a=>({
    start:{...a.p},last:{...a.p},travel:0,blocked:0,squeezing:0,
    passage:0,opening:0,lastRetries:a.recoveryAttempts,
@@ -342,6 +348,33 @@ function run(site,seed,kind){
    }finally{
     if(grid)setRouteGridAuditObserver(null);
     if(recordRoute)setTransientRouteObserver(null);
+   }
+   if(d326LastStallProbe&&kind==='authored'){
+    const chosen=seed===19036595?'ash':seed===19143269?'moss':null;
+    const lower=seed===19036595?6:34;
+    const upper=seed===19036595?20:40;
+    const actor=chosen?actors.find(a=>a.id===chosen):null;
+    if(actor&&session.seconds>=lower&&session.seconds<=upper&&
+       d326MicroTrace.length<500){
+      const next=actor.nav[0];
+      const owned=d326Gate.ownsD326FineMotorRoute(actor);
+      const key=[actor.nav.length,owned,actor.squeeze,
+        actor.doorTraversal?.maneuver??'none',
+        Math.round(actor.blockedTime*2)].join(':');
+      if(key!==d326LastMicroKey||tick%12===0){
+       d326MicroTrace.push({
+        seconds:round(session.seconds),actor:chosen,
+        position:{x:round(actor.p.x),y:round(actor.p.y)},
+        navLength:actor.nav.length,
+        first:next?{x:round(next.x),y:round(next.y)}:null,
+        fineOwned:owned,squeeze:actor.squeeze,
+        blocked:round(actor.blockedTime),velocity:round(actor.velocity),
+        door:actor.doorTraversal?.doorId??null,
+        maneuver:actor.doorTraversal?.maneuver??null,
+        motorPause:actor.motorPause});
+       d326LastMicroKey=key;
+      }
+    }
    }
    survey.sample(actors,1/60);
    quality?.sample(actors,session.seconds);
@@ -926,6 +959,7 @@ function run(site,seed,kind){
    ...(leafRejoinDiagnostic?{leafRecoveryEvidence}:{}),
    ...(d325Feasibility?{d325Feasibility}:{}),
    ...(d326StallEvidence?{d326StallEvidence}:{}),
+   ...(d326LastStallProbe?{d326MicroTrace}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
