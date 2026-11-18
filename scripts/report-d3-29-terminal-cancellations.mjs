@@ -10,6 +10,11 @@ if(!path)throw Error('Supply frozen22 replay path');
 const data=JSON.parse(readFileSync(path,'utf8'));
 const r=analyzeD329CancellationAudit(data);
 console.log('D329_COUNTS',JSON.stringify(r.summary));
+console.log('D329_NEW_LOCK_ROUTE_FEASIBILITY',JSON.stringify(
+ r.cases.filter(c=>c.legalWorldRouteAtCancellation)
+ .map(c=>({seed:c.seed,site:c.archetype,actor:c.id,
+  blockedDoor:c.selectedMotorDoor?.id,
+  route:c.legalWorldRouteAtCancellation}))));
 const invalidLocks=r.cases.filter(c=>c.lockedLeafMovedAfterClosedStart);
 console.log('D329_LOCK_INTEGRITY',JSON.stringify({
  count:invalidLocks.length,
