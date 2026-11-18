@@ -29,6 +29,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/release-d3-25b-terminal-entry-gate.test.mjs \
             tests/release-d3-25f-cold-swept-entry-escape.test.mjs \
+            tests/release-d3-26c-cold-motor-micro-departure.test.mjs \
             tests/tactical-integration-10-entry-gate.test.mjs
       - name: Physical 45-second independent 22-map evidence
         run: |
