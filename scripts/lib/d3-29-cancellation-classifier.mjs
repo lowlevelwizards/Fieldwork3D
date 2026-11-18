@@ -11,6 +11,13 @@ export function classifyD329Cancellation(mode,op){
  const door=mode.endDoorStates?.find(d=>d.id===doorId)??null;
  const failure=op.lastFailedOrder??null;
  const reason=String(failure?.reason??'');
+ const witness=(mode.d329CancelDoorWitness??[]).findLast(e=>
+  e.actor===op.id&&e.failedOrder?.id===failure?.id&&
+  Math.abs((e.failedOrder?.at??-100)-(failure?.at??-200))<.05);
+ const motorSelectedDoor=witness?.actualSelectedDoor??null;
+ const lockedRouteDoor=!!motorSelectedDoor?.locked;
+ const intermediary=!!motorSelectedDoor&&!!mode.doorId&&
+   motorSelectedDoor.id!==mode.doorId;
  let family='other-cancelled';
  if(op.outcome!=='cancelled'||!op.failedOrders)
   family='not-terminally-cancelled';
@@ -31,6 +38,10 @@ export function classifyD329Cancellation(mode,op){
   lastBlocker:op.lastBlocker??null,
   door:door?{id:door.id,open:door.open,fraction:door.fraction,
     locked:door.locked,jammed:door.jammed,wedged:door.wedged}:null,
+  selectedMotorDoor:motorSelectedDoor,interveningDoor:intermediary,
+  lockedMotorDoorVerified:lockedRouteDoor,
+  lockedDoorAtFailure:witness?.lockedNearby??[],
+  cancellationAt:witness?.seconds??failure?.at??null,
   reason,
   physicallyArrived:false};
 }
@@ -64,8 +75,15 @@ export function analyzeD329CancellationAudit(audit){
     full!==summary.physicalCompletedFour||
     cases.length!==operators-arrivals)
   throw Error('D3.29 derived case counts disagree with authoritative motor');
- const byFamily={};
- for(const c of cases)byFamily[c.family]=(byFamily[c.family]??0)+1;
+ const byFamily={},byLockedProvenance={};
+ for(const c of cases){
+  byFamily[c.family]=(byFamily[c.family]??0)+1;
+  const provenance=c.lockedMotorDoorVerified?
+   c.interveningDoor?'locked-intervening-door':'locked-selected-door':
+   c.door?.locked?'locked-selected-entry-door':
+   'unattributed-lock-message';
+  byLockedProvenance[provenance]=(byLockedProvenance[provenance]??0)+1;
+ }
  const ordered=['entry-cancelled-after-open-door',
    'authored-door-order-cancellation',
    'entry-incomplete-door-cancellation','physically-jammed-door',
@@ -73,7 +91,7 @@ export function analyzeD329CancellationAudit(audit){
  cases.sort((a,b)=>ordered.indexOf(a.family)-ordered.indexOf(b.family)||
    a.siteIndex-b.siteIndex||a.id.localeCompare(b.id));
  return {summary:{corpus:audit.corpus,operators,arrivals,fullSquads:full,
-   cancelledCases:cases.length,byFamily,
+   cancelledCases:cases.length,byFamily,byLockedProvenance,
    suspectedLoops:audit.progressSummary.suspectedLoops,
    routeSearches:audit.routeQualitySummary.searches},
    cases};
