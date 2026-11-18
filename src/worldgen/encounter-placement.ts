@@ -3,6 +3,7 @@
  * a crowd forms. Route checks are deferred to selected rooms (bounded on mobile).
  */
 import type {Site,Room} from '../breach-site.ts';
+import type {OperationKind} from '../breach-operations.ts';
 import {withTemporarySiteGeometry,passable,route,pointToSegment,type Pt}
  from '../breach-core.ts';
 import type {EncounterActorSpec,EncounterGroup,EncounterProfile}
@@ -24,7 +25,7 @@ type Anchor={room:Room;p:Pt;capacity:number;choices:Pt[]};
 
 export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
  groups:EncounterGroup[],seed:number,
- profile:EncounterProfile='scattered'):PlacementResult{
+ profile:EncounterProfile='scattered',mission?:OperationKind):PlacementResult{
  const rng=encounterRng(seed,5);
  const bounds=site.bounds??{minX:0,minY:0,maxX:640,maxY:740};
  let rejected=0,fallbacks=0;
@@ -165,9 +166,22 @@ export function placeEncounterActors(site:Site,planned:EncounterActorSpec[],
      profile==='clustered'?(zoneOccupied?90:-20):
      profile==='active'?(nearActivity?35:-10):
      profile==='prepared'?(nearestDoor>48&&nearestDoor<130?42:0):0;
+   // EQA2: existing PREPARED non-clear mission defenders should have a
+   // *chance* to occupy real rooms controlling the mission objective.
+   // Reward only verified, furnished and reachable candidate anchors.
+   // Never shift a body, invent a guard, force a population, or weaken
+   // the physical insertion, route and capacity checks below.
+   // HOLD benefits most from a nearby reserve; a quiet INTEL/RESCUE
+   // mission can still choose a distant watch post or have zero hostiles.
+   const objectiveDist=dist(anchor.p,site.objective);
+   const defendObjective=profile==='prepared'&&
+     (mission==='hold'||mission==='intel'||mission==='rescue')?
+     objectiveDist<=160?
+       (mission==='hold'?125:95)*(1-objectiveDist/450):
+       objectiveDist<=240?25:0:0;
    const score=(count===0?110:-90)+
      (anchor.capacity-count)*12-Math.min(32,originalDist*.065)+
-     profileBonus+
+     profileBonus+defendObjective+
      tactical+
      rng()*32;
    return {anchor,score};

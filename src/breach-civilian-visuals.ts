@@ -5,6 +5,9 @@
 import * as THREE from 'three';
 import type {CivilianActor} from './breach-civilian-types.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
+import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
+import {initialWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
+import {initialEquipmentLoadout,type EquipmentLoadout} from './equipment-loadouts.ts';
 
 /** Operator heads top out around 44 world units. Use comparable civilian
  * anatomy rather than globally enlarging a 36-unit, short-legged puppet.
@@ -45,13 +48,52 @@ function box(geometry:THREE.BoxGeometry,color:number,
  const mesh=new THREE.Mesh(geometry,mat(color));
  mesh.position.set(x,y,z);parent.add(mesh);return mesh;
 }
-export type CivilianRig={
+export type LegacyCivilianRig={
  root:THREE.Group;upper:THREE.Group;torso:THREE.Mesh;head:THREE.Mesh;
  leftArm:THREE.Mesh;rightArm:THREE.Mesh;
  leftLeg:THREE.Mesh;rightLeg:THREE.Mesh;
  leftShoe:THREE.Mesh;rightShoe:THREE.Mesh;
 };
-export function createCivilianRig(c:CivilianActor):CivilianRig{
+/** One real operator skeleton and appearance/IK animation system, equipped
+ * with an intentionally empty civilian wardrobe. The old cheap rig remains
+ * available ONLY to old replay/laboratory compatibility callers.
+ * Production 3D explicitly requests the shared model.
+ */
+export type UnifiedCivilianRig={
+ root:THREE.Group;character:OperatorRig;wardrobe:WardrobeOptions;
+ equipment:EquipmentLoadout;lastTime:number;
+};
+export type CivilianRig=LegacyCivilianRig|UnifiedCivilianRig;
+
+export function civilianSharedWardrobe(c:CivilianActor):WardrobeOptions{
+ const seed=c.appearanceSeed>>>0,wardrobe=initialWardrobe();
+ const shirts=['t-shirt','polo-shirt','button-up-shirt','tank-top'];
+ wardrobe.styles={
+  headwear:'bare',facewear:'face-none',eyewear:'eyes-none',
+  top:c.role==='employee'?'polo-shirt':shirts[seed%shirts.length],
+  trousers:'bdu-trousers',footwear:'field-boots',
+  armorStyle:'armor-bare',rigStyle:'no-rig',beltStyle:'no-belt',
+  packStyle:'no-pack',gloves:'gloves-none',knees:'knee-none',wrist:'wrist-none'
+ };
+ wardrobe.trouserHem='unbloused';
+ return wardrobe;
+}
+export function civilianSharedEquipment():EquipmentLoadout{
+ const base=initialEquipmentLoadout();
+ return {version:1,slots:{...base.slots,
+  head:'head-none',armor:'armor-none',rig:'rig-none',
+  belt:'belt-none',backpack:'backpack-none',top:'top-light',
+  legs:'legs-light',hands:'hands-none',feet:'feet-light',
+  medical:'medical-none',tactical:'tactical-none',utility:'utility-none'}};
+}
+export function createCivilianRig(c:CivilianActor,useSharedCharacter=false):CivilianRig{
+ if(useSharedCharacter){
+  const character=createOperatorRig('civilian-'+c.id,'blue',true);
+  character.root.name='civilian-'+c.id;
+  character.root.userData.civilianSharedCharacter=true;
+  return {root:character.root,character,wardrobe:civilianSharedWardrobe(c),
+    equipment:civilianSharedEquipment(),lastTime:-1};
+ }
  const seed=c.appearanceSeed>>>0,root=new THREE.Group(),upper=new THREE.Group();
  root.name='civilian-'+c.id;
  root.add(upper);
@@ -75,8 +117,51 @@ export function createCivilianRig(c:CivilianActor):CivilianRig{
  return {root,upper,torso,head,leftArm,rightArm,leftLeg,rightLeg,
    leftShoe,rightShoe};
 }
+/** The live shared model is driven by the SAME poseOperator frame as armed
+ * actors. Only civilian state->presentation intent is adapted; simulation
+ * movement, damage, sight, rescue and replay data are untouched.
+ */
+function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number){
+ const pose=civilianPose(c);
+ const down=pose==='down'||pose==='carried'||pose==='dragged';
+ const moving=pose==='walk'||pose==='run'||pose==='injured-walk';
+ const injured=pose==='injured'||pose==='injured-walk';
+ const squat=pose==='hide'||pose==='seated';
+ poseOperator(r.character,{
+  x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,
+  seconds:now,stride:moving?Math.max(.05,c.velocity/53):0,
+  posture:squat?'crouch':'stand',
+  injury:injured?1:down?3:0,weapon:'carbine',
+  reload:0,reloadDuration:0,lastDoorAt:-100,lastThrowAt:-100,
+  down,surrender:pose==='compliant',aiming:false,firing:false,
+  turning:0,deterministic:true,unarmedPreview:true,
+  appearanceSeed:c.appearanceSeed,equipment:r.equipment,
+  wardrobe:r.wardrobe,gait:pose==='run'?'run':'walk',
+  downProgress:down||pose==='compliant'?1:0,
+  poseDiagnostics:false
+ },r.lastTime>=0&&now>=r.lastTime?Math.min(.08,now-r.lastTime):0);
+ // The shared animator's generic kit presentation can restore the unused
+ // pack slot on its final frame. Neutrals have NO equipment inventory:
+ // suppress these cosmetic meshes after the common pose publication.
+ r.character.pack.visible=false;
+ r.character.weapon.visible=false;
+ r.character.droppedGun.visible=false;
+ // The operator skeleton owns gait, planted feet, full-body crouching,
+ // hands-up compliance and fall. Keep neutral carrying offset render-only.
+ // Tactical renderers place armed actor roots from the Session *outside*
+ // poseOperator; do the same here for neutral-owned 3D presentation.
+ r.root.position.set(c.p.x,pose==='carried'?10:pose==='dragged'?2:0,c.p.y);
+ r.lastTime=now;
+}
+export function disposeCivilianRig(r:CivilianRig):void{
+ if('character' in r)r.character.dispose();
+}
 export function updateCivilianRig(r:CivilianRig,
  c:CivilianActor,now:number):void{
+ if('character' in r){
+  updateSharedCivilianRig(r,c,now);
+  return;
+ }
  r.root.position.set(c.p.x,0,c.p.y);
  r.root.rotation.set(0,-c.heading,0);
  r.root.scale.setScalar(CIVILIAN_VISUAL_SCALE);
