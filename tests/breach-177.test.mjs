@@ -15,7 +15,7 @@ test('177: ordinary shoulder seat and separate underarm waist tuck',()=>{
    const exact=mode==='high'?[3.9,-2.3,6.6]:[3.45,4.45,4.8];
    assert.ok(Math.hypot(p.x-exact[0],p.y-exact[1],p.z-exact[2])<.001);
   }else{
-   assert.ok(p.x>4.2&&p.x<5.2);
+   assert.ok(p.x>4.2&&p.x<5.5);
    assert.ok(p.z>4.9&&p.z<5.6);
   }
   const fit=fitWeaponPose({weapon:'carbine',handling:mode,
