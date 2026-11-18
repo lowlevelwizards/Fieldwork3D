@@ -84,7 +84,7 @@ test('D3.23 rejected empty drag preserves previous route, ID and WATCH state',()
 
 import {generateSite} from '../src/breach-site.ts';
 import {stepSession} from '../src/breach-game.ts';
-import {doorLeafSegment,pointToSegment} from '../src/breach-core.ts';
+import {pointToSegment} from '../src/breach-core.ts';
 
 for(const [seed,mission] of [[20,'capture'],[26,'clear']]){
  test('EQA1: seed '+seed+' '+mission+' cannot author a squeeze-only FRONT-adjacent final landing',()=>{
@@ -106,7 +106,12 @@ for(const [seed,mission] of [[20,'capture'],[26,'clear']]){
     }
     verified++;
     assert.ok(intelPassable(out.endpoint,s.intel,OPERATOR_RADIUS),
-      'every accepted drag must have whole-operator known final clearance');
+      'every accepted drag must have whole-operator known wall clearance');
+    for(const door of s.doors)if(s.intel.doors.has(door.id)&&
+      (s.intel.doorMemory.get(door.id)??0)<.72){
+      assert.ok(pointToSegment(out.endpoint,door)>=OPERATOR_RADIUS+1,
+        'last MOVE must stand clear of every known closed door frame ('+door.id+')');
+    }
     if(out.clipped)adjustedOrRejected++;
    }
    assert.ok(adjustedOrRejected>0,
@@ -119,11 +124,11 @@ for(const [seed,mission] of [[20,'capture'],[26,'clear']]){
      const leaf=s.doors.find(d=>d.id==='FRONT');
      if(leaf&&!leaf.open&&actor.lastBlocker==='door'&&
         actor.blockedTime>.35&&
-        pointToSegment(actor.p,doorLeafSegment(leaf))<OPERATOR_RADIUS+1)
+        pointToSegment(actor.p,leaf)<OPERATOR_RADIUS+12)
        sameSideBlocking++;
     }
    }
-   assert.ok(sameSideBlocking<180,
+   assert.ok(sameSideBlocking<80,
       'should not repeat a ten-second FRONT-leaf blocked MOVE');
   }finally{activateSite(null);}
  });
