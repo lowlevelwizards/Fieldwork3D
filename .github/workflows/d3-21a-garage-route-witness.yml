@@ -1,7 +1,9 @@
 name: D3.21A Garage authored route and FRONT leaf witness
 on:
   push:
-    branches: [feature/d3-21a-garage-authored-route-witness-20261117]
+    branches:
+      - feature/d3-21a-garage-authored-route-witness-20261117
+      - feature/d3-21-garage-diagnostic-release-checkpoint-20261117
     paths:
       - '.github/workflows/d3-21a-garage-route-witness.yml'
       - 'tests/release-d3-21b-garage-front-departure-probe.test.mjs'
