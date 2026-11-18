@@ -11,6 +11,7 @@ import type {OperationKind} from './breach-operations.ts';
 import {resolveMissionKind,captureTargetIndex} from './breach-mission-semantics.ts';
 import type {IntelMode} from './breach-intel.ts';
 import {initialIntel,bindIntelWorld} from './breach-intel.ts';
+import {createObjectiveKnowledge} from './breach-objective-intel.ts';
 import {withActions} from './breach-actor-initial-state.ts';
 import {issueWeaponPreset,starterWeaponPreset} from './breach-weapon-issue.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
@@ -177,6 +178,7 @@ export function assembleSession(index=0,siteSeed?:number,
     intel:initialIntel(intelMode,site,initialDoorRecords,{
       walls:initialWorldWalls(site??null),cover:initialCover
     }),
+    objectiveIntel:createObjectiveKnowledge(site,'unknown'),
     intelObservedAt:-1,timesPaused:0,deaths:0,started:false,
     syncCode:0,report:[],movementNoiseAt:0,site,lightingMode:'day',
     sitePower:site?createSitePowerState(site,'day'):undefined,
