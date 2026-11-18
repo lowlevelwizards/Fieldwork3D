@@ -24,7 +24,7 @@ test('O2 factory selection: new volumetric dual optic, P6/P7 remain explicit his
  const p6=buildG36OriginalBlockout(m,{optic:'p6',magazine:'p6'});
  const rear=buildG36OriginalBlockout(m,{optic:'rear-integrated',magazine:'p6'});
  assert.deepEqual(G36_OPTIC_REVIEW_FORMS.p6.lower,[-3.37,3.35,0,4.95,1.30,1.96]);
- assert.equal(find(selected,'g36UpperReflex').userData.g36OpticArtVersion,'o2-simplified-125-125-55');
+ assert.equal(find(selected,'g36UpperReflex').userData.g36OpticArtVersion,'o3-compact-integrated-125-125-55');
  assert.ok(!box(find(selected,'g36UpperReflex')).equals(box(find(rear,'g36UpperReflex'))));
  assert.ok(!box(find(selected,'g36UpperReflex')).equals(box(find(p6,'g36UpperReflex'))));
  assert.ok(box(find(selected,'g36Magazine')).equals(box(find(p6,'g36Magazine'))),
@@ -41,7 +41,7 @@ test('P7 isolated optic alternatives hold roof, sight datums, handle span and me
   const alt=buildG36OriginalBlockout(m,{optic:variant});
   assert.equal(alt.children.length,p6.children.length);
   assert.equal(tris(alt),tris(p6));
-  assert.ok(close(box(alt).max.y,A.opticTopY));
+  assert.ok(close(box(alt).max.y,4.70),'legacy P6/P7 review remains at historical art height');
   assert.ok(box(find(alt,'g36HandleOpening')).equals(box(find(p6,'g36HandleOpening'))));
   assert.ok(box(find(alt,'g36MasterStock')).equals(box(find(p6,'g36MasterStock'))));
   assert.ok(box(find(alt,'g36LongHandguard')).equals(box(find(p6,'g36LongHandguard'))));
