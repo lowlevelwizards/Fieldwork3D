@@ -766,9 +766,16 @@ function run(site,seed,kind){
       const firstTail=tail[0]??null;
       const future=tail.length?[]:routeToNextOperableDoor(
         candidate,goal,session.doors,world);
+      let tailFailIndex=-1,at=candidate;
+      for(let k=0;k<tail.length;k++){
+       if(!micro(at,tail[k])){tailFailIndex=k;break;}
+       at=tail[k];
+      }
       previews.push({radius,heading:j,point:candidate,
        tailNodes:tail.length,tailFirst:firstTail,
        tailFirstMicro:firstTail?micro(candidate,firstTail):null,
+       tailAllMicro:tail.length>0&&tailFailIndex<0,
+       tailFailIndex,
        futureNodes:future.length,futureFirst:future[0]??null,
        futureFirstMicro:future[0]?micro(candidate,future[0]):null,
        nextNavMicro:first?micro(candidate,first):null});
