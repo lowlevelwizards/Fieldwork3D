@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import {claimD326ColdFineProbe,markD326FineMotorRoute,
  ownsD326FineMotorRoute}
  from '../src/breach-d326-fine-route-gate.ts';
+import {localDetourWaypointTolerance,completePreciseLocalDetour}
+ from '../src/breach-motor-local-detour.ts';
 
 const goal={x:220,y:105};
 const create=()=>({
@@ -57,4 +59,20 @@ test('D3.26F5 fine route survives waypoint shifts but not route replacement',()=
  markD326FineMotorRoute(a);
  a.nav.length=0;
  assert.equal(ownsD326FineMotorRoute(a),false);
+});
+
+test('D3.26G2: each fine-grid waypoint must be reached before next corner',()=>{
+ const p={x:316,y:524};
+ const actor={...create(),nav:[p,{x:316,y:556},goal]};
+ assert.equal(localDetourWaypointTolerance(actor,p),3,
+  'ordinary routes retain the 3-unit motor node radius');
+ markD326FineMotorRoute(actor);
+ assert.equal(localDetourWaypointTolerance(actor,p),.35);
+ actor.nav.shift();
+ completePreciseLocalDetour(actor);
+ assert.equal(localDetourWaypointTolerance(actor,actor.nav[0]),.35,
+  'every subsequent fine turn stays precise, not just the first stage');
+ actor.nav=[{x:320,y:544},goal];
+ assert.equal(localDetourWaypointTolerance(actor,actor.nav[0]),3,
+  'normal routes return to existing tolerance after replacement');
 });
