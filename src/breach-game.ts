@@ -927,39 +927,44 @@ export function planSquadEntry(s:Session,doorId:string){
  if(!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
  const alive=team(s).filter(a=>a.health>0);
  if(!alive.length)return false;
- const start=finalPoint(alive[0]);
- // Preserve the familiar tactical lane choices from D3.9, including a
- // narrow *route* where it is physically possible to turn sideways.
- // Only a generated DESTINATION must support an upright full-body stand.
- // Correct a known-unsafe landing locally (max 14 units) instead of
- // selecting an unrelated far-interior gallery, which can create loops.
+ const starts=alive.map(a=>finalPoint(a));
+ const start=starts[0];
+ // D3.24B: a lane reachable by the LEAD actor is not necessarily
+ // reachable by its assigned squadmate. Search the same deterministic
+ // tactical layouts, but evaluate each slot against THAT operator's
+ // authored starting point. Only discovered geometry is used here.
+ // These searches happen on explicit SQUAD ENTRY authoring, never 60 Hz.
  const knownLeaf=doorLeafSegment(door);
  const routeCache=new Map<string,boolean>();
- const routeTo=(p:Pt)=>{
-   const key=p.x.toFixed(3)+':'+p.y.toFixed(3);
+ const reachable=(index:number,p:Pt):boolean=>{
+   const from=starts[index];
+   if(!from)return false;
+   const key=index+':'+p.x.toFixed(3)+':'+p.y.toFixed(3);
    const cached=routeCache.get(key);
    if(cached!==undefined)return cached;
-   const reachable=routeWithSqueezeIntel(s.intel,start,p).length>0;
-   routeCache.set(key,reachable);
-   return reachable;
+   const accepted=routeWithSqueezeIntel(s.intel,from,p).length>0;
+   routeCache.set(key,accepted);
+   return accepted;
  };
- const candidateLanes=entryLanes(door,start,alive.length,p=>
-   intelPassable(p,s.intel,SQUEEZE_RADIUS)&&routeTo(p));
- const standing=(p:Pt)=>intelPassable(p,s.intel,OPERATOR_RADIUS)&&
-   pointToSegment(p,knownLeaf)>=OPERATOR_RADIUS+1&&routeTo(p);
+ // A squeeze is legal THROUGH the doorway, but not as a terminal
+ // clearing footprint. Repair generated candidates only inside the
+ // bounded original sector; preserve separate operator assignments.
+ const candidateLanes=entryLanes(door,start,alive.length,
+   p=>intelPassable(p,s.intel,SQUEEZE_RADIUS),reachable);
+ const standing=(p:Pt,index:number)=>intelPassable(p,s.intel,OPERATOR_RADIUS)&&
+   pointToSegment(p,knownLeaf)>=OPERATOR_RADIUS+1&&reachable(index,p);
  const corrected=candidateLanes.length===alive.length?
    settleKnownEntryLandings(door,candidateLanes,standing):null;
- // If one lane cannot be moved by a physically small, known-safe amount,
- // let the original deterministic generator search alternative legal
- // full-body layouts. All selection runs only on explicit authoring.
- const slots=corrected??entryLanes(door,start,alive.length,standing);
+ const slots=corrected??entryLanes(door,start,alive.length,
+   p=>intelPassable(p,s.intel,OPERATOR_RADIUS)&&
+     pointToSegment(p,knownLeaf)>=OPERATOR_RADIUS+1,reachable);
  if(slots.length!==alive.length){
-  notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT INTERIOR LANES');
+  notify(s,'SQUAD ENTRY BLOCKED · NO DISTINCT REACHABLE INTERIOR LANES');
   return false;
  }
  for(let i=0;i<alive.length;i++){
-  if(!routeWithSqueezeIntel(s.intel,finalPoint(alive[i]),slots[i].point).length){
-   notify(s,'SQUAD ENTRY BLOCKED · CHECK ROUTE');
+  if(!standing(slots[i].point,i)){
+   notify(s,'SQUAD ENTRY BLOCKED · CHECK OPERATOR ROUTE');
    return false;
   }
  }
@@ -986,7 +991,7 @@ export function planSquadEntry(s:Session,doorId:string){
    }
    if(!planMove(s,a.id,slot.point))return false;
    const arrival=a.plan.at(-1);
-   if(arrival?.kind!=='move'||
+   if(arrival?.kind!=='move'||d(arrival.p,slot.point)>.01||
      !planAim(s,a.id,'fixed',slot.look,arrival.id,'look'))return false;
    const assigned=a.plan.find(n=>n.id===arrival.id);
    if(!assigned)return false;
