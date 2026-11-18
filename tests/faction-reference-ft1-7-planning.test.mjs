@@ -47,8 +47,9 @@ test('FT1.7 missing-model classification never fabricates model absence',()=>{
  const gap=ref.gaps.find(x=>x.id==='g36-family');
  const r=assessReferenceGap(ref,gap);
  assert.equal(r.category,'weapon');
- assert.equal(r.status,'proxy-selected');
- assert.match(r.selectedProxy,/ar-/);
+ assert.equal(r.status,'representative-selected');
+ assert.equal(r.action,'inspect-substitute');
+ assert.match(r.selectedProxy,/g36-service \(representative\)/);
  const alice=FACTION_REFERENCES.find(x=>x.id==='us-desert-1991');
  const synthetic={...alice,styles:{...alice.styles,rigStyle:'field-webbing'}};
  const existing=assessReferenceGap(synthetic,{id:'alice-webbing',label:'ALICE',importance:'significant'});
