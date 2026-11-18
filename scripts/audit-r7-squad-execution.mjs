@@ -401,8 +401,18 @@ function run(site,seed,kind){
        [19125490,19178827,19338838].includes(seed)?
        routeWithSqueezeWorld(a.p,target,session.doors,
          sessionWorldGeometry(session)):null;
+     // Independent 4-unit cold full-capsule route, still observational.
+     // No lock, leaf, position or order mutation; expensive only at one
+     // physical failure in three exact known sites, never a motor tick.
+     const fineCandidate=targetRoute!==null&&target&&
+       targetRoute.length===0?
+       coldFineMotorWorldRoute(a.p,target,session.doors,
+         sessionWorldGeometry(session)):null;
      d329CancelDoorWitness.push({
       actor:a.id,seconds:round(session.seconds),
+      ...(fineCandidate?{coldFineWorld:{
+       nodes:fineCandidate.length,
+       first:fineCandidate[0]??null,last:fineCandidate.at(-1)??null}}:{}),
       ...(targetRoute?{legalWorldRoute:{
        goal:{...target},nodes:targetRoute.length,
        first:targetRoute[0]??null,
