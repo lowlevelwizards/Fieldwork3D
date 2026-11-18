@@ -11,7 +11,7 @@ export function retreatDoorClosureEligible(
 ):boolean{
  if(directContact||!Number.isFinite(now)||now-lastCloseAt<10||
     !door.open||door.kind==='sliding'||door.kind==='shutter'||
-    door.wedged||door.heldBy||
+    door.latchBroken||door.wedged||door.heldBy||
     (door.openFraction??1)<.72||!doorReachable(actor,door))
   return false;
  if(threat){
