@@ -1,0 +1,81 @@
+name: EQA3.0 read-only mission decision baseline
+on:
+  push:
+    branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
+    paths:
+      - '.github/workflows/eqa3-decision-baseline.yml'
+      - 'scripts/audit-eqa3-decisions.mjs'
+      - 'scripts/audit-eqa3-scout.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: eqa3-decision-baseline-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  structural:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Actual 55 generated sites, objective and entrance opportunity inventory
+        run: |
+          mkdir -p artifacts/eqa3
+          EQA3_OUTPUT=artifacts/eqa3/structural-55.json node --experimental-strip-types scripts/audit-eqa3-decisions.mjs
+      - name: Frozen structural G4 baseline
+        run: node --experimental-strip-types scripts/audit-g4-diversity.mjs --matrix --rows > artifacts/eqa3/structural-g4-55.json
+      - name: Upload exact site rows
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-structural-55
+          path: artifacts/eqa3/
+  scripted-scout:
+    strategy:
+      fail-fast: false
+      matrix:
+        intel: [unknown, approximate, confirmed]
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Matched 15 mission scenarios x two insertions, real fixed-step 45s scout
+        run: |
+          mkdir -p artifacts/eqa3
+          EQA3_OUTPUT=artifacts/eqa3/scout-${{ matrix.intel }}.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --intel=${{ matrix.intel }} --seconds=45
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-scout-${{ matrix.intel }}
+          path: artifacts/eqa3/
+  active-civilians-and-motor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: mkdir -p artifacts/eqa3
+      - name: Living civilian and hostile evidence baseline — 22 sites / 20s
+        run: |
+          node --experimental-strip-types scripts/audit-mission-quality.mjs 22 --living --doctrine-matrix > artifacts/eqa3/living-22.json
+          node -e "const a=require('./artifacts/eqa3/living-22.json');console.log(JSON.stringify({summary:a.summary,matrix:a.encounterBehavior?.matrix},null,2))"
+      - name: Real 40-trial motor, fog and contact baseline
+        run: |
+          node --experimental-strip-types scripts/audit-g4-flow.mjs --full --rows > artifacts/eqa3/motor-contact-40.json
+          node -e "const a=require('./artifacts/eqa3/motor-contact-40.json');console.log(JSON.stringify({summary:a.summary,exceptions:a.exceptions},null,2))"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-existing-real-behavior
+          path: artifacts/eqa3/
