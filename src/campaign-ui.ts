@@ -1513,13 +1513,14 @@ export class CampaignScreen{
   categoryBar.setAttribute('role','tablist');
   categoryBar.setAttribute('aria-label','Equipment categories');
   const categoryTabs=new Map<QuickLoadoutGroup,HTMLButtonElement>();
+  // Share the category-to-camera mapping with first-preview construction.
+  const previewFocusForGroup:Record<QuickLoadoutGroup,EquipmentPreviewFocus>={
+   weapon:'weapon',protection:'torso',carry:'carry',
+   utilities:'carry',issued:'full'
+  };
   const setCategory=(group:QuickLoadoutGroup)=>{
    this.activeKitGroup=group;
-   const focus:Record<QuickLoadoutGroup,EquipmentPreviewFocus>={
-    weapon:'weapon',protection:'torso',carry:'carry',
-    utilities:'carry',issued:'full'
-   };
-   this.preview?.focusOn(focus[group]);
+   this.preview?.focusOn(previewFocusForGroup[group]);
    for(const [key,control] of categoryTabs){
     control.setAttribute('aria-selected',String(key===group));
     control.tabIndex=key===group?0:-1;
@@ -1831,7 +1832,8 @@ export class CampaignScreen{
    }else{
     this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
      person.appearanceSeed,person.loadout,person.weaponConfiguration,
-     person.magazines,person.wardrobe);
+     person.magazines,person.wardrobe,
+     previewFocusForGroup[this.activeKitGroup]);
     const azimuth=this.operatorViewAngles.get(id);
     if(azimuth!==undefined)this.preview.setAzimuth(azimuth);
    }
