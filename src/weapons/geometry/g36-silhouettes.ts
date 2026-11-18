@@ -11,6 +11,7 @@ import {G36_B_PART_IDS} from './g36-family-contract.ts';
 import {G36_MAG30_OUTLINE,G36_MAG30_OUTLINE_CANDIDATE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
 import {addG36H3FactoryHandguard} from './g36-h3-handguard.ts';
 import {addHKSelectorLeverArt} from './hk-trigger-selector.ts';
+import {addWeaponPixelMarkPairBatched} from './weapon-pixel-detail.ts';
 import {addG36O2DualOptic} from './g36-dual-optic-o2.ts';
 
 export {G36_B_PART_IDS} from './g36-family-contract.ts';
@@ -65,7 +66,7 @@ function contour(poly:Outline,ccw:boolean):Outline{
 function addTwoOpeningStock(root:THREE.Group,material:THREE.Material,n:number):THREE.Mesh{
  const outside:Outline=[
   [-6.568,1.200],[-6.430,-1.555],[-6.831,-1.877],
-  [-9.527,-1.936],[-11.628,-2.445],[-12.630,-3.038],
+  [-9.527,-1.936],[-11.628,-2.445],
   [-13.397,-4.055],[-13.736,-5.233],[-14.379,-5.250],
   [-14.690,-4.970],[-14.640,.259],[-8.773,.403]
  ];
@@ -119,21 +120,27 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  const hinge=box('stock',-6.64,-.74,0,.84,2.43,1.80);
  hinge.userData.g36StockHinge=true;
 
- // R1: two continuous, chunky polymer masses, deliberately as economical
- // as H3's shell. The broad flat upper has ONE rear shoulder and ONE
- // front taper; the compact lower reads as a supported magwell cheek.
- // Keep the open trigger void and original grip/magazine interfaces.
+ // R2: broad six-point upper; the tapered nose deliberately tucks behind
+ // H3's existing six-sided guard. Roof/front overlap closes the old V-notch
+ // without an extra sleeve, overlap ring, spacer or chamfer.
  const upper=outline('receiver',[
-  [-6.80,1.27],[-6.30,1.49],[3.15,1.49],
-  [4.00,.83],[4.00,-1.49],[-6.80,-1.49]
+  [-6.80,1.27],[-6.30,1.49],[4.42,1.49],
+  [4.90,.70],[4.90,-1.49],[-6.80,-1.49]
  ],2.50);
  upper.userData.g36ReceiverUpper=true;
- upper.userData.g36ReceiverArtVersion='r1-simple-two-masses';
+ upper.userData.g36ReceiverArtVersion='r2-broad-interlocking-upper';
+ // The lower is ONE angular 5.56 magazine funnel: bottom width 4.10 vs
+ // 3.32 magazine mouth; depth 2.28 vs 1.83 mag, i.e. clearance on 4 sides.
+ // Its steep front face and open rear trigger void provide G36 identity
+ // without a second magwell collar or any modeled interior walls.
  const lower=outline('receiver',[
-  [-6.35,-1.28],[3.58,-1.28],[2.15,-2.92],
-  [-.55,-2.92],[-1.43,-2.17],[-3.78,-2.17],
+  [-6.35,-1.28],[4.05,-1.28],[2.65,-3.28],
+  [-1.45,-3.28],[-2.05,-2.18],[-3.78,-2.17],
   [-4.28,-3.43],[-6.35,-2.18]
  ],2.28);
+ lower.userData.g36MagwellArtVersion='r2-556-angled-funnel';
+ lower.userData.g36MagwellMouthWidth=4.10;
+ lower.userData.g36MagwellDepth=2.28;
  lower.userData.g36ReceiverLower=true;
  lower.userData.g36OpenTriggerGap=true;
 
@@ -176,15 +183,19 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  ],2.02);
  grip.userData.g36Grip=true;
 
- // R1: the charging tab is on the port-facing side, aligned in X with
- // the right-only ejection landmark (atlas x=-1.45..1.72). Its Y is just
- // above the dark port; no roof-floating, full-width transverse block.
- const charging=box('receiver',.12,.92,1.25,.96,.32,.38);
+ // The G36 charge handle is a transverse top cocking tab, NOT the side
+ // ejection port. It now sits at the FRONT of the upper under the empty
+ // handle bridge, above the receiver roof with a shallow root overlap.
+ // One six-faced cube, no separate pivot, bolt carrier or fictional rail.
+ const charging=box('receiver',2.25,1.63,0,1.20,.40,3.14);
  charging.userData.g36ChargingHandle=true;
- charging.userData.g36ChargingAlignedPortX=.135;
+ charging.userData.g36ChargePosition='r2-front-top-under-handle';
 
- // Exact shared HK selector geometry language, but positioned for this
- // rifle and bound to the same six-slot receiver identity. No control text.
+ // Shared HK pictogram selector marks. Both side quads are merged into
+ // ONE non-shadow-casting 4-triangle graphic, with a cached shared material.
+ // White safe and muted red fire modes remain legible on the upper slab.
+ // This must be added after the physical selector and kept out of factory
+ // finish replacement (it has its own transparent pixel material).
  for(const side of [-1,1] as const){
   // Move the selector forward/up into the lower receiver's readable flank.
   const [hub,lever]=addHKSelectorLeverArt(root,-3.95,-1.14,1.14,side,material);
@@ -193,6 +204,11 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
   hub.userData.g36SelectorHub=true;
   lever.userData.g36SelectorLever=true;
  }
+ const selectorMarks=addWeaponPixelMarkPairBatched(
+  root,'hk-selector-picto',-4.35,-.29,1.278,2.30,1.72);
+ selectorMarks.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
+ selectorMarks.userData.g36SelectorMarkings=true;
+ selectorMarks.userData.g36SelectorMarkCount=2;
 
  const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;
@@ -202,11 +218,14 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  const guard=addG36H3FactoryHandguard(root,ids.handguard,i.handguard++,material);
  guard.userData.g36LongHandguard=true;
 
- // One stout barrel and one nearly invisible terminal block.
+ // R2: same total two meshes, but an intentionally oversized longer
+ // terminal muzzle block is visible at gameplay distance. The barrel
+ // overlaps the rear of the device; no micro slots, rings or extra facets.
  const barrel=box('barrel',16.12,0,0,5.90,1.14,1.14);
  barrel.userData.g36Barrel=true;
- const muzzle=box('barrel',A.muzzleX-.325,0,0,.65,1.10,1.10);
+ const muzzle=box('barrel',A.muzzleX-.80,0,0,1.60,1.52,1.52);
  muzzle.userData.g36FactoryMuzzle=true;
+ muzzle.userData.g36MuzzleArtVersion='r2-bold-long-device';
  return root;
 }
 
@@ -220,6 +239,8 @@ export type G36FactoryMaterials=Readonly<{
 export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMaterials):void{
  for(const child of root.children){
   if(!(child instanceof THREE.Mesh))continue;
+  // Shared factory fire-mode pictograms carry their OWN cached atlas finish.
+  if(child.userData.g36SelectorMarkings)continue;
   let result:THREE.Material=finishes.polymer;
   if(child.userData.g36Magazine)result=finishes.magazine;
   else if(child.userData.g36Buttpad||child.userData.g36SelectorHub||
