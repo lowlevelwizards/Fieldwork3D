@@ -78,6 +78,8 @@ const d327Exact=d327GarageProbe?
  await import('../src/breach-d327-exact-motor-grid.ts'):null;
 const d327Stride=d327GarageProbe?
  await import('../src/breach-stack-micro-corner.ts'):null;
+const d327Passage=d327GarageProbe?
+ await import('../src/breach-d327-cold-passage.ts'):null;
 const d326Micro=d326LastStallProbe?
  await import('../src/breach-stack-micro-corner.ts'):null;
 const d326Fine=d326LastStallProbe?
@@ -900,6 +902,9 @@ function run(site,seed,kind){
        actor.p,authored,session.doors,world):[];
     const actualPortal=authored?routeToNextOperableDoor(
        actor.p,authored,session.doors,world):[];
+    const guardedPassage=authored?d327Passage.coldExactPassageWorldRoute(
+      actor.p,authored,site.openings??[],session.doors,world,
+      ()=>true,3500):[];
     // Offline counterfactual: test only route topology if real closed
     // doors were opened. These CLONES are never applied to session doors.
     const allOpenDoors=session.doors.map(door=>({...door,open:true,
@@ -1225,6 +1230,13 @@ function run(site,seed,kind){
        fine:{nodes:actualFine.length,first:actualFine.slice(0,7),
          last:actualFine.at(-1)??null},
        portal:{nodes:actualPortal.length,first:actualPortal.slice(0,5)},
+       guardedPassage:{nodes:guardedPassage.length,
+         first:guardedPassage.slice(0,8),
+         last:guardedPassage.at(-1)??null,
+         startsMotorClear:guardedPassage.length?
+           d327Stride.fullBodyMotorStrideClear(actor.p,guardedPassage[0],
+             (a,b)=>sweptBodyClear(a,b,session.doors,
+               OPERATOR_RADIUS,world)):false},
        allOpen:{nodes:hypotheticalAllOpen.length,
          first:hypotheticalAllOpen.slice(0,5)},
        noDoors:{nodes:hypotheticalNoDoors.length,
