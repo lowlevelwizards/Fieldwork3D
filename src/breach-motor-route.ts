@@ -1,6 +1,6 @@
 import {setTransientRoute,noteDoorHandoffRejection,hasTransientRouteObserver} from './breach-route-transition.ts';
-import {claimBlockedHingeStepback,selectBlockedHingeStepback}
- from './breach-partial-hinge-stepback.ts';
+import {claimBlockedHingeStepback,selectBlockedHingeStepback,
+ noteAdoptedHingeStepback} from './breach-partial-hinge-stepback.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
@@ -243,6 +243,7 @@ export function prepareMotorRoute(
         (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world));
       if(retreat){
         setTransientRoute(s,a,[retreat],'partial-hinge-stepback');
+        noteAdoptedHingeStepback(a,trappedLeaf);
         notePreciseLocalDetour(a,retreat);
         a.lastNavRepairAt=s.seconds;
         provisionalRouteAccepted(a);

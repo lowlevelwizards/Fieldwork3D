@@ -10,6 +10,22 @@ import type {TeamActor} from './breach-game.ts';
 import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const claims=new WeakMap<TeamActor,{orderId:number;doorId:string}>();
+// Distinct from ATTEMPTED probes: only an actual adopted, motor-executed
+// retreat can authorize stale doorway episode release after physical motion.
+const adopted=new WeakMap<TeamActor,{orderId:number;doorId:string}>();
+export function noteAdoptedHingeStepback(a:TeamActor,door:Door):void{
+ const order=a.plan[0];
+ if(order?.kind==='move')
+  adopted.set(a,{orderId:order.id,doorId:door.id});
+}
+export function clearedAdoptedHingeStepback(a:TeamActor,door:Door):boolean{
+ const prior=adopted.get(a),order=a.plan[0];
+ return !!prior&&order?.kind==='move'&&prior.orderId===order.id&&
+  prior.doorId===door.id&&door.open&&!door.locked&&!door.jammed&&
+  (door.openFraction??0)>=1.2&&
+  Math.abs(door.angularVelocity??0)<.16&&
+  pointToSegment(a.p,doorLeafSegment(door))>OPERATOR_RADIUS+24;
+}
 export function claimBlockedHingeStepback(a:TeamActor,door:Door):boolean{
  const order=a.plan[0];
  if(a.side!=='blue'||order?.kind!=='move'||

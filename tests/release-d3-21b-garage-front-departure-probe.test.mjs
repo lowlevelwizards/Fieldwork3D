@@ -7,7 +7,9 @@ import {activateSite,OPERATOR_RADIUS,doorLeafSegment,pointToSegment}
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {sweptBodyClear,bodyClear} from '../src/breach-navigation.ts';
 import {fullBodyMotorStrideClear} from '../src/breach-stack-micro-corner.ts';
-import {selectBlockedHingeStepback} from '../src/breach-partial-hinge-stepback.ts';
+import {selectBlockedHingeStepback,noteAdoptedHingeStepback,
+ clearedAdoptedHingeStepback}
+ from '../src/breach-partial-hinge-stepback.ts';
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departure sweep',()=>{
  const seed=19285501;
@@ -56,6 +58,19 @@ test('D3.21B read-only: exact standard Garage FRONT leaf physical micro-departur
   assert.ok(dist(from,chosen)<=12.001);
   assert.ok(pointToSegment(chosen,leaf)>=OPERATOR_RADIUS+7);
   assert.ok(fullBodyMotorStrideClear(from,chosen,sweep));
+  const mocked={p:from,plan:[{id:1,kind:'move',p:goal}],nav:[]};
+  assert.equal(clearedAdoptedHingeStepback(mocked,door),false);
+  noteAdoptedHingeStepback(mocked,door);
+  assert.equal(clearedAdoptedHingeStepback(mocked,door),false,
+   'a claimed retreat cannot release the leaf before real motion');
+  mocked.p={x:113.83879532845819,y:273};
+  door.openFraction=1.55;
+  assert.equal(clearedAdoptedHingeStepback(mocked,door),true,
+   'only physically remote, stationary fully open leaf may release old episode');
+  door.openFraction=.86;
+  assert.equal(clearedAdoptedHingeStepback(mocked,door),false,
+   'partial leaf cannot authorize stale doorway release');
+  door.openFraction=.8587962693316564;
   for(let i=0;i<=12;i++){
    const future={...door,openFraction:door.openFraction+
     (Math.max(1,door.pushTarget??1)-door.openFraction)*i/12};

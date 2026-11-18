@@ -7,6 +7,7 @@ on:
       - 'tests/release-d3-21b-garage-front-departure-probe.test.mjs'
       - 'src/breach-partial-hinge-stepback.ts'
       - 'src/breach-motor-route.ts'
+      - 'src/breach-door-traversal-episode.ts'
       - 'src/breach-route-transition.ts'
   workflow_dispatch:
 permissions:
