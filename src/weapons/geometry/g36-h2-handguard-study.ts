@@ -137,8 +137,13 @@ function bossShape(material:THREE.Material):THREE.Mesh{
  mesh.userData.h2MountingLug=true;
  return mesh;
 }
+/** H2.1 B: FOUR large, nearly square-ended graphic slits.
+ * Big enough to survive the 64px view, without mechanical trim or bevels.
+ */
+export const G36_H2_VENT_CENTERS=[2.50,4.27,6.04,7.81] as const;
+export const G36_H2_VENT_SIZE=Object.freeze({length:1.32,height:.40,centerY:.43});
 function ventShape():THREE.ShapeGeometry{
- const h=.115,w=.50,r=.110;
+ const h=G36_H2_VENT_SIZE.height/2,w=G36_H2_VENT_SIZE.length/2,r=.045;
  const path=new THREE.Shape();
  path.moveTo(-w+r,-h);
  path.lineTo(w-r,-h);
@@ -152,20 +157,28 @@ function ventShape():THREE.ShapeGeometry{
  return new THREE.ShapeGeometry(path,5);
 }
 function vents(width:number,mat:THREE.Material):THREE.InstancedMesh{
- // Five *high* elongated openings, not four square stamps in the center.
- // Placed on long flat side plane, paired both sides, without decorative rims.
- const n=5,geo=ventShape(),mesh=new THREE.InstancedMesh(geo,mat,n*2);
+ // Four high *large* vents, not five fine slits. One instanced draw call
+ // across two sides. The broad side face is not perfectly vertical; position
+ // the markings on its plane rather than floating ahead of it.
+ const n=G36_H2_VENT_CENTERS.length;
+ const geo=ventShape(),mesh=new THREE.InstancedMesh(geo,mat,n*2);
  const matrix=new THREE.Matrix4(),q=new THREE.Quaternion();
  for(let side=0;side<2;side++)for(let i=0;i<n;i++){
-  const x=2.7+i*1.32;
-  const z=(side===0?1:-1)*(1.5*width+.009);
-  const center=new THREE.Vector3(x,.53,z);
+  const x=G36_H2_VENT_CENTERS[i];
+  const roof=G36_H2_STATIONS[1].top;
+  const floor=G36_H2_STATIONS[1].bottom;
+  const shoulder=roof-(roof-floor)*.20;
+  const lower=floor+(roof-floor)*.15;
+  const fraction=(shoulder-G36_H2_VENT_SIZE.centerY)/(shoulder-lower);
+  const sideDepth=G36_H2_STATIONS[1].half*(1-.04*fraction);
+  const z=(side===0?1:-1)*(sideDepth*width+.008);
+  const center=new THREE.Vector3(x,G36_H2_VENT_SIZE.centerY,z);
   q.setFromAxisAngle(new THREE.Vector3(0,1,0),side===0?0:Math.PI);
   matrix.compose(center,q,new THREE.Vector3(1,1,1));
   mesh.setMatrixAt(side*n+i,matrix);
  }
  mesh.instanceMatrix.needsUpdate=true;
- mesh.name='H2 · five high slotted vents / both sides';
+ mesh.name='H2.1 · four bold upper vents / both sides';
  mesh.userData.h2VentCountPerSide=n;
  mesh.userData.h2GraphicVents=true;
  return mesh;
@@ -177,7 +190,7 @@ export function buildG36H2Handguard(options:Partial<G36H2Options>={}):THREE.Grou
   color:0x3b423e,roughness:.97,metalness:0,flatShading:true,side:THREE.DoubleSide
  });
  const result=new THREE.Group();result.name='H2 isolated original G36 handguard';
- result.userData.studyOnly=true;result.userData.handguardArtVersion='h2-reference-major-forms';
+ result.userData.studyOnly=true;result.userData.handguardArtVersion='h2.1-angled-four-vents';
  result.add(makeShell(polymer,o.width,o.showMouth));
  if(o.showMouth)result.add(openingBack(o.width,dark));
  if(o.showBoss)result.add(bossShape(polymer));
@@ -224,5 +237,5 @@ export function h2StudyStatistics(g:THREE.Group){
    (obj instanceof THREE.InstancedMesh?obj.count:1);
  });
  return {meshes,triangles,stations:G36_H2_STATIONS.length,
-  corners:8,ventsPerSide:g.getObjectByName('H2 · five high slotted vents / both sides')?5:0};
+  corners:8,ventsPerSide:g.getObjectByName('H2.1 · four bold upper vents / both sides')?4:0};
 }
