@@ -1287,7 +1287,23 @@ export class CampaignScreen{
    this.weaponView=!this.weaponView;this.armory(c,id);
   });
   summary.append(preview,node('p','campaign-note campaign-preview-hint',
-   this.weaponView?'DRAG TO ROTATE · TAP A MOUNT TO SELECT ITS SLOT':'DRAG THE SOLDIER TO ROTATE'));
+   this.weaponView?'DRAG TO ROTATE · TAP A MOUNT TO SELECT ITS SLOT':
+    'DRAG TO ROTATE · ARROW KEYS OR BUTTONS ALSO WORK'));
+  if(!this.weaponView){
+   // Visible 44px touch targets supplement dragging and keyboard orbit.
+   // These alter only the preview camera, never the equipped kit.
+   const orbitControls=node('div','campaign-kit-preview-controls');
+   orbitControls.setAttribute('role','group');
+   orbitControls.setAttribute('aria-label','Operator preview rotation');
+   const left=button('LEFT 45°',()=>this.preview?.rotateBy(-45));
+   const reset=button('RESET ANGLE',()=>this.preview?.resetOrientation());
+   const right=button('RIGHT 45°',()=>this.preview?.rotateBy(45));
+   left.setAttribute('aria-label','Rotate operator 45 degrees left');
+   reset.setAttribute('aria-label','Reset operator preview angle');
+   right.setAttribute('aria-label','Rotate operator 45 degrees right');
+   orbitControls.append(left,reset,right);
+   summary.append(orbitControls);
+  }
   const identityActions=node('div','campaign-kit-actions');
   const rename=button('EDIT CALLSIGN',async()=>{
    const name=await promptFieldworkText({
@@ -1837,6 +1853,10 @@ export class CampaignScreen{
     const azimuth=this.operatorViewAngles.get(id);
     if(azimuth!==undefined)this.preview.setAzimuth(azimuth);
    }
+   // No inert orbit buttons if a device cannot initialize WebGL.
+   if(!this.preview?.isReady())
+    for(const control of summary.querySelectorAll<HTMLButtonElement>(
+     '.campaign-kit-preview-controls button'))control.disabled=true;
   }
   this.root.scrollTop=restoreScroll;
   if(previousFocus){
