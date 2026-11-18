@@ -58,7 +58,7 @@ test('P8 actual shared HK pivot/paddle, charging tab and six factory part slots'
  assert.equal(all(g,'g36SelectorLever').length,2);
  for(const hub of all(g,'g36SelectorHub')){
   assert.equal(hub.geometry.type,'CylinderGeometry');
-  assert.equal(hub.geometry.parameters.radialSegments,8);
+  assert.equal(hub.geometry.parameters.radialSegments,6);
   assert.ok(hub.name.startsWith('family-receiver-'));
  }
  assert.equal(all(g,'g36ChargingHandle').length,1);
