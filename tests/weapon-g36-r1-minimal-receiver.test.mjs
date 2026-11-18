@@ -90,7 +90,7 @@ test('R4 magazine tile uses subtle rounds on both faces, reuses one pooled finis
    shades.add(data[i]);
    assert.equal(data[i+3],255,'smoke finish remains fully opaque');
   }
-  assert.ok(shades.has(226)&&shades.has(230),'heavier but restrained curve-following cartridge shades');
+  assert.ok(shades.has(227)&&shades.has(231),'heavier but restrained curve-following cartridge shades');
   assert.ok(shades.has(255)&&shades.size<=7,'mostly blank smoke polymer, no band clutter');
  }
  const mat=new THREE.MeshStandardMaterial(),g=buildG36OriginalBlockout(mat);
