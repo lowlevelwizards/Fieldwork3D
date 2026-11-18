@@ -44,8 +44,11 @@ export class CampaignKitPreview{
   appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,
   magazines:readonly MagazineItem[]=[],wardrobe?:WardrobeOptions,
-  initialFocus:EquipmentPreviewFocus='full'){
+  initialFocus:EquipmentPreviewFocus='full',initialAzimuth=.72){
   this.host=host;this.operatorId=id;
+  // Restored operator angles also apply before the first paint, never as a
+  // second frame after WebGL and procedural rig initialization.
+  this.azimuth=Number.isFinite(initialAzimuth)?initialAzimuth:.72;
   // Apply the selected category framing before the first WebGL paint.
   // Setting it after construction would submit an unnecessary full-body frame.
   const [height,radius,rise]=PREVIEW_FOCUS_TARGETS[initialFocus];
@@ -240,6 +243,12 @@ export class CampaignKitPreview{
   });
  }
  getAzimuth(){return this.azimuth;}
+ /** Discrete, touch-accessible orbit controls share keyboard/drag camera state. */
+ rotateBy(degrees:number):void{
+  if(Number.isFinite(degrees))this.setAzimuth(this.azimuth+degrees*Math.PI/180);
+ }
+ /** Reset rotation only; retain the equipment category's current focus. */
+ resetOrientation():void{this.setAzimuth(.72);}
  setAzimuth(value:number){
   if(!Number.isFinite(value)||Math.abs(this.azimuth-value)<1e-7)return;
   this.azimuth=value;

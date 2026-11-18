@@ -81,6 +81,56 @@ try{
     throw Error('Completed preview drag failed to update accessible view angle');
    if(gesture.afterLoss===gesture.last||gesture.afterRecovery===gesture.afterLoss)
     throw Error('Lost pointer capture left the preview stuck or orientation stale');
+   const orbit=page.getByRole('group',{name:'Operator preview rotation'});
+   const left=orbit.getByRole('button',{name:'Rotate operator 45 degrees left'});
+   const right=orbit.getByRole('button',{name:'Rotate operator 45 degrees right'});
+   const reset=orbit.getByRole('button',{name:'Reset operator preview angle'});
+   if(await orbit.locator('button').count()!==3)
+    throw Error('Phone preview rotation controls are not available');
+   const touchTargets=await orbit.locator('button').evaluateAll(buttons=>
+    buttons.map(button=>button.getBoundingClientRect().height));
+   if(touchTargets.some(height=>height<43))
+    throw Error('Preview rotation control touch targets are too small');
+   const angleBeforeButtons=await operatorPreview.getAttribute('aria-label');
+   await left.click();
+   const rotatedLeft=await operatorPreview.getAttribute('aria-label');
+   if(rotatedLeft===angleBeforeButtons)
+    throw Error('Preview left rotation control did not move the camera');
+   await right.click();
+   if(await operatorPreview.getAttribute('aria-label')!==angleBeforeButtons)
+    throw Error('Left and right preview rotation did not round-trip');
+   await reset.click();
+   if(await operatorPreview.getAttribute('aria-label')!==before)
+    throw Error('Reset angle did not restore the initial operator orientation');
+   if(await operatorPreview.getAttribute('data-preview-focus')!=='weapon')
+    throw Error('Reset angle unexpectedly discarded current equipment focus');
+   // Switching operators replaces the WebGL context but must preserve an
+   // independent preview angle for each operator, not share one global orbit.
+   const operatorTabs=page.locator('.campaign-kit-nav button');
+   if(await operatorTabs.count()<2)
+    throw Error('Dispatch campaign must have two operators for orbit continuity smoke');
+   await right.click();
+   const firstAngle=await operatorPreview.getAttribute('aria-label');
+   await operatorTabs.nth(1).click();
+   const secondAngle=await operatorPreview.getAttribute('aria-label');
+   const degrees=label=>Number(label?.match(/View angle (\d+) degrees/)?.[1]);
+   if(!Number.isFinite(degrees(secondAngle))||
+      degrees(secondAngle)!==degrees(before))
+    throw Error('Second operator inherited first operator camera rotation');
+   await page.getByRole('button',{name:'Rotate operator 45 degrees left'}).click();
+   const secondRotated=await operatorPreview.getAttribute('aria-label');
+   if(degrees(secondRotated)===degrees(secondAngle))
+    throw Error('Second operator rotation controls did not affect its own view');
+   await operatorTabs.first().click();
+   if(await operatorPreview.getAttribute('aria-label')!==firstAngle)
+    throw Error('Returning to first operator lost its saved preview angle');
+   await operatorTabs.nth(1).click();
+   if(await operatorPreview.getAttribute('aria-label')!==secondRotated)
+    throw Error('Second operator view angle leaked or reset during switching');
+   await operatorTabs.first().click();
+   await page.getByRole('button',{name:'Reset operator preview angle'}).click();
+   if(await operatorPreview.getAttribute('aria-label')!==before)
+    throw Error('Operator-specific reset did not restore default angle');
   }
   const groups=armory.locator(':scope > .fw-loadout-group');
   if(await groups.count()!==5)throw Error('Campaign kit must have five clear groups');
@@ -153,6 +203,13 @@ try{
   const rigChoice=carry.getByRole('button',{name:/Choose rig for/i});
   if(!await rigChoice.isVisible())throw Error('Carry equipment chooser is not reachable');
   const originalRig=await rigChoice.textContent();
+  // Rotation buttons must remain wired after the real Campaign DOM rebuild.
+  if(await operatorPreview.locator('canvas').count()){
+   const existing=await operatorPreview.getAttribute('aria-label');
+   await page.getByRole('button',{name:'Rotate operator 45 degrees right'}).click();
+   if(await operatorPreview.getAttribute('aria-label')===existing)
+    throw Error('Carry preview rotation button stopped responding');
+  }
   const orientationBeforeKitMutation=await operatorPreview.getAttribute('aria-label');
   // E3: The same WebGL canvas and user-selected view must survive mutation.
   const canvasBefore=await page.evaluate(()=>{
@@ -185,13 +242,23 @@ try{
     throw Error('Gear rebuild failed to preserve the accessible Carry focus');
    if(await armory.locator('[data-loadout-group="carry"][open]').count()!==1)
     throw Error('Gear change lost the selected equipment category');
+   // Confirm mutation restores picker focus *before* testing new buttons,
+   // whose legitimate pointer clicks intentionally take keyboard focus.
+   if(!await page.evaluate(()=>
+    document.activeElement?.getAttribute('aria-label')?.includes('Choose rig')))
+    throw Error('Equipment swap failed to return focus to its replacement slot');
+   if(canvasBefore){
+    await page.getByRole('button',{name:'Rotate operator 45 degrees left'}).click();
+    if(await operatorPreview.getAttribute('aria-label')===orientationBeforeKitMutation)
+     throw Error('Rebuilt kit rotation controls point to an obsolete preview');
+    await page.getByRole('button',{name:'Rotate operator 45 degrees right'}).click();
+    if(await operatorPreview.getAttribute('aria-label')!==orientationBeforeKitMutation)
+     throw Error('Rebuilt kit controls failed to restore the operator angle');
+   }
    if(!await page.locator('.campaign-kit-commit-feedback').isVisible())
     throw Error('Committed gear change has no visible confirmation');
    if(!await page.locator('[data-loadout-group="carry"] .campaign-kit-choice[data-changed="true"]').count())
     throw Error('Committed equipment slot was not highlighted');
-   if(!await page.evaluate(()=>
-    document.activeElement?.getAttribute('aria-label')?.includes('Choose rig')))
-    throw Error('Equipment swap failed to return focus to its replacement slot');
    await page.locator('.campaign-kit-presets > summary').click();
    await page.locator('.campaign-kit-preset-card').getByRole('button',
     {name:'EQUIP KIT'}).click();
