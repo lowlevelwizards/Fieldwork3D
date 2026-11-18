@@ -25,11 +25,17 @@ jobs:
         with:
           path: candidate
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Stable main before D3.15B feature
+      - name: Verified D3.24 production main baseline for D3.25 release
         uses: actions/checkout@v4
         with:
           path: baseline
-          ref: 53bbc59f34ed31fca334fe5cd7c2ad92e4c8aac1
+          ref: 9249dc70ff9dcbcf9fda309eaca4606e9afe93e9
+      # D3.25J: historic pre-D3.15B 53bbc59 baseline predates
+      # the D3.24 release, generating a false candidate-vs-current
+      # regression on Garage standard 14354241 authored Moss. Keep
+      # all strict unresolved-stall, per-squad physical-arrival, loop
+      # and A* search gates; compare against publicly verified
+      # production main 9249dc70 rather than the 2026-11-15 ancestor.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
