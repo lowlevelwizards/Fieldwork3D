@@ -890,6 +890,10 @@ function run(site,seed,kind){
     return {actor:actor.id,position:{...actor.p},goal:{...goal},
      next:{...next},distanceToGoal:round(dist(actor.p,goal)),
      blockedTime:round(actor.blockedTime),lastBlocker:actor.lastBlocker,
+     orderIssue:actor.orderIssue?.reason??null,
+     authoredGoalIntact:actor.plan[0]?.kind==='move'&&
+      dist(actor.plan[0].p,goal)<.001,
+     remainingNavNodes:actor.nav.length,
      normalAtCurrent:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
      normalAtGoal:bodyClear(goal,session.doors,OPERATOR_RADIUS,world),
      goalStaticPassable:world.passable(goal,OPERATOR_RADIUS),
