@@ -7,6 +7,8 @@
 import * as THREE from 'three';
 import {G36_H3_VENT_CENTERS,G36_H3_VENT_SIZE}
  from './g36-h3-handguard.ts';
+import {arMagazineSample} from './ar-magazine-profiles.ts';
+import {G36_MAG30_CURVE} from './g36-magazine-profiles.ts';
 type Region='guard'|'receiver'|'lower'|'magazine'|'muzzle';
 type Tile='guard-right'|'guard-left'|'receiver-right'|'receiver-left'|
  'lower-right'|'lower-left'|'magazine-right'|'magazine-left';
@@ -51,24 +53,45 @@ function ink(tile:Tile,x:number,y:number):number{
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  // R4: restrained opaque *illusion* of G36 translucent smoky polymer.
-  // Six slightly canted internal cartridge silhouettes; no full-height
-  // bars, seams, boxed patches or actual transparent alpha sorting.
-  // This uses the TWO existing magazine tiles in the 384x192 atlas,
-  // costs zero triangles/draw calls and survives both magazine faces.
-  if(x>=-.85&&x<=2.08){
-   const inclination=.13*(x+.85)/2.93;
-   for(let i=0;i<6;i++){
-    const cy=-3.80-i*.66+inclination;
-    if(Math.abs(y-cy)<.095)return i%2===0?226:233;
-   }
+  // R5: sample in the PHYSICAL MAGAZINE'S CURVED centerline frame.
+  // R4 bands were straight world-space Y stripes; they cut horizontally
+  // across the bent mesh and looked like inaccurate molded ribs.
+  // Convert the atlas point to longitudinal position t and cross-mag u,
+  // using the SAME tangent normal as arMagazineOutline(). No UV hacks,
+  // extra vertices, transparency or side-specific billboard.
+  const c=G36_MAG30_CURVE;
+  const t=(c.topY-y)/c.length;
+  if(t<.16||t>.97)return 255; // no exposed rounds in the feed lips
+  const p=arMagazineSample(c,t);
+  const u=((x-p.x)*p.nx+(y-p.y)*p.ny)/(c.width/2);
+  if(Math.abs(u)>.94)return 255;
+  // Five separated, shorter ghost-cartridge silhouettes follow the
+  // molded curve. The deliberate shear produces a visible diagonal:
+  // 0.13 in magazine length fraction across the whole visible face.
+  // Tapered ends, unequal lengths and low-contrast edges avoid the
+  // former repeating six full-width bars.
+  const stations=[.29,.41,.54,.67,.80] as const;
+  const limits=[
+   [-.76,.56],[-.65,.77],[-.81,.54],[-.61,.75],[-.72,.55]
+  ] as const;
+  for(let i=0;i<stations.length;i++){
+   const [from,to]=limits[i];
+   if(u<from||u>to)continue;
+   const relative=(u-from)/(to-from);
+   const center=stations[i]-.065*u;
+   const half=.015*(.6+.4*Math.sin(Math.PI*relative));
+   const distance=Math.abs(t-center);
+   if(distance<half*.52)return i%2?234:230;
+   if(distance<half)return 244;
   }
-  // Two small, molded coupling impressions, not geometric lugs. Their
-  // subtle inner highlights keep them readable on the smoke finish.
-  for(const [cx,cy] of [[-.74,-4.33],[1.37,-5.83]] as const){
-   const d=(x-cx)*(x-cx)+(y-cy)*(y-cy);
-   if(d<.065*.065)return 246;
-   if(d<.17*.17)return 211;
+  // Couple points are also anchored in curved magazine coordinates,
+  // rather than two floating world-space dots. Keep subtle dark rims.
+  for(const [station,lateral] of [[.37,-.69],[.65,.70]] as const){
+   const dp=(t-station)*c.length;
+   const du=(u-lateral)*c.width/2;
+   const dist2=dp*dp+du*du;
+   if(dist2<.055*.055)return 246;
+   if(dist2<.14*.14)return 220;
   }
   return 255;
  }
@@ -194,6 +217,6 @@ export function applyG36PixelDetails(root:THREE.Group):void{
 }
 export function g36PixelAtlasLayout(){
  return {width:TILE*COLS,height:TILE*ROWS,sideTiles:Object.keys(definitions),
-  ventsPerSide:4,magRibsPerSide:0,magGhostCartridges:6,
-  magCouplerImpressions:2,rightReceiverEjectionOnly:true};
+  ventsPerSide:4,magRibsPerSide:0,magGhostCartridges:5,
+  magCurveAligned:true,magCouplerImpressions:2,rightReceiverEjectionOnly:true};
 }

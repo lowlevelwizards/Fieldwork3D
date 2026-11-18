@@ -82,7 +82,8 @@ test('P8 real shared atlas paints right-only ejection and broad polymer facets',
  assert.equal(a.magRibsPerSide,0);
  assert.ok(sample(2,0,55,63)<110,'bold ejection landmark on right');
  assert.equal(sample(3,0,55,63),255,'left side has no mirrored port');
- assert.equal(sample(2,1,55,51),255,'magazine has no hard projected interior bar');
+ assert.equal(a.magCurveAligned,true,'magazine ink follows curved centerline');
+ assert.ok(sample(2,1,55,51)>=220,'no harsh world-space interior bar');
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const count=g.children.length;
  applyG36PixelDetails(g);

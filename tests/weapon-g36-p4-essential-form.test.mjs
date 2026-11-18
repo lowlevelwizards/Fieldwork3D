@@ -62,7 +62,8 @@ test('G36 P4: one atlas, large vents, quiet mag and clean lower receiver',()=>{
  assert.notEqual(sample(0,0,24,60),255);
  assert.equal(sample(0,1,52,62),255);
  // A large magazine panel is restrained, not the prior three nearly black ribs.
- assert.equal(sample(2,1,55,51),255,'solid magazine cannot have a rectangular atlas panel');
+ assert.ok(sample(2,1,55,51)>=220&&sample(2,1,55,51)<=255,
+  'subtle curved-mag ink without the old nearly black rectangular panel');
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const before=g.children.length;
  applyG36PixelDetails(g);
