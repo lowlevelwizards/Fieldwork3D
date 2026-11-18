@@ -62,15 +62,16 @@ export function addG36O2DualOptic(
   root.add(mesh);
   return mesh;
  };
- // O3 Stage 1: retain approved 125% width but compress length by 12.5%.
- // The rear stays at its original mount datum; only the front moves rearward.
+ // O3 Stages 1/4: keep the approved 125% transverse mass, but shorten
+ // the overall optical assembly and use two matching six-sided stations.
+ // Straight broad planes take priority over delicate forward tapering.
  const bodyWidth=.91*1.25;
  // O3 Stage 3: extend the REAR of the same housing into the carry-handle
  // root. The bottom rises slightly towards the nose: a single molded shell,
  // never an extra pedestal or an opaque slab over the handle opening.
  const lower=add(sixFacetPrism(-5.83,-1.50,
   section(1.94,3.08,4.12,bodyWidth),
-  section(2.24,3.08,4.12,bodyWidth*.97)), 'g36LowerOptic');
+  section(2.24,3.08,4.12,bodyWidth)), 'g36LowerOptic');
  lower.userData.g36IntegratedOpticShell=true;
  lower.userData.g36OpticCrossSectionSides=6;
 
@@ -79,7 +80,7 @@ export function addG36O2DualOptic(
  const hoodWidth=.73*1.25;
  const upper=add(sixFacetPrism(-5.57,-3.14,
   hoodSection(3.94,4.24,5.03,hoodWidth),
-  hoodSection(3.94,4.24,5.03,hoodWidth*.97)), 'g36UpperReflex');
+  hoodSection(3.94,4.24,5.03,hoodWidth)), 'g36UpperReflex');
  upper.userData.g36OpticCrossSectionSides=6;
 
  // O2 55% projection: lower ocular projects farther than the upper.
@@ -95,9 +96,10 @@ export function addG36O2DualOptic(
   return barrel;
  };
  ocular(-6.27,-5.76,3.57,.625,8,'g36LowerOpticBarrel');
- ocular(-5.86,-5.49,4.54,.395,6,'g36UpperReflexBarrel');
+ ocular(-5.79,-5.49,4.54,.395,6,'g36UpperReflexBarrel');
 
- // One recessed-looking matte-black circle per eyepiece, no stacked rings.
+ // O3 Stage 4: a short sleeve and ONE flat dark disc per optical face.
+ // No nested lens rings, knobs, mechanical seams, translucent glass or ribs.
  // Visible from the rear (-X); inherited shared materials are set by caller.
  const lens=(x:number,y:number,radius:number,segments:number,key:PartKind)=>{
   const geometry=new THREE.CircleGeometry(radius*.72,segments);
@@ -106,6 +108,6 @@ export function addG36O2DualOptic(
   return add(geometry,key);
  };
  lens(-6.268,3.57,.625,8,'g36OpticFace');
- lens(-5.858,4.54,.395,6,'g36UpperReflexWindow');
+ lens(-5.788,4.54,.395,6,'g36UpperReflexWindow');
  return index;
 }
