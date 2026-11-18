@@ -39,6 +39,10 @@ export function classifyD329Cancellation(mode,op){
   door:door?{id:door.id,open:door.open,fraction:door.fraction,
     locked:door.locked,jammed:door.jammed,wedged:door.wedged}:null,
   selectedMotorDoor:motorSelectedDoor,interveningDoor:intermediary,
+  initialSelectedDoor:witness?.initialSelectedDoor??null,
+  lockedLeafMovedAfterClosedStart:!!witness?.initialSelectedDoor?.locked&&
+   !witness.initialSelectedDoor.open&&!!motorSelectedDoor?.locked&&
+   !!motorSelectedDoor.open,
   lockedMotorDoorVerified:lockedRouteDoor,
   lockedDoorAtFailure:witness?.lockedNearby??[],
   cancellationAt:witness?.seconds??failure?.at??null,
