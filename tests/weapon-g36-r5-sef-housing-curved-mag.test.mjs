@@ -31,7 +31,7 @@ const mapMagazine=(t,u)=>{
 
 test('R5 SEF is entirely above trigger-guard boundary, visible on flat housing, HK F-E-left S-right',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
- const pivot={x:-5.20,y:-1.96};
+ const pivot={x:-5.20,y:-1.68};
  const marks=one(g,'g36SelectorMarkings');
  const [S,E,F]=G36_SEF_INDEX_MARKS;
  assert.deepEqual([S.letter,E.letter,F.letter],['S','E','F']);
@@ -40,7 +40,7 @@ test('R5 SEF is entirely above trigger-guard boundary, visible on flat housing, 
  assert.ok(S.x>pivot.x+1.2,'S to the right of safety lever');
  assert.equal(g.children.filter(x=>x.userData.g36SelectorMarkings).length,1);
  assert.equal(tri(marks),12,'six quad letters in one mesh/draw');
- assert.equal(marks.userData.g36SelectorArtVersion,'r5-sef-trigger-housing');
+ assert.equal(marks.userData.g36SelectorArtVersion,'r6-raised-indexed-sef');
  const pos=marks.geometry.getAttribute('position');
  assert.equal(pos.count,24);
  const hub=one(g,'g36SelectorHub');
@@ -52,7 +52,7 @@ test('R5 SEF is entirely above trigger-guard boundary, visible on flat housing, 
    mark.letter+' creeps onto offset upper receiver');
   assert.ok(near(mark.z,1.185),'glyph clears lower receiver side z=1.14');
   const dist=Math.hypot(mark.x-pivot.x,mark.y-pivot.y);
-  assert.ok(dist>.80,mark.letter+' touches pivot housing');
+  assert.ok(dist>.74,mark.letter+' touches pivot housing');
   for(const side of [0,1]){
    const start=(side*3+i)*4,sign=side===0?1:-1;
    let x=0,y=0,z=0;
@@ -97,10 +97,10 @@ test('R5 magazine decorative cartridges follow THE production curved magazine fr
    assert.equal(rgba[i+3],255,'no alpha-sort transparency');
    if(v<255)decorated++;
   }
-  assert.ok(shades.has(230)&&shades.has(234)&&shades.has(220),
+  assert.ok(shades.has(226)&&shades.has(230)&&shades.has(220),
    'two round values and muted coupling detail');
-  assert.ok(decorated>300&&decorated<900,
-   'less than 10 percent of entire tile darkened; no full-width banding');
+  assert.ok(decorated>750&&decorated<1200,
+   'approximately 10 percent of tile, bold five curved strokes, not full-width bands');
  }
  const arr=g36PixelAtlas().image.data;
  for(let y=0;y<96;y++)for(let x=0;x<96;x++)
@@ -116,7 +116,7 @@ test('R5 keeps same 476-triangle 23-mesh actual Arsenal factory with pooled maga
  addG36Family(live,{family:'g36',parts:FACTORY.parts});
  assert.equal(live.children.length,23);
  assert.equal(census(live),476);
- assert.equal(one(live,'g36SelectorMarkings').userData.g36SelectorArtVersion,'r5-sef-trigger-housing');
+ assert.equal(one(live,'g36SelectorMarkings').userData.g36SelectorArtVersion,'r6-raised-indexed-sef');
  const mag=one(live,'g36Magazine');
  assert.strictEqual(mag.material.map,g36PixelAtlas());
  assert.equal(mag.material.transparent,false);
