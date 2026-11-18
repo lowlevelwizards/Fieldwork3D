@@ -51,6 +51,10 @@ function contactEvidence(s:WeaponMountSurface):
   return {contact:'covered',
    evidenceSource:'src/weapons/geometry/ar-silhouettes.ts'};
  }
+ if(s.ownerPartId==='g36-rail-receiver'||
+    s.ownerPartId==='g36-handguard-k-rail')
+  return {contact:'authored',
+   evidenceSource:'src/weapons/geometry/g36-variant-parts.ts'};
  if(s.ownerPartId==='ar-flat')
   return {contact:'authored',
    evidenceSource:'src/weapons/geometry/ar-silhouettes.ts'};
