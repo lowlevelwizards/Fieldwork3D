@@ -48,7 +48,7 @@ import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.
  import {MovementQualitySurvey} from '../src/breach-movement-quality.ts';
 import {classifyD3Progress} from '../src/breach-d3-progress-triage.ts';
 import {classifyCProgressWindow} from '../src/breach-d3-c-progress.ts';
-import {enableD32MotorDoorWitness} from '../src/breach-d3-motor-door-witness.ts';
+import {enableD32MotorDoorWitness,selectedD32MotorDoor} from '../src/breach-d3-motor-door-witness.ts';
 import {captureD32DoorEvidence,captureD32RecoveryFeasibility,
  captureD32SelfBlockingHinge,
  dueDoorHoldMilestones,D32_HOLD_MILESTONES,
@@ -67,6 +67,8 @@ const progress=process.argv.includes('--progress');
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
+// D3.29B: audit-only capture at the EXACT frame an order is cancelled.
+const d329CancellationDoorWitness=process.argv.includes('--d329-cancellation-door-witness');
 // D3.25D: strictly read-only endpoint feasibility for known failed entry.
 const d325StallFeasibility=process.argv.includes('--d325-stall-feasibility');
 // D3.26B: strictly cold end-state microstride truth for the three physical
@@ -351,6 +353,8 @@ function run(site,seed,kind){
   // D3.26F7 exact-seed read-only motor handoff witness, sampled only
   // for one actor and short time windows. Zero impact in normal audits.
   const d326MicroTrace=[];
+  const d329CancelDoorWitness=[];
+  const d329PriorFailures=actors.map(a=>a.failedOrders??0);
   let d326LastMicroKey='';
   const observed=actors.map(a=>({
    start:{...a.p},last:{...a.p},travel:0,blocked:0,squeezing:0,
@@ -368,6 +372,35 @@ function run(site,seed,kind){
    }finally{
     if(grid)setRouteGridAuditObserver(null);
     if(recordRoute)setTransientRouteObserver(null);
+   }
+   // D3.29B: only after an actual, authoritatively failed order, capture
+   // the motor-selected leaf at the SAME failure tick. The final chosen
+   // squad ENTRY door can differ from the intervening locked panel.
+   // No per-tick geometry work or changed execution when flag is absent.
+   if(d329CancellationDoorWitness){
+    for(let i=0;i<actors.length;i++){
+     const a=actors[i];
+     if((a.failedOrders??0)<=d329PriorFailures[i])continue;
+     d329PriorFailures[i]=a.failedOrders??0;
+     const failure=a.lastFailedOrder;
+     const selected=selectedD32MotorDoor(a,failure?.at??session.seconds);
+     const leaf=selected?session.doors.find(x=>x.id===selected):null;
+     const lockedNearby=session.doors.filter(x=>x.locked)
+      .map(x=>({id:x.id,
+        distance:round(pointToSegment(a.p,doorLeafSegment(x)))}))
+      .sort((x,y)=>x.distance-y.distance).slice(0,4);
+     d329CancelDoorWitness.push({
+      actor:a.id,seconds:round(session.seconds),
+      failedOrder:failure,failedCount:a.failedOrders,
+      selectedDoorId:selected??null,
+      actualSelectedDoor:leaf?{id:leaf.id,open:leaf.open,
+       fraction:round(leaf.openFraction??0),
+       locked:!!leaf.locked,jammed:!!leaf.jammed,
+       wedged:!!leaf.wedged}:null,
+      intendedEntryDoor:planned.door?.id??null,
+      position:{...a.p},lockedNearby
+     });
+    }
    }
    if(d326LastStallProbe&&kind==='authored'){
     const chosen=seed===19036595?'ash':seed===19143269?'moss':null;
@@ -1395,6 +1428,7 @@ function run(site,seed,kind){
    ...(d325Feasibility?{d325Feasibility}:{}),
    ...(d326StallEvidence?{d326StallEvidence}:{}),
    ...(d326LastStallProbe?{d326MicroTrace}:{}),
+   ...(d329CancellationDoorWitness?{d329CancelDoorWitness}:{}),
    ...(d327GarageProbe?{d327GarageEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
