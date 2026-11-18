@@ -8,6 +8,8 @@ import {W,H,WALLS,COVER,initialDoors,doorCenter,type Pt,type Segment} from '../b
 import {initDoor} from '../breach-door.ts';
 import {doorProportions,DOOR_PANEL_END_RECESS,DOOR_FRAME_INSET,
  WALL_VISUAL_HEIGHT,DOOR_CLEAR_VISUAL_HEIGHT,DOOR_LEAF_VISUAL_HEIGHT} from '../breach-door-proportions.ts';
+import {buildDoorHardwareVisual,type BrokenDoorHardwareVisual}
+ from './breach-door-broken-hardware-visual.ts';
 import {buildArchitecturalOpenings,buildSiteDoors,buildSiteWindows,doorSweepArc,
  type SiteOpeningsHost} from './breach-site-openings-builder.ts';
 import {buildSiteExterior} from './breach-site-exterior-builder.ts';
@@ -70,7 +72,8 @@ export type SiteSceneBuildPort={
  mats:THREE.Material[];
  walls:Array<{mesh:THREE.Mesh;mid:Pt;segment:Segment;index:number;exterior:boolean}>;
  doors:Map<string,{root:THREE.Group;leaf:THREE.Group;frame:THREE.Group;
-   halo:THREE.Group;threshold:THREE.Mesh;wedge:THREE.Mesh;glassPane?:THREE.Mesh}>;
+   halo:THREE.Group;threshold:THREE.Mesh;wedge:THREE.Mesh;
+   glassPane?:THREE.Mesh}&BrokenDoorHardwareVisual>;
  observedDoorOpen:Map<string,number>;
  observedDoorGlass:Map<string,boolean>;
  windowGlass:Map<string,THREE.Mesh>;
@@ -173,7 +176,8 @@ export function finalizeStaticSiteBatches(host:SiteSceneBuildPort):void {
         // The glass pane retains its independent shattered/hidden state.
         record(compileRigidVisualOwner(door.leaf,{
           mode:exterior?'opaque-facade':'opaque',
-          exclude:door.glassPane?new Set([door.glassPane]):undefined
+          exclude:new Set([door.intactHardware,
+            ...(door.glassPane?[door.glassPane]:[])])
         }),'leaf');
       }
       host.root.userData.fieldworkE621Pilot={source,compiled,
@@ -825,16 +829,16 @@ export function buildSiteWorld(site:Site|null,host:SiteSceneBuildPort):void {
       host.box(hinge,(door.hinge==='b'?-1:1)*width/2,
         DOOR_LEAF_VISUAL_HEIGHT/2,0,
         width-2*DOOR_PANEL_END_RECESS,DOOR_LEAF_VISUAL_HEIGHT,profile.leafThickness,doorMat);
-      for(const side of [-1,1])
-        host.box(hinge,(door.hinge==='b'?-1:1)*width*.7,18,
-          side*(profile.leafThickness/2+1),3,4,2,doorTrim,false);
+      const hardware=buildDoorHardwareVisual(group,hinge,width,
+        door.hinge,profile.leafThickness,doorTrim,host.box);
       const halo=doorSweepArc(door,width,
         material=>host.siteMaterials.track(material));
       group.add(halo);
       host.root.add(group);
       const wedge=host.box(frame,0,1.9,6,6,2.7,6,thresholdMat,false);
       wedge.visible=false;
-      host.doors.set(door.id,{root:group,leaf:hinge,frame,halo,threshold,wedge});
+      host.doors.set(door.id,{root:group,leaf:hinge,frame,halo,
+        threshold,wedge,...hardware});
       host.observedDoorOpen.set(door.id,0);
     }
     // Furniture height matches cover classification: low crates vs high cabinets.
