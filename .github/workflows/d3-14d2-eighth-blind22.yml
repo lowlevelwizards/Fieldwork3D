@@ -25,11 +25,17 @@ jobs:
         with:
           path: candidate
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
-      - name: Immutable C2 baseline with unrelated FAL-only main updates
+      - name: Verified D3.24 main baseline before D3.25 changes
         uses: actions/checkout@v4
         with:
           path: baseline
-          ref: 91f381dc2be284c5e406daa122a2caabd4fb7f29
+          ref: 9249dc70ff9dcbcf9fda309eaca4606e9afe93e9
+      # D3.25I: the original 91f381 C2 comparison predates multiple
+      # merged navigation releases and reported an already-shipped Utility
+      # individual arrival loss. Exact 9720633 current-main vs candidate
+      # physical replay proved 1 authored / 4 ENTRY arrivals in BOTH.
+      # Reanchor to publicly verified D3.24 main (9249dc70), keeping the
+      # SAME strict per-mode no-lost-arrival, loop and CPU/search vetoes.
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
