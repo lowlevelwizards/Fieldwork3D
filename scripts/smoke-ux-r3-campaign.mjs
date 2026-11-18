@@ -36,6 +36,9 @@ try{
   await armory.waitFor({timeout:15000});
   const operatorPreview=page.locator('.campaign-kit-preview');
   if(await operatorPreview.locator('canvas').count()){
+   // The default active WEAPON category is framed on the first WebGL paint.
+   if(await operatorPreview.getAttribute('data-preview-focus')!=='weapon')
+    throw Error('Fresh campaign armory preview ignored the active Weapon category');
    await operatorPreview.focus();
    const before=await operatorPreview.getAttribute('aria-label');
    await operatorPreview.press('ArrowRight');
@@ -172,6 +175,8 @@ try{
     if(await operatorPreview.getAttribute('aria-label')!==orientationBeforeKitMutation)
      throw Error('Equipment mutation reset the user-selected preview orientation');
    }
+   if(await operatorPreview.getAttribute('data-preview-focus')!=='carry')
+    throw Error('Gear rebuild lost the selected category camera framing');
    if(await armory.locator('[data-loadout-group="carry"][open]').count()!==1)
     throw Error('Gear change lost the selected equipment category');
    if(!await page.locator('.campaign-kit-commit-feedback').isVisible())
