@@ -35,11 +35,12 @@ export type G36GuardLength='long'|'mid'|'short'|'mid-rail';
 /** Same approved H3 six-facet shell, three real front-end lengths.
  * No scale operation touches the receiver: only the forward end moves.
  */
-export const G36_GUARD_FRONT_X=Object.freeze({long:13.45,mid:11.0,short:9.65,'mid-rail':11.0});
+export const G36_GUARD_FRONT_X=Object.freeze({long:13.45,mid:11.0,short:10.10,'mid-rail':11.0});
 export function addG36H3FactoryHandguard(root:THREE.Group,id:string,n:number,
  material:THREE.Material,length:G36GuardLength='long'):THREE.Mesh{
  const endX=G36_GUARD_FRONT_X[length];
- // C only: a ~17% longer fore-end, with stronger front and rear rake.
+ // G36C only: the second screenshot-approved modest forward extension.
+ // Keep the larger six-facet H3 mass and its pronounced nose rake.
  // Keep the same six-sided H3 shell and BOTH K/service shapes untouched.
  const points=G36_H3_ENDS.flatMap((end,index)=>g36H3Section(index===0?
   (length==='short'?{...end,roofX:end.roofX+.10}:end):{
