@@ -202,7 +202,11 @@ export function addWeaponPixelMarkPairBatched(root:THREE.Group,mark:WeaponMark,
  * grip; the revised compact trio is entirely on the FLAT LOWER RECEIVER
  * side at z=+-1.185, 0.045 above its 1.14-side-depth surface.
  *
- * Pivot (-5.20,-1.96). F left/up, E left/slightly down, S right/horizontal.
+ * R6 pivot (-5.20,-1.68), raised 0.28. F/E stay above the trigger-guard
+ * edge on the existing lower-housing face (which ends at y=-1.49), with
+ * a slightly tighter horizontal arc. We cannot translate all letters up
+ * 0.28 because the upper receiver has a different surface depth.
+ * F left/up, E left/below, S right.
  * The complete glyph footprints are ABOVE y=-2.18 (imaginary trigger
  * guard top), avoid the 0.55-radius pivot and the rightward paddle, and
  * remain below the larger upper receiver side panel (y>=-1.49).
