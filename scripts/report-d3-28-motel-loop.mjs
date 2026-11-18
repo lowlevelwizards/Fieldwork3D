@@ -26,6 +26,20 @@ const routes=transitions.filter(x=>x.source!=='door-handoff-reject')
    blocked:x.blockedTime,door:x.doorId,
    phase:x.doorPhase,maneuver:x.doorManeuver}));
 const quality=mode.routeQuality?.actors?.find(x=>x.id==='ash');
+// D3.28 release gate: require the SPECIFIC measured loop to disappear,
+ // not merely preserve the correct arrival or aggregate squad count.
+ // Thresholds have headroom versus the accepted 589.64/46 fresh result
+ // and reject the old 958.94/162 looping baseline.
+const fine=routes.find(x=>x.source==='d328-entry-fine-world');
+const door=routes.find(x=>x.door==='FRONT'&&x.t>6&&
+  x.source==='initial-intel');
+if(!fine||!door||door.t>15||
+   !quality||!Number.isFinite(quality.travel)||
+   quality.travel>700||quality.directionReversals>80||
+   suspicious.length||windows.some(x=>x.classification==='movement-loop')||
+   ash.remaining>6||Math.hypot(ash.position.x-ash.goal.x,
+      ash.position.y-ash.goal.y)>6)
+ throw Error('D3.28 exact Ash 45s movement-loop recovery regressed');
 console.log('D328_FROZEN_MOTEL',JSON.stringify({
  seed:row.seed,scenario:mode.mode,door:mode.doorId,
  arrived:ash.arrived,position:ash.position,goal:ash.goal,
