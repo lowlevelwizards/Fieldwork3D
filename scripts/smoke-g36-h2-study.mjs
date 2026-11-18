@@ -44,10 +44,14 @@ try{
   for(const id of ['vents','boss','mouth'])await page.locator('#'+id).uncheck();
   const silhouette=await snap('h2-primary-mass-only');
   if(silhouette.equals(withDetails))throw Error('H2 secondary forms not toggleable');
-  await page.locator('#width').fill('1.2');
+  await page.locator('#width').evaluate(input=>{
+   input.value='1.2';input.dispatchEvent(new Event('input',{bubbles:true}));
+  });
   const wide=await snap('h2-width-120');
   if(wide.equals(silhouette))throw Error('H2 width adjustment ineffective');
-  await page.locator('#width').fill('1');
+  await page.locator('#width').evaluate(input=>{
+   input.value='1';input.dispatchEvent(new Event('input',{bubbles:true}));
+  });
   for(const id of ['vents','boss','mouth'])await page.locator('#'+id).check();
   await page.setViewportSize({width:390,height:820});
   await snap('h2-mobile-side',1000);
