@@ -1,0 +1,33 @@
+name: D3.23A drag endpoint full-body clearance
+on:
+  push:
+    branches: [feature/d3-23-drag-full-body-landing-20261117]
+    paths:
+      - 'src/breach-game.ts'
+      - 'tests/release-d3-23-drag-full-body-landing.test.mjs'
+      - '.github/workflows/d3-23-drag-landing.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-game.ts'
+      - 'tests/release-d3-23-drag-full-body-landing.test.mjs'
+      - '.github/workflows/d3-23-drag-landing.yml'
+permissions:
+  contents: read
+concurrency:
+  group: d323-drag-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  landing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Drag full-body known-landing, clipping, WATCH and UNDO
+        run: node --experimental-strip-types --test tests/release-d3-23-drag-full-body-landing.test.mjs tests/breach-stroke-safe-cutoff.test.mjs tests/breach-here-watch-continuity.test.mjs
+      - name: Legacy one-stroke atomicity and window plan
+        run: node --experimental-strip-types --test tests/breach-063.test.mjs tests/breach-wall-glide-here-window.test.mjs tests/tactical-integration-12-smoothness.test.mjs
