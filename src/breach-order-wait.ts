@@ -37,11 +37,15 @@ export function advanceWaitOrder(
   // unrelated later orders keep their normal authority.
   const locked=!!doorway&&doorSecuredFrom(doorway,a.p);
   const terminal=!!entry&&(!doorway||locked||doorway.jammed);
-  // A teammate's recorded, terminal interruption of THIS generated
-  // threshold cannot be silently forgotten if another system opens the
-  // door later. The remaining operators need an explicit authored resume.
-  // No live secret door state or extra collision authority is consulted.
-  const linked=!!entry&&!terminal&&
+  // A teammate's *past* cancellation remains in its own history and
+  // requires explicit RESUME. It must NOT cancel another still-live
+  // generated gate after this same leaf has been physically forced open.
+  // While the newly unlatched hinge swings, the ordinary entryDoorState
+  // below still waits for real body clearance (no instant pass/teleport).
+  // An unopened/secured door still propagates the genuine interruption.
+  const physicallyReleased=!!doorway&&doorway.open&&
+    !locked&&!doorway.jammed&&!doorway.wedged&&!doorway.heldBy;
+  const linked=!!entry&&!terminal&&!physicallyReleased&&
     generatedEntryInterruptedByTeammate(s,a,n.doorId);
   if(terminal||linked){
     const failure=!doorway?'DOOR MISSING':

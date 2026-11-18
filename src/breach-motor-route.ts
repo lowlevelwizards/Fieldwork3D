@@ -3,10 +3,10 @@ import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Fixed-clock transient route acquisition and backoff. This never
  * rewrites the player-authored PlanNode[] or grants collision authority.
  */
-import {OPERATOR_RADIUS,doorLeafSegment,pointToSegment,type Pt}
+import {OPERATOR_RADIUS,doorLeafSegment,doorCenter,pointToSegment,type Pt}
  from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
-import {pressDoorOnBodyAttempt} from './breach-door.ts';
+import {pressDoorOnBodyAttempt,crossesDoorThreshold} from './breach-door.ts';
 import {sessionDoorPressurePolicy}
  from './breach-door-pressure-frame.ts';
 import {recordDoorManeuverContact,tryGoalCompleteDoorHandoffAfterEscape}
@@ -229,6 +229,54 @@ export function restoreRepeatedDoorEscapeRoute(
  a.lastNavRepairAt=s.seconds;provisionalRouteAccepted(a);
  return true;
 }
+/** A kicked-off latch does not clear the leaf instantly, but an old
+ * locked-door detour can become obsolete when the real hinge clears. */
+const forcedDoorRechecks=new WeakMap<TeamActor,{goal:string;attempts:Map<string,number>}>();
+const routeLength=(start:Pt,path:readonly Pt[])=>{
+ let total=0,previous=start;
+ for(const next of path){total+=d(previous,next);previous=next;}
+ return total;
+};
+export function forcedDoorShortcutWorthTaking(start:Pt,
+ oldPath:readonly Pt[],candidate:readonly Pt[]):boolean{
+ if(!oldPath.length||!candidate.length)return false;
+ const original=routeLength(start,oldPath),next=routeLength(start,candidate);
+ return original-next>=32&&next<=original*.82;
+}
+/** Compare at most twice per actor/goal/physically kicked door, at
+ * two real opening thresholds. No hidden-world intel discovery, teleport,
+ * authored-goal rewrite or automatic unlock. */
+export function refreshRouteAfterForcedDoor(a:TeamActor,goal:Pt,s:Session):boolean{
+ const order=a.plan[0];
+ if(a.side!=='blue'||order?.kind!=='move'||!a.nav.length||
+    order.entryDoorId||order.stackDoorId||a.doorTraversal||
+    a.traversal||a.traversalPending||a.fireRetreatTarget||
+    a.autoSidestep||a.squeeze||d(a.p,goal)<35)return false;
+ const goalKey=Math.round(goal.x*2)+':'+Math.round(goal.y*2);
+ let checked=forcedDoorRechecks.get(a);
+ if(!checked||checked.goal!==goalKey){
+  checked={goal:goalKey,attempts:new Map()};
+  forcedDoorRechecks.set(a,checked);
+ }
+ for(const door of s.doors){
+  if(!door.latchBroken||!door.open||door.locked||door.jammed||
+     door.wedged||door.heldBy||door.hardwareDetachedAt===undefined||
+     !s.intel.doors.has(door.id)||
+     d(a.p,doorCenter(door))>250||
+     !crossesDoorThreshold(a.p,goal,door))continue;
+  const fraction=door.openFraction??0;
+  const phase=fraction>=.98?2:fraction>=.72?1:0;
+  if(!phase||phase<=(checked.attempts.get(door.id)??0))continue;
+  checked.attempts.set(door.id,phase);
+  const candidate=routeWithNormalWorld(a.p,goal,s.doors,
+    sessionWorldGeometry(s));
+  if(!forcedDoorShortcutWorthTaking(a.p,a.nav,candidate))continue;
+  setTransientRoute(s,a,candidate,'forced-door-shortcut');
+  a.retryRouteAt=0;
+  return true;
+ }
+ return false;
+}
 export type MotorRouteReadiness='ready'|'handled'|'unavailable';
 export function prepareMotorRoute(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks):MotorRouteReadiness{
@@ -238,6 +286,9 @@ export function prepareMotorRoute(
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
     a.lastNormalLaneProbeAt=-10;
   }
+  // Re-evaluate a previously chosen long path after a nearby physically
+  // broken latch clears. Transient route only; no player-plan rewrite.
+  if(a.nav.length)refreshRouteAfterForcedDoor(a,p,s);
   if(!a.nav.length){
     // D3.10B: after real retries have established a known, immovable
     // authored landing, do not run the same A* and contact probes forever.
