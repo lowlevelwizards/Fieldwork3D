@@ -71,19 +71,27 @@ try{
  for(const actor of mode.operators){
   if(actor.arrived||!actor.goal||!actor.position)continue;
   const from=actor.position,to=actor.goal;
+  const truePlan=authored.find(x=>x.actor===actor.id);
+  const committed=truePlan?.committed??to;
   const routes={
    currentNormal:routeWithNormalWorld(from,to,s.doors,world),
    currentSqueeze:routeWithSqueezeWorld(from,to,s.doors,world),
    unlockedNormal:routeWithNormalWorld(from,to,noLock,world),
    allOpenNormal:routeWithNormalWorld(from,to,allOpen,world),
    allOpenSqueeze:routeWithSqueezeWorld(from,to,allOpen,world),
+   committedAllOpenSqueeze:routeWithSqueezeWorld(from,committed,allOpen,world),
    firstOperablePortal:routeToNextOperableDoor(from,to,s.doors,world)
   };
   const nearest=[...s.doors].map(d=>({id:d.id,
    leafGap:pointToSegment(from,doorLeafSegment(d)),
    fraction:d.openFraction??0,locked:!!d.locked}))
    .sort((a,b)=>a.leafGap-b.leafGap).slice(0,4);
-  report.push({actor:actor.id,from,to,remaining:actor.remaining,
+  report.push({actor:actor.id,from,to,
+   committedMove:committed,remaining:actor.remaining,
+   committedWorldStanding:world.passable(committed,OPERATOR_RADIUS)&&
+    bodyClear(committed,s.doors,OPERATOR_RADIUS,world),
+   committedKnownIntelStanding:intelPassable(committed,s.intel,OPERATOR_RADIUS),
+   committedKnownIntelSqueeze:intelPassable(committed,s.intel,SQUEEZE_RADIUS),
    terminalCancellation:actor.lastFailedOrder?.reason??null,
    fromStandable:world.passable(from,OPERATOR_RADIUS)&&
     bodyClear(from,s.doors,OPERATOR_RADIUS,world),
