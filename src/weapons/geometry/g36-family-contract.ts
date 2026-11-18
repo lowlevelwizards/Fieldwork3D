@@ -25,5 +25,5 @@ export const G36_E0_FACTORY=Object.freeze({
  supportFarX:A.handguardFrontX-1.35,
  supportY:-1.35,
  magazineMouthX:.45,magazineMouthY:-3.00,
- lowerSightY:3.99,upperSightY:4.88
+ lowerSightY:4.19,upperSightY:5.16
 });
