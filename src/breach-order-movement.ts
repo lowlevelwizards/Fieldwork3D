@@ -54,7 +54,7 @@ const entrySettleProbe=new WeakMap<TeamActor,{nodeId:number;nextAt:number}>();
 export type EntryLandingWitness={
  actorId:string;seconds:number;orderId:number;entryDoorId:string;
  from:Pt;originalGoal:Pt;executedSettle:Pt;
- source:'blocked-physical-entry'|'friendly-arrival';
+ source:'blocked-physical-entry'|'friendly-arrival'|'order-completed';
 };
 let entryLandingWitness:((event:EntryLandingWitness)=>void)|null=null;
 export function setEntryLandingWitness(
@@ -294,6 +294,14 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       const held=visibleThreat?angle(a.p,visibleThreat.p):aimHeading(a);
       if(held!==null)rotate(a,held,dt,s);
     }
+    // A completed generated ENTRY order may be treated as logically done
+    // without reaching its original physical goal. Report the real body
+    // center and the current node target at the instant of retirement.
+    // This witness does not change the reason, tolerance or order itself.
+    if(entryLandingWitness&&n.kind==='move'&&n.entryDoorId)
+      entryLandingWitness({actorId:a.id,seconds:s.seconds,orderId:n.id,
+        entryDoorId:n.entryDoorId,from:{...a.p},originalGoal:{...n.p},
+        executedSettle:{...a.p},source:'order-completed'});
     pop(a);return true;
   }
   if(n.facing!==undefined&&!rotate(a,n.facing,dt,s))return true;
