@@ -5,7 +5,7 @@
  */
 import {readFileSync,writeFileSync} from 'node:fs';
 import {generateSite} from '../src/breach-site.ts';
-import {newSession} from '../src/breach-game.ts';
+import {newSession,team,planMove} from '../src/breach-game.ts';
 import {activateSite,OPERATOR_RADIUS,pointToSegment,doorLeafSegment}
  from '../src/breach-core.ts';
 import {bodyClear,SQUEEZE_RADIUS} from '../src/breach-navigation.ts';
@@ -26,6 +26,34 @@ const quiet={...site,training:true,enemies:[],encounter:undefined};
 const s=newSession(0,row.seed,'full-view','standard','intel',quiet,
  {enableCivilians:false});
 try{
+ // Replay exactly the R7 authored selector BEFORE applying end-of-run door
+ // states. R7 originally records the raw candidate into planned.goals even
+ // if planMove legitimately projects it to a different known walkable GO.
+ // Never infer arrival at a raw candidate when a different MOVE was accepted.
+ const authored=[];
+ const actualActors=team(s).slice(0,4);
+ const candidatePoints=site.rooms.filter(r=>r.kind==='room').flatMap(r=>[
+  {x:r.x+r.w*.5,y:r.y+r.h*.5},
+  {x:r.x+r.w*.35,y:r.y+r.h*.5},
+  {x:r.x+r.w*.65,y:r.y+r.h*.5}
+ ]).filter(p=>Number.isFinite(p.x)&&Number.isFinite(p.y));
+ const requestedGoals=new Map();
+ const d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+ for(const actor of actualActors){
+  const ranked=[...candidatePoints].sort((a,b)=>
+   d(b,actor.p)-d(a,actor.p)||a.x-b.x||a.y-b.y);
+  for(const requested of ranked){
+   if([...requestedGoals.values()].some(q=>d(requested,q)<26))continue;
+   if(!planMove(s,actor.id,requested))continue;
+   const committed=actor.plan.at(-1);
+   if(committed?.kind!=='move')throw Error('R7 accepted non-MOVE');
+   requestedGoals.set(actor.id,{...requested});
+   authored.push({actor:actor.id,requested:{...requested},
+    committed:{...committed.p},adjustment:d(requested,committed.p),
+    auditOriginalGoal:mode.operators.find(o=>o.id===actor.id)?.goal??null});
+   break;
+  }
+ }
  for(const d of mode.endDoorStates??[]){
   const door=s.doors.find(x=>x.id===d.id);
   if(!door)throw Error('Physical door missing: '+d.id);
@@ -78,6 +106,7 @@ try{
   physicalArrivals:audit.summary.physicalArrivals,
   actualUnlockedDoorIds:s.doors.filter(d=>d.locked).map(d=>d.id),
   operators:report,
+  actualAuthoredPlan:authored,
   notice:'counterfactual all-open is DIAGNOSTIC only, never a game command'};
  const txt=JSON.stringify(result,null,2)+'\n';
  if(destination)writeFileSync(destination,txt);
