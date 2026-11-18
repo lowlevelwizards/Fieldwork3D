@@ -90,3 +90,17 @@ export function d328DistinctFullBodyAlternative(
  if(travel>distance(from,goal)*3+150)return [];
  return route.map(clone);
 }
+
+/** Keep a newly adopted fine route for at most 6s while its actual motor
+ * steps are productive. Real blockage (>=0.8s) or another route replacing
+ * the array releases this narrow preference immediately.
+ */
+const fineOwnership=new WeakMap<TeamActor,{route:Pt[];until:number}>();
+export function noteD328FineOwnership(a:TeamActor,seconds:number):void{
+ fineOwnership.set(a,{route:a.nav,until:seconds+6});
+}
+export function ownsD328FineRoute(a:TeamActor,seconds:number):boolean{
+ const own=fineOwnership.get(a);
+ return !!own&&a.nav===own.route&&a.nav.length>0&&
+  seconds<own.until&&a.blockedTime<.8;
+}
