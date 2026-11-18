@@ -393,8 +393,20 @@ function run(site,seed,kind){
       .map(x=>({id:x.id,
         distance:round(pointToSegment(a.p,doorLeafSegment(x)))}))
       .sort((x,y)=>x.distance-y.distance).slice(0,4);
+     // D3.29E: read-only route feasibility for new lock-respecting
+     // cancellations. Truthful path against unchanged, locked world only.
+     // Costs at most once per real failed order, not per simulation tick.
+     const target=planned.goals.get(a.id)??null;
+     const targetRoute=selected&&kind==='authored'&&target&&
+       [19125490,19178827,19338838].includes(seed)?
+       routeWithSqueezeWorld(a.p,target,session.doors,
+         sessionWorldGeometry(session)):null;
      d329CancelDoorWitness.push({
       actor:a.id,seconds:round(session.seconds),
+      ...(targetRoute?{legalWorldRoute:{
+       goal:{...target},nodes:targetRoute.length,
+       first:targetRoute[0]??null,
+       last:targetRoute.at(-1)??null}}:{}),
       failedOrder:failure,failedCount:a.failedOrders,
       selectedDoorId:selected??null,
       initialSelectedDoor:selected?initialD329Doors?.get(selected)??null:null,
