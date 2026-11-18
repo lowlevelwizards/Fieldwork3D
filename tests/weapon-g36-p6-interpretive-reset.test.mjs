@@ -16,9 +16,9 @@ const triangles=o=>(o.geometry.index?.count??o.geometry.getAttribute('position')
 test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const guard=one(g,'g36LongHandguard');
- assert.equal(guard.geometry.getAttribute('position').count,96);
+ assert.equal(guard.geometry.getAttribute('position').count,258);
  assert.equal(G36_LONG_FOREND_RINGS.length,3);
- assert.equal(triangles(guard),32,'H1 six-sided shell: 24 side and eight cap triangles');
+ assert.equal(triangles(guard),86,'H2.1 angled shell: 64 sides, six rear-cap and 16 front-rim triangles');
  assert.equal(one(g,'g36LowerOptic').geometry.type,'BufferGeometry',
   'O2 production optic is one low-facet volumetric housing');
  assert.equal(one(g,'g36UpperReflex').geometry.type,'BufferGeometry');
@@ -29,8 +29,8 @@ test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',(
  assert.ok(counts.g36ReceiverUpper<=18);
  assert.ok(counts.g36ReceiverLower<=30);
  assert.ok(counts.g36Grip<=16);
- assert.ok(g.children.length<=22,'a limited HK identity budget, no traced mesh layers');
- assert.ok(g.children.reduce((n,x)=>n+triangles(x),0)<600,
+ assert.ok(g.children.length<=24,'one mouth face and one lug added, no traced mesh layers');
+ assert.ok(g.children.reduce((n,x)=>n+triangles(x),0)<760,
   'the small number of iconic forms must not be disguised trace meshes');
  clearWeaponSilhouette(g);m.dispose();
 });
@@ -69,6 +69,6 @@ test('P6 graphical content is ONLY vents and a polymer facet',()=>{
  const sample=(col,row,x,y)=>data[((row*96+y)*384+col*96+x)*4];
  assert.notEqual(sample(2,0,55,63),255,'one bold right-only ejection port');
  assert.equal(sample(3,0,55,63),255,'opposite receiver remains neutral');
- assert.notEqual(sample(0,0,22,60),255,'one of four large vent graphics');
+ assert.notEqual(sample(0,0,24,60),255,'one of four large H2.1 upper vent graphics');
  assert.ok(sample(2,1,55,51)>=185,'smoked polymer has broad restrained value facets');
 });
