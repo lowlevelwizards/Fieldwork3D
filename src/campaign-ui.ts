@@ -1849,9 +1849,7 @@ export class CampaignScreen{
     this.preview=new CampaignKitPreview(preview,person.id,person.weapon,
      person.appearanceSeed,person.loadout,person.weaponConfiguration,
      person.magazines,person.wardrobe,
-     previewFocusForGroup[this.activeKitGroup]);
-    const azimuth=this.operatorViewAngles.get(id);
-    if(azimuth!==undefined)this.preview.setAzimuth(azimuth);
+     previewFocusForGroup[this.activeKitGroup],this.operatorViewAngles.get(id));
    }
    // No inert orbit buttons if a device cannot initialize WebGL.
    if(!this.preview?.isReady())
