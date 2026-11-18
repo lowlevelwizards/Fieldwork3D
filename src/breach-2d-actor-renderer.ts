@@ -8,6 +8,7 @@ import {civilianPose} from './breach-civilian-pose.ts';
 import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {shotVisibility,contactFade} from './breach-presentation.ts';
+import {objectiveLocationKnown} from './breach-objective-intel.ts';
 import type {ReplayKnowledgeController} from './breach-replay-knowledge-controller.ts';
 export type Actor2DFrame={
  state:Session;replaying:boolean;selected:string;
@@ -69,6 +70,7 @@ function missionMarkers(){
   const {state,replaying,replayObjectiveMarkers}=getFrame();
   if(replaying&&!replayObjectiveMarkers)return;
   if(state.rescue&&!state.civilians.some(c=>c.rescueTarget)&&
+     objectiveLocationKnown(state,replaying,replayKnowledge.omniscient)&&
      presentUnrecordedRescueMarker(state,replaying&&replayKnowledge.omniscient,
        replaying?replayKnowledge.disclosure():null)){
     const p=state.rescue.p;
@@ -79,7 +81,8 @@ function missionMarkers(){
   }
   const p=state.mission==='extract'?state.scenario.extract:state.scenario.objective;
   if(state.mission==='clear'||state.mission==='done'||
-    !liveVisibility(state,p))return;
+    (state.mission==='secure'&&!objectiveLocationKnown(
+      state,replaying,replayKnowledge.omniscient)))return;
   draw.strokeStyle='#d8cc98';draw.lineWidth=2;
   draw.beginPath();draw.arc(p.x,p.y,33,0,Math.PI*2);draw.stroke();
   draw.fillStyle='#e1d1a2';draw.font='600 12px "Work Sans",sans-serif';
