@@ -47,12 +47,19 @@ test('H2 shape: thick broad roof, two shoulders, lower return and blunt nose',()
  assert.equal(shell.userData.h2Stations,5);
  assert.equal(G36_H2_STATIONS.length,5);
  for(const station of G36_H2_STATIONS){
-  const values=new Set();
-  for(let i=0;i<position.count;i++){
-   if(near(position.getX(i),station.x,.001))
-    values.add(position.getY(i).toFixed(3)+'/'+position.getZ(i).toFixed(3));
+  const contour=h2StationVertices(station);
+  assert.equal(contour.length,8);
+  const uniq=new Set(contour.map(([x,y,z])=>
+   x.toFixed(3)+'/'+y.toFixed(3)+'/'+z.toFixed(3)));
+  assert.equal(uniq.size,8,'all eight landmarks are truly distinct');
+  for(const [x,y,z] of contour){
+   let found=false;
+   for(let i=0;i<position.count;i++){
+    if(near(position.getX(i),x,.001)&&near(position.getY(i),y,.001)&&
+      near(position.getZ(i),z,.001)){found=true;break;}
+   }
+   assert.ok(found,'inclined station vertex is physically present in mesh');
   }
-  assert.equal(values.size,8,'all eight genuinely distinct contour stations');
  }
  const r=G36_H2_STATIONS[1],shape=h2Section(r);
  assert.ok(shape[1][1]<shape[2][1]-.25,'upper shoulder expands');
