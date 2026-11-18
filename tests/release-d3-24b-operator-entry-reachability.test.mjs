@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {entryLanes} from '../src/breach-entry-lanes.ts';
+import {entryLanes,sharedEntryRouteOrigin} from '../src/breach-entry-lanes.ts';
 import {settleKnownEntryLandings} from '../src/breach-entry-landing.ts';
 
 const door={id:'D1',a:{x:100,y:100},b:{x:140,y:100},
@@ -41,4 +41,17 @@ test('D3.24B rejects a squad if no assigned landing is reachable',()=>{
  const lanes=entryLanes(door,from,4,()=>true,(index,p)=>
   index!==2||false);
  assert.deepEqual(lanes,[],'do not silently substitute lead route');
+});
+
+test('D3.24B2 share only a genuinely swept, known full-body origin',()=>{
+ const lead={x:120,y:100},near={x:140,y:100},far={x:200,y:100};
+ assert.equal(sharedEntryRouteOrigin(near,lead,()=>true),true,
+  'short clear route can reuse lead origin');
+ assert.equal(sharedEntryRouteOrigin(far,lead,()=>true),false,
+  'distant teammates require their own route');
+ const wall=p=>!(p.x>=128&&p.x<=132);
+ assert.equal(sharedEntryRouteOrigin(near,lead,wall),false,
+  'wall-separated teammates must not borrow a leader route');
+ assert.equal(sharedEntryRouteOrigin(near,lead,()=>false),false,
+  'unknown or physically narrow connector cannot claim reachability');
 });
