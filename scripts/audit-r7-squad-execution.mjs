@@ -893,6 +893,13 @@ function run(site,seed,kind){
      orderIssue:actor.orderIssue?.reason??null,
      authoredGoalIntact:actor.plan[0]?.kind==='move'&&
       dist(actor.plan[0].p,goal)<.001,
+     actualOrder:actor.plan[0]?{id:actor.plan[0].id,kind:actor.plan[0].kind,
+       point:{...actor.plan[0].p},entryDoorId:actor.plan[0].entryDoorId??null,
+       stackDoorId:actor.plan[0].stackDoorId??null}:null,
+     actualOrderFixedBlock:actor.plan[0]?.kind==='move'?
+       knownFixedGoalBlock(session,actor.plan[0].p):null,
+     actualOrderFullBodyClear:actor.plan[0]?.kind==='move'?
+       bodyClear(actor.plan[0].p,session.doors,OPERATOR_RADIUS,world):null,
      remainingNavNodes:actor.nav.length,
      normalAtCurrent:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
      normalAtGoal:bodyClear(goal,session.doors,OPERATOR_RADIUS,world),
