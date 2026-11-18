@@ -104,6 +104,10 @@ jobs:
                 first:event.next[0]??null,position:event.position
               }));
             }
+            for(const step of mode.d326MicroTrace??[]){
+              if(site!=='garage')
+                console.log('D326_MOTOR_MICRO',JSON.stringify({site,...step}));
+            }
             for(const actor of mode.d326StallEvidence??[]){
               console.log('D326_STALL_MICRO',JSON.stringify({
                 site,seed:report.rows[0].seed,...actor,
