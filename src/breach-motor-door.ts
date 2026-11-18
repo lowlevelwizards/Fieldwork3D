@@ -29,9 +29,11 @@ import {openingFootwork,setOpeningFootstep,queueOpeningFootstep,clearOpeningFoot
  * closing. This is not a collision exemption or a forced movement.
  * The hinge remains solely responsible for actual leaf rotation.
  */
-export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number):boolean{
+export function stalledDoorYieldsToMotor(door:Door,openingSeconds:number,
+ actorPosition?:Pt):boolean{
  const fraction=door.openFraction??(door.open?1:0);
- return door.open&&!door.locked&&!door.heldBy&&!door.wedged&&
+ return door.open&&(!door.locked||actorPosition!==undefined&&
+   !doorSecuredFrom(door,actorPosition))&&!door.heldBy&&!door.wedged&&
    fraction>=.15&&fraction<.72&&openingSeconds>=.9&&
    Math.abs(door.angularVelocity??0)<.16;
 }
@@ -298,7 +300,7 @@ export function handleMotorDoor(
       // its regular bounded route recovery. There is no free passage.
       // Incidental body CLOSE on this exact leaf is deferred ONLY for
       // this motor attempt, preventing the D3.1 277-flip ping-pong.
-      if(a.side==='blue'&&stalledDoorYieldsToMotor(doorAhead,a.actionTimer)){
+      if(a.side==='blue'&&stalledDoorYieldsToMotor(doorAhead,a.actionTimer,a.p)){
         // D3.9's shared owner/follower traffic staging above is the ONLY
         // cold self-clearance authority. Do not separately create a second
         // D3.8 episode retry, whose transient nav could fight the first.
