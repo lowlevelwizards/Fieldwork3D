@@ -1,0 +1,45 @@
+name: D3.26 independent last-failure physical witness
+on:
+  push:
+    branches: [feature/d3-26-last-entry-failures-20261118]
+    paths:
+      - 'scripts/report-d3-26-last-failures.mjs'
+      - '.github/workflows/d3-26-last-entry-failures.yml'
+      - 'src/breach-*.ts'
+      - 'tests/release-d3-26*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d326-last-physical-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  fresh22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Critical type and entry regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-25b-terminal-entry-gate.test.mjs \
+            tests/release-d3-25f-cold-swept-entry-escape.test.mjs \
+            tests/tactical-integration-10-entry-gate.test.mjs
+      - name: Physical 45-second independent 22-map evidence
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress --route-quality \
+            --route-transitions > "$RUNNER_TEMP/d326-fresh22.json"
+          node scripts/report-d3-26-last-failures.mjs \
+            "$RUNNER_TEMP/d326-fresh22.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d326-independent-22-physical-witness
+          path: ${{ runner.temp }}/d326-fresh22.json
+          retention-days: 14
