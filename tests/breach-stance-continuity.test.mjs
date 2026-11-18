@@ -172,19 +172,27 @@ test('release from settled short-stock to ready and ADS never flips elbow bend b
      assert.ok(first.elbows[side].distanceTo(source.arms[side].elbow)<.0001,
       id+'/'+destination+' alpha 0 must preserve visible elbow');
     }
-    let previous=first,maxJump=0,minBendDot=1;
+    let previous=first,maxJump=0,minBendDot=1,worstStep=-1,worstPart='';
     for(let i=1;i<=64;i++){
      const alpha=i/64;
      const f=show(destination,2.01+alpha*.32,
       transition('short',destination,source,alpha));
-     maxJump=Math.max(maxJump,distance(previous,f));
+     const d=distance(previous,f);
+     if(d>maxJump){
+      maxJump=d;worstStep=i;
+      const parts=[['gun',previous.gun.distanceTo(f.gun)],
+       ...[0,1].flatMap(side=>[
+        ['hand'+side,previous.hands[side].distanceTo(f.hands[side])],
+        ['elbow'+side,previous.elbows[side].distanceTo(f.elbows[side])]])];
+      parts.sort((a,b)=>b[1]-a[1]);worstPart=parts[0][0];
+     }
      for(let side=0;side<2;side++)
       minBendDot=Math.min(minBendDot,
        previous.bends[side].dot(f.bends[side]));
      previous=f;
     }
     assert.ok(maxJump<3.5,
-     id+'/'+destination+' backward elbow flip, max jump '+maxJump);
+     id+'/'+destination+' backward elbow flip, max jump '+maxJump+' at step '+worstStep+' component '+worstPart);
     assert.ok(minBendDot>.15,
      id+'/'+destination+' flipped the elbow bend hemisphere '+minBendDot);
     const settled=show(destination,2.45,null);
