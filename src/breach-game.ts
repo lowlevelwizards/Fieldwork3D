@@ -7,7 +7,8 @@ import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-r
 export {plannedWindowRoute} from './breach-known-route-authoring.ts';
 import {addNode,finalPoint} from './breach-plan-node-commands.ts';
 export {addNode,finalPoint} from './breach-plan-node-commands.ts';
-export {resumeInterruptedDoorPlan} from './breach-interruption-recovery.ts';
+export {resumeInterruptedDoorPlan,canResumeInterruptedDoorPlan}
+ from './breach-interruption-recovery.ts';
 export {planAim,updatePlanFacing,planLook,planWatch,retargetActiveWatch,removeActiveWatch,releaseWatch} from './breach-plan-aim-commands.ts';
 export {operationBriefing,missionText,debrief} from './breach-mission-reporting.ts';
 import {team,enemies,actor,party,canEdit} from './breach-session-selectors.ts';
