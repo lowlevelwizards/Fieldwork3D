@@ -14,7 +14,8 @@ console.log('D329_NEW_LOCK_ROUTE_FEASIBILITY',JSON.stringify(
  r.cases.filter(c=>c.legalWorldRouteAtCancellation)
  .map(c=>({seed:c.seed,site:c.archetype,actor:c.id,
   blockedDoor:c.selectedMotorDoor?.id,
-  route:c.legalWorldRouteAtCancellation}))));
+  route:c.legalWorldRouteAtCancellation,
+  coldFine:c.coldFineMotorRouteAtCancellation}))));
 const invalidLocks=r.cases.filter(c=>c.lockedLeafMovedAfterClosedStart);
 console.log('D329_LOCK_INTEGRITY',JSON.stringify({
  count:invalidLocks.length,
