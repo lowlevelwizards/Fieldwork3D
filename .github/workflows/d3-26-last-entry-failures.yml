@@ -31,6 +31,7 @@ jobs:
             tests/release-d3-25b-terminal-entry-gate.test.mjs \
             tests/release-d3-25f-cold-swept-entry-escape.test.mjs \
             tests/release-d3-26c-cold-motor-micro-departure.test.mjs \
+            tests/release-d3-26f-cold-fine-route-gate.test.mjs \
             tests/tactical-integration-10-entry-gate.test.mjs
       - name: Physical 45-second independent 22-map evidence
         run: |
@@ -39,6 +40,21 @@ jobs:
             --route-transitions > "$RUNNER_TEMP/d326-fresh22.json"
           node scripts/report-d3-26-last-failures.mjs \
             "$RUNNER_TEMP/d326-fresh22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const a=JSON.parse(fs.readFileSync(
+            process.env.RUNNER_TEMP+'/d326-fresh22.json','utf8'));
+          const s=a.summary,p=a.progressSummary;
+          if(s.physicalArrivals<158||s.physicalCompletedFour<34||
+             p.suspectedLoops>1||s.arrivedDespiteCancellation||
+             s.unreachedDrainedOperators||s.invalidPositions||
+             s.physicsStepViolations||s.corruptedPlans)
+            throw Error('D3.26 regressed frozen 22-map physical acceptance');
+          console.log('D326_FROZEN_ACCEPTANCE',JSON.stringify({
+            arrived:s.physicalArrivals,completed:s.physicalCompletedFour,
+            loops:p.suspectedLoops,routeSearches:a.routeQualitySummary.searches
+          }));
+          NODE
       - uses: actions/upload-artifact@v4
         if: always()
         with:
