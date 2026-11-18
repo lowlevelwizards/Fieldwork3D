@@ -10,6 +10,7 @@ type Section=readonly (readonly [number,number])[];
 type PartKind='g36LowerOptic'|'g36UpperReflex'|'g36LowerOpticBarrel'|
  'g36UpperReflexBarrel'|'g36OpticFace'|'g36UpperReflexWindow';
 const STYLE='o3-compact-integrated-125-125-55';
+export const G36_R1_OPTIC_LIFT_Y=.42;
 
 function sixFacetPrism(x0:number,x1:number,rear:Section,front:Section):THREE.BufferGeometry{
  if(rear.length!==6||front.length!==6||x1<=x0)
@@ -54,11 +55,14 @@ export function addG36O2DualOptic(
 ):number{
  let index=startIndex;
  const add=(geometry:THREE.BufferGeometry,key:PartKind)=>{
+  // Move every optic housing, ocular sleeve and lens as one rigid assembly.
+  geometry.translate(0,G36_R1_OPTIC_LIFT_Y,0);
   const mesh=new THREE.Mesh(geometry,material);
   mesh.name='family-receiver-'+receiverId+'-'+index++;
   mesh.castShadow=true;mesh.receiveShadow=true;
   mesh.userData[key]=true;
   mesh.userData.g36OpticArtVersion=STYLE;
+  mesh.userData.g36OpticVerticalRevision='r1-raised';
   root.add(mesh);
   return mesh;
  };
