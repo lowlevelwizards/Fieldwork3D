@@ -1,0 +1,52 @@
+name: D3.30H-I final full-physical release acceptance
+on:
+  push:
+    branches: [feature/d3-30h-atomic-squad-resume-20261118]
+    paths:
+      - '.github/workflows/d3-30h-i-physical-release.yml'
+      - 'src/breach-interruption-recovery.ts'
+      - 'src/breach-order-wait.ts'
+      - 'src/breach-motor-door.ts'
+      - 'src/breach-game.ts'
+      - 'tests/release-d3-30-atomic-squad-resume.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d330-final-physical-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  full-physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Critical squad-retry state and physical-door safety
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-30-threshold-coordination.test.mjs tests/release-d3-30-recovery-feedback.test.mjs tests/release-d3-30-recovery-marker.test.mjs tests/release-d3-30-atomic-squad-resume.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs tests/release-d3-29-directional-locks.test.mjs
+      - name: Verify deployable production bundle
+        run: |
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
+      - name: Frozen 22-map 176-operator physical locked-door integrity
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d330-frozen22.json"
+          node scripts/report-d3-29-terminal-cancellations.mjs "$RUNNER_TEMP/d330-frozen22.json"
+      - name: Historical 11-map 88-operator physical merge gate
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d330-historical11.json"
+          node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/d330-historical11.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d330-h-i-physical-truth
+          path: |
+            ${{ runner.temp }}/d330-frozen22.json
+            ${{ runner.temp }}/d330-historical11.json
+          retention-days: 21

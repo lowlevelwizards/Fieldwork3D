@@ -9,7 +9,8 @@ import {type Session,type TeamActor,plannedControl,finalPoint,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planMedicalTreatment,
  planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
- doorAtNode,planEntryTool,liveVisibility,resumeInterruptedDoorPlan} from './breach-game.ts';
+ doorAtNode,planEntryTool,liveVisibility,resumeInterruptedDoorPlan,
+ resumeInterruptedSquadEntry} from './breach-game.ts';
 import type {EntryTool} from './breach-entry-tools.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -58,6 +59,9 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxResumeEntry':
    return finish(resumeInterruptedDoorPlan(state,selected),
      'ENTRY STILL BLOCKED · RESOLVE DOOR BEFORE RESUMING');
+  case 'ctxResumeSquad':
+   return finish(resumeInterruptedSquadEntry(state,selected),
+     'SQUAD ENTRY STILL BLOCKED · CHECK EACH OPERATOR');
   case 'ctxFire':{
    const active=node?.firePolicyState??a.firePolicy;
    const policy=active==='engage'?'hold':

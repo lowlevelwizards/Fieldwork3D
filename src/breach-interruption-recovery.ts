@@ -3,9 +3,9 @@
  * A resolved lock does not itself enqueue anything: this command is called
  * only after a player explicitly chooses RESUME during planning.
  */
-import type {Session} from './breach-game.ts';
-import {party,canEdit} from './breach-session-selectors.ts';
-import {edit} from './breach-plan-authoring.ts';
+import type {Session,TeamActor} from './breach-game.ts';
+import {party,team,canEdit} from './breach-session-selectors.ts';
+import {edit,atomicTeamEdit} from './breach-plan-authoring.ts';
 import {copyNodes} from './breach-plan.ts';
 import {doorSecuredFrom} from './breach-door-security.ts';
 import {doorClear} from './breach-door.ts';
@@ -45,4 +45,44 @@ export function resumeInterruptedDoorPlan(s:Session,actorId:string):boolean{
  });
  if(accepted)a.interruptedDoorPlan=null;
  return accepted;
+}
+
+
+/** D3.30H: squad-wide offers use *past witnessed authoring* only. Do not
+ * inspect live locks here: otherwise unlocking unseen could leak via UI.
+ */
+function generatedIncidentAt(a:TeamActor,doorId:string):boolean{
+ const snap=a.interruptedDoorPlan;
+ return snap?.doorId===doorId&&snap.original.some(n=>
+  n.kind==='move'&&n.entryDoorId===doorId||
+  n.kind==='wait'&&n.duration===0&&n.doorId===doorId) || false;
+}
+function interruptedSquad(s:Session,actorId:string):TeamActor[]{
+ const initiator=party(s,actorId);
+ const doorId=initiator?.interruptedDoorPlan?.doorId;
+ if(!doorId||!initiator||!generatedIncidentAt(initiator,doorId))return [];
+ return team(s).filter(a=>a.health>0&&generatedIncidentAt(a,doorId));
+}
+export function hasInterruptedSquadEntry(s:Session,actorId:string):boolean{
+ return interruptedSquad(s,actorId).length>=2;
+}
+/** One player action, one atomic authoring transaction, one shared undo.
+ * Each eligible member gets fresh order IDs ahead of unrelated orders.
+ * A rejected member aborts the entire action without changing any plan,
+ * nextId, undo history, or saved interruption snapshot.
+ */
+export function resumeInterruptedSquadEntry(s:Session,actorId:string):boolean{
+ const members=interruptedSquad(s,actorId);
+ if(members.length<2||!canEdit(s)||
+    !members.every(a=>canResumeInterruptedDoorPlan(s,a.id)))return false;
+ const committed=atomicTeamEdit(s,members,()=>{
+  for(const a of members){
+   const original=a.interruptedDoorPlan!.original;
+   const restored=copyNodes(original).map(n=>({...n,id:s.nextId++}));
+   a.plan.unshift(...restored);
+  }
+  return true;
+ });
+ if(committed)for(const a of members)a.interruptedDoorPlan=null;
+ return committed;
 }
