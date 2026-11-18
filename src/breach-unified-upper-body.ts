@@ -298,30 +298,15 @@ export function continuousElbowPole(shoulder:THREE.Vector3,
    return v.normalize();
  };
  const from=flatten(fromJoint),to=flatten(toJoint);
- // Do NOT pick between +angle and -2pi+angle on every moving frame.
- // With a mobile wrist, that choice crosses its threshold in mid-release
- // and flips the support elbow to the opposite side of the shoulder.
- // Instead, project a fixed forward/down/outboard guide onto the elbow
- // circle. A smoothly weighted midpoint uses the direct arc for nearby
- // endpoints and the guide for opposite bends: no discrete arc selection.
- const guide=new THREE.Vector3(4,-9,side*7);
- guide.addScaledVector(axis,-guide.dot(axis));
- if(guide.lengthSq()<1e-8)guide.copy(flatten(
-   shoulder.clone().add(new THREE.Vector3(0,-1,side))));
- guide.normalize();
- const opposition=Math.max(0,.5-from.dot(to));
- const mid=from.clone().add(to)
-   .addScaledVector(guide,opposition*.65);
- if(mid.lengthSq()<1e-8)mid.copy(guide);
- mid.normalize();
- // Two normalized interpolations retain unit bend poles and the exact
- // authored endpoints; the same 10+10 IK still owns all elbow geometry.
- const lerpPole=(a:THREE.Vector3,b:THREE.Vector3,t:number)=>{
-   const v=a.clone().lerp(b,t);
-   if(v.lengthSq()<1e-8)return guide.clone();
-   return v.normalize();
- };
- const t=Math.max(0,Math.min(1,alpha));
- return t<=.5?lerpPole(from,mid,t*2):
-   lerpPole(mid,to,(t-.5)*2);
+ const cross=new THREE.Vector3().crossVectors(from,to);
+ let angle=Math.atan2(axis.dot(cross),from.dot(to));
+ const alternate=angle>=0?angle-2*Math.PI:angle+2*Math.PI;
+ if(Math.abs(angle)>Math.PI*.75){
+   const score=(a:number)=>{
+     const mid=from.clone().applyAxisAngle(axis,a*.5);
+     return -mid.y+side*mid.z*.8;
+   };
+   if(score(alternate)>score(angle)+.0001)angle=alternate;
+ }
+ return from.applyAxisAngle(axis,angle*Math.max(0,Math.min(1,alpha)));
 }
