@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {classifyD329Cancellation,analyzeD329CancellationAudit}
+import {classifyD329Cancellation,analyzeD329CancellationAudit,validateD329PhysicalRelease,D329_PHYSICAL_BASELINE}
  from '../scripts/lib/d3-29-cancellation-classifier.mjs';
 const actor=(id='ash')=>({id,arrived:false,outcome:'cancelled',
  failedOrders:1,remainingOrders:0,
@@ -109,4 +109,24 @@ test('D3.29C: an originally closed locked leaf becoming ajar and still locked is
  assert.equal(row.lockedMotorDoorVerified,true);
  assert.equal(row.lockedLeafMovedAfterClosedStart,true);
  assert.equal(row.physicallyArrived,false);
+});
+
+test('D3.29F: locks cannot be counted as arrivals to retain an invalid legacy score',()=>{
+ assert.equal(D329_PHYSICAL_BASELINE.arrivals,154);
+ assert.equal(D329_PHYSICAL_BASELINE.fullSquads,35);
+ const blocked=(id)=>({id,site:'clinic',outcome:'cancelled',
+   physicallyArrived:false,reason:'PATH BLOCKED · DOOR LOCKED',
+   lockedMotorDoorVerified:true,lockedLeafMovedAfterClosedStart:false});
+ const truth={summary:{operators:176,arrivals:154,fullSquads:35,
+   suspectedLoops:0},cases:Array.from({length:22},(_,i)=>blocked('op'+i))};
+ assert.equal(validateD329PhysicalRelease(truth).ok,true);
+ assert.ok(validateD329PhysicalRelease({...truth,
+   summary:{...truth.summary,arrivals:153}}).errors.some(x=>/arrivals/.test(x)));
+ assert.ok(validateD329PhysicalRelease({...truth,
+   cases:[...truth.cases,{...blocked('unknown'),reason:'PATH BLOCKED · PHYSICS'}]})
+   .errors.some(x=>/non-lock cancellation/.test(x)));
+ assert.ok(validateD329PhysicalRelease({...truth,
+   cases:truth.cases.map((x,i)=>i===0?{...x,
+     lockedLeafMovedAfterClosedStart:true}:x)})
+   .errors.some(x=>/illegally/.test(x)));
 });
