@@ -28,6 +28,8 @@ export type ExecutionActor={
  completedOrders:number;failedOrders?:number;
  lastFailedOrder?:{id:number;kind:string;reason:string;at:number}|null;
  passageWaitSeconds?:number;
+ /** A historical door incident, not a current lock-state query. */
+ interruptedDoorPlan?:{doorId:string|null;reason:'locked'|'jammed'|'coordinated';at:number}|null;
 };
 type Peer={id?:string;health:number;syncReady:string|null;plan:readonly PlanNode[]};
 type DoorView={id:string;open:boolean;openFraction?:number};
@@ -45,6 +47,12 @@ export function executionStatus(a:ExecutionActor,ctx:ExecutionContext={}):Execut
  if(a.health<=0)return result('idle','DOWN','INCAPACITATED',null,'down');
  if(a.orderIssue&&n&&a.orderIssue.nodeId===n.id)
    return result('blocked','NEEDS ATTENTION',a.orderIssue.reason,id,'order-failed');
+ if(a.interruptedDoorPlan&&(ctx.phase==='planning'||!n))
+   return result('blocked','ENTRY INTERRUPTED',
+     a.interruptedDoorPlan.reason==='coordinated'?
+       'SQUAD ENTRY HELD · EXPLICIT RESUME REQUIRED':
+       'FAILED ENTRY PRESERVED · RESUME WHEN CLEAR',
+     id,'entry-interrupted');
  if(ctx.phase==='planning'&&n)
    return result('planned','PLANNED',n.kind.toUpperCase(),id,'planned');
  if(a.traversalRetreating)

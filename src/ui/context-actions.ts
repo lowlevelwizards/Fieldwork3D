@@ -15,11 +15,15 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   carryingCivilian?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;
   /** A prior witnessed interruption exists; not a query of current hidden lock state. */
-  resumeAvailable?:boolean;};
+  resumeAvailable?:boolean;
+  /** Based only on the previously witnessed interruption. */
+  resumeReason?:'locked'|'jammed'|'coordinated';};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
  if(o.resumeAvailable)return [
   {id:'ctxResumeEntry',label:'RESUME ENTRY',group:'primary',
-   title:'Retry your previously blocked entry after resolving its obstruction'},
+   title:o.resumeReason==='coordinated'?
+     'A teammate was stopped at this threshold · deliberately retry your preserved entry':
+     'Previously blocked entry · resolve its obstruction, then deliberately retry'},
   ...contextActionChoices({...o,resumeAvailable:false})
  ];
   if(o.door)return o.doorPartial?[

@@ -14,10 +14,13 @@ on:
       - 'src/breach-order-lifecycle.ts'
       - 'src/breach-motor-door.ts'
       - 'src/breach-order-wait.ts'
+      - 'src/breach-execution-state.ts'
+      - 'src/ui/tactical-hud-density.ts'
       - 'src/breach-entry-interruption-group.ts'
       - 'scripts/lib/d3-30-physical-gate.mjs'
       - 'tests/release-d3-30-physical-gate.test.mjs'
       - 'tests/release-d3-30-threshold-coordination.test.mjs'
+      - 'tests/release-d3-30-recovery-feedback.test.mjs'
       - 'tests/release-d3-30-interrupted-entry.test.mjs'
   workflow_dispatch:
 permissions:
@@ -38,4 +41,4 @@ jobs:
       - name: Typecheck and critical capture/explicit-resume regressions
         run: |
           npm run check
-          node --experimental-strip-types --test tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-30-physical-gate.test.mjs tests/release-d3-30-threshold-coordination.test.mjs tests/release-d3-25b-terminal-entry-gate.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs
+          node --experimental-strip-types --test tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-30-physical-gate.test.mjs tests/release-d3-30-threshold-coordination.test.mjs tests/release-d3-30-recovery-feedback.test.mjs tests/release-d3-25b-terminal-entry-gate.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs

@@ -12,7 +12,8 @@ export function compactExecutionStatus(
  if(!status||options.down)return {visible:false,label:'',detail:'',priority:'quiet'};
  const kind=status.kind;
  if(attention.has(kind))return {
-  visible:true,label:kind==='blocked'?'ATTENTION':'RECOVERING',
+  visible:true,label:status.reason==='entry-interrupted'?'ENTRY HELD':
+    kind==='blocked'?'ATTENTION':'RECOVERING',
   detail:status.detail,priority:'attention'};
  if(kind==='idle')return options.selected&&options.phase==='planning'?
   {visible:true,label:'READY',detail:status.detail,priority:'quiet'}:

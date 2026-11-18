@@ -414,6 +414,7 @@ export function createTacticalPaletteController(config:{
     // the OPTION regardless of any unseen subsequent lock state; only the
     // deliberate command checks present access, avoiding an intel leak.
     resumeAvailable:!!a.interruptedDoorPlan,
+    resumeReason:a.interruptedDoorPlan?.reason,
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
     nearDoor:!door&&!!nearbyDoor,
