@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {escortWalkMultiplier} from '../src/breach-civilian-mission.ts';
+import {escortWalkMultiplier,rescueFollowGoal} from '../src/breach-civilian-mission.ts';
 import {setCivilianState} from '../src/breach-civilian-types.ts';
 import {newSession,planMove,team,toggling,stepSession}
  from '../src/breach-game.ts';
@@ -23,6 +23,19 @@ test('EQA3.1 injured civilian escort slows leader to the real 22u/s gait',()=>{
  assert.equal(escortWalkMultiplier(owner,civilian(1,55)),.39);
  assert.ok(53*escortWalkMultiplier(owner,civilian(1,55))<22);
  assert.ok(53*escortWalkMultiplier(owner,civilian(1,100))<14);
+});
+test('EQA3.1 escort tail tracks actual travelled path while operator WATCH faces sideways',()=>{
+ const actual=rescueFollowGoal({
+  p:point(100,200),priorP:point(100,199),velocity:43,heading:0
+ });
+ assert.ok(Math.abs(actual.x-100)<1e-6);
+ assert.ok(Math.abs(actual.y-177)<1e-6,
+  'northbound actor watching east leaves follower on real southward trail');
+ assert.deepEqual(rescueFollowGoal({p:point(100,200),heading:0,
+  priorP:point(100,200),velocity:0}),point(77,200),
+  'idle fallback retains deterministic heading-based anchor');
+ assert.deepEqual(rescueFollowGoal({p:point(100,200),heading:0}),
+  point(77,200),'legacy caller remains compatible');
 });
 test('EQA3.1 no automatic slowing of an unassigned, incapacitated, carried or non-following person',()=>{
  const c=civilian();
