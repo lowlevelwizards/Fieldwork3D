@@ -42,3 +42,16 @@ export function claimD326ColdFineProbe(
  witness.anchor={...actor.p};
  return true;
 }
+
+/** Suppress coarse-grid lookahead on a path whose safety specifically
+ * depends on 4-unit steps. Store only the route ARRAY identity, not actor
+ * world state; replacing transient nav automatically releases ownership.
+ * Shifting completed nodes preserves ownership until the route is gone.
+ */
+const ownedFineRoutes=new WeakMap<TeamActor,Pt[]>();
+export function markD326FineMotorRoute(actor:TeamActor):void{
+ ownedFineRoutes.set(actor,actor.nav);
+}
+export function ownsD326FineMotorRoute(actor:TeamActor):boolean{
+ return !!actor.nav.length&&ownedFineRoutes.get(actor)===actor.nav;
+}
