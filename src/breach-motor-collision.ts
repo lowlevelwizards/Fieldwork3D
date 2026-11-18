@@ -56,7 +56,8 @@ import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
 import {selectColdMotorMicroDeparture,claimColdMotorMicroDeparture}
  from './breach-d326-micro-departure.ts';
-import {claimD326ColdFineProbe} from './breach-d326-fine-route-gate.ts';
+import {claimD326ColdFineProbe,markD326FineMotorRoute}
+ from './breach-d326-fine-route-gate.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -197,6 +198,7 @@ export function resolveMotorCollision(
         if(fine.length&&watchClearanceAllowed(a.p,fine[0],p,
           !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
           setTransientRoute(s,a,fine,'motor-cold-fine-world');
+          markD326FineMotorRoute(a);
           notePreciseLocalDetour(a,fine[0]);
           a.lastNavRepairAt=s.seconds;
           provisionalRouteAccepted(a);
