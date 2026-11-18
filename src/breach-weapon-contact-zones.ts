@@ -21,7 +21,7 @@ export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36';stock:Rif
  * A real foregrip/handstop retains its explicit physical socket.
  */
 export const UNDERHAND_PALM_DROP=Object.freeze({
- ar:.60,ak:.65,hk:.48,fal:.65,fnc:.60,g36:.78
+ ar:.88,ak:.65,hk:.48,fal:.65,fnc:.60,g36:.78
 } as const);
 export const UNDERHAND_PALM_Z=-1.60;
 export const AR_HANDGUARD_START=3.55;
