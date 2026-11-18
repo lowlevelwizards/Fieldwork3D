@@ -48,8 +48,8 @@ test('P8 integrated optic remains one casing plus compact reflex crown',()=>{
  assert.ok(bounds(face).intersectsBox(bounds(one(g,'g36LowerOpticBarrel'))));
  assert.equal(handle.geometry.parameters.shapes.holes.length,1);
  near(bounds(g).max.y,A.opticTopY,'optic crown');
- assert.equal(F.lowerSightY,3.57);
- assert.equal(F.upperSightY,4.46);
+ assert.equal(F.lowerSightY,3.99);
+ assert.equal(F.upperSightY,4.88);
  clearWeaponSilhouette(g);m.dispose();
 });
 test('P8 actual shared HK pivot/paddle, charging tab and six factory part slots',()=>{
@@ -82,7 +82,7 @@ test('P8 real shared atlas paints right-only ejection and broad polymer facets',
  assert.equal(a.magRibsPerSide,0);
  assert.ok(sample(2,0,55,63)<110,'bold ejection landmark on right');
  assert.equal(sample(3,0,55,63),255,'left side has no mirrored port');
- assert.ok(sample(2,1,55,51)<255,'mag body facet is visibly shaded');
+ assert.equal(sample(2,1,55,51),255,'magazine has no hard projected interior bar');
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const count=g.children.length;
  applyG36PixelDetails(g);
