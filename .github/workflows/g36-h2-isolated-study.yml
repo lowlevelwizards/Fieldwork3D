@@ -1,0 +1,43 @@
+name: G36 H2 isolated handguard study
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/weapons/geometry/g36-h2-handguard-study.ts'
+      - 'src/g36-h2-handguard-lab.ts'
+      - 'g36-h2-handguard-lab.html'
+      - 'vite.config.g36-h2.ts'
+      - 'tests/weapon-g36-h2-isolated-study.test.mjs'
+      - 'scripts/smoke-g36-h2-study.mjs'
+      - '.github/workflows/g36-h2-isolated-study.yml'
+permissions:
+  contents: read
+jobs:
+  isolated-study:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Isolated H2 geometry and untouched production H1
+        run: node --experimental-strip-types --test tests/weapon-g36-h2-isolated-study.test.mjs
+      - name: TypeScript validation and standalone H2 study bundle
+        run: |
+          npm run check
+          npx vite build --config vite.config.g36-h2.ts
+      - name: Browser capture tools
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+      - name: Capture actual WebGL H1/H2 views and mobile thumbnails
+        run: node scripts/smoke-g36-h2-study.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: g36-h2-isolated-art-study
+          path: g36-h2-captures/
+          if-no-files-found: ignore
+          retention-days: 21
