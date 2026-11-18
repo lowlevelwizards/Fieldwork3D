@@ -944,13 +944,52 @@ function run(site,seed,kind){
           fineLast:fine.at(-1)??null});
       }
     }
+    const nearestWalls=world.walls.map((wall,index)=>({
+      index,a:wall.a,b:wall.b,
+      gap:round(pointToSegment(actor.p,wall))
+    })).sort((a,b)=>a.gap-b.gap).slice(0,18);
+    const otherActorReachability=authored?actors.filter(other=>other!==actor)
+      .map(other=>({
+        id:other.id,at:{...other.p},
+        worldNodes:routeWithSqueezeWorld(other.p,authored,
+          session.doors,world).length,
+        fineNodes:coldFineMotorWorldRoute(other.p,authored,
+          session.doors,world).length
+      })):[];
     const stageProbes=paths.map((route,index)=>{
       let prior=actor.p,total=0;const legTruth=[];
       for(const point of route){
         const ok=sweptBodyClear(prior,point,session.doors,
           OPERATOR_RADIUS,world);
         const d=dist(prior,point);total+=d;
-        legTruth.push({point,full:ok,length:round(d)});
+        let firstFailed=null;
+        if(!ok){
+          const steps=Math.ceil(d/.3);
+          let last=prior;
+          for(let k=1;k<=steps;k++){
+            const t=k/steps;
+            const test={x:prior.x+(point.x-prior.x)*t,
+              y:prior.y+(point.y-prior.y)*t};
+            if(!sweptBodyClear(last,test,session.doors,
+              OPERATOR_RADIUS,world)){
+              firstFailed={at:test,
+                from:last,staticClear:world.passable(test,OPERATOR_RADIUS),
+                nearestWalls:world.walls.map((wall,index)=>({
+                  index,gap:round(pointToSegment(test,wall)),a:wall.a,b:wall.b
+                })).sort((a,b)=>a.gap-b.gap).slice(0,3),
+                nearestCover:world.cover.map((o,index)=>({
+                  index,fixture:o.fixture??null,
+                  dx:round(Math.max(0,Math.abs(test.x-o.x)-o.w/2)),
+                  dy:round(Math.max(0,Math.abs(test.y-o.y)-o.h/2))
+                })).sort((a,b)=>
+                  Math.hypot(a.dx,a.dy)-Math.hypot(b.dx,b.dy)).slice(0,3)};
+              break;
+            }
+            last=test;
+          }
+        }
+        legTruth.push({point,full:ok,length:round(d),
+          ...(firstFailed?{firstFailed}:{})});
         prior=point;
       }
       return {index,total:round(total),allFull:legTruth.every(x=>x.full),
@@ -983,6 +1022,8 @@ function run(site,seed,kind){
          first:hypotheticalNoDoors.slice(0,5)},
        singleOpenDoors:perDoor,
        coldRetreats,
+       nearestWalls,
+       otherActorReachability,
        stageProbes
      },
      remainingNavNodes:actor.nav.length,
