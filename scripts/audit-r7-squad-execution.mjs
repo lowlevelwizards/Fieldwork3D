@@ -1014,6 +1014,31 @@ function run(site,seed,kind){
           d327Stride.fullBodyMotorStrideClear(actor.p,exactWorldNorth[0],
             (from,to)=>sweptBodyClear(from,to,session.doors,
               OPERATOR_RADIUS,world)):false;
+        const exactDoorContactSteps=(()=>{
+          const legs=[];let prior=actor.p;
+          for(const [index,p] of exactWorldBridge.entries()){
+            const real=d327Stride.fullBodyMotorStrideClear(
+              prior,p,(from,to)=>sweptBodyClear(
+                from,to,session.doors,OPERATOR_RADIUS,world));
+            const staticClear=d327Stride.fullBodyMotorStrideClear(
+              prior,p,(from,to)=>sweptBodyClear(
+                from,to,[],OPERATOR_RADIUS,world));
+            if(!real||!staticClear)legs.push({
+              index,from:prior,to:p,real,staticClear,
+              nearDoors:session.doors.map(d=>({
+                id:d.id,open:d.open,locked:!!d.locked,
+                fraction:d.openFraction,
+                fromGap:pointToSegment(prior,doorLeafSegment(d)),
+                toGap:pointToSegment(p,doorLeafSegment(d))
+              })).filter(d=>Math.min(d.fromGap,d.toGap)<100)
+               .sort((a,b)=>
+                 Math.min(a.fromGap,a.toGap)-Math.min(b.fromGap,b.toGap))
+               .slice(0,8)
+            });
+            prior=p;
+          }
+          return legs.slice(0,10);
+        })();
         const exactRealDoorsBridge=exactWorldNorth.length>0&&
           fullBodyMotorRouteClear(actor.p,exactWorldBridge,
             (from,to)=>sweptBodyClear(from,to,session.doors,
@@ -1081,6 +1106,7 @@ function run(site,seed,kind){
             fullStaticBridgeClear:exactFullBridge,
             fullCurrentDoorsNorthClear:exactRealDoorsNorth,
             fullCurrentDoorsBridgeClear:exactRealDoorsBridge,
+            blockedLegs:exactDoorContactSteps,
             firstRealDoorStrideClear:exactFirstLive},
           noDoorNorth:{firstNodes:physicalNoDoorsFirst.length,
             fineNodes:physicalNoDoorsFine.length,
