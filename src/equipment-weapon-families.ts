@@ -281,7 +281,7 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('g36-k-dual','HK G36K · Classic Carbine','carbine','g36','g36-dual-receiver',
   'g36-stock','g36-grip','g36-mag30','g36-handguard-k','g36-barrel-318'),
  p('g36-c-classic','HK G36C · Compact','carbine','g36','g36-rail-receiver',
-  'g36-stock-short','g36-grip','g36-mag30','g36-handguard-c','g36-barrel-228'),
+  'g36-stock','g36-grip','g36-mag30','g36-handguard-c','g36-barrel-228'),
  p('g36-ka4','HK G36K A4 · Modernized','carbine','g36','g36-rail-receiver',
   'g36-stock-adjustable','g36-grip','g36-mag30','g36-handguard-k-rail','g36-barrel-318')
 ];
