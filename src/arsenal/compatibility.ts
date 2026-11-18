@@ -116,7 +116,7 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
    return {valid:true,requestedSlot:slot,requestedPartId:id,changes:[],
     requiresConfirmation:false,reasons:[],nextRecipe:next};
   if(attachmentSlot==='optic'&&id!=='optic-irons'&&
-   id!=='optic-g36-integrated'){
+   id!=='optic-g36-integrated'&&id!=='optic-g36-single'){
    const required=opticMountRequirement(prior,id);
    if(!required)
     return rejected(slot,id,
@@ -151,7 +151,7 @@ export function proposeArsenalPartChange(recipe:ArsenalRecipeV2,
    unresolved.map(x=>x.attachmentId+' ('+x.reasons.join('/')+')').join(', '));
  // Recheck against the committed candidate, not a temporary mount probe.
  if(slot==='optic'&&id!=='optic-irons'&&
-  id!=='optic-g36-integrated'&&
+  id!=='optic-g36-integrated'&&id!=='optic-g36-single'&&
   !physicalAttachmentFitOptions(normalized,id).feasible)
   return rejected(slot,id,'Optic mount or eye-box clearance is invalid');
  // New furniture accessories must have a real free rail and compatible

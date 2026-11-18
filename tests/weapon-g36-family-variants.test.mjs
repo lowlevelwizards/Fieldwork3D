@@ -10,6 +10,8 @@ import {g36FrontEnd,g36SupportRange,g36HandguardEnd}
  from '../src/weapons/geometry/g36-variant-parts.ts';
 import {g36PixelAtlas} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
+import {resolveMountedAccessoryLayout} from '../src/weapons/geometry/mounted-accessory-layout.ts';
+import {weaponHandlingModifiers} from '../src/equipment-weapon-handling.ts';
 import {alternateStockPosition,normalizedStockPosition,stockHingeX}
  from '../src/weapon-stock-position.ts';
 import {initialWeaponConfiguration,selectWeaponFamilyPreset,
@@ -153,6 +155,9 @@ test('single-scope upper is an optional part, never another preset, and cannot t
  const cfg=setConfiguredFamilyPart(k,'receiver','g36-single-receiver');
  assert.equal(cfg.build.parts.receiver,'g36-single-receiver');
  assert.equal(cfg.slots.optic,'optic-g36-single');
+ assert.deepEqual(resolveMountedAccessoryLayout(cfg).unresolved,[],
+  'factory single scope never enters detachable mount search');
+ assert.equal(weaponHandlingModifiers(cfg).sightSystem,'integrated');
  const g=model(cfg);
  assert.equal(all(g,'g36LowerOptic').length,1);
  assert.equal(all(g,'g36UpperReflex').length,0);

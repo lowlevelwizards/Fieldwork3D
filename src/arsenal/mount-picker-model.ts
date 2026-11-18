@@ -26,7 +26,7 @@ export interface MountPickerState{
  rails:readonly MountPickerRail[];
  reason?:string;
 }
-const INTEGRAL=new Set(['optic-irons','optic-g36-integrated',
+const INTEGRAL=new Set(['optic-irons','optic-g36-integrated','optic-g36-single',
  'foregrip-none','light-none']);
 const faceOrder:Record<MountPickerRail['face'],number>={
  top:0,bottom:1,right:2,left:3
