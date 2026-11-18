@@ -701,6 +701,42 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
     }
   }
   if(!proposed.length)return false;
+  // A known, closed leaf's FRAME is a visible physical landing obstacle.
+  // intelPassable checks known walls/cover but deliberately not door leaves;
+  // a final endpoint can otherwise be legal only for a squeezed body and
+  // make the full-radius motor grind against a same-side CLOSED FRONT leaf.
+  // Do not consult live leaf angle or undiscovered door state: only previously
+  // learned physical frames and the player's remembered opening fraction.
+  const knownFullBodyLanding=(point:Pt):boolean=>
+    intelPassable(point,s.intel,OPERATOR_RADIUS)&&
+    s.doors.every(door=>!doorKnown(s.intel,door.id)||
+      (s.intel.doorMemory.get(door.id)??0)>=.72||
+      pointToSegment(point,door)>=OPERATOR_RADIUS+1);
+  // EQA1 / D3.23A: a finger can travel THROUGH a known squeeze passage,
+  // but the last MOVE point must park the full operator-sized body.
+  // The known-only retreat is strictly on the final drawn segment.
+  const landing=proposed[proposed.length-1];
+  if(!knownFullBodyLanding(landing.p)){
+    const anchor=proposed.length>1?proposed[proposed.length-2].p:
+      replaceExisting?a.p:finalPoint(a);
+    const original={...landing.p},span=d(anchor,original);
+    let corrected:Pt|null=null;
+    for(let back=.75;back<=Math.min(13,span)+.001;back+=.75){
+      const f=span>0?Math.min(1,back/span):1;
+      const trial={x:original.x+(anchor.x-original.x)*f,
+        y:original.y+(anchor.y-original.y)*f};
+      if(d(anchor,trial)<3)continue;
+      if(!knownFullBodyLanding(trial)||
+         !legalMoveRoute(s,anchor,trial).length)continue;
+      corrected=trial;break;
+    }
+    if(!corrected){
+      notify(s,'MOVE REJECTED · DRAG ENDPOINT TOO NARROW TO STAND');
+      return false;
+    }
+    landing.p=corrected;
+    clipped=true;
+  }
   // Door actions inserted during one stroke remain one undoable edit.
   const expanded:PlanNode[]=[];let prior=replaceExisting?a.p:finalPoint(a);
   const opened=new Set((replaceExisting?[]:a.plan).filter(n=>
