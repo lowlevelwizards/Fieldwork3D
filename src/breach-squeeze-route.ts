@@ -390,11 +390,11 @@ export function routeWithSqueezeWorld(from:Pt,to:Pt,doors:Door[],world?:SessionW
  return narrow;
 }
 
-/** D3.26E: OFFLINE-only finer world-route feasibility. The fine grid
+/** D3.26E/F: COLD-only finer world-route feasibility. The fine grid
  * itself is not physical authority; each leg, including the START and
  * the final exact authored GO, must pass full-body 0.3-unit motor sweeps.
  * Split long straight edges into ordinary transient motor waypoints.
- * Caller may inspect the result without moving a single actor.
+ * Offline audits inspect it; D3.26F allows only a rate-limited failed\n * motor to adopt the fully verified transient route without moving the actor. 
  */
 export function coldFineMotorWorldRoute(from:Pt,to:Pt,doors:Door[],
  world?:SessionWorldGeometry):Pt[]{
