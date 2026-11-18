@@ -9,7 +9,7 @@ import {edit,atomicTeamEdit,validKnownPieArc,validEditedPlan} from './breach-pla
 import {party,team,canEdit} from './breach-session-selectors.ts';
 import {addNode,finalPoint} from './breach-plan-node-commands.ts';
 import {projectReachableGoal} from './breach-nav-diagnostics.ts';
-import {intelPassable,routeWithIntel} from './breach-intel.ts';
+import {intelPassable,intelNudgeSegmentClear,routeWithIntel} from './breach-intel.ts';
 const clone=(p:Pt):Pt=>({...p});
 const clamp=(x:number,a:number,b:number)=>Math.max(a,Math.min(b,x));
 
@@ -71,6 +71,7 @@ export function insertPlanNode(s:Session,id:string,index:number,p:Pt){
   const target=projectReachableGoal(from,p,{
     canStand:at=>intelPassable(at,s.intel),
     routeTo:(origin,goal)=>routeWithIntel(s.intel,origin,goal),
+    canNudgeAcross:(from,to)=>intelNudgeSegmentClear(s.intel,from,to),
   });
   if(!target)return false;
   const proposed=copyNodes(a.plan);
