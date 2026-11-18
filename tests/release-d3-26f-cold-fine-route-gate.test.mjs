@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {claimD326ColdFineProbe}
+import {claimD326ColdFineProbe,markD326FineMotorRoute,
+ ownsD326FineMotorRoute}
  from '../src/breach-d326-fine-route-gate.ts';
 
 const goal={x:220,y:105};
@@ -40,4 +41,20 @@ test('D3.26F changed authored GO/order starts a new bounded entitlement',()=>{
  const other={x:250,y:105};
  actor.plan=[{id:8,kind:'move',p:other}];
  assert.equal(claimD326ColdFineProbe(actor,other,1.01),true);
+});
+
+test('D3.26F5 fine route survives waypoint shifts but not route replacement',()=>{
+ const a={...create(),nav:[{x:48,y:96},{x:46,y:92},goal]};
+ assert.equal(ownsD326FineMotorRoute(a),false);
+ markD326FineMotorRoute(a);
+ assert.equal(ownsD326FineMotorRoute(a),true);
+ a.nav.shift();
+ assert.equal(ownsD326FineMotorRoute(a),true,
+  'coarse lookahead must stay disabled across true fine waypoint advances');
+ a.nav=[{x:52,y:94},goal];
+ assert.equal(ownsD326FineMotorRoute(a),false,
+  'replacement route returns to normal optimization');
+ markD326FineMotorRoute(a);
+ a.nav.length=0;
+ assert.equal(ownsD326FineMotorRoute(a),false);
 });
