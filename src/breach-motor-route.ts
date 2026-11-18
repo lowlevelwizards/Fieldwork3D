@@ -311,18 +311,19 @@ export function prepareMotorRoute(
       a.velocity=0;a.blockedTime+=dt;a.lastBlocker='route';
       return 'unavailable';
     }
-    // D3.26F3: a genuinely stalled plain authored MOVE with NO nav
-    // never reaches the collision recovery branch (Motel 19143269 Moss).
-    // Once normal intel, door pressure, shove and failed-route backoff
-    // have already run repeatedly, allow ONE bounded cold 4-unit A*.
-    // A returned route must pass EVERY real 0.3-unit full-body motor
-    // stride, terminate at the SAME GO, and travel through the ordinary
-    // motor on later frames. No early move, door bypass or intel reveal.
+    // D3.26G3: a genuinely stalled authored MOVE with NO nav never
+    // reaches the collision recovery path. Once one ordinary normal-intel
+    // request has ALREADY failed and physical door pressure / shove have
+    // ALREADY been offered, allow one bounded cold full-body fine-grid
+    // retry before another long portal detour. Motel 19143269 proved the
+    // fully legal fine path worked, but waiting until 35s left too little
+    // of the frozen 45s. A returned path must reach the unchanged GO
+    // and pass EVERY actual 0.3-unit motor step. Nothing moves here.
     if(a.side==='blue'&&a.plan[0]?.kind==='move'&&
        !a.plan[0].stackDoorId&&!a.plan[0].entryDoorId&&
        !a.doorTraversal&&!a.traversal&&!a.traversalPending&&
        !a.squeeze&&!a.fireRetreatTarget&&
-       a.recoveryAttempts>=2&&a.blockedTime>=2.5&&
+       a.recoveryAttempts>=1&&a.blockedTime>=1.8&&
        claimD326ColdFineProbe(a,p,s.seconds)){
       const world=sessionWorldGeometry(s);
       const fine=coldFineMotorWorldRoute(a.p,p,s.doors,world);
