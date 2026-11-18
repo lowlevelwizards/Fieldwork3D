@@ -38,6 +38,7 @@ jobs:
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
             11 2700 --site-index=5 --audit-seed=19285501 \
             --audit-scale=standard --d327-garage-probe \
+            --route-transitions --trace-actor=moss --trace-mode=authored \
             > "$RUNNER_TEMP/d327-garage.json"
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
@@ -63,7 +64,24 @@ jobs:
             actualBodyClear:witness.actualOrderFullBodyClear,
             warning:witness.orderIssue
           }));
-          console.log('D327_GARAGE_CONTACT',JSON.stringify(witness));
+          console.log('D327_GARAGE_CONTACT',JSON.stringify({
+            actual:witness.actualOrder,position:witness.position,
+            originalGoalDistance:witness.originalGoalDistance,
+            physicalCommittedArrival:witness.physicalCommittedArrival,
+            authoredGoalIntact:witness.authoredGoalIntact,
+            firstRoute:witness.actualGoalRoutes.guardedPassage.first,
+            originalGoalRoutes:witness.actualGoalRoutes.guardedPassage.nodes
+          }));
+          const events=data.rows[0].modes.find(x=>x.mode==='authored')
+            ?.routeTransitions?.events??[];
+          for(const event of events.filter(x=>x.actorId==='moss'&&
+            ['motor-exact-passage','initial-intel','full-body-lane',
+             'collision-world-replan','door-rehearsal'].includes(x.source)))
+            console.log('D327_ROUTE',JSON.stringify({
+              seconds:event.seconds,source:event.source,
+              first:event.next[0]??null,position:event.position,
+              doorId:event.doorId,doorPhase:event.doorPhase
+            }));
           NODE
       - uses: actions/upload-artifact@v4
         if: always()
