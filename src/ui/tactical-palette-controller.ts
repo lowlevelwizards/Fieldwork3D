@@ -10,7 +10,8 @@ import {sitePowerControls,controlPosition,POWER_CONTROL_REACH,
 import {interruptsWatch} from '../breach-plan.ts';
 import {equippedEntryMethods} from '../equipment-entry-tools.ts';
 import {entryToolVerdict} from '../breach-entry-tools.ts';
-import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,type Session,type TeamActor} from '../breach-game.ts';
+import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,
+ canResumeInterruptedDoorPlan,type Session,type TeamActor} from '../breach-game.ts';
 import {SUSPECT_CHALLENGE_RANGE} from '../breach-suspect-compliance.ts';
 import {sweptBodyClear} from '../breach-navigation.ts';
 import {sessionWorldGeometry} from '../breach-world-context.ts';
@@ -409,6 +410,7 @@ export function createTacticalPaletteController(config:{
     nearestPaletteCandidate(state.civilians,at,c=>
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
   const choices=availableActions(!!selectedWatch,{
+    resumeAvailable:canResumeInterruptedDoorPlan(state,selected),
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
     nearDoor:!door&&!!nearbyDoor,
