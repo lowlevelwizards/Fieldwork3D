@@ -2,7 +2,11 @@ name: EQA3.1 exact physically paced rescue custody witness
 on:
   push:
     branches: [feature/eqa3-1-rescue-escort-pacing-20261118]
-    paths: ['.github/workflows/eqa3-1-escort-causality.yml']
+    paths:
+      - '.github/workflows/eqa3-1-escort-causality.yml'
+      - 'src/breach-civilian-mission.ts'
+      - 'src/breach-order-movement.ts'
+      - 'tests/eqa3-1-rescue-escort-pacing.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
