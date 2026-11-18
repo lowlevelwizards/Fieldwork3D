@@ -191,8 +191,14 @@ export function applyG36PixelDetails(root:THREE.Group):void{
      // using ONLY UVs. No modeling of tiny real-life flash-hider cuts.
      const muzzleStart=mesh.userData.g36MuzzleStartX??17.85;
      const muzzleEnd=mesh.userData.g36MuzzleEndX??19.50;
+     // C keeps two FULL, chunky vents. Compress their atlas span slightly
+     // toward the rear: vent #2 ends before the tilted front end at y=.45,
+     // while vent #3 (atlas start 8.9688) never starts on this shorter shell.
+     // No per-variant atlas or overlay geometry, even at 64px thumbnail scale.
+     const compactX=region==='guard'&&mesh.userData.g36GuardLength==='short'?
+      4.23+(x-3.75)*.80:x;
      const tx=region==='muzzle'&&selected?
-      5.45+(x-muzzleStart)/(muzzleEnd-muzzleStart)*3.95:x;
+      5.45+(x-muzzleStart)/(muzzleEnd-muzzleStart)*3.95:compactX;
      const ty=region==='muzzle'&&selected?
       G36_H3_VENT_SIZE.centerY+y*.78:y;
      const [uu,vv]=uv(tile,tx,ty);

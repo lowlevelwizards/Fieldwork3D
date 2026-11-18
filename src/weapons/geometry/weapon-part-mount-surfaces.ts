@@ -13,6 +13,7 @@ import {AR_HANDGUARD_START,arHandguardEnd,akHandguardStart}
  from '../../breach-weapon-contact-zones.ts';
 import {HK_CLAW_VISUAL} from './hk-rail-accessories.ts';
 import {AK_SIDE_MOUNT_ART} from './ak-side-mount-geometry.ts';
+import {g36ReceiverRailSpan} from './g36-variant-parts.ts';
 export type WeaponMountSurface=Readonly<{
  id:string;ownerPartId:string;ownerSlot:FamilyPartSlot|'opticMount';
  standard:PartMountStandard;role:PartMountRole;face:PartMountFace;
@@ -106,10 +107,10 @@ export function weaponPartMountSurfaces(build:WeaponFamilyBuild,
   }
  }
  if(build.family==='g36'){
-  // Actual modelled continuous bridge (x -.5? no: -5.85..6.30),
-  // not the original molded optical handle with no rail at all.
+  // Expose only the actual Picatinny surface in the variant's geometry.
+  // C extends forward; KA4 retains its previously approved rail span.
   if(build.parts.receiver==='g36-rail-receiver')
-   add('receiver',[-5.855,6.295],2.225,0);
+   add('receiver',g36ReceiverRailSpan(build.parts.barrel),2.225,0);
   if(build.parts.handguard==='g36-handguard-k-rail'){
    const part=FAMILY_PARTS[build.parts.handguard];
    for(const mount of part.mounts??[]){

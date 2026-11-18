@@ -6,7 +6,7 @@ import {FAMILY_PRESETS,validFamilyBuild,initialWeaponFamilyBuild,
  readWeaponFamilyBuild,proposeFamilyPartChange} from '../src/equipment-weapon-families.ts';
 import {addG36Family} from '../src/weapons/geometry/g36-family-silhouettes.ts';
 import {G36_E0_FACTORY} from '../src/weapons/geometry/g36-family-contract.ts';
-import {g36FrontEnd,g36SupportRange,g36HandguardEnd}
+import {g36FrontEnd,g36SupportRange,g36HandguardEnd,g36ReceiverRailSpan}
  from '../src/weapons/geometry/g36-variant-parts.ts';
 import {g36PixelAtlas} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
@@ -20,6 +20,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,
  from '../src/equipment-weapon-assemblies.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
 import {physicalWeaponMountSlots} from '../src/weapons/geometry/weapon-physical-mount-slots.ts';
+import {weaponPartMountSurfaces} from '../src/weapons/geometry/weapon-part-mount-surfaces.ts';
 const originals=['g36-service','g36-k-dual','g36-c-classic','g36-ka4'];
 const preset=id=>{
  const p=FAMILY_PRESETS.find(p=>p.id===id);
@@ -62,7 +63,7 @@ test('G36K 318mm and G36C 228mm have real distinct front ends and matching shot-
  const specs=[
   ['g36-service',19.50,13.45,4],
   ['g36-k-dual',15.50,11.00,3],
-  ['g36-c-classic',12.15,8.80,2],
+  ['g36-c-classic',12.15,9.65,2],
   ['g36-ka4',15.50,11.00,3]
  ];
  for(const [id,muzzleX,guardX] of specs){
@@ -114,7 +115,7 @@ test('G36C flat bridge has backup irons, G36K original integral optics remain, K
  clearWeaponSilhouette(ka4);
  const short=model(c);
  assert.equal(all(short,'g36ModernHandguardRail').length,0);
- assert.equal(all(short,'g36MasterStock').length,1,'shorter original two-opening stock');
+ assert.equal(all(short,'g36MasterStock').length,1,'full original two-opening stock');
  clearWeaponSilhouette(short);
 });
 test('rail mounts exist only where actual model contains rails; optics and lights do not appear on integral scopes',()=>{
@@ -180,4 +181,45 @@ test('only valid barrel/handguard lengths; saved G36 service still normalizes id
  const invalid=readWeaponFamilyBuild({family:'g36',
   parts:{...G36_E0_FACTORY.parts,barrel:'g36-barrel-228'}},'rifle');
  assert.equal(invalid.parts.barrel,'g36-barrel-480');
+});
+
+
+test('G36C proportion polish changes only compact front/stock/rail, not its weapon length datum',()=>{
+ const c=preset('g36-c-classic'),k=preset('g36-k-dual'),a=preset('g36-ka4');
+ const compact=model(c),classic=model(k),modern=model(a);
+ assert.equal(c.build.parts.stock,'g36-stock','compact factory uses the original folder');
+ assert.equal(k.build.parts.stock,'g36-stock');
+ assert.equal(c.build.parts.barrel,'g36-barrel-228');
+ assert.equal(resolveWeaponAssembly(c).muzzleX,12.15,'short barrel and shot socket remain fixed');
+ assert.equal(resolveWeaponAssembly(c).stockX,-15.05,'rear physical datum follows original stock');
+ assert.equal(g36HandguardEnd(c.build.parts.handguard),9.65);
+ assert.equal(g36HandguardEnd(k.build.parts.handguard),11);
+ assert.equal(g36HandguardEnd(a.build.parts.handguard),11);
+ assert.ok((9.65-3.75)/(8.80-3.75)>1.16,'compact shell is at least 16% longer');
+ assert.ok(12.15-9.65<2.6,'less exposed tube between polymer nose and muzzle');
+ assert.equal(all(compact,'g36MasterStock').length,1);
+ const stockBox=g=>new THREE.Box3().setFromObject(all(g,'g36MasterStock')[0]);
+ assert.ok(near(stockBox(compact).min.x,stockBox(classic).min.x,.001),
+  'no compressed short-stock transform on compact preset');
+ assert.ok(near(stockBox(compact).max.x,stockBox(classic).max.x,.001));
+ assert.deepEqual(g36ReceiverRailSpan(c.build.parts.barrel),[-5.855,7.695]);
+ assert.deepEqual(g36ReceiverRailSpan(a.build.parts.barrel),[-5.855,6.295]);
+ const rail=g=>all(g,'g36PicatinnyTop')[0];
+ assert.ok(near(new THREE.Box3().setFromObject(rail(compact)).max.x,7.695,.002));
+ assert.ok(near(new THREE.Box3().setFromObject(rail(modern)).max.x,6.295,.002));
+ const [cBack,cFront]=all(compact,'g36BackupIron');
+ const [aBack,aFront]=all(modern,'g36BackupIron');
+ assert.ok(cBack&&cFront&&aBack&&aFront);
+ const sightCenter=m=>{
+  const box=new THREE.Box3().setFromObject(m);
+  return (box.min.x+box.max.x)/2;
+ };
+ assert.ok(near(sightCenter(cFront),7.0,.01));
+ assert.ok(near(sightCenter(aFront),5.14,.01),'KA4 unchanged');
+ const surface=build=>weaponPartMountSurfaces(build).find(s=>s.ownerPartId==='g36-rail-receiver');
+ assert.equal(surface(c.build)?.endX,7.695,'mount ends at compact rail geometry');
+ assert.equal(surface(a.build)?.endX,6.295,'KA4 mount unchanged');
+ assert.ok(all(compact,'g36ModernHandguardRail').length===0);
+ assert.ok(all(compact,'g36LongHandguard')[0].userData.g36SolidFrontCap);
+ for(const g of [compact,classic,modern])clearWeaponSilhouette(g);
 });

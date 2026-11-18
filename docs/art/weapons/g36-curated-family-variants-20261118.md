@@ -5,7 +5,7 @@ Build exactly **4 factory presets total**: preserved `g36-service` plus `g36-k-d
 
 ## New parts (8 essential + 1 optional)
 - K: `g36-barrel-318`, `g36-handguard-k`
-- C: `g36-barrel-228`, `g36-handguard-c`, `g36-rail-receiver`, `g36-stock-short`
+- C: `g36-barrel-228`, `g36-handguard-c`, `g36-rail-receiver`, original `g36-stock` (compact stock remains custom/legacy only)
 - K A4: `g36-handguard-k-rail`, `g36-stock-adjustable`; reuses K barrel + C flat rail
 - Optional: `g36-single-receiver` removes only the original upper reflex housing/lens, retaining lower magnified optic and carry handle. No extra factory preset.
 
@@ -14,16 +14,16 @@ Original 6-slot service part IDs remain immutable. Existing smoked polymer magaz
 ## Geometry (Fieldwork stylized coordinates; not fabrication dimensions)
 - Original: guard front 13.45, muzzle 19.50, outer stock -15.05. Original 476 triangles / 23 meshes.
 - K: guard front 11.00, muzzle 15.50. The shell shares H3's six-point front/back solid 3D section; existing atlas renders three untrimmed side vent impressions.
-- C: guard front 8.80, muzzle 12.15. Same H3 section; two visible vents; flat roof bridge and two folding iron posts.
+- C (Nov 18 proportion follow-up): guard front 9.65, muzzle remains 12.15; same 6-facet H3 shell with slightly stronger front/rear rake; two complete rescaled atlas vents; flat rail extends to 7.695 (KA4 remains 6.295), with front folding iron at 7.00.
 - Modern K: K front shell plus one actual upper, lower and bilateral support rail. Corresponding PartMountInterfaces are backed by matching physical mount surfaces and 3D geometry; no imagined rack or accessory faces.
-- Short skeletal stock compresses only V13 frame and buttpad X about the original hinge. Adjustable folding stock adds a large simple cheek rest and buttpad, using original hinge.
+- The factory G36C now reuses the unscaled, approved V13 two-opening folder from G36/G36K. The previously released short skeletal stock is retained as an optional/legacy saved part, but no longer appears on a factory preset. Adjustable folding stock adds a large simple cheek rest and buttpad, using original hinge.
 - Reuse the R3 eight-corner tapered flash-hider *grammar* with correct endpoint, and project its existing pooled atlas UVs along the shorter body. Never scale the receiver.
 - All variants preserve common operator grip/magazine control, 5.56 receiver, charging tab and SEF glyph positions.
 
 ## Gameplay/handling integration
-- `resolveWeaponAssembly` and `riflePoseContacts` share the length-specific front and contact extents with the visual builder, so both muzzle and support hand follow the actual front shell.
+- `resolveWeaponAssembly` and `riflePoseContacts` share the length-specific front and contact extents with the visual builder, so both muzzle and support hand follow the actual front shell. Compact muzzle endpoint stays 12.15 and the rear shoulder contact uses the original stockX -15.05.
 - Original G36 retains exact preexisting contact `4.15+.65` and `13.45-1.35`, its sight height and original gameplay data.
-- `g36-rail-receiver` exposes physical picatinny optic positions. Dual/single optics cannot accept duplicate detachable sights. Rail front `g36-handguard-k-rail` enables mounted foregrips/lights where built.
+- `g36-rail-receiver` exposes physical Picatinny optic positions on the real bridge span: C -5.855..7.695, K A4 -5.855..6.295. Dual/single optics cannot accept duplicate detachable sights. Rail front `g36-handguard-k-rail` enables mounted foregrips/lights where built.
 - A factory default flat bridge uses irons; single-scope and dual-scope configurations have distinct fixed optic metadata, no fake scope.
 - Presets are selectable for the appropriate existing gameplay class without migrating a carbine into a rifle or inventing a seventh save slot.
 - Magazine capacity, feed and ammo definitions unchanged; no automatic campaign equipment ownership changes.
@@ -32,3 +32,6 @@ Original 6-slot service part IDs remain immutable. Existing smoked polymer magaz
 - New tests: `tests/weapon-g36-family-variants.test.mjs` assert exact 4 presets, original R6 476/23 census and unchanged save, K/C geometry endpoints & support datums, KA4 rails and selector, and single-scope option.
 - Include original R6 and all historical G36 regression tests in dedicated real WebGL audit. Run Arsenal M2/M3 mounting + resource and Ground Zero critical checks.
 - Merge only after latest main Pages deployment verified and no active production release; verify public Pages build stamp matches merge commit.
+
+## Nov 18 G36C visual correction and acceptance
+User screenshot review preferred more fore-end polymer relative to exposed barrel and the approved full V13 folding stock rather than a squeezed stock. The compact guard grows about 17% from its previous modeled length (rear floor 3.75; old front 8.80, new front 9.65) with no change to barrel/muzzle or the G36/K/KA4 fore-end. Two large side ventilation impressions remain fully inside the C shell via UV-only re-projection in the pooled G36 atlas; no additional materials, draw calls or saved slots. The forward compact rail and backup sight follow its new proportion and mount interfaces report the same drawn physical span. Historical short-stock saves remain readable. The C factory preset uses the original approved folding stock and folding behavior. Focused family, mounts, visual and Pages release checks gate the release.
