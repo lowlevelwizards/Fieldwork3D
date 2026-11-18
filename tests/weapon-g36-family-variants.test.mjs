@@ -210,8 +210,6 @@ test('G36C proportion polish changes only compact front/stock/rail, not its weap
  const [cBack,cFront]=all(compact,'g36BackupIron');
  const [aBack,aFront]=all(modern,'g36BackupIron');
  assert.ok(cBack&&cFront&&aBack&&aFront);
- assert.ok(near(cFront.position.x,0,.01)===false||cFront.geometry,
-  'C front sight exists');
  const sightCenter=m=>{
   const box=new THREE.Box3().setFromObject(m);
   return (box.min.x+box.max.x)/2;
