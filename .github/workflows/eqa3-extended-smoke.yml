@@ -1,0 +1,31 @@
+name: EQA3.0 extended 90s objective and extraction witnesses
+on:
+  push:
+    branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
+    paths: ['.github/workflows/eqa3-extended-smoke.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  longer-real-scout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        intel: [unknown, confirmed]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Three exact weak cases x front/alternate x real 90s mission dynamics
+        run: |
+          mkdir -p artifacts/eqa3
+          EQA3_OUTPUT=artifacts/eqa3/extended-90-${{ matrix.intel }}.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --smoke --intel=${{ matrix.intel }} --seconds=90
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-extended-90-${{ matrix.intel }}
+          path: artifacts/eqa3/
