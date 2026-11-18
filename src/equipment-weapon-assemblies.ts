@@ -12,6 +12,7 @@ import {akBarrelArt} from './weapons/geometry/ak-barrel-profiles.ts';
 import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
+import {g36FrontEnd,g36SupportRange} from './weapons/geometry/g36-variant-parts.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {opticProfile} from './weapons/geometry/optic-profiles.ts';
 import {physicalWeaponMountSlots} from './weapons/geometry/weapon-physical-mount-slots.ts';
@@ -59,7 +60,10 @@ export const WEAPON_ATTACHMENTS:Readonly<Record<string,WeaponAttachment>>={
  'optic-irons':{id:'optic-irons',name:'Iron Sights',slot:'optic',compatible:ALL,
   massKg:0,massX:0,mountX:0,mountY:2.6,mountZ:0,sightHeight:2.6},
  'optic-g36-integrated':{id:'optic-g36-integrated',name:'Original G36 Integral Dual Optic',
-  slot:'optic',compatible:['rifle'],massKg:0,massX:0,
+  slot:'optic',compatible:['rifle','carbine'],massKg:0,massX:0,
+  mountX:-1.30,mountY:G36.lowerSightY,mountZ:0,sightHeight:G36.lowerSightY},
+ 'optic-g36-single':{id:'optic-g36-single',name:'Original G36 Single Carry-Handle Optic',
+  slot:'optic',compatible:['rifle','carbine'],massKg:0,massX:0,
   mountX:-1.30,mountY:G36.lowerSightY,mountZ:0,sightHeight:G36.lowerSightY},
  'optic-reflex':{id:'optic-reflex',name:'Reflex Sight',slot:'optic',compatible:ALL,
   massKg:.16,massX:2,mountX:0,mountY:2.6,mountZ:0,sightHeight:4.4},
@@ -150,15 +154,21 @@ export const compatibleWeaponAttachment=(weapon:WeaponId,slot:WeaponAttachmentSl
 export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  slot:WeaponAttachmentSlot,id:string,mount='optic-mount-none'):boolean{
  // The integrated factory dual sight is NOT a universal rifle accessory.
- if(id==='optic-g36-integrated'&&build.family!=='g36')return false;
+ if((id==='optic-g36-integrated'||id==='optic-g36-single')&&build.family!=='g36')return false;
  if(build.family==='g36'){
+  const receiver=build.parts.receiver;
+  const rail=receiver==='g36-rail-receiver';
+  const guardRail=build.parts.handguard==='g36-handguard-k-rail';
   if(slot==='stock')return id==='stock-standard';
   if(slot==='opticMount')return id==='optic-mount-none';
-  if(slot==='optic')return id==='optic-g36-integrated';
-  if(slot==='foregrip')return id==='foregrip-none';
-  if(slot==='light')return id==='light-none';
-  // A barrel/device replacement may suppress the original factory muzzle,
-  // but cannot add a fictitious top/fore-end accessory rail.
+  if(slot==='optic'){
+   if(!rail)return id===(receiver==='g36-single-receiver'?
+    'optic-g36-single':'optic-g36-integrated');
+   if(id==='optic-irons')return true;
+   return opticProfile(id)?.mount.standard==='picatinny';
+  }
+  if(slot==='foregrip')return id==='foregrip-none'||guardRail;
+  if(slot==='light')return id==='light-none'||guardRail;
  }
  if(slot==='stock')return id==='stock-standard';
  // M1.1: physical mount eligibility belongs to the installed parts, not
@@ -225,10 +235,13 @@ export function readWeaponConfiguration(raw:unknown,weapon:WeaponId):WeaponConfi
    if(!familyAccessoryAllowed(build,slot,result.slots[slot],
     result.slots.opticMount))
     result.slots[slot]=build.family==='g36'&&slot==='optic'?
-     'optic-g36-integrated':DEFAULT_IDS[slot];
+     (build.parts.receiver==='g36-rail-receiver'?'optic-irons':
+      build.parts.receiver==='g36-single-receiver'?'optic-g36-single':
+      'optic-g36-integrated'):DEFAULT_IDS[slot];
  }else{
   result.slots.opticMount=DEFAULT_IDS.opticMount;
-  if(result.slots.optic==='optic-g36-integrated')result.slots.optic=DEFAULT_IDS.optic;
+  if(result.slots.optic==='optic-g36-integrated'||result.slots.optic==='optic-g36-single')
+   result.slots.optic=DEFAULT_IDS.optic;
  }
  const positions=readMountSelections(
   (raw as {mountSelections?:unknown}).mountSelections,result.slots);
@@ -315,8 +328,9 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   build?.family==='fal'?falBarrelArt(build.parts.barrel):
   build?.family==='fnc'&&build.parts.barrel==='fnc-177-service'?
   {lengthScale:.94,muzzleX:19.50,muzzleY:0}:
-  build?.family==='g36'&&build.parts.barrel==='g36-barrel-480'?
-  {lengthScale:G36.displayScale,muzzleX:G36.muzzleX,muzzleY:G36.muzzleY}:undefined;
+  build?.family==='g36'&&g36FrontEnd(build.parts.barrel)?
+  {lengthScale:g36FrontEnd(build.parts.barrel)!.lengthScale,
+   muzzleX:g36FrontEnd(build.parts.barrel)!.muzzleX,muzzleY:G36.muzzleY}:undefined;
  const mounted={} as Record<WeaponAttachmentSlot,WeaponAttachment>;
  let mass=p.baseMassKg,weighted=p.baseMassKg*p.baseBalanceX;
  let inertia=p.baseMassKg*(18*18/12+p.baseBalanceX*p.baseBalanceX);
@@ -372,7 +386,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const mp5k=build?.parts.receiver==='hk-mp5k-stockless';
  const triRailVertical=build?.parts.handguard==='hk-mp5-trirail'&&
   config.slots.foregrip==='foregrip-vertical';
- const supportX=build?.family==='g36'?(G36.supportNearX+G36.supportFarX)/2:
+ const supportX=build?.family==='g36'?(
+  g36SupportRange(build.parts.handguard)[0]+g36SupportRange(build.parts.handguard)[1])/2:
   build?.family==='hk'?hkSupportX:
   build?(familyHandguard?.length==='long'?9.10:
   familyHandguard?.length==='mid'?7.70:6.50):p.supportX;
