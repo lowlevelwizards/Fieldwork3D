@@ -26,7 +26,7 @@ test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',(
   assert.equal(one(g,key).geometry.type,'CircleGeometry',key+' has one low-facet dark face');
  }
  const counts=Object.fromEntries(['g36ReceiverUpper','g36ReceiverLower','g36Grip'].map(k=>[k,triangles(one(g,k))]));
- assert.ok(counts.g36ReceiverUpper<=18);
+ assert.ok(counts.g36ReceiverUpper<=20,'R1 six-corner upper stays within one simple extrusion');
  assert.ok(counts.g36ReceiverLower<=30);
  assert.ok(counts.g36Grip<=16);
  assert.ok(g.children.length===22,'one solid handguard and no cavity/lug extras');
