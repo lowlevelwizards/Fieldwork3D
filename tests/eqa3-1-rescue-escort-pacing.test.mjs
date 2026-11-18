@@ -18,6 +18,8 @@ test('EQA3.1 healthy actual FOLLOW matches the civilian 43u/s pace as gap widens
  assert.equal(escortWalkMultiplier(owner,civilian(2,75)),.78*.8);
  assert.equal(escortWalkMultiplier(owner,civilian(2,100)),.78*.45);
  assert.ok(53*escortWalkMultiplier(owner,civilian(2,55))<43);
+ assert.equal(escortWalkMultiplier(owner,civilian(2,112)),0,
+  'ordinary walking waits before 125-unit FOLLOW break');
 });
 test('EQA3.1 injured civilian escort slows leader to the real 22u/s gait',()=>{
  assert.equal(escortWalkMultiplier(owner,civilian(1,55)),.39);
@@ -36,6 +38,10 @@ test('EQA3.1 escort tail tracks actual travelled path while operator WATCH faces
   'idle fallback retains deterministic heading-based anchor');
  assert.deepEqual(rescueFollowGoal({p:point(100,200),heading:0}),
   point(77,200),'legacy caller remains compatible');
+ const waiting=rescueFollowGoal({p:point(100,200),heading:0,
+  priorP:point(100,200),velocity:0},{p:point(100,330)});
+ assert.deepEqual(waiting,point(100,223),
+  'a stopped LOOK/WATCH operator anchors the next contact toward their actual follower');
 });
 test('EQA3.1 no automatic slowing of an unassigned, incapacitated, carried or non-following person',()=>{
  const c=civilian();
