@@ -195,8 +195,10 @@ export function lockpickApproach(from:Pt,d:Door,world?:SessionWorldGeometry):Pt|
   return reachable[0]?.point??null;
 }
 export function initDoor(d:Door,i:number):Door{
- const prepared:Door={...d,pushTarget:1,hinge:d.hinge??(i%3===0?'b':'a'),
-   swing:d.swing??(d.id==='FRONT'?-1:i%2===0?1:-1),openFraction:d.open?1:0,
+ const prepared:Door={...d,pushTarget:d.open?
+   Math.max(.08,d.openFraction??1):1,hinge:d.hinge??(i%3===0?'b':'a'),
+   swing:d.swing??(d.id==='FRONT'?-1:i%2===0?1:-1),
+   openFraction:d.open?(d.openFraction??1):0,
    angularVelocity:0,resistance:d.resistance??1,
    latchIntegrity:d.locked?Math.max(2.2,d.latchIntegrity??0):
      d.latchIntegrity??1.05,frameIntegrity:d.frameIntegrity??2.5,
@@ -368,7 +370,9 @@ export function advanceDoor(d:Door,dt:number,actors:readonly Pt[]=[],
   let remaining=Math.max(0,Math.min(dt,.5));
   while(remaining>1e-8){
     const h=Math.min(1/60,remaining);
-    const target=d.open?Math.max(1,d.pushTarget??1):0;
+    // A seeded ajar door rests at its actual angle until someone touches it.
+    // Any deliberate OPEN or body PUSH raises pushTarget normally.
+    const target=d.open?Math.max(.08,d.pushTarget??1):0;
     const current=d.openFraction??(d.open?1:0);
     // Hinge orientation stays fixed throughout the mission.
     const v=d.angularVelocity??0;

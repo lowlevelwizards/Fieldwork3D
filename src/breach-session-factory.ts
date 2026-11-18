@@ -22,7 +22,8 @@ import {civilianRefugePoints} from './breach-civilian-refuge.ts';
 import {materialForFixture,MATERIALS} from './breach-materials.ts';
 import {initializeWindows} from './breach-windows.ts';
 import {withCoverPropIds,withSitePropIds} from './worldgen/site-object-identity.ts';
-import {initDoor} from './breach-door.ts';
+import {initDoor,doorSwingBlocked} from './breach-door.ts';
+import {applySeededDoorStarts} from './worldgen/door-initial-states.ts';
 import {registerSessionWorldGeometry,sessionWorldGeometry} from './breach-world-context.ts';
 import {OBJECTIVE,EXTRACTION,SCENARIOS} from './breach-scenario-defaults.ts';
 import type {Session,TeamActor} from './breach-game.ts';
@@ -161,21 +162,37 @@ export function assembleSession(index=0,siteSeed?:number,
   const initialCover=withCoverPropIds(initialWorldCover(site??null).map(o=>({...o,
     material:materialForFixture(o.fixture),
     integrity:MATERIALS[materialForFixture(o.fixture)].integrity})));
-  const initialDoorRecords=initialDoors(site??null);
+  // Security first, seeded starting openness second, then actual swept
+  // geometry certification. Never consumes the encounter/worldgen RNG.
+  const baseDoorRecords=initialDoors(site??null).map((d,i)=>({
+    ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
+      d.kind!=='shutter'&&d.id!=='FRONT')
+  }));
+  const proceduralDoors=!!site&&prebuiltSite===undefined&&!site.training;
+  const initialDoorRecords=proceduralDoors?
+    applySeededDoorStarts(site!,baseDoorRecords):baseDoorRecords;
+  const spawnBodies=operators.filter(a=>a.health>0).map(a=>a.p);
+  const initializedDoors=initialDoorRecords.map((d,i)=>{
+    const leaf=initDoor(d,i);
+    if(!proceduralDoors||d.openFraction===undefined||!leaf.open)return leaf;
+    const fromClosed={...leaf,open:false,openFraction:0};
+    // Never place a seeded open leaf through architecture or actor capsules.
+    if(doorSwingBlocked(fromClosed,leaf.openFraction??0,spawnBodies))
+      return {...leaf,open:false,openFraction:0,pushTarget:1,angularVelocity:0};
+    return leaf;
+  });
   const state:Session={...seed,operators,civilians,trainingHits:{},
     civilianHarmEvents:[],objectRevision:0,
     coverState:initialCover,
     windows:initializeWindows(site?.windows??[]),
     passageLeases:{},squadEntryUndo:null,squadEntryRedo:null,
-    doors:initialDoorRecords.map((d,i)=>initDoor({
-      ...d,locked:d.locked??!!(site&&i>2&&i%7===0&&
-        d.kind!=='shutter'&&d.id!=='FRONT')},i)),variant,nextId:1,
+    doors:initializedDoors,variant,nextId:1,
     scenario:{index:variant,name:site?.name??sample.name,
       objective:clone(site?.objective??OBJECTIVE),
       extract:clone(site?.extract??EXTRACTION)},
     mission:'clear',noise:[],nextNoiseId:1,reports:[],nextReportId:1,shots:[],casings:[],nextShotId:1,known:new Map(),
     seenGround:new Set(),seenGroundRevision:0,
-    intel:initialIntel(intelMode,site,initialDoorRecords,{
+    intel:initialIntel(intelMode,site,initializedDoors,{
       walls:initialWorldWalls(site??null),cover:initialCover
     }),
     objectiveIntel:createObjectiveKnowledge(site,'unknown'),
