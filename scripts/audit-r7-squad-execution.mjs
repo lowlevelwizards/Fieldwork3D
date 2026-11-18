@@ -918,8 +918,32 @@ function run(site,seed,kind){
       [{x:535,y:607},{x:567,y:607},{x:582,y:590},authored],
       [{x:533,y:600},{x:568,y:604},{x:591,y:590},authored],
       [{x:530,y:614},{x:527,y:597},{x:567,y:600},authored],
-      [{x:535,y:620},{x:526,y:602},{x:577,y:599},authored]
+      [{x:535,y:620},{x:526,y:602},{x:577,y:599},authored],
+      [{x:529,y:639},{x:529,y:608},{x:565,y:608},authored],
+      [{x:525,y:639},{x:525,y:608},{x:565,y:608},authored],
+      [{x:521,y:639},{x:521,y:606},{x:562,y:607},authored],
+      [{x:529,y:639},{x:529,y:601},{x:572,y:604},authored]
     ]:[];
+    // Read-only witness: can a 12/16/24-unit full-body swept retreat
+    // find a fine physical path where starting directly against the sill
+    // caused the 4-unit grid to return no path?
+    const coldRetreats=[];
+    if(authored)for(const radius of [12,16,24,32]){
+      for(const angleIndex of [3,4,5,2,6]){
+        const theta=angleIndex*Math.PI/4;
+        const candidate={x:actor.p.x+radius*Math.cos(theta),
+          y:actor.p.y+radius*Math.sin(theta)};
+        if(!full(actor.p,candidate))continue;
+        const fine=coldFineMotorWorldRoute(candidate,authored,
+          session.doors,world);
+        const coarse=routeWithSqueezeWorld(candidate,authored,
+          session.doors,world);
+        coldRetreats.push({radius,angleIndex,point:candidate,
+          fineNodes:fine.length,coarseNodes:coarse.length,
+          fineFirst:fine.slice(0,4),
+          fineLast:fine.at(-1)??null});
+      }
+    }
     const stageProbes=paths.map((route,index)=>{
       let prior=actor.p,total=0;const legTruth=[];
       for(const point of route){
@@ -958,6 +982,7 @@ function run(site,seed,kind){
        noDoors:{nodes:hypotheticalNoDoors.length,
          first:hypotheticalNoDoors.slice(0,5)},
        singleOpenDoors:perDoor,
+       coldRetreats,
        stageProbes
      },
      remainingNavNodes:actor.nav.length,
