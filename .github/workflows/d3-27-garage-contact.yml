@@ -1,0 +1,50 @@
+name: D3.27 Garage final physical contact truth
+on:
+  push:
+    branches: [feature/d3-27-garage-contact-recovery-20261118]
+    paths:
+      - 'scripts/audit-r7-squad-execution.mjs'
+      - '.github/workflows/d3-27-garage-contact.yml'
+      - 'src/breach-d327*.ts'
+      - 'tests/release-d3-27*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d327-garage-contact-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-garage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Exact unchanged authored Garage motor and geometry witness
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=5 --audit-seed=19285501 \
+            --audit-scale=standard --d327-garage-probe \
+            > "$RUNNER_TEMP/d327-garage.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const data=JSON.parse(fs.readFileSync(
+            process.env.RUNNER_TEMP+'/d327-garage.json','utf8'));
+          if(data.summary.exceptions||data.summary.invalidPositions||
+             data.summary.physicsStepViolations||data.summary.corruptedPlans)
+            throw Error('D3.27 physical integrity regression');
+          const witness=data.rows[0].modes.find(x=>x.mode==='authored')
+            ?.d327GarageEvidence;
+          if(!witness||witness.actor!=='moss'||!witness.samples?.length)
+            throw Error('D3.27 missing exact frozen Garage physical witness');
+          console.log('D327_GARAGE_CONTACT',JSON.stringify(witness));
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d327-exact-garage-physical-contact
+          path: ${{ runner.temp }}/d327-garage.json
+          retention-days: 14
