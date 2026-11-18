@@ -9,6 +9,7 @@ import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
 import {idleYieldAllowed,commitIdleYield} from './breach-passage-yield.ts';
+import {legalCompletedEntryIdleYield} from './breach-completed-entry-yield.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {incomingHitFacing,hitFacingInterrupted} from './breach-combat-reactions.ts';
@@ -126,7 +127,11 @@ export function advanceSimulationActors(s:Session,h:number,
           }));
           const yieldStep=passageIdleYieldStep(idle,s.doors,peers,
             (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s)),h*45);
-          if(yieldStep&&!s.operators.some(b=>b!==a&&b.health>0&&
+          // An operator who has already physically completed a GENERATED
+          // ENTRY may still yield via the real swept motor, but never so far
+          // that the completed landing becomes a false final non-arrival.
+          if(yieldStep&&legalCompletedEntryIdleYield(a,yieldStep)&&
+              !s.operators.some(b=>b!==a&&b.health>0&&
               d(b.p,yieldStep)<13&&d(b.p,yieldStep)<d(b.p,a.p)-.01)){
             commitIdleYield(s,a.id,nearbyIds);
             noteQueueMotion(s,a,'idle-yield',a.p,yieldStep);
