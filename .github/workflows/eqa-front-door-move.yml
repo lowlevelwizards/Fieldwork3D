@@ -33,7 +33,13 @@ jobs:
         run: |
           npm run check
           node --experimental-strip-types --test tests/release-d3-29-motor-lock-gate.test.mjs tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-30-atomic-squad-resume.test.mjs
-          if [ -f tests/encounter-eqa1-front-door.test.mjs ]; then node --experimental-strip-types --test tests/encounter-eqa1-front-door.test.mjs; fi
+          node --experimental-strip-types --test tests/encounter-eqa1-front-door.test.mjs tests/breach-stroke-safe-cutoff.test.mjs tests/breach-here-watch-continuity.test.mjs tests/breach-wall-glide-here-window.test.mjs
+      - name: Compare 40 real contact and route trials against EQA0 frozen baseline
+        run: |
+          node --experimental-strip-types scripts/audit-g4-flow.mjs --full --rows > artifacts/encounter-quality/eqa1-contact.json
+          node -e "const a=require('./artifacts/encounter-quality/eqa1-contact.json');console.log(JSON.stringify({summary:a.summary,exceptions:a.exceptions,failures:a.failures,frontDoorCases:a.rows.filter(x=>[20,26].includes(x.seed)&&x.mode==='floor-plan').map(x=>({seed:x.seed,mission:x.mission,blockedFrames:x.blockedFrames,silentDoorFrames:x.silentDoorFrames}))},null,2))"
+      - name: Deployable production TypeScript/Vite build (no deployment)
+        run: npm run build
       - if: always()
         uses: actions/upload-artifact@v4
         with:
