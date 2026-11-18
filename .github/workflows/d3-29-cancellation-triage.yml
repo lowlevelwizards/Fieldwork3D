@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/d3-29-cancellation-triage.yml'
       - 'scripts/report-d3-29-terminal-cancellations.mjs'
+      - 'scripts/audit-r7-squad-execution.mjs'
       - 'scripts/lib/d3-29-cancellation-classifier.mjs'
       - 'tests/release-d3-29-terminal-cancellations.test.mjs'
   workflow_dispatch:
@@ -27,7 +28,7 @@ jobs:
         run: node --experimental-strip-types --test tests/release-d3-29-terminal-cancellations.test.mjs
       - name: Replay exact unchanged independent 22-map motor
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality > "$RUNNER_TEMP/d329-fresh22.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d329-fresh22.json"
           node scripts/report-d3-29-terminal-cancellations.mjs "$RUNNER_TEMP/d329-fresh22.json"
       - uses: actions/upload-artifact@v4
         if: always()
