@@ -990,6 +990,20 @@ function run(site,seed,kind){
         const liveRoute=(from,to)=>routeWithSqueezeWorld(from,to,
           session.doors,world);
         const first=liveRoute(actor.p,north);
+        const physicalNoDoorsFirst=route(actor.p,north);
+        const physicalNoDoorsFine=coldFineMotorWorldRoute(
+          actor.p,north,[],world);
+        const physicalNoDoorsLast=route(south,authored);
+        const noDoorBridge=[...physicalNoDoorsFirst,south,
+          ...physicalNoDoorsLast];
+        const noDoorMicroLegal=physicalNoDoorsFirst.length>0&&
+          physicalNoDoorsLast.length>0&&
+          fullBodyMotorRouteClear(actor.p,noDoorBridge,
+            (from,to)=>sweptBodyClear(from,to,[],
+              OPERATOR_RADIUS,world),950);
+        const noDoorFirstLive=physicalNoDoorsFirst[0]?sweptBodyClear(
+          actor.p,physicalNoDoorsFirst[0],session.doors,
+          OPERATOR_RADIUS,world):false;
         const intelFirst=routeWithSqueezeIntel(
           session.intel,actor.p,north);
         const intelSecond=routeWithSqueezeIntel(
@@ -1032,6 +1046,13 @@ function run(site,seed,kind){
           swept(north,south)&&
           fullBodyMotorRouteClear(actor.p,bridge,swept,950);
         return {opening,mid,north,south,
+          noDoorNorth:{firstNodes:physicalNoDoorsFirst.length,
+            fineNodes:physicalNoDoorsFine.length,
+            lastNodes:physicalNoDoorsLast.length,
+            first:physicalNoDoorsFirst.slice(0,6),
+            fineFirst:physicalNoDoorsFine.slice(0,6),
+            staticMotorCertified:noDoorMicroLegal,
+            firstStepCurrentDoorsClear:noDoorFirstLive},
           intelNorth:{firstNodes:intelFirst.length,
             secondNodes:intelSecond.length,
             totalNodes:intelBridge.length,
