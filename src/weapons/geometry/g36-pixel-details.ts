@@ -1,5 +1,5 @@
 /** G36 P8: game-scale identity marks in a single shared 384x192 atlas:
- * four fore-end vents and a one-sided ejection port; solid magazine finish.
+ * four fore-end vents, a one-sided ejection port and faint magazine rounds.
  * No added overlays, side mirrored ejection details, geometry count changes,
  * transparency, per-frame materials, per-instance texture uploads or shaders.
  * The same live-intended original G36 meshes are UV projected in place.
@@ -51,9 +51,25 @@ function ink(tile:Tile,x:number,y:number):number{
   return 255;
  }
  if(tile==='magazine-right'||tile==='magazine-left'){
-  // R1: no large UV-projected interior bars or mismatched translucent-look
-  // rectangles. Uniform unprinted opaque G36 smoky-polymer finish; the
-  // physical magazine profile and single shared material carry the shape.
+  // R4: restrained opaque *illusion* of G36 translucent smoky polymer.
+  // Six slightly canted internal cartridge silhouettes; no full-height
+  // bars, seams, boxed patches or actual transparent alpha sorting.
+  // This uses the TWO existing magazine tiles in the 384x192 atlas,
+  // costs zero triangles/draw calls and survives both magazine faces.
+  if(x>=-.85&&x<=2.08){
+   const inclination=.13*(x+.85)/2.93;
+   for(let i=0;i<6;i++){
+    const cy=-3.80-i*.66+inclination;
+    if(Math.abs(y-cy)<.095)return i%2===0?226:233;
+   }
+  }
+  // Two small, molded coupling impressions, not geometric lugs. Their
+  // subtle inner highlights keep them readable on the smoke finish.
+  for(const [cx,cy] of [[-.74,-4.33],[1.37,-5.83]] as const){
+   const d=(x-cx)*(x-cx)+(y-cy)*(y-cy);
+   if(d<.065*.065)return 246;
+   if(d<.17*.17)return 211;
+  }
   return 255;
  }
  return 255;
@@ -178,5 +194,6 @@ export function applyG36PixelDetails(root:THREE.Group):void{
 }
 export function g36PixelAtlasLayout(){
  return {width:TILE*COLS,height:TILE*ROWS,sideTiles:Object.keys(definitions),
-  ventsPerSide:4,magRibsPerSide:0,rightReceiverEjectionOnly:true};
+  ventsPerSide:4,magRibsPerSide:0,magGhostCartridges:6,
+  magCouplerImpressions:2,rightReceiverEjectionOnly:true};
 }
