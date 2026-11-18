@@ -9,7 +9,7 @@ import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {paintPassageRanks} from './ui/passage-rank-badges.ts';
 import {intelPassable} from './breach-intel.ts';
-import {objectiveLocationKnown} from './breach-objective-intel.ts';
+import {objectiveLocationKnown,approximateObjectiveBounds} from './breach-objective-intel.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {doorReachable} from './breach-door.ts';
 import {doorVisibility} from './breach-presentation.ts';
@@ -341,6 +341,26 @@ function renderProjectedPlans(){
       draw.lineTo(screen.x,screen.y);
     }
     draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
+  }
+  if(!replaying&&state.mission==='secure'){
+    const bounds=approximateObjectiveBounds(state);
+    if(bounds){
+      const corners=[
+        {x:bounds.minX,y:bounds.minY},{x:bounds.maxX,y:bounds.minY},
+        {x:bounds.maxX,y:bounds.maxY},{x:bounds.minX,y:bounds.maxY}
+      ].map(p=>worldToScreen(p,7));
+      draw.save();draw.strokeStyle='#d9bf83';draw.lineWidth=2;
+      draw.fillStyle='rgba(202,175,105,.07)';draw.setLineDash([8,6]);
+      draw.beginPath();draw.moveTo(corners[0].x,corners[0].y);
+      for(const point of corners.slice(1))draw.lineTo(point.x,point.y);
+      draw.closePath();draw.fill();draw.stroke();draw.setLineDash([]);
+      draw.font='600 11px "Work Sans",sans-serif';
+      draw.fillStyle='#ddc991';draw.textAlign='center';
+      draw.fillText('POSSIBLE OBJECTIVE AREA',
+        (corners[0].x+corners[1].x)/2,
+        (corners[0].y+corners[1].y)/2-8);
+      draw.restore();
+    }
   }
   if((!replaying||replayObjectiveMarkers)&&
     state.mission!=='clear'&&state.mission!=='done'&&
