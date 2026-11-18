@@ -12,6 +12,7 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+  actions: read
 concurrency:
   group: d328-motel-loop-${{ github.ref }}
   cancel-in-progress: true
@@ -82,3 +83,26 @@ jobs:
           name: d328-frozen22-physical-witness
           path: ${{ runner.temp }}/d328-fresh22.json
           retention-days: 14
+
+  integration-release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Integrated G36 R5 plus tactical module regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/weapon-g36-r5-sef-housing-curved-mag.test.mjs \
+            tests/weapon-g36-r4-selector-mag-texture.test.mjs \
+            tests/weapon-g36-r3-sef-magwell-flashhider.test.mjs \
+            tests/release-d3-28-entry-loop.test.mjs
+      - name: Production build of reconciled D3.28 and G36 R5 tree
+        run: npm run build
+      - name: Verify previous main Pages release is successful and served
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node scripts/audit-pages-release-checkpoint.mjs
