@@ -51,10 +51,15 @@ export function diagnoseMovement(from:Pt,to:Pt,doors:readonly Door[],
 export function projectReachableGoal(from:Pt,to:Pt,{
   canStand=passable,
   routeTo=(a,b)=>route(a,b,canStand),
+  canNudgeAcross=(a,b)=>!passable(a,0)||
+    diagnoseMovement(a,b,[],[],0).blocker==='clear',
   tolerance=13,
 }:{
   canStand?:(p:Pt)=>boolean;
   routeTo?:(a:Pt,b:Pt)=>Pt[];
+  /** User planning injects KNOWN-only zero-radius crossing; defaults
+   * retain legacy physical behavior for generic non-intel callers. */
+  canNudgeAcross?:(a:Pt,b:Pt)=>boolean;
   tolerance?:number;
 }={}):{point:Pt;adjusted:boolean}|null{
   if(canStand(to)&&routeTo(from,to).length)
@@ -70,9 +75,7 @@ export function projectReachableGoal(from:Pt,to:Pt,{
     }
   }
   const possible=offsets.filter(p=>canStand(p)&&
-    // The nudge cannot cross a solid physical wall/cover by accident.
-    (passable(to,0)?diagnoseMovement(to,p,[],[],0).blocker==='clear':
-      true));
+    canNudgeAcross(to,p));
   possible.sort((a,b)=>distance(a,to)-distance(b,to));
   for(const p of possible){
     if(routeTo(from,p).length)
