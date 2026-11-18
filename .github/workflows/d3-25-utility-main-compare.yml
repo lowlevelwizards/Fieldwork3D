@@ -1,0 +1,68 @@
+name: D3.25 current-main Utility single-case regression attribution
+on:
+  push:
+    branches: [feature/d3-25-entry-stall-witness-20261118]
+    paths:
+      - '.github/workflows/d3-25-utility-main-compare.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d325-utility-main-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Compare exact Utility standard 9720633 at live main and D3.25
+        env:
+          BASE_SHA: 9249dc70ff9dcbcf9fda309eaca4606e9afe93e9
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d325-utility-main" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d325-utility-main/node_modules"
+          node --experimental-strip-types \
+            "$RUNNER_TEMP/d325-utility-main/scripts/audit-r7-squad-execution.mjs" \
+            11 2700 --site-index=9 --audit-seed=9720633 --audit-scale=standard \
+            --progress > "$RUNNER_TEMP/d325-utility-main.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=9 --audit-seed=9720633 --audit-scale=standard \
+            --progress > "$RUNNER_TEMP/d325-utility-feature.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const read=n=>JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+
+            '/d325-utility-'+n+'.json','utf8'));
+          const main=read('main'),feature=read('feature');
+          const summary=n=>n.rows[0].modes.map(m=>({
+            mode:m.mode,arrivals:m.arrivals,accepted:m.accepted,
+            operators:m.operators.map(o=>({
+              id:o.id,arrived:o.arrived,outcome:o.outcome,
+              goal:o.goal,position:o.position,blocker:o.lastBlocker,
+              failedOrders:o.failedOrders,remainingOrders:o.remainingOrders
+            }))
+          }));
+          const a=summary(main),b=summary(feature);
+          console.log('D325_UTILITY_CURRENT_MAIN',JSON.stringify({
+            base:process.env.BASE_SHA,feature:process.env.GITHUB_SHA,
+            main:a,candidate:b
+          }));
+          for(let i=0;i<a.length;i++){
+            if(b[i].mode!==a[i].mode||b[i].arrivals<a[i].arrivals)
+              throw Error('D3.25 new real utility arrival regression versus current main');
+          }
+          if(feature.summary.invalidPositions||
+             feature.summary.physicsStepViolations||
+             feature.summary.corruptedPlans||feature.summary.exceptions)
+            throw Error('D3.25 utility physical integrity violation');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d325-utility-exact-current-main-compare
+          path: ${{ runner.temp }}/d325-utility-*.json
+          retention-days: 30

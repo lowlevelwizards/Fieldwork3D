@@ -33,6 +33,7 @@ import {joinedLocalOpenLeafStage} from './breach-door-escape-stage.ts';
 import {sweptProfileClear,squeezeFacing} from './breach-navigation.ts';
 import {findBoundedNarrowLeafExit,claimNarrowLeafExitProbe,
  ownNarrowExitWaypoints} from './breach-squeeze-leaf-exit.ts';
+import {coldSweptEntryEscapeJoin} from './breach-d325-escape-join.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
  * world-truth connector past a STABLE fully-open leaf. Otherwise a
@@ -46,6 +47,38 @@ export function restoreAfterOpenLeafEscape(
 ):boolean{
  if(s.seconds-a.lastNavRepairAt<.7){
   noteDoorHandoffRejection(s,a,'world:cooldown');return false;
+ }
+ // D3.25F: a real partial-leaf escape may produce a full-body-clear
+ // center whose normal grid FIRST LEG still clips that stationary panel.
+ // Only a generated ENTRY currently grabbing that SAME leaf can cold
+ // probe one extra 3/5/8-unit continuation along the last ACTUAL swept
+ // escape direction. Every proposal is certified against live full-body
+ // collision; ordinary motor remains the sole executor on later ticks.
+ const entry=a.plan[0],episode=a.doorTraversal;
+ if(a.side==='blue'&&a.lastBlocker==='door'&&a.priorP&&
+    entry?.kind==='move'&&entry.entryDoorId&&
+    episode?.doorId===entry.entryDoorId&&
+    episode.maneuver==='grab-and-hold'){
+  const leaf=s.doors.find(door=>door.id===entry.entryDoorId&&
+    door.open&&!door.locked&&!door.jammed&&!door.wedged&&
+    !door.heldBy&&(door.openFraction??0)>=.90&&
+    (door.openFraction??0)<.98&&
+    Math.abs(door.angularVelocity??0)<.16&&
+    pointToSegment(a.p,doorLeafSegment(door))<OPERATOR_RADIUS+13);
+  if(leaf){
+   const world=sessionWorldGeometry(s);
+   const swept=(from:Pt,to:Pt)=>
+     sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+   const staged=coldSweptEntryEscapeJoin(a.priorP,a.p,goal,
+     at=>bodyClear(at,s.doors,OPERATOR_RADIUS,world),swept,
+     (from,to)=>routeWithSqueezeWorld(from,to,s.doors,world));
+   if(staged.length){
+    a.lastNavRepairAt=s.seconds;
+    setTransientRoute(s,a,staged,'door-leaf-escape');
+    provisionalRouteAccepted(a);
+    return true;
+   }
+  }
  }
  const near=s.doors.some(door=>door.open&&
   (door.openFraction??0)>=.96&&

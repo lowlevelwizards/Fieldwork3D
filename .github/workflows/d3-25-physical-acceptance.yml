@@ -1,0 +1,114 @@
+name: D3.25 bounded door-escape physical acceptance
+on:
+  push:
+    branches: [feature/d3-25-entry-stall-witness-20261118]
+    paths:
+      - 'src/breach-order-wait.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-d325-escape-join.ts'
+      - 'tests/release-d3-25*.test.mjs'
+      - '.github/workflows/d3-25-physical-acceptance.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-order-wait.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-d325-escape-join.ts'
+      - 'tests/release-d3-25*.test.mjs'
+      - '.github/workflows/d3-25-physical-acceptance.yml'
+permissions:
+  contents: read
+concurrency:
+  group: d325-physical-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Type safety and legal door order contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-25b-terminal-entry-gate.test.mjs \
+            tests/release-d3-25f-cold-swept-entry-escape.test.mjs \
+            tests/tactical-integration-10-entry-gate.test.mjs \
+            tests/door-leaf-overlap-recovery.test.mjs \
+            tests/release-d3-17e-physical-leaf-rejoin.test.mjs
+  fresh22:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Independent 22-site 45s physical safety and arrival gain
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress --route-quality \
+            > "$RUNNER_TEMP/d325-fresh22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d325-fresh22.json'));
+          const s=d.summary,p=d.progressSummary,q=d.routeQualitySummary;
+          console.log('D325_FRESH22',JSON.stringify({
+            physicalArrivals:s.physicalArrivals,fullSquads:s.physicalCompletedFour,
+            loops:p.suspectedLoops,routeSearches:q.searches,
+            routeCpu:q.cpuMs,retries:s.retries,stalls:s.stallEpisodes,
+            townhouse:d.rows.find(x=>x.seed===19018816)?.modes.find(m=>m.mode==='entry')?.operators
+              .map(o=>({id:o.id,arrived:o.arrived,outcome:o.outcome}))
+          }));
+          if(d.rows.length!==22||d.ticks!==2700||
+             s.exceptions||s.invalidPositions||s.corruptedPlans||
+             s.physicsStepViolations||s.unboundedManeuverAttempts||
+             s.physicalArrivals<158||s.physicalCompletedFour<34||
+             p.suspectedLoops>1||q.searches>10800)
+            throw Error('D3.25 physical/CPU regression or missing real Townhouse arrival gain');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d325-fresh22-exact
+          path: ${{ runner.temp }}/d325-fresh22.json
+          retention-days: 30
+  historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Historical 11 and frozen 22 physical outcome guard
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress --route-quality > "$RUNNER_TEMP/d325-historical.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d315b4-blind22 --progress --route-quality > "$RUNNER_TEMP/d325-frozen22.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          for(const [name,minArrivals,minSquads] of [
+           ['historical',81,18],['frozen22',143,30]]){
+            const d=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d325-'+name+'.json'));
+            const s=d.summary,p=d.progressSummary,q=d.routeQualitySummary;
+            console.log('D325_'+name.toUpperCase(),JSON.stringify({
+              arrivals:s.physicalArrivals,squads:s.physicalCompletedFour,
+              loops:p.suspectedLoops,routeSearches:q.searches}));
+            if(s.exceptions||s.invalidPositions||s.corruptedPlans||
+               s.physicsStepViolations||s.unboundedManeuverAttempts||
+               s.physicalArrivals<minArrivals||
+               s.physicalCompletedFour<minSquads||p.suspectedLoops>0)
+              throw Error('D3.25 frozen or historical physical regression: '+name);
+          }
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d325-historical-frozen
+          path: ${{ runner.temp }}/d325-historical.json
+          retention-days: 30
