@@ -10,7 +10,7 @@ const choice=(presetId:string,fidelity:ReferenceWeaponFidelity):ReferenceWeaponC
  ({presetId,fidelity});
 export const REFERENCE_WEAPONS:Readonly<Record<string,ReferenceWeaponChoice>>={
  'usmc-woodland-2005':choice('ar-m16a4','representative'),
- 'bundeswehr-flecktarn-2000':choice('ar-m16a4','proxy'),
+ 'bundeswehr-flecktarn-2000':choice('g36-service','representative'),
  'russian-emr-2015':choice('ak-ak74m','representative'),
  'british-dpm-1995':choice('ar-m16a2','proxy'),
  'nva-strichtarn-1980':choice('ak-akm','exact'),
@@ -29,7 +29,7 @@ export const REFERENCE_WEAPONS:Readonly<Record<string,ReferenceWeaponChoice>>={
  'usmc-desert-2010':choice('ar-m16a4','representative'),
  'us-navy-aor1-2014':choice('ar-mk18','representative'),
  'british-mtp-2015':choice('ar-m4a1','proxy'),
- 'bundeswehr-tropentarn-2010':choice('ar-m4a1','proxy'),
+ 'bundeswehr-tropentarn-2010':choice('g36-service','representative'),
  'finnish-m05-2015':choice('ak-akm','proxy'),
  'polish-pantera-2010':choice('ak-ak74m','proxy'),
  'italian-vegetato-2015':choice('ar-m4a1','proxy'),
@@ -63,6 +63,14 @@ export const REFERENCE_WEAPONS:Readonly<Record<string,ReferenceWeaponChoice>>={
 export type ReferenceWeaponAlternative=ReferenceWeaponChoice&{note:string};
 export const REFERENCE_WEAPON_ALTERNATES:
  Readonly<Record<string,readonly ReferenceWeaponAlternative[]>>={
+ 'bundeswehr-flecktarn-2000':[
+  {presetId:'g36-k-dual',fidelity:'representative',
+   note:'G36K short-barrel family alternative for role-specific Bundeswehr use; not assumed universal issue in 2000.'}
+ ],
+ 'bundeswehr-tropentarn-2010':[
+  {presetId:'g36-k-dual',fidelity:'representative',
+   note:'G36K compact family alternative for selected deployed roles; this generic 2010 look does not establish unit-specific issue.'}
+ ],
  'rhodesian-brushstroke-1975':[
   {presetId:'fal-5061',fidelity:'representative',
    note:'Folding-stock FAL 50.61 also documented among Rhodesian Security Forces.'}
