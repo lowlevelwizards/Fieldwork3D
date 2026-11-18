@@ -3,6 +3,9 @@ import assert from 'node:assert/strict';
 import {newSession,team,undoPlan,redoPlan,
  resumeInterruptedDoorPlan,resumeInterruptedSquadEntry} from '../src/breach-game.ts';
 
+// Plans cloned by the engine may carry optional fields explicitly set to
+// undefined; compare their semantic serialized instructions, not key shape.
+const semantic=x=>JSON.parse(JSON.stringify(x));
 function prepare(){
  const s=newSession(0,undefined,'full-view'),members=team(s).slice(0,2);
  const door=s.doors[0];
@@ -22,7 +25,7 @@ test('D3.31C: solo resume undo restores saved incident and redo consumes it',()=
  assert.equal(a.interruptedDoorPlan,null);
  assert.deepEqual(a.plan.map(n=>n.kind),['move','look']);
  assert.equal(undoPlan(s,a.id),true);
- assert.deepEqual(a.interruptedDoorPlan,before);
+ assert.deepEqual(semantic(a.interruptedDoorPlan),before);
  assert.deepEqual(a.plan.map(n=>n.kind),['look']);
  assert.equal(redoPlan(s,a.id),true);
  assert.equal(a.interruptedDoorPlan,null);
@@ -33,7 +36,7 @@ test('D3.31C: grouped undo and redo preserve both original incident snapshots',(
  const original=members.map(a=>structuredClone(a.interruptedDoorPlan));
  assert.equal(resumeInterruptedSquadEntry(s,members[0].id),true);
  assert.equal(undoPlan(s,members[1].id),true);
- assert.deepEqual(members.map(a=>a.interruptedDoorPlan),original);
+ assert.deepEqual(semantic(members.map(a=>a.interruptedDoorPlan)),original);
  for(const a of members)assert.deepEqual(a.plan.map(n=>n.kind),['look']);
  assert.equal(redoPlan(s,members[0].id),true);
  for(const a of members){
