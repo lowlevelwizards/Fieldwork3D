@@ -1,0 +1,42 @@
+name: D3.22B current-main gameplay fingerprint scope
+on:
+  push:
+    branches: [feature/d3-22-known-full-body-goal-20261117]
+    paths: ['.github/workflows/d3-22-baseline-parity.yml']
+permissions:
+  contents: read
+concurrency:
+  group: d322-parity-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Current main versus proposed full-body goal, identical scenarios
+        env:
+          BASE_SHA: 396bcd54935c43217488682541a44f501d205cb3
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d322-current-main" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d322-current-main/node_modules"
+          node --experimental-strip-types \
+            "$RUNNER_TEMP/d322-current-main/scripts/audit-release-d0-workloads.mjs" \
+            "$RUNNER_TEMP/d322-main.json" > /dev/null
+          node --experimental-strip-types scripts/audit-release-d0-workloads.mjs \
+            "$RUNNER_TEMP/d322-candidate.json" > /dev/null
+          node -e 'const fs=require("fs");const a=JSON.parse(fs.readFileSync(process.argv[1])),b=JSON.parse(fs.readFileSync(process.argv[2]));const aa=a.workloads||[],bb=b.workloads||[];const pairs=aa.map((x,i)=>({name:x.label,changed:x.fingerprint!==bb[i]?.fingerprint,main:x.fingerprint,candidate:bb[i]?.fingerprint,missionBefore:x.mission,missionAfter:bb[i]?.mission}));console.log("D322B_MAIN_PARITY",JSON.stringify({main:process.env.BASE_SHA,compared:pairs.length,changed:pairs.filter(x=>x.changed)},null,2));if(pairs.length!==10||a.summary.nonfinite||b.summary.nonfinite)throw Error("D322B gameplay safety/workload coverage");' "$RUNNER_TEMP/d322-main.json" "$RUNNER_TEMP/d322-candidate.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d322b-main-vs-candidate-workloads
+          path: |
+            ${{ runner.temp }}/d322-main.json
+            ${{ runner.temp }}/d322-candidate.json
+          retention-days: 30

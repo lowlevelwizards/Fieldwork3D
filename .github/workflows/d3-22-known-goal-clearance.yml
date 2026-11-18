@@ -1,0 +1,44 @@
+name: D3.22A physical authored-goal clearance contract
+on:
+  push:
+    branches: [feature/d3-22-known-full-body-goal-20261117]
+    paths:
+      - 'src/breach-game.ts'
+      - 'tests/release-d3-22-known-full-body-move-goal.test.mjs'
+      - '.github/workflows/d3-22-known-goal-clearance.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'src/breach-game.ts'
+      - 'tests/release-d3-22-known-full-body-move-goal.test.mjs'
+      - '.github/workflows/d3-22-known-goal-clearance.yml'
+permissions:
+  contents: read
+concurrency:
+  group: d322-known-goal-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  landing:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Full-body authored GO versus narrower intermediate squeeze
+        run: node --experimental-strip-types --test tests/release-d3-22-known-full-body-move-goal.test.mjs
+      - name: True 45s Garage authored and generated physical outcomes
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=5 --audit-seed=19285501 \
+            --audit-scale=standard --progress \
+            > "$RUNNER_TEMP/d322-garage.json"
+          node -e 'const r=require(process.argv[1]);const m=r.rows[0].modes.find(x=>x.mode==="authored");console.log("D322A_REAL_MOTOR",JSON.stringify({seed:r.rows[0].seed,summary:r.summary,authoredAccepted:m.accepted,authoredOperators:m.operators.map(x=>({id:x.id,arrived:x.arrived,goal:x.goal,outcome:x.outcome,remaining:x.remaining}))},null,2));if(r.rows[0].seed!==19285501||r.summary.invalidPositions||r.summary.physicsStepViolations||r.summary.corruptedPlans)throw Error("physical safety violated")' "$RUNNER_TEMP/d322-garage.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d322-garage-authored-full-body-goals
+          path: ${{ runner.temp }}/d322-garage.json
+          retention-days: 30

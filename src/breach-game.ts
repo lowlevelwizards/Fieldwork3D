@@ -570,11 +570,23 @@ export function planMove(s:Session,id:string,p:Pt,strafe=false){
   if(!a)return false;
   const extra=strafe?{moveMode:'strafe' as const,
     facing:[...a.plan].reverse().find(n=>n.facing!==undefined)?.facing??a.heading}:{};
+  // D3.22A: a narrow SQUEEZE corridor is a legal way THROUGH a passage,
+  // not a guarantee that the operator can PARK their full body at its end.
+  // Previous MOVE authoring projected using SQUEEZE_RADIUS and could accept
+  // a terminal goal a real standing body cannot occupy (Garage standard).
+  // Require only player-KNOWN full-body endpoint clearance. Keep the same
+  // intel-only legal route, bounded 13-unit nudge, and hidden-cover privacy;
+  // the physical motor still handles any legitimate intermediate squeeze.
   const target=projectReachableGoal(finalPoint(a),p,{
-    canStand:at=>intelPassable(at,s.intel,SQUEEZE_RADIUS),
+    canStand:at=>intelPassable(at,s.intel,OPERATOR_RADIUS),
     routeTo:(from,to)=>legalMoveRoute(s,from,to),
   });
-  if(!target)return false;
+  if(!target){
+    if(intelPassable(p,s.intel,SQUEEZE_RADIUS)&&
+       !intelPassable(p,s.intel,OPERATOR_RADIUS))
+      notify(s,'MOVE REJECTED · DESTINATION TOO NARROW TO STAND');
+    return false;
+  }
   if(target.adjusted)notify(s,'POSITION ADJUSTED TO WALKABLE GROUND');
   return addNode(s,id,'move',target.point,extra);
 }
