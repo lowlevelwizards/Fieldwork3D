@@ -23,10 +23,11 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
   cycleCampaignAppearance,setCampaignWardrobe,retireOperator,
-  type CampaignState} from './campaign-state.ts';
+  reconContract,contractObjectiveIntel,type CampaignState} from './campaign-state.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
 import {campaignDeploymentSettings} from './campaign-rules.ts';
+import {setObjectiveIntelLevel} from './breach-objective-intel.ts';
 import {newDispatchPilotCampaign} from './dispatch-campaign-starter.ts';
 import {createDispatchSetup,type DispatchCampaignDraft} from './dispatch-campaign-setup.ts';
 import {isDispatchPilot} from './dispatch-campaign-eligibility.ts';
@@ -246,6 +247,8 @@ const campaignScreen=new CampaignScreen({
   deployCampaignContract();
  },
  resumeContract:()=>deployCampaignContract(),
+ reconContract:id=>applyVisibleCampaignAction(c=>reconContract(c,id),
+  'Mission reconnaissance upgraded'),
  buyAmmo:()=>applyVisibleCampaignAction(purchaseAmmo,'60 rounds added to supplies'),
  buyMedical:()=>applyVisibleCampaignAction(purchaseMedical,'Medical kit added to supplies'),
  buyFlash:()=>applyVisibleCampaignAction(purchaseFlash,'2 flashbangs added to supplies'),
@@ -341,6 +344,7 @@ function deployCampaignContract(){
  model.scale=deployment.scale;
  config.siteSize.textContent='MAP SIZE · '+model.scale.toUpperCase();
  config.resetContract(job);
+ setObjectiveIntelLevel(config.getSession(),contractObjectiveIntel(job));
  // Capture AFTER reset: the reset pathway invalidates prior mission state.
  deployedIncident=deployedDispatchIncident(model.campaign,job.id);
  campaignScreen.hide();
