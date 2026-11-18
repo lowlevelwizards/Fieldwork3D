@@ -11,7 +11,7 @@ export const G36_B_ART=Object.freeze({
  barrelAxisY:0,barrelStartX:13.05,muzzleX:19.50,
  // D1 measured against production M16A2: scale 1.00 => 99.35% of M16 length.
  displayLongitudinalScale:1.00,
- handleTopY:4.05,opticTopY:4.70,
+ handleTopY:4.05,opticTopY:5.03,
  frontStockOpeningX:-8.15,triggerVoidX:-2.28
 });
 export type G36BPoint=readonly [number,number];
