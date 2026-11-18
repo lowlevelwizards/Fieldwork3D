@@ -55,7 +55,7 @@ test('O3-S3: lower optic extends into handle root without closing the carry void
  const b=bb(main);
  assert.ok(b.min.y<2.50,'raised pod still overlaps the actual carry handle root');
  assert.ok(bb(main).intersectsBox(bb(handle)),'main lower pod actually meets frame');
- assert.ok(close(b.max.y,4.12),'lower body roof remains a short broad plane');
+ assert.ok(close(b.max.y,4.54),'raised lower body roof remains a short broad plane');
  assert.equal(handle.geometry.parameters.shapes.holes.length,1);
  const through=(x,y)=>g.children.some(mesh=>new THREE.Raycaster(
   new THREE.Vector3(x,y,10),new THREE.Vector3(0,0,-1)
