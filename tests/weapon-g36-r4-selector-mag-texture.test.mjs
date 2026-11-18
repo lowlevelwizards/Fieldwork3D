@@ -18,21 +18,25 @@ const sample=(col,row,x,y)=>{
  const d=g36PixelAtlas().image.data,i=((row*96+y)*384+col*96+x)*4;
  return d[i];
 };
-test('R4 positions each SEF letter at the 0° 45° 90° selector detent',()=>{
+test('R5 keeps HK SEF F/E left and S right, all on lower housing above trigger guard',()=>{
  const pivot={x:-5.20,y:-1.96};
  const expected=['S','E','F'];
  assert.deepEqual(G36_SEF_INDEX_MARKS.map(x=>x.letter),expected);
  const [s,e,f]=G36_SEF_INDEX_MARKS;
  assert.ok(s.x>pivot.x+1&&Math.abs(s.y-pivot.y)<.2,
-  'SAFE is right/horizontal from pivot');
- assert.ok(e.x>pivot.x+.65&&e.x<pivot.x+1&&e.y<pivot.y-.5,
-  'E is around 45 degrees down');
- assert.ok(Math.abs(f.x-pivot.x)<.10&&f.y<pivot.y-1,
-  'F is vertically down');
- assert.ok(s.z>e.z&&near(e.z,f.z),'S rests on receiver, E/F on grip');
+  'S sits to the right on the flat housing');
+ assert.ok(e.x<pivot.x-.7&&e.y< f.y-.25,
+  'E is left/below F just as in actual HK SEF grip photo');
+ assert.ok(f.x<pivot.x-.7&&f.y>e.y+.25,
+  'F stays on upper-left of selector, not down the grip');
+ for(const mark of [s,e,f]){
+  assert.ok(mark.y-.15>=-2.18,'full glyph stays above trigger-guard seam');
+  assert.ok(mark.y+.15<=-1.49,'does not cross larger upper-receiver side');
+  assert.ok(near(mark.z,1.185),'same visible lower-housing side depth');
+ }
  const m=new THREE.MeshBasicMaterial(),root=buildG36OriginalBlockout(m),
   glyphs=one(root,'g36SelectorMarkings');
- assert.equal(glyphs.userData.g36SelectorArtVersion,'r4-sef-indexed-arc');
+ assert.equal(glyphs.userData.g36SelectorArtVersion,'r5-sef-trigger-housing');
  assert.equal(glyphs.userData.surfaceDetailKind,'hk-selector');
  assert.equal(tris(glyphs),12,'six quads in ONE mesh, not one mesh per letter');
  assert.equal(root.children.filter(x=>x.userData.g36SelectorMarkings).length,1);
@@ -66,9 +70,10 @@ test('R4 positions each SEF letter at the 0° 45° 90° selector detent',()=>{
  for(const mat of Object.values(materials))mat.dispose();
  clearWeaponSilhouette(root);m.dispose();
 });
-test('R4 magazine has subtle six-cartridge texture, no opaque fake rectangle or alpha',()=>{
+test('R5 magazine uses five low-contrast warped rounds on both opaque faces',()=>{
  const layout=g36PixelAtlasLayout();
- assert.equal(layout.magGhostCartridges,6);
+ assert.equal(layout.magGhostCartridges,5);
+ assert.equal(layout.magCurveAligned,true);
  assert.equal(layout.magCouplerImpressions,2);
  assert.equal(layout.magRibsPerSide,0,'no return to harsh vertical ribs');
  for(const col of [2,3]){
@@ -78,8 +83,8 @@ test('R4 magazine has subtle six-cartridge texture, no opaque fake rectangle or 
    shades.add(value);
    if(value<250)subtle++;
   }
-  assert.ok(shades.has(226)&&shades.has(233)&&shades.has(211));
-  assert.ok(subtle>100&&subtle<1600,
+  assert.ok(shades.has(230)&&shades.has(234)&&shades.has(220));
+  assert.ok(subtle>50&&subtle<1400,
    'subtle rounds visible, but majority of mag remains undecorated');
   assert.equal(sample(col,1,94,90),255,'blank outside silhouette');
  }
