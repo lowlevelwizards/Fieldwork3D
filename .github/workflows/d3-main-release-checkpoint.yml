@@ -42,7 +42,8 @@ jobs:
           test -s dist/fieldwork-build.json
       - name: Full 45-second 88-operator mainline merge acceptance
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality          node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/release45.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/release45.json"
+          node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/release45.json"
       - name: Retain full physical acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
