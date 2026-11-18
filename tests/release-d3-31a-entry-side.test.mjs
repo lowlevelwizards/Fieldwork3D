@@ -34,7 +34,9 @@ test('D3.31A: cancellation freezes the real encounter approach side',()=>{
  assert.equal(members[1].interruptedDoorPlan.approachSide,-1);
 });
 test('D3.31A: same door but opposite physical approaches are NOT one squad',()=>{
- const s=newSession(0,undefined,'full-view'),door=s.doors[0];
+ // The legacy unseeded study has only two blue actors. A generated site
+ // provides the real four-person team needed for this three-member case.
+ const s=newSession(0,31175,'full-view','small'),door=s.doors[0];
  const members=team(s).slice(0,3);
  door.locked=false;door.jammed=false;door.wedged=false;door.heldBy=null;
  for(const [i,a] of members.entries()){
