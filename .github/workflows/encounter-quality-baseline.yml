@@ -24,8 +24,8 @@ jobs:
       - name: Eleven archetypes x five missions, seed-stable structural variation
         run: |
           mkdir -p artifacts/encounter-quality
-          node --experimental-strip-types scripts/audit-g4-diversity.mjs --matrix > artifacts/encounter-quality/structure.txt
-          tail -c 6500 artifacts/encounter-quality/structure.txt
+          node --experimental-strip-types scripts/audit-g4-diversity.mjs --matrix --rows > artifacts/encounter-quality/structure.json
+          node -e "const a=require('./artifacts/encounter-quality/structure.json');console.log(JSON.stringify({summary:a.summary,unsecured:a.observations.filter(x=>x.warnings.includes('objective has no nearby assigned security')).map(x=>({seed:x.seed,archetype:x.archetype,mission:x.mission,profile:x.profile,hostiles:x.hostiles,occupiedZones:x.occupiedZones,guards:x.objectiveGuards,alternateDoors:x.alternateDoors,entryWindows:x.entryWindows}))},null,2))"
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -45,7 +45,7 @@ jobs:
         run: |
           mkdir -p artifacts/encounter-quality
           node --experimental-strip-types scripts/audit-mission-quality.mjs 22 --living --doctrine-matrix > artifacts/encounter-quality/living.json
-          node -e "const a=require('./artifacts/encounter-quality/living.json');console.log(JSON.stringify({summary:a.summary, living:a.livingEncounters&&{counts:a.livingEncounters.generatedCivilians,active:a.livingEncounters.activeCivilians,profiles:a.livingEncounters.rows.map(x=>x.profile)},matrix:a.encounterBehavior?.matrix},null,2))"
+          node -e "const a=require('./artifacts/encounter-quality/living.json');console.log(JSON.stringify({summary:a.summary, living:a.livingEncounters&&{counts:a.livingEncounters.generatedCivilians,active:a.livingEncounters.activeCivilians,profiles:a.livingEncounters.rows.map(x=>x.profile)},matrix:a.encounterBehavior?.matrix,observed:a.encounterBehavior?.rows.map(x=>({seed:x.seed,building:x.archetype,mission:x.mission,hostiles:x.population.activeHostiles,civilians:x.population.activeCivilians,alerted:x.hostiles.alertedActors,hostileMoved:x.hostiles.movedActors,investigations:x.hostiles.investigationsStarted,investigationsWithoutProgress:x.hostiles.investigationsWithoutProgress,coordination:x.hostiles.coordinatedActors,defenseSeconds:x.hostiles.objectiveDefenseActorSeconds,civilianChanged:x.civilians.changedStateActors,civilianMoved:x.civilians.movedActors,civilianStates:x.civilians.stateSamples}))},null,2))"
       - if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -65,7 +65,7 @@ jobs:
         run: |
           mkdir -p artifacts/encounter-quality
           node --experimental-strip-types scripts/audit-g4-flow.mjs --full --rows > artifacts/encounter-quality/contact.json
-          node -e "const a=require('./artifacts/encounter-quality/contact.json');console.log(JSON.stringify({summary:a.summary,exceptions:a.exceptions,failures:a.failures,rows:a.rows.map(x=>({seed:x.seed,mission:x.mission,mode:x.mode,reason:x.reason,firstContactAt:x.firstContactAt,firstShotAt:x.firstShotAt,blockedFrames:x.blockedFrames,silentDoorFrames:x.silentDoorFrames}))},null,2))"
+          node -e "const a=require('./artifacts/encounter-quality/contact.json');console.log(JSON.stringify({summary:a.summary,exceptions:a.exceptions,failures:a.failures,problemRows:a.rows.filter(x=>x.silentDoorFrames>0||x.blockedFrames>100).map(x=>({seed:x.seed,mission:x.mission,mode:x.mode,reason:x.reason,firstContactAt:x.firstContactAt,firstShotAt:x.firstShotAt,blockedFrames:x.blockedFrames,silentDoorFrames:x.silentDoorFrames,blockedReasons:x.blockedReasons,blockedMotorPauses:x.blockedMotorPauses,doorCases:x.doorCases}))},null,2))"
       - if: always()
         uses: actions/upload-artifact@v4
         with:
