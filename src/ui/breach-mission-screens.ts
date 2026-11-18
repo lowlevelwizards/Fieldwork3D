@@ -15,6 +15,7 @@ import {createBriefingCardModel,type BriefingReport,type BriefingTab}
  from '../briefing/briefing-view-model.ts';
 import {createTacticalSheetNavigation} from './tactical-sheet-navigation.ts';
 import {INTEL_MODES,type IntelMode} from '../breach-intel.ts';
+import {objectiveIntelDescription} from '../breach-objective-intel.ts';
 import type {BreachBootConfig} from '../breach-boot-config.ts';
 import {readStoredText,writeStoredText,saveIntelPreference}
  from '../breach-persistence.ts';
@@ -230,7 +231,8 @@ function syncBriefingCard():void{
  ui.briefingBody.textContent=brief.objective;
  ui.briefingCondition.textContent=brief.condition;
  ui.briefingExtraction.textContent=brief.extraction;
- ui.briefingSite.textContent=model.siteLabel+' · '+model.layout;
+ ui.briefingSite.textContent=model.siteLabel+' · '+model.layout+'\n'+
+  objectiveIntelDescription(state);
  ui.briefingCaseContext.textContent=model.situation+
    (model.caseContext?'\n\n'+model.caseContext:'');
  const campaign=config.getCampaign();
