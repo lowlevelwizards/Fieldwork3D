@@ -171,6 +171,22 @@ export function buildG36H1HandguardComparison():THREE.Group{
  });
  const h1=addG36LongHandguard(root,'h1-study',0,mat);
  h1.position.x=-3.75;
+ // Only for A/B visualization: reproduce the deployed four narrow, square-ended
+ // H1 atlas stamps without importing the rest of the rifle/pixel-atlas pipeline.
+ const geom=new THREE.PlaneGeometry(1.70,.56);
+ const dark=new THREE.MeshBasicMaterial({color:0x121916,side:THREE.DoubleSide});
+ const stamps=new THREE.InstancedMesh(geom,dark,8);
+ const tx=new THREE.Matrix4(),q=new THREE.Quaternion();
+ for(let side=0;side<2;side++)for(let i=0;i<4;i++){
+  const x=[5.35,7.40,9.45,11.50][i]-3.75;
+  q.setFromAxisAngle(new THREE.Vector3(0,1,0),side===0?0:Math.PI);
+  tx.compose(new THREE.Vector3(x,.11,(side===0?1:-1)*1.463),
+   q,new THREE.Vector3(1,1,1));
+  stamps.setMatrixAt(side*4+i,tx);
+ }
+ stamps.instanceMatrix.needsUpdate=true;
+ stamps.name='H1 · actual four rectangular atlas stamps, preview-only';
+ root.add(stamps);
  root.position.x=-4.85;
  root.userData.studyOnly=true;
  return root;
