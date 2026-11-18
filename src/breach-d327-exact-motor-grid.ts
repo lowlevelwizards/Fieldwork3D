@@ -83,7 +83,7 @@ export function coldExactMotorGridRoute(
  if(!terminal)return [];
  const reverse:Pt[]=[];let current:string|null=terminal;
  while(current&&current!=='0,0'){
-  const node=map.get(current)!;
+  const node:Node=map.get(current)!;
   reverse.push({x:node.x,y:node.y});current=node.parent;
   if(reverse.length>maxWaypoints*4)return [];
  }
