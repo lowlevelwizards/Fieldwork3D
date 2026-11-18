@@ -113,7 +113,7 @@ try{
    const firstAngle=await operatorPreview.getAttribute('aria-label');
    await operatorTabs.nth(1).click();
    const secondAngle=await operatorPreview.getAttribute('aria-label');
-   const degrees=label=>Number(label?.match(/View angle (\\d+) degrees/)?.[1]);
+   const degrees=label=>Number(label?.match(/View angle (\d+) degrees/)?.[1]);
    if(!Number.isFinite(degrees(secondAngle))||
       degrees(secondAngle)!==degrees(before))
     throw Error('Second operator inherited first operator camera rotation');
