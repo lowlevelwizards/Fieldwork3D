@@ -45,7 +45,8 @@ import {shouldProbeStationaryCollisionRoute}
  from './breach-recovery-proposal-gate.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
  selectPhysicalOpenLeafRejoin} from './breach-physical-leaf-rejoin.ts';
-import {routeWithNormalWorld} from './breach-squeeze-route.ts';
+import {routeWithNormalWorld,coldFineMotorWorldRoute}
+ from './breach-squeeze-route.ts';
 import {claimRepeatedFurnitureDeparture,
  selectMotorVerifiedFurnitureDeparture}
  from './breach-d317c-micro-departure.ts';
@@ -55,6 +56,7 @@ import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
  from './breach-motor-cpu-probe.ts';
 import {selectColdMotorMicroDeparture,claimColdMotorMicroDeparture}
  from './breach-d326-micro-departure.ts';
+import {claimD326ColdFineProbe} from './breach-d326-fine-route-gate.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -181,6 +183,26 @@ export function resolveMotorCollision(
         provisionalRouteAccepted(a);
         a.squeeze=false;a.squeezeTime=0;
         return true;
+      }
+      // D3.26F2: the D3.26D whole-route verifier rejected all coarse
+      // continuations on Apartment 19036595. A COLD, 4-unit world route
+      // WAS fully legal at every 0.3-unit physical stride. Only after
+      // genuine wall/furniture blockage and an exhausted short departure
+      // may this same ordinary MOVE use that complete certified path.
+      // Door episodes nearby, ENTRY, STACK, squeeze and live traversal
+      // stay on their previous motor/queue authority. This selects route
+      // nodes; it NEVER moves the body or changes its authored GO.
+      if(a.blockedTime>=2&&claimD326ColdFineProbe(a,p,s.seconds)){
+        const fine=coldFineMotorWorldRoute(a.p,p,s.doors,world);
+        if(fine.length&&watchClearanceAllowed(a.p,fine[0],p,
+          !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+          setTransientRoute(s,a,fine,'motor-cold-fine-world');
+          notePreciseLocalDetour(a,fine[0]);
+          a.lastNavRepairAt=s.seconds;
+          provisionalRouteAccepted(a);
+          a.squeeze=false;a.squeezeTime=0;
+          return true;
+        }
       }
     }
     const laneAt=profile?beginMotorCpuMeasurement():0;
