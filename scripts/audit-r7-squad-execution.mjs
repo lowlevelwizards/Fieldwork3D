@@ -582,15 +582,6 @@ function run(site,seed,kind){
     }
     const episode=actor.doorTraversal;
     const door=episode?session.doors.find(d=>d.id===episode.doorId):null;
-    const authored=actor.plan[0]?.kind==='move'?actor.plan[0].p:null;
-    const actualWorld=authored?routeWithSqueezeWorld(
-       actor.p,authored,session.doors,world):[];
-    const actualFine=authored?coldFineMotorWorldRoute(
-       actor.p,authored,session.doors,world):[];
-    const actualNormal=authored?routeWithNormalWorld(
-       actor.p,authored,session.doors,world):[];
-    const actualPortal=authored?routeToNextOperableDoor(
-       actor.p,authored,session.doors,world):[];
     const route=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
     const future=routeToNextOperableDoor(actor.p,goal,session.doors,world);
     d314bClearanceEvidence={
@@ -895,6 +886,15 @@ function run(site,seed,kind){
       normalToward:headings.filter(x=>x.normal&&x.towardGoal).map(x=>x.i),
       narrowToward:headings.filter(x=>x.narrow&&x.towardGoal).map(x=>x.i)});
     }
+    const authored=actor.plan[0]?.kind==='move'?actor.plan[0].p:null;
+    const actualWorld=authored?routeWithSqueezeWorld(
+       actor.p,authored,session.doors,world):[];
+    const actualFine=authored?coldFineMotorWorldRoute(
+       actor.p,authored,session.doors,world):[];
+    const actualNormal=authored?routeWithNormalWorld(
+       actor.p,authored,session.doors,world):[];
+    const actualPortal=authored?routeToNextOperableDoor(
+       actor.p,authored,session.doors,world):[];
     const route=routeWithSqueezeWorld(actor.p,goal,session.doors,world);
     const portal=routeToNextOperableDoor(actor.p,goal,session.doors,world);
     return {actor:actor.id,position:{...actor.p},goal:{...goal},
