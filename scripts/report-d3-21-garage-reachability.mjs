@@ -8,7 +8,8 @@ import {generateSite} from '../src/breach-site.ts';
 import {newSession} from '../src/breach-game.ts';
 import {activateSite,OPERATOR_RADIUS,pointToSegment,doorLeafSegment}
  from '../src/breach-core.ts';
-import {bodyClear} from '../src/breach-navigation.ts';
+import {bodyClear,SQUEEZE_RADIUS} from '../src/breach-navigation.ts';
+import {intelPassable} from '../src/breach-intel.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {routeWithNormalWorld,routeWithSqueezeWorld,routeToNextOperableDoor}
  from '../src/breach-squeeze-route.ts';
@@ -60,6 +61,14 @@ try{
     bodyClear(from,s.doors,OPERATOR_RADIUS,world),
    goalStandable:world.passable(to,OPERATOR_RADIUS)&&
     bodyClear(to,s.doors,OPERATOR_RADIUS,world),
+   // Critical distinction: a KNOWN physically too-small authored endpoint
+   // is a planning-contract problem; a hidden obstacle cannot be exposed
+   // by the planner. Offline diagnostic never edits goals or player intel.
+   goalWorldWallClear:world.passable(to,OPERATOR_RADIUS),
+   goalCurrentDoorClear:bodyClear(to,s.doors,OPERATOR_RADIUS,world),
+   goalAllOpenDoorClear:bodyClear(to,allOpen,OPERATOR_RADIUS,world),
+   goalKnownIntelStanding:intelPassable(to,s.intel,OPERATOR_RADIUS),
+   goalKnownIntelSqueeze:intelPassable(to,s.intel,SQUEEZE_RADIUS),
    routeNodes:Object.fromEntries(Object.entries(routes)
     .map(([key,path])=>[key,path.length])),
    routeFirst:Object.fromEntries(Object.entries(routes)
