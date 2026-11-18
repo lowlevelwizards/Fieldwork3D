@@ -161,6 +161,9 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
           Math.max(.60,impactStart+.42));
         const outcome=kickDoor(door,a.p);
         door.lastKickAt=s.seconds;
+        if(outcome.opened&&door.latchBroken&&
+           door.hardwareDetachedAt===undefined)
+          door.hardwareDetachedAt=s.seconds;
         if(outcome.opened){
           door.openedAt=s.seconds;
           // One bounded, real-footprint shove of loose furniture touched
