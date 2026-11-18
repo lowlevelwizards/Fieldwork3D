@@ -74,7 +74,7 @@ test('G36 P4: larger handguard graphic decisions without new vent meshes',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const guard=one(g,'g36LongHandguard');
  const p=guard.geometry.getAttribute('position');
- assert.equal(p.count,258,'H2.1: five eight-corner stations, rear cap and inset mouth');
+ assert.equal(p.count,60,'H3: two six-corner sections and two solid caps');
  assert.equal(g.children.filter(o=>o.userData.g36LongHandguard).length,1);
  assert.ok(bounds(guard).max.y-bounds(guard).min.y>3.20);
  assert.ok(bounds(guard).max.z-bounds(guard).min.z<3.25);
