@@ -66,6 +66,11 @@ const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
 // D3.25D: strictly read-only endpoint feasibility for known failed entry.
 const d325StallFeasibility=process.argv.includes('--d325-stall-feasibility');
+// D3.26B: strictly cold end-state microstride truth for the three physical
+// non-arrivals. Off by default and never part of the authoritative motor.
+const d326LastStallProbe=process.argv.includes('--d326-last-stall-probe');
+const d326Micro=d326LastStallProbe?
+ await import('../src/breach-stack-micro-corner.ts'):null;
 // D3.17E: offline-only, post-run real geometry witness for blocked bodies.
 // It never runs in live movement, advances the simulation, or adopts a route.
 const leafRejoinDiagnostic=process.argv.includes('--leaf-rejoin-diagnostic');
@@ -731,6 +736,62 @@ function run(site,seed,kind){
        .map(d=>({id:d.id,open:!!d.open,locked:!!d.locked,fraction:round(d.openFraction??0)}))};
    }
   }
+  // D3.26B: compare the real stuck operator's *first 0.3-unit motor stride*
+  // against coarse 4-unit swept route validation. All probes inspect the
+  // final immutable world only; no actor position, GO, door or nav changes.
+  const d326StallEvidence=d326LastStallProbe&&kind==='authored'?
+   actors.filter(a=>a.plan[0]?.kind==='move'&&
+     stats.details.some(v=>v.actor===a.id&&!v.arrived)).map(actor=>{
+    const world=sessionWorldGeometry(session),goal=planned.goals.get(actor.id);
+    if(!goal)return null;
+    const distance=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
+    const sweep=(from,to)=>sweptBodyClear(from,to,
+      session.doors,OPERATOR_RADIUS,world);
+    const micro=(from,to)=>d326Micro.fullBodyMotorStrideClear(from,to,sweep);
+    const first=actor.nav[0]??null;
+    const direction=first??goal;
+    const gap=distance(actor.p,direction);
+    const immediate=gap>.001?{
+      x:actor.p.x+(direction.x-actor.p.x)/gap*.3,
+      y:actor.p.y+(direction.y-actor.p.y)/gap*.3}:null;
+    const previews=[];
+    for(const radius of [2,5,10]){
+     for(let j=0;j<8;j++){
+      const theta=j*Math.PI/4;
+      const candidate={x:actor.p.x+Math.cos(theta)*radius,
+        y:actor.p.y+Math.sin(theta)*radius};
+      if(!micro(actor.p,candidate))continue;
+      const tail=routeWithSqueezeWorld(candidate,goal,
+        session.doors,world);
+      const firstTail=tail[0]??null;
+      const future=tail.length?[]:routeToNextOperableDoor(
+        candidate,goal,session.doors,world);
+      previews.push({radius,heading:j,point:candidate,
+       tailNodes:tail.length,tailFirst:firstTail,
+       tailFirstMicro:firstTail?micro(candidate,firstTail):null,
+       futureNodes:future.length,futureFirst:future[0]??null,
+       futureFirstMicro:future[0]?micro(candidate,future[0]):null,
+       nextNavMicro:first?micro(candidate,first):null});
+     }
+    }
+    return {actor:actor.id,position:{...actor.p},goal:{...goal},
+     doorEpisode:actor.doorTraversal?.doorId??null,
+     nearestDoors:session.doors.map(d=>({id:d.id,
+       fromGap:pointToSegment(actor.p,doorLeafSegment(d)),
+       fraction:d.openFraction??0,locked:!!d.locked}))
+       .sort((a,b)=>a.fromGap-b.fromGap).slice(0,4),
+     blocker:actor.lastBlocker,blockedSeconds:actor.blockedTime,
+     firstNav:first,nextNavFullSweep:first?sweep(actor.p,first):null,
+     nextNavMicro:first?micro(actor.p,first):null,
+     nextImmediate:immediate,immediateSweep:immediate?sweep(actor.p,immediate):null,
+     positionFullBody:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
+     goalFullBody:bodyClear(goal,session.doors,OPERATOR_RADIUS,world),
+     currentWorldRouteNodes:routeWithSqueezeWorld(actor.p,goal,
+       session.doors,world).length,
+     currentFuturePortalNodes:routeToNextOperableDoor(actor.p,goal,
+       session.doors,world).length,
+     candidates:previews};
+   }).filter(Boolean):null;
   const triage=stats.details.map((detail,i)=>{
    const actor=actors[i];
    const recentNetMovement=round(dist(actor.p,windowStart[i]));
@@ -842,6 +903,7 @@ function run(site,seed,kind){
    ...(progress?{progressEvidence}:{}),
    ...(leafRejoinDiagnostic?{leafRecoveryEvidence}:{}),
    ...(d325Feasibility?{d325Feasibility}:{}),
+   ...(d326StallEvidence?{d326StallEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
