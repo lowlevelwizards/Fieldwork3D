@@ -162,9 +162,29 @@ for(const [seed,mission] of chosen){
         // A reached disclosed point is not itself success; the
         // mission state machine must independently acknowledge SECURE.
         if(gap>14){
-         issued=recordAction(action,target,planMove(s,rescuer.id,target));
-         if(issued){current={name:action,p:{...target}};
-          issuedAt=s.seconds;issueDistance=gap;issuedTravel=totalTravel;
+         let plannedAt=target;
+         let acceptedMove=planMove(s,rescuer.id,target);
+         // EQA3.1 diagnostic correction: a *verified objective location*
+         // need not be a valid standing footprint (e.g. evidence placed
+         // against a shelf or civilian body). An actual player can click a
+         // legal nearby contact spot. Probe a small deterministic ring
+         // through the identical user-facing planMove, using only the
+         // currently briefed/observed geometry and no secret truth.
+         if(!acceptedMove&&action==='approach-disclosed-objective'){
+          seek:for(const radius of [16,24,30,34]){
+           for(let i=0;i<16;i++){
+            const angle=i*Math.PI/8;
+            const candidate={x:target.x+Math.cos(angle)*radius,
+             y:target.y+Math.sin(angle)*radius};
+            if(planMove(s,rescuer.id,candidate)){
+             acceptedMove=true;plannedAt=candidate;break seek;
+            }
+           }
+          }
+         }
+         issued=recordAction(action,plannedAt,acceptedMove);
+         if(issued){current={name:action,p:{...plannedAt}};
+          issuedAt=s.seconds;issueDistance=dist(rescuer.p,plannedAt);issuedTravel=totalTravel;
           if(firstPlanAt===null)firstPlanAt=s.seconds;
          }else if(action==='explore-briefed-room'){
           const room=ordered.find(r=>dist(center(r),target)<1);
