@@ -17,6 +17,8 @@ test('D3.28B: across 4 real distinct source adoptions, same anchor qualifies onc
  note(a,'blocked-leg-connector',3.58,{x:456.08,y:606.2});
  assert.equal(claimD328EntryLoopProbe(a,goal,first,3.6),true);
  assert.equal(claimD328EntryLoopProbe(a,goal,first,4),false);
+ // A new repeated physical route is required before a second cold probe.
+ note(a,'full-body-lane',8.55,{x:456.2,y:601.5});
  assert.equal(claimD328EntryLoopProbe(a,goal,first,8.6),true);
  assert.equal(claimD328EntryLoopProbe(a,goal,first,14),false);
 });
