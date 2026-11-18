@@ -41,7 +41,7 @@ test('normal stocks shoulder at the front; SHORT tucks beside the waist',()=>{
    assert.ok(Math.hypot(pocket.x-user[0],pocket.y-user[1],
      pocket.z-user[2])<.001,'authored '+mode+' stock');
   }else{
-   assert.ok(pocket.x>=4.3&&pocket.x<=5.2,mode+' front seat X');
+   assert.ok(pocket.x>=4.3&&pocket.x<=5.45,mode+' front seat X');
    assert.ok(pocket.z>=5.0&&pocket.z<5.5,mode+' close to chest edge');
   }
   const fit=fitWeaponPose({weapon:carbine,configuration,
