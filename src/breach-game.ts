@@ -941,9 +941,15 @@ export function planSquadEntry(s:Session,doorId:string){
  // starting point proves that the lead's existing route is also
  // reachable from this squadmate. Reuse that ONE A* result per candidate.
  // Never share routes across a wall or from a distant/unknown anchor.
+ // If a direct full-body link is not clear, pay for ONE cold, known
+ // route from this operator to the leader. Concatenating two proven
+ // player-known routes is enough to establish slot reachability; A* does
+ // not need to be repeated for every candidate lane. A truly disconnected
+ // member still receives independent candidate route testing below.
  const canShare=starts.map((from,index)=>index===0||
    sharedEntryRouteOrigin(from,start,
-     p=>intelPassable(p,s.intel,OPERATOR_RADIUS)));
+     p=>intelPassable(p,s.intel,OPERATOR_RADIUS))||
+   routeWithSqueezeIntel(s.intel,from,start).length>0);
  const routeCache=new Map<string,boolean>();
  const leadRouteCache=new Map<string,boolean>();
  const leadRouteTo=(p:Pt):boolean=>{
