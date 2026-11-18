@@ -39,10 +39,13 @@ try{
    sticky:getComputedStyle(model).position,
    dock:getComputedStyle(action).position,
    context:screen.classList.contains('arsenal-wb-has-apply'),
+   flattenedStage:getComputedStyle(document.querySelector('.arsenal-wb-stage')).display,
    modelCount:document.querySelectorAll('.arsenal-wb-canvas').length
   };
  });
  assert.equal(layout.sticky,'sticky','phone model must remain visible during editing');
+ assert.equal(layout.flattenedStage,'contents',
+  'model and stats wrapper must not constrain the phone sticky viewport');
  assert.equal(layout.dock,'fixed','campaign Apply must remain accessible');
  assert.equal(layout.context,true,'campaign commit state missing');
  assert.equal(layout.modelCount,1,'workbench duplicated weapon canvas');
