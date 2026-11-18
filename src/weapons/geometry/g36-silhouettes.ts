@@ -205,15 +205,15 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
   hub.userData.g36SelectorHub=true;
   lever.userData.g36SelectorLever=true;
  }
- // R4: SEF represents three actual selector index positions, not a
- // vertical stack. S is horizontal from pivot, E is 45 degrees down,
- // F is vertical down. The letters sit on real housing/grip surfaces
- // in ONE pooled 12-triangle graphic (no added mesh or material).
+ // R5: F/E left of the pivot, S to its right, matching the HK grip.
+ // All letters fit ABOVE the imaginary trigger-guard boundary on the
+ // same receiver side face; neither E nor F sinks through the grip.
+ // Retain just one cached 12-triangle double-sided letter mesh.
  const selectorMarks=addG36SEFIndexMarks(root);
  selectorMarks.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
  selectorMarks.userData.g36SelectorMarkings=true;
  selectorMarks.userData.g36SelectorMarkCount=2;
- selectorMarks.userData.g36SelectorArtVersion='r4-sef-indexed-arc';
+ selectorMarks.userData.g36SelectorArtVersion='r5-sef-trigger-housing';
 
  const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;
