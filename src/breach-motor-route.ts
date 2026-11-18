@@ -286,6 +286,9 @@ export function prepareMotorRoute(
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
     a.lastNormalLaneProbeAt=-10;
   }
+  // Re-evaluate a previously chosen long path after a nearby physically
+  // broken latch clears. Transient route only; no player-plan rewrite.
+  if(a.nav.length)refreshRouteAfterForcedDoor(a,p,s);
   if(!a.nav.length){
     // D3.10B: after real retries have established a known, immovable
     // authored landing, do not run the same A* and contact probes forever.
@@ -436,9 +439,7 @@ export function prepareMotorRoute(
         provisionalRouteAccepted(a);
       }
     }
-    // Replace a stale long detour only after a verified opened latch.
-   if(a.nav.length)refreshRouteAfterForcedDoor(a,p,s);
-   if(!a.nav.length){
+    if(!a.nav.length){
       // Only an actual failed normal+intel+shove/portal attempt can be
       // cached. Do not claim a remote hidden obstacle is player-known.
       if(a.side==='blue'&&a.plan[0]?.kind==='move')
