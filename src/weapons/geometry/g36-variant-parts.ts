@@ -23,7 +23,7 @@ export function g36HandguardEnd(id:string):number{
 }
 export function g36SupportRange(id:string):readonly [number,number]{
  const end=g36HandguardEnd(id);
- return [4.80,Math.max(5.70,end-1.35)];
+ return [4.15+.65,Math.max(5.70,end-1.35)];
 }
 const dispose=(root:THREE.Group,predicate:(m:THREE.Mesh)=>boolean)=>{
  for(const obj of [...root.children]){
