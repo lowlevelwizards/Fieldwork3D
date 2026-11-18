@@ -54,14 +54,14 @@ export const weaponGrips=(id:WeaponId,configuration?:WeaponConfiguration,
  const mountedGrip=contact&&configuration.slots.foregrip!=='foregrip-none'?
   mountedAccessorySeat(configuration,'foregrip')?.hand:null;
  const supportX=low?Math.max(low.minSupportX,
-   a.supportX-low.supportBack*w):
+   Math.max(a.supportX,baseline?.x??a.supportX)-low.supportBack*w):
    handling==='short'?Math.min(a.supportX,-3.0):
    mountedGrip?mountedGrip.x:
    Math.max(a.supportX,baseline?.x??a.supportX);
  return {lengthScale:a.lengthScale,stockX:a.stockX,
   primaryX:a.primaryX,primaryY:a.primaryY,
   supportX,supportY:low?
-    a.supportY-(low?.supportDown??0)*w:
+    (mountedGrip?.y??baseline?.y??a.supportY)-(low?.supportDown??0)*w:
     handling==='short'?a.supportY:
     mountedGrip?.y??baseline?.y??a.supportY};
 };
@@ -105,6 +105,23 @@ const carryModularCache=new WeakMap<WeaponConfiguration,
   Partial<Record<ReadyCarry,Readonly<WorkbenchPose>>>>();
 const carryClassicCache=new Map<WeaponId,
   Partial<Record<ReadyCarry,Readonly<WorkbenchPose>>>>();
+/** Cache a rigid adjustment after transferring the authored M4 low carry.
+ * Front shoulder/vest contact is in front of the chest, not behind it.
+ * Move the visible butt and both wrists/elbows by the SAME offset: no
+ * independent teleporting grip or render-only muzzle correction.
+ * Keep the M4 authored reference, stockless caps and short-stock untouched.
+ */
+export function seatTransferredLowCarry(source:Readonly<WorkbenchPose>):WorkbenchPose{
+ const butt=source.targets.stock;
+ const dx=Math.max(0,5.50-butt[0]);
+ const dz=Math.max(0,5.45-butt[2]);
+ if(dx<.0001&&dz<.0001)return source as WorkbenchPose;
+ const targets=Object.fromEntries(Object.entries(source.targets).map(
+  ([key,point])=>[key,
+   (key==='supportShoulder'||key==='firingShoulder')?[...point]:
+   [point[0]+dx,point[1],point[2]+dz]])) as WorkbenchPose['targets'];
+ return {...source,targets};
+}
 export function liveReadyCarryPose(mode:ReadyCarry,weapon:WeaponId,
  configuration?:WeaponConfiguration):Readonly<WorkbenchPose>{
  const valid=configuration?.weapon===weapon?configuration:undefined;
@@ -112,10 +129,12 @@ export function liveReadyCarryPose(mode:ReadyCarry,weapon:WeaponId,
  if(cache?.[mode])return cache[mode]!;
  const source=AUTHORED_READY_CARRIES[mode];
  const exact=valid&&sameAuthoredReferenceBuild(source,valid);
- const pose=exact?source:transferShortStockPose(source,
+ const transferred=exact?source:transferShortStockPose(source,
    weaponGrips('carbine',M4_REFERENCE_CONFIG,'ready'),
    weaponGrips(weapon,valid,'ready'),weapon,
    valid?.build?.family??weapon);
+ const pose=!exact&&mode==='low'&&!stocklessMP5K(valid)?
+   seatTransferredLowCarry(transferred):transferred;
  const record={...cache,[mode]:pose};
  if(valid)carryModularCache.set(valid,record);
  else carryClassicCache.set(weapon,record);
