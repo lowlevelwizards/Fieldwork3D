@@ -20,6 +20,10 @@ export type Door={id:string;a:Pt;b:Pt;open:boolean;openedAt:number;
   hinge?:'a'|'b';swing?:-1|1;openFraction?:number;
   angularVelocity?:number;resistance?:number;kickImpulse?:number;heldBy?:string|null;latchIntegrity?:number;frameIntegrity?:number;
   kicks?:number;lastKickAt?:number;forced?:boolean;locked?:boolean;jammed?:boolean;
+  /** Permanent forced latch failure; leaf remains hinged but cannot close/relatch. */
+  latchBroken?:boolean;
+  /** Simulation timestamp of the real impact that detached the hardware. */
+  hardwareDetachedAt?:number;
   /** Frame-relative locked face, independent of swing and hinge orientation. */
   lockSide?:'positive'|'negative'|'both';
   /** Missing kind retains legacy two-sided mechanical lock semantics. */
