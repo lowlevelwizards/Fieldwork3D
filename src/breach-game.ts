@@ -37,7 +37,7 @@ import type {ActorMotorHooks} from './breach-motor-contract.ts';
  */
 import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,OPERATOR_RADIUS,segmentsCross,doorCenter,doorLeafSegment,doorBlocksRay,doorBlocksSightRay,pointToSegment} from './breach-core.ts';
 import {type PlanNode,type PlanKind,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
-import {entryLanes} from './breach-entry-lanes.ts';
+import {entryLanes,sharedEntryRouteOrigin} from './breach-entry-lanes.ts';
 import {settleKnownEntryLandings} from './breach-entry-landing.ts';
 import {stackApproachPositions,doorOpensTowardApproach} from './breach-entry-coordination.ts';
 import type {Site,SiteScale} from './breach-site.ts';
@@ -937,13 +937,31 @@ export function planSquadEntry(s:Session,doorId:string){
  // authored starting point. Only discovered geometry is used here.
  // These searches happen on explicit SQUAD ENTRY authoring, never 60 Hz.
  const knownLeaf=doorLeafSegment(door);
+ // D3.24B2: a full-shoulder known-clear connector to the leader's
+ // starting point proves that the lead's existing route is also
+ // reachable from this squadmate. Reuse that ONE A* result per candidate.
+ // Never share routes across a wall or from a distant/unknown anchor.
+ const canShare=starts.map((from,index)=>index===0||
+   sharedEntryRouteOrigin(from,start,
+     p=>intelPassable(p,s.intel,OPERATOR_RADIUS)));
  const routeCache=new Map<string,boolean>();
+ const leadRouteCache=new Map<string,boolean>();
+ const leadRouteTo=(p:Pt):boolean=>{
+   const key=p.x.toFixed(3)+':'+p.y.toFixed(3);
+   const cached=leadRouteCache.get(key);
+   if(cached!==undefined)return cached;
+   const accepted=routeWithSqueezeIntel(s.intel,start,p).length>0;
+   leadRouteCache.set(key,accepted);
+   return accepted;
+ };
  const reachable=(index:number,p:Pt):boolean=>{
    const from=starts[index];
    if(!from)return false;
+   if(canShare[index])return leadRouteTo(p);
    const key=index+':'+p.x.toFixed(3)+':'+p.y.toFixed(3);
    const cached=routeCache.get(key);
    if(cached!==undefined)return cached;
+   // Disconnected operators keep independent, intel-only route proof.
    const accepted=routeWithSqueezeIntel(s.intel,from,p).length>0;
    routeCache.set(key,accepted);
    return accepted;
