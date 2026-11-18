@@ -759,7 +759,7 @@ export class CampaignScreen{
      a.deadline-b.deadline||a.id.localeCompare(b.id));
     const visible=sorted.slice(0,3);
     jobs.append(node('p','campaign-contract-board-summary',
-     'SHOWING '+visible.length+' OF '+openContracts.length+
+     'INTELLIGENCE RESERVE '+campaignIntelBalance(c)+' · SHOWING '+visible.length+' OF '+openContracts.length+
      ' OPEN CASE'+(openContracts.length===1?'':'S')+' · EARLIEST DEADLINE FIRST'));
     const board=node('div','campaign-contract-board');
     for(const contract of visible)board.append(this.contract(contract,c));
