@@ -1,0 +1,48 @@
+name: D3.30 interruption, explicit retry and squad coordination
+on:
+  push:
+    branches: [feature/d3-30-interrupted-entry-recovery-20261118]
+    paths:
+      - '.github/workflows/d3-30-interrupted-entry.yml'
+      - 'src/breach-door-interruption.ts'
+      - 'src/breach-interruption-recovery.ts'
+      - 'src/ui/context-actions.ts'
+      - 'src/ui/tactical-palette-controller.ts'
+      - 'src/ui/tactical-icons.ts'
+      - 'src/breach-tactical-context-command.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-order-lifecycle.ts'
+      - 'src/breach-motor-door.ts'
+      - 'src/breach-order-wait.ts'
+      - 'src/breach-execution-state.ts'
+      - 'src/ui/interrupted-entry-marker.ts'
+      - 'src/breach-2d-route-overlays.ts'
+      - 'src/breach-2d-projected-overlays.ts'
+      - 'src/ui/tactical-hud-density.ts'
+      - 'src/breach-entry-interruption-group.ts'
+      - 'scripts/lib/d3-30-physical-gate.mjs'
+      - 'tests/release-d3-30-physical-gate.test.mjs'
+      - 'tests/release-d3-30-threshold-coordination.test.mjs'
+      - 'tests/release-d3-30-recovery-feedback.test.mjs'
+      - 'tests/release-d3-30-recovery-marker.test.mjs'
+      - 'tests/release-d3-30-interrupted-entry.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d330-interrupted-entry-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  interrupted-door-orders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and critical capture/explicit-resume regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-30-physical-gate.test.mjs tests/release-d3-30-threshold-coordination.test.mjs tests/release-d3-30-recovery-feedback.test.mjs tests/release-d3-30-recovery-marker.test.mjs tests/release-d3-25b-terminal-entry-gate.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs

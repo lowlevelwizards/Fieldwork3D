@@ -7,6 +7,8 @@ import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-r
 export {plannedWindowRoute} from './breach-known-route-authoring.ts';
 import {addNode,finalPoint} from './breach-plan-node-commands.ts';
 export {addNode,finalPoint} from './breach-plan-node-commands.ts';
+export {resumeInterruptedDoorPlan,canResumeInterruptedDoorPlan}
+ from './breach-interruption-recovery.ts';
 export {planAim,updatePlanFacing,planLook,planWatch,retargetActiveWatch,removeActiveWatch,releaseWatch} from './breach-plan-aim-commands.ts';
 export {operationBriefing,missionText,debrief} from './breach-mission-reporting.ts';
 import {team,enemies,actor,party,canEdit} from './breach-session-selectors.ts';
@@ -216,6 +218,8 @@ export type TeamActor=Operator & {
   completedOrders:number;failedOrders:number;
   /** Last witnessed terminal cancellation survives queue draining for debrief. */
   lastFailedOrder:{id:number;kind:string;reason:string;at:number}|null;
+  /** Optional stored recovery offer; NEVER an automatically active order. */
+  interruptedDoorPlan?:import('./breach-door-interruption.ts').InterruptedDoorPlan|null;
   passageWaitSeconds:number;passageStallReported:boolean;
   /** At most one physical deadlock retreat per authored waypoint and goal.
    * The motor can still queue/wait afterward, but never stack retreats. */

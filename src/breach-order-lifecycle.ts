@@ -3,6 +3,7 @@
  * feedback so they cannot stall the remaining authored plan.
  */
 import type {Session,TeamActor} from './breach-game.ts';
+import {snapshotDoorInterruption} from './breach-door-interruption.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {angleDifference,targetAngle,interruptsWatch} from './breach-plan.ts';
 import {bodyClear} from './breach-navigation.ts';
@@ -87,12 +88,15 @@ export function completeOrder(a:TeamActor){retireCurrentOrder(a,true);}
  * order can activate on the following tick without requiring Undo.
  * Temporary movement delays and hit interruptions do not call this.
  */
-export function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string,notify:(s:Session,text:string)=>void){
+export function failCurrentOrder(s:Session,a:TeamActor,n:PlanNode,reason:string,
+ notify:(s:Session,text:string)=>void,physicalDoorId?:string){
   if(a.plan[0]?.id!==n.id)return; // A stale callback cannot skip the next order.
   // D3.16: a terminally cancelled order MUST remain distinguishable
   // from a successfully executed one after plan draining. It is not an
   // unresolved orderIssue (which belongs only to the currently held node).
   // The stale-node check above makes this exactly-once and replay-stable.
+  if(a.side==='blue')a.interruptedDoorPlan=snapshotDoorInterruption(
+    n,a.plan,reason,s.seconds,physicalDoorId,a.interruptedDoorPlan??null);
   a.failedOrders=(a.failedOrders??0)+1;
   a.lastFailedOrder={id:n.id,kind:n.kind,reason,at:s.seconds};
   notify(s,a.name+' '+reason+' · ORDER CANCELLED');

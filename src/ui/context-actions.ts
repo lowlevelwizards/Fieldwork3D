@@ -13,8 +13,19 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nearSuspect?:boolean;
   nearCivilianCasualty?:boolean;
   carryingCivilian?:boolean;
-  availableTools?:readonly string[];doorWedged?:boolean;};
+  availableTools?:readonly string[];doorWedged?:boolean;
+  /** A prior witnessed interruption exists; not a query of current hidden lock state. */
+  resumeAvailable?:boolean;
+  /** Based only on the previously witnessed interruption. */
+  resumeReason?:'locked'|'jammed'|'coordinated';};
 export function contextActionChoices(o:ContextOptions):ContextAction[]{
+ if(o.resumeAvailable)return [
+  {id:'ctxResumeEntry',label:'RESUME ENTRY',group:'primary',
+   title:o.resumeReason==='coordinated'?
+     'A teammate was stopped at this threshold · deliberately retry your preserved entry':
+     'Previously blocked entry · resolve its obstruction, then deliberately retry'},
+  ...contextActionChoices({...o,resumeAvailable:false})
+ ];
   if(o.door)return o.doorPartial?[
      {id:'ctxOpen',label:'OPEN MORE',group:'primary',title:'Continue swinging this partially open door'},
      {id:'ctxClose',label:'CLOSE',group:'primary',title:'Swing this door toward its frame'},

@@ -197,6 +197,7 @@ export const FIELDWORK_ICON_FAMILY:Record<string,Glyph>={
   }
 };
 const aliases:Record<string,string>={
+  "ctxResumeEntry": "openDoor",
   "ctxOpen": "openDoor",
   "ctxDoor": "openDoor",
   "ctxClose": "closeDoor",

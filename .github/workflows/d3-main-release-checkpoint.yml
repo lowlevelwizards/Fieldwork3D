@@ -42,22 +42,8 @@ jobs:
           test -s dist/fieldwork-build.json
       - name: Full 45-second 88-operator mainline merge acceptance
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --progress --route-quality > "$RUNNER_TEMP/release45.json"
-          node --input-type=module -e '
-            import fs from "node:fs";
-            const data=JSON.parse(fs.readFileSync(process.argv[1],"utf8"));
-            const s=data.summary,p=data.progressSummary,q=data.routeQualitySummary;
-            console.log("D3_MAIN_RELEASE",JSON.stringify({summary:s,progress:p,route:q},null,2));
-            if(s.exceptions||s.invalidPositions||s.corruptedPlans||
-               s.physicsStepViolations||s.unboundedManeuverAttempts)
-              throw Error("invalid release physicality");
-            if(s.acceptedFour!==22||s.physicalArrivals<79||
-               s.physicalCompletedFour<18||s.completedFour<21)
-              throw Error("physical arrival regression");
-            if(s.stallEpisodes>9||s.retries>6||p.sustainedStill||p.suspectedLoops)
-              throw Error("new stalled or looping movement");
-            if(q.searches>4070)throw Error("A* regression");
-          ' "$RUNNER_TEMP/release45.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/release45.json"
+          node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/release45.json"
       - name: Retain full physical acceptance evidence
         if: always()
         uses: actions/upload-artifact@v4
