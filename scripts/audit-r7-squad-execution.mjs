@@ -796,6 +796,13 @@ function run(site,seed,kind){
        fraction:d.openFraction??0,locked:!!d.locked}))
        .sort((a,b)=>a.fromGap-b.fromGap).slice(0,4),
      blocker:actor.lastBlocker,blockedSeconds:actor.blockedTime,
+     squeeze:actor.squeeze,squeezeYaw:actor.squeezeYaw,
+     motorPause:actor.motorPause,recoveryAttempts:actor.recoveryAttempts,
+     lastNormalLaneProbeAt:actor.lastNormalLaneProbeAt,
+     lastNavRepairAt:actor.lastNavRepairAt,
+     doorEpisodePhase:actor.doorTraversal?.phase??null,
+     doorManeuver:actor.doorTraversal?.maneuver??null,
+     doorEpisodeAttempts:actor.doorTraversal?.maneuverAttempts??null,
      firstNav:first,nextNavFullSweep:first?sweep(actor.p,first):null,
      nextNavMicro:first?micro(actor.p,first):null,
      nextImmediate:immediate,immediateSweep:immediate?sweep(actor.p,immediate):null,
