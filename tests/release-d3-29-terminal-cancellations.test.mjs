@@ -22,6 +22,23 @@ test('D3.29A: fully open leaf cancellation is a review target, not success',()=>
  assert.equal(row.distanceToOriginalGoal,141.42);
  assert.equal(row.physicallyArrived,false);
 });
+test('D3.29B: actual locked interior door differs from open briefing FRONT',()=>{
+ const a=actor('moss');
+ const mode={mode:'entry',doorId:'FRONT',
+  endDoorStates:[{id:'FRONT',open:true,fraction:1,locked:false}],
+  d329CancelDoorWitness:[{actor:'moss',seconds:20,
+   failedOrder:{id:22,kind:'open',reason:'PATH BLOCKED · DOOR LOCKED',at:20},
+   selectedDoorId:'D5',
+   actualSelectedDoor:{id:'D5',locked:true,open:false,fraction:0},
+   lockedNearby:[{id:'D5',distance:2}]}]};
+ const row=classifyD329Cancellation(mode,a);
+ assert.equal(row.family,'entry-cancelled-after-open-door');
+ assert.equal(row.interveningDoor,true);
+ assert.equal(row.lockedMotorDoorVerified,true);
+ assert.equal(row.selectedMotorDoor.id,'D5');
+ assert.equal(row.door.id,'FRONT');
+ assert.equal(row.physicallyArrived,false);
+});
 test('D3.29A: authored cancelled route has separate bucket',()=>{
  const mode={mode:'authored',doorId:null,endDoorStates:[]};
  const row=classifyD329Cancellation(mode,actor('rook'));
