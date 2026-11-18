@@ -65,9 +65,12 @@ export function addG36O2DualOptic(
  // O3 Stage 1: retain approved 125% width but compress length by 12.5%.
  // The rear stays at its original mount datum; only the front moves rearward.
  const bodyWidth=.91*1.25;
+ // O3 Stage 3: extend the REAR of the same housing into the carry-handle
+ // root. The bottom rises slightly towards the nose: a single molded shell,
+ // never an extra pedestal or an opaque slab over the handle opening.
  const lower=add(sixFacetPrism(-5.83,-1.50,
-  section(2.69,3.06,4.08,bodyWidth),
-  section(2.69,3.06,4.08,bodyWidth*.97)), 'g36LowerOptic');
+  section(1.94,3.08,4.12,bodyWidth),
+  section(2.24,3.08,4.12,bodyWidth*.97)), 'g36LowerOptic');
  lower.userData.g36IntegratedOpticShell=true;
  lower.userData.g36OpticCrossSectionSides=6;
 
