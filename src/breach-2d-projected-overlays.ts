@@ -9,6 +9,7 @@ import {activeWatchTarget} from './ui/active-watch-marker.ts';
 import {orderVisualScopes} from './ui/order-visual-state.ts';
 import {paintPassageRanks} from './ui/passage-rank-badges.ts';
 import {intelPassable} from './breach-intel.ts';
+import {objectiveLocationKnown} from './breach-objective-intel.ts';
 import {SQUEEZE_RADIUS} from './breach-navigation.ts';
 import {doorReachable} from './breach-door.ts';
 import {doorVisibility} from './breach-presentation.ts';
@@ -342,7 +343,8 @@ function renderProjectedPlans(){
     draw.strokeStyle='#f0cd96';draw.lineWidth=3;draw.stroke();
   }
   if((!replaying||replayObjectiveMarkers)&&
-    state.mission!=='clear'&&state.mission!=='done'){
+    state.mission!=='clear'&&state.mission!=='done'&&
+    (state.mission==='extract'||objectiveLocationKnown(state,replaying,replayObjectiveMarkers))){
     const target=worldToScreen(state.mission==='secure'?
       state.scenario.objective:state.scenario.extract,9);
     draw.strokeStyle='#e8d5a6';draw.lineWidth=2;
