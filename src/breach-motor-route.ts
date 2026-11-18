@@ -34,7 +34,8 @@ import {sweptProfileClear,squeezeFacing} from './breach-navigation.ts';
 import {findBoundedNarrowLeafExit,claimNarrowLeafExitProbe,
  ownNarrowExitWaypoints} from './breach-squeeze-leaf-exit.ts';
 import {coldSweptEntryEscapeJoin} from './breach-d325-escape-join.ts';
-import {claimD326ColdFineProbe} from './breach-d326-fine-route-gate.ts';
+import {claimD326ColdFineProbe,markD326FineMotorRoute}
+ from './breach-d326-fine-route-gate.ts';
 import {notePreciseLocalDetour} from './breach-motor-local-detour.ts';
 
 /** After an ACTUAL swept door overlap escape, prefer one physical
@@ -327,6 +328,7 @@ export function prepareMotorRoute(
       const fine=coldFineMotorWorldRoute(a.p,p,s.doors,world);
       if(fine.length){
         setTransientRoute(s,a,fine,'motor-cold-fine-world');
+        markD326FineMotorRoute(a);
         notePreciseLocalDetour(a,fine[0]);
         provisionalRouteAccepted(a);
         a.lastNavRepairAt=s.seconds;
