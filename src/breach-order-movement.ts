@@ -13,6 +13,8 @@ import {friendlyArrivalSettleTarget,nearOccupiedFriendlyGoal}
  from './breach-friendly-traffic.ts';
 import {entryClearanceForLook} from './breach-entry-coordination.ts';
 import {selectPhysicalEntrySettle} from './breach-entry-target-settle.ts';
+import {noteCompletedGeneratedEntry,releaseCompletedGeneratedEntry}
+ from './breach-completed-entry-yield.ts';
 import {bodyClear} from './breach-navigation.ts';
 import {routeWithNormalWorld} from './breach-squeeze-route.ts';
 import {setTransientRoute} from './breach-route-transition.ts';
@@ -67,6 +69,8 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
   profile?:((section:string,elapsedMs:number)=>void)):boolean{
   // Only opt-in perf probes allocate the wrapper. Normal fixed-step movement
   // continues using the original motor callback without extra timing work.
+  // A new order supersedes a previously completed generated-entry anchor.
+  releaseCompletedGeneratedEntry(a,n.id);
   const move=profile?
    ((actor:TeamActor,point:Pt,step:number,session:Session,
      scale?:number)=>{
@@ -298,6 +302,8 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     // without reaching its original physical goal. Report the real body
     // center and the current node target at the instant of retirement.
     // This witness does not change the reason, tolerance or order itself.
+    if(n.kind==='move'&&n.entryDoorId)
+      noteCompletedGeneratedEntry(a,n.id,n.p);
     if(entryLandingWitness&&n.kind==='move'&&n.entryDoorId)
       entryLandingWitness({actorId:a.id,seconds:s.seconds,orderId:n.id,
         entryDoorId:n.entryDoorId,from:{...a.p},originalGoal:{...n.p},
