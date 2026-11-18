@@ -701,6 +701,31 @@ export function planMoveStroke(s:Session,id:string,points:Pt[],
     }
   }
   if(!proposed.length)return false;
+  // EQA1 / D3.23A: a finger can travel THROUGH a known squeeze passage,
+  // but the last MOVE point must park the full operator-sized body.
+  // The known-only retreat is strictly on the final drawn segment.
+  const landing=proposed[proposed.length-1];
+  if(!intelPassable(landing.p,s.intel,OPERATOR_RADIUS)){
+    const anchor=proposed.length>1?proposed[proposed.length-2].p:
+      replaceExisting?a.p:finalPoint(a);
+    const original={...landing.p},span=d(anchor,original);
+    let corrected:Pt|null=null;
+    for(let back=.75;back<=Math.min(13,span)+.001;back+=.75){
+      const f=span>0?Math.min(1,back/span):1;
+      const trial={x:original.x+(anchor.x-original.x)*f,
+        y:original.y+(anchor.y-original.y)*f};
+      if(d(anchor,trial)<3)continue;
+      if(!intelPassable(trial,s.intel,OPERATOR_RADIUS)||
+         !legalMoveRoute(s,anchor,trial).length)continue;
+      corrected=trial;break;
+    }
+    if(!corrected){
+      notify(s,'MOVE REJECTED · DRAG ENDPOINT TOO NARROW TO STAND');
+      return false;
+    }
+    landing.p=corrected;
+    clipped=true;
+  }
   // Door actions inserted during one stroke remain one undoable edit.
   const expanded:PlanNode[]=[];let prior=replaceExisting?a.p:finalPoint(a);
   const opened=new Set((replaceExisting?[]:a.plan).filter(n=>
