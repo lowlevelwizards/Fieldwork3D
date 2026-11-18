@@ -85,8 +85,10 @@ try{
    const left=orbit.getByRole('button',{name:'Rotate operator 45 degrees left'});
    const right=orbit.getByRole('button',{name:'Rotate operator 45 degrees right'});
    const reset=orbit.getByRole('button',{name:'Reset operator preview angle'});
-   if(await orbit.locator('button').count()!==3)
-    throw Error('Phone preview rotation controls are not available');
+   const flip=orbit.getByRole('button',
+    {name:'Turn operator 180 degrees to inspect the rear'});
+   if(await orbit.locator('button').count()!==4)
+    throw Error('Phone preview rotation and rear-inspection controls are not available');
    const touchTargets=await orbit.locator('button').evaluateAll(buttons=>
     buttons.map(button=>button.getBoundingClientRect().height));
    if(touchTargets.some(height=>height<43))
@@ -104,6 +106,14 @@ try{
     throw Error('Reset angle did not restore the initial operator orientation');
    if(await operatorPreview.getAttribute('data-preview-focus')!=='weapon')
     throw Error('Reset angle unexpectedly discarded current equipment focus');
+   await flip.click();
+   const rearAngle=await operatorPreview.getAttribute('aria-label');
+   if(rearAngle===before||await operatorPreview.getAttribute('data-preview-focus')!=='weapon')
+    throw Error('Rear-view half turn did not move camera without losing focus');
+   await flip.click();
+   if(await operatorPreview.getAttribute('aria-label')!==before)
+    throw Error('Rear-view half turn did not restore the original orientation');
+   await reset.click();
    // Switching operators replaces the WebGL context but must preserve an
    // independent preview angle for each operator, not share one global orbit.
    const operatorTabs=page.locator('.campaign-kit-nav button');
