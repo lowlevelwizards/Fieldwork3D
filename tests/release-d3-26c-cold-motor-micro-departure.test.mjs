@@ -10,7 +10,7 @@ const coarseMiss=(a,b)=>{
  const distance=Math.hypot(a.x-b.x,a.y-b.y);
  if(distance>4)return true;
  // A real northbound step near x=0 intersects the static wall.
- return !(b.y<-0.01&&a.x>-.9&&b.x>-.9);
+ return !(b.y<-0.01&&b.y>-8&&a.x>-.9&&b.x>-.9);
 };
 const stand=()=>true;
 const worldRoute=(stage,destination)=>[
@@ -42,4 +42,14 @@ test('D3.26C: never cross unswept departure or approve substituted final GO',()=
   coarseMiss,stand,(stage)=>[{x:stage.x,y:-20},{x:55,y:-40}]),[]);
  assert.deepEqual(selectColdMotorMicroDeparture(start,goal,next,
   coarseMiss,stand,()=>[]),[]);
+});
+
+test('D3.26D: a later real motor collision vetoes a tempting first-leg detour',()=>{
+ const lateWall=(from,to)=>{
+  const length=Math.hypot(to.x-from.x,to.y-from.y);
+  return length>4||to.y>=-25&&coarseMiss(from,to);
+ };
+ assert.deepEqual(selectColdMotorMicroDeparture(start,goal,next,
+  lateWall,stand,worldRoute),[],
+  'valid first motor stride cannot hide a later illegitimate collision');
 });
