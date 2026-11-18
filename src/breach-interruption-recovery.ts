@@ -17,7 +17,7 @@ import {SQUEEZE_RADIUS} from './breach-navigation.ts';
  * Restored instructions are fresh IDs ahead of unrelated queued orders.
  * All resulting physical passage still runs through the normal motor.
  */
-export function resumeInterruptedDoorPlan(s:Session,actorId:string):boolean{
+export function canResumeInterruptedDoorPlan(s:Session,actorId:string):boolean{
  const a=party(s,actorId);
  if(!a||!canEdit(s)||!a.interruptedDoorPlan)return false;
  const snap=a.interruptedDoorPlan;
@@ -33,6 +33,12 @@ export function resumeInterruptedDoorPlan(s:Session,actorId:string):boolean{
  if(snap.original.some(n=>
    (n.kind==='move'||n.kind==='door')&&
    !intelPassable(n.p,s.intel,SQUEEZE_RADIUS)))return false;
+ return true;
+}
+export function resumeInterruptedDoorPlan(s:Session,actorId:string):boolean{
+ if(!canResumeInterruptedDoorPlan(s,actorId))return false;
+ const a=party(s,actorId)!;
+ const snap=a.interruptedDoorPlan!;
  const accepted=edit(s,a,()=>{
   const restored=copyNodes(snap.original).map(n=>({...n,id:s.nextId++}));
   a.plan.unshift(...restored);
