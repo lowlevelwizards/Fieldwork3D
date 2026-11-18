@@ -9,6 +9,7 @@ import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {Site,SiteScale} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
 import {resolveQuickPlaySettings,type QuickPlaySettings} from './quick-play-settings.ts';
+import {setObjectiveIntelLevel} from './breach-objective-intel.ts';
 import {createQuickPlayConfigurator} from './ui/quick-play-configurator.ts';
 import type {TacticalScene3D,ViewMode} from './breach-3d.ts';
 import {createColdDeviceEvidence,mountColdDeviceExport,
@@ -219,6 +220,8 @@ async function launchQuickPlay(settings:QuickPlaySettings=configurator.getSettin
     config.setMode('quick');
     // Reuse the completed site rather than compiling the same map again.
     config.startSession(seed,generated.site,recipe.mission);
+    // Objective truth is independent of architectural map visibility.
+    setObjectiveIntelLevel(config.getSession(),recipe.objectiveIntel);
     const sessionMs=Math.round(performance.now()-sessionStart);
     quickPlayCheckpoint(86,'Building 3D environment',
       'Generating room meshes, fixtures, materials and static batches');
