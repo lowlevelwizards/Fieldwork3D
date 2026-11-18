@@ -49,18 +49,18 @@ test('R3 switches to real HK S/E/F, uses one batched mesh, restores control posi
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const ink=one(g,'g36SelectorMarkings');
  assert.equal(ink.userData.surfaceDetailKind,'hk-selector');
- assert.equal(ink.userData.g36SelectorArtVersion,'r5-sef-trigger-housing');
+ assert.equal(ink.userData.g36SelectorArtVersion,'r6-raised-indexed-sef');
  assert.equal(ink.userData.g36SelectorMarkCount,2);
  assert.equal(tris(ink),12,'three index glyphs per side: 12 triangles in one batch');
  assert.equal(ink.castShadow,false);
  assert.equal(ink.material.transparent,true);
  for(const hub of of(g,'g36SelectorHub')){
   assert.ok(near(hub.position.x,-5.20));
-  assert.ok(near(hub.position.y,-1.96));
+  assert.ok(near(hub.position.y,-1.68));
   assert.equal(hub.geometry.parameters.radialSegments,6);
  }
  for(const lever of of(g,'g36SelectorLever')){
-  assert.ok(lever.position.x<-4.5&&lever.position.y<-1.75);
+  assert.ok(lever.position.x<-4.5&&lever.position.y<-1.45);
  }
  assert.equal(of(g,'g36SelectorHub').length,2);
  assert.equal(of(g,'g36SelectorLever').length,2);

@@ -65,6 +65,8 @@ function ink(tile:Tile,x:number,y:number):number{
   const p=arMagazineSample(c,t);
   const u=((x-p.x)*p.nx+(y-p.y)*p.ny)/(c.width/2);
   if(Math.abs(u)>.94)return 255;
+  // R6: strokes 75% thicker than R5 with ~12% greater dark-to-light
+  // contrast, while preserving five separate shapes and tapered ends.
   // Five separated, shorter ghost-cartridge silhouettes follow the
   // molded curve. The deliberate shear produces a visible diagonal:
   // 0.13 in magazine length fraction across the whole visible face.
@@ -79,10 +81,10 @@ function ink(tile:Tile,x:number,y:number):number{
    if(u<from||u>to)continue;
    const relative=(u-from)/(to-from);
    const center=stations[i]-.065*u;
-   const half=.015*(.6+.4*Math.sin(Math.PI*relative));
+   const half=.02625*(.6+.4*Math.sin(Math.PI*relative));
    const distance=Math.abs(t-center);
-   if(distance<half*.52)return i%2?234:230;
-   if(distance<half)return 244;
+   if(distance<half*.60)return i%2?231:227;
+   if(distance<half)return 243;
   }
   // Couple points are also anchored in curved magazine coordinates,
   // rather than two floating world-space dots. Keep subtle dark rims.

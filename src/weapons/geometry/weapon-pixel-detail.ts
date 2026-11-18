@@ -202,16 +202,20 @@ export function addWeaponPixelMarkPairBatched(root:THREE.Group,mark:WeaponMark,
  * grip; the revised compact trio is entirely on the FLAT LOWER RECEIVER
  * side at z=+-1.185, 0.045 above its 1.14-side-depth surface.
  *
- * Pivot (-5.20,-1.96). F left/up, E left/slightly down, S right/horizontal.
+ * R6 pivot (-5.20,-1.68), raised 0.28. F/E stay above the trigger-guard
+ * edge on the existing lower-housing face (which ends at y=-1.49), with
+ * a slightly tighter horizontal arc. We cannot translate all letters up
+ * 0.28 because the upper receiver has a different surface depth.
+ * F left/up, E left/below, S right.
  * The complete glyph footprints are ABOVE y=-2.18 (imaginary trigger
  * guard top), avoid the 0.55-radius pivot and the rightward paddle, and
  * remain below the larger upper receiver side panel (y>=-1.49).
  * Six quads / 12 triangles / one pooled shared-marking material remain.
  */
 export const G36_SEF_INDEX_MARKS=Object.freeze([
- {letter:'S',x:-3.87,y:-1.86,z:1.185,atlasBottom:15},
- {letter:'E',x:-6.03,y:-2.00,z:1.185,atlasBottom:8},
- {letter:'F',x:-6.03,y:-1.66,z:1.185,atlasBottom:1}
+ {letter:'S',x:-3.94,y:-1.84,z:1.185,atlasBottom:15},
+ {letter:'E',x:-5.97,y:-1.98,z:1.185,atlasBottom:8},
+ {letter:'F',x:-5.97,y:-1.66,z:1.185,atlasBottom:1}
 ] as const);
 export const G36_SEF_GLYPH_SIZE=Object.freeze({width:.38,height:.32});
 export function addG36SEFIndexMarks(root:THREE.Group):THREE.Mesh{

@@ -199,21 +199,21 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  // the grip while preserving two-sided factory controls and six facets.
  // One batched four-triangle white S / red E-F graphic survives finish swaps.
  for(const side of [-1,1] as const){
-  const [hub,lever]=addHKSelectorLeverArt(root,-5.20,-1.96,1.14,side,material,6);
+  const [hub,lever]=addHKSelectorLeverArt(root,-5.20,-1.68,1.14,side,material,6);
   hub.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   lever.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   hub.userData.g36SelectorHub=true;
   lever.userData.g36SelectorLever=true;
  }
- // R5: F/E left of the pivot, S to its right, matching the HK grip.
- // All letters fit ABOVE the imaginary trigger-guard boundary on the
- // same receiver side face; neither E nor F sinks through the grip.
+ // R6: pivot rises 0.28, letter arc tightens slightly without crossing
+ // the upper/lower receiver depth seam. Every glyph stays on the flat
+ // lower trigger-housing face above the imaginary trigger-guard boundary.
  // Retain just one cached 12-triangle double-sided letter mesh.
  const selectorMarks=addG36SEFIndexMarks(root);
  selectorMarks.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
  selectorMarks.userData.g36SelectorMarkings=true;
  selectorMarks.userData.g36SelectorMarkCount=2;
- selectorMarks.userData.g36SelectorArtVersion='r5-sef-trigger-housing';
+ selectorMarks.userData.g36SelectorArtVersion='r6-raised-indexed-sef';
 
  const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;
