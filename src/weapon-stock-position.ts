@@ -6,7 +6,8 @@ export type WeaponStockPosition='deployed'|'folded'|'collapsed';
 const FOLDABLE=new Set([
  'ak-sidefold','ak-sidefold-plum','ak-skeleton','ak-triangle-full',
  'ak-triangle-padded','ak-underfolder','hk-mp5k-pdw-stock',
- 'fal-para-folder','fnc-tube-folder','g36-stock'
+ 'fal-para-folder','fnc-tube-folder','g36-stock',
+ 'g36-stock-short','g36-stock-adjustable'
 ]);
 const TELESCOPING=new Set([
  'ar-car','ar-stock-m4','ar-compact','hk-g3-retract-stock',
@@ -32,7 +33,7 @@ export function positionedStockX(stockId:string,baseX:number,
 /** The same hinge anchors drive the visible stock mesh. */
 export function stockHingeX(stockId:string):number{
  return stockId.startsWith('hk-')?-6.5:
-  stockId==='g36-stock'?-5.3:
+  stockId.startsWith('g36-stock')?-5.3:
   stockId.startsWith('fal-')?-6.1:
   stockId.startsWith('fnc-')?-6.2:-5.9;
 }

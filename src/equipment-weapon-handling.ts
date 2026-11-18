@@ -103,7 +103,7 @@ function configuredSight(opticId:string,native:WeaponSightSystem):WeaponSightSys
  if(opticId==='optic-reflex')return 'reflex';
  if(opticId==='optic-magnified'||opticId.startsWith('optic-kashtan'))
   return 'magnified';
- if(opticId==='optic-g36-integrated')return 'integrated';
+ if(opticId==='optic-g36-integrated'||opticId==='optic-g36-single')return 'integrated';
  return native;
 }
 export function weaponHandlingModifiers(configuration?:WeaponConfiguration):WeaponHandlingModifiers{

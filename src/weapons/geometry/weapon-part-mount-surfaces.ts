@@ -105,6 +105,24 @@ export function weaponPartMountSurfaces(build:WeaponFamilyBuild,
     z:mount.face==='side'?2.39:0});
   }
  }
+ if(build.family==='g36'){
+  // Actual modelled continuous bridge (x -.5? no: -5.85..6.30),
+  // not the original molded optical handle with no rail at all.
+  if(build.parts.receiver==='g36-rail-receiver')
+   add('receiver',[-5.855,6.295],2.225,0);
+  if(build.parts.handguard==='g36-handguard-k-rail'){
+   const part=FAMILY_PARTS[build.parts.handguard];
+   for(const mount of part.mounts??[]){
+    result.push({id:part.id+':'+mount.role+':'+mount.face,
+     ownerPartId:part.id,ownerSlot:'handguard',
+     standard:mount.standard,role:mount.role,face:mount.face,
+     startX:mount.face==='bottom'?4.49:5.425,
+     endX:mount.face==='bottom'?10.79:10.075,
+     y:mount.face==='bottom'?-2.15:-.20,
+     z:mount.face==='side'?1.61:0});
+   }
+  }
+ }
  if(build.parts.handguard==='hk-mp5-trirail'){
   const art=hkBarrelArt(build.parts.barrel);
   if(!art)throw Error('MP5 tri-rail requires authored fore-end landmarks');

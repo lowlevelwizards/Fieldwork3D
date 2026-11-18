@@ -106,6 +106,21 @@ function continuousSlots(source:WeaponMountSurface,face:PhysicalMountFace,
 function appendSource(result:PhysicalMountSlot[],source:WeaponMountSurface,
  build:WeaponFamilyBuild):void{
  const part=source.ownerPartId;
+ if(part==='g36-rail-receiver'&&source.role==='optic'&&source.face==='top'){
+  result.push(...continuousSlots(source,'top',
+   source.startX,source.endX,source.y,0));
+  return;
+ }
+ if(part==='g36-handguard-k-rail'&&source.ownerSlot==='handguard'){
+  if(source.role==='foregrip'&&source.face==='bottom')
+   result.push(...continuousSlots(source,'bottom',
+    source.startX,source.endX,-2.15,0));
+  else if(source.role==='light'&&source.face==='side')
+   for(const face of sides)
+    result.push(...continuousSlots(source,face,
+     source.startX,source.endX,-.20,sideSign(face)*1.61));
+  return;
+ }
  if(part==='ar-flat'&&source.role==='optic'&&source.face==='top'){
   // Receiver builder: [-5.3,2.3], three teeth, topY=2.84.
   result.push(...arToothSlots(source,'top',3,-5.3,2.3,3.01,0,-5.65,2.65));

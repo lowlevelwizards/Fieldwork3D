@@ -133,7 +133,7 @@ function option(profile:Footprint,id:string,
 }
 
 const NONE=new Set([
- 'optic-irons','optic-g36-integrated','optic-mount-none',
+ 'optic-irons','optic-g36-integrated','optic-g36-single','optic-mount-none',
  'foregrip-none','light-none'
 ]);
 

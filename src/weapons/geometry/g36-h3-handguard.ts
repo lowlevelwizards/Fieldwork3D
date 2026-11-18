@@ -31,9 +31,17 @@ export function g36H3Section(end:End):readonly (readonly [number,number,number])
   return [end.floorX+(end.roofX-end.floorX)*t,y,z] as const;
  });
 }
+export type G36GuardLength='long'|'mid'|'short'|'mid-rail';
+/** Same approved H3 six-facet shell, three real front-end lengths.
+ * No scale operation touches the receiver: only the forward end moves.
+ */
+export const G36_GUARD_FRONT_X=Object.freeze({long:13.45,mid:11.0,short:8.80,'mid-rail':11.0});
 export function addG36H3FactoryHandguard(root:THREE.Group,id:string,n:number,
- material:THREE.Material):THREE.Mesh{
- const points=G36_H3_ENDS.flatMap(g36H3Section);
+ material:THREE.Material,length:G36GuardLength='long'):THREE.Mesh{
+ const endX=G36_GUARD_FRONT_X[length];
+ const points=G36_H3_ENDS.flatMap((end,index)=>g36H3Section(index===0?end:{
+  ...end,roofX:end.roofX+(endX-13.45),floorX:endX
+ }));
  const coords=points.flatMap(v=>v);
  const indices:number[]=[];
  for(let i=0;i<6;i++){
@@ -56,6 +64,9 @@ export function addG36H3FactoryHandguard(root:THREE.Group,id:string,n:number,
  shell.userData.g36HandguardArtVersion='h3-six-sided-solid';
  shell.userData.g36HandguardSectionSides=6;
  shell.userData.g36HandguardStations=2;
+ shell.userData.g36GuardLength=length;
+ shell.userData.g36GuardFrontX=endX;
+ shell.userData.g36MountRail=length==='mid-rail';
  shell.userData.g36SolidFrontCap=true;
  root.add(shell);
  return shell;

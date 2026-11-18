@@ -86,7 +86,7 @@ export function accessorySeatsConflict(a:MountedAccessorySeat,
 const active=(c:WeaponConfiguration):readonly string[]=>[
  c.slots.opticMount,c.slots.optic,c.slots.foregrip,c.slots.light
 ].filter(x=>![
- 'optic-mount-none','optic-irons','optic-g36-integrated',
+ 'optic-mount-none','optic-irons','optic-g36-integrated','optic-g36-single',
  'foregrip-none','light-none'
 ].includes(x));
 /** Bounded layout search (four slots, at most 6 options per slot). Existing
