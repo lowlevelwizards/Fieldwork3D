@@ -30,7 +30,8 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/release-d3-10b-authored-obstruction.test.mjs \
-            tests/release-d3-26f-cold-fine-route-gate.test.mjs
+            tests/release-d3-26f-cold-fine-route-gate.test.mjs \
+            tests/release-d3-27d-exact-motor-grid.test.mjs
       - name: Exact unchanged authored Garage motor and geometry witness
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
