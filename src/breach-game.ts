@@ -216,6 +216,8 @@ export type TeamActor=Operator & {
   completedOrders:number;failedOrders:number;
   /** Last witnessed terminal cancellation survives queue draining for debrief. */
   lastFailedOrder:{id:number;kind:string;reason:string;at:number}|null;
+  /** Optional stored recovery offer; NEVER an automatically active order. */
+  interruptedDoorPlan?:import('./breach-door-interruption.ts').InterruptedDoorPlan|null;
   passageWaitSeconds:number;passageStallReported:boolean;
   /** At most one physical deadlock retreat per authored waypoint and goal.
    * The motor can still queue/wait afterward, but never stack retreats. */
