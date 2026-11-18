@@ -37,14 +37,14 @@ test('O3-S2: proud upper module and distinct oculars, not nested into one rectan
  const mat=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(mat);
  const main=bb(one(g,'g36LowerOptic')),upper=bb(one(g,'g36UpperReflex'));
  const hi=bb(one(g,'g36UpperReflexBarrel')),lo=bb(one(g,'g36LowerOpticBarrel'));
- assert.ok(close(upper.max.y,5.03)&&close(upper.max.y,A.opticTopY));
+ assert.ok(close(upper.max.y,5.45)&&close(upper.max.y,A.opticTopY));
  assert.ok(upper.max.y-main.max.y>.85,'upper rises proud above lower housing');
  assert.ok(hi.min.y>main.max.y,'entire upper ocular clears lower roof');
  assert.ok(hi.min.y>lo.max.y-.06,'upper/lower ocular rims are separately readable');
  assert.ok(bb(one(g,'g36UpperReflexWindow')).min.x<
   bb(one(g,'g36UpperReflex')).min.x,'upper optical face remains rear-visible');
- assert.equal(F.upperSightY,4.46,'existing aim datum deliberately remains stable');
- assert.equal(F.lowerSightY,3.57);
+ assert.equal(F.upperSightY,4.88,'raised visual lens and aiming contact stay aligned');
+ assert.equal(F.lowerSightY,3.99);
  clearWeaponSilhouette(g);mat.dispose();
 });
 
@@ -53,7 +53,7 @@ test('O3-S3: lower optic extends into handle root without closing the carry void
  g=buildG36OriginalBlockout(mat),main=one(g,'g36LowerOptic'),
  handle=one(g,'g36HandleOpening');
  const b=bb(main);
- assert.ok(b.min.y<2.0,'rear lower rectangular pod descends into handle root');
+ assert.ok(b.min.y<2.50,'raised pod still overlaps the actual carry handle root');
  assert.ok(bb(main).intersectsBox(bb(handle)),'main lower pod actually meets frame');
  assert.ok(close(b.max.y,4.12),'lower body roof remains a short broad plane');
  assert.equal(handle.geometry.parameters.shapes.holes.length,1);
