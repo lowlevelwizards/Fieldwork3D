@@ -10,6 +10,7 @@ on:
       - 'src/breach-order-door.ts'
       - 'src/breach-ai-door-response.ts'
       - 'tests/release-d3-29-broken-latch.test.mjs'
+      - 'tests/lw-mechanical-locks.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,4 +30,4 @@ jobs:
       - name: Typecheck and critical physical latch regressions
         run: |
           npm run check
-          node --experimental-strip-types --test tests/release-d3-29-broken-latch.test.mjs tests/breach-191-door-ux.test.mjs tests/lw-mechanical-locks.test.mjs tests/breach-door-order-lockpick-regressions.test.mjs
+          node --experimental-strip-types --test tests/release-d3-29-broken-latch.test.mjs tests/lw-mechanical-locks.test.mjs tests/breach-door-order-lockpick-regressions.test.mjs
