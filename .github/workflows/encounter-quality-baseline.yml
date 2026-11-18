@@ -1,0 +1,74 @@
+name: Encounter-quality baseline EQA (read-only)
+on:
+  push:
+    branches: [audit/encounter-quality-baseline-20261118]
+    paths:
+      - '.github/workflows/encounter-quality-baseline.yml'
+      - 'scripts/audit-encounter-quality-*.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: encounter-quality-baseline-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  structural-mission-diversity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Eleven archetypes x five missions, seed-stable structural variation
+        run: |
+          mkdir -p artifacts/encounter-quality
+          node --experimental-strip-types scripts/audit-g4-diversity.mjs --matrix > artifacts/encounter-quality/structure.txt
+          tail -c 6500 artifacts/encounter-quality/structure.txt
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: encounter-quality-structure
+          path: artifacts/encounter-quality/
+          if-no-files-found: warn
+  observed-living-responses:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Twenty-two varied cases with real fixed-step AI, civilians and diagnostic heard alarm
+        run: |
+          mkdir -p artifacts/encounter-quality
+          node --experimental-strip-types scripts/audit-mission-quality.mjs 22 --living --doctrine-matrix > artifacts/encounter-quality/living.json
+          node -e "const a=require('./artifacts/encounter-quality/living.json');console.log(JSON.stringify({summary:a.summary, living:a.livingEncounters&&{counts:a.livingEncounters.generatedCivilians,active:a.livingEncounters.activeCivilians,profiles:a.livingEncounters.rows.map(x=>x.profile)},matrix:a.encounterBehavior?.matrix},null,2))"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: encounter-quality-living
+          path: artifacts/encounter-quality/
+          if-no-files-found: warn
+  first-contact-and-intel:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Twenty seeded missions x two intel modes, legal authored operator routes and actual contact
+        run: |
+          mkdir -p artifacts/encounter-quality
+          node --experimental-strip-types scripts/audit-g4-flow.mjs --full --rows > artifacts/encounter-quality/contact.json
+          node -e "const a=require('./artifacts/encounter-quality/contact.json');console.log(JSON.stringify({summary:a.summary,exceptions:a.exceptions,failures:a.failures,rows:a.rows.map(x=>({seed:x.seed,mission:x.mission,mode:x.mode,reason:x.reason,firstContactAt:x.firstContactAt,firstShotAt:x.firstShotAt,blockedFrames:x.blockedFrames,silentDoorFrames:x.silentDoorFrames}))},null,2))"
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: encounter-quality-contact
+          path: artifacts/encounter-quality/
+          if-no-files-found: warn
