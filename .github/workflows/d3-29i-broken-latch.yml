@@ -1,0 +1,32 @@
+name: D3.29I broken-latch physical authority
+on:
+  push:
+    branches: [feature/d3-29i-broken-door-hardware-20261118]
+    paths:
+      - '.github/workflows/d3-29i-broken-latch.yml'
+      - 'src/breach-core.ts'
+      - 'src/breach-door.ts'
+      - 'src/breach-interactions.ts'
+      - 'src/breach-order-door.ts'
+      - 'src/breach-ai-door-response.ts'
+      - 'tests/release-d3-29-broken-latch.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d329i-broken-latch-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  broken-latch-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Typecheck and critical physical latch regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/release-d3-29-broken-latch.test.mjs tests/breach-191-door-ux.test.mjs tests/lw-mechanical-locks.test.mjs tests/breach-door-order-lockpick-regressions.test.mjs
