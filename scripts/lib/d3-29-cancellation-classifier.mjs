@@ -41,6 +41,7 @@ export function classifyD329Cancellation(mode,op){
   selectedMotorDoor:motorSelectedDoor,interveningDoor:intermediary,
   initialSelectedDoor:witness?.initialSelectedDoor??null,
   legalWorldRouteAtCancellation:witness?.legalWorldRoute??null,
+  coldFineMotorRouteAtCancellation:witness?.coldFineWorld??null,
   lockedLeafMovedAfterClosedStart:!!witness?.initialSelectedDoor?.locked&&
    !witness.initialSelectedDoor.open&&!!motorSelectedDoor?.locked&&
    !!motorSelectedDoor.open,
