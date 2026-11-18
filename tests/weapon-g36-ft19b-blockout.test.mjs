@@ -72,7 +72,7 @@ test('G36 B: mesh/triangle economy plus no premature production catalog registra
  const triangles=meshes.reduce((sum,x)=>{
   const geo=x.geometry;return sum+(geo.index?.count??geo.getAttribute('position').count)/3;
  },0);
- assert.equal(meshes.length,22, 'H3 replaces lug and mouth with one solid shell');
+ assert.equal(meshes.length,23, 'R2 adds one indispensable dual-sided HK marking mesh');
  assert.ok(triangles<=650, 'H3 should reduce production triangle count: '+triangles);
  assert.equal(FAMILY_PRESETS.filter(p=>p.family==='g36').length,1,
   'only the accepted original full-size model is an authored factory preset');
@@ -199,7 +199,7 @@ test('G36 D1-1: O2 rear-facing lower optic is a single low-facet dark circle, se
  assert.ok(ocular&&bb(ocular).intersectsBox(bb(lower)),
   'O2 projecting lower ocular is physically seated in the main optical pod');
  assert.ok(bb(face).intersectsBox(bb(ocular)),
-  'dark optical face must remain seated inside its actual eight-sided ocular');
+  'dark optical face must remain seated inside its six-sided ocular');
  assert.ok(face.geometry.getAttribute('position').count<=60,'no high-poly round lens');
  assert.equal(g.children.filter(x=>x.userData.g36OpticFace).length,1);
  clearWeaponSilhouette(g);m.dispose();
