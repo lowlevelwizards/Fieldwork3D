@@ -372,6 +372,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     return source?source.shoulder.clone().lerp(
       target,lowReadyBlendPhase(activeTransition!.alpha)):target;
   };
+  // On short-stock release, the visible shoulder blends from the previous
+  // pose, but grip candidates must be evaluated against the *fixed final*
+  // shoulder. Otherwise reachable handguard fractions switch halfway
+  // through the blend and the support elbow swings backwards.
+  const shortRelease=authoredLabSwitch&&
+    activeTransition?.from==='short'&&activeTransition.to!=='short';
+  const supportSearchShoulder=(i:number)=>{
+    if(!shortRelease)return shoulderFor(i);
+    const sign=i===0?-1:1;
+    const base=i===0?ANATOMY.shoulderLeft:ANATOMY.shoulderRight;
+    const end=handlingProfile(handling,p.weapon);
+    const weight=handling==='low'&&
+      !!p.weaponConfiguration?.build?0:poseWeight;
+    return P(base.x+weight*(i===0?
+      end.supportShoulderForward:end.firingShoulderForward),
+      base.y+weight*end.shoulderLift,
+      base.z-sign*weight*end.shoulderInward);
+  };
   // The coupled solution is deliberately restricted to relaxed, stationary,
   // two-handed AR/AK presentation. Combat aim and shot-time geometry remain
   // on the existing authoritative pose path.
@@ -490,7 +508,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   if(!coupled&&upperBodyPlan.supportEligible&&coupledConfig?.build){
     const supportSearch=cachedSupportUpperBody(r,{
       weapon:p.weapon,configuration:coupledConfig,fit,
-      shoulder:shoulderFor(0),firingShoulder:shoulderFor(1),
+      shoulder:supportSearchShoulder(0),
+      firingShoulder:supportSearchShoulder(1),
       envelope:poseEnvelope!,
       mode:p.reload>0?'reload':p.aiming||handling==='ads'?
         'aim':'carry'
@@ -564,7 +583,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
           reloadMechanismFor(p.weapon,coupledConfig)):
         choreographV3ReloadHand(releaseInputs)).target:undefined;
     const shoulders:[THREE.Vector3,THREE.Vector3]=[
-      shoulderFor(0),shoulderFor(1)
+      supportSearchShoulder(0),supportSearchShoulder(1)
     ];
     const constraintMode=reloadActive?'reload':
       p.aiming||handling==='ads'?'aim':'carry';
