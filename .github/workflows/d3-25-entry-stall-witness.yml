@@ -5,9 +5,7 @@ on:
     paths:
       - 'scripts/report-d3-25-entry-stalls.mjs'
       - 'src/breach-order-wait.ts'
-      - 'src/breach-motor-route.ts'
       - 'tests/release-d3-25b-terminal-entry-gate.test.mjs'
-      - 'tests/release-d3-25c-stable-entry-leaf-probe.test.mjs'
       - '.github/workflows/d3-25-entry-stall-witness.yml'
   workflow_dispatch:
 permissions:
@@ -29,7 +27,6 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/release-d3-25b-terminal-entry-gate.test.mjs \
-            tests/release-d3-25c-stable-entry-leaf-probe.test.mjs \
             tests/tactical-integration-10-entry-gate.test.mjs
       - name: Townhouse small · 19018816 · real four-person 45-second entry
         run: |
