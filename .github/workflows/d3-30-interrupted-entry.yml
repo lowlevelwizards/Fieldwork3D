@@ -1,4 +1,4 @@
-name: D3.30A/B interrupted door capture and explicit retry
+name: D3.30A-C interruption, explicit retry and tactical palette
 on:
   push:
     branches: [feature/d3-30-interrupted-entry-recovery-20261118]
@@ -6,6 +6,10 @@ on:
       - '.github/workflows/d3-30-interrupted-entry.yml'
       - 'src/breach-door-interruption.ts'
       - 'src/breach-interruption-recovery.ts'
+      - 'src/ui/context-actions.ts'
+      - 'src/ui/tactical-palette-controller.ts'
+      - 'src/ui/tactical-icons.ts'
+      - 'src/breach-tactical-context-command.ts'
       - 'src/breach-game.ts'
       - 'src/breach-order-lifecycle.ts'
       - 'src/breach-motor-door.ts'
