@@ -16,9 +16,9 @@ const triangles=o=>(o.geometry.index?.count??o.geometry.getAttribute('position')
 test('P6 master: no trace-derived chamfer planes or detail mesh proliferation',()=>{
  const m=new THREE.MeshBasicMaterial(),g=buildG36OriginalBlockout(m);
  const guard=one(g,'g36LongHandguard');
- assert.equal(guard.geometry.getAttribute('position').count,60);
+ assert.equal(guard.geometry.getAttribute('position').count,96);
  assert.equal(G36_LONG_FOREND_RINGS.length,3);
- assert.equal(triangles(guard),20,'exactly 16 flat side and four cap triangles');
+ assert.equal(triangles(guard),32,'H1 six-sided shell: 24 side and eight cap triangles');
  assert.equal(one(g,'g36LowerOptic').geometry.type,'BufferGeometry',
   'O2 production optic is one low-facet volumetric housing');
  assert.equal(one(g,'g36UpperReflex').geometry.type,'BufferGeometry');
