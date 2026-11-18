@@ -1,0 +1,42 @@
+name: EQA1 specific unlocked FRONT contact forensic
+on:
+  push:
+    branches: [feature/eqa1-unlocked-front-door-contact-20261118]
+    paths:
+      - '.github/workflows/eqa-front-door-move.yml'
+      - 'scripts/audit-eqa-front-door-move.mjs'
+      - 'src/breach-motor-door.ts'
+      - 'src/breach-door.ts'
+      - 'tests/encounter-eqa1-front-door.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: eqa1-front-door-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  physical-witness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Real fixed-step, exact seeded unlocked FRONT door witnesses
+        run: |
+          mkdir -p artifacts/encounter-quality
+          node --experimental-strip-types scripts/audit-eqa-front-door-move.mjs > artifacts/encounter-quality/front-door-witness.txt
+          tail -c 15000 artifacts/encounter-quality/front-door-witness.txt
+      - name: Focused physical door security tests
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/release-d3-29-motor-lock-gate.test.mjs tests/release-d3-30-interrupted-entry.test.mjs tests/release-d3-30-atomic-squad-resume.test.mjs
+          if [ -f tests/encounter-eqa1-front-door.test.mjs ]; then node --experimental-strip-types --test tests/encounter-eqa1-front-door.test.mjs; fi
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa1-front-door-physical-witness
+          path: artifacts/encounter-quality/
+          if-no-files-found: warn
