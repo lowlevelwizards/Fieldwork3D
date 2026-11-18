@@ -79,7 +79,7 @@ function ink(tile:Tile,x:number,y:number):number{
    if(u<from||u>to)continue;
    const relative=(u-from)/(to-from);
    const center=stations[i]-.065*u;
-   const half=.015*(.6+.4*Math.sin(Math.PI*relative));
+   const half=.02625*(.6+.4*Math.sin(Math.PI*relative));
    const distance=Math.abs(t-center);
    if(distance<half*.52)return i%2?234:230;
    if(distance<half)return 244;
