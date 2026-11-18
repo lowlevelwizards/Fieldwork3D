@@ -48,7 +48,9 @@ test('FT1.4 content demand counts unique affected reference kits and maps actual
  assert.equal(g36.affectedKitCount,2);
  assert.equal(sa80.affectedKitCount,2);
  assert.equal(g36.category,'weapon');
- assert.ok(g36.currentProxies.some(x=>x.includes('ar-')));
+ assert.equal(g36.missingKitCount,0,'two Bundeswehr looks now use a G36');
+ assert.equal(g36.approximateKitCount,2,'recognizable weapon is not full period issue certification');
+ assert.ok(g36.currentProxies.every(x=>x.includes('g36-service (representative)')));
  const duplicated=prioritizeContentDemand([...FACTION_REFERENCES,FACTION_REFERENCES[0]]);
  assert.deepEqual(duplicated,a);
  assert.equal(contentDemandSummary().referenceCount,44);

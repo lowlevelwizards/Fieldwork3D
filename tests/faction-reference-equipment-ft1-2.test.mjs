@@ -39,7 +39,8 @@ test('FT1.2 German historical 1991 Flecktarn, 1997 G36 and 2026 arid claims rema
  assert.ok(ids('bundeswehr-field',2026).includes('de-tropentarn-three'));
  assert.ok(!ids('bundeswehr-field',2010).includes('de-tropentarn-three'));
  const g=equipmentAtYear('bundeswehr-field',1997).find(x=>x.equipment.id==='de-g36');
- assert.equal(g.equipment.model.fidelity,'proxy');
+ assert.equal(g.equipment.model.fidelity,'representative');
+ assert.equal(g.equipment.model.id,'g36-service');
 });
 test('FT1.2 Canadian MT introduction plan is not past confirmed TW use',()=>{
  const older=ids('canadian-field',2020);
