@@ -229,7 +229,7 @@ export function resolveMotorCollision(
        (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
        !!s.site?.openings?.length&&
        claimD327ColdPassage(a,p,s.seconds)){
-      const known=(op:{a:Pt;b:Pt},approach:Pt,inside:Pt)=>{
+      const known=(_op:{a:Pt;b:Pt},approach:Pt,inside:Pt)=>{
        if(s.intel.mode==='full-view')return true;
        const roomFor=(pos:Pt)=>s.site?.rooms.find(room=>
          room.kind==='room'&&
