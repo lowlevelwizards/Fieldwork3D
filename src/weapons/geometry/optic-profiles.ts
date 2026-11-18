@@ -64,6 +64,16 @@ export const OPTIC_PROFILES:Readonly<Record<string,OpticProfile>>={
    supportRiseY:0,axisOffsetZ:0},
   eyeRelief:bounded,preferredX:{ar:-1.5,ak:-2.02,hk:-1.52}
  },
+ 'optic-g36-single':{
+  id:'optic-g36-single',familyId:'g36-factory-single',
+  name:'G36 Original Single Carry-Handle Optic',
+  sightClass:'integrated',magnification:3,
+  mount:{standard:'integrated',variantId:'factory-single',
+   integrated:true,clampOffsetsX:[],clampHalfX:0,baseHalfX:0},
+  visual:{bodyProfileId:'g36-single-carry',bodyHalfX:0,
+   eyepieceOffsetX:0,axisAboveBaseY:0,supportRiseY:0,axisOffsetZ:0},
+  eyeRelief:free,preferredX:{g36:-1.30}
+ },
  'optic-g36-integrated':{
   id:'optic-g36-integrated',familyId:'g36-factory',
   name:'Original G36 Integral Dual Optic',sightClass:'integrated',
