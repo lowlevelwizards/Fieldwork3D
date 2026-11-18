@@ -9,7 +9,7 @@ import {addOutline,addCuboid,addProfileFrame,
 import {G36_B_ART as A} from './g36-art-layout.ts';
 import {G36_B_PART_IDS} from './g36-family-contract.ts';
 import {G36_MAG30_OUTLINE,G36_MAG30_OUTLINE_CANDIDATE,G36_MAG30_DEPTH} from './g36-magazine-profiles.ts';
-import {addG36LongHandguard} from './g36-handguard-profiles.ts';
+import {addG36H21FactoryHandguard} from './g36-h2-handguard-study.ts';
 import {addHKSelectorLeverArt} from './hk-trigger-selector.ts';
 import {addG36O2DualOptic} from './g36-dual-optic-o2.ts';
 
@@ -191,7 +191,10 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  const mag=outline('magazine',review.magazine==='curve'?G36_MAG30_OUTLINE_CANDIDATE:G36_MAG30_OUTLINE,G36_MAG30_DEPTH);
  mag.userData.g36Magazine=true;
 
- const guard=addG36LongHandguard(root,ids.handguard,i.handguard++,material);
+ // H2.1: approved isolated sculpture now replaces H1 in all factory builds.
+ // One molded shell, one genuinely recessed front mouth, one rear mount lug.
+ // Four large vents remain atlas-only; keep all three parts in the same slot.
+ const guard=addG36H21FactoryHandguard(root,ids.handguard,i.handguard++,material);
  guard.userData.g36LongHandguard=true;
 
  // One stout barrel and one nearly invisible terminal block.
@@ -214,6 +217,8 @@ export function applyG36FactoryMaterials(root:THREE.Group,finishes:G36FactoryMat
   if(!(child instanceof THREE.Mesh))continue;
   let result:THREE.Material=finishes.polymer;
   if(child.userData.g36Magazine)result=finishes.magazine;
+  else if(child.userData.g36H21MouthRecess)
+   result=finishes.lens??finishes.buttpad;
   else if(child.userData.g36Buttpad||child.userData.g36SelectorHub||
    child.userData.g36SelectorLever)result=finishes.buttpad;
   else if(child.userData.g36FactoryMuzzle)result=finishes.muzzle;
