@@ -47,6 +47,14 @@ try{
    const after=await operatorPreview.getAttribute('aria-label');
    if(!before?.includes('Left and Right arrow keys')||after===before)
     throw Error('Operator 3D preview is not keyboard rotatable');
+   if(await operatorPreview.getAttribute('aria-keyshortcuts')!==
+    'ArrowLeft ArrowRight Home')
+    throw Error('Preview did not disclose the Home keyboard reset shortcut');
+   await operatorPreview.press('Home');
+   if(await operatorPreview.getAttribute('aria-label')!==before)
+    throw Error('Home key did not reset the preview to its initial orientation');
+   if(await operatorPreview.getAttribute('data-preview-focus')!=='weapon')
+    throw Error('Home key unexpectedly changed the equipment preview focus');
    const gesture=await operatorPreview.evaluate(element=>{
     const first=element.getAttribute('aria-label');
     const dispatch=(kind,x,id=41,isPrimary=true)=>
