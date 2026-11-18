@@ -8,6 +8,8 @@ on:
       - 'scripts/audit-r7-squad-execution.mjs'
       - 'scripts/lib/d3-29-cancellation-classifier.mjs'
       - 'tests/release-d3-29-terminal-cancellations.test.mjs'
+      - 'tests/release-d3-29-motor-lock-gate.test.mjs'
+      - 'src/breach-motor-door.ts'
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,8 +26,10 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - name: D3.29 read-only cancellation census and integrity tests
-        run: node --experimental-strip-types --test tests/release-d3-29-terminal-cancellations.test.mjs
+      - name: Typecheck and locked hinge / route regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test tests/release-d3-29-terminal-cancellations.test.mjs tests/release-d3-29-motor-lock-gate.test.mjs tests/breach-door-order-lockpick-regressions.test.mjs tests/release-d3-28-entry-loop.test.mjs
       - name: Replay exact unchanged independent 22-map motor
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --progress --route-quality --d329-cancellation-door-witness > "$RUNNER_TEMP/d329-fresh22.json"
