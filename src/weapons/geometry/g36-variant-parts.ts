@@ -6,7 +6,7 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addCuboid,addOutline} from './profile-primitives.ts';
-import {addG36H3FactoryHandguard,type G36GuardLength}
+import {addG36H3FactoryHandguard,G36_GUARD_FRONT_X,type G36GuardLength}
  from './g36-h3-handguard.ts';
 import {buildG36OriginalBlockout} from './g36-silhouettes.ts';
 
@@ -18,8 +18,8 @@ export const G36_FRONT_END=Object.freeze({
 export type G36BarrelId=keyof typeof G36_FRONT_END;
 export function g36FrontEnd(id:string){return G36_FRONT_END[id as G36BarrelId];}
 export function g36HandguardEnd(id:string):number{
- return id==='g36-handguard-c'?8.80:
-  id==='g36-handguard-k'||id==='g36-handguard-k-rail'?11.0:13.45;
+ return id==='g36-handguard-c'?G36_GUARD_FRONT_X.short:
+  id==='g36-handguard-k'||id==='g36-handguard-k-rail'?G36_GUARD_FRONT_X.mid:G36_GUARD_FRONT_X.long;
 }
 export function g36SupportRange(id:string):readonly [number,number]{
  const end=g36HandguardEnd(id);
@@ -56,12 +56,20 @@ function addModernStock(root:THREE.Group,mat:THREE.Material){
   -14.66,-1.88,0,.44,3.89,1.50,mat);
  pad.userData.g36Buttpad=true;
 }
-function addRailSight(root:THREE.Group,mat:THREE.Material,id:string){
+export function g36ReceiverRailSpan(barrelId:string):readonly [number,number]{
+ // The C's longer sight bridge follows its unique compact front; KA4 stays
+ // on the previously approved original rail span. Used by real optic mounts.
+ return [-5.855,barrelId==='g36-barrel-228'?7.695:6.295];
+}
+function addRailSight(root:THREE.Group,mat:THREE.Material,id:string,
+ barrelId:string){
  // Flat bridge with two legible folding iron posts. No fake integral
  // optical carry handle, duplicate lens or seven-slot schema.
- const rail=addCuboid(root,'receiver',id,100,.22,1.96,0,12.15,.53,1.35,mat);
+ const [rear,front]=g36ReceiverRailSpan(barrelId);
+ const rail=addCuboid(root,'receiver',id,100,(rear+front)/2,1.96,0,
+  front-rear,.53,1.35,mat);
  rail.userData.g36PicatinnyTop=true;
- for(const [i,x] of [-4.95,5.14].entries()){
+ for(const [i,x] of [-4.95,barrelId==='g36-barrel-228'?7.00:5.14].entries()){
   const iron=addCuboid(root,'receiver',id,101+i,x,2.39,0,.60,.55,1.0,mat);
   iron.userData.g36BackupIron=true;
  }
@@ -115,7 +123,7 @@ export function buildG36FamilyBlockout(material:THREE.Material,
    m.userData.g36LowerOptic||m.userData.g36UpperReflex||
    m.userData.g36LowerOpticBarrel||m.userData.g36UpperReflexBarrel||
    m.userData.g36OpticFace||m.userData.g36UpperReflexWindow));
-  addRailSight(root,material,receiver);
+  addRailSight(root,material,receiver,ids.barrel);
  }else if(receiver==='g36-single-receiver'){
   dispose(root,m=>Boolean(m.userData.g36UpperReflex||
    m.userData.g36UpperReflexBarrel||m.userData.g36UpperReflexWindow));
