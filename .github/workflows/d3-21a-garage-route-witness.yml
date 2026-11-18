@@ -8,6 +8,7 @@ on:
       - 'src/breach-partial-hinge-stepback.ts'
       - 'src/breach-motor-route.ts'
       - 'src/breach-door-traversal-episode.ts'
+      - 'scripts/report-d3-21-garage-reachability.mjs'
       - 'src/breach-route-transition.ts'
   workflow_dispatch:
 permissions:
@@ -35,9 +36,16 @@ jobs:
             --trace-actor=rook --trace-mode=authored --leaf-rejoin-diagnostic \
             > "$RUNNER_TEMP/d321a-garage.json"
           node -e 'const r=require(process.argv[1]);const site=r.rows[0];const m=site?.modes.find(x=>x.mode==="authored");const o=m?.operators||[];const blockers=o.filter(x=>!x.arrived).map(x=>({id:x.id,position:x.position,goal:x.goal,remaining:x.remaining,outcome:x.outcome,reason:x.lastFailedOrder,blocker:x.lastBlocker,blockedSeconds:x.blockedSeconds,episode:x.doorEpisode,nav:x.nextNav,orders:x.remainingOrders}));console.log("D321A_GARAGE",JSON.stringify({seed:site?.seed,archetype:site?.archetype,summary:r.summary,blockers,route:m?.routeTransitions,leaf:m?.leafRecoveryEvidence,doorStates:m?.endDoorStates},null,2));if(site?.seed!==19285501||site.archetype!=="garage"||m?.accepted!==4)throw Error("wrong Garage physical audit");if(r.summary.invalidPositions||r.summary.corruptedPlans||r.summary.physicsStepViolations||r.summary.unboundedManeuverAttempts)throw Error("unsafe Garage physical evidence")' "$RUNNER_TEMP/d321a-garage.json"
+      - name: Offline authored-goal reachability, current versus all-open doors
+        run: |
+          node --experimental-strip-types scripts/report-d3-21-garage-reachability.mjs \
+            "$RUNNER_TEMP/d321a-garage.json" "$RUNNER_TEMP/d321a-reachability.json"
+          cat "$RUNNER_TEMP/d321a-reachability.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: d321a-garage-authored-front-route45
-          path: ${{ runner.temp }}/d321a-garage.json
+          path: |
+            ${{ runner.temp }}/d321a-garage.json
+            ${{ runner.temp }}/d321a-reachability.json
           retention-days: 45
