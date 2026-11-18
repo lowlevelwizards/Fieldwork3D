@@ -16,6 +16,7 @@ on:
       - 'src/breach-order-door.ts'
       - 'src/breach-order-entry.ts'
       - 'src/breach-order-wait.ts'
+      - 'src/breach-entry-coordination.ts'
       - 'src/breach-entry-tools.ts'
       - 'tests/release-d3-29-directional-locks.test.mjs'
   workflow_dispatch:
