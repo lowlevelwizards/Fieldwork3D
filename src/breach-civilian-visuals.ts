@@ -140,6 +140,12 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
   downProgress:down||pose==='compliant'?1:0,
   poseDiagnostics:false
  },r.lastTime>=0&&now>=r.lastTime?Math.min(.08,now-r.lastTime):0);
+ // The shared animator's generic kit presentation can restore the unused
+ // pack slot on its final frame. Neutrals have NO equipment inventory:
+ // suppress these cosmetic meshes after the common pose publication.
+ r.character.pack.visible=false;
+ r.character.weapon.visible=false;
+ r.character.droppedGun.visible=false;
  // The operator skeleton owns gait, planted feet, full-body crouching,
  // hands-up compliance and fall. Keep neutral carrying offset render-only.
  r.root.position.y=pose==='carried'?10:pose==='dragged'?2:0;
