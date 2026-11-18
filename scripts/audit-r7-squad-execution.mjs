@@ -74,6 +74,10 @@ const d325StallFeasibility=process.argv.includes('--d325-stall-feasibility');
 const d326LastStallProbe=process.argv.includes('--d326-last-stall-probe');
 // D3.27A: exact Garage final-contact geometry; read-only, off by default.
 const d327GarageProbe=process.argv.includes('--d327-garage-probe');
+const d327Exact=d327GarageProbe?
+ await import('../src/breach-d327-exact-motor-grid.ts'):null;
+const d327Stride=d327GarageProbe?
+ await import('../src/breach-stack-micro-corner.ts'):null;
 const d326Micro=d326LastStallProbe?
  await import('../src/breach-stack-micro-corner.ts'):null;
 const d326Fine=d326LastStallProbe?
@@ -993,6 +997,23 @@ function run(site,seed,kind){
         const physicalNoDoorsFirst=route(actor.p,north);
         const physicalNoDoorsFine=coldFineMotorWorldRoute(
           actor.p,north,[],world);
+        const exactWorldSweep=(from,to)=>sweptBodyClear(from,to,[],
+          OPERATOR_RADIUS,world);
+        const exactMotor=(from,to)=>d327Stride.fullBodyMotorStrideClear(
+          from,to,exactWorldSweep);
+        const exactWorldNorth=d327Exact.coldExactMotorGridRoute(
+          actor.p,north,
+          point=>bodyClear(point,[],OPERATOR_RADIUS,world),
+          exactMotor,{step:4,maxExpansions:8500,padding:250,
+            maxDistance:1100,maxWaypoints:130});
+        const exactWorldBridge=[...exactWorldNorth,south,authored];
+        const exactFullBridge=exactWorldNorth.length>0&&
+          fullBodyMotorRouteClear(actor.p,exactWorldBridge,
+            exactWorldSweep,1100);
+        const exactFirstLive=exactWorldNorth[0]?
+          d327Stride.fullBodyMotorStrideClear(actor.p,exactWorldNorth[0],
+            (from,to)=>sweptBodyClear(from,to,session.doors,
+              OPERATOR_RADIUS,world)):false;
         const physicalNoDoorsLast=route(south,authored);
         const noDoorBridge=[...physicalNoDoorsFirst,south,
           ...physicalNoDoorsLast];
@@ -1046,6 +1067,11 @@ function run(site,seed,kind){
           swept(north,south)&&
           fullBodyMotorRouteClear(actor.p,bridge,swept,950);
         return {opening,mid,north,south,
+          exactMotorNorth:{nodes:exactWorldNorth.length,
+            first:exactWorldNorth.slice(0,8),
+            last:exactWorldNorth.at(-1)??null,
+            fullStaticBridgeClear:exactFullBridge,
+            firstRealDoorStrideClear:exactFirstLive},
           noDoorNorth:{firstNodes:physicalNoDoorsFirst.length,
             fineNodes:physicalNoDoorsFine.length,
             lastNodes:physicalNoDoorsLast.length,
