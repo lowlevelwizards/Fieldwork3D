@@ -39,6 +39,7 @@ import {routeWithSqueezeWorld,routeToNextOperableDoor,
  from '../src/breach-squeeze-route.ts';
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
 import {physicalOrderOutcome,successfulSquadExecution}
  from '../src/breach-order-outcome.ts';
 import {alternateFullBodyLaneFromCycle} from '../src/breach-cycle-lane-recovery.ts';
@@ -891,6 +892,8 @@ function run(site,seed,kind){
      blockedTime:round(actor.blockedTime),lastBlocker:actor.lastBlocker,
      normalAtCurrent:bodyClear(actor.p,session.doors,OPERATOR_RADIUS,world),
      normalAtGoal:bodyClear(goal,session.doors,OPERATOR_RADIUS,world),
+     goalStaticPassable:world.passable(goal,OPERATOR_RADIUS),
+     goalKnownFixedBlocker:knownFixedGoalBlock(session,goal),
      immediateFull:full(actor.p,motor),immediateNarrow:narrow(actor.p,motor),
      fullToNext:full(actor.p,next),narrowToNext:narrow(actor.p,next),
      normalWorldNodes:route.length,portalNodes:portal.length,
@@ -898,6 +901,7 @@ function run(site,seed,kind){
      nearestCover:world.cover.map((obstacle,i)=>({
       index:i,x:obstacle.x,y:obstacle.y,w:obstacle.w,h:obstacle.h,
       fixture:obstacle.fixture??null,kind:obstacle.kind??null,
+      discovered:session.intel.cover.has(i),
       movable:obstacle.movable??null,
       gap:round(Math.hypot(obstacle.x-actor.p.x,obstacle.y-actor.p.y))
      })).sort((a,b)=>a.gap-b.gap).slice(0,18),
