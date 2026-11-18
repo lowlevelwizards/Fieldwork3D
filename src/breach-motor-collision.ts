@@ -60,6 +60,9 @@ import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
 import {claimD327ColdPassage,coldExactPassageWorldRoute}
  from './breach-d327-cold-passage.ts';
+import {claimD328EntryLoopProbe,d328DistinctFullBodyAlternative,
+ noteD328FineOwnership,ownsD328FineRoute}
+ from './breach-d328-entry-loop.ts';
 
 export function resolveMotorCollision(
  a:TeamActor,p:Pt,next:Pt,move:Pt,dt:number,s:Session,
@@ -140,6 +143,7 @@ export function resolveMotorCollision(
   // Rate-limit this *physical-world* search to avoid A* churn every tick.
   if(!normalClear&&!blocking&&!closed&&!a.traversalPending&&
      !ownsCircularWorldRoute(a,s.seconds)&&
+     !ownsD328FineRoute(a,s.seconds)&&
      s.seconds-a.lastNormalLaneProbeAt>.50){
     // Failed comfort searches must not restart the world-truth recovery
     // clock; it needs uninterrupted stall time to escalate blocked moves.
@@ -265,6 +269,35 @@ export function resolveMotorCollision(
          !!a.aimInstruction&&a.aimInstruction.mode!=='free',
          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
        sweptBodyClear(a.p,fullLane[0],s.doors,OPERATOR_RADIUS,world)){
+      // D3.28C: a generated STACK approach can repeatedly revisit the
+      // SAME furniture anchor while alternating 3+ route sources. After
+      // real cross-source recurrence (not a single blocked frame), probe
+      // ONE cold 4-unit full-body verified path to THIS stack waypoint.
+      // Do not skip SYNC, OPEN or any authored entry; original goal stays.
+      // Every fine leg is verified at the real 0.3-unit motor sweep and
+      // the ordinary motor alone executes it. Failure is a pure no-op.
+      if(claimD328EntryLoopProbe(a,p,fullLane[0],s.seconds)){
+        const start=profile?beginMotorCpuMeasurement():0;
+        const candidate=coldFineMotorWorldRoute(a.p,p,s.doors,world);
+        if(profile)profile('motor-collision-d328-entry-loop',
+          finishMotorCpuMeasurement(start));
+        const sweep=(from:Pt,to:Pt)=>
+          sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+        const alternative=d328DistinctFullBodyAlternative(
+          a.p,p,fullLane[0],candidate,sweep);
+        if(alternative.length&&
+           watchClearanceAllowed(a.p,alternative[0],p,
+             !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)){
+          setTransientRoute(s,a,alternative,'d328-entry-fine-world');
+          markD326FineMotorRoute(a);
+          noteD328FineOwnership(a,s.seconds);
+          notePreciseLocalDetour(a,alternative[0]);
+          provisionalRouteAccepted(a);
+          a.lastNavRepairAt=s.seconds;
+          a.squeeze=false;a.squeezeTime=0;
+          return true;
+        }
+      }
       // D3.14C2: after 3 genuine repeated departures from nearly
       // the same physical anchor with no GO progress, the same legal
       // detour can loop back forever. One bounded world-truth ALTERNATE
