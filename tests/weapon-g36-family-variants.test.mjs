@@ -7,7 +7,7 @@ import {FAMILY_PRESETS,validFamilyBuild,initialWeaponFamilyBuild,
 import {addG36Family} from '../src/weapons/geometry/g36-family-silhouettes.ts';
 import {G36_E0_FACTORY} from '../src/weapons/geometry/g36-family-contract.ts';
 import {g36FrontEnd,g36SupportRange,g36HandguardEnd,g36ReceiverRailSpan,
- G36_COMPACT_RAIL_TOP_Y}
+ G36_LOW_RAIL_TOP_Y,G36_COMPACT_RAIL_TOP_Y}
  from '../src/weapons/geometry/g36-variant-parts.ts';
 import {g36PixelAtlas} from '../src/weapons/geometry/g36-pixel-details.ts';
 import {clearWeaponSilhouette} from '../src/breach-weapon-geometry.ts';
@@ -64,7 +64,7 @@ test('G36K 318mm and G36C 228mm have real distinct front ends and matching shot-
  const specs=[
   ['g36-service',19.50,13.45,4],
   ['g36-k-dual',15.50,11.00,3],
-  ['g36-c-classic',12.15,10.10,2],
+  ['g36-c-classic',12.15,10.40,2],
   ['g36-ka4',15.50,11.00,3]
  ];
  for(const [id,muzzleX,guardX] of specs){
@@ -193,11 +193,12 @@ test('G36C proportion polish changes only compact front/stock/rail, not its weap
  assert.equal(c.build.parts.barrel,'g36-barrel-228');
  assert.equal(resolveWeaponAssembly(c).muzzleX,12.15,'short barrel and shot socket remain fixed');
  assert.equal(resolveWeaponAssembly(c).stockX,-15.05,'rear physical datum follows original stock');
- assert.equal(g36HandguardEnd(c.build.parts.handguard),10.10);
+ assert.equal(g36HandguardEnd(c.build.parts.handguard),10.40);
  assert.equal(g36HandguardEnd(k.build.parts.handguard),11);
  assert.equal(g36HandguardEnd(a.build.parts.handguard),11);
- assert.ok((10.10-3.75)/(8.80-3.75)>1.25,'compact shell is at least 25% longer than original');
- assert.ok(12.15-10.10<2.1,'compact nose leaves less than 2.1 art units to muzzle');
+ assert.ok((10.40-3.75)/(8.80-3.75)>1.31,'compact shell is over 31% longer than original');
+ assert.ok(near(10.50-10.40,.10,.001),'polymer nose stops just behind flash-hider shoulder');
+ assert.ok(12.15-10.40<1.8,'compact nose leaves less than 1.8 art units to muzzle');
  assert.equal(all(compact,'g36MasterStock').length,1);
  const stockBox=g=>new THREE.Box3().setFromObject(all(g,'g36MasterStock')[0]);
  assert.ok(near(stockBox(compact).min.x,stockBox(classic).min.x,.001),
@@ -226,7 +227,7 @@ test('G36C proportion polish changes only compact front/stock/rail, not its weap
 });
 
 
-test('G36C low rail and sights have real matched heights and stay compact-only',()=>{
+test('G36C and K A4 share authentic low sight rails but retain separate factory sight spans',()=>{
  const compactConfig=preset('g36-c-classic'),ka4Config=preset('g36-ka4');
  const compact=model(compactConfig),ka4=model(ka4Config);
  const rails=all(compact,'g36PicatinnyTop'),sights=all(compact,'g36BackupIron');
@@ -235,6 +236,7 @@ test('G36C low rail and sights have real matched heights and stay compact-only',
  assert.equal(rails[0].userData.g36CompactLowRail,true);
  assert.equal(rails[0].userData.g36CompactRailTeeth,7);
  assert.equal(G36_COMPACT_RAIL_TOP_Y,1.96);
+ assert.equal(G36_LOW_RAIL_TOP_Y,G36_COMPACT_RAIL_TOP_Y);
  const railBox=new THREE.Box3().setFromObject(rails[0]);
  assert.ok(near(railBox.min.y,1.52,.003),'rail flush with receiver roof');
  assert.ok(near(railBox.max.y,1.96,.003),'low tooth line under sights');
@@ -257,18 +259,31 @@ test('G36C low rail and sights have real matched heights and stay compact-only',
  assert.equal(cMount?.endX,7.695);
  const ka4Rail=all(ka4,'g36PicatinnyTop')[0];
  assert.equal(ka4Rail.userData.g36CompactLowRail,undefined);
+ assert.equal(ka4Rail.userData.g36LowRail,true);
+ assert.equal(ka4Rail.userData.g36LowRailTeeth,6);
+ assert.equal(rails[0].userData.g36LowRailTeeth,7);
+ assert.equal(ka4Rail.userData.g36LowRailTopY,G36_LOW_RAIL_TOP_Y);
  const ka4Box=new THREE.Box3().setFromObject(ka4Rail);
- assert.ok(near(ka4Box.max.y,2.225,.003),'KA4 top rail unchanged');
+ assert.ok(near(ka4Box.min.y,1.52,.003),'K A4 low base flush with receiver');
+ assert.ok(near(ka4Box.max.y,G36_LOW_RAIL_TOP_Y,.003),'K A4 low top matches C');
+ assert.ok(near(ka4Box.max.x,6.295,.003),'KA4 keeps shorter rail span');
  const ka4Mount=weaponPartMountSurfaces(ka4Config.build).find(s=>s.ownerPartId==='g36-rail-receiver');
- assert.equal(ka4Mount?.y,2.225);
+ assert.equal(ka4Mount?.y,G36_LOW_RAIL_TOP_Y);
+ assert.equal(ka4Mount?.startX,-5.855);
+ assert.equal(ka4Mount?.endX,6.295);
+ const ka4Slots=physicalWeaponMountSlots(ka4Config.build).filter(s=>s.role==='optic');
+ assert.equal(ka4Slots.length,3);
+ assert.ok(ka4Slots.every(s=>near(s.y,G36_LOW_RAIL_TOP_Y,.003)),'KA4 mounting follows real low rail');
  const ka4Sights=all(ka4,'g36BackupIron');
  assert.equal(ka4Sights.length,2);
  for(const iron of ka4Sights)
-  assert.ok(near(new THREE.Box3().setFromObject(iron).max.y,2.665,.003),
-   'KA4 sight style unchanged');
+  assert.ok(near(new THREE.Box3().setFromObject(iron).max.y,2.19,.003),
+   'KA4 now reuses low integrated sight profile');
  assert.equal(all(compact,'g36ModernHandguardRail').length,0);
  assert.ok(tri(compact)<650,'compact art remains modest low-poly');
  assert.ok(compact.children.length<31,'no draw-call explosion');
+ assert.ok(tri(ka4)<650,'KA4 still modest low-poly');
+ assert.ok(ka4.children.length<31,'KA4 rail reuse retains small mesh count');
  clearWeaponSilhouette(compact);
  clearWeaponSilhouette(ka4);
 });
