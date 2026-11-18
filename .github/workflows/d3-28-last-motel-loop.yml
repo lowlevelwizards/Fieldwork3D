@@ -1,0 +1,40 @@
+name: D3.28 final Motel entry loop exact forensic witness
+on:
+  push:
+    branches: [feature/d3-28-last-motel-entry-loop-20261118]
+    paths:
+      - '.github/workflows/d3-28-last-motel-loop.yml'
+      - 'scripts/report-d3-28-motel-loop.mjs'
+      - 'src/breach-d328*.ts'
+      - 'tests/release-d3-28*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d328-motel-loop-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact-motel-entry:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Frozen Motel entry Ash route and 5s 60Hz witness
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --site-index=8 --audit-seed=19143269 \
+            --audit-scale=small --progress --route-quality \
+            --route-transitions --trace-actor=ash --trace-mode=entry \
+            > "$RUNNER_TEMP/d328-motel-entry.json"
+          node scripts/report-d3-28-motel-loop.mjs \
+            "$RUNNER_TEMP/d328-motel-entry.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d328-motel-entry-ash-physical-witness
+          path: ${{ runner.temp }}/d328-motel-entry.json
+          retention-days: 14
