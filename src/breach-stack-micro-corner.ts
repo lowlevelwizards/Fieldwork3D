@@ -32,16 +32,22 @@ export function fullBodyMotorStrideClear(from:Pt,to:Pt,
  return true;
 }
 
-/** ONLY an operator still executing its ordinary generated STACK MOVE. */
+/** ONLY an operator still executing its ordinary generated STACK MOVE.
+ * A door blocker is eligible ONLY when the caller verifies genuine motor
+ * contact with a stationary, non-locked, physically open leaf. Never treat
+ * a closed door or still-swinging panel as a recoverable local corner.
+ */
 export function stackMicroRecoveryEligible(
  actor:Pick<TeamActor,'side'|'squeeze'|'doorTraversal'|'plan'|
-  'blockedTime'|'lastBlocker'|'traversal'|'traversalPending'>):boolean{
+  'blockedTime'|'lastBlocker'|'traversal'|'traversalPending'>,
+ stableOpenLeafContact=false):boolean{
  const order=actor.plan[0];
  return actor.side==='blue'&&!actor.squeeze&&!actor.doorTraversal&&
   !actor.traversal&&!actor.traversalPending&&
   order?.kind==='move'&&!!order.stackDoorId&&!order.entryDoorId&&
   actor.blockedTime>=1.1&&
-  (actor.lastBlocker==='furniture'||actor.lastBlocker==='wall');
+  (actor.lastBlocker==='furniture'||actor.lastBlocker==='wall'||
+   (actor.lastBlocker==='door'&&stableOpenLeafContact));
 }
 
 /** Bounded 2/4-unit local departure; no grid A* or per-tick 360-degree scan.

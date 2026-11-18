@@ -1,0 +1,63 @@
+name: D3.19C four-site physical failure triage
+on:
+  push:
+    branches: [feature/d3-19c-four-site-physical-triage-20261117]
+    paths:
+      - 'scripts/lib/d3-19c-four-site-triage.mjs'
+      - 'scripts/report-d3-19c-four-site-triage.mjs'
+      - 'tests/release-d3-19c-four-site-triage.test.mjs'
+      - '.github/workflows/d3-19c-four-site-triage.yml'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'scripts/lib/d3-19c-four-site-triage.mjs'
+      - 'scripts/report-d3-19c-four-site-triage.mjs'
+      - 'tests/release-d3-19c-four-site-triage.test.mjs'
+      - '.github/workflows/d3-19c-four-site-triage.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d319c-triage-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Exact offline classification contracts
+        run: node --test tests/release-d3-19c-four-site-triage.test.mjs
+      - name: Real independent four-person 22-site physical audit
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            22 2700 --d318-fresh22 --progress \
+            > "$RUNNER_TEMP/d319c-real22.json"
+          node scripts/report-d3-19c-four-site-triage.mjs \
+            "$RUNNER_TEMP/d319c-real22.json" \
+            "$RUNNER_TEMP/d319c-four-sites.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const input=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d319c-real22.json'));
+          const focus=JSON.parse(fs.readFileSync(process.env.RUNNER_TEMP+'/d319c-four-sites.json'));
+          const s=input.summary,p=input.progressSummary;
+          console.log('D319C_PHYSICAL',JSON.stringify({
+            arrivals:s.physicalArrivals,squads:s.physicalCompletedFour,
+            suspectedLoops:p.suspectedLoops,bySite:focus.bySite,
+            categoryCounts:focus.counts},null,2));
+          if(s.invalidPositions||s.corruptedPlans||s.physicsStepViolations||
+             s.unboundedManeuverAttempts||s.physicalArrivals<146||
+             s.physicalCompletedFour<29)
+            throw Error('D3.19C physical regression: no diagnostics may mask failed movement');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d319c-real-motor-four-sites
+          path: |
+            ${{ runner.temp }}/d319c-real22.json
+            ${{ runner.temp }}/d319c-four-sites.json
+          retention-days: 60
