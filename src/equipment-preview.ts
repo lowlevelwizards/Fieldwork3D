@@ -64,6 +64,7 @@ export class CampaignKitPreview{
    host.addEventListener('pointermove',this.pointerMove);
    host.addEventListener('pointerup',this.pointerUp);
    host.addEventListener('pointercancel',this.pointerUp);
+   host.addEventListener('lostpointercapture',this.pointerUp);
    host.addEventListener('keydown',this.keyDown);
    this.observer=new ResizeObserver(()=>this.scheduleResize());
    this.observer.observe(host);
@@ -107,6 +108,7 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
+  this.host.removeEventListener('lostpointercapture',this.pointerUp);
   this.host.removeEventListener('keydown',this.keyDown);
   if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
   this.dragFrame=null;this.pointerId=null;this.host=host;
@@ -121,6 +123,7 @@ export class CampaignKitPreview{
   host.addEventListener('pointermove',this.pointerMove);
   host.addEventListener('pointerup',this.pointerUp);
   host.addEventListener('pointercancel',this.pointerUp);
+  host.addEventListener('lostpointercapture',this.pointerUp);
   host.addEventListener('keydown',this.keyDown);
   this.observer?.observe(host);
   // Campaign updates the rig immediately after a host swap; avoid a stale
@@ -146,7 +149,9 @@ export class CampaignKitPreview{
   this.draw();
  };
  private pointerDown=(event:PointerEvent)=>{
-  if(this.pointerId!==null)return;
+  // Ignore secondary touch contacts and non-primary mouse/pen buttons.
+  // An ignored press must not capture the preview or block the next drag.
+  if(this.pointerId!==null||!event.isPrimary||event.button!==0)return;
   this.pointerId=event.pointerId;this.lastX=event.clientX;
   try{this.host.setPointerCapture(event.pointerId);}catch{/* optional */}
  };
@@ -254,6 +259,7 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointermove',this.pointerMove);
   this.host.removeEventListener('pointerup',this.pointerUp);
   this.host.removeEventListener('pointercancel',this.pointerUp);
+  this.host.removeEventListener('lostpointercapture',this.pointerUp);
   this.host.removeEventListener('keydown',this.keyDown);
   if(this.rig){releaseOperatorPreviewRig(this.scene,this.rig);this.rig=null;}
   this.renderer?.dispose();this.renderer?.forceContextLoss();
