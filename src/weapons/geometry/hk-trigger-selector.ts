@@ -12,8 +12,9 @@ export type HKSelectorStyle='sef'|'pictogram';
  * Returning the meshes lets each family retain its own saved part naming.
  */
 export function addHKSelectorLeverArt(root:THREE.Group,x:number,y:number,
- lowerHalfDepth:number,side:-1|1,material:THREE.Material):readonly [THREE.Mesh,THREE.Mesh]{
- const pivot=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,.26,8,1),material);
+ lowerHalfDepth:number,side:-1|1,material:THREE.Material,
+ radialSegments=8):readonly [THREE.Mesh,THREE.Mesh]{
+ const pivot=new THREE.Mesh(new THREE.CylinderGeometry(.55,.55,.26,radialSegments,1),material);
  pivot.rotation.x=Math.PI/2;
  pivot.position.set(x,y,side*(lowerHalfDepth+.14));
  pivot.name='family-art-hk-selector-hub';
