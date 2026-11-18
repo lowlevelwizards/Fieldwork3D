@@ -199,7 +199,7 @@ export function buildG36OriginalBlockout(material:THREE.Material,review:G36ArtRe
  // the grip while preserving two-sided factory controls and six facets.
  // One batched four-triangle white S / red E-F graphic survives finish swaps.
  for(const side of [-1,1] as const){
-  const [hub,lever]=addHKSelectorLeverArt(root,-5.20,-1.96,1.14,side,material,6);
+  const [hub,lever]=addHKSelectorLeverArt(root,-5.20,-1.68,1.14,side,material,6);
   hub.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   lever.name='family-receiver-'+ids.receiver+'-'+i.receiver++;
   hub.userData.g36SelectorHub=true;
