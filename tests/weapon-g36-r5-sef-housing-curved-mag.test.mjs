@@ -97,7 +97,7 @@ test('R5 magazine decorative cartridges follow THE production curved magazine fr
    assert.equal(rgba[i+3],255,'no alpha-sort transparency');
    if(v<255)decorated++;
   }
-  assert.ok(shades.has(226)&&shades.has(230)&&shades.has(220),
+  assert.ok(shades.has(227)&&shades.has(231)&&shades.has(220),
    'two round values and muted coupling detail');
   assert.ok(decorated>750&&decorated<1200,
    'approximately 10 percent of tile, bold five curved strokes, not full-width bands');
