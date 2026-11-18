@@ -20,6 +20,7 @@ import {seeded} from './seeded-rng.ts';
 import {type Pt,type Door,type Segment} from '../breach-core.ts';
 import {ordinaryDoorOpeningWidth} from '../breach-door-proportions.ts';
 import {chooseMissionObjective} from './mission-objective-placement.ts';
+import {chooseTopologyAwareObjective} from './objective-entry-topology.ts';
 import type {OperationKind} from '../breach-operations.ts';
 type Cell={col:number;row:number;role:string;room:Room};
 type Edge={a:number;b:number;wall:Segment;length:number;
@@ -388,7 +389,10 @@ export function compileArchitecturalSite(kind:BuildingArchetype,seed:number,
  return {seed,name:b.family.toUpperCase(),archetype:kind,scale,
    planFamily:b.family,programLocked:true,circulationStyle,
    rooms:cells.map(c=>c.room),walls,doors,openings,cover:[],units,
-   entrance,spawn,enemies,objective,extract:point(frontX,frontY+117),
+   entrance,spawn,enemies,
+  objective:chooseTopologyAwareObjective(cells.map(c=>c.room),doors,
+    openings,entrance,seed,operation,enemies,objective),
+  extract:point(frontX,frontY+117),
    roomCount:habitable.length,layout:'corridor',
    bounds:{minX:Math.min(0,west-80),minY:Math.min(0,north-80),
     maxX:Math.max(['expanded','medium','large'].includes(scale)?720:640,east+84),
