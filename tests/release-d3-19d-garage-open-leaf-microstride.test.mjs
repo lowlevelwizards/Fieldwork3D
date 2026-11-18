@@ -6,7 +6,7 @@ import {OPERATOR_RADIUS,activateSite,doorLeafSegment,pointToSegment}
  from '../src/breach-core.ts';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {sweptBodyClear} from '../src/breach-navigation.ts';
-import {fullBodyMotorStrideClear,selectStackMicroCorner}
+import {fullBodyMotorStrideClear,selectStackMicroCorner,stackMicroRecoveryEligible}
  from '../src/breach-stack-micro-corner.ts';
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 test('D3.19D read-only: actual garage 19089932 D8 open leaf / Rook stack microstride',()=>{
@@ -45,9 +45,34 @@ test('D3.19D read-only: actual garage 19089932 D8 open leaf / Rook stack microst
     dist(proposed.at(-1),goal)<.001:false
   };
   console.log('D319D_GARAGE_MOTOR_WITNESS',JSON.stringify(witness));
+  assert.equal(witness.coarseDirectClear,true,'coarse leg is misleadingly clear');
+  assert.equal(witness.exactDirectClear,false,'real first stride must remain blocked');
+  assert.equal(proposed.length,2,'verified tiny departure and same original STACK GO');
   assert.ok(certified,'diagnostic cannot approve an invalid microstride');
   if(proposed.length)
    assert.ok(witness.reachesOriginalStackGoal,
     'recovery must not change the generated STACK order');
  }finally{activateSite(null);}
+});
+
+test('D3.19D stationary open-leaf permission is narrow to generated STACK',()=>{
+ const actor={side:'blue',squeeze:false,doorTraversal:null,
+  traversal:null,traversalPending:false,blockedTime:1.2,
+  lastBlocker:'door',
+  plan:[{kind:'move',id:1,stackDoorId:'D8',p:{x:376.5,y:403}}]};
+ assert.equal(stackMicroRecoveryEligible(actor),false,
+  'door blocking alone does not bypass the existing guard');
+ assert.equal(stackMicroRecoveryEligible(actor,true),true,
+  'motor may select a certified local departure at a verified stable leaf');
+ assert.equal(stackMicroRecoveryEligible({...actor,blockedTime:.8},true),false);
+ assert.equal(stackMicroRecoveryEligible({...actor,squeeze:true},true),false);
+ assert.equal(stackMicroRecoveryEligible({...actor,
+  doorTraversal:{doorId:'D8'}},true),false);
+ assert.equal(stackMicroRecoveryEligible({...actor,
+  plan:[{kind:'move',entryDoorId:'D8',p:{x:1,y:1}}]},true),false);
+ assert.equal(stackMicroRecoveryEligible({...actor,side:'red'},true),false);
+ assert.equal(stackMicroRecoveryEligible({...actor,
+  lastBlocker:'furniture'}),true,'original furniture recovery remains');
+ assert.equal(stackMicroRecoveryEligible({...actor,
+  lastBlocker:'wall'}),true,'original wall recovery remains');
 });
