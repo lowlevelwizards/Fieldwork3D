@@ -13,7 +13,9 @@ import {liveMagazineCapacity,freshMagazineIssue}
 
 test('original G36 is an independently selectable Arsenal factory rifle',()=>{
  const refs=arsenalReferencesForPlatform('g36');
- assert.deepEqual(refs.map(p=>p.id),['g36-service']);
+ assert.deepEqual(refs.map(p=>p.id),[
+  'g36-service','g36-k-dual','g36-c-classic','g36-ka4'
+ ]);
  assert.deepEqual(arsenalCatalogIssues(),[]);
  const preset=FAMILY_PRESETS.find(p=>p.id==='g36-service');
  assert.ok(preset);
