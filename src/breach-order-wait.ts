@@ -7,6 +7,7 @@ import type {PlanNode} from './breach-plan.ts';
 import {entryDoorState,leaderBeyondOpenEntry} from './breach-entry-coordination.ts';
 import {doorSwingBlocked} from './breach-door.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {failCurrentOrder} from './breach-order-lifecycle.ts';
 
 export function advanceWaitOrder(
  s:Session,a:TeamActor,n:PlanNode,dt:number,
@@ -27,6 +28,21 @@ export function advanceWaitOrder(
   // sweep; this does not declare the aperture universally passable.
   const entry=n.duration===0?a.plan.find(next=>
     next.kind==='move'&&next.entryDoorId===n.doorId):undefined;
+  // D3.25B: an automatic zero-duration follower gate must not outlive
+  // its physically impossible locked/jammed doorway. Cancel only the
+  // linked generated gate and its immediate generated ENTRY MOVE as
+  // genuine failures, not successful arrivals. Player WAIT, WATCH and
+  // unrelated later orders keep their normal authority.
+  const terminal=entry&&(!doorway||doorway.locked||doorway.jammed);
+  if(terminal){
+    const failure=!doorway?'DOOR MISSING':
+      doorway.locked?'DOOR LOCKED':'DOOR JAMMED';
+    const reason='SQUAD ENTRY CANCELLED · '+failure;
+    failCurrentOrder(s,a,n,reason,notify);
+    if(a.plan[0]?.id===entry.id)
+      failCurrentOrder(s,a,entry,reason,notify);
+    return;
+  }
   const lead=entry?s.operators.find(other=>
     other.side===a.side&&other.health>0):undefined;
   const leadAcross=!!entry&&!!lead&&lead!==a&&

@@ -51,18 +51,22 @@ jobs:
             }));
           }
           console.log('D316A_TOTAL',JSON.stringify(r.summary));
-          // Clean production main 1eb34097, independently replayed on 2026-11-17:
-          // 80 arrivals, 18 successful fours, 7 cancellations, 0 arrived despite cancellation.
-          // Keep exact physics/truth assertions; prior 16/9/2 snapshot was obsolete.
-          if(r.summary.physicalArrivals!==80||
+          // D3.25H paired exact 88-actor replay on published production main
+          // 9249dc70 (2026-11-18) and feature: all 88 operator outcomes,
+          // cancellations and every summary truth field were identical.
+          // Current main is 81 arrivals, 22 logically completed fours,
+          // 18 physically successful fours, 7 cancellations, ZERO pending.
+          // Preserve every strict physical/truth invariant, including
+          // 0 arrived despite cancellation and no drained-unreached orders.
+          if(r.summary.physicalArrivals!==81||
              r.summary.physicalCompletedFour!==18||
-             r.summary.completedFour!==21||
+             r.summary.completedFour!==22||
              r.summary.successfulFour!==18||
              r.summary.terminallyCancelledOrders!==7||
              r.summary.cancelledOperators!==7||
              r.summary.cancelledAndNotArrived!==7||
              r.summary.arrivedDespiteCancellation!==0||
-             r.summary.physicallyPendingOperators!==1||
+             r.summary.physicallyPendingOperators!==0||
              r.summary.unreachedDrainedOperators!==0)
             throw Error('D3.16A historical terminal truth disagrees with real 88-actor physics');
           if(r.rows.flatMap(x=>x.modes).some(m=>

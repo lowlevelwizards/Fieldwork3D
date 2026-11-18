@@ -1,0 +1,90 @@
+name: D3.25 exact current-main historical terminal-truth parity
+on:
+  push:
+    branches: [feature/d3-25-entry-stall-witness-20261118]
+    paths:
+      - '.github/workflows/d3-25-historical-truth-parity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d325-historical-truth-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Replay same 88 actors at exact published-main commit and candidate
+        env:
+          BASE_SHA: 9249dc70ff9dcbcf9fda309eaca4606e9afe93e9
+        run: |
+          git worktree add --detach "$RUNNER_TEMP/d325-main" "$BASE_SHA"
+          ln -s "$GITHUB_WORKSPACE/node_modules" "$RUNNER_TEMP/d325-main/node_modules"
+          node --experimental-strip-types \
+            "$RUNNER_TEMP/d325-main/scripts/audit-r7-squad-execution.mjs" \
+            11 2700 --progress > "$RUNNER_TEMP/d325-main-truth.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs \
+            11 2700 --progress > "$RUNNER_TEMP/d325-feature-truth.json"
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const read=name=>JSON.parse(fs.readFileSync(
+            process.env.RUNNER_TEMP+'/d325-'+name+'-truth.json','utf8'));
+          const base=read('main'),feature=read('feature');
+          const fields=['physicalArrivals','physicalCompletedFour',
+            'completedFour','successfulFour','terminallyCancelledOrders',
+            'cancelledOperators','cancelledAndNotArrived',
+            'arrivedDespiteCancellation','physicallyPendingOperators',
+            'unreachedDrainedOperators','invalidPositions',
+            'physicsStepViolations','corruptedPlans','exceptions'];
+          const summary=fields.map(key=>({
+            key,main:base.summary[key],feature:feature.summary[key]
+          }));
+          const cases=[];
+          for(let index=0;index<base.rows.length;index++){
+            const left=base.rows[index],right=feature.rows[index];
+            if(left.seed!==right?.seed||left.scale!==right?.scale||
+               left.archetype!==right?.archetype)
+              throw Error('changed exact historical map at '+index);
+            for(const mode of left.modes){
+              const candidate=right.modes.find(x=>x.mode===mode.mode);
+              if(!candidate)throw Error('missing exact mode '+mode.mode);
+              for(const op of mode.operators){
+                const after=candidate.operators.find(x=>x.id===op.id);
+                if(!after||op.arrived!==after.arrived||
+                  op.outcome!==after.outcome||
+                  op.remainingOrders!==after.remainingOrders||
+                  op.failedOrders!==after.failedOrders)
+                  cases.push({seed:left.seed,scale:left.scale,site:left.archetype,
+                    mode:mode.mode,actor:op.id,
+                    before:{arrived:op.arrived,outcome:op.outcome,
+                      orders:op.remainingOrders,failed:op.failedOrders},
+                    after:after?{arrived:after.arrived,outcome:after.outcome,
+                      orders:after.remainingOrders,failed:after.failedOrders}:null});
+              }
+            }
+          }
+          const differences=summary.filter(x=>x.main!==x.feature);
+          console.log('D325_HISTORICAL_CURRENT_MAIN_PARITY',JSON.stringify({
+            main:process.env.BASE_SHA,feature:process.env.GITHUB_SHA,
+            mapCount:base.rows.length,summary,
+            changedSummary:differences,changedOperatorCases:cases
+          }));
+          if(base.rows.length!==11||feature.rows.length!==11||
+             differences.length||cases.length||
+             feature.summary.invalidPositions||
+             feature.summary.physicsStepViolations||
+             feature.summary.corruptedPlans||feature.summary.exceptions)
+            throw Error('D3.25 historical physical truth changed against current main');
+          NODE
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d325-historical-current-main-paired
+          path: ${{ runner.temp }}/d325-*-truth.json
+          retention-days: 30
