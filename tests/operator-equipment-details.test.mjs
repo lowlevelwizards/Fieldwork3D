@@ -48,3 +48,23 @@ test('medical kits and real carried tools stay on their chosen body mounts',()=>
   assert.equal(rig.equipmentDetails.traumaHardware.visible,false);
  }finally{rig.dispose();}
 });
+
+test('long tools retain belt, pocket, rig or backpack carry identity',async()=>{
+ const {utilityDisplaySocket}=await import('../src/equipment-carry-visuals.ts');
+ for(const id of ['utility-breach','utility-pry','utility-cutter']){
+  assert.equal(utilityDisplaySocket(id,'belt',true).bone,'hip');
+  assert.equal(utilityDisplaySocket(id,'pocket',true).bone,'hip');
+  assert.equal(utilityDisplaySocket(id,'rig',true).bone,'chest');
+  assert.equal(utilityDisplaySocket(id,'backpack',true).bone,'pack');
+  assert.equal(utilityDisplaySocket(id,'backpack',false).bone,'chest');
+ }
+ assert.equal(utilityDisplaySocket('utility-light','belt',true).bone,'hip');
+ const rig=createOperatorRig('ash','blue');
+ try{
+  const kit=setEquipmentChoice(initialEquipmentLoadout(),'utility','utility-pry');
+  poseOperator(rig,{...pose(kit),utilityCarryLocation:'belt'},0);
+  assert.equal(rig.utilityTool.parent,rig.hip);
+  poseOperator(rig,{...pose(kit),utilityCarryLocation:'backpack'},0);
+  assert.equal(rig.utilityTool.parent,rig.pack);
+ }finally{rig.dispose();}
+});

@@ -62,6 +62,15 @@ export function utilityDisplaySocket(itemId:string,
  const base=equipmentCarrySocket('utility',location);
  const long=['utility-breach','utility-pry','utility-cutter'].includes(itemId);
  if(!long)return base;
- if(hasPack)return {bone:'pack',x:-2.2,y:1.7,z:-8.8,angle:0};
+ // L2.9B: preserve the chosen actual carrier instead of silently moving
+ // belt/pocket-issued tools onto a backpack merely because one is equipped.
+ // The angled rear-hip cradle holds the long shaft above moving thighs.
+ if(location==='belt')
+  return {bone:'hip',x:-3.3,y:2.1,z:-7.1,angle:-.62};
+ if(location==='pocket')
+  return {bone:'hip',x:-3.3,y:2.1,z:-6.2,angle:-.62};
+ if(location==='backpack'&&hasPack)
+  return {bone:'pack',x:-2.2,y:1.7,z:-8.8,angle:0};
+ // Rig stowage (and invalid/no-pack fallback) uses the upper back.
  return {bone:'chest',x:-6.45,y:3.0,z:-8.85,angle:0};
 }
