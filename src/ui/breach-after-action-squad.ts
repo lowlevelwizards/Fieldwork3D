@@ -5,6 +5,10 @@
 import type {AfterActionReport,OperatorAfterAction,ContributionEvidence}
  from '../breach-after-action-report.ts';
 import type {ReplayManifest} from '../breach-replay-manifest.ts';
+import type {AfterActionInventoryCloseout}
+ from '../breach-after-action-inventory.ts';
+import {renderAfterActionCarrySummary,renderAfterActionTeamReadiness}
+ from './breach-after-action-inventory.ts';
 
 const el=(tag:string,cls='',label?:string)=>{
  const e=document.createElement(tag);
@@ -139,7 +143,8 @@ function rankRow(op:OperatorAfterAction,operators:OperatorAfterAction[],
  row.append(rank,name,points);
  return row;
 }
-function initialOverview(report:AfterActionReport){
+function initialOverview(report:AfterActionReport,
+ inventory?:AfterActionInventoryCloseout){
  const root=el('div','fw-v4-team-overview');
  const total=report.operators.reduce((sum,op)=>sum+op.contribution,0);
  const heading=el('div','fw-v4-overview-heading');
@@ -154,11 +159,13 @@ function initialOverview(report:AfterActionReport){
  root.append(el('p','fw-v4-select-note',
    'Select any ranked operator to inspect their actions and condition.'));
  root.append(methodology());
+ if(inventory)root.append(renderAfterActionTeamReadiness(inventory));
  return root;
 }
 function selectedOverview(op:OperatorAfterAction,
  operators:OperatorAfterAction[],choose:(id:string|null)=>void,
- more:(id:string)=>void,inspect?:((key:string)=>void)){
+ more:(id:string)=>void,inspect?:((key:string)=>void),
+ inventory?:AfterActionInventoryCloseout){
  const root=el('div','fw-v4-selected-overview');
  const top=el('div','fw-v4-selected-top');
  const name=el('div','fw-v3-squad-name');
@@ -180,6 +187,8 @@ function selectedOverview(op:OperatorAfterAction,
    el('span','',op.contactReports+' CONTACT REPORTS')
  );
  root.append(counts);
+ const carried=inventory?.operators.find(item=>item.id===op.id);
+ if(carried)root.append(renderAfterActionCarrySummary(carried));
  const earned=distinction(op);
  if(earned)root.append(el('div','fw-v3-distinction','✦ '+earned));
  const actions=el('div','fw-v4-selected-actions');
@@ -196,7 +205,8 @@ function selectedOverview(op:OperatorAfterAction,
 export function renderSquadView(report:AfterActionReport,
  _manifest:ReplayManifest|null,selectedId:string|null,
  choose:(id:string|null)=>void,more:(id:string)=>void,
- inspect?:((key:string)=>void)):HTMLElement{
+ inspect?:((key:string)=>void),
+ inventory?:AfterActionInventoryCloseout):HTMLElement{
  const section=el('section','fw-v3-squad fw-v4-squad');
  const operators=report.operators;
  if(!operators.length){
@@ -222,15 +232,16 @@ export function renderSquadView(report:AfterActionReport,
  viewer.setAttribute('aria-label',selected?
    'Historical 3D model for '+selected.name:
    'Historical 3D models of the complete squad');
- focus.append(viewer,selected?selectedOverview(selected,operators,choose,more,inspect):
-   initialOverview(report));
+ focus.append(viewer,selected?selectedOverview(selected,operators,choose,more,inspect,inventory):
+   initialOverview(report,inventory));
  content.append(roster,focus);section.append(content);
  if(!report.complete)section.append(el('p','fw-after-muted fw-v4-partial',
    'PARTIAL REPLAY · RANKING MAY OMIT UNRECORDED ACTIONS'));
  return section;
 }
 export function renderSquadDetails(op:OperatorAfterAction,
- inspect?:((key:string)=>void)):HTMLElement{
+ inspect?:((key:string)=>void),
+ inventory?:AfterActionInventoryCloseout):HTMLElement{
  const root=el('section','fw-v3-operator-details');
  root.append(el('h3','',op.name+' / RECORDED CONTRIBUTIONS'));
  const pairs:[string,string][]=[
@@ -259,5 +270,7 @@ export function renderSquadDetails(op:OperatorAfterAction,
  const fullHistory=evidenceList(op.contributions,inspect,Infinity);
  if(fullHistory)root.append(fullHistory);
  root.append(methodology());
+ const carried=inventory?.operators.find(item=>item.id===op.id);
+ if(carried)root.append(renderAfterActionCarrySummary(carried,true));
  return root;
 }
