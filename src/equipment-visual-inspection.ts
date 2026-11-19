@@ -29,17 +29,17 @@ export function inspectEquipmentMesh(rig:OperatorRig,
   const id=target.id as FieldItemId;
   if(id==='flashbang'){
    const records=visibleFlashCanisters(kit);
-   return first(rig.flashCanisters.filter((mesh,i)=>
+   return first(rig.flashCanisters.filter((_mesh,i)=>
     (!loc||records[i]?.location===loc)&&!!records[i]),index);
   }
   if(id==='wedge'){
    const records=visibleDoorWedges(kit);
-   return first(rig.wedgeMeshes.filter((mesh,i)=>
+   return first(rig.wedgeMeshes.filter((_mesh,i)=>
     (!loc||records[i]?.location===loc)&&!!records[i]),index);
   }
   if(id==='zip-tie'){
    const records=visibleFlexCuffs(kit);
-   return first(rig.cuffMeshes.filter((mesh,i)=>
+   return first(rig.cuffMeshes.filter((_mesh,i)=>
     (!loc||records[i]?.location===loc)&&!!records[i]),index);
   }
   return null; // Unimplemented catalog items never receive phantom models.
