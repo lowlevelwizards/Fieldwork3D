@@ -2073,7 +2073,9 @@ export class CampaignScreen{
      id,mag.id,picker.value as MagazineLocation));
     row.append(picker);magazines.append(row);
    }
-   grouped.field('carry').append(magazines);
+   // Advanced legacy picker stays reachable without duplicating the
+   // primary physical-magazine board inside Physical Carry.
+   kitUtilities.append(magazines);
   }
   grid.append(editor);main.append(grid);
   this.root.append(main);
