@@ -1590,6 +1590,7 @@ export class CampaignScreen{
   });
   editor.insertBefore(categoryBar,grouped.group.weapon);
   for(const slot of LOADOUT_SLOTS){
+   if(slot==='tactical')continue; // Field consumables use the shared quantity and placement editor.
    const row=node('div','campaign-kit-row');
    const title=node('span','',slot.replace(/-/g,' ').toUpperCase());
    const select=node('select','campaign-select');
