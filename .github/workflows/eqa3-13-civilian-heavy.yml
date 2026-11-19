@@ -1,0 +1,36 @@
+name: EQA3.13 populated civilian encounter critical
+on:
+  push:
+    branches: [feature/eqa3-13-civilian-heavy-encounters-20261119]
+    paths:
+      - 'src/breach-civilian-refuge.ts'
+      - 'src/breach-civilian-response.ts'
+      - 'tests/eqa3-13-*.test.mjs'
+      - '.github/workflows/eqa3-13-civilian-heavy.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  civilian-heavy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript and focused EQA3.13 / historical physical regression
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-13-changing-threat-route.test.mjs \
+            tests/eqa3-13-civilian-heavy-session.test.mjs \
+            tests/eqa3-13-operator-civilian-contact.test.mjs \
+            tests/eqa3-12-civilian-firefight.test.mjs \
+            tests/eqa3-12-refuge-exit.test.mjs \
+            tests/eqa3-11-peripheral-civilian.test.mjs \
+            tests/eqa3-10-civilian-response.test.mjs \
+            tests/eqa3-9-auto-secure.test.mjs \
+            tests/civilian-c2-refuge-navigation.test.mjs \
+            tests/performance-p2-7-live-routing.test.mjs

@@ -48,6 +48,37 @@ export function civilianRefugePoints(site:Site,c:CivilianActor):Pt[]{
  }
  return result.slice(0,15);
 }
+/** The same modest perceived-danger corridor guard is used when choosing
+ * a refuge and when reviewing an already-authored route after NEW evidence.
+ * It never reads the real enemy position or predicts an enemy's movement.
+ */
+function perceivedThreatClearance(from:Pt,threat:Pt,fear:number):number{
+ return fear>=.4?Math.max(0,Math.min(34,dist(from,threat)-9)):0;
+}
+function legCrossesPerceivedThreat(a:Pt,b:Pt,threat:Pt,clearance:number):boolean{
+ if(clearance<=0)return false;
+ const dx=b.x-a.x,dy=b.y-a.y,denom=dx*dx+dy*dy;
+ const t=denom>0?Math.max(0,Math.min(1,
+  ((threat.x-a.x)*dx+(threat.y-a.y)*dy)/denom)):0;
+ return dist({x:a.x+dx*t,y:a.y+dy*t},threat)<clearance;
+}
+/** EQA3.13: an old flee path can become unsafe even if its final refuge
+ * is still far from a newly witnessed danger. Pure read, evaluated only
+ * during existing fresh-evidence cooldown in civilian response.
+ */
+export function civilianEscapeCrossesDanger(
+ c:Pick<CivilianActor,'p'|'goal'|'nav'|'threatEstimate'|'fear'>
+):boolean{
+ if(!c.goal||!c.threatEstimate||c.fear<.4)return false;
+ const clearance=perceivedThreatClearance(c.p,c.threatEstimate,c.fear);
+ let from=c.p;
+ for(const point of [...c.nav,c.goal]){
+  if(legCrossesPerceivedThreat(from,point,c.threatEstimate,clearance))
+   return true;
+  from=point;
+ }
+ return false;
+}
 export function chooseCivilianRefuge(c:CivilianActor,
  world:RefugeRouteWorld):{goal:Pt;path:Pt[]}|null{
  const threat=c.threatEstimate;
@@ -59,14 +90,9 @@ export function chooseCivilianRefuge(c:CivilianActor,
  // clearance down if the civilian is already next to the perceived danger.
  // Calm people with a stale estimate retain the historical route choice.
  // Clearance matters only during an actively frightened flight decision.
- const minimumClearance=c.fear>=.4?
-  Math.max(0,Math.min(34,current-9)):0;
- const safeLeg=(a:Pt,b:Pt)=>{
-  const dx=b.x-a.x,dy=b.y-a.y,denom=dx*dx+dy*dy;
-  const t=denom>0?Math.max(0,Math.min(1,
-   ((threat.x-a.x)*dx+(threat.y-a.y)*dy)/denom)):0;
-  return dist({x:a.x+dx*t,y:a.y+dy*t},threat)>=minimumClearance;
- };
+ const minimumClearance=perceivedThreatClearance(c.p,threat,c.fear);
+ const safeLeg=(a:Pt,b:Pt)=>
+  !legCrossesPerceivedThreat(a,b,threat,minimumClearance);
  // LOS queries involve walls/doors, not a cheap arithmetic score.
  // The old comparator re-ran them O(n log n) times for the same refuge
  // point during a single decision. Score each candidate once, then keep
