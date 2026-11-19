@@ -1,7 +1,7 @@
 # Fieldwork Breach — Universal Weapon Art & Production Standard
 
 **Status:** Canonical production policy for new weapon families, variants, and substantial revisions to existing weapon art.  
-**Version:** 1.0 · 2026-11-16  
+**Version:** 1.1 · 2026-11-18  
 **Owner:** Arsenal / weapon appearance pipeline.  
 **Companion documents:** [R2 silhouette contract](geometry-r2-silhouette-contract.md), [Arsenal V2 baseline](../../arsenal-v2-baseline.md), and the historical AR / AK / FAL / FNC / HK case studies in this directory.
 
@@ -260,6 +260,33 @@ A weapon/variant may be called **ART APPROVED** only when:
 - [ ] Focused regression tests, TypeScript, production build and production release gates pass before merge/deploy.
 
 **A missing checkbox is a blocker or an explicitly documented, approved exception; it is not silently interpreted as satisfied.**
+
+## 14A. Cross-platform motion / non-detachable-feed production contract (2026-11-18)
+
+**Evidence and rationale:** the G36 stock/hand placement and transition work exposed shoulder sinking, support-hand riding on the weapon's side and elbow reversal across short-stock/ready transitions. The pre-existing legacy shotgun is a rigid 20-box art fallback compiled to two same-material rigid meshes, while gameplay already has a shell-tube reload cue; an authentic 870 adds a separately moving fore-end, integrated stock grip, tube rather than a detachable box magazine, and moving shell/hull props. These are universal boundary conditions, **not claims that the future 870 has been implemented or visually approved**. Detailed family-specific references and candidate specs: [870 production plan](remington-870-reference-and-production-plan-20261118.md).
+
+### 14A.1 Distinguish physical behavior from cosmetic body slots
+- The six appearance slots remain the default **UI and stable-persistence** framework, not a claim that every weapon contains a removable box magazine or independent vertical pistol grip. Each family MUST explicitly define semantic slot behavior: detachable-box magazine, fixed tube/feed exterior, integral stock wrist, stockless hold, reciprocating charging piece, sliding pump and other independently moving art.
+- Animated subcomponents MUST have stable parent ownership, pivots, motion limits and deterministic timeline inputs. They MUST remain independently addressable after geometric consolidation; never bake a moving pump or magazine into an opaque rigid group for the sake of a draw-count target.
+- Compatibility MUST describe actual exterior support: a fore-end with an integral light cannot also host a duplicate ordinary fore-end, shotgun chokes are not generic rifle flash hiders, box feed needs an authored receiver/magwell rather than a fake magazine appended to a tube-fed variant.
+- Alternate gauges, feed systems, receiver laterality, unusual short-stock/stockless setups and period-specific military assemblies are **different platform/animation constraints** until explicitly researched and implemented; do not treat them as finish-only variants.
+- Distinguish simulation/state migrations from art staging; existing magazine ownership, reload and save behavior is authoritative until an intentional, individually tested migration.
+
+### 14A.2 Mechanical-action and reload evidence
+- For a weapon whose signature is a moving mechanism, the production acceptance sheet MUST contain motion states, not just parked beauty views: closed/partway/open mechanism, firing or cycle contact, reload/empty/partial states, release/reacquire and replay seek.
+- Any visible shell, magazine, hull or cycling part must be driven by the **single authoritative simulation event/timestamp**, not duplicated renderer-owned inventory counts or cumulative frame deltas. Interrupted sequences, replay seek and repeated scene creation should converge on exactly the same posed state.
+- Shotgun tube reload must depict **one shell at a time** if the game sim is individually loading; do not visually detach a tube magazine. Future removable-mag shotgun variants require distinct feed and inventory architecture and cannot be represented with a dummy box.
+- Stock contact must stay on the actual visible buttplate/shoulder surface through movement, aiming and pose blending; hand centres must touch meaningful physical furniture. Explicitly test low/ready/short-stock transitions, support grip under the actual fore-end, both handedness views and elbow pole/sidedness continuity to detect backwards elbow flips.
+- Pump strokes or other independently moving fore-ends should drive a coherent support-hand trajectory, never teleport a rigid hand off the weapon or drag the barrel/receiver along with the support.
+
+### 14A.3 Universal geometry and visual-cost lessons
+- The rigid-compilation audit's legacy shotgun 20-box-to-two-group pilot proves only conservative same-material grouping of **fixed unnamed** geometry, not acceptability of the placeholder's silhouette and not a general license to merge interactive body slots. Measure real WebGL submissions and workbench part selection for any newly enabled compiler path.
+- Continue the G36 practice of decisive silhouette differences, shared material values, correct side-only control/port marks and consistent producer geometry; avoid making a simple tubular shotgun look like a layered AR receiver by importing rifle-specific heuristics.
+- New production specs MUST record at least one **prohibited neighboring-platform confusion** (e.g. two visually similar shotguns) and one same-scale clay silhouette comparison to it.
+- Variant plans SHOULD separate a comprehensive **reference longlist** from a small **approved factory preset budget**; publication/production claims depend on actual historical evidence for each proposed exact configuration.
+- When a new platform exposes an absent general capability (pump motion, box-vs-tube feed, stockless grip or removable accessory owner), implement the smallest reusable capability and test it once across its real consumers, instead of producing a bespoke lab-only animation or creating a redundant second rendering pipeline.
+
+**Regression/application impact:** applies to all future weapon families and motion-bearing changes; focus tests are pose contact/shoulder/underhand grip/elbow polarity, identical replay seek, moving-part ownership and disposal, magazine/feed representation, Arsenal compatibility and genuine desktop/mobile production screenshots. Existing weapons are not silently modified by this document.
 
 ## 15. Practical implementation references
 
