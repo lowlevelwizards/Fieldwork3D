@@ -27,6 +27,7 @@ import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
  fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
+import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
@@ -907,9 +908,21 @@ export function moveCampaignMagazine(
  if(!item||item.location===to)return c;
  const spaces=magazineSpace(soldier.loadout);
  if(to!=='overflow'&&placed.filter(m=>m.location===to).length>=spaces[to])return c;
- const relocated=placed.map(m=>m.id===magazineId?{...m,location:to}:m);
+ let moved:MagazineItem[];
+ if(to==='overflow'){
+  moved=stageMagazines(placed.map(m=>m.id===magazineId?
+   {...m,location:to}:m),soldier.loadout);
+ }else{
+  // Campaign is the commit authority: a visual quote cannot substitute
+  // for an atomic physical capacity and displaced-gear revalidation.
+  const quote=quoteOneMagazineMove(soldier.loadout,soldier.magazines,
+   magazineId,to,soldier.loadout.fieldInventory??
+    initialFieldInventory(soldier.loadout));
+  if(!quote.ok||!quote.changed)return c;
+  moved=quote.magazines;
+ }
  return {...c,operators:c.operators.map(o=>o.id===operatorId?
-  {...o,magazines:stageMagazines(relocated,o.loadout)}:o)};
+  {...o,magazines:moved}:o)};
 }
 
 /** Appearance-only customization: never issues stock or alters carried gear.
