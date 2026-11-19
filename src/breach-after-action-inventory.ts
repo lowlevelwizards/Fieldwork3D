@@ -71,12 +71,13 @@ export function buildAfterActionInventoryCloseout(input:{
      id==='flashbang'?initial.flashCharges:
      id==='wedge'?initial.wedgeRemaining:
      id==='zip-tie'?initial.restraintRemaining:0):null,remaining);
-  const rounds=qty(initial?totalRounds(initial.magazine,initial.reserve):null,
+  const rounds=qty(hasStart&&initial?totalRounds(initial.magazine,initial.reserve):null,
    totalRounds(actor.magazine,actor.reserve));
   const flash=stocked('flashbang',actor.flashCharges);
   const wedges=stocked('wedge',actor.wedgeRemaining);
   const cuffs=stocked('zip-tie',actor.restraintRemaining);
-  const supplies=qty(initial?medical(initial.medicalSupplies):null,
+  const supplies=qty(hasStart&&initial?.medicalSupplies?
+   medical(initial.medicalSupplies):null,
    medical(actor.medicalSupplies));
   const locations=(id:FieldItemId):string[]=>
    currentField?.stacks.filter(row=>row.itemId===id).map(row=>
@@ -93,7 +94,7 @@ export function buildAfterActionInventoryCloseout(input:{
   const needs:string[]=[];
   let readiness:OperatorInventoryCloseout['readiness']='not-assessed';
   if(mode==='quick')readiness='fresh-round';
-  else if(mode==='mission'&&career){
+  else if(mode==='mission'&&career&&campaign?.activeContractId===null){
    if(career.recoveryDays>0||actor.health<=0)readiness='recovering';
    const full=liveMagazineCapacity(career.weapon,career.weaponConfiguration);
    const reserve=standardReserveRounds(career.weapon,career.weaponConfiguration);
