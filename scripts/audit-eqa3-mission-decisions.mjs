@@ -312,6 +312,14 @@ for(const [seed,mission] of chosen){
     executeOrder();
     for(let tick=0;tick<tickFrames&&s.phase==='running';tick++){
       stepSession(s,1/30);
+      // Completion can advance phase out of RUNNING before the 6-tick
+      // sample below. Do not describe a truly DONE mission as lacking
+      // extraction merely because its terminal transition fell off-grid.
+      if(objectiveAt===null&&
+         (s.mission==='extract'||s.mission==='done'))
+        objectiveAt=s.seconds;
+      if(atExtraction===null&&s.mission==='done')
+        atExtraction=s.seconds;
       if(forensic){
         for(const shot of s.shots){
           if(seenShotIds.has(shot.id))continue;
