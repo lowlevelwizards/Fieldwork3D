@@ -144,7 +144,7 @@ function saveFile(campaign:CampaignState){
  window.setTimeout(()=>URL.revokeObjectURL(href),1000);
 }
 function campaignMenu(){
- preGoPrep.close();
+ preGoPrep.setAvailable(false);
  deployedIncident=null;
  model.mode='menu';
  campaignScreen.entry(!!config.getCampaignInSlot('legacy'),
@@ -372,7 +372,7 @@ const campaignScreen=new CampaignScreen({
 });
 function showCampaignHome(){
  if(!model.campaign)return;
- preGoPrep.close();
+ preGoPrep.setAvailable(false);
  deployedIncident=null;
  model.mode='home';campaignScreen.home(model.campaign,config.getCampaignSlot());
 }
@@ -391,6 +391,7 @@ function deployCampaignContract(){
  // Capture AFTER reset: the reset pathway invalidates prior mission state.
  deployedIncident=deployedDispatchIncident(model.campaign,job.id);
  campaignScreen.hide();
+ preGoPrep.setAvailable(true);
  config.showBriefing();
 }
 function returnAfterCampaignMission(){
