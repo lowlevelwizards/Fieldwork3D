@@ -11,6 +11,12 @@ header{position:fixed;top:env(safe-area-inset-top);left:0;right:0;z-index:2;back
 header a{color:#c8b992}main{position:fixed;bottom:env(safe-area-inset-bottom);left:0;right:0;z-index:3;padding:8px;background:#202c2bf0;display:grid;gap:8px;max-height:48dvh;overflow-y:auto;overscroll-behavior:contain;touch-action:pan-y}
 .row{display:flex;gap:5px;flex-wrap:wrap;align-items:center}label{min-width:55px;color:#b9c5bd}button,select{background:#4a5b52;color:#fff1d8;border:1px solid #728177;padding:8px 11px;font:11px monospace;border-radius:3px;min-height:35px;touch-action:manipulation}button[aria-pressed=true]{background:#c8ac72;color:#1a2522}select{min-width:120px}small{opacity:.85}
 #timeline{flex:1;min-width:120px;accent-color:#c8ac72;touch-action:pan-x}
+#equipmentInspection{margin:8px 0;padding:8px;border:1px solid #809787;border-radius:6px;background:#263a32}
+#equipmentInspection summary{color:#e5ce9d;cursor:pointer;padding:5px;font-weight:700}
+#equipmentInspection .kit-grid{padding-top:6px!important}
+#equipmentInspection .row{margin:7px 0}
+#equipmentInspection button{min-height:42px;flex:1 1 auto}
+.equipment-inspection-status{white-space:pre-line;display:block;color:#d9e5d3;background:#1b2f28;padding:9px;border-radius:4px;min-height:41px;font-size:11px;line-height:1.5}
 #kitPanel{background:#23392f;border:1px solid #718b7e;border-radius:7px;padding:7px}
 #kitPanel summary{cursor:pointer;touch-action:manipulation;color:#e2c693;font-weight:700;padding:5px}
 #wardrobeTools{display:flex;gap:5px;flex-wrap:wrap;padding:4px 0}
@@ -379,7 +385,62 @@ main[data-lab-active="poses"] #weapon{display:none}
 <option value="pack">BACKPACK</option><option value="clothes">CLOTHING</option>
 <option value="hands">HANDS / GLOVES</option>
 <option value="knees">KNEES</option><option value="feet">FEET / FOOTWEAR</option></select></label>
-</div><details id="wardrobePanel" open><summary>3D APPEARANCE · ITEM BROWSER</summary>
+</div>
+<details id="equipmentInspection" open>
+<summary>PHYSICAL EQUIPMENT · MODEL & PLACEMENT INSPECTION</summary>
+<p class="kit-help">Real carried meshes, real bone attachments and shared operator animations. Inspection never changes a mission or Campaign inventory. A concealed item is labeled, not replaced by a fake exterior mesh.</p>
+<div class="row">
+<button id="inspectionSampleKit" type="button">LOAD FULL INSPECTION KIT</button>
+<button id="inspectionClear" type="button">CLEAR HIGHLIGHT</button>
+</div>
+<div class="kit-grid">
+<label>EXACT MODEL<select id="inspectionItem" aria-label="Equipment model to inspect">
+<option value="none">ALL EQUIPMENT</option>
+<option value="field:flashbang">FLASHBANG</option>
+<option value="field:wedge">DOOR WEDGE</option>
+<option value="field:zip-tie">FLEX CUFF PAIR</option>
+<option value="magazine">SPARE MAGAZINE</option>
+<option value="medical">MEDICAL POUCH</option>
+<option value="utility">UTILITY TOOL</option>
+<option value="armor">ARMOR</option>
+<option value="rig">CHEST RIG</option>
+<option value="belt">BELT</option>
+<option value="backpack">BACKPACK</option>
+</select></label>
+<label>CARRY LOCATION<select id="inspectionLocation" aria-label="Filter actual carrying location">
+<option value="">ANY VISIBLE POSITION</option>
+<option value="rig">CHEST RIG</option>
+<option value="belt">BELT</option>
+<option value="pocket">POCKET</option>
+<option value="backpack">BACKPACK</option>
+</select></label>
+<label>INDIVIDUAL PIECE<select id="inspectionIndex" aria-label="Physical item index">
+<option value="0">PIECE 1</option><option value="1">PIECE 2</option>
+<option value="2">PIECE 3</option><option value="3">PIECE 4</option>
+<option value="4">PIECE 5</option><option value="5">PIECE 6</option>
+</select></label>
+<label>MOVEMENT TEST<select id="inspectionPose" aria-label="Inspect model during animation">
+<option value="idle">STAND / IDLE</option>
+<option value="walk">WALK</option>
+<option value="crouch">CROUCH</option>
+<option value="crouch-walk">CROUCH WALK</option>
+<option value="active-aim">ACTIVE AIM</option>
+<option value="high-ready">HIGH READY</option>
+<option value="reload">RELOAD</option>
+<option value="flash">FLASH</option>
+<option value="door">DOOR</option>
+</select></label>
+</div>
+<div class="row" role="group" aria-label="Equipment inspection camera directions">
+<button type="button" data-inspection-view="front">FRONT</button>
+<button type="button" data-inspection-view="side">RIGHT</button>
+<button type="button" data-inspection-view="left">LEFT</button>
+<button type="button" data-inspection-view="back">REAR</button>
+<button type="button" data-inspection-view="iso">3/4</button>
+</div>
+<output id="inspectionStatus" class="equipment-inspection-status" aria-live="polite">Select a piece to inspect its actual model and placement.</output>
+</details>
+<details id="wardrobePanel" open><summary>3D APPEARANCE · ITEM BROWSER</summary>
 <div class="row"><label>STYLE / ROLE RECIPE<select id="wardrobeRecipe"></select></label>
 <button id="wardrobeApply">APPLY LOOK</button></div>
 <p class="kit-help">Every tile is rendered from the real soldier model. Select a category, then tap an item. Approved Classic Field and Modern Utility cuts are available; other unfinished garments have been removed.</p>

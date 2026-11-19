@@ -284,6 +284,7 @@ export function createQuickPlayConfigurator(options:{
    gadgetHost.replaceChildren(createFieldGadgetEditor({
     loadout:operator.loadout,magazines:operator.magazines,
      onInspectLocation:location=>squadPreview?.highlightCarryLocation(location),
+   onInspectItem:item=>squadPreview?.inspectCarryItem(item),
     onMoveMagazine:options.onMoveMagazine?(magazineId,to,focusLabel)=>{
      const scroll=content.scrollTop;
      if(!options.onMoveMagazine?.(operator.id,magazineId,to))return;

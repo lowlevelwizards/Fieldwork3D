@@ -1,0 +1,40 @@
+name: L2.14 physical equipment inspection critical
+on:
+  pull_request:
+    paths:
+      - 'src/equipment-visual-inspection.ts'
+      - 'src/equipment-preview.ts'
+      - 'src/ui/field-gadget-editor.ts'
+      - 'src/breach-operator-lab.ts'
+      - 'operator-lab.html'
+      - 'tests/equipment-visual-inspection.test.mjs'
+      - 'scripts/smoke-loadout-l214-inspection.mjs'
+      - '.github/workflows/loadout-l214-inspection-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Critical TypeScript
+        run: npm run check
+      - name: Actual mesh and existing equipment regression
+        run: node --experimental-strip-types --test tests/equipment-visual-inspection.test.mjs tests/equipment-field-visual-rig.test.mjs tests/equipment-preview-carry-focus.test.mjs
+      - name: Phone WebGL inspection acceptance
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/smoke-loadout-l214-inspection.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: l214-physical-equipment-phone-captures
+          path: equipment-l214-captures/
+          if-no-files-found: ignore
