@@ -200,10 +200,13 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  r.character.pack.visible=false;
  r.character.weapon.visible=false;
  r.character.droppedGun.visible=false;
- // poseOperator stages its own local collapse offset. The scene/world owns
- // the real civilian's presentation elevation, so restore it after IK,
- // just as the armed scene restores the authoritative motor root.
- r.root.position.set(c.p.x,transportHeight,c.p.y);
+ // IK solved each planted boot relative to the shared animator's
+ // LOCAL fall/kneel offset (often -6 during surrender). Replacing that
+ // offset with zero AFTER the solve lifts the shoes several units into
+ // midair. Preserve it and add only the transport height and world XY.
+ // This is render-only: the civilian's session position never changes.
+ const localCollapseY=r.root.position.y;
+ r.root.position.set(c.p.x,transportHeight+localCollapseY,c.p.y);
  // The operator skeleton owns gait, planted feet, full-body crouching,
  // hands-up compliance and fall. Keep neutral carrying offset render-only.
  // Tactical renderers place armed actor roots from the Session *outside*
