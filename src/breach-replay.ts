@@ -75,6 +75,8 @@ export type CivilianFrame=Pick<CivilianActor,
     transportMode?:CivilianActor['transportMode'];
     /** Added in EQA3.9: old films omit them and use completed posture. */
     stateSince?:number;restrained?:boolean;
+    /** Civilian's own witnessed sensory direction, NEVER full enemy truth. */
+    lastEvidenceAt?:number;threatEstimate?:Pt|null;
     visibleAtCapture?:boolean;
   };
 export type ReplayFrame={
@@ -211,6 +213,8 @@ export function snapshot(s:Session,seenGround?:string[],
       id:c.id,p:position(c.p),heading:c.heading,health:c.health,
       injuryStage:c.injuryStage,state:c.state,stateSince:c.stateSince,
       restrained:c.restrained===true,velocity:c.velocity,
+      lastEvidenceAt:c.lastEvidenceAt,
+      threatEstimate:c.threatEstimate?position(c.threatEstimate):null,
       lastHitAt:c.lastHitAt,following:c.following,
       carriedById:c.carriedById,transportMode:c.transportMode,
       rescueTarget:c.rescueTarget,appearanceSeed:c.appearanceSeed,
@@ -516,6 +520,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     return {...actor,...copy,p:position(copy.p),
       stateSince:copy.stateSince??(copy.state==='compliant'?f.t-2:f.t),
       restrained:copy.restrained===true,
+      // Never retain a present-day/omniscient gaze target on film rewind.
+      lastEvidenceAt:copy.lastEvidenceAt??-1,
+      threatEstimate:copy.threatEstimate?position(copy.threatEstimate):null,
       carriedById:copy.carriedById??null,
       transportMode:copy.transportMode??null,
       priorP:position(copy.p),goal:null,nav:[],
