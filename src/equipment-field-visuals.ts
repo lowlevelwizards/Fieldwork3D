@@ -82,3 +82,39 @@ export function wedgeSocket(location:FieldCarryLocation,index:number){
    x:-.7,y:4.1-row*3.1,z:column?4.1:-4.1};
  }
 }
+
+/** F6.4: visible physical flex cuff pairs, never decorative free restraints.
+ * The actual remaining deployed counter caps the visible field-stack total.
+ */
+export type VisibleFlexCuff={location:FieldCarryLocation;index:number};
+export function visibleFlexCuffs(
+ kit:EquipmentLoadout|undefined,remaining?:number):VisibleFlexCuff[]{
+ if(!kit)return [];
+ const inventory=kit.fieldInventory??initialFieldInventory(kit);
+ const limit=Math.min(FIELD_ITEMS['zip-tie'].maxPerOperator,
+  Number.isFinite(remaining)?Math.max(0,Math.floor(remaining!)):
+   FIELD_ITEMS['zip-tie'].maxPerOperator);
+ const result:VisibleFlexCuff[]=[];
+ for(const location of ['belt','rig','pocket','backpack'] as const){
+  const total=inventory.stacks.reduce((n,row)=>
+   n+(row.itemId==='zip-tie'&&row.location===location?row.quantity:0),0);
+  for(let i=0;i<total&&result.length<limit;i++)
+   result.push({location,index:i});
+ }
+ return result;
+}
+/** Low-poly cuff loop stowage, offset from magazines, canisters and wedges. */
+export function flexCuffSocket(location:FieldCarryLocation,index:number){
+ const i=Math.max(0,Math.min(5,Math.floor(index)));
+ const row=Math.floor(i/2),side=i%2?1:-1;
+ switch(location){
+  case 'rig':return {bone:'chest' as const,
+   x:8.1,y:-6.8-row*2.4,z:side*6.7};
+  case 'belt':return {bone:'hip' as const,
+   x:-1.7,y:-3.2-row*1.8,z:side*5.5};
+  case 'pocket':return {bone:'hip' as const,
+   x:-2.4,y:-3.6-row*1.8,z:side*3.4};
+  case 'backpack':return {bone:'pack' as const,
+   x:-.8,y:-3.4-row*2.4,z:side*4.7};
+ }
+}
