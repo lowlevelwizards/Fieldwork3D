@@ -232,6 +232,14 @@ button{font-family:"Work Sans",system-ui,sans-serif;font-weight:600;letter-spaci
 }
 /* One integrated pose/animation browser: never overlay the model. */
 main[data-lab-active="poses"]>[data-lab-group]:not([data-lab-group="poses"]):not([data-lab-group="transport"]){display:none}
+main[data-lab-active="npc"]>[data-lab-group]:not([data-lab-group="npc"]):not([data-lab-group="transport"]){display:none}
+main[data-lab-active="npc"] #labBaseControls{display:none}
+.npc-lab-workspace{display:grid;gap:8px;padding:5px 2px}
+.npc-lab-workspace label{display:grid;gap:6px;min-width:0;font-weight:700}
+.npc-lab-workspace select{width:100%;min-height:44px;font-size:13px}
+.npc-lab-workspace small{font:12px/1.5 "Work Sans",sans-serif;color:#d6dfd6}
+#npcLabStatus{display:block;background:#20372e;padding:8px;border:1px solid #657c6c;
+ border-radius:6px;white-space:pre-wrap;font:12px/1.45 "Saira Condensed",sans-serif}
 .pose-workspace{display:grid;gap:9px;min-width:0}
 .pose-select-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
 .pose-select-grid label{min-width:0;display:grid;gap:4px;font-weight:700}
@@ -272,6 +280,7 @@ main[data-lab-active="poses"] #weapon{display:none}
 <nav class="lab-category-nav" aria-label="Operator lab workbench categories">
 <button type="button" data-lab-tab="appearance" aria-pressed="true">APPEARANCE</button>
 <button type="button" data-lab-tab="poses" aria-pressed="false">POSES</button>
+<button type="button" data-lab-tab="npc" aria-pressed="false">NPC REACTIONS</button>
 <button type="button" data-lab-tab="motion" aria-pressed="false">MOTION</button>
 <button type="button" data-lab-tab="ready" aria-pressed="false">READY</button>
 <button type="button" data-lab-tab="actions" aria-pressed="false">ACTIONS</button>
@@ -305,6 +314,24 @@ main[data-lab-active="poses"] #weapon{display:none}
   <label class="pose-strict-label"><input type="checkbox" id="poseStrictContact"/> STRICT CONTACT AUDIT</label>
   <output id="poseInspectorReport" aria-live="polite"></output>
  </details>
+</section>
+<section class="npc-lab-workspace" data-lab-group="npc" aria-label="Civilian and hostile animation library">
+ <label>NPC / REACTION TRACK
+  <select id="npcLabTrack" aria-label="Every civilian and hostile reaction animation"></select>
+ </label>
+ <output id="npcLabStatus" aria-live="polite">Select an NPC reaction to preview its real 3D rig.</output>
+ <div class="row">
+  <button type="button" data-view="front">FRONT</button>
+  <button type="button" data-view="side">SIDE</button>
+  <button type="button" data-view="iso">3/4</button>
+  <button type="button" data-view="top">TOP</button>
+  <button type="button" data-view="game">GAME ZOOM</button>
+  <button type="button" id="npcFrameBack">−1 FRAME</button>
+  <button type="button" id="npcFrameNext">+1 FRAME</button>
+ </div>
+ <small>Real civilian and hostile skeletons · playback, scrub, slow motion and orbit.
+ States are scripted Lab samples, not an AI simulation. No operator orders or
+ campaign equipment are changed.</small>
 </section>
 <div class="row lab-transport" data-lab-group="transport" role="group" aria-label="Preview playback controls">
 <button id="playPause" type="button">PAUSE</button>
@@ -548,6 +575,7 @@ These are display positions of actual carried items, not extra inventory.</p>
  const hint=document.getElementById('labCategoryHint');
  const descriptions={appearance:'APPEARANCE · Dress and inspect the operator',
   poses:'POSES · Weapon, armor, rig and every animation',
+  npc:'NPC REACTIONS · Civilian, hostile, sensory and contact animations',
   motion:'MOTION · Choose a walking, strafing or turning track',
   ready:'READY · Compare weapon handling and ready positions',
   actions:'ACTIONS · Preview interactions, falls and reloads',
