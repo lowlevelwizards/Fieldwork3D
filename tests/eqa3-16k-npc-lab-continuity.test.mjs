@@ -6,6 +6,8 @@ import {createCivilianRig,updateCivilianRig,disposeCivilianRig}
 import {civilianPhysicalityAt} from '../src/breach-encounter-physicality.ts';
 import {sampleNpcCivilian,sampleNpcHostile,NpcLabFootFilm,NpcLabPreview}
  from '../src/operator-lab-npc-poses.ts';
+import {inspectOperatorPoseOutput}
+ from '../src/breach-operator-pose-output.ts';
 
 test('K1: fleeing before first sighting remains physically at origin',()=>{
  for(const time of [0,.35,.71,.79]){
@@ -52,17 +54,21 @@ test('K4: carried or dragged cannot leave inherited elevated hips in a later wal
   assert.ok('character' in rig);
   updateCivilianRig(rig,c,1.89,
    new NpcLabFootFilm('civ-carried').sample(1.89));
-  assert.equal(rig.root.position.y,10);
+  const localRoot=()=>inspectOperatorPoseOutput(rig.character).slots
+    .find(s=>s.id==='root').values[1];
+  assert.equal(rig.root.position.y,10+localRoot(),
+   'transport height adds the local pose fall offset instead of flattening IK');
   const walk=sampleNpcCivilian('civ-walk',1.09);
   updateCivilianRig(rig,walk,1.09,
    new NpcLabFootFilm('civ-walk').sample(1.09));
-  assert.equal(rig.root.position.y,0,
+  assert.ok(Math.abs(rig.root.position.y-localRoot())<1e-9,
    'a previous carried frame must never lift a standing walker');
   assert.ok(rig.character.legGap.every(v=>Number.isFinite(v)));
   const drag=sampleNpcCivilian('civ-dragged',1.89);
   updateCivilianRig(rig,drag,1.89,
    new NpcLabFootFilm('civ-dragged').sample(1.89));
-  assert.equal(rig.root.position.y,2);
+  assert.equal(rig.root.position.y,2+localRoot(),
+   'drag elevation must preserve local collapse offset');
  }finally{disposeCivilianRig(rig);}
 });
 test('K5: hostile surrender actually progresses into hands-up and drops gun',()=>{

@@ -104,6 +104,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
   const kneel=p.surrender?smooth(downProgress/.65):0;
+  // A kneel must keep the pelvis an achievable two-bone distance from
+  // planted ankles. The old hip -9 PLUS root -6 put the pelvis ~5 units
+  // off the floor, below the legal leg IK minimum reach (~8.4), forcing
+  // an impossible knee/ankle split even when both feet were planted.
+  const kneelHipDrop=6*kneel;
+  const kneelChestDrop=7*kneel;
+  const kneelRootDrop=3*kneel;
   // B1: prepare one observational action/handling decision alongside the
   // existing pure locomotion sample; bash facts never mutate the motor.
   const bash=contactReaction(p.seconds-(p.lastBashAt??-100),
@@ -210,12 +217,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // unarmed mannequin. The lift applies to pelvis and chest together;
   // it never moves planted feet or stretches the two-bone skeleton.
   // Shot-time muzzle elevation consumes this same pure rise.
+  // Unarmed NPCs use a continuous, evidence/pose-time crouch signal.
+  // Fade the standing 3-unit leg-rest rise WITH the pelvis drop, rather
+  // than keeping it elevated through the crouch and popping at the end.
   const mannequinLift=legRestRise(physicalSpeed,p.posture,
-    p.down,p.surrender);
+    p.down,p.surrender)*(p.unarmedPreview?
+      1-clamp(p.interactionCrouch??0,0,1):1);
   const stanceHip=neutralHip+motion.pelvisY-bash.brace;
   frame.hip.position.y=Math.max(
-    17.35-crouch-buckle*8-kneel*9,
-    stanceHip-buckle*8-kneel*9);
+    17.35-crouch-buckle*8-kneelHipDrop,
+    stanceHip-buckle*8-kneelHipDrop);
   frame.hip.position.y-=poseWeight*profile.stanceCompression;
   // The pelvis lifts WITH the upper body; it never drives its visual
   // shell up into a stationary chest.
@@ -245,7 +256,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     clamp((.32-aimLevel)/.32,0,1);
   frame.chest.position.y=26-crouch+idleLife.breathe+motion.pelvisY*.5+
     motion.chestLift*freeMotion*1.4-
-    bash.brace*.4-buckle*7-kneel*12+mannequinLift-
+    bash.brace*.4-buckle*7-kneelChestDrop+mannequinLift-
     poseWeight*profile.stanceCompression;
   frame.chest.position.z=motion.pelvisSide*.75+
     poseWeight*profile.pelvisShift*.45+
@@ -298,7 +309,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       reaction.side;
   // The scene translates the whole miniature to the motor's elevation.
   // Here only tuck the local torso. Avoid a second independent vertical arc.
-  frame.root.position.y=p.surrender?-3-3*kneel:p.down?collapse.y:
+  frame.root.position.y=p.surrender?-kneelRootDrop:p.down?collapse.y:
     -vaultTuck*2.8;
   // World-space anatomy is IDENTICAL to the old model:
   // canonicalRoot * legacyFrame(+90 Y) = original Euler(pitch,yaw,roll).

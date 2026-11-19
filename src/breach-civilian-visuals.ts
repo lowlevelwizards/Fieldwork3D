@@ -142,8 +142,11 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  // by poseOperator instead of adding another IK writer or locomotion tick.
  // Surrender already lowers the pelvis and chest. Adding crouch on top
  // collapsed compliant adults into a tangled kneeling knot.
- const squat=!secured&&(physical.flinch>.15||pose==='seated'||
-   (pose==='hide'&&c.state==='hiding'));
+ const crouchAmount=secured?0:
+   pose==='seated'?1:
+   pose==='hide'?Math.max(0,Math.min(1,physical.shelter/.85)):
+   physical.flinch>.15?Math.max(0,Math.min(.60,physical.flinch*.60)):
+   0;
  const gesture=physical.hands==='head'?'head-cover':
    physical.hands==='up'?'hands-up':
    physical.hands==='behind'?'hands-behind':undefined;
@@ -155,7 +158,10 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  poseOperator(r.character,{
   x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,
   seconds:now,stride:moving?Math.max(.05,c.velocity/53):0,
-  posture:squat?'crouch':'stand',
+  // Sample the crouch INTO the leg IK solve at the same moment as
+  // pelvis/torso height. Blending a crouched hip after leg IK separates
+  // the actual physical chain and visibly folds the knees backward.
+  posture:'stand',interactionCrouch:crouchAmount,
   injury:injured?1:down?3:0,weapon:'carbine',
   reload:0,reloadDuration:0,lastDoorAt:-100,lastThrowAt:-100,
   down,surrender:secured&&physical.kneel>.001,aiming:false,firing:false,
@@ -200,10 +206,13 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  r.character.pack.visible=false;
  r.character.weapon.visible=false;
  r.character.droppedGun.visible=false;
- // poseOperator stages its own local collapse offset. The scene/world owns
- // the real civilian's presentation elevation, so restore it after IK,
- // just as the armed scene restores the authoritative motor root.
- r.root.position.set(c.p.x,transportHeight,c.p.y);
+ // IK solved each planted boot relative to the shared animator's
+ // LOCAL fall/kneel offset (often -6 during surrender). Replacing that
+ // offset with zero AFTER the solve lifts the shoes several units into
+ // midair. Preserve it and add only the transport height and world XY.
+ // This is render-only: the civilian's session position never changes.
+ const localCollapseY=r.root.position.y;
+ r.root.position.set(c.p.x,transportHeight+localCollapseY,c.p.y);
  // The operator skeleton owns gait, planted feet, full-body crouching,
  // hands-up compliance and fall. Keep neutral carrying offset render-only.
  // Tactical renderers place armed actor roots from the Session *outside*
