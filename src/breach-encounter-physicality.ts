@@ -10,7 +10,8 @@ type Subject=Pick<CivilianActor,
  'p'|'heading'|'health'|'injuryStage'|'state'|'stateSince'|'velocity'|
  'activity'|'lastEvidenceAt'|'threatEstimate'|'lastFlinchAt'|'appearanceSeed'
 > & Partial<Pick<CivilianActor,
- 'lastEvidenceId'|'carriedById'|'transportMode'|'restrained'>>;
+ 'lastEvidenceId'|'lastContactAt'|'lastContactPoint'|
+ 'carriedById'|'transportMode'|'restrained'>>;
 const clamp=(v:number,low:number,high:number)=>Math.max(low,Math.min(high,v));
 const ease=(v:number)=>{const t=clamp(v,0,1);return t*t*(3-2*t);};
 const angle=(v:number)=>Math.atan2(Math.sin(v),Math.cos(v));
@@ -43,17 +44,28 @@ export function civilianPhysicalityAt(c:Subject,now:number):CivilianPhysicality{
  const validEvidence=c.lastEvidenceAt>=0&&evidenceAge>=0&&
    evidenceAge<5.5&&!!c.threatEstimate&&
    Number.isFinite(c.threatEstimate.x)&&Number.isFinite(c.threatEstimate.y);
- // Acoustics are estimates, not locked-on visual attention. The old
- // film's missing evidence ID receives the conservative audio limit.
+ // A GO-time physical touch authorizes a brief gaze to that exact
+ // historic contact location. Never follow the current actor after GO.
+ const contactAge=time-(c.lastContactAt??-100);
+ const contact=contactAge>=0&&contactAge<1.4&&
+   (pose==='compliant'||pose==='restrained'||pose==='walk'||pose==='idle')&&
+   !!c.lastContactPoint&&
+   Number.isFinite(c.lastContactPoint.x)&&
+   Number.isFinite(c.lastContactPoint.y);
+ const source=contact?c.lastContactPoint:validEvidence?c.threatEstimate:null;
+ // Acoustics are estimates, not locked-on visual attention. Older films
+ // missing an evidence ID receive the conservative audio limit.
  const visual=typeof c.lastEvidenceId==='string'&&
    c.lastEvidenceId.startsWith('visual/');
- const maxYaw=visual?.48:.28;
- const look=validEvidence&&!immobile&&!secured?
-   angle(Math.atan2(c.threatEstimate!.y-c.p.y,
-     c.threatEstimate!.x-c.p.x)-c.heading):0;
- const attention=validEvidence?
-   ease(Math.min(1,evidenceAge/.16))*
-   (1-ease((evidenceAge-(visual?3.5:2.1))/1.8)):0;
+ const maxYaw=contact?.48:visual?.48:.28;
+ const look=source&&!immobile&&(contact||!secured)?
+   angle(Math.atan2(source.y-c.p.y,source.x-c.p.x)-c.heading):0;
+ const attention=contact?
+   ease(Math.min(1,contactAge/.12))*
+    (1-ease((contactAge-.75)/.65)):
+   validEvidence?
+    ease(Math.min(1,evidenceAge/.16))*
+    (1-ease((evidenceAge-(visual?3.5:2.1))/1.8)):0;
  const headYaw=clamp(look,-maxYaw,maxYaw)*.75*attention;
  const flinchAge=time-(c.lastFlinchAt??-100);
  const flinch=!immobile&&!secured&&flinchAge>=0&&flinchAge<.48?
