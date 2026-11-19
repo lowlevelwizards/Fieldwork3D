@@ -1,0 +1,49 @@
+name: EQA3.4 real-door objective intel and mission decision AB
+on:
+  push:
+    branches: [audit/eqa3-3-first-contact-current-20261118]
+    paths:
+      - '.github/workflows/eqa3-4-objective-intel-doors.yml'
+      - 'scripts/audit-eqa3-mission-decisions.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  matched-full-mission:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    strategy:
+      fail-fast: false
+      matrix:
+        intel: [unknown, confirmed]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Actual 90s 60Hz mission progression with physically OPEN doors
+        run: |
+          mkdir -p artifacts/eqa3
+          EQA3_OUTPUT=artifacts/eqa3/mission-doors-${{ matrix.intel }}.json node --experimental-strip-types scripts/audit-eqa3-mission-decisions.mjs --smoke --door-aware --intel=${{ matrix.intel }} --seconds=90 > artifacts/eqa3/mission-doors-${{ matrix.intel }}-console.txt
+          node - <<'NODE'
+          const d=require('./artifacts/eqa3/mission-doors-${{ matrix.intel }}.json');
+          console.log(JSON.stringify({summary:d.summary,rows:d.rows.map(r=>({
+            seed:r.seed,mission:r.mission,entry:r.insertion,
+            initialKnown:r.initialObjectiveKnown,stage:r.missionStage,
+            objectiveAt:r.objectiveAt,extractionAt:r.extractedAt,
+            doorsAuthored:r.acceptedDoorActions,
+            actualOpenDoors:r.doorsAtEnd?.filter(x=>x.open).map(x=>x.id),
+            rejectedScriptCommands:r.rejected,aborts:r.routeAbort,
+            handoffs:r.operatorHandoffs,activeScout:r.activeScout,
+            activeScoutHealth:r.activeScoutHealth,
+            realContact:r.firstContactAt,
+            roomsVisited:r.roomsVisited,
+            civilian:r.rescue,issues:r.integrity
+          }))},null,2));
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-4-complete-mission-${{ matrix.intel }}
+          path: artifacts/eqa3/
