@@ -123,3 +123,17 @@ Source: `scripts/audit-eqa3-objective-landing.mjs`.
   https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44427241359 .
   It changes only **copied** test door leaves, not in-game door or AI state; treat it as a reachability bound rather than a player-operable passage guarantee.
 - Practical next player-facing work: build a scripted **explicit legal OPEN/entry interaction** before retrying the exact goal and classify the rejection reason. Improve a tactical error hint only if real player commands still fail despite an open, discovered, physically passable route.
+
+## EQA3.2 follow-on — actual explicit OPEN command probe (2026-11-18)
+
+The [90-second seed-12/14/23 real door-aware paired probe](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44427525132) **passed its integrity checks but was inconclusive as a door intervention test**:
+
+| Seed / mission | Entry pairs | Successful OPEN commands | Rejected scripted MOVEs | Completed |
+| --- | --- | ---: | ---: | ---: |
+| 12 / INTEL | FRONT + SERVICE | 0 | 170 | 0 |
+| 14 / HOLD | FRONT + SERVICE (two repeated matrix records) | 0 | 164 | 2 of 4 |
+| 23 / RESCUE | FRONT + SERVICE | 0 | 87 | 0 |
+
+The script attempted OPEN only if `planMove` had failed, and then only on a *currently known, still-closed, unjammed, unlocked* door for which `planDoor` admitted an authored approach. None of those combinations yielded a queued OPEN, so **this did not test execution of a true player OPEN action**. A valid initial plan against a closed door is not proof of actual future passage; nor are 83 repeated driver requests evidence of 83 independent engine defects. Earlier diagnostic sets had valid objective contact standing positions but zero presently traversable initial world paths with all leaf panels closed.
+
+**Status:** The correct next comparison must choose and approach a physically relevant known door before executing the objective route, record `planDoor` rejection reasons, and only then GO/open/cross in the real motor. No code to automatically skip, unlock or pass through a closed door is justified by this baseline. Preserve seed-12/23 player-controlled visual test priority.
