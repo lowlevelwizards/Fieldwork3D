@@ -4,6 +4,7 @@
 export const BREACH_STORAGE_KEYS={
  intelPreference:'fieldwork3d.intel.mode.v1',
  quickCosmetics:'fieldwork3d.quickplay-cosmetics.v1',
+ quickKitPreferences:'fieldwork3d.quickplay-kit-preferences.v1',
  legacyRoster:'fieldwork3d.operator-roster.v1',
  campaign:'fieldwork3d.campaign.v1',
  sandboxCampaign:'fieldwork3d.sandbox-campaign.v1',
