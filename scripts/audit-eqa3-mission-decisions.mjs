@@ -160,17 +160,21 @@ for(const [seed,mission] of chosen){
       // MOVE, author the closest physically near, known, currently closed
       // and nonlocked doorway. Use only currently-known door memory,
       // the already disclosed target and the same player-facing planDoor.
-      if(doorAware&&!issued&&s.mission==='secure'&&
-          objectiveLocationKnown(s)){
-       const target=s.scenario.objective;
+      if(doorAware&&!issued&&
+          (s.mission==='secure'||s.mission==='extract')){
+       // A target point is legal here ONLY after in-game objective
+       // discovery or a CONFIRMED briefing. Unknown intel uses the
+       // already-known immediate entry door, not the hidden objective.
+       const target=objectiveLocationKnown(s)?s.scenario.objective:null;
        const doorway=s.doors.filter(door=>doorKnown(s.intel,door.id)&&
           !door.open&&!door.locked&&!door.jammed&&!door.wedged&&
           !attemptedDoorActions.has(door.id)&&
           dist(rescuer.p,doorCenter(door))<=74 &&
           // Avoid opening a portal which only moves farther from the
           // already disclosed objective, except the immediate entry door.
-          (dist(doorCenter(door),target)<=dist(rescuer.p,target)+8||
-           dist(rescuer.p,doorCenter(door))<=54))
+          (dist(rescuer.p,doorCenter(door))<=54||
+           !!target&&dist(doorCenter(door),target)<=
+             dist(rescuer.p,target)+8))
          .sort((a,b)=>dist(rescuer.p,doorCenter(a))-
                dist(rescuer.p,doorCenter(b))||a.id.localeCompare(b.id));
        for(const door of doorway){
@@ -393,8 +397,8 @@ const summary={intel,doorAware,acceptedDoorActions:valid.reduce((n,r)=>n+(r.acce
  roomsVisited:valid.reduce((n,x)=>n+x.roomsVisited,0),
  quietWithoutContact:valid.filter(x=>x.firstContactAt===null&&
   x.noContactReason==='approach-still-distant').length};
-const report={schema:doorAware?'EQA3.2/explicit-door-scout-v1':'EQA3.0/scripted-scout-v1',
- method:'real paired insertion, floor-plan-known rooms, independent target intel; one deterministic scripted scout; actual motor, civilians, AI and mission stages, not a human complete playthrough; timeout is not a mission failure',
+const report={schema:doorAware?'EQA3.4/decision-aware-doors-v1':'EQA3.0/scripted-scout-v1',
+ method:'real OPEN on nearby player-known doors, paired insertion, floor-plan-known rooms, independent target intel; one deterministic scripted scout; actual motor, civilians, AI and mission stages, not a human complete playthrough; timeout is not a mission failure',
  summary,exceptions,rows};
 if(process.env.EQA3_OUTPUT){
  mkdirSync('artifacts/eqa3',{recursive:true});
