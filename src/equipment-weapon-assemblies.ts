@@ -392,6 +392,18 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
    weighted+=delta*shellMass*frontX;
    inertia+=delta*shellMass*frontX*frontX;
   }
+  const barrel=r870Barrel(build.parts.barrel);
+  if(barrel){
+   // Relative to the original 18-inch Police barrel, the exposed length
+   // shifts forward mass and yaw inertia. Short guns are not penalized
+   // by a fictitious full-length front, and the 26-inch field barrel is
+   // deliberately more front-heavy.
+   const difference=(barrel.nominalInches-18)*.065;
+   const barrelCentroid=(barrel.muzzleX+2.84)/2;
+   mass+=difference;
+   weighted+=difference*barrelCentroid;
+   inertia+=difference*barrelCentroid*barrelCentroid;
+  }
  }
  const balance=weighted/mass;
  const familyBarrel=build?FAMILY_PARTS[build.parts.barrel]:undefined;

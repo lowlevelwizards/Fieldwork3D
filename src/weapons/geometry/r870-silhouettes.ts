@@ -128,8 +128,28 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // simple 6-face cuboid, not a tiny screw or complex rifle sight assembly.
  // Sight follows the lowered barrel and grows a restrained 7% so it
  // remains visible from a 1080p gameplay camera.
- const bead=b('barrel',frontBarrel.muzzleX-.42,2.00,0,.52,.59,.54,FAL_MUZZLE_METAL);
+ const rifleSight=build.parts.barrel==='r870-20-rifle-sight';
+ const bead=b('barrel',frontBarrel.muzzleX-.42,rifleSight?1.94:2.00,0,
+  rifleSight?.62:.52,rifleSight?.78:.59,rifleSight?.70:.54,FAL_MUZZLE_METAL);
  bead.userData.r870FrontSight=true;
+ if(rifleSight){
+  // Two deliberately exaggerated but simple ramp/notch masses distinguish
+  // the dedicated rifle-sighted barrel without adding a generic optic rail.
+  const rear=b('barrel',-.04,2.09,0,.96,.84,1.08,HK_BLACK_METAL);
+  rear.userData.r870RearRifleSight=true;
+  root.userData.r870P16RifleSight=true;
+ }
+ if(build.parts.barrel==='r870-26-ventrib'){
+  // The sporting family's readable signature is a LONG, raised rib
+  // supported by three broad struts, not dozens of microscopic vents.
+  const rib=b('barrel',14.97,1.95,0,23.06,.20,.42,HK_BLACK_METAL);
+  rib.userData.r870VentilatedRib=true;
+  for(const x of [7.15,14.45,21.75]){
+   const post=b('barrel',x,1.72,0,.58,.34,.38,HK_BLACK_METAL);
+   post.userData.r870VentRibSupport=true;
+  }
+  root.userData.r870P16Sport=true;
+ }
  if(build.parts.magazine==='r870-extended-tube'){
   // A visible barrel/tube bridge makes the extended twin-cylinder front
   // instantly recognizable. One large faceted clamp, no screw geometry.
@@ -140,12 +160,12 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // PUMP: constant six-vertex section for most of its length. Tiny 0.4-unit
  // end chamfers only. No P09 six-station inflatable "pillow" profile.
  // Thick faceted wood sleeve partially surrounds the fixed magazine tube.
- const mlok=frontPump.pattern==='mlok';
+ const mlok=frontPump.pattern==='mlok',sport=frontPump.pattern==='sport';
  const stations=[
-  {x:frontPump.startX,top:mlok?-.08:-.15,bottom:mlok?-2.45:-2.72,half:mlok?1.53:1.70},
-  {x:frontPump.startX+.43,top:mlok?.06:-.04,bottom:mlok?-2.60:-2.84,half:mlok?1.70:1.85},
-  {x:frontPump.endX-.53,top:mlok?.06:-.04,bottom:mlok?-2.60:-2.84,half:mlok?1.70:1.85},
-  {x:frontPump.endX,top:mlok?-.08:-.15,bottom:mlok?-2.45:-2.72,half:mlok?1.53:1.70}
+  {x:frontPump.startX,top:sport?-.20:mlok?-.08:-.15,bottom:sport?-2.39:mlok?-2.45:-2.72,half:sport?1.43:mlok?1.53:1.70},
+  {x:frontPump.startX+.43,top:sport?-.11:mlok?.06:-.04,bottom:sport?-2.55:mlok?-2.60:-2.84,half:sport?1.60:mlok?1.70:1.85},
+  {x:frontPump.endX-.53,top:sport?-.11:mlok?.06:-.04,bottom:sport?-2.55:mlok?-2.60:-2.84,half:sport?1.60:mlok?1.70:1.85},
+  {x:frontPump.endX,top:sport?-.20:mlok?-.08:-.15,bottom:sport?-2.39:mlok?-2.45:-2.72,half:sport?1.43:mlok?1.53:1.70}
  ] as const;
  const cross=(s:typeof stations[number]):[number,number,number][]=>
   [[s.x,s.top,0],[s.x,s.top-.68,s.half],
@@ -200,7 +220,7 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  const grooveVertices:number[]=[],grooveIndices:number[]=[];
  // A mini MCS fore-end has only three bold readable ribs. Five full
  // Police ribs would overlap on its deliberately abbreviated sleeve.
- const grooveCount=frontPump.endX<8?3:frontPump.pattern==='mlok'?3:
+ const grooveCount=sport?0:frontPump.endX<8?3:frontPump.pattern==='mlok'?3:
   frontPump.material==='wood'?4:5;
  const innerWidth=frontPump.endX-frontPump.startX-2.8;
  for(let i=0;i<grooveCount;i++){
@@ -218,6 +238,7 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
    else grooveIndices.push(base,base+1,base+2,base,base+2,base+3);
   }
  }
+ if(grooveCount>0){
  const grooveGeometry=new THREE.BufferGeometry();
  grooveGeometry.setAttribute('position',new THREE.Float32BufferAttribute(grooveVertices,3));
  grooveGeometry.setIndex(grooveIndices);
@@ -231,6 +252,7 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  grooves.userData.r870GrooveCount=grooveCount*2;
  root.userData.r870FrontFamilyP14=true;
  root.add(grooves);
+ }
  // Two meshes move as ONE fore-end assembly: faceted sleeve + batched
  // grooves. Part naming, pump identity and contact landmarks are unchanged.
  root.userData.r870P07=true;root.userData.r870P08=true;
