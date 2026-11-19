@@ -36,7 +36,14 @@ const doorAware=process.argv.includes('--door-aware');
 const forensicSeedArg=params.get('seed');
 const chosenBeforeSeed=process.argv.includes('--smoke')?
  [[14,'hold'],[17,'rescue'],[25,'capture']]:cases;
-const chosen=forensicSeedArg?chosenBeforeSeed.filter(c=>c[0]===Number(forensicSeedArg)):chosenBeforeSeed;
+// An explicit forensic seed is exact: --smoke only limits the default
+// broad matrix, not the requested seed. Keep default runs unchanged.
+const chosen=forensicSeedArg?
+ cases.filter((c,i)=>c[0]===Number(forensicSeedArg)&&
+   cases.findIndex(first=>first[0]===c[0]&&first[1]===c[1])===i):
+ chosenBeforeSeed;
+if(forensicSeedArg&&!chosen.length)throw Error(
+ 'No EQA3 mission case for seed '+forensicSeedArg);
 const round=n=>Math.round(n*100)/100;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const center=r=>({x:r.x+r.w/2,y:r.y+r.h/2});
