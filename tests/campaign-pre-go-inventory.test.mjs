@@ -10,12 +10,16 @@ test('accepted-contract field preparation is assigned-only and stock-aware',()=>
  const id=accepted.squadIds[0],operator=accepted.operators.find(o=>o.id===id);
  assert.ok(operator);
  const inventory=operator.loadout.fieldInventory??initialFieldInventory(operator.loadout);
- const changed=replaceFieldQuantity(inventory,'flashbang',2);
- assert.equal(equipCampaignFieldInventory(accepted,id,changed),accepted);
- const prepared=equipCampaignPreGoFieldInventory(accepted,id,changed);
- assert.notEqual(prepared,accepted);
- assert.equal(fieldQuantity(prepared.operators.find(o=>o.id===id).loadout.fieldInventory,'flashbang'),2);
- assert.equal(prepared.supplies.flash,accepted.supplies.flash);
+ const changed=replaceFieldQuantity(inventory,'flashbang',0);
+ // A reduction is legal even when magazines and medical equipment already
+ // fill the operator's existing load-bearing slots.
+ const lightlyPacked={...accepted,operators:accepted.operators.map(o=>
+  o.id===id?{...o,magazines:[]}:o)};
+ assert.equal(equipCampaignFieldInventory(lightlyPacked,id,changed),lightlyPacked);
+ const prepared=equipCampaignPreGoFieldInventory(lightlyPacked,id,changed);
+ assert.notEqual(prepared,lightlyPacked);
+ assert.equal(fieldQuantity(prepared.operators.find(o=>o.id===id).loadout.fieldInventory,'flashbang'),0);
+ assert.equal(prepared.supplies.flash,lightlyPacked.supplies.flash);
  assert.equal(prepared.inventory.weapons.carbine,accepted.inventory.weapons.carbine);
 });
 test('pre-GO API cannot alter an unaccepted contract or an unassigned operator',()=>{
