@@ -13,7 +13,7 @@ import './loadout-prep.css';
 
 export type FieldGadgetEditorOptions={
  loadout:EquipmentLoadout;magazines:readonly MagazineItem[];
- onCommit:(inventory:FieldInventory)=>void;
+ onCommit:(inventory:FieldInventory,focusLabel?:string)=>void;
  /** Optional preview-only feedback; never authorizes or changes equipment. */
  onInspectLocation?:(location:FieldCarryLocation)=>void;
  locked?:boolean;
@@ -56,12 +56,21 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   for(const entry of destinations){
    const active=!!selected&&entry.location!==selected.from;
    entry.button.hidden=!active;
-   if(!active||!selected){entry.button.disabled=true;continue;}
+   const parent=entry.button.closest<HTMLElement>('.fw-field-inventory-slot');
+   if(!active||!selected){
+    entry.button.disabled=true;
+    if(parent)delete parent.dataset.placeStatus;
+    continue;
+   }
    const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,
     selected.id,selected.from,entry.location);
-   entry.button.disabled=!!options.locked||!quote.ok||!quote.changed;
+   const allowed=quote.ok&&quote.changed;
+   entry.button.disabled=!!options.locked||!allowed;
+   entry.button.textContent=allowed?'PLACE ONE HERE':'CANNOT FIT HERE';
    entry.button.title=quote.ok?'Move one item here':quote.reason;
+   if(parent)parent.dataset.placeStatus=allowed?'ready':'blocked';
   }
+  cancelSelection.hidden=!selected;
  };
  const placeOne=(id:FieldItemId,from:FieldCarryLocation,to:FieldCarryLocation)=>{
   if(options.locked)return;
@@ -69,7 +78,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
   if(!quote.changed){feedback('ALREADY STORED HERE');return;}
   options.onInspectLocation?.(to);
-  onCommit(quote.inventory);
+  onCommit(quote.inventory,'Select one '+FIELD_ITEMS[id].name+
+   ' from '+to.toUpperCase());
  };
  const capacity=document.createElement('div');
  capacity.className='fw-field-inventory-capacity';
@@ -119,7 +129,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      if(selected)options.onInspectLocation?.(loc);
      refreshSelection();
      feedback(selected?'SELECTED ONE '+tile.label.toUpperCase()+
-      ' · CHOOSE A HIGHLIGHTED CARRY LOCATION':'SELECTION CLEARED');
+      ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
     });
     select.className='fw-field-inventory-select-item';
     // L2.11E: optional direct pointer drag. The same quote/commit path is
@@ -195,6 +205,12 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   capacity.append(slot);
  }
  root.append(capacity);
+ const cancelSelection=btn('CANCEL PLACEMENT',()=>{
+  selected=null;refreshSelection();feedback('PLACEMENT CANCELLED · NO KIT CHANGES');
+ });
+ cancelSelection.className='fw-field-inventory-cancel';
+ cancelSelection.setAttribute('aria-label','Cancel selected item placement');
+ cancelSelection.hidden=true;root.append(cancelSelection);
  if(board.unplaced.length){
   const unplaced=text('div','fw-field-inventory-unplaced',
    'UNFITTED EQUIPMENT · '+board.unplaced.map(t=>t.label).join(' · '));

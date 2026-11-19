@@ -86,6 +86,12 @@ try{
   await panel.getByRole('button',{name:'Undo last gadget change'}).click();
   assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),1,
    'undo restores the original carrying position');
+  await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).click();
+  assert.equal(await panel.getByRole('button',{name:'Cancel selected item placement'}).isVisible(),true,
+   'touch selection exposes an explicit cancel action');
+  await panel.getByRole('button',{name:'Cancel selected item placement'}).click();
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).getAttribute('aria-pressed'),'false',
+   'cancel clears the selection without inventory changes');
   if(device==='desktop'){
    const source=await panel.getByRole('button',{name:'Select one Flashbang from RIG'})
     .boundingBox();
