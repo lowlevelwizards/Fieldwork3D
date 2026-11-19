@@ -41,6 +41,7 @@ import {poseClearanceEnvelope} from './breach-pose-clearance-envelope.ts';
 import {interpolateWeaponCarry,lowReadyBlendPhase}
  from './breach-low-ready-transition.ts';
 import {bodyFromContacts} from './breach-body-motion.ts';
+import {npcLocomotionSupport} from './breach-npc-locomotion-support.ts';
 import {packInertia} from './breach-gear-inertia.ts';
 import {LEG_HIP_HEIGHT,legRestRise} from './breach-leg-geometry.ts';
 import {turnHierarchy} from './breach-turn-hierarchy.ts';
@@ -134,6 +135,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // consumes its targets but must never relocate a planted anchor.
   const travelYaw=p.travelYaw??direction;
   const targets=sampleOperatorFootContacts(r,p,physicalSpeed,moving,travelYaw);
+  // Keep an unarmed moving civilian's pelvis over the actual planted
+  // support base. Match the chest to the same shift; the leg IK below
+  // consumes this adjusted hip while the boots remain at their real
+  // authoritative world contacts. Armed/muzzle poses are untouched.
+  if(p.unarmedPreview&&!p.down&&!p.surrender){
+    const balance=npcLocomotionSupport({x:p.x,y:p.z},p.heading,
+      physicalSpeed,targets,moving>.01);
+    frame.hip.position.x+=balance.pelvisForward;
+    frame.chest.position.x+=balance.chestForward;
+  }
   const kickAge=p.seconds-p.lastDoorAt;
   const kick=p.doorMethod==='kick'&&kickAge>=0&&kickAge<.76?
     kickMotion(kickAge):null;
