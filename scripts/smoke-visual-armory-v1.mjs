@@ -55,10 +55,11 @@ try{
    'Selecting physical item focuses exact on-body 3D mesh');
   await armory.getByRole('button',{name:'EQUIPMENT',exact:true}).click();
   await armory.getByRole('tab',{name:'PROTECTION'}).click();
-  const current=armory.locator('.campaign-kit-selected-model[data-model="real"] img').first();
-  await current.waitFor({timeout:16000});
-  const gear=armory.locator('.campaign-kit-choice').filter({has:current}).first();
-  await gear.locator('.campaign-kit-picker-trigger').click();
+  const gear=armory.locator('.fw-loadout-group[data-loadout-group="protection"]')
+   .locator('.campaign-kit-visual-trigger').first();
+  await gear.locator('.campaign-kit-selected-model[data-model="real"] img')
+   .waitFor({timeout:16000});
+  await gear.click();
   const options=page.locator('.campaign-gear-picker-option');
   assert.ok(await options.count()>=2,'Visual options are populated');
   await options.locator('.campaign-gear-picker-model[data-model="real"] img').first()
