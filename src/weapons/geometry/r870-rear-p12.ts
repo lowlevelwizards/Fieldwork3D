@@ -37,6 +37,15 @@ export const R870_BIRDSHEAD_GRIP:R870Outline=[
  [-8.36,-1.99],R870_REAR_JOIN.receiverBottom
 ];
 export const R870_REAR_PARTS=Object.freeze({
+ shortwood:Object.freeze({
+  stock:'r870-short-wood-stock',grip:'r870-police-wood-wrist',
+  stockX:-13.78,primaryX:-7.80,primaryY:-2.70,hasShoulder:true,
+  gripOutline:R870_WOOD_GRIP,stockOutline:[
+   [-13.26,.28],[-12.30,.24],[-11.25,.04],
+   R870_REAR_JOIN.extensionTop,R870_REAR_JOIN.extensionBottom,
+   [-12.0,-3.55],[-13.26,-3.85]
+  ] as R870Outline
+ }),
  wood:Object.freeze({
   stock:'r870-police-wood-stock',grip:'r870-police-wood-wrist',
   stockX:-15.78,primaryX:-7.80,primaryY:-2.70,hasShoulder:true,
@@ -62,6 +71,6 @@ export function r870RearFromStock(id:string):R870RearVariant|undefined{
   .find(key=>R870_REAR_PARTS[key].stock===id);
 }
 export function r870RearPair(stock:string,grip:string):R870RearVariant|undefined{
- const key=r870RearFromGrip(grip);
- return key&&R870_REAR_PARTS[key].stock===stock?key:undefined;
+ const key=r870RearFromStock(stock);
+ return key&&R870_REAR_PARTS[key].grip===grip?key:undefined;
 }
