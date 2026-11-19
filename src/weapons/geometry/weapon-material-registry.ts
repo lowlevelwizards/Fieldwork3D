@@ -31,6 +31,8 @@ export const WEAPON_FINISH_SPECS={
  'hk-polymer':{color:0x313735,roughness:.95,metalness:.015,role:'polymer'},
  'hk-olive-polymer':{color:0x60694e,roughness:.94,metalness:.015,role:'polymer'},
  'hk-wood':{color:0x896947,roughness:.95,metalness:0,role:'wood'},
+ // R870 P13: groove cuts should read as shadowed walnut rather than gray inserts.
+ 'r870-walnut-groove':{color:0x503824,roughness:.97,metalness:0,role:'wood'},
  'hk-mag-steel':{color:0x505757,roughness:.90,metalness:.12,role:'steel'},
  'hk556-mag-steel':{color:0x414747,roughness:.91,metalness:.12,role:'steel'},
  'hk9-mag-steel':{color:0x373d3d,roughness:.92,metalness:.11,role:'steel'},
