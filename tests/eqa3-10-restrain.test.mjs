@@ -36,7 +36,7 @@ const session=(walls=[])=>{
 test('EQA3.10 flex cuffs use real physical capacity and no implicit issuance',()=>{
  const kit=initialEquipmentLoadout();
  assert.equal(equippedRestraintCharges(kit),0);
- const stock={version:1,stacks:[{itemId:'zip-tie',quantity:3,location:'belt'}]};
+ const stock={version:1,stacks:[{itemId:'zip-tie',quantity:3,location:'backpack'}]};
  const read=readFieldInventory(stock,kit);
  assert.equal(fieldQuantity(read,'zip-tie'),3);
  assert.equal(FIELD_ITEMS['zip-tie'].usable,true);
@@ -44,7 +44,7 @@ test('EQA3.10 flex cuffs use real physical capacity and no implicit issuance',()
  const issued={...kit,fieldInventory:read};
  assert.equal(equippedRestraintCharges(issued),3);
  assert.equal(fieldQuantity(readFieldInventory({version:1,
-   stacks:[{itemId:'zip-tie',quantity:999,location:'belt'}]},kit),'zip-tie'),
+   stacks:[{itemId:'zip-tie',quantity:999,location:'backpack'}]},kit),'zip-tie'),
    FIELD_ITEMS['zip-tie'].maxPerOperator);
 });
 test('EQA3.10 palette selects only compliant, unsecured, nonrescue people',()=>{
