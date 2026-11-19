@@ -108,6 +108,7 @@ import {handlePoint,doorReachable} from './breach-door.ts';
 import {entryToolVerdict} from './breach-entry-tools.ts';
 import {doorHandPoint} from './breach-door-hand-contact.ts';
 import {doorGripPhysicalContact} from './breach-physical-contact-anchor.ts';
+import {preOpenDoorCandidate} from './breach-preopen-contact.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {armedPrecontactStyle} from './breach-idle-life.ts';
@@ -2256,10 +2257,19 @@ export class TacticalScene3D{
       }:undefined;
       // A3.5 maps the existing D4 fixed-step attachment to a shared
       // typed world anchor. No new motor or weapon authority is created.
+      // Planning preview is a read-only projection of the SAME authored
+      // OPEN order and same reachable face candidate used at GO-time.
+      // The simulation owns subsequent acquisition/release; no motor tick
+      // or phantom door command is created while paused.
+      const previewPreOpen=s.phase==='planning'&&plannedDoor&&
+        !physicalGrip&&!actor.physicalContact?
+        preOpenDoorCandidate(s,actor,plannedDoor,
+          sessionWorldGeometry(s)):null;
       const physicalContact=physicalGrip&&gripDoor&&doorGrip?
         doorGripPhysicalContact(physicalGrip.doorId,doorGrip,
           doorLeafSegment(gripDoor),actor.p):
-        actor.physicalContact??undefined;
+        actor.physicalContact??(previewPreOpen?{
+          ...previewPreOpen,startedAt:poseSeconds-.26}:undefined);
       // A3.8-L: the actual simulation keyway anchor is the lockpick clock.
       // Replaying a recorded frame samples this same contact timestamp;
       // no rendering-only progress state can invent an unlock.

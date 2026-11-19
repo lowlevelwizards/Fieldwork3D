@@ -8,6 +8,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {lockpickContactCandidate} from './breach-lockpick-contact.ts';
+import {preOpenDoorCandidate} from './breach-preopen-contact.ts';
 import {resolvePoseContactOwners,woundedHandGuard,type ContactOwners} from './breach-pose-contacts.ts';
 import {contactWithinReach,sameContact,
   releasePhysicalContact,selectSinglePhysicalContact,
@@ -164,13 +165,17 @@ export function chooseEnvironmentSupport(
  return (picks.retained??picks.best)?.claim??null;
 }
 export function teammateShoulderPoint(
- leader:Pick<TeamActor,'p'|'heading'|'posture'|'coverStanceDrop'>
+ leader:Pick<TeamActor,'p'|'heading'|'posture'|'coverStanceDrop'>,
+ lower=0
 ):ContactPoint3{
  const f=forward(leader.heading),l=left(leader.heading);
- return {x:leader.p.x-f.x*5+l.x*5.5,
-   // Reuse the fixed-step, replay-owned height of the real leader.
-   y:(leader.posture==='crouch'?13:21)-(leader.coverStanceDrop??0),
-   z:leader.p.y-f.y*5+l.y*5.5};
+ // The previous 21-unit target was below the shoulder and visually drove
+ // the support palm into the leader's ribs. Actual shoulder caps are at
+ // chest + ~7 world units; move rearward and OUTBOARD onto the top edge.
+ return {x:leader.p.x-f.x*5.5+l.x*6.1,
+   y:(leader.posture==='crouch'?25.5:33.5)-
+     (leader.coverStanceDrop??0)-lower,
+   z:leader.p.y-f.y*5.5+l.y*6.1};
 }
 /** A physical rear-shoulder attachment, never a permission to shoot through
  * either actor. The lead unit is NEVER modified by this claim.
@@ -194,27 +199,37 @@ export function chooseTeammateSupport(
   const dx=lead.p.x-a.p.x,dy=lead.p.y-a.p.y;
   const ahead=dx*f.x+dy*f.y,across=dx*l.x+dy*l.y;
   if(ahead<14||ahead>34||Math.abs(across)>11)continue;
-  const shoulder=teammateShoulderPoint(lead);
-  const target={x:shoulder.x,y:shoulder.z};
-  const normal=unit({x:a.p.x-target.x,y:a.p.y-target.y});
-  if(!normal.x&&!normal.y)continue;
-  const contact:PhysicalContact={intent:'teammate',limb:'support-hand',
-   anchor:{target:'teammate',id:lead.id,point:shoulder,
-    normal:{x:normal.x,y:0,z:normal.y}},
-   startedAt:s.seconds,releasedAt:null};
-  const e={from,acquireReach:SUPPORT_ACQUIRE_REACH,
-   retainReach:SUPPORT_RELEASE_REACH,lineClear:true};
-  const retaining=!!previous&&previous.releasedAt===null&&
-    sameContact(contact,previous);
-  if(!contactWithinReach(contact,e,retaining))continue;
-  e.lineClear=world.isClear(sourcePoint(from),target,s.doors);
-  if(!e.lineClear)continue;
-  const candidate={claim:{contact,reach:e},
-   score:Math.hypot(shoulder.x-from.x,shoulder.y-from.y,
-     shoulder.z-from.z)};
-  if(!best||nearerSupport(candidate,best)<0)best=candidate;
-  if(previous?.releasedAt===null&&sameContact(contact,previous)&&
-     (!retained||nearerSupport(candidate,retained)<0))retained=candidate;
+  // Prefer shoulder TOP, then upper deltoid. Never fall back to the
+  // old rear rib contact; these are stable alternatives at the same ID.
+  for(const drop of [0,2.25,4.5]){
+   const shoulder=teammateShoulderPoint(lead,drop);
+   const target={x:shoulder.x,y:shoulder.z};
+   const normal=unit({x:a.p.x-target.x,y:a.p.y-target.y});
+   if(!normal.x&&!normal.y)continue;
+   const contact:PhysicalContact={intent:'teammate',limb:'support-hand',
+    anchor:{target:'teammate',id:lead.id,point:shoulder,
+     // Palm rests on a TOP-facing shoulder cap, not the back/rib face.
+     normal:{x:normal.x*.25,y:Math.sqrt(1-.25*.25),
+      z:normal.y*.25}},
+    startedAt:s.seconds,releasedAt:null};
+   const e={from,acquireReach:SUPPORT_ACQUIRE_REACH,
+    retainReach:SUPPORT_RELEASE_REACH,lineClear:true};
+   const retaining=!!previous&&previous.releasedAt===null&&
+     sameContact(contact,previous);
+   if(!contactWithinReach(contact,e,retaining))continue;
+   e.lineClear=world.isClear(sourcePoint(from),target,s.doors);
+   if(!e.lineClear)break; // lower deltoid cannot bypass the same wall
+   // High point wins wherever physically valid, rather than choosing
+   // the numerically closest lower shoulder and burying the wrist.
+   const candidate={claim:{contact,reach:e},
+    score:drop*100+Math.hypot(shoulder.x-from.x,
+     shoulder.y-from.y,shoulder.z-from.z)};
+   if(!best||nearerSupport(candidate,best)<0)best=candidate;
+   if(previous?.releasedAt===null&&sameContact(contact,previous)&&
+      (!retained||nearerSupport(candidate,retained)<0))
+      retained=candidate;
+   break;
+  }
  }
  return (retained??best)?.claim??null;
 }
@@ -266,7 +281,13 @@ export function advanceContextualSupportContacts(s:Session):void{
   const previous=a.physicalContact;
   // A recorded release must finish before any different contact begins.
   if(previous?.releasedAt!==null&&previous!==null){
-   if(s.seconds-previous.releasedAt<SUPPORT_RELEASE_WINDOW)continue;
+   // A cancelled OPEN must visibly return to the firearm, not switch
+   // immediately to a near-identical idle frame brace at the door.
+   // The old contact's .30s fade is already zero by this point.
+   const cooling=previous.intent==='door'&&
+     previous.anchor.id.endsWith(':pre-open')?
+     .90:SUPPORT_RELEASE_WINDOW;
+   if(s.seconds-previous.releasedAt<cooling)continue;
    a.physicalContact=null;
   }
   const current=a.physicalContact;
@@ -288,6 +309,26 @@ export function advanceContextualSupportContacts(s:Session):void{
    continue;
   }
   if(current?.intent==='tool'){
+   if(current.releasedAt===null)
+    a.physicalContact=releasePhysicalContact(current,s.seconds);
+   continue;
+  }
+  // Queued explicit OPEN acquires a stationary, same-side pre-contact.
+  // Never touch a door from a remote authored node or force the hinge.
+  // D4's moving door grip supersedes this waiting-for-open anchor.
+  if(order?.kind==='door'&&
+      (order.method==='open'||order.method===undefined)){
+   const door=s.doors.find(d=>d.id===order.doorId);
+   const next=door?preOpenDoorCandidate(s,a,door,geometry(),current):null;
+   if(next&&current?.intent==='door'&&current.releasedAt===null&&
+      sameContact(next,current))
+    a.physicalContact={...next,startedAt:current.startedAt};
+   else if(current?.releasedAt===null)
+    a.physicalContact=releasePhysicalContact(current,s.seconds);
+   else if(next&&!current)a.physicalContact=next;
+   continue;
+  }
+  if(current?.intent==='door'){
    if(current.releasedAt===null)
     a.physicalContact=releasePhysicalContact(current,s.seconds);
    continue;
