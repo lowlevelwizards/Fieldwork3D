@@ -18,7 +18,7 @@ import {resolveOperation,tacticalSlotOperator,type CampaignReport}
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
   assignOperatorToSlot,buyWeapon,equipCampaignWeapon,repairCampaignArmor,
-  serviceCampaignWeapon,equipCampaignGear,equipCampaignWeaponPreset,
+  serviceCampaignWeapon,equipCampaignGear,equipCampaignFieldInventory,equipCampaignWeaponPreset,
   equipCampaignWeaponFamilyPart,equipCampaignWeaponAttachment,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
