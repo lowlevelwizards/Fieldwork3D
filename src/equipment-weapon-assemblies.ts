@@ -13,6 +13,7 @@ import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {g36FrontEnd,g36SupportRange} from './weapons/geometry/g36-variant-parts.ts';
+import {R870_P07} from './weapons/geometry/r870-silhouettes.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {opticProfile} from './weapons/geometry/optic-profiles.ts';
 import {physicalWeaponMountSlots} from './weapons/geometry/weapon-physical-mount-slots.ts';
@@ -155,6 +156,16 @@ export function familyAccessoryAllowed(build:WeaponFamilyBuild,
  slot:WeaponAttachmentSlot,id:string,mount='optic-mount-none'):boolean{
  // The integrated factory dual sight is NOT a universal rifle accessory.
  if((id==='optic-g36-integrated'||id==='optic-g36-single')&&build.family!=='g36')return false;
+ // Shotgun Police: plain bead, fixed tube, non-railed wooden pump.
+ // Accessory surfaces are not interchangeable with generic rifle hardware.
+ if(build.family==='r870'){
+  if(slot==='stock')return id==='stock-standard';
+  if(slot==='opticMount')return id==='optic-mount-none';
+  if(slot==='optic')return id==='optic-irons';
+  if(slot==='muzzle')return id==='muzzle-bare';
+  if(slot==='foregrip')return id==='foregrip-none';
+  if(slot==='light')return id==='light-none';
+ }
  if(build.family==='g36'){
   const receiver=build.parts.receiver;
   const rail=receiver==='g36-rail-receiver';
@@ -328,6 +339,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   build?.family==='fal'?falBarrelArt(build.parts.barrel):
   build?.family==='fnc'&&build.parts.barrel==='fnc-177-service'?
   {lengthScale:.94,muzzleX:19.50,muzzleY:0}:
+  build?.family==='r870'?{lengthScale:.92,muzzleX:R870_P07.muzzleX,
+   muzzleY:R870_P07.muzzleY}:
   build?.family==='g36'&&g36FrontEnd(build.parts.barrel)?
   {lengthScale:g36FrontEnd(build.parts.barrel)!.lengthScale,
    muzzleX:g36FrontEnd(build.parts.barrel)!.muzzleX,muzzleY:G36.muzzleY}:undefined;
@@ -378,15 +391,18 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  // Actual family pistol-grip silhouettes sit behind the receiver midpoint.
  // Earlier AK settings targeted empty space, putting the wrist in the plate.
  const primaryX=build?(build.family==='g36'?G36.primaryX:
+  build.family==='r870'?R870_P07.primaryX:
   build.family==='hk'?-4.20:build.family==='ar'?-4.80:-4.65):p.primaryX;
  const primaryY=build?(build.family==='g36'?G36.primaryY:
+  build.family==='r870'?R870_P07.primaryY:
   build.family==='hk'?-4.00:build.family==='ar'?-4.00:-4.10):p.primaryY;
  const hkSupportX=hkArt?Math.min(7.75,hkArt.handguardStartX+
   .47*(hkArt.handguardEndX-hkArt.handguardStartX)):7.75;
  const mp5k=build?.parts.receiver==='hk-mp5k-stockless';
  const triRailVertical=build?.parts.handguard==='hk-mp5-trirail'&&
   config.slots.foregrip==='foregrip-vertical';
- const supportX=build?.family==='g36'?(
+ const supportX=build?.family==='r870'?((R870_P07.supportNearX+R870_P07.supportFarX)/2):
+  build?.family==='g36'?(
   g36SupportRange(build.parts.handguard)[0]+g36SupportRange(build.parts.handguard)[1])/2:
   build?.family==='hk'?hkSupportX:
   build?(familyHandguard?.length==='long'?9.10:
@@ -395,7 +411,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   massKg:mass,balanceX:balance,rotationalInertia:Math.max(1,inertia),
   muzzleX:(art?.muzzleX??p.muzzleX)+(mounted.muzzle.muzzleExtension??0),
   muzzleY:build?.family==='ar'?AR_VISUAL_AXIS_Y:
-   build?.family==='fal'?(falBarrelArt(build.parts.barrel)?.muzzleY??0):0,
+   build?.family==='fal'?(falBarrelArt(build.parts.barrel)?.muzzleY??0):
+   build?.family==='r870'?R870_P07.muzzleY:0,
   stockX:stockX+(build?0:(mounted.stock.stockShift??0)),
   primaryX,primaryY,
   supportX:triRailVertical?7.0:supportX+(mounted.foregrip.supportShift??0),
@@ -403,6 +420,7 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
    mounted.foregrip.id==='foregrip-vertical'?-3.65:
    mounted.foregrip.id==='foregrip-handstop'?-2.3:
    build?.family==='g36'?G36.supportY:
+   build?.family==='r870'?R870_P07.supportY:
    build?.family==='hk'?-1.35:build?-1.65:p.supportY)+
    (build?.family==='ar'?AR_VISUAL_AXIS_Y:0),
   sightHeight:mounted.optic.sightHeight??2.6,
