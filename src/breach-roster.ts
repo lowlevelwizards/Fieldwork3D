@@ -13,6 +13,7 @@ import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
 import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
 import {quoteCarryGearChange,type CarryGearSlot} from './equipment-carry-gear-change.ts';
+import {captureCarryUndo,quoteCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
@@ -234,6 +235,20 @@ export function equipRosterCarryGear(roster:RosterState,id:string,
  if(!quote.ok)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,loadout:quote.kit,magazines:quote.magazines}:m)};
+}
+/** Restore the exact physical carry snapshot only if it is still current.
+ * The caller may show an Undo button, but this owner has final authority.
+ */
+export function undoRosterCarryGear(roster:RosterState,id:string,
+ expected:CarryUndoSnapshot,before:CarryUndoSnapshot):RosterState{
+ const member=roster.members.find(m=>m.id===id);
+ if(!member)return roster;
+ const current=captureCarryUndo(member.loadout,member.magazines);
+ if(JSON.stringify(current)!==JSON.stringify(expected))return roster;
+ const quote=quoteCarryUndo(current,before);
+ if(!quote.ok)return roster;
+ return {...roster,members:roster.members.map(m=>m.id===id?
+  {...m,loadout:quote.restore.loadout,magazines:quote.restore.magazines}:m)};
 }
 /** L2.1: atomically issue an operator's physical field kit.
  * The authoring UI validates capacity before calling this pathway.
