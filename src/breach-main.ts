@@ -100,7 +100,7 @@ import {doorReachable} from './breach-door.ts';
 import {doorKnown,type IntelMode} from './breach-intel.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
-import {applyRosterIdentity,equipRosterFieldInventory,moveRosterMagazine} from './breach-roster.ts';
+import {applyRosterIdentity,equipRosterFieldInventory,equipRosterCarryGear,moveRosterMagazine} from './breach-roster.ts';
 import {refreshQuickPlayPreparedRoster} from './breach-quickplay-kit-preferences.ts';
 import type {CampaignState} from './campaign-state.ts';
 import {loadActiveCampaign,loadCampaignSlot,writeCampaignSlot,
@@ -1292,6 +1292,11 @@ const quickPlayController=createBreachQuickPlayController({
   },
   moveMagazine:(id,magazineId,to)=>{
    const updated=moveRosterMagazine(persistentRoster,id,magazineId,to);
+   if(updated===persistentRoster)return false;
+   persistentRoster=updated;saveRoster();return true;
+  },
+  equipCarryGear:(id,slot,itemId)=>{
+   const updated=equipRosterCarryGear(persistentRoster,id,slot,itemId);
    if(updated===persistentRoster)return false;
    persistentRoster=updated;saveRoster();return true;
   },
