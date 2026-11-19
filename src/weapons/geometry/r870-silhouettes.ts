@@ -5,19 +5,13 @@
  * +X forward, +Y up, +Z operator's right. Art only; no ballistics here.
  */
 import * as THREE from 'three';
+import {R870_P07} from './r870-art-contract.ts';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {addOutline,addCuboid,addFacetedTube,type SlotName,type Outline}
  from './profile-primitives.ts';
 import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD,FAL_VENT_SHADOW,
  FAL_MUZZLE_METAL} from './weapon-visual-palette.ts';
 
-/** The same landmarks must drive pose, shotgun muzzle and future pump motion. */
-export const R870_P07=Object.freeze({
- stockX:-15.78,muzzleX:19.20,muzzleY:.94,
- pumpStartX:2.91,pumpEndX:11.43,pumpRearTravel:2.28,
- supportNearX:4.15,supportFarX:10.55,supportY:-2.0,
- primaryX:-7.80,primaryY:-2.70
-});
 const PARTS=Object.freeze({
  receiver:'r870-police-receiver',
  stock:'r870-police-wood-stock',
