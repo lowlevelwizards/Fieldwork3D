@@ -30,7 +30,7 @@ jobs:
             seed:r.seed,mission:r.mission,entry:r.insertion,stage:r.missionStage,
             aborted:r.routeAbort,rejected:r.rejected,opens:r.acceptedDoorActions,
             seconds:r.duration,phase:r.phase,firstRoom:r.roomVisitOrder?.at(0),
-            actorProgress:r.forensic?.filter(e=>['initial','tick','route-abort'].includes(e.type)).filter((e,i,arr)=>i%25===0||i===arr.length-1).map(e=>({at:e.at,stage:e.stage,phase:e.phase,actor:e.player,door:e.event})).slice(0,18),
+            actorProgress:r.forensic?.filter(e=>['initial','sample','route-abort'].includes(e.type)).map(e=>({at:e.at,stage:e.stage,phase:e.phase,actor:e.player,door:e.event})).slice(0,33),
             doorsAtEnd:r.doorsAtEnd?.filter(d=>d.open),
             objectiveAt:r.objectiveAt,done:r.missionStage==='done',
             physicalCommandTrace:r.decisions.filter(x=>x.action==='explicit-open-known-door')
