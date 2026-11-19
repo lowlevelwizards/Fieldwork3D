@@ -8,6 +8,8 @@ import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
 import {NPC_LAB_POSES,NPC_LAB_DURATION,NpcLabPreview}
  from './operator-lab-npc-poses.ts';
+import {isLabContactTrack,labContactPose,labContactLead,
+ labContactDescription} from './operator-lab-contact-tracks.ts';
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 import {weaponGrips,type Handling,type WeaponFit} from './breach-weapon-pose.ts';
 import {PoseTemporalMonitor} from './breach-pose-temporal-diagnostics.ts';
@@ -1181,6 +1183,15 @@ let labSwitch:null|{from:Handling;to:Handling;
   authoredArms?:readonly {shoulder:THREE.Vector3;elbow:THREE.Vector3;
     wrist:THREE.Vector3;bend:THREE.Vector3}[]}=null;
 let rig:OperatorRig|null=null,track:LabTrack='idle';
+/** Lazy visual peer for shoulder contact auditions. Reused while scrubbing. */
+let shoulderLeaderRig:OperatorRig|null=null;
+function ensureLabShoulderLeader():OperatorRig{
+ if(!shoulderLeaderRig){
+  shoulderLeaderRig=createOperatorRig('lab-stack-leader','blue',true);
+  scene.add(shoulderLeaderRig.root);
+ }
+ return shoulderLeaderRig;
+}
 const gaitReference=choose<HTMLSelectElement>('gaitReference');
 let cache:LabMotionCache|LabHistoricalMotionCache|LabDistanceMotionCache=new LabMotionCache(track);
 const newTrackCache=(kind:LabTrack)=>gaitReference.value==='historical'?
@@ -1728,7 +1739,9 @@ function draw(){
    for(const body of kitBodies)body.root.visible=false;
    for(const body of variantBodies)body.root.visible=false;
    if(gaitCompareRig)gaitCompareRig.root.visible=false;
-   doorProp.visible=false;debug.visible=false;labelLayer.hidden=true;
+   doorProp.visible=false;
+   if(shoulderLeaderRig)shoulderLeaderRig.root.visible=false;
+   debug.visible=false;labelLayer.hidden=true;
    const chosen=NPC_LAB_POSES.find(p=>p.id===npcSelect.value)!;
    const result=npcPreview.render(chosen.id,clock);
    npcStatus.textContent=result.label+' · '+chosen.description+
@@ -1781,8 +1794,21 @@ function draw(){
   const transition=direct??scripted;
   if(labSwitch&&alpha>=1)labSwitch=null;
   const selectedHandling=transition?.to??previewHandling[track];
-  doorProp.visible=track==='door'||track==='kick';
+  const contactTrack=isLabContactTrack(track);
+  const preOpenTrack=track.startsWith('pre-open');
+  const shoulderTrack=track.startsWith('stack-shoulder');
+  const scriptedContact=contactTrack?labContactPose(track,clock):null;
+  doorProp.visible=track==='door'||track==='kick'||preOpenTrack;
+  doorProp.position.x=preOpenTrack?-10:0;
+  if(shoulderLeaderRig)shoulderLeaderRig.root.visible=false;
   rig.root.position.set(motion.x,0,motion.z);
+  const contactInfo=document.getElementById('poseContactStatus');
+  if(contactInfo){
+   contactInfo.textContent=contactTrack?
+    labContactDescription(track,clock)+
+     ' · Scrub timeline to inspect reach, hold and release':'';
+   contactInfo.hidden=!contactTrack;
+  }
   // The selected family model remains the same across every track.
   // Shotgun reload is an explicit special case; no synthetic AR magazine.
   const selectedPosePreset=track==='reload-shotgun'?undefined:
@@ -1810,7 +1836,7 @@ function draw(){
       (motion.speed-sampleLabTrack(track,
         Math.max(0,clock-1/60)).speed)*60)),
     motionImpulse:sampleLabMovementImpulse(track,clock),
-    posture:motion.posture,
+    posture:track==='stack-shoulder-crouch'?'crouch':motion.posture,
     gait:track==='run'?'run':track==='pie'?'pie':
       track==='squeeze'?'squeeze':'walk',
     injury:Math.max(motion.injury,Number(injury.value),
@@ -1827,12 +1853,14 @@ function draw(){
     bashRole:track==='bash'?'push':null,
     doorMethod:track==='kick'?'kick':'open',
     doorPoint:track==='door'?{x:25.5,y:8}:undefined,
+    physicalContact:scriptedContact,
+    handlingIntent:preOpenTrack?'door':shoulderTrack?'stack':'hold',
     lastThrowAt:motion.throwAt,
     down:motion.down||Number(injury.value)===3,
     surrender:false,aiming:motion.aim>.2,
     firing:false,turning:motion.turning,
     aimBlend:motion.aim,
-    handlingOverride:selectedHandling,
+    handlingOverride:shoulderTrack?'high':selectedHandling,
     poseV3Preview,poseV4ReloadPreview,
     poseV3StrictContact:poseStrictContact.checked,
     handlingTransition:transition,
@@ -1858,6 +1886,19 @@ function draw(){
     hitYaw:motion.heading+Math.PI/2,
     hitAge:track==='wounded'?Math.max(0,clock-.7):undefined,
     hitSeverity:2},0);
+  if(shoulderTrack&&!comparing&&!kitComparing&&!variantComparing&&
+    rig.lastPose){
+    const leader=ensureLabShoulderLeader();
+    leader.root.visible=true;
+    leader.root.position.set(labContactLead.x,0,labContactLead.z);
+    poseOperator(leader,{...rig.lastPose,
+      x:labContactLead.x,z:labContactLead.z,
+      heading:labContactLead.heading,travelYaw:labContactLead.heading,
+      velocity:0,turning:0,physicalContact:null,doorGrip:null,
+      handlingIntent:'hold',handlingOverride:'high',
+      down:false,injury:0,aiming:false,firing:false,
+      appearanceSeed:labPalette,deterministic:true},0);
+  }
   // The shared wardrobe layer controls hair visibility even in unarmed preview.
   if(variantComparing&&rig.lastPose&&(pinnedLook||uniformComparing)){
    for(let i=0;i<variantBodies.length;i++){
