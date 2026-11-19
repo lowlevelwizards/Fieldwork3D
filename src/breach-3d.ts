@@ -100,6 +100,7 @@ import {type Site,type Room,type WideOpening} from './breach-site.ts';
 import {bakedOperatorCarry,prewarmSavedOperatorCarry}
  from './rendering/breach-saved-operator-carry-bake.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
+import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
@@ -2431,6 +2432,7 @@ export class TacticalScene3D{
          s.operators.find(o=>o.id===actor.lastTreatmentTargetId)?.p:undefined,
         flashCharges:actor.flashCharges,
         wedgeRemaining:actor.wedgeRemaining,
+        equipmentInteraction:readEquipmentInteraction(actor),
         // A path collision may leave residual motor velocity while position
         // is stationary: feet should brace, not march in place.
         blocked:!actor.traversal&&actor.blockedTime>.14&&
