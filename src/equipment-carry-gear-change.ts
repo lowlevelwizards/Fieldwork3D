@@ -40,14 +40,26 @@ export function previewCarryGearChange(
  const movable:{id:string;from:string;to:string;quantity:number}[]=[];
  if(packed){
   for(const id of FIELD_ITEM_IDS){
+   // Exact conservation: cancel retained quantities at each original carrier,
+   // then match remaining source and destination units one at a time.
    if(fieldQuantity(packed,id)!==fieldQuantity(inventory,id))continue;
-   for(const old of inventory.stacks.filter(s=>s.itemId===id)){
-    const retained=packed.stacks.find(s=>s.itemId===id&&s.location===old.location);
-    const removed=old.quantity-(retained?.quantity??0);
-    if(removed<=0)continue;
-    const dest=packed.stacks.find(s=>s.itemId===id&&s.location!==old.location);
-    if(dest)movable.push({id,from:old.location,to:dest.location,quantity:removed});
+   const left:Record<FieldCarryLocation,number>={rig:0,belt:0,pocket:0,backpack:0};
+   const right:Record<FieldCarryLocation,number>={rig:0,belt:0,pocket:0,backpack:0};
+   for(const row of inventory.stacks.filter(s=>s.itemId===id))
+    left[row.location]+=row.quantity;
+   for(const row of packed.stacks.filter(s=>s.itemId===id))
+    right[row.location]+=row.quantity;
+   for(const loc of FIELD_CARRY_LOCATIONS){
+    const retained=Math.min(left[loc],right[loc]);
+    left[loc]-=retained;right[loc]-=retained;
    }
+   for(const from of FIELD_CARRY_LOCATIONS)
+    for(const to of FIELD_CARRY_LOCATIONS){
+     if(from===to||left[from]<=0||right[to]<=0)continue;
+     const quantity=Math.min(left[from],right[to]);
+     left[from]-=quantity;right[to]-=quantity;
+     movable.push({id,from,to,quantity});
+    }
   }
  }
  const fits=after.valid||(repacked?.valid??false);

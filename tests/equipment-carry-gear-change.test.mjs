@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {initialEquipmentLoadout,setEquipmentChoice} from '../src/equipment-loadouts.ts';
-import {initialFieldInventory,fieldQuantity} from '../src/equipment-field-inventory.ts';
+import {initialFieldInventory,fieldQuantity,replaceFieldQuantity} from '../src/equipment-field-inventory.ts';
 import {previewCarryGearChange} from '../src/equipment-carry-gear-change.ts';
 test('losing a rig previews the new capacity and required field relocation',()=>{
  const kit=initialEquipmentLoadout();
@@ -37,4 +37,19 @@ test('no-op choice previews no displacement or inventory mutation',()=>{
  assert.equal(quoted.requiresRepack,false);
  assert.equal(quoted.itemMoves.length,0);
  assert.deepEqual(Object.values(quoted.capacityDelta),[0,0,0,0]);
+});
+
+test('split repacking lists precise quantities for each receiving carrier',()=>{
+ let kit=initialEquipmentLoadout();
+ kit=setEquipmentChoice(kit,'medical','medical-none');
+ kit=setEquipmentChoice(kit,'belt','belt-light');
+ const inventory=replaceFieldQuantity(initialFieldInventory(kit),'flashbang',2);
+ const quoted=previewCarryGearChange(kit,[],'rig','rig-none',inventory);
+ assert.equal(quoted.fits,true);
+ assert.equal(quoted.requiresRepack,true);
+ assert.equal(quoted.itemMoves.reduce((sum,x)=>sum+x.quantity,0),2);
+ assert.deepEqual(quoted.itemMoves.filter(x=>x.id==='flashbang')
+  .map(x=>[x.from,x.to,x.quantity]).sort(),
+  [['rig','backpack',1],['rig','belt',1]].sort());
+ assert.equal(fieldQuantity(inventory,'flashbang'),2);
 });
