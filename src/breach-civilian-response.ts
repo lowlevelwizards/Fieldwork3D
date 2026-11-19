@@ -120,7 +120,8 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   const peripheral=!direct&&range<=64&&Math.abs(delta)<1.95&&
     person.velocity>8;
   const geometric=(direct||peripheral)&&world.canSee(c.p,person.p);
-  const gain=geometric?visualGain(range,delta,person.velocity>10,
+  const gain=geometric?visualGain(range,
+    peripheral?Math.sign(delta)*.92:delta,person.velocity>10,
     person.posture==='crouch')*(peripheral?.38:1):0;
   c.visualProgress[person.id]=advanceSight(
     c.visualProgress[person.id]??0,elapsed,gain,geometric);
