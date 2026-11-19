@@ -83,6 +83,11 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
     initialFieldInventory(o.loadout),'flashbang'),0);
   const onChange=(inventory:FieldInventory,undoing=false)=>{
    if(!canPrepare())return;
+   // Rebuild just the equipment controls while keeping the finger/keyboard
+   // position stable. A quantity tap must not jump the mission sheet.
+   const focusedLabel=document.activeElement instanceof HTMLElement?
+    document.activeElement.getAttribute('aria-label'):null;
+   const scroll=panel.scrollTop;
    const before=hooks.getCampaign()?.operators.find(o=>o.id===selected.id);
    if(!before||!hooks.issue(selected.id,inventory))return;
    const after=hooks.getCampaign()?.operators.find(o=>o.id===selected.id);
@@ -93,6 +98,14 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
      initialFieldInventory(after.loadout));
    }
    render(false);
+   panel.scrollTop=scroll;
+   if(focusedLabel){
+    const refocus=Array.from(editorHost.querySelectorAll<HTMLElement>(
+     'button[aria-label],select[aria-label]')).find(el=>
+      el.getAttribute('aria-label')===focusedLabel&&
+      !(el as HTMLButtonElement|HTMLSelectElement).disabled);
+    refocus?.focus({preventScroll:true});
+   }
   };
   editorHost.replaceChildren(createFieldGadgetEditor({
    loadout:selected.loadout,magazines:selected.magazines,
@@ -125,6 +138,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
  // Its click gate, rather than stale CSS state, is the authoritative restriction.
  return {close,setAvailable:available=>{
   launch.hidden=!available;
+  launch.disabled=!available;
   if(!available)close();
  }};
 }
