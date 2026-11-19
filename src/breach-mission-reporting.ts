@@ -58,6 +58,18 @@ export function debrief(s:Session){
   const civilianInjured=s.civilians.filter(c=>c.health>0&&
     c.injuryStage>0).length;
   const civilianDown=s.civilians.filter(c=>c.health<=0).length;
+  // Retrospective outcome categories reflect final AUTHORITATIVE civilian
+  // states. SECURE is not RESTRAIN, and escorting remains a separate action.
+  // Counts do not change score/mission completion or live fog disclosure.
+  const civilianContact={
+    frightened:s.civilians.filter(c=>c.health>0&&
+      ['attentive','startled','frozen','fleeing','hiding'].includes(c.state)).length,
+    secured:s.civilians.filter(c=>c.health>0&&
+      c.state==='compliant'&&c.restrained!==true).length,
+    restrained:s.civilians.filter(c=>c.health>0&&
+      c.state==='compliant'&&c.restrained===true).length,
+    escorted:s.civilians.filter(c=>c.health>0&&c.state==='escorted').length
+  };
   const attributable=attributableCivilianHarm(s.civilianHarmEvents);
   // Retrospective only: the reviewer never feeds AI, fog, or score rules.
   const forceReview=assessDispatchForce(s.civilianHarmEvents,s.battleEvents);
@@ -78,6 +90,7 @@ export function debrief(s:Session){
     criticalCasualties:casualtyCare.critical,
     evacuatedCasualties:evacuated,
     shots,hits,civilianInjured,civilianDown,rescueStatus,
+    civilianContact,
     civilianPlayerInjured:attributable.injured,
     civilianPlayerDown:attributable.down,
     kills:own.reduce((t,a)=>t+a.kills,0),

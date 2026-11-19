@@ -1,0 +1,33 @@
+name: EQA3.11 physical civilian peripheral-awareness critical
+on:
+  push:
+    branches: [feature/eqa3-11-civilian-peripheral-awareness-20261119]
+    paths:
+      - 'src/breach-civilian-response.ts'
+      - 'src/breach-mission-reporting.ts'
+      - 'src/ui/breach-after-action-mission-details.ts'
+      - 'tests/eqa3-11-civilian-debrief.test.mjs'
+      - 'tests/eqa3-11-peripheral-civilian.test.mjs'
+      - '.github/workflows/eqa3-11-peripheral-civilian.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  peripheral-awareness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: TS and witnessed-only civilian visual regression
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-11-peripheral-civilian.test.mjs \
+            tests/eqa3-11-civilian-debrief.test.mjs \
+            tests/eqa3-10-civilian-response.test.mjs \
+            tests/eqa3-9-civilian-animation.test.mjs \
+            tests/civilian-r2-routines.test.mjs
