@@ -5,7 +5,7 @@ import {initialRoster} from '../src/breach-roster.ts';
 import {newCampaign} from '../src/campaign-state.ts';
 import {captureDeploymentInventory,applyDeploymentInventory,
  limitDeployedFlashIssue} from '../src/equipment-deployment-snapshot.ts';
-import {fieldQuantity} from '../src/equipment-field-inventory.ts';
+import {fieldQuantity,fieldCarryReport} from '../src/equipment-field-inventory.ts';
 import {stageMagazines} from '../src/equipment-magazine-placement.ts';
 import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 import {changeWeaponPlatform} from '../src/equipment-weapon-assemblies.ts';
@@ -14,7 +14,7 @@ test('F1 Quick Play snapshot carries exact magazine identities, rounds and fitte
  const op=initialRoster().members[0];
  const source={...op,
   loadout:{...op.loadout,fieldInventory:{version:1,stacks:[
-   {itemId:'flashbang',quantity:2,location:'rig'},
+   {itemId:'flashbang',quantity:2,location:'backpack'},
    {itemId:'zip-tie',quantity:1,location:'pocket'}]}}};
  const original=structuredClone(source);
  const snapshot=captureDeploymentInventory(source);
@@ -23,6 +23,8 @@ test('F1 Quick Play snapshot carries exact magazine identities, rounds and fitte
  assert.equal(snapshot.insertedMagazineId,op.loadedMagazineId);
  assert.equal(snapshot.magazine,op.magazine);
  assert.equal(snapshot.flashCharges,2);
+ assert.equal(fieldCarryReport(snapshot.equipment,snapshot.spareMagazines,
+  snapshot.equipment.fieldInventory).valid,true);
  assert.equal(snapshot.restraintRemaining,1);
  assert.equal(fieldQuantity(snapshot.equipment.fieldInventory,'zip-tie'),1);
  assert.deepEqual(snapshot.equipment.slots,source.loadout.slots);
@@ -44,13 +46,15 @@ test('F1 Campaign deployment preserves depleted medical inventory and true flash
  const source={...op,
   medicalSupplies:{'tourniquet':0,'field-dressing':1,'trauma-dressing':0},
   loadout:{...op.loadout,fieldInventory:{version:1,stacks:[
-   {itemId:'flashbang',quantity:3,location:'rig'},
+   {itemId:'flashbang',quantity:3,location:'backpack'},
    {itemId:'zip-tie',quantity:2,location:'pocket'}]}}};
  const actor={};
  const snapshot=applyDeploymentInventory(actor,source);
  assert.deepEqual(actor.medicalSupplies,source.medicalSupplies);
  assert.deepEqual(actor.spareMagazines,snapshot.spareMagazines);
  assert.equal(actor.flashCharges,3);
+ assert.equal(fieldCarryReport(actor.equipment,actor.spareMagazines,
+  actor.equipment.fieldInventory).valid,true);
  assert.equal(actor.restraintRemaining,2);
  assert.deepEqual(actor.weaponConfiguration,source.weaponConfiguration);
  assert.notStrictEqual(actor.weaponConfiguration,source.weaponConfiguration);
