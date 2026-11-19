@@ -11,6 +11,8 @@ import {visibleFlashCanisters,visibleDoorWedges}
  from '../src/equipment-field-visuals.ts';
 import {executeTacticalUtilityOrder} from '../src/breach-order-utility.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {newSession} from '../src/breach-game.ts';
+import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 
 const issued=(field,utility='utility-radio')=>{
  const source=initialRoster().members[0];
@@ -122,4 +124,31 @@ test('F2: real flash GO uses backpack retrieval duration and spends once',()=>{
   assert.equal(s.flashRemaining,0);
   assert.equal(done.length,1);
  }finally{activateSite(null);}
+});
+
+test('F2: replay rewinds and seeks exact physical item positions and quantities',()=>{
+ const s=newSession(),a=s.operators.find(o=>o.id==='rook');
+ applyDeploymentInventory(a,issued([
+  {itemId:'flashbang',quantity:1,location:'rig'},
+  {itemId:'flashbang',quantity:1,location:'backpack'},
+  {itemId:'zip-tie',quantity:1,location:'pocket'}]));
+ const before=snapshot(s);
+ assert.equal(spendDeployedFieldItem(a,'flashbang'),true);
+ const after=snapshot(s);
+ assert.deepEqual(before.actors.find(x=>x.id==='rook').fieldInventory.stacks
+  .filter(row=>row.itemId==='flashbang').map(row=>row.location),
+ ['rig','backpack']);
+ assert.deepEqual(after.actors.find(x=>x.id==='rook').fieldInventory.stacks
+  .filter(row=>row.itemId==='flashbang').map(row=>row.location),
+ ['backpack']);
+ applyReplayFrame(s,before);
+ assert.equal(a.flashCharges,2);
+ assert.deepEqual(visibleFlashCanisters(a.equipment,a.flashCharges).map(x=>x.location),
+ ['rig','backpack']);
+ applyReplayFrame(s,after);
+ assert.equal(a.flashCharges,1);
+ assert.deepEqual(visibleFlashCanisters(a.equipment,a.flashCharges).map(x=>x.location),
+ ['backpack']);
+ assert.equal(fieldQuantity(before.actors.find(x=>x.id==='rook').fieldInventory,
+  'flashbang'),2,'replay seek never mutates stored historic frames');
 });
