@@ -21,6 +21,8 @@ export type FieldGadgetEditorOptions={
  onInspectLocation?:(location:FieldCarryLocation)=>void;
  /** Select the REAL visible item mesh; concealed inventory has no proxy. */
  onInspectItem?:(item:EquipmentInspectionTarget)=>void;
+ /** Real model thumbnail supplied by shared 3D preview; never stock authority. */
+ onModelThumbnail?:(item:EquipmentInspectionTarget)=>string|null;
  onMoveMagazine?:(magazineId:string,to:FieldCarryLocation,focusLabel?:string)=>void;
  locked?:boolean;
  maxFlash?:number;
@@ -63,6 +65,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  // Selected item is transient UI state, not an inventory or campaign draft.
  let selected:PhysicalChoice|null=null;
  const selections:{button:HTMLButtonElement;choice:PhysicalChoice}[]=[];
+ const previewRequests:{host:HTMLElement;target:EquipmentInspectionTarget}[]=[];
  const destinations:{button:HTMLButtonElement;location:FieldCarryLocation;reason:HTMLElement}[]=[];
  const refreshSelection=()=>{
   for(const entry of selections)entry.button.setAttribute('aria-pressed',
@@ -222,6 +225,16 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    const silhouette=document.createElement('span');
    silhouette.className='fw-field-inventory-item-silhouette';
    silhouette.setAttribute('aria-hidden','true');
+   const model=document.createElement('span');
+   model.className='fw-field-inventory-model';
+   model.setAttribute('aria-hidden','true');
+   model.append(silhouette);
+   const target:EquipmentInspectionTarget={
+    kind:tile.kind,id:tile.itemId??tile.id,location:loc,
+    index:zone.items.filter(item=>item.kind===tile.kind)
+     .findIndex(item=>item.id===tile.id)
+   };
+   if(options.onModelThumbnail)previewRequests.push({host:model,target});
    const itemName=text('span','fw-field-inventory-item-name',tile.label);
    const quantity=text('strong','fw-field-inventory-item-count',
     tile.quantity>1?'×'+tile.quantity:'');
@@ -243,7 +256,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     select.setAttribute('aria-label','Select one '+tile.label+' from '+loc.toUpperCase());
     select.setAttribute('aria-pressed','false');
     select.disabled=!!options.locked;
-    select.append(silhouette,itemName,quantity,drag.grip);li.append(select);
+    select.append(model,itemName,quantity,drag.grip);li.append(select);
     selections.push({button:select,choice});
    }else if(tile.kind==='magazine'&&tile.magazineId&&options.onMoveMagazine){
     const id=tile.magazineId,choice:PhysicalChoice={kind:'magazine',id,from:loc};
@@ -264,7 +277,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     select.setAttribute('aria-label','Select magazine '+id+' from '+loc.toUpperCase());
     select.setAttribute('aria-pressed','false');
     select.disabled=!!options.locked;
-    select.append(silhouette,itemName,quantity,drag.grip);li.append(select);
+    select.append(model,itemName,quantity,drag.grip);li.append(select);
     selections.push({button:select,choice});
    }else if(tile.kind==='medical'||tile.kind==='utility'){
     // These are existing physical kit records, not countable gadgets.
@@ -284,14 +297,14 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      inspect.setAttribute('aria-label',inspectLabel);
      const copy=text('span','fw-field-inventory-fixed-copy','');
      copy.append(itemName,text('small','fw-field-inventory-fixed-meta',detail));
-     inspect.append(silhouette,copy);
+     inspect.append(model,copy);
      li.append(inspect);
     }else{
      const copy=text('span','fw-field-inventory-fixed-copy','');
      copy.append(itemName,text('small','fw-field-inventory-fixed-meta',detail));
-     li.append(silhouette,copy);
+     li.append(model,copy);
     }
-   }else li.append(silhouette,itemName,quantity);
+   }else li.append(model,itemName,quantity);
    items.append(li);
   }
   if(!zone.items.length){
@@ -525,5 +538,37 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   copyInner.prepend(picker);copyArea.append(copyInner);root.append(copyArea);
  }
  root.append(actions);
+ // The item model is rendered only when its row enters the viewport. One
+ // shared preview/renderer services all tiles, with no extra WebGL contexts.
+ // Offscreen items don't trigger expensive GPU captures during initial prep.
+ if(options.onModelThumbnail&&previewRequests.length){
+  const render=({host,target}:{host:HTMLElement;target:EquipmentInspectionTarget})=>{
+   if(!root.isConnected||!host.isConnected)return;
+   const source=options.onModelThumbnail?.(target);
+   if(source){
+    const picture=document.createElement('img');
+    picture.src=source;picture.alt='';picture.decoding='async';
+    host.replaceChildren(picture);
+    host.dataset.model='real';
+   }else host.dataset.model='unavailable';
+  };
+  requestAnimationFrame(()=>{
+   if(!root.isConnected)return;
+   if(typeof IntersectionObserver==='undefined'){
+    for(const target of previewRequests)render(target);
+    return;
+   }
+   const observer=new IntersectionObserver(entries=>{
+    for(const entry of entries){
+     if(!entry.isIntersecting)continue;
+     const record=previewRequests.find(record=>record.host===entry.target);
+     if(record)render(record);
+     observer.unobserve(entry.target);
+    }
+    if(!root.isConnected)observer.disconnect();
+   },{rootMargin:'140px'});
+   for(const {host} of previewRequests)observer.observe(host);
+  });
+ }
  return root;
 }
