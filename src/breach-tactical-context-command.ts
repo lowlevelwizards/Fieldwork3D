@@ -9,14 +9,13 @@ import {type Session,type TeamActor,plannedControl,finalPoint,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planMedicalTreatment,
  planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
- doorAtNode,planEntryTool,planLook,liveVisibility,resumeInterruptedDoorPlan,
+ doorAtNode,planEntryTool,liveVisibility,resumeInterruptedDoorPlan,
  resumeInterruptedSquadEntry} from './breach-game.ts';
 import type {EntryTool} from './breach-entry-tools.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {nearestContextCivilian} from './breach-civilian-context-selection.ts';
-import {canOfferKnownRescueLook} from './breach-rescue-contact-look.ts';
 
 export type ContextCommandResult={
  handled:boolean;outcome?:'accepted'|'rejected';failureReason?:string;
@@ -80,19 +79,6 @@ export function dispatchTacticalContextCommand(input:{
      .sort((x,y)=>distance(from,x.p)-distance(from,y.p))[0];
    return finish(!!target&&planSuspectChallenge(state,selected,target.id),
      'SUSPECT CHALLENGE NOT AVAILABLE');
-  }
-  case 'ctxKnownRescueLook':{
-   const at=finalPoint(a),point=state.scenario.objective;
-   // Authorized LOOK to an ALREADY disclosed location, not a remote
-   // civilian command. Preserve route-end-only editing and verify the
-   // same physical/world gating as the palette on every actual click.
-   const allowed=(!node||a.plan.at(-1)?.id===node.id)&&
-     canOfferKnownRescueLook(state,at,liveVisibility(state,point),
-       sweptBodyClear(at,point,state.doors,5.5,
-         sessionWorldGeometry(state)));
-   return finish(allowed&&planLook(state,selected,point,node?.id),
-     'KNOWN RESCUE CONTACT NOT REACHABLE FOR LOOK',
-     {invalidateFog:true});
   }
   case 'ctxSecureCivilian':
   case 'ctxFollowCivilian':{
