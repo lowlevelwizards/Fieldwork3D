@@ -26,6 +26,9 @@ on:
       - feature/loadout-l212-f3-mission-reconciliation-20261119
       - feature/loadout-l212-e1-carry-undo-20261119
       - feature/loadout-l212-e2-layout-copy-20261119
+  pull_request:
+    branches:
+      - feature/loadout-l212-f2-field-consumption-20261119
   workflow_dispatch:
 concurrency:
   group: loadout-prep-l2-${{ github.ref }}
