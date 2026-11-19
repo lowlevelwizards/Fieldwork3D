@@ -41,7 +41,8 @@ test('F6.2: retrieve same mesh from real location, then restore on cancellation'
 test('F6.2: reaches only real pouch and only after contact phase',()=>{
  const r=make(),p=pose(.20);
  presentFlashHandoff(r,p,true);
- assert.equal(r.root.userData.fieldworkHeldFlashIndex,null);
+ assert.equal(r.root.userData.fieldworkHeldFlashIndex,undefined,
+  'idle fast path never writes when no item is held');
  assert.equal(r.flashCanisters[0].parent,r.hip);
  const backpack={...p,equipmentInteraction:{...p.equipmentInteraction,
   location:'backpack',progress:.62}};
