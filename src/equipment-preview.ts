@@ -10,6 +10,8 @@ import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import type {FieldCarryLocation} from './equipment-field-inventory.ts';
 import {previewCarryFocus} from './equipment-preview-carry-focus.ts';
+import {inspectEquipmentMesh,measureEquipmentMesh,
+ type EquipmentInspectionTarget} from './equipment-visual-inspection.ts';
 import {equippedFlashCharges} from './equipment-loadouts.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
@@ -29,6 +31,13 @@ export class CampaignKitPreview{
  private rig:OperatorRig|null=null;
  private carryMarker:THREE.Mesh<THREE.RingGeometry,THREE.MeshBasicMaterial>|null=null;
  private selectedCarryLocation:FieldCarryLocation|null=null;
+ private selectedInspection:EquipmentInspectionTarget|null=null;
+ private inspectedMesh:THREE.Object3D|null=null;
+ private readonly inspectionBounds=new THREE.Box3();
+ private inspectionBox:THREE.Box3Helper|null=null;
+ private inspectionCenter:THREE.Vector3|null=null;
+ private inspectionSize:THREE.Vector3|null=null;
+ private currentEquipment:EquipmentLoadout|null=null;
  private observer:ResizeObserver|null=null;
  private azimuth=.72;
  private pointerId:number|null=null;
@@ -103,6 +112,7 @@ export class CampaignKitPreview{
   weaponConfiguration?:WeaponConfiguration,magazines:readonly MagazineItem[]=[],
   wardrobe?:WardrobeOptions):void{
   if(!this.rig)return;
+  this.currentEquipment=equipment;
   const placements=carryPlacementLedger(equipment,magazines);
   poseOperator(this.rig,{x:0,z:0,heading:0,velocity:0,seconds:0,
    stride:0,posture:'stand',injury:0,weapon,
@@ -115,13 +125,50 @@ export class CampaignKitPreview{
    utilityCarryLocation:placements.find(item=>item.kind==='utility')?.location,
    flashCharges:equippedFlashCharges(equipment),
    deterministic:true},0);
+  this.refreshInspection();
   this.draw();
  }
 
+ /** Resolve the actual visible mesh for one carried object. No proxy gear
+  * or inventory mutation; closed-pack contents explicitly remain concealed. */
+ inspectCarryItem(target:EquipmentInspectionTarget|null):void{
+  this.selectedInspection=target;
+  this.selectedCarryLocation=null;
+  if(this.carryMarker)this.carryMarker.visible=false;
+  delete this.host.dataset.carryHighlight;
+  this.refreshInspection();
+  if(target&&this.inspectedMesh)this.focusOn('carry',false);
+  this.draw();
+ }
+ private refreshInspection():void{
+  if(!this.rig||!this.currentEquipment)return;
+  this.inspectedMesh=this.selectedInspection?
+   inspectEquipmentMesh(this.rig,this.currentEquipment,this.selectedInspection):null;
+  const result=measureEquipmentMesh(this.inspectedMesh);
+  this.host.dataset.inspectedItem=this.selectedInspection?
+   (this.selectedInspection.id??this.selectedInspection.kind):'';
+  this.host.dataset.inspectionVisible=String(result.visible);
+  this.inspectionCenter=result.center??null;
+  this.inspectionSize=result.size??null;
+  if(result.center&&result.size){
+   this.inspectionBounds.setFromCenterAndSize(result.center,result.size);
+   if(!this.inspectionBox){
+    this.inspectionBox=new THREE.Box3Helper(this.inspectionBounds,0xc8efaf);
+    this.inspectionBox.name='preview-only-real-mesh-outline';
+    this.inspectionBox.renderOrder=1000;
+    this.scene.add(this.inspectionBox);
+   }
+   this.inspectionBox.visible=true;
+  }else if(this.inspectionBox)this.inspectionBox.visible=false;
+ }
  /** Highlight the actual operator carrying position; no new renderer, stock
   * write, item mesh, physics or perpetual animation loop is created. */
  highlightCarryLocation(location:FieldCarryLocation|null):void{
   if(!this.rig||!this.renderer)return;
+  this.selectedInspection=null;this.inspectedMesh=null;
+  this.inspectionCenter=null;this.inspectionSize=null;
+  if(this.inspectionBox)this.inspectionBox.visible=false;
+  delete this.host.dataset.inspectedItem;
   if(!location){
    this.selectedCarryLocation=null;
    if(this.carryMarker){this.carryMarker.visible=false;this.draw();}
@@ -165,6 +212,8 @@ export class CampaignKitPreview{
   this.dragFrame=null;this.pointerId=null;this.host=host;
   host.dataset.previewFocus=this.focusArea;
   if(this.selectedCarryLocation)host.dataset.carryHighlight=this.selectedCarryLocation;
+  if(this.selectedInspection)host.dataset.inspectedItem=
+   this.selectedInspection.id??this.selectedInspection.kind;
   else delete host.dataset.carryHighlight;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
@@ -304,9 +353,15 @@ export class CampaignKitPreview{
    this.camera.updateProjectionMatrix();
    this.renderedWidth=width;this.renderedHeight=height;
   }
-  this.camera.position.set(this.focusRadius*Math.cos(this.azimuth),
-   this.focusHeight+this.focusRise,this.focusRadius*Math.sin(this.azimuth));
-  this.camera.lookAt(0,this.focusHeight,0);
+  // Selected mesh, not a nearby carrier zone, becomes the orbit target.
+  const center=this.inspectionCenter;
+  const radius=center?Math.max(19,Math.min(48,
+   (this.inspectionSize?.length()??8)*2.35)):this.focusRadius;
+  this.camera.position.set((center?.x??0)+radius*Math.cos(this.azimuth),
+   center?center.y+radius*.38:this.focusHeight+this.focusRise,
+   (center?.z??0)+radius*Math.sin(this.azimuth));
+  this.camera.lookAt(center??new THREE.Vector3(0,this.focusHeight,0));
+  if(this.inspectionBox?.visible)this.inspectionBox.updateMatrixWorld(true);
   this.renderer.render(this.scene,this.camera);
  }
  dispose(){
@@ -328,6 +383,14 @@ export class CampaignKitPreview{
    this.carryMarker.material.dispose();this.carryMarker=null;
   }
   this.selectedCarryLocation=null;
+  this.selectedInspection=null;this.inspectedMesh=null;
+  this.currentEquipment=null;
+  if(this.inspectionBox){
+   this.inspectionBox.removeFromParent();
+   this.inspectionBox.geometry.dispose();
+   (this.inspectionBox.material as THREE.Material).dispose();
+   this.inspectionBox=null;
+  }
   if(this.rig){releaseOperatorPreviewRig(this.scene,this.rig);this.rig=null;}
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
