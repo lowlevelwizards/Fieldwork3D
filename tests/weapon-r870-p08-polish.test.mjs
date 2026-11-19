@@ -33,14 +33,17 @@ test('R870 P08 retains six authored selectable bodies, fixed tube, unchanged bal
  assert.ok(Math.abs(bound.max.x-R870_P07.muzzleX)<.03);
  }finally{model.dispose();}
 });
-test('R870 P08 insets right-only bolt, preserves fixed-feed presentation and six-facet barrels',()=>{
+test('R870 P10 reduces P08 micro-geometry while preserving right-only port and six-faced feed tubes',()=>{
  const model=create();try{
  const {g}=model;
  const ports=g.children.filter(x=>x.userData.r870RightEjectionPort);
- const bolts=g.children.filter(x=>x.userData.r870InsetBolt);
- assert.equal(ports.length,1);assert.equal(bolts.length,1);
- assert.ok(bolts[0].position.z>ports[0].position.z);
+ assert.equal(ports.length,1);
+ assert.equal(ports[0].userData.r870FlatPort,true);
  assert.ok(ports[0].position.z>0);
+ assert.equal(g.children.filter(x=>x.userData.r870InsetBolt).length,0,
+  'bolt and recessed micro-detail removed on purpose');
+ assert.equal(g.children.filter(x=>x.userData.r870ActionBar).length,0,
+  'unreadable receiver micro-lining removed');
  const mag=g.children.find(x=>x.userData.r870FixedTube);
  const barrel=g.children.find(x=>x.userData.r870Barrel);
  assert.equal(mag.geometry.parameters.radialSegments,6);
@@ -48,10 +51,7 @@ test('R870 P08 insets right-only bolt, preserves fixed-feed presentation and six
  assert.ok(Math.abs(mag.rotation.x-Math.PI/6)<.0001);
  assert.ok(Math.abs(barrel.rotation.x-Math.PI/6)<.0001);
  assert.ok(mag.position.y<barrel.position.y-1.3,
-  'fixed tube must be visibly lower than the barrel');
- assert.equal(g.children.filter(x=>x.userData.r870ActionBar).length,2);
- assert.ok(g.children.filter(x=>x.userData.r870ActionBar).every(x=>
-  x.name.startsWith('family-receiver-')));
+  'fixed tube remains below a separate heavy barrel');
  }finally{model.dispose();}
 });
 test('R870 P08 workbench mobile presentation keeps stats accessible while focusing weapon',()=>{
