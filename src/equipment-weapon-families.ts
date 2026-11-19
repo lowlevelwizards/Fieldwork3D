@@ -242,6 +242,7 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'r870-magpul-sga-grip':add('r870-magpul-sga-grip','Distinct SGA dropped polymer wrist','r870','grip',{receivers:['r870-police-receiver']}),
  'r870-short-wood-stock':add('r870-short-wood-stock','Short traditional wooden buttstock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.shortwood.stockX}),
  'r870-pistol-only':add('r870-pistol-only','Pistol grip only · no shoulder stock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.pistol.stockX}),
+ 'r870-mcs-skeletal-stock':add('r870-mcs-skeletal-stock','MCS-style skeletal shoulder stock · extended','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.mcs.stockX}),
  'r870-pistol-grip':add('r870-pistol-grip','Compact standalone polymer pistol grip','r870','grip',{receivers:['r870-police-receiver']}),
  'r870-birdshead-only':add('r870-birdshead-only','Birdshead grip only · no shoulder stock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.birdshead.stockX}),
  'r870-birdshead-grip':add('r870-birdshead-grip','Rear-swept birdshead grip','r870','grip',{receivers:['r870-police-receiver']}),
@@ -332,7 +333,10 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
   'r870-extended-tube','r870-magpul-mlok-pump','r870-18-bead'),
  p('r870-mcs-breacher','Remington 870 · MCS Breacher Style','shotgun','r870',
   'r870-police-receiver','r870-pistol-only','r870-pistol-grip',
-  'r870-mcs-mini-tube','r870-mcs-mini-pump','r870-10-bead')
+  'r870-mcs-mini-tube','r870-mcs-mini-pump','r870-10-bead'),
+ p('r870-mcs-cqb','Remington 870 · MCS CQB Style','shotgun','r870',
+  'r870-police-receiver','r870-mcs-skeletal-stock','r870-pistol-grip',
+  'r870-short-tube','r870-short-black-pump','r870-14-bead')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
