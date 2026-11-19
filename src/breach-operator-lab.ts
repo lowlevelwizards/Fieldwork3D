@@ -1745,9 +1745,9 @@ function draw(){
    const chosen=NPC_LAB_POSES.find(p=>p.id===npcSelect.value)!;
    const result=npcPreview.render(chosen.id,clock);
    npcStatus.textContent=result.label+' · '+chosen.description+
-    '\\nACTUAL POSE '+result.pose.toUpperCase()+
+    '\nACTUAL POSE '+result.pose.toUpperCase()+
     ' · '+result.model.toUpperCase()+' RIG'+
-    '\\nLab evidence/interaction timing only; no AI orders or weapon changes';
+    '\nLab evidence/interaction timing only; no AI orders or weapon changes';
    timeline.value=String(Math.round(clock*1000));
    timeOutput.textContent=clock.toFixed(2)+'s';
    diagnosticText.textContent='';
