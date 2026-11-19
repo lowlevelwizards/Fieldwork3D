@@ -6,7 +6,7 @@ export type CivilianPose=
  'compliant'|'restrained'|'injured'|'injured-walk'|'carried'|'dragged'|'down';
 export function civilianPose(c:Pick<CivilianActor,
  'health'|'injuryStage'|'state'|'velocity'|'activity'> &
- Partial<Pick<CivilianActor,'carriedById'|'transportMode'>>):CivilianPose{
+ Partial<Pick<CivilianActor,'carriedById'|'transportMode'|'restrained'>>):CivilianPose{
  if(c.carriedById)return c.transportMode==='carry'?'carried':'dragged';
  if(c.health<=0||c.injuryStage>=3||c.state==='incapacitated')return 'down';
  if(c.health<2||c.injuryStage>0||c.state==='wounded')
