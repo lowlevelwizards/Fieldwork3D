@@ -411,6 +411,7 @@ export function createTacticalPaletteController(config:{
         sessionWorldGeometry(state))):null;
   const civilianAtPlan=civilianContact('secure');
   const rescueAtPlan=civilianContact('follow');
+  const restraintAtPlan=a.restraintRemaining>0?civilianContact('restrain'):null;
   const suspectAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
       team(state).some(observer=>inSight(observer,e,state))&&
@@ -430,6 +431,8 @@ export function createTacticalPaletteController(config:{
     nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
     nearDoor:!door&&!!nearbyDoor,
     nearCivilian:!!civilianAtPlan,
+    nearRestrainableCivilian:!!restraintAtPlan,
+    restraintsRemaining:a.restraintRemaining,
     nearSuspect:!!suspectAtPlan,
     escortableCivilian:!!rescueAtPlan,
     nearCivilianCasualty:!!casualtyAtPlan,
