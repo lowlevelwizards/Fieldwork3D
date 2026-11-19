@@ -77,6 +77,8 @@ export type CivilianFrame=Pick<CivilianActor,
     stateSince?:number;restrained?:boolean;
     /** Civilian's own witnessed sensory direction, NEVER full enemy truth. */
     lastEvidenceAt?:number;threatEstimate?:Pt|null;
+    /** Newer films preserve witnessed gunshot flinch timing. */
+    lastFlinchAt?:number;
     visibleAtCapture?:boolean;
   };
 export type ReplayFrame={
@@ -213,7 +215,7 @@ export function snapshot(s:Session,seenGround?:string[],
       id:c.id,p:position(c.p),heading:c.heading,health:c.health,
       injuryStage:c.injuryStage,state:c.state,stateSince:c.stateSince,
       restrained:c.restrained===true,velocity:c.velocity,
-      lastEvidenceAt:c.lastEvidenceAt,
+      lastEvidenceAt:c.lastEvidenceAt,lastFlinchAt:c.lastFlinchAt??-100,
       threatEstimate:c.threatEstimate?position(c.threatEstimate):null,
       lastHitAt:c.lastHitAt,following:c.following,
       carriedById:c.carriedById,transportMode:c.transportMode,
@@ -522,6 +524,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       restrained:copy.restrained===true,
       // Never retain a present-day/omniscient gaze target on film rewind.
       lastEvidenceAt:copy.lastEvidenceAt??-1,
+      lastFlinchAt:copy.lastFlinchAt??-100,
       threatEstimate:copy.threatEstimate?position(copy.threatEstimate):null,
       carriedById:copy.carriedById??null,
       transportMode:copy.transportMode??null,
