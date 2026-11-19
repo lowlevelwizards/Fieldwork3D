@@ -3,7 +3,7 @@
  font:700 12px system-ui;letter-spacing:.06em;cursor:pointer;touch-action:manipulation}
 .fw-pre-go-backdrop{position:fixed;inset:0;z-index:9100;
  background:rgba(3,10,8,.85);display:grid;place-items:center;padding:12px}
-.fw-pre-go-backdrop[hidden]{display:none}
+.fw-pre-go-backdrop[hidden],.fw-pre-go-launch[hidden]{display:none}
 .fw-pre-go-panel{box-sizing:border-box;width:min(760px,100%);max-height:min(94dvh,920px);
  overflow:auto;overscroll-behavior:contain;border:1px solid #657e71;border-radius:13px;
  background:#182a25;color:#e8ece2;padding:clamp(12px,3vw,20px);
