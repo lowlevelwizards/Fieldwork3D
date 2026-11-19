@@ -94,6 +94,12 @@ for(const [seed,mission] of chosen){
       const snapshot={at:round(s.seconds),type,stage:s.mission,
         phase:s.phase,player:{p:{x:round(scout.p.x),y:round(scout.p.y)},
           hp:scout.health,heading:round(scout.heading),blockedTime:round(scout.blockedTime),
+          actionTimer:round(scout.actionTimer),velocity:round(scout.velocity),
+          routeAttempts:scout.recoveryAttempts,
+          nearbyDoors:s.doors.filter(d=>dist(scout.p,doorCenter(d))<110)
+            .map(d=>({id:d.id,open:d.open,
+              fraction:round(d.openFraction??0),locked:d.locked,
+              distance:round(dist(scout.p,doorCenter(d)))})),
           blocker:scout.lastBlocker,motorPause:scout.motorPause,
           failedOrders:scout.failedOrders,nav:scout.nav?.length,
           plan:cur?{id:cur.id,kind:cur.kind,p:cur.p,interaction:cur.interaction}:null},
@@ -260,6 +266,7 @@ for(const [seed,mission] of chosen){
     for(let tick=0;tick<tickFrames&&s.phase==='running';tick++){
       stepSession(s,1/30);
       totalTravel+=dist(scout.priorP,scout.p);
+      if(forensic&&tick%90===0)forensicCapture('sample');
       if(tick%6===0){
         film.capture(s);
         if(forensic)forensicCapture('tick');
