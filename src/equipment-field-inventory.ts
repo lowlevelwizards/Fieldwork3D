@@ -11,7 +11,7 @@ import {carryPlacementLedger} from './equipment-carry-placement.ts';
 export const FIELD_CARRY_LOCATIONS=['rig','belt','pocket','backpack'] as const;
 export type FieldCarryLocation=typeof FIELD_CARRY_LOCATIONS[number];
 export const FIELD_ITEM_IDS=[
- 'flashbang','wedge','smoke','frag','door-charge','chem-light'
+ 'flashbang','wedge','zip-tie','smoke','frag','door-charge','chem-light'
 ] as const;
 export type FieldItemId=typeof FIELD_ITEM_IDS[number];
 export type FieldItemDefinition={
@@ -27,6 +27,9 @@ export const FIELD_ITEMS:Readonly<Record<FieldItemId,FieldItemDefinition>>={
  wedge:{id:'wedge',name:'Door wedge',massKg:.14,spaces:1,
   maxPerOperator:4,locations:['rig','belt','pocket','backpack'],usable:true,
   description:'A physical wedge for a suitable door; requires the existing wedge tool capability.'},
+ 'zip-tie':{id:'zip-tie',name:'Flex cuffs · pair',massKg:.03,spaces:1,
+  maxPerOperator:6,locations:['rig','belt','pocket','backpack'],usable:true,
+  description:'One finite restraint. RESTRAIN uses an actual issued pair after physical SECURE.'},
  smoke:{id:'smoke',name:'Smoke grenade',massKg:.45,spaces:1,
   maxPerOperator:3,locations:['rig','belt','backpack'],usable:false,
   description:'Reserved for the future gameplay smoke effect; not yet available to equip.'},
