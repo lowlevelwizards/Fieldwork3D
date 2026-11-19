@@ -62,7 +62,7 @@ export type OperatorRig={
   armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
   rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
-  flashCanister:THREE.Mesh;utilityTool:THREE.Mesh;
+  flashCanister:THREE.Mesh;flashCanisters:THREE.Mesh[];utilityTool:THREE.Mesh;
   gloveCovers:THREE.Mesh[];gloveMaterial:THREE.MeshStandardMaterial;
   visualKit:OperatorVisualKit;
   poseCavity:OperatorPoseCavity;
@@ -329,6 +329,20 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   utilityTool.geometry=new THREE.BufferGeometry();
   flashCanister.geometry.dispose();
   flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
+  // Pooled physical canisters: at most four, no per-frame meshes or physics.
+  // They share the existing low-poly cylinder and non-unique materials.
+  const flashCapGeometry=new THREE.CylinderGeometry(1.43,1.43,.8,8);
+  const flashCanisters=[flashCanister];
+  for(let i=1;i<4;i++){
+    const canister=new THREE.Mesh(flashCanister.geometry,steel);
+    canister.name='fieldwork-carried-flash-'+i;
+    canister.castShadow=true;canister.receiveShadow=true;
+    canister.visible=false;hip.add(canister);
+    const cap=new THREE.Mesh(flashCapGeometry,boot);
+    cap.position.y=2.85;cap.castShadow=true;
+    canister.add(cap);
+    flashCanisters.push(canister);
+  }
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,baseTorso,feet,arms,
     {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
       dark:boot,skin,steel},headCanonicalFrame,lazyAccessories);
@@ -353,7 +367,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     bodycamChest,bodycamHelmet,
     reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
-    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,gloveMaterial,
+    medicalPouch,radioUnit,flashCanister,flashCanisters,utilityTool,gloveCovers,gloveMaterial,
     visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
