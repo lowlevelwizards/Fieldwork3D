@@ -137,9 +137,7 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
     }else if(pose==='injured'||pose==='seated'){
       rect(-5,-11,7,3,'#b9997e');rect(-5,8,7,3,'#b9997e');
     }else{
-      const swing=pose==='run'?
-        Math.sin(state.seconds*13+c.appearanceSeed)*3:
-        pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:
+      const swing=pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:
         pose==='injured-walk'?
           Math.sin(state.seconds*5+c.appearanceSeed)*.9:0;
       rect(-5+swing,-12,8,4,'#b9997e');
