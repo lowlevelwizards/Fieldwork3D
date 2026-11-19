@@ -1,5 +1,6 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {escortWalkMultiplier} from './breach-civilian-mission.ts';
+import {openingFootwork} from './breach-door-opening-footwork.ts';
 /** Stage 8: conditional locomotion, lasting WATCH/LOOK aim, PIE
  * progression and waypoint arrival. Motion is still delegated to the
  * authoritative Stage 7 physical motor.
@@ -198,6 +199,16 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     n.kind==='move'&&nearOccupiedFriendlyGoal(a.p,n.p,
       friendlyPeers,(from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,sessionWorldGeometry(s))));
   if(at&&retained)settledMoveTargets.delete(a);
+  // EQA3.2: an active DOOR order's short, physically swept swing-clear
+  // stance takes temporary precedence over its original handle waypoint.
+  // This movement handler runs BEFORE the door handler. Without the yield,
+  // both handlers alternately route back/forth; Retail14 FRONT/SERVICE
+  // never finish the retreat and their OPEN actionTimer stays at zero.
+  // Do not change authored plans, WAIT/LOOK, collision, or other doors.
+  if(n.kind==='door'&&n.doorId&&
+     (n.method==='open'||!n.method)&&
+     openingFootwork(a,n.doorId,n.id,'stance').target)
+    return false;
   if(!at&&(n.kind==='move'||n.kind==='door'||n.kind==='sync')&&
      !mayHandoffOpenedDoorOrder(n,a.p,s.doors)){
     // Running cancels WATCH rather than merely suspending it.
