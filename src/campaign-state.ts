@@ -318,9 +318,10 @@ export function readCampaign(raw:string|null):CampaignState|null{
     weaponConfiguration:config,
    armorCondition:normalizedArmorCondition((o as {armorCondition?:unknown}).armorCondition,
     readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon)),
-   fieldRestockLayout:sanitizedFieldRestockPreference(
-    (o as {fieldRestockLayout?:unknown}).fieldRestockLayout,
-    readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon)),
+   ...((o as {fieldRestockLayout?:unknown}).fieldRestockLayout!==undefined?
+    {fieldRestockLayout:sanitizedFieldRestockPreference(
+      (o as {fieldRestockLayout?:unknown}).fieldRestockLayout,
+      readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon))}:{ }),
    trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
    distinctions:Array.isArray(o.distinctions)?
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
