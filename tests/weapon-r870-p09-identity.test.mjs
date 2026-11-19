@@ -86,7 +86,7 @@ test('R870 P12 grip-first wood stock has seven-point extension and eleven-point 
 test('R870 P10 pump becomes a regular six-plane sleeve, not an inflated eight-face pillow',()=>{
  const {gun,dispose}=make();try{
   const pumps=tagged(gun,'r870PumpPart'),body=pumps.find(x=>x.userData.r870PumpSides);
-  assert.equal(pumps.length,9);assert.ok(body);
+  assert.equal(pumps.length,2);assert.ok(body);
   assert.equal(body.userData.r870PumpSides,6);
   assert.equal(body.userData.r870CorncobStations,4);
   const xyz=body.geometry.getAttribute('position').array;
@@ -99,7 +99,14 @@ test('R870 P10 pump becomes a regular six-plane sleeve, not an inflated eight-fa
    'rigid full-width section is constant from rear to front');
   assert.ok(sideWidth(3.08)>sideWidth(2.65)+.10);
   assert.ok(sideWidth(10.97)>sideWidth(11.50)+.10);
-  assert.ok(pumps.filter(x=>x!==body).every(x=>Math.abs(x.position.z)>2));
+  const groove=pumps.find(x=>x.userData.r870GrooveBatch);
+  assert.ok(groove);
+  assert.equal(groove.userData.r870GrooveCount,8);
+  assert.equal(groove.geometry.index.count/3,16,
+   'each groove has one front-facing quad, not six extruded faces');
+  const gxyz=groove.geometry.getAttribute('position').array;
+  for(let i=2;i<gxyz.length;i+=3)
+   assert.ok(Math.abs(gxyz[i])>2.03,'groove sits above six-sided pump flat');
   const contacts=riflePoseContacts('shotgun',config());
   assert.ok(contacts&&contacts.family==='r870');
   assert.equal(contacts.support.near.y,R870_P07.supportPalmY);
