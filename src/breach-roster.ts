@@ -12,6 +12,7 @@ import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
 import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
+import {quoteCarryGearChange,type CarryGearSlot} from './equipment-carry-gear-change.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
@@ -221,6 +222,18 @@ export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
  if(next===member.loadout)return roster;
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,loadout:next,magazines:stageMagazines(m.magazines,next)}:m)};
+}
+/** Explicit, single-commit carry gear swap used by live preparation UI.
+ * The legacy generic gear selector remains for other equipment slots.
+ */
+export function equipRosterCarryGear(roster:RosterState,id:string,
+ slot:CarryGearSlot,itemId:string):RosterState{
+ const member=roster.members.find(m=>m.id===id);
+ if(!member)return roster;
+ const quote=quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
+ if(!quote.ok)return roster;
+ return {...roster,members:roster.members.map(m=>m.id===id?
+  {...m,loadout:quote.kit,magazines:quote.magazines}:m)};
 }
 /** L2.1: atomically issue an operator's physical field kit.
  * The authoring UI validates capacity before calling this pathway.

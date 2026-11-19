@@ -3,7 +3,7 @@
  */
 import type {CampaignMode} from './breach-app-mode.ts';
 import type {Session} from './breach-game.ts';
-import {resupplyRoster,equipRoster,equipRosterGear,equipRosterFieldInventory,moveRosterMagazine,
+import {resupplyRoster,equipRoster,equipRosterGear,equipRosterCarryGear,equipRosterFieldInventory,moveRosterMagazine,
  configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
  renameRosterMember,type RosterState} from './breach-roster.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
@@ -24,6 +24,7 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
+import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
 import {initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
@@ -279,19 +280,41 @@ function renderOperationsBoard(){
     option.value=item.id;option.textContent=item.name;select.append(option);
    }
    select.value=member.loadout.slots[slot];
-   select.addEventListener('change',()=>{
-    if(config.getSession().phase!=='planning'||config.isReplaying())return;
-    config.setRoster(equipRosterGear(config.getRoster(),member.id,slot,select.value));
-    const saved=config.saveRoster();config.applyRoster();
-    if(saved){
-     const chosen=itemsForSlot(slot).find(item=>item.id===select.value);
-     showFieldworkActionFeedback(member.callsign+' · '+
-      (chosen?.name??slot.toUpperCase())+' EQUIPPED');
-    }
-    expandedQuickKit=member.id;renderOperationsBoard();config.refreshHud();
-   });
+   if(slot!=='rig'&&slot!=='belt'&&slot!=='backpack')
+    select.addEventListener('change',()=>{
+     if(config.getSession().phase!=='planning'||config.isReplaying())return;
+     const previous=config.getRoster();
+     const changed=equipRosterGear(previous,member.id,slot,select.value);
+     if(changed===previous)return;
+     config.setRoster(changed);
+     const saved=config.saveRoster();config.applyRoster();
+     if(saved){
+      const chosen=itemsForSlot(slot).find(item=>item.id===select.value);
+      showFieldworkActionFeedback(member.callsign+' · '+
+       (chosen?.name??slot.toUpperCase())+' EQUIPPED');
+     }
+     expandedQuickKit=member.id;renderOperationsBoard();config.refreshHud();
+    });
    row.className='fw-equipment-choice';
-   row.append(label,select);loadout.field(loadoutGroupForSlot(slot)).append(row);
+   row.append(label,select);
+   const container=document.createElement('div');container.className='fw-carry-gear-choice';
+   container.append(row);
+   if(slot==='rig'||slot==='belt'||slot==='backpack')
+    attachCarryGearChangePreview({
+     select,host:container,slot,kit:member.loadout,magazines:member.magazines,
+     onInspect:where=>quickKitPreview?.highlightCarryLocation(where),
+     onApply:itemId=>{
+      if(config.getSession().phase!=='planning'||config.isReplaying())return;
+      const prior=config.getRoster();
+      const changed=equipRosterCarryGear(prior,member.id,slot,itemId);
+      if(changed===prior){showFieldworkActionFeedback('CARRY CHANGE REJECTED · RECHECK CAPACITY');return;}
+      config.setRoster(changed);config.saveRoster();config.applyRoster();
+      expandedQuickKit=member.id;renderOperationsBoard();config.refreshHud();
+      showFieldworkActionFeedback(member.callsign+' · '+(itemsForSlot(slot)
+       .find(item=>item.id===itemId)?.name??slot.toUpperCase())+' EQUIPPED');
+     }
+    });
+   loadout.field(loadoutGroupForSlot(slot)).append(container);
   }
   const fieldHost=loadout.field('utilities');
   const renderField=(current:typeof member)=>{

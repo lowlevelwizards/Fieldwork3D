@@ -28,6 +28,7 @@ import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
 import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
+import {quoteCarryGearChange,type CarryGearSlot} from './equipment-carry-gear-change.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
@@ -699,6 +700,19 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
   armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
 }
 
+/** Campaign carry gear change is a single validated kit + magazine update.
+ * Existing inventory, content eligibility and contract locks remain final.
+ */
+export function equipCampaignCarryGear(c:CampaignState,id:string,
+ slot:CarryGearSlot,itemId:string):CampaignState{
+ if(c.activeContractId||!mayChooseCampaignContent(c,'equipment',itemId,slot))return c;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!member)return c;
+ const quote=quoteCarryGearChange(member.loadout,member.magazines,slot,itemId);
+ if(!quote.ok)return c;
+ return {...c,operators:c.operators.map(o=>o.id===id?
+  {...o,loadout:quote.kit,magazines:quote.magazines}:o)};
+}
 /** L2.3: stock- and capacity-aware pre-mission field item issuance.
  * Prepared kit allocations are a reservation, not a purchase or stock debit.
  */

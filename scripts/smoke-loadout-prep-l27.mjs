@@ -161,6 +161,31 @@ try{
   assert.equal(await magazineDemo.locator(
    '.fw-field-inventory-slot[data-location="rig"] [data-magazine-id="'+magId+'"]').count(),0);
 
+  const gear=page.locator('#carryGearSwapSmoke');
+  const rigSelect=gear.getByRole('combobox',{name:'Rig change preview witness'});
+  assert.equal(await gear.locator('[data-role="current-rig"]').innerText(),'rig-light');
+  await rigSelect.selectOption('rig-none');
+  assert.equal(await gear.locator('[data-role="current-rig"]').innerText(),'rig-light',
+   'selecting new rig only previews; no premature save');
+  assert.equal(await rigSelect.inputValue(),'rig-light',
+   'native selector resets to committed gear until APPLY');
+  const forecast=gear.getByRole('region',{name:'Carry gear change preview'});
+  assert.equal(await forecast.isVisible(),true);
+  assert.match(await forecast.innerText(),/CAPACITY|CARRY/i);
+  await forecast.getByRole('button',{name:'KEEP CURRENT GEAR'}).click();
+  assert.equal(await forecast.isVisible(),false,'cancel makes no inventory changes');
+  await rigSelect.selectOption('rig-none');
+  assert.equal(await forecast.getByRole('button',{name:'APPLY GEAR CHANGE'}).isEnabled(),
+   true,'fitted gear change can be explicitly applied');
+  await forecast.getByRole('button',{name:'APPLY GEAR CHANGE'}).click();
+  assert.equal(await gear.locator('[data-role="current-rig"]').innerText(),'rig-none',
+   'roster authority commits changed carrier after confirmation');
+  const blocked=page.locator('#carryGearBlockedSmoke');
+  await blocked.getByRole('combobox',{name:'Blocked rig change witness'}).selectOption('rig-none');
+  const denied=blocked.getByRole('region',{name:'Carry gear change preview'});
+  assert.equal(await denied.getByRole('button',{name:'APPLY GEAR CHANGE'}).isDisabled(),
+   true,'cannot apply a rig change with no compatible carrying space');
+  assert.match(await denied.innerText(),/CANNOT EQUIP/);
   await page.evaluate(()=>window.loadoutPrepSmoke.stop());
   await launch.click();
   assert.equal(await panel.isVisible(),false,'cannot re-enter equipment prep after GO');
