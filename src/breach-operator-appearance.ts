@@ -2,7 +2,7 @@
  * Caches only appearance fingerprints; never solves motion, fires, moves actors
  * or updates replay/simulation state.
  */
-import type {OperatorRig} from './breach-operator-rig.ts';
+import {ensureRigFlashCanisters,type OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {visibleFlashCanisters,flashCanisterSocket} from './equipment-field-visuals.ts';
 import * as THREE from 'three';
@@ -186,6 +186,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   // Use the simulation's remaining charges during play and the authored
   // inventory in previews. No new render geometry is allocated per pose.
   const visibleFlashes=visibleFlashCanisters(p.equipment,p.flashCharges);
+  ensureRigFlashCanisters(r,visibleFlashes.length);
   const legacySmoke=gear?.tactical==='tactical-smoke'&&
     visibleFlashes.length===0&&p.equipment?.fieldInventory===undefined;
   r.flashCanisters.forEach((canister,i)=>{
