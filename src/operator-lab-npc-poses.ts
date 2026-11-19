@@ -286,6 +286,10 @@ export class NpcLabPreview{
    this.scene.add(this.hostileDisplay);
   }
   const state=sampleNpcHostile(id,clock);
+  // The hostile shares the SAME absolute foot-contact coordinates as
+  // the motion sample. Keep its rig motor root at that position before
+  // IK, then camera-lock only the outer preview parent.
+  this.hostile.root.position.set(state.pose.x,0,state.pose.z);
   // The same single-rig blend used for civilians also covers hostile
   // reaction-track switching. A rewind of the same track remains exact.
   poseOperator(this.hostile,{...state.pose,replayFeet:feet,
