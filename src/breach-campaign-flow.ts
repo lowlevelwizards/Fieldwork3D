@@ -39,6 +39,8 @@ import {confirmFieldworkAction,showFieldworkNotice} from './ui/fieldwork-control
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
 import {mountCampaignPreGoPrep} from './ui/campaign-pre-go-prep.ts';
 import type {FieldInventory} from './equipment-field-inventory.ts';
+import {captureMissionFieldInventory}
+ from './equipment-mission-field-reconciliation.ts';
 import type {IntelMode} from './breach-intel.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {Session} from './breach-game.ts';
@@ -105,6 +107,12 @@ function recordCompletedOperation(){
     evacuatedIds:stats.evacuatedCasualties.map(careerId),
     medicalRemaining:Object.fromEntries(members.map(a=>[
      careerId(a.id),{...a.medicalSupplies}])),
+    // Report the actual detached live carriers, keyed by authoritative career
+    // identities (tactical slots may be mapped to different recruits).
+    fieldRemaining:Object.fromEntries(members.flatMap(a=>{
+     const remaining=captureMissionFieldInventory(a.equipment);
+     return remaining?[[careerId(a.id),remaining]]:[];
+    })),
     objective:stats.objective,
     flashUsed:state.battleEvents.filter(e=>e.kind==='flash'&&
      e.actor!==undefined&&e.text.endsWith('FLASH OUT')).length,
