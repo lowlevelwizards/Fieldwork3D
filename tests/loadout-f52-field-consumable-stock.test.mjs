@@ -134,9 +134,12 @@ test('F5.2 custom kit and presets cannot mint wedges or cuffs',()=>{
  const empty={...cleared,supplies:{...cleared.supplies,cuffs:0}};
  assert.equal(applyCampaignKitPreset(empty,'rook',preset.id),empty);
  // Enabling wedge tool has to debit the actual two inserted wedges.
- const geared=equipCampaignGear(newCampaign(820),'rook','utility','utility-wedge');
- if(geared!==newCampaign(820))
-  assert.equal(geared.supplies.wedges,6);
+ const initial=newCampaign(820);
+ const geared=equipCampaignGear(initial,'rook','utility','utility-wedge');
+ if(geared!==initial)
+  assert.equal(geared.supplies.wedges,initial.supplies.wedges-2);
+ else assert.equal(initial.supplies.wedges,8,
+  'an inability to fit the tool cannot spend inventory');
 });
 test('F5.2 UI wiring: reserve source, individual and squad quote, no free bypass',()=>{
  const src=p=>readFileSync(new URL('../'+p,import.meta.url),'utf8');
