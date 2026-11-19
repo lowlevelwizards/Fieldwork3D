@@ -1,0 +1,42 @@
+name: EQA3.16J — Operator Lab NPC animations critical
+on:
+  push:
+    branches: [feature/eqa3-16j-operator-lab-npc-library-20261119]
+    paths:
+      - 'src/operator-lab-npc-poses.ts'
+      - 'src/breach-operator-lab.ts'
+      - 'operator-lab.html'
+      - 'tests/eqa3-16j-npc-lab.test.mjs'
+      - 'scripts/smoke-eqa3-16j-npc-lab.mjs'
+      - '.github/workflows/eqa3-16j-operator-lab-npcs.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  npc-library:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript and authored NPC rig/pose contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-16j-npc-lab.test.mjs \
+            tests/eqa3-16g-defensive-gestures.test.mjs \
+            tests/eqa3-9-civilian-animation.test.mjs
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Actual mobile Operator Lab 3D NPC preview acceptance
+        run: node scripts/smoke-eqa3-16j-npc-lab.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: eqa3-16j-operator-lab-npc-3d
+          path: artifacts/eqa3-16j/
+          if-no-files-found: ignore
+          retention-days: 14
