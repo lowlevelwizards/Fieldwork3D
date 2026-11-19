@@ -7,6 +7,7 @@ on:
       - feature/loadout-prep-l2-11-tap-place-20261118
       - feature/loadout-prep-l2-11-feedback-mobile-20261118
       - feature/loadout-prep-l2-12-magazine-interaction-20261118
+      - feature/loadout-l212-c3-c4-gear-20261119
     paths:
       - 'src/ui/campaign-pre-go-prep.ts'
       - 'src/ui/campaign-pre-go-prep.css'
@@ -18,6 +19,7 @@ on:
       - 'loadout-prep-visual-smoke.html'
       - 'scripts/loadout-prep-visual-smoke.ts'
       - 'scripts/smoke-loadout-prep-l27.mjs'
+      - 'src/ui/carry-gear-change-controls.ts'
       - '.github/workflows/loadout-prep-l27-browser.yml'
   pull_request:
     paths:

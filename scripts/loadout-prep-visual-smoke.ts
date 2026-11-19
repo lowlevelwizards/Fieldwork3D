@@ -3,7 +3,9 @@ import {newCampaign,acceptContract,equipCampaignPreGoFieldInventory}
  from '../src/campaign-state.ts';
 import {mountCampaignPreGoPrep} from '../src/ui/campaign-pre-go-prep.ts';
 import type {FieldInventory} from '../src/equipment-field-inventory.ts';
-import {initialRoster,moveRosterMagazine} from '../src/breach-roster.ts';
+import {initialRoster,moveRosterMagazine,equipRosterCarryGear} from '../src/breach-roster.ts';
+import {attachCarryGearChangePreview} from '../src/ui/carry-gear-change-controls.ts';
+import {setEquipmentChoice} from '../src/equipment-loadouts.ts';
 import {createFieldGadgetEditor} from '../src/ui/field-gadget-editor.ts';
 let campaign=newCampaign(73);
 campaign=acceptContract(campaign,campaign.contracts[0].id);
@@ -45,4 +47,52 @@ const renderMagazineEditor=()=>{
  }));
 };
 renderMagazineEditor();
+// L2.12C3–C4: real interactive gear-change smoke, not a shipping flow.
+let carryRoster=initialRoster();
+const carryHost=document.createElement('section');
+carryHost.id='carryGearSwapSmoke';carryHost.style.cssText=
+ 'max-width:720px;margin:12px auto;min-width:0';
+document.body.append(carryHost);
+const renderCarry=()=>{
+ const operator=carryRoster.members[0];
+ carryHost.replaceChildren();
+ const current=document.createElement('output');current.dataset.role='current-rig';
+ current.textContent=operator.loadout.slots.rig;carryHost.append(current);
+ const selector=document.createElement('select');
+ selector.setAttribute('aria-label','Rig change preview witness');
+ for(const [id,name] of [['rig-light','Light Chest Rig'],
+  ['rig-none','No Chest Rig'],['rig-full','Field Webbing']]){
+  const opt=document.createElement('option');opt.value=id;opt.textContent=name;
+  selector.append(opt);
+ }
+ selector.value=operator.loadout.slots.rig;carryHost.append(selector);
+ attachCarryGearChangePreview({
+  select:selector,host:carryHost,slot:'rig',kit:operator.loadout,
+  magazines:operator.magazines,
+  onApply:item=>{
+   const next=equipRosterCarryGear(carryRoster,operator.id,'rig',item);
+   if(next===carryRoster)throw Error('Owner rejected quoted carry change');
+   carryRoster=next;renderCarry();
+  }
+ });
+};
+renderCarry();
+const blockedHost=document.createElement('section');
+blockedHost.id='carryGearBlockedSmoke';blockedHost.style.cssText=
+ 'max-width:720px;margin:12px auto;min-width:0';
+document.body.append(blockedHost);
+const cramped=carryRoster.members[0];
+let crampedKit=setEquipmentChoice(cramped.loadout,'backpack','backpack-none');
+crampedKit=setEquipmentChoice(crampedKit,'belt','belt-none');
+const denied=document.createElement('select');
+denied.setAttribute('aria-label','Blocked rig change witness');
+for(const item of ['rig-light','rig-none']){
+ const option=document.createElement('option');option.value=item;
+ option.textContent=item;denied.append(option);
+}
+denied.value='rig-light';blockedHost.append(denied);
+attachCarryGearChangePreview({select:denied,host:blockedHost,slot:'rig',
+ kit:crampedKit,magazines:cramped.magazines,
+ onApply:()=>{throw Error('Blocked physical change was committed')}
+});
 document.documentElement.dataset.loadoutPrepReady='1';
