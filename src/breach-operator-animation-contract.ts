@@ -80,7 +80,7 @@ export type OperatorPose={
   gait?:'walk'|'run'|'pie'|'squeeze';
   /** 0-1 motor-owned vault phase, also restored during replay. */
   traversalProgress?:number;
-  equipment?:EquipmentLoadout;flashCharges?:number;
+  equipment?:EquipmentLoadout;flashCharges?:number;wedgeRemaining?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
   magazineCarryLocations?:readonly CarryLocation[];
   /** Simulation-owned IDs and actual stowage, used for V4 handoff ONLY. */
