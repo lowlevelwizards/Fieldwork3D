@@ -12,6 +12,7 @@ import {initialFieldInventory,type FieldInventory} from '../equipment-field-inve
 import {FieldInventoryUndoHistory} from '../equipment-field-undo.ts';
 import {createFieldGadgetEditor} from './field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './loadout-squad-rail.ts';
+import {CampaignKitPreview} from '../equipment-preview.ts';
 import './quick-play-configurator.css';
 
 const STORAGE_KEY='fieldwork.quickplay.generator.v1';
@@ -192,6 +193,11 @@ export function createQuickPlayConfigurator(options:{
  const squadContent=node('div','fw-quick-config-advanced-content');
  let selectedSquadMember:string|null=null;
  const fieldUndo=new FieldInventoryUndoHistory();
+ let squadPreview:CampaignKitPreview|null=null;
+ let squadPreviewId:string|null=null;
+ const disposeSquadPreview=()=>{
+  squadPreview?.dispose();squadPreview=null;squadPreviewId=null;
+ };
  const renderSquadPrep=()=>{
   if(!options.getRoster||!options.onEquipField)return;
   const members=options.getRoster().members;
@@ -205,6 +211,21 @@ export function createQuickPlayConfigurator(options:{
   const hint=node('p','fw-quick-config-intro',
    'Ready this squad before generating a mission. Changes apply to the next Quick Play operation.');
   squadContent.append(hint);
+  const previewHost=node('div','fw-prep-operator-viewer fw-quick-config-operator-preview');
+  previewHost.setAttribute('aria-label','Rotatable 3D Quick Play operator equipment');
+  squadContent.append(previewHost);
+  if(squadPreview&&squadPreviewId!==selected.id)disposeSquadPreview();
+  if(!squadPreview){
+   squadPreview=new CampaignKitPreview(previewHost,selected.id,selected.weapon,
+    selected.appearanceSeed,selected.loadout,selected.weaponConfiguration,
+    selected.magazines,selected.wardrobe,'carry');
+   squadPreviewId=selected.id;
+  }else{
+   squadPreview.attachHost(previewHost,false);
+   squadPreview.updateEquipment(selected.weapon,selected.appearanceSeed,
+    selected.loadout,selected.weaponConfiguration,selected.magazines,
+    selected.wardrobe);
+  }
   const gadgetHost=node('div','fw-quick-config-field-gear');
   squadContent.append(gadgetHost);
   const renderGadgets=(operator:typeof selected)=>{
@@ -222,6 +243,7 @@ export function createQuickPlayConfigurator(options:{
    };
    gadgetHost.replaceChildren(createFieldGadgetEditor({
     loadout:operator.loadout,magazines:operator.magazines,
+     onInspectLocation:location=>squadPreview?.highlightCarryLocation(location),
     copyTargets:(options.getRoster?.().members??[]).filter(m=>m.id!==operator.id)
      .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
     onCopy:(targetId,inventory)=>{
@@ -234,7 +256,12 @@ export function createQuickPlayConfigurator(options:{
       operator.loadout.fieldInventory??initialFieldInventory(operator.loadout));
      if(previous&&applyChange(operator.id,previous,true)){
       const changed=options.getRoster?.().members.find(m=>m.id===operator.id);
-      if(changed)renderGadgets(changed);
+      if(changed){
+        renderGadgets(changed);
+        squadPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+         changed.loadout,changed.weaponConfiguration,changed.magazines,
+         changed.wardrobe);
+       }
      }
     },
     onCommit:inventory=>{
@@ -244,6 +271,9 @@ export function createQuickPlayConfigurator(options:{
      const changed=options.getRoster?.().members.find(m=>m.id===operator.id);
      if(!changed)return;
      renderGadgets(changed);
+      squadPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+       changed.loadout,changed.weaponConfiguration,changed.magazines,
+       changed.wardrobe);
      if(prior){
       const target=Array.from(gadgetHost.querySelectorAll<HTMLElement>(
        'button[aria-label],select[aria-label]')).find(el=>
@@ -258,7 +288,8 @@ export function createQuickPlayConfigurator(options:{
  };
  squadPrep.append(squadLabel,squadContent);
  squadPrep.addEventListener('toggle',()=>{
-  if(squadPrep.open)renderSquadPrep();
+  if(squadPrep.open&&!backdrop.hidden)renderSquadPrep();
+   else disposeSquadPreview();
  });
  const summary=node('p','fw-quick-config-summary');
  const error=node('p','fw-quick-config-error');error.setAttribute('role','status');
@@ -328,6 +359,7 @@ export function createQuickPlayConfigurator(options:{
   objectiveIntel.select.value=settings.objectiveIntel;update();
  }
  function hide(returnFocus=true){
+   disposeSquadPreview();
   backdrop.hidden=true;
   options.onVisibilityChange?.(false);
   if(returnFocus&&previouslyFocused?.isConnected&&!previouslyFocused.hidden)
@@ -343,6 +375,7 @@ export function createQuickPlayConfigurator(options:{
  return {
   open(){previouslyFocused=document.activeElement instanceof HTMLElement?
      document.activeElement:null;backdrop.hidden=false;
+     if(squadPrep.open)renderSquadPrep();
      options.onVisibilityChange?.(true);close.focus();},
   close:hide,
   get isOpen(){return !backdrop.hidden;},
