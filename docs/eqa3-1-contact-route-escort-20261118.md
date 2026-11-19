@@ -36,3 +36,11 @@ https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44421858611
 - The FOLLOW-heading correction has its own 90-second real Townhouse/Warehouse matched witness and refreshed integration regression gate; interpret final results before merge.
 - No claim that a single scripted scout is a complete four-person player-controlled mission, and no rendered/iPhone performance acceptance yet.
 - Do not merge or deploy simply because this stage compiles; group with other compatible EQA3 fixes at a deliberate release checkpoint and verify Pages afterward.
+
+## FINAL release-checkpoint evidence — 108-unit soft leash
+
+- [Final full gate](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44427056943): **23/23 focused physical, actor/civilian, door and rescue tests passed**; TypeScript check, production bundle and exact 90-second Retail25, Townhouse23 and Warehouse17 scenario corpus all passed.
+- The added long-duration unopposed `newSession` real rescue test runs the actual 60Hz fixed-step world, follows a planned real physical route, **requires `phase==='won'` and `mission==='done'`**, requires the actual rescue civilian inside the 37-unit extraction footprint, and denies any FOLLOW separation over the original 125-unit threshold.
+- [Actual final 90-second paired Townhouse/Warehouse trace](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44422998177): Townhouse 23 SERVICE entered FOLLOW at 9.63s. The subsequent run ended at 17.63s with the civilian **still escorted**, `following=rook`, custody holder `rook`, measured separation **110.42** units. **No separation reported** before this run ended; mission **not** completed, so this does not prove survival in hostile live rescue. This compares with original physical custody loss at 15.83s (129.13 units). Warehouse 17 RESCUE continued to show real gunfire-induced civilian incapacitation, a distinct and deliberately unfixed outcome.
+- No blanket AI awareness changes, no relocation/spawning of defenders, no automatic civilian recovery, no geometry bypass, no autonomous forced custody reattachment. Explicit sprint may still break real separation by design.
+- This is still an **isolated draft PR**, not included in public Pages until the next approved integration batch; full player-controlled 4-person/iOS tactile confirmation remains outstanding.
