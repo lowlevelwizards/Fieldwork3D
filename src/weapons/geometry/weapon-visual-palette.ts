@@ -23,6 +23,7 @@ export const HK_BLACK_METAL=weaponFinish('hk-steel');
 export const HK_DARK_POLYMER=weaponFinish('hk-polymer');
 export const HK_OLIVE_POLYMER=weaponFinish('hk-olive-polymer');
 export const HK_WOOD=weaponFinish('hk-wood');
+export const R870_WALNUT_GROOVE=weaponFinish('r870-walnut-groove');
 export const HK_MAG_METAL=weaponFinish('hk-mag-steel');
 export const HK556_MAG_METAL=weaponFinish('hk556-mag-steel');
 export const HK9_MAG_METAL=weaponFinish('hk9-mag-steel');
