@@ -1775,3 +1775,35 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   padding:12px;
  }
 }
+
+
+/* UX-L3 — optional floating LIVE preview for touch equipment placement.
+ * One canvas and one rig: CSS relocates the existing render host, rather than
+ * allocating a second WebGL context or replacing the preview model. */
+.campaign-armory-screen .campaign-kit-preview-dock-toggle{
+ min-height:44px;margin:0;font-size:11px;
+ border-color:#87a18c;background:#304a3c;
+}
+@media(max-width:620px){
+ .campaign-armory-screen[data-preview-docked="true"]:not([data-kit-workspace="readiness"]){
+  padding-bottom:210px;
+ }
+ .campaign-armory-screen[data-preview-docked="true"]:not([data-kit-workspace="readiness"])
+  .campaign-kit-preview{
+  position:fixed;z-index:150;right:12px;
+  bottom:calc(env(safe-area-inset-bottom) + 54px);
+  width:min(225px,57vw);height:180px;min-height:180px;
+  border:2px solid #b6cba9;border-radius:12px;
+  box-shadow:0 8px 25px #000a;
+ }
+ .campaign-armory-screen[data-preview-docked="true"]:not([data-kit-workspace="readiness"])
+  .campaign-kit-preview-dock-toggle{
+  position:fixed;z-index:151;right:12px;
+  bottom:calc(env(safe-area-inset-bottom) + 8px);
+  width:min(225px,57vw);min-height:42px;
+  padding:8px 5px;border-radius:7px;
+  background:#c3d2b2;color:#13241d;
+ }
+}
+/* Keep a pinned preview entirely opt-in; touch scrolling and placement
+ * remain available when the user closes it. */
