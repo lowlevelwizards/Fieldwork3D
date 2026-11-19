@@ -46,6 +46,8 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
+import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
+import type {CarryGearSlot} from './equipment-carry-gear-change.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {fieldQuantity,initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
@@ -72,6 +74,7 @@ export type CampaignHandlers={
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ equipCarryGear:(id:string,slot:CarryGearSlot,itemId:string)=>void;
  equipFieldInventory:(id:string,inventory:FieldInventory)=>void;
  copyFieldInventory:(sourceId:string,targetId:string)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
@@ -1634,8 +1637,9 @@ export class CampaignScreen{
      select.append(option);
     }
     select.value=person.loadout.slots[slot];
-    select.addEventListener('change',()=>this.handlers.equipGear(
-     id,slot,select.value));
+    if(slot!=='rig'&&slot!=='belt'&&slot!=='backpack')
+     select.addEventListener('change',()=>this.handlers.equipGear(
+      id,slot,select.value));
    }
    select.disabled=locked;
    select.classList.add('campaign-kit-native-select');
@@ -1651,6 +1655,12 @@ export class CampaignScreen{
    const info=node('small','campaign-kit-description',selected?.description??'');
    const wrap=node('div','campaign-kit-choice');
    wrap.append(row,info);
+   if(slot==='rig'||slot==='belt'||slot==='backpack')
+    attachCarryGearChangePreview({
+     select,host:wrap,slot,kit:person.loadout,magazines:person.magazines,
+     onInspect:where=>this.preview?.highlightCarryLocation(where),
+     onApply:itemId=>this.handlers.equipCarryGear(id,slot,itemId)
+    });
    if(changedSlots.includes(slot)){
     wrap.dataset.changed='true';
     wrap.setAttribute('aria-label',slot.replace(/-/g,' ')+' changed');
