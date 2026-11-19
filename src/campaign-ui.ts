@@ -47,6 +47,9 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
+import {CarryKitUndoHistory,captureCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
+import {quoteCarryGearChange} from './equipment-carry-gear-change.ts';
+import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
 import type {CarryGearSlot} from './equipment-carry-gear-change.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
@@ -75,6 +78,7 @@ export type CampaignHandlers={
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  equipCarryGear:(id:string,slot:CarryGearSlot,itemId:string)=>void;
+ undoCarryGear:(id:string,expected:CarryUndoSnapshot,before:CarryUndoSnapshot)=>void;
  equipFieldInventory:(id:string,inventory:FieldInventory)=>void;
  copyFieldInventory:(sourceId:string,targetId:string)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
@@ -123,6 +127,7 @@ export class CampaignScreen{
  private activeKitGroup:QuickLoadoutGroup='weapon';
  private showKitPresets=false;
  private readonly fieldUndo=new FieldInventoryUndoHistory();
+ private readonly carryUndo=new CarryKitUndoHistory();
  /** Focus after authorized one-piece placement, never persisted. */
  private pendingKitFocusLabel:string|null=null;
  /** Snapshot of successfully rendered Campaign equipment; never a pending draft. */
@@ -1659,7 +1664,13 @@ export class CampaignScreen{
     attachCarryGearChangePreview({
      select,host:wrap,slot,kit:person.loadout,magazines:person.magazines,
      onInspect:where=>this.preview?.highlightCarryLocation(where),
-     onApply:itemId=>this.handlers.equipCarryGear(id,slot,itemId)
+     onApply:itemId=>{
+      const quote=quoteCarryGearChange(person.loadout,person.magazines,slot,itemId);
+      if(!quote.ok)return;
+      this.carryUndo.record(id,captureCarryUndo(person.loadout,person.magazines),
+       captureCarryUndo(quote.kit,quote.magazines));
+      this.handlers.equipCarryGear(id,slot,itemId);
+     }
     });
    if(changedSlots.includes(slot)){
     wrap.dataset.changed='true';
@@ -1667,6 +1678,17 @@ export class CampaignScreen{
    }
    grouped.field(loadoutGroupForSlot(slot)).append(wrap);
   }
+  const carryUndoButton=button('UNDO LAST CARRY MOVE',()=>{
+   const expected=captureCarryUndo(person.loadout,person.magazines);
+   const undo=this.carryUndo.peek(id,expected);
+   if(!undo.ok)return;
+   this.carryUndo.clear(id);
+   this.handlers.undoCarryGear(id,expected,undo.restore);
+  },'fw-carry-undo-action');
+  carryUndoButton.setAttribute('aria-label','Undo last physical carry move');
+  carryUndoButton.disabled=locked||!this.carryUndo.peek(id,
+   captureCarryUndo(person.loadout,person.magazines)).ok;
+  grouped.field('carry').append(carryUndoButton);
   const squadFlashReserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
    .reduce((count,o)=>count+fieldQuantity(
     o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
@@ -1674,6 +1696,10 @@ export class CampaignScreen{
    loadout:person.loadout,magazines:person.magazines,locked,
    onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
    onMoveMagazine:(magazineId,to,focusLabel)=>{
+    const quote=quoteOneMagazineMove(person.loadout,person.magazines,magazineId,to);
+    if(!quote.ok||!quote.changed)return;
+    this.carryUndo.record(id,captureCarryUndo(person.loadout,person.magazines),
+     captureCarryUndo(person.loadout,quote.magazines));
     this.pendingKitFocusLabel=focusLabel??null;
     this.handlers.moveMagazine(id,magazineId,to);
    },

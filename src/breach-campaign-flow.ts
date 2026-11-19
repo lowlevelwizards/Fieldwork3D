@@ -7,6 +7,7 @@ import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
 import {fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 import {stageMagazines} from './equipment-magazine-placement.ts';
+import {undoCampaignCarryGear} from './campaign-state.ts';
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
@@ -314,6 +315,8 @@ const campaignScreen=new CampaignScreen({
   c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
  equipCarryGear:(id,slot,itemId)=>applyVisibleCampaignAction(
   c=>equipCampaignCarryGear(c,id,slot,itemId),'Carrying equipment updated'),
+ undoCarryGear:(id,expected,before)=>applyVisibleCampaignAction(
+  c=>undoCampaignCarryGear(c,id,expected,before),'Physical carry change undone'),
  equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(current=>{
   if(current.activeContractId)return current;
   const preset=familyPreset(presetId);

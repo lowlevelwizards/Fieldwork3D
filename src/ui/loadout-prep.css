@@ -193,3 +193,9 @@
 .fw-field-inventory-blocker[hidden]{display:none}
 .fw-field-inventory-slot[data-place-status="blocked"]{
  background:rgba(117,65,48,.13)}
+
+/* L2.12E1: bounded one-step carry undo, distinct from gadget quantity undo. */
+.fw-carry-undo-action{min-height:44px;padding:8px 12px;margin:7px 0;
+ border-radius:7px;border:1px solid #738d7c;background:#2c483a;
+ color:#ecf1e7;font-size:11px;cursor:pointer;touch-action:manipulation}
+.fw-carry-undo-action:disabled{opacity:.4;cursor:not-allowed}
