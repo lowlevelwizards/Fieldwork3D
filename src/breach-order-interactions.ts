@@ -142,6 +142,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         if(a.actionTimer<1.15)return true;
         a.restraintRemaining--;
         person.restrained=true;
+        // Successful real hand contact, not an inferred distant NPC look.
+        person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
         a.lastCivilianContactAt=s.seconds;
         notify(s,a.name+' RESTRAINED CIVILIAN · FLEX CUFFS '+a.restraintRemaining);
         clearCurrentOrderIssue(a);pop(a);return true;
@@ -160,6 +162,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         }
         person.following=a.id;
         s.rescue.following=a.id;s.rescue.p=clone(person.p);
+        person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
         notify(s,a.name+' ESCORTING PERSON');
       }else{
         if(!setCivilianState(person,'compliant',s.seconds)){
@@ -167,6 +170,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         }
         person.following=null;
         if(person.rescueTarget&&s.rescue)s.rescue.following=null;
+        person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
         notify(s,a.name+' SECURED CIVILIAN');
       }
       clearCurrentOrderIssue(a);pop(a);return true;
