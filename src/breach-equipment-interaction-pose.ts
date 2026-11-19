@@ -7,7 +7,7 @@
 import type {TeamActor} from './breach-game.ts';
 import {quoteDeployedFieldUse,type LiveFieldItem}
  from './equipment-deployed-field-use.ts';
-import type {FieldCarryLocation} from './equipment-field-inventory.ts';
+import {FIELD_ITEMS,type FieldCarryLocation} from './equipment-field-inventory.ts';
 
 export type EquipmentInteractionPose={
  readonly item:LiveFieldItem;
@@ -30,7 +30,9 @@ export function readEquipmentInteraction(
  if(order?.kind!=='flash'||!order.aimPoint||!(actor.actionTimer>0)||
   !Number.isFinite(actor.actionTimer))return null;
  const quote=quoteDeployedFieldUse(actor,'flashbang');
- if(!quote.available||!quote.location||!Number.isFinite(quote.accessSeconds))
+ if(!quote.available||!quote.location||
+  !FIELD_ITEMS[item].locations.includes(quote.location)||
+  !Number.isFinite(quote.accessSeconds))
   return null;
  const duration=.3+quote.accessSeconds;
  return {item:'flashbang',location:quote.location,elapsed:actor.actionTimer,
