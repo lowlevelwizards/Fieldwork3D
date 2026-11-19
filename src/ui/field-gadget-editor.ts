@@ -8,6 +8,7 @@ import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFi
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
+import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
 import './loadout-prep.css';
 
 export type FieldGadgetEditorOptions={
@@ -43,6 +44,23 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  const board=physicalCarryBoard(loadout,magazines,inventory);
  // L2.10A: read-only physical carrying-slot gauges. A gauge is a
  // presentation of the authoritative capacity report, not a second ledger.
+ // Selected item is transient UI state, not an inventory or campaign draft.
+ let selected:{id:FieldItemId;from:FieldCarryLocation}|null=null;
+ const selections:{button:HTMLButtonElement;id:FieldItemId;from:FieldCarryLocation}[]=[];
+ const destinations:{button:HTMLButtonElement;location:FieldCarryLocation}[]=[];
+ const refreshSelection=()=>{
+  for(const entry of selections)entry.button.setAttribute('aria-pressed',
+   String(!!selected&&entry.id===selected.id&&entry.from===selected.from));
+  for(const entry of destinations){
+   const active=!!selected&&entry.location!==selected.from;
+   entry.button.hidden=!active;
+   if(!active||!selected){entry.button.disabled=true;continue;}
+   const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,
+    selected.id,selected.from,entry.location);
+   entry.button.disabled=!!options.locked||!quote.ok||!quote.changed;
+   entry.button.title=quote.ok?'Move one item here':quote.reason;
+  }
+ };
  const capacity=document.createElement('div');
  capacity.className='fw-field-inventory-capacity';
  capacity.setAttribute('aria-label','Carrying capacity by location');
@@ -81,13 +99,42 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    const itemName=text('span','fw-field-inventory-item-name',tile.label);
    const quantity=text('strong','fw-field-inventory-item-count',
     tile.quantity>1?'×'+tile.quantity:'');
-   li.append(silhouette,itemName,quantity);items.append(li);
+   if(tile.kind==='field'&&tile.itemId){
+    const id=tile.itemId;
+    const select=btn('',()=>{
+     if(options.locked)return;
+     selected=selected?.id===id&&selected.from===loc?null:{id,from:loc};
+     refreshSelection();
+     feedback(selected?'SELECTED ONE '+tile.label.toUpperCase()+
+      ' · CHOOSE A HIGHLIGHTED CARRY LOCATION':'SELECTION CLEARED');
+    });
+    select.className='fw-field-inventory-select-item';
+    select.setAttribute('aria-label','Select one '+tile.label+' from '+loc.toUpperCase());
+    select.setAttribute('aria-pressed','false');
+    select.disabled=!!options.locked;
+    select.append(silhouette,itemName,quantity);li.append(select);
+    selections.push({button:select,id,from:loc});
+   }else li.append(silhouette,itemName,quantity);
+   items.append(li);
   }
   if(!zone.items.length){
    const empty=text('li','fw-field-inventory-empty','EMPTY');
    items.append(empty);
   }
-  slot.append(items);capacity.append(slot);
+  slot.append(items);
+  const place=btn('PLACE ONE HERE',()=>{
+   if(!selected||options.locked)return;
+   const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,
+    selected.id,selected.from,loc);
+   if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
+   if(!quote.changed){feedback('ALREADY STORED HERE');return;}
+   onCommit(quote.inventory);
+  });
+  place.className='fw-field-inventory-place';
+  place.setAttribute('aria-label','Place selected item in '+loc.toUpperCase());
+  place.hidden=true;place.disabled=true;
+  destinations.push({button:place,location:loc});slot.append(place);
+  capacity.append(slot);
  }
  root.append(capacity);
  if(board.unplaced.length){

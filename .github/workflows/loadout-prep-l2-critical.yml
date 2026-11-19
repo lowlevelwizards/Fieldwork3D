@@ -9,6 +9,7 @@ on:
       - feature/loadout-prep-l2-9-medical-utility-20261118
       - feature/loadout-prep-l2-10-carry-feedback-20261118
       - feature/loadout-prep-l2-11-physical-20261118
+      - feature/loadout-prep-l2-11-tap-place-20261118
   workflow_dispatch:
 concurrency:
   group: loadout-prep-l2-${{ github.ref }}

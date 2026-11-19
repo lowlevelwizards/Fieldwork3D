@@ -61,6 +61,20 @@ try{
   assert.match(await panel.getByRole('status').innerText(),/ALREADY PACKED/);
   assert.equal(Number(await rigMeter.getAttribute('aria-valuenow')),before,
    'no-op auto pack preserves the true physical carrying report');
+  const pickOne=panel.getByRole('button',{name:'Select one Flashbang from RIG'});
+  await pickOne.click();
+  assert.equal(await pickOne.getAttribute('aria-pressed'),'true',
+   'physical item selection is visible and keyboard accessible');
+  const placeOne=panel.getByRole('button',{name:'Place selected item in BACKPACK'});
+  assert.equal(await placeOne.isEnabled(),true,'real inventory fit is verified before placement');
+  await placeOne.click();
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),0,
+   'one flash leaves its source carrier');
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from BACKPACK'}).count(),1,
+   'the exact issued flash reaches the destination carrier');
+  await panel.getByRole('button',{name:'Undo last gadget change'}).click();
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),1,
+   'undo restores the original carrying position');
   await panel.getByLabel('Operator to copy gadgets to').selectOption('moss');
   await panel.getByRole('button',{name:'Copy carried gadgets to selected operator'}).click();
   assert.match(await panel.locator('.fw-pre-go-note').innerText(),/copied/i);

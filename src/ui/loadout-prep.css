@@ -94,3 +94,19 @@
 .fw-field-inventory-empty{font-size:9px;color:#789184;letter-spacing:.07em}
 .fw-field-inventory-unplaced{padding:7px;border:1px solid #ca936e;
  border-radius:6px;color:#eed2b6;font-size:10px;line-height:1.4}
+
+/* L2.11D: explicit, keyboard/touch accessible one-piece selection.
+ * No drag gestures or continuous animation; active state never owns stock. */
+.fw-field-inventory-select-item{display:grid;grid-template-columns:15px minmax(0,1fr) auto;
+ align-items:center;gap:5px;width:100%;min-height:38px;padding:4px 3px;
+ border:0;background:transparent;color:inherit;text-align:left;
+ cursor:pointer;touch-action:manipulation}
+.fw-field-inventory-select-item:disabled{opacity:.55;cursor:not-allowed}
+.fw-field-inventory-select-item[aria-pressed="true"]{background:rgba(173,215,161,.21);
+ outline:2px solid #b9dba7;outline-offset:0;border-radius:4px}
+.fw-field-inventory-place{grid-column:1/-1;min-height:38px;
+ padding:6px 7px;border:1px solid #b6cfa5;border-radius:5px;
+ background:rgba(83,121,87,.34);color:#f3f9e9;font-size:10px;
+ font-weight:700;cursor:pointer;touch-action:manipulation}
+.fw-field-inventory-place:disabled{opacity:.45;cursor:not-allowed}
+.fw-field-inventory-place[hidden]{display:none}
