@@ -1,5 +1,7 @@
 /** Unified Operator Lab model and motion browser: visual-only selections. */
 import {FAMILY_PRESETS,type WeaponFamilyPreset} from './equipment-weapon-families.ts';
+import {ARSENAL_PLATFORMS,ARSENAL_REFERENCES}
+ from './arsenal/catalog.ts';
 import {LAB_TRACKS,type LabTrack} from './breach-lab-tracks.ts';
 import type {WeaponId} from './breach-combat.ts';
 export const POSE_ARMOR_OPTIONS=[
@@ -33,6 +35,18 @@ export function poseRigEquipment(rig:string):
   ['chest-placard','micro-rig','light-rig','chicom-rig','bandolier']
    .includes(rig)?'rig-light':'rig-full';
 }
+/** The Lab is a view of the Arsenal's complete factory model roster.
+ * Derive both names and group membership from the same receiver/platform
+ * catalog rather than maintaining a second hard-coded family whitelist.
+ * Gun identities are visual presets; gameplay still owns weapon classes.
+ */
+export const POSE_WEAPON_GROUPS:ReadonlyArray<Readonly<{
+ id:string;name:string;presets:readonly WeaponFamilyPreset[]
+}>>=ARSENAL_PLATFORMS.map(platform=>({
+ id:platform.id,name:platform.name,
+ presets:ARSENAL_REFERENCES.filter(ref=>ref.platformId===platform.id)
+  .map(ref=>ref.legacy)
+}));
 export function posePreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(p=>p.id===id);
 }
