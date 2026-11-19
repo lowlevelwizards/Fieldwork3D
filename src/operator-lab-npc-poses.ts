@@ -170,7 +170,7 @@ export function sampleNpcHostile(id:string,clock:number):NpcHostileSample{
  const actor={
   side:'red' as const,p,heading:0,health:down?0:2,
   surrendered,alert,aim,velocity,reload,suppression,
-  lastNoiseAt:started&&heard?.9:-100,
+  lastNoiseAt:started&&heard?0.9:-100,
   heard:started&&heard?{x:60,y:70}:null,contact:null
  };
  const physical=hostilePhysicalityAt(actor,now);
