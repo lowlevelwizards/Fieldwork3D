@@ -51,6 +51,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** EQA3.10: finite physical restraint quantity (older films default zero). */
+ restraintRemaining?:number;
  /** EQA3.9: actual SECURE/FOLLOW support-hand reach, absent in old film. */
  lastCivilianContactAt?:number;
  /** Optional for archived films recorded before D4. */
@@ -178,6 +180,7 @@ export function snapshot(s:Session,seenGround?:string[],
        treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
        carryingId:a.carryingId,carriedById:a.carriedById,
        wedgeRemaining:a.wedgeRemaining,
+       restraintRemaining:a.restraintRemaining,
        weaponLightOn:a.weaponLightOn,
        nvgDeployed:a.nvgDeployed===true,
       armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
@@ -486,6 +489,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
+      restraintRemaining:copy.restraintRemaining??0,
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
       coverStanceDrop:copy.coverStanceDrop??0,
