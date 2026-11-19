@@ -127,15 +127,18 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  const moving=pose==='walk'||pose==='run'||pose==='injured-walk';
  const injured=pose==='injured'||pose==='injured-walk';
  const secured=pose==='compliant'||pose==='restrained';
+ const flinch=!secured&&!down&&c.lastFlinchAt!==undefined&&
+   now>=c.lastFlinchAt&&now-c.lastFlinchAt<.48;
  // Simulation SECURE is immediate and authoritative, but the same fixed
  // stateSince timestamp gives presentation a smooth flinch -> raised hands
  // -> kneeling response. No independent animation clock or motor change.
  const elapsed=Math.max(0,now-(c.stateSince??now));
  const compliantKneel=secured?
    Math.max(0,Math.min(1,(elapsed-.32)/.92)):0;
- const squat=pose==='hide'||pose==='seated'||pose==='restrained'||
+ const squat=flinch||pose==='hide'||pose==='seated'||pose==='restrained'||
    secured&&compliantKneel>.18;
- const gesture=pose==='startled'||pose==='compliant'&&elapsed<.32?
+ const gesture=flinch?'head-cover':
+   pose==='startled'||pose==='compliant'&&elapsed<.32?
    'hands-up':pose==='hide'||pose==='run'?'head-cover':
    pose==='restrained'?'hands-behind':undefined;
  poseOperator(r.character,{
@@ -223,7 +226,7 @@ export function updateCivilianRig(r:CivilianRig,
  }
  // Render-only deterministic idle activity, reversible in replay.
  if(pose==='idle'||pose==='work'||pose==='seated')
-  r.head.rotation.y=Math.sin(now*.55+c.appearanceSeed*.013)*.11;
+  r.head.rotation.y+=Math.sin(now*.55+c.appearanceSeed*.013)*.11;
  if(pose==='compliant'){
   // Raise hands first, then gradually lower the hips into compliance.
   // SECURE already succeeded at the physical fixed tick; no delayed AI.
