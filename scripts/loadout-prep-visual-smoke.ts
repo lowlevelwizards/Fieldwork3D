@@ -21,8 +21,8 @@ Object.assign(window,{loadoutPrepSmoke:{
  stop:()=>{preparing=false;},
  start:()=>{preparing=true;},
  close:mount.close,
- flash:(id:string)=>campaign.operators.find(o=>o.id===id)?
-  .loadout.fieldInventory?.stacks.filter(s=>s.itemId==='flashbang')
+ flash:(id:string)=>campaign.operators.find(o=>o.id===id)
+  ?.loadout.fieldInventory?.stacks.filter(s=>s.itemId==='flashbang')
    .reduce((sum,s)=>sum+s.quantity,0)??0
  }});
 document.documentElement.dataset.loadoutPrepReady='1';
