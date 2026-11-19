@@ -133,6 +133,8 @@ export class CampaignScreen{
  private selectedWorkbenchSocket:WorkbenchSocket|null=null;
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
+ /** Presentation-only armory workspace; no changes to authoritative kit. */
+ private activeKitWorkspace:'equipment'|'physical'|'readiness'='equipment';
  private showKitPresets=false;
  private readonly fieldUndo=new FieldInventoryUndoHistory();
  private readonly carryUndo=new CarryKitUndoHistory();
@@ -1334,7 +1336,10 @@ export class CampaignScreen{
   // The same operator keeps one preview renderer while HTML controls refresh.
   const retainOperatorPreview=sameOperator&&!this.weaponView&&!!this.preview?.isReady();
   if(!retainOperatorPreview)this.disposePreview();
-  if(!sameOperator){this.activeKitGroup='weapon';this.selectedWorkbenchSocket=null;}
+  if(!sameOperator){
+   this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
+   this.selectedWorkbenchSocket=null;
+  }
   this.lastArmoryRenderedId=id;
   const person=c.operators.find(o=>o.id===id);
   if(!person){this.armoryOperatorId=null;this.home(c);return;}
@@ -1357,6 +1362,7 @@ export class CampaignScreen{
   };
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide campaign-armory-screen');
+  main.dataset.kitWorkspace=this.activeKitWorkspace;
   const top=node('div','campaign-head campaign-armory-head');
   const identity=node('div');
   identity.append(node('div','campaign-eyebrow','PERSONNEL / FIELD ARMORY'),
@@ -1438,6 +1444,8 @@ export class CampaignScreen{
    metric.append(node('small','',name),node('strong','',value));stats.append(metric);
   }
   summary.append(stats);
+  const readinessPanel=node('section','campaign-kit-readiness-panel');
+  readinessPanel.setAttribute('aria-label','Readiness, resupply and maintenance');
   const singleQuote=quoteCampaignOperatorRefill(c,person.id);
   if(singleQuote){
    const needs=node('section','campaign-kit-refill');
@@ -1463,7 +1471,7 @@ export class CampaignScreen{
     singleQuote.wedgesIssued+singleQuote.cuffsIssued===0;
    actions.append(ammoButton,medicalButton,fieldButton);
    needs.append(actions);
-   summary.append(needs);
+   readinessPanel.append(needs);
   }
   if(committedKitChange){
    const feedback=node('div','campaign-kit-commit-feedback');
@@ -1508,7 +1516,7 @@ export class CampaignScreen{
    if(limit>0&&condition<limit)entry.dataset.condition='worn';
    track.append(fill);entry.append(track);conditionPanel.append(entry);
   }
-  summary.append(conditionPanel);
+  readinessPanel.append(conditionPanel);
   const maintenance=node('div','campaign-kit-maintenance');
   if(repairCost>0){
    const repair=button('REPAIR PROTECTION · '+repairCost+' CR',
@@ -1526,7 +1534,7 @@ export class CampaignScreen{
     'Locked during deployment':'Insufficient credits';
    maintenance.append(service);
   }
-  if(maintenance.childElementCount)summary.append(
+  if(maintenance.childElementCount)readinessPanel.append(
    node('p','campaign-kit-service-funds','SERVICE FUNDS · '+c.funds+' CR AVAILABLE'),
    maintenance);
   const readiness=node('details','campaign-readiness-details');
@@ -1580,7 +1588,8 @@ export class CampaignScreen{
   configuration.append(node('summary','','TECHNICAL WEAPON CONFIGURATION'),
    node('p','campaign-kit-metrics',Object.values(person.weaponConfiguration.slots).join(' / ')));
   readiness.append(configuration);
-  summary.append(readiness);
+  readinessPanel.append(readiness);
+  summary.append(readinessPanel);
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
@@ -1651,8 +1660,22 @@ export class CampaignScreen{
   presets.append(node('p','campaign-note',
    'Saved kits store equipment configurations, not duplicate weapons or stock.'));
   editor.append(node('h2','','EQUIPMENT'));
-  editor.append(presets);
+  const kitUtilities=node('details','campaign-kit-utilities');
+  kitUtilities.append(node('summary','','SAVED KITS & UTILITIES'),presets);
+  editor.append(kitUtilities);
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
+  const workspaceNav=node('nav','campaign-kit-workspace-nav');
+  workspaceNav.setAttribute('aria-label','Armory workspaces');
+  const workspaceButtons=new Map<'equipment'|'physical'|'readiness',HTMLButtonElement>();
+  for(const [key,label] of [
+   ['equipment','EQUIPMENT'],['physical','PHYSICAL CARRY'],
+   ['readiness','READINESS']
+  ] as const){
+   const control=button(label,()=>activateWorkspace(key),'campaign-kit-workspace-tab');
+   control.setAttribute('aria-current',String(this.activeKitWorkspace===key));
+   workspaceButtons.set(key,control);workspaceNav.append(control);
+  }
+  main.insertBefore(workspaceNav,grid);
   const categoryBar=node('div','campaign-kit-categories');
   categoryBar.setAttribute('role','tablist');
   categoryBar.setAttribute('aria-label','Equipment categories');
@@ -1664,6 +1687,10 @@ export class CampaignScreen{
   };
   const setCategory=(group:QuickLoadoutGroup)=>{
    this.activeKitGroup=group;
+   this.activeKitWorkspace=group==='carry'?'physical':'equipment';
+   main.dataset.kitWorkspace=this.activeKitWorkspace;
+   for(const [key,control] of workspaceButtons)
+    control.setAttribute('aria-current',String(key===this.activeKitWorkspace));
    this.preview?.focusOn(previewFocusForGroup[group]);
    for(const [key,control] of categoryTabs){
     control.setAttribute('aria-selected',String(key===group));
@@ -1685,6 +1712,22 @@ export class CampaignScreen{
    }
   };
   const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,setCategory);
+  function showGroup(group:QuickLoadoutGroup){
+   grouped.group[group].open=true;
+   setCategory(group);
+  }
+  const activateWorkspace=(destination:'equipment'|'physical'|'readiness')=>{
+   if(destination==='physical')showGroup('carry');
+   else if(destination==='equipment'){
+    showGroup(this.activeKitGroup==='carry'?'weapon':this.activeKitGroup);
+   }else{
+    this.activeKitWorkspace='readiness';
+    main.dataset.kitWorkspace='readiness';
+    this.preview?.focusOn('full');
+   }
+   for(const [key,control] of workspaceButtons)
+    control.setAttribute('aria-current',String(key===this.activeKitWorkspace));
+  };
   for(const definition of QUICK_LOADOUT_GROUPS){
    const group=definition.id;
    const select=button(definition.title,()=>{
@@ -1698,11 +1741,12 @@ export class CampaignScreen{
    grouped.group[group].id='campaign-kit-section-'+group;
    grouped.group[group].setAttribute('role','tabpanel');
    grouped.group[group].setAttribute('aria-label',definition.title+' equipment');
-   categoryTabs.set(group,select);categoryBar.append(select);
+   categoryTabs.set(group,select);
+   if(group!=='carry')categoryBar.append(select);
   }
   categoryBar.addEventListener('keydown',event=>{
    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
-   const keys=QUICK_LOADOUT_GROUPS.map(g=>g.id);
+   const keys=QUICK_LOADOUT_GROUPS.filter(g=>g.id!=='carry').map(g=>g.id);
    const index=keys.indexOf(this.activeKitGroup);
    const next=event.key==='Home'?0:event.key==='End'?keys.length-1:
     (index+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length;
@@ -1794,7 +1838,8 @@ export class CampaignScreen{
   const squadFlashReserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
    .reduce((count,o)=>count+fieldQuantity(
     o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
-  grouped.field('utilities').append(createFieldGadgetEditor({
+  // Real physical stacks, magazines, and placement controls belong together.
+  grouped.field('carry').append(createFieldGadgetEditor({
    loadout:person.loadout,magazines:person.magazines,locked,
    onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
    onInspectItem:item=>this.preview?.inspectCarryItem(item),
