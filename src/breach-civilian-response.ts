@@ -125,7 +125,8 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
     person.posture==='crouch')*(peripheral?.38:1):0;
   c.visualProgress[person.id]=advanceSight(
     c.visualProgress[person.id]??0,elapsed,gain,geometric);
-  if(confirmedSight(c.visualProgress[person.id])){
+  // Retained acquisition memory is not a fresh sighting through a new wall.
+  if(geometric&&confirmedSight(c.visualProgress[person.id])){
     // Evaluate ALL physically confirmed sight lines before selecting the
     // civilian's attention target. A familiar armed operator at the front
     // of the array must not mask a simultaneous witnessed shooting/aiming
