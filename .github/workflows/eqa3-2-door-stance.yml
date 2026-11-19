@@ -5,6 +5,7 @@ on:
     paths:
       - '.github/workflows/eqa3-2-door-stance.yml'
       - 'src/breach-motor-route.ts'
+      - 'src/breach-order-door.ts'
       - 'tests/eqa3-2-door-stance-route-handoff.test.mjs'
   workflow_dispatch:
 permissions:
