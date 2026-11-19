@@ -5,6 +5,7 @@ on:
     paths:
       - 'tests/eqa3-14-*.test.mjs'
       - 'src/breach-civilian-response.ts'
+      - 'src/breach-session-factory.ts'
       - 'src/breach-civilian-refuge.ts'
       - '.github/workflows/eqa3-14-organic-contacts.yml'
   workflow_dispatch:
@@ -25,9 +26,13 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/eqa3-14-organic-contact.test.mjs \
+            tests/eqa3-14-rescue-refuge.test.mjs \
             tests/eqa3-13-changing-threat-route.test.mjs \
             tests/eqa3-13-civilian-heavy-session.test.mjs \
             tests/eqa3-13-operator-civilian-contact.test.mjs \
             tests/eqa3-12-civilian-firefight.test.mjs \
             tests/eqa3-12-refuge-exit.test.mjs \
-            tests/performance-p2-7-live-routing.test.mjs
+            tests/performance-p2-7-live-routing.test.mjs \
+            tests/civilian-b7-rescue-session.test.mjs \
+            tests/civilian-r2-behavior.test.mjs \
+            tests/eqa3-9-auto-secure.test.mjs
