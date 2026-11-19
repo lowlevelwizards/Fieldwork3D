@@ -53,6 +53,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   const slot=document.createElement('div');
   slot.className='fw-field-inventory-slot';
   if(used>limit)slot.dataset.overfilled='true';
+  slot.dataset.location=loc;
   const title=text('span','fw-field-inventory-slot-name',loc.toUpperCase());
   const count=text('strong','fw-field-inventory-slot-count',used+'/'+limit);
   const gauge=document.createElement('div');
