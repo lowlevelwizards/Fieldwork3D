@@ -295,9 +295,9 @@ function renderOperationsBoard(){
   }
   const fieldHost=loadout.field('utilities');
   const renderField=(current:typeof member)=>{
-   const commitField=(inventory:FieldInventory,undo=false)=>{
-    const previousFocus=document.activeElement instanceof HTMLElement?
-     document.activeElement.getAttribute('aria-label'):null;
+   const commitField=(inventory:FieldInventory,undo=false,preferredFocus?:string)=>{
+    const previousFocus=preferredFocus??(document.activeElement instanceof HTMLElement?
+     document.activeElement.getAttribute('aria-label'):null);
     const prior=config.getRoster();
     const next=equipRosterFieldInventory(prior,current.id,inventory);
     if(next===prior)return;
@@ -351,7 +351,7 @@ function renderOperationsBoard(){
       current.loadout.fieldInventory??initialFieldInventory(current.loadout));
      if(previous)commitField(previous,true);
     },
-    onCommit:inventory=>commitField(inventory)
+    onCommit:(inventory,focusLabel)=>commitField(inventory,false,focusLabel)
    });
    const old=fieldHost.querySelector('.fw-field-inventory');
    if(old)old.replaceWith(editor);else fieldHost.append(editor);

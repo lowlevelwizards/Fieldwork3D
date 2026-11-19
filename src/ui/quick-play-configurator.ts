@@ -264,14 +264,16 @@ export function createQuickPlayConfigurator(options:{
        }
      }
     },
-    onCommit:inventory=>{
-     const prior=document.activeElement instanceof HTMLElement?
-      document.activeElement.getAttribute('aria-label'):null;
+    onCommit:(inventory,preferredFocus)=>{
+     const prior=preferredFocus??(document.activeElement instanceof HTMLElement?
+      document.activeElement.getAttribute('aria-label'):null);
+     const scroll=content.scrollTop;
      if(!applyChange(operator.id,inventory))return;
      const changed=options.getRoster?.().members.find(m=>m.id===operator.id);
      if(!changed)return;
      renderGadgets(changed);
-      squadPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+     content.scrollTop=scroll;
+     squadPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
        changed.loadout,changed.weaponConfiguration,changed.magazines,
        changed.wardrobe);
      if(prior){

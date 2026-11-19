@@ -73,6 +73,8 @@ try{
   const placeOne=panel.getByRole('button',{name:'Place selected item in BACKPACK'});
   assert.equal(await placeOne.isEnabled(),true,'real inventory fit is verified before placement');
   await placeOne.click();
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from BACKPACK'}).evaluate(el=>el===document.activeElement),true,
+   'placement restores focus on the new physical item tile');
   if(previewHasWebGL){
    assert.equal(await preview.getAttribute('data-carry-highlight'),'backpack',
     'successful placement retargets the same preview carry marker');
