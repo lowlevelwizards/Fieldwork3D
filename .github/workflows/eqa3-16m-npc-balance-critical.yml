@@ -1,0 +1,30 @@
+name: EQA3.16M NPC balance critical
+on:
+  push:
+    branches:
+      - feature/eqa3-16m-npc-balance-foot-chains-20261119
+  workflow_dispatch:
+concurrency:
+  group: eqa3-16m-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  npc-balance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-package-lock
+      - name: Typecheck
+        run: npm run check
+      - name: Critical visual balance, interpolation and IK checks
+        run: >-
+          node --experimental-strip-types --test
+          tests/eqa3-16m-npc-balance-contact.test.mjs
+          tests/eqa3-16l-npc-animation-transitions.test.mjs
+          tests/eqa3-16k-npc-lab-continuity.test.mjs
+          tests/animation-a2-5-continuity.test.mjs
+          tests/package-b3-lower-body-output.test.mjs
+          tests/eqa3-16j-npc-lab.test.mjs
