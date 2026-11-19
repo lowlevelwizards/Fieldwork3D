@@ -210,8 +210,12 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // unarmed mannequin. The lift applies to pelvis and chest together;
   // it never moves planted feet or stretches the two-bone skeleton.
   // Shot-time muzzle elevation consumes this same pure rise.
+  // Unarmed NPCs use a continuous, evidence/pose-time crouch signal.
+  // Fade the standing 3-unit leg-rest rise WITH the pelvis drop, rather
+  // than keeping it elevated through the crouch and popping at the end.
   const mannequinLift=legRestRise(physicalSpeed,p.posture,
-    p.down,p.surrender);
+    p.down,p.surrender)*(p.unarmedPreview?
+      1-clamp(p.interactionCrouch??0,0,1):1);
   const stanceHip=neutralHip+motion.pelvisY-bash.brace;
   frame.hip.position.y=Math.max(
     17.35-crouch-buckle*8-kneel*9,
