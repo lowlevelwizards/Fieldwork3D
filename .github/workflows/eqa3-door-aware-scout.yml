@@ -2,7 +2,7 @@ name: EQA3.2 explicit physical door-opening comparison
 on:
   push:
     branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
-    paths: ['.github/workflows/eqa3-door-aware-scout.yml']
+    paths: ['.github/workflows/eqa3-door-aware-scout.yml', 'scripts/audit-eqa3-scout.mjs']
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,6 +29,7 @@ jobs:
           console.log(JSON.stringify({summary:a.summary,rows:a.rows.map(r=>({
             seed:r.seed,mission:r.mission,entry:r.insertion,stage:r.missionStage,
             aborted:r.routeAbort,rejected:r.rejected,opens:r.acceptedDoorActions,
+            doorsAtEnd:r.doorsAtEnd?.filter(d=>d.open),
             objectiveAt:r.objectiveAt,done:r.missionStage==='done',
             physicalCommandTrace:r.decisions.filter(x=>x.action==='explicit-open-known-door')
           }))},null,2));
