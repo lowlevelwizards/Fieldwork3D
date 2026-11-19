@@ -6,6 +6,8 @@ import {type Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {setCivilianState} from './breach-civilian-types.ts';
+import {quoteDeployedFieldUse,spendDeployedFieldItem}
+ from './equipment-deployed-field-use.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
 import {SUSPECT_CHALLENGE_RANGE,SUSPECT_CHALLENGE_SECONDS,
@@ -133,14 +135,17 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       // spend equipment while planning. Only a completed GO-time contact
       // removes one actually carried pair of flex cuffs.
       if(n.interaction==='restrain-civilian'){
+        const cuffs=quoteDeployedFieldUse(a,'zip-tie');
         if(person.state!=='compliant'||person.restrained===true||
-           person.rescueTarget||a.restraintRemaining<=0){
+           person.rescueTarget||!cuffs.available){
           failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
         }
         if(a.actionTimer===0)a.lastCivilianContactAt=s.seconds;
         a.actionTimer+=dt;
-        if(a.actionTimer<1.15)return true;
-        a.restraintRemaining--;
+        if(a.actionTimer<1.15+cuffs.accessSeconds)return true;
+        if(!spendDeployedFieldItem(a,'zip-tie')){
+          failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
+        }
         person.restrained=true;
         a.lastCivilianContactAt=s.seconds;
         notify(s,a.name+' RESTRAINED CIVILIAN · FLEX CUFFS '+a.restraintRemaining);

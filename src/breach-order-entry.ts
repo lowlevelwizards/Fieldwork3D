@@ -8,7 +8,9 @@ import {doorCenter,type Pt} from './breach-core.ts';
 import {doorReachable,doorApproach,lockpickReachable,lockpickApproach}
  from './breach-door.ts';
 import {entryToolVerdict} from './breach-entry-tools.ts';
-import {canUseEntryTool,issuedWedges} from './equipment-entry-tools.ts';
+import {canUseEntryTool} from './equipment-entry-tools.ts';
+import {quoteDeployedFieldUse,spendDeployedFieldItem,restoreDeployedWedge}
+ from './equipment-deployed-field-use.ts';
 import {equipmentRetrievalSeconds} from './equipment-carry-placement.ts';
 import {initialEquipmentLoadout} from './equipment-loadouts.ts';
 import {targetAngle} from './breach-plan.ts';
@@ -35,8 +37,9 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
   if(n.kind==='tool'){
     const door=s.doors.find(door=>door.id===n.doorId);
     const method=n.toolMethod;
+    const wedge=method==='wedge'?quoteDeployedFieldUse(a,'wedge'):null;
     if(!door||!method||!canUseEntryTool(a.equipment,method)||
-       (method==='wedge'&&a.wedgeRemaining<1)){
+       (wedge&&!wedge.available)){
       failCurrentOrder(s,a,n,'ENTRY TOOL UNAVAILABLE');return true;
     }
     // Pick the actual handle from a reachable stance; a position near
@@ -62,8 +65,9 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
       a.lastDoorMethod='open';}
     // Tool retrieval from a backpack or inaccessible overflow is slower
     // than a belt mount. Wedge removal still uses the required tool.
-    const access=method==='pick'?0:equipmentRetrievalSeconds(
-      a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'utility');
+    const access=wedge?wedge.accessSeconds:
+      method==='pick'||method==='unwedge'?0:equipmentRetrievalSeconds(
+        a.equipment??initialEquipmentLoadout(a.weapon),a.spareMagazines,'utility');
     // A hit interrupts fine hand manipulation without consuming a tool.
     if(method==='pick'&&s.seconds-a.lastHitAt<.35){
       a.actionTimer=0;return true;
@@ -71,14 +75,14 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
     a.actionTimer+=dt;
     if(a.actionTimer<verdict.seconds+(Number.isFinite(access)?access:0))return true;
     if(method==='wedge'){
+      if(!spendDeployedFieldItem(a,'wedge')){
+        failCurrentOrder(s,a,n,'ENTRY TOOL UNAVAILABLE');return true;
+      }
       door.wedged=true;door.wedgeOwnerId=a.id;
-      a.wedgeRemaining--;
     }else if(method==='unwedge'){
       door.wedged=false;
       const owner=s.operators.find(o=>o.id===door.wedgeOwnerId);
-      if(owner&&canUseEntryTool(owner.equipment,'wedge'))
-       owner.wedgeRemaining=Math.min(issuedWedges(owner.equipment),
-        owner.wedgeRemaining+1);
+      if(owner)restoreDeployedWedge(owner);
       door.wedgeOwnerId=undefined;
     }
     else if(method==='pick'){

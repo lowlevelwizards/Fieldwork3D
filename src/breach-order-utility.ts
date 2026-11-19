@@ -6,6 +6,8 @@ import type {PlanNode} from './breach-plan.ts';
 import type {Pt} from './breach-core.ts';
 import {liveMagazineCapacity} from './arsenal/live-magazine-capacity.ts';
 import {validateThrow} from './breach-flash.ts';
+import {quoteDeployedFieldUse,spendDeployedFieldItem}
+ from './equipment-deployed-field-use.ts';
 import {targetAngle} from './breach-plan.ts';
 export type UtilityOrderHooks={
  pop:(actor:TeamActor)=>void;notify:(s:Session,message:string)=>void;
@@ -49,7 +51,8 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
     return true;
   }
   if(n.kind==='flash'){
-    if(!n.aimPoint||s.flashRemaining<=0||a.flashCharges<=0){
+    const field=quoteDeployedFieldUse(a,'flashbang');
+    if(!n.aimPoint||s.flashRemaining<=0||!field.available){
       h.fail(s,a,n,'FLASH UNAVAILABLE');return true;
     }
     const trajectory=validateThrow(a.p,n.aimPoint,s.doors);
@@ -59,8 +62,11 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
     }
     h.clearIssue(a);a.velocity=0;h.rotate(a,targetAngle(a.p,n.aimPoint),dt);
     a.actionTimer+=dt;
-    if(a.actionTimer>=.3){
-      s.flashRemaining--;a.flashCharges--;a.lastThrowAt=s.seconds;
+    if(a.actionTimer>=.3+field.accessSeconds){
+      if(!spendDeployedFieldItem(a,'flashbang')){
+        h.fail(s,a,n,'FLASH UNAVAILABLE');return true;
+      }
+      s.flashRemaining--;a.lastThrowAt=s.seconds;
       s.grenades.push({id:s.nextEffectId++,p:clone(a.p),
         from:clone(a.p),to:clone(n.aimPoint),age:0,fuse:1.15,
         path:trajectory});
