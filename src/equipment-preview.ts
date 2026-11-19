@@ -16,6 +16,7 @@ import {equippedFlashCharges} from './equipment-loadouts.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
+import {setEquipmentChoice,type LoadoutSlot} from './equipment-loadouts.ts';
 
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
@@ -38,6 +39,12 @@ export class CampaignKitPreview{
  private inspectionCenter:THREE.Vector3|null=null;
  private inspectionSize:THREE.Vector3|null=null;
  private currentEquipment:EquipmentLoadout|null=null;
+ private visualSnapshot:{
+  weapon:WeaponId;appearanceSeed:number;equipment:EquipmentLoadout;
+  weaponConfiguration?:WeaponConfiguration;magazines:readonly MagazineItem[];
+  wardrobe?:WardrobeOptions
+ }|null=null;
+ private readonly modelThumbCache=new Map<string,string>();
  private observer:ResizeObserver|null=null;
  private azimuth=.72;
  private pointerId:number|null=null;
@@ -113,6 +120,18 @@ export class CampaignKitPreview{
   wardrobe?:WardrobeOptions):void{
   if(!this.rig)return;
   this.currentEquipment=equipment;
+  this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
+  this.modelThumbCache.clear();
+  this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
+  this.refreshInspection();
+  this.draw();
+ }
+ /** The same battle rig pose, used for production and read-only thumbnail
+  * captures; no separate model definitions or inventory state are created. */
+ private poseForThumb(weapon:WeaponId,appearanceSeed:number,equipment:EquipmentLoadout,
+  weaponConfiguration?:WeaponConfiguration,magazines:readonly MagazineItem[]=[],
+  wardrobe?:WardrobeOptions):void{
+  if(!this.rig)return;
   const placements=carryPlacementLedger(equipment,magazines);
   poseOperator(this.rig,{x:0,z:0,heading:0,velocity:0,seconds:0,
    stride:0,posture:'stand',injury:0,weapon,
@@ -125,8 +144,80 @@ export class CampaignKitPreview{
    utilityCarryLocation:placements.find(item=>item.kind==='utility')?.location,
    flashCharges:equippedFlashCharges(equipment),
    deterministic:true},0);
-  this.refreshInspection();
-  this.draw();
+ }
+
+ /** Render an equipped item's actual procedural 3D mesh in isolation, using
+  * the EXISTING WebGL renderer (no second context, no icon substitutes).
+  * A missing/unmounted model returns null and is labeled accordingly.
+  * Caller may request alternate gear options; the active operator pose is
+  * restored in finally before any presentation draw. */
+ renderModelThumbnail(target:EquipmentInspectionTarget|
+  {kind:'gear';slot:LoadoutSlot;itemId:string}):string|null{
+  if(!this.renderer||!this.rig||!this.visualSnapshot)return null;
+  const key=JSON.stringify(target);
+  const previous=this.modelThumbCache.get(key);
+  if(previous)return previous;
+  const original=this.visualSnapshot;
+  try{
+   if(target.kind==='gear'){
+    const candidate=setEquipmentChoice(original.equipment,target.slot,target.itemId);
+    const weapon=target.slot==='primary'&&target.itemId.startsWith('primary-')?
+     target.itemId.slice(8) as WeaponId:original.weapon;
+    this.poseForThumb(weapon,original.appearanceSeed,candidate,
+     weapon===original.weapon?original.weaponConfiguration:undefined,
+     original.magazines,original.wardrobe);
+   }
+   const selected=target.kind==='gear'?
+    this.previewGearMesh(target.slot,target.itemId):
+    inspectEquipmentMesh(this.rig,
+     target.kind==='gear'?original.equipment:original.equipment,target);
+   if(!selected)return null;
+   selected.updateWorldMatrix(true,true);
+   const isolated=selected.clone(true);
+   isolated.matrixAutoUpdate=false;
+   isolated.matrix.copy(selected.matrixWorld);
+   isolated.traverse(obj=>{obj.visible=true;});
+   const modelScene=new THREE.Scene();
+   modelScene.background=new THREE.Color(0x1b2d2a);
+   modelScene.add(isolated);
+   const bounds=new THREE.Box3().setFromObject(isolated,true);
+   if(bounds.isEmpty())return null;
+   const center=bounds.getCenter(new THREE.Vector3());
+   const size=bounds.getSize(new THREE.Vector3());
+   const radius=Math.max(2,size.length()*.95);
+   const camera=new THREE.PerspectiveCamera(35,
+    Math.max(1,this.renderedWidth)/Math.max(1,this.renderedHeight),.1,800);
+   camera.position.copy(center).add(new THREE.Vector3(radius*.7,radius*.38,radius));
+   camera.lookAt(center);
+   modelScene.add(new THREE.HemisphereLight(0xe1e9d8,0x293634,3.1));
+   const light=new THREE.DirectionalLight(0xf2dbb8,2.4);
+   light.position.set(center.x+40,center.y+65,center.z+55);
+   modelScene.add(light);
+   this.renderer.render(modelScene,camera);
+   const data=this.renderer.domElement.toDataURL('image/png');
+   if(data.length<128)return null;
+   this.modelThumbCache.set(key,data);
+   return data;
+  }catch{return null;}
+  finally{
+   this.poseForThumb(original.weapon,original.appearanceSeed,
+    original.equipment,original.weaponConfiguration,
+    original.magazines,original.wardrobe);
+   this.refreshInspection();
+   this.draw();
+  }
+ }
+ private previewGearMesh(slot:LoadoutSlot,itemId:string):THREE.Object3D|null{
+  if(!this.rig||itemId.endsWith('-none'))return null;
+  if(slot==='primary')return this.rig.weapon;
+  if(slot==='head')return this.rig.head;
+  if(slot==='armor'||slot==='rig'||slot==='belt'||slot==='backpack'||
+   slot==='medical'||slot==='utility')
+   return inspectEquipmentMesh(this.rig,this.currentEquipment??undefined,{
+    kind:slot==='medical'?'medical':slot==='utility'?'utility':
+     slot==='armor'?'armor':slot==='rig'?'rig':
+     slot==='belt'?'belt':'backpack'});
+  return null;
  }
 
  /** Resolve the actual visible mesh for one carried object. No proxy gear
