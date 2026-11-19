@@ -41,7 +41,7 @@ export function createBreachOperationsBoardController(config:OperationsBoardHook
 // One operator expanded at a time in the mobile preparation sheet.
 let expandedQuickOperator:string|null=null;
 let expandedQuickKit:string|null=null;
-let expandedQuickLoadoutGroup:QuickLoadoutGroup='weapon';
+let expandedQuickLoadoutGroup:QuickLoadoutGroup='carry';
 let expandedQuickWeapon:string|null=null;
 /** Keep the intentional classic fallback open across part/weapon rerenders. */
 const expandedClassicWeaponControls=new Set<string>();
@@ -175,10 +175,11 @@ function renderOperationsBoard(){
   kit.append(kitTitle);
   const previewHost=document.createElement('div');
   previewHost.className='fw-prep-operator-viewer';
+  previewHost.hidden=expandedQuickLoadoutGroup==='weapon';
   previewHost.setAttribute('aria-label','Rotatable 3D operator and carried equipment');
   kit.append(previewHost);
   const renderKitPreview=()=>{
-   if(!kit.open||!previewHost.isConnected)return;
+   if(!kit.open||!previewHost.isConnected||previewHost.hidden)return;
    if(quickKitPreview&&quickKitPreviewId!==member.id){
     quickKitPreview.dispose();quickKitPreview=null;quickKitPreviewId=null;
    }
@@ -198,6 +199,11 @@ function renderOperationsBoard(){
   });
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
+   previewHost.hidden=group==='weapon';
+   if(previewHost.hidden&&quickKitPreview){
+    quickKitPreview.dispose();quickKitPreview=null;quickKitPreviewId=null;
+   }
+   if(!previewHost.hidden)requestAnimationFrame(renderKitPreview);
   });
   // Arsenal is the primary builder. Direct factory and socket controls remain
   // behind one accessible fallback for class-only or unsupported weapons.
