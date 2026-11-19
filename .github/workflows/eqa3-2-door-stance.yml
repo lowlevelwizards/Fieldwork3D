@@ -1,0 +1,33 @@
+name: EQA3.2 real seeded OPEN stance and door route critical
+on:
+  push:
+    branches: [feature/eqa3-2-door-stance-route-handoff-20261118]
+    paths:
+      - '.github/workflows/eqa3-2-door-stance.yml'
+      - 'src/breach-motor-route.ts'
+      - 'tests/eqa3-2-door-stance-route-handoff.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  physical-door-acceptance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Six actual generated OPEN scenes and door physical regression
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-2-door-stance-route-handoff.test.mjs \
+            tests/release-d3-31f-kick-open-recovery.test.mjs \
+            tests/release-d3-30-threshold-coordination.test.mjs \
+            tests/release-d3-29-broken-latch.test.mjs \
+            tests/passage-q5-live-blockers.test.mjs \
+            tests/passage-q6-opener.test.mjs
+      - name: Vite production build (no deploy)
+        run: npm run build
