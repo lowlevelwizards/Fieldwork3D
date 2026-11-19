@@ -3,7 +3,7 @@
  */
 import type {EquipmentLoadout} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
-import {FIELD_ITEMS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFieldInventory,
+import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFieldInventory,
  replaceFieldQuantity,moveFieldStack,fieldCarryReport,autoPackFieldInventory,quoteFieldInventoryCopy,
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
@@ -39,11 +39,31 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   text('small','','PHYSICAL QUANTITIES · ACCESS & CAPACITY'));
  root.append(header);
  const report=fieldCarryReport(loadout,magazines,inventory);
- const locations=FIELD_CARRY_LOCATIONS.map(loc=>{
+ // L2.10A: read-only physical carrying-slot gauges. A gauge is a
+ // presentation of the authoritative capacity report, not a second ledger.
+ const capacity=document.createElement('div');
+ capacity.className='fw-field-inventory-capacity';
+ capacity.setAttribute('aria-label','Carrying capacity by location');
+ for(const loc of FIELD_CARRY_LOCATIONS){
   const used=report.used[loc],limit=report.capacity[loc];
-  return loc.toUpperCase()+' '+used+'/'+limit;
- });
- const capacity=text('div','fw-field-inventory-capacity',locations.join(' · '));
+  const slot=document.createElement('div');
+  slot.className='fw-field-inventory-slot';
+  if(used>limit)slot.dataset.overfilled='true';
+  const title=text('span','fw-field-inventory-slot-name',loc.toUpperCase());
+  const count=text('strong','fw-field-inventory-slot-count',used+'/'+limit);
+  const gauge=document.createElement('div');
+  gauge.className='fw-field-inventory-gauge';
+  gauge.setAttribute('role','meter');
+  gauge.setAttribute('aria-label',loc.toUpperCase()+' occupied carrying spaces');
+  gauge.setAttribute('aria-valuemin','0');
+  gauge.setAttribute('aria-valuemax',String(Math.max(1,limit)));
+  gauge.setAttribute('aria-valuenow',String(Math.min(Math.max(0,used),Math.max(1,limit))));
+  gauge.setAttribute('aria-valuetext',used+' of '+limit+' spaces occupied');
+  const fill=document.createElement('span');
+  fill.className='fw-field-inventory-gauge-fill';
+  fill.style.width=(limit>0?Math.min(100,used/limit*100):used>0?100:0)+'%';
+  gauge.append(fill);slot.append(title,count,gauge);capacity.append(slot);
+ }
  root.append(capacity);
  const message=text('p','fw-field-inventory-feedback',report.valid?
   'Equipment is assigned to real carrying positions.':'CARRY CONFLICT · '+report.conflicts.join(' · '));
@@ -122,8 +142,20 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  const actions=document.createElement('div');actions.className='fw-field-inventory-actions';
  const autopack=btn('AUTO PACK',()=>{
   const packed=autoPackFieldInventory(loadout,magazines,inventory);
-  if(packed)onCommit(packed);
-  else feedback('AUTO PACK UNAVAILABLE · ADJUST LOAD OR CARRYING EQUIPMENT');
+  if(!packed){
+   feedback('AUTO PACK UNAVAILABLE · ADJUST LOAD OR CARRYING EQUIPMENT');
+   return;
+  }
+  // L2.10B: no meaningless mutation, undo entry, stock re-quote or view
+  // rebuild when all physical stacks already occupy the preferred slots.
+  const same=FIELD_CARRY_LOCATIONS.every(location=>
+   FIELD_ITEM_IDS.every(id=>
+    inventory.stacks.filter(s=>s.itemId===id&&s.location===location)
+     .reduce((total,s)=>total+s.quantity,0)===
+    packed.stacks.filter(s=>s.itemId===id&&s.location===location)
+     .reduce((total,s)=>total+s.quantity,0)));
+  if(same){feedback('ALREADY PACKED · NO CHANGES NEEDED');return;}
+  onCommit(packed);
  });
  autopack.disabled=!!options.locked;
  actions.append(autopack);

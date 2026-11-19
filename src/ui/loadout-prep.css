@@ -5,7 +5,19 @@
 .fw-field-inventory-heading{display:flex;align-items:baseline;justify-content:space-between;
  gap:8px;flex-wrap:wrap;font-size:12px;letter-spacing:.05em}
 .fw-field-inventory-heading small{font-size:10px;color:#adbdaf}
-.fw-field-inventory-capacity{font-size:10px;color:#b4c5ad;line-height:1.5}
+.fw-field-inventory-capacity{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));
+ gap:6px;min-width:0}
+.fw-field-inventory-slot{display:grid;grid-template-columns:1fr auto;gap:4px 5px;
+ align-items:center;min-width:0;padding:5px 7px;border:1px solid rgba(178,199,171,.18);
+ border-radius:7px;background:rgba(0,0,0,.15)}
+.fw-field-inventory-slot-name{font-size:10px;color:#b4c5ad}
+.fw-field-inventory-slot-count{font-size:10px;line-height:1.2;color:#e2eadb;
+ font-variant-numeric:tabular-nums}
+.fw-field-inventory-gauge{grid-column:1/-1;height:5px;border-radius:4px;
+ overflow:hidden;background:rgba(191,210,189,.18)}
+.fw-field-inventory-gauge-fill{display:block;height:100%;background:#a9c2a8}
+.fw-field-inventory-slot[data-overfilled="true"]{border-color:#ca936e}
+.fw-field-inventory-slot[data-overfilled="true"] .fw-field-inventory-gauge-fill{background:#d2a078}
 .fw-field-inventory-feedback{margin:0;color:#c1cdb8;font-size:11px;line-height:1.4}
 .fw-field-inventory-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;
  padding:9px;border-radius:8px;background:rgba(255,255,255,.04)}
