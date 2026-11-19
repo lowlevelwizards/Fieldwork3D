@@ -80,7 +80,8 @@ test('P13 ejection port is taller with no extra triangles and grooves use wood f
   close(Math.max(...ys),1.18,'raised port ceiling');
   close(Math.min(...ys),.10,'lower port floor');
   assert.ok(Math.max(...ys)-Math.min(...ys)>1.05,'taller port');
-  assert.equal(port.geometry.index.count/3,4,'flat six-point port remains four triangles');
+  assert.equal((port.geometry.index?.count??port.geometry.getAttribute('position').count)/3,4,
+   'flat six-point port remains four triangles');
   assert.equal(grooves.geometry.index.count/3,16,'all grooves stay batched');
   assert.equal(grooves.material.color.getHex(),WEAPON_FINISH_SPECS['r870-walnut-groove'].color);
   assert.equal(WEAPON_FINISH_SPECS['r870-walnut-groove'].role,'wood');
