@@ -286,4 +286,14 @@ export function updateCivilianRig(r:CivilianRig,
    r.leftArm.rotation.z=-2.12;r.rightArm.rotation.z=2.12;
   }
  }
+ // Transient hunch/hand shielding from the same witnessed danger timestamp
+ // as the shared rig; return to the actual base pose without residue.
+ const flinch=c.lastFlinchAt!==undefined&&now>=c.lastFlinchAt&&
+   now-c.lastFlinchAt<.48&&!['down','dragged','carried',
+     'compliant','restrained'].includes(pose);
+ if(flinch){
+  if(pose!=='hide'&&pose!=='seated')bend(3.5,.82);
+  r.upper.rotation.x=.12;
+  r.leftArm.rotation.z=-2.12;r.rightArm.rotation.z=2.12;
+ }
 }
