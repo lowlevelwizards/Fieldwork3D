@@ -1838,3 +1838,57 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-armory-screen[data-kit-workspace="equipment"]
   .campaign-kit-at-a-glance{grid-template-columns:repeat(2,minmax(0,1fr))}
 }
+
+
+/* Visual Armory V2 — the ACTUAL 3D mesh is rendered into equipment cards
+ * using the existing operator preview context. No surrogate gear art. */
+.campaign-armory-screen .campaign-kit-visual-trigger{
+ display:grid;grid-template-columns:72px minmax(0,1fr);
+ align-items:center;gap:10px;
+ min-height:84px;padding:7px 30px 7px 7px;
+ max-width:100%;width:100%;
+}
+.campaign-kit-selected-model,
+.campaign-gear-picker-model{
+ display:grid;place-items:center;overflow:hidden;
+ width:72px;height:70px;border:1px solid #577465;
+ border-radius:8px;background:#1b2d2a;
+ color:#8ba79a;font-size:10px;text-align:center;
+ box-sizing:border-box;
+}
+.campaign-kit-selected-model img,.campaign-gear-picker-model img{
+ width:100%;height:100%;display:block;object-fit:cover;
+}
+.campaign-kit-selected-model-label{
+ display:block;min-width:0;overflow-wrap:break-word;
+ font:700 14px/1.3 var(--fw-font-action);color:var(--fw-text-warm);
+}
+.campaign-armory-screen .campaign-kit-picker-trigger:after{z-index:1}
+.campaign-gear-picker-option{
+ display:grid;grid-template-columns:82px minmax(0,1fr);
+ gap:4px 12px;align-content:center;text-align:left;
+}
+.campaign-gear-picker-model{
+ grid-column:1;grid-row:1/span 4;
+ width:78px;height:80px;align-self:center;
+}
+.campaign-gear-picker-option>strong,
+.campaign-gear-picker-option>small,
+.campaign-gear-picker-option>span:not(.campaign-gear-picker-model),
+.campaign-gear-picker-option>em{
+ grid-column:2;min-width:0;overflow-wrap:break-word;
+}
+.campaign-gear-picker-option>strong{grid-row:1}
+.campaign-gear-picker-model[data-model="real"]{border-color:#a0c4ae}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-row:has(.campaign-kit-visual-trigger){
+  display:flex;flex-direction:column;align-items:stretch;gap:6px;
+ }
+ .campaign-armory-screen .campaign-kit-row:has(.campaign-kit-visual-trigger)>span{
+  font-size:12px;letter-spacing:.035em;
+ }
+ .campaign-armory-screen .campaign-kit-visual-trigger{
+  max-width:100%;width:100%;min-height:86px;
+ }
+ .campaign-gear-picker-option{padding:10px}
+}
