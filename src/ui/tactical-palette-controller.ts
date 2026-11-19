@@ -15,6 +15,7 @@ import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,
 import {SUSPECT_CHALLENGE_RANGE} from '../breach-suspect-compliance.ts';
 import {sweptBodyClear} from '../breach-navigation.ts';
 import {sessionWorldGeometry} from '../breach-world-context.ts';
+import {nearestContextCivilian} from '../breach-civilian-context-selection.ts';
 import {finalPoint} from '../breach-game.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from '../breach-context-placement.ts';
@@ -398,9 +399,18 @@ export function createTacticalPaletteController(config:{
   // SECURE/FOLLOW and civilian transport currently author at finalPoint(a).
   // Earlier waypoint editing cannot honestly promise these commands.
   const routeEndCivilianActions=canOfferRouteEndCivilianAction(node,a.plan);
-  const civilianAtPlan=routeEndCivilianActions?
-    nearestPaletteCandidate(state.civilians,at,c=>
-      c.health>0&&liveVisibility(state,c.p)):null;
+  // Use the same observed *physical-contact* candidate as the dispatch
+  // path. A closer unrelated visitor must never steal FOLLOW from a rescue
+  // target; a civilian visible across an opaque wall must not advertise a
+  // contact order the motor/game authority will reject.
+  const civilianContact=(mode:'secure'|'follow')=>
+    routeEndCivilianActions?nearestContextCivilian(
+      state.civilians,at,mode,state.mission,
+      p=>liveVisibility(state,p),
+      (from,to)=>sweptBodyClear(from,to,state.doors,5.5,
+        sessionWorldGeometry(state))):null;
+  const civilianAtPlan=civilianContact('secure');
+  const rescueAtPlan=civilianContact('follow');
   const suspectAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
       team(state).some(observer=>inSight(observer,e,state))&&
@@ -419,10 +429,9 @@ export function createTacticalPaletteController(config:{
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
     nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
     nearDoor:!door&&!!nearbyDoor,
-    nearCivilian:!!civilianAtPlan&&civilianAtPlan.state!=='compliant',
+    nearCivilian:!!civilianAtPlan,
     nearSuspect:!!suspectAtPlan,
-    escortableCivilian:!!civilianAtPlan&&
-      civilianAtPlan.rescueTarget&&state.mission==='extract',
+    escortableCivilian:!!rescueAtPlan,
     nearCivilianCasualty:!!casualtyAtPlan,
     carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
       c.id===a.carryingId&&c.carriedById===a.id),

@@ -15,6 +15,7 @@ import type {EntryTool} from './breach-entry-tools.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {nearestContextCivilian} from './breach-civilian-context-selection.ts';
 
 export type ContextCommandResult={
  handled:boolean;outcome?:'accepted'|'rejected';failureReason?:string;
@@ -81,11 +82,11 @@ export function dispatchTacticalContextCommand(input:{
   }
   case 'ctxSecureCivilian':
   case 'ctxFollowCivilian':{
-   const civ=state.civilians.filter(c=>c.health>0&&
-    liveVisibility(state,c.p)&&distance(finalPoint(a),c.p)<34)
-    .sort((x,y)=>distance(finalPoint(a),x.p)-
-      distance(finalPoint(a),y.p))[0];
    const mode=action==='ctxSecureCivilian'?'secure':'follow';
+   const civ=nearestContextCivilian(state.civilians,finalPoint(a),
+     mode,state.mission,p=>liveVisibility(state,p),
+     (from,to)=>sweptBodyClear(from,to,state.doors,5.5,
+       sessionWorldGeometry(state)));
    return finish(!!civ&&planCivilianInteraction(state,selected,civ.id,mode),
      'CIVILIAN INTERACTION NOT REACHABLE');
   }
