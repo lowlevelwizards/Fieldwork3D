@@ -17,7 +17,7 @@ import {manipulateWindow} from './breach-windows.ts';
 import {powerControlAt,controlPosition,POWER_CONTROL_REACH,
  POWER_ACTION_SECONDS} from './equipment-site-power-controls.ts';
 import {setSiteCircuitPower,setSiteFixtureSwitch} from './equipment-site-power.ts';
-import {completeOrder,clearCurrentOrderIssue,
+import {completeOrder,clearCurrentOrderIssue,rotate,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
 import type {OrderExecutionPort} from './breach-order-execution-port.ts';
 const d=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -102,18 +102,28 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       // A person who shuffles a little while the squad approaches must
       // not make SECURE appear inert; close the remaining gap under the
       // usual motor/door/traffic authority, with a bounded pursuit range.
-      if(person&&person.health>0&&d(a.p,person.p)>28&&
+      const range=person?d(a.p,person.p):Infinity;
+      const clear=!!person&&
+        sweptBodyClear(a.p,person.p,s.doors,5.5,sessionWorldGeometry(s));
+      if(person&&person.health>0&&range>28&&
          d(person.p,n.p)<=45&&liveVisibility(s,person.p)){
         approach(a,person.p,dt,s,.65);return true;
       }
-      if(!person||person.health<=0||
-         d(a.p,person.p)>32||
-         !sweptBodyClear(a.p,person.p,s.doors,5.5,sessionWorldGeometry(s))||
+      if(!person||person.health<=0||range>28||!clear||
          (person.rescueTarget&&!canSecureRescuePerson(person,a,
-           (from,to)=>sweptBodyClear(from,to,s.doors,5.5,sessionWorldGeometry(s))))||
-         !liveVisibility(s,person.p)){
+           (from,to)=>sweptBodyClear(from,to,s.doors,5.5,sessionWorldGeometry(s))))){
         failCurrentOrder(s,a,n,'CIVILIAN NOT IN PHYSICAL REACH');return true;
       }
+      // SECURE includes the obvious human movement: turn toward the
+      // person actually in arm's reach, then make a short reassurance
+      // gesture. In this close physical context, directional FOV alone
+      // must not invalidate a legal contact. No remote or through-wall
+      // interaction; GO rechecks live person position every tick.
+      a.velocity=0;
+      const bearing=Math.atan2(person.p.y-a.p.y,person.p.x-a.p.x);
+      if(!rotate(a,bearing,dt,s))return true;
+      a.actionTimer+=dt;
+      if(a.actionTimer<.4)return true;
       if(n.interaction==='follow-civilian'){
         if(!person.rescueTarget||s.missionType!=='rescue'||
            s.mission!=='extract'||!s.rescue){
