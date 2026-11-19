@@ -6,6 +6,7 @@ import {initialWardrobe,readWardrobe,type WardrobeOptions}
  from './operator-wardrobe-data.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
+import {applyDeploymentInventory} from './equipment-deployment-snapshot.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
  fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
@@ -17,8 +18,6 @@ import {captureCarryUndo,quoteCarryUndo,type CarryUndoSnapshot} from './equipmen
 import {quoteCarryLayoutCopy} from './equipment-carry-layout-copy.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
-import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
-import {issuedWedges} from './equipment-entry-tools.ts';
 import {initialFieldInventory,readFieldInventory,fieldCarryReport,type FieldInventory} from './equipment-field-inventory.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,selectWeaponFamilyPreset,setConfiguredFamilyPart,
@@ -26,9 +25,8 @@ import {readWeaponConfiguration,changeWeaponPlatform,
  from './equipment-weapon-assemblies.ts';
 import type {FamilyPartSlot} from './equipment-weapon-families.ts';
 import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
-import {equippedFlashCharges,equippedRestraintCharges,
- initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
- loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
+import {initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
+ type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 export type RosterMember={
  id:string;callsign:string;missions:number;successful:number;
  injuries:number;recovery:number;weapon:WeaponId;magazine:number;reserve:number;
@@ -131,24 +129,9 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
    a.name=member.callsign;
    a.appearanceSeed=member.appearanceSeed;
    a.wardrobe=member.wardrobe;
-   a.equipment=member.loadout;
-    a.weaponConfiguration=member.weaponConfiguration;
-    a.medicalSupplies=kitMedicalSupplies(member.loadout);
-    a.wedgeRemaining=issuedWedges(member.loadout);
-    a.restraintRemaining=equippedRestraintCharges(member.loadout);
-    a.weaponLightOn=member.weaponConfiguration.slots.light==='light-compact';
-    a.nvgDeployed=false;
-   a.flashCharges=equippedFlashCharges(member.loadout);
+   applyDeploymentInventory(a,member);
    const protection=initialArmorIntegrity(member.loadout);
    a.armorIntegrity=protection.torso;a.helmetIntegrity=protection.head;
-   a.loadMovementScale=loadMovementScale(member.loadout,member.weaponConfiguration);
-   a.weapon=member.weapon;
-   a.magazine=Math.min(liveMagazineCapacity(a.weapon,member.weaponConfiguration),member.magazine);
-   a.reserve=member.reserve;
-   a.insertedMagazineId=member.loadedMagazineId;
-   a.spareMagazines=a.weapon==='shotgun'?[]:
-      stageMagazines(member.magazines,member.loadout);
-   a.reload=0;a.reloadMode=null;
    // Persistent wounds affect readiness but never invent fresh fatal damage.
    if(member.recovery>0&&member.injuries>0){
     const stage=Math.min(2,member.injuries);
