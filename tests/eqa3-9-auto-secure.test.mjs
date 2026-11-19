@@ -65,12 +65,20 @@ test('EQA3.9 off-axis distant contact still fails; direct SECURE cannot pass sol
   person.p=pt(260,200);person.priorP={...person.p};
   assert.equal(planCivilianInteraction(s,actor.id,person.id,'secure'),false,
     'out of range target behind operator cannot be secured');
-  person.p=pt(282,200);person.priorP={...person.p};
-  // A real solid wall between centers bars contact even though the
-  // operator could turn on the spot. No edit of combat/fog.
-  s.site={...s.site,walls:[...s.site.walls,{
-     a:pt(291,180),b:pt(291,220),material:'concrete'
-  }]};
-  assert.equal(planCivilianInteraction(s,actor.id,person.id,'secure'),false);
+ }finally{activateSite(null);}
+ const w=site();
+ // A real new session is required: static walls are captured into its
+ // authoritative geometry index at construction, not editable via s.site.
+ w.walls=[{a:pt(291,180),b:pt(291,220)}];
+ const blocked=newSession(0,9940,'floor-plan','small','rescue',w,
+   {enableCivilians:true});
+ try{
+  const operator=team(blocked)[0],civil=blocked.civilians.find(c=>c.rescueTarget);
+  assert.ok(civil);
+  operator.p=pt(300,200);operator.priorP=pt(300,200);
+  operator.heading=0;operator.weaponYaw=0;
+  civil.p=pt(282,200);civil.priorP={...civil.p};
+  assert.equal(planCivilianInteraction(blocked,operator.id,civil.id,'secure'),false,
+    'a real physical wall still blocks close behind-the-back SECURE');
  }finally{activateSite(null);}
 });
