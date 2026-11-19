@@ -4,7 +4,7 @@
  */
 export type R870Point=readonly [number,number];
 export type R870Outline=readonly R870Point[];
-export type R870RearVariant='wood'|'pistol'|'birdshead';
+export type R870RearVariant='wood'|'shortwood'|'pistol'|'birdshead';
 export const R870_REAR_JOIN=Object.freeze({
  receiverTop:[-6.12,.76] as R870Point,
  receiverBottom:[-6.12,-1.76] as R870Point,
