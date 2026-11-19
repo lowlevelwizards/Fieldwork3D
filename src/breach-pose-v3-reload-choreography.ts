@@ -9,6 +9,7 @@
  */
 import * as THREE from 'three';
 import type {ReloadMode} from './breach-magazines.ts';
+import type {WeaponFamily} from './equipment-weapon-families.ts';
 import type {WeaponFit} from './breach-weapon-pose.ts';
 import {reloadHandChestTarget} from './breach-reload-motion.ts';
 
@@ -17,9 +18,10 @@ export type V3ReloadCorridorProfile='canonical'|'compact'|'outboard';
  * its feed-lip socket. The gun's insertion socket never moves. */
 export type V3MagazinePalm='legacy'|'upper-body'|'mid-body';
 export function v3MagazineBodyGrip(
- family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36'|undefined,palm:V3MagazinePalm
+ family:WeaponFamily|undefined,palm:V3MagazinePalm
 ):THREE.Vector3|null{
- if(palm==='legacy'||!family)return null;
+ // Tube-fed shotgun has no detachable-mag body/palm for this path.
+ if(palm==='legacy'||!family||family==='r870')return null;
  const mid=palm==='mid-body';
  const y=mid?(family==='hk'?-3.65:-4.05):
    (family==='hk'?-2.65:-2.85);
@@ -38,7 +40,7 @@ export type ReloadChoreographyRequest={
  /** Existing on-body magazine socket in chest space; no ammo writes. */
  pickupTarget?:THREE.Vector3;
  /** Only modular rifle previews opt into a family-specific magazine approach. */
- family?:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36';
+ family?:WeaponFamily;
  /** Lab audition only. Default uses the proven B14 hand track. */
  corridor?:V3ReloadCorridorProfile;
  /** Deliberate free-hand magazine-body hold, V3 Lab preview only. */
@@ -164,7 +166,7 @@ export function choreographV3ReloadHand(
  * No rotation on mounted/reacquired frames or on shell-loading weapons.
  */
 export function v3MagazineRockAngle(progress:number,mode:ReloadMode,
- family?:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36'):number{
+ family?:WeaponFamily):number{
  if(mode==='shells'||family!=='ak')return 0;
  const t=clamp(progress);
  // Mount must be bit-exact neutral, not a tiny trig residual.
