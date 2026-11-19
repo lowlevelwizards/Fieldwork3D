@@ -14,6 +14,7 @@ import {fieldQuantity,fieldCarryReport}
  from '../src/equipment-field-inventory.ts';
 import {setEquipmentChoice} from '../src/equipment-loadouts.ts';
 import {reserveRounds} from '../src/breach-magazines.ts';
+import {stageMagazines} from '../src/equipment-magazine-placement.ts';
 
 const initialCampaignWithPhysicalKit=()=>{
  let c=newCampaign(77);
@@ -122,7 +123,8 @@ test('F3: Quick Play still resets combat consumption but retains requested carry
  assert.equal(fieldQuantity(next.loadout.fieldInventory,'flashbang'),1);
  assert.equal(next.magazine,op.magazine);
  assert.equal(next.reserve,op.reserve);
- assert.deepEqual(next.magazines,op.magazines);
+ assert.deepEqual(next.magazines,stageMagazines(op.magazines,op.loadout),
+  'fresh round keeps exact authored positions with newly issued standard ammo');
 });
 test('F3: the real results UI captures a per-career-ID field receipt, not tactic slot or editor state',()=>{
  const flow=readFileSync(new URL('../src/breach-campaign-flow.ts',import.meta.url),'utf8');
