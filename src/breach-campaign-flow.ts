@@ -18,7 +18,7 @@ import {resolveOperation,tacticalSlotOperator,type CampaignReport}
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
   assignOperatorToSlot,buyWeapon,equipCampaignWeapon,repairCampaignArmor,
-  serviceCampaignWeapon,equipCampaignGear,equipCampaignFieldInventory,equipCampaignWeaponPreset,
+  serviceCampaignWeapon,equipCampaignGear,equipCampaignFieldInventory,copyCampaignFieldInventory,equipCampaignWeaponPreset,
   equipCampaignWeaponFamilyPart,equipCampaignWeaponAttachment,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
@@ -271,6 +271,8 @@ const campaignScreen=new CampaignScreen({
   c=>serviceCampaignWeapon(c,id),'Weapon maintenance completed'),
  equipFieldInventory:(id,inventory)=>applyVisibleCampaignAction(
   c=>equipCampaignFieldInventory(c,id,inventory),'Field equipment updated'),
+ copyFieldInventory:(sourceId,targetId)=>applyVisibleCampaignAction(
+  c=>copyCampaignFieldInventory(c,sourceId,targetId),'Carried gadgets copied'),
  equipGear:(id,slot,itemId)=>applyVisibleCampaignAction(
   c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
  equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(current=>{
