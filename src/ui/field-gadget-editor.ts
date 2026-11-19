@@ -10,6 +10,7 @@ import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFi
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
 import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
 import {quoteOneMagazineMove} from '../equipment-magazine-transfer.ts';
+import {quoteCarryLayoutCopy} from '../equipment-carry-layout-copy.ts';
 import './loadout-prep.css';
 
 export type FieldGadgetEditorOptions={
@@ -23,6 +24,8 @@ export type FieldGadgetEditorOptions={
  copyTargets?:readonly {id:string;name:string;loadout:EquipmentLoadout;
   magazines:readonly MagazineItem[]}[];
  onCopy?: (targetId:string,inventory:FieldInventory)=>void;
+ /** Copy placements only; source cannot issue destination stock or ammo. */
+ onCopyLayout?:(targetId:string)=>void;
  onUndo?:()=>void;
  canUndo?:boolean;
 };
@@ -408,7 +411,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   undo.disabled=!!options.locked||!options.canUndo;
   actions.append(undo);
  }
- if(options.onCopy&&options.copyTargets?.length){
+ if((options.onCopy||options.onCopyLayout)&&options.copyTargets?.length){
   const copyArea=document.createElement('div');
   copyArea.className='fw-field-inventory-copy-area';
   const picker=document.createElement('select');
@@ -421,17 +424,65 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    option.value=target.id;option.textContent=target.name.toUpperCase();
    picker.append(option);
   }
-  const copyButton=btn('COPY',()=>{
-   const target=options.copyTargets?.find(entry=>entry.id===picker.value);
-   if(!target)return;
-   const quote=quoteFieldInventoryCopy(inventory,target.loadout,target.magazines);
-   if(!quote.ok){feedback('CANNOT COPY · '+quote.reason);return;}
-   options.onCopy?.(target.id,quote.inventory);
-  });
-  copyButton.setAttribute('aria-label','Copy carried gadgets to selected operator');
-  copyButton.disabled=!!options.locked;
+  if(options.onCopy){
+   const copyButton=btn('COPY GADGETS',()=>{
+    const target=options.copyTargets?.find(entry=>entry.id===picker.value);
+    if(!target)return;
+    const quote=quoteFieldInventoryCopy(inventory,target.loadout,target.magazines);
+    if(!quote.ok){feedback('CANNOT COPY · '+quote.reason);return;}
+    options.onCopy?.(target.id,quote.inventory);
+   });
+   copyButton.setAttribute('aria-label','Copy carried gadgets to selected operator');
+   copyButton.disabled=!!options.locked;
+   copyArea.append(copyButton);
+  }
+  if(options.onCopyLayout){
+   const inspect=btn('PREVIEW CARRY LAYOUT',()=>{
+    const target=options.copyTargets?.find(entry=>entry.id===picker.value);
+    if(!target){feedback('SELECT A TARGET OPERATOR FIRST');return;}
+    const quote=quoteCarryLayoutCopy(loadout,magazines,target.loadout,target.magazines);
+    detail.hidden=false;
+    confirm.hidden=true;
+    if(!quote.ok){
+     detail.textContent='CANNOT COPY LAYOUT · '+quote.reason;
+     return;
+    }
+    if(!quote.changed){
+     detail.textContent='ALREADY MATCHES · NO CARRY MOVES NEEDED';
+     return;
+    }
+    detail.textContent='COPY POSITIONS ONLY TO '+target.name.toUpperCase()+
+     ' · '+quote.moves.map(move=>move.quantity+' × '+move.label+
+      ' '+move.from.toUpperCase()+' → '+move.to.toUpperCase()).join(' · ')+
+     ' · MAGAZINE IDENTITIES, ROUNDS AND STOCK WILL NOT CHANGE';
+    confirm.hidden=false;
+    pendingTarget=target.id;
+   });
+   inspect.setAttribute('aria-label','Preview carrying layout copy to selected operator');
+   inspect.disabled=!!options.locked;
+   let pendingTarget:string|null=null;
+   const detail=text('p','fw-field-inventory-layout-preview','');
+   detail.hidden=true;detail.setAttribute('role','status');
+   const confirm=btn('APPLY LAYOUT COPY',()=>{
+    const target=options.copyTargets?.find(entry=>
+     entry.id===pendingTarget&&entry.id===picker.value);
+    if(!target){detail.textContent='TARGET CHANGED · PREVIEW AGAIN';confirm.hidden=true;return;}
+    const quote=quoteCarryLayoutCopy(loadout,magazines,target.loadout,target.magazines);
+    if(!quote.ok||!quote.changed){
+     detail.textContent=quote.ok?'LAYOUT ALREADY MATCHES':'CANNOT COPY · '+quote.reason;
+     confirm.hidden=true;return;
+    }
+    confirm.hidden=true;options.onCopyLayout?.(target.id);
+   });
+   confirm.setAttribute('aria-label','Apply carrying layout copy to selected operator');
+   confirm.hidden=true;confirm.disabled=!!options.locked;
+   picker.addEventListener('change',()=>{
+    pendingTarget=null;detail.hidden=true;confirm.hidden=true;
+   });
+   copyArea.append(inspect,detail,confirm);
+  }
   picker.disabled=!!options.locked;
-  copyArea.append(picker,copyButton);root.append(copyArea);
+  copyArea.prepend(picker);root.append(copyArea);
  }
  root.append(actions);
  return root;

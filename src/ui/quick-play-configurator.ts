@@ -82,6 +82,7 @@ export function createQuickPlayConfigurator(options:{
  onEquipField?:(id:string,inventory:FieldInventory)=>boolean;
  onMoveMagazine?:(id:string,magazineId:string,to:FieldCarryLocation)=>boolean;
  onEquipCarryGear?:(id:string,slot:CarryGearSlot,itemId:string)=>boolean;
+ onCopyCarryLayout?:(sourceId:string,targetId:string)=>boolean;
 }){
  let settings=readSettings();
  let previouslyFocused:HTMLElement|null=null;
@@ -299,6 +300,11 @@ export function createQuickPlayConfigurator(options:{
     }:undefined,
     copyTargets:(options.getRoster?.().members??[]).filter(m=>m.id!==operator.id)
      .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
+    onCopyLayout:options.onCopyCarryLayout?(targetId)=>{
+     const scroll=content.scrollTop;
+     if(!options.onCopyCarryLayout?.(operator.id,targetId))return;
+     renderSquadPrep();content.scrollTop=scroll;
+    }:undefined,
     onCopy:(targetId,inventory)=>{
      if(applyChange(targetId,inventory))renderSquadPrep();
     },
