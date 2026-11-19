@@ -17,7 +17,7 @@ Does one explicit player-authorable `planLook()` from MOSS's real position to th
 The opt-in `--contact-look` audit-driver variant is a genuine normal LOOK command, not a visibility override, objective-state edit, body teleport, enemy nerf or mission rule change. It is issued only if:
 1. The mission is rescue and SECURE is pending.
 2. The objective position is already known through confirmed intel or observation.
-3. The living person is physically within the normal 34-unit command zone of the selected operator's final point.
+3. The previously disclosed objective point is within the normal 34-unit command zone of the selected operator's final point. This check does **not** read hidden civilian health, identity, or current position.
 4. The person is not currently live-visible.
 5. The command has not been repeatedly attempted (at most 4, with a fixed cooldown).
 
