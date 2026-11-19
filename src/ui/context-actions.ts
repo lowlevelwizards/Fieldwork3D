@@ -10,7 +10,6 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   powerActions?:readonly ContextAction[];
   treatTargetName?:string;
   nearCivilian?:boolean;escortableCivilian?:boolean;
-  knownRescueLook?:boolean;
   nearSuspect?:boolean;
   nearCivilianCasualty?:boolean;
   carryingCivilian?:boolean;
@@ -70,9 +69,6 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ...(o.escortableCivilian?[{id:'ctxFollowCivilian',label:'FOLLOW',
       group:'primary' as const,
       title:'Queue a physical rescue-person escort handoff'}]:[]),
-    ...(o.knownRescueLook?[{id:'ctxKnownRescueLook',
-      label:'LOOK TO PERSON',group:'primary' as const,
-      title:'Turn toward the already known rescue position. The person must actually become visible before SECURE is available.'}]:[]),
     ...(o.carryingCivilian?[
       {id:'ctxReleaseCivilian',label:'RELEASE',group:'primary' as const,
        title:'Queue the physical release of the civilian you are carrying'}
