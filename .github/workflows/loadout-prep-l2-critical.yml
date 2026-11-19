@@ -6,6 +6,7 @@ on:
       - feature/loadout-prep-l2-6-campaign-polish-20261118
       - feature/loadout-prep-l2-7-prego-20261118
       - feature/loadout-prep-l2-8-wedge-physical-20261118
+      - feature/loadout-prep-l2-9-medical-utility-20261118
   workflow_dispatch:
 concurrency:
   group: loadout-prep-l2-${{ github.ref }}
@@ -23,4 +24,4 @@ jobs:
       - name: Typecheck
         run: npm run check
       - name: Inventory regression tests
-        run: node --experimental-strip-types --test tests/equipment-field-inventory.test.mjs tests/equipment-12-flash-supply.test.mjs tests/quickplay-field-preferences.test.mjs tests/equipment-field-undo.test.mjs tests/campaign-pre-go-inventory.test.mjs tests/equipment-field-visuals.test.mjs tests/equipment-field-visual-rig.test.mjs tests/equipment-13-visuals.test.mjs
+        run: node --experimental-strip-types --test tests/equipment-field-inventory.test.mjs tests/equipment-12-flash-supply.test.mjs tests/quickplay-field-preferences.test.mjs tests/equipment-field-undo.test.mjs tests/campaign-pre-go-inventory.test.mjs tests/equipment-field-visuals.test.mjs tests/equipment-field-visual-rig.test.mjs tests/equipment-13-visuals.test.mjs tests/operator-equipment-details.test.mjs
