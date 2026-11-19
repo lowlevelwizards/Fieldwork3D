@@ -34,7 +34,7 @@ export function r870FrontCompatible(barrel:string,tube:string,pump:string):boole
  if(b.nominalInches===10)return tube==='r870-mcs-mini-tube'&&
   pump==='r870-mcs-mini-pump';
  if(b.nominalInches===14)return tube==='r870-short-tube'&&
-  pump!=='r870-police-wood-pump'&&pump!=='r870-magpul-mlok-pump';
+  pump==='r870-short-black-pump';
  return tube!=='r870-short-tube'&&tube!=='r870-mcs-mini-tube'&&
   pump!=='r870-short-black-pump'&&pump!=='r870-mcs-mini-pump';
 }
