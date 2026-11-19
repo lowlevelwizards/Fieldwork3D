@@ -71,6 +71,8 @@ export type CivilianFrame=Pick<CivilianActor,
     /** A recorded operator observation, never future knowledge. */
     carriedById?:string|null;
     transportMode?:CivilianActor['transportMode'];
+    /** Added in EQA3.9: old films omit them and use completed posture. */
+    stateSince?:number;restrained?:boolean;
     visibleAtCapture?:boolean;
   };
 export type ReplayFrame={
@@ -508,6 +510,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       isRescueTarget:copy.rescueTarget
     });
     return {...actor,...copy,p:position(copy.p),
+      stateSince:copy.stateSince??(copy.state==='compliant'?f.t-2:f.t),
+      restrained:copy.restrained===true,
       carriedById:copy.carriedById??null,
       transportMode:copy.transportMode??null,
       priorP:position(copy.p),goal:null,nav:[],
