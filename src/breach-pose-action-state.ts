@@ -38,13 +38,19 @@ export function resolveOperatorActionState(
   hitAge:p.hitAge});
  // A GO-validated active flash order borrows the SAME throw hand ownership.
  // Reload, medical, down, damage guard and door interaction all outrank it.
+ // A wedge action uses the same door order timer, not a second visual
+ // "open" command. It may borrow the door hand while the tool is active,
+ // unless an actual motor-owned door grip/physical contact owns that hand.
+ const wedgeTool=!!p.equipmentInteraction&&p.equipmentInteraction.item==='wedge';
  const equipmentActive=!!p.equipmentInteraction&&!p.down&&!p.surrender&&
   !treatmentActive&&!reloadActive&&!throwActive&&!pushActive&&
-  !woundedGuard&&!doorActive&&!p.firing;
+  !woundedGuard&&!p.firing&&
+  (!doorActive||(wedgeTool&&!p.doorGrip&&!p.physicalContact));
  const originalOwners=resolvePoseContactOwners({
    surrender:p.surrender,down:p.down,downProgress,
    treatmentActive,reloadActive,reloadProgress,reloadMode,
-   throwActive:throwActive||equipmentActive,pushActive,woundedGuard,doorActive
+   throwActive:throwActive||equipmentActive,pushActive,woundedGuard,
+   doorActive:doorActive&&!equipmentActive
  });
  const physicalContact=resolvePhysicalContactPose(
    p.physicalContact,originalOwners,p.seconds);
