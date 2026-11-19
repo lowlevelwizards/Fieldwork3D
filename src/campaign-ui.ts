@@ -1797,6 +1797,7 @@ export class CampaignScreen{
   grouped.field('utilities').append(createFieldGadgetEditor({
    loadout:person.loadout,magazines:person.magazines,locked,
    onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
+   onInspectItem:item=>this.preview?.inspectCarryItem(item),
    onMoveMagazine:(magazineId,to,focusLabel)=>{
     const quote=quoteOneMagazineMove(person.loadout,person.magazines,magazineId,to);
     if(!quote.ok||!quote.changed)return;
