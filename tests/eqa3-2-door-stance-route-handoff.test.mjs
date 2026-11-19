@@ -5,6 +5,10 @@ import {newSession,team,planDoor,selectDeployment,toggling,
  stepSession} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {openingFootwork} from '../src/breach-door-opening-footwork.ts';
+import {sweptBodyClear} from '../src/breach-navigation.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
+import {openerThreatensLeaf} from '../src/breach-door-opening-stance.ts';
+import {doorWouldStrikeActors} from '../src/breach-door.ts';
 
 const cases=[
  {seed:14,mission:'hold',entry:'FRONT'},
@@ -47,7 +51,15 @@ for(const {seed,mission,entry} of cases){
    assert.equal(actor.failedOrders,0,
     'the corrective stance should not cancel a legal OPEN');
    const foot=a=>a.plan[0]?.kind==='door'?openingFootwork(a,door.id,a.plan[0].id,'stance'):null;
-   const trace={p:actor.p,nav:actor.nav.slice(0,8),
+   const stance=foot(actor)?.target??null;
+   const peer=team(s).filter(b=>b.id!==actor.id&&b.health>0).map(b=>({
+     id:b.id,p:b.p,distStance:stance?Math.hypot(b.p.x-stance.x,b.p.y-stance.y):null
+   }));
+   const trace={p:actor.p,nav:actor.nav.slice(0,8),peer,
+     stanceSweeepClear:stance?sweptBodyClear(actor.p,stance,s.doors,8,
+        sessionWorldGeometry(s)):null,
+     currentWouldStrike:openerThreatensLeaf(door,actor.p),
+     stanceWouldStrike:stance?openerThreatensLeaf(door,stance):null,
      originalDoorCenter:{x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2},
      authoredNode:actor.plan[0],routeGoalKey:actor.routeGoalKey,
      openingFootwork:foot(actor),motorPause:actor.motorPause,
