@@ -1,0 +1,29 @@
+name: EQA3.16N NPC locomotion critical
+on:
+  push:
+    branches:
+      - fix/eqa3-16n-locomotion-support-alignment-20261119
+  workflow_dispatch:
+concurrency:
+  group: eqa3-16n-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  npc-gait:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-package-lock
+      - name: Typecheck
+        run: npm run check
+      - name: Screenshot gait, COM, chain and existing NPC animation checks
+        run: >-
+          node --experimental-strip-types --test
+          tests/eqa3-16n-npc-locomotion-support.test.mjs
+          tests/eqa3-16m-npc-balance-contact.test.mjs
+          tests/eqa3-16l-npc-animation-transitions.test.mjs
+          tests/eqa3-16k-npc-lab-continuity.test.mjs
+          tests/package-b3-lower-body-output.test.mjs
