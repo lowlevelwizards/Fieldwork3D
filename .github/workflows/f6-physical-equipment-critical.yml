@@ -31,6 +31,8 @@ jobs:
           tests/f6-equipment-interaction-pose.test.mjs
           tests/f6-flash-handoff.test.mjs
           tests/f6-wedge-handoff.test.mjs
+          tests/f6-cuff-handoff.test.mjs
+          tests/eqa3-9-civilian-animation.test.mjs
           tests/equipment-deployed-field-use.test.mjs
           tests/equipment-field-visual-rig.test.mjs
           tests/animation-a1-choreography.test.mjs
