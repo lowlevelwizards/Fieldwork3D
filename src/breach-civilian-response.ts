@@ -99,7 +99,7 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
  }
  // Sight is physically confirmed; an armed person's nonviolent presence
  // and an actual threat produce distinct evidence classes.
- let sighted:string|null=null;
+ let sighted:{key:string;point:Pt;threat:'caution'|'alarm';range:number}|null=null;
  for(const person of world.people){
   if(person.health<=0)continue;
   const threat=witnessedCivilianThreat(person,c.p,now);
@@ -126,20 +126,27 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   c.visualProgress[person.id]=advanceSight(
     c.visualProgress[person.id]??0,elapsed,gain,geometric);
   if(confirmedSight(c.visualProgress[person.id])){
-    const key=person.id+'/'+threat;
-    sighted=key;
-    if(c.lastVisualId!==key)
-      addEvidence(c,'visual/'+key+'/'+Math.floor(now*60),
-        now,threat==='alarm'?'visual':'investigate',person.p,true);
-    else if(threat==='alarm'){
-      c.fear=Math.max(c.fear,.72);
-      c.lastEvidenceAt=now;
-      c.threatEstimate={...person.p};
-    }
-    break;
+    // Evaluate ALL physically confirmed sight lines before selecting the
+    // civilian's attention target. A familiar armed operator at the front
+    // of the array must not mask a simultaneous witnessed shooting/aiming
+    // threat farther down it. Ties prefer proximity, then stable input order.
+    if(!sighted||(threat==='alarm'&&sighted.threat!=='alarm')||
+       (threat===sighted.threat&&range<sighted.range))
+      sighted={key:person.id+'/'+threat,point:person.p,threat,range};
   }
  }
- c.lastVisualId=sighted;
+ if(sighted){
+  const {key,point,threat}=sighted;
+  if(c.lastVisualId!==key)
+   addEvidence(c,'visual/'+key+'/'+Math.floor(now*60),
+     now,threat==='alarm'?'visual':'investigate',point,true);
+  else if(threat==='alarm'){
+   c.fear=Math.max(c.fear,.72);
+   c.lastEvidenceAt=now;
+   c.threatEstimate={...point};
+  }
+ }
+ c.lastVisualId=sighted?.key??null;
  if(c.state==='compliant'||c.state==='escorted')return;
  if(c.state==='routine'&&c.fear>=profile.alert)
    setState(c,'attentive',now);
