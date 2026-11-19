@@ -5,6 +5,9 @@
  * State is rebuilt from the selected four-second clock on EVERY sample.
  */
 import * as THREE from 'three';
+import {advanceFootsteps,createFootstepScheduler,
+ type FootTarget,type FootstepInput} from './breach-footsteps.ts';
+import {recordedFeet} from './breach-lab-tracks.ts';
 import {createCivilian,type CivilianActor,type CivilianState}
  from './breach-civilian-types.ts';
 import {civilianPose} from './breach-civilian-pose.ts';
@@ -83,7 +86,9 @@ export function sampleNpcCivilian(id:string,clock:number):CivilianActor{
  c.stateSince=.8;
  const set=(state:CivilianState,velocity=0)=>{
   c.state=state;c.velocity=velocity;
-  c.p.x=gait(now,velocity);
+  // Reactive tracks begin after .8 seconds, not during quiet idle.
+  c.p.x=gait(state==='routine'||state==='escorted'?now:delayed(now),
+   velocity);
   c.priorP={...c.p};
  };
  const audio=()=>{
@@ -182,7 +187,8 @@ export function sampleNpcHostile(id:string,clock:number):NpcHostileSample{
   down,surrender:surrendered,aiming:aim>.2,firing,
   turning:0,deterministic:true,aimBlend:aim,
   recoil:firing?.45:0,poseDiagnostics:false,
-  downProgress:down?Math.min(1,(now-.8)/.45):0
+  downProgress:down||surrendered?
+   Math.min(1,Math.max(0,(now-.8)/.55)):0
  };
  return {pose,physical};
 }
@@ -191,15 +197,60 @@ export function sampleNpcHostile(id:string,clock:number):NpcHostileSample{
  * alternate animation engine. Mounts only when the NPC tab is active,
  * and disposes both when leaving (important on iOS/WebGL).
  */
+/** Fixed-tick contacts for one selected track, not a mutating replay clock.
+ * Switching tracks, reverse seek and frame stepping reconstruct valid feet.
+ */
+export class NpcLabFootFilm{
+ readonly id:string;
+ readonly frames:[FootTarget,FootTarget][]=[];
+ constructor(id:string){
+  this.id=id;
+  const scheduler=createFootstepScheduler();
+  for(let tick=0;tick<=NPC_LAB_DURATION*60;tick++){
+   const time=tick/60;
+   let p:{x:number;y:number},heading:number,speed:number,
+     down:boolean,posture:'stand'|'crouch',gait:'run'|'walk';
+   if(id.startsWith('civ-')){
+    const c=sampleNpcCivilian(id,time);
+    const physical=civilianPhysicalityAt(c,time);
+    p=c.p;heading=c.heading;
+    speed=physical.pose==='walk'||physical.pose==='run'||
+      physical.pose==='injured-walk'?c.velocity:0;
+    down=physical.pose==='down'||physical.pose==='dragged'||
+      physical.pose==='carried';
+    posture=physical.pose==='hide'||physical.pose==='seated'?
+      'crouch':'stand';
+    gait=physical.pose==='run'?'run':'walk';
+   }else{
+    const pose=sampleNpcHostile(id,time).pose;
+    p={x:pose.x,y:pose.z};heading=pose.heading;
+    speed=pose.velocity;down=pose.down;
+    posture=pose.posture;gait='walk';
+   }
+   const input:FootstepInput={time,position:p,rootYaw:-heading,
+    travelYaw:heading,facingYaw:heading,speed,turning:0,
+    posture,injury:0,down,gait};
+   const feet=advanceFootsteps(scheduler,input);
+   this.frames.push(feet.map(foot=>({...foot,
+    position:{...foot.position}})) as [FootTarget,FootTarget]);
+  }
+ }
+ sample(now:number):[FootTarget,FootTarget]{
+  return recordedFeet(this.frames,bound(now));
+ }
+}
 export class NpcLabPreview{
  private civilian:CivilianRig|null=null;
  private hostile:OperatorRig|null=null;
+ private film:NpcLabFootFilm|null=null;
  private readonly scene:THREE.Scene;
  constructor(scene:THREE.Scene){this.scene=scene;}
  render(id:string,clock:number):{label:string;pose:string;headYaw:number;
   headPitch:number;model:'civilian'|'hostile'}{
   const chosen=npcLabPose(id);
   if(!chosen)throw Error('Unsupported NPC animation '+id);
+  if(this.film?.id!==id)this.film=new NpcLabFootFilm(id);
+  const feet=this.film.sample(clock);
   if(id.startsWith('civ-')){
    if(!this.civilian){
     const initial=sampleNpcCivilian('civ-idle',0);
@@ -207,7 +258,7 @@ export class NpcLabPreview{
     this.scene.add(this.civilian.root);
    }
    const c=sampleNpcCivilian(id,clock);
-   updateCivilianRig(this.civilian,c,bound(clock));
+   updateCivilianRig(this.civilian,c,bound(clock),feet);
    this.civilian.root.visible=true;
    if(this.hostile)this.hostile.root.visible=false;
    const physical=civilianPhysicalityAt(c,bound(clock));
@@ -222,7 +273,7 @@ export class NpcLabPreview{
    this.scene.add(this.hostile.root);
   }
   const state=sampleNpcHostile(id,clock);
-  poseOperator(this.hostile,state.pose,0);
+  poseOperator(this.hostile,{...state.pose,replayFeet:feet},0);
   this.hostile.head.rotation.y+=state.physical.headYaw;
   this.hostile.head.rotation.x+=state.physical.headPitch;
   this.hostile.root.visible=true;
@@ -236,5 +287,6 @@ export class NpcLabPreview{
    disposeCivilianRig(this.civilian);this.civilian=null;}
   if(this.hostile){this.scene.remove(this.hostile.root);
    this.hostile.dispose();this.hostile=null;}
+  this.film=null;
  }
 }
