@@ -12,7 +12,7 @@ export type CarryUndoQuote=
  |{ok:false;reason:string};
 export function captureCarryUndo(loadout:EquipmentLoadout,
  magazines:readonly MagazineItem[]):CarryUndoSnapshot{
- return {loadout:structuredClone(loadout),magazines:structuredClone(magazines)};
+ return {loadout:structuredClone(loadout),magazines:magazines.map(m=>structuredClone(m))};
 }
 const fingerprint=(x:CarryUndoSnapshot)=>JSON.stringify(x);
 const keyed=(items:readonly MagazineItem[])=>{
