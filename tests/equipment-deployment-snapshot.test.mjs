@@ -7,7 +7,7 @@ import {captureDeploymentInventory,applyDeploymentInventory,
  limitDeployedFlashIssue} from '../src/equipment-deployment-snapshot.ts';
 import {fieldQuantity,fieldCarryReport} from '../src/equipment-field-inventory.ts';
 import {stageMagazines} from '../src/equipment-magazine-placement.ts';
-import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
+import {initialEquipmentLoadout,setEquipmentChoice} from '../src/equipment-loadouts.ts';
 import {changeWeaponPlatform} from '../src/equipment-weapon-assemblies.ts';
 
 test('F1 Quick Play snapshot carries exact magazine identities, rounds and fitted locations',()=>{
@@ -79,6 +79,18 @@ test('F1 older kits migrate once without creating cuffs or future gadgets',()=>{
  assert.equal(fieldQuantity(snapshot.equipment.fieldInventory,'smoke'),0);
  assert.equal(fieldQuantity(snapshot.equipment.fieldInventory,'frag'),0);
  assert.equal(snapshot.reserve,op.reserve);
+});
+
+test('F1 issued wedges retain physical belt location and finite quantity',()=>{
+ const op=initialRoster().members[0];
+ const loadout=setEquipmentChoice(op.loadout,'utility','utility-wedge');
+ const snapshot=captureDeploymentInventory({...op,loadout});
+ assert.equal(snapshot.wedgeRemaining,2);
+ assert.equal(fieldQuantity(snapshot.equipment.fieldInventory,'wedge'),2);
+ assert.ok(snapshot.equipment.fieldInventory.stacks.some(row=>
+  row.itemId==='wedge'&&row.location==='belt'&&row.quantity===2));
+ assert.equal(fieldCarryReport(snapshot.equipment,snapshot.spareMagazines,
+  snapshot.equipment.fieldInventory).valid,true);
 });
 
 test('F1 shotgun deployment remains shell-backed without invented magazines',()=>{
