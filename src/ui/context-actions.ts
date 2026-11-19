@@ -10,6 +10,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   powerActions?:readonly ContextAction[];
   treatTargetName?:string;
   nearCivilian?:boolean;escortableCivilian?:boolean;
+  nearRestrainableCivilian?:boolean;restraintsRemaining?:number;
   nearSuspect?:boolean;
   nearCivilianCasualty?:boolean;
   carryingCivilian?:boolean;
@@ -66,6 +67,10 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ...(o.nearCivilian?[{id:'ctxSecureCivilian',label:'SECURE',
       group:'primary' as const,
       title:'Queue a physical reassurance and stay command'}]:[]),
+    ...(o.nearRestrainableCivilian&&Number(o.restraintsRemaining)>0?
+      [{id:'ctxRestrainCivilian',label:'RESTRAIN ×'+o.restraintsRemaining,
+        group:'primary' as const,
+        title:'Secure this compliant, unrestrained person with one physically carried pair of flex cuffs'}]:[]),
     ...(o.escortableCivilian?[{id:'ctxFollowCivilian',label:'FOLLOW',
       group:'primary' as const,
       title:'Queue a physical rescue-person escort handoff'}]:[]),
