@@ -11,6 +11,9 @@ import {setObjectiveIntelLevel} from '../src/breach-objective-intel.ts';
 import {doorCenter,activateSite} from '../src/breach-core.ts';
 import {doorKnown} from '../src/breach-intel.ts';
 import {knownDoorApproach} from '../src/breach-plan-authoring.ts';
+import {doorInteraction} from '../src/breach-interactions.ts';
+import {openerThreatensLeaf} from '../src/breach-door-opening-stance.ts';
+import {doorReachable,handlePoint} from '../src/breach-door.ts';
 import {writeFileSync,mkdirSync} from 'node:fs';
 const pairs=[[12,'intel'],[23,'rescue'],[14,'hold']];
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -57,11 +60,23 @@ for(const [seed,mission] of pairs){
     toggling(s);
     for(let i=0;i<30*20&&s.phase==='running';i++){
      stepSession(s,1/30);
-     if(i%30===0)steps.push({
+     if(i%15===0)steps.push({
       t:round(s.seconds),x:round(a.p.x),y:round(a.p.y),
       doorOpen:selected.open,doorFraction:round(selected.openFraction??0),
-      currentOrder:a.plan[0]?.kind??null,motorPause:a.motorPause,
+      currentOrder:a.plan[0]?.kind??null,
+      target:a.plan[0]?.p??null,
+      distToTarget:a.plan[0]?.p?round(dist(a.p,a.plan[0].p)):null,
+      distToHandle:round(dist(a.p,handlePoint(selected))),
+      distToCenter:round(dist(a.p,doorCenter(selected))),
+      actualReach:doorReachable(a.p,selected),
+      interaction:doorInteraction({target:selected,actorId:a.id,
+        actorPosition:a.p,action:'open'}),
+      threatensLeaf:openerThreatensLeaf(selected,a.p),
+      motorPause:a.motorPause,actionTimer:round(a.actionTimer),
+      recoveryAttempts:a.recoveryAttempts,
       blocked:round(a.blockedTime),lastBlocker:a.lastBlocker,
+      orderIssue:a.orderIssue,navLength:a.nav.length,
+      velocity:round(a.velocity),
       failures:a.failedOrders,health:a.health});
      if(!a.plan.length){doorActionSeconds=round(s.seconds);break;}
     }
