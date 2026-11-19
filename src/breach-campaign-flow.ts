@@ -5,6 +5,7 @@ import {initialArmorIntegrity} from './equipment-armor.ts';
 import {applyDeploymentInventory,limitDeployedFlashIssue}
  from './equipment-deployment-snapshot.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
+import {refillCampaignSquad} from './equipment-campaign-squad-refill.ts';
 import {undoCampaignCarryGear,copyCampaignCarryLayout} from './campaign-state.ts';
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
@@ -300,6 +301,8 @@ const campaignScreen=new CampaignScreen({
   'Operator ammunition replenished'),
  resupplyMedical:(id)=>applyVisibleCampaignAction(c=>resupplyMedicalOperator(c,id),
   'Operator medical supplies replenished'),
+ resupplySquad:()=>applyVisibleCampaignAction(refillCampaignSquad,
+  'Squad inventory replenished from HQ stock'),
  treat:(id)=>applyVisibleCampaignAction(c=>treatOperator(c,id),
   'Treatment completed · recovery time reduced'),
  recruit:()=>applyVisibleCampaignAction(hireRecruit,'New operator joined the roster'),
