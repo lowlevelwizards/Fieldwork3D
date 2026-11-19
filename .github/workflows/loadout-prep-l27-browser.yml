@@ -8,6 +8,10 @@ on:
       - feature/loadout-prep-l2-11-feedback-mobile-20261118
       - feature/loadout-prep-l2-12-magazine-interaction-20261118
       - feature/loadout-l212-c3-c4-gear-20261119
+      - feature/loadout-l212-d2-magazine-drag-20261119
+      - feature/loadout-l212-d3-placement-feedback-20261119
+      - feature/loadout-l212-d1-quickplay-carry-20261119
+      - feature/loadout-l212-release-b-20261119
     paths:
       - 'src/ui/campaign-pre-go-prep.ts'
       - 'src/ui/campaign-pre-go-prep.css'
@@ -20,6 +24,7 @@ on:
       - 'scripts/loadout-prep-visual-smoke.ts'
       - 'scripts/smoke-loadout-prep-l27.mjs'
       - 'src/ui/carry-gear-change-controls.ts'
+      - 'src/ui/quick-play-configurator.ts'
       - '.github/workflows/loadout-prep-l27-browser.yml'
   pull_request:
     paths:

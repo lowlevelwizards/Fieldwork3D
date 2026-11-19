@@ -3,7 +3,8 @@ import {newCampaign,acceptContract,equipCampaignPreGoFieldInventory}
  from '../src/campaign-state.ts';
 import {mountCampaignPreGoPrep} from '../src/ui/campaign-pre-go-prep.ts';
 import type {FieldInventory} from '../src/equipment-field-inventory.ts';
-import {initialRoster,moveRosterMagazine,equipRosterCarryGear} from '../src/breach-roster.ts';
+import {initialRoster,moveRosterMagazine,equipRosterCarryGear,equipRosterFieldInventory} from '../src/breach-roster.ts';
+import {createQuickPlayConfigurator} from '../src/ui/quick-play-configurator.ts';
 import {attachCarryGearChangePreview} from '../src/ui/carry-gear-change-controls.ts';
 import {setEquipmentChoice} from '../src/equipment-loadouts.ts';
 import {createFieldGadgetEditor} from '../src/ui/field-gadget-editor.ts';
@@ -95,4 +96,24 @@ attachCarryGearChangePreview({select:denied,host:blockedHost,slot:'rig',
  kit:crampedKit,magazines:cramped.magazines,
  onApply:()=>{throw Error('Blocked physical change was committed')}
 });
+// Real Quick Play mission-creator acceptance (independent persistent roster).
+let creatorRoster=initialRoster();
+const creator=createQuickPlayConfigurator({
+ randomSeed:()=>17,onGenerate:()=>{},
+ getRoster:()=>creatorRoster,
+ onEquipField:(id,inventory)=>{
+  const next=equipRosterFieldInventory(creatorRoster,id,inventory);
+  if(next===creatorRoster)return false;
+  creatorRoster=next;return true;
+ },
+ onEquipCarryGear:(id,slot,itemId)=>{
+  const next=equipRosterCarryGear(creatorRoster,id,slot,itemId);
+  if(next===creatorRoster)return false;
+  creatorRoster=next;return true;
+ }
+});
+Object.assign(window,{quickPlayCarrySmoke:{
+ open:()=>creator.open(),close:()=>creator.close(),
+ rig:()=>creatorRoster.members[0].loadout.slots.rig
+}});
 document.documentElement.dataset.loadoutPrepReady='1';

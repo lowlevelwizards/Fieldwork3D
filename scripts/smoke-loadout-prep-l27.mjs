@@ -83,6 +83,12 @@ try{
     'selecting a stored item marks its real 3D rig location');
   assert.equal(await pickOne.getAttribute('aria-pressed'),'true',
    'physical item selection is visible and keyboard accessible');
+  const pocket=panel.locator('.fw-field-inventory-slot[data-location="pocket"]');
+  assert.equal(await pocket.locator('.fw-field-inventory-place').isDisabled(),true,
+   'illegal pocket destination stays disabled');
+  assert.match(await pocket.locator('.fw-field-inventory-blocker').innerText(),
+   /INVALID CARRY LOCATION FOR FLASHBANG/,
+   'the reason for a blocked placement is legible on phone without hover');
   const placeOne=panel.getByRole('button',{name:'Place selected item in BACKPACK'});
   assert.equal(await placeOne.isEnabled(),true,'real inventory fit is verified before placement');
   await placeOne.click();
@@ -161,6 +167,36 @@ try{
   assert.equal(await magazineDemo.locator(
    '.fw-field-inventory-slot[data-location="rig"] [data-magazine-id="'+magId+'"]').count(),0);
 
+  const magSelect=magazineDemo.getByRole('button',{
+   name:'Select magazine '+magId+' from BACKPACK'});
+  const magazineGrip=magSelect.locator('.fw-field-inventory-drag-grip');
+  const gripRect=await magazineGrip.boundingBox();
+  assert.ok(gripRect&&gripRect.width>=36&&gripRect.height>=38,
+   'magazine drag grip matches field item thumb target');
+  if(device==='phone'){
+   const swipe=await magSelect.evaluate(el=>({
+    tile:getComputedStyle(el).touchAction,
+    grip:getComputedStyle(el.querySelector('.fw-field-inventory-drag-grip')).touchAction
+   }));
+   assert.deepEqual(swipe,{tile:'pan-y',grip:'none'},
+    'magazine can scroll normally except on the deliberate drag grip');
+  }else{
+   const srcRect=await magSelect.boundingBox();
+   const dstRect=await magazineDemo.locator(
+    '.fw-field-inventory-slot[data-location="rig"]').boundingBox();
+   assert.ok(srcRect&&dstRect);
+   await page.mouse.move(srcRect.x+srcRect.width/2,srcRect.y+srcRect.height/2);
+   await page.mouse.down();
+   await page.mouse.move(dstRect.x+dstRect.width/2,dstRect.y+dstRect.height/2,{steps:7});
+   await page.mouse.up();
+   const back=magazineDemo.locator(
+    '.fw-field-inventory-slot[data-location="rig"] [data-magazine-id="'+magId+'"]');
+   assert.equal(await back.count(),1,
+    'desktop drag moves one identified magazine back to its rig');
+   assert.equal(await back.locator('.fw-field-inventory-item-name').innerText(),
+    originalLabel,'drag retains the exact magazine rounds');
+  }
+
   const gear=page.locator('#carryGearSwapSmoke');
   const rigSelect=gear.getByRole('combobox',{name:'Rig change preview witness'});
   assert.equal(await gear.locator('[data-role="current-rig"]').innerText(),'rig-light');
@@ -186,6 +222,23 @@ try{
   assert.equal(await denied.getByRole('button',{name:'APPLY GEAR CHANGE'}).isDisabled(),
    true,'cannot apply a rig change with no compatible carrying space');
   assert.match(await denied.innerText(),/CANNOT EQUIP/);
+  await page.evaluate(()=>window.quickPlayCarrySmoke.open());
+  const creator=page.getByRole('dialog',{name:'Quick Play mission setup'});
+  await creator.locator('.fw-quick-config-squad-prep > summary').click();
+  const rig=creator.getByRole('combobox',{name:'Select rig for rook'});
+  await rig.waitFor({state:'visible'});
+  assert.equal(await page.evaluate(()=>window.quickPlayCarrySmoke.rig()),'rig-light');
+  await rig.selectOption('rig-none');
+  assert.equal(await page.evaluate(()=>window.quickPlayCarrySmoke.rig()),'rig-light',
+   'Quick Play mission setup previews without changing roster');
+  const creatorForecast=creator.getByRole('region',{name:'Carry gear change preview'}).first();
+  assert.equal(await creatorForecast.isVisible(),true);
+  await creatorForecast.getByRole('button',{name:'APPLY GEAR CHANGE'}).click();
+  assert.equal(await page.evaluate(()=>window.quickPlayCarrySmoke.rig()),'rig-none',
+   'mission creator commits through persistent Quick Play roster authority');
+  assert.equal(await creator.getByRole('combobox',{name:'Select rig for rook'}).inputValue(),
+   'rig-none','Quick Play keeps its new selection and editor in sync');
+  await page.evaluate(()=>window.quickPlayCarrySmoke.close());
   await page.evaluate(()=>window.loadoutPrepSmoke.stop());
   await launch.click();
   assert.equal(await panel.isVisible(),false,'cannot re-enter equipment prep after GO');
