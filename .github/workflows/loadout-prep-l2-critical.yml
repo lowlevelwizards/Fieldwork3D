@@ -5,6 +5,7 @@ on:
       - feature/loadout-prep-l2-20261118
       - feature/loadout-prep-l2-6-campaign-polish-20261118
       - feature/loadout-prep-l2-7-prego-20261118
+      - feature/loadout-prep-l2-8-wedge-physical-20261118
   workflow_dispatch:
 concurrency:
   group: loadout-prep-l2-${{ github.ref }}
