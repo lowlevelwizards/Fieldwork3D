@@ -403,7 +403,7 @@ export function createTacticalPaletteController(config:{
   // path. A closer unrelated visitor must never steal FOLLOW from a rescue
   // target; a civilian visible across an opaque wall must not advertise a
   // contact order the motor/game authority will reject.
-  const civilianContact=(mode:'secure'|'follow')=>
+  const civilianContact=(mode:'secure'|'follow'|'restrain')=>
     routeEndCivilianActions?nearestContextCivilian(
       state.civilians,at,mode,state.mission,
       p=>liveVisibility(state,p),
