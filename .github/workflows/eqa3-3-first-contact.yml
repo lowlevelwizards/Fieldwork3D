@@ -1,0 +1,42 @@
+name: EQA3.3 current-main actual first contact + entrance choice
+on:
+  push:
+    branches: [audit/eqa3-3-first-contact-current-20261118]
+    paths:
+      - '.github/workflows/eqa3-3-first-contact.yml'
+      - 'scripts/audit-eqa3-first-contact.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  eqa3-3-real-contact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: EQA3.3 eight 2-entry scenario actual OPEN + first-contact 60Hz witness
+        run: |
+          mkdir -p artifacts/eqa3
+          EQA3_OUTPUT=artifacts/eqa3/first-contact-16.json node --experimental-strip-types scripts/audit-eqa3-first-contact.mjs > artifacts/eqa3/first-contact-console.json
+          node - <<'NODE'
+          const d=require('./artifacts/eqa3/first-contact-16.json');
+          console.log(JSON.stringify({summary:d.summary,pairs:d.pairs,
+            decisions:d.records.map(r=>({seed:r.seed,mission:r.mission,entry:r.entry,
+              door:r.doorAuthored,openAt:r.doorOpensAt,
+              contactAt:r.firstContact?.at??null,
+              firstSaw:r.firstContact?.playerSaw??[],
+              firstEnemySaw:r.firstContact?.enemySawScout??[],
+              firstContactRoles:r.firstContact?.people.map(x=>x.role)??[],
+              nearbyCivilian:r.firstContact?.nearbyCivilians??[],
+              shots:r.actualShots,displacement:r.playerDisplacement,
+              followUp:r.firstFoeSnapshots.slice(0,4)}))},null,2));
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-3-first-contact-16
+          path: artifacts/eqa3/
