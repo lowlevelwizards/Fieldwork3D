@@ -70,7 +70,7 @@ export function buildAfterActionInventoryCloseout(input:{
    qty(hasStart&&initial?(
      id==='flashbang'?initial.flashCharges:
      id==='wedge'?initial.wedgeRemaining:
-     id==='zip-tie'?initial.restraintRemaining:0):null,remaining);
+     id==='zip-tie'?initial.restraintRemaining:0)??null:null,remaining);
   const rounds=qty(hasStart&&initial?totalRounds(initial.magazine,initial.reserve):null,
    totalRounds(actor.magazine,actor.reserve));
   const flash=stocked('flashbang',actor.flashCharges);
