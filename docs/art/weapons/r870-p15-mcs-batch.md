@@ -1,0 +1,9 @@
+# P15 R870 — MCS-style compact silhouettes (two-stage release batch)
+- **P15.A:** Additional distinct 10-inch silhouette profile (muzzleX 11.52, stock tube x8.57, compact mini pump x7.25) and 3-shell fixed mini tube. All numbers are Fieldwork game-art units and capacity data, not real-world specifications.
+- Compatible front pairings: 10-inch only mini tube + mini pump; 14-inch only short tube + short pump; 18-inch standard/extended tube with standard/synthetic/M-LOK pump. Barrel, tube and pump changes propose dependent components together. Existing factory presets/save IDs and family renderer remain unchanged.
+- Visual model reuses low-poly six-sided cylinders and reduces mini-pump grooves to three clear ribs per side. Actual muzzle, firing clearance, hand reach and capacity share front profile.
+- **P15.B:** One real MCS-style skeletal shoulder stock: a six-sided tube, a single diagonal metal beam and a substantial buttplate (three authored stock meshes) with genuine negative space. It reuses the existing compatible pistol-grip geometry without another duplicated grip mesh.
+- Two presets: MCS Breacher Style (10-inch, stockless pistol, 3 shells) and MCS CQB Style (14-inch, shouldered skeletal stock, 4 shells). The CQB butt has physical rear datum x=-14.40; stockless breacher has no phantom shoulder contact.
+- No live folding/collapsing animation claimed: skeletal stock currently modeled **extended** only. That behavior, ghost rings, light/receiver shell-carrier, campaign availability, balancing and reload-specific pose tuning belong to later stages.
+
+Release gates: P07–P15 focused test suites + TypeScript/production build + real WebGL smoke and Ground Zero, all on feature branch. Merge P15 A+B only at a release checkpoint after P14 live Pages stamp has been verified. No back-to-back in-flight Pages merges.
