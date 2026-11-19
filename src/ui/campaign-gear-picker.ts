@@ -14,6 +14,34 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
    ?.textContent?.split(' · ')[0]||value;
  trigger.textContent=display(source.value);
  trigger.dataset.modelItem=source.value;
+ if(renderModel&&['primary','head','armor','rig','belt','backpack','medical','utility']
+  .includes(slot)&&!source.value.endsWith('-none')){
+  trigger.classList.add('campaign-kit-visual-trigger');
+  const visual=document.createElement('span');
+  visual.className='campaign-kit-selected-model';
+  visual.setAttribute('aria-hidden','true');
+  const label=document.createElement('span');
+  label.className='campaign-kit-selected-model-label';
+  label.textContent=display(source.value);
+  trigger.replaceChildren(visual,label);
+  requestAnimationFrame(()=>{
+   if(!trigger.isConnected)return;
+   const fetch=()=>{
+    if(!trigger.isConnected)return;
+    const uri=renderModel(source.value);
+    if(!uri){visual.dataset.model='unavailable';return;}
+    const img=document.createElement('img');
+    img.src=uri;img.alt='';img.decoding='async';
+    visual.replaceChildren(img);visual.dataset.model='real';
+   };
+   if(typeof IntersectionObserver==='undefined'){fetch();return;}
+   const observer=new IntersectionObserver(entries=>{
+    if(!entries.some(entry=>entry.isIntersecting))return;
+    observer.disconnect();fetch();
+   },{rootMargin:'100px'});
+   observer.observe(trigger);
+  });
+ }
  trigger.setAttribute('aria-label',label);
  trigger.disabled=source.disabled;
  if(trigger.disabled)trigger.title='Equipment changes locked during deployment';
