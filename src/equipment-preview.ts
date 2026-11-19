@@ -176,7 +176,7 @@ export class CampaignKitPreview{
    const isolated=selected.clone(true);
    isolated.matrixAutoUpdate=false;
    isolated.matrix.copy(selected.matrixWorld);
-   isolated.traverse(obj=>{obj.visible=true;});
+   // Preserve per-subpart visibility (hidden cap/rails are not real gear).
    const modelScene=new THREE.Scene();
    modelScene.background=new THREE.Color(0x1b2d2a);
    modelScene.add(isolated);
