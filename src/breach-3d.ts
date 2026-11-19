@@ -110,6 +110,7 @@ import {doorGripPhysicalContact} from './breach-physical-contact-anchor.ts';
 import {footAnchorReachable} from './breach-navigation.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {armedPrecontactStyle} from './breach-idle-life.ts';
+import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
@@ -2490,6 +2491,13 @@ export class TacticalScene3D{
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         friendlyNear:friendlyAhead,friendlyAhead:actuallyAhead
       },dt);
+      // Read-only, evidence-scoped head-only investigation. Apply AFTER
+      // the existing weapon/IK owner resolves its pose; never rotate the
+      // root or weapon, or grant an unseen source position in replay.
+      if(actor.side==='red'){
+        const attention=hostilePhysicalityAt(actor,poseSeconds);
+        object.physical.head.rotation.y+=attention.headYaw;
+      }
       if(this.profileSceneUpdate){
        this.actorPhaseCosts.poseMs+=performance.now()-poseStart;
        this.actorPhaseCosts.poseCount++;
