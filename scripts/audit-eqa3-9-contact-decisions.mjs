@@ -26,6 +26,9 @@ import {assessMissionFilm} from '../src/breach-mission-quality.ts';
 import {analyzeContactPacing} from '../src/breach-contact-pacing-audit.ts';
 import {activateSite,doorCenter} from '../src/breach-core.ts';
 import {doorKnown} from '../src/breach-intel.ts';
+import {nearestContextCivilian} from '../src/breach-civilian-context-selection.ts';
+import {sweptBodyClear} from '../src/breach-navigation.ts';
+import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 const params=new Map(process.argv.slice(2).filter(x=>x.includes('='))
  .map(x=>x.replace(/^--/,'').split('=')));
 const intel=params.get('intel')??'unknown';
@@ -41,6 +44,7 @@ const cases=[
 const forensic=process.argv.includes('--forensic');
 const rescueStandOff=process.argv.includes('--rescue-stand-off');
 const contactLook=process.argv.includes('--contact-look');
+const secureClose=process.argv.includes('--secure-close');
 const doorAware=process.argv.includes('--door-aware');
 const forensicSeedArg=params.get('seed');
 const chosenBeforeSeed=process.argv.includes('--smoke')?
@@ -192,6 +196,19 @@ for(const [seed,mission] of chosen){
       }
       const seenPerson=s.civilians.find(c=>c.rescueTarget&&c.health>0&&
        liveVisibility(s,c.p));
+      // Only AFTER the target position is actually disclosed to the
+      // player, this scout can deliberately author close physical SECURE
+      // using the identical tactical palette selection and swept contact
+      // gate. It does not know a hidden person's ID, see through doors,
+      // move bodies, or bypass game admission.
+      const contactPerson=secureClose&&objectiveLocationKnown(s)?
+        nearestContextCivilian(s.civilians.filter(c=>c.rescueTarget),
+          rescuer.p,s.mission==='extract'?'follow':'secure',s.mission,
+          p=>liveVisibility(s,p),
+          (from,to)=>sweptBodyClear(from,to,s.doors,5.5,
+            sessionWorldGeometry(s))):
+        null;
+      const actionPerson=seenPerson??contactPerson;
       // EQA3.9 diagnostic A/B: a rescue target's position has ALREADY
       // been personally observed or explicitly confirmed by intel. When a
       // live occupant has slipped outside this operator's cone at arm's
@@ -210,18 +227,18 @@ for(const [seed,mission] of chosen){
           planLook(s,rescuer.id,knownTarget));
         if(issued)contactLookAccepted++;
       }
-      if(s.mission==='extract'&&seenPerson&&
-         seenPerson.following!==rescuer.id&&!seenPerson.carriedById&&
-         dist(rescuer.p,seenPerson.p)<=27){
+      if(s.mission==='extract'&&actionPerson&&
+         actionPerson.following!==rescuer.id&&!actionPerson.carriedById&&
+         dist(rescuer.p,actionPerson.p)<=27){
         action='follow-civilian';
-        issued=recordAction(action,seenPerson.p,
-         planCivilianInteraction(s,rescuer.id,seenPerson.id,'follow'));
-      }else if(s.mission==='secure'&&seenPerson&&
-          seenPerson.state!=='compliant'&&!seenPerson.carriedById&&
-          dist(rescuer.p,seenPerson.p)<=27){
+        issued=recordAction(action,actionPerson.p,
+         planCivilianInteraction(s,rescuer.id,actionPerson.id,'follow'));
+      }else if(s.mission==='secure'&&actionPerson&&
+          actionPerson.state!=='compliant'&&!actionPerson.carriedById&&
+          dist(rescuer.p,actionPerson.p)<=27){
         action='secure-civilian';
-        issued=recordAction(action,seenPerson.p,
-          planCivilianInteraction(s,rescuer.id,seenPerson.id,'secure'));
+        issued=recordAction(action,actionPerson.p,
+          planCivilianInteraction(s,rescuer.id,actionPerson.id,'secure'));
       }
       // EQA3.2: unlike MOVE admission, which is allowed to author a
       // desired traversal across a *known CLOSED* door, actual passage
@@ -586,7 +603,7 @@ for(const [seed,mission] of chosen){
       escortSamples,
       doorAware,acceptedDoorActions,operatorHandoffs,
       rescueStandOff,rescueStandOffAccepted,rescueStandOffFallbacks,
-      contactLook,contactLookAttempts,contactLookAccepted,
+      contactLook,contactLookAttempts,contactLookAccepted,secureClose,
       activeScout:scout.id,activeScoutHealth:scout.health,
       doorsAtEnd:doorAware?s.doors.map(d=>({id:d.id,open:d.open,
         fraction:round(d.openFraction??0),locked:d.locked})):undefined,
@@ -605,7 +622,7 @@ for(const [seed,mission] of chosen){
 }
 const valid=rows.filter(r=>Array.isArray(r.integrity));
 const observed=valid.filter(x=>x.firstContactAt!==null);
-const summary={intel,doorAware,rescueStandOff,contactLook,
+const summary={intel,doorAware,rescueStandOff,contactLook,secureClose,
  rescueStandOffAccepted:valid.reduce((n,r)=>n+(r.rescueStandOffAccepted??0),0),
  rescueStandOffFallbacks:valid.reduce((n,r)=>n+(r.rescueStandOffFallbacks??0),0),
  operatorHandoffs:valid.reduce((n,r)=>n+(r.operatorHandoffs?.length??0),0),acceptedDoorActions:valid.reduce((n,r)=>n+(r.acceptedDoorActions??0),0),trials:valid.length,exceptions:exceptions.length,
