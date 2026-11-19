@@ -1,0 +1,76 @@
+name: EQA3.6 physical rescue room witnesses and contact choices
+on:
+  push:
+    branches: [feature/eqa3-6-rescue-scene-choices-20261118]
+    paths:
+      - '.github/workflows/eqa3-6-rescue-scenes.yml'
+      - 'scripts/audit-eqa3-mission-decisions.mjs'
+      - 'scripts/audit-eqa3-6-rescue-scene.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  eqa3-6-scene-forensics:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Exact Apartment13 and Warehouse17 actual 90s rescue scenes
+        run: |
+          mkdir -p artifacts/eqa3-6
+          for seed in 13 17; do
+            for intel in unknown confirmed; do
+              file="artifacts/eqa3-6/rescue-${seed}-${intel}.json"
+              EQA3_OUTPUT="$file" node --experimental-strip-types scripts/audit-eqa3-mission-decisions.mjs --smoke "--seed=${seed}" --seconds=90 "--intel=${intel}" --door-aware --forensic > "artifacts/eqa3-6/rescue-${seed}-${intel}-console.json"
+              node --experimental-strip-types scripts/audit-eqa3-6-rescue-scene.mjs "--seed=${seed}" "--report=$file" "--out=artifacts/eqa3-6/scene-${seed}-${intel}" > "artifacts/eqa3-6/scene-${seed}-${intel}-console.json"
+            done
+          done
+      - name: Verify comparisons are complete and summarize exposed rescue corridors
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          for(const seed of [13,17]){
+            for(const intel of ['unknown','confirmed']){
+              const d=JSON.parse(fs.readFileSync(`artifacts/eqa3-6/rescue-${seed}-${intel}.json`));
+              const visual=JSON.parse(fs.readFileSync(`artifacts/eqa3-6/scene-${seed}-${intel}/manifest.json`));
+              const rows=d.rows.filter(x=>x.seed===seed&&x.mission==='rescue');
+              const expected=seed===13?1:2;
+              const record=rows.map(r=>({
+                insertion:r.insertion,objective:r.objectiveAt,
+                extracted:r.extractedAt,stage:r.missionStage,
+                firstContact:r.firstContactAt,firstShot:r.firstShotAt,
+                harm:r.harmWitnesses?.map(h=>({
+                  t:Math.round(h.at*100)/100,
+                  shooter:h.actorId,side:h.sourceSide,shotId:h.shotId,
+                  intended:h.associatedShot?.firingActorTargetId??null,
+                  before:h.before,after:h.after,realHit:!!h.associatedShot
+                }))??[],
+                routeAbort:r.routeAbort,scriptRejected:r.rejected,
+                controlHandoffs:r.operatorHandoffs?.length??0
+              }));
+              const overview=visual.scenes.map(s=>({
+                entry:s.entry,civilian:s.civilian.p,
+                hostiles:s.initialHostiles.map(h=>({
+                  id:h.id,gap:h.gap,initialOpticalRay:h.opticalRay
+                })),
+                contactRing:s.contactRing,shotRays:s.observedHarmRays.length,
+                svg:s.svg
+              }));
+              console.log(JSON.stringify({seed,intel,summary:d.summary,record,overview},null,2));
+              if(d.exceptions.length||rows.length!==expected||
+                 rows.some(r=>r.integrity?.length)||
+                 visual.scenes.length!==expected||
+                 visual.scenes.some(s=>s.contactRing.localContactClear===0))
+                process.exitCode=1;
+            }
+          }
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-6-rescue-geometry-and-physical-mission-witnesses
+          path: artifacts/eqa3-6/
