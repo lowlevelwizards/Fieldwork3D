@@ -12,6 +12,11 @@ const depleted=()=>{
  c={...c,operators:c.operators.map((op,index)=>({
   ...op,magazine:Math.max(0,op.magazine-5-index),
   reserve:Math.max(0,op.reserve-9-index),
+  // Actual spent spare rounds must match physical magazine bodies.
+  // Draining the scalar alone would create a corrupt synthetic save.
+  magazines:op.magazines.map((m,i)=>i===0?{
+   ...m,rounds:m.rounds-9-index
+  }:m),
   medicalSupplies:op.id==='rook'?
    {'tourniquet':0,'field-dressing':0,'trauma-dressing':0}:op.medicalSupplies
  }))};
@@ -78,7 +83,8 @@ test('F5: squad order and distinct IDs define one deterministic finite stock spe
  assert.deepEqual(q.lines.map(l=>l.id),['rook','moss','ash']);
  const done=refillCampaignSquad(duplicate);
  assert.deepEqual(done.operators.find(o=>o.id===spare.id),originalSpare);
- assert.deepEqual(done,manual({...duplicate,squadIds:['rook','moss','ash']}));
+ assert.deepEqual(done,manual(duplicate),
+  'duplicate ID cannot double issue rounds or medical supplies');
 });
 test('F5: operator quote matches actual individual service and conserves magazine IDs',()=>{
  const c=depleted(),op=c.operators[0];
