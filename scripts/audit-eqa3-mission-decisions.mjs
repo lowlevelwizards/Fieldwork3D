@@ -286,10 +286,19 @@ for(const [seed,mission] of chosen){
         for(const shot of s.shots){
           if(seenShotIds.has(shot.id))continue;
           seenShotIds.add(shot.id);
+          const firingActor=s.operators.find(a=>a.id===shot.shooterId);
+          const intendedOpponent=firingActor?.targetId?
+            s.operators.find(a=>a.id===firingActor.targetId):null;
           if(shotWitnesses.length<500)shotWitnesses.push({
             id:shot.id,at:round(shot.firedAt??s.seconds),
             side:shot.side,shooter:shot.shooterId,
-            target:shot.targetId,from:{...shot.start},to:{...shot.end},
+            // ShotEvent.targetId identifies the physically resolved hit,
+            // NOT the attacker's deliberate tactical target.
+            resolvedHitActorId:shot.targetId,
+            firingActorTargetId:firingActor?.targetId??null,
+            firingActorTargetP:intendedOpponent?{...intendedOpponent.p}:null,
+            firingActorP:firingActor?{...firingActor.p}:null,
+            from:{...shot.start},to:{...shot.end},
             yaw:shot.shotYaw,hit:shot.hit,down:shot.down,
             surface:shot.surface,hitRegion:shot.hitRegion});
         }
