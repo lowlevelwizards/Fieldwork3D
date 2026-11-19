@@ -1,4 +1,4 @@
-/** R870 P12 production WebGL review surface, using the exact shared
+/** R870 P15 production WebGL review surface, using the exact shared
  * factory silhouette builder and materials used in Arsenal/Operator Studio.
  * No proxy mesh, no separate geometry source, no gameplay writes.
  */
@@ -22,7 +22,7 @@ if(assembly.muzzleX!==R870_P07.muzzleX||
  throw Error('Shot-time muzzle/shoulder datum differs from visible model');
 const gun=buildWeaponSilhouette('shotgun',
  WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER,config);
-if(!gun.userData.r870P12)throw Error('R870 P12 art is not using live silhouette');
+if(!gun.userData.r870P12)throw Error('R870 P15 shares live P12+ silhouette');
 const whole=new THREE.Box3().setFromObject(gun);
 if(Math.abs(whole.min.x-R870_P07.stockX)>.02||
  Math.abs(whole.max.x-R870_P07.muzzleX)>.02)
