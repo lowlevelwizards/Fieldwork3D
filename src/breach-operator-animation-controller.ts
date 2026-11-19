@@ -30,7 +30,8 @@ import {neutralMannequinWrist,neutralMannequinElbowPole}
  from './operator-mannequin-pose.ts';
 import {solveTwoBone,ARM_LIMITS} from './breach-ik.ts';
 import {beginOperatorArmPose,setOperatorArmSegments,setOperatorHandPose,
- rotateOperatorSupportHand,operatorHandTransform,operatorHandEuler,
+ rotateOperatorSupportHand,orientOperatorSupportPalmOnShoulder,
+ operatorHandTransform,operatorHandEuler,
  finishOperatorArmPose} from './breach-operator-upper-body-output.ts';
 import {idleLifeAt} from './breach-idle-life.ts';
 import {lowReadyFamilyFit,lowReadyElbowPole}
@@ -1273,6 +1274,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       shoulder,solved.joint,solved.effector,scratch.sides[i]);
     setOperatorHandPose(scratch,i as 0|1,solved.effector,
       p.unarmedPreview||p.surrender?0:clamp(fit.rotation.y,-1,1));
+    // The top shoulder surface is upward-facing, unlike a door handle:
+    // settle the palm over it after the one authoritative wrist solve.
+    if(i===0&&physicalContact?.contact.intent==='teammate')
+      orientOperatorSupportPalmOnShoulder(scratch,physicalContact.weight);
   }
   r.root.userData.poseV3DynamicReport=p.poseV3Preview&&diagnosticsEnabled?
     v3DynamicReports:null;

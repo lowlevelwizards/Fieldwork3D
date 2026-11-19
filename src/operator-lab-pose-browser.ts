@@ -68,7 +68,8 @@ export function poseTrackGroup(track:LabTrack):string{
  if(['high-ready','low-ready','ready','short-stock','active-aim',
   'point-shoot','aim','ready-to-ads','ads-to-low'].includes(track))
   return 'WEAPON STANCES';
- if(['flash','door','kick','bash','look'].includes(track))
+ if(['flash','door','kick','bash','look'].includes(track)||
+   track.startsWith('pre-open')||track.startsWith('stack-shoulder'))
   return 'INTERACTIONS';
  if(track.startsWith('down')||track==='wounded')
   return 'INJURY / FALLS';

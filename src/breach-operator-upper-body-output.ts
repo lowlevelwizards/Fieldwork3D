@@ -10,6 +10,7 @@ import type {OperatorPoseScratch,OperatorArmPoseScratch}
 import {alignSegmentComponents} from './breach-ik.ts';
 
 const localZ=new THREE.Vector3(0,0,1);
+const localX=new THREE.Vector3(1,0,0);
 
 /** Seed once from the rig for exact degenerate-alignment compatibility.
  * Subsequent frames reuse their own component transforms; commits never
@@ -66,6 +67,20 @@ export function rotateOperatorSupportHand(scratch:OperatorPoseScratch,
  const output=scratch.armOutput,hand=output.transforms[2];
  output.rockQuaternion.setFromAxisAngle(localZ,radians);
  hand.quaternion.multiply(output.rockQuaternion);
+ output.handEuler[0].setFromQuaternion(hand.quaternion);
+}
+/** A3.10 palm rests ON the top-facing teammate shoulder rather than
+ * presenting a sideways fist in the torso. The existing hand output is
+ * rotated once, AFTER the same single arm IK solution has chosen its wrist.
+ * This does not move the wrist, muzzle, stock or other operator.
+ */
+export function orientOperatorSupportPalmOnShoulder(
+ scratch:OperatorPoseScratch,weight:number):void{
+ const w=Math.max(0,Math.min(1,weight));
+ if(!w)return;
+ const output=scratch.armOutput,hand=output.transforms[2],q=output.rockQuaternion;
+ hand.quaternion.multiply(q.setFromAxisAngle(localX,-.36*w));
+ hand.quaternion.multiply(q.setFromAxisAngle(localZ,.24*w));
  output.handEuler[0].setFromQuaternion(hand.quaternion);
 }
 export function operatorHandTransform(scratch:OperatorPoseScratch,

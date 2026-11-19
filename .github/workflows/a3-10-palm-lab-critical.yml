@@ -1,0 +1,28 @@
+name: A3.10 operator palm and lab preview critical
+on:
+  push:
+    branches:
+      - feature/operator-lab-a310-palm-contacts-20261119
+  workflow_dispatch:
+concurrency:
+  group: a3-10-palm-lab-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pose-preview-critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-package-lock
+      - name: TypeScript
+        run: npm run check
+      - name: Critical contact, lab and replay tests
+        run: >-
+          node --experimental-strip-types --test
+          tests/a3-10-contact-lab-palm.test.mjs
+          tests/a3-10-preopen-shoulder-cap.test.mjs
+          tests/animation-a3-6-7-support-contacts.test.mjs
+          tests/release-d2-4-contact-cover-pose.test.mjs
