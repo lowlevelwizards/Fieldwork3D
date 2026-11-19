@@ -30,6 +30,7 @@ export type QuickPlayControllerHooks={
   equipFieldInventory:(id:string,inventory:FieldInventory)=>boolean;
   moveMagazine?:(id:string,magazineId:string,to:FieldCarryLocation)=>boolean;
   equipCarryGear?:(id:string,slot:CarryGearSlot,itemId:string)=>boolean;
+  copyCarryLayout?:(sourceId:string,targetId:string)=>boolean;
   getScale:()=>SiteScale;
   getMode:()=>CampaignMode;
   setMode:(value:CampaignMode)=>void;
@@ -157,6 +158,7 @@ const configurator=createQuickPlayConfigurator({
   getRoster:config.getRoster,onEquipField:config.equipFieldInventory,
   onMoveMagazine:config.moveMagazine,
   onEquipCarryGear:config.equipCarryGear,
+  onCopyCarryLayout:config.copyCarryLayout,
   randomSeed:config.randomSeed,
   onGenerate:settings=>{void launchQuickPlay(settings);},
   onVisibilityChange:config.onConfiguratorVisibilityChange
