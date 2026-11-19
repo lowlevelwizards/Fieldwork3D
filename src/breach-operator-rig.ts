@@ -62,7 +62,7 @@ export type OperatorRig={
   armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
   rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
-  flashCanister:THREE.Mesh;flashCanisters:THREE.Mesh[];utilityTool:THREE.Mesh;
+  flashCanister:THREE.Mesh;flashCanisters:THREE.Mesh[];wedgeMeshes:THREE.Mesh[];utilityTool:THREE.Mesh;
   gloveCovers:THREE.Mesh[];gloveMaterial:THREE.MeshStandardMaterial;
   visualKit:OperatorVisualKit;
   poseCavity:OperatorPoseCavity;
@@ -332,6 +332,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   // Retain identical cold-rig mesh geometry for standard one-flash kits.
   // Additional canisters are allocated only when actually equipped.
   const flashCanisters=[flashCanister];
+  // Wedge miniatures are allocated lazily only on wedge-equipped operators.
+  const wedgeMeshes:THREE.Mesh[]=[];
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,baseTorso,feet,arms,
     {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
       dark:boot,skin,steel},headCanonicalFrame,lazyAccessories);
@@ -356,7 +358,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     bodycamChest,bodycamHelmet,
     reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
-    medicalPouch,radioUnit,flashCanister,flashCanisters,utilityTool,gloveCovers,gloveMaterial,
+    medicalPouch,radioUnit,flashCanister,flashCanisters,wedgeMeshes,utilityTool,gloveCovers,gloveMaterial,
     visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
@@ -413,6 +415,22 @@ export function ensureRigFlashCanisters(r:OperatorRig,count:number):void{
   const cap=new THREE.Mesh(capGeometry,r.weaponDark);
   cap.position.y=2.85;cap.castShadow=true;
   canister.add(cap);r.flashCanisters.push(canister);
+ }
+}
+
+/** Only wedge-equipped rigs allocate physical pieces; default rigs retain the
+ * exact original E6.7 geometry/mesh signature and no new animation work.
+ */
+export function ensureRigWedgeMeshes(r:OperatorRig,count:number):void{
+ const needed=Math.max(0,Math.min(4,Math.floor(count)));
+ if(r.wedgeMeshes.length>=needed)return;
+ const geometry=r.wedgeMeshes[0]?.geometry??
+  new THREE.BoxGeometry(3.9,1.45,1.5);
+ for(let i=r.wedgeMeshes.length;i<needed;i++){
+  const wedge=new THREE.Mesh(geometry,r.gearMaterial);
+  wedge.name='fieldwork-carried-wedge-'+i;
+  wedge.rotation.z=-.19;wedge.castShadow=true;wedge.receiveShadow=true;
+  wedge.visible=false;r.hip.add(wedge);r.wedgeMeshes.push(wedge);
  }
 }
 
