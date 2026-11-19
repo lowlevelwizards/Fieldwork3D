@@ -21,9 +21,18 @@ test('all sixteen authored magazine variants are simulation capacities',()=>{
    initialWeaponConfiguration(preset.weapon),preset.id);
   const id=config.build?.parts.magazine;
   assert.ok(id,preset.id);
+  const issue=freshMagazineIssue('test',preset.weapon,config);
+  if(preset.weapon==='shotgun'){
+   // Fixed tube and loose shells are not detachable ammunition magazines.
+   assert.equal(ARSENAL_MAGAZINE_CAPACITIES[id],undefined,preset.id);
+   assert.equal(liveMagazineCapacity(preset.weapon,config),6);
+   assert.equal(issue.magazine,6);
+   assert.equal(issue.reserve,24);
+   assert.deepEqual(issue.magazines,[]);
+   continue;
+  }
   const capacity=ARSENAL_MAGAZINE_CAPACITIES[id];
   assert.equal(liveMagazineCapacity(preset.weapon,config),capacity,preset.id);
-  const issue=freshMagazineIssue('test',preset.weapon,config);
   assert.equal(issue.magazine,capacity);
   assert.equal(issue.reserve,capacity*3);
   assert.deepEqual(issue.magazines.map(m=>m.rounds),
