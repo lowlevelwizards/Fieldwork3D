@@ -41,6 +41,8 @@ import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
 import {fieldQuantity,initialFieldInventory,readFieldInventory,fieldCarryReport,
  quoteFieldInventoryCopy,type FieldInventory} from './equipment-field-inventory.ts';
+import {reconcileCampaignFieldInventory}
+ from './equipment-mission-field-reconciliation.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
@@ -96,6 +98,9 @@ export type CampaignReport={
  dispatchCareer?:DispatchCareerReceiptV1;
  stabilizedIds?:string[];criticalIds?:string[];evacuatedIds?:string[];
  medicalRemaining?:Record<string,FieldMedicalSupplies>;
+ /** F3: actual remaining physical non-HQ consumables, by career operator ID.
+  * Absent on legacy reports; ignored on duplicate applied operation IDs. */
+ fieldRemaining?:Record<string,FieldInventory>;
 };
 export type CampaignState={
  version:1;id:string;seed:number;day:number;funds:number;
@@ -368,11 +373,19 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
     casualties.has(o.id)?(r.stabilizedIds===undefined?2:
       evacuated.has(o.id)?stabilized.has(o.id)?2:3:
       stabilized.has(o.id)?3:5):0)};
-  if(!performance)return base;
-  const progress=progressOperator(base,performance,r.outcome==='success');
-  gainedSkills.push(progress.gains);
-  return {...progress.operator,armorCondition:missionArmorCondition(
-   o.armorCondition,performance,initialArmorIntegrity(o.loadout))};
+  const progressed=performance?
+   progressOperator(base,performance,r.outcome==='success'):null;
+  if(progressed)gainedSkills.push(progressed.gains);
+  const current=progressed?.operator??base;
+  // The reporter's actual surviving magazines are already restored above,
+  // before physical carrier validation. Legacy reports leave the kit alone.
+  const settled=r.fieldRemaining?.[o.id]===undefined?null:
+   reconcileCampaignFieldInventory(current.loadout,current.magazines,
+    r.fieldRemaining[o.id]);
+  const withKit=settled?{...current,
+   loadout:{...current.loadout,fieldInventory:settled}}:current;
+  return performance?{...withKit,armorCondition:missionArmorCondition(
+   o.armorCondition,performance,initialArmorIntegrity(o.loadout))}:withKit;
  });
  const milestones=[
   {key:'5-operations',label:'Five Operations',test:(o:CampaignOperator)=>o.missions>=5},
