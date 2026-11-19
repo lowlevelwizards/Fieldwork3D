@@ -95,7 +95,21 @@ test('A3.10 cancel, open, reload, aim or distance release without phantom hand',
    assert.equal(old.releasedAt,null,'recorded historical contact is immutable');
    s.seconds+=SUPPORT_RELEASE_WINDOW+.01;
    advanceContextualSupportContacts(s);
-   assert.equal(a.physicalContact,null,state+' releases cleanly');
+   assert.equal(physicalContactWeight(a.physicalContact,s.seconds),0,
+    state+' returns hand from the door after brief release blend');
+   if(state==='cancel'){
+    assert.equal(a.physicalContact?.intent,'door',
+      'neutral return window suppresses immediate replacement by a frame brace');
+    const p={seconds:s.seconds,lastThrowAt:-100,lastDoorAt:-100,
+      doorMethod:'open',physicalContact:a.physicalContact,
+      reload:0,reloadDuration:1,weapon:'carbine',treatmentActive:false,
+      down:false,surrender:false,injury:0,aiming:false,firing:false,
+      aimBlend:0,handlingIntent:'hold',obstruction:false};
+    assert.equal(resolveOperatorActionState(p,0,false).handOwners.left,'weapon');
+    assert.notEqual(directOperatorPose(p,{moving:0,downProgress:0,
+      pushActive:false,receivingBash:false,previousHandlingAt:-100
+    }).handling,'high');
+   }
   }finally{activateSite(null);}
  }
 });
@@ -123,6 +137,8 @@ test('A3.10 four-person stack reaches shoulder TOP, upper fallback never rib hei
    assert.ok(actual.anchor.point.y>=29,
     'fallback is upper shoulder, never old 21-unit rib level');
    assert.deepEqual(actual.anchor.point,point);
+   assert.ok(actual.anchor.normal.y>.9,
+    'palm faces downward onto the top of the leader shoulder');
   }
   const a=squad[0],lead=squad[1];
   const occluded={...world,isClear:()=>false};
