@@ -326,7 +326,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // Detachable geometry is copied from precisely the same named AR/AK
     // magazine slot. No extra placeholder or alternate silhouette exists.
     const magazineSocket=weaponPresentationSockets(p.weapon,config).magazine;
-    for(const mesh of r.weaponBody.children){
+    // Shotguns feed individual shells through a permanent tube. Never clone
+    // its named Arsenal magazine *body slot* into the detachable-hand rig.
+    for(const mesh of p.weapon==='shotgun'?[]:r.weaponBody.children){
       if(!(mesh instanceof THREE.Mesh)||!mesh.name.startsWith('family-magazine-'))
         continue;
       const copy=mesh.clone();copy.geometry=mesh.geometry.clone();
@@ -737,10 +739,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   attachments[EAI.inserted].visible=!authoredMagazine&&
     p.weapon!=='shotgun'&&mountedMagazine;
   for(const mesh of r.weaponBody.children)
-    if(mesh.name.startsWith('family-magazine-'))mesh.visible=mountedMagazine;
-  attachments[EAI.hand].visible=!authoredMagazine&&reloadActive&&
+    if(mesh.name.startsWith('family-magazine-'))
+      mesh.visible=p.weapon==='shotgun'||mountedMagazine;
+  attachments[EAI.hand].visible=p.weapon!=='shotgun'&&
+    !authoredMagazine&&reloadActive&&
     magazinePhase!=='reach'&&magazinePhase!=='settle';
-  attachments[EAI.detached].visible=authoredMagazine&&reloadActive&&
+  attachments[EAI.detached].visible=p.weapon!=='shotgun'&&
+    authoredMagazine&&reloadActive&&
     !mountedMagazine&&magazinePhase!=='settle'&&!p.down&&!p.surrender;
   if(p.poseV4ReloadPreview&&reloadActive&&v4Magazine&&
     v4PouchAnchor){
