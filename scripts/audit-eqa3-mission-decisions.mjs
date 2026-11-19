@@ -61,7 +61,7 @@ for(const [seed,mission] of chosen){
     setObjectiveIntelLevel(s,intel);
     const initialKnown=objectiveLocationKnown(s);
     const initialDisclosure=s.objectiveIntel?.level??null;
-    const scout=team(s)[0];
+    let scout=team(s)[0];
     const original=scout.p;
     const roomList=site.rooms.filter(r=>r.kind==='room');
     const area=new Set(s.objectiveIntel?.area?.roomIds??[]);
@@ -77,6 +77,7 @@ for(const [seed,mission] of chosen){
     const visited=new Set(),failed=new Set(),attempted=new Set();
     const decisions=[],stages=[],civilianStates=[],firstViews=[];
     const attemptedDoorActions=new Set();
+    const operatorHandoffs=[];
     let acceptedDoorActions=0;
     const forensicEvents=[];
     let lastForensicSignature='';
@@ -138,7 +139,14 @@ for(const [seed,mission] of chosen){
     const executeOrder=()=>{
       if(s.phase!=='planning')toggling(s);
       let issued=false,action='idle',target=null;
-      const rescuer=team(s)[0];
+      const rescuer=scout;
+      // A dead operator cannot receive new tactical orders. The live
+      // game has four independent real squad members. Never count
+      // repeated planMove rejection on a deceased scout as a motor bug.
+      if(rescuer.health<=0){
+       if(s.phase==='planning')toggling(s);
+       lastDecisionAt=s.seconds;return;
+      }
       const seenPerson=s.civilians.find(c=>c.rescueTarget&&c.health>0&&
        liveVisibility(s,c.p));
       if(s.mission==='extract'&&seenPerson&&
@@ -269,6 +277,23 @@ for(const [seed,mission] of chosen){
     executeOrder();
     for(let tick=0;tick<tickFrames&&s.phase==='running';tick++){
       stepSession(s,1/30);
+      // Scripted handoff, not automatic gameplay AI: when its one
+      // commanded scout goes down, a human could choose another real
+      // surviving teammate. Preserve authoritative casualty state and
+      // existing actor positions; issue the next legal plan separately.
+      if(scout.health<=0){
+       const survivor=team(s).find(a=>a.health>0);
+       if(survivor){
+        operatorHandoffs.push({at:round(s.seconds),from:scout.id,
+          to:survivor.id,reason:'scout-incapacitated'});
+        scout=survivor;
+        current=null;issuedAt=-1;issueDistance=0;
+        attemptedDoorActions.clear();
+        lastDecisionAt=-1;
+        if(forensic)forensicCapture('scout-handoff');
+        executeOrder();
+       }
+      }
       totalTravel+=dist(scout.priorP,scout.p);
       if(forensic&&tick%90===0)forensicCapture('sample');
       if(tick%6===0){
@@ -365,7 +390,8 @@ for(const [seed,mission] of chosen){
       roomsUnreachable:failed.size,roomsAttempted:attempted.size,
       civilianStates,stages,decisions,
       forensic:forensic?forensicEvents:undefined,
-      doorAware,acceptedDoorActions,
+      doorAware,acceptedDoorActions,operatorHandoffs,
+      activeScout:scout.id,activeScoutHealth:scout.health,
       doorsAtEnd:doorAware?s.doors.map(d=>({id:d.id,open:d.open,
         fraction:round(d.openFraction??0),locked:d.locked})):undefined,
       eventCounts:{battle:film.events.length,shots:s.nextShotId-1,
@@ -383,7 +409,7 @@ for(const [seed,mission] of chosen){
 }
 const valid=rows.filter(r=>Array.isArray(r.integrity));
 const observed=valid.filter(x=>x.firstContactAt!==null);
-const summary={intel,doorAware,acceptedDoorActions:valid.reduce((n,r)=>n+(r.acceptedDoorActions??0),0),trials:valid.length,exceptions:exceptions.length,
+const summary={intel,doorAware,operatorHandoffs:valid.reduce((n,r)=>n+(r.operatorHandoffs?.length??0),0),acceptedDoorActions:valid.reduce((n,r)=>n+(r.acceptedDoorActions??0),0),trials:valid.length,exceptions:exceptions.length,
  invalid:valid.filter(x=>x.integrity.length).length,
  completed:valid.filter(x=>x.missionStage==='done').length,
  objectiveSecured:valid.filter(x=>x.objectiveAt!==null).length,
