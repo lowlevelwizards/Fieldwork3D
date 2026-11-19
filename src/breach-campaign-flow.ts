@@ -269,6 +269,8 @@ const campaignScreen=new CampaignScreen({
   c=>repairCampaignArmor(c,id),'Operator armor repaired'),
  serviceWeapon:(id)=>applyVisibleCampaignAction(
   c=>serviceCampaignWeapon(c,id),'Weapon maintenance completed'),
+ equipFieldInventory:(id,inventory)=>applyVisibleCampaignAction(
+  c=>equipCampaignFieldInventory(c,id,inventory),'Field equipment updated'),
  equipGear:(id,slot,itemId)=>applyVisibleCampaignAction(
   c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
  equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(current=>{
