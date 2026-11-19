@@ -21,6 +21,9 @@ export type FieldGadgetEditorOptions={
  onMoveMagazine?:(magazineId:string,to:FieldCarryLocation,focusLabel?:string)=>void;
  locked?:boolean;
  maxFlash?:number;
+ /** HQ reserves constrain the number of newly carried items. The already
+  * carried pieces are not debited again merely for moving/inspecting them. */
+ maxWedges?:number;maxCuffs?:number;
  copyTargets?:readonly {id:string;name:string;loadout:EquipmentLoadout;
   magazines:readonly MagazineItem[]}[];
  onCopy?: (targetId:string,inventory:FieldInventory)=>void;
@@ -331,6 +334,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   const disabled=!!options.locked||!enabled;
   const current=fieldQuantity(inventory,id);
   const stockCap=id==='flashbang'?Math.max(0,options.maxFlash??item.maxPerOperator):
+   id==='wedge'?current+Math.max(0,options.maxWedges??item.maxPerOperator):
+   id==='zip-tie'?current+Math.max(0,options.maxCuffs??item.maxPerOperator):
    item.maxPerOperator;
   const max=Math.min(item.maxPerOperator,stockCap);
   const row=document.createElement('div');row.className='fw-field-inventory-item';
@@ -353,6 +358,13 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    id==='wedge'?'belt':'rig')));
   up.setAttribute('aria-label','Add one '+item.name);
   up.disabled=disabled||current>=max;
+  if(id==='wedge'||id==='zip-tie'){
+   const available=id==='wedge'?options.maxWedges:options.maxCuffs;
+   up.title=available===0?'OUT OF HQ STOCK · PURCHASE IN LOGISTICS':
+    available===undefined?'CAMPAIGN STOCK UNKNOWN':
+    available+' HQ '+(id==='wedge'?'WEDGES':'FLEX CUFFS')+' AVAILABLE';
+   row.dataset.stock=String(available??0);
+  }
   controls.append(down,amount,up);row.append(controls);
   if(current&&enabled){
    const placement=document.createElement('select');
