@@ -110,3 +110,15 @@
  font-weight:700;cursor:pointer;touch-action:manipulation}
 .fw-field-inventory-place:disabled{opacity:.45;cursor:not-allowed}
 .fw-field-inventory-place[hidden]{display:none}
+
+/* L2.11E — only physical field pieces begin a pointer drag. Touch scroll
+ * remains available everywhere else and the 3D preview keeps its orbit. */
+.fw-field-inventory-select-item{touch-action:none;user-select:none;
+ -webkit-user-select:none}
+.fw-field-inventory-slot[data-drag-target="true"]{
+ outline:2px solid #b9dba7;outline-offset:0;background:rgba(111,164,118,.18)}
+.fw-field-inventory-drag-ghost{position:fixed;z-index:2147483646;
+ pointer-events:none;padding:8px 11px;border:1px solid #c5d6b2;
+ border-radius:7px;background:#294639;color:#f6faee;
+ font:700 11px/1.3 system-ui,sans-serif;white-space:nowrap;
+ box-shadow:0 5px 18px rgba(0,0,0,.35)}

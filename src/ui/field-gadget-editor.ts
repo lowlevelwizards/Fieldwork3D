@@ -61,6 +61,13 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    entry.button.title=quote.ok?'Move one item here':quote.reason;
   }
  };
+ const placeOne=(id:FieldItemId,from:FieldCarryLocation,to:FieldCarryLocation)=>{
+  if(options.locked)return;
+  const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,id,from,to);
+  if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
+  if(!quote.changed){feedback('ALREADY STORED HERE');return;}
+  onCommit(quote.inventory);
+ };
  const capacity=document.createElement('div');
  capacity.className='fw-field-inventory-capacity';
  capacity.setAttribute('aria-label','Carrying capacity by location');
@@ -71,6 +78,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   const slot=document.createElement('div');
   slot.className='fw-field-inventory-slot';
   if(used>limit)slot.dataset.overfilled='true';
+  slot.dataset.location=loc;
   const title=text('span','fw-field-inventory-slot-name',loc.toUpperCase());
   const count=text('strong','fw-field-inventory-slot-count',used+'/'+limit);
   const gauge=document.createElement('div');
@@ -102,6 +110,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    if(tile.kind==='field'&&tile.itemId){
     const id=tile.itemId;
     const select=btn('',()=>{
+     if(suppressClick){suppressClick=false;return;}
      if(options.locked)return;
      selected=selected?.id===id&&selected.from===loc?null:{id,from:loc};
      refreshSelection();
@@ -109,6 +118,56 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
       ' · CHOOSE A HIGHLIGHTED CARRY LOCATION':'SELECTION CLEARED');
     });
     select.className='fw-field-inventory-select-item';
+    // L2.11E: optional direct pointer drag. The same quote/commit path is
+    // used by keyboard/tap placement; drawing a ghost never edits stock.
+    let start:{pointer:number;x:number;y:number}|null=null;
+    let ghost:HTMLElement|null=null,dragged=false,suppressClick=false;
+    const cleanup=()=>{
+     ghost?.remove();ghost=null;
+     capacity.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
+      node=>delete node.dataset.dragTarget);
+     start=null;dragged=false;
+    };
+    select.addEventListener('pointerdown',event=>{
+     if(event.pointerType==='mouse'&&event.button!==0)return;
+     start={pointer:event.pointerId,x:event.clientX,y:event.clientY};
+     dragged=false;select.setPointerCapture(event.pointerId);
+    });
+    select.addEventListener('pointermove',event=>{
+     if(!start||event.pointerId!==start.pointer)return;
+     if(!dragged&&Math.hypot(event.clientX-start.x,event.clientY-start.y)<10)return;
+     if(!dragged){
+      dragged=true;
+      ghost=document.createElement('div');
+      ghost.className='fw-field-inventory-drag-ghost';
+      ghost.textContent='1 × '+tile.label.toUpperCase();
+      ghost.setAttribute('aria-hidden','true');
+      document.body.append(ghost);
+     }
+     if(ghost){
+      ghost.style.left=(event.clientX+12)+'px';
+      ghost.style.top=(event.clientY+12)+'px';
+     }
+     capacity.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
+      node=>delete node.dataset.dragTarget);
+     const hit=document.elementFromPoint(event.clientX,event.clientY);
+     const zone=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location]');
+     if(zone&&zone.dataset.location!==loc)zone.dataset.dragTarget='true';
+    });
+    select.addEventListener('pointerup',event=>{
+     if(!start||event.pointerId!==start.pointer)return;
+     const wasDragging=dragged;
+     const hit=wasDragging?document.elementFromPoint(event.clientX,event.clientY):null;
+     const destination=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location]')
+      ?.dataset.location as FieldCarryLocation|undefined;
+     cleanup();
+     if(!wasDragging)return;
+     suppressClick=true;
+     if(destination)placeOne(id,loc,destination);
+     else feedback('PLACEMENT CANCELLED · NO KIT CHANGES');
+    });
+    select.addEventListener('pointercancel',cleanup);
+    select.addEventListener('lostpointercapture',cleanup);
     select.setAttribute('aria-label','Select one '+tile.label+' from '+loc.toUpperCase());
     select.setAttribute('aria-pressed','false');
     select.disabled=!!options.locked;
@@ -123,12 +182,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   }
   slot.append(items);
   const place=btn('PLACE ONE HERE',()=>{
-   if(!selected||options.locked)return;
-   const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,
-    selected.id,selected.from,loc);
-   if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
-   if(!quote.changed){feedback('ALREADY STORED HERE');return;}
-   onCommit(quote.inventory);
+   if(selected)placeOne(selected.id,selected.from,loc);
   });
   place.className='fw-field-inventory-place';
   place.setAttribute('aria-label','Place selected item in '+loc.toUpperCase());

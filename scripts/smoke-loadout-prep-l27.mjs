@@ -75,6 +75,22 @@ try{
   await panel.getByRole('button',{name:'Undo last gadget change'}).click();
   assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),1,
    'undo restores the original carrying position');
+  if(device==='desktop'){
+   const source=await panel.getByRole('button',{name:'Select one Flashbang from RIG'})
+    .boundingBox();
+   const target=await panel.locator('.fw-field-inventory-slot[data-location="backpack"]')
+    .boundingBox();
+   assert.ok(source&&target,'pointer target zones are visible');
+   await page.mouse.move(source.x+source.width/2,source.y+source.height/2);
+   await page.mouse.down();
+   await page.mouse.move(target.x+target.width/2,target.y+target.height/2,{steps:6});
+   await page.mouse.up();
+   assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from BACKPACK'}).count(),1,
+    'pointer drag transfers exactly one physical flash');
+   await panel.getByRole('button',{name:'Undo last gadget change'}).click();
+   assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),1,
+    'pointer drag transaction can be undone');
+  }
   await panel.getByLabel('Operator to copy gadgets to').selectOption('moss');
   await panel.getByRole('button',{name:'Copy carried gadgets to selected operator'}).click();
   assert.match(await panel.locator('.fw-pre-go-note').innerText(),/copied/i);
