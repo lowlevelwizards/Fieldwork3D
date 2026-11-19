@@ -30,6 +30,7 @@ import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
 import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
 import {quoteCarryGearChange,type CarryGearSlot} from './equipment-carry-gear-change.ts';
 import {captureCarryUndo,quoteCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
+import {quoteCarryLayoutCopy} from './equipment-carry-layout-copy.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
@@ -734,6 +735,22 @@ export function undoCampaignCarryGear(c:CampaignState,id:string,
  }
  return {...c,operators:c.operators.map(o=>o.id===id?
   {...o,loadout:quote.restore.loadout,magazines:quote.restore.magazines}:o)};
+}
+/** A placement-only Campaign copy: cannot mint magazines, gadgets or stock.
+ * The owning Campaign state enforces operator status and contract phase.
+ */
+export function copyCampaignCarryLayout(c:CampaignState,
+ sourceId:string,targetId:string):CampaignState{
+ if(c.activeContractId||sourceId===targetId)return c;
+ const valid=(o:CampaignOperator)=>o.status!=='lost'&&o.status!=='retired';
+ const source=c.operators.find(o=>o.id===sourceId&&valid(o));
+ const target=c.operators.find(o=>o.id===targetId&&valid(o));
+ if(!source||!target)return c;
+ const quote=quoteCarryLayoutCopy(source.loadout,source.magazines,
+  target.loadout,target.magazines);
+ if(!quote.ok||!quote.changed)return c;
+ return {...c,operators:c.operators.map(o=>o.id===targetId?
+  {...o,loadout:quote.loadout,magazines:quote.magazines}:o)};
 }
 /** L2.3: stock- and capacity-aware pre-mission field item issuance.
  * Prepared kit allocations are a reservation, not a purchase or stock debit.
