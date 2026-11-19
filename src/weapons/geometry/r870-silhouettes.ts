@@ -128,8 +128,17 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // simple 6-face cuboid, not a tiny screw or complex rifle sight assembly.
  // Sight follows the lowered barrel and grows a restrained 7% so it
  // remains visible from a 1080p gameplay camera.
- const bead=b('barrel',frontBarrel.muzzleX-.42,2.00,0,.52,.59,.54,FAL_MUZZLE_METAL);
+ const rifleSight=build.parts.barrel==='r870-20-rifle-sight';
+ const bead=b('barrel',frontBarrel.muzzleX-.42,rifleSight?1.94:2.00,0,
+  rifleSight?.62:.52,rifleSight?.78:.59,rifleSight?.70:.54,FAL_MUZZLE_METAL);
  bead.userData.r870FrontSight=true;
+ if(rifleSight){
+  // Two deliberately exaggerated but simple ramp/notch masses distinguish
+  // the dedicated rifle-sighted barrel without adding a generic optic rail.
+  const rear=b('barrel',-.04,2.09,0,.96,.84,1.08,HK_BLACK_METAL);
+  rear.userData.r870RearRifleSight=true;
+  root.userData.r870P16RifleSight=true;
+ }
  if(build.parts.barrel==='r870-26-ventrib'){
   // The sporting family's readable signature is a LONG, raised rib
   // supported by three broad struts, not dozens of microscopic vents.
