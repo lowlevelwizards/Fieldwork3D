@@ -1757,7 +1757,7 @@ export class CampaignScreen{
   }
   categoryBar.addEventListener('keydown',event=>{
    if(!['ArrowLeft','ArrowRight','Home','End'].includes(event.key))return;
-   const keys=QUICK_LOADOUT_GROUPS.filter(g=>g.id!=='carry').map(g=>g.id);
+   const keys:QuickLoadoutGroup[]=QUICK_LOADOUT_GROUPS.filter(g=>g.id!=='carry').map(g=>g.id);
    const index=keys.indexOf(this.activeKitGroup);
    const next=event.key==='Home'?0:event.key==='End'?keys.length-1:
     (index+(event.key==='ArrowRight'?1:-1)+keys.length)%keys.length;
