@@ -48,6 +48,11 @@ function box(geometry:THREE.BoxGeometry,color:number,
  const mesh=new THREE.Mesh(geometry,mat(color));
  mesh.position.set(x,y,z);parent.add(mesh);return mesh;
 }
+// Shared across every civilian; no per-frame or per-rig geometry allocations.
+let restraintBandGeometry:THREE.TorusGeometry|null=null;
+const civilianRestraintBandGeometry=()=>
+ restraintBandGeometry??(restraintBandGeometry=new THREE.TorusGeometry(2,.35,3,7));
+
 export type LegacyCivilianRig={
  root:THREE.Group;upper:THREE.Group;torso:THREE.Mesh;head:THREE.Mesh;
  leftArm:THREE.Mesh;rightArm:THREE.Mesh;
@@ -62,6 +67,8 @@ export type LegacyCivilianRig={
 export type UnifiedCivilianRig={
  root:THREE.Group;character:OperatorRig;wardrobe:WardrobeOptions;
  equipment:EquipmentLoadout;lastTime:number;
+ /** F6.4: optional lazy one-pair cuff silhouette on real restrained wrists. */
+ restraintBand?:THREE.Mesh;
 };
 export type CivilianRig=LegacyCivilianRig|UnifiedCivilianRig;
 
@@ -151,6 +158,19 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
   downProgress:down?1:physical.kneel,
   poseDiagnostics:false
  },r.lastTime>=0&&now>=r.lastTime?Math.min(.08,now-r.lastTime):0);
+ // Only actual GO-time restraint earns a cuff band. The shared operator
+ // hands-behind pose remains the sole hand/arm IK writer. The tiny ring is
+ // attached to the resulting wrist and reuses geometry across civilians.
+ if(c.restrained===true&&!r.restraintBand){
+   const band=new THREE.Mesh(civilianRestraintBandGeometry(),mat(0x434843));
+   band.name='fieldwork-visible-restraint-band';
+   band.position.set(-.3,-1.8,0);
+   band.rotation.x=Math.PI*.5;
+   band.castShadow=false;
+   r.character.arms[0].hand.add(band);
+   r.restraintBand=band;
+ }
+ if(r.restraintBand)r.restraintBand.visible=c.restrained===true;
  // Per-frame absolute evidence-scoped gaze is derived by the same pure
  // interpreter as the legacy skeleton. poseOperator resets the head first.
  r.character.head.rotation.y+=physical.headYaw;
