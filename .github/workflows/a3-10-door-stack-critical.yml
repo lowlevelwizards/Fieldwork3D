@@ -1,0 +1,28 @@
+name: A3.10 pre-OPEN and shoulder-cap critical
+on:
+  push:
+    branches:
+      - feature/a3-door-preopen-highready-shoulder-cap-20261119
+  workflow_dispatch:
+concurrency:
+  group: a3-10-contact-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  pose-contact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-package-lock
+      - name: Typecheck
+        run: npm run check
+      - name: Physical contact and door action regression
+        run: >-
+          node --experimental-strip-types --test
+          tests/a3-10-preopen-shoulder-cap.test.mjs
+          tests/animation-a3-6-7-support-contacts.test.mjs
+          tests/animation-a3-8-lockpick-contact.test.mjs
+          tests/release-d2-4-contact-cover-pose.test.mjs
