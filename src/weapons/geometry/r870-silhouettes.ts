@@ -45,18 +45,22 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // variants. Stockless variants have NO invisible/redundant picking mesh.
  // Grip widths, not side-view profiles, are the P13 change: wood is
  // leaner, stockless grips narrower, birdshead especially hand-sized.
- const gripDepth=rearKey==='birdshead'?2.38:rearKey==='pistol'?2.60:2.90;
+ const gripDepth=rearKey==='birdshead'?2.38:rearKey==='pistol'?2.60:rearKey==='sga'?2.85:2.90;
+ const rearWood=rearKey==='wood'||rearKey==='shortwood'||rearKey==='birdshead';
  const grip=p('grip',rear.gripOutline,gripDepth,
-  rearKey==='pistol'?HK_DARK_POLYMER:HK_WOOD);
+  rearWood?HK_WOOD:HK_DARK_POLYMER);
  grip.userData.r870RearGrip=rearKey;
  if(rear.stockOutline){
-  const extension=p('stock',rear.stockOutline,2.90,HK_WOOD);
+  const extension=p('stock',rear.stockOutline,rearKey==='sga'?3.04:2.90,
+   rearWood?HK_WOOD:HK_DARK_POLYMER);
   extension.userData.r870StockExtension=true;
   const short=rearKey==='shortwood';
   // Thicker front-to-back pad; move its center forward to retain the
   // unchanged saved stockX (-15.78 or -13.78), and trim excess width.
-  const pad=b('stock',short?-13.44:-15.44,short?-1.79:-1.84,
-   0,.68,short?4.14:4.36,3.12,HK_DARK_POLYMER);
+  const sga=rearKey==='sga';
+  const pad=b('stock',sga?-14.90:short?-13.44:-15.44,
+   sga?-1.71:short?-1.79:-1.84,
+   0,.68,sga?4.32:short?4.14:4.36,sga?3.18:3.12,HK_DARK_POLYMER);
   pad.userData.r870ButtPad=true;
  }
  root.userData.r870RearVariant=rearKey;
@@ -122,11 +126,12 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // PUMP: constant six-vertex section for most of its length. Tiny 0.4-unit
  // end chamfers only. No P09 six-station inflatable "pillow" profile.
  // Thick faceted wood sleeve partially surrounds the fixed magazine tube.
+ const mlok=frontPump.pattern==='mlok';
  const stations=[
-  {x:frontPump.startX,top:-.15,bottom:-2.72,half:1.70},
-  {x:frontPump.startX+.43,top:-.04,bottom:-2.84,half:1.85},
-  {x:frontPump.endX-.53,top:-.04,bottom:-2.84,half:1.85},
-  {x:frontPump.endX,top:-.15,bottom:-2.72,half:1.70}
+  {x:frontPump.startX,top:mlok?-.08:-.15,bottom:mlok?-2.45:-2.72,half:mlok?1.53:1.70},
+  {x:frontPump.startX+.43,top:mlok?.06:-.04,bottom:mlok?-2.60:-2.84,half:mlok?1.70:1.85},
+  {x:frontPump.endX-.53,top:mlok?.06:-.04,bottom:mlok?-2.60:-2.84,half:mlok?1.70:1.85},
+  {x:frontPump.endX,top:mlok?-.08:-.15,bottom:mlok?-2.45:-2.72,half:mlok?1.53:1.70}
  ] as const;
  const cross=(s:typeof stations[number]):[number,number,number][]=>
   [[s.x,s.top,0],[s.x,s.top-.68,s.half],
@@ -164,6 +169,16 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  pump.userData.r870PumpPart=true;
  pump.userData.r870CorncobStations=stations.length;
  pump.userData.r870PumpSides=6;
+ if(mlok){
+  // Two oversized ends are the SGA/M-LOK signature at gameplay scale,
+  // much more readable than adding actual tiny mount-hole geometry.
+  const rearStop=b('handguard',frontPump.startX+.30,-1.44,0,
+   .40,2.74,3.64,HK_DARK_POLYMER);
+  const frontStop=b('handguard',frontPump.endX-.33,-1.44,0,
+   .42,2.74,3.64,HK_DARK_POLYMER);
+  rearStop.userData.r870PumpPart=true;
+  frontStop.userData.r870PumpPart=true;
+ }
  // Eight flat graphic grooves are SIXTEEN triangles in ONE draw call.
  // P10 extruded each groove as a 12-triangle cuboid (96 triangles,
  // 8 draw calls) even though sidewall thickness is invisible at gameplay
