@@ -22,6 +22,8 @@ export type OperatorInventoryCloseout={
  wedges:CloseoutQuantity;cuffs:CloseoutQuantity;medical:CloseoutQuantity;
  shots:number;spareMagazines:number;magazineIds:string[];
  condition:'active'|'injured'|'incapacitated';
+ carryLocations:Record<'flash'|'wedges'|'cuffs',readonly string[]>;
+ manifestMismatch:boolean;
  readiness:'fresh-round'|'ready'|'recovering'|'replenish'|'not-assessed';
  needs:readonly string[];
  /** True only when first authoritative film frame exists at mission start. */
@@ -60,11 +62,8 @@ export function buildAfterActionInventoryCloseout(input:{
  // A late or truncated recording cannot establish actual initial stock.
  const hasStart=!!first&&first.t>=0&&first.t<=.06;
  const startById=new Map((hasStart?first.actors:[]).map(actor=>[actor.id,actor]));
- const manifestById=new Map((recorder.manifest?.actors??[])
-  .filter(actor=>actor.side==='blue').map(actor=>[actor.id,actor]));
  const operators=session.operators.filter(a=>a.side==='blue').map(actor=>{
-  const initial=startById.get(actor.id),kit=manifestById.get(actor.id)?.equipment;
-  const issuedField=kit?initialField(kit.fieldInventory,kit):undefined;
+  const initial=startById.get(actor.id);
   const currentField=actor.equipment?
    initialField(actor.equipment.fieldInventory,actor.equipment):undefined;
   const stocked=(id:FieldItemId,remaining:number):CloseoutQuantity=>
@@ -79,6 +78,16 @@ export function buildAfterActionInventoryCloseout(input:{
   const cuffs=stocked('zip-tie',actor.restraintRemaining);
   const supplies=qty(initial?medical(initial.medicalSupplies):null,
    medical(actor.medicalSupplies));
+  const locations=(id:FieldItemId):string[]=>
+   currentField?.stacks.filter(row=>row.itemId===id).map(row=>
+     row.location.toUpperCase()+(row.quantity>1?' ×'+row.quantity:''))??[];
+  const carryLocations={
+   flash:locations('flashbang'),wedges:locations('wedge'),cuffs:locations('zip-tie')
+  };
+  const manifestMismatch=!!currentField&&(
+   count(currentField,'flashbang')!==actor.flashCharges||
+   count(currentField,'wedge')!==actor.wedgeRemaining||
+   count(currentField,'zip-tie')!==actor.restraintRemaining);
   const career=mode==='mission'&&campaign?
    tacticalSlotOperator(campaign,actor.id):undefined;
   const needs:string[]=[];
@@ -99,7 +108,8 @@ export function buildAfterActionInventoryCloseout(input:{
   }
   return {
    id:actor.id,name:actor.name,careerId:career?.id??null,
-   rounds,flash,wedges,cuffs,medical:supplies,
+   rounds,flash,wedges,cuffs,medical:supplies,carryLocations,
+   manifestMismatch,
    shots:usable(actor.shots),
    spareMagazines:actor.spareMagazines.length,
    magazineIds:actor.spareMagazines.map(m=>m.id),
