@@ -57,6 +57,8 @@ import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {fieldQuantity,initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
 import {quoteCampaignSquadRefill,quoteCampaignOperatorRefill}
  from './equipment-campaign-squad-refill.ts';
+import {FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
+ from './equipment-campaign-field-stock.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
 import './campaign-style.css';
@@ -74,8 +76,9 @@ export type CampaignHandlers={
  chooseContract:(id:string)=>void;resumeContract:()=>void;
  reconContract:(id:string)=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
+ buyWedges:()=>void;buyCuffs:()=>void;
  resupply:(id:string)=>void;resupplyMedical:(id:string)=>void;
- resupplySquad:()=>void;
+ resupplySquad:()=>void;resupplyField:(id:string)=>void;
  treat:(id:string)=>void;
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
@@ -676,7 +679,9 @@ export class CampaignScreen{
   for(const [count,label] of [
    [c.supplies.ammo,'ROUNDS'],
    [c.supplies.medical,'MEDICAL KITS'],
-   [c.supplies.flash,'FLASHBANGS']
+   [c.supplies.flash,'FLASHBANGS'],
+   [c.supplies.wedges,'DOOR WEDGES'],
+   [c.supplies.cuffs,'FLEX CUFF PAIRS']
   ] as const){
    const fact=node('div','campaign-logistics-stat');
    if(count===0||(label==='ROUNDS'&&count<60))
@@ -692,8 +697,10 @@ export class CampaignScreen{
   squadReplenish.append(node('h3','','SQUAD REFILL · LIVE HQ STOCK'));
   const refillSummary=node('p','campaign-squad-refill-summary',
    squadQuote.roundsIssued+' / '+squadQuote.roundsWanted+' ROUNDS · '+
-   squadQuote.medicalIssued+' / '+squadQuote.medicalWanted+' MEDICAL PACKS'+
-   (squadQuote.partial?' · PARTIAL STOCK':''));
+   squadQuote.medicalIssued+' / '+squadQuote.medicalWanted+' MEDICAL PACKS · '+
+   squadQuote.wedgesIssued+' / '+squadQuote.wedgesWanted+' WEDGES · '+
+   squadQuote.cuffsIssued+' / '+squadQuote.cuffsWanted+' CUFF PAIRS'+
+   (squadQuote.partial?' · PARTIAL / CARRY LIMITED':''));
   squadReplenish.append(refillSummary);
   const rows=node('div','campaign-squad-refill-lines');
   for(const line of squadQuote.lines){
@@ -701,32 +708,39 @@ export class CampaignScreen{
    chip.append(node('strong','',line.name.toUpperCase()),
     node('span','',
      line.roundsIssued+' / '+line.roundsWanted+' RDS · '+
-     line.medicalIssued+' / '+line.medicalWanted+' MED PACKS'+
-     (line.roundsShort?' · '+line.roundsShort+' RDS SHORT':'')));
+     line.medicalIssued+' / '+line.medicalWanted+' MED PACKS · '+
+     line.wedgesIssued+' / '+line.wedgesWanted+' WEDGES · '+
+     line.cuffsIssued+' / '+line.cuffsWanted+' CUFFS'+
+     (line.roundsShort?' · '+line.roundsShort+' RDS SHORT':'')+
+     (line.blockedByCarry?' · NOT ENOUGH CARRY SPACE':'')));
    rows.append(chip);
   }
   squadReplenish.append(rows);
   const squadRefill=button('REFILL SQUAD · '+
-   squadQuote.cost.ammo+' HQ ROUNDS + '+
-   squadQuote.cost.medical+' MEDICAL PACKS',
+   squadQuote.cost.ammo+' RDS · '+squadQuote.cost.medical+
+   ' MED · '+squadQuote.cost.wedges+' WEDGES · '+
+   squadQuote.cost.cuffs+' CUFFS',
    this.handlers.resupplySquad,'campaign-primary');
   squadRefill.setAttribute('aria-label',
-   'Refill squad using '+squadQuote.cost.ammo+' HQ rounds and '+
-   squadQuote.cost.medical+' medical packs');
+   'Refill squad using '+squadQuote.cost.ammo+' HQ rounds, '+
+   squadQuote.cost.medical+' medical packs, '+squadQuote.cost.wedges+
+   ' door wedges and '+squadQuote.cost.cuffs+' flex cuff pairs');
   squadRefill.disabled=!squadQuote.available||!squadQuote.changed;
   if(squadRefill.disabled)squadRefill.title=squadQuote.reason??
    'All assigned operators are supplied or HQ reserves are empty';
   squadReplenish.append(squadRefill,
    node('p','campaign-muted',
-    'Uses existing HQ stock once; remaining shortages stay visible. '+
-    'Wedges and flex cuffs retain their physical counts—no free refill.'));
+    'Issues each physical item from finite HQ stock exactly once. '+
+    'Equipment that cannot fit stays in HQ.'));
   supplyPanel.append(squadReplenish,node('h3','campaign-logistics-buy-heading',
    'REPLENISH RESERVES'));
   const purchases=node('div','campaign-purchases');
   for(const [label,cost,action] of [
    ['60 ROUNDS',120,this.handlers.buyAmmo],
    ['MEDICAL KIT',170,this.handlers.buyMedical],
-   ['2 FLASHBANGS',150,this.handlers.buyFlash]
+   ['2 FLASHBANGS',150,this.handlers.buyFlash],
+   [FIELD_STOCK_PACKS.wedges.name,FIELD_STOCK_PACKS.wedges.price,this.handlers.buyWedges],
+   [FIELD_STOCK_PACKS.cuffs.name,FIELD_STOCK_PACKS.cuffs.price,this.handlers.buyCuffs]
   ] as const){
    const price=isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?
     'NO CHARGE':cost+' CR';
@@ -736,7 +750,13 @@ export class CampaignScreen{
    const buy=button('BUY',action);
    buy.setAttribute('aria-label','Buy '+label+' for '+price);
    buy.disabled=!canAffordCampaignPurchase(c,cost)||
-    (label==='2 FLASHBANGS'&&(!!c.activeContractId||c.supplies.flash>998));
+    (label==='2 FLASHBANGS'&&(!!c.activeContractId||c.supplies.flash>998))||
+    (label===FIELD_STOCK_PACKS.wedges.name&&
+     (!!c.activeContractId||c.supplies.wedges>
+      FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.wedges.quantity))||
+    (label===FIELD_STOCK_PACKS.cuffs.name&&
+     (!!c.activeContractId||c.supplies.cuffs>
+      FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.cuffs.quantity));
    if(buy.disabled){
     const why=label==='2 FLASHBANGS'&&!!c.activeContractId?
      'Unavailable during an active deployment':
@@ -1414,8 +1434,11 @@ export class CampaignScreen{
    needs.append(node('strong','','BEFORE NEXT DEPLOYMENT'),
     node('p','',
      singleQuote.roundsIssued+' / '+singleQuote.roundsWanted+' ROUNDS FROM HQ · '+
-     singleQuote.medicalIssued+' / '+singleQuote.medicalWanted+' MEDICAL PACKS'+
-     (singleQuote.roundsShort?' · '+singleQuote.roundsShort+' ROUNDS SHORT':'')));
+     singleQuote.medicalIssued+' / '+singleQuote.medicalWanted+' MEDICAL PACKS · '+
+     singleQuote.wedgesIssued+' / '+singleQuote.wedgesWanted+' WEDGES · '+
+     singleQuote.cuffsIssued+' / '+singleQuote.cuffsWanted+' CUFF PAIRS'+
+     (singleQuote.roundsShort?' · '+singleQuote.roundsShort+' ROUNDS SHORT':'')+
+     (singleQuote.blockedByCarry?' · CARRY SPACE LIMITED':'')));
    const actions=node('div','campaign-kit-refill-actions');
    const ammoButton=button('REFILL '+singleQuote.roundsIssued+' ROUNDS',
     ()=>this.handlers.resupply(person.id));
@@ -1423,7 +1446,12 @@ export class CampaignScreen{
    const medicalButton=button('REISSUE '+singleQuote.medicalIssued+' MEDICAL PACK',
     ()=>this.handlers.resupplyMedical(person.id));
    medicalButton.disabled=!!c.activeContractId||singleQuote.medicalIssued<=0;
-   actions.append(ammoButton,medicalButton);
+   const fieldButton=button('REISSUE '+singleQuote.wedgesIssued+' WEDGES / '+
+    singleQuote.cuffsIssued+' CUFFS',
+    ()=>this.handlers.resupplyField(person.id));
+   fieldButton.disabled=!!c.activeContractId||
+    singleQuote.wedgesIssued+singleQuote.cuffsIssued===0;
+   actions.append(ammoButton,medicalButton,fieldButton);
    needs.append(actions);
    summary.append(needs);
   }
