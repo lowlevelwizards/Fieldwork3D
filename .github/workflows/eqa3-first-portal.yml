@@ -32,6 +32,25 @@ jobs:
             early:x.samples.slice(0,2),late:x.samples.slice(-2)
           }))},null,2));
           NODE
+      - name: Retail 14 stalled door action timeline (actual motor, zero effect on gameplay)
+        run: |
+          node - <<'NODE'
+          const r=require('./artifacts/eqa3/first-portal-6.json');
+          for(const x of r.rows.filter(x=>x.seed===14)){
+            console.log('RETAIL_DOOR',JSON.stringify({entry:x.entry,chosen:x.initiallySelectedDoor,
+              ending:x.physicalDoorAtEnd,ended:x.doorOrderFinished,
+              progress:x.samples.filter((s,i)=>i%5===0||i===x.samples.length-1).map(s=>({
+                t:s.t,p:{x:s.x,y:s.y},target:s.target,
+                dTarget:s.distToTarget,dHandle:s.distToHandle,dCenter:s.distToCenter,
+                reach:s.actualReach,reason:s.interaction?.reason,
+                allowed:s.interaction?.allowed,threatens:s.threatensLeaf,
+                timer:s.actionTimer,nav:s.navLength,blocked:s.blocked,
+                motor:s.motorPause,issue:s.orderIssue,
+                recovery:s.recoveryAttempts,velocity:s.velocity
+              }))
+            }));
+          }
+          NODE
       - if: always()
         uses: actions/upload-artifact@v4
         with:
