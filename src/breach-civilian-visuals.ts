@@ -150,7 +150,8 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  // The foot IK samples root elevation during its solve. Put the true
  // neutral transport height on the root BEFORE posing, otherwise a prior
  // carried/dragged frame contaminates the next standing frame.
- r.root.position.set(c.p.x,pose==='carried'?10:pose==='dragged'?2:0,c.p.y);
+ const transportHeight=pose==='carried'?10:pose==='dragged'?2:0;
+ r.root.position.set(c.p.x,transportHeight,c.p.y);
  poseOperator(r.character,{
   x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,
   seconds:now,stride:moving?Math.max(.05,c.velocity/53):0,
@@ -191,6 +192,10 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  r.character.pack.visible=false;
  r.character.weapon.visible=false;
  r.character.droppedGun.visible=false;
+ // poseOperator stages its own local collapse offset. The scene/world owns
+ // the real civilian's presentation elevation, so restore it after IK,
+ // just as the armed scene restores the authoritative motor root.
+ r.root.position.set(c.p.x,transportHeight,c.p.y);
  // The operator skeleton owns gait, planted feet, full-body crouching,
  // hands-up compliance and fall. Keep neutral carrying offset render-only.
  // Tactical renderers place armed actor roots from the Session *outside*
