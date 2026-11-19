@@ -51,6 +51,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** EQA3.9: actual SECURE/FOLLOW support-hand reach, absent in old film. */
+ lastCivilianContactAt?:number;
  /** Optional for archived films recorded before D4. */
  doorHandContact?:DoorHandContact|null;
  kickFoot?:0|1|null;
@@ -178,6 +180,7 @@ export function snapshot(s:Session,seenGround?:string[],
       flashCharges:a.flashCharges,
       morale:a.morale,
       lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
+      lastCivilianContactAt:a.lastCivilianContactAt??-100,
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
       kickFoot:a.kickFoot??null,
       coverStanceDrop:a.coverStanceDrop??0,
@@ -476,6 +479,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     if(a)Object.assign(a,copy,{p:position(copy.p),
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
+      lastCivilianContactAt:copy.lastCivilianContactAt??-100,
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
       coverStanceDrop:copy.coverStanceDrop??0,
