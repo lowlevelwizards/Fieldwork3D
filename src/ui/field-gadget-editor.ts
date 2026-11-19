@@ -3,7 +3,7 @@
  */
 import type {EquipmentLoadout} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
-import {FIELD_ITEMS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFieldInventory,
+import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFieldInventory,
  replaceFieldQuantity,moveFieldStack,fieldCarryReport,autoPackFieldInventory,quoteFieldInventoryCopy,
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
@@ -149,7 +149,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   // L2.10B: no meaningless mutation, undo entry, stock re-quote or view
   // rebuild when all physical stacks already occupy the preferred slots.
   const same=FIELD_CARRY_LOCATIONS.every(location=>
-   (['flashbang','wedge'] as FieldItemId[]).every(id=>
+   FIELD_ITEM_IDS.every(id=>
     inventory.stacks.filter(s=>s.itemId===id&&s.location===location)
      .reduce((total,s)=>total+s.quantity,0)===
     packed.stacks.filter(s=>s.itemId===id&&s.location===location)
