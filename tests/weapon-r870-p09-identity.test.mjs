@@ -18,6 +18,12 @@ const make=()=>{
 };
 const tagged=(gun,key)=>gun.children.filter(mesh=>mesh.userData[key]);
 const bounds=mesh=>new THREE.Box3().setFromObject(mesh);
+// THREE.Shape.getPoints() repeats the first vertex at the end of a closed
+// outline. Count unique authored silhouette corners, not the closure vertex.
+const cornerCount=mesh=>{
+ const pts=mesh.geometry.parameters.shapes.getPoints(1);
+ return pts.length-(pts.length>1&&pts[0].equals(pts.at(-1))?1:0);
+};
 
 test('R870 identity saves and six authored part slots survive the P10 simplification',()=>{
  const c=config(),recipe=arsenalRecipeFromLegacy(c),a=resolveWeaponAssembly(c);
@@ -51,9 +57,9 @@ test('R870 P10 uses one bold crowned steel receiver with a flat UPWARD right-sid
   assert.equal(tagged(gun,'r870InsetBolt').length,0);
   assert.equal(tagged(gun,'r870SolidLeftReceiver').length,0);
   assert.equal(tagged(gun,'r870ActionBar').length,0);
-  assert.ok(port[0].geometry.parameters.shapes.getPoints(1).length<=6);
+  assert.ok(cornerCount(port[0])<=6);
   const pts=body[0].geometry.parameters.shapes.getPoints(1);
-  assert.equal(pts.length,9,'nine readable exterior landmarks, no extra microplanes');
+  assert.equal(cornerCount(body[0]),9,'nine readable exterior landmarks, no extra microplanes');
   assert.ok(Math.max(...pts.map(x=>x.y))>1.65,'receiver crown is pronounced');
  }finally{dispose();}
 });
@@ -66,8 +72,8 @@ test('R870 P10 woody stock has few facets, substantial butt pad and sharply legi
    x.geometry instanceof THREE.ExtrudeGeometry);
   const pad=tagged(gun,'r870ButtPad')[0];
   assert.ok(stock&&grip&&pad);
-  assert.equal(stock.geometry.parameters.shapes.getPoints(1).length,8);
-  assert.equal(grip.geometry.parameters.shapes.getPoints(1).length,10);
+  assert.equal(cornerCount(stock),8);
+  assert.equal(cornerCount(grip),10);
   assert.ok(Math.abs(pad.geometry.parameters.width-.54)<1e-6,
    'visible rear pad slab enlarged from P09 .34');
   assert.ok(bounds(grip).min.y< -3.5,'new grip runs down then rear/down');
