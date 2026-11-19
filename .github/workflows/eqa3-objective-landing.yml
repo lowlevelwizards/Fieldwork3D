@@ -1,0 +1,36 @@
+name: EQA3.2 objective landing and portal physical evidence
+on:
+  push:
+    branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
+    paths: ['.github/workflows/eqa3-objective-landing.yml','scripts/audit-eqa3-objective-landing.mjs']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  actual-objective-contact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Eight actual authored objective initial-door world contact and route admissions
+        run: |
+          mkdir -p artifacts/eqa3
+          node --experimental-strip-types scripts/audit-eqa3-objective-landing.mjs > artifacts/eqa3/landing-8.json
+          node - <<'NODE'
+          const a=require('./artifacts/eqa3/landing-8.json');
+          for(const x of a.rows)console.log(JSON.stringify({
+            seed:x.seed,mission:x.mission,entry:x.entry,objective:x.objective,
+            nearDoors:x.closestDoor.slice(0,4),
+            count:x.candidates,
+            physicallySafe:x.nearSolutions.slice(0,4)
+          }));
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-2-objective-landing-truth
+          path: artifacts/eqa3/
