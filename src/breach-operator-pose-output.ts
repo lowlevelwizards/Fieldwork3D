@@ -86,6 +86,10 @@ type MutableOutput={
  indicesByStage:number[][];
  stageMask:number;pendingTime:number;pending:boolean;
  lastRenderedHandling:string|null;lastVisualSeconds:number|null;
+ /** One frozen, final displayed NPC pose captured on an actual state
+  * change. Lazily allocated once per rig, never per-frame. */
+ npcKey:string|null;npcStart:number|null;
+ npcFrom:Float64Array[]|null;
 };
 const outputs=new WeakMap<OperatorRig,MutableOutput>();
 function outputFor(r:OperatorRig):MutableOutput{
@@ -110,7 +114,7 @@ function outputFor(r:OperatorRig):MutableOutput{
   slotCount:declared.length,time:0,generation:0,valid:false,
   staged:declared.map(()=>new Float64Array(11)),indicesByStage,
   stageMask:0,pendingTime:0,pending:false,lastRenderedHandling:null,
-  lastVisualSeconds:null};
+  lastVisualSeconds:null,npcKey:null,npcStart:null,npcFrom:null};
  outputs.set(r,output);
  return output;
 }
@@ -281,6 +285,51 @@ function blendCompletePoseOutput(output:MutableOutput,p:OperatorPose,
   blendPoseTransform(slot.values,output.staged[i],alpha);
  }
 }
+/** EQA3.16L — NPC-only whole-pose handoff at the atomic B2 boundary.
+ * Each state change samples the last DISPLAYED joints, including during
+ * interruption. Reverse/large seeks bypass render history completely.
+ */
+function blendNpcPoseHandoff(output:MutableOutput,p:OperatorPose):void{
+ const key=p.npcTransitionKey;
+ if(!key){output.npcKey=null;output.npcStart=null;return;}
+ if(!output.valid){output.npcKey=key;return;}
+ const prev=output.lastVisualSeconds;
+ const dt=prev===null?Infinity:p.seconds-prev;
+ const changed=output.npcKey!==key;
+ if(changed){
+  output.npcKey=key;
+  // Lab track switches reset playback to zero, deliberately crossfading.
+  // Reverse seeks within a track keep the same key and never crossfade.
+  const freshTrack=p.seconds<=.10&&dt<0;
+  if((dt>=0&&dt<=.20)||freshTrack){
+   if(!output.npcFrom)
+    output.npcFrom=output.slots.map(()=>new Float64Array(11));
+   for(let i=0;i<output.slotCount;i++)
+    output.npcFrom[i].set(output.slots[i].values);
+   output.npcStart=p.seconds;
+  }else output.npcStart=null;
+ }else if(dt<-.015||dt>.30){
+  output.npcStart=null;
+ }
+ if(output.npcStart===null||!output.npcFrom)return;
+ const duration=Math.max(.10,Math.min(.60,
+   p.npcTransitionDuration??.24));
+ const raw=Math.max(0,Math.min(1,
+   (p.seconds-output.npcStart)/duration));
+ if(raw>=1){output.npcStart=null;return;}
+ const alpha=raw*raw*(3-2*raw);
+ for(let i=0;i<output.slotCount;i++){
+  const slot=output.slots[i],id=slot.id;
+  // The world motor and scheduled feet retain sole authority. No ghost
+  // weapons, magazines or other discrete equipment visibility.
+  if(id==='root'||id.endsWith('-shoe')||
+     id==='held-weapon'||id==='dropped-weapon'||
+     slot.owner==='attachments')continue;
+  if(slot.owner==='body'||slot.owner==='upper-body'||
+     slot.owner==='lower-body'||id==='legacy-frame')
+   blendPoseTransform(output.npcFrom[i],output.staged[i],alpha);
+ }
+}
 /** The ONLY production pose commit. It publishes exactly one complete,
  * validated stage set after all procedural solutions and finalizers.
  */
@@ -291,6 +340,9 @@ export function commitOperatorPoseOutput(r:OperatorRig,p:OperatorPose):void{
  if(output.pending&&output.pendingTime===p.seconds&&
     output.stageMask===COMPLETE_STAGE_MASK)
   blendCompletePoseOutput(output,p,renderedHandling);
+ if(output.pending&&output.pendingTime===p.seconds&&
+    output.stageMask===COMPLETE_STAGE_MASK)
+  blendNpcPoseHandoff(output,p);
  publishOperatorPoseOutput(r,p,true);
  output.lastRenderedHandling=renderedHandling;
  output.lastVisualSeconds=p.idleLifeSeconds??p.seconds;
