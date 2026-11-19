@@ -4,7 +4,7 @@
 import type {EquipmentLoadout} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
 import {FIELD_ITEMS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFieldInventory,
- replaceFieldQuantity,moveFieldStack,fieldCarryReport,autoPackFieldInventory,
+ replaceFieldQuantity,moveFieldStack,fieldCarryReport,autoPackFieldInventory,quoteFieldInventoryCopy,
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
 import './loadout-prep.css';
@@ -14,6 +14,9 @@ export type FieldGadgetEditorOptions={
  onCommit:(inventory:FieldInventory)=>void;
  locked?:boolean;
  maxFlash?:number;
+ copyTargets?:readonly {id:string;name:string;loadout:EquipmentLoadout;
+  magazines:readonly MagazineItem[]}[];
+ onCopy?: (targetId:string,inventory:FieldInventory)=>void;
 };
 const text=(tag:'div'|'span'|'strong'|'small'|'p',className:string,value:string)=>{
  const el=document.createElement(tag);el.className=className;el.textContent=value;
@@ -121,6 +124,32 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   else feedback('AUTO PACK UNAVAILABLE · ADJUST LOAD OR CARRYING EQUIPMENT');
  });
  autopack.disabled=!!options.locked;
- actions.append(autopack);root.append(actions);
+ actions.append(autopack);
+ if(options.onCopy&&options.copyTargets?.length){
+  const copyArea=document.createElement('div');
+  copyArea.className='fw-field-inventory-copy-area';
+  const picker=document.createElement('select');
+  picker.className='fw-field-inventory-location';
+  picker.setAttribute('aria-label','Operator to copy gadgets to');
+  const placeholder=document.createElement('option');
+  placeholder.value='';placeholder.textContent='COPY GADGETS TO…';picker.append(placeholder);
+  for(const target of options.copyTargets){
+   const option=document.createElement('option');
+   option.value=target.id;option.textContent=target.name.toUpperCase();
+   picker.append(option);
+  }
+  const copyButton=btn('COPY',()=>{
+   const target=options.copyTargets?.find(entry=>entry.id===picker.value);
+   if(!target)return;
+   const quote=quoteFieldInventoryCopy(inventory,target.loadout,target.magazines);
+   if(!quote.ok){feedback('CANNOT COPY · '+quote.reason);return;}
+   options.onCopy?.(target.id,quote.inventory);
+  });
+  copyButton.setAttribute('aria-label','Copy carried gadgets to selected operator');
+  copyButton.disabled=!!options.locked;
+  picker.disabled=!!options.locked;
+  copyArea.append(picker,copyButton);root.append(copyArea);
+ }
+ root.append(actions);
  return root;
 }
