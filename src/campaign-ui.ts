@@ -72,6 +72,7 @@ export type CampaignHandlers={
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  equipFieldInventory:(id:string,inventory:FieldInventory)=>void;
+ copyFieldInventory:(sourceId:string,targetId:string)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
  openStudio:(id:string)=>void;
  openArsenal:(id:string)=>void;
@@ -1658,6 +1659,11 @@ export class CampaignScreen{
    loadout:person.loadout,magazines:person.magazines,locked,
    maxFlash:c.squadIds.includes(id)?
     Math.max(0,c.supplies.flash-squadFlashReserved):4,
+   copyTargets:c.operators.filter(o=>o.id!==id&&
+    o.status!=='lost'&&o.status!=='retired').map(o=>({
+     id:o.id,name:o.callsign,loadout:o.loadout,magazines:o.magazines
+    })),
+   onCopy:targetId=>this.handlers.copyFieldInventory(id,targetId),
    onCommit:inventory=>this.handlers.equipFieldInventory(id,inventory)
   }));
   const workbenchEntry=node('section','campaign-kit-workbench-entry');
