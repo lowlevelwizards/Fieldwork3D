@@ -143,6 +143,24 @@ try{
    animations:'disabled'});
   await panel.getByRole('button',{name:'BACK TO BRIEFING'}).click();
   assert.equal(await panel.isVisible(),false);
+  const magazineDemo=page.locator('#magazinePlacementSmoke');
+  const magTile=magazineDemo.locator(
+   '.fw-field-inventory-slot[data-location="rig"] .fw-field-inventory-carry-tile[data-kind="magazine"]').first();
+  const magId=await magTile.getAttribute('data-magazine-id');
+  const originalLabel=await magTile.locator('.fw-field-inventory-item-name').innerText();
+  assert.ok(magId&&originalLabel.includes('rounds'),'magazine ID and rounds are visible');
+  await magazineDemo.getByRole('button',{name:'Select magazine '+magId+' from RIG'}).click();
+  const backpackPlace=magazineDemo.getByRole('button',{name:'Place selected item in BACKPACK'});
+  assert.equal(await backpackPlace.isEnabled(),true);
+  await backpackPlace.click();
+  const moved=magazineDemo.locator(
+   '.fw-field-inventory-slot[data-location="backpack"] [data-magazine-id="'+magId+'"]');
+  assert.equal(await moved.count(),1,'one actual magazine moved without duplication');
+  assert.equal(await moved.locator('.fw-field-inventory-item-name').innerText(),
+   originalLabel,'magazine identity and rounds survive placement');
+  assert.equal(await magazineDemo.locator(
+   '.fw-field-inventory-slot[data-location="rig"] [data-magazine-id="'+magId+'"]').count(),0);
+
   await page.evaluate(()=>window.loadoutPrepSmoke.stop());
   await launch.click();
   assert.equal(await panel.isVisible(),false,'cannot re-enter equipment prep after GO');
