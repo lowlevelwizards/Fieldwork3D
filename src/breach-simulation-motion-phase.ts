@@ -8,6 +8,7 @@ import {proposedCivilianTransportStep,reconcileCivilianTransportFrame}
  from './breach-civilian-transport.ts';
 import {civilianSenseDue,stepCivilianResponse} from './breach-civilian-response.ts';
 import {stepCivilianMovement} from './breach-civilian-movement.ts';
+import {escortUsesFriendlySoftTraffic} from './breach-civilian-mission.ts';
 import {buildMotionFrameProposals} from './breach-motion-frame-input.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
 import {sweptBodyClear,sweptProfileClear} from './breach-navigation.ts';
@@ -80,7 +81,7 @@ export function advanceSimulationMotion(s:Session,h:number,
     // One ordered live-body collection for all civilian occupancy queries.
     // No chained filter/spread arrays per authoritative 60Hz tick. Read
     // positions live, so earlier civilians moving this tick still matter.
-    const nearby:Array<{id:string;p:Pt}>=[];
+    const nearby:Array<{id:string;p:Pt;side?:string}>=[];
     for(const a of s.operators)if(a.health>0)nearby.push(a);
     for(const c of s.civilians)if(c.health>0)nearby.push(c);
     // These callbacks do not capture an individual civilian and can be
@@ -96,8 +97,15 @@ export function advanceSimulationMotion(s:Session,h:number,
       try{return port.routeTo(s,from,to);}
       finally{routeWorkMs+=performance.now()-started;}
     };
+    // A real FOLLOW can cross blue teammates just as the authoritative
+    // motion-frame arbiter already permits. Snapshot only the status bit,
+    // not positions: the nearby actor references retain live movement.
+    // Non-following civilians still avoid crowds; red and other neutral
+    // bodies remain hard obstructions for a rescued follower.
+    let escortSoftBlueTraffic=false;
     const occupied=(p:Pt,id:string)=>nearby.some(a=>
-      a.id!==id&&withinSquared(a.p,p,400));
+      a.id!==id&&!(escortSoftBlueTraffic&&a.side==='blue')&&
+      withinSquared(a.p,p,400));
     const sensoryCommon={
       noise:s.noise,people:s.operators,doors:s.doors,walls:currentWorld.walls,
       windows:s.windows,
@@ -127,6 +135,7 @@ export function advanceSimulationMotion(s:Session,h:number,
         profile('civilian-motion/response-'+civil.id,elapsed);
       }
       const civilianStepStart=cpuMark();
+      escortSoftBlueTraffic=escortUsesFriendlySoftTraffic(civil);
       stepCivilianMovement(civil,s.seconds,h,clear,occupied,routeTo);
       if(profile){
         const elapsed=performance.now()-civilianStepStart;

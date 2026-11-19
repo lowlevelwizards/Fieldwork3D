@@ -1,0 +1,93 @@
+name: EQA3.8 Warehouse 17 real rescue escort flow
+on:
+  push:
+    branches: [feature/eqa3-8-warehouse-escort-flow-20261118]
+    paths:
+      - '.github/workflows/eqa3-8-warehouse-escort.yml'
+      - 'scripts/audit-eqa3-8-warehouse-escort.mjs'
+      - 'src/breach-civilian-mission.ts'
+      - 'src/breach-civilian-movement.ts'
+      - 'src/breach-simulation-motion-phase.ts'
+      - 'src/breach-game.ts'
+      - 'tests/eqa3-8-escort-flow.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  warehouse-real-escort:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript compile and focused 60Hz escort/neutral collisions
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-8-escort-flow.test.mjs \
+            tests/eqa3-1-rescue-escort-pacing.test.mjs \
+            tests/civilian-b3-movement.test.mjs \
+            tests/civilian-r2-navigation.test.mjs \
+            tests/civilian-d1-rescue-lifecycle.test.mjs
+      - name: Full 110-second Warehouse FRONT/SERVICE real rescue + pickup, unknown/confirmed intel
+        run: |
+          mkdir -p artifacts/eqa3-8
+          for intel in unknown confirmed; do
+            EQA3_OUTPUT="artifacts/eqa3-8/warehouse17-${intel}.json" \
+            node --experimental-strip-types scripts/audit-eqa3-8-warehouse-escort.mjs \
+              --smoke --seed=17 --mission=rescue --seconds=110 \
+              "--intel=${intel}" --door-aware --forensic \
+              > "artifacts/eqa3-8/warehouse17-${intel}-console.json"
+          done
+      - name: Validate real case selection and summarize escort corridor stalls
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          for(const intel of ['unknown','confirmed']){
+            const data=JSON.parse(fs.readFileSync(
+              'artifacts/eqa3-8/warehouse17-'+intel+'.json'));
+            const rows=data.rows;
+            if(data.exceptions.length||rows.length!==2||
+              rows.some(r=>r.mission!=='rescue'||r.seed!==17||r.integrity?.length||
+                !Array.isArray(r.escortSamples))){
+              console.error('Invalid Warehouse17 physical witness',intel,data.summary);
+              process.exitCode=1;continue;
+            }
+            for(const row of rows){
+              const samples=row.escortSamples;
+              const following=samples.filter(x=>x.following);
+              const stalled=samples.filter((v,i)=>i>=5&&
+                v.following&&samples[i-5].following&&
+                Math.abs(v.civilianDistanceToExtract-
+                  samples[i-5].civilianDistanceToExtract)<3);
+              const end=samples.at(-1);
+              console.log(JSON.stringify({
+                intel,entry:row.insertion,objective:row.objectiveAt,
+                atExtraction:row.extractedAt,stage:row.missionStage,
+                personHealth:row.rescue?.secured,
+                followingSamples:following.length,stalledWindows:stalled.length,
+                lastState:end?{
+                  t:end.t,stage:end.stage,health:end.health,
+                  separation:end.separation,following:end.following,
+                  rescuerToExit:end.rescuerDistanceToExtract,
+                  civilianToExit:end.civilianDistanceToExtract,
+                  civilianBlocked:end.civilianBlocked,
+                  civilianRetryUntil:end.civilianRetryUntil,
+                  civilianGoal:end.civilianGoal,
+                  nearestDoors:end.nearestDoors
+                }:null,
+                firstFollow:following.at(0)??null,
+                lastFive:samples.slice(-5),
+                commands:row.decisions.slice(-8)
+              },null,2));
+            }
+          }
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-8-warehouse17-real-escort-110s
+          path: artifacts/eqa3-8/
