@@ -5,7 +5,7 @@
  */
 import type {TeamActor} from './breach-game.ts';
 import {CARRY_ACCESS_SECONDS} from './equipment-carry-placement.ts';
-import {FIELD_ITEMS,FIELD_CARRY_LOCATIONS,fieldQuantity,
+import {FIELD_ITEMS,fieldQuantity,
  fieldCarryReport,initialFieldInventory,type FieldCarryLocation,
  type FieldInventory} from './equipment-field-inventory.ts';
 
