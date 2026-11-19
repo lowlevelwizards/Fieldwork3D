@@ -2,7 +2,7 @@
  * One source of authored footprint + eye-box facts for the solver and renderer.
  * Distances are stylized Fieldwork weapon-local units, NOT manufacturer data.
  */
-import type {PartMountStandard} from '../../equipment-weapon-families.ts';
+import type {PartMountStandard,WeaponFamily} from '../../equipment-weapon-families.ts';
 export type OpticSightClass='reflex'|'holographic'|'prism'|'telescopic'|'integrated';
 export type OpticMountStandard=PartMountStandard|'integrated';
 export type OpticProfile=Readonly<{
@@ -18,8 +18,7 @@ export type OpticProfile=Readonly<{
  eyeRelief:Readonly<{mode:'unrestricted'|'bounded';
   minDistance:number|null;maxDistance:number|null;
   maxVerticalError:number;maxLateralError:number;}>;
- preferredX:Readonly<Partial<Record<'ar'|'ak'|'hk'|'fal'|'fnc'|'g36',
-  number>>>;
+ preferredX:Readonly<Partial<Record<WeaponFamily,number>>>;
 }>;
 const free={mode:'unrestricted',minDistance:null,maxDistance:null,
  maxVerticalError:1.6,maxLateralError:1.65} as const;

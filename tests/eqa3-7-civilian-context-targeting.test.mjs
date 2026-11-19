@@ -36,8 +36,8 @@ test('EQA3.7 SECURE skips compliant and physically blocked civilians',()=>{
    'secure','secure',()=>true,(_,to)=>to.x!==9),null,
    'palette must not advertise SECURE through opaque geometry');
 });
-test('EQA3.7 never reveals unobserved, out-of-range or incapacitated people',()=>{
- const unseen=make('unseen',{x:8,y:0},true);
+test('EQA3.7 requires sight beyond physical contact; still rejects out-of-range and incapacitated',()=>{
+ const unseen=make('unseen',{x:31,y:0},true);
  const known=make('known',{x:18,y:0},true);
  const distant=make('distant',{x:38,y:0},true);
  const down=make('down',{x:9,y:0},true);down.health=0;

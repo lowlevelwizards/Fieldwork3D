@@ -51,6 +51,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** EQA3.9: actual SECURE/FOLLOW support-hand reach, absent in old film. */
+ lastCivilianContactAt?:number;
  /** Optional for archived films recorded before D4. */
  doorHandContact?:DoorHandContact|null;
  kickFoot?:0|1|null;
@@ -71,6 +73,10 @@ export type CivilianFrame=Pick<CivilianActor,
     /** A recorded operator observation, never future knowledge. */
     carriedById?:string|null;
     transportMode?:CivilianActor['transportMode'];
+    /** Added in EQA3.9: old films omit them and use completed posture. */
+    stateSince?:number;restrained?:boolean;
+    /** Civilian's own witnessed sensory direction, NEVER full enemy truth. */
+    lastEvidenceAt?:number;threatEstimate?:Pt|null;
     visibleAtCapture?:boolean;
   };
 export type ReplayFrame={
@@ -176,6 +182,7 @@ export function snapshot(s:Session,seenGround?:string[],
       flashCharges:a.flashCharges,
       morale:a.morale,
       lastThrowAt:a.lastThrowAt,lastDoorAt:a.lastDoorAt,
+      lastCivilianContactAt:a.lastCivilianContactAt??-100,
       lastDoorId:a.lastDoorId,lastDoorMethod:a.lastDoorMethod,
       kickFoot:a.kickFoot??null,
       coverStanceDrop:a.coverStanceDrop??0,
@@ -204,7 +211,10 @@ export function snapshot(s:Session,seenGround?:string[],
       ()=>s.civilianHarmEvents.map(e=>({...e,p:position(e.p)}))),
     civilians:s.civilians.map(c=>({
       id:c.id,p:position(c.p),heading:c.heading,health:c.health,
-      injuryStage:c.injuryStage,state:c.state,velocity:c.velocity,
+      injuryStage:c.injuryStage,state:c.state,stateSince:c.stateSince,
+      restrained:c.restrained===true,velocity:c.velocity,
+      lastEvidenceAt:c.lastEvidenceAt,
+      threatEstimate:c.threatEstimate?position(c.threatEstimate):null,
       lastHitAt:c.lastHitAt,following:c.following,
       carriedById:c.carriedById,transportMode:c.transportMode,
       rescueTarget:c.rescueTarget,appearanceSeed:c.appearanceSeed,
@@ -473,6 +483,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
     if(a)Object.assign(a,copy,{p:position(copy.p),
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
+      lastCivilianContactAt:copy.lastCivilianContactAt??-100,
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
       coverStanceDrop:copy.coverStanceDrop??0,
@@ -507,6 +518,11 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       isRescueTarget:copy.rescueTarget
     });
     return {...actor,...copy,p:position(copy.p),
+      stateSince:copy.stateSince??(copy.state==='compliant'?f.t-2:f.t),
+      restrained:copy.restrained===true,
+      // Never retain a present-day/omniscient gaze target on film rewind.
+      lastEvidenceAt:copy.lastEvidenceAt??-1,
+      threatEstimate:copy.threatEstimate?position(copy.threatEstimate):null,
       carriedById:copy.carriedById??null,
       transportMode:copy.transportMode??null,
       priorP:position(copy.p),goal:null,nav:[],

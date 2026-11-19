@@ -22,6 +22,9 @@ on:
       - 'tests/arsenal-m30c4-*.test.mjs'
       - 'tests/arsenal-m30c5-*.test.mjs'
       - 'tests/arsenal-m30-*.test.mjs'
+      - 'src/arsenal-r870-p07-capture.ts'
+      - 'arsenal-r870-p07-capture.html'
+      - 'scripts/smoke-arsenal-r870-p07-visual.mjs'
       - '.github/workflows/arsenal-m30.yml'
 permissions:
   contents: read
@@ -80,6 +83,8 @@ jobs:
         run: node scripts/smoke-arsenal-m30c5-candidate-visual.mjs
       - name: M3.0C5B live production builder versus uncompiled WebGL proof
         run: node scripts/smoke-arsenal-m30c5-runtime-visual.mjs
+      - name: R870 P07 real Arsenal production geometry three-view proof
+        run: node scripts/smoke-arsenal-r870-p07-visual.mjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -88,6 +93,8 @@ jobs:
             reports/arsenal-m26-mounted-*.png
             reports/arsenal-m26-mesh-stats.json
             reports/arsenal-m30-shotgun-parity.png
+            reports/arsenal-r870-p07-production.png
+            reports/arsenal-r870-p07-production.json
             reports/arsenal-m30-shotgun-parity.json
             reports/arsenal-m30c3-modular-parity.png
             reports/arsenal-m30c3-modular-parity.json

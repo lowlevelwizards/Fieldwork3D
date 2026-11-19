@@ -124,14 +124,20 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
     rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
     rect(-7,-8,16,16,coat);
     rect(7,-4.5,9,9,'#b9997e');
-    if(pose==='compliant'){
+    if(pose==='compliant'||pose==='startled'){
+      // Clear from overhead: palms visibly raised and away from torso.
       rect(2,-16,5,9,'#b9997e');rect(2,7,5,9,'#b9997e');
-    }else if(pose==='hide'||pose==='injured'||pose==='seated'){
+    }else if(pose==='restrained'){
+      // Hands behind the body: visible only for an actual restraint flag.
+      rect(-10,-6,8,3,'#b9997e');rect(-10,3,8,3,'#b9997e');
+      circle(-9,0,3,'#65514b');
+    }else if(pose==='hide'||pose==='run'){
+      // Two hands over the head while crouched or running.
+      rect(5,-8,7,4,'#b9997e');rect(5,4,7,4,'#b9997e');
+    }else if(pose==='injured'||pose==='seated'){
       rect(-5,-11,7,3,'#b9997e');rect(-5,8,7,3,'#b9997e');
     }else{
-      const swing=pose==='run'?
-        Math.sin(state.seconds*13+c.appearanceSeed)*3:
-        pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:
+      const swing=pose==='walk'?Math.sin(state.seconds*8+c.appearanceSeed)*1.5:
         pose==='injured-walk'?
           Math.sin(state.seconds*5+c.appearanceSeed)*.9:0;
       rect(-5+swing,-12,8,4,'#b9997e');

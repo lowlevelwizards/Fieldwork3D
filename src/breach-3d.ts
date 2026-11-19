@@ -2418,6 +2418,9 @@ export class TacticalScene3D{
          nvgDeployed:actor.nvgDeployed===true,
         treatmentActive:actor.treatmentActive,
         treatmentProgress:actor.treatmentProgress,
+        // Real GO-time civilian contact flashes a gentle support-hand
+        // reach; never controls muzzle, hit logic or mission authority.
+        civilianContactAge:poseSeconds-(actor.lastCivilianContactAt??-100),
         interactionCrouch:actor.treatmentActive?
           Math.min(1,Math.max(0,(s.seconds-actor.lastTreatmentAt)/.38)):
           actor.plan[0]?.kind==='tool'&&actor.plan[0]?.toolMethod==='pick'&&

@@ -246,6 +246,8 @@ export type TeamActor=Operator & {
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
   encounterReactionUntil?:number;encounterReactionStartedAt?:number;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
+  /** Render-only brief arm reach after actual GO-time civilian contact. */
+  lastCivilianContactAt?:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
@@ -543,10 +545,12 @@ export function planSitePowerControl(s:Session,id:string,
 export function planCivilianInteraction(s:Session,id:string,
  civilianId:string,action:'secure'|'follow'):boolean{
  const a=party(s,id),civil=s.civilians.find(c=>c.id===civilianId);
- if(!a||!civil||!canEdit(s)||civil.health<=0||
-    !liveVisibility(s,civil.p))return false;
- const from=finalPoint(a);
- if(d(from,civil.p)>34||
+ if(!a||!civil||!canEdit(s)||civil.health<=0)return false;
+ const from=finalPoint(a),range=d(from,civil.p);
+ // At real physical contact distance SECURE/FOLLOW itself includes the
+ // operator turning toward the civilian. Farther commands still require
+ // actual visual disclosure. Every order retains the live swept gate.
+ if(range>34||(range>28&&!liveVisibility(s,civil.p))||
     !sweptBodyClear(from,civil.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
  if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
    return false;

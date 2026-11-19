@@ -21,8 +21,15 @@ test('mobile workbench: every current preset retains coherent magazine issue and
   const capacity=liveMagazineCapacity(member.weapon,member.weaponConfiguration);
   assert.equal(member?.magazine,capacity);
   assert.equal(member?.reserve,standardReserveRounds(member.weapon,member.weaponConfiguration));
-  assert.equal(member?.magazines.reduce((total,mag)=>total+mag.rounds,0),
-   member?.reserve);
+  // A fixed-tube shotgun carries individual reserve shells, not three
+  // detachable magazines. Preserve the ammo count without inventing boxes.
+  if(member.weapon==='shotgun'){
+   assert.equal(member.magazines.length,0,preset.id+' must not issue a box-mag');
+   assert.ok(member.reserve>0,preset.id+' retains physical loose-shell reserve');
+  }else{
+   assert.equal(member?.magazines.reduce((total,mag)=>total+mag.rounds,0),
+    member?.reserve);
+  }
   assert.ok(member?.magazines.every(mag=>mag.rounds<=capacity&&mag.weapon===member.weapon));
   assert.equal(roster.members[0].magazine,liveMagazineCapacity(roster.members[0].weapon,
    roster.members[0].weaponConfiguration),'input roster remains unchanged');
