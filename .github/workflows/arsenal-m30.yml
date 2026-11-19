@@ -26,6 +26,7 @@ on:
       - 'tests/weapon-r870-p09-identity.test.mjs'
       - 'tests/weapon-r870-p12-rear-family.test.mjs'
       - 'tests/weapon-r870-p13-proportions.test.mjs'
+      - 'tests/weapon-r870-p14-*.test.mjs'
       - 'src/arsenal-r870-p07-capture.ts'
       - 'arsenal-r870-p07-capture.html'
       - 'scripts/smoke-arsenal-r870-p07-visual.mjs'
@@ -61,7 +62,9 @@ jobs:
             tests/weapon-r870-p08-polish.test.mjs \
             tests/weapon-r870-p09-identity.test.mjs \
             tests/weapon-r870-p12-rear-family.test.mjs \
-            tests/weapon-r870-p13-proportions.test.mjs
+            tests/weapon-r870-p13-proportions.test.mjs \
+            tests/weapon-r870-p14-front.test.mjs \
+            tests/weapon-r870-p14-furniture.test.mjs
       - name: Emit factory draw and geometry baseline
         run: node --experimental-strip-types scripts/audit-weapon-production-m30.mjs > /tmp/weapon-m30-baseline.log && tail -n 2 /tmp/weapon-m30-baseline.log
       - name: TypeScript
@@ -92,7 +95,7 @@ jobs:
         run: node scripts/smoke-arsenal-m30c5-candidate-visual.mjs
       - name: M3.0C5B live production builder versus uncompiled WebGL proof
         run: node scripts/smoke-arsenal-m30c5-runtime-visual.mjs
-      - name: R870 P13 real Arsenal production geometry three-view proof
+      - name: R870 P14 real Arsenal production geometry three-view proof
         run: node scripts/smoke-arsenal-r870-p07-visual.mjs
       - uses: actions/upload-artifact@v4
         if: always()
