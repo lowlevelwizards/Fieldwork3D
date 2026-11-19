@@ -187,7 +187,7 @@ export function createQuickPlayConfigurator(options:{
  buildingDisclosure.append(buildingDisclosureSummary,buildingSection);
  advancedBody.append(seedGroup,conditions,buildingDisclosure);
  advanced.append(advancedBody);
- const squadPrep=node('details','fw-quick-config-advanced');
+ const squadPrep=node('details','fw-quick-config-squad-prep');
  const squadLabel=node('summary','','SQUAD LOADOUT · PREPARE EQUIPMENT');
  const squadContent=node('div','fw-quick-config-advanced-content');
  let selectedSquadMember:string|null=null;
