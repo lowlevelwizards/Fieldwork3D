@@ -14,12 +14,15 @@ import {armorArmIntrusion,armorElbowPole}
 import {idleLifeAt} from '../src/breach-idle-life.ts';
 import {reloadHandKey} from '../src/breach-reload-motion.ts';
 
-test('all modular AR/AK variants own exactly one named magazine set and real grip sockets',()=>{
+test('all factory weapons own their correct feed body and real grip sockets',()=>{
  const steel=new THREE.MeshStandardMaterial(),dark=new THREE.MeshStandardMaterial();
  for(const preset of FAMILY_PRESETS){
   const config=selectWeaponFamilyPreset(initialWeaponConfiguration(preset.weapon),preset.id);
   const sockets=weaponPresentationSockets(preset.weapon,config);
-  assert.equal(sockets.magazinePart,preset.parts.magazine);
+  if(preset.weapon==='shotgun')
+   assert.equal(sockets.magazinePart,null,
+    'fixed tube must not be detachable during shell reload');
+  else assert.equal(sockets.magazinePart,preset.parts.magazine);
   assert.ok(sockets.stock.x<sockets.primary.x,preset.id);
   assert.ok(sockets.primary.x<sockets.support.x,preset.id);
   assert.ok(sockets.support.x<sockets.muzzle.x,preset.id);
@@ -35,6 +38,13 @@ test('all modular AR/AK variants own exactly one named magazine set and real gri
 test('spare-mag curves match issued modular magazines, including shared FNC STANAG',()=>{
  for(const preset of FAMILY_PRESETS){
   const id=preset.parts.magazine,profile=carriedMagazineProfile(id);
+  // Fixed-tube shotguns render a magazine *body slot* in the gun, but
+  // must never create a detachable carried magazine art object.
+  if(preset.weapon==='shotgun'){
+   assert.equal(profile,null,preset.id+' is fixed-tube fed');
+   assert.equal(carriedMagazineGeometry(id),null);
+   continue;
+  }
   assert.ok(profile,preset.id);
   // The FNC factory intentionally owns the actual AR STANAG part ID.
   // A carried magazine's art profile follows its installed part, not

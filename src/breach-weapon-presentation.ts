@@ -50,6 +50,9 @@ export function weaponPresentationSockets(id:WeaponId,
   }:{x:1,y:2.2,z:-2.7},
   muzzle:{x:a.muzzleX,y:'muzzleY' in a?a.muzzleY:0,z:0},
   sight:{x:-1,y:'sightHeight' in a?a.sightHeight:2.6,z:0},
-  lengthScale:a.lengthScale,magazinePart:build?.parts.magazine??null
+  // A shotgun's six-slot visual 'magazine' is a permanently fixed tube.
+  // It is never a removable feed-lip socket for magazine choreography.
+  lengthScale:a.lengthScale,magazinePart:id==='shotgun'?null:
+   build?.parts.magazine??null
  };
 }

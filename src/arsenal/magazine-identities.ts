@@ -43,9 +43,12 @@ export function compareArsenalMagazineWithSimulation(recipe:ArsenalRecipeV2):
   simulatedReserve:simulation.reserve,
   matchesSimulation:id.nominalRounds===simulation.capacity};
 }
-/** Ensures newly added authorable magazine profiles are not silently missed. */
+/** Ensures detachable magazine profiles are present without treating fixed
+ * shotgun feed tubes as carried box magazines. The tube is still an Arsenal
+ * part/slot, but its shell capacity belongs to the shotgun simulation. */
 export function arsenalMagazineCatalogIssues():string[]{
- const actual=Object.values(FAMILY_PARTS).filter(part=>part.slot==='magazine');
+ const actual=Object.values(FAMILY_PARTS).filter(part=>
+  part.slot==='magazine'&&part.feed!=='tube12');
  const issues:string[]=[];
  for(const p of actual){
   const profile=arsenalMagazineIdentity(p.id);

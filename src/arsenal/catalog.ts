@@ -10,11 +10,11 @@ import {WEAPON_ATTACHMENTS,
  from '../equipment-weapon-assemblies.ts';
 import {arsenalPartName} from './naming.ts';
 
-export type ArsenalPlatformId='ar15'|'ak'|'g3'|'hk33'|'mp5'|'fal'|'fnc'|'g36';
+export type ArsenalPlatformId='ar15'|'ak'|'g3'|'hk33'|'mp5'|'fal'|'fnc'|'g36'|'remington870';
 export type ArsenalSlot=FamilyPartSlot|Exclude<WeaponAttachmentSlot,'stock'>;
 export type ArsenalCategoryId='core'|'front'|'furniture'|'magazine'|'sights'|'muzzle'|'accessories';
 export type ArsenalPartKind='family'|'accessory';
-export type ArsenalBrowseGroup='ar'|'ak'|'hk'|'fal'|'fnc'|'g36';
+export type ArsenalBrowseGroup='ar'|'ak'|'hk'|'fal'|'fnc'|'g36'|'r870';
 export interface ArsenalPlatform{
  id:ArsenalPlatformId;name:string;group:ArsenalBrowseGroup;
 }
@@ -38,7 +38,8 @@ export const ARSENAL_PLATFORMS:readonly ArsenalPlatform[]=[
  {id:'mp5',name:'MP5',group:'hk'},
  {id:'fal',name:'FN FAL',group:'fal'},
  {id:'fnc',name:'FN FNC',group:'fnc'},
- {id:'g36',name:'HK G36',group:'g36'}
+ {id:'g36',name:'HK G36',group:'g36'},
+ {id:'remington870',name:'Remington 870',group:'r870'}
 ];
 export const ARSENAL_CATEGORIES:readonly ArsenalCategory[]=[
  {id:'core',name:'Receiver',slots:['receiver']},
@@ -60,7 +61,8 @@ const RECEIVER_PLATFORMS:Readonly<Record<string,ArsenalPlatformId>>={
  'fal-50-receiver':'fal',
  'fnc-service-receiver':'fnc',
  'g36-dual-receiver':'g36','g36-rail-receiver':'g36',
- 'g36-single-receiver':'g36'
+ 'g36-single-receiver':'g36',
+ 'r870-police-receiver':'remington870'
 };
 export function arsenalPlatformForReceiver(receiverId:string):ArsenalPlatformId|undefined{
  return RECEIVER_PLATFORMS[receiverId];
