@@ -13,7 +13,7 @@ import {hkBarrelArt} from './weapons/geometry/hk-barrel-profiles.ts';
 import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {g36FrontEnd,g36SupportRange} from './weapons/geometry/g36-variant-parts.ts';
-import {R870_P07} from './weapons/geometry/r870-silhouettes.ts';
+import {R870_P07} from './weapons/geometry/r870-art-contract.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {opticProfile} from './weapons/geometry/optic-profiles.ts';
 import {physicalWeaponMountSlots} from './weapons/geometry/weapon-physical-mount-slots.ts';
