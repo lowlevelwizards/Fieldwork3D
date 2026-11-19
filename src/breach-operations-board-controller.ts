@@ -295,6 +295,17 @@ function renderOperationsBoard(){
    const editor=createFieldGadgetEditor({
     loadout:current.loadout,magazines:current.magazines,
     locked:config.getSession().phase!=='planning'||config.isReplaying(),
+    copyTargets:config.getRoster().members.filter(m=>m.id!==current.id)
+     .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
+    onCopy:(targetId,inventory)=>{
+     const before=config.getRoster();
+     const next=equipRosterFieldInventory(before,targetId,inventory);
+     if(next===before)return;
+     config.setRoster(next);config.saveRoster();config.applyRoster();
+     const target=next.members.find(m=>m.id===targetId);
+     if(target)showFieldworkActionFeedback('GADGETS COPIED · '+target.callsign.toUpperCase());
+     config.refreshHud();
+    },
     onCommit:inventory=>{
      const previousFocus=document.activeElement instanceof HTMLElement?
       document.activeElement.getAttribute('aria-label'):null;
