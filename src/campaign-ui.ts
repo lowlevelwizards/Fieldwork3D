@@ -1805,7 +1805,8 @@ export class CampaignScreen{
    }
    select.disabled=locked;
    select.classList.add('campaign-kit-native-select');
-   const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '));
+   const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '),
+    itemId=>this.preview?.renderModelThumbnail({kind:'gear',slot,itemId})??null);
    picker.addEventListener('click',()=>{
     const focus:EquipmentPreviewFocus=slot==='head'?'head':
      slot==='armor'?'torso':slot==='primary'?'weapon':
