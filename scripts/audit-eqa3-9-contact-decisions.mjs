@@ -200,7 +200,6 @@ for(const [seed,mission] of chosen){
       // auto-SECURE, or bypass the normal fog/GO-time contact rules.
       if(contactLook&&!issued&&s.missionType==='rescue'&&
         s.mission==='secure'&&objectiveLocationKnown(s)&&
-        s.civilians.some(c=>c.rescueTarget&&c.health>0)&&
         !seenPerson&&
         dist(rescuer.p,s.scenario.objective)<=34&&
         s.seconds-lastContactLookAt>=1.1&&contactLookAttempts<4){
