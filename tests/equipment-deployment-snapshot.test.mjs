@@ -47,7 +47,7 @@ test('F1 Campaign deployment preserves depleted medical inventory and true flash
   medicalSupplies:{'tourniquet':0,'field-dressing':1,'trauma-dressing':0},
   loadout:{...op.loadout,fieldInventory:{version:1,stacks:[
    {itemId:'flashbang',quantity:3,location:'backpack'},
-   {itemId:'zip-tie',quantity:2,location:'pocket'}]}}};
+   {itemId:'zip-tie',quantity:2,location:'backpack'}]}}};
  const actor={};
  const snapshot=applyDeploymentInventory(actor,source);
  assert.deepEqual(actor.medicalSupplies,source.medicalSupplies);
