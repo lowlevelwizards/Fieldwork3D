@@ -89,3 +89,13 @@ The current controlled scripted scout is intentionally simplistic and repeatedly
 Note the old `extractedAt=null` for a `missionStage=done` episode is an **audit sampling gap**: the game can transition out of RUNNING between the script's every-6-tick samples. EQA3.5J records terminal transition at each actual `stepSession`, without editing the mission or claiming an unobserved clock. Check the next CI re-run before quoting an exact completion time.
 
 **Decision:** do **not** ship automatic stand-off, enemy aim penalties, civilian invulnerability or new rescue placement. The safer opportunity, if player visual review confirms it, is making it easy to author a deliberate rescue approach, observe whether a civilian is between visible gunfire and operators, and transition to FOLLOW without crowding the rescue person. Continue exploring per-room cover and approach choices with actual player-visible knowledge. One failed scripted route is an audit-driver or specific path witness until reproduced in gameplay, not a generalized movement defect.
+
+## EQA3.5J — terminal-time reporting corrected and CI green
+
+[Final targeted rerun](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44441010555) **SUCCESS** with all optical/physical/mission checks, the matched baseline/standoff comparisons, and raw artifacts. A `DONE` transition is now recorded on its actual 30Hz script observation step, even if the every-six-tick summary misses it. This never changes mission logic.
+
+Corrected exact-time witness: **Warehouse17 UNKNOWN/SERVICE with the optional stand-off policy reached the rescue objective at 40.07s and completed the actual mission at 67.87s**, with one hostile-initiated civilian projectile injury, real FOLLOW and no scripted order rejection or route abort. The baseline UNKNOWN/SERVICE did not complete within 90s. UNKNOWN/FRONT still reached EXTRACT and maintained FOLLOW without completing in 90s; both CONFIRMED runs still failed completion, and stand-off CONFIRMED/FRONT retained a real scripted route abort.
+
+The earlier EQA3.4/EQA3.5 objective timestamps such as 37.63s and 20.63s were captured by the **coarser 0.2s sample**, and are preserved as approximate historical figures; the new per-tick objective clock has 37.57s and 20.57s for those cases. **Do not mix the two clocks as a performance delta.**
+
+**Release conclusion:** EQA3.5 is useful causal *instrumentation*, not a currently validated production balance fix. Keep this audit work in its draft feature PR pending scene-specific human visual review and a defensible minimal gameplay patch. Production remains on the separately merged EQA3.3/3.4 baseline.
