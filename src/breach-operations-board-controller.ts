@@ -290,18 +290,38 @@ function renderOperationsBoard(){
    row.className='fw-equipment-choice';
    row.append(label,select);loadout.field(loadoutGroupForSlot(slot)).append(row);
   }
-  loadout.field('utilities').append(createFieldGadgetEditor({
-    loadout:member.loadout,magazines:member.magazines,
+  const fieldHost=loadout.field('utilities');
+  const renderField=(current:typeof member)=>{
+   const editor=createFieldGadgetEditor({
+    loadout:current.loadout,magazines:current.magazines,
     locked:config.getSession().phase!=='planning'||config.isReplaying(),
     onCommit:inventory=>{
-     const next=equipRosterFieldInventory(config.getRoster(),member.id,inventory);
+     const previousFocus=document.activeElement instanceof HTMLElement?
+      document.activeElement.getAttribute('aria-label'):null;
+     const next=equipRosterFieldInventory(config.getRoster(),current.id,inventory);
      if(next===config.getRoster())return;
      config.setRoster(next);
      config.saveRoster();config.applyRoster();
-     expandedQuickKit=member.id;expandedQuickLoadoutGroup='utilities';
-     renderOperationsBoard();config.refreshHud();
+     const changed=next.members.find(m=>m.id===current.id);
+     if(changed){
+      renderField(changed);
+      quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+       changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
+     }
+     if(previousFocus){
+      const matched=Array.from(fieldHost.querySelectorAll<HTMLElement>(
+       'button[aria-label],select[aria-label]')).find(el=>
+        el.getAttribute('aria-label')===previousFocus&&
+        !((el as HTMLButtonElement|HTMLSelectElement).disabled));
+      matched?.focus({preventScroll:true});
+     }
+     config.refreshHud();
     }
-   }));
+   });
+   const old=fieldHost.querySelector('.fw-field-inventory');
+   if(old)old.replaceWith(editor);else fieldHost.append(editor);
+  };
+  renderField(member);
   // Factory body furniture and rail accessories share one spatial workbench.
   const weaponEditor=document.createElement('details');
   weaponEditor.className='fw-weapon-editor';
