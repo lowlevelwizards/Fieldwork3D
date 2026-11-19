@@ -82,6 +82,28 @@ export function createDoorOrderHandler(port:OrderExecutionPort){
       a.velocity=0;a.motorPause='door-opening';
       return true;
     }
+    // EQA3.2 Retail14: a real stance chosen to CLEAR an outward leaf
+    // may briefly leave handle reach *en route*. The previous order of
+    // checks prioritized a new out-of-reach correction toward the handle
+    // over the already accepted, safely swept retreat. The operator then
+    // bounced between two lawful goals forever with actionTimer=0.
+    // Finish this one fixed, player-authorized stance before attempting
+    // another handle correction. Never remotely operate or ignore a leaf.
+    if((n.method==='open'||!n.method)&&!door.open&&
+       a.actionTimer===0){
+      const staged=openingFootwork(a,door.id,n.id,'stance').target;
+      if(staged&&d(a.p,staged)>3.5){
+        const world=sessionWorldGeometry(s);
+        if(!sweptBodyClear(a.p,staged,s.doors,OPERATOR_RADIUS,world)||
+           s.operators.some(b=>b!==a&&b.health>0&&
+             d(b.p,staged)<OPERATOR_RADIUS*2+1)){
+          a.velocity=0;return true;
+        }
+        clearCurrentOrderIssue(a);
+        approach(a,staged,dt,s,.82);
+        return true;
+      }
+    }
     const interaction=doorInteraction({target:door,actorId:a.id,
       actorPosition:a.p,action:n.method??'open'});
     if(!interaction.allowed&&interaction.reason==='out-of-reach'&&
