@@ -8,7 +8,7 @@
  */
 import {writeFileSync,mkdirSync} from 'node:fs';
 import {generateSite} from '../src/breach-site.ts';
-import {newSession,team,enemies,toggling,stepSession,planMove,
+import {newSession,team,enemies,toggling,stepSession,planMove,planDoor,
  clearPlan,selectDeployment,availableDeployments,liveVisibility,
  inSight,planCivilianInteraction} from '../src/breach-game.ts';
 import {setObjectiveIntelLevel,objectiveLocationKnown}
@@ -16,7 +16,8 @@ import {setObjectiveIntelLevel,objectiveLocationKnown}
 import {MissionRecorder} from '../src/breach-replay.ts';
 import {assessMissionFilm} from '../src/breach-mission-quality.ts';
 import {analyzeContactPacing} from '../src/breach-contact-pacing-audit.ts';
-import {activateSite} from '../src/breach-core.ts';
+import {activateSite,doorCenter} from '../src/breach-core.ts';
+import {doorKnown} from '../src/breach-intel.ts';
 const params=new Map(process.argv.slice(2).filter(x=>x.includes('='))
  .map(x=>x.replace(/^--/,'').split('=')));
 const intel=params.get('intel')??'unknown';
@@ -30,6 +31,7 @@ const cases=[
  [21,'clear'],[14,'hold'],[17,'rescue'],[25,'capture'],[23,'rescue']
 ];
 const forensic=process.argv.includes('--forensic');
+const doorAware=process.argv.includes('--door-aware');
 const forensicSeedArg=params.get('seed');
 const chosenBeforeSeed=process.argv.includes('--smoke')?
  [[14,'hold'],[17,'rescue'],[25,'capture']]:cases;
@@ -74,6 +76,8 @@ for(const [seed,mission] of chosen){
     });
     const visited=new Set(),failed=new Set(),attempted=new Set();
     const decisions=[],stages=[],civilianStates=[],firstViews=[];
+    const attemptedDoorActions=new Set();
+    let acceptedDoorActions=0;
     const forensicEvents=[];
     let lastForensicSignature='';
     const forensicCapture=(type)=>{
@@ -179,6 +183,25 @@ for(const [seed,mission] of chosen){
             if(planMove(s,rescuer.id,candidate)){
              acceptedMove=true;plannedAt=candidate;break seek;
             }
+           }
+          }
+         }
+         // Explicit player-authorable OPEN action only in the opt-in
+         // door-aware diagnostic. An initially closed leaf is real, not
+         // permission to ghost through it. Never mutate door state.
+         if(!acceptedMove&&doorAware&&
+             action==='approach-disclosed-objective'){
+          const candidates=s.doors.filter(d=>doorKnown(s.intel,d.id)&&
+            !d.open&&!d.locked&&!d.jammed&&!d.wedged&&
+            !attemptedDoorActions.has(d.id)).sort((a,b)=>
+             dist(rescuer.p,doorCenter(a))-dist(rescuer.p,doorCenter(b))||
+             a.id.localeCompare(b.id));
+          for(const door of candidates){
+           attemptedDoorActions.add(door.id);
+           if(planDoor(s,rescuer.id,door.id,'open')){
+            acceptedMove=true;plannedAt=doorCenter(door);
+            action='explicit-open-known-door';
+            acceptedDoorActions++;break;
            }
           }
          }
@@ -301,6 +324,7 @@ for(const [seed,mission] of chosen){
       roomsUnreachable:failed.size,roomsAttempted:attempted.size,
       civilianStates,stages,decisions,
       forensic:forensic?forensicEvents:undefined,
+      doorAware,acceptedDoorActions,
       eventCounts:{battle:film.events.length,shots:s.nextShotId-1,
        objective:film.events.filter(e=>e.kind==='objective').length},
       rescue:{exists:!!s.rescue,
@@ -316,7 +340,7 @@ for(const [seed,mission] of chosen){
 }
 const valid=rows.filter(r=>Array.isArray(r.integrity));
 const observed=valid.filter(x=>x.firstContactAt!==null);
-const summary={intel,trials:valid.length,exceptions:exceptions.length,
+const summary={intel,doorAware,acceptedDoorActions:valid.reduce((n,r)=>n+(r.acceptedDoorActions??0),0),trials:valid.length,exceptions:exceptions.length,
  invalid:valid.filter(x=>x.integrity.length).length,
  completed:valid.filter(x=>x.missionStage==='done').length,
  objectiveSecured:valid.filter(x=>x.objectiveAt!==null).length,
@@ -330,7 +354,7 @@ const summary={intel,trials:valid.length,exceptions:exceptions.length,
  roomsVisited:valid.reduce((n,x)=>n+x.roomsVisited,0),
  quietWithoutContact:valid.filter(x=>x.firstContactAt===null&&
   x.noContactReason==='approach-still-distant').length};
-const report={schema:'EQA3.0/scripted-scout-v1',
+const report={schema:doorAware?'EQA3.2/explicit-door-scout-v1':'EQA3.0/scripted-scout-v1',
  method:'real paired insertion, floor-plan-known rooms, independent target intel; one deterministic scripted scout; actual motor, civilians, AI and mission stages, not a human complete playthrough; timeout is not a mission failure',
  summary,exceptions,rows};
 if(process.env.EQA3_OUTPUT){
