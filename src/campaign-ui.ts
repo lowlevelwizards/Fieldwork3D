@@ -46,6 +46,8 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
+import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
+import {fieldQuantity,initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
 import './campaign-style.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
@@ -68,6 +70,7 @@ export type CampaignHandlers={
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ equipFieldInventory:(id:string,inventory:FieldInventory)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
  openStudio:(id:string)=>void;
  openArsenal:(id:string)=>void;
@@ -1642,6 +1645,15 @@ export class CampaignScreen{
    }
    grouped.field(loadoutGroupForSlot(slot)).append(wrap);
   }
+  const squadFlashReserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
+   .reduce((count,o)=>count+fieldQuantity(
+    o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
+  grouped.field('utilities').append(createFieldGadgetEditor({
+   loadout:person.loadout,magazines:person.magazines,locked,
+   maxFlash:c.squadIds.includes(id)?
+    Math.max(0,c.supplies.flash-squadFlashReserved):4,
+   onCommit:inventory=>this.handlers.equipFieldInventory(id,inventory)
+  }));
   const workbenchEntry=node('section','campaign-kit-workbench-entry');
   workbenchEntry.append(node('strong','','MODULAR WEAPON WORKBENCH'));
   workbenchEntry.append(node('p','campaign-note',arsenal.disabled?
