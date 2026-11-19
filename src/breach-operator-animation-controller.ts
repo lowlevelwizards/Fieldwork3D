@@ -1,5 +1,8 @@
 import {sampleOperatorFootContacts,applyOperatorLegIK} from './breach-operator-lower-body.ts';
 import {throwSupportGesture} from './breach-animation-choreography.ts';
+import {sampleEquipmentGesture} from './breach-equipment-interaction-pose.ts';
+import {flashCanisterSocket} from './equipment-field-visuals.ts';
+import {presentFlashHandoff} from './breach-operator-field-handoff.ts';
 import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-operator-animation-frame.ts';
 import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
  from './breach-operator-frame-output.ts';
@@ -132,7 +135,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const {action:actionState}=decision;
   const {treatmentActive,reloadActive,reloadProgress,reloadMode,
     throwAge,throwActive,doorAge,doorActive,gripWeight,handOwners,
-    physicalContact}=actionState;
+    physicalContact,equipmentActive}=actionState;
   const {manual:manualShort,rawProgress:manualRaw}=decision.shortStock;
   const {active:activeTransition,authoredLabSwitch}=decision.transition;
   const {profile,upperBody:upperBodyPlan,poseWeight}=decision;
@@ -863,6 +866,24 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         primaryX:data.primaryX,
         magazineSocket:sockets.magazinePart?sockets.magazine:undefined
       });
+  }else if(equipmentActive&&p.equipmentInteraction){
+    // One existing support-arm IK target follows the real source pouch,
+    // then rises into throw preparation. No motor/weapon/shot authority.
+    reaching=true;
+    const flash=p.equipmentInteraction;
+    const gesture=sampleEquipmentGesture(flash);
+    const socket=flashCanisterSocket(flash.location==='pocket'?'belt':
+      flash.location,0);
+    const pouch=P(socket.x,socket.y,socket.z);
+    if(socket.bone==='hip')
+      pouch.y+=frame.hip.position.y-frame.chest.position.y;
+    if(socket.bone==='pack'){
+      pouch.x+=r.pack.position.x;pouch.y+=r.pack.position.y;
+      pouch.z+=r.pack.position.z;
+    }
+    const ready=P(12,3,-6);
+    leftGrip.copy(fit.support).lerp(pouch,gesture.reach);
+    leftGrip.lerp(ready,gesture.lift);
   }else if(throwActive){
     
     // A1: timeline-sampled visual gesture only. Hand ownership, simulated
@@ -1006,7 +1027,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   beginOperatorArmPose(r,scratch);
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
-    if((manualShort||manualCarry)&&manualSourceFit){
+    if((manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
         ...manualPose!.targets[
@@ -1091,7 +1112,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // No second IK pass may undo a validated elbow/armor solution.
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
     const pairedArms=!carryTransitionActive&&!authoredBridge&&
-      !p.unarmedPreview&&contactReach<.001?destinationArms:null;
+      !p.unarmedPreview&&contactReach<.001&&!equipmentActive?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];
       r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
@@ -1314,6 +1335,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     finalEquipment.attachmentOutputs);
   // Exactly one commit of the six validated, rig-local output stages.
   commitOperatorPoseOutput(r,p);
+  // F6.2: one already issued pouch mesh is attached to the *finished*
+  // support hand; cancellation and replay rewinds restore it to the pouch.
+  presentFlashHandoff(r,p,equipmentActive);
   if(profilePose){
    const total=performance.now()-poseStart;
    // 'other' includes gait, arm constraints, IK and transform publication;
