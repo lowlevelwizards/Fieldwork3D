@@ -26,6 +26,7 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/eqa3-15-moving-rescue-intel.test.mjs \
+            tests/eqa3-15-rescue-handoff.test.mjs \
             tests/eqa3-14-rescue-refuge.test.mjs \
             tests/eqa3-9-auto-secure.test.mjs \
             tests/eqa3-8-escort-flow.test.mjs \
