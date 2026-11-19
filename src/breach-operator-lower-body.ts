@@ -68,7 +68,12 @@ export function applyOperatorLegIK(r:OperatorRig,p:OperatorPose,
   const foot=r.feet[i],sign=i===0?-1:1,target=targets[i];
   const upper=output.transforms[i*4],lower=output.transforms[i*4+1];
   const shoe=output.transforms[i*4+2],ankle=output.transforms[i*4+3];
-  const hipLocal=scratch.hips[i].set(0,r.hip.position.y,
+  // The unarmed pelvis may shift a small distance over the bearing foot.
+  // Resolve the thigh from that SAME visible hip location; solving from
+  // x=0 while displaying a forward-shifted pelvis tears the anatomy.
+  // Armed rigs retain their original calibrated leg origin.
+  const hipLocal=scratch.hips[i].set(
+    p.unarmedPreview?r.hip.position.x:0,r.hip.position.y,
     r.hip.position.z+sign*LEG_HIP_SIDE);
   const anchor=target.position;
   foot.anchor.set(anchor.x,LEG_ANKLE_HEIGHT,anchor.y);
