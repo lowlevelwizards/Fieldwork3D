@@ -4,7 +4,7 @@
  */
 export type R870Point=readonly [number,number];
 export type R870Outline=readonly R870Point[];
-export type R870RearVariant='wood'|'shortwood'|'poly'|'sga'|'pistol'|'birdshead';
+export type R870RearVariant='wood'|'shortwood'|'poly'|'sga'|'pistol'|'mcs'|'birdshead';
 export const R870_REAR_JOIN=Object.freeze({
  receiverTop:[-6.12,.76] as R870Point,
  receiverBottom:[-6.12,-1.76] as R870Point,
@@ -79,6 +79,11 @@ export const R870_REAR_PARTS=Object.freeze({
  pistol:Object.freeze({
   stock:'r870-pistol-only',grip:'r870-pistol-grip',
   stockX:-10.96,primaryX:-8.45,primaryY:-3.10,hasShoulder:false,
+  gripOutline:R870_PISTOL_GRIP,stockOutline:null
+ }),
+ mcs:Object.freeze({
+  stock:'r870-mcs-skeletal-stock',grip:'r870-pistol-grip',
+  stockX:-14.40,primaryX:-8.45,primaryY:-3.10,hasShoulder:true,
   gripOutline:R870_PISTOL_GRIP,stockOutline:null
  }),
  birdshead:Object.freeze({
