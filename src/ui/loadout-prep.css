@@ -166,3 +166,19 @@
 .fw-field-inventory-fixed-meta{font-size:9px;line-height:1.2;letter-spacing:.025em;
  color:#b5c8bd;font-variant-numeric:tabular-nums}
 .fw-field-inventory-carry-tile[data-inspection-only="true"]{padding:2px 3px}
+
+/* L2.12C3: inline forecast, not a blocking modal or second inventory state. */
+.fw-carry-change-preview{display:grid;gap:8px;padding:10px;margin-top:6px;
+ background:rgba(38,62,52,.8);border:1px solid #728c7a;border-radius:8px;
+ color:#e4eee1;min-width:0}
+.fw-carry-change-preview[hidden]{display:none}
+.fw-carry-change-preview[data-fits="false"]{border-color:#c49475}
+.fw-carry-change-preview-status{font-weight:750;font-size:12px;letter-spacing:.03em}
+.fw-carry-change-preview-details{display:grid;gap:4px;font-size:11px;line-height:1.45;
+ overflow-wrap:anywhere;color:#cbdcca}
+.fw-carry-change-preview-details p{margin:0}
+.fw-carry-change-preview-actions{display:flex;gap:8px;flex-wrap:wrap}
+.fw-carry-change-preview-actions button{font-size:11px;min-height:44px;
+ border:1px solid #849f89;background:#294638;color:#edf2e8;
+ border-radius:6px;padding:7px 10px;touch-action:manipulation;cursor:pointer}
+.fw-carry-change-preview-actions button:disabled{opacity:.35;cursor:not-allowed}
