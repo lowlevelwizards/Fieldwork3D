@@ -63,6 +63,7 @@ export const R870_REAR_PARTS=Object.freeze({
  })
 });
 export function r870RearFromGrip(id:string):R870RearVariant|undefined{
+ if(id===R870_REAR_PARTS.wood.grip)return 'wood';
  return (Object.keys(R870_REAR_PARTS) as R870RearVariant[])
   .find(key=>R870_REAR_PARTS[key].grip===id);
 }
