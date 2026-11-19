@@ -105,3 +105,25 @@ test('P12 barrel root is inside receiver but shooting tip never shifts',()=>{
   assert.equal(a.stockX,R870_P07.stockX);
  }finally{dispose();}
 });
+
+test('P12 low-poly budget: flat right-only port, one batched groove mesh, no invisible geometry',()=>{
+ const {gun,dispose}=model(factory());
+ try{
+  const port=gun.children.find(x=>x.userData.r870RightEjectionPort);
+  const grooves=gun.children.find(x=>x.userData.r870GrooveBatch);
+  const pump=gun.children.find(x=>x.userData.r870PumpSides===6);
+  assert.ok(port&&grooves&&pump);
+  const triangles=x=>(x.geometry.index?.count??
+   x.geometry.getAttribute('position').count)/3;
+  assert.equal(triangles(port),4,'flat six-corner port triangulates without depth walls');
+  assert.equal(triangles(grooves),16,'eight grooves share sixteen flat triangles');
+  assert.equal(grooves.geometry.index.count,48);
+  assert.equal(gun.children.filter(x=>x.userData.r870PumpPart).length,2);
+  assert.equal(gun.children.length,11,'full wood uses only eleven draw-friendly meshes');
+  assert.equal(gun.userData.r870P12Optimized,true);
+  assert.equal(port.castShadow,false);
+  assert.equal(grooves.castShadow,false);
+  const total=gun.children.reduce((sum,mesh)=>sum+triangles(mesh),0);
+  assert.ok(total<=260,'keep complete, styled R870 under 260 triangles: '+total);
+ }finally{dispose();}
+});
