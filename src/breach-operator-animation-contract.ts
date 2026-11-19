@@ -52,6 +52,13 @@ export type OperatorPose={
   precontact?:PrecontactStyle;
   /** Render-only reconstructed feet and pose: no accumulated render state. */
   replayFeet?:ReplayFeet;deterministic?:boolean;pelvisYaw?:number;
+  /** NPC-only visual state key. On an ordinary advancing render clock the
+   * atomic pose publisher blends the last fully DISPLAYED anatomy into the
+   * new state, including during interruptions. Explicit seeking remains
+   * immediate/replay-safe; no simulation state or foot target is changed. */
+  npcTransitionKey?:string;
+  /** Duration of an NPC pose handoff, seconds (default .24). */
+  npcTransitionDuration?:number;
   reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
   reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};
