@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {inspectOperatorPoseOutput}
  from '../src/breach-operator-pose-output.ts';
-import {sampleNpcCivilian,NpcLabFootFilm,NpcLabPreview}
+import {NPC_LAB_POSES,sampleNpcCivilian,NpcLabFootFilm,NpcLabPreview}
  from '../src/operator-lab-npc-poses.ts';
 import {createCivilianRig,updateCivilianRig,disposeCivilianRig}
  from '../src/breach-civilian-visuals.ts';
@@ -153,4 +153,26 @@ test('L6: tracks share root / shoes authority, retain discrete gun visibility',(
   lab.render('host-surrender',2.1);
   assert.deepEqual(snap(lab.hostile,'arm-0-hand'),final);
  }finally{lab.dispose();}
+});
+
+test('L7: every selectable NPC animation can enter, exit and be interrupted',()=>{
+ const scene=new THREE.Scene(),lab=new NpcLabPreview(scene);
+ try{
+  let count=0;
+  for(const track of NPC_LAB_POSES){
+   const id=track.id;
+   for(const time of [0,.04,.19,.35,.81,1.05,2.4]){
+    const frame=lab.render(id,time);
+    assert.ok(frame.pose&&Number.isFinite(frame.headYaw),id);
+    const rig=id.startsWith('civ-')?lab.civilian.character:lab.hostile;
+    allFinite(rig);
+    assert.ok(rig.legGap.every(Number.isFinite),id+' leg IK finite');
+   }
+   count++;
+  }
+  assert.equal(count,NPC_LAB_POSES.length);
+  assert.equal(scene.children.length,2,
+   'crossing all tracks never allocates a new model per pose');
+ }finally{lab.dispose();}
+ assert.equal(scene.children.length,0);
 });
