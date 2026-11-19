@@ -10,6 +10,7 @@ import {addHKFamily} from './weapons/geometry/hk-silhouettes.ts';
 import {addFALFamily} from './weapons/geometry/fal-silhouettes.ts';
 import {addFNCFamily} from './weapons/geometry/fnc-silhouettes.ts';
 import {addG36Family} from './weapons/geometry/g36-family-silhouettes.ts';
+import {addR870Family} from './weapons/geometry/r870-silhouettes.ts';
 
 import {AR_BLACK_METAL,AR_BLACK_POLYMER,AR_MUTED_FDE,
  AK_BLACK_METAL,AK_BLACK_POLYMER,AK_DARK_WOOD,
@@ -37,6 +38,8 @@ export function buildModularWeaponSilhouette(build:WeaponFamilyBuild,
   addFNCFamily(root,build,showFactoryMuzzle);
  else if(build.family==='g36')
   addG36Family(root,build,showFactoryMuzzle);
+ else if(build.family==='r870')
+  addR870Family(root,build);
  else throw new Error('Unknown weapon visual family');
  return root;
 }
