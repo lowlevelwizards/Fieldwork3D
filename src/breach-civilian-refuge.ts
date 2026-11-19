@@ -57,7 +57,10 @@ export function chooseCivilianRefuge(c:CivilianActor,
  // Still avoid choosing a path that passes straight through that point:
  // running farther from the threat at the END is not enough. Scale the
  // clearance down if the civilian is already next to the perceived danger.
- const minimumClearance=Math.max(0,Math.min(34,current-9));
+ // Calm people with a stale estimate retain the historical route choice.
+ // Clearance matters only during an actively frightened flight decision.
+ const minimumClearance=c.fear>=.4?
+  Math.max(0,Math.min(34,current-9)):0;
  const safeLeg=(a:Pt,b:Pt)=>{
   const dx=b.x-a.x,dy=b.y-a.y,denom=dx*dx+dy*dy;
   const t=denom>0?Math.max(0,Math.min(1,
