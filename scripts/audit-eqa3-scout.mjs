@@ -148,6 +148,36 @@ for(const [seed,mission] of chosen){
         issued=recordAction(action,seenPerson.p,
           planCivilianInteraction(s,rescuer.id,seenPerson.id,'secure'));
       }
+      // EQA3.2: unlike MOVE admission, which is allowed to author a
+      // desired traversal across a *known CLOSED* door, actual passage
+      // requires a separate OPEN on GO. Before any objective-directed
+      // MOVE, author the closest physically near, known, currently closed
+      // and nonlocked doorway. Use only currently-known door memory,
+      // the already disclosed target and the same player-facing planDoor.
+      if(doorAware&&!issued&&s.mission==='secure'&&
+          objectiveLocationKnown(s)){
+       const target=s.scenario.objective;
+       const doorway=s.doors.filter(door=>doorKnown(s.intel,door.id)&&
+          !door.open&&!door.locked&&!door.jammed&&!door.wedged&&
+          !attemptedDoorActions.has(door.id)&&
+          dist(rescuer.p,doorCenter(door))<=74 &&
+          // Avoid opening a portal which only moves farther from the
+          // already disclosed objective, except the immediate entry door.
+          (dist(doorCenter(door),target)<=dist(rescuer.p,target)+8||
+           dist(rescuer.p,doorCenter(door))<=54))
+         .sort((a,b)=>dist(rescuer.p,doorCenter(a))-
+               dist(rescuer.p,doorCenter(b))||a.id.localeCompare(b.id));
+       for(const door of doorway){
+        attemptedDoorActions.add(door.id);
+        if(planDoor(s,rescuer.id,door.id,'open')){
+         action='explicit-open-known-door';issued=true;
+         acceptedDoorActions++;
+         recordAction(action,doorCenter(door),true);
+         if(forensic)forensicCapture('queued-open-'+door.id);
+         break;
+        }
+       }
+      }
       if(!issued){
        if(s.mission==='extract'){
         action='return-to-extraction';target=s.scenario.extract;
@@ -325,6 +355,8 @@ for(const [seed,mission] of chosen){
       civilianStates,stages,decisions,
       forensic:forensic?forensicEvents:undefined,
       doorAware,acceptedDoorActions,
+      doorsAtEnd:doorAware?s.doors.map(d=>({id:d.id,open:d.open,
+        fraction:round(d.openFraction??0),locked:d.locked})):undefined,
       eventCounts:{battle:film.events.length,shots:s.nextShotId-1,
        objective:film.events.filter(e=>e.kind==='objective').length},
       rescue:{exists:!!s.rescue,
