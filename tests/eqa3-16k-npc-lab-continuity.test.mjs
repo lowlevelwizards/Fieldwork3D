@@ -76,6 +76,10 @@ test('K5: hostile surrender actually progresses into hands-up and drops gun',()=
  const scene=new THREE.Scene(),preview=new NpcLabPreview(scene);
  try{
   preview.render('host-surrender',2.41);
+  assert.equal(preview.hostile.weapon.visible,false,
+   'held firearm must not still float in surrendered hands at 2.41s');
+  assert.equal(preview.hostile.droppedGun.visible,true,
+   'surrender actually releases the firearm');
   assert.equal(scene.children.length,1);
   const hostile=scene.children[0];
   assert.ok(hostile,'the real hostile preview rig exists');
