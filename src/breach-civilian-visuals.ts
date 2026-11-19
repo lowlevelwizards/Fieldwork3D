@@ -4,7 +4,7 @@
  */
 import * as THREE from 'three';
 import type {CivilianActor} from './breach-civilian-types.ts';
-import {civilianPose} from './breach-civilian-pose.ts';
+import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {initialWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
 import {initialEquipmentLoadout,type EquipmentLoadout} from './equipment-loadouts.ts';
@@ -122,50 +122,42 @@ export function createCivilianRig(c:CivilianActor,useSharedCharacter=false):Civi
  * movement, damage, sight, rescue and replay data are untouched.
  */
 function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number){
- const pose=civilianPose(c);
+ const physical=civilianPhysicalityAt(c,now);
+ const pose=physical.pose;
  const down=pose==='down'||pose==='carried'||pose==='dragged';
  const moving=pose==='walk'||pose==='run'||pose==='injured-walk';
  const injured=pose==='injured'||pose==='injured-walk';
  const secured=pose==='compliant'||pose==='restrained';
- const flinch=!secured&&!down&&c.lastFlinchAt!==undefined&&
-   now>=c.lastFlinchAt&&now-c.lastFlinchAt<.48;
- // Simulation SECURE is immediate and authoritative, but the same fixed
- // stateSince timestamp gives presentation a smooth flinch -> raised hands
- // -> kneeling response. No independent animation clock or motor change.
- const elapsed=Math.max(0,now-(c.stateSince??now));
- const compliantKneel=secured?
-   Math.max(0,Math.min(1,(elapsed-.32)/.92)):0;
- const squat=flinch||pose==='hide'||pose==='seated'||pose==='restrained'||
-   secured&&compliantKneel>.18;
- const gesture=flinch?'head-cover':
-   pose==='startled'||pose==='compliant'&&elapsed<.32?
-   'hands-up':pose==='hide'||pose==='run'?'head-cover':
-   pose==='restrained'?'hands-behind':undefined;
+ // Frozen people hunch and guard their heads; an established hiding
+ // posture actually crouches. Keep both upper/lower-body animations owned
+ // by poseOperator instead of adding another IK writer or locomotion tick.
+ const squat=physical.flinch>.15||pose==='seated'||pose==='restrained'||
+   (pose==='hide'&&c.state==='hiding')||
+   secured&&physical.kneel>.18;
+ const gesture=physical.hands==='head'?'head-cover':
+   physical.hands==='up'?'hands-up':
+   physical.hands==='behind'?'hands-behind':undefined;
  poseOperator(r.character,{
   x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,
   seconds:now,stride:moving?Math.max(.05,c.velocity/53):0,
   posture:squat?'crouch':'stand',
   injury:injured?1:down?3:0,weapon:'carbine',
   reload:0,reloadDuration:0,lastDoorAt:-100,lastThrowAt:-100,
-  down,surrender:secured&&compliantKneel>.001,aiming:false,firing:false,
+  down,surrender:secured&&physical.kneel>.001,aiming:false,firing:false,
   civilianGesture:gesture,
   turning:0,deterministic:true,unarmedPreview:true,
   appearanceSeed:c.appearanceSeed,equipment:r.equipment,
   wardrobe:r.wardrobe,gait:pose==='run'?'run':'walk',
-  downProgress:down?1:compliantKneel,
+  downProgress:down?1:physical.kneel,
   poseDiagnostics:false
  },r.lastTime>=0&&now>=r.lastTime?Math.min(.08,now-r.lastTime):0);
- // Low-cost visual glance toward a recently perceived physical threat.
- // The threat estimate is owned by sensory evidence, not enemy truth.
- // Clamp yaw so civilians never spin their heads beyond human limits.
- const known=c.threatEstimate;
- if(known&&c.lastEvidenceAt>=0&&now-c.lastEvidenceAt<6&&
-    !down&&pose!=='compliant'){
-   const bearing=Math.atan2(known.y-c.p.y,known.x-c.p.x);
-   const delta=Math.atan2(Math.sin(bearing-c.heading),
-     Math.cos(bearing-c.heading));
-   r.character.head.rotation.y+=Math.max(-.48,Math.min(.48,delta))*.55;
- }
+ // Per-frame absolute evidence-scoped gaze is derived by the same pure
+ // interpreter as the legacy skeleton. poseOperator resets the head first.
+ r.character.head.rotation.y+=physical.headYaw;
+ // A brief, local upper-body hunch differentiates freezing from hiding
+ // without inventing a new stance or changing the real character root.
+ if(c.state==='frozen'&&!down)
+   r.character.chest.rotation.x+=.05*physical.shelter;
  // The shared animator's generic kit presentation can restore the unused
  // pack slot on its final frame. Neutrals have NO equipment inventory:
  // suppress these cosmetic meshes after the common pose publication.
@@ -202,7 +194,7 @@ export function updateCivilianRig(r:CivilianRig,
  r.leftLeg.scale.set(1,1,1);r.rightLeg.scale.set(1,1,1);
  r.leftShoe.scale.set(1,1,1);r.rightShoe.scale.set(1,1,1);
  r.head.rotation.set(0,0,0);
- const pose=civilianPose(c);
+ const physical=civilianPhysicalityAt(c,now),pose=physical.pose;
  // Hiding and sitting LOWER THE HIPS AND TORSO while keeping feet near
  // ground. Old root.scale.y=.73 artificially truncated every limb and
  // made injured people look like children. Only leg segments compress.
@@ -214,23 +206,16 @@ export function updateCivilianRig(r:CivilianRig,
   r.leftShoe.scale.y=1/legCompression;
   r.rightShoe.scale.y=1/legCompression;
  };
- // A visible, previously perceived threat gets a small independent head
- // glance, never a new source of civilian AI knowledge.
- if(c.threatEstimate&&c.lastEvidenceAt>=0&&now-c.lastEvidenceAt<6&&
-    pose!=='down'){
-  const bearing=Math.atan2(c.threatEstimate.y-c.p.y,
-    c.threatEstimate.x-c.p.x);
-  const delta=Math.atan2(Math.sin(bearing-c.heading),
-    Math.cos(bearing-c.heading));
-  r.head.rotation.y=Math.max(-.48,Math.min(.48,delta))*.55;
- }
+ // No current-world enemy lookup: rewind and hidden contact both use the
+ // recorded evidence point in the same time-addressable resolver.
+ r.head.rotation.y=physical.headYaw;
  // Render-only deterministic idle activity, reversible in replay.
  if(pose==='idle'||pose==='work'||pose==='seated')
   r.head.rotation.y+=Math.sin(now*.55+c.appearanceSeed*.013)*.11;
  if(pose==='compliant'){
   // Raise hands first, then gradually lower the hips into compliance.
   // SECURE already succeeded at the physical fixed tick; no delayed AI.
-  const t=Math.max(0,Math.min(1,(now-c.stateSince-.32)/.92));
+  const t=physical.kneel;
   if(t>0){
    bend(8*t,1-.37*t);
    r.leftLeg.position.x=-4.15-.5*t;
@@ -247,8 +232,9 @@ export function updateCivilianRig(r:CivilianRig,
   // Visible palms/arms raised when a threatening armed presence startles.
   r.leftArm.rotation.z=-2.2;r.rightArm.rotation.z=2.2;
  }else if(pose==='hide'){
-  // Frozen or hiding civilian sinks at the knees, hands shielding head.
-  bend(6.4,.69);
+  // An overwhelmed frozen person ducks defensively; a person who has
+  // actually reached refuge settles deeper. Both still shield the head.
+  bend(3.5+5*physical.shelter,.82-.17*physical.shelter);
   r.leftLeg.position.x=-5.1;r.rightLeg.position.x=5.1;
   r.leftArm.rotation.z=-2.1;r.rightArm.rotation.z=2.1;
   r.upper.rotation.x=.08;
@@ -288,10 +274,7 @@ export function updateCivilianRig(r:CivilianRig,
  }
  // Transient hunch/hand shielding from the same witnessed danger timestamp
  // as the shared rig; return to the actual base pose without residue.
- const flinch=c.lastFlinchAt!==undefined&&now>=c.lastFlinchAt&&
-   now-c.lastFlinchAt<.48&&!['down','dragged','carried',
-     'compliant','restrained'].includes(pose);
- if(flinch){
+ if(physical.flinch>.15){
   if(pose!=='hide'&&pose!=='seated')bend(3.5,.82);
   r.upper.rotation.x=.12;
   r.leftArm.rotation.z=-2.12;r.rightArm.rotation.z=2.12;

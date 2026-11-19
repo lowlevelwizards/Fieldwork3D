@@ -224,14 +224,21 @@ export function assembleSession(index=0,siteSeed?:number,
       const room=site.rooms.find(r=>r.kind==='room'&&
         point.x>=r.x&&point.x<=r.x+r.w&&
         point.y>=r.y&&point.y<=r.y+r.h);
-      state.civilians.push(createCivilian({
+      const rescuePerson=createCivilian({
         id:'civ:rescue:'+site.seed,role:'rescue',persona:'cautious',
         activity:'waiting',position:clone(point),heading:0,
         roomId:room?.id??'objective',
         zoneId:room?.zoneId??room?.id,
         appearanceSeed:site.seed^0x57eb,
         isRescueTarget:true
-      }));
+      });
+      // EQA3.14: rescue people are appended after the ordinary civilian
+      // refuge-initialization pass above. Give this same real person its
+      // local, deterministic building refuge options before first GO.
+      // Without this, even an unwounded hostage who witnessed firefights
+      // always froze because their candidate array was empty.
+      rescuePerson.refugePoints=civilianRefugePoints(site,rescuePerson);
+      state.civilians.push(rescuePerson);
     }
     state.rescue={p:clone(state.scenario.objective),following:null,trail:[]};
   }

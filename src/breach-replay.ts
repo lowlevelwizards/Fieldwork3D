@@ -52,6 +52,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** EQA3.16: auditory estimate at this film time, never future AI memory. */
+ heard?:Pt|null;contact?:Pt|null;lastNoiseAt?:number;
  /** F2: sparse historical field inventory locations for actual replayed depletion. */
  fieldInventory?:FieldInventory;
  /** EQA3.10: finite physical restraint quantity (older films default zero). */
@@ -84,6 +86,9 @@ export type CivilianFrame=Pick<CivilianActor,
     lastEvidenceAt?:number;threatEstimate?:Pt|null;
     /** Newer films preserve witnessed gunshot flinch timing. */
     lastFlinchAt?:number;
+    /** Historical successful physical contact only; optional old films. */
+    lastContactAt?:number;lastContactPoint?:Pt|null;
+    lastEvidenceId?:string|null;
     visibleAtCapture?:boolean;
   };
 export type ReplayFrame={
@@ -154,6 +159,9 @@ export function snapshot(s:Session,seenGround?:string[],
       traversalElevation:a.traversalElevation,
       traversalRetreating:a.traversalRetreating,
       turning:a.turning,posture:a.posture,pace:a.pace,alert:a.alert,
+      heard:a.heard?position(a.heard):null,
+      contact:a.contact?position(a.contact):null,
+      lastNoiseAt:a.lastNoiseAt,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       insertedMagazineId:a.insertedMagazineId,
       spareMagazines:reuseFrozenReplayValue(a.spareMagazines,
@@ -228,6 +236,9 @@ export function snapshot(s:Session,seenGround?:string[],
       injuryStage:c.injuryStage,state:c.state,stateSince:c.stateSince,
       restrained:c.restrained===true,velocity:c.velocity,
       lastEvidenceAt:c.lastEvidenceAt,lastFlinchAt:c.lastFlinchAt??-100,
+      lastEvidenceId:c.lastEvidenceId,
+      lastContactAt:c.lastContactAt,
+      lastContactPoint:c.lastContactPoint?position(c.lastContactPoint):null,
       threatEstimate:c.threatEstimate?position(c.threatEstimate):null,
       lastHitAt:c.lastHitAt,following:c.following,
       carriedById:c.carriedById,transportMode:c.transportMode,
@@ -503,6 +514,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
+      heard:copy.heard?position(copy.heard):null,
+      contact:copy.contact?position(copy.contact):null,
+      lastNoiseAt:copy.lastNoiseAt??-100,
       restraintRemaining:copy.restraintRemaining??0,
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
@@ -543,6 +557,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Never retain a present-day/omniscient gaze target on film rewind.
       lastEvidenceAt:copy.lastEvidenceAt??-1,
       lastFlinchAt:copy.lastFlinchAt??-100,
+      lastEvidenceId:copy.lastEvidenceId??null,
+      lastContactAt:copy.lastContactAt??-100,
+      lastContactPoint:copy.lastContactPoint?position(copy.lastContactPoint):null,
       threatEstimate:copy.threatEstimate?position(copy.threatEstimate):null,
       carriedById:copy.carriedById??null,
       transportMode:copy.transportMode??null,
