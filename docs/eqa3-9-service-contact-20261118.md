@@ -1,49 +1,29 @@
-# EQA3.9 — Warehouse17 SERVICE: discovered but not secured
+# EQA3.9: SECURE auto-facing and civilian reactive animation
 
-## Evidence and corrected classification
+## Actual original failure and retained A/B evidence
 
-EQA3.8 actual 110-second physical mission witness [run 44454592461](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44454592461):
+Warehouse17 RESCUE / UNKNOWN SERVICE discovered the civilian at **23.83 seconds** and MOSS physically arrived 4.91 units away, but the original SECURE logic required live forward-cone visibility both when queuing and when executing. The person remained frozen behind the operator. Earlier audit [run #44455114182](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44455114182) confirmed an ordinary LOOK order toward an already discovered position converted this case from stuck through 110 seconds into a **55.07-second physical extraction**. Thus the search route, mission objective and escort collision were not root causes.
 
-- UNKNOWN / SERVICE discovers the actual rescue target at **23.83s**. This is NOT a failed room search or broken objective reveal.
-- The initial scout ROOK becomes incapacitated at **26.73s**, and the audit script chooses MOSS as the surviving second player operator.
-- MOSS reaches position **(178.4,463.88)** at around **39.63s**, **4.91 units** from actual civilian **(173.5,464)**. Both stay in the same room for the remainder of 110s. Civilian is alive (health 2), frozen in reaction to the fight, not yet compliant. No SECURE/FOLLOW order is authored. No route abort or rejected tactical order.
-- The scripted scout checks `liveVisibility(s,person.p)` before authoring SECURE and suppresses that interaction when the person is outside any currently valid operator cone. `objectiveLocationKnown` is already true because the squad previously discovered the person.
-- The physical motor performs its move successfully, but arrival alone never turns the actor toward a nearby known contact. The mission rule correctly insists on real SECURE and then FOLLOW, not proximity magic.
+## Revised player request: SECURE is the complete interaction
 
-## Narrow A/B question
+**No separate LOOK TO PERSON palette button**. For both SECURE and FOLLOW:
+- The shared contextual candidate selector and direct plan authoring accept a *living, physically clear* civilian up to **28 world units** away regardless of whether they are behind the operator's current facing cone. At **28–34** units, ordinary true live visual acquisition remains required. Never bypass a wall or closed door.
+- Actual GO execution rechecks the person's real health, live position, distance and swept world geometry. A civilian who shuffles just behind the operator can be pursued over a bounded 28–45 unit correction while still physically clear; no teleport or automatic civilian control.
+- An eligible operator **turns toward the actual nearby person** via the existing authoritative fixed-tick `rotate` and completes only after facing them. The normal `canSecureRescuePerson` range and physical sightline still apply to rescue targets.
+- A successful GO interaction stamps `lastCivilianContactAt`. The already-shared operator animation system briefly extends the support hand in a calm reassurance gesture (~0.64 seconds, render-only). Aligned one-tick SECURE/FOLLOW remain responsive, and mere proximity never causes compliance or custody. Civilian contact never changes ballistic aim or shot authority.
+- Earlier `LOOK TO PERSON` prototype code, palette, dispatcher and tests were deliberately removed from the branch.
 
-Does one explicit player-authorable `planLook()` from MOSS's real position to the **already disclosed** rescue point turn the actor's gaze enough to make SECURE authorable, and does the actual rescue/extraction then work?
+## Civilian animation: reuse shared 3D operator rig, no second skeleton
 
-The opt-in `--contact-look` audit-driver variant is a genuine normal LOOK command, not a visibility override, objective-state edit, body teleport, enemy nerf or mission rule change. It is issued only if:
-1. The mission is rescue and SECURE is pending.
-2. The objective position is already known through confirmed intel or observation.
-3. The previously disclosed objective point is within the normal 34-unit command zone of the selected operator's final point. This check does **not** read hidden civilian health, identity, or current position.
-4. The person is not currently live-visible.
-5. The command has not been repeatedly attempted (at most 4, with a fixed cooldown).
+- Existing **startled** maps to hands raised high. Civilian response still determines when an actual witnessed gun/sound produces that state.
+- Actual **fleeing movement** retains run leg gait, with arms covering the head. If temporarily stalled while fleeing, civilian remains visibly startled, never calm.
+- **frozen or stationary hiding** uses existing low crouch with both hands protecting the head.
+- **compliant** keeps the already present kneeling/hands-up surrender, not an invented 'zip-tied' state. No hand-behind-back restraints until an actual physical restraint order exists.
+- The shared rig's head glances briefly toward `threatEstimate` **only when** the civilian's own sensory system recorded evidence within six seconds. Clamp to a plausible yaw. This is a render-only reaction and never reveals hidden enemies.
+- Same intentional silhouettes in old legacy/replay rig and the floor-plan 2D renderer, with no new per-frame scans, physics, collisions, AI states, or idle timers.
 
-Compare Warehouse17 FRONT/SERVICE and UNKNOWN/CONFIRMED intelligence in the unchanged 110-second actual game simulation, explicitly checking prior discovery timestamps, SECURE, FOLLOW, extraction, casualty outcome and no integrity regressions.
+## Verification and release gate
 
-**Interpretation caution:** A successful A/B would show an issue with orientation/command discoverability and the scripted scout, **not** with search route AI or a need to extend fog sight. A failed A/B may reveal geometry/door/visibility or interaction-reach mismatch and needs a separate cause-specific check. Do not merge a gameplay/UI change solely because the diagnostic driver completes more missions.
+Targeted CI: TypeScript check, new physically simulated SECURE-from-behind regression, 2D/legacy/shared rig panic and rewind checks, previous civilian EQA3.7 candidate and C4 contact, D1 rescue, C5 unified pose and R2 fear animations. Existing long 110-second A/B script remains as historical causal evidence, not the new player-facing behavior.
 
-## EQA3.9 stage A/B verified on actual physics
-
-[110-second A/B CI #44455114182](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44455114182) passed; each trial used real 60Hz player-authored orders, actual enemy fire and civilian state, same seed and paired insertion. The only opt-in difference was a normal LOOK order toward a position previously disclosed to the squad.
-
-| Warehouse17 RESCUE | Original actions | With actual LOOK |
-| --- | --- | --- |
-| UNKNOWN / FRONT | Mission DONE, extracted at 63.93s | Mission DONE, extracted at 63.93s |
-| UNKNOWN / SERVICE | Person discovered 23.83s, MOSS arrives by 39.63s, remains SECURE through 110s | Person secured and mission enters EXTRACT 40.57s; **physically extracts at 55.07s** |
-| CONFIRMED / FRONT | Civilian incapacitated under hostile fire; not extracted | Same combat casualty outcome |
-| CONFIRMED / SERVICE | Civilian incapacitated under hostile fire; not extracted | Same combat casualty outcome |
-
-No integrity exceptions or script route aborts. This demonstrates the original inability to SECURE was the operator's orientation/contact affordance after handoff, not failure to search for the rescue person. The normal LOOK action solves it without fog overrides or auto-commands.
-
-## EQA3.9 player-facing change (staged separately on same feature branch)
-
-- Add `LOOK TO PERSON` in the **existing** contextual palette only when the real rescue objective is already confirmed/discovered; the selected route endpoint lies within 34 units; the known location is not currently visible; and a real 5.5-unit swept contact ray is not blocked by the current world/door geometry.
-- The dispatcher revalidates those conditions and authoritatively authors the exact existing `planLook()` order on click. This does not SECURE or FOLLOW automatically, and does not use the civilian's hidden live position.
-- The nearby known point, not an unseen moving person, is the target: this makes the user recheck the last observed/confirmed objective location instead of magically tracking a character.
-- Existing SECURE/FOLLOW visibility and physical GO-time conditions remain unchanged.
-- Tests cover unknown/approximate privacy, confirmed/discovered cues, contact obstruction, route-end gating, no auto-SECURE, and real GO-time sight acquisition; plus the earlier EQA3.7 civilian selector and D1 rescue lifecycle. Full A/B physical mission replay remains in targeted CI.
-
-Do not merge until the player-facing feature branch's TypeScript and targeted tests succeed. Merge at one production release checkpoint only if the latest main deployment is healthy and Pages serves the expected build.
+Keep EQA3.9 PR **draft until green**. If any test fails, fix the actual blocker and retest; do not merge unverified animation into main. Before any main release verify the most recent Pages run completed successfully and publicly serves its expected build. After merging, wait for the release, verify public Pages again, and only then start the next production batch.
