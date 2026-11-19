@@ -761,7 +761,17 @@ export class CampaignScreen{
     const why=label==='2 FLASHBANGS'&&!!c.activeContractId?
      'Unavailable during an active deployment':
      label==='2 FLASHBANGS'&&c.supplies.flash>998?
-      'Flashbang reserve at capacity':'Insufficient campaign funds';
+      'Flashbang reserve at capacity':
+     label===FIELD_STOCK_PACKS.wedges.name&&!!c.activeContractId?
+      'Finish the active deployment before acquiring field supplies':
+     label===FIELD_STOCK_PACKS.cuffs.name&&!!c.activeContractId?
+      'Finish the active deployment before acquiring field supplies':
+     label===FIELD_STOCK_PACKS.wedges.name&&
+      c.supplies.wedges>FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.wedges.quantity?
+      'Door wedge stock full':
+     label===FIELD_STOCK_PACKS.cuffs.name&&
+      c.supplies.cuffs>FIELD_STOCK_LIMIT-FIELD_STOCK_PACKS.cuffs.quantity?
+      'Flex cuff stock full':'Insufficient campaign funds';
     buy.title=why;
     buy.setAttribute('aria-description',why);
    }
@@ -1797,6 +1807,7 @@ export class CampaignScreen{
    },
    maxFlash:c.squadIds.includes(id)?
     Math.max(0,c.supplies.flash-squadFlashReserved):4,
+   maxWedges:c.supplies.wedges,maxCuffs:c.supplies.cuffs,
    copyTargets:c.operators.filter(o=>o.id!==id&&
     o.status!=='lost'&&o.status!=='retired').map(o=>({
      id:o.id,name:o.callsign,loadout:o.loadout,magazines:o.magazines
