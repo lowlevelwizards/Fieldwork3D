@@ -100,7 +100,7 @@ import {doorReachable} from './breach-door.ts';
 import {doorKnown,type IntelMode} from './breach-intel.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
-import {applyRosterIdentity,freshQuickPlayRoster} from './breach-roster.ts';
+import {applyRosterIdentity,freshQuickPlayRoster,equipRosterFieldInventory} from './breach-roster.ts';
 import type {CampaignState} from './campaign-state.ts';
 import {loadActiveCampaign,loadCampaignSlot,writeCampaignSlot,
  activateCampaignSlot,commitCampaignToSlot,type CampaignSlot}
@@ -1283,6 +1283,12 @@ function restartMission():void{
  * synchronous, but the status is painted immediately before it begins. */
 const quickPlayController=createBreachQuickPlayController({
   boot:bootConfig,randomSeed:randomSiteSeed,
+  getRoster:()=>persistentRoster,
+  equipFieldInventory:(id,inventory)=>{
+   const updated=equipRosterFieldInventory(persistentRoster,id,inventory);
+   if(updated===persistentRoster)return false;
+   persistentRoster=updated;saveRoster();return true;
+  },
   onConfiguratorVisibilityChange:visible=>appFlow.creatorVisibility(visible),getScale:()=>requestedSiteScale,
   getMode:()=>appFlow.mode,setMode:mode=>{appFlow.setMode(mode);},
   getSession:()=>state,
