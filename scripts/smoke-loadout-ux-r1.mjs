@@ -54,10 +54,11 @@ try{
       columns:getComputedStyle(root.querySelector('.fw-field-inventory-capacity')).gridTemplateColumns,
       overflowing:slots.some(el=>el.scrollWidth>el.clientWidth+2),
       narrow:tiles.some(el=>el.clientWidth<65),
-      names:tiles.map(el=>el.textContent)};
+      names:tiles.map(el=>({name:el.textContent,width:el.clientWidth,
+       parent:el.parentElement?.clientWidth,slot:el.closest('[data-location]')?.getAttribute('data-location')}))};
    });
    assert.ok(!geometry.overflowing,'Carrier sections must not overflow');
-   assert.ok(!geometry.narrow,'Equipment names must not collapse into vertical characters');
+   assert.ok(!geometry.narrow,'Equipment names must not collapse into vertical characters: '+JSON.stringify(geometry));
    assert.ok(geometry.columns.trim().split(/\s+/).length===1,
     'Mobile carrier layout must occupy one full-width column');
    const dock=armory.getByRole('button',{name:'KEEP MODEL VISIBLE'});
