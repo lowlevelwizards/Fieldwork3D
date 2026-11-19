@@ -4,6 +4,8 @@
 import type {Door,Pt} from './breach-core.ts';
 import {doorSecuredFrom} from './breach-door-security.ts';
 export type EntryTool='pick'|'pry'|'cut'|'wedge'|'unwedge'|'breach';
+/** One shared GO-time wedge contact duration; render sampling only reads it. */
+export const WEDGE_PLACEMENT_SECONDS=1.1;
 export type EntryToolVerdict={allowed:boolean;reason:string;seconds:number;
  noise:number;damage:number};
 const allow=(seconds:number,noise:number,damage=0):EntryToolVerdict=>
@@ -28,7 +30,7 @@ export function entryToolVerdict(door:Door,tool:EntryTool,actorPosition?:Pt):Ent
   if(kind!=='hinged')return deny('DOOR DOES NOT SWING');
   if(open)return deny('CLOSE FIRST');
   if(door.wedged)return deny('ALREADY WEDGED');
-  return allow(1.1,25);
+  return allow(WEDGE_PLACEMENT_SECONDS,25);
  }
  if(open)return deny('ALREADY OPEN');
  if(door.wedged)return deny('WEDGE BLOCKS ENTRY');
