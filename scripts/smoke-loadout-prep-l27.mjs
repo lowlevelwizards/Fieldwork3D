@@ -239,6 +239,22 @@ try{
   assert.equal(await creator.getByRole('combobox',{name:'Select rig for rook'}).inputValue(),
    'rig-none','Quick Play keeps its new selection and editor in sync');
   await page.evaluate(()=>window.quickPlayCarrySmoke.close());
+  const copy=page.locator('#carryLayoutCopySmoke');
+  const oldMags=await page.evaluate(()=>window.layoutCopySmoke.target());
+  await copy.getByLabel('Operator to copy gadgets to').selectOption('moss');
+  await copy.getByRole('button',{name:'Preview carrying layout copy to selected operator'}).click();
+  assert.equal(await copy.getByRole('button',{
+   name:'Apply carrying layout copy to selected operator'}).isVisible(),true);
+  assert.match(await copy.locator('.fw-field-inventory-layout-preview').innerText(),
+   /POSITIONS ONLY|MAGAZINE IDENTITIES/);
+  assert.deepEqual(await page.evaluate(()=>window.layoutCopySmoke.target()),oldMags,
+   'copying positions is read-only until explicit apply');
+  await copy.getByRole('button',{name:'Apply carrying layout copy to selected operator'}).click();
+  const newMags=await page.evaluate(()=>window.layoutCopySmoke.target());
+  assert.deepEqual(newMags.map(x=>[x.id,x.rounds]),oldMags.map(x=>[x.id,x.rounds]),
+   'layout copy preserves every destination magazine ID and remaining round');
+  assert.equal(newMags[0].location,'backpack',
+   'only the magazine carrying location is copied');
   await page.evaluate(()=>window.loadoutPrepSmoke.stop());
   await launch.click();
   assert.equal(await panel.isVisible(),false,'cannot re-enter equipment prep after GO');
