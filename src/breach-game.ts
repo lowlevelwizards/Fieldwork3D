@@ -167,7 +167,7 @@ export type TeamActor=Operator & {
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
-  wedgeRemaining:number;
+  wedgeRemaining:number;restraintRemaining:number;
   awareness:ActorAwareness;
   suspicion:SuspicionMemory;lastVisualSuspicionId:string|null;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
@@ -543,7 +543,7 @@ export function planSitePowerControl(s:Session,id:string,
 /** Explicit authored civilian interaction: no distant or fog-granted
  * command. The target's current physical position is rechecked on GO. */
 export function planCivilianInteraction(s:Session,id:string,
- civilianId:string,action:'secure'|'follow'):boolean{
+ civilianId:string,action:'secure'|'follow'|'restrain'):boolean{
  const a=party(s,id),civil=s.civilians.find(c=>c.id===civilianId);
  if(!a||!civil||!canEdit(s)||civil.health<=0)return false;
  const from=finalPoint(a),range=d(from,civil.p);
@@ -554,11 +554,16 @@ export function planCivilianInteraction(s:Session,id:string,
     !sweptBodyClear(from,civil.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
  if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
    return false;
+ if(action==='restrain'&&
+    (civil.state!=='compliant'||civil.restrained===true||
+     civil.rescueTarget||a.restraintRemaining<=0))return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:civil.id,interaction:action==='secure'?
-     'secure-civilian':'follow-civilian'
+     'secure-civilian':action==='follow'?'follow-civilian':
+     'restrain-civilian'
  });
- if(queued)notify(s,(action==='secure'?'SECURE':'FOLLOW')+
+ if(queued)notify(s,(action==='secure'?'SECURE':
+   action==='follow'?'FOLLOW':'RESTRAIN')+
    ' QUEUED — EXECUTES ON GO');
  return queued;
 }

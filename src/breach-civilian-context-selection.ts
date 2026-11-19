@@ -11,8 +11,8 @@ import type {CivilianActor} from './breach-civilian-types.ts';
  * Keep 34-unit planning reach and stable ordering of tied candidates.
  */
 export function nearestContextCivilian<T extends Pick<CivilianActor,
- 'p'|'health'|'state'|'rescueTarget'>>(
-  civilians:readonly T[],from:Pt,action:'secure'|'follow',missionStage:string,
+ 'p'|'health'|'state'|'rescueTarget'|'restrained'>>(
+  civilians:readonly T[],from:Pt,action:'secure'|'follow'|'restrain',missionStage:string,
   disclosed:(p:Pt)=>boolean,
   physicalContact:(from:Pt,to:Pt)=>boolean
 ):T|null{
@@ -20,7 +20,10 @@ export function nearestContextCivilian<T extends Pick<CivilianActor,
   let nearest:T|null=null,best=34;
   for(const person of civilians){
     if(person.health<=0||
-      (action==='follow'?!person.rescueTarget:person.state==='compliant'))
+      (action==='follow'?!person.rescueTarget:
+       action==='restrain'?person.state!=='compliant'||
+         person.restrained===true||person.rescueTarget:
+       person.state==='compliant'))
       continue;
     const distance=Math.hypot(from.x-person.p.x,from.y-person.p.y);
     // At arm's length the explicit SECURE/FOLLOW command can orient

@@ -56,6 +56,10 @@ function addEvidence(c:CivilianActor,id:string,at:number,
   point:Pt,estimateReliable:boolean){
  if(c.lastEvidenceId===id)return;
  c.lastEvidenceId=id;c.lastEvidenceAt=at;
+ // A brief visual flinch belongs to an actually HEARD alarming event or a
+ // newly CONFIRMED alarming sighting, not omniscient shooting knowledge.
+ // Never re-trigger it each observer tick while staring at the same gun.
+ if(kind==='alarm'||kind==='visual')c.lastFlinchAt=at;
  const strength=kind==='visual'?.78:
   kind==='alarm'?.72:kind==='investigate'?.31:.15;
  c.fear=Math.min(1,Math.max(c.fear,strength)+
