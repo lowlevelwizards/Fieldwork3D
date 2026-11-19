@@ -14,4 +14,4 @@ export function allocateFlashSupply(need:readonly number[],stock:number,limit=2)
 }
 export const clampFlashUse=(used:unknown):number=>
  typeof used==='number'&&Number.isFinite(used)?
-  Math.max(0,Math.min(2,Math.floor(used))):0;
+  Math.max(0,Math.min(32,Math.floor(used))):0;
