@@ -1,4 +1,4 @@
-/** R870 P12: grip-first, reference-led Fieldwork Police-wood caricature.
+/** R870 P13: proportion-tuned, grip-first, reference-led Fieldwork Police-wood caricature.
  * This is the same shared Arsenal/operator/replay factory model, not a lab
  * proxy. Every polygon must earn its silhouette at mobile gameplay size.
  * +X muzzle, +Y up, +Z right/ejection side; geometry only, no combat changes.
@@ -9,7 +9,7 @@ import {R870_P07} from './r870-art-contract.ts';
 import {r870RearPair,R870_REAR_PARTS} from './r870-rear-p12.ts';
 import {addOutline,addCuboid,addFacetedTube,
  type SlotName,type Outline} from './profile-primitives.ts';
-import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD,
+import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD,R870_WALNUT_GROOVE,
  FAL_VENT_SHADOW,FAL_MUZZLE_METAL} from './weapon-visual-palette.ts';
 
 const FRONT_PARTS=Object.freeze({
@@ -44,15 +44,20 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // The grip, not the rear butt, is the authored anatomical origin.
  // Stock extensions are independently selectable and only exist on shoulder
  // variants. Stockless variants have NO invisible/redundant picking mesh.
- const grip=p('grip',rear.gripOutline,3.22,
+ // Grip widths, not side-view profiles, are the P13 change: wood is
+ // leaner, stockless grips narrower, birdshead especially hand-sized.
+ const gripDepth=rearKey==='birdshead'?2.38:rearKey==='pistol'?2.60:2.90;
+ const grip=p('grip',rear.gripOutline,gripDepth,
   rearKey==='pistol'?HK_DARK_POLYMER:HK_WOOD);
  grip.userData.r870RearGrip=rearKey;
  if(rear.stockOutline){
-  const extension=p('stock',rear.stockOutline,3.22,HK_WOOD);
+  const extension=p('stock',rear.stockOutline,2.90,HK_WOOD);
   extension.userData.r870StockExtension=true;
   const short=rearKey==='shortwood';
-  const pad=b('stock',short?-13.51:-15.51,short?-1.79:-1.84,
-   0,.54,short?4.14:4.36,3.52,HK_DARK_POLYMER);
+  // Thicker front-to-back pad; move its center forward to retain the
+  // unchanged saved stockX (-15.78 or -13.78), and trim excess width.
+  const pad=b('stock',short?-13.44:-15.44,short?-1.79:-1.84,
+   0,.68,short?4.14:4.36,3.12,HK_DARK_POLYMER);
   pad.userData.r870ButtPad=true;
  }
  root.userData.r870RearVariant=rearKey;
@@ -62,8 +67,8 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // front nose do the visual work; no duplicated skins, frame tessellation,
  // secondary lower micro-line, bolt insert or ornamental edge chatter.
  const receiverOutline:Outline=[
-  [-6.24,.84],[-5.48,1.52],[-3.78,1.80],
-  [1.04,1.70],[2.84,.78],[2.84,-1.35],
+  [-6.24,.84],[-5.48,1.52],[-3.78,1.75],
+  [1.04,1.66],[2.84,.78],[2.84,-1.35],
   [1.83,-1.96],[-5.48,-1.96],[-6.24,-1.29]
  ];
  const receiver=p('receiver',receiverOutline,3.48,HK_BLACK_METAL);
@@ -73,9 +78,11 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // No bolt geometry, frame rim, z-fighting skins or real port recess.
  // The port is a graphic void, not a metal extrusion: a two-dimensional
  // four-triangle polygon, set just above the receiver's right side face.
+ // Larger VERTICAL opening near the upper barrel/bolt axis. Six points,
+ // still exactly four flat triangles and no machining-style inset.
  const portOutline:Outline=[
-  [-1.36,.82],[-1.12,1.06],[1.58,1.06],
-  [1.93,.78],[1.70,.26],[-1.36,.26]
+  [-1.36,.90],[-1.12,1.18],[1.58,1.18],
+  [1.93,.85],[1.70,.10],[-1.36,.10]
  ];
  const shape=new THREE.Shape();
  shape.moveTo(portOutline[0][0],portOutline[0][1]);
@@ -91,7 +98,9 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // FRONT: the two six-sided round forms are the silhouette, not thin rails.
  // Barrel and capped, non-detachable tube stay clearly separated. Retain
  // exact muzzle and stock datum for shot/pose/legacy-save compatibility.
- const barrel=t('barrel',.60,R870_P07.muzzleX,R870_P07.muzzleY,
+ // Drop the visible steel axis 0.14 units without changing the authoritative
+ // shot-time muzzle datum or the seated root at x=.60.
+ const barrel=t('barrel',.60,R870_P07.muzzleX,R870_P07.muzzleY-.14,
   .96,HK_BLACK_METAL);
  barrel.userData.r870Barrel=true;
  const tube=t('magazine',3.02,13.91,-1.04,.80,HK_BLACK_METAL);
@@ -100,17 +109,19 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  cap.userData.r870TubeCap=true;
  // A deliberately OVER-SCALE post/bead at the actual muzzle. This is one
  // simple 6-face cuboid, not a tiny screw or complex rifle sight assembly.
- const bead=b('barrel',18.78,2.13,0,.50,.55,.52,FAL_MUZZLE_METAL);
+ // Sight follows the lowered barrel and grows a restrained 7% so it
+ // remains visible from a 1080p gameplay camera.
+ const bead=b('barrel',18.78,2.00,0,.52,.59,.54,FAL_MUZZLE_METAL);
  bead.userData.r870FrontSight=true;
 
  // PUMP: constant six-vertex section for most of its length. Tiny 0.4-unit
  // end chamfers only. No P09 six-station inflatable "pillow" profile.
  // Thick faceted wood sleeve partially surrounds the fixed magazine tube.
  const stations=[
-  {x:2.65,top:-.32,bottom:-3.10,half:1.86},
-  {x:3.08,top:-.21,bottom:-3.23,half:2.03},
-  {x:10.97,top:-.21,bottom:-3.23,half:2.03},
-  {x:11.50,top:-.32,bottom:-3.10,half:1.86}
+  {x:2.65,top:-.15,bottom:-2.72,half:1.70},
+  {x:3.08,top:-.04,bottom:-2.84,half:1.85},
+  {x:10.97,top:-.04,bottom:-2.84,half:1.85},
+  {x:11.50,top:-.15,bottom:-2.72,half:1.70}
  ] as const;
  const cross=(s:typeof stations[number]):[number,number,number][]=>
   [[s.x,s.top,0],[s.x,s.top-.68,s.half],
@@ -156,10 +167,10 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  for(let i=0;i<4;i++){
   const x=4.29+i*1.73;
   for(const side of [-1,1]){
-   const z=side*2.095,base=grooveVertices.length/3;
+   const z=side*1.925,base=grooveVertices.length/3;
    grooveVertices.push(
-    x,-1.04,z, x+.38,-1.04,z,
-    x+.38,-2.50,z, x,-2.50,z);
+    x,-.78,z, x+.38,-.78,z,
+    x+.38,-2.10,z, x,-2.10,z);
    if(side>0)grooveIndices.push(base,base+2,base+1,base,base+3,base+2);
    else grooveIndices.push(base,base+1,base+2,base,base+2,base+3);
   }
@@ -168,7 +179,8 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  grooveGeometry.setAttribute('position',new THREE.Float32BufferAttribute(grooveVertices,3));
  grooveGeometry.setIndex(grooveIndices);
  grooveGeometry.computeVertexNormals();
- const grooves=new THREE.Mesh(grooveGeometry,HK_DARK_POLYMER);
+ // Walnut shadow, not separate gray-looking polymer strips.
+ const grooves=new THREE.Mesh(grooveGeometry,R870_WALNUT_GROOVE);
  grooves.name='family-handguard-'+build.parts.handguard+'-'+seq.handguard++;
  grooves.castShadow=false;grooves.receiveShadow=false;
  grooves.userData.r870PumpPart=true;
@@ -181,5 +193,6 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  root.userData.r870P09=true;root.userData.r870P10=true;
  root.userData.r870P12=true;
  root.userData.r870P12Optimized=true;
+ root.userData.r870P13=true;
  root.userData.r870PumpRearTravel=R870_P07.pumpRearTravel;
 }

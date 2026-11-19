@@ -74,8 +74,8 @@ test('R870 P12 grip-first wood stock has seven-point extension and eleven-point 
   assert.ok(stock&&grip&&pad);
   assert.equal(cornerCount(stock),7);
   assert.equal(cornerCount(grip),11);
-  assert.ok(Math.abs(pad.geometry.parameters.width-.54)<1e-6,
-   'visible rear pad slab enlarged from P09 .34');
+  assert.ok(Math.abs(pad.geometry.parameters.width-.68)<1e-6,
+   'P13 visible buttpad slab is thicker without moving its rear datum');
   assert.ok(bounds(grip).min.y< -3.1,'new grip is the lower wood neck, not a dangling hook');
   assert.ok(bounds(stock).min.y< -3.9);
   assert.ok(Math.abs(bounds(stock).min.z-bounds(grip).min.z)<.02,
@@ -106,7 +106,7 @@ test('R870 P10 pump becomes a regular six-plane sleeve, not an inflated eight-fa
    'each groove has one front-facing quad, not six extruded faces');
   const gxyz=groove.geometry.getAttribute('position').array;
   for(let i=2;i<gxyz.length;i+=3)
-   assert.ok(Math.abs(gxyz[i])>2.03,'groove sits above six-sided pump flat');
+   assert.ok(Math.abs(gxyz[i])>1.85,'groove sits above slimmer six-sided pump flat');
   const contacts=riflePoseContacts('shotgun',config());
   assert.ok(contacts&&contacts.family==='r870');
   assert.equal(contacts.support.near.y,R870_P07.supportPalmY);
@@ -124,10 +124,10 @@ test('R870 P10 barrel, fixed tube, cap and oversized bead retain 6-sided constru
   assert.equal(barrel.geometry.parameters.radiusTop,.96);
   assert.equal(tube.geometry.parameters.radiusTop,.80);
   assert.equal(cap.geometry.parameters.radiusTop,.86);
-  assert.ok(barrel.position.y-tube.position.y>1.9);
+  assert.ok(barrel.position.y-tube.position.y>1.78);
   assert.ok(bounds(barrel).max.x-bounds(cap).max.x>4.5);
-  assert.equal(sight.geometry.parameters.height,.55);
-  assert.ok(bounds(sight).max.y>2.35);
+  assert.equal(sight.geometry.parameters.height,.59);
+  assert.ok(bounds(sight).max.y>2.25);
   const triangles=gun.children.reduce((total,o)=>total+
    ((o.geometry?.index?.count??o.geometry?.getAttribute('position')?.count??0)/3),0);
   assert.ok(triangles<450,'P10 geometric reduction budget: '+triangles);
