@@ -282,6 +282,17 @@ export function prepareMotorRoute(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks):MotorRouteReadiness{
   const goalKey=Math.round(p.x*2)+':'+Math.round(p.y*2);
   if(a.routeGoalKey!==goalKey){
+    // EQA3.2: explicit DOOR execution can switch from its authored
+    // waypoint to a physically swept, short clear-the-leaf stance.
+    // A cached nav leg still points at the *old* waypoint even after the
+    // requested target changes. Retail seed14 FRONT/SERVICE then orbited
+    // around the handle forever with an allowed OPEN, actionTimer=0 and
+    // no blocked-frame diagnostics. Invalidate ONLY this obsolete door
+    // transient route, never the authored order, player LOOK/WATCH, or
+    // an in-progress threshold/traversal maneuver.
+    if(a.plan[0]?.kind==='door'&&!a.doorTraversal&&
+       !a.traversal&&!a.traversalPending)
+      a.nav=[];
     a.autoSidestep=null;
     a.routeGoalKey=goalKey;a.retryRouteAt=0;a.recoveryAttempts=0;
     a.lastNormalLaneProbeAt=-10;
