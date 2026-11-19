@@ -17,7 +17,10 @@ export function civilianPose(c:Pick<CivilianActor,
  // moving toward a refuge may walk there before adopting their hiding
  // posture; never slide across the floor in a compressed static pose.
  if(c.state==='hiding')return c.velocity>5?'walk':'hide';
- if(c.state==='startled'||c.state==='frozen')return 'startled';
+ // Visual-only: cover the head and crouch when frozen rather than
+ // looking like an ordinary idle standing person.
+ if(c.state==='frozen')return 'hide';
+ if(c.state==='startled')return 'startled';
  if(c.state==='fleeing')return c.velocity>5?'run':'startled';
  if(c.velocity>5)return 'walk';
  if(c.state==='routine'&&c.activity==='seated')return 'seated';
