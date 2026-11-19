@@ -24,6 +24,8 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
+import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
+import {CampaignKitPreview} from './equipment-preview.ts';
 import type {OperationRecord} from './breach-operations.ts';
 
 export type OperationsBoardHooks={
@@ -45,6 +47,9 @@ let expandedQuickWeapon:string|null=null;
 const expandedClassicWeaponControls=new Set<string>();
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
+let quickKitPreview:CampaignKitPreview|null=null;
+let quickKitPreviewId:string|null=null;
+let scrollToSelected=false;
 const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
 const savedQuickWorkbenchViews=new Map<string,WeaponWorkbenchViewState>();
 const resetQuickWorkbenchViews=new Set<string>();
@@ -56,7 +61,8 @@ function rememberQuickWorkbenchView(){
 }
 
 function renderOperationsBoard(){
- const priorScroll=config.board.scrollTop;
+ const priorScroll=scrollToSelected?0:config.board.scrollTop;
+ scrollToSelected=false;
  rememberQuickWorkbenchView();
  quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  config.board.replaceChildren();
@@ -87,7 +93,22 @@ function renderOperationsBoard(){
  intro.textContent=config.getRoster().members.length+' OPERATORS · FRESH GEAR EACH ROUND'+
   (history.length?' · LAST '+(history.at(-1)?.grade??'—'):'');
  config.board.append(intro);
- for(const member of config.getRoster().members){
+ const members=config.getRoster().members;
+ const selected=members.find(m=>m.id===expandedQuickOperator)??members[0];
+ if(selected){
+  expandedQuickOperator=selected.id;
+  config.board.append(createLoadoutSquadRail(members.map(m=>({
+   id:m.id,name:m.callsign.toUpperCase(),
+   detail:m.weapon.toUpperCase(),
+   status:m.id===selected.id?'SELECTED · '+m.weapon.toUpperCase():
+    m.weapon.toUpperCase()
+  })),selected.id,id=>{
+   if(id===expandedQuickOperator)return;
+   expandedQuickOperator=id;expandedQuickKit=id;
+   expandedQuickWeapon=id;scrollToSelected=true;renderOperationsBoard();
+  }));
+ }
+ for(const member of selected?[selected]:[]){
   const card=document.createElement('details');
   card.dataset.squadCard=member.id;
   card.className='fw-squad-card';
@@ -152,6 +173,29 @@ function renderOperationsBoard(){
   const kitTitle=document.createElement('summary');
   kitTitle.textContent='LOADOUT · '+member.weapon.toUpperCase();
   kit.append(kitTitle);
+  const previewHost=document.createElement('div');
+  previewHost.className='fw-prep-operator-viewer';
+  previewHost.setAttribute('aria-label','Rotatable 3D operator and carried equipment');
+  kit.append(previewHost);
+  const renderKitPreview=()=>{
+   if(!kit.open||!previewHost.isConnected)return;
+   if(quickKitPreview&&quickKitPreviewId!==member.id){
+    quickKitPreview.dispose();quickKitPreview=null;quickKitPreviewId=null;
+   }
+   if(!quickKitPreview){
+    quickKitPreview=new CampaignKitPreview(previewHost,member.id,member.weapon,
+     member.appearanceSeed,member.loadout,member.weaponConfiguration,
+     member.magazines,member.wardrobe);
+    quickKitPreviewId=member.id;
+   }else{
+    quickKitPreview.attachHost(previewHost);
+    quickKitPreview.updateEquipment(member.weapon,member.appearanceSeed,
+     member.loadout,member.weaponConfiguration,member.magazines,member.wardrobe);
+   }
+  };
+  kit.addEventListener('toggle',()=>{
+   if(kit.open)requestAnimationFrame(renderKitPreview);
+  });
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
   });
@@ -456,6 +500,7 @@ function renderOperationsBoard(){
    loadout.field('carry').append(magSection);
   }
   card.append(kit);config.board.append(card);
+  if(kit.open)requestAnimationFrame(renderKitPreview);
   // A newly opened details subtree can report zero width on iOS until
   // it is attached and laid out. Initialize after paint, not only on toggle.
   if(kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
@@ -474,6 +519,7 @@ function renderOperationsBoard(){
  }
  function dispose():void{
    quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
+   quickKitPreview?.dispose();quickKitPreview=null;quickKitPreviewId=null;
  }
  return {render:renderOperationsBoard,onQuickApplied,dispose};
 }
