@@ -9,6 +9,7 @@ import {quoteDeployedFieldUse,type LiveFieldItem}
  from './equipment-deployed-field-use.ts';
 import {FIELD_ITEMS,type FieldCarryLocation} from './equipment-field-inventory.ts';
 import {WEDGE_PLACEMENT_SECONDS} from './breach-entry-tools.ts';
+import {RESTRAINT_CONTACT_SECONDS} from './equipment-interaction-timings.ts';
 
 export type EquipmentInteractionPose={
  readonly item:LiveFieldItem;
@@ -31,14 +32,17 @@ export function readEquipmentInteraction(
  if(!(actor.actionTimer>0)||!Number.isFinite(actor.actionTimer))return null;
  const item=order?.kind==='flash'&&order.aimPoint?'flashbang':
   order?.kind==='tool'&&order.toolMethod==='wedge'&&order.doorId?
-   'wedge':null;
+   'wedge':
+  order?.kind==='interact'&&order.interaction==='restrain-civilian'&&
+   order.objectId?.startsWith('civ:')?'zip-tie':null;
  if(!item)return null;
  const quote=quoteDeployedFieldUse(actor,item);
  if(!quote.available||!quote.location||
   !FIELD_ITEMS[item].locations.includes(quote.location)||
   !Number.isFinite(quote.accessSeconds))
   return null;
- const duration=(item==='wedge'?WEDGE_PLACEMENT_SECONDS:.3)+quote.accessSeconds;
+ const duration=(item==='wedge'?WEDGE_PLACEMENT_SECONDS:
+  item==='zip-tie'?RESTRAINT_CONTACT_SECONDS:.3)+quote.accessSeconds;
  return {item,location:quote.location,elapsed:actor.actionTimer,
   duration,progress:Math.max(0,Math.min(1,actor.actionTimer/duration))};
 }
