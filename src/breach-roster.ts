@@ -16,7 +16,7 @@ import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {issuedWedges} from './equipment-entry-tools.ts';
-import {readFieldInventory,fieldCarryReport,type FieldInventory} from './equipment-field-inventory.ts';
+import {initialFieldInventory,readFieldInventory,fieldCarryReport,type FieldInventory} from './equipment-field-inventory.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,selectWeaponFamilyPreset,setConfiguredFamilyPart,
  type WeaponConfiguration,type WeaponAttachmentSlot}
