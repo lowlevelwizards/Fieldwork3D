@@ -45,7 +45,7 @@ test('P14.B black synthetic and SGA are independent rear part IDs with art-reada
   assert.equal(paint(w.gun).material.color.getHex(),0x896947);
   const sgaStock=m.gun.children.find(x=>x.userData.r870StockExtension);
   assert.ok(sgaStock);
-  assert.ok(ext(sgaStock).max.x>ext(w.gun.children.find(x=>x.userData.r870StockExtension)).max.x);
+  assert.ok(ext(sgaStock).min.x>ext(w.gun.children.find(x=>x.userData.r870StockExtension)).min.x);
   assert.equal(m.gun.userData.r870ShoulderStock,true);
   assert.ok(m.gun.children.filter(x=>x.userData.r870PumpPart).length>=4,'M-LOK end stops move with pump');
   assert.equal(m.gun.children.find(x=>x.userData.r870GrooveBatch).userData.r870GrooveCount,6);
