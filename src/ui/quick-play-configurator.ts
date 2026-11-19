@@ -7,6 +7,10 @@ import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
  type QuickPlaySize,type QuickPlayMission,type QuickPlayPresence,
  type QuickPlayCivilians,type QuickPlayObjectiveIntel} from '../quick-play-settings.ts';
 import type {BuildingArchetype} from '../breach-site.ts';
+import type {RosterState} from '../breach-roster.ts';
+import type {FieldInventory} from '../equipment-field-inventory.ts';
+import {createFieldGadgetEditor} from './field-gadget-editor.ts';
+import {createLoadoutSquadRail} from './loadout-squad-rail.ts';
 import './quick-play-configurator.css';
 
 const STORAGE_KEY='fieldwork.quickplay.generator.v1';
@@ -69,6 +73,8 @@ export function createQuickPlayConfigurator(options:{
  randomSeed:()=>number;
  onGenerate:(settings:QuickPlaySettings)=>void;
  onVisibilityChange?:(visible:boolean)=>void;
+ getRoster?:()=>RosterState;
+ onEquipField?:(id:string,inventory:FieldInventory)=>boolean;
 }){
  let settings=readSettings();
  let previouslyFocused:HTMLElement|null=null;
@@ -180,6 +186,34 @@ export function createQuickPlayConfigurator(options:{
  buildingDisclosure.append(buildingDisclosureSummary,buildingSection);
  advancedBody.append(seedGroup,conditions,buildingDisclosure);
  advanced.append(advancedBody);
+ const squadPrep=node('details','fw-quick-config-advanced');
+ const squadLabel=node('summary','','SQUAD LOADOUT · PREPARE EQUIPMENT');
+ const squadContent=node('div','fw-quick-config-advanced-content');
+ let selectedSquadMember:string|null=null;
+ const renderSquadPrep=()=>{
+  if(!options.getRoster||!options.onEquipField)return;
+  const members=options.getRoster().members;
+  squadContent.replaceChildren();
+  const selected=members.find(m=>m.id===selectedSquadMember)??members[0];
+  if(!selected)return;
+  selectedSquadMember=selected.id;
+  squadContent.append(createLoadoutSquadRail(members.map(m=>({
+   id:m.id,name:m.callsign.toUpperCase(),detail:m.weapon.toUpperCase()
+  })),selected.id,id=>{selectedSquadMember=id;renderSquadPrep();}));
+  const hint=node('p','fw-quick-config-intro',
+   'Ready this squad before generating a mission. Changes apply to the next Quick Play operation.');
+  squadContent.append(hint);
+  squadContent.append(createFieldGadgetEditor({
+   loadout:selected.loadout,magazines:selected.magazines,
+   onCommit:inventory=>{
+    if(options.onEquipField?.(selected.id,inventory))renderSquadPrep();
+   }
+  }));
+ };
+ squadPrep.append(squadLabel,squadContent);
+ squadPrep.addEventListener('toggle',()=>{
+  if(squadPrep.open)renderSquadPrep();
+ });
  const summary=node('p','fw-quick-config-summary');
  const error=node('p','fw-quick-config-error');error.setAttribute('role','status');
  const footer=node('footer','fw-quick-config-footer');
@@ -187,7 +221,7 @@ export function createQuickPlayConfigurator(options:{
  footer.append(command('SURPRISE ME',()=>{
    settings=defaultQuickPlaySettings();render();generate();
  }),start);
- content.append(fieldGrid,advanced,summary,error);
+ content.append(fieldGrid,squadPrep,advanced,summary,error);
  dialog.append(header,intro,content,footer);
  backdrop.append(dialog);document.body.append(backdrop);
  backdrop.addEventListener('click',e=>{
