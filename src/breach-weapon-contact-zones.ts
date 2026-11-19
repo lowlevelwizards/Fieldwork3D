@@ -45,8 +45,8 @@ export function riflePoseContacts(
   return {family:'r870',scale:a.lengthScale,
    stock:{x:a.stockX,y:-1.34,z:0},
    primary:{x:R870_P07.primaryX,y:R870_P07.primaryY,z:2.24},
-   support:{near:{x:R870_P07.supportNearX,y:-3.08,z:-1.60},
-    far:{x:R870_P07.supportFarX,y:-3.08,z:-1.60},
+   support:{near:{x:R870_P07.supportNearX,y:R870_P07.supportPalmY,z:-1.60},
+    far:{x:R870_P07.supportFarX,y:R870_P07.supportPalmY,z:-1.60},
     preferredFraction:.50}};
  }
  if(b.family!=='ar'&&b.family!=='ak'&&b.family!=='hk'&&b.family!=='fal'&&b.family!=='fnc'&&b.family!=='g36')return null;
