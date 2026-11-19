@@ -146,8 +146,10 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
       (rigItem==='rig-full'||(rigItem==='rig-light'&&i===0));
   });
   r.beltPouch.visible=gear?.belt==='belt-standard'&&!beltOccupied;
-  r.medicalPouch.visible=(gear?.medical==='medical-basic'||
-    gear?.medical==='medical-trauma')&&!p.treatmentActive;
+  // A treatment retrieves a dressing, not the entire removable carrier.
+  // The physical medical pouch remains strapped to the real carry socket.
+  r.medicalPouch.visible=gear?.medical==='medical-basic'||
+    gear?.medical==='medical-trauma';
   r.medicalPouch.scale.set(gear?.medical==='medical-trauma'?1.35:1,1,1);
   // Use actual carrier locations instead of rendering every pouch on chest.
   const medicalAnchor=resolveWardrobeDisplayMount(
