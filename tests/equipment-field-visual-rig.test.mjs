@@ -15,11 +15,13 @@ test('actual operator rig shows one, four, then zero finite flash canisters',()=
  try{
   const base=initialEquipmentLoadout();
   poseOperator(rig,pose(base,1),0);
-  assert.equal(rig.flashCanisters.length,4);
+  assert.equal(rig.flashCanisters.length,1,
+   'normal one-flash operators retain their original cold rig geometry');
   assert.equal(count(rig),1);
   const stacked={...base,fieldInventory:
    replaceFieldQuantity(base.fieldInventory,'flashbang',4)};
   poseOperator(rig,pose(stacked,4),0);
+  assert.equal(rig.flashCanisters.length,4);
   assert.equal(count(rig),4);
   poseOperator(rig,pose(stacked,2),0);
   assert.equal(count(rig),2,'throwing spent two physical canisters');
