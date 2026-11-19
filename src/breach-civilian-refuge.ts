@@ -53,6 +53,17 @@ export function chooseCivilianRefuge(c:CivilianActor,
  const threat=c.threatEstimate;
  if(!threat)return null;
  const current=dist(c.p,threat);
+ // A last-known danger point is imperfect evidence, not omniscient AI.
+ // Still avoid choosing a path that passes straight through that point:
+ // running farther from the threat at the END is not enough. Scale the
+ // clearance down if the civilian is already next to the perceived danger.
+ const minimumClearance=Math.max(0,Math.min(34,current-9));
+ const safeLeg=(a:Pt,b:Pt)=>{
+  const dx=b.x-a.x,dy=b.y-a.y,denom=dx*dx+dy*dy;
+  const t=denom>0?Math.max(0,Math.min(1,
+   ((threat.x-a.x)*dx+(threat.y-a.y)*dy)/denom)):0;
+  return dist({x:a.x+dx*t,y:a.y+dy*t},threat)>=minimumClearance;
+ };
  // LOS queries involve walls/doors, not a cheap arithmetic score.
  // The old comparator re-ran them O(n log n) times for the same refuge
  // point during a single decision. Score each candidate once, then keep
@@ -68,7 +79,8 @@ export function chooseCivilianRefuge(c:CivilianActor,
   .map(({p})=>p);
  // Bounded route work, once per new startle decision, NOT each tick.
  for(const p of candidates.slice(0,6)){
-  if(world.canReach(c.p,p))return {goal:{...p},path:[]};
+  if(world.canReach(c.p,p)&&safeLeg(c.p,p))
+   return {goal:{...p},path:[]};
   if(!world.routeTo)continue;
   const waypoints=world.routeTo(c.p,p);
   if(!waypoints.length||dist(waypoints.at(-1)!,p)>20)continue;
@@ -76,7 +88,9 @@ export function chooseCivilianRefuge(c:CivilianActor,
   if(!path.length)continue;
   let last=c.p,pass=true;
   for(const next of path){
-   if(!world.canReach(last,next)){pass=false;break;}
+   if(!world.canReach(last,next)||!safeLeg(last,next)){
+    pass=false;break;
+   }
    last=next;
   }
   if(pass)return {goal:{...p},path};
