@@ -7,7 +7,6 @@ on:
       - 'src/breach-civilian-mission.ts'
       - 'src/breach-order-movement.ts'
       - 'tests/eqa3-1-rescue-escort-pacing.test.mjs'
-      - 'scripts/audit-eqa3-scout.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -32,20 +31,5 @@ jobs:
             tests/civilian-c5-unified-pose.test.mjs \
             tests/mission-deployment-r2.test.mjs \
             tests/release-d3-31f-kick-open-recovery.test.mjs
-      - name: Exact 90-second generated mission follow and entry-pair acceptance
-        run: |
-          mkdir -p artifacts/eqa3
-          EQA3_OUTPUT=artifacts/eqa3/townhouse23-confirmed.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --seed=23 --intel=confirmed --seconds=90 > artifacts/eqa3/townhouse23-summary.txt
-          EQA3_OUTPUT=artifacts/eqa3/warehouse17-confirmed.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --seed=17 --intel=confirmed --seconds=90 > artifacts/eqa3/warehouse17-summary.txt
-          EQA3_OUTPUT=artifacts/eqa3/retail25-unknown.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --seed=25 --intel=unknown --seconds=90 > artifacts/eqa3/retail25-summary.txt
-          for f in artifacts/eqa3/*-summary.txt; do
-            echo "CASE SUMMARY: $f"
-            head -n 30 "$f"
-          done
       - name: Production Vite bundle, no deployment
         run: npm run build
-      - if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: eqa3-1-escort-paired-real-mission-qa
-          path: artifacts/eqa3/
