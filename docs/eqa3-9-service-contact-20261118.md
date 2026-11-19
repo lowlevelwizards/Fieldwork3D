@@ -24,3 +24,26 @@ The opt-in `--contact-look` audit-driver variant is a genuine normal LOOK comman
 Compare Warehouse17 FRONT/SERVICE and UNKNOWN/CONFIRMED intelligence in the unchanged 110-second actual game simulation, explicitly checking prior discovery timestamps, SECURE, FOLLOW, extraction, casualty outcome and no integrity regressions.
 
 **Interpretation caution:** A successful A/B would show an issue with orientation/command discoverability and the scripted scout, **not** with search route AI or a need to extend fog sight. A failed A/B may reveal geometry/door/visibility or interaction-reach mismatch and needs a separate cause-specific check. Do not merge a gameplay/UI change solely because the diagnostic driver completes more missions.
+
+## EQA3.9 stage A/B verified on actual physics
+
+[110-second A/B CI #44455114182](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44455114182) passed; each trial used real 60Hz player-authored orders, actual enemy fire and civilian state, same seed and paired insertion. The only opt-in difference was a normal LOOK order toward a position previously disclosed to the squad.
+
+| Warehouse17 RESCUE | Original actions | With actual LOOK |
+| --- | --- | --- |
+| UNKNOWN / FRONT | Mission DONE, extracted at 63.93s | Mission DONE, extracted at 63.93s |
+| UNKNOWN / SERVICE | Person discovered 23.83s, MOSS arrives by 39.63s, remains SECURE through 110s | Person secured and mission enters EXTRACT 40.57s; **physically extracts at 55.07s** |
+| CONFIRMED / FRONT | Civilian incapacitated under hostile fire; not extracted | Same combat casualty outcome |
+| CONFIRMED / SERVICE | Civilian incapacitated under hostile fire; not extracted | Same combat casualty outcome |
+
+No integrity exceptions or script route aborts. This demonstrates the original inability to SECURE was the operator's orientation/contact affordance after handoff, not failure to search for the rescue person. The normal LOOK action solves it without fog overrides or auto-commands.
+
+## EQA3.9 player-facing change (staged separately on same feature branch)
+
+- Add `LOOK TO PERSON` in the **existing** contextual palette only when the real rescue objective is already confirmed/discovered; the selected route endpoint lies within 34 units; the known location is not currently visible; and a real 5.5-unit swept contact ray is not blocked by the current world/door geometry.
+- The dispatcher revalidates those conditions and authoritatively authors the exact existing `planLook()` order on click. This does not SECURE or FOLLOW automatically, and does not use the civilian's hidden live position.
+- The nearby known point, not an unseen moving person, is the target: this makes the user recheck the last observed/confirmed objective location instead of magically tracking a character.
+- Existing SECURE/FOLLOW visibility and physical GO-time conditions remain unchanged.
+- Tests cover unknown/approximate privacy, confirmed/discovered cues, contact obstruction, route-end gating, no auto-SECURE, and real GO-time sight acquisition; plus the earlier EQA3.7 civilian selector and D1 rescue lifecycle. Full A/B physical mission replay remains in targeted CI.
+
+Do not merge until the player-facing feature branch's TypeScript and targeted tests succeed. Merge at one production release checkpoint only if the latest main deployment is healthy and Pages serves the expected build.
