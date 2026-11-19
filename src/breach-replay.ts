@@ -81,6 +81,9 @@ export type CivilianFrame=Pick<CivilianActor,
     lastEvidenceAt?:number;threatEstimate?:Pt|null;
     /** Newer films preserve witnessed gunshot flinch timing. */
     lastFlinchAt?:number;
+    /** Historical successful physical contact only; optional old films. */
+    lastContactAt?:number;lastContactPoint?:Pt|null;
+    lastEvidenceId?:string|null;
     visibleAtCapture?:boolean;
   };
 export type ReplayFrame={
@@ -219,6 +222,9 @@ export function snapshot(s:Session,seenGround?:string[],
       injuryStage:c.injuryStage,state:c.state,stateSince:c.stateSince,
       restrained:c.restrained===true,velocity:c.velocity,
       lastEvidenceAt:c.lastEvidenceAt,lastFlinchAt:c.lastFlinchAt??-100,
+      lastEvidenceId:c.lastEvidenceId,
+      lastContactAt:c.lastContactAt,
+      lastContactPoint:c.lastContactPoint?position(c.lastContactPoint):null,
       threatEstimate:c.threatEstimate?position(c.threatEstimate):null,
       lastHitAt:c.lastHitAt,following:c.following,
       carriedById:c.carriedById,transportMode:c.transportMode,
@@ -529,6 +535,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Never retain a present-day/omniscient gaze target on film rewind.
       lastEvidenceAt:copy.lastEvidenceAt??-1,
       lastFlinchAt:copy.lastFlinchAt??-100,
+      lastEvidenceId:copy.lastEvidenceId??null,
+      lastContactAt:copy.lastContactAt??-100,
+      lastContactPoint:copy.lastContactPoint?position(copy.lastContactPoint):null,
       threatEstimate:copy.threatEstimate?position(copy.threatEstimate):null,
       carriedById:copy.carriedById??null,
       transportMode:copy.transportMode??null,
