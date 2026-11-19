@@ -1,0 +1,21 @@
+name: Loadout Prep L2 critical
+on:
+  push:
+    branches:
+      - feature/loadout-prep-l2-20261118
+  workflow_dispatch:
+jobs:
+  inventory-critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Typecheck
+        run: npm run check
+      - name: Inventory regression tests
+        run: node --experimental-strip-types --test tests/equipment-field-inventory.test.mjs tests/equipment-12-flash-supply.test.mjs
