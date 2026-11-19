@@ -1,4 +1,5 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {escortWalkMultiplier} from './breach-civilian-mission.ts';
 /** Stage 8: conditional locomotion, lasting WATCH/LOOK aim, PIE
  * progression and waypoint arrival. Motion is still delegated to the
  * authoritative Stage 7 physical motor.
@@ -222,8 +223,20 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
     const templateEntry=n.kind==='move'&&!!n.entryDoorId&&
       n.aimMode==='fixed'&&
       (!a.aimInstruction||a.aimInstruction.source==='stack');
-    move(a,n.p,dt,s,running?1.40:distantTemplateStack?1:
-      templateEntry?.90:cautious?.70:1);
+    // EQA3.1: a healthy real civilian walks at 43u/s, and a wounded
+    // escort at 22u/s; ordinary 53u/s operator travel otherwise outruns
+    // the FOLLOW contract and repeatedly triggers ESCORT SEPARATED.
+    // This affects only the actual owner of an active FOLLOW, and only
+    // ordinary walk; explicit RUN/sprint, door entries, and carriers
+    // retain their existing independent physical authority.
+    const escorted=!running&&n.kind==='move'&&
+      !n.entryDoorId&&!n.stackDoorId&&s.mission==='extract'&&
+      s.rescue?.following===a.id?
+      s.civilians.find(c=>c.rescueTarget&&c.following===a.id&&
+        c.health>0&&!c.carriedById)??null:null;
+    const escortScale=escortWalkMultiplier(a,escorted);
+    move(a,n.p,dt,s,(running?1.40:distantTemplateStack?1:
+      templateEntry?.90:cautious?.70:1)*escortScale);
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     // While wedged sideways, the physical shoulder axis has priority
