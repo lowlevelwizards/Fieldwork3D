@@ -188,3 +188,23 @@ function moveOrAdd(inventory:FieldInventory,id:FieldItemId,
 export const fieldInventoryMass=(inventory:FieldInventory):number=>
  inventory.stacks.reduce((sum,row)=>sum+
   (FIELD_ITEMS[row.itemId]?.massKg??0)*row.quantity,0);
+
+/** L2.6: quote a physical gadget-only copy before mutating the destination.
+ * This is intentionally NOT a full loadout/weapon transfer. There is no
+ * silent omission of an incompatible item or phantom campaign stock.
+ */
+export function quoteFieldInventoryCopy(source:FieldInventory,
+ targetKit:EquipmentLoadout,targetMagazines:readonly MagazineItem[]):
+ {ok:true;inventory:FieldInventory}|{ok:false;reason:string}{
+ const requested=readFieldInventory(source,targetKit);
+ for(const id of FIELD_ITEM_IDS){
+  if(fieldQuantity(requested,id)!==fieldQuantity(source,id))
+   return {ok:false,reason:FIELD_ITEMS[id].name+' cannot be carried with this equipment'};
+ }
+ if(fieldCarryReport(targetKit,targetMagazines,requested).valid)
+  return {ok:true,inventory:requested};
+ const packed=autoPackFieldInventory(targetKit,targetMagazines,requested);
+ if(packed&&fieldCarryReport(targetKit,targetMagazines,packed).valid)
+  return {ok:true,inventory:packed};
+ return {ok:false,reason:'Not enough free carrying capacity on the destination operator'};
+}
