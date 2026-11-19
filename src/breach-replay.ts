@@ -51,6 +51,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** EQA3.16: auditory estimate at this film time, never future AI memory. */
+ heard?:Pt|null;contact?:Pt|null;lastNoiseAt?:number;
  /** EQA3.10: finite physical restraint quantity (older films default zero). */
  restraintRemaining?:number;
  /** EQA3.9: actual SECURE/FOLLOW support-hand reach, absent in old film. */
@@ -154,6 +156,9 @@ export function snapshot(s:Session,seenGround?:string[],
       traversalElevation:a.traversalElevation,
       traversalRetreating:a.traversalRetreating,
       turning:a.turning,posture:a.posture,pace:a.pace,alert:a.alert,
+      heard:a.heard?position(a.heard):null,
+      contact:a.contact?position(a.contact):null,
+      lastNoiseAt:a.lastNoiseAt,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       insertedMagazineId:a.insertedMagazineId,
       spareMagazines:reuseFrozenReplayValue(a.spareMagazines,
@@ -495,6 +500,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
+      heard:copy.heard?position(copy.heard):null,
+      contact:copy.contact?position(copy.contact):null,
+      lastNoiseAt:copy.lastNoiseAt??-100,
       restraintRemaining:copy.restraintRemaining??0,
       // Pre-A3.6 films have no anchor: do not leak one from a later seek.
       kickFoot:copy.kickFoot??null,
