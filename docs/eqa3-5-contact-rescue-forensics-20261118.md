@@ -42,3 +42,29 @@ Interpretation requires separating (a) civilian wound from a legitimate traversi
 ## Next stage after CI
 
 Inspect the four exact sightline witnesses and the Warehouse17 injury/escort sequence. If a *specific* contradiction is real, make the smallest source fix on a fresh feature branch (for instance, a bad occluder or spawn sightline, illegal firing-lane visibility, or a demonstrable escort route failure), preserving the nonproblematic entry contrasts. Verify physical traces and the core tactical gate before any release. Apartment13 is still a separate visual-proximity witness, not a proven civilian-damage defect.
+
+## First completed EQA3.5 CI evidence
+
+[First green 60Hz optical + rescue job](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44440470583), with raw six-file JSON artifact. All 15 physical door opens, all 7 entrance pairs and all 11 first contacts still passed. There were **22 actual sightline rays and zero blocked optical-exposure contradictions**.
+
+Four pre-open first-contact witnesses resolved more specifically:
+
+| Mission / entry | Contact before opening | Sightline observation |
+| --- | --- | --- |
+| Restaurant18 RESCUE / FRONT | 0.52s vs 1.52s OPEN | Two blue-to-red rays pass through the still-closed **glazed** FRONT and DOUBLE-L leaves; transparent optical glazing, not a solid-wall contradiction |
+| Utility20 CAPTURE / SHUTTER | 0.32s vs 1.42s OPEN | Two opposing blue/red rays do **not** cross the shutter leaf or any recorded window; exposed line of sight around that insertion, not visibility through steel |
+| Townhouse23 RESCUE / FRONT | 0.32s vs 1.52s OPEN | One blue-to-red ray intersects closed **french** glass leaf |
+| Retail25 CAPTURE / FRONT | 0.32s vs 2.72s OPEN | Six blue-to-red rays intersect closed **glazed** FRONT leaf |
+
+Thus the four cases are **not evidence of an opaque door/visibility bug**. This does not yet certify rendered fairness of facing, distance and cover from the player's camera; review exact scene images before changing geometry. An optical ray may pass through glass while physical bullet penetration is separately determined.
+
+Warehouse17 RESCUE, actual player-legal actions and real full 90s simulations, UNKNOWN vs CONFIRMED with FRONT/SERVICE:
+
+- UNKNOWN FRONT: one red-side guard projectile injured the rescue person at **37.40s** (health 2→1). At 37.63s the civilian became compliant and the objective entered EXTRACT; at **38.63s** the injured civilian was actually FOLLOWING ROOK. No completed extraction within 90s. UNKNOWN SERVICE did not secure the objective and handed scripted authority to a genuine surviving operator after ROOK was incapacitated.
+- CONFIRMED FRONT: red-side guard projectiles struck the rescue person at **24.67s and 25.30s**, health **2→1→0**; objective reached EXTRACT at 25.23s but civilian became incapacitated before FOLLOW.
+- CONFIRMED SERVICE: the same guard fired physically intersecting projectiles at **20.30s and 20.93s**, health **2→1→0**; objective entered EXTRACT at 20.63s but civilian was incapacitated before FOLLOW.
+- Across those four episodes there were zero rejected scripted orders, zero artificial route aborts and zero integrity failures. Neither confirmed insertion completed extraction in 90s. All five reported civilian wounds had authoritative red-side guard `shotId` and corresponding physical projectile endpoints.
+
+**Crucial attribution limitation:** the `ShotEvent.targetId` stored on a projectile means **the resolved physical person that was hit**, *not necessarily the combatant the shooter deliberately aimed at*. The 2nd forensic instrument pass records the shooter's `TeamActor.targetId` separately. Do **not** classify these as deliberate hostage executions without that evidence. The initial witness does establish that gunfire physically crossed the unprotected civilian's position just as rescuers approached.
+
+Design implication: prioritize assessing *real player choice and safe approach/cover* in this specific rescue room, not invisible civilian invulnerability, generic AI delays or forced guarantees. A person being hit by hostile fire remains a credible possible outcome; a repeated unavoidable corridor with no meaningful counterplay would instead justify a narrow geometry/placement fix.
