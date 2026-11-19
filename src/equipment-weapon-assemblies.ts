@@ -14,6 +14,7 @@ import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {g36FrontEnd,g36SupportRange} from './weapons/geometry/g36-variant-parts.ts';
 import {R870_P07} from './weapons/geometry/r870-art-contract.ts';
+import {r870Barrel,r870Tube} from './weapons/geometry/r870-front-p14.ts';
 import {r870RearPair,R870_REAR_PARTS} from './weapons/geometry/r870-rear-p12.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {opticProfile} from './weapons/geometry/optic-profiles.ts';
@@ -340,7 +341,8 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   build?.family==='fal'?falBarrelArt(build.parts.barrel):
   build?.family==='fnc'&&build.parts.barrel==='fnc-177-service'?
   {lengthScale:.94,muzzleX:19.50,muzzleY:0}:
-  build?.family==='r870'?{lengthScale:.92,muzzleX:R870_P07.muzzleX,
+  build?.family==='r870'?{lengthScale:.92,
+   muzzleX:r870Barrel(build.parts.barrel)?.muzzleX??R870_P07.muzzleX,
    muzzleY:R870_P07.muzzleY}:
   build?.family==='g36'&&g36FrontEnd(build.parts.barrel)?
   {lengthScale:g36FrontEnd(build.parts.barrel)!.lengthScale,
@@ -378,6 +380,18 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
   const shiftedMass=.38;
   inertia+=shiftedMass*(moved*moved-rear*rear);
   weighted+=shiftedMass*(moved-rear);
+ }
+ // Real tube length and shell capacity affect carried weight and yaw inertia.
+ // Reuse the same authoritative front profile in geometry, stats and combat.
+ if(build?.family==='r870'){
+  const tube=r870Tube(build.parts.magazine);
+  if(tube){
+   const delta=tube.capacity-6;
+   const shellMass=.045,frontX=8.2;
+   mass+=delta*shellMass;
+   weighted+=delta*shellMass*frontX;
+   inertia+=delta*shellMass*frontX*frontX;
+  }
  }
  const balance=weighted/mass;
  const familyBarrel=build?FAMILY_PARTS[build.parts.barrel]:undefined;
