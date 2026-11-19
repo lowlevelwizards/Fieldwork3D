@@ -11,6 +11,8 @@ import {visibleFlashCanisters,visibleDoorWedges}
  from '../src/equipment-field-visuals.ts';
 import {executeTacticalUtilityOrder} from '../src/breach-order-utility.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {initDoor} from '../src/breach-door.ts';
+import {createEntryOrderHandler} from '../src/breach-order-entry.ts';
 import {newSession,team,planCivilianInteraction,toggling,stepSession}
  from '../src/breach-game.ts';
 import {createCivilian} from '../src/breach-civilian-types.ts';
@@ -186,5 +188,33 @@ test('F2: real RESTRAIN retrieves backpack cuffs, then consumes only on success'
   assert.equal(person.restrained,true);
   assert.equal(a.restraintRemaining,1);
   assert.equal(fieldQuantity(a.equipment.fieldInventory,'zip-tie'),1);
+ }finally{activateSite(null);}
+});
+
+test('F2: actual door WEDGE/UNWEDGE action conserves placed + carried stock',()=>{
+ const s=newSession(),a=team(s)[0],events=[];
+ try{
+  const door=initDoor({id:'F2-WEDGE',a:{x:200,y:250},b:{x:238,y:250},
+   open:false,openedAt:-1,hinge:'a',swing:1},0);
+  s.doors=[door];a.p={x:231,y:272};
+  applyDeploymentInventory(a,issued([
+   {itemId:'wedge',quantity:2,location:'belt'},
+   {itemId:'flashbang',quantity:1,location:'rig'}],'utility-wedge'));
+  const hooks={notify:(_s,msg)=>events.push(msg),
+   approach:()=>true,hear:()=>{},battleEvent:()=>{}};
+  const handle=createEntryOrderHandler(hooks);
+  const wedge={id:5001,kind:'tool',p:{...a.p},doorId:door.id,toolMethod:'wedge'};
+  a.plan=[wedge];a.actionTimer=1.23;
+  assert.equal(handle(s,a,wedge,.1),true);
+  assert.equal(door.wedged,true);assert.equal(door.wedgeOwnerId,a.id);
+  assert.equal(a.wedgeRemaining,1);
+  assert.equal(fieldQuantity(a.equipment.fieldInventory,'wedge'),1);
+  const unwedge={id:5002,kind:'tool',p:{...a.p},doorId:door.id,toolMethod:'unwedge'};
+  a.plan=[unwedge];a.actionTimer=.71;
+  assert.equal(handle(s,a,unwedge,.1),true);
+  assert.equal(door.wedged,false);
+  assert.equal(a.wedgeRemaining,2);
+  assert.equal(fieldQuantity(a.equipment.fieldInventory,'wedge'),2);
+  assert.equal(restoreDeployedWedge({...a,wedgeRemaining:4}),false);
  }finally{activateSite(null);}
 });
