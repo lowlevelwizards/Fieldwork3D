@@ -1,8 +1,9 @@
 import {sampleOperatorFootContacts,applyOperatorLegIK} from './breach-operator-lower-body.ts';
 import {throwSupportGesture} from './breach-animation-choreography.ts';
 import {sampleEquipmentGesture} from './breach-equipment-interaction-pose.ts';
-import {flashCanisterSocket,wedgeSocket} from './equipment-field-visuals.ts';
-import {presentFlashHandoff,presentWedgeHandoff}
+import {flashCanisterSocket,wedgeSocket,flexCuffSocket}
+ from './equipment-field-visuals.ts';
+import {presentFlashHandoff,presentWedgeHandoff,presentFlexCuffHandoff}
  from './breach-operator-field-handoff.ts';
 import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-operator-animation-frame.ts';
 import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
@@ -873,8 +874,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     reaching=true;
     const flash=p.equipmentInteraction;
     const gesture=sampleEquipmentGesture(flash);
-    const socket=flash.item==='wedge'?
-      wedgeSocket(flash.location,0):
+    const socket=flash.item==='wedge'?wedgeSocket(flash.location,0):
+      flash.item==='zip-tie'?flexCuffSocket(flash.location,0):
       flashCanisterSocket(flash.location==='pocket'?'belt':flash.location,0);
     const pouch=P(socket.x,socket.y,socket.z);
     if(socket.bone==='hip')
@@ -883,7 +884,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       pouch.x+=r.pack.position.x;pouch.y+=r.pack.position.y;
       pouch.z+=r.pack.position.z;
     }
-    const ready=flash.item==='wedge'?P(12,-13,-6):P(12,3,-6);
+    const ready=flash.item==='wedge'?P(12,-13,-6):
+      flash.item==='zip-tie'?P(12,-4,-6):P(12,3,-6);
     leftGrip.copy(fit.support).lerp(pouch,gesture.reach);
     leftGrip.lerp(ready,gesture.lift);
   }else if(throwActive){
@@ -1023,7 +1025,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // leaves the weapon to reach forward; shot/muzzle data and GO contacts
   // remain authored solely by the fixed-tick game.
   const contactAge=p.civilianContactAge??Infinity;
-  const contactReach=!p.down&&!p.surrender&&!p.firing&&
+  const contactReach=!equipmentActive&&!p.down&&!p.surrender&&!p.firing&&
     contactAge>=0&&contactAge<.64?
     Math.sin(Math.PI*contactAge/.64):0;
   beginOperatorArmPose(r,scratch);
@@ -1341,6 +1343,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // support hand; cancellation and replay rewinds restore it to the pouch.
   presentFlashHandoff(r,p,equipmentActive);
   presentWedgeHandoff(r,p,equipmentActive);
+  presentFlexCuffHandoff(r,p,equipmentActive);
   if(profilePose){
    const total=performance.now()-poseStart;
    // 'other' includes gait, arm constraints, IK and transform publication;
