@@ -160,6 +160,14 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
   reload:0,reloadDuration:0,lastDoorAt:-100,lastThrowAt:-100,
   down,surrender:secured&&physical.kneel>.001,aiming:false,firing:false,
   civilianGesture:gesture,
+  // Named physical state/gesture handoff uses the same displayed pose
+  // buffers as operators. No simulation clock, extra foot solver or
+  // current roster lookup. Manual timeline seeks stay direct.
+  npcTransitionKey:'civilian/'+pose+'/'+(gesture??'hands-neutral')+
+    '/'+(secured&&physical.kneel>.001?'kneeling':'upright'),
+  npcTransitionDuration:down?.15:
+    physical.flinch>.15?.14:
+    pose==='run'||pose==='startled'?.18:.28,
   turning:0,deterministic:true,unarmedPreview:true,
   appearanceSeed:c.appearanceSeed,equipment:r.equipment,
   wardrobe:r.wardrobe,gait:pose==='run'?'run':'walk',

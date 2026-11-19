@@ -273,7 +273,16 @@ export class NpcLabPreview{
    this.scene.add(this.hostile.root);
   }
   const state=sampleNpcHostile(id,clock);
-  poseOperator(this.hostile,{...state.pose,replayFeet:feet},0);
+  // The same single-rig blend used for civilians also covers hostile
+  // reaction-track switching. A rewind of the same track remains exact.
+  poseOperator(this.hostile,{...state.pose,replayFeet:feet,
+   npcTransitionKey:'hostile/'+id+'/'+
+     (state.pose.surrender?'surrender':
+       state.pose.down?'down':
+       state.pose.reload>0?'reload':
+       state.pose.aiming?'aim':state.pose.firing?'fire':'hold'),
+   npcTransitionDuration:state.pose.down?.15:
+     state.pose.surrender?.20:.25},0);
   this.hostile.head.rotation.y+=state.physical.headYaw;
   this.hostile.head.rotation.x+=state.physical.headPitch;
   this.hostile.root.visible=true;
