@@ -295,9 +295,9 @@ function renderOperationsBoard(){
   }
   const fieldHost=loadout.field('utilities');
   const renderField=(current:typeof member)=>{
-   const commitField=(inventory:FieldInventory,undo=false)=>{
-    const previousFocus=document.activeElement instanceof HTMLElement?
-     document.activeElement.getAttribute('aria-label'):null;
+   const commitField=(inventory:FieldInventory,undo=false,preferredFocus?:string)=>{
+    const previousFocus=preferredFocus??(document.activeElement instanceof HTMLElement?
+     document.activeElement.getAttribute('aria-label'):null);
     const prior=config.getRoster();
     const next=equipRosterFieldInventory(prior,current.id,inventory);
     if(next===prior)return;
@@ -327,6 +327,26 @@ function renderOperationsBoard(){
    };
    const editor=createFieldGadgetEditor({
     loadout:current.loadout,magazines:current.magazines,
+    onInspectLocation:location=>quickKitPreview?.highlightCarryLocation(location),
+    onMoveMagazine:(magazineId,to,focusLabel)=>{
+     if(config.getSession().phase!=='planning'||config.isReplaying())return;
+     const prior=config.getRoster();
+     const next=moveRosterMagazine(prior,current.id,magazineId,to);
+     if(next===prior)return;
+     config.setRoster(next);config.saveRoster();config.applyRoster();
+     const changed=next.members.find(m=>m.id===current.id);
+     if(changed){
+      renderField(changed);
+      quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+       changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
+      if(focusLabel){
+       Array.from(fieldHost.querySelectorAll<HTMLElement>('button[aria-label]'))
+        .find(el=>el.getAttribute('aria-label')===focusLabel)
+        ?.focus({preventScroll:true});
+      }
+     }
+     config.refreshHud();
+    },
     locked:config.getSession().phase!=='planning'||config.isReplaying(),
     copyTargets:config.getRoster().members.filter(m=>m.id!==current.id)
      .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
@@ -350,7 +370,7 @@ function renderOperationsBoard(){
       current.loadout.fieldInventory??initialFieldInventory(current.loadout));
      if(previous)commitField(previous,true);
     },
-    onCommit:inventory=>commitField(inventory)
+    onCommit:(inventory,focusLabel)=>commitField(inventory,false,focusLabel)
    });
    const old=fieldHost.querySelector('.fw-field-inventory');
    if(old)old.replaceWith(editor);else fieldHost.append(editor);

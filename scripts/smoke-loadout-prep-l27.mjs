@@ -61,6 +61,68 @@ try{
   assert.match(await panel.getByRole('status').innerText(),/ALREADY PACKED/);
   assert.equal(Number(await rigMeter.getAttribute('aria-valuenow')),before,
    'no-op auto pack preserves the true physical carrying report');
+  const pickOne=panel.getByRole('button',{name:'Select one Flashbang from RIG'});
+  const dragGrip=pickOne.locator('.fw-field-inventory-drag-grip');
+  const gripBox=await dragGrip.boundingBox();
+  assert.ok(gripBox&&gripBox.width>=36&&gripBox.height>=38,
+   'drag grip remains thumb-sized');
+  if(device==='phone'){
+   const gestures=await pickOne.evaluate(el=>{
+    const grip=el.querySelector('.fw-field-inventory-drag-grip');
+    return {tile:getComputedStyle(el).touchAction,
+     grip:grip?getComputedStyle(grip).touchAction:null};
+   });
+   assert.deepEqual(gestures,{tile:'pan-y',grip:'none'},
+    'mobile scroll over item text remains separate from grip dragging');
+  }
+  const preview=panel.locator('.fw-pre-go-preview');
+  const previewHasWebGL=await preview.locator('canvas').count()>0;
+  await pickOne.click();
+  if(previewHasWebGL)
+   assert.equal(await preview.getAttribute('data-carry-highlight'),'rig',
+    'selecting a stored item marks its real 3D rig location');
+  assert.equal(await pickOne.getAttribute('aria-pressed'),'true',
+   'physical item selection is visible and keyboard accessible');
+  const placeOne=panel.getByRole('button',{name:'Place selected item in BACKPACK'});
+  assert.equal(await placeOne.isEnabled(),true,'real inventory fit is verified before placement');
+  await placeOne.click();
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from BACKPACK'}).evaluate(el=>el===document.activeElement),true,
+   'placement restores focus on the new physical item tile');
+  if(previewHasWebGL){
+   assert.equal(await preview.getAttribute('data-carry-highlight'),'backpack',
+    'successful placement retargets the same preview carry marker');
+   assert.equal(await preview.locator('canvas').count(),1,
+    'physical item transfer does not recreate the 3D renderer');
+  }
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),0,
+   'one flash leaves its source carrier');
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from BACKPACK'}).count(),1,
+   'the exact issued flash reaches the destination carrier');
+  await panel.getByRole('button',{name:'Undo last gadget change'}).click();
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),1,
+   'undo restores the original carrying position');
+  await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).click();
+  assert.equal(await panel.getByRole('button',{name:'Cancel selected item placement'}).isVisible(),true,
+   'touch selection exposes an explicit cancel action');
+  await panel.getByRole('button',{name:'Cancel selected item placement'}).click();
+  assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).getAttribute('aria-pressed'),'false',
+   'cancel clears the selection without inventory changes');
+  if(device==='desktop'){
+   const source=await panel.getByRole('button',{name:'Select one Flashbang from RIG'})
+    .boundingBox();
+   const target=await panel.locator('.fw-field-inventory-slot[data-location="backpack"]')
+    .boundingBox();
+   assert.ok(source&&target,'pointer target zones are visible');
+   await page.mouse.move(source.x+source.width/2,source.y+source.height/2);
+   await page.mouse.down();
+   await page.mouse.move(target.x+target.width/2,target.y+target.height/2,{steps:6});
+   await page.mouse.up();
+   assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from BACKPACK'}).count(),1,
+    'pointer drag transfers exactly one physical flash');
+   await panel.getByRole('button',{name:'Undo last gadget change'}).click();
+   assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),1,
+    'pointer drag transaction can be undone');
+  }
   await panel.getByLabel('Operator to copy gadgets to').selectOption('moss');
   await panel.getByRole('button',{name:'Copy carried gadgets to selected operator'}).click();
   assert.match(await panel.locator('.fw-pre-go-note').innerText(),/copied/i);
@@ -81,6 +143,24 @@ try{
    animations:'disabled'});
   await panel.getByRole('button',{name:'BACK TO BRIEFING'}).click();
   assert.equal(await panel.isVisible(),false);
+  const magazineDemo=page.locator('#magazinePlacementSmoke');
+  const magTile=magazineDemo.locator(
+   '.fw-field-inventory-slot[data-location="rig"] .fw-field-inventory-carry-tile[data-kind="magazine"]').first();
+  const magId=await magTile.getAttribute('data-magazine-id');
+  const originalLabel=await magTile.locator('.fw-field-inventory-item-name').innerText();
+  assert.ok(magId&&originalLabel.includes('rounds'),'magazine ID and rounds are visible');
+  await magazineDemo.getByRole('button',{name:'Select magazine '+magId+' from RIG'}).click();
+  const backpackPlace=magazineDemo.getByRole('button',{name:'Place selected item in BACKPACK'});
+  assert.equal(await backpackPlace.isEnabled(),true);
+  await backpackPlace.click();
+  const moved=magazineDemo.locator(
+   '.fw-field-inventory-slot[data-location="backpack"] [data-magazine-id="'+magId+'"]');
+  assert.equal(await moved.count(),1,'one actual magazine moved without duplication');
+  assert.equal(await moved.locator('.fw-field-inventory-item-name').innerText(),
+   originalLabel,'magazine identity and rounds survive placement');
+  assert.equal(await magazineDemo.locator(
+   '.fw-field-inventory-slot[data-location="rig"] [data-magazine-id="'+magId+'"]').count(),0);
+
   await page.evaluate(()=>window.loadoutPrepSmoke.stop());
   await launch.click();
   assert.equal(await panel.isVisible(),false,'cannot re-enter equipment prep after GO');

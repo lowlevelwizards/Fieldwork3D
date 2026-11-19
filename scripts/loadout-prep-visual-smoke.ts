@@ -3,6 +3,8 @@ import {newCampaign,acceptContract,equipCampaignPreGoFieldInventory}
  from '../src/campaign-state.ts';
 import {mountCampaignPreGoPrep} from '../src/ui/campaign-pre-go-prep.ts';
 import type {FieldInventory} from '../src/equipment-field-inventory.ts';
+import {initialRoster,moveRosterMagazine} from '../src/breach-roster.ts';
+import {createFieldGadgetEditor} from '../src/ui/field-gadget-editor.ts';
 let campaign=newCampaign(73);
 campaign=acceptContract(campaign,campaign.contracts[0].id);
 campaign={...campaign,operators:campaign.operators.map(o=>({...o,magazines:[]}))};
@@ -25,4 +27,22 @@ Object.assign(window,{loadoutPrepSmoke:{
   ?.loadout.fieldInventory?.stacks.filter(s=>s.itemId==='flashbang')
    .reduce((sum,s)=>sum+s.quantity,0)??0
  }});
+// Nonshipping placement witness uses the actual roster magazine authority.
+let roster=initialRoster();
+const magazineHost=document.createElement('section');
+magazineHost.id='magazinePlacementSmoke';
+magazineHost.style.cssText='max-width:720px;margin:12px auto;min-width:0';
+document.body.append(magazineHost);
+const renderMagazineEditor=()=>{
+ const operator=roster.members[0];
+ magazineHost.replaceChildren(createFieldGadgetEditor({
+  loadout:operator.loadout,magazines:operator.magazines,onCommit:()=>{},
+  onMoveMagazine:(id,to)=>{
+   const next=moveRosterMagazine(roster,operator.id,id,to);
+   if(next===roster)throw Error('Owner rejected a quoted magazine move');
+   roster=next;renderMagazineEditor();
+  }
+ }));
+};
+renderMagazineEditor();
 document.documentElement.dataset.loadoutPrepReady='1';

@@ -8,6 +8,8 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
+import type {FieldCarryLocation} from './equipment-field-inventory.ts';
+import {previewCarryFocus} from './equipment-preview-carry-focus.ts';
 import {equippedFlashCharges} from './equipment-loadouts.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
@@ -25,6 +27,8 @@ export class CampaignKitPreview{
  private readonly camera=new THREE.PerspectiveCamera(34,1,.1,700);
  private renderer:THREE.WebGLRenderer|null=null;
  private rig:OperatorRig|null=null;
+ private carryMarker:THREE.Mesh<THREE.RingGeometry,THREE.MeshBasicMaterial>|null=null;
+ private selectedCarryLocation:FieldCarryLocation|null=null;
  private observer:ResizeObserver|null=null;
  private azimuth=.72;
  private pointerId:number|null=null;
@@ -113,6 +117,38 @@ export class CampaignKitPreview{
    deterministic:true},0);
   this.draw();
  }
+
+ /** Highlight the actual operator carrying position; no new renderer, stock
+  * write, item mesh, physics or perpetual animation loop is created. */
+ highlightCarryLocation(location:FieldCarryLocation|null):void{
+  if(!this.rig||!this.renderer)return;
+  if(!location){
+   this.selectedCarryLocation=null;
+   if(this.carryMarker){this.carryMarker.visible=false;this.draw();}
+   delete this.host.dataset.carryHighlight;
+   return;
+  }
+  if(location===this.selectedCarryLocation&&this.carryMarker?.visible)return;
+  this.selectedCarryLocation=location;
+  if(!this.carryMarker){
+   const material=new THREE.MeshBasicMaterial({
+    color:0xc8efaf,transparent:true,opacity:.88,depthTest:false,
+    side:THREE.DoubleSide});
+   this.carryMarker=new THREE.Mesh(new THREE.RingGeometry(5.5,6.2,24),material);
+   this.carryMarker.name='preview-only-carry-zone-marker';
+   this.carryMarker.renderOrder=1000;
+  }
+  const marker=this.carryMarker,socket=previewCarryFocus(location);
+  const bone=this.rig[socket.bone];
+  if(marker.parent!==bone)bone.add(marker);
+  marker.position.set(socket.x,socket.y,socket.z);
+  marker.rotation.set(0,Math.PI/2,0);
+  marker.scale.setScalar(socket.radius/6.2);
+  marker.visible=true;
+  this.host.dataset.carryHighlight=location;
+  this.focusOn('carry');
+  this.draw();
+ }
  /** Move one canvas between rebuilt HTML hosts while maintaining its view state. */
  attachHost(host:HTMLElement,drawImmediately=true):void{
   if(host===this.host)return;
@@ -128,6 +164,8 @@ export class CampaignKitPreview{
   if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
   this.dragFrame=null;this.pointerId=null;this.host=host;
   host.dataset.previewFocus=this.focusArea;
+  if(this.selectedCarryLocation)host.dataset.carryHighlight=this.selectedCarryLocation;
+  else delete host.dataset.carryHighlight;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
   host.tabIndex=0;
@@ -285,6 +323,11 @@ export class CampaignKitPreview{
   this.host.removeEventListener('pointercancel',this.pointerUp);
   this.host.removeEventListener('lostpointercapture',this.pointerUp);
   this.host.removeEventListener('keydown',this.keyDown);
+  if(this.carryMarker){
+   this.carryMarker.removeFromParent();this.carryMarker.geometry.dispose();
+   this.carryMarker.material.dispose();this.carryMarker=null;
+  }
+  this.selectedCarryLocation=null;
   if(this.rig){releaseOperatorPreviewRig(this.scene,this.rig);this.rig=null;}
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;

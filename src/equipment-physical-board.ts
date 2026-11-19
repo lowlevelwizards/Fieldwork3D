@@ -14,6 +14,9 @@ export type PhysicalCarryTile={
  location:FieldCarryLocation|'overflow';quantity:number;spaces:number;
  /** Only field consumables are movable through L2.11C's atomic operation. */
  itemId?:FieldItemId;
+ /** Actual spare magazine identity, never a new ammo pool. */
+ magazineId?:string;
+ accessSeconds?:number;
 };
 export type PhysicalCarryZone={
  location:FieldCarryLocation;used:number;capacity:number;remaining:number;
@@ -45,16 +48,19 @@ export function physicalCarryBoard(kit:EquipmentLoadout,
    location:row.location,quantity:row.quantity,
    spaces:row.quantity*definition.spaces});
  }
- const byId=new Map(magazines.map(m=>[m.id,m]));
+ const byId=new Map(magazines.map((m,i)=>[m.id,{item:m,index:i}]));
  for(const row of carryPlacementLedger(kit,magazines)){
   // Wedges are the individual field stacks above, never a duplicate
   // decorative utility item, including for legacy loadouts.
   if(row.id==='utility-wedge')continue;
-  const title=row.kind==='magazine'?'Magazine':EQUIPMENT_CATALOG[row.id]?.name??row.id;
-  const rounds=row.kind==='magazine'?byId.get(row.id)?.rounds:undefined;
+  const match=row.kind==='magazine'?byId.get(row.id):undefined;
+  const title=match?'MAG '+String(match.index+1).padStart(2,'0'):
+   EQUIPMENT_CATALOG[row.id]?.name??row.id;
+  const rounds=match?.item.rounds;
   place({id:row.kind+':'+row.id,label:typeof rounds==='number'?
    title+' · '+rounds+' rounds':title,kind:row.kind,
-   location:row.location,quantity:1,spaces:row.spaces});
+   location:row.location,quantity:1,spaces:row.spaces,
+   magazineId:match?.item.id,accessSeconds:row.accessSeconds});
  }
  return {zones,unplaced,conflicts:report.conflicts,valid:report.valid};
 }

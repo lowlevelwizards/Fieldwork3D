@@ -94,3 +94,75 @@
 .fw-field-inventory-empty{font-size:9px;color:#789184;letter-spacing:.07em}
 .fw-field-inventory-unplaced{padding:7px;border:1px solid #ca936e;
  border-radius:6px;color:#eed2b6;font-size:10px;line-height:1.4}
+
+/* L2.11D: explicit, keyboard/touch accessible one-piece selection.
+ * No drag gestures or continuous animation; active state never owns stock. */
+.fw-field-inventory-select-item{display:grid;grid-template-columns:15px minmax(0,1fr) auto;
+ align-items:center;gap:5px;width:100%;min-height:38px;padding:4px 3px;
+ border:0;background:transparent;color:inherit;text-align:left;
+ cursor:pointer;touch-action:manipulation}
+.fw-field-inventory-select-item:disabled{opacity:.55;cursor:not-allowed}
+.fw-field-inventory-select-item[aria-pressed="true"]{background:rgba(173,215,161,.21);
+ outline:2px solid #b9dba7;outline-offset:0;border-radius:4px}
+.fw-field-inventory-place{grid-column:1/-1;min-height:38px;
+ padding:6px 7px;border:1px solid #b6cfa5;border-radius:5px;
+ background:rgba(83,121,87,.34);color:#f3f9e9;font-size:10px;
+ font-weight:700;cursor:pointer;touch-action:manipulation}
+.fw-field-inventory-place:disabled{opacity:.45;cursor:not-allowed}
+.fw-field-inventory-place[hidden]{display:none}
+
+/* L2.11E — only physical field pieces begin a pointer drag. Touch scroll
+ * remains available everywhere else and the 3D preview keeps its orbit. */
+.fw-field-inventory-select-item{touch-action:none;user-select:none;
+ -webkit-user-select:none}
+.fw-field-inventory-slot[data-drag-target="true"]{
+ outline:2px solid #b9dba7;outline-offset:0;background:rgba(111,164,118,.18)}
+.fw-field-inventory-drag-ghost{position:fixed;z-index:2147483646;
+ pointer-events:none;padding:8px 11px;border:1px solid #c5d6b2;
+ border-radius:7px;background:#294639;color:#f6faee;
+ font:700 11px/1.3 system-ui,sans-serif;white-space:nowrap;
+ box-shadow:0 5px 18px rgba(0,0,0,.35)}
+
+/* L2.11H: physical placement readiness and cancellation. */
+.fw-field-inventory-slot[data-place-status="ready"]{border-color:#9dc6a2}
+.fw-field-inventory-slot[data-place-status="blocked"]{border-color:#b18d72}
+.fw-field-inventory-place:disabled{opacity:.78;color:#d3b7a1;border-color:#a67c6c;
+ background:rgba(123,74,57,.2);cursor:not-allowed}
+.fw-field-inventory-cancel{min-height:42px;justify-self:start;padding:8px 13px;
+ border:1px solid #81958a;border-radius:7px;background:#304137;color:#edf2e8;
+ font-size:11px;font-weight:700;touch-action:manipulation;cursor:pointer}
+.fw-field-inventory-cancel[hidden]{display:none}
+.fw-field-inventory-cancel:focus-visible{outline:2px solid #d1dfbd;outline-offset:2px}
+
+/* L2.11I: separate normal thumb scroll and intentional touch grip dragging. */
+.fw-field-inventory-select-item{grid-template-columns:15px minmax(0,1fr) auto 38px;
+ touch-action:pan-y;-webkit-user-select:none;user-select:none;min-height:44px}
+.fw-field-inventory-drag-grip{display:grid;place-items:center;width:38px;height:40px;
+ color:#cad9bd;background:rgba(134,164,133,.15);
+ border:1px solid rgba(175,206,174,.25);border-radius:6px;
+ font-size:24px;line-height:1;touch-action:none;cursor:grab}
+.fw-field-inventory-drag-grip:active{cursor:grabbing}
+@media(max-width:390px){
+ .fw-field-inventory{padding:9px}
+ .fw-field-inventory-capacity{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .fw-field-inventory-carry-tile{padding:3px}
+ .fw-field-inventory-item-name{font-size:10px}
+}
+
+/* L2.12A: individually-selectable magazines use existing owner authority. */
+.fw-field-inventory-select-magazine{grid-template-columns:15px minmax(0,1fr) auto;
+ touch-action:manipulation;min-height:44px}
+.fw-field-inventory-carry-tile[data-kind="magazine"] .fw-field-inventory-item-silhouette{
+ width:9px;height:17px;border-radius:2px;border-color:#a6b8b6}
+
+/* L2.12B: inspect real medical/long tools without pretending they are movable. */
+.fw-field-inventory-inspect-fixed{display:grid;grid-template-columns:15px minmax(0,1fr);
+ gap:6px;align-items:center;width:100%;min-height:44px;text-align:left;
+ padding:4px;border:0;border-radius:5px;color:inherit;background:transparent;
+ cursor:pointer;touch-action:manipulation}
+.fw-field-inventory-inspect-fixed:hover,.fw-field-inventory-inspect-fixed:focus-visible{
+ background:rgba(139,177,158,.17)}
+.fw-field-inventory-fixed-copy{display:grid;min-width:0;gap:2px}
+.fw-field-inventory-fixed-meta{font-size:9px;line-height:1.2;letter-spacing:.025em;
+ color:#b5c8bd;font-variant-numeric:tabular-nums}
+.fw-field-inventory-carry-tile[data-inspection-only="true"]{padding:2px 3px}

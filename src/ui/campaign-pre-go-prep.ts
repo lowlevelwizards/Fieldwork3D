@@ -81,13 +81,13 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
   const flashElsewhere=squad.filter(o=>o.id!==selected.id)
    .reduce((n,o)=>n+fieldQuantity(o.loadout.fieldInventory??
     initialFieldInventory(o.loadout),'flashbang'),0);
-  const onChange=(inventory:FieldInventory,undoing=false)=>{
+  const onChange=(inventory:FieldInventory,undoing=false,preferredFocus?:string)=>{
    if(!canPrepare())return;
    note.textContent='Equipment issued here updates the current mission before GO. No resupply after execution.';
    // Rebuild just the equipment controls while keeping the finger/keyboard
    // position stable. A quantity tap must not jump the mission sheet.
-   const focusedLabel=document.activeElement instanceof HTMLElement?
-    document.activeElement.getAttribute('aria-label'):null;
+   const focusedLabel=preferredFocus??(document.activeElement instanceof HTMLElement?
+    document.activeElement.getAttribute('aria-label'):null);
    const scroll=panel.scrollTop;
    const before=hooks.getCampaign()?.operators.find(o=>o.id===selected.id);
    if(!before||!hooks.issue(selected.id,inventory))return;
@@ -110,6 +110,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
   };
   editorHost.replaceChildren(createFieldGadgetEditor({
    loadout:selected.loadout,magazines:selected.magazines,
+   onInspectLocation:location=>preview?.highlightCarryLocation(location),
    maxFlash:Math.max(0,campaign.supplies.flash-flashElsewhere),
    copyTargets:squad.filter(o=>o.id!==selected.id).map(o=>({
     id:o.id,name:o.callsign,loadout:o.loadout,magazines:o.magazines
@@ -135,7 +136,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
     const snapshot=undo.peek(selected.id,current);
     if(snapshot)onChange(snapshot,true);
    },
-   onCommit:inventory=>onChange(inventory)
+   onCommit:(inventory,focusLabel)=>onChange(inventory,false,focusLabel)
   }));
  };
  launch.addEventListener('click',()=>{

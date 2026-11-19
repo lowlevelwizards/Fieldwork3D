@@ -46,3 +46,37 @@ test('unfitted physical placement is presented, never made free or discarded',()
   .find(t=>t.itemId==='flashbang').quantity,4);
  assert.ok(board.conflicts.length>0);
 });
+
+test('L2.12A: magazine tiles are individually identified and round counts remain unique',()=>{
+ const spare=[
+  {id:'rook/carbine/0',weapon:'carbine',rounds:30,location:'rig'},
+  {id:'rook/carbine/1',weapon:'carbine',rounds:12,location:'backpack'}];
+ const board=physicalCarryBoard(initial,spare,initialFieldInventory(initial));
+ const magTiles=[...board.zones.flatMap(z=>z.items),...board.unplaced]
+  .filter(t=>t.kind==='magazine');
+ assert.equal(magTiles.length,2);
+ assert.deepEqual(magTiles.map(t=>t.magazineId).sort(),spare.map(m=>m.id));
+ assert.ok(magTiles.some(t=>t.label==='MAG 01 · 30 rounds'&&t.location==='rig'));
+ assert.ok(magTiles.some(t=>t.label==='MAG 02 · 12 rounds'&&t.location==='backpack'));
+ assert.ok(magTiles.every(t=>Number.isFinite(t.accessSeconds)));
+});
+
+test('L2.12B: medical and breaching tools carry real footprint and access data',()=>{
+ const equipped=setEquipmentChoice(setEquipmentChoice(initial,'medical','medical-trauma'),
+  'utility','utility-breach');
+ const board=physicalCarryBoard(equipped,[],initialFieldInventory(equipped));
+ const tools=[...board.zones.flatMap(z=>z.items),...board.unplaced]
+  .filter(x=>x.kind==='medical'||x.kind==='utility');
+ const trauma=tools.find(x=>x.id==='medical:medical-trauma');
+ const ram=tools.find(x=>x.id==='utility:utility-breach');
+ assert.ok(trauma,'actual trauma pack appears exactly once');
+ assert.ok(ram,'actual breaching ram appears exactly once');
+ assert.equal(trauma.quantity,1);
+ assert.equal(trauma.spaces,2);
+ assert.equal(ram.spaces,3);
+ assert.ok(Number.isFinite(trauma.accessSeconds));
+ assert.ok(Number.isFinite(ram.accessSeconds));
+ assert.equal(tools.filter(x=>x.id==='utility:utility-breach').length,1);
+ assert.equal(tools.filter(x=>x.id==='medical:medical-trauma').length,1);
+ assert.equal(board.valid,true);
+});

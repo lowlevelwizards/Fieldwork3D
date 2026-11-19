@@ -6,7 +6,7 @@ import type {CampaignMode} from './breach-app-mode.ts';
 import {team,type Session} from './breach-game.ts';
 import type {FavoriteMission} from './breach-mission-favorites.ts';
 import type {RosterState} from './breach-roster.ts';
-import type {FieldInventory} from './equipment-field-inventory.ts';
+import type {FieldInventory,FieldCarryLocation} from './equipment-field-inventory.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {Site,SiteScale} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
@@ -27,6 +27,7 @@ export type QuickPlayControllerHooks={
   randomSeed:()=>number;
   getRoster:()=>RosterState;
   equipFieldInventory:(id:string,inventory:FieldInventory)=>boolean;
+  moveMagazine?:(id:string,magazineId:string,to:FieldCarryLocation)=>boolean;
   getScale:()=>SiteScale;
   getMode:()=>CampaignMode;
   setMode:(value:CampaignMode)=>void;
@@ -152,6 +153,7 @@ quickPlayCancelButton.addEventListener('click',()=>{
 });
 const configurator=createQuickPlayConfigurator({
   getRoster:config.getRoster,onEquipField:config.equipFieldInventory,
+  onMoveMagazine:config.moveMagazine,
   randomSeed:config.randomSeed,
   onGenerate:settings=>{void launchQuickPlay(settings);},
   onVisibilityChange:config.onConfiguratorVisibilityChange

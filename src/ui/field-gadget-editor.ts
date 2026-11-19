@@ -8,11 +8,16 @@ import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFi
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
+import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
+import {quoteOneMagazineMove} from '../equipment-magazine-transfer.ts';
 import './loadout-prep.css';
 
 export type FieldGadgetEditorOptions={
  loadout:EquipmentLoadout;magazines:readonly MagazineItem[];
- onCommit:(inventory:FieldInventory)=>void;
+ onCommit:(inventory:FieldInventory,focusLabel?:string)=>void;
+ /** Optional preview-only feedback; never authorizes or changes equipment. */
+ onInspectLocation?:(location:FieldCarryLocation)=>void;
+ onMoveMagazine?:(magazineId:string,to:FieldCarryLocation,focusLabel?:string)=>void;
  locked?:boolean;
  maxFlash?:number;
  copyTargets?:readonly {id:string;name:string;loadout:EquipmentLoadout;
@@ -29,6 +34,9 @@ const btn=(label:string,action:()=>void)=>{
  const element=document.createElement('button');element.type='button';
  element.textContent=label;element.addEventListener('click',action);return element;
 };
+type PhysicalChoice=
+ |{kind:'field';id:FieldItemId;from:FieldCarryLocation}
+ |{kind:'magazine';id:string;from:FieldCarryLocation};
 export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLElement{
  const {loadout,magazines,onCommit}=options;
  const inventory=loadout.fieldInventory??initialFieldInventory(loadout);
@@ -43,6 +51,54 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  const board=physicalCarryBoard(loadout,magazines,inventory);
  // L2.10A: read-only physical carrying-slot gauges. A gauge is a
  // presentation of the authoritative capacity report, not a second ledger.
+ // Selected item is transient UI state, not an inventory or campaign draft.
+ let selected:PhysicalChoice|null=null;
+ const selections:{button:HTMLButtonElement;choice:PhysicalChoice}[]=[];
+ const destinations:{button:HTMLButtonElement;location:FieldCarryLocation}[]=[];
+ const refreshSelection=()=>{
+  for(const entry of selections)entry.button.setAttribute('aria-pressed',
+   String(!!selected&&entry.choice.kind===selected.kind&&
+    entry.choice.id===selected.id&&entry.choice.from===selected.from));
+  for(const entry of destinations){
+   const active=!!selected&&entry.location!==selected.from;
+   entry.button.hidden=!active;
+   const parent=entry.button.closest<HTMLElement>('.fw-field-inventory-slot');
+   if(!active||!selected){
+    entry.button.disabled=true;
+    if(parent)delete parent.dataset.placeStatus;
+    continue;
+   }
+   const quote=selected.kind==='field'?
+    quoteSingleFieldTransfer(loadout,magazines,inventory,
+     selected.id,selected.from,entry.location):
+    quoteOneMagazineMove(loadout,magazines,selected.id,entry.location,inventory);
+   const allowed=quote.ok&&quote.changed;
+   entry.button.disabled=!!options.locked||!allowed;
+   entry.button.textContent=allowed?'PLACE ONE HERE':'CANNOT FIT HERE';
+   entry.button.title=quote.ok?'Move one item here':quote.reason;
+   if(parent)parent.dataset.placeStatus=allowed?'ready':'blocked';
+  }
+  cancelSelection.hidden=!selected;
+ };
+ const placeOne=(choice:PhysicalChoice,to:FieldCarryLocation)=>{
+  if(options.locked)return;
+  if(choice.kind==='magazine'){
+   const quote=quoteOneMagazineMove(loadout,magazines,choice.id,to,inventory);
+   if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
+   if(!quote.changed){feedback('ALREADY STORED HERE');return;}
+   options.onInspectLocation?.(to);
+   options.onMoveMagazine?.(choice.id,to,'Select magazine '+choice.id+
+    ' from '+to.toUpperCase());
+   return;
+  }
+  const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,
+   choice.id,choice.from,to);
+  if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
+  if(!quote.changed){feedback('ALREADY STORED HERE');return;}
+  options.onInspectLocation?.(to);
+  onCommit(quote.inventory,'Select one '+FIELD_ITEMS[choice.id].name+
+   ' from '+to.toUpperCase());
+ };
  const capacity=document.createElement('div');
  capacity.className='fw-field-inventory-capacity';
  capacity.setAttribute('aria-label','Carrying capacity by location');
@@ -76,21 +132,161 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    li.className='fw-field-inventory-carry-tile';
    li.dataset.kind=tile.kind;
    if(tile.itemId)li.dataset.itemId=tile.itemId;
+   if(tile.magazineId){
+    li.dataset.magazineId=tile.magazineId;
+    li.title='Individual spare magazine · '+tile.label+
+     ' · '+(tile.accessSeconds??0).toFixed(2)+'s carry access';
+   }
    const silhouette=document.createElement('span');
    silhouette.className='fw-field-inventory-item-silhouette';
    silhouette.setAttribute('aria-hidden','true');
    const itemName=text('span','fw-field-inventory-item-name',tile.label);
    const quantity=text('strong','fw-field-inventory-item-count',
     tile.quantity>1?'×'+tile.quantity:'');
-   li.append(silhouette,itemName,quantity);items.append(li);
+   if(tile.kind==='field'&&tile.itemId){
+    const id=tile.itemId;
+    const select=btn('',()=>{
+     if(suppressClick){suppressClick=false;return;}
+     if(options.locked)return;
+     selected=selected?.kind==='field'&&selected.id===id&&selected.from===loc?
+      null:{kind:'field',id,from:loc};
+     if(selected)options.onInspectLocation?.(loc);
+     refreshSelection();
+     feedback(selected?'SELECTED ONE '+tile.label.toUpperCase()+
+      ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
+    });
+    select.className='fw-field-inventory-select-item';
+    // L2.11E: optional direct pointer drag. The same quote/commit path is
+    // used by keyboard/tap placement; drawing a ghost never edits stock.
+    const grip=document.createElement('span');
+    grip.className='fw-field-inventory-drag-grip';
+    grip.setAttribute('aria-hidden','true');
+    grip.title='Drag one item to a different carrying location';
+    grip.textContent='⠿';
+    let start:{pointer:number;x:number;y:number}|null=null;
+    let ghost:HTMLElement|null=null,dragged=false,suppressClick=false;
+    const cleanup=()=>{
+     ghost?.remove();ghost=null;
+     capacity.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
+      node=>delete node.dataset.dragTarget);
+     start=null;dragged=false;
+    };
+    select.addEventListener('pointerdown',event=>{
+     // Scrolling stays available on tile text; touch drag begins at the grip.
+     if(!event.isPrimary||(event.pointerType==='mouse'&&event.button!==0))return;
+     if(event.pointerType==='touch'&&!(event.target instanceof Element&&
+      event.target.closest('.fw-field-inventory-drag-grip')))return;
+     start={pointer:event.pointerId,x:event.clientX,y:event.clientY};
+     dragged=false;try{select.setPointerCapture(event.pointerId)}catch{/* optional */}
+    });
+    select.addEventListener('pointermove',event=>{
+     if(!start||event.pointerId!==start.pointer)return;
+     if(!dragged&&Math.hypot(event.clientX-start.x,event.clientY-start.y)<10)return;
+     if(!dragged){
+      dragged=true;
+      ghost=document.createElement('div');
+      ghost.className='fw-field-inventory-drag-ghost';
+      ghost.textContent='1 × '+tile.label.toUpperCase();
+      ghost.setAttribute('aria-hidden','true');
+      document.body.append(ghost);
+     }
+     if(ghost){
+      ghost.style.left=(event.clientX+12)+'px';
+      ghost.style.top=(event.clientY+12)+'px';
+     }
+     capacity.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
+      node=>delete node.dataset.dragTarget);
+     const hit=document.elementFromPoint(event.clientX,event.clientY);
+     const zone=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location]');
+     if(zone&&zone.dataset.location!==loc)zone.dataset.dragTarget='true';
+    });
+    select.addEventListener('pointerup',event=>{
+     if(!start||event.pointerId!==start.pointer)return;
+     const wasDragging=dragged;
+     const hit=wasDragging?document.elementFromPoint(event.clientX,event.clientY):null;
+     const destination=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location]')
+      ?.dataset.location as FieldCarryLocation|undefined;
+     cleanup();
+     if(!wasDragging)return;
+     suppressClick=true;
+     // A drag may not generate a click; don't swallow a subsequent tap.
+     window.setTimeout(()=>{suppressClick=false;},0);
+     if(destination)placeOne({kind:'field',id,from:loc},destination);
+     else feedback('PLACEMENT CANCELLED · NO KIT CHANGES');
+    });
+    select.addEventListener('pointercancel',cleanup);
+    select.addEventListener('lostpointercapture',cleanup);
+    select.setAttribute('aria-label','Select one '+tile.label+' from '+loc.toUpperCase());
+    select.setAttribute('aria-pressed','false');
+    select.disabled=!!options.locked;
+    select.append(silhouette,itemName,quantity,grip);li.append(select);
+    selections.push({button:select,choice:{kind:'field',id,from:loc}});
+   }else if(tile.kind==='magazine'&&tile.magazineId&&options.onMoveMagazine){
+    const id=tile.magazineId;
+    const select=btn('',()=>{
+     if(options.locked)return;
+     selected=selected?.kind==='magazine'&&selected.id===id&&
+      selected.from===loc?null:{kind:'magazine',id,from:loc};
+     if(selected)options.onInspectLocation?.(loc);
+     refreshSelection();
+     feedback(selected?'SELECTED '+tile.label.toUpperCase()+
+      ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
+    });
+    select.className='fw-field-inventory-select-item fw-field-inventory-select-magazine';
+    select.setAttribute('aria-label','Select magazine '+id+' from '+loc.toUpperCase());
+    select.setAttribute('aria-pressed','false');
+    select.disabled=!!options.locked;
+    select.append(silhouette,itemName,quantity);li.append(select);
+    selections.push({button:select,choice:{kind:'magazine',id,from:loc}});
+   }else if(tile.kind==='medical'||tile.kind==='utility'){
+    // These are existing physical kit records, not countable gadgets.
+    // Inspection is read-only; no movement command has been authorized.
+    const spaces=tile.spaces+' '+(tile.spaces===1?'SPACE':'SPACES');
+    const access=tile.accessSeconds;
+    const detail=spaces+(typeof access==='number'?
+     ' · '+access.toFixed(2)+'s ACCESS':'');
+    li.dataset.inspectionOnly='true';
+    const inspectLabel='Inspect '+tile.label+' in '+loc.toUpperCase();
+    if(options.onInspectLocation){
+     const inspect=btn('',()=>{
+      options.onInspectLocation?.(loc);
+      feedback(tile.label.toUpperCase()+' · '+detail+' · LOCATION FIXED');
+     });
+     inspect.className='fw-field-inventory-inspect-fixed';
+     inspect.setAttribute('aria-label',inspectLabel);
+     const copy=text('span','fw-field-inventory-fixed-copy','');
+     copy.append(itemName,text('small','fw-field-inventory-fixed-meta',detail));
+     inspect.append(silhouette,copy);
+     li.append(inspect);
+    }else{
+     const copy=text('span','fw-field-inventory-fixed-copy','');
+     copy.append(itemName,text('small','fw-field-inventory-fixed-meta',detail));
+     li.append(silhouette,copy);
+    }
+   }else li.append(silhouette,itemName,quantity);
+   items.append(li);
   }
   if(!zone.items.length){
    const empty=text('li','fw-field-inventory-empty','EMPTY');
    items.append(empty);
   }
-  slot.append(items);capacity.append(slot);
+  slot.append(items);
+  const place=btn('PLACE ONE HERE',()=>{
+   if(selected)placeOne(selected,loc);
+  });
+  place.className='fw-field-inventory-place';
+  place.setAttribute('aria-label','Place selected item in '+loc.toUpperCase());
+  place.hidden=true;place.disabled=true;
+  destinations.push({button:place,location:loc});slot.append(place);
+  capacity.append(slot);
  }
  root.append(capacity);
+ const cancelSelection=btn('CANCEL PLACEMENT',()=>{
+  selected=null;refreshSelection();feedback('PLACEMENT CANCELLED · NO KIT CHANGES');
+ });
+ cancelSelection.className='fw-field-inventory-cancel';
+ cancelSelection.setAttribute('aria-label','Cancel selected item placement');
+ cancelSelection.hidden=true;root.append(cancelSelection);
  if(board.unplaced.length){
   const unplaced=text('div','fw-field-inventory-unplaced',
    'UNFITTED EQUIPMENT · '+board.unplaced.map(t=>t.label).join(' · '));

@@ -11,11 +11,12 @@ import {liveMagazineCapacity,standardReserveRounds,freshMagazineIssue,
  fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
+import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {issuedWedges} from './equipment-entry-tools.ts';
-import {readFieldInventory,fieldCarryReport,type FieldInventory} from './equipment-field-inventory.ts';
+import {initialFieldInventory,readFieldInventory,fieldCarryReport,type FieldInventory} from './equipment-field-inventory.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,selectWeaponFamilyPreset,setConfiguredFamilyPart,
  type WeaponConfiguration,type WeaponAttachmentSlot}
@@ -287,8 +288,18 @@ export function moveRosterMagazine(roster:RosterState,id:string,
  if(!mag||mag.location===to)return roster;
  const space=magazineSpace(member.loadout);
  if(to!=='overflow'&&placed.filter(m=>m.location===to).length>=space[to])return roster;
- const moved=stageMagazines(placed.map(m=>m.id===magazineId?
-  {...m,location:to}:m),member.loadout);
+ // Validate within the roster authority as well as the UI; a single
+ // placement must not displace magazines, field pieces or medical kits.
+ let moved:MagazineItem[];
+ if(to==='overflow'){
+  moved=stageMagazines(placed.map(m=>m.id===magazineId?
+   {...m,location:to}:m),member.loadout);
+ }else{
+  const quote=quoteOneMagazineMove(member.loadout,member.magazines,magazineId,to,
+   member.loadout.fieldInventory??initialFieldInventory(member.loadout));
+  if(!quote.ok||!quote.changed)return roster;
+  moved=quote.magazines;
+ }
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,magazines:moved}:m)};
 }

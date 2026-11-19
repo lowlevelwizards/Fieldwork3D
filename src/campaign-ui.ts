@@ -120,6 +120,8 @@ export class CampaignScreen{
  private activeKitGroup:QuickLoadoutGroup='weapon';
  private showKitPresets=false;
  private readonly fieldUndo=new FieldInventoryUndoHistory();
+ /** Focus after authorized one-piece placement, never persisted. */
+ private pendingKitFocusLabel:string|null=null;
  /** Snapshot of successfully rendered Campaign equipment; never a pending draft. */
  private lastRenderedKit:{
   operatorId:string;slots:Record<LoadoutSlot,string>;weapon:string;
@@ -1243,8 +1245,9 @@ export class CampaignScreen{
  private armory(c:CampaignState,id:string){
   const sameOperator=this.lastArmoryRenderedId===id;
   const restoreScroll=sameOperator?this.root.scrollTop:0;
-  const previousFocus=this.root.contains(document.activeElement)?
-    document.activeElement?.getAttribute('aria-label'):null;
+  const previousFocus=this.pendingKitFocusLabel??(this.root.contains(document.activeElement)?
+    document.activeElement?.getAttribute('aria-label'):null);
+  this.pendingKitFocusLabel=null;
   // The same operator keeps one preview renderer while HTML controls refresh.
   const retainOperatorPreview=sameOperator&&!this.weaponView&&!!this.preview?.isReady();
   if(!retainOperatorPreview)this.disposePreview();
@@ -1659,6 +1662,11 @@ export class CampaignScreen{
     o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
   grouped.field('utilities').append(createFieldGadgetEditor({
    loadout:person.loadout,magazines:person.magazines,locked,
+   onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
+   onMoveMagazine:(magazineId,to,focusLabel)=>{
+    this.pendingKitFocusLabel=focusLabel??null;
+    this.handlers.moveMagazine(id,magazineId,to);
+   },
    maxFlash:c.squadIds.includes(id)?
     Math.max(0,c.supplies.flash-squadFlashReserved):4,
    copyTargets:c.operators.filter(o=>o.id!==id&&
@@ -1680,8 +1688,9 @@ export class CampaignScreen{
      target.loadout.fieldInventory??initialFieldInventory(target.loadout),inventory);
     this.handlers.copyFieldInventory(id,targetId);
    },
-   onCommit:inventory=>{
-    this.fieldUndo.record(id,
+   onCommit:(inventory,focusLabel)=>{
+     this.pendingKitFocusLabel=focusLabel??null;
+     this.fieldUndo.record(id,
      person.loadout.fieldInventory??initialFieldInventory(person.loadout),inventory);
     this.handlers.equipFieldInventory(id,inventory);
    }

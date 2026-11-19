@@ -109,3 +109,11 @@
 .fw-quick-config-squad-prep{border-top:1px solid #60776d;border-bottom:1px solid #60776d}
 .fw-quick-config-squad-prep>summary{box-sizing:border-box;display:flex;align-items:center;min-height:48px;cursor:pointer;color:#dae7dc;letter-spacing:.045em;font:700 13px var(--fw-font-menu)}
 .fw-quick-config-squad-prep>summary:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}
+
+/* L2.11G: reuse the existing preview only while squad prep is visible. */
+.fw-quick-config-operator-preview{height:clamp(160px,27dvh,230px);
+ min-width:0;margin:0;background:rgba(10,21,18,.4)}
+.fw-quick-config-operator-preview canvas{display:block;width:100%;height:100%}
+@media(max-width:520px){
+ .fw-quick-config-operator-preview{height:clamp(160px,24dvh,210px)}
+}
