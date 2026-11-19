@@ -21,9 +21,9 @@ test('EQA3.10 only actual alarm evidence triggers a visual flinch',()=>{
  // Exercise the actual low-frequency observer and acoustic admission rather
  // than setting visual state directly.
  stepCivilianResponse(c,.5,.3,sensory([{
-   id:1,time:.45,kind:'gunshot',p:{x:32,y:42},strength:1
+   id:1,time:.45,kind:'gunshot',p:{x:32,y:42},radius:200
  }]));
- assert.ok(c.lastFlinchAt>=0||c.lastFlinchAt===-100);
+ assert.equal(c.lastFlinchAt,.45,'witnessed gunshot alarm should drive flinch at evidence time');
 });
 test('EQA3.10 legacy and shared civilian rigs flinch briefly and rewind without residue',()=>{
  const c=person(),rig=createCivilianRig(c),unified=createCivilianRig(c,true);
