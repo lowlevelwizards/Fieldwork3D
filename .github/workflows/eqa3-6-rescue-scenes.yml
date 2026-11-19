@@ -25,7 +25,7 @@ jobs:
           for seed in 13 17; do
             for intel in unknown confirmed; do
               file="artifacts/eqa3-6/rescue-${seed}-${intel}.json"
-              EQA3_OUTPUT="$file" node --experimental-strip-types scripts/audit-eqa3-mission-decisions.mjs --smoke "--seed=${seed}" --seconds=90 "--intel=${intel}" --door-aware --forensic > "artifacts/eqa3-6/rescue-${seed}-${intel}-console.json"
+              EQA3_OUTPUT="$file" node --experimental-strip-types scripts/audit-eqa3-mission-decisions.mjs --smoke "--seed=${seed}" --mission=rescue --seconds=90 "--intel=${intel}" --door-aware --forensic > "artifacts/eqa3-6/rescue-${seed}-${intel}-console.json"
               node --experimental-strip-types scripts/audit-eqa3-6-rescue-scene.mjs "--seed=${seed}" "--report=$file" "--out=artifacts/eqa3-6/scene-${seed}-${intel}" > "artifacts/eqa3-6/scene-${seed}-${intel}-console.json"
             done
           done
@@ -61,7 +61,7 @@ jobs:
                 svg:s.svg
               }));
               console.log(JSON.stringify({seed,intel,summary:d.summary,record,overview},null,2));
-              if(d.exceptions.length||rows.length!==expected||
+              if(d.exceptions.length||d.summary.trials!==expected||rows.length!==expected||
                  rows.some(r=>r.integrity?.length)||
                  visual.scenes.length!==expected||
                  visual.scenes.some(s=>s.contactRing.localContactClear===0))
