@@ -1,0 +1,34 @@
+name: EQA3.16I NPC presentation CPU cost
+on:
+  push:
+    branches: [feature/eqa3-16i-npc-pose-cost-20261119]
+    paths:
+      - 'scripts/bench-eqa3-16i-npc-cost.mjs'
+      - '.github/workflows/eqa3-16i-npc-cost-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  cpu-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 9
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Minimal TypeScript and deterministic presentation CPU profile
+        run: |
+          npm run check
+          node --experimental-strip-types scripts/bench-eqa3-16i-npc-cost.mjs
+          node --experimental-strip-types --test \
+            tests/eqa3-16g-defensive-gestures.test.mjs \
+            tests/eqa3-16-hostile-intent.test.mjs \
+            tests/eqa3-16-physicality-contract.test.mjs
+      - uses: actions/upload-artifact@v4
+        if: success()
+        with:
+          name: eqa3-16i-npc-cpu-observational
+          path: artifacts/eqa3-16i/cpu-cost.json
+          retention-days: 14
