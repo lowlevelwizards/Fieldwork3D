@@ -127,6 +127,10 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
     if(pose==='compliant'||pose==='startled'){
       // Clear from overhead: palms visibly raised and away from torso.
       rect(2,-16,5,9,'#b9997e');rect(2,7,5,9,'#b9997e');
+    }else if(pose==='restrained'){
+      // Hands behind the body: visible only for an actual restraint flag.
+      rect(-10,-6,8,3,'#b9997e');rect(-10,3,8,3,'#b9997e');
+      circle(-9,0,3,'#65514b');
     }else if(pose==='hide'||pose==='run'){
       // Two hands over the head while crouched or running.
       rect(5,-8,7,4,'#b9997e');rect(5,4,7,4,'#b9997e');
