@@ -39,11 +39,31 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   text('small','','PHYSICAL QUANTITIES · ACCESS & CAPACITY'));
  root.append(header);
  const report=fieldCarryReport(loadout,magazines,inventory);
- const locations=FIELD_CARRY_LOCATIONS.map(loc=>{
+ // L2.10A: read-only physical carrying-slot gauges. A gauge is a
+ // presentation of the authoritative capacity report, not a second ledger.
+ const capacity=document.createElement('div');
+ capacity.className='fw-field-inventory-capacity';
+ capacity.setAttribute('aria-label','Carrying capacity by location');
+ for(const loc of FIELD_CARRY_LOCATIONS){
   const used=report.used[loc],limit=report.capacity[loc];
-  return loc.toUpperCase()+' '+used+'/'+limit;
- });
- const capacity=text('div','fw-field-inventory-capacity',locations.join(' · '));
+  const slot=document.createElement('div');
+  slot.className='fw-field-inventory-slot';
+  if(used>limit)slot.dataset.overfilled='true';
+  const title=text('span','fw-field-inventory-slot-name',loc.toUpperCase());
+  const count=text('strong','fw-field-inventory-slot-count',used+'/'+limit);
+  const gauge=document.createElement('div');
+  gauge.className='fw-field-inventory-gauge';
+  gauge.setAttribute('role','meter');
+  gauge.setAttribute('aria-label',loc.toUpperCase()+' occupied carrying spaces');
+  gauge.setAttribute('aria-valuemin','0');
+  gauge.setAttribute('aria-valuemax',String(Math.max(1,limit)));
+  gauge.setAttribute('aria-valuenow',String(Math.min(Math.max(0,used),Math.max(1,limit))));
+  gauge.setAttribute('aria-valuetext',used+' of '+limit+' spaces occupied');
+  const fill=document.createElement('span');
+  fill.className='fw-field-inventory-gauge-fill';
+  fill.style.width=(limit>0?Math.min(100,used/limit*100):used>0?100:0)+'%';
+  gauge.append(fill);slot.append(title,count,gauge);capacity.append(slot);
+ }
  root.append(capacity);
  const message=text('p','fw-field-inventory-feedback',report.valid?
   'Equipment is assigned to real carrying positions.':'CARRY CONFLICT · '+report.conflicts.join(' · '));

@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - feature/loadout-prep-l2-7-prego-20261118
+      - feature/loadout-prep-l2-10-carry-feedback-20261118
     paths:
       - 'src/ui/campaign-pre-go-prep.ts'
       - 'src/ui/campaign-pre-go-prep.css'

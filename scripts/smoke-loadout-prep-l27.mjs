@@ -38,12 +38,20 @@ try{
   await panel.waitFor({state:'visible'});
   const row=panel.locator('.fw-field-inventory-item').filter({hasText:'Flashbang'});
   assert.match(await row.locator('.fw-field-inventory-quantity').innerText(),/×1/);
+  const rigMeter=panel.getByRole('meter',{name:'RIG occupied carrying spaces'});
+  assert.equal(await panel.getByRole('meter').count(),4,'all four physical carriers have gauges');
+  const before=Number(await rigMeter.getAttribute('aria-valuenow'));
+  assert.ok(before>=1,'issued flash occupies a rig carrying space');
   const action=panel.getByRole('button',{name:'Add one Flashbang'});
   assert.ok((await action.boundingBox()).height>=38,'quantity touch target');
   await row.getByRole('button',{name:'Remove one Flashbang'}).click();
   assert.match(await row.locator('.fw-field-inventory-quantity').innerText(),/×0/);
+  assert.equal(Number(await rigMeter.getAttribute('aria-valuenow')),before-1,
+   'physical capacity gauge reflects removing one flashbang');
   await panel.getByRole('button',{name:'Undo last gadget change'}).click();
   assert.match(await row.locator('.fw-field-inventory-quantity').innerText(),/×1/);
+  assert.equal(Number(await rigMeter.getAttribute('aria-valuenow')),before,
+   'undo restores physical capacity gauge');
   await panel.getByLabel('Operator to copy gadgets to').selectOption('moss');
   await panel.getByRole('button',{name:'Copy carried gadgets to selected operator'}).click();
   assert.match(await panel.locator('.fw-pre-go-note').innerText(),/copied/i);
