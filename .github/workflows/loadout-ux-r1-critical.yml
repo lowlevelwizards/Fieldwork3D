@@ -1,0 +1,39 @@
+name: Loadout UX R1 mobile critical
+on:
+  pull_request:
+    paths:
+      - 'src/campaign-ui.ts'
+      - 'src/campaign-style.css'
+      - 'src/ui/field-gadget-editor.ts'
+      - 'src/ui/loadout-prep.css'
+      - 'scripts/smoke-loadout-ux-r1.mjs'
+      - '.github/workflows/loadout-ux-r1-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  armory-critical:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Critical TypeScript
+        run: npm run check
+      - name: Physical carry authority and layout regressions
+        run: >-
+          node --experimental-strip-types --test
+          tests/equipment-field-inventory.test.mjs
+          tests/equipment-field-transfer.test.mjs
+          tests/equipment-physical-board.test.mjs
+          tests/equipment-magazine-transfer.test.mjs
+          tests/loadout-magazine-editor-integration.test.mjs
+          tests/equipment-visual-inspection.test.mjs
+      - name: Actual iPhone-sized armory interaction
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/smoke-loadout-ux-r1.mjs
