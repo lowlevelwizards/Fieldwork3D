@@ -19,7 +19,10 @@ test('all factory weapons own their correct feed body and real grip sockets',()=
  for(const preset of FAMILY_PRESETS){
   const config=selectWeaponFamilyPreset(initialWeaponConfiguration(preset.weapon),preset.id);
   const sockets=weaponPresentationSockets(preset.weapon,config);
-  assert.equal(sockets.magazinePart,preset.parts.magazine);
+  if(preset.weapon==='shotgun')
+   assert.equal(sockets.magazinePart,null,
+    'fixed tube must not be detachable during shell reload');
+  else assert.equal(sockets.magazinePart,preset.parts.magazine);
   assert.ok(sockets.stock.x<sockets.primary.x,preset.id);
   assert.ok(sockets.primary.x<sockets.support.x,preset.id);
   assert.ok(sockets.support.x<sockets.muzzle.x,preset.id);
