@@ -1,0 +1,72 @@
+name: EQA3.9 rescue contact orientation A-B
+on:
+  push:
+    branches: [feature/eqa3-9-service-contact-20261118]
+    paths:
+      - 'scripts/audit-eqa3-9-contact-decisions.mjs'
+      - 'src/breach-game.ts'
+      - 'src/breach-plan-aim-commands.ts'
+      - 'src/breach-civilian-context-selection.ts'
+      - '.github/workflows/eqa3-9-service-contact.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  contact-knowledge-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 17
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Original and LOOK authoring in actual 60 Hz rescue world
+        run: |
+          mkdir -p artifacts/eqa3-9
+          for variant in baseline look; do
+            flag=""
+            if [ "$variant" = look ]; then flag="--contact-look"; fi
+            for intel in unknown confirmed; do
+              EQA3_OUTPUT="artifacts/eqa3-9/warehouse17-${intel}-${variant}.json" \
+                node --experimental-strip-types scripts/audit-eqa3-9-contact-decisions.mjs \
+                --smoke --seed=17 --mission=rescue --seconds=110 \
+                "--intel=${intel}" --door-aware --forensic $flag \
+                > "artifacts/eqa3-9/warehouse17-${intel}-${variant}-console.json"
+            done
+          done
+      - name: Report scenario-specific A-B, fail on physical integrity or hidden objective
+        run: |
+          node - <<'NODE'
+          const fs=require('node:fs');
+          for (const intel of ['unknown','confirmed']){
+            const files=['baseline','look'].map(v=>JSON.parse(fs.readFileSync(
+              'artifacts/eqa3-9/warehouse17-'+intel+'-'+v+'.json')));
+            for(const [i,d] of files.entries()){
+              if(d.exceptions.length||d.rows.length!==2||
+                d.rows.some(r=>r.seed!==17||r.mission!=='rescue'||r.integrity?.length)){
+                  console.error('Integrity/selection failure',intel,i,d.summary);
+                  process.exitCode=1;
+              }
+            }
+            for(const insertion of ['FRONT','SERVICE']){
+              const rows=files.map(d=>d.rows.find(r=>r.insertion===insertion));
+              const synopsis=r=>({
+                stage:r.missionStage,firstCivilian:r.firstCivilianAt,
+                discovered:r.discoveredAt,objective:r.objectiveAt,
+                extracted:r.extractedAt,scout:r.activeScout,
+                secure:r.decisions.filter(x=>x.action==='secure-civilian'),
+                look:r.decisions.filter(x=>x.action==='look-at-known-rescue-contact'),
+                failed:r.rejected,aborts:r.routeAbort,
+                totalCommands:r.decisions.length
+              });
+              console.log(JSON.stringify({intel,insertion,
+                baseline:synopsis(rows[0]),look:synopsis(rows[1])},null,2));
+            }
+          }
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-9-warehouse17-look-ab-real-missions
+          path: artifacts/eqa3-9/
