@@ -2,6 +2,9 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {civilianPose} from '../src/breach-civilian-pose.ts';
 import {createCivilian} from '../src/breach-civilian-types.ts';
+import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
+import {newSession} from '../src/breach-game.ts';
+
 import {createCivilianRig,updateCivilianRig,disposeCivilianRig}
  from '../src/breach-civilian-visuals.ts';
 
@@ -75,4 +78,35 @@ test('EQA3.9 shared 3D operator skeleton carries civilian gestures, evidence gaz
   assert.ok(Number.isFinite(rig.character.head.rotation.y),
     'rewound or forgotten threat does not corrupt shared rig');
  }finally{disposeCivilianRig(rig);}
+});
+
+test('EQA3.9 replay records real compliance start, restraint and observed gaze without future leak',()=>{
+ const session=newSession(),c=civilian();
+ session.civilians.push(c);
+ c.state='compliant';c.stateSince=3.25;c.restrained=false;
+ c.lastEvidenceAt=3.1;c.threatEstimate={x:90,y:110};
+ session.seconds=3.28;
+ const earlier=snapshot(session);
+ c.restrained=true;c.lastEvidenceAt=6.6;
+ c.threatEstimate={x:800,y:800};session.seconds=7;
+ const later=snapshot(session);
+ applyReplayFrame(session,earlier);
+ assert.equal(session.civilians[0].restrained,false);
+ assert.equal(session.civilians[0].stateSince,3.25);
+ assert.deepEqual(session.civilians[0].threatEstimate,{x:90,y:110});
+ applyReplayFrame(session,later);
+ assert.equal(session.civilians[0].restrained,true);
+ assert.deepEqual(session.civilians[0].threatEstimate,{x:800,y:800});
+ applyReplayFrame(session,earlier);
+ assert.deepEqual(session.civilians[0].threatEstimate,{x:90,y:110},
+   'head tracking cannot leak future threat observation on rewind');
+ const old=snapshot(session);
+ for(const item of old.civilians??[]){
+   delete item.stateSince;delete item.restrained;
+   delete item.lastEvidenceAt;delete item.threatEstimate;
+ }
+ applyReplayFrame(session,old);
+ assert.equal(session.civilians[0].restrained,false);
+ assert.equal(session.civilians[0].threatEstimate,null);
+ assert.ok(session.civilians[0].stateSince<=old.t);
 });
