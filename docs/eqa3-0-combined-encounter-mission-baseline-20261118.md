@@ -108,3 +108,18 @@ same workflow has separately downloadable Confirmed raw artifact).
 - Run follow-up campaign recon A/B only after complete tactical episodes establish the decision value of more precise objective knowledge.
 
 **Release policy:** This PR is data-only and remains draft. No merge or public deployment was requested; any eventual encounter changes should go into isolated feature branches and one verified release batch.
+
+## EQA3.2 initial-door objective landing / route isolation
+
+Full actual generated scenario diagnostic workflow:
+https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44427022045 .
+Source: `scripts/audit-eqa3-objective-landing.mjs`.
+
+- Checked **eight exact entrance/missions**: Townhouse seed 12 INTEL front/service, Townhouse seed 23 RESCUE front/service, Retail seed 14 HOLD front/service, Retail seed 25 CAPTURE front/service; **97** sample contact/standing points per case, radii 0, 10, 16, 24, 30, 34, 35.
+- **All eight** have viable physical standing and contact spots near the objective. Under the original **initial fully closed door states**, no world-body route from the actual insertion point could reach those goal spots; this diagnostic does not claim doors are automatically operable or ought to be bypassed. For example, Townhouse 12 INTEL objective (151,500.5), adjacent unopened D1 (210,500.5); Townhouse 23 RESCUE objective (484,589), adjacent unopened D1 (484,530). None of those D1 leaves was locked at site initialization.
+- `planMove` **accepted all 97** room-contact candidates at initial planning time in each case, using the intended floor-plan intel route contract; it did **not** reject those goal coordinates for invalid body clearance. This is a key contrast with the repeated objective-command rejections later in the *scripted driver*. Initial planner acceptance is **not proof the motor will pass a closed leaf** without an opening action.
+- The later 83–87 repeated orders in Townhouse scripts occur **after simulation and partial movement**. The scout never authors OPEN on a diagnosed door, so the actual closed leaf and actor position at the rejection must be considered. This result **does not prove an engine planning bug** and does not warrant weakening the physical portal or inventing automatic shortcuts.
+- A separate hypothetical **all-doors-open geometry sensitivity** run is recorded at
+  https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44427241359 .
+  It changes only **copied** test door leaves, not in-game door or AI state; treat it as a reachability bound rather than a player-operable passage guarantee.
+- Practical next player-facing work: build a scripted **explicit legal OPEN/entry interaction** before retrying the exact goal and classify the rejection reason. Improve a tactical error hint only if real player commands still fail despite an open, discovered, physically passable route.
