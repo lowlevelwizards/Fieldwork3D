@@ -47,6 +47,7 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
+import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {fieldQuantity,initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
 import './campaign-style.css';
@@ -1275,15 +1276,19 @@ export class CampaignScreen{
    this.armoryOperatorId=null;this.home(c);
   },'campaign-armory-back'),identity);
   main.append(top);
-  const nav=node('div','campaign-kit-nav');
-  for(const member of c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired')){
-   const choose=button(member.callsign,()=>{
-    this.armoryOperatorId=member.id;this.home(c);
-   },member.id===id?'campaign-primary':'');
-   choose.setAttribute('aria-pressed',String(member.id===id));
-   nav.append(choose);
-  }
-  main.append(nav);
+  const preparable=c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired')
+   .sort((a,b)=>{
+    const ai=c.squadIds.indexOf(a.id),bi=c.squadIds.indexOf(b.id);
+    return (ai<0?99:ai)-(bi<0?99:bi);
+   });
+  main.append(createLoadoutSquadRail(preparable.map(o=>({
+   id:o.id,name:o.callsign.toUpperCase(),
+   detail:o.weapon.toUpperCase(),
+   status:o.recoveryDays>0?'RECOVERING · '+o.recoveryDays+'D':
+    c.squadIds.includes(o.id)?'ASSIGNED · '+o.weapon.toUpperCase():'RESERVE'
+  })),id,selected=>{
+   this.armoryOperatorId=selected;this.home(c);
+  }));
   const grid=node('div','campaign-kit-grid');
   const summary=node('section','campaign-section campaign-kit-summary');
   summary.append(node('h2','','OPERATOR'));
