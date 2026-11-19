@@ -1,12 +1,10 @@
 /** Stage 10b: Campaign screen and transitions; authoritative state stays in host.
  * All Campaign actions continue using campaign-state and campaign-persistence.
  */
-import {issuedWedges} from './equipment-entry-tools.ts';
-import {equippedFlashCharges,equippedRestraintCharges,loadMovementScale} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
+import {applyDeploymentInventory,limitDeployedFlashIssue}
+ from './equipment-deployment-snapshot.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
-import {fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
-import {stageMagazines} from './equipment-magazine-placement.ts';
 import {undoCampaignCarryGear,copyCampaignCarryLayout} from './campaign-state.ts';
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
@@ -427,24 +425,10 @@ export function applyCampaignRosterToSession(session:Session,campaign:CampaignSt
    a.name=m.callsign;a.skills={...m.skills};a.weapon=m.weapon;
    a.appearanceSeed=m.appearanceSeed;
    a.wardrobe=m.wardrobe;
-   a.equipment=m.loadout;
-    a.weaponConfiguration=m.weaponConfiguration;
-    a.medicalSupplies={...m.medicalSupplies};
-    a.wedgeRemaining=issuedWedges(m.loadout);
-    a.restraintRemaining=equippedRestraintCharges(m.loadout);
-    a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
-    a.nvgDeployed=false;
-   a.flashCharges=equippedFlashCharges(m.loadout);
+   applyDeploymentInventory(a,m);
    const protection=initialArmorIntegrity(m.loadout);
    a.armorIntegrity=Math.min(protection.torso,m.armorCondition.torso);
    a.helmetIntegrity=Math.min(protection.head,m.armorCondition.head);
-   a.loadMovementScale=loadMovementScale(m.loadout,m.weaponConfiguration);
-   const fitted=fitMagazineInventory(a.id,a.weapon,m.weaponConfiguration,
-    m.magazine,m.reserve,m.magazines);
-   a.magazine=fitted.magazine;a.reserve=fitted.reserve;
-   a.insertedMagazineId=m.loadedMagazineId;
-   a.spareMagazines=a.weapon==='shotgun'?[]:
-    stageMagazines(fitted.magazines,m.loadout);
    if(m.recoveryDays>0&&m.injuries>0){
     a.injuryStage=Math.max(a.injuryStage,Math.min(2,m.injuries));
     a.health=Math.min(a.health,4-a.injuryStage);
@@ -456,7 +440,7 @@ export function applyCampaignRosterToSession(session:Session,campaign:CampaignSt
   const requested=squad.map(a=>a.flashCharges);
   const issued=allocateFlashSupply(requested,campaign.supplies.flash,
    requested.reduce((n,qty)=>n+qty,0));
-  squad.forEach((a,i)=>{a.flashCharges=issued[i];});
+  squad.forEach((a,i)=>{limitDeployedFlashIssue(a,issued[i]);});
   session.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
  }
 }
