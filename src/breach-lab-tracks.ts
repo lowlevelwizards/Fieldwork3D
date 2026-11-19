@@ -17,7 +17,9 @@ export const LAB_TRACKS=[
   'point-shoot','ready-to-ads','ads-to-low','reload',
   'reload-emergency','reload-retention','reload-shotgun',
   'reload-interrupt','reload-wounded',
-  'flash','door','kick','bash','down','down-forward','down-back',
+  'flash','door','pre-open-handle','pre-open-hinge','pre-open-cancel',
+  'stack-shoulder','stack-shoulder-crouch','stack-shoulder-cancel',
+  'kick','bash','down','down-forward','down-back',
   'down-left','down-right','down-slump'
 ] as const;
 export type LabTrack=typeof LAB_TRACKS[number];
