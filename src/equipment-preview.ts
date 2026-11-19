@@ -170,7 +170,7 @@ export class CampaignKitPreview{
    const selected=target.kind==='gear'?
     this.previewGearMesh(target.slot,target.itemId):
     inspectEquipmentMesh(this.rig,
-     target.kind==='gear'?original.equipment:original.equipment,target);
+     original.equipment,target);
    if(!selected)return null;
    selected.updateWorldMatrix(true,true);
    const isolated=selected.clone(true);
