@@ -2501,6 +2501,9 @@ export class TacticalScene3D{
       if(actor.side==='red'){
         const attention=hostilePhysicalityAt(actor,poseSeconds);
         object.physical.head.rotation.y+=attention.headYaw;
+        // Tiny suppression guard uses the head only: chest, weapon, and
+        // physical motor remain exclusively owned by the combat pose solver.
+        object.physical.head.rotation.x+=attention.headPitch;
       }
       if(this.profileSceneUpdate){
        this.actorPhaseCosts.poseMs+=performance.now()-poseStart;

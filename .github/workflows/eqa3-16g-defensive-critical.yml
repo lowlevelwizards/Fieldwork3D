@@ -1,0 +1,29 @@
+name: EQA3.16G hostile defensive gesture critical
+on:
+  push:
+    branches: [feature/eqa3-16g-hostile-defensive-gestures-20261119]
+    paths:
+      - 'src/breach-hostile-physicality.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/eqa3-16g-defensive-gestures.test.mjs'
+      - '.github/workflows/eqa3-16g-defensive-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  defensive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Minimal head-pose, organic encounter and TS checks
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-16g-defensive-gestures.test.mjs \
+            tests/eqa3-16-hostile-intent.test.mjs \
+            tests/eqa3-16-organic-presentation.test.mjs
