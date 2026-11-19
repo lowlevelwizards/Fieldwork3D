@@ -561,3 +561,29 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
   box-shadow:0 8px 20px #07140e75;
  }
 }
+
+/* P08: compact thumb-friendly Workbench on phones. The weapon stays sticky
+ * and the eight-value performance comparison is available on demand.
+ * This is pure presentation; part selection and gameplay stats are unchanged. */
+.arsenal-wb-stats-toggle{display:none}
+@media(max-width:760px){
+ .arsenal-wb-primary-actions{grid-template-columns:repeat(3,minmax(0,1fr))}
+ .arsenal-wb-primary-actions .arsenal-wb-action{
+  min-height:44px;padding:7px 5px;font-size:11px}
+ .arsenal-wb-head{padding-top:5px;padding-bottom:7px;gap:6px}
+ .arsenal-wb-utility-actions{padding-bottom:2px}
+ .arsenal-wb-main>.arsenal-wb-stage>.arsenal-wb-viewport{
+  height:clamp(215px,32dvh,315px);min-height:215px}
+ .arsenal-wb-stats-toggle{
+  display:inline-flex;align-items:center;justify-content:center;
+  margin-left:auto;padding:7px 9px;min-height:36px;
+  border-radius:var(--fw-radius-sm);border:1px solid var(--fw-panel-border);
+  color:var(--fw-text);background:var(--fw-panel-deep);
+  font:700 11px var(--fw-font-action)}
+ .arsenal-wb-stats-toggle:focus-visible{
+  outline:2px solid var(--fw-focus);outline-offset:2px}
+ .arsenal-wb-stats.is-collapsed .arsenal-wb-stats-grid,
+ .arsenal-wb-stats.is-collapsed .arsenal-wb-stats-note{display:none}
+ .arsenal-wb-stats.is-collapsed{padding:9px 11px}
+ .arsenal-wb-stats.is-collapsed .arsenal-wb-stats-head{margin:0}
+}
