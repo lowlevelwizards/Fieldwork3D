@@ -21,4 +21,4 @@ jobs:
       - name: Typecheck
         run: npm run check
       - name: Inventory regression tests
-        run: node --experimental-strip-types --test tests/equipment-field-inventory.test.mjs tests/equipment-12-flash-supply.test.mjs tests/quickplay-field-preferences.test.mjs
+        run: node --experimental-strip-types --test tests/equipment-field-inventory.test.mjs tests/equipment-12-flash-supply.test.mjs tests/quickplay-field-preferences.test.mjs tests/equipment-field-undo.test.mjs
