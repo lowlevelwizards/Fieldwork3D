@@ -7,6 +7,8 @@ import {INTEL_MODES,type IntelMode} from './breach-intel.ts';
 import {freshQuickPlayRoster,readRoster,serializeQuickPlayCosmetics,
  type RosterState} from './breach-roster.ts';
 import {readCampaign,type CampaignState} from './campaign-state.ts';
+import {applyQuickPlayKitPreferences,serializeQuickPlayKitPreferences}
+ from './breach-quickplay-kit-preferences.ts';
 import {parseOperationHistory,addOperationRecord,type OperationRecord}
  from './breach-operations.ts';
 import {BREACH_STORAGE_KEYS} from './breach-storage-keys.ts';
@@ -55,7 +57,9 @@ export function loadQuickPlayRoster(
  storage:BreachStorage|null=browserBreachStorage()):RosterState{
  const saved=readStoredText(BREACH_STORAGE_KEYS.quickCosmetics,storage)??
   readStoredText(BREACH_STORAGE_KEYS.legacyRoster,storage);
- const roster=freshQuickPlayRoster(readRoster(saved));
+ const roster=applyQuickPlayKitPreferences(
+  freshQuickPlayRoster(readRoster(saved)),
+  readStoredText(BREACH_STORAGE_KEYS.quickKitPreferences,storage));
  if(readStoredText(BREACH_STORAGE_KEYS.legacyRoster,storage)!==null){
   if(writeStoredText(BREACH_STORAGE_KEYS.quickCosmetics,
       serializeQuickPlayCosmetics(roster),storage))
@@ -65,8 +69,11 @@ export function loadQuickPlayRoster(
 }
 export function saveQuickPlayRoster(roster:RosterState,
  storage:BreachStorage|null=browserBreachStorage()):boolean{
- return writeStoredText(BREACH_STORAGE_KEYS.quickCosmetics,
+ const cosmetics=writeStoredText(BREACH_STORAGE_KEYS.quickCosmetics,
   serializeQuickPlayCosmetics(roster),storage);
+ const kit=writeStoredText(BREACH_STORAGE_KEYS.quickKitPreferences,
+  serializeQuickPlayKitPreferences(roster),storage);
+ return cosmetics&&kit;
 }
 export function loadCampaignFromStorage(
  storage:BreachStorage|null=browserBreachStorage()):CampaignState|null{
