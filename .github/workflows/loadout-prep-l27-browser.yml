@@ -12,6 +12,8 @@ on:
       - feature/loadout-l212-d3-placement-feedback-20261119
       - feature/loadout-l212-d1-quickplay-carry-20261119
       - feature/loadout-l212-release-b-20261119
+      - feature/loadout-l212-release-c-20261119
+      - feature/loadout-l212-e2-layout-copy-20261119
     paths:
       - 'src/ui/campaign-pre-go-prep.ts'
       - 'src/ui/campaign-pre-go-prep.css'
