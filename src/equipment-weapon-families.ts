@@ -310,7 +310,13 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  // Art reference is Police-style representative, not an exact dated SKU.
  p('r870-police-wood','Remington 870 Police · Wood','shotgun','r870',
   'r870-police-receiver','r870-police-wood-stock','r870-police-wood-wrist',
-  'r870-standard-tube','r870-police-wood-pump','r870-18-bead')
+  'r870-standard-tube','r870-police-wood-pump','r870-18-bead'),
+ p('r870-police-extended','Remington 870 Police · Extended Tube','shotgun','r870',
+  'r870-police-receiver','r870-police-wood-stock','r870-police-wood-wrist',
+  'r870-extended-tube','r870-police-wood-pump','r870-18-bead'),
+ p('r870-tac14','Remington 870 · TAC-14 Style','shotgun','r870',
+  'r870-police-receiver','r870-birdshead-only','r870-birdshead-grip',
+  'r870-short-tube','r870-short-black-pump','r870-14-bead')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
