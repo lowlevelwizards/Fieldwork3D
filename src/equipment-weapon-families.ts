@@ -3,6 +3,8 @@
  * Legacy carbine/rifle classes continue to own firing, inventory and magazines.
  */
 import type {WeaponId} from './breach-combat.ts';
+import {r870FrontCompatible,r870DefaultFrontForBarrel}
+ from './weapons/geometry/r870-front-p14.ts';
 import {r870RearFromGrip,r870RearFromStock,r870RearPair,R870_REAR_PARTS}
  from './weapons/geometry/r870-rear-p12.ts';
 import {AR_BARREL_ART} from './weapons/geometry/ar-barrel-profiles.ts';
@@ -239,9 +241,15 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'r870-pistol-grip':add('r870-pistol-grip','Compact standalone polymer pistol grip','r870','grip',{receivers:['r870-police-receiver']}),
  'r870-birdshead-only':add('r870-birdshead-only','Birdshead grip only · no shoulder stock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.birdshead.stockX}),
  'r870-birdshead-grip':add('r870-birdshead-grip','Rear-swept birdshead grip','r870','grip',{receivers:['r870-police-receiver']}),
- 'r870-standard-tube':add('r870-standard-tube','Fixed 12-gauge magazine tube','r870','magazine',{feed:'tube12',receivers:['r870-police-receiver']}),
+ 'r870-standard-tube':add('r870-standard-tube','Standard 6-shell fixed tube','r870','magazine',{feed:'tube12',receivers:['r870-police-receiver']}),
+ 'r870-short-tube':add('r870-short-tube','Compact 4-shell fixed tube','r870','magazine',{feed:'tube12',receivers:['r870-police-receiver']}),
+ 'r870-extended-tube':add('r870-extended-tube','Extended 8-shell fixed tube and front clamp','r870','magazine',{feed:'tube12',receivers:['r870-police-receiver']}),
  'r870-police-wood-pump':add('r870-police-wood-pump','Broad corncob sliding wood fore-end','r870','handguard',{receivers:['r870-police-receiver'],length:'mid'}),
- 'r870-18-bead':add('r870-18-bead','Police-style 18-inch bead-sight barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'mid',role:'shotgun',nominalInches:18})
+ 'r870-police-black-pump':add('r870-police-black-pump','Bold black ribbed Police pump','r870','handguard',{receivers:['r870-police-receiver'],length:'mid'}),
+ 'r870-magpul-mlok-pump':add('r870-magpul-mlok-pump','Angular M-LOK tactical fore-end','r870','handguard',{receivers:['r870-police-receiver'],length:'mid',mounts:FOREND_PICATINNY}),
+ 'r870-short-black-pump':add('r870-short-black-pump','Shortened ribbed synthetic pump','r870','handguard',{receivers:['r870-police-receiver'],length:'short'}),
+ 'r870-18-bead':add('r870-18-bead','Police-style 18-inch bead-sight barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'mid',role:'shotgun',nominalInches:18}),
+ 'r870-14-bead':add('r870-14-bead','Compact 14-inch bead-sight barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'short',role:'shotgun',nominalInches:14})
 };
 const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg'|'shotgun',family:WeaponFamily,
  receiver:string,stock:string,grip:string,magazine:string,handguard:string,
@@ -369,6 +377,15 @@ export function readWeaponFamilyBuild(raw:unknown,weapon:WeaponId):WeaponFamilyB
   next.parts.stock=R870_REAR_PARTS[rear].stock;
   next.parts.grip=R870_REAR_PARTS[rear].grip;
  }
+ if(receiver.family==='r870'){
+  const front=r870DefaultFrontForBarrel(next.parts.barrel);
+  if(front&&!r870FrontCompatible(next.parts.barrel,next.parts.magazine,
+      typeof parts.handguard==='string'?parts.handguard:next.parts.handguard)){
+   if(!r870FrontCompatible(next.parts.barrel,next.parts.magazine,front.pump))
+    next.parts.magazine=front.tube;
+   next.parts.handguard=front.pump;
+  }
+ }
  const handguard=parts.handguard;
  if(typeof handguard==='string'&&compatibleFamilyPart(
    receiverId,'handguard',handguard,weapon,barrelLength))
@@ -396,8 +413,11 @@ export function validFamilyBuild(build:WeaponFamilyBuild,weapon:WeaponId):boolea
  if(!receiver||receiver.family!==build.family)return false;
  const barrel=FAMILY_PARTS[build.parts.barrel];
  if(!barrel)return false;
- if(receiver.family==='r870'&&!r870RearPair(build.parts.stock,build.parts.grip))
-  return false;
+ if(receiver.family==='r870'){
+  if(!r870RearPair(build.parts.stock,build.parts.grip))return false;
+  if(!r870FrontCompatible(build.parts.barrel,build.parts.magazine,build.parts.handguard))
+   return false;
+ }
  return FAMILY_PART_SLOTS.every(slot=>compatibleFamilyPart(
   build.parts.receiver,slot,build.parts[slot],weapon,
   slot==='handguard'?barrel.length:undefined));
@@ -423,6 +443,23 @@ export function proposeFamilyPartChange(build:WeaponFamilyBuild,weapon:WeaponId,
   const key=r870RearFromGrip(id);
   if(!key)return reject('Unknown 870 grip');
   candidate.stock=R870_REAR_PARTS[key].stock;
+ }
+ if(build.family==='r870'&&(slot==='barrel'||slot==='magazine'||slot==='handguard')){
+  const front=r870DefaultFrontForBarrel(candidate.barrel);
+  if(!front)return reject('Unknown 870 front end');
+  if(slot==='magazine'){
+   // Choosing short/extended tube may require a compatible barrel.
+   if(candidate.magazine==='r870-short-tube')candidate.barrel='r870-14-bead';
+   else if(candidate.barrel==='r870-14-bead')candidate.barrel='r870-18-bead';
+  }else if(slot==='handguard'){
+   if(candidate.handguard==='r870-short-black-pump')candidate.barrel='r870-14-bead';
+   else if(candidate.barrel==='r870-14-bead')candidate.barrel='r870-18-bead';
+  }
+  const appropriate=r870DefaultFrontForBarrel(candidate.barrel)!;
+  if(!r870FrontCompatible(candidate.barrel,candidate.magazine,candidate.handguard)){
+   if(slot!=='magazine')candidate.magazine=appropriate.tube;
+   if(slot!=='handguard')candidate.handguard=appropriate.pump;
+  }
  }
  // The receiver may invalidate several pieces. Preserve everything else
  // when possible and use the historical factory fallback only where needed.
