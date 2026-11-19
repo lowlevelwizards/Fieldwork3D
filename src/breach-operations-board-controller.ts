@@ -213,7 +213,7 @@ function renderOperationsBoard(){
   });
   loadout.field('weapon').append(resupply);
   for(const slot of LOADOUT_SLOTS){
-   if(slot==='primary')continue; // Existing NEXT WEAPON action stays authoritative.
+   if(slot==='primary'||slot==='tactical')continue; // Gadgets now use physical quantities, not the legacy single-item selector.
    const row=document.createElement('label');
    row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
    const label=document.createElement('span');
