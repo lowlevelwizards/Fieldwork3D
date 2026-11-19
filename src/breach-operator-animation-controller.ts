@@ -817,8 +817,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const releaseRight=handOwners.right!=='weapon';
   let reaching=false;
   let reloadHandChest:THREE.Vector3|null=null;
-  const medicalPhase=medicalRetrievalPhase(p.treatmentProgress??0);
-  attachments[EAI.medical].visible=treatmentActive&&medicalPhase.itemInHand;
+  // No F6 medical object allocation on ordinary idle or combat frames.
+  const medicalPhase=treatmentActive?
+    medicalRetrievalPhase(p.treatmentProgress??0):null;
+  attachments[EAI.medical].visible=!!medicalPhase?.itemInHand;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
     // Deliberate visible surrender: discard the gun, kneel and raise both
@@ -851,9 +853,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
     const patientLeft=local.clone().add(P(-1,3,-2));
     const patientRight=local.clone().add(P(1,3,2));
-    const left=fit.support.clone().lerp(source,medicalPhase.reach)
-      .lerp(patientLeft,medicalPhase.apply);
-    const right=fit.primary.clone().lerp(patientRight,medicalPhase.apply);
+    const left=fit.support.clone().lerp(source,medicalPhase!.reach)
+      .lerp(patientLeft,medicalPhase!.apply);
+    const right=fit.primary.clone().lerp(patientRight,medicalPhase!.apply);
     leftGrip.copy(left);rightGrip.copy(right);
     attachments[EAI.medical].position.copy(left);
   }else if(reloadActive){
