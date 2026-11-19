@@ -4,6 +4,7 @@ on:
     branches:
       - feature/f6-physical-interactions-stages-0-2-20261119
       - feature/f6-physical-interactions-stages-3-4-20261119
+      - feature/f6-physical-interactions-stage-5-medical-20261119
       - feature/f6-physical-interactions-stage-3-wedge-20261119
       - feature/f6-physical-interactions-release-f-20261119
   pull_request:
@@ -32,6 +33,8 @@ jobs:
           tests/f6-flash-handoff.test.mjs
           tests/f6-wedge-handoff.test.mjs
           tests/f6-cuff-handoff.test.mjs
+          tests/f6-medical-retrieval.test.mjs
+          tests/equipment-22-09-campaign-medical.test.mjs
           tests/eqa3-9-civilian-animation.test.mjs
           tests/equipment-deployed-field-use.test.mjs
           tests/equipment-field-visual-rig.test.mjs
