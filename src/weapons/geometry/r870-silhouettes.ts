@@ -1,4 +1,4 @@
-/** R870 P10: bold, reference-led Fieldwork Police-wood caricature.
+/** R870 P12: grip-first, reference-led Fieldwork Police-wood caricature.
  * This is the same shared Arsenal/operator/replay factory model, not a lab
  * proxy. Every polygon must earn its silhouette at mobile gameplay size.
  * +X muzzle, +Y up, +Z right/ejection side; geometry only, no combat changes.
@@ -6,23 +6,24 @@
 import * as THREE from 'three';
 import type {WeaponFamilyBuild} from '../../equipment-weapon-families.ts';
 import {R870_P07} from './r870-art-contract.ts';
+import {r870RearPair,R870_REAR_PARTS} from './r870-rear-p12.ts';
 import {addOutline,addCuboid,addFacetedTube,
  type SlotName,type Outline} from './profile-primitives.ts';
 import {HK_BLACK_METAL,HK_DARK_POLYMER,HK_WOOD,
  FAL_VENT_SHADOW,FAL_MUZZLE_METAL} from './weapon-visual-palette.ts';
 
-const PARTS=Object.freeze({
+const FRONT_PARTS=Object.freeze({
  receiver:'r870-police-receiver',
- stock:'r870-police-wood-stock',
- grip:'r870-police-wood-wrist',
  magazine:'r870-standard-tube',
  handguard:'r870-police-wood-pump',
  barrel:'r870-18-bead'
 });
 export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
- if(build.family!=='r870'||Object.entries(PARTS).some(([slot,id])=>
+ const rearKey=r870RearPair(build.parts.stock,build.parts.grip);
+ if(build.family!=='r870'||!rearKey||Object.entries(FRONT_PARTS).some(([slot,id])=>
    build.parts[slot as SlotName]!==id))
-  throw new Error('Unimplemented Remington 870 appearance configuration');
+  throw new Error('Unimplemented Remington 870 rear furniture or front configuration');
+ const rear=R870_REAR_PARTS[rearKey];
  const seq:Record<SlotName,number>={
   stock:0,receiver:0,grip:0,magazine:0,handguard:0,barrel:0
  };
@@ -40,23 +41,22 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
   return mesh;
  };
 
- // STOCK: two low-vertex adjoining wood silhouettes with one matching seam.
- // The lower wrist goes DOWN directly behind the receiver, then moves BACK
- // and slightly farther DOWN before returning into the full stock belly.
- // Flat calm comb, few big planes, broad butt; no decorative step-lining.
- const wristTop:[number,number]=[-9.35,.55];
- const wristHeel:[number,number]=[-9.35,-2.67];
- p('stock',[
-  [-15.26,1.06],[-12.95,1.11],[-10.48,.76],wristTop,
-  wristHeel,[-10.48,-2.73],[-12.40,-3.72],[-15.26,-3.72]
- ],3.22,HK_WOOD);
- const pad=b('stock',-15.51,-1.33,0,.54,4.83,3.52,HK_DARK_POLYMER);
- pad.userData.r870ButtPad=true;
- p('grip',[
-  wristTop,[-7.98,.66],[-6.12,.78],[-6.12,-1.83],
-  [-6.66,-1.94],[-7.07,-3.10],[-7.78,-3.60],
-  [-8.43,-3.72],[-9.06,-3.44],wristHeel
- ],3.22,HK_WOOD);
+ // The grip, not the rear butt, is the authored anatomical origin.
+ // Stock extensions are independently selectable and only exist on shoulder
+ // variants. Stockless variants have NO invisible/redundant picking mesh.
+ const grip=p('grip',rear.gripOutline,3.22,
+  rearKey==='pistol'?HK_DARK_POLYMER:HK_WOOD);
+ grip.userData.r870RearGrip=rearKey;
+ if(rear.stockOutline){
+  const extension=p('stock',rear.stockOutline,3.22,HK_WOOD);
+  extension.userData.r870StockExtension=true;
+  const short=rearKey==='shortwood';
+  const pad=b('stock',short?-13.51:-15.51,short?-1.79:-1.84,
+   0,.54,short?4.14:4.36,3.52,HK_DARK_POLYMER);
+  pad.userData.r870ButtPad=true;
+ }
+ root.userData.r870RearVariant=rearKey;
+ root.userData.r870ShoulderStock=rear.hasShoulder;
 
  // RECEIVER: ONE strong exterior housing. This profile crown and steep
  // front nose do the visual work; no duplicated skins, frame tessellation,
@@ -71,17 +71,27 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // Large, UPWARD-SHIFTED flat shadow shape on the right (+Z). It is
  // deliberately a painted negative silhouette rather than an actual hole.
  // No bolt geometry, frame rim, z-fighting skins or real port recess.
- const port=p('receiver',[
+ // The port is a graphic void, not a metal extrusion: a two-dimensional
+ // four-triangle polygon, set just above the receiver's right side face.
+ const portOutline:Outline=[
   [-1.36,.82],[-1.12,1.06],[1.58,1.06],
   [1.93,.78],[1.70,.26],[-1.36,.26]
- ],.055,FAL_VENT_SHADOW);
- port.position.z=1.77;port.userData.r870RightEjectionPort=true;
+ ];
+ const shape=new THREE.Shape();
+ shape.moveTo(portOutline[0][0],portOutline[0][1]);
+ for(const [x,y] of portOutline.slice(1))shape.lineTo(x,y);
+ shape.closePath();
+ const port=new THREE.Mesh(new THREE.ShapeGeometry(shape,1),FAL_VENT_SHADOW);
+ port.name='family-receiver-'+build.parts.receiver+'-'+seq.receiver++;
+ port.position.z=1.785;
+ port.castShadow=false;port.receiveShadow=false;root.add(port);
+ port.userData.r870RightEjectionPort=true;
  port.userData.r870FlatPort=true;
 
  // FRONT: the two six-sided round forms are the silhouette, not thin rails.
  // Barrel and capped, non-detachable tube stay clearly separated. Retain
  // exact muzzle and stock datum for shot/pose/legacy-save compatibility.
- const barrel=t('barrel',2.53,R870_P07.muzzleX,R870_P07.muzzleY,
+ const barrel=t('barrel',.60,R870_P07.muzzleX,R870_P07.muzzleY,
   .96,HK_BLACK_METAL);
  barrel.userData.r870Barrel=true;
  const tube=t('magazine',3.02,13.91,-1.04,.80,HK_BLACK_METAL);
@@ -138,21 +148,38 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  pump.userData.r870PumpPart=true;
  pump.userData.r870CorncobStations=stations.length;
  pump.userData.r870PumpSides=6;
- // Four clear vertical dark channels per side. No tiny fasteners or
- // dynamic position sampling: both long side flats are straight.
+ // Eight flat graphic grooves are SIXTEEN triangles in ONE draw call.
+ // P10 extruded each groove as a 12-triangle cuboid (96 triangles,
+ // 8 draw calls) even though sidewall thickness is invisible at gameplay
+ // scale. Flat side-facing quads keep the EXACT approved 4/side layout.
+ const grooveVertices:number[]=[],grooveIndices:number[]=[];
  for(let i=0;i<4;i++){
   const x=4.29+i*1.73;
   for(const side of [-1,1]){
-   const rib=p('handguard',[
-    [x,-1.04],[x+.38,-1.04],[x+.38,-2.50],[x,-2.50]
-   ],.09,HK_DARK_POLYMER);
-   rib.position.z=side*2.05;
-   rib.userData.r870PumpPart=true;
+   const z=side*2.095,base=grooveVertices.length/3;
+   grooveVertices.push(
+    x,-1.04,z, x+.38,-1.04,z,
+    x+.38,-2.50,z, x,-2.50,z);
+   if(side>0)grooveIndices.push(base,base+2,base+1,base,base+3,base+2);
+   else grooveIndices.push(base,base+1,base+2,base,base+2,base+3);
   }
  }
- // The fore-end remains ONE logical moving assembly: pump body + 8
- // channels (9 authored meshes) for future hand-synchronized pump action.
+ const grooveGeometry=new THREE.BufferGeometry();
+ grooveGeometry.setAttribute('position',new THREE.Float32BufferAttribute(grooveVertices,3));
+ grooveGeometry.setIndex(grooveIndices);
+ grooveGeometry.computeVertexNormals();
+ const grooves=new THREE.Mesh(grooveGeometry,HK_DARK_POLYMER);
+ grooves.name='family-handguard-'+build.parts.handguard+'-'+seq.handguard++;
+ grooves.castShadow=false;grooves.receiveShadow=false;
+ grooves.userData.r870PumpPart=true;
+ grooves.userData.r870GrooveBatch=true;
+ grooves.userData.r870GrooveCount=8;
+ root.add(grooves);
+ // Two meshes move as ONE fore-end assembly: faceted sleeve + batched
+ // grooves. Part naming, pump identity and contact landmarks are unchanged.
  root.userData.r870P07=true;root.userData.r870P08=true;
  root.userData.r870P09=true;root.userData.r870P10=true;
+ root.userData.r870P12=true;
+ root.userData.r870P12Optimized=true;
  root.userData.r870PumpRearTravel=R870_P07.pumpRearTravel;
 }

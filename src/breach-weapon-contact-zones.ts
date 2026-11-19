@@ -12,6 +12,7 @@ import {FNC_FRONT_P13} from './weapons/geometry/fnc-front-layout.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {g36SupportRange} from './weapons/geometry/g36-variant-parts.ts';
 import {R870_P07} from './weapons/geometry/r870-art-contract.ts';
+import {r870RearPair,R870_REAR_PARTS} from './weapons/geometry/r870-rear-p12.ts';
 export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
 export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36'|'r870';stock:RiflePoint;
@@ -42,9 +43,10 @@ export function riflePoseContacts(
  // Aim hands below the actual sliding pump rather than its magazine tube.
  if(b.family==='r870'){
   const a=resolveWeaponAssembly(config);
+  const rear=R870_REAR_PARTS[r870RearPair(b.parts.stock,b.parts.grip)??'wood'];
   return {family:'r870',scale:a.lengthScale,
-   stock:{x:a.stockX,y:-1.34,z:0},
-   primary:{x:R870_P07.primaryX,y:R870_P07.primaryY,z:2.24},
+   stock:{x:a.stockX,y:rear.hasShoulder?-1.34:-2.10,z:0},
+   primary:{x:rear.primaryX,y:rear.primaryY,z:2.24},
    support:{near:{x:R870_P07.supportNearX,y:R870_P07.supportPalmY,z:-1.60},
     far:{x:R870_P07.supportFarX,y:R870_P07.supportPalmY,z:-1.60},
     preferredFraction:.50}};

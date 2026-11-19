@@ -84,7 +84,7 @@ test('R870 P07: real builder, six named slots, truthful muzzle and no detachable
   assert.equal(tube.length,1,'one fixed tube, no detachable box-mag');
   assert.equal(tube[0].name.startsWith('family-magazine-'),true);
   assert.equal(g.children.filter(o=>o.userData.r870RightEjectionPort).length,1);
-  assert.equal(g.children.filter(o=>o.userData.r870PumpPart).length,9);
+  assert.equal(g.children.filter(o=>o.userData.r870PumpPart).length,2);
   const triangles=g.children.reduce((sum,o)=>{
    if(!(o instanceof THREE.Mesh))return sum;
    return sum+(o.geometry.index?.count??o.geometry.getAttribute('position').count)/3;
