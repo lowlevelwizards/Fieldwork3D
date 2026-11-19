@@ -44,3 +44,13 @@ All four corrected episodes had **zero rejected script commands, zero route abor
 3. **Gameplay gate:** only ship a minimal fix if a specific rendered/accessibility or physical regression remains. An injured but successful Apartment rescue and hard Warehouse rescue should both remain possible; no guaranteed success, silent civilian protection, objective truth leak, or forced gunfight. Preserve the real FRONT/SERVICE divergence.
 4. **Release:** keep audit and presentation work in its feature PR, run focused CI, and do not stack another Pages deployment or merge to main until an actual gameplay feature is justified and the previous Pages checkpoint is verified.
 
+
+## Actual mobile browser capture — CI green
+
+[Real Chromium iPhone-sized screenshot workflow 44442443275](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44442443275) **SUCCESS** after adapting the pinned Playwright browser installer to the GitHub Ubuntu 26.04 runner. [Six PNG screenshots + manifest](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44442443275/artifacts/14491537376) were captured via the **ordinary** `?quick=1` browser startup, Settings/Quick Play scenario creator, real GENERATE MISSION button, and game-presented camera view controls. No Session, enemy, objective or fog mutation was used.
+
+- Apartment13: exact site seed **13**, selected building **APARTMENT**, selected **RESCUE & ESCORT**, size small, UNKNOWN briefing; three screenshots: briefing, live mobile iso, live mobile 2D.
+- Warehouse17: exact seed **17**, building **WAREHOUSE**, same RESCUE & ESCORT/UNKNOWN context; three analogous screenshots.
+- Browser emitted **zero page exceptions**. Reproduction and screenshot paths are logged in `artifacts/eqa3-6-browser/manifest.json`.
+
+This closes the **capture plumbing** gate and provides genuine, player-visible phone visuals. It does **not** claim a human reviewed the images for fairness, that the browser was a physical iPhone, or that live threats are visible before acquisition. The independently generated omniscient SVG maps and shot traces remain developer-only forensic comparisons, not gameplay visibility. Keep the PR in draft until a visual reviewer inspects exposure/readability and judges whether any narrow gameplay correction is actually necessary.
