@@ -9,6 +9,7 @@ import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFi
  from '../equipment-field-inventory.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
 import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
+import {quoteOneMagazineMove} from '../equipment-magazine-transfer.ts';
 import './loadout-prep.css';
 
 export type FieldGadgetEditorOptions={
@@ -16,6 +17,7 @@ export type FieldGadgetEditorOptions={
  onCommit:(inventory:FieldInventory,focusLabel?:string)=>void;
  /** Optional preview-only feedback; never authorizes or changes equipment. */
  onInspectLocation?:(location:FieldCarryLocation)=>void;
+ onMoveMagazine?:(magazineId:string,to:FieldCarryLocation,focusLabel?:string)=>void;
  locked?:boolean;
  maxFlash?:number;
  copyTargets?:readonly {id:string;name:string;loadout:EquipmentLoadout;
@@ -32,6 +34,9 @@ const btn=(label:string,action:()=>void)=>{
  const element=document.createElement('button');element.type='button';
  element.textContent=label;element.addEventListener('click',action);return element;
 };
+type PhysicalChoice=
+ |{kind:'field';id:FieldItemId;from:FieldCarryLocation}
+ |{kind:'magazine';id:string;from:FieldCarryLocation};
 export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLElement{
  const {loadout,magazines,onCommit}=options;
  const inventory=loadout.fieldInventory??initialFieldInventory(loadout);
@@ -47,12 +52,13 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  // L2.10A: read-only physical carrying-slot gauges. A gauge is a
  // presentation of the authoritative capacity report, not a second ledger.
  // Selected item is transient UI state, not an inventory or campaign draft.
- let selected:{id:FieldItemId;from:FieldCarryLocation}|null=null;
- const selections:{button:HTMLButtonElement;id:FieldItemId;from:FieldCarryLocation}[]=[];
+ let selected:PhysicalChoice|null=null;
+ const selections:{button:HTMLButtonElement;choice:PhysicalChoice}[]=[];
  const destinations:{button:HTMLButtonElement;location:FieldCarryLocation}[]=[];
  const refreshSelection=()=>{
   for(const entry of selections)entry.button.setAttribute('aria-pressed',
-   String(!!selected&&entry.id===selected.id&&entry.from===selected.from));
+   String(!!selected&&entry.choice.kind===selected.kind&&
+    entry.choice.id===selected.id&&entry.choice.from===selected.from));
   for(const entry of destinations){
    const active=!!selected&&entry.location!==selected.from;
    entry.button.hidden=!active;
@@ -62,8 +68,10 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     if(parent)delete parent.dataset.placeStatus;
     continue;
    }
-   const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,
-    selected.id,selected.from,entry.location);
+   const quote=selected.kind==='field'?
+    quoteSingleFieldTransfer(loadout,magazines,inventory,
+     selected.id,selected.from,entry.location):
+    quoteOneMagazineMove(loadout,magazines,selected.id,entry.location,inventory);
    const allowed=quote.ok&&quote.changed;
    entry.button.disabled=!!options.locked||!allowed;
    entry.button.textContent=allowed?'PLACE ONE HERE':'CANNOT FIT HERE';
@@ -72,13 +80,23 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   }
   cancelSelection.hidden=!selected;
  };
- const placeOne=(id:FieldItemId,from:FieldCarryLocation,to:FieldCarryLocation)=>{
+ const placeOne=(choice:PhysicalChoice,to:FieldCarryLocation)=>{
   if(options.locked)return;
-  const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,id,from,to);
+  if(choice.kind==='magazine'){
+   const quote=quoteOneMagazineMove(loadout,magazines,choice.id,to,inventory);
+   if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
+   if(!quote.changed){feedback('ALREADY STORED HERE');return;}
+   options.onInspectLocation?.(to);
+   options.onMoveMagazine?.(choice.id,to,'Select magazine '+choice.id+
+    ' from '+to.toUpperCase());
+   return;
+  }
+  const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,
+   choice.id,choice.from,to);
   if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
   if(!quote.changed){feedback('ALREADY STORED HERE');return;}
   options.onInspectLocation?.(to);
-  onCommit(quote.inventory,'Select one '+FIELD_ITEMS[id].name+
+  onCommit(quote.inventory,'Select one '+FIELD_ITEMS[choice.id].name+
    ' from '+to.toUpperCase());
  };
  const capacity=document.createElement('div');
@@ -130,7 +148,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     const select=btn('',()=>{
      if(suppressClick){suppressClick=false;return;}
      if(options.locked)return;
-     selected=selected?.id===id&&selected.from===loc?null:{id,from:loc};
+     selected=selected?.kind==='field'&&selected.id===id&&selected.from===loc?
+      null:{kind:'field',id,from:loc};
      if(selected)options.onInspectLocation?.(loc);
      refreshSelection();
      feedback(selected?'SELECTED ONE '+tile.label.toUpperCase()+
@@ -192,7 +211,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      suppressClick=true;
      // A drag may not generate a click; don't swallow a subsequent tap.
      window.setTimeout(()=>{suppressClick=false;},0);
-     if(destination)placeOne(id,loc,destination);
+     if(destination)placeOne({kind:'field',id,from:loc},destination);
      else feedback('PLACEMENT CANCELLED · NO KIT CHANGES');
     });
     select.addEventListener('pointercancel',cleanup);
@@ -201,7 +220,24 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     select.setAttribute('aria-pressed','false');
     select.disabled=!!options.locked;
     select.append(silhouette,itemName,quantity,grip);li.append(select);
-    selections.push({button:select,id,from:loc});
+    selections.push({button:select,choice:{kind:'field',id,from:loc}});
+   }else if(tile.kind==='magazine'&&tile.magazineId&&options.onMoveMagazine){
+    const id=tile.magazineId;
+    const select=btn('',()=>{
+     if(options.locked)return;
+     selected=selected?.kind==='magazine'&&selected.id===id&&
+      selected.from===loc?null:{kind:'magazine',id,from:loc};
+     if(selected)options.onInspectLocation?.(loc);
+     refreshSelection();
+     feedback(selected?'SELECTED '+tile.label.toUpperCase()+
+      ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
+    });
+    select.className='fw-field-inventory-select-item fw-field-inventory-select-magazine';
+    select.setAttribute('aria-label','Select magazine '+id+' from '+loc.toUpperCase());
+    select.setAttribute('aria-pressed','false');
+    select.disabled=!!options.locked;
+    select.append(silhouette,itemName,quantity);li.append(select);
+    selections.push({button:select,choice:{kind:'magazine',id,from:loc}});
    }else li.append(silhouette,itemName,quantity);
    items.append(li);
   }
@@ -211,7 +247,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   }
   slot.append(items);
   const place=btn('PLACE ONE HERE',()=>{
-   if(selected)placeOne(selected.id,selected.from,loc);
+   if(selected)placeOne(selected,loc);
   });
   place.className='fw-field-inventory-place';
   place.setAttribute('aria-label','Place selected item in '+loc.toUpperCase());
