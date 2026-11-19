@@ -1,8 +1,9 @@
 import {sampleOperatorFootContacts,applyOperatorLegIK} from './breach-operator-lower-body.ts';
 import {throwSupportGesture} from './breach-animation-choreography.ts';
 import {sampleEquipmentGesture} from './breach-equipment-interaction-pose.ts';
-import {flashCanisterSocket} from './equipment-field-visuals.ts';
-import {presentFlashHandoff} from './breach-operator-field-handoff.ts';
+import {flashCanisterSocket,wedgeSocket} from './equipment-field-visuals.ts';
+import {presentFlashHandoff,presentWedgeHandoff}
+ from './breach-operator-field-handoff.ts';
 import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-operator-animation-frame.ts';
 import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
  from './breach-operator-frame-output.ts';
@@ -872,8 +873,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     reaching=true;
     const flash=p.equipmentInteraction;
     const gesture=sampleEquipmentGesture(flash);
-    const socket=flashCanisterSocket(flash.location==='pocket'?'belt':
-      flash.location,0);
+    const socket=flash.item==='wedge'?
+      wedgeSocket(flash.location,0):
+      flashCanisterSocket(flash.location==='pocket'?'belt':flash.location,0);
     const pouch=P(socket.x,socket.y,socket.z);
     if(socket.bone==='hip')
       pouch.y+=frame.hip.position.y-frame.chest.position.y;
@@ -881,7 +883,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       pouch.x+=r.pack.position.x;pouch.y+=r.pack.position.y;
       pouch.z+=r.pack.position.z;
     }
-    const ready=P(12,3,-6);
+    const ready=flash.item==='wedge'?P(12,-13,-6):P(12,3,-6);
     leftGrip.copy(fit.support).lerp(pouch,gesture.reach);
     leftGrip.lerp(ready,gesture.lift);
   }else if(throwActive){
@@ -1338,6 +1340,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // F6.2: one already issued pouch mesh is attached to the *finished*
   // support hand; cancellation and replay rewinds restore it to the pouch.
   presentFlashHandoff(r,p,equipmentActive);
+  presentWedgeHandoff(r,p,equipmentActive);
   if(profilePose){
    const total=performance.now()-poseStart;
    // 'other' includes gait, arm constraints, IK and transform publication;
