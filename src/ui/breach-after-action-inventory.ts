@@ -98,10 +98,10 @@ export function renderAfterActionTeamReadiness(
  }
  root.append(row);
  if(report.hqStock){
-  const {ammo,medical,flash}=report.hqStock;
+  const {ammo,medical,flash,wedges,cuffs}=report.hqStock;
   root.append(el('p','fw-f4-hq',
    'HQ SUPPLY · '+ammo+' ROUNDS · '+medical+' MEDICAL PACKS · '+
-     flash+' FLASHBANGS'));
+     flash+' FLASHBANGS · '+wedges+' WEDGES · '+cuffs+' CUFF PAIRS'));
  }
  return root;
 }
