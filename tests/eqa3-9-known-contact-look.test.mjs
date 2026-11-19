@@ -91,7 +91,12 @@ test('EQA3.9 physical GO authoring turns toward disclosed civilian but does not 
    stepSession(s,1/60);
   assert.equal(liveVisibility(s,person.p),true,
     'real 60Hz GO should rotate toward the previously disclosed contact');
-  assert.equal(person.state,'routine','GO-time sight is not compliance');
+  assert.notEqual(person.state,'compliant',
+    'live civilian may freeze from real sounds, but LOOK cannot secure them');
+  assert.notEqual(person.state,'escorted',
+    'LOOK cannot grant FOLLOW custody');
+  assert.equal(person.following,null,'ordinary LOOK never assigns an escort');
+  assert.equal(s.rescue.following,null,'mission custody stays unchanged');
   assert.equal(s.mission,'secure','LOOK does not auto-complete rescue');
  }finally{activateSite(null);}
 });
