@@ -24,6 +24,8 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
 import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
+import {initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
+import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
 import type {OperationRecord} from './breach-operations.ts';
@@ -50,6 +52,7 @@ let quickWorkbenchId:string|null=null;
 let quickKitPreview:CampaignKitPreview|null=null;
 let quickKitPreviewId:string|null=null;
 let scrollToSelected=false;
+const fieldUndo=new FieldInventoryUndoHistory();
 const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
 const savedQuickWorkbenchViews=new Map<string,WeaponWorkbenchViewState>();
 const resetQuickWorkbenchViews=new Set<string>();
@@ -292,31 +295,62 @@ function renderOperationsBoard(){
   }
   const fieldHost=loadout.field('utilities');
   const renderField=(current:typeof member)=>{
+   const commitField=(inventory:FieldInventory,undo=false)=>{
+    const previousFocus=document.activeElement instanceof HTMLElement?
+     document.activeElement.getAttribute('aria-label'):null;
+    const prior=config.getRoster();
+    const next=equipRosterFieldInventory(prior,current.id,inventory);
+    if(next===prior)return;
+    const before=prior.members.find(m=>m.id===current.id);
+    const changed=next.members.find(m=>m.id===current.id);
+    if(before&&changed){
+     if(undo)fieldUndo.clear(current.id);
+     else fieldUndo.record(current.id,
+      before.loadout.fieldInventory??initialFieldInventory(before.loadout),
+      changed.loadout.fieldInventory??initialFieldInventory(changed.loadout));
+    }
+    config.setRoster(next);
+    config.saveRoster();config.applyRoster();
+    if(changed){
+     renderField(changed);
+     quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+      changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
+    }
+    if(previousFocus){
+     const matched=Array.from(fieldHost.querySelectorAll<HTMLElement>(
+      'button[aria-label],select[aria-label]')).find(el=>
+       el.getAttribute('aria-label')===previousFocus&&
+       !((el as HTMLButtonElement|HTMLSelectElement).disabled));
+     matched?.focus({preventScroll:true});
+    }
+    config.refreshHud();
+   };
    const editor=createFieldGadgetEditor({
     loadout:current.loadout,magazines:current.magazines,
     locked:config.getSession().phase!=='planning'||config.isReplaying(),
-    onCommit:inventory=>{
-     const previousFocus=document.activeElement instanceof HTMLElement?
-      document.activeElement.getAttribute('aria-label'):null;
-     const next=equipRosterFieldInventory(config.getRoster(),current.id,inventory);
-     if(next===config.getRoster())return;
-     config.setRoster(next);
-     config.saveRoster();config.applyRoster();
-     const changed=next.members.find(m=>m.id===current.id);
-     if(changed){
-      renderField(changed);
-      quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
-       changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
-     }
-     if(previousFocus){
-      const matched=Array.from(fieldHost.querySelectorAll<HTMLElement>(
-       'button[aria-label],select[aria-label]')).find(el=>
-        el.getAttribute('aria-label')===previousFocus&&
-        !((el as HTMLButtonElement|HTMLSelectElement).disabled));
-      matched?.focus({preventScroll:true});
-     }
+    copyTargets:config.getRoster().members.filter(m=>m.id!==current.id)
+     .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
+    onCopy:(targetId,inventory)=>{
+     const before=config.getRoster();
+     const next=equipRosterFieldInventory(before,targetId,inventory);
+     if(next===before)return;
+     const prior=before.members.find(m=>m.id===targetId);
+     const target=next.members.find(m=>m.id===targetId);
+     if(prior&&target)fieldUndo.record(targetId,
+      prior.loadout.fieldInventory??initialFieldInventory(prior.loadout),
+      target.loadout.fieldInventory??initialFieldInventory(target.loadout));
+     config.setRoster(next);config.saveRoster();config.applyRoster();
+     if(target)showFieldworkActionFeedback('GADGETS COPIED · '+target.callsign.toUpperCase());
      config.refreshHud();
-    }
+    },
+    canUndo:!!fieldUndo.peek(current.id,
+     current.loadout.fieldInventory??initialFieldInventory(current.loadout)),
+    onUndo:()=>{
+     const previous=fieldUndo.peek(current.id,
+      current.loadout.fieldInventory??initialFieldInventory(current.loadout));
+     if(previous)commitField(previous,true);
+    },
+    onCommit:inventory=>commitField(inventory)
    });
    const old=fieldHost.querySelector('.fw-field-inventory');
    if(old)old.replaceWith(editor);else fieldHost.append(editor);

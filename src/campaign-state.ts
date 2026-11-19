@@ -36,7 +36,7 @@ import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from '
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
 import {fieldQuantity,initialFieldInventory,readFieldInventory,fieldCarryReport,
- type FieldInventory} from './equipment-field-inventory.ts';
+ quoteFieldInventoryCopy,type FieldInventory} from './equipment-field-inventory.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
@@ -715,6 +715,21 @@ export function equipCampaignFieldInventory(c:CampaignState,id:string,
   otherFlash+fieldQuantity(next,'flashbang')>c.supplies.flash)return c;
  return {...c,operators:c.operators.map(o=>o.id===id?
   {...o,loadout:{...o.loadout,fieldInventory:next}}:o)};
+}
+
+/** Copy carried gadgets only. The destination retains its own magazines,
+ * weapon, armor and medical kit; campaign stock is re-quoted atomically.
+ */
+export function copyCampaignFieldInventory(c:CampaignState,sourceId:string,
+ targetId:string):CampaignState{
+ if(sourceId===targetId||c.activeContractId)return c;
+ const source=c.operators.find(o=>o.id===sourceId);
+ const target=c.operators.find(o=>o.id===targetId);
+ if(!source||!target||target.status==='lost'||target.status==='retired')return c;
+ const inventory=source.loadout.fieldInventory??initialFieldInventory(source.loadout);
+ const quote=quoteFieldInventoryCopy(inventory,target.loadout,target.magazines);
+ if(!quote.ok)return c;
+ return equipCampaignFieldInventory(c,target.id,quote.inventory);
 }
 
 /** Named equipment recipes are lightweight shared records, not physical stock. */

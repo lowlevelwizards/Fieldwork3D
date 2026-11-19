@@ -49,6 +49,7 @@ import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {fieldQuantity,initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
+import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
 import './campaign-style.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
@@ -72,6 +73,7 @@ export type CampaignHandlers={
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
  equipFieldInventory:(id:string,inventory:FieldInventory)=>void;
+ copyFieldInventory:(sourceId:string,targetId:string)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
  openStudio:(id:string)=>void;
  openArsenal:(id:string)=>void;
@@ -117,6 +119,7 @@ export class CampaignScreen{
  private lastArmoryRenderedId:string|null=null;
  private activeKitGroup:QuickLoadoutGroup='weapon';
  private showKitPresets=false;
+ private readonly fieldUndo=new FieldInventoryUndoHistory();
  /** Snapshot of successfully rendered Campaign equipment; never a pending draft. */
  private lastRenderedKit:{
   operatorId:string;slots:Record<LoadoutSlot,string>;weapon:string;
@@ -1658,7 +1661,30 @@ export class CampaignScreen{
    loadout:person.loadout,magazines:person.magazines,locked,
    maxFlash:c.squadIds.includes(id)?
     Math.max(0,c.supplies.flash-squadFlashReserved):4,
-   onCommit:inventory=>this.handlers.equipFieldInventory(id,inventory)
+   copyTargets:c.operators.filter(o=>o.id!==id&&
+    o.status!=='lost'&&o.status!=='retired').map(o=>({
+     id:o.id,name:o.callsign,loadout:o.loadout,magazines:o.magazines
+    })),
+   canUndo:!!this.fieldUndo.peek(id,
+    person.loadout.fieldInventory??initialFieldInventory(person.loadout)),
+   onUndo:()=>{
+    const previous=this.fieldUndo.peek(id,
+     person.loadout.fieldInventory??initialFieldInventory(person.loadout));
+    if(!previous)return;
+    this.fieldUndo.clear(id);
+    this.handlers.equipFieldInventory(id,previous);
+   },
+   onCopy:(targetId,inventory)=>{
+    const target=c.operators.find(o=>o.id===targetId);
+    if(target)this.fieldUndo.record(targetId,
+     target.loadout.fieldInventory??initialFieldInventory(target.loadout),inventory);
+    this.handlers.copyFieldInventory(id,targetId);
+   },
+   onCommit:inventory=>{
+    this.fieldUndo.record(id,
+     person.loadout.fieldInventory??initialFieldInventory(person.loadout),inventory);
+    this.handlers.equipFieldInventory(id,inventory);
+   }
   }));
   const workbenchEntry=node('section','campaign-kit-workbench-entry');
   workbenchEntry.append(node('strong','','MODULAR WEAPON WORKBENCH'));

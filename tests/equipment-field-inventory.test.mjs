@@ -70,3 +70,24 @@ test('legacy wedge capability follows real finite inventory',async()=>{
   replaceFieldQuantity(withWedges.fieldInventory,'wedge',0,'belt')};
  assert.equal(issuedWedges(emptied),0);
 });
+
+test('gadget copying is atomic and does not silently delete unsupported wedges',async()=>{
+ const {quoteFieldInventoryCopy}=await import('../src/equipment-field-inventory.ts');
+ const sourceKit=setEquipmentChoice(standard,'utility','utility-wedge');
+ const source=initialFieldInventory(sourceKit);
+ const invalid=quoteFieldInventoryCopy(source,standard,[]);
+ assert.equal(invalid.ok,false);
+ assert.match(invalid.reason,/wedge/i);
+ const valid=quoteFieldInventoryCopy(source,sourceKit,[]);
+ assert.equal(valid.ok,true);
+ assert.equal(fieldQuantity(valid.inventory,'wedge'),2);
+});
+test('gadget copying re-packs a stale slot only when destination can fit',async()=>{
+ const {quoteFieldInventoryCopy}=await import('../src/equipment-field-inventory.ts');
+ const source=replaceFieldQuantity(initialFieldInventory(standard),'flashbang',2);
+ const copied=quoteFieldInventoryCopy({...source,stacks:[
+  {itemId:'flashbang',quantity:2,location:'belt'}]},standard,[]);
+ assert.equal(copied.ok,true);
+ assert.equal(fieldQuantity(copied.inventory,'flashbang'),2);
+ assert.equal(fieldCarryReport(standard,[],copied.inventory).valid,true);
+});

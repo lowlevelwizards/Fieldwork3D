@@ -8,7 +8,8 @@ import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
  type QuickPlayCivilians,type QuickPlayObjectiveIntel} from '../quick-play-settings.ts';
 import type {BuildingArchetype} from '../breach-site.ts';
 import type {RosterState} from '../breach-roster.ts';
-import type {FieldInventory} from '../equipment-field-inventory.ts';
+import {initialFieldInventory,type FieldInventory} from '../equipment-field-inventory.ts';
+import {FieldInventoryUndoHistory} from '../equipment-field-undo.ts';
 import {createFieldGadgetEditor} from './field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './loadout-squad-rail.ts';
 import './quick-play-configurator.css';
@@ -190,6 +191,7 @@ export function createQuickPlayConfigurator(options:{
  const squadLabel=node('summary','','SQUAD LOADOUT · PREPARE EQUIPMENT');
  const squadContent=node('div','fw-quick-config-advanced-content');
  let selectedSquadMember:string|null=null;
+ const fieldUndo=new FieldInventoryUndoHistory();
  const renderSquadPrep=()=>{
   if(!options.getRoster||!options.onEquipField)return;
   const members=options.getRoster().members;
@@ -206,12 +208,39 @@ export function createQuickPlayConfigurator(options:{
   const gadgetHost=node('div','fw-quick-config-field-gear');
   squadContent.append(gadgetHost);
   const renderGadgets=(operator:typeof selected)=>{
+   const applyChange=(targetId:string,inventory:FieldInventory,undo=false)=>{
+    const before=options.getRoster?.().members.find(m=>m.id===targetId);
+    if(!before||!options.onEquipField?.(targetId,inventory))return false;
+    const after=options.getRoster?.().members.find(m=>m.id===targetId);
+    if(after){
+     if(undo)fieldUndo.clear(targetId);
+     else fieldUndo.record(targetId,
+      before.loadout.fieldInventory??initialFieldInventory(before.loadout),
+      after.loadout.fieldInventory??initialFieldInventory(after.loadout));
+    }
+    return true;
+   };
    gadgetHost.replaceChildren(createFieldGadgetEditor({
     loadout:operator.loadout,magazines:operator.magazines,
+    copyTargets:(options.getRoster?.().members??[]).filter(m=>m.id!==operator.id)
+     .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
+    onCopy:(targetId,inventory)=>{
+     if(applyChange(targetId,inventory))renderSquadPrep();
+    },
+    canUndo:!!fieldUndo.peek(operator.id,
+     operator.loadout.fieldInventory??initialFieldInventory(operator.loadout)),
+    onUndo:()=>{
+     const previous=fieldUndo.peek(operator.id,
+      operator.loadout.fieldInventory??initialFieldInventory(operator.loadout));
+     if(previous&&applyChange(operator.id,previous,true)){
+      const changed=options.getRoster?.().members.find(m=>m.id===operator.id);
+      if(changed)renderGadgets(changed);
+     }
+    },
     onCommit:inventory=>{
      const prior=document.activeElement instanceof HTMLElement?
       document.activeElement.getAttribute('aria-label'):null;
-     if(!options.onEquipField?.(operator.id,inventory))return;
+     if(!applyChange(operator.id,inventory))return;
      const changed=options.getRoster?.().members.find(m=>m.id===operator.id);
      if(!changed)return;
      renderGadgets(changed);
