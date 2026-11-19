@@ -387,6 +387,7 @@ function renderOperationsBoard(){
     loadout:current.loadout,magazines:current.magazines,
     onInspectLocation:location=>quickKitPreview?.highlightCarryLocation(location),
    onInspectItem:item=>quickKitPreview?.inspectCarryItem(item),
+   onModelThumbnail:item=>quickKitPreview?.renderModelThumbnail(item)??null,
     onMoveMagazine:(magazineId,to,focusLabel)=>{
      if(config.getSession().phase!=='planning'||config.isReplaying())return;
      const prior=config.getRoster();
