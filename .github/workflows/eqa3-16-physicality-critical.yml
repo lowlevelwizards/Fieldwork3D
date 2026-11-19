@@ -5,6 +5,8 @@ on:
     paths:
       - 'src/breach-encounter-physicality.ts'
       - 'src/breach-civilian-visuals.ts'
+      - 'src/breach-civilian-types.ts'
+      - 'src/breach-order-interactions.ts'
       - 'src/breach-civilian-pose.ts'
       - 'src/breach-2d-actor-renderer.ts'
       - 'src/breach-replay.ts'
@@ -29,9 +31,12 @@ jobs:
           npm run check
           node --experimental-strip-types --test \
             tests/eqa3-16-physicality-contract.test.mjs \
+            tests/eqa3-16-contact-replay.test.mjs \
             tests/eqa3-9-civilian-animation.test.mjs \
             tests/civilian-r2-presentation.test.mjs \
             tests/civilian-c5-unified-pose.test.mjs \
             tests/eqa3-10-civilian-response.test.mjs \
             tests/eqa3-15-moving-rescue-intel.test.mjs \
-            tests/eqa3-15-rescue-handoff.test.mjs
+            tests/eqa3-15-rescue-handoff.test.mjs \
+            tests/eqa3-9-auto-secure.test.mjs \
+            tests/eqa3-10-restrain.test.mjs
