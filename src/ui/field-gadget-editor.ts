@@ -142,8 +142,20 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  const actions=document.createElement('div');actions.className='fw-field-inventory-actions';
  const autopack=btn('AUTO PACK',()=>{
   const packed=autoPackFieldInventory(loadout,magazines,inventory);
-  if(packed)onCommit(packed);
-  else feedback('AUTO PACK UNAVAILABLE · ADJUST LOAD OR CARRYING EQUIPMENT');
+  if(!packed){
+   feedback('AUTO PACK UNAVAILABLE · ADJUST LOAD OR CARRYING EQUIPMENT');
+   return;
+  }
+  // L2.10B: no meaningless mutation, undo entry, stock re-quote or view
+  // rebuild when all physical stacks already occupy the preferred slots.
+  const same=FIELD_CARRY_LOCATIONS.every(location=>
+   (['flashbang','wedge'] as FieldItemId[]).every(id=>
+    inventory.stacks.filter(s=>s.itemId===id&&s.location===location)
+     .reduce((total,s)=>total+s.quantity,0)===
+    packed.stacks.filter(s=>s.itemId===id&&s.location===location)
+     .reduce((total,s)=>total+s.quantity,0)));
+  if(same){feedback('ALREADY PACKED · NO CHANGES NEEDED');return;}
+  onCommit(packed);
  });
  autopack.disabled=!!options.locked;
  actions.append(autopack);

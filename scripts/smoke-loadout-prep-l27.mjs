@@ -52,6 +52,10 @@ try{
   assert.match(await row.locator('.fw-field-inventory-quantity').innerText(),/×1/);
   assert.equal(Number(await rigMeter.getAttribute('aria-valuenow')),before,
    'undo restores physical capacity gauge');
+  await panel.getByRole('button',{name:'AUTO PACK'}).click();
+  assert.match(await panel.getByRole('status').innerText(),/ALREADY PACKED/);
+  assert.equal(Number(await rigMeter.getAttribute('aria-valuenow')),before,
+   'no-op auto pack preserves the true physical carrying report');
   await panel.getByLabel('Operator to copy gadgets to').selectOption('moss');
   await panel.getByRole('button',{name:'Copy carried gadgets to selected operator'}).click();
   assert.match(await panel.locator('.fw-pre-go-note').innerText(),/copied/i);
