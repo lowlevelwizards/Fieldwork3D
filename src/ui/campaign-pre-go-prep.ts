@@ -83,6 +83,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
     initialFieldInventory(o.loadout),'flashbang'),0);
   const onChange=(inventory:FieldInventory,undoing=false)=>{
    if(!canPrepare())return;
+   note.textContent='Equipment issued here updates the current mission before GO. No resupply after execution.';
    // Rebuild just the equipment controls while keeping the finger/keyboard
    // position stable. A quantity tap must not jump the mission sheet.
    const focusedLabel=document.activeElement instanceof HTMLElement?
@@ -110,6 +111,25 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
   editorHost.replaceChildren(createFieldGadgetEditor({
    loadout:selected.loadout,magazines:selected.magazines,
    maxFlash:Math.max(0,campaign.supplies.flash-flashElsewhere),
+   copyTargets:squad.filter(o=>o.id!==selected.id).map(o=>({
+    id:o.id,name:o.callsign,loadout:o.loadout,magazines:o.magazines
+   })),
+   onCopy:(targetId,inventory)=>{
+    if(!canPrepare())return;
+    const target=hooks.getCampaign()?.operators.find(o=>o.id===targetId);
+    if(!target)return;
+    const before=target.loadout.fieldInventory??initialFieldInventory(target.loadout);
+    if(!hooks.issue(targetId,inventory)){
+     note.textContent='Cannot copy this kit: check squad stock and available carrying space.';
+     return;
+    }
+    const after=hooks.getCampaign()?.operators.find(o=>o.id===targetId);
+    if(after)undo.record(targetId,before,
+     after.loadout.fieldInventory??initialFieldInventory(after.loadout));
+    note.textContent='Carried gadgets copied to '+target.callsign+
+     '. The destination keeps its own weapon, armor, and medical supplies.';
+    render(false);
+   },
    canUndo:!!undo.peek(selected.id,current),
    onUndo:()=>{
     const snapshot=undo.peek(selected.id,current);
