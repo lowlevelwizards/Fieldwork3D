@@ -8,6 +8,7 @@ import type {PlanNode} from './breach-plan.ts';
 import {setCivilianState} from './breach-civilian-types.ts';
 import {quoteDeployedFieldUse,spendDeployedFieldItem}
  from './equipment-deployed-field-use.ts';
+import {RESTRAINT_CONTACT_SECONDS} from './equipment-interaction-timings.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
 import {SUSPECT_CHALLENGE_RANGE,SUSPECT_CHALLENGE_SECONDS,
@@ -142,7 +143,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         }
         if(a.actionTimer===0)a.lastCivilianContactAt=s.seconds;
         a.actionTimer+=dt;
-        if(a.actionTimer<1.15+cuffs.accessSeconds)return true;
+        if(a.actionTimer<RESTRAINT_CONTACT_SECONDS+cuffs.accessSeconds)return true;
         if(!spendDeployedFieldItem(a,'zip-tie')){
           failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
         }

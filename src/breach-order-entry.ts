@@ -81,8 +81,10 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
       door.wedged=true;door.wedgeOwnerId=a.id;
     }else if(method==='unwedge'){
       door.wedged=false;
-      const owner=s.operators.find(o=>o.id===door.wedgeOwnerId);
-      if(owner)restoreDeployedWedge(owner);
+      // The person actually retrieving the wedge may keep it, only when
+      // their carried wedge tool and physical pouch still have room.
+      // Never teleport an item back to a distant original owner.
+      restoreDeployedWedge(a);
       door.wedgeOwnerId=undefined;
     }
     else if(method==='pick'){

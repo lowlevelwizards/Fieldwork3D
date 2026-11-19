@@ -52,6 +52,9 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** F6: optional fixed-step clock of the authored active interaction.
+  * Missing in older films means no credible mid-action hand retrieval. */
+ actionTimer?:number;
  /** EQA3.16: auditory estimate at this film time, never future AI memory. */
  heard?:Pt|null;contact?:Pt|null;lastNoiseAt?:number;
  /** F2: sparse historical field inventory locations for actual replayed depletion. */
@@ -152,6 +155,7 @@ export function snapshot(s:Session,seenGround?:string[],
       const prior=actorBefore?.get(a.id);
       return {id:a.id,p:position(a.p),
       plan:reuseFrozenReplayValue(a.plan,prior?.plan,()=>copyNodes(a.plan)),
+      actionTimer:a.actionTimer,
       heading:a.heading,health:a.health,velocity:a.velocity,
       squeeze:a.squeeze,squeezeYaw:a.squeezeYaw,squeezeTime:a.squeezeTime,
       traversal:traversalCopy(a.traversal),
@@ -514,6 +518,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
+      actionTimer:copy.actionTimer??0,
       heard:copy.heard?position(copy.heard):null,
       contact:copy.contact?position(copy.contact):null,
       lastNoiseAt:copy.lastNoiseAt??-100,

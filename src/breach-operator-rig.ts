@@ -62,7 +62,8 @@ export type OperatorRig={
   armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
   rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
-  flashCanister:THREE.Mesh;flashCanisters:THREE.Mesh[];wedgeMeshes:THREE.Mesh[];utilityTool:THREE.Mesh;
+  flashCanister:THREE.Mesh;flashCanisters:THREE.Mesh[];wedgeMeshes:THREE.Mesh[];
+  cuffMeshes:THREE.Mesh[];utilityTool:THREE.Mesh;
   gloveCovers:THREE.Mesh[];gloveMaterial:THREE.MeshStandardMaterial;
   visualKit:OperatorVisualKit;
   poseCavity:OperatorPoseCavity;
@@ -334,6 +335,8 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   const flashCanisters=[flashCanister];
   // Wedge miniatures are allocated lazily only on wedge-equipped operators.
   const wedgeMeshes:THREE.Mesh[]=[];
+  // Allocation only on first physical cuff issue, not on cold rigs.
+  const cuffMeshes:THREE.Mesh[]=[];
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,baseTorso,feet,arms,
     {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
       dark:boot,skin,steel},headCanonicalFrame,lazyAccessories);
@@ -358,7 +361,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     bodycamChest,bodycamHelmet,
     reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
-    medicalPouch,radioUnit,flashCanister,flashCanisters,wedgeMeshes,utilityTool,gloveCovers,gloveMaterial,
+    medicalPouch,radioUnit,flashCanister,flashCanisters,wedgeMeshes,cuffMeshes,utilityTool,gloveCovers,gloveMaterial,
     visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
@@ -431,6 +434,22 @@ export function ensureRigWedgeMeshes(r:OperatorRig,count:number):void{
   wedge.name='fieldwork-carried-wedge-'+i;
   wedge.rotation.z=-.19;wedge.castShadow=true;wedge.receiveShadow=true;
   wedge.visible=false;r.hip.add(wedge);r.wedgeMeshes.push(wedge);
+ }
+}
+
+/** Up to six individually countable flex cuff pairs; no mesh is created
+ * on an empty/default loadout or during repeated pose evaluation.
+ */
+export function ensureRigFlexCuffMeshes(r:OperatorRig,count:number):void{
+ const needed=Math.max(0,Math.min(6,Math.floor(count)));
+ if(r.cuffMeshes.length>=needed)return;
+ const geometry=r.cuffMeshes[0]?.geometry??
+  new THREE.TorusGeometry(1.4,.29,3,6);
+ for(let i=r.cuffMeshes.length;i<needed;i++){
+  const cuff=new THREE.Mesh(geometry,r.weaponDark);
+  cuff.name='fieldwork-carried-flex-cuff-'+i;
+  cuff.rotation.x=Math.PI*.5;cuff.castShadow=false;
+  cuff.visible=false;r.hip.add(cuff);r.cuffMeshes.push(cuff);
  }
 }
 

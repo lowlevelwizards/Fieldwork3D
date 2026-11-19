@@ -13,7 +13,7 @@ export type PoseActionSource=Pick<OperatorPose,
  'seconds'|'lastThrowAt'|'lastDoorAt'|'doorPoint'|'doorMethod'|'doorGrip'|'physicalContact'|
  'reload'|'reloadDuration'|'reloadMode'|'weapon'|'treatmentActive'|
  'down'|'surrender'|'injury'|'hitRegion'|'aiming'|'firing'|'hitAge'|
- 'lockpickActive'>;
+ 'lockpickActive'|'equipmentInteraction'>;
 export function resolveOperatorActionState(
  p:PoseActionSource,downProgress:number,pushActive:boolean
 ){
@@ -36,10 +36,21 @@ export function resolveOperatorActionState(
  const woundedGuard=woundedHandGuard({down:p.down,injury:p.injury,
   hitRegion:p.hitRegion,aiming:p.aiming,firing:p.firing,
   hitAge:p.hitAge});
+ // A GO-validated active flash order borrows the SAME throw hand ownership.
+ // Reload, medical, down, damage guard and door interaction all outrank it.
+ // A wedge action uses the same door order timer, not a second visual
+ // "open" command. It may borrow the door hand while the tool is active,
+ // unless an actual motor-owned door grip/physical contact owns that hand.
+ const wedgeTool=!!p.equipmentInteraction&&p.equipmentInteraction.item==='wedge';
+ const equipmentActive=!!p.equipmentInteraction&&!p.down&&!p.surrender&&
+  !treatmentActive&&!reloadActive&&!throwActive&&!pushActive&&
+  !woundedGuard&&!p.firing&&
+  (!doorActive||(wedgeTool&&!p.doorGrip&&!p.physicalContact));
  const originalOwners=resolvePoseContactOwners({
    surrender:p.surrender,down:p.down,downProgress,
    treatmentActive,reloadActive,reloadProgress,reloadMode,
-   throwActive,pushActive,woundedGuard,doorActive
+   throwActive:throwActive||equipmentActive,pushActive,woundedGuard,
+   doorActive:doorActive&&!equipmentActive
  });
  const physicalContact=resolvePhysicalContactPose(
    p.physicalContact,originalOwners,p.seconds);
@@ -51,6 +62,7 @@ export function resolveOperatorActionState(
      'brace' as const:'teammate' as const}:originalOwners;
  return {treatmentActive,reloadActive,reloadProgress,reloadMode,
    throwAge,throwActive,doorAge,doorActive,gripWeight,woundedGuard,
+   equipmentActive,
    handOwners,physicalContact,
    // Surface/teammate contacts are future A3.6/A3.7 actions. No new
    // action or world contact can be inferred from presentation alone.

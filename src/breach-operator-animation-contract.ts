@@ -20,6 +20,7 @@ import type {Handling,HandlingIntent} from './breach-weapon-pose.ts';
 import type {HandlingTransition} from './breach-handling-transition.ts';
 import type {WoundRegion,FallPose} from './breach-wounds.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
+import type {EquipmentInteractionPose} from './breach-equipment-interaction-pose.ts';
 import type {CarryLocation,CarryPlacement} from './equipment-carry-placement.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
@@ -54,6 +55,8 @@ export type OperatorPose={
   reload:number;reloadDuration:number;reloadMode?:ReloadMode|null;
   reloadRemoved?:boolean;reloadInserted?:boolean;lastThrowAt:number;
   lastDoorAt:number;doorPoint?:{x:number;y:number};
+  /** F6: real deployed pouch retrieval; presentation only. */
+  equipmentInteraction?:EquipmentInteractionPose|null;
   /** D4 motor-owned active/releasing support hand attachment. */
   doorGrip?:DoorGripPose|null;
   /** A3.5: typed anchor from an existing simulation-owned contact. */
@@ -81,6 +84,7 @@ export type OperatorPose={
   /** 0-1 motor-owned vault phase, also restored during replay. */
   traversalProgress?:number;
   equipment?:EquipmentLoadout;flashCharges?:number;wedgeRemaining?:number;
+  restraintRemaining?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
   magazineCarryLocations?:readonly CarryLocation[];
   /** Simulation-owned IDs and actual stowage, used for V4 handoff ONLY. */
