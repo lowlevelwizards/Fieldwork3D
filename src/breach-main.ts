@@ -100,7 +100,8 @@ import {doorReachable} from './breach-door.ts';
 import {doorKnown,type IntelMode} from './breach-intel.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
-import {applyRosterIdentity,freshQuickPlayRoster,equipRosterFieldInventory} from './breach-roster.ts';
+import {applyRosterIdentity,equipRosterFieldInventory} from './breach-roster.ts';
+import {refreshQuickPlayPreparedRoster} from './breach-quickplay-kit-preferences.ts';
 import type {CampaignState} from './campaign-state.ts';
 import {loadActiveCampaign,loadCampaignSlot,writeCampaignSlot,
  activateCampaignSlot,commitCampaignToSlot,type CampaignSlot}
@@ -217,7 +218,7 @@ const missionController=new BreachMissionController({
   }),
   randomSeed:randomSiteSeed,
   refreshQuickRoster:()=>{
-    persistentRoster=freshQuickPlayRoster(persistentRoster);
+    persistentRoster=refreshQuickPlayPreparedRoster(persistentRoster);
   },
   applyRoster:session=>applyRosterIdentity(session,persistentRoster),
   applyCampaign:applyCampaignSkills,
