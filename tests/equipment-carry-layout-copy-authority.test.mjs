@@ -6,10 +6,13 @@ import {fieldQuantity} from '../src/equipment-field-inventory.ts';
 test('same-magazine-class roster copy moves positions without changing magazine ownership',()=>{
  const start=initialRoster(),source=start.members[0],target=start.members[0];
  const from=moveRosterMagazine(start,source.id,source.magazines[0].id,'backpack');
- // Other default operators use other weapon families, and must be rejected.
+ // Explicitly incompatible magazine families must be rejected. The real
+ // starting squad can have several carbines, so never assume a class split.
  const second=from.members[1];
- const rejected=copyRosterCarryLayout(from,source.id,second.id);
- assert.equal(rejected,from);
+ const incompatible={...from,members:from.members.map(m=>m.id!==second.id?m:
+  {...m,magazines:m.magazines.map(mag=>({...mag,weapon:'smg'}))})};
+ const rejected=copyRosterCarryLayout(incompatible,source.id,second.id);
+ assert.equal(rejected,incompatible);
  // Explicit same-weapon-class partner with independent physical stock.
  const copy={...from,members:[from.members[0],{...from.members[0],
   id:'duplicate',callsign:'TWIN',magazines:from.members[0].magazines.map(m=>({
