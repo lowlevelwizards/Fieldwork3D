@@ -15,6 +15,7 @@ const civilian=()=>{
  // Only an observed/audibly estimated location is available to the
  // civilian, not the hostile's truth or its chosen combat target.
  c.threatEstimate={x:100,y:70};
+ c.fear=.85; // Active alarm, not a calm person's stale estimate.
  c.refugePoints=[far,side];
  return c;
 };
