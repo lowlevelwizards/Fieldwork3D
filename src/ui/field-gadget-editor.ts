@@ -337,7 +337,9 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   }
   feedback('NO AVAILABLE SPACE · '+checked.conflicts.join(' · '));
  };
- for(const id of ['flashbang','wedge','smoke','frag','door-charge','chem-light'] as FieldItemId[]){
+ // Show actually usable items; inactive catalog futures live in one disclosure,
+ // never compete for equal-size controls or create false inventory actions.
+ for(const id of FIELD_ITEM_IDS.filter(id=>FIELD_ITEMS[id].usable)){
   const item=FIELD_ITEMS[id];
   const enabled=item.usable&&(id!=='wedge'||loadout.slots.utility==='utility-wedge');
   const disabled=!!options.locked||!enabled;
@@ -406,6 +408,18 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   }
   root.append(row);
  }
+ const future=document.createElement('details');
+ future.className='fw-field-inventory-future';
+ const futureItems=FIELD_ITEM_IDS.filter(id=>!FIELD_ITEMS[id].usable);
+ const futureHeading=document.createElement('summary');
+ futureHeading.textContent='FUTURE EQUIPMENT · '+futureItems.length+' NOT YET AVAILABLE';
+ future.append(futureHeading);
+ for(const id of futureItems){
+  const item=FIELD_ITEMS[id];
+  const note=text('p','',item.name+' · '+item.description);
+  future.append(note);
+ }
+ if(futureItems.length)root.append(future);
  const actions=document.createElement('div');actions.className='fw-field-inventory-actions';
  const autopack=btn('AUTO PACK',()=>{
   const packed=autoPackFieldInventory(loadout,magazines,inventory);
@@ -433,8 +447,13 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   actions.append(undo);
  }
  if((options.onCopy||options.onCopyLayout)&&options.copyTargets?.length){
-  const copyArea=document.createElement('div');
+  const copyArea=document.createElement('details');
   copyArea.className='fw-field-inventory-copy-area';
+  const copyHeading=document.createElement('summary');
+  copyHeading.textContent='SQUAD COPY · GADGETS & CARRY LAYOUT';
+  copyArea.append(copyHeading);
+  const copyInner=document.createElement('div');
+  copyInner.className='fw-field-inventory-copy-inner';
   const picker=document.createElement('select');
   picker.className='fw-field-inventory-location';
   picker.setAttribute('aria-label','Operator to copy gadgets to');
@@ -455,7 +474,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    });
    copyButton.setAttribute('aria-label','Copy carried gadgets to selected operator');
    copyButton.disabled=!!options.locked;
-   copyArea.append(copyButton);
+   copyInner.append(copyButton);
   }
   if(options.onCopyLayout){
    const inspect=btn('PREVIEW CARRY LAYOUT',()=>{
@@ -500,10 +519,10 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    picker.addEventListener('change',()=>{
     pendingTarget=null;detail.hidden=true;confirm.hidden=true;
    });
-   copyArea.append(inspect,detail,confirm);
+   copyInner.append(inspect,detail,confirm);
   }
   picker.disabled=!!options.locked;
-  copyArea.prepend(picker);root.append(copyArea);
+  copyInner.prepend(picker);copyArea.append(copyInner);root.append(copyArea);
  }
  root.append(actions);
  return root;
