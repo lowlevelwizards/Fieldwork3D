@@ -320,14 +320,15 @@ function blendNpcPoseHandoff(output:MutableOutput,p:OperatorPose):void{
  const alpha=raw*raw*(3-2*raw);
  for(let i=0;i<output.slotCount;i++){
   const slot=output.slots[i],id=slot.id;
-  // The world motor and scheduled feet retain sole authority. No ghost
-  // weapons, magazines or other discrete equipment visibility.
-  if(id==='root'||id.endsWith('-shoe')||
-     id==='held-weapon'||id==='dropped-weapon'||
-     slot.owner==='attachments')continue;
-  if(slot.owner==='body'||slot.owner==='upper-body'||
-     slot.owner==='lower-body'||id==='legacy-frame')
+  // The leg IK solution is a CHAIN: its upper/lower segments, the hip,
+  // root orientation and scheduled boot must be published together from
+  // the same timestep. Never interpolate a shin while keeping the planted
+  // shoe fixed or it will visually disconnect and the body will hover.
+  // Stance height itself is progressively sampled before IK, not here.
+  if(id==='chest'||id==='head'||slot.owner==='upper-body')
    blendPoseTransform(output.npcFrom[i],output.staged[i],alpha);
+  // World root, pelvis, legacy rotation, all legs and shoes, all equipment
+  // remain the exact authored/IK pose. Rendering cannot alter motor/feet.
  }
 }
 /** The ONLY production pose commit. It publishes exactly one complete,
