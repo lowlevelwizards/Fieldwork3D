@@ -25,6 +25,18 @@ test('N1: actual Lab locomotion path speed equals motor velocity, including afte
   assert.ok(near(travel,right.velocity,.001),
    id+' world travel '+travel+' must equal reported '+right.velocity);
  }
+ // A FOLLOW handoff is physically idle until 0.8s. The earlier
+ // fixture advanced its root by 15.8 units at t=.79 despite velocity=0,
+ // leaving the ankle behind and violating the lower-leg reach budget.
+ for(const time of [0,.22,.79]){
+  const pre=sampleNpcCivilian('civ-follow',time);
+  assert.equal(pre.velocity,0);
+  assert.ok(near(pre.p.x,0,.0001),
+   'FOLLOW cannot pre-travel before first physical escort motion');
+ }
+ const followAfter=sampleNpcCivilian('civ-follow',.81);
+ assert.ok(near(followAfter.p.x,.2,.001),
+  'FOLLOW must travel continuously from its .8s start');
  const hostileA=sampleNpcHostile('host-retreat',1.37).pose;
  const hostileB=sampleNpcHostile('host-retreat',1.38).pose;
  assert.ok(near((hostileB.x-hostileA.x)/.01,hostileB.velocity,.001));
