@@ -184,7 +184,10 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // 8 draw calls) even though sidewall thickness is invisible at gameplay
  // scale. Flat side-facing quads keep the EXACT approved 4/side layout.
  const grooveVertices:number[]=[],grooveIndices:number[]=[];
- const grooveCount=frontPump.pattern==='mlok'?3:frontPump.material==='wood'?4:5;
+ // A mini MCS fore-end has only three bold readable ribs. Five full
+ // Police ribs would overlap on its deliberately abbreviated sleeve.
+ const grooveCount=frontPump.endX<8?3:frontPump.pattern==='mlok'?3:
+  frontPump.material==='wood'?4:5;
  const innerWidth=frontPump.endX-frontPump.startX-2.8;
  for(let i=0;i<grooveCount;i++){
   const x=frontPump.startX+1.28+(i+.12)*(innerWidth/grooveCount);
