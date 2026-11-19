@@ -328,6 +328,25 @@ function renderOperationsBoard(){
    const editor=createFieldGadgetEditor({
     loadout:current.loadout,magazines:current.magazines,
     onInspectLocation:location=>quickKitPreview?.highlightCarryLocation(location),
+    onMoveMagazine:(magazineId,to,focusLabel)=>{
+     if(config.getSession().phase!=='planning'||config.isReplaying())return;
+     const prior=config.getRoster();
+     const next=moveRosterMagazine(prior,current.id,magazineId,to);
+     if(next===prior)return;
+     config.setRoster(next);config.saveRoster();config.applyRoster();
+     const changed=next.members.find(m=>m.id===current.id);
+     if(changed){
+      renderField(changed);
+      quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+       changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
+      if(focusLabel){
+       Array.from(fieldHost.querySelectorAll<HTMLElement>('button[aria-label]'))
+        .find(el=>el.getAttribute('aria-label')===focusLabel)
+        ?.focus({preventScroll:true});
+      }
+     }
+     config.refreshHud();
+    },
     locked:config.getSession().phase!=='planning'||config.isReplaying(),
     copyTargets:config.getRoster().members.filter(m=>m.id!==current.id)
      .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),

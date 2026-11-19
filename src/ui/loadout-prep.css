@@ -148,3 +148,9 @@
  .fw-field-inventory-carry-tile{padding:3px}
  .fw-field-inventory-item-name{font-size:10px}
 }
+
+/* L2.12A: individually-selectable magazines use existing owner authority. */
+.fw-field-inventory-select-magazine{grid-template-columns:15px minmax(0,1fr) auto;
+ touch-action:manipulation;min-height:44px}
+.fw-field-inventory-carry-tile[data-kind="magazine"] .fw-field-inventory-item-silhouette{
+ width:9px;height:17px;border-radius:2px;border-color:#a6b8b6}

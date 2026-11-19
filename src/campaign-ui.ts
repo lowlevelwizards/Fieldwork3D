@@ -1663,6 +1663,10 @@ export class CampaignScreen{
   grouped.field('utilities').append(createFieldGadgetEditor({
    loadout:person.loadout,magazines:person.magazines,locked,
    onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
+   onMoveMagazine:(magazineId,to,focusLabel)=>{
+    this.pendingKitFocusLabel=focusLabel??null;
+    this.handlers.moveMagazine(id,magazineId,to);
+   },
    maxFlash:c.squadIds.includes(id)?
     Math.max(0,c.supplies.flash-squadFlashReserved):4,
    copyTargets:c.operators.filter(o=>o.id!==id&&

@@ -8,7 +8,7 @@ import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
  type QuickPlayCivilians,type QuickPlayObjectiveIntel} from '../quick-play-settings.ts';
 import type {BuildingArchetype} from '../breach-site.ts';
 import type {RosterState} from '../breach-roster.ts';
-import {initialFieldInventory,type FieldInventory} from '../equipment-field-inventory.ts';
+import {initialFieldInventory,type FieldInventory,type FieldCarryLocation} from '../equipment-field-inventory.ts';
 import {FieldInventoryUndoHistory} from '../equipment-field-undo.ts';
 import {createFieldGadgetEditor} from './field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './loadout-squad-rail.ts';
@@ -77,6 +77,7 @@ export function createQuickPlayConfigurator(options:{
  onVisibilityChange?:(visible:boolean)=>void;
  getRoster?:()=>RosterState;
  onEquipField?:(id:string,inventory:FieldInventory)=>boolean;
+ onMoveMagazine?:(id:string,magazineId:string,to:FieldCarryLocation)=>boolean;
 }){
  let settings=readSettings();
  let previouslyFocused:HTMLElement|null=null;
@@ -244,6 +245,20 @@ export function createQuickPlayConfigurator(options:{
    gadgetHost.replaceChildren(createFieldGadgetEditor({
     loadout:operator.loadout,magazines:operator.magazines,
      onInspectLocation:location=>squadPreview?.highlightCarryLocation(location),
+    onMoveMagazine:options.onMoveMagazine?(magazineId,to,focusLabel)=>{
+     const scroll=content.scrollTop;
+     if(!options.onMoveMagazine?.(operator.id,magazineId,to))return;
+     const changed=options.getRoster?.().members.find(m=>m.id===operator.id);
+     if(!changed)return;
+     renderGadgets(changed);content.scrollTop=scroll;
+     squadPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+      changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
+     if(focusLabel){
+      Array.from(gadgetHost.querySelectorAll<HTMLElement>('button[aria-label]'))
+       .find(el=>el.getAttribute('aria-label')===focusLabel)
+       ?.focus({preventScroll:true});
+     }
+    }:undefined,
     copyTargets:(options.getRoster?.().members??[]).filter(m=>m.id!==operator.id)
      .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
     onCopy:(targetId,inventory)=>{
