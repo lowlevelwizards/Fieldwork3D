@@ -55,6 +55,8 @@ import type {CarryGearSlot} from './equipment-carry-gear-change.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {fieldQuantity,initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
+import {quoteCampaignSquadRefill,quoteCampaignOperatorRefill}
+ from './equipment-campaign-squad-refill.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
 import './campaign-style.css';
@@ -73,6 +75,7 @@ export type CampaignHandlers={
  reconContract:(id:string)=>void;
  buyAmmo:()=>void;buyMedical:()=>void;buyFlash:()=>void;
  resupply:(id:string)=>void;resupplyMedical:(id:string)=>void;
+ resupplySquad:()=>void;
  treat:(id:string)=>void;
  recruit:()=>void;assignSlot:(slot:number,id:string)=>void;
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
@@ -614,16 +617,20 @@ export class CampaignScreen{
    look.setAttribute('aria-label','Edit '+p.callsign+' appearance in Operator Studio');
    actions.append(look);
    careActions.append(weaponPick);
-   const resupply=button('RESUPPLY AMMO',()=>this.handlers.resupply(p.id));
+   const refill=quoteCampaignOperatorRefill(c,p.id);
+   const resupply=button('REFILL '+(refill?.roundsIssued??0)+' ROUNDS · '+
+     (refill?.roundsWanted??0)+' NEEDED',()=>this.handlers.resupply(p.id));
    resupply.setAttribute('aria-label','Resupply ammunition for '+p.callsign);
-   resupply.disabled=!!c.activeContractId||c.supplies.ammo===0;
+   resupply.disabled=!!c.activeContractId||!refill?.roundsIssued;
    if(resupply.disabled)resupply.title=c.activeContractId?
     'Finish the current deployment before resupplying':
-    'No ammunition available in Logistics';
+    refill?.roundsWanted===0?'Ammunition already full':
+    'Insufficient ammunition in Logistics';
    careActions.append(resupply);
    const med=kitMedicalSupplies(p.loadout);
-   const replenish=button('REISSUE MEDICAL '+medicalSupplyCount(p.medicalSupplies)+
-    '/'+medicalSupplyCount(med)+' · '+c.supplies.medical+' IN STOCK',
+   const replenish=button('MEDICAL '+medicalSupplyCount(p.medicalSupplies)+
+    '/'+medicalSupplyCount(med)+' · '+(refill?.medicalIssued??0)+
+    ' HQ PACK',
     ()=>this.handlers.resupplyMedical(p.id));
    replenish.setAttribute('aria-label','Reissue medical supplies for '+p.callsign);
    replenish.disabled=!!c.activeContractId||c.supplies.medical<1||
@@ -677,7 +684,43 @@ export class CampaignScreen{
    fact.append(node('strong','',String(count)),node('span','',label));
    stock.append(fact);
   }
-  supplyPanel.append(stock,node('h3','campaign-logistics-buy-heading',
+  supplyPanel.append(stock);
+  // The same immutable HQ transaction plan powers these labels and the
+  // action. Shortages are visible *before* choosing the squad refill.
+  const squadQuote=quoteCampaignSquadRefill(c);
+  const squadReplenish=node('section','campaign-squad-refill');
+  squadReplenish.append(node('h3','','SQUAD REFILL · LIVE HQ STOCK'));
+  const summary=node('p','campaign-squad-refill-summary',
+   squadQuote.roundsIssued+' / '+squadQuote.roundsWanted+' ROUNDS · '+
+   squadQuote.medicalIssued+' / '+squadQuote.medicalWanted+' MEDICAL PACKS'+
+   (squadQuote.partial?' · PARTIAL STOCK':''));
+  squadReplenish.append(summary);
+  const rows=node('div','campaign-squad-refill-lines');
+  for(const line of squadQuote.lines){
+   const chip=node('div','campaign-squad-refill-line');
+   chip.append(node('strong','',line.name.toUpperCase()),
+    node('span','',
+     line.roundsIssued+' / '+line.roundsWanted+' RDS · '+
+     line.medicalIssued+' / '+line.medicalWanted+' MED PACKS'+
+     (line.roundsShort?' · '+line.roundsShort+' RDS SHORT':'')));
+   rows.append(chip);
+  }
+  squadReplenish.append(rows);
+  const squadRefill=button('REFILL SQUAD · '+
+   squadQuote.cost.ammo+' HQ ROUNDS + '+
+   squadQuote.cost.medical+' MEDICAL PACKS',
+   this.handlers.resupplySquad,'campaign-primary');
+  squadRefill.setAttribute('aria-label',
+   'Refill squad using '+squadQuote.cost.ammo+' HQ rounds and '+
+   squadQuote.cost.medical+' medical packs');
+  squadRefill.disabled=!squadQuote.available||!squadQuote.changed;
+  if(squadRefill.disabled)squadRefill.title=squadQuote.reason??
+   'All assigned operators are supplied or HQ reserves are empty';
+  squadReplenish.append(squadRefill,
+   node('p','campaign-muted',
+    'Uses existing HQ stock once; remaining shortages stay visible. '+
+    'Wedges and flex cuffs retain their physical counts—no free refill.'));
+  supplyPanel.append(squadReplenish,node('h3','campaign-logistics-buy-heading',
    'REPLENISH RESERVES'));
   const purchases=node('div','campaign-purchases');
   for(const [label,cost,action] of [
@@ -1365,6 +1408,25 @@ export class CampaignScreen{
    metric.append(node('small','',name),node('strong','',value));stats.append(metric);
   }
   summary.append(stats);
+  const singleQuote=quoteCampaignOperatorRefill(c,person.id);
+  if(singleQuote){
+   const needs=node('section','campaign-kit-refill');
+   needs.append(node('strong','','BEFORE NEXT DEPLOYMENT'),
+    node('p','',
+     singleQuote.roundsIssued+' / '+singleQuote.roundsWanted+' ROUNDS FROM HQ · '+
+     singleQuote.medicalIssued+' / '+singleQuote.medicalWanted+' MEDICAL PACKS'+
+     (singleQuote.roundsShort?' · '+singleQuote.roundsShort+' ROUNDS SHORT':'')));
+   const actions=node('div','campaign-kit-refill-actions');
+   const ammoButton=button('REFILL '+singleQuote.roundsIssued+' ROUNDS',
+    ()=>this.handlers.resupply(person.id));
+   ammoButton.disabled=!!c.activeContractId||singleQuote.roundsIssued<=0;
+   const medicalButton=button('REISSUE '+singleQuote.medicalIssued+' MEDICAL PACK',
+    ()=>this.handlers.resupplyMedical(person.id));
+   medicalButton.disabled=!!c.activeContractId||singleQuote.medicalIssued<=0;
+   actions.append(ammoButton,medicalButton);
+   needs.append(actions);
+   summary.append(needs);
+  }
   if(committedKitChange){
    const feedback=node('div','campaign-kit-commit-feedback');
    feedback.setAttribute('role','status');
