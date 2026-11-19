@@ -26,8 +26,16 @@ export function directOperatorPose(p:OperatorPose,context:PoseDirectorContext){
   // Treatment has legacy priority over manual Lab handling overrides.
   // Active combat and obstruction still take the exact same selection path
   // as shot-time weapon handling, with no additional visual yaw authority.
+  // Real queued OPEN contact uses a raised, one-hand-supported firearm.
+  // Actual shooting, clearance, injury and authored Lab poses keep priority.
+  const queuedOpen=!!p.physicalContact&&
+    p.physicalContact.intent==='door'&&
+    p.physicalContact.anchor.id.endsWith(':pre-open')&&
+    p.physicalContact.releasedAt===null&&
+    !p.down&&!p.surrender&&!p.firing&&!p.aiming&&
+    p.reload<=0&&!p.treatmentActive&&!p.obstruction;
   const handling:Handling=p.treatmentActive?'low':
-    p.handlingOverride??p.clearanceCarry??handlingPose({
+    p.handlingOverride??p.clearanceCarry??(queuedOpen?'high':handlingPose({
       aim:p.aimBlend??(p.aiming?1:0),
       moving:context.moving,
       obstruction:!!p.obstruction||context.receivingBash,
@@ -36,7 +44,7 @@ export function directOperatorPose(p:OperatorPose,context:PoseDirectorContext){
       weapon:p.weapon,
       previous:p.deterministic?undefined:context.previousHandling,
       heldFor:p.seconds-context.previousHandlingAt
-    });
+    }));
   return {handling,action};
 }
 
