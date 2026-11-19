@@ -208,6 +208,11 @@ export function createQuickPlayConfigurator(options:{
   const renderGadgets=(operator:typeof selected)=>{
    gadgetHost.replaceChildren(createFieldGadgetEditor({
     loadout:operator.loadout,magazines:operator.magazines,
+    copyTargets:(options.getRoster?.().members??[]).filter(m=>m.id!==operator.id)
+     .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
+    onCopy:(targetId,inventory)=>{
+     if(options.onEquipField?.(targetId,inventory))renderSquadPrep();
+    },
     onCommit:inventory=>{
      const prior=document.activeElement instanceof HTMLElement?
       document.activeElement.getAttribute('aria-label'):null;
