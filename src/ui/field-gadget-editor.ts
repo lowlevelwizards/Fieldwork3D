@@ -54,7 +54,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  // Selected item is transient UI state, not an inventory or campaign draft.
  let selected:PhysicalChoice|null=null;
  const selections:{button:HTMLButtonElement;choice:PhysicalChoice}[]=[];
- const destinations:{button:HTMLButtonElement;location:FieldCarryLocation}[]=[];
+ const destinations:{button:HTMLButtonElement;location:FieldCarryLocation;reason:HTMLElement}[]=[];
  const refreshSelection=()=>{
   for(const entry of selections)entry.button.setAttribute('aria-pressed',
    String(!!selected&&entry.choice.kind===selected.kind&&
@@ -65,6 +65,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    const parent=entry.button.closest<HTMLElement>('.fw-field-inventory-slot');
    if(!active||!selected){
     entry.button.disabled=true;
+    entry.reason.hidden=true;
     if(parent)delete parent.dataset.placeStatus;
     continue;
    }
@@ -76,6 +77,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    entry.button.disabled=!!options.locked||!allowed;
    entry.button.textContent=allowed?'PLACE ONE HERE':'CANNOT FIT HERE';
    entry.button.title=quote.ok?'Move one item here':quote.reason;
+   entry.reason.textContent=quote.ok?'':quote.reason;
+   entry.reason.hidden=allowed||quote.ok;
    if(parent)parent.dataset.placeStatus=allowed?'ready':'blocked';
   }
   cancelSelection.hidden=!selected;
@@ -287,7 +290,10 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   place.className='fw-field-inventory-place';
   place.setAttribute('aria-label','Place selected item in '+loc.toUpperCase());
   place.hidden=true;place.disabled=true;
-  destinations.push({button:place,location:loc});slot.append(place);
+  const reason=text('small','fw-field-inventory-blocker','');
+  reason.hidden=true;
+  destinations.push({button:place,location:loc,reason});
+  slot.append(place,reason);
   capacity.append(slot);
  }
  root.append(capacity);

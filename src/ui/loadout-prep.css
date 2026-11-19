@@ -186,3 +186,10 @@
 /* L2.12D2: same thumb-sized grip and scroll-safe tile for exact magazines. */
 .fw-field-inventory-select-magazine{grid-template-columns:15px minmax(0,1fr) auto 38px;
  touch-action:pan-y;min-height:44px}
+
+/* L2.12D3: actual explanation next to blocked carrying slot; touch has no hover. */
+.fw-field-inventory-blocker{grid-column:1/-1;color:#e3bda6;
+ font-size:10px;line-height:1.35;overflow-wrap:anywhere}
+.fw-field-inventory-blocker[hidden]{display:none}
+.fw-field-inventory-slot[data-place-status="blocked"]{
+ background:rgba(117,65,48,.13)}

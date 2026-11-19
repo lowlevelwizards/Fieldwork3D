@@ -9,6 +9,7 @@ on:
       - feature/loadout-prep-l2-12-magazine-interaction-20261118
       - feature/loadout-l212-c3-c4-gear-20261119
       - feature/loadout-l212-d2-magazine-drag-20261119
+      - feature/loadout-l212-d3-placement-feedback-20261119
     paths:
       - 'src/ui/campaign-pre-go-prep.ts'
       - 'src/ui/campaign-pre-go-prep.css'

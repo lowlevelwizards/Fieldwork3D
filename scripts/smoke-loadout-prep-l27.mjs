@@ -83,6 +83,12 @@ try{
     'selecting a stored item marks its real 3D rig location');
   assert.equal(await pickOne.getAttribute('aria-pressed'),'true',
    'physical item selection is visible and keyboard accessible');
+  const pocket=panel.locator('.fw-field-inventory-slot[data-location="pocket"]');
+  assert.equal(await pocket.locator('.fw-field-inventory-place').isDisabled(),true,
+   'illegal pocket destination stays disabled');
+  assert.match(await pocket.locator('.fw-field-inventory-blocker').innerText(),
+   /INVALID CARRY LOCATION FOR FLASHBANG/,
+   'the reason for a blocked placement is legible on phone without hover');
   const placeOne=panel.getByRole('button',{name:'Place selected item in BACKPACK'});
   assert.equal(await placeOne.isEnabled(),true,'real inventory fit is verified before placement');
   await placeOne.click();
