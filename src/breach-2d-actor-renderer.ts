@@ -4,7 +4,7 @@
 import {W,H,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,enemies,lastKnown,isSeen} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
-import {civilianPose} from './breach-civilian-pose.ts';
+import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
 import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {shotVisibility,contactFade} from './breach-presentation.ts';
@@ -116,16 +116,17 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
   const coat=coats[(c.appearanceSeed>>>0)%coats.length];
   const pants=trousers[(c.appearanceSeed>>>4)%trousers.length];
   draw.save();draw.translate(c.p.x,c.p.y);draw.rotate(c.heading);
-  const pose=civilianPose(c);
-  const flinch=c.lastFlinchAt!==undefined&&state.seconds>=c.lastFlinchAt&&
-    state.seconds-c.lastFlinchAt<.48&&
-    !['down','carried','dragged','compliant','restrained'].includes(pose);
+  const physical=civilianPhysicalityAt(c,state.seconds);
+  const pose=physical.pose,flinch=physical.flinch>.15;
   if(pose==='down'||pose==='carried'||pose==='dragged'){
     draw.globalAlpha=pose==='carried'?.96:.83;
     rect(-10,-6,23,12,coat);rect(7,-5,8,10,'#ba9880');
   }else{
     rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
-    rect(-7,-8,16,16,coat);
+    // Compact the top-down torso when hiding; a frightened person who
+    // merely freezes retains a larger silhouette. All world/collision
+    // positions remain unchanged and replay reconstructs from time.
+    rect(-7,-8+2*physical.shelter,16,16-3*physical.shelter,coat);
     rect(7,-4.5,9,9,'#b9997e');
     if(flinch){
       // Shared witnessed-danger timestamp; hands momentarily shield the
