@@ -7,6 +7,7 @@ import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFi
  replaceFieldQuantity,moveFieldStack,fieldCarryReport,autoPackFieldInventory,quoteFieldInventoryCopy,
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
+import {physicalCarryBoard} from '../equipment-physical-board.ts';
 import './loadout-prep.css';
 
 export type FieldGadgetEditorOptions={
@@ -20,7 +21,7 @@ export type FieldGadgetEditorOptions={
  onUndo?:()=>void;
  canUndo?:boolean;
 };
-const text=(tag:'div'|'span'|'strong'|'small'|'p',className:string,value:string)=>{
+const text=(tag:'div'|'span'|'strong'|'small'|'p'|'li',className:string,value:string)=>{
  const el=document.createElement(tag);el.className=className;el.textContent=value;
  return el;
 };
@@ -39,16 +40,20 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   text('small','','PHYSICAL QUANTITIES · ACCESS & CAPACITY'));
  root.append(header);
  const report=fieldCarryReport(loadout,magazines,inventory);
+ const board=physicalCarryBoard(loadout,magazines,inventory);
  // L2.10A: read-only physical carrying-slot gauges. A gauge is a
  // presentation of the authoritative capacity report, not a second ledger.
  const capacity=document.createElement('div');
  capacity.className='fw-field-inventory-capacity';
  capacity.setAttribute('aria-label','Carrying capacity by location');
- for(const loc of FIELD_CARRY_LOCATIONS){
-  const used=report.used[loc],limit=report.capacity[loc];
+ // L2.11B: the same four capacity gauges now show their actual carried
+ // objects, including magazines, medical and utility gear. Read-only.
+ for(const zone of board.zones){
+  const loc=zone.location,used=zone.used,limit=zone.capacity;
   const slot=document.createElement('div');
   slot.className='fw-field-inventory-slot';
   if(used>limit)slot.dataset.overfilled='true';
+  slot.dataset.location=loc;
   const title=text('span','fw-field-inventory-slot-name',loc.toUpperCase());
   const count=text('strong','fw-field-inventory-slot-count',used+'/'+limit);
   const gauge=document.createElement('div');
@@ -62,9 +67,35 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   const fill=document.createElement('span');
   fill.className='fw-field-inventory-gauge-fill';
   fill.style.width=(limit>0?Math.min(100,used/limit*100):used>0?100:0)+'%';
-  gauge.append(fill);slot.append(title,count,gauge);capacity.append(slot);
+  gauge.append(fill);slot.append(title,count,gauge);
+  const items=document.createElement('ul');
+  items.className='fw-field-inventory-slot-items';
+  items.setAttribute('aria-label',loc.toUpperCase()+' carried equipment');
+  for(const tile of zone.items){
+   const li=document.createElement('li');
+   li.className='fw-field-inventory-carry-tile';
+   li.dataset.kind=tile.kind;
+   if(tile.itemId)li.dataset.itemId=tile.itemId;
+   const silhouette=document.createElement('span');
+   silhouette.className='fw-field-inventory-item-silhouette';
+   silhouette.setAttribute('aria-hidden','true');
+   const itemName=text('span','fw-field-inventory-item-name',tile.label);
+   const quantity=text('strong','fw-field-inventory-item-count',
+    tile.quantity>1?'×'+tile.quantity:'');
+   li.append(silhouette,itemName,quantity);items.append(li);
+  }
+  if(!zone.items.length){
+   const empty=text('li','fw-field-inventory-empty','EMPTY');
+   items.append(empty);
+  }
+  slot.append(items);capacity.append(slot);
  }
  root.append(capacity);
+ if(board.unplaced.length){
+  const unplaced=text('div','fw-field-inventory-unplaced',
+   'UNFITTED EQUIPMENT · '+board.unplaced.map(t=>t.label).join(' · '));
+  root.append(unplaced);
+ }
  const message=text('p','fw-field-inventory-feedback',report.valid?
   'Equipment is assigned to real carrying positions.':'CARRY CONFLICT · '+report.conflicts.join(' · '));
  message.setAttribute('role','status');message.setAttribute('aria-live','polite');
