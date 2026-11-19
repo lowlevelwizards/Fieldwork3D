@@ -5,6 +5,7 @@
 import type {MagazineItem} from './breach-magazines.ts';
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import {stageMagazines,type MagazineLocation} from './equipment-magazine-placement.ts';
+import {carryPlacementLedger} from './equipment-carry-placement.ts';
 import {fieldCarryReport,initialFieldInventory,type FieldInventory}
  from './equipment-field-inventory.ts';
 export type MagazineMoveQuote=
@@ -32,6 +33,16 @@ export function quoteOneMagazineMove(kit:EquipmentLoadout,
   return {ok:false,reason:'DESTINATION WOULD MOVE ANOTHER MAGAZINE'};
  if(actual.find(m=>m.id===magazineId)?.location!==destination)
   return {ok:false,reason:'NO AVAILABLE MAGAZINE SPACE AT '+destination.toUpperCase()};
+ // Medical packs and long tools are physical too. The carry ledger can
+ // auto-restage them when magazine occupancy changes: explicit placement must
+ // not silently move them either.
+ const previousGear=carryPlacementLedger(kit,placed)
+  .filter(p=>p.kind!=='magazine');
+ const nextGear=carryPlacementLedger(kit,actual)
+  .filter(p=>p.kind!=='magazine');
+ if(previousGear.some(p=>nextGear.find(next=>next.id===p.id&&
+   next.kind===p.kind)?.location!==p.location))
+  return {ok:false,reason:'DESTINATION WOULD MOVE MEDICAL OR TOOL EQUIPMENT'};
  const fit=fieldCarryReport(kit,actual,inventory);
  if(!fit.valid)return {ok:false,reason:fit.conflicts.join(' · ')};
  return {ok:true,changed:true,magazines:actual};

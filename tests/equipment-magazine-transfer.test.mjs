@@ -49,3 +49,16 @@ test('existing field equipment capacity prevents a magazine from being smuggled 
   location:'backpack'}],'one','rig',inventory);
  assert.equal(result.ok,false);
 });
+
+test('manual magazine move cannot quietly shift a two-slot trauma kit to another carrier',()=>{
+ const trauma=setEquipmentChoice(kit,'medical','medical-trauma');
+ const seven=Array.from({length:7},(_,i)=>({id:'spare-'+i,
+  weapon:'carbine',rounds:20,location:i<6?'backpack':'rig'}));
+ const before=stageMagazines(seven,trauma);
+ assert.equal(before.filter(m=>m.location==='backpack').length,6);
+ const move=quoteOneMagazineMove(trauma,seven,'spare-6','backpack',
+  initialFieldInventory(trauma));
+ assert.equal(move.ok,false);
+ assert.match(move.reason,/MEDICAL OR TOOL/);
+ assert.equal(seven[6].location,'rig');
+});
