@@ -114,6 +114,11 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    li.className='fw-field-inventory-carry-tile';
    li.dataset.kind=tile.kind;
    if(tile.itemId)li.dataset.itemId=tile.itemId;
+   if(tile.magazineId){
+    li.dataset.magazineId=tile.magazineId;
+    li.title='Individual spare magazine · '+tile.label+
+     ' · '+(tile.accessSeconds??0).toFixed(2)+'s carry access';
+   }
    const silhouette=document.createElement('span');
    silhouette.className='fw-field-inventory-item-silhouette';
    silhouette.setAttribute('aria-hidden','true');

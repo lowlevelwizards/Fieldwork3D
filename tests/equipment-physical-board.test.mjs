@@ -46,3 +46,17 @@ test('unfitted physical placement is presented, never made free or discarded',()
   .find(t=>t.itemId==='flashbang').quantity,4);
  assert.ok(board.conflicts.length>0);
 });
+
+test('L2.12A: magazine tiles are individually identified and round counts remain unique',()=>{
+ const spare=[
+  {id:'rook/carbine/0',weapon:'carbine',rounds:30,location:'rig'},
+  {id:'rook/carbine/1',weapon:'carbine',rounds:12,location:'backpack'}];
+ const board=physicalCarryBoard(initial,spare,initialFieldInventory(initial));
+ const magTiles=[...board.zones.flatMap(z=>z.items),...board.unplaced]
+  .filter(t=>t.kind==='magazine');
+ assert.equal(magTiles.length,2);
+ assert.deepEqual(magTiles.map(t=>t.magazineId).sort(),spare.map(m=>m.id));
+ assert.ok(magTiles.some(t=>t.label==='MAG 01 · 30 rounds'&&t.location==='rig'));
+ assert.ok(magTiles.some(t=>t.label==='MAG 02 · 12 rounds'&&t.location==='backpack'));
+ assert.ok(magTiles.every(t=>Number.isFinite(t.accessSeconds)));
+});
