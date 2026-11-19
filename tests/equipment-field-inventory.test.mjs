@@ -47,3 +47,26 @@ test('auto-pack remains atomic and never discards an item',()=>{
  assert.equal(fieldQuantity(packed,'flashbang'),4);
  assert.equal(fieldCarryReport(standard,[],packed).valid,true);
 });
+
+test('versioned legacy loadout retains physical counts and mass',async()=>{
+ const {readEquipmentLoadout,totalEquipmentMass,equippedFlashCharges}=
+  await import('../src/equipment-loadouts.ts');
+ const raw={version:1,slots:{...standard.slots}};
+ const upgraded=readEquipmentLoadout(raw,'carbine');
+ assert.equal(equippedFlashCharges(upgraded),1);
+ assert.equal(fieldQuantity(upgraded.fieldInventory,'flashbang'),1);
+ const upgradedAgain=readEquipmentLoadout(JSON.parse(JSON.stringify(upgraded)),'carbine');
+ assert.equal(equippedFlashCharges(upgradedAgain),1);
+ const kit2={...upgradedAgain,fieldInventory:
+  replaceFieldQuantity(upgradedAgain.fieldInventory,'flashbang',2)};
+ assert.equal(equippedFlashCharges(kit2),2);
+ assert.ok(totalEquipmentMass(kit2)>totalEquipmentMass(upgradedAgain));
+});
+test('legacy wedge capability follows real finite inventory',async()=>{
+ const {issuedWedges}=await import('../src/equipment-entry-tools.ts');
+ const withWedges=setEquipmentChoice(standard,'utility','utility-wedge');
+ assert.equal(issuedWedges(withWedges),2);
+ const emptied={...withWedges,fieldInventory:
+  replaceFieldQuantity(withWedges.fieldInventory,'wedge',0,'belt')};
+ assert.equal(issuedWedges(emptied),0);
+});
