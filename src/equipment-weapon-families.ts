@@ -8,9 +8,9 @@ import {AR_BARREL_ART} from './weapons/geometry/ar-barrel-profiles.ts';
 export const FAMILY_PART_SLOTS=['stock','receiver','grip','magazine',
  'handguard','barrel'] as const;
 export type FamilyPartSlot=typeof FAMILY_PART_SLOTS[number];
-export type WeaponFamily='ar'|'ak'|'hk'|'fal'|'fnc'|'g36';
+export type WeaponFamily='ar'|'ak'|'hk'|'fal'|'fnc'|'g36'|'r870';
 export type FamilyLength='long'|'mid'|'short';
-type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762'|'fnc556'|'g36poly556';
+type Feed='stanag'|'ak762'|'ak545'|'hk762'|'hk556'|'hk9'|'fal762'|'fnc556'|'g36poly556'|'tube12';
 /** M1.0: mount eligibility is authored by the actual installed part.
  * The renderer derives physical bounds from the same geometry landmarks.
  * Do not treat these as saved attachment IDs or gameplay/ballistic sockets.
@@ -41,13 +41,13 @@ export type WeaponFamilyPart={
  receivers?:readonly string[];feed?:Feed;length?:FamilyLength;
  /** Fixed by installed receiver or handguard identity, not by weapon family. */
  mounts?:readonly PartMountInterface[];
- role?:'carbine'|'rifle'|'smg'|'both';stockX?:number;
+ role?:'carbine'|'rifle'|'smg'|'shotgun'|'both';stockX?:number;
  /** Canonical factory display only; gameplay ballistics are class-owned. */
  nominalInches?:number;
 };
 export type WeaponFamilyBuild={family:WeaponFamily;
  parts:Record<FamilyPartSlot,string>};
-export type WeaponFamilyPreset={id:string;name:string;weapon:'carbine'|'rifle'|'smg';
+export type WeaponFamilyPreset={id:string;name:string;weapon:'carbine'|'rifle'|'smg'|'shotgun';
  family:WeaponFamily;parts:Record<FamilyPartSlot,string>};
 const ar=['ar-a1','ar-a2','ar-retro','ar-flat'];
 const akClassic=['akm','ak74'];
@@ -226,9 +226,17 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'g36-handguard-k-rail':add('g36-handguard-k-rail','G36K A4 railed polymer fore-end','g36','handguard',{length:'mid',mounts:FOREND_PICATINNY}),
  'g36-barrel-480':add('g36-barrel-480','G36 original 480mm service barrel','g36','barrel',{length:'long',role:'rifle',nominalInches:18.9}),
  'g36-barrel-318':add('g36-barrel-318','G36K 318mm carbine barrel','g36','barrel',{length:'mid',role:'carbine',nominalInches:12.5}),
- 'g36-barrel-228':add('g36-barrel-228','G36C 228mm compact barrel','g36','barrel',{length:'short',role:'carbine',nominalInches:9.0})
+ 'g36-barrel-228':add('g36-barrel-228','G36C 228mm compact barrel','g36','barrel',{length:'short',role:'carbine',nominalInches:9.0}),
+ // 870 Police P07: six visual slots, but a *fixed tube* rather than a
+ // detachable magazine; stock and wrist are connected wooden components.
+ 'r870-police-receiver':add('r870-police-receiver','Remington 870 12-gauge Police receiver','r870','receiver',{feed:'tube12',role:'shotgun'}),
+ 'r870-police-wood-stock':add('r870-police-wood-stock','Traditional 870 wooden buttstock','r870','stock',{receivers:['r870-police-receiver'],stockX:-15.78}),
+ 'r870-police-wood-wrist':add('r870-police-wood-wrist','Integral shotgun wooden wrist and grip','r870','grip',{receivers:['r870-police-receiver']}),
+ 'r870-standard-tube':add('r870-standard-tube','Fixed 12-gauge magazine tube','r870','magazine',{feed:'tube12',receivers:['r870-police-receiver']}),
+ 'r870-police-wood-pump':add('r870-police-wood-pump','Broad corncob sliding wood fore-end','r870','handguard',{receivers:['r870-police-receiver'],length:'mid'}),
+ 'r870-18-bead':add('r870-18-bead','Police-style 18-inch bead-sight barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'mid',role:'shotgun',nominalInches:18})
 };
-const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg',family:WeaponFamily,
+const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg'|'shotgun',family:WeaponFamily,
  receiver:string,stock:string,grip:string,magazine:string,handguard:string,
  barrel:string):WeaponFamilyPreset=>({
  id,name,weapon,family,parts:{receiver,stock,grip,magazine,handguard,barrel}
@@ -283,7 +291,11 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
  p('g36-c-classic','HK G36C · Compact','carbine','g36','g36-rail-receiver',
   'g36-stock','g36-grip','g36-mag30','g36-handguard-c','g36-barrel-228'),
  p('g36-ka4','HK G36K A4 · Modernized','carbine','g36','g36-rail-receiver',
-  'g36-stock-adjustable','g36-grip','g36-mag30','g36-handguard-k-rail','g36-barrel-318')
+  'g36-stock-adjustable','g36-grip','g36-mag30','g36-handguard-k-rail','g36-barrel-318'),
+ // Art reference is Police-style representative, not an exact dated SKU.
+ p('r870-police-wood','Remington 870 Police · Wood','shotgun','r870',
+  'r870-police-receiver','r870-police-wood-stock','r870-police-wood-wrist',
+  'r870-standard-tube','r870-police-wood-pump','r870-18-bead')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
