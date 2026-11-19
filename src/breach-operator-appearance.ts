@@ -2,9 +2,11 @@
  * Caches only appearance fingerprints; never solves motion, fires, moves actors
  * or updates replay/simulation state.
  */
-import {ensureRigFlashCanisters,ensureRigWedgeMeshes,type OperatorRig} from './breach-operator-rig.ts';
+import {ensureRigFlashCanisters,ensureRigWedgeMeshes,
+ ensureRigFlexCuffMeshes,type OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
-import {visibleFlashCanisters,flashCanisterSocket,visibleDoorWedges,wedgeSocket} from './equipment-field-visuals.ts';
+import {visibleFlashCanisters,flashCanisterSocket,visibleDoorWedges,wedgeSocket,
+ visibleFlexCuffs,flexCuffSocket} from './equipment-field-visuals.ts';
 import * as THREE from 'three';
 import {operatorPixelTextures} from './rendering/pixel-materials.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
@@ -55,7 +57,8 @@ const appearanceState=new WeakMap<OperatorRig,{
 export type OperatorAppearanceInputs=Pick<OperatorPose,
  'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|
  'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
- 'flashCharges'|'wedgeRemaining'|'treatmentActive'|'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
+ 'flashCharges'|'wedgeRemaining'|'restraintRemaining'|'treatmentActive'|
+ 'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
 export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInputs){
   // Profile serialization separately from the one-time kit rebuild. In-place
   // edits in Studio and replay must still invalidate on the very next pose.
@@ -68,7 +71,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.appearanceSeed??0,p.equipment??null,p.wardrobe??null,
     p.magazineCarryLocations??null,p.medicalCarryLocation??null,
     p.utilityCarryLocation??null,p.faceStyle??null,
-    p.flashCharges??null,p.wedgeRemaining??null,p.treatmentActive??null,
+    p.flashCharges??null,p.wedgeRemaining??null,
+    p.restraintRemaining??null,p.treatmentActive??null,
     p.weaponConfiguration?.build?.parts.magazine??null,
     p.nvgDeployed??false
   ]);
@@ -212,6 +216,20 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     socket.bone==='pack'?r.pack:r.hip;
    if(wedge.parent!==parent)parent.add(wedge);
    wedge.position.set(socket.x,socket.y,socket.z);
+  });
+  // F6.4: pairs of actual flex cuffs. No separate tactical count or
+  // inventory copy, and no cold-rig geometry on operators carrying none.
+  const cuffs=visibleFlexCuffs(p.equipment,p.restraintRemaining);
+  ensureRigFlexCuffMeshes(r,cuffs.length);
+  r.cuffMeshes.forEach((mesh,i)=>{
+    const piece=cuffs[i];mesh.visible=!!piece;
+    if(!piece)return;
+    const socket=flexCuffSocket(piece.location,piece.index);
+    const parent=socket.bone==='chest'?r.chest:
+      socket.bone==='pack'?r.pack:r.hip;
+    if(mesh.parent!==parent)parent.add(mesh);
+    mesh.position.set(socket.x,socket.y,socket.z);
+    mesh.rotation.set(Math.PI*.5,0,0);
   });
   // Explicit wardrobe glove selection is cosmetic. It must neither inherit
   // the shirt material nor toggle because a fabric or loadout tint changed.
