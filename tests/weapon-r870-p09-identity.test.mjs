@@ -41,7 +41,7 @@ test('R870 identity saves and six authored part slots survive the P10 simplifica
   assert.ok(Math.abs(b.max.x-R870_P07.muzzleX)<.035);
   assert.equal(tagged(gun,'r870FixedTube').length,1);
   assert.equal(tagged(gun,'r870TubeCap').length,1);
-  assert.equal(tagged(gun,'r870PumpPart').length,9);
+  assert.equal(tagged(gun,'r870PumpPart').length,2);
  }finally{dispose();}
 });
 
