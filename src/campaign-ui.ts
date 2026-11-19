@@ -50,6 +50,7 @@ import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
 import {CarryKitUndoHistory,captureCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
 import {quoteCarryGearChange} from './equipment-carry-gear-change.ts';
 import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
+import {quoteCarryLayoutCopy} from './equipment-carry-layout-copy.ts';
 import type {CarryGearSlot} from './equipment-carry-gear-change.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
@@ -81,6 +82,7 @@ export type CampaignHandlers={
  undoCarryGear:(id:string,expected:CarryUndoSnapshot,before:CarryUndoSnapshot)=>void;
  equipFieldInventory:(id:string,inventory:FieldInventory)=>void;
  copyFieldInventory:(sourceId:string,targetId:string)=>void;
+ copyCarryLayout:(sourceId:string,targetId:string)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
  openStudio:(id:string)=>void;
  openArsenal:(id:string)=>void;
@@ -1717,6 +1719,17 @@ export class CampaignScreen{
     if(!previous)return;
     this.fieldUndo.clear(id);
     this.handlers.equipFieldInventory(id,previous);
+   },
+   onCopyLayout:targetId=>{
+    const target=c.operators.find(o=>o.id===targetId);
+    if(!target)return;
+    const quote=quoteCarryLayoutCopy(person.loadout,person.magazines,
+     target.loadout,target.magazines);
+    if(!quote.ok||!quote.changed)return;
+    this.carryUndo.record(targetId,
+     captureCarryUndo(target.loadout,target.magazines),
+     captureCarryUndo(quote.loadout,quote.magazines));
+    this.handlers.copyCarryLayout(id,targetId);
    },
    onCopy:(targetId,inventory)=>{
     const target=c.operators.find(o=>o.id===targetId);

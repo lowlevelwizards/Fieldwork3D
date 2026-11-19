@@ -7,7 +7,7 @@ import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
 import {fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
 import {stageMagazines} from './equipment-magazine-placement.ts';
-import {undoCampaignCarryGear} from './campaign-state.ts';
+import {undoCampaignCarryGear,copyCampaignCarryLayout} from './campaign-state.ts';
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
 import {team,debrief} from './breach-game.ts';
@@ -311,6 +311,8 @@ const campaignScreen=new CampaignScreen({
   c=>equipCampaignFieldInventory(c,id,inventory),'Field equipment updated'),
  copyFieldInventory:(sourceId,targetId)=>applyVisibleCampaignAction(
   c=>copyCampaignFieldInventory(c,sourceId,targetId),'Carried gadgets copied'),
+ copyCarryLayout:(sourceId,targetId)=>applyVisibleCampaignAction(
+  c=>copyCampaignCarryLayout(c,sourceId,targetId),'Carry layout copied · positions only'),
  equipGear:(id,slot,itemId)=>applyVisibleCampaignAction(
   c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
  equipCarryGear:(id,slot,itemId)=>applyVisibleCampaignAction(

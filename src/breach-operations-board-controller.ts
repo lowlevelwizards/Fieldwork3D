@@ -3,7 +3,7 @@
  */
 import type {CampaignMode} from './breach-app-mode.ts';
 import type {Session} from './breach-game.ts';
-import {resupplyRoster,equipRoster,equipRosterGear,equipRosterCarryGear,undoRosterCarryGear,equipRosterFieldInventory,moveRosterMagazine,
+import {resupplyRoster,equipRoster,equipRosterGear,equipRosterCarryGear,undoRosterCarryGear,copyRosterCarryLayout,equipRosterFieldInventory,moveRosterMagazine,
  configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
  renameRosterMember,type RosterState} from './breach-roster.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
@@ -413,6 +413,20 @@ function renderOperationsBoard(){
     locked:config.getSession().phase!=='planning'||config.isReplaying(),
     copyTargets:config.getRoster().members.filter(m=>m.id!==current.id)
      .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
+    onCopyLayout:targetId=>{
+     if(config.getSession().phase!=='planning'||config.isReplaying())return;
+     const before=config.getRoster();
+     const next=copyRosterCarryLayout(before,current.id,targetId);
+     if(next===before){showFieldworkActionFeedback('CANNOT COPY LAYOUT · CHECK CARRY FIT');return;}
+     const old=before.members.find(m=>m.id===targetId);
+     const updated=next.members.find(m=>m.id===targetId);
+     if(old&&updated)carryUndo.record(targetId,
+      captureCarryUndo(old.loadout,old.magazines),
+      captureCarryUndo(updated.loadout,updated.magazines));
+     config.setRoster(next);config.saveRoster();config.applyRoster();
+     renderOperationsBoard();config.refreshHud();
+     showFieldworkActionFeedback('CARRY LAYOUT COPIED · POSITIONS ONLY');
+    },
     onCopy:(targetId,inventory)=>{
      const before=config.getRoster();
      const next=equipRosterFieldInventory(before,targetId,inventory);
