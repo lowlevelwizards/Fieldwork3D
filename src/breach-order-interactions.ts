@@ -137,6 +137,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
            person.rescueTarget||a.restraintRemaining<=0){
           failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
         }
+        if(a.actionTimer===0)a.lastCivilianContactAt=s.seconds;
         a.actionTimer+=dt;
         if(a.actionTimer<1.15)return true;
         a.restraintRemaining--;
