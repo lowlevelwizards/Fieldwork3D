@@ -34,7 +34,9 @@ jobs:
             objectiveAt:r.objectiveAt,extractionAt:r.extractedAt,
             doorsAuthored:r.acceptedDoorActions,
             actualOpenDoors:r.doorsAtEnd?.filter(x=>x.open).map(x=>x.id),
-            failedOrders:r.rejected,aborts:r.routeAbort,
+            rejectedScriptCommands:r.rejected,aborts:r.routeAbort,
+            handoffs:r.operatorHandoffs,activeScout:r.activeScout,
+            activeScoutHealth:r.activeScoutHealth,
             realContact:r.firstContactAt,
             roomsVisited:r.roomsVisited,
             civilian:r.rescue,issues:r.integrity
