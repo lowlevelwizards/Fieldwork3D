@@ -7,6 +7,8 @@ import {captureDeploymentInventory,applyDeploymentInventory,
  limitDeployedFlashIssue} from '../src/equipment-deployment-snapshot.ts';
 import {fieldQuantity} from '../src/equipment-field-inventory.ts';
 import {stageMagazines} from '../src/equipment-magazine-placement.ts';
+import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
+import {changeWeaponPlatform} from '../src/equipment-weapon-assemblies.ts';
 
 test('F1 Quick Play snapshot carries exact magazine identities, rounds and fitted locations',()=>{
  const op=initialRoster().members[0];
@@ -76,8 +78,10 @@ test('F1 older kits migrate once without creating cuffs or future gadgets',()=>{
 });
 
 test('F1 shotgun deployment remains shell-backed without invented magazines',()=>{
- const op=initialRoster().members[3];
- assert.equal(op.weapon,'shotgun');
+ const base=initialRoster().members[0];
+ const op={...base,weapon:'shotgun',loadout:initialEquipmentLoadout('shotgun'),
+  weaponConfiguration:changeWeaponPlatform(base.weaponConfiguration,'shotgun'),
+  magazine:5,reserve:18,magazines:[],loadedMagazineId:base.id+'/shotgun/loaded'};
  const actor={};
  applyDeploymentInventory(actor,op);
  assert.deepEqual(actor.spareMagazines,[]);
