@@ -111,9 +111,17 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
   // No target truth is used unless world.canSee confirms the sight line.
   const yaw=Math.atan2(person.p.y-c.p.y,person.p.x-c.p.x);
   const delta=offAxis(c.heading,yaw);
-  const geometric=Math.abs(delta)<.96&&world.canSee(c.p,person.p);
+  // Nearby MOVING operators can register at the edge of peripheral
+  // vision (never behind the head, behind a wall or at long range).
+  // Recognition is deliberately slower than a direct look. Until the
+  // existing visual-evidence threshold is met, no threat position is
+  // stored and no head tracking/mission intel is gained.
+  const direct=Math.abs(delta)<.96;
+  const peripheral=!direct&&range<=64&&Math.abs(delta)<1.95&&
+    person.velocity>8;
+  const geometric=(direct||peripheral)&&world.canSee(c.p,person.p);
   const gain=geometric?visualGain(range,delta,person.velocity>10,
-    person.posture==='crouch'):0;
+    person.posture==='crouch')*(peripheral?.38:1):0;
   c.visualProgress[person.id]=advanceSight(
     c.visualProgress[person.id]??0,elapsed,gain,geometric);
   if(confirmedSight(c.visualProgress[person.id])){
