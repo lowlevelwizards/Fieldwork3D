@@ -29,6 +29,9 @@ import {initialEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
  type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
+import {fieldCarryReport,type FieldCarryLocation} from './equipment-field-inventory.ts';
+import {inspectEquipmentMesh,measureEquipmentMesh,
+ type EquipmentInspectionTarget} from './equipment-visual-inspection.ts';
 import {itemsForSlot} from './equipment-catalog.ts';
 import {bareLabEquipment,unequipLabAppearance} from './operator-lab-baseline.ts';
 import {LEGACY_FRAME_YAW} from './operator-axis-convention.ts';
@@ -1323,6 +1326,117 @@ function fit(next='iso'){
   control.target.set(center.x,25,center.z);control.update();
   cameraFollow={x:center.x,z:center.z};
 }
+
+/** L2.14 Operator Lab: inspect the same visible mesh and bone mounts as GO.
+ * All controls are sandbox-only; no Campaign mutation or duplicate mannequins.
+ */
+const inspectionItem=choose<HTMLSelectElement>('inspectionItem');
+const inspectionLocation=choose<HTMLSelectElement>('inspectionLocation');
+const inspectionIndex=choose<HTMLSelectElement>('inspectionIndex');
+const inspectionPose=choose<HTMLSelectElement>('inspectionPose');
+const inspectionStatus=choose<HTMLOutputElement>('inspectionStatus');
+const inspectionOutlineBox=new THREE.Box3();
+let inspectionOutline:THREE.Box3Helper|null=null;
+function inspectionTarget():EquipmentInspectionTarget|null{
+ const value=inspectionItem.value;
+ if(value==='none')return null;
+ const [kind,id]=value.split(':');
+ const location=inspectionLocation.value as FieldCarryLocation|'';
+ return {kind:kind as EquipmentInspectionTarget['kind'],id,
+  location:location||undefined,index:Number(inspectionIndex.value)};
+}
+function updateEquipmentInspection(kit:EquipmentLoadout):void{
+ if(!rig)return;
+ const target=inspectionTarget();
+ const active=!!target&&!comparing&&!kitComparing&&!variantComparing&&
+  !npcActive();
+ const mesh=active?inspectEquipmentMesh(rig,kit,target):null;
+ const result=measureEquipmentMesh(mesh);
+ if(!inspectionOutline){
+  inspectionOutline=new THREE.Box3Helper(inspectionOutlineBox,0xc8efaf);
+  inspectionOutline.name='lab-real-equipment-mesh-outline';
+  inspectionOutline.renderOrder=900;
+  scene.add(inspectionOutline);
+ }
+ inspectionOutline.visible=active&&result.visible;
+ if(result.center&&result.size){
+  inspectionOutlineBox.setFromCenterAndSize(result.center,result.size);
+  inspectionOutline.updateMatrixWorld(true);
+ }
+ const selection=target?.id??target?.kind??'all';
+ const location=target?.location?.toUpperCase()??'ANY POSITION';
+ const sample=Array.from({length:Number(magazineSelector.value)},(_,i)=>({
+  id:'lab-preview/'+i,weapon:labWeapon(),rounds:1
+ }));
+ const carry=fieldCarryReport(kit,sample,kit.fieldInventory??{version:1,stacks:[]});
+ const description=!target?'ALL GEAR · SELECT AN INDIVIDUAL PIECE':
+  result.visible?'ACTUAL MESH · BOUNDING BOX SHOWN':
+  'NOT EXTERNALLY VISIBLE · NO SUBSTITUTE MODEL';
+ const dimensions=result.size?
+  '\nMODEL EXTENTS '+['x','y','z'].map(axis=>
+   result.size![axis].toFixed(1)).join(' × '):'';
+ const message=selection.toUpperCase()+' · '+location+
+  '\n'+description+dimensions+
+  '\nANIMATION '+track.toUpperCase()+
+  (carry.valid?' · FIT VALID':' · CARRY CONFLICT: '+carry.conflicts.join('; '))+
+  '\nUse orbit and timeline to check floating, clipping and attachment movement.';
+ if(inspectionStatus.textContent!==message)inspectionStatus.textContent=message;
+ canvas.dataset.inspectionItem=selection;
+ canvas.dataset.inspectionLocation=location;
+ canvas.dataset.inspectionVisible=String(active&&result.visible);
+}
+function frameInspection():void{
+ if(!rig)return;
+ const target=inspectionTarget();
+ if(!target){fit();return;}
+ const mesh=inspectEquipmentMesh(rig,labKit,target);
+ const measured=measureEquipmentMesh(mesh);
+ if(!measured.center){fit();return;}
+ const previousLook=camera.position.clone().sub(control.target).normalize();
+ if(previousLook.lengthSq()<.01)previousLook.set(1,.3,-1).normalize();
+ control.target.copy(measured.center);
+ camera.position.copy(measured.center).addScaledVector(previousLook,52);
+ cameraFitZoom('upper');control.update();
+ cameraFollow={x:rig.root.position.x,z:rig.root.position.z};
+}
+for(const controlId of ['inspectionItem','inspectionLocation','inspectionIndex']){
+ choose<HTMLSelectElement>(controlId).addEventListener('change',()=>{
+  frameInspection();draw();
+ });
+}
+inspectionPose.addEventListener('change',()=>{
+ chooseTrack(inspectionPose.value as LabTrack);draw();
+});
+document.querySelectorAll<HTMLButtonElement>('[data-inspection-view]').forEach(button=>
+ button.addEventListener('click',()=>{
+  const view=button.dataset.inspectionView??'iso';
+  fit(view==='left'?'side':view);
+  if(view==='left')camera.position.x=
+   2*control.target.x-camera.position.x;
+  frameInspection();draw();
+ }));
+choose<HTMLButtonElement>('inspectionClear').addEventListener('click',()=>{
+ inspectionItem.value='none';inspectionLocation.value='';
+ inspectionIndex.value='0';if(inspectionOutline)inspectionOutline.visible=false;
+ fit();draw();
+});
+choose<HTMLButtonElement>('inspectionSampleKit').addEventListener('click',()=>{
+ checkpointAppearance();
+ let sample=kitPreset('heavy');
+ sample=setEquipmentChoice(sample,'utility','utility-wedge');
+ sample.fieldInventory={version:1,stacks:[
+  {itemId:'flashbang',quantity:1,location:'rig'},
+  {itemId:'wedge',quantity:2,location:'belt'},
+  {itemId:'zip-tie',quantity:1,location:'backpack'}
+ ]};
+ labKit=sample;
+ weapon.value='carbine';magazineSelector.value='4';
+ updateMagazineState();syncKit();
+ inspectionItem.value='field:flashbang';
+ inspectionLocation.value='rig';inspectionIndex.value='0';
+ chooseTrack('idle');draw();frameInspection();draw();
+});
+
 function chooseTrack(next:LabTrack){
   // Snapshot the actual current presentation, not merely the last named
   // pose. Rapid tap-to-tap retargeting remains continuous mid-transition.
@@ -1998,6 +2112,7 @@ function draw(){
   camera.position.x+=dx;camera.position.z+=dz;
   control.target.x+=dx;control.target.z+=dz;
   cameraFollow={x:motion.x,z:motion.z};
+  updateEquipmentInspection(currentKit);
   timeline.value=String(Math.round(clock*1000));
   timeOutput.textContent=clock.toFixed(2)+'s';
   if(comparing||kitComparing||variantComparing){
