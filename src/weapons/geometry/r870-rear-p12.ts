@@ -39,11 +39,16 @@ export const R870_SGA_STOCK:R870Outline=[
  R870_REAR_JOIN.extensionTop,R870_REAR_JOIN.extensionBottom,
  [-11.70,-2.92],[-12.70,-3.28],[-14.56,-3.87]
 ];
-/** No shoulder stock: each physical grip has its own recognizably complete silhouette. */
+/** P16 mobile silhouette: a compact, close-to-vertical pistol grip with an
+ * integral socket, defined backstrap, palm swell and faceted bottom heel.
+ * The former long diagonal wedge read as a detached birdshead handle.
+ * Both stockless and MCS-shouldered variants use this exact same grip.
+ */
 export const R870_PISTOL_GRIP:R870Outline=[
- R870_REAR_JOIN.receiverTop,[-7.12,.08],[-8.06,-1.00],
- [-10.60,-3.76],[-10.96,-4.32],[-10.36,-4.76],
- [-9.68,-4.66],[-7.25,-2.12],R870_REAR_JOIN.receiverBottom
+ R870_REAR_JOIN.receiverTop,[-7.03,.17],[-7.68,-.76],
+ [-8.48,-1.70],[-8.99,-2.18],[-9.54,-4.44],
+ [-9.48,-4.94],[-8.85,-5.19],[-8.10,-5.05],
+ [-7.72,-4.64],[-7.40,-2.66],R870_REAR_JOIN.receiverBottom
 ];
 export const R870_BIRDSHEAD_GRIP:R870Outline=[
  R870_REAR_JOIN.receiverTop,[-7.36,.30],[-9.04,-.22],
@@ -78,7 +83,7 @@ export const R870_REAR_PARTS=Object.freeze({
  }),
  pistol:Object.freeze({
   stock:'r870-pistol-only',grip:'r870-pistol-grip',
-  stockX:-10.96,primaryX:-8.45,primaryY:-3.10,hasShoulder:false,
+  stockX:-9.54,primaryX:-8.45,primaryY:-3.10,hasShoulder:false,
   gripOutline:R870_PISTOL_GRIP,stockOutline:null
  }),
  mcs:Object.freeze({
