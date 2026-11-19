@@ -127,6 +127,8 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  const moving=pose==='walk'||pose==='run'||pose==='injured-walk';
  const injured=pose==='injured'||pose==='injured-walk';
  const squat=pose==='hide'||pose==='seated';
+ const gesture=pose==='startled'?'hands-up':
+   pose==='hide'||pose==='run'?'head-cover':undefined;
  poseOperator(r.character,{
   x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,
   seconds:now,stride:moving?Math.max(.05,c.velocity/53):0,
@@ -134,12 +136,24 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
   injury:injured?1:down?3:0,weapon:'carbine',
   reload:0,reloadDuration:0,lastDoorAt:-100,lastThrowAt:-100,
   down,surrender:pose==='compliant',aiming:false,firing:false,
+  civilianGesture:gesture,
   turning:0,deterministic:true,unarmedPreview:true,
   appearanceSeed:c.appearanceSeed,equipment:r.equipment,
   wardrobe:r.wardrobe,gait:pose==='run'?'run':'walk',
   downProgress:down||pose==='compliant'?1:0,
   poseDiagnostics:false
  },r.lastTime>=0&&now>=r.lastTime?Math.min(.08,now-r.lastTime):0);
+ // Low-cost visual glance toward a recently perceived physical threat.
+ // The threat estimate is owned by sensory evidence, not enemy truth.
+ // Clamp yaw so civilians never spin their heads beyond human limits.
+ const known=c.threatEstimate;
+ if(known&&c.lastEvidenceAt>=0&&now-c.lastEvidenceAt<6&&
+    !down&&pose!=='compliant'){
+   const bearing=Math.atan2(known.y-c.p.y,known.x-c.p.x);
+   const delta=Math.atan2(Math.sin(bearing-c.heading),
+     Math.cos(bearing-c.heading));
+   r.character.head.rotation.y+=Math.max(-.48,Math.min(.48,delta))*.55;
+ }
  // The shared animator's generic kit presentation can restore the unused
  // pack slot on its final frame. Neutrals have NO equipment inventory:
  // suppress these cosmetic meshes after the common pose publication.
@@ -188,6 +202,16 @@ export function updateCivilianRig(r:CivilianRig,
   r.leftShoe.scale.y=1/legCompression;
   r.rightShoe.scale.y=1/legCompression;
  };
+ // A visible, previously perceived threat gets a small independent head
+ // glance, never a new source of civilian AI knowledge.
+ if(c.threatEstimate&&c.lastEvidenceAt>=0&&now-c.lastEvidenceAt<6&&
+    pose!=='down'){
+  const bearing=Math.atan2(c.threatEstimate.y-c.p.y,
+    c.threatEstimate.x-c.p.x);
+  const delta=Math.atan2(Math.sin(bearing-c.heading),
+    Math.cos(bearing-c.heading));
+  r.head.rotation.y=Math.max(-.48,Math.min(.48,delta))*.55;
+ }
  // Render-only deterministic idle activity, reversible in replay.
  if(pose==='idle'||pose==='work'||pose==='seated')
   r.head.rotation.y=Math.sin(now*.55+c.appearanceSeed*.013)*.11;
@@ -196,11 +220,13 @@ export function updateCivilianRig(r:CivilianRig,
   // unlike the former shoulderless centered-arm translation.
   r.leftArm.rotation.z=-2.35;r.rightArm.rotation.z=2.35;
  }else if(pose==='startled'){
-  r.leftArm.rotation.z=-.43;r.rightArm.rotation.z=.43;
+  // Visible palms/arms raised when a threatening armed presence startles.
+  r.leftArm.rotation.z=-2.2;r.rightArm.rotation.z=2.2;
  }else if(pose==='hide'){
+  // Frozen or hiding civilian sinks at the knees, hands shielding head.
   bend(6.4,.69);
   r.leftLeg.position.x=-5.1;r.rightLeg.position.x=5.1;
-  r.leftArm.rotation.z=-.25;r.rightArm.rotation.z=.25;
+  r.leftArm.rotation.z=-2.1;r.rightArm.rotation.z=2.1;
   r.upper.rotation.x=.08;
  }else if(pose==='injured'){
   // A wounded adult remains adult-height; pain changes the gesture.
@@ -231,5 +257,9 @@ export function updateCivilianRig(r:CivilianRig,
     c.appearanceSeed*.01)*.32;
   r.leftLeg.rotation.x=gait;r.rightLeg.rotation.x=-gait;
   r.leftArm.rotation.x=-gait*.65;r.rightArm.rotation.x=gait*.65;
+  if(pose==='run'){
+   // Arms protect the head while legs keep their full genuine sprint gait.
+   r.leftArm.rotation.z=-2.12;r.rightArm.rotation.z=2.12;
+  }
  }
 }
