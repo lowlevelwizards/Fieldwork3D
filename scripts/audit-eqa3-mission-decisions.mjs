@@ -80,6 +80,11 @@ for(const [seed,mission] of chosen){
     const operatorHandoffs=[];
     let acceptedDoorActions=0;
     const forensicEvents=[];
+    // EQA3.5 replayable forensic witnesses, never input into decisions.
+    // Harm is sourced from the authoritative projectile attribution ledger.
+    const harmWitnesses=[],shotWitnesses=[],rescueTimeline=[];
+    const seenShotIds=new Set(),seenHarmIds=new Set();
+    let lastRescueSignature='';
     let lastForensicSignature='';
     const forensicCapture=(type)=>{
       if(!forensic||forensicEvents.length>=380)return;
@@ -277,6 +282,50 @@ for(const [seed,mission] of chosen){
     executeOrder();
     for(let tick=0;tick<tickFrames&&s.phase==='running';tick++){
       stepSession(s,1/30);
+      if(forensic){
+        for(const shot of s.shots){
+          if(seenShotIds.has(shot.id))continue;
+          seenShotIds.add(shot.id);
+          if(shotWitnesses.length<500)shotWitnesses.push({
+            id:shot.id,at:round(shot.firedAt??s.seconds),
+            side:shot.side,shooter:shot.shooterId,
+            target:shot.targetId,from:{...shot.start},to:{...shot.end},
+            yaw:shot.shotYaw,hit:shot.hit,down:shot.down,
+            surface:shot.surface,hitRegion:shot.hitRegion});
+        }
+        for(const harm of s.civilianHarmEvents){
+          if(seenHarmIds.has(harm.id))continue;
+          seenHarmIds.add(harm.id);
+          const victim=s.civilians.find(c=>c.id===harm.victimId);
+          const shooter=s.operators.find(a=>a.id===harm.actorId);
+          if(harmWitnesses.length<100)harmWitnesses.push({
+            ...harm,p:{...harm.p},
+            victimState:victim?.state??null,
+            victimFollowing:victim?.following??null,
+            victimCarriedBy:victim?.carriedById??null,
+            victimRescueTarget:!!victim?.rescueTarget,
+            shooterP:shooter?{...shooter.p}:null,
+            associatedShot:shotWitnesses.find(x=>x.id===harm.shotId)??null
+          });
+        }
+        if(tick%6===0){
+          const person=s.civilians.find(c=>c.rescueTarget);
+          if(person){
+            const signature=JSON.stringify([
+              person.health,person.state,person.following,
+              person.carriedById,s.mission]);
+            if(signature!==lastRescueSignature){
+              lastRescueSignature=signature;
+              if(rescueTimeline.length<120)rescueTimeline.push({
+                at:round(s.seconds),stage:s.mission,
+                state:person.state,health:person.health,
+                following:person.following,carriedBy:person.carriedById,
+                position:{...person.p},actorDistance:round(dist(scout.p,person.p))
+              });
+            }
+          }
+        }
+      }
       // Scripted handoff, not automatic gameplay AI: when its one
       // commanded scout goes down, a human could choose another real
       // surviving teammate. Preserve authoritative casualty state and
@@ -390,6 +439,9 @@ for(const [seed,mission] of chosen){
       roomsUnreachable:failed.size,roomsAttempted:attempted.size,
       civilianStates,stages,decisions,
       forensic:forensic?forensicEvents:undefined,
+      harmWitnesses:forensic?harmWitnesses:undefined,
+      shotWitnesses:forensic?shotWitnesses:undefined,
+      rescueTimeline:forensic?rescueTimeline:undefined,
       doorAware,acceptedDoorActions,operatorHandoffs,
       activeScout:scout.id,activeScoutHealth:scout.health,
       doorsAtEnd:doorAware?s.doors.map(d=>({id:d.id,open:d.open,
@@ -431,6 +483,11 @@ if(process.env.EQA3_OUTPUT){
  writeFileSync(process.env.EQA3_OUTPUT,JSON.stringify(report,null,2)+'\n');
 }
 console.log(JSON.stringify({summary,errors:exceptions,
+ rescueHarm:forensic?valid.filter(r=>r.harmWitnesses?.length||r.rescueTimeline?.length)
+   .map(r=>({seed:r.seed,mission:r.mission,intel:r.intel,
+     insertion:r.insertion,harms:r.harmWitnesses,
+     rescueTimeline:r.rescueTimeline,
+     witnessShots:r.shotWitnesses?.length??0})):undefined,
  forensic:forensic?valid.map(r=>({seed:r.seed,mission:r.mission,intel:r.intel,
   insertion:r.insertion,stage:r.missionStage,events:r.forensic?.slice(0,120)})):undefined,
  highInterest:valid.filter(x=>x.routeAbort||x.objectiveAt!==null||
