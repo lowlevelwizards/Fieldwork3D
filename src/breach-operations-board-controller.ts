@@ -3,7 +3,7 @@
  */
 import type {CampaignMode} from './breach-app-mode.ts';
 import type {Session} from './breach-game.ts';
-import {resupplyRoster,equipRoster,equipRosterGear,equipRosterCarryGear,equipRosterFieldInventory,moveRosterMagazine,
+import {resupplyRoster,equipRoster,equipRosterGear,equipRosterCarryGear,undoRosterCarryGear,copyRosterCarryLayout,equipRosterFieldInventory,moveRosterMagazine,
  configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
  renameRosterMember,type RosterState} from './breach-roster.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
@@ -27,6 +27,7 @@ import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
 import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
 import {initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
+import {CarryKitUndoHistory,captureCarryUndo} from './equipment-carry-undo.ts';
 import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {CampaignKitPreview} from './equipment-preview.ts';
 import type {OperationRecord} from './breach-operations.ts';
@@ -54,6 +55,7 @@ let quickKitPreview:CampaignKitPreview|null=null;
 let quickKitPreviewId:string|null=null;
 let scrollToSelected=false;
 const fieldUndo=new FieldInventoryUndoHistory();
+const carryUndo=new CarryKitUndoHistory();
 const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
 const savedQuickWorkbenchViews=new Map<string,WeaponWorkbenchViewState>();
 const resetQuickWorkbenchViews=new Set<string>();
@@ -308,6 +310,11 @@ function renderOperationsBoard(){
       const prior=config.getRoster();
       const changed=equipRosterCarryGear(prior,member.id,slot,itemId);
       if(changed===prior){showFieldworkActionFeedback('CARRY CHANGE REJECTED · RECHECK CAPACITY');return;}
+      const before=prior.members.find(m=>m.id===member.id);
+      const after=changed.members.find(m=>m.id===member.id);
+      if(before&&after)carryUndo.record(member.id,
+       captureCarryUndo(before.loadout,before.magazines),
+       captureCarryUndo(after.loadout,after.magazines));
       config.setRoster(changed);config.saveRoster();config.applyRoster();
       expandedQuickKit=member.id;renderOperationsBoard();config.refreshHud();
       showFieldworkActionFeedback(member.callsign+' · '+(itemsForSlot(slot)
@@ -316,6 +323,33 @@ function renderOperationsBoard(){
     });
    loadout.field(loadoutGroupForSlot(slot)).append(container);
   }
+  const carryUndoButton=document.createElement('button');
+  carryUndoButton.type='button';carryUndoButton.className='fw-carry-undo-action';
+  carryUndoButton.textContent='UNDO LAST CARRY MOVE';
+  carryUndoButton.setAttribute('aria-label','Undo last physical carry move');
+  const canUndoCarry=(operator:typeof member)=>{
+   const quote=carryUndo.peek(operator.id,
+    captureCarryUndo(operator.loadout,operator.magazines));
+   return quote.ok;
+  };
+  carryUndoButton.disabled=!canUndoCarry(member)||
+   config.getSession().phase!=='planning'||config.isReplaying();
+  carryUndoButton.addEventListener('click',()=>{
+   if(config.getSession().phase!=='planning'||config.isReplaying())return;
+   const old=config.getRoster();
+   const current=old.members.find(m=>m.id===member.id);
+   if(!current)return;
+   const expected=captureCarryUndo(current.loadout,current.magazines);
+   const undo=carryUndo.peek(member.id,expected);
+   if(!undo.ok){showFieldworkActionFeedback(undo.reason);return;}
+   const restored=undoRosterCarryGear(old,member.id,expected,undo.restore);
+   if(restored===old){showFieldworkActionFeedback('CARRY UNDO REJECTED · KIT CHANGED');return;}
+   carryUndo.clear(member.id);
+   config.setRoster(restored);config.saveRoster();config.applyRoster();
+   expandedQuickKit=member.id;renderOperationsBoard();config.refreshHud();
+   showFieldworkActionFeedback('LAST PHYSICAL CARRY MOVE UNDONE');
+  });
+  loadout.field('carry').append(carryUndoButton);
   const fieldHost=loadout.field('utilities');
   const renderField=(current:typeof member)=>{
    const commitField=(inventory:FieldInventory,undo=false,preferredFocus?:string)=>{
@@ -333,6 +367,7 @@ function renderOperationsBoard(){
       changed.loadout.fieldInventory??initialFieldInventory(changed.loadout));
     }
     config.setRoster(next);
+    carryUndoButton.disabled=true;
     config.saveRoster();config.applyRoster();
     if(changed){
      renderField(changed);
@@ -356,8 +391,13 @@ function renderOperationsBoard(){
      const prior=config.getRoster();
      const next=moveRosterMagazine(prior,current.id,magazineId,to);
      if(next===prior)return;
-     config.setRoster(next);config.saveRoster();config.applyRoster();
+     const before=prior.members.find(m=>m.id===current.id);
      const changed=next.members.find(m=>m.id===current.id);
+     if(before&&changed)carryUndo.record(current.id,
+      captureCarryUndo(before.loadout,before.magazines),
+      captureCarryUndo(changed.loadout,changed.magazines));
+     config.setRoster(next);config.saveRoster();config.applyRoster();
+     carryUndoButton.disabled=changed?!canUndoCarry(changed):true;
      if(changed){
       renderField(changed);
       quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
@@ -373,6 +413,20 @@ function renderOperationsBoard(){
     locked:config.getSession().phase!=='planning'||config.isReplaying(),
     copyTargets:config.getRoster().members.filter(m=>m.id!==current.id)
      .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
+    onCopyLayout:targetId=>{
+     if(config.getSession().phase!=='planning'||config.isReplaying())return;
+     const before=config.getRoster();
+     const next=copyRosterCarryLayout(before,current.id,targetId);
+     if(next===before){showFieldworkActionFeedback('CANNOT COPY LAYOUT · CHECK CARRY FIT');return;}
+     const old=before.members.find(m=>m.id===targetId);
+     const updated=next.members.find(m=>m.id===targetId);
+     if(old&&updated)carryUndo.record(targetId,
+      captureCarryUndo(old.loadout,old.magazines),
+      captureCarryUndo(updated.loadout,updated.magazines));
+     config.setRoster(next);config.saveRoster();config.applyRoster();
+     renderOperationsBoard();config.refreshHud();
+     showFieldworkActionFeedback('CARRY LAYOUT COPIED · POSITIONS ONLY');
+    },
     onCopy:(targetId,inventory)=>{
      const before=config.getRoster();
      const next=equipRosterFieldInventory(before,targetId,inventory);

@@ -3,7 +3,7 @@ import {newCampaign,acceptContract,equipCampaignPreGoFieldInventory}
  from '../src/campaign-state.ts';
 import {mountCampaignPreGoPrep} from '../src/ui/campaign-pre-go-prep.ts';
 import type {FieldInventory} from '../src/equipment-field-inventory.ts';
-import {initialRoster,moveRosterMagazine,equipRosterCarryGear,equipRosterFieldInventory} from '../src/breach-roster.ts';
+import {initialRoster,moveRosterMagazine,equipRosterCarryGear,equipRosterFieldInventory,copyRosterCarryLayout} from '../src/breach-roster.ts';
 import {createQuickPlayConfigurator} from '../src/ui/quick-play-configurator.ts';
 import {attachCarryGearChangePreview} from '../src/ui/carry-gear-change-controls.ts';
 import {setEquipmentChoice} from '../src/equipment-loadouts.ts';
@@ -115,5 +115,33 @@ const creator=createQuickPlayConfigurator({
 Object.assign(window,{quickPlayCarrySmoke:{
  open:()=>creator.open(),close:()=>creator.close(),
  rig:()=>creatorRoster.members[0].loadout.slots.rig
+}});
+// Physical layout-copy witness, with a distinct destination operator ledger.
+let layoutRoster=initialRoster();
+layoutRoster=moveRosterMagazine(layoutRoster,'rook',
+ layoutRoster.members[0].magazines[0].id,'backpack');
+const copyHost=document.createElement('section');
+copyHost.id='carryLayoutCopySmoke';copyHost.style.cssText=
+ 'max-width:720px;margin:12px auto;min-width:0';
+document.body.append(copyHost);
+const renderLayoutCopy=()=>{
+ const source=layoutRoster.members[0],target=layoutRoster.members[1];
+ copyHost.replaceChildren(createFieldGadgetEditor({
+  loadout:source.loadout,magazines:source.magazines,onCommit:()=>{},
+  copyTargets:[{id:target.id,name:target.callsign,loadout:target.loadout,
+   magazines:target.magazines}],
+  onCopyLayout:targetId=>{
+   const next=copyRosterCarryLayout(layoutRoster,source.id,targetId);
+   if(next===layoutRoster)throw Error('Quoted layout copy was rejected by roster');
+   layoutRoster=next;renderLayoutCopy();
+  }
+ }));
+};
+renderLayoutCopy();
+Object.assign(window,{layoutCopySmoke:{
+ target:()=>{
+  const m=layoutRoster.members[1];
+  return m.magazines.map(x=>({id:x.id,rounds:x.rounds,location:x.location}));
+ }
 }});
 document.documentElement.dataset.loadoutPrepReady='1';

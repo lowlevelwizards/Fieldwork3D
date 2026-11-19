@@ -29,6 +29,8 @@ import {readPersistentMagazines,readLoadedMagazineId,addReserveRounds}
  from './equipment-magazine-persistence.ts';
 import {quoteOneMagazineMove} from './equipment-magazine-transfer.ts';
 import {quoteCarryGearChange,type CarryGearSlot} from './equipment-carry-gear-change.ts';
+import {captureCarryUndo,quoteCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
+import {quoteCarryLayoutCopy} from './equipment-carry-layout-copy.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {initialEquipmentLoadout,readEquipmentLoadout,setEquipmentChoice,syncPrimaryWeapon,
@@ -712,6 +714,43 @@ export function equipCampaignCarryGear(c:CampaignState,id:string,
  if(!quote.ok)return c;
  return {...c,operators:c.operators.map(o=>o.id===id?
   {...o,loadout:quote.kit,magazines:quote.magazines}:o)};
+}
+/** Reapply a previous physical carry snapshot, atomically, only if this
+ * Campaign's current operator kit still matches the recorded transaction.
+ * No magazines, ammunition, field supply, or unrelated gear are issued.
+ */
+export function undoCampaignCarryGear(c:CampaignState,id:string,
+ expected:CarryUndoSnapshot,before:CarryUndoSnapshot):CampaignState{
+ if(c.activeContractId)return c;
+ const operator=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!operator)return c;
+ const current=captureCarryUndo(operator.loadout,operator.magazines);
+ if(JSON.stringify(current)!==JSON.stringify(expected))return c;
+ const quote=quoteCarryUndo(current,before);
+ if(!quote.ok)return c;
+ for(const slot of ['rig','belt','backpack'] as const){
+  if(operator.loadout.slots[slot]===quote.restore.loadout.slots[slot])continue;
+  if(!mayChooseCampaignContent(c,'equipment',quote.restore.loadout.slots[slot],slot))
+   return c;
+ }
+ return {...c,operators:c.operators.map(o=>o.id===id?
+  {...o,loadout:quote.restore.loadout,magazines:quote.restore.magazines}:o)};
+}
+/** A placement-only Campaign copy: cannot mint magazines, gadgets or stock.
+ * The owning Campaign state enforces operator status and contract phase.
+ */
+export function copyCampaignCarryLayout(c:CampaignState,
+ sourceId:string,targetId:string):CampaignState{
+ if(c.activeContractId||sourceId===targetId)return c;
+ const valid=(o:CampaignOperator)=>o.status!=='lost'&&o.status!=='retired';
+ const source=c.operators.find(o=>o.id===sourceId&&valid(o));
+ const target=c.operators.find(o=>o.id===targetId&&valid(o));
+ if(!source||!target)return c;
+ const quote=quoteCarryLayoutCopy(source.loadout,source.magazines,
+  target.loadout,target.magazines);
+ if(!quote.ok||!quote.changed)return c;
+ return {...c,operators:c.operators.map(o=>o.id===targetId?
+  {...o,loadout:quote.loadout,magazines:quote.magazines}:o)};
 }
 /** L2.3: stock- and capacity-aware pre-mission field item issuance.
  * Prepared kit allocations are a reservation, not a purchase or stock debit.
