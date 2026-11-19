@@ -13,6 +13,8 @@ export type CivilianActor={
   heading:number;velocity:number;radius:number;
   health:number;injuryStage:number;state:CivilianState;
   stateSince:number;fear:number;lastEvidenceAt:number;
+  /** Timestamp of last actually witnessed immediate danger; render-only flinch. */
+  lastFlinchAt?:number;
   /** True ONLY when a later physical restraint action succeeds, never from SECURE. */
   restrained?:boolean;
   lastEvidenceId:string|null;lastHitAt:number;
@@ -42,7 +44,7 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     heading:spec.heading,velocity:0,radius:10,
     health:2,injuryStage:0,state:'routine',stateSince:0,fear:0,
     restrained:false,
-    lastEvidenceAt:-1,lastEvidenceId:null,lastHitAt:-100,
+    lastEvidenceAt:-1,lastFlinchAt:-100,lastEvidenceId:null,lastHitAt:-100,
     lastNoiseId:0,lastSenseAt:0,lastVisualId:null,
     visualProgress:{},threatEstimate:null,
     routine:(spec.routine??[]).map(p=>({...p})),
