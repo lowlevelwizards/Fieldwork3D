@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {activateSite} from '../src/breach-core.ts';
+import {createOperatorRig,poseOperator} from '../src/breach-operator-rig.ts';
 import {createA3Session,DEFAULT_A3_CONFIG}
  from '../src/a3-physicality-scenarios.ts';
 import {team} from '../src/breach-game.ts';
@@ -161,4 +162,33 @@ test('A3.10 preopen door and high shoulder anchors rewind without gameplay mutat
   assert.equal(a.physicalContact.releasedAt,null);
   assert.ok(physicalContactWeight(a.physicalContact,s.seconds)>.95);
  }finally{activateSite(null);}
+});
+
+test('A3.10 actual operator support wrist reaches door and restores on cancellation',()=>{
+ const {s,a}=setup();
+ const rig=createOperatorRig('preopen-real-arm','blue',true);
+ try{
+  const d=assign(s,a);
+  const candidate=preOpenDoorCandidate(s,a,d,sessionWorldGeometry(s));
+  assert.ok(candidate);
+  const pose={x:a.p.x,z:a.p.y,heading:a.heading,
+   velocity:0,seconds:s.seconds+.35,stride:0,posture:a.posture,
+   injury:0,weapon:'carbine',reload:0,reloadDuration:1,
+   lastThrowAt:-100,lastDoorAt:-100,doorMethod:'open',
+   down:false,surrender:false,aiming:false,firing:false,
+   turning:0,deterministic:true,poseV3Preview:true,
+   poseV4ReloadPreview:true,poseDiagnostics:false,
+   handlingIntent:'door',doorPoint:{x:candidate.anchor.point.x,
+    y:candidate.anchor.point.z}};
+  rig.root.position.set(a.p.x,0,a.p.y);
+  poseOperator(rig,pose,0);
+  const natural=rig.arms[0].hand.position.clone();
+  poseOperator(rig,{...pose,physicalContact:candidate},0);
+  const contact=rig.arms[0].hand.position.clone();
+  assert.ok(contact.distanceTo(natural)>2,
+   'actual support wrist must move to the handle/leaf contact');
+  poseOperator(rig,{...pose,physicalContact:null},0);
+  assert.ok(rig.arms[0].hand.position.distanceTo(natural)<2,
+   'cancel restores regular two-hand weapon pose');
+ }finally{rig.dispose();activateSite(null);}
 });
