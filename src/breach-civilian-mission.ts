@@ -40,6 +40,18 @@ export function escortWalkMultiplier(
  if(separation<=87)return base*.8;
  return base*.45;
 }
+/** EQA3.8: an actively escorted civilian should not be trapped by
+ * stationary friendly squadmates near insertion/extraction. The shared
+ * movement arbiter already makes blue↔neutral traffic soft. This mirrors
+ * that policy only for genuine FOLLOW, preserving ordinary civilians'
+ * cautious crowd avoidance and every hostile/neutral/wall/door collision.
+ */
+export function escortUsesFriendlySoftTraffic(
+ person:Pick<CivilianActor,'state'|'following'|'health'>
+):boolean{
+ return person.health>0&&person.state==='escorted'&&!!person.following;
+}
+
 export function rescueFollowGoal(
  rescuer:{p:Pt;heading:number;priorP?:Pt;velocity?:number},
  follower?:Pick<CivilianActor,'p'>|null
