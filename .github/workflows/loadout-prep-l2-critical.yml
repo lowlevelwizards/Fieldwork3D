@@ -27,4 +27,4 @@ jobs:
       - name: Typecheck
         run: npm run check
       - name: Inventory regression tests
-        run: node --experimental-strip-types --test tests/equipment-field-inventory.test.mjs tests/equipment-12-flash-supply.test.mjs tests/quickplay-field-preferences.test.mjs tests/equipment-field-undo.test.mjs tests/campaign-pre-go-inventory.test.mjs tests/equipment-field-visuals.test.mjs tests/equipment-field-visual-rig.test.mjs tests/equipment-13-visuals.test.mjs tests/operator-equipment-details.test.mjs tests/equipment-physical-board.test.mjs tests/equipment-field-transfer.test.mjs
+        run: node --experimental-strip-types --test tests/equipment-field-inventory.test.mjs tests/equipment-12-flash-supply.test.mjs tests/quickplay-field-preferences.test.mjs tests/equipment-field-undo.test.mjs tests/campaign-pre-go-inventory.test.mjs tests/equipment-field-visuals.test.mjs tests/equipment-field-visual-rig.test.mjs tests/equipment-13-visuals.test.mjs tests/operator-equipment-details.test.mjs tests/equipment-physical-board.test.mjs tests/equipment-field-transfer.test.mjs tests/equipment-preview-carry-focus.test.mjs
