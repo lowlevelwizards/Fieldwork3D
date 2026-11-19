@@ -60,6 +60,7 @@ const PART_LABELS:Readonly<Record<string,string>>={
  'r870-10-bead':'10-inch MCS Compact',
  'r870-mcs-mini-tube':'Mini Tube · 3 Shells',
  'r870-mcs-mini-pump':'Mini MCS Pump',
+ 'r870-mcs-skeletal-stock':'MCS Skeletal Shoulder Stock',
  'fnc-mag30':'30-Round STANAG',
  'g36-dual-receiver':'G36 Dual Optic',
  'g36-stock':'G36 Folding',
