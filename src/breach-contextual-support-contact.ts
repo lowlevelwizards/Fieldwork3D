@@ -208,7 +208,9 @@ export function chooseTeammateSupport(
    if(!normal.x&&!normal.y)continue;
    const contact:PhysicalContact={intent:'teammate',limb:'support-hand',
     anchor:{target:'teammate',id:lead.id,point:shoulder,
-     normal:{x:normal.x,y:0,z:normal.y}},
+     // Palm rests on a TOP-facing shoulder cap, not the back/rib face.
+     normal:{x:normal.x*.25,y:Math.sqrt(1-.25*.25),
+      z:normal.y*.25}},
     startedAt:s.seconds,releasedAt:null};
    const e={from,acquireReach:SUPPORT_ACQUIRE_REACH,
     retainReach:SUPPORT_RELEASE_REACH,lineClear:true};
@@ -216,7 +218,7 @@ export function chooseTeammateSupport(
      sameContact(contact,previous);
    if(!contactWithinReach(contact,e,retaining))continue;
    e.lineClear=world.isClear(sourcePoint(from),target,s.doors);
-   if(!e.lineClear)continue;
+   if(!e.lineClear)break; // lower deltoid cannot bypass the same wall
    // High point wins wherever physically valid, rather than choosing
    // the numerically closest lower shoulder and burying the wrist.
    const candidate={claim:{contact,reach:e},
@@ -279,7 +281,13 @@ export function advanceContextualSupportContacts(s:Session):void{
   const previous=a.physicalContact;
   // A recorded release must finish before any different contact begins.
   if(previous?.releasedAt!==null&&previous!==null){
-   if(s.seconds-previous.releasedAt<SUPPORT_RELEASE_WINDOW)continue;
+   // A cancelled OPEN must visibly return to the firearm, not switch
+   // immediately to a near-identical idle frame brace at the door.
+   // The old contact's .30s fade is already zero by this point.
+   const cooling=previous.intent==='door'&&
+     previous.anchor.id.endsWith(':pre-open')?
+     .90:SUPPORT_RELEASE_WINDOW;
+   if(s.seconds-previous.releasedAt<cooling)continue;
    a.physicalContact=null;
   }
   const current=a.physicalContact;
