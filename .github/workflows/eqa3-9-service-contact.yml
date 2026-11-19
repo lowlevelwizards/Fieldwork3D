@@ -7,6 +7,11 @@ on:
       - 'src/breach-game.ts'
       - 'src/breach-plan-aim-commands.ts'
       - 'src/breach-civilian-context-selection.ts'
+      - 'src/breach-rescue-contact-look.ts'
+      - 'src/ui/context-actions.ts'
+      - 'src/ui/tactical-palette-controller.ts'
+      - 'src/breach-tactical-context-command.ts'
+      - 'tests/eqa3-9-known-contact-look.test.mjs'
       - '.github/workflows/eqa3-9-service-contact.yml'
   workflow_dispatch:
 permissions:
@@ -21,6 +26,13 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
+      - name: TypeScript and physical known-contact/reacquisition regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-9-known-contact-look.test.mjs \
+            tests/eqa3-7-civilian-context-targeting.test.mjs \
+            tests/civilian-d1-rescue-lifecycle.test.mjs
       - name: Original and LOOK authoring in actual 60 Hz rescue world
         run: |
           mkdir -p artifacts/eqa3-9
