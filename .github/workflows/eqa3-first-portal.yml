@@ -18,7 +18,7 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - name: Three frozen paired mission cases: real user OPEN, hinge and MOVE
+      - name: 'Three frozen paired mission cases: real user OPEN, hinge and MOVE'
         run: |
           mkdir -p artifacts/eqa3
           EQA3_OUTPUT=artifacts/eqa3/first-portal-6.json node --experimental-strip-types scripts/audit-eqa3-first-portal-open.mjs > artifacts/eqa3/first-portal-console.json
