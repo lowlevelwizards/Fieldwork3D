@@ -17,10 +17,11 @@ export type CampaignPreGoPrepHooks={
  issue:(operatorId:string,inventory:FieldInventory)=>boolean;
 };
 export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
- hooks:CampaignPreGoPrepHooks):{close:()=>void}{
+ hooks:CampaignPreGoPrepHooks):{close:()=>void;setAvailable:(available:boolean)=>void}{
  const launch=document.createElement('button');
  launch.type='button';launch.className='fw-pre-go-launch';
  launch.textContent='PREPARE SQUAD EQUIPMENT';
+ launch.hidden=true;
  launch.setAttribute('aria-label','Prepare Campaign squad field equipment before GO');
  briefingRoster.insertAdjacentElement('afterend',launch);
  const backdrop=document.createElement('div');backdrop.className='fw-pre-go-backdrop';
@@ -122,5 +123,8 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
  });
  // The launch action is also used when the briefing can be reviewed after GO.
  // Its click gate, rather than stale CSS state, is the authoritative restriction.
- return {close};
+ return {close,setAvailable:available=>{
+  launch.hidden=!available;
+  if(!available)close();
+ }};
 }
