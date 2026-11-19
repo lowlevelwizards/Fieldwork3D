@@ -203,12 +203,29 @@ export function createQuickPlayConfigurator(options:{
   const hint=node('p','fw-quick-config-intro',
    'Ready this squad before generating a mission. Changes apply to the next Quick Play operation.');
   squadContent.append(hint);
-  squadContent.append(createFieldGadgetEditor({
-   loadout:selected.loadout,magazines:selected.magazines,
-   onCommit:inventory=>{
-    if(options.onEquipField?.(selected.id,inventory))renderSquadPrep();
-   }
-  }));
+  const gadgetHost=node('div','fw-quick-config-field-gear');
+  squadContent.append(gadgetHost);
+  const renderGadgets=(operator:typeof selected)=>{
+   gadgetHost.replaceChildren(createFieldGadgetEditor({
+    loadout:operator.loadout,magazines:operator.magazines,
+    onCommit:inventory=>{
+     const prior=document.activeElement instanceof HTMLElement?
+      document.activeElement.getAttribute('aria-label'):null;
+     if(!options.onEquipField?.(operator.id,inventory))return;
+     const changed=options.getRoster?.().members.find(m=>m.id===operator.id);
+     if(!changed)return;
+     renderGadgets(changed);
+     if(prior){
+      const target=Array.from(gadgetHost.querySelectorAll<HTMLElement>(
+       'button[aria-label],select[aria-label]')).find(el=>
+        el.getAttribute('aria-label')===prior&&
+        !(el as HTMLButtonElement|HTMLSelectElement).disabled);
+      target?.focus({preventScroll:true});
+     }
+    }
+   }));
+  };
+  renderGadgets(selected);
  };
  squadPrep.append(squadLabel,squadContent);
  squadPrep.addEventListener('toggle',()=>{
