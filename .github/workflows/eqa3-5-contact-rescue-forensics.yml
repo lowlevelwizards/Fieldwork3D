@@ -64,6 +64,36 @@ jobs:
             }))},null,2));
           }
           NODE
+      - name: EQA3.5H matched player-legal rescue stand-off A/B
+        run: |
+          for intel in unknown confirmed; do
+            EQA3_OUTPUT="artifacts/eqa3-5/warehouse17-${intel}-stand-off.json" node --experimental-strip-types scripts/audit-eqa3-mission-decisions.mjs --smoke --seed=17 --seconds=90 "--intel=${intel}" --door-aware --forensic --rescue-stand-off > "artifacts/eqa3-5/warehouse17-${intel}-stand-off-console.json"
+          done
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const fmt=(d)=>d.rows.filter(x=>x.seed===17&&x.mission==='rescue')
+            .map(r=>({entry:r.insertion,stage:r.missionStage,
+              objectiveAt:r.objectiveAt,extractedAt:r.extractedAt,
+              harms:r.harmWitnesses?.length??0,
+              following:r.rescue.escorted,
+              standOff:r.rescueStandOffAccepted,
+              fallback:r.rescueStandOffFallbacks,
+              scriptedRejected:r.rejected,routeAbort:r.routeAbort,
+              nearestShotVictimGap:r.harmWitnesses?.map(h=>
+                h.associatedShot?.firingActorTargetP?
+                Math.round(Math.hypot(
+                  h.associatedShot.firingActorTargetP.x-h.p.x,
+                  h.associatedShot.firingActorTargetP.y-h.p.y)*100)/100:null)}));
+          for(const intel of ['unknown','confirmed']){
+            const baseline=JSON.parse(fs.readFileSync('artifacts/eqa3-5/warehouse17-'+intel+'.json'));
+            const tested=JSON.parse(fs.readFileSync('artifacts/eqa3-5/warehouse17-'+intel+'-stand-off.json'));
+            console.log(JSON.stringify({intel,baseline:fmt(baseline),standOff:fmt(tested),
+              summary:tested.summary},null,2));
+            if(tested.exceptions.length||tested.rows.length!==2||
+              tested.rows.some(r=>r.integrity?.length)||
+              tested.summary.rescueStandOffAccepted<1)process.exitCode=1;
+          }
+          NODE
       - if: always()
         uses: actions/upload-artifact@v4
         with:
