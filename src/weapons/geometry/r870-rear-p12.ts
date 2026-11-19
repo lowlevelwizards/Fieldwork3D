@@ -4,7 +4,7 @@
  */
 export type R870Point=readonly [number,number];
 export type R870Outline=readonly R870Point[];
-export type R870RearVariant='wood'|'shortwood'|'pistol'|'birdshead';
+export type R870RearVariant='wood'|'shortwood'|'poly'|'sga'|'pistol'|'birdshead';
 export const R870_REAR_JOIN=Object.freeze({
  receiverTop:[-6.12,.76] as R870Point,
  receiverBottom:[-6.12,-1.76] as R870Point,
@@ -24,6 +24,21 @@ export const R870_WOOD_STOCK:R870Outline=[
  R870_REAR_JOIN.extensionTop,R870_REAR_JOIN.extensionBottom,
  [-12.50,-3.60],[-15.26,-4.02]
 ];
+/** P14 SGA is an authored angular stock, not a recolored Police stock.
+ * Shared receiver interface and shoulder datum; grip has its own low heel.
+ */
+export const R870_SGA_GRIP:R870Outline=[
+ R870_REAR_JOIN.extensionTop,[-9.70,-.45],[-8.85,-.72],
+ [-7.45,-.38],R870_REAR_JOIN.receiverTop,
+ R870_REAR_JOIN.receiverBottom,[-7.25,-1.95],
+ [-7.75,-2.66],[-8.55,-3.25],[-9.58,-3.46],
+ R870_REAR_JOIN.extensionBottom
+];
+export const R870_SGA_STOCK:R870Outline=[
+ [-14.56,.45],[-13.40,.28],[-11.90,.00],
+ R870_REAR_JOIN.extensionTop,R870_REAR_JOIN.extensionBottom,
+ [-11.70,-2.92],[-12.70,-3.28],[-14.56,-3.87]
+];
 /** No shoulder stock: each physical grip has its own recognizably complete silhouette. */
 export const R870_PISTOL_GRIP:R870Outline=[
  R870_REAR_JOIN.receiverTop,[-7.12,.08],[-8.06,-1.00],
@@ -37,6 +52,16 @@ export const R870_BIRDSHEAD_GRIP:R870Outline=[
  [-8.36,-1.99],R870_REAR_JOIN.receiverBottom
 ];
 export const R870_REAR_PARTS=Object.freeze({
+ poly:Object.freeze({
+  stock:'r870-police-poly-stock',grip:'r870-police-poly-grip',
+  stockX:-15.78,primaryX:-7.80,primaryY:-2.70,hasShoulder:true,
+  gripOutline:R870_WOOD_GRIP,stockOutline:R870_WOOD_STOCK
+ }),
+ sga:Object.freeze({
+  stock:'r870-magpul-sga-stock',grip:'r870-magpul-sga-grip',
+  stockX:-15.24,primaryX:-8.00,primaryY:-2.82,hasShoulder:true,
+  gripOutline:R870_SGA_GRIP,stockOutline:R870_SGA_STOCK
+ }),
  shortwood:Object.freeze({
   stock:'r870-short-wood-stock',grip:'r870-police-wood-wrist',
   stockX:-13.78,primaryX:-7.80,primaryY:-2.70,hasShoulder:true,
