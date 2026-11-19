@@ -28,3 +28,23 @@
 .fw-field-inventory-actions button{font-size:11px;padding:0 14px}
 .fw-field-inventory :is(button,select):focus-visible{outline:2px solid #d1dfbd;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.fw-field-inventory *{transition:none!important}}
+
+/* Unified squad rail — selected operator first, small-screen swipeable. */
+.fw-prep-squad-rail{display:flex;gap:7px;overflow-x:auto;overscroll-behavior-inline:contain;
+ scroll-snap-type:x proximity;min-width:0;padding:3px 2px 9px;margin:5px 0 9px;
+ scrollbar-width:thin}
+.fw-prep-squad-tab{display:grid;flex:1 0 86px;min-width:86px;max-width:180px;
+ text-align:left;gap:2px;padding:9px;border-radius:10px;border:1px solid #475e54;
+ background:#1d302a;color:#dce9de;cursor:pointer;scroll-snap-align:start;
+ touch-action:manipulation;transition:background 150ms,border-color 150ms,transform 150ms}
+.fw-prep-squad-tab[data-selected="true"]{background:#385249;border-color:#c1d6bf;
+ box-shadow:inset 0 0 0 1px #a5c0ad}
+.fw-prep-squad-tab:active{transform:scale(.975)}
+.fw-prep-squad-number{font-size:10px;opacity:.7;font-variant-numeric:tabular-nums}
+.fw-prep-squad-tab strong{font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.fw-prep-squad-tab small{font-size:10px;color:#b2c6b9}
+.fw-prep-squad-tab:focus-visible{outline:2px solid #d1dfbd;outline-offset:2px}
+.fw-prep-operator-viewer{height:220px;max-height:36vh;min-height:160px;
+ margin:8px 0;border-radius:10px;overflow:hidden;border:1px solid rgba(195,208,185,.18)}
+.fw-prep-operator-viewer canvas{display:block;width:100%;height:100%}
+@media(prefers-reduced-motion:reduce){.fw-prep-squad-tab{transition:none}}
