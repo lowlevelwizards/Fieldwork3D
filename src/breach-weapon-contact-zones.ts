@@ -11,9 +11,10 @@ import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {FNC_FRONT_P13} from './weapons/geometry/fnc-front-layout.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {g36SupportRange} from './weapons/geometry/g36-variant-parts.ts';
+import {R870_P07} from './weapons/geometry/r870-art-contract.ts';
 export type RiflePoint={x:number;y:number;z:number};
 export type RifleContactRange={near:RiflePoint;far:RiflePoint;preferredFraction:number};
-export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36';stock:RiflePoint;
+export type RiflePoseContacts={family:'ar'|'ak'|'hk'|'fal'|'fnc'|'g36'|'r870';stock:RiflePoint;
  primary:RiflePoint;support:RifleContactRange;scale:number};
 /** Underhand hold calibration: the fore-end shell is NOT the wrist center.
  * Move the unmounted palm below polymer/metal rather than to its side.
@@ -37,6 +38,17 @@ export function riflePoseContacts(
  id:WeaponId,config?:WeaponConfiguration):RiflePoseContacts|null{
  if(!config||config.weapon!==id||!config.build)return null;
  const b=config.build;
+ // R870's stock wrist is integral wood, not a generic rear rifle grip.
+ // Aim hands below the actual sliding pump rather than its magazine tube.
+ if(b.family==='r870'){
+  const a=resolveWeaponAssembly(config);
+  return {family:'r870',scale:a.lengthScale,
+   stock:{x:a.stockX,y:-1.34,z:0},
+   primary:{x:R870_P07.primaryX,y:R870_P07.primaryY,z:2.24},
+   support:{near:{x:R870_P07.supportNearX,y:-3.08,z:-1.60},
+    far:{x:R870_P07.supportFarX,y:-3.08,z:-1.60},
+    preferredFraction:.50}};
+ }
  if(b.family!=='ar'&&b.family!=='ak'&&b.family!=='hk'&&b.family!=='fal'&&b.family!=='fnc'&&b.family!=='g36')return null;
  const a=resolveWeaponAssembly(config),ar=b.family==='ar',hk=b.family==='hk';
  // HK reach targets share the fore-end's authoritative barrel-art landmarks.
