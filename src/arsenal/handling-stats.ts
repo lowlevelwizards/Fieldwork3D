@@ -61,7 +61,8 @@ export function arsenalHandlingStats(recipe:ArsenalRecipeV2):readonly ArsenalHan
    detail:Math.round(audibleRadius)+' u · audible',
    explanation:'Real gunshot noise radius seen by enemy hearing. Higher score means quieter; no stealth or discovery immunity.'},
   {id:'capacity',label:'CAPACITY',score:higher(capacity,5,46),
-   detail:capacity+' rounds · magazine',
+   detail:config.weapon==='shotgun'?capacity+' shells · tube':
+    capacity+' rounds · magazine',
    explanation:'Actual magazine capacity used by the mission. This does not add rounds or change owned inventory.'}
  ];
 }
