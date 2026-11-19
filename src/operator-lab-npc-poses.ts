@@ -90,9 +90,13 @@ export function sampleNpcCivilian(id:string,clock:number):CivilianActor{
  c.stateSince=.8;
  const set=(state:CivilianState,velocity=0)=>{
   c.state=state;c.velocity=velocity;
-  // Reactive tracks begin after .8 seconds, not during quiet idle.
-  c.p.x=gait(state==='routine'||state==='escorted'?now:delayed(now),
-   velocity);
+  // Only the three explicitly immediate locomotion demonstrations
+  // move before the 0.8s cue. FOLLOW is an escort state too, but must NOT
+  // pre-travel while its scripted pre-contact velocity is still zero.
+  // Otherwise an old planted boot stays at x=0 while the pelvis teleports.
+  const immediate=id==='civ-walk'||id==='civ-escorted'||
+    id==='civ-injured-walk';
+  c.p.x=gait(immediate?now:delayed(now),velocity);
   c.priorP={...c.p};
  };
  const audio=()=>{
