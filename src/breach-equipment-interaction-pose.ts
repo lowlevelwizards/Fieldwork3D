@@ -7,7 +7,7 @@
 import type {TeamActor} from './breach-game.ts';
 import {quoteDeployedFieldUse,type LiveFieldItem}
  from './equipment-deployed-field-use.ts';
-import type {FieldCarryLocation} from './equipment-field-inventory.ts';
+import {FIELD_ITEMS,type FieldCarryLocation} from './equipment-field-inventory.ts';
 import {WEDGE_PLACEMENT_SECONDS} from './breach-entry-tools.ts';
 
 export type EquipmentInteractionPose={
@@ -34,7 +34,9 @@ export function readEquipmentInteraction(
    'wedge':null;
  if(!item)return null;
  const quote=quoteDeployedFieldUse(actor,item);
- if(!quote.available||!quote.location||!Number.isFinite(quote.accessSeconds))
+ if(!quote.available||!quote.location||
+  !FIELD_ITEMS[item].locations.includes(quote.location)||
+  !Number.isFinite(quote.accessSeconds))
   return null;
  const duration=(item==='wedge'?WEDGE_PLACEMENT_SECONDS:.3)+quote.accessSeconds;
  return {item,location:quote.location,elapsed:actor.actionTimer,
