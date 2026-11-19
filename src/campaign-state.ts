@@ -510,6 +510,12 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
  if(oldIndex===slot)return c;
  if(oldIndex>=0)squads[oldIndex]=squads[slot];
  squads[slot]=id;
+ const reserved=squads.reduce((sum,memberId)=>{
+  const member=c.operators.find(o=>o.id===memberId);
+  return sum+(member?fieldQuantity(member.loadout.fieldInventory??
+   initialFieldInventory(member.loadout),'flashbang'):0);
+ },0);
+ if(reserved>c.supplies.flash)return c;
  return {...c,squadIds:squads};
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
@@ -733,6 +739,15 @@ export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:str
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return false;
+ const proposed=readEquipmentLoadout(preset.kit,preset.weapon);
+ const incoming=proposed.fieldInventory??initialFieldInventory(proposed);
+ if(!fieldCarryReport(proposed,member.magazines,incoming).valid)return false;
+ if(c.squadIds.includes(id)){
+  const reserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
+   .reduce((sum,o)=>sum+fieldQuantity(o.loadout.fieldInventory??
+    initialFieldInventory(o.loadout),'flashbang'),0);
+  if(reserved+fieldQuantity(incoming,'flashbang')>c.supplies.flash)return false;
+ }
  if(!isDispatchPilotCampaign(c)||
   effectiveDispatchSetup(c).equipmentScope==='global')return true;
  if(member.weapon!==preset.weapon||
