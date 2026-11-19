@@ -16,14 +16,17 @@ const cases=[
  {seed:12,mission:'intel',entry:'FRONT'},
  {seed:12,mission:'intel',entry:'SERVICE'},
  {seed:23,mission:'rescue',entry:'FRONT'},
- {seed:23,mission:'rescue',entry:'SERVICE'}
+ {seed:23,mission:'rescue',entry:'SERVICE'},
+ {seed:14,mission:'hold',entry:'FRONT',quiet:true},
+ {seed:14,mission:'hold',entry:'SERVICE',quiet:true}
 ];
-for(const {seed,mission,entry} of cases){
- test(`EQA3.2 actual ${seed}/${mission}/${entry} can reach its handle, clear stance and physically OPEN`,()=>{
-  const site=generateSite(seed,'small',undefined,{
+for(const {seed,mission,entry,quiet} of cases){
+ test(`EQA3.2 actual ${seed}/${mission}/${entry}${quiet?'/quiet':''} can reach its handle, clear stance and physically OPEN`,()=>{
+  const generated=generateSite(seed,'small',undefined,{
    mission,enableIncidentIntent:true});
+  const site=quiet?{...generated,training:true,enemies:[],encounter:undefined}:generated;
   const s=newSession(0,seed,'floor-plan','small',mission,site,
-   {enableCivilians:true});
+   {enableCivilians:!quiet});
   try{
    if(entry!=='FRONT')assert.equal(selectDeployment(s,entry),true);
    const actor=team(s)[0],door=s.doors.find(d=>d.id===entry);
@@ -65,7 +68,12 @@ for(const {seed,mission,entry} of cases){
      openingFootwork:foot(actor),motorPause:actor.motorPause,
      actionTimer:actor.actionTimer,velocity:actor.velocity,
      blocker:actor.lastBlocker,blockedTime:actor.blockedTime,
-     recoveryAttempts:actor.recoveryAttempts};
+     recoveryAttempts:actor.recoveryAttempts,
+     health:actor.health,fireRetreatTarget:actor.fireRetreatTarget,
+     autoSidestep:actor.autoSidestep,doorTraversal:actor.doorTraversal,
+     traversal:actor.traversal,squeeze:actor.squeeze,
+     aimInstruction:actor.aimInstruction,
+     lastHitAt:actor.lastHitAt,phase:s.phase};
    assert.ok(actionStartedAt!==null,
     'the door action must start instead of oscillating forever with timer=0: '+JSON.stringify(trace));
    assert.ok(openedAt!==null,'real hinge must be asked to open by GO, never setup');
