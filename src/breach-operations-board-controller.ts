@@ -3,7 +3,7 @@
  */
 import type {CampaignMode} from './breach-app-mode.ts';
 import type {Session} from './breach-game.ts';
-import {resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
+import {resupplyRoster,equipRoster,equipRosterGear,equipRosterFieldInventory,moveRosterMagazine,
  configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
  renameRosterMember,type RosterState} from './breach-roster.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
@@ -23,6 +23,7 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
+import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
 import type {OperationRecord} from './breach-operations.ts';
 
 export type OperationsBoardHooks={
@@ -239,6 +240,18 @@ function renderOperationsBoard(){
    row.className='fw-equipment-choice';
    row.append(label,select);loadout.field(loadoutGroupForSlot(slot)).append(row);
   }
+  loadout.field('utilities').append(createFieldGadgetEditor({
+    loadout:member.loadout,magazines:member.magazines,
+    locked:config.getSession().phase!=='planning'||config.isReplaying(),
+    onCommit:inventory=>{
+     const next=equipRosterFieldInventory(config.getRoster(),member.id,inventory);
+     if(next===config.getRoster())return;
+     config.setRoster(next);
+     config.saveRoster();config.applyRoster();
+     expandedQuickKit=member.id;expandedQuickLoadoutGroup='utilities';
+     renderOperationsBoard();config.refreshHud();
+    }
+   }));
   // Factory body furniture and rail accessories share one spatial workbench.
   const weaponEditor=document.createElement('details');
   weaponEditor.className='fw-weapon-editor';
