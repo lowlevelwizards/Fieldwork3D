@@ -62,12 +62,23 @@ try{
   assert.equal(Number(await rigMeter.getAttribute('aria-valuenow')),before,
    'no-op auto pack preserves the true physical carrying report');
   const pickOne=panel.getByRole('button',{name:'Select one Flashbang from RIG'});
+  const preview=panel.locator('.fw-pre-go-preview');
+  const previewHasWebGL=await preview.locator('canvas').count()>0;
   await pickOne.click();
+  if(previewHasWebGL)
+   assert.equal(await preview.getAttribute('data-carry-highlight'),'rig',
+    'selecting a stored item marks its real 3D rig location');
   assert.equal(await pickOne.getAttribute('aria-pressed'),'true',
    'physical item selection is visible and keyboard accessible');
   const placeOne=panel.getByRole('button',{name:'Place selected item in BACKPACK'});
   assert.equal(await placeOne.isEnabled(),true,'real inventory fit is verified before placement');
   await placeOne.click();
+  if(previewHasWebGL){
+   assert.equal(await preview.getAttribute('data-carry-highlight'),'backpack',
+    'successful placement retargets the same preview carry marker');
+   assert.equal(await preview.locator('canvas').count(),1,
+    'physical item transfer does not recreate the 3D renderer');
+  }
   assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from RIG'}).count(),0,
    'one flash leaves its source carrier');
   assert.equal(await panel.getByRole('button',{name:'Select one Flashbang from BACKPACK'}).count(),1,
