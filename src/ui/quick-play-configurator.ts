@@ -285,6 +285,7 @@ export function createQuickPlayConfigurator(options:{
     loadout:operator.loadout,magazines:operator.magazines,
      onInspectLocation:location=>squadPreview?.highlightCarryLocation(location),
    onInspectItem:item=>squadPreview?.inspectCarryItem(item),
+   onModelThumbnail:item=>squadPreview?.renderModelThumbnail(item)??null,
     onMoveMagazine:options.onMoveMagazine?(magazineId,to,focusLabel)=>{
      const scroll=content.scrollTop;
      if(!options.onMoveMagazine?.(operator.id,magazineId,to))return;
