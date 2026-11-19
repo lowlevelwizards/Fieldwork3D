@@ -1,0 +1,32 @@
+name: EQA3.7 civilian contextual contact targeting
+on:
+  push:
+    branches: [feature/eqa3-7-civilian-context-targeting-20261118]
+    paths:
+      - 'src/breach-civilian-context-selection.ts'
+      - 'src/breach-tactical-context-command.ts'
+      - 'src/ui/tactical-palette-controller.ts'
+      - 'tests/eqa3-7-civilian-context-targeting.test.mjs'
+      - '.github/workflows/eqa3-7-civilian-context.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  eqa3-7-civilian-targeting:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript compilation (no output)
+        run: npm run check
+      - name: Focused civilian command, lifecycle and interaction regressions
+        run: >
+          node --experimental-strip-types --test
+          tests/eqa3-7-civilian-context-targeting.test.mjs
+          tests/civilian-c4-contextual-contact.test.mjs
+          tests/civilian-d1-rescue-lifecycle.test.mjs
+          tests/release-c2-c5-interactions.test.mjs
