@@ -1,0 +1,50 @@
+/* Shared physical inventory: compact, touch-friendly, no continuous motion. */
+.fw-field-inventory { display:grid; gap:9px; min-width:0; margin:10px 0;
+ padding:12px; border:1px solid rgba(179,191,166,.28); border-radius:12px;
+ background:rgba(14,25,21,.55); color:#e6e9d9; }
+.fw-field-inventory-heading{display:flex;align-items:baseline;justify-content:space-between;
+ gap:8px;flex-wrap:wrap;font-size:12px;letter-spacing:.05em}
+.fw-field-inventory-heading small{font-size:10px;color:#adbdaf}
+.fw-field-inventory-capacity{font-size:10px;color:#b4c5ad;line-height:1.5}
+.fw-field-inventory-feedback{margin:0;color:#c1cdb8;font-size:11px;line-height:1.4}
+.fw-field-inventory-item{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;
+ padding:9px;border-radius:8px;background:rgba(255,255,255,.04)}
+.fw-field-inventory-item[data-unavailable="true"]{opacity:.55}
+.fw-field-inventory-copy{min-width:0;display:grid;gap:3px}
+.fw-field-inventory-copy strong{font-size:12px}
+.fw-field-inventory-copy small{color:#acbcb0;font-size:10px;line-height:1.4}
+.fw-field-inventory-controls{display:flex;align-items:center;gap:5px}
+.fw-field-inventory-controls button,.fw-field-inventory-actions button{min-width:38px;
+ min-height:38px;border:1px solid #5a7168;border-radius:7px;background:#263c34;
+ color:#f0f3e9;font-size:17px;cursor:pointer;touch-action:manipulation}
+.fw-field-inventory-controls button:active:not(:disabled){transform:scale(.95)}
+.fw-field-inventory-controls button:disabled{opacity:.35;cursor:not-allowed}
+.fw-field-inventory-quantity{min-width:28px;font-size:13px;font-variant-numeric:tabular-nums;
+ text-align:center;font-weight:700}
+.fw-field-inventory-location{grid-column:1/-1;min-height:36px;max-width:100%;
+ border:1px solid #536b60;border-radius:7px;padding:5px 8px;
+ background:#1d3028;color:#f0f3e9;font-size:11px}
+.fw-field-inventory-actions{display:flex;justify-content:flex-end}
+.fw-field-inventory-actions button{font-size:11px;padding:0 14px}
+.fw-field-inventory :is(button,select):focus-visible{outline:2px solid #d1dfbd;outline-offset:2px}
+@media (prefers-reduced-motion:reduce){.fw-field-inventory *{transition:none!important}}
+
+/* Unified squad rail — selected operator first, small-screen swipeable. */
+.fw-prep-squad-rail{display:flex;gap:7px;overflow-x:auto;overscroll-behavior-inline:contain;
+ scroll-snap-type:x proximity;min-width:0;padding:3px 2px 9px;margin:5px 0 9px;
+ scrollbar-width:thin}
+.fw-prep-squad-tab{display:grid;flex:1 0 86px;min-width:86px;max-width:180px;
+ text-align:left;gap:2px;padding:9px;border-radius:10px;border:1px solid #475e54;
+ background:#1d302a;color:#dce9de;cursor:pointer;scroll-snap-align:start;
+ touch-action:manipulation;transition:background 150ms,border-color 150ms,transform 150ms}
+.fw-prep-squad-tab[data-selected="true"]{background:#385249;border-color:#c1d6bf;
+ box-shadow:inset 0 0 0 1px #a5c0ad}
+.fw-prep-squad-tab:active{transform:scale(.975)}
+.fw-prep-squad-number{font-size:10px;opacity:.7;font-variant-numeric:tabular-nums}
+.fw-prep-squad-tab strong{font-size:12px;overflow:hidden;text-overflow:ellipsis}
+.fw-prep-squad-tab small{font-size:10px;color:#b2c6b9}
+.fw-prep-squad-tab:focus-visible{outline:2px solid #d1dfbd;outline-offset:2px}
+.fw-prep-operator-viewer{height:220px;max-height:36vh;min-height:160px;
+ margin:8px 0;border-radius:10px;overflow:hidden;border:1px solid rgba(195,208,185,.18)}
+.fw-prep-operator-viewer canvas{display:block;width:100%;height:100%}
+@media(prefers-reduced-motion:reduce){.fw-prep-squad-tab{transition:none}}

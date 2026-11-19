@@ -3,7 +3,7 @@
  */
 import type {CampaignMode} from './breach-app-mode.ts';
 import type {Session} from './breach-game.ts';
-import {resupplyRoster,equipRoster,equipRosterGear,moveRosterMagazine,
+import {resupplyRoster,equipRoster,equipRosterGear,equipRosterFieldInventory,moveRosterMagazine,
  configureRosterWeapon,configureRosterWeaponPreset,configureRosterWeaponBodyPart,
  renameRosterMember,type RosterState} from './breach-roster.ts';
 import {WEAPON_ATTACHMENT_SLOTS,WEAPON_ATTACHMENTS,resolveWeaponAssembly,
@@ -23,6 +23,9 @@ import {buildQuickLoadoutGroups,loadoutGroupForSlot,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
+import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
+import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
+import {CampaignKitPreview} from './equipment-preview.ts';
 import type {OperationRecord} from './breach-operations.ts';
 
 export type OperationsBoardHooks={
@@ -38,12 +41,15 @@ export function createBreachOperationsBoardController(config:OperationsBoardHook
 // One operator expanded at a time in the mobile preparation sheet.
 let expandedQuickOperator:string|null=null;
 let expandedQuickKit:string|null=null;
-let expandedQuickLoadoutGroup:QuickLoadoutGroup='weapon';
+let expandedQuickLoadoutGroup:QuickLoadoutGroup='carry';
 let expandedQuickWeapon:string|null=null;
 /** Keep the intentional classic fallback open across part/weapon rerenders. */
 const expandedClassicWeaponControls=new Set<string>();
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
+let quickKitPreview:CampaignKitPreview|null=null;
+let quickKitPreviewId:string|null=null;
+let scrollToSelected=false;
 const selectedQuickWeaponSockets=new Map<string,WorkbenchSocket>();
 const savedQuickWorkbenchViews=new Map<string,WeaponWorkbenchViewState>();
 const resetQuickWorkbenchViews=new Set<string>();
@@ -55,7 +61,8 @@ function rememberQuickWorkbenchView(){
 }
 
 function renderOperationsBoard(){
- const priorScroll=config.board.scrollTop;
+ const priorScroll=scrollToSelected?0:config.board.scrollTop;
+ scrollToSelected=false;
  rememberQuickWorkbenchView();
  quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  config.board.replaceChildren();
@@ -86,7 +93,22 @@ function renderOperationsBoard(){
  intro.textContent=config.getRoster().members.length+' OPERATORS · FRESH GEAR EACH ROUND'+
   (history.length?' · LAST '+(history.at(-1)?.grade??'—'):'');
  config.board.append(intro);
- for(const member of config.getRoster().members){
+ const members=config.getRoster().members;
+ const selected=members.find(m=>m.id===expandedQuickOperator)??members[0];
+ if(selected){
+  expandedQuickOperator=selected.id;
+  config.board.append(createLoadoutSquadRail(members.map(m=>({
+   id:m.id,name:m.callsign.toUpperCase(),
+   detail:m.weapon.toUpperCase(),
+   status:m.id===selected.id?'SELECTED · '+m.weapon.toUpperCase():
+    m.weapon.toUpperCase()
+  })),selected.id,id=>{
+   if(id===expandedQuickOperator)return;
+   expandedQuickOperator=id;expandedQuickKit=id;
+   expandedQuickWeapon=id;scrollToSelected=true;renderOperationsBoard();
+  }));
+ }
+ for(const member of selected?[selected]:[]){
   const card=document.createElement('details');
   card.dataset.squadCard=member.id;
   card.className='fw-squad-card';
@@ -151,8 +173,37 @@ function renderOperationsBoard(){
   const kitTitle=document.createElement('summary');
   kitTitle.textContent='LOADOUT · '+member.weapon.toUpperCase();
   kit.append(kitTitle);
+  const previewHost=document.createElement('div');
+  previewHost.className='fw-prep-operator-viewer';
+  previewHost.hidden=expandedQuickLoadoutGroup==='weapon';
+  previewHost.setAttribute('aria-label','Rotatable 3D operator and carried equipment');
+  kit.append(previewHost);
+  const renderKitPreview=()=>{
+   if(!kit.open||!previewHost.isConnected||previewHost.hidden)return;
+   if(quickKitPreview&&quickKitPreviewId!==member.id){
+    quickKitPreview.dispose();quickKitPreview=null;quickKitPreviewId=null;
+   }
+   if(!quickKitPreview){
+    quickKitPreview=new CampaignKitPreview(previewHost,member.id,member.weapon,
+     member.appearanceSeed,member.loadout,member.weaponConfiguration,
+     member.magazines,member.wardrobe);
+    quickKitPreviewId=member.id;
+   }else{
+    quickKitPreview.attachHost(previewHost);
+    quickKitPreview.updateEquipment(member.weapon,member.appearanceSeed,
+     member.loadout,member.weaponConfiguration,member.magazines,member.wardrobe);
+   }
+  };
+  kit.addEventListener('toggle',()=>{
+   if(kit.open)requestAnimationFrame(renderKitPreview);
+  });
   const loadout=buildQuickLoadoutGroups(kit,expandedQuickLoadoutGroup,group=>{
    expandedQuickLoadoutGroup=group;
+   previewHost.hidden=group==='weapon';
+   if(previewHost.hidden&&quickKitPreview){
+    quickKitPreview.dispose();quickKitPreview=null;quickKitPreviewId=null;
+   }
+   if(!previewHost.hidden)requestAnimationFrame(renderKitPreview);
   });
   // Arsenal is the primary builder. Direct factory and socket controls remain
   // behind one accessible fallback for class-only or unsupported weapons.
@@ -212,7 +263,7 @@ function renderOperationsBoard(){
   });
   loadout.field('weapon').append(resupply);
   for(const slot of LOADOUT_SLOTS){
-   if(slot==='primary')continue; // Existing NEXT WEAPON action stays authoritative.
+   if(slot==='primary'||slot==='tactical')continue; // Gadgets now use physical quantities, not the legacy single-item selector.
    const row=document.createElement('label');
    row.style.cssText='display:flex;justify-content:space-between;gap:8px;align-items:center;margin:8px 0';
    const label=document.createElement('span');
@@ -239,6 +290,38 @@ function renderOperationsBoard(){
    row.className='fw-equipment-choice';
    row.append(label,select);loadout.field(loadoutGroupForSlot(slot)).append(row);
   }
+  const fieldHost=loadout.field('utilities');
+  const renderField=(current:typeof member)=>{
+   const editor=createFieldGadgetEditor({
+    loadout:current.loadout,magazines:current.magazines,
+    locked:config.getSession().phase!=='planning'||config.isReplaying(),
+    onCommit:inventory=>{
+     const previousFocus=document.activeElement instanceof HTMLElement?
+      document.activeElement.getAttribute('aria-label'):null;
+     const next=equipRosterFieldInventory(config.getRoster(),current.id,inventory);
+     if(next===config.getRoster())return;
+     config.setRoster(next);
+     config.saveRoster();config.applyRoster();
+     const changed=next.members.find(m=>m.id===current.id);
+     if(changed){
+      renderField(changed);
+      quickKitPreview?.updateEquipment(changed.weapon,changed.appearanceSeed,
+       changed.loadout,changed.weaponConfiguration,changed.magazines,changed.wardrobe);
+     }
+     if(previousFocus){
+      const matched=Array.from(fieldHost.querySelectorAll<HTMLElement>(
+       'button[aria-label],select[aria-label]')).find(el=>
+        el.getAttribute('aria-label')===previousFocus&&
+        !((el as HTMLButtonElement|HTMLSelectElement).disabled));
+      matched?.focus({preventScroll:true});
+     }
+     config.refreshHud();
+    }
+   });
+   const old=fieldHost.querySelector('.fw-field-inventory');
+   if(old)old.replaceWith(editor);else fieldHost.append(editor);
+  };
+  renderField(member);
   // Factory body furniture and rail accessories share one spatial workbench.
   const weaponEditor=document.createElement('details');
   weaponEditor.className='fw-weapon-editor';
@@ -443,6 +526,7 @@ function renderOperationsBoard(){
    loadout.field('carry').append(magSection);
   }
   card.append(kit);config.board.append(card);
+  if(kit.open)requestAnimationFrame(renderKitPreview);
   // A newly opened details subtree can report zero width on iOS until
   // it is attached and laid out. Initialize after paint, not only on toggle.
   if(kit.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
@@ -461,6 +545,7 @@ function renderOperationsBoard(){
  }
  function dispose():void{
    quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
+   quickKitPreview?.dispose();quickKitPreview=null;quickKitPreviewId=null;
  }
  return {render:renderOperationsBoard,onQuickApplied,dispose};
 }

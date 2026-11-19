@@ -15,6 +15,7 @@ import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
 import {kitMedicalSupplies} from './equipment-medical-supplies.ts';
 import {issuedWedges} from './equipment-entry-tools.ts';
+import {readFieldInventory,fieldCarryReport,type FieldInventory} from './equipment-field-inventory.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,selectWeaponFamilyPreset,setConfiguredFamilyPart,
  type WeaponConfiguration,type WeaponAttachmentSlot}
@@ -157,8 +158,8 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
  * devices when nobody actually carries one. */
 export function reconcileSquadFlashes(s:Session){
  if(s.started)return;
- s.flashRemaining=Math.min(2,s.operators.filter(a=>a.side==='blue')
-  .reduce((n,a)=>n+a.flashCharges,0));
+ s.flashRemaining=s.operators.filter(a=>a.side==='blue')
+  .reduce((n,a)=>n+a.flashCharges,0);
 }
 export function recordRosterMission(s:Session,roster:RosterState):RosterState{
  return {version:1,members:roster.members.map(m=>{
@@ -219,6 +220,18 @@ export function equipRosterGear(roster:RosterState,id:string,slot:LoadoutSlot,
  return {...roster,members:roster.members.map(m=>m.id===id?
   {...m,loadout:next,magazines:stageMagazines(m.magazines,next)}:m)};
 }
+/** L2.1: atomically issue an operator's physical field kit.
+ * The authoring UI validates capacity before calling this pathway.
+ */
+export function equipRosterFieldInventory(roster:RosterState,id:string,
+ inventory:FieldInventory):RosterState{
+ const member=roster.members.find(m=>m.id===id);if(!member)return roster;
+ const next=readFieldInventory(inventory,member.loadout);
+ if(!fieldCarryReport(member.loadout,member.magazines,next).valid)return roster;
+ return {...roster,members:roster.members.map(m=>m.id===id?
+  {...m,loadout:{...m.loadout,fieldInventory:next}}:m)};
+}
+
 /** Quick Play permits selecting compatible parts between missions. */
 export function configureRosterWeapon(roster:RosterState,id:string,
  slot:WeaponAttachmentSlot,partId:string):RosterState{

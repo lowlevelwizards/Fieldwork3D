@@ -18,7 +18,7 @@ import {resolveOperation,tacticalSlotOperator,type CampaignReport}
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
   assignOperatorToSlot,buyWeapon,equipCampaignWeapon,repairCampaignArmor,
-  serviceCampaignWeapon,equipCampaignGear,equipCampaignWeaponPreset,
+  serviceCampaignWeapon,equipCampaignGear,equipCampaignFieldInventory,equipCampaignWeaponPreset,
   equipCampaignWeaponFamilyPart,equipCampaignWeaponAttachment,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
@@ -269,6 +269,8 @@ const campaignScreen=new CampaignScreen({
   c=>repairCampaignArmor(c,id),'Operator armor repaired'),
  serviceWeapon:(id)=>applyVisibleCampaignAction(
   c=>serviceCampaignWeapon(c,id),'Weapon maintenance completed'),
+ equipFieldInventory:(id,inventory)=>applyVisibleCampaignAction(
+  c=>equipCampaignFieldInventory(c,id,inventory),'Field equipment updated'),
  equipGear:(id,slot,itemId)=>applyVisibleCampaignAction(
   c=>equipCampaignGear(c,id,slot,itemId),'Operator equipment updated'),
  equipWeaponPreset:(id,presetId)=>applyVisibleCampaignAction(current=>{
@@ -401,7 +403,9 @@ export function applyCampaignRosterToSession(session:Session,campaign:CampaignSt
  }
  if(!session.started){
   const squad=team(session);
-  const issued=allocateFlashSupply(squad.map(a=>a.flashCharges),campaign.supplies.flash);
+  const requested=squad.map(a=>a.flashCharges);
+  const issued=allocateFlashSupply(requested,campaign.supplies.flash,
+   requested.reduce((n,qty)=>n+qty,0));
   squad.forEach((a,i)=>{a.flashCharges=issued[i];});
   session.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
  }

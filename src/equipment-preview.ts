@@ -8,6 +8,7 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {WardrobeOptions} from './operator-wardrobe-data.ts';
 import type {MagazineItem} from './breach-magazines.ts';
 import {carryPlacementLedger} from './equipment-carry-placement.ts';
+import {equippedFlashCharges} from './equipment-loadouts.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
@@ -108,7 +109,7 @@ export class CampaignKitPreview{
     .map(item=>item.location),
    medicalCarryLocation:placements.find(item=>item.kind==='medical')?.location,
    utilityCarryLocation:placements.find(item=>item.kind==='utility')?.location,
-   flashCharges:equipment.slots.tactical==='tactical-flash'?1:0,
+   flashCharges:equippedFlashCharges(equipment),
    deterministic:true},0);
   this.draw();
  }

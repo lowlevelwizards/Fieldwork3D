@@ -2,17 +2,20 @@
  * are separate later contracts, never inferred from the choices here. */
 import {DEFAULT_EQUIPMENT,LOADOUT_SLOTS,EQUIPMENT_CATALOG,
  validEquipmentChoice,equipmentMass,type EquipmentSlot} from './equipment-catalog.ts';
+import type {FieldInventory} from './equipment-field-inventory.ts';
+import {initialFieldInventory,readFieldInventory,fieldQuantity,fieldInventoryMass} from './equipment-field-inventory.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {resolveWeaponAssembly,WEAPON_PLATFORMS,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
 export type LoadoutSlot=Exclude<EquipmentSlot,'secondary'>;
-export type EquipmentLoadout={version:1;slots:Record<LoadoutSlot,string>};
+export type EquipmentLoadout={version:1;slots:Record<LoadoutSlot,string>;fieldInventory?:FieldInventory};
 const weaponItem=(weapon:WeaponId)=>'primary-'+weapon;
 const isWeapon=(weapon:unknown):weapon is WeaponId=>
  weapon==='carbine'||weapon==='smg'||weapon==='rifle'||weapon==='shotgun';
 export function initialEquipmentLoadout(weapon:WeaponId='carbine'):EquipmentLoadout{
- return {version:1,slots:{...DEFAULT_EQUIPMENT,primary:weaponItem(weapon)}};
+ const base:EquipmentLoadout={version:1,slots:{...DEFAULT_EQUIPMENT,primary:weaponItem(weapon)}};
+ return {...base,fieldInventory:initialFieldInventory(base)};
 }
 /** Reject malformed and wrong-slot entries without throwing or altering the
  * authoritative campaign primary weapon, magazine and reserve quantities. */
@@ -29,13 +32,30 @@ export function readEquipmentLoadout(raw:unknown,weapon:WeaponId):EquipmentLoado
   if(typeof value==='string'&&validEquipmentChoice(slot,value))
    result.slots[slot]=value;
  }
+ result.fieldInventory=readFieldInventory((raw as {fieldInventory?:unknown}).fieldInventory,result);
  return result;
 }
 export function setEquipmentChoice(loadout:EquipmentLoadout,
  slot:LoadoutSlot,itemId:string):EquipmentLoadout{
  if(!validEquipmentChoice(slot,itemId))return loadout;
  if(loadout.slots[slot]===itemId)return loadout;
- return {version:1,slots:{...loadout.slots,[slot]:itemId}};
+ const next:EquipmentLoadout={...loadout,slots:{...loadout.slots,[slot]:itemId}};
+ // Legacy single-item slots still define ability/tool compatibility, while
+ // physical quantities belong to the field manifest.
+ if(slot==='tactical'||slot==='utility'){
+  const previous=loadout.fieldInventory??initialFieldInventory(loadout);
+  const eligible=readFieldInventory(previous,next);
+  if(slot==='tactical'&&itemId==='tactical-flash'&&
+    !eligible.stacks.some(row=>row.itemId==='flashbang'))
+   eligible.stacks.push({itemId:'flashbang',quantity:1,location:'rig'});
+  if(slot==='utility'&&itemId==='utility-wedge'&&
+    !eligible.stacks.some(row=>row.itemId==='wedge'))
+   eligible.stacks.push({itemId:'wedge',quantity:2,location:'belt'});
+  // Removing the legacy tactical flash selector does not erase explicitly
+  // equipped physical flashes; only the wedge tool gate controls wedges.
+  next.fieldInventory=eligible;
+ }
+ return next;
 }
 export function syncPrimaryWeapon(loadout:EquipmentLoadout,
  weapon:WeaponId):EquipmentLoadout{
@@ -46,7 +66,12 @@ export function syncPrimaryWeapon(loadout:EquipmentLoadout,
  * is already counted in the authoritative equipment catalog. */
 export const totalEquipmentMass=(loadout:EquipmentLoadout,
  config?:WeaponConfiguration)=>{
- const baseline=equipmentMass(LOADOUT_SLOTS.map(slot=>loadout.slots[slot]));
+ const field=loadout.fieldInventory??initialFieldInventory(loadout);
+ // The old flash/wedge slot mass was the same physical issue, not extras.
+ const legacyIncluded=(loadout.slots.tactical==='tactical-flash'?.38:0)+
+  (loadout.slots.utility==='utility-wedge'?.28:0);
+ const baseline=equipmentMass(LOADOUT_SLOTS.map(slot=>loadout.slots[slot]))-
+  legacyIncluded+fieldInventoryMass(field);
  if(!config||loadout.slots.primary!=='primary-'+config.weapon)return baseline;
  const assembled=resolveWeaponAssembly(config);
  return baseline+assembled.massKg-WEAPON_PLATFORMS[config.weapon].baseMassKg;
@@ -71,4 +96,4 @@ export function loadMobilityDescription(loadout:EquipmentLoadout,
 /** An equipped flash is a single carried, usable charge. This does not
  * increase the existing two-device team-wide mission allotment. */
 export const equippedFlashCharges=(loadout:EquipmentLoadout):number=>
- loadout.slots.tactical==='tactical-flash'?1:0;
+ fieldQuantity(loadout.fieldInventory??initialFieldInventory(loadout),'flashbang');

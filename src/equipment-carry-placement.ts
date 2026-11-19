@@ -38,7 +38,9 @@ export function carryPlacementLedger(kit:EquipmentLoadout,
  // require two adjacent units. Unfitted slots are not invented.
  for(const kind of ['medical','utility'] as const){
   const id=kit.slots[kind];
-  if(id.endsWith('-none')||id==='utility-radio')continue;
+  // Wedges have migrated into individually countable field inventory.
+  if(id.endsWith('-none')||id==='utility-radio'||
+    (id==='utility-wedge'&&!!kit.fieldInventory))continue;
   const item=EQUIPMENT_CATALOG[id];
   if(!item)continue;
   const required=Math.max(1,Math.min(3,Math.ceil(item.bulk)));

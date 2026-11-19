@@ -35,6 +35,8 @@ import {progressOperator,type OperatorPerformance,type SkillGains} from './campa
 import {readKitPresets,nextPresetId,MAX_KIT_PRESETS,type EquipmentPreset} from './equipment-presets.ts';
 import {initialArmorIntegrity,type ArmorIntegrity} from './equipment-armor.ts';
 import {clampFlashUse} from './equipment-supply.ts';
+import {fieldQuantity,initialFieldInventory,readFieldInventory,fieldCarryReport,
+ type FieldInventory} from './equipment-field-inventory.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
@@ -508,6 +510,12 @@ export function assignOperatorToSlot(c:CampaignState,slot:number,id:string):Camp
  if(oldIndex===slot)return c;
  if(oldIndex>=0)squads[oldIndex]=squads[slot];
  squads[slot]=id;
+ const reserved=squads.reduce((sum,memberId)=>{
+  const member=c.operators.find(o=>o.id===memberId);
+  return sum+(member?fieldQuantity(member.loadout.fieldInventory??
+   initialFieldInventory(member.loadout),'flashbang'):0);
+ },0);
+ if(reserved>c.supplies.flash)return c;
  return {...c,squadIds:squads};
 }
 const RECRUIT_NAMES=['KITE','PIPER','JUNO','EMBER','DOVE','LIN','BRAM','SABLE'];
@@ -690,6 +698,25 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
   armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
 }
 
+/** L2.3: stock- and capacity-aware pre-mission field item issuance.
+ * Prepared kit allocations are a reservation, not a purchase or stock debit.
+ */
+export function equipCampaignFieldInventory(c:CampaignState,id:string,
+ inventory:FieldInventory):CampaignState{
+ if(c.activeContractId)return c;
+ const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
+ if(!member)return c;
+ const next=readFieldInventory(inventory,member.loadout);
+ if(!fieldCarryReport(member.loadout,member.magazines,next).valid)return c;
+ const otherFlash=c.operators.filter(o=>o.id!==id&&
+  c.squadIds.includes(o.id)).reduce((sum,o)=>sum+fieldQuantity(
+  o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
+ if(c.squadIds.includes(id)&&
+  otherFlash+fieldQuantity(next,'flashbang')>c.supplies.flash)return c;
+ return {...c,operators:c.operators.map(o=>o.id===id?
+  {...o,loadout:{...o.loadout,fieldInventory:next}}:o)};
+}
+
 /** Named equipment recipes are lightweight shared records, not physical stock. */
 export function saveCampaignKitPreset(c:CampaignState,id:string,name:string):CampaignState{
  if(c.activeContractId||c.kitPresets.length>=MAX_KIT_PRESETS||
@@ -712,6 +739,15 @@ export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:str
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  const preset=c.kitPresets.find(p=>p.id===presetId);
  if(!member||!preset)return false;
+ const proposed=readEquipmentLoadout(preset.kit,preset.weapon);
+ const incoming=proposed.fieldInventory??initialFieldInventory(proposed);
+ if(!fieldCarryReport(proposed,member.magazines,incoming).valid)return false;
+ if(c.squadIds.includes(id)){
+  const reserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
+   .reduce((sum,o)=>sum+fieldQuantity(o.loadout.fieldInventory??
+    initialFieldInventory(o.loadout),'flashbang'),0);
+  if(reserved+fieldQuantity(incoming,'flashbang')>c.supplies.flash)return false;
+ }
  if(!isDispatchPilotCampaign(c)||
   effectiveDispatchSetup(c).equipmentScope==='global')return true;
  if(member.weapon!==preset.weapon||

@@ -46,6 +46,9 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
+import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
+import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
+import {fieldQuantity,initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
 import './campaign-style.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
@@ -68,6 +71,7 @@ export type CampaignHandlers={
  buyWeapon:(weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipWeapon:(id:string,weapon:'carbine'|'smg'|'rifle'|'shotgun')=>void;
  equipGear:(id:string,slot:LoadoutSlot,itemId:string)=>void;
+ equipFieldInventory:(id:string,inventory:FieldInventory)=>void;
  setWardrobe:(id:string,look:WardrobeOptions)=>void;
  openStudio:(id:string)=>void;
  openArsenal:(id:string)=>void;
@@ -1272,15 +1276,19 @@ export class CampaignScreen{
    this.armoryOperatorId=null;this.home(c);
   },'campaign-armory-back'),identity);
   main.append(top);
-  const nav=node('div','campaign-kit-nav');
-  for(const member of c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired')){
-   const choose=button(member.callsign,()=>{
-    this.armoryOperatorId=member.id;this.home(c);
-   },member.id===id?'campaign-primary':'');
-   choose.setAttribute('aria-pressed',String(member.id===id));
-   nav.append(choose);
-  }
-  main.append(nav);
+  const preparable=c.operators.filter(o=>o.status!=='lost'&&o.status!=='retired')
+   .sort((a,b)=>{
+    const ai=c.squadIds.indexOf(a.id),bi=c.squadIds.indexOf(b.id);
+    return (ai<0?99:ai)-(bi<0?99:bi);
+   });
+  main.append(createLoadoutSquadRail(preparable.map(o=>({
+   id:o.id,name:o.callsign.toUpperCase(),
+   detail:o.weapon.toUpperCase(),
+   status:o.recoveryDays>0?'RECOVERING · '+o.recoveryDays+'D':
+    c.squadIds.includes(o.id)?'ASSIGNED · '+o.weapon.toUpperCase():'RESERVE'
+  })),id,selected=>{
+   this.armoryOperatorId=selected;this.home(c);
+  }));
   const grid=node('div','campaign-kit-grid');
   const summary=node('section','campaign-section campaign-kit-summary');
   summary.append(node('h2','','OPERATOR'));
@@ -1587,6 +1595,7 @@ export class CampaignScreen{
   });
   editor.insertBefore(categoryBar,grouped.group.weapon);
   for(const slot of LOADOUT_SLOTS){
+   if(slot==='tactical')continue; // Field consumables use the shared quantity and placement editor.
    const row=node('div','campaign-kit-row');
    const title=node('span','',slot.replace(/-/g,' ').toUpperCase());
    const select=node('select','campaign-select');
@@ -1642,6 +1651,15 @@ export class CampaignScreen{
    }
    grouped.field(loadoutGroupForSlot(slot)).append(wrap);
   }
+  const squadFlashReserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
+   .reduce((count,o)=>count+fieldQuantity(
+    o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
+  grouped.field('utilities').append(createFieldGadgetEditor({
+   loadout:person.loadout,magazines:person.magazines,locked,
+   maxFlash:c.squadIds.includes(id)?
+    Math.max(0,c.supplies.flash-squadFlashReserved):4,
+   onCommit:inventory=>this.handlers.equipFieldInventory(id,inventory)
+  }));
   const workbenchEntry=node('section','campaign-kit-workbench-entry');
   workbenchEntry.append(node('strong','','MODULAR WEAPON WORKBENCH'));
   workbenchEntry.append(node('p','campaign-note',arsenal.disabled?
