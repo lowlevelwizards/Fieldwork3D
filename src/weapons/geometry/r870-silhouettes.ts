@@ -63,6 +63,20 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
    0,.68,sga?4.32:short?4.14:4.36,sga?3.18:3.12,HK_DARK_POLYMER);
   pad.userData.r870ButtPad=true;
  }
+ if(rearKey==='mcs'){
+  // One bold six-sided rail, one low-poly diagonal support and a wide
+  // buttplate. The OPEN negative space defines this MCS-style skeleton;
+  // no faux screws, rails or other microgeometry.
+  const rail=t('stock',-13.94,-5.95,.49,.38,HK_BLACK_METAL);
+  rail.userData.r870MCSSkeletal=true;
+  const strut=p('stock',[
+   [-13.84,-2.54],[-12.94,-2.30],[-5.95,-.99],
+   [-5.95,-1.65],[-12.75,-2.95],[-13.84,-3.12]
+  ],.84,HK_BLACK_METAL);
+  strut.userData.r870MCSSkeletal=true;
+  const pad=b('stock',-14.10,-1.18,0,.60,3.80,2.72,HK_DARK_POLYMER);
+  pad.userData.r870MCSSkeletal=true;
+ }
  root.userData.r870RearVariant=rearKey;
  root.userData.r870ShoulderStock=rear.hasShoulder;
 
