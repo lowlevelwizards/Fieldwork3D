@@ -31,9 +31,11 @@ test('R870 P07: one authentic six-slot tube-fed factory model, browseable in Ars
  assert.equal(validFamilyBuild(b,'rifle'),false);
  assert.deepEqual(arsenalCatalogIssues(),[]);
  assert.equal(ARSENAL_PLATFORMS.find(x=>x.id==='remington870')?.name,'Remington 870');
- assert.deepEqual(arsenalReferencesForPlatform('remington870').map(x=>x.id),
-  ['r870-police-wood']);
- assert.equal(arsenalFactoryChoices('remington870').length,1);
+ const allR870=arsenalReferencesForPlatform('remington870').map(x=>x.id);
+ assert.ok(allR870.includes('r870-police-wood'),'the original factory must remain');
+ assert.ok(allR870.includes('r870-tac14'),'P14 compact factory is discoverable');
+ assert.ok(allR870.includes('r870-tactical-magpul'),'P14 tactical factory is discoverable');
+ assert.equal(arsenalFactoryChoices('remington870').length,allR870.length);
  assert.deepEqual(FAMILY_PART_SLOTS.map(slot=>FAMILY_PARTS[b.parts[slot]].slot),
   [...FAMILY_PART_SLOTS]);
  assert.equal(FAMILY_PARTS[b.parts.magazine].feed,'tube12');
