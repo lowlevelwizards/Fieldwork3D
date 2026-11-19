@@ -10,6 +10,7 @@ import {liveMagazineCapacity,fitMagazineInventory}
  from '../src/arsenal/live-magazine-capacity.ts';
 import {arsenalFactoryChoices} from '../src/arsenal/factory-recipes.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
+import {stocklessMP5K} from '../src/breach-weapon-pose.ts';
 import {r870FrontCompatible,r870Barrel,r870Tube}
  from '../src/weapons/geometry/r870-front-p14.ts';
 const cfg=id=>selectWeaponFamilyPreset(initialWeaponConfiguration('shotgun'),id);
@@ -70,4 +71,35 @@ test('P15.A lower capacity preserves shells and short fore-end poses stay on act
  const fitted=fitMagazineInventory('unit','shotgun',c,8,12,[]);
  assert.equal(fitted.magazine,3);
  assert.equal(fitted.reserve,17);
+});
+
+test('P15.B MCS skeletal stock has physical low-poly beams, real shoulder contact and a CQB preset',()=>{
+ const c=cfg('r870-mcs-cqb');assert.ok(c.build&&validFamilyBuild(c.build,'shotgun'));
+ assert.ok(arsenalFactoryChoices('remington870').some(x=>x.id==='r870-mcs-cqb'));
+ assert.equal(c.build.parts.stock,'r870-mcs-skeletal-stock');
+ assert.equal(c.build.parts.grip,'r870-pistol-grip');
+ assert.equal(liveMagazineCapacity('shotgun',c),4);
+ assert.equal(resolveWeaponAssembly(c).muzzleX,15.36);
+ assert.equal(resolveWeaponAssembly(c).stockX,-14.40);
+ assert.equal(stocklessMP5K(c),false,'physically shouldered stock, not a phantom pistol only');
+ const m=new THREE.MeshBasicMaterial(),g=buildWeaponSilhouette('shotgun',m,m,c);
+ try{
+  assert.equal(g.userData.r870RearVariant,'mcs');
+  assert.equal(g.userData.r870ShoulderStock,true);
+  const parts=g.children.filter(x=>x.userData.r870MCSSkeletal);
+  assert.equal(parts.length,3,'one tube, one diagonal strut, one buttplate');
+  assert.equal(g.children.filter(x=>x.name.startsWith('family-grip-')).length,1);
+  assert.ok(Math.abs(minmax(g).min.x+14.40)<.025,'actual butt at contact datum');
+  const stock=g.children.filter(x=>x.name.startsWith('family-stock-'));
+  assert.equal(stock.length,3);
+  assert.ok(stock.every(x=>x.geometry.getAttribute('position').count<=72),
+   'silhouette uses no dense curved meshes');
+  const pose=riflePoseContacts('shotgun',c);
+  assert.ok(pose&&Math.abs(pose.stock.x+14.40)<.02);
+ }finally{clearWeaponSilhouette(g);m.dispose()}
+ const base=cfg('r870-police-wood').build;
+ const selected=proposeFamilyPartChange(base,'shotgun','stock','r870-mcs-skeletal-stock');
+ assert.equal(selected.valid,true);
+ assert.equal(selected.build.parts.grip,'r870-pistol-grip');
+ assert.equal(validFamilyBuild(selected.build,'shotgun'),true);
 });
