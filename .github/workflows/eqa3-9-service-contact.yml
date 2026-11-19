@@ -1,4 +1,4 @@
-name: EQA3.9 rescue contact orientation A-B
+name: EQA3.9 auto SECURE and civilian feedback critical
 on:
   push:
     branches: [feature/eqa3-9-service-contact-20261118]
@@ -21,6 +21,8 @@ on:
       - 'src/breach-2d-actor-renderer.ts'
       - 'tests/eqa3-9-auto-secure.test.mjs'
       - 'tests/eqa3-9-civilian-animation.test.mjs'
+      - 'src/breach-civilian-types.ts'
+      - 'src/breach-replay.ts'
 
       - '.github/workflows/eqa3-9-service-contact.yml'
   workflow_dispatch:
@@ -47,12 +49,12 @@ jobs:
             tests/civilian-d1-rescue-lifecycle.test.mjs \
             tests/civilian-c5-unified-pose.test.mjs \
             tests/living-encounters-r2-civilian-pose.test.mjs
-      - name: Original and LOOK authoring in actual 60 Hz rescue world
+      - name: Original and direct close SECURE in actual 60 Hz rescue world
         run: |
           mkdir -p artifacts/eqa3-9
-          for variant in baseline look; do
+          for variant in baseline secure; do
             flag=""
-            if [ "$variant" = look ]; then flag="--contact-look"; fi
+            if [ "$variant" = secure ]; then flag="--secure-close"; fi
             for intel in unknown confirmed; do
               EQA3_OUTPUT="artifacts/eqa3-9/warehouse17-${intel}-${variant}.json" \
                 node --experimental-strip-types scripts/audit-eqa3-9-contact-decisions.mjs \
@@ -66,7 +68,7 @@ jobs:
           node - <<'NODE'
           const fs=require('node:fs');
           for (const intel of ['unknown','confirmed']){
-            const files=['baseline','look'].map(v=>JSON.parse(fs.readFileSync(
+            const files=['baseline','secure'].map(v=>JSON.parse(fs.readFileSync(
               'artifacts/eqa3-9/warehouse17-'+intel+'-'+v+'.json')));
             for(const [i,d] of files.entries()){
               if(d.exceptions.length||d.rows.length!==2||
@@ -87,7 +89,7 @@ jobs:
                 totalCommands:r.decisions.length
               });
               console.log(JSON.stringify({intel,insertion,
-                baseline:synopsis(rows[0]),look:synopsis(rows[1])},null,2));
+                baseline:synopsis(rows[0]),secure:synopsis(rows[1])},null,2));
             }
           }
           NODE
