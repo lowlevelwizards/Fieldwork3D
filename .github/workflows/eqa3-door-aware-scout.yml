@@ -23,12 +23,14 @@ jobs:
       - name: Execute 90-second real GO-time OPEN and valid known-goal search
         run: |
           mkdir -p artifacts/eqa3
-          EQA3_OUTPUT=artifacts/eqa3/door-aware-${{ matrix.seed }}.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --door-aware --seed=${{ matrix.seed }} --intel=confirmed --seconds=90 > artifacts/eqa3/door-aware-${{ matrix.seed }}-summary.txt
+          EQA3_OUTPUT=artifacts/eqa3/door-aware-${{ matrix.seed }}.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --door-aware --forensic --seed=${{ matrix.seed }} --intel=confirmed --seconds=90 > artifacts/eqa3/door-aware-${{ matrix.seed }}-summary.txt
           node - <<'NODE'
           const a=require('./artifacts/eqa3/door-aware-${{ matrix.seed }}.json');
           console.log(JSON.stringify({summary:a.summary,rows:a.rows.map(r=>({
             seed:r.seed,mission:r.mission,entry:r.insertion,stage:r.missionStage,
             aborted:r.routeAbort,rejected:r.rejected,opens:r.acceptedDoorActions,
+            seconds:r.duration,phase:r.phase,firstRoom:r.roomVisitOrder?.at(0),
+            actorProgress:r.forensic?.filter(e=>['initial','tick','route-abort'].includes(e.type)).filter((e,i,arr)=>i%25===0||i===arr.length-1).map(e=>({at:e.at,stage:e.stage,phase:e.phase,actor:e.player,door:e.event})).slice(0,18),
             doorsAtEnd:r.doorsAtEnd?.filter(d=>d.open),
             objectiveAt:r.objectiveAt,done:r.missionStage==='done',
             physicalCommandTrace:r.decisions.filter(x=>x.action==='explicit-open-known-door')
