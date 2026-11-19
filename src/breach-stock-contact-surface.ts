@@ -42,6 +42,9 @@ export function measureVisibleStockContact(root:THREE.Object3D,
  configuration:WeaponConfiguration):VisibleStockContact|null{
   const build=configuration.build;
   if(!build||configuration.stockPosition==='folded')return null;
+ // R870 stockless grips have no rear buttplate or shoulder support surface.
+ if(build.family==='r870'&&
+  (build.parts.stock==='r870-pistol-only'||build.parts.stock==='r870-birdshead-only'))return null;
   // The bare MP5K receiver cap cannot be shouldered like a PDW buttplate.
   if(build.parts.receiver==='hk-mp5k-stockless'&&
      build.parts.stock!=='hk-mp5k-pdw-stock')return null;
