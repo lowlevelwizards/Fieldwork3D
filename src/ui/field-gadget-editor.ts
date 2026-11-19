@@ -238,6 +238,31 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     select.disabled=!!options.locked;
     select.append(silhouette,itemName,quantity);li.append(select);
     selections.push({button:select,choice:{kind:'magazine',id,from:loc}});
+   }else if(tile.kind==='medical'||tile.kind==='utility'){
+    // These are existing physical kit records, not countable gadgets.
+    // Inspection is read-only; no movement command has been authorized.
+    const spaces=tile.spaces+' '+(tile.spaces===1?'SPACE':'SPACES');
+    const access=tile.accessSeconds;
+    const detail=spaces+(typeof access==='number'?
+     ' · '+access.toFixed(2)+'s ACCESS':'');
+    li.dataset.inspectionOnly='true';
+    const inspectLabel='Inspect '+tile.label+' in '+loc.toUpperCase();
+    if(options.onInspectLocation){
+     const inspect=btn('',()=>{
+      options.onInspectLocation?.(loc);
+      feedback(tile.label.toUpperCase()+' · '+detail+' · LOCATION FIXED');
+     });
+     inspect.className='fw-field-inventory-inspect-fixed';
+     inspect.setAttribute('aria-label',inspectLabel);
+     const copy=text('span','fw-field-inventory-fixed-copy','');
+     copy.append(itemName,text('small','fw-field-inventory-fixed-meta',detail));
+     inspect.append(silhouette,copy);
+     li.append(inspect);
+    }else{
+     const copy=text('span','fw-field-inventory-fixed-copy','');
+     copy.append(itemName,text('small','fw-field-inventory-fixed-meta',detail));
+     li.append(silhouette,copy);
+    }
    }else li.append(silhouette,itemName,quantity);
    items.append(li);
   }

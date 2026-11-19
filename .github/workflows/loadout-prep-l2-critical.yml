@@ -14,6 +14,7 @@ on:
       - feature/loadout-prep-l2-11-feedback-mobile-20261118
       - feature/loadout-prep-l2-12-magazine-20261118
       - feature/loadout-prep-l2-12-magazine-interaction-20261118
+      - feature/loadout-prep-l2-12-medical-tools-20261118
   workflow_dispatch:
 concurrency:
   group: loadout-prep-l2-${{ github.ref }}

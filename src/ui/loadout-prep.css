@@ -154,3 +154,15 @@
  touch-action:manipulation;min-height:44px}
 .fw-field-inventory-carry-tile[data-kind="magazine"] .fw-field-inventory-item-silhouette{
  width:9px;height:17px;border-radius:2px;border-color:#a6b8b6}
+
+/* L2.12B: inspect real medical/long tools without pretending they are movable. */
+.fw-field-inventory-inspect-fixed{display:grid;grid-template-columns:15px minmax(0,1fr);
+ gap:6px;align-items:center;width:100%;min-height:44px;text-align:left;
+ padding:4px;border:0;border-radius:5px;color:inherit;background:transparent;
+ cursor:pointer;touch-action:manipulation}
+.fw-field-inventory-inspect-fixed:hover,.fw-field-inventory-inspect-fixed:focus-visible{
+ background:rgba(139,177,158,.17)}
+.fw-field-inventory-fixed-copy{display:grid;min-width:0;gap:2px}
+.fw-field-inventory-fixed-meta{font-size:9px;line-height:1.2;letter-spacing:.025em;
+ color:#b5c8bd;font-variant-numeric:tabular-nums}
+.fw-field-inventory-carry-tile[data-inspection-only="true"]{padding:2px 3px}

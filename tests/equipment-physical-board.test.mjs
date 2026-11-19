@@ -60,3 +60,23 @@ test('L2.12A: magazine tiles are individually identified and round counts remain
  assert.ok(magTiles.some(t=>t.label==='MAG 02 · 12 rounds'&&t.location==='backpack'));
  assert.ok(magTiles.every(t=>Number.isFinite(t.accessSeconds)));
 });
+
+test('L2.12B: medical and breaching tools carry real footprint and access data',()=>{
+ const equipped=setEquipmentChoice(setEquipmentChoice(initial,'medical','medical-trauma'),
+  'utility','utility-breach');
+ const board=physicalCarryBoard(equipped,[],initialFieldInventory(equipped));
+ const tools=[...board.zones.flatMap(z=>z.items),...board.unplaced]
+  .filter(x=>x.kind==='medical'||x.kind==='utility');
+ const trauma=tools.find(x=>x.id==='medical:medical-trauma');
+ const ram=tools.find(x=>x.id==='utility:utility-breach');
+ assert.ok(trauma,'actual trauma pack appears exactly once');
+ assert.ok(ram,'actual breaching ram appears exactly once');
+ assert.equal(trauma.quantity,1);
+ assert.equal(trauma.spaces,2);
+ assert.equal(ram.spaces,3);
+ assert.ok(Number.isFinite(trauma.accessSeconds));
+ assert.ok(Number.isFinite(ram.accessSeconds));
+ assert.equal(tools.filter(x=>x.id==='utility:utility-breach').length,1);
+ assert.equal(tools.filter(x=>x.id==='medical:medical-trauma').length,1);
+ assert.equal(board.valid,true);
+});
