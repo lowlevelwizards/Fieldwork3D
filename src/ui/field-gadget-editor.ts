@@ -8,6 +8,7 @@ import {FIELD_ITEMS,FIELD_ITEM_IDS,FIELD_CARRY_LOCATIONS,fieldQuantity,initialFi
  type FieldInventory,type FieldItemId,type FieldCarryLocation}
  from '../equipment-field-inventory.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
+import type {EquipmentInspectionTarget} from '../equipment-visual-inspection.ts';
 import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
 import {quoteOneMagazineMove} from '../equipment-magazine-transfer.ts';
 import {quoteCarryLayoutCopy} from '../equipment-carry-layout-copy.ts';
@@ -18,6 +19,8 @@ export type FieldGadgetEditorOptions={
  onCommit:(inventory:FieldInventory,focusLabel?:string)=>void;
  /** Optional preview-only feedback; never authorizes or changes equipment. */
  onInspectLocation?:(location:FieldCarryLocation)=>void;
+ /** Select the REAL visible item mesh; concealed inventory has no proxy. */
+ onInspectItem?:(item:EquipmentInspectionTarget)=>void;
  onMoveMagazine?:(magazineId:string,to:FieldCarryLocation,focusLabel?:string)=>void;
  locked?:boolean;
  maxFlash?:number;
@@ -198,6 +201,11 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   fill.className='fw-field-inventory-gauge-fill';
   fill.style.width=(limit>0?Math.min(100,used/limit*100):used>0?100:0)+'%';
   gauge.append(fill);slot.append(title,count,gauge);
+  const inspectTile=(kind:'field'|'magazine'|'medical'|'utility',
+   id:string,location:FieldCarryLocation,index=0)=>{
+   if(options.onInspectItem)options.onInspectItem({kind,id,location,index});
+   else options.onInspectLocation?.(location);
+  };
   const items=document.createElement('ul');
   items.className='fw-field-inventory-slot-items';
   items.setAttribute('aria-label',loc.toUpperCase()+' carried equipment');
@@ -224,7 +232,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      if(consumeClick()||options.locked)return;
      selected=selected?.kind==='field'&&selected.id===id&&selected.from===loc?
       null:choice;
-     if(selected)options.onInspectLocation?.(loc);
+     if(selected)inspectTile('field',id,loc);
      refreshSelection();
      feedback(selected?'SELECTED ONE '+tile.label.toUpperCase()+
       ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
@@ -244,7 +252,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      if(consumeClick()||options.locked)return;
      selected=selected?.kind==='magazine'&&selected.id===id&&
       selected.from===loc?null:choice;
-     if(selected)options.onInspectLocation?.(loc);
+     if(selected)inspectTile('magazine',id,loc,
+      zone.items.filter(t=>t.kind==='magazine').findIndex(t=>t.magazineId===id));
      refreshSelection();
      feedback(selected?'SELECTED '+tile.label.toUpperCase()+
       ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
@@ -266,9 +275,9 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      ' · '+access.toFixed(2)+'s ACCESS':'');
     li.dataset.inspectionOnly='true';
     const inspectLabel='Inspect '+tile.label+' in '+loc.toUpperCase();
-    if(options.onInspectLocation){
+    if(options.onInspectLocation||options.onInspectItem){
      const inspect=btn('',()=>{
-      options.onInspectLocation?.(loc);
+      inspectTile(tile.kind,tile.id,loc);
       feedback(tile.label.toUpperCase()+' · '+detail+' · LOCATION FIXED');
      });
      inspect.className='fw-field-inventory-inspect-fixed';
