@@ -11,7 +11,9 @@ import {visibleFlashCanisters,visibleDoorWedges}
  from '../src/equipment-field-visuals.ts';
 import {executeTacticalUtilityOrder} from '../src/breach-order-utility.ts';
 import {activateSite} from '../src/breach-core.ts';
-import {newSession} from '../src/breach-game.ts';
+import {newSession,team,planCivilianInteraction,toggling,stepSession}
+ from '../src/breach-game.ts';
+import {createCivilian} from '../src/breach-civilian-types.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
 
 const issued=(field,utility='utility-radio')=>{
@@ -151,4 +153,38 @@ test('F2: replay rewinds and seeks exact physical item positions and quantities'
  ['backpack']);
  assert.equal(fieldQuantity(before.actors.find(x=>x.id==='rook').fieldInventory,
   'flashbang'),2,'replay seek never mutates stored historic frames');
+});
+
+test('F2: real RESTRAIN retrieves backpack cuffs, then consumes only on success',()=>{
+ const pt=(x,y)=>({x,y});
+ const site={seed:31010,name:'F2 pack restraints',layout:'corridor',
+  rooms:[{id:'floor',x:80,y:140,w:420,h:160,kind:'room',
+   purpose:'floor',tone:1}],roomCount:1,walls:[],cover:[],doors:[],
+  windows:[],enemies:[],spawn:[pt(300,200),pt(300,230),
+   pt(300,260),pt(300,290)],entrance:pt(290,200),
+  objective:pt(100,200),extract:pt(475,200),
+  bounds:{minX:0,minY:0,maxX:640,maxY:740}};
+ const s=newSession(0,31010,'floor-plan','small','rescue',site,
+   {enableCivilians:true});
+ const a=team(s)[0];
+ try{
+  for(const blue of team(s))if(blue!==a)blue.health=0;
+  a.p=pt(300,200);a.priorP={...a.p};a.heading=0;a.weaponYaw=0;
+  applyDeploymentInventory(a,issued([
+   {itemId:'zip-tie',quantity:2,location:'backpack'}]));
+  const person=createCivilian({id:'civ:f2-cuffs',role:'visitor',
+   persona:'steady',activity:'idle',position:pt(315,200),
+   heading:0,roomId:'floor',appearanceSeed:13});
+  person.state='compliant';person.stateSince=0;s.civilians.push(person);
+  assert.equal(planCivilianInteraction(s,a.id,person.id,'restrain'),true);
+  assert.equal(a.restraintRemaining,2,'planning is free');
+  toggling(s);
+  for(let i=0;i<95;i++)stepSession(s,1/60);
+  assert.equal(person.restrained,false,'backpack retrieval must take real time');
+  assert.equal(a.restraintRemaining,2,'incomplete gesture cannot spend cuffs');
+  for(let i=95;i<190&&!person.restrained;i++)stepSession(s,1/60);
+  assert.equal(person.restrained,true);
+  assert.equal(a.restraintRemaining,1);
+  assert.equal(fieldQuantity(a.equipment.fieldInventory,'zip-tie'),1);
+ }finally{activateSite(null);}
 });
