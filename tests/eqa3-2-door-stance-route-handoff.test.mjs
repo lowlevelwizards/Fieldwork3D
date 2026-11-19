@@ -4,6 +4,7 @@ import {generateSite} from '../src/breach-site.ts';
 import {newSession,team,planDoor,selectDeployment,toggling,
  stepSession} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
+import {openingFootwork} from '../src/breach-door-opening-footwork.ts';
 
 const cases=[
  {seed:14,mission:'hold',entry:'FRONT'},
@@ -45,8 +46,16 @@ for(const {seed,mission,entry} of cases){
    assert.ok(Number.isFinite(actor.p.x)&&Number.isFinite(actor.p.y));
    assert.equal(actor.failedOrders,0,
     'the corrective stance should not cancel a legal OPEN');
+   const foot=a=>a.plan[0]?.kind==='door'?openingFootwork(a,door.id,a.plan[0].id,'stance'):null;
+   const trace={p:actor.p,nav:actor.nav.slice(0,8),
+     originalDoorCenter:{x:(door.a.x+door.b.x)/2,y:(door.a.y+door.b.y)/2},
+     authoredNode:actor.plan[0],routeGoalKey:actor.routeGoalKey,
+     openingFootwork:foot(actor),motorPause:actor.motorPause,
+     actionTimer:actor.actionTimer,velocity:actor.velocity,
+     blocker:actor.lastBlocker,blockedTime:actor.blockedTime,
+     recoveryAttempts:actor.recoveryAttempts};
    assert.ok(actionStartedAt!==null,
-    'the door action must start instead of oscillating forever with timer=0');
+    'the door action must start instead of oscillating forever with timer=0: '+JSON.stringify(trace));
    assert.ok(openedAt!==null,'real hinge must be asked to open by GO, never setup');
    assert.ok(physicalFraction>=.72,
     `swept hinge should clear without body ghosting; max fraction ${physicalFraction}`);
