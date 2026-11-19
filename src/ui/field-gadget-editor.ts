@@ -21,7 +21,7 @@ export type FieldGadgetEditorOptions={
  onUndo?:()=>void;
  canUndo?:boolean;
 };
-const text=(tag:'div'|'span'|'strong'|'small'|'p',className:string,value:string)=>{
+const text=(tag:'div'|'span'|'strong'|'small'|'p'|'li',className:string,value:string)=>{
  const el=document.createElement(tag);el.className=className;el.textContent=value;
  return el;
 };
