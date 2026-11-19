@@ -62,6 +62,7 @@ const PART_LABELS:Readonly<Record<string,string>>={
  'r870-mcs-mini-pump':'Mini MCS Pump',
  'r870-mcs-skeletal-stock':'MCS Skeletal Shoulder Stock',
  'r870-26-ventrib':'26-inch Vent Rib',
+ 'r870-20-rifle-sight':'20-inch Rifle-Sighted',
  'r870-sport-wood-pump':'Slim Field Wood',
  'fnc-mag30':'30-Round STANAG',
  'g36-dual-receiver':'G36 Dual Optic',
