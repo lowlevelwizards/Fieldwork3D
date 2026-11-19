@@ -1,0 +1,35 @@
+name: EQA3.15 moving rescue continuity critical
+on:
+  push:
+    branches: [feature/eqa3-15-moving-rescue-continuity-20261119]
+    paths:
+      - 'src/breach-game.ts'
+      - 'src/breach-civilian-mission.ts'
+      - 'src/breach-order-interactions.ts'
+      - 'tests/eqa3-15-*.test.mjs'
+      - '.github/workflows/eqa3-15-rescue-continuity.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  rescue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript, moving rescue and limited physical regressions
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-15-moving-rescue-intel.test.mjs \
+            tests/eqa3-15-rescue-handoff.test.mjs \
+            tests/eqa3-14-rescue-refuge.test.mjs \
+            tests/eqa3-9-auto-secure.test.mjs \
+            tests/eqa3-8-escort-flow.test.mjs \
+            tests/eqa3-1-rescue-escort-pacing.test.mjs \
+            tests/eqa3-13-operator-civilian-contact.test.mjs \
+            tests/objective-intel-campaign.test.mjs
