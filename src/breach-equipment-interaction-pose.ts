@@ -8,6 +8,7 @@ import type {TeamActor} from './breach-game.ts';
 import {quoteDeployedFieldUse,type LiveFieldItem}
  from './equipment-deployed-field-use.ts';
 import type {FieldCarryLocation} from './equipment-field-inventory.ts';
+import {WEDGE_PLACEMENT_SECONDS} from './breach-entry-tools.ts';
 
 export type EquipmentInteractionPose={
  readonly item:LiveFieldItem;
@@ -27,13 +28,16 @@ type Observation=Pick<TeamActor,'plan'|'actionTimer'|'equipment'|
 export function readEquipmentInteraction(
  actor:Observation):EquipmentInteractionPose|null{
  const order=actor.plan[0];
- if(order?.kind!=='flash'||!order.aimPoint||!(actor.actionTimer>0)||
-  !Number.isFinite(actor.actionTimer))return null;
- const quote=quoteDeployedFieldUse(actor,'flashbang');
+ if(!(actor.actionTimer>0)||!Number.isFinite(actor.actionTimer))return null;
+ const item=order?.kind==='flash'&&order.aimPoint?'flashbang':
+  order?.kind==='tool'&&order.toolMethod==='wedge'&&order.doorId?
+   'wedge':null;
+ if(!item)return null;
+ const quote=quoteDeployedFieldUse(actor,item);
  if(!quote.available||!quote.location||!Number.isFinite(quote.accessSeconds))
   return null;
- const duration=.3+quote.accessSeconds;
- return {item:'flashbang',location:quote.location,elapsed:actor.actionTimer,
+ const duration=(item==='wedge'?WEDGE_PLACEMENT_SECONDS:.3)+quote.accessSeconds;
+ return {item,location:quote.location,elapsed:actor.actionTimer,
   duration,progress:Math.max(0,Math.min(1,actor.actionTimer/duration))};
 }
 export type EquipmentGesture={
