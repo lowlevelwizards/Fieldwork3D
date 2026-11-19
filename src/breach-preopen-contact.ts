@@ -23,7 +23,8 @@ export function preOpenDoorEligible(a:TeamActor,d:Door):boolean{
   a.health>0&&!a.surrendered&&!a.traversal&&!a.traversalPending&&
   !a.squeeze&&a.pace!=='run'&&a.velocity<=7&&a.reload<=0&&
   !a.treatmentActive&&!a.carryingId&&!a.carriedById&&
-  !a.doorHandContact?.releasedAt&&a.targetId===null&&a.aim<.24&&
+  (!a.doorHandContact||a.doorHandContact.releasedAt!==null)&&
+  a.targetId===null&&a.aim<.24&&
   !d.open&&!d.wedged&&!d.jammed&&!d.heldBy&&
   d.kind!=='shutter'&&d.kind!=='sliding'&&doorReachable(a.p,d);
 }
@@ -58,6 +59,9 @@ export function preOpenDoorCandidate(
  const candidates=[handle,closest,nearestEnd,middle];
  for(let i=0;i<candidates.length;i++){
   const target=candidates[i];
+  const front=(target.x-a.p.x)*f.x+(target.y-a.p.y)*f.y;
+  const side=(target.x-a.p.x)*l.x+(target.y-a.p.y)*l.y;
+  if(front< -8||front>23||side< -9||side>23)continue;
   if(i>0&&close(target,candidates[0]))continue;
   let nx=-dz/Math.sqrt(size),nz=dx/Math.sqrt(size);
   if((a.p.x-target.x)*nx+(a.p.y-target.y)*nz<0){
