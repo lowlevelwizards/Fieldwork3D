@@ -18,7 +18,8 @@ Warehouse17 RESCUE / UNKNOWN SERVICE discovered the civilian at **23.83 seconds*
 - Existing **startled** maps to hands raised high. Civilian response still determines when an actual witnessed gun/sound produces that state.
 - Actual **fleeing movement** retains run leg gait, with arms covering the head. If temporarily stalled while fleeing, civilian remains visibly startled, never calm.
 - **frozen or stationary hiding** uses existing low crouch with both hands protecting the head.
-- **compliant** keeps the already present kneeling/hands-up surrender, not an invented 'zip-tied' state. No hand-behind-back restraints until an actual physical restraint order exists.
+- **compliant** enters immediately at the real GO-time contact, but the animation begins hands-up, then lowers into its existing kneeling/surrender pose over ~1.2 seconds. The state remains authoritative and rescue progress is not postponed by a visual animation.
+- **restrained** has a separately typed, replay-recorded `restrained` flag, default FALSE. When a future physically equipped tie/restraint action sets it, the character kneels with hands behind the back; ordinary SECURE never marks a person bound or consumes imaginary restraints. 2D, legacy and shared skeleton preserve distinct silhouettes.
 - The shared rig's head glances briefly toward `threatEstimate` **only when** the civilian's own sensory system recorded evidence within six seconds. Clamp to a plausible yaw. This is a render-only reaction and never reveals hidden enemies.
 - Same intentional silhouettes in old legacy/replay rig and the floor-plan 2D renderer, with no new per-frame scans, physics, collisions, AI states, or idle timers.
 
@@ -27,3 +28,9 @@ Warehouse17 RESCUE / UNKNOWN SERVICE discovered the civilian at **23.83 seconds*
 Targeted CI: TypeScript check, new physically simulated SECURE-from-behind regression, 2D/legacy/shared rig panic and rewind checks, previous civilian EQA3.7 candidate and C4 contact, D1 rescue, C5 unified pose and R2 fear animations. Existing long 110-second A/B script remains as historical causal evidence, not the new player-facing behavior.
 
 Keep EQA3.9 PR **draft until green**. If any test fails, fix the actual blocker and retest; do not merge unverified animation into main. Before any main release verify the most recent Pages run completed successfully and publicly serves its expected build. After merging, wait for the release, verify public Pages again, and only then start the next production batch.
+
+## Replay and inventory boundaries
+
+Mission film samples now carry `civilian.stateSince`, `civilian.restrained`, and `operator.lastCivilianContactAt` as backward-compatible optional channels. Older film frames synthesize an already-settled compliant pose and no restraint or contact hand reach. Time-scrubbing is deterministic; none of the new animation timestamps changes AI or mission rules.
+
+There is currently no physical zip-tie stock, placement or consumption contract in the loadout inventory. This checkpoint supplies the truthful restrained pose and typed renderer signal only. A future RESTRAIN action must require an actual equipped/consumed item, a physical GO interaction, and its own tests. No infinite-free restraint button was introduced.
