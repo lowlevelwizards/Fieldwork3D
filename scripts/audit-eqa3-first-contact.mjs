@@ -134,7 +134,7 @@ for(const [seed,mission] of cases){
           role:e.encounterRole,readiness:e.encounterReadiness,
           movedFromSpawn:round(d(e.p,before?.p??e.p)),
           alert:e.alert,activity:e.encounterActivity,
-          health:e.health,coverSeeking:!!e.combatChoice,
+          health:e.health,hasCombatChoice:!!e.combatChoice,
           p:{...e.p}});
       }
     }
@@ -211,4 +211,9 @@ console.log(JSON.stringify({summary,pairs,
     .map(r=>({seed:r.seed,mission:r.mission,entry:r.entry,
       door:r.doorAuthored,displacement:r.playerDisplacement})) ,
   errors},null,2));
-if(errors.length||records.some(r=>r.violations.length))process.exitCode=1;
+// This CI gate targets the frozen physical interaction contract,
+ // not a quota of firefights or enemy kills. Quiet entries are valid.
+ if(errors.length||records.some(r=>r.violations.length)||
+    summary.doorsOpened!==summary.doorsAuthored||
+    summary.unreasonablyStationary>0||
+    summary.paired<6)process.exitCode=1;
