@@ -386,6 +386,7 @@ function renderOperationsBoard(){
    const editor=createFieldGadgetEditor({
     loadout:current.loadout,magazines:current.magazines,
     onInspectLocation:location=>quickKitPreview?.highlightCarryLocation(location),
+   onInspectItem:item=>quickKitPreview?.inspectCarryItem(item),
     onMoveMagazine:(magazineId,to,focusLabel)=>{
      if(config.getSession().phase!=='planning'||config.isReplaying())return;
      const prior=config.getRoster();
