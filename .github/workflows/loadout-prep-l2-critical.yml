@@ -19,6 +19,7 @@ on:
       - feature/loadout-l212-d2-magazine-drag-20261119
       - feature/loadout-l212-d3-placement-feedback-20261119
       - feature/loadout-l212-d1-quickplay-carry-20261119
+      - feature/loadout-l212-release-b-20261119
   workflow_dispatch:
 concurrency:
   group: loadout-prep-l2-${{ github.ref }}
