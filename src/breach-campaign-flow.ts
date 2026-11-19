@@ -401,7 +401,9 @@ export function applyCampaignRosterToSession(session:Session,campaign:CampaignSt
  }
  if(!session.started){
   const squad=team(session);
-  const issued=allocateFlashSupply(squad.map(a=>a.flashCharges),campaign.supplies.flash);
+  const requested=squad.map(a=>a.flashCharges);
+  const issued=allocateFlashSupply(requested,campaign.supplies.flash,
+   requested.reduce((n,qty)=>n+qty,0));
   squad.forEach((a,i)=>{a.flashCharges=issued[i];});
   session.flashRemaining=issued.reduce((n,qty)=>n+qty,0);
  }
