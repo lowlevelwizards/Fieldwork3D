@@ -246,6 +246,8 @@ export type TeamActor=Operator & {
   encounterRoutine?:Pt[];routineIndex?:number;routinePauseUntil?:number;
   encounterReactionUntil?:number;encounterReactionStartedAt?:number;
   lastNoiseExaminedAt:number;lastNoiseExaminedId:number;
+  /** Render-only brief arm reach after actual GO-time civilian contact. */
+  lastCivilianContactAt?:number;
   flashUntil:number;lastThrowAt:number;lastDoorAt:number;
   lastDoorId:string|null;lastDoorMethod:DoorMethod;
   stride:number;weapon:WeaponId;injuryStage:number;
