@@ -117,3 +117,15 @@
 @media(max-width:520px){
  .fw-quick-config-operator-preview{height:clamp(160px,24dvh,210px)}
 }
+
+/* L2.12D1: same carry selection and forecast in Quick Play mission prep. */
+.fw-quick-config-carry-gear{display:grid;gap:8px;min-width:0;
+ padding:10px;border:1px solid rgba(177,200,170,.23);border-radius:8px}
+.fw-quick-config-carry-title{font-size:11px;letter-spacing:.07em}
+.fw-quick-config-carry-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));
+ gap:7px;min-width:0}
+.fw-quick-config-carry-choice{display:grid;gap:5px;min-width:0}
+.fw-quick-config-carry-label{display:grid;gap:5px;font-size:10px;letter-spacing:.05em}
+.fw-quick-config-carry-label select{min-width:0;width:100%;min-height:44px;
+ padding:6px;background:#243b31;color:#e8efe3;border:1px solid #72877c;
+ border-radius:6px;touch-action:manipulation}
