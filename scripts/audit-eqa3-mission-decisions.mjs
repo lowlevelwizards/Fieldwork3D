@@ -36,7 +36,28 @@ const doorAware=process.argv.includes('--door-aware');
 const forensicSeedArg=params.get('seed');
 const chosenBeforeSeed=process.argv.includes('--smoke')?
  [[14,'hold'],[17,'rescue'],[25,'capture']]:cases;
-const chosen=forensicSeedArg?chosenBeforeSeed.filter(c=>c[0]===Number(forensicSeedArg)):chosenBeforeSeed;
+const missionFilter=params.get('mission')??null;
+if(missionFilter&&!['clear','intel','rescue','hold','capture'].includes(missionFilter))
+ throw Error('Invalid mission '+missionFilter);
+// Preserve original --smoke corpus, including its specific seed+mission
+// pair. Only fall back to the full corpus for a requested missing seed
+// or explicit --mission. Do not inadvertently compare 17 INTEL with
+// 17 RESCUE just because they share the same random seed.
+const requestedSeed=forensicSeedArg?Number(forensicSeedArg):null;
+const useFullCorpus=!!forensicSeedArg&&(
+ !!missionFilter||
+ !process.argv.includes('--smoke')||
+ !chosenBeforeSeed.some(c=>c[0]===requestedSeed));
+const selectionPool=useFullCorpus?cases:chosenBeforeSeed;
+const chosen=forensicSeedArg?
+ selectionPool.filter((c,i)=>c[0]===requestedSeed&&
+    (!missionFilter||c[1]===missionFilter)&&
+    selectionPool.findIndex(first=>
+      first[0]===c[0]&&first[1]===c[1])===i):
+ selectionPool.filter(c=>!missionFilter||c[1]===missionFilter);
+if((forensicSeedArg||missionFilter)&&!chosen.length)
+ throw Error('No EQA3 mission cases for seed '+forensicSeedArg+
+   ' mission '+missionFilter);
 const round=n=>Math.round(n*100)/100;
 const dist=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 const center=r=>({x:r.x+r.w/2,y:r.y+r.h/2});

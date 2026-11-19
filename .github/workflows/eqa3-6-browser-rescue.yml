@@ -1,0 +1,33 @@
+name: EQA3.6 real mobile rescue briefing and fog presentation
+on:
+  push:
+    branches: [feature/eqa3-6-rescue-scene-choices-20261118]
+    paths:
+      - '.github/workflows/eqa3-6-browser-rescue.yml'
+      - 'scripts/capture-eqa3-6-rescue-visual.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  eqa3-6-mobile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 23
+    # Playwright 1.56 pre-dates GitHub's Ubuntu 26.04 runner image.
+    # Chromium binary for 24.04 remains compatible with later glibc.
+    env:
+      PLAYWRIGHT_HOST_PLATFORM_OVERRIDE: ubuntu24.04-x64
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install chromium
+      - name: Real generated Apartment13 and Warehouse17 rescue screens
+        run: node scripts/capture-eqa3-6-rescue-visual.mjs
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-6-real-mobile-rescue-screens
+          path: artifacts/eqa3-6-browser/
