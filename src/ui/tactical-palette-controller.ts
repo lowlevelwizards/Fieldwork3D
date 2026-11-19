@@ -16,7 +16,6 @@ import {SUSPECT_CHALLENGE_RANGE} from '../breach-suspect-compliance.ts';
 import {sweptBodyClear} from '../breach-navigation.ts';
 import {sessionWorldGeometry} from '../breach-world-context.ts';
 import {nearestContextCivilian} from '../breach-civilian-context-selection.ts';
-import {canOfferKnownRescueLook} from '../breach-rescue-contact-look.ts';
 import {finalPoint} from '../breach-game.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from '../breach-context-placement.ts';
@@ -433,11 +432,6 @@ export function createTacticalPaletteController(config:{
     nearCivilian:!!civilianAtPlan,
     nearSuspect:!!suspectAtPlan,
     escortableCivilian:!!rescueAtPlan,
-    knownRescueLook:routeEndCivilianActions&&
-      canOfferKnownRescueLook(state,at,
-        liveVisibility(state,state.scenario.objective),
-        sweptBodyClear(at,state.scenario.objective,state.doors,5.5,
-          sessionWorldGeometry(state))),
     nearCivilianCasualty:!!casualtyAtPlan,
     carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
       c.id===a.carryingId&&c.carriedById===a.id),
