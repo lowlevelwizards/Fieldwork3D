@@ -2,9 +2,9 @@
  * Caches only appearance fingerprints; never solves motion, fires, moves actors
  * or updates replay/simulation state.
  */
-import {ensureRigFlashCanisters,type OperatorRig} from './breach-operator-rig.ts';
+import {ensureRigFlashCanisters,ensureRigWedgeMeshes,type OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
-import {visibleFlashCanisters,flashCanisterSocket} from './equipment-field-visuals.ts';
+import {visibleFlashCanisters,flashCanisterSocket,visibleDoorWedges,wedgeSocket} from './equipment-field-visuals.ts';
 import * as THREE from 'three';
 import {operatorPixelTextures} from './rendering/pixel-materials.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
@@ -55,7 +55,7 @@ const appearanceState=new WeakMap<OperatorRig,{
 export type OperatorAppearanceInputs=Pick<OperatorPose,
  'appearanceSeed'|'equipment'|'wardrobe'|'magazineCarryLocations'|
  'medicalCarryLocation'|'utilityCarryLocation'|'faceStyle'|
- 'flashCharges'|'treatmentActive'|'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
+ 'flashCharges'|'wedgeRemaining'|'treatmentActive'|'weaponConfiguration'|'nvgDeployed'|'down'|'surrender'>;
 export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInputs){
   // Profile serialization separately from the one-time kit rebuild. In-place
   // edits in Studio and replay must still invalidate on the very next pose.
@@ -68,7 +68,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     p.appearanceSeed??0,p.equipment??null,p.wardrobe??null,
     p.magazineCarryLocations??null,p.medicalCarryLocation??null,
     p.utilityCarryLocation??null,p.faceStyle??null,
-    p.flashCharges??null,p.treatmentActive??null,
+    p.flashCharges??null,p.wedgeRemaining??null,p.treatmentActive??null,
     p.weaponConfiguration?.build?.parts.magazine??null,
     p.nvgDeployed??false
   ]);
@@ -199,6 +199,19 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
       socket.bone==='pack'?r.pack:r.hip;
     if(canister.parent!==parent)parent.add(canister);
     canister.position.set(socket.x,socket.y,socket.z);
+  });
+  // Physical wedge count and location are the source of truth, never
+  // the decorative utility-slot icon. Lazy meshes preserve cold-rig parity.
+  const wedges=visibleDoorWedges(p.equipment,p.wedgeRemaining);
+  ensureRigWedgeMeshes(r,wedges.length);
+  r.wedgeMeshes.forEach((wedge,i)=>{
+   const item=wedges[i];wedge.visible=!!item;
+   if(!item)return;
+   const socket=wedgeSocket(item.location,item.index);
+   const parent=socket.bone==='chest'?r.chest:
+    socket.bone==='pack'?r.pack:r.hip;
+   if(wedge.parent!==parent)parent.add(wedge);
+   wedge.position.set(socket.x,socket.y,socket.z);
   });
   // Explicit wardrobe glove selection is cosmetic. It must neither inherit
   // the shirt material nor toggle because a fabric or loadout tint changed.
@@ -566,6 +579,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   r.colors.set(r.visualKit.patchMaterial,r.visualKit.patchMaterial.color.clone());
   updateOperatorEquipmentDetails(r.equipmentDetails,gear,
     visibleFlashes.length>0,legacySmoke);
+  if(gear?.utility==='utility-wedge')r.equipmentDetails.tools['utility-wedge'].visible=false;
   }
   // Desaturation changes only at injury/surrender transitions, not each
   // animation frame. Replayed appearance or kit changes refresh the palette.
