@@ -236,6 +236,10 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'r870-police-receiver':add('r870-police-receiver','Remington 870 12-gauge Police receiver','r870','receiver',{feed:'tube12',role:'shotgun'}),
  'r870-police-wood-stock':add('r870-police-wood-stock','Traditional 870 wooden buttstock','r870','stock',{receivers:['r870-police-receiver'],stockX:-15.78}),
  'r870-police-wood-wrist':add('r870-police-wood-wrist','Integral shotgun wooden wrist and grip','r870','grip',{receivers:['r870-police-receiver']}),
+ 'r870-police-poly-stock':add('r870-police-poly-stock','Classic black synthetic Police stock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.poly.stockX}),
+ 'r870-police-poly-grip':add('r870-police-poly-grip','Integral black synthetic Police wrist','r870','grip',{receivers:['r870-police-receiver']}),
+ 'r870-magpul-sga-stock':add('r870-magpul-sga-stock','Angular SGA adjustable-length style butt','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.sga.stockX}),
+ 'r870-magpul-sga-grip':add('r870-magpul-sga-grip','Distinct SGA dropped polymer wrist','r870','grip',{receivers:['r870-police-receiver']}),
  'r870-short-wood-stock':add('r870-short-wood-stock','Short traditional wooden buttstock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.shortwood.stockX}),
  'r870-pistol-only':add('r870-pistol-only','Pistol grip only · no shoulder stock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.pistol.stockX}),
  'r870-pistol-grip':add('r870-pistol-grip','Compact standalone polymer pistol grip','r870','grip',{receivers:['r870-police-receiver']}),
@@ -316,7 +320,13 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
   'r870-extended-tube','r870-police-wood-pump','r870-18-bead'),
  p('r870-tac14','Remington 870 · TAC-14 Style','shotgun','r870',
   'r870-police-receiver','r870-birdshead-only','r870-birdshead-grip',
-  'r870-short-tube','r870-short-black-pump','r870-14-bead')
+  'r870-short-tube','r870-short-black-pump','r870-14-bead'),
+ p('r870-police-synthetic','Remington 870 Police · Synthetic','shotgun','r870',
+  'r870-police-receiver','r870-police-poly-stock','r870-police-poly-grip',
+  'r870-standard-tube','r870-police-black-pump','r870-18-bead'),
+ p('r870-tactical-magpul','Remington 870 · Tactical Magpul Style','shotgun','r870',
+  'r870-police-receiver','r870-magpul-sga-stock','r870-magpul-sga-grip',
+  'r870-extended-tube','r870-magpul-mlok-pump','r870-18-bead')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
