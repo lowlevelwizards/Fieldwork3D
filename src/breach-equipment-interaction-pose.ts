@@ -31,7 +31,7 @@ export function readEquipmentInteraction(
   !Number.isFinite(actor.actionTimer))return null;
  const quote=quoteDeployedFieldUse(actor,'flashbang');
  if(!quote.available||!quote.location||
-  !FIELD_ITEMS[item].locations.includes(quote.location)||
+  !FIELD_ITEMS.flashbang.locations.includes(quote.location)||
   !Number.isFinite(quote.accessSeconds))
   return null;
  const duration=.3+quote.accessSeconds;
