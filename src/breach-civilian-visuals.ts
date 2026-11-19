@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import type {CivilianActor} from './breach-civilian-types.ts';
+import type {FootTarget} from './breach-footsteps.ts';
 import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {initialWardrobe,type WardrobeOptions} from './operator-wardrobe-data.ts';
@@ -128,7 +129,8 @@ export function createCivilianRig(c:CivilianActor,useSharedCharacter=false):Civi
  * actors. Only civilian state->presentation intent is adapted; simulation
  * movement, damage, sight, rescue and replay data are untouched.
  */
-function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number){
+function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number,
+ replayFeet?:[FootTarget,FootTarget]){
  const physical=civilianPhysicalityAt(c,now);
  const pose=physical.pose;
  const down=pose==='down'||pose==='carried'||pose==='dragged';
@@ -138,12 +140,18 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  // Frozen people hunch and guard their heads; an established hiding
  // posture actually crouches. Keep both upper/lower-body animations owned
  // by poseOperator instead of adding another IK writer or locomotion tick.
- const squat=physical.flinch>.15||pose==='seated'||pose==='restrained'||
-   (pose==='hide'&&c.state==='hiding')||
-   secured&&physical.kneel>.18;
+ // Surrender already lowers the pelvis and chest. Adding crouch on top
+ // collapsed compliant adults into a tangled kneeling knot.
+ const squat=!secured&&(physical.flinch>.15||pose==='seated'||
+   (pose==='hide'&&c.state==='hiding'));
  const gesture=physical.hands==='head'?'head-cover':
    physical.hands==='up'?'hands-up':
    physical.hands==='behind'?'hands-behind':undefined;
+ // The foot IK samples root elevation during its solve. Put the true
+ // neutral transport height on the root BEFORE posing, otherwise a prior
+ // carried/dragged frame contaminates the next standing frame.
+ const transportHeight=pose==='carried'?10:pose==='dragged'?2:0;
+ r.root.position.set(c.p.x,transportHeight,c.p.y);
  poseOperator(r.character,{
   x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,
   seconds:now,stride:moving?Math.max(.05,c.velocity/53):0,
@@ -156,7 +164,7 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
   appearanceSeed:c.appearanceSeed,equipment:r.equipment,
   wardrobe:r.wardrobe,gait:pose==='run'?'run':'walk',
   downProgress:down?1:physical.kneel,
-  poseDiagnostics:false
+  replayFeet,poseDiagnostics:false
  },r.lastTime>=0&&now>=r.lastTime?Math.min(.08,now-r.lastTime):0);
  // Only actual GO-time restraint earns a cuff band. The shared operator
  // hands-behind pose remains the sole hand/arm IK writer. The tiny ring is
@@ -184,20 +192,24 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  r.character.pack.visible=false;
  r.character.weapon.visible=false;
  r.character.droppedGun.visible=false;
+ // poseOperator stages its own local collapse offset. The scene/world owns
+ // the real civilian's presentation elevation, so restore it after IK,
+ // just as the armed scene restores the authoritative motor root.
+ r.root.position.set(c.p.x,transportHeight,c.p.y);
  // The operator skeleton owns gait, planted feet, full-body crouching,
  // hands-up compliance and fall. Keep neutral carrying offset render-only.
  // Tactical renderers place armed actor roots from the Session *outside*
  // poseOperator; do the same here for neutral-owned 3D presentation.
- r.root.position.set(c.p.x,pose==='carried'?10:pose==='dragged'?2:0,c.p.y);
  r.lastTime=now;
 }
 export function disposeCivilianRig(r:CivilianRig):void{
  if('character' in r)r.character.dispose();
 }
 export function updateCivilianRig(r:CivilianRig,
- c:CivilianActor,now:number):void{
+ c:CivilianActor,now:number,
+ replayFeet?:[FootTarget,FootTarget]):void{
  if('character' in r){
-  updateSharedCivilianRig(r,c,now);
+  updateSharedCivilianRig(r,c,now,replayFeet);
   return;
  }
  r.root.position.set(c.p.x,0,c.p.y);
