@@ -7,11 +7,21 @@ on:
       - 'src/breach-game.ts'
       - 'src/breach-plan-aim-commands.ts'
       - 'src/breach-civilian-context-selection.ts'
-      - 'src/breach-rescue-contact-look.ts'
+
       - 'src/ui/context-actions.ts'
       - 'src/ui/tactical-palette-controller.ts'
       - 'src/breach-tactical-context-command.ts'
-      - 'tests/eqa3-9-known-contact-look.test.mjs'
+      - 'src/breach-civilian-context-selection.ts'
+      - 'src/breach-order-interactions.ts'
+      - 'src/breach-civilian-pose.ts'
+      - 'src/breach-civilian-visuals.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/breach-operator-animation-contract.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-2d-actor-renderer.ts'
+      - 'tests/eqa3-9-auto-secure.test.mjs'
+      - 'tests/eqa3-9-civilian-animation.test.mjs'
+
       - '.github/workflows/eqa3-9-service-contact.yml'
   workflow_dispatch:
 permissions:
@@ -26,13 +36,17 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
-      - name: TypeScript and physical known-contact/reacquisition regressions
+      - name: TypeScript and physical SECURE, civilian pose and regression checks
         run: |
           npm run check
           node --experimental-strip-types --test \
-            tests/eqa3-9-known-contact-look.test.mjs \
+            tests/eqa3-9-auto-secure.test.mjs \
+            tests/eqa3-9-civilian-animation.test.mjs \
             tests/eqa3-7-civilian-context-targeting.test.mjs \
-            tests/civilian-d1-rescue-lifecycle.test.mjs
+            tests/civilian-c4-contextual-contact.test.mjs \
+            tests/civilian-d1-rescue-lifecycle.test.mjs \
+            tests/civilian-c5-unified-pose.test.mjs \
+            tests/living-encounters-r2-civilian-pose.test.mjs
       - name: Original and LOOK authoring in actual 60 Hz rescue world
         run: |
           mkdir -p artifacts/eqa3-9
