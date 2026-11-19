@@ -161,6 +161,36 @@ try{
   assert.equal(await magazineDemo.locator(
    '.fw-field-inventory-slot[data-location="rig"] [data-magazine-id="'+magId+'"]').count(),0);
 
+  const magSelect=magazineDemo.getByRole('button',{
+   name:'Select magazine '+magId+' from BACKPACK'});
+  const magazineGrip=magSelect.locator('.fw-field-inventory-drag-grip');
+  const gripRect=await magazineGrip.boundingBox();
+  assert.ok(gripRect&&gripRect.width>=36&&gripRect.height>=38,
+   'magazine drag grip matches field item thumb target');
+  if(device==='phone'){
+   const swipe=await magSelect.evaluate(el=>({
+    tile:getComputedStyle(el).touchAction,
+    grip:getComputedStyle(el.querySelector('.fw-field-inventory-drag-grip')).touchAction
+   }));
+   assert.deepEqual(swipe,{tile:'pan-y',grip:'none'},
+    'magazine can scroll normally except on the deliberate drag grip');
+  }else{
+   const srcRect=await magSelect.boundingBox();
+   const dstRect=await magazineDemo.locator(
+    '.fw-field-inventory-slot[data-location="rig"]').boundingBox();
+   assert.ok(srcRect&&dstRect);
+   await page.mouse.move(srcRect.x+srcRect.width/2,srcRect.y+srcRect.height/2);
+   await page.mouse.down();
+   await page.mouse.move(dstRect.x+dstRect.width/2,dstRect.y+dstRect.height/2,{steps:7});
+   await page.mouse.up();
+   const back=magazineDemo.locator(
+    '.fw-field-inventory-slot[data-location="rig"] [data-magazine-id="'+magId+'"]');
+   assert.equal(await back.count(),1,
+    'desktop drag moves one identified magazine back to its rig');
+   assert.equal(await back.locator('.fw-field-inventory-item-name').innerText(),
+    originalLabel,'drag retains the exact magazine rounds');
+  }
+
   const gear=page.locator('#carryGearSwapSmoke');
   const rigSelect=gear.getByRole('combobox',{name:'Rig change preview witness'});
   assert.equal(await gear.locator('[data-role="current-rig"]').innerText(),'rig-light');

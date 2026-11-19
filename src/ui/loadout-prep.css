@@ -182,3 +182,7 @@
  border:1px solid #849f89;background:#294638;color:#edf2e8;
  border-radius:6px;padding:7px 10px;touch-action:manipulation;cursor:pointer}
 .fw-carry-change-preview-actions button:disabled{opacity:.35;cursor:not-allowed}
+
+/* L2.12D2: same thumb-sized grip and scroll-safe tile for exact magazines. */
+.fw-field-inventory-select-magazine{grid-template-columns:15px minmax(0,1fr) auto 38px;
+ touch-action:pan-y;min-height:44px}
