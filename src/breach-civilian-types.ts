@@ -18,6 +18,8 @@ export type CivilianActor={
   /** True ONLY when a later physical restraint action succeeds, never from SECURE. */
   restrained?:boolean;
   lastEvidenceId:string|null;lastHitAt:number;
+  /** EQA3.16: actual successful GO contact, render-only and replay-owned. */
+  lastContactAt:number;lastContactPoint:Pt|null;
   lastNoiseId:number;lastSenseAt:number;
   lastVisualId:string|null;visualProgress:Record<string,number>;
   threatEstimate:Pt|null;
@@ -45,6 +47,7 @@ export function createCivilian(spec:CivilianSpec):CivilianActor{
     health:2,injuryStage:0,state:'routine',stateSince:0,fear:0,
     restrained:false,
     lastEvidenceAt:-1,lastFlinchAt:-100,lastEvidenceId:null,lastHitAt:-100,
+    lastContactAt:-100,lastContactPoint:null,
     lastNoiseId:0,lastSenseAt:0,lastVisualId:null,
     visualProgress:{},threatEstimate:null,
     routine:(spec.routine??[]).map(p=>({...p})),
