@@ -26,7 +26,7 @@ test('R870 P08 retains six authored selectable bodies, fixed tube, unchanged bal
  const slots=['stock','receiver','grip','magazine','handguard','barrel'];
  assert.deepEqual(slots.filter(slot=>g.children.some(m=>
   m.name.startsWith('family-'+slot+'-'))),slots);
- assert.equal(g.children.filter(x=>x.userData.r870PumpPart).length,9);
+ assert.equal(g.children.filter(x=>x.userData.r870PumpPart).length,2);
  assert.equal(g.children.filter(x=>x.userData.r870FixedTube).length,1);
  const bound=new THREE.Box3().setFromObject(g);
  assert.ok(Math.abs(bound.min.x-R870_P07.stockX)<.03);

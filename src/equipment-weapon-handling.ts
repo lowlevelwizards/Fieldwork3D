@@ -87,7 +87,8 @@ function platformResponse(build:WeaponFamilyBuild):PlatformResponse{
  }
  // These factory stocks are drawn DEPLOYED. Never simulate a magically
  // folded gun just because its part name says "folder" or "retract".
- const stockless=parts.stock==='hk-mp5k-cap';
+ const stockless=parts.stock==='hk-mp5k-cap'||
+  parts.stock==='r870-pistol-only'||parts.stock==='r870-birdshead-only';
  const compact=/^(ar-car|ar-compact|ar-stock-m4|ak-skeleton|hk-mp5k-pdw-stock)$/
   .test(parts.stock);
  if(compact){turn*=1.018;recovery*=.987;}

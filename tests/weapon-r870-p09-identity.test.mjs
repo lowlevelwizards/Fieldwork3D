@@ -32,7 +32,7 @@ test('R870 identity saves and six authored part slots survive the P10 simplifica
  assert.equal(a.muzzleY,R870_P07.muzzleY);
  assert.equal(a.stockX,R870_P07.stockX);
  const {gun,dispose}=make();try{
-  assert.equal(gun.userData.r870P10,true);
+  assert.equal(gun.userData.r870P12,true);
   for(const slot of ['stock','receiver','grip','magazine','handguard','barrel'])
    assert.ok(gun.children.some(mesh=>mesh.name.startsWith('family-'+slot+'-')),slot);
   assert.ok(gun.children.every(mesh=>mesh.name.startsWith('family-')));
@@ -41,7 +41,7 @@ test('R870 identity saves and six authored part slots survive the P10 simplifica
   assert.ok(Math.abs(b.max.x-R870_P07.muzzleX)<.035);
   assert.equal(tagged(gun,'r870FixedTube').length,1);
   assert.equal(tagged(gun,'r870TubeCap').length,1);
-  assert.equal(tagged(gun,'r870PumpPart').length,9);
+  assert.equal(tagged(gun,'r870PumpPart').length,2);
  }finally{dispose();}
 });
 
@@ -64,7 +64,7 @@ test('R870 P10 uses one bold crowned steel receiver with a flat UPWARD right-sid
  }finally{dispose();}
 });
 
-test('R870 P10 woody stock has few facets, substantial butt pad and sharply legible grip drop',()=>{
+test('R870 P12 grip-first wood stock has seven-point extension and eleven-point dipped grip',()=>{
  const {gun,dispose}=make();try{
   const stock=gun.children.find(x=>x.name.startsWith('family-stock-')&&
    x.geometry instanceof THREE.ExtrudeGeometry);
@@ -72,12 +72,12 @@ test('R870 P10 woody stock has few facets, substantial butt pad and sharply legi
    x.geometry instanceof THREE.ExtrudeGeometry);
   const pad=tagged(gun,'r870ButtPad')[0];
   assert.ok(stock&&grip&&pad);
-  assert.equal(cornerCount(stock),8);
-  assert.equal(cornerCount(grip),10);
+  assert.equal(cornerCount(stock),7);
+  assert.equal(cornerCount(grip),11);
   assert.ok(Math.abs(pad.geometry.parameters.width-.54)<1e-6,
    'visible rear pad slab enlarged from P09 .34');
-  assert.ok(bounds(grip).min.y< -3.5,'new grip runs down then rear/down');
-  assert.ok(bounds(stock).min.y< -3.6);
+  assert.ok(bounds(grip).min.y< -3.1,'new grip is the lower wood neck, not a dangling hook');
+  assert.ok(bounds(stock).min.y< -3.9);
   assert.ok(Math.abs(bounds(stock).min.z-bounds(grip).min.z)<.02,
    'stock and integral wrist use the same thickness');
  }finally{dispose();}
@@ -86,7 +86,7 @@ test('R870 P10 woody stock has few facets, substantial butt pad and sharply legi
 test('R870 P10 pump becomes a regular six-plane sleeve, not an inflated eight-face pillow',()=>{
  const {gun,dispose}=make();try{
   const pumps=tagged(gun,'r870PumpPart'),body=pumps.find(x=>x.userData.r870PumpSides);
-  assert.equal(pumps.length,9);assert.ok(body);
+  assert.equal(pumps.length,2);assert.ok(body);
   assert.equal(body.userData.r870PumpSides,6);
   assert.equal(body.userData.r870CorncobStations,4);
   const xyz=body.geometry.getAttribute('position').array;
@@ -99,7 +99,14 @@ test('R870 P10 pump becomes a regular six-plane sleeve, not an inflated eight-fa
    'rigid full-width section is constant from rear to front');
   assert.ok(sideWidth(3.08)>sideWidth(2.65)+.10);
   assert.ok(sideWidth(10.97)>sideWidth(11.50)+.10);
-  assert.ok(pumps.filter(x=>x!==body).every(x=>Math.abs(x.position.z)>2));
+  const groove=pumps.find(x=>x.userData.r870GrooveBatch);
+  assert.ok(groove);
+  assert.equal(groove.userData.r870GrooveCount,8);
+  assert.equal(groove.geometry.index.count/3,16,
+   'each groove has one front-facing quad, not six extruded faces');
+  const gxyz=groove.geometry.getAttribute('position').array;
+  for(let i=2;i<gxyz.length;i+=3)
+   assert.ok(Math.abs(gxyz[i])>2.03,'groove sits above six-sided pump flat');
   const contacts=riflePoseContacts('shotgun',config());
   assert.ok(contacts&&contacts.family==='r870');
   assert.equal(contacts.support.near.y,R870_P07.supportPalmY);

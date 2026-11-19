@@ -3,6 +3,8 @@
  * Legacy carbine/rifle classes continue to own firing, inventory and magazines.
  */
 import type {WeaponId} from './breach-combat.ts';
+import {r870RearFromGrip,r870RearFromStock,r870RearPair,R870_REAR_PARTS}
+ from './weapons/geometry/r870-rear-p12.ts';
 import {AR_BARREL_ART} from './weapons/geometry/ar-barrel-profiles.ts';
 
 export const FAMILY_PART_SLOTS=['stock','receiver','grip','magazine',
@@ -232,6 +234,11 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'r870-police-receiver':add('r870-police-receiver','Remington 870 12-gauge Police receiver','r870','receiver',{feed:'tube12',role:'shotgun'}),
  'r870-police-wood-stock':add('r870-police-wood-stock','Traditional 870 wooden buttstock','r870','stock',{receivers:['r870-police-receiver'],stockX:-15.78}),
  'r870-police-wood-wrist':add('r870-police-wood-wrist','Integral shotgun wooden wrist and grip','r870','grip',{receivers:['r870-police-receiver']}),
+ 'r870-short-wood-stock':add('r870-short-wood-stock','Short traditional wooden buttstock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.shortwood.stockX}),
+ 'r870-pistol-only':add('r870-pistol-only','Pistol grip only · no shoulder stock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.pistol.stockX}),
+ 'r870-pistol-grip':add('r870-pistol-grip','Compact standalone polymer pistol grip','r870','grip',{receivers:['r870-police-receiver']}),
+ 'r870-birdshead-only':add('r870-birdshead-only','Birdshead grip only · no shoulder stock','r870','stock',{receivers:['r870-police-receiver'],stockX:R870_REAR_PARTS.birdshead.stockX}),
+ 'r870-birdshead-grip':add('r870-birdshead-grip','Rear-swept birdshead grip','r870','grip',{receivers:['r870-police-receiver']}),
  'r870-standard-tube':add('r870-standard-tube','Fixed 12-gauge magazine tube','r870','magazine',{feed:'tube12',receivers:['r870-police-receiver']}),
  'r870-police-wood-pump':add('r870-police-wood-pump','Broad corncob sliding wood fore-end','r870','handguard',{receivers:['r870-police-receiver'],length:'mid'}),
  'r870-18-bead':add('r870-18-bead','Police-style 18-inch bead-sight barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'mid',role:'shotgun',nominalInches:18})
@@ -355,6 +362,13 @@ export function readWeaponFamilyBuild(raw:unknown,weapon:WeaponId):WeaponFamilyB
    next.parts[slot]=id;
  }
  const barrelLength=FAMILY_PARTS[next.parts.barrel].length;
+ // Read legacy or partial saves deterministically. The selected 870 stock
+ // chooses its correctly shaped grip; the editor changes both as a pair.
+ if(receiver.family==='r870'&&!r870RearPair(next.parts.stock,next.parts.grip)){
+  const rear=r870RearFromStock(next.parts.stock)??'wood';
+  next.parts.stock=R870_REAR_PARTS[rear].stock;
+  next.parts.grip=R870_REAR_PARTS[rear].grip;
+ }
  const handguard=parts.handguard;
  if(typeof handguard==='string'&&compatibleFamilyPart(
    receiverId,'handguard',handguard,weapon,barrelLength))
@@ -382,6 +396,8 @@ export function validFamilyBuild(build:WeaponFamilyBuild,weapon:WeaponId):boolea
  if(!receiver||receiver.family!==build.family)return false;
  const barrel=FAMILY_PARTS[build.parts.barrel];
  if(!barrel)return false;
+ if(receiver.family==='r870'&&!r870RearPair(build.parts.stock,build.parts.grip))
+  return false;
  return FAMILY_PART_SLOTS.every(slot=>compatibleFamilyPart(
   build.parts.receiver,slot,build.parts[slot],weapon,
   slot==='handguard'?barrel.length:undefined));
@@ -399,6 +415,15 @@ export function proposeFamilyPartChange(build:WeaponFamilyBuild,weapon:WeaponId,
  if(!receiver||receiver.family!==build.family)
   return reject('This core belongs to a different weapon class or family');
  const candidate={...build.parts,[slot]:id};
+ if(build.family==='r870'&&slot==='stock'){
+  const key=r870RearFromStock(id);
+  if(!key)return reject('Unknown 870 rear furniture');
+  candidate.grip=R870_REAR_PARTS[key].grip;
+ }else if(build.family==='r870'&&slot==='grip'){
+  const key=r870RearFromGrip(id);
+  if(!key)return reject('Unknown 870 grip');
+  candidate.stock=R870_REAR_PARTS[key].stock;
+ }
  // The receiver may invalidate several pieces. Preserve everything else
  // when possible and use the historical factory fallback only where needed.
  const result=readWeaponFamilyBuild({family:build.family,parts:candidate},weapon);
