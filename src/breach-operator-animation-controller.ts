@@ -3,6 +3,8 @@ import {throwSupportGesture} from './breach-animation-choreography.ts';
 import {sampleEquipmentGesture} from './breach-equipment-interaction-pose.ts';
 import {flashCanisterSocket,wedgeSocket,flexCuffSocket}
  from './equipment-field-visuals.ts';
+import {equipmentCarrySocket} from './equipment-carry-visuals.ts';
+import {medicalRetrievalPhase} from './breach-medical-retrieval.ts';
 import {presentFlashHandoff,presentWedgeHandoff,presentFlexCuffHandoff}
  from './breach-operator-field-handoff.ts';
 import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-operator-animation-frame.ts';
@@ -815,7 +817,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const releaseRight=handOwners.right!=='weapon';
   let reaching=false;
   let reloadHandChest:THREE.Vector3|null=null;
-  attachments[EAI.medical].visible=treatmentActive;
+  const medicalPhase=medicalRetrievalPhase(p.treatmentProgress??0);
+  attachments[EAI.medical].visible=treatmentActive&&medicalPhase.itemInHand;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
     // Deliberate visible surrender: discard the gun, kneel and raise both
@@ -835,9 +838,22 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const local=P(target.x-p.x,12-frame.chest.position.y,target.y-p.z);
     local.applyAxisAngle(P(0,1,0),-r.legacyYaw);
     local.applyAxisAngle(P(0,1,0),-frame.chest.rotation.y);
-    const reach=smooth((p.treatmentProgress??0)/.26);
-    const left=fit.support.clone().lerp(local.clone().add(P(-1,3,-2)),reach);
-    const right=fit.primary.clone().lerp(local.clone().add(P(1,3,2)),reach);
+    // Real medical pouch is the start of this reach. A dressing appears
+    // only once the support hand has reached that *actual* carrier.
+    const socket=equipmentCarrySocket('medical',p.medicalCarryLocation??'rig');
+    const source=P(socket.x,socket.y,socket.z);
+    if(socket.bone==='hip')
+      source.y+=frame.hip.position.y-frame.chest.position.y;
+    if(socket.bone==='pack'){
+      source.x+=r.pack.position.x;
+      source.y+=r.pack.position.y;
+      source.z+=r.pack.position.z;
+    }
+    const patientLeft=local.clone().add(P(-1,3,-2));
+    const patientRight=local.clone().add(P(1,3,2));
+    const left=fit.support.clone().lerp(source,medicalPhase.reach)
+      .lerp(patientLeft,medicalPhase.apply);
+    const right=fit.primary.clone().lerp(patientRight,medicalPhase.apply);
     leftGrip.copy(left);rightGrip.copy(right);
     attachments[EAI.medical].position.copy(left);
   }else if(reloadActive){
