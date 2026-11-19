@@ -105,8 +105,12 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       const range=person?d(a.p,person.p):Infinity;
       const clear=!!person&&
         sweptBodyClear(a.p,person.p,s.doors,5.5,sessionWorldGeometry(s));
-      if(person&&person.health>0&&range>28&&
-         d(person.p,n.p)<=45&&liveVisibility(s,person.p)){
+      if(person&&person.health>0&&range>28&&range<=45&&
+         d(person.p,n.p)<=45&&clear&&
+         (range<=32||liveVisibility(s,person.p))){
+        // A civilian who shifts just past the operator stays a reachable
+        // pending command. Walk the remaining real distance even when
+        // the person has slipped behind the present sight cone.
         approach(a,person.p,dt,s,.65);return true;
       }
       if(!person||person.health<=0||range>28||!clear||
