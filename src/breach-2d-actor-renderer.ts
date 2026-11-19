@@ -117,6 +117,9 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
   const pants=trousers[(c.appearanceSeed>>>4)%trousers.length];
   draw.save();draw.translate(c.p.x,c.p.y);draw.rotate(c.heading);
   const pose=civilianPose(c);
+  const flinch=c.lastFlinchAt!==undefined&&state.seconds>=c.lastFlinchAt&&
+    state.seconds-c.lastFlinchAt<.48&&
+    !['down','carried','dragged','compliant','restrained'].includes(pose);
   if(pose==='down'||pose==='carried'||pose==='dragged'){
     draw.globalAlpha=pose==='carried'?.96:.83;
     rect(-10,-6,23,12,coat);rect(7,-5,8,10,'#ba9880');
@@ -124,7 +127,11 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
     rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
     rect(-7,-8,16,16,coat);
     rect(7,-4.5,9,9,'#b9997e');
-    if(pose==='compliant'||pose==='startled'){
+    if(flinch){
+      // Shared witnessed-danger timestamp; hands momentarily shield the
+      // head before returning to the current action, not an AI-state swap.
+      rect(5,-8,7,4,'#b9997e');rect(5,4,7,4,'#b9997e');
+    }else if(pose==='compliant'||pose==='startled'){
       // Clear from overhead: palms visibly raised and away from torso.
       rect(2,-16,5,9,'#b9997e');rect(2,7,5,9,'#b9997e');
     }else if(pose==='restrained'){

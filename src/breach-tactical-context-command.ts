@@ -81,8 +81,10 @@ export function dispatchTacticalContextCommand(input:{
      'SUSPECT CHALLENGE NOT AVAILABLE');
   }
   case 'ctxSecureCivilian':
-  case 'ctxFollowCivilian':{
-   const mode=action==='ctxSecureCivilian'?'secure':'follow';
+  case 'ctxFollowCivilian':
+  case 'ctxRestrainCivilian':{
+   const mode=action==='ctxSecureCivilian'?'secure':
+     action==='ctxFollowCivilian'?'follow':'restrain';
    const civ=nearestContextCivilian(state.civilians,finalPoint(a),
      mode,state.mission,p=>liveVisibility(state,p),
      (from,to)=>sweptBodyClear(from,to,state.doors,5.5,

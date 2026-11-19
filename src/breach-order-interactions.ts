@@ -38,7 +38,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     }
     const contactCommand=n.objectId.startsWith('civ:')&&
       (n.interaction==='secure-civilian'||
-       n.interaction==='follow-civilian');
+       n.interaction==='follow-civilian'||
+       n.interaction==='restrain-civilian');
     if(!contactCommand&&!near(a.p,n.p,7)){
       // Once an electrical action has begun, losing the contact position
       // cancels it rather than letting an absent hand finish remotely.
@@ -96,7 +97,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     }
     if(n.objectId.startsWith('civ:')&&
        (n.interaction==='secure-civilian'||
-        n.interaction==='follow-civilian')){
+        n.interaction==='follow-civilian'||
+        n.interaction==='restrain-civilian')){
       const person=s.civilians.find(c=>c.id===n.objectId);
       // This is a physically authored contact, not a remote command.
       // A person who shuffles a little while the squad approaches must
@@ -126,6 +128,24 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       const bearing=Math.atan2(person.p.y-a.p.y,person.p.x-a.p.x);
       if(!rotate(a,bearing,dt,s))return true;
+      // RESTRAIN is a separate physical job following SECURE. It cannot
+      // manufacture cuffs, bind an uncooperative or rescue civilian, or
+      // spend equipment while planning. Only a completed GO-time contact
+      // removes one actually carried pair of flex cuffs.
+      if(n.interaction==='restrain-civilian'){
+        if(person.state!=='compliant'||person.restrained===true||
+           person.rescueTarget||a.restraintRemaining<=0){
+          failCurrentOrder(s,a,n,'RESTRAINT NOT AVAILABLE');return true;
+        }
+        if(a.actionTimer===0)a.lastCivilianContactAt=s.seconds;
+        a.actionTimer+=dt;
+        if(a.actionTimer<1.15)return true;
+        a.restraintRemaining--;
+        person.restrained=true;
+        a.lastCivilianContactAt=s.seconds;
+        notify(s,a.name+' RESTRAINED CIVILIAN · FLEX CUFFS '+a.restraintRemaining);
+        clearCurrentOrderIssue(a);pop(a);return true;
+      }
       // Once face-to-face, complete at the authoritative contact. The
       // visible hand reach has its own short post-contact pose window:
       // already-aligned contacts keep their prior one-tick responsiveness.

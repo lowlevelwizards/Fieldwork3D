@@ -16,7 +16,7 @@ export const withActions=(a:Operator):TeamActor=>({
   ...a,medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
   treatmentActive:false,treatmentProgress:0,
-  carryingId:null,carriedById:null,wedgeRemaining:0,
+  carryingId:null,carriedById:null,wedgeRemaining:0,restraintRemaining:0,
   awareness:newAwareness(),suspicion:newSuspicion(),lastVisualSuspicionId:null,
   intent:null,combatChoice:null,lastReportAt:-100,
   coordinationRole:null,coordinationUntil:0,lastMoraleEventAt:-100,searchOrigin:null,searchQueue:[],searchPauseUntil:0,plan:[],history:makeHistory(),nav:[],activeNode:-1,

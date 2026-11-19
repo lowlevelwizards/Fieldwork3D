@@ -1,0 +1,53 @@
+name: EQA3.10 civilian reaction and physical restraints critical
+on:
+  push:
+    branches: [feature/eqa3-10-civilian-contact-20261119]
+    paths:
+      - 'src/breach-civilian-response.ts'
+      - 'src/breach-civilian-types.ts'
+      - 'src/breach-civilian-visuals.ts'
+      - 'src/breach-2d-actor-renderer.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-plan.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-actor-initial-state.ts'
+      - 'src/breach-order-interactions.ts'
+      - 'src/breach-civilian-context-selection.ts'
+      - 'src/equipment-field-inventory.ts'
+      - 'src/equipment-loadouts.ts'
+      - 'src/breach-roster.ts'
+      - 'src/breach-campaign-flow.ts'
+      - 'src/ui/context-actions.ts'
+      - 'src/ui/tactical-palette-controller.ts'
+      - 'src/breach-tactical-context-command.ts'
+      - 'tests/eqa3-10-civilian-response.test.mjs'
+      - 'tests/eqa3-10-restrain.test.mjs'
+      - '.github/workflows/eqa3-10-civilian-contact.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  civilian-restraint-critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 13
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: TS and targeted real physical restraint and civilian response regression
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-10-civilian-response.test.mjs \
+            tests/eqa3-10-restrain.test.mjs \
+            tests/eqa3-9-auto-secure.test.mjs \
+            tests/eqa3-9-civilian-animation.test.mjs \
+            tests/eqa3-7-civilian-context-targeting.test.mjs \
+            tests/civilian-c4-contextual-contact.test.mjs \
+            tests/civilian-c5-unified-pose.test.mjs \
+            tests/civilian-r2-routines.test.mjs \
+            tests/equipment-field-inventory.test.mjs \
+            tests/equipment-field-transfer.test.mjs \
+            tests/civilian-d1-rescue-lifecycle.test.mjs

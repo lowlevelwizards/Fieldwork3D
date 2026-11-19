@@ -23,7 +23,7 @@ import {readWeaponConfiguration,changeWeaponPlatform,
  from './equipment-weapon-assemblies.ts';
 import type {FamilyPartSlot} from './equipment-weapon-families.ts';
 import {issueWeaponPreset,starterWeaponPreset,resolveIssuedOrLegacy} from './breach-weapon-issue.ts';
-import {equippedFlashCharges,
+import {equippedFlashCharges,equippedRestraintCharges,
  initialEquipmentLoadout,readEquipmentLoadout,syncPrimaryWeapon,setEquipmentChoice,
  loadMovementScale,type EquipmentLoadout,type LoadoutSlot} from './equipment-loadouts.ts';
 export type RosterMember={
@@ -132,6 +132,7 @@ export function applyRosterIdentity(s:Session,roster:RosterState){
     a.weaponConfiguration=member.weaponConfiguration;
     a.medicalSupplies=kitMedicalSupplies(member.loadout);
     a.wedgeRemaining=issuedWedges(member.loadout);
+    a.restraintRemaining=equippedRestraintCharges(member.loadout);
     a.weaponLightOn=member.weaponConfiguration.slots.light==='light-compact';
     a.nvgDeployed=false;
    a.flashCharges=equippedFlashCharges(member.loadout);
