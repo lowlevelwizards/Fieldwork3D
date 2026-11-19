@@ -73,8 +73,12 @@ export function isNpcLabPose(id:string):boolean{return !!npcLabPose(id);}
 const bound=(n:number)=>Math.max(0,Math.min(NPC_LAB_DURATION,
  Number.isFinite(n)?n:0));
 const delayed=(now:number)=>Math.max(0,now-.8);
+// A moving preview must advance at the same world-units/second as its
+// recorded motor velocity. The previous *.28 visual travel moved the root
+// slower than the footsteps, leaving both knees/boots ahead of the hips.
+// The preview stage is camera-locked below, not the authoritative gait.
 const gait=(now:number,speed:number)=>
- speed>5?Math.min(now,2.5)*Math.min(25,speed*.28):0;
+ speed>5?Math.max(0,now)*speed:0;
 
 export function sampleNpcCivilian(id:string,clock:number):CivilianActor{
  if(!npcLabPose(id)||!id.startsWith('civ-'))
@@ -242,6 +246,8 @@ export class NpcLabFootFilm{
 export class NpcLabPreview{
  private civilian:CivilianRig|null=null;
  private hostile:OperatorRig|null=null;
+ private civilianDisplay:THREE.Group|null=null;
+ private hostileDisplay:THREE.Group|null=null;
  private film:NpcLabFootFilm|null=null;
  private readonly scene:THREE.Scene;
  constructor(scene:THREE.Scene){this.scene=scene;}
@@ -255,10 +261,15 @@ export class NpcLabPreview{
    if(!this.civilian){
     const initial=sampleNpcCivilian('civ-idle',0);
     this.civilian=createCivilianRig(initial,true);
-    this.scene.add(this.civilian.root);
+    // Keep the long, physically correct world-space gait visible in a
+    // stationary lab camera without slowing the motor or moving footfalls.
+    this.civilianDisplay=new THREE.Group();
+    this.civilianDisplay.add(this.civilian.root);
+    this.scene.add(this.civilianDisplay);
    }
    const c=sampleNpcCivilian(id,clock);
    updateCivilianRig(this.civilian,c,bound(clock),feet);
+   this.civilianDisplay!.position.set(-c.p.x,0,-c.p.y);
    this.civilian.root.visible=true;
    if(this.hostile)this.hostile.root.visible=false;
    const physical=civilianPhysicalityAt(c,bound(clock));
@@ -270,7 +281,9 @@ export class NpcLabPreview{
   }
   if(!this.hostile){
    this.hostile=createOperatorRig('lab-npc-hostile','red',true);
-   this.scene.add(this.hostile.root);
+   this.hostileDisplay=new THREE.Group();
+   this.hostileDisplay.add(this.hostile.root);
+   this.scene.add(this.hostileDisplay);
   }
   const state=sampleNpcHostile(id,clock);
   // The same single-rig blend used for civilians also covers hostile
@@ -283,6 +296,7 @@ export class NpcLabPreview{
        state.pose.aiming?'aim':state.pose.firing?'fire':'hold'),
    npcTransitionDuration:state.pose.down?.15:
      state.pose.surrender?.20:.25},0);
+  this.hostileDisplay!.position.set(-state.pose.x,0,-state.pose.z);
   this.hostile.head.rotation.y+=state.physical.headYaw;
   this.hostile.head.rotation.x+=state.physical.headPitch;
   this.hostile.root.visible=true;
@@ -292,10 +306,16 @@ export class NpcLabPreview{
    headPitch:this.hostile.head.rotation.x,model:'hostile'};
  }
  dispose(){
-  if(this.civilian){this.scene.remove(this.civilian.root);
-   disposeCivilianRig(this.civilian);this.civilian=null;}
-  if(this.hostile){this.scene.remove(this.hostile.root);
-   this.hostile.dispose();this.hostile=null;}
+  if(this.civilian){
+   if(this.civilianDisplay)this.scene.remove(this.civilianDisplay);
+   disposeCivilianRig(this.civilian);this.civilian=null;
+   this.civilianDisplay=null;
+  }
+  if(this.hostile){
+   if(this.hostileDisplay)this.scene.remove(this.hostileDisplay);
+   this.hostile.dispose();this.hostile=null;
+   this.hostileDisplay=null;
+  }
   this.film=null;
  }
 }
