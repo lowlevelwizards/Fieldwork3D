@@ -1675,7 +1675,7 @@ export class CampaignScreen{
    control.setAttribute('aria-current',String(this.activeKitWorkspace===key));
    workspaceButtons.set(key,control);workspaceNav.append(control);
   }
-  main.insertBefore(workspaceNav,grid);
+  main.append(workspaceNav);
   const categoryBar=node('div','campaign-kit-categories');
   categoryBar.setAttribute('role','tablist');
   categoryBar.setAttribute('aria-label','Equipment categories');
