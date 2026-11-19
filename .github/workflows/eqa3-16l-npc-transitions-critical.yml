@@ -1,0 +1,29 @@
+name: EQA3.16L NPC pose transition critical
+on:
+  push:
+    branches:
+      - feature/eqa3-16l-npc-pose-transition-blends-20261119
+  workflow_dispatch:
+concurrency:
+  group: eqa3-16l-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  npc-pose-transitions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-package-lock
+      - name: TypeScript
+        run: npm run check
+      - name: Focused NPC, live pose and replay transition regressions
+        run: >-
+          node --experimental-strip-types --test
+          tests/eqa3-16l-npc-animation-transitions.test.mjs
+          tests/eqa3-16k-npc-lab-continuity.test.mjs
+          tests/eqa3-16j-npc-lab.test.mjs
+          tests/animation-a2-5-continuity.test.mjs
+          tests/package-b2-pose-output.test.mjs
