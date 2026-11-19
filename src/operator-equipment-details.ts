@@ -40,10 +40,20 @@ export function createOperatorEquipmentDetails(medical:THREE.Mesh,
  box(medicalMark,red,1.9,0,0,.25,1.65,.46);
  box(medicalMark,red,1.9,0,0,.25,.46,1.65);
  box(medicalMark,dark,1.65,1.65,0,.45,.38,3.0);
+ // L2.9A: a single chunky top flap and short pull tabs make the compact
+ // first-aid pouch read as a real carried kit instead of a flat sticker.
+ box(medicalMark,fabric,1.63,1.9,0,.44,.67,3.05);
+ for(const z of [-1.15,1.15])
+  box(medicalMark,dark,1.85,2.21,z,.38,.55,.50);
  const traumaHardware=group(medical);
  for(const z of [-1.45,1.45])
   box(traumaHardware,dark,0,2.25,z,.9,1.55,.65);
  box(traumaHardware,fabric,-.3,-1.8,0,2.0,.5,3.0);
+ // The trauma kit visibly carries one strapped roll above the enlarged bag.
+ // This is art only: medical supply and treatment remain simulation-owned.
+ const traumaRoll=cylinder(traumaHardware,dark,1.0,2.65,0,1.08,3.8,8);
+ traumaRoll.rotation.x=Math.PI/2;
+ box(traumaHardware,mark,2.08,2.65,0,.35,1.65,.70);
  const radioTrim=group(radio);
  cylinder(radioTrim,dark,-.45,4.1,0,.33,6.5,6);
  box(radioTrim,mark,1.85,1.15,0,.2,1.2,1.5);
