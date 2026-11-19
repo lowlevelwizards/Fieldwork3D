@@ -37,7 +37,6 @@ export function previewCarryGearChange(
   const old=magazineBefore.find(p=>p.id===m.id);
   return old&&old.location!==m.location?[{id:m.id,from:old.location,to:m.location}]:[];
  });
- const itemMoves:CarryGearChangePreview['itemMoves']=[]; // assigned below
  const movable:{id:string;from:string;to:string;quantity:number}[]=[];
  if(packed){
   for(const id of FIELD_ITEM_IDS){
