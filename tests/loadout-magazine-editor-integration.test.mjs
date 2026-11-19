@@ -1,0 +1,20 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import {readFileSync} from 'node:fs';
+const read=name=>readFileSync(new URL('../src/'+name,import.meta.url),'utf8');
+test('magazine placement shares the physical editor and existing authoritative owners',()=>{
+ const ui=read('ui/field-gadget-editor.ts');
+ assert.match(ui,/quoteOneMagazineMove\(/);
+ assert.match(ui,/tile\.kind==='magazine'&&tile\.magazineId&&options\.onMoveMagazine/);
+ assert.match(ui,/options\.onMoveMagazine\?\.\(choice\.id,to,/);
+ const campaign=read('campaign-ui.ts');
+ assert.match(campaign,/onMoveMagazine:\(magazineId,to,focusLabel\)=>/);
+ assert.match(campaign,/this\.handlers\.moveMagazine\(id,magazineId,to\)/);
+ const operations=read('breach-operations-board-controller.ts');
+ assert.match(operations,/onMoveMagazine:\(magazineId,to,focusLabel\)=>/);
+ assert.match(operations,/moveRosterMagazine\(prior,current\.id,magazineId,to\)/);
+ const quick=read('ui/quick-play-configurator.ts');
+ assert.match(quick,/onMoveMagazine:options\.onMoveMagazine\?/);
+ assert.match(read('breach-quickplay-controller.ts'),/onMoveMagazine:config\.moveMagazine/);
+ assert.match(read('breach-main.ts'),/moveRosterMagazine\(persistentRoster,id,magazineId,to\)/);
+});
