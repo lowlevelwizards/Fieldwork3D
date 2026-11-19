@@ -1,0 +1,40 @@
+name: EQA3.2 explicit physical door-opening comparison
+on:
+  push:
+    branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
+    paths: ['.github/workflows/eqa3-door-aware-scout.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  known-objective-open:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    strategy:
+      fail-fast: false
+      matrix:
+        seed: [12, 14, 23]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Execute 90-second real GO-time OPEN and valid known-goal search
+        run: |
+          mkdir -p artifacts/eqa3
+          EQA3_OUTPUT=artifacts/eqa3/door-aware-${{ matrix.seed }}.json node --experimental-strip-types scripts/audit-eqa3-scout.mjs --door-aware --seed=${{ matrix.seed }} --intel=confirmed --seconds=90 > artifacts/eqa3/door-aware-${{ matrix.seed }}-summary.txt
+          node - <<'NODE'
+          const a=require('./artifacts/eqa3/door-aware-${{ matrix.seed }}.json');
+          console.log(JSON.stringify({summary:a.summary,rows:a.rows.map(r=>({
+            seed:r.seed,mission:r.mission,entry:r.insertion,stage:r.missionStage,
+            aborted:r.routeAbort,rejected:r.rejected,opens:r.acceptedDoorActions,
+            objectiveAt:r.objectiveAt,done:r.missionStage==='done',
+            physicalCommandTrace:r.decisions.filter(x=>x.action==='explicit-open-known-door')
+          }))},null,2));
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-2-real-door-scout-${{ matrix.seed }}
+          path: artifacts/eqa3/
