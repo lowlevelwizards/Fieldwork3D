@@ -7,7 +7,7 @@ import type {OperatorPose} from './breach-operator-animation-contract.ts';
 import {sampleEquipmentGesture}
  from './breach-equipment-interaction-pose.ts';
 import {visibleFlashCanisters,flashCanisterSocket,
- visibleDoorWedges,wedgeSocket}
+ visibleDoorWedges,wedgeSocket,visibleFlexCuffs,flexCuffSocket}
  from './equipment-field-visuals.ts';
 
 const heldIndex=(r:OperatorRig):number|null=>{
@@ -91,5 +91,45 @@ export function presentWedgeHandoff(r:OperatorRig,p:OperatorPose,
  if(mesh.parent!==r.arms[0].hand)r.arms[0].hand.add(mesh);
  mesh.position.set(0,-3,0);
  mesh.rotation.set(0,0,.15);
+ mesh.visible=true;
+}
+
+/** F6.4: exactly one actual flex-cuff pair leaves its worn pouch and rides
+ * the existing support-hand transform. The gameplay's RESTRAIN transaction
+ * and the civilian's restrained state remain entirely separate authorities.
+ */
+export function presentFlexCuffHandoff(r:OperatorRig,p:OperatorPose,
+ allowed:boolean):void{
+ const action=allowed&&p.equipmentInteraction?.item==='zip-tie'?
+  p.equipmentInteraction:null;
+ const inHand=!!action&&sampleEquipmentGesture(action).inHand;
+ const previous=r.root.userData.fieldworkHeldCuffIndex;
+ const old=typeof previous==='number'&&previous>=0&&
+  previous<r.cuffMeshes.length?previous:null;
+ if(!inHand&&old===null)return;
+ const items=visibleFlexCuffs(p.equipment,p.restraintRemaining);
+ const target=inHand&&action?items.findIndex(item=>item.location===action.location):-1;
+ const selected=target>=0?target:null;
+ if(old!==null&&old!==selected){
+  const mesh=r.cuffMeshes[old],item=items[old];
+  if(mesh){
+   mesh.visible=!!item;
+   if(item){
+    const socket=flexCuffSocket(item.location,item.index);
+    const parent=socket.bone==='chest'?r.chest:
+      socket.bone==='pack'?r.pack:r.hip;
+    if(mesh.parent!==parent)parent.add(mesh);
+    mesh.position.set(socket.x,socket.y,socket.z);
+    mesh.rotation.set(Math.PI*.5,0,0);
+   }
+  }
+ }
+ r.root.userData.fieldworkHeldCuffIndex=selected;
+ if(selected===null)return;
+ const mesh=r.cuffMeshes[selected];
+ if(!mesh)return;
+ if(mesh.parent!==r.arms[0].hand)r.arms[0].hand.add(mesh);
+ mesh.position.set(.6,-2.6,0);
+ mesh.rotation.set(Math.PI*.5,0,0);
  mesh.visible=true;
 }
