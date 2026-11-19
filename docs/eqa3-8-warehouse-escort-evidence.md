@@ -21,3 +21,15 @@ This is narrower than globally allowing civilians to pass through everybody. It 
 - Focused prior EQA3.1 escort, civilian B3/R2 locomotion, D1 rescue lifecycle, and TypeScript validation.
 - Full 110-second UNKNOWN/CONFIRMED × FRONT/SERVICE audit after the correction: compare original UNKNOWN FRONT 52.55-unit stall to the new real finish time; preserve non-FOLLOW outcomes and allow risky encounters to remain risky.
 - Keep PR in draft until CI proves the causal fix; no merge onto `main` before full green verification, and check latest Pages deployment state before a production release.
+
+## EQA3.8 correction validated: no fabricated shortcut
+
+[Corrected 110-second Warehouse17 mission matrix CI #44454592461](https://github.com/lowlevelwizards/Fieldwork3D/actions/runs/44454592461) **SUCCESS** on the feature branch.
+
+- **17 focused tests pass; 0 fail**, including the original EQA3.1 rescue pacing contract, civilian B3/R2 movement, D1 physical custody, and new seed17 actual real-60 Hz physics with the two idle squad members.
+- TypeScript check passed.
+- UNKNOWN FRONT full gameplay simulation now physically secures FOLLOW and completes extraction with the wounded civilian at **63.93 seconds**. Prior unmodified build at 110 seconds had ROOK at 4.5 units from extract but civilian pinned 52.55 units away. The new run reports zero stalled five-second FOLLOW windows.
+- UNKNOWN SERVICE still fails to reach target in 110 seconds, and CONFIRMED FRONT/SERVICE still have the original fatal gunfire interceptions against the rescue person. The change has **not** granted invulnerability, sped up the person, auto-secured objectives, or erased contested encounters.
+- Exact code change is one conditional 20-unit crowd-avoidance filter for blue squadmates while a real living civilian owns FOLLOW; common geometry, other civilian bodies, red hostiles, and the shared movement-arbitration rules are unchanged.
+
+The previous EQA3.7 Pages release was independently verified, and L2.10's subsequent Pages release also passed its public-build check. EQA3.8 may be merged as a **single stable gameplay release checkpoint** when current `main` still has a successful latest deployment and no additional production release is queued.
