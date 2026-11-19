@@ -996,6 +996,13 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   r.root.userData.authoredM4ShortStock=
     manualReport&&manualPose!.preset==='ar-m4a1'&&
       p.weapon==='carbine'?manualReport:null;
+  // Purely visual, time-limited SECURE gesture. Support hand briefly
+  // leaves the weapon to reach forward; shot/muzzle data and GO contacts
+  // remain authored solely by the fixed-tick game.
+  const contactAge=p.civilianContactAge??Infinity;
+  const contactReach=!p.down&&!p.surrender&&!p.firing&&
+    contactAge>=0&&contactAge<.64?
+    Math.sin(Math.PI*contactAge/.64):0;
   beginOperatorArmPose(r,scratch);
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
@@ -1053,6 +1060,16 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
         .applyEuler(fit.rotation).add(fit.origin);
       if(i===0&&reloadHandChest)desired.copy(reloadHandChest);
     }
+    if(p.unarmedPreview&&p.civilianGesture){
+      const gesture=p.civilianGesture;
+      const wrist=gesture==='hands-behind'?
+        P(-5,-8,sign*2):
+        gesture==='hands-up'?P(1,10,sign*2):
+        P(5,7,-sign*2);
+      desired=shoulder.clone().add(wrist);
+    }else if(i===0&&contactReach>.001){
+      desired.lerp(shoulder.clone().add(P(11,-3,-2)),contactReach);
+    }
     if(carryTransitionActive&&carryTransitionHands)
       desired.copy(carryTransitionHands[i]).lerp(
         desired,carryTransitionAlpha);
@@ -1074,7 +1091,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     // No second IK pass may undo a validated elbow/armor solution.
     const destinationArms=coupled?.arms??coordinatedDynamic?.arms??null;
     const pairedArms=!carryTransitionActive&&!authoredBridge&&
-      !p.unarmedPreview?destinationArms:null;
+      !p.unarmedPreview&&contactReach<.001?destinationArms:null;
     if(pairedArms){
       const limb=pairedArms[i];
       r.elbowSpread[i]=Math.max(0,sign*(limb.joint.z-shoulder.z));
@@ -1097,7 +1114,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
       }
       continue;
     }
-    const neutralArms=!!p.unarmedPreview&&!p.down&&!p.surrender;
+    const neutralArms=!!p.unarmedPreview&&!p.down&&!p.surrender&&
+      !p.civilianGesture;
     if(neutralArms)
       desired=neutralMannequinWrist(sign as -1|1);
     const reachable=desired.distanceTo(shoulder)<=19.92;

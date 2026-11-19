@@ -89,6 +89,10 @@ export type OperatorPose={
   weaponConfiguration?:WeaponConfiguration;
   weaponLightOn?:boolean;
   nvgDeployed?:boolean;
+  /** Presentation-only hand reach after real SECURE/FOLLOW GO contact. */
+  civilianContactAge?:number;
+  /** Unarmed neutral upper-body gesture: simulation state never changes. */
+  civilianGesture?:'hands-up'|'head-cover'|'hands-behind';
   treatmentActive?:boolean;treatmentProgress?:number;
   lockpickActive?:boolean;lockpickProgress?:number;
   interactionCrouch?:number;
