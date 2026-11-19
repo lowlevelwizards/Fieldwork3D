@@ -9,6 +9,8 @@ import type {MissionRecorder} from '../breach-replay.ts';
 import type {CampaignState} from '../campaign-state.ts';
 import type {DispatchIncidentContext} from '../dispatch-incident-context.ts';
 import {renderAfterActionWorkspace} from './breach-after-action-controller.ts';
+import {buildAfterActionInventoryCloseout}
+ from '../breach-after-action-inventory.ts';
 import {renderStructuredMissionDetails} from './breach-after-action-mission-details.ts';
 type DebriefUi={
  debriefIntelBlock:HTMLElement;debriefIntelText:HTMLElement;
@@ -92,6 +94,13 @@ export function renderMissionDebrief(input:{
       name:incident?.title??brief.name,stats,recorder,campaign,campaignMode,
       incident,operationsLogged,phase:state.phase
     }));
-    if(root)renderAfterActionWorkspace(root,recorder,
-      {showIntel:!!state.operationDossier});
+    if(root)renderAfterActionWorkspace(root,recorder,{
+      showIntel:!!state.operationDossier,
+      inventory:buildAfterActionInventoryCloseout({
+       session:state,recorder,
+       mode:campaignMode==='mission'?'mission':
+        campaignMode==='quick'?'quick':'other',
+       campaign
+      })
+    });
 }

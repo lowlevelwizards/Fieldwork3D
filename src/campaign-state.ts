@@ -43,6 +43,9 @@ import {fieldQuantity,initialFieldInventory,readFieldInventory,fieldCarryReport,
  quoteFieldInventoryCopy,type FieldInventory} from './equipment-field-inventory.ts';
 import {reconcileCampaignFieldInventory}
  from './equipment-mission-field-reconciliation.ts';
+import {quoteCampaignFieldStockChange,fieldRestockPreference,
+ sanitizedFieldRestockPreference,FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
+ from './equipment-campaign-field-stock.ts';
 import {readWeaponConfiguration,changeWeaponPlatform,
  setWeaponAttachment,
  selectWeaponFamilyPreset,setConfiguredFamilyPart,sameWeaponConfiguration,
@@ -75,6 +78,8 @@ export type CampaignOperator={
  weaponConfiguration:WeaponConfiguration;
  weaponSerialId?:string|null;
  magazines:MagazineItem[];loadedMagazineId:string;
+ /** Preferred future issue/placement, never actual stock. */
+ fieldRestockLayout?:FieldInventory;
 };
 export type Contract={
  id:string;seed:number;kind:OperationKind;scale:'standard'|'expanded';
@@ -110,7 +115,7 @@ export type CampaignState={
  name?:string;
  operators:CampaignOperator[];squadIds:string[];contracts:Contract[];activeContractId:string|null;
  history:CampaignReport[];journal:CareerEvent[];appliedResults:string[];
- supplies:{medical:number;ammo:number;flash:number};regionalPressure:Record<string,number>;
+ supplies:{medical:number;ammo:number;flash:number;wedges:number;cuffs:number};regionalPressure:Record<string,number>;
  inventory:{weapons:Record<CampaignOperator['weapon'],number>;
   attachments:Record<string,number>;serializedWeapons?:SerializedWeapon[]};
  kitPresets:EquipmentPreset[];
@@ -208,7 +213,7 @@ export function newCampaign(seed:number,rules?:CampaignRules,name?:string):Campa
   operators:['rook','moss','ash','vale'].map((id,i)=>startingOperator(id,i,normalized)),
   squadIds:['rook','moss','ash','vale'],
   contracts:createContracts(normalized,1,[],{},parsedRules?.template==='dispatch'),activeContractId:null,
-  history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4},
+  history:[],journal:[],appliedResults:[],supplies:{medical:3,ammo:240,flash:4,wedges:8,cuffs:12},
   regionalPressure:Object.fromEntries(REGIONS.map(r=>[r,0])),
   inventory:{weapons:{carbine:0,smg:0,rifle:0,shotgun:0},
     attachments:readAttachmentStock(null)},kitPresets:[],
@@ -313,14 +318,27 @@ export function readCampaign(raw:string|null):CampaignState|null{
     weaponConfiguration:config,
    armorCondition:normalizedArmorCondition((o as {armorCondition?:unknown}).armorCondition,
     readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon)),
+   ...((o as {fieldRestockLayout?:unknown}).fieldRestockLayout!==undefined?
+    {fieldRestockLayout:sanitizedFieldRestockPreference(
+      (o as {fieldRestockLayout?:unknown}).fieldRestockLayout,
+      readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon))}:{ }),
    trait:typeof o.trait==='string'?o.trait:'Experienced Operator',
    distinctions:Array.isArray(o.distinctions)?
     o.distinctions.filter((x):x is string=>typeof x==='string').slice(0,32):[]
   };});
+  // Legacy saves have no separate HQ field stock; don't invent reserves.
+  const rawStock=c.supplies as CampaignState['supplies']&
+   {wedges?:unknown;cuffs?:unknown};
+  const validStock=(x:unknown):number|null=>
+   x===undefined?0:typeof x==='number'&&Number.isInteger(x)&&
+   x>=0&&x<=FIELD_STOCK_LIMIT?x:null;
+  const wedges=validStock(rawStock.wedges),cuffs=validStock(rawStock.cuffs);
+  if(wedges===null||cuffs===null)return null;
   return reconcileCampaignWeaponOwnership({...c,squadIds:chosen,operators,inventory:{weapons,
       serializedWeapons:(c.inventory as {serializedWeapons?:unknown})?.serializedWeapons as SerializedWeapon[]|undefined,
      attachments:readAttachmentStock((c.inventory as {attachments?:unknown})?.attachments)},
-    supplies:{...c.supplies,flash:Number.isFinite(c.supplies.flash)?
+    supplies:{...c.supplies,wedges,cuffs,
+     flash:Number.isFinite(c.supplies.flash)?
      Math.max(0,Math.min(1000,Math.floor(c.supplies.flash))):4},
     kitPresets:readKitPresets((c as {kitPresets?:unknown}).kitPresets),
     ...(parsedRules?{rules:parsedRules}:{}),
@@ -383,6 +401,8 @@ export function resolveOperation(c:CampaignState,r:CampaignReport):CampaignState
    reconcileCampaignFieldInventory(current.loadout,current.magazines,
     r.fieldRemaining[o.id]);
   const withKit=settled?{...current,
+   fieldRestockLayout:current.fieldRestockLayout??
+    fieldRestockPreference(o.loadout),
    loadout:{...current.loadout,fieldInventory:settled}}:current;
   return performance?{...withKit,armorCondition:missionArmorCondition(
    o.armorCondition,performance,initialArmorIntegrity(o.loadout))}:withKit;
@@ -477,6 +497,14 @@ export function purchaseMedical(c:CampaignState):CampaignState{
  const cost=170;
  if(!canSpend(c,cost))return c;
  return {...c,funds:charge(c,cost),supplies:{...c.supplies,medical:c.supplies.medical+1}};
+}
+/** Paid finite HQ reserves. No issue/refill occurs until a separate action. */
+export function purchaseFieldStock(c:CampaignState,key:'wedges'|'cuffs'):CampaignState{
+ const pack=FIELD_STOCK_PACKS[key];
+ if(c.activeContractId||!canSpend(c,pack.price)||
+  c.supplies[key]>FIELD_STOCK_LIMIT-pack.quantity)return c;
+ return {...c,funds:charge(c,pack.price),
+  supplies:{...c.supplies,[key]:c.supplies[key]+pack.quantity}};
 }
 export function treatOperator(c:CampaignState,id:string):CampaignState{
  const o=c.operators.find(m=>m.id===id&&m.recoveryDays>0);
@@ -709,7 +737,11 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  if(!o)return c;
  const next=setEquipmentChoice(o.loadout,slot,itemId);
  if(next===o.loadout)return c;
- return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
+ const stock=quoteCampaignFieldStockChange(c,o.loadout,next);
+ if(!stock.ok||!fieldCarryReport(next,stageMagazines(o.magazines,next),
+  next.fieldInventory??initialFieldInventory(next)).valid)return c;
+ return {...c,supplies:stock.stock,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
+  fieldRestockLayout:fieldRestockPreference(next),
   medicalSupplies:normalizedMedicalSupplies(m.medicalSupplies,kitMedicalSupplies(next)),
   magazines:stageMagazines(m.magazines,next),
   armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
@@ -787,14 +819,22 @@ function issueCampaignFieldInventory(c:CampaignState,id:string,
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!member)return c;
  const next=readFieldInventory(inventory,member.loadout);
+ // A malformed issue must not be normalized into free, hidden equipment.
+ for(const item of ['flashbang','wedge','zip-tie'] as const)
+  if(fieldQuantity(next,item)!==fieldQuantity(inventory,item))return c;
  if(!fieldCarryReport(member.loadout,member.magazines,next).valid)return c;
+ const stock=quoteCampaignFieldStockChange(c,member.loadout,
+  {...member.loadout,fieldInventory:next});
+ if(!stock.ok)return c;
  const otherFlash=c.operators.filter(o=>o.id!==id&&
   c.squadIds.includes(o.id)).reduce((sum,o)=>sum+fieldQuantity(
   o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
  if(c.squadIds.includes(id)&&
   otherFlash+fieldQuantity(next,'flashbang')>c.supplies.flash)return c;
- return {...c,operators:c.operators.map(o=>o.id===id?
-  {...o,loadout:{...o.loadout,fieldInventory:next}}:o)};
+ return {...c,supplies:stock.stock,operators:c.operators.map(o=>o.id===id?
+  {...o,fieldRestockLayout:fieldRestockPreference(
+   {...o.loadout,fieldInventory:next}),
+   loadout:{...o.loadout,fieldInventory:next}}:o)};
 }
 
 /** Copy carried gadgets only. The destination retains its own magazines,
@@ -837,6 +877,7 @@ export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:str
  const proposed=readEquipmentLoadout(preset.kit,preset.weapon);
  const incoming=proposed.fieldInventory??initialFieldInventory(proposed);
  if(!fieldCarryReport(proposed,member.magazines,incoming).valid)return false;
+ if(!quoteCampaignFieldStockChange(c,member.loadout,proposed).ok)return false;
  if(c.squadIds.includes(id)){
   const reserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
    .reduce((sum,o)=>sum+fieldQuantity(o.loadout.fieldInventory??
@@ -867,11 +908,16 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  const attachments=transfer.stockAfter;
  const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
  if(swapped===c&&member.weapon!==preset.weapon)return c;
- return {...swapped,inventory:{...swapped.inventory,attachments},
+ const targetKit=readEquipmentLoadout(preset.kit,preset.weapon);
+ const fieldStock=quoteCampaignFieldStockChange(swapped,member.loadout,targetKit);
+ if(!fieldStock.ok)return c;
+ return {...swapped,supplies:fieldStock.stock,
+  inventory:{...swapped.inventory,attachments},
   operators:swapped.operators.map(o=>o.id===id?{
    ...o,weaponConfiguration:desired,
    ...fitMagazineInventory(o.id,o.weapon,desired,o.magazine,o.reserve,o.magazines),
-   loadout:readEquipmentLoadout(preset.kit,preset.weapon),
+   loadout:targetKit,
+   fieldRestockLayout:fieldRestockPreference(targetKit),
    medicalSupplies:normalizedMedicalSupplies(o.medicalSupplies,
     kitMedicalSupplies(readEquipmentLoadout(preset.kit,preset.weapon))),
    magazines:stageMagazines(fitMagazineInventory(o.id,o.weapon,desired,

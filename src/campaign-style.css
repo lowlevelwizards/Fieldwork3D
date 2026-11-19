@@ -1669,3 +1669,25 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  min-height:44px;margin:0;padding:8px 4px;font-size:10px;line-height:1.2;
  touch-action:manipulation;white-space:nowrap}
 .campaign-shell .campaign-kit-preview-controls button:disabled{opacity:.5;cursor:default}
+
+/* L2.13 F5 — quoted stock consumption in the existing Operations surfaces. */
+.campaign-squad-refill,.campaign-kit-refill{min-width:0;margin:10px 0;
+ border:1px solid #607b6b;background:#172b28;border-radius:8px;padding:10px}
+.campaign-squad-refill h3{margin:0 0 6px;font:700 12px var(--fw-font-menu);
+ letter-spacing:.045em;color:#e4eadb}
+.campaign-squad-refill-summary,.campaign-kit-refill p{margin:4px 0 9px;
+ color:#cedac8;font-size:11px;line-height:1.5}
+.campaign-squad-refill-lines{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.campaign-squad-refill-line{display:flex;flex-direction:column;gap:3px;
+ padding:7px;background:#243a34;border:1px solid #435f51;border-radius:5px;min-width:0}
+.campaign-squad-refill-line strong{font-size:10px;color:#edf0df}
+.campaign-squad-refill-line span{color:#cad4c8;font-size:10px;overflow-wrap:anywhere}
+.campaign-squad-refill .campaign-muted{margin:4px 0}
+.campaign-kit-refill>strong{font-size:11px;letter-spacing:.055em}
+.campaign-kit-refill-actions{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.campaign-kit-refill-actions button{font-size:10px;padding:8px;margin:0;min-height:42px}
+.campaign-squad-refill button:disabled,.campaign-kit-refill button:disabled{
+ opacity:.58;cursor:not-allowed}
+@media(max-width:520px){.campaign-squad-refill-lines{grid-template-columns:minmax(0,1fr)}
+ .campaign-squad-refill,.campaign-kit-refill{padding:8px}
+ .campaign-kit-refill-actions{gap:4px}}

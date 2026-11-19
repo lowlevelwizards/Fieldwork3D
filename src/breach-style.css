@@ -4165,3 +4165,41 @@ body.nvg-selected-view #breach3dCanvas{
 .quick-states[data-scope-kind="operator"] .quick-scope{
  border-left:3px solid transparent;padding-left:7px;
 }
+
+/* Loadout L2.13 F4 — compact after-action physical equipment closeout.
+   Report stays in the existing Squad focus, never a fourth navigation tab. */
+.fw-f4-inventory,.fw-f4-squad-summary{
+ margin:9px 0 0;padding:10px;border:1px solid #58736b;
+ border-radius:6px;background:#162624;min-width:0}
+.fw-f4-inventory-header{display:flex;justify-content:space-between;
+ align-items:baseline;gap:7px;flex-wrap:wrap;margin-bottom:7px;
+ font:700 10px/1.4 var(--fw-font-menu,inherit);letter-spacing:.055em}
+.fw-f4-inventory-header strong{color:#e7ebdd}
+.fw-f4-status{color:#bcd2bd;font-size:10px}
+.fw-f4-inventory-tiles{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px}
+.fw-f4-inventory-tile{display:flex;flex-direction:column;gap:3px;
+ border:1px solid #35574e;border-radius:4px;padding:6px;
+ background:#1a302b;min-width:0}
+.fw-f4-inventory-tile small{font-size:9px;color:#abbdb3;letter-spacing:.06em}
+.fw-f4-inventory-tile strong{font-size:10px;color:#dfeadd;
+ font-weight:650;overflow-wrap:anywhere}
+.fw-f4-inventory-tile:last-child{grid-column:span 2}
+.fw-f4-team-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:5px}
+.fw-f4-team-chip{display:flex;flex-direction:column;gap:3px;min-width:0;
+ border-left:2px solid #7d9d89;background:#20322d;padding:6px 7px}
+.fw-f4-team-chip strong{color:#ebeedf;font-size:10px}
+.fw-f4-team-chip small{color:#bbd2bf;font-size:9px;overflow-wrap:anywhere}
+.fw-f4-hq{margin:8px 0 0;color:#c0cdb9;font-size:10px}
+.fw-f4-placements{border-top:1px solid #3d5a51;margin-top:9px;padding-top:8px}
+.fw-f4-placements>strong{font-size:10px;letter-spacing:.06em}
+.fw-f4-placement{display:flex;justify-content:space-between;
+ gap:7px;padding:5px 0;border-bottom:1px solid #2d4a42;
+ color:#c8d7c8;font-size:10px}
+.fw-f4-warning{color:#e5ba85;font-size:10px;margin:7px 0 0}
+@media(max-width:530px){
+ .fw-f4-inventory,.fw-f4-squad-summary{padding:8px;margin-top:7px}
+ .fw-f4-inventory-tiles{gap:4px}
+ .fw-f4-inventory-tile{padding:5px}
+ .fw-f4-team-row{grid-template-columns:minmax(0,1fr)}
+}

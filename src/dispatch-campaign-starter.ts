@@ -24,7 +24,8 @@ export function newDispatchPilotCampaign(seed:number,draft?:DispatchCampaignDraf
  const operators=base.operators.map(o=>issueDispatchPilotOperator(o,active.referenceId));
  return reconcileCampaignWeaponOwnership({...base,dispatchSetup:setup,operators,
   ...(setup.economy==='unlimited'?{
-   funds:1000000,supplies:{medical:999,ammo:9999,flash:999}
+   funds:1000000,supplies:{medical:999,ammo:9999,flash:999,
+    wedges:999,cuffs:999}
   }:{}),
   ...(setup.startingInventory==='all'?{inventory:{...base.inventory,
    weapons:{carbine:8,smg:8,rifle:8,shotgun:8}}}:{})

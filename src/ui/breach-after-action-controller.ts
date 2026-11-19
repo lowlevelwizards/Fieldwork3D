@@ -2,6 +2,7 @@
  * Reuses source recorder and mission results; never mutates combat or replay.
  */
 import {buildAfterActionReport,type AfterActionReport} from '../breach-after-action-report.ts';
+import type {AfterActionInventoryCloseout} from '../breach-after-action-inventory.ts';
 import {renderSquadView,renderSquadDetails} from './breach-after-action-squad.ts';
 import type {MissionRecorder} from '../breach-replay.ts';
 import {makeAfterActionLaunchRequest} from '../breach-after-action-replay-navigation.ts';
@@ -148,7 +149,7 @@ type State={
   selectedHighlight:string|null;
   operatorRecordOpen:boolean;summaryCompact:boolean;
   scroll:Partial<Record<AfterActionTab,number>>;
-  showIntel:boolean;
+  showIntel:boolean;inventory:AfterActionInventoryCloseout|null;
   timelineEvents:readonly AfterActionTimelineEvent[];
   timelineFilter:TimelineFilter;timelineSelectedKey:string|null;
   timelineClusterId:string|null;timelineLedgerOpen:boolean;
@@ -176,7 +177,7 @@ const make=(tag:string,cls='',value?:string)=>{
   return el;
 };
 export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
-  options:{showIntel:boolean}):void{
+  options:{showIntel:boolean;inventory?:AfterActionInventoryCloseout|null}):void{
  const content=root.querySelector<HTMLElement>('#afterActionBody');
  const nav=root.querySelector<HTMLElement>('#afterActionTabs');
  const intel=root.querySelector<HTMLElement>('#debriefIntelBlock');
@@ -192,6 +193,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
      forensicScope:'cumulative',
      selectedHighlight:null,operatorRecordOpen:false,summaryCompact:false,
      scroll:{},showIntel:options.showIntel,
+     inventory:options.inventory??null,
      timelineEvents:buildAfterActionTimeline(rec),
      timelineFilter:'key',timelineSelectedKey:null,timelineClusterId:null,
      timelineLedgerOpen:false,timelineLedgerLimit:30,timelineRailScroll:0,
@@ -262,6 +264,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
    }
  }else{
    state.showIntel=options.showIntel;
+   if(options.inventory)state.inventory=options.inventory;
    // A menu exit can release GPU resources while retaining this report.
    // Reopening the same completed mission remounts its presenter once.
    if(!models.has(root)&&!root.hidden)renderers.get(root)?.();
@@ -452,7 +455,7 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          s.operatorRecordOpen=true;draw();
          safeContent.querySelector<HTMLButtonElement>(
            '.fw-v4-record-back')?.focus({preventScroll:true});
-       },inspectContribution);
+       },inspectContribution,s.inventory??undefined);
      if(s.operatorRecordOpen){
        const operator=s.report.operators.find(o=>o.id===s.selectedOperator);
        if(operator){
@@ -472,7 +475,9 @@ export function renderAfterActionWorkspace(root:HTMLElement,rec:MissionRecorder,
          modelHost.setAttribute('data-after-squad-model','');
          modelHost.setAttribute('aria-label',
            'Historical 3D model for '+operator.name);
-         record.append(back,modelHost,renderSquadDetails(operator,inspectContribution));
+         record.append(back,modelHost,
+           renderSquadDetails(operator,inspectContribution,
+             s.inventory??undefined));
          // The complete record replaces the detail pane, not the ranked roster.
          const focus=screen.querySelector('.fw-v3-squad-focus');
          if(focus)focus.replaceWith(record);
