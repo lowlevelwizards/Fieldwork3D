@@ -259,7 +259,8 @@ export const FAMILY_PARTS:Readonly<Record<string,WeaponFamilyPart>>={
  'r870-18-bead':add('r870-18-bead','Police-style 18-inch bead-sight barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'mid',role:'shotgun',nominalInches:18}),
  'r870-14-bead':add('r870-14-bead','Compact 14-inch bead-sight barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'short',role:'shotgun',nominalInches:14}),
  'r870-10-bead':add('r870-10-bead','Ultra-compact 10-inch bead-sight barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'short',role:'shotgun',nominalInches:10}),
- 'r870-26-ventrib':add('r870-26-ventrib','Long 26-inch field barrel and ventilated rib','r870','barrel',{receivers:['r870-police-receiver'],length:'long',role:'shotgun',nominalInches:26})
+ 'r870-26-ventrib':add('r870-26-ventrib','Long 26-inch field barrel and ventilated rib','r870','barrel',{receivers:['r870-police-receiver'],length:'long',role:'shotgun',nominalInches:26}),
+ 'r870-20-rifle-sight':add('r870-20-rifle-sight','20-inch rifle-sighted barrel','r870','barrel',{receivers:['r870-police-receiver'],length:'mid',role:'shotgun',nominalInches:20})
 };
 const p=(id:string,name:string,weapon:'carbine'|'rifle'|'smg'|'shotgun',family:WeaponFamily,
  receiver:string,stock:string,grip:string,magazine:string,handguard:string,
@@ -341,7 +342,10 @@ export const FAMILY_PRESETS:readonly WeaponFamilyPreset[]=[
   'r870-short-tube','r870-short-black-pump','r870-14-bead'),
  p('r870-field-26','Remington 870 · Field 26-inch Style','shotgun','r870',
   'r870-police-receiver','r870-police-wood-stock','r870-police-wood-wrist',
-  'r870-standard-tube','r870-sport-wood-pump','r870-26-ventrib')
+  'r870-standard-tube','r870-sport-wood-pump','r870-26-ventrib'),
+ p('r870-rifle-sighted-20','Remington 870 · 20-inch Rifle-Sighted Style','shotgun','r870',
+  'r870-police-receiver','r870-police-poly-stock','r870-police-poly-grip',
+  'r870-standard-tube','r870-police-black-pump','r870-20-rifle-sight')
 ];
 export function familyPreset(id:string):WeaponFamilyPreset|undefined{
  return FAMILY_PRESETS.find(preset=>preset.id===id);
@@ -482,13 +486,16 @@ export function proposeFamilyPartChange(build:WeaponFamilyBuild,weapon:WeaponId,
    if(candidate.magazine==='r870-mcs-mini-tube')candidate.barrel='r870-10-bead';
    else if(candidate.magazine==='r870-short-tube')candidate.barrel='r870-14-bead';
    else if(candidate.magazine==='r870-extended-tube')candidate.barrel='r870-18-bead';
-   else if(candidate.barrel!=='r870-18-bead'&&candidate.barrel!=='r870-26-ventrib')
+   else if(!['r870-18-bead','r870-20-rifle-sight','r870-26-ventrib'].includes(candidate.barrel))
     candidate.barrel='r870-18-bead';
   }else if(slot==='handguard'){
    if(candidate.handguard==='r870-mcs-mini-pump')candidate.barrel='r870-10-bead';
    else if(candidate.handguard==='r870-short-black-pump')candidate.barrel='r870-14-bead';
    else if(candidate.handguard==='r870-sport-wood-pump')candidate.barrel='r870-26-ventrib';
-   else if(candidate.barrel!=='r870-18-bead')candidate.barrel='r870-18-bead';
+   else if(candidate.barrel!=='r870-18-bead'&&
+    !(candidate.barrel==='r870-20-rifle-sight'&&
+     ['r870-police-black-pump','r870-police-wood-pump'].includes(candidate.handguard)))
+    candidate.barrel='r870-18-bead';
   }
   const appropriate=r870DefaultFrontForBarrel(candidate.barrel)!;
   if(!r870FrontCompatible(candidate.barrel,candidate.magazine,candidate.handguard)){
