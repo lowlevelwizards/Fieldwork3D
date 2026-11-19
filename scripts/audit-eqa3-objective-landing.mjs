@@ -53,6 +53,18 @@ for(const [seed,mission] of cases){
       admitted});
     }
    }
+   // Geometry-only sensitivity analysis: deliberately NOT a live door
+   // command, not an assertion that every hinge can physically swing this
+   // far, and never mutate the real Session's door state. This separates
+   // an architectural objective isolation from a closed-leaf limitation.
+   const hypotheticalOpenDoors=s.doors.map(d=>({
+    ...d,open:true,locked:false,jammed:false,wedged:false,
+    openFraction:d.kind==='shutter'?1:d.kind==='sliding'?1:1.12
+   }));
+   const hypotheticalOpenRoute=routeWithSqueezeWorld(
+     leader.p,point,hypotheticalOpenDoors,world);
+   const hypotheticalOpenNearby=candidates.filter(x=>x.contact&&x.liveBodyStand)
+     .slice(0,12).length;
    const doors=[...s.doors].map(d=>({
     id:d.id,locked:d.locked,open:d.open,
     fraction:d.openFraction,center:doorCenter(d),
@@ -61,6 +73,12 @@ for(const [seed,mission] of cases){
    })).sort((a,b)=>a.fromObjective-b.fromObjective).slice(0,7);
    report.push({seed,mission,entry,objective:point,start:leader.p,
     civilian:person?{state:person.state,p:person.p}:null,
+    hypotheticalAllDoorsOpen:{
+      // Upper-bound geometry comparison, not an instruction to open everything.
+      routeToExactObjective:hypotheticalOpenRoute.length>0,
+      routeNodes:hypotheticalOpenRoute.length,
+      nearbyContactSites:hypotheticalOpenNearby
+    },
     closestDoor:doors,
     candidates:{total:candidates.length,
      knownCanStand:candidates.filter(c=>c.knownCanStand).length,
