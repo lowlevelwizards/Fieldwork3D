@@ -4,7 +4,7 @@
  */
 export const R870_P07=Object.freeze({
  stockX:-15.78,muzzleX:19.20,muzzleY:.94,
- pumpStartX:2.91,pumpEndX:11.43,pumpRearTravel:2.28,
+ pumpStartX:2.72,pumpEndX:11.43,pumpRearTravel:2.28,
  supportNearX:4.15,supportFarX:10.55,supportY:-2.0,
  primaryX:-7.80,primaryY:-2.70
 });
