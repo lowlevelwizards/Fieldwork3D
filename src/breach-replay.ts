@@ -10,6 +10,7 @@ import type {BattleEvent} from './breach-combat.ts';
 import type {ExecutionEvent} from './breach-execution-events.ts';
 import {copyMedicalCondition,newMedicalCondition} from './breach-medical-wounds.ts';
 import {normalizedMedicalSupplies,kitMedicalSupplies} from './equipment-medical-supplies.ts';
+import type {FieldInventory} from './equipment-field-inventory.ts';
 import {ReplayMotionRecorder,type ReplayPresentation} from './breach-replay-motion.ts';
 import {ReplayPlanRecorder} from './breach-replay-plans.ts';
 import {ReplayBallisticsRecorder} from './breach-replay-ballistics.ts';
@@ -51,6 +52,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** F2: sparse historical field inventory locations for actual replayed depletion. */
+ fieldInventory?:FieldInventory;
  /** EQA3.10: finite physical restraint quantity (older films default zero). */
  restraintRemaining?:number;
  /** EQA3.9: actual SECURE/FOLLOW support-hand reach, absent in old film. */
@@ -181,6 +184,12 @@ export function snapshot(s:Session,seenGround?:string[],
        carryingId:a.carryingId,carriedById:a.carriedById,
        wedgeRemaining:a.wedgeRemaining,
        restraintRemaining:a.restraintRemaining,
+       fieldInventory:a.equipment?.fieldInventory?
+         reuseFrozenReplayValue(a.equipment.fieldInventory,
+           prior?.fieldInventory,
+           ()=>({version:1 as const,stacks:
+             a.equipment!.fieldInventory!.stacks.map(row=>({...row}))})):
+         undefined,
        weaponLightOn:a.weaponLightOn,
        nvgDeployed:a.nvgDeployed===true,
       armorIntegrity:a.armorIntegrity,helmetIntegrity:a.helmetIntegrity,
@@ -486,6 +495,11 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
+      // F2: rewind physically carried locations as well as the HUD counters.
+      // Archived frames without this optional field keep their old kit.
+      ...(copy.fieldInventory&&a.equipment?{
+        equipment:{...a.equipment,fieldInventory:{version:1 as const,
+          stacks:copy.fieldInventory.stacks.map(row=>({...row}))}}}:{}),
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
