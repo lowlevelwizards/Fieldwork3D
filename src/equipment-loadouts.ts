@@ -97,3 +97,7 @@ export function loadMobilityDescription(loadout:EquipmentLoadout,
  * increase the existing two-device team-wide mission allotment. */
 export const equippedFlashCharges=(loadout:EquipmentLoadout):number=>
  fieldQuantity(loadout.fieldInventory??initialFieldInventory(loadout),'flashbang');
+/** Finite physical flex cuffs; tactical quantity is copied at deployment.
+ * No cuffs are invented for older loadouts or for enemy actors. */
+export const equippedRestraintCharges=(loadout:EquipmentLoadout):number=>
+ fieldQuantity(loadout.fieldInventory??initialFieldInventory(loadout),'zip-tie');
