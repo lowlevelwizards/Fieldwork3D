@@ -55,6 +55,7 @@ function run(seed,mission,seconds=12){
   let firstCivilianReactionAt=null,firstCivilianFlightAt=null;
   let firstCivilianInjuryAt=null,maxCivilianTickMove=0;
   let civilianTransitions=0,refugeRechecks=0;
+  const civilianStateChanges=[];
   const lastStates=new Map(civilians.map(c=>[c.id,c.state]));
   const lastRechecks=new Map(civilians.map(c=>[c.id,c.lastRefugeRecheckAt]));
   const discoveredCivilianIds=new Set();
@@ -80,7 +81,14 @@ function run(seed,mission,seconds=12){
     if(c.state==='fleeing'||c.state==='hiding')
      firstCivilianFlightAt??=round(s.seconds);
     if(c.health<2)firstCivilianInjuryAt??=round(s.seconds);
-    if(c.state!==lastStates.get(c.id))civilianTransitions++;
+    if(c.state!==lastStates.get(c.id)){
+     civilianTransitions++;
+     civilianStateChanges.push({t:round(s.seconds),id:c.id,
+      state:c.state,fear:round(c.fear),
+      refugeCandidates:c.refugePoints.length,
+      goal:c.goal?{...c.goal}:null,
+      estimatedThreat:c.threatEstimate?{...c.threatEstimate}:null});
+    }
     lastStates.set(c.id,c.state);
     if(c.lastRefugeRecheckAt!==lastRechecks.get(c.id)&&
        c.lastRefugeRecheckAt>=0)refugeRechecks++;
@@ -108,6 +116,13 @@ function run(seed,mission,seconds=12){
    evidenceObservers:discoveredCivilianIds.size,civilianTransitions,
    refugeRechecks,maxCivilianTickMove:round(maxCivilianTickMove),
    observerSamples,activeFrames,
+   civilianStateChanges,
+   finalCivilians:civilians.map(c=>({id:c.id,p:{...c.p},
+    state:c.state,health:c.health,fear:round(c.fear),
+    threatEstimate:c.threatEstimate?{...c.threatEstimate}:null,
+    homeRoomId:c.homeRoomId,refugeCandidates:c.refugePoints.length,
+    navCount:c.nav.length,goal:c.goal?{...c.goal}:null,
+    lastRefugeRecheckAt:round(c.lastRefugeRecheckAt)})),
    limitation:'Contact and firing are emergent; absent contact is recorded, not manufactured.'};
   assert.ok(activeFrames>0,'must advance real fixed-step simulation');
   assert.ok(observerSamples>0);
