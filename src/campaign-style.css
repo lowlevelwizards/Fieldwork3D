@@ -1691,3 +1691,150 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(max-width:520px){.campaign-squad-refill-lines{grid-template-columns:minmax(0,1fr)}
  .campaign-squad-refill,.campaign-kit-refill{padding:8px}
  .campaign-kit-refill-actions{gap:4px}}
+
+
+/* UX-L2 — three-workspace Field Armory. Existing equipment and supply
+ * ledgers remain authoritative; the panes only rearrange their controls. */
+.campaign-armory-screen .campaign-kit-workspace-nav{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));
+ gap:6px;min-width:0;margin:8px 0 14px;
+}
+.campaign-shell .campaign-kit-workspace-tab{
+ min-width:0;margin:0;padding:9px 5px;
+ min-height:48px;font-size:clamp(10px,2.7vw,14px);line-height:1.2;
+ white-space:normal;overflow-wrap:normal;word-break:normal;
+ border:1px solid var(--fw-panel-border);border-radius:8px;
+ background:var(--fw-panel-raised);color:var(--fw-text-warm);
+}
+.campaign-shell .campaign-kit-workspace-tab[aria-current="true"]{
+ background:var(--fw-sage);color:var(--fw-bg);
+ border-color:var(--fw-sage);font-weight:800;
+}
+.campaign-armory-screen .campaign-kit-readiness-panel{display:none;min-width:0;gap:9px}
+.campaign-armory-screen[data-kit-workspace="readiness"] .campaign-kit-readiness-panel{
+ display:grid;
+}
+.campaign-armory-screen[data-kit-workspace="readiness"] .campaign-kit-editor,
+.campaign-armory-screen[data-kit-workspace="readiness"] .campaign-kit-summary> :not(.campaign-kit-readiness-panel){
+ display:none;
+}
+.campaign-armory-screen[data-kit-workspace="readiness"] .campaign-kit-grid{
+ grid-template-columns:minmax(0,1fr);
+}
+.campaign-armory-screen[data-kit-workspace="readiness"] .campaign-kit-summary{
+ position:static;min-width:0;
+}
+.campaign-armory-screen[data-kit-workspace="physical"] .campaign-kit-categories,
+.campaign-armory-screen[data-kit-workspace="physical"] .campaign-kit-editor>h2,
+.campaign-armory-screen[data-kit-workspace="physical"] .campaign-kit-utilities{
+ display:none;
+}
+.campaign-armory-screen .campaign-kit-utilities{
+ margin:0 0 10px;min-width:0;
+}
+.campaign-armory-screen .campaign-kit-utilities>summary{
+ cursor:pointer;min-height:44px;display:flex;align-items:center;
+ color:var(--fw-text-muted);font:700 12px var(--fw-font-action);
+}
+.campaign-armory-screen .campaign-kit-utilities .campaign-kit-presets{
+ margin:0 0 8px;
+}
+.campaign-armory-screen .campaign-kit-at-a-glance{gap:5px}
+.campaign-armory-screen .campaign-kit-stat{padding:8px;gap:2px}
+.campaign-armory-screen .campaign-kit-stat small{font-size:10px}
+.campaign-armory-screen .campaign-kit-stat strong{font-size:14px;line-height:1.2}
+/* The active category is the only one whose existing controls render.
+ * A hidden category never loses its saved field state or items. */
+.campaign-armory-screen[data-kit-workspace="physical"] .fw-loadout-group:not([data-loadout-group="carry"]),
+.campaign-armory-screen[data-kit-workspace="equipment"] .fw-loadout-group[data-loadout-group="carry"]{
+ display:none!important;
+}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-grid{gap:10px}
+ .campaign-armory-screen .campaign-kit-summary{
+  padding:10px;gap:6px;
+ }
+ .campaign-armory-screen .campaign-kit-preview{height:194px;min-height:194px}
+ .campaign-armory-screen .campaign-preview-hint{font-size:10px}
+ .campaign-armory-screen .campaign-kit-preview-controls{gap:4px}
+ .campaign-armory-screen .campaign-kit-preview-controls button{
+  min-height:40px;font-size:10px;padding:6px 2px;
+ }
+ .campaign-armory-screen .campaign-kit-actions{gap:4px}
+ .campaign-armory-screen .campaign-kit-actions button{
+  min-width:0;min-height:40px;padding:7px 5px;font-size:11px;
+ }
+ .campaign-armory-screen .campaign-kit-at-a-glance{
+  grid-template-columns:repeat(3,minmax(0,1fr));
+ }
+ .campaign-armory-screen .campaign-kit-stat strong{font-size:13px}
+ .campaign-armory-screen .campaign-kit-nav{margin:2px 0 5px}
+ .campaign-armory-screen .campaign-kit-workspace-nav{margin:8px 0 10px}
+ .campaign-armory-screen .campaign-kit-editor{padding:10px}
+ .campaign-armory-screen[data-kit-workspace="readiness"] .campaign-kit-summary{
+  padding:12px;
+ }
+}
+
+
+/* UX-L3 — optional floating LIVE preview for touch equipment placement.
+ * One canvas and one rig: CSS relocates the existing render host, rather than
+ * allocating a second WebGL context or replacing the preview model. */
+.campaign-armory-screen .campaign-kit-preview-dock-toggle{
+ min-height:44px;margin:0;font-size:11px;
+ border-color:#87a18c;background:#304a3c;
+}
+@media(max-width:620px){
+ .campaign-armory-screen[data-preview-docked="true"]:not([data-kit-workspace="readiness"]){
+  padding-bottom:210px;
+ }
+ .campaign-armory-screen[data-preview-docked="true"]:not([data-kit-workspace="readiness"])
+  .campaign-kit-preview{
+  position:fixed;z-index:150;right:12px;
+  bottom:calc(env(safe-area-inset-bottom) + 54px);
+  width:min(225px,57vw);height:180px;min-height:180px;
+  border:2px solid #b6cba9;border-radius:12px;
+  box-shadow:0 8px 25px #000a;
+ }
+ .campaign-armory-screen[data-preview-docked="true"]:not([data-kit-workspace="readiness"])
+  .campaign-kit-preview-dock-toggle{
+  position:fixed;z-index:151;right:12px;
+  bottom:calc(env(safe-area-inset-bottom) + 8px);
+  width:min(225px,57vw);min-height:42px;
+  padding:8px 5px;border-radius:7px;
+  background:#c3d2b2;color:#13241d;
+ }
+}
+/* Keep a pinned preview entirely opt-in; touch scrolling and placement
+ * remain available when the user closes it. */
+
+
+/* UX-L4: keep the new primary navigation reachable while scrolling long kits.
+ * Physical Carry prioritizes the item list; equipment statistics and
+ * appearance actions remain in Equipment / Readiness, not repeated. */
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-workspace-nav{
+  position:sticky;top:calc(env(safe-area-inset-top) + 3px);z-index:60;
+  padding:5px 3px;margin-inline:-3px;
+  border-radius:9px;background:#142722;box-shadow:0 3px 14px #091b18bb;
+ }
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>h2,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>.campaign-kit-actions,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>.campaign-kit-at-a-glance,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>.campaign-kit-preview-controls,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>.campaign-preview-hint{
+  display:none;
+ }
+ .campaign-armory-screen[data-kit-workspace="physical"] .campaign-kit-preview{
+  height:176px;min-height:176px;
+ }
+ .campaign-armory-screen[data-kit-workspace="equipment"]
+  .campaign-kit-stat:nth-child(n+3){display:none}
+ .campaign-armory-screen[data-kit-workspace="equipment"]
+  .campaign-kit-at-a-glance{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
