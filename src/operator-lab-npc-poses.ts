@@ -268,8 +268,12 @@ export class NpcLabPreview{
     this.scene.add(this.civilianDisplay);
    }
    const c=sampleNpcCivilian(id,clock);
-   updateCivilianRig(this.civilian,c,bound(clock),feet);
+   // The pose's working world matrices must inherit this frame's preview
+   // origin BEFORE the leg solver runs. Moving the parent afterward leaves
+   // one seek/switch frame using an out-of-date transform.
    this.civilianDisplay!.position.set(-c.p.x,0,-c.p.y);
+   this.civilianDisplay!.updateWorldMatrix(true,false);
+   updateCivilianRig(this.civilian,c,bound(clock),feet);
    this.civilian.root.visible=true;
    if(this.hostile)this.hostile.root.visible=false;
    const physical=civilianPhysicalityAt(c,bound(clock));
@@ -290,6 +294,8 @@ export class NpcLabPreview{
   // the motion sample. Keep its rig motor root at that position before
   // IK, then camera-lock only the outer preview parent.
   this.hostile.root.position.set(state.pose.x,0,state.pose.z);
+  this.hostileDisplay!.position.set(-state.pose.x,0,-state.pose.z);
+  this.hostileDisplay!.updateWorldMatrix(true,false);
   // The same single-rig blend used for civilians also covers hostile
   // reaction-track switching. A rewind of the same track remains exact.
   poseOperator(this.hostile,{...state.pose,replayFeet:feet,
@@ -300,7 +306,6 @@ export class NpcLabPreview{
        state.pose.aiming?'aim':state.pose.firing?'fire':'hold'),
    npcTransitionDuration:state.pose.down?.15:
      state.pose.surrender?.20:.25},0);
-  this.hostileDisplay!.position.set(-state.pose.x,0,-state.pose.z);
   this.hostile.head.rotation.y+=state.physical.headYaw;
   this.hostile.head.rotation.x+=state.physical.headPitch;
   this.hostile.root.visible=true;
