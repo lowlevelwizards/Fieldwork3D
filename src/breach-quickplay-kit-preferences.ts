@@ -2,7 +2,7 @@
  * Separate from the historical cosmetic-only persistence contract so older
  * standalone Operator Studio editors cannot erase the selected field kit.
  */
-import type {RosterState} from './breach-roster.ts';
+import {freshQuickPlayRoster,type RosterState} from './breach-roster.ts';
 import {readEquipmentLoadout} from './equipment-loadouts.ts';
 import {readWeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
@@ -53,8 +53,6 @@ export function applyQuickPlayKitPreferences(
  * zero injuries and no campaign-style physical stock duplication.
  */
 export function refreshQuickPlayPreparedRoster(roster:RosterState):RosterState{
- return applyQuickPlayKitPreferences({
-  version:1,members:roster.members.map(member=>({...member,
-   injuries:0,recovery:0,shotsFired:0,fired:0}))
- },serializeQuickPlayKitPreferences(roster));
+ return applyQuickPlayKitPreferences(freshQuickPlayRoster(roster),
+  serializeQuickPlayKitPreferences(roster));
 }
