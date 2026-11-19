@@ -62,6 +62,19 @@ try{
   assert.equal(Number(await rigMeter.getAttribute('aria-valuenow')),before,
    'no-op auto pack preserves the true physical carrying report');
   const pickOne=panel.getByRole('button',{name:'Select one Flashbang from RIG'});
+  const dragGrip=pickOne.locator('.fw-field-inventory-drag-grip');
+  const gripBox=await dragGrip.boundingBox();
+  assert.ok(gripBox&&gripBox.width>=36&&gripBox.height>=38,
+   'drag grip remains thumb-sized');
+  if(device==='phone'){
+   const gestures=await pickOne.evaluate(el=>{
+    const grip=el.querySelector('.fw-field-inventory-drag-grip');
+    return {tile:getComputedStyle(el).touchAction,
+     grip:grip?getComputedStyle(grip).touchAction:null};
+   });
+   assert.deepEqual(gestures,{tile:'pan-y',grip:'none'},
+    'mobile scroll over item text remains separate from grip dragging');
+  }
   const preview=panel.locator('.fw-pre-go-preview');
   const previewHasWebGL=await preview.locator('canvas').count()>0;
   await pickOne.click();

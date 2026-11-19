@@ -134,6 +134,11 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     select.className='fw-field-inventory-select-item';
     // L2.11E: optional direct pointer drag. The same quote/commit path is
     // used by keyboard/tap placement; drawing a ghost never edits stock.
+    const grip=document.createElement('span');
+    grip.className='fw-field-inventory-drag-grip';
+    grip.setAttribute('aria-hidden','true');
+    grip.title='Drag one item to a different carrying location';
+    grip.textContent='⠿';
     let start:{pointer:number;x:number;y:number}|null=null;
     let ghost:HTMLElement|null=null,dragged=false,suppressClick=false;
     const cleanup=()=>{
@@ -143,9 +148,12 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      start=null;dragged=false;
     };
     select.addEventListener('pointerdown',event=>{
-     if(event.pointerType==='mouse'&&event.button!==0)return;
+     // Scrolling stays available on tile text; touch drag begins at the grip.
+     if(!event.isPrimary||(event.pointerType==='mouse'&&event.button!==0))return;
+     if(event.pointerType==='touch'&&!(event.target instanceof Element&&
+      event.target.closest('.fw-field-inventory-drag-grip')))return;
      start={pointer:event.pointerId,x:event.clientX,y:event.clientY};
-     dragged=false;select.setPointerCapture(event.pointerId);
+     dragged=false;try{select.setPointerCapture(event.pointerId)}catch{/* optional */}
     });
     select.addEventListener('pointermove',event=>{
      if(!start||event.pointerId!==start.pointer)return;
@@ -177,6 +185,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      cleanup();
      if(!wasDragging)return;
      suppressClick=true;
+     // A drag may not generate a click; don't swallow a subsequent tap.
+     window.setTimeout(()=>{suppressClick=false;},0);
      if(destination)placeOne(id,loc,destination);
      else feedback('PLACEMENT CANCELLED · NO KIT CHANGES');
     });
@@ -185,7 +195,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     select.setAttribute('aria-label','Select one '+tile.label+' from '+loc.toUpperCase());
     select.setAttribute('aria-pressed','false');
     select.disabled=!!options.locked;
-    select.append(silhouette,itemName,quantity);li.append(select);
+    select.append(silhouette,itemName,quantity,grip);li.append(select);
     selections.push({button:select,id,from:loc});
    }else li.append(silhouette,itemName,quantity);
    items.append(li);
