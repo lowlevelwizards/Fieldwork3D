@@ -690,11 +690,11 @@ export class CampaignScreen{
   const squadQuote=quoteCampaignSquadRefill(c);
   const squadReplenish=node('section','campaign-squad-refill');
   squadReplenish.append(node('h3','','SQUAD REFILL · LIVE HQ STOCK'));
-  const summary=node('p','campaign-squad-refill-summary',
+  const refillSummary=node('p','campaign-squad-refill-summary',
    squadQuote.roundsIssued+' / '+squadQuote.roundsWanted+' ROUNDS · '+
    squadQuote.medicalIssued+' / '+squadQuote.medicalWanted+' MEDICAL PACKS'+
    (squadQuote.partial?' · PARTIAL STOCK':''));
-  squadReplenish.append(summary);
+  squadReplenish.append(refillSummary);
   const rows=node('div','campaign-squad-refill-lines');
   for(const line of squadQuote.lines){
    const chip=node('div','campaign-squad-refill-line');
