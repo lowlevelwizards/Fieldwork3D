@@ -103,3 +103,9 @@
 .fw-quick-config-building-details[open]>summary::after{content:'−'}
 .fw-quick-config-building-details .fw-quick-config-buildings{padding:0 11px 12px}
 .fw-quick-config-building-details>summary:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}
+
+/* L2.7: visually reuse advanced disclosure styling without duplicating
+ * the semantic advanced-site-options selector used by browser tests. */
+.fw-quick-config-squad-prep{border-top:1px solid #60776d;border-bottom:1px solid #60776d}
+.fw-quick-config-squad-prep>summary{box-sizing:border-box;display:flex;align-items:center;min-height:48px;cursor:pointer;color:#dae7dc;letter-spacing:.045em;font:700 13px var(--fw-font-menu)}
+.fw-quick-config-squad-prep>summary:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}

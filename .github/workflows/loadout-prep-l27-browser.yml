@@ -1,0 +1,54 @@
+name: Loadout Prep L2.7 browser acceptance
+on:
+  push:
+    branches:
+      - feature/loadout-prep-l2-7-prego-20261118
+    paths:
+      - 'src/ui/campaign-pre-go-prep.ts'
+      - 'src/ui/campaign-pre-go-prep.css'
+      - 'src/ui/field-gadget-editor.ts'
+      - 'src/ui/loadout-prep.css'
+      - 'src/equipment-field-visuals.ts'
+      - 'src/breach-operator-rig.ts'
+      - 'src/breach-operator-appearance.ts'
+      - 'loadout-prep-visual-smoke.html'
+      - 'scripts/loadout-prep-visual-smoke.ts'
+      - 'scripts/smoke-loadout-prep-l27.mjs'
+      - '.github/workflows/loadout-prep-l27-browser.yml'
+  pull_request:
+    paths:
+      - 'src/ui/campaign-pre-go-prep.ts'
+      - 'src/ui/campaign-pre-go-prep.css'
+      - 'src/ui/field-gadget-editor.ts'
+      - 'src/equipment-field-visuals.ts'
+      - 'src/breach-operator-rig.ts'
+      - 'src/breach-operator-appearance.ts'
+      - 'scripts/smoke-loadout-prep-l27.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: loadout-prep-l27-visual-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  browser:
+    if: ${{ github.event_name != 'pull_request' || startsWith(github.head_ref, 'feature/loadout-prep-') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: L2.7 real touch modal, quantity and render acceptance
+        run: node scripts/smoke-loadout-prep-l27.mjs
+      - name: Upload browser evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: loadout-prep-l27-browser
+          path: reports/loadout-prep-*
+          if-no-files-found: ignore

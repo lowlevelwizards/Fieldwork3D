@@ -1379,6 +1379,7 @@ const campaignFlow=createBreachCampaignFlow({
   getIntel:()=>selectedIntelMode,setIntel:value=>{selectedIntelMode=value;},
   getScale:()=>requestedSiteScale,setScale:value=>{requestedSiteScale=value;},
   getSession:()=>state,isReplaying:()=>replaying,siteSize:ui.siteSize,siteSettings:ui.siteSettings,
+  briefingRoster:ui.briefingRoster,refreshHud:updateHud,
   randomSeed:randomSiteSeed,
   resetContract:job=>reset(0,job.seed,job.kind,undefined,job.risk,
     false,undefined,undefined,job.dispatchCase),

@@ -62,7 +62,7 @@ export type OperatorRig={
   armorPanels:THREE.Mesh[];capBill:THREE.Mesh;
   rigPouches:THREE.Mesh[];beltPouch:THREE.Mesh;
   medicalPouch:THREE.Mesh;radioUnit:THREE.Mesh;
-  flashCanister:THREE.Mesh;utilityTool:THREE.Mesh;
+  flashCanister:THREE.Mesh;flashCanisters:THREE.Mesh[];utilityTool:THREE.Mesh;
   gloveCovers:THREE.Mesh[];gloveMaterial:THREE.MeshStandardMaterial;
   visualKit:OperatorVisualKit;
   poseCavity:OperatorPoseCavity;
@@ -329,6 +329,9 @@ export function createOperatorRig(id:string,side:'blue'|'red',
   utilityTool.geometry=new THREE.BufferGeometry();
   flashCanister.geometry.dispose();
   flashCanister.geometry=new THREE.CylinderGeometry(1.25,1.25,5.8,8);
+  // Retain identical cold-rig mesh geometry for standard one-flash kits.
+  // Additional canisters are allocated only when actually equipped.
+  const flashCanisters=[flashCanister];
   const visualKit=createOperatorVisualKit(chest,hip,head,pack,baseTorso,feet,arms,
     {cloth,vest,trousers,packFabric,gearFabric,headCloth,headArmor,
       dark:boot,skin,steel},headCanonicalFrame,lazyAccessories);
@@ -353,7 +356,7 @@ export function createOperatorRig(id:string,side:'blue'|'red',
     bodycamChest,bodycamHelmet,
     reloadControlMesh,
     helmetShell,armorPanels,capBill,rigPouches,beltPouch,
-    medicalPouch,radioUnit,flashCanister,utilityTool,gloveCovers,gloveMaterial,
+    medicalPouch,radioUnit,flashCanister,flashCanisters,utilityTool,gloveCovers,gloveMaterial,
     visualKit,equipmentDetails,colors,garmentFitAnchors,poseCavity,
     clothMaterial:cloth,vestMaterial:vest,trouserMaterial:trousers,
     packMaterial:packFabric,gearMaterial:gearFabric,
@@ -389,6 +392,28 @@ export function createOperatorRig(id:string,side:'blue'|'red',
       for(const geo of geometries)geo.dispose();
       weaponLensMaterial.dispose();}};
   return rig;
+}
+
+/** Lazy, bounded additional canisters. The default one-canister rig keeps
+ * exactly the same cold mesh/UV/normal signature as the E6.7 baseline.
+ * Only appearance changes requesting >1 flashes incur extra allocations;
+ * no per-frame creation or independent animation/collision updates.
+ */
+export function ensureRigFlashCanisters(r:OperatorRig,count:number):void{
+ const needed=Math.max(1,Math.min(4,Math.floor(count)));
+ if(r.flashCanisters.length>=needed)return;
+ const original=r.flashCanisters[1]?.children[0];
+ const capGeometry=original instanceof THREE.Mesh?
+  original.geometry:new THREE.CylinderGeometry(1.43,1.43,.8,8);
+ for(let i=r.flashCanisters.length;i<needed;i++){
+  const canister=new THREE.Mesh(r.flashCanister.geometry,r.weaponSteel);
+  canister.name='fieldwork-carried-flash-'+i;
+  canister.castShadow=true;canister.receiveShadow=true;
+  canister.visible=false;r.hip.add(canister);
+  const cap=new THREE.Mesh(capGeometry,r.weaponDark);
+  cap.position.y=2.85;cap.castShadow=true;
+  canister.add(cap);r.flashCanisters.push(canister);
+ }
 }
 
 /** Compatibility entrypoint. All pose evaluation is presentation-owned. */

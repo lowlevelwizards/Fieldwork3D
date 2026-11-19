@@ -53,5 +53,6 @@ export function markD326FineMotorRoute(actor:TeamActor):void{
  ownedFineRoutes.set(actor,actor.nav);
 }
 export function ownsD326FineMotorRoute(actor:TeamActor):boolean{
- return !!actor.nav.length&&ownedFineRoutes.get(actor)===actor.nav;
+ return Array.isArray(actor.nav)&&actor.nav.length>0&&
+  ownedFineRoutes.get(actor)===actor.nav;
 }

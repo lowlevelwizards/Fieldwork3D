@@ -704,6 +704,19 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
 export function equipCampaignFieldInventory(c:CampaignState,id:string,
  inventory:FieldInventory):CampaignState{
  if(c.activeContractId)return c;
+ return issueCampaignFieldInventory(c,id,inventory);
+}
+/** Accepted contracts can only adjust the assigned squad's countable field kit
+ * before GO. The tactical phase gate is enforced by Campaign Flow; this
+ * function never touches weapon ownership, medical supplies, or currencies.
+ */
+export function equipCampaignPreGoFieldInventory(c:CampaignState,id:string,
+ inventory:FieldInventory):CampaignState{
+ if(!c.activeContractId||!c.squadIds.includes(id))return c;
+ return issueCampaignFieldInventory(c,id,inventory);
+}
+function issueCampaignFieldInventory(c:CampaignState,id:string,
+ inventory:FieldInventory):CampaignState{
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!member)return c;
  const next=readFieldInventory(inventory,member.loadout);

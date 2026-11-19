@@ -2,8 +2,9 @@
  * Caches only appearance fingerprints; never solves motion, fires, moves actors
  * or updates replay/simulation state.
  */
-import type {OperatorRig} from './breach-operator-rig.ts';
+import {ensureRigFlashCanisters,type OperatorRig} from './breach-operator-rig.ts';
 import type {OperatorPose} from './breach-operator-animation-contract.ts';
+import {visibleFlashCanisters,flashCanisterSocket} from './equipment-field-visuals.ts';
 import * as THREE from 'three';
 import {operatorPixelTextures} from './rendering/pixel-materials.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
@@ -181,9 +182,24 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
     gear?.utility==='utility-breach'?1.2:
     gear?.utility==='utility-cutter'?1.25:1,
     1);
-  r.flashCanister.visible=gear?.tactical==='tactical-smoke'||
-    (gear?.tactical==='tactical-flash'&&
-      (p.flashCharges===undefined||p.flashCharges>0));
+  // Flashbangs are physical stacks, not a single tactical-slot prop.
+  // Use the simulation's remaining charges during play and the authored
+  // inventory in previews. No new render geometry is allocated per pose.
+  const visibleFlashes=visibleFlashCanisters(p.equipment,p.flashCharges);
+  ensureRigFlashCanisters(r,visibleFlashes.length);
+  const legacySmoke=gear?.tactical==='tactical-smoke'&&
+    visibleFlashes.length===0&&p.equipment?.fieldInventory===undefined;
+  r.flashCanisters.forEach((canister,i)=>{
+    const placed=visibleFlashes[i];
+    canister.visible=!!placed||(i===0&&legacySmoke);
+    if(!canister.visible)return;
+    const socket=flashCanisterSocket(placed?.location??'belt',
+      placed?.index??0);
+    const parent=socket.bone==='chest'?r.chest:
+      socket.bone==='pack'?r.pack:r.hip;
+    if(canister.parent!==parent)parent.add(canister);
+    canister.position.set(socket.x,socket.y,socket.z);
+  });
   // Explicit wardrobe glove selection is cosmetic. It must neither inherit
   // the shirt material nor toggle because a fabric or loadout tint changed.
   for(const glove of r.gloveCovers)glove.visible=clothing.gloves!=='gloves-none';
@@ -548,7 +564,8 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   // palette ledger used by replay, silhouette mode and injury desaturation.
   r.colors.set(r.visualKit.hairMaterial,r.visualKit.hairMaterial.color.clone());
   r.colors.set(r.visualKit.patchMaterial,r.visualKit.patchMaterial.color.clone());
-  updateOperatorEquipmentDetails(r.equipmentDetails,gear);
+  updateOperatorEquipmentDetails(r.equipmentDetails,gear,
+    visibleFlashes.length>0,legacySmoke);
   }
   // Desaturation changes only at injury/surrender transitions, not each
   // animation frame. Replayed appearance or kit changes refresh the palette.

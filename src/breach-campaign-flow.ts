@@ -18,7 +18,7 @@ import {resolveOperation,tacticalSlotOperator,type CampaignReport}
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
   assignOperatorToSlot,buyWeapon,equipCampaignWeapon,repairCampaignArmor,
-  serviceCampaignWeapon,equipCampaignGear,equipCampaignFieldInventory,copyCampaignFieldInventory,equipCampaignWeaponPreset,
+  serviceCampaignWeapon,equipCampaignGear,equipCampaignFieldInventory,equipCampaignPreGoFieldInventory,copyCampaignFieldInventory,equipCampaignWeaponPreset,
   equipCampaignWeaponFamilyPart,equipCampaignWeaponAttachment,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
@@ -38,6 +38,8 @@ import {validateCampaignDraft,type CampaignCreationDraft} from './campaign-creat
 import type {CampaignSlot} from './campaign-save-slots.ts';
 import {confirmFieldworkAction,showFieldworkNotice} from './ui/fieldwork-controls.ts';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
+import {mountCampaignPreGoPrep} from './ui/campaign-pre-go-prep.ts';
+import type {FieldInventory} from './equipment-field-inventory.ts';
 import type {IntelMode} from './breach-intel.ts';
 import type {SiteScale} from './breach-site.ts';
 import type {Session} from './breach-game.ts';
@@ -53,7 +55,8 @@ export type CampaignFlowHooks={
  getIntel:()=>IntelMode;setIntel:(value:IntelMode)=>void;
  getScale:()=>SiteScale;setScale:(value:SiteScale)=>void;
  getSession:()=>Session;isReplaying:()=>boolean;
- siteSize:HTMLButtonElement;siteSettings:HTMLElement;randomSeed:()=>number;
+ siteSize:HTMLButtonElement;siteSettings:HTMLElement;briefingRoster:HTMLElement;
+ refreshHud:()=>void;randomSeed:()=>number;
  resetContract:(job:CampaignState['contracts'][number])=>void;
  launchQuickPlay:()=>void|Promise<void>;
  launchTraining:()=>void;
@@ -141,6 +144,7 @@ function saveFile(campaign:CampaignState){
  window.setTimeout(()=>URL.revokeObjectURL(href),1000);
 }
 function campaignMenu(){
+ preGoPrep.setAvailable(false);
  deployedIncident=null;
  model.mode='menu';
  campaignScreen.entry(!!config.getCampaignInSlot('legacy'),
@@ -170,6 +174,39 @@ function applyVisibleCampaignAction(change:(current:CampaignState)=>CampaignStat
  else void showFieldworkNotice('Save unavailable',
   'The change is not yet saved. Export your campaign before leaving this session.');
 }
+/** L2.7: only the accepted mission's unstarted planning phase may
+ * adjust issued field consumables. A failed save cannot quietly mutate the
+ * tactical session or the campaign's authoritative stock.
+ */
+function issuePreGoFieldKit(operatorId:string,inventory:FieldInventory):boolean{
+ const current=model.campaign;
+ const session=config.getSession();
+ if(!current?.activeContractId||model.mode!=='mission'||
+   config.isReplaying()||session.started||session.phase!=='planning')return false;
+ const next=equipCampaignPreGoFieldInventory(current,operatorId,inventory);
+ if(next===current)return false;
+ model.campaign=next;
+ if(!config.saveCampaign()){
+  model.campaign=current;
+  void showFieldworkNotice('Equipment not saved',
+   'The mission equipment has not changed. Free storage or export the campaign first.');
+  return false;
+ }
+ applyCampaignRosterToSession(session,next);
+ config.refreshHud();
+ showFieldworkActionFeedback('PRE-GO EQUIPMENT UPDATED');
+ return true;
+}
+const preGoPrep=mountCampaignPreGoPrep(config.briefingRoster,{
+ getCampaign:()=>model.campaign,
+ canPrepare:()=>{
+  const s=config.getSession();
+  return model.mode==='mission'&&!config.isReplaying()&&
+   s.phase==='planning'&&!s.started;
+ },
+ issue:issuePreGoFieldKit
+});
+
 const campaignScreen=new CampaignScreen({
  newCampaign:async()=>{
   if(config.getCampaignInSlot('legacy')&&!await confirmFieldworkAction({
@@ -335,11 +372,13 @@ const campaignScreen=new CampaignScreen({
 });
 function showCampaignHome(){
  if(!model.campaign)return;
+ preGoPrep.setAvailable(false);
  deployedIncident=null;
  model.mode='home';campaignScreen.home(model.campaign,config.getCampaignSlot());
 }
 function deployCampaignContract(){
  if(!model.campaign?.activeContractId)return;
+ preGoPrep.close();
  const job=model.campaign.contracts.find(k=>k.id===model.campaign!.activeContractId);
  if(!job)return;
  model.mode='mission';
@@ -352,6 +391,7 @@ function deployCampaignContract(){
  // Capture AFTER reset: the reset pathway invalidates prior mission state.
  deployedIncident=deployedDispatchIncident(model.campaign,job.id);
  campaignScreen.hide();
+ preGoPrep.setAvailable(true);
  config.showBriefing();
 }
 function returnAfterCampaignMission(){

@@ -100,13 +100,14 @@ export function createOperatorEquipmentDetails(medical:THREE.Mesh,
  return {tools,medicalMark,traumaHardware,radioTrim,flashHardware,smokeHardware};
 }
 export function updateOperatorEquipmentDetails(
- d:OperatorEquipmentDetails,slots:EquipmentLoadout['slots']|undefined){
+ d:OperatorEquipmentDetails,slots:EquipmentLoadout['slots']|undefined,
+ showFlashes?:boolean,showSmoke?:boolean){
  const chosen=slots?.utility??'utility-radio';
  for(const [id,obj] of Object.entries(d.tools))obj.visible=chosen===id;
  d.medicalMark.visible=slots?.medical==='medical-basic'||
   slots?.medical==='medical-trauma'||!slots;
  d.traumaHardware.visible=slots?.medical==='medical-trauma';
  d.radioTrim.visible=chosen==='utility-radio';
- d.flashHardware.visible=slots?.tactical==='tactical-flash'||!slots;
- d.smokeHardware.visible=slots?.tactical==='tactical-smoke';
+ d.flashHardware.visible=showFlashes??(slots?.tactical==='tactical-flash'||!slots);
+ d.smokeHardware.visible=showSmoke??slots?.tactical==='tactical-smoke';
 }
