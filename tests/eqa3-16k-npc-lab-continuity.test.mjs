@@ -61,7 +61,7 @@ test('K4: carried or dragged cannot leave inherited elevated hips in a later wal
   const walk=sampleNpcCivilian('civ-walk',1.09);
   updateCivilianRig(rig,walk,1.09,
    new NpcLabFootFilm('civ-walk').sample(1.09));
-  assert.equal(rig.root.position.y,localRoot(),
+  assert.ok(Math.abs(rig.root.position.y-localRoot())<1e-9,
    'a previous carried frame must never lift a standing walker');
   assert.ok(rig.character.legGap.every(v=>Number.isFinite(v)));
   const drag=sampleNpcCivilian('civ-dragged',1.89);
