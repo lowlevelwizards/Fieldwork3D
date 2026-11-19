@@ -31,6 +31,7 @@ const cases=[
  [21,'clear'],[14,'hold'],[17,'rescue'],[25,'capture'],[23,'rescue']
 ];
 const forensic=process.argv.includes('--forensic');
+const rescueStandOff=process.argv.includes('--rescue-stand-off');
 const doorAware=process.argv.includes('--door-aware');
 const forensicSeedArg=params.get('seed');
 const chosenBeforeSeed=process.argv.includes('--smoke')?
@@ -78,6 +79,7 @@ for(const [seed,mission] of chosen){
     const decisions=[],stages=[],civilianStates=[],firstViews=[];
     const attemptedDoorActions=new Set();
     const operatorHandoffs=[];
+    let rescueStandOffAccepted=0,rescueStandOffFallbacks=0;
     let acceptedDoorActions=0;
     const forensicEvents=[];
     // EQA3.5 replayable forensic witnesses, never input into decisions.
@@ -220,7 +222,35 @@ for(const [seed,mission] of chosen){
         // mission state machine must independently acknowledge SECURE.
         if(gap>14){
          let plannedAt=target;
-         let acceptedMove=planMove(s,rescuer.id,target);
+         // EQA3.5H audit-driver A/B ONLY. The baseline scripted scout
+         // walks onto the person's actual point even though SECURE/FOLLOW
+         // are usable 27-28 units away and neutral traffic is soft. Test a
+         // physically authored 22-unit approach without enemy/hidden truth.
+         // Stable approach-relative angular ordering ensures no stochastic
+         // tactic, target lookup, ghost movement or new live game behavior.
+         const standoff=rescueStandOff&&s.missionType==='rescue'&&
+           (action==='approach-visible-civilian'||
+            action==='approach-disclosed-objective');
+         let acceptedMove=false;
+         if(standoff){
+          const bearing=Math.atan2(rescuer.p.y-target.y,
+            rescuer.p.x-target.x);
+          findStandOff:for(const radius of [22,25]){
+           for(const offset of [0,Math.PI/4,-Math.PI/4,Math.PI/2,
+                -Math.PI/2,3*Math.PI/4,-3*Math.PI/4,Math.PI]){
+            const candidate={x:target.x+Math.cos(bearing+offset)*radius,
+              y:target.y+Math.sin(bearing+offset)*radius};
+            if(planMove(s,rescuer.id,candidate)){
+             acceptedMove=true;plannedAt=candidate;
+             rescueStandOffAccepted++;break findStandOff;
+            }
+           }
+          }
+          // Real fallback remains the established player-authored point;
+          // report it explicitly so we never claim a standoff occurred.
+          if(!acceptedMove){rescueStandOffFallbacks++;
+            acceptedMove=planMove(s,rescuer.id,target);}
+         }else acceptedMove=planMove(s,rescuer.id,target);
          // EQA3.1 diagnostic correction: a *verified objective location*
          // need not be a valid standing footprint (e.g. evidence placed
          // against a shelf or civilian body). An actual player can click a
@@ -452,6 +482,7 @@ for(const [seed,mission] of chosen){
       shotWitnesses:forensic?shotWitnesses:undefined,
       rescueTimeline:forensic?rescueTimeline:undefined,
       doorAware,acceptedDoorActions,operatorHandoffs,
+      rescueStandOff,rescueStandOffAccepted,rescueStandOffFallbacks,
       activeScout:scout.id,activeScoutHealth:scout.health,
       doorsAtEnd:doorAware?s.doors.map(d=>({id:d.id,open:d.open,
         fraction:round(d.openFraction??0),locked:d.locked})):undefined,
@@ -470,7 +501,10 @@ for(const [seed,mission] of chosen){
 }
 const valid=rows.filter(r=>Array.isArray(r.integrity));
 const observed=valid.filter(x=>x.firstContactAt!==null);
-const summary={intel,doorAware,operatorHandoffs:valid.reduce((n,r)=>n+(r.operatorHandoffs?.length??0),0),acceptedDoorActions:valid.reduce((n,r)=>n+(r.acceptedDoorActions??0),0),trials:valid.length,exceptions:exceptions.length,
+const summary={intel,doorAware,rescueStandOff,
+ rescueStandOffAccepted:valid.reduce((n,r)=>n+(r.rescueStandOffAccepted??0),0),
+ rescueStandOffFallbacks:valid.reduce((n,r)=>n+(r.rescueStandOffFallbacks??0),0),
+ operatorHandoffs:valid.reduce((n,r)=>n+(r.operatorHandoffs?.length??0),0),acceptedDoorActions:valid.reduce((n,r)=>n+(r.acceptedDoorActions??0),0),trials:valid.length,exceptions:exceptions.length,
  invalid:valid.filter(x=>x.integrity.length).length,
  completed:valid.filter(x=>x.missionStage==='done').length,
  objectiveSecured:valid.filter(x=>x.objectiveAt!==null).length,
