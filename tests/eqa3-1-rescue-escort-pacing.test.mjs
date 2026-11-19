@@ -96,3 +96,33 @@ test('EQA3.1 real 60Hz motor keeps a walking operator and rescued civilian physi
   assert.ok(greatest<120,'body separation stays below the 125 break threshold');
  }finally{activateSite(null);}
 });
+
+test('EQA3.1 actual unopposed 60Hz FOLLOW extraction completes without forced separation',()=>{
+ const s=newSession(0,undefined,'floor-plan','small','rescue',simpleSite(),
+  {enableCivilians:true});
+ try{
+  const actor=team(s)[0],civil=s.civilians.find(c=>c.rescueTarget);
+  assert.ok(civil);
+  civil.p=point(125,200);civil.priorP={...civil.p};
+  setCivilianState(civil,'escorted',0);
+  civil.following=actor.id;s.rescue.following=actor.id;
+  s.rescue.p={...civil.p};s.mission='extract';
+  assert.equal(planMove(s,actor.id,point(575,200)),true);
+  toggling(s);
+  let maxDistance=0;
+  for(let i=0;i<1800&&s.phase==='running';i++){
+   stepSession(s,1/60);
+   maxDistance=Math.max(maxDistance,Math.hypot(
+    actor.p.x-civil.p.x,actor.p.y-civil.p.y));
+   assert.ok(civil.following===actor.id||s.phase==='won',
+    'healthy civilian must remain the actual follower');
+  }
+  assert.equal(s.phase,'won',
+   'actual person must reach real extraction footprint, not merely stay attached');
+  assert.equal(s.mission,'done');
+  assert.ok(Math.hypot(civil.p.x-s.scenario.extract.x,
+    civil.p.y-s.scenario.extract.y)<37,
+    'rescue person truly reached mission extraction');
+  assert.ok(maxDistance<125,'the physical escort did not snap custody');
+ }finally{activateSite(null);}
+});
