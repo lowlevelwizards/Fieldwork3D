@@ -167,7 +167,7 @@ export type TeamActor=Operator & {
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
-  wedgeRemaining:number;
+  wedgeRemaining:number;restraintRemaining:number;
   awareness:ActorAwareness;
   suspicion:SuspicionMemory;lastVisualSuspicionId:string|null;
   intent:AIIntent|null;combatChoice:CombatAction|null;lastReportAt:number;
