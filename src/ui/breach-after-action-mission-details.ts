@@ -128,6 +128,17 @@ export function renderStructuredMissionDetails(input:{
    ['CONTACT → OBJECTIVE',metric(pace.contactToObjective,'s')],
    ['OBJECTIVE → EXIT',metric(pace.objectiveToExtraction,'s')]
  ]));
+ // Final observed mission outcome is separate from the force/harm review.
+ // SECURED WITHOUT RESTRAINT, physically restrained and actively escorted
+ // must not collapse into one generic "safe" count.
+ const civilianContact=stats.civilianContact;
+ if(Object.values(civilianContact).some(n=>n>0))
+  root.append(section('CIVILIAN ENCOUNTERS · CLOSEOUT',[
+   ['FRIGHTENED / HIDING',String(civilianContact.frightened)],
+   ['SECURED · UNRESTRAINED',String(civilianContact.secured)],
+   ['RESTRAINED WITH FLEX CUFFS',String(civilianContact.restrained)],
+   ['ESCORTED',String(civilianContact.escorted)]
+  ]));
  const rescue=stats.rescueStatus;
  if(rescue!=='none')root.append(section('CIVILIAN RESCUE',[
    ['RESULT',rescue.replaceAll('-',' ').toUpperCase()]
