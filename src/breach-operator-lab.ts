@@ -6,6 +6,8 @@ import {DEFAULT_SHADOW_MAP_SIZE} from './rendering/shadow-map-budget.ts';
 import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
 import {createOperatorRig,poseOperator,type OperatorRig}
   from './breach-operator-rig.ts';
+import {NPC_LAB_POSES,NPC_LAB_DURATION,NpcLabPreview}
+ from './operator-lab-npc-poses.ts';
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 import {weaponGrips,type Handling,type WeaponFit} from './breach-weapon-pose.ts';
 import {PoseTemporalMonitor} from './breach-pose-temporal-diagnostics.ts';
@@ -1189,6 +1191,41 @@ gaitReference.addEventListener('change',()=>{
 });
 let clock=0,last=performance.now(),rate=1,playing=true,loop=true;
 let cameraFollow={x:0,z:0};
+/** Explicit opt-in, lazily mounted NPC study; the ordinary operator model
+ * and its 47 historical tracks remain unchanged and independently owned.
+ */
+const npcSelect=choose<HTMLSelectElement>('npcLabTrack');
+const npcStatus=choose<HTMLOutputElement>('npcLabStatus');
+let npcPreview:NpcLabPreview|null=null;
+const npcActive=()=>document.querySelector('main')?.getAttribute(
+ 'data-lab-active')==='npc';
+const npcCategories=new Map<string,HTMLOptGroupElement>();
+for(const pose of NPC_LAB_POSES){
+ let group=npcCategories.get(pose.group);
+ if(!group){
+  group=document.createElement('optgroup');group.label=pose.group;
+  npcCategories.set(pose.group,group);npcSelect.append(group);
+ }
+ group.append(new Option(pose.label,pose.id));
+}
+npcSelect.value=NPC_LAB_POSES[0].id;
+npcSelect.addEventListener('change',()=>{
+ clock=0;playing=true;playPause.textContent='PAUSE';draw();
+});
+for(const [id,direction] of [['npcFrameBack',-1],['npcFrameNext',1]] as const)
+ choose<HTMLButtonElement>(id).addEventListener('click',()=>{
+  playing=false;playPause.textContent='PLAY';
+  clock=Math.max(0,Math.min(NPC_LAB_DURATION,clock+direction/60));
+  draw();
+ });
+document.querySelectorAll<HTMLButtonElement>('[data-lab-tab]').forEach(button=>
+ button.addEventListener('click',()=>{
+  if(button.dataset.labTab==='npc'){
+   clock=0;playing=true;playPause.textContent='PAUSE';fit();
+  }
+  draw();
+ }));
+
 let safeView=safeLabWindow(window.innerWidth,window.innerHeight,90,
  window.innerHeight*.55);
 const cameraHalfHeight=36;
@@ -1252,7 +1289,7 @@ const build=()=>{
 };
 operator.addEventListener('change',build);
 function fit(next='iso'){
-  const center=comparing||kitComparing||variantComparing?new THREE.Vector3():rig?.root.position??
+  const center=npcActive()||comparing||kitComparing||variantComparing?new THREE.Vector3():rig?.root.position??
     new THREE.Vector3();
   // Camera presets are defined in the public -Z-forward model space,
   // not arbitrary world X/Z directions. Pivot/turns can't swap front & side.
@@ -1682,6 +1719,47 @@ function showDiagnostics(){
 }
 function draw(){
   if(!rig)return;
+  if(npcActive()){
+   if(!npcPreview)npcPreview=new NpcLabPreview(scene);
+   // The normal operator track and all compare rigs must not appear behind
+   // a civilian. Hide rather than rebuild; leaving restores the original.
+   rig.root.visible=false;
+   for(const body of comparisonRigs)body.root.visible=false;
+   for(const body of kitBodies)body.root.visible=false;
+   for(const body of variantBodies)body.root.visible=false;
+   if(gaitCompareRig)gaitCompareRig.root.visible=false;
+   doorProp.visible=false;debug.visible=false;labelLayer.hidden=true;
+   const chosen=NPC_LAB_POSES.find(p=>p.id===npcSelect.value)!;
+   const result=npcPreview.render(chosen.id,clock);
+   npcStatus.textContent=result.label+' · '+chosen.description+
+    '\\nACTUAL POSE '+result.pose.toUpperCase()+
+    ' · '+result.model.toUpperCase()+' RIG'+
+    '\\nLab evidence/interaction timing only; no AI orders or weapon changes';
+   timeline.value=String(Math.round(clock*1000));
+   timeOutput.textContent=clock.toFixed(2)+'s';
+   diagnosticText.textContent='';
+   canvas.dataset.track=chosen.id;
+   canvas.dataset.npcTrack=chosen.id;
+   canvas.dataset.npcPose=result.pose;
+   canvas.dataset.npcModel=result.model;
+   canvas.dataset.npcHeadYaw=result.headYaw.toFixed(4);
+   canvas.dataset.npcHeadPitch=result.headPitch.toFixed(4);
+   control.update();updateSafeProjection();
+   renderer.render(scene,camera);
+   const statistics=renderer.info.render;
+   canvas.dataset.drawCalls=String(statistics.calls);
+   canvas.dataset.triangles=String(statistics.triangles);
+   choose<HTMLOutputElement>('visualStats').textContent=
+    'DRAWS '+statistics.calls+' · TRIS '+statistics.triangles+' · NPC RIG';
+   canvas.dataset.time=clock.toFixed(3);
+   if(canvas.dataset.ready!=='true'){
+    canvas.dataset.ready='true';
+    choose<HTMLElement>('labStatus').hidden=true;
+   }
+   return;
+  }
+  if(npcPreview){npcPreview.dispose();npcPreview=null;}
+  canvas.dataset.npcTrack='';
   const {motion,feet,state}=cache.sample(clock);
   const previewHandling=LAB_HANDLING;
   const scripted:HandlingTransition|undefined=
