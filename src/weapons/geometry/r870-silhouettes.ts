@@ -45,7 +45,8 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
  // variants. Stockless variants have NO invisible/redundant picking mesh.
  // Grip widths, not side-view profiles, are the P13 change: wood is
  // leaner, stockless grips narrower, birdshead especially hand-sized.
- const gripDepth=rearKey==='birdshead'?2.38:rearKey==='pistol'?2.60:rearKey==='sga'?2.85:2.90;
+ const gripDepth=rearKey==='birdshead'?2.38:
+  rearKey==='pistol'||rearKey==='mcs'?2.60:rearKey==='sga'?2.85:2.90;
  const rearWood=rearKey==='wood'||rearKey==='shortwood'||rearKey==='birdshead';
  const grip=p('grip',rear.gripOutline,gripDepth,
   rearWood?HK_WOOD:HK_DARK_POLYMER);
@@ -64,14 +65,14 @@ export function addR870Family(root:THREE.Group,build:WeaponFamilyBuild):void{
   pad.userData.r870ButtPad=true;
  }
  if(rearKey==='mcs'){
-  // One bold six-sided rail, one low-poly diagonal support and a wide
-  // buttplate. The OPEN negative space defines this MCS-style skeleton;
-  // no faux screws, rails or other microgeometry.
+  // The upper rail seats in the receiver. The lower strut now seats at
+  // the grip socket rather than running across the grip as a second
+  // diagonal handle. Preserve one large open triangle and three meshes.
   const rail=t('stock',-13.94,-5.95,.49,.38,HK_BLACK_METAL);
   rail.userData.r870MCSSkeletal=true;
   const strut=p('stock',[
-   [-13.84,-2.54],[-12.94,-2.30],[-5.95,-.99],
-   [-5.95,-1.65],[-12.75,-2.95],[-13.84,-3.12]
+   [-13.84,-2.60],[-12.94,-2.35],[-7.56,-1.15],
+   [-7.45,-1.88],[-12.75,-3.00],[-13.84,-3.18]
   ],.84,HK_BLACK_METAL);
   strut.userData.r870MCSSkeletal=true;
   const pad=b('stock',-14.10,-1.18,0,.60,3.80,2.72,HK_DARK_POLYMER);

@@ -28,6 +28,7 @@ on:
       - 'tests/weapon-r870-p13-proportions.test.mjs'
       - 'tests/weapon-r870-p14-*.test.mjs'
       - 'tests/weapon-r870-p15-*.test.mjs'
+      - 'tests/weapon-r870-p16-*.test.mjs'
       - 'src/arsenal-r870-p07-capture.ts'
       - 'arsenal-r870-p07-capture.html'
       - 'scripts/smoke-arsenal-r870-p07-visual.mjs'
@@ -66,7 +67,8 @@ jobs:
             tests/weapon-r870-p13-proportions.test.mjs \
             tests/weapon-r870-p14-front.test.mjs \
             tests/weapon-r870-p14-furniture.test.mjs \
-            tests/weapon-r870-p15-mcs.test.mjs
+            tests/weapon-r870-p15-mcs.test.mjs \
+            tests/weapon-r870-p16-pistol-grip.test.mjs
       - name: Emit factory draw and geometry baseline
         run: node --experimental-strip-types scripts/audit-weapon-production-m30.mjs > /tmp/weapon-m30-baseline.log && tail -n 2 /tmp/weapon-m30-baseline.log
       - name: TypeScript
