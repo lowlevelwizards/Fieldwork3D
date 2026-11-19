@@ -40,8 +40,8 @@ try{
   assert.match(await row.locator('.fw-field-inventory-quantity').innerText(),/×1/);
   const rigMeter=panel.getByRole('meter',{name:'RIG occupied carrying spaces'});
   assert.equal(await panel.getByRole('meter').count(),4,'all four physical carriers have gauges');
-  const rigItems=panel.locator('.fw-field-inventory-slot').filter({
-   has:rigMeter}).locator('.fw-field-inventory-carry-tile');
+  const rigItems=panel.locator('.fw-field-inventory-slot[data-location="rig"]')
+   .locator('.fw-field-inventory-carry-tile');
   assert.ok(await rigItems.count()>0,'rig lists actual carried items');
   assert.equal(await rigItems.filter({hasText:'Flashbang'}).count(),1,
    'actual issued flashbang appears in its carrier');
