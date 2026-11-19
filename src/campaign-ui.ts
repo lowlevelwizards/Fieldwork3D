@@ -135,6 +135,7 @@ export class CampaignScreen{
  private activeKitGroup:QuickLoadoutGroup='weapon';
  /** Presentation-only armory workspace; no changes to authoritative kit. */
  private activeKitWorkspace:'equipment'|'physical'|'readiness'='equipment';
+ private previewDocked=false;
  private showKitPresets=false;
  private readonly fieldUndo=new FieldInventoryUndoHistory();
  private readonly carryUndo=new CarryKitUndoHistory();
@@ -1338,6 +1339,7 @@ export class CampaignScreen{
   if(!retainOperatorPreview)this.disposePreview();
   if(!sameOperator){
    this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
+   this.previewDocked=false;
    this.selectedWorkbenchSocket=null;
   }
   this.lastArmoryRenderedId=id;
@@ -1363,6 +1365,7 @@ export class CampaignScreen{
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide campaign-armory-screen');
   main.dataset.kitWorkspace=this.activeKitWorkspace;
+  main.dataset.previewDocked=String(this.previewDocked);
   const top=node('div','campaign-head campaign-armory-head');
   const identity=node('div');
   identity.append(node('div','campaign-eyebrow','PERSONNEL / FIELD ARMORY'),
@@ -1410,6 +1413,14 @@ export class CampaignScreen{
    right.setAttribute('aria-label','Rotate operator 45 degrees right');
    orbitControls.append(left,reset,flip,right);
    summary.append(orbitControls);
+   const dock=button(this.previewDocked?'CLOSE FLOATING MODEL':'KEEP MODEL VISIBLE',()=>{
+    this.previewDocked=!this.previewDocked;
+    main.dataset.previewDocked=String(this.previewDocked);
+    dock.textContent=this.previewDocked?'CLOSE FLOATING MODEL':'KEEP MODEL VISIBLE';
+    dock.setAttribute('aria-pressed',String(this.previewDocked));
+   },'campaign-kit-preview-dock-toggle');
+   dock.setAttribute('aria-pressed',String(this.previewDocked));
+   summary.append(dock);
   }
   const identityActions=node('div','campaign-kit-actions');
   const rename=button('EDIT CALLSIGN',async()=>{
