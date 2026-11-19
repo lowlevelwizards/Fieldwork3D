@@ -126,21 +126,30 @@ function updateSharedCivilianRig(r:UnifiedCivilianRig,c:CivilianActor,now:number
  const down=pose==='down'||pose==='carried'||pose==='dragged';
  const moving=pose==='walk'||pose==='run'||pose==='injured-walk';
  const injured=pose==='injured'||pose==='injured-walk';
- const squat=pose==='hide'||pose==='seated';
- const gesture=pose==='startled'?'hands-up':
-   pose==='hide'||pose==='run'?'head-cover':undefined;
+ const secured=pose==='compliant'||pose==='restrained';
+ // Simulation SECURE is immediate and authoritative, but the same fixed
+ // stateSince timestamp gives presentation a smooth flinch -> raised hands
+ // -> kneeling response. No independent animation clock or motor change.
+ const elapsed=Math.max(0,now-(c.stateSince??now));
+ const compliantKneel=secured?
+   Math.max(0,Math.min(1,(elapsed-.32)/.92)):0;
+ const squat=pose==='hide'||pose==='seated'||pose==='restrained'||
+   secured&&compliantKneel>.18;
+ const gesture=pose==='startled'||pose==='compliant'&&elapsed<.32?
+   'hands-up':pose==='hide'||pose==='run'?'head-cover':
+   pose==='restrained'?'hands-behind':undefined;
  poseOperator(r.character,{
   x:c.p.x,z:c.p.y,heading:c.heading,velocity:moving?c.velocity:0,
   seconds:now,stride:moving?Math.max(.05,c.velocity/53):0,
   posture:squat?'crouch':'stand',
   injury:injured?1:down?3:0,weapon:'carbine',
   reload:0,reloadDuration:0,lastDoorAt:-100,lastThrowAt:-100,
-  down,surrender:pose==='compliant',aiming:false,firing:false,
+  down,surrender:secured&&compliantKneel>.001,aiming:false,firing:false,
   civilianGesture:gesture,
   turning:0,deterministic:true,unarmedPreview:true,
   appearanceSeed:c.appearanceSeed,equipment:r.equipment,
   wardrobe:r.wardrobe,gait:pose==='run'?'run':'walk',
-  downProgress:down||pose==='compliant'?1:0,
+  downProgress:down?1:compliantKneel,
   poseDiagnostics:false
  },r.lastTime>=0&&now>=r.lastTime?Math.min(.08,now-r.lastTime):0);
  // Low-cost visual glance toward a recently perceived physical threat.
@@ -216,9 +225,21 @@ export function updateCivilianRig(r:CivilianRig,
  if(pose==='idle'||pose==='work'||pose==='seated')
   r.head.rotation.y=Math.sin(now*.55+c.appearanceSeed*.013)*.11;
  if(pose==='compliant'){
-  // Arms pivot from the actual shoulders. Hands end above the head,
-  // unlike the former shoulderless centered-arm translation.
+  // Raise hands first, then gradually lower the hips into compliance.
+  // SECURE already succeeded at the physical fixed tick; no delayed AI.
+  const t=Math.max(0,Math.min(1,(now-c.stateSince-.32)/.92));
+  if(t>0){
+   bend(8*t,1-.37*t);
+   r.leftLeg.position.x=-4.15-.5*t;
+   r.rightLeg.position.x=4.15+.5*t;
+  }
   r.leftArm.rotation.z=-2.35;r.rightArm.rotation.z=2.35;
+ }else if(pose==='restrained'){
+  // Distinct actual restraint silhouette, not automatic after SECURE.
+  bend(11,.54);
+  r.leftLeg.position.x=-5.2;r.rightLeg.position.x=5.2;
+  r.leftArm.rotation.z=-.45;r.rightArm.rotation.z=.45;
+  r.leftArm.rotation.x=.68;r.rightArm.rotation.x=.68;
  }else if(pose==='startled'){
   // Visible palms/arms raised when a threatening armed presence startles.
   r.leftArm.rotation.z=-2.2;r.rightArm.rotation.z=2.2;
