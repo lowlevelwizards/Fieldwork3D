@@ -7,6 +7,7 @@ on:
       - 'scripts/audit-eqa3-8-warehouse-escort.mjs'
       - 'src/breach-civilian-mission.ts'
       - 'src/breach-civilian-movement.ts'
+      - 'src/breach-simulation-motion-phase.ts'
       - 'src/breach-game.ts'
       - 'tests/eqa3-8-escort-flow.test.mjs'
   workflow_dispatch:
@@ -22,6 +23,15 @@ jobs:
         with:
           node-version: '24'
       - run: npm install --no-audit --no-fund
+      - name: TypeScript compile and focused 60Hz escort/neutral collisions
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/eqa3-8-escort-flow.test.mjs \
+            tests/eqa3-1-rescue-escort-pacing.test.mjs \
+            tests/civilian-b3-movement.test.mjs \
+            tests/civilian-r2-navigation.test.mjs \
+            tests/civilian-d1-rescue-lifecycle.test.mjs
       - name: Full 110-second Warehouse FRONT/SERVICE real rescue + pickup, unknown/confirmed intel
         run: |
           mkdir -p artifacts/eqa3-8
