@@ -118,7 +118,23 @@ export function openArsenalWorkbench(
  const statsComparison=document.createElement('small');
  statsComparison.className='arsenal-wb-stats-comparison';
  statsHeading.append(statsTitle,statsComparison);
- const statsBody=document.createElement('div');statsBody.className='arsenal-wb-stats-grid';
+ // On phones, let the 3D weapon and part selection lead. Handling statistics
+ // remain one tap away instead of taking a full screen before the editor.
+ const statsToggle=document.createElement('button');
+ statsToggle.type='button';statsToggle.className='arsenal-wb-stats-toggle';
+ statsToggle.setAttribute('aria-controls','arsenal-wb-performance-grid');
+ const narrowStats=window.matchMedia('(max-width:760px)').matches;
+ stats.classList.toggle('is-collapsed',narrowStats);
+ statsToggle.setAttribute('aria-expanded',String(!narrowStats));
+ statsToggle.textContent=narrowStats?'SHOW STATS':'HIDE STATS';
+ statsToggle.addEventListener('click',()=>{
+  const collapsed=stats.classList.toggle('is-collapsed');
+  statsToggle.setAttribute('aria-expanded',String(!collapsed));
+  statsToggle.textContent=collapsed?'SHOW STATS':'HIDE STATS';
+ });
+ statsHeading.append(statsToggle);
+ const statsBody=document.createElement('div');
+ statsBody.id='arsenal-wb-performance-grid';statsBody.className='arsenal-wb-stats-grid';
  const statsNote=document.createElement('p');statsNote.className='arsenal-wb-stats-note';
  statsNote.textContent='Relative handling · higher is better · not damage or hit chance';
  stats.append(statsHeading,statsBody,statsNote);
