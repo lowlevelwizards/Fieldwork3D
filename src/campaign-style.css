@@ -1807,3 +1807,34 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 }
 /* Keep a pinned preview entirely opt-in; touch scrolling and placement
  * remain available when the user closes it. */
+
+
+/* UX-L4: keep the new primary navigation reachable while scrolling long kits.
+ * Physical Carry prioritizes the item list; equipment statistics and
+ * appearance actions remain in Equipment / Readiness, not repeated. */
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-workspace-nav{
+  position:sticky;top:calc(env(safe-area-inset-top) + 3px);z-index:60;
+  padding:5px 3px;margin-inline:-3px;
+  border-radius:9px;background:#142722;box-shadow:0 3px 14px #091b18bb;
+ }
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>h2,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>.campaign-kit-actions,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>.campaign-kit-at-a-glance,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>.campaign-kit-preview-controls,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-summary>.campaign-preview-hint{
+  display:none;
+ }
+ .campaign-armory-screen[data-kit-workspace="physical"] .campaign-kit-preview{
+  height:176px;min-height:176px;
+ }
+ .campaign-armory-screen[data-kit-workspace="equipment"]
+  .campaign-kit-stat:nth-child(n+3){display:none}
+ .campaign-armory-screen[data-kit-workspace="equipment"]
+  .campaign-kit-at-a-glance{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
