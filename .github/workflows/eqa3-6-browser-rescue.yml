@@ -12,6 +12,10 @@ jobs:
   eqa3-6-mobile:
     runs-on: ubuntu-latest
     timeout-minutes: 23
+    # Playwright 1.56 pre-dates GitHub's Ubuntu 26.04 runner image.
+    # Chromium binary for 24.04 remains compatible with later glibc.
+    env:
+      PLAYWRIGHT_HOST_PLATFORM_OVERRIDE: ubuntu24.04-x64
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
