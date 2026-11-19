@@ -33,3 +33,21 @@ test('other field objects and fake smoke never materialize as flashes',()=>{
  assert.equal(visibleFlashCanisters(undefined).length,0);
  assert.equal(visibleFlashCanisters(base,NaN).length,1);
 });
+
+test('physical wedges respect legacy tool, carrying location and remaining uses',async()=>{
+ const {visibleDoorWedges}=await import('../src/equipment-field-visuals.ts');
+ const {setEquipmentChoice}=await import('../src/equipment-loadouts.ts');
+ const withTool=setEquipmentChoice(base,'utility','utility-wedge');
+ assert.equal(visibleDoorWedges(withTool).length,2);
+ assert.equal(visibleDoorWedges(withTool,1).length,1);
+ assert.equal(visibleDoorWedges(withTool,0).length,0);
+ const four=replaceFieldQuantity(withTool.fieldInventory,'wedge',4,'belt');
+ const loaded={...withTool,fieldInventory:four};
+ assert.deepEqual(visibleDoorWedges(loaded).map(x=>x.location),
+  ['belt','belt','belt','belt']);
+ const moved={...loaded,fieldInventory:moveFieldStack(four,'wedge','belt','backpack')};
+ assert.deepEqual(visibleDoorWedges(moved,3).map(x=>x.location),
+  ['backpack','backpack','backpack']);
+ const withoutTool={...loaded,slots:{...loaded.slots,utility:'utility-radio'}};
+ assert.equal(visibleDoorWedges(withoutTool).length,0);
+});
