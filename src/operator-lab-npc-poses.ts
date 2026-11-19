@@ -194,7 +194,8 @@ export function sampleNpcHostile(id:string,clock:number):NpcHostileSample{
 export class NpcLabPreview{
  private civilian:CivilianRig|null=null;
  private hostile:OperatorRig|null=null;
- constructor(private readonly scene:THREE.Scene){}
+ private readonly scene:THREE.Scene;
+ constructor(scene:THREE.Scene){this.scene=scene;}
  render(id:string,clock:number):{label:string;pose:string;headYaw:number;
   headPitch:number;model:'civilian'|'hostile'}{
   const chosen=npcLabPose(id);
