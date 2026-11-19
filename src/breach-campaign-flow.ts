@@ -2,7 +2,7 @@
  * All Campaign actions continue using campaign-state and campaign-persistence.
  */
 import {issuedWedges} from './equipment-entry-tools.ts';
-import {equippedFlashCharges,loadMovementScale} from './equipment-loadouts.ts';
+import {equippedFlashCharges,equippedRestraintCharges,loadMovementScale} from './equipment-loadouts.ts';
 import {initialArmorIntegrity} from './equipment-armor.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
 import {fitMagazineInventory} from './arsenal/live-magazine-capacity.ts';
@@ -424,6 +424,7 @@ export function applyCampaignRosterToSession(session:Session,campaign:CampaignSt
     a.weaponConfiguration=m.weaponConfiguration;
     a.medicalSupplies={...m.medicalSupplies};
     a.wedgeRemaining=issuedWedges(m.loadout);
+    a.restraintRemaining=equippedRestraintCharges(m.loadout);
     a.weaponLightOn=m.weaponConfiguration.slots.light==='light-compact';
     a.nvgDeployed=false;
    a.flashCharges=equippedFlashCharges(m.loadout);
