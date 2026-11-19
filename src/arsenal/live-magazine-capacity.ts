@@ -6,13 +6,17 @@ import {WEAPONS,type WeaponId} from '../breach-combat.ts';
 import type {WeaponConfiguration} from '../equipment-weapon-assemblies.ts';
 import {magazineKit,type MagazineItem} from '../breach-magazines.ts';
 import {ARSENAL_MAGAZINE_CAPACITIES} from './magazine-identities.ts';
+import {r870Tube} from '../weapons/geometry/r870-front-p14.ts';
 
 export function liveMagazineCapacity(weapon:WeaponId,
  config?:WeaponConfiguration|null):number{
  const part=config?.weapon===weapon?config.build?.parts.magazine:undefined;
  const nominal=part?ARSENAL_MAGAZINE_CAPACITIES[part]:undefined;
- return weapon==='shotgun'?WEAPONS.shotgun.capacity:
-  Number.isInteger(nominal)&&nominal!>0?nominal!:WEAPONS[weapon].capacity;
+ if(weapon==='shotgun')
+  return config?.build?.family==='r870'?
+   (r870Tube(config.build.parts.magazine)?.capacity??WEAPONS.shotgun.capacity):
+   WEAPONS.shotgun.capacity;
+ return Number.isInteger(nominal)&&nominal!>0?nominal!:WEAPONS[weapon].capacity;
 }
 /** Three actual spare magazine bodies, not three class-sized ammo pools. */
 export function standardReserveRounds(weapon:WeaponId,
@@ -35,9 +39,13 @@ export function freshMagazineIssue(owner:string,weapon:WeaponId,
 export function fitMagazineInventory(owner:string,weapon:WeaponId,
  config:WeaponConfiguration|null|undefined,loaded:number,reserve:number,
  source:readonly MagazineItem[]){
- if(weapon==='shotgun')return {magazine:Math.max(0,Math.min(
-   WEAPONS.shotgun.capacity,loaded)),reserve:Math.max(0,reserve),
+ if(weapon==='shotgun'){
+  const cap=liveMagazineCapacity(weapon,config);
+  const owned=Math.max(0,Math.floor(Number.isFinite(loaded)?loaded:0));
+  const spare=Math.max(0,Math.floor(Number.isFinite(reserve)?reserve:0));
+  return {magazine:Math.min(cap,owned),reserve:spare+Math.max(0,owned-cap),
    magazines:[] as MagazineItem[]};
+ }
  const cap=liveMagazineCapacity(weapon,config);
  const integer=(n:number)=>Number.isFinite(n)?Math.max(0,Math.floor(n)):0;
  const starting=integer(loaded),spares=integer(reserve);
