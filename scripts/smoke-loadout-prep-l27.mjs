@@ -222,6 +222,23 @@ try{
   assert.equal(await denied.getByRole('button',{name:'APPLY GEAR CHANGE'}).isDisabled(),
    true,'cannot apply a rig change with no compatible carrying space');
   assert.match(await denied.innerText(),/CANNOT EQUIP/);
+  await page.evaluate(()=>window.quickPlayCarrySmoke.open());
+  const creator=page.getByRole('dialog',{name:'Quick Play mission setup'});
+  await creator.locator('.fw-quick-config-squad-prep > summary').click();
+  const rig=creator.getByRole('combobox',{name:'Select rig for rook'});
+  await rig.waitFor({state:'visible'});
+  assert.equal(await page.evaluate(()=>window.quickPlayCarrySmoke.rig()),'rig-light');
+  await rig.selectOption('rig-none');
+  assert.equal(await page.evaluate(()=>window.quickPlayCarrySmoke.rig()),'rig-light',
+   'Quick Play mission setup previews without changing roster');
+  const creatorForecast=creator.getByRole('region',{name:'Carry gear change preview'}).first();
+  assert.equal(await creatorForecast.isVisible(),true);
+  await creatorForecast.getByRole('button',{name:'APPLY GEAR CHANGE'}).click();
+  assert.equal(await page.evaluate(()=>window.quickPlayCarrySmoke.rig()),'rig-none',
+   'mission creator commits through persistent Quick Play roster authority');
+  assert.equal(await creator.getByRole('combobox',{name:'Select rig for rook'}).inputValue(),
+   'rig-none','Quick Play keeps its new selection and editor in sync');
+  await page.evaluate(()=>window.quickPlayCarrySmoke.close());
   await page.evaluate(()=>window.loadoutPrepSmoke.stop());
   await launch.click();
   assert.equal(await panel.isVisible(),false,'cannot re-enter equipment prep after GO');
