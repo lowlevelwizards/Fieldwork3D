@@ -14,6 +14,7 @@ import {falBarrelArt} from './weapons/geometry/fal-barrel-profiles.ts';
 import {G36_E0_FACTORY as G36} from './weapons/geometry/g36-family-contract.ts';
 import {g36FrontEnd,g36SupportRange} from './weapons/geometry/g36-variant-parts.ts';
 import {R870_P07} from './weapons/geometry/r870-art-contract.ts';
+import {r870RearPair,R870_REAR_PARTS} from './weapons/geometry/r870-rear-p12.ts';
 import {EQUIPMENT_CATALOG} from './equipment-catalog.ts';
 import {opticProfile} from './weapons/geometry/optic-profiles.ts';
 import {physicalWeaponMountSlots} from './weapons/geometry/weapon-physical-mount-slots.ts';
@@ -390,11 +391,12 @@ export function resolveWeaponAssembly(raw:WeaponConfiguration):ResolvedWeaponAss
  const hkArt=build?.family==='hk'?hkBarrelArt(build.parts.barrel):undefined;
  // Actual family pistol-grip silhouettes sit behind the receiver midpoint.
  // Earlier AK settings targeted empty space, putting the wrist in the plate.
+ const rear=build?.family==='r870'?R870_REAR_PARTS[r870RearPair(build.parts.stock,build.parts.grip)??'wood']:null;
  const primaryX=build?(build.family==='g36'?G36.primaryX:
-  build.family==='r870'?R870_P07.primaryX:
+  build.family==='r870'?(rear?.primaryX??R870_P07.primaryX):
   build.family==='hk'?-4.20:build.family==='ar'?-4.80:-4.65):p.primaryX;
  const primaryY=build?(build.family==='g36'?G36.primaryY:
-  build.family==='r870'?R870_P07.primaryY:
+  build.family==='r870'?(rear?.primaryY??R870_P07.primaryY):
   build.family==='hk'?-4.00:build.family==='ar'?-4.00:-4.10):p.primaryY;
  const hkSupportX=hkArt?Math.min(7.75,hkArt.handguardStartX+
   .47*(hkArt.handguardEndX-hkArt.handguardStartX)):7.75;
