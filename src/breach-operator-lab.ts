@@ -49,8 +49,8 @@ import {loadArsenalBuildLibrary} from './arsenal/saved-builds.ts';
 import {arsenalRecipeToLegacy,readArsenalRecipe,type ArsenalRecipeV2}
  from './arsenal/recipes.ts';
 import {POSE_ARMOR_OPTIONS,POSE_RIG_OPTIONS,POSE_UNIFORM_OPTIONS,
- POSE_ANIMATIONS,posePreset,poseWeaponType,defaultPoseWeapon,
- poseArmorEquipment,poseRigEquipment}
+ POSE_ANIMATIONS,POSE_WEAPON_GROUPS,posePreset,poseWeaponType,
+ defaultPoseWeapon,poseArmorEquipment,poseRigEquipment}
  from './operator-lab-pose-browser.ts';
 import {uniformCutCamoChoices,type UniformCompareCut}
  from './operator-uniform-cut-eligibility.ts';
@@ -769,11 +769,14 @@ const poseStrictContact=choose<HTMLInputElement>('poseStrictContact');
 poseStrictContact.addEventListener('change',()=>draw());
 poseWeaponSelect.add(new Option('No Weapon','none'));
 poseWeaponSelect.add(new Option('Shotgun','shotgun'));
-for(const [family,label] of [
- ['ar','AR / M4 / M16'],['ak','AK'],['hk','HK / MP5 / G3']
-] as const){
- const group=document.createElement('optgroup');group.label=label;
- for(const preset of FAMILY_PRESETS.filter(p=>p.family===family))
+// Show every real Arsenal factory reference, including FAL, FNC and G36.
+ // Group by physical platform (G3 / HK33 / MP5 are distinct), not by an
+ // old hard-coded trio. A new factory model appears here automatically.
+for(const platform of POSE_WEAPON_GROUPS){
+ if(!platform.presets.length)continue;
+ const group=document.createElement('optgroup');
+ group.label=platform.name+' · '+platform.presets.length;
+ for(const preset of platform.presets)
   group.append(new Option(preset.name,preset.id));
  poseWeaponSelect.append(group);
 }
