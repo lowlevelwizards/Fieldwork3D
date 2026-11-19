@@ -1,0 +1,39 @@
+name: EQA3.2 actual first-portal OPEN and approach comparison
+on:
+  push:
+    branches: [audit/eqa3-complete-mission-decision-baseline-20261118]
+    paths:
+      - '.github/workflows/eqa3-first-portal.yml'
+      - 'scripts/audit-eqa3-first-portal-open.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  first-known-portal:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Three frozen paired mission cases: real user OPEN, hinge and MOVE
+        run: |
+          mkdir -p artifacts/eqa3
+          EQA3_OUTPUT=artifacts/eqa3/first-portal-6.json node --experimental-strip-types scripts/audit-eqa3-first-portal-open.mjs > artifacts/eqa3/first-portal-console.json
+          node - <<'NODE'
+          const r=require('./artifacts/eqa3/first-portal-6.json');
+          console.log(JSON.stringify({summary:r.summary,cases:r.rows.map(x=>({
+            seed:x.seed,mission:x.mission,entry:x.entry,
+            chose:x.initiallySelectedDoor,after:x.physicalDoorAtEnd,
+            objectiveMove:x.goalPlanAccepted,closest:x.goalOutcome?.closest,
+            doorActionSeconds:x.doorActionSeconds,
+            early:x.samples.slice(0,2),late:x.samples.slice(-2)
+          }))},null,2));
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-2-first-portal-real
+          path: artifacts/eqa3/
