@@ -122,8 +122,10 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       a.velocity=0;
       const bearing=Math.atan2(person.p.y-a.p.y,person.p.x-a.p.x);
       if(!rotate(a,bearing,dt,s))return true;
-      a.actionTimer+=dt;
-      if(a.actionTimer<.4)return true;
+      // Once face-to-face, complete at the authoritative contact. The
+      // visible hand reach has its own short post-contact pose window:
+      // already-aligned contacts keep their prior one-tick responsiveness.
+      a.lastCivilianContactAt=s.seconds;
       if(n.interaction==='follow-civilian'){
         if(!person.rescueTarget||s.missionType!=='rescue'||
            s.mission!=='extract'||!s.rescue){
