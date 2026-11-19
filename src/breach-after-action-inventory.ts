@@ -32,7 +32,7 @@ export type OperatorInventoryCloseout={
 export type AfterActionInventoryCloseout={
  mode:'mission'|'quick'|'other';
  operators:OperatorInventoryCloseout[];
- hqStock:{ammo:number;medical:number;flash:number}|null;
+ hqStock:{ammo:number;medical:number;flash:number;wedges:number;cuffs:number}|null;
  /** Do not pretend an incomplete archive can prove all mission consumption. */
  source:'live-closeout';
 };
@@ -122,6 +122,7 @@ export function buildAfterActionInventoryCloseout(input:{
  return {mode,operators,source:'live-closeout',
   hqStock:mode==='mission'&&campaign?{
    ammo:campaign.supplies.ammo,medical:campaign.supplies.medical,
-   flash:campaign.supplies.flash
+   flash:campaign.supplies.flash,
+   wedges:campaign.supplies.wedges,cuffs:campaign.supplies.cuffs
   }:null};
 }
