@@ -124,9 +124,13 @@ function civilianSprite(c:import('./breach-civilian-types.ts').CivilianActor){
     rect(-12,-6,7,5,pants);rect(-12,1,7,5,pants);
     rect(-7,-8,16,16,coat);
     rect(7,-4.5,9,9,'#b9997e');
-    if(pose==='compliant'){
+    if(pose==='compliant'||pose==='startled'){
+      // Clear from overhead: palms visibly raised and away from torso.
       rect(2,-16,5,9,'#b9997e');rect(2,7,5,9,'#b9997e');
-    }else if(pose==='hide'||pose==='injured'||pose==='seated'){
+    }else if(pose==='hide'||pose==='run'){
+      // Two hands over the head while crouched or running.
+      rect(5,-8,7,4,'#b9997e');rect(5,4,7,4,'#b9997e');
+    }else if(pose==='injured'||pose==='seated'){
       rect(-5,-11,7,3,'#b9997e');rect(-5,8,7,3,'#b9997e');
     }else{
       const swing=pose==='run'?
