@@ -1485,11 +1485,22 @@ function observe(s:Session){
     observeIntel(s.intel,s.site,s.doors,p=>liveVisibility(s,p),
       sessionWorldGeometry(s));
     s.intelObservedAt=s.seconds;
-    // Even full architectural visibility never reveals an objective until
-    // a squad member actually observes it. Confirmation is persistent.
-    if(s.objectiveIntel&&!s.objectiveIntel.discovered){
-      discoverObjective(s,team(s).some(a=>
-        observerPointVisible(s,a,s.scenario.objective)));
+    // For an actual rescue person, distinguish the ORIGINAL briefing spot
+    // from their last genuinely observed location. A fleeing subject can
+    // leave the known room; never discover them by staring at the empty
+    // spawn point, nor track them through walls or from full-view intel.
+    // Only the 140ms authoritative observation tick may update the known
+    // mission marker. Replay snapshots already record scenario.objective,
+    // so historical markers inherit the correct time-specific evidence.
+    const rescueSubject=s.missionType==='rescue'?
+      s.civilians.find(c=>c.rescueTarget):undefined;
+    const actualObjective=rescueSubject?.p??s.scenario.objective;
+    if(s.objectiveIntel){
+      const observed=team(s).some(a=>
+        observerPointVisible(s,a,actualObjective));
+      if(observed&&rescueSubject)
+        s.scenario.objective=clone(actualObjective);
+      if(!s.objectiveIntel.discovered)discoverObjective(s,observed);
     }
   }
   // Site knowledge persists, current knowledge does not. Sight has geometry,
