@@ -3,6 +3,7 @@
  */
 import type {EquipmentLoadout} from './equipment-loadouts.ts';
 import type {EntryTool} from './breach-entry-tools.ts';
+import {fieldQuantity,initialFieldInventory} from './equipment-field-inventory.ts';
 export const ENTRY_TOOL_EQUIPMENT:Readonly<Record<string,EntryTool[]>>={
  'utility-breach':['breach'],
  'utility-pry':['pry'],
@@ -14,6 +15,7 @@ export function equippedEntryMethods(kit?:EquipmentLoadout):readonly EntryTool[]
 }
 /** A wedge carrier starts with two physical wedges per issued kit. */
 export const issuedWedges=(kit?:EquipmentLoadout)=>
- kit?.slots.utility==='utility-wedge'?2:0;
+ kit?.slots.utility==='utility-wedge'?
+ fieldQuantity(kit.fieldInventory??initialFieldInventory(kit),'wedge'):0;
 export const canUseEntryTool=(kit:EquipmentLoadout|undefined,tool:EntryTool):boolean=>
  tool==='pick'||equippedEntryMethods(kit).includes(tool);
