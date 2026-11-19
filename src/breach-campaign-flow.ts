@@ -6,6 +6,8 @@ import {applyDeploymentInventory,limitDeployedFlashIssue}
  from './equipment-deployment-snapshot.ts';
 import {allocateFlashSupply} from './equipment-supply.ts';
 import {refillCampaignSquad} from './equipment-campaign-squad-refill.ts';
+import {replenishCampaignFieldPieces}
+ from './equipment-campaign-field-stock.ts';
 import {undoCampaignCarryGear,copyCampaignCarryLayout} from './campaign-state.ts';
 import type {CampaignMode} from './breach-app-mode.ts';
 import {CampaignScreen} from './campaign-ui.ts';
@@ -16,6 +18,7 @@ import {careerEventsForOperation} from './campaign-history.ts';
 import {resolveOperation,tacticalSlotOperator,type CampaignReport}
   from './campaign-state.ts';
 import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
+ purchaseFieldStock,
   resupplyOperator,resupplyMedicalOperator,treatOperator,hireRecruit,
   assignOperatorToSlot,buyWeapon,equipCampaignWeapon,repairCampaignArmor,
   serviceCampaignWeapon,equipCampaignGear,equipCampaignCarryGear,equipCampaignFieldInventory,equipCampaignPreGoFieldInventory,copyCampaignFieldInventory,equipCampaignWeaponPreset,
@@ -297,12 +300,19 @@ const campaignScreen=new CampaignScreen({
  buyAmmo:()=>applyVisibleCampaignAction(purchaseAmmo,'60 rounds added to supplies'),
  buyMedical:()=>applyVisibleCampaignAction(purchaseMedical,'Medical kit added to supplies'),
  buyFlash:()=>applyVisibleCampaignAction(purchaseFlash,'2 flashbangs added to supplies'),
+ buyWedges:()=>applyVisibleCampaignAction(c=>purchaseFieldStock(c,'wedges'),
+  '4 door wedges added to HQ supplies'),
+ buyCuffs:()=>applyVisibleCampaignAction(c=>purchaseFieldStock(c,'cuffs'),
+  '6 flex cuff pairs added to HQ supplies'),
  resupply:(id)=>applyVisibleCampaignAction(c=>resupplyOperator(c,id),
   'Operator ammunition replenished'),
  resupplyMedical:(id)=>applyVisibleCampaignAction(c=>resupplyMedicalOperator(c,id),
   'Operator medical supplies replenished'),
  resupplySquad:()=>applyVisibleCampaignAction(refillCampaignSquad,
   'Squad inventory replenished from HQ stock'),
+ resupplyField:(id)=>applyVisibleCampaignAction(
+  c=>replenishCampaignFieldPieces(c,id).result,
+  'Carried wedges and cuffs replenished from HQ'),
  treat:(id)=>applyVisibleCampaignAction(c=>treatOperator(c,id),
   'Treatment completed · recovery time reduced'),
  recruit:()=>applyVisibleCampaignAction(hireRecruit,'New operator joined the roster'),
