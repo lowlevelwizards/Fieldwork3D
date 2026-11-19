@@ -35,6 +35,7 @@ jobs:
             tests/eqa3-16-physicality-contract.test.mjs \
             tests/eqa3-16-contact-replay.test.mjs \
             tests/eqa3-16-hostile-intent.test.mjs \
+            tests/eqa3-16-organic-presentation.test.mjs \
             tests/eqa3-9-civilian-animation.test.mjs \
             tests/civilian-r2-presentation.test.mjs \
             tests/civilian-c5-unified-pose.test.mjs \
@@ -42,4 +43,5 @@ jobs:
             tests/eqa3-15-moving-rescue-intel.test.mjs \
             tests/eqa3-15-rescue-handoff.test.mjs \
             tests/eqa3-9-auto-secure.test.mjs \
-            tests/eqa3-10-restrain.test.mjs
+            tests/eqa3-10-restrain.test.mjs \
+            tests/eqa3-14-organic-contact.test.mjs
