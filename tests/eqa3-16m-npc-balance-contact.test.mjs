@@ -36,7 +36,12 @@ function checkContinuousLimbChains(r,context){
   assert.ok(distance(thighEnd,shinStart)<.20,
    context+' joint '+i+' broken at knee by '+distance(thighEnd,shinStart));
   assert.ok(distance(shinEnd,shoe)<.8,
-   context+' joint '+i+' detached at ankle by '+distance(shinEnd,shoe));
+   context+' joint '+i+' detached at ankle by '+distance(shinEnd,shoe)+
+   ' root='+r.root.position.toArray()+
+   ' hip='+r.hip.position.toArray()+
+   ' ankle='+shoe.toArray()+
+   ' shin='+shinEnd.toArray()+
+   ' legGap='+r.legGap[i]);
  }
 }
 test('M1: actual compliant and restrained planted shoes remain at ground',()=>{
