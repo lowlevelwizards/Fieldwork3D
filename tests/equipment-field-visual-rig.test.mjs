@@ -57,3 +57,31 @@ test('legacy smoke rendering never turns into a bundle of phantom flashes',()=>{
   assert.equal(rig.equipmentDetails.flashHardware.visible,false);
  }finally{rig.dispose();}
 });
+
+test('physical wedges reflect the wedge utility and live consumption',async()=>{
+ const {setEquipmentChoice}=await import('../src/equipment-loadouts.ts');
+ const rig=createOperatorRig('rook','blue');
+ try{
+  const equipped=setEquipmentChoice(initialEquipmentLoadout(),'utility','utility-wedge');
+  poseOperator(rig,{...pose(equipped,1),wedgeRemaining:2},0);
+  assert.equal(rig.wedgeMeshes.length,2);
+  assert.equal(rig.wedgeMeshes.filter(x=>x.visible).length,2);
+  assert.equal(rig.equipmentDetails.tools['utility-wedge'].visible,false,
+   'do not double-render decorative two-wedge package');
+  poseOperator(rig,{...pose(equipped,1),wedgeRemaining:1},0);
+  assert.equal(rig.wedgeMeshes.filter(x=>x.visible).length,1);
+  poseOperator(rig,{...pose(equipped,1),wedgeRemaining:0},0);
+  assert.equal(rig.wedgeMeshes.filter(x=>x.visible).length,0);
+  const moved={...equipped,fieldInventory:
+   moveFieldStack(equipped.fieldInventory,'wedge','belt','backpack')};
+  poseOperator(rig,{...pose(moved,1),wedgeRemaining:2},0);
+  assert.ok(rig.wedgeMeshes.slice(0,2).every(x=>x.parent===rig.pack));
+ }finally{rig.dispose();}
+});
+test('ordinary operator models allocate no physical wedge meshes',()=>{
+ const rig=createOperatorRig('vale','blue');
+ try{
+  poseOperator(rig,{...pose(initialEquipmentLoadout(),1),wedgeRemaining:0},0);
+  assert.equal(rig.wedgeMeshes.length,0);
+ }finally{rig.dispose();}
+});

@@ -42,3 +42,43 @@ export function flashCanisterSocket(location:VisibleFlashLocation,index:number){
    x:-1.1,y:2.2-row*6.2,z:column?4.4:-4.4};
  }
 }
+
+/** Wedges are explicitly equipped, and physically consumed by the existing
+ * door-wedge action. Never display decorative wedges without the tool.
+ * Keep exactly the same conservative cap and carry order as flashbangs.
+ */
+export type VisibleWedge={location:FieldCarryLocation;index:number};
+export function visibleDoorWedges(
+ kit:EquipmentLoadout|undefined,remaining?:number):VisibleWedge[]{
+ if(!kit||kit.slots.utility!=='utility-wedge')return [];
+ const inventory=kit.fieldInventory??initialFieldInventory(kit);
+ const limit=Math.min(FIELD_ITEMS.wedge.maxPerOperator,
+  Number.isFinite(remaining)?Math.max(0,Math.floor(remaining!)):
+   FIELD_ITEMS.wedge.maxPerOperator);
+ const result:VisibleWedge[]=[];
+ for(const location of ['belt','rig','pocket','backpack'] as const){
+  const total=inventory.stacks.reduce((n,row)=>
+   n+(row.itemId==='wedge'&&row.location===location?row.quantity:0),0);
+  for(let i=0;i<total&&result.length<limit;i++)
+   result.push({location,index:i});
+ }
+ return result;
+}
+
+/** Readable stowage sockets, relative to existing hip, chest and pack bones.
+ * Wedges are flat, chunky quadrilaterals rather than cylinders or magazines.
+ */
+export function wedgeSocket(location:FieldCarryLocation,index:number){
+ const i=Math.max(0,Math.min(3,Math.floor(index)));
+ const column=i%2,row=Math.floor(i/2);
+ switch(location){
+  case 'rig':return {bone:'chest' as const,
+   x:10.2,y:-3.1-row*3.1,z:column?5.6:-5.6};
+  case 'belt':return {bone:'hip' as const,
+   x:1.1,y:-3.1-row*2.3,z:column?7.1:-7.1};
+  case 'pocket':return {bone:'hip' as const,
+   x:-2.1,y:-3.3-row*2.3,z:column?4.6:-4.6};
+  case 'backpack':return {bone:'pack' as const,
+   x:-.7,y:4.1-row*3.1,z:column?4.1:-4.1};
+ }
+}
