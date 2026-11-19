@@ -736,7 +736,11 @@ export function equipCampaignGear(c:CampaignState,id:string,slot:LoadoutSlot,
  if(!o)return c;
  const next=setEquipmentChoice(o.loadout,slot,itemId);
  if(next===o.loadout)return c;
- return {...c,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
+ const stock=quoteCampaignFieldStockChange(c,o.loadout,next);
+ if(!stock.ok||!fieldCarryReport(next,stageMagazines(o.magazines,next),
+  next.fieldInventory??initialFieldInventory(next)).valid)return c;
+ return {...c,supplies:stock.stock,operators:c.operators.map(m=>m.id===id?{...m,loadout:next,
+  fieldRestockLayout:fieldRestockPreference(next),
   medicalSupplies:normalizedMedicalSupplies(m.medicalSupplies,kitMedicalSupplies(next)),
   magazines:stageMagazines(m.magazines,next),
   armorCondition:clampArmorToKit(m.armorCondition,next)}:m)};
@@ -814,14 +818,22 @@ function issueCampaignFieldInventory(c:CampaignState,id:string,
  const member=c.operators.find(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired');
  if(!member)return c;
  const next=readFieldInventory(inventory,member.loadout);
+ // A malformed issue must not be normalized into free, hidden equipment.
+ for(const item of ['flashbang','wedge','zip-tie'] as const)
+  if(fieldQuantity(next,item)!==fieldQuantity(inventory,item))return c;
  if(!fieldCarryReport(member.loadout,member.magazines,next).valid)return c;
+ const stock=quoteCampaignFieldStockChange(c,member.loadout,
+  {...member.loadout,fieldInventory:next});
+ if(!stock.ok)return c;
  const otherFlash=c.operators.filter(o=>o.id!==id&&
   c.squadIds.includes(o.id)).reduce((sum,o)=>sum+fieldQuantity(
   o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
  if(c.squadIds.includes(id)&&
   otherFlash+fieldQuantity(next,'flashbang')>c.supplies.flash)return c;
- return {...c,operators:c.operators.map(o=>o.id===id?
-  {...o,loadout:{...o.loadout,fieldInventory:next}}:o)};
+ return {...c,supplies:stock.stock,operators:c.operators.map(o=>o.id===id?
+  {...o,fieldRestockLayout:fieldRestockPreference(
+   {...o.loadout,fieldInventory:next}),
+   loadout:{...o.loadout,fieldInventory:next}}:o)};
 }
 
 /** Copy carried gadgets only. The destination retains its own magazines,
@@ -864,6 +876,7 @@ export function canApplyCampaignKitPreset(c:CampaignState,id:string,presetId:str
  const proposed=readEquipmentLoadout(preset.kit,preset.weapon);
  const incoming=proposed.fieldInventory??initialFieldInventory(proposed);
  if(!fieldCarryReport(proposed,member.magazines,incoming).valid)return false;
+ if(!quoteCampaignFieldStockChange(c,member.loadout,proposed).ok)return false;
  if(c.squadIds.includes(id)){
   const reserved=c.operators.filter(o=>o.id!==id&&c.squadIds.includes(o.id))
    .reduce((sum,o)=>sum+fieldQuantity(o.loadout.fieldInventory??
@@ -894,11 +907,16 @@ export function applyCampaignKitPreset(c:CampaignState,id:string,presetId:string
  const attachments=transfer.stockAfter;
  const swapped=member.weapon===preset.weapon?c:equipCampaignWeapon(c,id,preset.weapon);
  if(swapped===c&&member.weapon!==preset.weapon)return c;
- return {...swapped,inventory:{...swapped.inventory,attachments},
+ const targetKit=readEquipmentLoadout(preset.kit,preset.weapon);
+ const fieldStock=quoteCampaignFieldStockChange(swapped,member.loadout,targetKit);
+ if(!fieldStock.ok)return c;
+ return {...swapped,supplies:fieldStock.stock,
+  inventory:{...swapped.inventory,attachments},
   operators:swapped.operators.map(o=>o.id===id?{
    ...o,weaponConfiguration:desired,
    ...fitMagazineInventory(o.id,o.weapon,desired,o.magazine,o.reserve,o.magazines),
-   loadout:readEquipmentLoadout(preset.kit,preset.weapon),
+   loadout:targetKit,
+   fieldRestockLayout:fieldRestockPreference(targetKit),
    medicalSupplies:normalizedMedicalSupplies(o.medicalSupplies,
     kitMedicalSupplies(readEquipmentLoadout(preset.kit,preset.weapon))),
    magazines:stageMagazines(fitMagazineInventory(o.id,o.weapon,desired,
