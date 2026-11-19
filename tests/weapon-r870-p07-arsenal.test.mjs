@@ -14,6 +14,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset,resolveWeaponAssembl
 import {buildWeaponSilhouette,clearWeaponSilhouette}
  from '../src/breach-weapon-geometry.ts';
 import {riflePoseContacts} from '../src/breach-weapon-contact-zones.ts';
+import {weaponPresentationSockets} from '../src/breach-weapon-presentation.ts';
 import {R870_P07} from '../src/weapons/geometry/r870-art-contract.ts';
 import {liveMagazineCapacity} from '../src/arsenal/live-magazine-capacity.ts';
 import {WEAPONS} from '../src/breach-combat.ts';
@@ -48,6 +49,8 @@ test('R870 P07: selection and recipe persist; no class or ammunition migration',
  assert.deepEqual(arsenalRecipeToLegacy(read)?.build,c.build);
  assert.equal(liveMagazineCapacity('shotgun',c),WEAPONS.shotgun.capacity);
  assert.equal(reloadMechanismFor('shotgun',c),'shell-tube');
+ assert.equal(weaponPresentationSockets('shotgun',c).magazinePart,null,
+  'fixed tube must never become a detachable reload socket');
  const legacy=initialWeaponConfiguration('shotgun');
  assert.equal(legacy.build,undefined,'existing class-only shotgun remains unchanged');
  assert.equal(readWeaponConfiguration(legacy,'shotgun').build,undefined);
