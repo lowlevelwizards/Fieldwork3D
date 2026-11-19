@@ -11,7 +11,8 @@ import {liveMagazineCapacity,standardReserveRounds}
  from './arsenal/live-magazine-capacity.ts';
 import {kitMedicalSupplies,medicalSupplyCount}
  from './equipment-medical-supplies.ts';
-import {fieldQuantity,initialFieldInventory} from './equipment-field-inventory.ts';
+import {replenishCampaignFieldPieces}
+ from './equipment-campaign-field-stock.ts';
 
 export type CampaignRefillLine={
  id:string;name:string;
@@ -19,16 +20,20 @@ export type CampaignRefillLine={
  roundsWanted:number;roundsIssued:number;roundsShort:number;
  /** Each used medical pack replaces the operator's entire missing kit. */
  medicalWanted:number;medicalIssued:number;
- /** Kept for feedback: the HQ does not stock these items in the current economy. */
- wedgesCarried:number;cuffsCarried:number;
+ wedgesWanted:number;wedgesIssued:number;wedgesShort:number;
+ cuffsWanted:number;cuffsIssued:number;cuffsShort:number;
+ blockedByCarry:boolean;
 };
 export type CampaignSquadRefillQuote={
  available:boolean;reason:string|null;
  lines:CampaignRefillLine[];
  roundsWanted:number;roundsIssued:number;roundsShort:number;
  medicalWanted:number;medicalIssued:number;
- /** Exact HQ cost, not credits charged at refill. */
- cost:{ammo:number;medical:number};
+ wedgesWanted:number;wedgesIssued:number;wedgesShort:number;
+ cuffsWanted:number;cuffsIssued:number;cuffsShort:number;
+ blockedByCarry:boolean;
+ /** Exact finite HQ quantity deducted, not credits. */
+ cost:{ammo:number;medical:number;wedges:number;cuffs:number};
  partial:boolean;changed:boolean;
 };
 const eligible=(op:CampaignOperator)=>
@@ -56,28 +61,41 @@ function plan(c:CampaignState,ids:readonly string[]):RefillPlan{
    next=resupplyOperator(next,id);
    next=resupplyMedicalOperator(next,id);
   }
+  const field=locked?null:replenishCampaignFieldPieces(next,id);
+  if(field)next=field.result;
   const roundsIssued=beforeAmmo-next.supplies.ammo;
   const medicalIssued=beforeMedical-next.supplies.medical;
-  const field=op.loadout.fieldInventory??initialFieldInventory(op.loadout);
   lines.push({id,name:op.callsign,roundsWanted,roundsIssued,
    roundsShort:roundsWanted-roundsIssued,
    medicalWanted,medicalIssued,
-   wedgesCarried:fieldQuantity(field,'wedge'),
-   cuffsCarried:fieldQuantity(field,'zip-tie')});
+   wedgesWanted:field?.wedgesWanted??0,wedgesIssued:field?.wedgesIssued??0,
+   wedgesShort:field?.wedgesShort??0,
+   cuffsWanted:field?.cuffsWanted??0,cuffsIssued:field?.cuffsIssued??0,
+   cuffsShort:field?.cuffsShort??0,
+   blockedByCarry:field?.blockedByCarry??false});
  }
  const roundsWanted=lines.reduce((n,l)=>n+l.roundsWanted,0);
  const roundsIssued=lines.reduce((n,l)=>n+l.roundsIssued,0);
  const roundsShort=roundsWanted-roundsIssued;
  const medicalWanted=lines.reduce((n,l)=>n+l.medicalWanted,0);
  const medicalIssued=lines.reduce((n,l)=>n+l.medicalIssued,0);
- const partial=roundsShort>0||medicalIssued<medicalWanted;
+ const wedgesWanted=lines.reduce((n,l)=>n+l.wedgesWanted,0);
+ const wedgesIssued=lines.reduce((n,l)=>n+l.wedgesIssued,0);
+ const cuffsWanted=lines.reduce((n,l)=>n+l.cuffsWanted,0);
+ const cuffsIssued=lines.reduce((n,l)=>n+l.cuffsIssued,0);
+ const wedgesShort=wedgesWanted-wedgesIssued,cuffsShort=cuffsWanted-cuffsIssued;
+ const blockedByCarry=lines.some(l=>l.blockedByCarry);
+ const partial=roundsShort>0||medicalIssued<medicalWanted||
+  wedgesShort>0||cuffsShort>0;
  return {result:next,quote:{
   available:!locked&&lines.length>0,
   reason:locked?'COMPLETE CURRENT DEPLOYMENT FIRST':
    !lines.length?'NO ELIGIBLE SQUAD MEMBERS':null,
   lines,roundsWanted,roundsIssued,roundsShort,
-  medicalWanted,medicalIssued,
-  cost:{ammo:roundsIssued,medical:medicalIssued},
+  medicalWanted,medicalIssued,wedgesWanted,wedgesIssued,wedgesShort,
+  cuffsWanted,cuffsIssued,cuffsShort,blockedByCarry,
+  cost:{ammo:roundsIssued,medical:medicalIssued,
+   wedges:wedgesIssued,cuffs:cuffsIssued},
   partial,changed:next!==c
  }};
 }
