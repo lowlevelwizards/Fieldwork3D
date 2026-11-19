@@ -1350,7 +1350,7 @@ function updateEquipmentInspection(kit:EquipmentLoadout):void{
  const target=inspectionTarget();
  const active=!!target&&!comparing&&!kitComparing&&!variantComparing&&
   !npcActive();
- const mesh=active?inspectEquipmentMesh(rig,kit,target):null;
+ const mesh=active&&target?inspectEquipmentMesh(rig,kit,target):null;
  const result=measureEquipmentMesh(mesh);
  if(!inspectionOutline){
   inspectionOutline=new THREE.Box3Helper(inspectionOutlineBox,0xc8efaf);
@@ -1373,7 +1373,7 @@ function updateEquipmentInspection(kit:EquipmentLoadout):void{
   result.visible?'ACTUAL MESH · BOUNDING BOX SHOWN':
   'NOT EXTERNALLY VISIBLE · NO SUBSTITUTE MODEL';
  const dimensions=result.size?
-  '\nMODEL EXTENTS '+['x','y','z'].map(axis=>
+  '\nMODEL EXTENTS '+(['x','y','z'] as const).map(axis=>
    result.size![axis].toFixed(1)).join(' × '):'';
  const message=selection.toUpperCase()+' · '+location+
   '\n'+description+dimensions+
