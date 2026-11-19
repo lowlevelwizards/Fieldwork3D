@@ -164,6 +164,8 @@ export class CampaignKitPreview{
   if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
   this.dragFrame=null;this.pointerId=null;this.host=host;
   host.dataset.previewFocus=this.focusArea;
+  if(this.selectedCarryLocation)host.dataset.carryHighlight=this.selectedCarryLocation;
+  else delete host.dataset.carryHighlight;
   host.classList.add('campaign-kit-preview');
   host.setAttribute('role','img');
   host.tabIndex=0;

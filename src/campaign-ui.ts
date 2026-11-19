@@ -1659,6 +1659,7 @@ export class CampaignScreen{
     o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
   grouped.field('utilities').append(createFieldGadgetEditor({
    loadout:person.loadout,magazines:person.magazines,locked,
+   onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
    maxFlash:c.squadIds.includes(id)?
     Math.max(0,c.supplies.flash-squadFlashReserved):4,
    copyTargets:c.operators.filter(o=>o.id!==id&&

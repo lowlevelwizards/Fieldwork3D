@@ -14,6 +14,8 @@ import './loadout-prep.css';
 export type FieldGadgetEditorOptions={
  loadout:EquipmentLoadout;magazines:readonly MagazineItem[];
  onCommit:(inventory:FieldInventory)=>void;
+ /** Optional preview-only feedback; never authorizes or changes equipment. */
+ onInspectLocation?:(location:FieldCarryLocation)=>void;
  locked?:boolean;
  maxFlash?:number;
  copyTargets?:readonly {id:string;name:string;loadout:EquipmentLoadout;
@@ -66,6 +68,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   const quote=quoteSingleFieldTransfer(loadout,magazines,inventory,id,from,to);
   if(!quote.ok){feedback('CANNOT PLACE · '+quote.reason);return;}
   if(!quote.changed){feedback('ALREADY STORED HERE');return;}
+  options.onInspectLocation?.(to);
   onCommit(quote.inventory);
  };
  const capacity=document.createElement('div');
@@ -113,6 +116,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      if(suppressClick){suppressClick=false;return;}
      if(options.locked)return;
      selected=selected?.id===id&&selected.from===loc?null:{id,from:loc};
+     if(selected)options.onInspectLocation?.(loc);
      refreshSelection();
      feedback(selected?'SELECTED ONE '+tile.label.toUpperCase()+
       ' · CHOOSE A HIGHLIGHTED CARRY LOCATION':'SELECTION CLEARED');

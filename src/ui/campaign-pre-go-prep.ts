@@ -110,6 +110,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
   };
   editorHost.replaceChildren(createFieldGadgetEditor({
    loadout:selected.loadout,magazines:selected.magazines,
+   onInspectLocation:location=>preview?.highlightCarryLocation(location),
    maxFlash:Math.max(0,campaign.supplies.flash-flashElsewhere),
    copyTargets:squad.filter(o=>o.id!==selected.id).map(o=>({
     id:o.id,name:o.callsign,loadout:o.loadout,magazines:o.magazines

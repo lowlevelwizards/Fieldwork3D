@@ -327,6 +327,7 @@ function renderOperationsBoard(){
    };
    const editor=createFieldGadgetEditor({
     loadout:current.loadout,magazines:current.magazines,
+    onInspectLocation:location=>quickKitPreview?.highlightCarryLocation(location),
     locked:config.getSession().phase!=='planning'||config.isReplaying(),
     copyTargets:config.getRoster().members.filter(m=>m.id!==current.id)
      .map(m=>({id:m.id,name:m.callsign,loadout:m.loadout,magazines:m.magazines})),
