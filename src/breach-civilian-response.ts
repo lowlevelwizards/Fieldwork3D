@@ -9,7 +9,7 @@ import type {AcousticEvent} from './breach-sound-evidence.ts';
 import {interpretSound,soundResponse} from './breach-sound-evidence.ts';
 import {advanceSight,visualGain,confirmedSight}
  from './breach-visual-perception.ts';
-import {chooseCivilianRefuge} from './breach-civilian-refuge.ts';
+import {chooseCivilianRefuge,civilianEscapeCrossesDanger} from './breach-civilian-refuge.ts';
 
 type ArmedPerson={id:string;p:Pt;heading:number;health:number;
  velocity:number;posture:'stand'|'crouch';side:'blue'|'red';
@@ -178,7 +178,8 @@ export function stepCivilianResponse(c:CivilianActor,now:number,dt:number,
  if(freshThreat&&canReconsider&&
     (c.state==='frozen'||c.state==='hiding'||c.state==='fleeing')){
    const unsafeGoal=c.state!=='fleeing'||!c.goal||!c.threatEstimate||
-     dist(c.goal,c.threatEstimate)<=dist(c.p,c.threatEstimate)+15;
+     dist(c.goal,c.threatEstimate)<=dist(c.p,c.threatEstimate)+15||
+     civilianEscapeCrossesDanger(c);
    if(unsafeGoal){
     c.lastRefugeRecheckAt=now;
     const safe=chooseCivilianRefuge(c,world);
