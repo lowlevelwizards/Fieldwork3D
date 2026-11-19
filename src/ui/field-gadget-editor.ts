@@ -17,6 +17,8 @@ export type FieldGadgetEditorOptions={
  copyTargets?:readonly {id:string;name:string;loadout:EquipmentLoadout;
   magazines:readonly MagazineItem[]}[];
  onCopy?: (targetId:string,inventory:FieldInventory)=>void;
+ onUndo?:()=>void;
+ canUndo?:boolean;
 };
 const text=(tag:'div'|'span'|'strong'|'small'|'p',className:string,value:string)=>{
  const el=document.createElement(tag);el.className=className;el.textContent=value;
@@ -125,6 +127,12 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  });
  autopack.disabled=!!options.locked;
  actions.append(autopack);
+ if(options.onUndo){
+  const undo=btn('UNDO',options.onUndo);
+  undo.setAttribute('aria-label','Undo last gadget change');
+  undo.disabled=!!options.locked||!options.canUndo;
+  actions.append(undo);
+ }
  if(options.onCopy&&options.copyTargets?.length){
   const copyArea=document.createElement('div');
   copyArea.className='fw-field-inventory-copy-area';
