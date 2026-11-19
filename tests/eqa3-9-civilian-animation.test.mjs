@@ -32,6 +32,30 @@ test('EQA3.9 legacy rig hands visibly raise, protect head, and rewind determinis
  assert.equal(r.upper.position.y,0,'rewinding to calm pose restores anatomy');
  assert.equal(r.leftArm.rotation.z,0);
 });
+
+test('EQA3.9 secure state is immediately lawful; post-contact animation blends from hands-up to kneel',()=>{
+ const c=civilian(),r=createCivilianRig(c);
+ c.state='compliant';c.stateSince=4;c.restrained=false;
+ assert.equal(civilianPose(c),'compliant');
+ updateCivilianRig(r,c,4.05);
+ const early=r.upper.position.y;
+ assert.ok(r.leftArm.rotation.z< -2);
+ updateCivilianRig(r,c,5.15);
+ assert.ok(r.upper.position.y<early-3,
+   'hips settle after initial raised-hands contact phase, rather than snap');
+ updateCivilianRig(r,c,4.05);
+ assert.equal(r.upper.position.y,early,
+   'scrubbing backward reconstructs physical pose from recorded state timestamp');
+ c.restrained=true;
+ assert.equal(civilianPose(c),'restrained',
+   'restrained is distinct from ordinary SECURE');
+ updateCivilianRig(r,c,5.5);
+ assert.ok(r.upper.position.y< -7,'restrained pose must actually kneel');
+ assert.ok(r.leftArm.rotation.z> -1,
+   'hands move BEHIND the body, not raised in surrender');
+ c.restrained=false;
+ assert.equal(civilianPose(c),'compliant');
+});
 test('EQA3.9 shared 3D operator skeleton carries civilian gestures, evidence gaze, and physical crouch',()=>{
  const c=civilian(),rig=createCivilianRig(c,true);
  try{
