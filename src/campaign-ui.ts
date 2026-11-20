@@ -46,6 +46,8 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
  from './ui/fieldwork-controls.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
+import {createOutfitterGallery} from './ui/campaign-outfitter-gallery.ts';
+import {quoteSingleFieldTransfer} from './equipment-field-transfer.ts';
 import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
 import {CarryKitUndoHistory,captureCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
 import {quoteCarryGearChange} from './equipment-carry-gear-change.ts';
@@ -1748,6 +1750,9 @@ export class CampaignScreen{
   };
   const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,setCategory);
   const benchRows=new Map<LoadoutSlot,HTMLElement>();
+  const gallerySources=new Map<LoadoutSlot,HTMLSelectElement>();
+  let showGallery:((slot:LoadoutSlot)=>void)|null=null;
+  let closeAdvanced:(()=>void)|null=null;
   const benchButtons=new Map<LoadoutSlot,HTMLButtonElement>();
   const benchNav=node('nav','campaign-kit-bench-zones');
   benchNav.setAttribute('aria-label','Choose equipment position');
@@ -1827,7 +1832,8 @@ export class CampaignScreen{
    for(const [key,control] of benchButtons)
     control.setAttribute('aria-current',String(key===slot));
    for(const [key,row] of benchRows)row.hidden=compact&&key!==slot;
-   showGroup(loadoutGroupForSlot(slot));
+   if(compact){closeAdvanced?.();showGallery?.(slot);}
+   else showGroup(loadoutGroupForSlot(slot));
    contextName.textContent=slot==='primary'?'WEAPON':
     slot==='rig'?'CHEST RIG':slot==='backpack'?'BACKPACK':
     slot==='utility'?'TOOLS':slot.toUpperCase();
@@ -1928,6 +1934,7 @@ export class CampaignScreen{
       id,slot,select.value));
    }
    select.disabled=locked;
+   gallerySources.set(slot,select);
    select.classList.add('campaign-kit-native-select');
    const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '),
     itemId=>this.preview?.renderModelThumbnail({kind:'gear',slot,itemId})??null);
@@ -1978,7 +1985,8 @@ export class CampaignScreen{
    .reduce((count,o)=>count+fieldQuantity(
     o.loadout.fieldInventory??initialFieldInventory(o.loadout),'flashbang'),0);
   // Real physical stacks, magazines, and placement controls belong together.
-  grouped.field('carry').append(createFieldGadgetEditor({
+  // Keep this existing validated authority outside the mobile presentation.
+  const physicalEditor=createFieldGadgetEditor({
    loadout:person.loadout,magazines:person.magazines,locked,
    onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
    onInspectItem:item=>{
@@ -2043,7 +2051,8 @@ export class CampaignScreen{
      person.loadout.fieldInventory??initialFieldInventory(person.loadout),inventory);
     this.handlers.equipFieldInventory(id,inventory);
    }
-  }));
+  });
+  grouped.field('carry').append(physicalEditor);
   const workbenchEntry=node('section','campaign-kit-workbench-entry');
   workbenchEntry.append(node('strong','','MODULAR WEAPON WORKBENCH'));
   workbenchEntry.append(node('p','campaign-note',arsenal.disabled?
@@ -2219,9 +2228,80 @@ export class CampaignScreen{
    // primary physical-magazine board inside Physical Carry.
    kitUtilities.append(magazines);
   }
-  // One contextual drawer, one camera and one selection authority. The
-  // workspace selector is inside the drawer; it never creates another page.
-  if(compact)editor.prepend(workspaceNav);
+  // R3: Mobile has no workspaces, secondary picker or group navigation.
+  // Retain existing source controls OFFSCREEN to preserve save/stock handlers;
+  // the visible surface is a single direct-action gallery.
+  if(compact){
+   const legacy=node('div','fw-outfitter-legacy');
+   legacy.hidden=true;
+   legacy.replaceChildren(...Array.from(editor.childNodes));
+   editor.append(legacy);
+   const advanced=node('section','fw-outfitter-advanced');
+   advanced.hidden=true;
+   const advancedHead=node('div','fw-outfitter-advanced-head');
+   const advancedClose=button('‹ BACK TO EQUIPMENT',()=>{
+    advanced.hidden=true;galleryRoot.hidden=false;
+   });
+   advancedHead.append(advancedClose);
+   advanced.append(advancedHead);
+   advanced.append(kitUtilities);
+   const physicalAdvanced=physicalEditor.querySelector<HTMLElement>(
+    '.fw-field-inventory-advanced');
+   if(physicalAdvanced)advanced.append(physicalAdvanced);
+   advanced.append(issuedMore);
+   editor.append(advanced);
+   const galleryRoot=node('div','fw-outfitter-main');
+   editor.append(galleryRoot);
+   closeAdvanced=()=>{
+    advanced.hidden=true;galleryRoot.hidden=false;
+   };
+   const gallery=createOutfitterGallery({
+    host:galleryRoot,sources:gallerySources,kit:person.loadout,
+    magazines:person.magazines,physicalEditor,locked,
+    renderModel:(slot,itemId)=>this.preview?.renderModelThumbnail(
+     {kind:'gear',slot,itemId})??null,
+    onEquip:(slot,itemId)=>{
+     const original=gallerySources.get(slot);
+     if(!original||original.disabled||
+      original.querySelector<HTMLOptionElement>(
+       'option[value="'+CSS.escape(itemId)+'"]')?.disabled)return;
+     if(['rig','belt','backpack'].includes(slot)){
+      const carrySlot=slot as CarryGearSlot;
+      const quote=quoteCarryGearChange(person.loadout,person.magazines,
+       carrySlot,itemId);
+      if(!quote.ok||!quote.changed)return;
+      this.carryUndo.record(id,captureCarryUndo(person.loadout,person.magazines),
+       captureCarryUndo(quote.kit,quote.magazines));
+      this.handlers.equipCarryGear(id,carrySlot,itemId);
+     }else{
+      original.value=itemId;
+      original.dispatchEvent(new Event('change',{bubbles:true}));
+     }
+    },
+    onMoveField:(fieldId,from,to)=>{
+     const inventory=person.loadout.fieldInventory??
+      initialFieldInventory(person.loadout);
+     const quote=quoteSingleFieldTransfer(person.loadout,
+      person.magazines,inventory,fieldId,from,to);
+     if(!quote.ok||!quote.changed)return;
+     this.fieldUndo.record(id,inventory,quote.inventory);
+     this.handlers.equipFieldInventory(id,quote.inventory);
+    },
+    onMoveMagazine:(magId,to)=>{
+     const quote=quoteOneMagazineMove(person.loadout,
+      person.magazines,magId,to);
+     if(!quote.ok||!quote.changed)return;
+     this.carryUndo.record(id,captureCarryUndo(person.loadout,person.magazines),
+      captureCarryUndo(person.loadout,quote.magazines));
+     this.handlers.moveMagazine(id,magId,to);
+    },
+    onArsenal:()=>this.handlers.openArsenal(id),
+    onAdvanced:()=>{galleryRoot.hidden=true;advanced.hidden=false;}
+   });
+   showGallery=slot=>gallery.show(slot);
+   gallery.show(this.activeBenchSlot);
+   main.dataset.kitWorkspace='unified';
+  }
   grid.append(editor);main.append(grid);
   this.root.append(main);
   if(this.weaponView){
