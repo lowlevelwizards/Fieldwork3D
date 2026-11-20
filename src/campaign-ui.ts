@@ -2425,7 +2425,7 @@ export class CampaignScreen{
    this.preview?.setOnTapSlot(slot=>selectBenchSlot(slot,true));
    this.preview?.setSelectedSlot(this.activeBenchSlot,false);
    this.preview?.setWeaponPresentation(this.inspectionWeaponVisible);
-   this.preview?.onWeaponVisibilityChange=held=>{
+   if(this.preview)this.preview.onWeaponVisibilityChange=held=>{
     this.inspectionWeaponVisible=held;
    };
    if(compact){
