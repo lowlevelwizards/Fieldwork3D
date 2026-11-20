@@ -6,7 +6,6 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {entryDoorState,generatedLeadAcrossSameDoor} from './breach-entry-coordination.ts';
 import {generatedEntryInterruptedByTeammate} from './breach-entry-interruption-group.ts';
-import {completedGeneratedEntryAt} from './breach-completed-entry-leaf-yield.ts';
 import {doorSwingBlocked} from './breach-door.ts';
 import {doorSecuredFrom} from './breach-door-security.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -59,10 +58,7 @@ export function advanceWaitOrder(
     return;
   }
   const leadAcross=!!entry&&generatedLeadAcrossSameDoor(
-    doorway,a,entry.p,s.operators,(id,doorId)=>{
-      const peer=s.operators.find(other=>other.id===id);
-      return !!peer&&completedGeneratedEntryAt(peer,doorId);
-    });
+    doorway,a,entry.p,s.operators);
   if(gate!=='ready'&&!leadAcross){
    a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
    if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
