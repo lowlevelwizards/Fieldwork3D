@@ -100,6 +100,8 @@ import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
+import {captureVitalStatus,livingCaptureStatus,CAPTURE_VITAL_CHECK_SECONDS,
+ recordActualDown} from './breach-capture-vitals.ts';
 import {captureTargetTransportEligible,designatedDownedCaptureTarget}
  from './breach-capture-transport-policy.ts';
 
@@ -173,6 +175,9 @@ export type TeamActor=Operator & {
   /** One authored, fixed-step pistol reload; rifle magazine fields are untouched. */
   secondaryReload:import('./secondary-timed-reload.ts').SecondaryTimedReload|null;
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
+  /** D15.7: real downing / irreversible fatality evidence. */
+  downedAt?:number|null;deathAt?:number|null;
+  lastDownById?:string|null;
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
@@ -1292,7 +1297,12 @@ export function planCaptureTransportRelease(s:Session,id:string):boolean{
 export function planMedicalTreatment(s:Session,id:string,patientId:string,
  afterNodeId?:number):boolean{
  const a=party(s,id),patient=s.operators.find(o=>o.id===patientId);
- if(!a||!patient||patient.side!==a.side||!canEdit(s))return false;
+ const captive=!!a&&!!patient&&a.side==='blue'&&
+   designatedDownedCaptureTarget(s,patient)&&
+   captureVitalStatus(patient)!=='deceased'&&
+   liveVisibility(s,patient.p);
+ if(!a||!patient||(!captive&&patient.side!==a.side)||
+   !canEdit(s)||captureVitalStatus(patient)==='deceased')return false;
  const wound=mostUrgentWound(patient.medical);
  if(!wound||!treatmentSupplyForWound(wound,a.medicalSupplies))return false;
  const insertion=afterNodeId===undefined?-1:
@@ -1825,8 +1835,9 @@ function mission(s:Session,dt:number){
   if(team(s).every(a=>a.health<=0)){
     s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
   }
-  const captured=s.missionType==='capture'&&s.captureTarget?
-    enemies(s).some(a=>a.id===s.captureTarget&&captureTargetResolved(a)):false;
+  const capturePerson=s.missionType==='capture'&&s.captureTarget?
+    enemies(s).find(a=>a.id===s.captureTarget):undefined;
+  const captured=!!capturePerson&&captureTargetResolved(capturePerson);
   if(s.mission==='clear'&&
     (captured||(s.missionType!=='capture'&&enemies(s).every(a=>!activeCombatant(a))))){
     s.mission='secure';
@@ -1869,8 +1880,24 @@ function mission(s:Session,dt:number){
       s.intelCarrierId=collector.id;
     }
     if(s.missionType==='capture'){
-      const target=enemies(s).find(e=>e.id===s.captureTarget);
+      const target=capturePerson;
       if(!target||!captureTargetResolved(target))return;
+      const clinical=captureVitalStatus(target);
+      if(clinical==='deceased'){
+        s.phase='lost';s.report=['OPERATION FAILED','CAPTURE TARGET DECEASED'];
+        notify(s,'CAPTURE FAILED — TARGET DECEASED');return;
+      }
+      if(clinical==='unverified'){
+        // A historical body with no down evidence needs an actual
+        // on-site contact assessment, not an invented living outcome.
+        s.holdTime+=dt;
+        if(s.holdTime<CAPTURE_VITAL_CHECK_SECONDS)return;
+        recordActualDown(target,s.seconds);
+        notify(s,'TARGET VITALS VERIFIED — INCAPACITATED');
+        battleEvent(s,'interaction',atObjective[0]!,target.p,
+          'TARGET VITALS VERIFIED',{action:'capture-vitals-checked',
+            targetId:target.id,contributorId:atObjective[0]!.id});
+      }
       // A living submitted target cannot be counted as arrested through mere
       // physical proximity. A genuine GO-time restraint must be completed.
       // Existing downed-target missions keep their historical secure behavior.
@@ -1923,8 +1950,10 @@ function mission(s:Session,dt:number){
       sweptBodyClear(a.p,prisoner.p,s.doors,5.5,sessionWorldGeometry(s));
     // Physically downed bodies follow the existing real carrier or must be
     // recovered in direct contact at extraction; never remote objective wins.
-    if(prisoner.health<=0)return (prisoner.carriedById===a.id&&
-      a.carryingId===prisoner.id)||atBody;
+    if(prisoner.health<=0)return livingCaptureStatus(
+      captureVitalStatus(prisoner))&&
+      ((prisoner.carriedById===a.id&&
+      a.carryingId===prisoner.id)||atBody);
     return prisoner.surrendered&&prisoner.restrained===true&&
       (prisoner.escortLeaderId===a.id||atBody);
   };
