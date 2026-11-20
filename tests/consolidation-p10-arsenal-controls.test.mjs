@@ -54,7 +54,10 @@ test('P10: both galleries share presentation buttons, not persistence or weapon 
  assert.match(glock,/renameGlockSavedBuild\(/);
  assert.match(glock,/duplicateGlockSavedBuild\(/);
  assert.match(glock,/deleteGlockSavedBuild\(/);
- assert.match(primary,/className='arsenal-saved-actions'/);
- assert.match(glock,/arsenal-glock-saved-actions/);
+ const chrome=src('arsenal/gallery-chrome.ts');
+ assert.match(primary,/createArsenalGalleryChrome\('primary'\)/);
+ assert.match(glock,/createArsenalGalleryChrome\('secondary'\)/);
+ assert.match(chrome,/arsenal-saved-actions/);
+ assert.match(chrome,/arsenal-glock-saved-actions/);
  assert.doesNotMatch(common,/localStorage|loadArsenalBuildLibrary|loadGlockLibrary|ammo|equipRoster|THREE/);
 });
