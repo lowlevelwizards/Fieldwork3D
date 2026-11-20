@@ -143,8 +143,8 @@ export function createShotResolver(ports:ShotResolverPorts){
   const priorBurst=s.seconds-a.lastShotAt<.48;
   const proposedBurst=priorBurst?a.burstCount+1:1;
   // Roll ordering is authoritative. The pure ignition policy never calls RNG.
-  const cone=shotDispersionCone(secondaryWeapon?{...a,weapon:'smg' as const}:a,
-    mode,range,moving,mods,weapon.optimalRange)*
+  const cone=shotDispersionCone(a,mode,range,moving,mods,
+    weapon.optimalRange,secondaryWeapon?profile:undefined)*
     (sightClearance.carryOverride==='short'?
       1.30+Math.max(0,sightClearance.compression)*.38:1);
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
