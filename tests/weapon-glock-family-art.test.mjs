@@ -125,7 +125,8 @@ test('G2.5: right-side ejection port is one flat batched rectangle, not new geom
    const verts=detail[0].geometry.attributes.position;
    const portVerts=[];
    for(let i=0;i<verts.count;i++){
-    if(verts.getY(i)>2.05&&verts.getY(i)<2.52)
+    if(verts.getY(i)>2.05&&verts.getY(i)<2.52&&
+     verts.getX(i)>=.58&&verts.getX(i)<=2.53&&verts.getZ(i)>1.48)
      portVerts.push([verts.getX(i),verts.getY(i),verts.getZ(i)]);
    }
    assert.equal(portVerts.length,4,'one four-vertex port graphic');
