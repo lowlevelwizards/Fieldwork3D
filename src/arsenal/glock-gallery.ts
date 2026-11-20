@@ -63,11 +63,9 @@ class GlockGallerySnapshots{
    const bounds=new THREE.Box3().setFromObject(model);
    const center=bounds.getCenter(new THREE.Vector3());
    const distance=glockPreviewFitDistance(bounds,width,height,size==='hero'?.86:.80);
-   // Factory and saved card icons share the same flat, right-facing side
-   // profile used by primary Arsenal cards. Keep the hero three-quarter.
-   const isCard=size==='card';
-   this.camera.position.set(center.x+(isCard?0:distance*.29),
-    center.y+(isCard?0:distance*.10),center.z+distance);
+   // D6: card AND hero use the true right-facing side profile shared
+   // with primary Arsenal cards. One unchanged renderer/cache path.
+   this.camera.position.set(center.x,center.y,center.z+distance);
    this.camera.lookAt(center);this.camera.updateProjectionMatrix();
    this.renderer.render(this.scene,this.camera);
    const encoded=this.renderer.domElement.toDataURL('image/webp',.84);
