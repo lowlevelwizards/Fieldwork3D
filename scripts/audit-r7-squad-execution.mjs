@@ -1510,9 +1510,9 @@ function run(site,seed,kind){
        samples};
     })}:{}),
     ...(queueDecisionWitnessEnabled?{queueDecisionEvidence,
-     queueEndState:{doors:session.doors.filter(d=>d.id==='D5').map(d=>({id:d.id,a:d.a,b:d.b,openFraction:d.openFraction})),
+     queueEndState:{doors:session.doors.filter(d=>d.id==='FRONT'||d.id==='D5').map(d=>({id:d.id,a:d.a,b:d.b,openFraction:d.openFraction})),
       slots:[...livePassageSchedule(session)].map(([id,slots])=>({id,slots})),
-      lanes:[-1,1].map(side=>({side,...inspectPassageLane(session,'D5',side)}))}}:{}),
+      lanes:[-1,1].map(side=>({side,...inspectPassageLane(session,session.doors.some(d=>d.id==='FRONT')?'FRONT':'D5',side)}))}}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
