@@ -51,6 +51,7 @@ test('P9: secondary is activated by tab, renders only visible queued cards, and 
  assert.match(main,/const previewQueue=createArsenalPreviewQueue\(\)/);
  assert.match(main,/previewQueue\.enqueue\(host,task,hero\)/);
  assert.match(glock,/const previewQueue=createArsenalPreviewQueue\(\)/);
+ assert.match(glock,/previewQueue\.enqueue\(feature,\(\)=>\s*display\(feature,selected,'hero',saved\?\.recipe\.customization\),true\)/);
  assert.match(glock,/const activate=\(\)=>\{\s*if\(activated\)return;\s*activated=true;\s*renderFilters\(\);renderCards\(\)/);
  assert.match(glock,/if\('IntersectionObserver' in window\)/);
  assert.match(glock,/deferred\.set\(image,paint\);observer\.observe\(image\)/);
