@@ -1416,6 +1416,7 @@ export class CampaignScreen{
   const selectName=fieldworkSelect({label:'Choose outfitting operator',
    value:id,choices:preparable.map((o,i)=>({
     value:o.id,label:o.callsign.toUpperCase(),
+    swatch:o.squadColor??SQUAD_IDENTIFICATION_COLORS[i%SQUAD_IDENTIFICATION_COLORS.length],
     hint:'OPERATOR '+String(i+1).padStart(2,'0')+' / '+
      String(preparable.length).padStart(2,'0')})),
    onChange:chooseOperator});
