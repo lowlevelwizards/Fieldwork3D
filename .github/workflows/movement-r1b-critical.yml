@@ -8,6 +8,9 @@ on:
       - 'src/breach-passage-visual-ranks.ts'
       - 'src/breach-queue-trace.ts'
       - 'src/breach-motor-passage.ts'
+      - 'src/breach-frame-actor-recovery.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-route-recurrence.ts'
       - 'src/breach-door.ts'
       - 'src/breach-order-entry.ts'
       - 'src/breach-order-door.ts'
@@ -36,6 +39,7 @@ jobs:
             tests/release-d3-r1-repeated-passage.test.mjs \
             tests/release-d3-r1-passage-feedback.test.mjs \
             tests/release-d3-r1-door-topology.test.mjs \
+            tests/release-d3-r1-frame-actor-recovery.test.mjs \
             tests/passage-q2-coordinator.test.mjs \
             tests/passage-q3-ranks.test.mjs \
             tests/doorway-planned-sequence.test.mjs
