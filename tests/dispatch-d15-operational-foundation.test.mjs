@@ -33,6 +33,8 @@ test('D15.1 legacy surrender is NOT physical custody or a living captive',()=>{
   assert.equal(classifySuspectCustody(suspect).disposition,'legacy-surrendered-down');
   assert.equal(classifySuspectCustody(suspect).custodyCandidate,false);
   assert.equal(classifySuspectCustody(officer).disposition,'not-suspect');
+  assert.equal(classifySuspectCustody({...suspect,deathAt:8}).disposition,
+    'deceased','confirmed fatality cannot be classified as a recoverable down');
   assert.equal(s.captureSecured,false);
  }finally{activateSite(null);}
 });
