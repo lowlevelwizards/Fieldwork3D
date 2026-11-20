@@ -15,7 +15,7 @@ export type DoorMethod='open'|'close'|'kick'|'hold';
 export type PlanNode={
   id:number;kind:PlanKind;p:Pt;facing?:number;doorId?:string;
   objectId?:string;pushDirection?:Pt;interaction?:'push'|'open-window'|'close-window'|
-    'secure-civilian'|'follow-civilian'|'restrain-civilian'|'release-civilian'|'challenge-suspect'|
+    'secure-civilian'|'follow-civilian'|'stop-following-civilian'|'restrain-civilian'|'release-civilian'|'challenge-suspect'|
     'power-on'|'power-off';
   method?:DoorMethod;duration?:number;syncCode?:string;holdOnContact?:boolean;
   postureState?:'stand'|'crouch';paceState?:'walk'|'run';

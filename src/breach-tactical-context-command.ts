@@ -83,12 +83,15 @@ export function dispatchTacticalContextCommand(input:{
   }
   case 'ctxSecureCivilian':
   case 'ctxFollowCivilian':
+  case 'ctxStopFollowingCivilian':
   case 'ctxRestrainCivilian':{
    const mode=action==='ctxSecureCivilian'?'secure':
-     action==='ctxFollowCivilian'?'follow':'restrain';
+     action==='ctxFollowCivilian'?'follow':
+     action==='ctxStopFollowingCivilian'?'stop-following':'restrain';
    const civ=nearestContextCivilian(state.civilians,finalPoint(a),
      mode,state.mission,p=>liveVisibility(state,p),
-     (from,to)=>sweptBodyClear(from,to,state.doors,5.5,
+     (from,to)=>sweptBodyClear(from,to,state.doors,
+       mode==='follow'||mode==='stop-following'?1.5:5.5,
        sessionWorldGeometry(state)));
    return finish(!!civ&&planCivilianInteraction(state,selected,civ.id,mode),
      'CIVILIAN INTERACTION NOT REACHABLE');

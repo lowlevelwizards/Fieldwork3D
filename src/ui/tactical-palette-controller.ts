@@ -405,14 +405,16 @@ export function createTacticalPaletteController(config:{
   // path. A closer unrelated visitor must never steal FOLLOW from a rescue
   // target; a civilian visible across an opaque wall must not advertise a
   // contact order the motor/game authority will reject.
-  const civilianContact=(mode:'secure'|'follow'|'restrain')=>
+  const civilianContact=(mode:'secure'|'follow'|'restrain'|'stop-following')=>
     routeEndCivilianActions?nearestContextCivilian(
       state.civilians,at,mode,state.mission,
       p=>liveVisibility(state,p),
-      (from,to)=>sweptBodyClear(from,to,state.doors,5.5,
+      (from,to)=>sweptBodyClear(from,to,state.doors,
+        mode==='follow'||mode==='stop-following'?1.5:5.5,
         sessionWorldGeometry(state))):null;
   const civilianAtPlan=civilianContact('secure');
   const rescueAtPlan=civilianContact('follow');
+  const followingAtPlan=civilianContact('stop-following');
   const restraintAtPlan=a.restraintRemaining>0?civilianContact('restrain'):null;
   const suspectAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&
@@ -438,7 +440,8 @@ export function createTacticalPaletteController(config:{
     nearRestrainableCivilian:!!restraintAtPlan,
     restraintsRemaining:a.restraintRemaining,
     nearSuspect:!!suspectAtPlan,
-    escortableCivilian:!!rescueAtPlan,
+    escortableCivilian:!!rescueAtPlan&&rescueAtPlan.following!==a.id,
+    stopFollowingCivilian:!!followingAtPlan,
     nearCivilianCasualty:!!casualtyAtPlan,
     carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
       c.id===a.carryingId&&c.carriedById===a.id),

@@ -3,6 +3,7 @@
  * immutable samples. This module is intentionally presentation-only.
  */
 import {isDetected,personDetected,inSight,liveVisibility,observerPointVisible,type Session,type TeamActor} from './breach-game.ts';
+import {escortedCivilianVisible} from './breach-civilian-visibility.ts';
 
 export type ReplayKnowledge={
   /** Exactly which actors had player-visible models at capture time. */
@@ -71,7 +72,8 @@ export function captureReplayKnowledge(
       for(const target of livingHostiles)
         if(inSight(observer,target,s))visibleIds.push(target.id);
       for(const civilian of s.civilians)
-        if(observerPointVisible(s,observer,civilian.p))
+        if(escortedCivilianVisible(civilian)||
+           observerPointVisible(s,observer,civilian.p))
           civilianIds.push(civilian.id);
       for(const body of bodies)
         if(observerPointVisible(s,observer,body.p))
@@ -93,7 +95,8 @@ export function captureReplayKnowledge(
     if(a.health<=0&&visible)discovered.add(a.id);
   }
   for(const c of s.civilians)
-    if(liveVisibility(s,c.p))visibleCivilianIds.push(c.id);
+    if(escortedCivilianVisible(c)||liveVisibility(s,c.p))
+      visibleCivilianIds.push(c.id);
   return {visibleActorIds,visibleCivilianIds,
     discoveredBodyIds:[...discovered],operatorVisibleActorIds,
     operatorDetectedActorIds,

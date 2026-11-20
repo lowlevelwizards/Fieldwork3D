@@ -97,6 +97,7 @@ import {PerceptionPairCache} from './breach-perception-cache.ts';
 
 import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
+import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 
 
@@ -551,30 +552,37 @@ export function planSitePowerControl(s:Session,id:string,
   else a.plan.push(order);
  });
 }
-/** Explicit authored civilian interaction: no distant or fog-granted
- * command. The target's current physical position is rechecked on GO. */
+/** Authored contact or spoken civilian interaction; neither is applied
+ * until GO. Long-distance voice still requires actual unobstructed space. */
 export function planCivilianInteraction(s:Session,id:string,
- civilianId:string,action:'secure'|'follow'|'restrain'):boolean{
+ civilianId:string,action:'secure'|'follow'|'restrain'|'stop-following'):boolean{
  const a=party(s,id),civil=s.civilians.find(c=>c.id===civilianId);
  if(!a||!civil||!canEdit(s)||civil.health<=0)return false;
  const from=finalPoint(a),range=d(from,civil.p);
- // At real physical contact distance SECURE/FOLLOW itself includes the
- // operator turning toward the civilian. Farther commands still require
- // actual visual disclosure. Every order retains the live swept gate.
- if(range>34||(range>28&&!liveVisibility(s,civil.p))||
-    !sweptBodyClear(from,civil.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ // FOLLOW/STOP are spoken instructions, not a hand-contact maneuver.
+ // SECURE/RESTRAIN retain their short physical reach and full body gate.
+ const voice=action==='follow'||action==='stop-following';
+ const alreadyEscorted=civil.following!==null&&civil.state==='escorted';
+ if(range>(voice?CIVILIAN_VOICE_RANGE:34)||
+    (range>28&&action!=='stop-following'&&
+     !(action==='follow'&&alreadyEscorted)&&!liveVisibility(s,civil.p))||
+    !sweptBodyClear(from,civil.p,s.doors,voice?1.5:5.5,
+      sessionWorldGeometry(s)))return false;
  if(action==='follow'&&(!civil.rescueTarget||s.mission!=='extract'))
    return false;
+ if(action==='stop-following'&&(!civil.rescueTarget||
+   s.mission!=='extract'||!alreadyEscorted))return false;
  if(action==='restrain'&&
     (civil.state!=='compliant'||civil.restrained===true||
      civil.rescueTarget||a.restraintRemaining<=0))return false;
  const queued=addNode(s,id,'interact',from,{
    objectId:civil.id,interaction:action==='secure'?
      'secure-civilian':action==='follow'?'follow-civilian':
-     'restrain-civilian'
+     action==='stop-following'?'stop-following-civilian':'restrain-civilian'
  });
  if(queued)notify(s,(action==='secure'?'SECURE':
-   action==='follow'?'FOLLOW':'RESTRAIN')+
+   action==='follow'?'FOLLOW':action==='stop-following'?
+   'STOP FOLLOWING':'RESTRAIN')+
    ' QUEUED — EXECUTES ON GO');
  return queued;
 }

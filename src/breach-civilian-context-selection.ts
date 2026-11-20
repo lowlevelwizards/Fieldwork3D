@@ -5,32 +5,41 @@
 import type {Pt} from './breach-core.ts';
 import type {CivilianActor} from './breach-civilian-types.ts';
 
+export const CIVILIAN_VOICE_RANGE=96;
+
 /** Select a *reachable* civilian of the correct kind. The old
  * dispatcher chose the nearest civilian of ANY kind, even when the UI
  * offered FOLLOW because a farther rescue person was actually eligible.
- * Keep 34-unit planning reach and stable ordering of tied candidates.
+ * SECURE/RESTRAIN keep 34-unit contact reach; spoken FOLLOW/STOP use
+ * 96-unit unobstructed communication reach. Stable ties keep actor order.
  */
 export function nearestContextCivilian<T extends Pick<CivilianActor,
- 'p'|'health'|'state'|'rescueTarget'|'restrained'>>(
-  civilians:readonly T[],from:Pt,action:'secure'|'follow'|'restrain',missionStage:string,
+ 'p'|'health'|'state'|'rescueTarget'|'restrained'> &
+ Partial<Pick<CivilianActor,'following'>>>(
+  civilians:readonly T[],from:Pt,action:'secure'|'follow'|'restrain'|'stop-following',missionStage:string,
   disclosed:(p:Pt)=>boolean,
   physicalContact:(from:Pt,to:Pt)=>boolean
 ):T|null{
-  if(action==='follow'&&missionStage!=='extract')return null;
-  let nearest:T|null=null,best=34;
+  const spoken=action==='follow'||action==='stop-following';
+  if(spoken&&missionStage!=='extract')return null;
+  let nearest:T|null=null,best=spoken?CIVILIAN_VOICE_RANGE:34;
   for(const person of civilians){
     if(person.health<=0||
-      (action==='follow'?!person.rescueTarget:
+      (action==='stop-following'?!person.rescueTarget||
+         !person.following||person.state!=='escorted':
+       action==='follow'?!person.rescueTarget:
        action==='restrain'?person.state!=='compliant'||
          person.restrained===true||person.rescueTarget:
        person.state==='compliant'))
       continue;
     const distance=Math.hypot(from.x-person.p.x,from.y-person.p.y);
-    // At arm's length the explicit SECURE/FOLLOW command can orient
-    // toward the person, even if they are behind the operator's current
-    // facing cone. Still refuse any wall/closed-door obstruction.
+    // A currently escorted person is already known even outside the
+    // present sight cone; a NEW FOLLOW requires disclosure. All spoken
+    // commands still need an unobstructed route for the actual voice.
+    const knownEscort=!!person.following&&person.state==='escorted';
     if(distance>=best||
-       (distance>28&&!disclosed(person.p))||
+       (distance>28&&action!=='stop-following'&&
+        !(action==='follow'&&knownEscort)&&!disclosed(person.p))||
        !physicalContact(from,person.p))continue;
     nearest=person;best=distance;
   }
