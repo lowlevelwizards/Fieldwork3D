@@ -487,6 +487,9 @@ export function createTacticalPaletteController(config:{
     nearDownedCaptureTarget:!!downedCaptureAtPlan,
     carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
       c.id===a.carryingId&&c.carriedById===a.id),
+    carryingCaptureTarget:!!a.carryingId&&state.missionType==='capture'&&
+      state.operators.some(o=>o.id===a.carryingId&&
+        o.id===state.captureTarget&&o.health<=0&&o.carriedById===a.id),
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
