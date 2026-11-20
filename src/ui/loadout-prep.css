@@ -533,3 +533,8 @@
  .fw-carry-bodymap-zone[data-location="belt"]{left:3%}
  .fw-carry-bodymap-zone[data-location="pocket"]{right:3%}
 }
+
+.fw-carry-bodymap-zone[data-drag-target="true"]{
+ background:#76976b;color:#fff;border-color:#f0ffce;
+ box-shadow:0 0 0 4px #b5dba388;
+}
