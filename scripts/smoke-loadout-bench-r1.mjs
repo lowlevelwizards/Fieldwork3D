@@ -40,9 +40,9 @@ try{
     'One real operator model remains on-screen');
    const readiness=armory.locator('.campaign-kit-readiness-drawer');
    assert.equal(await readiness.evaluate(el=>el.open),false);
-   await readiness.locator('summary').click();
+   await readiness.locator(':scope > summary').click();
    assert.ok(await readiness.locator('.campaign-kit-readiness-panel').isVisible());
-   await readiness.locator('summary').click();
+   await readiness.locator(':scope > summary').click();
    await armory.locator('.campaign-kit-bench-zone[data-slot="head"]').click();
    assert.equal(await armory.getAttribute('data-bench-slot'),'head');
    const row=armory.locator('.campaign-kit-choice[data-bench-slot="head"]');
