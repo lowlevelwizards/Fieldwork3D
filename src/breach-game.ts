@@ -291,6 +291,8 @@ export type TeamActor=Operator & {
   releasedWeaponId?:number|null;
   /** Restraints applied only after physical GO completion. */
   restrained?:boolean;lastCustodyAt?:number;
+  /** Only a successfully completed physical search establishes this fact. */
+  suspectSearched?:boolean;
  /** D9: authoritative interval since last resolved spoken challenge. */
  lastChallengeAt?:number;
   lastFireRepositionAt:number;lastMissionEvadeAt:number;
@@ -627,6 +629,33 @@ export function planSuspectRestraint(s:Session,id:string,targetId:string):boolea
    objectId:'suspect:'+target.id,interaction:'restrain-suspect'
  });
  if(queued)notify(s,'RESTRAIN SUSPECT QUEUED — EXECUTES ON GO');
+ return queued;
+}
+/** D15.4: physically search a living, restrained, known suspect. */
+export function planSearchSuspect(s:Session,id:string,targetId:string):boolean{
+ const a=party(s,id),target=enemies(s).find(x=>x.id===targetId);
+ if(!a||!target||!canEdit(s)||a.health<=0||target.health<=0||
+    !target.surrendered||target.restrained!==true||target.suspectSearched)return false;
+ const from=finalPoint(a);
+ if(d(from,target.p)>34||(d(from,target.p)>28&&!liveVisibility(s,target.p))||
+    !sweptBodyClear(from,target.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ const queued=addNode(s,id,'interact',from,{
+   objectId:'suspect:'+target.id,interaction:'search-suspect'
+ });
+ if(queued)notify(s,'SEARCH SUSPECT QUEUED — EXECUTES ON GO');
+ return queued;
+}
+/** D15.4: only an actual identified, reachable, loose firearm can be secured. */
+export function planSecureDroppedFirearm(s:Session,id:string,weaponId:number):boolean{
+ const a=party(s,id),item=s.droppedFirearms.find(w=>w.id===weaponId);
+ if(!a||!item||!canEdit(s)||a.health<=0||item.status!=='loose')return false;
+ const from=finalPoint(a);
+ if(d(from,item.p)>34||(d(from,item.p)>28&&!liveVisibility(s,item.p))||
+    !sweptBodyClear(from,item.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ const queued=addNode(s,id,'interact',from,{
+   objectId:'weapon:'+item.id,interaction:'secure-firearm'
+ });
+ if(queued)notify(s,'SECURE FIREARM QUEUED — EXECUTES ON GO');
  return queued;
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){

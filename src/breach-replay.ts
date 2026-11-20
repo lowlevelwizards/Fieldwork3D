@@ -65,6 +65,7 @@ export type ReplayActorFrame=ActorFrame & {
  lastSurrenderAt?:number;
  releasedWeaponId?:number|null;
  restrained?:boolean;lastCustodyAt?:number;
+ suspectSearched?:boolean;
  /** F6: optional fixed-step clock of the authored active interaction.
   * Missing in older films means no credible mid-action hand retrieval. */
  actionTimer?:number;
@@ -249,6 +250,7 @@ export function snapshot(s:Session,seenGround?:string[],
       surrendered:a.surrendered,lastSurrenderAt:a.lastSurrenderAt,
       releasedWeaponId:a.releasedWeaponId??null,
       restrained:a.restrained===true,lastCustodyAt:a.lastCustodyAt,
+      suspectSearched:a.suspectSearched===true,
       defense:a.defense?position(a.defense):null,
       watch:a.watch?position(a.watch):null,
       aimInstruction:a.aimInstruction?{...a.aimInstruction,
@@ -562,6 +564,7 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       releasedWeaponId:copy.releasedWeaponId??null,
       restrained:copy.restrained===true,
       lastCustodyAt:copy.lastCustodyAt,
+      suspectSearched:copy.suspectSearched===true,
       actionTimer:copy.actionTimer??0,
       heard:copy.heard?position(copy.heard):null,
       contact:copy.contact?position(copy.contact):null,

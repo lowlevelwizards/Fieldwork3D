@@ -10,6 +10,7 @@ export type DroppedFirearm={
  loadedRounds:number;reserveRounds:number;magazineId:string;
  secondaryWeapon?:GlockAppearanceId;
  status:'loose'|'secured'|'retrieved';
+ securedById?:string;
 };
 /** A unique world object receives actual held-firearm identity exactly once. */
 export function releaseSuspectHeldFirearm(s:Session,a:TeamActor):DroppedFirearm{

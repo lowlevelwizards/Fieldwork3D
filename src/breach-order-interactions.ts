@@ -45,7 +45,9 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
        n.interaction==='follow-civilian'||
        n.interaction==='stop-following-civilian'||
        n.interaction==='restrain-civilian'))||
-      (n.objectId.startsWith('suspect:')&&n.interaction==='restrain-suspect');
+      (n.objectId.startsWith('suspect:')&&
+        (n.interaction==='restrain-suspect'||n.interaction==='search-suspect'))||
+      (n.objectId.startsWith('weapon:')&&n.interaction==='secure-firearm');
     if(!contactCommand&&!near(a.p,n.p,7)){
       // Once an electrical action has begun, losing the contact position
       // cancels it rather than letting an absent hand finish remotely.
@@ -124,6 +126,76 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       notify(s,message);
       battleEvent(s,'interaction',a,a.p,message,{
         action:'suspect-restrained',targetId:suspect.id,contributorId:a.id});
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
+    if(n.interaction==='search-suspect'){
+      const suspect=s.operators.find(x=>x.side==='red'&&
+        n.objectId==='suspect:'+x.id);
+      if(!suspect||suspect.health<=0||!suspect.surrendered||
+         suspect.restrained!==true||suspect.suspectSearched===true||a.health<=0){
+        failCurrentOrder(s,a,n,'RESTRAINED SUSPECT NOT AVAILABLE');return true;
+      }
+      const distance=d(a.p,suspect.p);
+      const clear=sweptBodyClear(a.p,suspect.p,s.doors,5.5,
+        sessionWorldGeometry(s));
+      if(distance>28&&distance<=45&&clear&&d(suspect.p,n.p)<=45&&
+         liveVisibility(s,suspect.p)){
+        approach(a,suspect.p,dt,s,.65);return true;
+      }
+      if(distance>28||!clear){
+        failCurrentOrder(s,a,n,'SEARCH REQUIRES PHYSICAL CONTACT');return true;
+      }
+      a.velocity=0;
+      if(!rotate(a,Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x),dt,s))
+        return true;
+      a.actionTimer+=dt;
+      if(a.actionTimer<.9)return true;
+      const pistol=suspect.equipment?.secondary;
+      if(pistol?.weapon){
+        // Physically confiscate only an actually issued carried pistol.
+        s.droppedFirearms.push({
+          id:s.nextEffectId++,ownerId:suspect.id,p:clone(suspect.p),
+          heading:suspect.heading,at:s.seconds,weapon:suspect.weapon,
+          loadedRounds:pistol.loadedRounds,reserveRounds:0,
+          magazineId:'secondary:'+suspect.id,
+          secondaryWeapon:pistol.weapon,status:'secured',securedById:a.id
+        });
+        suspect.equipment={...suspect.equipment!,secondary:undefined};
+      }
+      suspect.suspectSearched=true;
+      const message=a.name+' SEARCHED '+suspect.name+
+        (pistol?.weapon?' · SIDEARM SECURED':' · NO SIDEARM');
+      notify(s,message);
+      battleEvent(s,'interaction',a,a.p,message,{
+        action:'suspect-searched',targetId:suspect.id,contributorId:a.id});
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
+    if(n.interaction==='secure-firearm'){
+      const weapon=s.droppedFirearms.find(w=>n.objectId==='weapon:'+w.id);
+      if(!weapon||weapon.status!=='loose'||a.health<=0){
+        failCurrentOrder(s,a,n,'DROPPED FIREARM UNAVAILABLE');return true;
+      }
+      const distance=d(a.p,weapon.p);
+      const clear=sweptBodyClear(a.p,weapon.p,s.doors,5.5,
+        sessionWorldGeometry(s));
+      if(distance>28&&distance<=45&&clear&&d(weapon.p,n.p)<=45&&
+         liveVisibility(s,weapon.p)){
+        approach(a,weapon.p,dt,s,.65);return true;
+      }
+      if(distance>28||!clear){
+        failCurrentOrder(s,a,n,'WEAPON OUT OF PHYSICAL REACH');return true;
+      }
+      a.velocity=0;
+      if(!rotate(a,Math.atan2(weapon.p.y-a.p.y,weapon.p.x-a.p.x),dt,s))
+        return true;
+      a.actionTimer+=dt;
+      if(a.actionTimer<.75)return true;
+      weapon.status='secured';weapon.securedById=a.id;
+      const message=a.name+' SECURED DROPPED FIREARM';
+      notify(s,message);
+      battleEvent(s,'interaction',a,a.p,message,{
+        action:'weapon-secured',targetId:weapon.ownerId,
+        objectId:'weapon:'+weapon.id,contributorId:a.id});
       clearCurrentOrderIssue(a);pop(a);return true;
     }
     if(n.interaction==='release-civilian'){

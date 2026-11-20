@@ -36,6 +36,16 @@ Base main: `a4e323d6e66edf5f2a45a470a4ac399e0d7c7af9`. Feature branch: `feature/
 - Actor replay snapshots preserve restraint and custody timestamps separately.
 - Still requires critical CI and full custody release contract before deployment.
 
+## D15.4A — actual suspect search and weapon security (feature branch)
+- Explicitly target actual captive ID and real loose firearm ID. GO-time
+  hand contact, orientation, timed completion and current physical clearance
+  are revalidated; no inventory mutation in planning.
+- Search only discovers/confiscates a genuinely issued carried sidearm, with
+  one stable world firearm record and no fictional items.
+- SECURE WEAPON marks the actual dropped object inaccessible; both actions
+  produce structured operator-attributed events and replay-true states.
+- Contextual UI exposure and full targeted validation remain outstanding.
+
 ## R1 must still implement before release
 - Real living surrender; authoritative transfer of the held firearm into a
   Session-owned recoverable world entity (current `droppedGun` is visual only).
