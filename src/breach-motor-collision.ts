@@ -170,33 +170,6 @@ export function resolveMotorCollision(
     // full-body 0.3-unit motor sweep; the original authored GO is kept.
     // Near an active hinge, the existing doorway maneuver remains owner.
     const moveOrder=a.plan[0];
-    // M2.8 Motel 31149: a physically jammed generated ENTRY in squeeze
-    // can have no valid coarse first leg despite a nearby real full-body
-    // departure. Cold-certify the first microstep AND the rejoined narrow
-    // leg; ordinary collision motor still owns every future body stride.
-    if(a.side==='blue'&&moveOrder?.kind==='move'&&
-       !!moveOrder.entryDoorId&&a.squeeze&&a.blockedTime>=2&&
-       !a.doorTraversal&&!a.traversal&&!a.traversalPending&&
-       !a.fireRetreatTarget&&
-       (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
-       claimM2EntrySqueezeProbe(a,p,s.seconds)){
-      const physical=(from:Pt,to:Pt)=>
-        sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
-      const narrow=(from:Pt,to:Pt)=>
-        sweptProfileClear(from,to,s.doors,
-          squeezeFacing(angle(from,to)),'squeeze',world);
-      const route=selectM2EntrySqueezeDeparture(a.p,p,next,
-        physical,narrow,(from,to)=>routeWithSqueezeWorld(
-          from,to,s.doors,world));
-      if(route.length&&watchClearanceAllowed(a.p,route[0],p,
-          !!a.aimInstruction&&a.aimInstruction.mode!=='free',physical)){
-        setTransientRoute(s,a,route,'entry-squeeze-departure');
-        notePreciseLocalDetour(a,route[0]);
-        a.lastNavRepairAt=s.seconds;
-        provisionalRouteAccepted(a);
-        return true;
-      }
-    }
     const episodeDoor=a.doorTraversal?.doorId?
       s.doors.find(door=>door.id===a.doorTraversal?.doorId):undefined;
     const remoteEpisode=!a.doorTraversal||!!episodeDoor&&
@@ -743,6 +716,33 @@ export function resolveMotorCollision(
           // Do not erase evidence of repeated failure. This route is only
           // provisional until actual feet progress through the first step.
           a.retryRouteAt=0;
+          return true;
+        }
+      }
+        // M2.8 Motel 31149: a physically jammed generated ENTRY in squeeze
+      // can have no valid coarse first leg despite a nearby real full-body
+      // departure. Cold-certify the first microstep AND the rejoined narrow
+      // leg; ordinary collision motor still owns every future body stride.
+      if(a.side==='blue'&&moveOrder?.kind==='move'&&
+         !!moveOrder.entryDoorId&&a.squeeze&&a.blockedTime>=2&&
+         !a.doorTraversal&&!a.traversal&&!a.traversalPending&&
+         !a.fireRetreatTarget&&
+         (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
+         claimM2EntrySqueezeProbe(a,p,s.seconds)){
+        const physical=(from:Pt,to:Pt)=>
+          sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+        const narrow=(from:Pt,to:Pt)=>
+          sweptProfileClear(from,to,s.doors,
+            squeezeFacing(angle(from,to)),'squeeze',world);
+        const route=selectM2EntrySqueezeDeparture(a.p,p,next,
+          physical,narrow,(from,to)=>routeWithSqueezeWorld(
+            from,to,s.doors,world));
+        if(route.length&&watchClearanceAllowed(a.p,route[0],p,
+            !!a.aimInstruction&&a.aimInstruction.mode!=='free',physical)){
+          setTransientRoute(s,a,route,'entry-squeeze-departure');
+          notePreciseLocalDetour(a,route[0]);
+          a.lastNavRepairAt=s.seconds;
+          provisionalRouteAccepted(a);
           return true;
         }
       }
