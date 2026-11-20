@@ -59,7 +59,7 @@ try{
     // The seed is a deliberate advanced choice in the compact setup UI.
     const advanced=dialog.locator('details.fw-quick-config-advanced');
     if(!(await advanced.evaluate(element=>element.open)))
-     await advanced.locator('summary').click();
+     await advanced.locator(':scope > summary').click();
     await dialog.getByRole('spinbutton',{name:'Seed, blank for random'}).
      fill(String(seed));
     await dialog.getByRole('button',{name:'GENERATE MISSION'}).click();
