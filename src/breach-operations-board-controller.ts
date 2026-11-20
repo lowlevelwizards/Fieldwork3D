@@ -59,6 +59,7 @@ const expandedClassicWeaponControls=new Set<string>();
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
 let quickKitPreview:CampaignKitPreview|null=null;
+let currentGallery:ReturnType<typeof createOutfitterGallery>|null=null;
 let quickKitPreviewId:string|null=null;
 let scrollToSelected=false;
 const fieldUndo=new FieldInventoryUndoHistory();
@@ -74,6 +75,7 @@ function rememberQuickWorkbenchView(){
 }
 
 function renderOperationsBoard(){
+ currentGallery?.dispose();currentGallery=null;
  const priorScroll=scrollToSelected?0:config.board.scrollTop;
  scrollToSelected=false;
  rememberQuickWorkbenchView();
@@ -718,6 +720,7 @@ function renderOperationsBoard(){
     advancedPanel.open=false;
    }
   });
+  currentGallery=gallery;
   showGallery=gallery.show;
   kit.insertBefore(galleryHost,advancedPanel);
   // Keep carry contents in the gallery's place, not below the advanced
