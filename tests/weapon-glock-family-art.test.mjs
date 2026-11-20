@@ -187,7 +187,7 @@ test('G2.8: pistol-specific Arsenal close framing without dev comparison UI',()=
  const source=readFileSync(new URL('../src/arsenal/gallery-main.ts',import.meta.url),'utf8');
  const preview=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
  assert.match(source,/mountGlockArsenalGallery/);
- assert.match(preview,/buildGlockAppearance/);
+ assert.match(preview,/buildSidearmPreview/);
  assert.match(preview,/factoryGlockRecipe\(selected\)/);
  assert.doesNotMatch(preview,/FAMILY SCALE|MP5K PEER|QUICK PLAY EQUIPMENT|equipFreshSecondary/);
 });
