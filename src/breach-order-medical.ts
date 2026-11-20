@@ -14,7 +14,9 @@ import {treatmentSupplyForWound,treatmentDuration}
 import {stabilizeWound} from './breach-medical-wounds.ts';
 import {dropCivilianCustody,takeCivilianCustody,proposedCivilianTransportStep}
  from './breach-civilian-transport.ts';
-import {captureTargetTransportEligible} from './breach-capture-transport-policy.ts';
+import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+ from './breach-capture-transport-policy.ts';
+import {captureVitalStatus} from './breach-capture-vitals.ts';
 
 import {sweptBodyClear} from './breach-navigation.ts';
 import {completeOrder,rotate,clearCurrentOrderIssue,
@@ -70,6 +72,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
        (a.carryingId===o.id&&o.carriedById===a.id)));
     const patient=friendly??civil;
     if(!patient||patient===a||patient.health>0||
+       (friendly&&captureVitalStatus(friendly)==='deceased')||
        (friendly&&friendly.side===a.side&&friendly.surrendered)){
       if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
       else if(friendly?.carriedById===a.id){
@@ -149,9 +152,20 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     patient.velocity=0;return true;
   }
   if(n.kind==='treat'){
-    const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
+    const patient=s.operators.find(o=>o.id===n.patientId&&
+      (o.side===a.side||a.side==='blue'&&
+        designatedDownedCaptureTarget(s,o)));
+    const hostile=!!patient&&patient.side!==a.side;
     const wound=patient?.medical.wounds.find(w=>w.id===n.woundId);
-    if(!patient||!wound||wound.stabilized||wound.bleeding<=0){pop(a);return true;}
+    if(!patient||!wound||wound.stabilized||wound.bleeding<=0||
+      captureVitalStatus(patient)==='deceased'){
+      pop(a);return true;
+    }
+    if(hostile&&(!liveVisibility(s,patient.p)||
+       !sweptBodyClear(a.p,patient.p,s.doors,5.5,
+          sessionWorldGeometry(s)))){
+      failCurrentOrder(s,a,n,'CAPTIVE NOT IN PHYSICAL MEDICAL REACH');return true;
+    }
     const supply=treatmentSupplyForWound(wound,a.medicalSupplies);
     if(!supply){
       failCurrentOrder(s,a,n,'MEDICAL SUPPLY UNAVAILABLE');return true;
