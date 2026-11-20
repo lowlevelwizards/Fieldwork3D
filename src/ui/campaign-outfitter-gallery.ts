@@ -94,7 +94,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   queued.push({tile,frame,choice,slot});
   if(!thumbnailFrame)thumbnailFrame=requestAnimationFrame(paintNext);
  };
- const observer=typeof IntersectionObserver!=='undefined'?
+ const thumbTargets=new Map<HTMLElement,{frame:HTMLElement;choice:Choice;slot:LoadoutSlot}>();
+ const observer:IntersectionObserver|null=typeof IntersectionObserver!=='undefined'?
   new IntersectionObserver(entries=>{
    for(const entry of entries){
     if(!entry.isIntersecting)continue;
@@ -103,7 +104,6 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
     if(data){scheduleThumb(tile,data.frame,data.choice,data.slot);observer?.unobserve(tile);}
    }
   },{root:viewport,rootMargin:'60px'}):null;
- const thumbTargets=new Map<HTMLElement,{frame:HTMLElement;choice:Choice;slot:LoadoutSlot}>();
  const addImage=(tile:HTMLElement,choice:Choice,slot:LoadoutSlot)=>{
   const frame=el('div','fw-outfitter-gallery-image');
   frame.textContent=choice.id.endsWith('-none')?'—':'';
