@@ -38,6 +38,9 @@ on:
       - 'tests/breach-p7-replay-sharing.test.mjs'
       - 'src/breach-fog-cache.ts'
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   simulation-benchmark:
     runs-on: ubuntu-latest
