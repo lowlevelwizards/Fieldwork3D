@@ -76,19 +76,22 @@ function context(s:Session,schedule:PassageSchedule):Context{
 function pending(actor:TeamActor,schedule:PassageSchedule,
  byDoor:ReadonlyMap<string,Door>):PassageSlot|null{
  const active=actor.plan[0];
+ let earliest:PassageSlot|null=null;
  for(const slot of schedule.get(actor.id)??[]){
-  // An actor may cross the same physical door from the same side on
-  // separate authored MOVE nodes. The previous crossing's immutable
-  // rank cannot own the NEW movement episode. Legacy slots without
-  // order IDs retain their old behavior.
+  // A repeated crossing's old GO-time rank is not the current order.
   if((active?.kind==='move'||active?.kind==='pie')&&
-     slot.orderId!==undefined&&
-     slot.orderId!==active.id)continue;
+      slot.orderId!==undefined&&slot.orderId!==active.id)continue;
   const door=byDoor.get(slot.doorId);
-  if(door&&normalDepth(actor.p,door)*slot.fromSide>=-18)
-   return slot;
+  if(!door||normalDepth(actor.p,door)*slot.fromSide< -18)continue;
+  // The global schedule groups by doorway ID; an actor's current
+  // earliest unfinished threshold is instead ordered by authored ETA.
+  if(!earliest||slot.eta<earliest.eta-.00001||
+     Math.abs(slot.eta-earliest.eta)<=.00001&&
+      (slot.doorId<earliest.doorId||
+       slot.doorId===earliest.doorId&&slot.rank<earliest.rank))
+    earliest=slot;
  }
- return null;
+ return earliest;
 }
 function ready(member:Member,context:Context):boolean{
  const a=member.actor,d=context.byDoor.get(member.slot.doorId);
