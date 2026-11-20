@@ -9,6 +9,7 @@ on:
       - 'src/breach-order-utility.ts'
       - 'src/breach-plan-utility-commands.ts'
       - 'src/breach-firing-pipeline.ts'
+      - 'src/breach-replay.ts'
       - 'tests/secondary-s5-2-order-handoff.test.mjs'
       - '.github/workflows/secondary-switch-handoff-critical.yml'
   workflow_dispatch:
