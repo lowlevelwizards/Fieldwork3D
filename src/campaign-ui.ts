@@ -2195,7 +2195,7 @@ export class CampaignScreen{
    // Operator geometry is the primary edit target; direct body-zone
    // buttons provide a precise fallback on small screens and for keyboard.
    this.preview?.setOnTapSlot(slot=>selectBenchSlot(slot,true));
-   this.preview?.setSelectedSlot(this.activeBenchSlot);
+   this.preview?.setSelectedSlot(this.activeBenchSlot,false);
    // No inert orbit buttons if a device cannot initialize WebGL.
    if(!this.preview?.isReady())
     for(const control of summary.querySelectorAll<HTMLButtonElement>(
