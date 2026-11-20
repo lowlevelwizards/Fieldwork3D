@@ -75,24 +75,22 @@ export function buildM9Appearance(id:M9AppearanceId,
  // The FRONT FRAME is visibly shorter and lower than the upper. The rear
  // body, guard, and swept butt stay ONE contiguous lower silhouette.
  const outer:Outline=[
-  [-9.07,.44],[6.71,.44],[6.71,-.25],[5.89,-.70],
-  [2.50,-.81],[1.72,-1.05],[1.64,-3.06],
-  [1.12,-3.59],[-2.69,-3.59],[-3.16,-3.13],
-  [-3.68,-3.26],[-4.15,-4.06],
-  [a.gripFront+.43,a.heel+1.03],
+  [-9.07,.44],[6.71,.44],[6.71,-.28],[5.92,-.70],
+  [2.48,-.82],[1.64,-1.10],[1.64,-3.06],
+  [.99,-3.59],[-2.69,-3.59],[-3.75,-3.25],
+  [-4.15,-4.06],[a.gripFront+.43,a.heel+1.03],
   [a.gripFront-.05,a.heel+.32],[a.gripRear+.50,a.heel],
   [a.gripRear-.06,a.heel+.52],
   [a.straightGrip?-8.50:-9.12,-5.18],
   [a.straightGrip?-7.95:-8.16,-3.35],
-  [-8.20,-2.37],[-8.83,-1.19],[-9.88,-.57],[-9.20,-.02]
+  [-8.20,-2.37],[-9.88,-.57],[-9.20,-.02]
  ];
  // Large curved-octagonal hole is genuine through-Z geometry; the lower
  // guard remains thick enough to read at game scale without becoming a box.
  const opening:Outline=[
-  [-2.69,-1.27],[.73,-1.27],[1.12,-1.61],
-  [1.21,-2.24],[.80,-3.03],[.20,-3.18],
-  [-1.95,-3.18],[-2.73,-2.84],[-2.95,-2.29],
-  [-2.91,-1.66]
+  [-2.69,-1.27],[.78,-1.27],[1.18,-1.76],
+  [1.19,-2.31],[.55,-3.12],[-1.95,-3.18],
+  [-2.82,-2.77],[-2.95,-2.12]
  ];
  const localFrame=frameMaterial.clone();localFrame.side=THREE.DoubleSide;
  const frame=addProfileFrame(root,'receiver',id,n++,outer,opening,
@@ -106,7 +104,7 @@ export function buildM9Appearance(id:M9AppearanceId,
  // exposed round barrel. Not one uninterrupted Glock-like rectangular slab.
  const breech:Outline=[
   [SLIDE_REAR,SLIDE_BOTTOM],[-2.69,SLIDE_BOTTOM],
-  [-2.69,2.62],[-3.04,2.98],[-3.27,SLIDE_TOP],
+  [-2.69,2.62],[-3.17,SLIDE_TOP],
   [SLIDE_REAR+.35,SLIDE_TOP],[SLIDE_REAR,2.88]
  ];
  const rearSlide=addOutline(root,'barrel',id,n++,breech,SLIDE_DEPTH,slideMaterial);
@@ -166,11 +164,11 @@ export function buildM9Appearance(id:M9AppearanceId,
   const gripPanel:Outline=a.straightGrip?[
    [-7.72,-3.71],[-5.20,-3.87],
    [a.gripFront-.09,a.heel+.83],[a.gripFront-.30,a.heel+.56],
-   [a.gripRear+.63,a.heel+.55],[-8.62,-5.72]
+   [a.gripRear+.63,a.heel+.55]
   ]:[
    [-7.88,-3.77],[-5.26,-3.90],
    [a.gripFront-.07,a.heel+.83],[a.gripFront-.25,a.heel+.53],
-   [a.gripRear+.78,a.heel+.52],[-9.01,-5.80]
+   [a.gripRear+.78,a.heel+.52]
   ];
   for(const side of [-1,1]){
    const pad=addOutline(root,'grip',id,n++,gripPanel,.13,gripMaterial);
