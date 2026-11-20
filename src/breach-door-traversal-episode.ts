@@ -94,14 +94,22 @@ export function syncDoorTraversalEpisode(
   // not a permanent reservation for a distant doorway. Preserve it
   // while a real waypoint or support hand is still owned; retire it
   // once that route has finished and the operator has left the frame.
+  // A physically stationary remote detour cannot reserve this episode
+  // forever. Four seconds without any committed body progress retires
+  // the saved footpath; the original MOVE remains fully authored and
+  // normal routing/recovery resumes if the actor is still moving.
   const activeLeafStage=episode.maneuver==='outside-leaf'&&
     episode.waypointIndex<episode.waypoints.length&&
-    episode.waypoints.length>0;
+    episode.waypoints.length>0&&
+    seconds-episode.lastProgressAt<4;
   const attachedHand=actor.doorHandContact?.doorId===door.id&&
     actor.doorHandContact.releasedAt===null;
   if(departed&&!activeLeafStage&&!attachedHand&&
      (episode.phase==='cross'||episode.phase==='release'||
-      episode.phase==='blocked'||opened)){
+      episode.phase==='blocked'||opened||
+      // A briefly acquired approach that traveled away from an
+      // unopened frame is not an everlasting door-side reservation.
+      (episode.phase==='approach'&&seconds-episode.startedAt>=3))){
     actor.doorTraversal=null;return null;
   }
   // D4 retains a physical support-hand attachment while the world
