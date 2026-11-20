@@ -42,6 +42,7 @@ import {routeWithSqueezeWorld,routeToNextOperableDoor,
 import {observeNarrowLeafExit} from './lib/d3-14b-narrow-exit-probe.mjs';
 import {sessionWorldGeometry} from '../src/breach-world-context.ts';
 import {fullBodyMotorRouteClear} from '../src/breach-recovery-route-validation.ts';
+import {fullBodyMotorStrideClear} from '../src/breach-stack-micro-corner.ts';
 import {knownFixedGoalBlock} from '../src/breach-authored-goal-block.ts';
 import {physicalOrderOutcome,successfulSquadExecution}
  from '../src/breach-order-outcome.ts';
@@ -1494,7 +1495,11 @@ function run(site,seed,kind){
        session.doors,squeezeFacing(Math.atan2(first.y-next.y,first.x-next.x)),
        'squeeze',world):false;
       samples.push({r,theta,narrow,full,stage:next,
-        tailLength:tail.length,first,firstClear});
+        firstMotorClear:fullBodyMotorStrideClear(a.p,next,
+          (from,to)=>sweptBodyClear(from,to,session.doors,OPERATOR_RADIUS,world)),
+        tailLength:tail.length,first,firstClear,
+        projectedTravel:r+tail.reduce((sum,node,i)=>
+          sum+dist(i?tail[i-1]:next,node),0),tail});
      }
      return {p:a.p,goal,squeeze:a.squeeze,squeezeYaw:a.squeezeYaw,
        fine:coldFineMotorWorldRoute(a.p,goal,session.doors,world).slice(0,8),
