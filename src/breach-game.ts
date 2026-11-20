@@ -997,7 +997,8 @@ export function planStackTeam(s:Session,doorId:string,
  * a shared go-code, open the door with the lead, then feed others through
  * at staggered intervals. Tactical pathfinding remains authoritative.
  */
-export function planSquadEntry(s:Session,doorId:string){
+export function planSquadEntry(s:Session,doorId:string,
+ formation:StackFormation='auto'){
  const door=s.doors.find(d=>d.id===doorId);
  if(!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
  const alive=team(s).filter(a=>a.health>0);
@@ -1070,7 +1071,7 @@ export function planSquadEntry(s:Session,doorId:string){
  const committed=atomicTeamEdit(s,alive,()=>{
   for(const a of alive)
    if(!a.plan.some(n=>n.stackDoorId===doorId)&&
-     !planStack(s,a.id,doorId))return false;
+     !planStack(s,a.id,doorId,undefined,formation))return false;
   if(!planSync(s,alive.map(a=>a.id)))return false;
   const lead=alive[0];
   // A leaf already ajar is a push-through problem, not another latch
