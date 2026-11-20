@@ -244,7 +244,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       }
       // A stopped/replanned carrier releases the actual actor where the
       // previous resolved physical tick left it. No off-screen relocation.
-      target.carriedById=null;a.carryingId=null;
+      target.carriedById=null;target.transportMode=null;a.carryingId=null;
       a.velocity=0;
       const message=a.name+' RELEASED '+target.name;
       notify(s,message);
