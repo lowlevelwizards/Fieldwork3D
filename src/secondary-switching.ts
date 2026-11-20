@@ -57,3 +57,15 @@ export function advanceSecondarySwitch(s:SecondarySwitchState,dt:number,
  return fraction===s.fraction&&active===s.active&&desired===s.desired?s:
   {active,desired,fraction};
 }
+
+/** A canceled/moved weapon-switch node cannot strand a pistol between hands.
+ * Continue toward the last FULLY held weapon, unless its physical issue was
+ * removed, in which case return to primary. This is not a new player order.
+ */
+export function advanceInterruptedSecondarySwitch(s:SecondarySwitchState,dt:number,
+ equipment:SecondaryEquipment|undefined,operational=true):SecondarySwitchState{
+ const target=equipment?.weapon?s.active:'primary';
+ if(secondarySwitchSettled(s)&&s.desired===target)return s;
+ return advanceSecondarySwitch(
+  target===s.desired?s:{...s,desired:target},dt,equipment,operational);
+}
