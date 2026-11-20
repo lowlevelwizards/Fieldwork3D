@@ -1,0 +1,29 @@
+name: Performance P6.H local ally context
+on:
+  pull_request:
+    paths:
+      - 'src/breach-actor-neighborhood.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/performance-p6-local-ally-broadphase.test.mjs'
+      - '.github/workflows/performance-p6-ally-broadphase.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Seeded 16/88/180 actor, exact safety and existing E6.5 parity
+        run: >-
+          node --experimental-strip-types --test
+          tests/performance-p6-local-ally-broadphase.test.mjs
+          tests/refactor-e6-5-ally-context.test.mjs
+          tests/performance-p6-frame-indices.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build
