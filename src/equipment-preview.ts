@@ -162,18 +162,26 @@ export class CampaignKitPreview{
   if(previous)return previous;
   const original=this.visualSnapshot;
   try{
+   // An explicitly chosen cosmetic helmet does not override the catalog
+   // preview for a DIFFERENT head item. Remove only that cosmetic override
+   // during the temporary capture, then restore the real wardrobe below.
+   const previewWardrobe=target.kind==='gear'&&target.slot==='head'&&
+     target.itemId!==original.equipment.slots.head&&original.wardrobe?
+    {...original.wardrobe,styles:{
+      ...original.wardrobe.styles,headwear:undefined
+    }}:original.wardrobe;
+   const previewKit=target.kind==='gear'?
+    setEquipmentChoice(original.equipment,target.slot,target.itemId):
+    original.equipment;
    if(target.kind==='gear'){
-    const candidate=setEquipmentChoice(original.equipment,target.slot,target.itemId);
     const weapon=target.slot==='primary'&&target.itemId.startsWith('primary-')?
      target.itemId.slice(8) as WeaponId:original.weapon;
-    this.poseForThumb(weapon,original.appearanceSeed,candidate,
+    this.poseForThumb(weapon,original.appearanceSeed,previewKit,
      weapon===original.weapon?original.weaponConfiguration:undefined,
-     original.magazines,original.wardrobe);
+     original.magazines,previewWardrobe);
    }
    const selected=target.kind==='gear'?
-    this.previewGearMesh(target.slot,target.itemId,
-     setEquipmentChoice(original.equipment,target.slot,target.itemId),
-     original.wardrobe):
+    this.previewGearMesh(target.slot,target.itemId,previewKit,previewWardrobe):
     inspectEquipmentMesh(this.rig,original.equipment,target);
    if(!selected)return null;
    selected.updateWorldMatrix(true,true);
