@@ -32,3 +32,10 @@ test('gallery owner still commits equipment through authoritative handlers',()=>
  assert.match(src,/options\.onEquip\(active,choice\.id\)/);
  assert.match(src,/tile\.disabled=!choice\.issued/);
 });
+
+test('existing mobile loadout smoke covers shared gallery edits',()=>{
+ const workflow=readFileSync(new URL('../.github/workflows/loadout-ux-r1-critical.yml',import.meta.url),'utf8');
+ assert.match(workflow,/'src\/ui\/campaign-outfitter-gallery\.ts'/);
+ assert.match(workflow,/'src\/ui\/outfitter-choice-sources\.ts'/);
+ assert.match(workflow,/uses: \.\/\.github\/actions\/outfitter-mobile-smoke/);
+});
