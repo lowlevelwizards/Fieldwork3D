@@ -1,3 +1,4 @@
+import {uiNode as node,uiButton as button} from './ui/dom-elements.ts';
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
 import {SQUAD_IDENTIFICATION_COLORS,type CampaignState,type Contract}
  from './campaign-state.ts';
@@ -108,13 +109,6 @@ export type CampaignHandlers={
  setOperatorColor:(id:string,color:string)=>void;
  cycleAppearance:(id:string)=>void;
  exportSave:()=>void;importSave:(raw:string,slot:CampaignSlot)=>void;retire:(id:string)=>void;
-};
-const node=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
- const el=document.createElement(tag);if(cls)el.className=cls;
- if(label)el.textContent=label;return el;
-};
-const button=(label:string,action:()=>void,cls='')=>{
- const b=node('button',cls,label);b.type='button';b.addEventListener('click',action);return b;
 };
 export class CampaignScreen{
  readonly root=node('section','campaign-screen');
