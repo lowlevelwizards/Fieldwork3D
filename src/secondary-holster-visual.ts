@@ -1,96 +1,139 @@
-/** S4A: real passive holster + belt pistol-magazine visuals on the SAME hip
- * bone used by the running operator. Never fabricates a combat firearm.
- * The S5 transition owner will hide/transfer the real pistol when drawn.
- * No frame allocations: rebuild only on loadout/holster identity changes.
+/** S4: passive, physically issued Glock carry on existing operator bones.
+ * All placements use the legacy +X-forward / +Z-right operator coordinate
+ * frame, NEVER the public -Z forward frame or weapon mesh art coordinates.
+ * No weapon authority, combat ammo changes, per-frame mesh rebuilds or
+ * world-space floating inventory. S5 owns visibility while drawing.
  */
 import * as THREE from 'three';
 import {buildGlockAppearance,glockArtSockets,
  type GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
-import type {SecondaryEquipment} from './secondary-equipment.ts';
+import type {SecondaryEquipment,SecondaryMagazineLocation}
+ from './secondary-equipment.ts';
 
-type Mounted={signature:string;root:THREE.Group;model:THREE.Group|null};
+type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[]};
 const mounted=new WeakMap<THREE.Group,Mounted>();
-const shellMaterial=()=>new THREE.MeshStandardMaterial({
- color:0x242d29,roughness:.94,metalness:.04,flatShading:true
+const pouchMaterial=()=>new THREE.MeshStandardMaterial({
+ color:0x2a3430,roughness:.96,metalness:0,flatShading:true
 });
 const copyPaletteMaterials=(root:THREE.Group)=>{
- // OperatorRig.dispose() owns and disposes all attached materials; NEVER
- // attach global shared Glock palette objects directly to a live rig.
+ // Rigs dispose mesh materials. Glock Arsenal palette objects are globally
+ // shared: every rig owns clones, even on immediate hot-swap/destruction.
  const copies=new Map<THREE.Material,THREE.Material>();
  root.traverse(child=>{
   if(!(child instanceof THREE.Mesh))return;
-  const clone=(material:THREE.Material)=>{
-   if(!copies.has(material))copies.set(material,material.clone());
-   return copies.get(material)!;
+  const clone=(m:THREE.Material)=>{
+   let local=copies.get(m);
+   if(!local){local=m.clone();copies.set(m,local);}
+   return local;
   };
   child.material=Array.isArray(child.material)?
    child.material.map(clone):clone(child.material);
  });
 };
-export function clearHipSecondaryVisual(hip:THREE.Group):void{
- const prior=mounted.get(hip);if(!prior)return;
- hip.remove(prior.root);
- prior.root.traverse(child=>{
-  if(child instanceof THREE.Mesh){
-   child.geometry.dispose();
-   const mats=Array.isArray(child.material)?child.material:[child.material];
-   for(const material of mats)material.dispose();
-  }
+function disposeOwned(root:THREE.Group){
+ const geometries=new Set<THREE.BufferGeometry>();
+ const materials=new Set<THREE.Material>();
+ root.traverse(child=>{
+  if(!(child instanceof THREE.Mesh))return;
+  geometries.add(child.geometry);
+  for(const m of Array.isArray(child.material)?child.material:[child.material])
+   materials.add(m);
  });
- prior.root.clear();mounted.delete(hip);
+ for(const g of geometries)g.dispose();
+ for(const m of materials)m.dispose();
+ root.parent?.remove(root);
+ root.clear();
 }
+export function clearHipSecondaryVisual(hip:THREE.Group):void{
+ const prev=mounted.get(hip);
+ if(!prev)return;
+ for(const root of prev.ownedRoots)disposeOwned(root);
+ mounted.delete(hip);
+}
+const pouch=(parent:THREE.Group,id:string,index:number,
+ location:SecondaryMagazineLocation,side:number)=>{
+ // One unmistakable upright chunk per physically carried pistol magazine.
+ // No giant billboard, stacked fake rounds, or copy of primary magazines.
+ const item=new THREE.Mesh(new THREE.BoxGeometry(1.45,2.5,1.85),
+  pouchMaterial());
+ item.name='secondary-magazine-pouch-'+id;
+ item.userData.secondaryMagazineId=id;
+ item.userData.secondaryMagazineLocation=location;
+ item.castShadow=true;item.receiveShadow=true;
+ if(location==='belt')item.position.set(2.0+index*1.8,-3.8,-side*8.8);
+ else if(location==='pocket')item.position.set(-1.5,-4.4,-side*6.4);
+ else if(location==='rig')item.position.set(8.95,-5.3,-2.8+index*2.3);
+ else item.position.set(-1.4,-3.4,side*(6.4+index*2.1));
+ parent.add(item);
+ return item;
+};
+/** Optional chest and pack anchors support actual multi-location cargo.
+ * The wrapper remains compatible with legacy hip-only Operator Lab fixtures.
+ * Caller supplies hip/chest/pack from the SAME rig: all follow the body.
+ */
 export function syncHipSecondaryVisual(hip:THREE.Group,
- state:SecondaryEquipment|undefined,hasBelt:boolean):THREE.Group|null{
+ state:SecondaryEquipment|undefined,hasBelt:boolean,
+ chest?:THREE.Group,pack?:THREE.Object3D):THREE.Group|null{
  const valid=state?.weapon&&hasBelt?state.weapon:null;
  const signature=valid?[
-  valid,state!.holster,
+  valid,state!.holster,Boolean(chest),Boolean(pack),
   ...state!.spareMagazines.map(m=>m.id+':'+m.location)
  ].join('|'):'none';
- const cached=mounted.get(hip);
- if(cached?.signature===signature)return cached.root;
+ const prior=mounted.get(hip);
+ if(prior?.signature===signature)return prior.root;
  clearHipSecondaryVisual(hip);
  if(!valid)return null;
  const side=state!.holster==='belt-right'?1:-1;
- const mount=new THREE.Group();
- mount.name='secondary-hip-carry';
- mount.userData.secondaryHolsterOccupied=true;
- mount.userData.secondaryWeaponId=valid;
- mount.userData.secondaryHolsterSide=state!.holster;
- mount.position.set(.2,-3.6,side*9.25);
+ const root=new THREE.Group();root.name='secondary-hip-carry';
+ root.userData.secondaryHolsterOccupied=true;
+ root.userData.secondaryWeaponId=valid;
+ root.userData.secondaryHolsterSide=state!.holster;
+ const holster=new THREE.Group();
+ holster.name='secondary-holster-mount';
+ holster.position.set(.2,-3.6,side*9.25);
  const pistol=buildGlockAppearance(valid as GlockAppearanceId);
  copyPaletteMaterials(pistol);
  const socket=glockArtSockets(valid as GlockAppearanceId).holsterPivot;
- const pivot=new THREE.Group();
- pivot.name='secondary-holster-pivot';
- pivot.scale.setScalar(.37);
- pivot.rotation.z=-Math.PI/2;
+ const cradle=new THREE.Group();
+ cradle.name='secondary-holstered-pistol';
+ cradle.userData.secondaryWeaponVisual=true;
+ cradle.scale.setScalar(.37);
+ cradle.rotation.z=-Math.PI/2;
  pistol.position.set(-socket.x,-socket.y,-socket.z);
- pivot.add(pistol);mount.add(pivot);
- // One chunky, nearly featureless retention shell. The true Glock geometry
- // remains visible at the grip and stays physically attached to the hip.
- const shell=new THREE.Mesh(new THREE.BoxGeometry(3.3,5.3,2.1),shellMaterial());
+ cradle.add(pistol);holster.add(cradle);
+ const shell=new THREE.Mesh(new THREE.BoxGeometry(3.3,5.3,2.1),pouchMaterial());
  shell.name='secondary-holster-shell';
  shell.position.set(-1,-2.5,0);
- shell.castShadow=true;shell.receiveShadow=true;
- mount.add(shell);
- hip.add(mount);
- // Distinct physical spare magazine silhouettes only where actually BELT
- // carried. Rig/backpack and pocket pouches belong to their own S4 sockets.
- let beltIndex=0;
- for(const magazine of state!.spareMagazines){
-  if(magazine.location!=='belt'||beltIndex>=3)continue;
-  const pouch=new THREE.Mesh(new THREE.BoxGeometry(1.25,2.35,1.65),
-   shellMaterial());
-  pouch.name='secondary-magazine-pouch-'+magazine.id;
-  pouch.userData.secondaryMagazineId=magazine.id;
-  pouch.position.set(1.1+beltIndex*1.55,-2.6,-side*9.1);
-  pouch.castShadow=true;pouch.receiveShadow=true;
-  mount.add(pouch); // one owned root, one deterministic disposal path
-  pouch.position.set(1.1+beltIndex*1.55,-2.6,
-   -side*18.35); // root is offset side*9.25: opposite belt in hip space
-  beltIndex++;
+ shell.castShadow=true;shell.receiveShadow=true;holster.add(shell);
+ root.add(holster);hip.add(root);
+ const ownedRoots=[root];
+ const counts={rig:0,belt:0,backpack:0,pocket:0};
+ for(const mag of state!.spareMagazines){
+  if(mag.location==='overflow')continue;
+  const place=mag.location;
+  const index=counts[place]++;
+  let target=root;
+  if(place==='rig'&&chest){
+   // Separate transform owner: torso lean and pitch follow chest.
+   target=ownedRoots.find(x=>x.name==='secondary-rig-carry')!;
+   if(!target){
+    target=new THREE.Group();target.name='secondary-rig-carry';
+    chest.add(target);ownedRoots.push(target);
+   }
+  }else if(place==='backpack'&&pack){
+   // Backpacks use their existing -X mounted socket, not a guessed hip offset.
+   target=ownedRoots.find(x=>x.name==='secondary-pack-carry')!;
+   if(!target){
+    target=new THREE.Group();target.name='secondary-pack-carry';
+    pack.add(target);ownedRoots.push(target);
+   }
+  }
+  // With no torso or pack attachment (legacy lab), do not fake a pouch
+  // at the hip for non-hip locations. The item remains in live inventory.
+  if((place==='rig'&&!chest)||(place==='backpack'&&!pack))continue;
+  if(index>=4)continue;
+  pouch(target,mag.id,index,place,side);
  }
- const entry={signature,root:mount,model:pistol};
- mounted.set(hip,entry);
- return mount;
+ mounted.set(hip,{signature,root,ownedRoots});
+ return root;
 }
