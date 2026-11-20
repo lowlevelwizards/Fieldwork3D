@@ -176,6 +176,8 @@ export type TeamActor=Operator & {
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
   carryingId:string|null;carriedById:string|null;
+  /** Physical downed-person drag/carry presentation, recorded for replay. */
+  transportMode?:TransportMode|null;
   wedgeRemaining:number;restraintRemaining:number;
   awareness:ActorAwareness;
   suspicion:SuspicionMemory;lastVisualSuspicionId:string|null;
