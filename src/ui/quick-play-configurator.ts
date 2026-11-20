@@ -378,12 +378,8 @@ export function createQuickPlayConfigurator(options:{
     if(pack&&!pack.disabled)pack.click();
    },
    onArsenal:()=>{},arsenalDisabled:true,
-   onInspect:(slot,itemId,kind,location)=>{
-    if(!itemId){squadPreview?.selectItemDot(null);return;}
-    if(kind==='gear')squadPreview?.selectItemDot({kind:'gear',slot,itemId});
-    else squadPreview?.selectItemDot({kind:kind==='field'?'field':'magazine',
-     id:itemId,location});
-   },
+   onInspect:(slot,itemId)=>squadPreview?.selectItemDot(
+    itemId?{kind:'gear',slot,itemId}:null),
    onSelectCategory:chooseSlot,
    onAdvanced:()=>{
     galleryHost.hidden=true;carryPanel.hidden=false;
