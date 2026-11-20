@@ -1413,7 +1413,11 @@ export function cycleWeapon(s:Session,id:string):boolean{
 
 export function reloadNow(s:Session,id:string):boolean{
   const a=party(s,id);
-  return !!a&&s.phase==='running'&&beginReload(s,a);
+  // Direct reload belongs only to the primary. While a pistol is drawn or
+  // moving between hands, never silently reload a holstered rifle.
+  return !!a&&s.phase==='running'&&
+    (a.secondarySwitch?.fraction??0)===0&&
+    a.secondarySwitch?.desired!=='secondary'&&beginReload(s,a);
 }
 
 
