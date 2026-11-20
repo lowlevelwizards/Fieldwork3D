@@ -2454,7 +2454,8 @@ export class TacticalScene3D{
           actor.plan[0]?.kind==='tool'&&actor.plan[0]?.toolMethod==='pick'&&
           actor.actionTimer>0?
           Math.min(1,Math.max(0,(s.seconds-actor.lastDoorAt)/.38)):0,
-        treatmentPoint:actor.treatmentActive?
+        treatmentPoint:actor.treatmentActive&&
+         actor.lastTreatmentTargetId!==null?
          this.frameActorsById.get(actor.lastTreatmentTargetId)?.p:undefined,
         flashCharges:actor.flashCharges,
         wedgeRemaining:actor.wedgeRemaining,
