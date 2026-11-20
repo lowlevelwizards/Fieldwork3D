@@ -3061,3 +3061,48 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-uxr-record-title{grid-column:2;grid-row:1}
  .campaign-uxr-record-result{grid-column:2;grid-row:2;text-align:left}
 }
+
+/* UXR-08 static squad identity art. A genuinely rig-derived thumbnail may
+ * replace this fallback when an existing cached asset is available. */
+.campaign-uxr-slot-avatar{
+ width:min(100%,130px);height:86px;position:relative;
+ overflow:hidden;border-color:var(--fw-panel-border);
+ background:radial-gradient(ellipse at 50% 92%,#8da49833,transparent 69%),
+  var(--fw-panel-deep);
+ isolation:isolate;
+}
+.campaign-uxr-slot-avatar::after{
+ content:'';position:absolute;inset:auto 0 0;height:4px;
+ background:var(--uxr-operator-color,var(--fw-sage));
+}
+.campaign-uxr-silhouette-head,
+.campaign-uxr-silhouette-body,
+.campaign-uxr-silhouette-shoulder{
+ position:absolute;display:block;left:50%;
+ transform:translateX(-50%);
+ background:linear-gradient(130deg,#728778,#3c4e46 65%,#273b34);
+ border:1px solid #94a89b66;
+}
+.campaign-uxr-silhouette-head{
+ top:12px;width:33px;height:31px;
+ clip-path:polygon(14% 0,84% 0,100% 22%,98% 70%,82% 73%,77% 100%,23% 100%,18% 72%,2% 70%,0 22%);
+ z-index:3;
+}
+.campaign-uxr-silhouette-body{
+ top:43px;width:44px;height:55px;
+ clip-path:polygon(16% 0,84% 0,99% 100%,0 100%);
+ z-index:2;
+}
+.campaign-uxr-silhouette-shoulder{
+ top:48px;width:80px;height:43px;
+ clip-path:polygon(12% 10%,31% 0,69% 0,88% 10%,100% 100%,0 100%);
+ z-index:1;
+}
+@media(max-width:720px){
+ .campaign-landing:not(.campaign-landing-subpage) .campaign-landing-utility{
+  margin-top:clamp(12px,3dvh,34px);
+ }
+ .campaign-landing:not(.campaign-landing-subpage){
+  justify-content:flex-start;
+ }
+}
