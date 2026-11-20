@@ -59,6 +59,15 @@ export function selectM2EntrySqueezeDeparture(
   // the existing motor will use to execute the transient stage.
   if(!fullBodyMotorStrideClear(from,stage,fullSweep)&&
      !fullBodyMotorStrideClear(from,stage,narrowSweep))continue;
+  // An actor held at zero velocity restarts with a ~0.026-unit stride,
+  // not the .3-unit substep of the route verifier. A wider swept chord
+  // can clear a corner even when a TINY first displacement does not.
+  // Reject that direction now; never require an illegal first tick or
+  // repeatedly reissue a visually valid but physically useless path.
+  const firstFraction=Math.min(.026,radius)/radius;
+  const firstStep={x:from.x+(stage.x-from.x)*firstFraction,
+   y:from.y+(stage.y-from.y)*firstFraction};
+  if(!narrowSweep(from,firstStep)&&!fullSweep(from,firstStep))continue;
   if(++searches>4)return [];
   const tail=worldRoute(stage,goal);
   if(!tail.length||distance(tail.at(-1)!,goal)>3)continue;
