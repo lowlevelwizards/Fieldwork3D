@@ -45,11 +45,11 @@ test('M9 family: two genuinely 3D art-only models, not issued Glock IDs',()=>{
    assert.equal(m.children.filter(x=>x.userData.m9MagazineFloorplate).length,1);
    assert.ok(m.children.every(x=>x.name.startsWith('family-')));
    const stats=count(m);
-   console.log('BERETTA D5 GEOMETRY',ref.id,JSON.stringify(stats));
-   assert.ok(stats.meshes<=24,
-    'D5 review: batched controls and wrapped sight, mesh economy '+JSON.stringify(stats));
-   assert.ok(stats.triangles<=520,
-    'D5 review: real emitted geometry within bounded cap '+JSON.stringify(stats));
+   const isA3=ref.id==='beretta-m9a3';
+   assert.ok(stats.meshes<=(isA3?22:20),
+    'D5: approved mesh economy '+JSON.stringify(stats));
+   assert.ok(stats.triangles<=(isA3?480:455),
+    'D5: measured emitted triangle budget '+JSON.stringify(stats));
   }finally{
    clearM9Appearance(m);
    assert.equal(m.children.length,0);
@@ -353,13 +353,15 @@ test('D5 rear hammer is tall/slim and grip panels rake backwards',()=>{
    assert.equal(panels.length,2);
    for(const panel of panels){
     const p=panel.geometry.getAttribute('position');
-    const hi=[],lo=[];
+    const hi=new Set(),lo=new Set();
     for(let i=0;i<p.count;i++){
-     if(p.getY(i)>-1.84)hi.push(p.getX(i));
-     if(p.getY(i)<-7.85)lo.push(p.getX(i));
+     // Extrusion duplicates vertices for walls/caps; unique silhouette
+     // points are the appropriate basis for an art-rake assertion.
+     if(p.getY(i)>-1.84)hi.add(p.getX(i).toFixed(3));
+     if(p.getY(i)<-7.85)lo.add(p.getX(i).toFixed(3));
     }
-    assert.ok(hi.length>0&&lo.length>0);
-    const avg=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
+    assert.ok(hi.size>=2&&lo.size>=2);
+    const avg=set=>[...set].map(Number).reduce((a,b)=>a+b,0)/set.size;
     assert.ok(avg(lo)<avg(hi)-.60,
      'grip panel heel rakes backwards, not an upright trapezoid');
    }
