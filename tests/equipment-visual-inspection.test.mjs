@@ -76,5 +76,5 @@ test('Operator Lab and all three prep flows expose real mesh inspection',()=>{
  for(const path of ['src/ui/quick-play-configurator.ts',
   'src/ui/campaign-pre-go-prep.ts','src/breach-operations-board-controller.ts',
   'src/campaign-ui.ts'])
-  assert.match(file(path),/onInspectItem:item=>.*inspectCarryItem\(item\)/);
+  assert.match(file(path),/onInspectItem:item=>[\s\S]{0,500}?inspectCarryItem\(item\)/);
 });

@@ -3,7 +3,8 @@
  * change event / CampaignScreen handlers. */
 import {itemDefinition} from '../equipment-catalog.ts';
 
-export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):HTMLButtonElement{
+export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
+ renderModel?:(itemId:string)=>string|null):HTMLButtonElement{
  const trigger=document.createElement('button');
  trigger.type='button';trigger.className='campaign-kit-picker-trigger';
  const label=source.getAttribute('aria-label')?.replace(/^Select /,'Choose ')||
@@ -12,6 +13,35 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):H
   source.querySelector<HTMLOptionElement>('option[value="'+CSS.escape(value)+'"]')
    ?.textContent?.split(' · ')[0]||value;
  trigger.textContent=display(source.value);
+ trigger.dataset.modelItem=source.value;
+ if(renderModel&&['primary','head','armor','rig','belt','backpack','medical','utility']
+  .includes(slot)&&!source.value.endsWith('-none')){
+  trigger.classList.add('campaign-kit-visual-trigger');
+  const visual=document.createElement('span');
+  visual.className='campaign-kit-selected-model';
+  visual.setAttribute('aria-hidden','true');
+  const label=document.createElement('span');
+  label.className='campaign-kit-selected-model-label';
+  label.textContent=display(source.value);
+  trigger.replaceChildren(visual,label);
+  requestAnimationFrame(()=>{
+   if(!trigger.isConnected)return;
+   const fetch=()=>{
+    if(!trigger.isConnected)return;
+    const uri=renderModel(source.value);
+    if(!uri){visual.dataset.model='unavailable';return;}
+    const img=document.createElement('img');
+    img.src=uri;img.alt='';img.decoding='async';
+    visual.replaceChildren(img);visual.dataset.model='real';
+   };
+   if(typeof IntersectionObserver==='undefined'){fetch();return;}
+   const observer=new IntersectionObserver(entries=>{
+    if(!entries.some(entry=>entry.isIntersecting))return;
+    observer.disconnect();fetch();
+   },{rootMargin:'100px'});
+   observer.observe(trigger);
+  });
+ }
  trigger.setAttribute('aria-label',label);
  trigger.disabled=source.disabled;
  if(trigger.disabled)trigger.title='Equipment changes locked during deployment';
@@ -55,6 +85,7 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):H
   panel.append(header);
   const list=document.createElement('div');
   list.className='campaign-gear-picker-list';
+  const thumbnails:{id:string;el:HTMLElement}[]=[];
   for(const option of Array.from(source.options)){
    const def=itemDefinition(option.value);
    const chosen=option.value===source.value;
@@ -71,7 +102,13 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):H
     weightDelta+(chosen?' · EQUIPPED':option.disabled?' · UNAVAILABLE':'');
    const description=document.createElement('span');
    description.textContent=def?.description||option.textContent||'';
-   entry.append(name,detail,description);
+   const visual=document.createElement('span');
+   visual.className='campaign-gear-picker-model';
+   visual.setAttribute('aria-hidden','true');
+   visual.textContent=option.value.endsWith('-none')?'EMPTY':'3D';
+   entry.append(visual,name,detail,description);
+   if(renderModel&&!option.value.endsWith('-none'))
+    thumbnails.push({id:option.value,el:visual});
    if(option.disabled){
     const warning=document.createElement('em');
     warning.textContent=option.textContent||'Not available in this campaign';
@@ -104,6 +141,25 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string):H
    }
   });
   document.body.append(backdrop);
+  // Progressive visual rendering: one card per frame, from the same live
+  // operator geometry and WebGL context. Never a second canvas per option.
+  let cursor=0;
+  const populate=()=>{
+   if(closed||!backdrop.isConnected||cursor>=thumbnails.length)return;
+   const item=thumbnails[cursor++];
+   const source=renderModel?.(item.id);
+   if(source){
+    const img=document.createElement('img');
+    img.src=source;img.alt='';img.loading='lazy';
+    item.el.replaceChildren(img);
+    item.el.dataset.model='real';
+   }else{
+    item.el.textContent='NO MODEL';
+    item.el.dataset.model='unavailable';
+   }
+   if(cursor<thumbnails.length)requestAnimationFrame(populate);
+  };
+  if(thumbnails.length)requestAnimationFrame(populate);
   const active=list.querySelector<HTMLButtonElement>('[aria-current="true"]:not(:disabled)');
   (active||closeButton).focus({preventScroll:true});
  });

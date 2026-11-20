@@ -1805,7 +1805,8 @@ export class CampaignScreen{
    }
    select.disabled=locked;
    select.classList.add('campaign-kit-native-select');
-   const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '));
+   const picker=createCampaignGearPicker(select,slot.replace(/-/g,' '),
+    itemId=>this.preview?.renderModelThumbnail({kind:'gear',slot,itemId})??null);
    picker.addEventListener('click',()=>{
     const focus:EquipmentPreviewFocus=slot==='head'?'head':
      slot==='armor'?'torso':slot==='primary'?'weapon':
@@ -1853,7 +1854,21 @@ export class CampaignScreen{
   grouped.field('carry').append(createFieldGadgetEditor({
    loadout:person.loadout,magazines:person.magazines,locked,
    onInspectLocation:location=>this.preview?.highlightCarryLocation(location),
-   onInspectItem:item=>this.preview?.inspectCarryItem(item),
+   onInspectItem:item=>{
+    this.preview?.inspectCarryItem(item);
+    // The model is the inspection surface. Keep the actual mount in view
+    // while the user taps physical items further down a phone screen.
+    if(window.matchMedia?.('(max-width:620px)').matches){
+     this.previewDocked=true;main.dataset.previewDocked='true';
+     const control=summary.querySelector<HTMLButtonElement>(
+      '.campaign-kit-preview-dock-toggle');
+     if(control){
+      control.textContent='CLOSE FLOATING MODEL';
+      control.setAttribute('aria-pressed','true');
+     }
+    }
+   },
+   onModelThumbnail:item=>this.preview?.renderModelThumbnail(item)??null,
    onMoveMagazine:(magazineId,to,focusLabel)=>{
     const quote=quoteOneMagazineMove(person.loadout,person.magazines,magazineId,to);
     if(!quote.ok||!quote.changed)return;

@@ -112,6 +112,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
    loadout:selected.loadout,magazines:selected.magazines,
    onInspectLocation:location=>preview?.highlightCarryLocation(location),
    onInspectItem:item=>preview?.inspectCarryItem(item),
+   onModelThumbnail:item=>preview?.renderModelThumbnail(item)??null,
    maxFlash:Math.max(0,campaign.supplies.flash-flashElsewhere),
    copyTargets:squad.filter(o=>o.id!==selected.id).map(o=>({
     id:o.id,name:o.callsign,loadout:o.loadout,magazines:o.magazines
