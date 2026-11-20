@@ -1140,6 +1140,12 @@ export class TacticalScene3D{
   applySite(site:Site|null){
     // A new site cannot reuse the previous scene/camera preparation.
     this.preparedColdFrame=null;
+    // Scene persists across missions; retire read-only indices of the old
+    // encounter immediately instead of keeping previous shot/actor objects
+    // alive until a later scene update.
+    this.recentMuzzleShots.clear();
+    this.frameActorsById.clear();
+    this.frameDoorsById.clear();
     this.displayedSite=site;
     this.staticBatches.clear();
     this.repeatedFixtures.clear();
