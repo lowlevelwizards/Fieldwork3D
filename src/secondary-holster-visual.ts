@@ -4,7 +4,7 @@
  * No frame allocations: rebuild only on loadout/holster identity changes.
  */
 import * as THREE from 'three';
-import {buildGlockAppearance,clearGlockAppearance,glockArtSockets,
+import {buildGlockAppearance,glockArtSockets,
  type GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 import type {SecondaryEquipment} from './secondary-equipment.ts';
 
