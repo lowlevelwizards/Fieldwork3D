@@ -28,6 +28,9 @@ on:
       - 'tests/secondary-s5-2-order-handoff.test.mjs'
       - '.github/workflows/secondary-switch-handoff-critical.yml'
   workflow_dispatch:
+concurrency:
+  group: secondary-closeout-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 jobs:
   focused:
     runs-on: ubuntu-latest
