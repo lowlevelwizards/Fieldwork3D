@@ -9,6 +9,10 @@ import {BREACH_STORAGE_KEYS} from '../breach-storage-keys.ts';
 import {emptySecondaryEquipment,equipFreshSecondary,moveSecondaryHolster,
  placeSecondaryMagazines,type SecondaryHolster} from '../secondary-equipment.ts';
 import {secondaryCarrierSpace} from '../equipment-loadouts.ts';
+import {openGlockWorkbench} from './glock-workbench.ts';
+import {factoryGlockRecipe,loadGlockLibrary,saveGlockLibrary,
+ renameGlockSavedBuild,duplicateGlockSavedBuild,deleteGlockSavedBuild,
+ type GlockRecipe,type GlockSavedBuild} from './glock-saved-builds.ts';
 import {quoteSecondaryMagazineLocation,
  secondaryCarryClaim} from '../equipment-magazine-placement.ts';
 
@@ -135,7 +139,7 @@ export function mountGlockArsenalGallery():HTMLElement{
   '<div class="arsenal-glock-header">'+
     '<div><span class="arsenal-overline">ARSENAL / SECONDARY WEAPONS</span>'+
     '<h2>GLOCK FAMILY</h2></div>'+
-    '<span class="arsenal-glock-notice">QUICK PLAY EQUIPMENT · LIVE USE COMING S5–S7</span>'+
+    '<span class="arsenal-glock-notice">ARSENAL / FACTORY & SAVED BUILDS</span>'+
   '</div>'+
   '<div class="arsenal-glock-feature">'+
     '<div class="arsenal-glock-hero-visual" aria-live="polite"></div>'+
@@ -145,16 +149,30 @@ export function mountGlockArsenalGallery():HTMLElement{
       '<p class="arsenal-glock-description"></p>'+
       '<div class="arsenal-glock-view-controls" role="group" aria-label="3D model view"></div>'+
       '<p class="arsenal-glock-view-note" role="status"></p>'+
-      '<p class="arsenal-glock-subnote">Real shared low-poly geometry, native Arsenal lighting. Models now share an operator loadout selection. Live drawing and shooting arrive in S5–S7.</p>'+
+      '<button type="button" class="arsenal-hero-open arsenal-glock-open">OPEN WORKBENCH</button>'+
+      '<div class="arsenal-saved-actions arsenal-glock-saved-actions" hidden></div>'+
+      '<p class="arsenal-glock-subnote">Actual Fieldwork 3D geometry and saved Quick Play sidearm presets. Live drawing and shooting remain separate.</p>'+
     '</div>'+
   '</div>'+
-  '<div class="arsenal-glock-cards" role="group" aria-label="Glock family variants"></div>';
+  '<div class="arsenal-browser arsenal-glock-browser">'+
+   '<div class="arsenal-controls"><div><span class="arsenal-overline">FACTORY REFERENCES & SAVED</span>'+
+   '<h2 class="arsenal-control-heading">SELECT A SECONDARY</h2></div>'+
+   '<input class="arsenal-search arsenal-glock-search" type="search" placeholder="Find a model or build" aria-label="Find Glock model or saved build"></div>'+
+   '<div class="arsenal-filters arsenal-glock-filters" role="group" aria-label="Secondary model filters"></div>'+
+   '<p class="arsenal-count arsenal-glock-count" aria-live="polite"></p>'+
+   '<div class="arsenal-grid arsenal-glock-cards" role="group" aria-label="Glock models and saved builds"></div>'+
+   '</div>';
  const feature=section.querySelector<HTMLElement>('.arsenal-glock-hero-visual')!;
  const modelLabel=section.querySelector<HTMLElement>('.arsenal-glock-model')!;
  const desc=section.querySelector<HTMLElement>('.arsenal-glock-description')!;
  const note=section.querySelector<HTMLElement>('.arsenal-glock-view-note')!;
  const controls=section.querySelector<HTMLElement>('.arsenal-glock-view-controls')!;
  const cards=section.querySelector<HTMLElement>('.arsenal-glock-cards')!;
+ const search=section.querySelector<HTMLInputElement>('.arsenal-glock-search')!;
+ const filters=section.querySelector<HTMLElement>('.arsenal-glock-filters')!;
+ const count=section.querySelector<HTMLElement>('.arsenal-glock-count')!;
+ const openWorkbench=section.querySelector<HTMLButtonElement>('.arsenal-glock-open')!;
+ const savedActions=section.querySelector<HTMLElement>('.arsenal-glock-saved-actions')!;
  // S3: loadout preparation shares Quick Play's existing persistent kit
  // preference file. This does not allocate Campaign stock or create a gun
  // inside a live Session before S5/S7 weapon-switch and ballistics authority.
@@ -252,6 +270,36 @@ export function mountGlockArsenalGallery():HTMLElement{
    equipAction.disabled=true;unequipAction.disabled=true;
   }
  };
+ const applyRecipe=(recipe:GlockRecipe):{ok:boolean;message:string}=>{
+  try{
+   const roster=readPrepared(),id=operatorPicker.value;
+   let found=false;
+   const next={...roster,members:roster.members.map(m=>{
+    if(m.id!==id)return m;
+    found=true;
+    if(m.loadout.slots.belt==='belt-none')throw Error('Equip a belt before a Glock');
+    const previous=m.loadout.secondary??emptySecondaryEquipment();
+    const nextSide=moveSecondaryHolster(
+     equipFreshSecondary(previous,m.id,recipe.model),recipe.holster);
+    const side={...nextSide,spareMagazines:nextSide.spareMagazines.map((mag,i)=>({
+     ...mag,location:recipe.spares[i]??mag.location
+    }))};
+    const equipment={...m.loadout,secondary:side};
+    const claim=secondaryCarryClaim(equipment);
+    if(!claim.valid)throw Error('No free '+claim.overflow.join(' / ')+' carry space');
+    return {...m,loadout:equipment};
+   })};
+   if(!found)throw Error('Operator unavailable');
+   savePrepared(next);
+   selected=recipe.model;
+   selectedSavedId=null;
+   refresh();
+   return {ok:true,message:'EQUIPPED · '+recipe.model+' · '+id};
+  }catch(error){
+   return {ok:false,message:error instanceof Error?error.message:
+    'Quick Play equipment storage unavailable'};
+  }
+ };
  const writeEquipped=(weapon:GlockAppearanceId|null)=>{
   try{
    const roster=readPrepared(),id=operatorPicker.value;
@@ -283,6 +331,28 @@ export function mountGlockArsenalGallery():HTMLElement{
  });
 
  const renderer=new GlockGallerySnapshots();
+ let selectedSavedId:string|null=null;
+ let filter:'all'|'compact'|'subcompact'|'crossover'|'saved'='all';
+ const nameFor=(id:GlockAppearanceId)=>
+  GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===id)?.name??id;
+ const recipeForSelection=():GlockRecipe=>{
+  const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
+  if(saved)return saved.recipe;
+  try{
+   const member=readPrepared().members.find(m=>m.id===operatorPicker.value);
+   const s=member?.loadout.secondary;
+   if(s?.weapon===selected)return {version:1,model:selected,holster:s.holster,
+    spares:s.spareMagazines.map(m=>m.location)};
+  }catch{}
+  return {...factoryGlockRecipe(selected),holster:holsterPicker.value as SecondaryHolster};
+ };
+ openWorkbench.addEventListener('click',()=>{
+  const member=initialRoster().members.find(m=>m.id===operatorPicker.value);
+  openGlockWorkbench(recipeForSelection(),{
+   operatorName:member?.callsign??operatorPicker.value,
+   onApply:applyRecipe,onLibraryChange:()=>{renderFilters();renderCards();refresh();}
+  });
+ });
  const images=new Map<GlockAppearanceId,HTMLElement>();
  const buttons=new Map<GlockAppearanceId,HTMLButtonElement>();
  let selected:GlockAppearanceId='glock-g19-gen3';
@@ -324,7 +394,40 @@ export function mountGlockArsenalGallery():HTMLElement{
   refreshEquip();
   display(feature,selected,view,'hero');
   for(const [id,button] of buttons)
-   button.setAttribute('aria-pressed',String(id===selected));
+   button.setAttribute('aria-pressed',String(id===selected&&!selectedSavedId));
+  for(const button of cards.querySelectorAll<HTMLButtonElement>('[data-glock-saved]'))
+   button.setAttribute('aria-pressed',String(button.dataset.glockSaved===selectedSavedId));
+  savedActions.hidden=!selectedSavedId;
+  savedActions.replaceChildren();
+  if(selectedSavedId){
+   const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
+   if(saved){
+    const b=()=>{const x=document.createElement('button');
+     x.type='button';return x;};
+    const rename=b();rename.textContent='RENAME';
+    rename.addEventListener('click',()=>{
+     const next=window.prompt('Rename saved secondary build',saved.name);
+     if(next===null)return;
+     const changed=renameGlockSavedBuild(loadGlockLibrary(),saved.id,next);
+     if(changed&&saveGlockLibrary(changed)){renderFilters();renderCards();}
+    });
+    const duplicate=b();duplicate.textContent='DUPLICATE';
+    duplicate.addEventListener('click',()=>{
+     const copy=duplicateGlockSavedBuild(loadGlockLibrary(),saved.id);
+     if(copy&&saveGlockLibrary(copy.library)){
+      selectedSavedId=copy.build.id;renderFilters();renderCards();refresh();
+     }
+    });
+    const remove=b();remove.textContent='DELETE';
+    remove.addEventListener('click',()=>{
+     if(!window.confirm('Delete '+saved.name+'?'))return;
+     if(saveGlockLibrary(deleteGlockSavedBuild(loadGlockLibrary(),saved.id))){
+      selectedSavedId=null;renderFilters();renderCards();refresh();
+     }
+    });
+    savedActions.append(rename,duplicate,remove);
+   }
+  }
   for(const button of controls.querySelectorAll<HTMLButtonElement>('button'))
    button.setAttribute('aria-pressed',String(button.dataset.view===view));
  };
@@ -335,30 +438,95 @@ export function mountGlockArsenalGallery():HTMLElement{
   button.addEventListener('click',()=>{view=id;refresh();});
   controls.append(button);
  }
- for(const ref of GLOCK_APPEARANCE_REFERENCES){
-  const button=document.createElement('button');button.type='button';
-  button.className='arsenal-glock-card';
-  button.setAttribute('aria-label','Inspect '+ref.name);
-  const image=document.createElement('span');image.className='arsenal-glock-card-preview';
-  const name=document.createElement('strong');name.textContent=ref.name;
-  const caption=document.createElement('small');caption.textContent=ref.description;
-  button.append(image,name,caption);
-  button.addEventListener('click',()=>{selected=ref.id;refresh();});
-  cards.append(button);buttons.set(ref.id,button);images.set(ref.id,image);
+ const filterOptions:readonly (readonly [typeof filter,string])[]=[
+  ['all','ALL'],['compact','G19'],['subcompact','G26'],
+  ['crossover','G19X'],['saved','SAVED']
+ ];
+ const filterMatch=(id:GlockAppearanceId)=>{
+  if(filter==='all')return true;
+  if(filter==='compact')return id==='glock-g19-gen3'||id==='glock-g19-gen5-mos';
+  if(filter==='subcompact')return id==='glock-g26';
+  if(filter==='crossover')return id==='glock-g19x';
+  return false;
+ };
+ const searchMatch=(id:GlockAppearanceId,name:string)=>{
+  const q=search.value.trim().toLowerCase();
+  return !q||[id,name,
+   GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===id)?.description??'']
+   .some(text=>text.toLowerCase().includes(q));
+ };
+ function renderFilters(){
+  filters.replaceChildren();
+  for(const [id,label] of filterOptions){
+   const button=document.createElement('button');
+   button.type='button';button.className='arsenal-filter';
+   button.textContent=id==='saved'?label+' · '+loadGlockLibrary().builds.length:label;
+   button.setAttribute('aria-pressed',String(filter===id));
+   button.addEventListener('click',()=>{
+    filter=id;renderFilters();renderCards();
+   });
+   filters.append(button);
+  }
  }
+ function renderCards(){
+  cards.replaceChildren();
+  buttons.clear();images.clear();
+  const saved=loadGlockLibrary().builds;
+  const shown:({kind:'factory';ref:typeof GLOCK_APPEARANCE_REFERENCES[number]}|
+   {kind:'saved';build:GlockSavedBuild})[]=[];
+  if(filter!=='saved')for(const ref of GLOCK_APPEARANCE_REFERENCES)
+   if(filterMatch(ref.id)&&searchMatch(ref.id,ref.name))
+    shown.push({kind:'factory',ref});
+  if(filter==='saved')for(const build of saved)
+   if(searchMatch(build.recipe.model,build.name))
+    shown.push({kind:'saved',build});
+  count.textContent=shown.length+
+   (filter==='saved'?' SAVED SECONDARIES':' FACTORY CONFIGURATIONS');
+  if(!shown.length){
+   const empty=document.createElement('p');
+   empty.className='arsenal-empty';
+   empty.textContent=filter==='saved'?'No saved Glock builds. Use OPEN WORKBENCH to save one.':
+    'No matching models. Try another search or filter.';
+   cards.append(empty);return;
+  }
+  for(const choice of shown){
+   const ref=choice.kind==='factory'?choice.ref:
+    GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===choice.build.recipe.model)!;
+   const button=document.createElement('button');button.type='button';
+   button.className='arsenal-card arsenal-glock-card';
+   button.setAttribute('aria-label','Inspect '+(choice.kind==='factory'?ref.name:choice.build.name));
+   const image=document.createElement('span');
+   image.className='arsenal-card-preview arsenal-glock-card-preview';
+   const name=document.createElement('strong');name.className='model';
+   name.textContent=choice.kind==='factory'?ref.name:choice.build.name;
+   const caption=document.createElement('small');
+   caption.className='platform';
+   caption.textContent=choice.kind==='factory'?ref.description:
+    'SAVED · '+ref.name;
+   button.append(image,name,caption);
+   if(choice.kind==='saved')button.dataset.glockSaved=choice.build.id;
+   button.addEventListener('click',()=>{
+    selected=ref.id;
+    selectedSavedId=choice.kind==='saved'?choice.build.id:null;
+    refresh();
+   });
+   cards.append(button);
+   if(choice.kind==='factory')buttons.set(ref.id,button);
+   // Workbench uses one WebGL context; saved and factory thumbnails share
+   // the same source mesh and cache, never generate secondary replicas.
+   const source=renderer.render(ref.id,'quarter','card');
+   if(source){const photo=document.createElement('img');
+    photo.src=source;photo.alt='';image.append(photo);}
+  }
+  refresh();
+ }
+ search.addEventListener('input',renderCards);
+ renderFilters();renderCards();
  // One shared WebGL context, bounded on-demand snapshot work.
  requestAnimationFrame(()=>{
   if(!section.isConnected)return;
   refresh();
-  const sequence=[...GLOCK_APPEARANCE_REFERENCES];
-  const pump=(index:number)=>{
-   if(index>=sequence.length||!section.isConnected)return;
-   const ref=sequence[index];
-   const host=images.get(ref.id);
-   if(host)display(host,ref.id,'quarter','card');
-   if(index+1<sequence.length)requestAnimationFrame(()=>pump(index+1));
-  };
-  requestAnimationFrame(()=>pump(0));
+  // Factory and saved cards are rendered and cached on selection.
  });
  window.addEventListener('pagehide',()=>renderer.dispose(),{once:true});
  return section;
