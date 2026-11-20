@@ -521,9 +521,18 @@ export class CampaignScreen{
     node('span',operator?.recoveryDays?'campaign-uxr-slot-recovering':'',
      !operator?'EMPTY':operator.recoveryDays?
       operator.recoveryDays+'D RECOVERY':'READY'));
-   const avatar=node('div','campaign-uxr-slot-avatar',
-    operator?.callsign.slice(0,2).toUpperCase()??'+');
+   // Static, allocation-free silhouette until an existing cached rig
+   // thumbnail is available; never create four live WebGL renderers.
+   const avatar=node('div','campaign-uxr-slot-avatar');
    avatar.setAttribute('aria-hidden','true');
+   if(operator){
+    const paletteIndex=c.operators.findIndex(p=>p.id===operator.id);
+    avatar.style.setProperty('--uxr-operator-color',operator.squadColor??
+     SQUAD_IDENTIFICATION_COLORS[Math.max(0,paletteIndex)%SQUAD_IDENTIFICATION_COLORS.length]);
+    avatar.append(node('span','campaign-uxr-silhouette-head'),
+     node('span','campaign-uxr-silhouette-body'),
+     node('span','campaign-uxr-silhouette-shoulder'));
+   }else avatar.textContent='+';
    inspect.append(top,avatar,node('strong','',operator?.callsign??'UNASSIGNED'),
     node('small','',operator?operator.weapon.toUpperCase():'SELECT OPERATOR'));
    const change=button('CHANGE',()=>showSlotPicker(slot),'campaign-uxr-slot-change');
