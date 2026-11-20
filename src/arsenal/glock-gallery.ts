@@ -460,7 +460,7 @@ export function mountGlockArsenalGallery():HTMLElement{
    const button=document.createElement('button');
    button.type='button';button.className='arsenal-filter';
    button.textContent=id==='saved'?label+' · '+loadGlockLibrary().builds.length:label;
-   button.setAttribute('aria-pressed',String(filter===id));
+   button.setAttribute('aria-pressed',String(filterState.value===id));
    button.addEventListener('click',()=>{
     filterState.value=id;renderFilters();renderCards();
    });
