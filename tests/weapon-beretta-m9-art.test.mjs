@@ -88,6 +88,12 @@ test('M9A3 silhouette differs through real shape, not FDE only',()=>{
   assert.ok(!M9_ART['beretta-m9'].straightGrip);
   assert.equal(m9.children.filter(x=>x.userData.m9AccessoryRail).length,0);
   assert.equal(a3.children.filter(x=>x.userData.m9AccessoryRail).length,1);
+  const a3rail=a3.children.find(x=>x.userData.m9AccessoryRail);
+  const a3frame=a3.children.find(x=>x.userData.m9IntegratedFrame);
+  assert.ok(bounds(a3rail).intersectsBox(bounds(a3frame)),
+   'M9A3 accessory rail must actually meet lower frame');
+  assert.ok(bounds(a3rail).max.x<=bounds(a3frame).max.x-.3,
+   'accessory rail must not float beyond the dust-cover nose');
   assert.ok(m9ArtSockets('beretta-m9a3').muzzle.x>
    m9ArtSockets('beretta-m9').muzzle.x);
   assert.equal(m9.userData.m9ArtLandmarks.actualOpenTop,true);
