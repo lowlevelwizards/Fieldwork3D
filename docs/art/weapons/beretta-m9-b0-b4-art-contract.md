@@ -27,10 +27,10 @@ No production game-play or manufacturing/assembly information is implied.
 | Upper depth Z | 3.08 | 3.08 |
 | Frame body depth Z | 2.72 | 2.72 |
 | Grip heel Y | -8.65 | -8.56 |
-| Grip rear X | -8.15 | -7.95 |
+| Grip rear X | -8.65 | -7.95 |
 | Grip front X | -4.05 | -4.04 |
 | Physical guard hole Y | -3.09 .. -1.64 | same |
-| Sight line Y | +3.50 | +3.50 |
+| Sight line Y | +3.52 | +3.52 |
 | Barrel center Y | +2.57 | +2.57 |
 
 These are authored game-art datums, **not firearm dimensions**. The current G19 reference slide is -8.66..+8.30, nominal height +.21..+3.17, slide depth 3.20 and grip heel -7.65. M9 is longer with a more open upper and heavier grip/frame relationships rather than simply being a stretched Glock.
