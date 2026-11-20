@@ -178,7 +178,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   let ghost:HTMLElement|null=null,dragged=false,suppressClick=false;
   const cleanup=()=>{
    ghost?.remove();ghost=null;
-   capacity.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
+   root.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
     node=>delete node.dataset.dragTarget);
    start=null;dragged=false;
   };
@@ -207,14 +207,14 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    capacity.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
     node=>delete node.dataset.dragTarget);
    const hit=document.elementFromPoint(event.clientX,event.clientY);
-   const zone=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location]');
+   const zone=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location], .fw-carry-bodymap-zone[data-location]');
    if(zone&&zone.dataset.location!==choice.from)zone.dataset.dragTarget='true';
   });
   select.addEventListener('pointerup',event=>{
    if(!start||event.pointerId!==start.pointer)return;
    const wasDragging=dragged;
    const hit=wasDragging?document.elementFromPoint(event.clientX,event.clientY):null;
-   const destination=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location]')
+   const destination=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location], .fw-carry-bodymap-zone[data-location]')
     ?.dataset.location as FieldCarryLocation|undefined;
    cleanup();
    if(!wasDragging)return;
@@ -386,6 +386,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
       null:choice;
      if(selected)inspectTile('field',id,loc);
      refreshSelection();
+     if(selected)map.scrollIntoView({block:'nearest',
+      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
      feedback(selected?'SELECTED ONE '+tile.label.toUpperCase()+
       ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
     });
@@ -407,6 +409,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      if(selected)inspectTile('magazine',id,loc,
       zone.items.filter(t=>t.kind==='magazine').findIndex(t=>t.magazineId===id));
      refreshSelection();
+     if(selected)map.scrollIntoView({block:'nearest',
+      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
      feedback(selected?'SELECTED '+tile.label.toUpperCase()+
       ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
     });
