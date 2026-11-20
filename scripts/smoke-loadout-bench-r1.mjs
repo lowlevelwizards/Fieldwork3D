@@ -135,7 +135,7 @@ try{
    assert.ok(await gallery.locator('.fw-outfitter-option:visible').count()>=1,
     'Chest equipment retains direct selection');
    await armory.locator('.campaign-outfitter-library-button').click();
-   assert.ok(await armory.locator('.fw-outfitter-advanced').isVisible(),
+   assert.ok(await armory.locator('.fw-outfitter-advanced:not(.fw-outfitter-carry-panel)').isVisible(),
     'Kit library accessible from header, not gallery More button');
    assert.equal(await gallery.locator('.fw-outfitter-more').count(),0,
     'No More link at the bottom of the equipment panel');
