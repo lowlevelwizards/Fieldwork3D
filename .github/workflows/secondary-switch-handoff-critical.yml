@@ -1,0 +1,27 @@
+name: Secondary S5.2 switch handoff critical
+on:
+  pull_request:
+    paths:
+      - 'src/secondary-switching.ts'
+      - 'src/breach-plan.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-actor-initial-state.ts'
+      - 'src/breach-order-utility.ts'
+      - 'src/breach-plan-utility-commands.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'tests/secondary-s5-2-order-handoff.test.mjs'
+      - '.github/workflows/secondary-switch-handoff-critical.yml'
+  workflow_dispatch:
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Authored weapon handoff and ammunition conservation
+        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs
+      - name: Production TypeScript and bundle
+        run: npm run build
