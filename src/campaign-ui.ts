@@ -68,6 +68,7 @@ import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
 import {projectOperationsSummary} from './ui/campaign/operations-summary.ts';
 import './campaign-style.css';
+import './ui/campaign-uxr-workspaces.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
