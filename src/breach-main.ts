@@ -100,7 +100,7 @@ import {doorReachable} from './breach-door.ts';
 import {doorKnown,type IntelMode} from './breach-intel.ts';
 import {DisplayRouteCache} from './breach-route-cache.ts';
 import {ProjectedRouteCache} from './breach-plan-projection-cache.ts';
-import {applyRosterIdentity,equipRosterFieldInventory,equipRosterCarryGear,copyRosterCarryLayout,moveRosterMagazine} from './breach-roster.ts';
+import {applyRosterIdentity,equipRoster,equipRosterGear,equipRosterFieldInventory,equipRosterCarryGear,copyRosterCarryLayout,moveRosterMagazine} from './breach-roster.ts';
 import {refreshQuickPlayPreparedRoster} from './breach-quickplay-kit-preferences.ts';
 import type {CampaignState} from './campaign-state.ts';
 import {loadActiveCampaign,loadCampaignSlot,writeCampaignSlot,
@@ -1297,6 +1297,17 @@ const quickPlayController=createBreachQuickPlayController({
   },
   equipCarryGear:(id,slot,itemId)=>{
    const updated=equipRosterCarryGear(persistentRoster,id,slot,itemId);
+   if(updated===persistentRoster)return false;
+   persistentRoster=updated;saveRoster();return true;
+  },
+  equipGear:(id,slot,itemId)=>{
+   const updated=equipRosterGear(persistentRoster,id,slot,itemId);
+   if(updated===persistentRoster)return false;
+   persistentRoster=updated;saveRoster();return true;
+  },
+  equipWeapon:(id,weapon)=>{
+   if(persistentRoster.members.find(m=>m.id===id)?.weapon===weapon)return false;
+   const updated=equipRoster(persistentRoster,id,weapon);
    if(updated===persistentRoster)return false;
    persistentRoster=updated;saveRoster();return true;
   },
