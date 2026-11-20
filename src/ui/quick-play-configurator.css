@@ -129,3 +129,108 @@
 .fw-quick-config-carry-label select{min-width:0;width:100%;min-height:44px;
  padding:6px;background:#243b31;color:#e8efe3;border:1px solid #72877c;
  border-radius:6px;touch-action:manipulation}
+
+/* Outfitter R5: Quick Play presents the SAME gallery as Campaign Armory.
+   Only the surrounding mission setup layout differs. One horizontal row,
+   no category-specific nested inventory lists or duplicated gear editors. */
+.fw-quick-outfitter-main[hidden],.fw-quick-outfitter-carry[hidden]{display:none!important}
+.fw-quick-outfitter-main{display:grid;gap:7px;min-width:0}
+.fw-quick-outfitter-zones{
+ display:grid;grid-template-columns:repeat(6,minmax(0,1fr));
+ gap:5px;min-width:0;
+}
+.fw-quick-config-dialog .fw-quick-outfitter-zone{
+ min-height:38px;padding:5px 3px;border:1px solid #76927d;
+ font:700 10px var(--fw-font-action);background:#29463a;color:#d7e7d5;
+}
+.fw-quick-config-dialog .fw-quick-outfitter-zone[aria-current="true"]{
+ background:#b4cca5;color:#1c3328;border-color:#e0f0c0;
+}
+.fw-quick-outfitter-main>.fw-outfitter-gallery{
+ display:grid;grid-template-rows:36px 145px minmax(60px,auto);
+ min-width:0;height:auto;overflow:hidden;
+ background:#1f372d;border:1px solid #637d6a;border-radius:10px;
+}
+.fw-quick-outfitter-main .fw-outfitter-gallery-head{
+ display:flex;align-items:center;justify-content:space-between;
+ padding:7px 10px;border-bottom:1px solid #6d8974;
+ background:#274337;
+}
+.fw-quick-outfitter-main .fw-outfitter-gallery-head strong{
+ font:800 16px var(--fw-font-action);
+}
+.fw-quick-outfitter-main .fw-outfitter-gallery-head span{
+ font:600 10px var(--fw-font-menu);color:#b7cbbc;
+}
+.fw-quick-outfitter-main .fw-outfitter-gallery-scroll{
+ display:block;min-width:0;min-height:0;overflow-x:auto;overflow-y:hidden;
+ overscroll-behavior-x:contain;scroll-snap-type:x proximity;
+ -webkit-overflow-scrolling:touch;scrollbar-width:thin;padding:7px;
+}
+.fw-quick-outfitter-main .fw-outfitter-options{
+ display:flex;flex-flow:row nowrap;gap:7px;
+ width:max-content;min-width:100%;height:100%;align-items:stretch;
+}
+.fw-quick-config-dialog .fw-outfitter-option{
+ display:flex;flex-direction:column;align-items:stretch;
+ flex:0 0 112px;box-sizing:border-box;width:112px;max-width:112px;
+ min-width:112px;min-height:0;height:100%;padding:5px;margin:0;
+ background:#2d493b;color:#e1ecdc;border:1px solid #718d7a;
+ border-radius:9px;scroll-snap-align:start;text-align:left;gap:4px;
+}
+.fw-quick-config-dialog .fw-outfitter-option[data-selected="true"]{
+ background:#42614c;border:2px solid #dfedbb;
+}
+.fw-quick-config-dialog .fw-outfitter-option:disabled{
+ opacity:.38;filter:saturate(.4);pointer-events:none;cursor:not-allowed;
+}
+.fw-quick-outfitter-main .fw-outfitter-gallery-image{
+ display:grid;place-items:center;flex:1 1 auto;min-height:30px;
+ border-radius:5px;background:#192e26;overflow:hidden;
+}
+.fw-quick-outfitter-main .fw-outfitter-gallery-image img{
+ width:100%;height:100%;display:block;object-fit:contain;
+}
+.fw-quick-outfitter-main .fw-outfitter-option-copy{
+ display:flex;flex-direction:column;gap:2px;flex:0 0 auto;
+ min-width:0;font-size:10px;
+}
+.fw-quick-outfitter-main .fw-outfitter-option-copy strong{
+ font:700 10px/1.15 var(--fw-font-action);
+ display:-webkit-box;-webkit-line-clamp:2;line-clamp:2;
+ -webkit-box-orient:vertical;overflow:hidden;
+}
+.fw-quick-outfitter-main .fw-outfitter-option-copy small{
+ font:500 9px var(--fw-font-menu);color:#bdd0c0;
+}
+.fw-quick-outfitter-main .fw-outfitter-context{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:7px;padding:7px 10px;border-top:1px solid #668370;
+ background:#274135;min-width:0;
+}
+.fw-quick-outfitter-main .fw-outfitter-detail-copy{
+ display:flex;flex-direction:column;gap:3px;min-width:0;
+ font:700 12px var(--fw-font-menu);
+}
+.fw-quick-outfitter-main .fw-outfitter-detail-copy>small{
+ font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.fw-quick-config-dialog .fw-outfitter-context-action{
+ flex:0 0 auto;max-width:154px;min-height:38px;
+ padding:5px 8px;font:700 10px var(--fw-font-action);
+}
+.fw-quick-outfitter-carry{padding:8px;border:1px solid #647d6c;
+ border-radius:8px;background:#203a30;min-width:0}
+.fw-quick-outfitter-back{margin-bottom:8px}
+@media(max-width:520px){
+ .fw-quick-outfitter-zones{grid-template-columns:repeat(4,minmax(0,1fr))}
+ .fw-quick-config-dialog .fw-quick-outfitter-zone{
+  min-height:36px;font-size:9px;padding:4px 2px;
+ }
+ .fw-quick-outfitter-main>.fw-outfitter-gallery{
+  grid-template-rows:35px 132px minmax(59px,auto);
+ }
+ .fw-quick-config-dialog .fw-outfitter-option{
+  flex-basis:105px;width:105px;min-width:105px;max-width:105px;
+ }
+}
