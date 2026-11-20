@@ -9,7 +9,7 @@ import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-ope
 import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
  from './breach-operator-frame-output.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
-import {presentSecondaryDraw} from './secondary-holster-visual.ts';
+import {presentSecondaryDraw,presentSecondaryReload} from './secondary-holster-visual.ts';
 import {secondaryUpperBodyTargets} from './secondary-upper-body-pose.ts';
 /** Roadmap 2 Stage 11: presentation-only operator pose orchestrator.
  * This is the compatibility-preserving home for the existing pose evaluation;
@@ -1408,6 +1408,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   presentSecondaryDraw(r.hip,r.arms[1].hand,p.equipment?.secondary,
     p.secondarySwitch?.fraction??0,!p.down&&!p.surrender,
     p.shotHeading??p.heading);
+  presentSecondaryReload(r.hip,r.arms[0].hand,p.equipment?.secondary,
+    !p.down&&!p.surrender?p.secondaryReload:null);
   // F6.2: one already issued pouch mesh is attached to the *finished*
   // support hand; cancellation and replay rewinds restore it to the pouch.
   presentFlashHandoff(r,p,equipmentActive);
