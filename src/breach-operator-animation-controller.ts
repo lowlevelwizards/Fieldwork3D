@@ -9,6 +9,7 @@ import {beginOperatorAnimationFrame,sampleOperatorTurnAngles} from './breach-ope
 import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
  from './breach-operator-frame-output.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
+import {presentSecondaryDraw} from './secondary-holster-visual.ts';
 /** Roadmap 2 Stage 11: presentation-only operator pose orchestrator.
  * This is the compatibility-preserving home for the existing pose evaluation;
  * it never writes actor simulation, collision, inventory or shot ballistics.
@@ -807,7 +808,9 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     }
   }
   r.reachRequest=null;
-  heldWeapon.visible=(!p.down&&!p.surrender)||downProgress<.30;
+  // S6.1: prevent simultaneous shouldered primary and held sidearm.
+  heldWeapon.visible=((!p.down&&!p.surrender)||downProgress<.30)&&
+    (p.secondarySwitch?.fraction??0)<.50;
   droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30;
   if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
     const buildStart=profilePose?performance.now():0;
@@ -1366,6 +1369,10 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     finalEquipment.attachmentOutputs);
   // Exactly one commit of the six validated, rig-local output stages.
   commitOperatorPoseOutput(r,p);
+  // S6.1: one 3D Glock follows the finished firing wrist, not uncommitted IK.
+  // The fixed-step fraction also gives deterministic replay and reversal.
+  presentSecondaryDraw(r.hip,r.arms[1].hand,p.equipment?.secondary,
+    p.secondarySwitch?.fraction??0,!p.down&&!p.surrender);
   // F6.2: one already issued pouch mesh is attached to the *finished*
   // support hand; cancellation and replay rewinds restore it to the pouch.
   presentFlashHandoff(r,p,equipmentActive);
