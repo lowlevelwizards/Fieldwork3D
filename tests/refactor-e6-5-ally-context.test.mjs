@@ -95,7 +95,10 @@ test('scene has exactly one teammate pass per posed operator; PERF remains opt-i
  const block=scene.slice(scene.indexOf('// E6.5: directional muzzle courtesy'),
   scene.indexOf('// Physical contact is queried from',scene.indexOf('// E6.5: directional muzzle courtesy')));
  assert.ok(block.length>100);
- assert.equal((block.match(/for\(const peer of s\.operators\)/g)||[]).length,1);
+ assert.equal((block.match(/for\(const peer of allyPeers\)/g)||[]).length,1);
+ assert.match(block,/const allyPeers=useAllyBroadphase\?/);
+ assert.match(block,/this\.frameActorNeighborhood\.candidates\(/);
+ assert.match(block,/:s\.operators;/);
  assert.match(block,/if\(peer===actor\|\|peer\.side!==actor\.side\|\|peer\.health<=0\)continue/);
  assert.match(block,/teammateAheadProjectedOffset\(/);
  assert.match(block,/stackX\*stackX\+stackY\*stackY<40\*40/);
@@ -103,7 +106,7 @@ test('scene has exactly one teammate pass per posed operator; PERF remains opt-i
  assert.match(block,/nearbyAllies\.push\(safetyBodyFor\(peer\)\)/);
  assert.doesNotMatch(block,/teammateAheadForHandling\(/);
  assert.match(block,/if\(this\.profileSceneUpdate\)\{/);
- assert.match(scene,/this\.actorPhaseCosts\.allyPeerVisits\+=s\.operators\.length/);
+ assert.match(scene,/this\.actorPhaseCosts\.allyPeerVisits\+=allyPeers\.length/);
  assert.match(scene,/this\.actorPhaseCosts\.allyContextMs\+=performance\.now\(\)-allyStart/);
  assert.match(loop,/E6\.5 ALLY CONTEXT/);
  assert.match(loop,/intervalE6\.allyContextMs\+=actorCost\?\.allyContextMs\?\?0/);
