@@ -228,3 +228,141 @@
  .fw-outfitter-gallery-image{height:61px;min-height:61px}
  .fw-outfitter-gallery-scroll{padding:7px 6px 10px}
 }
+
+/* R4 · A genuinely horizontal, stable palette. No secondary vertical list. */
+@media(max-width:620px), (max-width:920px) and (max-height:620px){
+ .campaign-armory-screen .fw-outfitter-gallery{
+  display:grid!important;grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:39px minmax(0,1fr) 61px!important;
+  overflow:hidden!important;height:100%!important;min-height:0!important;
+ }
+ .campaign-armory-screen .fw-outfitter-gallery-head{
+  box-sizing:border-box;min-height:39px!important;height:39px!important;
+  padding:6px 10px!important;
+ }
+ .campaign-armory-screen .fw-outfitter-gallery-scroll{
+  display:block!important;min-height:0!important;height:100%!important;
+  width:100%!important;padding:7px 8px!important;box-sizing:border-box;
+  overflow-x:auto!important;overflow-y:hidden!important;
+  scroll-snap-type:x proximity;
+  scrollbar-width:thin;overscroll-behavior-x:contain;
+  -webkit-overflow-scrolling:touch;
+ }
+ .campaign-armory-screen .fw-outfitter-options{
+  display:flex!important;flex-direction:row!important;
+  flex-wrap:nowrap!important;align-items:stretch!important;
+  width:max-content!important;height:100%!important;
+  max-width:none!important;min-width:100%!important;gap:7px!important;
+ }
+ .campaign-armory-screen .fw-outfitter-option{
+  display:flex!important;flex-direction:column!important;
+  flex:0 0 116px!important;
+  width:116px!important;min-width:116px!important;max-width:116px!important;
+  min-height:0!important;height:100%!important;max-height:none!important;
+  padding:5px!important;margin:0!important;
+  scroll-snap-align:start!important;
+  transition:border-color .15s,background-color .15s,transform .15s;
+ }
+ .campaign-armory-screen .fw-outfitter-option:active{transform:scale(.965)}
+ .campaign-armory-screen .fw-outfitter-option[data-selected="true"]{
+  border-color:#dce9b6!important;background:#385645!important;
+  box-shadow:inset 0 0 0 1px #dce9b68a;
+ }
+ .campaign-armory-screen .fw-outfitter-option[data-available="false"]{
+  opacity:.52!important;filter:saturate(.35);
+ }
+ .campaign-armory-screen .fw-outfitter-option[data-available="false"][data-selected="true"]{
+  opacity:.82!important;
+ }
+ .campaign-armory-screen .fw-outfitter-gallery-image{
+  flex:1 1 auto!important;min-height:35px!important;height:auto!important;
+  max-height:none!important;
+ }
+ .campaign-armory-screen .fw-outfitter-option-copy{flex:0 0 auto!important}
+ .campaign-armory-screen .fw-outfitter-option-copy>strong{
+  font-size:10px!important;line-height:1.1!important;
+  display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+  line-clamp:2;overflow:hidden;
+ }
+ .campaign-armory-screen .fw-outfitter-context{
+  box-sizing:border-box;display:flex;align-items:center;
+  justify-content:space-between;gap:7px;
+  height:61px!important;min-height:61px!important;
+  padding:7px 10px;border-top:1px solid #607e6a;
+  overflow:hidden;background:#233c31;
+ }
+ .fw-outfitter-detail-copy{
+  display:flex;flex:1 1 auto;min-width:0;flex-direction:column;gap:2px;
+  font:700 12px/1.15 var(--fw-font-menu);
+ }
+ .fw-outfitter-detail-copy>small{
+  color:#b7c8b9;font:550 10px/1.2 var(--fw-font-menu);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+ }
+ .fw-outfitter-disabled-note{color:#d0b6a5!important}
+ .fw-outfitter-detail-capacity{
+  white-space:nowrap;font:700 11px var(--fw-font-menu);
+  color:#cddcbf;
+ }
+ .fw-outfitter-context-action{
+  min-height:38px!important;min-width:70px!important;
+  max-width:116px!important;padding:6px 9px!important;
+  font:700 11px var(--fw-font-action)!important;
+ }
+ .campaign-armory-screen .fw-outfitter-context .fw-outfitter-quantity-controls{
+  display:flex!important;flex:0 0 auto;gap:3px;
+ }
+ .campaign-armory-screen .fw-outfitter-context .fw-select-trigger{
+  flex:0 0 auto;max-width:100px!important;
+ }
+}
+@media(max-width:380px){
+ .campaign-armory-screen .fw-outfitter-option{
+  flex-basis:102px!important;width:102px!important;
+  min-width:102px!important;max-width:102px!important;
+ }
+ .campaign-armory-screen .fw-outfitter-context{padding:6px!important}
+ .campaign-armory-screen .fw-outfitter-detail-copy>small{font-size:9px!important}
+}
+/* Shared Fieldwork dropdown (portalled to body, never native iOS UI). */
+.fw-select-trigger{
+ appearance:none;-webkit-appearance:none;
+ color:#e2e9d7;background:#304c40;border:1px solid #9db49d;
+ border-radius:7px;min-width:70px;min-height:38px;
+ padding:7px 26px 7px 9px;
+ font:700 12px/1.15 var(--fw-font-menu);
+ cursor:pointer;position:relative;text-align:left;
+}
+.fw-select-trigger::after{
+ content:"⌄";position:absolute;right:8px;top:50%;
+ transform:translateY(-53%);font-size:16px;opacity:.85;
+}
+.fw-select-trigger.is-compact{max-width:112px}
+.fw-select-menu{
+ position:fixed;z-index:99999!important;
+ display:flex;flex-direction:column;gap:4px;
+ overflow-y:auto;overscroll-behavior:contain;
+ padding:6px;box-sizing:border-box;
+ background:#1d3229;border:1px solid #adbea3;
+ box-shadow:0 7px 26px #000b;border-radius:10px;
+}
+.fw-select-choice{
+ appearance:none;-webkit-appearance:none;
+ display:flex;flex-direction:column;align-items:stretch;
+ gap:2px;text-align:left;flex-shrink:0;
+ width:100%;min-height:43px;
+ padding:9px 10px;border:1px solid #4c6959;
+ border-radius:7px;background:#2a4437;color:#dbe9d6;
+ font:700 12px var(--fw-font-menu);
+}
+.fw-select-choice.is-selected{
+ border-color:#ddecc1;background:#496a50;
+}
+.fw-select-choice:disabled{opacity:.45}
+.fw-select-choice small{font:500 10px var(--fw-font-menu);color:#bdd0c0}
+.fw-select-choice:focus-visible,.fw-select-trigger:focus-visible{
+ outline:2px solid #e3edb5;outline-offset:2px;
+}
+@media(prefers-reduced-motion:reduce){
+ .campaign-armory-screen .fw-outfitter-option{transition:none!important}
+}
