@@ -61,7 +61,7 @@ export class CampaignKitPreview{
  // in-flight async readback target from the synchronous path.
  private thumbnailAsyncTarget:THREE.WebGLRenderTarget|null=null;
  private thumbnailAsyncPixels:Uint8Array|null=null;
- private thumbnailReadbackPending:Promise<string|null>|null=null;
+ private thumbnailReadbackTail:Promise<void>=Promise.resolve();
  private thumbnailRevision=0;
  private observer:ResizeObserver|null=null;
  private azimuth=.72;
@@ -255,19 +255,16 @@ export class CampaignKitPreview{
  }
  async renderModelThumbnailAsync(target:EquipmentInspectionTarget|
   {kind:'gear';slot:LoadoutSlot;itemId:string}):Promise<string|null>{
-  // The GPU readback buffer must not be reused until its fence resolves.
-  // Requests from rapidly switched categories run in their submitted order.
-  if(this.thumbnailReadbackPending){
-   try{await this.thumbnailReadbackPending;}catch{/* prior capture retired */}
-  }
-  if(!this.renderer)return null;
-  const result=this.captureModelThumbnail(target,true);
-  if(!(result instanceof Promise))return result;
-  this.thumbnailReadbackPending=result;
-  try{return await result;}
-  finally{
-   if(this.thumbnailReadbackPending===result)this.thumbnailReadbackPending=null;
-  }
+  // Reserve a queue slot BEFORE the first await. Multiple category or
+  // operator requests must not race the one reusable async GPU buffer.
+  const previous=this.thumbnailReadbackTail;
+  let release:()=>void=()=>{};
+  this.thumbnailReadbackTail=new Promise<void>(resolve=>{release=resolve;});
+  await previous;
+  try{
+   if(!this.renderer)return null;
+   return await this.captureModelThumbnail(target,true);
+  }finally{release();}
  }
  private captureModelThumbnail(target:EquipmentInspectionTarget|
   {kind:'gear';slot:LoadoutSlot;itemId:string},
@@ -1020,7 +1017,7 @@ export class CampaignKitPreview{
   this.thumbnailTarget?.dispose();this.thumbnailTarget=null;
   this.thumbnailAsyncTarget?.dispose();this.thumbnailAsyncTarget=null;
   this.thumbnailPixels=null;this.thumbnailAsyncPixels=null;
-  this.thumbnailCanvas=null;this.thumbnailReadbackPending=null;
+  this.thumbnailCanvas=null;
   this.modelThumbCache.clear();
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
