@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import {openGlockWorkbench} from './glock-workbench.ts';
 import {createArsenalPreviewQueue} from './preview-job-queue.ts';
+import {createArsenalGalleryChrome} from './gallery-chrome.ts';
 import {createArsenalSavedActionButtons,renderArsenalFilterButtons} from './gallery-browser-controls.ts';
 import {type GlockCustomization} from '../weapons/geometry/glock-customization.ts';
 import {factoryGlockRecipe,loadGlockLibrary,saveGlockLibrary,
@@ -78,38 +79,9 @@ class GlockGallerySnapshots{
 }
 
 export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>void}{
- const section=document.createElement('section');
- section.className='arsenal-layout arsenal-glock-gallery';
- section.setAttribute('aria-label','Glock family secondary weapon loadouts');
- section.innerHTML=
-  '<div class="arsenal-hero arsenal-glock-feature">'+
-    '<div class="arsenal-hero-media arsenal-glock-hero-visual" aria-live="polite"></div>'+
-    '<div class="arsenal-hero-copy arsenal-glock-feature-copy">'+
-      '<span class="arsenal-overline arsenal-glock-platform">GLOCK</span>'+
-      '<h2 class="arsenal-glock-model"></h2>'+
-      '<p class="hint arsenal-glock-description"></p>'+
-      '<button type="button" class="arsenal-hero-open arsenal-glock-open">OPEN WORKBENCH</button>'+
-      '<div class="arsenal-saved-actions arsenal-glock-saved-actions" hidden></div>'+
-    '</div>'+
-  '</div>'+
-  '<div class="arsenal-browser arsenal-glock-browser">'+
-   '<div class="arsenal-controls"><div><span class="arsenal-overline">FACTORY REFERENCES</span>'+
-   '<h2 class="arsenal-control-heading">SELECT A WEAPON</h2></div>'+
-   '<input class="arsenal-search arsenal-glock-search" type="search" placeholder="Find a model" aria-label="Find Glock model or saved build"></div>'+
-   '<div class="arsenal-filters arsenal-glock-filters" role="group" aria-label="Secondary model filters"></div>'+
-   '<p class="arsenal-count arsenal-glock-count" aria-live="polite"></p>'+
-   '<div class="arsenal-grid arsenal-glock-cards" role="group" aria-label="Glock models and saved builds"></div>'+
-  '</div>'+
-  '';
- const feature=section.querySelector<HTMLElement>('.arsenal-glock-hero-visual')!;
- const modelLabel=section.querySelector<HTMLElement>('.arsenal-glock-model')!;
- const desc=section.querySelector<HTMLElement>('.arsenal-glock-description')!;
- const cards=section.querySelector<HTMLElement>('.arsenal-glock-cards')!;
- const search=section.querySelector<HTMLInputElement>('.arsenal-glock-search')!;
- const filters=section.querySelector<HTMLElement>('.arsenal-glock-filters')!;
- const count=section.querySelector<HTMLElement>('.arsenal-glock-count')!;
- const openWorkbench=section.querySelector<HTMLButtonElement>('.arsenal-glock-open')!;
- const savedActions=section.querySelector<HTMLElement>('.arsenal-glock-saved-actions')!;
+ const {layout:section,heroMedia:feature,heroTitle:modelLabel,heroHint:desc,
+  grid:cards,search,filters,count,openWorkbench,
+  savedControls:savedActions}=createArsenalGalleryChrome('secondary');
  const renderer=new GlockGallerySnapshots();
  const previewQueue=createArsenalPreviewQueue();
  let observer:IntersectionObserver|null=null;
