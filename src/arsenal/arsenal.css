@@ -651,3 +651,26 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  .arsenal-glock-card strong{font-size:16px}
  .arsenal-glock-card small{font-size:10px}
 }
+
+
+/* G2.7 same-camera family grid: the images are native 3D geometry snapshots,
+   one common coordinate scale, with labels that never consume view height. */
+.arsenal-glock-hero-visual[data-view="family"]{
+ position:relative;aspect-ratio:4/3;min-height:0;
+}
+.arsenal-glock-family-labels{
+ position:absolute;inset:0;display:grid;
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ grid-template-rows:repeat(2,minmax(0,1fr));
+ pointer-events:none;
+}
+.arsenal-glock-family-labels span{
+ align-self:start;justify-self:start;
+ margin:10px 0 0 13px;padding:4px 6px;border-radius:3px;
+ background:#24352de0;color:#d5dfd5;
+ font:700 11px/1.25 var(--fw-font-menu);letter-spacing:.015em;
+}
+@media(max-width:720px){
+ .arsenal-glock-hero-visual[data-view="family"]{aspect-ratio:4/3}
+ .arsenal-glock-family-labels span{font-size:10px;margin:7px 0 0 7px;padding:3px 4px}
+}
