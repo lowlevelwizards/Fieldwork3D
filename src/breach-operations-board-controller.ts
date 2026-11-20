@@ -58,6 +58,7 @@ let expandedQuickWeapon:string|null=null;
 const expandedClassicWeaponControls=new Set<string>();
 let quickWorkbench:WeaponWorkbenchPreview|null=null;
 let quickWorkbenchId:string|null=null;
+let quickWorkbenchConfigKey:string|null=null;
 let quickKitPreview:CampaignKitPreview|null=null;
 let currentGallery:ReturnType<typeof createOutfitterGallery>|null=null;
 let quickKitPreviewId:string|null=null;
@@ -78,8 +79,9 @@ function renderOperationsBoard(){
  currentGallery?.dispose();currentGallery=null;
  const priorScroll=scrollToSelected?0:config.board.scrollTop;
  scrollToSelected=false;
+ // Rebuild HTML without throwing away the expensive weapon WebGL context.
+ // syncWorkbench remounts it if the same operator keeps the bench open.
  rememberQuickWorkbenchView();
- quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
  config.board.replaceChildren();
  const heading=document.createElement('div');
  heading.className='fw-squad-sheet-header';
@@ -457,19 +459,33 @@ function renderOperationsBoard(){
    quickWorkbench?.showSocketChoices(slot,select);
   };
   const syncWorkbench=()=>{
-   const active=kit.open&&advancedPanel.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open;
+   // A detached prior UI may emit a delayed <details> toggle event. It must
+   // not dispose or reparent the current operator's live WebGL context.
+   if(!kit.isConnected)return;
+   const active=kit.open&&advancedPanel.open&&loadout.group.weapon.open&&
+    legacyControls.open&&weaponEditor.open;
    if(!active){if(quickWorkbenchId===member.id){
     rememberQuickWorkbenchView();
     quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
+    quickWorkbenchConfigKey=null;
    }return;}
-   if(quickWorkbenchId===member.id)return;
-   rememberQuickWorkbenchView();
-   quickWorkbench?.dispose();quickWorkbench=null;
-   quickWorkbenchId=member.id;
-   quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
-    member.weaponConfiguration,slot=>showSocket(slot));
+   const visualKey=JSON.stringify(member.weaponConfiguration);
    const view=resetQuickWorkbenchViews.has(member.id)?
     null:savedQuickWorkbenchViews.get(member.id);
+   if(quickWorkbench&&quickWorkbenchId===member.id){
+    quickWorkbench.attachHost(workbenchHost,slot=>showSocket(slot));
+    if(visualKey===quickWorkbenchConfigKey)return;
+    // Only rebuild procedural weapon geometry when a real part changed.
+    quickWorkbench.setConfiguration(member.weaponConfiguration);
+    quickWorkbenchConfigKey=visualKey;
+   }else{
+    rememberQuickWorkbenchView();
+    quickWorkbench?.dispose();quickWorkbench=null;
+    quickWorkbenchId=member.id;
+    quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
+     member.weaponConfiguration,slot=>showSocket(slot));
+    quickWorkbenchConfigKey=visualKey;
+   }
    if(view)quickWorkbench.restoreViewState(view);
    resetQuickWorkbenchViews.delete(member.id);
    const saved=selectedQuickWeaponSockets.get(member.id);
@@ -744,6 +760,12 @@ function renderOperationsBoard(){
   // it is attached and laid out. Initialize after paint, not only on toggle.
   if(kit.open&&advancedPanel.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
    requestAnimationFrame(()=>{if(kit.isConnected)syncWorkbench();});
+  else if(quickWorkbench){
+   // A closed editor does not hold onto an idle WebGL context.
+   rememberQuickWorkbenchView();
+   quickWorkbench.dispose();quickWorkbench=null;quickWorkbenchId=null;
+   quickWorkbenchConfigKey=null;
+  }
  }
  const hint=document.createElement('p');
  hint.textContent='Select an operator to edit. Close to resume planning.';
@@ -758,6 +780,7 @@ function renderOperationsBoard(){
  }
  function dispose():void{
    quickWorkbench?.dispose();quickWorkbench=null;quickWorkbenchId=null;
+   quickWorkbenchConfigKey=null;
    quickKitPreview?.dispose();quickKitPreview=null;quickKitPreviewId=null;
  }
  return {render:renderOperationsBoard,onQuickApplied,dispose};
