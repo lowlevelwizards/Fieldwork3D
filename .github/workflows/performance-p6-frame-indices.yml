@@ -7,6 +7,7 @@ on:
       - 'src/breach-3d.ts'
       - 'tests/performance-p6-frame-indices.test.mjs'
       - 'tests/tactical-integration-18-firefight-b2.test.mjs'
+      - 'scripts/verification/performance-p6-frame-index-bench.mjs'
       - '.github/workflows/performance-p6-frame-indices.yml'
   workflow_dispatch:
 permissions:
@@ -27,5 +28,7 @@ jobs:
           tests/performance-p6-frame-indices.test.mjs
           tests/phase-a-combat-cues.test.mjs
           tests/tactical-integration-18-firefight-b2.test.mjs
+      - name: Reproducible baseline-vs-index CPU probe (no FPS thresholds)
+        run: node --experimental-strip-types scripts/verification/performance-p6-frame-index-bench.mjs
       - name: Validate simulation and replay invariants with TypeScript and deployable bundle
         run: npm run check && npx vite build
