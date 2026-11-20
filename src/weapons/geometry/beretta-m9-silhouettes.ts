@@ -55,8 +55,8 @@ export function buildM9Appearance(id:M9AppearanceId,
  const a=M9_ART[id],clay=options.monochrome===true;
  const showDetails=options.details!==false&&!clay;
  // Use existing shared palette: broad matte value hierarchy, no glossy skin.
- const slideMaterial=HK_BLACK_METAL===undefined?FAL_LOWER_METAL:
-  clay?HK_BLACK_METAL:a.rail?GLOCK_COYOTE_SLIDE:HK_BLACK_METAL;
+ const slideMaterial=clay?HK_BLACK_METAL:
+  a.rail?GLOCK_COYOTE_SLIDE:HK_BLACK_METAL;
  const frameMaterial=clay?HK_BLACK_METAL:a.rail?AR_MUTED_FDE:FAL_LOWER_METAL;
  const gripMaterial=clay?HK_BLACK_METAL:HK_DARK_POLYMER;
  const barrelMaterial=clay?HK_BLACK_METAL:HK_MAG_METAL;
@@ -75,7 +75,7 @@ export function buildM9Appearance(id:M9AppearanceId,
  // The FRONT FRAME is visibly shorter and lower than the upper. The rear
  // body, guard, and swept butt stay ONE contiguous lower silhouette.
  const outer:Outline=[
-  [-9.07,.30],[7.68,.30],[7.68,-.38],[6.76,-.82],
+  [-9.07,.46],[7.68,.46],[7.68,-.38],[6.76,-.82],
   [2.45,-.86],[1.54,-1.09],[1.49,-3.07],
   [1.03,-3.71],[-2.64,-3.71],[-3.16,-3.12],
   [-3.64,-3.26],[-4.10,-4.13],
@@ -152,7 +152,7 @@ export function buildM9Appearance(id:M9AppearanceId,
  hammerMesh.userData.m9Hammer=true;
 
  // Oversize, uncomplicated rear and front sights.
- cuboid('barrel',-8.07,3.41,0,.59,.47,1.33,slideMaterial);
+ cuboid('barrel',-8.07,3.39,0,.59,.47,1.33,slideMaterial);
  cuboid('barrel',a.nose-.61,3.33,0,.48,.43,1.23,slideMaterial);
  const buttCenter=(a.gripRear+a.gripFront)/2;
  const floorplate=cuboid('magazine',buttCenter,a.heel-.19,0,
