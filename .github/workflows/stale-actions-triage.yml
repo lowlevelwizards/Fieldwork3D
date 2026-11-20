@@ -1,4 +1,4 @@
-name: One-off stale PR Actions queue triage
+name: One-off orphaned Actions queue cleanup
 on:
   push:
     branches: [ops/stale-actions-triage-20261120]
@@ -12,68 +12,105 @@ concurrency:
   group: stale-actions-triage-20261120
   cancel-in-progress: false
 jobs:
-  stale-queued-only:
+  obsolete-queued-runs:
     runs-on: ubuntu-latest
-    timeout-minutes: 24
+    timeout-minutes: 12
     steps:
-      - name: Cancel superseded queued PR runs only
+      - name: Cancel only November 11 superseded orphans
         uses: actions/github-script@v7
         with:
           script: |
             const {owner, repo} = context.repo;
-            const watched = [
-              'feature/secondary-s5-s11-closeout-20261120',
-              'feature/movement-reliability-r1-20261120',
-              'feature/movement-reliability-r1b-20261120',
+            const oldBranches = [
+              'refactor/consolidation-b0-pose-baseline',
+              'refactor/consolidation-b1-pose-decision',
             ];
-            const live = new Map();
-            for (const branch of watched) {
-              const response = await github.rest.repos.getBranch({owner, repo, branch});
-              live.set(branch, response.data.commit.sha);
-              core.info(`Preserving ${branch} at ${response.data.commit.sha}`);
+            const cutoff = Date.parse('2026-11-12T00:00:00Z');
+            const oldMainId = 43098274766;
+            const oldMainSha = 'abd0dd14067ed6a9f6c4f45a0277a81eee943132';
+            const verifiedDeployId = 44752587439;
+            const current = new Map();
+            for (const branch of ['main', ...oldBranches]) {
+              const r = await github.rest.repos.getBranch({owner, repo, branch});
+              current.set(branch, r.data.commit.sha);
+              core.info('Protecting current ' + branch + ': ' + r.data.commit.sha);
             }
-            // Snapshot only the first 1,000 queued workflow runs. Never touch
-            // running/completed work, Pages, push runs, or unknown branches.
-            const queued = [];
-            for (let page = 1; page <= 10; page++) {
-              const response = await github.rest.actions.listWorkflowRunsForRepo({
+            const lastDeploy = (await github.rest.actions.getWorkflowRun({
+              owner, repo, run_id: verifiedDeployId
+            })).data;
+            // The later main deployment succeeded and included a passing
+            // public Pages build-id verification, making the 11/11 main run obsolete.
+            const safeOldMain = lastDeploy.status === 'completed' &&
+              lastDeploy.conclusion === 'success' &&
+              lastDeploy.head_sha === current.get('main');
+            if (!safeOldMain) {
+              core.warning('Do not cancel historical main run: latest Pages release not proven current');
+            }
+            const runs = [];
+            for (let page = 1; page <= 3; page++) {
+              const p = await github.rest.actions.listWorkflowRunsForRepo({
                 owner, repo, status: 'queued', per_page: 100, page,
               });
-              queued.push(...response.data.workflow_runs);
-              if (response.data.workflow_runs.length < 100) break;
+              runs.push(...p.data.workflow_runs);
+              if (p.data.workflow_runs.length < 100) break;
             }
-            const stale = queued.filter(run =>
-              run.event === 'pull_request' &&
-              live.has(run.head_branch) &&
-              run.head_sha !== live.get(run.head_branch) &&
-              run.name !== 'Deploy Fieldwork Ground Zero' &&
-              run.id !== context.runId
-            );
-            core.info(`Queued snapshot: ${queued.length}; superseded targeted runs: ${stale.length}`);
-            const LIMIT = 850; // Stay below the per-repository GITHUB_TOKEN hourly API budget.
-            let canceled = 0, alreadyFinished = 0;
-            for (const run of stale.slice(0, LIMIT)) {
+            const candidate = r =>
+              r.status === 'queued' &&
+              Date.parse(r.created_at) < cutoff &&
+              (
+                (r.event === 'pull_request' &&
+                  oldBranches.includes(r.head_branch) &&
+                  r.head_sha !== current.get(r.head_branch)) ||
+                (safeOldMain && r.id === oldMainId &&
+                  r.head_branch === 'main' && r.event === 'push' &&
+                  r.head_sha === oldMainSha &&
+                  r.head_sha !== current.get('main'))
+              );
+            const matches = runs.filter(candidate);
+            core.info('Queued snapshot: ' + runs.length +
+              '; safely obsolete Nov 11 targets: ' + matches.length);
+            let canceled = 0, alreadyGone = 0, protectedRuns = 0;
+            for (const item of matches.slice(0, 40)) {
+              const liveRun = (await github.rest.actions.getWorkflowRun({
+                owner, repo, run_id: item.id
+              })).data;
+              const branch = item.head_branch;
+              const headNow = (await github.rest.repos.getBranch({
+                owner, repo, branch
+              })).data.commit.sha;
+              const stillObsolete = liveRun.status === 'queued' &&
+                liveRun.head_sha === item.head_sha &&
+                Date.parse(liveRun.created_at) < cutoff &&
+                (branch === 'main'
+                  ? safeOldMain && liveRun.id === oldMainId &&
+                    liveRun.event === 'push' && liveRun.head_sha === oldMainSha &&
+                    headNow === current.get('main')
+                  : oldBranches.includes(branch) &&
+                    liveRun.event === 'pull_request' &&
+                    liveRun.head_sha !== headNow);
+              if (!stillObsolete) { protectedRuns++; continue; }
               try {
-                await github.rest.actions.cancelWorkflowRun({owner, repo, run_id: run.id});
+                await github.rest.actions.cancelWorkflowRun({
+                  owner, repo, run_id: liveRun.id,
+                });
                 canceled++;
+                core.info('Cancel requested: ' + liveRun.id + ' (' + branch + ')');
               } catch (e) {
-                if (e.status === 404 || e.status === 409 || e.status === 422) {
-                  alreadyFinished++;
-                } else {
-                  throw e;
-                }
+                if ([404,409,422].includes(e.status)) {
+                  alreadyGone++;
+                  core.warning('Already completed / un-cancellable: ' + item.id);
+                } else { throw e; }
               }
-              // Throttle to avoid GitHub secondary API-rate limits.
               await new Promise(resolve => setTimeout(resolve, 650));
             }
-            core.summary.addHeading('Stale queued PR checks')
+            core.summary.addHeading('November 11 queue recovery')
               .addTable([
-                [{data:'Metric',header:true},{data:'Count',header:true}],
-                ['Queued snapshot',String(queued.length)],
-                ['Superseded targeted runs',String(stale.length)],
-                ['Cancel requests accepted',String(canceled)],
-                ['Already finished or cancelled',String(alreadyFinished)],
-                ['Remaining targeted in snapshot',String(Math.max(0,stale.length-LIMIT))],
+                [{data:'Measure',header:true},{data:'Count',header:true}],
+                ['Queued snapshot',String(runs.length)],
+                ['Superseded candidates',String(matches.length)],
+                ['Cancellation requests accepted',String(canceled)],
+                ['Already finished or un-cancellable',String(alreadyGone)],
+                ['Protected on recheck',String(protectedRuns)],
               ])
-              .addRaw('Protected: all latest branch SHAs, all in-progress jobs, main and Pages, and all other branches.')
+              .addRaw('Only historical pose-architecture PR runs on superseded commits and one expressly guarded obsolete November 11 main deployment were eligible. Newer builds and running jobs are preserved.')
               .write();
