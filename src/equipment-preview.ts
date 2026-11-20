@@ -64,6 +64,16 @@ export class CampaignKitPreview{
  private zoomScale=1;
  private showHeldWeapon=true;
  private poseToggle:HTMLButtonElement|null=null;
+ /** One projected white pip only for the actual selected visible mesh. */
+ private selectedDot:HTMLDivElement|null=null;
+ private dotTarget:EquipmentInspectionTarget|
+  {kind:'gear';slot:LoadoutSlot;itemId:string}|null=null;
+ private dotMesh:THREE.Object3D|null=null;
+ private idleFrame:number|null=null;
+ private idleLastPaint=0;
+ private idleStarted=0;
+ private idleQuietUntil=0;
+ private idleBase:{headY:number;headX:number;chestZ:number;weaponX:number}|null=null;
  private readonly touchPointers=new Map<number,{x:number;y:number}>();
  private pinchDistance=0;
  private focusArea:EquipmentPreviewFocus='full';
@@ -121,6 +131,7 @@ export class CampaignKitPreview{
    host.addEventListener('keydown',this.keyDown);
    this.observer=new ResizeObserver(()=>this.scheduleResize());
    this.observer.observe(host);
+   this.startInspectionIdle();
    // updateEquipment already painted the initial pose. Subsequent resize
    // notifications redraw only when dimensions actually change.
   }catch{
@@ -143,6 +154,7 @@ export class CampaignKitPreview{
   this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
   this.fitFullOperator();
   this.refreshInspection();
+  this.refreshSelectionDot();
   this.draw();
  }
  /** The same battle rig pose, used for production and read-only thumbnail
@@ -164,6 +176,10 @@ export class CampaignKitPreview{
    flashCharges:equippedFlashCharges(equipment),
    deterministic:true,handlingOverride:'low',
    unarmedPreview:!(this.showHeldWeapon||forceHeldWeapon)},0);
+  this.idleBase={
+   headY:this.rig.head.rotation.y,headX:this.rig.head.rotation.x,
+   chestZ:this.rig.chest.rotation.z,weaponX:this.rig.weapon.rotation.x
+  };
  }
 
  /** Fit the visible operator instead of a fixed rig origin. */
@@ -434,6 +450,8 @@ export class CampaignKitPreview{
  }
  /** Retire stale highlight geometry on any context change. */
  clearTransientSelection():void{
+  this.dotTarget=null;this.dotMesh=null;
+  if(this.selectedDot)this.selectedDot.hidden=true;
   this.selectedCarryLocation=null;
   this.selectedInspection=null;
   this.inspectedMesh=null;
@@ -455,7 +473,7 @@ export class CampaignKitPreview{
   if(!state)return;
   this.poseForThumb(state.weapon,state.appearanceSeed,state.equipment,
    state.weaponConfiguration,state.magazines,state.wardrobe);
-  this.refreshInspection();this.draw();
+  this.refreshInspection();this.refreshSelectionDot();this.draw();
  }
  zoomBy(factor:number):void{
   if(!Number.isFinite(factor)||factor<=0)return;
@@ -509,8 +527,60 @@ export class CampaignKitPreview{
    event.stopPropagation();this.setWeaponPresentation(!this.showHeldWeapon);
   });
   layer.append(pose);this.poseToggle=pose;
+  const pip=document.createElement('div');
+  pip.className='campaign-kit-selected-dot';pip.hidden=true;
+  pip.setAttribute('aria-hidden','true');
+  layer.append(pip);this.selectedDot=pip;
   this.hotspotLayer=layer;this.host.append(layer);
   this.syncHotspots();
+ }
+ /** Select the ACTUAL worn/carry mesh, without a bounding-box outline or
+  * camera jump. No phantom marker if the option is not equipped/visible. */
+ selectItemDot(target:EquipmentInspectionTarget|
+  {kind:'gear';slot:LoadoutSlot;itemId:string}|null):void{
+  this.dotTarget=target;this.refreshSelectionDot();
+  this.idleQuietUntil=performance.now()+550;
+  this.draw();
+ }
+ private refreshSelectionDot():void{
+  if(!this.rig||!this.currentEquipment||!this.dotTarget){
+   this.dotMesh=null;if(this.selectedDot)this.selectedDot.hidden=true;return;
+  }
+  const t=this.dotTarget;
+  const selected=t.kind==='gear'?
+   (this.currentEquipment.slots[t.slot]===t.itemId?
+    this.previewGearMesh(t.slot,t.itemId,this.currentEquipment,
+     this.visualSnapshot?.wardrobe):null):
+   inspectEquipmentMesh(this.rig,this.currentEquipment,t);
+  this.dotMesh=selected;
+  if(!selected&&this.selectedDot)this.selectedDot.hidden=true;
+ }
+ private syncSelectionDot():void{
+  const dot=this.selectedDot,mesh=this.dotMesh;
+  if(!dot||!mesh||!this.rig){if(dot)dot.hidden=true;return;}
+  const result=measureEquipmentMesh(mesh);
+  if(!result.visible||!result.center){dot.hidden=true;return;}
+  const center=result.center.clone(),screen=center.clone().project(this.camera);
+  if(screen.z<-.9||screen.z>1||Math.abs(screen.x)>.9||Math.abs(screen.y)>.9){
+   dot.hidden=true;return;
+  }
+  // If solid model geometry is between the camera and the selected item,
+  // never draw its white marker through the operator's body.
+  const direction=center.clone().sub(this.camera.position);
+  const maxDistance=direction.length();
+  const ray=new THREE.Raycaster(this.camera.position,
+   direction.normalize(),.1,maxDistance+1);
+  const closest=ray.intersectObject(this.rig.root,true)[0];
+  let ancestor:THREE.Object3D|null=closest?.object??null;
+  let hitsSelected=false;
+  while(ancestor){if(ancestor===mesh){hitsSelected=true;break;}ancestor=ancestor.parent;}
+  if(closest&&!hitsSelected&&closest.distance<maxDistance-
+    Math.max(.5,(result.size?.length()??1)*.24)){
+   dot.hidden=true;return;
+  }
+  dot.hidden=false;
+  dot.style.left=((screen.x+1)*50).toFixed(2)+'%';
+  dot.style.top=((1-screen.y)*50).toFixed(2)+'%';
  }
  private syncHotspots():void{
   if(!this.hotspotLayer||!this.rig||!this.renderer)return;
@@ -531,6 +601,7 @@ export class CampaignKitPreview{
    belt:[-.12,.42,.02],backpack:[0,.63,-.17],
    primary:[.28,.52,.15],medical:[.18,.4,.06],utility:[-.22,.4,.06]
   };
+  this.syncSelectionDot();
   for(const [slot,button] of this.hotspotButtons){
    const meshes=worn[slot]??[];
    const mesh=meshes.find(item=>item.visible&&item.parent);
@@ -620,6 +691,7 @@ export class CampaignKitPreview{
   this.rotateBy((event.key==='ArrowRight'?1:-1)*(event.shiftKey?15:5));
  };
  private pointerDown=(event:PointerEvent)=>{
+  this.idleQuietUntil=performance.now()+1200;
   // Ignore secondary touch contacts and non-primary mouse/pen buttons.
   // An ignored press must not capture the preview or block the next drag.
   if(event.target instanceof Element&&
@@ -688,6 +760,7 @@ export class CampaignKitPreview{
     this.focusRadius===radius&&this.focusRise===rise)return;
   }
   this.focusArea=area;this.host.dataset.previewFocus=area;
+  this.idleQuietUntil=performance.now()+650;
   // Announce category changes once, not during the 220 ms interpolation.
   this.updateOrientationLabel();
   if(this.focusFrame!==null){
@@ -736,6 +809,40 @@ export class CampaignKitPreview{
   this.updateOrientationLabel();
   this.draw();
  }
+ /** Gentle inspection-only activity; never writes to the simulation or
+  * alters foot IK. No GPU work while hidden or with reduced motion. */
+ private startInspectionIdle():void{
+  if(this.idleFrame!==null||!this.renderer)return;
+  if(window.matchMedia?.('(prefers-reduced-motion: reduce)').matches)return;
+  this.idleStarted=performance.now();
+  const frame=(now:number)=>{
+   this.idleFrame=null;
+   if(!this.renderer||!this.host.isConnected)return;
+   this.idleFrame=requestAnimationFrame(frame);
+   if(now-this.idleLastPaint<48||document.hidden||
+    !this.host.getClientRects().length||now<this.idleQuietUntil)return;
+   this.idleLastPaint=now;
+   this.applyInspectionIdle((now-this.idleStarted)/1000);
+   this.draw();
+  };
+  this.idleFrame=requestAnimationFrame(frame);
+ }
+ private applyInspectionIdle(t:number):void{
+  if(!this.rig||!this.idleBase)return;
+  const b=this.idleBase;
+  // Smooth low-amplitude breathing; slight occasional independent gaze.
+  const glanceCycle=t%17,glanceWindow=Math.max(0,1-
+   Math.abs(glanceCycle-8.5)/2.1);
+  const glance=glanceWindow*glanceWindow*(3-2*glanceWindow);
+  const weightCycle=t%13,shift=Math.sin(weightCycle/13*Math.PI*2);
+  const checkCycle=t%29,check=Math.max(0,1-
+   Math.abs(checkCycle-17)/2.0);
+  const settle=check*check*(3-2*check);
+  this.rig.head.rotation.y=b.headY+glance*.13*Math.sin(t*.41);
+  this.rig.head.rotation.x=b.headX-settle*.055;
+  this.rig.chest.rotation.z=b.chestZ+Math.sin(t*1.4)*.006+shift*.011;
+  this.rig.weapon.rotation.x=b.weaponX+(this.showHeldWeapon?settle*.014:0);
+ }
  private draw(){
   if(!this.renderer)return;
   const width=Math.max(160,this.host.clientWidth);
@@ -761,6 +868,8 @@ export class CampaignKitPreview{
   this.syncHotspots();
  }
  dispose(){
+  if(this.idleFrame!==null)cancelAnimationFrame(this.idleFrame);
+  this.idleFrame=null;
   if(this.resizeFrame!==null)cancelAnimationFrame(this.resizeFrame);
   this.resizeFrame=null;
   if(this.dragFrame!==null)cancelAnimationFrame(this.dragFrame);
@@ -780,7 +889,8 @@ export class CampaignKitPreview{
   }
   this.selectedCarryLocation=null;
   this.touchPointers.clear();this.hotspotLayer?.remove();
-  this.hotspotLayer=null;this.poseToggle=null;this.hotspotButtons.clear();
+  this.hotspotLayer=null;this.poseToggle=null;this.selectedDot=null;
+  this.dotTarget=null;this.dotMesh=null;this.hotspotButtons.clear();
   this.selectedInspection=null;this.inspectedMesh=null;
   this.currentEquipment=null;
   if(this.inspectionBox){
