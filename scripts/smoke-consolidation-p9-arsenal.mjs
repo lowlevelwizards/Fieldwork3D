@@ -76,6 +76,9 @@ try{
    await inspector.getByRole('button',{name:'3/4 VIEW'}).click();
    await page.waitForTimeout(180);
    await inspector.screenshot({path:'artifacts/m9/m9a3-quarter-'+viewport.width+'.png'});
+   await inspector.getByRole('button',{name:'TOP',exact:true}).click();
+   await page.waitForTimeout(180);
+   await inspector.screenshot({path:'artifacts/m9/m9a3-top-'+viewport.width+'.png'});
    await inspector.getByRole('button',{name:'BACK TO ARSENAL'}).click();
    assert.equal(await page.getByRole('dialog').count(),0);
    // Both real sculpted Beretta variants need actual mobile/desktop visual
@@ -93,6 +96,9 @@ try{
    await inspector.getByRole('button',{name:'3/4 VIEW'}).click();
    await page.waitForTimeout(180);
    await inspector.screenshot({path:'artifacts/m9/m9-quarter-'+viewport.width+'.png'});
+   await inspector.getByRole('button',{name:'TOP',exact:true}).click();
+   await page.waitForTimeout(180);
+   await inspector.screenshot({path:'artifacts/m9/m9-top-'+viewport.width+'.png'});
    await inspector.getByRole('button',{name:'BACK TO ARSENAL'}).click();
    assert.equal(await page.getByRole('dialog').count(),0);
    assert.deepEqual(errors,[],'No JS errors after Glock and Beretta inspection');
