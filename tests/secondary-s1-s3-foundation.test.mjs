@@ -10,6 +10,7 @@ import {initialSecondaryEquipment,emptySecondaryEquipment,
 import {initialEquipmentLoadout,readEquipmentLoadout,totalEquipmentMass}
  from '../src/equipment-loadouts.ts';
 import {initialRoster} from '../src/breach-roster.ts';
+import {captureDeploymentInventory} from '../src/equipment-deployment-snapshot.ts';
 import {applyQuickPlayKitPreferences,serializeQuickPlayKitPreferences,
  refreshQuickPlayPreparedRoster} from '../src/breach-quickplay-kit-preferences.ts';
 import {readFileSync} from 'node:fs';
@@ -97,4 +98,16 @@ test('S3: Arsenal nav and equip actions do not masquerade as live weapon switchi
  assert.match(gallery,/live combat pending/);
  assert.match(css,/arsenal-glock-gallery\[hidden\]/);
  assert.match(css,/arsenal-glock-hero-visual\[data-view="family"\]/);
+});
+
+test('S3: GO-time detached inventory preserves operator secondary without mutating the saved kit',()=>{
+ const base=initialRoster().members[0];
+ const prepared={...base,loadout:{...base.loadout,
+  secondary:initialSecondaryEquipment(base.id,'glock-g19-gen3')}};
+ const snapshot=captureDeploymentInventory(prepared);
+ assert.equal(snapshot.equipment.secondary.weapon,'glock-g19-gen3');
+ assert.equal(snapshot.equipment.secondary.loadedRounds,15);
+ assert.notEqual(snapshot.equipment,prepared.loadout);
+ assert.notEqual(snapshot.equipment.secondary,prepared.loadout.secondary);
+ assert.equal(prepared.loadout.secondary.spareMagazines.length,2);
 });
