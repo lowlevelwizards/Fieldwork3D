@@ -65,8 +65,16 @@ import {kitMedicalSupplies,normalizedMedicalSupplies,medicalSupplyCount,
  type FieldMedicalSupplies} from './equipment-medical-supplies.ts';
 
 export type CareerEvent={id:string;day:number;operatorId:string;operationId?:string;kind:string;detail:string;otherOperatorId?:string};
+/** Operator ID tint: independent of uniform appearance and owned gear. */
+export const SQUAD_IDENTIFICATION_COLORS=[
+ '#88B4C8','#B7B57D','#C18F82','#88B89D','#B69CC9','#DEB37D'
+] as const;
+const readSquadColor=(value:unknown):string|undefined=>
+ typeof value==='string'&&SQUAD_IDENTIFICATION_COLORS.some(c=>c===value)?
+  value:undefined;
 export type CampaignOperator={
  id:string;callsign:string;background:string;appearanceSeed:number;
+ squadColor?:string;
  wardrobe?:WardrobeOptions;
  skills:ShootingSkills;experience:ShootingSkills;aptitudes:ShootingSkills;
  trait:string;distinctions:string[];
@@ -169,7 +177,7 @@ export function startingOperator(id:string,i:number,seed:number):CampaignOperato
  const weapon=issue.weapon;
  const ammo=freshMagazineIssue(id,weapon,issue.weaponConfiguration);
  return {id,callsign:id.toUpperCase(),background:['Patrol','Reconnaissance','Security','Emergency Response'][i%4],
-  appearanceSeed:hash(seed+i+83),wardrobe:initialWardrobe(),
+  appearanceSeed:hash(seed+i+83),squadColor:SQUAD_IDENTIFICATION_COLORS[i%SQUAD_IDENTIFICATION_COLORS.length],wardrobe:initialWardrobe(),
   skills:values(hash(seed+i*313),'skill'),
   experience:Object.fromEntries(SKILL_NAMES.map(k=>[k,0])) as ShootingSkills,
   aptitudes:aptitude,trait:traitNames[strongest],distinctions:[],
@@ -313,6 +321,8 @@ export function readCampaign(raw:string|null):CampaignState|null{
      (o as {loadedMagazineId?:unknown}).loadedMagazineId,fitted.magazines),
    loadout:readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon),
    wardrobe:readWardrobe((o as {wardrobe?:unknown}).wardrobe),
+   squadColor:readSquadColor((o as {squadColor?:unknown}).squadColor)??SQUAD_IDENTIFICATION_COLORS[
+    Math.max(0,c.operators.indexOf(o))%SQUAD_IDENTIFICATION_COLORS.length],
    medicalSupplies:normalizedMedicalSupplies((o as {medicalSupplies?:unknown}).medicalSupplies,
     kitMedicalSupplies(readEquipmentLoadout((o as {loadout?:unknown}).loadout,o.weapon))),
     weaponConfiguration:config,
@@ -935,6 +945,13 @@ export function renameCampaignOperator(c:CampaignState,id:string,callsign:string
   return c;
  return {...c,operators:c.operators.map(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'?
   {...o,callsign:next}:o)};
+}
+/** Persist actual identification color without altering cloth/armor dyes. */
+export function setCampaignOperatorColor(c:CampaignState,id:string,color:string):CampaignState{
+ const valid=readSquadColor(color);
+ if(!valid||c.activeContractId)return c;
+ return {...c,operators:c.operators.map(o=>o.id===id&&o.status!=='lost'&&o.status!=='retired'?
+  {...o,squadColor:valid}:o)};
 }
 export function cycleCampaignAppearance(c:CampaignState,id:string):CampaignState{
  if(c.activeContractId)return c;
