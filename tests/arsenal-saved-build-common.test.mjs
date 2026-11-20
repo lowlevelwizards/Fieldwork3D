@@ -14,8 +14,8 @@ test('preset libraries share bounded names, valid record IDs and deduplication',
   {id:'p-1',name:' Alpha  One ',recipe:1},
   {id:'p-1',name:'duplicate',recipe:2},
   {id:'p-0',name:'bad',recipe:2},
-  {id:'p-2',name:'  ',recipe:3},
   {id:'p-3',name:'ok',recipe:3},
+  {id:'p-2',name:'  ',recipe:3},
   {id:'p-4',name:'overflow',recipe:4}
  ];
  const decoded=parseSavedBuildEntries({version:1,builds:records},'p-',2,
