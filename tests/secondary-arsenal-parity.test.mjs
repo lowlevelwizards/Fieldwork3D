@@ -104,3 +104,41 @@ test('P6: saved V1 recipes migrate visually without creating ammunition',()=>{
  assert.equal(readGlockRecipe(modified).customization.optic,'micro');
  assert.equal(readGlockRecipe({...modified,model:'glock-g26'}),null);
 });
+
+
+test('S5 gallery parity: secondary uses the primary hero/browser hierarchy, with optional utilities',()=>{
+ const primary=readFileSync(new URL('../src/arsenal/gallery-main.ts',import.meta.url),'utf8');
+ const secondary=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
+ assert.ok(primary.includes("className='arsenal-layout'"));
+ assert.ok(primary.includes("className='arsenal-hero'"));
+ assert.ok(secondary.includes("className='arsenal-layout arsenal-glock-gallery'"));
+ assert.ok(secondary.includes('class="arsenal-hero arsenal-glock-feature"'));
+ assert.ok(secondary.includes('class="arsenal-hero-media arsenal-glock-hero-visual"'));
+ assert.ok(secondary.includes('class="arsenal-hero-copy arsenal-glock-feature-copy"'));
+ assert.ok(secondary.includes('class="arsenal-browser arsenal-glock-browser"'));
+ assert.ok(secondary.includes('class="arsenal-grid arsenal-glock-cards"'));
+ assert.ok(secondary.includes('details class="arsenal-glock-views"'));
+ assert.ok(secondary.includes('details class="arsenal-glock-kit"'));
+ assert.ok(secondary.includes("section.querySelector('.arsenal-glock-kit')!.append(equipPanel)"));
+ assert.ok(css.includes('.arsenal-shell>.arsenal-glock-gallery[hidden]{display:none}'));
+ assert.ok(css.includes('.arsenal-glock-gallery>.arsenal-glock-feature'));
+});
+test('S5 camera parity: primary and Glock pointer drag use the same horizontal sign',()=>{
+ const primary=readFileSync(new URL('../src/arsenal/viewport.ts',import.meta.url),'utf8');
+ const secondary=readFileSync(new URL('../src/arsenal/glock-viewport.ts',import.meta.url),'utf8');
+ assert.match(primary,/this\.yaw-=dx\*\.009/);
+ assert.match(secondary,/this\.yaw-=\(event\.clientX-previous\.x\)\*\.009/);
+ assert.doesNotMatch(secondary,/this\.yaw\+=\(event\.clientX-previous\.x\)/);
+ assert.ok(secondary.includes("this.element.style.touchAction='none'"));
+});
+test('S5 secondary Workbench follows primary category, stats and apply structure',()=>{
+ const primary=readFileSync(new URL('../src/arsenal/workbench-screen.ts',import.meta.url),'utf8');
+ const secondary=readFileSync(new URL('../src/arsenal/glock-workbench.ts',import.meta.url),'utf8');
+ assert.ok(primary.includes("className='arsenal-wb-stats-head'"));
+ assert.ok(secondary.includes("className='arsenal-wb-stats-head'"));
+ assert.ok(secondary.includes("className='arsenal-wb-stats-grid glock-wb-stats-grid'"));
+ assert.ok(secondary.includes("className='arsenal-wb-screen arsenal-wb-has-apply arsenal-glock-workbench'"));
+ assert.ok(secondary.includes("action('MODEL','arsenal-wb-category')"));
+ assert.ok(secondary.includes("className='arsenal-wb-option-list glock-wb-options'"));
+});
