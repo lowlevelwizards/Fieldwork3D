@@ -34,6 +34,7 @@ jobs:
           node --experimental-strip-types --test \
             tests/release-d3-r1-entry-lead.test.mjs \
             tests/release-d3-r1-committed-progress.test.mjs \
+            tests/release-d3-r1-route-adoption.test.mjs \
             tests/release-d3-30-threshold-coordination.test.mjs \
             tests/release-d3-31f-kick-open-recovery.test.mjs \
             tests/passage-q2-coordinator.test.mjs
