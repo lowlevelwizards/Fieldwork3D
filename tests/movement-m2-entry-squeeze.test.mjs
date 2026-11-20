@@ -9,9 +9,12 @@ const actor=()=>({side:'blue',p:p(0,0),plan:[{id:1,kind:'move',
  doorTraversal:null,fireRetreatTarget:null});
 test('M2.8: no repeated cold probing at one blocked anchor',()=>{
  const a=actor();assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),5),true);
- assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),10),false);
- a.p=p(5,0);assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),11),true);
- assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),20),false);
+ assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),5.5),false);
+ assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),10),true,
+  'one delayed retry is legal even if the first probe produced no route');
+ assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),15),false);
+ a.p=p(5,0);assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),20),true);
+ assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),25),false);
  a.plan=[{id:2,kind:'move',p:p(100,0)}];
  assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),25),false);
 });

@@ -26,8 +26,11 @@ export function claimM2EntrySqueezeProbe(
   w={orderId:order.id,goal:{...goal},anchor:{...a.p},
    lastAt:-Infinity,count:0};attempts.set(a,w);
  }
- if(w.count>=2||seconds-w.lastAt<4||
-    (w.count>0&&distance(a.p,w.anchor)<4))return false;
+ // A closed/moving leaf may make the FIRST physically swept cold route
+ // empty. Permit exactly one delayed stationary re-probe after four real
+ // seconds; further probes require actual relocation and the same cap.
+ if(w.count>=3||seconds-w.lastAt<4||
+    (w.count>=2&&distance(a.p,w.anchor)<4))return false;
  w.lastAt=seconds;w.count++;w.anchor={...a.p};
  return true;
 }
