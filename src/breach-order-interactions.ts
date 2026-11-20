@@ -123,6 +123,17 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'RESTRAINT STOCK CHANGED');return true;
       }
       suspect.restrained=true;suspect.lastCustodyAt=s.seconds;
+      // Completing physical cuffs interrupts any pending escape, hand
+      // retrieval or partially drawn pistol at the exact GO-time tick.
+      suspect.suspectEscapeMode=null;suspect.suspectEscapeGoal=null;
+      suspect.suspectEscapeWeaponId=null;
+      suspect.suspectEscapeStartedAt=-100;
+      suspect.suspectEscapeCooldownUntil=s.seconds+5;
+      if(suspect.secondarySwitch.desired==='secondary'&&
+         suspect.surrendered){
+        suspect.secondarySwitch={...suspect.secondarySwitch,
+          desired:'primary'};
+      }
       const message=a.name+' RESTRAINED '+suspect.name;
       notify(s,message);
       battleEvent(s,'interaction',a,a.p,message,{
