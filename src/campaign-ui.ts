@@ -157,6 +157,7 @@ export class CampaignScreen{
   core:string;view:WeaponWorkbenchViewState
  }>();
  private workbenchCore:string|null=null;
+ private workbenchVisualKey:string|null=null;
  private disposeGallery(){
   this.outfitterGallery?.dispose();this.outfitterGallery=null;
  }
@@ -170,7 +171,8 @@ export class CampaignScreen{
     core:this.workbenchCore,view
    });
   }
-  this.workbench?.dispose();this.workbench=null;}
+  this.workbench?.dispose();this.workbench=null;
+  this.workbenchCore=null;this.workbenchVisualKey=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
   this.root.setAttribute('aria-label','Fieldwork campaign');
@@ -1345,7 +1347,18 @@ export class CampaignScreen{
   // The same operator keeps one preview renderer while HTML controls refresh.
   // Reuse one WebGL context when cycling personnel, updating rig content only.
   const retainOperatorPreview=!this.weaponView&&!!this.preview?.isReady();
-  if(!retainOperatorPreview)this.disposePreview();
+  const retainWorkbench=this.weaponView&&!!this.workbench;
+  // Preserve this operator's orbit before a deliberate personnel switch.
+  if(retainWorkbench&&!sameOperator&&this.lastArmoryRenderedId&&this.workbenchCore){
+   const view=this.workbench!.getViewState();
+   if(view)this.weaponWorkbenchViews.set(this.lastArmoryRenderedId,{
+    core:this.workbenchCore,view
+   });
+  }
+  if(!retainOperatorPreview&&!retainWorkbench)this.disposePreview();
+  else if(retainWorkbench&&this.preview){
+   this.preview.dispose();this.preview=null;
+  }
   if(!sameOperator){
    this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
    // Preserve selected equipment section when cycling squad members.
@@ -2394,7 +2407,7 @@ export class CampaignScreen{
   grid.append(editor);main.append(grid);
   this.root.append(main);
   if(this.weaponView){
-   this.workbench=new WeaponWorkbenchPreview(preview,person.weaponConfiguration,socket=>{
+   const onSocket=(socket:WorkbenchSocket)=>{
     const bodyPart=socket.startsWith('body-')?
      socket.slice(5) as FamilyPartSlot:null;
     const select=bodyPart?familySelectors.get(bodyPart):
@@ -2404,15 +2417,27 @@ export class CampaignScreen{
     legacyControls.open=true;
     if(bodyPart)familyEditor.open=true;
     else{attachments.open=true;this.selectedMount=socket as WeaponAttachmentSlot;}
-    // Mirror the existing options directly below the model. Keep
-    // Campaign purchase confirmation and stock rules on the select handler.
+    // Preserve Campaign stock/purchase authority on the NEW select handler.
     this.workbench?.showSocketChoices(socket,select);
-   });
+   };
    const core=person.weapon+'|'+(person.weaponConfiguration.build?.parts.receiver??'legacy')+
     '|'+(person.weaponConfiguration.build?.parts.barrel??'none');
-   this.workbenchCore=core;
+   const visualKey=JSON.stringify(person.weaponConfiguration);
+   const refreshGeometry=!this.workbench||!sameOperator||
+    this.workbenchVisualKey!==visualKey;
+   if(this.workbench){
+    if(refreshGeometry&&sameOperator&&this.workbenchCore===core){
+     const view=this.workbench.getViewState();
+     if(view)this.weaponWorkbenchViews.set(id,{core,view});
+    }
+    this.workbench.attachHost(preview,onSocket);
+    if(refreshGeometry)this.workbench.setConfiguration(person.weaponConfiguration);
+   }else this.workbench=new WeaponWorkbenchPreview(
+    preview,person.weaponConfiguration,onSocket);
+   this.workbenchCore=core;this.workbenchVisualKey=visualKey;
    const savedView=this.weaponWorkbenchViews.get(id);
-   if(savedView?.core===core)this.workbench.restoreViewState(savedView.view);
+   if(refreshGeometry&&savedView?.core===core)
+    this.workbench.restoreViewState(savedView.view);
    const remembered=this.selectedWorkbenchSocket;
    const savedSelect=remembered?.startsWith('body-')?
     familySelectors.get(remembered.slice(5) as FamilyPartSlot):
