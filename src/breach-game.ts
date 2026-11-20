@@ -1814,6 +1814,10 @@ function mission(s:Session,dt:number){
     if(s.missionType==='capture'){
       const target=enemies(s).find(e=>e.id===s.captureTarget);
       if(!target||!captureTargetResolved(target))return;
+      // A living submitted target cannot be counted as arrested through mere
+      // physical proximity. A genuine GO-time restraint must be completed.
+      // Existing downed-target missions keep their historical secure behavior.
+      if(target.health>0&&target.surrendered&&target.restrained!==true)return;
       s.captureSecured=true;
     }
     s.mission='extract';

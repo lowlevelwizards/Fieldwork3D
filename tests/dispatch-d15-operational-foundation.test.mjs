@@ -50,3 +50,21 @@ test('D15.1 living submission satisfies neutralization not physical custody',()=
   assert.equal(target.health,3);
  }finally{activateSite(null);}
 });
+
+test('D15 capture proximity is not a substitute for living restraint',()=>{
+ const s=newSession(0,4);
+ try{
+  const a=team(s)[0],target=enemies(s).find(x=>x.id===s.captureTarget);
+  assert.ok(target);
+  for(const e of enemies(s))if(e!==target)e.health=0;
+  target.health=3;target.injuryStage=0;target.surrendered=true;
+  target.p={...a.p};target.priorP={...a.p};
+  toggling(s);stepSession(s,1/60);
+  assert.equal(s.mission,'secure');
+  assert.equal(s.captureSecured,false,
+   'unrestrained living suspect is not captured by proximity');
+  target.restrained=true;stepSession(s,1/60);
+  assert.equal(s.captureSecured,true,
+   'completed physical custody permits objective secure phase');
+ }finally{activateSite(null);}
+});
