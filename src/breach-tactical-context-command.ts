@@ -1,3 +1,4 @@
+import {captureVitalStatus} from './breach-capture-vitals.ts';
 /** Authoritative contextual command mutations, independent of button DOM.
  * Input gestures and target-mode arming remain in the application; gameplay
  * legality remains delegated to breach-game, not revalidated here.
@@ -163,7 +164,8 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxCarryCapture':{
    const at=finalPoint(a);
    const prisoner=enemies(state).find(e=>e.id===state.captureTarget&&
-      e.health<=0&&(!e.carriedById||e.carriedById===a.id)&&
+      e.health<=0&&captureVitalStatus(e)!=='deceased'&&
+       (!e.carriedById||e.carriedById===a.id)&&
       distance(at,e.p)<34&&liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)));
    return finish(!!prisoner&&planCasualtyTransport(state,selected,prisoner.id,
