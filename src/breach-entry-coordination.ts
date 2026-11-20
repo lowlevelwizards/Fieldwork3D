@@ -93,7 +93,14 @@ export function doorOpensTowardApproach(door:Door,from:Pt):boolean{
  const check={x:center.x+nx*side*24,y:center.y+ny*side*24};
  return doorWouldStrikeActors({...door,openFraction:0},1.02,[check],OPERATOR_RADIUS+1);
 }
-export function stackApproachPositions(door:Door,from:Pt):Pt[]{
+export type StackFormation='auto'|'left'|'right'|'split'|'angled';
+/** M4.2: optional authored stack layouts. Defaults remain pixel-identical
+ * to the existing safe auto stack; these are candidates only. The
+ * authoring caller retains door-sweep, world-intel, reach and 23u checks.
+ * Nothing here executes motor movement or changes a player plan.
+ */
+export function stackApproachPositions(door:Door,from:Pt,
+ formation:StackFormation='auto'):Pt[]{
  const center=doorCenter(door);
  const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
  const width=Math.hypot(dx,dy);
@@ -105,6 +112,26 @@ export function stackApproachPositions(door:Door,from:Pt):Pt[]{
    x:center.x+tx*lateral+nx*approach*19,
    y:center.y+ty*lateral+ny*approach*19
  }));
+ if(formation!=='auto'){
+  // Order candidates to favor the requested formation's first/second
+  // actor, with extra rear choices if the front pocket is obstructed.
+  const pattern:{l:number;depth:number}[]=formation==='left'||
+    formation==='right'?(()=>{
+      const sign=formation==='left'?-1:1;
+      return [{l:sign*36,depth:20},{l:sign*25,depth:44},
+       {l:sign*14,depth:68},{l:sign*5,depth:92},
+       {l:sign*40,depth:63},{l:sign*30,depth:88}];
+    })():formation==='split'?
+    [{l:-36,depth:22},{l:36,depth:22},{l:-24,depth:54},
+     {l:24,depth:54},{l:-12,depth:86},{l:12,depth:86}]:
+    [{l:-37,depth:24},{l:37,depth:42},{l:-18,depth:66},
+     {l:18,depth:85},{l:-45,depth:77},{l:44,depth:96}];
+  // For outward-swinging leaves, ONLY the collision-aware authoring
+  // predicate may accept a candidate; include alternate rear pockets.
+  return pattern.map(({l,depth})=>({
+   x:center.x+tx*l+nx*approach*depth,
+   y:center.y+ty*l+ny*approach*depth}));
+ }
  if(!doorOpensTowardApproach(door,from))return regular;
  // A door swinging toward the team makes the two near-center stack slots
  // unsafe. Keep the front two off the leaf arc; stage the next two behind
