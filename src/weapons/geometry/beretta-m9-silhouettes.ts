@@ -43,7 +43,7 @@ const SAFETY_RED=new THREE.MeshBasicMaterial({
 // Tonal factory M9A3 panels: darker FDE, not an aftermarket black patch.
 // One pooled material; no per-view allocation or global material disposal.
 const M9A3_GRIP_PANEL=AR_MUTED_FDE.clone();
-M9A3_GRIP_PANEL.color.multiplyScalar(.76);
+M9A3_GRIP_PANEL.color.multiplyScalar(.59);
 
 /** Presentation contacts always come from the authored shape, not a Glock. */
 export function m9ArtSockets(id:M9AppearanceId){
