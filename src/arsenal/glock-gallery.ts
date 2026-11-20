@@ -7,7 +7,7 @@ import {applyQuickPlayKitPreferences,serializeQuickPlayKitPreferences}
  from '../breach-quickplay-kit-preferences.ts';
 import {BREACH_STORAGE_KEYS} from '../breach-storage-keys.ts';
 import {emptySecondaryEquipment,equipFreshSecondary,moveSecondaryHolster,
- SECONDARY_CAPACITY,type SecondaryHolster} from '../secondary-equipment.ts';
+ type SecondaryHolster} from '../secondary-equipment.ts';
 
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
