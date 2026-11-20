@@ -9,6 +9,7 @@ on:
       - 'src/breach-motor-route.ts'
       - 'src/breach-squeeze-leaf-exit.ts'
       - 'src/breach-motor-collision.ts'
+      - 'src/breach-actor-motor.ts'
       - 'src/breach-locomotion-clearance.ts'
       - 'scripts/audit-r7-squad-execution.mjs'
 permissions: {contents: read}
