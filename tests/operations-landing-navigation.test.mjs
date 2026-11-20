@@ -169,7 +169,7 @@ test('Squad shows one visual deployment team and a selected operator inspector',
  assert.match(personnel,/personnelWorkspace\.append\(rosterPanel\)/);
  assert.match(personnel,/personnel\.append\(personnelWorkspace\)/);
  assert.match(personnel,/this\.handlers\.assignSlot\(slot,p\.id\)/);
- assert.doesNotMatch(personnel,/node\('select','campaign-select'\)/);
+ assert.doesNotMatch(personnel,/this\.handlers\.assignSlot\(slot,picker\.value\)/);
  assert.match(personnel,/this\.handlers\.openStudio\(p\.id\)/);
 });
 
@@ -195,7 +195,8 @@ test('Logistics has stock, replenish actions and armory in task-first DOM order'
  assert.match(logistics,/supplyPanel\.append\(squadReplenish,node\('h3','campaign-logistics-buy-heading'/);
  assert.match(logistics,/supplyPanel\.append\(purchases\)/);
  assert.match(logistics,/logisticsWorkspace\.append\(supplyPanel\)/);
- assert.match(logistics,/logisticsWorkspace\.append\(inventory\)/);
+ assert.match(logistics,/procurement\.append\(node\('summary'[\s\S]*?inventory\)/);
+ assert.match(logistics,/logisticsWorkspace\.append\(procurement\)/);
  assert.match(logistics,/logistics\.append\(logisticsWorkspace\)/);
  assert.match(logistics,/this\.handlers\.buyAmmo/);
  assert.match(logistics,/this\.handlers\.buyMedical/);
@@ -304,7 +305,7 @@ test('Operator action labels are unique by callsign while retaining existing han
  for(const handler of [
   'this.handlers.resupply(p.id)','this.handlers.resupplyMedical(p.id)',
   'this.handlers.treat(p.id)','this.handlers.retire(p.id)',
-  'this.handlers.assignSlot(slot,picker.value)'
+  'this.handlers.assignSlot(slot,p.id)'
  ])assert.ok(personnel.includes(handler),'Existing action changed '+handler);
 });
 
@@ -331,7 +332,7 @@ test('C5 Logistics preserves purchases, shows truthful low stock and discloses w
  const ui=source('campaign-ui.ts');
  const logistics=ui.slice(ui.indexOf("const logistics=node('section','campaign-section')"),
   ui.indexOf("const recruit=button('RECRUIT OPERATOR"));
- assert.match(logistics,/count===0\|\|\(label==='ROUNDS'&&count<60\)/);
+ assert.match(logistics,/if\(needed>count\)fact\.classList\.add\('is-low'\)/);
  assert.match(logistics,/fact\.classList\.add\('is-low'\)/);
  assert.match(logistics,/buy\.disabled=!canAffordCampaignPurchase\(c,cost\)/);
  assert.match(logistics,/buy\.setAttribute\('aria-description',why\)/);
@@ -403,7 +404,7 @@ test('C8 UI-only disclosure continuity survives in-place campaign refresh',()=>{
  assert.match(home,/for\(const detail of this\.root\.querySelectorAll<HTMLDetailsElement>\(/);
  assert.match(home,/detail\.open=openWorkspaceDetails\.has/);
  for(const key of [
-  'campaign-context','more-cases','more-history','personnel-milestones',
+  'campaign-context','more-history','personnel-milestones',
   'service-record','related-cases','closeout-notes',
   'save-utilities','department-profile'
  ])assert.ok(home.includes("dataset.campaignDetail='"+key+"'"),
