@@ -504,3 +504,11 @@
   background:#b2c8a4;color:#1b3326;
  }
 }
+
+/* Win over R2's broad .campaign-armory-head>div {display:none!important}.
+ * The new Fieldwork header is the intentional visible direct child. */
+@media(max-width:620px), (max-width:920px) and (max-height:620px){
+ .campaign-shell.campaign-armory-screen .campaign-armory-head>.campaign-outfitter-header-controls{
+  display:flex!important;visibility:visible!important;
+ }
+}
