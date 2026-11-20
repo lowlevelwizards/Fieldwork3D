@@ -15,6 +15,8 @@ on:
       - 'src/secondary-timed-reload.ts'
       - 'src/breach-order-utility.ts'
       - 'tests/secondary-s8-2-timed-reload.test.mjs'
+      - 'tests/secondary-s10-2-replay-magazines.test.mjs'
+      - 'src/breach-replay-sharing.ts'
       - 'src/secondary-holster-visual.ts'
       - 'src/breach-operator-animation-controller.ts'
       - 'src/breach-operator-animation-contract.ts'
@@ -34,6 +36,6 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Authored weapon handoff and ammunition conservation
-        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s8-magazine-exchange.test.mjs
+        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s10-2-replay-magazines.test.mjs
       - name: Production TypeScript and bundle
         run: npm run build
