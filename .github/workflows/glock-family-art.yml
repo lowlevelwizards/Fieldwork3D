@@ -55,3 +55,11 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Live Arsenal phone and desktop lazy-thumbnails
         run: node scripts/smoke-consolidation-p9-arsenal.mjs
+      - name: Preserve M9 visual-review captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beretta-m9-art-review
+          path: artifacts/m9/*.png
+          if-no-files-found: ignore
+          retention-days: 7
