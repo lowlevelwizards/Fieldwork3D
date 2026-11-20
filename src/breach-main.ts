@@ -901,7 +901,7 @@ function render(dt=0):void{
 function rejectAt(pt:Pt,reason:string):void{
  frameFeedbackController.rejectAt(pt,reason);
 }
-function useSelectedGround(pt:Pt):void{
+function useSelectedGround(pt:Pt,transportRoute?:readonly Pt[]):void{
  commitTacticalGroundCommand({
   state,selected,replaying,
   get selectedNode(){return selectedNode;},
@@ -910,7 +910,7 @@ function useSelectedGround(pt:Pt):void{
   set selectedActiveWatch(value){selectedActiveWatch=value;},
   targeting,tacticalFeedback,audio:audioController,updateHud,rejectAt,showUiHelp,teach,
   onAuthoring:()=>{lastAuthoringAt=performance.now();}
- },pt);
+ },pt,transportRoute);
 }
 function isMissionTerminal(s:Session){return s.phase==='won'||s.phase==='lost';}
 /** Reapply recorded outcomes after timeline navigation, then refresh dependent
@@ -1529,6 +1529,7 @@ tacticalGestures.install({
   is3D:()=>!!stage&&viewMode!=='plan2d',
   isPlanning:()=>state.phase==='planning',
   isLooking:()=>targeting.isFacing,
+  isEvacArmed:()=>!!targeting.evacMode,
   targetArmed:()=>targeting.isArmed,
   world:pointerWorld,
   aimWorld:pointerAimWorld,
@@ -1543,7 +1544,12 @@ tacticalGestures.install({
   clearDrag:()=>{trace=null;draggingNode=null;draggingWatchTarget=false;},
   dragNode:(point,watch)=>{draggingNode=point;draggingWatchTarget=watch;},
   traceRoute:(screen,point)=>{
-    if(!trace)trace=[{...uid(selected)!.p}];
+    if(!trace){
+      const carrying=targeting.evacMode;
+      const body=carrying?(state.operators.find(a=>a.id===carrying.patientId)??
+        state.civilians.find(c=>c.id===carrying.patientId)):null;
+      trace=[{...(body?.p??uid(selected)!.p)}];
+    }
     if(shouldAppendStrokePoint(worldToScreen(trace.at(-1)!,8),screen))
       trace.push({...point});
   },

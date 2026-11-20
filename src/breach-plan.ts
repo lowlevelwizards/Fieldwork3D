@@ -25,6 +25,8 @@ export type PlanNode={
   weaponHand?:'primary'|'secondary';
   patientId?:string;woundId?:number;
   transportMode?:'drag'|'carry';
+  /** Authored patient-transport bends, consumed during actual GO traversal. */
+  transportPath?:Pt[];
   stackDoorId?:string;
   /** The physical threshold for a generated squad-entry clearing handoff.
    * Ordinary authored MOVE/LOOK orders intentionally omit this marker. */
@@ -50,7 +52,8 @@ export const copyNodes=(nodes:PlanNode[]):PlanNode[]=>
     aimPoint:n.aimPoint?{...n.aimPoint}:undefined,
     pushDirection:n.pushDirection?{...n.pushDirection}:undefined,
     firePoint:n.firePoint?{...n.firePoint}:undefined,
-    arc:n.arc?.map(p=>({...p}))}));
+    arc:n.arc?.map(p=>({...p})),
+    transportPath:n.transportPath?.map(p=>({...p}))}));
 export const makeHistory=():PlanHistory=>({undo:[],redo:[],undoControls:[],redoControls:[]});
 export function record(history:PlanHistory,prior:PlanNode[]){
   history.undo.push(copyNodes(prior));

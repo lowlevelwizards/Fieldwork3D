@@ -89,7 +89,22 @@ function renderProjectedPlans(){
         displayRouteCache.get(previous,n.p,state.intel,state.phase==='planning',
           (from,to,ordinary)=>plannedWindowRoute(state,from,to,ordinary),
           state.objectRevision):null;
-      const steps=n.kind==='pie'?n.arc??[]:cachedRoute?.points??[];
+      const transportSteps=n.kind==='evacuate'?(()=>{
+        const patient=state.operators.find(p=>p.id===n.patientId)??
+          state.civilians.find(p=>p.id===n.patientId);
+        const route:Pt[]=[];let from=previous;
+        for(const stop of [patient?.p,...(n.transportPath??[]),n.p]){
+          if(!stop)continue;
+          route.push(...displayRouteCache.get(from,stop,state.intel,
+            state.phase==='planning',
+            (a,b,ordinary)=>plannedWindowRoute(state,a,b,ordinary),
+            state.objectRevision).points);
+          from=stop;
+        }
+        return route;
+      })():null;
+      const steps=n.kind==='pie'?n.arc??[]:
+        transportSteps??cachedRoute?.points??[];
       if(steps.length){
         draw.beginPath();
         const start=worldToScreen(previous,4);
@@ -108,7 +123,7 @@ function renderProjectedPlans(){
         draw.setLineDash(n.kind==='pie'?[3,3]:
           semantics.before.watch&&a.id===selected?[3,5]:
           semantics.before.pace==='run'?[12,3]:
-          narrowOnly?[2,4]:[7,4]);
+          narrowOnly?[2,4]:n.kind==='evacuate'?[5,4]:[7,4]);
         draw.stroke();draw.setLineDash([]);draw.globalAlpha=1;
       }
       draw.globalAlpha=muted?.32:1;
@@ -123,6 +138,16 @@ function renderProjectedPlans(){
         n.kind==='door'?7:a.id===selected?6:4,
         invalidDrag?'#df8070':selectedNow?'#ecd29f':color);
       if(selectedNow)circle(point.x,point.y,3,'#233b39');
+      if(n.kind==='evacuate'&&a.id===selected){
+        for(const bend of n.transportPath??[]){
+          const pin=worldToScreen(bend,8);
+          circle(pin.x,pin.y,5,'#e3b989');
+        }
+        draw.save();draw.fillStyle='#e9c79e';
+        draw.font='700 11px "Saira Condensed",sans-serif';
+        draw.fillText(n.transportMode==='carry'?'CARRY ROUTE':'DRAG ROUTE',
+          point.x+12,point.y-13);draw.restore();
+      }
       if(a.id===selected&&cachedRoute?.narrowOnly&&n.kind==='move'){
         draw.save();draw.fillStyle='#e7b980';
         draw.font='700 11px "Saira Condensed",sans-serif';
@@ -224,7 +249,8 @@ function renderProjectedPlans(){
           n.paceState?.toUpperCase(),n.firePolicyState?.toUpperCase()]
           .filter(Boolean).join(' · '),point.x+12,point.y+18);
       }
-      if(n.kind==='move'||n.kind==='door'||n.kind==='pie')previous=n.p;
+      if(n.kind==='move'||n.kind==='door'||n.kind==='pie'||
+          n.kind==='evacuate')previous=n.p;
     }
     draw.restore();
     const pawn=worldToScreen(a.p,32),ground=worldToScreen(a.p,1);

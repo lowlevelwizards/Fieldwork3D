@@ -103,6 +103,16 @@ function paths(){
           const course=displayRouteCache.get(from,node.p,state.intel,state.phase==='planning').points;
           for(const p of course)draw.lineTo(p.x,p.y);
           from=node.p;
+        }else if(node.kind==='evacuate'){
+          const patient=state.operators.find(p=>p.id===node.patientId)??
+            state.civilians.find(p=>p.id===node.patientId);
+          for(const stop of [patient?.p,...(node.transportPath??[]),node.p]){
+            if(!stop)continue;
+            const course=displayRouteCache.get(from,stop,state.intel,
+              state.phase==='planning').points;
+            for(const p of course)draw.lineTo(p.x,p.y);
+            from=stop;
+          }
         }else if(node.kind==='pie'&&node.arc?.length){
           for(const p of node.arc)draw.lineTo(p.x,p.y);
           from=node.p;
@@ -178,6 +188,14 @@ function paths(){
         n.kind==='door'?7:a.id===selected?6:4,
         selectedNow?'#ecd29f':n.kind==='move'?c:'#c8ae7f');
       if(selectedNow)circle(point.x,point.y,3,'#263836');
+      if(n.kind==='evacuate'&&a.id===selected){
+        for(const bend of n.transportPath??[])
+          circle(bend.x,bend.y,4.6,'#e3b989');
+        draw.save();draw.fillStyle='#e9c79e';
+        draw.font='700 11px "Saira Condensed",sans-serif';
+        draw.fillText(n.transportMode==='carry'?'CARRY ROUTE':'DRAG ROUTE',
+          point.x+12,point.y-14);draw.restore();
+      }
       if(n.facing!==undefined){
         const end={x:point.x+Math.cos(n.facing)*40,
           y:point.y+Math.sin(n.facing)*40};

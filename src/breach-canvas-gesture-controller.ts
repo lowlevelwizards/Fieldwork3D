@@ -21,6 +21,7 @@ export type TacticalCanvasGestureCallbacks={
   isPlanning:()=>boolean;
   isLooking:()=>boolean;
   targetArmed:()=>boolean;
+  isEvacArmed:()=>boolean;
   world:(event:PointerEvent)=>Pt;
   aimWorld:(event:PointerEvent,height?:number)=>Pt;
   pick:(screen:Pt,pointerKind:string)=>TacticalPick|null;
@@ -171,6 +172,12 @@ export function createBreachCanvasGestureController(canvas:HTMLCanvasElement){
       cb.pan(dx,dy);return;
     }
     if(p.mode==='cameraMulti')return;
+    if(cb.isPlanning()&&cb.isEvacArmed()&&p.moved&&
+      (p.mode==='undecided'||p.mode==='targetPreview')){
+      p.mode='targetPreview';
+      cb.traceRoute({x:e.clientX,y:e.clientY},point);
+      return;
+    }
     if(p.mode==='undecided'&&e.pointerType==='touch'&&p.moved&&
       cb.targetArmed()){
       p.mode='targetPreview';return;

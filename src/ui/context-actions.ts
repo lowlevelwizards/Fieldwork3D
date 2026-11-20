@@ -12,7 +12,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   watchActive?:boolean;
   nearMovable?:boolean;nearWindow?:boolean;nearDoor?:boolean;
   powerActions?:readonly ContextAction[];
-  treatTargetName?:string;
+  treatTargetName?:string;treatCaptureTarget?:boolean;
   nearCivilian?:boolean;escortableCivilian?:boolean;
   stopFollowingCivilian?:boolean;
   nearRestrainableCivilian?:boolean;restraintsRemaining?:number;
@@ -77,8 +77,12 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       title:'Keep watching a chosen point as you move until released'},
     {id:'ctxWait',label:'WAIT',group:'primary',
       pressed:o.nodeKind==='wait'||o.nodeKind==='holdClear',title:'Wait at this position'},
-    ...(o.treatTargetName?[{id:'ctxTreat',label:'TREAT',group:'primary' as const,
-      title:'Queue medical treatment for '+o.treatTargetName}]:[]),
+    ...(o.treatTargetName?[{id:'ctxTreat',
+      label:o.treatCaptureTarget?'TREAT CAPTURE TARGET':'TREAT',
+      group:'primary' as const,
+      title:o.treatCaptureTarget?
+        'Stabilize actual bleeding before extraction to prevent death · requires issued medical supplies':
+        'Queue medical treatment for '+o.treatTargetName}]:[]),
     ...(o.nearDoor?[{id:'ctxDoor',label:'DOOR',group:'primary' as const,
       title:'Show actions for a reachable door'}]:[]),
     ...(o.powerActions??[]),
@@ -122,9 +126,9 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ]:[]),
     ...(o.nearDownedCaptureTarget?[
       {id:'ctxDragCapture',label:'DRAG CAPTURE TARGET',group:'primary' as const,
-       title:'Physically drag the designated incapacitated target to extraction'},
+       title:'Arm physical drag · tap a destination or draw a custom transport route'},
       {id:'ctxCarryCapture',label:'CARRY CAPTURE TARGET',group:'primary' as const,
-       title:'Physically carry the designated incapacitated target to extraction'}
+       title:'Arm physical carry · tap a destination or draw a custom transport route'}
     ]:[]),
     ...(o.nearCivilianCasualty?[
       {id:'ctxDragCivilian',label:'DRAG',group:'primary' as const,

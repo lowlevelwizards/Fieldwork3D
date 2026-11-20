@@ -33,7 +33,7 @@ test('D15.5F presentation requires reciprocal actual custody and injured subject
   carriedById:'rook',transportMode:'carry'};
  const carrier={id:'rook',p:pt(0,0),health:4,heading:0,carryingId:'guard'};
  assert.deepEqual(downedTransportPresentation(subject,[carrier]),{
-  carrierId:'rook',mode:'carry',heading:Math.PI/2,lift:10,
+  carrierId:'rook',mode:'carry',heading:Math.PI/2,lift:18,
   carrierPosition:carrier.p
  });
  assert.equal(downedTransportPresentation({...subject,health:2},[carrier]),null);
@@ -62,7 +62,7 @@ test('D15.5F real GO carry mode survives film rewind and clears on historical se
   assert.equal(carrier.carryingId,target.id);
   assert.equal(target.transportMode,'carry');
   const during=snapshot(s);
-  assert.equal(downedTransportPresentation(target,s.operators)?.lift,10);
+  assert.equal(downedTransportPresentation(target,s.operators)?.lift,18);
   applyReplayFrame(s,before);
   assert.equal(target.carriedById,null);
   assert.equal(target.transportMode,null,'no future carry leaks into pre-pickup frame');

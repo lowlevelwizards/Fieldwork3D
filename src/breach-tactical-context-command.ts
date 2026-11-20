@@ -26,6 +26,8 @@ export type ContextCommandResult={
  handled:boolean;outcome?:'accepted'|'rejected';failureReason?:string;
  clearDoorFocus?:boolean;dismissDoorId?:string|null;
  clearSelection?:boolean;invalidateFog?:boolean;
+ /** Arms player-directed route placement; it does not silently extract. */
+ armTransport?:{patientId:string;mode:'drag'|'carry'};
 };
 const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function dispatchTacticalContextCommand(input:{
@@ -168,9 +170,10 @@ export function dispatchTacticalContextCommand(input:{
        (!e.carriedById||e.carriedById===a.id)&&
       distance(at,e.p)<34&&liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)));
-   return finish(!!prisoner&&planCasualtyTransport(state,selected,prisoner.id,
-     state.scenario.extract,action==='ctxCarryCapture'?'carry':'drag'),
-     'CAPTURE TARGET TRANSPORT ROUTE NOT AVAILABLE');
+   if(!prisoner)return finish(false,'CAPTURE TARGET NOT IN PHYSICAL REACH');
+   return {handled:true,outcome:'accepted',armTransport:{
+     patientId:prisoner.id,mode:action==='ctxCarryCapture'?'carry':'drag'}};
+
   }
   case 'ctxDragCivilian':
   case 'ctxCarryCivilian':{
