@@ -12,6 +12,9 @@ on:
       - 'tests/secondary-s4-holster-visual.test.mjs'
       - '.github/workflows/secondary-carry-critical.yml'
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   focused:
     runs-on: ubuntu-latest
