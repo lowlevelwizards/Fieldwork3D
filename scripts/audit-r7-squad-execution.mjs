@@ -303,6 +303,10 @@ function run(site,seed,kind){
   const recentLeafEscapes=routeWitness?new Map():null;
   const recordRoute=routeWitness?(e)=>{
    routeWitness.counts[e.source]=(routeWitness.counts[e.source]??0)+1;
+   if(motelLoopSamplesEnabled&&seed===19143269&&kind==='entry'&&
+      e.actorId==='ash'&&e.seconds>=19.65&&e.seconds<=20.15&&
+      motelLastRouteEvents.length<40)
+     motelLastRouteEvents.push({...e});
    if(e.source==='door-handoff-reject'){
     routeWitness.rejectReasons[e.reason??'unknown']=
       (routeWitness.rejectReasons[e.reason??'unknown']??0)+1;
@@ -359,6 +363,7 @@ function run(site,seed,kind){
   const progressEvidence=[];
   const motelLoopSamples=[];
   const motelNavClearEvents=[];
+  const motelLastRouteEvents=[];
   const watchedAsh=actors.find(a=>a.id==='ash');
   // D3.26F7 exact-seed read-only motor handoff witness, sampled only
   // for one actor and short time windows. Zero impact in normal audits.
@@ -1547,7 +1552,7 @@ function run(site,seed,kind){
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
-   ...(motelLoopSamplesEnabled?{motelLoopSamples,motelColdClearance,motelNavClearEvents}:{}),
+   ...(motelLoopSamplesEnabled?{motelLoopSamples,motelColdClearance,motelNavClearEvents,motelLastRouteEvents}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
