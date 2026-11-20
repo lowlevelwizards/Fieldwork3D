@@ -2,12 +2,12 @@
  * vetted saved presets, and explicit GO-time kit application.
  * No invented compatibility sockets, ammunition, recoil or gameplay guns.
  */
-import {GLOCK_APPEARANCE_REFERENCES,type GlockAppearanceId}
+import {GLOCK_APPEARANCE_REFERENCES}
  from '../weapons/geometry/glock-family-silhouettes.ts';
 import {SECONDARY_CAPACITY,SECONDARY_MASS_KG,type SecondaryMagazineLocation}
  from '../secondary-equipment.ts';
 import {GlockViewport} from './glock-viewport.ts';
-import {factoryGlockRecipe,loadGlockLibrary,saveGlockLibrary,
+import {loadGlockLibrary,saveGlockLibrary,
  createGlockSavedBuild,type GlockRecipe,type GlockSavedBuild}
  from './glock-saved-builds.ts';
 export type GlockWorkbenchContext=Readonly<{
