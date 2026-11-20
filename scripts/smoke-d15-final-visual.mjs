@@ -5,6 +5,7 @@
  */
 import {spawn} from 'node:child_process';
 import {mkdir,writeFile} from 'node:fs/promises';
+import {existsSync} from 'node:fs';
 import {chromium} from 'playwright';
 import assert from 'node:assert/strict';
 const port=4467,url='http://127.0.0.1:'+port;
@@ -22,7 +23,11 @@ try{
   catch{}await pause(150);
  }
  assert.ok(ready,'Vite browser acceptance server did not start');
- browser=await chromium.launch({headless:true,args:[
+ const installedChrome=['/usr/bin/google-chrome',
+  '/usr/bin/google-chrome-stable','/opt/google/chrome/chrome',
+  '/usr/bin/chromium'].find(existsSync);
+ browser=await chromium.launch({headless:true,
+  ...(installedChrome?{executablePath:installedChrome}:{}),args:[
   '--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'
  ]});
  await mkdir(out,{recursive:true});
