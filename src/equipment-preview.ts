@@ -148,7 +148,17 @@ export class CampaignKitPreview{
  setOperatorId(id:string):void{
   if(this.operatorId===id)return;
   this.operatorId=id;
-  this.selectItemDot(null);
+  // Retire prior person's inspection without painting a stale, detached host.
+  // The caller attaches the new host and draws the new pose immediately.
+  this.dotTarget=null;this.dotMesh=null;
+  if(this.selectedDot)this.selectedDot.hidden=true;
+  this.selectedCarryLocation=null;this.selectedInspection=null;
+  this.inspectedMesh=null;this.inspectionCenter=null;this.inspectionSize=null;
+  if(this.carryMarker)this.carryMarker.visible=false;
+  if(this.inspectionBox)this.inspectionBox.visible=false;
+  delete this.host.dataset.carryHighlight;
+  delete this.host.dataset.inspectedItem;
+  delete this.host.dataset.inspectionVisible;
   this.idleStarted=performance.now();
  }
  /** A kit change updates the existing rig, without creating another WebGL context. */
