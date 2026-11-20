@@ -42,7 +42,7 @@ import {type Pt,type Operator,type TacticalState,type Door,type Side,W,H,COVER,O
 import {type PlanNode,type PlanKind,type PlanHistory,type DoorMethod,type AimInstruction,makeHistory,copyNodes,modifyNode,type FirePolicy,type PlanControlSnapshot,length,targetAngle,angleDifference} from './breach-plan.ts';
 import {entryLanes,sharedEntryRouteOrigin} from './breach-entry-lanes.ts';
 import {settleKnownEntryLandings} from './breach-entry-landing.ts';
-import {stackApproachPositions,doorOpensTowardApproach} from './breach-entry-coordination.ts';
+import {stackApproachPositions,type StackFormation,doorOpensTowardApproach} from './breach-entry-coordination.ts';
 import type {Site,SiteScale} from './breach-site.ts';
 import type {OperationDossierV1} from './briefing/briefing-types.ts';
 import type {EncounterContext,EncounterActivity,EncounterReadiness,EncounterRole} from './worldgen/encounter-types.ts';
@@ -926,7 +926,8 @@ export function planDoor(s:Session,id:string,doorId:string,method:DoorMethod){
 /** Plan an actual reserved stack position on the same approach side.
  * Four positions are spaced along the door frame, with a second rank.
  */
-export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number){
+export function planStack(s:Session,id:string,doorId:string,
+ afterNodeId?:number,formation:StackFormation='auto'){
   const a=party(s,id),door=s.doors.find(d=>d.id===doorId);
   if(!a||!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
   const index=afterNodeId===undefined?a.plan.length:
@@ -940,7 +941,7 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   // Outward-opening leaves need the rear slots outside the physical sweep.
   const outward=doorOpensTowardApproach(door,from);
   const preferred=team(s).findIndex(b=>b.id===id);
-  const candidates=stackApproachPositions(door,from);
+  const candidates=stackApproachPositions(door,from,formation);
   // Q5: a pre-opened panel can ALREADY be occupying the otherwise legal
   // closed-door staging pocket. Use its current visible physical leaf,
   // not the imaginary closed position; no hidden geometry is disclosed.
@@ -948,7 +949,7 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
   // Smaller entrance frames retain valid nearby choices; never pick a
   // physical stack slot too far away to use the door.
   const legal=candidates.filter(p=>
-    d(p,center)<(outward?68:43)&&
+    d(p,center)<(formation==='auto'?(outward?68:43):112)&&
     pointToSegment(p,currentLeaf)>=OPERATOR_RADIUS+2.5&&
     (!outward||!doorWouldStrikeActors({...door,openFraction:0},
       door.open?PUSHED_OPEN_LIMIT:1.03,
@@ -980,12 +981,13 @@ export function planStack(s:Session,id:string,doorId:string,afterNodeId?:number)
  * retained; a failed actor allocation leaves the completed positions intact
  * so players can adjust a tight site individually.
  */
-export function planStackTeam(s:Session,doorId:string){
+export function planStackTeam(s:Session,doorId:string,
+ formation:StackFormation='auto'){
  if(!canEdit(s)||!doorKnown(s.intel,doorId))return false;
  const members=team(s).filter(a=>a.health>0);
  let count=0;
  const ok=atomicTeamEdit(s,members,()=>{
-  for(const a of members)if(planStack(s,a.id,doorId))count++;
+  for(const a of members)if(planStack(s,a.id,doorId,undefined,formation))count++;
   return count>0;
  });
  if(ok)notify(s,'STACK '+count+' / '+members.length);
@@ -995,7 +997,8 @@ export function planStackTeam(s:Session,doorId:string){
  * a shared go-code, open the door with the lead, then feed others through
  * at staggered intervals. Tactical pathfinding remains authoritative.
  */
-export function planSquadEntry(s:Session,doorId:string){
+export function planSquadEntry(s:Session,doorId:string,
+ formation:StackFormation='auto'){
  const door=s.doors.find(d=>d.id===doorId);
  if(!door||!canEdit(s)||!doorKnown(s.intel,doorId))return false;
  const alive=team(s).filter(a=>a.health>0);
@@ -1068,7 +1071,7 @@ export function planSquadEntry(s:Session,doorId:string){
  const committed=atomicTeamEdit(s,alive,()=>{
   for(const a of alive)
    if(!a.plan.some(n=>n.stackDoorId===doorId)&&
-     !planStack(s,a.id,doorId))return false;
+     !planStack(s,a.id,doorId,undefined,formation))return false;
   if(!planSync(s,alive.map(a=>a.id)))return false;
   const lead=alive[0];
   // A leaf already ajar is a push-through problem, not another latch

@@ -1,0 +1,52 @@
+name: Movement M3 M4 full physical release acceptance
+on:
+  push:
+    branches: [release/movement-m3m4-20261120]
+    paths:
+      - '.github/workflows/movement-m3m4-release.yml'
+permissions:
+  contents: read
+concurrency:
+  group: movement-m3m4-physical-release
+  cancel-in-progress: false
+jobs:
+  physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: M3-M4 lifecycle, queue, authored formations and motor contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/movement-m3-door-lifecycle.test.mjs \
+            tests/movement-m4-queue-formation.test.mjs \
+            tests/passage-q2-coordinator.test.mjs \
+            tests/release-d3-r1-repeated-passage.test.mjs \
+            tests/release-d3-r1-entry-lead.test.mjs \
+            tests/release-d3-r1-door-topology.test.mjs \
+            tests/release-d3-14b2-narrow-leaf-exit.test.mjs \
+            tests/phase-a-stack-geometry.test.mjs \
+            tests/passage-q6-opener.test.mjs
+          npm run check
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
+      - name: Q5 full strict real-motor door matrix 70/70
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
+      - name: Frozen historical 11-site physical baseline
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/m34-historical11.json"
+          node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/m34-historical11.json"
+      - name: Independent 22-map 176-operator physical holdout
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/m34-fresh22.json"
+          node scripts/report-d3-29-terminal-cancellations.mjs "$RUNNER_TEMP/m34-fresh22.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m3-m4-physical-release-evidence
+          path: ${{ runner.temp }}/m34-*.json
+          retention-days: 30

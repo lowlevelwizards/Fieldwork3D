@@ -8,7 +8,16 @@ import {doorCenter} from './breach-core.ts';
 import {doorReachable} from './breach-door.ts';
 import {activeDoorCrossingIntent} from './breach-door-pressure-arbitration.ts';
 
-type Lease={actorId:string;orderId:number;lastIntentAt:number;explicit:boolean};
+type Lease={actorId:string;orderId:number;lastIntentAt:number;explicit:boolean;
+ progressAt:number;at:{x:number;y:number};fraction:number};
+/** M3.2: a stationary implicit opener may NOT own a hinge indefinitely.
+ * Real feet moving three units, real leaf rotation, or a physically
+ * attached support hand keep the SAME owner. This never opens a door.
+ */
+export function openingLeasePhysicallyExpired(now:number,progressAt:number,
+ attached:boolean):boolean{
+ return !attached&&now-progressAt>=3.2;
+}
 const owners=new WeakMap<Session,Map<string,Lease>>();
 const sq=(a:{x:number;y:number},b:{x:number;y:number})=>
  (a.x-b.x)**2+(a.y-b.y)**2;
@@ -42,8 +51,16 @@ function candidate(a:TeamActor,d:Door,requireReach:boolean):boolean{
 function stillOwns(a:TeamActor,d:Door,lease:Lease,now:number):boolean{
  if(a.side!=='blue'||a.health<=0||a.surrendered||
     sq(a.p,doorCenter(d))>96*96)return false;
- if(a.plan[0]?.id===lease.orderId)
-   return candidate(a,d,false);
+ if(a.plan[0]?.id===lease.orderId){
+   if(!candidate(a,d,false))return false;
+   const fraction=d.openFraction??0;
+   if(sq(a.p,lease.at)>=3*3||Math.abs(fraction-lease.fraction)>=.025){
+    lease.at={...a.p};lease.fraction=fraction;lease.progressAt=now;
+   }
+   const attached=a.doorHandContact?.doorId===d.id&&
+     a.doorHandContact.releasedAt===null;
+   return !openingLeasePhysicallyExpired(now,lease.progressAt,attached);
+ }
  return lease.explicit&&d.open&&(d.openFraction??0)>.08&&
    !finished(d)&&now-lease.lastIntentAt<1.25&&
    a.plan[0]?.kind!=='door';
@@ -93,7 +110,8 @@ export function claimOpeningIntent(s:Session,a:TeamActor,d:Door):boolean{
  let map=owners.get(s);
  if(!map){map=new Map();owners.set(s,map);}
  map.set(d.id,{actorId:a.id,orderId:a.plan[0].id,
-  lastIntentAt:s.seconds,explicit:a.plan[0].kind==='door'});
+  lastIntentAt:s.seconds,explicit:a.plan[0].kind==='door',
+  progressAt:s.seconds,at:{...a.p},fraction:d.openFraction??0});
  return true;
 }
 /** An actual full-reach support-hand candidate may take over a merely
@@ -113,7 +131,8 @@ export function claimContactReadyOpening(s:Session,a:TeamActor,d:Door):boolean{
     !candidate(a,d,true))return false;
  const map=owners.get(s)!;
  map.set(d.id,{actorId:a.id,orderId:a.plan[0].id,
-   lastIntentAt:s.seconds,explicit:false});
+   lastIntentAt:s.seconds,explicit:false,
+   progressAt:s.seconds,at:{...a.p},fraction:d.openFraction??0});
  return true;
 }
 /** The opening lease limits manipulation only, never physical passage. */
