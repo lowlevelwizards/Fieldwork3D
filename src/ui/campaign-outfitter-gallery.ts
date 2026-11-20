@@ -263,6 +263,13 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   addSlotChoices(slot);
   if(slot==='rig'||slot==='belt'||slot==='backpack')
    addContents(slot);
+  if(slot==='medical'||slot==='utility'){
+   const equipped=options.sources.get(slot)?.value;
+   const stored=board.zones.flatMap(zone=>zone.items.filter(
+    tile=>tile.id===slot+':'+equipped).map(()=>LOC_LABEL[zone.location]));
+   if(stored.length)items.append(note(
+    'CURRENT EQUIPMENT CARRIED: '+stored.join(' / ').toUpperCase()));
+  }
   if(slot==='primary'){
    addMagazines();
    const arsenal=action('OPEN ARSENAL · MODIFY WEAPON',options.onArsenal,
