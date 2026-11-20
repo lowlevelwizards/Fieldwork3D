@@ -455,6 +455,9 @@ export class CampaignKitPreview{
   // Campaign updates the rig immediately after a host swap; avoid a stale
   // pre-update render while preserving the default standalone behavior.
   if(drawImmediately)this.draw();
+  // A detached host may stop the idle RAF before the new operator is mounted.
+  // Resume the same preview loop without allocating a second WebGL renderer.
+  if(this.idleFrame===null)this.startInspectionIdle();
  }
  isReady():boolean{return this.renderer!==null&&this.rig!==null;}
  /** Selection belongs to the caller; preview never commits kit changes. */
