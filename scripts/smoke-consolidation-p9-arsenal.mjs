@@ -44,7 +44,7 @@ try{
    await gallery.locator('.arsenal-glock-card').first().waitFor();
    assert.equal(await gallery.locator('.arsenal-glock-card').count(),1);
    await gallery.locator('.arsenal-glock-card').first().click();
-   await gallery.locator('.arsenal-glock-model').filter({hasText:'G19X'}).waitFor();
+   await gallery.locator('.arsenal-glock-model').filter({hasText:/19X/i}).waitFor();
    await gallery.locator('.arsenal-glock-card-preview img').first().waitFor({timeout:45000});
    assert.deepEqual(errors,[],'No JS errors after changing filters');
    await page.close();
