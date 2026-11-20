@@ -608,6 +608,16 @@ export class CampaignKitPreview{
  }
  private syncHotspots():void{
   if(!this.hotspotLayer||!this.rig||!this.renderer)return;
+  // The phone layout intentionally hides every projected category button.
+  // Do not traverse the full rig and all worn gear bounds on each 15 Hz
+  // breathing frame merely to re-hide those buttons. The independently
+  // selected white dot must still follow its real mesh on mobile.
+  if(this.host.clientWidth<=620){
+   this.syncSelectionDot();
+   for(const button of this.hotspotButtons.values())
+    if(!button.hidden)button.hidden=true;
+   return;
+  }
   this.rig.root.updateWorldMatrix(true,true);
   this.camera.updateMatrixWorld(true);
   const bounds=new THREE.Box3().setFromObject(this.rig.root);
