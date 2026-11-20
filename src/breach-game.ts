@@ -100,6 +100,7 @@ import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
+import {captureTargetTransportEligible} from './breach-capture-transport-policy.ts';
 
 
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
@@ -1239,8 +1240,12 @@ export function planCasualtyTransport(s:Session,id:string,patientId:string,
  const a=party(s,id),friendly=s.operators.find(o=>o.id===patientId);
  const civil=s.civilians.find(c=>c.id===patientId),patient=friendly??civil;
  if(!a||!patient||patient===a||!canEdit(s))return false;
- if(friendly&&(friendly.side!==a.side||friendly.health>0||
-    friendly.surrendered))return false;
+ // D15: only the designated downed CAPTURE target may cross allegiance
+ // for patient transport. Same-side casualty orders retain prior rules.
+ const captive=!!friendly&&captureTargetTransportEligible(s,friendly,a);
+ if(friendly&&((friendly.side!==a.side&&!captive)||friendly.health>0||
+    (friendly.surrendered&&!captive)))return false;
+ if(captive&&friendly&&!liveVisibility(s,friendly.p))return false;
  if(civil&&(!civilianTransportEligible(civil,a)||
     !liveVisibility(s,civil.p)))return false;
  if(!intelPassable(to,s.intel,5.4)||

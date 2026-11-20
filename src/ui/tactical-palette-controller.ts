@@ -448,6 +448,13 @@ export function createTacticalPaletteController(config:{
       e.restrained===true&&!!e.escortLeaderId&&
       sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
       SUSPECT_CHALLENGE_RANGE):null;
+  const downedCaptureAtPlan=routeEndCivilianActions&&
+    state.missionType==='capture'&&!!state.captureTarget?
+    nearestPaletteCandidate(enemies(state),at,e=>
+      e.id===state.captureTarget&&e.health<=0&&
+      (!e.carriedById||e.carriedById===a.id)&&
+      liveVisibility(state,e.p)&&
+      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
   const casualtyAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(state.civilians,at,c=>
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
@@ -477,6 +484,7 @@ export function createTacticalPaletteController(config:{
     escortableCivilian:!!rescueAtPlan&&rescueAtPlan.following!==a.id,
     stopFollowingCivilian:!!followingAtPlan,
     nearCivilianCasualty:!!casualtyAtPlan,
+    nearDownedCaptureTarget:!!downedCaptureAtPlan,
     carryingCivilian:!!a.carryingId&&state.civilians.some(c=>
       c.id===a.carryingId&&c.carriedById===a.id),
     posture:current.posture,pace:current.pace,

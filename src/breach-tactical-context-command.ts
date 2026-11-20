@@ -156,6 +156,17 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxReleaseCivilian':
    return finish(planCivilianRelease(state,selected),
      'NO CIVILIAN TRANSPORT TO RELEASE');
+  case 'ctxDragCapture':
+  case 'ctxCarryCapture':{
+   const at=finalPoint(a);
+   const prisoner=enemies(state).find(e=>e.id===state.captureTarget&&
+      e.health<=0&&(!e.carriedById||e.carriedById===a.id)&&
+      distance(at,e.p)<34&&liveVisibility(state,e.p)&&
+      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)));
+   return finish(!!prisoner&&planCasualtyTransport(state,selected,prisoner.id,
+     state.scenario.extract,action==='ctxCarryCapture'?'carry':'drag'),
+     'CAPTURE TARGET TRANSPORT ROUTE NOT AVAILABLE');
+  }
   case 'ctxDragCivilian':
   case 'ctxCarryCivilian':{
    const civ=state.civilians.filter(c=>c.health<=0&&

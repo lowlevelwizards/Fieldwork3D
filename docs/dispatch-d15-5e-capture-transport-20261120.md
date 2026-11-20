@@ -12,6 +12,16 @@ Base: released R2A `418053c5012ee9b3a89fedfe7a955b4eaead4c37`, with public Pages
   a body or modify mission state. Tests cover bad identity, wrong objective,
   live surrender, and exclusive ownership.
 
+## E.2 — authored physical transport, feature branch implementation
+- Reuses the same existing EVACUATE PlanNode and GO-time medical order
+  executor as friendly casualty and real civilian transport.
+- Only the designated downed hostile capture target can cross allegiance for
+  this specific transport. GO rechecks visible physical contact and sweeps.
+- DRAG CAPTURE TARGET / CARRY CAPTURE TARGET are contextual only for the
+  observed, reachable designated target; the target remains red TeamActor.
+- Actual 60 Hz motor movement, old friendly/civilian regression and extraction
+  acceptance are still required before publication.
+
 ## E.2 — physically authorize existing EVACUATE, pending
 Reuse `breach-game.planCasualtyTransport` and
 `breach-order-medical.createMedicalOrderHandler` only for the designated

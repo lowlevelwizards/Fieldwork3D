@@ -13,6 +13,7 @@ import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
 import {stabilizeWound} from './breach-medical-wounds.ts';
 import {dropCivilianCustody,takeCivilianCustody} from './breach-civilian-transport.ts';
+import {captureTargetTransportEligible} from './breach-capture-transport-policy.ts';
 import {casualtyTrailingPosition,transportIsClear}
  from './breach-casualty-transport.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
@@ -64,10 +65,11 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
   }
   if(n.kind==='evacuate'){
     const civil=s.civilians.find(c=>c.id===n.patientId);
-    const friendly=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
+    const friendly=s.operators.find(o=>o.id===n.patientId&&
+      (o.side===a.side||captureTargetTransportEligible(s,o,a)));
     const patient=friendly??civil;
     if(!patient||patient===a||patient.health>0||
-       (friendly&&friendly.surrendered)){
+       (friendly&&friendly.side===a.side&&friendly.surrendered)){
       if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
       else if(friendly)friendly.carriedById=null;
       a.carryingId=null;pop(a);return true;
@@ -83,8 +85,12 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
           y:patient.p.y+Math.sin(theta)*19};
         approach(a,goal,dt,s,.70);return true;
       }
-      if(civil&&(!liveVisibility(s,civil.p)||
-         !sweptBodyClear(a.p,civil.p,s.doors,5.5,sessionWorldGeometry(s)))){
+      // Opposing downed capture targets need the same observed contact and
+      // full-body swept reach as neutral rescue casualties. No remote pickup.
+      if((civil||friendly?.side==='red')&&
+         (!liveVisibility(s,patient.p)||
+          !sweptBodyClear(a.p,patient.p,s.doors,5.5,
+             sessionWorldGeometry(s)))){
         failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return true;
       }
       a.velocity=0;a.actionTimer+=dt;
