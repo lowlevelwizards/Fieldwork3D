@@ -10,6 +10,9 @@ on:
       - 'src/breach-plan-utility-commands.ts'
       - 'src/breach-firing-pipeline.ts'
       - 'src/breach-replay.ts'
+      - 'src/secondary-equipment.ts'
+      - 'src/secondary-magazine-exchange.ts'
+      - 'tests/secondary-s8-magazine-exchange.test.mjs'
       - 'tests/secondary-s5-2-order-handoff.test.mjs'
       - '.github/workflows/secondary-switch-handoff-critical.yml'
   workflow_dispatch:
@@ -23,6 +26,6 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Authored weapon handoff and ammunition conservation
-        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs
+        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s8-magazine-exchange.test.mjs
       - name: Production TypeScript and bundle
         run: npm run build
