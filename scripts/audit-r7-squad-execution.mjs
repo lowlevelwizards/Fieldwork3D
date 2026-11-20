@@ -11,10 +11,11 @@
  * orders, nonfinite positions and exceptions are hard regressions.
  */
 import {generateSite} from '../src/breach-site.ts';
-import {newSession,team,planMove,planSquadEntry,stepSession,toggling}
+import {newSession,team,planMove,planSquadEntry,stepSession,toggling,livePassageSchedule}
  from '../src/breach-game.ts';
 import {activateSite,OPERATOR_RADIUS,doorLeafSegment,pointToSegment,
  setRouteGridAuditObserver} from '../src/breach-core.ts';
+import {inspectPassageLane} from '../src/breach-passage-coordinator.ts';
 import {setTransientRouteObserver}
  from '../src/breach-route-transition.ts';
 import {D311RouteSurvey,createD311GridObserver}
@@ -1470,7 +1471,10 @@ function run(site,seed,kind){
    ...(d327GarageProbe?{d327GarageEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
-    ...(queueDecisionWitnessEnabled?{queueDecisionEvidence}:{}),
+    ...(queueDecisionWitnessEnabled?{queueDecisionEvidence,
+     queueEndState:{doors:session.doors.filter(d=>d.id==='D5').map(d=>({id:d.id,a:d.a,b:d.b,openFraction:d.openFraction})),
+      slots:[...livePassageSchedule(session)].map(([id,slots])=>({id,slots})),
+      lanes:[-1,1].map(side=>({side,...inspectPassageLane(session,'D5',side)}))}}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
