@@ -1,0 +1,43 @@
+name: Visual Armory V2 critical
+on:
+  pull_request:
+    paths:
+      - 'src/equipment-preview.ts'
+      - 'src/equipment-thumbnail-camera.ts'
+      - 'src/ui/campaign-gear-picker.ts'
+      - 'src/campaign-style.css'
+      - 'scripts/smoke-visual-armory-v2.mjs'
+      - 'tests/equipment-thumbnail-camera.test.mjs'
+      - '.github/workflows/visual-armory-v2-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual-armory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript and production build
+        run: npm run check
+      - name: Exact camera bounds and physical inventory regressions
+        run: >-
+          node --experimental-strip-types --test
+          tests/equipment-thumbnail-camera.test.mjs
+          tests/equipment-visual-inspection.test.mjs
+          tests/equipment-physical-board.test.mjs
+      - name: Real phone WebGL thumbnail and Utility modal checks
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          npx playwright install --with-deps chromium
+          node scripts/smoke-visual-armory-v2.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: visual-armory-v2-phone-screenshots
+          path: visual-armory-v2-captures/
+          if-no-files-found: ignore

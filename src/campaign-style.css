@@ -1892,3 +1892,116 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  }
  .campaign-gear-picker-option{padding:10px}
 }
+
+
+/* VA2 — one scroll owner for the gear sheet; no implicit grid-row
+ * spanning. This specifically prevents Utility models and descriptions
+ * overlapping neighboring options at 320/390px. */
+.campaign-gear-picker-panel{min-height:0;overflow:hidden}
+.campaign-gear-picker-scroll{
+ min-height:0;flex:1 1 auto;overflow-y:auto;overflow-x:hidden;
+ overscroll-behavior:contain;scrollbar-gutter:stable;
+ padding:10px 12px max(16px,env(safe-area-inset-bottom));
+}
+.campaign-gear-picker-panel .campaign-gear-picker-list{
+ display:grid;grid-template-columns:minmax(0,1fr);
+ align-content:start;align-items:stretch;gap:8px;
+ min-height:0;min-width:0;padding:0;margin:0;overflow:visible;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-option{
+ display:grid;grid-template-columns:88px minmax(0,1fr);
+ grid-template-rows:auto;
+ align-items:center;align-content:stretch;gap:10px;
+ box-sizing:border-box;position:relative;
+ height:auto!important;min-height:100px;
+ width:100%;margin:0;padding:9px 11px;
+ white-space:normal;text-align:left;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-option>.campaign-gear-picker-model{
+ display:grid;grid-column:1;grid-row:1;
+ width:84px;height:80px;min-height:0;margin:0;
+ align-self:center;justify-self:center;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-option>.campaign-gear-picker-copy{
+ display:flex;grid-column:2;grid-row:1;
+ flex-direction:column;align-items:flex-start;justify-content:center;
+ min-width:0;min-height:0;gap:4px;
+ font:400 12px/1.32 var(--fw-font-narrative);
+ overflow-wrap:break-word;word-break:normal;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-copy>strong{
+ display:block;max-width:100%;font:700 16px/1.2 var(--fw-font-action);
+}
+.campaign-gear-picker-panel .campaign-gear-picker-copy>small{
+ display:block;max-width:100%;font:600 11px/1.3 var(--fw-font-data);
+}
+.campaign-gear-picker-panel .campaign-gear-picker-copy>.campaign-gear-picker-description{
+ display:block;max-width:100%;font:400 12px/1.32 var(--fw-font-narrative);
+ overflow-wrap:break-word;word-break:normal;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-copy>em{display:none}
+.campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]{
+ grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:9px;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]
+ .campaign-gear-picker-option{
+ display:flex;flex-direction:column;align-items:stretch;
+ gap:8px;min-height:0;padding:9px;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]
+ .campaign-gear-picker-option>.campaign-gear-picker-model{
+ display:grid;width:100%;height:105px;
+ flex:0 0 105px;align-self:center;
+ border-radius:6px;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]
+ .campaign-gear-picker-option>.campaign-gear-picker-copy{
+ display:flex;flex:1 1 auto;width:100%;
+ justify-content:start;gap:5px;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]
+ .campaign-gear-picker-copy>strong{
+ font-size:14px;line-height:1.18;min-height:32px;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]
+ .campaign-gear-picker-copy>small{
+ font-size:10px;line-height:1.3;
+}
+.campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]
+ .campaign-gear-picker-description{
+ display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;
+ line-clamp:2;overflow:hidden;font-size:11px;line-height:1.25;
+}
+.campaign-gear-picker-model img,.campaign-kit-selected-model img,
+.fw-field-inventory-model img{object-fit:contain;background:#1b2d2a}
+.campaign-gear-picker-panel .campaign-gear-picker-option[aria-current="true"]{
+ box-shadow:inset 0 0 0 1px #b1c79c;
+}
+.campaign-gear-picker-unissued{
+ margin-top:12px;padding:0;
+ border-top:1px solid #577465;
+}
+.campaign-gear-picker-unissued>summary{
+ display:flex;align-items:center;min-height:48px;
+ font:700 12px/1.4 var(--fw-font-action);
+ color:#c4d2c2;cursor:pointer;
+}
+.campaign-gear-picker-unissued .campaign-gear-picker-list{
+ padding-bottom:8px;
+}
+@media(max-width:350px){
+ .campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]
+  .campaign-gear-picker-option>.campaign-gear-picker-model{
+  height:88px;flex-basis:88px;
+ }
+ .campaign-gear-picker-panel .campaign-gear-picker-list[data-layout="gallery"]
+  .campaign-gear-picker-copy>strong{font-size:13px}
+ .campaign-gear-picker-scroll{padding:8px}
+}
+
+
+/* Modal stacking: a newly detected site update must never visually cover an
+ * active equipment choice or take its touch targets. Once the user closes the
+ * gear sheet, the pending update prompt can be addressed normally. */
+.campaign-gear-picker-backdrop{z-index:2147483000}

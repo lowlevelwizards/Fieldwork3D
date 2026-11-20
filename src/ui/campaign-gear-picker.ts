@@ -83,9 +83,18 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
   const header=document.createElement('header');
   header.className='campaign-gear-picker-head';header.append(heading,closeButton);
   panel.append(header);
+  const scroll=document.createElement('div');
+  scroll.className='campaign-gear-picker-scroll';
   const list=document.createElement('div');
   list.className='campaign-gear-picker-list';
+  const choices=Array.from(source.options);
+  const gallery=choices.length<=6&&slot!=='utility';
+  list.dataset.layout=gallery?'gallery':'rows';
+  const unavailableList=document.createElement('div');
+  unavailableList.className='campaign-gear-picker-list';
+  unavailableList.dataset.layout='rows';
   const thumbnails:{id:string;el:HTMLElement}[]=[];
+  const seen=new Set<HTMLElement>();
   for(const option of Array.from(source.options)){
    const def=itemDefinition(option.value);
    const chosen=option.value===source.value;
@@ -101,18 +110,28 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
    detail.textContent=(def?'ITEM '+def.massKg.toFixed(2)+' KG':'')+
     weightDelta+(chosen?' · EQUIPPED':option.disabled?' · UNAVAILABLE':'');
    const description=document.createElement('span');
+   description.className='campaign-gear-picker-description';
    description.textContent=def?.description||option.textContent||'';
    const visual=document.createElement('span');
    visual.className='campaign-gear-picker-model';
    visual.setAttribute('aria-hidden','true');
    visual.textContent=option.value.endsWith('-none')?'EMPTY':'3D';
-   entry.append(visual,name,detail,description);
+   // A single intrinsic-height text column replaces four implicit grid
+   // rows (which previously overlapped in tall Utility options on iPhone).
+   const copy=document.createElement('span');
+   copy.className='campaign-gear-picker-copy';
+   copy.append(name,detail,description);
+   entry.append(visual,copy);
+   entry.title=def?.description||'';
+   entry.dataset.optionId=option.value;
+   entry.dataset.available=String(!option.disabled);
+   if(chosen)entry.dataset.equipped='true';
    if(renderModel&&!option.value.endsWith('-none'))
     thumbnails.push({id:option.value,el:visual});
    if(option.disabled){
     const warning=document.createElement('em');
     warning.textContent=option.textContent||'Not available in this campaign';
-    entry.append(warning);
+    copy.append(warning);
    }
    entry.addEventListener('click',()=>{
     if(entry.disabled)return;
@@ -122,9 +141,19 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
     }
     close();
    });
-   list.append(entry);
+   (option.disabled&&!chosen?unavailableList:list).append(entry);
   }
-  panel.append(list);backdrop.append(panel);
+  scroll.append(list);
+  if(unavailableList.childElementCount){
+   const unissued=document.createElement('details');
+   unissued.className='campaign-gear-picker-unissued';
+   const summary=document.createElement('summary');
+   summary.textContent='NOT ISSUED / RESTRICTED · '+
+    unavailableList.childElementCount+' OPTIONS';
+   unissued.append(summary,unavailableList);
+   scroll.append(unissued);
+  }
+  panel.append(scroll);backdrop.append(panel);
   backdrop.addEventListener('click',event=>{
    if(event.target===backdrop)close();
   });
@@ -141,25 +170,39 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
    }
   });
   document.body.append(backdrop);
-  // Progressive visual rendering: one card per frame, from the same live
-  // operator geometry and WebGL context. Never a second canvas per option.
-  let cursor=0;
-  const populate=()=>{
-   if(closed||!backdrop.isConnected||cursor>=thumbnails.length)return;
-   const item=thumbnails[cursor++];
-   const source=renderModel?.(item.id);
-   if(source){
+  // Render only items that enter the visible scroller. A separate drawer
+  // of unavailable gear stays collapsed; no costly images until inspected.
+  const renderThumb=(item:{id:string;el:HTMLElement})=>{
+   if(closed||seen.has(item.el)||!item.el.isConnected)return;
+   seen.add(item.el);
+   const uri=renderModel?.(item.id);
+   if(uri){
     const img=document.createElement('img');
-    img.src=source;img.alt='';img.loading='lazy';
+    img.src=uri;img.alt='';img.decoding='async';
     item.el.replaceChildren(img);
     item.el.dataset.model='real';
    }else{
-    item.el.textContent='NO MODEL';
+    item.el.textContent='NOT VISIBLE';
     item.el.dataset.model='unavailable';
    }
-   if(cursor<thumbnails.length)requestAnimationFrame(populate);
   };
-  if(thumbnails.length)requestAnimationFrame(populate);
+  requestAnimationFrame(()=>{
+   if(closed||!backdrop.isConnected)return;
+   if(typeof IntersectionObserver==='undefined'){
+    for(const item of thumbnails)renderThumb(item);
+    return;
+   }
+   const observer=new IntersectionObserver(entries=>{
+    for(const entry of entries){
+     if(!entry.isIntersecting)continue;
+     const match=thumbnails.find(item=>item.el===entry.target);
+     if(match)renderThumb(match);
+     observer.unobserve(entry.target);
+    }
+    if(closed)observer.disconnect();
+   },{root:scroll,rootMargin:'160px'});
+   for(const item of thumbnails)observer.observe(item.el);
+  });
   const active=list.querySelector<HTMLButtonElement>('[aria-current="true"]:not(:disabled)');
   (active||closeButton).focus({preventScroll:true});
  });
