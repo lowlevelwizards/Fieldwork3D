@@ -47,7 +47,7 @@ export type ActorFrame=Pick<TeamActor,
   'reloadFromRounds'|'reloadTargetRounds'|'reloadSelectedMagazineId'|
   'lastHitAt'|'lastDownAt'|'lastHitRegion'|'lastHitYaw'|
   'lastHitSeverity'|'downPose'|'downClearance'|'flashUntil'|'suppression'|
-  'wedgeRemaining'|'carryingId'|'carriedById'|
+  'wedgeRemaining'|'carryingId'|'carriedById'|'transportMode'|
   'lastTreatmentAt'|'lastTreatmentTargetId'|'treatmentActive'|'treatmentProgress'|
   'medical'|'medicalSupplies'|'weapon'|'weaponConfiguration'|'weaponLightOn'|'nvgDeployed'|'injuryStage'|'armorIntegrity'|'helmetIntegrity'|'flashCharges'|'morale'|'surrendered'|'defense'|'watch'|'aimInstruction'|
   'lastThrowAt'|'lastDoorAt'|'lastDoorId'|'lastDoorMethod'|'stride'|
@@ -217,6 +217,7 @@ export function snapshot(s:Session,seenGround?:string[],
        lastTreatmentTargetId:a.lastTreatmentTargetId,
        treatmentActive:a.treatmentActive,treatmentProgress:a.treatmentProgress,
        carryingId:a.carryingId,carriedById:a.carriedById,
+       transportMode:a.transportMode??null,
        wedgeRemaining:a.wedgeRemaining,
        restraintRemaining:a.restraintRemaining,
        fieldInventory:a.equipment?.fieldInventory?
@@ -565,6 +566,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
+      // Historical frames without a mode cannot inherit the future one.
+      transportMode:copy.transportMode??null,
       lastSurrenderAt:copy.lastSurrenderAt,
       releasedWeaponId:copy.releasedWeaponId??null,
       restrained:copy.restrained===true,
