@@ -70,6 +70,10 @@ export const withActions=(a:Operator):TeamActor=>({
   armorIntegrity:0,helmetIntegrity:0,flashCharges:2,
   firePolicy:'engage',suppressPoint:null,focusTargetId:null,
   weapon:'carbine',injuryStage:0,defense:null,watch:null,
-  defenseUntil:0,surrendered:false,lastFireRepositionAt:-100,
+  defenseUntil:0,surrendered:false,
+  suspectEscapeMode:null,suspectEscapeWeaponId:null,
+  suspectEscapeStartedAt:-100,suspectEscapeCooldownUntil:0,
+  suspectEscapeGoal:null,suspectRearmedSecondary:false,
+  lastFireRepositionAt:-100,
   lastMissionEvadeAt:-100,lastEnemyDoorCloseAt:-100,
 });
