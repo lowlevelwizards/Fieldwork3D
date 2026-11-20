@@ -15,6 +15,14 @@ export function recordCompletedGeneratedEntry(
  completeEntry.set(actor,{orderId:node.id,doorId:node.entryDoorId,
   goal:{...node.p}});
 }
+/** A historical, physically completed generated entry may establish that a
+ * particular teammate crossed THIS door. A new active order invalidates the
+ * rest witness; it never licenses physical movement or reveals a door.
+ */
+export function completedGeneratedEntryAt(actor:TeamActor,doorId:string):boolean{
+ const prior=completeEntry.get(actor);
+ return !!prior&&prior.doorId===doorId&&actor.plan.length===0;
+}
 export function clearCompletedEntryOnNewOrder(actor:TeamActor,orderId:number):void{
  const prior=completeEntry.get(actor);
  if(prior&&prior.orderId!==orderId)completeEntry.delete(actor);
