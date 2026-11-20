@@ -11,7 +11,15 @@ function box(o,mat,x=0){
 }
 function bounds(o){
  o.updateMatrixWorld(true);
- return new THREE.Box3().setFromObject(o);
+ const result=new THREE.Box3();
+ function add(node,hidden=false){
+  if(hidden||!node.visible)return;
+  if(node instanceof THREE.Mesh)
+   result.union(new THREE.Box3().setFromObject(node));
+  for(const child of node.children)add(child);
+ }
+ add(o);
+ return result;
 }
 const close=(a,b)=>assert.ok(a.distanceTo(b)<1e-5,
  'rigid compiled geometry must preserve exact world bounds');
