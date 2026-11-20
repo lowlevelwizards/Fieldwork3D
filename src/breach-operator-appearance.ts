@@ -95,7 +95,7 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   // Passive, actual-pelvis-mounted S4 carry. An unissued or unequipped
   // secondary does not materialize. S5 will take over drawing authority.
   syncHipSecondaryVisual(r.hip,p.equipment?.secondary,
-   !!p.equipment&&p.equipment.slots.belt!=='belt-none');
+   !!p.equipment&&p.equipment.slots.belt!=='belt-none',r.chest,r.pack);
   // Stable career-based presentation, never changing physical collision or IK.
   const identity=p.appearanceSeed??0;
   if(identity!==r.appearanceSeed){
