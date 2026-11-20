@@ -100,3 +100,29 @@ test('S8.2: authored RELOAD uses equipped sidearm, not rifle counts or reserve',
  assert.equal(a.insertedMagazineId,rifleBefore.insertedMagazineId);
  assert.deepEqual(a.spareMagazines,rifleBefore.spare);
 });
+
+test('S8.3: emergency Glock reload creates exactly one serial-accurate dropped magazine',()=>{
+ const s=newSession(),a=team(s)[0];
+ const kit={...initialSecondaryEquipment(a.id,'glock-g26'),loadedRounds:0};
+ a.equipment={...initialEquipmentLoadout(),secondary:kit};
+ let ready=requestSecondarySwitch(initialSecondarySwitch(),'secondary',kit).state;
+ for(let i=0;i<60;i++)ready=advanceSecondarySwitch(ready,1/60,kit);
+ a.secondarySwitch=ready;
+ const oldId=kit.loadedMagazineId;
+ const rifleRounds=a.magazine;
+ const ammo=secondaryRoundTotal(kit);
+ assert.equal(planReload(s,a.id),true);
+ const hooks={pop(actor){actor.plan.shift()},notify(){},clearIssue(){},
+  beginReload(){throw Error('cannot reload rifle while pistol drawn')},
+  fail(_s,_a,_n,reason){throw Error(reason)},
+  rotate(){return true},battleEvent(){}};
+ for(let i=0;i<180&&a.plan.length;i++)
+  executeTacticalUtilityOrder(s,a,a.plan[0],1/60,hooks);
+ assert.equal(a.plan.length,0);
+ const drops=s.dropped.filter(m=>m.magazineId===oldId);
+ assert.equal(drops.length,1,'one physical ejection, never one per render');
+ assert.equal(drops[0].secondaryWeapon,'glock-g26');
+ assert.equal(drops[0].rounds,0);
+ assert.equal(a.magazine,rifleRounds);
+ assert.equal(secondaryRoundTotal(a.equipment.secondary),ammo);
+});
