@@ -6,6 +6,7 @@ import {itemDefinition} from '../equipment-catalog.ts';
 import {FIELD_CARRY_LOCATIONS,initialFieldInventory,
  type FieldCarryLocation,type FieldItemId} from '../equipment-field-inventory.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
+import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
 import {quoteOneMagazineMove} from '../equipment-magazine-transfer.ts';
 import {quoteCarryGearChange}
  from '../equipment-carry-gear-change.ts';
@@ -42,16 +43,17 @@ export type OutfitterGalleryOptions={
  onMoveField:(id:FieldItemId,from:FieldCarryLocation,to:FieldCarryLocation)=>void;
  onMoveMagazine:(id:string,to:FieldCarryLocation)=>void;
  onArsenal:()=>void;
+ onAutoPack?:()=>void;
  arsenalDisabled?:boolean;
  selectedItems?:Map<string,string>;
  scrollPositions?:Map<string,number>;
- onInspect?:(slot:LoadoutSlot,id:string,kind:'gear'|'field'|'magazine')=>void;
+ onInspect?:(slot:LoadoutSlot,id:string,kind:'gear'|'field'|'magazine',location?:FieldCarryLocation)=>void;
  onSelectCategory?:(slot:LoadoutSlot)=>void;
  onAdvanced:()=>void;
 };
 type Choice={id:string;label:string;mass:string;kind:'gear'|'field'|'magazine';
  issued:boolean;equipped:boolean;reason?:string;
- row?:HTMLElement;fieldId?:FieldItemId};
+ row?:HTMLElement;fieldId?:FieldItemId;location?:FieldCarryLocation;magazineId?:string;};
 export function createOutfitterGallery(options:OutfitterGalleryOptions){
  const root=el('section','fw-outfitter-gallery');
  root.setAttribute('aria-label','Selected equipment and options');
@@ -83,7 +85,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    if(!root.isConnected||!tile.isConnected)return;
    const url=choice.kind==='field'?
     options.renderField?.(choice.fieldId??'flashbang'): 
-    choice.kind==='gear'?options.renderModel(slot,choice.id):null;
+    choice.kind==='gear'?options.renderModel(slot,choice.id):
+    null;
    if(!url)return;
    const img=el('img');img.src=url;img.alt='';img.decoding='async';
    frame.replaceChildren(img);
@@ -140,6 +143,24 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   }
   return result;
  };
+ const carryChoices=(loc:FieldCarryLocation)=>{
+  const zone=board.zones.find(z=>z.location===loc);
+  const result:Choice[]=[];
+  for(const tile of zone?.items??[]){
+   if(tile.kind==='magazine'&&tile.magazineId){
+    result.push({id:'carry-mag-'+tile.magazineId,
+     label:tile.label,mass:'×'+tile.quantity,
+     kind:'magazine',issued:true,equipped:true,
+     location:loc,magazineId:tile.magazineId});
+   }else if(tile.kind==='field'&&tile.itemId){
+    result.push({id:'carry-field-'+tile.itemId+'-'+loc,
+     label:tile.label,mass:'×'+tile.quantity,
+     kind:'field',fieldId:tile.itemId,location:loc,
+     issued:true,equipped:true});
+   }
+  }
+  return result;
+ };
  const createPlace=(label:string,value:FieldCarryLocation,
   available:(location:FieldCarryLocation)=>{ok:boolean;reason?:string},
   onChange:(location:FieldCarryLocation)=>void)=>{
@@ -180,7 +201,17 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
     const zone=board.zones.find(z=>z.location===loc);
     context.append(el('span','fw-outfitter-detail-capacity',
      (zone?.used??0)+' / '+(zone?.capacity??0)+' SLOTS'));
+    if(options.onAutoPack&&zone&&zone.capacity>0&&zone.used>=zone.capacity){
+     const pack=action('AUTO PACK',options.onAutoPack,'fw-outfitter-context-action');
+     pack.disabled=options.locked;context.append(pack);
+    }
    }
+  }else if(choice.kind==='field'&&choice.location&&choice.fieldId){
+   const from=choice.location,id=choice.fieldId;
+   context.append(createPlace('Move '+choice.label,from,
+    loc=>quoteSingleFieldTransfer(options.kit,options.magazines,
+     inventory,id,from,loc),
+    loc=>options.onMoveField(id,from,loc)));
   }else if(choice.kind==='field'&&choice.row){
    const buttons=[...choice.row.querySelectorAll<HTMLButtonElement>(
     '.fw-field-inventory-controls button')];
@@ -207,15 +238,16 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
     context.append(dropdown);
    }
   }else if(choice.kind==='magazine'){
-   let location:FieldCarryLocation|null=null;
-   for(const zone of board.zones)
-    if(zone.items.some(item=>item.magazineId===choice.id))location=zone.location;
+   const magId=choice.magazineId??choice.id;
+   let location:FieldCarryLocation|null=choice.location??null;
+   if(!location)for(const zone of board.zones)
+    if(zone.items.some(item=>item.magazineId===magId))location=zone.location;
    if(location){
     const start=location;
     context.append(createPlace('Magazine carry',start,
      loc=>quoteOneMagazineMove(options.kit,options.magazines,
-      choice.id,loc,inventory),
-     loc=>options.onMoveMagazine(choice.id,loc)));
+      magId,loc,inventory),
+     loc=>options.onMoveMagazine(magId,loc)));
    }
   }
  };
@@ -233,7 +265,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
      choice.kind==='field'&&choice.equipped||
      choice.kind==='magazine')
    options.onInspect?.(active,choice.kind==='field'?
-    choice.fieldId??choice.id:choice.id,choice.kind);
+    choice.fieldId??choice.id:choice.magazineId??choice.id,
+    choice.kind,choice.location);
   else options.onInspect?.(active,'','gear');
   showDetail(choice);
  };
@@ -257,6 +290,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   const base=equipmentChoices(slot);
   if(slot==='utility'||slot==='tactical')base.push(...fieldChoices());
   if(slot==='primary')base.push(...magazineChoices());
+  if(slot==='rig'||slot==='belt'||slot==='backpack')
+   base.push(...carryChoices(slot));
   choices=base;
   rail.replaceChildren();
   for(const choice of choices){
