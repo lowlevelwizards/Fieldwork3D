@@ -5,7 +5,7 @@
 import type {Pt} from './breach-core.ts';
 export type TransportMode='drag'|'carry';
 export const TRANSPORT_GAP:Readonly<Record<TransportMode,number>>={
- drag:25,carry:11
+ drag:25,carry:13
 };
 export function casualtyTrailingPosition(from:Pt,to:Pt,heading:number,
  mode:TransportMode):Pt{
