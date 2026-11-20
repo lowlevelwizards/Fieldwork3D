@@ -94,7 +94,9 @@ export function createOrderExecutor(port:OrderExecutionPort){
     if(civil)dropCivilianCustody(civil,a);
     else {
       const prior=s.operators.find(o=>o.id===a.carryingId);
-      if(prior)prior.carriedById=null;
+      if(prior?.carriedById===a.id){
+         prior.carriedById=null;prior.transportMode=null;
+       }
       a.carryingId=null;
     }
   }
