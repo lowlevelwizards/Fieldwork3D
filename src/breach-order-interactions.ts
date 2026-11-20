@@ -11,6 +11,7 @@ import {quoteDeployedFieldUse,spendDeployedFieldItem}
 import {RESTRAINT_CONTACT_SECONDS} from './equipment-interaction-timings.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {canSecureRescuePerson} from './breach-civilian-mission.ts';
+import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {SUSPECT_CHALLENGE_RANGE,SUSPECT_CHALLENGE_SECONDS,
  challengeSuspectDecision,commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {canRelocateCover,coverPushDistance} from './breach-movable-cover.ts';
@@ -42,6 +43,7 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     const contactCommand=n.objectId.startsWith('civ:')&&
       (n.interaction==='secure-civilian'||
        n.interaction==='follow-civilian'||
+       n.interaction==='stop-following-civilian'||
        n.interaction==='restrain-civilian');
     if(!contactCommand&&!near(a.p,n.p,7)){
       // Once an electrical action has begun, losing the contact position
@@ -101,16 +103,17 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     if(n.objectId.startsWith('civ:')&&
        (n.interaction==='secure-civilian'||
         n.interaction==='follow-civilian'||
+        n.interaction==='stop-following-civilian'||
         n.interaction==='restrain-civilian')){
       const person=s.civilians.find(c=>c.id===n.objectId);
-      // This is a physically authored contact, not a remote command.
-      // A person who shuffles a little while the squad approaches must
-      // not make SECURE appear inert; close the remaining gap under the
-      // usual motor/door/traffic authority, with a bounded pursuit range.
+      // Spoken FOLLOW/STOP use actual voice reach and obstruction checks.
+      // SECURE/RESTRAIN alone approach for physical hand contact.
+      const voice=n.interaction==='follow-civilian'||
+        n.interaction==='stop-following-civilian';
       const range=person?d(a.p,person.p):Infinity;
-      const clear=!!person&&
-        sweptBodyClear(a.p,person.p,s.doors,5.5,sessionWorldGeometry(s));
-      if(person&&person.health>0&&range>28&&range<=45&&
+      const clear=!!person&&sweptBodyClear(a.p,person.p,s.doors,
+        voice?1.5:5.5,sessionWorldGeometry(s));
+      if(!voice&&person&&person.health>0&&range>28&&range<=45&&
          d(person.p,n.p)<=45&&clear&&
          (range<=32||liveVisibility(s,person.p))){
         // A civilian who shifts just past the operator stays a reachable
@@ -118,16 +121,19 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         // the person has slipped behind the present sight cone.
         approach(a,person.p,dt,s,.65);return true;
       }
-      if(!person||person.health<=0||range>28||!clear||
-         (person.rescueTarget&&!canSecureRescuePerson(person,a,
+      const knownEscort=!!person?.following&&person.state==='escorted';
+      if(!person||person.health<=0||
+         range>(voice?CIVILIAN_VOICE_RANGE:28)||!clear||
+         (n.interaction==='follow-civilian'&&range>28&&
+          !knownEscort&&!liveVisibility(s,person.p))||
+         (!voice&&person.rescueTarget&&!canSecureRescuePerson(person,a,
            (from,to)=>sweptBodyClear(from,to,s.doors,5.5,sessionWorldGeometry(s))))){
-        failCurrentOrder(s,a,n,'CIVILIAN NOT IN PHYSICAL REACH');return true;
+        failCurrentOrder(s,a,n,voice?
+          'CIVILIAN OUT OF VOICE RANGE OR OBSTRUCTED':
+          'CIVILIAN NOT IN PHYSICAL REACH');return true;
       }
-      // SECURE includes the obvious human movement: turn toward the
-      // person actually in arm's reach, then make a short reassurance
-      // gesture. In this close physical context, directional FOV alone
-      // must not invalidate a legal contact. No remote or through-wall
-      // interaction; GO rechecks live person position every tick.
+      // Face the known person for either verbal instruction or close
+      // hand contact. Both revalidate range and obstructions on GO.
       a.velocity=0;
       const bearing=Math.atan2(person.p.y-a.p.y,person.p.x-a.p.x);
       if(!rotate(a,bearing,dt,s))return true;
@@ -157,8 +163,24 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       // Once face-to-face, complete at the authoritative contact. The
       // visible hand reach has its own short post-contact pose window:
       // already-aligned contacts keep their prior one-tick responsiveness.
-      a.lastCivilianContactAt=s.seconds;
-      if(n.interaction==='follow-civilian'){
+      // Do not animate a hand touching someone 90 units away.
+      if(!voice||range<=28)a.lastCivilianContactAt=s.seconds;
+      if(n.interaction==='stop-following-civilian'){
+        if(!person.rescueTarget||s.missionType!=='rescue'||
+           s.mission!=='extract'||!s.rescue||!knownEscort){
+          failCurrentOrder(s,a,n,'PERSON IS NOT FOLLOWING');return true;
+        }
+        if(!setCivilianState(person,'compliant',s.seconds)){
+          failCurrentOrder(s,a,n,'PERSON CANNOT STOP');return true;
+        }
+        person.following=null;person.goal=null;person.nav=[];
+        person.lastEscortRouteAt=-100;
+        s.rescue.following=null;s.rescue.p=clone(person.p);
+        if(range<=28){
+          person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
+        }
+        notify(s,'PERSON HOLDING POSITION — FOLLOW TO RESUME');
+      }else if(n.interaction==='follow-civilian'){
         if(!person.rescueTarget||s.missionType!=='rescue'||
            s.mission!=='extract'||!s.rescue){
           failCurrentOrder(s,a,n,'ESCORT NOT AVAILABLE');return true;
@@ -168,7 +190,9 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         }
         person.following=a.id;
         s.rescue.following=a.id;s.rescue.p=clone(person.p);
-        person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
+        if(range<=28){
+          person.lastContactAt=s.seconds;person.lastContactPoint=clone(a.p);
+        }
         notify(s,a.name+' ESCORTING PERSON');
       }else{
         if(!setCivilianState(person,'compliant',s.seconds)){
