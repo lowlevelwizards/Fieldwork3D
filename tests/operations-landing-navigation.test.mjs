@@ -75,7 +75,9 @@ test('Operations first viewport keeps priority ahead of secondary controls',()=>
   ui.indexOf('grid.append(overview,logistics)'));
  assert.match(overview,/const workspace=node\('div','campaign-overview-workspace'\)/);
  assert.match(overview,/priority\.append\(nextCard,readiness\)/);
- assert.match(overview,/support\.append\(stats,suppliesSummary,shortcuts\)/);
+ assert.match(overview,/support\.append\(shortcuts\)/);
+ assert.match(overview,/projectOperationsSummary\(c\)/);
+ assert.match(overview,/campaign-uxr-status-strip/);
  assert.match(overview,/if\(department\)support\.append\(department\)/);
  assert.match(overview,/workspace\.append\(priority,support\)/);
  assert.match(overview,/overview\.append\(workspace,footer\)/);
@@ -120,20 +122,21 @@ test('Operations uses wide workspace columns without narrowing mobile fallback',
  assert.match(desktop,/\.campaign-overview-support\{gap:16px\}/);
 });
 
-test('Cases board orders displayed contracts by campaign day and discloses its limit',()=>{
+test('Cases preserve deadline order and expose every offer through focused navigation',()=>{
  const ui=source('campaign-ui.ts');
  const cases=ui.slice(ui.indexOf("const jobs=node('section','campaign-section')"),
   ui.indexOf('grid.append(jobs)'));
  assert.match(cases,/const openContracts=c\.contracts\.filter/);
  assert.match(cases,/const sorted=\[\.\.\.openContracts\]\.sort\(\(a,b\)=>/);
  assert.match(cases,/a\.deadline-b\.deadline\|\|a\.id\.localeCompare\(b\.id\)/);
- assert.match(cases,/const visible=sorted\.slice\(0,3\)/);
- assert.match(cases,/node\('p','campaign-contract-board-summary'/);
- assert.match(cases,/node\('div','campaign-contract-board'\)/);
- assert.match(cases,/for\(const contract of visible\)board\.append\(this\.contract\(contract,c\)\)/);
- assert.match(cases,/if\(sorted\.length>visible\.length\)/);
- assert.match(cases,/node\('details','campaign-contract-more'\)/);
- assert.match(cases,/for\(const contract of sorted\.slice\(visible\.length\)\)/);
+ assert.match(cases,/campaign-uxr-case-browser/);
+ assert.match(cases,/campaign-uxr-case-pages/);
+ assert.match(cases,/campaign-uxr-case-position/);
+ assert.match(cases,/const pages=sorted\.map\(k=>this\.contract\(k,c\)\)/);
+ assert.match(cases,/const selectCase=\(index:number\)=>/);
+ assert.match(cases,/this\.selectedCaseId=sorted\[current\]\.id/);
+ assert.match(cases,/Math\.abs\(deltaX\)>55/);
+ assert.doesNotMatch(cases,/const visible=sorted\.slice\(0,3\)/);
  assert.match(cases,/button\('CONTINUE DEPLOYMENT'/);
 });
 
@@ -148,7 +151,7 @@ test('Cases board stays single-column on phones and uses desktop columns when wi
  assert.match(cases,/\.campaign-contract-more>\.campaign-contract-board\{margin-top:13px\}/);
 });
 
-test('Squad workspace keeps deployment assignment before active roster and existing actions',()=>{
+test('Squad shows one visual deployment team and a selected operator inspector',()=>{
  const ui=source('campaign-ui.ts');
  const personnel=ui.slice(ui.indexOf("const personnel=node('section','campaign-section')"),
   ui.indexOf("const logistics=node('section','campaign-section')"));
@@ -156,13 +159,17 @@ test('Squad workspace keeps deployment assignment before active roster and exist
  assert.match(personnel,/personnelWorkspace\.append\(deployment\)/);
  assert.match(personnel,/const activeOperators=c\.operators\.filter\(p=>/);
  assert.match(personnel,/p\.status!=='retired'&&p\.status!=='lost'/);
- assert.match(personnel,/node\('h2','','ACTIVE ROSTER'\)/);
+ assert.match(personnel,/node\('h2','','OPERATOR DETAIL'\)/);
+ assert.match(personnel,/campaign-uxr-squad-grid/);
+ assert.match(personnel,/campaign-uxr-reserve-tiles/);
+ assert.match(personnel,/card\.hidden=p\.id!==selectedId/);
  assert.match(personnel,/if\(!activeOperators\.length\)roster\.append/);
  assert.match(personnel,/for\(const p of activeOperators\)/);
  assert.match(personnel,/rosterPanel\.append\(roster\)/);
  assert.match(personnel,/personnelWorkspace\.append\(rosterPanel\)/);
  assert.match(personnel,/personnel\.append\(personnelWorkspace\)/);
- assert.match(personnel,/this\.handlers\.assignSlot\(slot,picker\.value\)/);
+ assert.match(personnel,/this\.handlers\.assignSlot\(slot,p\.id\)/);
+ assert.doesNotMatch(personnel,/this\.handlers\.assignSlot\(slot,picker\.value\)/);
  assert.match(personnel,/this\.handlers\.openStudio\(p\.id\)/);
 });
 
@@ -188,7 +195,8 @@ test('Logistics has stock, replenish actions and armory in task-first DOM order'
  assert.match(logistics,/supplyPanel\.append\(squadReplenish,node\('h3','campaign-logistics-buy-heading'/);
  assert.match(logistics,/supplyPanel\.append\(purchases\)/);
  assert.match(logistics,/logisticsWorkspace\.append\(supplyPanel\)/);
- assert.match(logistics,/logisticsWorkspace\.append\(inventory\)/);
+ assert.match(logistics,/procurement\.append\(node\('summary'[\s\S]*?inventory\)/);
+ assert.match(logistics,/logisticsWorkspace\.append\(procurement\)/);
  assert.match(logistics,/logistics\.append\(logisticsWorkspace\)/);
  assert.match(logistics,/this\.handlers\.buyAmmo/);
  assert.match(logistics,/this\.handlers\.buyMedical/);
@@ -208,14 +216,16 @@ test('Logistics keeps one-column phones and separates supply and armory on deskt
  assert.match(css,/@media\(max-width:600px\)\{\.campaign-purchases\{grid-template-columns:minmax\(0,1fr\)/);
 });
 
-test('Records preserve eight recent reports and disclose earlier history on demand',()=>{
+test('Records expose eight indexed reports and lazily disclose older history',()=>{
  const ui=source('campaign-ui.ts');
  const records=ui.slice(ui.indexOf("const chronicle=node('section','campaign-section campaign-chronicle')"),
   ui.indexOf('const footer=node(\'div\',\'campaign-footer\')'));
  assert.match(records,/const recentReports=c\.history\.slice\(-8\)\.reverse\(\)/);
  assert.match(records,/const renderOperation=\(report:\(typeof c\.history\)\[number\]\)=>/);
- assert.match(records,/const operationBoard=node\('div','campaign-operation-board'\)/);
- assert.match(records,/for\(const report of recentReports\)operationBoard\.append\(renderOperation\(report\)\)/);
+ assert.match(records,/const operationBoard=node\('div','campaign-operation-board campaign-uxr-record-index'\)/);
+ assert.match(records,/const record=button\('',\(\)=>inspect\(i\),'campaign-uxr-record-row'\)/);
+ assert.match(records,/inspected\.replaceChildren\(renderOperation\(report\)\)/);
+ assert.match(records,/this\.selectedRecordId=report\.id/);
  assert.match(records,/LATEST '\+recentReports\.length\+' OF '\+c\.history\.length/);
  assert.match(records,/if\(c\.history\.length>recentReports\.length\)/);
  assert.match(records,/const older=node\('details','campaign-operation-more'\)/);
@@ -295,7 +305,7 @@ test('Operator action labels are unique by callsign while retaining existing han
  for(const handler of [
   'this.handlers.resupply(p.id)','this.handlers.resupplyMedical(p.id)',
   'this.handlers.treat(p.id)','this.handlers.retire(p.id)',
-  'this.handlers.assignSlot(slot,picker.value)'
+  'this.handlers.assignSlot(slot,p.id)'
  ])assert.ok(personnel.includes(handler),'Existing action changed '+handler);
 });
 
@@ -322,7 +332,7 @@ test('C5 Logistics preserves purchases, shows truthful low stock and discloses w
  const ui=source('campaign-ui.ts');
  const logistics=ui.slice(ui.indexOf("const logistics=node('section','campaign-section')"),
   ui.indexOf("const recruit=button('RECRUIT OPERATOR"));
- assert.match(logistics,/count===0\|\|\(label==='ROUNDS'&&count<60\)/);
+ assert.match(logistics,/if\(needed>count\)fact\.classList\.add\('is-low'\)/);
  assert.match(logistics,/fact\.classList\.add\('is-low'\)/);
  assert.match(logistics,/buy\.disabled=!canAffordCampaignPurchase\(c,cost\)/);
  assert.match(logistics,/buy\.setAttribute\('aria-description',why\)/);
@@ -394,7 +404,7 @@ test('C8 UI-only disclosure continuity survives in-place campaign refresh',()=>{
  assert.match(home,/for\(const detail of this\.root\.querySelectorAll<HTMLDetailsElement>\(/);
  assert.match(home,/detail\.open=openWorkspaceDetails\.has/);
  for(const key of [
-  'campaign-context','more-cases','more-history','personnel-milestones',
+  'campaign-context','more-history','personnel-milestones',
   'service-record','related-cases','closeout-notes',
   'save-utilities','department-profile'
  ])assert.ok(home.includes("dataset.campaignDetail='"+key+"'"),
@@ -432,7 +442,7 @@ test('C9 checks restored full roster, lazy history, low stock and active mission
   'full roster did not render','earlier records should be lazy before opening',
   'earlier history failed to load remaining two records',
   'exhausted reserves were not restored',
-  'empty stock alerts missing','saved personnel milestones inaccessible',
+  'selected HQ resource is not identifiable','saved personnel milestones inaccessible',
   'active mission resume action missing',
   'squad slots editable during an active deployment',
   'accepting a contract altered recent operation history',

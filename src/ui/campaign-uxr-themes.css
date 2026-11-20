@@ -1,0 +1,72 @@
+/* UXR-01: opt-in Operations Room theme studies.
+ * Applied only to .campaign-screen[data-fw-theme]; do not touch uniforms,
+ * real-world gear colors, tactical rendering or the global game palette.
+ * These are three prototypes, not a player preference/save schema. */
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) {
+  --fw-bg:var(--uxr-backdrop);
+  --fw-panel:var(--uxr-panel);
+  --fw-panel-raised:var(--uxr-raised);
+  --fw-panel-deep:var(--uxr-recessed);
+  --fw-control-bg:var(--uxr-control);
+  --fw-interactive:var(--uxr-control);
+  --fw-control-active:var(--uxr-selected);
+  --fw-panel-border:var(--uxr-border);
+  --fw-text:var(--uxr-foreground);
+  --fw-text-muted:var(--uxr-muted);
+  --fw-text-faint:var(--uxr-subtle);
+  --fw-sage:var(--uxr-selected);
+  --fw-brass:var(--uxr-attention);
+  --fw-focus:var(--uxr-attention);
+}
+.campaign-screen[data-fw-theme="industrial"] {
+  --uxr-backdrop:#171d1e;--uxr-panel:#293435;
+  --uxr-raised:#344143;--uxr-recessed:#202a2b;
+  --uxr-control:#344544;--uxr-selected:#a5bdac;
+  --uxr-border:#61746d;--uxr-foreground:#e5e5d9;
+  --uxr-muted:#bdc7be;--uxr-subtle:#97aaa0;
+  --uxr-attention:#c59c70;
+}
+.campaign-screen[data-fw-theme="cold"] {
+  --uxr-backdrop:#121c24;--uxr-panel:#293944;
+  --uxr-raised:#354b57;--uxr-recessed:#192b35;
+  --uxr-control:#344d58;--uxr-selected:#a4c7cc;
+  --uxr-border:#657e87;--uxr-foreground:#e7e9e6;
+  --uxr-muted:#c0d0d2;--uxr-subtle:#94abb3;
+  --uxr-attention:#d6a16f;
+}
+.campaign-screen[data-fw-theme="ledger"] {
+  --uxr-backdrop:#272c29;--uxr-panel:#424a42;
+  --uxr-raised:#535d51;--uxr-recessed:#313a32;
+  --uxr-control:#545e50;--uxr-selected:#c0cbaa;
+  --uxr-border:#788272;--uxr-foreground:#e2ddd0;
+  --uxr-muted:#d0cfc1;--uxr-subtle:#b7bfaa;
+  --uxr-attention:#d8ad82;
+}
+/* The current campaign stylesheet has several older explicit fills; pilot
+ * prototypes intentionally bind only the major surface components here.
+ * UXR-09 must migrate remaining screen literals after UX surfaces stabilize. */
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-section,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-next-action,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-person,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-contract,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-operation-record,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-supply-offer,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-procurement-item {
+  background:var(--fw-panel);
+  border-color:var(--fw-panel-border);
+}
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-stat,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-assignment,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-readiness,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-next-action {
+  background:var(--fw-panel-deep);
+}
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-primary,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-tab[aria-selected="true"] {
+  background:var(--fw-sage);
+  color:var(--fw-bg);
+}
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-tab,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-select {
+  border-color:var(--fw-panel-border);
+}
