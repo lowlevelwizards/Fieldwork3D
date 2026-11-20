@@ -169,3 +169,62 @@ must come from reviewing rendered results, not merely from numerical tests.
 
 This release remains appearance-only: no secondary weapon simulation,
 inventory/save migration, ammunition, holstering or attachments.
+
+
+## G2.6 Iconic Anatomy and Ejection-Port Wrap — CURRENT authoring override
+
+**Context:** User-reviewed deployed G2.5 captures show good compact overall scale
+but a still-overweight flat polymer dust-cover band, a generic grip junction,
+and an ejection-port marking too small and too low. Make the iconic Glock
+features carry more of the identity *without* changing the established slide
+envelope or turning the weapon into detailed CAD.
+
+### What stays frozen
+- G19 / Gen5 slide X: -8.55 to 8.30, Y .34 to 3.04, depth 2.96.
+- Same slide mesh and exaggerated squared-off chamfers, two sights,
+  one magazine heel and one **integrated** open frame/grip/guard shape.
+- Single shared material palette, one detail mesh for the entire family
+  with no extra draw calls for the ejection port.
+- Existing side/quarter/opposite/clay/MP5K peer Arsenal modes and all
+  appearance IDs. No sidearm gameplay/loadout/save changes.
+
+### G2.6 silhouette changes (art units)
+- Front dust-cover lower edge moves from -1.23 up to -1.01 at the
+  muzzle; slight stepped slope via x=3.00 y=-1.07 to x=1.76 y=-1.24
+  where it joins the front guard. Preserve a strong connected polymer
+  body: no detached strip.
+- Backstrap uses two purposeful, low-vertex contour facets at
+  heelY+1.23 and heelY+2.64 to smooth the heavy G2.5 corner.
+  Keep the grip broad, solid and tilted; no finger grooves.
+- G26 grip heel Y rises from -6.07 to -5.88, leaving its short
+  nose at 5.78: still squat but immediately identifiable as subcompact.
+- G19X grip heel drops from -8.75 to -8.96 and widens toward the
+  front heel from -4.06 to -3.82 (rear -8.11); fuller, not just tan.
+- The trigger opening remains physically open and integrated; front
+  pillar and bottom rim are still substantial.
+
+### Ejection-port landmark specification
+- **One visually continuous L-shaped dark panel** on the slide's
+  **right (+Z) side plus top (+Y)**, not two overlapping rectangles or
+  a cylinder/real open cut through the slide.
+- Same constant X interval .26 .. 3.41 (width 3.15 art units).
+- Side panel Y 2.11 .. 3.058, Z=1.498; top panel Y=3.058,
+  Z=.36 .. 1.498. This sits high on the slide with a graphic top wrap.
+- Construct with **six shared vertices**, **four triangles**, inside
+  the EXISTING serration-mark BufferGeometry; two triangles side,
+  two top, sharing the two outer-edge vertices.
+- The port is visible only from the right and from above, and
+  deliberately absent from the left slide face. Remove it entirely in
+  monochrome/clay or details-off mode, keeping silhouette tests honest.
+- The port is a stylized *color plane*, not operational chamber
+  engineering. No depth, recess bevels, ejection path, faux moving barrel
+  or additional mechanism.
+- Keep only 3 rear serrations each side, 2 optional Gen5 front each side,
+  and a separate subtle MOS plate as before.
+
+### Verification
+Focused geometry tests must verify the real opening, variant body bounds,
+5 clay / 6 normal / 7 MOS meshes, <=220 triangles, +Z and +Y port
+face orientations and shared-edge geometry, TypeScript / production build,
+and critical integration smoke. Actual WebGL snapshots need human review;
+CI success is not equivalent to final aesthetic approval.
