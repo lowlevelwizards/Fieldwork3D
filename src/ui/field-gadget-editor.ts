@@ -204,7 +204,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
     ghost.style.left=(event.clientX+12)+'px';
     ghost.style.top=(event.clientY+12)+'px';
    }
-   capacity.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
+   root.querySelectorAll<HTMLElement>('[data-drag-target]').forEach(
     node=>delete node.dataset.dragTarget);
    const hit=document.elementFromPoint(event.clientX,event.clientY);
    const zone=hit?.closest<HTMLElement>('.fw-field-inventory-slot[data-location], .fw-carry-bodymap-zone[data-location]');
@@ -248,8 +248,12 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  }
  // Body-map and slot list are two views of the SAME capacity and transfer
  // authority. No additional inventory state, phantom slots or auto-repacking.
- const map=document.createElement('section');
+ const map=document.createElement('details');
  map.className='fw-carry-bodymap';
+ const mapDisclosure=document.createElement('summary');
+ mapDisclosure.className='fw-carry-bodymap-toggle';
+ mapDisclosure.textContent='OPTIONAL · PRECISE BODY MAP';
+ map.append(mapDisclosure);
  map.setAttribute('aria-label','Interactive front and back carrying map');
  map.dataset.view='front';
  const mapHeader=document.createElement('div');
@@ -317,7 +321,9 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   figure.append(place);paperDestinations.push({button:place,location});
  }
  map.append(figure);
- root.append(map,locationNav,moveTray);
+ // The body diagram is OPTIONAL, not an extra mandatory page. The real
+ // location tabs and selected item/destination choices are the fast path.
+ root.append(locationNav,moveTray);
  const capacity=document.createElement('div');
  capacity.className='fw-field-inventory-capacity';
  capacity.setAttribute('aria-label','Carrying capacity by location');
@@ -386,8 +392,8 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
       null:choice;
      if(selected)inspectTile('field',id,loc);
      refreshSelection();
-     if(selected)map.scrollIntoView({block:'nearest',
-      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+     // The selected item is already in the visible drawer; never scroll
+     // the entire screen or expand the secondary body map automatically.
      feedback(selected?'SELECTED ONE '+tile.label.toUpperCase()+
       ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
     });
@@ -409,8 +415,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
      if(selected)inspectTile('magazine',id,loc,
       zone.items.filter(t=>t.kind==='magazine').findIndex(t=>t.magazineId===id));
      refreshSelection();
-     if(selected)map.scrollIntoView({block:'nearest',
-      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+     // Native list stays in place; destination rail becomes the action.
      feedback(selected?'SELECTED '+tile.label.toUpperCase()+
       ' · CHOOSE A GREEN DESTINATION OR CANCEL':'SELECTION CLEARED');
     });
@@ -467,7 +472,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   slot.append(place,reason);
   capacity.append(slot);
  }
- root.append(capacity);
+ root.append(capacity,map);
  const cancelSelection=btn('CANCEL PLACEMENT',()=>{
   selected=null;refreshSelection();feedback('PLACEMENT CANCELLED · NO KIT CHANGES');
  });
