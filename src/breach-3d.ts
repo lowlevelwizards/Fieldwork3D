@@ -2440,6 +2440,7 @@ export class TacticalScene3D{
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
         secondarySwitch:actor.secondarySwitch,
+        secondaryReload:actor.secondaryReload,
         // B30: live and replay use the new posing by default.
         // This changes rendered anatomy only, not fixed-step ammo/shot.
         poseV3Preview:true,poseV4ReloadPreview:true,
