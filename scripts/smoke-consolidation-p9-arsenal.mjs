@@ -78,6 +78,9 @@ try{
    mkdirSync('artifacts/m9',{recursive:true});
    await page.waitForTimeout(180);
    await inspector.screenshot({path:'artifacts/m9/m9a3-side-'+viewport.width+'.png'});
+   await inspector.getByRole('button',{name:'OTHER SIDE'}).click();
+   await page.waitForTimeout(180);
+   await inspector.screenshot({path:'artifacts/m9/m9a3-opposite-'+viewport.width+'.png'});
    await inspector.getByRole('button',{name:'3/4 VIEW'}).click();
    await page.waitForTimeout(180);
    await inspector.screenshot({path:'artifacts/m9/m9a3-quarter-'+viewport.width+'.png'});
@@ -98,6 +101,9 @@ try{
    await inspector.getByRole('button',{name:'SIDE',exact:true}).click();
    await page.waitForTimeout(180);
    await inspector.screenshot({path:'artifacts/m9/m9-side-'+viewport.width+'.png'});
+   await inspector.getByRole('button',{name:'OTHER SIDE'}).click();
+   await page.waitForTimeout(180);
+   await inspector.screenshot({path:'artifacts/m9/m9-opposite-'+viewport.width+'.png'});
    await inspector.getByRole('button',{name:'3/4 VIEW'}).click();
    await page.waitForTimeout(180);
    await inspector.screenshot({path:'artifacts/m9/m9-quarter-'+viewport.width+'.png'});

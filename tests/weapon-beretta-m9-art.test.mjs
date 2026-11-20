@@ -44,8 +44,11 @@ test('M9 family: two genuinely 3D art-only models, not issued Glock IDs',()=>{
    assert.equal(m.children.filter(x=>x.userData.m9Hammer).length,1);
    assert.equal(m.children.filter(x=>x.userData.m9MagazineFloorplate).length,1);
    assert.ok(m.children.every(x=>x.name.startsWith('family-')));
-   assert.ok(count(m).meshes<=18,'intentional miniature mesh economy');
-   assert.ok(count(m).triangles<=420,'real emitted triangle budget');
+   const stats=count(m);
+   assert.ok(stats.meshes<=20,
+    'miniature mesh count including real wrap and red dots: '+JSON.stringify(stats));
+   assert.ok(stats.triangles<=450,
+    'emitted triangle review cap including true U-wrap: '+JSON.stringify(stats));
   }finally{
    clearM9Appearance(m);
    assert.equal(m.children.length,0);
@@ -60,7 +63,7 @@ test('M9 negative spaces: guard truly open and forward upper unroofed',()=>{
    assert.equal(sideRay(m,-.3,-2.4),0,'physical aperture');
    assert.ok(sideRay(m,1.45,-2.55)>0,'front pillar');
    assert.ok(sideRay(m,-.4,-3.52)>0,'lower guard');
-   assert.equal(sideRay(m,4.4,3.42),0,
+   assert.equal(sideRay(m,4.4,3.63),0,
     'upper does not have a fictitious full-width roof');
    assert.ok(sideRay(m,-5.0,2.4)>0,'rear slide solid');
    const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
@@ -85,6 +88,12 @@ test('M9A3 silhouette differs through real shape, not FDE only',()=>{
   assert.ok(!M9_ART['beretta-m9'].straightGrip);
   assert.equal(m9.children.filter(x=>x.userData.m9AccessoryRail).length,0);
   assert.equal(a3.children.filter(x=>x.userData.m9AccessoryRail).length,1);
+  const a3rail=a3.children.find(x=>x.userData.m9AccessoryRail);
+  const a3frame=a3.children.find(x=>x.userData.m9IntegratedFrame);
+  assert.ok(bounds(a3rail).intersectsBox(bounds(a3frame)),
+   'M9A3 accessory rail must actually meet lower frame');
+  assert.ok(bounds(a3rail).max.x<=bounds(a3frame).max.x-.3,
+   'accessory rail must not float beyond the dust-cover nose');
   assert.ok(m9ArtSockets('beretta-m9a3').muzzle.x>
    m9ArtSockets('beretta-m9').muzzle.x);
   assert.equal(m9.userData.m9ArtLandmarks.actualOpenTop,true);
@@ -140,8 +149,8 @@ test('C1 caricature: grip is swept and broad; classic curvature differs from Ver
   try{
    const panels=m.children.filter(x=>x.userData.m9GripPanel);
    assert.equal(panels.length,2);
-   assert.ok(panels.every(p=>bounds(p).max.y<-3.1),
-    'grip panels should not become floating slide controls');
+   assert.ok(panels.every(p=>bounds(p).max.y>=-1.70&&bounds(p).max.y<=-1.45),
+    'grip panels rise to the trigger-guard roof without floating');
    assert.ok(m.children.filter(x=>x.userData.m9DecockerCue).length===2,
     'both exposed slide faces have one deliberate paddle each');
    assert.ok(sideRay(m,-.3,-2.30)===0,
@@ -164,7 +173,7 @@ test('C2 Beretta inspector is mobile-first and scoped away from Glock loadouts',
  assert.match(css,/\.arsenal-m9-inspector \.glock-wb-viewport\{height:100%\}/);
 });
 
-test('D3 silhouette: full-height serrations, thick exposed barrel, rake and muzzle are substantive',()=>{
+test('D4 silhouette: SHORT forward-angled serrations, thicker exposed barrel and connected heel',()=>{
  const oldRadius=.70;
  const m=M9_ART['beretta-m9'],a=M9_ART['beretta-m9a3'];
  assert.ok(m.gripRear<-10.0,'classic M9 broad swept heel');
@@ -175,7 +184,7 @@ test('D3 silhouette: full-height serrations, thick exposed barrel, rake and muzz
   const g=buildM9Appearance(id);
   try{
    const landmarks=g.userData.m9ArtLandmarks;
-   assert.ok(landmarks.barrelRadius>=oldRadius*1.22,
+   assert.ok(landmarks.barrelRadius>=oldRadius*1.40,
     'exposed barrel is visibly wider than D2, not merely a material change');
    const barrel=g.children.find(x=>x.userData.m9ExposedBarrel);
    const sideRail=g.children.find(x=>x.userData.m9OpenSlideRail);
@@ -188,9 +197,9 @@ test('D3 silhouette: full-height serrations, thick exposed barrel, rake and muzz
    for(let i=0;i<attr.count;i++){
     bottom=Math.min(bottom,attr.getY(i));top=Math.max(top,attr.getY(i));
    }
-   assert.ok(top-bottom>=2.65,'serrations extend top-to-bottom of rear slide');
-   assert.ok(bottom<=landmarks.slideBottomY+.1);
-   assert.ok(top>=landmarks.slideTopY-.1);
+   assert.ok(top-bottom>=1.25&&top-bottom<=1.55,'serrations are bold but shorter than slide height');
+   assert.ok(bottom>=1.40,'serration lower end stays on upper rear slide');
+   assert.ok(top<=landmarks.slideTopY-.25,'clean top roof margin must remain');
    assert.equal(serrations[0].geometry.index.count,48,
     'four bold marks per side, two triangles each, no mesh-per-serration');
    assert.ok(sideRay(g,-.25,-2.35)===0,
@@ -198,5 +207,65 @@ test('D3 silhouette: full-height serrations, thick exposed barrel, rake and muzz
    assert.ok(g.children.some(x=>x.userData.m9MuzzleCrown));
    assert.equal(g.userData.appearanceOnly,true);
   }finally{clearM9Appearance(g);}
+ }
+});
+
+test('D4 rear bridge is physically longer, narrower and angled above the broad skirt',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const upper=m.children.find(x=>x.userData.m9NarrowUpperBridge);
+   const skirt=m.children.find(x=>x.userData.m9BroadLowerSlide);
+   assert.ok(upper&&skirt,'two authored volumes, not one generic extrusion');
+   const ub=bounds(upper),lb=bounds(skirt),lm=m.userData.m9ArtLandmarks;
+   assert.ok(ub.max.x>=-1.3,'upper extends to the trigger zone');
+   assert.ok(lb.max.z-lb.min.z>ub.max.z-ub.min.z+.4,
+    'upper is visibly thinner across the top/three-quarter view');
+   assert.ok(lm.beavertailRearX<-11,'rear tang projects beyond hammer and Glock rear');
+   const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
+   assert.ok(bounds(frame).min.x<=-11,'long tang is part of connected frame');
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D4 muzzle U-wrap is physically open, carries sight and exposes projecting barrel',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const a=M9_ART[id],wrap=m.children.filter(x=>x.userData.m9FrontUWrap);
+   assert.equal(wrap.length,1,'one continuous sculpted front muzzle U-wrap');
+   const b=bounds(wrap[0]),barrel=m.children.find(x=>x.userData.m9ExposedBarrel);
+   assert.ok(b.max.x<a.barrelEnd-.20,'barrel visibly projects past slide nose');
+   assert.ok(bounds(barrel).max.y>b.max.y+.20,'barrel rises above open wrap');
+   assert.ok(b.max.z-b.min.z>=3.10,'true three-dimensional muzzle cheeks');
+   assert.equal(sideRay(m,4.4,3.63),0,'no cosmetic full-width slide roof');
+   const sights=m.children.filter(x=>x.name.startsWith('family-barrel-')&&
+    x.geometry.type==='BoxGeometry');
+   assert.ok(sights.length>=2);
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D4 safety cues and magazine plate are attached, minimal and double-sided',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const dots=m.children.filter(x=>x.userData.m9RedSafetyDots);
+   assert.equal(dots.length,1,'one batched red safety-mark mesh');
+   assert.equal(dots[0].geometry.index.count,36,
+    'two simple six-facet indicators, not high-poly rivets');
+   const decockers=m.children.filter(x=>x.userData.m9DecockerCue);
+   assert.equal(decockers.length,2,'one large paddle per slide face');
+   const plate=m.children.find(x=>x.userData.m9MagazineFloorplate);
+   const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
+   assert.equal(plate.userData.m9HeelContact,true);
+   assert.ok(bounds(plate).intersectsBox(bounds(frame)),
+    'sloped magazine plate intersects grip without a gap');
+   assert.ok(bounds(plate).min.y< M9_ART[id].heel-.25,
+    'plate visibly extends below heel while seating against it');
+   const clay=buildM9Appearance(id,{monochrome:true});
+   try{assert.equal(clay.children.filter(x=>x.userData.m9RedSafetyDots).length,0);}
+   finally{clearM9Appearance(clay);}
+  }finally{clearM9Appearance(m);}
  }
 });
