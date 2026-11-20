@@ -43,32 +43,34 @@ test('B5 weapon identities differ, suppressors reduce transients and hidden hits
 });
 test('B6 presentation consumes shot IDs and visibility, never chooses hit results',()=>{
  const three=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(three,/mostRecentActiveMuzzleShot\(s\.shots,actor\.id,/,
-  'scene selects authoritative newest shot rather than an older flash');
+ const audio=readFileSync(new URL('../src/breach-audio-controller.ts',import.meta.url),'utf8');
+ assert.match(three,/this\.recentMuzzleShots\.rebuild\(s\.shots\)/,
+  'scene indexes only the real authoritative recorded shot history');
+ assert.match(three,/mostRecentActiveMuzzleShot\(\s*this\.recentMuzzleShots\.forShooter\(actor\.id\),actor\.id,/,
+  'scene retains the original newest visible shot resolver with a bounded per-actor view');
  const cues=readFileSync(new URL('../src/breach-combat-cues.ts',import.meta.url),'utf8');
  assert.match(cues,/muzzleFlashCue\(weapon,shot\.age,attachment\)\.active/,
   'shared event resolver must still use exact shot age and muzzle attachment');
  assert.match(three,/impactPulse\(shot\.surface\?\?'dust',shot\.age/);
  assert.match(three,/shotVisibility\(s,shot\)\.flash/);
- assert.match(main,/audibleImpact\(shotVisibility\(state,shot\)\.impact/);
- assert.match(main,/weaponAudioCue\(weapon,/);
- assert.match(main,/fresh\.slice\(-3\)/,'audio voices remain bounded');
+ assert.match(audio,/audibleImpact\(shotVisibility\(state,shot\)\.impact/);
+ assert.match(audio,/weaponAudioCue\(weapon,/);
+ assert.match(audio,/if\(freshShots\.length===3\)freshShots\.shift\(\)/,'audio voices remain bounded');
 });
 
 test('encounter regression: no false initial audio suspicion; real gunfire interrupts',()=>{
  assert.equal(hasRecentSound(2,-1),false);
  assert.equal(hasRecentSound(2,1.5),true);
  assert.equal(hasRecentSound(9,1.5),false);
- const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
- assert.match(game,/const recentNoise=hasRecentSound\(s\.seconds,a\.lastNoiseAt\)/);
- // E1/E5 replaced the former raw-noise alarm scan. Defenders now consume
- // each audible evidence item once, then update suspicion only if warranted.
- const decisions=game.slice(game.indexOf('function enemyDecisions('),
-  game.indexOf('function distributeReports('));
- assert.match(decisions,/for\(const sound of s\.noise\)/);
- assert.match(decisions,/sound\.id<=a\.lastNoiseExaminedId/);
- assert.match(decisions,/interpretSound\(sound,a\.id,a\.p,s\.doors,WALLS,s\.windows\)/);
- assert.match(decisions,/if\(disposition!=='ignore'\)observeSuspicion/);
- assert.match(decisions,/a\.lastNoiseExaminedId=Math\.max/);
+ const ai=readFileSync(new URL('../src/breach-ai-reconciliation.ts',import.meta.url),'utf8');
+ assert.match(ai,/const recentNoise=hasRecentSound\(s\.seconds,a\.lastNoiseAt\)/);
+ const intake=readFileSync(new URL('../src/breach-ai-acoustic-perception.ts',import.meta.url),'utf8');
+ // E1/E5 and the later architecture split consume each new audible item once
+ // using its ID/clock and never invent unseen target positions.
+ assert.match(intake,/for\(const sound of s\.noise\)/);
+ assert.match(intake,/sound\.id<=a\.lastNoiseExaminedId/);
+ assert.match(intake,/interpretSound\(sound,a\.id,a\.p,s\.doors,sessionWorldGeometry\(s\)\.walls,s\.windows\)/);
+ assert.match(intake,/if\(disposition!=='ignore'\)observeSuspicion/);
+ assert.match(intake,/a\.lastNoiseExaminedId=Math\.max/);
+
 });
