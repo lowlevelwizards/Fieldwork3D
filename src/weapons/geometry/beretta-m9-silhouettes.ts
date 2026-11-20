@@ -22,7 +22,7 @@ export type M9ArtOptions=Readonly<{monochrome?:boolean;details?:boolean}>;
 
 export const M9_ART={
  'beretta-m9':{
-  nose:9.30,barrelEnd:9.40,heel:-8.65,gripRear:-8.15,
+  nose:9.30,barrelEnd:9.40,heel:-8.65,gripRear:-8.65,
   gripFront:-4.05,straightGrip:false,rail:false,threaded:false
  },
  'beretta-m9a3':{
@@ -38,12 +38,12 @@ const SLIDE_BOTTOM=.38,SLIDE_TOP=3.14;
 export function m9ArtSockets(id:M9AppearanceId){
  const a=M9_ART[id],heel=(a.gripRear+a.gripFront)/2;
  return Object.freeze({
-  muzzle:Object.freeze({x:a.barrelEnd,y:2.52,z:0}),
+  muzzle:Object.freeze({x:a.barrelEnd,y:2.57,z:0}),
   primaryGrip:Object.freeze({x:heel,y:-4.25,z:-.15}),
   supportGrip:Object.freeze({x:heel+.28,y:-3.25,z:.85}),
   slideGrip:Object.freeze({x:-5.25,y:1.35,z:0}),
   magazineBase:Object.freeze({x:heel,y:a.heel-.22,z:0}),
-  sightLine:Object.freeze({x:-.85,y:3.50,z:0}),
+  sightLine:Object.freeze({x:-.85,y:3.52,z:0}),
   holsterPivot:Object.freeze({x:heel,y:-3.50,z:0})
  });
 }
@@ -121,7 +121,7 @@ export function buildM9Appearance(id:M9AppearanceId,
  barrel.userData.m9ExposedBarrel=true;
  // The front bridge joins both rails below the barrel without filling the
  // characteristic wide upper aperture.
- const noseBridge=cuboid('barrel',a.nose-.30,.72,0,.58,.52,SLIDE_DEPTH,steel);
+ const noseBridge=cuboid('barrel',a.nose-.34,1.79,0,.69,2.53,SLIDE_DEPTH,steel);
  noseBridge.userData.m9NoseBridge=true;
  // Deliberately oversized exposed hammer and small named sights.
  const hammer:Outline=[
@@ -131,7 +131,7 @@ export function buildM9Appearance(id:M9AppearanceId,
  const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.44,steel);
  hammerMesh.userData.m9Hammer=true;
  cuboid('barrel',-8.03,3.34,0,.58,.47,1.48,steel);
- cuboid('barrel',a.nose-.76,2.80,0,.48,.45,1.38,steel);
+ cuboid('barrel',a.nose-.62,3.25,0,.48,.45,1.38,steel);
  const heel=(a.gripRear+a.gripFront)/2;
  const floorplate=cuboid('magazine',heel,a.heel-.23,0,
   a.gripFront-a.gripRear+.35,.48,FRAME_DEPTH+.27,gripMaterial);
