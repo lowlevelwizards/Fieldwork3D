@@ -95,7 +95,7 @@ test('S3: Arsenal nav and equip actions do not masquerade as live weapon switchi
  assert.match(main,/SECONDARIES · GLOCK/);
  assert.match(gallery,/serializeQuickPlayKitPreferences/);
  assert.match(gallery,/EQUIP GLOCK/);
- assert.match(gallery,/live combat pending/);
+ assert.match(gallery,/combat switching pending/);
  assert.match(css,/arsenal-glock-gallery\[hidden\]/);
  assert.match(css,/arsenal-glock-hero-visual\[data-view="family"\]/);
 });
