@@ -35,7 +35,7 @@ test('Secondary Arsenal: rename/duplicate/delete and corrupt saved-build rejecti
   version:1,builds:[...copy.library.builds,
    {...copy.build,id:'glock-build-1',recipe:{...copy.build.recipe,model:'unrecognized'}}]
  })).builds.length,2);
- assert.equal(readGlockLibrary('{'),emptyGlockLibrary().builds);
+ assert.deepEqual(readGlockLibrary('{'),emptyGlockLibrary());
 });
 test('Secondary Arsenal: same interactive presentation affordances with honest equipment gate',()=>{
  const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
