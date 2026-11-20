@@ -1751,7 +1751,7 @@ export class CampaignScreen{
   const benchButtons=new Map<LoadoutSlot,HTMLButtonElement>();
   const benchNav=node('nav','campaign-kit-bench-zones');
   benchNav.setAttribute('aria-label','Choose equipment position');
-  const compact=window.matchMedia?.('(max-width:620px)').matches??false;
+  const compact=window.matchMedia?.('(max-width:620px), (max-width:920px) and (max-height:620px)').matches??false;
   const leftRail=node('div','campaign-outfitter-rail campaign-outfitter-rail-left');
   const rightRail=node('div','campaign-outfitter-rail campaign-outfitter-rail-right');
   // Monochrome icons are precise 44px targets, not projected over the rig.
