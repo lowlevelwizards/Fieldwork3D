@@ -206,13 +206,16 @@ export function createQuickPlayConfigurator(options:{
  let selectedSquadSlot:LoadoutSlot='primary';
  const fieldUndo=new FieldInventoryUndoHistory();
  let squadPreview:CampaignKitPreview|null=null;
+ let squadGallery:ReturnType<typeof createOutfitterGallery>|null=null;
  let squadPreviewId:string|null=null;
  const disposeSquadPreview=()=>{
+  squadGallery?.dispose();squadGallery=null;
   squadPreview?.dispose();squadPreview=null;squadPreviewId=null;
  };
  const renderSquadPrep=()=>{
   if(!options.getRoster||!options.onEquipField)return;
   const members=options.getRoster().members;
+  squadGallery?.dispose();squadGallery=null;
   squadContent.replaceChildren();
   const selected=members.find(m=>m.id===selectedSquadMember)??members[0];
   if(!selected)return;
@@ -386,6 +389,7 @@ export function createQuickPlayConfigurator(options:{
     renderGadgets(options.getRoster?.().members.find(m=>m.id===selected.id)??selected);
    }
   });
+  squadGallery=gallery;
   showGallery=gallery.show;
   squadPreview?.setOnTapSlot(slot=>chooseSlot(slot));
   chooseSlot(selectedSquadSlot);
