@@ -2354,7 +2354,7 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  display:none;
 }
 .campaign-outfitter-context-title{display:none}
-@media(max-width:620px){
+@media(max-width:620px), (max-width:920px) and (max-height:620px){
  body:has(.campaign-armory-screen){overflow:hidden!important}
  .campaign-shell.campaign-armory-screen{
   box-sizing:border-box!important;position:fixed!important;
@@ -2638,7 +2638,7 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-armory-screen .fw-carry-bodymap:not([open])>:not(summary){display:none!important}
  .campaign-armory-screen .fw-carry-bodymap[open]{padding:8px!important}
 }
-@media(max-width:620px) and (max-height:580px){
+@media(max-width:620px) and (max-height:580px), (max-width:920px) and (max-height:580px){
  .campaign-shell.campaign-armory-screen{
   grid-template-rows:42px minmax(0,1fr);
   padding-top:calc(env(safe-area-inset-top) + 2px)!important;
@@ -2648,15 +2648,15 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   grid-template-rows:minmax(120px,1fr) minmax(145px,43%)!important;
  }
  .campaign-armory-screen .campaign-kit-bench-zone{
-  width:42px!important;min-width:42px!important;height:39px!important;
-  min-height:39px!important;
+  width:42px!important;min-width:42px!important;height:34px!important;
+  min-height:34px!important;max-height:36px!important;
  }
  .campaign-armory-screen .campaign-kit-preview{
   width:calc(100% - 98px)!important;
  }
  .campaign-outfitter-icon{height:17px;width:17px}
 }
-@media(min-width:621px){
+@media(min-width:621px) and (min-height:621px){
  .campaign-armory-screen .campaign-kit-bench-zones{
   display:flex;gap:6px;align-items:center;
  }
