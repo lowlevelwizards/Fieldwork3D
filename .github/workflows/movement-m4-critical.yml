@@ -1,0 +1,27 @@
+name: Movement M4 formation and queue critical
+on:
+  push:
+    branches: [feature/movement-m4-squad-queue-20261120]
+    paths:
+      - '.github/workflows/movement-m4-critical.yml'
+      - 'src/breach-passage-coordinator.ts'
+      - 'tests/movement-m4-queue-formation.test.mjs'
+permissions: {contents: read}
+concurrency:
+  group: movement-m4-formation-and-queue-critical
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Current-order doorway and queue contracts
+        run: |
+          node --experimental-strip-types --test tests/movement-m4-queue-formation.test.mjs tests/passage-q2-coordinator.test.mjs tests/release-d3-r1-repeated-passage.test.mjs tests/release-d3-r1-passage-feedback.test.mjs tests/phase-a-stack-geometry.test.mjs
+          npm run check
+      - name: Door Range strict 70 cases
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
