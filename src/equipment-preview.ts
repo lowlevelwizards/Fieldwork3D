@@ -573,7 +573,8 @@ export class CampaignKitPreview{
   this.camera.updateMatrixWorld(true);
   ray.setFromCamera(xy,this.camera);
   const hit=ray.intersectObject(this.rig.root,true)[0];
-  if(!hit)return;
+  // A tap on empty stage retires transient callouts, never another category.
+  if(!hit){this.clearTransientSelection();return;}
   const ancestorOf=(candidate:THREE.Object3D,parent:THREE.Object3D)=>{
    let node:THREE.Object3D|null=candidate;
    while(node){if(node===parent)return true;node=node.parent;}
