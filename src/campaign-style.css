@@ -1,4 +1,5 @@
 @import './ui/fieldwork-design.css';
+@import './ui/campaign-uxr-themes.css';
 @import './operator-material-browser.css';
 /* Campaign management never alters the tactical canvas or render pipeline. */
 .campaign-screen{position:fixed;z-index:120;inset:0;overflow-y:auto;
@@ -2685,4 +2686,71 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-armory-screen .campaign-outfitter-icon{
   height:18px;width:18px;
  }
+}
+
+/* UXR-03 — Operations Room: one decision followed by a small status rail.
+ * Styles appended while the legacy stylesheet is being extracted screen by
+ * screen; UXR-09 will relocate these to campaign/overview.css. */
+.campaign-shell .campaign-uxr-readiness{
+  margin:0;padding:12px;border:1px solid var(--fw-panel-border);
+  background:var(--fw-panel-deep);border-radius:var(--fw-radius-sm);
+}
+.campaign-uxr-readiness>h2{
+  margin:0 0 10px;font:750 12px/1.3 var(--fw-font-menu);
+  letter-spacing:.06em;color:var(--fw-text-muted);
+}
+.campaign-uxr-status-strip{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;
+}
+.campaign-uxr-status{
+  min-width:0;display:flex;flex-direction:column;gap:2px;
+  align-items:flex-start;justify-content:center;
+  background:var(--fw-panel);border-radius:5px;padding:9px 8px;
+}
+.campaign-uxr-status strong{
+  color:var(--fw-text);font:800 clamp(17px,3.4vw,24px)/1 var(--fw-font-data);
+  font-variant-numeric:tabular-nums;
+}
+.campaign-uxr-status span{
+  color:var(--fw-text-muted);font:650 10px/1.15 var(--fw-font-menu);
+  letter-spacing:.025em;
+}
+.campaign-uxr-readiness .campaign-readiness-ok{
+  margin:8px 0 0;font:600 11px/1.3 var(--fw-font-menu);
+  color:var(--fw-text-muted);
+}
+.campaign-uxr-readiness .campaign-readiness-warning{
+  margin:8px 0 0;min-height:44px;text-align:left;
+  background:var(--fw-panel);border-color:var(--fw-brass);
+  color:var(--fw-text);font-size:12px;
+}
+.campaign-uxr-quicklinks{
+  display:flex;gap:8px;margin:0;
+}
+.campaign-shell .campaign-uxr-quicklinks button{
+  width:auto;flex:1;min-height:44px;margin:0;
+  font-size:12px;color:var(--fw-text-muted);
+  background:var(--fw-panel-deep);
+}
+.campaign-overview .campaign-overview-workspace{
+  align-items:start;gap:12px;
+}
+.campaign-overview .campaign-overview-priority{
+  min-width:0;display:grid;gap:10px;
+}
+.campaign-overview .campaign-overview-support{
+  min-width:0;display:grid;gap:12px;
+}
+.campaign-overview .campaign-next-action{
+  margin:0;padding:14px;min-width:0;
+}
+.campaign-overview .campaign-next-action h3{
+  margin:5px 0;font-size:clamp(20px,4.4vw,25px);
+}
+.campaign-overview .campaign-next-action .campaign-primary{
+  margin:10px 0 0;min-height:48px;
+}
+@media(max-width:390px){
+ .campaign-uxr-status-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .campaign-uxr-status{padding:7px 9px}
 }
