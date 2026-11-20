@@ -48,10 +48,10 @@ test('M9 family: two genuinely 3D art-only models, not issued Glock IDs',()=>{
    const stats=count(m);
    const isA3=ref.id==='beretta-m9a3';
    assert.ok(stats.meshes<=(isA3?15:14),
-     'D6 measured mesh budget '+JSON.stringify(stats));
-   assert.ok(stats.triangles<=(isA3?370:355),
-     'D6 measured triangle budget '+JSON.stringify(stats));
-   console.log('BERETTA_D6_ART_BUDGET '+JSON.stringify({id:ref.id,...stats}));
+     'D7 retain D6 mesh economy '+JSON.stringify(stats));
+   assert.ok(stats.triangles<=(isA3?400:380),
+     'D7: bounded silhouette-only triangle spend '+JSON.stringify(stats));
+   console.log('BERETTA_D7_ART_BUDGET '+JSON.stringify({id:ref.id,...stats}));
     }finally{
    clearM9Appearance(m);
    assert.equal(m.children.length,0);
@@ -349,9 +349,10 @@ test('D5 rear hammer is tall/slim and grip panels rake backwards',()=>{
   const m=buildM9Appearance(id);
   try{
    const hammer=m.children.find(x=>x.userData.m9Hammer),b=bounds(hammer);
-   assert.ok(b.max.y>=4.10&&b.max.y<=4.18,'chunky hooked hammer');
-   assert.ok(b.max.x-b.min.x<.75,'slim side hook');
-   assert.ok(b.max.z-b.min.z<=1.20,'narrow hammer in top view');
+   assert.ok(b.max.y>=4.0&&b.max.y<=4.06,'short curled hammer crown');
+   assert.ok(b.max.x-b.min.x>=.88&&b.max.x-b.min.x<=1.05,
+    'hammer head sweeps backward instead of growing into a spike');
+   assert.ok(b.max.z-b.min.z<=1.10,'restrained hammer thickness in top view');
    const panels=m.children.filter(x=>x.userData.m9GripPanelBatch);
    assert.equal(panels.length,1,'two factory grip faces batched');
    const p=panels[0].geometry.getAttribute('position');
@@ -364,7 +365,8 @@ test('D5 rear hammer is tall/slim and grip panels rake backwards',()=>{
    assert.ok(hi.size>=2&&lo.size>=2);
    assert.equal(zs.size,2,'flat panel faces, no hidden sidewalls');
    const avg=set=>[...set].map(Number).reduce((a,b)=>a+b,0)/set.size;
-   assert.ok(avg(lo)<avg(hi)-.60,'authentic rear-swept grip panel');
+   assert.ok(avg(lo)<avg(hi)-.95,
+    'D7 both factory panels visibly rake backwards');
    const source=readFileSync(new URL('../src/weapons/geometry/beretta-m9-silhouettes.ts',import.meta.url),'utf8');
    assert.doesNotMatch(source,/m9Trigger|addTriggerToM9/);
   }finally{clearM9Appearance(m);}
@@ -438,4 +440,89 @@ test('D6 no redundant micro control or extruded sight geometry',()=>{
    assert.equal(sideRay(g,-.3,-2.4),0,'guard physically open');
   }finally{clearM9Appearance(g);}
  }
+});
+
+test('D7 chamfered muzzle cheek and undercut: reuse one U mesh and no front post',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const nose=m.children.find(x=>x.userData.m9UnifiedNose);
+   assert.ok(nose,'one connected U-wrap/front sight mesh');
+   const p=nose.geometry.getAttribute('position');
+   const xFront=M9_ART[id].nose+.08;
+   const points=[];
+   for(let i=0;i<p.count;i++)
+    points.push({x:p.getX(i),y:p.getY(i),z:Math.abs(p.getZ(i))});
+   const bottomFace=points.filter(v=>v.y>=1.10&&v.y<=1.14&&v.x>xFront-.5);
+   assert.ok(bottomFace.length,'lower muzzle nose has real front triangles');
+   assert.ok(bottomFace.every(v=>v.x<xFront-.14),
+    'bottom face is set back: no tall rectangular front posts');
+   const upperCheek=points.filter(v=>Math.abs(v.y-3.32)<.01&&v.z>1.2);
+   assert.ok(upperCheek.length>=2,'chamfered crown shoulders exist');
+   assert.ok(Math.max(...upperCheek.map(v=>v.z))-
+    Math.min(...upperCheek.map(v=>v.z))>=.04,
+    'front roof cheeks taper inward without adding bevel meshes');
+   assert.equal(m.children.filter(x=>x.userData.m9FrontWrapCrown).length,1);
+   assert.equal(m.children.filter(x=>x.userData.m9AttachedFrontSight).length,1);
+   assert.equal(sideRay(m,4.4,3.63),0,
+    'actual open slide is not concealed by a fake full roof');
+   assert.ok(M9_ART[id].barrelEnd>xFront+.2,
+    'the six-sided barrel visibly extends through the nose');
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D7 posterior tang, reprofiled upper transition and integrated A3 rail',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const lm=m.userData.m9ArtLandmarks;
+   assert.equal(lm.beavertailRearX,-11.40);
+   assert.equal(lm.upperBridgeFrontX,-.98);
+   const upper=m.children.find(x=>x.userData.m9NarrowUpperBridge);
+   const up=upper.geometry.getAttribute('position');
+   assert.ok(Array.from({length:up.count},(_,i)=>[up.getX(i),up.getY(i)])
+    .some(([x,y])=>Math.abs(x+.98)<.005&&Math.abs(y-1.96)<.005),
+    'rear upper break includes a deliberate lower bevel station');
+   const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
+   assert.ok(bounds(frame).min.x<=-11.39,'connected beavertail preserved');
+   if(id==='beretta-m9a3'){
+    const rail=m.children.find(x=>x.userData.m9AccessoryRail);
+    assert.equal(rail.userData.m9IntegralDustCoverRail,true);
+    assert.notEqual(rail.geometry.type,'BoxGeometry',
+     'A3 rail is a shaped integrated profile, not a floating cuboid');
+    assert.ok(bounds(rail).min.x<=2.81&&bounds(rail).max.x>=6.19,
+     'A3 shaped rail supports the length of the dust-cover nose');
+    assert.ok(bounds(rail).min.y<=-1.09,'lower accessory rail reads in silhouette');
+    assert.ok(bounds(rail).intersectsBox(bounds(frame)),
+     'rail actually seats into the continuous lower frame');
+   }else{
+    assert.equal(m.children.filter(x=>x.userData.m9AccessoryRail).length,0);
+   }
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D7 identical 5-station grip panel economy with greater classic grip rake',()=>{
+ const byId={};
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const panel=m.children.find(x=>x.userData.m9GripPanelBatch);
+   assert.ok(panel);
+   assert.equal(panel.geometry.index.count,18,
+    'one batch, two planar five-point sides, no added bevel topology');
+   const p=panel.geometry.getAttribute('position');
+   const point=[];
+   for(let i=0;i<p.count/2;i++)
+    point.push([p.getX(i),p.getY(i)]);
+   const top=point.filter(([,y])=>y>-2.30).map(([x])=>x);
+   const heel=point.filter(([,y])=>y<-7.70).map(([x])=>x);
+   assert.equal(top.length,2);assert.equal(heel.length,2);
+   const avg=a=>a.reduce((x,y)=>x+y,0)/a.length;
+   byId[id]=avg(top)-avg(heel);
+  }finally{clearM9Appearance(m);}
+ }
+ assert.ok(byId['beretta-m9']>byId['beretta-m9a3']+.30,
+  'classic 92 panel rake exaggerated relative to straighter A3 Vertec');
 });
