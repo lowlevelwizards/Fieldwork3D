@@ -218,9 +218,7 @@ function renderOperationsBoard(){
      member.loadout,member.weaponConfiguration,member.magazines,member.wardrobe);
    }
   };
-  kit.addEventListener('toggle',()=>{
-   if(kit.open)requestAnimationFrame(renderKitPreview);
-  });
+  // The shared bench explicitly initializes its one preview after mounting.
   const advancedPanel=document.createElement('details');
   advancedPanel.className='fw-quick-board-advanced';
   advancedPanel.open=quickKitView==='advanced';
