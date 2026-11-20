@@ -3,6 +3,7 @@
  */
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
+import {mkdirSync} from 'node:fs';
 import {chromium} from 'playwright';
 
 const port=4299,origin='http://127.0.0.1:'+port;
@@ -25,7 +26,7 @@ try{
     hasTouch:viewport.width<500});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
-   const tab=page.getByRole('button',{name:'SECONDARIES · GLOCK'});
+   const tab=page.getByRole('button',{name:'SECONDARY WEAPONS'});
    await tab.waitFor({timeout:20000});
    // P11 shared shell must still expose both gallery hierarchies, with the
    // primary selected and a working hero before lazy secondary activation.
@@ -56,7 +57,28 @@ try{
    await gallery.locator('.arsenal-glock-card').first().click();
    await gallery.locator('.arsenal-glock-model').filter({hasText:/19X/i}).waitFor();
    await gallery.locator('.arsenal-glock-card-preview img').first().waitFor({timeout:45000});
-   assert.deepEqual(errors,[],'No JS errors after changing filters');
+   // M9 B4: verify real WebGL Beretta cards and a genuinely orbitable 3D
+   // inspector on the same renderer and shared secondary category.
+   await search.fill('M9A3');
+   assert.equal(await gallery.locator('.arsenal-glock-card').count(),1);
+   await gallery.locator('.arsenal-glock-card').first().click();
+   await gallery.locator('.arsenal-glock-model').filter({hasText:'M9A3'}).waitFor();
+   await gallery.locator('.arsenal-glock-hero-visual img').waitFor({timeout:45000});
+   await gallery.getByRole('button',{name:'INSPECT 3D MODEL'}).click();
+   const inspector=page.getByRole('dialog',{name:'Beretta M9 family visual inspection'});
+   await inspector.waitFor({timeout:15000});
+   await inspector.locator('.glock-wb-canvas canvas').waitFor({timeout:20000});
+   await inspector.getByRole('button',{name:'SIDE',exact:true}).click();
+   // Actual 3D geometry screenshots; never substitute the earlier 2D mockup.
+   mkdirSync('artifacts/m9',{recursive:true});
+   await page.waitForTimeout(180);
+   await inspector.screenshot({path:'artifacts/m9/m9a3-side-'+viewport.width+'.png'});
+   await inspector.getByRole('button',{name:'3/4 VIEW'}).click();
+   await page.waitForTimeout(180);
+   await inspector.screenshot({path:'artifacts/m9/m9a3-quarter-'+viewport.width+'.png'});
+   await inspector.getByRole('button',{name:'BACK TO ARSENAL'}).click();
+   assert.equal(await page.getByRole('dialog').count(),0);
+   assert.deepEqual(errors,[],'No JS errors after Glock and Beretta inspection');
    await page.close();
   }
  }finally{await browser.close();}
