@@ -14,6 +14,8 @@ export class GlockViewport{
  private scene=new THREE.Scene();
  private camera=new THREE.PerspectiveCamera(37,1,.1,300);
  private model:THREE.Group|null=null;
+ private currentId:GlockAppearanceId|null=null;
+ private currentClay=false;
  private observer:ResizeObserver;
  private yaw=.27;
  private pitch=.13;
@@ -103,7 +105,11 @@ export class GlockViewport{
   this.radius=THREE.MathUtils.clamp(height/(2*Math.tan(37*Math.PI/360)*.76),14,120);
  }
  setModel(id:GlockAppearanceId,clay=false){
+  // Switching tabs/carry-only edits must not reset an intentionally orbited
+  // camera, churn geometry or allocate a new WebGL resource on mobile.
+  if(this.model&&this.currentId===id&&this.currentClay===clay)return;
   if(this.model){this.scene.remove(this.model);clearGlockAppearance(this.model);}
+  this.currentId=id;this.currentClay=clay;
   this.model=buildGlockAppearance(id,{monochrome:clay});
   this.scene.add(this.model);this.fit();this.draw();
  }
