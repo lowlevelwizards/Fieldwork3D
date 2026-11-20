@@ -19,6 +19,7 @@ test('D15.3 real GO restraint consumes one pair after physical contact',()=>{
  try{
   const a=team(s)[0],target=enemies(s)[0];
   for(const blue of team(s))if(blue!==a)blue.health=0;
+  for(const red of enemies(s))if(red!==target)red.health=0;
   target.p={x:a.p.x+15,y:a.p.y};target.priorP={...target.p};
   target.heading=a.heading;
   assert.equal(commitSuspectSurrender(s,target,()=>{},()=>{}),true);
