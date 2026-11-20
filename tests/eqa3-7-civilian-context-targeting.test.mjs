@@ -39,7 +39,7 @@ test('EQA3.7 SECURE skips compliant and physically blocked civilians',()=>{
 test('EQA3.7 requires sight beyond physical contact; still rejects out-of-range and incapacitated',()=>{
  const unseen=make('unseen',{x:31,y:0},true);
  const known=make('known',{x:18,y:0},true);
- const distant=make('distant',{x:38,y:0},true);
+ const distant=make('distant',{x:115,y:0},true);
  const down=make('down',{x:9,y:0},true);down.health=0;
  assert.equal(nearestContextCivilian([unseen,down,known,distant],from,
    'follow','extract',p=>p.x===18,()=>true),known);
