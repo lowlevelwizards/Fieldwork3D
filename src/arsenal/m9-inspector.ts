@@ -33,8 +33,8 @@ export function openM9Inspector(id:M9AppearanceId):void{
  const actions=document.createElement('div');actions.className='arsenal-wb-actions';
  const controls=document.createElement('div');controls.className='arsenal-wb-utility-actions';
  const side=action('SIDE'),opposite=action('OTHER SIDE'),
-  orbit=action('3/4 VIEW'),clay=action('CLAY');
- controls.append(side,opposite,orbit,clay);actions.append(controls);
+  orbit=action('3/4 VIEW'),top=action('TOP'),clay=action('CLAY');
+ controls.append(side,opposite,orbit,top,clay);actions.append(controls);
  header.append(back,identity,actions);
  const main=document.createElement('div');main.className='arsenal-wb-main';
  const stage=document.createElement('div');stage.className='arsenal-wb-stage';
