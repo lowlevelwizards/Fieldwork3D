@@ -125,6 +125,7 @@ export class CampaignScreen{
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
  private selectedSquadOperatorId:string|null=null;
+ private selectedCaseId:string|null=null;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
@@ -932,23 +933,67 @@ export class CampaignScreen{
    }else{
     const sorted=[...openContracts].sort((a,b)=>
      a.deadline-b.deadline||a.id.localeCompare(b.id));
-    const visible=sorted.slice(0,3);
-    jobs.append(node('p','campaign-contract-board-summary',
-     'INTELLIGENCE RESERVE '+campaignIntelBalance(c)+' · SHOWING '+visible.length+' OF '+openContracts.length+
-     ' OPEN CASE'+(openContracts.length===1?'':'S')+' · EARLIEST DEADLINE FIRST'));
-    const board=node('div','campaign-contract-board');
-    for(const contract of visible)board.append(this.contract(contract,c));
-    jobs.append(board);
-    if(sorted.length>visible.length){
-     const more=node('details','campaign-contract-more');
-     more.dataset.campaignDetail='more-cases';
-     more.append(node('summary','',
-      'VIEW '+(sorted.length-visible.length)+' ADDITIONAL CASES'));
-     const remaining=node('div','campaign-contract-board');
-     for(const contract of sorted.slice(visible.length))
-      remaining.append(this.contract(contract,c));
-     more.append(remaining);jobs.append(more);
+    // UXR-05: one active case, explicit navigation and a direct case index.
+    // All cards stay mounted to preserve intel disclosures; only one is visible.
+    const selectedCase=sorted.findIndex(k=>k.id===this.selectedCaseId);
+    let current=selectedCase<0?0:selectedCase;
+    const browser=node('section','campaign-uxr-case-browser');
+    const browseHead=node('div','campaign-uxr-case-heading');
+    const caseIndex=node('span','campaign-uxr-case-position');
+    caseIndex.setAttribute('aria-live','polite');
+    const prev=button('PREV',()=>showCase(current-1),'campaign-uxr-case-prev');
+    const next=button('NEXT',()=>showCase(current+1),'campaign-uxr-case-next');
+    browseHead.append(prev,caseIndex,next);
+    const board=node('div','campaign-contract-board campaign-uxr-case-pages');
+    const pages=sorted.map(k=>this.contract(k,c));
+    for(const page of pages)board.append(page);
+    const indexRail=node('div','campaign-uxr-case-index');
+    indexRail.setAttribute('aria-label','Select a case directly');
+    const selectors=sorted.map((k,i)=>{
+     const title=campaignIncidentView(c,k).title;
+     const buttonItem=button(String(i+1).padStart(2,'0')+' · '+title,
+      ()=>showCase(i),'campaign-uxr-case-index-item');
+     buttonItem.setAttribute('aria-label','Select case '+(i+1)+' of '+sorted.length+' · '+title);
+     indexRail.append(buttonItem);
+     return buttonItem;
+    });
+    function showCase(index:number){
+     current=Math.max(0,Math.min(sorted.length-1,index));
+     for(let i=0;i<pages.length;i++)pages[i].hidden=i!==current;
+     for(let i=0;i<selectors.length;i++)
+      selectors[i].setAttribute('aria-current',i===current?'true':'false');
+     caseIndex.textContent='CASE '+(current+1)+' / '+sorted.length;
+     prev.disabled=current===0;next.disabled=current===sorted.length-1;
     }
+    // Persist selection without mutating a save. Updated in the listener,
+    // rather than by the projection or case contents.
+    const selectCase=(index:number)=>{
+     showCase(index);
+     this.selectedCaseId=sorted[current].id;
+    };
+    prev.onclick=()=>selectCase(current-1);
+    next.onclick=()=>selectCase(current+1);
+    for(let i=0;i<selectors.length;i++)selectors[i].onclick=()=>selectCase(i);
+    let initialTouch:{x:number;y:number}|null=null;
+    board.addEventListener('touchstart',event=>{
+     const touch=event.touches[0];
+     if(touch&&event.touches.length===1)
+      initialTouch={x:touch.clientX,y:touch.clientY};
+    },{passive:true});
+    board.addEventListener('touchend',event=>{
+     if(!initialTouch)return;
+     const touch=event.changedTouches[0];
+     const deltaX=touch.clientX-initialTouch.x;
+     const deltaY=touch.clientY-initialTouch.y;
+     if(Math.abs(deltaX)>55&&Math.abs(deltaX)>Math.abs(deltaY)*1.45)
+      selectCase(current+(deltaX<0?1:-1));
+     initialTouch=null;
+    },{passive:true});
+    showCase(current);
+    this.selectedCaseId=sorted[current].id;
+    browser.append(node('p','campaign-contract-board-summary',
+     'INTEL '+campaignIntelBalance(c)+' · EARLIEST DEADLINE FIRST'),browseHead,board,indexRail);
+    jobs.append(browser);
    }
   }
   grid.append(jobs);
