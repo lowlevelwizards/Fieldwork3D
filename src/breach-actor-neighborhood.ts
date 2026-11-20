@@ -1,6 +1,6 @@
 /** P6.H: frame-only broadphase for tactical 3D ally presentation.
  *
- * A candidate must be within the original 48u fixed-position directional
+ * A candidate must be within the original ~49u fixed-position directional
  * courtesy/40u stack window OR within 90u of the interpolated muzzle.
  * The old exact predicates, health/side filter and safetyBodyFor are still
  * evaluated by the caller, in the original roster order. No game authority.
@@ -49,7 +49,10 @@ export class FrameActorNeighborhoodIndex<T extends FrameActorPoint>{
  /** The returned scratch view is valid only until the next query/rebuild. */
  candidates(fixedX:number,fixedY:number,drawX:number,drawY:number):readonly T[]{
   this.matches.length=0;this.candidateIndices.length=0;this.seen.clear();
-  this.collect(fixedX,fixedY,48);
+  // Forward <48 and lateral <8.5 can place a diagonal peer up to
+  // hypot(48,8.5)=48.75 from the actor's feet. The conservative 49u
+  // square is required to avoid rejecting legitimate angled courtesy.
+  this.collect(fixedX,fixedY,49);
   this.collect(drawX,drawY,90);
   // Sorting source positions preserves the original deterministic iteration
   // order, including duplicate IDs and equal-distance friendlies.
