@@ -1,5 +1,6 @@
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {escortWalkMultiplier} from './breach-civilian-mission.ts';
+import {physicalEscortWalkMultiplier} from './breach-follow-physical-policy.ts';
 import {openingFootwork} from './breach-door-opening-footwork.ts';
 /** Stage 8: conditional locomotion, lasting WATCH/LOOK aim, PIE
  * progression and waypoint arrival. Motion is still delegated to the
@@ -245,9 +246,17 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       s.rescue?.following===a.id?
       s.civilians.find(c=>c.rescueTarget&&c.following===a.id&&
         c.health>0&&!c.carriedById)??null:null;
+    // Restrained suspects remain red TeamActors; only the owner of an
+    // authored ESCORT walks gently enough to keep a real person behind.
+    // Existing RUN and squad-entry ownership retain their original speeds.
+    const escortedSuspect=!running&&n.kind==='move'&&
+      !n.entryDoorId&&!n.stackDoorId?
+      s.operators.find(e=>e.side==='red'&&e.health>0&&
+        e.surrendered&&e.restrained===true&&e.escortLeaderId===a.id)??null:null;
     const escortScale=escortWalkMultiplier(a,escorted);
+    const prisonerScale=physicalEscortWalkMultiplier(a,escortedSuspect);
     move(a,n.p,dt,s,(running?1.40:distantTemplateStack?1:
-      templateEntry?.90:cautious?.70:1)*escortScale);
+      templateEntry?.90:cautious?.70:1)*Math.min(escortScale,prisonerScale));
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     // While wedged sideways, the physical shoulder axis has priority

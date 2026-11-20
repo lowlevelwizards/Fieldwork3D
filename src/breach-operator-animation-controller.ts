@@ -106,7 +106,7 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   const downProgress=clamp(p.downProgress??(p.down?1:0),0,1);
   const smooth=(t:number)=>{const v=clamp(t,0,1);return v*v*(3-2*v)};
   const buckle=p.down&&!p.surrender?smooth(downProgress/.48):0;
-  const kneel=p.surrender?smooth(downProgress/.65):0;
+  const kneel=p.surrender&&!p.custodyWalking?smooth(downProgress/.65):0;
   // A kneel must keep the pelvis an achievable two-bone distance from
   // planted ankles. The old hip -9 PLUS root -6 put the pelvis ~5 units
   // off the floor, below the legal leg IK minimum reach (~8.4), forcing
@@ -925,10 +925,15 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     const gesture=throwSupportGesture(throwAge);
     leftGrip.set(data.supportX+gesture.forward,4+gesture.lift,-7);
   }else if(p.surrender){
-    
+    // Preserve actual cuffed hands during follow; do not raise them again
+    // in this later choreography branch and override the custody pose.
     const raised=smooth(downProgress/.60);
-    leftGrip.set(-1,3+15*raised,-6);
-    rightGrip.set(-1,3+15*raised,6);
+    if(p.restrained){
+      leftGrip.set(-6,-7,-6);rightGrip.set(-6,-7,6);
+    }else{
+      leftGrip.set(-1,3+15*raised,-6);
+      rightGrip.set(-1,3+15*raised,6);
+    }
   }else if(bash.active&&p.bashRole==='push'){
     // A short forearm/shoulder extension separates the opponent, while
     // the primary hand keeps the gun from flailing through the torso.

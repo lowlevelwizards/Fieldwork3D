@@ -4,7 +4,7 @@
  */
 import {doorCenter,type Door,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,plannedControl,finalPoint,
- setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,planSuspectRestraint,planSearchSuspect,planSecureDroppedFirearm,
+ setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,planSuspectRestraint,planSearchSuspect,planSecureDroppedFirearm,planSuspectEscort,
  inSight,team,enemies,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planSwitchWeaponAt,planMedicalTreatment,
@@ -123,6 +123,20 @@ export function dispatchTacticalContextCommand(input:{
      .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
    return finish(!!item&&planSecureDroppedFirearm(state,selected,item.id),
      'LOOSE FIREARM NOT REACHABLE');
+  }
+  case 'ctxEscortSuspect':
+  case 'ctxStopEscortSuspect':{
+   const at=finalPoint(a),stopping=action==='ctxStopEscortSuspect';
+   const candidate=enemies(state).filter(e=>e.health>0&&
+     e.surrendered&&e.restrained===true&&
+     (stopping?!!e.escortLeaderId:e.escortLeaderId!==a.id)&&
+     (!stopping?liveVisibility(state,e.p):true)&&
+     distance(at,e.p)<=SUSPECT_CHALLENGE_RANGE&&
+     sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)))
+     .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
+   return finish(!!candidate&&planSuspectEscort(state,selected,
+     candidate.id,stopping?'stop':'escort'),
+     'RESTRAINED SUSPECT OUT OF SPEAKING RANGE');
   }
   case 'ctxSecureCivilian':
   case 'ctxFollowCivilian':

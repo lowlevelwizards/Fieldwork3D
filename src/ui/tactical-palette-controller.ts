@@ -437,6 +437,17 @@ export function createTacticalPaletteController(config:{
     nearestPaletteCandidate(state.droppedFirearms,at,w=>w.status==='loose'&&
       liveVisibility(state,w.p)&&
       sweptBodyClear(at,w.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
+  const escortableSuspectAtPlan=routeEndCivilianActions?
+    nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&e.surrendered&&
+      e.restrained===true&&e.escortLeaderId!==a.id&&
+      liveVisibility(state,e.p)&&
+      sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
+      SUSPECT_CHALLENGE_RANGE):null;
+  const followingSuspectAtPlan=routeEndCivilianActions?
+    nearestPaletteCandidate(enemies(state),at,e=>e.health>0&&e.surrendered&&
+      e.restrained===true&&!!e.escortLeaderId&&
+      sweptBodyClear(at,e.p,state.doors,1.5,sessionWorldGeometry(state)),
+      SUSPECT_CHALLENGE_RANGE):null;
   const casualtyAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(state.civilians,at,c=>
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
@@ -461,6 +472,8 @@ export function createTacticalPaletteController(config:{
     nearRestrainableSuspect:!!restrainedSuspectAtPlan,
     nearSearchableSuspect:!!searchableAtPlan,
     nearDroppedFirearm:!!looseFirearmAtPlan,
+    nearEscortableSuspect:!!escortableSuspectAtPlan,
+    nearFollowingSuspect:!!followingSuspectAtPlan,
     escortableCivilian:!!rescueAtPlan&&rescueAtPlan.following!==a.id,
     stopFollowingCivilian:!!followingAtPlan,
     nearCivilianCasualty:!!casualtyAtPlan,

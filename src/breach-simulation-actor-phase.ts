@@ -7,6 +7,8 @@ import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
+import {physicalFollowGoal,physicalFollowerSeparated}
+ from './breach-follow-physical-policy.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
 import {idleYieldAllowed,commitIdleYield} from './breach-passage-yield.ts';
@@ -25,6 +27,8 @@ export type ActorSimulationPhasePort={
  unobstructed:(from:Pt,to:Pt,s:Session,lowBlocks:boolean)=>boolean;
  defensivePosition:(a:TeamActor,threat:Pt,s:Session)=>Pt|null;
  decideEnemy:(s:Session,a:TeamActor,h:number)=>void;
+ /** Existing actor motor is the ONLY physical executor for restrained suspects. */
+ runCustody:(s:Session,a:TeamActor,goal:Pt,h:number)=>void;
  runFriendly:(s:Session,a:TeamActor,h:number,
   profile?:((section:string,elapsedMs:number)=>void))=>void;
 };
@@ -86,6 +90,30 @@ export function advanceSimulationActors(s:Session,h:number,
     }
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
+    // A submitted hostile is not a combatant, but remains a living physical
+    // TeamActor. Advance only explicit restraint custody through the existing
+    // 60 Hz motor, never hostile AI or a second follower controller.
+    if(a.side==='red'&&a.health>0&&a.surrendered){
+      if(a.restrained===true&&a.escortLeaderId){
+        const leader=s.operators.find(b=>b.side==='blue'&&
+          b.id===a.escortLeaderId&&b.health>0)??null;
+        if(physicalFollowerSeparated(a,leader)){
+          a.escortLeaderId=null;a.escortGoal=null;
+          a.nav=[];a.velocity=0;a.lastEscortRouteAt=-100;
+          notify(s,a.name+' ESCORT SEPARATED — PERSON HOLDING');
+        }else if(leader){
+          // Bound follower goal updates; don't run route search per 60 Hz tick.
+          if(s.seconds-(a.lastEscortRouteAt??-100)>=.55){
+            a.escortGoal=physicalFollowGoal(leader,a);
+            a.lastEscortRouteAt=s.seconds;
+          }
+          if(a.escortGoal&&d(a.p,a.escortGoal)>19)
+            port.runCustody(s,a,a.escortGoal,h);
+          else a.velocity=0;
+        }
+      }else a.velocity=0;
+      continue;
+    }
     if(!activeCombatant(a))continue;
     if((a.doorStunUntil??0)>s.seconds){
       // Retain authored orders; no movement or firing while physically stunned.

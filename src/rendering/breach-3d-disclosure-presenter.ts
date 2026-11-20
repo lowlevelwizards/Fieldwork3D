@@ -16,6 +16,12 @@ import type {WideOpening} from '../breach-site.ts';
 
 export function presentActor(s:Session,a:TeamActor,omniscient:boolean,
  policy:ReplayDisclosure|null):boolean{
+ // A genuine active custody relationship is squad-visible, matching the
+ // existing escorted-civilian exception. Archived films lacking custody
+ // evidence cannot retroactively reveal a future captured subject.
+ if(a.side==='red'&&a.health>0&&a.restrained===true&&
+    a.escortLeaderId&&s.operators.some(o=>o.id===a.escortLeaderId&&
+      o.side==='blue'&&o.health>0))return true;
  if(policy)return replayActorDisclosed(s,a,policy);
  // A live game has no historical sample. Keep its authoritative current
  // actor sight separate from replay's intentionally fail-closed evidence.
