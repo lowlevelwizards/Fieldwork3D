@@ -2890,3 +2890,57 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(max-width:360px){
  .campaign-uxr-picker-options{grid-template-columns:minmax(0,1fr)}
 }
+
+/* UXR-05 — one case at a time, visible explicit navigation and direct index. */
+.campaign-uxr-case-browser{min-width:0;display:grid;gap:8px}
+.campaign-uxr-case-browser>.campaign-contract-board-summary{
+ margin:0;color:var(--fw-text-muted);
+}
+.campaign-uxr-case-heading{
+ display:grid;grid-template-columns:minmax(72px,1fr) auto minmax(72px,1fr);
+ gap:8px;align-items:center;
+}
+.campaign-uxr-case-position{
+ font:750 12px/1.25 var(--fw-font-menu);
+ color:var(--fw-text);white-space:nowrap;
+ font-variant-numeric:tabular-nums;
+}
+.campaign-shell .campaign-uxr-case-prev,
+.campaign-shell .campaign-uxr-case-next{
+ width:100%;min-height:44px;margin:0;
+ color:var(--fw-text);background:var(--fw-panel-deep);
+}
+.campaign-shell .campaign-uxr-case-prev:disabled,
+.campaign-shell .campaign-uxr-case-next:disabled{
+ opacity:.38;cursor:not-allowed;
+}
+.campaign-uxr-case-pages.campaign-contract-board{
+ display:block;min-width:0;touch-action:pan-y;
+}
+.campaign-uxr-case-pages>.campaign-contract{
+ display:grid;box-sizing:border-box;width:100%;
+ grid-column:auto;margin:0;padding:14px;
+ background:var(--fw-panel);border:1px solid var(--fw-panel-border);
+}
+.campaign-uxr-case-pages>.campaign-contract[hidden]{display:none!important}
+.campaign-uxr-case-index{
+ display:flex;gap:7px;overflow-x:auto;scrollbar-width:thin;
+ padding:3px 0 7px;scroll-snap-type:x proximity;
+}
+.campaign-shell .campaign-uxr-case-index-item{
+ flex:0 0 auto;max-width:65%;min-width:92px;
+ min-height:44px;width:auto;margin:0;padding:8px 12px;
+ background:var(--fw-panel-deep);color:var(--fw-text-muted);
+ text-align:left;font:650 12px/1.25 var(--fw-font-menu);
+ scroll-snap-align:start;
+}
+.campaign-shell .campaign-uxr-case-index-item[aria-current="true"]{
+ border-color:var(--fw-sage);color:var(--fw-text);
+ background:var(--fw-panel-raised);
+}
+@media(min-width:900px){
+ .campaign-uxr-case-pages.campaign-contract-board{
+  display:block;max-width:100%;
+ }
+ .campaign-uxr-case-pages>.campaign-contract:first-child{grid-column:auto}
+}
