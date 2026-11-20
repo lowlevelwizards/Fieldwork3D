@@ -20,7 +20,11 @@ Base main: `a4e323d6e66edf5f2a45a470a4ac399e0d7c7af9`. Feature branch: `feature/
   no longer rely on fake death.
 - Replay records surrender time, dropped firearm state and physical actor
   health without inventing custody for archival D9 films.
-- Retrieval, separate world mesh and custody orders are still outstanding;
+- D15.2B now presents authoritative world guns independently of the owner rig
+  using original primary and Glock geometry. Old surrender films keep their
+  legacy pose when no world gun was recorded. Separate owner rig drop is hidden
+  only for D15 world-released weapons. Scene swap and replay clear stale models.
+- Retrieval, custody orders and full focused validation are still outstanding;
   do not publish an incomplete checkpoint.
 
 ## R1 must still implement before release

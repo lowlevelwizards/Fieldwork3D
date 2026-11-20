@@ -812,7 +812,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // S6.1: prevent simultaneous shouldered primary and held sidearm.
   heldWeapon.visible=((!p.down&&!p.surrender)||downProgress<.30)&&
     (p.secondarySwitch?.fraction??0)<.50;
-  droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30;
+  droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30&&
+    !(p.surrender&&p.worldWeaponReleased);
   if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
     const buildStart=profilePose?performance.now():0;
     // Build the same real silhouette (including accessories) at the exact
