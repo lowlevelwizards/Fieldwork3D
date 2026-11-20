@@ -187,3 +187,157 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
  border:1px solid #8aab92;border-radius:8px;padding:8px 9px;
  font:600 14px var(--fw-font-action)}
 .fw-weapon-editor .weapon-workbench-viewport{max-width:100%;min-width:0}
+
+/* R5 Quick Play: the in-mission Squad > LOADOUT button now owns the same
+   one-row gallery as Campaign. Only physical inventory and technical weapon
+   editing use their separate on-demand panels. */
+#operationsBoard .fw-quick-board-model-stage{
+ position:relative;min-width:0;
+ height:clamp(230px,38dvh,350px);margin:5px 0 8px;
+ border:1px solid #637c69;border-radius:11px;overflow:hidden;
+ background:#1b3029;
+}
+#operationsBoard .fw-quick-board-model-stage>.fw-prep-operator-viewer{
+ display:block;box-sizing:border-box;width:100%;height:100%;
+ min-height:0;max-height:none;margin:0;border:0;border-radius:0;
+ background:#1b3029;
+}
+#operationsBoard .fw-quick-board-zones{
+ position:absolute;inset:0;z-index:3;
+ display:grid;grid-template-columns:65px minmax(0,1fr) 65px;
+ grid-template-rows:repeat(4,minmax(0,1fr));
+ gap:5px;padding:7px;pointer-events:none;
+}
+#operationsBoard .fw-quick-board-zone{
+ min-width:0;min-height:40px;max-height:56px;height:100%;
+ padding:5px 2px;border:1px solid #7a9884;border-radius:8px;
+ background:#294a3c;color:#d7e7d5;
+ font:800 10px/1.15 var(--fw-font-action);
+ display:grid;place-items:center;pointer-events:auto;
+}
+#operationsBoard .fw-quick-board-zone:nth-child(-n+4){grid-column:1}
+#operationsBoard .fw-quick-board-zone:nth-child(n+5):nth-child(-n+8){grid-column:3}
+#operationsBoard .fw-quick-board-zone:nth-child(1),
+#operationsBoard .fw-quick-board-zone:nth-child(5){grid-row:1}
+#operationsBoard .fw-quick-board-zone:nth-child(2),
+#operationsBoard .fw-quick-board-zone:nth-child(6){grid-row:2}
+#operationsBoard .fw-quick-board-zone:nth-child(3),
+#operationsBoard .fw-quick-board-zone:nth-child(7){grid-row:3}
+#operationsBoard .fw-quick-board-zone:nth-child(4),
+#operationsBoard .fw-quick-board-zone:nth-child(8){grid-row:4}
+#operationsBoard .fw-quick-board-zone:nth-child(n+9){display:none}
+#operationsBoard .fw-quick-board-zone[aria-current="true"]{
+ background:#b6cda9;color:#1b3426;border-color:#e0efc1;
+}
+#operationsBoard .fw-quick-board-gallery[hidden],
+#operationsBoard .fw-quick-board-carry[hidden]{display:none!important}
+#operationsBoard .fw-quick-board-gallery{min-width:0;margin:0 0 8px}
+#operationsBoard .fw-quick-board-clothing{
+ display:block;margin:0 0 6px auto;min-height:34px;
+ padding:5px 10px;border:1px solid #76927b;border-radius:7px;
+ background:#284538;color:#d4e7d6;
+ font:750 10px var(--fw-font-action);
+}
+#operationsBoard .fw-quick-board-gallery>.fw-outfitter-gallery{
+ display:grid;grid-template-rows:38px 145px minmax(60px,auto);
+ min-width:0;height:auto;overflow:hidden;
+ background:#20392e;border:1px solid #65826d;border-radius:10px;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-gallery-head{
+ display:flex;align-items:center;justify-content:space-between;
+ box-sizing:border-box;min-height:38px;height:38px;
+ padding:6px 10px;border-bottom:1px solid #6c8974;background:#28463a;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-gallery-head strong{
+ font:800 15px/1 var(--fw-font-action);
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-gallery-head span{
+ font:600 10px/1 var(--fw-font-menu);color:#b6cbbc;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-gallery-scroll{
+ display:block;box-sizing:border-box;min-width:0;min-height:0;
+ height:100%;width:100%;overflow-x:auto;overflow-y:hidden;
+ scroll-snap-type:x proximity;overscroll-behavior-x:contain;
+ padding:7px;scrollbar-width:thin;-webkit-overflow-scrolling:touch;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-options{
+ display:flex;flex-direction:row;flex-wrap:nowrap;align-items:stretch;
+ gap:7px;height:100%;width:max-content;min-width:100%;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-option{
+ box-sizing:border-box;flex:0 0 110px;min-width:110px;max-width:110px;
+ display:flex;flex-direction:column;align-items:stretch;gap:4px;
+ height:100%;min-height:0;margin:0;padding:5px;scroll-snap-align:start;
+ background:#2e493b;color:#e1ecd9;border:1px solid #738f7a;
+ border-radius:8px;text-align:left;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-option[data-selected="true"]{
+ background:#44614d;border:2px solid #dfecbc;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-option:disabled{
+ opacity:.35;filter:saturate(.3);cursor:not-allowed;pointer-events:none;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-gallery-image{
+ flex:1 1 auto;min-height:28px;height:auto;
+ display:grid;place-items:center;overflow:hidden;
+ border-radius:5px;background:#1a3027;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-gallery-image img{
+ width:100%;height:100%;object-fit:contain;display:block;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-option-copy{
+ flex:0 0 auto;min-width:0;display:flex;flex-direction:column;gap:2px;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-option-copy strong{
+ font:750 10px/1.1 var(--fw-font-action);overflow:hidden;
+ display:-webkit-box;-webkit-box-orient:vertical;
+ -webkit-line-clamp:2;line-clamp:2;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-option-copy small{
+ font:600 9px var(--fw-font-menu);color:#bacabd;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-context{
+ box-sizing:border-box;min-height:60px;
+ display:flex;align-items:center;justify-content:space-between;
+ gap:7px;padding:7px 9px;background:#284136;
+ border-top:1px solid #647e6d;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-detail-copy{
+ flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:3px;
+ font:750 12px/1.2 var(--fw-font-menu);
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-detail-copy small{
+ font:550 10px var(--fw-font-menu);overflow:hidden;
+ white-space:nowrap;text-overflow:ellipsis;
+}
+#operationsBoard .fw-quick-board-gallery .fw-outfitter-context-action{
+ flex:0 0 auto;max-width:132px;min-width:75px;
+ min-height:40px;padding:6px 9px;
+ font:750 10px/1.1 var(--fw-font-action);white-space:normal;
+}
+#operationsBoard .fw-quick-board-carry{
+ padding:8px;border:1px solid #647f6e;border-radius:9px;
+ background:#203a30;margin:8px 0;
+}
+#operationsBoard .fw-quick-board-return{min-height:41px;margin-bottom:8px}
+#operationsBoard .fw-quick-board-advanced{
+ margin:9px 0 7px;border:1px solid #5a7766;border-radius:8px;
+ background:#1d342b;
+}
+#operationsBoard .fw-quick-board-advanced>summary{
+ box-sizing:border-box;min-height:42px;padding:10px 9px;
+ color:#c9dacb;font:750 11px/1.2 var(--fw-font-action);
+}
+#operationsBoard .fw-quick-board-advanced[open]>.fw-quick-board-legacy{
+ padding:5px 7px;
+}
+@media(max-width:370px){
+ #operationsBoard .fw-quick-board-model-stage{height:clamp(210px,34dvh,290px)}
+ #operationsBoard .fw-quick-board-zones{
+  grid-template-columns:57px minmax(0,1fr) 57px;padding:5px;gap:3px;
+ }
+ #operationsBoard .fw-quick-board-zone{font-size:9px}
+ #operationsBoard .fw-quick-board-gallery .fw-outfitter-option{
+  flex-basis:102px;min-width:102px;max-width:102px;
+ }
+}
