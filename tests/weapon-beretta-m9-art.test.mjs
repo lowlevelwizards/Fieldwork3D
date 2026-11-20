@@ -21,6 +21,7 @@ const count=g=>{
  return {meshes,triangles};
 };
 const sideRay=(g,x,y)=>{
+ g.updateMatrixWorld(true);
  const ray=new THREE.Raycaster(new THREE.Vector3(x,y,9),
   new THREE.Vector3(0,0,-1),0,20);
  return ray.intersectObject(g,true).length;
@@ -46,10 +47,10 @@ test('M9 family: two genuinely 3D art-only models, not issued Glock IDs',()=>{
    assert.ok(m.children.every(x=>x.name.startsWith('family-')));
    const stats=count(m);
    const isA3=ref.id==='beretta-m9a3';
-   assert.ok(stats.meshes<=(isA3?18:17),
-     'D6 provisional reduced mesh budget '+JSON.stringify(stats));
-   assert.ok(stats.triangles<=(isA3?380:365),
-     'D6 provisional reduced triangle budget '+JSON.stringify(stats));
+   assert.ok(stats.meshes<=(isA3?15:14),
+     'D6 measured mesh budget '+JSON.stringify(stats));
+   assert.ok(stats.triangles<=(isA3?370:355),
+     'D6 measured triangle budget '+JSON.stringify(stats));
    console.log('BERETTA_D6_ART_BUDGET '+JSON.stringify({id:ref.id,...stats}));
     }finally{
    clearM9Appearance(m);
