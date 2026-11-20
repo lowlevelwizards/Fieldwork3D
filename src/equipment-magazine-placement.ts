@@ -37,6 +37,27 @@ export function secondaryCarryClaim(kit:EquipmentLoadout){
   .filter(loc=>used[loc]>available[loc]);
  return {used,available,overflow,valid:overflow.length===0};
 }
+/** Author-authored spare pistol magazine move. The source ID, round count
+ * and other magazines are immutable. Reject overfilling rather than quietly
+ * placing the requested magazine somewhere other than the chosen slot.
+ * Primary magazines repack through stageMagazines at GO time.
+ */
+export function quoteSecondaryMagazineLocation(
+ kit:EquipmentLoadout,id:string,location:MagazineLocation
+):{ok:boolean;kit:EquipmentLoadout;reason?:string}{
+ const side=kit.secondary;
+ if(!side?.weapon||!side.spareMagazines.some(m=>m.id===id))
+  return {ok:false,kit,reason:'Magazine is not owned by this operator'};
+ if(!(['rig','belt','pocket','backpack','overflow'] as const).includes(location))
+  return {ok:false,kit,reason:'Unsupported carry location'};
+ const secondary={...side,spareMagazines:side.spareMagazines.map(m=>
+  m.id===id?{...m,location}:m)};
+ const candidate={...kit,secondary};
+ const report=secondaryCarryClaim(candidate);
+ if(!report.valid)return {ok:false,kit,
+  reason:'No free '+report.overflow.join(' / ')+' carry space'};
+ return {ok:true,kit:candidate};
+}
 export function magazineSpace(kit:EquipmentLoadout){
  const capacity=(id:string)=>Math.max(0,Math.floor(
   EQUIPMENT_CATALOG[id]?.capacity??0));
