@@ -10,6 +10,7 @@ import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
 import type {BuildingArchetype} from '../breach-site.ts';
 import type {RosterState} from '../breach-roster.ts';
 import {catalogOutfitterSources} from './outfitter-choice-sources.ts';
+import {createOutfitterZoneNav,previewFocusForOutfitterSlot} from './outfitter-zone-nav.ts';
 import type {LoadoutSlot} from '../equipment-loadouts.ts';
 import type {WeaponId} from '../breach-combat.ts';
 import type {CarryGearSlot} from '../equipment-carry-gear-change.ts';
@@ -323,33 +324,20 @@ export function createQuickPlayConfigurator(options:{
   };
   // The gallery reads the catalog directly; there are no throwaway selects.
   const sources=catalogOutfitterSources(selected.loadout);
-  const zones=node('nav','fw-quick-outfitter-zones');
-  zones.setAttribute('aria-label','Equipment locations');
-  const zoneButtons=new Map<LoadoutSlot,HTMLButtonElement>();
   let showGallery:(slot:LoadoutSlot)=>void=()=>{};
-  const chooseSlot=(slot:LoadoutSlot)=>{
-   selectedSquadSlot=slot;
-   for(const [key,control] of zoneButtons)
-    control.setAttribute('aria-current',String(key===slot));
-   showGallery(slot);
-   squadPreview?.setSelectedSlot(slot);
-   squadPreview?.focusOn(slot==='head'?'head':slot==='primary'?'weapon':
-    slot==='armor'||slot==='rig'||slot==='top'?'torso':
-    slot==='backpack'?'back':slot==='belt'||slot==='medical'||slot==='utility'?'belt':
-    slot==='legs'||slot==='feet'?'legs':'full');
-  };
-  for(const [slot,label] of [
-   ['primary','WEAPON'],['head','HEAD'],['armor','ARMOR'],
-   ['rig','CHEST'],['belt','BELT'],['backpack','PACK'],
-   ['medical','MEDICAL'],['utility','TOOLS'],
-   ['top','TOP'],['legs','LEGS'],['hands','HANDS'],['feet','FOOTWEAR']
-  ] as const){
-   const control=command(label,()=>chooseSlot(slot),'fw-quick-outfitter-zone');
-   control.dataset.slot=slot;
-   control.setAttribute('aria-current',String(slot===selectedSquadSlot));
-   zoneButtons.set(slot,control);zones.append(control);
-  }
-  galleryHost.append(zones);
+  const zones=createOutfitterZoneNav({
+   navClass:'fw-quick-outfitter-zones',
+   buttonClass:'fw-quick-outfitter-zone',
+   selected:selectedSquadSlot,
+   onSelect:slot=>{
+    selectedSquadSlot=slot;
+    showGallery(slot);
+    squadPreview?.setSelectedSlot(slot);
+    squadPreview?.focusOn(previewFocusForOutfitterSlot(slot));
+   }
+  });
+  const chooseSlot=zones.select;
+  galleryHost.append(zones.nav);
   const gallery=createOutfitterGallery({
    host:galleryHost,sources,kit:selected.loadout,magazines:selected.magazines,
    locked:false,
