@@ -20,8 +20,8 @@ jobs:
           node -e "const r=require('./garage-31110.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,lastQueue:r.queueDecisionEvidence.slice(-8)},null,2))"
       - name: Motel 31149 Vale blocked motor
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 --route-transitions --trace-actor=vale --trace-mode=entry --d326-last-stall-probe > motel-31149.json
-          node -e "const r=require('./motel-31149.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,vale:r.operators.find(x=>x.id==='vale'),routes:r.routeTransitions?.events?.slice(-8)},null,2))"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 --motel-exit-probe > motel-31149.json
+          node -e "const r=require('./motel-31149.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,vale:r.operators.find(x=>x.id==='vale'),probe:r.motelExitProbe},null,2))"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

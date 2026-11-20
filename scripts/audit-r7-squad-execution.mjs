@@ -103,6 +103,7 @@ const entryLandingModule=entryLandingWitnessEnabled?
  await import('../src/breach-order-movement.ts'):null;
 const queueMotionWitnessEnabled=process.argv.includes('--queue-motion-witness');
 const queueDecisionWitnessEnabled=process.argv.includes('--queue-decision-witness');
+const motelExitProbeEnabled=process.argv.includes('--motel-exit-probe');
 const queueMotionModule=(queueMotionWitnessEnabled||queueDecisionWitnessEnabled)?
  await import('../src/breach-queue-trace.ts'):null;
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
@@ -1471,6 +1472,35 @@ function run(site,seed,kind){
    ...(d327GarageProbe?{d327GarageEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
+    ...(motelExitProbeEnabled?{motelExitProbe:actors.filter(a=>a.id==='vale').map(a=>{
+     const goal=planned.goals.get(a.id);
+     const world=sessionWorldGeometry(session);
+     if(!goal)return null;
+     const radius=[2,4,8,12];
+     const angles=[0,Math.PI/4,Math.PI/2,3*Math.PI/4,
+       Math.PI,5*Math.PI/4,3*Math.PI/2,7*Math.PI/4];
+     const samples=[];
+     for(const r of radius)for(const theta of angles){
+      const next={x:a.p.x+r*Math.cos(theta),y:a.p.y+r*Math.sin(theta)};
+      const yaw=squeezeFacing(theta);
+      const narrow=sweptProfileClear(a.p,next,session.doors,yaw,'squeeze',world);
+      const full=sweptBodyClear(a.p,next,session.doors,OPERATOR_RADIUS,world);
+      if(!narrow&&!full)continue;
+      const tail=routeWithSqueezeWorld(next,goal,session.doors,world);
+      const first=tail[0]??null;
+      const firstClear=first? sweptProfileClear(next,
+       {x:next.x+(first.x-next.x)*Math.min(.3,dist(next,first))/Math.max(.0001,dist(next,first)),
+        y:next.y+(first.y-next.y)*Math.min(.3,dist(next,first))/Math.max(.0001,dist(next,first))},
+       session.doors,squeezeFacing(Math.atan2(first.y-next.y,first.x-next.x)),
+       'squeeze',world):false;
+      samples.push({r,theta,narrow,full,stage:next,
+        tailLength:tail.length,first,firstClear});
+     }
+     return {p:a.p,goal,squeeze:a.squeeze,squeezeYaw:a.squeezeYaw,
+       fine:coldFineMotorWorldRoute(a.p,goal,session.doors,world).slice(0,8),
+       coarse:routeWithSqueezeWorld(a.p,goal,session.doors,world).slice(0,8),
+       samples};
+    })}:{}),
     ...(queueDecisionWitnessEnabled?{queueDecisionEvidence,
      queueEndState:{doors:session.doors.filter(d=>d.id==='D5').map(d=>({id:d.id,a:d.a,b:d.b,openFraction:d.openFraction})),
       slots:[...livePassageSchedule(session)].map(([id,slots])=>({id,slots})),
