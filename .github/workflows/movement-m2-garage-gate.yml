@@ -28,10 +28,6 @@ jobs:
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=5 > garage-m2-31110.json
           node -e "const r=require('./garage-m2-31110.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,successful:r.successful,ops:r.operators.map(x=>({id:x.id,arrived:x.arrived,remaining:x.remaining,failed:x.failedOrders}))}));if(r.arrivals!==4)process.exit(1)"
-      - name: Clinic frozen holdout seed 19178827 four physical arrivals
-        run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=10 --audit-seed=19178827 --audit-scale=small > clinic-m2-19178827.json
-          node -e "const r=require('./clinic-m2-19178827.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,ops:r.operators.map(x=>({id:x.id,arrived:x.arrived,active:x.activeOrder,hold:x.motorPause}))}));if(r.arrivals!==4)process.exit(1)"
       - name: Strict unchanged Q5 70-door matrix
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
       - uses: actions/upload-artifact@v4

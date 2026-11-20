@@ -276,11 +276,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  let hostileThroat=false;
  if(forward>.025&&normalDepth(a.p,door)*slot.fromSide>=0)
   for(const other of s.operators){
-   // A teammate already at generated SYNC is waiting for the squad,
-   // not attempting counterflow. Occupying the far-side stack footprint
-   // must not reserve the crossing forever against a still-arriving peer.
-   // Physical doorway and teammate clearance remain owned by the motor.
-   if(other===a||other.health<=0||other.plan[0]?.kind==='sync'||
+   if(other===a||other.health<=0||
       finishedFriendly(a,other)||!throat(other.p,door))continue;
    if(normalDepth(other.p,door)*slot.fromSide<0){
     hostileThroat=true;break;
