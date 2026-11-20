@@ -54,7 +54,7 @@ test('P11: one semantic Arsenal shell preserves separate primary/secondary CSS a
   assert.equal(secondary.layout.tagName,'section');
   assert.equal(secondary.hero.tagName,'div');
   assert.equal(secondary.layout.getAttribute('aria-label'),
-   'Glock family secondary weapon loadouts');
+   'Secondary weapon factory gallery');
   assert.ok(secondary.layout.find('arsenal-glock-gallery'));
   assert.ok(secondary.layout.find('arsenal-glock-feature'));
   assert.ok(secondary.layout.find('arsenal-glock-hero-visual'));
@@ -62,10 +62,10 @@ test('P11: one semantic Arsenal shell preserves separate primary/secondary CSS a
   assert.ok(secondary.layout.find('arsenal-glock-cards'));
   assert.equal(secondary.heroMedia.getAttribute('aria-live'),'polite');
   assert.equal(secondary.search.getAttribute('aria-label'),
-   'Find Glock model or saved build');
+   'Find secondary weapon model or saved Glock build');
   assert.equal(secondary.filters.getAttribute('aria-label'),'Secondary model filters');
   assert.equal(secondary.grid.getAttribute('role'),'group');
-  assert.equal(secondary.grid.getAttribute('aria-label'),'Glock models and saved builds');
+  assert.equal(secondary.grid.getAttribute('aria-label'),'Secondary factory models and saved Glock builds');
   assert.equal(secondary.heroPlatform.textContent,'GLOCK');
   assert.equal(secondary.heroHint.textContent,'');
  }finally{globalThis.document=prev;}

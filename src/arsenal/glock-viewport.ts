@@ -7,8 +7,8 @@ import {configureGraphicRendererOutput}
  from '../rendering/graphic-lighting-profile.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {inspectOrbitYaw,inspectOrbitPitch,positionInspectCamera} from './orbit-math.ts';
-import {buildGlockAppearance,clearGlockAppearance,
- type GlockAppearanceId} from '../weapons/geometry/glock-family-silhouettes.ts';
+import {buildSidearmPreview,clearSidearmPreview,
+ type SidearmPreviewId} from '../weapons/geometry/sidearm-preview.ts';
 import type {GlockCustomization}
  from '../weapons/geometry/glock-customization.ts';
 export class GlockViewport{
@@ -17,7 +17,7 @@ export class GlockViewport{
  private scene=new THREE.Scene();
  private camera=new THREE.PerspectiveCamera(37,1,.1,300);
  private model:THREE.Group|null=null;
- private currentId:GlockAppearanceId|null=null;
+ private currentId:SidearmPreviewId|null=null;
  private currentClay=false;
  private customizationKey='';
  private observer:ResizeObserver;
@@ -43,10 +43,10 @@ export class GlockViewport{
   positionInspectCamera(this.camera,this.target,this.radius,this.yaw,this.pitch);
   this.renderer.render(this.scene,this.camera);
  };
- constructor(host:HTMLElement,id:GlockAppearanceId){
+ constructor(host:HTMLElement,id:SidearmPreviewId){
   this.element=document.createElement('div');
   this.element.className='glock-wb-canvas';
-  this.element.setAttribute('aria-label','3D Glock model · drag to rotate · pinch or wheel to zoom');
+  this.element.setAttribute('aria-label','3D secondary model · drag to rotate · pinch or wheel to zoom');
   this.element.style.touchAction='none';host.append(this.element);
   this.scene.background=new THREE.Color(0x1a2a25);
   addArsenalInspectionLighting(this.scene);
@@ -113,19 +113,21 @@ export class GlockViewport{
   const height=Math.max(size.y,size.x/aspect,size.z);
   this.radius=THREE.MathUtils.clamp(height/(2*Math.tan(37*Math.PI/360)*.76),14,120);
  }
- setModel(id:GlockAppearanceId,clay=false,customization?:GlockCustomization){
+ setModel(id:SidearmPreviewId,clay=false,customization?:GlockCustomization){
   // Only actual part changes trigger a mesh rebuild. Keep orbit and
   // zoom through magazine placement and editor panel navigation.
   const key=JSON.stringify(customization??null);
   if(this.model&&this.currentId===id&&this.currentClay===clay&&
    this.customizationKey===key)return;
-  if(this.model){this.scene.remove(this.model);clearGlockAppearance(this.model);}
+  if(this.model&&this.currentId){this.scene.remove(this.model);
+   clearSidearmPreview(this.currentId,this.model);}
   this.currentId=id;this.currentClay=clay;this.customizationKey=key;
-  this.model=buildGlockAppearance(id,{monochrome:clay,customization});
+  this.model=buildSidearmPreview(id,{monochrome:clay,customization});
   this.scene.add(this.model);this.fit();this.draw();
  }
  side(){this.yaw=0;this.pitch=0;this.draw();}
  opposite(){this.yaw=Math.PI;this.pitch=0;this.draw();}
+ top(){this.yaw=0;this.pitch=1.38;this.draw();}
  reset(){this.yaw=.27;this.pitch=.13;this.fit();this.draw();}
  // Coalesce touch/mouse orbit updates into the display cadence.
  private draw(){
@@ -144,7 +146,8 @@ export class GlockViewport{
   this.element.removeEventListener('pointerup',this.onUp);
   this.element.removeEventListener('pointercancel',this.onUp);
   this.element.removeEventListener('wheel',this.onWheel);
-  if(this.model){this.scene.remove(this.model);clearGlockAppearance(this.model);}
+  if(this.model&&this.currentId){this.scene.remove(this.model);
+   clearSidearmPreview(this.currentId,this.model);}
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.element.replaceChildren();
  }

@@ -49,7 +49,7 @@ categoryNav.setAttribute('aria-label','Arsenal weapon categories');
 const primaryTab=document.createElement('button');
 primaryTab.type='button';primaryTab.textContent='PRIMARY WEAPONS';
 const secondaryTab=document.createElement('button');
-secondaryTab.type='button';secondaryTab.textContent='SECONDARIES · GLOCK';
+secondaryTab.type='button';secondaryTab.textContent='SECONDARY WEAPONS';
 categoryNav.append(primaryTab,secondaryTab);
 const secondaryGallery=mountGlockArsenalGallery();
 const glockGallery=secondaryGallery.section;

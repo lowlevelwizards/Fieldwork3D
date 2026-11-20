@@ -15,6 +15,10 @@ on:
       - 'scripts/smoke-consolidation-p9-arsenal.mjs'
       - 'src/arsenal/arsenal.css'
       - 'tests/weapon-glock-family-art.test.mjs'
+      - 'src/weapons/geometry/beretta-m9-silhouettes.ts'
+      - 'src/weapons/geometry/sidearm-preview.ts'
+      - 'src/arsenal/m9-inspector.ts'
+      - 'tests/weapon-beretta-m9-art.test.mjs'
       - 'tests/secondary-s1-s3-foundation.test.mjs'
       - 'src/secondary-equipment.ts'
       - 'src/equipment-loadouts.ts'
@@ -25,7 +29,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   focused-art:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -36,6 +40,7 @@ jobs:
         run: >-
           node --experimental-strip-types --test
           tests/weapon-glock-family-art.test.mjs
+          tests/weapon-beretta-m9-art.test.mjs
           tests/secondary-s1-s3-foundation.test.mjs
           tests/secondary-arsenal-parity.test.mjs
           tests/consolidation-p9-arsenal-preview.test.mjs
@@ -50,3 +55,11 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Live Arsenal phone and desktop lazy-thumbnails
         run: node scripts/smoke-consolidation-p9-arsenal.mjs
+      - name: Preserve M9 visual-review captures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: beretta-m9-art-review
+          path: artifacts/m9/*.png
+          if-no-files-found: ignore
+          retention-days: 7
