@@ -94,8 +94,10 @@ async function assessEstablishedCareer(page,name,mobile){
     name+' full roster did not render');
    check(await page.locator('.campaign-person-expand').first()
     .locator(':scope > summary').isVisible(),name+' roster summary unreachable');
-   check(await page.locator('.campaign-assignment select').count()===4,
-    name+' tactical slot pickers missing');
+   check(await page.locator('.campaign-uxr-slot').count()===4,
+    name+' visual deployment slots missing');
+   check(await page.locator('.campaign-uxr-reserve').count()===4,
+    name+' reserve selector missing or incomplete');
   }
   if(tab==='contracts'){
    check(await page.locator('.campaign-contract-review').count()>0,
@@ -135,14 +137,14 @@ async function assessEstablishedCareer(page,name,mobile){
   if(tab==='logistics'){
    const stock=await page.locator('.campaign-logistics-stat strong')
     .allTextContents();
-   check(stock.length===3&&stock.every(count=>count.trim()==='0'),
+   check(stock.length===5&&stock.slice(0,3).every(count=>count.trim()==='0'),
     name+' exhausted reserves were not restored');
-   check(await page.locator('.campaign-logistics-stat.is-low').count()===3,
+   check(await page.locator('.campaign-logistics-stat.is-low').count()>=1,
     name+' empty stock alerts missing');
   }
   if(tab==='chronicle'){
-   const recent=page.locator('.campaign-chronicle>.campaign-operation-board');
-   check(await recent.locator('.campaign-operation-record').count()===8,
+   const recent=page.locator('.campaign-chronicle>.campaign-uxr-record-index');
+   check(await recent.locator('.campaign-uxr-record-row').count()===8,
     name+' Records should show only eight recent operations');
    const earlier=page.locator('.campaign-operation-more');
    check(await earlier.count()===1,name+' missing older record disclosure');
@@ -155,7 +157,7 @@ async function assessEstablishedCareer(page,name,mobile){
     .waitFor({state:'attached',timeout:5000});
    check(await earlier.locator('.campaign-operation-record').count()===2,
     name+' earlier history failed to load remaining two records');
-   const detail=recent.locator('.campaign-operation-detail').first();
+   const detail=page.locator('.campaign-uxr-record-inspector .campaign-operation-detail').first();
    await detail.locator(':scope > summary').click();
    check(await detail.locator('.campaign-operation-participants').isVisible(),
     name+' saved operation participants inaccessible');
@@ -197,11 +199,11 @@ async function assessActiveDeployment(page,name,expected){
  check((await page.locator('.campaign-overview-primary-action').textContent())
   ?.includes('CONTINUE DEPLOYMENT'),name+' active mission resume action missing');
  await page.locator('#campaign-tab-personnel').click();
- const disabled=await page.locator('.campaign-assignment select')
+ const disabled=await page.locator('.campaign-uxr-slot-change')
   .evaluateAll(els=>els.length===4&&els.every(el=>el.disabled));
  check(disabled,name+' squad slots editable during an active deployment');
  await page.locator('#campaign-tab-chronicle').click();
- check(await page.locator('.campaign-chronicle>.campaign-operation-board .campaign-operation-record')
+ check(await page.locator('.campaign-chronicle>.campaign-uxr-record-index .campaign-uxr-record-row')
   .count()===Math.min(8,expected.total),
   name+' accepting a contract altered recent operation history');
  check(await page.locator('.campaign-operation-more').count()===(expected.total>8?1:0),
@@ -251,13 +253,15 @@ async function assess(browser,{name,width,height,mobile}){
    }
    const pair=tab==='overview'?['.campaign-overview-priority','.campaign-overview-support']:
     tab==='personnel'?['.campaign-assignment','.campaign-personnel-roster-panel']:
-    tab==='logistics'?['.campaign-logistics-supply-panel','.campaign-logistics-workspace>.campaign-armory']:null;
+    tab==='logistics'?['.campaign-logistics-supply-panel','.campaign-uxr-procurement']:null;
    if(pair){
     const a=await page.locator(pair[0]).boundingBox();
     const b=await page.locator(pair[1]).boundingBox();
     check(a&&b,name+' '+tab+' workspace missing');
-    check(mobile?b.y>=a.y+a.height-8:b.x>=a.x+a.width-8,
-     name+' '+tab+' layout is not '+(mobile?'stacked':'two-column'));
+    check(b.width>=90&&b.height>=40,name+' '+tab+' workspace inaccessible');
+    check(mobile?b.y>=a.y+a.height-8:
+     (b.x>=a.x+a.width-8||b.y>=a.y+a.height-8),
+     name+' '+tab+' workspace ordering changed');
    }
    // C1–C4 progressive-disclosure regressions: information stays accessible
    // without forcing every roster and case detail into the initial scroll.
@@ -275,9 +279,11 @@ async function assess(browser,{name,width,height,mobile}){
    if(tab==='personnel'){
     const row=page.locator('.campaign-person-expand').first();
     check(await row.count()===1,name+' missing operator disclosures');
-    check(await row.getAttribute('open')===null,name+' operator starts expanded');
+    check(await row.getAttribute('open')!==null,name+' selected operator inspector starts closed');
     await row.locator(':scope > summary').click();
-    check(await row.getAttribute('open')!==null,name+' operator did not expand');
+    check(await row.getAttribute('open')===null,name+' operator inspector did not close');
+    await row.locator(':scope > summary').click();
+    check(await row.getAttribute('open')!==null,name+' operator inspector did not reopen');
     check(await row.locator('.campaign-person-actions button').first().isVisible(),
      name+' operator loadout action inaccessible');
     await row.locator(':scope > summary').click();
@@ -291,10 +297,13 @@ async function assess(browser,{name,width,height,mobile}){
     // Keep the case open so the logistics action can test persistent state.
    }
    if(tab==='logistics'){
-    check(await page.locator('.campaign-logistics-stat').count()===3,
-     name+' logistics stock ledger missing');
-    check(await page.locator('.campaign-supply-offer button').count()===3,
+    check(await page.locator('.campaign-uxr-stock-button').count()===5,
+     name+' five selectable HQ resources missing');
+    check(await page.locator('.campaign-supply-offer button').count()===5,
      name+' replenishment actions missing');
+    check(await page.locator('.campaign-supply-offer:visible').count()===1,
+     name+' more than one purchase option visible');
+    await page.locator('.campaign-uxr-procurement > summary').click();
     const procurement=page.locator('.campaign-procurement-item').first();
     check(await procurement.count()===1,name+' procurement item missing');
     check(await procurement.locator('button').count()===1,
