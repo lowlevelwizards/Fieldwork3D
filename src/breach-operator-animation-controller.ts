@@ -1406,7 +1406,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // S6.1: one 3D Glock follows the finished firing wrist, not uncommitted IK.
   // The fixed-step fraction also gives deterministic replay and reversal.
   presentSecondaryDraw(r.hip,r.arms[1].hand,p.equipment?.secondary,
-    p.secondarySwitch?.fraction??0,!p.down&&!p.surrender);
+    p.secondarySwitch?.fraction??0,!p.down&&!p.surrender,
+    p.shotHeading??p.heading);
   // F6.2: one already issued pouch mesh is attached to the *finished*
   // support hand; cancellation and replay rewinds restore it to the pouch.
   presentFlashHandoff(r,p,equipmentActive);
