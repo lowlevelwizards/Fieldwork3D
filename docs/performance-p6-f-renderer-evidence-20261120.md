@@ -20,8 +20,8 @@ On these four independent cold runs, the already-default prewarm materially redu
 |---|---|---:|---:|---:|---:|---:|---:|
 | 23 | 0 | 947 | 368 | 595 | 340 | 31.8 ms | 289.4 ms |
 | 23 | 1 | 947 | 368 | 595 | 340 | 21.7 ms | 395.1 ms |
-| 97 | 0 | 1317 | 495 | 898 | 416 | See E6.17 artifact | See E6.17 artifact |
-| 97 | 1 | 1317 | 495 | 898 | 416 | See E6.17 artifact | See E6.17 artifact |
+| 97 | 0 | 1317 | 495 | 898 | 416 | 27.5 ms | 428.0 ms |
+| 97 | 1 | 1317 | 495 | 898 | 416 | 27.8 ms | 456.7 ms |
 
 E6.17's previous-callback attribution proves large live RAF gaps often have large **preceding CPU/driver scene submission** work: 23/0 worst 433 ms gap with 263 ms preceding scene sync (252 ms GPU-submit *CPU wall*), while 97/0 worst 550 ms gap with 442.5 ms preceding scene sync. Simulation continues to execute fixed 60Hz ticks; do not reduce simulation cadence to address these renderer-origin hitches.
 
