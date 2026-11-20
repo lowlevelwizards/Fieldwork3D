@@ -126,6 +126,7 @@ export class CampaignScreen{
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
  private selectedSquadOperatorId:string|null=null;
  private selectedCaseId:string|null=null;
+ private selectedSupplyIndex=0;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
@@ -759,24 +760,31 @@ export class CampaignScreen{
   const logisticsWorkspace=node('div','campaign-logistics-workspace');
   const supplyPanel=node('section','campaign-logistics-supply-panel');
   supplyPanel.append(node('h2','','RESERVE SUPPLIES'));
-  const stock=node('div','campaign-logistics-stats');
-  for(const [count,label] of [
+  // UXR-06: five resource selectors, only one purchasing decision shown.
+  const squadQuote=quoteCampaignSquadRefill(c);
+  const stock=node('div','campaign-logistics-stats campaign-uxr-stock');
+  const stockButtons:HTMLButtonElement[]=[];
+  let selectStock=(index:number)=>{};
+  const supplyFacts=[
    [c.supplies.ammo,'ROUNDS'],
    [c.supplies.medical,'MEDICAL KITS'],
    [c.supplies.flash,'FLASHBANGS'],
    [c.supplies.wedges,'DOOR WEDGES'],
    [c.supplies.cuffs,'FLEX CUFF PAIRS']
-  ] as const){
-   const fact=node('div','campaign-logistics-stat');
-   if(count===0||(label==='ROUNDS'&&count<60))
-    fact.classList.add('is-low');
+  ] as const;
+  for(let i=0;i<supplyFacts.length;i++){
+   const [count,label]=supplyFacts[i];
+   const fact=button('',()=>selectStock(i),'campaign-logistics-stat campaign-uxr-stock-button');
+   const needed=label==='ROUNDS'?squadQuote.roundsWanted:
+    label==='MEDICAL KITS'?squadQuote.medicalWanted:
+    label==='DOOR WEDGES'?squadQuote.wedgesWanted:
+    label==='FLEX CUFF PAIRS'?squadQuote.cuffsWanted:0;
+   if(needed>count)fact.classList.add('is-low');
+   fact.setAttribute('aria-label','Select '+label+' · '+count+' in HQ stock');
    fact.append(node('strong','',String(count)),node('span','',label));
-   stock.append(fact);
+   stockButtons.push(fact);stock.append(fact);
   }
   supplyPanel.append(stock);
-  // The same immutable HQ transaction plan powers these labels and the
-  // action. Shortages are visible *before* choosing the squad refill.
-  const squadQuote=quoteCampaignSquadRefill(c);
   const squadReplenish=node('section','campaign-squad-refill');
   squadReplenish.append(node('h3','','SQUAD REFILL · LIVE HQ STOCK'));
   const refillSummary=node('p','campaign-squad-refill-summary',
@@ -799,11 +807,12 @@ export class CampaignScreen{
      (line.blockedByCarry?' · NOT ENOUGH CARRY SPACE':'')));
    rows.append(chip);
   }
-  squadReplenish.append(rows);
-  const squadRefill=button('REFILL SQUAD · '+
-   squadQuote.cost.ammo+' RDS · '+squadQuote.cost.medical+
-   ' MED · '+squadQuote.cost.wedges+' WEDGES · '+
-   squadQuote.cost.cuffs+' CUFFS',
+  const refillBreakdown=node('details','campaign-uxr-refill-breakdown');
+  refillBreakdown.dataset.campaignDetail='refill-breakdown';
+  refillBreakdown.append(node('summary','','OPERATOR ALLOCATION DETAILS'),rows);
+  squadReplenish.append(refillBreakdown);
+  const squadRefill=button('ISSUE SUPPLIES · '+
+   squadQuote.cost.ammo+' RDS · '+squadQuote.cost.medical+' MED',
    this.handlers.resupplySquad,'campaign-primary');
   squadRefill.setAttribute('aria-label',
    'Refill squad using '+squadQuote.cost.ammo+' HQ rounds, '+
@@ -812,13 +821,13 @@ export class CampaignScreen{
   squadRefill.disabled=!squadQuote.available||!squadQuote.changed;
   if(squadRefill.disabled)squadRefill.title=squadQuote.reason??
    'All assigned operators are supplied or HQ reserves are empty';
-  squadReplenish.append(squadRefill,
-   node('p','campaign-muted',
-    'Issues each physical item from finite HQ stock exactly once. '+
-    'Equipment that cannot fit stays in HQ.'));
+  squadReplenish.append(squadRefill);
+  refillBreakdown.append(node('p','campaign-muted',
+   'Items come from finite HQ stock. Carry-limited gear stays in HQ.'));
   supplyPanel.append(squadReplenish,node('h3','campaign-logistics-buy-heading',
    'REPLENISH RESERVES'));
-  const purchases=node('div','campaign-purchases');
+  const purchases=node('div','campaign-purchases campaign-uxr-purchase-panel');
+  const purchaseItems:HTMLElement[]=[];
   for(const [label,cost,action] of [
    ['60 ROUNDS',120,this.handlers.buyAmmo],
    ['MEDICAL KIT',170,this.handlers.buyMedical],
@@ -859,8 +868,17 @@ export class CampaignScreen{
     buy.title=why;
     buy.setAttribute('aria-description',why);
    }
-   item.append(desc,buy);purchases.append(item);
+   item.append(desc,buy);purchases.append(item);purchaseItems.push(item);
   }
+  selectStock=(index:number)=>{
+   const choice=Math.max(0,Math.min(stockButtons.length-1,index));
+   this.selectedSupplyIndex=choice;
+   for(let i=0;i<stockButtons.length;i++){
+    stockButtons[i].setAttribute('aria-pressed',String(i===choice));
+    purchaseItems[i].hidden=i!==choice;
+   }
+  };
+  selectStock(this.selectedSupplyIndex);
   supplyPanel.append(purchases);
   logisticsWorkspace.append(supplyPanel);
   const inventory=node('div','campaign-armory');
@@ -893,7 +911,10 @@ export class CampaignScreen{
    buy.setAttribute('aria-describedby',reasonId);
    row.append(heading,metrics,buy,eligibility);inventory.append(row);
   }
-  logisticsWorkspace.append(inventory);
+  const procurement=node('details','campaign-uxr-procurement');
+  procurement.dataset.campaignDetail='weapon-procurement';
+  procurement.append(node('summary','','WEAPON PROCUREMENT · '+offerings.length+' PLATFORMS'),inventory);
+  logisticsWorkspace.append(procurement);
   logistics.append(logisticsWorkspace);
   const recruit=button('RECRUIT OPERATOR · '+
    (isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?
