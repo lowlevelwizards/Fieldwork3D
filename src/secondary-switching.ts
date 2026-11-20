@@ -69,3 +69,19 @@ export function advanceInterruptedSecondarySwitch(s:SecondarySwitchState,dt:numb
  return advanceSecondarySwitch(
   target===s.desired?s:{...s,desired:target},dt,equipment,operational);
 }
+
+/** S9: planned hand at HERE or just AFTER a selected plan node. Reading the
+ * authored order prefix avoids guessing from the actor's current hand while
+ * paused, and never changes the fixed-step switch motor.
+ */
+export function plannedSecondaryHand(s:SecondarySwitchState,
+ plan:readonly Readonly<{id:number;kind:string;weaponHand?:WeaponHand}>[],
+ afterNodeId?:number):WeaponHand{
+ let hand=s.active;
+ if(afterNodeId===undefined)return hand;
+ for(const n of plan){
+  if(n.kind==='switch-weapon')hand=n.weaponHand??'secondary';
+  if(n.id===afterNodeId)break;
+ }
+ return hand;
+}
