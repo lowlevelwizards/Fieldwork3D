@@ -106,3 +106,58 @@ test('shared preview accepts Beretta but leaves Glock equipment unchanged',()=>{
  assert.match(gallery,/BERETTA/);
  assert.doesNotMatch(gallery,/equipFreshSecondary/);
 });
+
+test('C1 caricature: the exposed round barrel is a real visible object, not a painted beam',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const barrels=m.children.filter(x=>x.userData.m9ExposedBarrel);
+   const sideRails=m.children.filter(x=>x.userData.m9OpenSlideRail);
+   assert.equal(barrels.length,1);
+   assert.equal(sideRails.length,2);
+   const barrel=bounds(barrels[0]);
+   const rail=bounds(sideRails[0]);
+   assert.ok(barrel.max.y>rail.max.y+.9,
+    'barrel protrudes substantially above low side rails');
+   assert.ok(barrel.max.y-barrel.min.y>1.2,
+    'barrel diameter remains visibly chunky');
+   assert.ok(sideRay(m,4.4,2.8)>0,'barrel physically visible from side');
+   assert.equal(sideRay(m,4.4,3.42),0,'real opening above barrel');
+   assert.ok(m.children.some(x=>x.userData.m9MuzzleCrown));
+   const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
+   assert.ok(bounds(frame).max.x<M9_ART[id].nose-1.1,
+    'shorter dust cover exposes muzzle and no full-length lower slab');
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('C1 caricature: grip is swept and broad; classic curvature differs from Vertec',()=>{
+ const classic=M9_ART['beretta-m9'],a3=M9_ART['beretta-m9a3'];
+ assert.ok(classic.gripRear<a3.gripRear-.5,'classic heel extends rearward');
+ assert.ok(classic.gripFront<a3.gripFront-.1,'fuller classic heel');
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const panels=m.children.filter(x=>x.userData.m9GripPanel);
+   assert.equal(panels.length,2);
+   assert.ok(panels.every(p=>bounds(p).max.y<-3.1),
+    'grip panels should not become floating slide controls');
+   assert.ok(m.children.filter(x=>x.userData.m9DecockerCue).length===2,
+    'both exposed slide faces have one deliberate paddle each');
+   assert.ok(sideRay(m,-.3,-2.30)===0,
+    'larger sculpted trigger guard remains physically empty');
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('C2 Beretta inspector is mobile-first and scoped away from Glock loadouts',()=>{
+ const inspector=readFileSync(new URL('../src/arsenal/m9-inspector.ts',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
+ assert.match(inspector,/arsenal-m9-inspector/);
+ assert.match(inspector,/aria-pressed/);
+ assert.match(inspector,/VISUAL STUDY ONLY/);
+ assert.match(inspector,/viewport\.top\(\)/);
+ assert.doesNotMatch(inspector,/equipFreshSecondary|secondaryRoundTotal|saveGlockLibrary/);
+ assert.match(css,/\.arsenal-m9-inspector \.arsenal-wb-main/);
+ assert.match(css,/\.arsenal-m9-inspector \.glock-wb-viewport\{height:100%\}/);
+});
