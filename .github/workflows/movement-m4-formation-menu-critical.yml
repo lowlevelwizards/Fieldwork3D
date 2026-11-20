@@ -1,0 +1,38 @@
+name: Movement M4 formation menu critical
+on:
+  push:
+    branches: [feature/movement-m4-formation-menu-20261120]
+    paths:
+      - '.github/workflows/movement-m4-formation-menu-critical.yml'
+      - 'src/breach-stack-formation-selection.ts'
+      - 'src/ui/context-actions.ts'
+      - 'src/ui/tactical-palette-controller.ts'
+      - 'src/breach-tactical-context-command.ts'
+      - 'tests/movement-m4-formation-menu.test.mjs'
+permissions: {contents: read}
+concurrency:
+  group: movement-m4-formation-menu
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: In-game formation and context dispatch regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/movement-m4-formation-menu.test.mjs \
+            tests/movement-m4-queue-formation.test.mjs \
+            tests/breach-roadmap3-context-commands.test.mjs \
+            tests/context-dock.test.mjs \
+            tests/passage-q2-coordinator.test.mjs \
+            tests/phase-a-stack-geometry.test.mjs
+          npm run check
+          npm run build
+          test -s dist/fieldwork-build.json
+      - name: Strict unchanged Q5 physical door matrix
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
