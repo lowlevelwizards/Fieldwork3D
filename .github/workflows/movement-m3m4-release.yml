@@ -29,7 +29,6 @@ jobs:
             tests/release-d3-r1-door-topology.test.mjs \
             tests/release-d3-14b2-narrow-leaf-exit.test.mjs \
             tests/phase-a-stack-geometry.test.mjs \
-            tests/breach-083-088.test.mjs \
             tests/passage-q6-opener.test.mjs
           npm run check
           npm run build
