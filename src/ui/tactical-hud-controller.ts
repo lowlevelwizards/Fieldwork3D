@@ -31,6 +31,8 @@ import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,toggleNvg
 import {captureRangeTrial} from '../equipment-training-diagnostics.ts';
 import {confirmFieldworkAction} from './fieldwork-controls.ts';
 import {contextActionChoices} from './context-actions.ts';
+import {plannedSecondaryHand} from '../secondary-switching.ts';
+import {selectAccessibleSecondaryMagazine} from '../secondary-timed-reload.ts';
 import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
@@ -269,7 +271,11 @@ export function createTacticalHudController(
       door:false,node:!!node,flashRemaining:state.flashRemaining,
       posture:current.posture,pace:current.pace,
       firePolicy:node?.firePolicyState??actor.firePolicy,
-      reserve:actor.reserve,magazine:actor.magazine
+      reserve:actor.reserve,magazine:actor.magazine,
+      secondaryIssued:!!actor.equipment?.secondary?.weapon,
+      secondaryHand:plannedSecondaryHand(actor.secondarySwitch,actor.plan,node?.id),
+      secondaryReloadAvailable:!!actor.equipment?.secondary?.weapon&&
+        !!selectAccessibleSecondaryMagazine(actor.equipment.secondary)
     }).filter(choice=>choice.group==='state');
     for(const choice of choices){
       const button=quickStates.querySelector<HTMLButtonElement>(
@@ -949,7 +955,11 @@ port.ui.loadout.addEventListener('click',()=>{
 });
 port.ui.reload.addEventListener('click',()=>{
   if(port.state.phase==='planning')planReload(port.state,port.selected);
-  else if(port.state.phase==='running')reloadNow(port.state,port.selected);
+  else if(port.state.phase==='running'&&!reloadNow(port.state,port.selected)){
+    const actor=team(port.state).find(x=>x.id===port.selected);
+    if((actor?.secondarySwitch?.fraction??0)>0)
+      port.showUiHelp('PAUSE TO QUEUE A PISTOL RELOAD',3200);
+  }
   port.updateHud();
 });
 port.ui.cancelTarget.addEventListener('click',port.cancelTargeting);
