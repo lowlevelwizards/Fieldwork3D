@@ -15,6 +15,12 @@ import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-prof
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {GLOCK_APPEARANCE_REFERENCES,buildGlockAppearance,clearGlockAppearance,
  type GlockAppearanceId} from '../weapons/geometry/glock-family-silhouettes.ts';
+import {buildM9Appearance,clearM9Appearance,
+ isM9AppearanceId,type M9AppearanceId}
+ from '../weapons/geometry/beretta-m9-silhouettes.ts';
+import {SIDEARM_PREVIEW_REFERENCES,type SidearmPreviewId}
+ from '../weapons/geometry/sidearm-preview.ts';
+import {openM9Inspector} from './m9-inspector.ts';
 
 /** Unlike the rifle workbench, never impose a 27-unit minimum distance on a
  * short pistol. Frame the *actual* mesh bounds at the requested aspect ratio.
@@ -36,7 +42,7 @@ class GlockGallerySnapshots{
  private readonly cached=new Map<string,string>();
  private unavailable=false;
  constructor(){addArsenalInspectionLighting(this.scene);}
- render(id:GlockAppearanceId,size:'card'|'hero',
+ render(id:SidearmPreviewId,size:'card'|'hero',
  customization?:GlockCustomization):string|undefined{
   const key=[id,size,JSON.stringify(customization??null)].join('/');
   if(this.cached.has(key))return this.cached.get(key);
@@ -52,7 +58,8 @@ class GlockGallerySnapshots{
    const width=size==='hero'?960:420,height=size==='hero'?480:210;
    this.renderer.setSize(width,height,false);
    this.camera.aspect=width/height;this.camera.updateProjectionMatrix();
-   model=buildGlockAppearance(id,{customization});this.scene.add(model);
+   model=isM9AppearanceId(id)?buildM9Appearance(id):
+    buildGlockAppearance(id,{customization});this.scene.add(model);
    model.updateMatrixWorld(true);
    const bounds=new THREE.Box3().setFromObject(model);
    const center=bounds.getCenter(new THREE.Vector3());
@@ -70,7 +77,9 @@ class GlockGallerySnapshots{
   }catch{
    this.unavailable=true;return undefined;
   }finally{
-   if(model){this.scene.remove(model);clearGlockAppearance(model);}
+   if(model){this.scene.remove(model);
+    if(isM9AppearanceId(id))clearM9Appearance(model);
+    else clearGlockAppearance(model);}
   }
  }
  dispose(){
@@ -88,20 +97,22 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
  let observer:IntersectionObserver|null=null;
  let activated=false;
  let selectedSavedId:string|null=null;
- type GlockFilter='all'|'compact'|'subcompact'|'crossover'|'saved';
+ let selectedM9:M9AppearanceId|null=null;
+ type GlockFilter='all'|'compact'|'subcompact'|'crossover'|'beretta'|'saved';
  const filterState:{value:GlockFilter}={value:'all'};
  const recipeForSelection=()=>{
   const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
   return saved?.recipe??factoryGlockRecipe(selected);
  };
  openWorkbench.addEventListener('click',()=>{
+  if(selectedM9){openM9Inspector(selectedM9);return;}
   openGlockWorkbench(recipeForSelection(),{
    onLibraryChange:()=>{renderFilters();renderCards();}
   });
  });
- const buttons=new Map<GlockAppearanceId,HTMLButtonElement>();
+ const buttons=new Map<SidearmPreviewId,HTMLButtonElement>();
  let selected:GlockAppearanceId='glock-g19-gen3';
- const display=(host:HTMLElement,id:GlockAppearanceId,
+ const display=(host:HTMLElement,id:SidearmPreviewId,
  size:'card'|'hero',customization?:GlockCustomization)=>{
   const source=renderer.render(id,size,customization);
   if(!source){host.textContent='3D preview unavailable';return;}
@@ -110,16 +121,21 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
   host.replaceChildren(image);
  };
  const refresh=()=>{
-  const reference=GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===selected)!;
+  const previewId:SidearmPreviewId=selectedM9??selected;
+  const reference=SIDEARM_PREVIEW_REFERENCES.find(r=>r.id===previewId)!;
   modelLabel.textContent=reference.name;
-  desc.textContent=reference.description;
+  desc.textContent=reference.description+
+   (selectedM9?' · ART PREVIEW ONLY — NOT EQUIPPABLE':'');
+  openWorkbench.textContent=selectedM9?'INSPECT 3D MODEL':'OPEN WORKBENCH';
+  const platform=section.querySelector('.arsenal-glock-platform');
+  if(platform)platform.textContent=selectedM9?'BERETTA 92 / CONCEPT':'GLOCK';
   const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
   // Give a just-opened tab one paint before its costly hero readback.
   // Priority replaces a prior hero request when selection changes rapidly.
   previewQueue.enqueue(feature,()=>
-   display(feature,selected,'hero',saved?.recipe.customization),true);
+   display(feature,previewId,'hero',saved?.recipe.customization),true);
   for(const [id,button] of buttons)
-   button.setAttribute('aria-pressed',String(id===selected&&!selectedSavedId));
+   button.setAttribute('aria-pressed',String(id===previewId&&!selectedSavedId));
   for(const button of cards.querySelectorAll<HTMLButtonElement>('[data-glock-saved]'))
    button.setAttribute('aria-pressed',String(button.dataset.glockSaved===selectedSavedId));
   savedActions.hidden=!selectedSavedId;
@@ -152,19 +168,21 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
  };
  const filterOptions:readonly (readonly [GlockFilter,string])[]=[
   ['all','ALL'],['compact','G19'],['subcompact','G26'],
-  ['crossover','G19X'],['saved','SAVED']
+  ['crossover','G19X'],['beretta','BERETTA'],['saved','SAVED']
  ];
- const filterMatch=(id:GlockAppearanceId)=>{
+ const filterMatch=(id:SidearmPreviewId)=>{
   if(filterState.value==='all')return true;
+  if(filterState.value==='beretta')return isM9AppearanceId(id);
+  if(isM9AppearanceId(id))return false;
   if(filterState.value==='compact')return id==='glock-g19-gen3'||id==='glock-g19-gen5-mos';
   if(filterState.value==='subcompact')return id==='glock-g26';
   if(filterState.value==='crossover')return id==='glock-g19x';
   return false;
  };
- const searchMatch=(id:GlockAppearanceId,name:string)=>{
+ const searchMatch=(id:SidearmPreviewId,name:string)=>{
   const q=search.value.trim().toLowerCase();
   return !q||[id,name,
-   GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===id)?.description??'']
+   SIDEARM_PREVIEW_REFERENCES.find(r=>r.id===id)?.description??'']
    .some(text=>text.toLowerCase().includes(q));
  };
  function renderFilters(){
@@ -193,9 +211,9 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
    },{rootMargin:'100px'});
   }
   const saved=loadGlockLibrary().builds;
-  const shown:({kind:'factory';ref:typeof GLOCK_APPEARANCE_REFERENCES[number]}|
+  const shown:({kind:'factory';ref:typeof SIDEARM_PREVIEW_REFERENCES[number]}|
    {kind:'saved';build:GlockSavedBuild})[]=[];
-  if(filterState.value!=='saved')for(const ref of GLOCK_APPEARANCE_REFERENCES)
+  if(filterState.value!=='saved')for(const ref of SIDEARM_PREVIEW_REFERENCES)
    if(filterMatch(ref.id)&&searchMatch(ref.id,ref.name))
     shown.push({kind:'factory',ref});
   if(filterState.value==='saved')for(const build of saved)
@@ -216,12 +234,13 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
    const displayName=choice.kind==='factory'?ref.name:choice.build.name;
    const {button,preview:image}=createArsenalGalleryCard({
     kind:'secondary',name:displayName,
-    subtitle:choice.kind==='factory'?'GLOCK':'SAVED · GLOCK',
+    subtitle:choice.kind==='factory'?(isM9AppearanceId(ref.id)?'BERETTA · ART PREVIEW':'GLOCK'):'SAVED · GLOCK',
     ariaLabel:'Inspect '+displayName,selected:false
    });
    if(choice.kind==='saved')button.dataset.glockSaved=choice.build.id;
    button.addEventListener('click',()=>{
-    selected=ref.id;
+    if(isM9AppearanceId(ref.id))selectedM9=ref.id;
+    else{selected=ref.id;selectedM9=null;}
     selectedSavedId=choice.kind==='saved'?choice.build.id:null;
     refresh();
    });
