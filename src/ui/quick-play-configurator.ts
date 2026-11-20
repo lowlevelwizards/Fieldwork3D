@@ -13,6 +13,7 @@ import type {LoadoutSlot} from '../equipment-loadouts.ts';
 import type {WeaponId} from '../breach-combat.ts';
 import type {CarryGearSlot} from '../equipment-carry-gear-change.ts';
 import {createOutfitterGallery} from './campaign-outfitter-gallery.ts';
+import './campaign-outfitter-gallery.css';
 import {initialFieldInventory,type FieldInventory,type FieldCarryLocation} from '../equipment-field-inventory.ts';
 import {FieldInventoryUndoHistory} from '../equipment-field-undo.ts';
 import {createFieldGadgetEditor} from './field-gadget-editor.ts';
