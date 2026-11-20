@@ -1,0 +1,26 @@
+name: Performance P3 preview hotpaths
+on:
+  pull_request:
+    paths:
+      - 'src/equipment-preview.ts'
+      - 'src/arsenal/gallery-main.ts'
+      - 'src/arsenal/glock-viewport.ts'
+      - 'tests/performance-p3-preview-hotpaths.test.mjs'
+      - '.github/workflows/performance-p3-preview-hotpaths.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Equipment and arsenal preview hotpath contracts
+        run: node --experimental-strip-types --test tests/performance-p3-preview-hotpaths.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build
