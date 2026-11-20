@@ -297,12 +297,67 @@ export function buildM9Appearance(id:M9AppearanceId,
   dots.name='family-receiver-'+id+'-red-safety-indicators';
   dots.userData.m9RedSafetyDots=true;dots.castShadow=false;
   root.add(dots);
+
+  // Three deliberate frame-side identifiers in ONE shared indexed mesh:
+  // big slide stop, takedown disc, and high magazine-release button.
+  // They are non-operational visual cues, deliberately asymmetric.
+  const controlPositions:number[]=[],controlIndices:number[]=[];
+  const quad=(points:readonly (readonly [number,number])[],z:number)=>{
+   const at=controlPositions.length/3;
+   for(const [x,y] of points)controlPositions.push(x,y,z);
+   controlIndices.push(at,at+1,at+2,at,at+2,at+3);
+  };
+  quad([[-3.87,-.32],[-2.92,-.32],[-2.71,-.10],[-3.74,-.10]],
+   FRAME_DEPTH/2+.038);
+  quad([[-4.81,-1.78],[-4.43,-1.78],[-4.43,-1.40],[-4.81,-1.40]],
+   FRAME_DEPTH/2+.045);
+  for(const side of [-1,1]){
+   const z=side*(FRAME_DEPTH/2+.045),cx=-.43,cy=-.30,r=.23;
+   const center=controlPositions.length/3;
+   controlPositions.push(cx,cy,z);
+   for(let k=0;k<6;k++){
+    const theta=k*Math.PI/3;
+    controlPositions.push(cx+r*Math.cos(theta),cy+r*Math.sin(theta),z);
+   }
+   for(let k=0;k<6;k++){
+    if(side>0)controlIndices.push(center,center+1+k,center+1+(k+1)%6);
+    else controlIndices.push(center,center+1+(k+1)%6,center+1+k);
+   }
+  }
+  const controlGeo=new THREE.BufferGeometry();
+  controlGeo.setAttribute('position',
+   new THREE.Float32BufferAttribute(controlPositions,3));
+  controlGeo.setIndex(controlIndices);controlGeo.computeVertexNormals();
+  const controls=new THREE.Mesh(controlGeo,dark);
+  controls.name='family-receiver-'+id+'-iconic-control-batch';
+  controls.userData.m9FrameControlBatch=true;
+  controls.castShadow=false;root.add(controls);
  }
  if(a.rail){
   // A3-only, readable under-frame rail; sits in dust-cover mass instead of
   // an extra long floating rectangle.
-  const rail=cuboid('receiver',4.80,-.55,0,2.65,.25,1.96,frameMaterial);
+  const rail=cuboid('receiver',4.80,-.86,0,2.65,.51,1.96,frameMaterial);
   rail.userData.m9AccessoryRail=true;
+  // Three broad slot cues in a single plane, no individual hardware mesh.
+  const slotPositions:number[]=[],slotIndices:number[]=[];
+  for(const side of [-1,1]){
+   const z=side*(1.96/2+.024);
+   for(let k=0;k<3;k++){
+    const x=3.84+k*.61,at=slotPositions.length/3;
+    slotPositions.push(x,-1.09,z,x+.18,-1.09,z,
+     x+.18,-.91,z,x,-.91,z);
+    if(side>0)slotIndices.push(at,at+1,at+2,at,at+2,at+3);
+    else slotIndices.push(at,at+2,at+1,at,at+3,at+2);
+   }
+  }
+  const slotGeometry=new THREE.BufferGeometry();
+  slotGeometry.setAttribute('position',
+   new THREE.Float32BufferAttribute(slotPositions,3));
+  slotGeometry.setIndex(slotIndices);slotGeometry.computeVertexNormals();
+  const slots=new THREE.Mesh(slotGeometry,dark);
+  slots.name='family-receiver-'+id+'-rail-slot-batch';
+  slots.userData.m9RailSlots=true;slots.castShadow=false;
+  root.add(slots);
  }
  root.userData.m9ArtLandmarks=Object.freeze({
   rearX:SLIDE_REAR,noseX:a.nose,muzzleX:a.barrelEnd,
