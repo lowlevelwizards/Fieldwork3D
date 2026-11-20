@@ -732,7 +732,19 @@ export function resolveMotorCollision(
          heading:a.heading,squeezeYaw:a.squeezeYaw,
          nextNav:a.nav[0],nextMotor:desiredMove,
          fullClear:normalClear,narrowClear,
-         speed:a.velocity}));
+         speed:a.velocity,
+         tinyFree:[...Array(16)].map((_,i)=>{
+          const theta=i*Math.PI/8;
+          const target={x:a.p.x+Math.cos(theta)*.027,
+           y:a.p.y+Math.sin(theta)*.027};
+          return sweptProfileClear(a.p,target,s.doors,
+            squeezeFacing(theta),'squeeze',world)?i:null;
+         }).filter(v=>v!==null),
+         westSweep:[.027,.1,.2,.3,1,2].map(length=>{
+          const target={x:a.p.x-length,y:a.p.y};
+          return {length,clear:sweptProfileClear(a.p,target,s.doors,
+           squeezeFacing(Math.PI),'squeeze',world)};
+         })}));
       }
       // M2.8 Motel 31149: a physically jammed generated ENTRY in squeeze
       // can have no valid coarse first leg despite a nearby real full-body
