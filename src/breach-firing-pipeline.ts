@@ -455,6 +455,10 @@ function settlePassiveAim(a:TeamActor,dt:number):void{
  a.aim+=Math.max(-step,Math.min(step,ready-a.aim));
 }
 function fire(s:Session,a:TeamActor,dt:number){
+  // Prevent the holstered primary from firing while a pistol is selected.
+  if((a.secondarySwitch?.fraction??0)>0||a.secondarySwitch?.desired==='secondary'){
+    a.aimSideTarget=0;return;
+  }
  updateContextualCrouch(s,a);
  // A3.2: only simulation time moves the tactical rifle accommodation.
  // Renderer/replay cannot initiate an offset or authorize a shot.
