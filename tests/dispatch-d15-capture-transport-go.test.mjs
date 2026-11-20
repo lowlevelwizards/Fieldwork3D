@@ -28,6 +28,9 @@ const setup=()=>{
  carrier.heading=0;carrier.weaponYaw=0;
  target.p=pt(155,200);target.priorP={...target.p};
  target.health=0;target.injuryStage=3;
+ // The simulated casualty has a real known down origin, not a legacy
+ // unverified body requiring D15.7's on-site vital assessment.
+ target.downedAt=0;
  target.surrendered=false;target.carriedById=null;
  return {s,carrier,target};
 };
