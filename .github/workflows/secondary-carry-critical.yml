@@ -1,0 +1,22 @@
+name: Secondary S4 physical carry focused
+on:
+  pull_request:
+    paths:
+      - 'src/secondary-holster-visual.ts'
+      - 'src/breach-operator-appearance.ts'
+      - 'tests/secondary-s4-holster-visual.test.mjs'
+      - '.github/workflows/secondary-carry-critical.yml'
+  workflow_dispatch:
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm ci --no-audit --no-fund
+      - name: Native holster, material ownership and carry tests
+        run: node --experimental-strip-types --test tests/secondary-s4-holster-visual.test.mjs
+      - name: Critical TypeScript and production build
+        run: npm run build
