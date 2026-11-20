@@ -474,10 +474,12 @@ function renderOperationsBoard(){
     null:savedQuickWorkbenchViews.get(member.id);
    if(quickWorkbench&&quickWorkbenchId===member.id){
     quickWorkbench.attachHost(workbenchHost,slot=>showSocket(slot));
-    if(visualKey===quickWorkbenchConfigKey)return;
-    // Only rebuild procedural weapon geometry when a real part changed.
-    quickWorkbench.setConfiguration(member.weaponConfiguration);
-    quickWorkbenchConfigKey=visualKey;
+    // Rebind accessory choice callbacks to the newly constructed selects
+    // even if geometry is identical; old selects are detached after refresh.
+    if(visualKey!==quickWorkbenchConfigKey){
+     quickWorkbench.setConfiguration(member.weaponConfiguration);
+     quickWorkbenchConfigKey=visualKey;
+    }
    }else{
     rememberQuickWorkbenchView();
     quickWorkbench?.dispose();quickWorkbench=null;
