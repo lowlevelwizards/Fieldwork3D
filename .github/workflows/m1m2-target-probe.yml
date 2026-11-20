@@ -1,31 +1,29 @@
-name: M1-M2 exact Garage and Motel read-only diagnostic
+name: M1-M2 independent clinic entry queue diagnosis
 on:
   push:
     branches: [audit/m1m2-queue-probe-20261120]
-    paths: ['.github/workflows/m1m2-target-probe.yml','scripts/audit-r7-squad-execution.mjs']
+    paths: ['.github/workflows/m1m2-target-probe.yml']
 permissions:
   contents: read
+concurrency:
+  group: m1m2-clinic-seed-diagnosis
+  cancel-in-progress: true
 jobs:
-  exact-seeds:
+  clinic:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 12
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with: {node-version: '24'}
       - run: npm install --no-audit --no-fund
-      - name: Garage 31110 D5 queue reason
+      - name: Clinic 19178827 four operator queue decision and rank evidence
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=5 --queue-decision-witness > garage-31110.json
-          node -e "const r=require('./garage-31110.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,lastQueue:r.queueDecisionEvidence.slice(-8)},null,2))"
-      - name: Motel 31149 Vale blocked motor
-        run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 --motel-exit-probe > motel-31149.json
-          node -e "const r=require('./motel-31149.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,vale:r.operators.find(x=>x.id==='vale'),probe:r.motelExitProbe},null,2))"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=10 --audit-seed=19178827 --audit-scale=small --queue-decision-witness > clinic-19178827.json
+          node -e "const x=require('./clinic-19178827.json');const r=x.rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,operators:r.operators.map(a=>({id:a.id,reason:a.motorPause,active:a.activeOrder,next:a.nextNav,p:a.position})),early:r.queueDecisionEvidence.slice(0,8),last:r.queueDecisionEvidence.slice(-8),lanes:r.queueEndState?.lanes,slots:r.queueEndState?.slots},null,2))"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: garage-motel-movement-witness
-          path: |
-            garage-31110.json
-            motel-31149.json
+          name: m1m2-clinic-queue-evidence
+          path: clinic-19178827.json
+          retention-days: 14
