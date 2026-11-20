@@ -13,6 +13,9 @@ on:
       - 'scripts/audit-animation-a0.mjs'
       - '.github/workflows/animation-a0-a1-critical.yml'
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   animation:
     runs-on: ubuntu-latest
