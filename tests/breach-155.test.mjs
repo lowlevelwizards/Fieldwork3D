@@ -87,9 +87,10 @@ test('155: briefing and operation history are present on both entry pages',()=>{
  assert.match(app,/recordCompletedOperation\(/);
  const screen=readFileSync(new URL('../src/ui/breach-mission-screens.ts',import.meta.url),'utf8');
  assert.match(screen,/operationBriefing\(state\)/);
- for(const path of ['../index.html','../breach.html']){
-   const html=readFileSync(new URL(path,import.meta.url),'utf8');
-   assert.match(html,/id="briefingPanel"/);
-   assert.match(html,/id="briefingToggle"/);
- }
+ const canonical=readFileSync(new URL('../index.html',import.meta.url),'utf8');
+ assert.match(canonical,/id="briefingPanel"/);
+ assert.match(canonical,/id="briefingToggle"/);
+ // UX18 moved tactical entry into index; breach.html now forwards there.
+ const redirect=readFileSync(new URL('../breach.html',import.meta.url),'utf8');
+ assert.match(redirect,/window\.location\.replace\(target\.href\)/);
 });

@@ -6,6 +6,7 @@ import {commitSuspectSurrender} from '../src/breach-suspect-compliance.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
+import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
 test('D15.3 custody is optional and requires issued cuffs',()=>{
  const options={door:false,node:false,posture:'stand',pace:'walk',
   firePolicy:'engage',reserve:0,magazine:10,flashRemaining:0,
@@ -27,7 +28,7 @@ test('D15.3 real GO restraint consumes one pair after physical contact',()=>{
   assert.equal(commitSuspectSurrender(s,target,()=>{},()=>{}),true);
   // The live field-use authority checks BOTH the quantity counter and
   // its physically issued inventory, never grants free cuffs in tests.
-  a.equipment={...a.equipment,fieldInventory:{version:1,
+  a.equipment={...initialEquipmentLoadout(),fieldInventory:{version:1,
     stacks:[{itemId:'zip-tie',quantity:2,location:'belt'}]}};
   a.restraintRemaining=2;
   assert.equal(planSuspectRestraint(s,a.id,target.id),true);
