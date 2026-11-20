@@ -136,6 +136,9 @@ test('D15.7 a live red designated target accepts actual timed blue treatment',()
  const {s,a,target}=fixture();
  try{
   down(target);
+  // A valid cross-side treatment must consume an ACTUALLY ISSUED
+  // dressing, never fabricate supplies for this hemorrhagic wound.
+  a.medicalSupplies['trauma-dressing']=1;
   a.p=pt(245,255);a.priorP={...a.p};
   assert.equal(planMedicalTreatment(s,a.id,target.id),true);
   assert.equal(a.plan.at(-1)?.kind,'treat');
