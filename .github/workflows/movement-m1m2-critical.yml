@@ -1,0 +1,45 @@
+name: Movement M1-M2 focused quality and recovery
+on:
+  push:
+    branches: [feature/movement-m1m2-quality-20261120]
+    paths:
+      - 'src/breach-movement-quality.ts'
+      - 'src/breach-route-recurrence.ts'
+      - 'src/breach-recovery-route-validation.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'scripts/audit-movement-quality.mjs'
+      - 'tests/movement-m1-*.test.mjs'
+      - 'tests/movement-m2-*.test.mjs'
+      - '.github/workflows/movement-m1m2-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: movement-m1m2-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Focused motor contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/movement-m1-quality-survey.test.mjs \
+            tests/release-d3-r1-route-adoption.test.mjs \
+            tests/release-d3-r1-committed-progress.test.mjs \
+            tests/passage-q2-coordinator.test.mjs
+      - name: Three real motor seeded quality witnesses
+        run: node --experimental-strip-types scripts/audit-movement-quality.mjs 3 240 > movement-quality-m1m2.json
+      - name: Typecheck and deployable bundle
+        run: npm run check && npm run build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: movement-m1m2-quality-evidence
+          path: movement-quality-m1m2.json
+          retention-days: 30

@@ -10,12 +10,19 @@ export class MovementQualitySurvey{
    distance:number;stallEpisodes:number;retries:number;
    passageWaitSeconds:number;squeezeSeconds:number;blockedSeconds:number;
    longestStillSeconds:number;stillSeconds:number;invalidPositions:number;
+   initialRemaining:number;bestRemaining:number;noProgressSeconds:number;
+   longestNoProgressSeconds:number;backtrackDistance:number;
+   reversals:number;lastStep:Pt|null;
  }>();
  private goals:ReadonlyMap<string,Pt>;
  constructor(actors:readonly TeamActor[],goals:ReadonlyMap<string,Pt>){
   this.goals=goals;
   for(const a of actors)this.tracks.set(a.id,{
    last:{...a.p},lastAttempts:a.recoveryAttempts,
+   initialRemaining:goals.has(a.id)?dist(a.p,goals.get(a.id)!):0,
+   bestRemaining:goals.has(a.id)?dist(a.p,goals.get(a.id)!):Infinity,
+   noProgressSeconds:0,longestNoProgressSeconds:0,
+   backtrackDistance:0,reversals:0,lastStep:null,
    blocked:false,waiting:false,squeezing:false,
    distance:0,stallEpisodes:0,retries:0,passageWaitSeconds:0,
    squeezeSeconds:0,blockedSeconds:0,longestStillSeconds:0,
@@ -30,6 +37,26 @@ export class MovementQualitySurvey{
    }
    const progress=dist(a.p,t.last);
    t.distance+=progress;
+   // M1: measure actual physical displacement, never waypoint assignments.
+   const goal=this.goals.get(a.id);
+   if(goal){
+    const before=dist(t.last,goal),remaining=dist(a.p,goal);
+    if(progress>.1&&remaining>before+.15)
+      t.backtrackDistance+=remaining-before;
+    if(remaining<t.bestRemaining-.5){
+      t.bestRemaining=remaining;t.noProgressSeconds=0;
+    }else if(a.plan.length){
+      t.noProgressSeconds+=dt;
+      t.longestNoProgressSeconds=Math.max(t.longestNoProgressSeconds,t.noProgressSeconds);
+    }else t.noProgressSeconds=0;
+    if(progress>.15){
+      const step={x:a.p.x-t.last.x,y:a.p.y-t.last.y};
+      const prior=t.lastStep;
+      if(prior&&step.x*prior.x+step.y*prior.y<
+         -.25*progress*Math.hypot(prior.x,prior.y))t.reversals++;
+      t.lastStep=step;
+    }
+   }
    // Only an *attempted* goal can be classified as a stuck arrival.
    if(this.goals.has(a.id)&&progress<.1){
     t.stillSeconds+=dt;
@@ -59,6 +86,11 @@ export class MovementQualitySurvey{
     passageWaitSeconds:+t.passageWaitSeconds.toFixed(2),
     squeezeSeconds:+t.squeezeSeconds.toFixed(2),
     longestStillSeconds:+t.longestStillSeconds.toFixed(2),
+    longestNoProgressSeconds:+t.longestNoProgressSeconds.toFixed(2),
+    backtrackDistance:+t.backtrackDistance.toFixed(2),
+    reversals:t.reversals,
+    routeStretch:arrived&&t.initialRemaining>1?
+      +(t.distance/t.initialRemaining).toFixed(2):null,
     invalidPositions:t.invalidPositions,
     orderIssue:a.orderIssue?.reason??null};
   });
@@ -71,6 +103,9 @@ export class MovementQualitySurvey{
    stallEpisodes:total('stallEpisodes'),retries:total('retries'),
    passageWaitSeconds:+total('passageWaitSeconds').toFixed(2),
    squeezeSeconds:+total('squeezeSeconds').toFixed(2),
+   backtrackDistance:+total('backtrackDistance').toFixed(2),
+   reversals:total('reversals'),
+   longestNoProgressSeconds:Math.max(0,...details.map(d=>d.longestNoProgressSeconds)),
    invalidPositions:total('invalidPositions'),details};
  }
 }
