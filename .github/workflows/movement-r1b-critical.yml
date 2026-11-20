@@ -16,6 +16,8 @@ on:
       - 'src/breach-order-door.ts'
       - 'src/breach-motor-door.ts'
       - 'tests/release-d3-r1-*.test.mjs'
+      - 'tests/passage-q2-coordinator.test.mjs'
+      - 'tests/passage-q3-ranks.test.mjs'
       - '.github/workflows/movement-r1b-critical.yml'
   workflow_dispatch:
 permissions:
