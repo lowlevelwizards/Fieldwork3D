@@ -21,7 +21,7 @@ const ray=(g,x,y)=>new THREE.Raycaster(
  new THREE.Vector3(x,y,10),new THREE.Vector3(0,0,-1),0,24)
  .intersectObject(g,true).length;
 
-test('G2.5: four independently authored balanced miniatures in the existing mesh budget',()=>{
+test('G2.6: four miniature variants retain the low geometry budget',()=>{
  assert.equal(GLOCK_APPEARANCE_REFERENCES.length,4);
  for(const ref of GLOCK_APPEARANCE_REFERENCES){
   const model=buildGlockAppearance(ref.id);
@@ -29,6 +29,7 @@ test('G2.5: four independently authored balanced miniatures in the existing mesh
    assert.equal(model.userData.appearanceOnly,true);
    assert.equal(model.userData.glockG2FieldworkProportions,true);
    assert.equal(model.userData.glockG25BalancedProportions,true);
+   assert.equal(model.userData.glockG26IdentityRefinement,true);
    assert.ok(model.children.length>=6&&model.children.length<=7,ref.id);
    assert.ok(triangleCount(model)<=220,ref.id+' measured emitted triangles');
    assert.ok(model.children.every(x=>x.name.startsWith('family-')));
@@ -48,7 +49,7 @@ test('G2.5: four independently authored balanced miniatures in the existing mesh
   }
  }
 });
-test('G2.5: thick guard remains connected and aperture stays genuinely open',()=>{
+test('G2.6: guard stays thick and aperture remains physically open',()=>{
  for(const ref of GLOCK_APPEARANCE_REFERENCES){
   const model=buildGlockAppearance(ref.id,{monochrome:true});
   try{
@@ -65,7 +66,7 @@ test('G2.5: thick guard remains connected and aperture stays genuinely open',()=
   }finally{clearGlockAppearance(model);}
  }
 });
-test('G2.5: slide ratios deliberately interpolate G1 and G2 without returning to either extreme',()=>{
+test('G2.6: slide mass remains within G2.5 identity range',()=>{
  const model=buildGlockAppearance('glock-g19-gen3',{monochrome:true});
  try{
   const slide=model.children.find(x=>x.userData.glockMovingSlide);
@@ -83,7 +84,7 @@ test('G2.5: slide ratios deliberately interpolate G1 and G2 without returning to
    'compact but not exaggerated block overall miniature');
  }finally{clearGlockAppearance(model);}
 });
-test('G2.5: compact, subcompact, crossover, and MOS retain independently authored anatomy',()=>{
+test('G2.6: G26 stays stubbier and G19X grows a fuller heel without scale tricks',()=>{
  const g19=buildGlockAppearance('glock-g19-gen3');
  const g26=buildGlockAppearance('glock-g26');
  const g19x=buildGlockAppearance('glock-g19x');
@@ -92,7 +93,10 @@ test('G2.5: compact, subcompact, crossover, and MOS retain independently authore
   const a=bounds(g19),b=bounds(g26),c=bounds(g19x),d=bounds(gen5);
   assert.ok(b.max.x<a.max.x-2,'G26 nose is intrinsically shorter');
   assert.ok(b.min.y>a.min.y+1.2,'G26 grip genuinely shorter');
-  assert.ok(c.min.y<a.min.y-.8,'G19X fuller grip');
+  assert.ok(c.min.y<a.min.y-1.2,'G19X fuller grip');
+  assert.ok(GLOCK_G2_ART['glock-g26'].heelY>-6.07,'G26 shortened further');
+  assert.ok(GLOCK_G2_ART['glock-g19x'].frontHeelX>-4.06,
+   'G19X heel grows wider rather than merely stretching');
   assert.ok(Math.abs(d.max.x-a.max.x)<.05,'Gen5 and Gen3 compact envelopes');
   assert.equal(GLOCK_G2_ART['glock-g26'].frontSerrations,false);
   assert.equal(gen5.children.filter(x=>x.userData.glockMOSAppearanceOnly).length,1);
@@ -103,7 +107,7 @@ test('G2.5: compact, subcompact, crossover, and MOS retain independently authore
   }
  }finally{for(const m of [g19,g26,g19x,gen5])clearGlockAppearance(m);}
 });
-test('G2.5: port and serrations share ONE mesh; clay deletes the entire detail layer',()=>{
+test('G2.6: wrapped port and serrations remain one mesh; clay removes detail',()=>{
  const base=buildGlockAppearance('glock-g19-gen3',{monochrome:true});
  const detailed=buildGlockAppearance('glock-g19-gen3');
  try{
@@ -116,30 +120,49 @@ test('G2.5: port and serrations share ONE mesh; clay deletes the entire detail l
  }finally{clearGlockAppearance(base);clearGlockAppearance(detailed);}
 });
 
-test('G2.5: right-side ejection port is one flat batched rectangle, not new geometry',()=>{
+test('G2.6: one port ribbon wraps from right (+Z) onto slide top (+Y)',()=>{
  for(const ref of GLOCK_APPEARANCE_REFERENCES){
   const g=buildGlockAppearance(ref.id);
   try{
    const detail=g.children.filter(x=>x.userData.glockRightEjectionPort);
-   assert.equal(detail.length,1,'existing single surface detail batch');
-   const verts=detail[0].geometry.attributes.position;
-   // Port is the final 4 vertices intentionally appended to the SAME
-   // geometry batch; compare rounded Float32 positions with tolerance.
-   const portVerts=Array.from({length:4},(_,n)=>{
-    const i=verts.count-4+n;
-    return [verts.getX(i),verts.getY(i),verts.getZ(i)];
+   assert.equal(detail.length,1,'shared serration and port material batch');
+   assert.equal(detail[0].userData.glockPortFaceCount,2);
+   const geo=detail[0].geometry;
+   const verts=geo.attributes.position;
+   const p=Array.from({length:6},(_,i)=>{
+    const idx=verts.count-6+i;
+    return [verts.getX(idx),verts.getY(idx),verts.getZ(idx)];
    });
-   assert.equal(portVerts.length,4,'one four-vertex port graphic');
-   assert.ok(portVerts.every(v=>v[2]>1.48),'right +Z face only');
-   assert.ok(portVerts.every(v=>v[0]>.57&&v[0]<2.54),
-    'modest central-right symbolic port width');
-   assert.ok(portVerts.every(v=>v[1]>2.05&&v[1]<2.52),
-    'ejection port stays within the slide face');
-   assert.ok(triangleCount(g)<=220,'no geometry budget increase');
+   assert.equal(p.length,6);
+   // Side face uses a much larger and higher rectangle than G2.5.
+   assert.ok(p[0][0]<.3 && p[1][0]>3.4,'port width >=3.1');
+   assert.ok(p[0][1]>=2.10 && p[2][1]>3.04,'port is higher');
+   assert.ok(p.slice(0,4).every(v=>v[2]>1.49),'side on +Z only');
+   // Shared edge is precisely the same four coordinates for both
+   // surfaces. The inboard vertices define the top's wide visible notch.
+   assert.equal(p[2][1],p[4][1]);
+   assert.equal(p[3][1],p[5][1]);
+   assert.ok(p[4][2]<.4 && p[5][2]<.4,'wrap reaches top plane center');
+   assert.equal(p[2][2],p[3][2]);
+   // Final four triangles have +Z and +Y normals and no backface.
+   const idx=geo.index;
+   const portIndexStart=idx.count-12;
+   const va=new THREE.Vector3(),vb=new THREE.Vector3(),vc=new THREE.Vector3();
+   const normals=[];
+   for(let k=portIndexStart;k<idx.count;k+=3){
+    va.fromBufferAttribute(verts,idx.getX(k));
+    vb.fromBufferAttribute(verts,idx.getX(k+1));
+    vc.fromBufferAttribute(verts,idx.getX(k+2));
+    normals.push(vb.clone().sub(va).cross(vc.clone().sub(va)).normalize());
+   }
+   assert.ok(normals.slice(0,2).every(n=>n.z>.99),'visible right side');
+   assert.ok(normals.slice(2).every(n=>n.y>.99),'visible top face');
+   assert.ok(triangleCount(g)<=220,'minimal triangles despite wrapped port');
+   assert.ok(g.children.length<=7,'no extra detached mesh');
   }finally{clearGlockAppearance(g);}
  }
 });
-test('G2.5: revised heel and slide positions sit strictly between G1 and G2',()=>{
+test('G2.6: master slide and heel remain between G1 and G2',()=>{
  const g=buildGlockAppearance('glock-g19-gen3');
  try{
   const a=g.userData.glockArtLandmarks;
