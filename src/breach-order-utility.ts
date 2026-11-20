@@ -24,7 +24,7 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
  dt:number,h:UtilityOrderHooks):boolean{
   if(n.kind==='switch-weapon'){
     const target=n.weaponHand??'secondary';
-    const request=requestSecondarySwitch(a.secondarySwitch,target,
+    const request=requestSecondarySwitch(a.secondarySwitch??initialSecondarySwitch(),target,
       a.equipment?.secondary,a.health>0&&!a.surrendered);
     if(!request.accepted){
       h.fail(s,a,n,request.reason??'SECONDARY NOT EQUIPPED');return true;
