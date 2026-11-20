@@ -1,4 +1,4 @@
-/** R3 phone acceptance: 1 contextual gallery, 8 direct category rails,
+/** R4 phone acceptance: 1 contextual gallery, 8 direct category rails,
  * no workspace selector, second gear picker, or page scroll. */
 import {spawn} from 'node:child_process';
 import assert from 'node:assert/strict';
@@ -83,7 +83,9 @@ try{
    await armory.locator('.campaign-kit-bench-zone[data-slot="head"]').click();
    const head=gallery.locator('.fw-outfitter-option[data-equipped="true"]');
    assert.equal(await head.count(),1,'Equipped item marked within the gallery');
-   const alternative=gallery.locator('.fw-outfitter-option:not([disabled]):not([data-equipped="true"])');
+   const before=await gallery.locator('.fw-outfitter-option').evaluateAll(
+    nodes=>nodes.map(n=>n.dataset.itemId));
+   const alternative=gallery.locator('.fw-outfitter-option[data-available="true"]:not([data-equipped="true"])');
    if(await alternative.count()){
     const target=await alternative.first().getAttribute('data-item-id');
     await alternative.first().click();
@@ -91,27 +93,75 @@ try{
     assert.equal(await page.locator('.fw-outfitter-option[data-equipped="true"]').first()
      .getAttribute('data-item-id'),target,
      'One tap commits an eligible item through the existing handler');
+    assert.deepEqual(await page.locator('.fw-outfitter-option').evaluateAll(
+     nodes=>nodes.map(n=>n.dataset.itemId)),before,
+     'Equipping never reorders the horizontal palette');
    }
    await armory.locator('.campaign-kit-bench-zone[data-slot="utility"]').click();
-   assert.ok(await gallery.locator('.fw-outfitter-quantity-row').count()>=2,
-    'Consumables and inline quantities are part of Tools, no separate carry mode');
-   const flash=gallery.locator('.fw-outfitter-quantity-row').filter({hasText:'Flashbang'});
-   assert.ok(await flash.count(),'Flashbang quantity exists');
-   assert.ok(await flash.locator('button').count()===2);
-   const capacity=gallery.locator('.fw-outfitter-content-row');
+   const rail=gallery.locator('.fw-outfitter-options');
+   const layout=await gallery.evaluate(el=>{
+    const scroller=el.querySelector('.fw-outfitter-gallery-scroll');
+    const rail=el.querySelector('.fw-outfitter-options');
+    const context=el.querySelector('.fw-outfitter-context');
+    return {flow:getComputedStyle(rail).display,
+     horizontal:scroller.scrollWidth>=scroller.clientWidth,
+     vertical:scroller.scrollHeight-scroller.clientHeight,
+     contextHeight:context.getBoundingClientRect().height,
+     galleryHeight:el.getBoundingClientRect().height};
+   });
+   assert.equal(layout.flow,'flex','One horizontal row of catalog choices');
+   assert.ok(layout.vertical<=3,'No vertical scrolling inside equipment row '+JSON.stringify(layout));
+   assert.ok(layout.contextHeight>=45,'A fixed detail area remains visible');
+   assert.equal(await gallery.locator('.fw-outfitter-unavailable').count(),0,
+    'Unavailable items stay in the same row');
+   const flash=gallery.locator('.fw-outfitter-option[data-item-id="field-flashbang"]');
+   assert.ok(await flash.count(),'Flashbang is a selectable card');
+   await flash.click();
+   assert.equal(await gallery.locator('.fw-outfitter-context .fw-outfitter-quantity-controls button').count(),2,
+    'Selected consumable shows only its own inline quantity controls');
+   assert.equal(await gallery.locator('select:visible').count(),0,
+    'All carry choices use Fieldwork select, never a native iOS dropdown');
+   const toolCards=await rail.locator('.fw-outfitter-option').count();
+   assert.ok(toolCards>=4,'Tools and consumables share one row');
+   await armory.locator('.campaign-kit-bench-zone[data-slot="primary"]').click();
+   const restricted=gallery.locator('.fw-outfitter-option[data-available="false"]');
+   assert.ok(await restricted.count()>0,'Restricted choices remain inline and inspectable');
+   assert.equal(await gallery.locator('details').count(),0,
+    'No unavailable drawer or second list');
    await armory.locator('.campaign-kit-bench-zone[data-slot="rig"]').click();
-   assert.ok(await capacity.count()>=1,'Chest shows actual carried contents');
-   await gallery.locator('.fw-outfitter-more').click();
+   assert.ok(await gallery.locator('.fw-outfitter-option:visible').count()>=1,
+    'Chest equipment retains direct selection');
+   await armory.locator('.campaign-outfitter-library-button').click();
    assert.ok(await armory.locator('.fw-outfitter-advanced').isVisible(),
-    'Advanced tools remain reachable but out of primary flow');
+    'Kit library accessible from header, not gallery More button');
+   assert.equal(await gallery.locator('.fw-outfitter-more').count(),0,
+    'No More link at the bottom of the equipment panel');
    await armory.locator('.fw-outfitter-advanced-head button').click();
-   assert.ok(await gallery.isVisible(),'Return from advanced without leaving outfitter');
+   assert.ok(await gallery.isVisible(),'Return from kit library to same selection');
+   const operator=armory.locator('.campaign-outfitter-operator-select');
+   await operator.click();
+   assert.ok(await page.locator('.fw-select-menu [role="option"]').count()>=2,
+    'Custom operator roster picker replaces native dropdown');
+   await page.keyboard.press('Escape');
+   assert.equal(await page.locator('.fw-select-menu').count(),0);
+   assert.equal(await armory.locator('.campaign-armory-head select:visible').count(),0,
+    'No iOS native operator picker');
    const preview=armory.locator('.campaign-kit-preview');
    assert.equal(await preview.evaluate(el=>getComputedStyle(el).position),'relative');
    assert.equal(await preview.locator('.campaign-kit-hotspot:visible').count(),0,
     'No persistent floating pips');
+   const weaponToggle=preview.locator('.campaign-kit-preview-pose-toggle');
+   assert.ok(await weaponToggle.isVisible(),'Explicit preview weapon toggle');
+   await weaponToggle.click();
+   assert.ok((await weaponToggle.textContent()).includes('SHOW'),
+    'Hide returns to a neutral display stance');
+   await weaponToggle.click();
+   assert.ok((await weaponToggle.textContent()).includes('HIDE'),
+    'Show restores low-ready weapon presentation');
+   assert.ok(await preview.locator('.campaign-kit-selected-dot').count()===1,
+    'Exactly one physical selection marker, never one per category');
    assert.deepEqual(errors,[],'No runtime errors at '+width+'px');
-   console.log('OUTFITTER R3 PHONE PASS',width,bounds);
+   console.log('OUTFITTER R4 PHONE PASS',width,bounds);
    await page.close();
   }
  }finally{await browser.close();}
