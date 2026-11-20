@@ -19,7 +19,9 @@ test('weapon geometry and orbit change only on real edits or operator switches',
  assert.match(code,/if\(retainWorkbench&&!sameOperator&&this\.lastArmoryRenderedId&&this\.workbenchCore\)/);
  assert.match(code,/this\.weaponWorkbenchViews\.set\(this\.lastArmoryRenderedId,/);
  assert.match(code,/if\(refreshGeometry&&sameOperator&&this\.workbenchCore===core\)/);
- assert.match(code,/if\(refreshGeometry&&savedView\?\.core===core\)/);
+ assert.match(code,/if\(refreshGeometry\)\{\s*if\(savedView\?\.core===core\)/);
+ assert.match(code,/this\.workbench\.resetViewState\(\)/);
+ assert.match(readFileSync(new URL('../src/equipment-weapon-workbench.ts',import.meta.url),'utf8'),/resetViewState\(\):void\{[\s\S]*?this\.yaw=\.15;this\.pitch=\.17;this\.distance=51/);
  assert.match(code,/this\.workbenchCore=null;this\.workbenchVisualKey=null/);
 });
 
