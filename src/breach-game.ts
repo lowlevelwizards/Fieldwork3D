@@ -152,6 +152,7 @@ import {discoverObjective,type ObjectiveKnowledge} from './breach-objective-inte
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
 import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type ReloadMode} from './breach-magazines.ts';
 import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
+import {beginTimedSecondaryReload} from './secondary-timed-reload.ts';
 
 
 import {weaponHandlingModifiers} from './equipment-weapon-handling.ts';
@@ -1413,10 +1414,19 @@ export function cycleWeapon(s:Session,id:string):boolean{
 
 export function reloadNow(s:Session,id:string):boolean{
   const a=party(s,id);
-  // Direct reload belongs only to the primary. While a pistol is drawn or
-  // moving between hands, never silently reload a holstered rifle.
-  return !!a&&s.phase==='running'&&
-    (a.secondarySwitch?.fraction??0)===0&&
+  if(!a||s.phase!=='running'||a.health<=0)return false;
+  if(a.secondarySwitch?.active==='secondary'&&
+     a.secondarySwitch.desired==='secondary'&&
+     a.secondarySwitch.fraction>=1){
+    if(a.secondaryReload||!a.equipment?.secondary)return false;
+    const started=beginTimedSecondaryReload(a.equipment.secondary,0);
+    if(!started.ok||!started.state)return false;
+    a.secondaryReload=started.state;
+    notify(s,a.name+' PISTOL RELOADING');
+    return true;
+  }
+  // During any incomplete switch do NOT eject/refill the invisible rifle.
+  return (a.secondarySwitch?.fraction??0)===0&&
     a.secondarySwitch?.desired!=='secondary'&&beginReload(s,a);
 }
 
