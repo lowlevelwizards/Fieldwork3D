@@ -77,7 +77,7 @@ class GlockGallerySnapshots{
  }
 }
 
-export function mountGlockArsenalGallery():HTMLElement{
+export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>void}{
  const section=document.createElement('section');
  section.className='arsenal-layout arsenal-glock-gallery';
  section.setAttribute('aria-label','Glock family secondary weapon loadouts');
