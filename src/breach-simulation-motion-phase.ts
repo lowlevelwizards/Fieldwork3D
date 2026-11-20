@@ -11,6 +11,8 @@ import {stepCivilianMovement} from './breach-civilian-movement.ts';
 import {escortUsesFriendlySoftTraffic} from './breach-civilian-mission.ts';
 import {buildMotionFrameProposals} from './breach-motion-frame-input.ts';
 import {resolveMovementFrame} from './breach-movement-authority.ts';
+import {recordRejectedMovementCommit,clearUnrejectedCommit}
+ from './breach-movement-commit-progress.ts';
 import {sweptBodyClear,sweptProfileClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {motorTraversalWorld} from './breach-motor-traversal.ts';
@@ -210,8 +212,15 @@ export function advanceSimulationMotion(s:Session,h:number,
       a.traversalElevation=sampleTraversal(a.traversal,
         a.traversalElapsed).elevation;
     }
-    a.blockedTime+=h;a.lastBlocker=decision.blocked==='actor'?'actor':'route';
+    // The motor's provisional accepted step may have reset blockedTime
+    // before this authoritative rejection. Preserve the actual consecutive
+    // frame-denial episode rather than treating the next attempted step as
+    // physical progress.
+    recordRejectedMovementCommit(a,decision.blocked,s.seconds,h);
   }
-  for(const a of s.operators)a.stride+=d(a.p,a.priorP);
+  for(const a of s.operators){
+    clearUnrejectedCommit(a,s.seconds);
+    a.stride+=d(a.p,a.priorP);
+  }
   cpuEnd('authority',arbitrationStart);
 }
