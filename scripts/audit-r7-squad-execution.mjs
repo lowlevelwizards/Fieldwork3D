@@ -358,6 +358,8 @@ function run(site,seed,kind){
   const blockWitness=actors.map(()=>({mask:0,events:[]}));
   const progressEvidence=[];
   const motelLoopSamples=[];
+  const motelNavClearEvents=[];
+  const watchedAsh=actors.find(a=>a.id==='ash');
   // D3.26F7 exact-seed read-only motor handoff witness, sampled only
   // for one actor and short time windows. Zero impact in normal audits.
   const d326MicroTrace=[];
@@ -375,11 +377,28 @@ function run(site,seed,kind){
     for(let i=0;i<actors.length;i++)windowStart[i]={...actors[i].p};
    if(grid)setRouteGridAuditObserver(grid.observe);
    if(recordRoute)setTransientRouteObserver(recordRoute);
+   const ashPrior=motelLoopSamplesEnabled&&seed===19143269&&
+     kind==='entry'&&watchedAsh?{
+     p:{...watchedAsh.p},nav:watchedAsh.nav.slice(0,4),
+     squeeze:watchedAsh.squeeze,lastBlocker:watchedAsh.lastBlocker,
+     episode:watchedAsh.doorTraversal?.phase}:null;
    try{
     stepSession(session,1/60);
    }finally{
     if(grid)setRouteGridAuditObserver(null);
     if(recordRoute)setTransientRouteObserver(null);
+   }
+   if(ashPrior&&watchedAsh&&(ashPrior.nav.length>0&&
+      watchedAsh.nav.length===0 ||
+      session.seconds>=19.7&&session.seconds<=20.05&&tick%2===0)){
+     if(motelNavClearEvents.length<100)
+       motelNavClearEvents.push({
+        time:round(session.seconds),before:ashPrior,
+        after:{p:{...watchedAsh.p},nav:watchedAsh.nav.slice(0,4),
+         squeeze:watchedAsh.squeeze,
+         lastBlocker:watchedAsh.lastBlocker,
+         blocked:round(watchedAsh.blockedTime),velocity:round(watchedAsh.velocity),
+         episode:watchedAsh.doorTraversal?.phase}});
    }
    // D3.29B: only after an actual, authoritatively failed order, capture
    // the motor-selected leaf at the SAME failure tick. The final chosen
@@ -1522,7 +1541,7 @@ function run(site,seed,kind){
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
-   ...(motelLoopSamplesEnabled?{motelLoopSamples,motelColdClearance}:{}),
+   ...(motelLoopSamplesEnabled?{motelLoopSamples,motelColdClearance,motelNavClearEvents}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
