@@ -171,8 +171,12 @@ test('G2.9: secondary factory and saved thumbnails share side view and equal gre
  assert.match(gallery,/center\.y\+\(isCard\?0:distance\*\.10\)/);
  assert.match(gallery,/renderer\.render\(ref\.id,'card',/);
  assert.match(gallery,/choice\.kind==='saved'\?choice\.build\.recipe\.customization:undefined/);
- assert.match(gallery,/className='arsenal-card arsenal-glock-card'/);
- assert.match(gallery,/className='arsenal-card-preview arsenal-glock-card-preview'/);
+ // P11 shares the card DOM author: verify that it retains G2.9 parity.
+ const sharedCards=readFileSync(new URL('../src/arsenal/gallery-browser-controls.ts',import.meta.url),'utf8');
+ assert.match(gallery,/createArsenalGalleryCard\(\{/);
+ assert.match(gallery,/kind:'secondary',name:displayName/);
+ assert.match(sharedCards,/className=secondary\?'arsenal-card arsenal-glock-card':'arsenal-card'/);
+ assert.match(sharedCards,/arsenal-card-preview arsenal-glock-card-preview/);
  assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-cards\{[^}]*grid-auto-rows:1fr/s);
  assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-card\{[^}]*height:100%/s);
  assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-card-preview\{aspect-ratio:2\.36\/1\}/);
