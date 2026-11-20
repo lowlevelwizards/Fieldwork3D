@@ -50,6 +50,12 @@ export class CampaignKitPreview{
   wardrobe?:WardrobeOptions
  }|null=null;
  private readonly modelThumbCache=new Map<string,string>();
+ // Reuse GPU color/depth attachments and the CPU readback surface across
+ // visible equipment choices; a fresh GL render target per tile forces
+ // driver allocation/deletion on the very frame that paints the thumbnail.
+ private thumbnailTarget:THREE.WebGLRenderTarget|null=null;
+ private thumbnailPixels:Uint8Array|null=null;
+ private thumbnailCanvas:HTMLCanvasElement|null=null;
  private observer:ResizeObserver|null=null;
  private azimuth=.72;
  private pointerId:number|null=null;
@@ -294,18 +300,29 @@ export class CampaignKitPreview{
    // Render at the ITEM'S aspect ratio, never the operator viewport ratio.
    // One temporary offscreen target on the existing WebGL context; a 2D
    // readback canvas encodes a thumbnail without another WebGL renderer.
-   const targetBuffer=new THREE.WebGLRenderTarget(shot.width,shot.height,{
-    depthBuffer:true,stencilBuffer:false});
+   let targetBuffer=this.thumbnailTarget;
+   if(!targetBuffer){
+    targetBuffer=new THREE.WebGLRenderTarget(shot.width,shot.height,{
+     depthBuffer:true,stencilBuffer:false});
+    this.thumbnailTarget=targetBuffer;
+   }else if(targetBuffer.width!==shot.width||targetBuffer.height!==shot.height){
+    targetBuffer.setSize(shot.width,shot.height);
+   }
    const previousTarget=this.renderer.getRenderTarget();
    let data:string|null=null;
    try{
     this.renderer.setRenderTarget(targetBuffer);
     this.renderer.render(modelScene,camera);
-    const pixels=new Uint8Array(shot.width*shot.height*4);
+    const byteLength=shot.width*shot.height*4;
+    if(!this.thumbnailPixels||this.thumbnailPixels.length!==byteLength)
+     this.thumbnailPixels=new Uint8Array(byteLength);
+    const pixels=this.thumbnailPixels;
     this.renderer.readRenderTargetPixels(targetBuffer,0,0,
      shot.width,shot.height,pixels);
-    const canvas=document.createElement('canvas');
-    canvas.width=shot.width;canvas.height=shot.height;
+    if(!this.thumbnailCanvas)this.thumbnailCanvas=document.createElement('canvas');
+    const canvas=this.thumbnailCanvas;
+    if(canvas.width!==shot.width)canvas.width=shot.width;
+    if(canvas.height!==shot.height)canvas.height=shot.height;
     const context=canvas.getContext('2d');
     if(!context)return null;
     const image=context.createImageData(shot.width,shot.height);
@@ -313,8 +330,9 @@ export class CampaignKitPreview{
     context.putImageData(image,0,0);
     data=canvas.toDataURL('image/png');
    }finally{
+    // Restore the live operator viewport even when readback or PNG encoding
+    // fails. The reusable target is retired with the preview, not per card.
     this.renderer.setRenderTarget(previousTarget);
-    targetBuffer.dispose();
    }
    if(!data||data.length<128)return null;
    this.modelThumbCache.set(key,data);
@@ -942,6 +960,9 @@ export class CampaignKitPreview{
    this.inspectionBox=null;
   }
   if(this.rig){releaseOperatorPreviewRig(this.scene,this.rig);this.rig=null;}
+  this.thumbnailTarget?.dispose();this.thumbnailTarget=null;
+  this.thumbnailPixels=null;this.thumbnailCanvas=null;
+  this.modelThumbCache.clear();
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
   this.pointerId=null;
