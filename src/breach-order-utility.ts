@@ -9,6 +9,8 @@ import {validateThrow} from './breach-flash.ts';
 import {quoteDeployedFieldUse,spendDeployedFieldItem}
  from './equipment-deployed-field-use.ts';
 import {targetAngle} from './breach-plan.ts';
+import {requestSecondarySwitch,advanceSecondarySwitch,secondarySwitchSettled}
+ from './secondary-switching.ts';
 export type UtilityOrderHooks={
  pop:(actor:TeamActor)=>void;notify:(s:Session,message:string)=>void;
  beginReload:(s:Session,a:TeamActor)=>boolean;
@@ -20,6 +22,19 @@ export type UtilityOrderHooks={
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
 export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
  dt:number,h:UtilityOrderHooks):boolean{
+  if(n.kind==='switch-weapon'){
+    const target=n.weaponHand??'secondary';
+    const request=requestSecondarySwitch(a.secondarySwitch,target,
+      a.equipment?.secondary,a.health>0&&!a.surrendered);
+    if(!request.accepted){
+      h.fail(s,a,n,request.reason??'SECONDARY NOT EQUIPPED');return true;
+    }
+    h.clearIssue(a);a.velocity=0;
+    a.secondarySwitch=advanceSecondarySwitch(request.state,dt,
+     a.equipment?.secondary,true);
+    if(secondarySwitchSettled(a.secondarySwitch))h.pop(a);
+    return true;
+  }
   if(n.kind==='sync'){
     a.syncReady=n.syncCode??'A';
     // Only actors still carrying this code participate. An undone
