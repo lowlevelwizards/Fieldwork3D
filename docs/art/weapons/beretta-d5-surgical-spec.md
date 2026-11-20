@@ -36,6 +36,9 @@ All coordinates are local **illustrative game-art units**, not real firearm dime
 - Commit in feature branch and keep draft PR until exact-head focused tests, TypeScript/production build and critical integration are green.
 - Before merge verify previous GitHub Pages deployed the current main SHA and no release is active. After merge verify the public build stamp equals the new main SHA; repair failed Pages deployment instead of stacking merges.
 
+## Measured topology and finish acceptance
+First exact WebGL-art gate emitted **20 meshes / 452 triangles** for the M9 and **22 meshes / 476 triangles** for the railed M9A3. D5 enforces <=20/455 for the classic and <=22/480 for the A3, compared with D4's <=20/450 target. The small geometric increase is specifically the essential connected muzzle crown, batched frame cues and (for M9A3) visible rail-slot batch. No per-groove or per-dot mesh proliferation. D5 also pools a single muted coyote M9A3 grip-panel finish instead of showing an uncharacteristically near-black factory panel; the floorplate keeps its dark color. The revised sight datum is Y3.56, synchronized with the taller connected front-sight sculpt.
+
 ## Review cautions
 - The narrow upper cannot be replaced with an extruded full-width slab or the Beretta will regress toward Glock mass logic.
 - Nose crossbar must cover only the last segment of the muzzle, not create a long opaque top that hides the real barrel.
