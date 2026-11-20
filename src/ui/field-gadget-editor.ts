@@ -217,17 +217,20 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    suppressClick=false;return true;
   }};
  };
+ root.dataset.activeLocation=board.zones[0]?.location??'rig';
  const locationNav=document.createElement('nav');
  locationNav.className='fw-field-inventory-zones';
  locationNav.setAttribute('aria-label','Inspect equipment carrying locations');
  for(const zone of board.zones){
   const jump=btn(zone.location.toUpperCase()+' · '+zone.used+'/'+zone.capacity,()=>{
+   root.dataset.activeLocation=zone.location;
+   for(const button of locationNav.querySelectorAll<HTMLButtonElement>('button'))
+    button.setAttribute('aria-current',String(button.dataset.location===zone.location));
    options.onInspectLocation?.(zone.location);
-   capacity.querySelector<HTMLElement>(
-    '[data-location="'+zone.location+'"]')?.scrollIntoView({
-      behavior:'smooth',block:'nearest'});
   });
   jump.className='fw-field-inventory-zone-jump';
+  jump.dataset.location=zone.location;
+  jump.setAttribute('aria-current',String(zone.location===root.dataset.activeLocation));
   locationNav.append(jump);
  }
  root.append(locationNav,moveTray);
@@ -402,6 +405,11 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   }
   feedback('NO AVAILABLE SPACE · '+checked.conflicts.join(' · '));
  };
+ const issue=document.createElement('details');
+ issue.className='fw-field-inventory-issue';
+ const issueLabel=document.createElement('summary');
+ issueLabel.textContent='ISSUE / RETURN CONSUMABLES';
+ issue.append(issueLabel);root.append(issue);
  // Show actually usable items; inactive catalog futures live in one disclosure,
  // never compete for equal-size controls or create false inventory actions.
  for(const id of FIELD_ITEM_IDS.filter(id=>FIELD_ITEMS[id].usable)){
@@ -471,8 +479,13 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    });
    row.append(placement);
   }
-  root.append(row);
+  issue.append(row);
  }
+ const advanced=document.createElement('details');
+ advanced.className='fw-field-inventory-advanced';
+ const advancedLabel=document.createElement('summary');
+ advancedLabel.textContent='AUTO PACK / UNDO / SQUAD TOOLS';
+ advanced.append(advancedLabel);root.append(advanced);
  const future=document.createElement('details');
  future.className='fw-field-inventory-future';
  const futureItems=FIELD_ITEM_IDS.filter(id=>!FIELD_ITEMS[id].usable);
@@ -484,7 +497,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   const note=text('p','',item.name+' · '+item.description);
   future.append(note);
  }
- if(futureItems.length)root.append(future);
+ if(futureItems.length)advanced.append(future);
  const actions=document.createElement('div');actions.className='fw-field-inventory-actions';
  const autopack=btn('AUTO PACK',()=>{
   const packed=autoPackFieldInventory(loadout,magazines,inventory);
@@ -587,9 +600,9 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    copyInner.append(inspect,detail,confirm);
   }
   picker.disabled=!!options.locked;
-  copyInner.prepend(picker);copyArea.append(copyInner);root.append(copyArea);
+  copyInner.prepend(picker);copyArea.append(copyInner);advanced.append(copyArea);
  }
- root.append(actions);
+ advanced.append(actions);
  // The item model is rendered only when its row enters the viewport. One
  // shared preview/renderer services all tiles, with no extra WebGL contexts.
  // Offscreen items don't trigger expensive GPU captures during initial prep.
