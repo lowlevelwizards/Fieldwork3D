@@ -8,7 +8,7 @@ import {
   doorCenter,type Pt,} from './breach-core.ts';
 import {
   type Session,
-  type TeamActor,team,
+  type TeamActor,team,liveVisibility,
   
   plannedControl,
   finalPoint,undoPlan,redoPlan,
@@ -68,6 +68,10 @@ import type {FavoriteMission} from './breach-mission-favorites.ts';
 
 import {mostUrgentWound} from './breach-medical-wounds.ts';
 import {treatmentSupplyForWound} from './breach-medical-treatment.ts';
+import {captureVitalStatus} from './breach-capture-vitals.ts';
+import {designatedDownedCaptureTarget} from './breach-capture-transport-policy.ts';
+import {sweptBodyClear} from './breach-navigation.ts';
+import {sessionWorldGeometry} from './breach-world-context.ts';
 
 import type {SiteScale} from './breach-site.ts';
 import type {LightingMode} from './equipment-site-lighting.ts';
@@ -741,10 +745,25 @@ function medicalCandidate(id:string,origin?:Pt){
  const squad=team(state);
  const a=squad.find(o=>o.id===id&&o.health>0);
  if(!a)return null;
- return nearestEligibleActor(squad,origin??a.p,o=>{
+ const at=origin??a.p;
+ const friend=nearestEligibleActor(squad,at,o=>{
   const wound=mostUrgentWound(o.medical);
   return !!wound&&!!treatmentSupplyForWound(wound,a.medicalSupplies);
  });
+ // Only the actually observed, reachable designated downed prisoner can
+ // receive cross-side care; generic hostile proximity never offers TREAT.
+ const captive=state.operators.find(o=>
+   designatedDownedCaptureTarget(state,o)&&
+   captureVitalStatus(o)!=='deceased'&&
+   liveVisibility(state,o.p)&&
+   Math.hypot(o.p.x-at.x,o.p.y-at.y)<55&&
+   sweptBodyClear(at,o.p,state.doors,5.5,sessionWorldGeometry(state))&&
+   !!mostUrgentWound(o.medical)&&
+   !!treatmentSupplyForWound(mostUrgentWound(o.medical)!,a.medicalSupplies));
+ if(!captive)return friend;
+ if(!friend)return captive;
+ return Math.hypot(captive.p.x-at.x,captive.p.y-at.y)<
+   Math.hypot(friend.p.x-at.x,friend.p.y-at.y)?captive:friend;
 }
 
 function updateHud(){

@@ -19,8 +19,8 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nearSuspect?:boolean;nearRestrainableSuspect?:boolean;
   nearSearchableSuspect?:boolean;nearDroppedFirearm?:boolean;
   nearEscortableSuspect?:boolean;nearFollowingSuspect?:boolean;
-  nearCivilianCasualty?:boolean;
-  carryingCivilian?:boolean;
+  nearCivilianCasualty?:boolean;nearDownedCaptureTarget?:boolean;
+  carryingCivilian?:boolean;carryingCaptureTarget?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;
   /** A prior witnessed interruption exists; not a query of current hidden lock state. */
   resumeAvailable?:boolean;
@@ -115,6 +115,16 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ...(o.carryingCivilian?[
       {id:'ctxReleaseCivilian',label:'RELEASE',group:'primary' as const,
        title:'Queue the physical release of the civilian you are carrying'}
+    ]:[]),
+    ...(o.carryingCaptureTarget?[
+      {id:'ctxReleaseCapture',label:'RELEASE CAPTURE TARGET',group:'primary' as const,
+       title:'Release the physically held downed target at its actual position'}
+    ]:[]),
+    ...(o.nearDownedCaptureTarget?[
+      {id:'ctxDragCapture',label:'DRAG CAPTURE TARGET',group:'primary' as const,
+       title:'Physically drag the designated incapacitated target to extraction'},
+      {id:'ctxCarryCapture',label:'CARRY CAPTURE TARGET',group:'primary' as const,
+       title:'Physically carry the designated incapacitated target to extraction'}
     ]:[]),
     ...(o.nearCivilianCasualty?[
       {id:'ctxDragCivilian',label:'DRAG',group:'primary' as const,

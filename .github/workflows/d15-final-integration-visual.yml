@@ -1,0 +1,61 @@
+name: D15 FINAL unified custody and real visual release acceptance
+on:
+  push:
+    branches: [release/d15-final-integration-20261120]
+    paths:
+      - '.github/workflows/d15-final-integration-visual.yml'
+      - 'src/**'
+      - 'scripts/smoke-d15-final-visual.mjs'
+      - 'tests/dispatch-d15*.test.mjs'
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: d15-final-release-acceptance
+  cancel-in-progress: true
+jobs:
+  validated-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Dependencies
+        run: npm install --no-audit --no-fund
+      - name: Real surrender, transport, medical, escape, vital check and replay
+        run: |
+          node --experimental-strip-types --test \
+            tests/dispatch-d15-capture-vitals.test.mjs \
+            tests/dispatch-d15-capture-transport-go.test.mjs \
+            tests/dispatch-d15-capture-transport-presentation.test.mjs \
+            tests/dispatch-d15-capture-transport-eligibility.test.mjs \
+            tests/dispatch-d15-opportunity-escape-rearm.test.mjs \
+            tests/dispatch-d15-suspect-escort-go.test.mjs \
+            tests/dispatch-d15-operational-foundation.test.mjs \
+            tests/equipment-22-04-treatment.test.mjs \
+            tests/breach-155.test.mjs \
+            tests/breach-roadmap2-stage10-combat.test.mjs \
+            tests/secondary-s7-live-shot.test.mjs \
+            tests/movement-m3-door-lifecycle.test.mjs \
+            tests/movement-m4-queue-formation.test.mjs \
+            tests/package-b6-frame-body-output.test.mjs
+      - name: TypeScript and real production Pages compile
+        run: |
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
+      - name: Real Chromium + software WebGL
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          command -v google-chrome || command -v google-chrome-stable || command -v chromium
+          google-chrome --version || google-chrome-stable --version || chromium --version
+      - name: Physical D15 3D relative carry/drag, 2D Floor Plan and phone/desktop screenshots
+        run: node scripts/smoke-d15-final-visual.mjs
+      - name: Retain custody visual acceptance contact sheets and diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d15-final-visual-evidence
+          path: artifacts/d15-final-visual/
+          retention-days: 14
+          if-no-files-found: warn

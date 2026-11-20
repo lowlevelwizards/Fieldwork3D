@@ -104,6 +104,7 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
 import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
+import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
@@ -2246,10 +2247,17 @@ export class TacticalScene3D{
       // Presentation samples do not alter authoritative collision or shot state.
       const posePrepStart=this.profileSceneUpdate?performance.now():0;
       const drawActor=interpolatedActor(actor,renderFrame);
+      // Only an actual reciprocal GO-time carrier may lift or reorient a
+      // downed body. Live and replay use their sampled actor roster.
+      const transport=downedTransportPresentation(actor,s.operators);
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
       // miniature at its authored horizontal position, lifted only by the
       // recorded traversal arc (never by render-time speculative physics).
-      object.root.position.set(drawActor.x,actor.traversalElevation,drawActor.z);
+      // Scene root uses authoritative ground/traversal height once.
+      // The 3D pose pass applies the recorded carry/drag lift below; adding
+      // it here as well caused the same body to float at double elevation.
+      object.root.position.set(drawActor.x,
+        actor.traversalElevation,drawActor.z);
       // Build 120: the pose solver is the only writer of actor anatomical,
       // firearm and hit-reaction transforms; the scene owns world placement.
       const downProgress=actor.health<=0||actor.surrendered?
@@ -2459,7 +2467,8 @@ export class TacticalScene3D{
       if(this.profileSceneUpdate)
         this.actorPhaseCosts.posePrepMs+=poseStart-posePrepStart;
       poseOperator(object.physical,{
-        x:drawActor.x,z:drawActor.z,heading:drawActor.heading,
+        x:drawActor.x,z:drawActor.z,
+        heading:transport?.heading??drawActor.heading,
         velocity:actor.traversal?0:actor.velocity,
         seconds:poseSeconds,idleLifeSeconds:actorIdleSeconds,
         precontact,
@@ -2539,7 +2548,10 @@ export class TacticalScene3D{
         down:actor.health<=0,surrender:actor.surrendered,
         worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
-        custodyWalking:actor.restrained===true&&!!actor.escortLeaderId,
+        // Escaping unrestrained captives remain visibly upright while
+        // moving, rather than gliding on their knees in surrender pose.
+        custodyWalking:actor.restrained===true&&!!actor.escortLeaderId||
+          actor.surrendered&&actor.suspectEscapeMode==='flee',
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,
@@ -2562,6 +2574,10 @@ export class TacticalScene3D{
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         friendlyNear:friendlyAhead,friendlyAhead:actuallyAhead
       },dt);
+      // The shared pose solver publishes its local fall/root offset. Restore
+      // only the actual transport elevation afterward (as for civilians);
+      // otherwise the body stays floor-flat while physically carried.
+      if(transport)object.root.position.y+=transport.lift;
       // One existing muzzle flash follows the actual physical Glock socket
       // only once a selected sidearm is completely drawn. The rifle retains
       // its original visual authority in every other phase.

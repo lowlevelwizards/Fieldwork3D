@@ -123,6 +123,17 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         failCurrentOrder(s,a,n,'RESTRAINT STOCK CHANGED');return true;
       }
       suspect.restrained=true;suspect.lastCustodyAt=s.seconds;
+      // Completing physical cuffs interrupts any pending escape, hand
+      // retrieval or partially drawn pistol at the exact GO-time tick.
+      suspect.suspectEscapeMode=null;suspect.suspectEscapeGoal=null;
+      suspect.suspectEscapeWeaponId=null;
+      suspect.suspectEscapeStartedAt=-100;
+      suspect.suspectEscapeCooldownUntil=s.seconds+5;
+      if(suspect.secondarySwitch.desired==='secondary'&&
+         suspect.surrendered){
+        suspect.secondarySwitch={...suspect.secondarySwitch,
+          desired:'primary'};
+      }
       const message=a.name+' RESTRAINED '+suspect.name;
       notify(s,message);
       battleEvent(s,'interaction',a,a.p,message,{
@@ -233,6 +244,23 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       battleEvent(s,'interaction',a,a.p,message,{
         action:'weapon-secured',targetId:weapon.ownerId,
         objectId:'weapon:'+weapon.id,contributorId:a.id});
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
+    if(n.interaction==='release-capture-target'){
+      const target=s.operators.find(o=>o.id===n.objectId&&
+        o.side==='red'&&o.health<=0&&o.id===s.captureTarget&&
+        s.missionType==='capture');
+      if(!target||target.carriedById!==a.id||a.carryingId!==target.id){
+        failCurrentOrder(s,a,n,'CAPTURE TARGET NOT IN TRANSPORT');return true;
+      }
+      // A stopped/replanned carrier releases the actual actor where the
+      // previous resolved physical tick left it. No off-screen relocation.
+      target.carriedById=null;target.transportMode=null;a.carryingId=null;
+      a.velocity=0;
+      const message=a.name+' RELEASED '+target.name;
+      notify(s,message);
+      battleEvent(s,'interaction',a,target.p,message,{
+        action:'capture-target-released',targetId:target.id,contributorId:a.id});
       clearCurrentOrderIssue(a);pop(a);return true;
     }
     if(n.interaction==='release-civilian'){

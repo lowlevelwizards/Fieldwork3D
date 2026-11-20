@@ -7,6 +7,7 @@ import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
+import {advanceSurrenderOpportunity} from './breach-suspect-opportunity.ts';
 import {physicalFollowGoal,physicalFollowerSeparated}
  from './breach-follow-physical-policy.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
@@ -111,7 +112,10 @@ export function advanceSimulationActors(s:Session,h:number,
             port.runCustody(s,a,a.escortGoal,h);
           else a.velocity=0;
         }
-      }else a.velocity=0;
+      }else if(a.restrained===true)a.velocity=0;
+      else advanceSurrenderOpportunity(s,a,h,{
+        unobstructed,runCustody:port.runCustody,notify,battleEvent
+      });
       continue;
     }
     if(!activeCombatant(a))continue;
