@@ -7,7 +7,7 @@ import {type Session,type TeamActor,plannedControl,finalPoint,
  setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,
  inSight,team,enemies,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
- posture,setStartPace,planReloadAt,planMedicalTreatment,
+ posture,setStartPace,planReloadAt,planSwitchWeaponAt,planMedicalTreatment,
  planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
  doorAtNode,planEntryTool,liveVisibility,resumeInterruptedDoorPlan,
  resumeInterruptedSquadEntry} from './breach-game.ts';
@@ -16,6 +16,7 @@ import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {nearestContextCivilian} from './breach-civilian-context-selection.ts';
+import {plannedSecondaryHand} from './secondary-switching.ts';
 
 export type ContextCommandResult={
  handled:boolean;outcome?:'accepted'|'rejected';failureReason?:string;
@@ -123,6 +124,12 @@ export function dispatchTacticalContextCommand(input:{
    return finish(node?
      setNodeControl(state,selected,node.id,'paceState',value):
      setStartPace(state,selected,value),'PACE CHANGE NOT AVAILABLE');
+  }
+  case 'ctxSwitchWeapon':{
+   const active=plannedSecondaryHand(a.secondarySwitch,a.plan,node?.id);
+   const next=active==='primary'?'secondary':'primary';
+   return finish(planSwitchWeaponAt(state,selected,next,node?.id),
+     next==='secondary'?'NO ISSUED PISTOL TO DRAW':'HOLSTER ORDER UNAVAILABLE');
   }
   case 'ctxReload':
    return finish(planReloadAt(state,selected,node?.id),

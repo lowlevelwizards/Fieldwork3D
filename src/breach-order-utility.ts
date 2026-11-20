@@ -9,6 +9,11 @@ import {validateThrow} from './breach-flash.ts';
 import {quoteDeployedFieldUse,spendDeployedFieldItem}
  from './equipment-deployed-field-use.ts';
 import {targetAngle} from './breach-plan.ts';
+import {initialSecondarySwitch,requestSecondarySwitch,advanceSecondarySwitch,secondarySwitchSettled}
+ from './secondary-switching.ts';
+import {beginTimedSecondaryReload,advanceTimedSecondaryReload}
+ from './secondary-timed-reload.ts';
+import {commitSecondaryReloadStep} from './secondary-reload-commit.ts';
 export type UtilityOrderHooks={
  pop:(actor:TeamActor)=>void;notify:(s:Session,message:string)=>void;
  beginReload:(s:Session,a:TeamActor)=>boolean;
@@ -20,6 +25,22 @@ export type UtilityOrderHooks={
 const clone=(p:Pt):Pt=>({x:p.x,y:p.y});
 export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
  dt:number,h:UtilityOrderHooks):boolean{
+  if(n.kind==='switch-weapon'){
+    // Do not freeze a primary reload halfway through a magazine exchange.
+    // Fixed-step fire/reload remains authoritative until it can finish.
+    if(a.reload>0||a.secondaryReload){a.velocity=0;return true;}
+    const target=n.weaponHand??'secondary';
+    const request=requestSecondarySwitch(a.secondarySwitch??initialSecondarySwitch(),target,
+      a.equipment?.secondary,a.health>0&&!a.surrendered);
+    if(!request.accepted){
+      h.fail(s,a,n,request.reason??'SECONDARY NOT EQUIPPED');return true;
+    }
+    h.clearIssue(a);a.velocity=0;
+    a.secondarySwitch=advanceSecondarySwitch(request.state,dt,
+      a.equipment?.secondary,true);
+    if(secondarySwitchSettled(a.secondarySwitch))h.pop(a);
+    return true;
+  }
   if(n.kind==='sync'){
     a.syncReady=n.syncCode??'A';
     // Only actors still carrying this code participate. An undone
@@ -36,6 +57,44 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
     return true;
   }
   if(n.kind==='reload'){
+    // S8.2 is the same authored RELOAD command, dispatched by the settled
+    // physical hand. The issued Glock owns its magazine and timing; the
+    // rifle's magazine/reserve/reload fields never change here.
+    if(a.secondarySwitch?.active==='secondary'&&
+       secondarySwitchSettled(a.secondarySwitch)){
+      a.velocity=0;
+      const kit=a.equipment?.secondary;
+      if(!kit){h.fail(s,a,n,'NO ISSUED SECONDARY');return true;}
+      if(!a.secondaryReload||a.secondaryReload.orderId!==n.id){
+        const started=beginTimedSecondaryReload(kit,n.id);
+        if(!started.ok||!started.state){
+          if(started.reason==='MAGAZINE FULL'){h.pop(a);return true;}
+          h.fail(s,a,n,started.reason??'PISTOL RELOAD UNAVAILABLE');
+          return true;
+        }
+        a.secondaryReload=started.state;
+        h.clearIssue(a);h.notify(s,a.name+' PISTOL RELOADING');
+      }
+      const progressed=advanceTimedSecondaryReload(kit,a.secondaryReload,dt);
+      if(!progressed.ok){
+        a.secondaryReload=null;
+        h.fail(s,a,n,progressed.reason??'PISTOL RELOAD INTERRUPTED');
+        return true;
+      }
+      commitSecondaryReloadStep(s,a,progressed);
+      if(progressed.dropped)
+        h.notify(s,a.name+' PISTOL MAGAZINE DROPPED');
+      a.secondaryReload=progressed.state;
+      if(progressed.done){
+        h.notify(s,a.name+' PISTOL RELOADED');
+        h.pop(a);
+      }
+      return true;
+    }
+    if((a.secondarySwitch?.fraction??0)>0){
+      // Never start a rifle reload while the hands are between weapons.
+      a.velocity=0;return true;
+    }
     // The authored order owns one reload, not an endless sequence of
     // refills when the final available magazine isn't completely full.
     if(a.actionTimer>0&&a.reload===0){h.pop(a);return true;}

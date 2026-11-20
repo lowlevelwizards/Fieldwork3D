@@ -65,16 +65,22 @@ export function readSecondaryEquipment(raw:unknown,owner:string):SecondaryEquipm
  if(typeof v.weapon!=='string'||!isGlockAppearanceId(v.weapon))return empty;
  const capacity=SECONDARY_CAPACITY[v.weapon];
  const prefix=validOwner(owner)+'/secondary/'+v.weapon;
- if(v.loadedMagazineId!==prefix+'/loaded'||!Number.isInteger(v.loadedRounds)||
+ // Once magazines are exchanged, the actual loaded serial can be
+ // any of this operator's issued identities. The former fixed '/loaded'
+ // check silently rejected legal post-reload saves and erased ammunition.
+ const issued=(id:unknown):id is string=>
+  typeof id==='string'&&
+  (id===prefix+'/loaded'||
+   id.startsWith(prefix+'/spare-')&&
+   /^spare-[0-5]$/.test(id.slice((prefix+'/').length)));
+ if(!issued(v.loadedMagazineId)||!Number.isInteger(v.loadedRounds)||
   v.loadedRounds!<0||v.loadedRounds!>capacity||
   !Array.isArray(v.spareMagazines)||v.spareMagazines.length>6)
   return empty;
  const seen=new Set([v.loadedMagazineId]);
  const spareMagazines:SecondaryMagazine[]=[];
  for(const m of v.spareMagazines){
-  if(!m||typeof m!=='object'||typeof m.id!=='string'||
-   !/^spare-[0-5]$/.test(m.id.slice((prefix+'/').length))||
-   !m.id.startsWith(prefix+'/spare-')||seen.has(m.id)||
+  if(!m||typeof m!=='object'||!issued(m.id)||seen.has(m.id)||
    !Number.isInteger(m.rounds)||m.rounds<0||m.rounds>capacity||
    !locs.includes(m.location))return empty;
   seen.add(m.id);

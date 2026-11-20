@@ -6,13 +6,15 @@ import type {BattleEvent} from './breach-combat.ts';
 import type {RecordedShot} from './breach-replay-ballistics.ts';
 import type {Pt} from './breach-core.ts';
 import type {WeaponId} from './breach-combat.ts';
+import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 
 export type ReplaySoundKind='gunshot'|'door'|'flash'|'reload'|
   'interaction'|'surrender';
 export type ReplaySoundEvent={
   id:string;t:number;kind:ReplaySoundKind;
   actorId:string|null;p:Pt|null;
-  weapon:WeaponId|null;suppressed:boolean;
+  weapon:WeaponId|null;secondaryWeapon?:GlockAppearanceId;
+  suppressed:boolean;
   hit:boolean;down:boolean;description?:string;
 };
 export class ReplaySoundTimeline{
@@ -24,7 +26,9 @@ export class ReplaySoundTimeline{
       entries.push({
         id:'shot:'+shot.id,t:shot.recordedAt,kind:'gunshot',
         actorId:shot.shooterId,p:{...shot.start},
-        weapon:shot.weaponAtFire??'carbine',
+        weapon:shot.secondaryWeaponAtFire?'smg':
+          shot.weaponAtFire??'carbine',
+        secondaryWeapon:shot.secondaryWeaponAtFire,
         suppressed:shot.suppressedAtFire??false,
         hit:shot.hit,down:shot.down
       });

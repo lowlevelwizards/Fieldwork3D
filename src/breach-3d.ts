@@ -117,6 +117,7 @@ import {armedPrecontactStyle} from './breach-idle-life.ts';
 import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
+import {presentSecondaryMuzzleFlash} from './secondary-holster-visual.ts';
 import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse,
  RecentMuzzleShotFrameIndex}
  from './breach-combat-cues.ts';
@@ -2252,12 +2253,17 @@ export class TacticalScene3D{
       const muzzleAttachment=actor.weaponConfiguration?.slots.muzzle;
       // Rapid bursts can have overlapping live shot cues. Display the
       // newest physically recorded flash, never an older first match.
+      const drawnPistol=actor.secondarySwitch?.active==='secondary'&&
+        actor.secondarySwitch.fraction>=1&&!!actor.equipment?.secondary?.weapon;
+      const flashWeapon=drawnPistol?'smg':actor.weapon;
+      const flashAttachment=drawnPistol?null:muzzleAttachment;
       const firing=mostRecentActiveMuzzleShot(
         this.recentMuzzleShots.forShooter(actor.id),actor.id,
-        actor.weapon,muzzleAttachment,
-        shot=>omniscient||shotVisibility(s,shot).flash);
-      const flashCue=muzzleFlashCue(actor.weapon,
-        firing?.age??Infinity,muzzleAttachment);
+        flashWeapon,flashAttachment,
+        shot=>!!shot.secondaryWeapon===drawnPistol&&
+          (omniscient||shotVisibility(s,shot).flash));
+      const flashCue=muzzleFlashCue(flashWeapon,
+        firing?.age??Infinity,flashAttachment);
       object.flash.visible=flashCue.active&&actor.health>0;
       const gunTip=actor.weaponConfiguration?
        resolveWeaponAssembly(actor.weaponConfiguration):null;
@@ -2451,6 +2457,8 @@ export class TacticalScene3D{
           actor.traversalElapsed/Math.max(.001,actor.traversal.duration):0,
         appearanceSeed:actor.appearanceSeed,
         equipment:actor.equipment,wardrobe:actor.wardrobe,
+        secondarySwitch:actor.secondarySwitch,
+        secondaryReload:actor.secondaryReload,
         // B30: live and replay use the new posing by default.
         // This changes rendered anatomy only, not fixed-step ammo/shot.
         poseV3Preview:true,poseV4ReloadPreview:true,
@@ -2540,6 +2548,14 @@ export class TacticalScene3D{
         flashActive:actor.flashUntil>s.seconds&&actor.health>0,
         friendlyNear:friendlyAhead,friendlyAhead:actuallyAhead
       },dt);
+      // One existing muzzle flash follows the actual physical Glock socket
+      // only once a selected sidearm is completely drawn. The rifle retains
+      // its original visual authority in every other phase.
+      presentSecondaryMuzzleFlash(object.physical.root,
+        object.physical.weapon,object.flash,object.physical.hip,
+        actor.equipment?.secondary,
+        drawnPistol?actor.secondarySwitch!.fraction:0,
+        gunTip?.muzzleX??19.5,gunTip?.muzzleY??0);
       // Read-only, evidence-scoped head-only investigation. Apply AFTER
       // the existing weapon/IK owner resolves its pose; never rotate the
       // root or weapon, or grant an unseen source position in replay.
