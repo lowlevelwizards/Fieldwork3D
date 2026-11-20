@@ -68,7 +68,12 @@ try{
    const inspector=page.getByRole('dialog',{name:'Beretta M9 family visual inspection'});
    await inspector.waitFor({timeout:15000});
    await inspector.locator('.glock-wb-canvas canvas').waitFor({timeout:20000});
+   const inspectorStage=await inspector.locator('.glock-wb-canvas').boundingBox();
+   assert.ok(inspectorStage&&inspectorStage.height>=viewport.height*.55,
+    'art-only inspector dedicates most of phone/desktop height to real WebGL');
+   assert.equal(await inspector.getByRole('button',{name:'3/4 VIEW'}).getAttribute('aria-pressed'),'true');
    await inspector.getByRole('button',{name:'SIDE',exact:true}).click();
+   assert.equal(await inspector.getByRole('button',{name:'SIDE',exact:true}).getAttribute('aria-pressed'),'true');
    // Actual 3D geometry screenshots; never substitute the earlier 2D mockup.
    mkdirSync('artifacts/m9',{recursive:true});
    await page.waitForTimeout(180);
