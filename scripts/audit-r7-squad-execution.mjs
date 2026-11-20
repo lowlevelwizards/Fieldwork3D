@@ -1497,6 +1497,9 @@ function run(site,seed,kind){
       samples.push({r,theta,narrow,full,stage:next,
         firstMotorClear:fullBodyMotorStrideClear(a.p,next,
           (from,to)=>sweptBodyClear(from,to,session.doors,OPERATOR_RADIUS,world)),
+        narrowMotorClear:fullBodyMotorStrideClear(a.p,next,
+          (from,to)=>sweptProfileClear(from,to,session.doors,
+           squeezeFacing(theta),'squeeze',world)),
         tailLength:tail.length,first,firstClear,
         projectedTravel:r+tail.reduce((sum,node,i)=>
           sum+dist(i?tail[i-1]:next,node),0),tail});
