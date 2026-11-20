@@ -157,6 +157,8 @@ test('C2 Beretta inspector is mobile-first and scoped away from Glock loadouts',
  assert.match(inspector,/aria-pressed/);
  assert.match(inspector,/VISUAL STUDY ONLY/);
  assert.match(inspector,/viewport\.top\(\)/);
+ assert.match(inspector,/viewport\.useTightArtFraming\(\)/);
+ assert.match(inspector,/viewport\.quarter\(\)/);
  assert.doesNotMatch(inspector,/equipFreshSecondary|secondaryRoundTotal|saveGlockLibrary/);
  assert.match(css,/\.arsenal-m9-inspector \.arsenal-wb-main/);
  assert.match(css,/\.arsenal-m9-inspector \.glock-wb-viewport\{height:100%\}/);
