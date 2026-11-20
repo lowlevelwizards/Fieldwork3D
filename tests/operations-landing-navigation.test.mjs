@@ -442,7 +442,7 @@ test('C9 checks restored full roster, lazy history, low stock and active mission
   'full roster did not render','earlier records should be lazy before opening',
   'earlier history failed to load remaining two records',
   'exhausted reserves were not restored',
-  'empty stock alerts missing','saved personnel milestones inaccessible',
+  'selected HQ resource is not identifiable','saved personnel milestones inaccessible',
   'active mission resume action missing',
   'squad slots editable during an active deployment',
   'accepting a contract altered recent operation history',
