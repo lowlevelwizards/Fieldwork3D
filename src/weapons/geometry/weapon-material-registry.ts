@@ -54,6 +54,10 @@ export const WEAPON_FINISH_SPECS={
  'fal-mag-rib':{color:0x404847,roughness:.94,metalness:.10,role:'steel'},
  'fal-transition-steel':{color:0x2a312e,roughness:.86,metalness:.13,role:'steel'},
  'fal-muzzle-slot':{color:0x202624,roughness:.98,metalness:.06,role:'steel'},
+ // G2.7 miniature sidearms: dedicated shared signatures keep G19X steel
+ // distinct from its FDE polymer and soften the exaggerated port contrast.
+ 'glock-coyote-slide':{color:0x85745f,roughness:.84,metalness:.10,role:'steel'},
+ 'glock-port-shadow':{color:0x343c38,roughness:.93,metalness:.08,role:'steel'},
  'accessory-steel':{color:0x47514b,roughness:.82,metalness:.12,role:'steel'},
  'accessory-polymer':{color:0x343c38,roughness:.94,metalness:.015,role:'polymer'}
 } as const satisfies Record<string,Finish>;

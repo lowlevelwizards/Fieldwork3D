@@ -228,3 +228,58 @@ Focused geometry tests must verify the real opening, variant body bounds,
 face orientations and shared-edge geometry, TypeScript / production build,
 and critical integration smoke. Actual WebGL snapshots need human review;
 CI success is not equivalent to final aesthetic approval.
+
+
+## G2.7 Identity Lock — current lower-frame, material and comparison contract
+
+**Goal:** Maintain the user-reviewed G2.6 slide proportions. Improve authentic
+recognition through guard, grip and material relationships rather than scaling
+whole guns or adding ornamental mechanism detail.
+
+### Geometry / silhouette
+- Freeze the G19 / Gen5 envelope: rear=-8.55, muzzle=8.30,
+  slide Y=.34..3.04, slide depth=2.96. G26 nose=5.78 and G19X
+  heel remain variant-authored; no uniform scaling.
+- One continuous polymer frame, grip and open guard extrusion:
+  lower edge y=-3.88; guard pillar front x=1.76.
+- The new **five-point true opening** is (-2.25,-1.72),
+  (.83,-1.72), (.83,-3.13), (-1.98,-3.13),
+  (-2.25,-2.82). Compared with G2.6 it is approximately
+  27% taller, while lower rim remains ~.75 and front pillar ~.93.
+  The diagonal rear corner clarifies guard-to-frontstrap continuity.
+- Replace the old pinched-V backstrap with two broad facets at
+  heelY+1.28 and heelY+2.55 leading to (-7.03,-2.64),
+  (-7.26,-2.13) and rear (-8.43,-1.39).
+- No new micro finger grooves or dust-cover rail notches. Those were
+  evaluated against normal 64/128px silhouette readability and rejected
+  for insufficient identity benefit. G26 retains its shorter rail-less
+  visual profile, without fictitious decorative rail marks on G19.
+
+### Materials and identifying landmarks
+- Keep classic upper/lower shared black-steel/polymer hierarchy.
+- G19X: existing AR muted FDE polymer and new shared **slightly
+  darker coyote steel** upper. Both are pooled finishes, not per-model
+  material instances or game/save identities.
+- Keep the G2.6 right (+Z) to top (+Y) six-vertex wrapped port
+  and reduce contrast via one shared medium-dark Glock port material.
+  Serrations still share exactly that one existing surface mesh.
+- Tiny front muzzle-face symbolic mark uses four additional vertices,
+  two triangles on +X in the **same batch**. No new mesh or fake barrel
+  mechanism; omitted in monochrome/detail-off preview.
+
+### Comparison contract and acceptance
+- Arsenal **FAMILY SCALE** shows the real four 3D models in one
+  scene, in two rows of two, using exactly **one common camera,
+  native art-unit scale, distance and lighting**. There is no
+  per-card zoom. Top row G19 Gen3/G26; bottom row G19X/Gen5 MOS.
+  Shorter G26 and longer G19X must remain visibly distinct.
+- The existing MP5K peer view remains provisional until a true
+  secondary rig provides a final operator-contact scale.
+- Keep 5 meshes in clay, 6 normally and 7 MOS, <=220 emitted
+  triangles; no new independent draw surface.
+- Require raycast checks through the aperture, face-normal checks
+  for muzzle/port, material-cache identity tests, close-view and
+  common-scale mobile/desktop review, and critical build regressions.
+  Technical tests do NOT certify the model's aesthetic success.
+- Appearance-only. Never change primary weapon recipes, inventory,
+  saved loadouts, ballistics, ammunition, reloads or operator poses.

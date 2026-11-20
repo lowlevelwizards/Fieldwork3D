@@ -1,4 +1,4 @@
-/** Arsenal G2.2: the exact real Glock art, properly framed for miniature review.
+/** Arsenal G2.7: actual Glock art, with common-scale family identity review.
  * Gallery-only; no issued sidearms, gameplay classes, or saved pistol recipes.
  */
 import * as THREE from 'three';
@@ -13,7 +13,7 @@ import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER}
 import {GLOCK_APPEARANCE_REFERENCES,buildGlockAppearance,clearGlockAppearance,
  type GlockAppearanceId} from '../weapons/geometry/glock-family-silhouettes.ts';
 
-type View='side'|'quarter'|'opposite'|'clay'|'peer';
+type View='side'|'quarter'|'opposite'|'clay'|'peer'|'family';
 /** Unlike the rifle workbench, never impose a 27-unit minimum distance on a
  * short pistol. Frame the *actual* mesh bounds at the requested aspect ratio.
  * In peer mode both native-art meshes receive ONE camera and NO camera tricks.
@@ -40,6 +40,7 @@ class GlockGallerySnapshots{
   if(this.cached.has(key))return this.cached.get(key);
   if(this.unavailable)return undefined;
   let model:THREE.Group|null=null,peer:THREE.Group|null=null;
+  const family:THREE.Group[]=[];
   try{
    if(!this.renderer){
     this.renderer=new THREE.WebGLRenderer({alpha:false,antialias:false,
@@ -47,13 +48,26 @@ class GlockGallerySnapshots{
     configureGraphicRendererOutput(this.renderer);
     this.renderer.setPixelRatio(1);
    }
-   const width=size==='hero'?960:420,height=size==='hero'?480:210;
+   const width=size==='hero'?960:420;
+   const height=size==='hero'&&view==='family'?720:size==='hero'?480:210;
    this.renderer.setSize(width,height,false);
    this.camera.aspect=width/height;
    this.camera.updateProjectionMatrix();
-   model=buildGlockAppearance(id,{monochrome:view==='clay'});
-   this.scene.add(model);
-   if(view==='peer'){
+   if(view==='family'){
+    // Fixed offsets and ONE camera for all four genuine models: no
+    // per-card camera fit or scaling disguising the subcompact's short grip.
+    const positions:readonly (readonly [number,number])[]=[
+     [-10.4,8.3],[10.4,8.3],[-10.4,-8.3],[10.4,-8.3]];
+    GLOCK_APPEARANCE_REFERENCES.forEach((ref,i)=>{
+     const item=buildGlockAppearance(ref.id);
+     item.position.set(positions[i][0],positions[i][1],0);
+     this.scene.add(item);family.push(item);
+    });
+   }else{
+    model=buildGlockAppearance(id,{monochrome:view==='clay'});
+    this.scene.add(model);
+   }
+   if(view==='peer'&&model){
     // A REAL, live Arsenal MP5K model, not a mocked comparison shape.
     // Shared art-unit comparison is provisional until secondary rigs exist.
     const config=selectWeaponFamilyPreset(initialWeaponConfiguration('smg'),'hk-mp5k');
@@ -68,12 +82,14 @@ class GlockGallerySnapshots{
     peer.position.set(-peerCenter.x,-7.7-peerCenter.y,0);
     this.scene.add(peer);
    }
-   model.updateMatrixWorld(true);peer?.updateMatrixWorld(true);
-   const bounds=new THREE.Box3().setFromObject(model);
-   if(peer)bounds.union(new THREE.Box3().setFromObject(peer));
+   model?.updateMatrixWorld(true);peer?.updateMatrixWorld(true);
+   const bounds=new THREE.Box3();
+   if(model)bounds.expandByObject(model);
+   for(const item of family){item.updateMatrixWorld(true);bounds.expandByObject(item);}
+   if(peer)bounds.expandByObject(peer);
    const center=bounds.getCenter(new THREE.Vector3());
    const distance=glockPreviewFitDistance(bounds,width,height,
-    view==='peer'?.76:size==='hero'?.86:.80);
+    view==='peer'?.76:view==='family'?.78:size==='hero'?.86:.80);
    // Three-quarter emphasizes the chunky 3D slab; side and clay are the
    // unbiased silhouette checks; opposite uses the genuine opposite side.
    const sideOffset=view==='quarter'?.29:0;
@@ -91,6 +107,7 @@ class GlockGallerySnapshots{
    return undefined;
   }finally{
    if(model){this.scene.remove(model);clearGlockAppearance(model);}
+   for(const item of family){this.scene.remove(item);clearGlockAppearance(item);}
    if(peer){this.scene.remove(peer);clearWeaponSilhouette(peer);}
   }
  }
@@ -113,7 +130,7 @@ export function mountGlockArsenalGallery():HTMLElement{
   '<div class="arsenal-glock-feature">'+
     '<div class="arsenal-glock-hero-visual" aria-live="polite"></div>'+
     '<div class="arsenal-glock-feature-copy">'+
-      '<span class="arsenal-overline">FIELDWORK / G2.6 ICONIC FORMS</span>'+
+      '<span class="arsenal-overline">FIELDWORK / G2.7 IDENTITY LOCK</span>'+
       '<h3 class="arsenal-glock-model"></h3>'+
       '<p class="arsenal-glock-description"></p>'+
       '<div class="arsenal-glock-view-controls" role="group" aria-label="3D model view"></div>'+
@@ -136,20 +153,31 @@ export function mountGlockArsenalGallery():HTMLElement{
  const views:readonly [View,string][]= [
   ['side','SIDE'],['quarter','THREE-QUARTER'],
   ['opposite','OPPOSITE'],['clay','CLAY'],
-  ['peer','MP5K PEER']];
+  ['family','FAMILY SCALE'],['peer','MP5K PEER']];
  const viewNotes:Record<View,string>={
   side:'Orthographic-feeling side profile · silhouette first',
   quarter:'Enlarged three-quarter view · check thickness and connected shapes',
   opposite:'Opposite side · check that surfaces are not simply mirrored',
   clay:'One material · no markings · judge the pure shape',
+  family:'ONE CAMERA · top: G19 / G26 · bottom: G19X / Gen5 MOS · same art units and zoom',
   peer:'Glock ABOVE real MP5K BELOW · common art units, provisional until a live sidearm rig exists'
  };
  const display=(host:HTMLElement,id:GlockAppearanceId,angle:View,size:'card'|'hero')=>{
   const source=renderer.render(id,angle,size);
   if(!source){host.textContent='3D preview unavailable';return;}
   const image=document.createElement('img');
-  image.src=source;image.alt='';
-  image.decoding='async';host.replaceChildren(image);
+  image.src=source;
+  image.alt=angle==='family'?'Four Glock variants side-by-side at identical 3D camera scale':'';
+  image.decoding='async';host.dataset.view=angle;
+  if(angle==='family'&&size==='hero'){
+   const labels=document.createElement('div');
+   labels.className='arsenal-glock-family-labels';
+   for(const ref of GLOCK_APPEARANCE_REFERENCES){
+    const tag=document.createElement('span');
+    tag.textContent=ref.name;labels.append(tag);
+   }
+   host.replaceChildren(image,labels);
+  }else host.replaceChildren(image);
  };
  const refresh=()=>{
   const reference=GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===selected)!;

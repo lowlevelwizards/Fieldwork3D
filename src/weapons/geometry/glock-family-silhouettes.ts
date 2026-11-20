@@ -1,4 +1,4 @@
-/** Glock G2.6: iconic compact miniatures and a wrapped port, not firearm CAD.
+/** Glock G2.7: identity-lock miniatures with honest open guards, not CAD.
  * One exaggerated slide and ONE integrated polymer frame/grip/guard with a true
  * opening. No floaters, secondary lower spacers or false trigger-guard boxes.
  * Art-only: not a primary weapon, an equipable secondary or a simulation change.
@@ -6,8 +6,8 @@
  */
 import * as THREE from 'three';
 import {addOutline,addCuboid,type Outline} from './profile-primitives.ts';
-import {HK_BLACK_METAL,HK_DARK_POLYMER,AR_MUTED_FDE,FAL_VENT_SHADOW}
- from './weapon-visual-palette.ts';
+import {HK_BLACK_METAL,HK_DARK_POLYMER,AR_MUTED_FDE,FAL_VENT_SHADOW,
+ GLOCK_COYOTE_SLIDE,GLOCK_PORT_SHADOW} from './weapon-visual-palette.ts';
 
 export const GLOCK_APPEARANCE_REFERENCES=[
  {id:'glock-g19-gen3',name:'G19 · Gen 3',description:'Balanced compact · reference master'},
@@ -41,14 +41,16 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  options:GlockAppearanceOptions={}):THREE.Group{
  const art=GLOCK_G2_ART[id],coyote=id==='glock-g19x';
  const clay=options.monochrome===true;
- const steel=clay?HK_BLACK_METAL:coyote?AR_MUTED_FDE:HK_BLACK_METAL;
+ const steel=clay?HK_BLACK_METAL:coyote?GLOCK_COYOTE_SLIDE:HK_BLACK_METAL;
  const polymer=clay?HK_BLACK_METAL:coyote?AR_MUTED_FDE:HK_DARK_POLYMER;
  const shadow=clay?HK_BLACK_METAL:FAL_VENT_SHADOW;
+ const marksFinish=GLOCK_PORT_SHADOW;
  const root=new THREE.Group();root.name='glock-appearance-'+id;
  root.userData.glockAppearance=id;root.userData.appearanceOnly=true;
  root.userData.glockG2FieldworkProportions=true;
  root.userData.glockG25BalancedProportions=true;
  root.userData.glockG26IdentityRefinement=true;
+ root.userData.glockG27IdentityLock=true;
  let n=0;
  const box=(slot:'barrel'|'magazine',x:number,y:number,z:number,
   w:number,h:number,d:number,material:THREE.Material)=>
@@ -77,24 +79,26 @@ export function buildGlockAppearance(id:GlockAppearanceId,
   // Shallow nose band, subtly deepening toward the front guard.
   // Preserve the lower as a single continuous extrusion, not two slabs.
   [art.frontX-.17,-1.01],[3.00,-1.07],[1.76,-1.24],
-  [1.76,-3.36],[1.31,-3.80],
-  [-2.79,-3.80],[art.frontHeelX,art.heelY],
+  [1.76,-3.40],[1.30,-3.88],
+  [-2.83,-3.88],[art.frontHeelX,art.heelY],
   [art.rearHeelX,art.heelY],
-  // Two restrained facets make the backstrap sweep rather than kink.
-  [art.rearHeelX+.24,art.heelY+1.23],
-  [art.rearHeelX+.61,art.heelY+2.64],
-  [-6.73,-2.59],[-7.24,-1.68],[SLIDE_REAR+.12,-1.29]
+  // A broad, deliberate backstrap sweep; remove G2.6's pinched V.
+  [art.rearHeelX+.28,art.heelY+1.28],
+  [art.rearHeelX+.58,art.heelY+2.55],
+  [-7.03,-2.64],[-7.26,-2.13],[SLIDE_REAR+.12,-1.39]
  ];
  frame.moveTo(perimeter[0][0],perimeter[0][1]);
  for(const [x,y] of perimeter.slice(1))frame.lineTo(x,y);
  frame.closePath();
  const opening=new THREE.Path();
- // Extra substantial perimeter: ~0.8 lower bar and ~1.0 front pillar,
- // while maintaining one open ~3.1 × 1.1 graphic negative-space landmark.
- opening.moveTo(-2.36,-1.91);
- opening.lineTo(.78,-1.91);
- opening.lineTo(.78,-3.02);
- opening.lineTo(-2.36,-3.02);
+ // One authentic, taller open guard with a simple diagonal rear transition.
+ // ~3.1 × 1.4 void: retains .75 lower rim and .93 front pillar.
+ // The 5-point aperture (not an extra mesh) restores sidearm anatomy.
+ opening.moveTo(-2.25,-1.72);
+ opening.lineTo(.83,-1.72);
+ opening.lineTo(.83,-3.13);
+ opening.lineTo(-1.98,-3.13);
+ opening.lineTo(-2.25,-2.82);
  opening.closePath();
  frame.holes.push(opening);
  const frameGeom=new THREE.ExtrudeGeometry(frame,{
@@ -134,10 +138,20 @@ export function buildGlockAppearance(id:GlockAppearanceId,
     for(let i=0;i<2;i++)
      addMark(art.frontX-2.20+i*.55,.80,side,.23,1.19);
   }
+  // G2.7 retains the wrapped panel; lower its contrast rather than
+  // changing its silhouette or adding a hole to the slide.
+  // One small +X muzzle-face inset also shares this batch (two triangles).
   // From the right side to the top in ONE continuous, four-triangle
   // six-vertex ribbon; side 3.15 × .92, top ~3.15 × 1.12.
   // x=0.26..3.41 keeps it distinct from rear serrations and nose.
   // Corner points are shared; no separate floating top decal/mesh.
+  // A low-contrast front face mark is only an inspectable muzzle cue,
+  // not a modeled bore, barrel mechanism or additional draw mesh.
+  const face=verts.length/3;
+  const muzzleX=art.frontX+.018;
+  verts.push(muzzleX,1.25,-.53,muzzleX,1.25,.53,
+   muzzleX,2.04,.53,muzzleX,2.04,-.53);
+  indices.push(face,face+2,face+1,face,face+3,face+2);
   const x0=.26,x1=3.41,y0=2.11,y1=SLIDE_TOP+.018;
   const zOuter=SLIDE_DEPTH/2+.018,zInner=.36;
   const first=verts.length/3;
@@ -153,11 +167,12 @@ export function buildGlockAppearance(id:GlockAppearanceId,
   const geom=new THREE.BufferGeometry();
   geom.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
   geom.setIndex(indices);geom.computeVertexNormals();
-  const marks=new THREE.Mesh(geom,shadow);
+  const marks=new THREE.Mesh(geom,marksFinish);
   marks.name='family-barrel-'+id+'-serration-batch';
   marks.userData.glockRightEjectionPort=true;
   marks.userData.glockRightEjectionPortGeometry='shared-edge-side-to-top-six-vertex-ribbon';
   marks.userData.glockPortFaceCount=2;
+  marks.userData.glockMuzzleFaceCue=true;
   marks.castShadow=false;marks.receiveShadow=false;
   root.add(marks);
   if(art.mos){
@@ -174,7 +189,8 @@ export function buildGlockAppearance(id:GlockAppearanceId,
   slideTopY:SLIDE_TOP,slideBottomY:SLIDE_BOTTOM,slideDepth:SLIDE_DEPTH,
   frameDepth:FRAME_DEPTH,gripHeelY:art.heelY,
   gripRearX:art.rearHeelX,gripFrontX:art.frontHeelX,
-  guardOpeningX:[-2.36,.78],guardOpeningY:[-3.02,-1.91],
+  guardOpeningX:[-2.25,.83],guardOpeningY:[-3.13,-1.72],
+  guardFivePointAperture:true,guardRearDiagonal:true,
   rightEjectionPort:!clay&&options.details!==false,
   portSideRange:[.26,3.41,2.11,SLIDE_TOP+.018],
   portTopRange:[.36,SLIDE_DEPTH/2+.018],
