@@ -172,8 +172,9 @@ export function buildM9Appearance(id:M9AppearanceId,
   [a.gripRear-.06,a.heel+.52],
   [a.straightGrip?-8.50:-9.12,-5.18],
   [a.straightGrip?-7.95:-8.16,-3.35],
-  [-8.20,-2.37],[-10.02,-.72],[-11.25,-.47],
-  [-11.45,-.19],[-9.20,-.02]
+  // D7: blunt two-facet swept tang, no shovel-like pinched triangular tip.
+  [-8.20,-2.37],[-10.15,-.75],[-11.18,-.42],
+  [-11.40,-.24],[-11.12,-.08],[-9.20,-.02]
  ];
  // Large curved-octagonal hole is genuine through-Z geometry; the lower
  // guard remains thick enough to read at game scale without becoming a box.
@@ -193,9 +194,11 @@ export function buildM9Appearance(id:M9AppearanceId,
  // D4: forward-reaching NARROW rear upper, with a thicker LOWER skirt.
  // Both have purposeful depth, preventing a single long Glock-like slab.
  // The sloping rear boundary angles toward the muzzle as it rises.
+ // D7: two broad angled planes at the transition to the exposed barrel.
+ // Extend its lower nose slightly forward, without an extra bevel object.
  const breech:Outline=[
-  [-8.91,SLIDE_BOTTOM],[-1.22,SLIDE_BOTTOM],
-  [-1.22,2.72],[-1.64,SLIDE_TOP],
+  [-8.91,SLIDE_BOTTOM],[-.98,SLIDE_BOTTOM],
+  [-.98,1.96],[-1.30,2.63],[-1.72,SLIDE_TOP],
   [-8.15,SLIDE_TOP],[-8.91,1.22]
  ];
  const rearSlide=addOutline(root,'barrel',id,n++,breech,
@@ -304,14 +307,17 @@ export function buildM9Appearance(id:M9AppearanceId,
  if(showDetails){
   // D6: factory panels are large side-plane facets, not extruded slabs.
   // Five landmarks follow the actual frame sweep on each *distinct* grip.
+  // D7: visibly angled frame-following panel silhouettes. Classic 92
+  // leans farther aft at the heel; the A3's Vertec grip stays straighter.
+  // Five points each, so this correction costs ZERO additional triangles.
   const gripPanel:Outline=a.straightGrip?[
-   [-7.80,-2.10],[-5.14,-2.12],
-   [a.gripFront-.45,a.heel+.82],
-   [a.gripRear+.64,a.heel+.69],[-8.34,-4.31]
+   [-7.70,-2.12],[-5.12,-2.16],
+   [a.gripFront-.58,a.heel+.82],
+   [a.gripRear+.62,a.heel+.66],[-8.20,-4.50]
   ]:[
-   [-8.03,-2.12],[-5.27,-2.17],
-   [a.gripFront-.57,a.heel+.83],
-   [a.gripRear+.81,a.heel+.66],[-8.92,-4.90]
+   [-8.03,-2.12],[-5.18,-2.19],
+   [a.gripFront-.88,a.heel+.86],
+   [a.gripRear+.67,a.heel+.64],[-8.99,-4.92]
   ];
   const panelVertices:number[]=[],panelIndices:number[]=[];
   const panelTriangles=THREE.ShapeUtils.triangulateShape(
@@ -403,11 +409,19 @@ export function buildM9Appearance(id:M9AppearanceId,
 
  }
  if(a.rail){
-  // A3-only, readable under-frame rail; sits in dust-cover mass instead of
-  // an extra long floating rectangle.
-  const rail=cuboid('receiver',4.80,-.86,0,2.65,.51,1.96,frameMaterial);
+  // D7 A3-only one-piece dust-cover rail: embedded top, sloped rear ramp,
+  // broad rail-bearing lower shelf and chamfered muzzleward end.
+  // Six strong profile stations replace the floating D6 cuboid; no
+  // miniature slots, repeated teeth or added accessory component.
+  const railProfile:Outline=[
+   [2.80,-.61],[6.20,-.61],
+   [6.00,-.84],[5.82,-1.10],
+   [3.21,-1.10],[2.80,-.84]
+  ];
+  const rail=addOutline(root,'receiver',id,n++,railProfile,2.05,frameMaterial);
+  rail.name='family-receiver-'+id+'-integrated-dust-cover-rail';
   rail.userData.m9AccessoryRail=true;
-
+  rail.userData.m9IntegralDustCoverRail=true;
  }
  root.userData.m9ArtLandmarks=Object.freeze({
   rearX:SLIDE_REAR,noseX:a.nose,muzzleX:a.barrelEnd,
@@ -417,7 +431,7 @@ export function buildM9Appearance(id:M9AppearanceId,
   guardOpening:true,actualOpenTop:true,
   barrelRadius:BARREL_RADIUS,barrelY:BARREL_Y,
   muzzleWrapEndX:a.nose+.08,
-  upperBridgeFrontX:-1.22,beavertailRearX:-11.45,
+  upperBridgeFrontX:-.98,beavertailRearX:-11.40,
   upperRoofInset:.14,lowerSlideTopY:2.16,
   frontWrapDepth:1.35,
   serrationBottomY:.70,serrationTopY:2.04,
