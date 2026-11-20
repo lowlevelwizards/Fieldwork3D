@@ -2336,3 +2336,95 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(max-width:620px){
  .campaign-armory-screen .campaign-kit-summary::after{display:none}
 }
+
+
+/* R1 emergency correction: the existing mobile .campaign-kit-preview
+ * was position:static!important. As a result the absolute hotspot layer
+ * anchored to the STICKY SUMMARY, not to the 3D viewport. Full-width
+ * campaign button styles then grew its controls into screen-covering bars.
+ * Keep ONE positioned, clipped coordinate space on every breakpoint. */
+.campaign-armory-screen .campaign-kit-preview{
+ position:relative!important;
+ isolation:isolate;
+ display:block;
+ box-sizing:border-box;
+}
+.campaign-armory-screen .campaign-kit-preview canvas{
+ display:block;position:absolute;inset:0;
+ width:100%!important;height:100%!important;
+}
+.campaign-armory-screen .campaign-kit-preview .campaign-kit-hotspots{
+ position:absolute!important;inset:0!important;
+ width:100%!important;height:100%!important;
+ display:block!important;overflow:hidden;
+ box-sizing:border-box;pointer-events:none;
+ z-index:3;
+}
+/* Never allow the standard campaign full-width button rule to affect
+ * canvas overlay controls. The 40px hit target contains a small 14px pip. */
+.campaign-armory-screen .campaign-kit-preview .campaign-kit-hotspot{
+ box-sizing:border-box!important;position:absolute!important;
+ flex:none!important;display:grid!important;place-items:center;
+ width:40px!important;height:40px!important;
+ min-width:40px!important;min-height:40px!important;
+ max-width:40px!important;max-height:40px!important;
+ padding:0!important;margin:0!important;
+ transform:translate(-50%,-50%)!important;
+ background:transparent!important;border:0!important;
+ box-shadow:none!important;pointer-events:auto;overflow:visible;
+ color:transparent!important;font-size:0!important;
+ touch-action:manipulation;
+}
+.campaign-armory-screen .campaign-kit-preview .campaign-kit-hotspot[hidden]{
+ display:none!important;
+}
+.campaign-kit-hotspot::after{
+ content:"";display:block;width:13px;height:13px;
+ border:2px solid #ecf4d6;border-radius:50%;
+ background:#344c3a;box-shadow:0 1px 6px #081710bb;
+}
+.campaign-kit-hotspot[aria-pressed="true"]::after{
+ width:16px;height:16px;background:#d3e5b5;
+ border-color:#122a1d;box-shadow:0 0 0 3px #d3e5b56b;
+}
+.campaign-armory-screen .campaign-kit-preview .campaign-kit-zoom{
+ position:absolute!important;right:7px!important;top:7px!important;
+ left:auto!important;bottom:auto!important;
+ width:38px!important;max-width:38px!important;
+ display:grid!important;gap:5px;pointer-events:auto;
+}
+.campaign-armory-screen .campaign-kit-preview .campaign-kit-zoom button{
+ box-sizing:border-box!important;display:grid!important;place-items:center;
+ flex:none!important;width:38px!important;height:38px!important;
+ min-width:38px!important;min-height:38px!important;
+ max-width:38px!important;max-height:38px!important;
+ margin:0!important;padding:0!important;
+ font-size:22px!important;line-height:1!important;
+ touch-action:manipulation;
+}
+.campaign-armory-screen .campaign-kit-preview .campaign-kit-preview-pose-toggle{
+ box-sizing:border-box!important;position:absolute!important;
+ left:8px!important;bottom:8px!important;right:auto!important;top:auto!important;
+ width:auto!important;min-width:0!important;
+ min-height:34px!important;height:auto!important;
+ max-width:calc(100% - 62px)!important;
+ margin:0!important;padding:7px 10px!important;
+ font-size:10px!important;line-height:1.2!important;
+ border-radius:6px;
+}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-summary{
+  max-height:none!important;overflow:visible!important;
+ }
+ .campaign-armory-screen .campaign-kit-preview{
+  position:relative!important;min-height:248px!important;
+  height:248px!important;overflow:hidden!important;
+ }
+ .campaign-armory-screen .campaign-kit-summary::after{display:none!important}
+}
+@media(max-width:620px) and (max-height:620px){
+ .campaign-armory-screen .campaign-kit-preview{
+  position:relative!important;
+  min-height:180px!important;height:180px!important;
+ }
+}
