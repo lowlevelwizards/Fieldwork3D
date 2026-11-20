@@ -45,10 +45,11 @@ test('M9 family: two genuinely 3D art-only models, not issued Glock IDs',()=>{
    assert.equal(m.children.filter(x=>x.userData.m9MagazineFloorplate).length,1);
    assert.ok(m.children.every(x=>x.name.startsWith('family-')));
    const stats=count(m);
-   assert.ok(stats.meshes<=20,
-    'miniature mesh count including real wrap and red dots: '+JSON.stringify(stats));
-   assert.ok(stats.triangles<=450,
-    'emitted triangle review cap including true U-wrap: '+JSON.stringify(stats));
+   console.log('BERETTA D5 GEOMETRY',ref.id,JSON.stringify(stats));
+   assert.ok(stats.meshes<=24,
+    'D5 review: batched controls and wrapped sight, mesh economy '+JSON.stringify(stats));
+   assert.ok(stats.triangles<=520,
+    'D5 review: real emitted geometry within bounded cap '+JSON.stringify(stats));
   }finally{
    clearM9Appearance(m);
    assert.equal(m.children.length,0);
@@ -198,8 +199,9 @@ test('D4 silhouette: SHORT forward-angled serrations, thicker exposed barrel and
     bottom=Math.min(bottom,attr.getY(i));top=Math.max(top,attr.getY(i));
    }
    assert.ok(top-bottom>=1.25&&top-bottom<=1.55,'serrations are bold but shorter than slide height');
-   assert.ok(bottom>=1.40,'serration lower end stays on upper rear slide');
-   assert.ok(top<=landmarks.slideTopY-.25,'clean top roof margin must remain');
+   assert.ok(bottom>=.65&&bottom<=.75,'D5 serrations move down onto lower skirt');
+   assert.ok(top<=landmarks.lowerSlideTopY-.10,
+    'short slanted grooves remain within the taller lower slide');
    assert.equal(serrations[0].geometry.index.count,48,
     'four bold marks per side, two triangles each, no mesh-per-serration');
    assert.ok(sideRay(g,-.25,-2.35)===0,
@@ -266,6 +268,129 @@ test('D4 safety cues and magazine plate are attached, minimal and double-sided',
    const clay=buildM9Appearance(id,{monochrome:true});
    try{assert.equal(clay.children.filter(x=>x.userData.m9RedSafetyDots).length,0);}
    finally{clearM9Appearance(clay);}
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D5 sculpted rear roof tapers inward while broad lower skirt carries marks',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const upper=m.children.find(x=>x.userData.m9NarrowUpperBridge);
+   const skirt=m.children.find(x=>x.userData.m9BroadLowerSlide);
+   assert.equal(upper.userData.m9TaperedRoof,true);
+   const pos=upper.geometry.getAttribute('position'),roof=[],base=[];
+   for(let i=0;i<pos.count;i++){
+    const y=pos.getY(i),z=Math.abs(pos.getZ(i));
+    if(Math.abs(y-3.17)<.005)roof.push(z);
+    if(Math.abs(y-.34)<.005)base.push(z);
+   }
+   assert.ok(roof.length>1&&base.length>1);
+   assert.ok(Math.max(...roof)<=Math.max(...base)*.88,
+    'rear upper must have a visible taper, not uniform-depth extrusion');
+   assert.ok(bounds(skirt).max.y>=2.15,
+    'lower slide raised to carry all control details');
+   const marks=m.children.find(x=>x.userData.m9SerrationBatch);
+   const attr=marks.geometry.getAttribute('position');
+   let minX=Infinity,maxY=-Infinity,minY=Infinity,minZ=Infinity;
+   for(let i=0;i<attr.count;i++){
+    minX=Math.min(minX,attr.getX(i));
+    maxY=Math.max(maxY,attr.getY(i));
+    minY=Math.min(minY,attr.getY(i));
+    minZ=Math.min(minZ,Math.abs(attr.getZ(i)));
+   }
+   assert.ok(minX>=-6.05,'four marks shifted toward muzzle');
+   assert.ok(maxY<=2.08&&minY>=.67,'lower slide marks, clear of roof');
+   assert.ok(minZ>=1.53,'marks physically sit outside broad lower slide');
+   const dots=m.children.find(x=>x.userData.m9RedSafetyDots);
+   const dotAttr=dots.geometry.getAttribute('position');
+   for(let i=0;i<dotAttr.count;i++){
+    assert.ok(Math.abs(dotAttr.getZ(i))>=1.52,
+     'red dot remains outside the lower slide');
+    assert.ok(dotAttr.getY(i)<=1.30,'red safety dot lowered under paddle');
+   }
+   const levers=m.children.filter(x=>x.userData.m9DecockerCue);
+   assert.equal(levers.length,2);
+   assert.ok(levers.every(x=>bounds(x).max.y<=2.01),
+    'safety levers descend with lower slide');
+   assert.ok(levers.every(x=>Math.abs(x.position.z)>1.55));
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D5 connected front wrap and longer rooted front sight retain open channel',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const wrap=m.children.find(x=>x.userData.m9FrontUWrap);
+   const crown=m.children.find(x=>x.userData.m9FrontWrapCrown);
+   const sight=m.children.find(x=>x.userData.m9AttachedFrontSight);
+   assert.ok(wrap&&crown&&sight);
+   assert.ok(bounds(wrap).max.x-bounds(wrap).min.x>=1.40,
+    'front wrap must be substantial front-to-back, not two posts');
+   assert.ok(bounds(wrap).intersectsBox(bounds(crown)),
+    'front crown connects to the open U cheeks');
+   assert.ok(bounds(crown).intersectsBox(bounds(sight)),
+    'front sight physically roots into its nose mount');
+   assert.ok(bounds(sight).max.x-bounds(sight).min.x>=.80,
+    'front sight broad along pistol axis');
+   assert.ok(bounds(wrap).max.x<M9_ART[id].barrelEnd-.20,
+    'barrel continues through and beyond front wrap');
+   assert.equal(sideRay(m,4.4,3.63),0,
+    'open slide channel stays real behind front cap');
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D5 rear hammer is tall/slim and grip panels rake backwards',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const hammer=m.children.find(x=>x.userData.m9Hammer),b=bounds(hammer);
+   assert.ok(b.max.y>=4.40,'taller external hammer');
+   assert.ok(b.max.x-b.min.x<.75,'slimmer side profile, not paddle');
+   const panels=m.children.filter(x=>x.userData.m9GripPanel);
+   assert.equal(panels.length,2);
+   for(const panel of panels){
+    const p=panel.geometry.getAttribute('position');
+    const hi=[],lo=[];
+    for(let i=0;i<p.count;i++){
+     if(p.getY(i)>-1.84)hi.push(p.getX(i));
+     if(p.getY(i)<-7.85)lo.push(p.getX(i));
+    }
+    assert.ok(hi.length>0&&lo.length>0);
+    const avg=arr=>arr.reduce((a,b)=>a+b,0)/arr.length;
+    assert.ok(avg(lo)<avg(hi)-.60,
+     'grip panel heel rakes backwards, not an upright trapezoid');
+   }
+   const source=readFileSync(new URL('../src/weapons/geometry/beretta-m9-silhouettes.ts',import.meta.url),'utf8');
+   assert.doesNotMatch(source,/m9Trigger|addTriggerToM9/);
+  }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D5 flat front dust cover and visible M9A3-only rail/control cues',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const m=buildM9Appearance(id);
+  try{
+   const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
+   const p=frame.geometry.getAttribute('position');
+   const frameXs=[1.58,5.92].map(x=>{
+    const ys=[];
+    for(let i=0;i<p.count;i++)
+     if(Math.abs(p.getX(i)-x)<.005&&p.getY(i)<0)ys.push(p.getY(i));
+    return ys;
+   });
+   assert.ok(frameXs.every(x=>x.some(y=>Math.abs(y+.70)<.005)),
+    'both dust cover underside stations must be level');
+   assert.equal(m.children.filter(x=>x.userData.m9FrameControlBatch).length,1);
+   if(id==='beretta-m9a3'){
+    const rail=m.children.find(x=>x.userData.m9AccessoryRail);
+    assert.ok(bounds(rail).min.y<-.99,'M9A3 rail visibly projects below frame');
+    assert.equal(m.children.filter(x=>x.userData.m9RailSlots).length,1);
+   }else{
+    assert.equal(m.children.filter(x=>x.userData.m9RailSlots).length,0);
+   }
   }finally{clearM9Appearance(m);}
  }
 });
