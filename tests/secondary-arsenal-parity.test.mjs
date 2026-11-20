@@ -156,3 +156,19 @@ test('G2.8 dedicated secondary Workbench edits only weapon variants, not equipme
  assert.ok(!gallery.includes('FAMILY SCALE'));
  assert.ok(!gallery.includes('MP5K PEER'));
 });
+
+test('G2.9: secondary factory and saved thumbnails share side view and equal green card geometry',()=>{
+ const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
+ assert.match(gallery,/const isCard=size==='card'/);
+ assert.match(gallery,/center\.x\+\(isCard\?0:distance\*\.29\)/);
+ assert.match(gallery,/center\.y\+\(isCard\?0:distance\*\.10\)/);
+ assert.match(gallery,/renderer\.render\(ref\.id,'card',/);
+ assert.match(gallery,/choice\.kind==='saved'\?choice\.build\.recipe\.customization:undefined/);
+ assert.match(gallery,/className='arsenal-card arsenal-glock-card'/);
+ assert.match(gallery,/className='arsenal-card-preview arsenal-glock-card-preview'/);
+ assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-cards\{[^}]*grid-auto-rows:1fr/s);
+ assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-card\{[^}]*height:100%/s);
+ assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-card-preview\{aspect-ratio:2\.36\/1\}/);
+ assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-card\[aria-pressed="true"\]\{\s*background:#2a423a/);
+});
