@@ -34,6 +34,7 @@ import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {activeCombatant} from './breach-suspect-operational-state.ts';
+import {recordActualDown} from './breach-capture-vitals.ts';
 import {chooseFall,hitRegion} from './breach-wounds.ts';
 import {shadowHitAnatomy} from './breach-hit-anatomy.ts';
 import {registerWound} from './breach-medical-wounds.ts';
@@ -377,7 +378,10 @@ export function createShotResolver(ports:ShotResolverPorts){
     a.hits++;
     if(range>weapon.optimalRange)a.longHits++;
     if(target.health<=0){
-      a.kills++;s.deaths++;target.lastDownAt=s.seconds;
+      // Incapacitation is not fatality; only irreversible measured death
+      // awards a kill and increments the fatality count.
+      recordActualDown(target,s.seconds,a.id);
+      target.lastDownAt=s.seconds;
       target.downPose=fall.pose;target.downClearance=fall.space;
       target.plan=[];target.path=[];
       target.nav=[];target.velocity=0;
