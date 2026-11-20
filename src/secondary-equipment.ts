@@ -5,6 +5,9 @@
  */
 import {isGlockAppearanceId,type GlockAppearanceId}
  from './weapons/geometry/glock-family-silhouettes.ts';
+import {defaultGlockCustomization,normalizeGlockCustomization,
+ glockAccessoryMassKg,type GlockCustomization}
+ from './weapons/geometry/glock-customization.ts';
 export type SecondaryHolster='belt-right'|'belt-left';
 export type SecondaryMagazineLocation='rig'|'belt'|'pocket'|'backpack'|'overflow';
 export type SecondaryMagazine=Readonly<{
@@ -14,6 +17,8 @@ export type SecondaryEquipment=Readonly<{
  version:1;weapon:GlockAppearanceId|null;holster:SecondaryHolster;
  loadedMagazineId:string|null;loadedRounds:number;
  spareMagazines:readonly SecondaryMagazine[];
+ /** Visual installed hardware is saved with the real issued pistol. */
+ customization?:GlockCustomization;
 }>;
 export const SECONDARY_CAPACITY:Readonly<Record<GlockAppearanceId,number>>={
  'glock-g19-gen3':15,'glock-g26':10,'glock-g19x':17,
@@ -41,7 +46,8 @@ export function initialSecondaryEquipment(owner:string,
  const prefix=validOwner(owner)+'/secondary/'+weapon;
  const capacity=SECONDARY_CAPACITY[weapon];
  return {version:1,weapon,holster,loadedMagazineId:prefix+'/loaded',
-  loadedRounds:capacity,spareMagazines:[0,1].map(i=>({
+  loadedRounds:capacity,customization:defaultGlockCustomization(),
+  spareMagazines:[0,1].map(i=>({
    id:prefix+'/spare-'+i,rounds:capacity,location:'belt' as const
   }))};
 }
@@ -76,6 +82,7 @@ export function readSecondaryEquipment(raw:unknown,owner:string):SecondaryEquipm
  }
  return {version:1,weapon:v.weapon,holster,
   loadedMagazineId:v.loadedMagazineId,loadedRounds:v.loadedRounds!,
+  customization:normalizeGlockCustomization(v.weapon,v.customization),
   spareMagazines};
 }
 export function equipFreshSecondary(state:SecondaryEquipment,owner:string,
@@ -92,7 +99,8 @@ export function moveSecondaryHolster(state:SecondaryEquipment,
 export function secondaryLoadMass(state:SecondaryEquipment):number{
  if(!state.weapon)return 0;
  // Loaded handgun, actual spare magazines and an occupied belt holster.
- return SECONDARY_MASS_KG[state.weapon]+.18+state.spareMagazines.length*.22;
+ return SECONDARY_MASS_KG[state.weapon]+.18+state.spareMagazines.length*.22+
+  glockAccessoryMassKg(normalizeGlockCustomization(state.weapon,state.customization));
 }
 export function secondaryRoundTotal(state:SecondaryEquipment):number{
  return state.loadedRounds+state.spareMagazines.reduce((n,m)=>n+m.rounds,0);
