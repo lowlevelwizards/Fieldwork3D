@@ -4,6 +4,7 @@
  */
 import type {Pt} from './breach-core.ts';
 import {fullBodyMotorStrideClear} from './breach-stack-micro-corner.ts';
+import {materiallyDifferentRoute} from './breach-movement-recovery.ts';
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function fullBodyMotorRouteClear(from:Pt,route:readonly Pt[],
  sweep:(a:Pt,b:Pt)=>boolean,maxTravel=Infinity):boolean{
@@ -47,4 +48,26 @@ export function joinsExistingMotorRoute(
     !fullBodyMotorRouteClear(from,prefix,sweep,maxTravel))return [];
  return [...prefix.map(p=>({...p})),
   ...original.slice(joinAt+1).map(p=>({...p}))];
+}
+
+/** M2: accept a cold, FULL-BODY recovery alternative only when the next
+ * actual 0.3-unit motor step is clear. An actor stalled at the same old
+ * first waypoint must not replace its nav solely because the far tail of
+ * another path has changed. Door, squeeze, intel and generated-entry routes
+ * do not use this generic full-radius helper.
+ * This never advances an actor or edits a plan or world model.
+ */
+export function usefulFullBodyRecoveryRoute(
+ from:Pt,current:readonly Pt[],candidate:readonly Pt[],
+ sweep:(a:Pt,b:Pt)=>boolean,stalledSeconds:number
+):boolean{
+ if(!materiallyDifferentRoute(current,candidate))return false;
+ const first=candidate[0];
+ if(!first||!Number.isFinite(first.x)||!Number.isFinite(first.y)||
+    !firstFullBodyMotorStrideClear(from,first,sweep))return false;
+ // If the first waypoint has already been physically obstructed for
+ // >=1.25s, changing only later waypoints cannot unstick the current leg.
+ if(stalledSeconds>=1.25&&current.length&&
+    dist(current[0],first)<3&&dist(from,current[0])>.5)return false;
+ return true;
 }

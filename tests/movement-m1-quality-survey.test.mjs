@@ -5,7 +5,7 @@ const p=(x,y)=>({x,y});
 const actor=()=>({id:'rook',p:p(0,0),plan:[{id:1,kind:'move',p:p(10,0)}],
  recoveryAttempts:0,blockedTime:0,motorPause:null,squeeze:false,orderIssue:null});
 test('M1: physical backtracking and reversals, not route transitions',()=>{
- const a=actor(),s=new MovementQualitySurvey([a],new Map([[a.id,p(10,0)]]));
+ const a=actor(),s=new MovementQualitySurvey([a],new Map([[a.id,p(50,0)]]));
  a.p=p(3,0);s.sample([a],1/60);
  a.p=p(1,0);s.sample([a],1/60);
  const x=s.finish([a]);assert.equal(x.details[0].distance,5);

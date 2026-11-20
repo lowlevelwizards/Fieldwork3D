@@ -41,7 +41,7 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
-import {firstFullBodyMotorStrideClear}
+import {firstFullBodyMotorStrideClear,usefulFullBodyRecoveryRoute}
  from './breach-recovery-route-validation.ts';
 import {eligibleFrameActorDetour} from './breach-frame-actor-recovery.ts';
 import {shouldProbeStationaryCollisionRoute}
@@ -556,7 +556,8 @@ export function resolveMotorCollision(
     const sweep=(from:Pt,to:Pt)=>
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
     if(candidate&&d(candidate,a.p)>3&&d(candidate,p)<d(a.p,p)+12&&
-       firstFullBodyMotorStrideClear(a.p,candidate,sweep)&&
+       usefulFullBodyRecoveryRoute(a.p,a.nav,[candidate,...a.nav],
+         sweep,a.blockedTime)&&
        sweep(candidate,next)&&
        watchClearanceAllowed(a.p,candidate,p,
          !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)&&
@@ -745,7 +746,9 @@ export function resolveMotorCollision(
         // already walked back to the same furniture anchor repeatedly.
         // Fall through to bounded physical-world replan, without resetting
         // the normal recovery budget when an identical connector recurs.
-        if(connected.length&&materiallyDifferentRoute(a.nav,connected)&&
+        if(usefulFullBodyRecoveryRoute(a.p,a.nav,connected,
+             (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+             a.blockedTime)&&
            allowPhysicalRouteReissue(a,'blocked-leg-connector',p,
              connected,s.seconds)){
           setTransientRoute(s,a,connected,'blocked-leg-connector');

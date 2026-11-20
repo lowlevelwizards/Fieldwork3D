@@ -26,7 +26,17 @@ export function allowPhysicalRouteReissue(
  if(actor.side!=='blue'||order?.kind!=='move'||!route.length)return true;
  let states=byActor.get(actor);
  if(!states){states=new Map();byActor.set(actor,states);}
- const previous=states.get(family);
+ // M2: a sustained ordinary MOVE stalled against physical geometry must
+ // not escape its recurrence budget merely by switching between the full
+ // lane, blocked-leg connector and collision-replan writers. The door,
+ // generated STACK/ENTRY and short transient actor detour authorities keep
+ // their own independent budgets and are never intercepted by this gate.
+ const ordinaryStall=!order.stackDoorId&&!order.entryDoorId&&
+   actor.blockedTime>=1.25&&
+   (family==='full-body-lane'||family==='blocked-leg-connector'||
+    family==='collision-replan');
+ const key=ordinaryStall?'ordinary-collision-route':family;
+ const previous=states.get(key);
  const remaining=distance(actor.p,goal);
  // A backward portal-only maneuver can be individually swept-clear yet
  // repeatedly undo a good approach. Keep a longer *same-anchor* witness
@@ -44,7 +54,7 @@ export function allowPhysicalRouteReissue(
    seconds-previous.firstAt<maxAge&&
    remaining>=previous.bestRemaining-3;
  if(!same){
-   states.set(family,{orderId:order.id,token,
+   states.set(key,{orderId:order.id,token,
      goal:{...goal},first:{...route[0]},anchor:{...actor.p},
      bestRemaining:remaining,firstAt:seconds,lastAt:seconds,count:1});
    return true;
