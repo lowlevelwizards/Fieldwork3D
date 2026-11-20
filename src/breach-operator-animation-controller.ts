@@ -10,6 +10,7 @@ import {beginOperatorFramePose,workingOperatorRig,finishOperatorFramePose}
  from './breach-operator-frame-output.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {presentSecondaryDraw} from './secondary-holster-visual.ts';
+import {secondaryUpperBodyTargets} from './secondary-upper-body-pose.ts';
 /** Roadmap 2 Stage 11: presentation-only operator pose orchestrator.
  * This is the compatibility-preserving home for the existing pose evaluation;
  * it never writes actor simulation, collision, inventory or shot ballistics.
@@ -1055,8 +1056,41 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
     contactAge>=0&&contactAge<.64?
     Math.sin(Math.PI*contactAge/.64):0;
   beginOperatorArmPose(r,scratch);
+  // S6.2: single upper-body IK owner. Draw fraction, aim and reload clocks
+  // are fixed-step facts; this pure pose is never a second combat state.
+  // Keep dedicated door/medical/flash gestures in charge when hands are busy.
+  const secondaryTarget=p.equipment?.secondary?.weapon&&
+    (p.secondarySwitch?.fraction??0)>.08&&
+    !p.unarmedPreview&&!p.down&&!p.surrender&&!treatmentActive&&
+    !equipmentActive&&!doorActive&&!throwActive?
+    secondaryUpperBodyTargets({
+      fraction:p.secondarySwitch?.fraction??0,
+      aim:p.aimBlend??(p.aiming?1:0),moving:physicalSpeed>3,
+      obstructed:!!p.obstruction||!!p.clearanceBlocked,
+      reloadProgress:p.secondaryReload?
+        p.secondaryReload.elapsed/Math.max(.001,p.secondaryReload.duration):null
+    }):null;
   for(let i=0;i<2;i++){
     const sign=i===0?-1:1,arm=r.arms[i];
+    if(secondaryTarget&&secondaryTarget.weight>0){
+      const shoulder=shoulderFor(i);
+      const actualSource=coupled?.arms??coordinatedDynamic?.arms;
+      const source=actualSource?actualSource[i].effector:
+        i===0?fit.support:fit.primary;
+      const target=i===0?secondaryTarget.support:secondaryTarget.firing;
+      const requested=source.clone().lerp(P(target.x,target.y,target.z),
+        secondaryTarget.weight);
+      const guide=i===0?P(5,-8,-3):P(5,-8,4);
+      const solved=solveTwoBone(shoulder,requested,10,10,guide,ARM_LIMITS);
+      arm.bend.copy(solved.bendPlane);
+      arm.outOfReach=!solved.reached;
+      r.elbowSpread[i]=Math.max(0,
+        sign*(solved.joint.z-shoulder.z));
+      setOperatorArmSegments(scratch,i as 0|1,
+        shoulder,solved.joint,solved.effector,scratch.sides[i]);
+      setOperatorHandPose(scratch,i as 0|1,solved.effector,0);
+      continue;
+    }
     if((manualShort||manualCarry)&&manualSourceFit&&!equipmentActive){
       const startShoulder=shoulderFor(i);
       const targetShoulder=new THREE.Vector3(
