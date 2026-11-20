@@ -74,7 +74,7 @@ export class CampaignKitPreview{
  private idleLastPaint=0;
  private idleStarted=0;
  private idleQuietUntil=0;
- private idleBase:{headY:number;headX:number;chestZ:number;weaponX:number}|null=null;
+ private idleBase:{headY:number;headX:number;chestZ:number;weaponX:number;hipY:number;chestY:number}|null=null;
  private readonly touchPointers=new Map<number,{x:number;y:number}>();
  private pinchDistance=0;
  private focusArea:EquipmentPreviewFocus='full';
@@ -179,7 +179,8 @@ export class CampaignKitPreview{
    unarmedPreview:!(this.showHeldWeapon||forceHeldWeapon)},0);
   this.idleBase={
    headY:this.rig.head.rotation.y,headX:this.rig.head.rotation.x,
-   chestZ:this.rig.chest.rotation.z,weaponX:this.rig.weapon.rotation.x
+   chestZ:this.rig.chest.rotation.z,weaponX:this.rig.weapon.rotation.x,
+   hipY:this.rig.hip.position.y,chestY:this.rig.chest.position.y
   };
  }
 
@@ -844,6 +845,11 @@ export class CampaignKitPreview{
   this.rig.head.rotation.y=b.headY+glance*.13*Math.sin(t*.41);
   this.rig.head.rotation.x=b.headX-settle*.055;
   this.rig.chest.rotation.z=b.chestZ+Math.sin(t*1.4)*.006+shift*.011;
+  // A tiny synchronized hip/torso settle evokes a knee bounce without
+  // touching the planted feet, ground contact or the production IK solver.
+  const bounce=Math.pow(Math.max(0,Math.sin(t*.75)),6)*.11;
+  this.rig.hip.position.y=b.hipY-bounce;
+  this.rig.chest.position.y=b.chestY-bounce;
   this.rig.weapon.rotation.x=b.weaponX+(this.showHeldWeapon?settle*.014:0);
  }
  private draw(){
