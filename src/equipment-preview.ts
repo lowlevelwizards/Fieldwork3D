@@ -20,6 +20,7 @@ import {setEquipmentChoice,type LoadoutSlot} from './equipment-loadouts.ts';
 import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {frameArmoryObject,type ArmoryShotCategory}
  from './equipment-thumbnail-camera.ts';
+import {copyLinearRgbaToSrgbFlipped} from './equipment-thumbnail-color.ts';
 
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
@@ -52,6 +53,10 @@ export class CampaignKitPreview{
  private azimuth=.72;
  private pointerId:number|null=null;
  private lastX=0;
+ private downX=0;
+ private downY=0;
+ private movedOnPress=false;
+ private onTapSlot:((slot:LoadoutSlot)=>void)|null=null;
  private focusArea:EquipmentPreviewFocus='full';
  private focusHeight=26;
  private focusRadius=110;
@@ -229,11 +234,7 @@ export class CampaignKitPreview{
     const context=canvas.getContext('2d');
     if(!context)return null;
     const image=context.createImageData(shot.width,shot.height);
-    for(let y=0;y<shot.height;y++){
-     const from=(shot.height-1-y)*shot.width*4;
-     image.data.set(pixels.subarray(from,from+shot.width*4),
-      y*shot.width*4);
-    }
+    image.data.set(copyLinearRgbaToSrgbFlipped(pixels,shot.width,shot.height));
     context.putImageData(image,0,0);
     data=canvas.toDataURL('image/png');
    }finally{
@@ -376,6 +377,46 @@ export class CampaignKitPreview{
   if(drawImmediately)this.draw();
  }
  isReady():boolean{return this.renderer!==null&&this.rig!==null;}
+ /** Selection belongs to the caller; preview never commits kit changes. */
+ setOnTapSlot(callback:((slot:LoadoutSlot)=>void)|null):void{
+  this.onTapSlot=callback;
+ }
+ private tapEquipmentAt(clientX:number,clientY:number):void{
+  if(!this.rig||!this.onTapSlot||!this.renderer)return;
+  const rect=this.host.getBoundingClientRect();
+  if(rect.width<2||rect.height<2)return;
+  const xy=new THREE.Vector2(
+   ((clientX-rect.left)/rect.width)*2-1,
+   -((clientY-rect.top)/rect.height)*2+1
+  );
+  const ray=new THREE.Raycaster();
+  this.rig.root.updateMatrixWorld(true);
+  this.camera.updateMatrixWorld(true);
+  ray.setFromCamera(xy,this.camera);
+  const hit=ray.intersectObject(this.rig.root,true)[0];
+  if(!hit)return;
+  const ancestorOf=(candidate:THREE.Object3D,parent:THREE.Object3D)=>{
+   let node:THREE.Object3D|null=candidate;
+   while(node){if(node===parent)return true;node=node.parent;}
+   return false;
+  };
+  const worn=this.rig.visualKit.wardrobeGear;
+  const match=(groups:Record<string,THREE.Object3D>)=>
+   Object.values(groups).some(mesh=>ancestorOf(hit.object,mesh));
+  let slot:LoadoutSlot;
+  if(ancestorOf(hit.object,this.rig.weaponBody))slot='primary';
+  else if(match(worn.pack))slot='backpack';
+  else if(match(worn.belt))slot='belt';
+  else if(match(worn.rig))slot='rig';
+  else if(match(worn.armor))slot='armor';
+  else{
+   const extents=new THREE.Box3().setFromObject(this.rig.root);
+   const ratio=(hit.point.y-extents.min.y)/Math.max(1,
+    extents.max.y-extents.min.y);
+   slot=ratio>.75?'head':ratio>.48?'armor':ratio>.26?'belt':'legs';
+  }
+  this.onTapSlot(slot);
+ }
  /** Keep rotation discoverable and usable without touch or a mouse. */
  private updateOrientationLabel():void{
   const degrees=((Math.round(this.azimuth*180/Math.PI)%360)+360)%360;
@@ -403,11 +444,15 @@ export class CampaignKitPreview{
   // An ignored press must not capture the preview or block the next drag.
   if(this.pointerId!==null||!event.isPrimary||event.button!==0)return;
   this.pointerId=event.pointerId;this.lastX=event.clientX;
+  this.downX=event.clientX;this.downY=event.clientY;
+  this.movedOnPress=false;
   try{this.host.setPointerCapture(event.pointerId);}catch{/* optional */}
  };
  private pointerMove=(event:PointerEvent)=>{
   if(event.pointerId!==this.pointerId)return;
   const delta=event.clientX-this.lastX;
+  if(Math.abs(event.clientX-this.downX)>7||
+   Math.abs(event.clientY-this.downY)>7)this.movedOnPress=true;
   if(!delta)return;
   this.azimuth+=delta*.012;
   this.lastX=event.clientX;
@@ -418,6 +463,9 @@ export class CampaignKitPreview{
  private pointerUp=(event:PointerEvent)=>{
   if(event.pointerId!==this.pointerId)return;
   this.pointerId=null;
+  const tap=!this.movedOnPress&&
+   Math.hypot(event.clientX-this.downX,event.clientY-this.downY)<9;
+  if(tap&&event.type==='pointerup')this.tapEquipmentAt(event.clientX,event.clientY);
   // Commit any final rotation immediately, including before a quick release.
   if(this.dragFrame!==null){
    cancelAnimationFrame(this.dragFrame);this.dragFrame=null;this.draw();

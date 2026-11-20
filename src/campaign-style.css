@@ -2005,3 +2005,227 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  * active equipment choice or take its touch targets. Once the user closes the
  * gear sheet, the pending update prompt can be addressed normally. */
 .campaign-gear-picker-backdrop{z-index:2147483000}
+
+
+/* OUTFITTING BENCH R2/R3: one operator, two editing modes and a contextual
+ * equipment shelf. No changes to Campaign kit/stock/permission authority. */
+.campaign-armory-screen .campaign-kit-workspace-nav{
+ grid-template-columns:repeat(2,minmax(0,1fr));
+}
+.campaign-armory-screen .campaign-kit-readiness-drawer{
+ margin:0 0 8px;border:1px solid #526e5d;border-radius:9px;
+ background:#1b2f29;padding:0;min-width:0;
+}
+.campaign-armory-screen .campaign-kit-readiness-drawer>summary{
+ display:flex;align-items:center;min-height:44px;padding:9px 12px;
+ font:700 12px/1.25 var(--fw-font-action);
+ color:#d8e4d2;cursor:pointer;
+}
+.campaign-armory-screen .campaign-kit-readiness-drawer[open]{
+ padding-bottom:10px;
+}
+.campaign-armory-screen .campaign-kit-readiness-drawer[open] .campaign-kit-readiness-panel{
+ display:grid!important;padding:9px;gap:8px;
+}
+.campaign-armory-screen .campaign-kit-bench-zones{display:none}
+.campaign-armory-screen .campaign-gear-picker-inline{
+ position:relative;display:block;min-width:0;
+ margin:8px 0 0;padding:0;
+ background:#172b25;border:1px solid #7a9581;
+ border-radius:9px;overflow:hidden;
+}
+.campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-panel{
+ display:flex;position:static;inset:auto;transform:none;
+ width:100%;max-width:none;max-height:none;height:auto;
+ border:0;border-radius:0;background:#1d332b;
+ padding:0;margin:0;overflow:hidden;box-shadow:none;
+}
+.campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-head{
+ padding:9px 11px;border-bottom:1px solid #4b6858;
+}
+.campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-head h2{
+ font:700 13px/1.25 var(--fw-font-action);
+}
+.campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-close{
+ min-height:38px;padding:6px 10px;
+}
+.campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-scroll{
+ overflow:visible;max-height:none;min-height:0;
+ padding:8px;
+}
+.campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-list[data-layout="gallery"]{
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;
+}
+.campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-option{
+ min-width:0;min-height:0;box-sizing:border-box;
+}
+.campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-unissued>summary{
+ min-height:42px;font-size:11px;
+}
+@media(max-width:620px){
+ .campaign-armory-screen{
+  --fw-bench-top:calc(env(safe-area-inset-top) + 3px);
+  min-width:0;
+ }
+ .campaign-armory-screen .campaign-armory-head{
+  margin-bottom:6px;
+ }
+ .campaign-armory-screen .fw-prep-squad-rail,
+ .campaign-armory-screen .campaign-kit-squad-rail{
+  margin-bottom:4px;
+ }
+ .campaign-armory-screen .campaign-kit-workspace-nav{
+  position:sticky;top:var(--fw-bench-top);
+  z-index:95;grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:6px;margin:4px 0;padding:4px;
+  background:#142822;
+ }
+ .campaign-armory-screen .campaign-kit-workspace-tab{
+  min-height:44px;font-size:13px;
+ }
+ .campaign-armory-screen .campaign-kit-readiness-drawer{
+  margin:3px 0 6px;
+ }
+ .campaign-armory-screen .campaign-kit-grid{
+  display:flex;flex-direction:column;gap:5px;
+ }
+ .campaign-armory-screen .campaign-kit-summary{
+  position:sticky!important;top:calc(var(--fw-bench-top) + 58px);
+  z-index:80;display:block;
+  width:100%;max-height:235px;overflow:hidden;
+  margin:0;padding:7px!important;
+  background:#20372f;box-shadow:0 4px 16px #091813ad;
+ }
+ .campaign-armory-screen .campaign-kit-summary>h2,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-preview-hint,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-kit-preview-controls,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-kit-preview-dock-toggle,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-kit-actions,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-kit-at-a-glance{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-kit-preview{
+  position:static!important;inset:auto!important;
+  margin:0!important;width:100%!important;
+  height:205px!important;min-height:205px!important;
+  border:1px solid #667f70;box-shadow:none!important;
+  border-radius:8px;
+ }
+ .campaign-armory-screen[data-preview-docked="true"]{
+  padding-bottom:0!important;
+ }
+ .campaign-armory-screen .campaign-kit-editor{
+  min-width:0;width:100%;padding:9px!important;
+ }
+ .campaign-armory-screen .campaign-kit-editor>h2,
+ .campaign-armory-screen .campaign-kit-editor>.campaign-kit-utilities,
+ .campaign-armory-screen .campaign-kit-categories,
+ .campaign-armory-screen .fw-loadout-group>summary{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-kit-bench-zones{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:5px;min-width:0;margin-bottom:8px;
+ }
+ .campaign-armory-screen .campaign-kit-bench-zone{
+  min-width:0;min-height:45px;padding:5px 2px;
+  border:1px solid #5c7b66;border-radius:6px;
+  background:#2d473a;color:#d5e1d3;
+  font:700 11px/1.2 var(--fw-font-action);
+ }
+ .campaign-armory-screen .campaign-kit-bench-zone[aria-current="true"]{
+  background:#afc49e;color:#11241c;
+ }
+ .campaign-armory-screen .fw-loadout-group{
+  border:0;margin:0;padding:0;min-width:0;
+ }
+ .campaign-armory-screen .fw-loadout-group .fw-loadout-fields{
+  padding:3px;display:grid;gap:6px;
+ }
+ .campaign-armory-screen .campaign-kit-choice[hidden]{
+  display:none!important;
+ }
+ .campaign-armory-screen[data-kit-workspace="equipment"]
+  .fw-loadout-group[data-loadout-group="carry"][open]{
+  display:block!important;
+ }
+ .campaign-armory-screen[data-kit-workspace="equipment"]
+  .fw-field-inventory,
+ .campaign-armory-screen[data-kit-workspace="equipment"]
+  .fw-carry-undo-action{
+  display:none!important;
+ }
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-bench-zones,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .fw-loadout-group[data-loadout-group="carry"] .campaign-kit-choice,
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .fw-loadout-group[data-loadout-group="carry"] .fw-carry-undo-action{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-kit-choice{
+  margin:0;padding:3px 0!important;border:0!important;
+ }
+ .campaign-armory-screen .campaign-kit-choice>.campaign-kit-description{
+  display:none;
+ }
+ .campaign-armory-screen .campaign-kit-row{
+  display:grid;grid-template-columns:1fr;gap:4px;
+ }
+ .campaign-armory-screen .campaign-kit-row>span{
+  font-size:12px;
+ }
+ .campaign-armory-screen .campaign-kit-visual-trigger{
+  min-height:78px;padding:5px 24px 5px 5px;
+ }
+ .campaign-armory-screen .campaign-kit-selected-model{
+  height:68px;width:72px;
+ }
+ .campaign-armory-screen .campaign-kit-workbench-entry,
+ .campaign-armory-screen .campaign-legacy-weapons{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-list[data-layout="gallery"]
+  .campaign-gear-picker-option>.campaign-gear-picker-model{
+  height:90px;flex-basis:90px;
+ }
+ .campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-list[data-layout="gallery"]
+  .campaign-gear-picker-copy>strong{
+  font-size:13px;
+ }
+}
+/* The old forced-floating state is ignored on mobile: one stage is always
+ * visible in-place. Desktop retains its normal separate preview layout. */
+
+
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-bench-more{
+  min-width:0;margin:2px 0 8px;border-top:1px solid #506a59;
+ }
+ .campaign-armory-screen .campaign-kit-bench-more>summary{
+  display:flex;align-items:center;min-height:43px;
+  font:700 11px/1.2 var(--fw-font-action);color:#c1d2c3;
+  cursor:pointer;
+ }
+ .campaign-armory-screen .campaign-kit-bench-more-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:5px;
+  margin-bottom:6px;
+ }
+ .campaign-armory-screen .campaign-kit-bench-more .campaign-kit-bench-zone{
+  min-width:0;font-size:10px;
+ }
+}
+@media(min-width:621px){
+ .campaign-armory-screen .campaign-kit-bench-more{display:none}
+}
+
+
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-summary::after{
+  content:"TAP GEAR TO EDIT  ·  SWIPE TO ROTATE";
+  display:block;position:absolute;left:16px;right:16px;bottom:10px;
+  padding:3px 5px;border-radius:4px;text-align:center;
+  font:700 10px/1.25 var(--fw-font-action);
+  color:#d9e6d2;background:#132921d9;pointer-events:none;
+ }
+}
