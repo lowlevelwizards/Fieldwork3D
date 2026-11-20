@@ -108,3 +108,17 @@ test('M2.7: same-door reverse entry drops stale opposing owner when order change
   'old opposite direction cannot retain lease across a new authored crossing');
  assert.equal(after.hold,false);
 });
+
+test('M2.9: a synchronizing teammate beyond the threshold does not block the approaching squad',()=>{
+ const parked=actor('parked',90),approaching=actor('approaching',125);
+ parked.plan=[{id:7,kind:'sync',syncCode:'B1',p:p(100,90)}];
+ const s=game([parked,approaching],[{...door,openFraction:.45}]);
+ const schedule=new Map([
+  ['parked',[{...slot('parked',0),orderId:1}]],
+  ['approaching',[{...slot('approaching',1),orderId:1}]]
+ ]);
+ const allowed=movement(s,approaching,p(100,124),schedule);
+ assert.equal(allowed.hold,false);
+ assert.equal(allowed.reason,'free');
+ assert.deepEqual(allowed.move,p(100,124));
+});
