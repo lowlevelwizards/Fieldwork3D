@@ -39,3 +39,11 @@ test('existing mobile loadout smoke covers shared gallery edits',()=>{
  assert.match(workflow,/'src\/ui\/outfitter-choice-sources\.ts'/);
  assert.match(workflow,/uses: \.\/\.github\/actions\/outfitter-mobile-smoke/);
 });
+
+test('phone acceptance preserves already-open UXR personnel disclosure',()=>{
+ const smoke=readFileSync(new URL('../scripts/smoke-loadout-bench-r1.mjs',import.meta.url),'utf8');
+ assert.match(smoke,/campaign-person:visible/);
+ assert.match(smoke,/personDisclosure\.evaluate\(el=>el\.open\)/);
+ assert.match(smoke,/if\(!\(await personDisclosure\.evaluate\(el=>el\.open\)\)\)/);
+ assert.match(smoke,/Open \.\* loadout/);
+});
