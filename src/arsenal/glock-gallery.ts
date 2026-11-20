@@ -5,7 +5,8 @@ import * as THREE from 'three';
 import {openGlockWorkbench} from './glock-workbench.ts';
 import {createArsenalPreviewQueue} from './preview-job-queue.ts';
 import {createArsenalGalleryChrome} from './gallery-chrome.ts';
-import {createArsenalSavedActionButtons,renderArsenalFilterButtons} from './gallery-browser-controls.ts';
+import {createArsenalSavedActionButtons,renderArsenalFilterButtons,
+ createArsenalGalleryCard} from './gallery-browser-controls.ts';
 import {type GlockCustomization} from '../weapons/geometry/glock-customization.ts';
 import {factoryGlockRecipe,loadGlockLibrary,saveGlockLibrary,
  renameGlockSavedBuild,duplicateGlockSavedBuild,deleteGlockSavedBuild,
@@ -212,19 +213,12 @@ export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>voi
   for(const choice of shown){
    const ref=choice.kind==='factory'?choice.ref:
     GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===choice.build.recipe.model)!;
-   const button=document.createElement('button');button.type='button';
-   button.className='arsenal-card arsenal-glock-card';
-   button.setAttribute('aria-pressed','false');
-   button.setAttribute('aria-label','Inspect '+(choice.kind==='factory'?ref.name:choice.build.name));
-   const image=document.createElement('span');
-   image.className='arsenal-card-preview arsenal-glock-card-preview';
-   const name=document.createElement('strong');name.className='model';
-   name.textContent=choice.kind==='factory'?ref.name:choice.build.name;
-   const caption=document.createElement('small');
-   caption.className='platform';
-   caption.textContent=choice.kind==='factory'?'GLOCK':
-    'SAVED · GLOCK';
-   button.append(image,name,caption);
+   const displayName=choice.kind==='factory'?ref.name:choice.build.name;
+   const {button,preview:image}=createArsenalGalleryCard({
+    kind:'secondary',name:displayName,
+    subtitle:choice.kind==='factory'?'GLOCK':'SAVED · GLOCK',
+    ariaLabel:'Inspect '+displayName,selected:false
+   });
    if(choice.kind==='saved')button.dataset.glockSaved=choice.build.id;
    button.addEventListener('click',()=>{
     selected=ref.id;
