@@ -28,12 +28,18 @@ export class GlockViewport{
  private pointers=new Map<number,{x:number;y:number}>();
  private previousPinch=0;
  private disposed=false;
+ private frameId:number|null=null;
+ private renderedWidth=0;
+ private renderedHeight=0;
  private onFrame=()=>{
   if(this.disposed||!this.renderer)return;
   const width=Math.max(1,this.element.clientWidth);
   const height=Math.max(1,this.element.clientHeight);
-  this.renderer.setSize(width,height,false);
-  this.camera.aspect=width/height;this.camera.updateProjectionMatrix();
+  if(width!==this.renderedWidth||height!==this.renderedHeight){
+   this.renderer.setSize(width,height,false);
+   this.camera.aspect=width/height;this.camera.updateProjectionMatrix();
+   this.renderedWidth=width;this.renderedHeight=height;
+  }
   positionInspectCamera(this.camera,this.target,this.radius,this.yaw,this.pitch);
   this.renderer.render(this.scene,this.camera);
  };
@@ -121,9 +127,18 @@ export class GlockViewport{
  side(){this.yaw=0;this.pitch=0;this.draw();}
  opposite(){this.yaw=Math.PI;this.pitch=0;this.draw();}
  reset(){this.yaw=.27;this.pitch=.13;this.fit();this.draw();}
- private draw(){if(!this.disposed)this.onFrame();}
+ // Coalesce touch/mouse orbit updates into the display cadence.
+ private draw(){
+  if(this.disposed||this.frameId!==null)return;
+  this.frameId=requestAnimationFrame(()=>{
+   this.frameId=null;
+   if(!this.disposed)this.onFrame();
+  });
+ }
  dispose(){
-  this.disposed=true;this.observer.disconnect();
+  this.disposed=true;
+  if(this.frameId!==null)cancelAnimationFrame(this.frameId);
+  this.frameId=null;this.observer.disconnect();
   this.element.removeEventListener('pointerdown',this.onDown);
   this.element.removeEventListener('pointermove',this.onMove);
   this.element.removeEventListener('pointerup',this.onUp);

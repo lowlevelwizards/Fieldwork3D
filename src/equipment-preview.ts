@@ -50,6 +50,19 @@ export class CampaignKitPreview{
   wardrobe?:WardrobeOptions
  }|null=null;
  private readonly modelThumbCache=new Map<string,string>();
+ // Reuse GPU color/depth attachments and the CPU readback surface across
+ // visible equipment choices; a fresh GL render target per tile forces
+ // driver allocation/deletion on the very frame that paints the thumbnail.
+ private thumbnailTarget:THREE.WebGLRenderTarget|null=null;
+ private thumbnailPixels:Uint8Array|null=null;
+ private thumbnailCanvas:HTMLCanvasElement|null=null;
+ // Async captures have a separate reusable FBO: legacy synchronous consumers
+ // may still inspect an item while a GPU fence is pending. Never resize an
+ // in-flight async readback target from the synchronous path.
+ private thumbnailAsyncTarget:THREE.WebGLRenderTarget|null=null;
+ private thumbnailAsyncPixels:Uint8Array|null=null;
+ private thumbnailReadbackTail:Promise<void>=Promise.resolve();
+ private thumbnailRevision=0;
  private observer:ResizeObserver|null=null;
  private azimuth=.72;
  private pointerId:number|null=null;
@@ -168,6 +181,7 @@ export class CampaignKitPreview{
   if(!this.rig)return;
   this.currentEquipment=equipment;
   this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
+  this.thumbnailRevision++;
   this.modelThumbCache.clear();
   this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
   this.fitFullOperator();
@@ -236,6 +250,25 @@ export class CampaignKitPreview{
   * restored in finally before any presentation draw. */
  renderModelThumbnail(target:EquipmentInspectionTarget|
   {kind:'gear';slot:LoadoutSlot;itemId:string}):string|null{
+  // Older carry editors require synchronous images. They retain that API.
+  return this.captureModelThumbnail(target,false) as string|null;
+ }
+ async renderModelThumbnailAsync(target:EquipmentInspectionTarget|
+  {kind:'gear';slot:LoadoutSlot;itemId:string}):Promise<string|null>{
+  // Reserve a queue slot BEFORE the first await. Multiple category or
+  // operator requests must not race the one reusable async GPU buffer.
+  const previous=this.thumbnailReadbackTail;
+  let release:()=>void=()=>{};
+  this.thumbnailReadbackTail=new Promise<void>(resolve=>{release=resolve;});
+  await previous;
+  try{
+   if(!this.renderer)return null;
+   return await this.captureModelThumbnail(target,true);
+  }finally{release();}
+ }
+ private captureModelThumbnail(target:EquipmentInspectionTarget|
+  {kind:'gear';slot:LoadoutSlot;itemId:string},
+  asynchronous:boolean):string|null|Promise<string|null>{
   if(!this.renderer||!this.rig||!this.visualSnapshot)return null;
   const key=JSON.stringify(target);
   const previous=this.modelThumbCache.get(key);
@@ -294,30 +327,68 @@ export class CampaignKitPreview{
    // Render at the ITEM'S aspect ratio, never the operator viewport ratio.
    // One temporary offscreen target on the existing WebGL context; a 2D
    // readback canvas encodes a thumbnail without another WebGL renderer.
-   const targetBuffer=new THREE.WebGLRenderTarget(shot.width,shot.height,{
-    depthBuffer:true,stencilBuffer:false});
+   // A distinct async FBO prevents a legacy synchronous carry preview from
+   // resizing the target while its GPU readback has not completed.
+   const asyncReadback=asynchronous&&
+    typeof this.renderer.readRenderTargetPixelsAsync==='function'&&
+    new URLSearchParams(window.location.search).get('thumbnailReadback')!=='sync';
+   let targetBuffer=asyncReadback?this.thumbnailAsyncTarget:this.thumbnailTarget;
+   if(!targetBuffer){
+    targetBuffer=new THREE.WebGLRenderTarget(shot.width,shot.height,{
+     depthBuffer:true,stencilBuffer:false});
+    if(asyncReadback)this.thumbnailAsyncTarget=targetBuffer;
+    else this.thumbnailTarget=targetBuffer;
+   }else if(targetBuffer.width!==shot.width||targetBuffer.height!==shot.height){
+    targetBuffer.setSize(shot.width,shot.height);
+   }
    const previousTarget=this.renderer.getRenderTarget();
-   let data:string|null=null;
-   try{
-    this.renderer.setRenderTarget(targetBuffer);
-    this.renderer.render(modelScene,camera);
-    const pixels=new Uint8Array(shot.width*shot.height*4);
-    this.renderer.readRenderTargetPixels(targetBuffer,0,0,
-     shot.width,shot.height,pixels);
-    const canvas=document.createElement('canvas');
-    canvas.width=shot.width;canvas.height=shot.height;
+   const byteLength=shot.width*shot.height*4;
+   let pixels=asyncReadback?this.thumbnailAsyncPixels:this.thumbnailPixels;
+   if(!pixels||pixels.length!==byteLength)pixels=new Uint8Array(byteLength);
+   if(asyncReadback)this.thumbnailAsyncPixels=pixels;
+   else this.thumbnailPixels=pixels;
+   const encode=():string|null=>{
+    if(!this.thumbnailCanvas)this.thumbnailCanvas=document.createElement('canvas');
+    const canvas=this.thumbnailCanvas;
+    if(canvas.width!==shot.width)canvas.width=shot.width;
+    if(canvas.height!==shot.height)canvas.height=shot.height;
     const context=canvas.getContext('2d');
     if(!context)return null;
     const image=context.createImageData(shot.width,shot.height);
     image.data.set(copyLinearRgbaToSrgbFlipped(pixels,shot.width,shot.height));
     context.putImageData(image,0,0);
-    data=canvas.toDataURL('image/png');
+    const data=canvas.toDataURL('image/png');
+    return data.length>=128?data:null;
+   };
+   let pending:Promise<unknown>|null=null;
+   let data:string|null=null;
+   try{
+    this.renderer.setRenderTarget(targetBuffer);
+    this.renderer.render(modelScene,camera);
+    if(asyncReadback){
+     // Issue the fence while the GPU target is current, but restore the
+     // operator framebuffer BEFORE awaiting it (as in Studio R7.7).
+     pending=this.renderer.readRenderTargetPixelsAsync(targetBuffer,0,0,
+      shot.width,shot.height,pixels);
+    }else{
+     this.renderer.readRenderTargetPixels(targetBuffer,0,0,
+      shot.width,shot.height,pixels);
+     data=encode();
+    }
    }finally{
     this.renderer.setRenderTarget(previousTarget);
-    targetBuffer.dispose();
    }
-   if(!data||data.length<128)return null;
-   this.modelThumbCache.set(key,data);
+   if(pending){
+    const revision=this.thumbnailRevision;
+    return pending.then(()=>{
+     // Rapid roster swaps may retire the preview before the GPU resolves.
+     if(!this.renderer||revision!==this.thumbnailRevision)return null;
+     const result=encode();
+     if(result)this.modelThumbCache.set(key,result);
+     return result;
+    }).catch(()=>null);
+   }
+   if(data)this.modelThumbCache.set(key,data);
    return data;
   }catch{return null;}
   finally{
@@ -608,6 +679,16 @@ export class CampaignKitPreview{
  }
  private syncHotspots():void{
   if(!this.hotspotLayer||!this.rig||!this.renderer)return;
+  // The phone layout intentionally hides every projected category button.
+  // Do not traverse the full rig and all worn gear bounds on each 15 Hz
+  // breathing frame merely to re-hide those buttons. The independently
+  // selected white dot must still follow its real mesh on mobile.
+  if(this.host.clientWidth<=620){
+   this.syncSelectionDot();
+   for(const button of this.hotspotButtons.values())
+    if(!button.hidden)button.hidden=true;
+   return;
+  }
   this.rig.root.updateWorldMatrix(true,true);
   this.camera.updateMatrixWorld(true);
   const bounds=new THREE.Box3().setFromObject(this.rig.root);
@@ -932,6 +1013,12 @@ export class CampaignKitPreview{
    this.inspectionBox=null;
   }
   if(this.rig){releaseOperatorPreviewRig(this.scene,this.rig);this.rig=null;}
+  this.thumbnailRevision++;
+  this.thumbnailTarget?.dispose();this.thumbnailTarget=null;
+  this.thumbnailAsyncTarget?.dispose();this.thumbnailAsyncTarget=null;
+  this.thumbnailPixels=null;this.thumbnailAsyncPixels=null;
+  this.thumbnailCanvas=null;
+  this.modelThumbCache.clear();
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
   this.pointerId=null;

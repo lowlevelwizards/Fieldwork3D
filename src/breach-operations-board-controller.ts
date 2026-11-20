@@ -682,7 +682,7 @@ function renderOperationsBoard(){
   const gallery=createOutfitterGallery({
    host:galleryHost,sources,kit:member.loadout,magazines:member.magazines,
    locked:!editable,selectedItems,scrollPositions,
-   renderModel:(slot,itemId)=>quickKitPreview?.renderModelThumbnail(
+   renderModel:(slot,itemId)=>quickKitPreview?.renderModelThumbnailAsync(
     {kind:'gear',slot,itemId})??null,
    onEquip:(slot,itemId)=>{
     if(config.getSession().phase!=='planning'||config.isReplaying())return;
