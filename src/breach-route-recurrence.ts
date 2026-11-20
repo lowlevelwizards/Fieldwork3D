@@ -19,7 +19,7 @@ const distance=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
  * This is an expensive-recovery callsite gate, NEVER a movement/GO gate.
  */
 export function allowPhysicalRouteReissue(
- actor:TeamActor,family:'door-rehearsal'|'full-body-lane'|'blocked-leg-connector',
+ actor:TeamActor,family:'door-rehearsal'|'full-body-lane'|'blocked-leg-connector'|'collision-replan',
  goal:Pt,route:readonly Pt[],seconds:number,token=''
 ):boolean{
  const order=actor.plan[0];
