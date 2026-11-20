@@ -2,7 +2,7 @@
  * Applied only to .campaign-screen[data-fw-theme]; do not touch uniforms,
  * real-world gear colors, tactical rendering or the global game palette.
  * These are three prototypes, not a player preference/save schema. */
-.campaign-screen[data-fw-theme] {
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) {
   --fw-bg:var(--uxr-backdrop);
   --fw-panel:var(--uxr-panel);
   --fw-panel-raised:var(--uxr-raised);
@@ -45,28 +45,28 @@
 /* The current campaign stylesheet has several older explicit fills; pilot
  * prototypes intentionally bind only the major surface components here.
  * UXR-09 must migrate remaining screen literals after UX surfaces stabilize. */
-.campaign-screen[data-fw-theme] .campaign-section,
-.campaign-screen[data-fw-theme] .campaign-next-action,
-.campaign-screen[data-fw-theme] .campaign-person,
-.campaign-screen[data-fw-theme] .campaign-contract,
-.campaign-screen[data-fw-theme] .campaign-operation-record,
-.campaign-screen[data-fw-theme] .campaign-supply-offer,
-.campaign-screen[data-fw-theme] .campaign-procurement-item {
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-section,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-next-action,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-person,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-contract,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-operation-record,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-supply-offer,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-procurement-item {
   background:var(--fw-panel);
   border-color:var(--fw-panel-border);
 }
-.campaign-screen[data-fw-theme] .campaign-stat,
-.campaign-screen[data-fw-theme] .campaign-assignment,
-.campaign-screen[data-fw-theme] .campaign-readiness,
-.campaign-screen[data-fw-theme] .campaign-next-action {
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-stat,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-assignment,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-readiness,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-next-action {
   background:var(--fw-panel-deep);
 }
-.campaign-screen[data-fw-theme] .campaign-primary,
-.campaign-screen[data-fw-theme] .campaign-tab[aria-selected="true"] {
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-primary,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-tab[aria-selected="true"] {
   background:var(--fw-sage);
   color:var(--fw-bg);
 }
-.campaign-screen[data-fw-theme] .campaign-tab,
-.campaign-screen[data-fw-theme] .campaign-select {
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-tab,
+.campaign-screen[data-fw-theme]:has(.campaign-tabs) .campaign-select {
   border-color:var(--fw-panel-border);
 }
