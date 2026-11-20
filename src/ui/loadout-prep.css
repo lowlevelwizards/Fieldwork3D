@@ -461,3 +461,75 @@
 .fw-field-inventory-issue .fw-field-inventory-item{
  margin:6px 0;
 }
+
+/* Outfitter R1.C: spatial physical-carry view. Actual placements still come
+ * exclusively from physicalCarryBoard and the existing transfer quote APIs. */
+.fw-carry-bodymap{
+ display:grid;gap:9px;padding:12px;
+ border:1px solid #698474;border-radius:11px;
+ background:#1a3029;min-width:0;
+}
+.fw-carry-bodymap-header{
+ display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 10px;
+ align-items:center;
+}
+.fw-carry-bodymap-header>strong{
+ font-size:15px;letter-spacing:.06em;color:#e0e8da;
+}
+.fw-carry-bodymap-header>small{
+ grid-column:1/-1;font-size:11px;color:#b8c9ba;
+}
+.fw-carry-bodymap-views{display:flex;gap:5px}
+.fw-carry-bodymap-views button{
+ min-height:40px;min-width:63px;padding:6px 8px;
+ border:1px solid #718d78;border-radius:7px;
+ background:#263e32;color:#d2dfcf;font-weight:700;
+}
+.fw-carry-bodymap-views button[aria-pressed="true"]{
+ background:#b3c99f;color:#14291e;
+}
+.fw-carry-bodymap-figure{
+ height:250px;min-width:0;position:relative;overflow:hidden;
+ border:1px solid #486655;border-radius:8px;
+ background:radial-gradient(ellipse at center,#31483b 0%,#152920 76%);
+}
+.fw-carry-bodymap-silhouette{
+ position:absolute;left:50%;top:6px;transform:translateX(-50%);
+ height:235px;width:170px;opacity:.92;pointer-events:none;
+}
+.fw-carry-bodymap-zone{
+ position:absolute;z-index:1;display:flex;flex-direction:column;
+ align-items:center;justify-content:center;gap:3px;
+ min-height:49px;min-width:92px;max-width:46%;
+ padding:7px 9px;margin:0;line-height:1.15;
+ font-size:12px;border:2px solid #92aa96;border-radius:8px;
+ background:#264539eb;color:#e5eee0;
+ box-shadow:0 3px 7px #0006;
+}
+.fw-carry-bodymap-zone strong{font-size:11px;white-space:nowrap}
+.fw-carry-bodymap-icons{font-size:14px;letter-spacing:.09em;white-space:nowrap}
+.fw-carry-bodymap-zone[data-location="rig"]{left:50%;top:52px;transform:translateX(-50%)}
+.fw-carry-bodymap-zone[data-location="belt"]{left:10%;top:118px}
+.fw-carry-bodymap-zone[data-location="pocket"]{right:10%;top:163px}
+.fw-carry-bodymap-zone[data-location="backpack"]{
+ left:50%;top:68px;transform:translateX(-50%);
+}
+.fw-carry-bodymap[data-view="front"] .fw-carry-bodymap-zone[data-side="back"],
+.fw-carry-bodymap[data-view="back"] .fw-carry-bodymap-zone[data-side="front"]{
+ display:none;
+}
+.fw-carry-bodymap-zone[data-fit="yes"]{
+ background:#607e55;color:#fff;border-color:#e5f5bd;
+ box-shadow:0 0 0 3px #b4db9f44;
+}
+.fw-carry-bodymap-zone[data-fit="no"]{opacity:.55;border-style:dashed}
+.fw-carry-bodymap-zone:focus-visible{
+ outline:3px solid #e5f5bd;outline-offset:3px;
+}
+@media(max-width:380px){
+ .fw-carry-bodymap{padding:8px}
+ .fw-carry-bodymap-zone{min-width:83px;padding:6px}
+ .fw-carry-bodymap-zone strong{font-size:10px}
+ .fw-carry-bodymap-zone[data-location="belt"]{left:3%}
+ .fw-carry-bodymap-zone[data-location="pocket"]{right:3%}
+}
