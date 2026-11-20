@@ -1834,8 +1834,7 @@ export class CampaignScreen{
    contextMeta.textContent='CURRENT EQUIPMENT · TAP TO CHANGE';
    this.preview?.clearTransientSelection();
    if(slot==='backpack')this.preview?.setAzimuth(Math.PI);
-   else if(this.activeBenchSlot!=='backpack'&&slot!=='backpack'&&
-    Math.cos(this.preview?.getAzimuth()??.72)<-.2&&
+   else if(Math.cos(this.preview?.getAzimuth()??.72)<-.2&&
     ['primary','head','armor','rig'].includes(slot))
     this.preview?.setAzimuth(.72);
    if(fromModel&&compact&&['top','legs','hands','feet'].includes(slot))
