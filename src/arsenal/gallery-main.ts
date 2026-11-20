@@ -7,6 +7,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../equipment-weapon-assemblies.ts';
 import {arsenalRecipeFromLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {ArsenalThumbnailer} from './thumbnailer.ts';
+import {mountGlockArsenalGallery} from './glock-gallery.ts';
 import {openArsenalWorkbench} from './workbench-screen.ts';
 import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
  renameSavedArsenalBuild,deleteSavedArsenalBuild,duplicateSavedArsenalBuild}
@@ -65,7 +66,7 @@ filters.setAttribute('role','group');filters.setAttribute('aria-label','Weapon p
 const count=document.createElement('p');count.className='arsenal-count';count.setAttribute('aria-live','polite');
 const grid=document.createElement('div');grid.className='arsenal-grid';
 browser.append(controls,filters,count,grid);layout.append(hero,browser);
-shell.append(heading,layout);root.append(shell);
+shell.append(heading,mountGlockArsenalGallery(),layout);root.append(shell);
 
 let activePlatform:ArsenalPlatformId|'all'|'saved'='all';
 let selectedId='ar-m4a1';
