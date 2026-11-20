@@ -308,7 +308,10 @@ export type ShotEvent={
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number;
-  weapon?:WeaponId;rounds?:number;magazineId?:string};
+  weapon?:WeaponId;rounds?:number;magazineId?:string;
+  /** Actually ejected secondary identity; the legacy SMG visual carrier
+   * does not imply that a rifle/SMG magazine was spent. */
+  secondaryWeapon?:import('./weapons/geometry/glock-family-silhouettes.ts').GlockAppearanceId;};
 export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;
   fuse:number;path?:ThrowPath};
 export type FlashBurst={id:number;p:Pt;age:number};
