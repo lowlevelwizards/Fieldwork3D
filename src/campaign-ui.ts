@@ -135,6 +135,7 @@ export class CampaignScreen{
  private activeKitGroup:QuickLoadoutGroup='weapon';
  /** Presentation-only armory workspace; no changes to authoritative kit. */
  private activeKitWorkspace:'equipment'|'physical'|'readiness'='equipment';
+ private activeBenchSlot:LoadoutSlot='primary';
  private previewDocked=false;
  private showKitPresets=false;
  private readonly fieldUndo=new FieldInventoryUndoHistory();
@@ -1339,6 +1340,7 @@ export class CampaignScreen{
   if(!retainOperatorPreview)this.disposePreview();
   if(!sameOperator){
    this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
+   this.activeBenchSlot='primary';
    this.previewDocked=false;
    this.selectedWorkbenchSocket=null;
   }
@@ -1364,7 +1366,9 @@ export class CampaignScreen{
   };
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide campaign-armory-screen');
+  if(this.activeKitWorkspace==='readiness')this.activeKitWorkspace='equipment';
   main.dataset.kitWorkspace=this.activeKitWorkspace;
+  main.dataset.benchSlot=this.activeBenchSlot;
   main.dataset.previewDocked=String(this.previewDocked);
   const top=node('div','campaign-head campaign-armory-head');
   const identity=node('div');
@@ -1600,7 +1604,8 @@ export class CampaignScreen{
    node('p','campaign-kit-metrics',Object.values(person.weaponConfiguration.slots).join(' / ')));
   readiness.append(configuration);
   readinessPanel.append(readiness);
-  summary.append(readinessPanel);
+  // Readiness becomes an on-demand preparation drawer, not a third
+  // navigation destination or another copy of the operator profile.
   grid.append(summary);
   const editor=node('section','campaign-section campaign-kit-editor');
   const locked=!!c.activeContractId;
@@ -1677,16 +1682,19 @@ export class CampaignScreen{
   if(locked)editor.append(node('p','campaign-note','ACTIVE DEPLOYMENT · KIT CHANGES LOCKED'));
   const workspaceNav=node('nav','campaign-kit-workspace-nav');
   workspaceNav.setAttribute('aria-label','Armory workspaces');
-  const workspaceButtons=new Map<'equipment'|'physical'|'readiness',HTMLButtonElement>();
+  const workspaceButtons=new Map<'equipment'|'physical',HTMLButtonElement>();
   for(const [key,label] of [
-   ['equipment','EQUIPMENT'],['physical','PHYSICAL CARRY'],
-   ['readiness','READINESS']
+   ['equipment','CHANGE GEAR'],['physical','ARRANGE CARRY']
   ] as const){
    const control=button(label,()=>activateWorkspace(key),'campaign-kit-workspace-tab');
    control.setAttribute('aria-current',String(this.activeKitWorkspace===key));
    workspaceButtons.set(key,control);workspaceNav.append(control);
   }
-  main.append(workspaceNav);
+  const readyDrawer=node('details','campaign-kit-readiness-drawer');
+  const readySummary=node('summary','','READINESS · LOAD '+
+   currentMass.toFixed(1)+' KG · MOBILITY '+currentMobility+'%');
+  readyDrawer.append(readySummary,readinessPanel);
+  main.append(workspaceNav,readyDrawer);
   const categoryBar=node('div','campaign-kit-categories');
   categoryBar.setAttribute('role','tablist');
   categoryBar.setAttribute('aria-label','Equipment categories');
@@ -1698,7 +1706,7 @@ export class CampaignScreen{
   };
   const setCategory=(group:QuickLoadoutGroup)=>{
    this.activeKitGroup=group;
-   this.activeKitWorkspace=group==='carry'?'physical':'equipment';
+   // Category changes never silently switch editing modes.
    main.dataset.kitWorkspace=this.activeKitWorkspace;
    for(const [key,control] of workspaceButtons)
     control.setAttribute('aria-current',String(key===this.activeKitWorkspace));
@@ -1723,21 +1731,45 @@ export class CampaignScreen{
    }
   };
   const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,setCategory);
+  const benchRows=new Map<LoadoutSlot,HTMLElement>();
+  const benchButtons=new Map<LoadoutSlot,HTMLButtonElement>();
+  const benchNav=node('nav','campaign-kit-bench-zones');
+  benchNav.setAttribute('aria-label','Choose equipment position');
+  const compact=window.matchMedia?.('(max-width:620px)').matches??false;
+  for(const [slot,label] of [
+   ['primary','WEAPON'],['head','HEAD'],['armor','ARMOR'],
+   ['rig','CHEST'],['belt','BELT'],['backpack','PACK'],
+   ['medical','MEDICAL'],['utility','TOOLS']
+  ] as const){
+   const part=button(label,()=>selectBenchSlot(slot),'campaign-kit-bench-zone');
+   part.dataset.slot=slot;
+   part.setAttribute('aria-current',String(this.activeBenchSlot===slot));
+   benchNav.append(part);benchButtons.set(slot,part);
+  }
+  editor.insertBefore(benchNav,grouped.group.weapon);
+  const selectBenchSlot=(slot:LoadoutSlot)=>{
+   this.activeBenchSlot=slot;main.dataset.benchSlot=slot;
+   this.activeKitWorkspace='equipment';main.dataset.kitWorkspace='equipment';
+   for(const [key,control] of workspaceButtons)
+    control.setAttribute('aria-current',String(key==='equipment'));
+   for(const [key,control] of benchButtons)
+    control.setAttribute('aria-current',String(key===slot));
+   for(const [key,row] of benchRows)row.hidden=compact&&key!==slot;
+   showGroup(loadoutGroupForSlot(slot));
+   this.preview?.focusOn(slot==='head'?'head':slot==='primary'?'weapon':
+    slot==='armor'?'torso':'carry');
+  };
   function showGroup(group:QuickLoadoutGroup){
    grouped.group[group].open=true;
    setCategory(group);
   }
-  const activateWorkspace=(destination:'equipment'|'physical'|'readiness')=>{
+  const activateWorkspace=(destination:'equipment'|'physical')=>{
+   this.activeKitWorkspace=destination;
+   main.dataset.kitWorkspace=destination;
    if(destination==='physical')showGroup('carry');
-   else if(destination==='equipment'){
-    showGroup(this.activeKitGroup==='carry'?'weapon':this.activeKitGroup);
-   }else{
-    this.activeKitWorkspace='readiness';
-    main.dataset.kitWorkspace='readiness';
-    this.preview?.focusOn('full');
-   }
+   else showGroup(loadoutGroupForSlot(this.activeBenchSlot));
    for(const [key,control] of workspaceButtons)
-    control.setAttribute('aria-current',String(key===this.activeKitWorkspace));
+    control.setAttribute('aria-current',String(key===destination));
   };
   for(const definition of QUICK_LOADOUT_GROUPS){
    const group=definition.id;
@@ -1818,6 +1850,9 @@ export class CampaignScreen{
    const info=node('small','campaign-kit-description',selected?.description??'');
    const wrap=node('div','campaign-kit-choice');
    wrap.append(row,info);
+   wrap.dataset.benchSlot=slot;
+   wrap.hidden=compact&&slot!==this.activeBenchSlot;
+   benchRows.set(slot,wrap);
    if(slot==='rig'||slot==='belt'||slot==='backpack')
     attachCarryGearChangePreview({
      select,host:wrap,slot,kit:person.loadout,magazines:person.magazines,
