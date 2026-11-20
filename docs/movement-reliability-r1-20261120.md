@@ -40,3 +40,13 @@ Branch `feature/movement-reliability-r1b-20261120` is stacked upon draft R1.A PR
 
 ### Release criteria
 No authorization to merge R1.B before R1.A's exact-head critical/typecheck/build pass, a safe R1.A release checkpoint (or explicit reconciliation onto main), then R1.B exact-head critical tests, both exact full physical corpora, real phone/desktop four-person and handle-stage smoke, and public Pages served-SHA verification. No rapid repeated main merges.
+
+## R1.B continued reliability fixes — same release candidate
+- **R1.02 tightened**: the active lead's own generated ENTRY destination must be across the same physical threshold in the follower's direction. Entry eligibility now directly reads bounded completed-entry witnesses instead of creating a callback and rescanning all operators at 60 Hz.
+- **R1.03 corrected**: final arbitration denial duration counts each fixed tick exactly once, even if local collision already recorded the same frame; new authored order resets the witness. R1.03b adds a cold, physically swept local detour only after 1.25 seconds of actual post-arbitration opposing-body blockage, excluding STACK/ENTRY, squeeze, traversal and active door maneuvers. The original GO remains intact and the recurrence gate bounds repeated proposals.
+- **R1.05b strengthened**: every staging grid chord must pass a full-body sweep against all live doors/world obstacles; merely passable grid vertices cannot authorize an unsafe handle stance.
+- **R1.06 corrected**: when several distinct doors are in an operator's plan, the runtime and visual pending crossing pick the lowest remaining authored ETA, rather than the alphabetically first door. Repeated crossings continue to use unique PlanNode identity.
+- All corresponding regression tests are in the R1 focused and final manual physical release gates. No CI or browser acceptance pass is claimed before exact-head green results.
+
+### Current release interlock
+On review, GitHub Pages main run 44747107798 for main `3805ad5339e8167451a35116cd00bd961118f844` was **queued**; the last completed successful Pages run was 44746067290 for `d2c40f6300f593839e047e408f55fd8b1457cf4e`. Do not merge/deploy R1 while queued or until public Pages serves the prior expected SHA. R1.A PR #1878 and stacked R1.B PR #1879 remain drafts. CI is queued; never substitute GitHub's mergeability bit for actual test and published-build verification.
