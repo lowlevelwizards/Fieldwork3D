@@ -332,7 +332,8 @@ export function mountGlockArsenalGallery():HTMLElement{
 
  const renderer=new GlockGallerySnapshots();
  let selectedSavedId:string|null=null;
- let filter:'all'|'compact'|'subcompact'|'crossover'|'saved'='all';
+ type GlockFilter='all'|'compact'|'subcompact'|'crossover'|'saved';
+ const filterState:{value:GlockFilter}={value:'all'};
  const recipeForSelection=():GlockRecipe=>{
   const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
   if(saved)return saved.recipe;
@@ -436,15 +437,15 @@ export function mountGlockArsenalGallery():HTMLElement{
   button.addEventListener('click',()=>{view=id;refresh();});
   controls.append(button);
  }
- const filterOptions:readonly (readonly [typeof filter,string])[]=[
+ const filterOptions:readonly (readonly [GlockFilter,string])[]=[
   ['all','ALL'],['compact','G19'],['subcompact','G26'],
   ['crossover','G19X'],['saved','SAVED']
  ];
  const filterMatch=(id:GlockAppearanceId)=>{
-  if(filter==='all')return true;
-  if(filter==='compact')return id==='glock-g19-gen3'||id==='glock-g19-gen5-mos';
-  if(filter==='subcompact')return id==='glock-g26';
-  if(filter==='crossover')return id==='glock-g19x';
+  if(filterState.value==='all')return true;
+  if(filterState.value==='compact')return id==='glock-g19-gen3'||id==='glock-g19-gen5-mos';
+  if(filterState.value==='subcompact')return id==='glock-g26';
+  if(filterState.value==='crossover')return id==='glock-g19x';
   return false;
  };
  const searchMatch=(id:GlockAppearanceId,name:string)=>{
@@ -461,7 +462,7 @@ export function mountGlockArsenalGallery():HTMLElement{
    button.textContent=id==='saved'?label+' · '+loadGlockLibrary().builds.length:label;
    button.setAttribute('aria-pressed',String(filter===id));
    button.addEventListener('click',()=>{
-    filter=id;renderFilters();renderCards();
+    filterState.value=id;renderFilters();renderCards();
    });
    filters.append(button);
   }
@@ -472,18 +473,18 @@ export function mountGlockArsenalGallery():HTMLElement{
   const saved=loadGlockLibrary().builds;
   const shown:({kind:'factory';ref:typeof GLOCK_APPEARANCE_REFERENCES[number]}|
    {kind:'saved';build:GlockSavedBuild})[]=[];
-  if(filter!=='saved')for(const ref of GLOCK_APPEARANCE_REFERENCES)
+  if(filterState.value!=='saved')for(const ref of GLOCK_APPEARANCE_REFERENCES)
    if(filterMatch(ref.id)&&searchMatch(ref.id,ref.name))
     shown.push({kind:'factory',ref});
-  if(filter==='saved')for(const build of saved)
+  if(filterState.value==='saved')for(const build of saved)
    if(searchMatch(build.recipe.model,build.name))
     shown.push({kind:'saved',build});
   count.textContent=shown.length+
-   (filter==='saved'?' SAVED SECONDARIES':' FACTORY CONFIGURATIONS');
+   (filterState.value==='saved'?' SAVED SECONDARIES':' FACTORY CONFIGURATIONS');
   if(!shown.length){
    const empty=document.createElement('p');
    empty.className='arsenal-empty';
-   empty.textContent=filter==='saved'?'No saved Glock builds. Use OPEN WORKBENCH to save one.':
+   empty.textContent=filterState.value==='saved'?'No saved Glock builds. Use OPEN WORKBENCH to save one.':
     'No matching models. Try another search or filter.';
    cards.append(empty);return;
   }
