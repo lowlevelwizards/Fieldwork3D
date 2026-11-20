@@ -257,10 +257,13 @@ test('G2.7: muzzle front face cue joins existing detail batch with +X front norm
   }finally{clearGlockAppearance(g);}
  }
 });
-test('G2.8: no dev gallery modes; all variants use one static three-quarter snapshot',()=>{
+test('G2.9: no dev gallery modes; hero uses three-quarter and thumbnails use side view',()=>{
  const source=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
  assert.match(source,/glockPreviewFitDistance/);
  assert.match(source,/this\.camera\.position\.set/);
+ assert.match(source,/const isCard=size==='card'/);
+ assert.match(source,/center\.x\+\(isCard\?0:distance\*\.29\)/);
+ assert.match(source,/center\.y\+\(isCard\?0:distance\*\.10\)/);
  assert.doesNotMatch(source,/FAMILY SCALE|MP5K PEER|ONE CAMERA|type View=/);
  assert.doesNotMatch(source,/readPrepared|operatorPicker|equipFreshSecondary/);
 });
@@ -288,5 +291,38 @@ test('G2.8: visible aperture sidewalls and bigger slide, serrations, port and ba
     'ported surfaces are darker than serrations without another mesh');
    assert.equal(g.children.length,ref.id==='glock-g19-gen5-mos'?7:6);
   }finally{clearGlockAppearance(g);}
+ }
+});
+
+test('G2.9: rear and optional front grooves stretch to slide edges on both faces',()=>{
+ for(const ref of GLOCK_APPEARANCE_REFERENCES){
+  const model=buildGlockAppearance(ref.id);
+  try{
+   const marks=model.children.find(x=>x.userData.glockRightEjectionPort);
+   assert.ok(marks,ref.id+' still has batched groove geometry');
+   const landmarks=model.userData.glockArtLandmarks;
+   const span=landmarks.slideTopY-landmarks.slideBottomY;
+   const grooveSpan=landmarks.slideGrooveTopY-landmarks.slideGrooveBottomY;
+   assert.ok(grooveSpan/span>.94,'grooves occupy almost the whole slide height');
+   assert.ok(landmarks.slideGrooveBottomY-landmarks.slideBottomY<=.09);
+   assert.ok(landmarks.slideTopY-landmarks.slideGrooveTopY<=.09);
+   const vertices=marks.geometry.attributes.position;
+   const perSide=ref.id==='glock-g19-gen5-mos'?20:12;
+   for(const start of [0,perSide]){
+    for(let groove=0;groove<3;groove++){
+     const at=start+groove*4;
+     assert.ok(Math.abs(vertices.getY(at)-landmarks.slideGrooveBottomY)<.0001);
+     assert.ok(Math.abs(vertices.getY(at+2)-landmarks.slideGrooveTopY)<.0001);
+    }
+    if(ref.id==='glock-g19-gen5-mos'){
+     for(let groove=0;groove<2;groove++){
+      const at=start+12+groove*4;
+      assert.ok(Math.abs(vertices.getY(at)-landmarks.slideGrooveBottomY)<.0001);
+      assert.ok(Math.abs(vertices.getY(at+2)-landmarks.slideGrooveTopY)<.0001);
+     }
+    }
+   }
+   assert.ok(triangleCount(model)<=220,'no extra draw geometry');
+  }finally{clearGlockAppearance(model);}
  }
 });

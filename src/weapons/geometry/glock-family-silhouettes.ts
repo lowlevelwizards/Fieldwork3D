@@ -172,12 +172,17 @@ export function buildGlockAppearance(id:GlockAppearanceId,
    if(side>0)indices.push(base,base+1,base+2,base,base+2,base+3);
    else indices.push(base,base+2,base+1,base,base+3,base+2);
   };
+  // G2.9: full-height side grooves, with only a hairline inset to stay
+  // within the slide's upper/lower edges. All variants keep their original
+  // groove widths, count and lateral spacing, including Gen 5 front grooves.
+  const grooveBottom=SLIDE_BOTTOM+.08,grooveTop=SLIDE_TOP-.08;
+  const grooveHeight=grooveTop-grooveBottom;
   for(const side of [-1,1]){
    for(let i=0;i<3;i++)
-    addMark(SLIDE_REAR+.74+i*.68,.72,side,.35,1.51);
+    addMark(SLIDE_REAR+.74+i*.68,grooveBottom,side,.35,grooveHeight);
    if(art.frontSerrations)
     for(let i=0;i<2;i++)
-     addMark(art.frontX-2.63+i*.76,.80,side,.31,1.37);
+     addMark(art.frontX-2.63+i*.76,grooveBottom,side,.31,grooveHeight);
   }
   // G2.7 retains the wrapped panel; lower its contrast rather than
   // changing its silhouette or adding a hole to the slide.
@@ -260,6 +265,7 @@ export function buildGlockAppearance(id:GlockAppearanceId,
   rearX:SLIDE_REAR,muzzleX:art.frontX,
   slideTopY:SLIDE_TOP,slideBottomY:SLIDE_BOTTOM,slideDepth:SLIDE_DEPTH,
   guardInteriorDoubleSided:true,slideGrooveWidth:.35,slideGrooveSpacing:.68,
+  slideGrooveBottomY:SLIDE_BOTTOM+.08,slideGrooveTopY:SLIDE_TOP-.08,
   magazineFloorplateHeight:.56,portShade:.43,
   frameDepth:FRAME_DEPTH,gripHeelY:art.heelY,
   gripRearX:art.rearHeelX,gripFrontX:art.frontHeelX,
