@@ -12,6 +12,8 @@ import type {SecondaryEquipment,SecondaryMagazineLocation}
 
 type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  holster:THREE.Group;cradle:THREE.Group;
+ /** Magazine changes cannot destroy/replace the held Glock model. */
+ pouchSignature:string;physicalPouches:Map<string,THREE.Mesh>;
  /** Immutable stowed socket for deterministic, seek-safe draws. */
  stowedPosition:THREE.Vector3;stowedQuaternion:THREE.Quaternion;
  /** Reused pose scratch: a live Glock must not allocate vectors every frame. */
@@ -69,13 +71,75 @@ const pouch=(parent:THREE.Group,id:string,index:number,
  item.userData.secondaryMagazineId=id;
  item.userData.secondaryMagazineLocation=location;
  item.castShadow=true;item.receiveShadow=true;
- if(location==='belt')item.position.set(2.0+index*1.8,-3.8,-side*8.8);
- else if(location==='pocket')item.position.set(-1.5,-4.4,-side*6.4);
- else if(location==='rig')item.position.set(8.95,-5.3,-2.8+index*2.3);
- else item.position.set(-1.4,-3.4,side*(6.4+index*2.1));
+ item.position.copy(pouchSocket(location,index,side));
  parent.add(item);
  return item;
 };
+/** Update separately-owned carried magazines without ever rebuilding a
+ * drawn Glock when its loaded/spare IDs change at the .72 insertion event.
+ * A physical item has one ID, one attachment and one mesh.
+ */
+function reconcilePouches(mount:Mounted,state:SecondaryEquipment,
+ chest?:THREE.Group,pack?:THREE.Object3D):void{
+ const nextSig=state.spareMagazines.map(m=>m.id+':'+m.location).join('|');
+ if(mount.pouchSignature===nextSig)return;
+ const retained=new Set<string>();
+ const counts={rig:0,belt:0,backpack:0,pocket:0};
+ const side=state.holster==='belt-right'?1:-1;
+ const targetFor=(place:'rig'|'belt'|'backpack'|'pocket')=>{
+  if(place==='belt'||place==='pocket')return mount.root;
+  const name=place==='rig'?'secondary-rig-carry':'secondary-pack-carry';
+  const bone=place==='rig'?chest:pack;
+  if(!bone)return null;
+  let parent=mount.ownedRoots.find(r=>r.name===name);
+  if(!parent){
+   parent=new THREE.Group();parent.name=name;
+   bone.add(parent);mount.ownedRoots.push(parent);
+  }
+  return parent;
+ };
+ for(const mag of state.spareMagazines){
+  if(mag.location==='overflow')continue;
+  const place=mag.location;
+  const index=counts[place]++;
+  const parent=targetFor(place);
+  if(!parent||index>=4)continue;
+  retained.add(mag.id);
+  let item=mount.physicalPouches.get(mag.id);
+  if(item&&item.parent!==parent){
+   item.parent?.remove(item);parent.add(item);
+  }
+  if(!item){
+   item=pouch(parent,mag.id,index,place,side);
+   mount.physicalPouches.set(mag.id,item);
+  }else{
+   // Reuse the exact mesh but update the physical carrier placement.
+   const prior=mount.physicalPouches.get(mag.id);
+   if(prior&&prior.userData.secondaryMagazineLocation!==place){
+    prior.userData.secondaryMagazineLocation=place;
+   }
+   const slot=pouchSocket(place,index,side);
+   item.position.copy(slot);
+  }
+ }
+ for(const [id,item] of mount.physicalPouches){
+  if(retained.has(id))continue;
+  item.parent?.remove(item);item.geometry.dispose();
+  for(const m of Array.isArray(item.material)?item.material:[item.material])
+   m.dispose();
+  mount.physicalPouches.delete(id);
+ }
+ mount.pouchSignature=nextSig;
+}
+/** Single location recipe for new and retained physical magazine meshes. */
+function pouchSocket(location:'rig'|'belt'|'backpack'|'pocket',
+ index:number,side:number):THREE.Vector3{
+ if(location==='belt')return new THREE.Vector3(2+index*1.8,-3.8,-side*8.8);
+ if(location==='pocket')return new THREE.Vector3(-1.5,-4.4,-side*6.4);
+ if(location==='rig')return new THREE.Vector3(8.95,-5.3,-2.8+index*2.3);
+ return new THREE.Vector3(-1.4,-3.4,side*(6.4+index*2.1));
+}
+
 /** Optional chest and pack anchors support actual multi-location cargo.
  * The wrapper remains compatible with legacy hip-only Operator Lab fixtures.
  * Caller supplies hip/chest/pack from the SAME rig: all follow the body.
@@ -86,11 +150,15 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  const valid=state?.weapon&&hasBelt?state.weapon:null;
  const signature=valid?[
   valid,state!.holster,JSON.stringify(state!.customization??null),
-  Boolean(chest),Boolean(pack),
-  ...state!.spareMagazines.map(m=>m.id+':'+m.location)
+  Boolean(chest),Boolean(pack)
  ].join('|'):'none';
  const prior=mounted.get(hip);
- if(prior?.signature===signature)return prior.root;
+ // S8: changing inserted/spare magazine IDs is NOT a weapon swap.
+ // Preserve the drawn rig's model, geometry, materials and hand attachment.
+ if(prior?.signature===signature){
+  reconcilePouches(prior,state!,chest,pack);
+  return prior.root;
+ }
  clearHipSecondaryVisual(hip);
  if(!valid)return null;
  const side=state!.holster==='belt-right'?1:-1;
@@ -119,39 +187,15 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  shell.castShadow=true;shell.receiveShadow=true;holster.add(shell);
  root.add(holster);hip.add(root);
  const ownedRoots=[root];
- const counts={rig:0,belt:0,backpack:0,pocket:0};
- for(const mag of state!.spareMagazines){
-  if(mag.location==='overflow')continue;
-  const place=mag.location;
-  const index=counts[place]++;
-  let target=root;
-  if(place==='rig'&&chest){
-   // Separate transform owner: torso lean and pitch follow chest.
-   target=ownedRoots.find(x=>x.name==='secondary-rig-carry')!;
-   if(!target){
-    target=new THREE.Group();target.name='secondary-rig-carry';
-    chest.add(target);ownedRoots.push(target);
-   }
-  }else if(place==='backpack'&&pack){
-   // Backpacks use their existing -X mounted socket, not a guessed hip offset.
-   target=ownedRoots.find(x=>x.name==='secondary-pack-carry')!;
-   if(!target){
-    target=new THREE.Group();target.name='secondary-pack-carry';
-    pack.add(target);ownedRoots.push(target);
-   }
-  }
-  // With no torso or pack attachment (legacy lab), do not fake a pouch
-  // at the hip for non-hip locations. The item remains in live inventory.
-  if((place==='rig'&&!chest)||(place==='backpack'&&!pack))continue;
-  if(index>=4)continue;
-  pouch(target,mag.id,index,place,side);
- }
- mounted.set(hip,{signature,root,ownedRoots,holster,cradle,
+ const current:Mounted={signature,root,ownedRoots,holster,cradle,
+  pouchSignature:'',physicalPouches:new Map(),
   stowedPosition:cradle.position.clone(),
   stowedQuaternion:cradle.quaternion.clone(),
   gripWorld:new THREE.Vector3(),targetLocal:new THREE.Vector3(),
   targetWorldRotation:new THREE.Quaternion(),parentWorldRotation:new THREE.Quaternion(),
-  flashWorld:new THREE.Vector3()});
+  flashWorld:new THREE.Vector3()};
+ mounted.set(hip,current);
+ reconcilePouches(current,state!,chest,pack);
  return root;
 }
 
