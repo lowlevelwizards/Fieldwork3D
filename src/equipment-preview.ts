@@ -64,6 +64,7 @@ export class CampaignKitPreview{
  private zoomScale=1;
  private showHeldWeapon=true;
  private poseToggle:HTMLButtonElement|null=null;
+ onWeaponVisibilityChange:((held:boolean)=>void)|null=null;
  /** One projected white pip only for the actual selected visible mesh. */
  private selectedDot:HTMLDivElement|null=null;
  private dotTarget:EquipmentInspectionTarget|
@@ -467,6 +468,7 @@ export class CampaignKitPreview{
  setWeaponPresentation(held:boolean):void{
   if(this.showHeldWeapon===held)return;
   this.showHeldWeapon=held;
+  this.onWeaponVisibilityChange?.(held);
   this.poseToggle?.setAttribute('aria-pressed',String(held));
   if(this.poseToggle)this.poseToggle.textContent=held?'HIDE WEAPON':'SHOW LOW READY';
   const state=this.visualSnapshot;
@@ -890,6 +892,7 @@ export class CampaignKitPreview{
   this.selectedCarryLocation=null;
   this.touchPointers.clear();this.hotspotLayer?.remove();
   this.hotspotLayer=null;this.poseToggle=null;this.selectedDot=null;
+  this.onWeaponVisibilityChange=null;
   this.dotTarget=null;this.dotMesh=null;this.hotspotButtons.clear();
   this.selectedInspection=null;this.inspectedMesh=null;
   this.currentEquipment=null;
