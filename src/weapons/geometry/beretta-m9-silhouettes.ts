@@ -40,6 +40,10 @@ const BARREL_Y=2.48,BARREL_RADIUS=1.02;
 const SAFETY_RED=new THREE.MeshBasicMaterial({
  color:0xc73c32,side:THREE.DoubleSide,toneMapped:false
 });
+// Tonal factory M9A3 panels: darker FDE, not an aftermarket black patch.
+// One pooled material; no per-view allocation or global material disposal.
+const M9A3_GRIP_PANEL=AR_MUTED_FDE.clone();
+M9A3_GRIP_PANEL.color.multiplyScalar(.76);
 
 /** Presentation contacts always come from the authored shape, not a Glock. */
 export function m9ArtSockets(id:M9AppearanceId){
@@ -50,7 +54,7 @@ export function m9ArtSockets(id:M9AppearanceId){
   supportGrip:Object.freeze({x:heel+.69,y:-3.48,z:.77}),
   slideGrip:Object.freeze({x:-5.25,y:1.50,z:0}),
   magazineBase:Object.freeze({x:heel,y:a.heel-.19,z:0}),
-  sightLine:Object.freeze({x:-.85,y:3.36,z:0}),
+  sightLine:Object.freeze({x:-.85,y:3.56,z:0}),
   holsterPivot:Object.freeze({x:heel,y:-4.08,z:0})
  });
 }
@@ -236,7 +240,8 @@ export function buildM9Appearance(id:M9AppearanceId,
    [a.gripRear+.82,a.heel+.59],[-8.80,-4.02]
   ];
   for(const side of [-1,1]){
-   const pad=addOutline(root,'grip',id,n++,gripPanel,.13,gripMaterial);
+   const panelMaterial=clay?HK_BLACK_METAL:a.rail?M9A3_GRIP_PANEL:gripMaterial;
+   const pad=addOutline(root,'grip',id,n++,gripPanel,.13,panelMaterial);
    pad.position.z=side*(FRAME_DEPTH/2+.012);
    pad.userData.m9GripPanel=true;
   }
