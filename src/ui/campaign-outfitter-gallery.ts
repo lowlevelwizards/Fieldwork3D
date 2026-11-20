@@ -9,7 +9,6 @@ import {quoteCarryGearChange}
  from '../equipment-carry-gear-change.ts';
 import type {EquipmentLoadout,LoadoutSlot} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
-import {fieldworkSelect} from './fieldwork-select.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
  const node=document.createElement(tag);node.className=cls;
