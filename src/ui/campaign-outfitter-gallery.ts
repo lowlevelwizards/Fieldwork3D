@@ -3,7 +3,7 @@
  * It delegates each action to the existing Campaign/physical authority.
  */
 import {itemDefinition} from '../equipment-catalog.ts';
-import {FIELD_CARRY_LOCATIONS,FIELD_ITEMS,initialFieldInventory,
+import {FIELD_CARRY_LOCATIONS,initialFieldInventory,
  type FieldCarryLocation,type FieldItemId} from '../equipment-field-inventory.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
 import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
@@ -45,6 +45,7 @@ export type OutfitterGalleryOptions={
  onMoveField:(id:FieldItemId,from:FieldCarryLocation,to:FieldCarryLocation)=>void;
  onMoveMagazine:(id:string,to:FieldCarryLocation)=>void;
  onArsenal:()=>void;
+ arsenalDisabled?:boolean;
  onAdvanced:()=>void;
 };
 export function createOutfitterGallery(options:OutfitterGalleryOptions){
@@ -263,8 +264,10 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    addContents(slot);
   if(slot==='primary'){
    addMagazines();
-   items.append(action('OPEN ARSENAL · MODIFY WEAPON',options.onArsenal,
-    'fw-outfitter-arsenal'));
+   const arsenal=action('OPEN ARSENAL · MODIFY WEAPON',options.onArsenal,
+    'fw-outfitter-arsenal');
+   arsenal.disabled=!!options.arsenalDisabled;
+   items.append(arsenal);
   }
   if(slot==='utility'||slot==='tactical')addQuantities();
   addMore();
