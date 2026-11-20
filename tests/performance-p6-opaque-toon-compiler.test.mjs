@@ -95,3 +95,22 @@ test('P6.G preserves material identity and render state for rigid Toon geometry'
  for(const item of [a,b])item.geometry.dispose();
  toon.dispose();
 });
+
+test('P6.G leaves baked per-piece operator lighting and garment metadata with their source geometry',()=>{
+ const parent=new THREE.Group(),toon=new THREE.MeshToonMaterial();
+ const one=box(parent,toon,-3),two=box(parent,toon,3);
+ one.geometry.userData.fieldworkSelfOcclusionMask=new Uint8Array([0,128,255]);
+ two.geometry.userData.fieldworkLightingPartSpans=[
+  {partId:'sleeve',role:'fabric',start:0,count:3}
+ ];
+ const sourceBefore=parent.children.slice();
+ const result=compileRigidVisualOwner(parent,{allowOpaqueToon:true});
+ assert.equal(result.avoidedDraws,0,'generic compiler must not drop per-piece AO');
+ assert.equal(result.archive,null);
+ assert.deepEqual(parent.children,sourceBefore);
+ assert.deepEqual(Array.from(one.geometry.userData.fieldworkSelfOcclusionMask),
+  [0,128,255]);
+ assert.equal(two.geometry.userData.fieldworkLightingPartSpans[0].partId,'sleeve');
+ for(const mesh of [one,two])mesh.geometry.dispose();
+ toon.dispose();
+});
