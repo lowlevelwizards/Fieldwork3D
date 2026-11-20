@@ -21,6 +21,7 @@ import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {frameArmoryObject,type ArmoryShotCategory}
  from './equipment-thumbnail-camera.ts';
 import {copyLinearRgbaToSrgbFlipped} from './equipment-thumbnail-color.ts';
+import {equipmentPreviewVisualKey} from './equipment-preview-visual-key.ts';
 
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry'|'back'|'belt'|'legs';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
@@ -50,6 +51,8 @@ export class CampaignKitPreview{
   wardrobe?:WardrobeOptions
  }|null=null;
  private readonly modelThumbCache=new Map<string,string>();
+ private visualKey:string|null=null;
+ private static readonly MAX_THUMB_CACHE=96;
  // Reuse GPU color/depth attachments and the CPU readback surface across
  // visible equipment choices; a fresh GL render target per tile forces
  // driver allocation/deletion on the very frame that paints the thumbnail.
@@ -161,6 +164,7 @@ export class CampaignKitPreview{
  setOperatorId(id:string):void{
   if(this.operatorId===id)return;
   this.operatorId=id;
+  this.visualKey=null;this.thumbnailRevision++;this.modelThumbCache.clear();
   // Retire prior person's inspection without painting a stale, detached host.
   // The caller attaches the new host and draws the new pose immediately.
   this.dotTarget=null;this.dotMesh=null;
@@ -179,8 +183,14 @@ export class CampaignKitPreview{
   weaponConfiguration?:WeaponConfiguration,magazines:readonly MagazineItem[]=[],
   wardrobe?:WardrobeOptions):void{
   if(!this.rig)return;
+  // Update authority refs without forcing a full rig/GPU refresh on UI rerenders.
   this.currentEquipment=equipment;
   this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
+  const key=equipmentPreviewVisualKey(this.operatorId,weapon,appearanceSeed,
+   equipment,weaponConfiguration,magazines,wardrobe);
+  if(key===this.visualKey)return;
+  this.visualKey=key;
+  // A genuinely changed outfit invalidates pending asynchronous readbacks.
   this.thumbnailRevision++;
   this.modelThumbCache.clear();
   this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
@@ -188,6 +198,15 @@ export class CampaignKitPreview{
   this.refreshInspection();
   this.refreshSelectionDot();
   this.draw();
+ }
+ /** Bound encoded PNGs without interrupting pending GPU readbacks. */
+ private rememberThumbnail(key:string,data:string):void{
+  if(!this.modelThumbCache.has(key)&&
+   this.modelThumbCache.size>=CampaignKitPreview.MAX_THUMB_CACHE){
+   const oldest=this.modelThumbCache.keys().next().value;
+   if(oldest!==undefined)this.modelThumbCache.delete(oldest);
+  }
+  this.modelThumbCache.set(key,data);
  }
  /** The same battle rig pose, used for production and read-only thumbnail
   * captures; no separate model definitions or inventory state are created. */
@@ -384,11 +403,11 @@ export class CampaignKitPreview{
      // Rapid roster swaps may retire the preview before the GPU resolves.
      if(!this.renderer||revision!==this.thumbnailRevision)return null;
      const result=encode();
-     if(result)this.modelThumbCache.set(key,result);
+     if(result)this.rememberThumbnail(key,result);
      return result;
     }).catch(()=>null);
    }
-   if(data)this.modelThumbCache.set(key,data);
+   if(data)this.rememberThumbnail(key,data);
    return data;
   }catch{return null;}
   finally{
@@ -1006,6 +1025,7 @@ export class CampaignKitPreview{
   this.dotTarget=null;this.dotMesh=null;this.hotspotButtons.clear();
   this.selectedInspection=null;this.inspectedMesh=null;
   this.currentEquipment=null;
+  this.visualSnapshot=null;this.visualKey=null;
   if(this.inspectionBox){
    this.inspectionBox.removeFromParent();
    this.inspectionBox.geometry.dispose();
