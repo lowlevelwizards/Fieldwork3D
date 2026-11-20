@@ -81,9 +81,9 @@ export function buildM9Appearance(id:M9AppearanceId,
  // body, guard, and swept butt stay ONE contiguous lower silhouette.
  const outer:Outline=[
   [-9.07,.44],[6.71,.44],[6.71,-.28],[5.92,-.70],
-  [2.48,-.82],[1.58,-1.12],[1.52,-3.10],
+  [1.58,-1.12],[1.52,-3.10],
   [.97,-3.65],[.22,-3.85],[-1.96,-3.84],
-  [-2.82,-3.57],[-3.72,-3.23],[-4.15,-4.06],
+  [-2.82,-3.57],[-4.15,-4.06],
   [a.gripFront+.43,a.heel+1.03],
   [a.gripFront-.05,a.heel+.32],[a.gripRear+.50,a.heel],
   [a.gripRear-.06,a.heel+.52],
@@ -178,9 +178,8 @@ export function buildM9Appearance(id:M9AppearanceId,
 
  // Hammer stays an exposed low-facet hook, read against the longer tang.
  const hammer:Outline=[
-  [-8.68,2.48],[-9.14,2.72],[-9.72,3.27],
-  [-9.95,3.61],[-9.75,3.77],[-9.43,3.72],
-  [-9.12,3.48],[-8.76,3.04]
+  [-8.68,2.48],[-9.14,2.72],[-9.95,3.61],
+  [-9.75,3.77],[-9.43,3.72],[-8.76,3.04]
  ];
  const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.52,slideMaterial);
  hammerMesh.userData.m9Hammer=true;
@@ -208,12 +207,10 @@ export function buildM9Appearance(id:M9AppearanceId,
   // Both face pieces are slim broad wedges embedded into the sculpted butt.
   const gripPanel:Outline=a.straightGrip?[
    [-7.86,-1.56],[-5.63,-1.56],
-   [a.gripFront-.10,a.heel+.80],
-   [a.gripRear+.70,a.heel+.58],[-8.56,-5.80]
+   [a.gripFront-.10,a.heel+.80],[a.gripRear+.70,a.heel+.58]
   ]:[
    [-8.02,-1.56],[-5.91,-1.56],
-   [a.gripFront-.10,a.heel+.79],
-   [a.gripRear+.82,a.heel+.56],[-9.08,-5.84]
+   [a.gripFront-.10,a.heel+.79],[a.gripRear+.82,a.heel+.56]
   ];
   for(const side of [-1,1]){
    const pad=addOutline(root,'grip',id,n++,gripPanel,.13,gripMaterial);
@@ -247,7 +244,7 @@ export function buildM9Appearance(id:M9AppearanceId,
   // arbitrary tiny dots, these can be read at 128px and at side profile.
   const lever:Outline=[
    [-8.48,2.65],[-7.73,2.65],[-7.16,2.28],
-   [-7.60,1.98],[-8.66,1.98],[-8.88,2.30]
+   [-7.60,1.98],[-8.88,2.30]
   ];
   for(const side of [-1,1]){
    const decocker=addOutline(root,'receiver',id,n++,lever,.20,dark);
