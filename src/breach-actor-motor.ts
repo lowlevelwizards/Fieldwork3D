@@ -28,6 +28,15 @@ import {beginMotorCpuMeasurement,finishMotorCpuMeasurement}
 export function advanceActorMotor(
  a:TeamActor,p:Pt,dt:number,s:Session,hooks:ActorMotorHooks,
  speedScale=1,profile?:((section:string,elapsedMs:number)=>void)):boolean{
+ const m2Debug=a.id==='ash'&&s.seconds>=19.76&&s.seconds<=19.84;
+ const m2Mark=(phase:string)=>{
+  if(m2Debug)console.error('M2-ASH-MOTOR',s.seconds.toFixed(4),phase,
+   JSON.stringify({p:a.p,nav:a.nav.slice(0,2),squeeze:a.squeeze,
+    blocker:a.lastBlocker,activeNode:a.activeNode,plan:a.plan[0]?.id,
+    pending:!!a.traversalPending,traversal:!!a.traversal,
+    blocked:a.blockedTime,velocity:a.velocity}));
+ };
+ m2Mark('start');
  // All marks are observational and gated behind the same opt-in simulation
  // profiler as the parent operator total. No additional work in normal play.
  // One authoritative observation before any route/door/queue early return.
@@ -40,10 +49,12 @@ export function advanceActorMotor(
   return true;
  }
  if(releaseEmbeddedMotorActor(a,p,s.doors,dt,sessionWorldGeometry(s))){
+  m2Mark('embedded-return');
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
  if(prepareMotorTraversal(a,p,dt,s,hooks)){
+  m2Mark('traversal-return');
   if(profile)profile('motor-traversal',finishMotorCpuMeasurement(traversalStart));
   return true;
  }
@@ -55,6 +66,7 @@ export function advanceActorMotor(
  if(a.side==='blue'&&recoverDoorApproachDrift(a,s))return true;
  const routeStart=profile?beginMotorCpuMeasurement():0;
  const readiness=prepareMotorRoute(a,p,dt,s,hooks);
+ m2Mark('route-'+readiness);
  if(profile)profile('motor-route',finishMotorCpuMeasurement(routeStart));
  if(readiness==='handled')return true;
  if(readiness==='unavailable')return false;
@@ -89,6 +101,7 @@ export function advanceActorMotor(
  const correcting=!!a.fireRetreatTarget&&
    d(p,a.fireRetreatTarget)<.5;
  if(gap<(correcting?.9:localDetourWaypointTolerance(a,next))){
+  m2Mark('waypoint-shift');
   completePreciseLocalDetour(a);
   a.nav.shift();
   if(profile)profile('motor-stride',finishMotorCpuMeasurement(strideStart));
