@@ -22,10 +22,11 @@ import {frameArmoryObject,type ArmoryShotCategory}
  from './equipment-thumbnail-camera.ts';
 import {copyLinearRgbaToSrgbFlipped} from './equipment-thumbnail-color.ts';
 
-export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
+export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry'|'back'|'belt'|'legs';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
- full:[26,110,35],head:[57,72,26],torso:[38,82,31],
- weapon:[35,90,31],carry:[29,91,32]
+ full:[34,84,22],head:[57,66,23],torso:[38,69,22],
+ weapon:[35,78,24],carry:[29,75,25],back:[38,77,26],
+ belt:[25,64,19],legs:[16,85,19]
 };
 export class CampaignKitPreview{
  private host:HTMLElement;
@@ -138,6 +139,7 @@ export class CampaignKitPreview{
   this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
   this.modelThumbCache.clear();
   this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
+  if(this.focusArea==='full')this.fitFullOperator();
   this.refreshInspection();
   this.draw();
  }
@@ -161,6 +163,17 @@ export class CampaignKitPreview{
    deterministic:true},0);
  }
 
+ /** Fit the visible operator instead of a fixed rig origin. */
+ private fitFullOperator():void{
+  if(!this.rig)return;
+  this.rig.root.updateWorldMatrix(true,true);
+  const bounds=new THREE.Box3().setFromObject(this.rig.root,true);
+  if(bounds.isEmpty())return;
+  const height=bounds.max.y-bounds.min.y;
+  this.focusHeight=(bounds.min.y+bounds.max.y)*.5;
+  this.focusRadius=THREE.MathUtils.clamp(height*1.95,65,104);
+  this.focusRise=Math.min(25,height*.42);
+ }
  /** Render an equipped item's actual procedural 3D mesh in isolation, using
   * the EXISTING WebGL renderer (no second context, no icon substitutes).
   * A missing/unmounted model returns null and is labeled accordingly.
@@ -424,6 +437,19 @@ export class CampaignKitPreview{
    });
    layer.append(dot);this.hotspotButtons.set(slot,dot);
   }
+  const zoom=document.createElement('div');
+  zoom.className='campaign-kit-zoom';
+  for(const [label,factor] of [['+',.83],['−',1.2]] as const){
+   const control=document.createElement('button');
+   control.type='button';control.textContent=label;
+   control.setAttribute('aria-label',factor<1?'Zoom into operator':'Zoom out of operator');
+   control.addEventListener('pointerdown',event=>event.stopPropagation());
+   control.addEventListener('click',event=>{
+    event.stopPropagation();this.zoomBy(factor);
+   });
+   zoom.append(control);
+  }
+  layer.append(zoom);
   this.hotspotLayer=layer;this.host.append(layer);
   this.syncHotspots();
  }
@@ -506,7 +532,7 @@ export class CampaignKitPreview{
   const degrees=((Math.round(this.azimuth*180/Math.PI)%360)+360)%360;
   const target:Record<EquipmentPreviewFocus,string>={
    full:'Full operator',head:'Head',torso:'Torso',
-   weapon:'Weapon',carry:'Carried equipment'
+   weapon:'Weapon',carry:'Carried equipment',back:'Back',belt:'Belt',legs:'Legs'
   };
   this.host.setAttribute('aria-label','Rotatable 3D preview of '+
    this.operatorId+' with equipped gear. '+target[this.focusArea]+
@@ -582,7 +608,16 @@ export class CampaignKitPreview{
  };
  /** One 220 ms context transition, with no recurring animation while idle. */
  focusOn(area:EquipmentPreviewFocus,animate=true):void{
-  const [height,radius,rise]=PREVIEW_FOCUS_TARGETS[area];
+  let [height,radius,rise]=PREVIEW_FOCUS_TARGETS[area];
+  if(area==='full'&&this.rig){
+   const bounds=new THREE.Box3().setFromObject(this.rig.root,true);
+   if(!bounds.isEmpty()){
+    const span=bounds.max.y-bounds.min.y;
+    height=(bounds.max.y+bounds.min.y)*.5;
+    radius=THREE.MathUtils.clamp(span*1.95,65,104);
+    rise=Math.min(25,span*.42);
+   }
+  }
   const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Re-selecting a focus target must not restart an identical transition,
   // especially when a category and its equipment picker both request it.
