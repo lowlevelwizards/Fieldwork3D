@@ -37,7 +37,8 @@ test('E6.4 appearance profiler measures the original exact serialization and imm
    p.appearanceSeed??0,p.equipment??null,p.wardrobe??null,
    p.magazineCarryLocations??null,p.medicalCarryLocation??null,
    p.utilityCarryLocation??null,p.faceStyle??null,
-   p.flashCharges??null,p.treatmentActive??null,
+   p.flashCharges??null,p.wedgeRemaining??null,
+   p.restraintRemaining??null,p.treatmentActive??null,
    p.weaponConfiguration?.build?.parts.magazine??null,
    p.nvgDeployed??false
   ]);
