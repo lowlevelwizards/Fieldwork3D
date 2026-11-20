@@ -18,10 +18,10 @@ Date: 2026-11-20. Canonical integration branch: `feature/secondary-s5-s11-closeo
 - [ ] Critical CI passes.
 
 ## S6 — poses and ownership
-- [ ] Draw and holster physically transfer the ONE issued Glock visual from its actual holster to a correct hand attachment; no duplicated visible pistols.
+- [x] S6.1 implemented: one issued Glock visual interpolates from holster to solved firing wrist; deterministic replay fraction, no duplicate model (CI validation pending).
 - [ ] Real right/left hand IK and support hand, pistol ready/aim/retention/low/high/movement/recoil/reload, smooth and interruptible.
 - [ ] Transition-friendly physical clearance and no barrel-through-neighbor; weapon pose must correspond to real shot-time muzzle.
-- [ ] Physical rig reuse, material/geometry ownership, no per-frame rebuild/allocations.
+- [x] S6.1 preserves the existing mesh and appearance cache; no per-frame Glock rebuild (CI validation pending).
 
 ## S7 — authoritative combat
 - [ ] Use the shared target visibility/friendly/civilian/cover/damage pipeline for 9mm, not a second hit oracle.
@@ -33,10 +33,13 @@ Date: 2026-11-20. Canonical integration branch: `feature/secondary-s5-s11-closeo
 ## S8 — reload / inventory
 - [ ] Tactical reload orders and automatic emergency reload when eligible; independent timers for active pistol.
 - [x] S8.1 inventory-only exchange quotes use actual issued serials, no added rounds, retain old rounds or explicitly report dropped magazines. Persistence now accepts an honestly exchanged loaded serial.
-- [ ] Wire S8.1 into a timed fixed-step reload order, physical detachable magazine, and actual magazine access constraints.
-- [ ] Proper behavior without spares, full mag, no belt, lost/unissued kit and interrupted reload.
+- [x] S8.2: fixed-step authored RELOAD order switches by selected hand, uses accessible issued ID and transfers inventory only at insertion; no rifle ammo touched (CI validation pending).
+- [ ] S8.3 actual detachable pistol magazine and synchronized hand-motion rendering.
+- [x] S8.2 inventory/order guards for inaccessible/overflow spares, missing kit, full magazine, and before-insertion cancellation (CI pending).
+- [ ] Validate live mission belt loss, interruptions across same-tick replanning and complete after-action accounting.
 - [ ] Real carrier contents follow holster and magazine model, both before and after reload.
-- [ ] Total ammo conservation through save/reload, reorder, failed orders and mission restart.
+- [x] S8.2 timed insertion is one atomic exchange conserving issued magazine rounds (focused tests committed, CI pending).
+- [ ] Verify save/reload, replay rewind, reorder, failed orders and mission restart end-to-end.
 
 ## S9 — interface / persistence
 - [ ] Quick Play / Campaign shared Outfitter and Arsenal display the same physical issued weapon and customization.
@@ -53,7 +56,8 @@ Date: 2026-11-20. Canonical integration branch: `feature/secondary-s5-s11-closeo
 
 ## S11 — regression, performance and release
 - [x] Authored switch, cancel/lost-kit, baseline ammo conservation and replay-compatibility tests committed (CI rerun pending).
-- [ ] Complete domain tests: real timed reload, 9mm fired rounds, both-handed pose and no ghost primary shot.
+- [x] New focused S6.1 physical mesh and S8.2 timed magazine tests committed (CI pending).
+- [ ] Complete domain tests for 9mm fired rounds, both-handed pose and no ghost primary shot.
 - [ ] Focused end-to-end: 9mm shot, damage, full/partial magazine, retention/emergency reload, count conservation, no ghost magazines.
 - [ ] Critical build/typecheck and desktop/mobile browser smoke on tactical, Arsenal, Quick Play, replay.
 - [ ] Final CSS/TS dedup, disposal correctness, animation transition hitches and inspection orbit parity.
