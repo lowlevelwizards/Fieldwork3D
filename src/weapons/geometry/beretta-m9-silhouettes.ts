@@ -278,7 +278,7 @@ export function buildM9Appearance(id:M9AppearanceId,
  if(a.rail){
   // A3-only, readable under-frame rail; sits in dust-cover mass instead of
   // an extra long floating rectangle.
-  const rail=cuboid('receiver',5.22,-.64,0,3.60,.23,1.96,frameMaterial);
+  const rail=cuboid('receiver',4.80,-.55,0,2.65,.25,1.96,frameMaterial);
   rail.userData.m9AccessoryRail=true;
  }
  root.userData.m9ArtLandmarks=Object.freeze({
