@@ -1,0 +1,31 @@
+name: M1-M2 exact Garage and Motel read-only diagnostic
+on:
+  push:
+    branches: [audit/m1m2-queue-probe-20261120]
+    paths: ['.github/workflows/m1m2-target-probe.yml']
+permissions:
+  contents: read
+jobs:
+  exact-seeds:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Garage 31110 D5 queue reason
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=5 --queue-decision-witness > garage-31110.json
+          node -e "const r=require('./garage-31110.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,lastQueue:r.queueDecisionEvidence.slice(-8)},null,2))"
+      - name: Motel 31149 Vale blocked motor
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 --route-transitions --trace-actor=vale --trace-mode=entry --d326-last-stall-probe > motel-31149.json
+          node -e "const r=require('./motel-31149.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,vale:r.operators.find(x=>x.id==='vale'),routes:r.routeTransitions?.events?.slice(-8)},null,2))"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: garage-motel-movement-witness
+          path: |
+            garage-31110.json
+            motel-31149.json

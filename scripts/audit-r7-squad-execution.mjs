@@ -101,7 +101,8 @@ const entryLandingWitnessEnabled=process.argv.includes('--entry-settle-witness')
 const entryLandingModule=entryLandingWitnessEnabled?
  await import('../src/breach-order-movement.ts'):null;
 const queueMotionWitnessEnabled=process.argv.includes('--queue-motion-witness');
-const queueMotionModule=queueMotionWitnessEnabled?
+const queueDecisionWitnessEnabled=process.argv.includes('--queue-decision-witness');
+const queueMotionModule=(queueMotionWitnessEnabled||queueDecisionWitnessEnabled)?
  await import('../src/breach-queue-trace.ts'):null;
 const g2Fresh22=process.argv.includes('--g2-fresh-22');
 const d314bClearanceProbe=process.argv.includes('--d314b-clearance-probe');
@@ -247,7 +248,7 @@ function run(site,seed,kind){
  const quiet={...site,training:true,enemies:[],encounter:undefined};
  const session=newSession(0,seed,'full-view',site.scale??'small','intel',quiet,
   {enableCivilians:false});
- const entryLandingEvidence=[],queueMotionEvidence=[];
+ const entryLandingEvidence=[],queueMotionEvidence=[],queueDecisionEvidence=[];
  try{
   const initialD329Doors=d329CancellationDoorWitness?
    new Map(session.doors.map(d=>[d.id,{id:d.id,open:!!d.open,
@@ -280,7 +281,17 @@ function run(site,seed,kind){
        entryDoorId:n.entryDoorId??null,doorId:n.doorId??null}))??[]});
     }
    });
-  const initial=actors.map(a=>new Set(a.plan.map(n=>n.id)));
+  if(queueDecisionWitnessEnabled&&kind==='entry')
+    queueMotionModule.listenQueueDecision(session,event=>{
+     if(!event.hold||event.time<35)return;
+     const mover=actors.find(a=>a.id===event.actor);
+     if(queueDecisionEvidence.length>=320)queueDecisionEvidence.shift();
+     queueDecisionEvidence.push({time:round(event.time),actor:event.actor,
+      reason:event.reason,doorId:event.doorId,rank:event.rank,
+      position:{...event.from},goal:mover?.plan[0]?.p??null,
+      next:mover?.nav[0]??null});
+    });
+   const initial=actors.map(a=>new Set(a.plan.map(n=>n.id)));
   // D3.6: frozen per-run authored targets and entry positions. Endpoints
   // expose actual arrival, not just plan exhaustion or a 3-second triage.
   const starting=actors.map(a=>({...a.p}));
@@ -1459,6 +1470,7 @@ function run(site,seed,kind){
    ...(d327GarageProbe?{d327GarageEvidence}:{}),
    ...(entryLandingWitnessEnabled?{entryLandingEvidence}:{}),
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
+    ...(queueDecisionWitnessEnabled?{queueDecisionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
@@ -1530,6 +1542,7 @@ function run(site,seed,kind){
  }finally{
   entryLandingModule?.setEntryLandingWitness(null);
   queueMotionModule?.listenQueueMotion(session,null);
+   queueMotionModule?.listenQueueDecision(session,null);
   setRouteGridAuditObserver(null);
   setTransientRouteObserver(null);
   enableD32MotorDoorWitness(false);activateSite(null);
