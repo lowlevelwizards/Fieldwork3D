@@ -13,6 +13,7 @@ import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart
  from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {catalogOutfitterSources} from './ui/outfitter-choice-sources.ts';
+import {createOutfitterZoneNav,previewFocusForOutfitterSlot} from './ui/outfitter-zone-nav.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
@@ -662,38 +663,21 @@ function renderOperationsBoard(){
   galleryHost.className='fw-quick-board-gallery';
   galleryHost.hidden=quickKitView!=='equipment';
   const sources=catalogOutfitterSources(member.loadout);
-  const zoneNav=document.createElement('nav');
-  zoneNav.className='fw-quick-board-zones';
-  zoneNav.setAttribute('aria-label','Equipment locations');
-  const zoneButtons=new Map<LoadoutSlot,HTMLButtonElement>();
   let showGallery:(slot:LoadoutSlot)=>void=()=>{};
-  const selectZone=(slot:LoadoutSlot)=>{
-   quickBenchSlot=slot;
-   for(const [key,button] of zoneButtons)
-    button.setAttribute('aria-current',String(key===slot));
-   showGallery(slot);
-   quickKitPreview?.clearTransientSelection();
-   quickKitPreview?.setSelectedSlot(slot);
-   quickKitPreview?.focusOn(
-    slot==='head'?'head':slot==='primary'?'weapon':
-    slot==='armor'||slot==='rig'||slot==='top'?'torso':
-    slot==='backpack'?'back':slot==='belt'||slot==='medical'||slot==='utility'?'belt':
-    slot==='legs'||slot==='feet'?'legs':'full');
-  };
-  for(const [slot,label] of [
-   ['primary','WEAPON'],['head','HEAD'],['armor','ARMOR'],
-   ['rig','CHEST'],['belt','BELT'],['backpack','PACK'],
-   ['medical','MEDICAL'],['utility','TOOLS'],
-   ['top','TOP'],['legs','LEGS'],['hands','HANDS'],['feet','FOOTWEAR']
-  ] as const){
-   const button=document.createElement('button');
-   button.type='button';button.textContent=label;
-   button.className='fw-quick-board-zone';button.dataset.slot=slot;
-   button.setAttribute('aria-current',String(slot===quickBenchSlot));
-   button.addEventListener('click',()=>selectZone(slot));
-   zoneButtons.set(slot,button);zoneNav.append(button);
-  }
-  modelStage.append(zoneNav);
+  const zones=createOutfitterZoneNav({
+   navClass:'fw-quick-board-zones',
+   buttonClass:'fw-quick-board-zone',
+   selected:quickBenchSlot,
+   onSelect:slot=>{
+    quickBenchSlot=slot;
+    showGallery(slot);
+    quickKitPreview?.clearTransientSelection();
+    quickKitPreview?.setSelectedSlot(slot);
+    quickKitPreview?.focusOn(previewFocusForOutfitterSlot(slot));
+   }
+  });
+  const selectZone=zones.select;
+  modelStage.append(zones.nav);
   const clothing=document.createElement('button');
   clothing.type='button';clothing.className='fw-quick-board-clothing';
   clothing.textContent='CLOTHING';clothing.addEventListener('click',()=>selectZone('top'));
