@@ -1,0 +1,49 @@
+name: D15.8 physical carry, drawn route and capture medical clarity
+on:
+  push:
+    branches: [release/d15-8-critical-20261120]
+    paths:
+      - '.github/workflows/d15-8-critical-validation.yml'
+      - 'src/**'
+      - 'tests/dispatch-d15*.test.mjs'
+      - 'scripts/smoke-d15-final-visual.mjs'
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency: {group: d15-8-critical, cancel-in-progress: true}
+jobs:
+  custody-route-and-visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - name: Install source dependencies
+        run: npm install --no-audit --no-fund
+      - name: Targeted real 60Hz carry route / medical / gesture regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/dispatch-d15-8-transport-route.test.mjs \
+            tests/dispatch-d15-capture-transport-go.test.mjs \
+            tests/dispatch-d15-capture-transport-presentation.test.mjs \
+            tests/dispatch-d15-capture-vitals.test.mjs \
+            tests/dispatch-d15-operational-foundation.test.mjs \
+            tests/civilian-r2-rescue-transport.test.mjs \
+            tests/breach-roadmap2-stage4-pointer-feedback.test.mjs \
+            tests/breach-roadmap3-context-commands.test.mjs \
+            tests/breach-2d-renderer-extraction.test.mjs
+      - name: TypeScript and production Pages build
+        run: npm run build
+      - name: Use real system Chrome
+        run: |
+          npm install --no-save --package-lock=false playwright@1.56.1
+          command -v google-chrome
+      - name: Real WebGL 3D carry/drag and floor-plan visual acceptance
+        run: node scripts/smoke-d15-final-visual.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: d15-8-carry-route-webgl
+          path: artifacts/d15-final-visual/
+          if-no-files-found: warn
+          retention-days: 7
