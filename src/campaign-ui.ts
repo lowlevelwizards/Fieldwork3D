@@ -1760,7 +1760,7 @@ export class CampaignScreen{
   }
   issuedMore.append(issuedSlots);
   editor.insertBefore(issuedMore,grouped.group.weapon);
-  const selectBenchSlot=(slot:LoadoutSlot)=>{
+  const selectBenchSlot=(slot:LoadoutSlot,fromModel=false)=>{
    this.activeBenchSlot=slot;main.dataset.benchSlot=slot;
    this.activeKitWorkspace='equipment';main.dataset.kitWorkspace='equipment';
    for(const [key,control] of workspaceButtons)
@@ -1769,8 +1769,20 @@ export class CampaignScreen{
     control.setAttribute('aria-current',String(key===slot));
    for(const [key,row] of benchRows)row.hidden=compact&&key!==slot;
    showGroup(loadoutGroupForSlot(slot));
+   if(fromModel&&compact){
+    if(['top','legs','hands','feet'].includes(slot))issuedMore.open=true;
+    requestAnimationFrame(()=>{
+     const row=benchRows.get(slot);
+     if(!row||!row.isConnected)return;
+     row.scrollIntoView({block:'nearest',
+      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
+    });
+   }
+   this.preview?.setSelectedSlot(slot);
    this.preview?.focusOn(slot==='head'?'head':slot==='primary'?'weapon':
-    slot==='armor'?'torso':'carry');
+    slot==='armor'||slot==='rig'||slot==='top'?'torso':
+    slot==='backpack'?'back':slot==='belt'||slot==='medical'||slot==='utility'?'belt':
+    slot==='legs'||slot==='feet'?'legs':'full');
   };
   function showGroup(group:QuickLoadoutGroup){
    grouped.group[group].open=true;
@@ -2182,7 +2194,8 @@ export class CampaignScreen{
    }
    // Operator geometry is the primary edit target; direct body-zone
    // buttons provide a precise fallback on small screens and for keyboard.
-   this.preview?.setOnTapSlot(slot=>selectBenchSlot(slot));
+   this.preview?.setOnTapSlot(slot=>selectBenchSlot(slot,true));
+   this.preview?.setSelectedSlot(this.activeBenchSlot,false);
    // No inert orbit buttons if a device cannot initialize WebGL.
    if(!this.preview?.isReady())
     for(const control of summary.querySelectorAll<HTMLButtonElement>(

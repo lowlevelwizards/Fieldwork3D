@@ -22,10 +22,11 @@ import {frameArmoryObject,type ArmoryShotCategory}
  from './equipment-thumbnail-camera.ts';
 import {copyLinearRgbaToSrgbFlipped} from './equipment-thumbnail-color.ts';
 
-export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
+export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry'|'back'|'belt'|'legs';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
- full:[26,110,35],head:[57,72,26],torso:[38,82,31],
- weapon:[35,90,31],carry:[29,91,32]
+ full:[34,84,22],head:[57,66,23],torso:[38,69,22],
+ weapon:[35,78,24],carry:[29,75,25],back:[38,77,26],
+ belt:[25,64,19],legs:[16,85,19]
 };
 export class CampaignKitPreview{
  private host:HTMLElement;
@@ -57,6 +58,14 @@ export class CampaignKitPreview{
  private downY=0;
  private movedOnPress=false;
  private onTapSlot:((slot:LoadoutSlot)=>void)|null=null;
+ private activeHotspot:LoadoutSlot|null=null;
+ private readonly hotspotButtons=new Map<LoadoutSlot,HTMLButtonElement>();
+ private hotspotLayer:HTMLDivElement|null=null;
+ private zoomScale=1;
+ private showHeldWeapon=false;
+ private poseToggle:HTMLButtonElement|null=null;
+ private readonly touchPointers=new Map<number,{x:number;y:number}>();
+ private pinchDistance=0;
  private focusArea:EquipmentPreviewFocus='full';
  private focusHeight=26;
  private focusRadius=110;
@@ -85,7 +94,7 @@ export class CampaignKitPreview{
   this.focusHeight=height;this.focusRadius=radius;this.focusRise=rise;
   host.dataset.previewFocus=initialFocus;
   host.classList.add('campaign-kit-preview');
-  host.setAttribute('role','img');
+  host.setAttribute('role','group');
   host.tabIndex=0;
   host.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight Home');
   this.updateOrientationLabel();
@@ -95,6 +104,7 @@ export class CampaignKitPreview{
    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.5));
    this.renderer.setClearColor(0x1b2d2a,1);
    host.append(this.renderer.domElement);
+   this.createHotspots();
    const ambient=new THREE.HemisphereLight(0xe0e6ce,0x1a2927,2.6);
    const key=new THREE.DirectionalLight(0xf2d6ac,2.3);
    key.position.set(60,100,55);
@@ -131,6 +141,7 @@ export class CampaignKitPreview{
   this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
   this.modelThumbCache.clear();
   this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
+  if(this.focusArea==='full')this.fitFullOperator();
   this.refreshInspection();
   this.draw();
  }
@@ -138,7 +149,7 @@ export class CampaignKitPreview{
   * captures; no separate model definitions or inventory state are created. */
  private poseForThumb(weapon:WeaponId,appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,magazines:readonly MagazineItem[]=[],
-  wardrobe?:WardrobeOptions):void{
+  wardrobe?:WardrobeOptions,forceHeldWeapon=false):void{
   if(!this.rig)return;
   const placements=carryPlacementLedger(equipment,magazines);
   poseOperator(this.rig,{x:0,z:0,heading:0,velocity:0,seconds:0,
@@ -151,9 +162,20 @@ export class CampaignKitPreview{
    medicalCarryLocation:placements.find(item=>item.kind==='medical')?.location,
    utilityCarryLocation:placements.find(item=>item.kind==='utility')?.location,
    flashCharges:equippedFlashCharges(equipment),
-   deterministic:true},0);
+   deterministic:true,unarmedPreview:!(this.showHeldWeapon||forceHeldWeapon)},0);
  }
 
+ /** Fit the visible operator instead of a fixed rig origin. */
+ private fitFullOperator():void{
+  if(!this.rig)return;
+  this.rig.root.updateWorldMatrix(true,true);
+  const bounds=new THREE.Box3().setFromObject(this.rig.root,true);
+  if(bounds.isEmpty())return;
+  const height=bounds.max.y-bounds.min.y;
+  this.focusHeight=(bounds.min.y+bounds.max.y)*.5;
+  this.focusRadius=THREE.MathUtils.clamp(height*1.95,65,104);
+  this.focusRise=Math.min(25,height*.42);
+ }
  /** Render an equipped item's actual procedural 3D mesh in isolation, using
   * the EXISTING WebGL renderer (no second context, no icon substitutes).
   * A missing/unmounted model returns null and is labeled accordingly.
@@ -183,7 +205,7 @@ export class CampaignKitPreview{
      target.itemId.slice(8) as WeaponId:original.weapon;
     this.poseForThumb(weapon,original.appearanceSeed,previewKit,
      weapon===original.weapon?original.weaponConfiguration:undefined,
-     original.magazines,previewWardrobe);
+     original.magazines,previewWardrobe,target.slot==='primary');
    }
    const selected=target.kind==='gear'?
     this.previewGearMesh(target.slot,target.itemId,previewKit,previewWardrobe):
@@ -365,6 +387,7 @@ export class CampaignKitPreview{
   host.setAttribute('aria-keyshortcuts','ArrowLeft ArrowRight Home');
   this.updateOrientationLabel();
   if(this.renderer)host.append(this.renderer.domElement);
+  if(this.hotspotLayer)host.append(this.hotspotLayer);
   host.addEventListener('pointerdown',this.pointerDown);
   host.addEventListener('pointermove',this.pointerMove);
   host.addEventListener('pointerup',this.pointerUp);
@@ -380,6 +403,118 @@ export class CampaignKitPreview{
  /** Selection belongs to the caller; preview never commits kit changes. */
  setOnTapSlot(callback:((slot:LoadoutSlot)=>void)|null):void{
   this.onTapSlot=callback;
+  this.createHotspots();
+  this.syncHotspots();
+ }
+ setSelectedSlot(slot:LoadoutSlot,changePresentation=true):void{
+  this.activeHotspot=slot;
+  // First paint stays neutral even if the weapon tab is initially selected.
+  if(changePresentation)this.setWeaponPresentation(slot==='primary');
+  this.syncHotspots();
+ }
+ setWeaponPresentation(held:boolean):void{
+  if(this.showHeldWeapon===held)return;
+  this.showHeldWeapon=held;
+  this.poseToggle?.setAttribute('aria-pressed',String(held));
+  if(this.poseToggle)this.poseToggle.textContent=held?'NEUTRAL GEAR VIEW':'SHOW HELD WEAPON';
+  const state=this.visualSnapshot;
+  if(!state)return;
+  this.poseForThumb(state.weapon,state.appearanceSeed,state.equipment,
+   state.weaponConfiguration,state.magazines,state.wardrobe);
+  this.refreshInspection();this.draw();
+ }
+ zoomBy(factor:number):void{
+  if(!Number.isFinite(factor)||factor<=0)return;
+  this.zoomScale=THREE.MathUtils.clamp(this.zoomScale*factor,.55,1.65);
+  this.draw();
+ }
+ resetZoom():void{this.zoomScale=1;this.draw();}
+ private createHotspots():void{
+  if(!this.renderer||this.hotspotLayer||!this.onTapSlot)return;
+  const layer=document.createElement('div');
+  layer.className='campaign-kit-hotspots';
+  layer.setAttribute('aria-label','Interactive equipment positions');
+  for(const [slot,label] of [
+   ['head','Head'],['armor','Armor'],['rig','Chest rig'],['belt','Belt'],
+   ['backpack','Backpack'],['primary','Weapon'],
+   ['medical','Medical'],['utility','Tool']
+  ] as const){
+   const dot=document.createElement('button');
+   dot.type='button';dot.className='campaign-kit-hotspot';
+   dot.dataset.slot=slot;dot.textContent='•';
+   dot.setAttribute('aria-label','Inspect '+label+' equipment');
+   dot.title='Inspect '+label;
+   dot.addEventListener('pointerdown',event=>event.stopPropagation());
+   dot.addEventListener('pointerup',event=>event.stopPropagation());
+   dot.addEventListener('click',event=>{
+    event.stopPropagation();this.activeHotspot=slot;
+    this.onTapSlot?.(slot);this.syncHotspots();
+   });
+   layer.append(dot);this.hotspotButtons.set(slot,dot);
+  }
+  const zoom=document.createElement('div');
+  zoom.className='campaign-kit-zoom';
+  for(const [label,factor] of [['+',.83],['−',1.2]] as const){
+   const control=document.createElement('button');
+   control.type='button';control.textContent=label;
+   control.setAttribute('aria-label',factor<1?'Zoom into operator':'Zoom out of operator');
+   control.addEventListener('pointerdown',event=>event.stopPropagation());
+   control.addEventListener('click',event=>{
+    event.stopPropagation();this.zoomBy(factor);
+   });
+   zoom.append(control);
+  }
+  layer.append(zoom);
+  const pose=document.createElement('button');
+  pose.type='button';pose.className='campaign-kit-preview-pose-toggle';
+  pose.textContent=this.showHeldWeapon?'NEUTRAL GEAR VIEW':'SHOW HELD WEAPON';
+  pose.setAttribute('aria-pressed',String(this.showHeldWeapon));
+  pose.setAttribute('aria-label','Toggle neutral equipment inspection and held weapon view');
+  pose.addEventListener('pointerdown',event=>event.stopPropagation());
+  pose.addEventListener('click',event=>{
+   event.stopPropagation();this.setWeaponPresentation(!this.showHeldWeapon);
+  });
+  layer.append(pose);this.poseToggle=pose;
+  this.hotspotLayer=layer;this.host.append(layer);
+  this.syncHotspots();
+ }
+ private syncHotspots():void{
+  if(!this.hotspotLayer||!this.rig||!this.renderer)return;
+  this.rig.root.updateWorldMatrix(true,true);
+  this.camera.updateMatrixWorld(true);
+  const bounds=new THREE.Box3().setFromObject(this.rig.root);
+  if(bounds.isEmpty())return;
+  const center=bounds.getCenter(new THREE.Vector3());
+  const height=bounds.max.y-bounds.min.y;
+  const groups=this.rig.visualKit.wardrobeGear;
+  const worn:Partial<Record<LoadoutSlot,THREE.Object3D[]>>={
+   armor:Object.values(groups.armor),rig:Object.values(groups.rig),
+   belt:Object.values(groups.belt),backpack:Object.values(groups.pack),
+   primary:[this.rig.weaponBody]
+  };
+  const fallback:Partial<Record<LoadoutSlot,[number,number,number]>>={
+   head:[0,.87,0],armor:[-.11,.69,.02],rig:[.10,.59,.06],
+   belt:[-.12,.42,.02],backpack:[0,.63,-.17],
+   primary:[.28,.52,.15],medical:[.18,.4,.06],utility:[-.22,.4,.06]
+  };
+  for(const [slot,button] of this.hotspotButtons){
+   const meshes=worn[slot]??[];
+   const mesh=meshes.find(item=>item.visible&&item.parent);
+   const itemBounds=mesh?new THREE.Box3().setFromObject(mesh,true):null;
+   const local=fallback[slot]??[0,.5,0];
+   const point=itemBounds&&!itemBounds.isEmpty()?
+    itemBounds.getCenter(new THREE.Vector3()):
+    new THREE.Vector3(center.x+local[0]*height,
+     bounds.min.y+local[1]*height,center.z+local[2]*height);
+   const projected=point.project(this.camera);
+   const onScreen=projected.z>=-1&&projected.z<=1&&
+    Math.abs(projected.x)<.92&&Math.abs(projected.y)<.92;
+   const behind=slot==='backpack'&&Math.sin(this.azimuth)>-.15;
+   button.hidden=!onScreen||behind;
+   button.style.left=((projected.x+1)*50).toFixed(2)+'%';
+   button.style.top=((1-projected.y)*50).toFixed(2)+'%';
+   button.setAttribute('aria-pressed',String(slot===this.activeHotspot));
+  }
  }
  private tapEquipmentAt(clientX:number,clientY:number):void{
   if(!this.rig||!this.onTapSlot||!this.renderer)return;
@@ -415,14 +550,14 @@ export class CampaignKitPreview{
     extents.max.y-extents.min.y);
    slot=ratio>.75?'head':ratio>.48?'armor':ratio>.26?'belt':'legs';
   }
-  this.onTapSlot(slot);
+  this.activeHotspot=slot;this.onTapSlot(slot);this.syncHotspots();
  }
  /** Keep rotation discoverable and usable without touch or a mouse. */
  private updateOrientationLabel():void{
   const degrees=((Math.round(this.azimuth*180/Math.PI)%360)+360)%360;
   const target:Record<EquipmentPreviewFocus,string>={
    full:'Full operator',head:'Head',torso:'Torso',
-   weapon:'Weapon',carry:'Carried equipment'
+   weapon:'Weapon',carry:'Carried equipment',back:'Back',belt:'Belt',legs:'Legs'
   };
   this.host.setAttribute('aria-label','Rotatable 3D preview of '+
    this.operatorId+' with equipped gear. '+target[this.focusArea]+
@@ -442,6 +577,16 @@ export class CampaignKitPreview{
  private pointerDown=(event:PointerEvent)=>{
   // Ignore secondary touch contacts and non-primary mouse/pen buttons.
   // An ignored press must not capture the preview or block the next drag.
+  if(event.target instanceof Element&&
+   event.target.closest('.campaign-kit-hotspot'))return;
+  if(event.pointerType==='touch'){
+   this.touchPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+   if(this.touchPointers.size===2){
+    const [a,b]=[...this.touchPointers.values()];
+    this.pinchDistance=Math.hypot(a.x-b.x,a.y-b.y);
+    this.movedOnPress=true;
+   }
+  }
   if(this.pointerId!==null||!event.isPrimary||event.button!==0)return;
   this.pointerId=event.pointerId;this.lastX=event.clientX;
   this.downX=event.clientX;this.downY=event.clientY;
@@ -449,6 +594,16 @@ export class CampaignKitPreview{
   try{this.host.setPointerCapture(event.pointerId);}catch{/* optional */}
  };
  private pointerMove=(event:PointerEvent)=>{
+  if(event.pointerType==='touch'&&this.touchPointers.has(event.pointerId)){
+   this.touchPointers.set(event.pointerId,{x:event.clientX,y:event.clientY});
+   if(this.touchPointers.size>=2){
+    const [a,b]=[...this.touchPointers.values()];
+    const distance=Math.hypot(a.x-b.x,a.y-b.y);
+    if(this.pinchDistance>5)this.zoomBy(this.pinchDistance/Math.max(5,distance));
+    this.pinchDistance=distance;this.movedOnPress=true;
+    return;
+   }
+  }
   if(event.pointerId!==this.pointerId)return;
   const delta=event.clientX-this.lastX;
   if(Math.abs(event.clientX-this.downX)>7||
@@ -461,6 +616,8 @@ export class CampaignKitPreview{
   });
  };
  private pointerUp=(event:PointerEvent)=>{
+  this.touchPointers.delete(event.pointerId);
+  if(this.touchPointers.size<2)this.pinchDistance=0;
   if(event.pointerId!==this.pointerId)return;
   this.pointerId=null;
   const tap=!this.movedOnPress&&
@@ -476,7 +633,16 @@ export class CampaignKitPreview{
  };
  /** One 220 ms context transition, with no recurring animation while idle. */
  focusOn(area:EquipmentPreviewFocus,animate=true):void{
-  const [height,radius,rise]=PREVIEW_FOCUS_TARGETS[area];
+  let [height,radius,rise]=PREVIEW_FOCUS_TARGETS[area];
+  if(area==='full'&&this.rig){
+   const bounds=new THREE.Box3().setFromObject(this.rig.root,true);
+   if(!bounds.isEmpty()){
+    const span=bounds.max.y-bounds.min.y;
+    height=(bounds.max.y+bounds.min.y)*.5;
+    radius=THREE.MathUtils.clamp(span*1.95,65,104);
+    rise=Math.min(25,span*.42);
+   }
+  }
   const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Re-selecting a focus target must not restart an identical transition,
   // especially when a category and its equipment picker both request it.
@@ -546,14 +712,15 @@ export class CampaignKitPreview{
   }
   // Selected mesh, not a nearby carrier zone, becomes the orbit target.
   const center=this.inspectionCenter;
-  const radius=center?Math.max(19,Math.min(48,
-   (this.inspectionSize?.length()??8)*2.35)):this.focusRadius;
+  const radius=(center?Math.max(19,Math.min(48,
+   (this.inspectionSize?.length()??8)*2.35)):this.focusRadius)*this.zoomScale;
   this.camera.position.set((center?.x??0)+radius*Math.cos(this.azimuth),
    center?center.y+radius*.38:this.focusHeight+this.focusRise,
    (center?.z??0)+radius*Math.sin(this.azimuth));
   this.camera.lookAt(center??new THREE.Vector3(0,this.focusHeight,0));
   if(this.inspectionBox?.visible)this.inspectionBox.updateMatrixWorld(true);
   this.renderer.render(this.scene,this.camera);
+  this.syncHotspots();
  }
  dispose(){
   if(this.resizeFrame!==null)cancelAnimationFrame(this.resizeFrame);
@@ -574,6 +741,8 @@ export class CampaignKitPreview{
    this.carryMarker.material.dispose();this.carryMarker=null;
   }
   this.selectedCarryLocation=null;
+  this.touchPointers.clear();this.hotspotLayer?.remove();
+  this.hotspotLayer=null;this.poseToggle=null;this.hotspotButtons.clear();
   this.selectedInspection=null;this.inspectedMesh=null;
   this.currentEquipment=null;
   if(this.inspectionBox){
