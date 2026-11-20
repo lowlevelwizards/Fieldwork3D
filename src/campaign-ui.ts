@@ -66,7 +66,9 @@ import {FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
  from './equipment-campaign-field-stock.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
+import {projectOperationsSummary} from './ui/campaign/operations-summary.ts';
 import './campaign-style.css';
+import './ui/campaign-uxr-workspaces.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 export type CampaignHandlers={
@@ -117,6 +119,10 @@ export class CampaignScreen{
  private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
+ private selectedSquadOperatorId:string|null=null;
+ private selectedCaseId:string|null=null;
+ private selectedSupplyIndex=0;
+ private selectedRecordId:string|null=null;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
@@ -157,6 +163,7 @@ export class CampaignScreen{
   core:string;view:WeaponWorkbenchViewState
  }>();
  private workbenchCore:string|null=null;
+ private workbenchVisualKey:string|null=null;
  private disposeGallery(){
   this.outfitterGallery?.dispose();this.outfitterGallery=null;
  }
@@ -170,7 +177,8 @@ export class CampaignScreen{
     core:this.workbenchCore,view
    });
   }
-  this.workbench?.dispose();this.workbench=null;}
+  this.workbench?.dispose();this.workbench=null;
+  this.workbenchCore=null;this.workbenchVisualKey=null;}
  constructor(handlers:CampaignHandlers){
   this.handlers=handlers;
   this.root.setAttribute('aria-label','Fieldwork campaign');
@@ -397,6 +405,9 @@ export class CampaignScreen{
   this.disposeGallery();this.disposePreview();
   this.lastArmoryRenderedId=null;
   this.root.hidden=false;this.root.replaceChildren();
+  // UXR-01 theme study: query-only visual trial, never a saved campaign setting.
+  const trial=new URLSearchParams(window.location.search).get('uxTheme');
+  this.root.dataset.fwTheme=trial==='cold'||trial==='ledger'?trial:'industrial';
   const main=node('main','campaign-shell campaign-wide');
   const top=node('div','campaign-head');
   const title=node('div','campaign-heading');
@@ -451,32 +462,92 @@ export class CampaignScreen{
    readyAssigned+' / 4 READY');
   deploymentHeading.append(headingCopy,readinessCount);
   deployment.append(deploymentHeading);
-  const slotList=node('div','campaign-assignment-slots');
-  for(let slot=0;slot<4;slot++){
-   const operator=c.operators.find(p=>p.id===c.squadIds[slot]);
-   const line=node('label','campaign-assignment-row');
-   const slotHeading=node('div','campaign-assignment-slot-label');
-   slotHeading.append(node('strong','','SLOT 0'+(slot+1)));
-   if(operator){
-    const state=operator.recoveryDays>0?
-     'RECOVERING · '+operator.recoveryDays+' DAYS':'READY';
-    slotHeading.append(node('small',operator.recoveryDays>0?
-     'is-recovering':'is-ready',state));
-   }else slotHeading.append(node('small','is-unfilled','UNASSIGNED'));
-   const picker=node('select','campaign-select');
-   picker.setAttribute('aria-label','Choose operator for tactical slot '+(slot+1));
-   for(const member of c.operators.filter(p=>p.status!=='lost'&&p.status!=='retired')){
-    const option=node('option','',member.callsign);
-    option.value=member.id;
-    picker.append(option);
+  const slotList=node('div','campaign-assignment-slots campaign-uxr-squad-grid');
+  const assignmentPicker=node('div','campaign-uxr-assignment-picker');
+  assignmentPicker.hidden=true;
+  const validOperators=c.operators.filter(p=>p.status!=='retired'&&p.status!=='lost');
+  const selectedId=validOperators.find(p=>p.id===this.selectedSquadOperatorId)?.id
+   ??validOperators.find(p=>c.squadIds.includes(p.id))?.id
+   ??validOperators[0]?.id??'';
+  this.selectedSquadOperatorId=selectedId||null;
+  const selectOperator=(id:string)=>{
+   this.selectedSquadOperatorId=id;
+   for(const card of roster.querySelectorAll<HTMLElement>('.campaign-person')){
+    const active=card.dataset.operatorId===id;
+    card.hidden=!active;
+    if(active){
+     const details=card.querySelector<HTMLDetailsElement>('.campaign-person-expand');
+     if(details)details.open=true;
+    }
    }
-   picker.value=c.squadIds[slot];
-   picker.disabled=!!c.activeContractId;
-   picker.addEventListener('change',()=>this.handlers.assignSlot(slot,picker.value));
-   line.append(slotHeading,picker);
-   slotList.append(line);
+   for(const tile of slotList.querySelectorAll<HTMLElement>('.campaign-uxr-slot'))
+    tile.dataset.selected=String(tile.dataset.operatorId===id);
+   for(const tile of reserveRail.querySelectorAll<HTMLElement>('.campaign-uxr-reserve'))
+    tile.dataset.selected=String(tile.dataset.operatorId===id);
+  };
+  const showSlotPicker=(slot:number)=>{
+   if(c.activeContractId)return;
+   assignmentPicker.replaceChildren();
+   assignmentPicker.hidden=false;
+   const header=node('div','campaign-uxr-picker-heading');
+   header.append(node('strong','','REPLACE SLOT 0'+(slot+1)),
+    button('CLOSE',()=>{assignmentPicker.hidden=true;},'campaign-uxr-picker-close'));
+   assignmentPicker.append(header);
+   const options=node('div','campaign-uxr-picker-options');
+   const candidates=[...validOperators].sort((a,b)=>
+    Number(a.recoveryDays>0)-Number(b.recoveryDays>0)||
+    a.callsign.localeCompare(b.callsign));
+   for(const p of candidates){
+    const state=p.recoveryDays>0?'RECOVERING · '+p.recoveryDays+' DAYS':
+     c.squadIds.includes(p.id)?'CURRENTLY ASSIGNED':'READY';
+    const choice=button(p.callsign+' · '+state,()=>{
+     assignmentPicker.hidden=true;
+     this.handlers.assignSlot(slot,p.id);
+    },'campaign-uxr-picker-choice');
+    choice.disabled=p.id===c.squadIds[slot];
+    choice.setAttribute('aria-label','Assign '+p.callsign+' to slot '+(slot+1)+
+     (p.recoveryDays>0?' · recovering':''));
+    options.append(choice);
+   }
+   assignmentPicker.append(options);
+  };
+  for(let slot=0;slot<4;slot++){
+   const operator=validOperators.find(p=>p.id===c.squadIds[slot]);
+   const tile=node('div','campaign-uxr-slot');
+   tile.dataset.operatorId=operator?.id??'';
+   tile.dataset.selected=String(operator?.id===selectedId);
+   const inspect=button('',()=>{
+    if(operator)selectOperator(operator.id);
+    else showSlotPicker(slot);
+   },'campaign-uxr-slot-main');
+   inspect.setAttribute('aria-label',operator?
+    'Inspect '+operator.callsign+' · squad slot '+(slot+1):
+    'Choose operator for empty squad slot '+(slot+1));
+   const top=node('div','campaign-uxr-slot-top');
+   top.append(node('span','','0'+(slot+1)),
+    node('span',operator?.recoveryDays?'campaign-uxr-slot-recovering':'',
+     !operator?'EMPTY':operator.recoveryDays?
+      operator.recoveryDays+'D RECOVERY':'READY'));
+   // Static, allocation-free silhouette until an existing cached rig
+   // thumbnail is available; never create four live WebGL renderers.
+   const avatar=node('div','campaign-uxr-slot-avatar');
+   avatar.setAttribute('aria-hidden','true');
+   if(operator){
+    const paletteIndex=c.operators.findIndex(p=>p.id===operator.id);
+    avatar.style.setProperty('--uxr-operator-color',operator.squadColor??
+     SQUAD_IDENTIFICATION_COLORS[Math.max(0,paletteIndex)%SQUAD_IDENTIFICATION_COLORS.length]);
+    avatar.append(node('span','campaign-uxr-silhouette-head'),
+     node('span','campaign-uxr-silhouette-body'),
+     node('span','campaign-uxr-silhouette-shoulder'));
+   }else avatar.textContent='+';
+   inspect.append(top,avatar,node('strong','',operator?.callsign??'UNASSIGNED'),
+    node('small','',operator?operator.weapon.toUpperCase():'SELECT OPERATOR'));
+   const change=button('CHANGE',()=>showSlotPicker(slot),'campaign-uxr-slot-change');
+   change.disabled=!!c.activeContractId;
+   change.setAttribute('aria-label','Change squad slot '+(slot+1));
+   tile.append(inspect,change);slotList.append(tile);
   }
-  deployment.append(slotList);
+  deployment.append(slotList,assignmentPicker);
   personnelWorkspace.append(deployment);
   const rosterPanel=node('section','campaign-personnel-roster-panel');
   const activeOperators=c.operators.filter(p=>
@@ -485,25 +556,39 @@ export class CampaignScreen{
     return (ai<0?99:ai)-(bi<0?99:bi);
    });
   const rosterHeading=node('div','campaign-roster-heading');
-  rosterHeading.append(node('h2','','ACTIVE ROSTER'),
+  rosterHeading.append(node('h2','','OPERATOR DETAIL'),
    node('span','campaign-roster-count',
     activeOperators.length+' OPERATOR'+(activeOperators.length===1?'':'S')));
   rosterPanel.append(rosterHeading);
-  const roster=node('div','campaign-roster');
+  const reserveRail=node('div','campaign-uxr-reserves');
+  const reserves=activeOperators.filter(p=>!c.squadIds.includes(p.id));
+  const reserveHeading=node('div','campaign-uxr-reserve-heading');
+  reserveHeading.append(node('strong','','RESERVES'),
+   node('span','',reserves.length+' AVAILABLE ON ROSTER'));
+  reserveRail.append(reserveHeading);
+  const reserveTiles=node('div','campaign-uxr-reserve-tiles');
+  for(const p of reserves){
+   const reserve=button('',()=>selectOperator(p.id),'campaign-uxr-reserve');
+   reserve.dataset.operatorId=p.id;
+   reserve.dataset.selected=String(p.id===selectedId);
+   reserve.setAttribute('aria-label','Inspect reserve '+p.callsign+
+    (p.recoveryDays?' · recovering '+p.recoveryDays+' days':' · ready'));
+   reserve.append(node('span','campaign-uxr-reserve-avatar',p.callsign.slice(0,2).toUpperCase()),
+    node('strong','',p.callsign),
+    node('small','',p.recoveryDays?p.recoveryDays+'D RECOVERY':'READY'));
+   reserveTiles.append(reserve);
+  }
+  reserveRail.append(reserveTiles);
+  rosterPanel.append(reserveRail);
+  const roster=node('div','campaign-roster campaign-uxr-inspector');
   if(!activeOperators.length)roster.append(node('p','campaign-note',
    'No active operators. Recruit personnel to prepare your next deployment.'));
-  const deployed=activeOperators.filter(p=>c.squadIds.includes(p.id));
-  const reserves=activeOperators.filter(p=>!c.squadIds.includes(p.id));
   for(const p of activeOperators){
-   if(p===deployed[0])
-    roster.append(node('h3','campaign-roster-group-label',
-     'DEPLOYMENT TEAM · '+deployed.length));
-   if(p===reserves[0])
-    roster.append(node('h3','campaign-roster-group-label',
-     'RESERVES · '+reserves.length));
    const card=node('article','campaign-person');
+   card.dataset.operatorId=p.id;
+   card.hidden=p.id!==selectedId;
    const tools=node('details','campaign-person-expand');
-   tools.open=this.expandedOperatorTools.has(p.id);
+   tools.open=this.expandedOperatorTools.has(p.id)||p.id===selectedId;
    tools.addEventListener('toggle',()=>{
     if(tools.open)this.expandedOperatorTools.add(p.id);
     else this.expandedOperatorTools.delete(p.id);
@@ -686,24 +771,31 @@ export class CampaignScreen{
   const logisticsWorkspace=node('div','campaign-logistics-workspace');
   const supplyPanel=node('section','campaign-logistics-supply-panel');
   supplyPanel.append(node('h2','','RESERVE SUPPLIES'));
-  const stock=node('div','campaign-logistics-stats');
-  for(const [count,label] of [
+  // UXR-06: five resource selectors, only one purchasing decision shown.
+  const squadQuote=quoteCampaignSquadRefill(c);
+  const stock=node('div','campaign-logistics-stats campaign-uxr-stock');
+  const stockButtons:HTMLButtonElement[]=[];
+  let selectStock:(index:number)=>void;
+  const supplyFacts=[
    [c.supplies.ammo,'ROUNDS'],
    [c.supplies.medical,'MEDICAL KITS'],
    [c.supplies.flash,'FLASHBANGS'],
    [c.supplies.wedges,'DOOR WEDGES'],
    [c.supplies.cuffs,'FLEX CUFF PAIRS']
-  ] as const){
-   const fact=node('div','campaign-logistics-stat');
-   if(count===0||(label==='ROUNDS'&&count<60))
-    fact.classList.add('is-low');
+  ] as const;
+  for(let i=0;i<supplyFacts.length;i++){
+   const [count,label]=supplyFacts[i];
+   const fact=button('',()=>selectStock(i),'campaign-logistics-stat campaign-uxr-stock-button');
+   const needed=label==='ROUNDS'?squadQuote.roundsWanted:
+    label==='MEDICAL KITS'?squadQuote.medicalWanted:
+    label==='DOOR WEDGES'?squadQuote.wedgesWanted:
+    label==='FLEX CUFF PAIRS'?squadQuote.cuffsWanted:0;
+   if(needed>count)fact.classList.add('is-low');
+   fact.setAttribute('aria-label','Select '+label+' · '+count+' in HQ stock');
    fact.append(node('strong','',String(count)),node('span','',label));
-   stock.append(fact);
+   stockButtons.push(fact);stock.append(fact);
   }
   supplyPanel.append(stock);
-  // The same immutable HQ transaction plan powers these labels and the
-  // action. Shortages are visible *before* choosing the squad refill.
-  const squadQuote=quoteCampaignSquadRefill(c);
   const squadReplenish=node('section','campaign-squad-refill');
   squadReplenish.append(node('h3','','SQUAD REFILL · LIVE HQ STOCK'));
   const refillSummary=node('p','campaign-squad-refill-summary',
@@ -726,11 +818,12 @@ export class CampaignScreen{
      (line.blockedByCarry?' · NOT ENOUGH CARRY SPACE':'')));
    rows.append(chip);
   }
-  squadReplenish.append(rows);
-  const squadRefill=button('REFILL SQUAD · '+
-   squadQuote.cost.ammo+' RDS · '+squadQuote.cost.medical+
-   ' MED · '+squadQuote.cost.wedges+' WEDGES · '+
-   squadQuote.cost.cuffs+' CUFFS',
+  const refillBreakdown=node('details','campaign-uxr-refill-breakdown');
+  refillBreakdown.dataset.campaignDetail='refill-breakdown';
+  refillBreakdown.append(node('summary','','OPERATOR ALLOCATION DETAILS'),rows);
+  squadReplenish.append(refillBreakdown);
+  const squadRefill=button('ISSUE SUPPLIES · '+
+   squadQuote.cost.ammo+' RDS · '+squadQuote.cost.medical+' MED',
    this.handlers.resupplySquad,'campaign-primary');
   squadRefill.setAttribute('aria-label',
    'Refill squad using '+squadQuote.cost.ammo+' HQ rounds, '+
@@ -739,13 +832,13 @@ export class CampaignScreen{
   squadRefill.disabled=!squadQuote.available||!squadQuote.changed;
   if(squadRefill.disabled)squadRefill.title=squadQuote.reason??
    'All assigned operators are supplied or HQ reserves are empty';
-  squadReplenish.append(squadRefill,
-   node('p','campaign-muted',
-    'Issues each physical item from finite HQ stock exactly once. '+
-    'Equipment that cannot fit stays in HQ.'));
+  squadReplenish.append(squadRefill);
+  refillBreakdown.append(node('p','campaign-muted',
+   'Items come from finite HQ stock. Carry-limited gear stays in HQ.'));
   supplyPanel.append(squadReplenish,node('h3','campaign-logistics-buy-heading',
    'REPLENISH RESERVES'));
-  const purchases=node('div','campaign-purchases');
+  const purchases=node('div','campaign-purchases campaign-uxr-purchase-panel');
+  const purchaseItems:HTMLElement[]=[];
   for(const [label,cost,action] of [
    ['60 ROUNDS',120,this.handlers.buyAmmo],
    ['MEDICAL KIT',170,this.handlers.buyMedical],
@@ -786,8 +879,17 @@ export class CampaignScreen{
     buy.title=why;
     buy.setAttribute('aria-description',why);
    }
-   item.append(desc,buy);purchases.append(item);
+   item.append(desc,buy);purchases.append(item);purchaseItems.push(item);
   }
+  selectStock=(index:number)=>{
+   const choice=Math.max(0,Math.min(stockButtons.length-1,index));
+   this.selectedSupplyIndex=choice;
+   for(let i=0;i<stockButtons.length;i++){
+    stockButtons[i].setAttribute('aria-pressed',String(i===choice));
+    purchaseItems[i].hidden=i!==choice;
+   }
+  };
+  selectStock(this.selectedSupplyIndex);
   supplyPanel.append(purchases);
   logisticsWorkspace.append(supplyPanel);
   const inventory=node('div','campaign-armory');
@@ -820,7 +922,10 @@ export class CampaignScreen{
    buy.setAttribute('aria-describedby',reasonId);
    row.append(heading,metrics,buy,eligibility);inventory.append(row);
   }
-  logisticsWorkspace.append(inventory);
+  const procurement=node('details','campaign-uxr-procurement');
+  procurement.dataset.campaignDetail='weapon-procurement';
+  procurement.append(node('summary','','WEAPON PROCUREMENT · '+offerings.length+' PLATFORMS'),inventory);
+  logisticsWorkspace.append(procurement);
   logistics.append(logisticsWorkspace);
   const recruit=button('RECRUIT OPERATOR · '+
    (isDispatchPilot(c)&&effectiveDispatchSetup(c).economy==='unlimited'?
@@ -860,23 +965,64 @@ export class CampaignScreen{
    }else{
     const sorted=[...openContracts].sort((a,b)=>
      a.deadline-b.deadline||a.id.localeCompare(b.id));
-    const visible=sorted.slice(0,3);
-    jobs.append(node('p','campaign-contract-board-summary',
-     'INTELLIGENCE RESERVE '+campaignIntelBalance(c)+' · SHOWING '+visible.length+' OF '+openContracts.length+
-     ' OPEN CASE'+(openContracts.length===1?'':'S')+' · EARLIEST DEADLINE FIRST'));
-    const board=node('div','campaign-contract-board');
-    for(const contract of visible)board.append(this.contract(contract,c));
-    jobs.append(board);
-    if(sorted.length>visible.length){
-     const more=node('details','campaign-contract-more');
-     more.dataset.campaignDetail='more-cases';
-     more.append(node('summary','',
-      'VIEW '+(sorted.length-visible.length)+' ADDITIONAL CASES'));
-     const remaining=node('div','campaign-contract-board');
-     for(const contract of sorted.slice(visible.length))
-      remaining.append(this.contract(contract,c));
-     more.append(remaining);jobs.append(more);
+    // UXR-05: one active case, explicit navigation and a direct case index.
+    // All cards stay mounted to preserve intel disclosures; only one is visible.
+    const selectedCase=sorted.findIndex(k=>k.id===this.selectedCaseId);
+    let current=selectedCase<0?0:selectedCase;
+    const browser=node('section','campaign-uxr-case-browser');
+    const browseHead=node('div','campaign-uxr-case-heading');
+    const caseIndex=node('span','campaign-uxr-case-position');
+    caseIndex.setAttribute('aria-live','polite');
+    const prev=button('PREV',()=>selectCase(current-1),'campaign-uxr-case-prev');
+    const next=button('NEXT',()=>selectCase(current+1),'campaign-uxr-case-next');
+    browseHead.append(prev,caseIndex,next);
+    const board=node('div','campaign-contract-board campaign-uxr-case-pages');
+    const pages=sorted.map(k=>this.contract(k,c));
+    for(const page of pages)board.append(page);
+    const indexRail=node('div','campaign-uxr-case-index');
+    indexRail.setAttribute('aria-label','Select a case directly');
+    const selectors=sorted.map((k,i)=>{
+     const title=campaignIncidentView(c,k).title;
+     const buttonItem=button(String(i+1).padStart(2,'0')+' · '+title,
+      ()=>selectCase(i),'campaign-uxr-case-index-item');
+     buttonItem.setAttribute('aria-label','Select case '+(i+1)+' of '+sorted.length+' · '+title);
+     indexRail.append(buttonItem);
+     return buttonItem;
+    });
+    function showCase(index:number){
+     current=Math.max(0,Math.min(sorted.length-1,index));
+     for(let i=0;i<pages.length;i++)pages[i].hidden=i!==current;
+     for(let i=0;i<selectors.length;i++)
+      selectors[i].setAttribute('aria-current',i===current?'true':'false');
+     caseIndex.textContent='CASE '+(current+1)+' / '+sorted.length;
+     prev.disabled=current===0;next.disabled=current===sorted.length-1;
     }
+    // Persist selection without mutating a save. Updated in the listener,
+    // rather than by the projection or case contents.
+    const selectCase=(index:number)=>{
+     showCase(index);
+     this.selectedCaseId=sorted[current].id;
+    };
+    let initialTouch:{x:number;y:number}|null=null;
+    board.addEventListener('touchstart',event=>{
+     const touch=event.touches[0];
+     if(touch&&event.touches.length===1)
+      initialTouch={x:touch.clientX,y:touch.clientY};
+    },{passive:true});
+    board.addEventListener('touchend',event=>{
+     if(!initialTouch)return;
+     const touch=event.changedTouches[0];
+     const deltaX=touch.clientX-initialTouch.x;
+     const deltaY=touch.clientY-initialTouch.y;
+     if(Math.abs(deltaX)>55&&Math.abs(deltaX)>Math.abs(deltaY)*1.45)
+      selectCase(current+(deltaX<0?1:-1));
+     initialTouch=null;
+    },{passive:true});
+    showCase(current);
+    this.selectedCaseId=sorted[current].id;
+    browser.append(node('p','campaign-contract-board-summary',
+     'INTEL '+campaignIntelBalance(c)+' · EARLIEST DEADLINE FIRST'),browseHead,board,indexRail);
+    jobs.append(browser);
    }
   }
   grid.append(jobs);
@@ -911,7 +1057,7 @@ export class CampaignScreen{
   if(c.history.length===0)chronicle.append(node('p','campaign-note',
    'Your unit history will appear here after its first operation.'));
   const recentReports=c.history.slice(-8).reverse();
-  const operationBoard=node('div','campaign-operation-board');
+  const operationBoard=node('div','campaign-operation-board campaign-uxr-record-index');
   const renderOperation=(report:(typeof c.history)[number])=>{
    const contract=c.contracts.find(k=>k.id===report.contractId);
    const incident=historicalDispatchIncident(c,report);
@@ -959,11 +1105,43 @@ export class CampaignScreen{
    article.append(recordDetail);
    return article;
   };
-  for(const report of recentReports)operationBoard.append(renderOperation(report));
+  // UXR-07: chronological scan lives in compact rows. Only one complete
+  // authoritative report is inspected; old history remains lazy below.
+  const inspected=node('section','campaign-uxr-record-inspector');
   if(recentReports.length){
+   const selected=c.history.find(report=>report.id===this.selectedRecordId);
+   const initial=selected?recentReports.findIndex(report=>report.id===selected.id):-1;
+   let current=initial<0?0:initial;
+   const recordButtons:HTMLButtonElement[]=[];
+   const inspect=(index:number)=>{
+    current=index;
+    const report=recentReports[current];
+    if(!report)return;
+    this.selectedRecordId=report.id;
+    for(let i=0;i<recordButtons.length;i++)
+     recordButtons[i].setAttribute('aria-current',i===current?'true':'false');
+    inspected.replaceChildren(renderOperation(report));
+   };
+   for(let i=0;i<recentReports.length;i++){
+    const report=recentReports[i];
+    const contract=c.contracts.find(k=>k.id===report.contractId);
+    const incident=historicalDispatchIncident(c,report);
+    const title=incident?.title??(contract?
+     campaignIncidentView(c,contract).title:'Operation');
+    // Read-only selection uses the shared button helper and report projection.
+    const record=button('',()=>inspect(i),'campaign-uxr-record-row');
+    record.append(node('span','campaign-uxr-record-day','DAY '+report.day),
+     node('span','campaign-uxr-record-title',title),
+     node('span','campaign-uxr-record-result',
+      report.outcome.toUpperCase()+' · '+report.grade));
+    record.setAttribute('aria-label','Inspect day '+report.day+' · '+title+
+     ' · '+report.outcome+' · grade '+report.grade);
+    recordButtons.push(record);operationBoard.append(record);
+   }
    chronicle.append(node('p','campaign-operation-count',
     'LATEST '+recentReports.length+' OF '+c.history.length+' RECORDED OPERATION'+
-    (c.history.length===1?'':'S')),operationBoard);
+    (c.history.length===1?'':'S')),operationBoard,inspected);
+   inspect(current);
   }
   if(c.history.length>recentReports.length){
    const older=node('details','campaign-operation-more');
@@ -1094,10 +1272,9 @@ export class CampaignScreen{
   const overview=node('section','campaign-section campaign-overview');
   overview.append(node('h2','','OPERATIONS DASHBOARD'));
   // The first viewport describes a decision instead of showing a lone button.
-  const availableContracts=c.contracts.filter(k=>
-   k.status==='available'&&k.deadline>=c.day);
-  const leadCase=[...availableContracts].sort((a,b)=>
-   a.deadline-b.deadline||a.id.localeCompare(b.id))[0];
+  const operations=projectOperationsSummary(c);
+  const availableContracts=operations.cases;
+  const leadCase=operations.leadCase;
   const nextCard=node('section','campaign-next-action');
   nextCard.append(node('div','campaign-next-action-eyebrow',
    accepted?'DEPLOYMENT IN PROGRESS':
@@ -1163,66 +1340,40 @@ export class CampaignScreen{
    department.append(progress);
    overview.append(department);
   }
-  const stats=node('div','campaign-overview-stats');
-  const available=c.operators.filter(o=>
-   (o.status==='available'||o.status==='reserve')&&o.recoveryDays===0).length;
+  // UXR-03: one compact, truthful readiness summary and contextual blockers.
+  const readiness=node('section','campaign-readiness campaign-uxr-readiness');
+  readiness.append(node('h2','','DEPLOYMENT STATUS'));
+  const statusStrip=node('div','campaign-uxr-status-strip');
   for(const [value,label] of [
-   [String(available),'READY'],[String(c.squadIds.length),'ASSIGNED'],
-   [String(c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).length),'CONTRACTS']
-  ]){
-   const stat=node('div','campaign-stat');
-   stat.append(node('strong','',value),node('span','',label));stats.append(stat);
-  }
-  overview.append(stats);
-  const suppliesSummary=node('p','campaign-note',
-   'SUPPLIES · '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
-   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS');
-  overview.append(suppliesSummary);
-  const readiness=node('div','campaign-readiness');
-  readiness.append(node('h2','','DEPLOYMENT READINESS'));
-  const assigned=c.operators.filter(o=>c.squadIds.includes(o.id));
-  const recovering=assigned.filter(o=>o.recoveryDays>0);
-  // Callsigns are shown in Squad; keep the home readiness view actionable.
-  const checks=[
-   {attention:assigned.length<4,label:assigned.length+' / 4 SQUAD SLOTS FILLED',
-    action:'personnel' as const},
-   {attention:recovering.length>0,
-    label:recovering.length+' ASSIGNED OPERATOR'+(recovering.length===1?'':'S')+
-     ' RECOVERING',action:'personnel' as const},
-   {attention:c.supplies.ammo<60,
-    label:'LOW AMMUNITION RESERVE · '+c.supplies.ammo+' ROUNDS IN STOCK',
-    action:'logistics' as const},
-   {attention:c.supplies.medical===0,
-    label:'NO SPARE MEDICAL KITS IN STOCK',action:'logistics' as const}
-  ];
-  for(const check of checks){
-   if(!check.attention)continue;
-   const item=button(check.label,()=>{
-    activateTab(check.action)
-   },'campaign-readiness-warning');
-   readiness.append(item);
-  }
-  if(!checks.some(check=>check.attention)){
-   readiness.append(node('p','campaign-readiness-ok',
-    'SQUAD ASSIGNED · BASE RESERVES AVAILABLE'));
-  }
-  overview.append(readiness);
-  const shortcuts=node('div','campaign-overview-actions');
-  for(const [tab,label] of [
-   ['personnel','MANAGE PERSONNEL'],
-   ['logistics','SUPPLIES & ARMORY']
+   [operations.ready+'/4','READY'],
+   [String(availableContracts.length),'OPEN CASES'],
+   [String(c.supplies.ammo),'HQ ROUNDS'],
+   [String(c.supplies.medical),'MEDICAL']
   ] as const){
-   shortcuts.append(button(label,()=>{
-    activateTab(tab)
-   }));
+   const cell=node('div','campaign-uxr-status');
+   cell.append(node('strong','',value),node('span','',label));
+   statusStrip.append(cell);
   }
-  // Keep action and readiness together in both DOM order and screen layout.
-  // Supplementary status, shortcuts and department details form a separate area.
+  readiness.append(statusStrip);
+  if(!operations.attention.length)
+   readiness.append(node('p','campaign-readiness-ok','TEAM READY · NO URGENT LOGISTICS ALERTS'));
+  for(const alert of operations.attention){
+   const destination=alert.destination;
+   const warning=button(alert.label,()=>activateTab(destination),'campaign-readiness-warning');
+   warning.setAttribute('aria-label',alert.label+' · OPEN '+
+    (destination==='personnel'?'SQUAD':'SUPPLY'));
+   readiness.append(warning);
+  }
+  const shortcuts=node('nav','campaign-uxr-quicklinks');
+  shortcuts.setAttribute('aria-label','Other HQ departments');
+  for(const [tab,label] of [
+   ['personnel','SQUAD'],['logistics','SUPPLY']
+  ] as const)shortcuts.append(button(label,()=>activateTab(tab)));
   const workspace=node('div','campaign-overview-workspace');
   const priority=node('div','campaign-overview-priority');
   const support=node('div','campaign-overview-support');
   priority.append(nextCard,readiness);
-  support.append(stats,suppliesSummary,shortcuts);
+  support.append(shortcuts);
   const department=overview.querySelector<HTMLElement>('.campaign-department-identity');
   if(department)support.append(department);
   workspace.append(priority,support);
@@ -1345,7 +1496,18 @@ export class CampaignScreen{
   // The same operator keeps one preview renderer while HTML controls refresh.
   // Reuse one WebGL context when cycling personnel, updating rig content only.
   const retainOperatorPreview=!this.weaponView&&!!this.preview?.isReady();
-  if(!retainOperatorPreview)this.disposePreview();
+  const retainWorkbench=this.weaponView&&!!this.workbench;
+  // Preserve this operator's orbit before a deliberate personnel switch.
+  if(retainWorkbench&&!sameOperator&&this.lastArmoryRenderedId&&this.workbenchCore){
+   const view=this.workbench!.getViewState();
+   if(view)this.weaponWorkbenchViews.set(this.lastArmoryRenderedId,{
+    core:this.workbenchCore,view
+   });
+  }
+  if(!retainOperatorPreview&&!retainWorkbench)this.disposePreview();
+  else if(retainWorkbench&&this.preview){
+   this.preview.dispose();this.preview=null;
+  }
   if(!sameOperator){
    this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
    // Preserve selected equipment section when cycling squad members.
@@ -2394,7 +2556,7 @@ export class CampaignScreen{
   grid.append(editor);main.append(grid);
   this.root.append(main);
   if(this.weaponView){
-   this.workbench=new WeaponWorkbenchPreview(preview,person.weaponConfiguration,socket=>{
+   const onSocket=(socket:WorkbenchSocket)=>{
     const bodyPart=socket.startsWith('body-')?
      socket.slice(5) as FamilyPartSlot:null;
     const select=bodyPart?familySelectors.get(bodyPart):
@@ -2404,15 +2566,32 @@ export class CampaignScreen{
     legacyControls.open=true;
     if(bodyPart)familyEditor.open=true;
     else{attachments.open=true;this.selectedMount=socket as WeaponAttachmentSlot;}
-    // Mirror the existing options directly below the model. Keep
-    // Campaign purchase confirmation and stock rules on the select handler.
+    // Preserve Campaign stock/purchase authority on the NEW select handler.
     this.workbench?.showSocketChoices(socket,select);
-   });
+   };
    const core=person.weapon+'|'+(person.weaponConfiguration.build?.parts.receiver??'legacy')+
     '|'+(person.weaponConfiguration.build?.parts.barrel??'none');
-   this.workbenchCore=core;
+   const previousWorkbenchCore=this.workbenchCore;
+   const visualKey=JSON.stringify(person.weaponConfiguration);
+   const refreshGeometry=!this.workbench||!sameOperator||
+    this.workbenchVisualKey!==visualKey;
+   if(this.workbench){
+    if(refreshGeometry&&sameOperator&&this.workbenchCore===core){
+     const view=this.workbench.getViewState();
+     if(view)this.weaponWorkbenchViews.set(id,{core,view});
+    }
+    this.workbench.attachHost(preview,onSocket);
+    if(refreshGeometry)this.workbench.setConfiguration(person.weaponConfiguration);
+   }else this.workbench=new WeaponWorkbenchPreview(
+    preview,person.weaponConfiguration,onSocket);
+   this.workbenchCore=core;this.workbenchVisualKey=visualKey;
    const savedView=this.weaponWorkbenchViews.get(id);
-   if(savedView?.core===core)this.workbench.restoreViewState(savedView.view);
+   if(refreshGeometry){
+    if(savedView?.core===core)this.workbench.restoreViewState(savedView.view);
+    else if(previousWorkbenchCore&&
+     (!sameOperator||previousWorkbenchCore!==core))
+     this.workbench.resetViewState();
+   }
    const remembered=this.selectedWorkbenchSocket;
    const savedSelect=remembered?.startsWith('body-')?
     familySelectors.get(remembered.slice(5) as FamilyPartSlot):

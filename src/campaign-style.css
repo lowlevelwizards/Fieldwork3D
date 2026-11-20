@@ -1,4 +1,5 @@
 @import './ui/fieldwork-design.css';
+@import './ui/campaign-uxr-themes.css';
 @import './operator-material-browser.css';
 /* Campaign management never alters the tactical canvas or render pipeline. */
 .campaign-screen{position:fixed;z-index:120;inset:0;overflow-y:auto;
@@ -2686,3 +2687,4 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   height:18px;width:18px;
  }
 }
+

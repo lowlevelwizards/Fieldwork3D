@@ -200,8 +200,15 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   else options.onInspect?.(active,'');
   showDetail(choice);
  };
+ let renderedSlot:LoadoutSlot|null=null;
  const show=(slot:LoadoutSlot)=>{
   if(disposed)return;
+  // The source/kit are a snapshot of this gallery's creation. Repeated
+  // taps on the same category must not discard visible cards, reset scroll
+  // or enqueue another round of procedural thumbnail GPU readbacks.
+  // A committed equipment change recreates the gallery through its owner.
+  if(renderedSlot===slot)return;
+  renderedSlot=slot;
   active=slot;root.dataset.slot=slot;
   name.textContent=(SLOT_LABEL[slot]??slot).toUpperCase();
   heading.replaceChildren(name);
