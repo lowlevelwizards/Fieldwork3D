@@ -9,6 +9,14 @@ unchanged; shared leader-corridor goal, separated-by-distance and ordinary
 walk pacing are now available to living restrained suspects. No second motor.
 Focused tests prove old civilian decisions and new policy match.
 
+## D15.5B — committed player command and replay contract
+- A GO-time voice order establishes/restores one exact suspect escort owner,
+  or stops at the actual location. A person must already be living,
+  surrendered and physically restrained. The plan does not change custody.
+- Contextual ESCORT SUSPECT / STOP ESCORT show only eligible, heard subjects;
+  replay samples retain leader and goal identity without creating a puppet.
+- This commit deliberately does not yet move prisoners. D15.5C is required.
+
 ## D15.5B — next
 Add a real `escort-suspect` and `stop-escorting-suspect` player-authored
 PlanNode and context selection. The GO-time action must establish actual

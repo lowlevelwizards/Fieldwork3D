@@ -293,6 +293,10 @@ export type TeamActor=Operator & {
   restrained?:boolean;lastCustodyAt?:number;
   /** Only a successfully completed physical search establishes this fact. */
   suspectSearched?:boolean;
+  /** D15.5: one actual squad custody relationship; no alternate actor. */
+  escortLeaderId?:string|null;
+  escortGoal?:Pt|null;
+  lastEscortRouteAt?:number;
  /** D9: authoritative interval since last resolved spoken challenge. */
  lastChallengeAt?:number;
   lastFireRepositionAt:number;lastMissionEvadeAt:number;
@@ -629,6 +633,29 @@ export function planSuspectRestraint(s:Session,id:string,targetId:string):boolea
    objectId:'suspect:'+target.id,interaction:'restrain-suspect'
  });
  if(queued)notify(s,'RESTRAIN SUSPECT QUEUED — EXECUTES ON GO');
+ return queued;
+}
+/** D15.5: explicit command authoring, never automatic custody acquisition.
+ * Actual heard voice distance and restraints are verified again on GO.
+ */
+export function planSuspectEscort(s:Session,id:string,targetId:string,
+ mode:'escort'|'stop'):boolean{
+ const a=party(s,id),suspect=enemies(s).find(x=>x.id===targetId);
+ if(!a||!suspect||!canEdit(s)||a.health<=0||suspect.health<=0||
+    !suspect.surrendered||suspect.restrained!==true)return false;
+ if(mode==='stop'&&!suspect.escortLeaderId)return false;
+ if(mode==='escort'&&suspect.escortLeaderId===a.id)return false;
+ const from=finalPoint(a);
+ const range=d(from,suspect.p);
+ if(range>SUSPECT_CHALLENGE_RANGE||
+    !sweptBodyClear(from,suspect.p,s.doors,1.5,sessionWorldGeometry(s))||
+    (mode==='escort'&&!liveVisibility(s,suspect.p)))return false;
+ const queued=addNode(s,id,'interact',from,{
+   objectId:'suspect:'+suspect.id,
+   interaction:mode==='escort'?'escort-suspect':'stop-escorting-suspect'
+ });
+ if(queued)notify(s,(mode==='escort'?'ESCORT':'STOP ESCORT')+
+   ' QUEUED — EXECUTES ON GO');
  return queued;
 }
 /** D15.4: physically search a living, restrained, known suspect. */

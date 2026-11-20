@@ -18,6 +18,7 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nearRestrainableCivilian?:boolean;restraintsRemaining?:number;
   nearSuspect?:boolean;nearRestrainableSuspect?:boolean;
   nearSearchableSuspect?:boolean;nearDroppedFirearm?:boolean;
+  nearEscortableSuspect?:boolean;nearFollowingSuspect?:boolean;
   nearCivilianCasualty?:boolean;
   carryingCivilian?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;
@@ -94,6 +95,10 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ...(o.nearDroppedFirearm?[{id:'ctxSecureFirearm',label:'SECURE WEAPON',
       group:'primary' as const,
       title:'Secure an actual visible dropped firearm through physical contact'}]:[]),
+    ...(o.nearEscortableSuspect?[{id:'ctxEscortSuspect',label:'ESCORT SUSPECT',
+      group:'primary' as const,title:'Voice-order a physically restrained suspect to follow this operator'}]:[]),
+    ...(o.nearFollowingSuspect?[{id:'ctxStopEscortSuspect',label:'STOP ESCORT',
+      group:'primary' as const,title:'Tell a restrained suspect to hold their actual position'}]:[]),
     ...(o.nearCivilian?[{id:'ctxSecureCivilian',label:'SECURE',
       group:'primary' as const,
       title:'Queue a physical reassurance and stay command'}]:[]),

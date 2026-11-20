@@ -4,7 +4,6 @@ import type {Pt} from './breach-core.ts';
 import type {CivilianActor} from './breach-civilian-types.ts';
 import {physicalFollowGoal,physicalFollowerSeparated,
  physicalEscortWalkMultiplier} from './breach-follow-physical-policy.ts';
-const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 export function canSecureRescuePerson(
  person:CivilianActor,rescuer:{p:Pt;health:number},
  clear:(a:Pt,b:Pt)=>boolean):boolean{

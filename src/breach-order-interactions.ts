@@ -46,7 +46,8 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
        n.interaction==='stop-following-civilian'||
        n.interaction==='restrain-civilian'))||
       (n.objectId.startsWith('suspect:')&&
-        (n.interaction==='restrain-suspect'||n.interaction==='search-suspect'))||
+        (n.interaction==='restrain-suspect'||n.interaction==='search-suspect'||
+         n.interaction==='escort-suspect'||n.interaction==='stop-escorting-suspect'))||
       (n.objectId.startsWith('weapon:')&&n.interaction==='secure-firearm');
     if(!contactCommand&&!near(a.p,n.p,7)){
       // Once an electrical action has begun, losing the contact position
@@ -126,6 +127,42 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
       notify(s,message);
       battleEvent(s,'interaction',a,a.p,message,{
         action:'suspect-restrained',targetId:suspect.id,contributorId:a.id});
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
+    if(n.interaction==='escort-suspect'||
+       n.interaction==='stop-escorting-suspect'){
+      const suspect=s.operators.find(e=>e.side==='red'&&
+        n.objectId==='suspect:'+e.id);
+      if(!suspect||suspect.health<=0||suspect.surrendered!==true||
+         suspect.restrained!==true||a.health<=0){
+        failCurrentOrder(s,a,n,'RESTRAINED SUSPECT NOT AVAILABLE');return true;
+      }
+      if(n.interaction==='stop-escorting-suspect'&&!suspect.escortLeaderId){
+        failCurrentOrder(s,a,n,'SUSPECT IS NOT FOLLOWING');return true;
+      }
+      const range=d(a.p,suspect.p);
+      if(range>SUSPECT_CHALLENGE_RANGE||
+         !sweptBodyClear(a.p,suspect.p,s.doors,1.5,sessionWorldGeometry(s))){
+        failCurrentOrder(s,a,n,'SUSPECT OUT OF VOICE RANGE');return true;
+      }
+      a.velocity=0;
+      const bearing=Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x);
+      if(!rotate(a,bearing,dt,s))return true;
+      a.actionTimer+=dt;
+      if(a.actionTimer<.35)return true;
+      const start=n.interaction==='escort-suspect';
+      // A GO-time custody change belongs to the targeted original actor.
+      // No civilian puppet, allegiance mutation, or implicit follow on arrest.
+      suspect.escortLeaderId=start?a.id:null;
+      suspect.escortGoal=null;
+      suspect.lastEscortRouteAt=-100;
+      suspect.nav=[];suspect.velocity=0;
+      suspect.routeGoalKey='';
+      const message=a.name+(start?' ESCORTING ':' STOPPED ESCORT OF ')+suspect.name;
+      notify(s,message);
+      battleEvent(s,'interaction',a,a.p,message,{
+        action:start?'suspect-escort':'suspect-escort-stop',
+        targetId:suspect.id,contributorId:a.id});
       clearCurrentOrderIssue(a);pop(a);return true;
     }
     if(n.interaction==='search-suspect'){
