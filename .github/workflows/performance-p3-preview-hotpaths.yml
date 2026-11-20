@@ -3,9 +3,14 @@ on:
   pull_request:
     paths:
       - 'src/equipment-preview.ts'
+      - 'src/ui/campaign-outfitter-gallery.ts'
+      - 'src/campaign-ui.ts'
+      - 'src/ui/quick-play-configurator.ts'
+      - 'src/breach-operations-board-controller.ts'
       - 'src/arsenal/gallery-main.ts'
       - 'src/arsenal/glock-viewport.ts'
       - 'tests/performance-p3-preview-hotpaths.test.mjs'
+      - 'tests/performance-p3-async-thumbnails.test.mjs'
       - '.github/workflows/performance-p3-preview-hotpaths.yml'
   workflow_dispatch:
 permissions:
@@ -21,6 +26,9 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Equipment and arsenal preview hotpath contracts
-        run: node --experimental-strip-types --test tests/performance-p3-preview-hotpaths.test.mjs
+        run: >
+          node --experimental-strip-types --test
+          tests/performance-p3-preview-hotpaths.test.mjs
+          tests/performance-p3-async-thumbnails.test.mjs
       - name: Typecheck and production bundle
         run: npm run check && npx vite build
