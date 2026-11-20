@@ -75,12 +75,14 @@ primaryTab.type='button';primaryTab.textContent='PRIMARY WEAPONS';
 const secondaryTab=document.createElement('button');
 secondaryTab.type='button';secondaryTab.textContent='SECONDARIES · GLOCK';
 categoryNav.append(primaryTab,secondaryTab);
-const glockGallery=mountGlockArsenalGallery();
+const secondaryGallery=mountGlockArsenalGallery();
+const glockGallery=secondaryGallery.section;
 const showCategory=(category:'primary'|'secondary')=>{
  const secondary=category==='secondary';
  layout.hidden=secondary;glockGallery.hidden=!secondary;
  primaryTab.setAttribute('aria-pressed',String(!secondary));
  secondaryTab.setAttribute('aria-pressed',String(secondary));
+ if(secondary)secondaryGallery.activate();
 };
 primaryTab.addEventListener('click',()=>showCategory('primary'));
 secondaryTab.addEventListener('click',()=>showCategory('secondary'));
