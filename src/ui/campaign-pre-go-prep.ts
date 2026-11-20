@@ -55,7 +55,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
   priorFocus=null;
  };
  const canPrepare=()=>hooks.canPrepare()&&!!hooks.getCampaign()?.activeContractId;
- const render=(rebuildPreview=true)=>{
+ const render=()=>{
   if(backdrop.hidden||!canPrepare()){close();return;}
   const campaign=hooks.getCampaign();
   if(!campaign)return;
@@ -68,15 +68,20 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
   squadHost.replaceChildren(createLoadoutSquadRail(squad.map(o=>({
    id:o.id,name:o.callsign.toUpperCase(),detail:o.weapon.toUpperCase(),
    status:o.recoveryDays>0?'RECOVERING':'ASSIGNED'
-  })),selected.id,id=>{selectedId=id;render(true);}));
-  if(rebuildPreview||!preview){
-   preview?.dispose();preview=null;viewerHost.replaceChildren();
+  })),selected.id,id=>{selectedId=id;render();}));
+  // Keep one renderer/canvas alive throughout squad preparation. Operator
+  // changes re-pose the existing rig rather than destroying WebGL context.
+  if(!preview||!preview.isReady()){
+   preview?.dispose();viewerHost.replaceChildren();
    preview=new CampaignKitPreview(viewerHost,selected.id,selected.weapon,
     selected.appearanceSeed,selected.loadout,selected.weaponConfiguration,
     selected.magazines,selected.wardrobe,'carry');
-  }else preview.updateEquipment(selected.weapon,selected.appearanceSeed,
+  }else{
+   preview.setOperatorId(selected.id);
+   preview.updateEquipment(selected.weapon,selected.appearanceSeed,
     selected.loadout,selected.weaponConfiguration,selected.magazines,
     selected.wardrobe);
+  }
   const current=selected.loadout.fieldInventory??initialFieldInventory(selected.loadout);
   const flashElsewhere=squad.filter(o=>o.id!==selected.id)
    .reduce((n,o)=>n+fieldQuantity(o.loadout.fieldInventory??
@@ -98,7 +103,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
      initialFieldInventory(before.loadout),after.loadout.fieldInventory??
      initialFieldInventory(after.loadout));
    }
-   render(false);
+   render();
    panel.scrollTop=scroll;
    if(focusedLabel){
     const refocus=Array.from(editorHost.querySelectorAll<HTMLElement>(
@@ -131,7 +136,7 @@ export function mountCampaignPreGoPrep(briefingRoster:HTMLElement,
      after.loadout.fieldInventory??initialFieldInventory(after.loadout));
     note.textContent='Carried gadgets copied to '+target.callsign+
      '. The destination keeps its own weapon, armor, and medical supplies.';
-    render(false);
+    render();
    },
    canUndo:!!undo.peek(selected.id,current),
    onUndo:()=>{
