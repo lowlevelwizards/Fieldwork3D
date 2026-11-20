@@ -165,6 +165,8 @@ export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
   /** Explicit sidearm selection is independent of primary inventory. */
   secondarySwitch:import('./secondary-switching.ts').SecondarySwitchState;
+  /** One authored, fixed-step pistol reload; rifle magazine fields are untouched. */
+  secondaryReload:import('./secondary-timed-reload.ts').SecondaryTimedReload|null;
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
