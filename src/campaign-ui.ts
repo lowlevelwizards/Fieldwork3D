@@ -1747,6 +1747,19 @@ export class CampaignScreen{
    benchNav.append(part);benchButtons.set(slot,part);
   }
   editor.insertBefore(benchNav,grouped.group.weapon);
+  const issuedMore=node('details','campaign-kit-bench-more');
+  issuedMore.append(node('summary','','CLOTHING & ISSUED BASICS'));
+  const issuedSlots=node('div','campaign-kit-bench-more-grid');
+  for(const [slot,label] of [
+   ['top','TOP'],['legs','LEGS'],['hands','HANDS'],['feet','FOOTWEAR']
+  ] as const){
+   const part=button(label,()=>selectBenchSlot(slot),'campaign-kit-bench-zone');
+   part.dataset.slot=slot;
+   part.setAttribute('aria-current',String(this.activeBenchSlot===slot));
+   issuedSlots.append(part);benchButtons.set(slot,part);
+  }
+  issuedMore.append(issuedSlots);
+  editor.insertBefore(issuedMore,grouped.group.weapon);
   const selectBenchSlot=(slot:LoadoutSlot)=>{
    this.activeBenchSlot=slot;main.dataset.benchSlot=slot;
    this.activeKitWorkspace='equipment';main.dataset.kitWorkspace='equipment';
