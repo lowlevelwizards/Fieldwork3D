@@ -1,5 +1,6 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
+import {rebuildFrameIdIndex} from './breach-frame-lookup.ts';
 import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
@@ -166,6 +167,9 @@ export class TacticalScene3D{
    * flashes; shot visibility stays evaluated by the original resolver. */
   private readonly recentMuzzleShots=
    new RecentMuzzleShotFrameIndex<Session['shots'][number]>();
+  /** Same first-match references as Array.find, built once per 3D frame. */
+  private readonly frameActorsById=new Map<string,Session['operators'][number]>();
+  private readonly frameDoorsById=new Map<string,Session['doors'][number]>();
   // E6.15: reuse existing P1.5 actor/scene phase counters only when the
   // user explicitly requests a local coldBench capture. Normal gameplay
   // still leaves pose/phase CPU timing entirely disabled.
@@ -2161,6 +2165,8 @@ export class TacticalScene3D{
     // One history pass per drawn frame, rather than rewalking all retained
     // shots for every friendly, hostile and recently undisclosed rig.
     this.recentMuzzleShots.rebuild(s.shots);
+    rebuildFrameIdIndex(this.frameActorsById,s.operators);
+    rebuildFrameIdIndex(this.frameDoorsById,s.doors);
     // Quality tier is camera-wide, not per-person. Calculate it once even
     // when twenty operators are animating this frame.
     const frameShadowDetail=operatorShadowDetail(
@@ -2244,9 +2250,9 @@ export class TacticalScene3D{
       object.flash.position.y=gunTip?.muzzleY??0;
       if(flashCue.active)object.flash.scale.setScalar(flashCue.scale);
       const plannedDoor=actor.plan[0]?.kind==='door'?
-        s.doors.find(d=>d.id===actor.plan[0].doorId):undefined;
+        this.frameDoorsById.get(actor.plan[0].doorId):undefined;
       const activeDoor=plannedDoor??(actor.lastDoorId?
-        s.doors.find(d=>d.id===actor.lastDoorId):undefined);
+        this.frameDoorsById.get(actor.lastDoorId):undefined);
       const handle=activeDoor?
         actor.lastDoorMethod==='kick'?
           (()=>{const leaf=doorLeafSegment(activeDoor);
@@ -2257,7 +2263,7 @@ export class TacticalScene3D{
       // Only actors actually attached to a door resolve its geometry.
       const physicalGrip=actor.doorHandContact;
       const gripDoor=physicalGrip?
-        s.doors.find(d=>d.id===physicalGrip.doorId):undefined;
+        this.frameDoorsById.get(physicalGrip.doorId):undefined;
       const doorGrip=physicalGrip?{
         point:gripDoor&&physicalGrip.releasedAt===null?
           doorHandPoint(gripDoor,physicalGrip.fraction):physicalGrip.point,
@@ -2286,14 +2292,14 @@ export class TacticalScene3D{
         physicalContact.releasedAt===null&&
         actor.plan[0]?.kind==='tool'&&
         actor.plan[0].toolMethod==='pick';
-      const lockpickDoor=lockpickActive?s.doors.find(d=>
-        d.id===actor.plan[0]?.doorId):undefined;
+      const lockpickDoor=lockpickActive&&actor.plan[0]?.doorId?
+        this.frameDoorsById.get(actor.plan[0].doorId):undefined;
       const lockpickProgress=lockpickActive?
         Math.max(0,Math.min(1,(s.seconds-physicalContact.startedAt)/
           Math.max(.1,lockpickDoor?
             entryToolVerdict(lockpickDoor,'pick').seconds:1.5))):0;
       const threat=actor.targetId?
-        s.operators.find(o=>o.id===actor.targetId):null;
+        this.frameActorsById.get(actor.targetId):null;
       const threatRange=threat?Math.hypot(threat.p.x-actor.p.x,
         threat.p.y-actor.p.y):null;
       // Tactical weapon readiness is presentation-only. Derive intent from
@@ -2449,7 +2455,7 @@ export class TacticalScene3D{
           actor.actionTimer>0?
           Math.min(1,Math.max(0,(s.seconds-actor.lastDoorAt)/.38)):0,
         treatmentPoint:actor.treatmentActive?
-         s.operators.find(o=>o.id===actor.lastTreatmentTargetId)?.p:undefined,
+         this.frameActorsById.get(actor.lastTreatmentTargetId)?.p:undefined,
         flashCharges:actor.flashCharges,
         wedgeRemaining:actor.wedgeRemaining,
         restraintRemaining:actor.restraintRemaining,
