@@ -2313,17 +2313,25 @@ export class CampaignScreen{
    advanced.append(otherDetails);
    const physicalAdvanced=physicalEditor.querySelector<HTMLElement>(
     '.fw-field-inventory-advanced');
-   if(physicalAdvanced)advanced.append(physicalAdvanced);
-   // This is the original validated physical inventory editor, not a copy.
-   // The gallery's CARRY CONTENTS action reveals it on demand.
-   advanced.append(physicalEditor,issuedMore);
+   advanced.append(issuedMore);
    editor.append(advanced);
+   // Separate carry from saved kits: one editor with one clear destination.
+   const carryPanel=node('section','fw-outfitter-advanced fw-outfitter-carry-panel');
+   carryPanel.hidden=true;
+   const carryBack=button('‹ BACK TO EQUIPMENT',()=>{
+    carryPanel.hidden=true;galleryRoot.hidden=false;
+   },'fw-outfitter-carry-back');
+   carryPanel.append(carryBack,physicalEditor);
+   if(physicalAdvanced)carryPanel.append(physicalAdvanced);
+   editor.append(carryPanel);
    const galleryRoot=node('div','fw-outfitter-main');
    editor.append(galleryRoot);
    closeAdvanced=()=>{
-    advanced.hidden=true;galleryRoot.hidden=false;
+    advanced.hidden=true;carryPanel.hidden=true;galleryRoot.hidden=false;
    };
-   openKitLibrary=()=>{galleryRoot.hidden=true;advanced.hidden=false;};
+   openKitLibrary=()=>{
+    galleryRoot.hidden=true;carryPanel.hidden=true;advanced.hidden=false;
+   };
    openClothing=()=>{selectBenchSlot('top');};
    const gallery=createOutfitterGallery({
     host:galleryRoot,sources:gallerySources,kit:person.loadout,
@@ -2385,7 +2393,9 @@ export class CampaignScreen{
     },
     onArsenal:()=>{if(!arsenal.disabled)this.handlers.openArsenal(id);},
     arsenalDisabled:arsenal.disabled,
-    onAdvanced:()=>{galleryRoot.hidden=true;advanced.hidden=false;}
+    onAdvanced:()=>{
+    galleryRoot.hidden=true;advanced.hidden=true;carryPanel.hidden=false;
+   }
    });
    showGallery=slot=>gallery.show(slot);
    gallery.show(this.activeBenchSlot);
