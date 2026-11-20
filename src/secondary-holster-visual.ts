@@ -65,7 +65,7 @@ export function clearHipSecondaryVisual(hip:THREE.Group):void{
  mounted.delete(hip);
 }
 const pouch=(parent:THREE.Group,id:string,index:number,
- location:SecondaryMagazineLocation,side:number)=>{
+ location:Exclude<SecondaryMagazineLocation,'overflow'>,side:number)=>{
  // One unmistakable upright chunk per physically carried pistol magazine.
  // No giant billboard, stacked fake rounds, or copy of primary magazines.
  const item=new THREE.Mesh(new THREE.BoxGeometry(1.45,2.5,1.85),
