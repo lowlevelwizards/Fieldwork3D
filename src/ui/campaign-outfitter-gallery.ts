@@ -85,7 +85,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   const available=el('div','fw-outfitter-options');
   const unavailable=el('div','fw-outfitter-options');
   let blocked=0;
-  for(const option of [...source.options]){
+  for(const option of [...source.options].sort((a,b)=>
+   Number(b.value===source.value)-Number(a.value===source.value))){
    const id=option.value;
    const item=itemDefinition(id);
    if(!id||!item)continue;
