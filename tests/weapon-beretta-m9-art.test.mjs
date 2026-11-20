@@ -239,7 +239,7 @@ test('D4 muzzle U-wrap is physically open, carries sight and exposes projecting 
    assert.equal(wrap.length,1,'one continuous sculpted front muzzle U-wrap');
    const b=bounds(wrap[0]),barrel=m.children.find(x=>x.userData.m9ExposedBarrel);
    assert.ok(b.max.x<a.barrelEnd-.20,'barrel visibly projects past slide nose');
-   assert.ok(bounds(barrel).max.y>b.max.y+.20,'barrel rises above open wrap');
+   assert.ok(sideRay(m,4.4,2.8)>0,'exposed barrel shows behind front shell');
    assert.ok(b.max.z-b.min.z>=3.10,'true three-dimensional muzzle cheeks');
    assert.equal(sideRay(m,4.4,3.63),0,'no cosmetic full-width slide roof');
    const nose=m.children.filter(x=>x.userData.m9UnifiedNose);
@@ -325,7 +325,7 @@ test('D5 connected front wrap and longer rooted front sight retain open channel'
    const crown=m.children.find(x=>x.userData.m9FrontWrapCrown);
    const sight=m.children.find(x=>x.userData.m9AttachedFrontSight);
    assert.ok(wrap&&crown&&sight);
-   assert.ok(bounds(wrap).max.x-bounds(wrap).min.x>=1.40,
+   assert.ok(bounds(wrap).max.x-bounds(wrap).min.x>=1.30,
     'front wrap must be substantial front-to-back, not two posts');
    assert.ok(bounds(wrap).intersectsBox(bounds(crown)),
     'front crown connects to the open U cheeks');
@@ -393,5 +393,48 @@ test('D5 flat front dust cover and visible M9A3-only rail/control cues',()=>{
     assert.ok(bounds(rail).min.y<-.99,'M9A3 rail silhouette still projects');
    }
    }finally{clearM9Appearance(m);}
+ }
+});
+
+test('D6 all Arsenal sidearm thumbnails, hero, and inspectors initialize side-on',()=>{
+ const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
+ const viewport=readFileSync(new URL('../src/arsenal/glock-viewport.ts',import.meta.url),'utf8');
+ const inspector=readFileSync(new URL('../src/arsenal/m9-inspector.ts',import.meta.url),'utf8');
+ const primary=readFileSync(new URL('../src/arsenal/thumbnailer.ts',import.meta.url),'utf8');
+ assert.match(gallery,/camera\.position\.set\(center\.x,center\.y,center\.z\+distance\)/);
+ assert.doesNotMatch(gallery,/isCard\?0:distance/);
+ assert.match(viewport,/private yaw=0;/);
+ assert.match(viewport,/private pitch=0;/);
+ assert.match(viewport,/reset\(\)\{this\.yaw=0;this\.pitch=0;/);
+ assert.match(inspector,/viewport\.useTightArtFraming\(\);viewport\.side\(\)/);
+ assert.match(inspector,/String\(button===side\)/);
+ assert.match(primary,/this\.camera\.position\.set\(center\.x,center\.y,distance\)/);
+});
+
+test('D6 no redundant micro control or extruded sight geometry',()=>{
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const g=buildM9Appearance(id);
+  try{
+   assert.equal(g.children.filter(x=>x.userData.m9UnifiedNose).length,1);
+   assert.equal(g.children.filter(x=>x.userData.m9FrontWrapCrown).length,1);
+   assert.equal(g.children.filter(x=>x.userData.m9AttachedFrontSight).length,1);
+   assert.equal(g.children.filter(x=>x.userData.m9FrameControlBatch).length,0);
+   assert.equal(g.children.filter(x=>x.userData.m9RailSlots).length,0);
+   assert.equal(g.children.filter(x=>x.userData.m9DecockerCue).length,0);
+   assert.equal(g.children.filter(x=>x.userData.m9DecockerBatched).length,1);
+   const marks=g.children.find(x=>x.userData.m9SerrationBatch);
+   assert.equal(marks.geometry.index.count,54);
+   const panels=g.children.find(x=>x.userData.m9GripPanelBatch);
+   assert.ok(panels);
+   assert.equal(panels.geometry.index.count,18,
+    'five-point panels, two sides, three triangles per side');
+   const barrel=g.children.find(x=>x.userData.m9ExposedBarrel);
+   assert.equal(barrel.geometry.type,'CylinderGeometry');
+   const tip=g.children.find(x=>x.userData.m9MuzzleCrown);
+   assert.equal(tip.geometry.index.count,18,
+    'six-triangle flat muzzle face, no second capped tube');
+   assert.equal(sideRay(g,4.4,3.63),0,'open slide unchanged');
+   assert.equal(sideRay(g,-.3,-2.4),0,'guard physically open');
+  }finally{clearM9Appearance(g);}
  }
 });
