@@ -45,17 +45,17 @@ const SAFETY_RED=new THREE.MeshBasicMaterial({
 const M9A3_GRIP_PANEL=AR_MUTED_FDE.clone();
 M9A3_GRIP_PANEL.color.multiplyScalar(.59);
 
-/** D6: one hand-authored, faceted miniature front shell. +X is muzzle.
- * The 12-station U section is open along its top; the *short* connected
- * bridge and sight are included in this same unindexed GPU mesh.
- * No hidden sight-box, inset slab, duplicate rear face or beveled ladder.
+/** D7: 12-station chamfered U, integrated short crown/sight, real open top.
+ * Every front bevel is obtained by moving D6 vertices, not adding meshes
+ * or subdivisions. Lower muzzle face slopes backward, outer cheek shoulders
+ * taper in toward the crown. +X muzzle, +Y up, +Z right.
  */
 function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
  const yz:readonly (readonly [number,number])[]=[
-  [-1.60,3.28],[-1.60,1.25],[-1.30,.96],
-  [1.30,.96],[1.60,1.25],[1.60,3.28],
-  [1.34,3.53],[1.09,3.53],[1.09,1.68],
-  [-1.09,1.68],[-1.09,3.53],[-1.34,3.53]
+  [-1.35,3.32],[-1.55,2.94],[-1.55,1.46],
+  [-1.26,1.12],[1.26,1.12],[1.55,1.46],
+  [1.55,2.94],[1.35,3.32],[1.09,3.46],
+  [1.07,1.71],[-1.07,1.71],[-1.09,3.46]
  ];
  const vertices:number[]=[];
  type V=readonly [number,number,number];
@@ -66,32 +66,40 @@ function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
   tri(a,b,c);tri(a,c,d);
  };
  const rear=nose-1.27,front=nose+.08;
+ // Gentle planar taper at the muzzle: front cheek roof narrows 5.5%,
+ // and its lower face retreats 0.17 art units. The inner barrel-facing
+ // channel remains at full clearance and the six-sided barrel protrudes.
+ const facePoint=(z:number,y:number):V=>{
+  const t=THREE.MathUtils.clamp((y-1.12)/2.34,0,1);
+  return [front-.17*(1-t),y,
+   Math.abs(z)>1.12?z*(1-.055*t):z];
+ };
  // Contour orientation controls outer wall facing. No rear cap is needed:
- // it is visually and geometrically seated inside the existing open rails.
+ // it is seated inside the existing open rails.
  const signed=yz.reduce((sum,p,i)=>{
   const q=yz[(i+1)%yz.length];
   return sum+p[0]*q[1]-q[0]*p[1];
  },0);
  for(let i=0;i<yz.length;i++){
   const [z0,y0]=yz[i],[z1,y1]=yz[(i+1)%yz.length];
-  const a:V=[rear,y0,z0],b:V=[front,y0,z0],
-   c:V=[front,y1,z1],d:V=[rear,y1,z1];
+  const a:V=[rear,y0,z0],b=facePoint(z0,y0),
+   c=facePoint(z1,y1),d:V=[rear,y1,z1];
   if(signed>0)quad(a,b,c,d);else quad(a,d,c,b);
  }
  // The front face is a U, NOT a closed square covering the barrel mouth.
  const contour=yz.map(([z,y])=>new THREE.Vector2(z,y));
  for(const [i,j,k] of THREE.ShapeUtils.triangulateShape(contour,[])){
-  const a:V=[front,yz[i][1],yz[i][0]],
-   b:V=[front,yz[j][1],yz[j][0]],
-   c:V=[front,yz[k][1],yz[k][0]];
+  const a=facePoint(yz[i][0],yz[i][1]),
+   b=facePoint(yz[j][0],yz[j][1]),
+   c=facePoint(yz[k][0],yz[k][1]);
   const faceX=(b[1]-a[1])*(c[2]-a[2])-
    (b[2]-a[2])*(c[1]-a[1]);
   if(faceX>0)tri(a,b,c);else tri(a,c,b);
  }
  // Short, shared nose crown: this genuinely connects the upper shoulders.
  // No bridge runs down the open barrel channel.
- const x0=nose-.60,x1=nose+.08;
- const y0=3.47,y1=3.69,z0=-1.27,z1=1.27;
+ const x0=nose-.54,x1=nose+.08;
+ const y0=3.38,y1=3.58,z0=-1.22,z1=1.22;
  quad([x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0]); // top
  quad([x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]); // muzzle face
  quad([x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[x0,y0,z0]); // back
@@ -99,7 +107,7 @@ function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
  quad([x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[x0,y0,z1]); // right
  // One raised, stubby trapezoidal sight crest attached to the crown.
  // Skips the hidden bottom face; four broad faces and one flat crown.
- const sx0=nose-.44,sx1=nose+.03,by=y1,ty=3.99;
+ const sx0=nose-.39,sx1=nose+.01,by=y1,ty=3.88;
  const lo:V[]=[[sx0,by,-.56],[sx1,by,-.56],
   [sx1,by,.56],[sx0,by,.56]];
  const hi:V[]=[[sx0+.055,ty,-.38],[sx1-.055,ty,-.38],
@@ -125,7 +133,7 @@ export function m9ArtSockets(id:M9AppearanceId){
   supportGrip:Object.freeze({x:heel+.69,y:-3.48,z:.77}),
   slideGrip:Object.freeze({x:-5.25,y:1.50,z:0}),
   magazineBase:Object.freeze({x:heel,y:a.heel-.19,z:0}),
-  sightLine:Object.freeze({x:-.85,y:3.99,z:0}),
+  sightLine:Object.freeze({x:-.85,y:3.88,z:0}),
   holsterPivot:Object.freeze({x:heel,y:-4.08,z:0})
  });
 }
@@ -268,13 +276,14 @@ export function buildM9Appearance(id:M9AppearanceId,
  tip.userData.m9MuzzleCrown=true;
  tip.castShadow=false;root.add(tip);
 
- // D6: compact hooked crown, narrow upright stem. Not an antenna or fin.
- // Retain the long approved rear beavertail without adding ring micro-detail.
+ // D7: compact aft-curling hammer; broad head and short rising neck.
+ // The nine silhouette stations replace the tall narrow D6 antenna read.
  const hammer:Outline=[
-  [-8.82,2.45],[-9.07,2.76],[-9.27,3.58],
-  [-9.44,4.00],[-9.16,4.13],[-8.93,3.97],[-8.78,3.18]
+  [-8.82,2.45],[-9.06,2.76],[-9.20,3.18],
+  [-9.56,3.57],[-9.78,3.61],[-9.65,3.94],
+  [-9.36,4.02],[-9.14,3.83],[-8.95,3.33]
  ];
- const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.16,slideMaterial);
+ const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.04,slideMaterial);
  hammerMesh.userData.m9Hammer=true;
 
  // Oversize, uncomplicated rear and front sights.
