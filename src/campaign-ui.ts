@@ -1769,8 +1769,11 @@ export class CampaignScreen{
     control.setAttribute('aria-current',String(key===slot));
    for(const [key,row] of benchRows)row.hidden=compact&&key!==slot;
    showGroup(loadoutGroupForSlot(slot));
+   this.preview?.setSelectedSlot(slot);
    this.preview?.focusOn(slot==='head'?'head':slot==='primary'?'weapon':
-    slot==='armor'?'torso':'carry');
+    slot==='armor'||slot==='rig'||slot==='top'?'torso':
+    slot==='backpack'?'back':slot==='belt'||slot==='medical'||slot==='utility'?'belt':
+    slot==='legs'||slot==='feet'?'legs':'full');
   };
   function showGroup(group:QuickLoadoutGroup){
    grouped.group[group].open=true;
@@ -2183,6 +2186,7 @@ export class CampaignScreen{
    // Operator geometry is the primary edit target; direct body-zone
    // buttons provide a precise fallback on small screens and for keyboard.
    this.preview?.setOnTapSlot(slot=>selectBenchSlot(slot));
+   this.preview?.setSelectedSlot(this.activeBenchSlot);
    // No inert orbit buttons if a device cannot initialize WebGL.
    if(!this.preview?.isReady())
     for(const control of summary.querySelectorAll<HTMLButtonElement>(
