@@ -1448,9 +1448,25 @@ export class CampaignScreen{
   colorPicker.textContent='●';
   colorPicker.style.color=person.squadColor??SQUAD_IDENTIFICATION_COLORS[index%SQUAD_IDENTIFICATION_COLORS.length];
   nameRow.append(selectName,colorPicker);
-  const kitButton=button('💾',()=>openKitLibrary(),'campaign-outfitter-library-button');
+  // Monochrome icons match the equipment category glyphs and avoid the
+  // platform-specific colored emoji appearance on iOS.
+  const headerIcon=(pathData:string)=>{
+   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+   svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
+   svg.classList.add('campaign-outfitter-header-icon');
+   const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+   path.setAttribute('d',pathData);path.setAttribute('fill','none');
+   path.setAttribute('stroke','currentColor');
+   path.setAttribute('stroke-width','1.75');
+   path.setAttribute('stroke-linecap','round');
+   path.setAttribute('stroke-linejoin','round');
+   svg.append(path);return svg;
+  };
+  const kitButton=button('',()=>openKitLibrary(),'campaign-outfitter-library-button');
+  kitButton.append(headerIcon('M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z M17 21v-8H7v8 M7 3v5h8'));
   kitButton.setAttribute('aria-label','Saved kit library and squad tools');
-  const clothes=button('👕',()=>openClothing(),'campaign-outfitter-clothing-button');
+  const clothes=button('',()=>openClothing(),'campaign-outfitter-clothing-button');
+  clothes.append(headerIcon('M16 2c0 2.2-1.8 4-4 4S8 4.2 8 2L3.6 4 1 10l5 2 2-3v12h8V9l2 3 5-2-2.6-6L16 2'));
   clothes.setAttribute('aria-label','Clothing and appearance');
   compactHeader.append(previous,identityBox,next,renameShortcut,
    kitButton,clothes);
