@@ -188,7 +188,6 @@ export function buildM9Appearance(id:M9AppearanceId,
  cuboid('barrel',-7.93,3.30,0,.53,.37,1.22,slideMaterial);
  // Front sight is rooted into the upper lip of the real U-wrap.
  cuboid('barrel',a.nose-.43,3.15,0,.49,.40,1.20,slideMaterial);
- const buttCenter=(a.gripRear+a.gripFront)/2;
  // D4: slope matches the actual heel rather than leaving a triangular gap
  // above a horizontal box. Upper face penetrates the butt by 0.15 units.
  const plateProfile:Outline=[
