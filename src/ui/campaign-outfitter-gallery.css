@@ -577,3 +577,10 @@
   line-height:1.05!important;font-size:10px!important;
  }
 }
+
+.campaign-outfitter-header-icon{
+ display:block;width:20px;height:20px;flex:none;pointer-events:none;
+}
+.campaign-outfitter-library-button,.campaign-outfitter-clothing-button{
+ place-items:center;
+}
