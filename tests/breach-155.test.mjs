@@ -85,7 +85,8 @@ test('155: debrief grades are reproducible and history is bounded',()=>{
 test('155: briefing and operation history are present on both entry pages',()=>{
  const app=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
  assert.match(app,/recordCompletedOperation\(/);
- assert.match(app,/operationBriefing\(state\)/);
+ const screen=readFileSync(new URL('../src/ui/breach-mission-screens.ts',import.meta.url),'utf8');
+ assert.match(screen,/operationBriefing\(state\)/);
  for(const path of ['../index.html','../breach.html']){
    const html=readFileSync(new URL(path,import.meta.url),'utf8');
    assert.match(html,/id="briefingPanel"/);

@@ -21,7 +21,9 @@ test('D15.3 real GO restraint consumes one pair after physical contact',()=>{
   for(const blue of team(s))if(blue!==a)blue.health=0;
   for(const red of enemies(s))if(red!==target)red.health=0;
   target.p={x:a.p.x+15,y:a.p.y};target.priorP={...target.p};
-  target.heading=a.heading;
+  a.heading=0;a.weaponYaw=0;
+  target.heading=0;
+  a.awareness.visualProgress[target.id]=1;
   assert.equal(commitSuspectSurrender(s,target,()=>{},()=>{}),true);
   // The live field-use authority checks BOTH the quantity counter and
   // its physically issued inventory, never grants free cuffs in tests.
