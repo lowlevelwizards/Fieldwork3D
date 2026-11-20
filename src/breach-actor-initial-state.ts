@@ -16,6 +16,7 @@ import {initialSecondarySwitch} from './secondary-switching.ts';
 export const withActions=(a:Operator):TeamActor=>({
   ...a,secondarySwitch:initialSecondarySwitch(),secondaryReload:null,
   medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
+  downedAt:null,deathAt:null,lastDownById:null,
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
   treatmentActive:false,treatmentProgress:0,
   carryingId:null,carriedById:null,transportMode:null,
