@@ -32,7 +32,8 @@ Date: 2026-11-20. Canonical integration branch: `feature/secondary-s5-s11-closeo
 
 ## S8 — reload / inventory
 - [ ] Tactical reload orders and automatic emergency reload when eligible; independent timers for active pistol.
-- [ ] Select an issued accessible spare mag by its stable id; correct detach/insert and preserve remaining rounds.
+- [x] S8.1 inventory-only exchange quotes use actual issued serials, no added rounds, retain old rounds or explicitly report dropped magazines. Persistence now accepts an honestly exchanged loaded serial.
+- [ ] Wire S8.1 into a timed fixed-step reload order, physical detachable magazine, and actual magazine access constraints.
 - [ ] Proper behavior without spares, full mag, no belt, lost/unissued kit and interrupted reload.
 - [ ] Real carrier contents follow holster and magazine model, both before and after reload.
 - [ ] Total ammo conservation through save/reload, reorder, failed orders and mission restart.
@@ -45,12 +46,14 @@ Date: 2026-11-20. Canonical integration branch: `feature/secondary-s5-s11-closeo
 - [ ] Mission, new mission, preview, campaign and saved equipment carry forward coherently.
 
 ## S10 — replay / debrief
-- [ ] Replay and camera reconstruct selected weapon, shot/reload timing, magazine identity and complete movement.
+- [x] S10 foundation: sample/restore the explicitly authored switching fraction in replay; interpolate draw over 20 Hz samples and reset absent legacy state on seek.
+- [ ] Replay and camera reconstruct held pistol poses, shot/reload timing, magazine identity and complete movement.
 - [ ] Combat report uses correct 9mm weapon, shooter, target, impact and wounds.
 - [ ] Deterministic seek, clipping, restart and legacy save compatibility.
 
 ## S11 — regression, performance and release
-- [ ] Focused domain tests: both directions of handoff, interruption, no kit, player-only, no ghost primary shot.
+- [x] Authored switch, cancel/lost-kit, baseline ammo conservation and replay-compatibility tests committed (CI rerun pending).
+- [ ] Complete domain tests: real timed reload, 9mm fired rounds, both-handed pose and no ghost primary shot.
 - [ ] Focused end-to-end: 9mm shot, damage, full/partial magazine, retention/emergency reload, count conservation, no ghost magazines.
 - [ ] Critical build/typecheck and desktop/mobile browser smoke on tactical, Arsenal, Quick Play, replay.
 - [ ] Final CSS/TS dedup, disposal correctness, animation transition hitches and inspection orbit parity.
