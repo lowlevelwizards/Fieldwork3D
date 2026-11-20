@@ -201,12 +201,12 @@ export class CampaignKitPreview{
   const halfFov=Math.tan(THREE.MathUtils.degToRad(this.camera.fov*.5));
   const fitDistance=Math.max(78,span/(2*halfFov)*1.2);
   const heights:Record<EquipmentPreviewFocus,number>={
-   full:.50,head:.78,torso:.58,weapon:.55,carry:.48,
-   back:.57,belt:.38,legs:.31
+   full:.50,head:.65,torso:.55,weapon:.53,carry:.49,
+   back:.55,belt:.43,legs:.39
   };
   const distances:Record<EquipmentPreviewFocus,number>={
-   full:1,head:.89,torso:.94,weapon:1,carry:.96,
-   back:.97,belt:.98,legs:1.02
+   full:1,head:.98,torso:.98,weapon:1,carry:.99,
+   back:1,belt:1,legs:1.01
   };
   return [bounds.min.y+span*heights[area],
    fitDistance*distances[area],Math.min(22,span*.35)];
