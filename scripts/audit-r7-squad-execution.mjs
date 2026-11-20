@@ -67,6 +67,7 @@ const progress=process.argv.includes('--progress');
 const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
+const motelLoopSamplesEnabled=process.argv.includes('--motel-loop-samples');
 // D3.29B: audit-only capture at the EXACT frame an order is cancelled.
 const d329CancellationDoorWitness=process.argv.includes('--d329-cancellation-door-witness');
 // D3.25D: strictly read-only endpoint feasibility for known failed entry.
@@ -354,6 +355,7 @@ function run(site,seed,kind){
   const doorWitness=actors.map(()=>({pause:null,since:0,mask:0,events:[]}));
   const blockWitness=actors.map(()=>({mask:0,events:[]}));
   const progressEvidence=[];
+  const motelLoopSamples=[];
   // D3.26F7 exact-seed read-only motor handoff witness, sampled only
   // for one actor and short time windows. Zero impact in normal audits.
   const d326MicroTrace=[];
@@ -454,6 +456,25 @@ function run(site,seed,kind){
         motorPause:actor.motorPause});
        d326LastMicroKey=key;
       }
+    }
+   }
+   if(motelLoopSamplesEnabled&&seed===19143269&&kind==='entry'&&tick%30===0){
+    const actor=actors.find(a=>a.id==='ash');
+    if(actor){
+     const front=session.doors.find(d=>d.id==='FRONT');
+     motelLoopSamples.push({time:round(session.seconds),
+      p:{...actor.p},prior:{...actor.priorP},
+      nav:actor.nav.slice(0,4),blocked:round(actor.blockedTime),
+      pause:actor.motorPause,velocity:round(actor.velocity),
+      squeeze:actor.squeeze,heading:round(actor.heading),
+      episode:actor.doorTraversal?{phase:actor.doorTraversal.phase,
+       maneuver:actor.doorTraversal.maneuver,
+       lastProgress:round(actor.doorTraversal.lastProgressAt),
+       waypoints:actor.doorTraversal.waypoints.slice(0,3)}:null,
+      hand:actor.doorHandContact?{id:actor.doorHandContact.doorId,
+       released:actor.doorHandContact.releasedAt!==null}:null,
+      front:front?{fraction:round(front.openFraction??0),
+       push:round(front.pushTarget??0),held:front.heldBy}:null});
     }
    }
    survey.sample(actors,1/60);
@@ -1461,6 +1482,7 @@ function run(site,seed,kind){
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
+   ...(motelLoopSamplesEnabled?{motelLoopSamples}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
