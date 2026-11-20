@@ -45,3 +45,20 @@ test('R1.03: no active physical order never accumulates artificial block time',(
  assert.equal(recordRejectedMovementCommit(a,'actor',step,step),0);
  assert.equal(pendingCommitStall(a),0);
 });
+
+test('R1.03: motor and frame arbiter observing one blocked frame never double count it',()=>{
+ const a=actor(),dt=1/60;
+ a.blockedTime=dt; // local motor already saw real geometry rejection
+ assert.equal(recordRejectedMovementCommit(a,'geometry',dt,dt),dt);
+ a.blockedTime=2*dt; // the second local motor rejection also counted dt
+ assert.equal(recordRejectedMovementCommit(a,'geometry',2*dt,dt),2*dt,
+  'two actual ticks must equal two, not four, blocked intervals');
+});
+test('R1.03: stale blockedTime cannot carry into a new authored MOVE',()=>{
+ const a=actor(1),dt=1/60;
+ a.blockedTime=3;
+ recordRejectedMovementCommit(a,'actor',dt,dt);
+ a.plan=[{id:2,kind:'move'}];
+ a.blockedTime=4;
+ assert.equal(recordRejectedMovementCommit(a,'actor',2*dt,dt),dt);
+});
