@@ -44,6 +44,13 @@ Use real clearance and the existing shared motion arbiter, route retries,
 door openings and bounded 0.55s target updates. Preserve STOP at exact
 location and separation/leader casualty rules.
 
+## D15.5D — living capture extraction gate
+- A living restrained CAPTURE target must actually be in the extraction zone,
+  under an active escort or direct same-zone physical contact. A lone squadmate
+  touching the extraction marker cannot teleport the prisoner or win early.
+- Incapacitated target transport still needs a separate physical carrier path;
+  legacy downed-target compatibility stays in place until that is proven.
+
 ## D15.5D — next
 Integrate pace scaling, visible prisoner follow state, shared walking with
 restrained hands, and replay restoration. Full CAPTURE requires target

@@ -8,6 +8,7 @@ test('D15.5 restrained red actor uses custody motion instead of enemy AI',()=>{
  const s=newSession(0,4);
  try{
   const leader=team(s)[0],prisoner=enemies(s)[0];
+  for(const other of enemies(s))if(other!==prisoner)other.health=0;
   leader.p={x:325,y:350};leader.priorP={x:315,y:350};
   leader.velocity=45;leader.health=2;
   prisoner.p={x:255,y:350};prisoner.priorP={...prisoner.p};

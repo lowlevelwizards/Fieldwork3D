@@ -1881,8 +1881,23 @@ function mission(s:Session,dt:number){
         (rescuePerson.carriedById===a.id&&a.carryingId===rescuePerson.id))&&
         near(rescuePerson.p,s.scenario.extract,37)):
       s.rescue.following===a.id&&near(s.rescue.p,s.scenario.extract,37));
+  // D15.5: a living captive must physically reach extraction, not remain
+  // at the arrest point while an unrelated operator touches the exit.
+  // Unconscious/legacy capture still requires a separate D15 transport gate;
+  // do not invent movement for an injured downed actor in this phase.
+  const validLivingCaptureExtraction=(a:TeamActor)=>{
+    if(s.missionType!=='capture')return true;
+    const prisoner=enemies(s).find(e=>e.id===s.captureTarget);
+    if(!prisoner||prisoner.health<=0)return true;
+    return prisoner.surrendered&&prisoner.restrained===true&&
+      near(prisoner.p,s.scenario.extract,37)&&
+      (prisoner.escortLeaderId===a.id||
+        (near(a.p,prisoner.p,28)&&
+          sweptBodyClear(a.p,prisoner.p,s.doors,5.5,sessionWorldGeometry(s))));
+  };
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&
+    validLivingCaptureExtraction(a)&&
     (s.missionType!=='intel'||s.intelCarrierId===a.id)&&
     validRescueCustody(a))){
     s.mission='done';s.phase='won';
