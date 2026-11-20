@@ -1,0 +1,55 @@
+name: Movement M2.7 Garage exact checkpoint
+on:
+  push:
+    branches: [feature/movement-m1m2-quality-20261120]
+    paths:
+      - 'src/breach-passage-coordinator.ts'
+      - 'tests/passage-q2-coordinator.test.mjs'
+      - 'src/breach-squeeze-leaf-exit.ts'
+      - 'src/breach-motor-route.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-locomotion-clearance.ts'
+      - 'src/breach-motor-local-detour.ts'
+      - 'tests/release-d3-14b2-narrow-leaf-exit.test.mjs'
+      - '.github/workflows/movement-m2-garage-gate.yml'
+permissions:
+  contents: read
+concurrency:
+  group: movement-m2-garage-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Coordinator and crossing critical contracts
+        run: |
+          node --experimental-strip-types --test tests/passage-q2-coordinator.test.mjs tests/release-d3-r1-repeated-passage.test.mjs tests/doorway-planned-sequence.test.mjs
+          npm run check
+      - name: Garage frozen seed 31110 full physical squad completion
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=5 > garage-m2-31110.json
+          node -e "const r=require('./garage-m2-31110.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,successful:r.successful,ops:r.operators.map(x=>({id:x.id,arrived:x.arrived,remaining:x.remaining,failed:x.failedOrders}))}));if(r.arrivals!==4)process.exit(1)"
+      - name: Clinic seed 19178827 must resolve SYNC and terminally cancel at real locked D8
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=10 --audit-seed=19178827 --audit-scale=small > clinic-m2-19178827.json
+          node -e "const r=require('./clinic-m2-19178827.json').rows[0].modes[1];const ok=r.operators.every(o=>o.outcome==='cancelled'&&/LOCKED/.test(o.lastFailedOrder?.reason??'')&&o.remainingOrders===0);console.log(JSON.stringify({terminallyLegal:ok,doors:r.endDoorStates.filter(x=>x.id==='D8'),operators:r.operators.map(o=>({id:o.id,outcome:o.outcome,reason:o.lastFailedOrder?.reason,remainingOrders:o.remainingOrders}))}));if(!ok||!r.endDoorStates.some(x=>x.id==='D8'&&x.locked)||r.invalidPositions||r.physicsStepViolations)process.exit(1)"
+      - name: Motel open leaf exact seed 19143269 four real arrivals
+        run: |
+          node --experimental-strip-types --test tests/release-d3-14b2-narrow-leaf-exit.test.mjs
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 --audit-seed=19143269 --audit-scale=small > motel-m2-19143269.json
+          node -e "const r=require('./motel-m2-19143269.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,squad:r.successful,operators:r.operators.map(a=>({id:a.id,arrived:a.arrived,failed:a.failedOrders}))}));if(r.arrivals!==4||r.physicsStepViolations||r.invalidPositions||!r.planIntact)process.exit(1)"
+      - name: Strict unchanged Q5 70-door matrix
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: garage-m2-exact-acceptance
+          path: |
+            garage-m2-31110.json
+            clinic-m2-19178827.json
+            motel-m2-19143269.json

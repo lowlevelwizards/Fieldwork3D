@@ -12,7 +12,7 @@ export type RouteSource=
  'full-body-lane'|'blocked-leg-connector'|'collision-world-replan'|
  'collision-intel-replan'|'self-hinge-relief'|'local-detour'|
  'generated-entry-settle'|'initial-portal-recovery'|'passage-retreat'|'door-handoff-reject'|'door-escape-swept-rejoin'|'door-escape-world-rejoin'|'door-escape-local-portal'|'door-escape-future-portal'|'door-squeeze-leaf-exit'|'lane-cycle-world'|'stack-micro-corner'|'cold-micro-departure'|'motor-micro-departure'|'motor-cold-fine-world'|'motor-exact-passage'|
- 'open-leaf-local-rejoin'|'d328-entry-fine-world'|'forced-door-shortcut';
+ 'open-leaf-local-rejoin'|'d328-entry-fine-world'|'forced-door-shortcut'|'entry-squeeze-departure';
 export type TransientRouteTransition={
  seconds:number;actorId:string;source:RouteSource;
  prior:readonly Pt[];next:readonly Pt[];

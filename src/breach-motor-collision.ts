@@ -1,4 +1,5 @@
-import {setTransientRoute,prependTransientLeg} from './breach-route-transition.ts';
+import {setTransientRoute,prependTransientLeg}
+ from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: authoritative body-collision response and recovery.
  * A full-radius swept motion is preferred; squeeze is only a physical
@@ -41,7 +42,7 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
-import {firstFullBodyMotorStrideClear}
+import {firstFullBodyMotorStrideClear,usefulFullBodyRecoveryRoute}
  from './breach-recovery-route-validation.ts';
 import {eligibleFrameActorDetour} from './breach-frame-actor-recovery.ts';
 import {shouldProbeStationaryCollisionRoute}
@@ -61,6 +62,9 @@ import {selectColdMotorMicroDeparture,claimColdMotorMicroDeparture}
  from './breach-d326-micro-departure.ts';
 import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
+import {preciseNarrowExitWaypoint} from './breach-squeeze-leaf-exit.ts';
+import {claimM2EntrySqueezeProbe,selectM2EntrySqueezeDeparture}
+ from './breach-m2-entry-squeeze-departure.ts';
 import {claimD327ColdPassage,coldExactPassageWorldRoute}
  from './breach-d327-cold-passage.ts';
 import {claimD328EntryLoopProbe,d328DistinctFullBodyAlternative,
@@ -438,7 +442,12 @@ export function resolveMotorCollision(
   }
   if(a.squeeze){
     a.squeezeYaw=sidewaysYaw;
-    if(normalClear&&squeezeExitClear(a.p,desiredMove,s.doors,12,world)){
+    // A physically verified narrow route around a long outward leaf
+    // remains narrow until its *last* owned stage is traversed. A
+    // momentarily full-width-clear 0.02-unit tick must not drop the
+    // narrow shoulder before the next footstep beside the solid panel.
+    if(normalClear&&!preciseNarrowExitWaypoint(a,next)&&
+       squeezeExitClear(a.p,desiredMove,s.doors,12,world)){
       a.squeeze=false;a.squeezeTime=0;
     }else{
       // The body visibly turns to the SAME angle used by oriented collision
@@ -556,7 +565,8 @@ export function resolveMotorCollision(
     const sweep=(from:Pt,to:Pt)=>
       sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
     if(candidate&&d(candidate,a.p)>3&&d(candidate,p)<d(a.p,p)+12&&
-       firstFullBodyMotorStrideClear(a.p,candidate,sweep)&&
+       usefulFullBodyRecoveryRoute(a.p,a.nav,[candidate,...a.nav],
+         sweep,a.blockedTime)&&
        sweep(candidate,next)&&
        watchClearanceAllowed(a.p,candidate,p,
          !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)&&
@@ -716,6 +726,34 @@ export function resolveMotorCollision(
           return true;
         }
       }
+        const moveOrder=a.plan[0];
+      // M2.8 Motel 31149: a physically jammed generated ENTRY in squeeze
+      // can have no valid coarse first leg despite a nearby real full-body
+      // departure. Cold-certify the first microstep AND the rejoined narrow
+      // leg; ordinary collision motor still owns every future body stride.
+      if(a.side==='blue'&&moveOrder?.kind==='move'&&
+         !!moveOrder.entryDoorId&&a.squeeze&&a.blockedTime>=2&&
+         !a.doorTraversal&&!a.traversal&&!a.traversalPending&&
+         !a.fireRetreatTarget&&
+         (a.lastBlocker==='wall'||a.lastBlocker==='furniture')&&
+         claimM2EntrySqueezeProbe(a,p,s.seconds)){
+        const physical=(from:Pt,to:Pt)=>
+          sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+        const narrow=(from:Pt,to:Pt)=>
+          sweptProfileClear(from,to,s.doors,
+            squeezeFacing(angle(from,to)),'squeeze',world);
+        const route=selectM2EntrySqueezeDeparture(a.p,p,next,
+          physical,narrow,(from,to)=>routeWithSqueezeWorld(
+            from,to,s.doors,world));
+        if(route.length&&watchClearanceAllowed(a.p,route[0],p,
+            !!a.aimInstruction&&a.aimInstruction.mode!=='free',narrow)){
+          setTransientRoute(s,a,route,'entry-squeeze-departure');
+          notePreciseLocalDetour(a,route[0]);
+          a.lastNavRepairAt=s.seconds;
+          provisionalRouteAccepted(a);
+          return true;
+        }
+      }
       // D3.17E2: route changes are not physical progress. After repeated
       // immobile furniture contacts with unchanged door/cover geometry,
       // defer redundant world+intel A* until a cold probe is due. All
@@ -745,7 +783,9 @@ export function resolveMotorCollision(
         // already walked back to the same furniture anchor repeatedly.
         // Fall through to bounded physical-world replan, without resetting
         // the normal recovery budget when an identical connector recurs.
-        if(connected.length&&materiallyDifferentRoute(a.nav,connected)&&
+        if(usefulFullBodyRecoveryRoute(a.p,a.nav,connected,
+             (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world),
+             a.blockedTime)&&
            allowPhysicalRouteReissue(a,'blocked-leg-connector',p,
              connected,s.seconds)){
           setTransientRoute(s,a,connected,'blocked-leg-connector');

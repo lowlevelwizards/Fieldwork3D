@@ -53,6 +53,9 @@ console.log(JSON.stringify({method:'TM10 real generated seeded four-operator fix
  retries:sum(r=>r.retries),
  passageWaitSeconds:+sum(r=>r.passageWaitSeconds).toFixed(2),
  squeezeSeconds:+sum(r=>r.squeezeSeconds).toFixed(2),
+ backtrackDistance:+sum(r=>r.backtrackDistance).toFixed(2),
+ reversals:sum(r=>r.reversals),
+ longestNoProgressSeconds:Math.max(0,...rows.map(r=>r.longestNoProgressSeconds)),
  invalidPositions:sum(r=>r.invalidPositions)
 }},null,2));
 if(rows.some(r=>r.invalidPositions))process.exitCode=1;

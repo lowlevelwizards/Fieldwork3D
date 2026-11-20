@@ -89,3 +89,38 @@ test('Q2 real occupant cannot bypass the waiting preceding rank',()=>{
   'an already-crossing occupant must not bypass rank 2 when rank 3 approaches');
  assert.deepEqual(waiting.move,vale.p,'a queue HOLD is not a retreat');
 });
+
+test('M2.7: same-door reverse entry drops stale opposing owner when order changes',()=>{
+ const oldOwner=actor('lead',90,150),entrance=actor('follower',126,40);
+ const s=game([oldOwner,entrance],[{...door,openFraction:.45}]);
+ const schedule=new Map([
+  ['lead',[{...slot('lead',0,'D',-1),orderId:1,eta:.1},
+    {...slot('lead',0,'D',1),orderId:2,eta:2}]],
+  ['follower',[{...slot('follower',1,'D',1),orderId:1,eta:1}]]
+ ]);
+ const before=movement(s,entrance,p(100,100),schedule);
+ assert.equal(before.reason,'opposing','original opposite-side crossing really held its lease');
+ oldOwner.p=p(100,125);
+ oldOwner.plan=[{id:2,kind:'move',p:p(100,40)}];
+ s.seconds+=.1;
+ const after=movement(s,oldOwner,p(100,124),schedule);
+ assert.notEqual(after.reason,'opposing',
+  'old opposite direction cannot retain lease across a new authored crossing');
+ assert.equal(after.hold,false);
+});
+
+test('M2.9: stationary SYNC in open doorway is not a competing crossing',()=>{
+ const clinic={...door,a:p(460,404),b:p(460,362),openFraction:1};
+ const parked=actor('rook',370,370);parked.p=p(445.8,370);
+ parked.plan=[{id:5,kind:'sync',syncCode:'B1',p:p(445.8,370)}];
+ const trailing=actor('vale',376,368);trailing.p=p(464.6,376);
+ trailing.plan=[{id:4,kind:'move',p:p(365.5,368)}];
+ const s=game([parked,trailing],[clinic]);
+ const slots=new Map([
+  ['rook',[{...slot('rook',1,'D',1),orderId:1}]],
+  ['vale',[{...slot('vale',2,'D',1),orderId:4}]]
+ ]);
+ const observed=movement(s,trailing,p(463.6,376),slots);
+ assert.equal(observed.hold,false);
+ assert.deepEqual(observed.move,p(463.6,376));
+});
