@@ -114,7 +114,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
           patient.transportMode=mode;
         }
         a.actionTimer=0;clearCurrentOrderIssue(a);
-        notify(s,a.name+' '+mode.toUpperCase()+'ING '+
+        notify(s,a.name+' '+(mode==='drag'?'DRAGGING':'CARRYING')+' '+
           ('name' in patient?patient.name:'CIVILIAN'));
       }
       return true;
