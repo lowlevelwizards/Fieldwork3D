@@ -10,6 +10,8 @@ on:
       - 'tests/refactor-e6-17-main-pass.test.mjs'
       - 'tests/refactor-e6-18a-mesh-provenance.test.mjs'
       - 'scripts/verification/e6-17-main-pass-browser.mjs'
+      - 'scripts/verification/performance-p6-mainpass-budget.mjs'
+      - 'tests/performance-p6-mainpass-budget.test.mjs'
       - '.github/workflows/refactor-e6-17-main-pass.yml'
   workflow_dispatch:
 permissions:
@@ -43,12 +45,16 @@ jobs:
             tests/refactor-e6-11-device-cold-evidence.test.mjs \
             tests/quick-play-startup-progress.test.mjs \
             tests/consolidation-stage2-config-persistence.test.mjs
+      - name: P6.F draw budget evidence interpreter contract
+        run: node --test tests/performance-p6-mainpass-budget.test.mjs
       - name: Production typecheck and bundle
         run: npm run build
       - name: Four real-browser 90-frame live main-pass material attribution runs
         env:
           FIELDWORK_CI_CHROME: '1'
         run: node scripts/verification/e6-17-main-pass-browser.mjs
+      - name: Summarize actual 90-frame main-pass owner and transparency budgets
+        run: node scripts/verification/performance-p6-mainpass-budget.mjs artifacts/refactor-e6-17/live-scene/summary.json artifacts/refactor-e6-17/live-scene/p6-mainpass-budget.json
       - uses: actions/upload-artifact@v4
         if: always()
         with:
