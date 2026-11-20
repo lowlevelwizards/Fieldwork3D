@@ -11,6 +11,8 @@ export type PassagePlanActor={
 };
 export type PassageSlot={
  actorId:string;doorId:string;fromSide:-1|1;rank:number;eta:number;
+ /** The authored movement occurrence, not just door ID + approach side. */
+ orderId?:number;
 };
 export type PassageSchedule=ReadonlyMap<string,readonly PassageSlot[]>;
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
@@ -77,11 +79,11 @@ export function planDoorSchedule(
       if(dist(door.a,door.b)>60)continue;
       const entry=crossing(from,to,door);
       if(!entry)continue;
-      const key=door.id+':'+entry.side;
+      const key=node.id+':'+door.id+':'+entry.side;
       if(seen.has(key))continue;
       seen.add(key);
       slots.push({actorId:actor.id,doorId:door.id,
-       fromSide:entry.side,rank:0,
+       fromSide:entry.side,rank:0,orderId:node.id,
        eta:elapsed+timeFor(length*entry.fraction,actor,speed)});
      }
      elapsed+=timeFor(length,actor,speed);
@@ -115,11 +117,23 @@ export function planDoorSchedule(
  * isn't sufficient. */
 export function pendingPassageSlot(p:Pt,
  slots:readonly PassageSlot[]|undefined,
- doors:readonly Door[]):PassageSlot|null{
+ doors:readonly Door[],orderId?:number|null):PassageSlot|null{
+ // Slots are assembled by door ID for stable lane ranks, not necessarily
+ // by an individual operator's authored crossing sequence. In a two-door
+ // vestibule the lexically earlier door may be the later threshold.
+ // Pick the lowest ETA that has not been physically cleared, with no
+ // per-frame sorting, route regeneration, or order edits.
+ let earliest:PassageSlot|null=null;
  for(const slot of slots??[]){
+  if(orderId!==undefined&&slot.orderId!==undefined&&
+     slot.orderId!==orderId)continue;
   const door=doors.find(d=>d.id===slot.doorId);
-  if(!door)continue;
-  if(sign(p,door)*slot.fromSide>=-18)return slot;
+  if(!door||sign(p,door)*slot.fromSide< -18)continue;
+  if(!earliest||slot.eta<earliest.eta-.00001||
+     Math.abs(slot.eta-earliest.eta)<=.00001&&
+     (slot.doorId<earliest.doorId||
+      slot.doorId===earliest.doorId&&slot.rank<earliest.rank))
+    earliest=slot;
  }
- return null;
+ return earliest;
 }

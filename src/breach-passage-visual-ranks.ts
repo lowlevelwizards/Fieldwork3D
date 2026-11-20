@@ -59,7 +59,8 @@ export function thresholdRankMarkers(
   const actor=s.operators.find(o=>o.id===actorId);
   if(!actor||actor.health<=0||actor.side!=='blue')continue;
   const shown=s.phase==='planning'?slots:
-   [pendingPassageSlot(actor.p,slots,s.doors)].filter(
+   [pendingPassageSlot(actor.p,slots,s.doors,
+    actor.plan.find(n=>n.kind==='move'||n.kind==='pie')?.id??null)].filter(
     (x):x is PassageSlot=>x!==null);
   for(const slot of shown){
    const door=doors.get(slot.doorId);
@@ -92,7 +93,8 @@ export function nextThresholdRank(a:TeamActor,
   return first&&(!s.intel||doorKnown(s.intel,first.doorId))?
    first.rank+1:null;
  }
- const slot=pendingPassageSlot(a.p,schedule.get(a.id),s.doors);
+ const slot=pendingPassageSlot(a.p,schedule.get(a.id),s.doors,
+  a.plan.find(n=>n.kind==='move'||n.kind==='pie')?.id??null);
  return slot&&(!s.intel||doorKnown(s.intel,slot.doorId))?
   slot.rank+1:null;
 }

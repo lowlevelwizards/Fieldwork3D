@@ -12,6 +12,21 @@ import {sweptBodyClear,sweptProfileClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {noteQueueMotion,noteQueueDecision} from './breach-queue-trace.ts';
 import {d,type ActorMotorHooks} from './breach-motor-contract.ts';
+/** Only a sustained *physical* queue wait deserves a player-facing
+ * message. Opposing traffic and an actually occupied throat are actionable
+ * even for one operator; an ordinary spacing hold is not necessarily a jam.
+ * Reporting never changes queue priority or starts automatic movement.
+ */
+export function passageWaitMessage(
+ reason:'free'|'sequence'|'spacing'|'opposing'|'occupied',
+ seconds:number,otherWaiting=false
+):string|null{
+ if(reason==='opposing'&&seconds>=3)return 'COUNTERFLOW · WAITING FOR CLEARANCE';
+ if(reason==='occupied'&&seconds>=4.5)return 'PASSAGE OCCUPIED · CHECK ENTRY';
+ if(reason==='spacing'&&otherWaiting&&seconds>=5.5)
+  return 'SQUAD ENTRY QUEUED · CHECK LEAD';
+ return null;
+}
 export function negotiateMotorPassage(
  a:TeamActor,_p:Pt,initialMove:Pt,dt:number,s:Session,
  hooks:ActorMotorHooks):{paused:boolean;move:Pt}{
@@ -52,12 +67,17 @@ export function negotiateMotorPassage(
      }
     }
   }
-  if(a.passageWaitSeconds>5.5&&!a.passageStallReported&&
-     s.operators.some(other=>other!==a&&other.side===a.side&&
-      other.health>0&&other.motorPause==='passage'&&
-      other.passageWaitSeconds>3)){
-   a.passageStallReported=true;
-   hooks.notify(s,a.name+' PASSAGE STALLED · CHECK ROUTES');
+  if(!a.passageStallReported){
+    const anotherWaiting=decision.reason==='spacing'&&
+      s.operators.some(other=>other!==a&&other.side===a.side&&
+        other.health>0&&other.motorPause==='passage'&&
+        other.passageWaitSeconds>3);
+    const message=passageWaitMessage(decision.reason,
+      a.passageWaitSeconds,anotherWaiting);
+    if(message){
+      a.passageStallReported=true;
+      hooks.notify(s,a.name+' '+message);
+    }
   }
   return {paused:true,move:initialMove};
  }
