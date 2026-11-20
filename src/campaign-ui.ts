@@ -1350,7 +1350,7 @@ export class CampaignScreen{
   if(!retainOperatorPreview)this.disposePreview();
   if(!sameOperator){
    this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
-   this.activeBenchSlot='primary';
+   // Preserve selected equipment section when cycling squad members.
    this.previewDocked=false;
    this.selectedWorkbenchSocket=null;
   }
@@ -1886,13 +1886,13 @@ export class CampaignScreen{
    for(const [key,control] of benchButtons)
     control.setAttribute('aria-current',String(key===slot));
    for(const [key,row] of benchRows)row.hidden=compact&&key!==slot;
+   this.preview?.clearTransientSelection();
    if(compact){closeAdvanced?.();showGallery?.(slot);}
    else showGroup(loadoutGroupForSlot(slot));
    contextName.textContent=slot==='primary'?'WEAPON':
     slot==='rig'?'CHEST RIG':slot==='backpack'?'BACKPACK':
     slot==='utility'?'TOOLS':slot.toUpperCase();
    contextMeta.textContent='CURRENT EQUIPMENT · TAP TO CHANGE';
-   this.preview?.clearTransientSelection();
    if(slot==='backpack')this.preview?.setAzimuth(Math.PI);
    else if(Math.cos(this.preview?.getAzimuth()??.72)<-.2&&
     ['primary','head','armor','rig'].includes(slot))
