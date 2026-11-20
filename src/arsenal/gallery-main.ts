@@ -8,6 +8,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 import {arsenalRecipeFromLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {ArsenalThumbnailer} from './thumbnailer.ts';
 import {createArsenalPreviewQueue} from './preview-job-queue.ts';
+import {createArsenalSavedActionButtons,renderArsenalFilterButtons} from './gallery-browser-controls.ts';
 import {mountGlockArsenalGallery} from './glock-gallery.ts';
 import {openArsenalWorkbench} from './workbench-screen.ts';
 import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
@@ -38,10 +39,8 @@ openWorkbench.addEventListener('click',()=>{
  if(ref)openArsenalWorkbench(ref,id=>refreshLibrary(id));
 });
 const savedControls=document.createElement('div');savedControls.className='arsenal-saved-actions';
- const rename=document.createElement('button');rename.type='button';rename.textContent='RENAME';
- const duplicate=document.createElement('button');duplicate.type='button';duplicate.textContent='DUPLICATE';
- const remove=document.createElement('button');remove.type='button';remove.textContent='DELETE';
- savedControls.append(rename,duplicate,remove);savedControls.hidden=true;
+const {rename,duplicate,remove}=createArsenalSavedActionButtons();
+savedControls.append(rename,duplicate,remove);savedControls.hidden=true;
  const renameBox=document.createElement('div');renameBox.className='arsenal-rename-box';renameBox.hidden=true;
  const renameInput=document.createElement('input');renameInput.type='text';renameInput.maxLength=32;
  renameInput.setAttribute('aria-label','New saved build name');
@@ -128,20 +127,13 @@ function showSelected(ref:ArsenalReference|ArsenalSavedBuild){
   button.setAttribute('aria-pressed',String(button.dataset.arsenalReference===ref.id));
 }
 function renderFilters(){
- filters.replaceChildren();
  const tabs:{id:ArsenalPlatformId|'all'|'saved';name:string}[]=[
   {id:'all',name:'All'},...ARSENAL_PLATFORMS,
   {id:'saved',name:'Saved · '+loadArsenalBuildLibrary().builds.length}];
- for(const item of tabs){
-  const button=document.createElement('button');button.type='button';
-  button.className='arsenal-filter';button.textContent=item.name;
-  button.setAttribute('aria-pressed',String(activePlatform===item.id));
-  button.addEventListener('click',()=>{
-   activePlatform=item.id;
-   renderFilters();renderCards();
-  });
-  filters.append(button);
- }
+ renderArsenalFilterButtons(filters,tabs,activePlatform,id=>{
+  activePlatform=id;
+  renderFilters();renderCards();
+ });
 }
 let observer:IntersectionObserver|null=null;
 function renderCards(){
