@@ -1418,7 +1418,9 @@ export function reloadNow(s:Session,id:string):boolean{
   if(a.secondarySwitch?.active==='secondary'&&
      a.secondarySwitch.desired==='secondary'&&
      a.secondarySwitch.fraction>=1){
-    if(a.secondaryReload||!a.equipment?.secondary)return false;
+    if(a.secondaryReload||!a.equipment?.secondary||a.traversal||
+       a.squeeze||a.carryingId||a.treatmentActive||a.pace==='run'||
+       a.plan[0]?.kind==='door'||a.plan[0]?.kind==='treat')return false;
     const started=beginTimedSecondaryReload(a.equipment.secondary,0);
     if(!started.ok||!started.state)return false;
     a.secondaryReload=started.state;
