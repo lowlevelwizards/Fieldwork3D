@@ -6,7 +6,7 @@ import type {SessionWorldGeometry} from './breach-world-context.ts';
 import type {TeamActor} from './breach-game.ts';
 import {WALLS,COVER,OPERATOR_RADIUS,activeWorldBounds,
  someCoverNearPoint,type Door,type Pt} from './breach-core.ts';
-import {releaseStaticWallOverlap,profileClear,sweptProfileClear,
+import {releaseStaticWallOverlap,sweptProfileClear,
  squeezeFacing} from './breach-navigation.ts';
 import {preciseNarrowExitWaypoint} from './breach-squeeze-leaf-exit.ts';
 import {releaseEmbeddedCover} from './breach-cover-release.ts';
@@ -30,8 +30,11 @@ export function releaseEmbeddedMotorActor(
    const heading=squeezeFacing(Math.atan2(dy,dx));
    const at=(step:number)=>({x:a.p.x+dx*step/length,
       y:a.p.y+dy*step/length});
-   if(profileClear(a.p,doors,heading,'squeeze',world)&&
-      sweptProfileClear(a.p,at(Math.min(.026,length)),doors,
+   // A close wall may overlap the stationary full-radius (or even the
+   // initially rotated shoulder). Require the REAL first two swept
+   // motor strides to be legal instead of rejecting an otherwise safe
+   // outward step merely because its starting center is too close.
+   if(sweptProfileClear(a.p,at(Math.min(.026,length)),doors,
        heading,'squeeze',world)&&
       sweptProfileClear(a.p,at(Math.min(.3,length)),doors,
        heading,'squeeze',world))return false;
