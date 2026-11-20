@@ -1,0 +1,13 @@
+name: Shared Outfitter Mobile Browser Acceptance
+description: Reuse one canonical mobile outfitter smoke without duplicating browser setup across historical workflows
+runs:
+  using: composite
+  steps:
+    - name: Install browser smoke dependencies
+      shell: bash
+      run: |
+        npm install --no-save --package-lock=false playwright@1.56.1
+        npx playwright install --with-deps chromium
+    - name: Exercise shared model-centered outfitter bench
+      shell: bash
+      run: node scripts/smoke-loadout-bench-r1.mjs
