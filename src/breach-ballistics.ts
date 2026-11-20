@@ -29,8 +29,8 @@ export function readyMode(range:number,aim:number,
 }
 export function dispersion(id:WeaponId,mode:FiringMode,
   stability:number,moving:boolean,suppression:number,injury:number,
-  recoil:number):number{
-  const profile=BALLISTICS[id];
+  recoil:number,profileOverride?:BallisticProfile):number{
+  const profile=profileOverride??BALLISTICS[id];
   const base=mode==='ads'?profile.adsSpread:profile.pointSpread;
   return base*(1+(.9-clamp01(stability))*.9+
     (moving?.48:0)+suppression*.85+injury*.27)+recoil*.45;
