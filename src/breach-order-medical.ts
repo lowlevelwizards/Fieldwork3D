@@ -119,10 +119,17 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
       }
       return true;
     }
-    if(near(a.p,n.p,8)){
+    // Follow each user-drawn bend while maintaining this exact reciprocal
+    // casualty attachment. No intermediate MOVE order may release the body.
+    const destination=n.transportPath?.[0]??n.p;
+    if(near(a.p,destination,8)){
+      if(n.transportPath?.length){
+        n.transportPath.shift();a.nav=[];a.velocity=0;return true;
+      }
       // Keep valid custody until the objective can acknowledge extraction.
-      if(civil?.rescueTarget&&s.mission==='extract'&&
-         near(a.p,s.scenario.extract,37)){
+      if((civil?.rescueTarget||
+          friendly?.id===s.captureTarget&&s.missionType==='capture')&&
+         s.mission==='extract'&&near(a.p,s.scenario.extract,37)){
         // Keep custody until the physically trailing body enters extraction.
         a.velocity=0;return true;
       }
@@ -133,7 +140,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
       pop(a);return true;
     }
     const before=clone(a.p);
-    approach(a,n.p,dt,s,mode==='drag'?.48:.38);
+    approach(a,destination,dt,s,mode==='drag'?.48:.38);
     if(civil)return true; // Neutral body motion commits with the carrier later.
     // Apply the same bounded, swept physical body step as civilian rescue.
     // An operator casualty must never snap 9–16 units across a threshold
