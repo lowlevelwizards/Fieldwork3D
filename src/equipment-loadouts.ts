@@ -5,21 +5,26 @@ import {DEFAULT_EQUIPMENT,LOADOUT_SLOTS,EQUIPMENT_CATALOG,
 import type {FieldInventory} from './equipment-field-inventory.ts';
 import {initialFieldInventory,readFieldInventory,fieldQuantity,fieldInventoryMass} from './equipment-field-inventory.ts';
 import type {WeaponId} from './breach-combat.ts';
+import {emptySecondaryEquipment,readSecondaryEquipment,secondaryLoadMass,
+ type SecondaryEquipment} from './secondary-equipment.ts';
 import {resolveWeaponAssembly,WEAPON_PLATFORMS,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 
 export type LoadoutSlot=Exclude<EquipmentSlot,'secondary'>;
-export type EquipmentLoadout={version:1;slots:Record<LoadoutSlot,string>;fieldInventory?:FieldInventory};
+export type EquipmentLoadout={version:1;slots:Record<LoadoutSlot,string>;fieldInventory?:FieldInventory;
+ /** S2 independent sidearm preparation; not yet a simulated active firearm. */
+ secondary?:SecondaryEquipment};
 const weaponItem=(weapon:WeaponId)=>'primary-'+weapon;
 const isWeapon=(weapon:unknown):weapon is WeaponId=>
  weapon==='carbine'||weapon==='smg'||weapon==='rifle'||weapon==='shotgun';
 export function initialEquipmentLoadout(weapon:WeaponId='carbine'):EquipmentLoadout{
- const base:EquipmentLoadout={version:1,slots:{...DEFAULT_EQUIPMENT,primary:weaponItem(weapon)}};
+ const base:EquipmentLoadout={version:1,slots:{...DEFAULT_EQUIPMENT,primary:weaponItem(weapon)},
+  secondary:emptySecondaryEquipment()};
  return {...base,fieldInventory:initialFieldInventory(base)};
 }
 /** Reject malformed and wrong-slot entries without throwing or altering the
  * authoritative campaign primary weapon, magazine and reserve quantities. */
-export function readEquipmentLoadout(raw:unknown,weapon:WeaponId):EquipmentLoadout{
+export function readEquipmentLoadout(raw:unknown,weapon:WeaponId,owner='operator'):EquipmentLoadout{
  const result=initialEquipmentLoadout(isWeapon(weapon)?weapon:'carbine');
  if(!raw||typeof raw!=='object'||(raw as {version?:unknown}).version!==1)
   return result;
@@ -33,6 +38,7 @@ export function readEquipmentLoadout(raw:unknown,weapon:WeaponId):EquipmentLoado
    result.slots[slot]=value;
  }
  result.fieldInventory=readFieldInventory((raw as {fieldInventory?:unknown}).fieldInventory,result);
+ result.secondary=readSecondaryEquipment((raw as {secondary?:unknown}).secondary,owner);
  return result;
 }
 export function setEquipmentChoice(loadout:EquipmentLoadout,
@@ -71,7 +77,8 @@ export const totalEquipmentMass=(loadout:EquipmentLoadout,
  const legacyIncluded=(loadout.slots.tactical==='tactical-flash'?.38:0)+
   (loadout.slots.utility==='utility-wedge'?.28:0);
  const baseline=equipmentMass(LOADOUT_SLOTS.map(slot=>loadout.slots[slot]))-
-  legacyIncluded+fieldInventoryMass(field);
+  legacyIncluded+fieldInventoryMass(field)+
+  secondaryLoadMass(loadout.secondary??emptySecondaryEquipment());
  if(!config||loadout.slots.primary!=='primary-'+config.weapon)return baseline;
  const assembled=resolveWeaponAssembly(config);
  return baseline+assembled.massKg-WEAPON_PLATFORMS[config.weapon].baseMassKg;

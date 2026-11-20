@@ -7,6 +7,9 @@ on:
       - 'src/arsenal/gallery-main.ts'
       - 'src/arsenal/arsenal.css'
       - 'tests/weapon-glock-family-art.test.mjs'
+      - 'tests/secondary-s1-s3-foundation.test.mjs'
+      - 'src/secondary-equipment.ts'
+      - 'src/equipment-loadouts.ts'
       - '.github/workflows/glock-family-art.yml'
   workflow_dispatch:
 jobs:
@@ -19,6 +22,6 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Glock anatomy and gallery checks
-        run: node --experimental-strip-types --test tests/weapon-glock-family-art.test.mjs
+        run: node --experimental-strip-types --test tests/weapon-glock-family-art.test.mjs tests/secondary-s1-s3-foundation.test.mjs
       - name: TypeScript and production build
         run: npm run build

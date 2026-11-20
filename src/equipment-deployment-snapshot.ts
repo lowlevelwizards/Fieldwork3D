@@ -40,7 +40,7 @@ export type DeploymentInventorySnapshot={
  */
 export function captureDeploymentInventory(
  source:DeploymentInventorySource):DeploymentInventorySnapshot{
- const equipment=readEquipmentLoadout(source.loadout,source.weapon);
+ const equipment=readEquipmentLoadout(source.loadout,source.weapon,source.id);
  const config=structuredClone(source.weaponConfiguration);
  const fitted=fitMagazineInventory(source.id,source.weapon,config,
   source.magazine,source.reserve,source.magazines);

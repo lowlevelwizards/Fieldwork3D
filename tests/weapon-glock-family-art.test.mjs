@@ -191,7 +191,8 @@ test('G2.5: pistol-specific Arsenal close framing and honest real-MP5K peer mode
  assert.match(preview,/buildWeaponSilhouette/);
  assert.match(preview,/hk-mp5k/);
  assert.match(preview,/provisional until a live sidearm rig exists/);
- assert.match(preview,/NOT YET EQUIPPABLE/);
+ assert.match(preview,/LIVE USE COMING S5/);
+ assert.match(preview,/equipFreshSecondary/);
 });
 
 

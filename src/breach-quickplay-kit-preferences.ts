@@ -37,7 +37,7 @@ export function applyQuickPlayKitPreferences(
   const input=members.find(x=>x&&typeof x==='object'&&x.id===base.id);
   if(!input||!validWeapon(input.weapon))return base;
   const config=readWeaponConfiguration(input.weaponConfiguration,input.weapon);
-  const loadout=readEquipmentLoadout(input.loadout,input.weapon);
+  const loadout=readEquipmentLoadout(input.loadout,input.weapon,base.id);
   const issue=freshMagazineIssue(base.id,input.weapon,config);
   const placements=Array.isArray(input.magazineLocations)?
    input.magazineLocations.slice(0,32):[];

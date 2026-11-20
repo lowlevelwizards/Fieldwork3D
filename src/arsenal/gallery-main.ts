@@ -66,7 +66,25 @@ filters.setAttribute('role','group');filters.setAttribute('aria-label','Weapon p
 const count=document.createElement('p');count.className='arsenal-count';count.setAttribute('aria-live','polite');
 const grid=document.createElement('div');grid.className='arsenal-grid';
 browser.append(controls,filters,count,grid);layout.append(hero,browser);
-shell.append(heading,mountGlockArsenalGallery(),layout);root.append(shell);
+const categoryNav=document.createElement('nav');
+categoryNav.className='arsenal-weapon-categories';
+categoryNav.setAttribute('aria-label','Arsenal weapon categories');
+const primaryTab=document.createElement('button');
+primaryTab.type='button';primaryTab.textContent='PRIMARY WEAPONS';
+const secondaryTab=document.createElement('button');
+secondaryTab.type='button';secondaryTab.textContent='SECONDARIES · GLOCK';
+categoryNav.append(primaryTab,secondaryTab);
+const glockGallery=mountGlockArsenalGallery();
+const showCategory=(category:'primary'|'secondary')=>{
+ const secondary=category==='secondary';
+ layout.hidden=secondary;glockGallery.hidden=!secondary;
+ primaryTab.setAttribute('aria-pressed',String(!secondary));
+ secondaryTab.setAttribute('aria-pressed',String(secondary));
+};
+primaryTab.addEventListener('click',()=>showCategory('primary'));
+secondaryTab.addEventListener('click',()=>showCategory('secondary'));
+shell.append(heading,categoryNav,layout,glockGallery);root.append(shell);
+showCategory('primary');
 
 let activePlatform:ArsenalPlatformId|'all'|'saved'='all';
 let selectedId='ar-m4a1';

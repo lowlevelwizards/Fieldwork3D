@@ -674,3 +674,55 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  .arsenal-glock-hero-visual[data-view="family"]{aspect-ratio:4/3}
  .arsenal-glock-family-labels span{font-size:10px;margin:7px 0 0 7px;padding:3px 4px}
 }
+
+
+/* S1: keep the 2x2 same-scale Glock preview inside a narrow phone viewport.
+ * Its camera stays fixed; only responsive *display* sizing changes. */
+.arsenal-glock-gallery,.arsenal-glock-feature,
+.arsenal-glock-hero-visual,.arsenal-glock-feature-copy{
+ min-width:0;max-width:100%;box-sizing:border-box;
+}
+.arsenal-glock-hero-visual[data-view="family"]{
+ width:100%;overflow:hidden;contain:layout paint;
+}
+.arsenal-glock-hero-visual[data-view="family"]>img{
+ display:block;width:100%;max-width:100%;height:100%;object-fit:contain;
+}
+.arsenal-glock-family-labels{min-width:0;max-width:100%;overflow:hidden}
+.arsenal-glock-family-labels span{max-width:calc(100% - 12px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media(max-width:720px){
+ .arsenal-glock-gallery{width:100%;max-width:100%;overflow:hidden}
+ .arsenal-glock-feature{width:100%;min-width:0;padding:9px}
+ .arsenal-glock-view-controls{min-width:0;max-width:100%}
+ .arsenal-glock-view{min-width:0}
+ .arsenal-glock-hero-visual[data-view="family"]{aspect-ratio:4/3}
+}
+
+
+/* S3 primary/secondary switch stays compact, with one Arsenal shell. */
+.arsenal-layout[hidden],.arsenal-glock-gallery[hidden]{display:none}
+.arsenal-weapon-categories{display:flex;flex-wrap:wrap;gap:8px;
+ margin:0 0 12px;min-width:0}
+.arsenal-weapon-categories button{flex:1;min-width:min(155px,100%);
+ min-height:44px;padding:9px 13px;border-radius:var(--fw-radius-sm);
+ border:1px solid var(--fw-panel-border);background:var(--fw-panel-deep);
+ color:var(--fw-text-muted);font:750 12px var(--fw-font-menu)}
+.arsenal-weapon-categories button[aria-pressed="true"]{
+ border-color:var(--fw-sage);color:var(--fw-bg);background:var(--fw-sage)}
+.arsenal-weapon-categories button:focus-visible,
+.arsenal-glock-equip button:focus-visible,
+.arsenal-glock-equip select:focus-visible{outline:2px solid var(--fw-focus);outline-offset:2px}
+.arsenal-glock-equip{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;min-width:0;border-top:1px solid var(--fw-panel-border);padding-top:10px}
+.arsenal-glock-equip label{display:flex;flex-direction:column;gap:5px;min-width:0;
+ color:var(--fw-text-muted);font:750 11px var(--fw-font-menu)}
+.arsenal-glock-equip select{width:100%;min-width:0;min-height:42px;
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-sm);
+ color:var(--fw-text);background:var(--fw-panel-deep);padding:8px}
+.arsenal-glock-equip-actions{grid-column:1/-1;display:flex;gap:8px}
+.arsenal-glock-equip button{flex:1;min-height:44px;border:1px solid var(--fw-panel-border);
+ background:var(--fw-panel);color:var(--fw-text);border-radius:var(--fw-radius-sm);
+ padding:8px;font:750 11px var(--fw-font-menu)}
+.arsenal-glock-equip button:disabled{opacity:.45}
+.arsenal-glock-equip-status{grid-column:1/-1;margin:0;
+ color:var(--fw-text-muted);font:500 12px/1.4 var(--fw-font-action)}
