@@ -207,7 +207,7 @@
 .fw-field-inventory-copy-area button{min-height:40px;padding:7px 10px;
  border:1px solid #718c7d;border-radius:6px;background:#294437;
  color:#f0f3ed;font-size:11px;touch-action:manipulation}
-.fw-field-inventory-copy-area button:disabled{opacity:.4}
+
 
 
 /* UX-L1.B — carrier rows never compress equipment names into vertical text.
