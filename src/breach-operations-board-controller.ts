@@ -155,6 +155,11 @@ function renderOperationsBoard(){
    const opening=expandedQuickKit!==member.id;
    expandedQuickKit=opening?member.id:null;
    if(opening)quickKitView='equipment';
+   else{
+    // Closing the bench frees its WebGL context rather than leaving an idle
+    // renderer attached to a detached operator preview.
+    quickKitPreview?.dispose();quickKitPreview=null;quickKitPreviewId=null;
+   }
    renderOperationsBoard();
   };
   loadoutAction.addEventListener('click',toggleKit);
