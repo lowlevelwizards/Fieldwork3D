@@ -472,6 +472,7 @@ function renderOperationsBoard(){
    const visualKey=JSON.stringify(member.weaponConfiguration);
    const view=resetQuickWorkbenchViews.has(member.id)?
     null:savedQuickWorkbenchViews.get(member.id);
+   let rebuiltGeometry=false;
    if(quickWorkbench&&quickWorkbenchId===member.id){
     quickWorkbench.attachHost(workbenchHost,slot=>showSocket(slot));
     // Rebind accessory choice callbacks to the newly constructed selects
@@ -479,6 +480,7 @@ function renderOperationsBoard(){
     if(visualKey!==quickWorkbenchConfigKey){
      quickWorkbench.setConfiguration(member.weaponConfiguration);
      quickWorkbenchConfigKey=visualKey;
+     rebuiltGeometry=true;
     }
    }else{
     rememberQuickWorkbenchView();
@@ -487,8 +489,10 @@ function renderOperationsBoard(){
     quickWorkbench=new WeaponWorkbenchPreview(workbenchHost,
      member.weaponConfiguration,slot=>showSocket(slot));
     quickWorkbenchConfigKey=visualKey;
+    rebuiltGeometry=true;
    }
-   if(view)quickWorkbench.restoreViewState(view);
+   // A spurious disclosure toggle must not reset orbit after a user drag.
+   if(rebuiltGeometry&&view)quickWorkbench.restoreViewState(view);
    resetQuickWorkbenchViews.delete(member.id);
    const saved=selectedQuickWeaponSockets.get(member.id);
    if(saved&&socketRows.has(saved))showSocket(saved);
