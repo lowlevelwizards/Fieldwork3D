@@ -12,9 +12,12 @@ import {kitMedicalSupplies,transferMedicalSupply,spendMedicalSupply}
 import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
 import {stabilizeWound} from './breach-medical-wounds.ts';
-import {dropCivilianCustody,takeCivilianCustody} from './breach-civilian-transport.ts';
-import {casualtyTrailingPosition,transportIsClear}
- from './breach-casualty-transport.ts';
+import {dropCivilianCustody,takeCivilianCustody,proposedCivilianTransportStep}
+ from './breach-civilian-transport.ts';
+import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+ from './breach-capture-transport-policy.ts';
+import {captureVitalStatus} from './breach-capture-vitals.ts';
+
 import {sweptBodyClear} from './breach-navigation.ts';
 import {completeOrder,rotate,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
@@ -64,13 +67,19 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
   }
   if(n.kind==='evacuate'){
     const civil=s.civilians.find(c=>c.id===n.patientId);
-    const friendly=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
+    const friendly=s.operators.find(o=>o.id===n.patientId&&
+      (o.side===a.side||captureTargetTransportEligible(s,o,a)||
+       (a.carryingId===o.id&&o.carriedById===a.id)));
     const patient=friendly??civil;
     if(!patient||patient===a||patient.health>0||
-       (friendly&&friendly.surrendered)){
+       (friendly&&captureVitalStatus(friendly)==='deceased')||
+       (friendly&&friendly.side===a.side&&friendly.surrendered)){
       if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
-      else if(friendly)friendly.carriedById=null;
-      a.carryingId=null;pop(a);return true;
+      else if(friendly?.carriedById===a.id){
+        friendly.carriedById=null;friendly.transportMode=null;
+      }
+      if(a.carryingId===n.patientId)a.carryingId=null;
+      pop(a);return true;
     }
     if(patient.carriedById&&patient.carriedById!==a.id){
       failCurrentOrder(s,a,n,'CASUALTY ALREADY IN TRANSPORT');return true;
@@ -83,8 +92,12 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
           y:patient.p.y+Math.sin(theta)*19};
         approach(a,goal,dt,s,.70);return true;
       }
-      if(civil&&(!liveVisibility(s,civil.p)||
-         !sweptBodyClear(a.p,civil.p,s.doors,5.5,sessionWorldGeometry(s)))){
+      // Opposing downed capture targets need the same observed contact and
+      // full-body swept reach as neutral rescue casualties. No remote pickup.
+      if((civil||friendly?.side==='red')&&
+         (!liveVisibility(s,patient.p)||
+          !sweptBodyClear(a.p,patient.p,s.doors,5.5,
+             sessionWorldGeometry(s)))){
         failCurrentOrder(s,a,n,'CASUALTY NOT IN PHYSICAL REACH');return true;
       }
       a.velocity=0;a.actionTimer+=dt;
@@ -98,6 +111,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
           }
         }else{
           a.carryingId=patient.id;patient.carriedById=a.id;
+          patient.transportMode=mode;
         }
         a.actionTimer=0;clearCurrentOrderIssue(a);
         notify(s,a.name+' '+mode.toUpperCase()+'ING '+
@@ -113,7 +127,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
         a.velocity=0;return true;
       }
       if(civil)dropCivilianCustody(civil,a);
-      else patient.carriedById=null;
+      else {patient.carriedById=null;patient.transportMode=null;}
       a.carryingId=null;
       notify(s,('name' in patient?patient.name:'CIVILIAN')+' RELEASED');
       pop(a);return true;
@@ -121,20 +135,37 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     const before=clone(a.p);
     approach(a,n.p,dt,s,mode==='drag'?.48:.38);
     if(civil)return true; // Neutral body motion commits with the carrier later.
-    const attached=casualtyTrailingPosition(before,a.p,a.heading,mode);
-    const people=s.operators.filter(o=>o!==a&&o!==patient&&o.health>0)
-     .map(o=>o.p);
-    if(!transportIsClear(patient.p,attached,
-      (from,to)=>sweptBodyClear(from,to,s.doors,8,sessionWorldGeometry(s)),people)){
+    // Apply the same bounded, swept physical body step as civilian rescue.
+    // An operator casualty must never snap 9–16 units across a threshold
+    // on the first pickup tick, even if the carrier has barely moved.
+    const people:Pt[]=[];
+    for(const o of s.operators)if(o!==a&&o!==patient)people.push(o.p);
+    for(const c of s.civilians)people.push(c.p);
+    const attached=proposedCivilianTransportStep(patient.p,before,a.p,
+      a.heading,mode,
+      (from,to)=>sweptBodyClear(from,to,s.doors,8,sessionWorldGeometry(s)),
+      people,dt*36);
+    if(!attached){
       a.p=before;a.velocity=0;a.nav=[];return true;
     }
     patient.priorP=clone(patient.p);patient.p=attached;
     patient.velocity=0;return true;
   }
   if(n.kind==='treat'){
-    const patient=s.operators.find(o=>o.id===n.patientId&&o.side===a.side);
+    const patient=s.operators.find(o=>o.id===n.patientId&&
+      (o.side===a.side||a.side==='blue'&&
+        designatedDownedCaptureTarget(s,o)));
+    const hostile=!!patient&&patient.side!==a.side;
     const wound=patient?.medical.wounds.find(w=>w.id===n.woundId);
-    if(!patient||!wound||wound.stabilized||wound.bleeding<=0){pop(a);return true;}
+    if(!patient||!wound||wound.stabilized||wound.bleeding<=0||
+      captureVitalStatus(patient)==='deceased'){
+      pop(a);return true;
+    }
+    if(hostile&&(!liveVisibility(s,patient.p)||
+       !sweptBodyClear(a.p,patient.p,s.doors,5.5,
+          sessionWorldGeometry(s)))){
+      failCurrentOrder(s,a,n,'CAPTIVE NOT IN PHYSICAL MEDICAL REACH');return true;
+    }
     const supply=treatmentSupplyForWound(wound,a.medicalSupplies);
     if(!supply){
       failCurrentOrder(s,a,n,'MEDICAL SUPPLY UNAVAILABLE');return true;

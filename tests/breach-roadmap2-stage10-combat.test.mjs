@@ -55,7 +55,9 @@ test('physical bullet effects commit health, cover, doors, glass, suppression an
  assert.match(resolution,/s\.shots\.push\(/);
  assert.match(resolution,/s\.casings\.push\(/);
  assert.match(resolution,/retainImpactMark\(/);
- assert.match(resolution,/s\.deaths\+\+/);
+ // D15.7: an actual down is no longer a recorded fatality.
+ assert.doesNotMatch(resolution,/s\.deaths\+\+/);
+ assert.match(src('breach-simulation-medical-door-phase.ts'),/s\.deaths\+\+/);
  assert.match(pipeline,/commitShot\(s,a,target,\{mode,range,moving,mods,weapon,profile,\s*secondaryWeapon:sidearmKit\?\.weapon\?\?undefined,\s*preflight:shotPreflight\}\)/);
  assert.match(environment,/function damageStruckCover\(/);
  assert.match(environment,/function shatterStruckWindows\(/);

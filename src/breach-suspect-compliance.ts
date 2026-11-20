@@ -38,6 +38,10 @@ export function commitSuspectSurrender(
  target.reload=0;target.reloadMode=null;target.secondaryReload=null;
  target.aim=0;target.targetId=null;target.combatChoice=null;
  target.intent=null;target.defense=null;target.retreatPoint=null;
+ target.suspectEscapeMode=null;target.suspectEscapeGoal=null;
+ target.suspectEscapeWeaponId=null;target.suspectEscapeStartedAt=-100;
+ target.suspectEscapeCooldownUntil=s.seconds+3;
+ target.suspectRearmedSecondary=false;
  target.fireRetreatTarget=null;target.fireRetreatUntil=0;
  const message=target.name+' SURRENDERED'+
    (source==='challenge'?' AFTER CHALLENGE':'');

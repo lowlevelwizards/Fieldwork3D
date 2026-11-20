@@ -4,6 +4,7 @@
  */
 import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {advanceMedicalCondition} from './breach-medical-wounds.ts';
+import {advanceDownedVitals,recordActualDown} from './breach-capture-vitals.ts';
 import {dropCivilianCustody} from './breach-civilian-transport.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
 import {advanceDoor,doorReachable,initialOpeningYieldCandidate} from './breach-door.ts';
@@ -45,16 +46,31 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
       if(civil)dropCivilianCustody(civil,casualty);
       else {
         const patient=s.operators.find(o=>o.id===casualty.carryingId);
-        if(patient)patient.carriedById=null;
+        if(patient?.carriedById===casualty.id){
+          patient.carriedById=null;patient.transportMode=null;
+        }
         casualty.carryingId=null;
       }
     }
-    if(casualty.health<=0)continue;
+    if(casualty.health<=0){
+      if(advanceDownedVitals(casualty,h,s.seconds)){
+        s.deaths++;
+        if(casualty.lastDownById){
+          const responsible=s.operators.find(o=>o.id===casualty.lastDownById);
+          if(responsible)responsible.kills++;
+        }
+        // Never reveal a red casualty death through global fog.
+        if(casualty.side==='blue')
+          notify(s,casualty.name+' DECEASED — UNCONTROLLED BLOOD LOSS');
+      }
+      continue;
+    }
     const loss=advanceMedicalCondition(casualty.medical,h);
     if(loss<=0)continue;
     casualty.injuryStage=Math.min(3,casualty.injuryStage+loss);
     casualty.health=Math.max(0,4-casualty.injuryStage);
     if(casualty.health<=0){
+      recordActualDown(casualty,s.seconds);
       casualty.lastDownAt=s.seconds;
       const fall=wallSafeFall(casualty.p,casualty.heading,'slump',sessionWorldGeometry(s).walls);
       casualty.downPose=fall.pose;casualty.downClearance=fall.space;

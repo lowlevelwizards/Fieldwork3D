@@ -39,7 +39,9 @@ export function bleedingRate(state:MedicalCondition):number{
 /** Returns the number of irreversible injury-stage thresholds crossed. */
 export function advanceMedicalCondition(state:MedicalCondition,dt:number):number{
  const old=Math.floor(state.bloodLoss);
- state.bloodLoss=Math.max(0,Math.min(3,state.bloodLoss+
+ // D15.7: health caps at the third injury stage, but an untreated downed
+ // actor may continue to bleed to explicit terminal loss (stage four).
+ state.bloodLoss=Math.max(0,Math.min(4,state.bloodLoss+
   bleedingRate(state)*Math.max(0,Math.min(dt,1/30))));
  return Math.floor(state.bloodLoss)-old;
 }

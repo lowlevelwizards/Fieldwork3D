@@ -54,6 +54,8 @@ export type OperationAssessment={
   outcome:'success'|'failure';kind:OperationKind;elapsed:number;
   casualties:number;teamSize:number;shots:number;hits:number;
   objective:boolean;targetSurrendered?:boolean;extracted:number;
+  /** Retrospective actual captive condition, never inferred from zero HP. */
+  captureOutcome?:string;
   /** Separate from operator casualties and hostile kill credit. */
   civilianInjured?:number;civilianDown?:number;
   civilianPlayerInjured?:number;civilianPlayerDown?:number;
@@ -82,6 +84,10 @@ export function assessOperation(data:OperationAssessment,explain=false){
   award('TIME MODIFIER',-Math.min(12,Math.floor((data.elapsed-180)/30)));
  if(data.kind==='capture'&&data.targetSurrendered)
   award('TARGET SURRENDERED',8);
+ if(data.kind==='capture'&&data.outcome==='success'){
+  if(data.captureOutcome==='stabilized')award('CAPTIVE STABILIZED',5);
+  else if(data.captureOutcome==='critical')award('CAPTIVE IN CRITICAL CONDITION',-8);
+ }
  if(data.kind==='rescue'&&data.extracted===0)
   award('RESCUE EXTRACTION',-20);
  const civilianHarm=Math.max(0,

@@ -484,10 +484,13 @@ function fire(s:Session,a:TeamActor,dt:number){
       a.plan[0].id!==a.secondaryReload.orderId))a.secondaryReload=null;
   // An undone/canceled order does not leave the operator permanently
   // half-drawn or lock the primary once a pistol is unissued.
-  if(a.secondarySwitch&&a.plan[0]?.kind!=='switch-weapon')
+  if(a.secondarySwitch&&a.plan[0]?.kind!=='switch-weapon'&&
+     a.suspectEscapeMode!=='secondary')
     a.secondarySwitch=advanceInterruptedSecondarySwitch(a.secondarySwitch,dt,
       a.equipment?.secondary,a.health>0&&!a.surrendered);
-  const sidearmKit=a.side==='blue'&&a.secondarySwitch?.active==='secondary'&&
+  const sidearmKit=(a.side==='blue'||
+    (a.side==='red'&&a.suspectRearmedSecondary===true))&&
+    a.secondarySwitch?.active==='secondary'&&
     a.secondarySwitch.desired==='secondary'&&
     a.secondarySwitch.fraction>=1?
     a.equipment?.secondary:undefined;

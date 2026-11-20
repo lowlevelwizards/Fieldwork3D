@@ -88,12 +88,15 @@ export function createOrderExecutor(port:OrderExecutionPort){
   try{
   if(a.carryingId&&
      (n?.kind!=='evacuate'||n.patientId!==a.carryingId)&&
-     (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)){
+     (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)&&
+     (n?.interaction!=='release-capture-target'||n.objectId!==a.carryingId)){
     const civil=s.civilians.find(c=>c.id===a.carryingId);
     if(civil)dropCivilianCustody(civil,a);
     else {
       const prior=s.operators.find(o=>o.id===a.carryingId);
-      if(prior)prior.carriedById=null;
+      if(prior?.carriedById===a.id){
+         prior.carriedById=null;prior.transportMode=null;
+       }
       a.carryingId=null;
     }
   }

@@ -5,6 +5,7 @@ import {W,H,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,enemies,lastKnown,isSeen} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
 import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
+import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {shotVisibility,contactFade} from './breach-presentation.ts';
@@ -177,12 +178,34 @@ function sprite(a:TeamActor){
   const unidentified=!replaying&&!friendly&&!isSeen(state,a);
   const c=friendly?colorFor(a.id):unidentified?'#8b9088':'#d3917b';
   if(a.health<=0){
+    const transport=downedTransportPresentation(a,state.operators);
+    if(transport){
+      // Only a recorded reciprocal carrier link is an actual transport.
+      draw.save();draw.strokeStyle='rgba(213,190,157,.42)';
+      draw.lineWidth=2;draw.setLineDash([3,4]);
+      draw.beginPath();draw.moveTo(a.p.x,a.p.y);
+      draw.lineTo(transport.carrierPosition.x,transport.carrierPosition.y);
+      draw.stroke();draw.setLineDash([]);draw.restore();
+    }
     draw.save();draw.translate(a.p.x,a.p.y);
-    draw.rotate(a.heading);
-    rect(-13,-4,29,8,'#574d49');rect(-3,-9,5,18,'#a46556');
+    draw.rotate(transport?.heading??a.heading);
+    if(transport?.mode==='carry'){
+      // Broad across-shoulder silhouette, unlike a low floor drag.
+      rect(-11,-9,23,18,'#574d49');
+      rect(4,-10,6,20,'#a46556');
+      rect(-8,-13,8,5,'#8c7265');rect(-8,8,8,5,'#8c7265');
+    }else{
+      rect(-13,-4,29,8,'#574d49');rect(-3,-9,5,18,'#a46556');
+      if(transport){
+        rect(-17,-7,7,5,'#8c7265');rect(-17,2,7,5,'#8c7265');
+      }
+    }
     draw.restore();
-    draw.fillStyle='#7e363092';draw.beginPath();
-    draw.ellipse(a.p.x,a.p.y,13,6,a.heading,0,2*Math.PI);draw.fill();
+    if(!transport){
+      // Blood belongs to the original fall, not a repeated moving stain.
+      draw.fillStyle='#7e363092';draw.beginPath();
+      draw.ellipse(a.p.x,a.p.y,13,6,a.heading,0,2*Math.PI);draw.fill();
+    }
     return;
   }
   if(friendly&&(a.id===selected)&&
@@ -211,13 +234,26 @@ function sprite(a:TeamActor){
   if(a.surrendered&&a.restrained){
     // Hands secured behind the body: distinguish custody from hands-up compliance.
     rect(-9,-6,5,12,'#ac816c');rect(-10,3,5,12,'#ac816c');
+  }else if(a.surrendered&&a.suspectEscapeMode==='flee'){
+    // A physical unarmed escape is mobile and open-handed, not a gunman.
+    const swing=Math.sin(state.seconds*15)*Math.min(3,a.velocity/22);
+    rect(-5,-13+swing,8,4,'#d0a58a');
+    rect(-5,8-swing,8,4,'#d0a58a');
+  }else if(a.surrendered&&a.suspectEscapeMode==='secondary'){
+    // Reach to an issued holster; never draw a muzzle until the transition
+    // completes and the suspect becomes a genuine active combatant.
+    rect(-3,-10,7,5,'#d0a58a');rect(-3,5,7,5,'#d0a58a');
   }else if(a.surrendered){
     // Hands-up silhouette remains distinct from a physical downed body.
     rect(-3,-15,5,12,'#d0a58a');rect(-3,4,5,12,'#d0a58a');
     circle(-5,-14,3,'#d0a58a');circle(-5,15,3,'#d0a58a');
   }else{
+    const pistol=a.suspectRearmedSecondary===true&&
+      a.secondarySwitch?.active==='secondary'&&
+      a.secondarySwitch.fraction>=1;
     rect(firing?2:5,-2,
-      a.weapon==='smg'?13:a.weapon==='rifle'?23:a.weapon==='shotgun'?20:18,
+      pistol?11:a.weapon==='smg'?13:a.weapon==='rifle'?23:
+        a.weapon==='shotgun'?20:18,
       a.weapon==='shotgun'?5:4,'#1a2527');
     rect(firing?17:20,-1,6,2,'#a2a9a1');
   }

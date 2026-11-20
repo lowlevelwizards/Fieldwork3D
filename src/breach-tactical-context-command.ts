@@ -1,3 +1,4 @@
+import {captureVitalStatus} from './breach-capture-vitals.ts';
 /** Authoritative contextual command mutations, independent of button DOM.
  * Input gestures and target-mode arming remain in the application; gameplay
  * legality remains delegated to breach-game, not revalidated here.
@@ -6,7 +7,7 @@ import {doorCenter,type Door,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,plannedControl,finalPoint,
  setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,planSuspectRestraint,planSearchSuspect,planSecureDroppedFirearm,planSuspectEscort,
  inSight,team,enemies,
- planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
+ planCasualtyTransport,planCaptureTransportRelease,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planSwitchWeaponAt,planMedicalTreatment,
  planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
  doorAtNode,planEntryTool,planStackTeam,planSquadEntry,canEdit,
@@ -156,6 +157,21 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxReleaseCivilian':
    return finish(planCivilianRelease(state,selected),
      'NO CIVILIAN TRANSPORT TO RELEASE');
+  case 'ctxReleaseCapture':
+    return finish(planCaptureTransportRelease(state,selected),
+      'NO INCAPACITATED CAPTURE TARGET IN TRANSPORT');
+   case 'ctxDragCapture':
+  case 'ctxCarryCapture':{
+   const at=finalPoint(a);
+   const prisoner=enemies(state).find(e=>e.id===state.captureTarget&&
+      e.health<=0&&captureVitalStatus(e)!=='deceased'&&
+       (!e.carriedById||e.carriedById===a.id)&&
+      distance(at,e.p)<34&&liveVisibility(state,e.p)&&
+      sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)));
+   return finish(!!prisoner&&planCasualtyTransport(state,selected,prisoner.id,
+     state.scenario.extract,action==='ctxCarryCapture'?'carry':'drag'),
+     'CAPTURE TARGET TRANSPORT ROUTE NOT AVAILABLE');
+  }
   case 'ctxDragCivilian':
   case 'ctxCarryCivilian':{
    const civ=state.civilians.filter(c=>c.health<=0&&
