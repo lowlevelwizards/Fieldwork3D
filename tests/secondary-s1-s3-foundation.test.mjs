@@ -56,6 +56,10 @@ test('S2: reject invalid/foreign/duplicate/over-capacity secondary magazines',()
  assert.equal(readSecondaryEquipment(good,'moss').weapon,null,
   'foreign IDs never silently become another operator owned magazines');
  assert.deepEqual(readSecondaryEquipment(null,'rook'),emptySecondaryEquipment());
+ const emptyLeft=moveSecondaryHolster(emptySecondaryEquipment(),'belt-left');
+ assert.equal(readSecondaryEquipment(emptyLeft,'rook').holster,'belt-left');
+ assert.equal(equipFreshSecondary(emptyLeft,'rook','glock-g19-gen3').holster,'belt-left');
+ assert.equal(equipFreshSecondary(initialSecondaryEquipment('rook','glock-g19-gen3'),'rook',null).weapon,null);
 });
 test('S2: legacy primary-only loadouts and Quick Play roster remain compatible',()=>{
  const base=initialEquipmentLoadout('smg');
