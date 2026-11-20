@@ -2249,7 +2249,8 @@ export class TacticalScene3D{
       object.flash.position.x=gunTip?.muzzleX??19.5;
       object.flash.position.y=gunTip?.muzzleY??0;
       if(flashCue.active)object.flash.scale.setScalar(flashCue.scale);
-      const plannedDoor=actor.plan[0]?.kind==='door'?
+      const plannedDoor=actor.plan[0]?.kind==='door'&&
+        actor.plan[0].doorId!==undefined?
         this.frameDoorsById.get(actor.plan[0].doorId):undefined;
       const activeDoor=plannedDoor??(actor.lastDoorId?
         this.frameDoorsById.get(actor.lastDoorId):undefined);
@@ -2292,7 +2293,7 @@ export class TacticalScene3D{
         physicalContact.releasedAt===null&&
         actor.plan[0]?.kind==='tool'&&
         actor.plan[0].toolMethod==='pick';
-      const lockpickDoor=lockpickActive&&actor.plan[0]?.doorId?
+      const lockpickDoor=lockpickActive&&actor.plan[0]?.doorId!==undefined?
         this.frameDoorsById.get(actor.plan[0].doorId):undefined;
       const lockpickProgress=lockpickActive?
         Math.max(0,Math.min(1,(s.seconds-physicalContact.startedAt)/
