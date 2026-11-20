@@ -22,10 +22,15 @@ function fixture(){
 test('S8.3: one physical pistol remains attached across magazine serial swaps',()=>{
  const f=fixture(),{hip,chest,right,left,mount,kit}=f;
  const gun=hip.getObjectByName('secondary-holstered-pistol');
- const inserted=gun.getObjectByProperty('glockMagazineFloorplate',true);
+ let inserted=null;
+ gun.traverse(object=>{
+  if(object instanceof THREE.Mesh&&object.userData.glockMagazineFloorplate)
+   inserted=object;
+ });
  const chosen=kit.spareMagazines[0],old=kit.loadedMagazineId;
  const spare=hip.getObjectByName('secondary-magazine-pouch-'+chosen.id);
- assert.ok(gun&&spare,'actual carrier mag and Glock are both visible');
+ assert.ok(gun&&spare&&inserted,
+  'the issued Glock has a real visible loaded floorplate and spare');
  presentSecondaryDraw(hip,right,kit,1);
  const before=spare.getWorldPosition(new THREE.Vector3()).clone();
  const reload={orderId:10,selectedId:chosen.id,elapsed:.62,
