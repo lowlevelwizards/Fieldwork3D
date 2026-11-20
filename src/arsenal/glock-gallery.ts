@@ -333,8 +333,6 @@ export function mountGlockArsenalGallery():HTMLElement{
  const renderer=new GlockGallerySnapshots();
  let selectedSavedId:string|null=null;
  let filter:'all'|'compact'|'subcompact'|'crossover'|'saved'='all';
- const nameFor=(id:GlockAppearanceId)=>
-  GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===id)?.name??id;
  const recipeForSelection=():GlockRecipe=>{
   const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
   if(saved)return saved.recipe;
