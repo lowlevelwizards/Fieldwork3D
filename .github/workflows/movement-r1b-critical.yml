@@ -1,7 +1,7 @@
 name: Movement R1.B passage and feedback critical
 on:
   push:
-    branches: [feature/movement-reliability-r1b-20261120]
+    branches: [integration/movement-r1ab-on-main-20261120]
     paths:
       - 'src/breach-passage-plan.ts'
       - 'src/breach-passage-coordinator.ts'
