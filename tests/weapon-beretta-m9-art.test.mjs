@@ -163,3 +163,40 @@ test('C2 Beretta inspector is mobile-first and scoped away from Glock loadouts',
  assert.match(css,/\.arsenal-m9-inspector \.arsenal-wb-main/);
  assert.match(css,/\.arsenal-m9-inspector \.glock-wb-viewport\{height:100%\}/);
 });
+
+test('D3 silhouette: full-height serrations, thick exposed barrel, rake and muzzle are substantive',()=>{
+ const oldRadius=.70;
+ const m=M9_ART['beretta-m9'],a=M9_ART['beretta-m9a3'];
+ assert.ok(m.gripRear<-10.0,'classic M9 broad swept heel');
+ assert.ok(a.gripRear>-9.5,'Vertec heel stays more upright');
+ assert.ok(m.gripRear<a.gripRear-.65,'variant backstraps differ by actual art coordinates');
+ assert.ok(m.gripFront<a.gripFront-.30,'classic grip extends further aft');
+ for(const {id} of M9_APPEARANCE_REFERENCES){
+  const g=buildM9Appearance(id);
+  try{
+   const landmarks=g.userData.m9ArtLandmarks;
+   assert.ok(landmarks.barrelRadius>=oldRadius*1.22,
+    'exposed barrel is visibly wider than D2, not merely a material change');
+   const barrel=g.children.find(x=>x.userData.m9ExposedBarrel);
+   const sideRail=g.children.find(x=>x.userData.m9OpenSlideRail);
+   assert.ok(bounds(barrel).max.y-bounds(sideRail).max.y>1.5,
+    'barrel clears low open rails on both sides');
+   const serrations=g.children.filter(x=>x.userData.m9SerrationBatch);
+   assert.equal(serrations.length,1,'serrations stay one shared indexed draw batch');
+   const attr=serrations[0].geometry.getAttribute('position');
+   let bottom=Infinity,top=-Infinity;
+   for(let i=0;i<attr.count;i++){
+    bottom=Math.min(bottom,attr.getY(i));top=Math.max(top,attr.getY(i));
+   }
+   assert.ok(top-bottom>=2.65,'serrations extend top-to-bottom of rear slide');
+   assert.ok(bottom<=landmarks.slideBottomY+.1);
+   assert.ok(top>=landmarks.slideTopY-.1);
+   assert.equal(serrations[0].geometry.index.count,48,
+    'four bold marks per side, two triangles each, no mesh-per-serration');
+   assert.ok(sideRay(g,-.25,-2.35)===0,
+    'large, rounded trigger guard retains authentic physical opening');
+   assert.ok(g.children.some(x=>x.userData.m9MuzzleCrown));
+   assert.equal(g.userData.appearanceOnly,true);
+  }finally{clearM9Appearance(g);}
+ }
+});
