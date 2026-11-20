@@ -54,6 +54,8 @@ test('155: target must be secured by approaching the downed position',()=>{
  const target=enemies(s).find(e=>e.id===s.captureTarget);
  assert.ok(target);
  target.health=0;target.injuryStage=3;
+ // Fixture represents an actual recorded down, not an unknown legacy body.
+ target.downedAt=0;
  toggling(s);stepSession(s,1/60);
  assert.equal(s.mission,'secure');
  assert.equal(s.captureSecured,false);
