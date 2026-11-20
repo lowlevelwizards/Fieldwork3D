@@ -1,0 +1,22 @@
+name: Secondary Arsenal parity critical
+on:
+  pull_request:
+    paths:
+      - 'src/arsenal/glock-*.ts'
+      - 'src/arsenal/arsenal.css'
+      - 'tests/secondary-arsenal-parity.test.mjs'
+      - '.github/workflows/secondary-arsenal-parity-critical.yml'
+  workflow_dispatch:
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Secondary save, geometry, gallery and primary compatibility contracts
+        run: node --experimental-strip-types --test tests/secondary-arsenal-parity.test.mjs tests/secondary-s1-s3-foundation.test.mjs tests/secondary-s4-holster-visual.test.mjs
+      - name: Production TypeScript and bundle
+        run: npm run build
