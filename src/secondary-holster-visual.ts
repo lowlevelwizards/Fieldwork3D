@@ -14,6 +14,9 @@ type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  holster:THREE.Group;cradle:THREE.Group;
  /** Immutable stowed socket for deterministic, seek-safe draws. */
  stowedPosition:THREE.Vector3;stowedQuaternion:THREE.Quaternion;
+ /** Reused pose scratch: a live Glock must not allocate vectors every frame. */
+ gripWorld:THREE.Vector3;targetLocal:THREE.Vector3;
+ targetWorldRotation:THREE.Quaternion;parentWorldRotation:THREE.Quaternion;
 };
 const mounted=new WeakMap<THREE.Group,Mounted>();
 const pouchMaterial=()=>new THREE.MeshStandardMaterial({
@@ -143,7 +146,9 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  }
  mounted.set(hip,{signature,root,ownedRoots,holster,cradle,
   stowedPosition:cradle.position.clone(),
-  stowedQuaternion:cradle.quaternion.clone()});
+  stowedQuaternion:cradle.quaternion.clone(),
+  gripWorld:new THREE.Vector3(),targetLocal:new THREE.Vector3(),
+  targetWorldRotation:new THREE.Quaternion(),parentWorldRotation:new THREE.Quaternion()});
  return root;
 }
 
@@ -175,10 +180,10 @@ export function presentSecondaryDraw(hip:THREE.Group,
  if(!chest)return false;
  mount.holster.updateWorldMatrix(true,false);
  firingHand.updateWorldMatrix(true,false);
- const gripWorld=firingHand.getWorldPosition(new THREE.Vector3());
- const target=mount.holster.worldToLocal(gripWorld);
- const targetWorldRotation=chest.getWorldQuaternion(new THREE.Quaternion());
- const parentWorldRotation=mount.holster.getWorldQuaternion(new THREE.Quaternion());
+ const gripWorld=firingHand.getWorldPosition(mount.gripWorld);
+ const target=mount.holster.worldToLocal(mount.targetLocal.copy(gripWorld));
+ const targetWorldRotation=chest.getWorldQuaternion(mount.targetWorldRotation);
+ const parentWorldRotation=mount.holster.getWorldQuaternion(mount.parentWorldRotation);
  const targetRotation=parentWorldRotation.invert().multiply(targetWorldRotation);
  // A curved, controlled draw path clears the holster before rotating into
  // the firing grip. No per-frame mesh or material allocations.
