@@ -31,3 +31,33 @@ export function createArsenalSavedActionButtons():{
  };
  return {rename:make('RENAME'),duplicate:make('DUPLICATE'),remove:make('DELETE')};
 }
+
+/** A shared card shell, not a shared selection or weapon renderer. The
+ * primary and secondary owners still assign dataset IDs, click handlers and
+ * all preview scheduling independently.
+ */
+export function createArsenalGalleryCard(options:{
+ kind:'primary'|'secondary';
+ name:string;
+ subtitle:string;
+ ariaLabel:string;
+ selected:boolean;
+}):{button:HTMLButtonElement;preview:HTMLElement}{
+ const secondary=options.kind==='secondary';
+ const button=document.createElement('button');
+ button.type='button';
+ button.className=secondary?'arsenal-card arsenal-glock-card':'arsenal-card';
+ button.setAttribute('aria-pressed',String(options.selected));
+ button.setAttribute('aria-label',options.ariaLabel);
+ const preview=document.createElement(secondary?'span':'div');
+ preview.className=secondary?
+  'arsenal-card-preview arsenal-glock-card-preview':'arsenal-card-preview';
+ const model=document.createElement('strong');
+ model.className='model';
+ model.textContent=options.name;
+ const subtitle=document.createElement(secondary?'small':'span');
+ subtitle.className='platform';
+ subtitle.textContent=options.subtitle;
+ button.append(preview,model,subtitle);
+ return {button,preview};
+}
