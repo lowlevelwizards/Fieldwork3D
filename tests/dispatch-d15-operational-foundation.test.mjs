@@ -28,7 +28,8 @@ test('D15.1 legacy surrender is NOT physical custody or a living captive',()=>{
  try{
   const suspect=enemies(s)[0],officer=team(s)[0];
   assert.ok(suspect&&officer);
-  assert.equal(commitSuspectSurrender(s,suspect,()=>{},()=>{}),true);
+  // D9 historical frames had zero health; classify rather than reinterpret them.
+  suspect.health=0;suspect.injuryStage=3;suspect.surrendered=true;
   assert.equal(classifySuspectCustody(suspect).disposition,'legacy-surrendered-down');
   assert.equal(classifySuspectCustody(suspect).custodyCandidate,false);
   assert.equal(classifySuspectCustody(officer).disposition,'not-suspect');

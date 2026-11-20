@@ -286,6 +286,9 @@ export type TeamActor=Operator & {
   flashCharges:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
+  /** D15 conscious submission is not a physical wound or casualty. */
+  lastSurrenderAt?:number;
+  releasedWeaponId?:number|null;
  /** D9: authoritative interval since last resolved spoken challenge. */
  lastChallengeAt?:number;
   lastFireRepositionAt:number;lastMissionEvadeAt:number;
@@ -359,6 +362,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;site?:Site;lightingMode:LightingMode;dropped:DroppedMagazine[];
+  /** Authoritative surrendered firearms, distinct from transient presentation. */
+  droppedFirearms:import('./breach-suspect-weapons.ts').DroppedFirearm[];
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;

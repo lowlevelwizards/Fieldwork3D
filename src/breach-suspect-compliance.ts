@@ -4,8 +4,7 @@
  */
 import type {Session,TeamActor} from './breach-game.ts';
 import type {BattleEvent} from './breach-combat.ts';
-import {wallSafeFall} from './breach-ground-geometry.ts';
-import {sessionWorldGeometry} from './breach-world-context.ts';
+import {releaseSuspectHeldFirearm} from './breach-suspect-weapons.ts';
 
 export const SUSPECT_CHALLENGE_RANGE=100;
 export const SUSPECT_CHALLENGE_SECONDS=.48;
@@ -31,13 +30,15 @@ export function commitSuspectSurrender(
   p:{x:number;y:number},text:string,meta?:BattleEvent['meta'])=>void,
  source:'morale'|'challenge'='morale',challengerId?:string):boolean{
  if(target.health<=0||target.surrendered)return false;
- target.surrendered=true;target.health=0;target.injuryStage=3;
- target.lastDownAt=s.seconds;
- const fall=wallSafeFall(target.p,target.heading,'slump',
-  sessionWorldGeometry(s).walls);
- target.downPose=fall.pose;target.downClearance=fall.space;
+ // Never fabricate a wound, down event, or casualty to represent compliance.
+ const released=releaseSuspectHeldFirearm(s,target);
+ target.surrendered=true;target.lastSurrenderAt=s.seconds;
+ target.releasedWeaponId=released.id;
  target.velocity=0;target.nav=[];target.plan=[];
- target.reload=0;target.reloadMode=null;
+ target.reload=0;target.reloadMode=null;target.secondaryReload=null;
+ target.aim=0;target.targetId=null;target.combatChoice=null;
+ target.intent=null;target.defense=null;target.retreatPoint=null;
+ target.fireRetreatTarget=null;target.fireRetreatUntil=0;
  const message=target.name+' SURRENDERED'+
    (source==='challenge'?' AFTER CHALLENGE':'');
  notify(s,message);

@@ -37,6 +37,7 @@ import type {DoorHandContact} from './breach-door-hand-contact.ts';
 import type {PhysicalContact} from './breach-physical-contact-anchor.ts';
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
 import {createCivilian,type CivilianActor} from './breach-civilian-types.ts';
+import type {DroppedFirearm} from './breach-suspect-weapons.ts';
 
 export type ActorFrame=Pick<TeamActor,
   'id'|'p'|'heading'|'health'|'velocity'|'turning'|'posture'|'pace'|'alert'|
@@ -60,6 +61,9 @@ export type ReplayActorFrame=ActorFrame & {
  /** S8.2: historical pistol magazine identity, rounds and handoff clock. */
  secondaryEquipment?:SecondaryEquipment;
  secondaryReload?:SecondaryTimedReload|null;
+ /** D15 conscious surrender timestamp, not a down event. */
+ lastSurrenderAt?:number;
+ releasedWeaponId?:number|null;
  /** F6: optional fixed-step clock of the authored active interaction.
   * Missing in older films means no credible mid-action hand retrieval. */
  actionTimer?:number;
@@ -115,6 +119,8 @@ export type ReplayFrame={
   sitePower?:Session['sitePower'];
   casings:Session['casings'];
   dropped:DroppedMagazine[];impactMarks:ImpactMark[];grenades:FlashGrenade[];
+  /** D15 optional world-firearm history; absent in old films. */
+  droppedFirearms?:DroppedFirearm[];
   flashBursts:FlashBurst[];flashRemaining:number;
   missionType:Session['missionType'];holdTime:number;
   rescue:{p:Pt;following:string|null}|null;objective:Pt;
@@ -239,7 +245,9 @@ export function snapshot(s:Session,seenGround?:string[],
       lastShotAt:a.lastShotAt,fireMode:a.fireMode,burstCount:a.burstCount,
       skills:reuseFrozenReplayValue(a.skills,prior?.skills,
         ()=>({...a.skills})),
-      surrendered:a.surrendered,defense:a.defense?position(a.defense):null,
+      surrendered:a.surrendered,lastSurrenderAt:a.lastSurrenderAt,
+      releasedWeaponId:a.releasedWeaponId??null,
+      defense:a.defense?position(a.defense):null,
       watch:a.watch?position(a.watch):null,
       aimInstruction:a.aimInstruction?{...a.aimInstruction,
         point:a.aimInstruction.point?position(a.aimInstruction.point):undefined}:null,
@@ -280,6 +288,11 @@ export function snapshot(s:Session,seenGround?:string[],
       ()=>s.casings.map(x=>({...x}))),
     dropped:reuseFrozenReplayValue(s.dropped,priorEffects?.dropped,
       ()=>s.dropped.map(m=>({...m,p:position(m.p)}))),
+    droppedFirearms:reuseFrozenReplayValue(s.droppedFirearms,
+      priorEffects?.droppedFirearms,
+      ()=>s.droppedFirearms.map(w=>({...w,p:position(w.p),
+        weaponConfiguration:w.weaponConfiguration?
+          structuredClone(w.weaponConfiguration):undefined}))),
     impactMarks:reuseFrozenReplayValue(s.impactMarks,priorEffects?.impactMarks,
       ()=>s.impactMarks.map(m=>({...m,p:position(m.p)}))),
     grenades:reuseFrozenReplayValue(s.grenades,priorEffects?.grenades,
@@ -543,6 +556,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
+      lastSurrenderAt:copy.lastSurrenderAt,
+      releasedWeaponId:copy.releasedWeaponId??null,
       actionTimer:copy.actionTimer??0,
       heard:copy.heard?position(copy.heard):null,
       contact:copy.contact?position(copy.contact):null,
@@ -599,6 +614,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       replayVisible:copy.visibleAtCapture
     };
   });
+  s.droppedFirearms=(f.droppedFirearms??[]).map(w=>({...w,
+    p:position(w.p),weaponConfiguration:w.weaponConfiguration?
+      structuredClone(w.weaponConfiguration):undefined}));
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.objectRevision=f.objectRevision??0;
   // Seek/rewind restores the actual circuit state from this exact film frame.

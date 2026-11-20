@@ -12,6 +12,17 @@ Base main: `a4e323d6e66edf5f2a45a470a4ac399e0d7c7af9`. Feature branch: `feature/
 - Preserve D9 live surrender until the true world-weapon/pose work is ready.
   Living compliant targets in this stage are only policy test fixtures.
 
+## D15.2A — living surrender and physical firearm state
+- Live CHALLENGE/morale submission preserves health and injury and does not
+  manufacture a downed/casualty event.
+- Session owns a real dropped firearm with original identity, ammunition,
+  location, stable ID and owner. Existing 3D kneel and new 2D raised hands
+  no longer rely on fake death.
+- Replay records surrender time, dropped firearm state and physical actor
+  health without inventing custody for archival D9 films.
+- Retrieval, separate world mesh and custody orders are still outstanding;
+  do not publish an incomplete checkpoint.
+
 ## R1 must still implement before release
 - Real living surrender; authoritative transfer of the held firearm into a
   Session-owned recoverable world entity (current `droppedGun` is visual only).

@@ -2242,8 +2242,9 @@ export class TacticalScene3D{
       object.root.position.set(drawActor.x,actor.traversalElevation,drawActor.z);
       // Build 120: the pose solver is the only writer of actor anatomical,
       // firearm and hit-reaction transforms; the scene owns world placement.
-      const downProgress=actor.health<=0?
-        Math.min(1,Math.max(0,(poseSeconds-actor.lastDownAt)/.78)):0;
+      const downProgress=actor.health<=0||actor.surrendered?
+        Math.min(1,Math.max(0,(poseSeconds-(actor.surrendered&&actor.health>0?
+          actor.lastSurrenderAt??actor.lastDownAt:actor.lastDownAt))/.78)):0;
       const hitAge=poseSeconds-actor.lastHitAt;
       const hitFade=actor.health>0&&hitAge>=0&&hitAge<.32?
         1-hitAge/.32:0;
