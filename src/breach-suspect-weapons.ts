@@ -27,5 +27,7 @@ export function releaseSuspectHeldFirearm(s:Session,a:TeamActor):DroppedFirearm{
   status:'loose'
  };
  s.droppedFirearms.push(item);
+ // A sidearm released from the firing hand cannot remain issued in its holster.
+ if(pistol&&a.equipment)a.equipment={...a.equipment,secondary:undefined};
  return item;
 }
