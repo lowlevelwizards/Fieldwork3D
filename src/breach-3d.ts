@@ -1,6 +1,7 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {rebuildFrameIdIndex} from './breach-frame-lookup.ts';
+import {FrameActorNeighborhoodIndex} from './breach-actor-neighborhood.ts';
 import {groundBloodFootprintOccluded,groundMarkHiddenByWallFromCamera}
   from './breach-ground-geometry.ts';
 import {lightingPresentation} from './equipment-lighting-presentation.ts';
@@ -170,6 +171,9 @@ export class TacticalScene3D{
   /** Same first-match references as Array.find, built once per 3D frame. */
   private readonly frameActorsById=new Map<string,Session['operators'][number]>();
   private readonly frameDoorsById=new Map<string,Session['doors'][number]>();
+  /** Reusable ally-only spatial candidates for crowded 3D presentation. */
+  private readonly frameActorNeighborhood=
+   new FrameActorNeighborhoodIndex<Session['operators'][number]>();
   // E6.15: reuse existing P1.5 actor/scene phase counters only when the
   // user explicitly requests a local coldBench capture. Normal gameplay
   // still leaves pose/phase CPU timing entirely disabled.
@@ -1146,6 +1150,7 @@ export class TacticalScene3D{
     this.recentMuzzleShots.clear();
     this.frameActorsById.clear();
     this.frameDoorsById.clear();
+    this.frameActorNeighborhood.clear();
     this.displayedSite=site;
     this.staticBatches.clear();
     this.repeatedFixtures.clear();
@@ -2173,6 +2178,10 @@ export class TacticalScene3D{
     this.recentMuzzleShots.rebuild(s.shots);
     rebuildFrameIdIndex(this.frameActorsById,s.operators);
     rebuildFrameIdIndex(this.frameDoorsById,s.doors);
+    // Four-man missions use the original straight scan, avoiding index
+    // overhead. Crowded scenes keep the original exact predicates/order.
+    const useAllyBroadphase=s.operators.length>=16;
+    if(useAllyBroadphase)this.frameActorNeighborhood.rebuild(s.operators);
     // Quality tier is camera-wide, not per-person. Calculate it once even
     // when twenty operators are animating this frame.
     const frameShadowDetail=operatorShadowDetail(
@@ -2333,7 +2342,10 @@ export class TacticalScene3D{
       const facingX=Math.cos(actor.heading),facingY=Math.sin(actor.heading);
       const nearbyAllies=this.nearbyAllyScratch;
       nearbyAllies.length=0;
-      for(const peer of s.operators){
+      const allyPeers=useAllyBroadphase?
+        this.frameActorNeighborhood.candidates(
+          actor.p.x,actor.p.y,drawActor.x,drawActor.z):s.operators;
+      for(const peer of allyPeers){
         if(peer===actor||peer.side!==actor.side||peer.health<=0)continue;
         // Stack and high-ready use fixed-step actor positions, while weapon
         // safety still uses the interpolated presentation position.
@@ -2350,7 +2362,7 @@ export class TacticalScene3D{
       }
       if(this.profileSceneUpdate){
         this.actorPhaseCosts.allyContextMs+=performance.now()-allyStart;
-        this.actorPhaseCosts.allyPeerVisits+=s.operators.length;
+        this.actorPhaseCosts.allyPeerVisits+=allyPeers.length;
       }
       const friendlyAhead=stackCrowded||actuallyAhead;
       // Physical contact is queried from the actual interpolated barrel,

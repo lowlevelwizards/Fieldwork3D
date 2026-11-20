@@ -1,0 +1,28 @@
+name: Performance P6.G optional rigid Toon compiler
+on:
+  pull_request:
+    paths:
+      - 'src/rendering/fieldwork-model-compiler.ts'
+      - 'tests/performance-p6-opaque-toon-compiler.test.mjs'
+      - '.github/workflows/performance-p6-opaque-toon-compiler.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compiler-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Reversible opaque Toon compiler and existing rigid owner contracts
+        run: >-
+          node --experimental-strip-types --test
+          tests/performance-p6-opaque-toon-compiler.test.mjs
+          tests/refactor-e6-20-universal-model-compiler.test.mjs
+          tests/refactor-e6-21-owner-assembly.test.mjs
+      - name: Typecheck and production bundle
+        run: npm run check && npx vite build
