@@ -293,6 +293,14 @@ export type TeamActor=Operator & {
   /** D15 conscious submission is not a physical wound or casualty. */
   lastSurrenderAt?:number;
   releasedWeaponId?:number|null;
+  /** D15.6: only unrestrained submitted subjects get physical attempts. */
+  suspectEscapeMode?:'recover'|'secondary'|'flee'|null;
+  suspectEscapeWeaponId?:number|null;
+  suspectEscapeStartedAt?:number;
+  suspectEscapeCooldownUntil?:number;
+  suspectEscapeGoal?:Pt|null;
+  /** Authority: red pistol firing only after real drawn/retrieved sidearm. */
+  suspectRearmedSecondary?:boolean;
   /** Restraints applied only after physical GO completion. */
   restrained?:boolean;lastCustodyAt?:number;
   /** Only a successfully completed physical search establishes this fact. */
