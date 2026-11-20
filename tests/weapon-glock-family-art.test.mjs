@@ -21,7 +21,7 @@ const ray=(g,x,y)=>new THREE.Raycaster(
  new THREE.Vector3(x,y,10),new THREE.Vector3(0,0,-1),0,24)
  .intersectObject(g,true).length;
 
-test('G2.6: four miniature variants retain the low geometry budget',()=>{
+test('G2.7: four miniature variants retain the low geometry budget',()=>{
  assert.equal(GLOCK_APPEARANCE_REFERENCES.length,4);
  for(const ref of GLOCK_APPEARANCE_REFERENCES){
   const model=buildGlockAppearance(ref.id);
@@ -30,6 +30,7 @@ test('G2.6: four miniature variants retain the low geometry budget',()=>{
    assert.equal(model.userData.glockG2FieldworkProportions,true);
    assert.equal(model.userData.glockG25BalancedProportions,true);
    assert.equal(model.userData.glockG26IdentityRefinement,true);
+   assert.equal(model.userData.glockG27IdentityLock,true);
    assert.ok(model.children.length>=6&&model.children.length<=7,ref.id);
    assert.ok(triangleCount(model)<=220,ref.id+' measured emitted triangles');
    assert.ok(model.children.every(x=>x.name.startsWith('family-')));
@@ -191,4 +192,75 @@ test('G2.5: pistol-specific Arsenal close framing and honest real-MP5K peer mode
  assert.match(preview,/hk-mp5k/);
  assert.match(preview,/provisional until a live sidearm rig exists/);
  assert.match(preview,/NOT YET EQUIPPABLE/);
+});
+
+
+test('G2.7: taller, angled guard opening remains truly void and sturdy',()=>{
+ for(const ref of GLOCK_APPEARANCE_REFERENCES){
+  const model=buildGlockAppearance(ref.id,{monochrome:true});
+  try{
+   const a=model.userData.glockArtLandmarks;
+   assert.equal(a.guardFivePointAperture,true);
+   assert.equal(a.guardRearDiagonal,true);
+   assert.ok(a.guardOpeningY[1]-a.guardOpeningY[0]>=1.39,
+    'opening now about 27% taller than G2.6');
+   assert.equal(ray(model,-.3,-1.81),0,'top of opening stays empty');
+   assert.equal(ray(model,-.3,-3.04),0,'bottom of opening stays empty');
+   assert.ok(ray(model,-.3,-3.56)>0,'lower bar remains substantial');
+   assert.ok(ray(model,1.30,-2.50)>0,'front pillar remains substantial');
+   assert.ok(ray(model,-2.50,-2.88)>0,
+    'angled rear rim joins the grip instead of forming a window');
+   assert.equal(model.children.filter(x=>x.userData.glockIntegratedFrameGrip).length,1);
+  }finally{clearGlockAppearance(model);}
+ }
+});
+test('G2.7: G19X coyote slide has separate pooled steel identity, no per-instance material',async()=>{
+ const {GLOCK_COYOTE_SLIDE,GLOCK_PORT_SHADOW,AR_MUTED_FDE}=
+  await import('../src/weapons/geometry/weapon-visual-palette.ts');
+ const a=buildGlockAppearance('glock-g19x');
+ const b=buildGlockAppearance('glock-g19x');
+ try{
+  const slide=a.children.find(x=>x.userData.glockMovingSlide);
+  const frame=a.children.find(x=>x.userData.glockIntegratedFrameGrip);
+  const marks=a.children.find(x=>x.userData.glockRightEjectionPort);
+  assert.equal(slide.material,GLOCK_COYOTE_SLIDE);
+  assert.equal(frame.material,AR_MUTED_FDE);
+  assert.notEqual(slide.material,frame.material);
+  assert.equal(marks.material,GLOCK_PORT_SHADOW);
+  assert.equal(b.children.find(x=>x.userData.glockMovingSlide).material,slide.material);
+  assert.equal(b.children.find(x=>x.userData.glockRightEjectionPort).material,marks.material);
+  assert.ok(slide.material.color.getHex()!==frame.material.color.getHex());
+ }finally{clearGlockAppearance(a);clearGlockAppearance(b);}
+});
+test('G2.7: muzzle front face cue joins existing detail batch with +X front normals',()=>{
+ for(const ref of GLOCK_APPEARANCE_REFERENCES){
+  const g=buildGlockAppearance(ref.id);
+  try{
+   const detail=g.children.find(x=>x.userData.glockMuzzleFaceCue);
+   assert.ok(detail);
+   const geom=detail.geometry,verts=geom.attributes.position,idx=geom.index;
+   const normals=[];
+   const mouthStart=idx.count-18;
+   for(let i=mouthStart;i<mouthStart+6;i+=3){
+    const a=new THREE.Vector3().fromBufferAttribute(verts,idx.getX(i));
+    const b=new THREE.Vector3().fromBufferAttribute(verts,idx.getX(i+1));
+    const c=new THREE.Vector3().fromBufferAttribute(verts,idx.getX(i+2));
+    normals.push(b.sub(a).cross(c.sub(a)).normalize());
+   }
+   assert.ok(normals.every(n=>n.x>.99),'muzzle mark faces forward');
+   assert.ok(g.children.length<=7,'no separate muzzle mesh');
+   assert.ok(triangleCount(g)<=220,'still meets triangle review target');
+  }finally{clearGlockAppearance(g);}
+ }
+});
+test('G2.7: Arsenal supports one-camera comparison for all four unscaled family models',()=>{
+ const source=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
+ const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
+ assert.match(source,/type View=.*'family'/);
+ assert.match(source,/FAMILY SCALE/);
+ assert.match(source,/GLOCK_APPEARANCE_REFERENCES\.forEach/);
+ assert.match(source,/this\.scene\.add\(item\);family\.push\(item\)/);
+ assert.match(source,/for\(const item of family\).*bounds\.expandByObject\(item\)/);
+ assert.match(source,/ONE CAMERA/);
+ assert.match(css,/arsenal-glock-hero-visual\[data-view="family"\]/);
 });
