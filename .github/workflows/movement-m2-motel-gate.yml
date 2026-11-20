@@ -28,8 +28,8 @@ jobs:
           npm run check
       - name: Motel exact 31149 four physical arrivals
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 > motel-m2-31149.json
-          node -e "const r=require('./motel-m2-31149.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,operators:r.operators.map(x=>({id:x.id,arrived:x.arrived,remaining:x.remaining,blocker:x.lastBlocker}))}));if(r.arrivals!==4)process.exit(1)"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 --route-transitions --trace-actor=vale --trace-mode=entry > motel-m2-31149.json
+          node -e "const r=require('./motel-m2-31149.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,operators:r.operators.map(x=>({id:x.id,arrived:x.arrived,remaining:x.remaining,blocker:x.lastBlocker})),routes:r.routeTransitions?.events?.slice(-15),counts:r.routeTransitions?.counts}}));if(r.arrivals!==4)process.exit(1)"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
