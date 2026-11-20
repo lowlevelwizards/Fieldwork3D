@@ -25,5 +25,7 @@ jobs:
           tests/performance-p6-local-ally-broadphase.test.mjs
           tests/refactor-e6-5-ally-context.test.mjs
           tests/performance-p6-frame-indices.test.mjs
+      - name: Diagnostic baseline versus indexed peer scan at 4/16/32/88/180 actors
+        run: node --experimental-strip-types scripts/verification/performance-p6-ally-broadphase-bench.mjs
       - name: Typecheck and production bundle
         run: npm run check && npx vite build
