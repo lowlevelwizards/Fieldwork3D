@@ -85,7 +85,7 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
   pouch.userData.secondaryMagazineId=magazine.id;
   pouch.position.set(1.1+beltIndex*1.55,-2.6,-side*9.1);
   pouch.castShadow=true;pouch.receiveShadow=true;
-  hip.add(pouch);mount.add(pouch); // move under owned holster root for disposal
+  mount.add(pouch); // one owned root, one deterministic disposal path
   pouch.position.set(1.1+beltIndex*1.55,-2.6,
    -side*18.35); // root is offset side*9.25: opposite belt in hip space
   beltIndex++;
