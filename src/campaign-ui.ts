@@ -1,5 +1,6 @@
 /** Campaign screens. Render only on navigation and state changes, never per frame. */
-import type {CampaignState,Contract} from './campaign-state.ts';
+import {SQUAD_IDENTIFICATION_COLORS,type CampaignState,type Contract}
+ from './campaign-state.ts';
 import type {CampaignSlot} from './campaign-save-slots.ts';
 import type {CampaignCreationDraft} from './campaign-creation.ts';
 import {effectiveCampaignRules} from './campaign-rules.ts';
@@ -47,6 +48,7 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import {createOutfitterGallery} from './ui/campaign-outfitter-gallery.ts';
+import {fieldworkSelect} from './ui/fieldwork-select.ts';
 import './ui/campaign-outfitter-gallery.css';
 import {quoteSingleFieldTransfer} from './equipment-field-transfer.ts';
 import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
@@ -104,6 +106,7 @@ export type CampaignHandlers={
  applyKitPreset:(id:string,presetId:string)=>void;
  deleteKitPreset:(presetId:string)=>void;
  renameOperator:(id:string,callsign:string)=>void;
+ setOperatorColor:(id:string,color:string)=>void;
  cycleAppearance:(id:string)=>void;
  exportSave:()=>void;importSave:(raw:string,slot:CampaignSlot)=>void;retire:(id:string)=>void;
 };
@@ -151,6 +154,10 @@ export class CampaignScreen{
   mass:number;mobility:number
  }|null=null;
  private readonly operatorViewAngles=new Map<string,number>();
+ /** Persistent UI state across rerenders; not part of the loadout. */
+ private readonly outfitterSelected=new Map<string,Map<string,string>>();
+ private readonly outfitterScroll=new Map<string,Map<string,number>>();
+ private inspectionWeaponVisible=true;
  /** Keep orbit/zoom only across small cosmetic swaps; refit a new core. */
  private readonly weaponWorkbenchViews=new Map<string,{
   core:string;view:WeaponWorkbenchViewState
@@ -1386,22 +1393,63 @@ export class CampaignScreen{
     const ai=c.squadIds.indexOf(a.id),bi=c.squadIds.indexOf(b.id);
     return (ai<0?99:ai)-(bi<0?99:bi);
    });
-  // The full squad rail remains available on desktop. A compact selector is
-  // placed in the header on phones so the model, not roster cards, owns space.
-  const mobileOperatorSelect=node('select','campaign-outfitter-operator-select') as HTMLSelectElement;
-  mobileOperatorSelect.setAttribute('aria-label','Choose outfitting operator');
-  for(const operator of preparable){
-   const option=node('option','',operator.callsign.toUpperCase()) as HTMLOptionElement;
-   option.value=operator.id;
-   mobileOperatorSelect.append(option);
-  }
-  mobileOperatorSelect.value=id;
-  mobileOperatorSelect.addEventListener('change',()=>{
-   this.armoryOperatorId=mobileOperatorSelect.value;this.home(c);
-  });
+  // Native iOS selects are replaced by one reusable anchored Fieldwork picker.
+  // Cycling operators retains the current equipment category and view intent.
+  const chooseOperator=(nextId:string)=>{
+   if(nextId===id)return;
+   this.armoryOperatorId=nextId;this.home(c);
+  };
+  const index=preparable.findIndex(o=>o.id===id);
+  const compactHeader=node('div','campaign-outfitter-header-controls');
+  const previous=button('‹',()=>chooseOperator(
+   preparable[(index+preparable.length-1)%preparable.length].id),
+   'campaign-outfitter-previous');
+  previous.setAttribute('aria-label','Previous operator');
+  previous.disabled=preparable.length<2;
+  const next=button('›',()=>chooseOperator(
+   preparable[(index+1)%preparable.length].id),
+   'campaign-outfitter-next');
+  next.setAttribute('aria-label','Next operator');
+  next.disabled=preparable.length<2;
+  const identityBox=node('div','campaign-outfitter-identity-box');
+  const selectName=fieldworkSelect({label:'Choose outfitting operator',
+   value:id,choices:preparable.map((o,i)=>({
+    value:o.id,label:o.callsign.toUpperCase(),
+    hint:'OPERATOR '+String(i+1).padStart(2,'0')+' / '+
+     String(preparable.length).padStart(2,'0')})),
+   onChange:chooseOperator});
+  selectName.classList.add('campaign-outfitter-operator-select');
   const mobileMetrics=node('span','campaign-outfitter-metrics',
-   currentMass.toFixed(1)+' KG · '+currentMobility+'% MOBILITY');
-  top.append(mobileOperatorSelect,mobileMetrics);
+   currentMass.toFixed(1)+' KG · '+currentMobility+'%');
+  identityBox.append(selectName,mobileMetrics);
+  let openKitLibrary=()=>{};
+  let openClothing=()=>{};
+  const renameShortcut=button('✎',()=>{
+   if(!rename.disabled)rename.click();
+  },'campaign-outfitter-rename');
+  renameShortcut.setAttribute('aria-label','Rename '+person.callsign);
+  renameShortcut.disabled=!!c.activeContractId;
+  const palette=[
+   ['Slate blue','#88B4C8'],['Olive','#B7B57D'],
+   ['Muted red','#C18F82'],['Sage','#88B89D'],
+   ['Plum','#B69CC9'],['Amber','#DEB37D']
+  ] as const;
+  const colorPicker=fieldworkSelect({
+   label:'Operator identification color',
+   value:person.squadColor??SQUAD_IDENTIFICATION_COLORS[index%SQUAD_IDENTIFICATION_COLORS.length],
+   choices:palette.map(([label,value])=>({label,value})),
+   onChange:color=>this.handlers.setOperatorColor(id,color)
+  });
+  colorPicker.classList.add('campaign-outfitter-color');
+  colorPicker.textContent='●';
+  colorPicker.style.color=person.squadColor??SQUAD_IDENTIFICATION_COLORS[index%SQUAD_IDENTIFICATION_COLORS.length];
+  const kitButton=button('▣',()=>openKitLibrary(),'campaign-outfitter-library-button');
+  kitButton.setAttribute('aria-label','Saved kit library and squad tools');
+  const clothes=button('◈',()=>openClothing(),'campaign-outfitter-clothing-button');
+  clothes.setAttribute('aria-label','Clothing and appearance');
+  compactHeader.append(previous,identityBox,next,renameShortcut,
+   colorPicker,kitButton,clothes);
+  top.append(compactHeader);
   main.append(createLoadoutSquadRail(preparable.map(o=>({
    id:o.id,name:o.callsign.toUpperCase(),
    detail:o.weapon.toUpperCase(),
@@ -1751,6 +1799,10 @@ export class CampaignScreen{
   };
   const grouped=buildQuickLoadoutGroups(editor,this.activeKitGroup,setCategory);
   const benchRows=new Map<LoadoutSlot,HTMLElement>();
+  const selectedItems=this.outfitterSelected.get(id)??new Map<string,string>();
+  const scrollPositions=this.outfitterScroll.get(id)??new Map<string,number>();
+  this.outfitterSelected.set(id,selectedItems);
+  this.outfitterScroll.set(id,scrollPositions);
   const gallerySources=new Map<LoadoutSlot,HTMLSelectElement>();
   let showGallery:((slot:LoadoutSlot)=>void)|null=null;
   let closeAdvanced:(()=>void)|null=null;
@@ -2248,7 +2300,13 @@ export class CampaignScreen{
    });
    advancedHead.append(advancedClose);
    advanced.append(advancedHead);
-   advanced.append(kitUtilities);
+   // Save/apply presets have a dedicated header shortcut, not a More tab.
+   presets.open=true;
+   advanced.append(presets);
+   const otherDetails=node('details','campaign-outfitter-squad-tools');
+   otherDetails.append(node('summary','','SQUAD LOGISTICS / AUTO PACK'));
+   otherDetails.append(kitUtilities);
+   advanced.append(otherDetails);
    const physicalAdvanced=physicalEditor.querySelector<HTMLElement>(
     '.fw-field-inventory-advanced');
    if(physicalAdvanced)advanced.append(physicalAdvanced);
@@ -2259,11 +2317,25 @@ export class CampaignScreen{
    closeAdvanced=()=>{
     advanced.hidden=true;galleryRoot.hidden=false;
    };
+   openKitLibrary=()=>{galleryRoot.hidden=true;advanced.hidden=false;};
+   openClothing=()=>{selectBenchSlot('top');};
    const gallery=createOutfitterGallery({
     host:galleryRoot,sources:gallerySources,kit:person.loadout,
     magazines:person.magazines,physicalEditor,locked,
     renderModel:(slot,itemId)=>this.preview?.renderModelThumbnail(
      {kind:'gear',slot,itemId})??null,
+    renderField:fieldId=>this.preview?.renderModelThumbnail(
+     {kind:'field',id:fieldId})??null,
+    selectedItems,scrollPositions,
+    onInspect:(slot,itemId,kind)=>{
+     if(!itemId){this.preview?.selectItemDot(null);return;}
+     if(kind==='gear')this.preview?.selectItemDot({
+      kind:'gear',slot,itemId
+     });
+     else this.preview?.selectItemDot({
+      kind:kind==='field'?'field':'magazine',id:itemId
+     });
+    },
     onEquip:(slot,itemId)=>{
      const original=gallerySources.get(slot);
      if(!original||original.disabled||
@@ -2351,6 +2423,17 @@ export class CampaignScreen{
    // buttons provide a precise fallback on small screens and for keyboard.
    this.preview?.setOnTapSlot(slot=>selectBenchSlot(slot,true));
    this.preview?.setSelectedSlot(this.activeBenchSlot,false);
+   this.preview?.setWeaponPresentation(this.inspectionWeaponVisible);
+   this.preview?.onWeaponVisibilityChange=held=>{
+    this.inspectionWeaponVisible=held;
+   };
+   if(compact){
+    const card=selectedItems.get(this.activeBenchSlot);
+    if(card&&person.loadout.slots[this.activeBenchSlot]===card)
+     this.preview?.selectItemDot({
+      kind:'gear',slot:this.activeBenchSlot,itemId:card
+     });
+   }
    // No inert orbit buttons if a device cannot initialize WebGL.
    if(!this.preview?.isReady())
     for(const control of summary.querySelectorAll<HTMLButtonElement>(
