@@ -50,7 +50,6 @@ import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import {createOutfitterGallery} from './ui/campaign-outfitter-gallery.ts';
 import {fieldworkSelect} from './ui/fieldwork-select.ts';
 import './ui/campaign-outfitter-gallery.css';
-import {quoteSingleFieldTransfer} from './equipment-field-transfer.ts';
 import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
 import {CarryKitUndoHistory,captureCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
 import {quoteCarryGearChange} from './equipment-carry-gear-change.ts';
