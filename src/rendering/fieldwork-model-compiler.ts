@@ -40,8 +40,14 @@ function eligible(node:THREE.Object3D,options:VisualCompileOptions):Candidate|nu
   node.customDistanceMaterial||node.morphTargetInfluences?.length||
   !(node.geometry instanceof THREE.BufferGeometry)||
   Object.keys(node.userData).some(k=>!safeMetadata.has(k)))return null;
+ // Operator garments may carry source-indexed baked AO, skin/cavity
+ // receiver masks or per-piece visual metadata. Generic mergeGeometries
+ // cannot preserve those channels; the operator-specific garment merger
+ // owns them. Never silently drop any such CPU metadata in this pilot.
  const opaqueToon=options.allowOpaqueToon===true&&
-  options.mode!=='opaque-facade'&&node.material instanceof THREE.MeshToonMaterial;
+  options.mode!=='opaque-facade'&&
+  Object.keys(node.geometry.userData).length===0&&
+  node.material instanceof THREE.MeshToonMaterial;
  if(!(node.material instanceof THREE.MeshStandardMaterial)&&!opaqueToon)return null;
  // Toon is allowed only when the caller explicitly owns this parent as
  // rigid. Moving bones, individually hidden parts and special shader meshes
