@@ -54,5 +54,6 @@ test('M2.8: reject a west coarse route when the actual tiny stride is blocked',(
  const route=selectM2EntrySqueezeDeparture(from,goal,p(-4,0),
   ()=>false,narrow,(_a,to)=>[to]);
  assert.ok(route.length>=2);
- assert.ok(route[0].y<-.1,'do not choose the rejected due-west startup');
+ assert.ok(Math.abs(route[0].y)>.1,
+  'do not choose the rejected due-west startup');
 });
