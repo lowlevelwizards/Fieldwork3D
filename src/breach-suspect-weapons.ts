@@ -4,11 +4,14 @@
 import type {Pt} from './breach-core.ts';
 import type {Session,TeamActor} from './breach-game.ts';
 import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
+import type {SecondaryEquipment} from './secondary-equipment.ts';
 export type DroppedFirearm={
  id:number;ownerId:string;p:Pt;heading:number;at:number;
  weapon:TeamActor['weapon'];weaponConfiguration?:TeamActor['weaponConfiguration'];
  loadedRounds:number;reserveRounds:number;magazineId:string;
  secondaryWeapon?:GlockAppearanceId;
+ /** Actual issued pistol+magazines, no fabricated kit on retrieval. */
+ secondaryEquipment?:SecondaryEquipment;
  status:'loose'|'secured'|'retrieved';
  securedById?:string;
 };
@@ -24,7 +27,9 @@ export function releaseSuspectHeldFirearm(s:Session,a:TeamActor):DroppedFirearm{
   loadedRounds:pistol?(secondary?.loadedRounds??0):a.magazine,
   reserveRounds:pistol?0:a.reserve,
   magazineId:pistol?'secondary:'+a.id:a.insertedMagazineId,
-  ...(pistol&&secondary?.weapon?{secondaryWeapon:secondary.weapon}:{}),
+  ...(pistol&&secondary?.weapon?{
+   secondaryWeapon:secondary.weapon,
+   secondaryEquipment:structuredClone(secondary)}:{}),
   status:'loose'
  };
  s.droppedFirearms.push(item);
