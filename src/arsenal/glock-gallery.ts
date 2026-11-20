@@ -10,6 +10,8 @@ import {emptySecondaryEquipment,equipFreshSecondary,moveSecondaryHolster,
  placeSecondaryMagazines,type SecondaryHolster} from '../secondary-equipment.ts';
 import {secondaryCarrierSpace} from '../equipment-loadouts.ts';
 import {openGlockWorkbench} from './glock-workbench.ts';
+import {normalizeGlockCustomization,
+ type GlockCustomization} from '../weapons/geometry/glock-customization.ts';
 import {factoryGlockRecipe,loadGlockLibrary,saveGlockLibrary,
  renameGlockSavedBuild,duplicateGlockSavedBuild,deleteGlockSavedBuild,
  type GlockRecipe,type GlockSavedBuild} from './glock-saved-builds.ts';
@@ -49,8 +51,9 @@ class GlockGallerySnapshots{
  private readonly cached=new Map<string,string>();
  private unavailable=false;
  constructor(){addArsenalInspectionLighting(this.scene);}
- render(id:GlockAppearanceId,view:View,size:'card'|'hero'):string|undefined{
-  const key=[id,view,size].join('/');
+ render(id:GlockAppearanceId,view:View,size:'card'|'hero',
+ customization?:GlockCustomization):string|undefined{
+  const key=[id,view,size,JSON.stringify(customization??null)].join('/');
   if(this.cached.has(key))return this.cached.get(key);
   if(this.unavailable)return undefined;
   let model:THREE.Group|null=null,peer:THREE.Group|null=null;
@@ -78,7 +81,7 @@ class GlockGallerySnapshots{
      this.scene.add(item);family.push(item);
     });
    }else{
-    model=buildGlockAppearance(id,{monochrome:view==='clay'});
+    model=buildGlockAppearance(id,{monochrome:view==='clay',customization});
     this.scene.add(model);
    }
    if(view==='peer'&&model){
@@ -281,7 +284,9 @@ export function mountGlockArsenalGallery():HTMLElement{
     const previous=m.loadout.secondary??emptySecondaryEquipment();
     const nextSide=moveSecondaryHolster(
      equipFreshSecondary(previous,m.id,recipe.model),recipe.holster);
-    const side={...nextSide,spareMagazines:nextSide.spareMagazines.map((mag,i)=>({
+    const side={...nextSide,customization:normalizeGlockCustomization(
+     recipe.model,recipe.customization),
+     spareMagazines:nextSide.spareMagazines.map((mag,i)=>({
      ...mag,location:recipe.spares[i]??mag.location
     }))};
     const equipment={...m.loadout,secondary:side};
@@ -341,7 +346,8 @@ export function mountGlockArsenalGallery():HTMLElement{
    const member=readPrepared().members.find(m=>m.id===operatorPicker.value);
    const s=member?.loadout.secondary;
    if(s?.weapon===selected)return {version:1,model:selected,holster:s.holster,
-    spares:s.spareMagazines.map(m=>m.location)};
+    spares:s.spareMagazines.map(m=>m.location),
+    customization:normalizeGlockCustomization(selected,s.customization)};
   }catch{}
   return {...factoryGlockRecipe(selected),holster:holsterPicker.value as SecondaryHolster};
  };
@@ -368,8 +374,9 @@ export function mountGlockArsenalGallery():HTMLElement{
   family:'ONE CAMERA · top: G19 / G26 · bottom: G19X / Gen5 MOS · same art units and zoom',
   peer:'Glock ABOVE real MP5K BELOW · common art units, provisional until a live sidearm rig exists'
  };
- const display=(host:HTMLElement,id:GlockAppearanceId,angle:View,size:'card'|'hero')=>{
-  const source=renderer.render(id,angle,size);
+ const display=(host:HTMLElement,id:GlockAppearanceId,angle:View,
+ size:'card'|'hero',customization?:GlockCustomization)=>{
+  const source=renderer.render(id,angle,size,customization);
   if(!source){host.textContent='3D preview unavailable';return;}
   const image=document.createElement('img');
   image.src=source;
@@ -391,7 +398,14 @@ export function mountGlockArsenalGallery():HTMLElement{
   desc.textContent=reference.description;
   note.textContent=viewNotes[view];
   refreshEquip();
-  display(feature,selected,view,'hero');
+  const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
+  let shownCustomization=saved?.recipe.customization;
+  if(!shownCustomization)try{
+   const active=readPrepared().members.find(m=>m.id===operatorPicker.value)?.loadout.secondary;
+   if(active?.weapon===selected)shownCustomization=
+    normalizeGlockCustomization(selected,active.customization);
+  }catch{}
+  display(feature,selected,view,'hero',shownCustomization);
   for(const [id,button] of buttons)
    button.setAttribute('aria-pressed',String(id===selected&&!selectedSavedId));
   for(const button of cards.querySelectorAll<HTMLButtonElement>('[data-glock-saved]'))
@@ -513,7 +527,8 @@ export function mountGlockArsenalGallery():HTMLElement{
    if(choice.kind==='factory')buttons.set(ref.id,button);
    // Workbench uses one WebGL context; saved and factory thumbnails share
    // the same source mesh and cache, never generate secondary replicas.
-   const source=renderer.render(ref.id,'quarter','card');
+   const source=renderer.render(ref.id,'quarter','card',
+    choice.kind==='saved'?choice.build.recipe.customization:undefined);
    if(source){const photo=document.createElement('img');
     photo.src=source;photo.alt='';image.append(photo);}
   }
