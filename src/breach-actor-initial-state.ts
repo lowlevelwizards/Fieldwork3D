@@ -14,7 +14,7 @@ import {DEFAULT_SKILLS} from './breach-skills.ts';
 import {initialSecondarySwitch} from './secondary-switching.ts';
 
 export const withActions=(a:Operator):TeamActor=>({
-  ...a,secondarySwitch:initialSecondarySwitch(),
+  ...a,secondarySwitch:initialSecondarySwitch(),secondaryReload:null,
   medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
   treatmentActive:false,treatmentProgress:0,
