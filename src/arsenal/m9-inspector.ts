@@ -54,6 +54,7 @@ export function openM9Inspector(id:M9AppearanceId):void{
  document.body.append(overlay);
  document.body.style.overflow='hidden';
  const viewport=new GlockViewport(host,id);
+ viewport.useTightArtFraming();viewport.quarter();
  let monochrome=false,closed=false;
  const close=()=>{
   if(closed)return;closed=true;
@@ -73,7 +74,7 @@ export function openM9Inspector(id:M9AppearanceId):void{
  };
  side.addEventListener('click',()=>setView(side,()=>viewport.side()));
  opposite.addEventListener('click',()=>setView(opposite,()=>viewport.opposite()));
- orbit.addEventListener('click',()=>setView(orbit,()=>viewport.reset()));
+ orbit.addEventListener('click',()=>setView(orbit,()=>viewport.quarter()));
  top.addEventListener('click',()=>setView(top,()=>viewport.top()));
  clay.addEventListener('click',()=>{
   monochrome=!monochrome;viewport.setModel(id,monochrome);
