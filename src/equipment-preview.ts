@@ -21,6 +21,7 @@ import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {frameArmoryObject,type ArmoryShotCategory}
  from './equipment-thumbnail-camera.ts';
 import {copyLinearRgbaToSrgbFlipped} from './equipment-thumbnail-color.ts';
+import {equipmentPreviewVisualKey} from './equipment-preview-visual-key.ts';
 
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry'|'back'|'belt'|'legs';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
@@ -50,6 +51,9 @@ export class CampaignKitPreview{
   wardrobe?:WardrobeOptions
  }|null=null;
  private readonly modelThumbCache=new Map<string,string>();
+ /** Last rendered visual content; never compare mutable kit objects by reference. */
+ private visualKey:string|null=null;
+ private static readonly MAX_THUMB_CACHE=96;
  private observer:ResizeObserver|null=null;
  private azimuth=.72;
  private pointerId:number|null=null;
@@ -148,6 +152,8 @@ export class CampaignKitPreview{
  setOperatorId(id:string):void{
   if(this.operatorId===id)return;
   this.operatorId=id;
+  this.visualKey=null;
+  this.modelThumbCache.clear();
   // Retire prior person's inspection without painting a stale, detached host.
   // The caller attaches the new host and draws the new pose immediately.
   this.dotTarget=null;this.dotMesh=null;
@@ -166,8 +172,14 @@ export class CampaignKitPreview{
   weaponConfiguration?:WeaponConfiguration,magazines:readonly MagazineItem[]=[],
   wardrobe?:WardrobeOptions):void{
   if(!this.rig)return;
+  // Keep authoritative current references, even when content is identical:
+  // the caller may replace the same kit with a new immutable object.
   this.currentEquipment=equipment;
   this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
+  const key=equipmentPreviewVisualKey(this.operatorId,weapon,appearanceSeed,
+   equipment,weaponConfiguration,magazines,wardrobe);
+  if(key===this.visualKey)return;
+  this.visualKey=key;
   this.modelThumbCache.clear();
   this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
   this.fitFullOperator();
@@ -317,6 +329,12 @@ export class CampaignKitPreview{
     targetBuffer.dispose();
    }
    if(!data||data.length<128)return null;
+   // Keep expensive GPU readback PNGs only for the most recent choices.
+   // An active gallery tile already owns its rendered <img> independently.
+   if(this.modelThumbCache.size>=CampaignKitPreview.MAX_THUMB_CACHE){
+    const oldest=this.modelThumbCache.keys().next().value;
+    if(oldest!==undefined)this.modelThumbCache.delete(oldest);
+   }
    this.modelThumbCache.set(key,data);
    return data;
   }catch{return null;}
@@ -925,6 +943,8 @@ export class CampaignKitPreview{
   this.dotTarget=null;this.dotMesh=null;this.hotspotButtons.clear();
   this.selectedInspection=null;this.inspectedMesh=null;
   this.currentEquipment=null;
+  this.visualSnapshot=null;this.visualKey=null;
+  this.modelThumbCache.clear();
   if(this.inspectionBox){
    this.inspectionBox.removeFromParent();
    this.inspectionBox.geometry.dispose();
