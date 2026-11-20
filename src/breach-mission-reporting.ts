@@ -36,8 +36,7 @@ export function missionText(s:Session){
       s.holdTime.toFixed(1)+'/1.2s':
     s.missionType==='capture'?'REACH TARGET AND VERIFY VITALS':
     'SECURE OBJECTIVE';
-  if(s.missionType==='capture')return
-    'EXTRACT LIVING CAPTIVE · ESCORT OR PHYSICALLY TRANSPORT';
+  if(s.missionType==='capture')return 'EXTRACT LIVING CAPTIVE · ESCORT OR PHYSICALLY TRANSPORT';
   return s.missionType==='intel'?
     'RETURN TO EXTRACTION · INTEL CARRIER MUST EXIT':
     s.missionType==='rescue'?
