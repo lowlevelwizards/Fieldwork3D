@@ -7,6 +7,7 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
  from '../equipment-weapon-assemblies.ts';
 import {arsenalRecipeFromLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {ArsenalThumbnailer} from './thumbnailer.ts';
+import {createArsenalPreviewQueue} from './preview-job-queue.ts';
 import {mountGlockArsenalGallery} from './glock-gallery.ts';
 import {openArsenalWorkbench} from './workbench-screen.ts';
 import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
@@ -74,12 +75,14 @@ primaryTab.type='button';primaryTab.textContent='PRIMARY WEAPONS';
 const secondaryTab=document.createElement('button');
 secondaryTab.type='button';secondaryTab.textContent='SECONDARIES · GLOCK';
 categoryNav.append(primaryTab,secondaryTab);
-const glockGallery=mountGlockArsenalGallery();
+const secondaryGallery=mountGlockArsenalGallery();
+const glockGallery=secondaryGallery.section;
 const showCategory=(category:'primary'|'secondary')=>{
  const secondary=category==='secondary';
  layout.hidden=secondary;glockGallery.hidden=!secondary;
  primaryTab.setAttribute('aria-pressed',String(!secondary));
  secondaryTab.setAttribute('aria-pressed',String(secondary));
+ if(secondary)secondaryGallery.activate();
 };
 primaryTab.addEventListener('click',()=>showCategory('primary'));
 secondaryTab.addEventListener('click',()=>showCategory('secondary'));
@@ -90,31 +93,9 @@ let activePlatform:ArsenalPlatformId|'all'|'saved'='all';
 let selectedId='ar-m4a1';
 let selectedSaved:ArsenalSavedBuild|null=null;
 const thumbnails=new ArsenalThumbnailer();
-type PreviewJob={host:HTMLElement;paint:()=>void};
-const previewQueue:PreviewJob[]=[];
-const previewVersions=new WeakMap<HTMLElement,number>();
-let renderScheduled=false;
-function enqueuePreview(host:HTMLElement,task:()=>void,hero=false){
- // An in-flight hero selection may replace the SAME connected host.
- // Discard its older queued work, rather than painting the wrong weapon.
- const version=(previewVersions.get(host)??0)+1;
- previewVersions.set(host,version);
- for(let i=previewQueue.length-1;i>=0;i--)
-  if(previewQueue[i].host===host)previewQueue.splice(i,1);
- const job:PreviewJob={host,paint:()=>{
-  if(host.isConnected&&previewVersions.get(host)===version)task();
- }};
- // The selected hero should not wait for all grid thumbnails.
- if(hero)previewQueue.unshift(job);else previewQueue.push(job);
- if(renderScheduled)return;
- renderScheduled=true;
- const pump=()=>{
-  const work=previewQueue.shift();work?.paint();
-  if(previewQueue.length)requestAnimationFrame(pump);
-  else renderScheduled=false;
- };
- requestAnimationFrame(pump);
-}
+const previewQueue=createArsenalPreviewQueue();
+const enqueuePreview=(host:HTMLElement,task:()=>void,hero=false)=>
+ previewQueue.enqueue(host,task,hero);
 const recipes=new Map<string,ArsenalRecipeV2>();
 function recipeFor(ref:ArsenalReference):ArsenalRecipeV2|undefined{
  const existing=recipes.get(ref.id);if(existing)return existing;
@@ -169,8 +150,7 @@ function renderCards(){
  // Filter changes detach the previous tiles. Prune their expensive pending
  // 3D renders immediately; otherwise they occupy one RAF slot each and make
  // the new visible thumbnails appear several frames late.
- for(let i=previewQueue.length-1;i>=0;i--)
-  if(!previewQueue[i].host.isConnected)previewQueue.splice(i,1);
+ previewQueue.pruneDetached();
  const term=search.value.trim().toLowerCase();
  const saved=loadArsenalBuildLibrary().builds;
  const visible:(ArsenalReference|ArsenalSavedBuild)[]=activePlatform==='saved'?
@@ -258,4 +238,4 @@ search.addEventListener('input',renderCards);
 renderFilters();renderCards();
 const first=ARSENAL_REFERENCES.find(ref=>ref.id===selectedId)??ARSENAL_REFERENCES[0];
 if(first)showSelected(first);
-window.addEventListener('pagehide',()=>{observer?.disconnect();thumbnails.dispose()},{once:true});
+window.addEventListener('pagehide',()=>{observer?.disconnect();previewQueue.dispose();thumbnails.dispose()},{once:true});
