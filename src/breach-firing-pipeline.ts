@@ -1,5 +1,6 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {advanceInterruptedSecondarySwitch} from './secondary-switching.ts';
+import {GLOCK_9MM_WEAPON,GLOCK_9MM_BALLISTICS} from './secondary-ballistics.ts';
 import {chooseMicroAimOffset,approachMicroAimOffset,allowMicroAim}
  from './breach-physical-micro-aim.ts';
 import {canContextuallyCrouch,validRearStack,contextualCrouchRecovery}
@@ -465,9 +466,20 @@ function fire(s:Session,a:TeamActor,dt:number){
   if(a.secondarySwitch&&a.plan[0]?.kind!=='switch-weapon')
     a.secondarySwitch=advanceInterruptedSecondarySwitch(a.secondarySwitch,dt,
       a.equipment?.secondary,a.health>0&&!a.surrendered);
-  // Prevent the holstered primary from firing while a pistol is selected.
-  if((a.secondarySwitch?.fraction??0)>0||a.secondarySwitch?.desired==='secondary'){
+  const sidearmKit=a.side==='blue'&&a.secondarySwitch?.active==='secondary'&&
+    a.secondarySwitch.desired==='secondary'&&
+    a.secondarySwitch.fraction>=1?
+    a.equipment?.secondary:undefined;
+  const sidearm=!!sidearmKit?.weapon;
+  // During any incomplete transfer, never fire an invisible rifle or an
+  // unheld pistol. A completed draw now follows the SAME firing pipeline.
+  if(((a.secondarySwitch?.fraction??0)>0||
+      a.secondarySwitch?.desired==='secondary')&&!sidearm){
     a.aimSideTarget=0;return;
+  }
+  if(sidearm){
+    a.aimSideTarget=0;a.aimSideOffset=0;
+    if(a.secondaryReload||!sidearmKit?.loadedRounds)return;
   }
  updateContextualCrouch(s,a);
  // A3.2: only simulation time moves the tactical rifle accommodation.
@@ -487,7 +499,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // Reload independently of sprint/no-target exits. An empty gun begins
   // its emergency reload as soon as both hands are available.
   if(a.reload>0){advanceReload(s,a,dt);return;}
-  if(a.magazine<=0){
+  if(!sidearm&&a.magazine<=0){
     if(a.reserve>0&&!a.traversal&&!a.squeeze&&!a.carryingId&&
        !a.treatmentActive&&a.plan[0]?.kind!=='treat')beginReload(s,a);
     return; // No shots, including after the last reserve magazine is spent.
@@ -514,8 +526,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     a.weaponYaw=approachAngle(a.weaponYaw,a.heading,dt*4);
     return;
   }
-  const profile=BALLISTICS[a.weapon];
-  const mods=weaponHandlingModifiers(a.weaponConfiguration);
+  const profile=sidearm?GLOCK_9MM_BALLISTICS:BALLISTICS[a.weapon];
+  const mods=weaponHandlingModifiers(sidearm?undefined:a.weaponConfiguration);
   const recovering=recoverWeapon(a.recoil,a.stability,dt*mods.recovery,
    profile,a.velocity>10);
   a.recoil=recovering.recoil;a.stability=recovering.stability;
@@ -539,6 +551,9 @@ function fire(s:Session,a:TeamActor,dt:number){
       settlePassiveAim(a,dt);return;
     }
     if(a.firePolicy==='suppress'){
+      // Area suppression requires a long-gun plan. Never fall back to an
+      // invisible primary or fabricate pistol suppressive fire.
+      if(sidearm){settlePassiveAim(a,dt);return;}
       fireSuppression(s,a,dt);return;
     }
   }
@@ -561,7 +576,9 @@ function fire(s:Session,a:TeamActor,dt:number){
   const target=selectFireableContact(a.p,visible,a.targetId,candidate=>{
     const clearance=weaponClearance({x:a.p.x,z:a.p.y,
       heading:a.heading,weaponYaw:angle(a.p,candidate.p),
-      shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+      shoulderOffset:a.aimSideOffset??0,weapon:a.weapon,
+      secondaryWeapon:sidearmKit?.weapon??undefined,
+      weaponConfiguration:a.weaponConfiguration,
       equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
       velocity:a.velocity,recoil:a.recoil,threatRange:d(a.p,candidate.p)},
       s.doors,world.cover,world.walls);
@@ -578,7 +595,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     if(lane.blocker==='clear')return true;
     if(lane.blocker!=='cover')return false;
     const preview=strikeSurface(from,candidate.p,s,
-      clearance.muzzle.y,h,WEAPONS[a.weapon].penetration);
+      clearance.muzzle.y,h,
+      (sidearm?GLOCK_9MM_WEAPON:WEAPONS[a.weapon]).penetration);
     return fireLaneReachable(lane,preview,candidate.p);
   });
   if(!target){
@@ -598,7 +616,8 @@ function fire(s:Session,a:TeamActor,dt:number){
       a.lastClearLookProbeAt=s.seconds;
       const probe=(yaw:number)=>weaponClearance({
         x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:yaw,
-        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+        weapon:a.weapon,secondaryWeapon:sidearmKit?.weapon??undefined,
+        weaponConfiguration:a.weaponConfiguration,
         equipment:a.equipment,aim:0,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
         velocity:0,recoil:0
       },s.doors,sessionWorldGeometry(s).cover,sessionWorldGeometry(s).walls);
@@ -629,7 +648,7 @@ function fire(s:Session,a:TeamActor,dt:number){
   // shoulder shift. Candidate shot lines use the SAME muzzle+IK fit as live
   // ignition and preserve the independent civilian and teammate vetoes.
   let centeredFireableThisTick=false;
-  const microAllowed=a.side==='blue'&&allowMicroAim({
+  const microAllowed=a.side==='blue'&&!sidearm&&allowMicroAim({
     moving:a.velocity,busy:!!a.traversal||a.squeeze||a.reload>0||
       !!a.treatmentActive||a.carryingId!==null||
       ['door','tool','treat','reload','flash']
@@ -647,7 +666,8 @@ function fire(s:Session,a:TeamActor,dt:number){
     const canFireOffset=(offset:number)=>{
       const probe=weaponClearance({x:a.p.x,z:a.p.y,
         heading:a.heading,weaponYaw:aimYaw,shoulderOffset:offset,
-        weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+        weapon:a.weapon,secondaryWeapon:sidearmKit?.weapon??undefined,
+        weaponConfiguration:a.weaponConfiguration,
         equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
         velocity:a.velocity,recoil:a.recoil,threatRange:d(a.p,target.p)
        },s.doors,world.cover,world.walls,friends);
@@ -688,7 +708,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     !(centeredFireableThisTick&&(a.aimSideOffset??0)===0)){
     const preflight=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
       weaponYaw:angle(a.p,target.p),shoulderOffset:a.aimSideOffset??0,
-      weapon:a.weapon,
+      weapon:a.weapon,secondaryWeapon:sidearmKit?.weapon??undefined,
       weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,
       aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,velocity:a.velocity,recoil:a.recoil,
       threatRange:d(a.p,target.p)},s.doors,world.cover,world.walls,
@@ -726,7 +746,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     return;
   }
   const moving=a.velocity>10;
-  const weapon=WEAPONS[a.weapon];
+  const weapon=sidearm?GLOCK_9MM_WEAPON:WEAPONS[a.weapon];
   const range=d(a.p,target.p);
   const acquisition=acquisitionSeconds({
     base:weapon.acquisition,moving,
@@ -749,12 +769,13 @@ function fire(s:Session,a:TeamActor,dt:number){
   const shotPreflight=prepareShotSight({
     x:a.p.x,z:a.p.y,heading:a.heading,weaponYaw:a.weaponYaw,
     shoulderOffset:a.aimSideOffset??0,
-    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,
+    weapon:a.weapon,secondaryWeapon:sidearmKit?.weapon??undefined,
+    weaponConfiguration:a.weaponConfiguration,
     equipment:a.equipment,aim:a.aim,posture:a.posture,velocity:a.velocity,
     recoil:a.recoil,threatRange:range
   },s.doors,world.cover,world.walls,friends);
   const muzzle=shotPreflight.clearance;
-  const mode=urgentFireMode(readyMode(range,a.aim,a.weapon),
+  const mode=urgentFireMode(readyMode(range,a.aim,sidearm?'smg':a.weapon),
     a.aim,muzzle,desiredYaw);
   if(!mode){
     if(muzzle.blocked)requestClearFireStep(s,a,target,
@@ -769,6 +790,7 @@ function fire(s:Session,a:TeamActor,dt:number){
     Math.cos(desiredYaw-a.weaponYaw)))>.38)return;
   a.fireMode=mode;
   commitShot(s,a,target,{mode,range,moving,mods,weapon,profile,
+    secondaryWeapon:sidearmKit?.weapon??undefined,
     preflight:shotPreflight});
 }
 
