@@ -34,6 +34,9 @@ test('Q3 rank belongs to each threshold; later crossing order can reverse',()=>{
   'hidden second threshold must not leak to planning UI');
  assert.equal(nextThresholdRank(a,s,schedule),1);
  a.p=p(100,130);
+ // The first authored MOVE has completed at the first threshold. GO now
+ // carries only the next live MOVE (id:3); an old id:1 rank is retired.
+ a.plan=[a.plan[2]];
  assert.equal(nextThresholdRank(a,s,schedule),null,
   'live number cannot reveal hidden upcoming door');
  s.intel.doors.add('SECOND');
