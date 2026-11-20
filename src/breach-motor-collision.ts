@@ -1,4 +1,6 @@
-import {setTransientRoute,prependTransientLeg} from './breach-route-transition.ts';
+import {setTransientRoute,prependTransientLeg,
+  hasTransientRouteObserver,noteDoorHandoffRejection}
+ from './breach-route-transition.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 /** Stage 7: authoritative body-collision response and recovery.
  * A full-radius swept motion is preferred; squeeze is only a physical
@@ -720,6 +722,14 @@ export function resolveMotorCollision(
         }
       }
         const moveOrder=a.plan[0];
+      if(hasTransientRouteObserver()&&a.side==='blue'&&
+         moveOrder?.entryDoorId&&a.blockedTime>=2){
+        noteDoorHandoffRejection(s,a,'M2.8-PROBE-STATE '+JSON.stringify({
+         squeeze:a.squeeze,blockedTime:a.blockedTime,
+         blocker:a.lastBlocker,doorEpisode:!!a.doorTraversal,
+         traverse:!!a.traversal,pending:!!a.traversalPending,
+         retreat:!!a.fireRetreatTarget,order:moveOrder?.id}));
+      }
       // M2.8 Motel 31149: a physically jammed generated ENTRY in squeeze
       // can have no valid coarse first leg despite a nearby real full-body
       // departure. Cold-certify the first microstep AND the rejoined narrow
@@ -738,6 +748,8 @@ export function resolveMotorCollision(
         const route=selectM2EntrySqueezeDeparture(a.p,p,next,
           physical,narrow,(from,to)=>routeWithSqueezeWorld(
             from,to,s.doors,world));
+        if(hasTransientRouteObserver())
+          noteDoorHandoffRejection(s,a,'M2.8-SELECTED '+route.length);
         if(route.length&&watchClearanceAllowed(a.p,route[0],p,
             !!a.aimInstruction&&a.aimInstruction.mode!=='free',physical)){
           setTransientRoute(s,a,route,'entry-squeeze-departure');
