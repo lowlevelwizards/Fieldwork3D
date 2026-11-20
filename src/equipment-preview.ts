@@ -62,7 +62,7 @@ export class CampaignKitPreview{
  private readonly hotspotButtons=new Map<LoadoutSlot,HTMLButtonElement>();
  private hotspotLayer:HTMLDivElement|null=null;
  private zoomScale=1;
- private showHeldWeapon=false;
+ private showHeldWeapon=true;
  private poseToggle:HTMLButtonElement|null=null;
  private readonly touchPointers=new Map<number,{x:number;y:number}>();
  private pinchDistance=0;
@@ -162,7 +162,8 @@ export class CampaignKitPreview{
    medicalCarryLocation:placements.find(item=>item.kind==='medical')?.location,
    utilityCarryLocation:placements.find(item=>item.kind==='utility')?.location,
    flashCharges:equippedFlashCharges(equipment),
-   deterministic:true,unarmedPreview:!(this.showHeldWeapon||forceHeldWeapon)},0);
+   deterministic:true,handlingOverride:'low',
+   unarmedPreview:!(this.showHeldWeapon||forceHeldWeapon)},0);
  }
 
  /** Fit the visible operator instead of a fixed rig origin. */
@@ -315,6 +316,7 @@ export class CampaignKitPreview{
  /** Resolve the actual visible mesh for one carried object. No proxy gear
   * or inventory mutation; closed-pack contents explicitly remain concealed. */
  inspectCarryItem(target:EquipmentInspectionTarget|null):void{
+  this.clearTransientSelection();
   this.selectedInspection=target;
   this.selectedCarryLocation=null;
   if(this.carryMarker)this.carryMarker.visible=false;
@@ -348,8 +350,7 @@ export class CampaignKitPreview{
   * write, item mesh, physics or perpetual animation loop is created. */
  highlightCarryLocation(location:FieldCarryLocation|null):void{
   if(!this.rig||!this.renderer)return;
-  this.selectedInspection=null;this.inspectedMesh=null;
-  this.inspectionCenter=null;this.inspectionSize=null;
+  this.clearTransientSelection();
   if(this.inspectionBox)this.inspectionBox.visible=false;
   delete this.host.dataset.inspectedItem;
   if(!location){
@@ -369,6 +370,10 @@ export class CampaignKitPreview{
    this.carryMarker.renderOrder=1000;
   }
   const marker=this.carryMarker,socket=previewCarryFocus(location);
+  // Never render a pack cue through the operator's chest.
+  marker.material.depthTest=true;
+  marker.material.depthWrite=false;
+  marker.renderOrder=0;
   const bone=this.rig[socket.bone];
   if(marker.parent!==bone)bone.add(marker);
   marker.position.set(socket.x,socket.y,socket.z);
@@ -423,17 +428,29 @@ export class CampaignKitPreview{
   this.createHotspots();
   this.syncHotspots();
  }
- setSelectedSlot(slot:LoadoutSlot,changePresentation=true):void{
+ setSelectedSlot(slot:LoadoutSlot,_changePresentation=true):void{
   this.activeHotspot=slot;
-  // First paint stays neutral even if the weapon tab is initially selected.
-  if(changePresentation)this.setWeaponPresentation(slot==='primary');
   this.syncHotspots();
+ }
+ /** Retire stale highlight geometry on any context change. */
+ clearTransientSelection():void{
+  this.selectedCarryLocation=null;
+  this.selectedInspection=null;
+  this.inspectedMesh=null;
+  this.inspectionCenter=null;
+  this.inspectionSize=null;
+  if(this.carryMarker)this.carryMarker.visible=false;
+  if(this.inspectionBox)this.inspectionBox.visible=false;
+  delete this.host.dataset.carryHighlight;
+  delete this.host.dataset.inspectedItem;
+  delete this.host.dataset.inspectionVisible;
+  this.draw();
  }
  setWeaponPresentation(held:boolean):void{
   if(this.showHeldWeapon===held)return;
   this.showHeldWeapon=held;
   this.poseToggle?.setAttribute('aria-pressed',String(held));
-  if(this.poseToggle)this.poseToggle.textContent=held?'NEUTRAL GEAR VIEW':'SHOW HELD WEAPON';
+  if(this.poseToggle)this.poseToggle.textContent=held?'HIDE WEAPON':'SHOW LOW READY';
   const state=this.visualSnapshot;
   if(!state)return;
   this.poseForThumb(state.weapon,state.appearanceSeed,state.equipment,
@@ -484,7 +501,7 @@ export class CampaignKitPreview{
   layer.append(zoom);
   const pose=document.createElement('button');
   pose.type='button';pose.className='campaign-kit-preview-pose-toggle';
-  pose.textContent=this.showHeldWeapon?'NEUTRAL GEAR VIEW':'SHOW HELD WEAPON';
+  pose.textContent=this.showHeldWeapon?'HIDE WEAPON':'SHOW LOW READY';
   pose.setAttribute('aria-pressed',String(this.showHeldWeapon));
   pose.setAttribute('aria-label','Toggle neutral equipment inspection and held weapon view');
   pose.addEventListener('pointerdown',event=>event.stopPropagation());
@@ -535,7 +552,9 @@ export class CampaignKitPreview{
     slot==='armor'||slot==='medical'||slot==='utility'||
     (slot==='primary'&&!this.showHeldWeapon));
    const hiddenSide=slot==='backpack'?!rear:rear&&slot==='rig';
-   button.hidden=!onScreen||hiddenSide||reduced;
+   // Side icons and ray-picked real meshes serve every slot on mobile.
+   // Projected pips only remain available on larger inspection workspaces.
+   button.hidden=compact||!onScreen||hiddenSide||reduced;
    button.style.left=((projected.x+1)*50).toFixed(2)+'%';
    button.style.top=((1-projected.y)*50).toFixed(2)+'%';
    button.setAttribute('aria-pressed',String(slot===this.activeHotspot));
@@ -735,6 +754,8 @@ export class CampaignKitPreview{
    (center?.z??0)+radius*Math.sin(this.azimuth));
   this.camera.lookAt(center??new THREE.Vector3(0,this.focusHeight,0));
   if(this.inspectionBox?.visible)this.inspectionBox.updateMatrixWorld(true);
+  if(this.carryMarker&&this.selectedCarryLocation==='backpack')
+   this.carryMarker.visible=Math.cos(this.azimuth)<-.2;
   this.renderer.render(this.scene,this.camera);
   this.syncHotspots();
  }
