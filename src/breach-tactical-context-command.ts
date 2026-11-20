@@ -6,7 +6,7 @@ import {doorCenter,type Door,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,plannedControl,finalPoint,
  setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,planSuspectRestraint,planSearchSuspect,planSecureDroppedFirearm,planSuspectEscort,
  inSight,team,enemies,
- planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
+ planCasualtyTransport,planCaptureTransportRelease,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planSwitchWeaponAt,planMedicalTreatment,
  planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
  doorAtNode,planEntryTool,planStackTeam,planSquadEntry,canEdit,
@@ -156,7 +156,10 @@ export function dispatchTacticalContextCommand(input:{
   case 'ctxReleaseCivilian':
    return finish(planCivilianRelease(state,selected),
      'NO CIVILIAN TRANSPORT TO RELEASE');
-  case 'ctxDragCapture':
+  case 'ctxReleaseCapture':
+    return finish(planCaptureTransportRelease(state,selected),
+      'NO INCAPACITATED CAPTURE TARGET IN TRANSPORT');
+   case 'ctxDragCapture':
   case 'ctxCarryCapture':{
    const at=finalPoint(a);
    const prisoner=enemies(state).find(e=>e.id===state.captureTarget&&

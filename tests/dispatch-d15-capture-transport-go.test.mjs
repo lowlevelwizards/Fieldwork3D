@@ -1,10 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newSession,team,enemies,planCasualtyTransport,
- toggling,stepSession} from '../src/breach-game.ts';
+ toggling,stepSession,planCaptureTransportRelease} from '../src/breach-game.ts';
 import {activateSite} from '../src/breach-core.ts';
 import {contextActionChoices} from '../src/ui/context-actions.ts';
 import {snapshot,applyReplayFrame} from '../src/breach-replay.ts';
+import {proposedCivilianTransportStep,reconcileCivilianTransportFrame}
+ from '../src/breach-civilian-transport.ts';
+import {resolveMovementFrame} from '../src/breach-movement-authority.ts';
 const pt=(x,y)=>({x,y});
 const site=()=>({
  seed:52115,name:'D15.5E real CAPTURE target transport',
@@ -70,5 +73,112 @@ test('D15.5E downed CAPTURE cannot be extracted remotely',()=>{
   carrier.carryingId=target.id;
   stepSession(s,1/60);
   assert.equal(s.phase,'won','real body at extraction can resolve CAPTURE');
+ }finally{activateSite(null);}
+});
+
+test('D15.5E downed operator has the same bounded first-step drag/carry as civilian rescue',()=>{
+ for(const mode of ['drag','carry']){
+  const {s,carrier,target}=setup();
+  try{
+   assert.equal(planCasualtyTransport(s,carrier.id,target.id,
+     s.scenario.extract,mode),true);
+   toggling(s);
+   for(let i=0;i<200&&s.phase==='running'&&!carrier.carryingId;i++)
+    stepSession(s,1/60);
+   assert.equal(carrier.carryingId,target.id);
+   for(let i=0;i<12;i++){
+    const bodyBefore={...target.p},leadBefore={...carrier.p};
+    stepSession(s,1/60);
+    const bodyTravel=Math.hypot(target.p.x-bodyBefore.x,target.p.y-bodyBefore.y);
+    const leadTravel=Math.hypot(carrier.p.x-leadBefore.x,carrier.p.y-leadBefore.y);
+    assert.ok(bodyTravel<=leadTravel+1.002,
+      mode+' never snaps a carried body across a doorway');
+   }
+  }finally{activateSite(null);}
+ }
+});
+test('D15.5E obstructed trailing body refuses closed-threshold and stationary-body steps',()=>{
+ const body=pt(-18,0),from=pt(0,0),to=pt(3,0);
+ const closedDoor=(a,b)=>!(a.x < -16&&b.x > -16);
+ assert.equal(proposedCivilianTransportStep(body,from,to,0,'drag',
+  closedDoor,[],0),null,'swept door closure blocks the entire carried step');
+ assert.equal(proposedCivilianTransportStep(body,from,to,0,'drag',
+  ()=>true,[pt(-14,0)],0),null,'stationary bystander holds position');
+ const clear=proposedCivilianTransportStep(body,from,to,0,'drag',
+  ()=>true,[],0);
+ assert.ok(clear&&Math.hypot(clear.x-body.x,clear.y-body.y)<=4.001);
+});
+test('D15.5E full coupled arbitration rolls back both a hostile body and its carrier',()=>{
+ const proposals=[
+  {id:'rook',side:'blue',alive:true,from:pt(0,0),to:pt(3,0)},
+  {id:'captive',side:'red',alive:false,carried:true,
+   from:pt(-28,0),to:pt(-23,0)},
+  {id:'guard',side:'red',alive:true,from:pt(-14,0),to:pt(-14,0)}
+ ];
+ const decisions=resolveMovementFrame(proposals,()=>true);
+ reconcileCivilianTransportFrame(proposals,decisions,
+  [{carrierId:'rook',bodyId:'captive'}]);
+ assert.deepEqual(decisions.find(d=>d.id==='rook')?.point,pt(0,0));
+ assert.deepEqual(decisions.find(d=>d.id==='captive')?.point,pt(-28,0));
+ assert.equal(decisions.find(d=>d.id==='guard')?.blocked,null);
+});
+test('D15.5E authored RELEASE stops physical transport at GO without moving the body',()=>{
+ const {s,carrier,target}=setup();
+ try{
+  assert.equal(planCasualtyTransport(s,carrier.id,target.id,
+   s.scenario.extract,'drag'),true);
+  toggling(s);
+  for(let i=0;i<200&&s.phase==='running'&&!carrier.carryingId;i++)
+   stepSession(s,1/60);
+  assert.equal(carrier.carryingId,target.id);
+  assert.equal(planCaptureTransportRelease(s,carrier.id),false,
+   'running phase cannot mutate a GO-time transport plan');
+  toggling(s);
+  assert.equal(planCaptureTransportRelease(s,carrier.id),true);
+  assert.equal(carrier.plan[0].interaction,'release-capture-target');
+  const resting={...target.p};
+  assert.equal(carrier.carryingId,target.id,'planning does not release');
+  toggling(s);
+  stepSession(s,1/60);
+  assert.equal(carrier.carryingId,null);
+  assert.equal(target.carriedById,null);
+  assert.ok(Math.hypot(target.p.x-resting.x,target.p.y-resting.y)<.001);
+ }finally{activateSite(null);}
+});
+test('D15.5E clearing a plan or losing the carrier releases reciprocal custody',()=>{
+ for(const interruption of ['clear','death']){
+  const {s,carrier,target}=setup();
+  try{
+   assert.equal(planCasualtyTransport(s,carrier.id,target.id,
+    s.scenario.extract,'drag'),true);
+   toggling(s);
+   for(let i=0;i<200&&s.phase==='running'&&!carrier.carryingId;i++)
+    stepSession(s,1/60);
+   assert.equal(target.carriedById,carrier.id);
+   const place={...target.p};
+   if(interruption==='clear')carrier.plan=[];
+   else carrier.health=0;
+   stepSession(s,1/60);
+   assert.equal(carrier.carryingId,null);
+   assert.equal(target.carriedById,null);
+   assert.ok(Math.hypot(target.p.x-place.x,target.p.y-place.y)<.001,
+    interruption+' cannot warp or silently extract target');
+  }finally{activateSite(null);}
+ }
+});
+
+test('D15.5E an unexpectedly recovered target cannot keep a stale carrier link',()=>{
+ const {s,carrier,target}=setup();
+ try{
+  assert.equal(planCasualtyTransport(s,carrier.id,target.id,
+   s.scenario.extract,'drag'),true);
+  toggling(s);
+  for(let i=0;i<200&&s.phase==='running'&&!carrier.carryingId;i++)
+   stepSession(s,1/60);
+  assert.equal(carrier.carryingId,target.id);
+  target.health=1;
+  stepSession(s,1/60);
+  assert.equal(carrier.carryingId,null);
+  assert.equal(target.carriedById,null);
  }finally{activateSite(null);}
 });

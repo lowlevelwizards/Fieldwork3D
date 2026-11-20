@@ -12,10 +12,10 @@ import {kitMedicalSupplies,transferMedicalSupply,spendMedicalSupply}
 import {treatmentSupplyForWound,treatmentDuration}
  from './breach-medical-treatment.ts';
 import {stabilizeWound} from './breach-medical-wounds.ts';
-import {dropCivilianCustody,takeCivilianCustody} from './breach-civilian-transport.ts';
+import {dropCivilianCustody,takeCivilianCustody,proposedCivilianTransportStep}
+ from './breach-civilian-transport.ts';
 import {captureTargetTransportEligible} from './breach-capture-transport-policy.ts';
-import {casualtyTrailingPosition,transportIsClear}
- from './breach-casualty-transport.ts';
+
 import {sweptBodyClear} from './breach-navigation.ts';
 import {completeOrder,rotate,clearCurrentOrderIssue,
  failCurrentOrder as failOrder} from './breach-order-lifecycle.ts';
@@ -66,13 +66,15 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
   if(n.kind==='evacuate'){
     const civil=s.civilians.find(c=>c.id===n.patientId);
     const friendly=s.operators.find(o=>o.id===n.patientId&&
-      (o.side===a.side||captureTargetTransportEligible(s,o,a)));
+      (o.side===a.side||captureTargetTransportEligible(s,o,a)||
+       (a.carryingId===o.id&&o.carriedById===a.id)));
     const patient=friendly??civil;
     if(!patient||patient===a||patient.health>0||
        (friendly&&friendly.side===a.side&&friendly.surrendered)){
       if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
-      else if(friendly)friendly.carriedById=null;
-      a.carryingId=null;pop(a);return true;
+      else if(friendly?.carriedById===a.id)friendly.carriedById=null;
+      if(a.carryingId===n.patientId)a.carryingId=null;
+      pop(a);return true;
     }
     if(patient.carriedById&&patient.carriedById!==a.id){
       failCurrentOrder(s,a,n,'CASUALTY ALREADY IN TRANSPORT');return true;
@@ -127,11 +129,17 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     const before=clone(a.p);
     approach(a,n.p,dt,s,mode==='drag'?.48:.38);
     if(civil)return true; // Neutral body motion commits with the carrier later.
-    const attached=casualtyTrailingPosition(before,a.p,a.heading,mode);
-    const people=s.operators.filter(o=>o!==a&&o!==patient&&o.health>0)
-     .map(o=>o.p);
-    if(!transportIsClear(patient.p,attached,
-      (from,to)=>sweptBodyClear(from,to,s.doors,8,sessionWorldGeometry(s)),people)){
+    // Apply the same bounded, swept physical body step as civilian rescue.
+    // An operator casualty must never snap 9–16 units across a threshold
+    // on the first pickup tick, even if the carrier has barely moved.
+    const people:Pt[]=[];
+    for(const o of s.operators)if(o!==a&&o!==patient)people.push(o.p);
+    for(const c of s.civilians)people.push(c.p);
+    const attached=proposedCivilianTransportStep(patient.p,before,a.p,
+      a.heading,mode,
+      (from,to)=>sweptBodyClear(from,to,s.doors,8,sessionWorldGeometry(s)),
+      people,dt*36);
+    if(!attached){
       a.p=before;a.velocity=0;a.nav=[];return true;
     }
     patient.priorP=clone(patient.p);patient.p=attached;

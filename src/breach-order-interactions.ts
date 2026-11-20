@@ -235,6 +235,23 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         objectId:'weapon:'+weapon.id,contributorId:a.id});
       clearCurrentOrderIssue(a);pop(a);return true;
     }
+    if(n.interaction==='release-capture-target'){
+      const target=s.operators.find(o=>o.id===n.objectId&&
+        o.side==='red'&&o.health<=0&&o.id===s.captureTarget&&
+        s.missionType==='capture');
+      if(!target||target.carriedById!==a.id||a.carryingId!==target.id){
+        failCurrentOrder(s,a,n,'CAPTURE TARGET NOT IN TRANSPORT');return true;
+      }
+      // A stopped/replanned carrier releases the actual actor where the
+      // previous resolved physical tick left it. No off-screen relocation.
+      target.carriedById=null;a.carryingId=null;
+      a.velocity=0;
+      const message=a.name+' RELEASED '+target.name;
+      notify(s,message);
+      battleEvent(s,'interaction',a,target.p,message,{
+        action:'capture-target-released',targetId:target.id,contributorId:a.id});
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
     if(n.interaction==='release-civilian'){
       const person=s.civilians.find(c=>c.id===n.objectId);
       if(!person||!dropCivilianCustody(person,a)){

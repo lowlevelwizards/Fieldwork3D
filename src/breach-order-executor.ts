@@ -88,7 +88,8 @@ export function createOrderExecutor(port:OrderExecutionPort){
   try{
   if(a.carryingId&&
      (n?.kind!=='evacuate'||n.patientId!==a.carryingId)&&
-     (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)){
+     (n?.interaction!=='release-civilian'||n.objectId!==a.carryingId)&&
+     (n?.interaction!=='release-capture-target'||n.objectId!==a.carryingId)){
     const civil=s.civilians.find(c=>c.id===a.carryingId);
     if(civil)dropCivilianCustody(civil,a);
     else {

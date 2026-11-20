@@ -168,6 +168,12 @@ export function advanceSimulationMotion(s:Session,h:number,
   if(civilianById)for(const civil of s.civilians)
     civilianById.set(civil.id,civil);
   let transportLinks:{carrierId:string;bodyId:string}[]|null=null;
+  // A transported red or blue TeamActor participates in exactly the same
+  // coupled carrier/body arbitration as a neutral civilian casualty.
+  for(const patient of s.operators)if(patient.health<=0&&patient.carriedById){
+    if(!transportLinks)transportLinks=[];
+    transportLinks.push({carrierId:patient.carriedById,bodyId:patient.id});
+  }
   for(const civil of s.civilians)if(civil.carriedById){
     if(!transportLinks)transportLinks=[];
     transportLinks.push({carrierId:civil.carriedById,bodyId:civil.id});

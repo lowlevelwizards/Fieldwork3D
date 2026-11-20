@@ -100,7 +100,8 @@ import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
-import {captureTargetTransportEligible} from './breach-capture-transport-policy.ts';
+import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+ from './breach-capture-transport-policy.ts';
 
 
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
@@ -1263,6 +1264,20 @@ export function planCivilianRelease(s:Session,id:string):boolean{
    a.plan.unshift({id:s.nextId++,kind:'interact',p:clone(a.p),
      objectId:c.id,interaction:'release-civilian'});
  });
+}
+/** Explicit, undoable GO-time release of the *currently held* downed target.
+ * Never silently counts a released body as extracted or changes its side. */
+export function planCaptureTransportRelease(s:Session,id:string):boolean{
+  const a=party(s,id);
+  const patient=s.operators.find(o=>o.id===a?.carryingId);
+  if(!a||!patient||!canEdit(s)||
+     !designatedDownedCaptureTarget(s,patient)||
+     patient.carriedById!==a.id)return false;
+  return edit(s,a,()=>{
+    a.plan=a.plan.filter(n=>n.kind!=='evacuate'||n.patientId!==patient.id);
+    a.plan.unshift({id:s.nextId++,kind:'interact',p:clone(a.p),
+      objectId:patient.id,interaction:'release-capture-target'});
+  });
 }
 export function planMedicalTreatment(s:Session,id:string,patientId:string,
  afterNodeId?:number):boolean{
