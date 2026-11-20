@@ -34,7 +34,15 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
     img.src=uri;img.alt='';img.decoding='async';
     visual.replaceChildren(img);visual.dataset.model='real';
    };
-   if(typeof IntersectionObserver==='undefined'){fetch();return;}
+   // The selected row lives in a bounded scrolling drawer. On phones its
+   // WebGL thumbnail must be ready even before an IntersectionObserver
+   // considers the nested scroller visible; all inactive rows remain lazy.
+   const mobile=window.matchMedia?.(
+    '(max-width:620px), (max-width:920px) and (max-height:620px)').matches;
+   if(typeof IntersectionObserver==='undefined'||
+    (mobile&&!trigger.closest<HTMLElement>('.campaign-kit-choice')?.hidden)){
+    fetch();return;
+   }
    const observer=new IntersectionObserver(entries=>{
     if(!entries.some(entry=>entry.isIntersecting))return;
     observer.disconnect();fetch();
@@ -51,7 +59,8 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
   // On phones keep the equipment shelf inside the selected slot.
   // Unlike a modal this preserves the operator viewport, scrolling
   // context, and allows immediate visual comparison while outfitting.
-  const shelf=window.matchMedia?.('(max-width:620px)').matches?
+  const shelf=window.matchMedia?.(
+   '(max-width:620px), (max-width:920px) and (max-height:620px)').matches?
    trigger.closest<HTMLElement>('.campaign-kit-choice'):null;
   const inline=!!shelf;
   const scroller=trigger.closest<HTMLElement>('.campaign-screen');
