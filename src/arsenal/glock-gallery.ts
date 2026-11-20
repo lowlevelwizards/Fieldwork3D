@@ -113,7 +113,7 @@ export function mountGlockArsenalGallery():HTMLElement{
   '<div class="arsenal-glock-feature">'+
     '<div class="arsenal-glock-hero-visual" aria-live="polite"></div>'+
     '<div class="arsenal-glock-feature-copy">'+
-      '<span class="arsenal-overline">FIELDWORK / BALANCED G2.5 FORMS</span>'+
+      '<span class="arsenal-overline">FIELDWORK / G2.6 ICONIC FORMS</span>'+
       '<h3 class="arsenal-glock-model"></h3>'+
       '<p class="arsenal-glock-description"></p>'+
       '<div class="arsenal-glock-view-controls" role="group" aria-label="3D model view"></div>'+
