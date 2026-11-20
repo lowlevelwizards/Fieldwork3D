@@ -69,7 +69,10 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
  // procedural model in one RAF was a major phone navigation hitch.
  const queued:{tile:HTMLElement;frame:HTMLElement;choice:Choice;slot:LoadoutSlot}[]=[];
  let thumbnailFrame=0;
+ let scrollFrame=0;
+ let disposed=false;
  const paintNext=()=>{
+  if(disposed){thumbnailFrame=0;return;}
   thumbnailFrame=0;
   const pending=queued.shift();
   if(!pending)return;
@@ -85,6 +88,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   if(queued.length)thumbnailFrame=requestAnimationFrame(paintNext);
  };
  const scheduleThumb=(tile:HTMLElement,frame:HTMLElement,choice:Choice,slot:LoadoutSlot)=>{
+  if(disposed)return;
   if(tile.dataset.thumbReady||queued.some(job=>job.tile===tile))return;
   queued.push({tile,frame,choice,slot});
   if(!thumbnailFrame)thumbnailFrame=requestAnimationFrame(paintNext);
@@ -187,6 +191,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   showDetail(choice);
  };
  const show=(slot:LoadoutSlot)=>{
+  if(disposed)return;
   active=slot;root.dataset.slot=slot;
   name.textContent=(SLOT_LABEL[slot]??slot).toUpperCase();
   heading.replaceChildren(name);
@@ -232,12 +237,24 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   const selected=choices.find(c=>c.issued&&c.id===remembered.get(slot))??
    choices.find(c=>c.issued&&c.equipped)??choices.find(c=>c.issued);
   if(selected)selectChoice(selected,false);
-  requestAnimationFrame(()=>{
-   if(!root.isConnected)return;
+  if(scrollFrame)cancelAnimationFrame(scrollFrame);
+  scrollFrame=requestAnimationFrame(()=>{
+   scrollFrame=0;
+   if(disposed||!root.isConnected)return;
    viewport.scrollLeft=positions.get(slot)??0;
   });
  };
- viewport.addEventListener('scroll',()=>{positions.set(active,viewport.scrollLeft);},
+ viewport.addEventListener('scroll',()=>{if(!disposed)positions.set(active,viewport.scrollLeft);},
   {passive:true});
- return {root,show,getActive:()=>active};
+ const dispose=()=>{
+  if(disposed)return;
+  disposed=true;
+  observer?.disconnect();
+  thumbTargets.clear();queued.length=0;
+  if(thumbnailFrame)cancelAnimationFrame(thumbnailFrame);
+  if(scrollFrame)cancelAnimationFrame(scrollFrame);
+  thumbnailFrame=0;scrollFrame=0;
+  root.remove();
+ };
+ return {root,show,getActive:()=>active,dispose};
 }
