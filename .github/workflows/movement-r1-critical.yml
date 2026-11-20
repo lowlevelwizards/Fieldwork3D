@@ -1,7 +1,7 @@
 name: Movement R1 focused critical
 on:
   push:
-    branches: [feature/movement-reliability-r1-20261120]
+    branches: [integration/movement-r1a-on-main-20261120]
     paths:
       - 'src/breach-entry-coordination.ts'
       - 'src/breach-order-wait.ts'
