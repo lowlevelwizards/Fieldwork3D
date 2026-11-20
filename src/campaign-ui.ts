@@ -2324,17 +2324,22 @@ export class CampaignScreen{
     magazines:person.magazines,physicalEditor,locked,
     renderModel:(slot,itemId)=>this.preview?.renderModelThumbnail(
      {kind:'gear',slot,itemId})??null,
+    onAutoPack:()=>{
+     const button=[...physicalEditor.querySelectorAll<HTMLButtonElement>('button')]
+      .find(button=>button.textContent?.trim()==='AUTO PACK');
+     if(button&&!button.disabled)button.click();
+    },
     renderField:fieldId=>this.preview?.renderModelThumbnail(
      {kind:'field',id:fieldId})??null,
     selectedItems,scrollPositions,
     onSelectCategory:slot=>selectBenchSlot(slot),
-    onInspect:(slot,itemId,kind)=>{
+    onInspect:(slot,itemId,kind,location)=>{
      if(!itemId){this.preview?.selectItemDot(null);return;}
      if(kind==='gear')this.preview?.selectItemDot({
       kind:'gear',slot,itemId
      });
      else this.preview?.selectItemDot({
-      kind:kind==='field'?'field':'magazine',id:itemId
+      kind:kind==='field'?'field':'magazine',id:itemId,location
      });
     },
     onEquip:(slot,itemId)=>{
