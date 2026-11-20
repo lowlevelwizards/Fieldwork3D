@@ -72,7 +72,9 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
     if(!patient||patient===a||patient.health>0||
        (friendly&&friendly.side===a.side&&friendly.surrendered)){
       if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
-      else if(friendly?.carriedById===a.id)friendly.carriedById=null;
+      else if(friendly?.carriedById===a.id){
+        friendly.carriedById=null;friendly.transportMode=null;
+      }
       if(a.carryingId===n.patientId)a.carryingId=null;
       pop(a);return true;
     }
@@ -106,6 +108,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
           }
         }else{
           a.carryingId=patient.id;patient.carriedById=a.id;
+          patient.transportMode=mode;
         }
         a.actionTimer=0;clearCurrentOrderIssue(a);
         notify(s,a.name+' '+mode.toUpperCase()+'ING '+
@@ -121,7 +124,7 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
         a.velocity=0;return true;
       }
       if(civil)dropCivilianCustody(civil,a);
-      else patient.carriedById=null;
+      else {patient.carriedById=null;patient.transportMode=null;}
       a.carryingId=null;
       notify(s,('name' in patient?patient.name:'CIVILIAN')+' RELEASED');
       pop(a);return true;
