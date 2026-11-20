@@ -20,6 +20,7 @@ import {setEquipmentChoice,type LoadoutSlot} from './equipment-loadouts.ts';
 import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {frameArmoryObject,type ArmoryShotCategory}
  from './equipment-thumbnail-camera.ts';
+import {copyLinearRgbaToSrgbFlipped} from './equipment-thumbnail-color.ts';
 
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
@@ -229,11 +230,7 @@ export class CampaignKitPreview{
     const context=canvas.getContext('2d');
     if(!context)return null;
     const image=context.createImageData(shot.width,shot.height);
-    for(let y=0;y<shot.height;y++){
-     const from=(shot.height-1-y)*shot.width*4;
-     image.data.set(pixels.subarray(from,from+shot.width*4),
-      y*shot.width*4);
-    }
+    image.data.set(copyLinearRgbaToSrgbFlipped(pixels,shot.width,shot.height));
     context.putImageData(image,0,0);
     data=canvas.toDataURL('image/png');
    }finally{
