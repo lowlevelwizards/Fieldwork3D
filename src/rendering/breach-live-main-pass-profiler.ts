@@ -20,9 +20,15 @@ export type MainPassFrame=Readonly<{
  topMaterials:readonly MainPassMaterialInstance[];
 }>;
 type MaterialLike={id?:number;name?:string;type?:string;
- transparent?:boolean;alphaTest?:number};
+ transparent?:boolean;alphaTest?:number;roughness?:number;
+ color?:{getHexString?:()=>string}};
 type ObjectLike={isInstancedMesh?:boolean;isSkinnedMesh?:boolean;
- name?:string;geometry?:{type?:string};
+ name?:string;geometry?:{type?:string;groups?:readonly unknown[];
+  boundingBox?:{min:{x:number;y:number;z:number};
+    max:{x:number;y:number;z:number}}|null;
+  computeBoundingBox?:()=>void};
+ matrixWorld?:{elements:ArrayLike<number>};
+ castShadow?:boolean;receiveShadow?:boolean;
  userData?:Record<string,unknown>;parent?:ObjectLike|null};
 function renderOwner(object:ObjectLike):string{
  let current:ObjectLike|null|undefined=object;
@@ -52,6 +58,31 @@ function renderSource(object:ObjectLike):string{
  return [owner,nearest||'[unnamed]',object.geometry?.type||'unknown-geometry']
   .join('/');
 }
+/** Only in E6.25 cold diagnostic: stable exact-mesh identity without
+ * Three IDs, renderer handles, or material allocation order. Use world
+ * translation + geometry local bounds to disambiguate unnamed site meshes.
+ * This does not execute in the default game or other performance captures.
+ */
+function detailedDrawSource(object:ObjectLike,material:MaterialLike):string{
+ const geometry=object.geometry;
+ if(geometry&&!geometry.boundingBox)geometry.computeBoundingBox?.();
+ const bounds=geometry?.boundingBox;
+ const r=(n:number)=>Number.isFinite(n)?n.toFixed(2):'unknown';
+ const extents=bounds?[
+  bounds.min.x,bounds.min.y,bounds.min.z,
+  bounds.max.x,bounds.max.y,bounds.max.z].map(r).join(','):'unbounded';
+ const e=object.matrixWorld?.elements;
+ const origin=e?[e[12],e[13],e[14]].map(r).join(','):'unset';
+ const color=material.color?.getHexString?.()??'none';
+ return [renderSource(object),origin,extents,
+  material.type??'unknown',color,
+  Number.isFinite(material.roughness)?r(material.roughness!):'none',
+  'groups:'+(geometry?.groups?.length??0),
+  'instanced:'+(object.isInstancedMesh?1:0),
+  'shadow:'+(object.castShadow?1:0),
+  'receive:'+(object.receiveShadow?1:0)
+ ].join('|');
+}
 /** First explicit authoring reason on mesh or nearest owning parent.
  * Role tags do NOT change whether a material is actually transparent.
  */
@@ -75,6 +106,11 @@ export class LiveMainPassProfiler{
  private readonly inShadowPass:()=>boolean;
  private readonly now:()=>number;
  private active=false;private calls=0;private drawCalls=0;
+ // This full actual-submission census is only for explicit E6.25 cold QA.
+ // Avoid array/DOM work in production or other profiling configurations.
+ private readonly e625Census=typeof location!=='undefined'&&
+  new URLSearchParams(location.search).get('coldBench')==='1'&&
+  new URLSearchParams(location.search).has('e625Character');
  private opaque=0;private transparent=0;private alphaTest=0;
  private instanced=0;private skinned=0;private elapsed=0;
  private reliable=true;
@@ -82,6 +118,7 @@ export class LiveMainPassProfiler{
  private readonly types=new Map<string,number>();
  private readonly owners=new Map<string,number>();
  private readonly sources=new Map<string,number>();
+ private readonly detailedSources=new Map<string,number>();
  private readonly transparentRoles=new Map<string,number>();
  constructor(renderer:RendererLike,inShadowPass:()=>boolean,
   now:()=>number=()=>performance.now()){
@@ -117,6 +154,11 @@ export class LiveMainPassProfiler{
       (material.alphaTest??0)>0?'alpha-test':'opaque';
      const source=[renderSource(object),type,surface].join('/');
      profiler.sources.set(source,(profiler.sources.get(source)??0)+draws);
+     if(profiler.e625Census){
+      const detailed=detailedDrawSource(object,material);
+      profiler.detailedSources.set(detailed,
+       (profiler.detailedSources.get(detailed)??0)+draws);
+     }
      const id=String(material.id??'unknown-'+type);
      const entry=profiler.materials.get(id)??{
       id,label:material.name||type,type,draws:0,wallMs:0
@@ -148,6 +190,7 @@ export class LiveMainPassProfiler{
   this.instanced=0;this.skinned=0;this.elapsed=0;
   this.reliable=true;this.materials.clear();this.types.clear();
   this.owners.clear();this.sources.clear();this.transparentRoles.clear();
+  this.detailedSources.clear();
   try{return render();}
   finally{
    const materialTypes=[...this.types].map(([type,draws])=>({type,draws}))
@@ -163,6 +206,19 @@ export class LiveMainPassProfiler{
    const topMaterials=[...this.materials.values()]
     .sort((a,b)=>b.draws-a.draws||a.id.localeCompare(b.id))
     .slice(0,12).map(m=>({...m,wallMs:Math.round(m.wallMs*10)/10}));
+   // Unlike top-16 sampled attribution, this includes EVERY actual
+   // non-shadow renderBufferDirect source in the last reliable 3D frame.
+   // Parent fixture labels are only attached by the E6.25 cold benchmark.
+   if(this.e625Census&&typeof window!=='undefined')Object.assign(window,{
+    __fieldworkE625DrawTrace:{
+     total:this.drawCalls,opaque:this.opaque,transparent:this.transparent,
+     alphaTest:this.alphaTest,instanced:this.instanced,reliable:this.reliable,
+     sources:[...this.sources].map(([source,draws])=>({source,draws}))
+      .sort((a,b)=>a.source.localeCompare(b.source)),
+     details:[...this.detailedSources].map(([source,draws])=>({source,draws}))
+      .sort((a,b)=>a.source.localeCompare(b.source))
+    }
+   });
    this.last={
     renderBufferCalls:this.calls,drawCalls:this.drawCalls,
     uniqueMaterials:this.materials.size,opaqueDraws:this.opaque,

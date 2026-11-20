@@ -706,8 +706,10 @@ export class TacticalScene3D{
   private readonly useArchitectureTemplates=new URLSearchParams(location.search)
     .get('e622Template')==='1';
   // Independent opt-in; rigid cover geometry is immutable, damage/wear is not.
-  private readonly includeServiceFixtureTemplates=new URLSearchParams(location.search)
-    .get('e624Service')==='1';
+  private readonly includeCharacterFixtureTemplates=new URLSearchParams(location.search)
+    .get('e625Character')==='1';
+  private readonly includeServiceFixtureTemplates=this.includeCharacterFixtureTemplates||
+    new URLSearchParams(location.search).get('e624Service')==='1';
   private readonly useFixtureTemplates=this.includeServiceFixtureTemplates||
     new URLSearchParams(location.search).get('e623Fixture')==='1';
   private readonly repeatedFixtures=new RepeatedFixtureBatches();
@@ -1065,6 +1067,15 @@ export class TacticalScene3D{
       }
     });
   }
+  /** E6.25 opt-in: cache-only replay of the primitive authoring order.
+   * No default-OFF control path changes; no extra mesh is instantiated. */
+  private reserveBoxGeometry(w:number,h:number,d:number):void{
+    const key=w+':'+h+':'+d;
+    if(this.boxGeometryCache.has(key)||this.boxGeometryCache.size>=384)return;
+    const geometry=mapBoxPixelUV(new THREE.BoxGeometry(w,h,d),w,h,d);
+    this.boxGeometryCache.set(key,geometry);
+    this.sharedBoxGeometries.add(geometry);
+  }
   private box(parent:THREE.Object3D,x:number,y:number,z:number,
     w:number,h:number,d:number,material:THREE.Material,cast=true){
     const key=w+':'+h+':'+d;
@@ -1248,11 +1259,13 @@ export class TacticalScene3D{
       staticBatches:scene.staticBatches,
       repeatedFixtures:scene.repeatedFixtures,
       sharedBoxGeometries:scene.sharedBoxGeometries,
+      reserveBoxGeometry:(w,h,d)=>scene.reserveBoxGeometry(w,h,d),
       visualTemplates:scene.useArchitectureTemplates?
         scene.architecturalVisualTemplates:undefined,
       fixtureTemplates:scene.useFixtureTemplates?
         scene.architecturalVisualTemplates:undefined,
       includeServiceFixtureTemplates:scene.includeServiceFixtureTemplates,
+      includeCharacterFixtureTemplates:scene.includeCharacterFixtureTemplates,
       registerVisualLease:lease=>scene.siteVisualLeases.push(lease),
       siteMaterials:scene.siteMaterials,
       mats:scene.mats,
@@ -1298,7 +1311,9 @@ export class TacticalScene3D{
       elapsedMs:performance.now()-started,
       cache:this.architecturalVisualTemplates.stats(),
       repeated:this.repeatedFixtures.stats,
-      coverCount:this.coverGroups.size
+      coverCount:this.coverGroups.size,
+      fixtureInventory:this.root.userData.fieldworkE625FixtureInventory??[],
+      batchMembership:this.root.userData.fieldworkE625BatchMembership??[]
     }});
   }
   resize(w:number,h:number){
