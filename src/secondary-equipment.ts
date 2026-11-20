@@ -51,10 +51,12 @@ export function readSecondaryEquipment(raw:unknown,owner:string):SecondaryEquipm
  const empty=emptySecondaryEquipment();
  if(!raw||typeof raw!=='object'||Array.isArray(raw))return empty;
  const v=raw as Partial<SecondaryEquipment>;
- if(v.version!==1||typeof v.weapon!=='string'||
-  !isGlockAppearanceId(v.weapon))return empty;
+ if(v.version!==1)return empty;
  const holster=holsters.includes(v.holster as SecondaryHolster)?
   v.holster as SecondaryHolster:'belt-right';
+ // Holster-side preference survives even while the pistol is unequipped.
+ if(v.weapon===null)return {...empty,holster};
+ if(typeof v.weapon!=='string'||!isGlockAppearanceId(v.weapon))return empty;
  const capacity=SECONDARY_CAPACITY[v.weapon];
  const prefix=validOwner(owner)+'/secondary/'+v.weapon;
  if(v.loadedMagazineId!==prefix+'/loaded'||!Number.isInteger(v.loadedRounds)||
@@ -65,6 +67,7 @@ export function readSecondaryEquipment(raw:unknown,owner:string):SecondaryEquipm
  const spareMagazines:SecondaryMagazine[]=[];
  for(const m of v.spareMagazines){
   if(!m||typeof m!=='object'||typeof m.id!=='string'||
+   !/^spare-[0-5]$/.test(m.id.slice((prefix+'/').length))||
    !m.id.startsWith(prefix+'/spare-')||seen.has(m.id)||
    !Number.isInteger(m.rounds)||m.rounds<0||m.rounds>capacity||
    !locs.includes(m.location))return empty;
@@ -78,6 +81,7 @@ export function readSecondaryEquipment(raw:unknown,owner:string):SecondaryEquipm
 export function equipFreshSecondary(state:SecondaryEquipment,owner:string,
  weapon:GlockAppearanceId|null):SecondaryEquipment{
  if(state.weapon===weapon)return state; // choosing same item never refills
+ if(weapon===null)return {...emptySecondaryEquipment(),holster:state.holster};
  return initialSecondaryEquipment(owner,weapon,state.holster);
 }
 export function moveSecondaryHolster(state:SecondaryEquipment,
