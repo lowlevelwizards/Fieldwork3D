@@ -30,11 +30,13 @@ const GOLDENS=Object.freeze({
  // opening, both operator crossings and no-ping-pong tests remain required.
  door:'2a7842fd010610b57cd542c40069f420c78231d756280e3f90619c1123567236',
  medical:'e8c442acf7b5869b4877d0670f9ae2a811c6c68907e4128e44d3a1788bc122d9',
- // D15 R1 controlled rebaseline: living surrender retains actual health and
- // physical firearm evidence instead of fabricating a terminal down event.
- // The exact real-game 60Hz contact outcome is deterministic; projectile,
- // attributable-hit and enemy-observation assertions below remain strict.
- combat:'f0d974b999f8124eb72bb3e9c20ffd63fc28a4f850cde8eb39aa8172e9111373',
+ // D15.7 final release: real downing is incapacitation, not an automatic
+ // fatality. This projected hash includes actor.kills as well as health,
+ // impacts, positions, shooter events and enemy observation/decisions.
+ // The earlier D15 R1 hash credited a kill at health=0; D15.7 credits
+ // only an irreversible observed fatality. Independent real-shot, actual
+ // down, opponent health, AI observation and repeatability gates remain.
+ combat:'196a1ed6e715942d82fbe813eb1788e5094dffa3dd4d1ad8c7da59a744c90121',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
 });
 function authorDoorEntry(s){
