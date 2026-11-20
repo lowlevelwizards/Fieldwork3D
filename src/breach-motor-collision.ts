@@ -751,7 +751,7 @@ export function resolveMotorCollision(
         if(hasTransientRouteObserver())
           noteDoorHandoffRejection(s,a,'M2.8-SELECTED '+route.length);
         if(route.length&&watchClearanceAllowed(a.p,route[0],p,
-            !!a.aimInstruction&&a.aimInstruction.mode!=='free',physical)){
+            !!a.aimInstruction&&a.aimInstruction.mode!=='free',narrow)){
           setTransientRoute(s,a,route,'entry-squeeze-departure');
           notePreciseLocalDetour(a,route[0]);
           a.lastNavRepairAt=s.seconds;

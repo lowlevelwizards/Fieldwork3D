@@ -36,4 +36,8 @@ test('M2.8: accepts only swept departure and narrow rejoin without moving actor'
  assert.deepEqual(from,p(0,0));
  assert.deepEqual(selectM2EntrySqueezeDeparture(from,goal,p(-4,0),
   full,()=>false,(_a,to)=>[to]),[]);
+ const squeezeOnly=selectM2EntrySqueezeDeparture(from,goal,p(-4,0),
+  ()=>false,narrow,(_a,to)=>[to]);
+ assert.ok(squeezeOnly.length>=2,
+  'already-squeezing actor may use the real exact narrow-profile footstep');
 });

@@ -53,7 +53,12 @@ export function selectM2EntrySqueezeDeparture(
  for(const radius of [2,4,8])for(const theta of headings){
   const stage={x:from.x+Math.cos(theta)*radius,
    y:from.y+Math.sin(theta)*radius};
-  if(!fullBodyMotorStrideClear(from,stage,fullSweep))continue;
+  // The operator is ALREADY in an approved squeeze pose. A full-body
+  // microstride may be physically impossible at this narrow starting
+  // center; require the SAME exact 0.3-unit oriented squeeze sweep that
+  // the existing motor will use to execute the transient stage.
+  if(!fullBodyMotorStrideClear(from,stage,fullSweep)&&
+     !fullBodyMotorStrideClear(from,stage,narrowSweep))continue;
   if(++searches>4)return [];
   const tail=worldRoute(stage,goal);
   if(!tail.length||distance(tail.at(-1)!,goal)>3)continue;
