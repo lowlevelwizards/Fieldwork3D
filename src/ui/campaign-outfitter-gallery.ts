@@ -3,7 +3,8 @@
  * through the existing campaign and physical-carry handlers/quotes.
  */
 import {itemDefinition} from '../equipment-catalog.ts';
-import {type FieldCarryLocation,type FieldItemId} from '../equipment-field-inventory.ts';
+import {initialFieldInventory,type FieldCarryLocation,type FieldItemId} from '../equipment-field-inventory.ts';
+import {physicalCarryBoard} from '../equipment-physical-board.ts';
 import {quoteCarryGearChange}
  from '../equipment-carry-gear-change.ts';
 import type {EquipmentLoadout,LoadoutSlot} from '../equipment-loadouts.ts';
@@ -63,6 +64,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
  context.setAttribute('aria-live','polite');
  root.append(heading,viewport,context);
  options.host.append(root);
+ const inventory=options.kit.fieldInventory??initialFieldInventory(options.kit);
+ const board=physicalCarryBoard(options.kit,options.magazines,inventory);
  const remembered=options.selectedItems??new Map<string,string>();
  const positions=options.scrollPositions??new Map<string,number>();
  let active:LoadoutSlot='primary';
@@ -121,8 +124,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    const quote=carrier&&!current?quoteCarryGearChange(
     options.kit,options.magazines,slot as 'rig'|'belt'|'backpack',
     id,inventory):null;
-   const unavailable=options.locked||(!current&&
-    (option.disabled||(quote!==null&&!quote.ok)));
+   const unavailable=!current&&(options.locked||
+    option.disabled||(quote!==null&&!quote.ok));
    const delta=item.massKg-(itemDefinition(source.value)?.massKg??0);
    result.push({id,label:item.name,mass:current?'EQUIPPED':
     (delta>=0?'+':'')+delta.toFixed(2)+' KG',
