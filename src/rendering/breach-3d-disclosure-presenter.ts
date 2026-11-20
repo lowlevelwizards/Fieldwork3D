@@ -7,7 +7,8 @@ import type {Door,Pt} from '../breach-core.ts';
 import type {CivilianActor} from '../breach-civilian-types.ts';
 import {replayActorDisclosed,replayCivilianDisclosed,recordedReplayKnowledge,
  type ReplayDisclosure} from '../breach-replay-visibility.ts';
-import {civilianPresentationVisible} from '../breach-civilian-visibility.ts';
+import {civilianPresentationVisible,escortedCivilianVisible}
+ from '../breach-civilian-visibility.ts';
 import {personalDecorVisible,personalGroundEvidenceAt} from '../breach-replay-personal-visibility.ts';
 import {architecturalOpeningKnown} from '../breach-presentation.ts';
 import {accessibleExteriorWall} from '../breach-site-footprint.ts';
@@ -23,6 +24,10 @@ export function presentActor(s:Session,a:TeamActor,omniscient:boolean,
 }
 export function presentCivilian(s:Session,c:CivilianActor,omniscient:boolean,
  policy:ReplayDisclosure|null):boolean{
+ // In both live and replay, an actual (historically restored) escort is
+ // squad knowledge until STOP or separation. Do not substitute live LOS
+ // for a replay frame that never contained custody.
+ if(escortedCivilianVisible(c))return true;
  if(policy){
    if(policy.mode==='full')return true;
    if(policy.mode==='operator')return replayCivilianDisclosed(s,c.id,policy);
