@@ -7,6 +7,7 @@ import {initialSecondaryEquipment,secondaryRoundTotal}
  from '../src/secondary-equipment.ts';
 import {executeTacticalUtilityOrder}
  from '../src/breach-order-utility.ts';
+import {snapshot,MissionRecorder,applyReplayFrame} from '../src/breach-replay.ts';
 import {initialSecondarySwitch,requestSecondarySwitch,advanceSecondarySwitch,
  advanceInterruptedSecondarySwitch,secondarySwitchSettled}
  from '../src/secondary-switching.ts';
@@ -78,4 +79,36 @@ test('S5.2: removing an issued Glock from a selected operator safely returns to 
  assert.equal(s.active,'primary');
  assert.equal(s.fraction,0);
  assert.equal(s.desired,'primary');
+});
+
+test('S10 foundation: film stores sidearm state, interpolates draw, resets absent legacy selection on seek',()=>{
+ const s=newSession(),a=team(s)[0];
+ const kit=initialSecondaryEquipment(a.id,'glock-g19x');
+ a.equipment={...initialEquipmentLoadout(),secondary:kit};
+ const film=new MissionRecorder();
+ film.capture(s,true);
+ const old=film.frames[0].actors.find(x=>x.id===a.id);
+ assert.deepEqual(old.secondarySwitch,initialSecondarySwitch());
+ a.secondarySwitch=requestSecondarySwitch(a.secondarySwitch,'secondary',kit).state;
+ a.secondarySwitch=advanceSecondarySwitch(a.secondarySwitch,.2,kit);
+ s.seconds=.1;
+ film.capture(s,true);
+ const second=film.frames[1].actors.find(x=>x.id===a.id);
+ assert.ok(second.secondarySwitch.fraction>0);
+ const sampled=film.sample(.05).actors.find(x=>x.id===a.id);
+ assert.ok(sampled.secondarySwitch.fraction>0);
+ assert.ok(sampled.secondarySwitch.fraction<second.secondarySwitch.fraction);
+ applyReplayFrame(s,film.frames[0]);
+ assert.equal(a.secondarySwitch.active,'primary');
+ assert.equal(a.secondarySwitch.fraction,0);
+ // Old films have no selected-hand field: seeking backward may never
+ // inherit whichever pistol the live actor had selected later.
+ const legacy={...film.frames[0],actors:film.frames[0].actors.map(x=>{
+  const {secondarySwitch:_omitted,...rest}=x;return rest;
+ })};
+ a.secondarySwitch=advanceSecondarySwitch(
+  requestSecondarySwitch(a.secondarySwitch,'secondary',kit).state,.15,kit);
+ assert.ok(a.secondarySwitch.fraction>0);
+ applyReplayFrame(s,legacy);
+ assert.deepEqual(a.secondarySwitch,initialSecondarySwitch());
 });
