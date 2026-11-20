@@ -264,3 +264,53 @@ test('D15.6 recovered 9mm obeys real red firing pipeline and uses only pistol ro
   assert.equal(a.magazine,primary);
  }finally{activateSite(null);}
 });
+
+test('D15.6 shared actor phase owns submission opportunities, never ordinary red AI',async()=>{
+ const {s,a,port}=scenario();
+ try{
+  commitSuspectSurrender(s,a,()=>{},()=>{});
+  s.seconds=9;
+  let hostileDecisions=0;
+  const {advanceSimulationActors}=await import(
+    '../src/breach-simulation-actor-phase.ts');
+  advanceSimulationActors(s,1/60,{
+   ...port,decideEnemy:()=>{hostileDecisions++;},
+   defensivePosition:()=>null,runFriendly:()=>{}
+  });
+  assert.equal(a.suspectEscapeMode,'recover');
+  assert.equal(hostileDecisions,0,
+   'submitted red actor only uses physical opportunity, not hostile AI');
+ }finally{activateSite(null);}
+});
+test('D15.6 cuffs interrupt an unfinished real holster hand and prevent rearm',()=>{
+ const {s,a,port}=scenario();
+ try{
+  a.equipment={...initialEquipmentLoadout(),
+   secondary:initialSecondaryEquipment(a.id,'glock-g19x')};
+  commitSuspectSurrender(s,a,()=>{},()=>{});
+  s.droppedFirearms[0].status='secured';
+  s.seconds=9;tick(s,a,port,75);
+  assert.equal(a.suspectEscapeMode,'secondary');
+  assert.ok(a.secondarySwitch.fraction>0&&a.secondarySwitch.fraction<1);
+  a.restrained=true;
+  tick(s,a,port);
+  assert.equal(a.suspectEscapeMode,null);
+  assert.equal(a.secondarySwitch.desired,'primary');
+  assert.equal(a.surrendered,true);
+  tick(s,a,port,140);
+  assert.equal(a.suspectRearmedSecondary,false);
+  assert.equal(a.surrendered,true);
+ }finally{activateSite(null);}
+});
+test('D15.6 rendered Floor Plan distinguishes unarmed flight and actual 9mm',async()=>{
+ const {readFileSync}=await import('node:fs');
+ const src=readFileSync(new URL('../src/breach-2d-actor-renderer.ts',
+   import.meta.url),'utf8');
+ assert.match(src,/a\.surrendered&&a\.suspectEscapeMode==='flee'/);
+ assert.match(src,/a\.surrendered&&a\.suspectEscapeMode==='secondary'/);
+ assert.match(src,/a\.suspectRearmedSecondary===true/);
+ assert.match(src,/pistol\?11:/);
+ const interaction=readFileSync(new URL('../src/breach-order-interactions.ts',
+   import.meta.url),'utf8');
+ assert.match(interaction,/suspect\.restrained=true;[\s\S]{0,400}suspect\.suspectEscapeMode=null/);
+});
