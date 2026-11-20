@@ -635,3 +635,19 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  .arsenal-glock-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
  .arsenal-glock-gallery{padding:12px}
 }
+
+
+/* G2.2 pistol-specific inspection: a short sidearm should never inherit the
+ * overly distant long-rifle crop. Native geometry uses a 2:1 render target. */
+.arsenal-glock-hero-visual{aspect-ratio:2/1;min-height:200px;width:100%}
+.arsenal-glock-card-preview{aspect-ratio:2/1}
+.arsenal-glock-view-note{min-height:28px;max-width:340px;margin:0;
+ color:var(--fw-text-muted);font:600 11px/1.4 var(--fw-font-action)}
+.arsenal-glock-feature{grid-template-columns:minmax(0,1.35fr) minmax(220px,.65fr)}
+@media(max-width:720px){
+ .arsenal-glock-feature{display:flex;flex-direction:column;align-items:stretch;gap:8px}
+ .arsenal-glock-hero-visual{min-height:0;aspect-ratio:2/1}
+ .arsenal-glock-view-controls{justify-content:flex-start}
+ .arsenal-glock-card strong{font-size:16px}
+ .arsenal-glock-card small{font-size:10px}
+}
