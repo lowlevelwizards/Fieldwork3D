@@ -5,6 +5,8 @@ on:
     paths:
       - '.github/workflows/movement-m4-critical.yml'
       - 'src/breach-passage-coordinator.ts'
+      - 'src/breach-entry-coordination.ts'
+      - 'src/breach-game.ts'
       - 'tests/movement-m4-queue-formation.test.mjs'
 permissions: {contents: read}
 concurrency:
