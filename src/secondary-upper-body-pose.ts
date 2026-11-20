@@ -24,7 +24,7 @@ export function secondaryUpperBodyTargets(input:Readonly<{
  reloadProgress?:number|null;
 }>):SecondaryPoseTarget{
  const weight=smooth((clamp(input.fraction)-.08)/.78);
- const ads=smooth(input.aim)*(input.moving?.88:1);
+ const ads=smooth(input.aim)*(input.moving ? .88 : 1);
  const ready:Anchor3={x:8.2,y:-3.0,z:3.3};
  const extended:Anchor3={x:13.4,y:-.25,z:2.0};
  const retention:Anchor3={x:5.7,y:-5.7,z:4.9};
