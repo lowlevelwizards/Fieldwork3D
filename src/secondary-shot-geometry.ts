@@ -18,13 +18,21 @@ export function secondaryMuzzleAtShot(p:SecondaryMuzzleInput):MuzzleSample{
  const grip=secondaryUpperBodyTargets({fraction:1,aim:p.aim,
   moving:p.velocity>3,obstructed:false}).firing;
  const sockets=glockArtSockets(p.weapon);
- const forward=grip.x+HELD_GLOCK_SCALE*
+ // The wrist follows the operator's anatomical chest/heading, while
+ // the physically rotated handgun points along the independent weaponYaw.
+ // Rotating the wrist itself with the barrel displaced the shot origin
+ // whenever LOOK/WATCH tracked an off-axis threat.
+ const bodyX=Math.cos(p.heading)*grip.x-Math.sin(p.heading)*grip.z;
+ const bodyZ=Math.sin(p.heading)*grip.x+Math.cos(p.heading)*grip.z;
+ const muzzleForward=HELD_GLOCK_SCALE*
   (sockets.muzzle.x-sockets.holsterPivot.x);
- const right=grip.z+HELD_GLOCK_SCALE*
+ const muzzleRight=HELD_GLOCK_SCALE*
   (sockets.muzzle.z-sockets.holsterPivot.z);
  const yaw=p.weaponYaw;
- return {x:p.x+Math.cos(yaw)*forward-Math.sin(yaw)*right,
-  z:p.z+Math.sin(yaw)*forward+Math.cos(yaw)*right,
+ return {x:p.x+bodyX+Math.cos(yaw)*muzzleForward-
+    Math.sin(yaw)*muzzleRight,
+  z:p.z+bodyZ+Math.sin(yaw)*muzzleForward+
+    Math.cos(yaw)*muzzleRight,
   y:26+legRestRise(p.velocity,p.posture??'stand')+
    grip.y+HELD_GLOCK_SCALE*(sockets.muzzle.y-sockets.holsterPivot.y)-
    (p.posture==='crouch'?8:0)-(p.coverStanceDrop??0),
