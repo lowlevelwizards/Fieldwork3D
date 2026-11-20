@@ -46,6 +46,11 @@ Base main: `a4e323d6e66edf5f2a45a470a4ac399e0d7c7af9`. Feature branch: `feature/
   produce structured operator-attributed events and replay-true states.
 - Contextual UI exposure and full targeted validation remain outstanding.
 
+## D15.4B — contextual UI exposure
+- SEARCH SUSPECT and SECURE WEAPON use the same eligible physical candidates
+  in palette and dispatcher. Neither grayed-out, unknown or unreached items
+  can be selected; existing civilian SECURE/FOLLOW options remain distinct.
+
 ## R1 must still implement before release
 - Real living surrender; authoritative transfer of the held firearm into a
   Session-owned recoverable world entity (current `droppedGun` is visual only).
