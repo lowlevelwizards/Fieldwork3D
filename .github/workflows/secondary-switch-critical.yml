@@ -1,0 +1,21 @@
+name: Secondary S5 switch contract focused
+on:
+  pull_request:
+    paths:
+      - 'src/secondary-switching.ts'
+      - 'tests/secondary-s5-switching.test.mjs'
+      - '.github/workflows/secondary-switch-critical.yml'
+  workflow_dispatch:
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Deterministic switching and ammo conservation
+        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs
+      - name: Critical TypeScript and production build
+        run: npm run build
