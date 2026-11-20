@@ -1999,3 +1999,9 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
   .campaign-gear-picker-copy>strong{font-size:13px}
  .campaign-gear-picker-scroll{padding:8px}
 }
+
+
+/* Modal stacking: a newly detected site update must never visually cover an
+ * active equipment choice or take its touch targets. Once the user closes the
+ * gear sheet, the pending update prompt can be addressed normally. */
+.campaign-gear-picker-backdrop{z-index:2147483000}
