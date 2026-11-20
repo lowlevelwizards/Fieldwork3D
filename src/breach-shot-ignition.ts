@@ -4,7 +4,7 @@
  */
 import type {TeamActor} from './breach-game.ts';
 import type {FiringMode} from './breach-ballistics.ts';
-import {dispersion,handlingInstability} from './breach-ballistics.ts';
+import {dispersion,handlingInstability,type BallisticProfile} from './breach-ballistics.ts';
 import {skillMultiplier} from './breach-skills.ts';
 import {sightSpreadScale,type WeaponHandlingModifiers}
  from './equipment-weapon-handling.ts';
@@ -21,9 +21,10 @@ export function rangeSpreadScale(range:number,optimalRange:number):number{
 export function shotDispersionCone(a:Pick<TeamActor,
  'weapon'|'stability'|'suppression'|'injuryStage'|'recoil'|'turning'|
  'velocity'|'skills'>,mode:FiringMode,range:number,moving:boolean,
- mods:WeaponHandlingModifiers,optimalRange:number):number{
+ mods:WeaponHandlingModifiers,optimalRange:number,
+ profileOverride?:BallisticProfile):number{
  return (dispersion(a.weapon,mode,a.stability,moving,
-   a.suppression,a.injuryStage,a.recoil)+
+   a.suppression,a.injuryStage,a.recoil,profileOverride)+
   handlingInstability(a.turning,a.velocity,a.recoil,a.stability))*
   (2-skillMultiplier(mode==='point'?a.skills.pointShooting:
     range>optimalRange?a.skills.longRange:a.skills.precision,.28))*
