@@ -50,6 +50,13 @@ on:
       - 'tests/secondary-s10-2-replay-magazines.test.mjs'
       - 'tests/secondary-s10-3-shot-attribution.test.mjs'
       - 'tests/breach-roadmap2-stage10-combat.test.mjs'
+      - 'src/tactical-active-ammo.ts'
+      - 'src/breach-ballistics.ts'
+      - 'src/breach-shot-ignition.ts'
+      - 'src/breach-after-action-report.ts'
+      - 'src/breach-replay-export-json.ts'
+      - 'tests/secondary-s8-3-physical-magazine.test.mjs'
+      - 'tests/secondary-s9-2-ammo-hud.test.mjs'
       - '.github/workflows/secondary-switch-handoff-critical.yml'
   workflow_dispatch:
 concurrency:
@@ -65,6 +72,6 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Critical sidearm order, muzzle, safety, reload, pose and replay regressions
-        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s4-holster-visual.test.mjs tests/secondary-s6-1-held-handoff.test.mjs tests/secondary-s6-2-posed-hands.test.mjs tests/secondary-s7-pistol-fire.test.mjs tests/secondary-s7-live-shot.test.mjs tests/secondary-s7-pistol-flash.test.mjs tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s8-2-timed-reload.test.mjs tests/secondary-s8-4-direct-reload.test.mjs tests/secondary-s9-tactical-controls.test.mjs tests/secondary-s10-2-replay-magazines.test.mjs tests/secondary-s10-3-shot-attribution.test.mjs tests/breach-roadmap2-stage10-combat.test.mjs
+        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s4-holster-visual.test.mjs tests/secondary-s6-1-held-handoff.test.mjs tests/secondary-s6-2-posed-hands.test.mjs tests/secondary-s7-pistol-fire.test.mjs tests/secondary-s7-live-shot.test.mjs tests/secondary-s7-pistol-flash.test.mjs tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s8-2-timed-reload.test.mjs tests/secondary-s8-4-direct-reload.test.mjs tests/secondary-s9-tactical-controls.test.mjs tests/secondary-s10-2-replay-magazines.test.mjs tests/secondary-s10-3-shot-attribution.test.mjs tests/breach-roadmap2-stage10-combat.test.mjs tests/secondary-s8-3-physical-magazine.test.mjs tests/secondary-s9-2-ammo-hud.test.mjs
       - name: Production TypeScript and bundle
         run: npm run build
