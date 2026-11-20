@@ -1,0 +1,33 @@
+name: M2 Motel FRONT exact leaf-motor witness
+on:
+  push:
+    branches: [experiment/m2-motel-front-20261120]
+    paths:
+      - '.github/workflows/m2-motel-front-experiment.yml'
+      - 'src/breach-door-traversal-episode.ts'
+      - 'src/breach-door-hand-contact.ts'
+      - 'src/breach-motor-route.ts'
+      - 'scripts/audit-r7-squad-execution.mjs'
+permissions: {contents: read}
+concurrency:
+  group: m2-motel-front-exact
+  cancel-in-progress: true
+jobs:
+  exact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 16
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Motel seed 19143269 — trace Ash 60Hz motor with opt-in half-second witness
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 --audit-seed=19143269 --audit-scale=small --route-transitions --trace-actor=ash --trace-mode=entry --motel-loop-samples --progress > motel-front-exact.json
+          node -e "const r=require('./motel-front-exact.json').rows[0].modes[1];const a=r.operators.find(a=>a.id==='ash');console.log(JSON.stringify({arrivals:r.arrivals,ash:{position:a.position,remaining:a.remaining,episode:a.doorEpisode,hand:a.doorHand},counts:r.routeTransitions?.byActor,events:r.routeTransitions?.events?.slice(-12),samples:r.motelLoopSamples?.filter((x,i)=>i%8===0||i>80).slice(-30)},null,2));"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: motel-front-exact-trace
+          path: motel-front-exact.json
+          retention-days: 14
