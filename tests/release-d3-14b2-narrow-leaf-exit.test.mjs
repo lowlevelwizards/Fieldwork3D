@@ -63,3 +63,17 @@ test('D3.14B2 exact staged waypoint tolerance never affects normal nav',()=>{
  assert.equal(localDetourWaypointTolerance(a,p(296,496)),3,
   'original transient nav must use its original 3-unit tolerance');
 });
+
+test('M2.10: repeated witnessed leaf escape gets at most three spaced cold probes',()=>{
+ const a={plan:[{kind:'move',id:91,entryDoorId:'FRONT'}],p:p(420,605)};
+ const goal=p(283,585);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.05,10),true);
+ a.p=p(425,605);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.05,15),false);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.26,16),true);
+ a.p=p(416,604);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.26,17),false);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.26,21),true);
+ a.p=p(440,604);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.45,26),false);
+});

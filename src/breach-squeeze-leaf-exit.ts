@@ -59,21 +59,32 @@ export function findBoundedNarrowLeafExit(
  * can warrant another attempt. A repeated unchanged failed search cannot
  * consume every 60Hz frame or reacquire a cosmetic route indefinitely.
  */
-type Probe={id:number;doorId:string;goal:Pt;fraction:number;anchor:Pt};
+type Probe={id:number;doorId:string;goal:Pt;fraction:number;anchor:Pt;
+ attempts:number;at:number};
 const probes=new WeakMap<TeamActor,Probe>();
 const active=new WeakMap<TeamActor,Pt[]>();
 export function claimNarrowLeafExitProbe(
- a:TeamActor,doorId:string,goal:Pt,fraction:number
+ a:TeamActor,doorId:string,goal:Pt,fraction:number,
+ seconds=NaN
 ):boolean{
  const order=a.plan[0];
  if(order?.kind!=='move'||order.entryDoorId!==doorId)return false;
  const prior=probes.get(a);
- if(prior&&prior.id===order.id&&prior.doorId===doorId&&
-    gap(prior.goal,goal)<.25&&
-    Math.abs(prior.fraction-fraction)<.14&&
-    gap(prior.anchor,a.p)<32)return false;
+ const same=!!prior&&prior.id===order.id&&
+  prior.doorId===doorId&&gap(prior.goal,goal)<.25;
+ if(same){
+  // A second/third probe requires a physically changed leaf or real
+  // relocation from the last probe, and a cold multi-second pause.
+  // Absolute max three per authored entry; never 60Hz repeated search.
+  if(prior!.attempts>=3||
+     (Math.abs(prior!.fraction-fraction)<.14&&
+      gap(prior!.anchor,a.p)<9)||
+     (Number.isFinite(seconds)&&Number.isFinite(prior!.at)&&
+      seconds-prior!.at<3))return false;
+ }
  probes.set(a,{id:order.id,doorId,goal:clone(goal),
-  fraction,anchor:clone(a.p)});
+  fraction,anchor:clone(a.p),
+  attempts:same?prior!.attempts+1:1,at:seconds});
  return true;
 }
 export function ownNarrowExitWaypoints(a:TeamActor,stages:readonly Pt[]){

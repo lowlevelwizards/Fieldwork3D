@@ -203,13 +203,17 @@ export function restoreRepeatedDoorEscapeRoute(
       a.doorTraversal?.phase==='clear-leaf'&&
       a.doorTraversal.maneuver==='grab-and-hold'&&
       claimNarrowLeafExitProbe(a,stageDoor.id,goal,
-       stageDoor.openFraction??0)){
+       stageDoor.openFraction??0,s.seconds)){
      const narrow=(from:Pt,to:Pt)=>
        sweptProfileClear(from,to,s.doors,
          squeezeFacing(Math.atan2(to.y-from.y,to.x-from.x)),
          'squeeze',world);
+     // A confirmed repeated escape at a stable wide-open 42-unit leaf
+     // can require going AROUND its tip (>48 units), rather than the
+     // default short 12x4 cold stage. Never expand ordinary live routing.
+     const deepLeaf=(stageDoor.openFraction??0)>=1.20;
      const stages=findBoundedNarrowLeafExit(
-       a.p,goal,original[0],narrow,sweep);
+       a.p,goal,original[0],narrow,sweep,deepLeaf?768:96);
      if(stages.length){
        setTransientRoute(s,a,[...stages.map(clone),
          ...original.map(clone)],'door-squeeze-leaf-exit');
