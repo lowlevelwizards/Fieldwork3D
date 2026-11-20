@@ -9,7 +9,8 @@ import {type Session,type TeamActor,plannedControl,finalPoint,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planSwitchWeaponAt,planMedicalTreatment,
  planNearbyInteraction,planSitePowerControl,removeActiveWatch,deletePlanNode,
- doorAtNode,planEntryTool,liveVisibility,resumeInterruptedDoorPlan,
+ doorAtNode,planEntryTool,planStackTeam,planSquadEntry,canEdit,
+ liveVisibility,resumeInterruptedDoorPlan,
  resumeInterruptedSquadEntry} from './breach-game.ts';
 import type {EntryTool} from './breach-entry-tools.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
@@ -17,6 +18,8 @@ import {sweptBodyClear} from './breach-navigation.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
 import {nearestContextCivilian} from './breach-civilian-context-selection.ts';
 import {plannedSecondaryHand} from './secondary-switching.ts';
+import {selectedDoorStackFormation,cycleDoorStackFormation}
+ from './breach-stack-formation-selection.ts';
 
 export type ContextCommandResult={
  handled:boolean;outcome?:'accepted'|'rejected';failureReason?:string;
@@ -58,6 +61,18 @@ export function dispatchTacticalContextCommand(input:{
     {clearDoorFocus:true,dismissDoorId:door.id});
  }
  switch(action){
+  case 'ctxFormationCycle':
+   return finish(!!door&&canEdit(state)&&
+     !!cycleDoorStackFormation(state,door.id),
+     'CHOOSE A KNOWN DOOR WHILE PLANNING');
+  case 'ctxStackTeam':
+   return finish(!!door&&planStackTeam(state,door.id,
+     selectedDoorStackFormation(state,door?.id??'')),
+     'NO PHYSICALLY REACHABLE STACK POSITIONS');
+  case 'ctxSquadEntry':
+   return finish(!!door&&planSquadEntry(state,door.id,
+     selectedDoorStackFormation(state,door?.id??'')),
+     'SQUAD ENTRY BLOCKED · CHECK DOOR AND TEAM ROUTES');
   case 'ctxResumeEntry':
    return finish(resumeInterruptedDoorPlan(state,selected),
      'ENTRY STILL BLOCKED · RESOLVE DOOR BEFORE RESUMING');
