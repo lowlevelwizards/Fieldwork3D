@@ -1,0 +1,35 @@
+name: UX R4 — Landing and Campaign Browser Gate
+on:
+  pull_request:
+    paths:
+      - 'src/campaign-ui.ts'
+      - 'src/campaign-style.css'
+      - 'scripts/smoke-ux-r4-campaign.mjs'
+      - '.github/workflows/ux-r4-campaign-smoke.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fieldwork-ux-r4-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+jobs:
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - run: npm install --no-save --package-lock=false playwright@1.56.1
+      - run: npx playwright install --with-deps chromium
+      - name: R4 menu and Operations Room, 390px / 416px / desktop
+        run: node scripts/smoke-ux-r4-campaign.mjs
+      - name: Upload screenshots for visual release review
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ux-r4-browser-${{ github.run_id }}
+          path: artifacts/ux-r4/
+          if-no-files-found: ignore

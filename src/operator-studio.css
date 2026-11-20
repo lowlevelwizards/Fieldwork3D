@@ -1,5 +1,6 @@
 @import './ui/fieldwork-design.css';
 @import './operator-material-browser.css';
+:root{--fw-studio-styles-ready:1}
 :root{font-family:"Saira Condensed",sans-serif;color:var(--fw-text);background:#c4c7bd}
 *{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden}
 button,select,input{font:700 14px "Saira Condensed",sans-serif}
