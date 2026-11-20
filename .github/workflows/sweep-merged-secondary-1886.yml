@@ -1,0 +1,67 @@
+name: One-off superseded secondary PR queue sweep
+on:
+  push:
+    branches: [ops/stale-actions-triage-20261120]
+    paths:
+      - '.github/workflows/sweep-merged-secondary-1886.yml'
+permissions:
+  contents: read
+  actions: write
+  pull-requests: read
+concurrency:
+  group: sweep-secondary-1886
+  cancel-in-progress: false
+jobs:
+  cancel-only-superseded-queued:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner,repo}=context.repo;
+            const sha='f63b3f17356352db160667b80c73af5b10ce7760';
+            const branch='integration/secondary-s5-s11-on-main-20261120';
+            const pr=(await github.rest.pulls.get({owner,repo,pull_number:1886})).data;
+            if(!pr.merged||pr.head.sha!==sha)throw new Error('Guard: exact PR #1886 is not merged');
+            const main=(await github.rest.repos.getBranch({owner,repo,branch:'main'})).data;
+            if(main.commit.sha!=='27ae542c41d5f64b228fd54ec2763dcf316da155')
+              throw new Error('Guard: main advanced unexpectedly; abort sweep');
+            let seen=0,eligible=0,requested=0,stale=0,refused=0;
+            const runs=[];
+            for(let page=1;page<=3;page++){
+              const r=await github.rest.actions.listWorkflowRunsForRepo({
+                owner,repo,status:'queued',event:'pull_request',per_page:100,page
+              });
+              runs.push(...r.data.workflow_runs);
+              if(r.data.workflow_runs.length<100)break;
+            }
+            seen=runs.length;
+            const matches=runs.filter(r=>r.status==='queued'&&r.event==='pull_request'&&
+              r.head_branch===branch&&r.head_sha===sha&&
+              Date.parse(r.created_at)>=Date.parse('2026-11-20T16:28:00Z'));
+            eligible=matches.length;
+            for(const candidate of matches){
+              const r=(await github.rest.actions.getWorkflowRun({owner,repo,run_id:candidate.id})).data;
+              if(r.status!=='queued'||r.head_sha!==sha||r.head_branch!==branch||
+                 r.event!=='pull_request'){stale++;continue;}
+              try{
+                await github.rest.actions.cancelWorkflowRun({owner,repo,run_id:r.id});
+                requested++;core.info('Accepted cancellation: '+r.id+' '+r.name);
+              }catch(error){
+                if([404,409,422].includes(error.status)){
+                  refused++;core.warning('GitHub refused or run changed: '+r.id);
+                }else throw error;
+              }
+            }
+            core.summary.addHeading('Superseded #1886 PR queue sweep')
+              .addTable([
+                [{data:'Metric',header:true},{data:'Count',header:true}],
+                ['Queued PR snapshot',String(seen)],
+                ['Exact SHA candidates',String(eligible)],
+                ['Cancellation accepted',String(requested)],
+                ['Status advanced before cancellation',String(stale)],
+                ['Refused / uncancellable',String(refused)]
+              ])
+              .addRaw('No push runs, running jobs, main deployments, branch HEADs or other PRs were eligible.')
+              .write();
