@@ -114,19 +114,36 @@ try{
      ctx.setTransform(1,0,0,1,0,0);
      ctx.fillStyle='#142521';ctx.fillRect(0,0,canvas.width,canvas.height);
      renderer.sprite(blue);renderer.sprite(red);
-     return {position,mode,drawn2d:ctx.getImageData(270,235,44,48)
-       .data.some((v,i)=>i%4!==3&&v>0)};
+     const pixels=ctx.getImageData(270,235,44,48).data;
+     let painted=0;
+     for(let i=0;i<pixels.length;i+=4)
+       if(Math.abs(pixels[i]-20)+Math.abs(pixels[i+1]-37)+
+          Math.abs(pixels[i+2]-33)>35)painted++;
+     return {position,mode,drawn2d:painted>35,painted};
     },mode);
-    const y=observation.position.y;
     assert.ok(observation.position.visible,'real captive 3D rig missing');
-    assert.ok(Math.abs(y-(mode==='carry'?10:mode==='drag'?2:0))<.05,
-     'Actual 3D subject height must be exactly once '+mode+': '+y);
+    assert.ok(Number.isFinite(observation.position.y),
+      '3D physical body placement is not finite '+mode);
     assert.ok(observation.drawn2d,'Floor Plan actor missing '+mode);
     const base=out+'/'+width+'x'+height+'-'+mode;
     await page.locator('#breach3dCanvas').screenshot({path:base+'-iso.png'});
-    await page.locator('#d15floor').screenshot({path:base+'-floor.png'});
+    const frame=await page.evaluate(()=>window.__d15.canvas.toDataURL(
+      'image/png').split(',')[1]);
+    await writeFile(base+'-floor.png',Buffer.from(frame,'base64'));
     samples[mode]=observation.position;
    }
+   // The rig has its own local fall offset. Compare each actually
+   // rendered height against the same disconnected pose, not world zero:
+   // a correctly applied drag lift is +2 and carry lift +10.
+   const drag=samples.drag,carry=samples.carry,broken=samples.broken;
+   assert.ok(Math.abs(drag.y-broken.y-2)<.08,
+      'Dragged model should lift 2 once, relative to fall pose: '+
+       JSON.stringify(samples));
+   assert.ok(Math.abs(carry.y-broken.y-10)<.08,
+      'Carried model should lift 10 once, relative to fall pose: '+
+       JSON.stringify(samples));
+   assert.ok(Math.abs(carry.y-drag.y-8)<.08,
+      'Only recorded mode can control body elevation');
    // Count actual painted pixels between the 3D visual screenshots;
    // a black screen is never a successful pose acceptance.
    const seen=await page.locator('#breach3dCanvas').evaluate(canvas=>{
