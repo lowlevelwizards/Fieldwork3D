@@ -32,6 +32,7 @@ jobs:
             tests/dispatch-d15-follow-policy.test.mjs \
             tests/dispatch-d15-suspect-escort-phase.test.mjs \
             tests/dispatch-d15-suspect-escort-go.test.mjs \
+            tests/dispatch-d15-suspect-escort-real-motor.test.mjs \
             tests/eqa3-1-rescue-escort-pacing.test.mjs \
             tests/eqa3-10-restrain.test.mjs \
             tests/breach-155.test.mjs
