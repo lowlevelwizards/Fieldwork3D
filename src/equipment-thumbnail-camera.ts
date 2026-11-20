@@ -44,8 +44,8 @@ export function frameArmoryObject(bounds:THREE.Box3,
  }
  const vtan=Math.tan(fovDegrees*Math.PI/360);
  const htan=vtan*(preset.width/preset.height);
- const distance=Math.max(halfX/htan,halfY/vtan,1)*1.23+
-  halfDepth+1.5;
+ const distance=Math.max(halfX/htan,halfY/vtan,1)*1.12+
+  halfDepth+.8;
  return {center,position:center.clone().addScaledVector(forward,distance),
   width:preset.width,height:preset.height,distance};
 }
