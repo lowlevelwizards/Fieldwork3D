@@ -6,6 +6,7 @@ import type {Session,TeamActor} from './breach-game.ts';
 import type {PlanNode} from './breach-plan.ts';
 import {entryDoorState,leaderBeyondOpenEntry} from './breach-entry-coordination.ts';
 import {generatedEntryInterruptedByTeammate} from './breach-entry-interruption-group.ts';
+import {completedGeneratedEntryAt} from './breach-completed-entry-leaf-yield.ts';
 import {doorSwingBlocked} from './breach-door.ts';
 import {doorSecuredFrom} from './breach-door-security.ts';
 import {sessionWorldGeometry} from './breach-world-context.ts';
@@ -57,10 +58,17 @@ export function advanceWaitOrder(
       failCurrentOrder(s,a,entry,reason,notify,doorway?.id);
     return;
   }
-  const lead=entry?s.operators.find(other=>
-    other.side===a.side&&other.health>0):undefined;
-  const leadAcross=!!entry&&!!lead&&lead!==a&&
-    leaderBeyondOpenEntry(doorway,lead.p,a.p,entry.p);
+  // A random first live teammate is not evidence of this particular
+  // threshold. Only an actively executing same-door generated ENTRY or
+  // a recorded physically completed same-door ENTRY may release the
+  // conservative straight clearance gate. The ordinary full-body motor
+  // still decides whether the follower's actual next step is lawful.
+  const leadAcross=!!entry&&s.operators.some(other=>
+    other!==a&&other.side===a.side&&other.health>0&&
+    (other.plan[0]?.kind==='move'&&
+      other.plan[0].entryDoorId===n.doorId||
+      completedGeneratedEntryAt(other,n.doorId!))&&
+    leaderBeyondOpenEntry(doorway,other.p,a.p,entry.p));
   if(gate!=='ready'&&!leadAcross){
    a.velocity=0;a.waitRemaining=0;a.actionTimer+=dt;
    if(a.actionTimer>=2.5&&a.actionTimer-dt<2.5){
