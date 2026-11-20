@@ -148,7 +148,7 @@ export function buildM9Appearance(id:M9AppearanceId,
   ];
   for(const side of [-1,1]){
    const pad=addOutline(root,'grip',id,n++,panel,.065,gripMaterial);
-   pad.position.z=side*(FRAME_DEPTH/2+.042);
+   pad.position.z=side*(FRAME_DEPTH/2+.015);
    pad.userData.m9GripPanel=true;
   }
   // One indexed mark batch for the upper's short, bold grooves. Avoid
@@ -172,7 +172,7 @@ export function buildM9Appearance(id:M9AppearanceId,
   root.add(marks);
   // Single broad right-side safety/decocker cue, subordinate to the upper.
   // It is a visual token, not a fabricated functional mechanism.
-  const decocker=cuboid('receiver',-7.69,2.25,SLIDE_DEPTH/2+.13,
+  const decocker=cuboid('receiver',-7.69,2.25,SLIDE_DEPTH/2+.10,
    1.08,.32,.24,dark);
   decocker.userData.m9DecockerCue=true;
  }
