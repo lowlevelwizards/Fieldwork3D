@@ -11,6 +11,7 @@ import {orientArchitecturalSite,type EntrySide} from './worldgen/site-orientatio
 import {buildingIdentity} from './worldgen/building-identity.ts';
 import {measureSiteCompleteness,shouldTryAnotherLayout,preferCompleteCandidate} from './worldgen/site-completeness.ts';
 import {repairDoorwayClutter} from './worldgen/doorway-clutter-repair.ts';
+import {orientGeneratedDoorSwings} from './worldgen/generated-door-swing.ts';
 import {attachEncounterPlan} from './worldgen/encounter-director.ts';
 import {missionForSeed} from './breach-operations.ts';
 import {chooseGenerationIncidentIntent} from './briefing/incident-intent.ts';
@@ -117,7 +118,10 @@ export function generateSite(seed:number,scale:SiteScale='standard',
    // door. Keep this deterministic, conservative and pre-spawn: essential
    // fixtures are never deleted to manufacture a route.
    const furnished=applyArchetype(orientArchitecturalSite(geometry,seed),seed);
-   const accessible=repairDoorwayClutter(furnished).site;
+   // Decide swing against the furnished building, not an unrelated global
+   // scene. A leaf clear at .32 can still wedge before .72 passage.
+   const accessible=orientGeneratedDoorSwings(
+     repairDoorwayClutter(furnished).site);
    const candidate=attachEncounterPlan(accessible,contextWithIntent);
    onProgress?.('scoring',attempt);
    const grade=measureSiteCompleteness(candidate);

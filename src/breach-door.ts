@@ -203,7 +203,11 @@ export function initDoor(d:Door,i:number):Door{
    latchIntegrity:d.locked?Math.max(2.2,d.latchIntegrity??0):
      d.latchIntegrity??1.05,frameIntegrity:d.frameIntegrity??2.5,
    kicks:d.kicks??0,forced:d.forced??false,heldBy:d.heldBy??null};
- if(doorSwingBlocked(prepared,.32)){
+ // An explicit generated/authored swing has already been selected against
+ // its OWN site. Never reorient it against an unrelated global presentation
+ // world: that silently undoes the 72%-clear procedural site preflight.
+ // Preserve the old 32% fallback ONLY for doors without authored swing.
+ if(d.swing===undefined&&doorSwingBlocked(prepared,.32)){
    const opposite=prepared.swing===1?-1:1;
    if(!doorSwingBlocked({...prepared,swing:opposite},.32))
      prepared.swing=opposite;
