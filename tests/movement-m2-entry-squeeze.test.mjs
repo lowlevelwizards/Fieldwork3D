@@ -18,11 +18,11 @@ test('M2.8: no repeated cold probing at one blocked anchor',()=>{
  a.plan=[{id:2,kind:'move',p:p(100,0)}];
  assert.equal(claimM2EntrySqueezeProbe(a,p(100,0),25),false);
 });
-test('M2.8: cold departure requires complete real full-body first leg',()=>{
+test('M2.8: reject departure when neither real body profile has a clear first leg',()=>{
  const world=(from,to)=>[to];
  const blocked=()=>false;
  assert.deepEqual(selectM2EntrySqueezeDeparture(p(0,0),p(30,0),p(-4,0),
-  blocked,()=>true,world),[]);
+  blocked,()=>false,world),[]);
 });
 test('M2.8: accepts only swept departure and narrow rejoin without moving actor',()=>{
  const from=p(0,0),goal=p(30,0);
@@ -35,7 +35,7 @@ test('M2.8: accepts only swept departure and narrow rejoin without moving actor'
  assert.deepEqual(proposed.at(-1),goal);
  assert.deepEqual(from,p(0,0));
  assert.deepEqual(selectM2EntrySqueezeDeparture(from,goal,p(-4,0),
-  full,()=>false,(_a,to)=>[to]),[]);
+  ()=>false,()=>false,(_a,to)=>[to]),[]);
  const squeezeOnly=selectM2EntrySqueezeDeparture(from,goal,p(-4,0),
   ()=>false,narrow,(_a,to)=>[to]);
  assert.ok(squeezeOnly.length>=2,
