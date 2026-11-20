@@ -1,0 +1,29 @@
+name: M1-M2 read-only mainline 11-site witness
+on:
+  push:
+    branches: [audit/m1m2-mainline-20261120]
+    paths: ['.github/workflows/m1m2-mainline-witness.yml']
+permissions:
+  contents: read
+concurrency:
+  group: m1m2-mainline-readonly
+  cancel-in-progress: false
+jobs:
+  baseline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Identical historical read-only 11-site physical witness
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/m1m2-mainline11.json"
+          node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/m1m2-mainline11.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: m1m2-mainline11-truth
+          path: ${{ runner.temp }}/m1m2-mainline11.json
+          retention-days: 15
