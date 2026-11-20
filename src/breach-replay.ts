@@ -19,6 +19,8 @@ import {copySitePowerState,createSitePowerState} from './equipment-site-power.ts
 import {withCoverPropIds} from './worldgen/site-object-identity.ts';
 import {copyNodes,type PlanNode} from './breach-plan.ts';
 import {initialSecondarySwitch,type SecondarySwitchState} from './secondary-switching.ts';
+import {readSecondaryEquipment,type SecondaryEquipment} from './secondary-equipment.ts';
+import type {SecondaryTimedReload} from './secondary-timed-reload.ts';
 import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
   from './breach-replay-visibility.ts';
 import {enablePersonalGroundCapture,drainPersonalGround,
@@ -55,6 +57,9 @@ export type ActorFrame=Pick<TeamActor,
 export type ReplayActorFrame=ActorFrame & {
  /** S5.2: recorded explicit weapon hand, optional for all legacy films. */
  secondarySwitch?:SecondarySwitchState;
+ /** S8.2: historical pistol magazine identity, rounds and handoff clock. */
+ secondaryEquipment?:SecondaryEquipment;
+ secondaryReload?:SecondaryTimedReload|null;
  /** F6: optional fixed-step clock of the authored active interaction.
   * Missing in older films means no credible mid-action hand retrieval. */
  actionTimer?:number;
@@ -171,6 +176,10 @@ export function snapshot(s:Session,seenGround?:string[],
       lastNoiseAt:a.lastNoiseAt,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
       secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
+      secondaryEquipment:a.equipment?.secondary?
+        reuseFrozenReplayValue(a.equipment.secondary,prior?.secondaryEquipment,
+          ()=>structuredClone(a.equipment!.secondary!)):undefined,
+      secondaryReload:a.secondaryReload?{...a.secondaryReload}:null,
       insertedMagazineId:a.insertedMagazineId,
       spareMagazines:reuseFrozenReplayValue(a.spareMagazines,
         prior?.spareMagazines,()=>a.spareMagazines.map(m=>({...m}))),
@@ -521,11 +530,16 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       // Archived films have no sidearm channel; neutralize stale future
       // state rather than leaking a selected pistol across seek.
       secondarySwitch:copy.secondarySwitch?{...copy.secondarySwitch}:initialSecondarySwitch(),
+      secondaryReload:copy.secondaryReload?{...copy.secondaryReload}:null,
       // F2: rewind physically carried locations as well as the HUD counters.
       // Archived frames without this optional field keep their old kit.
-      ...(copy.fieldInventory&&a.equipment?{
-        equipment:{...a.equipment,fieldInventory:{version:1 as const,
-          stacks:copy.fieldInventory.stacks.map(row=>({...row}))}}}:{}),
+      ...(a.equipment&&(copy.fieldInventory||copy.secondaryEquipment)?{
+        equipment:{...a.equipment,
+          ...(copy.fieldInventory?{fieldInventory:{version:1 as const,
+            stacks:copy.fieldInventory.stacks.map(row=>({...row}))}}:{}),
+          ...(copy.secondaryEquipment?{
+            secondary:readSecondaryEquipment(copy.secondaryEquipment,a.id)}:{})
+        }}:{}),
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
