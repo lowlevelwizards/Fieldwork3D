@@ -25,7 +25,7 @@ import {newCampaign,acceptContract,purchaseAmmo,purchaseMedical,purchaseFlash,
   equipCampaignWeaponFamilyPart,equipCampaignWeaponAttachment,
   purchaseAndEquipWeaponAttachment,moveCampaignMagazine,saveCampaignKitPreset,
   applyCampaignKitPreset,deleteCampaignKitPreset,renameCampaignOperator,
-  cycleCampaignAppearance,setCampaignWardrobe,retireOperator,
+  setCampaignOperatorColor,cycleCampaignAppearance,setCampaignWardrobe,retireOperator,
   reconContract,contractObjectiveIntel,type CampaignState} from './campaign-state.ts';
 import {exportCampaign,importCampaign} from './campaign-persistence.ts';
 import {familyPreset} from './equipment-weapon-families.ts';
@@ -367,6 +367,8 @@ const campaignScreen=new CampaignScreen({
   c=>deleteCampaignKitPreset(c,presetId),'Operator kit preset deleted'),
  renameOperator:(id,callsign)=>applyVisibleCampaignAction(
   c=>renameCampaignOperator(c,id,callsign),'Operator callsign updated'),
+ setOperatorColor:(id,color)=>applyVisibleCampaignAction(
+  c=>setCampaignOperatorColor(c,id,color),'Operator identification color updated'),
  cycleAppearance:(id)=>applyVisibleCampaignAction(
   c=>cycleCampaignAppearance(c,id),'Operator appearance updated'),
  setWardrobe:(id,look)=>applyVisibleCampaignAction(
