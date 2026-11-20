@@ -2,7 +2,7 @@
  * Anchors to the trigger but mounts to document.body so clipped galleries
  * cannot cut off the menu. No native select appears in the primary UI.
  */
-export type FieldworkChoice={value:string;label:string;disabled?:boolean;hint?:string};
+export type FieldworkChoice={value:string;label:string;disabled?:boolean;hint?:string;swatch?:string};
 export function fieldworkSelect(args:{
  label:string;value:string;choices:readonly FieldworkChoice[];
  onChange:(value:string)=>void;
@@ -77,6 +77,12 @@ export function fieldworkSelect(args:{
    option.type='button';option.className='fw-select-choice';
    option.setAttribute('role','option');
    option.setAttribute('aria-selected',String(entry.value===args.value));
+   if(entry.swatch){
+    const chip=document.createElement('span');
+    chip.className='fw-select-color-chip';
+    chip.style.backgroundColor=entry.swatch;
+    option.append(chip);
+   }
    const title=document.createElement('strong');title.textContent=entry.label;
    option.append(title);
    if(entry.hint){
