@@ -67,6 +67,15 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  const selections:{button:HTMLButtonElement;choice:PhysicalChoice}[]=[];
  const previewRequests:{host:HTMLElement;target:EquipmentInspectionTarget}[]=[];
  const destinations:{button:HTMLButtonElement;location:FieldCarryLocation;reason:HTMLElement}[]=[];
+ const moveTray=document.createElement('section');
+ moveTray.className='fw-field-inventory-move-tray';
+ moveTray.setAttribute('aria-label','Selected item and carrying destination');
+ moveTray.hidden=true;
+ const moveTitle=text('strong','fw-field-inventory-move-title','');
+ const moveChoices=document.createElement('div');
+ moveChoices.className='fw-field-inventory-move-choices';
+ const quickDestinations:{button:HTMLButtonElement;location:FieldCarryLocation}[]=[];
+ moveTray.append(moveTitle,moveChoices);
  const refreshSelection=()=>{
   for(const entry of selections)entry.button.setAttribute('aria-pressed',
    String(!!selected&&entry.choice.kind===selected.kind&&
@@ -94,6 +103,26 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    if(parent)parent.dataset.placeStatus=allowed?'ready':'blocked';
   }
   cancelSelection.hidden=!selected;
+  moveTray.hidden=!selected;
+  if(selected){
+   moveTitle.textContent='MOVE '+(selected.kind==='field'?
+    FIELD_ITEMS[selected.id].name.toUpperCase():'SELECTED MAGAZINE')+
+    ' · '+selected.from.toUpperCase()+' →';
+  }
+  for(const entry of quickDestinations){
+   const choice=selected;
+   const active=!!choice&&choice.from!==entry.location;
+   const quote=!active||!choice?null:choice.kind==='field'?
+    quoteSingleFieldTransfer(loadout,magazines,inventory,
+     choice.id,choice.from,entry.location):
+    quoteOneMagazineMove(loadout,magazines,choice.id,entry.location,inventory);
+   const valid=!!quote?.ok&&!!quote.changed;
+   entry.button.disabled=!!options.locked||!valid;
+   entry.button.dataset.fit=valid?'yes':'no';
+   entry.button.textContent=entry.location.toUpperCase();
+   entry.button.title=quote&&!quote.ok?quote.reason:
+    valid?'Move one item to '+entry.location:active?'Not available':'Current location';
+  }
  };
  const placeOne=(choice:PhysicalChoice,to:FieldCarryLocation)=>{
   if(options.locked)return;
@@ -114,6 +143,15 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   onCommit(quote.inventory,'Select one '+FIELD_ITEMS[choice.id].name+
    ' from '+to.toUpperCase());
  };
+ for(const location of FIELD_CARRY_LOCATIONS){
+  const control=btn(location.toUpperCase(),()=>{
+   if(selected)placeOne(selected,location);
+  });
+  control.className='fw-field-inventory-move-destination';
+  control.disabled=true;
+  moveChoices.append(control);
+  quickDestinations.push({button:control,location});
+ }
  // One drag implementation for individually identified magazines and
  // physical field pieces; touch scrolling remains free outside the grip.
  const bindPhysicalDrag=(select:HTMLButtonElement,choice:PhysicalChoice,label:string)=>{
@@ -179,6 +217,20 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    suppressClick=false;return true;
   }};
  };
+ const locationNav=document.createElement('nav');
+ locationNav.className='fw-field-inventory-zones';
+ locationNav.setAttribute('aria-label','Inspect equipment carrying locations');
+ for(const zone of board.zones){
+  const jump=btn(zone.location.toUpperCase()+' · '+zone.used+'/'+zone.capacity,()=>{
+   options.onInspectLocation?.(zone.location);
+   capacity.querySelector<HTMLElement>(
+    '[data-location="'+zone.location+'"]')?.scrollIntoView({
+      behavior:'smooth',block:'nearest'});
+  });
+  jump.className='fw-field-inventory-zone-jump';
+  locationNav.append(jump);
+ }
+ root.append(locationNav,moveTray);
  const capacity=document.createElement('div');
  capacity.className='fw-field-inventory-capacity';
  capacity.setAttribute('aria-label','Carrying capacity by location');
