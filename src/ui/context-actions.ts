@@ -122,9 +122,9 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ]:[]),
     ...(o.nearDownedCaptureTarget?[
       {id:'ctxDragCapture',label:'DRAG CAPTURE TARGET',group:'primary' as const,
-       title:'Physically drag the designated incapacitated target to extraction'},
+       title:'Arm physical drag · tap a destination or draw a custom transport route'},
       {id:'ctxCarryCapture',label:'CARRY CAPTURE TARGET',group:'primary' as const,
-       title:'Physically carry the designated incapacitated target to extraction'}
+       title:'Arm physical carry · tap a destination or draw a custom transport route'}
     ]:[]),
     ...(o.nearCivilianCasualty?[
       {id:'ctxDragCivilian',label:'DRAG',group:'primary' as const,
