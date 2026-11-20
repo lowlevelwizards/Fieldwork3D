@@ -127,8 +127,10 @@ test('S5 gallery parity: secondary uses the primary hero/browser hierarchy, with
 test('S5 camera parity: primary and Glock pointer drag use the same horizontal sign',()=>{
  const primary=readFileSync(new URL('../src/arsenal/viewport.ts',import.meta.url),'utf8');
  const secondary=readFileSync(new URL('../src/arsenal/glock-viewport.ts',import.meta.url),'utf8');
- assert.match(primary,/this\.yaw-=dx\*\.009/);
- assert.match(secondary,/this\.yaw-=\(event\.clientX-previous\.x\)\*\.009/);
+ assert.match(primary,/this\.yaw=inspectOrbitYaw\(this\.yaw,dx\)/);
+ assert.match(secondary,/this\.yaw=inspectOrbitYaw\(this\.yaw,event\.clientX-previous\.x\)/);
+ assert.match(primary,/positionInspectCamera\(this\.camera,this\.target,/);
+ assert.match(secondary,/positionInspectCamera\(this\.camera,this\.target,/);
  assert.doesNotMatch(secondary,/this\.yaw\+=\(event\.clientX-previous\.x\)/);
  assert.ok(secondary.includes("this.element.style.touchAction='none'"));
 });
