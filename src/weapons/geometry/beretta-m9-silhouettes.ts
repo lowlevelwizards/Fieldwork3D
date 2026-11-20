@@ -23,30 +23,30 @@ export type M9ArtOptions=Readonly<{monochrome?:boolean;details?:boolean}>;
 
 export const M9_ART={
  'beretta-m9':{
-  nose:9.23,barrelEnd:9.36,heel:-8.90,gripRear:-9.30,
-  gripFront:-4.76,straightGrip:false,rail:false,threaded:false
+  nose:9.23,barrelEnd:9.36,heel:-9.04,gripRear:-10.21,
+  gripFront:-5.54,straightGrip:false,rail:false,threaded:false
  },
  'beretta-m9a3':{
-  nose:9.32,barrelEnd:10.02,heel:-8.78,gripRear:-8.59,
-  gripFront:-4.59,straightGrip:true,rail:true,threaded:true
+  nose:9.32,barrelEnd:10.02,heel:-8.87,gripRear:-9.34,
+  gripFront:-5.15,straightGrip:true,rail:true,threaded:true
  }
 } as const;
 const SLIDE_REAR=-8.82;
 const SLIDE_BOTTOM=.34,SLIDE_TOP=3.17;
 const SLIDE_DEPTH=3.03,FRAME_DEPTH=2.62,RAIL_DEPTH=.55;
-const BARREL_Y=2.58,BARREL_RADIUS=.70;
+const BARREL_Y=2.46,BARREL_RADIUS=.88;
 
 /** Presentation contacts always come from the authored shape, not a Glock. */
 export function m9ArtSockets(id:M9AppearanceId){
  const a=M9_ART[id],heel=(a.gripRear+a.gripFront)/2;
  return Object.freeze({
   muzzle:Object.freeze({x:a.barrelEnd,y:BARREL_Y,z:0}),
-  primaryGrip:Object.freeze({x:heel+.26,y:-4.72,z:-.18}),
-  supportGrip:Object.freeze({x:heel+.62,y:-3.32,z:.77}),
+  primaryGrip:Object.freeze({x:heel+.34,y:-4.92,z:-.18}),
+  supportGrip:Object.freeze({x:heel+.69,y:-3.48,z:.77}),
   slideGrip:Object.freeze({x:-5.25,y:1.50,z:0}),
-  magazineBase:Object.freeze({x:heel,y:a.heel-.22,z:0}),
-  sightLine:Object.freeze({x:-.85,y:3.53,z:0}),
-  holsterPivot:Object.freeze({x:heel,y:-3.80,z:0})
+  magazineBase:Object.freeze({x:heel,y:a.heel-.19,z:0}),
+  sightLine:Object.freeze({x:-.85,y:3.39,z:0}),
+  holsterPivot:Object.freeze({x:heel,y:-4.08,z:0})
  });
 }
 
@@ -75,23 +75,22 @@ export function buildM9Appearance(id:M9AppearanceId,
  // The FRONT FRAME is visibly shorter and lower than the upper. The rear
  // body, guard, and swept butt stay ONE contiguous lower silhouette.
  const outer:Outline=[
-  [-9.07,.46],[7.68,.46],[7.68,-.38],[6.76,-.82],
-  [2.45,-.86],[1.54,-1.09],[1.49,-3.07],
-  [1.03,-3.71],[-2.64,-3.71],[-3.16,-3.12],
-  [-3.64,-3.26],[-4.10,-4.13],
-  [a.gripFront+.21,a.heel+.56],
-  [a.gripFront-.23,a.heel],[a.gripRear+.43,a.heel],
-  [a.gripRear-.02,a.heel+.49],
-  [a.straightGrip?-8.28:-8.65,-4.80],
-  [a.straightGrip?-7.93:-8.03,-3.09],
-  [-7.97,-2.43],[-8.69,-1.23],[-9.80,-.68],[-9.22,-.04]
+  [-9.07,.44],[6.71,.44],[6.71,-.28],[5.92,-.70],
+  [2.48,-.82],[1.64,-1.10],[1.64,-3.06],
+  [.99,-3.59],[-2.69,-3.59],[-3.75,-3.25],
+  [-4.15,-4.06],[a.gripFront+.43,a.heel+1.03],
+  [a.gripFront-.05,a.heel+.32],[a.gripRear+.50,a.heel],
+  [a.gripRear-.06,a.heel+.52],
+  [a.straightGrip?-8.50:-9.12,-5.18],
+  [a.straightGrip?-7.95:-8.16,-3.35],
+  [-8.20,-2.37],[-9.88,-.57],[-9.20,-.02]
  ];
  // Large curved-octagonal hole is genuine through-Z geometry; the lower
  // guard remains thick enough to read at game scale without becoming a box.
  const opening:Outline=[
-  [-2.52,-1.37],[.63,-1.37],[1.09,-1.69],
-  [1.13,-2.25],[.73,-2.98],[.30,-3.15],
-  [-1.93,-3.15],[-2.59,-2.80],[-2.77,-2.11]
+  [-2.69,-1.27],[.78,-1.27],[1.18,-1.76],
+  [1.19,-2.31],[.55,-3.12],[-1.95,-3.18],
+  [-2.82,-2.77],[-2.95,-2.12]
  ];
  const localFrame=frameMaterial.clone();localFrame.side=THREE.DoubleSide;
  const frame=addProfileFrame(root,'receiver',id,n++,outer,opening,
@@ -104,9 +103,9 @@ export function buildM9Appearance(id:M9AppearanceId,
  // Strong, short rear slide; its top edge breaks before the characteristic
  // exposed round barrel. Not one uninterrupted Glock-like rectangular slab.
  const breech:Outline=[
-  [SLIDE_REAR,SLIDE_BOTTOM],[-2.71,SLIDE_BOTTOM],
-  [-2.71,2.88],[-2.98,SLIDE_TOP],
-  [SLIDE_REAR+.32,SLIDE_TOP],[SLIDE_REAR,2.91]
+  [SLIDE_REAR,SLIDE_BOTTOM],[-2.69,SLIDE_BOTTOM],
+  [-2.69,2.62],[-3.17,SLIDE_TOP],
+  [SLIDE_REAR+.35,SLIDE_TOP],[SLIDE_REAR,2.88]
  ];
  const rearSlide=addOutline(root,'barrel',id,n++,breech,SLIDE_DEPTH,slideMaterial);
  rearSlide.name='family-barrel-'+id+'-moving-slide';
@@ -115,9 +114,9 @@ export function buildM9Appearance(id:M9AppearanceId,
  // Open upper = two low left/right rails. Their roofs stop at Y1.65; a
  // real six-sided, brighter barrel is revealed above them from both sides.
  const sideRail:Outline=[
-  [-2.74,SLIDE_BOTTOM],[a.nose-.30,SLIDE_BOTTOM],
-  [a.nose,SLIDE_BOTTOM+.29],[a.nose,1.63],
-  [a.nose-.36,1.76],[-2.74,1.76]
+  [-2.74,SLIDE_BOTTOM],[a.nose-.42,SLIDE_BOTTOM],
+  [a.nose,SLIDE_BOTTOM+.28],[a.nose,1.48],
+  [a.nose-.39,1.61],[-2.74,1.61]
  ];
  for(const side of [-1,1]){
   const rail=addOutline(root,'barrel',id,n++,sideRail,RAIL_DEPTH,slideMaterial);
@@ -131,29 +130,29 @@ export function buildM9Appearance(id:M9AppearanceId,
  barrel.name='family-barrel-'+id+'-visible-open-top-barrel';
  barrel.userData.m9ExposedBarrel=true;
  // Only a LOW under-barrel bridge, never a rectangular cap over the opening.
- const bridge=cuboid('barrel',a.nose-.30,.85,0,.56,.84,SLIDE_DEPTH,
+ const bridge=cuboid('barrel',a.nose-.30,1.02,0,.49,.91,SLIDE_DEPTH,
   slideMaterial);
  bridge.userData.m9NoseBridge=true;
 
  // A compact darker six-facet muzzle crown reads clearly from front/quarter
  // without expanding the actual cylinder diameter or plugging the open top.
  const tip=addFacetedTube(root,'barrel',id,n++,a.barrelEnd-.22,
-  a.barrelEnd+.035,BARREL_RADIUS*.82,muzzleMaterial);
+  a.barrelEnd+.035,BARREL_RADIUS*.76,muzzleMaterial);
  tip.position.y=BARREL_Y;
  tip.userData.m9MuzzleCrown=true;
 
  // Hooked, round-shouldered hammer. Integrated beavertail remains in frame.
  const hammer:Outline=[
-  [-8.82,2.41],[-9.22,2.65],[-9.78,3.36],
-  [-9.94,3.67],[-9.68,3.88],[-9.31,3.88],
-  [-9.00,3.58],[-8.65,3.03]
+  [-8.86,2.44],[-9.27,2.69],[-9.78,3.17],
+  [-10.02,3.57],[-9.82,3.75],[-9.54,3.74],
+  [-9.24,3.51],[-8.83,3.03]
  ];
  const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.52,slideMaterial);
  hammerMesh.userData.m9Hammer=true;
 
  // Oversize, uncomplicated rear and front sights.
- cuboid('barrel',-8.07,3.39,0,.59,.47,1.33,slideMaterial);
- cuboid('barrel',a.nose-.61,3.33,0,.48,.43,1.23,slideMaterial);
+ cuboid('barrel',-8.07,3.34,0,.56,.36,1.30,slideMaterial);
+ cuboid('barrel',a.nose-.61,3.37,0,.49,.35,1.22,slideMaterial);
  const buttCenter=(a.gripRear+a.gripFront)/2;
  const floorplate=cuboid('magazine',buttCenter,a.heel-.19,0,
   a.gripFront-a.gripRear+.37,.38,FRAME_DEPTH+.18,gripMaterial);
@@ -163,28 +162,28 @@ export function buildM9Appearance(id:M9AppearanceId,
   // Panels sweep with the real grip, not isolated upright dark trapezoids.
   // Both face pieces are slim broad wedges embedded into the sculpted butt.
   const gripPanel:Outline=a.straightGrip?[
-   [-7.66,-3.67],[-5.12,-3.67],
-   [-4.66,a.heel+.83],[-4.94,a.heel+.54],
-   [-7.91,a.heel+.54],[-8.08,-6.45]
+   [-7.72,-3.71],[-5.20,-3.87],
+   [a.gripFront-.09,a.heel+.83],[a.gripFront-.30,a.heel+.56],
+   [a.gripRear+.63,a.heel+.55]
   ]:[
-   [-7.72,-3.64],[-5.18,-3.70],
-   [-4.83,a.heel+.84],[-5.10,a.heel+.55],
-   [-8.55,a.heel+.55],[-8.72,-6.61]
+   [-7.88,-3.77],[-5.26,-3.90],
+   [a.gripFront-.07,a.heel+.83],[a.gripFront-.25,a.heel+.53],
+   [a.gripRear+.78,a.heel+.52]
   ];
   for(const side of [-1,1]){
    const pad=addOutline(root,'grip',id,n++,gripPanel,.13,gripMaterial);
    pad.position.z=side*(FRAME_DEPTH/2+.012);
    pad.userData.m9GripPanel=true;
   }
-  // Three bold serrations per side in ONE indexed batch: no screws,
-  // stippling or per-mark draw calls at miniature resolution.
+  // Four full-height slide serrations from near upper to lower edge.
+  // One indexed geometry batch, no per-groove mesh or z-fighting overlay.
   const positions:number[]=[],index:number[]=[];
   for(const side of [-1,1]){
-   for(let i=0;i<3;i++){
-    const x=-7.69+i*.59,z=side*(SLIDE_DEPTH/2+.027);
+   for(let i=0;i<4;i++){
+    const x=-7.42+i*.54,z=side*(SLIDE_DEPTH/2+.027);
     const at=positions.length/3;
-    positions.push(x,.95,z,x+.23,.95,z,
-     x+.45,2.76,z,x+.22,2.76,z);
+    positions.push(x,SLIDE_BOTTOM+.065,z,x+.21,SLIDE_BOTTOM+.065,z,
+     x+.40,SLIDE_TOP-.045,z,x+.19,SLIDE_TOP-.045,z);
     if(side>0)index.push(at,at+1,at+2,at,at+2,at+3);
     else index.push(at,at+2,at+1,at,at+3,at+2);
    }
@@ -201,8 +200,8 @@ export function buildM9Appearance(id:M9AppearanceId,
   // One oversized silhouette decocker paddle on each slide face; unlike
   // arbitrary tiny dots, these can be read at 128px and at side profile.
   const lever:Outline=[
-   [-8.15,2.48],[-7.54,2.48],[-7.27,2.22],
-   [-7.70,2.03],[-8.47,2.03],[-8.59,2.28]
+   [-8.38,2.50],[-7.93,2.50],[-7.70,2.23],
+   [-7.99,2.03],[-8.59,2.03],[-8.70,2.29]
   ];
   for(const side of [-1,1]){
    const decocker=addOutline(root,'receiver',id,n++,lever,.18,dark);
@@ -222,6 +221,8 @@ export function buildM9Appearance(id:M9AppearanceId,
   slideDepth:SLIDE_DEPTH,frameDepth:FRAME_DEPTH,
   gripHeelY:a.heel,guardOpening:true,actualOpenTop:true,
   barrelRadius:BARREL_RADIUS,barrelY:BARREL_Y,
+  serrationBottomY:SLIDE_BOTTOM+.065,
+  serrationTopY:SLIDE_TOP-.045,
   rail:a.rail,threaded:a.threaded
  });
  return root;

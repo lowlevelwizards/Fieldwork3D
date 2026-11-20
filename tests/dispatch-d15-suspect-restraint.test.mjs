@@ -23,6 +23,10 @@ test('D15.3 real GO restraint consumes one pair after physical contact',()=>{
   target.p={x:a.p.x+15,y:a.p.y};target.priorP={...target.p};
   target.heading=a.heading;
   assert.equal(commitSuspectSurrender(s,target,()=>{},()=>{}),true);
+  // The live field-use authority checks BOTH the quantity counter and
+  // its physically issued inventory, never grants free cuffs in tests.
+  a.equipment={...a.equipment,fieldInventory:{version:1,
+    stacks:[{itemId:'zip-tie',quantity:2,location:'belt'}]}};
   a.restraintRemaining=2;
   assert.equal(planSuspectRestraint(s,a.id,target.id),true);
   assert.equal(target.restrained===true,false,'planning cannot cuff');
