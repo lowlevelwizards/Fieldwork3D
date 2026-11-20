@@ -48,17 +48,27 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
  trigger.addEventListener('click',()=>{
   if(trigger.disabled)return;
   const prior=document.activeElement instanceof HTMLElement?document.activeElement:trigger;
+  // On phones keep the equipment shelf inside the selected slot.
+  // Unlike a modal this preserves the operator viewport, scrolling
+  // context, and allows immediate visual comparison while outfitting.
+  const shelf=window.matchMedia?.('(max-width:620px)').matches?
+   trigger.closest<HTMLElement>('.campaign-kit-choice'):null;
+  const inline=!!shelf;
   const scroller=trigger.closest<HTMLElement>('.campaign-screen');
   const originalScrollerOverflow=scroller?.style.overflow??'';
   const originalBodyOverflow=document.body.style.overflow;
-  if(scroller)scroller.style.overflow='hidden';
-  document.body.style.overflow='hidden';
+  if(!inline){
+   if(scroller)scroller.style.overflow='hidden';
+   document.body.style.overflow='hidden';
+  }
   const originalItem=itemDefinition(source.value);
   const backdrop=document.createElement('div');
-  backdrop.className='campaign-gear-picker-backdrop';
+  backdrop.className=inline?'campaign-gear-picker-inline':
+   'campaign-gear-picker-backdrop';
   const panel=document.createElement('section');
   panel.className='campaign-gear-picker-panel';
-  panel.setAttribute('role','dialog');panel.setAttribute('aria-modal','true');
+  panel.setAttribute('role',inline?'region':'dialog');
+  if(!inline)panel.setAttribute('aria-modal','true');
   const heading=document.createElement('h2');
   heading.textContent='CHOOSE '+slot.toUpperCase();
   heading.id='campaign-gear-picker-title';
@@ -70,8 +80,11 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
   const close=()=>{
    if(closed)return;
    closed=true;backdrop.remove();
-   if(scroller)scroller.style.overflow=originalScrollerOverflow;
-   document.body.style.overflow=originalBodyOverflow;
+   trigger.setAttribute('aria-expanded','false');
+   if(!inline){
+    if(scroller)scroller.style.overflow=originalScrollerOverflow;
+    document.body.style.overflow=originalBodyOverflow;
+   }
    // The equip callback may rebuild the entire equipment page synchronously.
    // Restore focus to its new corresponding slot, never a detached button.
    const target=prior.isConnected?prior:
@@ -159,7 +172,7 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
   });
   backdrop.addEventListener('keydown',event=>{
    if(event.key==='Escape'){event.preventDefault();close();return;}
-   if(event.key!=='Tab')return;
+   if(inline||event.key!=='Tab')return;
    const focusable=Array.from(panel.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
    const first=focusable[0],last=focusable[focusable.length-1];
    if(!first||!last)return;
@@ -169,7 +182,15 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
     event.preventDefault();first.focus();
    }
   });
-  document.body.append(backdrop);
+  // At most one inline shelf is open. Switching slots closes the old
+  // shelf, without locking the page or covering the operator.
+  if(inline){
+   document.querySelectorAll<HTMLElement>('.campaign-gear-picker-inline')
+    .forEach(open=>open.remove());
+   shelf!.append(backdrop);
+   trigger.setAttribute('aria-expanded','true');
+   backdrop.addEventListener('focusout',()=>{});
+  }else document.body.append(backdrop);
   // Render only items that enter the visible scroller. A separate drawer
   // of unavailable gear stays collapsed; no costly images until inspected.
   const renderThumb=(item:{id:string;el:HTMLElement})=>{
