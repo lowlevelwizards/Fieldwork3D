@@ -1838,6 +1838,21 @@ function mission(s:Session,dt:number){
   const capturePerson=s.missionType==='capture'&&s.captureTarget?
     enemies(s).find(a=>a.id===s.captureTarget):undefined;
   const captured=!!capturePerson&&captureTargetResolved(capturePerson);
+  // A fatality is not a "secured living captive". Discover it through
+  // actual proximity/sight or a previously secured physical prisoner,
+  // rather than leaking an off-screen death through the fog.
+  if(capturePerson&&captureVitalStatus(capturePerson)==='deceased'&&
+     (s.captureSecured||team(s).some(a=>a.health>0&&
+       near(a.p,capturePerson.p,38)&&
+       sweptBodyClear(a.p,capturePerson.p,s.doors,5.5,
+          sessionWorldGeometry(s))&&liveVisibility(s,capturePerson.p)))){
+    s.phase='lost';s.report=['OPERATION FAILED','CAPTURE TARGET DECEASED'];
+    notify(s,'CAPTURE FAILED — TARGET DECEASED');
+    battleEvent(s,'interaction',null,capturePerson.p,
+      'CAPTURE TARGET DECEASED',{action:'capture-target-deceased',
+       targetId:capturePerson.id});
+    return;
+  }
   if(s.mission==='clear'&&
     (captured||(s.missionType!=='capture'&&enemies(s).every(a=>!activeCombatant(a))))){
     s.mission='secure';
@@ -1850,7 +1865,9 @@ function mission(s:Session,dt:number){
     battleEvent(s,'objective',null,s.scenario.objective,'HOSTILES SECURED');
   }
   // Wall-adjacent proximity alone does not permit a remote interaction.
-  const objectivePoint=rescuePerson?rescuePerson.p:s.scenario.objective;
+  const objectivePoint=rescuePerson?rescuePerson.p:
+    s.missionType==='capture'&&capturePerson?capturePerson.p:
+    s.scenario.objective;
   const atObjective=team(s).filter(a=>a.health>0&&
     near(a.p,objectivePoint,36)&&
     sweptBodyClear(a.p,objectivePoint,s.doors,4,sessionWorldGeometry(s)));
@@ -1927,6 +1944,9 @@ function mission(s:Session,dt:number){
     battleEvent(s,'objective',null,s.scenario.objective,verb,
       {action:'objective-secure',objectId:s.missionType,
        contributorId:atObjective[0]?.id});
+  }else if(s.missionType==='capture'&&s.mission==='secure'){
+    // The full 0.9-second vital check requires uninterrupted contact.
+    s.holdTime=0;
   }else if((s.missionType==='hold'||s.missionType==='intel')&&
     s.mission==='secure'){
     s.holdTime=Math.max(0,s.holdTime-dt*.6);
