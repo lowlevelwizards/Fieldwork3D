@@ -86,7 +86,7 @@ export function readRoster(raw:string|null):RosterState{
    return {...base,callsign:typeof f.callsign==='string'&&f.callsign.trim()?
      f.callsign.trim().slice(0,24):base.callsign,
     appearanceSeed:finite(f.appearanceSeed,0,0xffffffff,base.appearanceSeed),
-    loadout:readEquipmentLoadout(f.loadout,weapon),
+    loadout:readEquipmentLoadout(f.loadout,weapon,base.id),
     wardrobe:readWardrobe(f.wardrobe),
     weaponConfiguration:config,
     magazines,loadedMagazineId:readLoadedMagazineId(base.id,weapon,
