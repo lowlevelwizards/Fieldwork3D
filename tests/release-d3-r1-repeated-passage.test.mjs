@@ -38,3 +38,19 @@ test('R1.06: one ordinary crossing still retains its normal rank',()=>{
  assert.deepEqual(s.get('rook').map(x=>({rank:x.rank,order:x.orderId})),
   [{rank:0,order:11}]);
 });
+
+test('R1.06: ordered two-door passage follows ETA, never alphabetic door ID',()=>{
+ const later={...door,id:'A_LATER',a:p(80,200),b:p(120,200)};
+ const earlier={...door,id:'Z_FIRST',a:p(80,100),b:p(120,100)};
+ // The GO schedule was grouped by door ID; a route travels first through
+ // Z_FIRST and only later through A_LATER.
+ const slots=[
+  {actorId:'rook',doorId:'A_LATER',fromSide:-1,rank:0,eta:3,orderId:41},
+  {actorId:'rook',doorId:'Z_FIRST',fromSide:-1,rank:0,eta:1,orderId:41}
+ ];
+ const before=p(100,50),between=p(100,125);
+ assert.equal(pendingPassageSlot(before,slots,[later,earlier],41)?.doorId,
+  'Z_FIRST','first physical threshold must own the current crossing');
+ assert.equal(pendingPassageSlot(between,slots,[later,earlier],41)?.doorId,
+  'A_LATER','after full body has crossed Z, A becomes next');
+});
