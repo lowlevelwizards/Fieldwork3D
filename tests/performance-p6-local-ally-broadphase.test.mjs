@@ -30,10 +30,12 @@ const actor=(id,x,y,side='blue',health=100,heading=0)=>({
  id,p:{x,y},side,health,heading
 });
 test('P6.H inclusive 49u diagonal courtesy keeps exact forward/lateral contacts',()=>{
- const center=actor('rook',0,0,'blue',100,Math.PI/4);
- // 47.95 forward and 8.4 transverse = 48.68 radial, just outside 48.
+ // Aim a little off +X: the 47.95-forward/8.4-lateral peer is
+ // almost 48.68 units along X. A 48-unit square broadphase misses it.
+ const center=actor('rook',0,0,'blue',100,Math.atan2(8.4,47.95));
  const fx=Math.cos(center.heading),fy=Math.sin(center.heading);
- const dx=47.95*fx-8.4*fy,dy=47.95*fy+8.4*fx;
+ const dx=47.95*fx+8.4*fy,dy=47.95*fy-8.4*fx;
+ assert.ok(dx>48&&dx<49&&Math.abs(dy)<1,'edge case crosses the 48u cell-query bound');
  const peer=actor('ash',dx,dy);
  const others=[center,peer,actor('red',2,2,'red'),actor('dead',0,0,'blue',0)];
  const index=new FrameActorNeighborhoodIndex();
