@@ -90,14 +90,26 @@ let activePlatform:ArsenalPlatformId|'all'|'saved'='all';
 let selectedId='ar-m4a1';
 let selectedSaved:ArsenalSavedBuild|null=null;
 const thumbnails=new ArsenalThumbnailer();
-const previewQueue:(()=>void)[]=[];
+type PreviewJob={host:HTMLElement;paint:()=>void};
+const previewQueue:PreviewJob[]=[];
+const previewVersions=new WeakMap<HTMLElement,number>();
 let renderScheduled=false;
-function enqueuePreview(task:()=>void){
- previewQueue.push(task);
+function enqueuePreview(host:HTMLElement,task:()=>void,hero=false){
+ // An in-flight hero selection may replace the SAME connected host.
+ // Discard its older queued work, rather than painting the wrong weapon.
+ const version=(previewVersions.get(host)??0)+1;
+ previewVersions.set(host,version);
+ for(let i=previewQueue.length-1;i>=0;i--)
+  if(previewQueue[i].host===host)previewQueue.splice(i,1);
+ const job:PreviewJob={host,paint:()=>{
+  if(host.isConnected&&previewVersions.get(host)===version)task();
+ }};
+ // The selected hero should not wait for all grid thumbnails.
+ if(hero)previewQueue.unshift(job);else previewQueue.push(job);
  if(renderScheduled)return;
  renderScheduled=true;
  const pump=()=>{
-  const work=previewQueue.shift();if(work)work();
+  const work=previewQueue.shift();work?.paint();
   if(previewQueue.length)requestAnimationFrame(pump);
   else renderScheduled=false;
  };
@@ -120,12 +132,11 @@ function attachImage(host:HTMLElement,ref:ArsenalReference|ArsenalSavedBuild,siz
  const placeholder=document.createElement('span');
  placeholder.className='arsenal-hero-placeholder';placeholder.textContent=ref.name;
  host.replaceChildren(placeholder);
- enqueuePreview(()=>{
-  if(!host.isConnected)return;
+ enqueuePreview(host,()=>{
   const source=thumbnails.render(recipe,size);
   if(!source)return;
   image.src=source;host.replaceChildren(image);
- });
+ },size==='hero');
 }
 function showSelected(ref:ArsenalReference|ArsenalSavedBuild){
  selectedId=ref.id;selectedSaved='recipe' in ref?ref:null;
@@ -155,6 +166,11 @@ let observer:IntersectionObserver|null=null;
 function renderCards(){
  observer?.disconnect();observer=null;
  grid.replaceChildren();
+ // Filter changes detach the previous tiles. Prune their expensive pending
+ // 3D renders immediately; otherwise they occupy one RAF slot each and make
+ // the new visible thumbnails appear several frames late.
+ for(let i=previewQueue.length-1;i>=0;i--)
+  if(!previewQueue[i].host.isConnected)previewQueue.splice(i,1);
  const term=search.value.trim().toLowerCase();
  const saved=loadArsenalBuildLibrary().builds;
  const visible:(ArsenalReference|ArsenalSavedBuild)[]=activePlatform==='saved'?
