@@ -50,7 +50,6 @@ import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import {createOutfitterGallery} from './ui/campaign-outfitter-gallery.ts';
 import {fieldworkSelect} from './ui/fieldwork-select.ts';
 import './ui/campaign-outfitter-gallery.css';
-import {quoteSingleFieldTransfer} from './equipment-field-transfer.ts';
 import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
 import {CarryKitUndoHistory,captureCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
 import {quoteCarryGearChange} from './equipment-carry-gear-change.ts';
@@ -2352,7 +2351,7 @@ export class CampaignScreen{
    openClothing=()=>{selectBenchSlot('top');};
    const gallery=createOutfitterGallery({
     host:galleryRoot,sources:gallerySources,kit:person.loadout,
-    magazines:person.magazines,physicalEditor,locked,
+    magazines:person.magazines,locked,
     renderModel:(slot,itemId)=>this.preview?.renderModelThumbnail(
      {kind:'gear',slot,itemId})??null,
     onAutoPack:()=>{
@@ -2360,19 +2359,10 @@ export class CampaignScreen{
       .find(button=>button.textContent?.trim()==='AUTO PACK');
      if(button&&!button.disabled)button.click();
     },
-    renderField:fieldId=>this.preview?.renderModelThumbnail(
-     {kind:'field',id:fieldId})??null,
     selectedItems,scrollPositions,
     onSelectCategory:slot=>selectBenchSlot(slot),
-    onInspect:(slot,itemId,kind,location)=>{
-     if(!itemId){this.preview?.selectItemDot(null);return;}
-     if(kind==='gear')this.preview?.selectItemDot({
-      kind:'gear',slot,itemId
-     });
-     else this.preview?.selectItemDot({
-      kind:kind==='field'?'field':'magazine',id:itemId,location
-     });
-    },
+    onInspect:(slot,itemId)=>this.preview?.selectItemDot(
+     itemId?{kind:'gear',slot,itemId}:null),
     onEquip:(slot,itemId)=>{
      const original=gallerySources.get(slot);
      if(!original||original.disabled||
@@ -2390,23 +2380,6 @@ export class CampaignScreen{
       original.value=itemId;
       original.dispatchEvent(new Event('change',{bubbles:true}));
      }
-    },
-    onMoveField:(fieldId,from,to)=>{
-     const inventory=person.loadout.fieldInventory??
-      initialFieldInventory(person.loadout);
-     const quote=quoteSingleFieldTransfer(person.loadout,
-      person.magazines,inventory,fieldId,from,to);
-     if(!quote.ok||!quote.changed)return;
-     this.fieldUndo.record(id,inventory,quote.inventory);
-     this.handlers.equipFieldInventory(id,quote.inventory);
-    },
-    onMoveMagazine:(magId,to)=>{
-     const quote=quoteOneMagazineMove(person.loadout,
-      person.magazines,magId,to);
-     if(!quote.ok||!quote.changed)return;
-     this.carryUndo.record(id,captureCarryUndo(person.loadout,person.magazines),
-      captureCarryUndo(person.loadout,quote.magazines));
-     this.handlers.moveMagazine(id,magId,to);
     },
     onArsenal:()=>{if(!arsenal.disabled)this.handlers.openArsenal(id);},
     arsenalDisabled:arsenal.disabled,

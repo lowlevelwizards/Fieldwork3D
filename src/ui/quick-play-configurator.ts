@@ -8,7 +8,7 @@ import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
  type QuickPlayCivilians,type QuickPlayObjectiveIntel} from '../quick-play-settings.ts';
 import type {BuildingArchetype} from '../breach-site.ts';
 import type {RosterState} from '../breach-roster.ts';
-import {itemsForSlot,LOADOUT_SLOTS} from '../equipment-catalog.ts';
+import {catalogOutfitterSources} from './outfitter-choice-sources.ts';
 import type {LoadoutSlot} from '../equipment-loadouts.ts';
 import type {WeaponId} from '../breach-combat.ts';
 import type {CarryGearSlot} from '../equipment-carry-gear-change.ts';
@@ -329,18 +329,8 @@ export function createQuickPlayConfigurator(options:{
     }
    }));
   };
-  const sources=new Map<LoadoutSlot,HTMLSelectElement>();
-  for(const slot of LOADOUT_SLOTS){
-   if(slot==='tactical')continue;
-   const source=node('select');
-   source.setAttribute('aria-label','Select '+slot+' for '+selected.callsign);
-   for(const item of itemsForSlot(slot)){
-    const option=node('option','',item.name);
-    option.value=item.id;source.append(option);
-   }
-   source.value=selected.loadout.slots[slot];
-   sources.set(slot,source);
-  }
+  // The gallery reads the catalog directly; there are no throwaway selects.
+  const sources=catalogOutfitterSources(selected.loadout);
   const zones=node('nav','fw-quick-outfitter-zones');
   zones.setAttribute('aria-label','Equipment locations');
   const zoneButtons=new Map<LoadoutSlot,HTMLButtonElement>();
@@ -370,7 +360,7 @@ export function createQuickPlayConfigurator(options:{
   galleryHost.append(zones);
   const gallery=createOutfitterGallery({
    host:galleryHost,sources,kit:selected.loadout,magazines:selected.magazines,
-   physicalEditor:gadgetHost,locked:false,
+   locked:false,
    renderModel:(slot,itemId)=>squadPreview?.renderModelThumbnail(
     {kind:'gear',slot,itemId})??null,
    onEquip:(slot,itemId)=>{
@@ -382,23 +372,14 @@ export function createQuickPlayConfigurator(options:{
     else changed=options.onEquipGear?.(selected.id,slot,itemId)??false;
     if(changed){const scroll=content.scrollTop;renderSquadPrep();content.scrollTop=scroll;}
    },
-   onMoveField:()=>{/* Physical inventory editor remains the authority. */},
-   onMoveMagazine:(magazineId,to)=>{
-    if(!options.onMoveMagazine?.(selected.id,magazineId,to))return;
-    const scroll=content.scrollTop;renderSquadPrep();content.scrollTop=scroll;
-   },
    onAutoPack:()=>{
     const pack=[...gadgetHost.querySelectorAll<HTMLButtonElement>('button')]
      .find(el=>el.textContent?.trim()==='AUTO PACK');
     if(pack&&!pack.disabled)pack.click();
    },
    onArsenal:()=>{},arsenalDisabled:true,
-   onInspect:(slot,itemId,kind,location)=>{
-    if(!itemId){squadPreview?.selectItemDot(null);return;}
-    if(kind==='gear')squadPreview?.selectItemDot({kind:'gear',slot,itemId});
-    else squadPreview?.selectItemDot({kind:kind==='field'?'field':'magazine',
-     id:itemId,location});
-   },
+   onInspect:(slot,itemId)=>squadPreview?.selectItemDot(
+    itemId?{kind:'gear',slot,itemId}:null),
    onSelectCategory:chooseSlot,
    onAdvanced:()=>{
     galleryHost.hidden=true;carryPanel.hidden=false;

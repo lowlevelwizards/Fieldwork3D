@@ -3,7 +3,8 @@
  * through the existing campaign and physical-carry handlers/quotes.
  */
 import {itemDefinition} from '../equipment-catalog.ts';
-import {initialFieldInventory,type FieldCarryLocation,type FieldItemId} from '../equipment-field-inventory.ts';
+import {initialFieldInventory} from '../equipment-field-inventory.ts';
+import type {OutfitterChoiceSource} from './outfitter-choice-sources.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
 import {quoteCarryGearChange}
  from '../equipment-carry-gear-change.ts';
@@ -25,28 +26,23 @@ const SLOT_LABEL:Partial<Record<LoadoutSlot,string>>={
 };
 export type OutfitterGalleryOptions={
  host:HTMLElement;
- sources:Map<LoadoutSlot,HTMLSelectElement>;
+ sources:ReadonlyMap<LoadoutSlot,OutfitterChoiceSource>;
  kit:EquipmentLoadout;
  magazines:readonly MagazineItem[];
- physicalEditor:HTMLElement;
  locked:boolean;
  renderModel:(slot:LoadoutSlot,itemId:string)=>string|null;
- renderField?:(id:FieldItemId)=>string|null;
  onEquip:(slot:LoadoutSlot,itemId:string)=>void;
- onMoveField:(id:FieldItemId,from:FieldCarryLocation,to:FieldCarryLocation)=>void;
- onMoveMagazine:(id:string,to:FieldCarryLocation)=>void;
  onArsenal:()=>void;
  onAutoPack?:()=>void;
  arsenalDisabled?:boolean;
  selectedItems?:Map<string,string>;
  scrollPositions?:Map<string,number>;
- onInspect?:(slot:LoadoutSlot,id:string,kind:'gear'|'field'|'magazine',location?:FieldCarryLocation)=>void;
+ onInspect?:(slot:LoadoutSlot,id:string)=>void;
  onSelectCategory?:(slot:LoadoutSlot)=>void;
  onAdvanced:()=>void;
 };
-type Choice={id:string;label:string;mass:string;kind:'gear'|'field'|'magazine';
- issued:boolean;equipped:boolean;reason?:string;
- row?:HTMLElement;fieldId?:FieldItemId;location?:FieldCarryLocation;magazineId?:string;};
+type Choice={id:string;label:string;mass:string;kind:'gear';
+ issued:boolean;equipped:boolean;reason?:string;};
 export function createOutfitterGallery(options:OutfitterGalleryOptions){
  const root=el('section','fw-outfitter-gallery');
  root.setAttribute('aria-label','Selected equipment and options');
@@ -80,7 +76,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   const {tile,frame,choice,slot}=pending;
   if(root.isConnected&&tile.isConnected&&tile.dataset.thumbReady!=='true'){
    tile.dataset.thumbReady='true';
-   const url=choice.kind==='gear'?options.renderModel(slot,choice.id):null;
+   const url=options.renderModel(slot,choice.id);
    if(url){
     const img=el('img');img.src=url;img.alt='';img.decoding='async';
     frame.replaceChildren(img);
@@ -143,7 +139,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
  const showDetail=(choice:Choice)=>{
   context.replaceChildren();
   const title=detailSection(choice.label,choice.mass);
-  if(choice.kind==='gear'){
+  {
    if(!choice.issued&&!choice.equipped){
     title.append(el('small','fw-outfitter-disabled-note',choice.reason??'UNAVAILABLE'));
     return;
@@ -183,16 +179,11 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    card.dataset.selected=String(selected);
    card.setAttribute('aria-pressed',String(selected));
   }
-  if(fromClick&&choice.kind==='gear'&&choice.issued&&!choice.equipped){
+  if(fromClick&&choice.issued&&!choice.equipped){
    options.onEquip(active,choice.id);return;
   }
-  if(choice.kind==='gear'&&choice.equipped||
-     choice.kind==='field'&&choice.equipped||
-     choice.kind==='magazine')
-   options.onInspect?.(active,choice.kind==='field'?
-    choice.fieldId??choice.id:choice.magazineId??choice.id,
-    choice.kind,choice.location);
-  else options.onInspect?.(active,'','gear');
+  if(choice.equipped)options.onInspect?.(active,choice.id);
+  else options.onInspect?.(active,'');
   showDetail(choice);
  };
  const show=(slot:LoadoutSlot)=>{
