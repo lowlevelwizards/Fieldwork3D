@@ -445,7 +445,7 @@
   display:flex;min-height:40px;align-items:center;
   font:700 11px var(--fw-font-action);color:#c8dbc6;
  }
- .campaign-armory-screen .campaign-kit-preview .campaign-kit-preview-pose-toggle{
+ .campaign-shell.campaign-armory-screen .campaign-kit-preview .campaign-kit-preview-pose-toggle{
   display:block!important;position:absolute!important;
   left:4px!important;bottom:5px!important;
   top:auto!important;right:auto!important;
