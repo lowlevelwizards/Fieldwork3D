@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - run: npm ci --no-audit --no-fund
+      - run: npm install --no-audit --no-fund
       - name: Native holster, material ownership and carry tests
         run: node --experimental-strip-types --test tests/secondary-s4-holster-visual.test.mjs
       - name: Critical TypeScript and production build
