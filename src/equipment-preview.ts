@@ -141,7 +141,7 @@ export class CampaignKitPreview{
   this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
   this.modelThumbCache.clear();
   this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
-  if(this.focusArea==='full')this.fitFullOperator();
+  this.fitFullOperator();
   this.refreshInspection();
   this.draw();
  }
@@ -167,14 +167,31 @@ export class CampaignKitPreview{
 
  /** Fit the visible operator instead of a fixed rig origin. */
  private fitFullOperator():void{
-  if(!this.rig)return;
+  const [height,radius,rise]=this.operatorFocus(this.focusArea);
+  this.focusHeight=height;this.focusRadius=radius;this.focusRise=rise;
+ }
+ /** The field rig is ~50 model-space units tall, but garments and weapon
+  * attachments vary. Anchor each equipment view to the ACTUAL posed 3D
+  * bounds and the camera FOV. Never use an unrelated 57-unit head pivot
+  * or an upper distance clamp that crops tall kits on phone aspect ratios. */
+ private operatorFocus(area:EquipmentPreviewFocus):readonly [number,number,number]{
+  if(!this.rig)return PREVIEW_FOCUS_TARGETS[area];
   this.rig.root.updateWorldMatrix(true,true);
   const bounds=new THREE.Box3().setFromObject(this.rig.root,true);
-  if(bounds.isEmpty())return;
-  const height=bounds.max.y-bounds.min.y;
-  this.focusHeight=(bounds.min.y+bounds.max.y)*.5;
-  this.focusRadius=THREE.MathUtils.clamp(height*1.95,65,104);
-  this.focusRise=Math.min(25,height*.42);
+  if(bounds.isEmpty())return PREVIEW_FOCUS_TARGETS[area];
+  const span=Math.max(1,bounds.max.y-bounds.min.y);
+  const halfFov=Math.tan(THREE.MathUtils.degToRad(this.camera.fov*.5));
+  const fitDistance=Math.max(78,span/(2*halfFov)*1.2);
+  const heights:Record<EquipmentPreviewFocus,number>={
+   full:.50,head:.78,torso:.58,weapon:.55,carry:.48,
+   back:.57,belt:.38,legs:.31
+  };
+  const distances:Record<EquipmentPreviewFocus,number>={
+   full:1,head:.89,torso:.94,weapon:1,carry:.96,
+   back:.97,belt:.98,legs:1.02
+  };
+  return [bounds.min.y+span*heights[area],
+   fitDistance*distances[area],Math.min(22,span*.35)];
  }
  /** Render an equipped item's actual procedural 3D mesh in isolation, using
   * the EXISTING WebGL renderer (no second context, no icon substitutes).
@@ -509,8 +526,16 @@ export class CampaignKitPreview{
    const projected=point.project(this.camera);
    const onScreen=projected.z>=-1&&projected.z<=1&&
     Math.abs(projected.x)<.92&&Math.abs(projected.y)<.92;
-   const behind=slot==='backpack'&&Math.sin(this.azimuth)>-.15;
-   button.hidden=!onScreen||behind;
+   // Three well-spaced front-side markers are legible on a phone.
+   // The bottom equipment buttons remain the explicit accessible fallback
+   // for armor, medical, tools and the weapon's hidden/holstered state.
+   const compact=this.host.clientWidth<=620;
+   const rear=Math.sin(this.azimuth)<-.15;
+   const reduced=compact&&(
+    slot==='armor'||slot==='medical'||slot==='utility'||
+    (slot==='primary'&&!this.showHeldWeapon));
+   const hiddenSide=slot==='backpack'?!rear:rear&&slot==='rig';
+   button.hidden=!onScreen||hiddenSide||reduced;
    button.style.left=((projected.x+1)*50).toFixed(2)+'%';
    button.style.top=((1-projected.y)*50).toFixed(2)+'%';
    button.setAttribute('aria-pressed',String(slot===this.activeHotspot));
@@ -559,7 +584,7 @@ export class CampaignKitPreview{
    full:'Full operator',head:'Head',torso:'Torso',
    weapon:'Weapon',carry:'Carried equipment',back:'Back',belt:'Belt',legs:'Legs'
   };
-  this.host.setAttribute('aria-label','Rotatable 3D preview of '+
+  this.host.setAttribute('aria-label','Rotatable, tappable 3D preview of '+
    this.operatorId+' with equipped gear. '+target[this.focusArea]+
    ' view. View angle '+degrees+
    ' degrees. Use Left and Right arrow keys to rotate; Home resets the angle.');
@@ -633,16 +658,7 @@ export class CampaignKitPreview{
  };
  /** One 220 ms context transition, with no recurring animation while idle. */
  focusOn(area:EquipmentPreviewFocus,animate=true):void{
-  let [height,radius,rise]=PREVIEW_FOCUS_TARGETS[area];
-  if(area==='full'&&this.rig){
-   const bounds=new THREE.Box3().setFromObject(this.rig.root,true);
-   if(!bounds.isEmpty()){
-    const span=bounds.max.y-bounds.min.y;
-    height=(bounds.max.y+bounds.min.y)*.5;
-    radius=THREE.MathUtils.clamp(span*1.95,65,104);
-    rise=Math.min(25,span*.42);
-   }
-  }
+  const [height,radius,rise]=this.operatorFocus(area);
   const instant=!animate||window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
   // Re-selecting a focus target must not restart an identical transition,
   // especially when a category and its equipment picker both request it.
