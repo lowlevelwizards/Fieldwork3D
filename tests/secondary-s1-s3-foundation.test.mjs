@@ -93,7 +93,7 @@ test('G2.8: Arsenal browser is inspection-only; GO-time kit persistence remains 
  const main=readFileSync(new URL('../src/arsenal/gallery-main.ts',import.meta.url),'utf8');
  const chrome=readFileSync(new URL('../src/arsenal/gallery-chrome.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
- assert.match(main,/SECONDARIES · GLOCK/);
+ assert.match(main,/SECONDARY WEAPONS/);
  assert.match(chrome,/OPEN WORKBENCH/);
  assert.match(gallery,/factoryGlockRecipe/);
  assert.doesNotMatch(gallery,/serializeQuickPlayKitPreferences|EQUIP GLOCK|combat switching pending/);
