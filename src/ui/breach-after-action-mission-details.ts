@@ -139,6 +139,13 @@ export function renderStructuredMissionDetails(input:{
    ['RESTRAINED WITH FLEX CUFFS',String(civilianContact.restrained)],
    ['ESCORTED',String(civilianContact.escorted)]
   ]));
+ if(stats.type==='capture')root.append(section('CAPTURE TARGET · MEDICAL OUTCOME',[
+   ['VITAL STATUS',stats.captureVitals.replaceAll('-',' ').toUpperCase()],
+   ['CAPTURE OUTCOME',stats.captureOutcome.replaceAll('-',' ').toUpperCase()],
+   ['SECURED AT SCENE',stats.captureSecured?'YES':'NO'],
+   ['DEATH RECORDED',stats.captureDeathAt!==null?
+     timelineTime(stats.captureDeathAt):'NO CONFIRMED FATALITY']
+ ]));
  const rescue=stats.rescueStatus;
  if(rescue!=='none')root.append(section('CIVILIAN RESCUE',[
    ['RESULT',rescue.replaceAll('-',' ').toUpperCase()]
