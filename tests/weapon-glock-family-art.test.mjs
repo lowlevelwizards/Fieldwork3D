@@ -191,7 +191,10 @@ test('G2.5: pistol-specific Arsenal close framing and honest real-MP5K peer mode
  assert.match(preview,/buildWeaponSilhouette/);
  assert.match(preview,/hk-mp5k/);
  assert.match(preview,/provisional until a live sidearm rig exists/);
- assert.match(preview,/LIVE USE COMING S5/);
+ // S3+ shipped physical Quick Play sidearm carry; keep the live-use gate
+ // explicit without requiring the obsolete pre-S3 placeholder badge.
+ assert.match(preview,/QUICK PLAY EQUIPMENT/);
+ assert.match(preview,/secondaryCarryClaim/);
  assert.match(preview,/equipFreshSecondary/);
 });
 

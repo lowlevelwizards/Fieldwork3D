@@ -136,35 +136,32 @@ class GlockGallerySnapshots{
 
 export function mountGlockArsenalGallery():HTMLElement{
  const section=document.createElement('section');
- section.className='arsenal-glock-gallery';
+ section.className='arsenal-layout arsenal-glock-gallery';
  section.setAttribute('aria-label','Glock family secondary weapon loadouts');
  section.innerHTML=
-  '<div class="arsenal-glock-header">'+
-    '<div><span class="arsenal-overline">ARSENAL / SECONDARY WEAPONS</span>'+
-    '<h2>GLOCK FAMILY</h2></div>'+
-    '<span class="arsenal-glock-notice">ARSENAL / FACTORY & SAVED BUILDS</span>'+
-  '</div>'+
-  '<div class="arsenal-glock-feature">'+
-    '<div class="arsenal-glock-hero-visual" aria-live="polite"></div>'+
-    '<div class="arsenal-glock-feature-copy">'+
-      '<span class="arsenal-overline">FIELDWORK / G2.7 IDENTITY LOCK</span>'+
-      '<h3 class="arsenal-glock-model"></h3>'+
-      '<p class="arsenal-glock-description"></p>'+
-      '<div class="arsenal-glock-view-controls" role="group" aria-label="3D model view"></div>'+
-      '<p class="arsenal-glock-view-note" role="status"></p>'+
+  '<div class="arsenal-hero arsenal-glock-feature">'+
+    '<div class="arsenal-hero-media arsenal-glock-hero-visual" aria-live="polite"></div>'+
+    '<div class="arsenal-hero-copy arsenal-glock-feature-copy">'+
+      '<span class="arsenal-overline arsenal-glock-platform">GLOCK</span>'+
+      '<h2 class="arsenal-glock-model"></h2>'+
+      '<p class="hint arsenal-glock-description"></p>'+
       '<button type="button" class="arsenal-hero-open arsenal-glock-open">OPEN WORKBENCH</button>'+
       '<div class="arsenal-saved-actions arsenal-glock-saved-actions" hidden></div>'+
-      '<p class="arsenal-glock-subnote">Actual Fieldwork 3D geometry and saved Quick Play sidearm presets. Live drawing and shooting remain separate.</p>'+
+      '<details class="arsenal-glock-views"><summary>INSPECTION VIEWS</summary>'+
+        '<div class="arsenal-glock-view-controls" role="group" aria-label="3D model views"></div>'+
+        '<p class="arsenal-glock-view-note" role="status"></p>'+
+      '</details>'+
     '</div>'+
   '</div>'+
   '<div class="arsenal-browser arsenal-glock-browser">'+
-   '<div class="arsenal-controls"><div><span class="arsenal-overline">FACTORY REFERENCES & SAVED</span>'+
-   '<h2 class="arsenal-control-heading">SELECT A SECONDARY</h2></div>'+
-   '<input class="arsenal-search arsenal-glock-search" type="search" placeholder="Find a model or build" aria-label="Find Glock model or saved build"></div>'+
+   '<div class="arsenal-controls"><div><span class="arsenal-overline">FACTORY REFERENCES</span>'+
+   '<h2 class="arsenal-control-heading">SELECT A WEAPON</h2></div>'+
+   '<input class="arsenal-search arsenal-glock-search" type="search" placeholder="Find a model" aria-label="Find Glock model or saved build"></div>'+
    '<div class="arsenal-filters arsenal-glock-filters" role="group" aria-label="Secondary model filters"></div>'+
    '<p class="arsenal-count arsenal-glock-count" aria-live="polite"></p>'+
    '<div class="arsenal-grid arsenal-glock-cards" role="group" aria-label="Glock models and saved builds"></div>'+
-   '</div>';
+  '</div>'+
+  '<details class="arsenal-glock-kit"><summary>QUICK PLAY EQUIPMENT</summary></details>';
  const feature=section.querySelector<HTMLElement>('.arsenal-glock-hero-visual')!;
  const modelLabel=section.querySelector<HTMLElement>('.arsenal-glock-model')!;
  const desc=section.querySelector<HTMLElement>('.arsenal-glock-description')!;
@@ -210,7 +207,7 @@ export function mountGlockArsenalGallery():HTMLElement{
  const equipButtons=document.createElement('div');equipButtons.className='arsenal-glock-equip-actions';
  equipButtons.append(equipAction,unequipAction);
  equipPanel.append(operatorLabel,holsterLabel,equipButtons,equipStatus,magazinePlacement);
- section.querySelector('.arsenal-glock-feature-copy')!.append(equipPanel);
+ section.querySelector('.arsenal-glock-kit')!.append(equipPanel);
  const readPrepared=()=>applyQuickPlayKitPreferences(
   readRoster(localStorage.getItem(BREACH_STORAGE_KEYS.quickCosmetics)),
   localStorage.getItem(BREACH_STORAGE_KEYS.quickKitPreferences));
@@ -507,6 +504,7 @@ export function mountGlockArsenalGallery():HTMLElement{
     GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===choice.build.recipe.model)!;
    const button=document.createElement('button');button.type='button';
    button.className='arsenal-card arsenal-glock-card';
+   button.setAttribute('aria-pressed','false');
    button.setAttribute('aria-label','Inspect '+(choice.kind==='factory'?ref.name:choice.build.name));
    const image=document.createElement('span');
    image.className='arsenal-card-preview arsenal-glock-card-preview';
@@ -514,8 +512,8 @@ export function mountGlockArsenalGallery():HTMLElement{
    name.textContent=choice.kind==='factory'?ref.name:choice.build.name;
    const caption=document.createElement('small');
    caption.className='platform';
-   caption.textContent=choice.kind==='factory'?ref.description:
-    'SAVED · '+ref.name;
+   caption.textContent=choice.kind==='factory'?'GLOCK':
+    'SAVED · GLOCK';
    button.append(image,name,caption);
    if(choice.kind==='saved')button.dataset.glockSaved=choice.build.id;
    button.addEventListener('click',()=>{

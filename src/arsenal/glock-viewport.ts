@@ -82,7 +82,8 @@ export class GlockViewport{
     this.radius*this.previousPinch/distance,14,120);
    this.previousPinch=distance;
   }else{
-   this.yaw+=(event.clientX-previous.x)*.011;
+   // Match the primary Workbench: dragging right rotates the model right.
+   this.yaw-=(event.clientX-previous.x)*.009;
    this.pitch=THREE.MathUtils.clamp(this.pitch+
     (event.clientY-previous.y)*.008,-.85,.85);
   }

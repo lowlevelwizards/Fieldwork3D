@@ -841,3 +841,119 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  .glock-wb-choice{font-size:12px}
  .glock-wb-stats{font-size:11px}
 }
+
+
+/* S5 Arsenal gallery parity: Glock uses the same hero > browser rhythm as
+ * primary weapons. The extra inspection/carry tools are opt-in, not a second
+ * giant card-within-card preceding the catalogue. */
+.arsenal-shell>.arsenal-glock-gallery{
+ display:grid;grid-template-columns:minmax(0,1fr);gap:23px;
+ padding:0 0 24px;margin:0;min-width:0;max-width:none;
+ border:0;border-radius:0;background:transparent;overflow:visible
+}
+.arsenal-shell>.arsenal-glock-gallery[hidden]{display:none}
+.arsenal-glock-gallery>.arsenal-glock-feature{
+ display:grid;grid-template-columns:minmax(0,1.4fr) minmax(170px,.6fr);
+ gap:18px;align-items:center;min-height:260px;
+ background:linear-gradient(132deg,#233631,#142624 68%);
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-lg);
+ padding:clamp(16px,2vw,28px)
+}
+.arsenal-glock-gallery .arsenal-glock-hero-visual{
+ aspect-ratio:2.5/1;min-height:0;max-height:none;width:100%;
+ background:transparent;border:0;border-radius:0
+}
+.arsenal-glock-gallery .arsenal-glock-feature-copy{gap:8px}
+.arsenal-glock-gallery .arsenal-glock-model{
+ font:800 clamp(28px,4.2vw,50px)/1 var(--fw-font-display)
+}
+.arsenal-glock-gallery .arsenal-glock-description{
+ font-size:12px;line-height:1.45;max-width:240px
+}
+.arsenal-glock-gallery .arsenal-glock-card-preview{aspect-ratio:2.36/1}
+.arsenal-glock-gallery .arsenal-glock-card{
+ background:var(--fw-panel-deep);min-height:173px
+}
+.arsenal-glock-gallery .arsenal-glock-card[aria-pressed="true"]{
+ background:#2a423a
+}
+.arsenal-glock-gallery .arsenal-glock-card .platform{font-size:11px}
+.arsenal-glock-gallery .arsenal-glock-open{
+ align-self:flex-start;margin-top:9px;padding:11px 18px;
+ background:var(--fw-sage);color:var(--fw-bg);
+ border:1px solid var(--fw-sage);border-radius:var(--fw-radius-sm);
+ min-height:44px;font:750 13px var(--fw-font-action)
+}
+.arsenal-glock-views{margin-top:7px;color:var(--fw-text-muted)}
+.arsenal-glock-views summary,.arsenal-glock-kit summary{
+ list-style:none;cursor:pointer;font:700 11px/1.3 var(--fw-font-menu);
+ letter-spacing:.04em;min-height:40px;display:flex;align-items:center;
+ width:max-content;max-width:100%;padding:9px 12px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm)
+}
+.arsenal-glock-views summary::-webkit-details-marker,
+.arsenal-glock-kit summary::-webkit-details-marker{display:none}
+.arsenal-glock-views summary:focus-visible,
+.arsenal-glock-kit summary:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px
+}
+.arsenal-glock-views[open] .arsenal-glock-view-controls{margin:9px 0}
+.arsenal-glock-kit{
+ border:1px solid var(--fw-panel-border);border-radius:var(--fw-radius-md);
+ padding:10px 13px;background:var(--fw-panel-deep)
+}
+.arsenal-glock-kit[open] .arsenal-glock-equip{margin-top:9px}
+.arsenal-glock-kit .arsenal-glock-equip{border-top:0}
+.arsenal-glock-workbench .glock-wb-tabs{
+ display:flex;flex-direction:column;flex-wrap:nowrap;gap:7px;
+ min-height:0;overflow-y:auto
+}
+.arsenal-glock-workbench .glock-wb-tabs .arsenal-wb-category{
+ width:100%;white-space:normal;text-align:left
+}
+.arsenal-glock-workbench .glock-wb-options{
+ grid-template-columns:repeat(2,minmax(0,1fr))
+}
+.arsenal-glock-workbench .glock-wb-choice{
+ background:var(--fw-panel-deep);min-height:60px
+}
+.arsenal-glock-workbench .glock-wb-choice[aria-pressed="true"]{
+ background:var(--fw-control-active);border-color:var(--fw-sage)
+}
+.arsenal-glock-workbench .glock-wb-stats-grid{
+ grid-template-columns:repeat(2,minmax(0,1fr));gap:8px
+}
+.arsenal-glock-workbench .glock-wb-stats-grid .arsenal-wb-stat>strong{
+ font:700 11px/1.2 var(--fw-font-menu)
+}
+@media(max-width:640px){
+ .arsenal-shell>.arsenal-glock-gallery{gap:23px}
+ .arsenal-glock-gallery>.arsenal-glock-feature{
+  display:flex;flex-direction:column;align-items:stretch;
+  min-height:0;gap:3px;padding:13px
+ }
+ .arsenal-glock-gallery .arsenal-glock-model{font-size:31px}
+ .arsenal-glock-gallery .arsenal-glock-description{max-width:none}
+ .arsenal-glock-gallery .arsenal-glock-card{
+  min-height:126px;padding:6px 8px 9px
+ }
+ .arsenal-glock-gallery .arsenal-glock-card .model{font-size:17px}
+}
+@media(max-width:760px){
+ .arsenal-glock-workbench .glock-wb-tabs{
+  flex-direction:row;overflow-x:auto;overflow-y:hidden;
+  flex:none;gap:7px;scrollbar-width:thin;overscroll-behavior-x:contain
+ }
+ .arsenal-glock-workbench .glock-wb-tabs .arsenal-wb-category{
+  width:auto;flex:none;white-space:nowrap;text-align:center;min-height:44px
+ }
+ .arsenal-glock-workbench .glock-wb-stats-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr))
+ }
+}
+
+/* Only the voluntary same-scale study needs the taller 2×2 canvas. */
+.arsenal-glock-gallery .arsenal-glock-hero-visual[data-view="family"]{
+ aspect-ratio:4/3
+}

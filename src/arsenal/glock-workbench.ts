@@ -36,7 +36,7 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  const activeBefore=document.activeElement as HTMLElement|null;
  const oldOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');
- overlay.className='arsenal-wb-screen arsenal-glock-workbench';
+ overlay.className='arsenal-wb-screen arsenal-wb-has-apply arsenal-glock-workbench';
  overlay.setAttribute('role','dialog');overlay.setAttribute('aria-modal','true');
  overlay.setAttribute('aria-label','Secondary weapon workbench');
  const head=document.createElement('header');head.className='arsenal-wb-head';
@@ -69,18 +69,36 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  viewportHost.className='arsenal-wb-viewport glock-wb-viewport';
  const stats=document.createElement('section');stats.className='arsenal-wb-stats';
  stats.setAttribute('aria-label','Real sidearm capacity and unloaded mass');
+ const statsHead=document.createElement('div');statsHead.className='arsenal-wb-stats-head';
  const statsHeader=document.createElement('strong');statsHeader.textContent='WEAPON SPECIFICATIONS';
- const statsLine=document.createElement('div');statsLine.className='glock-wb-stats';
- stats.append(statsHeader,statsLine);stage.append(viewportHost,stats);
+ const statsToggle=action('SHOW STATS','arsenal-wb-stats-toggle');
+ const narrowStats=window.matchMedia('(max-width:760px)').matches;
+ stats.classList.toggle('is-collapsed',narrowStats);
+ statsToggle.setAttribute('aria-expanded',String(!narrowStats));
+ statsToggle.textContent=narrowStats?'SHOW STATS':'HIDE STATS';
+ statsToggle.addEventListener('click',()=>{
+  const collapsed=stats.classList.toggle('is-collapsed');
+  statsToggle.setAttribute('aria-expanded',String(!collapsed));
+  statsToggle.textContent=collapsed?'SHOW STATS':'HIDE STATS';
+ });
+ statsHead.append(statsHeader,statsToggle);
+ const statsLine=document.createElement('div');
+ statsLine.className='arsenal-wb-stats-grid glock-wb-stats-grid';
+ statsLine.id='glock-wb-specifications';
+ statsToggle.setAttribute('aria-controls',statsLine.id);
+ stats.append(statsHead,statsLine);stage.append(viewportHost,stats);
  const tabs=document.createElement('nav');tabs.className='arsenal-wb-nav glock-wb-tabs';
  tabs.setAttribute('aria-label','Secondary Workbench sections');
- const modelTab=action('MODEL'),sightsTab=action('SIGHTS');
- const accessoriesTab=action('ACCESSORIES'),finishTab=action('FINISH');
- const carryTab=action('CARRY'),savedTab=action('SAVED BUILDS');
+ const modelTab=action('MODEL','arsenal-wb-category'),
+  sightsTab=action('SIGHTS','arsenal-wb-category');
+ const accessoriesTab=action('ACCESSORIES','arsenal-wb-category'),
+  finishTab=action('FINISH','arsenal-wb-category');
+ const carryTab=action('CARRY','arsenal-wb-category'),
+  savedTab=action('SAVED BUILDS','arsenal-wb-category');
  tabs.append(modelTab,sightsTab,accessoriesTab,finishTab,carryTab,savedTab);
  const choices=document.createElement('section');choices.className='arsenal-wb-panel glock-wb-panel';
  const subtitle=document.createElement('h3');const grid=document.createElement('div');
- grid.className='glock-wb-options';
+ grid.className='arsenal-wb-option-list glock-wb-options';
  const editBar=document.createElement('div');editBar.className='glock-wb-save-entry';
  editBar.hidden=true;
  const nameInput=document.createElement('input');nameInput.type='text';
@@ -161,7 +179,7 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
   context.onLibraryChange?.();
  });
  const createChoice=(label:string,selected:boolean,callback:()=>void,detail?:string)=>{
-  const b=action(label,'glock-wb-choice');
+  const b=action(label,'arsenal-wb-option glock-wb-choice');
   b.setAttribute('aria-pressed',String(selected));
   if(detail){const small=document.createElement('small');
    small.textContent=detail;b.append(small);}
@@ -187,10 +205,18 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
   const baseline=SECONDARY_MASS_KG[original.model]+
    glockAccessoryMassKg(original.customization);
   const delta=installedMass-baseline;
-  statsLine.textContent='CAPACITY '+SECONDARY_CAPACITY[working.model]+' ROUNDS / MAG'+
-   ' · UNLOADED '+installedMass.toFixed(2)+' KG'+
-   ' · MASS Δ '+(delta>=0?'+':'')+delta.toFixed(2)+' KG'+
-   ' · '+working.spares.length+' SPARE PLACEMENTS';
+  statsLine.replaceChildren();
+  for(const [label,value] of [
+   ['CAPACITY',SECONDARY_CAPACITY[working.model]+' ROUNDS / MAG'],
+   ['UNLOADED',installedMass.toFixed(2)+' KG'],
+   ['MASS Δ',(delta>=0?'+':'')+delta.toFixed(2)+' KG'],
+   ['SPARE PLACEMENTS',String(working.spares.length)]
+  ]){
+   const stat=document.createElement('div');stat.className='arsenal-wb-stat';
+   const heading=document.createElement('strong');heading.textContent=label;
+   const data=document.createElement('span');data.className='arsenal-wb-stat-value';
+   data.textContent=value;stat.append(heading,data);statsLine.append(stat);
+  }
   grid.replaceChildren();
   if(panel==='models'){
    subtitle.textContent='FACTORY MODELS';
