@@ -57,8 +57,11 @@ export function buildReplayReport(recording:MissionRecorder){
       anatomy:anatomy?{...anatomy}:null,
       sideEvidence:anatomy?.side??'unknown',
       mode:s.mode??null,
-      weaponAtFire:s.weaponAtFire??null,
-      receiverAtFire:s.receiverAtFire??null,familyAtFire:s.familyAtFire??null,
+      weaponAtFire:s.secondaryWeaponAtFire??s.secondaryWeapon??
+        s.weaponAtFire??null,
+      secondaryWeaponAtFire:s.secondaryWeaponAtFire??s.secondaryWeapon??null,
+      receiverAtFire:s.secondaryWeaponAtFire??s.receiverAtFire??null,
+      familyAtFire:s.secondaryWeaponAtFire?'glock-9mm':s.familyAtFire??null,
       nominalCaliberAtFire:s.nominalCaliberAtFire??null,
       caliberEvidence:s.nominalCaliberAtFire?'visual-preset':'unavailable',
       precision:anatomy?.source==='trajectory-proxy'?

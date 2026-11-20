@@ -31,14 +31,16 @@ import {backOne,clearPlan,undoPlan,redoPlan,planWait,toggleWeaponLight,toggleNvg
 import {captureRangeTrial} from '../equipment-training-diagnostics.ts';
 import {confirmFieldworkAction} from './fieldwork-controls.ts';
 import {contextActionChoices} from './context-actions.ts';
+import {plannedSecondaryHand} from '../secondary-switching.ts';
+import {selectAccessibleSecondaryMagazine} from '../secondary-timed-reload.ts';
+import {tacticalActiveAmmo} from '../tactical-active-ammo.ts';
 import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
 import {recoveryAdviceFor} from './recovery-guidance.ts';
 import {team,isSeen,missionText,operationBriefing,type Session,type TeamActor} from '../breach-game.ts';
 import {injuryOf,WEAPONS} from '../breach-combat.ts';
-import {liveMagazineCapacity,magazineAlert}
-  from '../arsenal/live-magazine-capacity.ts';
+import {magazineAlert} from '../arsenal/live-magazine-capacity.ts';
 import {executionStatus} from '../breach-execution-state.ts';
 import {compactExecutionStatus} from './tactical-hud-density.ts';
 import {tacticalUiActionAvailability} from './tactical-command-affordances.ts';
@@ -269,7 +271,11 @@ export function createTacticalHudController(
       door:false,node:!!node,flashRemaining:state.flashRemaining,
       posture:current.posture,pace:current.pace,
       firePolicy:node?.firePolicyState??actor.firePolicy,
-      reserve:actor.reserve,magazine:actor.magazine
+      reserve:actor.reserve,magazine:actor.magazine,
+      secondaryIssued:!!actor.equipment?.secondary?.weapon,
+      secondaryHand:plannedSecondaryHand(actor.secondarySwitch,actor.plan,node?.id),
+      secondaryReloadAvailable:!!actor.equipment?.secondary?.weapon&&
+        !!selectAccessibleSecondaryMagazine(actor.equipment.secondary)
     }).filter(choice=>choice.group==='state');
     for(const choice of choices){
       const button=quickStates.querySelector<HTMLButtonElement>(
@@ -438,20 +444,27 @@ export function createTacticalHudController(
     if(title&&a)writeDomText(title,a.name);
     button.classList.toggle('selected',id===selected);
     button.classList.toggle('down',!a||a.health<=0);
-    const buttonTitle=a?WEAPONS[a.weapon].label+' • '+
+    const ammunition=a?tacticalActiveAmmo(a):null;
+    const capacity=ammunition?.capacity??0;
+    const shownLoaded=ammunition?.loaded??0;
+    const shownSpare=ammunition?.reserve??0;
+    const reloading=ammunition?.reloading??false;
+    const buttonTitle=a?ammunition!.label+' • '+
       injuryOf(a.injuryStage).toUpperCase():'NO OPERATOR';
     if(button.title!==buttonTitle)button.title=buttonTitle;
-    button.classList.toggle('loading',!!a&&a.reload>0);
+    button.classList.toggle('loading',reloading);
     writeDomStyle(button,'--reload-progress',
-      ((a?.reload??0)>0?Math.round(100*(1-a!.reload/
-        (WEAPONS[a!.weapon].reload*(a!.injuryStage===2?1.5:
-          a!.injuryStage===1?1.1:1)))):0)+'%');
-    const capacity=a?liveMagazineCapacity(a.weapon,a.weaponConfiguration):0;
-    const alert=a?magazineAlert(a.magazine,capacity):'normal';
+      Math.round((ammunition?.reloadProgress??0)*100)+'%');
+    const alert=a?magazineAlert(shownLoaded,capacity):'normal';
     if(ammo.dataset.ammo!==alert)ammo.dataset.ammo=alert;
-    writeDomText(ammo,a?String(a.magazine).padStart(2,'0')+' / '+a.reserve+
-      (a.reload>0?' ↻':''):'--');
-    ammo.title=a?`${a.magazine} / ${capacity} loaded · ${a.reserve} reserve rounds`:'';
+    writeDomText(ammo,a?(ammunition?.hand==='secondary'?'9MM ':'')+
+      String(shownLoaded).padStart(2,'0')+' / '+shownSpare+
+      (reloading?' ↻':''):'--');
+    ammo.title=ammunition?(ammunition.hand==='secondary'?
+      'SECONDARY · ':'PRIMARY · ')+shownLoaded+' / '+capacity+
+      ' loaded · '+shownSpare+' reserve rounds'+
+      (ammunition.hand==='secondary'?' · '+ammunition.spareMagazines+
+        ' carried magazines':''):'';
     writeDomAttribute(button,'aria-pressed',String(id===selected));
     writeDomText(hp,!a?'--':a.health<=0?'DOWN':
       a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK');
@@ -498,8 +511,10 @@ export function createTacticalHudController(
       stateLine.style.removeProperty('--execution-progress');
     }
     writeDomAttribute(button,'aria-label',a?
-      a.name+', '+condition+', '+a.magazine+' of '+capacity+
-      ' rounds loaded, '+a.reserve+' reserve'+(a.reload>0?', reloading':'')+
+      a.name+', '+condition+', '+
+      (ammunition?.hand==='secondary'?'Glock 9 millimeter':'primary')+
+      ', '+shownLoaded+' of '+capacity+
+      ' rounds loaded, '+shownSpare+' reserve'+(reloading?', reloading':'')+
       '. '+queued+' queued '+(queued===1?'order':'orders')+
       '. '+(execution?.label??'IDLE')+'. '+(execution?.detail??''):
       id+', unavailable');
@@ -949,7 +964,11 @@ port.ui.loadout.addEventListener('click',()=>{
 });
 port.ui.reload.addEventListener('click',()=>{
   if(port.state.phase==='planning')planReload(port.state,port.selected);
-  else if(port.state.phase==='running')reloadNow(port.state,port.selected);
+  else if(port.state.phase==='running'&&!reloadNow(port.state,port.selected)){
+    const actor=team(port.state).find(x=>x.id===port.selected);
+    if((actor?.secondarySwitch?.fraction??0)>0)
+      port.showUiHelp('PAUSE TO QUEUE A PISTOL RELOAD',3200);
+  }
   port.updateHud();
 });
 port.ui.cancelTarget.addEventListener('click',port.cancelTargeting);

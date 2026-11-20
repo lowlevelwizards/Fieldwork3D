@@ -57,3 +57,31 @@ export function advanceSecondarySwitch(s:SecondarySwitchState,dt:number,
  return fraction===s.fraction&&active===s.active&&desired===s.desired?s:
   {active,desired,fraction};
 }
+
+/** A canceled/moved weapon-switch node cannot strand a pistol between hands.
+ * Continue toward the last FULLY held weapon, unless its physical issue was
+ * removed, in which case return to primary. This is not a new player order.
+ */
+export function advanceInterruptedSecondarySwitch(s:SecondarySwitchState,dt:number,
+ equipment:SecondaryEquipment|undefined,operational=true):SecondarySwitchState{
+ const target=equipment?.weapon?s.active:'primary';
+ if(secondarySwitchSettled(s)&&s.desired===target)return s;
+ return advanceSecondarySwitch(
+  target===s.desired?s:{...s,desired:target},dt,equipment,operational);
+}
+
+/** S9: planned hand at HERE or just AFTER a selected plan node. Reading the
+ * authored order prefix avoids guessing from the actor's current hand while
+ * paused, and never changes the fixed-step switch motor.
+ */
+export function plannedSecondaryHand(s:SecondarySwitchState,
+ plan:readonly Readonly<{id:number;kind:string;weaponHand?:WeaponHand}>[],
+ afterNodeId?:number):WeaponHand{
+ let hand=s.active;
+ if(afterNodeId===undefined)return hand;
+ for(const n of plan){
+  if(n.kind==='switch-weapon')hand=n.weaponHand??'secondary';
+  if(n.id===afterNodeId)break;
+ }
+ return hand;
+}

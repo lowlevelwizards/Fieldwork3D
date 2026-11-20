@@ -136,3 +136,17 @@ export function planReloadAt(s:Session,id:string,afterNodeId?:number){
  return edit(s,a,()=>a.plan.splice(index,0,{id:s.nextId++,
    kind:'reload',p:clone(p)}));
 }
+
+/** Deliberately authored weapon handoff with the normal plan transaction/history.
+ * The editor must not silently hand an operator a pistol not issued to them.
+ */
+export function planSwitchWeaponAt(s:Session,id:string,
+ target:'primary'|'secondary',afterNodeId?:number):boolean{
+ const a=party(s,id);if(!a||!canEdit(s)||a.health<=0)return false;
+ if(target==='secondary'&&!a.equipment?.secondary?.weapon)return false;
+ const index=afterNodeId===undefined?0:a.plan.findIndex(n=>n.id===afterNodeId)+1;
+ if(afterNodeId!==undefined&&index<=0)return false;
+ const p=index===0?a.p:a.plan[index-1].p;
+ return edit(s,a,()=>a.plan.splice(index,0,{id:s.nextId++,
+  kind:'switch-weapon',weaponHand:target,p:clone(p)}));
+}

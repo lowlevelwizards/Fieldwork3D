@@ -20,6 +20,8 @@ import {finalPoint} from '../breach-game.ts';
 import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from '../breach-context-placement.ts';
 import {PaletteMotion} from './palette-motion.ts';
+import {plannedSecondaryHand} from '../secondary-switching.ts';
+import {selectAccessibleSecondaryMagazine} from '../secondary-timed-reload.ts';
 import {contextActionChoices,type ContextAction,type ContextOptions}
   from './context-actions.ts';
 import {installPalettePointerGuard} from './palette-pointer-guard.ts';
@@ -420,6 +422,8 @@ export function createTacticalPaletteController(config:{
   const casualtyAtPlan=routeEndCivilianActions?
     nearestPaletteCandidate(state.civilians,at,c=>
       c.health<=0&&!c.carriedById&&liveVisibility(state,c.p)):null;
+  const secondaryHand=plannedSecondaryHand(a.secondarySwitch,a.plan,node?.id);
+  const secondaryKit=a.equipment?.secondary;
   const choices=availableActions(!!selectedWatch,{
     // An interrupted destination is known from a real failed order. Show
     // the OPTION regardless of any unseen subsequent lock state; only the
@@ -441,6 +445,9 @@ export function createTacticalPaletteController(config:{
     posture:current.posture,pace:current.pace,
     firePolicy:node?.firePolicyState??a.firePolicy,
     reserve:a.reserve,magazine:a.magazine,
+    secondaryIssued:!!secondaryKit?.weapon,secondaryHand,
+    secondaryReloadAvailable:!!secondaryKit?.weapon&&
+      !!selectAccessibleSecondaryMagazine(secondaryKit),
     doorOpen:!!door&&(door.openFraction??(door.open?1:0))>=.98,
     doorPartial:!!door&&(door.openFraction??(door.open?1:0))>.08&&
       (door.openFraction??(door.open?1:0))<.98,

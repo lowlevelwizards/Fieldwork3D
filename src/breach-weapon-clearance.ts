@@ -41,6 +41,18 @@ export function weaponClearance(input:MuzzleInput,
   walls:readonly Segment[]=WALLS,
   friends:readonly Pt[]=[]):ClearanceResult{
   if(combatCostDiagnosticsEnabled)combatCostCounts.clearanceCalls++;
+  // Handgun has no folding rifle stock. Its muzzle and sleeve clearance
+  // must be checked against the SAME world obstacles and teammate volumes
+  // before the ordinary shared shot/impact resolver can fire.
+  if(input.secondaryWeapon){
+    const muzzle=muzzleAtShot(input);
+    const from:Pt={x:input.x,y:input.z};
+    const to:Pt={x:muzzle.x,y:muzzle.z};
+    const blocker=assessFireLane(from,muzzle.y,to,muzzle.y,
+      cover,walls,doors,friends,'weapon').blocker;
+    return {obstruction:blocker!=='clear',blocked:blocker!=='clear',
+      compression:0,retraction:0,blocker,muzzle};
+  }
   const from:Pt={x:input.x,y:input.z};
   const check=(tip:Pt,height:number):FireBlock=>{
     if(combatCostDiagnosticsEnabled)combatCostCounts.clearanceProbes++;

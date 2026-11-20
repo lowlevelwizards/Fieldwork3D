@@ -2,7 +2,7 @@ import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
-export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt} from './breach-plan-utility-commands.ts';
+export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt,planSwitchWeaponAt} from './breach-plan-utility-commands.ts';
 import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
 export {plannedWindowRoute} from './breach-known-route-authoring.ts';
 import {addNode,finalPoint} from './breach-plan-node-commands.ts';
@@ -152,6 +152,7 @@ import {discoverObjective,type ObjectiveKnowledge} from './breach-objective-inte
 import {stageMagazines,chooseReloadMagazine,reloadMagazineDelay} from './equipment-magazine-placement.ts';
 import {magazineKit,reloadDuration as reloadTiming,type MagazineItem,type ReloadMode} from './breach-magazines.ts';
 import {liveMagazineCapacity,freshMagazineIssue} from './arsenal/live-magazine-capacity.ts';
+import {beginTimedSecondaryReload} from './secondary-timed-reload.ts';
 
 
 import {weaponHandlingModifiers} from './equipment-weapon-handling.ts';
@@ -163,6 +164,10 @@ export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
+  /** Explicit sidearm selection is independent of primary inventory. */
+  secondarySwitch:import('./secondary-switching.ts').SecondarySwitchState;
+  /** One authored, fixed-step pistol reload; rifle magazine fields are untouched. */
+  secondaryReload:import('./secondary-timed-reload.ts').SecondaryTimedReload|null;
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
@@ -287,6 +292,9 @@ export type TeamActor=Operator & {
 export type NoiseEvent={id?:number;p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={
   id:number;shooterId:string;targetId:string|null;
+  /** Snapshot identity of fired primary or Glock (not current selection). */
+  weapon?:import('./breach-combat.ts').WeaponId|import('./weapons/geometry/glock-family-silhouettes.ts').GlockAppearanceId;
+  secondaryWeapon?:import('./weapons/geometry/glock-family-silhouettes.ts').GlockAppearanceId;
   start:Pt;end:Pt;age:number;hit:boolean;side:Side;
   healthBefore:number;healthAfter:number;down:boolean;
   shotYaw?:number;mode?:FiringMode;spread?:number;
@@ -301,7 +309,10 @@ export type ShotEvent={
 export type ImpactMark={id:number;p:Pt;surface:ShotEvent['surface'];age:number;
   height?:number;normal?:Pt};
 export type DroppedMagazine={id:number;p:Pt;side:Side;age:number;
-  weapon?:WeaponId;rounds?:number;magazineId?:string};
+  weapon?:WeaponId;rounds?:number;magazineId?:string;
+  /** Actually ejected secondary identity; the legacy SMG visual carrier
+   * does not imply that a rifle/SMG magazine was spent. */
+  secondaryWeapon?:import('./weapons/geometry/glock-family-silhouettes.ts').GlockAppearanceId;};
 export type FlashGrenade={id:number;p:Pt;from:Pt;to:Pt;age:number;
   fuse:number;path?:ThrowPath};
 export type FlashBurst={id:number;p:Pt;age:number};
@@ -1403,7 +1414,22 @@ export function cycleWeapon(s:Session,id:string):boolean{
 
 export function reloadNow(s:Session,id:string):boolean{
   const a=party(s,id);
-  return !!a&&s.phase==='running'&&beginReload(s,a);
+  if(!a||s.phase!=='running'||a.health<=0)return false;
+  if(a.secondarySwitch?.active==='secondary'&&
+     a.secondarySwitch.desired==='secondary'&&
+     a.secondarySwitch.fraction>=1){
+    if(a.secondaryReload||!a.equipment?.secondary||a.traversal||
+       a.squeeze||a.carryingId||a.treatmentActive||a.pace==='run'||
+       a.plan[0]?.kind==='door'||a.plan[0]?.kind==='treat')return false;
+    const started=beginTimedSecondaryReload(a.equipment.secondary,0);
+    if(!started.ok||!started.state)return false;
+    a.secondaryReload=started.state;
+    notify(s,a.name+' PISTOL RELOADING');
+    return true;
+  }
+  // During any incomplete switch do NOT eject/refill the invisible rifle.
+  return (a.secondarySwitch?.fraction??0)===0&&
+    a.secondarySwitch?.desired!=='secondary'&&beginReload(s,a);
 }
 
 

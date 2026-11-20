@@ -1,0 +1,82 @@
+name: Secondary S5–S11 critical integration
+on:
+  push:
+    branches: [integration/secondary-s5-s11-on-main-20261120]
+    paths:
+      - 'src/secondary-holster-visual.ts'
+      - '.github/workflows/secondary-switch-handoff-critical.yml'
+  pull_request:
+    paths:
+      - 'src/secondary-switching.ts'
+      - 'src/secondary-timed-reload.ts'
+      - 'src/secondary-upper-body-pose.ts'
+      - 'src/secondary-shot-geometry.ts'
+      - 'src/secondary-ballistics.ts'
+      - 'src/secondary-reload-commit.ts'
+      - 'src/secondary-equipment.ts'
+      - 'src/secondary-magazine-exchange.ts'
+      - 'src/secondary-holster-visual.ts'
+      - 'src/breach-plan.ts'
+      - 'src/breach-game.ts'
+      - 'src/breach-actor-initial-state.ts'
+      - 'src/breach-order-utility.ts'
+      - 'src/breach-plan-utility-commands.ts'
+      - 'src/breach-firing-pipeline.ts'
+      - 'src/breach-shot-resolution.ts'
+      - 'src/breach-muzzle.ts'
+      - 'src/breach-weapon-clearance.ts'
+      - 'src/breach-fire-preflight.ts'
+      - 'src/breach-replay.ts'
+      - 'src/breach-replay-sharing.ts'
+      - 'src/breach-replay-ballistics.ts'
+      - 'src/breach-replay-audio.ts'
+      - 'src/breach-replay-shot-inspector.ts'
+      - 'src/breach-audio-controller.ts'
+      - 'src/breach-effects.ts'
+      - 'src/breach-operator-animation-controller.ts'
+      - 'src/breach-operator-animation-contract.ts'
+      - 'src/breach-3d.ts'
+      - 'src/breach-tactical-context-command.ts'
+      - 'src/ui/context-actions.ts'
+      - 'src/ui/tactical-palette-controller.ts'
+      - 'src/ui/tactical-hud-controller.ts'
+      - 'tests/secondary-s5-switching.test.mjs'
+      - 'tests/secondary-s5-2-order-handoff.test.mjs'
+      - 'tests/secondary-s4-holster-visual.test.mjs'
+      - 'tests/secondary-s6-1-held-handoff.test.mjs'
+      - 'tests/secondary-s6-2-posed-hands.test.mjs'
+      - 'tests/secondary-s7-pistol-fire.test.mjs'
+      - 'tests/secondary-s7-live-shot.test.mjs'
+      - 'tests/secondary-s7-pistol-flash.test.mjs'
+      - 'tests/secondary-s8-magazine-exchange.test.mjs'
+      - 'tests/secondary-s8-2-timed-reload.test.mjs'
+      - 'tests/secondary-s8-4-direct-reload.test.mjs'
+      - 'tests/secondary-s9-tactical-controls.test.mjs'
+      - 'tests/secondary-s10-2-replay-magazines.test.mjs'
+      - 'tests/secondary-s10-3-shot-attribution.test.mjs'
+      - 'tests/breach-roadmap2-stage10-combat.test.mjs'
+      - 'src/tactical-active-ammo.ts'
+      - 'src/breach-ballistics.ts'
+      - 'src/breach-shot-ignition.ts'
+      - 'src/breach-after-action-report.ts'
+      - 'src/breach-replay-export-json.ts'
+      - 'tests/secondary-s8-3-physical-magazine.test.mjs'
+      - 'tests/secondary-s9-2-ammo-hud.test.mjs'
+      - '.github/workflows/secondary-switch-handoff-critical.yml'
+  workflow_dispatch:
+concurrency:
+  group: secondary-closeout-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Critical sidearm order, muzzle, safety, reload, pose and replay regressions
+        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s4-holster-visual.test.mjs tests/secondary-s6-1-held-handoff.test.mjs tests/secondary-s6-2-posed-hands.test.mjs tests/secondary-s7-pistol-fire.test.mjs tests/secondary-s7-live-shot.test.mjs tests/secondary-s7-pistol-flash.test.mjs tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s8-2-timed-reload.test.mjs tests/secondary-s8-4-direct-reload.test.mjs tests/secondary-s9-tactical-controls.test.mjs tests/secondary-s10-2-replay-magazines.test.mjs tests/secondary-s10-3-shot-attribution.test.mjs tests/breach-roadmap2-stage10-combat.test.mjs tests/secondary-s8-3-physical-magazine.test.mjs tests/secondary-s9-2-ammo-hud.test.mjs
+      - name: Production TypeScript and bundle
+        run: npm run build

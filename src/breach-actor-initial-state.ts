@@ -11,9 +11,11 @@ import {newAwareness} from './breach-awareness.ts';
 import {newSuspicion} from './breach-ai-suspicion.ts';
 import {magazineKit} from './breach-magazines.ts';
 import {DEFAULT_SKILLS} from './breach-skills.ts';
+import {initialSecondarySwitch} from './secondary-switching.ts';
 
 export const withActions=(a:Operator):TeamActor=>({
-  ...a,medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
+  ...a,secondarySwitch:initialSecondarySwitch(),secondaryReload:null,
+  medical:newMedicalCondition(),medicalSupplies:kitMedicalSupplies(),
   lastTreatmentAt:-100,lastTreatmentTargetId:null,
   treatmentActive:false,treatmentProgress:0,
   carryingId:null,carriedById:null,wedgeRemaining:0,restraintRemaining:0,

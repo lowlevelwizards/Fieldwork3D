@@ -21,7 +21,8 @@ export function inspectRecordedShot(shot:RecordedShot,
   return {
     id:shot.id,time:shot.recordedAt,shooterId:shot.shooterId,
     targetId:targetKnown?shot.targetId:null,
-    weapon:shot.weaponAtFire??'UNKNOWN',
+    weapon:shot.secondaryWeaponAtFire??shot.secondaryWeapon??
+      shot.weaponAtFire??'UNKNOWN',
     hit:targetKnown?shot.hit:false,
     down:targetKnown?shot.down:false,
     surface:targetKnown?shot.surface??null:null,

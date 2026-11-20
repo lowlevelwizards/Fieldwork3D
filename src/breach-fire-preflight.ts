@@ -39,7 +39,7 @@ export function matchingShotSight(preflight:ShotSightPreflight|undefined,
  return p.x===input.x&&p.z===input.z&&
   p.heading===input.heading&&p.weaponYaw===input.weaponYaw&&
   p.shoulderOffset===input.shoulderOffset&&
-  p.weapon===input.weapon&&
+  p.weapon===input.weapon&&p.secondaryWeapon===input.secondaryWeapon&&
   p.weaponConfiguration===input.weaponConfiguration&&
   p.equipment===input.equipment&&p.aim===input.aim&&
   p.posture===input.posture&&
