@@ -179,6 +179,9 @@ try{
      'Actual in-game Squad Loadout opens the shared R5 gallery');
     assert.equal(await board.locator('.fw-loadout-group:visible').count(),0,
      'Old grouped equipment interface is not the visible loadout screen');
+    // WebGL creation is intentionally deferred until the drawer is attached.
+    // Wait for the first rendered frame instead of racing requestAnimationFrame.
+    await board.locator('.fw-quick-board-model-stage canvas').waitFor({timeout:15000});
     assert.equal(await board.locator('.fw-quick-board-model-stage canvas').count(),1,
      'Operator still has one 3D preview renderer');
     await board.locator('.fw-quick-board-zone[data-slot="armor"]').click();
@@ -205,6 +208,7 @@ try{
     await board.locator('.fw-prep-squad-tab').nth(1).click();
     assert.ok(await board.locator('.fw-quick-board-gallery .fw-outfitter-gallery').isVisible(),
      'Switching operators retains shared loadout presentation');
+    await board.locator('.fw-quick-board-model-stage canvas').waitFor({timeout:15000});
     assert.equal(await board.locator('.fw-quick-board-model-stage canvas').count(),1,
      'Operator switch reuses the single preview canvas');
     assert.deepEqual(errors,[],'Quick Play Loadout has no runtime errors');
