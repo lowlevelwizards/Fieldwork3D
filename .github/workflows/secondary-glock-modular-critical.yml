@@ -9,6 +9,9 @@ on:
       - 'tests/secondary-arsenal-parity.test.mjs'
       - '.github/workflows/secondary-glock-modular-critical.yml'
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   focused:
     runs-on: ubuntu-latest
