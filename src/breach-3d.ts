@@ -2253,8 +2253,11 @@ export class TacticalScene3D{
       // Airborne body is a fixed-tick simulation outcome. Keep the 3D
       // miniature at its authored horizontal position, lifted only by the
       // recorded traversal arc (never by render-time speculative physics).
+      // Scene root uses authoritative ground/traversal height once.
+      // The 3D pose pass applies the recorded carry/drag lift below; adding
+      // it here as well caused the same body to float at double elevation.
       object.root.position.set(drawActor.x,
-        actor.traversalElevation+(transport?.lift??0),drawActor.z);
+        actor.traversalElevation,drawActor.z);
       // Build 120: the pose solver is the only writer of actor anatomical,
       // firearm and hit-reaction transforms; the scene owns world placement.
       const downProgress=actor.health<=0||actor.surrendered?
