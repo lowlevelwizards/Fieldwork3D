@@ -1271,7 +1271,8 @@ export function planCasualtyTransport(s:Session,id:string,patientId:string,
     !Number.isFinite(p.y)))return false;
  const route=[patient.p,...waypoints,to];
  if(!route.every((p,i)=>intelPassable(p,s.intel,5.4)&&
-   (i===0||!!routeWithSqueezeIntel(s.intel,route[i-1],p).length))||
+   (i===0||d(route[i-1],p)<1||
+    !!routeWithSqueezeIntel(s.intel,route[i-1],p).length))||
    !routeWithSqueezeIntel(s.intel,finalPoint(a),patient.p).length)return false;
  return addNode(s,id,'evacuate',to,{patientId,transportMode:mode,
    transportPath:waypoints.map(p=>({...p}))});
