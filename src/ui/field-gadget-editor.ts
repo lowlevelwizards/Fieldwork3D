@@ -75,6 +75,7 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
  const moveChoices=document.createElement('div');
  moveChoices.className='fw-field-inventory-move-choices';
  const quickDestinations:{button:HTMLButtonElement;location:FieldCarryLocation}[]=[];
+ const paperDestinations:{button:HTMLButtonElement;location:FieldCarryLocation}[]=[];
  moveTray.append(moveTitle,moveChoices);
  const refreshSelection=()=>{
   for(const entry of selections)entry.button.setAttribute('aria-pressed',
@@ -108,6 +109,18 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
    moveTitle.textContent='MOVE '+(selected.kind==='field'?
     FIELD_ITEMS[selected.id].name.toUpperCase():'SELECTED MAGAZINE')+
     ' · '+selected.from.toUpperCase()+' →';
+  }
+  for(const entry of paperDestinations){
+   const choice=selected,active=!!choice&&choice.from!==entry.location;
+   const quote=!active||!choice?null:choice.kind==='field'?
+    quoteSingleFieldTransfer(loadout,magazines,inventory,
+     choice.id,choice.from,entry.location):
+    quoteOneMagazineMove(loadout,magazines,choice.id,entry.location,inventory);
+   const valid=!!quote?.ok&&!!quote.changed&&!options.locked;
+   entry.button.dataset.fit=!choice?'idle':valid?'yes':'no';
+   entry.button.title=!choice?'Inspect '+entry.location+' carry location':
+    valid?'Place selected item on '+entry.location:
+    quote&&!quote.ok?quote.reason:'Already carrying here';
   }
   for(const entry of quickDestinations){
    const choice=selected;
@@ -233,7 +246,78 @@ export function createFieldGadgetEditor(options:FieldGadgetEditorOptions):HTMLEl
   jump.setAttribute('aria-current',String(zone.location===root.dataset.activeLocation));
   locationNav.append(jump);
  }
- root.append(locationNav,moveTray);
+ // Body-map and slot list are two views of the SAME capacity and transfer
+ // authority. No additional inventory state, phantom slots or auto-repacking.
+ const map=document.createElement('section');
+ map.className='fw-carry-bodymap';
+ map.setAttribute('aria-label','Interactive front and back carrying map');
+ map.dataset.view='front';
+ const mapHeader=document.createElement('div');
+ mapHeader.className='fw-carry-bodymap-header';
+ const mapTitle=text('strong','','CARRY MAP');
+ const mapHint=text('small','','SELECT AN ITEM, THEN TAP A HIGHLIGHTED LOCATION');
+ const mapView=document.createElement('div');
+ mapView.className='fw-carry-bodymap-views';
+ for(const side of ['front','back'] as const){
+  const flip=btn(side.toUpperCase(),()=>{
+   map.dataset.view=side;
+   for(const control of mapView.querySelectorAll<HTMLButtonElement>('button'))
+    control.setAttribute('aria-pressed',String(control.dataset.view===side));
+   options.onInspectLocation?.(side==='back'?'backpack':'rig');
+  });
+  flip.dataset.view=side;
+  flip.setAttribute('aria-pressed',String(side==='front'));
+  flip.setAttribute('aria-label','Show '+side+' carry positions');
+  mapView.append(flip);
+ }
+ mapHeader.append(mapTitle,mapHint,mapView);
+ map.append(mapHeader);
+ const figure=document.createElement('div');
+ figure.className='fw-carry-bodymap-figure';
+ const silhouette=document.createElementNS('http://www.w3.org/2000/svg','svg');
+ silhouette.setAttribute('viewBox','0 0 170 235');
+ silhouette.setAttribute('aria-hidden','true');
+ silhouette.classList.add('fw-carry-bodymap-silhouette');
+ const body=document.createElementNS('http://www.w3.org/2000/svg','path');
+ body.setAttribute('d','M70 13 Q85 1 100 13 L103 33 L94 44 L108 50 L128 63 L145 128 L130 134 L107 94 L106 139 L101 224 L82 224 L84 147 L77 147 L73 224 L54 224 L51 139 L52 94 L29 134 L15 128 L32 63 L62 44 L67 33 Z');
+ body.setAttribute('fill','#354a3e');
+ body.setAttribute('stroke','#95ad9b');
+ body.setAttribute('stroke-width','2');
+ silhouette.append(body);figure.append(silhouette);
+ for(const zone of board.zones){
+  const location=zone.location;
+  const place=btn('',()=>{
+   if(selected&&selected.from!==location){
+    const quote=selected.kind==='field'?
+     quoteSingleFieldTransfer(loadout,magazines,inventory,
+      selected.id,selected.from,location):
+     quoteOneMagazineMove(loadout,magazines,selected.id,location,inventory);
+    if(quote.ok&&quote.changed&&!options.locked){placeOne(selected,location);return;}
+    feedback(quote.ok?'ALREADY STORED HERE':'CANNOT PLACE · '+quote.reason);
+    return;
+   }
+   locationNav.querySelector<HTMLButtonElement>(
+    '[data-location="'+location+'"]')?.click();
+  });
+  place.className='fw-carry-bodymap-zone';
+  place.dataset.location=location;
+  place.dataset.side=location==='backpack'?'back':'front';
+  const label=document.createElement('strong');
+  label.textContent=location.toUpperCase()+' · '+zone.used+'/'+zone.capacity;
+  const icons=document.createElement('span');
+  icons.className='fw-carry-bodymap-icons';
+  const symbol=(kind:string)=>kind==='magazine'?'▥':
+   kind==='medical'?'✚':kind==='utility'?'⚙':'✦';
+  icons.textContent=zone.items.length?
+   zone.items.slice(0,5).map(item=>symbol(item.kind)).join(' '):'EMPTY';
+  place.append(label,icons);
+  place.setAttribute('aria-label',location.toUpperCase()+', '+zone.used+
+   ' of '+zone.capacity+' spaces used. Tap to inspect or place selected item');
+  place.title=location+' carrying position';
+  figure.append(place);paperDestinations.push({button:place,location});
+ }
+ map.append(figure);
+ root.append(map,locationNav,moveTray);
  const capacity=document.createElement('div');
  capacity.className='fw-field-inventory-capacity';
  capacity.setAttribute('aria-label','Carrying capacity by location');
