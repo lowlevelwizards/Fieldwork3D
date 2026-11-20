@@ -29,6 +29,15 @@ test('P9: one RAF serializes cards, prioritizes hero, and replaces obsolete host
   queue.enqueue(a,()=>drawn.push('detached'));
   a.isConnected=false;queue.pruneDetached();step();
   assert.deepEqual(drawn,['hero','latest']);
+  // Reentrant thumbnail requests must not start a second RAF pump.
+  queue.enqueue(b,()=>{
+   drawn.push('outer');
+   queue.enqueue(b,()=>drawn.push('inner'));
+  });
+  step();
+  assert.equal(callbacks.size,1,'one continuation despite in-frame enqueue');
+  step();
+  assert.deepEqual(drawn,['hero','latest','outer','inner']);
   queue.enqueue(b,()=>drawn.push('disposed'));
   assert.equal(callbacks.size,1);
   queue.dispose();
