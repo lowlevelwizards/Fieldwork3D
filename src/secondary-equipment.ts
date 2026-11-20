@@ -75,7 +75,7 @@ export function readSecondaryEquipment(raw:unknown,owner:string):SecondaryEquipm
   spareMagazines.push({id:m.id,rounds:m.rounds,location:m.location});
  }
  return {version:1,weapon:v.weapon,holster,
-  loadedMagazineId:v.loadedMagazineId,loadedRounds:v.loadedRounds,
+  loadedMagazineId:v.loadedMagazineId,loadedRounds:v.loadedRounds!,
   spareMagazines};
 }
 export function equipFreshSecondary(state:SecondaryEquipment,owner:string,
