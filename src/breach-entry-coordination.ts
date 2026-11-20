@@ -42,6 +42,26 @@ export function leaderBeyondOpenEntry(
    lead*goal>0&&follower*goal<0;
 }
 
+/** A generated WAIT is not released by the first friendly in roster
+ * order: require actual far-side evidence from THIS physical threshold.
+ * The remembered successful-entry witness is passed in rather than reading
+ * mutable map/door state. Final motor collision remains authoritative.
+ */
+export function generatedLeadAcrossSameDoor(
+ door:Door|undefined,waiting:{id:string;side:string;p:Pt},
+ goal:Pt,peers:readonly {
+  id:string;side:string;health:number;p:Pt;
+  plan:readonly {kind:string;entryDoorId?:string}[]
+ }[],completed:(id:string,doorId:string)=>boolean
+):boolean{
+ if(!door)return false;
+ return peers.some(peer=>
+  peer.id!==waiting.id&&peer.side===waiting.side&&peer.health>0&&
+  (peer.plan[0]?.kind==='move'&&
+    peer.plan[0].entryDoorId===door.id||completed(peer.id,door.id))&&
+  leaderBeyondOpenEntry(door,peer.p,waiting.p,goal));
+}
+
 /** Stack placement is measured in the real door frame, not world X/Y.
  * A diagonally mounted door has the same approach-side geometry as a
  * horizontal or vertical one. This proposes candidates only: the caller
