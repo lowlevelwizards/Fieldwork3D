@@ -2422,6 +2422,7 @@ export class CampaignScreen{
    };
    const core=person.weapon+'|'+(person.weaponConfiguration.build?.parts.receiver??'legacy')+
     '|'+(person.weaponConfiguration.build?.parts.barrel??'none');
+   const previousWorkbenchCore=this.workbenchCore;
    const visualKey=JSON.stringify(person.weaponConfiguration);
    const refreshGeometry=!this.workbench||!sameOperator||
     this.workbenchVisualKey!==visualKey;
@@ -2436,8 +2437,12 @@ export class CampaignScreen{
     preview,person.weaponConfiguration,onSocket);
    this.workbenchCore=core;this.workbenchVisualKey=visualKey;
    const savedView=this.weaponWorkbenchViews.get(id);
-   if(refreshGeometry&&savedView?.core===core)
-    this.workbench.restoreViewState(savedView.view);
+   if(refreshGeometry){
+    if(savedView?.core===core)this.workbench.restoreViewState(savedView.view);
+    else if(previousWorkbenchCore&&
+     (!sameOperator||previousWorkbenchCore!==core))
+     this.workbench.resetViewState();
+   }
    const remembered=this.selectedWorkbenchSocket;
    const savedSelect=remembered?.startsWith('body-')?
     familySelectors.get(remembered.slice(5) as FamilyPartSlot):
