@@ -13,6 +13,8 @@ on:
       - 'src/secondary-equipment.ts'
       - 'src/secondary-magazine-exchange.ts'
       - 'src/secondary-timed-reload.ts'
+      - 'src/secondary-upper-body-pose.ts'
+      - 'tests/secondary-s6-2-posed-hands.test.mjs'
       - 'src/breach-order-utility.ts'
       - 'tests/secondary-s8-2-timed-reload.test.mjs'
       - 'tests/secondary-s10-2-replay-magazines.test.mjs'
@@ -36,6 +38,6 @@ jobs:
           node-version: '22'
       - run: npm install --no-audit --no-fund
       - name: Authored weapon handoff and ammunition conservation
-        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s10-2-replay-magazines.test.mjs
+        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s10-2-replay-magazines.test.mjs tests/secondary-s6-2-posed-hands.test.mjs
       - name: Production TypeScript and bundle
         run: npm run build
