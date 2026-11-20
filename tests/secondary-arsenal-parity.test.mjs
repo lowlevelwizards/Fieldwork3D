@@ -58,7 +58,7 @@ test('Secondary Arsenal: same interactive presentation affordances with honest e
   'CHOOSE MODEL','LOAD BUILD','SAVE BUILD','role','dialog','SECONDARY_CAPACITY'])
   assert.ok(wb.includes(token),'Missing '+token);
  for(const token of ['pointerdown','pointermove','wheel','ResizeObserver',
-  'clearGlockAppearance','setPixelRatio'])
+  'clearSidearmPreview','setPixelRatio'])
   assert.ok(viewport.includes(token),'Missing '+token);
  assert.ok(wb.includes('Assign sidearms, holsters and spare magazines in Quick Play equipment.'));
  assert.doesNotMatch(wb,/EQUIP TO|onApply|operatorName|carryTab|CARRY_PLACES|glock-wb-location/);
