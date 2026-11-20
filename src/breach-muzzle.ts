@@ -4,6 +4,8 @@
  */
 import * as THREE from 'three';
 import type {WeaponId} from './breach-combat.ts';
+import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
+import {secondaryMuzzleAtShot} from './secondary-shot-geometry.ts';
 import type {Handling,HandlingIntent} from './breach-weapon-pose.ts';
 import {resolveWeaponAssembly,type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {fitWeaponPose,handlingPose,weaponGrips,
@@ -14,6 +16,8 @@ import type {EquipmentLoadout} from './equipment-loadouts.ts';
 export type MuzzleSample={x:number;y:number;z:number;yaw:number;pitch:number};
 export type MuzzleInput={x:number;z:number;heading:number;
   weaponYaw:number;weapon:WeaponId;aim:number;velocity:number;
+  /** Present only when an issued Glock is settled in the firing hand. */
+  secondaryWeapon?:GlockAppearanceId;
   weaponConfiguration?:WeaponConfiguration;
   recoil:number;obstruction?:boolean;friendlyNear?:boolean;
   threatRange?:number|null;clearanceRetraction?:number;
@@ -27,6 +31,7 @@ export type MuzzleInput={x:number;z:number;heading:number;
   equipment?:EquipmentLoadout};
 export const MUZZLE_TIP=19.5;
 export function muzzleAtShot(p:MuzzleInput):MuzzleSample{
+  if(p.secondaryWeapon)return secondaryMuzzleAtShot({...p,weapon:p.secondaryWeapon});
   const handling=p.carryOverride??handlingPose({aim:p.aim,moving:Math.min(1,p.velocity/72),
     obstruction:!!p.obstruction,friendlyNear:!!p.friendlyNear,
     threatRange:p.threatRange,weapon:p.weapon,
