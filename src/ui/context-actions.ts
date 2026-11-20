@@ -16,7 +16,8 @@ export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   nearCivilian?:boolean;escortableCivilian?:boolean;
   stopFollowingCivilian?:boolean;
   nearRestrainableCivilian?:boolean;restraintsRemaining?:number;
-  nearSuspect?:boolean;
+  nearSuspect?:boolean;nearRestrainableSuspect?:boolean;
+  nearSearchableSuspect?:boolean;nearDroppedFirearm?:boolean;
   nearCivilianCasualty?:boolean;
   carryingCivilian?:boolean;
   availableTools?:readonly string[];doorWedged?:boolean;
@@ -83,6 +84,16 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     ...(o.nearSuspect?[{id:'ctxChallengeSuspect',label:'CHALLENGE',
       group:'primary' as const,
       title:'Issue a timed verbal challenge to a visibly identified suspect; compliance is not guaranteed'}]:[]),
+    ...(o.nearRestrainableSuspect&&Number(o.restraintsRemaining)>0?
+      [{id:'ctxRestrainSuspect',label:'RESTRAIN SUSPECT ×'+o.restraintsRemaining,
+        group:'primary' as const,
+        title:'Physically apply one issued pair of flex cuffs to the compliant suspect'}]:[]),
+    ...(o.nearSearchableSuspect?[{id:'ctxSearchSuspect',label:'SEARCH SUSPECT',
+      group:'primary' as const,
+      title:'Search a physically restrained person and confiscate carried sidearms'}]:[]),
+    ...(o.nearDroppedFirearm?[{id:'ctxSecureFirearm',label:'SECURE WEAPON',
+      group:'primary' as const,
+      title:'Secure an actual visible dropped firearm through physical contact'}]:[]),
     ...(o.nearCivilian?[{id:'ctxSecureCivilian',label:'SECURE',
       group:'primary' as const,
       title:'Queue a physical reassurance and stay command'}]:[]),

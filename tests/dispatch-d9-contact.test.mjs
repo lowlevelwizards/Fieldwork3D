@@ -29,7 +29,7 @@ test('D9.1 spoken challenge needs low morale AND observed threat pressure',()=>{
  assert.equal(challengeSuspectDecision({...s,health:0},8),'ineligible');
 });
 
-test('D9.1 surrendered suspect uses existing downed/capture authority',()=>{
+test('D15.2 living surrender preserves health and releases the held firearm',()=>{
  const s=newSession(0,4),suspect=enemies(s)[0];
  try{
   const emitted=[];
@@ -37,9 +37,11 @@ test('D9.1 surrendered suspect uses existing downed/capture authority',()=>{
    (_s,kind,actor,point,msg)=>emitted.push({kind,actor,point,msg}),
    'challenge');
   assert.equal(done,true);
-  assert.equal(suspect.health,0);
+  assert.ok(suspect.health>0);
   assert.equal(suspect.surrendered,true);
-  assert.equal(suspect.injuryStage,3);
+  assert.equal(suspect.injuryStage,0);
+  assert.equal(suspect.releasedWeaponId,s.droppedFirearms[0]?.id);
+  assert.equal(s.droppedFirearms[0]?.ownerId,suspect.id);
   assert.equal(suspect.plan.length,0);
   assert.equal(commitSuspectSurrender(s,suspect,()=>{},()=>{}),false);
   assert.ok(emitted.some(x=>x.kind==='surrender'));
@@ -74,7 +76,7 @@ test('D9.2 order processing is timed and source-limited; no new authority for ar
  assert.match(interactions,/n.interaction==='challenge-suspect'/);
  assert.match(interactions,/port.inSight\(a,suspect,s\)/);
  assert.match(interactions,/SUSPECT_CHALLENGE_SECONDS/);
- assert.match(interactions,/commitSuspectSurrender\(s,suspect,notify,battleEvent,'challenge'\)/);
+ assert.match(interactions,/commitSuspectSurrender\(s,suspect,notify,battleEvent,'challenge',a\.id\)/);
  assert.match(read('breach-tactical-context-command.ts'),/planSuspectChallenge\(state,selected,target.id\)/);
  assert.match(read('ui/tactical-palette-controller.ts'),/nearSuspect:!!suspectAtPlan/);
  assert.match(read('breach-order-interactions.ts'),/n.interaction==='follow-civilian'/);

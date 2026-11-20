@@ -208,10 +208,19 @@ function sprite(a:TeamActor){
   rect(-7,-5,14,10,c);
   rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
   circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
-  rect(firing?2:5,-2,
-    a.weapon==='smg'?13:a.weapon==='rifle'?23:a.weapon==='shotgun'?20:18,
-    a.weapon==='shotgun'?5:4,'#1a2527');
-  rect(firing?17:20,-1,6,2,'#a2a9a1');
+  if(a.surrendered&&a.restrained){
+    // Hands secured behind the body: distinguish custody from hands-up compliance.
+    rect(-9,-6,5,12,'#ac816c');rect(-10,3,5,12,'#ac816c');
+  }else if(a.surrendered){
+    // Hands-up silhouette remains distinct from a physical downed body.
+    rect(-3,-15,5,12,'#d0a58a');rect(-3,4,5,12,'#d0a58a');
+    circle(-5,-14,3,'#d0a58a');circle(-5,15,3,'#d0a58a');
+  }else{
+    rect(firing?2:5,-2,
+      a.weapon==='smg'?13:a.weapon==='rifle'?23:a.weapon==='shotgun'?20:18,
+      a.weapon==='shotgun'?5:4,'#1a2527');
+    rect(firing?17:20,-1,6,2,'#a2a9a1');
+  }
   draw.restore();
   if(a.traversal){
     // Floor Plan has no vertical axis; retain a small physical crossing

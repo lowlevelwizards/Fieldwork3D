@@ -4,7 +4,7 @@
  */
 import {doorCenter,type Door,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,plannedControl,finalPoint,
- setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,
+ setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,planSuspectRestraint,planSearchSuspect,planSecureDroppedFirearm,
  inSight,team,enemies,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planSwitchWeaponAt,planMedicalTreatment,
@@ -95,6 +95,34 @@ export function dispatchTacticalContextCommand(input:{
      .sort((x,y)=>distance(from,x.p)-distance(from,y.p))[0];
    return finish(!!target&&planSuspectChallenge(state,selected,target.id),
      'SUSPECT CHALLENGE NOT AVAILABLE');
+  }
+  case 'ctxRestrainSuspect':{
+   const at=finalPoint(a);
+   const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
+     !e.restrained&&distance(at,e.p)<=34&&liveVisibility(state,e.p)&&
+     sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)))
+     .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
+   return finish(!!target&&planSuspectRestraint(state,selected,target.id),
+     'COMPLIANT SUSPECT OR ISSUED RESTRAINT NOT AVAILABLE');
+  }
+  case 'ctxSearchSuspect':{
+   const at=finalPoint(a);
+   const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
+     e.restrained===true&&!e.suspectSearched&&distance(at,e.p)<=34&&
+     liveVisibility(state,e.p)&&
+     sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)))
+     .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
+   return finish(!!target&&planSearchSuspect(state,selected,target.id),
+     'RESTRAINED SUSPECT NOT REACHABLE');
+  }
+  case 'ctxSecureFirearm':{
+   const at=finalPoint(a);
+   const item=state.droppedFirearms.filter(w=>w.status==='loose'&&
+     distance(at,w.p)<=34&&liveVisibility(state,w.p)&&
+     sweptBodyClear(at,w.p,state.doors,5.5,sessionWorldGeometry(state)))
+     .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
+   return finish(!!item&&planSecureDroppedFirearm(state,selected,item.id),
+     'LOOSE FIREARM NOT REACHABLE');
   }
   case 'ctxSecureCivilian':
   case 'ctxFollowCivilian':

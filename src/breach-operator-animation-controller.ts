@@ -812,7 +812,8 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   // S6.1: prevent simultaneous shouldered primary and held sidearm.
   heldWeapon.visible=((!p.down&&!p.surrender)||downProgress<.30)&&
     (p.secondarySwitch?.fraction??0)<.50;
-  droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30;
+  droppedWeapon.visible=(p.down||p.surrender)&&downProgress>=.30&&
+    !(p.surrender&&p.worldWeaponReleased);
   if(droppedWeapon.visible&&r.droppedWeaponBody.children.length===0){
     const buildStart=profilePose?performance.now():0;
     // Build the same real silhouette (including accessories) at the exact
@@ -845,12 +846,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   attachments[EAI.medical].visible=treatmentActive;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
-    // Deliberate visible surrender: discard the gun, kneel and raise both
-    // hands overhead. Unlike an incapacitated actor this is not a fall.
-    
+    // Distinct compliant hands-up versus physically restrained hands-back.
     const raised=smooth(downProgress/.60);
-    leftGrip.set(-1,3+15*raised,-7);
-    rightGrip.set(-1,3+15*raised,7);
+    if(p.restrained){
+      leftGrip.set(-6,-7,-6);rightGrip.set(-6,-7,6);
+    }else{
+      leftGrip.set(-1,3+15*raised,-7);
+      rightGrip.set(-1,3+15*raised,7);
+    }
   }else if(p.down){
     // Support hand gives way first, then the firing hand releases.
     

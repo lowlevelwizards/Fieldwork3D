@@ -103,7 +103,8 @@ import {bakedOperatorCarry,prewarmSavedOperatorCarry}
  from './rendering/breach-saved-operator-carry-bake.ts';
 import {updateOperatorAppearance} from './breach-operator-appearance.ts';
 import {readEquipmentInteraction} from './breach-equipment-interaction-pose.ts';
-import {type Session,type TeamActor,team,knownAt} from './breach-game.ts';
+import {type Session,type TeamActor,team,knownAt,liveVisibility} from './breach-game.ts';
+import {SurrenderedFirearmsPresenter} from './rendering/breach-surrendered-firearms-presenter.ts';
 import {spatialSurfaceKnown,shotVisibility} from './breach-presentation.ts';
 import {doorKnown} from './breach-intel.ts';
 import {handlePoint,doorReachable} from './breach-door.ts';
@@ -757,6 +758,8 @@ export class TacticalScene3D{
 
   private rescueFigure:THREE.Group|null=null;
   private civilianRigs=new Map<string,CivilianRig>();
+  /** World-owned dropped firearms survive the character pose; no per-frame model creation. */
+  private surrenderedFirearms=new SurrenderedFirearmsPresenter(this.scene);
   private tracerAxis=new THREE.Vector3(0,1,0);
   /** Shot visuals copy these values into meshes immediately. Scratch vectors
    * avoid three new Vector3 allocations per visible shot per render frame. */
@@ -1172,6 +1175,7 @@ export class TacticalScene3D{
     for(const rig of this.civilianRigs.values())
       if('character' in rig)rig.character.dispose();
     this.civilianRigs.clear();
+    this.surrenderedFirearms.clear();
     if(this.rescueFigure)this.rescueFigure.visible=false;
     // A new layout can reuse the same seed, object revision and light tick.
     // Drop old beam obstruction geometry and force surviving friendly beams
@@ -2173,6 +2177,12 @@ export class TacticalScene3D{
         replayDisclosurePolicy);
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
+    this.surrenderedFirearms.update(s.droppedFirearms??[],item=>{
+      const owner=s.operators.find(a=>a.id===item.ownerId);
+      return omniscient||(replayDisclosurePolicy?
+        !!owner&&presentActor(s,owner,false,replayDisclosurePolicy):
+        liveVisibility(s,item.p));
+    });
     this.markScenePhase('disclosure');
     // One history pass per drawn frame, rather than rewalking all retained
     // shots for every friendly, hostile and recently undisclosed rig.
@@ -2242,8 +2252,9 @@ export class TacticalScene3D{
       object.root.position.set(drawActor.x,actor.traversalElevation,drawActor.z);
       // Build 120: the pose solver is the only writer of actor anatomical,
       // firearm and hit-reaction transforms; the scene owns world placement.
-      const downProgress=actor.health<=0?
-        Math.min(1,Math.max(0,(poseSeconds-actor.lastDownAt)/.78)):0;
+      const downProgress=actor.health<=0||actor.surrendered?
+        Math.min(1,Math.max(0,(poseSeconds-(actor.surrendered&&actor.health>0?
+          actor.lastSurrenderAt??actor.lastDownAt:actor.lastDownAt))/.78)):0;
       const hitAge=poseSeconds-actor.lastHitAt;
       const hitFade=actor.health>0&&hitAge>=0&&hitAge<.32?
         1-hitAge/.32:0;
@@ -2526,6 +2537,8 @@ export class TacticalScene3D{
         doorPoint:handle?{x:handle.x,y:handle.y}:undefined,
          doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
+        worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
+        restrained:actor.restrained===true,
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,

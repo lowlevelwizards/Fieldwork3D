@@ -99,6 +99,7 @@ import {setCivilianState,type CivilianActor} from './breach-civilian-types.ts';
 import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.ts';
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
+import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
 
 
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
@@ -285,6 +286,13 @@ export type TeamActor=Operator & {
   flashCharges:number;
   firePolicy:FirePolicy;suppressPoint:Pt|null;focusTargetId:string|null;
   defense:Pt|null;watch:Pt|null;defenseUntil:number;surrendered:boolean;
+  /** D15 conscious submission is not a physical wound or casualty. */
+  lastSurrenderAt?:number;
+  releasedWeaponId?:number|null;
+  /** Restraints applied only after physical GO completion. */
+  restrained?:boolean;lastCustodyAt?:number;
+  /** Only a successfully completed physical search establishes this fact. */
+  suspectSearched?:boolean;
  /** D9: authoritative interval since last resolved spoken challenge. */
  lastChallengeAt?:number;
   lastFireRepositionAt:number;lastMissionEvadeAt:number;
@@ -358,6 +366,8 @@ export type Session=Omit<TacticalState,'operators'> & {
   timesPaused:number;deaths:number;
   started:boolean;syncCode:number;report:string[];
   movementNoiseAt:number;site?:Site;lightingMode:LightingMode;dropped:DroppedMagazine[];
+  /** Authoritative surrendered firearms, distinct from transient presentation. */
+  droppedFirearms:import('./breach-suspect-weapons.ts').DroppedFirearm[];
   grenades:FlashGrenade[];flashBursts:FlashBurst[];flashRemaining:number;
   nextEffectId:number;impactMarks:ImpactMark[];
   battleEvents:BattleEvent[];nextBattleId:number;
@@ -601,6 +611,51 @@ export function planSuspectChallenge(s:Session,id:string,targetId:string):boolea
    objectId:'suspect:'+suspect.id,interaction:'challenge-suspect'
  });
  if(queued)notify(s,'CHALLENGE QUEUED — EXECUTES ON GO');
+ return queued;
+}
+/** D15.3 plan only: actual restraint requires a physically completed GO action. */
+export function planSuspectRestraint(s:Session,id:string,targetId:string):boolean{
+ const a=party(s,id),target=enemies(s).find(e=>e.id===targetId);
+ if(!a||!target||!canEdit(s)||a.health<=0||
+    target.health<=0||!target.surrendered||target.restrained===true||
+    a.restraintRemaining<=0)return false;
+ const from=finalPoint(a);
+ if(d(from,target.p)>34||
+    !team(s).some(observer=>inSight(observer,target,s))&&
+      !liveVisibility(s,target.p)||
+    !sweptBodyClear(from,target.p,s.doors,5.5,sessionWorldGeometry(s)))
+   return false;
+ const queued=addNode(s,id,'interact',from,{
+   objectId:'suspect:'+target.id,interaction:'restrain-suspect'
+ });
+ if(queued)notify(s,'RESTRAIN SUSPECT QUEUED — EXECUTES ON GO');
+ return queued;
+}
+/** D15.4: physically search a living, restrained, known suspect. */
+export function planSearchSuspect(s:Session,id:string,targetId:string):boolean{
+ const a=party(s,id),target=enemies(s).find(x=>x.id===targetId);
+ if(!a||!target||!canEdit(s)||a.health<=0||target.health<=0||
+    !target.surrendered||target.restrained!==true||target.suspectSearched)return false;
+ const from=finalPoint(a);
+ if(d(from,target.p)>34||(d(from,target.p)>28&&!liveVisibility(s,target.p))||
+    !sweptBodyClear(from,target.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ const queued=addNode(s,id,'interact',from,{
+   objectId:'suspect:'+target.id,interaction:'search-suspect'
+ });
+ if(queued)notify(s,'SEARCH SUSPECT QUEUED — EXECUTES ON GO');
+ return queued;
+}
+/** D15.4: only an actual identified, reachable, loose firearm can be secured. */
+export function planSecureDroppedFirearm(s:Session,id:string,weaponId:number):boolean{
+ const a=party(s,id),item=s.droppedFirearms.find(w=>w.id===weaponId);
+ if(!a||!item||!canEdit(s)||a.health<=0||item.status!=='loose')return false;
+ const from=finalPoint(a);
+ if(d(from,item.p)>34||(d(from,item.p)>28&&!liveVisibility(s,item.p))||
+    !sweptBodyClear(from,item.p,s.doors,5.5,sessionWorldGeometry(s)))return false;
+ const queued=addNode(s,id,'interact',from,{
+   objectId:'weapon:'+item.id,interaction:'secure-firearm'
+ });
+ if(queued)notify(s,'SECURE FIREARM QUEUED — EXECUTES ON GO');
  return queued;
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){
@@ -1714,9 +1769,9 @@ function mission(s:Session,dt:number){
     s.phase='lost';s.report=['OPERATION FAILED','ALL OPERATORS LOST'];return;
   }
   const captured=s.missionType==='capture'&&s.captureTarget?
-    enemies(s).some(a=>a.id===s.captureTarget&&a.health<=0):false;
+    enemies(s).some(a=>a.id===s.captureTarget&&captureTargetResolved(a)):false;
   if(s.mission==='clear'&&
-    (captured||(s.missionType!=='capture'&&enemies(s).every(a=>a.health<=0)))){
+    (captured||(s.missionType!=='capture'&&enemies(s).every(a=>!activeCombatant(a))))){
     s.mission='secure';
     if(captured){
       const target=enemies(s).find(a=>a.id===s.captureTarget);
@@ -1738,7 +1793,7 @@ function mission(s:Session,dt:number){
     if(s.missionType==='hold'){
       // A contested position is not secured merely by standing on its
       // marker. Nearby active defenders arrest the actual hold clock.
-      const contested=enemies(s).some(e=>e.health>0&&
+      const contested=enemies(s).some(e=>activeCombatant(e)&&
         near(e.p,s.scenario.objective,74));
       if(contested){
         s.holdTime=Math.max(0,s.holdTime-dt*.6);
@@ -1758,7 +1813,11 @@ function mission(s:Session,dt:number){
     }
     if(s.missionType==='capture'){
       const target=enemies(s).find(e=>e.id===s.captureTarget);
-      if(!target||target.health>0)return;
+      if(!target||!captureTargetResolved(target))return;
+      // A living submitted target cannot be counted as arrested through mere
+      // physical proximity. A genuine GO-time restraint must be completed.
+      // Existing downed-target missions keep their historical secure behavior.
+      if(target.health>0&&target.surrendered&&target.restrained!==true)return;
       s.captureSecured=true;
     }
     s.mission='extract';

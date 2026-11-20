@@ -33,6 +33,7 @@ import {resolveArmorImpact} from './equipment-armor.ts';
 import {retainImpactMark} from './breach-impact-evidence-buffer.ts';
 import {CASING_LIMIT} from './breach-effects.ts';
 import {wallSafeFall} from './breach-ground-geometry.ts';
+import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {chooseFall,hitRegion} from './breach-wounds.ts';
 import {shadowHitAnatomy} from './breach-hit-anatomy.ts';
 import {registerWound} from './breach-medical-wounds.ts';
@@ -75,6 +76,7 @@ export function createShotResolver(ports:ShotResolverPorts){
   shatterStruckWindows}=ports;
  function commitShot(s:Session,a:TeamActor,target:TeamActor,
   ctx:ShotCommitContext):void{
+  if(!activeCombatant(a)||!activeCombatant(target))return;
   const {mode,range,moving,mods,weapon,profile,secondaryWeapon}=ctx;
   // An unissued, half-drawn or reloading pistol cannot fire.
   const pistol=secondaryWeapon?a.equipment?.secondary:undefined;
