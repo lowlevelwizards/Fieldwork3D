@@ -30,7 +30,7 @@ const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number
 };
 export class CampaignKitPreview{
  private host:HTMLElement;
- private readonly operatorId:string;
+ private operatorId:string;
  private readonly scene=new THREE.Scene();
  private readonly camera=new THREE.PerspectiveCamera(34,1,.1,700);
  private renderer:THREE.WebGLRenderer|null=null;
@@ -143,6 +143,23 @@ export class CampaignKitPreview{
    note.textContent='3D preview is unavailable on this device. Kit editing remains available.';
    host.append(note);
   }
+ }
+ /** The operator changes while the renderer and WebGL context remain alive. */
+ setOperatorId(id:string):void{
+  if(this.operatorId===id)return;
+  this.operatorId=id;
+  // Retire prior person's inspection without painting a stale, detached host.
+  // The caller attaches the new host and draws the new pose immediately.
+  this.dotTarget=null;this.dotMesh=null;
+  if(this.selectedDot)this.selectedDot.hidden=true;
+  this.selectedCarryLocation=null;this.selectedInspection=null;
+  this.inspectedMesh=null;this.inspectionCenter=null;this.inspectionSize=null;
+  if(this.carryMarker)this.carryMarker.visible=false;
+  if(this.inspectionBox)this.inspectionBox.visible=false;
+  delete this.host.dataset.carryHighlight;
+  delete this.host.dataset.inspectedItem;
+  delete this.host.dataset.inspectionVisible;
+  this.idleStarted=performance.now();
  }
  /** A kit change updates the existing rig, without creating another WebGL context. */
  updateEquipment(weapon:WeaponId,appearanceSeed:number,equipment:EquipmentLoadout,
@@ -823,7 +840,7 @@ export class CampaignKitPreview{
    this.idleFrame=null;
    if(!this.renderer||!this.host.isConnected)return;
    this.idleFrame=requestAnimationFrame(frame);
-   if(now-this.idleLastPaint<48||document.hidden||
+   if(now-this.idleLastPaint<65||document.hidden||
     !this.host.getClientRects().length||now<this.idleQuietUntil)return;
    this.idleLastPaint=now;
    this.applyInspectionIdle((now-this.idleStarted)/1000);
@@ -835,22 +852,24 @@ export class CampaignKitPreview{
   if(!this.rig||!this.idleBase)return;
   const b=this.idleBase;
   // Smooth low-amplitude breathing; slight occasional independent gaze.
-  const glanceCycle=t%17,glanceWindow=Math.max(0,1-
-   Math.abs(glanceCycle-8.5)/2.1);
+  const glanceCycle=t%13,glanceWindow=Math.max(0,1-
+   Math.abs(glanceCycle-6.5)/2.0);
   const glance=glanceWindow*glanceWindow*(3-2*glanceWindow);
-  const weightCycle=t%13,shift=Math.sin(weightCycle/13*Math.PI*2);
-  const checkCycle=t%29,check=Math.max(0,1-
-   Math.abs(checkCycle-17)/2.0);
+  const weightCycle=t%10,shift=Math.sin(weightCycle/10*Math.PI*2);
+  const checkCycle=t%19,check=Math.max(0,1-
+   Math.abs(checkCycle-12)/1.9);
   const settle=check*check*(3-2*check);
-  this.rig.head.rotation.y=b.headY+glance*.13*Math.sin(t*.41);
-  this.rig.head.rotation.x=b.headX-settle*.055;
-  this.rig.chest.rotation.z=b.chestZ+Math.sin(t*1.4)*.006+shift*.011;
+  // More readable head sweeps, breathing and deliberate weapon check.
+  // Preserve planted feet and use smooth envelopes for all gestures.
+  this.rig.head.rotation.y=b.headY+glance*.26*Math.sin(t*.41);
+  this.rig.head.rotation.x=b.headX-settle*.09+glance*.04;
+  this.rig.chest.rotation.z=b.chestZ+Math.sin(t*1.4)*.01+shift*.021;
   // A tiny synchronized hip/torso settle evokes a knee bounce without
   // touching the planted feet, ground contact or the production IK solver.
-  const bounce=Math.pow(Math.max(0,Math.sin(t*.75)),6)*.11;
+  const bounce=Math.pow(Math.max(0,Math.sin(t*.8)),6)*.22;
   this.rig.hip.position.y=b.hipY-bounce;
   this.rig.chest.position.y=b.chestY-bounce;
-  this.rig.weapon.rotation.x=b.weaponX+(this.showHeldWeapon?settle*.014:0);
+  this.rig.weapon.rotation.x=b.weaponX+(this.showHeldWeapon?settle*.055:0);
  }
  private draw(){
   if(!this.renderer)return;

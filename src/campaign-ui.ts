@@ -1346,7 +1346,8 @@ export class CampaignScreen{
     document.activeElement?.getAttribute('aria-label'):null);
   this.pendingKitFocusLabel=null;
   // The same operator keeps one preview renderer while HTML controls refresh.
-  const retainOperatorPreview=sameOperator&&!this.weaponView&&!!this.preview?.isReady();
+  // Reuse one WebGL context when cycling personnel, updating rig content only.
+  const retainOperatorPreview=!this.weaponView&&!!this.preview?.isReady();
   if(!retainOperatorPreview)this.disposePreview();
   if(!sameOperator){
    this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
@@ -1415,13 +1416,16 @@ export class CampaignScreen{
   const selectName=fieldworkSelect({label:'Choose outfitting operator',
    value:id,choices:preparable.map((o,i)=>({
     value:o.id,label:o.callsign.toUpperCase(),
+    swatch:o.squadColor??SQUAD_IDENTIFICATION_COLORS[i%SQUAD_IDENTIFICATION_COLORS.length],
     hint:'OPERATOR '+String(i+1).padStart(2,'0')+' / '+
      String(preparable.length).padStart(2,'0')})),
    onChange:chooseOperator});
   selectName.classList.add('campaign-outfitter-operator-select');
   const mobileMetrics=node('span','campaign-outfitter-metrics',
    currentMass.toFixed(1)+' KG · '+currentMobility+'%');
-  identityBox.append(selectName,mobileMetrics);
+  // Color remains separately selectable, but visually belongs to identity.
+  const nameRow=node('div','campaign-outfitter-name-row');
+  identityBox.append(nameRow,mobileMetrics);
   let openKitLibrary=()=>{};
   let openClothing=()=>{};
   const renameShortcut=button('✎',()=>{
@@ -1443,12 +1447,29 @@ export class CampaignScreen{
   colorPicker.classList.add('campaign-outfitter-color');
   colorPicker.textContent='●';
   colorPicker.style.color=person.squadColor??SQUAD_IDENTIFICATION_COLORS[index%SQUAD_IDENTIFICATION_COLORS.length];
-  const kitButton=button('▣',()=>openKitLibrary(),'campaign-outfitter-library-button');
+  nameRow.append(selectName,colorPicker);
+  // Monochrome icons match the equipment category glyphs and avoid the
+  // platform-specific colored emoji appearance on iOS.
+  const headerIcon=(pathData:string)=>{
+   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+   svg.setAttribute('viewBox','0 0 24 24');svg.setAttribute('aria-hidden','true');
+   svg.classList.add('campaign-outfitter-header-icon');
+   const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+   path.setAttribute('d',pathData);path.setAttribute('fill','none');
+   path.setAttribute('stroke','currentColor');
+   path.setAttribute('stroke-width','1.75');
+   path.setAttribute('stroke-linecap','round');
+   path.setAttribute('stroke-linejoin','round');
+   svg.append(path);return svg;
+  };
+  const kitButton=button('',()=>openKitLibrary(),'campaign-outfitter-library-button');
+  kitButton.append(headerIcon('M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z M17 21v-8H7v8 M7 3v5h8'));
   kitButton.setAttribute('aria-label','Saved kit library and squad tools');
-  const clothes=button('◈',()=>openClothing(),'campaign-outfitter-clothing-button');
+  const clothes=button('',()=>openClothing(),'campaign-outfitter-clothing-button');
+  clothes.append(headerIcon('M16 2c0 2.2-1.8 4-4 4S8 4.2 8 2L3.6 4 1 10l5 2 2-3v12h8V9l2 3 5-2-2.6-6L16 2'));
   clothes.setAttribute('aria-label','Clothing and appearance');
   compactHeader.append(previous,identityBox,next,renameShortcut,
-   colorPicker,kitButton,clothes);
+   kitButton,clothes);
   top.append(compactHeader);
   main.append(createLoadoutSquadRail(preparable.map(o=>({
    id:o.id,name:o.callsign.toUpperCase(),
@@ -2309,15 +2330,25 @@ export class CampaignScreen{
    advanced.append(otherDetails);
    const physicalAdvanced=physicalEditor.querySelector<HTMLElement>(
     '.fw-field-inventory-advanced');
-   if(physicalAdvanced)advanced.append(physicalAdvanced);
    advanced.append(issuedMore);
    editor.append(advanced);
+   // Separate carry from saved kits: one editor with one clear destination.
+   const carryPanel=node('section','fw-outfitter-advanced fw-outfitter-carry-panel');
+   carryPanel.hidden=true;
+   const carryBack=button('‹ BACK TO EQUIPMENT',()=>{
+    carryPanel.hidden=true;galleryRoot.hidden=false;
+   },'fw-outfitter-carry-back');
+   carryPanel.append(carryBack,physicalEditor);
+   if(physicalAdvanced)carryPanel.append(physicalAdvanced);
+   editor.append(carryPanel);
    const galleryRoot=node('div','fw-outfitter-main');
    editor.append(galleryRoot);
    closeAdvanced=()=>{
-    advanced.hidden=true;galleryRoot.hidden=false;
+    advanced.hidden=true;carryPanel.hidden=true;galleryRoot.hidden=false;
    };
-   openKitLibrary=()=>{galleryRoot.hidden=true;advanced.hidden=false;};
+   openKitLibrary=()=>{
+    galleryRoot.hidden=true;carryPanel.hidden=true;advanced.hidden=false;
+   };
    openClothing=()=>{selectBenchSlot('top');};
    const gallery=createOutfitterGallery({
     host:galleryRoot,sources:gallerySources,kit:person.loadout,
@@ -2379,7 +2410,9 @@ export class CampaignScreen{
     },
     onArsenal:()=>{if(!arsenal.disabled)this.handlers.openArsenal(id);},
     arsenalDisabled:arsenal.disabled,
-    onAdvanced:()=>{galleryRoot.hidden=true;advanced.hidden=false;}
+    onAdvanced:()=>{
+    galleryRoot.hidden=true;advanced.hidden=true;carryPanel.hidden=false;
+   }
    });
    showGallery=slot=>gallery.show(slot);
    gallery.show(this.activeBenchSlot);
@@ -2416,6 +2449,7 @@ export class CampaignScreen{
    else this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
   }else{
    if(retainOperatorPreview&&this.preview){
+    this.preview.setOperatorId(id);
     this.preview.attachHost(preview,false);
     this.preview.updateEquipment(person.weapon,person.appearanceSeed,person.loadout,
      person.weaponConfiguration,person.magazines,person.wardrobe);

@@ -84,7 +84,7 @@ try{
    const head=gallery.locator('.fw-outfitter-option[data-equipped="true"]');
    assert.equal(await head.count(),1,'Equipped item marked within the gallery');
    const before=await gallery.locator('.fw-outfitter-option').evaluateAll(
-    nodes=>nodes.map(n=>n.dataset.itemId));
+    nodes=>nodes.filter(n=>n.dataset.available==='true').map(n=>n.dataset.itemId));
    const alternative=gallery.locator('.fw-outfitter-option[data-available="true"]:not([data-equipped="true"])');
    if(await alternative.count()){
     const target=await alternative.first().getAttribute('data-item-id');
@@ -114,25 +114,28 @@ try{
    assert.ok(layout.contextHeight>=45,'A fixed detail area remains visible');
    assert.equal(await gallery.locator('.fw-outfitter-unavailable').count(),0,
     'Unavailable items stay in the same row');
-   const flash=gallery.locator('.fw-outfitter-option[data-item-id="field-flashbang"]');
-   assert.ok(await flash.count(),'Flashbang is a selectable card');
-   await flash.click();
-   assert.equal(await gallery.locator('.fw-outfitter-context .fw-outfitter-quantity-controls button').count(),2,
-    'Selected consumable shows only its own inline quantity controls');
-   assert.equal(await gallery.locator('select:visible').count(),0,
-    'All carry choices use Fieldwork select, never a native iOS dropdown');
-   const toolCards=await rail.locator('.fw-outfitter-option').count();
-   assert.ok(toolCards>=4,'Tools and consumables share one row');
+   assert.equal(await rail.locator('.fw-outfitter-option[data-kind="field"]').count(),0,
+    'Physical consumables no longer masquerade as gear choices');
+   assert.equal(await rail.locator('.fw-outfitter-option[data-kind="magazine"]').count(),0,
+    'Magazine instances no longer appear in equipment option galleries');
+   const carryAction=gallery.getByRole('button',{name:'ARRANGE MAGAZINES & TOOLS'});
+   await carryAction.click();
+   assert.ok(await armory.locator('.fw-outfitter-carry-panel').isVisible(),
+    'Physical supplies use their original dedicated inventory editor');
+   await armory.locator('.fw-outfitter-carry-back').click();
+   assert.ok(await gallery.isVisible(),'Return directly to the same equipment row');
    await armory.locator('.campaign-kit-bench-zone[data-slot="primary"]').click();
    const restricted=gallery.locator('.fw-outfitter-option[data-available="false"]');
-   assert.ok(await restricted.count()>0,'Restricted choices remain inline and inspectable');
+   assert.ok(await restricted.count()>0,'Restricted choices remain visible at the end');
+   assert.equal(await restricted.evaluateAll(nodes=>nodes.every(n=>n.disabled)),true,
+    'Disabled options cannot be selected or inspected');
    assert.equal(await gallery.locator('details').count(),0,
     'No unavailable drawer or second list');
    await armory.locator('.campaign-kit-bench-zone[data-slot="rig"]').click();
    assert.ok(await gallery.locator('.fw-outfitter-option:visible').count()>=1,
     'Chest equipment retains direct selection');
    await armory.locator('.campaign-outfitter-library-button').click();
-   assert.ok(await armory.locator('.fw-outfitter-advanced').isVisible(),
+   assert.ok(await armory.locator('.fw-outfitter-advanced:not(.fw-outfitter-carry-panel)').isVisible(),
     'Kit library accessible from header, not gallery More button');
    assert.equal(await gallery.locator('.fw-outfitter-more').count(),0,
     'No More link at the bottom of the equipment panel');

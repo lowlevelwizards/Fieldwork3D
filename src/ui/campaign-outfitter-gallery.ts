@@ -3,16 +3,12 @@
  * through the existing campaign and physical-carry handlers/quotes.
  */
 import {itemDefinition} from '../equipment-catalog.ts';
-import {FIELD_CARRY_LOCATIONS,initialFieldInventory,
- type FieldCarryLocation,type FieldItemId} from '../equipment-field-inventory.ts';
+import {initialFieldInventory,type FieldCarryLocation,type FieldItemId} from '../equipment-field-inventory.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
-import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
-import {quoteOneMagazineMove} from '../equipment-magazine-transfer.ts';
 import {quoteCarryGearChange}
  from '../equipment-carry-gear-change.ts';
 import type {EquipmentLoadout,LoadoutSlot} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
-import {fieldworkSelect} from './fieldwork-select.ts';
 
 const el=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
  const node=document.createElement(tag);node.className=cls;
@@ -26,9 +22,6 @@ const SLOT_LABEL:Partial<Record<LoadoutSlot,string>>={
  primary:'Weapon',head:'Head',armor:'Armor',rig:'Chest',belt:'Belt',
  backpack:'Pack',medical:'Medical',utility:'Tools',top:'Top',legs:'Legs',
  hands:'Hands',feet:'Footwear',tactical:'Tactical'
-};
-const LOC_LABEL:Record<FieldCarryLocation,string>={
- rig:'Chest',belt:'Belt',pocket:'Pocket',backpack:'Pack'
 };
 export type OutfitterGalleryOptions={
  host:HTMLElement;
@@ -70,27 +63,53 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
  context.setAttribute('aria-live','polite');
  root.append(heading,viewport,context);
  options.host.append(root);
- const remembered=options.selectedItems??new Map<string,string>();
- const positions=options.scrollPositions??new Map<string,number>();
  const inventory=options.kit.fieldInventory??initialFieldInventory(options.kit);
  const board=physicalCarryBoard(options.kit,options.magazines,inventory);
+ const remembered=options.selectedItems??new Map<string,string>();
+ const positions=options.scrollPositions??new Map<string,number>();
  let active:LoadoutSlot='primary';
  let choices:Choice[]=[];
+ // Render only thumbnails that approach the visible rail. Rendering every
+ // procedural model in one RAF was a major phone navigation hitch.
+ const queued:{tile:HTMLElement;frame:HTMLElement;choice:Choice;slot:LoadoutSlot}[]=[];
+ let thumbnailFrame=0;
+ const paintNext=()=>{
+  thumbnailFrame=0;
+  const pending=queued.shift();
+  if(!pending)return;
+  const {tile,frame,choice,slot}=pending;
+  if(root.isConnected&&tile.isConnected&&tile.dataset.thumbReady!=='true'){
+   tile.dataset.thumbReady='true';
+   const url=choice.kind==='gear'?options.renderModel(slot,choice.id):null;
+   if(url){
+    const img=el('img');img.src=url;img.alt='';img.decoding='async';
+    frame.replaceChildren(img);
+   }
+  }
+  if(queued.length)thumbnailFrame=requestAnimationFrame(paintNext);
+ };
+ const scheduleThumb=(tile:HTMLElement,frame:HTMLElement,choice:Choice,slot:LoadoutSlot)=>{
+  if(tile.dataset.thumbReady||queued.some(job=>job.tile===tile))return;
+  queued.push({tile,frame,choice,slot});
+  if(!thumbnailFrame)thumbnailFrame=requestAnimationFrame(paintNext);
+ };
+ const thumbTargets=new Map<HTMLElement,{frame:HTMLElement;choice:Choice;slot:LoadoutSlot}>();
+ const observer:IntersectionObserver|null=typeof IntersectionObserver!=='undefined'?
+  new IntersectionObserver(entries=>{
+   for(const entry of entries){
+    if(!entry.isIntersecting)continue;
+    const tile=entry.target as HTMLElement;
+    const data=thumbTargets.get(tile);
+    if(data){scheduleThumb(tile,data.frame,data.choice,data.slot);observer?.unobserve(tile);}
+   }
+  },{root:viewport,rootMargin:'60px'}):null;
  const addImage=(tile:HTMLElement,choice:Choice,slot:LoadoutSlot)=>{
   const frame=el('div','fw-outfitter-gallery-image');
   frame.textContent=choice.id.endsWith('-none')?'—':'';
   tile.prepend(frame);
-  if(choice.id.endsWith('-none'))return;
-  requestAnimationFrame(()=>{
-   if(!root.isConnected||!tile.isConnected)return;
-   const url=choice.kind==='field'?
-    options.renderField?.(choice.fieldId??'flashbang'): 
-    choice.kind==='gear'?options.renderModel(slot,choice.id):
-    null;
-   if(!url)return;
-   const img=el('img');img.src=url;img.alt='';img.decoding='async';
-   frame.replaceChildren(img);
-  });
+  if(choice.id.endsWith('-none')||!choice.issued)return;
+  if(observer){thumbTargets.set(tile,{frame,choice,slot});observer.observe(tile);}
+  else scheduleThumb(tile,frame,choice,slot);
  };
  const equipmentChoices=(slot:LoadoutSlot)=>{
   const source=options.sources.get(slot);
@@ -104,8 +123,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    const quote=carrier&&!current?quoteCarryGearChange(
     options.kit,options.magazines,slot as 'rig'|'belt'|'backpack',
     id,inventory):null;
-   const unavailable=options.locked||(!current&&
-    (option.disabled||(quote!==null&&!quote.ok)));
+   const unavailable=!current&&(options.locked||
+    option.disabled||(quote!==null&&!quote.ok));
    const delta=item.massKg-(itemDefinition(source.value)?.massKg??0);
    result.push({id,label:item.name,mass:current?'EQUIPPED':
     (delta>=0?'+':'')+delta.toFixed(2)+' KG',
@@ -113,64 +132,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
     reason:quote&&!quote.ok?quote.reason:options.locked?
      'LOCKED DURING DEPLOYMENT':'NOT ISSUED / RESTRICTED'});
   }
-  return result;
- };
- const fieldRows=()=>[...options.physicalEditor.querySelectorAll<HTMLElement>(
-  '.fw-field-inventory-issue .fw-field-inventory-item')];
- const fieldChoices=()=>{
-  const result:Choice[]=[];
-  for(const row of fieldRows()){
-   const title=row.querySelector('strong')?.textContent??'Consumable';
-   const fieldId=(title.toLowerCase().includes('flash')?'flashbang':
-    title.toLowerCase().includes('wedge')?'wedge':'zip-tie') as FieldItemId;
-   const count=row.querySelector('.fw-field-inventory-quantity')?.textContent??'×0';
-   result.push({id:'field-'+fieldId,label:title,mass:count,
-    kind:'field',fieldId,row,issued:true,equipped:count!=='×0'});
-  }
-  return result;
- };
- const magazineChoices=()=>{
-  const result:Choice[]=[];
-  let index=0;
-  for(const zone of board.zones){
-   for(const tile of zone.items){
-    if(tile.kind!=='magazine'||!tile.magazineId)continue;
-    index++;
-    result.push({id:tile.magazineId,label:'MAG '+String(index).padStart(2,'0'),
-     mass:tile.label.replace(/^.*?·/,'').trim(),kind:'magazine',
-     issued:true,equipped:true});
-   }
-  }
-  return result;
- };
- const carryChoices=(loc:FieldCarryLocation)=>{
-  const zone=board.zones.find(z=>z.location===loc);
-  const result:Choice[]=[];
-  for(const tile of zone?.items??[]){
-   if(tile.kind==='magazine'&&tile.magazineId){
-    result.push({id:'carry-mag-'+tile.magazineId,
-     label:tile.label,mass:'×'+tile.quantity,
-     kind:'magazine',issued:true,equipped:true,
-     location:loc,magazineId:tile.magazineId});
-   }else if(tile.kind==='field'&&tile.itemId){
-    result.push({id:'carry-field-'+tile.itemId+'-'+loc,
-     label:tile.label,mass:'×'+tile.quantity,
-     kind:'field',fieldId:tile.itemId,location:loc,
-     issued:true,equipped:true});
-   }
-  }
-  return result;
- };
- const createPlace=(label:string,value:FieldCarryLocation,
-  available:(location:FieldCarryLocation)=>{ok:boolean;reason?:string},
-  onChange:(location:FieldCarryLocation)=>void)=>{
-  const choices=FIELD_CARRY_LOCATIONS.map(loc=>{
-   const quote=available(loc);
-   return {value:loc,label:LOC_LABEL[loc],disabled:!quote.ok,
-    hint:quote.ok?'':quote.reason??'Full or incompatible'};
-  });
-  return fieldworkSelect({label,value,choices,
-   onChange:loc=>onChange(loc as FieldCarryLocation),compact:true});
+  return result.filter(choice=>choice.issued).concat(result.filter(choice=>!choice.issued));
  };
  const detailSection=(title:string,info?:string)=>{
   const section=el('div','fw-outfitter-detail-copy');
@@ -191,7 +153,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    }else{
     title.append(el('small','','Tap the card to equip'));
    }
-   if(active==='primary'){
+   if(active==='primary'&&!options.arsenalDisabled){
     const button=action('ARSENAL',options.onArsenal,'fw-outfitter-context-action');
     button.disabled=!!options.arsenalDisabled;
     context.append(button);
@@ -206,52 +168,15 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
      pack.disabled=options.locked;context.append(pack);
     }
    }
-  }else if(choice.kind==='field'&&choice.location&&choice.fieldId){
-   const from=choice.location,id=choice.fieldId;
-   context.append(createPlace('Move '+choice.label,from,
-    loc=>quoteSingleFieldTransfer(options.kit,options.magazines,
-     inventory,id,from,loc),
-    loc=>options.onMoveField(id,from,loc)));
-  }else if(choice.kind==='field'&&choice.row){
-   const buttons=[...choice.row.querySelectorAll<HTMLButtonElement>(
-    '.fw-field-inventory-controls button')];
-   const qty=choice.row.querySelector('.fw-field-inventory-quantity');
-   const controls=el('div','fw-outfitter-quantity-controls');
-   const minus=action('−',()=>buttons[0]?.click());
-   minus.disabled=options.locked||!!buttons[0]?.disabled;
-   minus.setAttribute('aria-label','Remove one '+choice.label);
-   const amount=el('strong','',qty?.textContent??'×0');
-   const plus=action('+',()=>buttons[1]?.click());
-   plus.disabled=options.locked||!!buttons[1]?.disabled;
-   plus.setAttribute('aria-label','Add one '+choice.label);
-   controls.append(minus,amount,plus);context.append(controls);
-   const select=choice.row.querySelector<HTMLSelectElement>(
-    '.fw-field-inventory-location');
-   if(select){
-    const dropdown=fieldworkSelect({label:'Carry '+choice.label,
-     value:select.value,choices:[...select.options].map(o=>({
-      value:o.value,label:o.textContent??o.value,disabled:o.disabled})),
-     compact:true,onChange:value=>{
-      select.value=value;
-      select.dispatchEvent(new Event('change',{bubbles:true}));
-     }});
-    context.append(dropdown);
-   }
-  }else if(choice.kind==='magazine'){
-   const magId=choice.magazineId??choice.id;
-   let location:FieldCarryLocation|null=choice.location??null;
-   if(!location)for(const zone of board.zones)
-    if(zone.items.some(item=>item.magazineId===magId))location=zone.location;
-   if(location){
-    const start=location;
-    context.append(createPlace('Magazine carry',start,
-     loc=>quoteOneMagazineMove(options.kit,options.magazines,
-      magId,loc,inventory),
-     loc=>options.onMoveMagazine(magId,loc)));
-   }
+  }
+  if(['primary','rig','belt','backpack','utility','tactical'].includes(active)){
+   const carry=action('ARRANGE MAGAZINES & TOOLS',options.onAdvanced,
+    'fw-outfitter-context-action fw-outfitter-carry-action');
+   carry.disabled=options.locked;context.append(carry);
   }
  };
  const selectChoice=(choice:Choice,fromClick:boolean)=>{
+  if(!choice.issued)return;
   remembered.set(active,choice.id);
   for(const card of rail.querySelectorAll<HTMLElement>('.fw-outfitter-option')){
    const selected=card.dataset.itemId===choice.id;
@@ -287,12 +212,11 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    heading.append(clothing);
   }else heading.append(detail);
   context.replaceChildren();
-  const base=equipmentChoices(slot);
-  if(slot==='utility'||slot==='tactical')base.push(...fieldChoices());
-  if(slot==='primary')base.push(...magazineChoices());
-  if(slot==='rig'||slot==='belt'||slot==='backpack')
-   base.push(...carryChoices(slot));
-  choices=base;
+  // Equipment options only. Ammunition and consumables use the existing
+  // validated carry editor, reached via the contextual ARRANGE action.
+  choices=equipmentChoices(slot);
+  observer?.disconnect();queued.length=0;
+  thumbTargets.clear();
   rail.replaceChildren();
   for(const choice of choices){
    const tile=action(choice.label,()=>selectChoice(choice,true),
@@ -301,6 +225,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    tile.dataset.kind=choice.kind;
    tile.dataset.equipped=String(choice.equipped);
    tile.dataset.available=String(choice.issued);
+   tile.disabled=!choice.issued;
    tile.setAttribute('aria-label',choice.label+
     (!choice.issued?' · '+choice.reason:choice.equipped?' · equipped':' · equip'));
    const copy=el('div','fw-outfitter-option-copy');
@@ -311,8 +236,10 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
    rail.append(tile);
   }
   if(!choices.length)context.append(el('p','fw-outfitter-gallery-note','Nothing issued.'));
-  const selected=choices.find(c=>c.id===remembered.get(slot))??
-   choices.find(c=>c.equipped&&c.kind==='gear')??choices[0];
+  else if(!choices.some(choice=>choice.issued))
+   context.append(el('p','fw-outfitter-gallery-note','No available options.'));
+  const selected=choices.find(c=>c.issued&&c.id===remembered.get(slot))??
+   choices.find(c=>c.issued&&c.equipped)??choices.find(c=>c.issued);
   if(selected)selectChoice(selected,false);
   requestAnimationFrame(()=>{
    if(!root.isConnected)return;
