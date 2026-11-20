@@ -59,7 +59,7 @@ const shareableFields=[
  * often remain identical for minutes. Share those immutable subtrees too;
  * otherwise every moving pose retains redundant deep copies in the film. */
 const shareableActorFields=[
-  'plan','spareMagazines','medical','medicalSupplies','fieldInventory',
+  'plan','spareMagazines','secondaryEquipment','medical','medicalSupplies','fieldInventory',
   'weaponConfiguration','skills','aimInstruction',
   'watch','defense','traversal'
 ] as const satisfies readonly (keyof ReplayActorFrame)[];
