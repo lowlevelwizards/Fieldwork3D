@@ -34,7 +34,7 @@ export class WeaponWorkbenchPreview{
  private readonly reducedMotion=window.matchMedia?.('(prefers-reduced-motion: reduce)').matches??false;
  private readonly steel=WEAPON_ACCESSORY_STEEL;
  private readonly dark=WEAPON_ACCESSORY_POLYMER;
- private readonly host:HTMLElement;
+ private host:HTMLElement;
  private readonly canvasHost:HTMLDivElement;
  private readonly caption:HTMLParagraphElement;
  private readonly toolbar:HTMLDivElement;
@@ -50,7 +50,7 @@ export class WeaponWorkbenchPreview{
  private in2D=false;
  private revealed=false;
  private mode:WorkbenchMode='attachments';
- private readonly onSelect:(slot:WorkbenchSocket)=>void;
+ private onSelect:(slot:WorkbenchSocket)=>void;
  private readonly resizeObserver:ResizeObserver;
  private yaw=.15;
  private pitch=.17;
@@ -77,17 +77,7 @@ export class WeaponWorkbenchPreview{
    'touch-action:none;overflow:hidden';
   this.caption=document.createElement('p');this.caption.className='campaign-note';
   this.caption.style.cssText='margin:8px 0 4px;min-height:1em;font-size:11px;opacity:.72';
-  host.classList.add('weapon-workbench');
-  host.style.cssText='display:block;width:100%;min-width:0;max-width:100%;overflow:hidden';
-  // Campaign used a hard-coded 300px preview box; the replacement panel
-  // must grow with its contents instead of being cut off on phones.
-  if(host.classList.contains('campaign-kit-preview')){
-   host.style.height='auto';
-   host.style.minHeight='0';
-   host.style.overflow='visible';
-   host.style.touchAction='pan-y';
-   this.caption.style.padding='8px 2px';
-  }
+  this.prepareHost(host);
   this.toolbar=document.createElement('div');
   this.toolbar.style.cssText='display:flex;flex-wrap:wrap;gap:7px;margin:5px 0 9px';
   for(const mode of ['body','attachments'] as const){
@@ -166,6 +156,30 @@ export class WeaponWorkbenchPreview{
   this.resizeObserver=new ResizeObserver(()=>this.draw());
   this.resizeObserver.observe(this.canvasHost);
   this.setConfiguration(config);
+ }
+ /** Preserve the existing WebGL context, sockets and orbit across HTML-only
+  * Operations Board refreshes. Socket dispatch is always rebound to the new
+  * (authoritative) select rows rather than stale detached controls. */
+ attachHost(host:HTMLElement,onSelect:(slot:WorkbenchSocket)=>void):void{
+  this.onSelect=onSelect;
+  if(this.host===host)return;
+  this.resizeObserver.disconnect();
+  this.host=host;
+  this.prepareHost(host);
+  host.append(this.toolbar,this.canvasHost,this.choicePanel,this.caption);
+  this.resizeObserver.observe(this.canvasHost);
+  this.draw();
+ }
+ private prepareHost(host:HTMLElement):void{
+  host.classList.add('weapon-workbench');
+  host.style.cssText='display:block;width:100%;min-width:0;max-width:100%;overflow:hidden';
+  if(host.classList.contains('campaign-kit-preview')){
+   host.style.height='auto';
+   host.style.minHeight='0';
+   host.style.overflow='visible';
+   host.style.touchAction='pan-y';
+   this.caption.style.padding='8px 2px';
+  }else this.caption.style.removeProperty('padding');
  }
  setConfiguration(config:WeaponConfiguration){
   this.config=config;
