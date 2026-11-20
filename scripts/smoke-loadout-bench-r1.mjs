@@ -36,7 +36,7 @@ try{
    // UXR V2 opens the selected operator inspector by default. Blindly
    // clicking its summary closes it and hides the LOADOUT action.
    if(!(await personDisclosure.evaluate(el=>el.open)))
-    await personDisclosure.locator('> summary').click();
+    await personDisclosure.locator('summary').first().click();
    await person.getByRole('button',{name:/^Open .* loadout$/}).click();
    const armory=page.locator('.campaign-armory-screen');
    await armory.waitFor({timeout:30000});
