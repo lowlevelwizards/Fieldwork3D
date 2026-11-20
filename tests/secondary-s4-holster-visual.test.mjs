@@ -6,6 +6,8 @@ import {initialSecondaryEquipment,moveSecondaryHolster}
 import {syncHipSecondaryVisual,clearHipSecondaryVisual}
  from '../src/secondary-holster-visual.ts';
 import {GLOCK_COYOTE_SLIDE} from '../src/weapons/geometry/weapon-visual-palette.ts';
+import {initialEquipmentLoadout} from '../src/equipment-loadouts.ts';
+import {magazineSpace,secondaryCarryClaim,stageMagazines} from '../src/equipment-magazine-placement.ts';
 
 test('S4A: occupied hip holster is one pelvis child with native Glock and two physical spare pouch identities',()=>{
  const hip=new THREE.Group();
@@ -42,4 +44,21 @@ test('S4A: change side removes previous mount; no belt / no sidearm means no inv
  assert.equal(syncHipSecondaryVisual(hip,kit,false),null);
  assert.equal(hip.children.length,0);
  assert.equal(syncHipSecondaryVisual(hip,undefined,true),null);
+});
+
+test('S4B: one shared carrier budget reserves occupied holster and pistol magazines',()=>{
+ const loadout=initialEquipmentLoadout();
+ const side=initialSecondaryEquipment('rook','glock-g19-gen3');
+ const equipped={...loadout,secondary:side};
+ assert.equal(secondaryCarryClaim(equipped).valid,true);
+ assert.equal(secondaryCarryClaim(equipped).used.belt,3,
+  'holster 1 plus two pistol magazines');
+ assert.equal(magazineSpace(equipped).belt,0);
+ assert.equal(magazineSpace(loadout).belt,3);
+ const primary=stageMagazines([{id:'rook/carbine/extra',weapon:'carbine',rounds:12,
+  location:'belt'}],equipped);
+ assert.notEqual(primary[0].location,'belt','primary cannot steal pistol-owned belt space');
+ const beltless={...equipped,slots:{...equipped.slots,belt:'belt-none'}};
+ assert.equal(secondaryCarryClaim(beltless).valid,false);
+ assert.ok(secondaryCarryClaim(beltless).overflow.includes('belt'));
 });
