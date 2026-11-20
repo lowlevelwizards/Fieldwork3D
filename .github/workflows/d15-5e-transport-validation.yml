@@ -1,0 +1,55 @@
+name: D15.5E physical capture transport critical
+on:
+  push:
+    branches: [release/d15-5e-transport-critical-20261120]
+    paths:
+      - '.github/workflows/d15-5e-transport-validation.yml'
+      - 'src/**'
+      - 'tests/dispatch-d15*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d15-5e-capture-transport
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Actual player GO pickup, target transport, replay and extraction
+        run: |
+          node --experimental-strip-types --test \
+            tests/dispatch-d15-capture-transport-eligibility.test.mjs \
+            tests/dispatch-d15-capture-transport-go.test.mjs \
+            tests/dispatch-d15-suspect-escort-go.test.mjs \
+            tests/dispatch-d15-suspect-escort-real-motor.test.mjs \
+            tests/civilian-r2-transport-foundation.test.mjs \
+            tests/civilian-r2-rescue-transport.test.mjs \
+            tests/civilian-r2-transport-replay.test.mjs \
+            tests/equipment-22-07-transport.test.mjs \
+            tests/breach-155.test.mjs
+      - name: Existing physical doorway and queue behavior
+        run: |
+          node --experimental-strip-types --test \
+            tests/movement-m3-door-lifecycle.test.mjs \
+            tests/movement-m4-queue-formation.test.mjs
+      - name: Same tactical tests that gate production Pages
+        run: |
+          node --experimental-strip-types --test \
+            tests/breach-roadmap2-stage1-contracts.test.mjs \
+            tests/passage-q5-approaches.test.mjs \
+            tests/animation-a3-10-close-stack-fire.test.mjs \
+            tests/animation-a3-11-progressive-urgency.test.mjs \
+            tests/fog-exterior-unseen-apertures-regression.test.mjs \
+            tests/operator-studio-main-menu.test.mjs \
+            tests/performance-p8-replay-memory.test.mjs
+      - name: Production TypeScript/build/stamp
+        run: |
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
