@@ -253,10 +253,10 @@ export function createMovementOrderHandler(port:OrderExecutionPort){
       !n.entryDoorId&&!n.stackDoorId?
       s.operators.find(e=>e.side==='red'&&e.health>0&&
         e.surrendered&&e.restrained===true&&e.escortLeaderId===a.id)??null:null;
-    const escortScale=Math.min(escortWalkMultiplier(a,escorted),
-      physicalEscortWalkMultiplier(a,escortedSuspect));
+    const escortScale=escortWalkMultiplier(a,escorted);
+    const prisonerScale=physicalEscortWalkMultiplier(a,escortedSuspect);
     move(a,n.p,dt,s,(running?1.40:distantTemplateStack?1:
-      templateEntry?.90:cautious?.70:1)*escortScale);
+      templateEntry?.90:cautious?.70:1)*Math.min(escortScale,prisonerScale));
     // Unmodified movement follows its route, while an explicit fixed STRAFE
     // or PIE/TRACK instruction persists until LOOK releases it.
     // While wedged sideways, the physical shoulder axis has priority
