@@ -115,7 +115,8 @@ import {armedPrecontactStyle} from './breach-idle-life.ts';
 import {hostilePhysicalityAt} from './breach-hostile-physicality.ts';
 import {WEAPONS} from './breach-combat.ts';
 import {IMPACT_MARK_LIMIT,impactProfile} from './breach-effects.ts';
-import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse}
+import {muzzleFlashCue,mostRecentActiveMuzzleShot,impactPulse,
+ RecentMuzzleShotFrameIndex}
  from './breach-combat-cues.ts';
 import {confinedGroundRadius} from './breach-ground-geometry.ts';
 import {WALL_VISUAL_HEIGHT} from './breach-door-proportions.ts';
@@ -161,6 +162,10 @@ export class TacticalScene3D{
   private readonly presentationSight=new PresentationSightMemo();
   /** Reused every 3D frame; occupancy only affects roof presentation. */
   private readonly occupiedRoofRoomIds=new Set<string>();
+  /** Render-only: a single history scan for all actors' overlapping muzzle
+   * flashes; shot visibility stays evaluated by the original resolver. */
+  private readonly recentMuzzleShots=
+   new RecentMuzzleShotFrameIndex<Session['shots'][number]>();
   // E6.15: reuse existing P1.5 actor/scene phase counters only when the
   // user explicitly requests a local coldBench capture. Normal gameplay
   // still leaves pose/phase CPU timing entirely disabled.
@@ -2153,6 +2158,9 @@ export class TacticalScene3D{
       this.rescueFigure.position.set(s.rescue.p.x,0,s.rescue.p.y);
     }else if(this.rescueFigure)this.rescueFigure.visible=false;
     this.markScenePhase('disclosure');
+    // One history pass per drawn frame, rather than rewalking all retained
+    // shots for every friendly, hostile and recently undisclosed rig.
+    this.recentMuzzleShots.rebuild(s.shots);
     // Quality tier is camera-wide, not per-person. Calculate it once even
     // when twenty operators are animating this frame.
     const frameShadowDetail=operatorShadowDetail(
@@ -2223,7 +2231,8 @@ export class TacticalScene3D{
       const muzzleAttachment=actor.weaponConfiguration?.slots.muzzle;
       // Rapid bursts can have overlapping live shot cues. Display the
       // newest physically recorded flash, never an older first match.
-      const firing=mostRecentActiveMuzzleShot(s.shots,actor.id,
+      const firing=mostRecentActiveMuzzleShot(
+        this.recentMuzzleShots.forShooter(actor.id),actor.id,
         actor.weapon,muzzleAttachment,
         shot=>omniscient||shotVisibility(s,shot).flash);
       const flashCue=muzzleFlashCue(actor.weapon,
