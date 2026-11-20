@@ -1,0 +1,42 @@
+name: D15 R1 custody targeted release validation
+on:
+  push:
+    branches: [release/d15-r1-critical-20261120]
+    paths:
+      - '.github/workflows/d15-r1-validation.yml'
+      - 'tests/dispatch-d9-contact.test.mjs'
+      - 'src/**'
+      - 'tests/dispatch-d15*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d15-r1-targeted
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: D9 D15 surrender custody weapon replay and extraction
+        run: |
+          node --experimental-strip-types --test \
+            tests/dispatch-d9-contact.test.mjs \
+            tests/dispatch-d15-operational-foundation.test.mjs \
+            tests/dispatch-d15-living-surrender.test.mjs \
+            tests/dispatch-d15-suspect-restraint.test.mjs \
+            tests/dispatch-d15-weapon-security.test.mjs \
+            tests/breach-155.test.mjs \
+            tests/eqa3-10-restrain.test.mjs
+      - name: Preserve M3 M4 doorway and squad physicality
+        run: |
+          node --experimental-strip-types --test \
+            tests/movement-m3-door-lifecycle.test.mjs \
+            tests/movement-m4-queue-formation.test.mjs
+      - name: Production typecheck build and stamp
+        run: npm run build

@@ -76,7 +76,7 @@ test('D9.2 order processing is timed and source-limited; no new authority for ar
  assert.match(interactions,/n.interaction==='challenge-suspect'/);
  assert.match(interactions,/port.inSight\(a,suspect,s\)/);
  assert.match(interactions,/SUSPECT_CHALLENGE_SECONDS/);
- assert.match(interactions,/commitSuspectSurrender\(s,suspect,notify,battleEvent,'challenge'\)/);
+ assert.match(interactions,/commitSuspectSurrender\(s,suspect,notify,battleEvent,'challenge',a\.id\)/);
  assert.match(read('breach-tactical-context-command.ts'),/planSuspectChallenge\(state,selected,target.id\)/);
  assert.match(read('ui/tactical-palette-controller.ts'),/nearSuspect:!!suspectAtPlan/);
  assert.match(read('breach-order-interactions.ts'),/n.interaction==='follow-civilian'/);
