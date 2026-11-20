@@ -406,10 +406,10 @@ export class CampaignKitPreview{
   this.createHotspots();
   this.syncHotspots();
  }
- setSelectedSlot(slot:LoadoutSlot):void{
+ setSelectedSlot(slot:LoadoutSlot,changePresentation=true):void{
   this.activeHotspot=slot;
-  // Use the actual rig's neutral pose when handling body gear.
-  this.setWeaponPresentation(slot==='primary');
+  // First paint stays neutral even if the weapon tab is initially selected.
+  if(changePresentation)this.setWeaponPresentation(slot==='primary');
   this.syncHotspots();
  }
  setWeaponPresentation(held:boolean):void{
