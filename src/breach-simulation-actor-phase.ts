@@ -6,6 +6,7 @@ import {type Pt,OPERATOR_RADIUS} from './breach-core.ts';
 import {length,targetAngle,angleDifference} from './breach-plan.ts';
 import {witnessShock,countNearbyEnemyAllies,countRecentlySeenThreats,moraleResponse} from './breach-ai-morale.ts';
 import {commitSuspectSurrender} from './breach-suspect-compliance.ts';
+import {activeCombatant} from './breach-suspect-operational-state.ts';
 import {passageIdleYieldStep,type PassageActor} from './breach-passage.ts';
 import {noteQueueMotion} from './breach-queue-trace.ts';
 import {idleYieldAllowed,commitIdleYield} from './breach-passage-yield.ts';
@@ -45,7 +46,7 @@ export function advanceSimulationActors(s:Session,h:number,
  for(const a of s.operators){
     if(a.health<=0&&a.reload>0){a.reload=0;a.reloadMode=null;}
     a.fireCd=Math.max(0,a.fireCd-h);
-    if(a.side==='red'&&a.health>0){
+    if(a.side==='red'&&activeCombatant(a)){
       a.morale=Math.min(1,a.morale+h*.006-
         (a.suppression>.65?h*.075:0));
       // Only a visible nearby casualty affects this actor's resolve.
@@ -85,7 +86,7 @@ export function advanceSimulationActors(s:Session,h:number,
     }
     a.suppression=Math.max(0,a.suppression-h*.17);
     a.priorP=clone(a.p);
-    if(a.health<=0)continue;
+    if(!activeCombatant(a))continue;
     if((a.doorStunUntil??0)>s.seconds){
       // Retain authored orders; no movement or firing while physically stunned.
       a.velocity=0;a.motorPause='contact';
