@@ -1383,6 +1383,22 @@ export class CampaignScreen{
     const ai=c.squadIds.indexOf(a.id),bi=c.squadIds.indexOf(b.id);
     return (ai<0?99:ai)-(bi<0?99:bi);
    });
+  // The full squad rail remains available on desktop. A compact selector is
+  // placed in the header on phones so the model, not roster cards, owns space.
+  const mobileOperatorSelect=node('select','campaign-outfitter-operator-select') as HTMLSelectElement;
+  mobileOperatorSelect.setAttribute('aria-label','Choose outfitting operator');
+  for(const operator of preparable){
+   const option=node('option','',operator.callsign.toUpperCase()) as HTMLOptionElement;
+   option.value=operator.id;
+   mobileOperatorSelect.append(option);
+  }
+  mobileOperatorSelect.value=id;
+  mobileOperatorSelect.addEventListener('change',()=>{
+   this.armoryOperatorId=mobileOperatorSelect.value;this.home(c);
+  });
+  const mobileMetrics=node('span','campaign-outfitter-metrics',
+   currentMass.toFixed(1)+' KG · '+currentMobility+'% MOBILITY');
+  top.append(mobileOperatorSelect,mobileMetrics);
   main.append(createLoadoutSquadRail(preparable.map(o=>({
    id:o.id,name:o.callsign.toUpperCase(),
    detail:o.weapon.toUpperCase(),
@@ -1735,7 +1751,35 @@ export class CampaignScreen{
   const benchButtons=new Map<LoadoutSlot,HTMLButtonElement>();
   const benchNav=node('nav','campaign-kit-bench-zones');
   benchNav.setAttribute('aria-label','Choose equipment position');
-  const compact=window.matchMedia?.('(max-width:620px)').matches??false;
+  const compact=window.matchMedia?.('(max-width:620px), (max-width:920px) and (max-height:620px)').matches??false;
+  const leftRail=node('div','campaign-outfitter-rail campaign-outfitter-rail-left');
+  const rightRail=node('div','campaign-outfitter-rail campaign-outfitter-rail-right');
+  // Monochrome icons are precise 44px targets, not projected over the rig.
+  // All eight core categories are ALWAYS reachable, including hidden packs.
+  const glyphs:Record<string,string>={
+   primary:'M12 3v3m0 3v-3m0 3v3m0-3v3 M5 12h14 M12 5v14',
+   head:'M4 17h16 M6 17v-5a6 6 0 0 1 12 0v5 M5 12h14',
+   armor:'M12 2l8 4v6c0 5-3 8-8 12C7 20 4 17 4 12V6z',
+   rig:'M4 5h16v15H4z M8 5v15 M16 5v15 M4 11h16',
+   belt:'M3 9h18v6H3z M14 9v6 M17 11h2',
+   backpack:'M7 6V5a5 5 0 0 1 10 0v1 M6 6h12v15H6z M9 11h6v4H9z',
+   medical:'M9 4h6v5h5v6h-5v5H9v-5H4V9h5z',
+   utility:'M20 7a5 5 0 0 1-6 6l-7 7-3-3 7-7a5 5 0 0 1 6-6l-3 3 3 3z'
+  };
+  const buildIcon=(slot:string)=>{
+   const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+   svg.setAttribute('viewBox','0 0 24 24');
+   svg.setAttribute('aria-hidden','true');
+   svg.classList.add('campaign-outfitter-icon');
+   const path=document.createElementNS('http://www.w3.org/2000/svg','path');
+   path.setAttribute('d',glyphs[slot]??glyphs.utility);
+   path.setAttribute('fill','none');
+   path.setAttribute('stroke','currentColor');
+   path.setAttribute('stroke-width','1.8');
+   path.setAttribute('stroke-linejoin','round');
+   path.setAttribute('stroke-linecap','round');
+   svg.append(path);return svg;
+  };
   for(const [slot,label] of [
    ['primary','WEAPON'],['head','HEAD'],['armor','ARMOR'],
    ['rig','CHEST'],['belt','BELT'],['backpack','PACK'],
@@ -1743,10 +1787,16 @@ export class CampaignScreen{
   ] as const){
    const part=button(label,()=>selectBenchSlot(slot),'campaign-kit-bench-zone');
    part.dataset.slot=slot;
+   part.setAttribute('aria-label','Inspect '+label.toLowerCase()+' equipment');
+   const caption=node('span','campaign-outfitter-icon-label',label);
+   part.replaceChildren(buildIcon(slot),caption);
    part.setAttribute('aria-current',String(this.activeBenchSlot===slot));
-   benchNav.append(part);benchButtons.set(slot,part);
+   (['primary','head','armor','rig'].includes(slot)?leftRail:rightRail).append(part);
+   benchButtons.set(slot,part);
   }
-  editor.insertBefore(benchNav,grouped.group.weapon);
+  benchNav.append(leftRail,rightRail);
+  if(compact)summary.append(benchNav);
+  else editor.insertBefore(benchNav,grouped.group.weapon);
   const issuedMore=node('details','campaign-kit-bench-more');
   issuedMore.append(node('summary','','CLOTHING & ISSUED BASICS'));
   const issuedSlots=node('div','campaign-kit-bench-more-grid');
@@ -1760,6 +1810,15 @@ export class CampaignScreen{
   }
   issuedMore.append(issuedSlots);
   editor.insertBefore(issuedMore,grouped.group.weapon);
+  const contextTitle=node('div','campaign-outfitter-context-title');
+  const contextName=node('strong','',
+   this.activeBenchSlot==='primary'?'WEAPON':
+   this.activeBenchSlot==='rig'?'CHEST RIG':
+   this.activeBenchSlot==='backpack'?'BACKPACK':
+   this.activeBenchSlot.toUpperCase());
+  const contextMeta=node('small','','Select equipment or place carried items');
+  contextTitle.append(contextName,contextMeta);
+  editor.insertBefore(contextTitle,grouped.group.weapon);
   const selectBenchSlot=(slot:LoadoutSlot,fromModel=false)=>{
    this.activeBenchSlot=slot;main.dataset.benchSlot=slot;
    this.activeKitWorkspace='equipment';main.dataset.kitWorkspace='equipment';
@@ -1769,15 +1828,20 @@ export class CampaignScreen{
     control.setAttribute('aria-current',String(key===slot));
    for(const [key,row] of benchRows)row.hidden=compact&&key!==slot;
    showGroup(loadoutGroupForSlot(slot));
-   if(fromModel&&compact){
-    if(['top','legs','hands','feet'].includes(slot))issuedMore.open=true;
-    requestAnimationFrame(()=>{
-     const row=benchRows.get(slot);
-     if(!row||!row.isConnected)return;
-     row.scrollIntoView({block:'nearest',
-      behavior:window.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'instant':'smooth'});
-    });
-   }
+   contextName.textContent=slot==='primary'?'WEAPON':
+    slot==='rig'?'CHEST RIG':slot==='backpack'?'BACKPACK':
+    slot==='utility'?'TOOLS':slot.toUpperCase();
+   contextMeta.textContent='CURRENT EQUIPMENT · TAP TO CHANGE';
+   this.preview?.clearTransientSelection();
+   if(slot==='backpack')this.preview?.setAzimuth(Math.PI);
+   else if(Math.cos(this.preview?.getAzimuth()??.72)<-.2&&
+    ['primary','head','armor','rig'].includes(slot))
+    this.preview?.setAzimuth(.72);
+   if(fromModel&&compact&&['top','legs','hands','feet'].includes(slot))
+    issuedMore.open=true;
+   // The bottom drawer alone scrolls; never move the whole screen to follow
+   // a selected body part. Its content starts at the current item.
+   if(compact)editor.scrollTop=0;
    this.preview?.setSelectedSlot(slot);
    this.preview?.focusOn(slot==='head'?'head':slot==='primary'?'weapon':
     slot==='armor'||slot==='rig'||slot==='top'?'torso':
@@ -1789,6 +1853,9 @@ export class CampaignScreen{
    setCategory(group);
   }
   const activateWorkspace=(destination:'equipment'|'physical')=>{
+   this.preview?.clearTransientSelection();
+   contextMeta.textContent=destination==='physical'?
+    'TAP AN ITEM, THEN CHOOSE A CARRY LOCATION':'CURRENT EQUIPMENT · TAP TO CHANGE';
    this.activeKitWorkspace=destination;
    main.dataset.kitWorkspace=destination;
    if(destination==='physical')showGroup('carry');
@@ -2152,6 +2219,9 @@ export class CampaignScreen{
    // primary physical-magazine board inside Physical Carry.
    kitUtilities.append(magazines);
   }
+  // One contextual drawer, one camera and one selection authority. The
+  // workspace selector is inside the drawer; it never creates another page.
+  if(compact)editor.prepend(workspaceNav);
   grid.append(editor);main.append(grid);
   this.root.append(main);
   if(this.weaponView){

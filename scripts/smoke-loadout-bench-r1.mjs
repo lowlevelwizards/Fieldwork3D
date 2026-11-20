@@ -18,8 +18,11 @@ try{
   '--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'
  ]});
  try{
-  for(const width of [320,390]){
-   const page=await browser.newPage({viewport:{width,height:844},
+  for(const {width,height} of [
+   {width:320,height:844},{width:390,height:844},
+   {width:667,height:375}
+  ]){
+   const page=await browser.newPage({viewport:{width,height},
     isMobile:true,hasTouch:true});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto(origin+'/index.html',{waitUntil:'domcontentloaded'});
@@ -38,11 +41,33 @@ try{
    assert.equal(await nav.locator('button').count(),2,'Only two editing modes');
    assert.ok(await armory.locator('.campaign-kit-preview canvas').count(),
     'One real operator model remains on-screen');
-   const readiness=armory.locator('.campaign-kit-readiness-drawer');
-   assert.equal(await readiness.evaluate(el=>el.open),false);
-   await readiness.locator(':scope > summary').click();
-   assert.ok(await readiness.locator('.campaign-kit-readiness-panel').isVisible());
-   await readiness.locator(':scope > summary').click();
+   const roster=armory.locator('.campaign-outfitter-operator-select');
+   assert.ok(await roster.isVisible(),'Compact operator selector visible');
+   assert.ok(await armory.locator('.campaign-outfitter-metrics').isVisible());
+   const stage=armory.locator('.campaign-kit-summary');
+   const drawer=armory.locator('.campaign-kit-editor');
+   const screen=await armory.evaluate(el=>{
+    const bounds=node=>{const r=node.getBoundingClientRect();return {
+     top:r.top,bottom:r.bottom,left:r.left,right:r.right,
+     width:r.width,height:r.height};
+    };
+    return {viewport:{width:innerWidth,height:innerHeight},
+     root:bounds(el),stage:bounds(el.querySelector('.campaign-kit-summary')),
+     drawer:bounds(el.querySelector('.campaign-kit-editor')),
+     rail:bounds(el.querySelector('.campaign-kit-bench-zones')),
+     style:getComputedStyle(el).position};
+   });
+   assert.equal(screen.style,'fixed','Whole outfitter owns one stable viewport');
+   assert.ok(screen.root.bottom<=screen.viewport.height+2&&
+    screen.root.top>=-2&&screen.root.height<=screen.viewport.height+2,
+    'No vertical page length outside screen '+JSON.stringify(screen));
+   assert.ok(screen.stage.bottom<=screen.drawer.top+3&&
+    screen.drawer.bottom<=screen.viewport.height+2,
+    'Stage and drawer occupy separate non-overlapping viewport bands '+JSON.stringify(screen));
+   assert.equal(await armory.locator('.campaign-kit-bench-zone:visible').count(),8,
+    'Every category is available along the two icon rails');
+   assert.equal(await armory.locator('.campaign-kit-bench-zone svg:visible').count(),8,
+    'All eight category buttons have real icons');
    await armory.locator('.campaign-kit-bench-zone[data-slot="head"]').click();
    assert.equal(await armory.getAttribute('data-bench-slot'),'head');
    const row=armory.locator('.campaign-kit-choice[data-bench-slot="head"]');
@@ -70,21 +95,19 @@ try{
     Math.abs(layout.layer.width-layout.host.width)<4&&
     Math.abs(layout.layer.height-layout.host.height)<4,
     'Hotspot coordinate space must equal the stage, not the sticky summary '+JSON.stringify(layout));
-   assert.ok(layout.visibleHotspots<=4,
-    'Only a few small projected body markers may cover phone model '+JSON.stringify(layout));
+   assert.equal(await preview.locator('.campaign-kit-hotspot:visible').count(),0,
+    'The clean operator model has no permanent floating category pips');
    for(const control of layout.controls){
+    if(control.width===0||control.height===0)continue;
     assert.ok(control.width<=Math.max(155,layout.host.width*.55)&&
      control.height<=44,'Overlay button must not stretch into an unreadable bar '+
      JSON.stringify(control));
     assert.ok(control.x>=layout.host.x-3&&control.right<=layout.host.right+3&&
      control.y>=layout.host.y-3&&control.bottom<=layout.host.bottom+3,
-     'Overlay controls stay inside the preview '+JSON.stringify(control));
+     'Visible overlay controls stay inside the preview '+JSON.stringify(control));
    }
-   const headMarker=preview.locator('.campaign-kit-hotspot[data-slot="head"]:visible');
-   assert.ok(await headMarker.isVisible(),'Head pickpoint remains available');
-   await headMarker.click();
    assert.equal(await armory.getAttribute('data-bench-slot'),'head',
-    '3D body marker routes to the correct existing gear editor');
+    'Head icon routes to the actual equipment editor');
    await row.locator('.campaign-kit-picker-trigger').click();
    const shelf=row.locator('.campaign-gear-picker-inline');
    await shelf.waitFor({timeout:20000});
@@ -113,6 +136,8 @@ try{
    });
    assert.ok(visibility.max>75&&visibility.brightFraction>.0015,
     'True rendered item image has legible illuminated pixels '+JSON.stringify(visibility));
+   await armory.locator('.campaign-kit-bench-zone[data-slot="backpack"]').click();
+   assert.equal(await armory.getAttribute('data-bench-slot'),'backpack');
    await nav.getByRole('button',{name:'ARRANGE CARRY'}).click();
    const board=armory.locator('.fw-field-inventory');
    assert.ok(await board.isVisible());
@@ -122,6 +147,8 @@ try{
    assert.equal(await board.getAttribute('data-active-location'),'belt');
    assert.equal(await board.locator('.fw-field-inventory-slot:visible').count(),1);
    assert.ok(await board.locator('.fw-field-inventory-slot[data-location="belt"]').isVisible());
+   assert.equal(await board.locator('.fw-carry-bodymap').evaluate(el=>el.open),false,
+    'Precision diagram is optional and collapsed by default');
    assert.equal(await board.locator('.fw-field-inventory-issue').evaluate(el=>el.open),false);
    assert.equal(await board.locator('.fw-field-inventory-advanced').evaluate(el=>el.open),false);
    assert.deepEqual(errors,[],'No runtime exceptions at '+width+'px');

@@ -398,7 +398,7 @@
 /* Bench R4 — one carrier at a time, with a single short destination picker.
  * Full inventory still exists in the real physical board; no duplicate
  * item source or alternative movement implementation. */
-@media(max-width:620px){
+@media(max-width:620px), (max-width:920px) and (max-height:620px){
  .fw-field-inventory[data-active-location="rig"]
   .fw-field-inventory-slot:not([data-location="rig"]),
  .fw-field-inventory[data-active-location="belt"]
