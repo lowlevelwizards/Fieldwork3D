@@ -2218,3 +2218,14 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(min-width:621px){
  .campaign-armory-screen .campaign-kit-bench-more{display:none}
 }
+
+
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-summary::after{
+  content:"TAP GEAR TO EDIT  ·  SWIPE TO ROTATE";
+  display:block;position:absolute;left:16px;right:16px;bottom:10px;
+  padding:3px 5px;border-radius:4px;text-align:center;
+  font:700 10px/1.25 var(--fw-font-action);
+  color:#d9e6d2;background:#132921d9;pointer-events:none;
+ }
+}
