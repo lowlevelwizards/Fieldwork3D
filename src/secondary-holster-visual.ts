@@ -217,9 +217,9 @@ export function presentSecondaryMuzzleFlash(
  const sockets=glockArtSockets(sidearm!.weapon as GlockAppearanceId);
  // The pistol is already moved to its solved wrist by poseOperator().
  const point=mount!.flashWorld.set(
-  (sockets.muzzle.x-sockets.holsterPivot.x)*.37,
-  (sockets.muzzle.y-sockets.holsterPivot.y)*.37,
-  (sockets.muzzle.z-sockets.holsterPivot.z)*.37);
+  sockets.muzzle.x-sockets.holsterPivot.x,
+  sockets.muzzle.y-sockets.holsterPivot.y,
+  sockets.muzzle.z-sockets.holsterPivot.z);
  mount!.cradle.updateWorldMatrix(true,false);
  mount!.cradle.localToWorld(point);
  if(flash.parent!==root)root.add(flash);
