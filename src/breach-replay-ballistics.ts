@@ -4,9 +4,12 @@
  */
 import type {Session,ShotEvent} from './breach-game.ts';
 import type {WeaponId} from './breach-combat.ts';
+import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 import {FAMILY_PARTS} from './equipment-weapon-families.ts';
 export type RecordedShot=ShotEvent & {
   recordedAt:number;weaponAtFire?:WeaponId;suppressedAtFire?:boolean;
+  /** Explicit pistol at ignition, independently from the holstered primary. */
+  secondaryWeaponAtFire?:GlockAppearanceId;
   receiverAtFire?:string;familyAtFire?:string;
   /** Visual preset caliber; firing mechanics remain class-based. */
   nominalCaliberAtFire?:string
@@ -31,12 +34,13 @@ export class ReplayBallisticsRecorder{
       this.shots.push({
         ...shot,start:position(shot.start),end:position(shot.end),
         weaponAtFire:shooter?.weapon,
+        secondaryWeaponAtFire:shot.secondaryWeapon,
         receiverAtFire:shooter?.weaponConfiguration?.build?.parts.receiver,
         familyAtFire:shooter?.weaponConfiguration?.build?.family,
-        nominalCaliberAtFire:nominalCaliber[
+        nominalCaliberAtFire:shot.secondaryWeapon?'9×19 mm':nominalCaliber[
           FAMILY_PARTS[shooter?.weaponConfiguration?.build?.parts.receiver??'']?.feed??''],
-        suppressedAtFire:shooter?.weaponConfiguration?.slots.muzzle===
-          'muzzle-suppressor',
+        suppressedAtFire:!shot.secondaryWeapon&&
+          shooter?.weaponConfiguration?.slots.muzzle==='muzzle-suppressor',
         recordedAt:Number.isFinite(recordedAt)?recordedAt:s.seconds
       });
       this.lastShotId=shot.id;
