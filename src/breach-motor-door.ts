@@ -240,7 +240,7 @@ export function handleMotorDoor(
          [a.p],OPERATOR_RADIUS+1)){
       const staged=doorApproach(a.p,doorAhead,sessionWorldGeometry(s),
         [...s.operators.filter(other=>other!==a&&other.health>0).map(other=>other.p),
-         ...s.civilians.filter(c=>c.health>0).map(c=>c.p)]);
+         ...s.civilians.filter(c=>c.health>0).map(c=>c.p)],0,s.doors);
       if(staged&&d(staged,a.p)>5&&d(staged,a.p)<50&&
          sweptBodyClear(a.p,staged,s.doors,8,sessionWorldGeometry(s))){
         a.nav.unshift(staged);a.velocity=0;
