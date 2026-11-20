@@ -72,7 +72,7 @@ test('S5.2: cancellation reverses partial draw and does not leave a hidden-prima
 test('S5.2: removing an issued Glock from a selected operator safely returns to primary',()=>{
  const issue=initialSecondaryEquipment('rook','glock-g19-gen3');
  let s=requestSecondarySwitch(initialSecondarySwitch(),'secondary',issue).state;
- s=advanceSecondarySwitch(s,.68,issue);
+ for(let i=0;i<45;i++)s=advanceSecondarySwitch(s,1/60,issue);
  assert.equal(s.active,'secondary');
  for(let i=0;i<50;i++)s=advanceInterruptedSecondarySwitch(s,1/60,undefined);
  assert.equal(s.active,'primary');
