@@ -110,8 +110,26 @@ export function autoDoorAtBodyContact(from:Pt,to:Pt,
  }
  return nearest;
 }
+/** Candidate grid waypoints are not proof that the SHOULDER swept each
+ * edge (a diagonal grid corner can cross a real leaf between centers).
+ * Validate the entire short staging route before adopting its destination.
+ * Explicit DOOR/TOOL motor still performs exact per-tick body checks.
+ */
+export function sweptDoorStagingRoute(
+ from:Pt,waypoints:readonly Pt[],doors:Door[],
+ world?:SessionWorldGeometry
+):boolean{
+ if(!waypoints.length)return false;
+ let prior=from;
+ for(const waypoint of waypoints){
+  if(!sweptBodyClear(prior,waypoint,doors,OPERATOR_RADIUS,world))
+   return false;
+  prior=waypoint;
+ }
+ return true;
+}
 export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
- occupied:readonly Pt[]=[],minimumTravel=0):Pt|null{
+ occupied:readonly Pt[]=[],minimumTravel=0,allDoors:Door[]=[d]):Pt|null{
   const m=doorCenter(d),len=dist(d.a,d.b)||1;
   const t={x:(d.b.x-d.a.x)/len,y:(d.b.y-d.a.y)/len};
   const n={x:-t.y,y:t.x};
@@ -143,10 +161,11 @@ export function doorApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
   // leaf, forcing a silly detour or wall scrape just to approach a door.
   const staged=candidates.flatMap((point,index)=>{
     if(dist(from,point)<minimumTravel||
-       !bodyClear(point,[d],OPERATOR_RADIUS,world)||!doorReachable(point,d)||
+       !bodyClear(point,allDoors,OPERATOR_RADIUS,world)||!doorReachable(point,d)||
         occupied.some(other=>dist(other,point)<27))return [];
-    const waypoints=route(from,point,p=>bodyClear(p,[d],OPERATOR_RADIUS,world));
-    if(!waypoints.length||!waypoints.every(onChosenSide))return [];
+    const waypoints=route(from,point,p=>bodyClear(p,allDoors,OPERATOR_RADIUS,world));
+    if(!waypoints.length||!waypoints.every(onChosenSide)||
+       !sweptDoorStagingRoute(from,waypoints,allDoors,world))return [];
     let previous=from,pathLength=0;
     for(const waypoint of waypoints){
       pathLength+=dist(previous,waypoint);previous=waypoint;
@@ -168,7 +187,8 @@ export function lockpickReachable(p:Pt,d:Door):boolean{
  * same full-body world collision and route gate as normal door approach.
  * Never move an actor instantly or cross the closed panel.
  */
-export function lockpickApproach(from:Pt,d:Door,world?:SessionWorldGeometry):Pt|null{
+export function lockpickApproach(from:Pt,d:Door,world?:SessionWorldGeometry,
+ allDoors:Door[]=[d]):Pt|null{
   const handle=handlePoint(d),center=doorCenter(d);
   const length=dist(d.a,d.b)||1;
   const t={x:(d.b.x-d.a.x)/length,y:(d.b.y-d.a.y)/length};
@@ -182,9 +202,10 @@ export function lockpickApproach(from:Pt,d:Door,world?:SessionWorldGeometry):Pt|
         y:handle.y+normal.y*depth*side+t.y*along});
   const reachable=positions.flatMap((point,index)=>{
     if(!lockpickReachable(point,d)||
-       !bodyClear(point,[d],OPERATOR_RADIUS,world))return [];
-    const waypoints=route(from,point,p=>bodyClear(p,[d],OPERATOR_RADIUS,world));
-    if(!waypoints.length)return [];
+       !bodyClear(point,allDoors,OPERATOR_RADIUS,world))return [];
+    const waypoints=route(from,point,p=>bodyClear(p,allDoors,OPERATOR_RADIUS,world));
+    if(!waypoints.length||
+       !sweptDoorStagingRoute(from,waypoints,allDoors,world))return [];
     let previous=from,travel=0;
     for(const waypoint of waypoints){
       travel+=dist(previous,waypoint);previous=waypoint;

@@ -56,7 +56,8 @@ export class QueueMotionAudit {
   // Every sixth 60-Hz tick: 10Hz and <=600 samples per member in 60s.
   if(++this.tick%6!==0)return;
   for(const a of s.operators.filter(u=>u.side==='blue'&&u.health>0)){
-   const slot=pendingPassageSlot(a.p,slots.get(a.id),s.doors);
+   const slot=pendingPassageSlot(a.p,slots.get(a.id),s.doors,
+    a.plan.find(n=>n.kind==='move'||n.kind==='pie')?.id??null);
    const door=slot&&s.doors.find(d=>d.id===slot.doorId);
    const depth=door?signed(a.p,door)*slot!.fromSide:null;
    const previous=this.last.get(a.id);

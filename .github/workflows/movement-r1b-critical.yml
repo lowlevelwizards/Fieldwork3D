@@ -1,0 +1,56 @@
+name: Movement R1.B passage and feedback critical
+on:
+  push:
+    branches: [integration/movement-r1ab-on-main-20261120]
+    paths:
+      - 'src/breach-passage-plan.ts'
+      - 'src/breach-passage-coordinator.ts'
+      - 'src/breach-passage-visual-ranks.ts'
+      - 'src/breach-queue-trace.ts'
+      - 'src/breach-motor-passage.ts'
+      - 'src/breach-frame-actor-recovery.ts'
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-route-recurrence.ts'
+      - 'src/breach-door.ts'
+      - 'src/breach-order-entry.ts'
+      - 'src/breach-order-door.ts'
+      - 'src/breach-motor-door.ts'
+      - 'tests/release-d3-r1-*.test.mjs'
+      - 'tests/passage-q2-coordinator.test.mjs'
+      - 'tests/passage-q3-ranks.test.mjs'
+      - '.github/workflows/movement-r1b-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: movement-r1b-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript and exact passage contracts
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-r1-entry-lead.test.mjs \
+            tests/release-d3-r1-committed-progress.test.mjs \
+            tests/release-d3-r1-route-adoption.test.mjs \
+            tests/release-d3-r1-repeated-passage.test.mjs \
+            tests/release-d3-r1-passage-feedback.test.mjs \
+            tests/release-d3-r1-door-topology.test.mjs \
+            tests/release-d3-r1-frame-actor-recovery.test.mjs \
+            tests/release-d3-31f-kick-open-recovery.test.mjs \
+            tests/release-d3-30-threshold-coordination.test.mjs \
+            tests/passage-q2-coordinator.test.mjs \
+            tests/passage-q3-ranks.test.mjs \
+            tests/doorway-planned-sequence.test.mjs
+      - name: Build smoke
+        run: |
+          npm run build
+          test -s dist/fieldwork-build.json

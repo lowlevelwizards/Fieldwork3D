@@ -1,0 +1,49 @@
+name: Movement R1 final physical release gate (manual)
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: movement-r1-final-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  physical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Exact R1 contracts, TypeScript and production build
+        run: |
+          npm run check
+          node --experimental-strip-types --test \
+            tests/release-d3-r1-entry-lead.test.mjs \
+            tests/release-d3-r1-committed-progress.test.mjs \
+            tests/release-d3-r1-route-adoption.test.mjs \
+            tests/release-d3-r1-repeated-passage.test.mjs \
+            tests/release-d3-r1-passage-feedback.test.mjs \
+            tests/release-d3-r1-door-topology.test.mjs \
+            tests/release-d3-r1-frame-actor-recovery.test.mjs \
+            tests/release-d3-31f-kick-open-recovery.test.mjs \
+            tests/passage-q2-coordinator.test.mjs \
+            tests/passage-q3-ranks.test.mjs \
+            tests/breach-roadmap2-stage2-physical-integrity.test.mjs
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
+      - name: Historical 11-site motor truth with actual locked-door evidence
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/r1-historical11.json"
+          node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/r1-historical11.json"
+      - name: Independent 22-map 176-operator physical holdout
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/r1-fresh22.json"
+          node scripts/report-d3-29-terminal-cancellations.mjs "$RUNNER_TEMP/r1-fresh22.json"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: movement-r1-frozen-physical-evidence
+          path: ${{ runner.temp }}/r1-*.json
+          retention-days: 30

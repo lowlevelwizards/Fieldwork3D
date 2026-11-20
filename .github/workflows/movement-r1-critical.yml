@@ -1,0 +1,44 @@
+name: Movement R1 focused critical
+on:
+  push:
+    branches: [integration/movement-r1a-on-main-20261120]
+    paths:
+      - 'src/breach-entry-coordination.ts'
+      - 'src/breach-order-wait.ts'
+      - 'src/breach-completed-entry-leaf-yield.ts'
+      - 'src/breach-movement-commit-progress.ts'
+      - 'src/breach-simulation-motion-phase.ts'
+      - 'src/breach-passage-*.ts'
+      - 'src/breach-motor-*.ts'
+      - 'tests/release-d3-r1-*.test.mjs'
+      - '.github/workflows/movement-r1-critical.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: movement-r1-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: TypeScript authority boundary
+        run: npm run check
+      - name: New R1 and existing doorway regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/release-d3-r1-entry-lead.test.mjs \
+            tests/release-d3-r1-committed-progress.test.mjs \
+            tests/release-d3-r1-route-adoption.test.mjs \
+            tests/release-d3-30-threshold-coordination.test.mjs \
+            tests/release-d3-31f-kick-open-recovery.test.mjs \
+            tests/passage-q2-coordinator.test.mjs
+      - name: Deployable Vite bundle
+        run: |
+          npm run build
+          test -s dist/fieldwork-build.json

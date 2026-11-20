@@ -63,7 +63,10 @@ test('Q2 different thresholds own different numbered crossings',()=>{
  const next={...door,id:'NEXT',a:p(80,200),b:p(120,200)};
  const s=game([a,b],[door,next]);
  const slots=new Map([
-  ['a',[slot('a',1),slot('a',0,'NEXT',-1)]],
+  // A second authored MOVE owns NEXT: a future occurrence cannot claim
+  // the current doorway until the first MOVE actually completes.
+  ['a',[{...slot('a',1),orderId:1,eta:1},
+   {...slot('a',0,'NEXT',-1),orderId:9,eta:3}]],
   ['b',[slot('b',0),slot('b',1,'NEXT',-1)]]
  ]);
  assert.equal(movement(s,a,p(100,154),slots).rank,1);
