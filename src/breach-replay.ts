@@ -18,6 +18,7 @@ import {captureReplayManifest,type ReplayManifest} from './breach-replay-manifes
 import {copySitePowerState,createSitePowerState} from './equipment-site-power.ts';
 import {withCoverPropIds} from './worldgen/site-object-identity.ts';
 import {copyNodes,type PlanNode} from './breach-plan.ts';
+import {initialSecondarySwitch,type SecondarySwitchState} from './secondary-switching.ts';
 import {captureReplayKnowledge,applyReplayKnowledge,type ReplayKnowledge}
   from './breach-replay-visibility.ts';
 import {enablePersonalGroundCapture,drainPersonalGround,
@@ -52,6 +53,8 @@ export type ActorFrame=Pick<TeamActor,
   'traversal'|'traversalElapsed'|'traversalElevation'|
   'traversalRetreating'>;
 export type ReplayActorFrame=ActorFrame & {
+ /** S5.2: recorded explicit weapon hand, optional for all legacy films. */
+ secondarySwitch?:SecondarySwitchState;
  /** F6: optional fixed-step clock of the authored active interaction.
   * Missing in older films means no credible mid-action hand retrieval. */
  actionTimer?:number;
@@ -167,6 +170,7 @@ export function snapshot(s:Session,seenGround?:string[],
       contact:a.contact?position(a.contact):null,
       lastNoiseAt:a.lastNoiseAt,
       magazine:a.magazine,reserve:a.reserve,reload:a.reload,
+      secondarySwitch:a.secondarySwitch?{...a.secondarySwitch}:initialSecondarySwitch(),
       insertedMagazineId:a.insertedMagazineId,
       spareMagazines:reuseFrozenReplayValue(a.spareMagazines,
         prior?.spareMagazines,()=>a.spareMagazines.map(m=>({...m}))),
@@ -450,6 +454,10 @@ export class MissionRecorder{
         coverStanceDrop:mix(a.coverStanceDrop??0,
           b.coverStanceDrop??0,alpha),
         reload:mix(a.reload,b.reload,alpha),
+        secondarySwitch:{...(a.secondarySwitch??initialSecondarySwitch()),
+          fraction:mix(a.secondarySwitch?.fraction??0,
+            b.secondarySwitch?.fraction??0,alpha)},
+
         recoil:mix(a.recoil,b.recoil,alpha),
         stability:mix(a.stability,b.stability,alpha),
         stride:mix(a.stride,b.stride,alpha),
@@ -510,6 +518,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   for(const copy of f.actors){
     const a=s.operators.find(actor=>actor.id===copy.id);
     if(a)Object.assign(a,copy,{p:position(copy.p),
+      // Archived films have no sidearm channel; neutralize stale future
+      // state rather than leaking a selected pistol across seek.
+      secondarySwitch:copy.secondarySwitch?{...copy.secondarySwitch}:initialSecondarySwitch(),
       // F2: rewind physically carried locations as well as the HUD counters.
       // Archived frames without this optional field keep their old kit.
       ...(copy.fieldInventory&&a.equipment?{
