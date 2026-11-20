@@ -2,6 +2,8 @@
 import type {WeaponId} from './breach-combat.ts';
 export type EjectedCasing={
  id:number;at:number;weapon:WeaponId;side:'blue'|'red';
+ /** Optional real Glock chamber identity; legacy casing shape remains valid. */
+ secondaryWeapon?:import('./weapons/geometry/glock-family-silhouettes.ts').GlockAppearanceId;
  x:number;z:number;y:number;heading:number;
 };
 const hash=(n:number)=>((Math.imul(n^0x9e3779b9,1664525)+1013904223)>>>0)/4294967296;
