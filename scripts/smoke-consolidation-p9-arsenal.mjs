@@ -27,6 +27,16 @@ try{
    await page.goto(origin+'/arsenal.html',{waitUntil:'domcontentloaded'});
    const tab=page.getByRole('button',{name:'SECONDARIES · GLOCK'});
    await tab.waitFor({timeout:20000});
+   // P11 shared shell must still expose both gallery hierarchies, with the
+   // primary selected and a working hero before lazy secondary activation.
+   const primary=page.locator('.arsenal-layout:not(.arsenal-glock-gallery)');
+   assert.equal(await primary.isVisible(),true);
+   assert.equal(await primary.locator('.arsenal-hero[aria-label="Selected weapon"]').count(),1);
+   assert.equal(await primary.locator('input.arsenal-search[aria-label="Find weapon model"]').count(),1);
+   assert.ok(await primary.locator('button.arsenal-card').count()>0);
+   await primary.locator('.arsenal-hero-media img').waitFor({timeout:45000});
+   assert.equal(await tab.getAttribute('aria-pressed'),'false');
+   assert.equal(await page.getByRole('button',{name:'PRIMARY WEAPONS'}).getAttribute('aria-pressed'),'true');
    assert.equal(await page.locator('.arsenal-glock-card-preview img').count(),0,
     'hidden secondary gallery performs no eager thumbnail painting');
    await tab.click();
