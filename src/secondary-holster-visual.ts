@@ -20,6 +20,7 @@ type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  flashWorld:THREE.Vector3;
 };
 const mounted=new WeakMap<THREE.Group,Mounted>();
+const WORLD_UP=new THREE.Vector3(0,1,0);
 const pouchMaterial=()=>new THREE.MeshStandardMaterial({
  color:0x2a3430,roughness:.96,metalness:0,flatShading:true
 });
@@ -190,7 +191,7 @@ export function presentSecondaryDraw(hip:THREE.Group,
  // old Lab fixtures which have no recorded shot heading.
  const targetWorldRotation=Number.isFinite(shotHeading)?
   mount.targetWorldRotation.setFromAxisAngle(
-   new THREE.Vector3(0,1,0),-shotHeading!):
+   WORLD_UP,-shotHeading!):
   chest.getWorldQuaternion(mount.targetWorldRotation);
  const parentWorldRotation=mount.holster.getWorldQuaternion(mount.parentWorldRotation);
  const targetRotation=parentWorldRotation.invert().multiply(targetWorldRotation);
