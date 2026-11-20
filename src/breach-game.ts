@@ -100,7 +100,8 @@ import {rescueEscortSeparated,rescueFollowGoal} from './breach-civilian-mission.
 import {CIVILIAN_VOICE_RANGE} from './breach-civilian-context-selection.ts';
 import {SUSPECT_CHALLENGE_RANGE} from './breach-suspect-compliance.ts';
 import {activeCombatant,captureTargetResolved} from './breach-suspect-operational-state.ts';
-import {captureTargetTransportEligible} from './breach-capture-transport-policy.ts';
+import {captureTargetTransportEligible,designatedDownedCaptureTarget}
+ from './breach-capture-transport-policy.ts';
 
 
 import type {CivilianHarmEvent} from './breach-civilian-harm.ts';
