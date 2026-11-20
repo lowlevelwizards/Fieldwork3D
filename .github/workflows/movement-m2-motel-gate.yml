@@ -1,0 +1,36 @@
+name: Movement M2.8 Motel exact recovery checkpoint
+on:
+  push:
+    branches: [feature/movement-m1m2-quality-20261120]
+    paths:
+      - 'src/breach-motor-collision.ts'
+      - 'src/breach-m2-entry-squeeze-departure.ts'
+      - 'tests/movement-m2-entry-squeeze.test.mjs'
+      - '.github/workflows/movement-m2-motel-gate.yml'
+permissions:
+  contents: read
+concurrency:
+  group: movement-m2-motel-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: M2 cold recovery and motor invariants
+        run: |
+          node --experimental-strip-types --test tests/movement-m2-entry-squeeze.test.mjs tests/movement-m2-recovery-ownership.test.mjs tests/release-d3-r1-route-adoption.test.mjs
+          npm run check
+      - name: Motel exact 31149 four physical arrivals
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 > motel-m2-31149.json
+          node -e "const r=require('./motel-m2-31149.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,operators:r.operators.map(x=>({id:x.id,arrived:x.arrived,remaining:x.remaining,blocker:x.lastBlocker}))}));if(r.arrivals!==4)process.exit(1)"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: motel-m2-exact-acceptance
+          path: motel-m2-31149.json
