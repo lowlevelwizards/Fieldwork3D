@@ -74,5 +74,6 @@ test('E6.21 source keeps dynamic and independently controlled boundaries',()=>{
  assert.match(s,/exclude:new Set\(\[glass\]\)/);
  assert.match(s,/exclude:new Set\(\[door\.threshold,door\.wedge\]\)/);
  assert.match(s,/mode:exterior\?'opaque-facade':'opaque'/);
- assert.match(s,/exclude:door\.glassPane\?new Set\(\[door\.glassPane\]\):undefined/);
+ assert.match(s,/exclude:new Set\(\[door\.intactHardware,\s*\.\.\.\(door\.glassPane\?\[door\.glassPane\]:\[\]\)\]\)/,
+  'door glass and intact hardware must remain independently hidden/broken outside the rigid leaf bake');
 });
