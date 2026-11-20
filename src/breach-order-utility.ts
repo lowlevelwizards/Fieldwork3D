@@ -82,8 +82,15 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
       }
       if(progressed.equipment!==kit)
         a.equipment={...a.equipment!,secondary:progressed.equipment};
-      if(progressed.dropped)
-        h.notify(s,a.name+' EMPTY PISTOL MAGAZINE DROPPED');
+      if(progressed.dropped){
+        // Emergency reload is the one actual inventory removal. Emit the
+        // existing bounded physical drop and preserve its exact serial.
+        s.dropped.push({id:s.nextEffectId++,p:clone(a.p),
+          side:a.side,age:0,weapon:'smg',secondaryWeapon:kit.weapon!,
+          magazineId:progressed.dropped.id,rounds:progressed.dropped.rounds});
+        if(s.dropped.length>48)s.dropped.shift();
+        h.notify(s,a.name+' PISTOL MAGAZINE DROPPED');
+      }
       a.secondaryReload=progressed.state;
       if(progressed.done){
         h.notify(s,a.name+' PISTOL RELOADED');
