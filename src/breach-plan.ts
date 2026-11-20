@@ -1,7 +1,7 @@
 /** 053: Player-authored instructions are not generated navigation vertices. */
 import type {InterruptedDoorPlan} from './breach-door-interruption.ts';
 export type Pt={x:number;y:number};
-export type PlanKind='tool'|'recover-medical'|'evacuate'|'treat'|'move'|'door'|'wait'|'holdClear'|'look'|'sync'|'pie'|'reload'|'flash'|'interact';
+export type PlanKind='tool'|'recover-medical'|'evacuate'|'treat'|'move'|'door'|'wait'|'holdClear'|'look'|'sync'|'pie'|'reload'|'flash'|'interact'|'switch-weapon';
 export type MoveMode='advance'|'strafe'|'sprint';
 export type FirePolicy='engage'|'hold'|'return'|'focus'|'suppress';
 /** Persistent world-facing instruction, independent of any movement route. */
@@ -22,6 +22,8 @@ export type PlanNode={
   moveMode?:MoveMode;pivot?:Pt;pieSide?:PieSide;pieDegrees?:number;arc?:Pt[];
   aimMode?:AimMode;aimPoint?:Pt;aimLabel?:'look'|'watch'|'strafe'|'pie';
   toolMethod?:'pick'|'pry'|'cut'|'wedge'|'unwedge'|'breach';
+  /** Explicit authored primary/secondary selection; never invented by AI. */
+  weaponHand?:'primary'|'secondary';
   patientId?:string;woundId?:number;
   transportMode?:'drag'|'carry';
   stackDoorId?:string;
@@ -92,5 +94,5 @@ export function interruptsWatch(node:Pick<PlanNode,'kind'|'paceState'|'moveMode'
  return currentPace==='run'||node.paceState==='run'||
    node.moveMode==='sprint'||
    ['door','tool','interact','flash','reload','treat','recover-medical',
-    'evacuate'].includes(node.kind);
+    'evacuate','switch-weapon'].includes(node.kind);
 }
