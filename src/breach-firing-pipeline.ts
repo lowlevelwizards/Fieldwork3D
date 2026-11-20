@@ -1,4 +1,5 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
+import {advanceInterruptedSecondarySwitch} from './secondary-switching.ts';
 import {chooseMicroAimOffset,approachMicroAimOffset,allowMicroAim}
  from './breach-physical-micro-aim.ts';
 import {canContextuallyCrouch,validRearStack,contextualCrouchRecovery}
@@ -455,6 +456,11 @@ function settlePassiveAim(a:TeamActor,dt:number):void{
  a.aim+=Math.max(-step,Math.min(step,ready-a.aim));
 }
 function fire(s:Session,a:TeamActor,dt:number){
+  // An undone/canceled order does not leave the operator permanently
+  // half-drawn or lock the primary once a pistol is unissued.
+  if(a.secondarySwitch&&a.plan[0]?.kind!=='switch-weapon')
+    a.secondarySwitch=advanceInterruptedSecondarySwitch(a.secondarySwitch,dt,
+      a.equipment?.secondary,a.health>0&&!a.surrendered);
   // Prevent the holstered primary from firing while a pistol is selected.
   if((a.secondarySwitch?.fraction??0)>0||a.secondarySwitch?.desired==='secondary'){
     a.aimSideTarget=0;return;
