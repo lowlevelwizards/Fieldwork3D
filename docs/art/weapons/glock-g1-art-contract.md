@@ -113,3 +113,59 @@ G1 appearance-only IDs remain stable; no old weapon family, primary weapon,
 ammunition, inventory, simulation or save schema is migrated. This release
 does **not** add functional pistol/holster/secondary interactions. Keep
 separate stages for that future system.
+
+
+## G2.5 Reconciliation (2026-11-19) — CURRENT authoring target, supersedes G2 datums
+
+**Visual critique:** User's live G2 screenshots confirm the family became too squat
+and block-like; the frame read as a large monolith, the guard looked thin in
+relation to the thicker slide, and removing the ejection port erased a useful
+recognition cue. G2.5 restores ~one-third of G1's silhouette proportions while
+retaining G2's integrated 3D construction and strong Fieldwork miniature mass.
+
+### Exact authoring targets (art units; not firearm dimensions)
+
+| Landmark | G19 Gen3 / Gen5 MOS | G26 | G19X |
+| --- | ---: | ---: | ---: |
+| Slide rear X | -8.55 | -8.55 | -8.55 |
+| Slide nose X | 8.30 | 5.78 | 8.30 |
+| Slide bottom/top Y | .34 / 3.04 | .34 / 3.04 | .34 / 3.04 |
+| Slide full depth | 2.96 | 2.96 | 2.96 |
+| Polymer frame full depth | 2.62 | 2.62 | 2.62 |
+| Grip heel Y | -7.65 | -6.07 | -8.75 |
+| Heel back/front X | -8.05 / -4.06 | -7.86 / -4.17 | -8.06 / -4.06 |
+| Guard outer front X / bottom Y | 1.76 / -3.80 | same | same |
+| Guard real aperture X | -2.36 to .78 | same | same |
+| Guard real aperture Y | -3.02 to -1.91 | same | same |
+
+G19 slide relative to G2: ~7.4% longer, 6.9% lower, 6.0% less
+deep; still much shorter and more massive than G1. Recovered grip length,
+a more readable backstrap sweep and slightly slimmer heel avoid both
+the pencil handle of G1 and the rectangular stump of G2.
+This is a **selective art interpolation**, not a uniformly scaled firearm.
+
+### Integrated guard and ejection side
+
+- Keep the frame, grip, and guard perimeter in **one extruded polygon with
+  a real hole**. Front pillar approximately 0.98 art units and lower bar
+  approximately 0.78: both intentionally grow with slide mass.
+- Keep the aperture visually open at miniature scale; do not plug it with
+  a trigger mechanism or decorative insert.
+- Restore ONE simple right-side ejection-port shadow rectangle on the
+  slide: x=.58..2.53, y=2.06..2.51, on the **+Z** right side only.
+  No port rectangle on left. Port is an indexed four-vertex quad within
+  the EXISTING single serration mesh; no additional geometry object.
+- Retain only 3 rear marks per side and 2 additional front marks per
+  side for Gen5 MOS. No other external controls or screw decals.
+- Five clay meshes, six ordinary detailed meshes and seven MOS meshes;
+  triangle budget remains <=220. Materials remain shared with Fieldwork.
+
+### Acceptance and protected behavior
+
+Run the focused Glock art test, TypeScript/production build and critical
+Arsenal regressions. Review native 3D hero/card, side/opposite, three-quarter,
+clay and MP5K peer modes at mobile and desktop sizes. Visual approval
+must come from reviewing rendered results, not merely from numerical tests.
+
+This release remains appearance-only: no secondary weapon simulation,
+inventory/save migration, ammunition, holstering or attachments.
