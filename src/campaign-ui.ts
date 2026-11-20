@@ -2233,6 +2233,8 @@ export class CampaignScreen{
   // Retain existing source controls OFFSCREEN to preserve save/stock handlers;
   // the visible surface is a single direct-action gallery.
   if(compact){
+   // Remove the old two-mode selector entirely from the mobile tree.
+   workspaceNav.remove();
    const legacy=node('div','fw-outfitter-legacy');
    legacy.hidden=true;
    legacy.replaceChildren(...Array.from(editor.childNodes));
