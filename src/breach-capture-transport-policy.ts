@@ -4,11 +4,10 @@
  * this exact TeamActor through the existing motor and collision authority.
  */
 import type {TeamActor,Session} from './breach-game.ts';
-import {captureVitalStatus} from './breach-capture-vitals.ts';
 export type CaptureTransportMission=Pick<Session,'missionType'|'captureTarget'>;
 export type CaptureTransportSubject=Pick<TeamActor,
- 'id'|'side'|'health'|'carriedById'|'surrendered'|
- 'medical'|'downedAt'|'deathAt'>;
+ 'id'|'side'|'health'|'carriedById'|'surrendered'> &
+ Partial<Pick<TeamActor,'deathAt'>>;
 export type CaptureTransportCarrier=Pick<TeamActor,
  'id'|'side'|'health'|'carryingId'>;
 export function captureTargetTransportEligible(
@@ -17,7 +16,7 @@ export function captureTargetTransportEligible(
  return mission.missionType==='capture'&&
    mission.captureTarget===subject.id&&subject.side==='red'&&
    carrier.side==='blue'&&subject.health<=0&&carrier.health>0&&
-   captureVitalStatus(subject)!=='deceased'&&
+   subject.deathAt==null&&
    (!subject.carriedById||subject.carriedById===carrier.id)&&
    (!carrier.carryingId||carrier.carryingId===subject.id);
 }
