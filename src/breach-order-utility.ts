@@ -28,7 +28,7 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
   if(n.kind==='switch-weapon'){
     // Do not freeze a primary reload halfway through a magazine exchange.
     // Fixed-step fire/reload remains authoritative until it can finish.
-    if(a.reload>0){a.velocity=0;return true;}
+    if(a.reload>0||a.secondaryReload){a.velocity=0;return true;}
     const target=n.weaponHand??'secondary';
     const request=requestSecondarySwitch(a.secondarySwitch??initialSecondarySwitch(),target,
       a.equipment?.secondary,a.health>0&&!a.surrendered);
