@@ -2,7 +2,7 @@ name: M1-M2 exact Garage and Motel read-only diagnostic
 on:
   push:
     branches: [audit/m1m2-queue-probe-20261120]
-    paths: ['.github/workflows/m1m2-target-probe.yml']
+    paths: ['.github/workflows/m1m2-target-probe.yml','scripts/audit-r7-squad-execution.mjs']
 permissions:
   contents: read
 jobs:
