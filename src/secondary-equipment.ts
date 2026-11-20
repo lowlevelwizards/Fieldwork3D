@@ -97,3 +97,41 @@ export function secondaryLoadMass(state:SecondaryEquipment):number{
 export function secondaryRoundTotal(state:SecondaryEquipment):number{
  return state.loadedRounds+state.spareMagazines.reduce((n,m)=>n+m.rounds,0);
 }
+
+/** Carrier-space normalization for explicitly owned magazines. No ammo or
+ * serial ID is added. The holster permanently reserves one belt cell.
+ * Never paper over a missing belt: the equipment selector must repair that.
+ */
+export type SecondaryCarrierSpace=Readonly<{
+ rig:number;belt:number;backpack:number;pocket:number
+}>;
+export function placeSecondaryMagazines(state:SecondaryEquipment,
+ capacity:SecondaryCarrierSpace):SecondaryEquipment{
+ if(!state.weapon)return state;
+ const available={
+  rig:Math.max(0,capacity.rig|0),
+  belt:Math.max(0,(capacity.belt|0)-1),
+  pocket:Math.max(0,capacity.pocket|0),
+  backpack:Math.max(0,capacity.backpack|0)
+ };
+ const locations:(SecondaryMagazineLocation|undefined)[]=
+  state.spareMagazines.map(m=>{
+   if(m.location==='overflow')return 'overflow';
+   if(available[m.location]>0){available[m.location]--;return m.location;}
+   return undefined;
+  });
+ const priority:readonly (keyof typeof available)[]=
+  ['rig','belt','pocket','backpack'];
+ const placed=state.spareMagazines.map((m,i)=>{
+  let location=locations[i];
+  if(!location){
+   location='overflow';
+   for(const slot of priority)if(available[slot]>0){
+    location=slot;available[slot]--;break;
+   }
+  }
+  return location===m.location?m:{...m,location};
+ });
+ return placed.every((m,i)=>m===state.spareMagazines[i])?
+  state:{...state,spareMagazines:placed};
+}
