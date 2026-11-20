@@ -48,8 +48,43 @@ try{
    const row=armory.locator('.campaign-kit-choice[data-bench-slot="head"]');
    assert.ok(await row.isVisible());
    const preview=armory.locator('.campaign-kit-preview');
-   assert.equal(await preview.evaluate(el=>getComputedStyle(el).position),'static',
-    'Single in-place operator stage, no floating duplicate');
+   assert.equal(await preview.evaluate(el=>getComputedStyle(el).position),'relative',
+    'Operator overlay must use the WebGL viewport as its containing block');
+   const layout=await preview.evaluate(el=>{
+    const bounds=node=>{const r=node.getBoundingClientRect();return {
+     x:r.x,y:r.y,width:r.width,height:r.height,right:r.right,bottom:r.bottom};
+    };
+    const host=bounds(el),canvas=bounds(el.querySelector('canvas'));
+    const layer=bounds(el.querySelector('.campaign-kit-hotspots'));
+    const controls=[...el.querySelectorAll(
+     '.campaign-kit-hotspot:not([hidden]),.campaign-kit-zoom button,.campaign-kit-preview-pose-toggle')]
+     .map(node=>({label:node.getAttribute('aria-label'),...bounds(node)}));
+    return {host,canvas,layer,controls,allHotspots:el.querySelectorAll(
+     '.campaign-kit-hotspot').length,visibleHotspots:el.querySelectorAll(
+     '.campaign-kit-hotspot:not([hidden])').length};
+   });
+   assert.ok(layout.canvas.width>=layout.host.width-4 &&
+    layout.canvas.height>=layout.host.height-4,'Canvas fills operator stage '+JSON.stringify(layout));
+   assert.ok(Math.abs(layout.layer.x-layout.host.x)<3&&
+    Math.abs(layout.layer.y-layout.host.y)<3&&
+    Math.abs(layout.layer.width-layout.host.width)<4&&
+    Math.abs(layout.layer.height-layout.host.height)<4,
+    'Hotspot coordinate space must equal the stage, not the sticky summary '+JSON.stringify(layout));
+   assert.ok(layout.visibleHotspots<=4,
+    'Only a few small projected body markers may cover phone model '+JSON.stringify(layout));
+   for(const control of layout.controls){
+    assert.ok(control.width<=Math.max(155,layout.host.width*.55)&&
+     control.height<=44,'Overlay button must not stretch into an unreadable bar '+
+     JSON.stringify(control));
+    assert.ok(control.x>=layout.host.x-3&&control.right<=layout.host.right+3&&
+     control.y>=layout.host.y-3&&control.bottom<=layout.host.bottom+3,
+     'Overlay controls stay inside the preview '+JSON.stringify(control));
+   }
+   const headMarker=preview.locator('.campaign-kit-hotspot[data-slot="head"]:visible');
+   assert.ok(await headMarker.isVisible(),'Head pickpoint remains available');
+   await headMarker.click();
+   assert.equal(await armory.getAttribute('data-bench-slot'),'head',
+    '3D body marker routes to the correct existing gear editor');
    await row.locator('.campaign-kit-picker-trigger').click();
    const shelf=row.locator('.campaign-gear-picker-inline');
    await shelf.waitFor({timeout:20000});
