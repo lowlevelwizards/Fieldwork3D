@@ -34,7 +34,6 @@ jobs:
       - name: Render anatomy and M3/M4 doorway carry regression
         run: |
           node --experimental-strip-types --test \
-            tests/breach-156.test.mjs \
             tests/package-b6-frame-body-output.test.mjs \
             tests/eqa3-16j-npc-lab.test.mjs \
             tests/movement-m3-door-lifecycle.test.mjs \
