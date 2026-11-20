@@ -31,7 +31,7 @@ No production game-play or manufacturing/assembly information is implied.
 | Grip front X | -4.05 | -4.04 |
 | Physical guard hole Y | -3.09 .. -1.64 | same |
 | Sight line Y | +3.52 | +3.52 |
-| Barrel center Y | +2.57 | +2.57 |
+| Barrel center Y | +2.61 | +2.61 |
 
 These are authored game-art datums, **not firearm dimensions**. The current G19 reference slide is -8.66..+8.30, nominal height +.21..+3.17, slide depth 3.20 and grip heel -7.65. M9 is longer with a more open upper and heavier grip/frame relationships rather than simply being a stretched Glock.
 
@@ -41,6 +41,9 @@ These are authored game-art datums, **not firearm dimensions**. The current G19 
 3. **B2 shared viewer.** Reuse existing demand-render `GlockViewport` camera, light, orbit, geometry lifecycle through dispatch that discriminates Glock vs Beretta. Preserve saved Glock IDs, recipes and issued equipment authority exactly.
 4. **B3 Arsenal.** M9/M9A3 factory cards under BERETTA in the same secondary gallery, 3D thumbnail and three-quarter hero, art-only visual inspection modal; NO equipping or misleading editable Beretta build controls.
 5. **B4 verify.** Focused tests for true guard hole, open-top negative space, independent variant geometry, actual geometry budget, source Glock parity, disposal and cross-family selection. `tsc`, build, desktop + mobile Arsenal screenshots and visual comparison. Approval checkpoint before any main release.
+
+## B5 visual review correction (real WebGL 390/1200 capture)
+The B4 screenshot made the forward upper read like a generic rectangular Glock slide. B5 lowers both side rail roofs to Y1.90, exposes one broader six-facet dark barrel (radius .67, center Y2.61), narrows the nose bridge, and enlarges the true guard opening. This is a primary-structure correction with no new geometry objects or false cosmetic slide window. Both M9 and M9A3 now require screenshot evidence at desktop and 390px mobile sizes before sign-off. 
 
 ## Budgets / sign-off
 - Initial review target **12–18 meshes**, **<=420 measured emitted triangles**. A more stringent 300-triangle stretch target applies only if authenticity and opening remain.
