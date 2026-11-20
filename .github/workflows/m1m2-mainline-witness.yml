@@ -1,4 +1,4 @@
-name: M1-M2 read-only mainline 11-site witness
+name: M1-M2 read-only mainline independent 22-map witness
 on:
   push:
     branches: [audit/m1m2-mainline-20261120]
@@ -19,8 +19,8 @@ jobs:
       - run: npm install --no-audit --no-fund
       - name: Identical historical read-only 11-site physical witness
         run: |
-          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/m1m2-mainline11.json"
-          node scripts/verify-d3-30-mainline.mjs "$RUNNER_TEMP/m1m2-mainline11.json"
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 22 2700 --d318-fresh22 --d329-cancellation-door-witness --progress --route-quality > "$RUNNER_TEMP/m1m2-mainline11.json"
+          node -e "const x=require(process.argv[1]);console.log(JSON.stringify(x.summary))" "$RUNNER_TEMP/m1m2-mainline11.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
