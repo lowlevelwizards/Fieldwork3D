@@ -5,6 +5,7 @@ import {W,H,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,enemies,lastKnown,isSeen} from './breach-game.ts';
 import type {ViewMode} from './breach-3d.ts';
 import {civilianPhysicalityAt} from './breach-encounter-physicality.ts';
+import {downedTransportPresentation} from './breach-capture-transport-presentation.ts';
 import {presentActor,presentCivilian,presentUnrecordedRescueMarker}
  from './rendering/breach-3d-disclosure-presenter.ts';
 import {shotVisibility,contactFade} from './breach-presentation.ts';
@@ -177,12 +178,34 @@ function sprite(a:TeamActor){
   const unidentified=!replaying&&!friendly&&!isSeen(state,a);
   const c=friendly?colorFor(a.id):unidentified?'#8b9088':'#d3917b';
   if(a.health<=0){
+    const transport=downedTransportPresentation(a,state.operators);
+    if(transport){
+      // Only a recorded reciprocal carrier link is an actual transport.
+      draw.save();draw.strokeStyle='rgba(213,190,157,.42)';
+      draw.lineWidth=2;draw.setLineDash([3,4]);
+      draw.beginPath();draw.moveTo(a.p.x,a.p.y);
+      draw.lineTo(transport.carrierPosition.x,transport.carrierPosition.y);
+      draw.stroke();draw.setLineDash([]);draw.restore();
+    }
     draw.save();draw.translate(a.p.x,a.p.y);
-    draw.rotate(a.heading);
-    rect(-13,-4,29,8,'#574d49');rect(-3,-9,5,18,'#a46556');
+    draw.rotate(transport?.heading??a.heading);
+    if(transport?.mode==='carry'){
+      // Broad across-shoulder silhouette, unlike a low floor drag.
+      rect(-11,-9,23,18,'#574d49');
+      rect(4,-10,6,20,'#a46556');
+      rect(-8,-13,8,5,'#8c7265');rect(-8,8,8,5,'#8c7265');
+    }else{
+      rect(-13,-4,29,8,'#574d49');rect(-3,-9,5,18,'#a46556');
+      if(transport){
+        rect(-17,-7,7,5,'#8c7265');rect(-17,2,7,5,'#8c7265');
+      }
+    }
     draw.restore();
-    draw.fillStyle='#7e363092';draw.beginPath();
-    draw.ellipse(a.p.x,a.p.y,13,6,a.heading,0,2*Math.PI);draw.fill();
+    if(!transport){
+      // Blood belongs to the original fall, not a repeated moving stain.
+      draw.fillStyle='#7e363092';draw.beginPath();
+      draw.ellipse(a.p.x,a.p.y,13,6,a.heading,0,2*Math.PI);draw.fill();
+    }
     return;
   }
   if(friendly&&(a.id===selected)&&
