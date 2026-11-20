@@ -245,6 +245,13 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   applyOperatorVisualKit(r.visualKit,gear,identity,
     p.magazineCarryLocations,p.faceStyle,p.wardrobe,p.weaponConfiguration,
     nvgMounted(p),p.nvgDeployed===true);
+  // An occupied functional holster replaces (never overlays) the wardrobe's
+  // decorative EMPTY holster at the same belt side.
+  if(p.equipment?.secondary?.weapon){
+   const slot=p.equipment.secondary.holster==='belt-right'?'beltRight':'beltLeft';
+   const cosmetic=r.visualKit.accessories[slot]['empty-holster'];
+   if(cosmetic)cosmetic.visible=false;
+  }
   if(traceAppearance)visualKitMs=performance.now()-kitStart;
   r.colors.set(r.visualKit.carriedMagazineMaterial,
     r.visualKit.carriedMagazineMaterial.color.clone());
