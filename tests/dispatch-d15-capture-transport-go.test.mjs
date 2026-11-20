@@ -166,3 +166,19 @@ test('D15.5E clearing a plan or losing the carrier releases reciprocal custody',
   }finally{activateSite(null);}
  }
 });
+
+test('D15.5E an unexpectedly recovered target cannot keep a stale carrier link',()=>{
+ const {s,carrier,target}=setup();
+ try{
+  assert.equal(planCasualtyTransport(s,carrier.id,target.id,
+   s.scenario.extract,'drag'),true);
+  toggling(s);
+  for(let i=0;i<200&&s.phase==='running'&&!carrier.carryingId;i++)
+   stepSession(s,1/60);
+  assert.equal(carrier.carryingId,target.id);
+  target.health=1;
+  stepSession(s,1/60);
+  assert.equal(carrier.carryingId,null);
+  assert.equal(target.carriedById,null);
+ }finally{activateSite(null);}
+});
