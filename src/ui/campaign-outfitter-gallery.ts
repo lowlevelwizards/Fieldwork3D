@@ -6,9 +6,8 @@ import {itemDefinition} from '../equipment-catalog.ts';
 import {FIELD_CARRY_LOCATIONS,initialFieldInventory,
  type FieldCarryLocation,type FieldItemId} from '../equipment-field-inventory.ts';
 import {physicalCarryBoard} from '../equipment-physical-board.ts';
-import {quoteSingleFieldTransfer} from '../equipment-field-transfer.ts';
 import {quoteOneMagazineMove} from '../equipment-magazine-transfer.ts';
-import {quoteCarryGearChange,previewCarryGearChange}
+import {quoteCarryGearChange}
  from '../equipment-carry-gear-change.ts';
 import type {EquipmentLoadout,LoadoutSlot} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
@@ -116,7 +115,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   '.fw-field-inventory-issue .fw-field-inventory-item')];
  const fieldChoices=()=>{
   const result:Choice[]=[];
-  for(const [i,row] of fieldRows().entries()){
+  for(const row of fieldRows()){
    const title=row.querySelector('strong')?.textContent??'Consumable';
    const fieldId=(title.toLowerCase().includes('flash')?'flashbang':
     title.toLowerCase().includes('wedge')?'wedge':'zip-tie') as FieldItemId;
