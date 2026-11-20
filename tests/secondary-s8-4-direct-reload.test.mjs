@@ -74,3 +74,20 @@ test('S8.4: no issued spare, interrupted draw and lost kit cannot trigger a ghos
  assert.equal(reloadNow(s,a.id),false);
  assert.equal(a.secondaryReload,null);
 });
+
+test('S8.4: entering sprint cancels a partial live reload before insertion without spending rounds',()=>{
+ const {s,a,kit,run}=setup(4);
+ const issued=secondaryRoundTotal(kit),oldSerial=kit.loadedMagazineId;
+ a.pace='run';
+ assert.equal(reloadNow(s,a.id),false);
+ a.pace='walk';
+ assert.equal(reloadNow(s,a.id),true);
+ for(let i=0;i<10;i++)run.fire(s,a,1/60);
+ assert.ok(a.secondaryReload);
+ a.pace='run';
+ run.fire(s,a,1/60);
+ assert.equal(a.secondaryReload,null);
+ assert.equal(a.equipment.secondary.loadedMagazineId,oldSerial);
+ assert.equal(secondaryRoundTotal(a.equipment.secondary),issued);
+ assert.equal(s.dropped.length,0);
+});
