@@ -1,0 +1,25 @@
+name: Performance P3.C unchanged loadout previews
+on:
+  pull_request:
+    paths:
+      - 'src/equipment-preview.ts'
+      - 'src/equipment-preview-signature.ts'
+      - 'tests/performance-p3-unchanged-loadout.test.mjs'
+      - '.github/workflows/performance-p3-unchanged-loadout.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reuse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Value signatures, invalidation and no-op presentation contracts
+        run: node --experimental-strip-types --test tests/performance-p3-unchanged-loadout.test.mjs tests/performance-p3-async-thumbnails.test.mjs
+      - name: TypeScript and bundle
+        run: npm run check && npx vite build
