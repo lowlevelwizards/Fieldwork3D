@@ -87,8 +87,10 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  choices.append(subtitle,grid,editBar,footer);
  main.append(stage,tabs,choices);
  overlay.append(head,main);
- const viewport=new GlockViewport(viewportHost,working.model);
+ // Mount before WebGL camera fitting: a detached mobile viewport has zero
+ // CSS width and would mistakenly zoom every Glock several steps too far.
  document.body.append(overlay);document.body.style.overflow='hidden';
+ const viewport=new GlockViewport(viewportHost,working.model);
  let closed=false;
  const close=()=>{
   if(closed)return;closed=true;
