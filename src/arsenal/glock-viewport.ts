@@ -24,6 +24,7 @@ export class GlockViewport{
  private yaw=.27;
  private pitch=.13;
  private radius=34;
+ private fitMultiplier=1;
  private target=new THREE.Vector3();
  private pointers=new Map<number,{x:number;y:number}>();
  private previousPinch=0;
@@ -111,7 +112,8 @@ export class GlockViewport{
   box.getCenter(this.target);
   const aspect=Math.max(.5,this.element.clientWidth/Math.max(1,this.element.clientHeight));
   const height=Math.max(size.y,size.x/aspect,size.z);
-  this.radius=THREE.MathUtils.clamp(height/(2*Math.tan(37*Math.PI/360)*.76),14,120);
+  this.radius=THREE.MathUtils.clamp(height/(2*Math.tan(37*Math.PI/360)*.76)*
+   this.fitMultiplier,14,120);
  }
  setModel(id:SidearmPreviewId,clay=false,customization?:GlockCustomization){
   // Only actual part changes trigger a mesh rebuild. Keep orbit and
@@ -128,6 +130,13 @@ export class GlockViewport{
  side(){this.yaw=0;this.pitch=0;this.draw();}
  opposite(){this.yaw=Math.PI;this.pitch=0;this.draw();}
  top(){this.yaw=0;this.pitch=1.38;this.draw();}
+ /** Scoped Beretta art-only framing; default Glock editor remains unchanged. */
+ useTightArtFraming(){
+  this.fitMultiplier=.89;this.fit();this.draw();
+ }
+ quarter(){
+  this.yaw=.52;this.pitch=.23;this.fit();this.draw();
+ }
  reset(){this.yaw=.27;this.pitch=.13;this.fit();this.draw();}
  // Coalesce touch/mouse orbit updates into the display cadence.
  private draw(){

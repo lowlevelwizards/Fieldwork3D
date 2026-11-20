@@ -961,3 +961,74 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
 .arsenal-glock-gallery .arsenal-glock-hero-visual[data-view="family"]{
  aspect-ratio:4/3
 }
+
+/* M9 C2: art-only inspection must not inherit full equipment editor chrome.
+ * One large, responsive canvas; accessible 44px view controls; no scroll
+ * wasting the second half of portrait phones. Scoped away from Glock Workbench.
+ */
+.arsenal-m9-inspector{
+ height:100dvh;overflow:hidden;
+ padding-left:max(10px,env(safe-area-inset-left,0px));
+ padding-right:max(10px,env(safe-area-inset-right,0px));
+}
+.arsenal-m9-inspector .arsenal-wb-head{
+ display:grid;grid-template-columns:auto minmax(0,1fr) auto;
+ grid-template-areas:"back identity tools";align-items:center;
+ gap:8px 13px;padding:6px 0 9px;flex:none;
+}
+.arsenal-m9-inspector .arsenal-wb-back{grid-area:back;
+ min-height:44px;white-space:nowrap}
+.arsenal-m9-inspector .arsenal-wb-identity{grid-area:identity;
+ display:flex;flex-direction:column;gap:2px}
+.arsenal-m9-inspector .arsenal-wb-head h2{
+ margin:0;font-size:clamp(21px,2.4vw,29px)}
+.arsenal-m9-inspector .arsenal-overline{font-size:10px}
+.arsenal-m9-inspector .arsenal-wb-dirty{
+ margin:0;font-size:10px;letter-spacing:.04em}
+.arsenal-m9-inspector .arsenal-wb-actions{grid-area:tools;
+ margin:0;min-width:0;max-width:100%}
+.arsenal-m9-inspector .arsenal-wb-utility-actions{
+ flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;
+ overscroll-behavior-x:contain;scrollbar-width:none;max-width:100%;
+ padding:2px 0}
+.arsenal-m9-inspector .arsenal-wb-utility-actions::-webkit-scrollbar{
+ display:none}
+.arsenal-m9-inspector .arsenal-wb-action{
+ min-height:44px;flex:none;padding:8px 10px;
+ font-size:11px;white-space:nowrap}
+.arsenal-m9-inspector .arsenal-wb-utility-actions
+ .arsenal-wb-action[aria-pressed="true"]{
+ background:var(--fw-control-active);border-color:var(--fw-sage)}
+.arsenal-m9-inspector .arsenal-wb-main{
+ display:flex;flex-direction:column;gap:6px;
+ width:min(100%,1200px);max-width:1200px;
+ flex:1;min-height:0;overflow:hidden;padding:6px 0;
+}
+.arsenal-m9-inspector .arsenal-wb-main>.arsenal-wb-stage{
+ display:flex;position:relative;min-width:0;min-height:0;flex:1;
+}
+.arsenal-m9-inspector .arsenal-wb-main>.arsenal-wb-stage
+ >.arsenal-wb-viewport{
+ position:relative;min-width:0;min-height:0;height:100%;
+ flex:1;box-shadow:none}
+.arsenal-m9-inspector .glock-wb-viewport{height:100%}
+.arsenal-m9-inspector .arsenal-wb-main>.arsenal-wb-panel{
+ flex:none;min-height:0;max-height:none;overflow:hidden;
+ background:transparent;border:0;padding:2px 4px 3px;
+}
+.arsenal-m9-inspector .glock-wb-note{
+ font:600 10px/1.25 var(--fw-font-action);
+ letter-spacing:.06em;color:var(--fw-text-muted);
+ margin:0;text-align:center}
+@media(max-width:760px){
+ .arsenal-m9-inspector .arsenal-wb-head{
+  grid-template-columns:auto minmax(0,1fr);
+  grid-template-areas:"back identity" "tools tools";gap:5px 8px;
+  padding:3px 0 6px}
+ .arsenal-m9-inspector .arsenal-wb-action{
+  font-size:11px;padding:7px 9px}
+ .arsenal-m9-inspector .arsenal-wb-utility-actions{gap:5px}
+ .arsenal-m9-inspector .arsenal-wb-back{padding:7px 10px}
+ .arsenal-m9-inspector .arsenal-wb-main{gap:4px;padding:5px 0}
+ .arsenal-m9-inspector .arsenal-wb-head h2{font-size:23px}
+}

@@ -10,7 +10,7 @@ export function openM9Inspector(id:M9AppearanceId):void{
   document.activeElement:null;
  const oldOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');
- overlay.className='arsenal-wb-screen arsenal-glock-workbench';
+ overlay.className='arsenal-wb-screen arsenal-glock-workbench arsenal-m9-inspector';
  overlay.setAttribute('role','dialog');
  overlay.setAttribute('aria-modal','true');
  overlay.setAttribute('aria-label','Beretta M9 family visual inspection');
@@ -21,19 +21,25 @@ export function openM9Inspector(id:M9AppearanceId):void{
   button.type='button';button.className='arsenal-wb-action';
   button.textContent=label;return button;
  };
- const back=action('BACK TO ARSENAL');back.classList.add('arsenal-wb-back');
+ const back=action('← ARSENAL');
+ back.setAttribute('aria-label','BACK TO ARSENAL');
+ back.classList.add('arsenal-wb-back');
  const identity=document.createElement('div');identity.className='arsenal-wb-identity';
  const over=document.createElement('span');over.className='arsenal-overline';
- over.textContent='SECONDARY WEAPON / 3D ART PREVIEW';
+ over.textContent='SECONDARY / BERETTA';
  const heading=document.createElement('h2');
  heading.textContent=M9_APPEARANCE_REFERENCES.find(r=>r.id===id)?.name??'BERETTA';
  const note=document.createElement('small');note.className='arsenal-wb-dirty';
- note.textContent='VISUAL ONLY · NOT ISSUED · NO GAMEPLAY';
+ note.textContent='3D ART PREVIEW · NOT ISSUED';
  identity.append(over,heading,note);
  const actions=document.createElement('div');actions.className='arsenal-wb-actions';
  const controls=document.createElement('div');controls.className='arsenal-wb-utility-actions';
  const side=action('SIDE'),opposite=action('OTHER SIDE'),
   orbit=action('3/4 VIEW'),top=action('TOP'),clay=action('CLAY');
+ const viewButtons=[side,opposite,orbit,top];
+ viewButtons.forEach(button=>button.setAttribute('aria-pressed',String(button===orbit)));
+ clay.setAttribute('aria-pressed','false');
+ controls.setAttribute('aria-label','3D inspection views');
  controls.append(side,opposite,orbit,top,clay);actions.append(controls);
  header.append(back,identity,actions);
  const main=document.createElement('div');main.className='arsenal-wb-main';
@@ -43,11 +49,12 @@ export function openM9Inspector(id:M9AppearanceId):void{
  const footer=document.createElement('section');
  footer.className='arsenal-wb-panel glock-wb-panel';
  const label=document.createElement('p');label.className='glock-wb-note';
- label.textContent='Fieldwork miniature 3D study. Rotate or pinch the model to inspect its real open-top slide, trigger-guard aperture and independent variant proportions. Equipment, firing and saved builds are not enabled.';
+ label.textContent='DRAG TO ROTATE · PINCH TO ZOOM · VISUAL STUDY ONLY';
  footer.append(label);main.append(stage,footer);overlay.append(header,main);
  document.body.append(overlay);
  document.body.style.overflow='hidden';
  const viewport=new GlockViewport(host,id);
+ viewport.useTightArtFraming();viewport.quarter();
  let monochrome=false,closed=false;
  const close=()=>{
   if(closed)return;closed=true;
@@ -60,10 +67,15 @@ export function openM9Inspector(id:M9AppearanceId):void{
  };
  document.addEventListener('keydown',onKey);
  back.addEventListener('click',close);
- side.addEventListener('click',()=>viewport.side());
- opposite.addEventListener('click',()=>viewport.opposite());
- orbit.addEventListener('click',()=>viewport.reset());
- top.addEventListener('click',()=>viewport.top());
+ const setView=(button:HTMLButtonElement,action:()=>void)=>{
+  action();
+  for(const candidate of viewButtons)
+   candidate.setAttribute('aria-pressed',String(candidate===button));
+ };
+ side.addEventListener('click',()=>setView(side,()=>viewport.side()));
+ opposite.addEventListener('click',()=>setView(opposite,()=>viewport.opposite()));
+ orbit.addEventListener('click',()=>setView(orbit,()=>viewport.quarter()));
+ top.addEventListener('click',()=>setView(top,()=>viewport.top()));
  clay.addEventListener('click',()=>{
   monochrome=!monochrome;viewport.setModel(id,monochrome);
   clay.setAttribute('aria-pressed',String(monochrome));

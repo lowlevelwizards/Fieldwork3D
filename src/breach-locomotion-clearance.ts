@@ -21,7 +21,7 @@ export function releaseEmbeddedMotorActor(
  // Both a 0.026-unit startup AND a 0.3-unit motor stride must be swept
  // through real doors, walls and furniture. Ordinary collision remains
  // authoritative on the actual next tick; this grants no displacement.
- if(a.squeeze&&a.nav.length&&a.plan[0]?.kind==='move'&&
+ if(a.squeeze&&a.nav.length&&a.plan?.[0]?.kind==='move'&&
     preciseNarrowExitWaypoint(a,a.nav[0])){
   // At an EXACT narrow stage center the next motor tick removes that
   // waypoint before taking another stride. Full-body rescue runs FIRST.
