@@ -1827,7 +1827,8 @@ export class CampaignScreen{
   editor.insertBefore(contextTitle,grouped.group.weapon);
   const selectBenchSlot=(slot:LoadoutSlot,fromModel=false)=>{
    this.activeBenchSlot=slot;main.dataset.benchSlot=slot;
-   this.activeKitWorkspace='equipment';main.dataset.kitWorkspace='equipment';
+   this.activeKitWorkspace='equipment';
+   main.dataset.kitWorkspace=compact?'unified':'equipment';
    for(const [key,control] of workspaceButtons)
     control.setAttribute('aria-current',String(key==='equipment'));
    for(const [key,control] of benchButtons)
