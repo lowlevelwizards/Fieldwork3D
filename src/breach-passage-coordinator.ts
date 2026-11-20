@@ -277,7 +277,10 @@ export function coordinatePassage(s:Session,a:TeamActor,
  if(forward>.025&&normalDepth(a.p,door)*slot.fromSide>=0)
   for(const other of s.operators){
    if(other===a||other.health<=0||
-      finishedFriendly(a,other)||!throat(other.p,door))continue;
+      // A stationary teammate at an authored SYNC is not counterflow.
+      // Keep motor/swept collision and queue gap enforcement unchanged.
+      other.plan[0]?.kind==='sync'||finishedFriendly(a,other)||
+      !throat(other.p,door))continue;
    if(normalDepth(other.p,door)*slot.fromSide<0){
     hostileThroat=true;break;
    }
