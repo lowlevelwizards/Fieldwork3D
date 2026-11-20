@@ -66,13 +66,15 @@ export function createMedicalOrderHandler(port:OrderExecutionPort){
   if(n.kind==='evacuate'){
     const civil=s.civilians.find(c=>c.id===n.patientId);
     const friendly=s.operators.find(o=>o.id===n.patientId&&
-      (o.side===a.side||captureTargetTransportEligible(s,o,a)));
+      (o.side===a.side||captureTargetTransportEligible(s,o,a)||
+       (a.carryingId===o.id&&o.carriedById===a.id)));
     const patient=friendly??civil;
     if(!patient||patient===a||patient.health>0||
        (friendly&&friendly.side===a.side&&friendly.surrendered)){
       if(civil&&civil.carriedById===a.id)dropCivilianCustody(civil,a);
-      else if(friendly)friendly.carriedById=null;
-      a.carryingId=null;pop(a);return true;
+      else if(friendly?.carriedById===a.id)friendly.carriedById=null;
+      if(a.carryingId===n.patientId)a.carryingId=null;
+      pop(a);return true;
     }
     if(patient.carriedById&&patient.carriedById!==a.id){
       failCurrentOrder(s,a,n,'CASUALTY ALREADY IN TRANSPORT');return true;
