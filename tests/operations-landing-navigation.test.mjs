@@ -215,14 +215,16 @@ test('Logistics keeps one-column phones and separates supply and armory on deskt
  assert.match(css,/@media\(max-width:600px\)\{\.campaign-purchases\{grid-template-columns:minmax\(0,1fr\)/);
 });
 
-test('Records preserve eight recent reports and disclose earlier history on demand',()=>{
+test('Records expose eight indexed reports and lazily disclose older history',()=>{
  const ui=source('campaign-ui.ts');
  const records=ui.slice(ui.indexOf("const chronicle=node('section','campaign-section campaign-chronicle')"),
   ui.indexOf('const footer=node(\'div\',\'campaign-footer\')'));
  assert.match(records,/const recentReports=c\.history\.slice\(-8\)\.reverse\(\)/);
  assert.match(records,/const renderOperation=\(report:\(typeof c\.history\)\[number\]\)=>/);
- assert.match(records,/const operationBoard=node\('div','campaign-operation-board'\)/);
- assert.match(records,/for\(const report of recentReports\)operationBoard\.append\(renderOperation\(report\)\)/);
+ assert.match(records,/const operationBoard=node\('div','campaign-operation-board campaign-uxr-record-index'\)/);
+ assert.match(records,/const record=button\('',\(\)=>inspect\(i\),'campaign-uxr-record-row'\)/);
+ assert.match(records,/inspected\.replaceChildren\(renderOperation\(report\)\)/);
+ assert.match(records,/this\.selectedRecordId=report\.id/);
  assert.match(records,/LATEST '\+recentReports\.length\+' OF '\+c\.history\.length/);
  assert.match(records,/if\(c\.history\.length>recentReports\.length\)/);
  assert.match(records,/const older=node\('details','campaign-operation-more'\)/);
