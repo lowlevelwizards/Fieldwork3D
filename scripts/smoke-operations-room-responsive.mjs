@@ -94,8 +94,10 @@ async function assessEstablishedCareer(page,name,mobile){
     name+' full roster did not render');
    check(await page.locator('.campaign-person-expand').first()
     .locator(':scope > summary').isVisible(),name+' roster summary unreachable');
-   check(await page.locator('.campaign-assignment select').count()===4,
-    name+' tactical slot pickers missing');
+   check(await page.locator('.campaign-uxr-slot').count()===4,
+    name+' visual deployment slots missing');
+   check(await page.locator('.campaign-uxr-reserve').count()===4,
+    name+' reserve selector missing or incomplete');
   }
   if(tab==='contracts'){
    check(await page.locator('.campaign-contract-review').count()>0,
@@ -197,7 +199,7 @@ async function assessActiveDeployment(page,name,expected){
  check((await page.locator('.campaign-overview-primary-action').textContent())
   ?.includes('CONTINUE DEPLOYMENT'),name+' active mission resume action missing');
  await page.locator('#campaign-tab-personnel').click();
- const disabled=await page.locator('.campaign-assignment select')
+ const disabled=await page.locator('.campaign-uxr-slot-change')
   .evaluateAll(els=>els.length===4&&els.every(el=>el.disabled));
  check(disabled,name+' squad slots editable during an active deployment');
  await page.locator('#campaign-tab-chronicle').click();
@@ -275,9 +277,11 @@ async function assess(browser,{name,width,height,mobile}){
    if(tab==='personnel'){
     const row=page.locator('.campaign-person-expand').first();
     check(await row.count()===1,name+' missing operator disclosures');
-    check(await row.getAttribute('open')===null,name+' operator starts expanded');
+    check(await row.getAttribute('open')!==null,name+' selected operator inspector starts closed');
     await row.locator(':scope > summary').click();
-    check(await row.getAttribute('open')!==null,name+' operator did not expand');
+    check(await row.getAttribute('open')===null,name+' operator inspector did not close');
+    await row.locator(':scope > summary').click();
+    check(await row.getAttribute('open')!==null,name+' operator inspector did not reopen');
     check(await row.locator('.campaign-person-actions button').first().isVisible(),
      name+' operator loadout action inaccessible');
     await row.locator(':scope > summary').click();
