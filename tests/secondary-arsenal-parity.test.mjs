@@ -46,12 +46,14 @@ test('Secondary Arsenal: rename/duplicate/delete and corrupt saved-build rejecti
 });
 test('Secondary Arsenal: same interactive presentation affordances with honest equipment gate',()=>{
  const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
+ const chrome=readFileSync(new URL('../src/arsenal/gallery-chrome.ts',import.meta.url),'utf8');
  const wb=readFileSync(new URL('../src/arsenal/glock-workbench.ts',import.meta.url),'utf8');
  const viewport=readFileSync(new URL('../src/arsenal/glock-viewport.ts',import.meta.url),'utf8');
- for(const token of ['arsenal-search','arsenal-filters','arsenal-grid',
-  'OPEN WORKBENCH','SAVED','renameGlockSavedBuild','duplicateGlockSavedBuild',
+ for(const token of ['arsenal-search','arsenal-filters','arsenal-grid','OPEN WORKBENCH'])
+  assert.ok(chrome.includes(token),'Missing shared chrome '+token);
+ for(const token of ['SAVED','renameGlockSavedBuild','duplicateGlockSavedBuild',
   'deleteGlockSavedBuild'])
-  assert.ok(gallery.includes(token),'Missing '+token);
+  assert.ok(gallery.includes(token),'Missing Glock authority '+token);
  for(const token of ['UNDO','REDO','FIT',
   'CHOOSE MODEL','LOAD BUILD','SAVE BUILD','role','dialog','SECONDARY_CAPACITY'])
   assert.ok(wb.includes(token),'Missing '+token);
@@ -111,14 +113,16 @@ test('S5 gallery parity: secondary uses the primary hero/browser hierarchy, with
  const primary=readFileSync(new URL('../src/arsenal/gallery-main.ts',import.meta.url),'utf8');
  const secondary=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
- assert.ok(primary.includes("className='arsenal-layout'"));
- assert.ok(primary.includes("className='arsenal-hero'"));
- assert.ok(secondary.includes("className='arsenal-layout arsenal-glock-gallery'"));
- assert.ok(secondary.includes('class="arsenal-hero arsenal-glock-feature"'));
- assert.ok(secondary.includes('class="arsenal-hero-media arsenal-glock-hero-visual"'));
- assert.ok(secondary.includes('class="arsenal-hero-copy arsenal-glock-feature-copy"'));
- assert.ok(secondary.includes('class="arsenal-browser arsenal-glock-browser"'));
- assert.ok(secondary.includes('class="arsenal-grid arsenal-glock-cards"'));
+ const chrome=readFileSync(new URL('../src/arsenal/gallery-chrome.ts',import.meta.url),'utf8');
+ assert.match(primary,/createArsenalGalleryChrome\('primary'\)/);
+ assert.match(secondary,/createArsenalGalleryChrome\('secondary'\)/);
+ for(const className of ['arsenal-layout','arsenal-hero','arsenal-hero-media',
+  'arsenal-hero-copy','arsenal-browser','arsenal-grid',
+  'arsenal-glock-gallery','arsenal-glock-feature','arsenal-glock-hero-visual',
+  'arsenal-glock-feature-copy','arsenal-glock-browser','arsenal-glock-cards'])
+  assert.ok(chrome.includes(className),'Missing shared gallery class '+className);
+ assert.doesNotMatch(secondary,/<div class="arsenal-hero/);
+ assert.doesNotMatch(primary,/document.createElement\('section'\);browser.className='arsenal-browser'/);
  assert.doesNotMatch(secondary,/arsenal-glock-views|arsenal-glock-kit|equipPanel|FAMILY SCALE|MP5K PEER/);
  assert.doesNotMatch(secondary,/readPrepared|operatorPicker|holsterPicker|equipFreshSecondary/);
  assert.ok(css.includes('.arsenal-shell>.arsenal-glock-gallery[hidden]{display:none}'));
@@ -167,8 +171,12 @@ test('G2.9: secondary factory and saved thumbnails share side view and equal gre
  assert.match(gallery,/center\.y\+\(isCard\?0:distance\*\.10\)/);
  assert.match(gallery,/renderer\.render\(ref\.id,'card',/);
  assert.match(gallery,/choice\.kind==='saved'\?choice\.build\.recipe\.customization:undefined/);
- assert.match(gallery,/className='arsenal-card arsenal-glock-card'/);
- assert.match(gallery,/className='arsenal-card-preview arsenal-glock-card-preview'/);
+ // P11 shares the card DOM author: verify that it retains G2.9 parity.
+ const sharedCards=readFileSync(new URL('../src/arsenal/gallery-browser-controls.ts',import.meta.url),'utf8');
+ assert.match(gallery,/createArsenalGalleryCard\(\{/);
+ assert.match(gallery,/kind:'secondary',name:displayName/);
+ assert.match(sharedCards,/className=secondary\?'arsenal-card arsenal-glock-card':'arsenal-card'/);
+ assert.match(sharedCards,/arsenal-card-preview arsenal-glock-card-preview/);
  assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-cards\{[^}]*grid-auto-rows:1fr/s);
  assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-card\{[^}]*height:100%/s);
  assert.match(css,/\.arsenal-glock-gallery \.arsenal-glock-card-preview\{aspect-ratio:2\.36\/1\}/);
