@@ -140,7 +140,10 @@ export function mountGlockArsenalGallery():HTMLElement{
   modelLabel.textContent=reference.name;
   desc.textContent=reference.description;
   const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
-  display(feature,selected,'hero',saved?.recipe.customization);
+  // Give a just-opened tab one paint before its costly hero readback.
+  // Priority replaces a prior hero request when selection changes rapidly.
+  previewQueue.enqueue(feature,()=>
+   display(feature,selected,'hero',saved?.recipe.customization),true);
   for(const [id,button] of buttons)
    button.setAttribute('aria-pressed',String(id===selected&&!selectedSavedId));
   for(const button of cards.querySelectorAll<HTMLButtonElement>('[data-glock-saved]'))
