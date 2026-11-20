@@ -46,6 +46,7 @@ export type OutfitterGalleryOptions={
  selectedItems?:Map<string,string>;
  scrollPositions?:Map<string,number>;
  onInspect?:(slot:LoadoutSlot,id:string,kind:'gear'|'field'|'magazine')=>void;
+ onSelectCategory?:(slot:LoadoutSlot)=>void;
  onAdvanced:()=>void;
 };
 type Choice={id:string;label:string;mass:string;kind:'gear'|'field'|'magazine';
@@ -239,6 +240,19 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
  const show=(slot:LoadoutSlot)=>{
   active=slot;root.dataset.slot=slot;
   name.textContent=(SLOT_LABEL[slot]??slot).toUpperCase();
+  heading.replaceChildren(name);
+  if(['top','legs','hands','feet'].includes(slot)){
+   const clothing=el('div','fw-outfitter-clothing-nav');
+   for(const [key,label] of [
+    ['top','TOP'],['legs','LEGS'],['hands','HANDS'],['feet','FEET']
+   ] as const){
+    const control=action(label,()=>options.onSelectCategory?.(key));
+    control.setAttribute('aria-label','Inspect '+label.toLowerCase()+' clothing');
+    control.setAttribute('aria-current',String(slot===key));
+    clothing.append(control);
+   }
+   heading.append(clothing);
+  }else heading.append(detail);
   context.replaceChildren();
   const base=equipmentChoices(slot);
   if(slot==='utility'||slot==='tactical')base.push(...fieldChoices());
