@@ -6,6 +6,7 @@ import * as THREE from 'three';
 import {configureGraphicRendererOutput}
  from '../rendering/graphic-lighting-profile.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
+import {inspectOrbitYaw,inspectOrbitPitch,positionInspectCamera} from './orbit-math.ts';
 import {buildGlockAppearance,clearGlockAppearance,
  type GlockAppearanceId} from '../weapons/geometry/glock-family-silhouettes.ts';
 import type {GlockCustomization}
@@ -33,10 +34,8 @@ export class GlockViewport{
   const height=Math.max(1,this.element.clientHeight);
   this.renderer.setSize(width,height,false);
   this.camera.aspect=width/height;this.camera.updateProjectionMatrix();
-  this.camera.position.set(this.target.x+this.radius*Math.sin(this.yaw)*Math.cos(this.pitch),
-   this.target.y+this.radius*Math.sin(this.pitch),
-   this.target.z+this.radius*Math.cos(this.yaw)*Math.cos(this.pitch));
-  this.camera.lookAt(this.target);this.renderer.render(this.scene,this.camera);
+  positionInspectCamera(this.camera,this.target,this.radius,this.yaw,this.pitch);
+  this.renderer.render(this.scene,this.camera);
  };
  constructor(host:HTMLElement,id:GlockAppearanceId){
   this.element=document.createElement('div');
@@ -82,10 +81,10 @@ export class GlockViewport{
     this.radius*this.previousPinch/distance,14,120);
    this.previousPinch=distance;
   }else{
-   // Match the primary Workbench: dragging right rotates the model right.
-   this.yaw-=(event.clientX-previous.x)*.009;
-   this.pitch=THREE.MathUtils.clamp(this.pitch+
-    (event.clientY-previous.y)*.008,-.85,.85);
+   // Match the primary Workbench's camera orbit sign and pivot convention.
+   this.yaw=inspectOrbitYaw(this.yaw,event.clientX-previous.x);
+   this.pitch=inspectOrbitPitch(this.pitch,event.clientY-previous.y,
+    .008,-.85,.85);
   }
   this.draw();
  };

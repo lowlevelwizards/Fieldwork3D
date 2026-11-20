@@ -5,6 +5,7 @@ import * as THREE from 'three';
 import {WEAPON_ACCESSORY_STEEL,WEAPON_ACCESSORY_POLYMER} from '../weapons/geometry/weapon-visual-palette.ts';
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
+import {inspectOrbitYaw,inspectOrbitPitch,positionInspectCamera} from './orbit-math.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../breach-weapon-geometry.ts';
 import {buildWeaponAccessories} from '../breach-weapon-accessories.ts';
 import {weaponVisualLayout} from '../weapons/geometry/weapon-visual-layout.ts';
@@ -276,11 +277,7 @@ export class ArsenalViewport{
    this.lastWidth=w;this.lastHeight=h;
   }
   this.camera.aspect=w/h;this.camera.updateProjectionMatrix();
-  const cos=Math.cos(this.pitch);
-  this.camera.position.set(this.target.x+this.distance*Math.sin(this.yaw)*cos,
-   this.target.y+this.distance*Math.sin(this.pitch),
-   this.target.z+this.distance*Math.cos(this.yaw)*cos);
-  this.camera.lookAt(this.target);
+  positionInspectCamera(this.camera,this.target,this.distance,this.yaw,this.pitch);
   this.renderer.render(this.scene,this.camera);
   this.positionSocketDots(w,h);
  }
@@ -322,7 +319,8 @@ export class ArsenalViewport{
    this.gestureMoved=true;this.hideDotsDuringInspection();
   }
   if(this.pointers.size===1){
-   this.yaw-=dx*.009;this.pitch=THREE.MathUtils.clamp(this.pitch+dy*.007,-.65,.85);
+   this.yaw=inspectOrbitYaw(this.yaw,dx);
+   this.pitch=inspectOrbitPitch(this.pitch,dy,.007,-.65,.85);
   }else if(this.pointers.size===2){
    const points=[...this.pointers.values()];
    const span=Math.hypot(points[0].x-points[1].x,points[0].y-points[1].y);
