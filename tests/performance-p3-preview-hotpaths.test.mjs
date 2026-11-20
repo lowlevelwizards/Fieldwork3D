@@ -23,10 +23,10 @@ test('equipment thumbnail capture reuses one GPU target and restores live frameb
  const capture=code.slice(code.indexOf(' renderModelThumbnail('),
   code.indexOf(' private previewGearMesh('));
  assert.match(code,/private thumbnailTarget:THREE\.WebGLRenderTarget\|null=null/);
- assert.match(capture,/let targetBuffer=this\.thumbnailTarget/);
- assert.match(capture,/this\.thumbnailTarget=targetBuffer/);
+ assert.match(capture,/let targetBuffer=asyncReadback\?this\.thumbnailAsyncTarget:this\.thumbnailTarget/);
+ assert.match(capture,/else this\.thumbnailTarget=targetBuffer/);
  assert.match(capture,/targetBuffer\.setSize\(shot\.width,shot\.height\)/);
- assert.match(capture,/this\.thumbnailPixels\.length!==byteLength/);
+ assert.match(capture,/if\(!pixels\|\|pixels\.length!==byteLength\)pixels=new Uint8Array/);
  assert.match(capture,/if\(!this\.thumbnailCanvas\)/);
  assert.match(capture,/finally\{[\s\S]*?this\.renderer\.setRenderTarget\(previousTarget\)/);
  assert.doesNotMatch(capture,/targetBuffer\.dispose\(\)/);
