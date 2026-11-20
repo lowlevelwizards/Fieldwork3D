@@ -2754,3 +2754,139 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-uxr-status-strip{grid-template-columns:repeat(2,minmax(0,1fr))}
  .campaign-uxr-status{padding:7px 9px}
 }
+
+/* UXR-04 — team composition: four direct-selection slots, reserve rail,
+ * exactly one visible operator inspector. No new 3D rendering per tile. */
+.campaign-personnel-workspace{gap:10px}
+.campaign-personnel-workspace .campaign-assignment{
+ padding:9px;background:transparent;border:0;
+}
+.campaign-personnel-workspace .campaign-assignment-heading{
+ align-items:center;margin-bottom:9px;
+}
+.campaign-personnel-workspace .campaign-assignment-heading p{display:none}
+.campaign-assignment-slots.campaign-uxr-squad-grid{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:8px;align-items:stretch;
+}
+.campaign-uxr-slot{
+ min-width:0;display:flex;flex-direction:column;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ border-radius:8px;overflow:hidden;
+}
+.campaign-uxr-slot[data-selected="true"]{
+ border-color:var(--fw-sage);box-shadow:inset 0 0 0 1px var(--fw-sage);
+}
+.campaign-shell .campaign-uxr-slot-main{
+ display:flex;flex-direction:column;align-items:flex-start;gap:5px;
+ margin:0;padding:9px 10px 5px;min-width:0;width:100%;
+ min-height:145px;text-align:left;border:0;border-radius:0;
+ background:transparent;color:var(--fw-text);
+}
+.campaign-uxr-slot-top{
+ display:flex;justify-content:space-between;gap:4px;align-items:center;
+ width:100%;font:650 10px/1.25 var(--fw-font-menu);
+ color:var(--fw-text-muted);
+}
+.campaign-uxr-slot-recovering{color:var(--fw-brass)}
+.campaign-uxr-slot-avatar{
+ display:flex;align-items:center;justify-content:center;
+ height:49px;width:49px;margin:0;
+ border-radius:8px;background:var(--fw-panel-raised);
+ color:var(--fw-text);border:1px solid var(--fw-panel-border);
+ font:750 21px/1 var(--fw-font-display);letter-spacing:.06em;
+}
+.campaign-uxr-slot-main>strong{
+ font:800 clamp(16px,4vw,21px)/1 var(--fw-font-display);
+ overflow-wrap:anywhere;
+}
+.campaign-uxr-slot-main>small{
+ color:var(--fw-text-muted);font:650 10px/1.3 var(--fw-font-menu);
+}
+.campaign-shell .campaign-uxr-slot-change{
+ margin:auto 0 0;min-height:36px;width:100%;padding:5px 8px;
+ border:0;border-top:1px solid var(--fw-panel-border);border-radius:0;
+ background:var(--fw-panel);color:var(--fw-text-muted);
+ font:700 11px/1.2 var(--fw-font-menu);
+}
+.campaign-uxr-assignment-picker{
+ margin:10px 0 0;padding:10px;border-radius:9px;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+}
+.campaign-uxr-assignment-picker[hidden]{display:none}
+.campaign-uxr-picker-heading{
+ display:flex;align-items:center;justify-content:space-between;gap:10px;
+ font:750 12px/1.3 var(--fw-font-menu);
+}
+.campaign-shell .campaign-uxr-picker-close{
+ width:auto;min-height:44px;margin:0;
+}
+.campaign-uxr-picker-options{
+ display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;
+ margin-top:8px;
+}
+.campaign-shell .campaign-uxr-picker-choice{
+ width:100%;margin:0;padding:9px 7px;min-height:48px;
+ font:650 12px/1.2 var(--fw-font-menu);
+ white-space:normal;overflow-wrap:anywhere;
+}
+.campaign-shell .campaign-uxr-picker-choice:disabled{
+ opacity:.48;cursor:not-allowed;
+}
+.campaign-uxr-reserves{min-width:0}
+.campaign-uxr-reserve-heading{
+ display:flex;align-items:center;justify-content:space-between;
+ gap:6px;margin:2px 0 7px;color:var(--fw-text-muted);
+ font:750 12px/1.3 var(--fw-font-menu);
+}
+.campaign-uxr-reserve-heading span{font-size:10px}
+.campaign-uxr-reserve-tiles{
+ display:flex;gap:7px;overflow-x:auto;padding:1px 0 6px;
+ scroll-snap-type:x proximity;scrollbar-width:thin;
+}
+.campaign-shell .campaign-uxr-reserve{
+ flex:1 0 94px;max-width:160px;min-width:94px;
+ min-height:92px;margin:0;padding:7px 8px;
+ display:flex;flex-direction:column;align-items:flex-start;gap:3px;
+ scroll-snap-align:start;text-align:left;
+ border-color:var(--fw-panel-border);background:var(--fw-panel-deep);
+}
+.campaign-shell .campaign-uxr-reserve[data-selected="true"]{
+ border-color:var(--fw-sage);box-shadow:inset 0 0 0 1px var(--fw-sage);
+}
+.campaign-uxr-reserve-avatar{
+ display:flex;align-items:center;justify-content:center;
+ width:32px;height:30px;border-radius:5px;
+ color:var(--fw-text);background:var(--fw-panel-raised);
+ font:750 14px var(--fw-font-display);
+}
+.campaign-uxr-reserve strong{font:750 14px/1 var(--fw-font-display)}
+.campaign-uxr-reserve small{
+ font:650 10px/1.2 var(--fw-font-menu);color:var(--fw-text-muted);
+}
+.campaign-personnel-roster-panel .campaign-roster.campaign-uxr-inspector{
+ display:block;min-width:0;
+}
+.campaign-personnel-roster-panel .campaign-uxr-inspector>.campaign-person{
+ width:100%;margin:0;box-sizing:border-box;
+}
+.campaign-personnel-roster-panel .campaign-uxr-inspector>.campaign-person[hidden]{
+ display:none!important;
+}
+@media(min-width:640px){
+ .campaign-assignment-slots.campaign-uxr-squad-grid{
+  grid-template-columns:repeat(4,minmax(0,1fr));
+ }
+ .campaign-personnel-workspace{grid-template-columns:minmax(0,1fr)}
+}
+@media(min-width:1000px){
+ .campaign-personnel-workspace{
+  grid-template-columns:minmax(0,1.2fr) minmax(290px,.8fr);
+ }
+ .campaign-assignment-slots.campaign-uxr-squad-grid{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
+@media(max-width:360px){
+ .campaign-uxr-picker-options{grid-template-columns:minmax(0,1fr)}
+}
