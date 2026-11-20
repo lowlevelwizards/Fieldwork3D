@@ -29,3 +29,14 @@ One authoritative fixed-tick motor and final frame arbiter; no generated displac
 
 ## Focused checks and release batching
 Run TypeScript, deployable build, changed-domain node tests, a few exact seeded physical witnesses. Reserve expensive 88/176-actor corpus for logical merge checkpoints. Group compatible stages and keep all unverified work on draft feature PRs. Never merge a batch on a green unit test alone.
+
+## Staged implementation checkpoint — R1.B
+Branch `feature/movement-reliability-r1b-20261120` is stacked upon draft R1.A PR #1878. **NOT YET verified or merged.**
+
+- **R1.05b**: Runtime open/lockpick door stance search now considers *all* currently physical door leaves rather than only the target leaf, retaining backward-compatible single-leaf callers. Door motor, entry tool and explicit open action pass the full Session door collection. Actual hinge/collision never changes.
+- **R1.06**: Separate authored MOVE crossing occurrences may use the same physical door and approach side without disappearing from GO-time scheduling. Preserve per-threshold ranks, attach a node ID to new slots, and filter runtime queue ownership by the currently active authored MOVE; old rank slots without node IDs remain valid. Live markers and queue trace follow the next movement order.
+- **R1.07**: Report sustained actual counterflow or occupied-door pauses individually, even if no second squad member happens to be blocked. Ordinary spacing and rank delays do not automatically become a deadlock warning. No new movement/queue manipulation.
+- **R1.08**: A separate **manual-only** final gate now executes targeted R1+door/formation/world tests and the frozen 11×2 plus independent 22×2 45-second full-motor corpora with lock witnesses and retained artifacts. Not an automatic deployment or success claim.
+
+### Release criteria
+No authorization to merge R1.B before R1.A's exact-head critical/typecheck/build pass, a safe R1.A release checkpoint (or explicit reconciliation onto main), then R1.B exact-head critical tests, both exact full physical corpora, real phone/desktop four-person and handle-stage smoke, and public Pages served-SHA verification. No rapid repeated main merges.
