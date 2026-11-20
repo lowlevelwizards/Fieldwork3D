@@ -165,6 +165,55 @@ try{
     'Exactly one physical selection marker, never one per category');
    assert.deepEqual(errors,[],'No runtime errors at '+width+'px');
    console.log('OUTFITTER R4 PHONE PASS',width,bounds);
+   if(width===390){
+    // Regression for the *real* in-game Quick Play Squad > LOADOUT button.
+    // The earlier R5 smoke only visited campaign and mission setup.
+    await page.goto(origin+'/index.html?fixedSite=1',{waitUntil:'domcontentloaded'});
+    await page.locator('#operationsBoardToggle:visible').waitFor({timeout:30000});
+    await page.locator('#operationsBoardToggle').click();
+    const board=page.locator('#operationsBoard');
+    const operator=board.locator('.fw-squad-card').first();
+    await operator.locator('.fw-squad-actions button').filter({hasText:'LOADOUT'}).click();
+    const quickGallery=board.locator('.fw-quick-board-gallery .fw-outfitter-gallery');
+    assert.ok(await quickGallery.isVisible(),
+     'Actual in-game Squad Loadout opens the shared R5 gallery');
+    assert.equal(await board.locator('.fw-loadout-group:visible').count(),0,
+     'Old grouped equipment interface is not the visible loadout screen');
+    // WebGL creation is intentionally deferred until the drawer is attached.
+    // Wait for the first rendered frame instead of racing requestAnimationFrame.
+    await board.locator('.fw-quick-board-model-stage canvas').waitFor({timeout:15000});
+    assert.equal(await board.locator('.fw-quick-board-model-stage canvas').count(),1,
+     'Operator still has one 3D preview renderer');
+    await board.locator('.fw-quick-board-zone[data-slot="armor"]').click();
+    assert.equal(await quickGallery.getAttribute('data-slot'),'armor');
+    const alternative=quickGallery.locator(
+     '.fw-outfitter-option[data-available="true"]:not([data-equipped="true"])').first();
+    if(await alternative.count()){
+     const item=await alternative.getAttribute('data-item-id');
+     await alternative.click();
+     assert.equal(await board.locator('.fw-quick-board-gallery .fw-outfitter-option[data-equipped="true"]')
+      .first().getAttribute('data-item-id'),item,
+      'Shared gallery commits gear through the actual Quick Play roster');
+    }
+    await board.locator('.fw-quick-board-zone[data-slot="rig"]').click();
+    await board.getByRole('button',{name:'ARRANGE MAGAZINES & TOOLS'}).click();
+    assert.ok(await board.locator('.fw-quick-board-carry:visible .fw-field-inventory').count()>0,
+     'Real physical magazine and gadget editor opens separately');
+    await board.locator('.fw-quick-board-return').click();
+    assert.ok(await quickGallery.isVisible(),'Returning from carry restores the gallery');
+    const restricted=quickGallery.locator('.fw-outfitter-option[data-available="false"]');
+    if(await restricted.count())
+     assert.ok(await restricted.evaluateAll(nodes=>nodes.every(x=>x.disabled)),
+      'Unavailable items are not clickable');
+    await board.locator('.fw-prep-squad-tab').nth(1).click();
+    assert.ok(await board.locator('.fw-quick-board-gallery .fw-outfitter-gallery').isVisible(),
+     'Switching operators retains shared loadout presentation');
+    await board.locator('.fw-quick-board-model-stage canvas').waitFor({timeout:15000});
+    assert.equal(await board.locator('.fw-quick-board-model-stage canvas').count(),1,
+     'Operator switch reuses the single preview canvas');
+    assert.deepEqual(errors,[],'Quick Play Loadout has no runtime errors');
+    console.log('QUICK PLAY SQUAD R5 REAL ENTRY PASS');
+   }
    await page.close();
   }
  }finally{await browser.close();}
