@@ -19,7 +19,8 @@ Date: 2026-11-20. Canonical integration branch: `feature/secondary-s5-s11-closeo
 
 ## S6 — poses and ownership
 - [x] S6.1 implemented: one issued Glock visual interpolates from holster to solved firing wrist; deterministic replay fraction, no duplicate model (CI validation pending).
-- [ ] Real right/left hand IK and support hand, pistol ready/aim/retention/low/high/movement/recoil/reload, smooth and interruptible.
+- [x] S6.2: pure bounded two-hand Glock ready, ADS, retention and reload-reach IK targets integrated in the existing operator pose publisher; full motion, recoil, collision and browser acceptance still required (CI pending).
+- [ ] Finish high/low-ready variants, pistol recoil, fingertip/magazine physical contact, and full combat/obstacle pose parity.
 - [ ] Transition-friendly physical clearance and no barrel-through-neighbor; weapon pose must correspond to real shot-time muzzle.
 - [x] S6.1 preserves the existing mesh and appearance cache; no per-frame Glock rebuild (CI validation pending).
 
@@ -50,16 +51,18 @@ Date: 2026-11-20. Canonical integration branch: `feature/secondary-s5-s11-closeo
 
 ## S10 — replay / debrief
 - [x] S10 foundation: sample/restore the explicitly authored switching fraction in replay; interpolate draw over 20 Hz samples and reset absent legacy state on seek.
-- [ ] Replay and camera reconstruct held pistol poses, shot/reload timing, magazine identity and complete movement.
+- [x] S10.2: replay frames carry actual secondary mag serials/rounds and in-progress reload state with structural sharing; seeking back restores historical inventory (CI pending).
+- [ ] Reconstruct fired pistol shots, impacts, physical magazines, reload animation and clip/debrief details.
 - [ ] Combat report uses correct 9mm weapon, shooter, target, impact and wounds.
 - [ ] Deterministic seek, clipping, restart and legacy save compatibility.
 
 ## S11 — regression, performance and release
 - [x] Authored switch, cancel/lost-kit, baseline ammo conservation and replay-compatibility tests committed (CI rerun pending).
 - [x] New focused S6.1 physical mesh and S8.2 timed magazine tests committed (CI pending).
-- [ ] Complete domain tests for 9mm fired rounds, both-handed pose and no ghost primary shot.
+- [x] S6.2 pose target bounds and real-rig tests, and S10.2 exact magazine/reload replay seek tests committed (critical CI queued).
+- [ ] Complete domain tests for 9mm fired rounds, physical magazine handoff, and no ghost primary shot.
 - [ ] Focused end-to-end: 9mm shot, damage, full/partial magazine, retention/emergency reload, count conservation, no ghost magazines.
-- [ ] Critical build/typecheck and desktop/mobile browser smoke on tactical, Arsenal, Quick Play, replay.
+- [ ] GitHub Actions: focused S5–S10 TypeScript/build + contract tests queued at latest PR head; fix failures before marking any stage verified. Desktop/mobile browser acceptance still outstanding.
 - [ ] Final CSS/TS dedup, disposal correctness, animation transition hitches and inspection orbit parity.
 - [ ] Confirm no queued/failed deployment; merge only at validated checkpoint, then verify Pages serves exact expected SHA.
 
