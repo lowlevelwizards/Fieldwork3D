@@ -7,6 +7,10 @@ on:
       - 'src/ui/field-gadget-editor.ts'
       - 'src/ui/campaign-outfitter-gallery.ts'
       - 'src/ui/outfitter-choice-sources.ts'
+      - 'src/ui/outfitter-zone-nav.ts'
+      - 'src/ui/quick-play-configurator.ts'
+      - 'src/breach-operations-board-controller.ts'
+      - 'tests/consolidation-p8-outfitter-zones.test.mjs'
       - 'src/ui/loadout-prep.css'
       - 'scripts/smoke-loadout-ux-r1.mjs'
       - '.github/actions/outfitter-mobile-smoke/action.yml'
@@ -35,5 +39,15 @@ jobs:
           tests/equipment-magazine-transfer.test.mjs
           tests/loadout-magazine-editor-integration.test.mjs
           tests/equipment-visual-inspection.test.mjs
+      - name: Shared P8 equipment-zone interaction and owning-screen regressions
+        run: >-
+          node --experimental-strip-types --test
+          tests/consolidation-p8-outfitter-zones.test.mjs
+          tests/consolidation-4-to-7-integration.test.mjs
+          tests/loadout-quickplay-carry-selector.test.mjs
+          tests/loadout-quickplay-preview-integration.test.mjs
+          tests/outfitter-gallery-lifecycle.test.mjs
+      - name: Production build
+        run: npm run build
       - name: Actual iPhone-sized armory interaction
         uses: ./.github/actions/outfitter-mobile-smoke

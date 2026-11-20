@@ -13,7 +13,7 @@ test('gallery owns and releases IntersectionObserver and all queued frames',()=>
  assert.match(gallery,/generation!==thumbnailGeneration/);
  assert.match(gallery,/if\(disposed\|\|thumbnailBusy\)return/);
  assert.match(gallery,/return \{root,show,getActive:\(\)=>active,dispose\}/);
- assert.match(gallery,/if\(disposed\)return;\s*active=slot/);
+ assert.match(gallery,/if\(disposed\)return;[\s\S]*?if\(renderedSlot===slot\)return;\s*renderedSlot=slot;\s*active=slot/);
 });
 
 test('all three outfitter entry points dispose replaced galleries',()=>{

@@ -34,14 +34,19 @@ test('equipment thumbnail capture reuses one GPU target and restores live frameb
  assert.match(code,/this\.thumbnailCanvas=null/);
 });
 
-test('arsenal defers 3D thumbnails, replaces stale host jobs and prioritizes hero',()=>{
+test('arsenal delegates thumbnail invalidation and hero priority to shared queue',()=>{
  const code=src('arsenal/gallery-main.ts');
- assert.match(code,/const previewVersions=new WeakMap<HTMLElement,number>\(\)/);
- assert.match(code,/if\(previewQueue\[i\]\.host===host\)previewQueue\.splice\(i,1\)/);
- assert.match(code,/host\.isConnected&&previewVersions\.get\(host\)===version/);
- assert.match(code,/if\(hero\)previewQueue\.unshift\(job\)/);
- assert.match(code,/if\(!previewQueue\[i\]\.host\.isConnected\)previewQueue\.splice\(i,1\)/);
+ const queue=src('arsenal/preview-job-queue.ts');
+ assert.match(code,/const previewQueue=createArsenalPreviewQueue\(\)/);
+ assert.match(code,/previewQueue\.enqueue\(host,task,hero\)/);
+ assert.match(code,/previewQueue\.pruneDetached\(\)/);
+ assert.match(code,/previewQueue\.dispose\(\)/);
  assert.match(code,/\},size==='hero'\)/);
+ assert.match(queue,/const revisions=new WeakMap<HTMLElement,number>\(\)/);
+ assert.match(queue,/pending\[i\]\.host===host/);
+ assert.match(queue,/host\.isConnected&&revisions\.get\(host\)===revision/);
+ assert.match(queue,/if\(priority\)pending\.unshift\(job\)/);
+ assert.match(queue,/if\(!pending\[i\]\.host\.isConnected\)pending\.splice\(i,1\)/);
 });
 
 test('secondary inspector coalesces pointer renders and only resizes on change',()=>{

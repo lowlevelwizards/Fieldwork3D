@@ -3,6 +3,7 @@
  */
 import * as THREE from 'three';
 import {openGlockWorkbench} from './glock-workbench.ts';
+import {createArsenalPreviewQueue} from './preview-job-queue.ts';
 import {type GlockCustomization} from '../weapons/geometry/glock-customization.ts';
 import {factoryGlockRecipe,loadGlockLibrary,saveGlockLibrary,
  renameGlockSavedBuild,duplicateGlockSavedBuild,deleteGlockSavedBuild,
@@ -75,7 +76,7 @@ class GlockGallerySnapshots{
  }
 }
 
-export function mountGlockArsenalGallery():HTMLElement{
+export function mountGlockArsenalGallery():{section:HTMLElement;activate:()=>void}{
  const section=document.createElement('section');
  section.className='arsenal-layout arsenal-glock-gallery';
  section.setAttribute('aria-label','Glock family secondary weapon loadouts');
@@ -109,6 +110,9 @@ export function mountGlockArsenalGallery():HTMLElement{
  const openWorkbench=section.querySelector<HTMLButtonElement>('.arsenal-glock-open')!;
  const savedActions=section.querySelector<HTMLElement>('.arsenal-glock-saved-actions')!;
  const renderer=new GlockGallerySnapshots();
+ const previewQueue=createArsenalPreviewQueue();
+ let observer:IntersectionObserver|null=null;
+ let activated=false;
  let selectedSavedId:string|null=null;
  type GlockFilter='all'|'compact'|'subcompact'|'crossover'|'saved';
  const filterState:{value:GlockFilter}={value:'all'};
@@ -118,10 +122,9 @@ export function mountGlockArsenalGallery():HTMLElement{
  };
  openWorkbench.addEventListener('click',()=>{
   openGlockWorkbench(recipeForSelection(),{
-   onLibraryChange:()=>{renderFilters();renderCards();refresh();}
+   onLibraryChange:()=>{renderFilters();renderCards();}
   });
  });
- const images=new Map<GlockAppearanceId,HTMLElement>();
  const buttons=new Map<GlockAppearanceId,HTMLButtonElement>();
  let selected:GlockAppearanceId='glock-g19-gen3';
  const display=(host:HTMLElement,id:GlockAppearanceId,
@@ -137,7 +140,10 @@ export function mountGlockArsenalGallery():HTMLElement{
   modelLabel.textContent=reference.name;
   desc.textContent=reference.description;
   const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
-  display(feature,selected,'hero',saved?.recipe.customization);
+  // Give a just-opened tab one paint before its costly hero readback.
+  // Priority replaces a prior hero request when selection changes rapidly.
+  previewQueue.enqueue(feature,()=>
+   display(feature,selected,'hero',saved?.recipe.customization),true);
   for(const [id,button] of buttons)
    button.setAttribute('aria-pressed',String(id===selected&&!selectedSavedId));
   for(const button of cards.querySelectorAll<HTMLButtonElement>('[data-glock-saved]'))
@@ -205,8 +211,22 @@ export function mountGlockArsenalGallery():HTMLElement{
   }
  }
  function renderCards(){
+  observer?.disconnect();observer=null;
   cards.replaceChildren();
-  buttons.clear();images.clear();
+  previewQueue.pruneDetached();
+  buttons.clear();
+  const deferred=new Map<Element,()=>void>();
+  if('IntersectionObserver' in window){
+   observer=new IntersectionObserver(entries=>{
+    for(const entry of entries){
+     if(!entry.isIntersecting)continue;
+     observer?.unobserve(entry.target);
+     const render=deferred.get(entry.target);
+     deferred.delete(entry.target);
+     if(render)previewQueue.enqueue(entry.target as HTMLElement,render);
+    }
+   },{rootMargin:'100px'});
+  }
   const saved=loadGlockLibrary().builds;
   const shown:({kind:'factory';ref:typeof GLOCK_APPEARANCE_REFERENCES[number]}|
    {kind:'saved';build:GlockSavedBuild})[]=[];
@@ -249,23 +269,33 @@ export function mountGlockArsenalGallery():HTMLElement{
    });
    cards.append(button);
    if(choice.kind==='factory')buttons.set(ref.id,button);
-   // Workbench uses one WebGL context; saved and factory thumbnails share
-   // the same source mesh and cache, never generate secondary replicas.
-   const source=renderer.render(ref.id,'card',
-    choice.kind==='saved'?choice.build.recipe.customization:undefined);
-   if(source){const photo=document.createElement('img');
-    photo.src=source;photo.alt='';image.append(photo);}
+   // The secondary shares primary's versioned, one-per-frame 3D image
+   // scheduling. Offscreen/hidden cards do no GPU work; rapid filter
+   // changes retire detached hosts before rendering their stale models.
+   const paint=()=>{
+    const source=renderer.render(ref.id,'card',
+     choice.kind==='saved'?choice.build.recipe.customization:undefined);
+    if(!source)return;
+    const photo=document.createElement('img');
+    photo.src=source;photo.alt='';photo.decoding='async';
+    image.replaceChildren(photo);
+   };
+   if(observer){
+    deferred.set(image,paint);observer.observe(image);
+   }else previewQueue.enqueue(image,paint);
   }
   refresh();
  }
- search.addEventListener('input',renderCards);
- renderFilters();renderCards();
- // One shared WebGL context, bounded on-demand snapshot work.
- requestAnimationFrame(()=>{
-  if(!section.isConnected)return;
-  refresh();
-  // Factory and saved cards are rendered and cached on selection.
- });
- window.addEventListener('pagehide',()=>renderer.dispose(),{once:true});
- return section;
+ search.addEventListener('input',()=>{if(activated)renderCards();});
+ // Do not allocate a secondary renderer or paint hidden thumbnails while
+ // the primary category is selected on initial Arsenal navigation.
+ const activate=()=>{
+  if(activated)return;
+  activated=true;
+  renderFilters();renderCards(); // also paints the first selected hero
+ };
+ window.addEventListener('pagehide',()=>{
+  observer?.disconnect();previewQueue.dispose();renderer.dispose();
+ },{once:true});
+ return {section,activate};
 }
