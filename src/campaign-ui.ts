@@ -2352,7 +2352,7 @@ export class CampaignScreen{
    const gallery=createOutfitterGallery({
     host:galleryRoot,sources:gallerySources,kit:person.loadout,
     magazines:person.magazines,locked,
-    renderModel:(slot,itemId)=>this.preview?.renderModelThumbnail(
+    renderModel:(slot,itemId)=>this.preview?.renderModelThumbnailAsync(
      {kind:'gear',slot,itemId})??null,
     onAutoPack:()=>{
      const button=[...physicalEditor.querySelectorAll<HTMLButtonElement>('button')]
