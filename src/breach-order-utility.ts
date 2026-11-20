@@ -13,6 +13,7 @@ import {initialSecondarySwitch,requestSecondarySwitch,advanceSecondarySwitch,sec
  from './secondary-switching.ts';
 import {beginTimedSecondaryReload,advanceTimedSecondaryReload}
  from './secondary-timed-reload.ts';
+import {commitSecondaryReloadStep} from './secondary-reload-commit.ts';
 export type UtilityOrderHooks={
  pop:(actor:TeamActor)=>void;notify:(s:Session,message:string)=>void;
  beginReload:(s:Session,a:TeamActor)=>boolean;
@@ -80,17 +81,9 @@ export function executeTacticalUtilityOrder(s:Session,a:TeamActor,n:PlanNode,
         h.fail(s,a,n,progressed.reason??'PISTOL RELOAD INTERRUPTED');
         return true;
       }
-      if(progressed.equipment!==kit)
-        a.equipment={...a.equipment!,secondary:progressed.equipment};
-      if(progressed.dropped){
-        // Emergency reload is the one actual inventory removal. Emit the
-        // existing bounded physical drop and preserve its exact serial.
-        s.dropped.push({id:s.nextEffectId++,p:clone(a.p),
-          side:a.side,age:0,weapon:'smg',secondaryWeapon:kit.weapon!,
-          magazineId:progressed.dropped.id,rounds:progressed.dropped.rounds});
-        if(s.dropped.length>48)s.dropped.shift();
+      commitSecondaryReloadStep(s,a,progressed);
+      if(progressed.dropped)
         h.notify(s,a.name+' PISTOL MAGAZINE DROPPED');
-      }
       a.secondaryReload=progressed.state;
       if(progressed.done){
         h.notify(s,a.name+' PISTOL RELOADED');
