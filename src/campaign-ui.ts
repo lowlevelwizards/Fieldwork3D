@@ -764,7 +764,7 @@ export class CampaignScreen{
   const squadQuote=quoteCampaignSquadRefill(c);
   const stock=node('div','campaign-logistics-stats campaign-uxr-stock');
   const stockButtons:HTMLButtonElement[]=[];
-  let selectStock=(index:number)=>{};
+  let selectStock:(index:number)=>void;
   const supplyFacts=[
    [c.supplies.ammo,'ROUNDS'],
    [c.supplies.medical,'MEDICAL KITS'],
