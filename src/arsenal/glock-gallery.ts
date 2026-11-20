@@ -1,7 +1,14 @@
 /** Arsenal G2.7: actual Glock art, with common-scale family identity review.
- * Gallery-only; no issued sidearms, gameplay classes, or saved pistol recipes.
+ * S3: real Quick Play equipment choices; live draw/fire still gated to S5-S7.
  */
 import * as THREE from 'three';
+import {initialRoster,readRoster} from '../breach-roster.ts';
+import {applyQuickPlayKitPreferences,serializeQuickPlayKitPreferences}
+ from '../breach-quickplay-kit-preferences.ts';
+import {BREACH_STORAGE_KEYS} from '../breach-storage-keys.ts';
+import {emptySecondaryEquipment,equipFreshSecondary,moveSecondaryHolster,
+ SECONDARY_CAPACITY,type SecondaryHolster} from '../secondary-equipment.ts';
+
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {buildWeaponSilhouette,clearWeaponSilhouette} from '../breach-weapon-geometry.ts';
@@ -120,12 +127,12 @@ class GlockGallerySnapshots{
 export function mountGlockArsenalGallery():HTMLElement{
  const section=document.createElement('section');
  section.className='arsenal-glock-gallery';
- section.setAttribute('aria-label','Glock family 3D appearance references');
+ section.setAttribute('aria-label','Glock family secondary weapon loadouts');
  section.innerHTML=
   '<div class="arsenal-glock-header">'+
-    '<div><span class="arsenal-overline">SIDEARMS / ART REFERENCE</span>'+
+    '<div><span class="arsenal-overline">ARSENAL / SECONDARY WEAPONS</span>'+
     '<h2>GLOCK FAMILY</h2></div>'+
-    '<span class="arsenal-glock-notice">VISUAL PREVIEW · NOT YET EQUIPPABLE</span>'+
+    '<span class="arsenal-glock-notice">QUICK PLAY EQUIPMENT · LIVE USE COMING S5–S7</span>'+
   '</div>'+
   '<div class="arsenal-glock-feature">'+
     '<div class="arsenal-glock-hero-visual" aria-live="polite"></div>'+
@@ -135,7 +142,7 @@ export function mountGlockArsenalGallery():HTMLElement{
       '<p class="arsenal-glock-description"></p>'+
       '<div class="arsenal-glock-view-controls" role="group" aria-label="3D model view"></div>'+
       '<p class="arsenal-glock-view-note" role="status"></p>'+
-      '<p class="arsenal-glock-subnote">Real shared low-poly geometry, native Arsenal lighting. Art previews only; functional secondaries remain separate.</p>'+
+      '<p class="arsenal-glock-subnote">Real shared low-poly geometry, native Arsenal lighting. Models now share an operator loadout selection. Live drawing and shooting arrive in S5–S7.</p>'+
     '</div>'+
   '</div>'+
   '<div class="arsenal-glock-cards" role="group" aria-label="Glock family variants"></div>';
@@ -145,6 +152,90 @@ export function mountGlockArsenalGallery():HTMLElement{
  const note=section.querySelector<HTMLElement>('.arsenal-glock-view-note')!;
  const controls=section.querySelector<HTMLElement>('.arsenal-glock-view-controls')!;
  const cards=section.querySelector<HTMLElement>('.arsenal-glock-cards')!;
+ // S3: loadout preparation shares Quick Play's existing persistent kit
+ // preference file. This does not allocate Campaign stock or create a gun
+ // inside a live Session before S5/S7 weapon-switch and ballistics authority.
+ const equipPanel=document.createElement('div');
+ equipPanel.className='arsenal-glock-equip';
+ const operatorLabel=document.createElement('label');operatorLabel.textContent='OPERATOR';
+ const operatorPicker=document.createElement('select');
+ operatorPicker.setAttribute('aria-label','Quick Play operator');
+ for(const member of initialRoster().members){
+  const option=document.createElement('option');
+  option.value=member.id;option.textContent=member.callsign;
+  operatorPicker.append(option);
+ }
+ operatorLabel.append(operatorPicker);
+ const holsterLabel=document.createElement('label');holsterLabel.textContent='HOLSTER';
+ const holsterPicker=document.createElement('select');
+ holsterPicker.setAttribute('aria-label','Secondary holster side');
+ for(const [value,label] of [['belt-right','Right hip'],['belt-left','Left hip']] as const){
+  const option=document.createElement('option');option.value=value;
+  option.textContent=label;holsterPicker.append(option);
+ }
+ holsterLabel.append(holsterPicker);
+ const equipAction=document.createElement('button');
+ equipAction.type='button';equipAction.textContent='EQUIP GLOCK';
+ const unequipAction=document.createElement('button');
+ unequipAction.type='button';unequipAction.textContent='UNEQUIP';
+ const equipStatus=document.createElement('p');
+ equipStatus.className='arsenal-glock-equip-status';equipStatus.setAttribute('role','status');
+ const equipButtons=document.createElement('div');equipButtons.className='arsenal-glock-equip-actions';
+ equipButtons.append(equipAction,unequipAction);
+ equipPanel.append(operatorLabel,holsterLabel,equipButtons,equipStatus);
+ section.querySelector('.arsenal-glock-feature-copy')!.append(equipPanel);
+ const readPrepared=()=>applyQuickPlayKitPreferences(
+  readRoster(localStorage.getItem(BREACH_STORAGE_KEYS.quickCosmetics)),
+  localStorage.getItem(BREACH_STORAGE_KEYS.quickKitPreferences));
+ const savePrepared=(next:ReturnType<typeof readPrepared>)=>{
+  localStorage.setItem(BREACH_STORAGE_KEYS.quickKitPreferences,
+   serializeQuickPlayKitPreferences(next));
+ };
+ const refreshEquip=()=>{
+  try{
+   const m=readPrepared().members.find(x=>x.id===operatorPicker.value);
+   const state=m?.loadout.secondary??emptySecondaryEquipment();
+   holsterPicker.value=state.holster;
+   const equipped=state.weapon;
+   equipStatus.textContent=equipped?
+    'Selected: '+(GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===equipped)?.name??equipped)+
+    ' · '+state.loadedRounds+' loaded · '+state.spareMagazines.length+
+    ' spare magazines · loadout only (live combat pending)':
+    'No secondary equipped for this operator.';
+   equipAction.disabled=equipped===selected;
+   unequipAction.disabled=!equipped;
+  }catch{
+   equipStatus.textContent='Local Quick Play equipment storage unavailable.';
+   equipAction.disabled=true;unequipAction.disabled=true;
+  }
+ };
+ const writeEquipped=(weapon:GlockAppearanceId|null)=>{
+  try{
+   const roster=readPrepared(),id=operatorPicker.value;
+   const next={...roster,members:roster.members.map(m=>{
+    if(m.id!==id)return m;
+    const previous=m.loadout.secondary??emptySecondaryEquipment();
+    const chosen=equipFreshSecondary(previous,m.id,weapon);
+    const holster=moveSecondaryHolster(chosen,holsterPicker.value as SecondaryHolster);
+    return {...m,loadout:{...m.loadout,secondary:holster}};
+   })};
+   savePrepared(next);refreshEquip();
+  }catch{equipStatus.textContent='Unable to save secondary to Quick Play equipment.';}
+ };
+ equipAction.addEventListener('click',()=>writeEquipped(selected));
+ unequipAction.addEventListener('click',()=>writeEquipped(null));
+ operatorPicker.addEventListener('change',refreshEquip);
+ holsterPicker.addEventListener('change',()=>{
+  try{
+   const roster=readPrepared(),id=operatorPicker.value;
+   const next={...roster,members:roster.members.map(m=>m.id!==id?m:{
+    ...m,loadout:{...m.loadout,secondary:moveSecondaryHolster(
+     m.loadout.secondary??emptySecondaryEquipment(),
+     holsterPicker.value as SecondaryHolster)}})};
+   savePrepared(next);refreshEquip();
+  }catch{equipStatus.textContent='Unable to save holster location.';}
+ });
+
  const renderer=new GlockGallerySnapshots();
  const images=new Map<GlockAppearanceId,HTMLElement>();
  const buttons=new Map<GlockAppearanceId,HTMLButtonElement>();
@@ -184,6 +275,7 @@ export function mountGlockArsenalGallery():HTMLElement{
   modelLabel.textContent=reference.name;
   desc.textContent=reference.description;
   note.textContent=viewNotes[view];
+  refreshEquip();
   display(feature,selected,view,'hero');
   for(const [id,button] of buttons)
    button.setAttribute('aria-pressed',String(id===selected));
