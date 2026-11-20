@@ -44,8 +44,11 @@ test('M9 family: two genuinely 3D art-only models, not issued Glock IDs',()=>{
    assert.equal(m.children.filter(x=>x.userData.m9Hammer).length,1);
    assert.equal(m.children.filter(x=>x.userData.m9MagazineFloorplate).length,1);
    assert.ok(m.children.every(x=>x.name.startsWith('family-')));
-   assert.ok(count(m).meshes<=18,'intentional miniature mesh economy');
-   assert.ok(count(m).triangles<=420,'real emitted triangle budget');
+   const stats=count(m);
+   assert.ok(stats.meshes<=20,
+    'miniature mesh count including real wrap and red dots: '+JSON.stringify(stats));
+   assert.ok(stats.triangles<=450,
+    'emitted triangle review cap including true U-wrap: '+JSON.stringify(stats));
   }finally{
    clearM9Appearance(m);
    assert.equal(m.children.length,0);
