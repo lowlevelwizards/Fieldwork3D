@@ -2352,7 +2352,7 @@ export class CampaignScreen{
    openClothing=()=>{selectBenchSlot('top');};
    const gallery=createOutfitterGallery({
     host:galleryRoot,sources:gallerySources,kit:person.loadout,
-    magazines:person.magazines,physicalEditor,locked,
+    magazines:person.magazines,locked,
     renderModel:(slot,itemId)=>this.preview?.renderModelThumbnail(
      {kind:'gear',slot,itemId})??null,
     onAutoPack:()=>{
@@ -2360,8 +2360,6 @@ export class CampaignScreen{
       .find(button=>button.textContent?.trim()==='AUTO PACK');
      if(button&&!button.disabled)button.click();
     },
-    renderField:fieldId=>this.preview?.renderModelThumbnail(
-     {kind:'field',id:fieldId})??null,
     selectedItems,scrollPositions,
     onSelectCategory:slot=>selectBenchSlot(slot),
     onInspect:(slot,itemId,kind,location)=>{
@@ -2390,23 +2388,6 @@ export class CampaignScreen{
       original.value=itemId;
       original.dispatchEvent(new Event('change',{bubbles:true}));
      }
-    },
-    onMoveField:(fieldId,from,to)=>{
-     const inventory=person.loadout.fieldInventory??
-      initialFieldInventory(person.loadout);
-     const quote=quoteSingleFieldTransfer(person.loadout,
-      person.magazines,inventory,fieldId,from,to);
-     if(!quote.ok||!quote.changed)return;
-     this.fieldUndo.record(id,inventory,quote.inventory);
-     this.handlers.equipFieldInventory(id,quote.inventory);
-    },
-    onMoveMagazine:(magId,to)=>{
-     const quote=quoteOneMagazineMove(person.loadout,
-      person.magazines,magId,to);
-     if(!quote.ok||!quote.changed)return;
-     this.carryUndo.record(id,captureCarryUndo(person.loadout,person.magazines),
-      captureCarryUndo(person.loadout,quote.magazines));
-     this.handlers.moveMagazine(id,magId,to);
     },
     onArsenal:()=>{if(!arsenal.disabled)this.handlers.openArsenal(id);},
     arsenalDisabled:arsenal.disabled,
