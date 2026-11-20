@@ -24,7 +24,7 @@ jobs:
       - name: Motel seed 19143269 — trace Ash 60Hz motor with opt-in half-second witness
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=8 --audit-seed=19143269 --audit-scale=small --route-transitions --trace-actor=ash --trace-mode=entry --motel-loop-samples --progress > motel-front-exact.json
-          node -e "const r=require('./motel-front-exact.json').rows[0].modes[1];const a=r.operators.find(a=>a.id==='ash');console.log(JSON.stringify({arrivals:r.arrivals,ash:{position:a.position,remaining:a.remaining,episode:a.doorEpisode,hand:a.doorHand},counts:r.routeTransitions?.byActor,events:r.routeTransitions?.events?.slice(-12),samples:r.motelLoopSamples?.filter((x,i)=>i%8===0||i>80).slice(-30),cold:r.motelColdClearance},null,2));"
+          node -e "const r=require('./motel-front-exact.json').rows[0].modes[1];const a=r.operators.find(a=>a.id==='ash');console.log(JSON.stringify({arrivals:r.arrivals,ash:{position:a.position,remaining:a.remaining,episode:a.doorEpisode,hand:a.doorHand},counts:r.routeTransitions?.byActor,events:r.routeTransitions?.events?.slice(-12),samples:r.motelLoopSamples?.filter((x,i)=>i%8===0||i>80).slice(-30),cold:{...r.motelColdClearance,samples:undefined}},null,2));"
       - uses: actions/upload-artifact@v4
         if: always()
         with:

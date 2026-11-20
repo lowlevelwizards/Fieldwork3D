@@ -68,6 +68,8 @@ const routeQuality=process.argv.includes('--route-quality');
 const utilityTrace=process.argv.includes('--utility-trace');
 const routeTransitions=process.argv.includes('--route-transitions');
 const motelLoopSamplesEnabled=process.argv.includes('--motel-loop-samples');
+const narrowLeafExperiment=motelLoopSamplesEnabled?
+ await import('../src/breach-squeeze-leaf-exit.ts'):null;
 // D3.29B: audit-only capture at the EXACT frame an order is cancelled.
 const d329CancellationDoorWitness=process.argv.includes('--d329-cancellation-door-witness');
 // D3.25D: strictly read-only endpoint feasibility for known failed entry.
@@ -1488,6 +1490,14 @@ function run(site,seed,kind){
       direct:{yaw:directYaw,length:d,
        narrow:!!first&&sweep(first,directYaw),
        tinyNarrow:!!tiny&&sweep(tiny,directYaw)},
+      routeProbes:first?[96,256,512,768].map(maxNodes=>({maxNodes,
+       path:narrowLeafExperiment.findBoundedNarrowLeafExit(a.p,
+        planned.goals.get(a.id),first,
+        (from,to)=>sweptProfileClear(from,to,session.doors,
+         squeezeFacing(Math.atan2(to.y-from.y,to.x-from.x)),
+         'squeeze',world),
+        (from,to)=>sweptBodyClear(from,to,session.doors,OPERATOR_RADIUS,world),
+        maxNodes)})):[],
       doors:session.doors.filter(o=>o.id==='FRONT').map(o=>({
        id:o.id,a:o.a,b:o.b,fraction:o.openFraction,
        leaf:doorLeafSegment(o)})),samples};
