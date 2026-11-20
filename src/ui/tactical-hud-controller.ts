@@ -173,8 +173,8 @@ export function createTacticalHudController(
         case 'push':return 'PUSH: tap or drag a direction away from the selected object (±80°). CANCEL to exit.';
         case 'suppress':return 'SUPPRESS ARMED · TAP A POINT TO PLACE FIRE POLICY · CANCEL/BACK TO EXIT.';
         case 'evac':return targeting.mode.transport==='drag'?
-          'DRAG ARMED · TAP A REACHABLE DESTINATION · CANCEL/BACK TO EXIT.':
-          'CARRY ARMED · TAP A REACHABLE DESTINATION · CANCEL/BACK TO EXIT.';
+          'DRAG ARMED · TAP DESTINATION OR DRAW A ROUTE · CANCEL/BACK TO EXIT.':
+          'CARRY ARMED · TAP DESTINATION OR DRAW A ROUTE · CANCEL/BACK TO EXIT.';
         case 'watch':return 'WATCH ARMED · TAP A POINT · CANCEL/BACK TO EXIT. Replaces prior WATCH; RUN or interactions end tracking.';
         case 'look':return 'LOOK ARMED · TAP ANY DIRECTION · CANCEL/BACK TO EXIT. Replaces prior WATCH.';
       }
@@ -1025,6 +1025,14 @@ port.ui.contact.addEventListener('click',()=>{toggleContactRule(port.state,port.
         medicalCandidate:config.medicalCandidate
       });
       if(result.handled){
+        if(result.armTransport){
+          targeting.armEvac(result.armTransport.patientId,
+            result.armTransport.mode);
+          feedback.emit('armed',a.p,
+            result.armTransport.mode==='carry'?'CARRY ROUTE READY':'DRAG ROUTE READY');
+          config.showUiHelp('TAP DESTINATION OR DRAW TRANSPORT ROUTE · CANCEL TO EXIT',5500);
+          config.audio.uiClickTone('select');config.updateHud();return;
+        }
         if(result.clearSelection){
           config.selectedNode=null;config.selectedActiveWatch=false;
         }
