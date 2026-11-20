@@ -48,8 +48,8 @@ export function createEntryOrderHandler(port:OrderExecutionPort){
     if(!doorReachable(a.p,door)||
        (method==='pick'&&!lockpickReachable(a.p,door))){
       const world=sessionWorldGeometry(s);
-      const approachPoint=method==='pick'?lockpickApproach(a.p,door,world):
-        doorApproach(a.p,door,world);
+      const approachPoint=method==='pick'?lockpickApproach(a.p,door,world,s.doors):
+        doorApproach(a.p,door,world,[],0,s.doors);
       if(approachPoint&&entryCorrectionEligible(a,a.p,approachPoint)){
         clearCurrentOrderIssue(a);
         approach(a,approachPoint,dt,s,.60);
