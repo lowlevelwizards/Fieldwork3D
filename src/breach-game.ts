@@ -1252,7 +1252,7 @@ export function planRecoverMedical(s:Session,id:string,patientId:string):boolean
  return addNode(s,id,'recover-medical',finalPoint(a),{patientId});
 }
 export function planCasualtyTransport(s:Session,id:string,patientId:string,
- to:Pt,mode:TransportMode='drag'):boolean{
+ to:Pt,mode:TransportMode='drag',waypoints:readonly Pt[]=[]):boolean{
  const a=party(s,id),friendly=s.operators.find(o=>o.id===patientId);
  const civil=s.civilians.find(c=>c.id===patientId),patient=friendly??civil;
  if(!a||!patient||patient===a||!canEdit(s))return false;
@@ -1264,10 +1264,17 @@ export function planCasualtyTransport(s:Session,id:string,patientId:string,
  if(captive&&friendly&&!liveVisibility(s,friendly.p))return false;
  if(civil&&(!civilianTransportEligible(civil,a)||
     !liveVisibility(s,civil.p)))return false;
- if(!intelPassable(to,s.intel,5.4)||
-  !routeWithSqueezeIntel(s.intel,finalPoint(a),patient.p).length||
-  !routeWithSqueezeIntel(s.intel,patient.p,to).length)return false;
- return addNode(s,id,'evacuate',to,{patientId,transportMode:mode});
+ // A drawn transport route is ONE authored/undoable order, not separate
+ // ordinary MOVE commands that would drop custody between bends.
+ // Validate every segment against known geometry; never consult hidden walls.
+ if(waypoints.length>24||waypoints.some(p=>!Number.isFinite(p.x)||
+    !Number.isFinite(p.y)))return false;
+ const route=[patient.p,...waypoints,to];
+ if(!route.every((p,i)=>intelPassable(p,s.intel,5.4)&&
+   (i===0||!!routeWithSqueezeIntel(s.intel,route[i-1],p).length))||
+   !routeWithSqueezeIntel(s.intel,finalPoint(a),patient.p).length)return false;
+ return addNode(s,id,'evacuate',to,{patientId,transportMode:mode,
+   transportPath:waypoints.map(p=>({...p}))});
 }
 /** Authored emergency release supersedes only this patient's transport.
  * Other subsequent planned orders remain intact and the edit is undoable. */
