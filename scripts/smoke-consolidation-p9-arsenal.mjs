@@ -78,6 +78,23 @@ try{
    await inspector.screenshot({path:'artifacts/m9/m9a3-quarter-'+viewport.width+'.png'});
    await inspector.getByRole('button',{name:'BACK TO ARSENAL'}).click();
    assert.equal(await page.getByRole('dialog').count(),0);
+   // Both real sculpted Beretta variants need actual mobile/desktop visual
+   // review; the classic M9 cannot be approved from the M9A3 silhouette.
+   await search.fill('92FS');
+   assert.equal(await gallery.locator('.arsenal-glock-card').count(),1);
+   await gallery.locator('.arsenal-glock-card').first().click();
+   await gallery.locator('.arsenal-glock-model').filter({hasText:'M9 / 92FS'}).waitFor();
+   await gallery.getByRole('button',{name:'INSPECT 3D MODEL'}).click();
+   await inspector.waitFor({timeout:15000});
+   await inspector.locator('.glock-wb-canvas canvas').waitFor({timeout:20000});
+   await inspector.getByRole('button',{name:'SIDE',exact:true}).click();
+   await page.waitForTimeout(180);
+   await inspector.screenshot({path:'artifacts/m9/m9-side-'+viewport.width+'.png'});
+   await inspector.getByRole('button',{name:'3/4 VIEW'}).click();
+   await page.waitForTimeout(180);
+   await inspector.screenshot({path:'artifacts/m9/m9-quarter-'+viewport.width+'.png'});
+   await inspector.getByRole('button',{name:'BACK TO ARSENAL'}).click();
+   assert.equal(await page.getByRole('dialog').count(),0);
    assert.deepEqual(errors,[],'No JS errors after Glock and Beretta inspection');
    await page.close();
   }
