@@ -31,8 +31,12 @@ try{
    await page.getByRole('button',{name:'CREATE DISPATCH',exact:true}).click();
    await page.locator('#campaign-tab-personnel').waitFor({timeout:30000});
    await page.locator('#campaign-tab-personnel').click();
-   const person=page.locator('.campaign-person').first();
-   await person.locator('.campaign-person-expand > summary').click();
+   const person=page.locator('.campaign-person:visible').first();
+   const personDisclosure=person.locator('.campaign-person-expand');
+   // UXR V2 opens the selected operator inspector by default. Blindly
+   // clicking its summary closes it and hides the LOADOUT action.
+   if(!(await personDisclosure.evaluate(el=>el.open)))
+    await personDisclosure.locator('summary').first().click();
    await person.getByRole('button',{name:/^Open .* loadout$/}).click();
    const armory=page.locator('.campaign-armory-screen');
    await armory.waitFor({timeout:30000});

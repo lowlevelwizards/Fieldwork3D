@@ -5,6 +5,8 @@ on:
       - 'src/campaign-ui.ts'
       - 'src/campaign-style.css'
       - 'src/ui/field-gadget-editor.ts'
+      - 'src/ui/campaign-outfitter-gallery.ts'
+      - 'src/ui/outfitter-choice-sources.ts'
       - 'src/ui/loadout-prep.css'
       - 'scripts/smoke-loadout-ux-r1.mjs'
       - '.github/actions/outfitter-mobile-smoke/action.yml'
