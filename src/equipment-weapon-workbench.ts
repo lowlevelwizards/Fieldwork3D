@@ -209,6 +209,14 @@ export class WeaponWorkbenchPreview{
   this.choiceGrid.replaceChildren();
   this.setActiveSlot(this.active,false);
  }
+ /** Reset a reused viewer to the new operator's default camera rather
+  * than inheriting another person's yaw, zoom or simplified 2D preference. */
+ resetViewState():void{
+  this.yaw=.15;this.pitch=.17;this.distance=51;
+  this.autoFitPending=true;
+  if(this.renderer&&this.in2D)this.switchView();
+  else this.draw();
+ }
  getViewState():WeaponWorkbenchViewState|null{
   if(this.autoFitPending)return null;
   return {yaw:this.yaw,pitch:this.pitch,distance:this.distance,in2D:this.in2D};
