@@ -100,7 +100,6 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
   scroll.className='campaign-gear-picker-scroll';
   const list=document.createElement('div');
   list.className='campaign-gear-picker-list';
-  const choices=Array.from(source.options);
   // One compact comparison row per item: no huge uneven two-column cards.
   const gallery=false;
   list.dataset.layout=gallery?'gallery':'rows';
