@@ -67,7 +67,7 @@ test('M9 negative spaces: guard truly open and forward upper unroofed',()=>{
    const slide=m.children.find(x=>x.userData.m9MovingSlide);
    assert.ok(bounds(frame).intersectsBox(bounds(slide)));
    const b=bounds(m),depth=b.max.z-b.min.z;
-   assert.ok(depth>=3.07,'substantial 3D upper');
+   assert.ok(depth>=3.0&&depth<=3.4,'substantial but restrained Beretta upper');
   }finally{clearM9Appearance(m);}
  }
 });
