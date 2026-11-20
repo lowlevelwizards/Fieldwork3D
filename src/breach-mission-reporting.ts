@@ -27,16 +27,18 @@ export function missionText(s:Session){
   if(s.phase==='won')return 'COMPLETE — OPERATION SUCCESS';
   if(s.phase==='lost')return 'MISSION FAILED';
   if(s.mission==='clear')return s.missionType==='capture'?
-    'INCAPACITATE OR FORCE SURRENDER OF TARGET':
+    'TAKE TARGET ALIVE · RESTRAIN OR TREAT IF DOWN':
     'CLEAR HOSTILES • SECURE OBJECTIVE';
   if(s.mission==='secure')return s.missionType==='hold'?
     'HOLD OBJECTIVE • '+Math.floor(s.holdTime)+'/7 SECONDS':
     s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
     s.missionType==='intel'?'RECOVER INTELLIGENCE • '+
       s.holdTime.toFixed(1)+'/1.2s':
-    s.missionType==='capture'?'REACH TARGET AND VERIFY VITALS':
+    s.missionType==='capture'?
+      'SECURE TARGET · CHECK VITALS · TREAT IF BLEEDING':
     'SECURE OBJECTIVE';
-  if(s.missionType==='capture')return 'EXTRACT LIVING CAPTIVE · ESCORT OR PHYSICALLY TRANSPORT';
+  if(s.missionType==='capture')return
+    'EXTRACT TARGET ALIVE · TREAT IF BLEEDING · ESCORT/DRAG/CARRY';
   return s.missionType==='intel'?
     'RETURN TO EXTRACTION · INTEL CARRIER MUST EXIT':
     s.missionType==='rescue'?
