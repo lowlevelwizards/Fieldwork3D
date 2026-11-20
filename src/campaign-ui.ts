@@ -124,6 +124,7 @@ export class CampaignScreen{
  private lastEntry={legacy:false,sandbox:false,dispatch:false,active:'legacy' as CampaignSlot};
  private armoryOperatorId:string|null=null;
  private homeTab:'overview'|'personnel'|'contracts'|'logistics'|'chronicle'='overview';
+ private selectedSquadOperatorId:string|null=null;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
@@ -457,32 +458,83 @@ export class CampaignScreen{
    readyAssigned+' / 4 READY');
   deploymentHeading.append(headingCopy,readinessCount);
   deployment.append(deploymentHeading);
-  const slotList=node('div','campaign-assignment-slots');
-  for(let slot=0;slot<4;slot++){
-   const operator=c.operators.find(p=>p.id===c.squadIds[slot]);
-   const line=node('label','campaign-assignment-row');
-   const slotHeading=node('div','campaign-assignment-slot-label');
-   slotHeading.append(node('strong','','SLOT 0'+(slot+1)));
-   if(operator){
-    const state=operator.recoveryDays>0?
-     'RECOVERING · '+operator.recoveryDays+' DAYS':'READY';
-    slotHeading.append(node('small',operator.recoveryDays>0?
-     'is-recovering':'is-ready',state));
-   }else slotHeading.append(node('small','is-unfilled','UNASSIGNED'));
-   const picker=node('select','campaign-select');
-   picker.setAttribute('aria-label','Choose operator for tactical slot '+(slot+1));
-   for(const member of c.operators.filter(p=>p.status!=='lost'&&p.status!=='retired')){
-    const option=node('option','',member.callsign);
-    option.value=member.id;
-    picker.append(option);
+  const slotList=node('div','campaign-assignment-slots campaign-uxr-squad-grid');
+  const assignmentPicker=node('div','campaign-uxr-assignment-picker');
+  assignmentPicker.hidden=true;
+  const validOperators=c.operators.filter(p=>p.status!=='retired'&&p.status!=='lost');
+  const selectedId=validOperators.find(p=>p.id===this.selectedSquadOperatorId)?.id
+   ??validOperators.find(p=>c.squadIds.includes(p.id))?.id
+   ??validOperators[0]?.id??'';
+  this.selectedSquadOperatorId=selectedId||null;
+  const selectOperator=(id:string)=>{
+   this.selectedSquadOperatorId=id;
+   for(const card of roster.querySelectorAll<HTMLElement>('.campaign-person')){
+    const active=card.dataset.operatorId===id;
+    card.hidden=!active;
+    if(active){
+     const details=card.querySelector<HTMLDetailsElement>('.campaign-person-expand');
+     if(details)details.open=true;
+    }
    }
-   picker.value=c.squadIds[slot];
-   picker.disabled=!!c.activeContractId;
-   picker.addEventListener('change',()=>this.handlers.assignSlot(slot,picker.value));
-   line.append(slotHeading,picker);
-   slotList.append(line);
+   for(const tile of slotList.querySelectorAll<HTMLElement>('.campaign-uxr-slot'))
+    tile.dataset.selected=String(tile.dataset.operatorId===id);
+   for(const tile of reserveRail.querySelectorAll<HTMLElement>('.campaign-uxr-reserve'))
+    tile.dataset.selected=String(tile.dataset.operatorId===id);
+  };
+  const showSlotPicker=(slot:number)=>{
+   if(c.activeContractId)return;
+   assignmentPicker.replaceChildren();
+   assignmentPicker.hidden=false;
+   const header=node('div','campaign-uxr-picker-heading');
+   header.append(node('strong','','REPLACE SLOT 0'+(slot+1)),
+    button('CLOSE',()=>{assignmentPicker.hidden=true;},'campaign-uxr-picker-close'));
+   assignmentPicker.append(header);
+   const options=node('div','campaign-uxr-picker-options');
+   const candidates=[...validOperators].sort((a,b)=>
+    Number(a.recoveryDays>0)-Number(b.recoveryDays>0)||
+    a.callsign.localeCompare(b.callsign));
+   for(const p of candidates){
+    const state=p.recoveryDays>0?'RECOVERING · '+p.recoveryDays+' DAYS':
+     c.squadIds.includes(p.id)?'CURRENTLY ASSIGNED':'READY';
+    const choice=button(p.callsign+' · '+state,()=>{
+     assignmentPicker.hidden=true;
+     this.handlers.assignSlot(slot,p.id);
+    },'campaign-uxr-picker-choice');
+    choice.disabled=p.id===c.squadIds[slot];
+    choice.setAttribute('aria-label','Assign '+p.callsign+' to slot '+(slot+1)+
+     (p.recoveryDays>0?' · recovering':''));
+    options.append(choice);
+   }
+   assignmentPicker.append(options);
+  };
+  for(let slot=0;slot<4;slot++){
+   const operator=validOperators.find(p=>p.id===c.squadIds[slot]);
+   const tile=node('div','campaign-uxr-slot');
+   tile.dataset.operatorId=operator?.id??'';
+   tile.dataset.selected=String(operator?.id===selectedId);
+   const inspect=button('',()=>{
+    if(operator)selectOperator(operator.id);
+    else showSlotPicker(slot);
+   },'campaign-uxr-slot-main');
+   inspect.setAttribute('aria-label',operator?
+    'Inspect '+operator.callsign+' · squad slot '+(slot+1):
+    'Choose operator for empty squad slot '+(slot+1));
+   const top=node('div','campaign-uxr-slot-top');
+   top.append(node('span','','0'+(slot+1)),
+    node('span',operator?.recoveryDays?'campaign-uxr-slot-recovering':'',
+     !operator?'EMPTY':operator.recoveryDays?
+      operator.recoveryDays+'D RECOVERY':'READY'));
+   const avatar=node('div','campaign-uxr-slot-avatar',
+    operator?.callsign.slice(0,2).toUpperCase()??'+');
+   avatar.setAttribute('aria-hidden','true');
+   inspect.append(top,avatar,node('strong','',operator?.callsign??'UNASSIGNED'),
+    node('small','',operator?operator.weapon.toUpperCase():'SELECT OPERATOR'));
+   const change=button('CHANGE',()=>showSlotPicker(slot),'campaign-uxr-slot-change');
+   change.disabled=!!c.activeContractId;
+   change.setAttribute('aria-label','Change squad slot '+(slot+1));
+   tile.append(inspect,change);slotList.append(tile);
   }
-  deployment.append(slotList);
+  deployment.append(slotList,assignmentPicker);
   personnelWorkspace.append(deployment);
   const rosterPanel=node('section','campaign-personnel-roster-panel');
   const activeOperators=c.operators.filter(p=>
@@ -491,25 +543,39 @@ export class CampaignScreen{
     return (ai<0?99:ai)-(bi<0?99:bi);
    });
   const rosterHeading=node('div','campaign-roster-heading');
-  rosterHeading.append(node('h2','','ACTIVE ROSTER'),
+  rosterHeading.append(node('h2','','OPERATOR DETAIL'),
    node('span','campaign-roster-count',
     activeOperators.length+' OPERATOR'+(activeOperators.length===1?'':'S')));
   rosterPanel.append(rosterHeading);
-  const roster=node('div','campaign-roster');
+  const reserveRail=node('div','campaign-uxr-reserves');
+  const reserves=activeOperators.filter(p=>!c.squadIds.includes(p.id));
+  const reserveHeading=node('div','campaign-uxr-reserve-heading');
+  reserveHeading.append(node('strong','','RESERVES'),
+   node('span','',reserves.length+' AVAILABLE ON ROSTER'));
+  reserveRail.append(reserveHeading);
+  const reserveTiles=node('div','campaign-uxr-reserve-tiles');
+  for(const p of reserves){
+   const reserve=button('',()=>selectOperator(p.id),'campaign-uxr-reserve');
+   reserve.dataset.operatorId=p.id;
+   reserve.dataset.selected=String(p.id===selectedId);
+   reserve.setAttribute('aria-label','Inspect reserve '+p.callsign+
+    (p.recoveryDays?' · recovering '+p.recoveryDays+' days':' · ready'));
+   reserve.append(node('span','campaign-uxr-reserve-avatar',p.callsign.slice(0,2).toUpperCase()),
+    node('strong','',p.callsign),
+    node('small','',p.recoveryDays?p.recoveryDays+'D RECOVERY':'READY'));
+   reserveTiles.append(reserve);
+  }
+  reserveRail.append(reserveTiles);
+  rosterPanel.append(reserveRail);
+  const roster=node('div','campaign-roster campaign-uxr-inspector');
   if(!activeOperators.length)roster.append(node('p','campaign-note',
    'No active operators. Recruit personnel to prepare your next deployment.'));
-  const deployed=activeOperators.filter(p=>c.squadIds.includes(p.id));
-  const reserves=activeOperators.filter(p=>!c.squadIds.includes(p.id));
   for(const p of activeOperators){
-   if(p===deployed[0])
-    roster.append(node('h3','campaign-roster-group-label',
-     'DEPLOYMENT TEAM · '+deployed.length));
-   if(p===reserves[0])
-    roster.append(node('h3','campaign-roster-group-label',
-     'RESERVES · '+reserves.length));
    const card=node('article','campaign-person');
+   card.dataset.operatorId=p.id;
+   card.hidden=p.id!==selectedId;
    const tools=node('details','campaign-person-expand');
-   tools.open=this.expandedOperatorTools.has(p.id);
+   tools.open=this.expandedOperatorTools.has(p.id)||p.id===selectedId;
    tools.addEventListener('toggle',()=>{
     if(tools.open)this.expandedOperatorTools.add(p.id);
     else this.expandedOperatorTools.delete(p.id);
