@@ -9,6 +9,7 @@ import {operationBrief,assessOperation,type OperationKind} from './breach-operat
 import {stabilizationSummary} from './breach-casualty-status.ts';
 import {attributableCivilianHarm} from './breach-civilian-harm.ts';
 import {assessDispatchForce} from './dispatch-force-review.ts';
+import {captureVitalStatus} from './breach-capture-vitals.ts';
 
 const near=(a:Pt,b:Pt,range:number)=>Math.hypot(a.x-b.x,a.y-b.y)<=range;
 
@@ -33,8 +34,10 @@ export function missionText(s:Session){
     s.missionType==='rescue'?'REACH PERSON IN TARGET ROOM':
     s.missionType==='intel'?'RECOVER INTELLIGENCE • '+
       s.holdTime.toFixed(1)+'/1.2s':
-    s.missionType==='capture'?'SECURE NEUTRALIZED TARGET':
+    s.missionType==='capture'?'REACH TARGET AND VERIFY VITALS':
     'SECURE OBJECTIVE';
+  if(s.missionType==='capture')return
+    'EXTRACT LIVING CAPTIVE · ESCORT OR PHYSICALLY TRANSPORT';
   return s.missionType==='intel'?
     'RETURN TO EXTRACTION · INTEL CARRIER MUST EXIT':
     s.missionType==='rescue'?
@@ -50,6 +53,12 @@ export function debrief(s:Session){
   const shots=own.reduce((t,a)=>t+a.shots,0);
   const hits=own.reduce((t,a)=>t+a.hits,0);
   const target=enemies(s).find(e=>e.id===s.captureTarget);
+  const captureVitals=target?captureVitalStatus(target):'unverified';
+  const captureOutcome=s.missionType!=='capture'?'not-applicable':
+    captureVitals==='deceased'?'deceased':
+    s.phase==='won'&&s.captureSecured?captureVitals:
+    s.captureSecured?'secured-not-extracted':
+    captureVitals==='unverified'?'unverified':'not-secured';
   const rescuePerson=s.civilians.find(c=>c.rescueTarget);
   const rescueStatus=!rescuePerson?'none':
     s.mission!=='done'?'not-extracted':
@@ -79,6 +88,7 @@ export function debrief(s:Session){
     elapsed:Math.floor(s.seconds),casualties,teamSize:own.length,
     shots,hits,objective:s.mission==='done',
     targetSurrendered:target?.surrendered??false,
+    captureOutcome:s.missionType==='capture'?captureOutcome:undefined,
     civilianInjured,civilianDown,
     civilianPlayerInjured:attributable.injured,
     civilianPlayerDown:attributable.down,
@@ -105,6 +115,9 @@ export function debrief(s:Session){
       survived:a.health>0,injury:a.injuryStage,
       fired:a.shots,hits:a.hits})),
     captureSecured:s.captureSecured,
+    captureVitals,captureOutcome,
+    captureDeathAt:target?.deathAt??null,
+    captureDownedAt:target?.downedAt??null,
     rescueExtracted:!!s.rescue&&s.phase==='won',
     intelCarrier:s.intelCarrierId};
 }
