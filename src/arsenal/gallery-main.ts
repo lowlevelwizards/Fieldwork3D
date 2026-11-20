@@ -8,6 +8,9 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 import {arsenalRecipeFromLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {ArsenalThumbnailer} from './thumbnailer.ts';
 import {createArsenalPreviewQueue} from './preview-job-queue.ts';
+import {createArsenalSavedActionButtons,renderArsenalFilterButtons,
+ createArsenalGalleryCard} from './gallery-browser-controls.ts';
+import {createArsenalGalleryChrome} from './gallery-chrome.ts';
 import {mountGlockArsenalGallery} from './glock-gallery.ts';
 import {openArsenalWorkbench} from './workbench-screen.ts';
 import {type ArsenalSavedBuild,loadArsenalBuildLibrary,persistArsenalBuildLibrary,
@@ -23,25 +26,14 @@ const kicker=document.createElement('span');kicker.className='arsenal-overline';
 const title=document.createElement('h1');title.textContent='ARSENAL';brand.append(kicker,title);
 const exit=document.createElement('a');exit.href='./index.html';exit.className='arsenal-back';exit.textContent='BACK TO BREACH';
 heading.append(brand,exit);
-const layout=document.createElement('div');layout.className='arsenal-layout';
-const hero=document.createElement('section');hero.className='arsenal-hero';hero.setAttribute('aria-label','Selected weapon');
-const heroMedia=document.createElement('div');heroMedia.className='arsenal-hero-media';
-const heroCopy=document.createElement('div');heroCopy.className='arsenal-hero-copy';
-const heroPlatform=document.createElement('span');heroPlatform.className='arsenal-overline';
-const heroTitle=document.createElement('h2');
-const heroHint=document.createElement('p');heroHint.className='hint';
-heroHint.textContent='Explore real factory configurations in the full-screen Workbench.';
-const openWorkbench=document.createElement('button');openWorkbench.type='button';
-openWorkbench.className='arsenal-hero-open';openWorkbench.textContent='OPEN WORKBENCH';
+const {layout,heroCopy,heroMedia,heroPlatform,heroTitle,openWorkbench,
+ savedControls,search,filters,count,grid}=createArsenalGalleryChrome('primary');
 openWorkbench.addEventListener('click',()=>{
  const ref=selectedSaved??ARSENAL_REFERENCES.find(r=>r.id===selectedId);
  if(ref)openArsenalWorkbench(ref,id=>refreshLibrary(id));
 });
-const savedControls=document.createElement('div');savedControls.className='arsenal-saved-actions';
- const rename=document.createElement('button');rename.type='button';rename.textContent='RENAME';
- const duplicate=document.createElement('button');duplicate.type='button';duplicate.textContent='DUPLICATE';
- const remove=document.createElement('button');remove.type='button';remove.textContent='DELETE';
- savedControls.append(rename,duplicate,remove);savedControls.hidden=true;
+const {rename,duplicate,remove}=createArsenalSavedActionButtons();
+savedControls.append(rename,duplicate,remove);savedControls.hidden=true;
  const renameBox=document.createElement('div');renameBox.className='arsenal-rename-box';renameBox.hidden=true;
  const renameInput=document.createElement('input');renameInput.type='text';renameInput.maxLength=32;
  renameInput.setAttribute('aria-label','New saved build name');
@@ -50,23 +42,7 @@ const savedControls=document.createElement('div');savedControls.className='arsen
  renameBox.append(renameInput,renameSave,renameCancel);
  const savedFeedback=document.createElement('p');savedFeedback.className='arsenal-saved-feedback';
  savedFeedback.setAttribute('role','status');
- heroCopy.append(heroPlatform,heroTitle,heroHint,openWorkbench,savedControls,renameBox,savedFeedback);
-hero.append(heroMedia,heroCopy);
-const browser=document.createElement('section');browser.className='arsenal-browser';
-const controls=document.createElement('div');controls.className='arsenal-controls';
-const controlHeading=document.createElement('div');
-const overline=document.createElement('span');overline.className='arsenal-overline';
-overline.textContent='FACTORY REFERENCES';
-const subTitle=document.createElement('h2');subTitle.className='arsenal-control-heading';subTitle.textContent='SELECT A WEAPON';
-controlHeading.append(overline,subTitle);
-const search=document.createElement('input');search.className='arsenal-search';search.type='search';
-search.placeholder='Find a model';search.setAttribute('aria-label','Find weapon model');
-controls.append(controlHeading,search);
-const filters=document.createElement('div');filters.className='arsenal-filters';
-filters.setAttribute('role','group');filters.setAttribute('aria-label','Weapon platforms');
-const count=document.createElement('p');count.className='arsenal-count';count.setAttribute('aria-live','polite');
-const grid=document.createElement('div');grid.className='arsenal-grid';
-browser.append(controls,filters,count,grid);layout.append(hero,browser);
+heroCopy.append(renameBox,savedFeedback);
 const categoryNav=document.createElement('nav');
 categoryNav.className='arsenal-weapon-categories';
 categoryNav.setAttribute('aria-label','Arsenal weapon categories');
@@ -128,20 +104,13 @@ function showSelected(ref:ArsenalReference|ArsenalSavedBuild){
   button.setAttribute('aria-pressed',String(button.dataset.arsenalReference===ref.id));
 }
 function renderFilters(){
- filters.replaceChildren();
  const tabs:{id:ArsenalPlatformId|'all'|'saved';name:string}[]=[
   {id:'all',name:'All'},...ARSENAL_PLATFORMS,
   {id:'saved',name:'Saved · '+loadArsenalBuildLibrary().builds.length}];
- for(const item of tabs){
-  const button=document.createElement('button');button.type='button';
-  button.className='arsenal-filter';button.textContent=item.name;
-  button.setAttribute('aria-pressed',String(activePlatform===item.id));
-  button.addEventListener('click',()=>{
-   activePlatform=item.id;
-   renderFilters();renderCards();
-  });
-  filters.append(button);
- }
+ renderArsenalFilterButtons(filters,tabs,activePlatform,id=>{
+  activePlatform=id;
+  renderFilters();renderCards();
+ });
 }
 let observer:IntersectionObserver|null=null;
 function renderCards(){
@@ -180,16 +149,13 @@ function renderCards(){
   },{rootMargin:'100px'});
  }
  for(const ref of visible){
-  const card=document.createElement('button');card.type='button';
-  card.className='arsenal-card';card.dataset.arsenalReference=ref.id;
-  card.setAttribute('aria-pressed',String(selectedId===ref.id));
-  card.setAttribute('aria-label','Select '+ref.name);
-  const photo=document.createElement('div');photo.className='arsenal-card-preview';
+  const {button:card,preview:photo}=createArsenalGalleryCard({
+   kind:'primary',name:ref.name,
+   subtitle:platformName('recipe' in ref?ref.recipe.platformId:ref.platformId),
+   ariaLabel:'Select '+ref.name,selected:selectedId===ref.id
+  });
+  card.dataset.arsenalReference=ref.id;
   photo.dataset.referencePreview=ref.id;
-  const model=document.createElement('strong');model.className='model';model.textContent=ref.name;
-  const platform=document.createElement('span');platform.className='platform';
-  platform.textContent=platformName('recipe' in ref?ref.recipe.platformId:ref.platformId);
-  card.append(photo,model,platform);
   card.addEventListener('click',()=>showSelected(ref));
   grid.append(card);
   if(observer)observer.observe(photo);else attachImage(photo,ref,'card');

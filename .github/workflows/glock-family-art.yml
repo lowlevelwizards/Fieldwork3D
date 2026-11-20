@@ -6,6 +6,10 @@ on:
       - 'src/arsenal/glock-gallery.ts'
       - 'src/arsenal/gallery-main.ts'
       - 'src/arsenal/preview-job-queue.ts'
+      - 'src/arsenal/gallery-browser-controls.ts'
+      - 'src/arsenal/gallery-chrome.ts'
+      - 'tests/consolidation-p11-arsenal-chrome.test.mjs'
+      - 'tests/consolidation-p10-arsenal-controls.test.mjs'
       - 'tests/consolidation-p9-arsenal-preview.test.mjs'
       - 'tests/performance-p3-preview-hotpaths.test.mjs'
       - 'scripts/smoke-consolidation-p9-arsenal.mjs'
@@ -35,6 +39,8 @@ jobs:
           tests/secondary-s1-s3-foundation.test.mjs
           tests/secondary-arsenal-parity.test.mjs
           tests/consolidation-p9-arsenal-preview.test.mjs
+          tests/consolidation-p10-arsenal-controls.test.mjs
+          tests/consolidation-p11-arsenal-chrome.test.mjs
           tests/performance-p3-preview-hotpaths.test.mjs
       - name: TypeScript and production build
         run: npm run check && npm run build
