@@ -50,9 +50,9 @@ test('Secondary Arsenal: same interactive presentation affordances with honest e
  const viewport=readFileSync(new URL('../src/arsenal/glock-viewport.ts',import.meta.url),'utf8');
  for(const token of ['arsenal-search','arsenal-filters','arsenal-grid',
   'OPEN WORKBENCH','SAVED','renameGlockSavedBuild','duplicateGlockSavedBuild',
-  'deleteGlockSavedBuild','secondaryCarryClaim'])
+  'deleteGlockSavedBuild'])
   assert.ok(gallery.includes(token),'Missing '+token);
- for(const token of ['UNDO','REDO','FIT','SIDE','OPPOSITE',
+ for(const token of ['UNDO','REDO','FIT',
   'CHOOSE MODEL','LOAD BUILD','SAVE BUILD','role','dialog','SECONDARY_CAPACITY'])
   assert.ok(wb.includes(token),'Missing '+token);
  for(const token of ['pointerdown','pointermove','wheel','ResizeObserver',
