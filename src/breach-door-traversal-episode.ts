@@ -90,8 +90,18 @@ export function syncDoorTraversalEpisode(
   // or still-closed leaf. This does not edit routes or authored orders.
   const departed=squared(actor.p,doorCenter(door))>110*110;
   const opened=door.open&&(door.openFraction??0)>=.98;
-  if(episode.maneuver!=='outside-leaf'&&departed&&
-     (episode.phase==='cross'||episode.phase==='blocked'||opened)){
+  // M3.1: an outside-leaf maneuver is a *temporary* physical stage,
+  // not a permanent reservation for a distant doorway. Preserve it
+  // while a real waypoint or support hand is still owned; retire it
+  // once that route has finished and the operator has left the frame.
+  const activeLeafStage=episode.maneuver==='outside-leaf'&&
+    episode.waypointIndex<episode.waypoints.length&&
+    episode.waypoints.length>0;
+  const attachedHand=actor.doorHandContact?.doorId===door.id&&
+    actor.doorHandContact.releasedAt===null;
+  if(departed&&!activeLeafStage&&!attachedHand&&
+     (episode.phase==='cross'||episode.phase==='release'||
+      episode.phase==='blocked'||opened)){
     actor.doorTraversal=null;return null;
   }
   // D4 retains a physical support-hand attachment while the world
