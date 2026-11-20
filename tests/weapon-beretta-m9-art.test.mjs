@@ -101,7 +101,7 @@ test('shared preview accepts Beretta but leaves Glock equipment unchanged',()=>{
   assert.equal(preview.children.length,0);
  }
  const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
- assert.match(gallery,/buildM9Appearance/);
+ assert.match(gallery,/buildSidearmPreview/);
  assert.match(gallery,/openM9Inspector/);
  assert.match(gallery,/BERETTA/);
  assert.doesNotMatch(gallery,/equipFreshSecondary/);
