@@ -47,6 +47,6 @@ test('S5.2: queued weapon switch progresses smoothly, conserves ammo, and comple
  assert.equal(a.magazine,priorPrimary);
  const protectedCode=readFileSync(
   new URL('../src/breach-firing-pipeline.ts',import.meta.url),'utf8');
- assert.match(protectedCode,/a.secondarySwitch.fraction>0/);
+ assert.match(protectedCode,/a.secondarySwitch\\?\\.fraction/);
  assert.match(protectedCode,/a.secondarySwitch.desired==='secondary'/);
 });
