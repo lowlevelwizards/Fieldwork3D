@@ -120,6 +120,7 @@ export class CampaignScreen{
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
+ private outfitterGallery:ReturnType<typeof createOutfitterGallery>|null=null;
  private workbench:WeaponWorkbenchPreview|null=null;
  private weaponView=false;
  /** Temporary UI preference only; no Campaign save mutation. */
@@ -156,6 +157,9 @@ export class CampaignScreen{
   core:string;view:WeaponWorkbenchViewState
  }>();
  private workbenchCore:string|null=null;
+ private disposeGallery(){
+  this.outfitterGallery?.dispose();this.outfitterGallery=null;
+ }
  private disposePreview(){
   if(this.preview&&this.lastArmoryRenderedId)
    this.operatorViewAngles.set(this.lastArmoryRenderedId,this.preview.getAzimuth());
@@ -173,12 +177,12 @@ export class CampaignScreen{
   this.root.hidden=true;
   document.body.append(this.root);
  }
- hide(){this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
+ hide(){this.disposeGallery();this.disposePreview();this.root.hidden=true;this.armoryOperatorId=null;}
  entry(hasSave:boolean,sandboxHasSave=false,active:CampaignSlot='legacy',dispatchHasSave=false,
   initialPane:'main'|'new'='main',
   savedCampaigns:Partial<Record<CampaignSlot,CampaignState|null>>={}){
   this.lastEntry={legacy:hasSave,sandbox:sandboxHasSave,dispatch:dispatchHasSave,active};
-  this.armoryOperatorId=null;this.disposePreview();
+  this.armoryOperatorId=null;this.disposeGallery();this.disposePreview();
   this.root.hidden=false;this.root.replaceChildren();
   const slots:[
    CampaignSlot,string,boolean,()=>void
@@ -390,7 +394,7 @@ export class CampaignScreen{
    if(target){this.armory(c,target.id);return;}
    this.armoryOperatorId=null;
   }
-  this.disposePreview();
+  this.disposeGallery();this.disposePreview();
   this.lastArmoryRenderedId=null;
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide');
@@ -1368,6 +1372,7 @@ export class CampaignScreen{
    operatorId:id,weapon:person.weapon,slots:slotSnapshot,
    mass:currentMass,mobility:currentMobility
   };
+  this.disposeGallery();
   this.root.hidden=false;this.root.replaceChildren();
   const main=node('main','campaign-shell campaign-wide campaign-armory-screen');
   if(this.activeKitWorkspace==='readiness')this.activeKitWorkspace='equipment';
@@ -2381,6 +2386,7 @@ export class CampaignScreen{
     galleryRoot.hidden=true;advanced.hidden=true;carryPanel.hidden=false;
    }
    });
+   this.outfitterGallery=gallery;
    showGallery=slot=>gallery.show(slot);
    gallery.show(this.activeBenchSlot);
    main.dataset.kitWorkspace='unified';

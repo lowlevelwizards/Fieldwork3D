@@ -56,7 +56,8 @@ test('P3.B invalidates late GPU work on kit swaps or preview disposal',()=>{
 test('P3.B gallery waits once and ignores obsolete operator/category work',()=>{
  assert.match(gallery,/renderModel:\(slot:LoadoutSlot,itemId:string\)=>string\|null\|Promise<string\|null>/);
  assert.match(gallery,/let thumbnailBusy=false/);
- assert.match(gallery,/if\(thumbnailBusy\)return/);
+ assert.match(gallery,/if\(disposed\|\|thumbnailBusy\)return/);
+ assert.match(gallery,/disposed=true;\s*thumbnailGeneration\+\+/);
  assert.match(gallery,/const url=await options\.renderModel\(slot,choice\.id\)/);
  assert.match(gallery,/generation!==thumbnailGeneration\|\|!root\.isConnected\|\|!tile\.isConnected/);
  assert.match(gallery,/root\.dataset\.slot!==slot/);
