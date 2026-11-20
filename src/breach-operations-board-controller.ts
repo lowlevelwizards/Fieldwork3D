@@ -736,6 +736,9 @@ function renderOperationsBoard(){
   });
   showGallery=gallery.show;
   kit.insertBefore(galleryHost,advancedPanel);
+  // Keep carry contents in the gallery's place, not below the advanced
+  // workbench disclosure where it would require an extra vertical scroll.
+  kit.insertBefore(carryPanel,advancedPanel);
   advancedPanel.addEventListener('toggle',()=>{
    if(advancedPanel.open){
     quickKitView='advanced';galleryHost.hidden=true;carryPanel.hidden=true;
