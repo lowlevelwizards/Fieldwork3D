@@ -68,6 +68,13 @@ test('D15.5E downed CAPTURE cannot be extracted remotely',()=>{
   carrier.p={...s.scenario.extract};carrier.priorP={...carrier.p};
   toggling(s);stepSession(s,1/60);
   assert.equal(s.phase,'running','operator alone cannot teleport the patient');
+  // A stale one-way link cannot complete an extraction without physical
+  // contact; either actual reciprocal custody or direct contact is required.
+  target.p=pt(s.scenario.extract.x-34,s.scenario.extract.y);
+  target.priorP={...target.p};target.carriedById=carrier.id;
+  carrier.carryingId=null;
+  stepSession(s,1/60);
+  assert.equal(s.phase,'running','broken reciprocal custody is not capture');
   target.p=pt(s.scenario.extract.x-14,s.scenario.extract.y);
   target.priorP={...target.p};target.carriedById=carrier.id;
   carrier.carryingId=target.id;
