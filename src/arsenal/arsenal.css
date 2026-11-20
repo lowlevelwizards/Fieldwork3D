@@ -587,3 +587,51 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
  .arsenal-wb-stats.is-collapsed{padding:9px 11px}
  .arsenal-wb-stats.is-collapsed .arsenal-wb-stats-head{margin:0}
 }
+
+
+/* Glock art references: same Arsenal shell, clearly separated from equippable
+   primary-weapon recipes. One native-geometry snapshot context for all cards. */
+.arsenal-glock-gallery{display:flex;flex-direction:column;gap:13px;
+ padding:16px;border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-lg);background:var(--fw-panel-deep)}
+.arsenal-glock-header{display:flex;justify-content:space-between;align-items:end;
+ flex-wrap:wrap;gap:12px}
+.arsenal-glock-header h2{margin:3px 0 0;font:800 clamp(23px,4vw,36px)/1 var(--fw-font-display);
+ letter-spacing:.045em}
+.arsenal-glock-notice{font:700 11px var(--fw-font-menu);letter-spacing:.075em;
+ color:var(--fw-text-muted);border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-sm);padding:8px 10px}
+.arsenal-glock-feature{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(175px,.55fr);
+ gap:15px;align-items:center;padding:13px;background:#25342f;
+ border-radius:var(--fw-radius-md)}
+.arsenal-glock-hero-visual{min-height:140px;aspect-ratio:2.5/1;display:grid;
+ place-items:center;overflow:hidden;color:var(--fw-text-muted)}
+.arsenal-glock-hero-visual img{display:block;width:100%;height:100%;object-fit:contain}
+.arsenal-glock-feature-copy{display:flex;flex-direction:column;gap:9px;min-width:0}
+.arsenal-glock-model{font:800 clamp(22px,3vw,36px)/1 var(--fw-font-display);margin:0}
+.arsenal-glock-description{color:var(--fw-text-muted);margin:0}
+.arsenal-glock-subnote{font:500 11px/1.4 var(--fw-font-action);
+ color:var(--fw-text-faint);margin:0}
+.arsenal-glock-view-controls{display:flex;flex-wrap:wrap;gap:5px}
+.arsenal-glock-view{border:1px solid var(--fw-panel-border);background:var(--fw-panel);
+ color:var(--fw-text-muted);padding:9px 11px;min-height:40px;border-radius:var(--fw-radius-sm);
+ font:700 11px var(--fw-font-menu)}
+.arsenal-glock-view[aria-pressed="true"]{background:var(--fw-sage);color:var(--fw-bg)}
+.arsenal-glock-cards{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.arsenal-glock-card{display:flex;flex-direction:column;text-align:left;gap:5px;
+ padding:8px;border:1px solid var(--fw-panel-border);
+ border-radius:var(--fw-radius-md);background:var(--fw-panel);min-width:0;
+ color:var(--fw-text);cursor:pointer}
+.arsenal-glock-card[aria-pressed="true"]{border-color:var(--fw-sage);background:#2c4139}
+.arsenal-glock-card-preview{aspect-ratio:2.29/1;display:grid;place-items:center;
+ overflow:hidden;width:100%}
+.arsenal-glock-card-preview img{width:100%;height:100%;object-fit:contain}
+.arsenal-glock-card strong{font:750 18px/1 var(--fw-font-display)}
+.arsenal-glock-card small{font:500 11px/1.35 var(--fw-font-action);color:var(--fw-text-muted)}
+.arsenal-glock-card:focus-visible,.arsenal-glock-view:focus-visible{
+ outline:2px solid var(--fw-focus);outline-offset:2px}
+@media(max-width:720px){
+ .arsenal-glock-feature{grid-template-columns:minmax(0,1fr)}
+ .arsenal-glock-cards{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .arsenal-glock-gallery{padding:12px}
+}
