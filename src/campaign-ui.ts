@@ -47,6 +47,7 @@ import {promptFieldworkText,confirmFieldworkAction,showFieldworkNotice}
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
 import {createCampaignGearPicker} from './ui/campaign-gear-picker.ts';
 import {createOutfitterGallery} from './ui/campaign-outfitter-gallery.ts';
+import './ui/campaign-outfitter-gallery.css';
 import {quoteSingleFieldTransfer} from './equipment-field-transfer.ts';
 import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
 import {CarryKitUndoHistory,captureCarryUndo,type CarryUndoSnapshot} from './equipment-carry-undo.ts';
@@ -2295,7 +2296,8 @@ export class CampaignScreen{
       captureCarryUndo(person.loadout,quote.magazines));
      this.handlers.moveMagazine(id,magId,to);
     },
-    onArsenal:()=>this.handlers.openArsenal(id),
+    onArsenal:()=>{if(!arsenal.disabled)this.handlers.openArsenal(id);},
+    arsenalDisabled:arsenal.disabled,
     onAdvanced:()=>{galleryRoot.hidden=true;advanced.hidden=false;}
    });
    showGallery=slot=>gallery.show(slot);
