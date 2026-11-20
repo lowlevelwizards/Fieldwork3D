@@ -75,7 +75,9 @@ test('Operations first viewport keeps priority ahead of secondary controls',()=>
   ui.indexOf('grid.append(overview,logistics)'));
  assert.match(overview,/const workspace=node\('div','campaign-overview-workspace'\)/);
  assert.match(overview,/priority\.append\(nextCard,readiness\)/);
- assert.match(overview,/support\.append\(stats,suppliesSummary,shortcuts\)/);
+ assert.match(overview,/support\.append\(shortcuts\)/);
+ assert.match(overview,/projectOperationsSummary\(c\)/);
+ assert.match(overview,/campaign-uxr-status-strip/);
  assert.match(overview,/if\(department\)support\.append\(department\)/);
  assert.match(overview,/workspace\.append\(priority,support\)/);
  assert.match(overview,/overview\.append\(workspace,footer\)/);
@@ -148,7 +150,7 @@ test('Cases board stays single-column on phones and uses desktop columns when wi
  assert.match(cases,/\.campaign-contract-more>\.campaign-contract-board\{margin-top:13px\}/);
 });
 
-test('Squad workspace keeps deployment assignment before active roster and existing actions',()=>{
+test('Squad shows one visual deployment team and a selected operator inspector',()=>{
  const ui=source('campaign-ui.ts');
  const personnel=ui.slice(ui.indexOf("const personnel=node('section','campaign-section')"),
   ui.indexOf("const logistics=node('section','campaign-section')"));
@@ -156,13 +158,17 @@ test('Squad workspace keeps deployment assignment before active roster and exist
  assert.match(personnel,/personnelWorkspace\.append\(deployment\)/);
  assert.match(personnel,/const activeOperators=c\.operators\.filter\(p=>/);
  assert.match(personnel,/p\.status!=='retired'&&p\.status!=='lost'/);
- assert.match(personnel,/node\('h2','','ACTIVE ROSTER'\)/);
+ assert.match(personnel,/node\('h2','','OPERATOR DETAIL'\)/);
+ assert.match(personnel,/campaign-uxr-squad-grid/);
+ assert.match(personnel,/campaign-uxr-reserve-tiles/);
+ assert.match(personnel,/card\.hidden=p\.id!==selectedId/);
  assert.match(personnel,/if\(!activeOperators\.length\)roster\.append/);
  assert.match(personnel,/for\(const p of activeOperators\)/);
  assert.match(personnel,/rosterPanel\.append\(roster\)/);
  assert.match(personnel,/personnelWorkspace\.append\(rosterPanel\)/);
  assert.match(personnel,/personnel\.append\(personnelWorkspace\)/);
- assert.match(personnel,/this\.handlers\.assignSlot\(slot,picker\.value\)/);
+ assert.match(personnel,/this\.handlers\.assignSlot\(slot,p\.id\)/);
+ assert.doesNotMatch(personnel,/node\('select','campaign-select'\)/);
  assert.match(personnel,/this\.handlers\.openStudio\(p\.id\)/);
 });
 
