@@ -61,6 +61,8 @@ export type ReplayActorFrame=ActorFrame & {
  /** S8.2: historical pistol magazine identity, rounds and handoff clock. */
  secondaryEquipment?:SecondaryEquipment;
  secondaryReload?:SecondaryTimedReload|null;
+ /** D15.7 exact down and fatality evidence; absent in legacy films. */
+ downedAt?:number|null;deathAt?:number|null;lastDownById?:string|null;
  /** D15 conscious surrender timestamp, not a down event. */
  lastSurrenderAt?:number;
  releasedWeaponId?:number|null;
@@ -258,6 +260,8 @@ export function snapshot(s:Session,seenGround?:string[],
       lastShotAt:a.lastShotAt,fireMode:a.fireMode,burstCount:a.burstCount,
       skills:reuseFrozenReplayValue(a.skills,prior?.skills,
         ()=>({...a.skills})),
+      downedAt:a.downedAt??null,deathAt:a.deathAt??null,
+      lastDownById:a.lastDownById??null,
       surrendered:a.surrendered,lastSurrenderAt:a.lastSurrenderAt,
       releasedWeaponId:a.releasedWeaponId??null,
       suspectEscapeMode:a.suspectEscapeMode??null,
@@ -587,6 +591,8 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       lastCivilianContactAt:copy.lastCivilianContactAt??-100,
       // Historical frames without a mode cannot inherit the future one.
       transportMode:copy.transportMode??null,
+      downedAt:copy.downedAt??null,deathAt:copy.deathAt??null,
+      lastDownById:copy.lastDownById??null,
       lastSurrenderAt:copy.lastSurrenderAt,
       releasedWeaponId:copy.releasedWeaponId??null,
       suspectEscapeMode:copy.suspectEscapeMode??null,
