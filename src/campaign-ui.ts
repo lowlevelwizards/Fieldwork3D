@@ -127,6 +127,7 @@ export class CampaignScreen{
  private selectedSquadOperatorId:string|null=null;
  private selectedCaseId:string|null=null;
  private selectedSupplyIndex=0;
+ private selectedRecordId:string|null=null;
  /** Keeps the selected case available while preparing squad or supplies. */
  private preparationContractId:string|null=null;
  private preview:CampaignKitPreview|null=null;
@@ -1046,7 +1047,7 @@ export class CampaignScreen{
   if(c.history.length===0)chronicle.append(node('p','campaign-note',
    'Your unit history will appear here after its first operation.'));
   const recentReports=c.history.slice(-8).reverse();
-  const operationBoard=node('div','campaign-operation-board');
+  const operationBoard=node('div','campaign-operation-board campaign-uxr-record-index');
   const renderOperation=(report:(typeof c.history)[number])=>{
    const contract=c.contracts.find(k=>k.id===report.contractId);
    const incident=historicalDispatchIncident(c,report);
@@ -1094,11 +1095,46 @@ export class CampaignScreen{
    article.append(recordDetail);
    return article;
   };
-  for(const report of recentReports)operationBoard.append(renderOperation(report));
+  // UXR-07: chronological scan lives in compact rows. Only one complete
+  // authoritative report is inspected; old history remains lazy below.
+  const inspected=node('section','campaign-uxr-record-inspector');
   if(recentReports.length){
+   const selected=c.history.find(report=>report.id===this.selectedRecordId);
+   const initial=selected?recentReports.findIndex(report=>report.id===selected.id):-1;
+   let current=initial<0?0:initial;
+   const recordButtons:HTMLButtonElement[]=[];
+   const inspect=(index:number)=>{
+    current=index;
+    const report=recentReports[current];
+    if(!report)return;
+    this.selectedRecordId=report.id;
+    for(let i=0;i<recordButtons.length;i++)
+     recordButtons[i].setAttribute('aria-current',i===current?'true':'false');
+    inspected.replaceChildren(renderOperation(report));
+   };
+   for(let i=0;i<recentReports.length;i++){
+    const report=recentReports[i];
+    const contract=c.contracts.find(k=>k.id===report.contractId);
+    const incident=historicalDispatchIncident(c,report);
+    const title=incident?.title??(contract?
+     campaignIncidentView(c,contract).title:'Operation');
+    const record=button('','campaign-uxr-record-row',undefined as never);
+    // The general button helper owns click binding; the archive row uses it
+    // with one deterministic callback and no report state mutations.
+    record.textContent='';
+    record.addEventListener('click',()=>inspect(i));
+    record.append(node('span','campaign-uxr-record-day','DAY '+report.day),
+     node('span','campaign-uxr-record-title',title),
+     node('span','campaign-uxr-record-result',
+      report.outcome.toUpperCase()+' · '+report.grade));
+    record.setAttribute('aria-label','Inspect day '+report.day+' · '+title+
+     ' · '+report.outcome+' · grade '+report.grade);
+    recordButtons.push(record);operationBoard.append(record);
+   }
    chronicle.append(node('p','campaign-operation-count',
     'LATEST '+recentReports.length+' OF '+c.history.length+' RECORDED OPERATION'+
-    (c.history.length===1?'':'S')),operationBoard);
+    (c.history.length===1?'':'S')),operationBoard,inspected);
+   inspect(current);
   }
   if(c.history.length>recentReports.length){
    const older=node('details','campaign-operation-more');
