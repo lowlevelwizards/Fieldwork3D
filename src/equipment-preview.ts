@@ -17,6 +17,9 @@ import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
 import {setEquipmentChoice,type LoadoutSlot} from './equipment-loadouts.ts';
+import {resolvedWardrobe} from './operator-wardrobe-data.ts';
+import {frameArmoryObject,type ArmoryShotCategory}
+ from './equipment-thumbnail-camera.ts';
 
 export type EquipmentPreviewFocus='full'|'head'|'torso'|'weapon'|'carry';
 const PREVIEW_FOCUS_TARGETS:Record<EquipmentPreviewFocus,readonly [number,number,number]>={
@@ -168,9 +171,10 @@ export class CampaignKitPreview{
      original.magazines,original.wardrobe);
    }
    const selected=target.kind==='gear'?
-    this.previewGearMesh(target.slot,target.itemId):
-    inspectEquipmentMesh(this.rig,
-     original.equipment,target);
+    this.previewGearMesh(target.slot,target.itemId,
+     setEquipmentChoice(original.equipment,target.slot,target.itemId),
+     original.wardrobe):
+    inspectEquipmentMesh(this.rig,original.equipment,target);
    if(!selected)return null;
    selected.updateWorldMatrix(true,true);
    const isolated=selected.clone(true);
@@ -183,19 +187,52 @@ export class CampaignKitPreview{
    const bounds=new THREE.Box3().setFromObject(isolated,true);
    if(bounds.isEmpty())return null;
    const center=bounds.getCenter(new THREE.Vector3());
-   const size=bounds.getSize(new THREE.Vector3());
-   const radius=Math.max(2,size.length()*.95);
-   const camera=new THREE.PerspectiveCamera(35,
-    Math.max(1,this.renderedWidth)/Math.max(1,this.renderedHeight),.1,800);
-   camera.position.copy(center).add(new THREE.Vector3(radius*.7,radius*.38,radius));
-   camera.lookAt(center);
+   const category:ArmoryShotCategory=target.kind==='gear'?
+    target.slot==='primary'?'weapon':
+    target.slot==='head'?'head':
+    target.slot==='armor'?'armor':target.slot==='rig'?'rig':
+    target.slot==='belt'?'belt':target.slot==='backpack'?'backpack':'small':
+    target.kind==='armor'?'armor':target.kind==='rig'?'rig':
+    target.kind==='belt'?'belt':target.kind==='backpack'?'backpack':'small';
+   const shot=frameArmoryObject(bounds,category);
+   const camera=new THREE.PerspectiveCamera(34,
+    shot.width/shot.height,.1,1200);
+   camera.position.copy(shot.position);
+   camera.lookAt(shot.center);
    modelScene.add(new THREE.HemisphereLight(0xe1e9d8,0x293634,3.1));
    const light=new THREE.DirectionalLight(0xf2dbb8,2.4);
    light.position.set(center.x+40,center.y+65,center.z+55);
    modelScene.add(light);
-   this.renderer.render(modelScene,camera);
-   const data=this.renderer.domElement.toDataURL('image/png');
-   if(data.length<128)return null;
+   // Render at the ITEM'S aspect ratio, never the operator viewport ratio.
+   // One temporary offscreen target on the existing WebGL context; a 2D
+   // readback canvas encodes a thumbnail without another WebGL renderer.
+   const targetBuffer=new THREE.WebGLRenderTarget(shot.width,shot.height,{
+    depthBuffer:true,stencilBuffer:false});
+   const previousTarget=this.renderer.getRenderTarget();
+   let data:string|null=null;
+   try{
+    this.renderer.setRenderTarget(targetBuffer);
+    this.renderer.render(modelScene,camera);
+    const pixels=new Uint8Array(shot.width*shot.height*4);
+    this.renderer.readRenderTargetPixels(targetBuffer,0,0,
+     shot.width,shot.height,pixels);
+    const canvas=document.createElement('canvas');
+    canvas.width=shot.width;canvas.height=shot.height;
+    const context=canvas.getContext('2d');
+    if(!context)return null;
+    const image=context.createImageData(shot.width,shot.height);
+    for(let y=0;y<shot.height;y++){
+     const from=(shot.height-1-y)*shot.width*4;
+     image.data.set(pixels.subarray(from,from+shot.width*4),
+      y*shot.width*4);
+    }
+    context.putImageData(image,0,0);
+    data=canvas.toDataURL('image/png');
+   }finally{
+    this.renderer.setRenderTarget(previousTarget);
+    targetBuffer.dispose();
+   }
+   if(!data||data.length<128)return null;
    this.modelThumbCache.set(key,data);
    return data;
   }catch{return null;}
@@ -207,16 +244,23 @@ export class CampaignKitPreview{
    this.draw();
   }
  }
- private previewGearMesh(slot:LoadoutSlot,itemId:string):THREE.Object3D|null{
+ private previewGearMesh(slot:LoadoutSlot,itemId:string,
+  equipment:EquipmentLoadout,wardrobe?:WardrobeOptions):THREE.Object3D|null{
   if(!this.rig||itemId.endsWith('-none'))return null;
-  if(slot==='primary')return this.rig.weapon;
-  if(slot==='head')return this.rig.head;
-  if(slot==='armor'||slot==='rig'||slot==='belt'||slot==='backpack'||
-   slot==='medical'||slot==='utility')
-   return inspectEquipmentMesh(this.rig,this.currentEquipment??undefined,{
-    kind:slot==='medical'?'medical':slot==='utility'?'utility':
-     slot==='armor'?'armor':slot==='rig'?'rig':
-     slot==='belt'?'belt':'backpack'});
+  const visual=this.rig.visualKit;
+  const looks=resolvedWardrobe(wardrobe,equipment);
+  // Wardrobe-authored equipment REPLACES the old generic shells. Query the
+  // actual worn variant, or the picker previously reported NO MODEL while
+  // a real armor/rig mesh was visibly attached to the operator.
+  if(slot==='head')return visual.wardrobeHead.headwear[looks.headwear]??null;
+  if(slot==='armor')
+   return visual.wardrobeGear.armor[looks.armorStyle]??null;
+  if(slot==='rig')return visual.wardrobeGear.rig[looks.rigStyle]??null;
+  if(slot==='belt')return visual.wardrobeGear.belt[looks.beltStyle]??null;
+  if(slot==='backpack')return visual.wardrobeGear.pack[looks.packStyle]??null;
+  if(slot==='primary')return this.rig.weaponBody;
+  if(slot==='medical'||slot==='utility')
+   return inspectEquipmentMesh(this.rig,equipment,{kind:slot});
   return null;
  }
 
