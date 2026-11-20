@@ -7,6 +7,7 @@ on:
       - 'src/breach-door-traversal-episode.ts'
       - 'src/breach-door-hand-contact.ts'
       - 'src/breach-motor-route.ts'
+      - 'src/breach-squeeze-leaf-exit.ts'
       - 'scripts/audit-r7-squad-execution.mjs'
 permissions: {contents: read}
 concurrency:
