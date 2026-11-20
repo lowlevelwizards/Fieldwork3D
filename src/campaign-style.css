@@ -2944,3 +2944,77 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  }
  .campaign-uxr-case-pages>.campaign-contract:first-child{grid-column:auto}
 }
+
+/* UXR-06 — inventory is a selected-resource workspace, not five buy rows. */
+.campaign-logistics-supply-panel .campaign-logistics-stats.campaign-uxr-stock{
+ display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;
+}
+.campaign-shell .campaign-uxr-stock-button{
+ display:flex;align-items:flex-start;flex-direction:column;gap:5px;
+ box-sizing:border-box;width:100%;min-width:0;min-height:70px;
+ padding:10px;margin:0;text-align:left;
+ background:var(--fw-panel-deep);border:1px solid var(--fw-panel-border);
+ color:var(--fw-text);
+}
+.campaign-uxr-stock-button strong{
+ font:800 22px/1 var(--fw-font-data);font-variant-numeric:tabular-nums;
+}
+.campaign-uxr-stock-button span{
+ font:650 10px/1.2 var(--fw-font-menu);
+ color:var(--fw-text-muted);
+}
+.campaign-shell .campaign-uxr-stock-button[aria-pressed="true"]{
+ border-color:var(--fw-sage);background:var(--fw-panel-raised);
+ box-shadow:inset 0 0 0 1px var(--fw-sage);
+}
+.campaign-shell .campaign-uxr-stock-button.is-low:not([aria-pressed="true"]){
+ border-color:var(--fw-brass);
+}
+.campaign-uxr-refill-breakdown{
+ border-top:1px solid var(--fw-panel-border);padding-top:7px;
+}
+.campaign-uxr-refill-breakdown>summary{
+ display:flex;align-items:center;min-height:44px;
+ font:700 12px/1.25 var(--fw-font-menu);
+ color:var(--fw-text-muted);cursor:pointer;
+}
+.campaign-uxr-refill-breakdown>.campaign-squad-refill-lines{
+ margin:6px 0;
+}
+.campaign-logistics-supply-panel .campaign-purchases.campaign-uxr-purchase-panel{
+ display:block;margin:0;min-width:0;
+}
+.campaign-uxr-purchase-panel .campaign-supply-offer{
+ display:flex;flex-direction:row;align-items:center;gap:10px;
+ padding:10px;margin:0;
+}
+.campaign-uxr-purchase-panel .campaign-supply-offer[hidden]{
+ display:none!important;
+}
+.campaign-uxr-purchase-panel .campaign-supply-offer-title{
+ flex:1;min-width:0;
+}
+.campaign-shell .campaign-uxr-purchase-panel .campaign-supply-offer button{
+ flex:0 0 auto;width:auto;min-width:90px;
+ min-height:44px;margin:0;
+}
+.campaign-uxr-procurement{
+ border:1px solid var(--fw-panel-border);
+ border-radius:9px;background:var(--fw-panel-deep);min-width:0;
+}
+.campaign-uxr-procurement>summary{
+ min-height:50px;display:flex;align-items:center;
+ padding:12px;cursor:pointer;list-style:none;
+ font:750 13px/1.25 var(--fw-font-menu);color:var(--fw-text);
+}
+.campaign-uxr-procurement>summary::-webkit-details-marker{display:none}
+.campaign-uxr-procurement>summary::after{content:'+';margin-left:auto;font-size:19px}
+.campaign-uxr-procurement[open]>summary::after{content:'−'}
+.campaign-uxr-procurement>.campaign-armory{
+ padding:10px;box-sizing:border-box;
+}
+@media(max-width:390px){
+ .campaign-logistics-supply-panel .campaign-logistics-stats.campaign-uxr-stock{
+  grid-template-columns:repeat(2,minmax(0,1fr));
+ }
+}
