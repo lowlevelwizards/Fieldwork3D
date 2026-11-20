@@ -53,6 +53,8 @@ try{
   assert.equal(await armory.locator('.campaign-kit-preview')
    .getAttribute('data-inspected-item'),'flashbang',
    'Selecting physical item focuses exact on-body 3D mesh');
+  assert.equal(await armory.getAttribute('data-preview-docked'),'true',
+   'Selecting actual carried equipment pins its model on a phone');
   await armory.getByRole('button',{name:'EQUIPMENT',exact:true}).click();
   await armory.getByRole('tab',{name:'PROTECTION'}).click();
   const gear=armory.locator('.fw-loadout-group[data-loadout-group="protection"]')
