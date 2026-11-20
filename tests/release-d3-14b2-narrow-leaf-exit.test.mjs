@@ -5,6 +5,8 @@ import {findBoundedNarrowLeafExit,claimNarrowLeafExitProbe,
  from '../src/breach-squeeze-leaf-exit.ts';
 import {localDetourWaypointTolerance}
  from '../src/breach-motor-local-detour.ts';
+import {releaseEmbeddedMotorActor}
+ from '../src/breach-locomotion-clearance.ts';
 const p=(x,y)=>({x,y}),d=(a,b)=>Math.hypot(a.x-b.x,a.y-b.y);
 
 test('D3.14B2 narrow escape: every local leg needs a real oriented sweep',()=>{
@@ -62,4 +64,76 @@ test('D3.14B2 exact staged waypoint tolerance never affects normal nav',()=>{
  assert.equal(localDetourWaypointTolerance(a,stages[1]),.85);
  assert.equal(localDetourWaypointTolerance(a,p(296,496)),3,
   'original transient nav must use its original 3-unit tolerance');
+});
+
+test('M2.10: repeated witnessed leaf escape gets at most three spaced cold probes',()=>{
+ const a={plan:[{kind:'move',id:91,entryDoorId:'FRONT'}],p:p(420,605)};
+ const goal=p(283,585);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.05,10),true);
+ a.p=p(425,605);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.05,15),false);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.26,16),true);
+ a.p=p(416,604);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.26,17),false);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.26,21),true);
+ a.p=p(440,604);
+ assert.equal(claimNarrowLeafExitProbe(a,'FRONT',goal,1.45,26),false);
+});
+
+test('M2.10: legitimate narrow profile cannot be reset by early full-width wall rescue',()=>{
+ const wall={a:p(8, -50),b:p(8, 50)};
+ const nearWall=(point,r,callback)=>
+  Math.abs(point.x-8)<r+1&&callback(wall,0);
+ const world={
+  someWallNearPoint:nearWall,
+  someCoverNearPoint:()=>false,
+  passable:(point,r=8)=>Math.abs(point.x-8)>=r+1&&
+    Math.abs(point.x)<100&&Math.abs(point.y)<100,
+  cover:[],walls:[wall],bounds:{minX:-100,minY:-100,maxX:100,maxY:100}
+ };
+ const actor={p:p(0,0),priorP:p(0,0),squeeze:true,
+  plan:[{kind:'move',id:81,entryDoorId:'FRONT',p:p(0,30)}],
+  nav:[p(0,8)],blockedTime:2,squeezeTime:1,velocity:0,retryRouteAt:0};
+ ownNarrowExitWaypoints(actor,[actor.nav[0]]);
+ const result=releaseEmbeddedMotorActor(actor,p(0,30),[],1/60,world);
+ assert.equal(result,false,'no full-body rescue on genuine narrow stage');
+ assert.deepEqual(actor.nav,[p(0,8)]);
+ assert.deepEqual(actor.p,p(0,0),'no invented displacement');
+ // Without a certified narrow stage, original embedded-body safety owns
+ // real collision and may issue its existing swept rescue.
+ actor.nav=[p(0,9)];
+ const recovery=releaseEmbeddedMotorActor(actor,p(0,30),[],1/60,world);
+ assert.equal(recovery,true);
+ assert.deepEqual(actor.nav,[]);
+});
+
+test('M2.10d: extended leaf-tip turns require exact center before heading changes',()=>{
+ const a={plan:[{kind:'move',id:92,entryDoorId:'FRONT'}],p:p(0,0)};
+ const stages=[p(8,4),p(16,8)];
+ ownNarrowExitWaypoints(a,stages,true);
+ assert.equal(localDetourWaypointTolerance(a,stages[0]),.18);
+ assert.equal(localDetourWaypointTolerance(a,stages[1]),.18);
+ assert.equal(localDetourWaypointTolerance(a,p(30,8)),3);
+});
+
+test('M2.10f: arrived narrow leaf stage checks next owned stride BEFORE full-body rescue',()=>{
+ const wall={a:p(8,-50),b:p(8,50)};
+ const world={
+  someWallNearPoint:(point,r,callback)=>
+    Math.abs(point.x-8)<r+1&&callback(wall,0),
+  someCoverNearPoint:()=>false,
+  passable:(point,r=8)=>Math.abs(point.x-8)>=r+1&&
+    Math.abs(point.x)<100&&Math.abs(point.y)<100,
+  cover:[],walls:[wall],
+  bounds:{minX:-100,minY:-100,maxX:100,maxY:100}
+ };
+ const a={p:p(0,0),priorP:p(0,0),squeeze:true,
+  plan:[{kind:'move',id:82,entryDoorId:'FRONT',p:p(0,30)}],
+  nav:[p(0,0),p(0,8)],blockedTime:0,squeezeTime:1,
+  velocity:15,retryRouteAt:0};
+ ownNarrowExitWaypoints(a,a.nav,true);
+ assert.equal(releaseEmbeddedMotorActor(a,p(0,30),[],1/60,world),false,
+  'already reached stage must not erase verified next narrow step');
+ assert.deepEqual(a.nav,[p(0,0),p(0,8)]);
+ assert.deepEqual(a.p,p(0,0));
 });
