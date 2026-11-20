@@ -236,13 +236,18 @@ export function createBreachAudioController(config:{
     }
     if(audio&&!replaying)for(const shot of freshShots){
       const firingActor=state.operators.find(a=>a.id===shot.shooterId);
-      const weapon=firingActor?.weapon??'carbine';
+      // Audio identity belongs to the fired shot, not the actor's now
+      // holstered primary. Glock 9mm reuses the existing compact 9mm cue.
+      const weapon=shot.secondaryWeapon?'smg':
+        (shot.weapon&&shot.weapon in WEAPONS?
+          shot.weapon as keyof typeof WEAPONS:
+          firingActor?.weapon??'carbine');
       const listener=selectedActor(state,selected)?.p;
       const level=listener?heardIntensity(shot.start,listener,
         WEAPONS[weapon].noise,state.doors,WALLS):1;
       if(level<.01)continue;
       const pan=listener?(shot.start.x-listener.x)/210:0;
-      const suppressed=firingActor?.weaponConfiguration?.
+      const suppressed=!shot.secondaryWeapon&&firingActor?.weaponConfiguration?.
         slots.muzzle==='muzzle-suppressor';
       const cue=weaponAudioCue(weapon,suppressed);
       if(!playApprovedCue('weapons.'+weapon+
