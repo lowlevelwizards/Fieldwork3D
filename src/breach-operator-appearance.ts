@@ -9,6 +9,7 @@ import {visibleFlashCanisters,flashCanisterSocket,visibleDoorWedges,wedgeSocket,
  visibleFlexCuffs,flexCuffSocket} from './equipment-field-visuals.ts';
 import * as THREE from 'three';
 import {operatorPixelTextures} from './rendering/pixel-materials.ts';
+import {syncHipSecondaryVisual} from './secondary-holster-visual.ts';
 import {equipmentCarrySocket,utilityDisplaySocket} from './equipment-carry-visuals.ts';
 import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {SKIN_TONES,seededSkinTone} from './operator-identity-palette.ts';
@@ -91,6 +92,10 @@ export function updateOperatorAppearance(r:OperatorRig,p:OperatorAppearanceInput
   const clothing=appearanceChanged?
     resolvedWardrobe(p.wardrobe,p.equipment):previousAppearance!.outfit;
   if(appearanceChanged){
+  // Passive, actual-pelvis-mounted S4 carry. An unissued or unequipped
+  // secondary does not materialize. S5 will take over drawing authority.
+  syncHipSecondaryVisual(r.hip,p.equipment?.secondary,
+   !!p.equipment&&p.equipment.slots.belt!=='belt-none');
   // Stable career-based presentation, never changing physical collision or IK.
   const identity=p.appearanceSeed??0;
   if(identity!==r.appearanceSeed){
