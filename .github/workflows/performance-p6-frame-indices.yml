@@ -1,0 +1,31 @@
+name: Performance P6 live frame indices
+on:
+  pull_request:
+    paths:
+      - 'src/breach-combat-cues.ts'
+      - 'src/breach-frame-lookup.ts'
+      - 'src/breach-3d.ts'
+      - 'tests/performance-p6-frame-indices.test.mjs'
+      - 'tests/tactical-integration-18-firefight-b2.test.mjs'
+      - '.github/workflows/performance-p6-frame-indices.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tactical-performance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Combat history/visibility and tactical lookup parity
+        run: >-
+          node --experimental-strip-types --test
+          tests/performance-p6-frame-indices.test.mjs
+          tests/phase-a-combat-cues.test.mjs
+          tests/tactical-integration-18-firefight-b2.test.mjs
+      - name: Validate simulation and replay invariants with TypeScript and deployable bundle
+        run: npm run check && npx vite build
