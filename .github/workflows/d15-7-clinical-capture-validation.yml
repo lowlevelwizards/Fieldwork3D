@@ -1,0 +1,53 @@
+name: D15.7 clinical capture and fatality critical
+on:
+  push:
+    branches: [release/d15-7-vitals-critical-20261120]
+    paths:
+      - '.github/workflows/d15-7-clinical-capture-validation.yml'
+      - 'src/**'
+      - 'tests/dispatch-d15*.test.mjs'
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: d15-7-clinical-capture
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: D15 clinical, surrender, transport and replay contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/dispatch-d15-capture-vitals.test.mjs \
+            tests/dispatch-d15-capture-transport-eligibility.test.mjs \
+            tests/dispatch-d15-capture-transport-go.test.mjs \
+            tests/dispatch-d15-capture-transport-presentation.test.mjs \
+            tests/dispatch-d15-suspect-escort-go.test.mjs \
+            tests/dispatch-d15-opportunity-escape-rearm.test.mjs \
+            tests/dispatch-d15-operational-foundation.test.mjs
+      - name: Existing medical, capture and 9mm combat regressions
+        run: |
+          node --experimental-strip-types --test \
+            tests/equipment-22-04-treatment.test.mjs \
+            tests/equipment-22-06-casualty-status.test.mjs \
+            tests/equipment-22-08-casualty-extraction.test.mjs \
+            tests/breach-155.test.mjs \
+            tests/breach-097-106.test.mjs \
+            tests/secondary-s7-live-shot.test.mjs
+      - name: M3/M4 transport and operator medical pose
+        run: |
+          node --experimental-strip-types --test \
+            tests/movement-m3-door-lifecycle.test.mjs \
+            tests/movement-m4-queue-formation.test.mjs \
+            tests/package-b6-frame-body-output.test.mjs \
+            tests/eqa3-16j-npc-lab.test.mjs
+      - name: TypeScript, production Vite and Pages stamp
+        run: |
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
