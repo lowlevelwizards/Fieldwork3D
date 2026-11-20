@@ -28,10 +28,16 @@ jobs:
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=5 > garage-m2-31110.json
           node -e "const r=require('./garage-m2-31110.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,successful:r.successful,ops:r.operators.map(x=>({id:x.id,arrived:x.arrived,remaining:x.remaining,failed:x.failedOrders}))}));if(r.arrivals!==4)process.exit(1)"
+      - name: Clinic seed 19178827 must resolve SYNC and terminally cancel at real locked D8
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=10 --audit-seed=19178827 --audit-scale=small > clinic-m2-19178827.json
+          node -e "const r=require('./clinic-m2-19178827.json').rows[0].modes[1];const ok=r.operators.every(o=>o.outcome==='cancelled'&&/LOCKED/.test(o.lastFailedOrder?.reason??'')&&o.remainingOrders===0);console.log(JSON.stringify({terminallyLegal:ok,doors:r.endDoorStates.filter(x=>x.id==='D8'),operators:r.operators.map(o=>({id:o.id,outcome:o.outcome,reason:o.lastFailedOrder?.reason,remainingOrders:o.remainingOrders}))}));if(!ok||!r.endDoorStates.some(x=>x.id==='D8'&&x.locked)||r.invalidPositions||r.physicsStepViolations)process.exit(1)"
       - name: Strict unchanged Q5 70-door matrix
         run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: garage-m2-exact-acceptance
-          path: garage-m2-31110.json
+          path: |
+            garage-m2-31110.json
+            clinic-m2-19178827.json
