@@ -41,3 +41,18 @@ test('M2.8: accepts only swept departure and narrow rejoin without moving actor'
  assert.ok(squeezeOnly.length>=2,
   'already-squeezing actor may use the real exact narrow-profile footstep');
 });
+
+test('M2.8: reject a west coarse route when the actual tiny stride is blocked',()=>{
+ const from=p(0,0),goal=p(30,0);
+ // A swept 0.3 segment appears passable west but a restart motor stride
+ // near 0.026 is not. Southwest remains a valid narrow passage.
+ const narrow=(a,b)=>{
+  const d=Math.hypot(b.x-a.x,b.y-a.y);
+  const west=b.x<a.x&&Math.abs(b.y-a.y)<1e-5;
+  return !west||d>.1;
+ };
+ const route=selectM2EntrySqueezeDeparture(from,goal,p(-4,0),
+  ()=>false,narrow,(_a,to)=>[to]);
+ assert.ok(route.length>=2);
+ assert.ok(route[0].y<-.1,'do not choose the rejected due-west startup');
+});
