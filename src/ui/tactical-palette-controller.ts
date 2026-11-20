@@ -1,3 +1,4 @@
+import {captureVitalStatus} from '../breach-capture-vitals.ts';
 /** Contextual command palette presentation and spatial placement.
  * Receives read-only, already-authorized action descriptors. NEVER validates,
  * queues or executes tactical commands. Both layouts share one DOM dispatcher.
@@ -452,6 +453,7 @@ export function createTacticalPaletteController(config:{
     state.missionType==='capture'&&!!state.captureTarget?
     nearestPaletteCandidate(enemies(state),at,e=>
       e.id===state.captureTarget&&e.health<=0&&
+      captureVitalStatus(e)!=='deceased'&&
       (!e.carriedById||e.carriedById===a.id)&&
       liveVisibility(state,e.p)&&
       sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)),34):null;
