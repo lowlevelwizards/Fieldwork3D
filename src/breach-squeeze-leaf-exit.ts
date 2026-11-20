@@ -47,6 +47,11 @@ export function findBoundedNarrowLeafExit(
    const tiny={x:p.x+(next.x-p.x)*.026/step,
     y:p.y+(next.y-p.y)*.026/step};
    if(!narrow(p,tiny))continue;
+   if(extended){
+    const realStep={x:p.x+(next.x-p.x)*.3/step,
+      y:p.y+(next.y-p.y)*.3/step};
+    if(!narrow(p,realStep))continue;
+   }
    const k=key(next);
    if(visited.has(k)||!narrow(p,next))continue;
    visited.add(k);
@@ -62,7 +67,7 @@ export function findBoundedNarrowLeafExit(
 type Probe={id:number;doorId:string;goal:Pt;fraction:number;anchor:Pt;
  attempts:number;at:number};
 const probes=new WeakMap<TeamActor,Probe>();
-const active=new WeakMap<TeamActor,Pt[]>();
+const active=new WeakMap<TeamActor,{stages:Pt[];strict:boolean}>();
 export function claimNarrowLeafExitProbe(
  a:TeamActor,doorId:string,goal:Pt,fraction:number,
  seconds=NaN
@@ -87,11 +92,16 @@ export function claimNarrowLeafExitProbe(
   attempts:same?prior!.attempts+1:1,at:seconds});
  return true;
 }
-export function ownNarrowExitWaypoints(a:TeamActor,stages:readonly Pt[]){
- active.set(a,stages.map(clone));
+export function ownNarrowExitWaypoints(a:TeamActor,stages:readonly Pt[],
+ strict=false){
+ active.set(a,{stages:stages.map(clone),strict});
+}
+export function narrowExitWaypointTolerance(a:TeamActor,next:Pt):number|null{
+ const state=active.get(a);if(!state)return null;
+ if(state.stages.some(p=>gap(p,next)<.25))
+  return state.strict?.18:.85;
+ active.delete(a);return null;
 }
 export function preciseNarrowExitWaypoint(a:TeamActor,next:Pt):boolean{
- const stage=active.get(a);if(!stage)return false;
- if(stage.some(p=>gap(p,next)<.25))return true;
- active.delete(a);return false;
+ return narrowExitWaypointTolerance(a,next)!==null;
 }

@@ -106,3 +106,12 @@ test('M2.10: legitimate narrow profile cannot be reset by early full-width wall 
  assert.equal(recovery,true);
  assert.deepEqual(actor.nav,[]);
 });
+
+test('M2.10d: extended leaf-tip turns require exact center before heading changes',()=>{
+ const a={plan:[{kind:'move',id:92,entryDoorId:'FRONT'}],p:p(0,0)};
+ const stages=[p(8,4),p(16,8)];
+ ownNarrowExitWaypoints(a,stages,true);
+ assert.equal(localDetourWaypointTolerance(a,stages[0]),.18);
+ assert.equal(localDetourWaypointTolerance(a,stages[1]),.18);
+ assert.equal(localDetourWaypointTolerance(a,p(30,8)),3);
+});

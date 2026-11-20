@@ -217,7 +217,7 @@ export function restoreRepeatedDoorEscapeRoute(
      if(stages.length){
        setTransientRoute(s,a,[...stages.map(clone),
          ...original.map(clone)],'door-squeeze-leaf-exit');
-       ownNarrowExitWaypoints(a,stages);
+       ownNarrowExitWaypoints(a,stages,deepLeaf);
        finishDoorEscapeRejoin(a);
        a.lastNavRepairAt=s.seconds;
        provisionalRouteAccepted(a);
