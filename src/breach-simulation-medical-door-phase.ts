@@ -45,7 +45,9 @@ export function advanceMedicalDoorPhase(s:Session,h:number,
       if(civil)dropCivilianCustody(civil,casualty);
       else {
         const patient=s.operators.find(o=>o.id===casualty.carryingId);
-        if(patient)patient.carriedById=null;
+        if(patient?.carriedById===casualty.id){
+          patient.carriedById=null;patient.transportMode=null;
+        }
         casualty.carryingId=null;
       }
     }
