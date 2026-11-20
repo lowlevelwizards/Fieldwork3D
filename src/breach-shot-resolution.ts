@@ -9,6 +9,7 @@ import type {CivilianActor} from './breach-civilian-types.ts';
 import type {BattleEvent} from './breach-combat.ts';
 import type {Pt} from './breach-core.ts';
 import {WEAPONS} from './breach-combat.ts';
+import type {GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 import {BALLISTICS,readyMode} from './breach-ballistics.ts';
 import {weaponHandlingModifiers} from './equipment-weapon-handling.ts';
 import type {createShotEnvironmentCommitter} from './breach-shot-environment.ts';
@@ -45,6 +46,8 @@ export type ShotCommitContext={
  profile:(typeof BALLISTICS)[keyof typeof BALLISTICS];
  /** Call-local sight result from the SAME fire() invocation; never a shot permit. */
  preflight?:ShotSightPreflight;
+ /** Real issued Glock selection; primary weapon and magazines stay separate. */
+ secondaryWeapon?:GlockAppearanceId;
 };
 export type ShotResolverPorts=ReturnType<typeof createShotEnvironmentCommitter> & {
  team:(s:Session)=>TeamActor[];
@@ -72,7 +75,13 @@ export function createShotResolver(ports:ShotResolverPorts){
   shatterStruckWindows}=ports;
  function commitShot(s:Session,a:TeamActor,target:TeamActor,
   ctx:ShotCommitContext):void{
-  const {mode,range,moving,mods,weapon,profile}=ctx;
+  const {mode,range,moving,mods,weapon,profile,secondaryWeapon}=ctx;
+  // An unissued, half-drawn or reloading pistol cannot fire.
+  const pistol=secondaryWeapon?a.equipment?.secondary:undefined;
+  if(secondaryWeapon&&(!pistol||pistol.weapon!==secondaryWeapon||
+     pistol.loadedRounds<=0||a.secondaryReload||
+     a.secondarySwitch?.active!=='secondary'||
+     a.secondarySwitch.fraction<1))return;
   const {walls:WALLS,cover:COVER}=sessionWorldGeometry(s);
   // The eyes may have a contact even when the muzzle cannot safely fire.
   // Hold the shot rather than dumping ammunition into adjacent cover or
@@ -81,7 +90,8 @@ export function createShotResolver(ports:ShotResolverPorts){
     o.side===a.side).map(safetyBodyFor);
   const sightInput={x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:a.weaponYaw,shoulderOffset:a.aimSideOffset??0,
-    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
+    weapon:a.weapon,secondaryWeapon,
+    weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
     velocity:a.velocity,recoil:a.recoil,threatRange:range};
   // Reuse only an identical synchronous fixed-tick sample. In particular,
   // a nonzero cover-height offset previously absent in the readiness probe
@@ -133,13 +143,15 @@ export function createShotResolver(ports:ShotResolverPorts){
   const priorBurst=s.seconds-a.lastShotAt<.48;
   const proposedBurst=priorBurst?a.burstCount+1:1;
   // Roll ordering is authoritative. The pure ignition policy never calls RNG.
-  const cone=shotDispersionCone(a,mode,range,moving,mods,weapon.optimalRange)*
+  const cone=shotDispersionCone(secondaryWeapon?{...a,weapon:'smg' as const}:a,
+    mode,range,moving,mods,weapon.optimalRange)*
     (sightClearance.carryOverride==='short'?
       1.30+Math.max(0,sightClearance.compression)*.38:1);
   const proposedYaw=shotYaw(a.weaponYaw,cone,random(s),random(s));
   const shotClearance=weaponClearance({x:a.p.x,z:a.p.y,heading:a.heading,
     weaponYaw:proposedYaw,shoulderOffset:a.aimSideOffset??0,
-    weapon:a.weapon,weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
+    weapon:a.weapon,secondaryWeapon,
+    weaponConfiguration:a.weaponConfiguration,equipment:a.equipment,aim:a.aim,posture:a.posture,coverStanceDrop:a.coverStanceDrop??0,
     velocity:a.velocity,recoil:a.recoil,threatRange:range},s.doors,COVER,WALLS,
     friends);
   if(shotClearance.blocked){
@@ -188,7 +200,12 @@ export function createShotResolver(ports:ShotResolverPorts){
   }
   a.weaponYaw=yaw; // renderer sees exactly the outgoing shot orientation
   a.fireCd=weapon.interval*(a.side==='red'?1.30:1);
-  a.magazine--;a.shots++;a.burstCount=proposedBurst;
+  if(secondaryWeapon){
+    // Only after all teammate/civilian/cover/muzzle vetoes passed.
+    a.equipment={...a.equipment!,secondary:{...pistol!,
+      loadedRounds:pistol!.loadedRounds-1}};
+  }else a.magazine--;
+  a.shots++;a.burstCount=proposedBurst;
    if(mode==='point')a.pointShots++;else a.aimedShots++;
   a.lastShotAt=s.seconds;
   const hitRadius=Math.max(4.2,10.5-
@@ -278,6 +295,7 @@ export function createShotResolver(ports:ShotResolverPorts){
     chooseFall(target.heading,yaw,nearSolid||nearWall),WALLS);
   s.shots.push({
     id:shotId,shooterId:a.id,
+    weapon:secondaryWeapon??a.weapon,secondaryWeapon,
     targetId:civilianHit?.actor.id??target.id,
     start:muzzlePoint,end,age:0,hit:hit||!!civilianHit,side:a.side,
     shotYaw:yaw,mode,spread:cone,
@@ -293,7 +311,8 @@ export function createShotResolver(ports:ShotResolverPorts){
     down:(hit||!!civilianHit)&&healthAfter<=0,
     surface:impact.surface,
   });
-  s.casings.push({id:shotId,at:s.seconds,weapon:a.weapon,side:a.side,
+  s.casings.push({id:shotId,at:s.seconds,
+    weapon:secondaryWeapon?'smg':a.weapon,secondaryWeapon,side:a.side,
     x:muzzle.x-4*Math.cos(a.weaponYaw),z:muzzle.z-4*Math.sin(a.weaponYaw),
     y:muzzle.y-3,heading:a.weaponYaw});
   if(s.casings.length>CASING_LIMIT)s.casings.shift();
