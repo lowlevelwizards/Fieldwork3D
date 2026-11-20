@@ -26,8 +26,8 @@ test('P8 selection retains class, order, accessible current state and callback',
   append(...children){this.children.push(...children);}
   setAttribute(k,v){this.attrs.set(k,v);}
   getAttribute(k){return this.attrs.get(k);}
-  addEventListener(k,fn){this[k]=fn;}
-  click(){this.click();}
+  addEventListener(k,fn){this[k+'Handler']=fn;}
+  click(){this.clickHandler?.();}
  }
  globalThis.document={createElement:tag=>new FakeElement(tag)};
  try{
