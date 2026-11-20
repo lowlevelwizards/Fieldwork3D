@@ -22,12 +22,15 @@ export type VisualCompileOptions={
  mode?:VisualCompileMode;
  exclude?:ReadonlySet<THREE.Object3D>;
  minParts?:number;
+ /** Explicit opt-in for rigid, opaque Toon siblings. Default is unchanged. */
+ allowOpaqueToon?:boolean;
 };
 const safeMetadata=new Set([
  'fogFacade','fieldworkDrawFamily','fieldworkTransparencyRole'
 ]);
-type Candidate={mesh:THREE.Mesh<THREE.BufferGeometry,THREE.MeshStandardMaterial>;
- material:THREE.MeshStandardMaterial;role:string};
+type EligibleRigidMaterial=THREE.MeshStandardMaterial|THREE.MeshToonMaterial;
+type Candidate={mesh:THREE.Mesh<THREE.BufferGeometry,EligibleRigidMaterial>;
+ material:EligibleRigidMaterial;role:string};
 function eligible(node:THREE.Object3D,options:VisualCompileOptions):Candidate|null{
  if(!(node instanceof THREE.Mesh)||
   node instanceof THREE.InstancedMesh||
@@ -36,9 +39,14 @@ function eligible(node:THREE.Object3D,options:VisualCompileOptions):Candidate|nu
   options.exclude?.has(node)||node.customDepthMaterial||
   node.customDistanceMaterial||node.morphTargetInfluences?.length||
   !(node.geometry instanceof THREE.BufferGeometry)||
-  !(node.material instanceof THREE.MeshStandardMaterial)||
   Object.keys(node.userData).some(k=>!safeMetadata.has(k)))return null;
- const material=node.material;
+ const opaqueToon=options.allowOpaqueToon===true&&
+  options.mode!=='opaque-facade'&&node.material instanceof THREE.MeshToonMaterial;
+ if(!(node.material instanceof THREE.MeshStandardMaterial)&&!opaqueToon)return null;
+ // Toon is allowed only when the caller explicitly owns this parent as
+ // rigid. Moving bones, individually hidden parts and special shader meshes
+ // must never be offered as direct siblings to this visual-only compiler.
+ const material=node.material as EligibleRigidMaterial;
  if(material.opacity!==1||!material.depthWrite||!material.depthTest||
   material.alphaTest!==0||material.alphaMap!==null||
   material.blending!==THREE.NormalBlending)return null;
