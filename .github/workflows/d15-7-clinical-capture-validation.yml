@@ -37,7 +37,7 @@ jobs:
             tests/equipment-22-06-casualty-status.test.mjs \
             tests/equipment-22-08-casualty-extraction.test.mjs \
             tests/breach-155.test.mjs \
-            tests/breach-097-106.test.mjs \
+            tests/breach-roadmap2-stage10-combat.test.mjs \
             tests/secondary-s7-live-shot.test.mjs
       - name: M3/M4 transport and operator medical pose
         run: |
