@@ -2513,7 +2513,23 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
  .campaign-armory-screen .campaign-kit-categories,
  .campaign-armory-screen .fw-loadout-group>summary,
  .campaign-armory-screen .campaign-kit-bench-more{
-  display:none!important;
+  display:block!important;
+  margin:3px 0 0;min-width:0;
+  border-top:1px solid #4a6555;
+ }
+ .campaign-armory-screen .campaign-kit-bench-more>summary{
+  min-height:40px;display:flex;align-items:center;
+  font:700 11px var(--fw-font-action);color:#baccb8;
+  cursor:pointer;padding:4px;
+ }
+ .campaign-armory-screen .campaign-kit-bench-more-grid{
+  display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:5px;
+ }
+ .campaign-armory-screen .campaign-kit-bench-more .campaign-kit-bench-zone{
+  display:block!important;width:100%!important;max-width:none!important;
+  height:42px!important;min-height:42px!important;
+  font-size:10px!important;
  }
  .campaign-armory-screen .campaign-kit-editor .campaign-kit-workspace-nav{
   position:sticky!important;top:-7px!important;z-index:10;
