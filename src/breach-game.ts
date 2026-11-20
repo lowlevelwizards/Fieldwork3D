@@ -1913,7 +1913,8 @@ function mission(s:Session,dt:number){
       sweptBodyClear(a.p,prisoner.p,s.doors,5.5,sessionWorldGeometry(s));
     // Physically downed bodies follow the existing real carrier or must be
     // recovered in direct contact at extraction; never remote objective wins.
-    if(prisoner.health<=0)return prisoner.carriedById===a.id||atBody;
+    if(prisoner.health<=0)return (prisoner.carriedById===a.id&&
+      a.carryingId===prisoner.id)||atBody;
     return prisoner.surrendered&&prisoner.restrained===true&&
       (prisoner.escortLeaderId===a.id||atBody);
   };
