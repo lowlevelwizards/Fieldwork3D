@@ -76,7 +76,8 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  chest?:THREE.Group,pack?:THREE.Object3D):THREE.Group|null{
  const valid=state?.weapon&&hasBelt?state.weapon:null;
  const signature=valid?[
-  valid,state!.holster,Boolean(chest),Boolean(pack),
+  valid,state!.holster,JSON.stringify(state!.customization??null),
+  Boolean(chest),Boolean(pack),
   ...state!.spareMagazines.map(m=>m.id+':'+m.location)
  ].join('|'):'none';
  const prior=mounted.get(hip);
@@ -91,7 +92,9 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  const holster=new THREE.Group();
  holster.name='secondary-holster-mount';
  holster.position.set(.2,-3.6,side*9.25);
- const pistol=buildGlockAppearance(valid as GlockAppearanceId);
+ const pistol=buildGlockAppearance(valid as GlockAppearanceId,{
+  customization:state!.customization
+ });
  copyPaletteMaterials(pistol);
  const socket=glockArtSockets(valid as GlockAppearanceId).holsterPivot;
  const cradle=new THREE.Group();
