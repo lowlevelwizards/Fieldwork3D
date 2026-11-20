@@ -1,4 +1,4 @@
-/** Glock G2.5: balanced Fieldwork miniature sidearm, not a measured CAD model.
+/** Glock G2.6: iconic compact miniatures and a wrapped port, not firearm CAD.
  * One exaggerated slide and ONE integrated polymer frame/grip/guard with a true
  * opening. No floaters, secondary lower spacers or false trigger-guard boxes.
  * Art-only: not a primary weapon, an equipable secondary or a simulation change.
@@ -30,8 +30,8 @@ export type GlockAppearanceOptions={monochrome?:boolean;details?:boolean};
  */
 export const GLOCK_G2_ART={
  'glock-g19-gen3':{frontX:8.30,heelY:-7.65,rearHeelX:-8.05,frontHeelX:-4.06,frontSerrations:false,mos:false},
- 'glock-g26':{frontX:5.78,heelY:-6.07,rearHeelX:-7.86,frontHeelX:-4.17,frontSerrations:false,mos:false},
- 'glock-g19x':{frontX:8.30,heelY:-8.75,rearHeelX:-8.06,frontHeelX:-4.06,frontSerrations:false,mos:false},
+ 'glock-g26':{frontX:5.78,heelY:-5.88,rearHeelX:-7.86,frontHeelX:-4.17,frontSerrations:false,mos:false},
+ 'glock-g19x':{frontX:8.30,heelY:-8.96,rearHeelX:-8.11,frontHeelX:-3.82,frontSerrations:false,mos:false},
  'glock-g19-gen5-mos':{frontX:8.30,heelY:-7.65,rearHeelX:-8.05,frontHeelX:-4.06,frontSerrations:true,mos:true}
 } as const;
 const SLIDE_REAR=-8.55,SLIDE_TOP=3.04,SLIDE_BOTTOM=.34;
@@ -48,6 +48,7 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  root.userData.glockAppearance=id;root.userData.appearanceOnly=true;
  root.userData.glockG2FieldworkProportions=true;
  root.userData.glockG25BalancedProportions=true;
+ root.userData.glockG26IdentityRefinement=true;
  let n=0;
  const box=(slot:'barrel'|'magazine',x:number,y:number,z:number,
   w:number,h:number,d:number,material:THREE.Material)=>
@@ -73,12 +74,16 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  const frame=new THREE.Shape();
  const perimeter:Outline=[
   [SLIDE_REAR+.12,.44],[art.frontX-.17,.44],
-  [art.frontX-.17,-1.23],[1.76,-1.23],
+  // Shallow nose band, subtly deepening toward the front guard.
+  // Preserve the lower as a single continuous extrusion, not two slabs.
+  [art.frontX-.17,-1.01],[3.00,-1.07],[1.76,-1.24],
   [1.76,-3.36],[1.31,-3.80],
   [-2.79,-3.80],[art.frontHeelX,art.heelY],
   [art.rearHeelX,art.heelY],
-  [art.rearHeelX+.42,art.heelY+2.55],
-  [-6.69,-2.49],[-7.23,-1.65],[SLIDE_REAR+.12,-1.35]
+  // Two restrained facets make the backstrap sweep rather than kink.
+  [art.rearHeelX+.24,art.heelY+1.23],
+  [art.rearHeelX+.61,art.heelY+2.64],
+  [-6.73,-2.59],[-7.24,-1.68],[SLIDE_REAR+.12,-1.29]
  ];
  frame.moveTo(perimeter[0][0],perimeter[0][1]);
  for(const [x,y] of perimeter.slice(1))frame.lineTo(x,y);
@@ -112,9 +117,9 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  box('barrel',art.frontX-.74,SLIDE_TOP+.19,0,.43,.40,1.44,shadow);
 
  if(options.details!==false&&!clay){
-  // Both rear serrations and ONE right-side ejection port are surface quads
-  // in a SINGLE batch, not individual meshes, extruded housings or hardware.
-  // The +Z face is the right ejection side; the left remains clean.
+  // One material and ONE mesh for serrations + an iconic L-shaped port.
+  // Its six-vertex continuous panel wraps right (+Z) onto top (+Y).
+  // This is a broad graphic seam, not a hollow mechanical chamber.
   const verts:number[]=[],indices:number[]=[];
   const addMark=(x:number,y:number,side:number,w:number,h:number)=>{
    const z=side*(SLIDE_DEPTH/2+.018),base=verts.length/3;
@@ -129,15 +134,30 @@ export function buildGlockAppearance(id:GlockAppearanceId,
     for(let i=0;i<2;i++)
      addMark(art.frontX-2.20+i*.55,.80,side,.23,1.19);
   }
-  // Wide, low-value symbolic port instead of the previous detached dark box.
-  addMark(0.58,2.06,1,1.95,.45);
+  // From the right side to the top in ONE continuous, four-triangle
+  // six-vertex ribbon; side 3.15 × .92, top ~3.15 × 1.12.
+  // x=0.26..3.41 keeps it distinct from rear serrations and nose.
+  // Corner points are shared; no separate floating top decal/mesh.
+  const x0=.26,x1=3.41,y0=2.11,y1=SLIDE_TOP+.018;
+  const zOuter=SLIDE_DEPTH/2+.018,zInner=.36;
+  const first=verts.length/3;
+  verts.push(
+   x0,y0,zOuter, x1,y0,zOuter,
+   x1,y1,zOuter, x0,y1,zOuter,
+   x1,y1,zInner, x0,y1,zInner
+  );
+  indices.push(
+   first,first+1,first+2,first,first+2,first+3,
+   first+3,first+2,first+4,first+3,first+4,first+5
+  );
   const geom=new THREE.BufferGeometry();
   geom.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
   geom.setIndex(indices);geom.computeVertexNormals();
   const marks=new THREE.Mesh(geom,shadow);
   marks.name='family-barrel-'+id+'-serration-batch';
   marks.userData.glockRightEjectionPort=true;
-  marks.userData.glockRightEjectionPortGeometry='batched-quad-plus-z';
+  marks.userData.glockRightEjectionPortGeometry='shared-edge-side-to-top-six-vertex-ribbon';
+  marks.userData.glockPortFaceCount=2;
   marks.castShadow=false;marks.receiveShadow=false;
   root.add(marks);
   if(art.mos){
@@ -156,6 +176,8 @@ export function buildGlockAppearance(id:GlockAppearanceId,
   gripRearX:art.rearHeelX,gripFrontX:art.frontHeelX,
   guardOpeningX:[-2.36,.78],guardOpeningY:[-3.02,-1.91],
   rightEjectionPort:!clay&&options.details!==false,
+  portSideRange:[.26,3.41,2.11,SLIDE_TOP+.018],
+  portTopRange:[.36,SLIDE_DEPTH/2+.018],
   guardOpen:true,integratedFrame:true
  });
  return root;
