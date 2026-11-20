@@ -7,7 +7,9 @@ import {initialSecondaryEquipment,secondaryRoundTotal}
  from '../src/secondary-equipment.ts';
 import {executeTacticalUtilityOrder}
  from '../src/breach-order-utility.ts';
-import {initialSecondarySwitch} from '../src/secondary-switching.ts';
+import {initialSecondarySwitch,requestSecondarySwitch,advanceSecondarySwitch,
+ advanceInterruptedSecondarySwitch,secondarySwitchSettled}
+ from '../src/secondary-switching.ts';
 
 test('S5.2: only actual operator-owned Glock can be authored into the movement timeline',()=>{
  const s=newSession(),a=team(s)[0];
@@ -49,4 +51,31 @@ test('S5.2: queued weapon switch progresses smoothly, conserves ammo, and comple
   new URL('../src/breach-firing-pipeline.ts',import.meta.url),'utf8');
  assert.match(protectedCode,/a\.secondarySwitch\?\.fraction/);
  assert.match(protectedCode,/a\.secondarySwitch\?\.desired==='secondary'/);
+});
+
+test('S5.2: cancellation reverses partial draw and does not leave a hidden-primary lockout',()=>{
+ const issue=initialSecondaryEquipment('rook','glock-g19x');
+ const requested=requestSecondarySwitch(initialSecondarySwitch(),'secondary',issue).state;
+ const partial=advanceSecondarySwitch(requested,.31,issue);
+ assert.equal(partial.active,'primary');
+ assert.ok(partial.fraction>0&&partial.fraction<1);
+ const after=advanceInterruptedSecondarySwitch(partial,.12,issue);
+ assert.equal(after.desired,'primary');
+ assert.ok(after.fraction<partial.fraction);
+ let s=after;
+ for(let i=0;i<40;i++)s=advanceInterruptedSecondarySwitch(s,1/60,issue);
+ assert.equal(secondarySwitchSettled(s),true);
+ assert.equal(s.active,'primary');
+ assert.equal(s.fraction,0);
+ assert.equal(secondaryRoundTotal(issue),51);
+});
+test('S5.2: removing an issued Glock from a selected operator safely returns to primary',()=>{
+ const issue=initialSecondaryEquipment('rook','glock-g19-gen3');
+ let s=requestSecondarySwitch(initialSecondarySwitch(),'secondary',issue).state;
+ s=advanceSecondarySwitch(s,.68,issue);
+ assert.equal(s.active,'secondary');
+ for(let i=0;i<50;i++)s=advanceInterruptedSecondarySwitch(s,1/60,undefined);
+ assert.equal(s.active,'primary');
+ assert.equal(s.fraction,0);
+ assert.equal(s.desired,'primary');
 });
