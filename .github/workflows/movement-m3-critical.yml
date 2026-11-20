@@ -1,0 +1,28 @@
+name: Movement M3 doorway critical
+on:
+  push:
+    branches: [feature/movement-m3-door-lifecycle-20261120]
+    paths:
+      - '.github/workflows/movement-m3-critical.yml'
+      - 'src/breach-door-traversal-episode.ts'
+      - 'src/breach-door-opening-ownership.ts'
+      - 'tests/movement-m3-door-lifecycle.test.mjs'
+permissions: {contents: read}
+concurrency:
+  group: movement-m3-doorway-critical
+  cancel-in-progress: true
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Current-order doorway and queue contracts
+        run: |
+          node --experimental-strip-types --test tests/movement-m3-door-lifecycle.test.mjs tests/release-d3-14b2-narrow-leaf-exit.test.mjs tests/release-d3-r1-door-topology.test.mjs tests/release-d3-r1-route-adoption.test.mjs tests/phase-a-stack-geometry.test.mjs
+          npm run check
+      - name: Door Range strict 70 cases
+        run: node --experimental-strip-types scripts/audit-passage-q5.mjs --extended --strict
