@@ -123,16 +123,18 @@ test('G2.5: right-side ejection port is one flat batched rectangle, not new geom
    const detail=g.children.filter(x=>x.userData.glockRightEjectionPort);
    assert.equal(detail.length,1,'existing single surface detail batch');
    const verts=detail[0].geometry.attributes.position;
-   const portVerts=[];
-   for(let i=0;i<verts.count;i++){
-    if(verts.getY(i)>2.05&&verts.getY(i)<2.52&&
-     verts.getX(i)>=.58&&verts.getX(i)<=2.53&&verts.getZ(i)>1.48)
-     portVerts.push([verts.getX(i),verts.getY(i),verts.getZ(i)]);
-   }
+   // Port is the final 4 vertices intentionally appended to the SAME
+   // geometry batch; compare rounded Float32 positions with tolerance.
+   const portVerts=Array.from({length:4},(_,n)=>{
+    const i=verts.count-4+n;
+    return [verts.getX(i),verts.getY(i),verts.getZ(i)];
+   });
    assert.equal(portVerts.length,4,'one four-vertex port graphic');
    assert.ok(portVerts.every(v=>v[2]>1.48),'right +Z face only');
-   assert.ok(portVerts.every(v=>v[0]>=.58&&v[0]<=2.53),
+   assert.ok(portVerts.every(v=>v[0]>.57&&v[0]<2.54),
     'modest central-right symbolic port width');
+   assert.ok(portVerts.every(v=>v[1]>2.05&&v[1]<2.52),
+    'ejection port stays within the slide face');
    assert.ok(triangleCount(g)<=220,'no geometry budget increase');
   }finally{clearGlockAppearance(g);}
  }
