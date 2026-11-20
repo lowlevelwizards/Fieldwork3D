@@ -13,12 +13,12 @@ import {factoryGlockRecipe,loadGlockLibrary,saveGlockLibrary,
  type GlockSavedBuild} from './glock-saved-builds.ts';
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
-import {GLOCK_APPEARANCE_REFERENCES,buildGlockAppearance,clearGlockAppearance,
+import {GLOCK_APPEARANCE_REFERENCES,
  type GlockAppearanceId} from '../weapons/geometry/glock-family-silhouettes.ts';
-import {buildM9Appearance,clearM9Appearance,
- isM9AppearanceId,type M9AppearanceId}
+import {isM9AppearanceId,type M9AppearanceId}
  from '../weapons/geometry/beretta-m9-silhouettes.ts';
-import {SIDEARM_PREVIEW_REFERENCES,type SidearmPreviewId}
+import {SIDEARM_PREVIEW_REFERENCES,buildSidearmPreview,
+ clearSidearmPreview,type SidearmPreviewId}
  from '../weapons/geometry/sidearm-preview.ts';
 import {openM9Inspector} from './m9-inspector.ts';
 
@@ -58,8 +58,7 @@ class GlockGallerySnapshots{
    const width=size==='hero'?960:420,height=size==='hero'?480:210;
    this.renderer.setSize(width,height,false);
    this.camera.aspect=width/height;this.camera.updateProjectionMatrix();
-   model=isM9AppearanceId(id)?buildM9Appearance(id):
-    buildGlockAppearance(id,{customization});this.scene.add(model);
+   model=buildSidearmPreview(id,{customization});this.scene.add(model);
    model.updateMatrixWorld(true);
    const bounds=new THREE.Box3().setFromObject(model);
    const center=bounds.getCenter(new THREE.Vector3());
@@ -77,9 +76,7 @@ class GlockGallerySnapshots{
   }catch{
    this.unavailable=true;return undefined;
   }finally{
-   if(model){this.scene.remove(model);
-    if(isM9AppearanceId(id))clearM9Appearance(model);
-    else clearGlockAppearance(model);}
+   if(model){this.scene.remove(model);clearSidearmPreview(id,model);}
   }
  }
  dispose(){
