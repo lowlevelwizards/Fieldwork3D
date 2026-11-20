@@ -473,6 +473,8 @@ export function createTacticalPaletteController(config:{
     formationEditable:!!door&&canEdit(state),
     stackFormation:door?selectedDoorStackFormation(state,door.id):'auto',
     nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
+     treatCaptureTarget:state.missionType==='capture'&&
+       !!treatTarget&&treatTarget.id===state.captureTarget,
     nearDoor:!door&&!!nearbyDoor,
     nearCivilian:!!civilianAtPlan,
     nearRestrainableCivilian:!!restraintAtPlan,
