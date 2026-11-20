@@ -33,3 +33,40 @@ Do not confuse an incapacitated actor (legacy `health <= 0`) with a medically co
 2. Review 2D and 3D carried-vs-dragged hostile depiction and replay at doorway and stationary-body contact, including no floating/sliding. No unverified visual assertions.
 3. Reconcile main (including Beretta D4) without losing source changes; verify previous public Pages commit and idle deployment queue before merge.
 4. D15.6 conditional escape/rearm/actual secondary remains a separate, unimplemented stage. D15.7 medical outcome and debrief semantics are not implied by D15.5E.
+
+## F.1 — visual transport parity (feature branch, validated pending)
+- One pure `downedTransportPresentation` projection reads only the physically
+  reciprocal downed TeamActor/carrier link. This policy does not move, heal,
+  secure or disclose another actor.
+- Successful GO pickup records an optional actor `transportMode` = drag/carry.
+  Stop/replan, carrier down, explicit RELEASE, recovery and delivery clear
+  that field with the reciprocal link. Older replay frames default missing
+  transport mode to low dragging rather than inheriting a future carry.
+- Floor Plan distinguishes the lower dragging body from the broad
+  across-shoulder carry silhouette; draws a modest connection to the actual
+  carrier only for a disclosed real carried actor; does not paint a new
+  moving blood stain every frame.
+- Tactical 3D shares the same interpretation and keeps the *real*
+  interpolated target world position. Carried body elevation matches
+  the existing civilian shared-character renderer (carry +10, drag +2);
+  the pose solver's local fall offset and IK are preserved and the
+  recorded carrier supplies visual heading.
+- Focused tests cover true GO timing, both elevations/headings, invalid
+  orphan/one-way links, pre-pickup rewind, legacy missing mode, and 2D/3D
+  binding of the exact shared projection. No new simulation or film schema.
+
+### Visual acceptance still requires real rendered inspection
+- Inspect downed hostile in drag/carry from both sides and both contexts
+  (Door Lab doorway and open floor), including carried feet/hand alignment.
+- Inspect replay reverse seek over pickup, stop and RELEASE at 2D and 3D.
+- If carrier grip remains visibly detached from lifted body, add an explicit
+  carrier arm/grip pose in a follow-up instead of claiming this visual pass
+  is perfect. This gate is not proven by TypeScript alone.
+
+### CI discipline
+- The isolated D15.5F validator runs D15 GO/replay, B6 operator pose,
+  EQA3 NPC pose, M3/M4 movement, tactical Pages preflight and build.
+- The unrelated old `breach-156.test.mjs` currently asserts a former
+  surrender knee threshold and a `ctxFlash` switch inside `breach-main.ts`
+  (already factored into its own controller). Both stale assumptions were
+  excluded from this narrowly scoped gate; the underlying new tests remain.
