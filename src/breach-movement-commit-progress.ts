@@ -26,7 +26,10 @@ export function recordRejectedMovementCommit(
  // inherit the previous plan's collision episode.
  const continuous=!!prior&&prior.orderId===order.id&&
    Math.abs(at-prior.at-dt)<Math.max(.003,dt*.35);
- const seconds=Math.max(actor.blockedTime,continuous?prior.seconds:0)+dt;
+ // Only the final authority denial contributes one new fixed step.
+ // If the local motor already counted this same blocked frame, never count
+ // it again. A new order/episode never borrows a previous order's duration.
+ const seconds=continuous?Math.max(prior!.seconds+dt,actor.blockedTime):dt;
  rejected.set(actor,{orderId:order.id,at,seconds});
  actor.blockedTime=seconds;
  actor.lastBlocker=blocked==='actor'?'actor':'route';
