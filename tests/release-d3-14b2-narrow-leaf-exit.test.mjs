@@ -115,3 +115,25 @@ test('M2.10d: extended leaf-tip turns require exact center before heading change
  assert.equal(localDetourWaypointTolerance(a,stages[1]),.18);
  assert.equal(localDetourWaypointTolerance(a,p(30,8)),3);
 });
+
+test('M2.10f: arrived narrow leaf stage checks next owned stride BEFORE full-body rescue',()=>{
+ const wall={a:p(8,-50),b:p(8,50)};
+ const world={
+  someWallNearPoint:(point,r,callback)=>
+    Math.abs(point.x-8)<r+1&&callback(wall,0),
+  someCoverNearPoint:()=>false,
+  passable:(point,r=8)=>Math.abs(point.x-8)>=r+1&&
+    Math.abs(point.x)<100&&Math.abs(point.y)<100,
+  cover:[],walls:[wall],
+  bounds:{minX:-100,minY:-100,maxX:100,maxY:100}
+ };
+ const a={p:p(0,0),priorP:p(0,0),squeeze:true,
+  plan:[{kind:'move',id:82,entryDoorId:'FRONT',p:p(0,30)}],
+  nav:[p(0,0),p(0,8)],blockedTime:0,squeezeTime:1,
+  velocity:15,retryRouteAt:0};
+ ownNarrowExitWaypoints(a,a.nav,true);
+ assert.equal(releaseEmbeddedMotorActor(a,p(0,30),[],1/60,world),false,
+  'already reached stage must not erase verified next narrow step');
+ assert.deepEqual(a.nav,[p(0,0),p(0,8)]);
+ assert.deepEqual(a.p,p(0,0));
+});

@@ -23,7 +23,14 @@ export function releaseEmbeddedMotorActor(
  // authoritative on the actual next tick; this grants no displacement.
  if(a.squeeze&&a.nav.length&&a.plan[0]?.kind==='move'&&
     preciseNarrowExitWaypoint(a,a.nav[0])){
-  const next=a.nav[0];
+  // At an EXACT narrow stage center the next motor tick removes that
+  // waypoint before taking another stride. Full-body rescue runs FIRST.
+  // Certify the next owned narrow stage, not the zero-length arrived
+  // stage, or an otherwise legal escape is erased at every corner.
+  const reached=a.nav[0];
+  const reachedGap=Math.hypot(reached.x-a.p.x,reached.y-a.p.y);
+  const next=reachedGap<=.18&&a.nav[1]&&
+    preciseNarrowExitWaypoint(a,a.nav[1])?a.nav[1]:reached;
   const dx=next.x-a.p.x,dy=next.y-a.p.y;
   const length=Math.hypot(dx,dy);
   if(length>.026){
