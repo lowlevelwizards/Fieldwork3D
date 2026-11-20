@@ -37,7 +37,7 @@ export type OutfitterGalleryOptions={
  arsenalDisabled?:boolean;
  selectedItems?:Map<string,string>;
  scrollPositions?:Map<string,number>;
- onInspect?:(slot:LoadoutSlot,id:string,kind:'gear'|'field'|'magazine',location?:FieldCarryLocation)=>void;
+ onInspect?:(slot:LoadoutSlot,id:string)=>void;
  onSelectCategory?:(slot:LoadoutSlot)=>void;
  onAdvanced:()=>void;
 };
@@ -182,8 +182,8 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   if(fromClick&&choice.issued&&!choice.equipped){
    options.onEquip(active,choice.id);return;
   }
-  if(choice.equipped)options.onInspect?.(active,choice.id,'gear');
-  else options.onInspect?.(active,'','gear');
+  if(choice.equipped)options.onInspect?.(active,choice.id);
+  else options.onInspect?.(active,'');
   showDetail(choice);
  };
  const show=(slot:LoadoutSlot)=>{
