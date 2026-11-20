@@ -4,6 +4,7 @@ on:
     branches: [feature/movement-m1m2-quality-20261120]
     paths:
       - 'src/breach-motor-collision.ts'
+      - 'src/breach-route-transition.ts'
       - 'src/breach-m2-entry-squeeze-departure.ts'
       - 'tests/movement-m2-entry-squeeze.test.mjs'
       - '.github/workflows/movement-m2-motel-gate.yml'
