@@ -26,6 +26,7 @@ jobs:
             tests/movement-m1-quality-survey.test.mjs \
             tests/movement-m2-recovery-ownership.test.mjs \
             tests/movement-m2-entry-squeeze.test.mjs \
+            tests/release-d3-14b2-narrow-leaf-exit.test.mjs \
             tests/release-d3-r1-entry-lead.test.mjs \
             tests/release-d3-r1-committed-progress.test.mjs \
             tests/release-d3-r1-route-adoption.test.mjs \

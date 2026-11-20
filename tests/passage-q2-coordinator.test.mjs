@@ -108,3 +108,19 @@ test('M2.7: same-door reverse entry drops stale opposing owner when order change
   'old opposite direction cannot retain lease across a new authored crossing');
  assert.equal(after.hold,false);
 });
+
+test('M2.9: stationary SYNC in open doorway is not a competing crossing',()=>{
+ const clinic={...door,a:p(460,404),b:p(460,362),openFraction:1};
+ const parked=actor('rook',370,370);parked.p=p(445.8,370);
+ parked.plan=[{id:5,kind:'sync',syncCode:'B1',p:p(445.8,370)}];
+ const trailing=actor('vale',376,368);trailing.p=p(464.6,376);
+ trailing.plan=[{id:4,kind:'move',p:p(365.5,368)}];
+ const s=game([parked,trailing],[clinic]);
+ const slots=new Map([
+  ['rook',[{...slot('rook',1,'D',1),orderId:1}]],
+  ['vale',[{...slot('vale',2,'D',1),orderId:4}]]
+ ]);
+ const observed=movement(s,trailing,p(463.6,376),slots);
+ assert.equal(observed.hold,false);
+ assert.deepEqual(observed.move,p(463.6,376));
+});

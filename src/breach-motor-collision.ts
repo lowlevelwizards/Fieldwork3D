@@ -62,6 +62,7 @@ import {selectColdMotorMicroDeparture,claimColdMotorMicroDeparture}
  from './breach-d326-micro-departure.ts';
 import {claimD326ColdFineProbe,markD326FineMotorRoute}
  from './breach-d326-fine-route-gate.ts';
+import {preciseNarrowExitWaypoint} from './breach-squeeze-leaf-exit.ts';
 import {claimM2EntrySqueezeProbe,selectM2EntrySqueezeDeparture}
  from './breach-m2-entry-squeeze-departure.ts';
 import {claimD327ColdPassage,coldExactPassageWorldRoute}
@@ -441,7 +442,12 @@ export function resolveMotorCollision(
   }
   if(a.squeeze){
     a.squeezeYaw=sidewaysYaw;
-    if(normalClear&&squeezeExitClear(a.p,desiredMove,s.doors,12,world)){
+    // A physically verified narrow route around a long outward leaf
+    // remains narrow until its *last* owned stage is traversed. A
+    // momentarily full-width-clear 0.02-unit tick must not drop the
+    // narrow shoulder before the next footstep beside the solid panel.
+    if(normalClear&&!preciseNarrowExitWaypoint(a,next)&&
+       squeezeExitClear(a.p,desiredMove,s.doors,12,world)){
       a.squeeze=false;a.squeezeTime=0;
     }else{
       // The body visibly turns to the SAME angle used by oriented collision

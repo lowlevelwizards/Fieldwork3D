@@ -23,7 +23,14 @@ export function findBoundedNarrowLeafExit(
 ):Pt[]{
  if(gap(from,firstNav)>65||gap(from,authoredGoal)<40||
     narrow(from,firstNav)||full(from,firstNav))return [];
- const step=4,angles=Array.from({length:16},(_,i)=>i*Math.PI/8);
+ // A separately budgeted COLD probe may route around an entire long
+ // outward-swing leaf tip. The 12 x 4 unit usual search cannot reach
+ // around a 42-unit leaf. Normal motor calls keep their existing 96 budget.
+ const extended=maxNodes>96;
+ const step=extended?8:4;
+ const radius=extended?120:52;
+ const maxDepth=extended?22:12;
+ const angles=Array.from({length:16},(_,i)=>i*Math.PI/8);
  const key=(p:Pt)=>Math.round(p.x/2)+':'+Math.round(p.y/2);
  const queue:{p:Pt;path:Pt[]}[]=[{p:clone(from),path:[]}];
  const visited=new Set<string>([key(from)]);
@@ -32,11 +39,19 @@ export function findBoundedNarrowLeafExit(
   const {p,path}=queue[index];
   if(path.length>=2&&gap(p,firstNav)<56&&
      (full(p,firstNav)||narrow(p,firstNav)))return path;
-  if(path.length>=12)continue;
+  if(path.length>=maxDepth)continue;
   expanded++;
   for(const a of angles){
    const next={x:p.x+Math.cos(a)*step,y:p.y+Math.sin(a)*step};
-   if(gap(next,from)>52)continue;
+   if(gap(next,from)>radius)continue;
+   const tiny={x:p.x+(next.x-p.x)*.026/step,
+    y:p.y+(next.y-p.y)*.026/step};
+   if(!narrow(p,tiny))continue;
+   if(extended){
+    const realStep={x:p.x+(next.x-p.x)*.3/step,
+      y:p.y+(next.y-p.y)*.3/step};
+    if(!narrow(p,realStep))continue;
+   }
    const k=key(next);
    if(visited.has(k)||!narrow(p,next))continue;
    visited.add(k);
@@ -49,28 +64,44 @@ export function findBoundedNarrowLeafExit(
  * can warrant another attempt. A repeated unchanged failed search cannot
  * consume every 60Hz frame or reacquire a cosmetic route indefinitely.
  */
-type Probe={id:number;doorId:string;goal:Pt;fraction:number;anchor:Pt};
+type Probe={id:number;doorId:string;goal:Pt;fraction:number;anchor:Pt;
+ attempts:number;at:number};
 const probes=new WeakMap<TeamActor,Probe>();
-const active=new WeakMap<TeamActor,Pt[]>();
+const active=new WeakMap<TeamActor,{stages:Pt[];strict:boolean}>();
 export function claimNarrowLeafExitProbe(
- a:TeamActor,doorId:string,goal:Pt,fraction:number
+ a:TeamActor,doorId:string,goal:Pt,fraction:number,
+ seconds=NaN
 ):boolean{
  const order=a.plan[0];
  if(order?.kind!=='move'||order.entryDoorId!==doorId)return false;
  const prior=probes.get(a);
- if(prior&&prior.id===order.id&&prior.doorId===doorId&&
-    gap(prior.goal,goal)<.25&&
-    Math.abs(prior.fraction-fraction)<.14&&
-    gap(prior.anchor,a.p)<32)return false;
+ const same=!!prior&&prior.id===order.id&&
+  prior.doorId===doorId&&gap(prior.goal,goal)<.25;
+ if(same){
+  // A second/third probe requires a physically changed leaf or real
+  // relocation from the last probe, and a cold multi-second pause.
+  // Absolute max three per authored entry; never 60Hz repeated search.
+  if(prior!.attempts>=3||
+     (Math.abs(prior!.fraction-fraction)<.14&&
+      gap(prior!.anchor,a.p)<9)||
+     (Number.isFinite(seconds)&&Number.isFinite(prior!.at)&&
+      seconds-prior!.at<3))return false;
+ }
  probes.set(a,{id:order.id,doorId,goal:clone(goal),
-  fraction,anchor:clone(a.p)});
+  fraction,anchor:clone(a.p),
+  attempts:same?prior!.attempts+1:1,at:seconds});
  return true;
 }
-export function ownNarrowExitWaypoints(a:TeamActor,stages:readonly Pt[]){
- active.set(a,stages.map(clone));
+export function ownNarrowExitWaypoints(a:TeamActor,stages:readonly Pt[],
+ strict=false){
+ active.set(a,{stages:stages.map(clone),strict});
+}
+export function narrowExitWaypointTolerance(a:TeamActor,next:Pt):number|null{
+ const state=active.get(a);if(!state)return null;
+ if(state.stages.some(p=>gap(p,next)<.25))
+  return state.strict?.18:.85;
+ active.delete(a);return null;
 }
 export function preciseNarrowExitWaypoint(a:TeamActor,next:Pt):boolean{
- const stage=active.get(a);if(!stage)return false;
- if(stage.some(p=>gap(p,next)<.25))return true;
- active.delete(a);return false;
+ return narrowExitWaypointTolerance(a,next)!==null;
 }
