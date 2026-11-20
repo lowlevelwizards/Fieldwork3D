@@ -43,6 +43,7 @@ import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
 import {firstFullBodyMotorStrideClear}
  from './breach-recovery-route-validation.ts';
+import {eligibleFrameActorDetour} from './breach-frame-actor-recovery.ts';
 import {shouldProbeStationaryCollisionRoute}
  from './breach-recovery-proposal-gate.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
@@ -532,6 +533,38 @@ export function resolveMotorCollision(
       prependTransientLeg(s,a,candidate,'local-detour');
       notePreciseLocalDetour(a,candidate);
       a.lastNavRepairAt=s.seconds;
+      return true;
+    }
+  }
+  // A moving red/blue body can reject the final coupled frame even when
+  // this actor's own provisional endpoint was locally clear. In that case
+  // the ordinary local 'blocking' branch never executes, despite many
+  // seconds of REAL zero movement recorded by the final arbiter. After a
+  // genuine continuous actor denial, try one cold physically swept side
+  // path. No authored GO edit, teleports, priority waiver or per-tick A*.
+  if(!blocking&&!closed&&traversable&&!narrowApproach&&a.nav.length&&
+     eligibleFrameActorDetour(a,s.seconds)){
+    // Throttle even failed proposals: the motor must never spend a new
+    // 24-candidate sweep on each identical, still-blocked fixed tick.
+    a.lastNavRepairAt=s.seconds;
+    const opponents:Pt[]=[];
+    for(const peer of s.operators)
+      if(peer!==a&&peer.health>0&&peer.side!==a.side)
+        opponents.push(peer.p);
+    const candidate=localDetour(a.p,next,s.doors,opponents,
+      OPERATOR_RADIUS,world);
+    const sweep=(from:Pt,to:Pt)=>
+      sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world);
+    if(candidate&&d(candidate,a.p)>3&&d(candidate,p)<d(a.p,p)+12&&
+       firstFullBodyMotorStrideClear(a.p,candidate,sweep)&&
+       sweep(candidate,next)&&
+       watchClearanceAllowed(a.p,candidate,p,
+         !!a.aimInstruction&&a.aimInstruction.mode!=='free',sweep)&&
+       allowPhysicalRouteReissue(a,'frame-actor-detour',p,
+         [candidate,...a.nav],s.seconds)){
+      prependTransientLeg(s,a,candidate,'local-detour');
+      notePreciseLocalDetour(a,candidate);
+      provisionalRouteAccepted(a);
       return true;
     }
   }
