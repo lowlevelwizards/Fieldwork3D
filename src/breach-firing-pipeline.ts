@@ -1,6 +1,8 @@
 import {safetyBodyFor} from './breach-friendly-safety-volume.ts';
 import {advanceInterruptedSecondarySwitch} from './secondary-switching.ts';
 import {GLOCK_9MM_WEAPON,GLOCK_9MM_BALLISTICS} from './secondary-ballistics.ts';
+import {beginTimedSecondaryReload,advanceTimedSecondaryReload} from './secondary-timed-reload.ts';
+import {commitSecondaryReloadStep} from './secondary-reload-commit.ts';
 import {chooseMicroAimOffset,approachMicroAimOffset,allowMicroAim}
  from './breach-physical-micro-aim.ts';
 import {canContextuallyCrouch,validRearStack,contextualCrouchRecovery}
@@ -459,6 +461,22 @@ function settlePassiveAim(a:TeamActor,dt:number):void{
 function fire(s:Session,a:TeamActor,dt:number){
   // Interrupted authored pistol reloads cannot resume when their order
   // was canceled or a new plan replaced it; completed insertion is final.
+  // The explicit live reload button and an empty-gun emergency share one
+  // fixed-step timer (orderId=0). They are not authored plan mutations.
+  if(a.secondaryReload?.orderId===0){
+    const kit=a.equipment?.secondary;
+    if(a.health<=0||a.surrendered||!kit?.weapon||
+       a.secondarySwitch?.active!=='secondary'||
+       a.secondarySwitch.fraction<1){
+      a.secondaryReload=null;return;
+    }
+    const progress=advanceTimedSecondaryReload(kit,a.secondaryReload,dt);
+    commitSecondaryReloadStep(s,a,progress);
+    a.secondaryReload=progress.state;
+    if(!progress.ok)notify(s,a.name+' PISTOL RELOAD INTERRUPTED');
+    else if(progress.done)notify(s,a.name+' PISTOL RELOADED');
+    a.aimSideTarget=0;return;
+  }
   if(a.secondaryReload&&(a.plan[0]?.kind!=='reload'||
       a.plan[0].id!==a.secondaryReload.orderId))a.secondaryReload=null;
   // An undone/canceled order does not leave the operator permanently
@@ -479,7 +497,21 @@ function fire(s:Session,a:TeamActor,dt:number){
   }
   if(sidearm){
     a.aimSideTarget=0;a.aimSideOffset=0;
-    if(a.secondaryReload||!sidearmKit?.loadedRounds)return;
+    if(a.secondaryReload)return;
+    if(!sidearmKit?.loadedRounds){
+      // Emergency auto-reload uses only real accessible issued spares.
+      // A separately authored RELOAD still owns its own fixed-step timer.
+      if(a.plan[0]?.kind!=='reload'&&a.health>0&&!a.surrendered&&
+         !a.traversal&&!a.squeeze&&!a.carryingId&&!a.treatmentActive&&
+         a.pace!=='run'){
+        const started=beginTimedSecondaryReload(sidearmKit,0);
+        if(started.ok&&started.state){
+          a.secondaryReload=started.state;
+          notify(s,a.name+' EMERGENCY PISTOL RELOAD');
+        }
+      }
+      return;
+    }
   }
  updateContextualCrouch(s,a);
  // A3.2: only simulation time moves the tactical rifle accommodation.
