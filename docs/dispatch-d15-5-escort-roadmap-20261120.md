@@ -24,6 +24,18 @@ leader ownership only when a living restrained person hears the command.
 A held, surrendered unrestrained subject must never be silently treated as
 secure custody.
 
+## D15.5C — committed actual motor custody
+- Fixed-tick living submitted actor phase now calls exactly the same existing
+  `advanceActorMotor` as player/AI, gated by issued RESTRAINT + explicit ESCORT.
+- Shared physical route goal samples no faster than 0.55s; STOP/leader death
+  cancels without teleport, changes of allegiance or generated player orders.
+- Only the escorting squad member slows ordinary walking; explicit RUN and
+  entry movements retain their original authority.
+- 3D restrained follow stands and walks with hands behind, 2D remains
+  restrained; active custody has the same player-visible exception as civilian
+  FOLLOW, replay-owned and absent in legacy films.
+- Fixed-step and real-motor acceptance still required before merging R2.
+
 ## D15.5C — next
 Advance a compliant suspect through existing TeamActor `advanceActorMotor`
 in the fixed actor phase, before the non-combatant early return; never

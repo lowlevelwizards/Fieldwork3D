@@ -1982,6 +1982,7 @@ const actorSimulationPhasePort:ActorSimulationPhasePort={
  notify,battleEvent,unobstructed,
  defensivePosition:(a,threat,s)=>runEnemyAi.defensivePosition(a,threat,s),
  decideEnemy:(s,a,h)=>runEnemyAi.decide(s,a,h),
+ runCustody:(s,a,goal,h)=>{approach(a,goal,h,s,.80);},
  runFriendly:runOrders
 };
 const motionSimulationPhasePort:MotionSimulationPhasePort={

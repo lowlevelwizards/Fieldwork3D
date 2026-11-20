@@ -2539,6 +2539,7 @@ export class TacticalScene3D{
         down:actor.health<=0,surrender:actor.surrendered,
         worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
         restrained:actor.restrained===true,
+        custodyWalking:actor.restrained===true&&!!actor.escortLeaderId,
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,
