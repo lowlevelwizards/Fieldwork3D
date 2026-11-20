@@ -1462,6 +1462,36 @@ function run(site,seed,kind){
       routeFirst:first,routeFirstSwept:firstSwept,
       joinProbes,localJoin};
    }):null;
+  const motelColdClearance=motelLoopSamplesEnabled&&seed===19143269&&
+   kind==='entry'?(()=>{
+    const a=actors.find(o=>o.id==='ash');if(!a)return null;
+    const world=sessionWorldGeometry(session);
+    const sweep=(to,theta)=>sweptProfileClear(a.p,to,session.doors,
+      squeezeFacing(theta),'squeeze',world);
+    const samples=[];
+    for(let i=0;i<16;i++){
+     const theta=i*Math.PI/8;
+     const byRadius=[.026,.1,.3,1,2,4,8].map(radius=>{
+      const point={x:a.p.x+radius*Math.cos(theta),
+       y:a.p.y+radius*Math.sin(theta)};
+      return {radius,narrow:sweep(point,theta),
+        full:sweptBodyClear(a.p,point,session.doors,OPERATOR_RADIUS,world)};
+     });
+     samples.push({heading:i,theta,steps:byRadius});
+    }
+    const first=a.nav[0];
+    const directYaw=first?Math.atan2(first.y-a.p.y,first.x-a.p.x):null;
+    const d=first?Math.hypot(first.x-a.p.x,first.y-a.p.y):0;
+    const tiny=first?{x:a.p.x+(first.x-a.p.x)*Math.min(.026,d)/Math.max(d,1e-5),
+      y:a.p.y+(first.y-a.p.y)*Math.min(.026,d)/Math.max(d,1e-5)}:null;
+    return {p:{...a.p},first,goal:planned.goals.get(a.id),
+      direct:{yaw:directYaw,length:d,
+       narrow:!!first&&sweep(first,directYaw),
+       tinyNarrow:!!tiny&&sweep(tiny,directYaw)},
+      doors:session.doors.filter(o=>o.id==='FRONT').map(o=>({
+       id:o.id,a:o.a,b:o.b,fraction:o.openFraction,
+       leaf:doorLeafSegment(o)})),samples};
+   })():null;
   return {mode:kind,doorId:planned.door?.id??null,accepted:planned.accepted,
    successful,queueDrained:complete,
    cancelledOrders:actors.reduce((n,a)=>n+(a.failedOrders??0),0),
@@ -1482,7 +1512,7 @@ function run(site,seed,kind){
    ...(queueMotionWitnessEnabled?{queueMotionEvidence}:{}),
    ...(quality?{routeQuality:quality.finish(),gridAudit:grid.summary()}:{}),
    ...(routeWitness?{routeTransitions:routeWitness}:{}),
-   ...(motelLoopSamplesEnabled?{motelLoopSamples}:{}),
+   ...(motelLoopSamplesEnabled?{motelLoopSamples,motelColdClearance}:{}),
    doorEvidence:doorWitness.flatMap((trace,i)=>trace.events.map(e=>({
     operator:actors[i].id,...e}))),
    physicalBlockEvidence:blockWitness.flatMap((trace,i)=>trace.events.map(e=>({
