@@ -30,7 +30,7 @@ export type OutfitterGalleryOptions={
  kit:EquipmentLoadout;
  magazines:readonly MagazineItem[];
  locked:boolean;
- renderModel:(slot:LoadoutSlot,itemId:string)=>string|null;
+ renderModel:(slot:LoadoutSlot,itemId:string)=>string|null|Promise<string|null>;
  onEquip:(slot:LoadoutSlot,itemId:string)=>void;
  onArsenal:()=>void;
  onAutoPack?:()=>void;
@@ -69,20 +69,38 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
  // procedural model in one RAF was a major phone navigation hitch.
  const queued:{tile:HTMLElement;frame:HTMLElement;choice:Choice;slot:LoadoutSlot}[]=[];
  let thumbnailFrame=0;
- const paintNext=()=>{
+ let thumbnailBusy=false;
+ let thumbnailGeneration=0;
+ const paintNext=async()=>{
   thumbnailFrame=0;
+  if(thumbnailBusy)return;
   const pending=queued.shift();
   if(!pending)return;
+  thumbnailBusy=true;
   const {tile,frame,choice,slot}=pending;
-  if(root.isConnected&&tile.isConnected&&tile.dataset.thumbReady!=='true'){
+  const generation=thumbnailGeneration;
+  try{
+   if(!root.isConnected||!tile.isConnected||tile.dataset.thumbReady==='true')return;
+   // A single in-flight GPU readback per gallery. Promise output is supported
+   // without forcing older synchronous thumbnail providers to change.
+   const url=await options.renderModel(slot,choice.id);
+   if(generation!==thumbnailGeneration||!root.isConnected||!tile.isConnected||
+      root.dataset.slot!==slot)return;
    tile.dataset.thumbReady='true';
-   const url=options.renderModel(slot,choice.id);
    if(url){
     const img=el('img');img.src=url;img.alt='';img.decoding='async';
     frame.replaceChildren(img);
    }
+  }catch{
+   // A failed WebGL context leaves kit selection usable. The tile simply
+   // keeps its textual fallback instead of repeatedly enqueueing failure.
+   if(generation===thumbnailGeneration&&tile.isConnected)
+    tile.dataset.thumbReady='true';
+  }finally{
+   thumbnailBusy=false;
+   if(queued.length&&root.isConnected&&!thumbnailFrame)
+    thumbnailFrame=requestAnimationFrame(paintNext);
   }
-  if(queued.length)thumbnailFrame=requestAnimationFrame(paintNext);
  };
  const scheduleThumb=(tile:HTMLElement,frame:HTMLElement,choice:Choice,slot:LoadoutSlot)=>{
   if(tile.dataset.thumbReady||queued.some(job=>job.tile===tile))return;
@@ -206,6 +224,7 @@ export function createOutfitterGallery(options:OutfitterGalleryOptions){
   // Equipment options only. Ammunition and consumables use the existing
   // validated carry editor, reached via the contextual ARRANGE action.
   choices=equipmentChoices(slot);
+  thumbnailGeneration++;
   observer?.disconnect();queued.length=0;
   thumbTargets.clear();
   rail.replaceChildren();
