@@ -1,31 +1,41 @@
-name: Secondary S5.2 switch handoff critical
+name: Secondary S5–S11 critical integration
 on:
   pull_request:
     paths:
       - 'src/secondary-switching.ts'
+      - 'src/secondary-timed-reload.ts'
+      - 'src/secondary-upper-body-pose.ts'
+      - 'src/secondary-shot-geometry.ts'
+      - 'src/secondary-ballistics.ts'
+      - 'src/secondary-equipment.ts'
+      - 'src/secondary-magazine-exchange.ts'
+      - 'src/secondary-holster-visual.ts'
       - 'src/breach-plan.ts'
       - 'src/breach-game.ts'
       - 'src/breach-actor-initial-state.ts'
       - 'src/breach-order-utility.ts'
       - 'src/breach-plan-utility-commands.ts'
       - 'src/breach-firing-pipeline.ts'
+      - 'src/breach-shot-resolution.ts'
+      - 'src/breach-muzzle.ts'
+      - 'src/breach-weapon-clearance.ts'
+      - 'src/breach-fire-preflight.ts'
       - 'src/breach-replay.ts'
-      - 'src/secondary-equipment.ts'
-      - 'src/secondary-magazine-exchange.ts'
-      - 'src/secondary-timed-reload.ts'
-      - 'src/secondary-upper-body-pose.ts'
-      - 'tests/secondary-s6-2-posed-hands.test.mjs'
-      - 'src/breach-order-utility.ts'
-      - 'tests/secondary-s8-2-timed-reload.test.mjs'
-      - 'tests/secondary-s10-2-replay-magazines.test.mjs'
       - 'src/breach-replay-sharing.ts'
-      - 'src/secondary-holster-visual.ts'
+      - 'src/breach-effects.ts'
       - 'src/breach-operator-animation-controller.ts'
       - 'src/breach-operator-animation-contract.ts'
       - 'src/breach-3d.ts'
-      - 'tests/secondary-s6-1-held-handoff.test.mjs'
-      - 'tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s6-1-held-handoff.test.mjs tests/secondary-s4-holster-visual.test.mjs tests/secondary-s8-2-timed-reload.test.mjs'
+      - 'tests/secondary-s5-switching.test.mjs'
       - 'tests/secondary-s5-2-order-handoff.test.mjs'
+      - 'tests/secondary-s4-holster-visual.test.mjs'
+      - 'tests/secondary-s6-1-held-handoff.test.mjs'
+      - 'tests/secondary-s6-2-posed-hands.test.mjs'
+      - 'tests/secondary-s7-pistol-fire.test.mjs'
+      - 'tests/secondary-s8-magazine-exchange.test.mjs'
+      - 'tests/secondary-s8-2-timed-reload.test.mjs'
+      - 'tests/secondary-s10-2-replay-magazines.test.mjs'
+      - 'tests/breach-roadmap2-stage10-combat.test.mjs'
       - '.github/workflows/secondary-switch-handoff-critical.yml'
   workflow_dispatch:
 concurrency:
@@ -40,7 +50,7 @@ jobs:
         with:
           node-version: '22'
       - run: npm install --no-audit --no-fund
-      - name: Authored weapon handoff and ammunition conservation
-        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s10-2-replay-magazines.test.mjs tests/secondary-s6-2-posed-hands.test.mjs
+      - name: Secondary physical, combat, replay and order regressions
+        run: node --experimental-strip-types --test tests/secondary-s5-switching.test.mjs tests/secondary-s5-2-order-handoff.test.mjs tests/secondary-s4-holster-visual.test.mjs tests/secondary-s6-1-held-handoff.test.mjs tests/secondary-s6-2-posed-hands.test.mjs tests/secondary-s7-pistol-fire.test.mjs tests/secondary-s8-magazine-exchange.test.mjs tests/secondary-s8-2-timed-reload.test.mjs tests/secondary-s10-2-replay-magazines.test.mjs tests/breach-roadmap2-stage10-combat.test.mjs
       - name: Production TypeScript and bundle
         run: npm run build
