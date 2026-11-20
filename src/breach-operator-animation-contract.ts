@@ -76,6 +76,7 @@ export type OperatorPose={
   surrender:boolean;aiming:boolean;firing:boolean;turning:number;
   /** A separate Session-owned visual now represents this released firearm. */
   worldWeaponReleased?:boolean;
+  restrained?:boolean;
   /** Lab preview only: choose an exact stock/weapon readiness posture. */
   handlingOverride?:Handling;
   handlingIntent?:HandlingIntent;threatRange?:number|null;

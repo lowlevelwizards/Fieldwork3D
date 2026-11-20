@@ -4,7 +4,7 @@
  */
 import {doorCenter,type Door,type Pt} from './breach-core.ts';
 import {type Session,type TeamActor,plannedControl,finalPoint,
- setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,
+ setFirePolicy,planCivilianInteraction,planCivilianRelease,planSuspectChallenge,planSuspectRestraint,
  inSight,team,enemies,
  planCasualtyTransport,planWaitAt,setWaitDuration,setNodeControl,
  posture,setStartPace,planReloadAt,planSwitchWeaponAt,planMedicalTreatment,
@@ -95,6 +95,15 @@ export function dispatchTacticalContextCommand(input:{
      .sort((x,y)=>distance(from,x.p)-distance(from,y.p))[0];
    return finish(!!target&&planSuspectChallenge(state,selected,target.id),
      'SUSPECT CHALLENGE NOT AVAILABLE');
+  }
+  case 'ctxRestrainSuspect':{
+   const at=finalPoint(a);
+   const target=enemies(state).filter(e=>e.health>0&&e.surrendered&&
+     !e.restrained&&distance(at,e.p)<=34&&liveVisibility(state,e.p)&&
+     sweptBodyClear(at,e.p,state.doors,5.5,sessionWorldGeometry(state)))
+     .sort((x,y)=>distance(at,x.p)-distance(at,y.p))[0];
+   return finish(!!target&&planSuspectRestraint(state,selected,target.id),
+     'COMPLIANT SUSPECT OR ISSUED RESTRAINT NOT AVAILABLE');
   }
   case 'ctxSecureCivilian':
   case 'ctxFollowCivilian':

@@ -27,6 +27,15 @@ Base main: `a4e323d6e66edf5f2a45a470a4ac399e0d7c7af9`. Feature branch: `feature/
 - Retrieval, custody orders and full focused validation are still outstanding;
   do not publish an incomplete checkpoint.
 
+## D15.3 — physical suspect restraint (feature branch)
+- New target-ID retained GO interaction with physical contact and timed cuff
+  completion, actual finite issued inventory, and exactly-once consumption.
+- Contextual RESTRAIN SUSPECT appears only for a legitimately disclosed living
+  compliant unrestrained subject. Source-owned GO rechecks prevent stale plans.
+- 2D and shared 3D poses distinguish restrained from unsecured surrender.
+- Actor replay snapshots preserve restraint and custody timestamps separately.
+- Still requires critical CI and full custody release contract before deployment.
+
 ## R1 must still implement before release
 - Real living surrender; authoritative transfer of the held firearm into a
   Session-owned recoverable world entity (current `droppedGun` is visual only).

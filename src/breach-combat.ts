@@ -65,5 +65,5 @@ export type BattleEvent={id:number;t:number;kind:'shot'|'wound'|'down'|'flash'|
   meta?:{action?:'spot'|'door-open'|'door-forced'|'door-close'|
     'door-resisted'|'door-blocked'|'window-open'|'window-traverse'|
     'objective-secure'|'door-impact'|'suspect-challenge'|'suspect-refusal'|
-    'suspect-compliance'|'suspect-surrender';
+    'suspect-compliance'|'suspect-surrender'|'suspect-restrained';
     objectId?:string;targetId?:string;contributorId?:string};};

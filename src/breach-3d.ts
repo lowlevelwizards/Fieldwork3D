@@ -2538,6 +2538,7 @@ export class TacticalScene3D{
          doorGrip,physicalContact,
         down:actor.health<=0,surrender:actor.surrendered,
         worldWeaponReleased:actor.surrendered&&actor.releasedWeaponId!=null,
+        restrained:actor.restrained===true,
         aiming:!actor.traversal&&actor.aim>.20,
         turning:actor.turning,firing:!!firing&&!actor.traversal,
         aimBlend:actor.aim,recoil:actor.recoil*6,

@@ -846,12 +846,14 @@ export function poseOperator(r:OperatorRig,p:OperatorPose,dt:number){
   attachments[EAI.medical].visible=treatmentActive;
   let fullDoorContact:THREE.Vector3|null=null;
   if(p.surrender){
-    // Deliberate visible surrender: discard the gun, kneel and raise both
-    // hands overhead. Unlike an incapacitated actor this is not a fall.
-    
+    // Distinct compliant hands-up versus physically restrained hands-back.
     const raised=smooth(downProgress/.60);
-    leftGrip.set(-1,3+15*raised,-7);
-    rightGrip.set(-1,3+15*raised,7);
+    if(p.restrained){
+      leftGrip.set(-6,-7,-6);rightGrip.set(-6,-7,6);
+    }else{
+      leftGrip.set(-1,3+15*raised,-7);
+      rightGrip.set(-1,3+15*raised,7);
+    }
   }else if(p.down){
     // Support hand gives way first, then the firing hand releases.
     

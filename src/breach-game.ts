@@ -289,6 +289,8 @@ export type TeamActor=Operator & {
   /** D15 conscious submission is not a physical wound or casualty. */
   lastSurrenderAt?:number;
   releasedWeaponId?:number|null;
+  /** Restraints applied only after physical GO completion. */
+  restrained?:boolean;lastCustodyAt?:number;
  /** D9: authoritative interval since last resolved spoken challenge. */
  lastChallengeAt?:number;
   lastFireRepositionAt:number;lastMissionEvadeAt:number;
@@ -607,6 +609,24 @@ export function planSuspectChallenge(s:Session,id:string,targetId:string):boolea
    objectId:'suspect:'+suspect.id,interaction:'challenge-suspect'
  });
  if(queued)notify(s,'CHALLENGE QUEUED — EXECUTES ON GO');
+ return queued;
+}
+/** D15.3 plan only: actual restraint requires a physically completed GO action. */
+export function planSuspectRestraint(s:Session,id:string,targetId:string):boolean{
+ const a=party(s,id),target=enemies(s).find(e=>e.id===targetId);
+ if(!a||!target||!canEdit(s)||a.health<=0||
+    target.health<=0||!target.surrendered||target.restrained===true||
+    a.restraintRemaining<=0)return false;
+ const from=finalPoint(a);
+ if(d(from,target.p)>34||
+    !team(s).some(observer=>inSight(observer,target,s))&&
+      !liveVisibility(s,target.p)||
+    !sweptBodyClear(from,target.p,s.doors,5.5,sessionWorldGeometry(s)))
+   return false;
+ const queued=addNode(s,id,'interact',from,{
+   objectId:'suspect:'+target.id,interaction:'restrain-suspect'
+ });
+ if(queued)notify(s,'RESTRAIN SUSPECT QUEUED — EXECUTES ON GO');
  return queued;
 }
 export function planMove(s:Session,id:string,p:Pt,strafe=false){

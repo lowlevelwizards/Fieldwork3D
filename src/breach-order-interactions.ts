@@ -40,11 +40,12 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
     if(!n.objectId||!n.interaction){
       failCurrentOrder(s,a,n,'INTERACTION TARGET UNAVAILABLE');return true;
     }
-    const contactCommand=n.objectId.startsWith('civ:')&&
+    const contactCommand=(n.objectId.startsWith('civ:')&&
       (n.interaction==='secure-civilian'||
        n.interaction==='follow-civilian'||
        n.interaction==='stop-following-civilian'||
-       n.interaction==='restrain-civilian');
+       n.interaction==='restrain-civilian'))||
+      (n.objectId.startsWith('suspect:')&&n.interaction==='restrain-suspect');
     if(!contactCommand&&!near(a.p,n.p,7)){
       // Once an electrical action has begun, losing the contact position
       // cancels it rather than letting an absent hand finish remotely.
@@ -87,6 +88,42 @@ export function createInteractionOrderHandler(port:OrderExecutionPort){
         battleEvent(s,'interaction',a,a.p,text,
           {action:'suspect-refusal',targetId:suspect.id,contributorId:a.id});
       }
+      clearCurrentOrderIssue(a);pop(a);return true;
+    }
+    if(n.interaction==='restrain-suspect'){
+      const suspect=s.operators.find(e=>e.side==='red'&&
+        n.objectId==='suspect:'+e.id);
+      if(!suspect||suspect.health<=0||!suspect.surrendered||
+         suspect.restrained===true||a.health<=0){
+        failCurrentOrder(s,a,n,'SUSPECT NOT AVAILABLE FOR RESTRAINT');return true;
+      }
+      const range=d(a.p,suspect.p);
+      const clear=sweptBodyClear(a.p,suspect.p,s.doors,5.5,
+        sessionWorldGeometry(s));
+      if(range>28&&range<=45&&clear&&d(suspect.p,n.p)<=45&&
+         liveVisibility(s,suspect.p)){
+        approach(a,suspect.p,dt,s,.65);return true;
+      }
+      if(range>28||!clear){
+        failCurrentOrder(s,a,n,'SUSPECT NOT IN PHYSICAL CONTACT');return true;
+      }
+      const cuffs=quoteDeployedFieldUse(a,'zip-tie');
+      if(!cuffs.available){
+        failCurrentOrder(s,a,n,'NO ISSUED FLEX CUFFS');return true;
+      }
+      a.velocity=0;
+      const toward=Math.atan2(suspect.p.y-a.p.y,suspect.p.x-a.p.x);
+      if(!rotate(a,toward,dt,s))return true;
+      a.actionTimer+=dt;
+      if(a.actionTimer<RESTRAINT_CONTACT_SECONDS+cuffs.accessSeconds)return true;
+      if(!spendDeployedFieldItem(a,'zip-tie')){
+        failCurrentOrder(s,a,n,'RESTRAINT STOCK CHANGED');return true;
+      }
+      suspect.restrained=true;suspect.lastCustodyAt=s.seconds;
+      const message=a.name+' RESTRAINED '+suspect.name;
+      notify(s,message);
+      battleEvent(s,'interaction',a,a.p,message,{
+        action:'suspect-restrained',targetId:suspect.id,contributorId:a.id});
       clearCurrentOrderIssue(a);pop(a);return true;
     }
     if(n.interaction==='release-civilian'){

@@ -208,7 +208,10 @@ function sprite(a:TeamActor){
   rect(-7,-5,14,10,c);
   rect(-10,-4,5,8,friendly?'#45625d':'#563e39');
   circle(4,0,3.8,friendly?'#d3dac1':'#d0a58a');
-  if(a.surrendered){
+  if(a.surrendered&&a.restrained){
+    // Hands secured behind the body: distinguish custody from hands-up compliance.
+    rect(-9,-6,5,12,'#ac816c');rect(-10,3,5,12,'#ac816c');
+  }else if(a.surrendered){
     // Hands-up silhouette remains distinct from a physical downed body.
     rect(-3,-15,5,12,'#d0a58a');rect(-3,4,5,12,'#d0a58a');
     circle(-5,-14,3,'#d0a58a');circle(-5,15,3,'#d0a58a');
