@@ -71,9 +71,9 @@ try{
    const inspectorStage=await inspector.locator('.glock-wb-canvas').boundingBox();
    assert.ok(inspectorStage&&inspectorStage.height>=viewport.height*.55,
     'art-only inspector dedicates most of phone/desktop height to real WebGL');
-   assert.equal(await inspector.getByRole('button',{name:'3/4 VIEW'}).getAttribute('aria-pressed'),'true');
-   await inspector.getByRole('button',{name:'SIDE',exact:true}).click();
+   // D6: SIDE is selected before the user touches the orbit controls.
    assert.equal(await inspector.getByRole('button',{name:'SIDE',exact:true}).getAttribute('aria-pressed'),'true');
+   assert.equal(await inspector.getByRole('button',{name:'3/4 VIEW'}).getAttribute('aria-pressed'),'false');
    // Actual 3D geometry screenshots; never substitute the earlier 2D mockup.
    mkdirSync('artifacts/m9',{recursive:true});
    await page.waitForTimeout(180);
@@ -98,7 +98,8 @@ try{
    await gallery.getByRole('button',{name:'INSPECT 3D MODEL'}).click();
    await inspector.waitFor({timeout:15000});
    await inspector.locator('.glock-wb-canvas canvas').waitFor({timeout:20000});
-   await inspector.getByRole('button',{name:'SIDE',exact:true}).click();
+   assert.equal(await inspector.getByRole('button',{name:'SIDE',exact:true}).getAttribute('aria-pressed'),'true',
+    'classic M9 also opens in side view without manual reorientation');
    await page.waitForTimeout(180);
    await inspector.screenshot({path:'artifacts/m9/m9-side-'+viewport.width+'.png'});
    await inspector.getByRole('button',{name:'OTHER SIDE'}).click();
