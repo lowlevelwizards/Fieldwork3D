@@ -101,7 +101,8 @@ export function createCampaignGearPicker(source:HTMLSelectElement,slot:string,
   const list=document.createElement('div');
   list.className='campaign-gear-picker-list';
   const choices=Array.from(source.options);
-  const gallery=choices.length<=6&&slot!=='utility';
+  // One compact comparison row per item: no huge uneven two-column cards.
+  const gallery=false;
   list.dataset.layout=gallery?'gallery':'rows';
   const unavailableList=document.createElement('div');
   unavailableList.className='campaign-gear-picker-list';
