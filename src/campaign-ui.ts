@@ -1346,7 +1346,8 @@ export class CampaignScreen{
     document.activeElement?.getAttribute('aria-label'):null);
   this.pendingKitFocusLabel=null;
   // The same operator keeps one preview renderer while HTML controls refresh.
-  const retainOperatorPreview=sameOperator&&!this.weaponView&&!!this.preview?.isReady();
+  // Reuse one WebGL context when cycling personnel, updating rig content only.
+  const retainOperatorPreview=!this.weaponView&&!!this.preview?.isReady();
   if(!retainOperatorPreview)this.disposePreview();
   if(!sameOperator){
    this.activeKitGroup='weapon';this.activeKitWorkspace='equipment';
@@ -1421,7 +1422,9 @@ export class CampaignScreen{
   selectName.classList.add('campaign-outfitter-operator-select');
   const mobileMetrics=node('span','campaign-outfitter-metrics',
    currentMass.toFixed(1)+' KG · '+currentMobility+'%');
-  identityBox.append(selectName,mobileMetrics);
+  // Color remains separately selectable, but visually belongs to identity.
+  const nameRow=node('div','campaign-outfitter-name-row');
+  identityBox.append(nameRow,mobileMetrics);
   let openKitLibrary=()=>{};
   let openClothing=()=>{};
   const renameShortcut=button('✎',()=>{
@@ -1443,12 +1446,13 @@ export class CampaignScreen{
   colorPicker.classList.add('campaign-outfitter-color');
   colorPicker.textContent='●';
   colorPicker.style.color=person.squadColor??SQUAD_IDENTIFICATION_COLORS[index%SQUAD_IDENTIFICATION_COLORS.length];
-  const kitButton=button('▣',()=>openKitLibrary(),'campaign-outfitter-library-button');
+  nameRow.append(selectName,colorPicker);
+  const kitButton=button('💾',()=>openKitLibrary(),'campaign-outfitter-library-button');
   kitButton.setAttribute('aria-label','Saved kit library and squad tools');
-  const clothes=button('◈',()=>openClothing(),'campaign-outfitter-clothing-button');
+  const clothes=button('👕',()=>openClothing(),'campaign-outfitter-clothing-button');
   clothes.setAttribute('aria-label','Clothing and appearance');
   compactHeader.append(previous,identityBox,next,renameShortcut,
-   colorPicker,kitButton,clothes);
+   kitButton,clothes);
   top.append(compactHeader);
   main.append(createLoadoutSquadRail(preparable.map(o=>({
    id:o.id,name:o.callsign.toUpperCase(),
@@ -2416,6 +2420,7 @@ export class CampaignScreen{
    else this.workbench.setActiveSlot(build?'body-receiver':this.selectedMount,false);
   }else{
    if(retainOperatorPreview&&this.preview){
+    this.preview.setOperatorId(id);
     this.preview.attachHost(preview,false);
     this.preview.updateEquipment(person.weapon,person.appearanceSeed,person.loadout,
      person.weaponConfiguration,person.magazines,person.wardrobe);
