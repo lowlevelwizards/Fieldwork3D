@@ -361,7 +361,7 @@ export function createQuickPlayConfigurator(options:{
   const gallery=createOutfitterGallery({
    host:galleryHost,sources,kit:selected.loadout,magazines:selected.magazines,
    locked:false,
-   renderModel:(slot,itemId)=>squadPreview?.renderModelThumbnail(
+   renderModel:(slot,itemId)=>squadPreview?.renderModelThumbnailAsync(
     {kind:'gear',slot,itemId})??null,
    onEquip:(slot,itemId)=>{
     let changed=false;
