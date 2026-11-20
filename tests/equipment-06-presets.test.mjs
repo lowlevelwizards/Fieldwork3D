@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {newCampaign,readCampaign,saveCampaignKitPreset,applyCampaignKitPreset,
- deleteCampaignKitPreset,renameCampaignOperator,cycleCampaignAppearance,buyWeapon,
+ deleteCampaignKitPreset,renameCampaignOperator,setCampaignOperatorColor,
+ SQUAD_IDENTIFICATION_COLORS,cycleCampaignAppearance,buyWeapon,
  equipCampaignGear,equipCampaignWeapon} from '../src/campaign-state.ts';
 import {readKitPresets} from '../src/equipment-presets.ts';
 
@@ -45,4 +46,18 @@ test('callsign and appearance edits are bounded and do not damage identity',()=>
  assert.equal(renameCampaignOperator(c,'rook','   '),c);
  assert.notEqual(cycleCampaignAppearance(c,'rook').operators[0].appearanceSeed,
   c.operators[0].appearanceSeed);
+});
+
+test('assigned squad color persists as a validated identity, not uniform paint',()=>{
+ const c=newCampaign(17);
+ const next=setCampaignOperatorColor(c,'rook',SQUAD_IDENTIFICATION_COLORS[4]);
+ assert.equal(next.operators[0].squadColor,SQUAD_IDENTIFICATION_COLORS[4]);
+ assert.equal(next.operators[0].wardrobe,c.operators[0].wardrobe);
+ assert.equal(setCampaignOperatorColor(c,'rook','#ff00ff'),c);
+ assert.equal(readCampaign(JSON.stringify(next)).operators[0].squadColor,
+  SQUAD_IDENTIFICATION_COLORS[4]);
+ const invalid=JSON.parse(JSON.stringify(next));
+ invalid.operators[0].squadColor='#BADBAD';
+ assert.notEqual(readCampaign(JSON.stringify(invalid)).operators[0].squadColor,
+  '#BADBAD');
 });
