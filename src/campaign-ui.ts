@@ -1437,7 +1437,7 @@ export class CampaignScreen{
   const colorPicker=fieldworkSelect({
    label:'Operator identification color',
    value:person.squadColor??SQUAD_IDENTIFICATION_COLORS[index%SQUAD_IDENTIFICATION_COLORS.length],
-   choices:palette.map(([label,value])=>({label,value})),
+   choices:palette.map(([label,value])=>({label,value,swatch:value})),
    onChange:color=>this.handlers.setOperatorColor(id,color)
   });
   colorPicker.classList.add('campaign-outfitter-color');
@@ -2327,6 +2327,7 @@ export class CampaignScreen{
     renderField:fieldId=>this.preview?.renderModelThumbnail(
      {kind:'field',id:fieldId})??null,
     selectedItems,scrollPositions,
+    onSelectCategory:slot=>selectBenchSlot(slot),
     onInspect:(slot,itemId,kind)=>{
      if(!itemId){this.preview?.selectItemDot(null);return;}
      if(kind==='gear')this.preview?.selectItemDot({
