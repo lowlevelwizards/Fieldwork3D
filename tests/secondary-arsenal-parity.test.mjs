@@ -46,12 +46,14 @@ test('Secondary Arsenal: rename/duplicate/delete and corrupt saved-build rejecti
 });
 test('Secondary Arsenal: same interactive presentation affordances with honest equipment gate',()=>{
  const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
+ const chrome=readFileSync(new URL('../src/arsenal/gallery-chrome.ts',import.meta.url),'utf8');
  const wb=readFileSync(new URL('../src/arsenal/glock-workbench.ts',import.meta.url),'utf8');
  const viewport=readFileSync(new URL('../src/arsenal/glock-viewport.ts',import.meta.url),'utf8');
- for(const token of ['arsenal-search','arsenal-filters','arsenal-grid',
-  'OPEN WORKBENCH','SAVED','renameGlockSavedBuild','duplicateGlockSavedBuild',
+ for(const token of ['arsenal-search','arsenal-filters','arsenal-grid','OPEN WORKBENCH'])
+  assert.ok(chrome.includes(token),'Missing shared chrome '+token);
+ for(const token of ['SAVED','renameGlockSavedBuild','duplicateGlockSavedBuild',
   'deleteGlockSavedBuild'])
-  assert.ok(gallery.includes(token),'Missing '+token);
+  assert.ok(gallery.includes(token),'Missing Glock authority '+token);
  for(const token of ['UNDO','REDO','FIT',
   'CHOOSE MODEL','LOAD BUILD','SAVE BUILD','role','dialog','SECONDARY_CAPACITY'])
   assert.ok(wb.includes(token),'Missing '+token);
