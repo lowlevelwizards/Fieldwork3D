@@ -64,6 +64,14 @@ export type ReplayActorFrame=ActorFrame & {
  /** D15 conscious surrender timestamp, not a down event. */
  lastSurrenderAt?:number;
  releasedWeaponId?:number|null;
+ suspectEscapeMode?:TeamActor['suspectEscapeMode'];
+ suspectEscapeWeaponId?:number|null;
+ suspectEscapeStartedAt?:number;
+ suspectEscapeCooldownUntil?:number;
+ suspectEscapeGoal?:Pt|null;
+ suspectRearmedSecondary?:boolean;
+ /** Explicit issue status, absent for all historical legacy recordings. */
+ secondaryIssued?:boolean;
  restrained?:boolean;lastCustodyAt?:number;
  suspectSearched?:boolean;
  escortLeaderId?:string|null;lastEscortRouteAt?:number;
@@ -252,6 +260,13 @@ export function snapshot(s:Session,seenGround?:string[],
         ()=>({...a.skills})),
       surrendered:a.surrendered,lastSurrenderAt:a.lastSurrenderAt,
       releasedWeaponId:a.releasedWeaponId??null,
+      suspectEscapeMode:a.suspectEscapeMode??null,
+      suspectEscapeWeaponId:a.suspectEscapeWeaponId??null,
+      suspectEscapeStartedAt:a.suspectEscapeStartedAt??-100,
+      suspectEscapeCooldownUntil:a.suspectEscapeCooldownUntil??0,
+      suspectEscapeGoal:a.suspectEscapeGoal?position(a.suspectEscapeGoal):null,
+      suspectRearmedSecondary:a.suspectRearmedSecondary===true,
+      secondaryIssued:!!a.equipment?.secondary?.weapon,
       restrained:a.restrained===true,lastCustodyAt:a.lastCustodyAt,
       suspectSearched:a.suspectSearched===true,
       escortLeaderId:a.escortLeaderId??null,
@@ -302,7 +317,9 @@ export function snapshot(s:Session,seenGround?:string[],
       priorEffects?.droppedFirearms,
       ()=>s.droppedFirearms.map(w=>({...w,p:position(w.p),
         weaponConfiguration:w.weaponConfiguration?
-          structuredClone(w.weaponConfiguration):undefined}))),
+          structuredClone(w.weaponConfiguration):undefined,
+        secondaryEquipment:w.secondaryEquipment?
+          structuredClone(w.secondaryEquipment):undefined}))),
     impactMarks:reuseFrozenReplayValue(s.impactMarks,priorEffects?.impactMarks,
       ()=>s.impactMarks.map(m=>({...m,p:position(m.p)}))),
     grenades:reuseFrozenReplayValue(s.grenades,priorEffects?.grenades,
@@ -556,12 +573,14 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       secondaryReload:copy.secondaryReload?{...copy.secondaryReload}:null,
       // F2: rewind physically carried locations as well as the HUD counters.
       // Archived frames without this optional field keep their old kit.
-      ...(a.equipment&&(copy.fieldInventory||copy.secondaryEquipment)?{
+      ...(a.equipment&&(copy.fieldInventory||copy.secondaryEquipment||
+          copy.secondaryIssued===false)?{
         equipment:{...a.equipment,
           ...(copy.fieldInventory?{fieldInventory:{version:1 as const,
             stacks:copy.fieldInventory.stacks.map(row=>({...row}))}}:{}),
-          ...(copy.secondaryEquipment?{
-            secondary:readSecondaryEquipment(copy.secondaryEquipment,a.id)}:{})
+          ...(copy.secondaryIssued===false?{secondary:undefined}:
+            copy.secondaryEquipment?{
+              secondary:readSecondaryEquipment(copy.secondaryEquipment,a.id)}:{})
         }}:{}),
       // Absent in legacy L1.4 films; do not retain future device state on rewind.
       nvgDeployed:copy.nvgDeployed===true,
@@ -570,6 +589,12 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
       transportMode:copy.transportMode??null,
       lastSurrenderAt:copy.lastSurrenderAt,
       releasedWeaponId:copy.releasedWeaponId??null,
+      suspectEscapeMode:copy.suspectEscapeMode??null,
+      suspectEscapeWeaponId:copy.suspectEscapeWeaponId??null,
+      suspectEscapeStartedAt:copy.suspectEscapeStartedAt??-100,
+      suspectEscapeCooldownUntil:copy.suspectEscapeCooldownUntil??0,
+      suspectEscapeGoal:copy.suspectEscapeGoal?position(copy.suspectEscapeGoal):null,
+      suspectRearmedSecondary:copy.suspectRearmedSecondary===true,
       restrained:copy.restrained===true,
       lastCustodyAt:copy.lastCustodyAt,
       suspectSearched:copy.suspectSearched===true,
@@ -634,7 +659,9 @@ export function applyReplayFrame(s:Session,f:ReplayFrame):void{
   });
   s.droppedFirearms=(f.droppedFirearms??[]).map(w=>({...w,
     p:position(w.p),weaponConfiguration:w.weaponConfiguration?
-      structuredClone(w.weaponConfiguration):undefined}));
+      structuredClone(w.weaponConfiguration):undefined,
+    secondaryEquipment:w.secondaryEquipment?
+      structuredClone(w.secondaryEquipment):undefined}));
   s.doors=f.doors.map(d=>({...d,a:position(d.a),b:position(d.b)}));
   s.objectRevision=f.objectRevision??0;
   // Seek/rewind restores the actual circuit state from this exact film frame.
