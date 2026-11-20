@@ -19,12 +19,11 @@ import {stageMagazines,magazineSpace,type MagazineLocation}
 import {WeaponWorkbenchPreview,type WeaponWorkbenchViewState}
  from './equipment-weapon-workbench.ts';
 import type {WorkbenchSocket} from './equipment-weapon-workbench-layout.ts';
-import {buildQuickLoadoutGroups,loadoutGroupForSlot,
+import {buildQuickLoadoutGroups,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
 import {confirmFieldworkAction,promptFieldworkText} from './ui/fieldwork-controls.ts';
 import {showFieldworkActionFeedback} from './ui/fieldwork-action-toast.ts';
 import {createFieldGadgetEditor} from './ui/field-gadget-editor.ts';
-import {attachCarryGearChangePreview} from './ui/carry-gear-change-controls.ts';
 import {initialFieldInventory,type FieldInventory} from './equipment-field-inventory.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {CarryKitUndoHistory,captureCarryUndo} from './equipment-carry-undo.ts';
@@ -32,7 +31,7 @@ import {createLoadoutSquadRail} from './ui/loadout-squad-rail.ts';
 import {createOutfitterGallery} from './ui/campaign-outfitter-gallery.ts';
 import type {LoadoutSlot} from './equipment-loadouts.ts';
 import './ui/campaign-outfitter-gallery.css';
-import './quickplay-board-outfitter.css';
+import './ui/ux-r1-sheets.css';
 import {CampaignKitPreview} from './equipment-preview.ts';
 import type {OperationRecord} from './breach-operations.ts';
 
@@ -118,7 +117,7 @@ function renderOperationsBoard(){
     m.weapon.toUpperCase()
   })),selected.id,id=>{
    if(id===expandedQuickOperator)return;
-   expandedQuickOperator=id;expandedQuickKit=id;
+   expandedQuickOperator=id;expandedQuickKit=id;quickKitView='equipment';
    expandedQuickWeapon=id;scrollToSelected=true;renderOperationsBoard();
   }));
  }
@@ -195,7 +194,9 @@ function renderOperationsBoard(){
   previewHost.className='fw-prep-operator-viewer';
   previewHost.hidden=false;
   previewHost.setAttribute('aria-label','Rotatable 3D operator and carried equipment');
-  kit.append(previewHost);
+  const modelStage=document.createElement('div');
+  modelStage.className='fw-quick-board-model-stage';
+  modelStage.append(previewHost);kit.append(modelStage);
   const renderKitPreview=()=>{
    if(!kit.open||!previewHost.isConnected||previewHost.hidden)return;
    if(quickKitPreview&&quickKitPreviewId!==member.id){
@@ -628,8 +629,124 @@ function renderOperationsBoard(){
    }
    loadout.field('carry').append(magSection);
   }
+  // This is the same shared R5 equipment gallery used by Campaign Armory
+  // and Quick Play mission setup. No second equipment choice implementation.
+  const galleryHost=document.createElement('div');
+  galleryHost.className='fw-quick-board-gallery';
+  galleryHost.hidden=quickKitView!=='equipment';
+  const sources=new Map<LoadoutSlot,HTMLSelectElement>();
+  for(const slot of LOADOUT_SLOTS){
+   if(slot==='tactical')continue;
+   const select=document.createElement('select');
+   select.setAttribute('aria-label','Select '+slot+' for '+member.callsign);
+   for(const item of itemsForSlot(slot)){
+    const option=document.createElement('option');
+    option.value=item.id;option.textContent=item.name;select.append(option);
+   }
+   select.value=member.loadout.slots[slot];sources.set(slot,select);
+  }
+  const zoneNav=document.createElement('nav');
+  zoneNav.className='fw-quick-board-zones';
+  zoneNav.setAttribute('aria-label','Equipment locations');
+  const zoneButtons=new Map<LoadoutSlot,HTMLButtonElement>();
+  let showGallery:(slot:LoadoutSlot)=>void=()=>{};
+  const selectZone=(slot:LoadoutSlot)=>{
+   quickBenchSlot=slot;
+   for(const [key,button] of zoneButtons)
+    button.setAttribute('aria-current',String(key===slot));
+   showGallery(slot);
+   quickKitPreview?.clearTransientSelection();
+   quickKitPreview?.setSelectedSlot(slot);
+   quickKitPreview?.focusOn(
+    slot==='head'?'head':slot==='primary'?'weapon':
+    slot==='armor'||slot==='rig'||slot==='top'?'torso':
+    slot==='backpack'?'back':slot==='belt'||slot==='medical'||slot==='utility'?'belt':
+    slot==='legs'||slot==='feet'?'legs':'full');
+  };
+  for(const [slot,label] of [
+   ['primary','WEAPON'],['head','HEAD'],['armor','ARMOR'],
+   ['rig','CHEST'],['belt','BELT'],['backpack','PACK'],
+   ['medical','MEDICAL'],['utility','TOOLS'],
+   ['top','TOP'],['legs','LEGS'],['hands','HANDS'],['feet','FOOTWEAR']
+  ] as const){
+   const button=document.createElement('button');
+   button.type='button';button.textContent=label;
+   button.className='fw-quick-board-zone';button.dataset.slot=slot;
+   button.setAttribute('aria-current',String(slot===quickBenchSlot));
+   button.addEventListener('click',()=>selectZone(slot));
+   zoneButtons.set(slot,button);zoneNav.append(button);
+  }
+  modelStage.append(zoneNav);
+  const clothing=document.createElement('button');
+  clothing.type='button';clothing.className='fw-quick-board-clothing';
+  clothing.textContent='CLOTHING';clothing.addEventListener('click',()=>selectZone('top'));
+  galleryHost.append(clothing);
+  const selectedItems=gallerySelections.get(member.id)??new Map<string,string>();
+  const scrollPositions=galleryScroll.get(member.id)??new Map<string,number>();
+  gallerySelections.set(member.id,selectedItems);
+  galleryScroll.set(member.id,scrollPositions);
+  const editable=config.getSession().phase==='planning'&&!config.isReplaying();
+  const gallery=createOutfitterGallery({
+   host:galleryHost,sources,kit:member.loadout,magazines:member.magazines,
+   physicalEditor:fieldHost,locked:!editable,selectedItems,scrollPositions,
+   renderModel:(slot,itemId)=>quickKitPreview?.renderModelThumbnail(
+    {kind:'gear',slot,itemId})??null,
+   onEquip:(slot,itemId)=>{
+    if(config.getSession().phase!=='planning'||config.isReplaying())return;
+    const before=config.getRoster();
+    let after=before;
+    if(slot==='primary'){
+     const weapon=itemId.startsWith('primary-')?itemId.slice(8):'';
+     if(weapon==='carbine'||weapon==='smg'||weapon==='rifle'||weapon==='shotgun')
+      after=equipRoster(before,member.id,weapon);
+    }else if(slot==='rig'||slot==='belt'||slot==='backpack'){
+     after=equipRosterCarryGear(before,member.id,slot,itemId);
+     const old=before.members.find(m=>m.id===member.id);
+     const changed=after.members.find(m=>m.id===member.id);
+     if(after!==before&&old&&changed)carryUndo.record(member.id,
+      captureCarryUndo(old.loadout,old.magazines),
+      captureCarryUndo(changed.loadout,changed.magazines));
+    }else after=equipRosterGear(before,member.id,slot,itemId);
+    if(after===before){
+     showFieldworkActionFeedback('EQUIPMENT CHANGE UNAVAILABLE');
+     return;
+    }
+    config.setRoster(after);config.saveRoster();config.applyRoster();
+    expandedQuickKit=member.id;quickKitView='equipment';
+    renderOperationsBoard();config.refreshHud();
+   },
+   onMoveField:()=>{}, // Existing field editor owns authoritative transfers.
+   onMoveMagazine:()=>{}, // Existing carry editor owns magazine placement.
+   onArsenal:()=>{if(!arsenalAction.disabled)config.openArsenal(member.id);},
+   arsenalDisabled:arsenalAction.disabled,
+   onSelectCategory:selectZone,
+   onInspect:(slot,itemId,kind,location)=>{
+    if(!itemId){quickKitPreview?.selectItemDot(null);return;}
+    if(kind==='gear')quickKitPreview?.selectItemDot({kind:'gear',slot,itemId});
+    else quickKitPreview?.selectItemDot({
+     kind:kind==='field'?'field':'magazine',id:itemId,location});
+   },
+   onAdvanced:()=>{
+    quickKitView='carry';galleryHost.hidden=true;carryPanel.hidden=false;
+    advancedPanel.open=false;
+   }
+  });
+  showGallery=gallery.show;
+  kit.insertBefore(galleryHost,advancedPanel);
+  advancedPanel.addEventListener('toggle',()=>{
+   if(advancedPanel.open){
+    quickKitView='advanced';galleryHost.hidden=true;carryPanel.hidden=true;
+   }else if(quickKitView==='advanced'){
+    quickKitView='equipment';galleryHost.hidden=false;
+   }
+  });
+  selectZone(quickBenchSlot);
   card.append(kit);config.board.append(card);
-  if(kit.open)requestAnimationFrame(renderKitPreview);
+  requestAnimationFrame(()=>{
+   renderKitPreview();
+   quickKitPreview?.setOnTapSlot(selectZone);
+   quickKitPreview?.setSelectedSlot(quickBenchSlot);
+  });
   // A newly opened details subtree can report zero width on iOS until
   // it is attached and laid out. Initialize after paint, not only on toggle.
   if(kit.open&&advancedPanel.open&&loadout.group.weapon.open&&legacyControls.open&&weaponEditor.open)
