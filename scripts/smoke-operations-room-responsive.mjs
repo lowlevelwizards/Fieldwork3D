@@ -143,8 +143,8 @@ async function assessEstablishedCareer(page,name,mobile){
     name+' empty stock alerts missing');
   }
   if(tab==='chronicle'){
-   const recent=page.locator('.campaign-chronicle>.campaign-operation-board');
-   check(await recent.locator('.campaign-operation-record').count()===8,
+   const recent=page.locator('.campaign-chronicle>.campaign-uxr-record-index');
+   check(await recent.locator('.campaign-uxr-record-row').count()===8,
     name+' Records should show only eight recent operations');
    const earlier=page.locator('.campaign-operation-more');
    check(await earlier.count()===1,name+' missing older record disclosure');
@@ -157,7 +157,7 @@ async function assessEstablishedCareer(page,name,mobile){
     .waitFor({state:'attached',timeout:5000});
    check(await earlier.locator('.campaign-operation-record').count()===2,
     name+' earlier history failed to load remaining two records');
-   const detail=recent.locator('.campaign-operation-detail').first();
+   const detail=page.locator('.campaign-uxr-record-inspector .campaign-operation-detail').first();
    await detail.locator(':scope > summary').click();
    check(await detail.locator('.campaign-operation-participants').isVisible(),
     name+' saved operation participants inaccessible');
@@ -203,7 +203,7 @@ async function assessActiveDeployment(page,name,expected){
   .evaluateAll(els=>els.length===4&&els.every(el=>el.disabled));
  check(disabled,name+' squad slots editable during an active deployment');
  await page.locator('#campaign-tab-chronicle').click();
- check(await page.locator('.campaign-chronicle>.campaign-operation-board .campaign-operation-record')
+ check(await page.locator('.campaign-chronicle>.campaign-uxr-record-index .campaign-uxr-record-row')
   .count()===Math.min(8,expected.total),
   name+' accepting a contract altered recent operation history');
  check(await page.locator('.campaign-operation-more').count()===(expected.total>8?1:0),
