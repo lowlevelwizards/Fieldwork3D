@@ -45,6 +45,77 @@ const SAFETY_RED=new THREE.MeshBasicMaterial({
 const M9A3_GRIP_PANEL=AR_MUTED_FDE.clone();
 M9A3_GRIP_PANEL.color.multiplyScalar(.59);
 
+/** D6: one hand-authored, faceted miniature front shell. +X is muzzle.
+ * The 12-station U section is open along its top; the *short* connected
+ * bridge and sight are included in this same unindexed GPU mesh.
+ * No hidden sight-box, inset slab, duplicate rear face or beveled ladder.
+ */
+function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
+ const yz:readonly (readonly [number,number])[]=[
+  [-1.60,3.28],[-1.60,1.25],[-1.30,.96],
+  [1.30,.96],[1.60,1.25],[1.60,3.28],
+  [1.34,3.53],[1.09,3.53],[1.09,1.68],
+  [-1.09,1.68],[-1.09,3.53],[-1.34,3.53]
+ ];
+ const vertices:number[]=[];
+ type V=readonly [number,number,number];
+ const tri=(a:V,b:V,c:V)=>{
+  vertices.push(...a,...b,...c);
+ };
+ const quad=(a:V,b:V,c:V,d:V)=>{
+  tri(a,b,c);tri(a,c,d);
+ };
+ const rear=nose-1.27,front=nose+.08;
+ // Contour orientation controls outer wall facing. No rear cap is needed:
+ // it is visually and geometrically seated inside the existing open rails.
+ const signed=yz.reduce((sum,p,i)=>{
+  const q=yz[(i+1)%yz.length];
+  return sum+p[0]*q[1]-q[0]*p[1];
+ },0);
+ for(let i=0;i<yz.length;i++){
+  const [z0,y0]=yz[i],[z1,y1]=yz[(i+1)%yz.length];
+  const a:V=[rear,y0,z0],b:V=[front,y0,z0],
+   c:V=[front,y1,z1],d:V=[rear,y1,z1];
+  if(signed>0)quad(a,b,c,d);else quad(a,d,c,b);
+ }
+ // The front face is a U, NOT a closed square covering the barrel mouth.
+ const contour=yz.map(([z,y])=>new THREE.Vector2(z,y));
+ for(const [i,j,k] of THREE.ShapeUtils.triangulateShape(contour,[])){
+  const a:V=[front,yz[i][1],yz[i][0]],
+   b:V=[front,yz[j][1],yz[j][0]],
+   c:V=[front,yz[k][1],yz[k][0]];
+  const faceX=(b[1]-a[1])*(c[2]-a[2])-
+   (b[2]-a[2])*(c[1]-a[1]);
+  if(faceX>0)tri(a,b,c);else tri(a,c,b);
+ }
+ // Short, shared nose crown: this genuinely connects the upper shoulders.
+ // No bridge runs down the open barrel channel.
+ const x0=nose-.60,x1=nose+.08;
+ const y0=3.47,y1=3.69,z0=-1.27,z1=1.27;
+ quad([x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0]); // top
+ quad([x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]); // muzzle face
+ quad([x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[x0,y0,z0]); // back
+ quad([x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]); // left
+ quad([x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[x0,y0,z1]); // right
+ // One raised, stubby trapezoidal sight crest attached to the crown.
+ // Skips the hidden bottom face; four broad faces and one flat crown.
+ const sx0=nose-.44,sx1=nose+.03,by=y1,ty=3.99;
+ const lo:V[]=[[sx0,by,-.56],[sx1,by,-.56],
+  [sx1,by,.56],[sx0,by,.56]];
+ const hi:V[]=[[sx0+.055,ty,-.38],[sx1-.055,ty,-.38],
+  [sx1-.055,ty,.38],[sx0+.055,ty,.38]];
+ quad(hi[0],hi[3],hi[2],hi[1]);
+ for(let i=0;i<4;i++){
+  const j=(i+1)%4;
+  quad(lo[i],lo[j],hi[j],hi[i]);
+ }
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ geometry.computeVertexNormals();
+ geometry.computeBoundingBox();geometry.computeBoundingSphere();
+ return geometry;
+}
+
 /** Presentation contacts always come from the authored shape, not a Glock. */
 export function m9ArtSockets(id:M9AppearanceId){
  const a=M9_ART[id],heel=(a.gripRear+a.gripFront)/2;
@@ -54,7 +125,7 @@ export function m9ArtSockets(id:M9AppearanceId){
   supportGrip:Object.freeze({x:heel+.69,y:-3.48,z:.77}),
   slideGrip:Object.freeze({x:-5.25,y:1.50,z:0}),
   magazineBase:Object.freeze({x:heel,y:a.heel-.19,z:0}),
-  sightLine:Object.freeze({x:-.85,y:3.56,z:0}),
+  sightLine:Object.freeze({x:-.85,y:3.99,z:0}),
   holsterPivot:Object.freeze({x:heel,y:-4.08,z:0})
  });
 }
@@ -164,34 +235,16 @@ export function buildM9Appearance(id:M9AppearanceId,
  barrel.position.y=BARREL_Y;
  barrel.name='family-barrel-'+id+'-visible-open-top-barrel';
  barrel.userData.m9ExposedBarrel=true;
- // D5: extend the *same physical U* rearward along the low side rails.
- // The short front crown bridge connects its cheeks and carries the sight;
- // only the final nose is bridged, preserving an open top behind it.
- // The local XY cross-section becomes world Z/Y after 90-degree Y rotation.
- const cross:readonly (readonly [number,number])[]=[
-  [-1.63,3.02],[-1.63,1.27],[-1.25,.95],
-  [1.25,.95],[1.63,1.27],[1.63,3.02],
-  [1.12,3.02],[1.12,1.62],[-1.12,1.62],[-1.12,3.02]
- ];
- const wrapShape=new THREE.Shape();
- wrapShape.moveTo(cross[0][0],cross[0][1]);
- for(const [u,v] of cross.slice(1))wrapShape.lineTo(u,v);
- wrapShape.closePath();
- const wrapGeometry=new THREE.ExtrudeGeometry(wrapShape,{
-  depth:1.45,steps:1,bevelEnabled:false,curveSegments:1
- });
- wrapGeometry.rotateY(Math.PI/2);
- wrapGeometry.translate(a.nose-1.37,0,0);
- const wrap=new THREE.Mesh(wrapGeometry,slideMaterial);
- wrap.name='family-barrel-'+id+'-open-muzzle-wrap';
+ // D6: physically connected single faceted front shell, short crown and
+ // stubby front sight. The exposed barrel and open slide remain independent.
+ const wrap=new THREE.Mesh(m9UnifiedFrontShell(a.nose),slideMaterial);
+ wrap.name='family-barrel-'+id+'-unified-open-muzzle-and-sight';
  wrap.userData.m9NoseBridge=true;
  wrap.userData.m9FrontUWrap=true;
+ wrap.userData.m9FrontWrapCrown=true;
+ wrap.userData.m9AttachedFrontSight=true;
+ wrap.userData.m9UnifiedNose=true;
  wrap.castShadow=true;wrap.receiveShadow=true;root.add(wrap);
- // A shallow front cap ties both side cheeks together (not a long roof).
- // Its top physically carries the longer, squat Beretta front sight.
- const wrapCrown=cuboid('barrel',a.nose-.30,3.22,0,
-  .78,.43,3.26,slideMaterial);
- wrapCrown.userData.m9FrontWrapCrown=true;
 
  // A compact darker six-facet muzzle crown reads clearly from front/quarter
  // without expanding the actual cylinder diameter or plugging the open top.
@@ -200,20 +253,17 @@ export function buildM9Appearance(id:M9AppearanceId,
  tip.position.y=BARREL_Y;
  tip.userData.m9MuzzleCrown=true;
 
- // D5: taller/leaner hammer without changing the long D4 beavertail.
+ // D6: compact hooked crown, narrow upright stem. Not an antenna or fin.
+ // Retain the long approved rear beavertail without adding ring micro-detail.
  const hammer:Outline=[
-  [-8.81,2.42],[-9.06,2.76],[-9.35,4.22],
-  [-9.12,4.43],[-8.89,4.31],[-8.72,3.10]
+  [-8.82,2.45],[-9.07,2.76],[-9.27,3.58],
+  [-9.44,4.00],[-9.16,4.13],[-8.93,3.97],[-8.78,3.18]
  ];
- const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.52,slideMaterial);
+ const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.16,slideMaterial);
  hammerMesh.userData.m9Hammer=true;
 
  // Oversize, uncomplicated rear and front sights.
  cuboid('barrel',-7.93,3.30,0,.53,.37,1.22,slideMaterial);
- // D5: broaden sight front-to-back and root its base into the nose cap.
- const frontSight=cuboid('barrel',a.nose-.32,3.55,0,
-  .83,.40,1.14,slideMaterial);
- frontSight.userData.m9AttachedFrontSight=true;
  // D4: slope matches the actual heel rather than leaving a triangular gap
  // above a horizontal box. Upper face penetrates the butt by 0.15 units.
  const plateProfile:Outline=[
