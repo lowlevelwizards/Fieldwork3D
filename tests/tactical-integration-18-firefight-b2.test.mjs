@@ -44,8 +44,10 @@ test('B5 weapon identities differ, suppressors reduce transients and hidden hits
 test('B6 presentation consumes shot IDs and visibility, never chooses hit results',()=>{
  const three=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
- assert.match(three,/mostRecentActiveMuzzleShot\(s\.shots,actor\.id,/,
-  'scene selects authoritative newest shot rather than an older flash');
+ assert.match(three,/this\.recentMuzzleShots\.rebuild\(s\.shots\)/,
+  'scene indexes only the real authoritative recorded shot history');
+ assert.match(three,/mostRecentActiveMuzzleShot\(\s*this\.recentMuzzleShots\.forShooter\(actor\.id\),actor\.id,/,
+  'scene retains the original newest visible shot resolver with a bounded per-actor view');
  const cues=readFileSync(new URL('../src/breach-combat-cues.ts',import.meta.url),'utf8');
  assert.match(cues,/muzzleFlashCue\(weapon,shot\.age,attachment\)\.active/,
   'shared event resolver must still use exact shot age and muzzle attachment');
