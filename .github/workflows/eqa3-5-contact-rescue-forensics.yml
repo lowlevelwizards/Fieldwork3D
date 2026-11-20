@@ -1,0 +1,101 @@
+name: EQA3.5 first-contact optical and rescue harm forensics
+on:
+  push:
+    branches: [feature/eqa3-5-contact-rescue-forensics-20261118]
+    paths:
+      - '.github/workflows/eqa3-5-contact-rescue-forensics.yml'
+      - 'scripts/audit-eqa3-first-contact.mjs'
+      - 'scripts/audit-eqa3-mission-decisions.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  eqa3-5-real-geometry-and-harm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - run: npm install --no-audit --no-fund
+      - name: Real 60Hz first-contact optical rays and moving doors
+        run: |
+          mkdir -p artifacts/eqa3-5
+          EQA3_OUTPUT=artifacts/eqa3-5/contact.json node --experimental-strip-types scripts/audit-eqa3-first-contact.mjs --forensic > artifacts/eqa3-5/contact-console.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const d=JSON.parse(fs.readFileSync('artifacts/eqa3-5/contact.json'));
+          const contacts=d.records.filter(x=>x.firstContact);
+          const early=contacts.filter(x=>x.doorOpensAt!==null&&x.firstContact.at<x.doorOpensAt);
+          const rays=contacts.flatMap(x=>x.firstContact.sightlineWitness??[]);
+          const noRay=contacts.filter(x=>!x.firstContact.sightlineWitness?.length);
+          const contradiction=rays.filter(x=>x.opticalExposure?.blocked);
+          console.log(JSON.stringify({summary:d.summary,early:early.map(x=>({
+            seed:x.seed,mission:x.mission,entry:x.entry,
+            at:x.firstContact.at,opened:x.doorOpensAt,
+            door:x.firstContact.firstOpenOrderDoor,
+            rays:x.firstContact.sightlineWitness
+          })),rays:rays.length,contradictions:contradiction,
+            missingRays:noRay.map(x=>[x.seed,x.entry])},null,2));
+          if(d.errors.length||noRay.length)process.exitCode=1;
+          // A sight/optics contradiction is audit evidence, not permission
+          // to change AI. Fail so we investigate, never silently suppress.
+          if(contradiction.length)process.exitCode=1;
+          NODE
+      - name: Warehouse17 rescue civilian harm, UNKNOWN and CONFIRMED
+        run: |
+          EQA3_OUTPUT=artifacts/eqa3-5/warehouse17-unknown.json node --experimental-strip-types scripts/audit-eqa3-mission-decisions.mjs --smoke --seed=17 --seconds=90 --intel=unknown --door-aware --forensic > artifacts/eqa3-5/warehouse17-unknown-console.json
+          EQA3_OUTPUT=artifacts/eqa3-5/warehouse17-confirmed.json node --experimental-strip-types scripts/audit-eqa3-mission-decisions.mjs --smoke --seed=17 --seconds=90 --intel=confirmed --door-aware --forensic > artifacts/eqa3-5/warehouse17-confirmed-console.json
+          node - <<'NODE'
+          const fs=require('node:fs');
+          for(const intel of ['unknown','confirmed']){
+            const d=JSON.parse(fs.readFileSync('artifacts/eqa3-5/warehouse17-'+intel+'.json'));
+            const rows=d.rows.filter(x=>x.seed===17&&x.mission==='rescue');
+            if(d.exceptions.length||rows.length!==2||rows.some(r=>r.integrity?.length))process.exitCode=1;
+            console.log(JSON.stringify({intel,summary:d.summary,entries:rows.map(r=>({
+              insertion:r.insertion,objective:r.objectiveAt,
+              completion:r.extractedAt,stage:r.missionStage,
+              shotCount:r.shotWitnesses?.length,
+              harms:r.harmWitnesses,
+              rescueTimeline:r.rescueTimeline,
+              doorActions:r.acceptedDoorActions,
+              handoffs:r.operatorHandoffs
+            }))},null,2));
+          }
+          NODE
+      - name: EQA3.5H matched player-legal rescue stand-off A/B
+        run: |
+          for intel in unknown confirmed; do
+            EQA3_OUTPUT="artifacts/eqa3-5/warehouse17-${intel}-stand-off.json" node --experimental-strip-types scripts/audit-eqa3-mission-decisions.mjs --smoke --seed=17 --seconds=90 "--intel=${intel}" --door-aware --forensic --rescue-stand-off > "artifacts/eqa3-5/warehouse17-${intel}-stand-off-console.json"
+          done
+          node - <<'NODE'
+          const fs=require('node:fs');
+          const fmt=(d)=>d.rows.filter(x=>x.seed===17&&x.mission==='rescue')
+            .map(r=>({entry:r.insertion,stage:r.missionStage,
+              objectiveAt:r.objectiveAt,extractedAt:r.extractedAt,
+              harms:r.harmWitnesses?.length??0,
+              following:r.rescue.escorted,
+              standOff:r.rescueStandOffAccepted,
+              fallback:r.rescueStandOffFallbacks,
+              scriptedRejected:r.rejected,routeAbort:r.routeAbort,
+              nearestShotVictimGap:r.harmWitnesses?.map(h=>
+                h.associatedShot?.firingActorTargetP?
+                Math.round(Math.hypot(
+                  h.associatedShot.firingActorTargetP.x-h.p.x,
+                  h.associatedShot.firingActorTargetP.y-h.p.y)*100)/100:null)}));
+          for(const intel of ['unknown','confirmed']){
+            const baseline=JSON.parse(fs.readFileSync('artifacts/eqa3-5/warehouse17-'+intel+'.json'));
+            const tested=JSON.parse(fs.readFileSync('artifacts/eqa3-5/warehouse17-'+intel+'-stand-off.json'));
+            console.log(JSON.stringify({intel,baseline:fmt(baseline),standOff:fmt(tested),
+              summary:tested.summary},null,2));
+            if(tested.exceptions.length||tested.rows.length!==2||
+              tested.rows.some(r=>r.integrity?.length)||
+              tested.summary.rescueStandOffAccepted<1)process.exitCode=1;
+          }
+          NODE
+      - if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eqa3-5-optical-rays-rescue-harm
+          path: artifacts/eqa3-5/
