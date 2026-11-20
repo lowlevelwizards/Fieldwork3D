@@ -2338,93 +2338,314 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 }
 
 
-/* R1 emergency correction: the existing mobile .campaign-kit-preview
- * was position:static!important. As a result the absolute hotspot layer
- * anchored to the STICKY SUMMARY, not to the 3D viewport. Full-width
- * campaign button styles then grew its controls into screen-covering bars.
- * Keep ONE positioned, clipped coordinate space on every breakpoint. */
-.campaign-armory-screen .campaign-kit-preview{
- position:relative!important;
- isolation:isolate;
- display:block;
- box-sizing:border-box;
+
+
+/* ---------------------------------------------------------------------------
+ * OUTFITTER R2 · One-screen responsive operator bench
+ * Visual ownership: one true operator rig, two accessible category rails,
+ * ONE contextual drawer. The drawer alone scrolls. No floating viewer,
+ * full-page mode switch, duplicated gear catalog or permanent model pips.
+ * ------------------------------------------------------------------------ */
+.campaign-outfitter-icon{
+ width:21px;height:21px;display:block;pointer-events:none;flex-shrink:0;
 }
-.campaign-armory-screen .campaign-kit-preview canvas{
- display:block;position:absolute;inset:0;
- width:100%!important;height:100%!important;
+.campaign-outfitter-icon-label{pointer-events:none}
+.campaign-outfitter-operator-select,.campaign-outfitter-metrics{
+ display:none;
 }
-.campaign-armory-screen .campaign-kit-preview .campaign-kit-hotspots{
- position:absolute!important;inset:0!important;
- width:100%!important;height:100%!important;
- display:block!important;overflow:hidden;
- box-sizing:border-box;pointer-events:none;
- z-index:3;
-}
-/* Never allow the standard campaign full-width button rule to affect
- * canvas overlay controls. The 40px hit target contains a small 14px pip. */
-.campaign-armory-screen .campaign-kit-preview .campaign-kit-hotspot{
- box-sizing:border-box!important;position:absolute!important;
- flex:none!important;display:grid!important;place-items:center;
- width:40px!important;height:40px!important;
- min-width:40px!important;min-height:40px!important;
- max-width:40px!important;max-height:40px!important;
- padding:0!important;margin:0!important;
- transform:translate(-50%,-50%)!important;
- background:transparent!important;border:0!important;
- box-shadow:none!important;pointer-events:auto;overflow:visible;
- color:transparent!important;font-size:0!important;
- touch-action:manipulation;
-}
-.campaign-armory-screen .campaign-kit-preview .campaign-kit-hotspot[hidden]{
- display:none!important;
-}
-.campaign-kit-hotspot::after{
- content:"";display:block;width:13px;height:13px;
- border:2px solid #ecf4d6;border-radius:50%;
- background:#344c3a;box-shadow:0 1px 6px #081710bb;
-}
-.campaign-kit-hotspot[aria-pressed="true"]::after{
- width:16px;height:16px;background:#d3e5b5;
- border-color:#122a1d;box-shadow:0 0 0 3px #d3e5b56b;
-}
-.campaign-armory-screen .campaign-kit-preview .campaign-kit-zoom{
- position:absolute!important;right:7px!important;top:7px!important;
- left:auto!important;bottom:auto!important;
- width:38px!important;max-width:38px!important;
- display:grid!important;gap:5px;pointer-events:auto;
-}
-.campaign-armory-screen .campaign-kit-preview .campaign-kit-zoom button{
- box-sizing:border-box!important;display:grid!important;place-items:center;
- flex:none!important;width:38px!important;height:38px!important;
- min-width:38px!important;min-height:38px!important;
- max-width:38px!important;max-height:38px!important;
- margin:0!important;padding:0!important;
- font-size:22px!important;line-height:1!important;
- touch-action:manipulation;
-}
-.campaign-armory-screen .campaign-kit-preview .campaign-kit-preview-pose-toggle{
- box-sizing:border-box!important;position:absolute!important;
- left:8px!important;bottom:8px!important;right:auto!important;top:auto!important;
- width:auto!important;min-width:0!important;
- min-height:34px!important;height:auto!important;
- max-width:calc(100% - 62px)!important;
- margin:0!important;padding:7px 10px!important;
- font-size:10px!important;line-height:1.2!important;
- border-radius:6px;
-}
+.campaign-outfitter-context-title{display:none}
 @media(max-width:620px){
- .campaign-armory-screen .campaign-kit-summary{
-  max-height:none!important;overflow:visible!important;
+ body:has(.campaign-armory-screen){overflow:hidden!important}
+ .campaign-shell.campaign-armory-screen{
+  box-sizing:border-box!important;position:fixed!important;
+  inset:0!important;z-index:250;
+  width:100%!important;max-width:none!important;
+  height:100dvh!important;min-height:0!important;
+  padding:calc(env(safe-area-inset-top) + 5px) 8px
+   calc(env(safe-area-inset-bottom) + 5px)!important;
+  margin:0!important;overflow:hidden!important;
+  background:#101f1b!important;
+  display:grid!important;grid-template-columns:minmax(0,1fr);
+  grid-template-rows:50px minmax(0,1fr);
+  gap:5px!important;
  }
- .campaign-armory-screen .campaign-kit-preview{
-  position:relative!important;min-height:248px!important;
-  height:248px!important;overflow:hidden!important;
+ .campaign-armory-screen .campaign-armory-head{
+  box-sizing:border-box;min-width:0;min-height:0;height:50px;
+  margin:0!important;padding:0 3px;
+  gap:8px;display:flex;align-items:center;
+ }
+ .campaign-armory-screen .campaign-armory-head>div,
+ .campaign-armory-screen .campaign-kit-squad-rail,
+ .campaign-armory-screen .fw-prep-squad-rail,
+ .campaign-armory-screen>.campaign-kit-readiness-drawer{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-armory-head .campaign-armory-back{
+  flex:0 0 auto!important;min-width:48px!important;width:48px!important;
+  height:44px!important;min-height:44px!important;
+  font-size:0!important;position:relative;
+  padding:0!important;margin:0!important;
+ }
+ .campaign-armory-screen .campaign-armory-back::after{
+  content:"‹";position:absolute;inset:0;display:grid;place-items:center;
+  font-size:31px;line-height:1;color:#e4e8d9;
+ }
+ .campaign-armory-screen .campaign-outfitter-operator-select{
+  display:block;min-width:0;max-width:100%;flex:1 1 auto;
+  height:44px;min-height:44px;border-radius:8px;
+  font:700 16px var(--fw-font-action);color:#dce6d4;
+  background:#294238;border:1px solid #73917a;padding:0 8px;
+ }
+ .campaign-armory-screen .campaign-outfitter-metrics{
+  display:block;flex:0 0 auto;max-width:125px;
+  font:700 10px/1.3 var(--fw-font-menu);
+  color:#c8d7bd;text-align:right;
+ }
+ .campaign-armory-screen .campaign-kit-grid{
+  min-width:0;min-height:0;height:100%;width:100%;
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:minmax(150px,1fr) minmax(165px,38%)!important;
+  gap:6px!important;align-items:stretch!important;
+ }
+ .campaign-armory-screen .campaign-kit-summary{
+  box-sizing:border-box!important;position:relative!important;top:auto!important;
+  min-width:0!important;min-height:0!important;height:100%!important;
+  width:100%!important;max-height:none!important;
+  margin:0!important;padding:5px!important;
+  display:block!important;overflow:hidden!important;
+  z-index:1!important;box-shadow:none!important;
+  border:1px solid #566f60;border-radius:10px;background:#1b2d29;
+ }
+ .campaign-armory-screen .campaign-kit-summary>h2,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-preview-hint,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-kit-preview-controls,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-kit-preview-dock-toggle,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-kit-actions,
+ .campaign-armory-screen .campaign-kit-summary>.campaign-kit-at-a-glance{
+  display:none!important;
  }
  .campaign-armory-screen .campaign-kit-summary::after{display:none!important}
-}
-@media(max-width:620px) and (max-height:620px){
  .campaign-armory-screen .campaign-kit-preview{
-  position:relative!important;
-  min-height:180px!important;height:180px!important;
+  position:relative!important;inset:auto!important;
+  display:block!important;box-sizing:border-box;
+  min-width:0;width:calc(100% - 110px)!important;
+  height:100%!important;min-height:0!important;
+  margin:0 auto!important;overflow:hidden!important;
+  background:#1b2d29!important;
+  border:0!important;border-radius:7px;box-shadow:none!important;
+  isolation:isolate;
  }
+ .campaign-armory-screen .campaign-kit-preview canvas{
+  position:absolute;inset:0;display:block;
+  height:100%!important;width:100%!important;
+ }
+ .campaign-armory-screen .campaign-kit-preview .campaign-kit-hotspots{
+  position:absolute!important;inset:0!important;
+  width:100%!important;height:100%!important;
+  z-index:3;pointer-events:none;overflow:hidden;
+ }
+ .campaign-armory-screen .campaign-kit-preview .campaign-kit-hotspot{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-kit-preview .campaign-kit-zoom{
+  position:absolute!important;right:5px!important;top:5px!important;
+  left:auto!important;bottom:auto!important;
+  width:33px!important;display:grid!important;gap:5px;
+  pointer-events:auto;
+ }
+ .campaign-armory-screen .campaign-kit-preview .campaign-kit-zoom button{
+  box-sizing:border-box!important;
+  display:grid!important;place-items:center!important;
+  flex:none!important;
+  width:33px!important;height:33px!important;
+  min-height:33px!important;min-width:33px!important;
+  max-width:33px!important;max-height:33px!important;
+  padding:0!important;margin:0!important;
+  font-size:21px!important;line-height:1!important;
+ }
+ .campaign-armory-screen .campaign-kit-preview .campaign-kit-preview-pose-toggle{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-kit-bench-zones{
+  position:absolute!important;inset:5px!important;
+  width:auto!important;height:auto!important;
+  margin:0!important;padding:0!important;
+  z-index:6;display:flex!important;
+  justify-content:space-between;align-items:stretch;
+  pointer-events:none;gap:0;
+ }
+ .campaign-armory-screen .campaign-outfitter-rail{
+  display:grid;grid-template-rows:repeat(4,minmax(0,1fr));align-items:center;
+  justify-items:center;gap:5px;min-width:47px;width:47px;
+  pointer-events:none;
+ }
+ .campaign-armory-screen .campaign-kit-bench-zone{
+  box-sizing:border-box!important;width:46px!important;max-width:46px!important;
+  min-width:46px!important;height:48px!important;
+  min-height:44px!important;max-height:56px!important;
+  padding:4px 2px!important;margin:0!important;
+  display:flex!important;flex-direction:column;align-items:center;
+  justify-content:center;gap:2px;pointer-events:auto;
+  border:1px solid #73947e;border-radius:8px;
+  background:#294638;color:#d8e4d3;
+  font:700 9px/1.1 var(--fw-font-menu)!important;
+ }
+ .campaign-armory-screen .campaign-kit-bench-zone[aria-current="true"]{
+  border:2px solid #dde7b8;background:#a9c5a0;color:#142a1e;
+ }
+ .campaign-armory-screen .campaign-kit-bench-zone:focus-visible{
+  outline:2px solid #fae8b5;outline-offset:2px;
+ }
+ .campaign-armory-screen .campaign-kit-editor{
+  box-sizing:border-box!important;min-width:0!important;
+  min-height:0!important;height:100%!important;
+  width:100%!important;margin:0!important;
+  padding:7px 9px 14px!important;
+  display:block!important;overflow-x:hidden!important;
+  overflow-y:auto!important;overscroll-behavior-y:contain;
+  scroll-padding-top:92px;
+  border:1px solid #607c69;border-radius:10px;
+  background:#20372f;
+ }
+ .campaign-armory-screen .campaign-kit-editor>h2,
+ .campaign-armory-screen .campaign-kit-editor>.campaign-kit-utilities,
+ .campaign-armory-screen .campaign-kit-categories,
+ .campaign-armory-screen .fw-loadout-group>summary,
+ .campaign-armory-screen .campaign-kit-bench-more{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-kit-editor .campaign-kit-workspace-nav{
+  position:sticky!important;top:-7px!important;z-index:10;
+  display:grid!important;grid-template-columns:1fr 1fr!important;
+  height:41px!important;min-height:41px;
+  margin:-7px -9px 0!important;padding:3px!important;
+  border-radius:0;gap:5px!important;background:#20372f!important;
+ }
+ .campaign-armory-screen .campaign-kit-workspace-tab{
+  box-sizing:border-box!important;min-height:35px!important;
+  height:35px!important;padding:4px!important;
+  margin:0!important;font-size:11px!important;
+ }
+ .campaign-armory-screen .campaign-kit-workspace-tab[aria-current="true"]{
+  background:#b0c9a2;color:#10251b;
+ }
+ .campaign-armory-screen .campaign-outfitter-context-title{
+  position:sticky;top:34px;z-index:9;
+  display:flex;align-items:center;justify-content:space-between;gap:8px;
+  margin:0 -9px 5px;padding:5px 12px 6px;
+  min-height:31px;background:#20372f;
+  border-bottom:1px solid #4d6b59;
+ }
+ .campaign-armory-screen .campaign-outfitter-context-title>strong{
+  font:700 13px var(--fw-font-action);color:#e0ead9;
+ }
+ .campaign-armory-screen .campaign-outfitter-context-title>small{
+  font:500 10px/1.2 var(--fw-font-menu);text-align:right;
+  color:#afc7b3;
+ }
+ .campaign-armory-screen .fw-loadout-group{border:0;margin:0;padding:0}
+ .campaign-armory-screen .fw-loadout-group .fw-loadout-fields{
+  padding:0;display:grid;gap:6px;
+ }
+ .campaign-armory-screen .campaign-kit-choice[hidden]{display:none!important}
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-bench-zones{display:flex!important}
+ .campaign-armory-screen[data-kit-workspace="physical"]
+  .campaign-kit-bench-more{display:none!important}
+ .campaign-armory-screen .campaign-kit-choice{
+  padding:0!important;margin:0!important;border:0!important;
+ }
+ .campaign-armory-screen .campaign-kit-choice>.campaign-kit-description{
+  display:none!important;
+ }
+ .campaign-armory-screen .campaign-kit-row{
+  display:grid;grid-template-columns:minmax(0,1fr);gap:3px;
+ }
+ .campaign-armory-screen .campaign-kit-row>span{font-size:11px}
+ .campaign-armory-screen .campaign-kit-visual-trigger{
+  min-height:70px!important;margin:0!important;padding:5px 26px 5px 5px!important;
+ }
+ .campaign-armory-screen .campaign-kit-selected-model{
+  height:63px;width:70px;
+ }
+ .campaign-armory-screen .campaign-kit-workbench-entry,
+ .campaign-armory-screen .campaign-legacy-weapons{display:none!important}
+ .campaign-armory-screen .campaign-gear-picker-inline{
+  position:fixed!important;
+  z-index:270!important;
+  left:max(6px,env(safe-area-inset-left))!important;
+  right:max(6px,env(safe-area-inset-right))!important;
+  bottom:calc(env(safe-area-inset-bottom) + 6px)!important;
+  max-height:48dvh!important;
+  box-shadow:0 -10px 36px #000a;
+ }
+ .campaign-armory-screen .campaign-gear-picker-inline .campaign-gear-picker-panel{
+  max-height:48dvh!important;
+ }
+ .campaign-armory-screen .fw-field-inventory{
+  margin:2px 0;padding:5px!important;gap:5px;
+ }
+ .campaign-armory-screen .fw-field-inventory-zones{
+  margin:2px 0 5px;gap:5px;
+ }
+ .campaign-armory-screen .fw-field-inventory-zone-jump{
+  min-height:37px!important;font-size:11px!important;
+ }
+ .campaign-armory-screen .fw-field-inventory-slot{
+  padding:5px!important;
+ }
+ .campaign-armory-screen .fw-field-inventory-model{
+  width:45px;height:45px;
+ }
+ .campaign-armory-screen .fw-field-inventory-select-item,
+ .campaign-armory-screen .fw-field-inventory-select-magazine{
+  min-height:52px!important;
+ }
+ .campaign-armory-screen .fw-field-inventory-move-tray:not([hidden]){
+  position:sticky;top:72px;z-index:8;margin:4px 0;
+  padding:6px;box-shadow:none;
+ }
+ .campaign-armory-screen .fw-field-inventory-move-choices button{
+  min-height:38px;font-size:11px;
+ }
+ .campaign-armory-screen .fw-carry-bodymap{
+  margin:4px 0;padding:0!important;
+  display:block!important;
+  border:1px solid #566f61;background:transparent;
+ }
+ .campaign-armory-screen .fw-carry-bodymap>summary{
+  display:flex;align-items:center;min-height:40px;
+  padding:6px 10px;font:700 11px var(--fw-font-action);
+  color:#c1d6c4;cursor:pointer;
+ }
+ .campaign-armory-screen .fw-carry-bodymap:not([open])>:not(summary){display:none!important}
+ .campaign-armory-screen .fw-carry-bodymap[open]{padding:8px!important}
+}
+@media(max-width:620px) and (max-height:580px){
+ .campaign-shell.campaign-armory-screen{
+  grid-template-rows:42px minmax(0,1fr);
+  padding-top:calc(env(safe-area-inset-top) + 2px)!important;
+ }
+ .campaign-armory-screen .campaign-armory-head{height:42px}
+ .campaign-armory-screen .campaign-kit-grid{
+  grid-template-rows:minmax(120px,1fr) minmax(145px,43%)!important;
+ }
+ .campaign-armory-screen .campaign-kit-bench-zone{
+  width:42px!important;min-width:42px!important;height:39px!important;
+  min-height:39px!important;
+ }
+ .campaign-armory-screen .campaign-kit-preview{
+  width:calc(100% - 98px)!important;
+ }
+ .campaign-outfitter-icon{height:17px;width:17px}
+}
+@media(min-width:621px){
+ .campaign-armory-screen .campaign-kit-bench-zones{
+  display:flex;gap:6px;align-items:center;
+ }
+ .campaign-armory-screen .campaign-outfitter-rail{
+  display:contents;
+ }
+ .campaign-armory-screen .campaign-outfitter-icon{display:none}
 }
