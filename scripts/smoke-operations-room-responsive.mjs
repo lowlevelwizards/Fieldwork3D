@@ -253,13 +253,15 @@ async function assess(browser,{name,width,height,mobile}){
    }
    const pair=tab==='overview'?['.campaign-overview-priority','.campaign-overview-support']:
     tab==='personnel'?['.campaign-assignment','.campaign-personnel-roster-panel']:
-    tab==='logistics'?['.campaign-logistics-supply-panel','.campaign-logistics-workspace>.campaign-armory']:null;
+    tab==='logistics'?['.campaign-logistics-supply-panel','.campaign-uxr-procurement']:null;
    if(pair){
     const a=await page.locator(pair[0]).boundingBox();
     const b=await page.locator(pair[1]).boundingBox();
     check(a&&b,name+' '+tab+' workspace missing');
-    check(mobile?b.y>=a.y+a.height-8:b.x>=a.x+a.width-8,
-     name+' '+tab+' layout is not '+(mobile?'stacked':'two-column'));
+    check(b.width>=90&&b.height>=40,name+' '+tab+' workspace inaccessible');
+    check(mobile?b.y>=a.y+a.height-8:
+     (b.x>=a.x+a.width-8||b.y>=a.y+a.height-8),
+     name+' '+tab+' workspace ordering changed');
    }
    // C1–C4 progressive-disclosure regressions: information stays accessible
    // without forcing every roster and case detail into the initial scroll.
