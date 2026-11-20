@@ -163,6 +163,8 @@ export type Posture='stand'|'crouch';
 export type Alert='idle'|'suspicious'|'investigating'|'engaging'|'cover'|'retreat';
 export type Personality='guard'|'aggressor'|'cautious';
 export type TeamActor=Operator & {
+  /** Independent player-authored sidearm transition; primary combat stays gated. */
+  secondarySwitch:import('./secondary-switching.ts').SecondarySwitchState;
   medical:MedicalCondition;medicalSupplies:FieldMedicalSupplies;
   lastTreatmentAt:number;lastTreatmentTargetId:string|null;
   treatmentActive:boolean;treatmentProgress:number;
