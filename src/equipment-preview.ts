@@ -509,8 +509,16 @@ export class CampaignKitPreview{
    const projected=point.project(this.camera);
    const onScreen=projected.z>=-1&&projected.z<=1&&
     Math.abs(projected.x)<.92&&Math.abs(projected.y)<.92;
-   const behind=slot==='backpack'&&Math.sin(this.azimuth)>-.15;
-   button.hidden=!onScreen||behind;
+   // Three well-spaced front-side markers are legible on a phone.
+   // The bottom equipment buttons remain the explicit accessible fallback
+   // for armor, medical, tools and the weapon's hidden/holstered state.
+   const compact=this.host.clientWidth<=620;
+   const rear=Math.sin(this.azimuth)<-.15;
+   const reduced=compact&&(
+    slot==='armor'||slot==='medical'||slot==='utility'||
+    (slot==='primary'&&!this.showHeldWeapon));
+   const hiddenSide=slot==='backpack'?!rear:rear&&slot==='rig';
+   button.hidden=!onScreen||hiddenSide||reduced;
    button.style.left=((projected.x+1)*50).toFixed(2)+'%';
    button.style.top=((1-projected.y)*50).toFixed(2)+'%';
    button.setAttribute('aria-pressed',String(slot===this.activeHotspot));
@@ -559,7 +567,7 @@ export class CampaignKitPreview{
    full:'Full operator',head:'Head',torso:'Torso',
    weapon:'Weapon',carry:'Carried equipment',back:'Back',belt:'Belt',legs:'Legs'
   };
-  this.host.setAttribute('aria-label','Rotatable 3D preview of '+
+  this.host.setAttribute('aria-label','Rotatable, tappable 3D preview of '+
    this.operatorId+' with equipped gear. '+target[this.focusArea]+
    ' view. View angle '+degrees+
    ' degrees. Use Left and Right arrow keys to rotate; Home resets the angle.');
