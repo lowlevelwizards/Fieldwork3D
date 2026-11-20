@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import {openGlockWorkbench} from './glock-workbench.ts';
 import {createArsenalPreviewQueue} from './preview-job-queue.ts';
+import {createArsenalSavedActionButtons,renderArsenalFilterButtons} from './gallery-browser-controls.ts';
 import {type GlockCustomization} from '../weapons/geometry/glock-customization.ts';
 import {factoryGlockRecipe,loadGlockLibrary,saveGlockLibrary,
  renameGlockSavedBuild,duplicateGlockSavedBuild,deleteGlockSavedBuild,
@@ -153,23 +154,19 @@ export function mountGlockArsenalGallery():HTMLElement{
   if(selectedSavedId){
    const saved=loadGlockLibrary().builds.find(b=>b.id===selectedSavedId);
    if(saved){
-    const b=()=>{const x=document.createElement('button');
-     x.type='button';return x;};
-    const rename=b();rename.textContent='RENAME';
+    const {rename,duplicate,remove}=createArsenalSavedActionButtons();
     rename.addEventListener('click',()=>{
      const next=window.prompt('Rename saved secondary build',saved.name);
      if(next===null)return;
      const changed=renameGlockSavedBuild(loadGlockLibrary(),saved.id,next);
      if(changed&&saveGlockLibrary(changed)){renderFilters();renderCards();}
     });
-    const duplicate=b();duplicate.textContent='DUPLICATE';
     duplicate.addEventListener('click',()=>{
      const copy=duplicateGlockSavedBuild(loadGlockLibrary(),saved.id);
      if(copy&&saveGlockLibrary(copy.library)){
       selectedSavedId=copy.build.id;renderFilters();renderCards();refresh();
      }
     });
-    const remove=b();remove.textContent='DELETE';
     remove.addEventListener('click',()=>{
      if(!window.confirm('Delete '+saved.name+'?'))return;
      if(saveGlockLibrary(deleteGlockSavedBuild(loadGlockLibrary(),saved.id))){
@@ -198,17 +195,12 @@ export function mountGlockArsenalGallery():HTMLElement{
    .some(text=>text.toLowerCase().includes(q));
  };
  function renderFilters(){
-  filters.replaceChildren();
-  for(const [id,label] of filterOptions){
-   const button=document.createElement('button');
-   button.type='button';button.className='arsenal-filter';
-   button.textContent=id==='saved'?label+' · '+loadGlockLibrary().builds.length:label;
-   button.setAttribute('aria-pressed',String(filterState.value===id));
-   button.addEventListener('click',()=>{
-    filterState.value=id;renderFilters();renderCards();
-   });
-   filters.append(button);
-  }
+  const items=filterOptions.map(([id,label])=>({
+   id,name:id==='saved'?label+' · '+loadGlockLibrary().builds.length:label
+  }));
+  renderArsenalFilterButtons(filters,items,filterState.value,id=>{
+   filterState.value=id;renderFilters();renderCards();
+  });
  }
  function renderCards(){
   observer?.disconnect();observer=null;
