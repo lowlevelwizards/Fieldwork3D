@@ -13,6 +13,7 @@ import type {V3ReloadCorridorProfile,V3MagazinePalm} from './breach-pose-v3-relo
 import type {V3ReloadHold} from './breach-pose-v3-reload-weapon.ts';
 import type {WeaponId} from './breach-combat.ts';
 import type {SecondarySwitchState} from './secondary-switching.ts';
+import type {SecondaryTimedReload} from './secondary-timed-reload.ts';
 import type {ReplayFeet} from './breach-replay-motion.ts';
 import type {MomentumEnvelope} from './breach-motion-transitions.ts';
 import type {ReloadMode} from './breach-magazines.ts';
@@ -93,6 +94,8 @@ export type OperatorPose={
   traversalProgress?:number;
   /** Recorded fixed-step draw fraction, never advanced by this renderer. */
   secondarySwitch?:SecondarySwitchState;
+  /** Already authored fixed-step magazine retrieval, presentation only. */
+  secondaryReload?:SecondaryTimedReload|null;
   equipment?:EquipmentLoadout;flashCharges?:number;wedgeRemaining?:number;
   restraintRemaining?:number;
   medicalCarryLocation?:CarryLocation;utilityCarryLocation?:CarryLocation;
