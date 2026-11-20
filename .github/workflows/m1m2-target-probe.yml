@@ -20,7 +20,7 @@ jobs:
       - name: Clinic 19178827 four operator queue decision and rank evidence
         run: |
           node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=10 --audit-seed=19178827 --audit-scale=small --queue-decision-witness > clinic-19178827.json
-          node -e "const x=require('./clinic-19178827.json');const r=x.rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,operators:r.operators.map(a=>({id:a.id,reason:a.motorPause,active:a.activeOrder,next:a.nextNav,p:a.position})),early:r.queueDecisionEvidence.slice(0,8),last:r.queueDecisionEvidence.slice(-8),lanes:r.queueEndState?.lanes,slots:r.queueEndState?.slots},null,2))"
+          node -e "const x=require('./clinic-19178827.json');const r=x.rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,operators:r.operators.map(a=>({id:a.id,reason:a.motorPause,active:a.activeOrder,next:a.nextNav,p:a.position})),early:r.queueDecisionEvidence.slice(0,8),last:r.queueDecisionEvidence.slice(-8),lanes:r.queueEndState?.lanes,doors:r.queueEndState?.doors,slots:r.queueEndState?.slots},null,2))"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
