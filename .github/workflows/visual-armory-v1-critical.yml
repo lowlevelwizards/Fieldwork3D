@@ -9,6 +9,7 @@ on:
       - 'src/ui/field-gadget-editor.ts'
       - 'src/ui/loadout-prep.css'
       - 'scripts/smoke-visual-armory-v1.mjs'
+      - '.github/actions/outfitter-mobile-smoke/action.yml'
       - '.github/workflows/visual-armory-v1-critical.yml'
   workflow_dispatch:
 permissions:
@@ -32,10 +33,7 @@ jobs:
           tests/equipment-physical-board.test.mjs
           tests/equipment-field-transfer.test.mjs
       - name: Actual mobile rendered models
-        run: |
-          npm install --no-save --package-lock=false playwright@1.56.1
-          npx playwright install --with-deps chromium
-          node scripts/smoke-visual-armory-v1.mjs
+        uses: ./.github/actions/outfitter-mobile-smoke
       - uses: actions/upload-artifact@v4
         if: always()
         with:

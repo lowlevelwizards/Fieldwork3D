@@ -1,3 +1,4 @@
+import {uiNode as node,uiButton as command} from './dom-elements.ts';
 /** Primary Quick Play entry and reusable in-mission scenario creator.
  * Opening the overlay never replaces the live tactical session.
  */
@@ -53,18 +54,6 @@ function readSettings():QuickPlaySettings{
 function saveSettings(settings:QuickPlaySettings){
  try{localStorage.setItem(STORAGE_KEY,JSON.stringify(settings));}
  catch{/* Optional local persistence; private browsing remains supported. */}
-}
-function node<K extends keyof HTMLElementTagNameMap>(
- tag:K,cls='',label=''
-):HTMLElementTagNameMap[K]{
- const element=document.createElement(tag);
- if(cls)element.className=cls;
- if(label)element.textContent=label;
- return element;
-}
-function command(text:string,onClick:()=>void,cls=''){
- const button=node('button',cls,text);button.type='button';
- button.addEventListener('click',onClick);return button;
 }
 function picker(title:string,values:readonly [string,string][],
  onChange:(value:string)=>void){

@@ -8,6 +8,8 @@ import type {SecondaryHolster,SecondaryMagazineLocation}
  from '../secondary-equipment.ts';
 import {defaultGlockCustomization,readGlockCustomization,
  type GlockCustomization} from '../weapons/geometry/glock-customization.ts';
+import {normalizeSavedBuildName,allocateSavedBuildId,parseSavedBuildEntries,
+ readStoredSavedBuilds,writeStoredSavedBuilds} from './saved-build-library-common.ts';
 export type GlockRecipe=Readonly<{version:1;model:GlockAppearanceId;
  holster:SecondaryHolster;spares:readonly SecondaryMagazineLocation[];
  customization:GlockCustomization}>;
@@ -35,38 +37,21 @@ export function readGlockRecipe(raw:unknown):GlockRecipe|null{
   spares:[...(r.spares as SecondaryMagazineLocation[])],customization};
 }
 export function readGlockLibrary(raw:unknown):GlockBuildLibrary{
- let data:unknown=raw;
- if(typeof data==='string')try{data=JSON.parse(data);}catch{return emptyGlockLibrary();}
- if(!data||typeof data!=='object'||Array.isArray(data))return emptyGlockLibrary();
- const source=data as {version?:unknown;builds?:unknown};
- if(source.version!==1||!Array.isArray(source.builds))return emptyGlockLibrary();
- const builds:GlockSavedBuild[]=[],seen=new Set<string>();
- for(const item of source.builds.slice(0,MAX_GLOCK_SAVES*2)){
-  if(!item||typeof item!=='object'||Array.isArray(item))continue;
-  const b=item as Record<string,unknown>;
-  const name=typeof b.name==='string'?
-   b.name.trim().replace(/\s+/g,' ').slice(0,32):'';
-  const recipe=readGlockRecipe(b.recipe);
-  if(typeof b.id!=='string'||!/^glock-build-[1-9]\d{0,5}$/.test(b.id)||
-   seen.has(b.id)||!name||!recipe)continue;
-  seen.add(b.id);builds.push({id:b.id,name,recipe});
-  if(builds.length>=MAX_GLOCK_SAVES)break;
- }
- return {version:1,builds};
+ return {version:1,builds:parseSavedBuildEntries(raw,'glock-build-',
+  MAX_GLOCK_SAVES,readGlockRecipe)};
 }
 export function createGlockSavedBuild(lib:GlockBuildLibrary,
  raw:GlockRecipe,name:string):{library:GlockBuildLibrary;build:GlockSavedBuild}|null{
- const recipe=readGlockRecipe(raw),clean=name.trim().replace(/\s+/g,' ').slice(0,32);
+ const recipe=readGlockRecipe(raw),clean=normalizeSavedBuildName(name);
  if(!recipe||!clean||lib.builds.length>=MAX_GLOCK_SAVES)return null;
- const used=new Set(lib.builds.map(b=>b.id));
- let n=1;while(used.has('glock-build-'+n))n++;
- if(n>999999)return null;
- const build={id:'glock-build-'+n,name:clean,recipe};
+ const id=allocateSavedBuildId(lib.builds,'glock-build-');
+ if(!id)return null;
+ const build={id,name:clean,recipe};
  return {library:{version:1,builds:[...lib.builds,build]},build};
 }
 export function renameGlockSavedBuild(lib:GlockBuildLibrary,id:string,name:string):
  GlockBuildLibrary|null{
- const clean=name.trim().replace(/\s+/g,' ').slice(0,32);
+ const clean=normalizeSavedBuildName(name);
  return !clean||!lib.builds.some(b=>b.id===id)?null:
   {version:1,builds:lib.builds.map(b=>b.id===id?{...b,name:clean}:b)};
 }
@@ -84,10 +69,8 @@ export const duplicateGlockSavedBuild=(lib:GlockBuildLibrary,id:string)=>
  createGlockSavedBuild(lib,lib.builds.find(b=>b.id===id)!.recipe,
   lib.builds.find(b=>b.id===id)!.name+' Copy'):null;
 export function loadGlockLibrary():GlockBuildLibrary{
- try{return readGlockLibrary(localStorage.getItem(GLOCK_BUILDS_KEY));}
- catch{return emptyGlockLibrary();}
+ return readStoredSavedBuilds(GLOCK_BUILDS_KEY,readGlockLibrary,emptyGlockLibrary);
 }
 export function saveGlockLibrary(lib:GlockBuildLibrary):boolean{
- try{localStorage.setItem(GLOCK_BUILDS_KEY,JSON.stringify(lib));return true;}
- catch{return false;}
+ return writeStoredSavedBuilds(GLOCK_BUILDS_KEY,lib);
 }
