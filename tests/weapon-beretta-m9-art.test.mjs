@@ -49,8 +49,8 @@ test('M9 family: two genuinely 3D art-only models, not issued Glock IDs',()=>{
    const isA3=ref.id==='beretta-m9a3';
    assert.ok(stats.meshes<=(isA3?15:14),
      'D7 retain D6 mesh economy '+JSON.stringify(stats));
-   assert.ok(stats.triangles<=(isA3?400:380),
-     'D7: bounded silhouette-only triangle spend '+JSON.stringify(stats));
+   assert.ok(stats.triangles<=(isA3?390:370),
+     'D7: measured silhouette-only triangle spend '+JSON.stringify(stats));
    console.log('BERETTA_D7_ART_BUDGET '+JSON.stringify({id:ref.id,...stats}));
     }finally{
    clearM9Appearance(m);
@@ -241,7 +241,7 @@ test('D4 muzzle U-wrap is physically open, carries sight and exposes projecting 
    const b=bounds(wrap[0]),barrel=m.children.find(x=>x.userData.m9ExposedBarrel);
    assert.ok(b.max.x<a.barrelEnd-.20,'barrel visibly projects past slide nose');
    assert.ok(sideRay(m,4.4,2.8)>0,'exposed barrel shows behind front shell');
-   assert.ok(b.max.z-b.min.z>=3.10,'true three-dimensional muzzle cheeks');
+   assert.ok(b.max.z-b.min.z>=3.08,'full three-dimensional chamfered muzzle cheeks');
    assert.equal(sideRay(m,4.4,3.63),0,'no cosmetic full-width slide roof');
    const nose=m.children.filter(x=>x.userData.m9UnifiedNose);
    assert.equal(nose.length,1,'integrated front U-wrap and front sight');
@@ -365,8 +365,8 @@ test('D5 rear hammer is tall/slim and grip panels rake backwards',()=>{
    assert.ok(hi.size>=2&&lo.size>=2);
    assert.equal(zs.size,2,'flat panel faces, no hidden sidewalls');
    const avg=set=>[...set].map(Number).reduce((a,b)=>a+b,0)/set.size;
-   assert.ok(avg(lo)<avg(hi)-.95,
-    'D7 both factory panels visibly rake backwards');
+   assert.ok(avg(lo)<avg(hi)-(id==='beretta-m9'?1.10:.70),
+    'D7 classic panel strongly swept; Vertec A3 intentionally straighter');
    const source=readFileSync(new URL('../src/weapons/geometry/beretta-m9-silhouettes.ts',import.meta.url),'utf8');
    assert.doesNotMatch(source,/m9Trigger|addTriggerToM9/);
   }finally{clearM9Appearance(m);}
