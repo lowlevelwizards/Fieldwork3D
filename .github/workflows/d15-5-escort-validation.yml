@@ -1,0 +1,47 @@
+name: D15.5 targeted escort and capture validation
+on:
+  push:
+    branches: [release/d15-5-escort-critical-20261120]
+    paths:
+      - '.github/workflows/d15-5-escort-validation.yml'
+      - 'src/**'
+      - 'tests/dispatch-d15*.test.mjs'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: d15-5-escort-gate
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 22
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Living surrender custody and real escort contracts
+        run: |
+          node --experimental-strip-types --test \
+            tests/dispatch-d9-contact.test.mjs \
+            tests/dispatch-d15-operational-foundation.test.mjs \
+            tests/dispatch-d15-living-surrender.test.mjs \
+            tests/dispatch-d15-suspect-restraint.test.mjs \
+            tests/dispatch-d15-weapon-security.test.mjs \
+            tests/dispatch-d15-follow-policy.test.mjs \
+            tests/dispatch-d15-suspect-escort-phase.test.mjs \
+            tests/dispatch-d15-suspect-escort-go.test.mjs \
+            tests/eqa3-1-rescue-escort-pacing.test.mjs \
+            tests/eqa3-10-restrain.test.mjs \
+            tests/breach-155.test.mjs
+      - name: M3 and M4 physical doorway and queue authority
+        run: |
+          node --experimental-strip-types --test \
+            tests/movement-m3-door-lifecycle.test.mjs \
+            tests/movement-m4-queue-formation.test.mjs
+      - name: TypeScript production build and Pages stamp
+        run: |
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
