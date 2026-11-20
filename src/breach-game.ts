@@ -1893,12 +1893,14 @@ function mission(s:Session,dt:number){
   const validLivingCaptureExtraction=(a:TeamActor)=>{
     if(s.missionType!=='capture')return true;
     const prisoner=enemies(s).find(e=>e.id===s.captureTarget);
-    if(!prisoner||prisoner.health<=0)return true;
+    if(!prisoner||!near(prisoner.p,s.scenario.extract,37))return false;
+    const atBody=near(a.p,prisoner.p,28)&&
+      sweptBodyClear(a.p,prisoner.p,s.doors,5.5,sessionWorldGeometry(s));
+    // Physically downed bodies follow the existing real carrier or must be
+    // recovered in direct contact at extraction; never remote objective wins.
+    if(prisoner.health<=0)return prisoner.carriedById===a.id||atBody;
     return prisoner.surrendered&&prisoner.restrained===true&&
-      near(prisoner.p,s.scenario.extract,37)&&
-      (prisoner.escortLeaderId===a.id||
-        (near(a.p,prisoner.p,28)&&
-          sweptBodyClear(a.p,prisoner.p,s.doors,5.5,sessionWorldGeometry(s))));
+      (prisoner.escortLeaderId===a.id||atBody);
   };
   if(s.mission==='extract'&&team(s).some(a=>a.health>0&&
     near(a.p,s.scenario.extract,37)&&

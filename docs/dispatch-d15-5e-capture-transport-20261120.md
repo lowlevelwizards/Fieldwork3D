@@ -31,6 +31,15 @@ existing drag/carry speed and actual motor. No actor type or allegiance swap.
 Expose DRAG CAPTURE TARGET and CARRY CAPTURE TARGET only when physically
 observed, eligible and routeable.
 
+## E.3 — physical extraction guard committed
+- The target's actual TeamActor body must reach extraction, including if
+  health<=0. A distant operator cannot finish the mission alone.
+- The target must have a real carrier link or be in unobstructed, local
+  physical contact with the extracting operator. Existing civilian and
+  squad casualty geometry/collision remain authoritative.
+- Reassess medical alive-vs-dead outcomes in later D15.7; this gate makes
+  no unsupported claim that health<=0 proves a living prisoner.
+
 ## E.3 — true extraction and physical arbitration, pending
 Downed target must actually arrive at extraction under real custody or
 direct body recovery. Do not win from operator-only proximity. Verify
