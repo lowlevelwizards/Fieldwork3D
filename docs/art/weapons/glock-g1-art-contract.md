@@ -38,3 +38,78 @@ Factory/role exactness is not claimed by the model names. Gallery entries use th
 
 ## Future work (separate scope)
 A true \`secondary\` weapon class, sidearm ownership/holster, safe and typed magazines/capacity, draw/holster states, shoulderless hand contacts, pistol reload poses, accessories and workbench configuration require an independently reviewed gameplay/interface migration. Current four appearances must not pretend to deliver those capabilities.
+
+
+## G2 Fieldwork Proportion Reset (2026-11-19) — replacement art contract
+
+**Reason:** Actual user-reviewed G1 Arsenal captures showed a slide too long/thin,
+a pencil-like grip, weak frame/dust-cover relationship and a dangling box guard.
+The closest Fieldwork neighbors (compact HK/MP5K, AK and R870) communicate
+identity through a few BIG, connected volumes, not firearm-realistic ratios.
+G2 deliberately restores the miniature language. Human aesthetic sign-off
+remains pending the updated native WebGL comparison screenshots.
+
+### Absolute G2 art datums (visual units, not weapon manufacturing specs)
+
+| Anatomical landmark | G19 Gen3 / Gen5 MOS | G26 | G19X |
+| --- | ---: | ---: | ---: |
+| Slide rear X | -8.17 | -8.17 | -8.17 |
+| Slide nose X | 7.52 | 5.10 | 7.52 |
+| Slide bottom/top Y | .34 / 3.24 | .34 / 3.24 | .34 / 3.24 |
+| Slide half-depth | 1.575 | 1.575 | 1.575 |
+| Polymer half-depth | 1.36 | 1.36 | 1.36 |
+| Grip heel Y | -7.22 | -5.73 | -8.20 |
+| Grip heel rear/front X | -7.76 / -3.52 | -7.49 / -3.70 | -7.78 / -3.54 |
+| Trigger-guard opening X | -2.37 to .87 | same | same |
+| Trigger-guard opening Y | -2.94 to -1.93 | same | same |
+
+**Intended G19 changes versus G1:** slide length ~18.8 to 15.69 art units
+(about 17% shorter); height 2.16 to 2.90 (about 34% taller); depth 2.45
+to 3.15 (about 29% thicker). Grip heel rises from -8.50 to -7.22
+(roughly 15% shorter in the side view) and grows broader at the heel.
+These values are identity exaggerations. No local scale transform shortens
+the G26 or lengthens the G19X: every variant has its own authored profile.
+
+### Positive shape and negative space
+1. One **blunt low-vertex slide** with tiny nose bevels, separate named
+   transform identity for future moving slide. Oversized slide-height and
+   depth are intentional relative to the gun's shorter length.
+2. **One connected polymer shell** for frame, raked grip and trigger-guard
+   perimeter, not stacked boxes. Its one real 3D aperture must remain empty
+   under all views. No floating frame wedge, duplicated handle, or
+   independently drawn dangling guard.
+3. One blunt magazine heel, two small enlarged sights; one optional
+   batched shallow serration mesh, plus at most one MOS appearance inset.
+4. **No ejection-port rectangle** in G2. No micro trigger, finger grooves,
+   screws, top rails, extra guard trim, specular accents, model-specific lights
+   or material-colored geometry used to rescue silhouette mistakes.
+5. G26 is short and squat; G19X remains distinctly fuller without the
+   long thin handle; Gen5 MOS remains compatible with the compact silhouette.
+   Its shallow top inset denotes an *appearance cue*, **not** an optic mount.
+
+### Mesh economy / audit
+Factory G2 appearances target five primitive meshes in clay (slide, integrated
+polymer body including guard opening, magazine heel, two sights), six with
+batched serrations, seven only for the MOS top identity. Automated checks
+measure actual emitted triangles with a review ceiling of 220 and validate
+the 3D trigger opening via geometry raycasts. This is deliberately stricter
+than the generic rifle budgets while preserving the pistol's essential hole.
+
+### Arsenal presentation and peer comparison
+- Hero/card screenshots come from the identical real Three.js builder with
+  the shared Arsenal material/lighting profile. Pistol-specific close-fit
+  distance and 2:1 viewport fix the prior distant long-rifle crop.
+- Side, three-quarter, opposite and clay remain available.
+- **MP5K PEER** mode renders the existing actual MP5K model and Glock
+  with one shared camera and art-unit scale. This is an honest provisional
+  art-size comparison, **not** a claim of final in-operator physical scale,
+  because playable secondary rig/pose authority does not exist yet.
+- Compare at desktop and mobile, actual tactical/Arsenal pixel sizes, and
+  64/128px; inspect rear slide thickness, grip/guard negative space and
+  G19X/G26 differentiated proportions. Only visual review may certify art.
+
+### Protected integration
+G1 appearance-only IDs remain stable; no old weapon family, primary weapon,
+ammunition, inventory, simulation or save schema is migrated. This release
+does **not** add functional pistol/holster/secondary interactions. Keep
+separate stages for that future system.
