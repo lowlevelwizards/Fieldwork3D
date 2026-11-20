@@ -1,0 +1,52 @@
+name: D15.6 opportunity and real weapon rearm critical
+on:
+  push:
+    branches: [release/d15-6-escape-rearm-critical-20261120]
+    paths:
+      - '.github/workflows/d15-6-opportunity-validation.yml'
+      - 'src/**'
+      - 'tests/dispatch-d15*.test.mjs'
+  workflow_dispatch:
+permissions: {contents: read}
+concurrency:
+  group: d15-6-opportunity-critical
+  cancel-in-progress: true
+jobs:
+  critical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: Real surrender, escape, custody and firearm tests
+        run: |
+          node --experimental-strip-types --test \
+            tests/dispatch-d15-opportunity-escape-rearm.test.mjs \
+            tests/dispatch-d15-living-surrender.test.mjs \
+            tests/dispatch-d15-suspect-escort-phase.test.mjs \
+            tests/dispatch-d15-capture-transport-presentation.test.mjs \
+            tests/dispatch-d15-capture-transport-go.test.mjs \
+            tests/dispatch-d15-suspect-escort-go.test.mjs
+      - name: Physical pistol switching and 9mm shot preflight
+        run: |
+          node --experimental-strip-types --test \
+            tests/secondary-s5-switching.test.mjs \
+            tests/secondary-s7-live-shot.test.mjs \
+            tests/secondary-s8-2-timed-reload.test.mjs \
+            tests/secondary-s9-2-ammo-hud.test.mjs \
+            tests/equipment-22-07-transport.test.mjs
+      - name: M3/M4 doorway and tactical Pages preflight
+        run: |
+          node --experimental-strip-types --test \
+            tests/movement-m3-door-lifecycle.test.mjs \
+            tests/movement-m4-queue-formation.test.mjs \
+            tests/package-b6-frame-body-output.test.mjs \
+            tests/fog-exterior-unseen-apertures-regression.test.mjs \
+            tests/passage-q5-approaches.test.mjs
+      - name: TypeScript and production Pages build
+        run: |
+          npm run build
+          test -s dist/index.html
+          test -s dist/fieldwork-build.json
