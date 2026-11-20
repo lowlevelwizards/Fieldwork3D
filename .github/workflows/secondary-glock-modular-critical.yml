@@ -1,0 +1,24 @@
+name: Secondary Glock modular parts critical
+on:
+  pull_request:
+    paths:
+      - 'src/weapons/geometry/glock-*.ts'
+      - 'src/arsenal/glock-*.ts'
+      - 'src/secondary-equipment.ts'
+      - 'src/secondary-holster-visual.ts'
+      - 'tests/secondary-arsenal-parity.test.mjs'
+      - '.github/workflows/secondary-glock-modular-critical.yml'
+  workflow_dispatch:
+jobs:
+  focused:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Glock modular model, save, owner and geometry contracts
+        run: node --experimental-strip-types --test tests/secondary-arsenal-parity.test.mjs tests/secondary-s1-s3-foundation.test.mjs tests/secondary-s4-holster-visual.test.mjs
+      - name: Production TypeScript and bundle
+        run: npm run build
