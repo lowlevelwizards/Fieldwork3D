@@ -22,10 +22,12 @@ type Lane={door:Door;side:-1|1;members:Member[];
  readyMembers:Member[];swingDepth:number};
 type Owner={id:string;side:-1|1;orderId:number|undefined;
  lastAt:Pt;lastProgress:number};
+type Promotion={actorId:string;orderId:number|undefined;
+ fromSide:-1|1;doorId:string};
 type Context={schedule:PassageSchedule;byDoor:Map<string,Door>;
  actors:Map<string,TeamActor>;centers:Map<string,Pt>;
  lanes:Map<string,Lane>;owners:Map<string,Owner>;
- promotions:Map<string,string>;nextPromotionProbe:Map<string,number>};
+ promotions:Map<string,Promotion>;nextPromotionProbe:Map<string,number>};
 const contexts=new WeakMap<Session,Context>();
 const dist=(a:Pt,b:Pt)=>Math.hypot(a.x-b.x,a.y-b.y);
 const normalDepth=(p:Pt,d:Door)=>{
@@ -96,7 +98,7 @@ function pending(actor:TeamActor,schedule:PassageSchedule,
 }
 function ready(member:Member,context:Context):boolean{
  const a=member.actor,d=context.byDoor.get(member.slot.doorId);
- if(!d||a.health<=0||a.side!=='blue')return false;
+ if(!d||a.health<=0||a.surrendered||a.side!=='blue')return false;
  const order=a.plan[0];
  if(!order||(order.kind!=='move'&&order.kind!=='pie'))return false;
  // A deliberately authored WAIT, STACK, SYNC, DOOR OPEN or DOOR TOOL
@@ -171,6 +173,23 @@ function ownerFor(ctx:Context,s:Session,door:Door):Owner|null{
  ctx.owners.set(door.id,result);
  return result;
 }
+/** M4.1: promotion owns one *current* crossing occurrence only.
+ * A healthy but no-longer-crossing leader cannot reserve the door in a
+ * later order, and a casualty/WAIT/SYNC does not hold an old promotion.
+ * Read-only, no side effects beyond removing an expired cache entry.
+ */
+function currentPromotion(ctx:Context,lane:Lane):string|null{
+ const key=laneKey(lane.door.id,lane.side);
+ const promoted=ctx.promotions.get(key);
+ if(!promoted)return null;
+ const member=lane.members.find(m=>m.actor.id===promoted.actorId&&
+  m.slot.orderId===promoted.orderId&&
+  m.slot.fromSide===promoted.fromSide&&
+  m.slot.doorId===promoted.doorId&&ready(m,ctx));
+ if(member)return promoted.actorId;
+ ctx.promotions.delete(key);
+ return null;
+}
 /** Only genuinely blocked UNCOMMITTED leads may yield one rank turn.
  * This is a rare physical candidate test, never a 60-Hz global route search.
  * A lead intentionally doing a WAIT is not ready and needs no promotion.
@@ -178,7 +197,7 @@ function ownerFor(ctx:Context,s:Session,door:Door):Owner|null{
 function maybePromote(ctx:Context,s:Session,lane:Lane,
  waiting:Member,leader:Member,move:Pt):boolean{
  const key=laneKey(lane.door.id,lane.side);
- if(ctx.promotions.has(key)||s.seconds<(ctx.nextPromotionProbe.get(key)??0))
+ if(currentPromotion(ctx,lane)||s.seconds<(ctx.nextPromotionProbe.get(key)??0))
   return false;
  const lead=leader.actor;
  const leadDepth=normalDepth(lead.p,lane.door)*lane.side;
@@ -193,7 +212,9 @@ function maybePromote(ctx:Context,s:Session,lane:Lane,
  if(dist(waiting.actor.p,move)<.05||
     !sweptBodyClear(waiting.actor.p,move,s.doors,OPERATOR_RADIUS,
       sessionWorldGeometry(s)))return false;
- ctx.promotions.set(key,waiting.actor.id);
+ ctx.promotions.set(key,{actorId:waiting.actor.id,
+  orderId:waiting.slot.orderId,fromSide:waiting.slot.fromSide,
+  doorId:waiting.slot.doorId});
  s.events.push('PASSAGE PROMOTION '+lane.door.id+' · '+
   waiting.actor.id+' ahead of delayed '+lead.id);
  return true;
@@ -202,7 +223,7 @@ function maybePromote(ctx:Context,s:Session,lane:Lane,
  * GO-time lane. Never recompute the schedule or change queue ownership. */
 export function inspectPassageLane(s:Session,doorId:string,side:-1|1){
  const ctx=contexts.get(s),lane=ctx?.lanes.get(laneKey(doorId,side));
- return {hasLane:!!lane,promoted:ctx?.promotions.get(laneKey(doorId,side))??null,
+ return {hasLane:!!lane,promoted:lane?currentPromotion(ctx!,lane):null,
   members:lane?.members.map(m=>({
    id:m.actor.id,rank:m.slot.rank,ready:ready(m,ctx!),
    depth:normalDepth(m.actor.p,lane.door)*lane.side,
@@ -308,7 +329,7 @@ export function coordinatePassage(s:Session,a:TeamActor,
  const candidates=lane.readyMembers;
  candidates.length=0;
  for(const member of lane.members)if(ready(member,ctx))candidates.push(member);
- const promoted=ctx.promotions.get(laneKey(door.id,lane.side));
+ const promoted=currentPromotion(ctx,lane);
  if(promoted){
   const i=candidates.findIndex(m=>m.actor.id===promoted);
   if(i>0){
