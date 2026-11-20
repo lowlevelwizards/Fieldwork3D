@@ -1,0 +1,38 @@
+name: M2 Clinic exact-seed experiment
+on:
+  push:
+    branches: [experiment/m2-clinic-entry-20261120]
+    paths:
+      - '.github/workflows/m2-clinic-experiment.yml'
+      - 'src/breach-passage-coordinator.ts'
+permissions: {contents: read}
+concurrency:
+  group: m2-clinic-exact-experiment
+  cancel-in-progress: true
+jobs:
+  exact:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '24'}
+      - run: npm install --no-audit --no-fund
+      - name: One coordinator contract and TS check
+        run: |
+          node --experimental-strip-types --test tests/passage-q2-coordinator.test.mjs
+          npm run check
+      - name: Exact Clinic 19178827 four-operator entry, 45s
+        run: |
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 2700 --site-index=10 --audit-seed=19178827 --audit-scale=small --progress --route-quality > clinic-experiment-45.json
+          node -e "const r=require('./clinic-experiment-45.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,operators:r.operators.map(x=>({id:x.id,p:x.position,remaining:x.remaining,active:x.activeOrder,paused:x.motorPause,wait:x.waitSeconds,progress:x.progressDistance})),reversals:r.reversalsNearDoor}));"
+      - name: Exact Clinic 19178827 extended 60s only if incomplete at 45s
+        run: |
+          if node -e "const r=require('./clinic-experiment-45.json').rows[0].modes[1];process.exit(r.arrivals===4?0:1)"; then exit 0; fi
+          node --experimental-strip-types scripts/audit-r7-squad-execution.mjs 11 3600 --site-index=10 --audit-seed=19178827 --audit-scale=small > clinic-experiment-60.json
+          node -e "const r=require('./clinic-experiment-60.json').rows[0].modes[1];console.log(JSON.stringify({arrivals:r.arrivals,operators:r.operators.map(x=>({id:x.id,p:x.position,remaining:x.remaining,active:x.activeOrder,paused:x.motorPause,wait:x.waitSeconds,progress:x.progressDistance}))}));"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clinic-m2-experimental-physical-truth
+          path: clinic-experiment-*.json
