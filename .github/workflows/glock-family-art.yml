@@ -1,0 +1,24 @@
+name: Glock family art gate
+on:
+  pull_request:
+    paths:
+      - 'src/weapons/geometry/glock-family-silhouettes.ts'
+      - 'src/arsenal/glock-gallery.ts'
+      - 'src/arsenal/gallery-main.ts'
+      - 'src/arsenal/arsenal.css'
+      - 'tests/weapon-glock-family-art.test.mjs'
+      - '.github/workflows/glock-family-art.yml'
+  workflow_dispatch:
+jobs:
+  focused-art:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+      - name: Glock anatomy and gallery checks
+        run: node --experimental-strip-types --test tests/weapon-glock-family-art.test.mjs
+      - name: TypeScript and production build
+        run: npm run build
