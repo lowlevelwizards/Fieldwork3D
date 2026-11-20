@@ -20,6 +20,29 @@ export function isGlockAppearanceId(value:string):value is GlockAppearanceId{
  return GLOCK_APPEARANCE_REFERENCES.some(ref=>ref.id===value);
 }
 export type GlockAppearanceOptions={monochrome?:boolean;details?:boolean};
+/** S1: authoring-space sockets, never guessed from a screenshot or independent
+ * combat offsets. +X muzzle, +Y up, +Z operator-right. Visual rig/shot solver
+ * must transform these through the SAME held-weapon world matrix. */
+export type GlockArtPoint=Readonly<{x:number;y:number;z:number}>;
+export type GlockArtSockets=Readonly<{
+ muzzle:GlockArtPoint;primaryGrip:GlockArtPoint;supportGrip:GlockArtPoint;
+ slideGrip:GlockArtPoint;magazineSeat:GlockArtPoint;magazineBase:GlockArtPoint;
+ sightLine:GlockArtPoint;holsterPivot:GlockArtPoint;
+}>;
+const point=(x:number,y:number,z:number):GlockArtPoint=>Object.freeze({x,y,z});
+export function glockArtSockets(id:GlockAppearanceId):GlockArtSockets{
+ const art=GLOCK_G2_ART[id],heel=(art.frontHeelX+art.rearHeelX)/2;
+ return Object.freeze({
+  muzzle:point(art.frontX,1.62,0),
+  primaryGrip:point(heel,-4.20,-.18),
+  supportGrip:point(heel+.30,-3.35,.85),
+  slideGrip:point(-4.50,1.45,0),
+  magazineSeat:point(heel,-3.55,0),
+  magazineBase:point(heel,art.heelY-.18,0),
+  sightLine:point(-1.0,3.26,0),
+  holsterPivot:point(heel,-3.25,0)
+ });
+}
 
 /** All coordinates below are symbolic Fieldwork ART UNITS, not real dimensions.
  * Explicit variant profiles prevent the G26 and G19X from being scaled copies.
@@ -51,6 +74,7 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  root.userData.glockG25BalancedProportions=true;
  root.userData.glockG26IdentityRefinement=true;
  root.userData.glockG27IdentityLock=true;
+ root.userData.glockArtSockets=glockArtSockets(id);
  let n=0;
  const box=(slot:'barrel'|'magazine',x:number,y:number,z:number,
   w:number,h:number,d:number,material:THREE.Material)=>
