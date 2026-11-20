@@ -1,6 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
+import {buildGlockAppearance,clearGlockAppearance}
+ from '../src/weapons/geometry/glock-family-silhouettes.ts';
+import {normalizeGlockCustomization,readGlockCustomization,
+ defaultGlockCustomization}
+ from '../src/weapons/geometry/glock-customization.ts';
+import {initialSecondaryEquipment,readSecondaryEquipment,secondaryRoundTotal,
+ secondaryLoadMass} from '../src/secondary-equipment.ts';
 import {factoryGlockRecipe,readGlockRecipe,emptyGlockLibrary,
  createGlockSavedBuild,renameGlockSavedBuild,duplicateGlockSavedBuild,
  deleteGlockSavedBuild,readGlockLibrary} from '../src/arsenal/glock-saved-builds.ts';
@@ -52,5 +59,48 @@ test('Secondary Arsenal: same interactive presentation affordances with honest e
  for(const token of ['pointerdown','pointermove','wheel','ResizeObserver',
   'clearGlockAppearance','setPixelRatio'])
   assert.ok(viewport.includes(token),'Missing '+token);
- assert.ok(wb.includes('No live pistol firing'));
+ assert.ok(wb.includes('Pistol firing and weapon-light illumination await live integration.'));
+});
+
+test('P6: physically mounted optic and light are real compact geometry, not preview overlays',()=>{
+ const selected={finish:'coyote',optic:'micro',light:'compact'};
+ assert.equal(readGlockCustomization('glock-g19-gen5-mos',selected)?.optic,'micro');
+ assert.equal(readGlockCustomization('glock-g26',selected),null);
+ const normalized=normalizeGlockCustomization('glock-g26',selected);
+ assert.equal(normalized.optic,'none');
+ assert.equal(normalized.light,'none');
+ const installed=buildGlockAppearance('glock-g19-gen5-mos',{customization:selected});
+ assert.ok(installed.getObjectByName('glock-installed-micro-optic'));
+ assert.ok(installed.getObjectByName('glock-installed-rail-light'));
+ assert.ok(installed.getObjectByName('glock-optic-window'));
+ clearGlockAppearance(installed);
+ const factory=buildGlockAppearance('glock-g19-gen5-mos',{
+  customization:defaultGlockCustomization()});
+ assert.equal(factory.getObjectByName('glock-installed-micro-optic'),undefined);
+ clearGlockAppearance(factory);
+});
+test('P6: hot-swapped secondary hardware conserves owned ammo and affects only physical mass',()=>{
+ const base=initialSecondaryEquipment('rook','glock-g19-gen5-mos');
+ const modified={...base,customization:{finish:'black',optic:'micro',light:'compact'}};
+ const total=secondaryRoundTotal(modified);
+ const read=readSecondaryEquipment(JSON.stringify(modified),'rook');
+ // Loadout reader takes the saved object, not a serialized string.
+ const restored=readSecondaryEquipment(modified,'rook');
+ assert.equal(read.weapon,null);
+ assert.equal(restored.customization.optic,'micro');
+ assert.equal(restored.customization.light,'compact');
+ assert.equal(secondaryRoundTotal(restored),total);
+ assert.ok(secondaryLoadMass(restored)>secondaryLoadMass(base));
+ assert.equal(readSecondaryEquipment({
+  ...modified,weapon:'glock-g26'},'rook').weapon,null,
+  'a forged sidearm model cannot reuse another model serial inventory');
+});
+test('P6: saved V1 recipes migrate visually without creating ammunition',()=>{
+ const legacy={version:1,model:'glock-g19-gen5-mos',
+  holster:'belt-right',spares:['belt','belt']};
+ const valid=readGlockRecipe(legacy);
+ assert.equal(valid.customization.optic,'none');
+ const modified={...valid,customization:{finish:'coyote',optic:'micro',light:'compact'}};
+ assert.equal(readGlockRecipe(modified).customization.optic,'micro');
+ assert.equal(readGlockRecipe({...modified,model:'glock-g26'}),null);
 });

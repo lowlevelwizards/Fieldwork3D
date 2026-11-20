@@ -6,15 +6,19 @@ import {isGlockAppearanceId,type GlockAppearanceId} from
  '../weapons/geometry/glock-family-silhouettes.ts';
 import type {SecondaryHolster,SecondaryMagazineLocation}
  from '../secondary-equipment.ts';
+import {defaultGlockCustomization,readGlockCustomization,
+ type GlockCustomization} from '../weapons/geometry/glock-customization.ts';
 export type GlockRecipe=Readonly<{version:1;model:GlockAppearanceId;
- holster:SecondaryHolster;spares:readonly SecondaryMagazineLocation[]}>;
+ holster:SecondaryHolster;spares:readonly SecondaryMagazineLocation[];
+ customization:GlockCustomization}>;
 export type GlockSavedBuild=Readonly<{id:string;name:string;recipe:GlockRecipe}>;
 export type GlockBuildLibrary=Readonly<{version:1;builds:readonly GlockSavedBuild[]}>;
 export const GLOCK_BUILDS_KEY='fieldwork3d.arsenal-secondary-recipes.v1';
 export const MAX_GLOCK_SAVES=48;
 export const emptyGlockLibrary=():GlockBuildLibrary=>({version:1,builds:[]});
 export const factoryGlockRecipe=(model:GlockAppearanceId):GlockRecipe=>({
- version:1,model,holster:'belt-right',spares:['belt','belt']
+ version:1,model,holster:'belt-right',spares:['belt','belt'],
+ customization:defaultGlockCustomization()
 });
 export function readGlockRecipe(raw:unknown):GlockRecipe|null{
  if(!raw||typeof raw!=='object'||Array.isArray(raw))return null;
@@ -24,8 +28,11 @@ export function readGlockRecipe(raw:unknown):GlockRecipe|null{
  !Array.isArray(r.spares)||r.spares.length>6||
  !r.spares.every(x=>['rig','belt','backpack','pocket','overflow'].includes(x)))
   return null;
+ const customization=r.customization===undefined?defaultGlockCustomization():
+  readGlockCustomization(r.model,r.customization);
+ if(!customization)return null;
  return {version:1,model:r.model,holster:r.holster,
-  spares:[...(r.spares as SecondaryMagazineLocation[])]};
+  spares:[...(r.spares as SecondaryMagazineLocation[])],customization};
 }
 export function readGlockLibrary(raw:unknown):GlockBuildLibrary{
  let data:unknown=raw;

@@ -8,6 +8,8 @@ import {configureGraphicRendererOutput}
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
 import {buildGlockAppearance,clearGlockAppearance,
  type GlockAppearanceId} from '../weapons/geometry/glock-family-silhouettes.ts';
+import type {GlockCustomization}
+ from '../weapons/geometry/glock-customization.ts';
 export class GlockViewport{
  readonly element:HTMLDivElement;
  private renderer:THREE.WebGLRenderer|null=null;
@@ -16,6 +18,7 @@ export class GlockViewport{
  private model:THREE.Group|null=null;
  private currentId:GlockAppearanceId|null=null;
  private currentClay=false;
+ private customizationKey='';
  private observer:ResizeObserver;
  private yaw=.27;
  private pitch=.13;
@@ -104,13 +107,15 @@ export class GlockViewport{
   const height=Math.max(size.y,size.x/aspect,size.z);
   this.radius=THREE.MathUtils.clamp(height/(2*Math.tan(37*Math.PI/360)*.76),14,120);
  }
- setModel(id:GlockAppearanceId,clay=false){
-  // Switching tabs/carry-only edits must not reset an intentionally orbited
-  // camera, churn geometry or allocate a new WebGL resource on mobile.
-  if(this.model&&this.currentId===id&&this.currentClay===clay)return;
+ setModel(id:GlockAppearanceId,clay=false,customization?:GlockCustomization){
+  // Only actual part changes trigger a mesh rebuild. Keep orbit and
+  // zoom through magazine placement and editor panel navigation.
+  const key=JSON.stringify(customization??null);
+  if(this.model&&this.currentId===id&&this.currentClay===clay&&
+   this.customizationKey===key)return;
   if(this.model){this.scene.remove(this.model);clearGlockAppearance(this.model);}
-  this.currentId=id;this.currentClay=clay;
-  this.model=buildGlockAppearance(id,{monochrome:clay});
+  this.currentId=id;this.currentClay=clay;this.customizationKey=key;
+  this.model=buildGlockAppearance(id,{monochrome:clay,customization});
   this.scene.add(this.model);this.fit();this.draw();
  }
  side(){this.yaw=0;this.pitch=0;this.draw();}

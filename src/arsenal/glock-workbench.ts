@@ -7,6 +7,9 @@ import {GLOCK_APPEARANCE_REFERENCES}
 import {SECONDARY_CAPACITY,SECONDARY_MASS_KG,type SecondaryMagazineLocation}
  from '../secondary-equipment.ts';
 import {GlockViewport} from './glock-viewport.ts';
+import {glockHasAccessoryRail,glockHasOpticMount,
+ glockAccessoryMassKg,normalizeGlockCustomization}
+ from '../weapons/geometry/glock-customization.ts';
 import {loadGlockLibrary,saveGlockLibrary,
  createGlockSavedBuild,type GlockRecipe,type GlockSavedBuild}
  from './glock-saved-builds.ts';
@@ -28,7 +31,8 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  let working=start;
  const undoStack:GlockRecipe[]=[],redoStack:GlockRecipe[]=[];
  let clay=false;
- let panel:'models'|'carry'|'saved'='models';
+ type WorkPanel='models'|'sights'|'accessories'|'finish'|'carry'|'saved';
+ let panel:WorkPanel='models';
  const activeBefore=document.activeElement as HTMLElement|null;
  const oldOverflow=document.body.style.overflow;
  const overlay=document.createElement('section');
@@ -70,8 +74,10 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  stats.append(statsHeader,statsLine);stage.append(viewportHost,stats);
  const tabs=document.createElement('nav');tabs.className='arsenal-wb-nav glock-wb-tabs';
  tabs.setAttribute('aria-label','Secondary Workbench sections');
- const modelTab=action('MODEL'),carryTab=action('CARRY'),savedTab=action('SAVED BUILDS');
- tabs.append(modelTab,carryTab,savedTab);
+ const modelTab=action('MODEL'),sightsTab=action('SIGHTS');
+ const accessoriesTab=action('ACCESSORIES'),finishTab=action('FINISH');
+ const carryTab=action('CARRY'),savedTab=action('SAVED BUILDS');
+ tabs.append(modelTab,sightsTab,accessoriesTab,finishTab,carryTab,savedTab);
  const choices=document.createElement('section');choices.className='arsenal-wb-panel glock-wb-panel';
  const subtitle=document.createElement('h3');const grid=document.createElement('div');
  grid.className='glock-wb-options';
@@ -83,7 +89,7 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  const confirmSave=action('SAVE NAME'),cancelSave=action('CANCEL');
  editBar.append(nameInput,confirmSave,cancelSave);
  const footer=document.createElement('p');footer.className='glock-wb-note';
- footer.textContent='Factory geometry and honest carry positions. No live pistol firing or unsupported attachments are implied.';
+ footer.textContent='Real installed low-poly parts, factory compatibility and honest carry positions. Pistol firing and weapon-light illumination await live integration.';
  choices.append(subtitle,grid,editBar,footer);
  main.append(stage,tabs,choices);
  overlay.append(head,main);
@@ -113,13 +119,16 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
  modelButton.addEventListener('click',()=>setPanel('models'));
  loadButton.addEventListener('click',()=>setPanel('saved'));
  modelTab.addEventListener('click',()=>setPanel('models'));
+ sightsTab.addEventListener('click',()=>setPanel('sights'));
+ accessoriesTab.addEventListener('click',()=>setPanel('accessories'));
+ finishTab.addEventListener('click',()=>setPanel('finish'));
  carryTab.addEventListener('click',()=>setPanel('carry'));
  savedTab.addEventListener('click',()=>setPanel('saved'));
  fitButton.addEventListener('click',()=>viewport.reset());
  sideButton.addEventListener('click',()=>viewport.side());
  oppositeButton.addEventListener('click',()=>viewport.opposite());
  clayButton.addEventListener('click',()=>{
-  clay=!clay;viewport.setModel(working.model,clay);
+  clay=!clay;viewport.setModel(working.model,clay,working.customization);
   clayButton.setAttribute('aria-pressed',String(clay));
  });
  undoButton.addEventListener('click',()=>{
@@ -168,20 +177,64 @@ export function openGlockWorkbench(start:GlockRecipe,context:GlockWorkbenchConte
   dirty.textContent=JSON.stringify(working)===JSON.stringify(original)?
    'FACTORY / ORIGINAL':'UNSAVED CHANGES';
   undoButton.disabled=!undoStack.length;redoButton.disabled=!redoStack.length;
-  for(const [btn,id] of [[modelTab,'models'],[carryTab,'carry'],[savedTab,'saved']] as const)
+  for(const [btn,id] of [
+   [modelTab,'models'],[sightsTab,'sights'],[accessoriesTab,'accessories'],
+   [finishTab,'finish'],[carryTab,'carry'],[savedTab,'saved']] as const)
    btn.setAttribute('aria-pressed',String(panel===id));
-  viewport.setModel(working.model,clay);
+  viewport.setModel(working.model,clay,working.customization);
+  const installedMass=SECONDARY_MASS_KG[working.model]+
+   glockAccessoryMassKg(working.customization);
+  const baseline=SECONDARY_MASS_KG[original.model]+
+   glockAccessoryMassKg(original.customization);
+  const delta=installedMass-baseline;
   statsLine.textContent='CAPACITY '+SECONDARY_CAPACITY[working.model]+' ROUNDS / MAG'+
-   ' · UNLOADED '+SECONDARY_MASS_KG[working.model].toFixed(2)+' KG'+
+   ' · UNLOADED '+installedMass.toFixed(2)+' KG'+
+   ' · MASS Δ '+(delta>=0?'+':'')+delta.toFixed(2)+' KG'+
    ' · '+working.spares.length+' SPARE PLACEMENTS';
   grid.replaceChildren();
   if(panel==='models'){
    subtitle.textContent='FACTORY MODELS';
    for(const model of GLOCK_APPEARANCE_REFERENCES){
     createChoice(model.name,model.id===working.model,()=>{
-     put({...working,model:model.id});
+     put({...working,model:model.id,
+      customization:normalizeGlockCustomization(model.id,working.customization)});
     },model.description);
    }
+  }else if(panel==='sights'){
+   subtitle.textContent='SIGHT SYSTEM';
+   createChoice('FACTORY IRON SIGHTS',working.customization.optic==='none',
+    ()=>put({...working,customization:{...working.customization,optic:'none'}}),
+    'Simple, chunky existing iron silhouettes');
+   if(glockHasOpticMount(working.model))
+    createChoice('MICRO RED DOT',working.customization.optic==='micro',
+     ()=>put({...working,customization:{...working.customization,optic:'micro'}}),
+     'Real mounted low-poly optic · MOS slide only');
+   else{
+    const text=document.createElement('p');text.className='glock-wb-description';
+    text.textContent='This factory slide is not optic-ready. Choose the Gen 5 MOS for the supported micro optic.';
+    grid.append(text);
+   }
+  }else if(panel==='accessories'){
+   subtitle.textContent='RAIL ACCESSORIES';
+   createChoice('NO WEAPON LIGHT',working.customization.light==='none',
+    ()=>put({...working,customization:{...working.customization,light:'none'}}));
+   if(glockHasAccessoryRail(working.model))
+    createChoice('COMPACT WEAPON LIGHT',working.customization.light==='compact',
+     ()=>put({...working,customization:{...working.customization,light:'compact'}}),
+     'Two block under-frame lamp · light-output gameplay pending');
+   else{
+    const text=document.createElement('p');text.className='glock-wb-description';
+    text.textContent='The G26 profile has no compatible accessory rail.';
+    grid.append(text);
+   }
+  }else if(panel==='finish'){
+   subtitle.textContent='MATERIAL FINISH';
+   for(const [id,name] of [
+    ['factory','FACTORY FINISH'],['black','ALL BLACK'],['coyote','COYOTE']
+   ] as const)
+    createChoice(name,working.customization.finish===id,
+     ()=>put({...working,customization:{...working.customization,finish:id}}),
+     'Actual slide and polymer palette, not an image filter');
   }else if(panel==='carry'){
    subtitle.textContent='HOLSTER & MAGAZINES';
    for(const [side,label] of [['belt-left','LEFT HIP'],['belt-right','RIGHT HIP']] as const)
