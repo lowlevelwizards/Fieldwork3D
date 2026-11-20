@@ -1,4 +1,4 @@
-/** One Arsenal gallery shell for primaries and secondary Glock models.
+/** One Arsenal gallery shell for primaries and all secondary preview families.
  * Presentation only: each owner retains its search policy, thumbnails,
  * saved-build commands, selected recipe and workbench authority.
  */
@@ -15,7 +15,7 @@ export function createArsenalGalleryChrome(kind:ArsenalGalleryKind){
  const secondary=kind==='secondary';
  const layout=secondary?node('section','arsenal-layout arsenal-glock-gallery'):
   node('div','arsenal-layout');
- if(secondary)layout.setAttribute('aria-label','Glock family secondary weapon loadouts');
+ if(secondary)layout.setAttribute('aria-label','Secondary weapon factory gallery');
 
  const hero=secondary?node('div','arsenal-hero arsenal-glock-feature'):
   node('section','arsenal-hero');
@@ -55,7 +55,7 @@ export function createArsenalGalleryChrome(kind:ArsenalGalleryKind){
  search.type='search';
  search.placeholder='Find a model';
  search.setAttribute('aria-label',secondary?
-  'Find Glock model or saved build':'Find weapon model');
+  'Find secondary weapon model or saved Glock build':'Find weapon model');
  controls.append(controlHeading,search);
  const filters=node('div',secondary?'arsenal-filters arsenal-glock-filters':'arsenal-filters');
  filters.setAttribute('role','group');
@@ -65,7 +65,7 @@ export function createArsenalGalleryChrome(kind:ArsenalGalleryKind){
  const grid=node('div',secondary?'arsenal-grid arsenal-glock-cards':'arsenal-grid');
  if(secondary){
   grid.setAttribute('role','group');
-  grid.setAttribute('aria-label','Glock models and saved builds');
+  grid.setAttribute('aria-label','Secondary factory models and saved Glock builds');
  }
  browser.append(controls,filters,count,grid);
  layout.append(hero,browser);
