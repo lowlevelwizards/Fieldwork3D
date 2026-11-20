@@ -12,7 +12,7 @@ import {FAMILY_PART_SLOTS,FAMILY_PARTS,matchingFamilyPreset,compatibleFamilyPart
  familyPreset,proposeFamilyPartChange,type FamilyPartSlot}
  from './equipment-weapon-families.ts';
 import {createWeaponPresetBrowser} from './ui/weapon-preset-browser.ts';
-import {LOADOUT_SLOTS,itemsForSlot} from './equipment-catalog.ts';
+import {catalogOutfitterSources} from './ui/outfitter-choice-sources.ts';
 import {carryCapacityReport} from './equipment-carry-placement.ts';
 import {stageMagazines,magazineSpace,type MagazineLocation}
  from './equipment-magazine-placement.ts';
@@ -637,17 +637,7 @@ function renderOperationsBoard(){
   const galleryHost=document.createElement('div');
   galleryHost.className='fw-quick-board-gallery';
   galleryHost.hidden=quickKitView!=='equipment';
-  const sources=new Map<LoadoutSlot,HTMLSelectElement>();
-  for(const slot of LOADOUT_SLOTS){
-   if(slot==='tactical')continue;
-   const select=document.createElement('select');
-   select.setAttribute('aria-label','Select '+slot+' for '+member.callsign);
-   for(const item of itemsForSlot(slot)){
-    const option=document.createElement('option');
-    option.value=item.id;option.textContent=item.name;select.append(option);
-   }
-   select.value=member.loadout.slots[slot];sources.set(slot,select);
-  }
+  const sources=catalogOutfitterSources(member.loadout);
   const zoneNav=document.createElement('nav');
   zoneNav.className='fw-quick-board-zones';
   zoneNav.setAttribute('aria-label','Equipment locations');
@@ -691,7 +681,7 @@ function renderOperationsBoard(){
   const editable=config.getSession().phase==='planning'&&!config.isReplaying();
   const gallery=createOutfitterGallery({
    host:galleryHost,sources,kit:member.loadout,magazines:member.magazines,
-   physicalEditor:fieldHost,locked:!editable,selectedItems,scrollPositions,
+   locked:!editable,selectedItems,scrollPositions,
    renderModel:(slot,itemId)=>quickKitPreview?.renderModelThumbnail(
     {kind:'gear',slot,itemId})??null,
    onEquip:(slot,itemId)=>{
@@ -718,17 +708,11 @@ function renderOperationsBoard(){
     expandedQuickKit=member.id;quickKitView='equipment';
     renderOperationsBoard();config.refreshHud();
    },
-   onMoveField:()=>{}, // Existing field editor owns authoritative transfers.
-   onMoveMagazine:()=>{}, // Existing carry editor owns magazine placement.
    onArsenal:()=>{if(!arsenalAction.disabled)config.openArsenal(member.id);},
    arsenalDisabled:arsenalAction.disabled,
    onSelectCategory:selectZone,
-   onInspect:(slot,itemId,kind,location)=>{
-    if(!itemId){quickKitPreview?.selectItemDot(null);return;}
-    if(kind==='gear')quickKitPreview?.selectItemDot({kind:'gear',slot,itemId});
-    else quickKitPreview?.selectItemDot({
-     kind:kind==='field'?'field':'magazine',id:itemId,location});
-   },
+   onInspect:(slot,itemId)=>quickKitPreview?.selectItemDot(
+    itemId?{kind:'gear',slot,itemId}:null),
    onAdvanced:()=>{
     quickKitView='carry';galleryHost.hidden=true;carryPanel.hidden=false;
     advancedPanel.open=false;
