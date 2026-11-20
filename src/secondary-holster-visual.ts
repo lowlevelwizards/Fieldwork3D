@@ -163,7 +163,7 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  */
 export function presentSecondaryDraw(hip:THREE.Group,
  firingHand:THREE.Object3D,secondary:SecondaryEquipment|undefined,
- fraction:number,operational=true):boolean{
+ fraction:number,operational=true,shotHeading?:number):boolean{
  const mount=mounted.get(hip);
  if(!mount||!secondary?.weapon||mount.root.userData.secondaryWeaponId!==secondary.weapon){
   return false;
@@ -184,7 +184,14 @@ export function presentSecondaryDraw(hip:THREE.Group,
  firingHand.updateWorldMatrix(true,false);
  const gripWorld=firingHand.getWorldPosition(mount.gripWorld);
  const target=mount.holster.worldToLocal(mount.targetLocal.copy(gripWorld));
- const targetWorldRotation=chest.getWorldQuaternion(mount.targetWorldRotation);
+ // An actively aiming pistol must rotate its actual authored +X barrel
+ // toward the SAME fixed-step yaw used by the shot resolver, not merely
+ // the character's torso direction. Retain chest-relative fallback for
+ // old Lab fixtures which have no recorded shot heading.
+ const targetWorldRotation=Number.isFinite(shotHeading)?
+  mount.targetWorldRotation.setFromAxisAngle(
+   new THREE.Vector3(0,1,0),-shotHeading!):
+  chest.getWorldQuaternion(mount.targetWorldRotation);
  const parentWorldRotation=mount.holster.getWorldQuaternion(mount.parentWorldRotation);
  const targetRotation=parentWorldRotation.invert().multiply(targetWorldRotation);
  // A curved, controlled draw path clears the holster before rotating into
