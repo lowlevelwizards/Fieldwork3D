@@ -98,7 +98,7 @@ test('M2.7: same-door reverse entry drops stale opposing owner when order change
     {...slot('lead',0,'D',1),orderId:2,eta:2}]],
   ['follower',[{...slot('follower',1,'D',1),orderId:1,eta:1}]]
  ]);
- const before=movement(s,entrance,p(100,125),schedule);
+ const before=movement(s,entrance,p(100,100),schedule);
  assert.equal(before.reason,'opposing','original opposite-side crossing really held its lease');
  oldOwner.p=p(100,125);
  oldOwner.plan=[{id:2,kind:'move',p:p(100,40)}];
