@@ -381,6 +381,9 @@ function run(site,seed,kind){
      kind==='entry'&&watchedAsh?{
      p:{...watchedAsh.p},nav:watchedAsh.nav.slice(0,4),
      squeeze:watchedAsh.squeeze,lastBlocker:watchedAsh.lastBlocker,
+     activeNode:watchedAsh.activeNode,planId:watchedAsh.plan[0]?.id,
+     pending:!!watchedAsh.traversalPending,traversal:!!watchedAsh.traversal,
+     retry:watchedAsh.retryRouteAt,
      episode:watchedAsh.doorTraversal?.phase}:null;
    try{
     stepSession(session,1/60);
@@ -398,6 +401,9 @@ function run(site,seed,kind){
          squeeze:watchedAsh.squeeze,
          lastBlocker:watchedAsh.lastBlocker,
          blocked:round(watchedAsh.blockedTime),velocity:round(watchedAsh.velocity),
+         activeNode:watchedAsh.activeNode,planId:watchedAsh.plan[0]?.id,
+         pending:!!watchedAsh.traversalPending,traversal:!!watchedAsh.traversal,
+         retry:watchedAsh.retryRouteAt,
          episode:watchedAsh.doorTraversal?.phase}});
    }
    // D3.29B: only after an actual, authoritatively failed order, capture
