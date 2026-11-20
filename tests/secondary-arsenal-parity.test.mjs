@@ -111,14 +111,16 @@ test('S5 gallery parity: secondary uses the primary hero/browser hierarchy, with
  const primary=readFileSync(new URL('../src/arsenal/gallery-main.ts',import.meta.url),'utf8');
  const secondary=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
- assert.ok(primary.includes("className='arsenal-layout'"));
- assert.ok(primary.includes("className='arsenal-hero'"));
- assert.ok(secondary.includes("className='arsenal-layout arsenal-glock-gallery'"));
- assert.ok(secondary.includes('class="arsenal-hero arsenal-glock-feature"'));
- assert.ok(secondary.includes('class="arsenal-hero-media arsenal-glock-hero-visual"'));
- assert.ok(secondary.includes('class="arsenal-hero-copy arsenal-glock-feature-copy"'));
- assert.ok(secondary.includes('class="arsenal-browser arsenal-glock-browser"'));
- assert.ok(secondary.includes('class="arsenal-grid arsenal-glock-cards"'));
+ const chrome=readFileSync(new URL('../src/arsenal/gallery-chrome.ts',import.meta.url),'utf8');
+ assert.match(primary,/createArsenalGalleryChrome\('primary'\)/);
+ assert.match(secondary,/createArsenalGalleryChrome\('secondary'\)/);
+ for(const className of ['arsenal-layout','arsenal-hero','arsenal-hero-media',
+  'arsenal-hero-copy','arsenal-browser','arsenal-grid',
+  'arsenal-glock-gallery','arsenal-glock-feature','arsenal-glock-hero-visual',
+  'arsenal-glock-feature-copy','arsenal-glock-browser','arsenal-glock-cards'])
+  assert.ok(chrome.includes(className),'Missing shared gallery class '+className);
+ assert.doesNotMatch(secondary,/<div class="arsenal-hero/);
+ assert.doesNotMatch(primary,/document.createElement\('section'\);browser.className='arsenal-browser'/);
  assert.doesNotMatch(secondary,/arsenal-glock-views|arsenal-glock-kit|equipPanel|FAMILY SCALE|MP5K PEER/);
  assert.doesNotMatch(secondary,/readPrepared|operatorPicker|holsterPicker|equipFreshSecondary/);
  assert.ok(css.includes('.arsenal-shell>.arsenal-glock-gallery[hidden]{display:none}'));
