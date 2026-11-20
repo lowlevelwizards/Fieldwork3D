@@ -61,8 +61,9 @@ export const GLOCK_G2_ART={
  'glock-g19x':{frontX:8.30,heelY:-8.96,rearHeelX:-8.11,frontHeelX:-3.82,frontSerrations:false,mos:false},
  'glock-g19-gen5-mos':{frontX:8.30,heelY:-7.65,rearHeelX:-8.05,frontHeelX:-4.06,frontSerrations:true,mos:true}
 } as const;
-const SLIDE_REAR=-8.55,SLIDE_TOP=3.04,SLIDE_BOTTOM=.34;
-const SLIDE_DEPTH=2.96,FRAME_DEPTH=2.62;
+// G2.8: subtly fuller slide, with the real muzzle X and grip sockets fixed.
+const SLIDE_REAR=-8.66,SLIDE_TOP=3.17,SLIDE_BOTTOM=.21;
+const SLIDE_DEPTH=3.20,FRAME_DEPTH=2.62;
 
 export function buildGlockAppearance(id:GlockAppearanceId,
  options:GlockAppearanceOptions={}):THREE.Group{
@@ -88,9 +89,7 @@ export function buildGlockAppearance(id:GlockAppearanceId,
   w:number,h:number,d:number,material:THREE.Material)=>
   addCuboid(root,slot,id,n++,x,y,z,w,h,d,material);
 
- // G2.5: keep G2 mass, but undo ~one third of its exaggeration:
- // G19 slide 16.85 long / 2.70 high / 2.96 deep, down from G1's
- // long wafer (18.8) and G2's over-tall slab (15.69 × 2.90 × 3.15).
+ // G2.8: fuller slide while preserving real muzzle and grip sockets.
  const slideOutline:Outline=[
   [SLIDE_REAR,SLIDE_BOTTOM],[art.frontX-.26,SLIDE_BOTTOM],
   [art.frontX,.63],[art.frontX,SLIDE_TOP-.29],
@@ -136,7 +135,11 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  const frameGeom=new THREE.ExtrudeGeometry(frame,{
   depth:FRAME_DEPTH,steps:1,bevelEnabled:false,curveSegments:1});
  frameGeom.translate(0,0,-FRAME_DEPTH/2);
- const frameMesh=new THREE.Mesh(frameGeom,polymer);
+ // Two-sided inside aperture/side wall, without mutating pooled palette.
+ const guardMaterial=polymer.clone();guardMaterial.side=THREE.DoubleSide;
+ const frameMesh=new THREE.Mesh(frameGeom,guardMaterial);
+ frameMesh.userData.glockOwnsMaterial=true;
+ frameMesh.userData.glockGuardInteriorFaces=true;
  frameMesh.name='family-receiver-'+id+'-integrated-polymer';
  frameMesh.castShadow=true;frameMesh.receiveShadow=true;
  frameMesh.userData.glockOpenGuard=true;
@@ -144,9 +147,11 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  frameMesh.userData.glockIntegratedFrameGrip=true;
  root.add(frameMesh);
 
- // One wide blunt magazine heel, deliberately a little bigger than grip.
- box('magazine',(art.rearHeelX+art.frontHeelX)/2,art.heelY-.18,0,
-  art.frontHeelX-art.rearHeelX+.24,.40,FRAME_DEPTH+.16,polymer);
+ // G2.8: a visibly chunkier magazine floorplate, without changing capacity.
+ const floorplate=box('magazine',(art.rearHeelX+art.frontHeelX)/2,
+  art.heelY-.24,0,art.frontHeelX-art.rearHeelX+.48,
+  .56,FRAME_DEPTH+.40,polymer);
+ floorplate.userData.glockMagazineFloorplate=true;
 
  // Two simplified chunky low-profile landmarks (not rail-height sights).
  box('barrel',SLIDE_REAR+.83,SLIDE_TOP+.19,0,.59,.40,1.44,shadow);
@@ -156,19 +161,23 @@ export function buildGlockAppearance(id:GlockAppearanceId,
   // One material and ONE mesh for serrations + an iconic L-shaped port.
   // Its six-vertex continuous panel wraps right (+Z) onto top (+Y).
   // This is a broad graphic seam, not a hollow mechanical chamber.
-  const verts:number[]=[],indices:number[]=[];
+  const verts:number[]=[],indices:number[]=[],shades:number[]=[];
+  const shade=(amount:number,vertices:number)=>{
+   for(let i=0;i<vertices;i++)shades.push(amount,amount,amount);
+  };
   const addMark=(x:number,y:number,side:number,w:number,h:number)=>{
    const z=side*(SLIDE_DEPTH/2+.018),base=verts.length/3;
    verts.push(x,y,z,x+w,y,z,x+w,y+h,z,x,y+h,z);
+   shade(.91,4);
    if(side>0)indices.push(base,base+1,base+2,base,base+2,base+3);
    else indices.push(base,base+2,base+1,base,base+3,base+2);
   };
   for(const side of [-1,1]){
    for(let i=0;i<3;i++)
-    addMark(SLIDE_REAR+.70+i*.50,.72,side,.26,1.35);
+    addMark(SLIDE_REAR+.74+i*.68,.72,side,.35,1.51);
    if(art.frontSerrations)
     for(let i=0;i<2;i++)
-     addMark(art.frontX-2.20+i*.55,.80,side,.23,1.19);
+     addMark(art.frontX-2.63+i*.76,.80,side,.31,1.37);
   }
   // G2.7 retains the wrapped panel; lower its contrast rather than
   // changing its silhouette or adding a hole to the slide.
@@ -183,6 +192,7 @@ export function buildGlockAppearance(id:GlockAppearanceId,
   const muzzleX=art.frontX+.018;
   verts.push(muzzleX,1.25,-.53,muzzleX,1.25,.53,
    muzzleX,2.04,.53,muzzleX,2.04,-.53);
+  shade(.81,4);
   indices.push(face,face+2,face+1,face,face+3,face+2);
   const x0=.26,x1=3.41,y0=2.11,y1=SLIDE_TOP+.018;
   const zOuter=SLIDE_DEPTH/2+.018,zInner=.36;
@@ -192,14 +202,20 @@ export function buildGlockAppearance(id:GlockAppearanceId,
    x1,y1,zOuter, x0,y1,zOuter,
    x1,y1,zInner, x0,y1,zInner
   );
+  // Darker port in the same batched detail mesh; no overlay object.
+  shade(.43,6);
   indices.push(
    first,first+1,first+2,first,first+2,first+3,
    first+3,first+2,first+4,first+3,first+4,first+5
   );
   const geom=new THREE.BufferGeometry();
   geom.setAttribute('position',new THREE.Float32BufferAttribute(verts,3));
+  geom.setAttribute('color',new THREE.Float32BufferAttribute(shades,3));
   geom.setIndex(indices);geom.computeVertexNormals();
-  const marks=new THREE.Mesh(geom,marksFinish);
+  const detailMaterial=marksFinish.clone();detailMaterial.vertexColors=true;
+  const marks=new THREE.Mesh(geom,detailMaterial);
+  marks.userData.glockOwnsMaterial=true;
+  marks.userData.glockPortShade=.43;
   marks.name='family-barrel-'+id+'-serration-batch';
   marks.userData.glockRightEjectionPort=true;
   marks.userData.glockRightEjectionPortGeometry='shared-edge-side-to-top-six-vertex-ribbon';
@@ -243,6 +259,8 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  root.userData.glockArtLandmarks=Object.freeze({
   rearX:SLIDE_REAR,muzzleX:art.frontX,
   slideTopY:SLIDE_TOP,slideBottomY:SLIDE_BOTTOM,slideDepth:SLIDE_DEPTH,
+  guardInteriorDoubleSided:true,slideGrooveWidth:.35,slideGrooveSpacing:.68,
+  magazineFloorplateHeight:.56,portShade:.43,
   frameDepth:FRAME_DEPTH,gripHeelY:art.heelY,
   gripRearX:art.rearHeelX,gripFrontX:art.frontHeelX,
   guardOpeningX:[-2.25,.83],guardOpeningY:[-3.13,-1.72],
@@ -257,7 +275,14 @@ export function buildGlockAppearance(id:GlockAppearanceId,
 /** Palette assets are global: dispose weapon-owned buffers ONLY. */
 export function clearGlockAppearance(root:THREE.Group):void{
  root.traverse(child=>{
-  if(child instanceof THREE.Mesh)child.geometry.dispose();
+  if(child instanceof THREE.Mesh){
+   child.geometry.dispose();
+   // Own these two local materials; leave all shared game materials intact.
+   if(child.userData.glockOwnsMaterial){
+    const materials=Array.isArray(child.material)?child.material:[child.material];
+    for(const material of materials)material.dispose();
+   }
+  }
  });
  root.clear();
 }
