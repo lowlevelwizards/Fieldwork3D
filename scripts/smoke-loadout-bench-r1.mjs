@@ -18,8 +18,11 @@ try{
   '--use-gl=angle','--use-angle=swiftshader','--enable-unsafe-swiftshader'
  ]});
  try{
-  for(const width of [320,390]){
-   const page=await browser.newPage({viewport:{width,height:844},
+  for(const {width,height} of [
+   {width:320,height:844},{width:390,height:844},
+   {width:667,height:375}
+  ]){
+   const page=await browser.newPage({viewport:{width,height},
     isMobile:true,hasTouch:true});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    await page.goto(origin+'/index.html',{waitUntil:'domcontentloaded'});
