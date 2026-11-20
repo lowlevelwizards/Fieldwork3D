@@ -139,8 +139,10 @@ async function assessEstablishedCareer(page,name,mobile){
     .allTextContents();
    check(stock.length===5&&stock.slice(0,3).every(count=>count.trim()==='0'),
     name+' exhausted reserves were not restored');
-   check(await page.locator('.campaign-logistics-stat.is-low').count()>=1,
-    name+' empty stock alerts missing');
+   check(await page.locator('.campaign-uxr-stock-button[aria-pressed="true"]').count()===1,
+    name+' selected HQ resource is not identifiable');
+   // Zero stock is not automatically an alert: only an actual refill deficit
+   // requires a warning. The five authoritative quantities remain visible.
   }
   if(tab==='chronicle'){
    const recent=page.locator('.campaign-chronicle>.campaign-uxr-record-index');
