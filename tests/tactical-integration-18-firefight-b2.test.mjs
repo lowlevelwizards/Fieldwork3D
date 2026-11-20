@@ -62,15 +62,15 @@ test('encounter regression: no false initial audio suspicion; real gunfire inter
  assert.equal(hasRecentSound(2,-1),false);
  assert.equal(hasRecentSound(2,1.5),true);
  assert.equal(hasRecentSound(9,1.5),false);
- const game=readFileSync(new URL('../src/breach-game.ts',import.meta.url),'utf8');
- assert.match(game,/const recentNoise=hasRecentSound\(s\.seconds,a\.lastNoiseAt\)/);
- // E1/E5 replaced the former raw-noise alarm scan. Defenders now consume
- // each audible evidence item once, then update suspicion only if warranted.
- const decisions=game.slice(game.indexOf('function enemyDecisions('),
-  game.indexOf('function distributeReports('));
- assert.match(decisions,/for\(const sound of s\.noise\)/);
- assert.match(decisions,/sound\.id<=a\.lastNoiseExaminedId/);
- assert.match(decisions,/interpretSound\(sound,a\.id,a\.p,s\.doors,WALLS,s\.windows\)/);
- assert.match(decisions,/if\(disposition!=='ignore'\)observeSuspicion/);
- assert.match(decisions,/a\.lastNoiseExaminedId=Math\.max/);
+ const ai=readFileSync(new URL('../src/breach-ai-reconciliation.ts',import.meta.url),'utf8');
+ assert.match(ai,/const recentNoise=hasRecentSound\(s\.seconds,a\.lastNoiseAt\)/);
+ const intake=readFileSync(new URL('../src/breach-ai-acoustic-perception.ts',import.meta.url),'utf8');
+ // E1/E5 and the later architecture split consume each new audible item once
+ // using its ID/clock and never invent unseen target positions.
+ assert.match(intake,/for\(const sound of s\.noise\)/);
+ assert.match(intake,/sound\.id<=a\.lastNoiseExaminedId/);
+ assert.match(intake,/interpretSound\(sound,a\.id,a\.p,s\.doors,sessionWorldGeometry\(s\)\.walls,s\.windows\)/);
+ assert.match(intake,/if\(disposition!=='ignore'\)observeSuspicion/);
+ assert.match(intake,/a\.lastNoiseExaminedId=Math\.max/);
+
 });
