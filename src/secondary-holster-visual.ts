@@ -22,7 +22,7 @@ type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  /** Reused pose scratch: a live Glock must not allocate vectors every frame. */
  gripWorld:THREE.Vector3;targetLocal:THREE.Vector3;
  targetWorldRotation:THREE.Quaternion;parentWorldRotation:THREE.Quaternion;
- flashWorld:THREE.Vector3;
+ flashWorld:THREE.Vector3;pouchRest:THREE.Vector3;
 };
 const mounted=new WeakMap<THREE.Group,Mounted>();
 const WORLD_UP=new THREE.Vector3(0,1,0);
@@ -138,11 +138,11 @@ function reconcilePouches(mount:Mounted,state:SecondaryEquipment,
 }
 /** Single location recipe for new and retained physical magazine meshes. */
 function pouchSocket(location:'rig'|'belt'|'backpack'|'pocket',
- index:number,side:number):THREE.Vector3{
- if(location==='belt')return new THREE.Vector3(2+index*1.8,-3.8,-side*8.8);
- if(location==='pocket')return new THREE.Vector3(-1.5,-4.4,-side*6.4);
- if(location==='rig')return new THREE.Vector3(8.95,-5.3,-2.8+index*2.3);
- return new THREE.Vector3(-1.4,-3.4,side*(6.4+index*2.1));
+ index:number,side:number,out=new THREE.Vector3()):THREE.Vector3{
+ if(location==='belt')return out.set(2+index*1.8,-3.8,-side*8.8);
+ if(location==='pocket')return out.set(-1.5,-4.4,-side*6.4);
+ if(location==='rig')return out.set(8.95,-5.3,-2.8+index*2.3);
+ return out.set(-1.4,-3.4,side*(6.4+index*2.1));
 }
 
 /** Optional chest and pack anchors support actual multi-location cargo.
@@ -206,7 +206,7 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
   stowedQuaternion:cradle.quaternion.clone(),
   gripWorld:new THREE.Vector3(),targetLocal:new THREE.Vector3(),
   targetWorldRotation:new THREE.Quaternion(),parentWorldRotation:new THREE.Quaternion(),
-  flashWorld:new THREE.Vector3()};
+  flashWorld:new THREE.Vector3(),pouchRest:new THREE.Vector3()};
  mounted.set(hip,current);
  reconcilePouches(current,state!,chest,pack);
  return root;
@@ -314,7 +314,8 @@ export function presentSecondaryReload(hip:THREE.Group,
   const loc=mesh.userData.secondaryMagazineLocation as
     'rig'|'belt'|'backpack'|'pocket';
   const slot=mesh.userData.secondaryMagazineIndex as number;
-  const original=pouchSocket(loc,slot,kit.holster==='belt-right'?1:-1);
+  const original=pouchSocket(loc,slot,
+   kit.holster==='belt-right'?1:-1,mount.pouchRest);
   mesh.position.copy(original);
   mesh.rotation.set(0,0,0);
   mesh.visible=true;
