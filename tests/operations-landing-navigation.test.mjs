@@ -122,20 +122,21 @@ test('Operations uses wide workspace columns without narrowing mobile fallback',
  assert.match(desktop,/\.campaign-overview-support\{gap:16px\}/);
 });
 
-test('Cases board orders displayed contracts by campaign day and discloses its limit',()=>{
+test('Cases preserve deadline order and expose every offer through focused navigation',()=>{
  const ui=source('campaign-ui.ts');
  const cases=ui.slice(ui.indexOf("const jobs=node('section','campaign-section')"),
   ui.indexOf('grid.append(jobs)'));
  assert.match(cases,/const openContracts=c\.contracts\.filter/);
  assert.match(cases,/const sorted=\[\.\.\.openContracts\]\.sort\(\(a,b\)=>/);
  assert.match(cases,/a\.deadline-b\.deadline\|\|a\.id\.localeCompare\(b\.id\)/);
- assert.match(cases,/const visible=sorted\.slice\(0,3\)/);
- assert.match(cases,/node\('p','campaign-contract-board-summary'/);
- assert.match(cases,/node\('div','campaign-contract-board'\)/);
- assert.match(cases,/for\(const contract of visible\)board\.append\(this\.contract\(contract,c\)\)/);
- assert.match(cases,/if\(sorted\.length>visible\.length\)/);
- assert.match(cases,/node\('details','campaign-contract-more'\)/);
- assert.match(cases,/for\(const contract of sorted\.slice\(visible\.length\)\)/);
+ assert.match(cases,/campaign-uxr-case-browser/);
+ assert.match(cases,/campaign-uxr-case-pages/);
+ assert.match(cases,/campaign-uxr-case-position/);
+ assert.match(cases,/const pages=sorted\.map\(k=>this\.contract\(k,c\)\)/);
+ assert.match(cases,/const selectCase=\(index:number\)=>/);
+ assert.match(cases,/this\.selectedCaseId=sorted\[current\]\.id/);
+ assert.match(cases,/Math\.abs\(deltaX\)>55/);
+ assert.doesNotMatch(cases,/const visible=sorted\.slice\(0,3\)/);
  assert.match(cases,/button\('CONTINUE DEPLOYMENT'/);
 });
 
