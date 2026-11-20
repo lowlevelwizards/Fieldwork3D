@@ -20,7 +20,8 @@ type Member={actor:TeamActor;slot:PassageSlot};
 type Lane={door:Door;side:-1|1;members:Member[];
  // Reuse one small live-read buffer for sequential fixed-clock motor ticks.
  readyMembers:Member[];swingDepth:number};
-type Owner={id:string;side:-1|1;lastAt:Pt;lastProgress:number};
+type Owner={id:string;side:-1|1;orderId:number|undefined;
+ lastAt:Pt;lastProgress:number};
 type Context={schedule:PassageSchedule;byDoor:Map<string,Door>;
  actors:Map<string,TeamActor>;centers:Map<string,Pt>;
  lanes:Map<string,Lane>;owners:Map<string,Owner>;
@@ -132,7 +133,11 @@ function ownerFor(ctx:Context,s:Session,door:Door):Owner|null{
  if(old){
   const actor=ctx.actors.get(old.id);
   const slot=actor&&pending(actor,ctx.schedule,ctx.byDoor);
+  // A lease belongs to ONE authored crossing occurrence, not the actor
+  // for the lifetime of the door. Re-entering the same threshold in the
+  // reverse direction must release the former opposing stream immediately.
   const active=!!actor&&!!slot&&slot.doorId===door.id&&
+    slot.fromSide===old.side&&slot.orderId===old.orderId&&
     ready({actor,slot},ctx);
   if(active){
    // Lateral shuffling and backward drift cannot renew the crossing
@@ -162,7 +167,7 @@ function ownerFor(ctx:Context,s:Session,door:Door):Owner|null{
  best??=stalledFallback;
  if(!best)return null;
  const result:Owner={id:best.actor.id,side:best.slot.fromSide,
-  lastAt:{...best.actor.p},lastProgress:s.seconds};
+  orderId:best.slot.orderId,lastAt:{...best.actor.p},lastProgress:s.seconds};
  ctx.owners.set(door.id,result);
  return result;
 }
