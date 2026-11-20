@@ -1,0 +1,79 @@
+name: One-off stale PR Actions queue triage
+on:
+  push:
+    branches: [ops/stale-actions-triage-20261120]
+    paths:
+      - '.github/workflows/stale-actions-triage.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: write
+concurrency:
+  group: stale-actions-triage-20261120
+  cancel-in-progress: false
+jobs:
+  stale-queued-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 24
+    steps:
+      - name: Cancel superseded queued PR runs only
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const {owner, repo} = context.repo;
+            const watched = [
+              'feature/secondary-s5-s11-closeout-20261120',
+              'feature/movement-reliability-r1-20261120',
+              'feature/movement-reliability-r1b-20261120',
+            ];
+            const live = new Map();
+            for (const branch of watched) {
+              const response = await github.rest.repos.getBranch({owner, repo, branch});
+              live.set(branch, response.data.commit.sha);
+              core.info(`Preserving ${branch} at ${response.data.commit.sha}`);
+            }
+            // Snapshot only the first 1,000 queued workflow runs. Never touch
+            // running/completed work, Pages, push runs, or unknown branches.
+            const queued = [];
+            for (let page = 1; page <= 10; page++) {
+              const response = await github.rest.actions.listWorkflowRunsForRepo({
+                owner, repo, status: 'queued', per_page: 100, page,
+              });
+              queued.push(...response.data.workflow_runs);
+              if (response.data.workflow_runs.length < 100) break;
+            }
+            const stale = queued.filter(run =>
+              run.event === 'pull_request' &&
+              live.has(run.head_branch) &&
+              run.head_sha !== live.get(run.head_branch) &&
+              run.name !== 'Deploy Fieldwork Ground Zero' &&
+              run.id !== context.runId
+            );
+            core.info(`Queued snapshot: ${queued.length}; superseded targeted runs: ${stale.length}`);
+            const LIMIT = 850; // Stay below the per-repository GITHUB_TOKEN hourly API budget.
+            let canceled = 0, alreadyFinished = 0;
+            for (const run of stale.slice(0, LIMIT)) {
+              try {
+                await github.rest.actions.cancelWorkflowRun({owner, repo, run_id: run.id});
+                canceled++;
+              } catch (e) {
+                if (e.status === 404 || e.status === 409 || e.status === 422) {
+                  alreadyFinished++;
+                } else {
+                  throw e;
+                }
+              }
+              // Throttle to avoid GitHub secondary API-rate limits.
+              await new Promise(resolve => setTimeout(resolve, 650));
+            }
+            core.summary.addHeading('Stale queued PR checks')
+              .addTable([
+                [{data:'Metric',header:true},{data:'Count',header:true}],
+                ['Queued snapshot',String(queued.length)],
+                ['Superseded targeted runs',String(stale.length)],
+                ['Cancel requests accepted',String(canceled)],
+                ['Already finished or cancelled',String(alreadyFinished)],
+                ['Remaining targeted in snapshot',String(Math.max(0,stale.length-LIMIT))],
+              ])
+              .addRaw('Protected: all latest branch SHAs, all in-progress jobs, main and Pages, and all other branches.')
+              .write();
