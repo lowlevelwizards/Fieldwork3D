@@ -118,12 +118,22 @@ export function planDoorSchedule(
 export function pendingPassageSlot(p:Pt,
  slots:readonly PassageSlot[]|undefined,
  doors:readonly Door[],orderId?:number|null):PassageSlot|null{
+ // Slots are assembled by door ID for stable lane ranks, not necessarily
+ // by an individual operator's authored crossing sequence. In a two-door
+ // vestibule the lexically earlier door may be the later threshold.
+ // Pick the lowest ETA that has not been physically cleared, with no
+ // per-frame sorting, route regeneration, or order edits.
+ let earliest:PassageSlot|null=null;
  for(const slot of slots??[]){
   if(orderId!==undefined&&slot.orderId!==undefined&&
      slot.orderId!==orderId)continue;
   const door=doors.find(d=>d.id===slot.doorId);
-  if(!door)continue;
-  if(sign(p,door)*slot.fromSide>=-18)return slot;
+  if(!door||sign(p,door)*slot.fromSide< -18)continue;
+  if(!earliest||slot.eta<earliest.eta-.00001||
+     Math.abs(slot.eta-earliest.eta)<=.00001&&
+     (slot.doorId<earliest.doorId||
+      slot.doorId===earliest.doorId&&slot.rank<earliest.rank))
+    earliest=slot;
  }
- return null;
+ return earliest;
 }
