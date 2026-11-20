@@ -9,7 +9,7 @@ import {validateThrow} from './breach-flash.ts';
 import {quoteDeployedFieldUse,spendDeployedFieldItem}
  from './equipment-deployed-field-use.ts';
 import {targetAngle} from './breach-plan.ts';
-import {requestSecondarySwitch,advanceSecondarySwitch,secondarySwitchSettled}
+import {initialSecondarySwitch,requestSecondarySwitch,advanceSecondarySwitch,secondarySwitchSettled}
  from './secondary-switching.ts';
 export type UtilityOrderHooks={
  pop:(actor:TeamActor)=>void;notify:(s:Session,message:string)=>void;
