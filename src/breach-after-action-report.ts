@@ -68,8 +68,9 @@ export function viewShot(s:RecordedShot):ReportShot{
       anatomy?'region-only':'unknown',
     damage:finite(s.healthBefore)&&finite(s.healthAfter)?
       Math.max(0,s.healthBefore-s.healthAfter):null,
-    weapon:s.weaponAtFire??null,caliber:s.nominalCaliberAtFire??null,
-    receiver:s.receiverAtFire??null
+    weapon:s.secondaryWeaponAtFire??s.secondaryWeapon??s.weaponAtFire??null,
+    caliber:s.nominalCaliberAtFire??null,
+    receiver:s.secondaryWeaponAtFire??s.receiverAtFire??null
   };
 }
 function contactReviews(rec:MissionRecorder,side:'red'|'blue',shots:ReportShot[]):ContactAfterAction[]{
