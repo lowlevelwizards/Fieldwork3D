@@ -21,8 +21,8 @@ export class GlockViewport{
  private currentClay=false;
  private customizationKey='';
  private observer:ResizeObserver;
- private yaw=.27;
- private pitch=.13;
+ private yaw=0;
+ private pitch=0;
  private radius=34;
  private fitMultiplier=1;
  private tightArt=false;
@@ -145,7 +145,7 @@ export class GlockViewport{
  quarter(){
   this.yaw=.52;this.pitch=.23;this.fit();this.draw();
  }
- reset(){this.yaw=.27;this.pitch=.13;this.fit();this.draw();}
+ reset(){this.yaw=0;this.pitch=0;this.fit();this.draw();}
  // Coalesce touch/mouse orbit updates into the display cadence.
  private draw(){
   if(this.disposed||this.frameId!==null)return;

@@ -37,7 +37,7 @@ export function openM9Inspector(id:M9AppearanceId):void{
  const side=action('SIDE'),opposite=action('OTHER SIDE'),
   orbit=action('3/4 VIEW'),top=action('TOP'),clay=action('CLAY');
  const viewButtons=[side,opposite,orbit,top];
- viewButtons.forEach(button=>button.setAttribute('aria-pressed',String(button===orbit)));
+ viewButtons.forEach(button=>button.setAttribute('aria-pressed',String(button===side)));
  clay.setAttribute('aria-pressed','false');
  controls.setAttribute('aria-label','3D inspection views');
  controls.append(side,opposite,orbit,top,clay);actions.append(controls);
@@ -54,7 +54,7 @@ export function openM9Inspector(id:M9AppearanceId):void{
  document.body.append(overlay);
  document.body.style.overflow='hidden';
  const viewport=new GlockViewport(host,id);
- viewport.useTightArtFraming();viewport.quarter();
+ viewport.useTightArtFraming();viewport.side();
  let monochrome=false,closed=false;
  const close=()=>{
   if(closed)return;closed=true;

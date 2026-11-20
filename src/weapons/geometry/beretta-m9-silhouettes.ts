@@ -45,6 +45,77 @@ const SAFETY_RED=new THREE.MeshBasicMaterial({
 const M9A3_GRIP_PANEL=AR_MUTED_FDE.clone();
 M9A3_GRIP_PANEL.color.multiplyScalar(.59);
 
+/** D6: one hand-authored, faceted miniature front shell. +X is muzzle.
+ * The 12-station U section is open along its top; the *short* connected
+ * bridge and sight are included in this same unindexed GPU mesh.
+ * No hidden sight-box, inset slab, duplicate rear face or beveled ladder.
+ */
+function m9UnifiedFrontShell(nose:number):THREE.BufferGeometry{
+ const yz:readonly (readonly [number,number])[]=[
+  [-1.60,3.28],[-1.60,1.25],[-1.30,.96],
+  [1.30,.96],[1.60,1.25],[1.60,3.28],
+  [1.34,3.53],[1.09,3.53],[1.09,1.68],
+  [-1.09,1.68],[-1.09,3.53],[-1.34,3.53]
+ ];
+ const vertices:number[]=[];
+ type V=readonly [number,number,number];
+ const tri=(a:V,b:V,c:V)=>{
+  vertices.push(...a,...b,...c);
+ };
+ const quad=(a:V,b:V,c:V,d:V)=>{
+  tri(a,b,c);tri(a,c,d);
+ };
+ const rear=nose-1.27,front=nose+.08;
+ // Contour orientation controls outer wall facing. No rear cap is needed:
+ // it is visually and geometrically seated inside the existing open rails.
+ const signed=yz.reduce((sum,p,i)=>{
+  const q=yz[(i+1)%yz.length];
+  return sum+p[0]*q[1]-q[0]*p[1];
+ },0);
+ for(let i=0;i<yz.length;i++){
+  const [z0,y0]=yz[i],[z1,y1]=yz[(i+1)%yz.length];
+  const a:V=[rear,y0,z0],b:V=[front,y0,z0],
+   c:V=[front,y1,z1],d:V=[rear,y1,z1];
+  if(signed>0)quad(a,b,c,d);else quad(a,d,c,b);
+ }
+ // The front face is a U, NOT a closed square covering the barrel mouth.
+ const contour=yz.map(([z,y])=>new THREE.Vector2(z,y));
+ for(const [i,j,k] of THREE.ShapeUtils.triangulateShape(contour,[])){
+  const a:V=[front,yz[i][1],yz[i][0]],
+   b:V=[front,yz[j][1],yz[j][0]],
+   c:V=[front,yz[k][1],yz[k][0]];
+  const faceX=(b[1]-a[1])*(c[2]-a[2])-
+   (b[2]-a[2])*(c[1]-a[1]);
+  if(faceX>0)tri(a,b,c);else tri(a,c,b);
+ }
+ // Short, shared nose crown: this genuinely connects the upper shoulders.
+ // No bridge runs down the open barrel channel.
+ const x0=nose-.60,x1=nose+.08;
+ const y0=3.47,y1=3.69,z0=-1.27,z1=1.27;
+ quad([x0,y1,z0],[x0,y1,z1],[x1,y1,z1],[x1,y1,z0]); // top
+ quad([x1,y0,z0],[x1,y1,z0],[x1,y1,z1],[x1,y0,z1]); // muzzle face
+ quad([x0,y0,z1],[x0,y1,z1],[x0,y1,z0],[x0,y0,z0]); // back
+ quad([x0,y0,z0],[x0,y1,z0],[x1,y1,z0],[x1,y0,z0]); // left
+ quad([x1,y0,z1],[x1,y1,z1],[x0,y1,z1],[x0,y0,z1]); // right
+ // One raised, stubby trapezoidal sight crest attached to the crown.
+ // Skips the hidden bottom face; four broad faces and one flat crown.
+ const sx0=nose-.44,sx1=nose+.03,by=y1,ty=3.99;
+ const lo:V[]=[[sx0,by,-.56],[sx1,by,-.56],
+  [sx1,by,.56],[sx0,by,.56]];
+ const hi:V[]=[[sx0+.055,ty,-.38],[sx1-.055,ty,-.38],
+  [sx1-.055,ty,.38],[sx0+.055,ty,.38]];
+ quad(hi[0],hi[3],hi[2],hi[1]);
+ for(let i=0;i<4;i++){
+  const j=(i+1)%4;
+  quad(lo[i],lo[j],hi[j],hi[i]);
+ }
+ const geometry=new THREE.BufferGeometry();
+ geometry.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));
+ geometry.computeVertexNormals();
+ geometry.computeBoundingBox();geometry.computeBoundingSphere();
+ return geometry;
+}
+
 /** Presentation contacts always come from the authored shape, not a Glock. */
 export function m9ArtSockets(id:M9AppearanceId){
  const a=M9_ART[id],heel=(a.gripRear+a.gripFront)/2;
@@ -54,7 +125,7 @@ export function m9ArtSockets(id:M9AppearanceId){
   supportGrip:Object.freeze({x:heel+.69,y:-3.48,z:.77}),
   slideGrip:Object.freeze({x:-5.25,y:1.50,z:0}),
   magazineBase:Object.freeze({x:heel,y:a.heel-.19,z:0}),
-  sightLine:Object.freeze({x:-.85,y:3.56,z:0}),
+  sightLine:Object.freeze({x:-.85,y:3.99,z:0}),
   holsterPivot:Object.freeze({x:heel,y:-4.08,z:0})
  });
 }
@@ -149,9 +220,9 @@ export function buildM9Appearance(id:M9AppearanceId,
  // The lower rear band is tall enough to carry controls and serrations;
  // the forward open rails remain low so the exposed cylinder stays dominant.
  const sideRail:Outline=[
-  [-2.74,SLIDE_BOTTOM],[a.nose-.42,SLIDE_BOTTOM],
-  [a.nose,SLIDE_BOTTOM+.28],[a.nose,1.55],
-  [a.nose-.39,1.72],[-2.74,1.72]
+  [-2.74,SLIDE_BOTTOM],[a.nose-1.30,SLIDE_BOTTOM],
+  [a.nose-1.18,SLIDE_BOTTOM+.28],[a.nose-1.18,1.55],
+  [a.nose-1.30,1.72],[-2.74,1.72]
  ];
  for(const side of [-1,1]){
   const rail=addOutline(root,'barrel',id,n++,sideRail,RAIL_DEPTH,slideMaterial);
@@ -164,56 +235,50 @@ export function buildM9Appearance(id:M9AppearanceId,
  barrel.position.y=BARREL_Y;
  barrel.name='family-barrel-'+id+'-visible-open-top-barrel';
  barrel.userData.m9ExposedBarrel=true;
- // D5: extend the *same physical U* rearward along the low side rails.
- // The short front crown bridge connects its cheeks and carries the sight;
- // only the final nose is bridged, preserving an open top behind it.
- // The local XY cross-section becomes world Z/Y after 90-degree Y rotation.
- const cross:readonly (readonly [number,number])[]=[
-  [-1.63,3.02],[-1.63,1.27],[-1.25,.95],
-  [1.25,.95],[1.63,1.27],[1.63,3.02],
-  [1.12,3.02],[1.12,1.62],[-1.12,1.62],[-1.12,3.02]
- ];
- const wrapShape=new THREE.Shape();
- wrapShape.moveTo(cross[0][0],cross[0][1]);
- for(const [u,v] of cross.slice(1))wrapShape.lineTo(u,v);
- wrapShape.closePath();
- const wrapGeometry=new THREE.ExtrudeGeometry(wrapShape,{
-  depth:1.45,steps:1,bevelEnabled:false,curveSegments:1
- });
- wrapGeometry.rotateY(Math.PI/2);
- wrapGeometry.translate(a.nose-1.37,0,0);
- const wrap=new THREE.Mesh(wrapGeometry,slideMaterial);
- wrap.name='family-barrel-'+id+'-open-muzzle-wrap';
+ // D6: physically connected single faceted front shell, short crown and
+ // stubby front sight. The exposed barrel and open slide remain independent.
+ const wrap=new THREE.Mesh(m9UnifiedFrontShell(a.nose),slideMaterial);
+ wrap.name='family-barrel-'+id+'-unified-open-muzzle-and-sight';
  wrap.userData.m9NoseBridge=true;
  wrap.userData.m9FrontUWrap=true;
+ wrap.userData.m9FrontWrapCrown=true;
+ wrap.userData.m9AttachedFrontSight=true;
+ wrap.userData.m9UnifiedNose=true;
  wrap.castShadow=true;wrap.receiveShadow=true;root.add(wrap);
- // A shallow front cap ties both side cheeks together (not a long roof).
- // Its top physically carries the longer, squat Beretta front sight.
- const wrapCrown=cuboid('barrel',a.nose-.30,3.22,0,
-  .78,.43,3.26,slideMaterial);
- wrapCrown.userData.m9FrontWrapCrown=true;
 
- // A compact darker six-facet muzzle crown reads clearly from front/quarter
- // without expanding the actual cylinder diameter or plugging the open top.
- const tip=addFacetedTube(root,'barrel',id,n++,a.barrelEnd-.22,
-  a.barrelEnd+.035,BARREL_RADIUS*.76,muzzleMaterial);
- tip.position.y=BARREL_Y;
+ // D6: front-facing low-triangle dark muzzle inset, not a second tiny tube.
+ // One planar six-facet cap, with no hidden cylindrical walls or back cap.
+ const mouthPositions:number[]=[a.barrelEnd+.038,BARREL_Y,0];
+ const mouthIndices:number[]=[];
+ const mouthR=BARREL_RADIUS*.75;
+ for(let k=0;k<6;k++){
+  const theta=k*Math.PI/3;
+  mouthPositions.push(a.barrelEnd+.038,
+   BARREL_Y+mouthR*Math.cos(theta),mouthR*Math.sin(theta));
+ }
+ for(let k=0;k<6;k++){
+  mouthIndices.push(0,k+1,(k+1)%6+1);
+ }
+ const mouthGeometry=new THREE.BufferGeometry();
+ mouthGeometry.setAttribute('position',
+  new THREE.Float32BufferAttribute(mouthPositions,3));
+ mouthGeometry.setIndex(mouthIndices);mouthGeometry.computeVertexNormals();
+ const tip=new THREE.Mesh(mouthGeometry,muzzleMaterial);
+ tip.name='family-barrel-'+id+'-low-poly-muzzle-face';
  tip.userData.m9MuzzleCrown=true;
+ tip.castShadow=false;root.add(tip);
 
- // D5: taller/leaner hammer without changing the long D4 beavertail.
+ // D6: compact hooked crown, narrow upright stem. Not an antenna or fin.
+ // Retain the long approved rear beavertail without adding ring micro-detail.
  const hammer:Outline=[
-  [-8.81,2.42],[-9.06,2.76],[-9.35,4.22],
-  [-9.12,4.43],[-8.89,4.31],[-8.72,3.10]
+  [-8.82,2.45],[-9.07,2.76],[-9.27,3.58],
+  [-9.44,4.00],[-9.16,4.13],[-8.93,3.97],[-8.78,3.18]
  ];
- const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.52,slideMaterial);
+ const hammerMesh=addOutline(root,'receiver',id,n++,hammer,1.16,slideMaterial);
  hammerMesh.userData.m9Hammer=true;
 
  // Oversize, uncomplicated rear and front sights.
  cuboid('barrel',-7.93,3.30,0,.53,.37,1.22,slideMaterial);
- // D5: broaden sight front-to-back and root its base into the nose cap.
- const frontSight=cuboid('barrel',a.nose-.32,3.55,0,
-  .83,.40,1.14,slideMaterial);
- frontSight.userData.m9AttachedFrontSight=true;
  // D4: slope matches the actual heel rather than leaving a triangular gap
  // above a horizontal box. Upper face penetrates the butt by 0.15 units.
  const plateProfile:Outline=[
@@ -228,35 +293,72 @@ export function buildM9Appearance(id:M9AppearanceId,
  floorplate.userData.m9HeelContact=true;
 
  if(showDetails){
-  // Panels sweep with the real grip, not isolated upright dark trapezoids.
-  // Both face pieces are slim broad wedges embedded into the sculpted butt.
+  // D6: factory panels are large side-plane facets, not extruded slabs.
+  // Five landmarks follow the actual frame sweep on each *distinct* grip.
   const gripPanel:Outline=a.straightGrip?[
-   [-8.12,-1.64],[-4.57,-1.64],
-   [a.gripFront-.12,a.heel+.76],
-   [a.gripRear+.68,a.heel+.60],[-8.46,-4.00]
+   [-7.80,-2.10],[-5.14,-2.12],
+   [a.gripFront-.45,a.heel+.82],
+   [a.gripRear+.64,a.heel+.69],[-8.34,-4.31]
   ]:[
-   [-8.25,-1.64],[-4.58,-1.72],
-   [a.gripFront-.12,a.heel+.77],
-   [a.gripRear+.82,a.heel+.59],[-8.80,-4.02]
+   [-8.03,-2.12],[-5.27,-2.17],
+   [a.gripFront-.57,a.heel+.83],
+   [a.gripRear+.81,a.heel+.66],[-8.92,-4.90]
   ];
+  const panelVertices:number[]=[],panelIndices:number[]=[];
+  const panelTriangles=THREE.ShapeUtils.triangulateShape(
+   gripPanel.map(([x,y])=>new THREE.Vector2(x,y)),[]);
   for(const side of [-1,1]){
-   const panelMaterial=clay?HK_BLACK_METAL:a.rail?M9A3_GRIP_PANEL:gripMaterial;
-   const pad=addOutline(root,'grip',id,n++,gripPanel,.13,panelMaterial);
-   pad.position.z=side*(FRAME_DEPTH/2+.012);
-   pad.userData.m9GripPanel=true;
+   const z=side*(FRAME_DEPTH/2+.022),at=panelVertices.length/3;
+   for(const [x,y] of gripPanel)panelVertices.push(x,y,z);
+   for(const [i,j,k] of panelTriangles){
+    const p=gripPanel[i],q=gripPanel[j],r=gripPanel[k];
+    const cross=(q[0]-p[0])*(r[1]-p[1])-
+     (q[1]-p[1])*(r[0]-p[0]);
+    if(cross*side>0)panelIndices.push(at+i,at+j,at+k);
+    else panelIndices.push(at+i,at+k,at+j);
+   }
   }
+  const panelGeo=new THREE.BufferGeometry();
+  panelGeo.setAttribute('position',
+   new THREE.Float32BufferAttribute(panelVertices,3));
+  panelGeo.setIndex(panelIndices);panelGeo.computeVertexNormals();
+  const panelMaterial=a.rail?M9A3_GRIP_PANEL:gripMaterial;
+  const panel=new THREE.Mesh(panelGeo,panelMaterial);
+  panel.name='family-grip-'+id+'-batched-raked-panels';
+  panel.userData.m9GripPanelBatch=true;
+  panel.userData.m9GripPanel=true;
+  panel.castShadow=false;root.add(panel);
   // D5: grooves belong to the *broad lower skirt*, not the tapering
   // upper slide; move forward, keep their short forward slope and roof gap.
   // One indexed mesh for both side faces (no mesh per mark).
   const positions:number[]=[],index:number[]=[];
   for(const side of [-1,1]){
-   for(let i=0;i<4;i++){
-    const x=-5.97+i*.58,z=side*(SLIDE_DEPTH/2+.028);
+   for(let i=0;i<3;i++){
+    const x=-5.91+i*.80,z=side*(SLIDE_DEPTH/2+.028);
     const at=positions.length/3;
     positions.push(x,.70,z,x+.22,.70,z,
      x+.68,2.04,z,x+.46,2.04,z);
     if(side>0)index.push(at,at+1,at+2,at,at+2,at+3);
     else index.push(at,at+2,at+1,at,at+3,at+2);
+   }
+  }
+  // D6: two decocker silhouette paddles share the existing dark surface
+  // batch. No extruded lever bodies or extra draw calls.
+  const lever:Outline=[
+   [-8.46,1.98],[-7.73,1.98],[-7.19,1.60],
+   [-7.62,1.34],[-8.88,1.52]
+  ];
+  const leverTris=THREE.ShapeUtils.triangulateShape(
+   lever.map(([x,y])=>new THREE.Vector2(x,y)),[]);
+  for(const side of [-1,1]){
+   const z=side*(SLIDE_DEPTH/2+.10),at=positions.length/3;
+   for(const [x,y] of lever)positions.push(x,y,z);
+   for(const [i,j,k] of leverTris){
+    const p=lever[i],q=lever[j],r=lever[k];
+    const cross=(q[0]-p[0])*(r[1]-p[1])-
+     (q[1]-p[1])*(r[0]-p[0]);
+    if(cross*side>0)index.push(at+i,at+j,at+k);
+    else index.push(at+i,at+k,at+j);
    }
   }
   const marksGeometry=new THREE.BufferGeometry();
@@ -265,35 +367,21 @@ export function buildM9Appearance(id:M9AppearanceId,
   marksGeometry.setIndex(index);marksGeometry.computeVertexNormals();
   const marks=new THREE.Mesh(marksGeometry,dark);
   marks.name='family-barrel-'+id+'-serration-batch';
-  marks.userData.m9SerrationBatch=true;marks.castShadow=false;
+  marks.userData.m9SerrationBatch=true;
+  marks.userData.m9DecockerBatched=true;
+  marks.castShadow=false;
   root.add(marks);
 
-  // Lowered decocker sits on the taller broad skirt with the safety dot.
-  const lever:Outline=[
-   [-8.46,1.98],[-7.73,1.98],[-7.19,1.60],
-   [-7.62,1.34],[-8.88,1.52]
-  ];
-  for(const side of [-1,1]){
-   const decocker=addOutline(root,'receiver',id,n++,lever,.20,dark);
-   decocker.position.z=side*(SLIDE_DEPTH/2+.09);
-   decocker.userData.m9DecockerCue=true;
-  }
-  // One six-facet red indicator on EACH broad lower slide face.
-  // All 12 flat colored facets share one indexed object and one pooled
-  // matte accent. It is a visual safety cue, not an operable control.
+  // D6: two conspicuous red diamonds, two triangles per side.
+  // More rounded micro-facets were invisible in actual gameplay captures.
   const dotPositions:number[]=[],dotIndices:number[]=[];
   for(const side of [-1,1]){
-   const z=side*(SLIDE_DEPTH/2+.032),center=dotPositions.length/3;
+   const z=side*(SLIDE_DEPTH/2+.033),at=dotPositions.length/3;
    const cx=-8.13,cy=1.06,r=.18;
-   dotPositions.push(cx,cy,z);
-   for(let i=0;i<6;i++){
-    const angle=i*Math.PI/3;
-    dotPositions.push(cx+Math.cos(angle)*r,cy+Math.sin(angle)*r,z);
-   }
-   for(let i=0;i<6;i++){
-    if(side>0)dotIndices.push(center,center+1+i,center+1+(i+1)%6);
-    else dotIndices.push(center,center+1+(i+1)%6,center+1+i);
-   }
+   dotPositions.push(cx-r,cy,z,cx,cy+r,z,
+    cx+r,cy,z,cx,cy-r,z);
+   if(side>0)dotIndices.push(at,at+2,at+1,at,at+3,at+2);
+   else dotIndices.push(at,at+1,at+2,at,at+2,at+3);
   }
   const safetyGeom=new THREE.BufferGeometry();
   safetyGeom.setAttribute('position',new THREE.Float32BufferAttribute(dotPositions,3));
@@ -303,66 +391,14 @@ export function buildM9Appearance(id:M9AppearanceId,
   dots.userData.m9RedSafetyDots=true;dots.castShadow=false;
   root.add(dots);
 
-  // Three deliberate frame-side identifiers in ONE shared indexed mesh:
-  // big slide stop, takedown disc, and high magazine-release button.
-  // They are non-operational visual cues, deliberately asymmetric.
-  const controlPositions:number[]=[],controlIndices:number[]=[];
-  const quad=(points:readonly (readonly [number,number])[],z:number)=>{
-   const at=controlPositions.length/3;
-   for(const [x,y] of points)controlPositions.push(x,y,z);
-   controlIndices.push(at,at+1,at+2,at,at+2,at+3);
-  };
-  quad([[-3.87,-.32],[-2.92,-.32],[-2.71,-.10],[-3.74,-.10]],
-   FRAME_DEPTH/2+.038);
-  quad([[-4.81,-1.78],[-4.43,-1.78],[-4.43,-1.40],[-4.81,-1.40]],
-   FRAME_DEPTH/2+.045);
-  for(const side of [-1,1]){
-   const z=side*(FRAME_DEPTH/2+.045),cx=-.43,cy=-.30,r=.23;
-   const center=controlPositions.length/3;
-   controlPositions.push(cx,cy,z);
-   for(let k=0;k<6;k++){
-    const theta=k*Math.PI/3;
-    controlPositions.push(cx+r*Math.cos(theta),cy+r*Math.sin(theta),z);
-   }
-   for(let k=0;k<6;k++){
-    if(side>0)controlIndices.push(center,center+1+k,center+1+(k+1)%6);
-    else controlIndices.push(center,center+1+(k+1)%6,center+1+k);
-   }
-  }
-  const controlGeo=new THREE.BufferGeometry();
-  controlGeo.setAttribute('position',
-   new THREE.Float32BufferAttribute(controlPositions,3));
-  controlGeo.setIndex(controlIndices);controlGeo.computeVertexNormals();
-  const controls=new THREE.Mesh(controlGeo,dark);
-  controls.name='family-receiver-'+id+'-iconic-control-batch';
-  controls.userData.m9FrameControlBatch=true;
-  controls.castShadow=false;root.add(controls);
+
  }
  if(a.rail){
   // A3-only, readable under-frame rail; sits in dust-cover mass instead of
   // an extra long floating rectangle.
   const rail=cuboid('receiver',4.80,-.86,0,2.65,.51,1.96,frameMaterial);
   rail.userData.m9AccessoryRail=true;
-  // Three broad slot cues in a single plane, no individual hardware mesh.
-  const slotPositions:number[]=[],slotIndices:number[]=[];
-  for(const side of [-1,1]){
-   const z=side*(1.96/2+.024);
-   for(let k=0;k<3;k++){
-    const x=3.84+k*.61,at=slotPositions.length/3;
-    slotPositions.push(x,-1.09,z,x+.18,-1.09,z,
-     x+.18,-.91,z,x,-.91,z);
-    if(side>0)slotIndices.push(at,at+1,at+2,at,at+2,at+3);
-    else slotIndices.push(at,at+2,at+1,at,at+3,at+2);
-   }
-  }
-  const slotGeometry=new THREE.BufferGeometry();
-  slotGeometry.setAttribute('position',
-   new THREE.Float32BufferAttribute(slotPositions,3));
-  slotGeometry.setIndex(slotIndices);slotGeometry.computeVertexNormals();
-  const slots=new THREE.Mesh(slotGeometry,dark);
-  slots.name='family-receiver-'+id+'-rail-slot-batch';
-  slots.userData.m9RailSlots=true;slots.castShadow=false;
-  root.add(slots);
+
  }
  root.userData.m9ArtLandmarks=Object.freeze({
   rearX:SLIDE_REAR,noseX:a.nose,muzzleX:a.barrelEnd,
@@ -374,7 +410,7 @@ export function buildM9Appearance(id:M9AppearanceId,
   muzzleWrapEndX:a.nose+.08,
   upperBridgeFrontX:-1.22,beavertailRearX:-11.45,
   upperRoofInset:.14,lowerSlideTopY:2.16,
-  frontWrapDepth:1.45,
+  frontWrapDepth:1.35,
   serrationBottomY:.70,serrationTopY:2.04,
   rail:a.rail,threaded:a.threaded
  });

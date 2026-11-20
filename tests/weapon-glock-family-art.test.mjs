@@ -257,13 +257,12 @@ test('G2.7: muzzle front face cue joins existing detail batch with +X front norm
   }finally{clearGlockAppearance(g);}
  }
 });
-test('G2.9: no dev gallery modes; hero uses three-quarter and thumbnails use side view',()=>{
+test('D6: no dev gallery modes; hero and thumbnails both use common side view',()=>{
  const source=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
  assert.match(source,/glockPreviewFitDistance/);
  assert.match(source,/this\.camera\.position\.set/);
- assert.match(source,/const isCard=size==='card'/);
- assert.match(source,/center\.x\+\(isCard\?0:distance\*\.29\)/);
- assert.match(source,/center\.y\+\(isCard\?0:distance\*\.10\)/);
+ assert.match(source,/this\.camera\.position\.set\(center\.x,center\.y,center\.z\+distance\)/);
+ assert.doesNotMatch(source,/isCard\?0:distance/);
  assert.doesNotMatch(source,/FAMILY SCALE|MP5K PEER|ONE CAMERA|type View=/);
  assert.doesNotMatch(source,/readPrepared|operatorPicker|equipFreshSecondary/);
 });

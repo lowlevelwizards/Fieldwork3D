@@ -163,12 +163,12 @@ test('G2.8 dedicated secondary Workbench edits only weapon variants, not equipme
  assert.ok(!gallery.includes('MP5K PEER'));
 });
 
-test('G2.9: secondary factory and saved thumbnails share side view and equal green card geometry',()=>{
+test('D6: secondary factory/saved cards and hero share side view, equal green card geometry',()=>{
  const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
- assert.match(gallery,/const isCard=size==='card'/);
- assert.match(gallery,/center\.x\+\(isCard\?0:distance\*\.29\)/);
- assert.match(gallery,/center\.y\+\(isCard\?0:distance\*\.10\)/);
+ assert.match(gallery,/this\.camera\.position\.set\(center\.x,center\.y,center\.z\+distance\)/);
+ assert.doesNotMatch(gallery,/isCard\?0:distance/,
+  'main hero now uses the same side profile as factory/saved cards');
  assert.match(gallery,/renderer\.render\(ref\.id,'card',/);
  assert.match(gallery,/choice\.kind==='saved'\?choice\.build\.recipe\.customization:undefined/);
  // P11 shares the card DOM author: verify that it retains G2.9 parity.
