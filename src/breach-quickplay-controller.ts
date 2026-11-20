@@ -8,6 +8,8 @@ import type {FavoriteMission} from './breach-mission-favorites.ts';
 import type {RosterState} from './breach-roster.ts';
 import type {FieldInventory,FieldCarryLocation} from './equipment-field-inventory.ts';
 import type {CarryGearSlot} from './equipment-carry-gear-change.ts';
+import type {LoadoutSlot} from './equipment-loadouts.ts';
+import type {WeaponId} from './breach-combat.ts';
 import type {MissionStartSnapshot} from './breach-mission-restart.ts';
 import type {Site,SiteScale} from './breach-site.ts';
 import type {OperationKind} from './breach-operations.ts';
@@ -30,6 +32,8 @@ export type QuickPlayControllerHooks={
   equipFieldInventory:(id:string,inventory:FieldInventory)=>boolean;
   moveMagazine?:(id:string,magazineId:string,to:FieldCarryLocation)=>boolean;
   equipCarryGear?:(id:string,slot:CarryGearSlot,itemId:string)=>boolean;
+  equipGear?:(id:string,slot:LoadoutSlot,itemId:string)=>boolean;
+  equipWeapon?:(id:string,weapon:WeaponId)=>boolean;
   copyCarryLayout?:(sourceId:string,targetId:string)=>boolean;
   getScale:()=>SiteScale;
   getMode:()=>CampaignMode;
@@ -158,6 +162,7 @@ const configurator=createQuickPlayConfigurator({
   getRoster:config.getRoster,onEquipField:config.equipFieldInventory,
   onMoveMagazine:config.moveMagazine,
   onEquipCarryGear:config.equipCarryGear,
+  onEquipGear:config.equipGear,onEquipWeapon:config.equipWeapon,
   onCopyCarryLayout:config.copyCarryLayout,
   randomSeed:config.randomSeed,
   onGenerate:settings=>{void launchQuickPlay(settings);},
