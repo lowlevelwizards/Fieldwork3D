@@ -65,6 +65,7 @@ import {FIELD_STOCK_PACKS,FIELD_STOCK_LIMIT}
  from './equipment-campaign-field-stock.ts';
 import {FieldInventoryUndoHistory} from './equipment-field-undo.ts';
 import {campaignIntelBalance,contractObjectiveIntel} from './campaign-state.ts';
+import {projectOperationsSummary} from './ui/campaign/operations-summary.ts';
 import './campaign-style.css';
 import {buildQuickLoadoutGroups,loadoutGroupForSlot,QUICK_LOADOUT_GROUPS,
  type QuickLoadoutGroup} from './ui/quick-loadout-groups.ts';
@@ -399,6 +400,9 @@ export class CampaignScreen{
   this.disposePreview();
   this.lastArmoryRenderedId=null;
   this.root.hidden=false;this.root.replaceChildren();
+  // UXR-01 theme study: query-only visual trial, never a saved campaign setting.
+  const trial=new URLSearchParams(window.location.search).get('uxTheme');
+  this.root.dataset.fwTheme=trial==='cold'||trial==='ledger'?trial:'industrial';
   const main=node('main','campaign-shell campaign-wide');
   const top=node('div','campaign-head');
   const title=node('div','campaign-heading');
@@ -1096,10 +1100,9 @@ export class CampaignScreen{
   const overview=node('section','campaign-section campaign-overview');
   overview.append(node('h2','','OPERATIONS DASHBOARD'));
   // The first viewport describes a decision instead of showing a lone button.
-  const availableContracts=c.contracts.filter(k=>
-   k.status==='available'&&k.deadline>=c.day);
-  const leadCase=[...availableContracts].sort((a,b)=>
-   a.deadline-b.deadline||a.id.localeCompare(b.id))[0];
+  const operations=projectOperationsSummary(c);
+  const availableContracts=operations.cases;
+  const leadCase=operations.leadCase;
   const nextCard=node('section','campaign-next-action');
   nextCard.append(node('div','campaign-next-action-eyebrow',
    accepted?'DEPLOYMENT IN PROGRESS':
@@ -1165,66 +1168,40 @@ export class CampaignScreen{
    department.append(progress);
    overview.append(department);
   }
-  const stats=node('div','campaign-overview-stats');
-  const available=c.operators.filter(o=>
-   (o.status==='available'||o.status==='reserve')&&o.recoveryDays===0).length;
+  // UXR-03: one compact, truthful readiness summary and contextual blockers.
+  const readiness=node('section','campaign-readiness campaign-uxr-readiness');
+  readiness.append(node('h2','','DEPLOYMENT STATUS'));
+  const statusStrip=node('div','campaign-uxr-status-strip');
   for(const [value,label] of [
-   [String(available),'READY'],[String(c.squadIds.length),'ASSIGNED'],
-   [String(c.contracts.filter(k=>k.status==='available'&&k.deadline>=c.day).length),'CONTRACTS']
-  ]){
-   const stat=node('div','campaign-stat');
-   stat.append(node('strong','',value),node('span','',label));stats.append(stat);
-  }
-  overview.append(stats);
-  const suppliesSummary=node('p','campaign-note',
-   'SUPPLIES · '+c.supplies.ammo+' ROUNDS · '+c.supplies.medical+
-   ' MEDICAL KITS · '+c.supplies.flash+' FLASHBANGS');
-  overview.append(suppliesSummary);
-  const readiness=node('div','campaign-readiness');
-  readiness.append(node('h2','','DEPLOYMENT READINESS'));
-  const assigned=c.operators.filter(o=>c.squadIds.includes(o.id));
-  const recovering=assigned.filter(o=>o.recoveryDays>0);
-  // Callsigns are shown in Squad; keep the home readiness view actionable.
-  const checks=[
-   {attention:assigned.length<4,label:assigned.length+' / 4 SQUAD SLOTS FILLED',
-    action:'personnel' as const},
-   {attention:recovering.length>0,
-    label:recovering.length+' ASSIGNED OPERATOR'+(recovering.length===1?'':'S')+
-     ' RECOVERING',action:'personnel' as const},
-   {attention:c.supplies.ammo<60,
-    label:'LOW AMMUNITION RESERVE · '+c.supplies.ammo+' ROUNDS IN STOCK',
-    action:'logistics' as const},
-   {attention:c.supplies.medical===0,
-    label:'NO SPARE MEDICAL KITS IN STOCK',action:'logistics' as const}
-  ];
-  for(const check of checks){
-   if(!check.attention)continue;
-   const item=button(check.label,()=>{
-    activateTab(check.action)
-   },'campaign-readiness-warning');
-   readiness.append(item);
-  }
-  if(!checks.some(check=>check.attention)){
-   readiness.append(node('p','campaign-readiness-ok',
-    'SQUAD ASSIGNED · BASE RESERVES AVAILABLE'));
-  }
-  overview.append(readiness);
-  const shortcuts=node('div','campaign-overview-actions');
-  for(const [tab,label] of [
-   ['personnel','MANAGE PERSONNEL'],
-   ['logistics','SUPPLIES & ARMORY']
+   [operations.ready+'/4','READY'],
+   [String(availableContracts.length),'OPEN CASES'],
+   [String(c.supplies.ammo),'HQ ROUNDS'],
+   [String(c.supplies.medical),'MEDICAL']
   ] as const){
-   shortcuts.append(button(label,()=>{
-    activateTab(tab)
-   }));
+   const cell=node('div','campaign-uxr-status');
+   cell.append(node('strong','',value),node('span','',label));
+   statusStrip.append(cell);
   }
-  // Keep action and readiness together in both DOM order and screen layout.
-  // Supplementary status, shortcuts and department details form a separate area.
+  readiness.append(statusStrip);
+  if(!operations.attention.length)
+   readiness.append(node('p','campaign-readiness-ok','TEAM READY · NO URGENT LOGISTICS ALERTS'));
+  for(const alert of operations.attention){
+   const destination=alert.destination;
+   const warning=button(alert.label,()=>activateTab(destination),'campaign-readiness-warning');
+   warning.setAttribute('aria-label',alert.label+' · OPEN '+
+    (destination==='personnel'?'SQUAD':'SUPPLY'));
+   readiness.append(warning);
+  }
+  const shortcuts=node('nav','campaign-uxr-quicklinks');
+  shortcuts.setAttribute('aria-label','Other HQ departments');
+  for(const [tab,label] of [
+   ['personnel','SQUAD'],['logistics','SUPPLY']
+  ] as const)shortcuts.append(button(label,()=>activateTab(tab)));
   const workspace=node('div','campaign-overview-workspace');
   const priority=node('div','campaign-overview-priority');
   const support=node('div','campaign-overview-support');
   priority.append(nextCard,readiness);
-  support.append(stats,suppliesSummary,shortcuts);
+  support.append(shortcuts);
   const department=overview.querySelector<HTMLElement>('.campaign-department-identity');
   if(department)support.append(department);
   workspace.append(priority,support);
