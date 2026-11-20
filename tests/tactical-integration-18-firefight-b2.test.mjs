@@ -43,7 +43,7 @@ test('B5 weapon identities differ, suppressors reduce transients and hidden hits
 });
 test('B6 presentation consumes shot IDs and visibility, never chooses hit results',()=>{
  const three=readFileSync(new URL('../src/breach-3d.ts',import.meta.url),'utf8');
- const main=readFileSync(new URL('../src/breach-main.ts',import.meta.url),'utf8');
+ const audio=readFileSync(new URL('../src/breach-audio-controller.ts',import.meta.url),'utf8');
  assert.match(three,/this\.recentMuzzleShots\.rebuild\(s\.shots\)/,
   'scene indexes only the real authoritative recorded shot history');
  assert.match(three,/mostRecentActiveMuzzleShot\(\s*this\.recentMuzzleShots\.forShooter\(actor\.id\),actor\.id,/,
@@ -53,9 +53,9 @@ test('B6 presentation consumes shot IDs and visibility, never chooses hit result
   'shared event resolver must still use exact shot age and muzzle attachment');
  assert.match(three,/impactPulse\(shot\.surface\?\?'dust',shot\.age/);
  assert.match(three,/shotVisibility\(s,shot\)\.flash/);
- assert.match(main,/audibleImpact\(shotVisibility\(state,shot\)\.impact/);
- assert.match(main,/weaponAudioCue\(weapon,/);
- assert.match(main,/fresh\.slice\(-3\)/,'audio voices remain bounded');
+ assert.match(audio,/audibleImpact\(shotVisibility\(state,shot\)\.impact/);
+ assert.match(audio,/weaponAudioCue\(weapon,/);
+ assert.match(audio,/if\(freshShots\.length===3\)freshShots\.shift\(\)/,'audio voices remain bounded');
 });
 
 test('encounter regression: no false initial audio suspicion; real gunfire interrupts',()=>{
