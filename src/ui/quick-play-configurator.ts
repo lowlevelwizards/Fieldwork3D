@@ -8,9 +8,11 @@ import {defaultQuickPlaySettings,QUICK_PLAY_BUILDINGS,
  type QuickPlayCivilians,type QuickPlayObjectiveIntel} from '../quick-play-settings.ts';
 import type {BuildingArchetype} from '../breach-site.ts';
 import type {RosterState} from '../breach-roster.ts';
-import {itemsForSlot} from '../equipment-catalog.ts';
+import {itemsForSlot,LOADOUT_SLOTS} from '../equipment-catalog.ts';
+import type {LoadoutSlot} from '../equipment-loadouts.ts';
+import type {WeaponId} from '../breach-combat.ts';
 import type {CarryGearSlot} from '../equipment-carry-gear-change.ts';
-import {attachCarryGearChangePreview} from './carry-gear-change-controls.ts';
+import {createOutfitterGallery} from './campaign-outfitter-gallery.ts';
 import {initialFieldInventory,type FieldInventory,type FieldCarryLocation} from '../equipment-field-inventory.ts';
 import {FieldInventoryUndoHistory} from '../equipment-field-undo.ts';
 import {createFieldGadgetEditor} from './field-gadget-editor.ts';
@@ -82,6 +84,8 @@ export function createQuickPlayConfigurator(options:{
  onEquipField?:(id:string,inventory:FieldInventory)=>boolean;
  onMoveMagazine?:(id:string,magazineId:string,to:FieldCarryLocation)=>boolean;
  onEquipCarryGear?:(id:string,slot:CarryGearSlot,itemId:string)=>boolean;
+ onEquipGear?:(id:string,slot:LoadoutSlot,itemId:string)=>boolean;
+ onEquipWeapon?:(id:string,weapon:WeaponId)=>boolean;
  onCopyCarryLayout?:(sourceId:string,targetId:string)=>boolean;
 }){
  let settings=readSettings();
@@ -198,6 +202,7 @@ export function createQuickPlayConfigurator(options:{
  const squadLabel=node('summary','','SQUAD LOADOUT · PREPARE EQUIPMENT');
  const squadContent=node('div','fw-quick-config-advanced-content');
  let selectedSquadMember:string|null=null;
+ let selectedSquadSlot:LoadoutSlot='primary';
  const fieldUndo=new FieldInventoryUndoHistory();
  let squadPreview:CampaignKitPreview|null=null;
  let squadPreviewId:string|null=null;
@@ -220,7 +225,9 @@ export function createQuickPlayConfigurator(options:{
   const previewHost=node('div','fw-prep-operator-viewer fw-quick-config-operator-preview');
   previewHost.setAttribute('aria-label','Rotatable 3D Quick Play operator equipment');
   squadContent.append(previewHost);
-  if(squadPreview&&squadPreviewId!==selected.id)disposeSquadPreview();
+  if(squadPreview&&squadPreviewId!==selected.id){
+   squadPreview.setOperatorId(selected.id);squadPreviewId=selected.id;
+  }
   if(!squadPreview){
    squadPreview=new CampaignKitPreview(previewHost,selected.id,selected.weapon,
     selected.appearanceSeed,selected.loadout,selected.weaponConfiguration,
@@ -232,42 +239,16 @@ export function createQuickPlayConfigurator(options:{
     selected.loadout,selected.weaponConfiguration,selected.magazines,
     selected.wardrobe);
   }
-  // The same preview-first carrier selector as Campaign Armory and the
-  // in-mission operations board. Reuse roster authority, not Quick Play
-  // generator settings or a second equipment save.
-  if(options.onEquipCarryGear){
-   const gearHost=node('section','fw-quick-config-carry-gear');
-   gearHost.setAttribute('aria-label','Operator carrying equipment');
-   gearHost.append(node('strong','fw-quick-config-carry-title','CARRYING EQUIPMENT'));
-   const row=node('div','fw-quick-config-carry-grid');
-   for(const slot of ['rig','belt','backpack'] as const){
-    const wrap=node('div','fw-quick-config-carry-choice');
-    const label=node('label','fw-quick-config-carry-label',slot.toUpperCase());
-    const select=node('select');
-    select.setAttribute('aria-label','Select '+slot+' for '+selected.callsign);
-    for(const item of itemsForSlot(slot)){
-     const option=node('option','',item.name);option.value=item.id;select.append(option);
-    }
-    select.value=selected.loadout.slots[slot];
-    label.append(select);wrap.append(label);
-    attachCarryGearChangePreview({
-     select,host:wrap,slot,kit:selected.loadout,magazines:selected.magazines,
-     onInspect:where=>squadPreview?.highlightCarryLocation(where),
-     onApply:itemId=>{
-      const scroll=content.scrollTop;
-      if(!options.onEquipCarryGear?.(selected.id,slot,itemId))return;
-      renderSquadPrep();content.scrollTop=scroll;
-      const focus=Array.from(squadContent.querySelectorAll<HTMLSelectElement>('select'))
-       .find(el=>el.getAttribute('aria-label')==='Select '+slot+' for '+selected.callsign);
-      focus?.focus({preventScroll:true});
-     }
-    });
-    row.append(wrap);
-   }
-   gearHost.append(row);squadContent.append(gearHost);
-  }
+  // Share the Campaign Armory gallery; physical item editing retains the
+  // existing validated field inventory controls, opened only on demand.
+  const galleryHost=node('div','fw-quick-outfitter-main');
+  const carryPanel=node('section','fw-quick-outfitter-carry');
+  carryPanel.hidden=true;
   const gadgetHost=node('div','fw-quick-config-field-gear');
-  squadContent.append(gadgetHost);
+  carryPanel.append(command('‹ BACK TO EQUIPMENT',()=>{
+   carryPanel.hidden=true;galleryHost.hidden=false;
+  },'fw-quick-outfitter-back'),gadgetHost);
+  squadContent.append(galleryHost,carryPanel);
   const renderGadgets=(operator:typeof selected)=>{
    const applyChange=(targetId:string,inventory:FieldInventory,undo=false)=>{
     const before=options.getRoster?.().members.find(m=>m.id===targetId);
@@ -347,7 +328,85 @@ export function createQuickPlayConfigurator(options:{
     }
    }));
   };
-  renderGadgets(selected);
+  const sources=new Map<LoadoutSlot,HTMLSelectElement>();
+  for(const slot of LOADOUT_SLOTS){
+   if(slot==='tactical')continue;
+   const source=node('select');
+   source.setAttribute('aria-label','Select '+slot+' for '+selected.callsign);
+   for(const item of itemsForSlot(slot)){
+    const option=node('option','',item.name);
+    option.value=item.id;source.append(option);
+   }
+   source.value=selected.loadout.slots[slot];
+   sources.set(slot,source);
+  }
+  const zones=node('nav','fw-quick-outfitter-zones');
+  zones.setAttribute('aria-label','Equipment locations');
+  const zoneButtons=new Map<LoadoutSlot,HTMLButtonElement>();
+  let showGallery:(slot:LoadoutSlot)=>void=()=>{};
+  const chooseSlot=(slot:LoadoutSlot)=>{
+   selectedSquadSlot=slot;
+   for(const [key,control] of zoneButtons)
+    control.setAttribute('aria-current',String(key===slot));
+   showGallery(slot);
+   squadPreview?.setSelectedSlot(slot);
+   squadPreview?.focusOn(slot==='head'?'head':slot==='primary'?'weapon':
+    slot==='armor'||slot==='rig'||slot==='top'?'torso':
+    slot==='backpack'?'back':slot==='belt'||slot==='medical'||slot==='utility'?'belt':
+    slot==='legs'||slot==='feet'?'legs':'full');
+  };
+  for(const [slot,label] of [
+   ['primary','WEAPON'],['head','HEAD'],['armor','ARMOR'],
+   ['rig','CHEST'],['belt','BELT'],['backpack','PACK'],
+   ['medical','MEDICAL'],['utility','TOOLS'],
+   ['top','TOP'],['legs','LEGS'],['hands','HANDS'],['feet','FOOTWEAR']
+  ] as const){
+   const control=command(label,()=>chooseSlot(slot),'fw-quick-outfitter-zone');
+   control.dataset.slot=slot;
+   control.setAttribute('aria-current',String(slot===selectedSquadSlot));
+   zoneButtons.set(slot,control);zones.append(control);
+  }
+  galleryHost.append(zones);
+  const gallery=createOutfitterGallery({
+   host:galleryHost,sources,kit:selected.loadout,magazines:selected.magazines,
+   physicalEditor:gadgetHost,locked:false,
+   renderModel:(slot,itemId)=>squadPreview?.renderModelThumbnail(
+    {kind:'gear',slot,itemId})??null,
+   onEquip:(slot,itemId)=>{
+    let changed=false;
+    if(slot==='primary')
+     changed=options.onEquipWeapon?.(selected.id,itemId.replace(/^primary-/, '') as WeaponId)??false;
+    else if(slot==='rig'||slot==='belt'||slot==='backpack')
+     changed=options.onEquipCarryGear?.(selected.id,slot,itemId)??false;
+    else changed=options.onEquipGear?.(selected.id,slot,itemId)??false;
+    if(changed){const scroll=content.scrollTop;renderSquadPrep();content.scrollTop=scroll;}
+   },
+   onMoveField:()=>{/* Physical inventory editor remains the authority. */},
+   onMoveMagazine:(magazineId,to)=>{
+    if(!options.onMoveMagazine?.(selected.id,magazineId,to))return;
+    const scroll=content.scrollTop;renderSquadPrep();content.scrollTop=scroll;
+   },
+   onAutoPack:()=>{
+    const pack=[...gadgetHost.querySelectorAll<HTMLButtonElement>('button')]
+     .find(el=>el.textContent?.trim()==='AUTO PACK');
+    if(pack&&!pack.disabled)pack.click();
+   },
+   onArsenal:()=>{},arsenalDisabled:true,
+   onInspect:(slot,itemId,kind,location)=>{
+    if(!itemId){squadPreview?.selectItemDot(null);return;}
+    if(kind==='gear')squadPreview?.selectItemDot({kind:'gear',slot,itemId});
+    else squadPreview?.selectItemDot({kind:kind==='field'?'field':'magazine',
+     id:itemId,location});
+   },
+   onSelectCategory:chooseSlot,
+   onAdvanced:()=>{
+    galleryHost.hidden=true;carryPanel.hidden=false;
+    renderGadgets(options.getRoster?.().members.find(m=>m.id===selected.id)??selected);
+   }
+  });
+  showGallery=gallery.show;
+  squadPreview?.setOnTapSlot(slot=>chooseSlot(slot));
+  chooseSlot(selectedSquadSlot);
  };
  squadPrep.append(squadLabel,squadContent);
  squadPrep.addEventListener('toggle',()=>{
