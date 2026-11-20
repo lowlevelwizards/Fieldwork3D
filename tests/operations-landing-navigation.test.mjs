@@ -184,7 +184,8 @@ test('Logistics has stock, replenish actions and armory in task-first DOM order'
  assert.match(logistics,/const logisticsWorkspace=node\('div','campaign-logistics-workspace'\)/);
  assert.match(logistics,/const supplyPanel=node\('section','campaign-logistics-supply-panel'\)/);
  assert.match(logistics,/node\('h2','','RESERVE SUPPLIES'\)/);
- assert.match(logistics,/supplyPanel\.append\(stock,node\('h3','campaign-logistics-buy-heading'/);
+ assert.match(logistics,/supplyPanel\.append\(stock\);/);
+ assert.match(logistics,/supplyPanel\.append\(squadReplenish,node\('h3','campaign-logistics-buy-heading'/);
  assert.match(logistics,/supplyPanel\.append\(purchases\)/);
  assert.match(logistics,/logisticsWorkspace\.append\(supplyPanel\)/);
  assert.match(logistics,/logisticsWorkspace\.append\(inventory\)/);
