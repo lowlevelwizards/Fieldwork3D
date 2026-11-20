@@ -2314,7 +2314,9 @@ export class CampaignScreen{
    const physicalAdvanced=physicalEditor.querySelector<HTMLElement>(
     '.fw-field-inventory-advanced');
    if(physicalAdvanced)advanced.append(physicalAdvanced);
-   advanced.append(issuedMore);
+   // This is the original validated physical inventory editor, not a copy.
+   // The gallery's CARRY CONTENTS action reveals it on demand.
+   advanced.append(physicalEditor,issuedMore);
    editor.append(advanced);
    const galleryRoot=node('div','fw-outfitter-main');
    editor.append(galleryRoot);
