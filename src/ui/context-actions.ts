@@ -4,6 +4,8 @@ export type ContextAction={id:string;label:string;group:'primary'|'advanced'|'st
 export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:string;
   reserve:number;magazine:number;doorOpen?:boolean;doorPartial?:boolean;
+  secondaryIssued?:boolean;secondaryHand?:'primary'|'secondary';
+  secondaryReloadAvailable?:boolean;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
   watchActive?:boolean;
   nearMovable?:boolean;nearWindow?:boolean;nearDoor?:boolean;
@@ -84,6 +86,11 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
       {id:'ctxCarryCivilian',label:'CARRY',group:'primary' as const,
        title:'Physically carry an incapacitated civilian to extraction'}
     ]:[]),
+    ...(o.secondaryIssued?[{id:'ctxSwitchWeapon',group:'advanced' as const,
+      label:o.secondaryHand==='secondary'?'HOLSTER SIDEARM':'DRAW SIDEARM',
+      title:o.secondaryHand==='secondary'?
+        'Plan return to primary at this waypoint':
+        'Plan drawing the actual issued pistol at this waypoint'}]:[]),
     {id:'ctxFlash',label:'FLASH ×'+o.flashRemaining,group:'advanced',
       disabled:o.flashRemaining<=0,title:o.flashRemaining>0?'Choose a flash target':'No flash grenades remaining'},
     {id:'ctxSuppress',label:'SUPPRESS',group:'advanced',
@@ -95,7 +102,12 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     {id:'ctxPace',label:o.pace.toUpperCase(),group:'state',
       pressed:o.pace==='run',title:'Toggle walk and run'},
     {id:'ctxReload',label:'RELOAD',group:'state',
-      disabled:o.reserve<=0,title:o.reserve<=0?'No reserve ammunition':'Queue a reload'},
+      disabled:o.secondaryHand==='secondary'?
+        !o.secondaryReloadAvailable:o.reserve<=0,
+      title:o.secondaryHand==='secondary'?
+        o.secondaryReloadAvailable?'Reload from an issued accessible pistol magazine':
+        'No accessible pistol magazine with more rounds':
+        o.reserve<=0?'No reserve ammunition':'Queue a reload'},
     // Contextual fixtures append AFTER the stable primary order.
     ...(o.nearMovable?[{id:'ctxPush',label:'PUSH',group:'advanced' as const,
       title:'Queue a physical push of nearby light furniture'}]:[]),
