@@ -170,11 +170,27 @@ let last3dUpdateAt=-Infinity;
 let last3dSession:Session|null=null,last3dMode:RuntimeFrameMode|null=null;
 let idle3dSkipped=0;
 let briefing3dWasHeld=false;
-if(idle3dExperiment){
- const markInput=()=>{last3dInputAt=performance.now();};
- for(const event of ['pointerdown','pointermove','touchstart',
-   'touchmove','wheel','keydown'])
-  window.addEventListener(event,markInput,{passive:true});
+// Install presentation-only idle wake listeners only while this runtime is
+// running. Otherwise a stopped/remounted game retains a closure over its
+// entire session and scene graph through window event subscriptions.
+const idleInputEvents=['pointerdown','pointermove','touchstart',
+ 'touchmove','wheel','keydown'] as const;
+let idleInputAttached=false;
+const markIdleInput=()=>{last3dInputAt=performance.now();};
+function attachIdleInputs():void{
+ if(!idle3dExperiment||idleInputAttached)return;
+ for(const event of idleInputEvents)
+  window.addEventListener(event,markIdleInput,{passive:true});
+ idleInputAttached=true;
+}
+function detachIdleInputs():void{
+ if(!idleInputAttached)return;
+ // On real Window this is always present. Keep non-browser test ports that
+ // only supply addEventListener idempotent rather than double-subscribing.
+ if(typeof window.removeEventListener!=='function')return;
+ for(const event of idleInputEvents)
+  window.removeEventListener(event,markIdleInput);
+ idleInputAttached=false;
 }
 // The RAF interval includes the *previous* callback, not the JS that
 // runs after the current RAF fires. Include all preceding diagnostic work.
@@ -731,10 +747,11 @@ function tick(now:number){
  }
  function start():void{
   if(running)return;
+  attachIdleInputs();
   running=true;last=performance.now();scheduleFrame();
  }
  function stop():void{
-  running=false;resetPresentation();
+  running=false;detachIdleInputs();resetPresentation();
  }
  return {start,stop,resetPresentation,toggleProfiler,isProfilerVisible,
   isProfilerRecording};
