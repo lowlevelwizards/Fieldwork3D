@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import {createArsenalGalleryChrome} from '../src/arsenal/gallery-chrome.ts';
+import {createArsenalGalleryCard} from '../src/arsenal/gallery-browser-controls.ts';
 
 class FakeNode{
  constructor(tagName){this.tagName=tagName;this.className='';this.textContent='';
@@ -69,10 +70,41 @@ test('P11: one semantic Arsenal shell preserves separate primary/secondary CSS a
   assert.equal(secondary.heroHint.textContent,'');
  }finally{globalThis.document=prev;}
 });
+test('P11: shared Arsenal card presenter preserves primary and secondary tag/label contracts',()=>{
+ const previous=globalThis.document;
+ globalThis.document={createElement:tag=>new FakeNode(tag)};
+ try{
+  const primary=createArsenalGalleryCard({kind:'primary',name:'M4A1',
+   subtitle:'AR PLATFORM',ariaLabel:'Select M4A1',selected:true});
+  const secondary=createArsenalGalleryCard({kind:'secondary',name:'Glock 19',
+   subtitle:'SAVED · GLOCK',ariaLabel:'Inspect Glock 19',selected:false});
+  assert.equal(primary.button.tagName,'button');
+  assert.equal(secondary.button.tagName,'button');
+  assert.equal(primary.button.type,'button');
+  assert.equal(secondary.button.type,'button');
+  assert.equal(primary.button.className,'arsenal-card');
+  assert.equal(secondary.button.className,'arsenal-card arsenal-glock-card');
+  assert.equal(primary.button.getAttribute('aria-pressed'),'true');
+  assert.equal(secondary.button.getAttribute('aria-pressed'),'false');
+  assert.equal(primary.button.getAttribute('aria-label'),'Select M4A1');
+  assert.equal(secondary.button.getAttribute('aria-label'),'Inspect Glock 19');
+  assert.equal(primary.preview.tagName,'div');
+  assert.equal(secondary.preview.tagName,'span');
+  assert.equal(secondary.preview.className,'arsenal-card-preview arsenal-glock-card-preview');
+  assert.deepEqual(primary.button.children.map(x=>x.tagName),['div','strong','span']);
+  assert.deepEqual(secondary.button.children.map(x=>x.tagName),['span','strong','small']);
+  assert.equal(primary.button.children[1].textContent,'M4A1');
+  assert.equal(secondary.button.children[1].textContent,'Glock 19');
+  assert.equal(primary.button.children[2].textContent,'AR PLATFORM');
+  assert.equal(secondary.button.children[2].textContent,'SAVED · GLOCK');
+ }finally{globalThis.document=previous;}
+});
 test('P11: both galleries delegate shell structure while keeping native handling',()=>{
  const src=p=>readFileSync(new URL('../src/arsenal/'+p,import.meta.url),'utf8');
  const primary=src('gallery-main.ts'),secondary=src('glock-gallery.ts'),shell=src('gallery-chrome.ts');
  assert.match(primary,/createArsenalGalleryChrome\('primary'\)/);
+ assert.match(primary,/createArsenalGalleryCard\(/);
+ assert.match(secondary,/createArsenalGalleryCard\(/);
  assert.match(secondary,/createArsenalGalleryChrome\('secondary'\)/);
  assert.match(primary,/heroCopy\.append\(renameBox,savedFeedback\)/);
  assert.match(primary,/openArsenalWorkbench\(/);
