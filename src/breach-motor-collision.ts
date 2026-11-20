@@ -41,6 +41,8 @@ import {shouldProbeCircularFullBodyLane,alternateFullBodyLaneFromCycle,
  from './breach-cycle-lane-recovery.ts';
 import {shouldEnterSqueeze} from './breach-squeeze-gate.ts';
 import {allowPhysicalRouteReissue} from './breach-route-recurrence.ts';
+import {firstFullBodyMotorStrideClear}
+ from './breach-recovery-route-validation.ts';
 import {shouldProbeStationaryCollisionRoute}
  from './breach-recovery-proposal-gate.ts';
 import {claimPhysicalLeafRejoin,relevantStableOpenLeaf,
@@ -265,6 +267,8 @@ export function resolveMotorCollision(
     if(profile)profile('motor-collision-lane',finishMotorCpuMeasurement(laneAt));
     if(fullLane.length&&d(fullLane[0],next)>6&&
        d(fullLane[0],a.p)>3&&
+       firstFullBodyMotorStrideClear(a.p,fullLane[0],(from,to)=>
+         sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
        watchClearanceAllowed(a.p,fullLane[0],p,
          !!a.aimInstruction&&a.aimInstruction.mode!=='free',
          (from,to)=>sweptBodyClear(from,to,s.doors,OPERATOR_RADIUS,world))&&
@@ -733,11 +737,16 @@ export function resolveMotorCollision(
       // Known-intel fallback is allowed only if it materially differs;
       // never replace a route with an empty result while the door moves.
       let adopted=false;
-      if(materiallyDifferentRoute(a.nav,repaired)){
+      // World/intel collision replans share one source-independent
+      // stationary recurrence family. An unchanged near-anchor detour is
+      // not physical progress and must not repeatedly replace the route.
+      if(materiallyDifferentRoute(a.nav,repaired)&&
+         allowPhysicalRouteReissue(a,'collision-replan',p,repaired,s.seconds)){
         setTransientRoute(s,a,repaired,'collision-world-replan');adopted=true;
       }else if(a.side==='blue'){
         const known=routeWithSqueezeIntel(s.intel,a.p,p);
-        if(materiallyDifferentRoute(a.nav,known)){
+        if(materiallyDifferentRoute(a.nav,known)&&
+           allowPhysicalRouteReissue(a,'collision-replan',p,known,s.seconds)){
           setTransientRoute(s,a,known,'collision-intel-replan');adopted=true;
         }
       }
