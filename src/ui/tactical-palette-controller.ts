@@ -11,7 +11,7 @@ import {interruptsWatch} from '../breach-plan.ts';
 import {equippedEntryMethods} from '../equipment-entry-tools.ts';
 import {entryToolVerdict} from '../breach-entry-tools.ts';
 import {team,enemies,isSeen,inSight,plannedControl,liveVisibility,
- hasInterruptedSquadEntry,type Session,type TeamActor} from '../breach-game.ts';
+ hasInterruptedSquadEntry,canEdit,type Session,type TeamActor} from '../breach-game.ts';
 import {SUSPECT_CHALLENGE_RANGE} from '../breach-suspect-compliance.ts';
 import {sweptBodyClear} from '../breach-navigation.ts';
 import {sessionWorldGeometry} from '../breach-world-context.ts';
@@ -21,6 +21,8 @@ import {placeContextMenu,type AvoidRect,type ScreenPath,type MenuSide}
   from '../breach-context-placement.ts';
 import {PaletteMotion} from './palette-motion.ts';
 import {plannedSecondaryHand} from '../secondary-switching.ts';
+import {selectedDoorStackFormation}
+ from '../breach-stack-formation-selection.ts';
 import {selectAccessibleSecondaryMagazine} from '../secondary-timed-reload.ts';
 import {contextActionChoices,type ContextAction,type ContextOptions}
   from './context-actions.ts';
@@ -434,6 +436,8 @@ export function createTacticalPaletteController(config:{
     resumeSquadAvailable:hasInterruptedSquadEntry(state,a.id),
     resumeReason:a.interruptedDoorPlan?.reason,
     door:!!door,node:!!node,flashRemaining:state.flashRemaining,
+    formationEditable:!!door&&canEdit(state),
+    stackFormation:door?selectedDoorStackFormation(state,door.id):'auto',
     nearMovable,nearWindow,powerActions,treatTargetName:treatTarget?.name,
     nearDoor:!door&&!!nearbyDoor,
     nearCivilian:!!civilianAtPlan,

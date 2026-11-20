@@ -32,3 +32,47 @@ test('M4.9 formation actions are visible only for planning and retain door contr
  assert.equal(executing.some(x=>x.id==='ctxStackTeam'),false);
  assert.equal(executing.some(x=>x.id==='ctxSquadEntry'),false);
 });
+
+import {newSession,team} from '../src/breach-game.ts';
+import {activateSite} from '../src/breach-core.ts';
+import {dispatchTacticalContextCommand}
+ from '../src/breach-tactical-context-command.ts';
+test('M4.9 real door palette command authors a squad stack using the selected variant',()=>{
+ const s=newSession(0,33717,'full-view');
+ try{
+  const a=team(s)[0],door=s.doors.find(x=>x.id==='FRONT');
+  assert.ok(door);
+  const command=action=>dispatchTacticalContextCommand({
+   state:s,selected:a.id,actor:a,node:undefined,door,
+   action,selectedActiveWatch:false,medicalCandidate:()=>null
+  });
+  const before=team(s).map(x=>x.plan.length);
+  assert.equal(command('ctxFormationCycle').outcome,'accepted');
+  assert.equal(selectedDoorStackFormation(s,'FRONT'),'left');
+  assert.deepEqual(team(s).map(x=>x.plan.length),before,
+   'cycling the visible choice cannot author a plan');
+  // Re-select the default for a normal known four-person mission; this
+  // is an integration test of the REAL gameplay command, not synthetic
+  // route geometry or a copied plan.
+  for(let i=0;i<4;i++)command('ctxFormationCycle');
+  assert.equal(selectedDoorStackFormation(s,'FRONT'),'auto');
+  assert.equal(command('ctxStackTeam').outcome,'accepted');
+  const stacked=team(s).map(x=>x.plan.find(n=>n.stackDoorId==='FRONT'));
+  assert.equal(stacked.filter(Boolean).length,4);
+  for(let i=0;i<stacked.length;i++)for(let j=0;j<i;j++)
+   assert.ok(Math.hypot(stacked[i].p.x-stacked[j].p.x,
+    stacked[i].p.y-stacked[j].p.y)>22);
+ }finally{activateSite(null);}
+});
+test('M4.9 no door is not a shortcut to a squad plan or preference change',()=>{
+ const s=newSession(0,33717,'full-view');
+ try{
+  const a=team(s)[0];
+  const r=dispatchTacticalContextCommand({state:s,selected:a.id,
+   actor:a,node:undefined,door:undefined,action:'ctxSquadEntry',
+   selectedActiveWatch:false,medicalCandidate:()=>null});
+  assert.equal(r.handled,true);
+  assert.equal(r.outcome,'rejected');
+  assert.deepEqual(team(s).map(x=>x.plan.length),[0,0,0,0]);
+ }finally{activateSite(null);}
+});
