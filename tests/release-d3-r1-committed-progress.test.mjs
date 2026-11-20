@@ -20,7 +20,8 @@ test('R1.03: authoritative frame rejection accumulates across provisional motor 
    'only actual authority denial should accumulate');
   assert.equal(a.lastBlocker,'actor');
  }
- assert.ok(a.blockedTime>=2,'real stalled time reaches ordinary recovery gates');
+ assert.ok(Math.abs(a.blockedTime-2)<1e-6,
+  'the authoritative 120th 60Hz denial reaches the two-second recovery gate');
 });
 test('R1.03: a committed or paused frame clears an old denial episode',()=>{
  const a=actor();
