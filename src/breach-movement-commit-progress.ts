@@ -4,7 +4,6 @@
  * real consecutive rejected time until an actual frame without rejection.
  * This is observational recovery accounting, never a second motor.
  */
-import type {Pt} from './breach-core.ts';
 type PhysicalStallActor={
  blockedTime:number;
  lastBlocker:string;
