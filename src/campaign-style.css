@@ -2323,3 +2323,16 @@ details.campaign-department-identity[open]>*:not(summary){margin:10px 13px 0}
 @media(prefers-reduced-motion:reduce){
  .campaign-kit-hotspot{transition:none}
 }
+
+.campaign-kit-preview-pose-toggle{
+ position:absolute;bottom:9px;left:9px;min-height:35px;max-width:53%;
+ border:1px solid #a6bda9;border-radius:6px;padding:5px 8px;
+ font:700 10px/1.2 var(--fw-font-action);
+ color:#dbe9d5;background:#142821de;pointer-events:auto;
+}
+.campaign-kit-preview-pose-toggle[aria-pressed="true"]{
+ color:#162b20;background:#c4d6b4;
+}
+@media(max-width:620px){
+ .campaign-armory-screen .campaign-kit-summary::after{display:none}
+}
