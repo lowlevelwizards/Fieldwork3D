@@ -76,3 +76,20 @@ test('M4.9 no door is not a shortcut to a squad plan or preference change',()=>{
   assert.deepEqual(team(s).map(x=>x.plan.length),[0,0,0,0]);
  }finally{activateSite(null);}
 });
+
+test('M4.9 real context command authors synchronized entry with unchanged AUTO layout',()=>{
+ const s=newSession(0,33717,'full-view');
+ try{
+  const a=team(s)[0],door=s.doors.find(x=>x.id==='FRONT');
+  assert.ok(door);
+  const result=dispatchTacticalContextCommand({state:s,selected:a.id,
+   actor:a,node:undefined,door,action:'ctxSquadEntry',
+   selectedActiveWatch:false,medicalCandidate:()=>null});
+  assert.equal(result.outcome,'accepted');
+  for(const member of team(s)){
+   assert.ok(member.plan.some(n=>n.stackDoorId==='FRONT'));
+   assert.ok(member.plan.some(n=>n.kind==='sync'));
+   assert.ok(member.plan.some(n=>n.entryDoorId==='FRONT'));
+  }
+ }finally{activateSite(null);}
+});
