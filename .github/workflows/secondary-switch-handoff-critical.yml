@@ -1,7 +1,7 @@
 name: Secondary S5–S11 critical integration
 on:
   push:
-    branches: [feature/secondary-s5-s11-release-reconcile-20261120]
+    branches: [integration/secondary-s5-s11-on-main-20261120]
     paths:
       - 'src/secondary-holster-visual.ts'
       - '.github/workflows/secondary-switch-handoff-critical.yml'
