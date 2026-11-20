@@ -5,6 +5,9 @@
  * +X muzzle, +Y up, +Z right face; geometry built on preview configuration.
  */
 import * as THREE from 'three';
+import {normalizeGlockCustomization,
+ glockHasAccessoryRail,glockHasOpticMount,
+ type GlockCustomization} from './glock-customization.ts';
 import {addOutline,addCuboid,type Outline} from './profile-primitives.ts';
 import {HK_BLACK_METAL,HK_DARK_POLYMER,AR_MUTED_FDE,FAL_VENT_SHADOW,
  GLOCK_COYOTE_SLIDE,GLOCK_PORT_SHADOW} from './weapon-visual-palette.ts';
@@ -19,7 +22,8 @@ export type GlockAppearanceId=typeof GLOCK_APPEARANCE_REFERENCES[number]['id'];
 export function isGlockAppearanceId(value:string):value is GlockAppearanceId{
  return GLOCK_APPEARANCE_REFERENCES.some(ref=>ref.id===value);
 }
-export type GlockAppearanceOptions={monochrome?:boolean;details?:boolean};
+export type GlockAppearanceOptions={monochrome?:boolean;details?:boolean;
+ customization?:GlockCustomization};
 /** S1: authoring-space sockets, never guessed from a screenshot or independent
  * combat offsets. +X muzzle, +Y up, +Z operator-right. Visual rig/shot solver
  * must transform these through the SAME held-weapon world matrix. */
@@ -62,7 +66,10 @@ const SLIDE_DEPTH=2.96,FRAME_DEPTH=2.62;
 
 export function buildGlockAppearance(id:GlockAppearanceId,
  options:GlockAppearanceOptions={}):THREE.Group{
- const art=GLOCK_G2_ART[id],coyote=id==='glock-g19x';
+ const art=GLOCK_G2_ART[id];
+ const customization=normalizeGlockCustomization(id,options.customization);
+ const coyote=customization.finish==='factory'?
+  id==='glock-g19x':customization.finish==='coyote';
  const clay=options.monochrome===true;
  const steel=clay?HK_BLACK_METAL:coyote?GLOCK_COYOTE_SLIDE:HK_BLACK_METAL;
  const polymer=clay?HK_BLACK_METAL:coyote?AR_MUTED_FDE:HK_DARK_POLYMER;
@@ -75,6 +82,7 @@ export function buildGlockAppearance(id:GlockAppearanceId,
  root.userData.glockG26IdentityRefinement=true;
  root.userData.glockG27IdentityLock=true;
  root.userData.glockArtSockets=glockArtSockets(id);
+ root.userData.glockCustomization=customization;
  let n=0;
  const box=(slot:'barrel'|'magazine',x:number,y:number,z:number,
   w:number,h:number,d:number,material:THREE.Material)=>
@@ -207,6 +215,30 @@ export function buildGlockAppearance(id:GlockAppearanceId,
    plate.userData.glockMOSAppearanceOnly=true;
    plate.castShadow=false;plate.receiveShadow=false;
   }
+ }
+ // P6 real low-poly installed accessories. Only physical compatible
+ // sockets draw models; no free-floating labels or pretend optic housing.
+ // Material reuse and a maximum of 5 chunky cuboids maintain art economy.
+ if(customization.optic==='micro'&&glockHasOpticMount(id)){
+  const optic=box('barrel',SLIDE_REAR+3.6,SLIDE_TOP+.58,0,
+   2.10,.93,1.68,steel);
+  optic.name='glock-installed-micro-optic';
+  optic.userData.glockInstalledOptic='micro';
+  const glass=box('barrel',SLIDE_REAR+4.66,SLIDE_TOP+.68,0,
+   .045,.48,1.12,GLOCK_PORT_SHADOW);
+  glass.name='glock-optic-window';
+  const base=box('barrel',SLIDE_REAR+3.6,SLIDE_TOP+.11,0,
+   2.34,.24,1.96,polymer);
+  base.name='glock-mos-optic-footprint';
+ }
+ if(customization.light==='compact'&&glockHasAccessoryRail(id)){
+  const body=box('barrel',art.frontX-2.37,-1.74,0,
+   3.05,1.12,2.12,polymer);
+  body.name='glock-installed-rail-light';
+  body.userData.glockInstalledLight='compact';
+  const lens=box('barrel',art.frontX-.75,-1.72,0,
+   .24,.87,1.42,GLOCK_PORT_SHADOW);
+  lens.name='glock-light-lens';
  }
  root.userData.glockArtLandmarks=Object.freeze({
   rearX:SLIDE_REAR,muzzleX:art.frontX,
