@@ -562,22 +562,23 @@ export class CampaignKitPreview{
   if(!dot||!mesh||!this.rig){if(dot)dot.hidden=true;return;}
   const result=measureEquipmentMesh(mesh);
   if(!result.visible||!result.center){dot.hidden=true;return;}
-  const center=result.center.clone(),screen=center.clone().project(this.camera);
-  if(screen.z<-.9||screen.z>1||Math.abs(screen.x)>.9||Math.abs(screen.y)>.9){
+  const center=result.center.clone();
+  // Put the pip on the surface closest to the camera, not inside the item.
+  // This makes caps, armor and weapon parts reliably selectable.
+  const direction=center.clone().sub(this.camera.position).normalize();
+  const ray=new THREE.Raycaster(this.camera.position,direction,.1,700);
+  const surface=ray.intersectObject(mesh,true)[0];
+  if(!surface){dot.hidden=true;return;}
+  const closest=ray.intersectObject(this.rig.root,true)[0];
+  // Another model part in front means the selection is concealed.
+  let ancestor:THREE.Object3D|null=closest?.object??null;
+  let same=false;
+  while(ancestor){if(ancestor===mesh){same=true;break;}ancestor=ancestor.parent;}
+  if(closest&&!same&&closest.distance<surface.distance-.8){
    dot.hidden=true;return;
   }
-  // If solid model geometry is between the camera and the selected item,
-  // never draw its white marker through the operator's body.
-  const direction=center.clone().sub(this.camera.position);
-  const maxDistance=direction.length();
-  const ray=new THREE.Raycaster(this.camera.position,
-   direction.normalize(),.1,maxDistance+1);
-  const closest=ray.intersectObject(this.rig.root,true)[0];
-  let ancestor:THREE.Object3D|null=closest?.object??null;
-  let hitsSelected=false;
-  while(ancestor){if(ancestor===mesh){hitsSelected=true;break;}ancestor=ancestor.parent;}
-  if(closest&&!hitsSelected&&closest.distance<maxDistance-
-    Math.max(.5,(result.size?.length()??1)*.24)){
+  const screen=surface.point.clone().project(this.camera);
+  if(screen.z<-.9||screen.z>1||Math.abs(screen.x)>.9||Math.abs(screen.y)>.9){
    dot.hidden=true;return;
   }
   dot.hidden=false;
