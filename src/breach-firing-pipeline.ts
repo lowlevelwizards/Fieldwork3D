@@ -456,6 +456,10 @@ function settlePassiveAim(a:TeamActor,dt:number):void{
  a.aim+=Math.max(-step,Math.min(step,ready-a.aim));
 }
 function fire(s:Session,a:TeamActor,dt:number){
+  // Interrupted authored pistol reloads cannot resume when their order
+  // was canceled or a new plan replaced it; completed insertion is final.
+  if(a.secondaryReload&&(a.plan[0]?.kind!=='reload'||
+      a.plan[0].id!==a.secondaryReload.orderId))a.secondaryReload=null;
   // An undone/canceled order does not leave the operator permanently
   // half-drawn or lock the primary once a pistol is unissued.
   if(a.secondarySwitch&&a.plan[0]?.kind!=='switch-weapon')
