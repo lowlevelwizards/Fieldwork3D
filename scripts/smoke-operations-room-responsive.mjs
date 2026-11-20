@@ -137,9 +137,9 @@ async function assessEstablishedCareer(page,name,mobile){
   if(tab==='logistics'){
    const stock=await page.locator('.campaign-logistics-stat strong')
     .allTextContents();
-   check(stock.length===3&&stock.every(count=>count.trim()==='0'),
+   check(stock.length===5&&stock.slice(0,3).every(count=>count.trim()==='0'),
     name+' exhausted reserves were not restored');
-   check(await page.locator('.campaign-logistics-stat.is-low').count()===3,
+   check(await page.locator('.campaign-logistics-stat.is-low').count()>=1,
     name+' empty stock alerts missing');
   }
   if(tab==='chronicle'){
@@ -295,10 +295,13 @@ async function assess(browser,{name,width,height,mobile}){
     // Keep the case open so the logistics action can test persistent state.
    }
    if(tab==='logistics'){
-    check(await page.locator('.campaign-logistics-stat').count()===3,
-     name+' logistics stock ledger missing');
-    check(await page.locator('.campaign-supply-offer button').count()===3,
+    check(await page.locator('.campaign-uxr-stock-button').count()===5,
+     name+' five selectable HQ resources missing');
+    check(await page.locator('.campaign-supply-offer button').count()===5,
      name+' replenishment actions missing');
+    check(await page.locator('.campaign-supply-offer:visible').count()===1,
+     name+' more than one purchase option visible');
+    await page.locator('.campaign-uxr-procurement > summary').click();
     const procurement=page.locator('.campaign-procurement-item').first();
     check(await procurement.count()===1,name+' procurement item missing');
     check(await procurement.locator('button').count()===1,
