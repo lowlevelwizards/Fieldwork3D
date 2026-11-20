@@ -127,6 +127,7 @@ export class GlockViewport{
  }
  side(){this.yaw=0;this.pitch=0;this.draw();}
  opposite(){this.yaw=Math.PI;this.pitch=0;this.draw();}
+ top(){this.yaw=0;this.pitch=1.38;this.draw();}
  reset(){this.yaw=.27;this.pitch=.13;this.fit();this.draw();}
  // Coalesce touch/mouse orbit updates into the display cadence.
  private draw(){
