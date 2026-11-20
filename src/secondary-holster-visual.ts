@@ -9,11 +9,14 @@ import {buildGlockAppearance,glockArtSockets,
  type GlockAppearanceId} from './weapons/geometry/glock-family-silhouettes.ts';
 import type {SecondaryEquipment,SecondaryMagazineLocation}
  from './secondary-equipment.ts';
+import type {SecondaryTimedReload} from './secondary-timed-reload.ts';
 
 type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  holster:THREE.Group;cradle:THREE.Group;
  /** Magazine changes cannot destroy/replace the held Glock model. */
  pouchSignature:string;physicalPouches:Map<string,THREE.Mesh>;
+ /** Real visible magazine floorplate is part of the existing Glock model. */
+ insertedFloorplate:THREE.Mesh|null;
  /** Immutable stowed socket for deterministic, seek-safe draws. */
  stowedPosition:THREE.Vector3;stowedQuaternion:THREE.Quaternion;
  /** Reused pose scratch: a live Glock must not allocate vectors every frame. */
@@ -70,6 +73,7 @@ const pouch=(parent:THREE.Group,id:string,index:number,
  item.name='secondary-magazine-pouch-'+id;
  item.userData.secondaryMagazineId=id;
  item.userData.secondaryMagazineLocation=location;
+ item.userData.secondaryMagazineIndex=index;
  item.castShadow=true;item.receiveShadow=true;
  item.position.copy(pouchSocket(location,index,side));
  parent.add(item);
@@ -114,6 +118,7 @@ function reconcilePouches(mount:Mounted,state:SecondaryEquipment,
    mount.physicalPouches.set(mag.id,item);
   }else{
    // Reuse the exact mesh but update the physical carrier placement.
+   item.userData.secondaryMagazineIndex=index;
    const prior=mount.physicalPouches.get(mag.id);
    if(prior&&prior.userData.secondaryMagazineLocation!==place){
     prior.userData.secondaryMagazineLocation=place;
@@ -189,6 +194,14 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
  const ownedRoots=[root];
  const current:Mounted={signature,root,ownedRoots,holster,cradle,
   pouchSignature:'',physicalPouches:new Map(),
+  insertedFloorplate:(()=>{
+    let floor:THREE.Mesh|null=null;
+    pistol.traverse(child=>{
+      if(child instanceof THREE.Mesh&&child.userData.glockMagazineFloorplate)
+       floor=child;
+    });
+    return floor;
+  })(),
   stowedPosition:cradle.position.clone(),
   stowedQuaternion:cradle.quaternion.clone(),
   gripWorld:new THREE.Vector3(),targetLocal:new THREE.Vector3(),
@@ -277,4 +290,49 @@ export function presentSecondaryMuzzleFlash(
  if(flash.parent!==root)root.add(flash);
  root.updateWorldMatrix(true,false);
  flash.position.copy(root.worldToLocal(point));
+}
+
+/** S8.3: real selected spare magazine travels from its authored physical
+ * carrier socket into the existing solved support wrist. The same ONE mesh
+ * returns to its original mount after cancellation or replay rewind.
+ * The inserted Glock floorplate is hidden only during the actual handoff.
+ * Inventory/insert/drop timing remains exclusively simulation-owned.
+ */
+export function presentSecondaryReload(hip:THREE.Group,
+ supportHand:THREE.Object3D,kit:SecondaryEquipment|undefined,
+ reload:SecondaryTimedReload|null|undefined):void{
+ const mount=mounted.get(hip);
+ if(!mount||!kit?.weapon||mount.root.userData.secondaryWeaponId!==kit.weapon)
+  return;
+ const progress=reload&&reload.duration>0?
+  Math.max(0,Math.min(1,reload.elapsed/reload.duration)):0;
+ const active=!!reload&&Number.isFinite(progress)&&
+  kit.spareMagazines.some(m=>m.id===reload.selectedId);
+ if(mount.insertedFloorplate)
+  mount.insertedFloorplate.visible=!active||progress<.30||progress>=.72;
+ for(const [id,mesh] of mount.physicalPouches){
+  const loc=mesh.userData.secondaryMagazineLocation as
+    'rig'|'belt'|'backpack'|'pocket';
+  const slot=mesh.userData.secondaryMagazineIndex as number;
+  const original=pouchSocket(loc,slot,kit.holster==='belt-right'?1:-1);
+  mesh.position.copy(original);
+  mesh.rotation.set(0,0,0);
+  mesh.visible=true;
+  if(!active||id!==reload!.selectedId||!mesh.parent)continue;
+  // No viewport- or RAF-owned motion. This is a seek-safe function of
+  // the actual timed simulation reload phase and existing wrist.
+  const lift=progress<=.26?0:progress>=.66?1:
+    Math.max(0,Math.min(1,(progress-.26)/.40));
+  if(lift<=0)continue;
+  const ease=lift*lift*(3-2*lift);
+  supportHand.updateWorldMatrix(true,false);
+  mesh.parent.updateWorldMatrix(true,false);
+  const hand=mount.gripWorld;
+  supportHand.getWorldPosition(hand);
+  const local=mesh.parent.worldToLocal(mount.targetLocal.copy(hand));
+  mesh.position.lerp(local,ease);
+  mesh.rotation.z=-.24*ease;
+  // Once actually inserted at .72, the inventory exchange will remove
+  // this spare serial and the existing Glock floorplate reappears.
+ }
 }
