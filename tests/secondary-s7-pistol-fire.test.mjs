@@ -22,8 +22,14 @@ test('S7: shot muzzle uses the one Glock geometry socket and authored hand pose'
  assert.ok(shared.x>13,'actual muzzle sits beyond the pistol grip');
  assert.ok(Number.isFinite(shared.y)&&Number.isFinite(shared.z));
  const turned=muzzleAtShot({...pose,weaponYaw:Math.PI/2});
- assert.ok(turned.z>13,'actual bullet orientation follows the targeting yaw');
+ assert.ok(turned.z>4&&turned.x>8,
+  'aim turns the barrel, but the firing wrist stays on the actual torso');
  assert.ok(Math.abs(turned.yaw-Math.PI/2)<1e-8);
+ const bodyOnly=muzzleAtShot({...pose,heading:Math.PI/2,weaponYaw:0});
+ assert.ok(Math.abs(bodyOnly.x-shared.x)>2,
+  'operator heading controls the anatomical hand placement');
+ assert.equal(bodyOnly.yaw,0,
+  'turning the body does not change the independently aimed bullet yaw');
  // An unequipped/missing secondary never silently changes primary geometry.
  const rifle=muzzleAtShot({...pose,secondaryWeapon:undefined});
  assert.notDeepEqual(rifle,shared);
