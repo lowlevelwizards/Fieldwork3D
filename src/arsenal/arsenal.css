@@ -726,3 +726,14 @@ body.arsenal-standalone{color-scheme:dark;margin:0;min-height:100%;
 .arsenal-glock-equip button:disabled{opacity:.45}
 .arsenal-glock-equip-status{grid-column:1/-1;margin:0;
  color:var(--fw-text-muted);font:500 12px/1.4 var(--fw-font-action)}
+
+
+/* S4: two compact genuine spare magazine location controls, no extra tab or
+ * full-screen carry layout. Invalid locations report inline in the status. */
+.arsenal-glock-magazine-placements{
+ grid-column:1/-1;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+ gap:7px;min-width:0;
+}
+.arsenal-glock-magazine-placements:empty{display:none}
+.arsenal-glock-magazine-placements label{min-width:0}
+.arsenal-glock-magazine-placements select{min-width:0;max-width:100%}

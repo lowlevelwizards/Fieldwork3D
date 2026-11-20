@@ -6,6 +6,7 @@ import type {FieldInventory} from './equipment-field-inventory.ts';
 import {initialFieldInventory,readFieldInventory,fieldQuantity,fieldInventoryMass} from './equipment-field-inventory.ts';
 import type {WeaponId} from './breach-combat.ts';
 import {emptySecondaryEquipment,readSecondaryEquipment,secondaryLoadMass,
+ placeSecondaryMagazines,type SecondaryCarrierSpace,
  type SecondaryEquipment} from './secondary-equipment.ts';
 import {resolveWeaponAssembly,WEAPON_PLATFORMS,
  type WeaponConfiguration} from './equipment-weapon-assemblies.ts';
@@ -14,6 +15,12 @@ export type LoadoutSlot=Exclude<EquipmentSlot,'secondary'>;
 export type EquipmentLoadout={version:1;slots:Record<LoadoutSlot,string>;fieldInventory?:FieldInventory;
  /** S2 independent sidearm preparation; not yet a simulated active firearm. */
  secondary?:SecondaryEquipment};
+/** Physical magazine-equivalent carrier spaces before primary magazine issue. */
+export function secondaryCarrierSpace(loadout:EquipmentLoadout):SecondaryCarrierSpace{
+ const capacity=(id:string)=>Math.max(0,EQUIPMENT_CATALOG[id]?.capacity??0);
+ return {rig:capacity(loadout.slots.rig),belt:capacity(loadout.slots.belt),
+  backpack:capacity(loadout.slots.backpack),pocket:1};
+}
 const weaponItem=(weapon:WeaponId)=>'primary-'+weapon;
 const isWeapon=(weapon:unknown):weapon is WeaponId=>
  weapon==='carbine'||weapon==='smg'||weapon==='rifle'||weapon==='shotgun';
@@ -38,14 +45,21 @@ export function readEquipmentLoadout(raw:unknown,weapon:WeaponId,owner='operator
    result.slots[slot]=value;
  }
  result.fieldInventory=readFieldInventory((raw as {fieldInventory?:unknown}).fieldInventory,result);
- result.secondary=readSecondaryEquipment((raw as {secondary?:unknown}).secondary,owner);
+ const secondary=readSecondaryEquipment((raw as {secondary?:unknown}).secondary,owner);
+ result.secondary=placeSecondaryMagazines(secondary,secondaryCarrierSpace(result));
  return result;
 }
 export function setEquipmentChoice(loadout:EquipmentLoadout,
  slot:LoadoutSlot,itemId:string):EquipmentLoadout{
  if(!validEquipmentChoice(slot,itemId))return loadout;
  if(loadout.slots[slot]===itemId)return loadout;
+ // Never strand a physically issued pistol with no belt for its holster.
+ if(slot==='belt'&&itemId==='belt-none'&&loadout.secondary?.weapon)
+  return loadout;
  const next:EquipmentLoadout={...loadout,slots:{...loadout.slots,[slot]:itemId}};
+ // Belt/rig/pack changes move owned magazines; never clone or refill rounds.
+ if((slot==='belt'||slot==='rig'||slot==='backpack')&&next.secondary)
+  next.secondary=placeSecondaryMagazines(next.secondary,secondaryCarrierSpace(next));
  // Legacy single-item slots still define ability/tool compatibility, while
  // physical quantities belong to the field manifest.
  if(slot==='tactical'||slot==='utility'){

@@ -18,11 +18,54 @@ export const magazineAccessSeconds=(location:MagazineLocation)=>ACCESS[location]
  * A pocket always holds one emergency magazine; excess inventory remains
  * accounted for but retrieving from overflow is slower.
  */
+/** S4B: one shared magazine-equivalent capacity budget.
+ * The holster consumes one belt cell, each physically issued pistol magazine
+ * consumes one location cell. Primary magazines must not reclaim these spaces.
+ * An invalid/beltless kit is reported, not silently granted extra storage. */
+export function secondaryCarryClaim(kit:EquipmentLoadout){
+ const used={rig:0,belt:0,backpack:0,pocket:0};
+ const state=kit.secondary;
+ if(state?.weapon){
+  used.belt++;
+  for(const m of state.spareMagazines)
+   if(m.location!=='overflow')used[m.location]++;
+ }
+ const capacity=(id:string)=>Math.max(0,Math.floor(EQUIPMENT_CATALOG[id]?.capacity??0));
+ const available={rig:capacity(kit.slots.rig),belt:capacity(kit.slots.belt),
+  backpack:capacity(kit.slots.backpack),pocket:1};
+ const overflow=(Object.keys(used) as (keyof typeof used)[])
+  .filter(loc=>used[loc]>available[loc]);
+ return {used,available,overflow,valid:overflow.length===0};
+}
+/** Author-authored spare pistol magazine move. The source ID, round count
+ * and other magazines are immutable. Reject overfilling rather than quietly
+ * placing the requested magazine somewhere other than the chosen slot.
+ * Primary magazines repack through stageMagazines at GO time.
+ */
+export function quoteSecondaryMagazineLocation(
+ kit:EquipmentLoadout,id:string,location:MagazineLocation
+):{ok:boolean;kit:EquipmentLoadout;reason?:string}{
+ const side=kit.secondary;
+ if(!side?.weapon||!side.spareMagazines.some(m=>m.id===id))
+  return {ok:false,kit,reason:'Magazine is not owned by this operator'};
+ if(!(['rig','belt','pocket','backpack','overflow'] as const).includes(location))
+  return {ok:false,kit,reason:'Unsupported carry location'};
+ const secondary={...side,spareMagazines:side.spareMagazines.map(m=>
+  m.id===id?{...m,location}:m)};
+ const candidate={...kit,secondary};
+ const report=secondaryCarryClaim(candidate);
+ if(!report.valid)return {ok:false,kit,
+  reason:'No free '+report.overflow.join(' / ')+' carry space'};
+ return {ok:true,kit:candidate};
+}
 export function magazineSpace(kit:EquipmentLoadout){
  const capacity=(id:string)=>Math.max(0,Math.floor(
   EQUIPMENT_CATALOG[id]?.capacity??0));
- return {rig:capacity(kit.slots.rig),belt:capacity(kit.slots.belt),
-  backpack:capacity(kit.slots.backpack),pocket:1};
+ const secondary=secondaryCarryClaim(kit).used;
+ return {rig:Math.max(0,capacity(kit.slots.rig)-secondary.rig),
+  belt:Math.max(0,capacity(kit.slots.belt)-secondary.belt),
+  backpack:Math.max(0,capacity(kit.slots.backpack)-secondary.backpack),
+  pocket:Math.max(0,1-secondary.pocket)};
 }
 const priority:readonly Exclude<MagazineLocation,'overflow'>[]=['rig','belt','pocket','backpack'];
 export function stageMagazines(magazines:readonly MagazineItem[],

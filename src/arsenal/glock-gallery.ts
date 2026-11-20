@@ -7,7 +7,10 @@ import {applyQuickPlayKitPreferences,serializeQuickPlayKitPreferences}
  from '../breach-quickplay-kit-preferences.ts';
 import {BREACH_STORAGE_KEYS} from '../breach-storage-keys.ts';
 import {emptySecondaryEquipment,equipFreshSecondary,moveSecondaryHolster,
- type SecondaryHolster} from '../secondary-equipment.ts';
+ placeSecondaryMagazines,type SecondaryHolster} from '../secondary-equipment.ts';
+import {secondaryCarrierSpace} from '../equipment-loadouts.ts';
+import {quoteSecondaryMagazineLocation,
+ secondaryCarryClaim} from '../equipment-magazine-placement.ts';
 
 import {configureGraphicRendererOutput} from '../rendering/graphic-lighting-profile.ts';
 import {addArsenalInspectionLighting} from './inspection-lighting.ts';
@@ -180,9 +183,12 @@ export function mountGlockArsenalGallery():HTMLElement{
  unequipAction.type='button';unequipAction.textContent='UNEQUIP';
  const equipStatus=document.createElement('p');
  equipStatus.className='arsenal-glock-equip-status';equipStatus.setAttribute('role','status');
+ const magazinePlacement=document.createElement('div');
+ magazinePlacement.className='arsenal-glock-magazine-placements';
+ magazinePlacement.setAttribute('aria-label','Pistol spare magazine positions');
  const equipButtons=document.createElement('div');equipButtons.className='arsenal-glock-equip-actions';
  equipButtons.append(equipAction,unequipAction);
- equipPanel.append(operatorLabel,holsterLabel,equipButtons,equipStatus);
+ equipPanel.append(operatorLabel,holsterLabel,equipButtons,equipStatus,magazinePlacement);
  section.querySelector('.arsenal-glock-feature-copy')!.append(equipPanel);
  const readPrepared=()=>applyQuickPlayKitPreferences(
   readRoster(localStorage.getItem(BREACH_STORAGE_KEYS.quickCosmetics)),
@@ -197,13 +203,50 @@ export function mountGlockArsenalGallery():HTMLElement{
    const state=m?.loadout.secondary??emptySecondaryEquipment();
    holsterPicker.value=state.holster;
    const equipped=state.weapon;
-   equipStatus.textContent=equipped?
+   const beltless=m?.loadout.slots.belt==='belt-none';
+   const report=m?secondaryCarryClaim(m.loadout):null;
+   equipStatus.textContent=beltless?
+    'A belt is required for a Glock holster. Equip a belt in Operator Studio.':
+    equipped?
     'Selected: '+(GLOCK_APPEARANCE_REFERENCES.find(r=>r.id===equipped)?.name??equipped)+
     ' · '+state.loadedRounds+' loaded · '+state.spareMagazines.length+
-    ' spare magazines · loadout only (live combat pending)':
+    ' spares · '+(report?.valid?'carry valid':'carry needs space')+
+    ' · combat switching pending':
     'No secondary equipped for this operator.';
-   equipAction.disabled=equipped===selected;
+   equipAction.disabled=beltless||equipped===selected;
    unequipAction.disabled=!equipped;
+   magazinePlacement.replaceChildren();
+   if(m&&equipped)for(const [index,magazine] of state.spareMagazines.entries()){
+    const label=document.createElement('label');
+    label.textContent='SPARE '+(index+1);
+    const input=document.createElement('select');
+    input.setAttribute('aria-label','Spare '+(index+1)+' location');
+    for(const [location,description] of [
+     ['rig','Chest rig'],['belt','Belt'],['pocket','Pocket'],
+     ['backpack','Backpack'],['overflow','Overflow']
+    ] as const){
+     const option=document.createElement('option');
+     option.value=location;option.textContent=description;input.append(option);
+    }
+    input.value=magazine.location;
+    input.addEventListener('change',()=>{
+     try{
+      const roster=readPrepared();
+      const next={...roster,members:roster.members.map(member=>{
+       if(member.id!==operatorPicker.value)return member;
+       const quote=quoteSecondaryMagazineLocation(member.loadout,
+        magazine.id,input.value as typeof magazine.location);
+       if(!quote.ok)throw Error(quote.reason??'Carry space unavailable');
+       return {...member,loadout:quote.kit};
+      })};
+      savePrepared(next);refreshEquip();
+     }catch(e){
+      input.value=magazine.location;
+      equipStatus.textContent=e instanceof Error?e.message:'Cannot move magazine';
+     }
+    });
+    label.append(input);magazinePlacement.append(label);
+   }
   }catch{
    equipStatus.textContent='Local Quick Play equipment storage unavailable.';
    equipAction.disabled=true;unequipAction.disabled=true;
@@ -216,11 +259,14 @@ export function mountGlockArsenalGallery():HTMLElement{
     if(m.id!==id)return m;
     const previous=m.loadout.secondary??emptySecondaryEquipment();
     const chosen=equipFreshSecondary(previous,m.id,weapon);
+    if(weapon&&m.loadout.slots.belt==='belt-none')
+     throw Error('A belt is required for a Glock holster');
     const holster=moveSecondaryHolster(chosen,holsterPicker.value as SecondaryHolster);
-    return {...m,loadout:{...m.loadout,secondary:holster}};
+    const secondary=placeSecondaryMagazines(holster,secondaryCarrierSpace(m.loadout));
+    return {...m,loadout:{...m.loadout,secondary}};
    })};
    savePrepared(next);refreshEquip();
-  }catch{equipStatus.textContent='Unable to save secondary to Quick Play equipment.';}
+  }catch(e){equipStatus.textContent=e instanceof Error?e.message:'Unable to save secondary.';}
  };
  equipAction.addEventListener('click',()=>writeEquipped(selected));
  unequipAction.addEventListener('click',()=>writeEquipped(null));
