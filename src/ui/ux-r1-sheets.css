@@ -341,3 +341,18 @@ body[data-tactical-sheet="briefing"] #breachCanvas{pointer-events:none}
   flex-basis:102px;min-width:102px;max-width:102px;
  }
 }
+
+/* Keep the low-ready toggle clear of the chest/weapon category hit targets.
+   The genuine phone smoke caught the old bottom-left toggle intercepting
+   taps even though the gallery itself was working. */
+#operationsBoard .fw-quick-board-model-stage>.fw-quick-board-zones{
+ z-index:30;isolation:isolate;
+}
+#operationsBoard .fw-quick-board-model-stage .campaign-kit-preview-pose-toggle{
+ position:absolute!important;left:50%!important;right:auto!important;
+ bottom:6px!important;top:auto!important;
+ transform:translateX(-50%)!important;
+ max-width:calc(100% - 160px)!important;width:auto!important;
+ min-height:30px!important;padding:5px 7px!important;
+ white-space:nowrap;z-index:2;
+}
