@@ -941,8 +941,8 @@ export class CampaignScreen{
     const browseHead=node('div','campaign-uxr-case-heading');
     const caseIndex=node('span','campaign-uxr-case-position');
     caseIndex.setAttribute('aria-live','polite');
-    const prev=button('PREV',()=>showCase(current-1),'campaign-uxr-case-prev');
-    const next=button('NEXT',()=>showCase(current+1),'campaign-uxr-case-next');
+    const prev=button('PREV',()=>selectCase(current-1),'campaign-uxr-case-prev');
+    const next=button('NEXT',()=>selectCase(current+1),'campaign-uxr-case-next');
     browseHead.append(prev,caseIndex,next);
     const board=node('div','campaign-contract-board campaign-uxr-case-pages');
     const pages=sorted.map(k=>this.contract(k,c));
@@ -952,7 +952,7 @@ export class CampaignScreen{
     const selectors=sorted.map((k,i)=>{
      const title=campaignIncidentView(c,k).title;
      const buttonItem=button(String(i+1).padStart(2,'0')+' · '+title,
-      ()=>showCase(i),'campaign-uxr-case-index-item');
+      ()=>selectCase(i),'campaign-uxr-case-index-item');
      buttonItem.setAttribute('aria-label','Select case '+(i+1)+' of '+sorted.length+' · '+title);
      indexRail.append(buttonItem);
      return buttonItem;
@@ -971,9 +971,6 @@ export class CampaignScreen{
      showCase(index);
      this.selectedCaseId=sorted[current].id;
     };
-    prev.onclick=()=>selectCase(current-1);
-    next.onclick=()=>selectCase(current+1);
-    for(let i=0;i<selectors.length;i++)selectors[i].onclick=()=>selectCase(i);
     let initialTouch:{x:number;y:number}|null=null;
     board.addEventListener('touchstart',event=>{
      const touch=event.touches[0];
