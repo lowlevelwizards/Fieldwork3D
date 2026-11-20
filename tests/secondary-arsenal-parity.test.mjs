@@ -50,16 +50,17 @@ test('Secondary Arsenal: same interactive presentation affordances with honest e
  const viewport=readFileSync(new URL('../src/arsenal/glock-viewport.ts',import.meta.url),'utf8');
  for(const token of ['arsenal-search','arsenal-filters','arsenal-grid',
   'OPEN WORKBENCH','SAVED','renameGlockSavedBuild','duplicateGlockSavedBuild',
-  'deleteGlockSavedBuild','secondaryCarryClaim'])
+  'deleteGlockSavedBuild'])
   assert.ok(gallery.includes(token),'Missing '+token);
- for(const token of ['UNDO','REDO','FIT','SIDE','OPPOSITE',
-  'CLAY','CHOOSE MODEL','LOAD BUILD','SAVE BUILD','CARRY',
-  'onApply','role','dialog','SECONDARY_CAPACITY'])
+ for(const token of ['UNDO','REDO','FIT',
+  'CHOOSE MODEL','LOAD BUILD','SAVE BUILD','role','dialog','SECONDARY_CAPACITY'])
   assert.ok(wb.includes(token),'Missing '+token);
  for(const token of ['pointerdown','pointermove','wheel','ResizeObserver',
   'clearGlockAppearance','setPixelRatio'])
   assert.ok(viewport.includes(token),'Missing '+token);
- assert.ok(wb.includes('Pistol firing and weapon-light illumination await live integration.'));
+ assert.ok(wb.includes('Assign sidearms, holsters and spare magazines in Quick Play equipment.'));
+ assert.doesNotMatch(wb,/EQUIP TO|onApply|operatorName|carryTab|CARRY_PLACES|glock-wb-location/);
+ assert.doesNotMatch(wb,/OPPOSITE|CLAY|sideButton/);
 });
 
 test('P6: physically mounted optic and light are real compact geometry, not preview overlays',()=>{
@@ -118,9 +119,8 @@ test('S5 gallery parity: secondary uses the primary hero/browser hierarchy, with
  assert.ok(secondary.includes('class="arsenal-hero-copy arsenal-glock-feature-copy"'));
  assert.ok(secondary.includes('class="arsenal-browser arsenal-glock-browser"'));
  assert.ok(secondary.includes('class="arsenal-grid arsenal-glock-cards"'));
- assert.ok(secondary.includes('details class="arsenal-glock-views"'));
- assert.ok(secondary.includes('details class="arsenal-glock-kit"'));
- assert.ok(secondary.includes("section.querySelector('.arsenal-glock-kit')!.append(equipPanel)"));
+ assert.doesNotMatch(secondary,/arsenal-glock-views|arsenal-glock-kit|equipPanel|FAMILY SCALE|MP5K PEER/);
+ assert.doesNotMatch(secondary,/readPrepared|operatorPicker|holsterPicker|equipFreshSecondary/);
  assert.ok(css.includes('.arsenal-shell>.arsenal-glock-gallery[hidden]{display:none}'));
  assert.ok(css.includes('.arsenal-glock-gallery>.arsenal-glock-feature'));
 });
@@ -138,7 +138,21 @@ test('S5 secondary Workbench follows primary category, stats and apply structure
  assert.ok(primary.includes("className='arsenal-wb-stats-head'"));
  assert.ok(secondary.includes("className='arsenal-wb-stats-head'"));
  assert.ok(secondary.includes("className='arsenal-wb-stats-grid glock-wb-stats-grid'"));
- assert.ok(secondary.includes("className='arsenal-wb-screen arsenal-wb-has-apply arsenal-glock-workbench'"));
+ assert.ok(secondary.includes("className='arsenal-wb-screen arsenal-glock-workbench'"));
  assert.ok(secondary.includes("action('MODEL','arsenal-wb-category')"));
  assert.ok(secondary.includes("className='arsenal-wb-option-list glock-wb-options'"));
+});
+
+test('G2.8 dedicated secondary Workbench edits only weapon variants, not equipment assignment',()=>{
+ const wb=readFileSync(new URL('../src/arsenal/glock-workbench.ts',import.meta.url),'utf8');
+ const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
+ for(const token of ['MODEL','SIGHTS','ACCESSORIES','FINISH','SAVED BUILDS','SAVE BUILD',
+  'onLibraryChange','normalizeGlockCustomization'])assert.ok(wb.includes(token),token);
+ assert.ok(gallery.includes('factoryGlockRecipe(selected)'));
+ for(const token of ['EQUIP TO','CARRY_PLACES','carryTab','onApply','operatorName'])
+  assert.ok(!wb.includes(token),'redundant operator setting '+token);
+ assert.ok(!gallery.includes('arsenal-glock-kit'));
+ assert.ok(!gallery.includes('INSPECTION VIEWS'));
+ assert.ok(!gallery.includes('FAMILY SCALE'));
+ assert.ok(!gallery.includes('MP5K PEER'));
 });

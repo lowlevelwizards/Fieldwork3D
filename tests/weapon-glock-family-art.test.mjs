@@ -74,8 +74,8 @@ test('G2.6: slide mass remains within G2.5 identity range',()=>{
   const frame=model.children.find(x=>x.userData.glockIntegratedFrameGrip);
   const s=bounds(slide),f=bounds(frame);
   const length=s.max.x-s.min.x,height=s.max.y-s.min.y;
-  assert.ok(length>=16.7&&length<=17.0,'between G2 15.69 and G1 18.8');
-  assert.ok(height>=2.65&&height<=2.75,'between G2 2.90 and G1 2.16');
+  assert.ok(length>=16.8&&length<=17.15,'subtle G2.8 slide rear expansion');
+  assert.ok(height>=2.90&&height<=3.05,'slightly fuller slide vertical profile');
   assert.ok(length/height>5.7&&length/height<7.5,'balanced Glock mass ratio');
   assert.ok(s.max.z-s.min.z>f.max.z-f.min.z,
    'slide remains boldest depth mass');
@@ -170,14 +170,14 @@ test('G2.6: master slide and heel remain between G1 and G2',()=>{
   assert.ok(a.rearX< -8.17&&a.rearX> -9.4);
   assert.ok(a.muzzleX>7.52&&a.muzzleX<9.40);
   assert.ok(a.slideTopY<3.24&&a.slideTopY>2.50);
-  assert.ok(a.slideDepth<3.15&&a.slideDepth>2.45);
+  assert.ok(a.slideDepth>3.15&&a.slideDepth<3.3,'slightly wider side faces');
   assert.ok(a.gripHeelY< -7.22&&a.gripHeelY> -8.50);
   assert.ok(a.guardOpeningX[1]<1.76);
   assert.ok(a.guardOpeningY[0]> -3.80);
  }finally{clearGlockAppearance(g);}
 });
 
-test('G2.5: pistol-specific Arsenal close framing and honest real-MP5K peer mode',()=>{
+test('G2.8: pistol-specific Arsenal close framing without dev comparison UI',()=>{
  const pistol=buildGlockAppearance('glock-g19-gen3');
  try{
   const fit=glockPreviewFitDistance(bounds(pistol),960,480,.86);
@@ -188,14 +188,8 @@ test('G2.5: pistol-specific Arsenal close framing and honest real-MP5K peer mode
  const preview=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
  assert.match(source,/mountGlockArsenalGallery/);
  assert.match(preview,/buildGlockAppearance/);
- assert.match(preview,/buildWeaponSilhouette/);
- assert.match(preview,/hk-mp5k/);
- assert.match(preview,/provisional until a live sidearm rig exists/);
- // S3+ shipped physical Quick Play sidearm carry; keep the live-use gate
- // explicit without requiring the obsolete pre-S3 placeholder badge.
- assert.match(preview,/QUICK PLAY EQUIPMENT/);
- assert.match(preview,/secondaryCarryClaim/);
- assert.match(preview,/equipFreshSecondary/);
+ assert.match(preview,/factoryGlockRecipe\(selected\)/);
+ assert.doesNotMatch(preview,/FAMILY SCALE|MP5K PEER|QUICK PLAY EQUIPMENT|equipFreshSecondary/);
 });
 
 
@@ -218,21 +212,27 @@ test('G2.7: taller, angled guard opening remains truly void and sturdy',()=>{
   }finally{clearGlockAppearance(model);}
  }
 });
-test('G2.7: G19X coyote slide has separate pooled steel identity, no per-instance material',async()=>{
+test('G2.8: pooled slide remains shared; aperture/port materials are locally owned',async()=>{
  const {GLOCK_COYOTE_SLIDE,GLOCK_PORT_SHADOW,AR_MUTED_FDE}=
   await import('../src/weapons/geometry/weapon-visual-palette.ts');
- const a=buildGlockAppearance('glock-g19x');
- const b=buildGlockAppearance('glock-g19x');
+ const a=buildGlockAppearance('glock-g19x'),b=buildGlockAppearance('glock-g19x');
  try{
   const slide=a.children.find(x=>x.userData.glockMovingSlide);
   const frame=a.children.find(x=>x.userData.glockIntegratedFrameGrip);
   const marks=a.children.find(x=>x.userData.glockRightEjectionPort);
+  const frameB=b.children.find(x=>x.userData.glockIntegratedFrameGrip);
+  const marksB=b.children.find(x=>x.userData.glockRightEjectionPort);
   assert.equal(slide.material,GLOCK_COYOTE_SLIDE);
-  assert.equal(frame.material,AR_MUTED_FDE);
-  assert.notEqual(slide.material,frame.material);
-  assert.equal(marks.material,GLOCK_PORT_SHADOW);
-  assert.equal(b.children.find(x=>x.userData.glockMovingSlide).material,slide.material);
-  assert.equal(b.children.find(x=>x.userData.glockRightEjectionPort).material,marks.material);
+  assert.notEqual(frame.material,AR_MUTED_FDE);
+  assert.equal(frame.material.color.getHex(),AR_MUTED_FDE.color.getHex());
+  assert.equal(frame.material.side,THREE.DoubleSide);
+  assert.notEqual(frame.material,frameB.material);
+  assert.equal(frame.userData.glockGuardInteriorFaces,true);
+  assert.notEqual(marks.material,GLOCK_PORT_SHADOW);
+  assert.equal(marks.material.color.getHex(),GLOCK_PORT_SHADOW.color.getHex());
+  assert.equal(marks.material.vertexColors,true);
+  assert.notEqual(marks.material,marksB.material);
+  assert.equal(marks.userData.glockPortShade,.43);
   assert.ok(slide.material.color.getHex()!==frame.material.color.getHex());
  }finally{clearGlockAppearance(a);clearGlockAppearance(b);}
 });
@@ -257,14 +257,36 @@ test('G2.7: muzzle front face cue joins existing detail batch with +X front norm
   }finally{clearGlockAppearance(g);}
  }
 });
-test('G2.7: Arsenal supports one-camera comparison for all four unscaled family models',()=>{
+test('G2.8: no dev gallery modes; all variants use one static three-quarter snapshot',()=>{
  const source=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
- const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
- assert.match(source,/type View=.*'family'/);
- assert.match(source,/FAMILY SCALE/);
- assert.match(source,/GLOCK_APPEARANCE_REFERENCES\.forEach/);
- assert.match(source,/this\.scene\.add\(item\);family\.push\(item\)/);
- assert.match(source,/for\(const item of family\).*bounds\.expandByObject\(item\)/);
- assert.match(source,/ONE CAMERA/);
- assert.match(css,/arsenal-glock-hero-visual\[data-view="family"\]/);
+ assert.match(source,/glockPreviewFitDistance/);
+ assert.match(source,/this\.camera\.position\.set/);
+ assert.doesNotMatch(source,/FAMILY SCALE|MP5K PEER|ONE CAMERA|type View=/);
+ assert.doesNotMatch(source,/readPrepared|operatorPicker|equipFreshSecondary/);
+});
+
+test('G2.8: visible aperture sidewalls and bigger slide, serrations, port and base',()=>{
+ for(const ref of GLOCK_APPEARANCE_REFERENCES){
+  const g=buildGlockAppearance(ref.id),a=g.userData.glockArtLandmarks;
+  try{
+   const frame=g.children.find(x=>x.userData.glockIntegratedFrameGrip);
+   const plate=g.children.find(x=>x.userData.glockMagazineFloorplate);
+   const slide=g.children.find(x=>x.userData.glockMovingSlide);
+   const marks=g.children.find(x=>x.userData.glockRightEjectionPort);
+   assert.ok(frame&&plate&&slide&&marks);
+   assert.equal(frame.material.side,THREE.DoubleSide,'guard interior visible from both sides');
+   assert.equal(frame.userData.glockGuardInteriorFaces,true);
+   assert.equal(ray(g,-.3,-2.48),0,'the hole remains physically open');
+   assert.ok(bounds(plate).max.y-bounds(plate).min.y>=.55,'chunkier base');
+   assert.ok(bounds(plate).max.z-bounds(plate).min.z>=3.0,'wider floorplate');
+   assert.ok(a.slideGrooveWidth>=.34&&a.slideGrooveSpacing>=.67);
+   assert.ok(a.slideDepth>=3.19,'wider side faces');
+   assert.ok(bounds(slide).max.y-bounds(slide).min.y>=2.95,'fuller slide height');
+   const colors=marks.geometry.attributes.color;
+   assert.ok(colors&&colors.count===marks.geometry.attributes.position.count);
+   assert.ok(colors.getX(colors.count-1)<colors.getX(0),
+    'ported surfaces are darker than serrations without another mesh');
+   assert.equal(g.children.length,ref.id==='glock-g19-gen5-mos'?7:6);
+  }finally{clearGlockAppearance(g);}
+ }
 });
