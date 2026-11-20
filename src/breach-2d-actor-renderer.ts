@@ -234,13 +234,26 @@ function sprite(a:TeamActor){
   if(a.surrendered&&a.restrained){
     // Hands secured behind the body: distinguish custody from hands-up compliance.
     rect(-9,-6,5,12,'#ac816c');rect(-10,3,5,12,'#ac816c');
+  }else if(a.surrendered&&a.suspectEscapeMode==='flee'){
+    // A physical unarmed escape is mobile and open-handed, not a gunman.
+    const swing=Math.sin(state.seconds*15)*Math.min(3,a.velocity/22);
+    rect(-5,-13+swing,8,4,'#d0a58a');
+    rect(-5,8-swing,8,4,'#d0a58a');
+  }else if(a.surrendered&&a.suspectEscapeMode==='secondary'){
+    // Reach to an issued holster; never draw a muzzle until the transition
+    // completes and the suspect becomes a genuine active combatant.
+    rect(-3,-10,7,5,'#d0a58a');rect(-3,5,7,5,'#d0a58a');
   }else if(a.surrendered){
     // Hands-up silhouette remains distinct from a physical downed body.
     rect(-3,-15,5,12,'#d0a58a');rect(-3,4,5,12,'#d0a58a');
     circle(-5,-14,3,'#d0a58a');circle(-5,15,3,'#d0a58a');
   }else{
+    const pistol=a.suspectRearmedSecondary===true&&
+      a.secondarySwitch?.active==='secondary'&&
+      a.secondarySwitch.fraction>=1;
     rect(firing?2:5,-2,
-      a.weapon==='smg'?13:a.weapon==='rifle'?23:a.weapon==='shotgun'?20:18,
+      pistol?11:a.weapon==='smg'?13:a.weapon==='rifle'?23:
+        a.weapon==='shotgun'?20:18,
       a.weapon==='shotgun'?5:4,'#1a2527');
     rect(firing?17:20,-1,6,2,'#a2a9a1');
   }
