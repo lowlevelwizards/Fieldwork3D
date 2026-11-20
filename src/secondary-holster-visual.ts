@@ -17,6 +17,7 @@ type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
  /** Reused pose scratch: a live Glock must not allocate vectors every frame. */
  gripWorld:THREE.Vector3;targetLocal:THREE.Vector3;
  targetWorldRotation:THREE.Quaternion;parentWorldRotation:THREE.Quaternion;
+ flashWorld:THREE.Vector3;
 };
 const mounted=new WeakMap<THREE.Group,Mounted>();
 const pouchMaterial=()=>new THREE.MeshStandardMaterial({
@@ -148,7 +149,8 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
   stowedPosition:cradle.position.clone(),
   stowedQuaternion:cradle.quaternion.clone(),
   gripWorld:new THREE.Vector3(),targetLocal:new THREE.Vector3(),
-  targetWorldRotation:new THREE.Quaternion(),parentWorldRotation:new THREE.Quaternion()});
+  targetWorldRotation:new THREE.Quaternion(),parentWorldRotation:new THREE.Quaternion(),
+  flashWorld:new THREE.Vector3()});
  return root;
 }
 
@@ -192,4 +194,35 @@ export function presentSecondaryDraw(hip:THREE.Group,
  mount.cradle.position.y+=Math.sin(Math.PI*blend)*2.4;
  mount.cradle.quaternion.copy(mount.stowedQuaternion).slerp(targetRotation,blend);
  return weight>=1;
+}
+
+/** S7.3: reuse the EXISTING actor muzzle flash, never a second effect mesh.
+ * The physical Glock cradle owns geometry only; its cached disposal cannot
+ * accidentally dispose this actor-owned flash when the loadout changes.
+ * The world point comes from the SAME artwork muzzle socket as S7 ballistics.
+ */
+export function presentSecondaryMuzzleFlash(
+ root:THREE.Group,primary:THREE.Group,flash:THREE.Object3D,
+ hip:THREE.Group,sidearm:SecondaryEquipment|undefined,
+ fraction:number,primaryTipX:number,primaryTipY:number):void{
+ const mount=mounted.get(hip);
+ const drawn=!!mount&&!!sidearm?.weapon&&
+  mount.root.userData.secondaryWeaponId===sidearm.weapon&&
+  Number.isFinite(fraction)&&fraction>=1;
+ if(!drawn){
+  if(flash.parent!==primary)primary.add(flash);
+  flash.position.set(primaryTipX,primaryTipY,0);
+  return;
+ }
+ const sockets=glockArtSockets(sidearm!.weapon as GlockAppearanceId);
+ // The pistol is already moved to its solved wrist by poseOperator().
+ const point=mount!.flashWorld.set(
+  (sockets.muzzle.x-sockets.holsterPivot.x)*.37,
+  (sockets.muzzle.y-sockets.holsterPivot.y)*.37,
+  (sockets.muzzle.z-sockets.holsterPivot.z)*.37);
+ mount!.cradle.updateWorldMatrix(true,false);
+ mount!.cradle.localToWorld(point);
+ if(flash.parent!==root)root.add(flash);
+ root.updateWorldMatrix(true,false);
+ flash.position.copy(root.worldToLocal(point));
 }
