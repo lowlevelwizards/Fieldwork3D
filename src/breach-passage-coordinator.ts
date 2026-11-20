@@ -75,7 +75,14 @@ function context(s:Session,schedule:PassageSchedule):Context{
 }
 function pending(actor:TeamActor,schedule:PassageSchedule,
  byDoor:ReadonlyMap<string,Door>):PassageSlot|null{
+ const active=actor.plan[0];
  for(const slot of schedule.get(actor.id)??[]){
+  // An actor may cross the same physical door from the same side on
+  // separate authored MOVE nodes. The previous crossing's immutable
+  // rank cannot own the NEW movement episode. Legacy slots without
+  // order IDs retain their old behavior.
+  if(active?.kind==='move'&&slot.orderId!==undefined&&
+     slot.orderId!==active.id)continue;
   const door=byDoor.get(slot.doorId);
   if(door&&normalDepth(actor.p,door)*slot.fromSide>=-18)
    return slot;
