@@ -140,7 +140,10 @@ export function advanceSurrenderOpportunity(
   const mode:NonNullable<TeamActor['suspectEscapeMode']>=goal?
    'recover':availableSidearm(a)?'secondary':'flee';
   const flight=mode==='flee'?chooseFlightGoal(s,a):null;
-  if(mode==='flee'&&!flight){a.velocity=0;return;}
+  if(mode==='flee'&&!flight){
+   // An impossible site lane must not trigger five geometric sweeps 60Hz.
+   a.velocity=0;a.suspectEscapeCooldownUntil=s.seconds+5;return;
+  }
   a.suspectEscapeMode=mode;a.suspectEscapeWeaponId=goal?gun!.id:null;
   a.suspectEscapeStartedAt=s.seconds;
   a.suspectEscapeGoal=goal?{...goal}:flight;
