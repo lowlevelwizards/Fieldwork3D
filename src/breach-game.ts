@@ -2,7 +2,7 @@ import {planAim} from './breach-plan-aim-commands.ts';
 import {planWait,planSync} from './breach-plan-utility-commands.ts';
 import {assembleSession} from './breach-session-factory.ts';
 import {coverTargetToken} from './worldgen/site-object-identity.ts';
-export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt} from './breach-plan-utility-commands.ts';
+export {setStrafe,planPieAt,planPie,editPie,insertPlanNode,planWaitAt,planWait,planSync,planHoldClear,planReload,planReloadAt,planSwitchWeaponAt} from './breach-plan-utility-commands.ts';
 import {legalMoveRoute,knownTraversal,knownShoveCrossing} from './breach-known-route-authoring.ts';
 export {plannedWindowRoute} from './breach-known-route-authoring.ts';
 import {addNode,finalPoint} from './breach-plan-node-commands.ts';
