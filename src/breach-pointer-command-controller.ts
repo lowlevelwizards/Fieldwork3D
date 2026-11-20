@@ -41,7 +41,8 @@ export type PointerCommandPort={
  worldToScreen:(p:Pt,height?:number)=>Pt;
  followReplayOperator:(id:string)=>void;
  historicalShotVisible:(shot:import('./breach-replay-ballistics.ts').RecordedShot)=>boolean;
- selectUnit:(id:string)=>void;useSelectedGround:(point:Pt)=>void;
+ selectUnit:(id:string)=>void;
+  useSelectedGround:(point:Pt,transportRoute?:readonly Pt[])=>void;
  showUiHelp:(text:string,duration?:number)=>void;
  adoptPointerOwner:(pointer:{pick?:TacticalPick|null})=>void;
  uid:(id:string)=>TeamActor|undefined;
@@ -101,9 +102,29 @@ export function dispatchTacticalPointerRelease(port:PointerCommandPort,e:Pointer
       // LOOK/WATCH are directions and may deliberately point across an
       // unseen door or beyond the property; other commands still require a
       // point inside the real procedural site bounds, not legacy W/H.
-      if(port.hudController.facing.looking||insideTacticalBounds(pt,sessionWorldGeometry(port.state).bounds))
-        port.useSelectedGround(pt);
-      else port.showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
+      if(port.hudController.facing.looking||
+         insideTacticalBounds(pt,sessionWorldGeometry(port.state).bounds)){
+        // One transport gesture creates a single authored route, not MOVE
+        // orders that release the patient between intermediate bends.
+        const stroke=port.evacMode&&port.trace&&port.trace.length>1?
+          [...port.trace,pt]:null;
+        const project=(point:Pt)=>port.worldToScreen(point,8);
+        const shortcut=(from:Pt,to:Pt)=>{
+          const length=distance(from,to);
+          const steps=Math.max(1,Math.ceil(length/4));
+          for(let i=1;i<steps;i++){
+            const t=i/steps;
+            if(!intelPassable({x:from.x+(to.x-from.x)*t,
+              y:from.y+(to.y-from.y)*t},port.state.intel,8))
+              return false;
+          }
+          return true;
+        };
+        const spaced=stroke?spaceStrokeWaypoints(
+          simplifyStrokePoints(stroke,project,15,shortcut),
+          project,18,shortcut):[];
+        port.useSelectedGround(pt,spaced.slice(1,-1).slice(0,24));
+      }else port.showUiHelp('TAP INSIDE THE MAP TO PLACE THE TARGET',2700);
     }else if(p.mode==='activeWatch'){
       port.adoptPointerOwner(p);
       const target=aimTargetFromTap(port.uid(port.selected)?.p??pt,pt);
@@ -239,7 +260,8 @@ export type GroundCommandPort={
 };
 /** One ground-placement commit boundary: same plan rules and A4 targeting
  * transitions as the previous entrypoint handler. Pointer previews stay read-only. */
-export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt):void{
+export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt,
+ transportRoute:readonly Pt[]=[]):void{
 
   if(port.state.phase!=='planning'||port.replaying)return;
   if(port.targeting.pushMode){
@@ -255,7 +277,7 @@ export function commitTacticalGroundCommand(port:GroundCommandPort,pt:Pt):void{
   const evacuation=port.targeting.evacMode;
   if(evacuation){
     const accepted=planCasualtyTransport(port.state,port.selected,
-      evacuation.patientId,pt,evacuation.mode);
+      evacuation.patientId,pt,evacuation.mode,transportRoute);
     if(!accepted)
       port.rejectAt(pt,'CASUALTY ROUTE BLOCKED · CHOOSE REACHABLE DESTINATION');
     else{
