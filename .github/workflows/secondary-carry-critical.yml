@@ -3,6 +3,7 @@ on:
   pull_request:
     paths:
       - 'src/secondary-holster-visual.ts'
+      - 'src/equipment-magazine-placement.ts'
       - 'src/breach-operator-appearance.ts'
       - 'tests/secondary-s4-holster-visual.test.mjs'
       - '.github/workflows/secondary-carry-critical.yml'
