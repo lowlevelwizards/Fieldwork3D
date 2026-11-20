@@ -134,15 +134,15 @@ try{
    }
    // The rig has its own local fall offset. Compare each actually
    // rendered height against the same disconnected pose, not world zero:
-   // a correctly applied drag lift is +2 and carry lift +10.
+   // a correctly applied drag lift is +2 and shoulder carry lift +18.
    const drag=samples.drag,carry=samples.carry,broken=samples.broken;
    assert.ok(Math.abs(drag.y-broken.y-2)<.08,
       'Dragged model should lift 2 once, relative to fall pose: '+
        JSON.stringify(samples));
-   assert.ok(Math.abs(carry.y-broken.y-10)<.08,
-      'Carried model should lift 10 once, relative to fall pose: '+
+   assert.ok(Math.abs(carry.y-broken.y-18)<.08,
+      'Carried model should lift 18 once, relative to fall pose: '+
        JSON.stringify(samples));
-   assert.ok(Math.abs(carry.y-drag.y-8)<.08,
+   assert.ok(Math.abs(carry.y-drag.y-16)<.08,
       'Only recorded mode can control body elevation');
    // Count actual painted pixels between the 3D visual screenshots;
    // a black screen is never a successful pose acceptance.
