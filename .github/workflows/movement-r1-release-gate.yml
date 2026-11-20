@@ -25,6 +25,7 @@ jobs:
             tests/release-d3-r1-repeated-passage.test.mjs \
             tests/release-d3-r1-passage-feedback.test.mjs \
             tests/release-d3-r1-door-topology.test.mjs \
+            tests/release-d3-r1-frame-actor-recovery.test.mjs \
             tests/release-d3-31f-kick-open-recovery.test.mjs \
             tests/passage-q2-coordinator.test.mjs \
             tests/passage-q3-ranks.test.mjs \
