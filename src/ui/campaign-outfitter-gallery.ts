@@ -1,3 +1,4 @@
+import {uiNode as el,uiButton as action} from './dom-elements.ts';
 /** Outfitter R4 — one horizontal gallery + one contextual detail area.
  * Read-only presentation: all equipment/stock/magazine changes still go
  * through the existing campaign and physical-carry handlers/quotes.
@@ -11,14 +12,6 @@ import {quoteCarryGearChange}
 import type {EquipmentLoadout,LoadoutSlot} from '../equipment-loadouts.ts';
 import type {MagazineItem} from '../breach-magazines.ts';
 
-const el=<K extends keyof HTMLElementTagNameMap>(tag:K,cls='',label='')=>{
- const node=document.createElement(tag);node.className=cls;
- if(label)node.textContent=label;return node;
-};
-const action=(label:string,fn:()=>void,cls='')=>{
- const control=el('button',cls,label);control.type='button';
- control.addEventListener('click',fn);return control;
-};
 const SLOT_LABEL:Partial<Record<LoadoutSlot,string>>={
  primary:'Weapon',head:'Head',armor:'Armor',rig:'Chest',belt:'Belt',
  backpack:'Pack',medical:'Medical',utility:'Tools',top:'Top',legs:'Legs',
