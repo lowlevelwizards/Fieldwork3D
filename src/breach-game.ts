@@ -291,6 +291,9 @@ export type TeamActor=Operator & {
 export type NoiseEvent={id?:number;p:Pt;radius:number;time:number;kind:string};
 export type ShotEvent={
   id:number;shooterId:string;targetId:string|null;
+  /** Snapshot identity of fired primary or Glock (not current selection). */
+  weapon?:import('./breach-combat.ts').WeaponId|import('./weapons/geometry/glock-family-silhouettes.ts').GlockAppearanceId;
+  secondaryWeapon?:import('./weapons/geometry/glock-family-silhouettes.ts').GlockAppearanceId;
   start:Pt;end:Pt;age:number;hit:boolean;side:Side;
   healthBefore:number;healthAfter:number;down:boolean;
   shotYaw?:number;mode?:FiringMode;spread?:number;
