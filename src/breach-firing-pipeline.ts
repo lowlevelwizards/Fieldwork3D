@@ -465,8 +465,10 @@ function fire(s:Session,a:TeamActor,dt:number){
   // fixed-step timer (orderId=0). They are not authored plan mutations.
   if(a.secondaryReload?.orderId===0){
     const kit=a.equipment?.secondary;
-    if(a.health<=0||a.surrendered||!kit?.weapon||
-       a.secondarySwitch?.active!=='secondary'||
+    if(a.health<=0||a.surrendered||a.traversal||a.squeeze||
+       a.carryingId||a.treatmentActive||a.pace==='run'||
+       a.plan[0]?.kind==='door'||a.plan[0]?.kind==='treat'||
+       !kit?.weapon||a.secondarySwitch?.active!=='secondary'||
        a.secondarySwitch.fraction<1){
       a.secondaryReload=null;return;
     }
