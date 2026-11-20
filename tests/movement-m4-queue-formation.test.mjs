@@ -66,3 +66,20 @@ test('M4.2: selected stack variants put the physical pockets in distinct layouts
  assert.deepEqual(stackApproachPositions(door,from),
   stackApproachPositions(door,from,'auto'),'existing default stays exact');
 });
+
+import {planDoorSchedule} from '../src/breach-passage-plan.ts';
+test('M4.1 1–4 physical team roles use each member’s own crossing ETA',()=>{
+ const door={id:'FRONT',a:p(80,100),b:p(120,100),kind:'hinged',
+  open:true,openFraction:1};
+ for(let count=1;count<=4;count++){
+  const members=Array.from({length:count},(_,i)=>({
+   id:'op'+i,p:p(100,135+i*21),side:'blue',health:4,
+   pace:'walk',plan:[{id:10+i,kind:'move',p:p(100,65)}]
+  }));
+  const schedule=planDoorSchedule(members,[door],(_start,to)=>[to]);
+  const slots=members.map(m=>schedule.get(m.id)?.[0]);
+  assert.ok(slots.every(Boolean));
+  assert.deepEqual(slots.map(x=>x.rank),Array.from({length:count},(_,i)=>i));
+  assert.ok(slots.every((x,i)=>x.orderId===10+i&&x.fromSide===1));
+ }
+});
