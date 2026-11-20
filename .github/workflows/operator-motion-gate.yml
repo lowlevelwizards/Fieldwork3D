@@ -20,6 +20,9 @@ on:
       - 'tests/breach-distance-*.test.mjs'
       - '.github/workflows/operator-motion-gate.yml'
   workflow_dispatch:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   motion:
     runs-on: ubuntu-latest
