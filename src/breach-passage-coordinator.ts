@@ -81,7 +81,8 @@ function pending(actor:TeamActor,schedule:PassageSchedule,
   // separate authored MOVE nodes. The previous crossing's immutable
   // rank cannot own the NEW movement episode. Legacy slots without
   // order IDs retain their old behavior.
-  if(active?.kind==='move'&&slot.orderId!==undefined&&
+  if((active?.kind==='move'||active?.kind==='pie')&&
+     slot.orderId!==undefined&&
      slot.orderId!==active.id)continue;
   const door=byDoor.get(slot.doorId);
   if(door&&normalDepth(actor.p,door)*slot.fromSide>=-18)
