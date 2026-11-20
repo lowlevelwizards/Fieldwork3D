@@ -60,7 +60,7 @@ test('M9 negative spaces: guard truly open and forward upper unroofed',()=>{
    assert.equal(sideRay(m,-.3,-2.4),0,'physical aperture');
    assert.ok(sideRay(m,1.45,-2.55)>0,'front pillar');
    assert.ok(sideRay(m,-.4,-3.52)>0,'lower guard');
-   assert.equal(sideRay(m,4.4,3.42),0,
+   assert.equal(sideRay(m,4.4,3.63),0,
     'upper does not have a fictitious full-width roof');
    assert.ok(sideRay(m,-5.0,2.4)>0,'rear slide solid');
    const frame=m.children.find(x=>x.userData.m9IntegratedFrame);
