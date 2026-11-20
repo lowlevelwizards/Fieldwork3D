@@ -8,7 +8,8 @@ import {initialWeaponConfiguration,selectWeaponFamilyPreset}
 import {arsenalRecipeFromLegacy,type ArsenalRecipeV2} from './recipes.ts';
 import {ArsenalThumbnailer} from './thumbnailer.ts';
 import {createArsenalPreviewQueue} from './preview-job-queue.ts';
-import {createArsenalSavedActionButtons,renderArsenalFilterButtons} from './gallery-browser-controls.ts';
+import {createArsenalSavedActionButtons,renderArsenalFilterButtons,
+ createArsenalGalleryCard} from './gallery-browser-controls.ts';
 import {createArsenalGalleryChrome} from './gallery-chrome.ts';
 import {mountGlockArsenalGallery} from './glock-gallery.ts';
 import {openArsenalWorkbench} from './workbench-screen.ts';
@@ -148,16 +149,13 @@ function renderCards(){
   },{rootMargin:'100px'});
  }
  for(const ref of visible){
-  const card=document.createElement('button');card.type='button';
-  card.className='arsenal-card';card.dataset.arsenalReference=ref.id;
-  card.setAttribute('aria-pressed',String(selectedId===ref.id));
-  card.setAttribute('aria-label','Select '+ref.name);
-  const photo=document.createElement('div');photo.className='arsenal-card-preview';
+  const {button:card,preview:photo}=createArsenalGalleryCard({
+   kind:'primary',name:ref.name,
+   subtitle:platformName('recipe' in ref?ref.recipe.platformId:ref.platformId),
+   ariaLabel:'Select '+ref.name,selected:selectedId===ref.id
+  });
+  card.dataset.arsenalReference=ref.id;
   photo.dataset.referencePreview=ref.id;
-  const model=document.createElement('strong');model.className='model';model.textContent=ref.name;
-  const platform=document.createElement('span');platform.className='platform';
-  platform.textContent=platformName('recipe' in ref?ref.recipe.platformId:ref.platformId);
-  card.append(photo,model,platform);
   card.addEventListener('click',()=>showSelected(ref));
   grid.append(card);
   if(observer)observer.observe(photo);else attachImage(photo,ref,'card');
