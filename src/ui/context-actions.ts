@@ -1,9 +1,11 @@
 /** Single source of truth for the tactical palette's visible actions and their states. */
+import type {StackFormation} from '../breach-entry-coordination.ts';
 export type ContextAction={id:string;label:string;group:'primary'|'advanced'|'state'|'destructive';
   pressed?:boolean;disabled?:boolean;title?:string};
 export type ContextOptions={door:boolean;node:boolean;flashRemaining:number;
   posture:'stand'|'crouch';pace:'walk'|'run';firePolicy:string;
   reserve:number;magazine:number;doorOpen?:boolean;doorPartial?:boolean;
+  formationEditable?:boolean;stackFormation?:StackFormation;
   secondaryIssued?:boolean;secondaryHand?:'primary'|'secondary';
   secondaryReloadAvailable?:boolean;
   nodeKind?:string;nodeMoveMode?:string;aimLabel?:string;nodeFirePolicy?:string;
@@ -34,7 +36,19 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
     title:'Explicitly restore the previously interrupted same-door squad orders'}]:[]),
   ...contextActionChoices({...o,resumeAvailable:false,resumeSquadAvailable:false})
  ];
-  if(o.door)return o.doorPartial?[
+  if(o.door){
+  const formation:ContextAction[]=o.formationEditable?[
+    {id:'ctxFormationCycle',label:'FORMATION · '+
+      (o.stackFormation??'auto').toUpperCase(),group:'advanced',
+      title:'Choose AUTO, LEFT, RIGHT, SPLIT 2+2 or 45° ANGLED stack; no plan is changed'},
+    {id:'ctxStackTeam',label:'STACK SQUAD',group:'advanced',
+      title:'Queue the squad to physically reachable, distinct '+
+        (o.stackFormation??'auto').toUpperCase()+' stack positions'},
+    {id:'ctxSquadEntry',label:'SQUAD ENTRY',group:'advanced',
+      title:'Plan synchronized entry using the '+
+        (o.stackFormation??'auto').toUpperCase()+' stack layout'}
+  ]:[];
+  const doorActions:ContextAction[]=o.doorPartial?[
      {id:'ctxOpen',label:'OPEN MORE',group:'primary',title:'Continue swinging this partially open door'},
      {id:'ctxClose',label:'CLOSE',group:'primary',title:'Swing this door toward its frame'},
      {id:'ctxDoorFlash',label:'FLASH ×'+o.flashRemaining,group:'primary',
@@ -52,6 +66,8 @@ export function contextActionChoices(o:ContextOptions):ContextAction[]{
      label:method.toUpperCase(),group:'primary' as const,
      title:'Use equipped '+method+' tool at door'})), 
   ];
+  return [...doorActions,...formation];
+ }
   return [
     {id:'ctxLook',label:'LOOK',group:'primary',pressed:o.aimLabel==='look',
       title:'Check a direction briefly, then resume natural movement-facing'},
