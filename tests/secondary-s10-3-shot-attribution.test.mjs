@@ -4,6 +4,7 @@ import {newSession,team} from '../src/breach-game.ts';
 import {ReplayBallisticsRecorder} from '../src/breach-replay-ballistics.ts';
 import {ReplaySoundTimeline} from '../src/breach-replay-audio.ts';
 import {inspectRecordedShot} from '../src/breach-replay-shot-inspector.ts';
+import {viewShot} from '../src/breach-after-action-report.ts';
 
 test('S10.3: replay inspector, soundtrack and caliber derive weapon from the fired Glock shot',()=>{
  const s=newSession(),a=team(s)[0];
@@ -23,6 +24,11 @@ test('S10.3: replay inspector, soundtrack and caliber derive weapon from the fir
  assert.equal(shot.suppressedAtFire,false);
  const view=inspectRecordedShot(shot,null,true);
  assert.equal(view.weapon,'glock-g19x');
+ const debrief=viewShot(shot);
+ assert.equal(debrief.weapon,'glock-g19x',
+  'after-action contribution records actual 9mm sidearm, not primary');
+ assert.equal(debrief.caliber,'9×19 mm');
+ assert.equal(debrief.receiver,'glock-g19x');
  const sounds=new ReplaySoundTimeline(recorder.shots,[]);
  assert.equal(sounds.events[0].weapon,'smg','9mm sound bank compatibility only');
  assert.equal(sounds.events[0].secondaryWeapon,'glock-g19x');
