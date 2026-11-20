@@ -2361,15 +2361,8 @@ export class CampaignScreen{
     },
     selectedItems,scrollPositions,
     onSelectCategory:slot=>selectBenchSlot(slot),
-    onInspect:(slot,itemId,kind,location)=>{
-     if(!itemId){this.preview?.selectItemDot(null);return;}
-     if(kind==='gear')this.preview?.selectItemDot({
-      kind:'gear',slot,itemId
-     });
-     else this.preview?.selectItemDot({
-      kind:kind==='field'?'field':'magazine',id:itemId,location
-     });
-    },
+    onInspect:(slot,itemId)=>this.preview?.selectItemDot(
+     itemId?{kind:'gear',slot,itemId}:null),
     onEquip:(slot,itemId)=>{
      const original=gallerySources.get(slot);
      if(!original||original.disabled||
