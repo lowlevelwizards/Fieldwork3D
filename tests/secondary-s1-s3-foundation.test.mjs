@@ -88,16 +88,16 @@ test('S3: Quick Play preference round-trip preserves independently selected pist
  const next=refreshQuickPlayPreparedRoster(loaded);
  assert.equal(next.members.find(m=>m.id==='rook').loadout.secondary.weapon,'glock-g19x');
 });
-test('S3: Arsenal nav and equip actions do not masquerade as live weapon switching',()=>{
+test('G2.8: Arsenal browser is inspection-only; GO-time kit persistence remains separate',()=>{
  const gallery=readFileSync(new URL('../src/arsenal/glock-gallery.ts',import.meta.url),'utf8');
  const main=readFileSync(new URL('../src/arsenal/gallery-main.ts',import.meta.url),'utf8');
  const css=readFileSync(new URL('../src/arsenal/arsenal.css',import.meta.url),'utf8');
  assert.match(main,/SECONDARIES · GLOCK/);
- assert.match(gallery,/serializeQuickPlayKitPreferences/);
- assert.match(gallery,/EQUIP GLOCK/);
- assert.match(gallery,/combat switching pending/);
+ assert.match(gallery,/OPEN WORKBENCH/);
+ assert.match(gallery,/factoryGlockRecipe/);
+ assert.doesNotMatch(gallery,/serializeQuickPlayKitPreferences|EQUIP GLOCK|combat switching pending/);
  assert.match(css,/arsenal-glock-gallery\[hidden\]/);
- assert.match(css,/arsenal-glock-hero-visual\[data-view="family"\]/);
+ assert.match(css,/arsenal-glock-hero-visual/);
 });
 
 test('S3: GO-time detached inventory preserves operator secondary without mutating the saved kit',()=>{
