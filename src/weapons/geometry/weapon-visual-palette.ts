@@ -49,5 +49,7 @@ export const FAL_MAG_RIB=weaponFinish('fal-mag-rib');
 export const FAL_TRANSITION_METAL=weaponFinish('fal-transition-steel');
 export const FAL_MUZZLE_METAL=HK_MUZZLE_METAL;
 export const FAL_MUZZLE_SLOT=weaponFinish('fal-muzzle-slot');
+export const GLOCK_COYOTE_SLIDE=weaponFinish('glock-coyote-slide');
+export const GLOCK_PORT_SHADOW=weaponFinish('glock-port-shadow');
 export const WEAPON_ACCESSORY_STEEL=weaponFinish('accessory-steel');
 export const WEAPON_ACCESSORY_POLYMER=weaponFinish('accessory-polymer');
