@@ -63,6 +63,7 @@ export function openM9Inspector(id:M9AppearanceId):void{
  side.addEventListener('click',()=>viewport.side());
  opposite.addEventListener('click',()=>viewport.opposite());
  orbit.addEventListener('click',()=>viewport.reset());
+ top.addEventListener('click',()=>viewport.top());
  clay.addEventListener('click',()=>{
   monochrome=!monochrome;viewport.setModel(id,monochrome);
   clay.setAttribute('aria-pressed',String(monochrome));
