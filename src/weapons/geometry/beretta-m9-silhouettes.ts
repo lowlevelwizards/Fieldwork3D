@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import {addCuboid,addOutline,addFacetedTube,addProfileFrame,
  type Outline} from './profile-primitives.ts';
 import {HK_BLACK_METAL,HK_DARK_POLYMER,AR_MUTED_FDE,
- GLOCK_COYOTE_SLIDE,FAL_VENT_SHADOW} from './weapon-visual-palette.ts';
+ GLOCK_COYOTE_SLIDE,FAL_VENT_SHADOW,HK_MUZZLE_METAL} from './weapon-visual-palette.ts';
 
 export const M9_APPEARANCE_REFERENCES=[
  {id:'beretta-m9',name:'M9 / 92FS',
@@ -38,7 +38,7 @@ const SLIDE_BOTTOM=.38,SLIDE_TOP=3.14;
 export function m9ArtSockets(id:M9AppearanceId){
  const a=M9_ART[id],heel=(a.gripRear+a.gripFront)/2;
  return Object.freeze({
-  muzzle:Object.freeze({x:a.barrelEnd,y:2.57,z:0}),
+  muzzle:Object.freeze({x:a.barrelEnd,y:2.61,z:0}),
   primaryGrip:Object.freeze({x:heel,y:-4.25,z:-.15}),
   supportGrip:Object.freeze({x:heel+.28,y:-3.25,z:.85}),
   slideGrip:Object.freeze({x:-5.25,y:1.35,z:0}),
@@ -55,7 +55,7 @@ export function buildM9Appearance(id:M9AppearanceId,
  const steel=clay?HK_BLACK_METAL:a.rail?GLOCK_COYOTE_SLIDE:HK_BLACK_METAL;
  const frameMaterial=clay?HK_BLACK_METAL:a.rail?AR_MUTED_FDE:HK_BLACK_METAL;
  const gripMaterial=clay?HK_BLACK_METAL:HK_DARK_POLYMER;
- const barrelMaterial=clay?HK_BLACK_METAL:a.rail?GLOCK_COYOTE_SLIDE:HK_BLACK_METAL;
+ const barrelMaterial=clay?HK_BLACK_METAL:HK_MUZZLE_METAL;
  const dark=clay?HK_BLACK_METAL:FAL_VENT_SHADOW;
  const root=new THREE.Group();
  root.name='beretta-m9-appearance-'+id;
@@ -82,8 +82,8 @@ export function buildM9Appearance(id:M9AppearanceId,
   [-8.65,-1.28],[-9.55,-.78],[-9.18,-.04]
  ];
  const opening:Outline=[
-  [-2.56,-1.64],[.88,-1.64],[1.02,-2.12],
-  [.75,-3.09],[-2.16,-3.09],[-2.82,-2.69]
+  [-2.56,-1.48],[.86,-1.48],[1.04,-2.00],
+  [.72,-3.14],[-2.16,-3.14],[-2.87,-2.71]
  ];
  // Reuse the actual hole-bearing profile helper; clone only the local frame
  // material so the guard's interior walls remain visible from both sides.
@@ -94,8 +94,8 @@ export function buildM9Appearance(id:M9AppearanceId,
  frame.userData.m9IntegratedFrame=true;
  frame.userData.m9OpenGuard=true;
  frame.userData.m9OwnsMaterial=true;
- // Rear breech/slide block and TWO forward side rails. No full-width roof
- // across the barrel: the top/quarter view truly reveals exposed barrel.
+ // Rear breech/slide block and TWO abbreviated forward side rails. No full-width roof
+ // across the barrel: the top/quarter view truly reveals a thick dark barrel.
  const rear:Outline=[
   [SLIDE_REAR,SLIDE_BOTTOM],[-2.37,SLIDE_BOTTOM],
   [-2.37,SLIDE_TOP-.13],[-2.62,SLIDE_TOP],
@@ -106,8 +106,8 @@ export function buildM9Appearance(id:M9AppearanceId,
  rearSlide.userData.m9MovingSlide=true;
  const forward:Outline=[
   [-2.44,SLIDE_BOTTOM],[a.nose-.16,SLIDE_BOTTOM],
-  [a.nose,SLIDE_BOTTOM+.34],[a.nose,2.27],
-  [a.nose-.31,2.40],[-2.44,2.40]
+  [a.nose,SLIDE_BOTTOM+.34],[a.nose,1.83],
+  [a.nose-.31,1.90],[-2.44,1.90]
  ];
  for(const side of [-1,1]){
   const rail=addOutline(root,'barrel',id,n++,forward,RAIL_DEPTH,steel);
@@ -115,13 +115,13 @@ export function buildM9Appearance(id:M9AppearanceId,
   rail.name='family-barrel-'+id+(side===1?'-right-open-rail':'-left-open-rail');
   rail.userData.m9OpenSlideRail=true;
  }
- const barrel=addFacetedTube(root,'barrel',id,n++,-2.58,a.barrelEnd,.50,barrelMaterial);
- barrel.position.y=2.57;
+ const barrel=addFacetedTube(root,'barrel',id,n++,-2.58,a.barrelEnd,.67,barrelMaterial);
+ barrel.position.y=2.61;
  barrel.name='family-barrel-'+id+'-visible-open-top-barrel';
  barrel.userData.m9ExposedBarrel=true;
  // The front bridge joins both rails below the barrel without filling the
  // characteristic wide upper aperture.
- const noseBridge=cuboid('barrel',a.nose-.34,1.79,0,.69,2.53,SLIDE_DEPTH,steel);
+ const noseBridge=cuboid('barrel',a.nose-.28,1.77,0,.55,2.60,SLIDE_DEPTH,steel);
  noseBridge.userData.m9NoseBridge=true;
  // Deliberately oversized exposed hammer and small named sights.
  const hammer:Outline=[
