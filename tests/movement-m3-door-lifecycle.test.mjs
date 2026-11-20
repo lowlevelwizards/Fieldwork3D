@@ -27,6 +27,7 @@ test('M3.1 finished remote leaf bypass releases obsolete episode',()=>{
 test('M3.1 active leaf waypoint and attached hand retain genuine ownership',()=>{
  const moving=actor();moving.doorTraversal=episode(moving.p);
  moving.doorTraversal.waypoints=[p(100,245)];
+ moving.doorTraversal.lastProgressAt=9;
  assert.ok(syncDoorTraversalEpisode(moving,[door],10));
  assert.equal(moving.doorTraversal.maneuver,'outside-leaf');
  const held=actor();held.doorTraversal=episode(held.p);
