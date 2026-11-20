@@ -30,9 +30,11 @@ const GOLDENS=Object.freeze({
  // opening, both operator crossings and no-ping-pong tests remain required.
  door:'2a7842fd010610b57cd542c40069f420c78231d756280e3f90619c1123567236',
  medical:'e8c442acf7b5869b4877d0670f9ae2a811c6c68907e4128e44d3a1788bc122d9',
- // A3.11 approved rebaseline: earlier visible-contact point fire changes
- // the genuine deterministic hit timeline; all event/AI invariants below pass.
- combat:'89fd5ab9c5db29bc59789de5de32d12f5d84dea3d211e1926f216c1c2ff21c96',
+ // D15 R1 controlled rebaseline: living surrender retains actual health and
+ // physical firearm evidence instead of fabricating a terminal down event.
+ // The exact real-game 60Hz contact outcome is deterministic; projectile,
+ // attributable-hit and enemy-observation assertions below remain strict.
+ combat:'f0d974b999f8124eb72bb3e9c20ffd63fc28a4f850cde8eb39aa8172e9111373',
  civilian:'32b97cc3908c2c2655d5729996b6513d57efa339f1ed63b8b82aadf204592136'
 });
 function authorDoorEntry(s){
