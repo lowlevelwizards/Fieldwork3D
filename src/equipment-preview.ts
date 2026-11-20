@@ -62,6 +62,8 @@ export class CampaignKitPreview{
  private readonly hotspotButtons=new Map<LoadoutSlot,HTMLButtonElement>();
  private hotspotLayer:HTMLDivElement|null=null;
  private zoomScale=1;
+ private showHeldWeapon=false;
+ private poseToggle:HTMLButtonElement|null=null;
  private readonly touchPointers=new Map<number,{x:number;y:number}>();
  private pinchDistance=0;
  private focusArea:EquipmentPreviewFocus='full';
@@ -147,7 +149,7 @@ export class CampaignKitPreview{
   * captures; no separate model definitions or inventory state are created. */
  private poseForThumb(weapon:WeaponId,appearanceSeed:number,equipment:EquipmentLoadout,
   weaponConfiguration?:WeaponConfiguration,magazines:readonly MagazineItem[]=[],
-  wardrobe?:WardrobeOptions):void{
+  wardrobe?:WardrobeOptions,forceHeldWeapon=false):void{
   if(!this.rig)return;
   const placements=carryPlacementLedger(equipment,magazines);
   poseOperator(this.rig,{x:0,z:0,heading:0,velocity:0,seconds:0,
@@ -160,7 +162,7 @@ export class CampaignKitPreview{
    medicalCarryLocation:placements.find(item=>item.kind==='medical')?.location,
    utilityCarryLocation:placements.find(item=>item.kind==='utility')?.location,
    flashCharges:equippedFlashCharges(equipment),
-   deterministic:true},0);
+   deterministic:true,unarmedPreview:!(this.showHeldWeapon||forceHeldWeapon)},0);
  }
 
  /** Fit the visible operator instead of a fixed rig origin. */
@@ -203,7 +205,7 @@ export class CampaignKitPreview{
      target.itemId.slice(8) as WeaponId:original.weapon;
     this.poseForThumb(weapon,original.appearanceSeed,previewKit,
      weapon===original.weapon?original.weaponConfiguration:undefined,
-     original.magazines,previewWardrobe);
+     original.magazines,previewWardrobe,target.slot==='primary');
    }
    const selected=target.kind==='gear'?
     this.previewGearMesh(target.slot,target.itemId,previewKit,previewWardrobe):
@@ -406,7 +408,20 @@ export class CampaignKitPreview{
  }
  setSelectedSlot(slot:LoadoutSlot):void{
   this.activeHotspot=slot;
+  // Use the actual rig's neutral pose when handling body gear.
+  this.setWeaponPresentation(slot==='primary');
   this.syncHotspots();
+ }
+ setWeaponPresentation(held:boolean):void{
+  if(this.showHeldWeapon===held)return;
+  this.showHeldWeapon=held;
+  this.poseToggle?.setAttribute('aria-pressed',String(held));
+  if(this.poseToggle)this.poseToggle.textContent=held?'NEUTRAL GEAR VIEW':'SHOW HELD WEAPON';
+  const state=this.visualSnapshot;
+  if(!state)return;
+  this.poseForThumb(state.weapon,state.appearanceSeed,state.equipment,
+   state.weaponConfiguration,state.magazines,state.wardrobe);
+  this.refreshInspection();this.draw();
  }
  zoomBy(factor:number):void{
   if(!Number.isFinite(factor)||factor<=0)return;
@@ -450,6 +465,16 @@ export class CampaignKitPreview{
    zoom.append(control);
   }
   layer.append(zoom);
+  const pose=document.createElement('button');
+  pose.type='button';pose.className='campaign-kit-preview-pose-toggle';
+  pose.textContent=this.showHeldWeapon?'NEUTRAL GEAR VIEW':'SHOW HELD WEAPON';
+  pose.setAttribute('aria-pressed',String(this.showHeldWeapon));
+  pose.setAttribute('aria-label','Toggle neutral equipment inspection and held weapon view');
+  pose.addEventListener('pointerdown',event=>event.stopPropagation());
+  pose.addEventListener('click',event=>{
+   event.stopPropagation();this.setWeaponPresentation(!this.showHeldWeapon);
+  });
+  layer.append(pose);this.poseToggle=pose;
   this.hotspotLayer=layer;this.host.append(layer);
   this.syncHotspots();
  }
@@ -717,7 +742,7 @@ export class CampaignKitPreview{
   }
   this.selectedCarryLocation=null;
   this.touchPointers.clear();this.hotspotLayer?.remove();
-  this.hotspotLayer=null;this.hotspotButtons.clear();
+  this.hotspotLayer=null;this.poseToggle=null;this.hotspotButtons.clear();
   this.selectedInspection=null;this.inspectedMesh=null;
   this.currentEquipment=null;
   if(this.inspectionBox){
