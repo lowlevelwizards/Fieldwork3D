@@ -98,6 +98,10 @@ test('D3.31F real kicked-open door replaces only stale navigation, with full swe
       'every route step physically passes with real door leaf');prev=next;
   }
   assert.equal(refreshRouteAfterForcedDoor(actor,goal,s),false,'no repeated expensive replan');
+  actor.plan=[{id:71,kind:'move',p:goal}];
+  actor.nav=prior.map(point=>({...point}));
+  assert.equal(refreshRouteAfterForcedDoor(actor,goal,s),true,
+   'a newly authored order to the SAME destination must not inherit an old shortcut budget');
  }finally{activateSite(null);}
 });
 test('D3.31F must not replan via a kicked door if unseen or physically still blocked',()=>{

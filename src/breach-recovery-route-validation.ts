@@ -17,6 +17,22 @@ export function fullBodyMotorRouteClear(from:Pt,route:readonly Pt[],
  }
  return true;
 }
+/** Cold full-body detours must at least pass the first *real* motor-size
+ * stride. A coarse multi-unit sweep can miss an immediate corner contact.
+ * This samples only one bounded .3-unit footstep; full fine-grid routes
+ * still require fullBodyMotorRouteClear and ordinary motor resweeps all
+ * subsequent physical steps.
+ */
+export function firstFullBodyMotorStrideClear(
+ from:Pt,to:Pt,sweep:(a:Pt,b:Pt)=>boolean
+):boolean{
+ const length=dist(from,to);
+ if(!Number.isFinite(length))return false;
+ if(length<.00001)return false;
+ const fraction=Math.min(.3,length)/length;
+ return sweep(from,{x:from.x+(to.x-from.x)*fraction,
+   y:from.y+(to.y-from.y)*fraction});
+}
 /** The tail is still the original authored goal, and is ALWAYS executed
  * through normal motor. Only the join prefix is geometrically certified.
  */

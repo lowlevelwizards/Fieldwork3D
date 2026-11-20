@@ -7,6 +7,8 @@ import {doorSecuredFrom} from './breach-door-security.ts';
 import type {SessionWorldGeometry} from './breach-world-context.ts';
 import {OPERATOR_RADIUS,doorCenter,type Pt} from './breach-core.ts';
 import type {Door} from './breach-core.ts';
+import type {TeamActor} from './breach-game.ts';
+import {completedGeneratedEntryAt} from './breach-completed-entry-leaf-yield.ts';
 export type EntryDoorGate='ready'|'pending'|'missing';
 export function entryDoorState(door:Door|undefined,
  world?:SessionWorldGeometry):EntryDoorGate{
@@ -40,6 +42,41 @@ export function leaderBeyondOpenEntry(
    Math.abs(goal)>=OPERATOR_RADIUS+8&&
    Math.abs(follower)>=4&&
    lead*goal>0&&follower*goal<0;
+}
+
+/** A generated WAIT is not released by the first friendly in roster
+ * order: require actual far-side evidence from THIS physical threshold.
+ * The remembered successful-entry witness is passed in rather than reading
+ * mutable map/door state. Final motor collision remains authoritative.
+ */
+export function generatedLeadAcrossSameDoor(
+ door:Door|undefined,waiting:Pick<TeamActor,'id'|'side'|'p'>,
+ goal:Pt,peers:readonly TeamActor[]
+):boolean{
+ if(!door)return false;
+ return peers.some(peer=>
+  peer.id!==waiting.id&&peer.side===waiting.side&&peer.health>0&&
+  (peer.plan[0]?.kind==='move'&&
+   peer.plan[0].entryDoorId===door.id&&
+   entryDestinationBeyondDoor(door,peer.plan[0].p,waiting.p,goal)||
+   completedGeneratedEntryAt(peer,door.id))&&
+  leaderBeyondOpenEntry(door,peer.p,waiting.p,goal));
+}
+/** Validate that the active teammate is actually trying to cross into the
+ * same destination half-space, not simply sharing the leaf ID while
+ * executing a counterflow order in the other direction.
+ */
+function entryDestinationBeyondDoor(
+ door:Door,peerGoal:Pt,waitingAt:Pt,followerGoal:Pt
+):boolean{
+ const dx=door.b.x-door.a.x,dy=door.b.y-door.a.y;
+ const length=Math.hypot(dx,dy);
+ if(length<.001)return false;
+ const signed=(p:Pt)=>
+  ((p.x-door.a.x)*-dy+(p.y-door.a.y)*dx)/length;
+ const waiting=signed(waitingAt),peer=signed(peerGoal),
+  follower=signed(followerGoal);
+ return waiting*follower<0&&peer*follower>0;
 }
 
 /** Stack placement is measured in the real door frame, not world X/Y.

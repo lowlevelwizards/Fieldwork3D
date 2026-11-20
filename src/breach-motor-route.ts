@@ -231,7 +231,7 @@ export function restoreRepeatedDoorEscapeRoute(
 }
 /** A kicked-off latch does not clear the leaf instantly, but an old
  * locked-door detour can become obsolete when the real hinge clears. */
-const forcedDoorRechecks=new WeakMap<TeamActor,{goal:string;attempts:Map<string,number>}>();
+const forcedDoorRechecks=new WeakMap<TeamActor,{goal:string;orderId:number;attempts:Map<string,number>}>();
 const routeLength=(start:Pt,path:readonly Pt[])=>{
  let total=0,previous=start;
  for(const next of path){total+=d(previous,next);previous=next;}
@@ -254,8 +254,11 @@ export function refreshRouteAfterForcedDoor(a:TeamActor,goal:Pt,s:Session):boole
     a.autoSidestep||a.squeeze||d(a.p,goal)<35)return false;
  const goalKey=Math.round(goal.x*2)+':'+Math.round(goal.y*2);
  let checked=forcedDoorRechecks.get(a);
- if(!checked||checked.goal!==goalKey){
-  checked={goal:goalKey,attempts:new Map()};
+ // An explicitly new MOVE to the SAME location is a fresh planning
+ // generation. It cannot inherit the previous order's spent door checks.
+ // Retain the at-most-two checks for each unchanged authored order.
+ if(!checked||checked.goal!==goalKey||checked.orderId!==order.id){
+  checked={goal:goalKey,orderId:order.id,attempts:new Map()};
   forcedDoorRechecks.set(a,checked);
  }
  for(const door of s.doors){
