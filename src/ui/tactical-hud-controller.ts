@@ -33,15 +33,14 @@ import {confirmFieldworkAction} from './fieldwork-controls.ts';
 import {contextActionChoices} from './context-actions.ts';
 import {plannedSecondaryHand} from '../secondary-switching.ts';
 import {selectAccessibleSecondaryMagazine} from '../secondary-timed-reload.ts';
-import {SECONDARY_CAPACITY} from '../secondary-equipment.ts';
+import {tacticalActiveAmmo} from '../tactical-active-ammo.ts';
 import {TacticalFeedback,type FeedbackPoint} from './tactical-feedback.ts';
 import {ContextualTeaching,resolveHudPresentation,type HudUrgency,type HudPhase}
   from './contextual-teaching.ts';
 import {recoveryAdviceFor} from './recovery-guidance.ts';
 import {team,isSeen,missionText,operationBriefing,type Session,type TeamActor} from '../breach-game.ts';
 import {injuryOf,WEAPONS} from '../breach-combat.ts';
-import {liveMagazineCapacity,magazineAlert}
-  from '../arsenal/live-magazine-capacity.ts';
+import {magazineAlert} from '../arsenal/live-magazine-capacity.ts';
 import {executionStatus} from '../breach-execution-state.ts';
 import {compactExecutionStatus} from './tactical-hud-density.ts';
 import {tacticalUiActionAvailability} from './tactical-command-affordances.ts';
@@ -445,39 +444,27 @@ export function createTacticalHudController(
     if(title&&a)writeDomText(title,a.name);
     button.classList.toggle('selected',id===selected);
     button.classList.toggle('down',!a||a.health<=0);
-    const sidearm=a?.equipment?.secondary?.weapon&&
-      (a.secondarySwitch?.fraction??0)>=.5?
-      a.equipment.secondary:null;
-    const shownLoaded=sidearm?sidearm.loadedRounds:a?.magazine??0;
-    const shownSpare=sidearm?
-      sidearm.spareMagazines.reduce((sum,m)=>sum+m.rounds,0):
-      a?.reserve??0;
-    const shownCapacity=sidearm?
-      SECONDARY_CAPACITY[sidearm.weapon!]:
-      a?liveMagazineCapacity(a.weapon,a.weaponConfiguration):0;
-    const reloading=sidearm?!!a?.secondaryReload:(a?.reload??0)>0;
-    const buttonTitle=a?(sidearm?
-      sidearm.weapon!.replaceAll('glock-','GLOCK ').toUpperCase():
-      WEAPONS[a.weapon].label)+' • '+
+    const ammunition=a?tacticalActiveAmmo(a):null;
+    const capacity=ammunition?.capacity??0;
+    const shownLoaded=ammunition?.loaded??0;
+    const shownSpare=ammunition?.reserve??0;
+    const reloading=ammunition?.reloading??false;
+    const buttonTitle=a?ammunition!.label+' • '+
       injuryOf(a.injuryStage).toUpperCase():'NO OPERATOR';
     if(button.title!==buttonTitle)button.title=buttonTitle;
     button.classList.toggle('loading',reloading);
-    const reloadProgress=sidearm?a?.secondaryReload?
-      a.secondaryReload.elapsed/Math.max(.001,a.secondaryReload.duration):0:
-      (a?.reload??0)>0?1-a!.reload/
-        Math.max(.001,a!.reloadDuration):0;
     writeDomStyle(button,'--reload-progress',
-      Math.round(Math.max(0,Math.min(1,reloadProgress))*100)+'%');
-    const capacity=shownCapacity;
+      Math.round((ammunition?.reloadProgress??0)*100)+'%');
     const alert=a?magazineAlert(shownLoaded,capacity):'normal';
     if(ammo.dataset.ammo!==alert)ammo.dataset.ammo=alert;
-    writeDomText(ammo,a?(sidearm?'9MM ':'')+
+    writeDomText(ammo,a?(ammunition?.hand==='secondary'?'9MM ':'')+
       String(shownLoaded).padStart(2,'0')+' / '+shownSpare+
       (reloading?' ↻':''):'--');
-    ammo.title=a?(sidearm?'SECONDARY · ':'PRIMARY · ')+
-      shownLoaded+' / '+capacity+' loaded · '+shownSpare+
-      ' reserve rounds'+(sidearm?' · '+sidearm.spareMagazines.length+
-      ' carried magazines':''):'';
+    ammo.title=ammunition?(ammunition.hand==='secondary'?
+      'SECONDARY · ':'PRIMARY · ')+shownLoaded+' / '+capacity+
+      ' loaded · '+shownSpare+' reserve rounds'+
+      (ammunition.hand==='secondary'?' · '+ammunition.spareMagazines+
+        ' carried magazines':''):'';
     writeDomAttribute(button,'aria-pressed',String(id===selected));
     writeDomText(hp,!a?'--':a.health<=0?'DOWN':
       a.injuryStage===2?'HEAVY':a.injuryStage===1?'HURT':'OK');
@@ -524,7 +511,8 @@ export function createTacticalHudController(
       stateLine.style.removeProperty('--execution-progress');
     }
     writeDomAttribute(button,'aria-label',a?
-      a.name+', '+condition+', '+(sidearm?'Glock 9 millimeter':'primary')+
+      a.name+', '+condition+', '+
+      (ammunition?.hand==='secondary'?'Glock 9 millimeter':'primary')+
       ', '+shownLoaded+' of '+capacity+
       ' rounds loaded, '+shownSpare+' reserve'+(reloading?', reloading':'')+
       '. '+queued+' queued '+(queued===1?'order':'orders')+
