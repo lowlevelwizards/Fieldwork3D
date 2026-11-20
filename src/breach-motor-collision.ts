@@ -719,7 +719,8 @@ export function resolveMotorCollision(
           return true;
         }
       }
-        // M2.8 Motel 31149: a physically jammed generated ENTRY in squeeze
+        const moveOrder=a.plan[0];
+      // M2.8 Motel 31149: a physically jammed generated ENTRY in squeeze
       // can have no valid coarse first leg despite a nearby real full-body
       // departure. Cold-certify the first microstep AND the rejoined narrow
       // leg; ordinary collision motor still owns every future body stride.
