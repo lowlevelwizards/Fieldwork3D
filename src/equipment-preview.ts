@@ -16,6 +16,7 @@ import {equippedFlashCharges} from './equipment-loadouts.ts';
 import type {WeaponConfiguration} from './equipment-weapon-assemblies.ts';
 import {createOperatorRig,poseOperator,type OperatorRig} from './breach-operator-rig.ts';
 import {releaseOperatorPreviewRig} from './operator-preview-rig-lifecycle.ts';
+import {equipmentPreviewSignature} from './equipment-preview-signature.ts';
 import {setEquipmentChoice,type LoadoutSlot} from './equipment-loadouts.ts';
 import {resolvedWardrobe} from './operator-wardrobe-data.ts';
 import {frameArmoryObject,type ArmoryShotCategory}
@@ -187,11 +188,9 @@ export class CampaignKitPreview{
   // equipment values. Serialize only once per requested operator update;
   // preserving the cache prevents repeated full-rig procedural reposes,
   // geometry bounds traversals and GPU thumbnail readbacks.
-  let signature:string|null=null;
-  try{
-   signature=JSON.stringify([this.operatorId,weapon,appearanceSeed,
-    equipment,weaponConfiguration,magazines,wardrobe,this.showHeldWeapon]);
-  }catch{/* Nonserializable lab input takes the conservative full update. */}
+  const signature=equipmentPreviewSignature(this.operatorId,weapon,
+   appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe,
+   this.showHeldWeapon);
   this.currentEquipment=equipment;
   this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
   if(signature!==null&&signature===this.visualSignature){
