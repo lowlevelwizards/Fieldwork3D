@@ -10,7 +10,11 @@ import {buildGlockAppearance,glockArtSockets,
 import type {SecondaryEquipment,SecondaryMagazineLocation}
  from './secondary-equipment.ts';
 
-type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[]};
+type Mounted={signature:string;root:THREE.Group;ownedRoots:THREE.Group[];
+ holster:THREE.Group;cradle:THREE.Group;
+ /** Immutable stowed socket for deterministic, seek-safe draws. */
+ stowedPosition:THREE.Vector3;stowedQuaternion:THREE.Quaternion;
+};
 const mounted=new WeakMap<THREE.Group,Mounted>();
 const pouchMaterial=()=>new THREE.MeshStandardMaterial({
  color:0x2a3430,roughness:.96,metalness:0,flatShading:true
@@ -137,6 +141,50 @@ export function syncHipSecondaryVisual(hip:THREE.Group,
   if(index>=4)continue;
   pouch(target,mag.id,index,place,side);
  }
- mounted.set(hip,{signature,root,ownedRoots});
+ mounted.set(hip,{signature,root,ownedRoots,holster,cradle,
+  stowedPosition:cradle.position.clone(),
+  stowedQuaternion:cradle.quaternion.clone()});
  return root;
+}
+
+/** S6.1 presentation-only transfer of the ONE issued 3D Glock.
+ * Its mesh remains owned by the same disposable hip holster assembly;
+ * only the cradle transform changes after the main six-stage pose commit.
+ * No second pistol mesh, new magazines, simulation changes or render clocks.
+ * Motion derives exclusively from the recorded fixed-step switch fraction,
+ * making replay seeking/reversal deterministic.
+ */
+export function presentSecondaryDraw(hip:THREE.Group,
+ firingHand:THREE.Object3D,secondary:SecondaryEquipment|undefined,
+ fraction:number,operational=true):boolean{
+ const mount=mounted.get(hip);
+ if(!mount||!secondary?.weapon||mount.root.userData.secondaryWeaponId!==secondary.weapon){
+  return false;
+ }
+ const weight=operational&&Number.isFinite(fraction)?
+  Math.max(0,Math.min(1,fraction)):0;
+ if(weight===0){
+  mount.cradle.position.copy(mount.stowedPosition);
+  mount.cradle.quaternion.copy(mount.stowedQuaternion);
+  return false;
+ }
+ // The authored Glock grip/holster pivot sits at the socket origin.
+ // A single actual firing wrist decides the held grip position. Its weapon
+ // forward/up axes are chest-local; palm animation will be refined in S6.2.
+ const chest=firingHand.parent;
+ if(!chest)return false;
+ mount.holster.updateWorldMatrix(true,false);
+ firingHand.updateWorldMatrix(true,false);
+ const gripWorld=firingHand.getWorldPosition(new THREE.Vector3());
+ const target=mount.holster.worldToLocal(gripWorld);
+ const targetWorldRotation=chest.getWorldQuaternion(new THREE.Quaternion());
+ const parentWorldRotation=mount.holster.getWorldQuaternion(new THREE.Quaternion());
+ const targetRotation=parentWorldRotation.invert().multiply(targetWorldRotation);
+ // A curved, controlled draw path clears the holster before rotating into
+ // the firing grip. No per-frame mesh or material allocations.
+ const blend=weight*weight*(3-2*weight);
+ mount.cradle.position.copy(mount.stowedPosition).lerp(target,blend);
+ mount.cradle.position.y+=Math.sin(Math.PI*blend)*2.4;
+ mount.cradle.quaternion.copy(mount.stowedQuaternion).slerp(targetRotation,blend);
+ return weight>=1;
 }
