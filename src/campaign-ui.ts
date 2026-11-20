@@ -2180,6 +2180,9 @@ export class CampaignScreen{
      person.magazines,person.wardrobe,
      previewFocusForGroup[this.activeKitGroup],this.operatorViewAngles.get(id));
    }
+   // Operator geometry is the primary edit target; direct body-zone
+   // buttons provide a precise fallback on small screens and for keyboard.
+   this.preview?.setOnTapSlot(slot=>selectBenchSlot(slot));
    // No inert orbit buttons if a device cannot initialize WebGL.
    if(!this.preview?.isReady())
     for(const control of summary.querySelectorAll<HTMLButtonElement>(
