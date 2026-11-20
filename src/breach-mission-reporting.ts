@@ -37,7 +37,7 @@ export function missionText(s:Session){
     s.missionType==='capture'?
       'SECURE TARGET · CHECK VITALS · TREAT IF BLEEDING':
     'SECURE OBJECTIVE';
-  if(s.missionType==='capture')return 'EXTRACT TARGET ALIVE · TREAT IF BLEEDING · ESCORT/DRAG/CARRY';
+  if(s.missionType==='capture')return 'EXTRACT LIVING CAPTIVE · TREAT IF BLEEDING · ESCORT/DRAG/CARRY';
   return s.missionType==='intel'?
     'RETURN TO EXTRACTION · INTEL CARRIER MUST EXIT':
     s.missionType==='rescue'?

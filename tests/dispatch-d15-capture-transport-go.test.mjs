@@ -109,7 +109,7 @@ test('D15.5E downed operator has the same bounded first-step drag/carry as civil
 });
 test('D15.5E obstructed trailing body refuses closed-threshold and stationary-body steps',()=>{
  const body=pt(-30,0),from=pt(0,0),to=pt(3,0);
- const closedDoor=(a,b)=>!(a.x < -25&&b.x > -25);
+ const closedDoor=(a,b)=>!(a.x < -28&&b.x > -28);
  assert.equal(proposedCivilianTransportStep(body,from,to,0,'drag',
   closedDoor,[],0),null,'swept door closure blocks the entire carried step');
  assert.equal(proposedCivilianTransportStep(body,from,to,0,'drag',
