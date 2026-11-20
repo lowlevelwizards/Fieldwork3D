@@ -1811,7 +1811,11 @@ export class CampaignScreen{
   issuedMore.append(issuedSlots);
   editor.insertBefore(issuedMore,grouped.group.weapon);
   const contextTitle=node('div','campaign-outfitter-context-title');
-  const contextName=node('strong','','WEAPON');
+  const contextName=node('strong','',
+   this.activeBenchSlot==='primary'?'WEAPON':
+   this.activeBenchSlot==='rig'?'CHEST RIG':
+   this.activeBenchSlot==='backpack'?'BACKPACK':
+   this.activeBenchSlot.toUpperCase());
   const contextMeta=node('small','','Select equipment or place carried items');
   contextTitle.append(contextName,contextMeta);
   editor.insertBefore(contextTitle,grouped.group.weapon);
@@ -1830,6 +1834,10 @@ export class CampaignScreen{
    contextMeta.textContent='CURRENT EQUIPMENT · TAP TO CHANGE';
    this.preview?.clearTransientSelection();
    if(slot==='backpack')this.preview?.setAzimuth(Math.PI);
+   else if(this.activeBenchSlot!=='backpack'&&slot!=='backpack'&&
+    Math.cos(this.preview?.getAzimuth()??.72)<-.2&&
+    ['primary','head','armor','rig'].includes(slot))
+    this.preview?.setAzimuth(.72);
    if(fromModel&&compact&&['top','legs','hands','feet'].includes(slot))
     issuedMore.open=true;
    // The bottom drawer alone scrolls; never move the whole screen to follow
