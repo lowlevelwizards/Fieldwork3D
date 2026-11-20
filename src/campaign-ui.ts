@@ -1118,11 +1118,8 @@ export class CampaignScreen{
     const incident=historicalDispatchIncident(c,report);
     const title=incident?.title??(contract?
      campaignIncidentView(c,contract).title:'Operation');
-    const record=button('','campaign-uxr-record-row',undefined as never);
-    // The general button helper owns click binding; the archive row uses it
-    // with one deterministic callback and no report state mutations.
-    record.textContent='';
-    record.addEventListener('click',()=>inspect(i));
+    // Read-only selection uses the shared button helper and report projection.
+    const record=button('',()=>inspect(i),'campaign-uxr-record-row');
     record.append(node('span','campaign-uxr-record-day','DAY '+report.day),
      node('span','campaign-uxr-record-title',title),
      node('span','campaign-uxr-record-result',
