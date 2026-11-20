@@ -50,6 +50,9 @@ export class CampaignKitPreview{
   wardrobe?:WardrobeOptions
  }|null=null;
  private readonly modelThumbCache=new Map<string,string>();
+ // An unchanged roster paint should not rebuild the full procedural pose or
+ // invalidate its already-rendered item thumbnails.
+ private visualSignature:string|null=null;
  // Reuse GPU color/depth attachments and the CPU readback surface across
  // visible equipment choices; a fresh GL render target per tile forces
  // driver allocation/deletion on the very frame that paints the thumbnail.
@@ -161,6 +164,7 @@ export class CampaignKitPreview{
  setOperatorId(id:string):void{
   if(this.operatorId===id)return;
   this.operatorId=id;
+  this.visualSignature=null;
   // Retire prior person's inspection without painting a stale, detached host.
   // The caller attaches the new host and draws the new pose immediately.
   this.dotTarget=null;this.dotMesh=null;
@@ -179,8 +183,24 @@ export class CampaignKitPreview{
   weaponConfiguration?:WeaponConfiguration,magazines:readonly MagazineItem[]=[],
   wardrobe?:WardrobeOptions):void{
   if(!this.rig)return;
+  // Roster/UI rebuilding can pass new object instances with the exact same
+  // equipment values. Serialize only once per requested operator update;
+  // preserving the cache prevents repeated full-rig procedural reposes,
+  // geometry bounds traversals and GPU thumbnail readbacks.
+  let signature:string|null=null;
+  try{
+   signature=JSON.stringify([this.operatorId,weapon,appearanceSeed,
+    equipment,weaponConfiguration,magazines,wardrobe,this.showHeldWeapon]);
+  }catch{/* Nonserializable lab input takes the conservative full update. */}
   this.currentEquipment=equipment;
   this.visualSnapshot={weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe};
+  if(signature!==null&&signature===this.visualSignature){
+   // The host may have been moved by a parent UI rebuild or resized; retain
+   // the exact current pose but refresh the new canvas and projected pips.
+   this.draw();
+   return;
+  }
+  this.visualSignature=signature;
   this.thumbnailRevision++;
   this.modelThumbCache.clear();
   this.poseForThumb(weapon,appearanceSeed,equipment,weaponConfiguration,magazines,wardrobe);
@@ -1018,7 +1038,7 @@ export class CampaignKitPreview{
   this.thumbnailAsyncTarget?.dispose();this.thumbnailAsyncTarget=null;
   this.thumbnailPixels=null;this.thumbnailAsyncPixels=null;
   this.thumbnailCanvas=null;
-  this.modelThumbCache.clear();
+  this.modelThumbCache.clear();this.visualSignature=null;
   this.renderer?.dispose();this.renderer?.forceContextLoss();
   this.renderer?.domElement.remove();this.renderer=null;
   this.pointerId=null;
