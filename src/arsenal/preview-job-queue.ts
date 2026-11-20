@@ -13,7 +13,9 @@ export function createArsenalPreviewQueue(){
   if(disposed)return;
   const next=pending.shift();
   next?.paint();
-  if(pending.length)frame=requestAnimationFrame(pump);
+  // A render can enqueue work while this pump is running. It may already
+  // have scheduled the next frame; never create a second RAF chain.
+  if(pending.length&&frame===null)frame=requestAnimationFrame(pump);
  };
  const enqueue=(host:HTMLElement,render:()=>void,priority=false)=>{
   if(disposed)return;
