@@ -28,6 +28,6 @@ export function downedTransportPresentation(
    length>3?Math.atan2(dy,dx):carrier.heading;
  return {carrierId:carrier.id,mode,heading,
   // Match the established civilian shared-rig visual elevations.
-  lift:mode==='carry'?10:2,
+  lift:mode==='carry'?18:2,
   carrierPosition:carrier.p};
 }
