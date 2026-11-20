@@ -457,7 +457,7 @@ function settlePassiveAim(a:TeamActor,dt:number):void{
 function fire(s:Session,a:TeamActor,dt:number){
  // S5.2: real pistol selection must not secretly fire or auto-reload the
  // archived primary. Pistol ballistics begin only after S6/S7 handoff.
- if(a.secondarySwitch.fraction>0||a.secondarySwitch.desired==='secondary'){
+ if((a.secondarySwitch?.fraction??0)>0||a.secondarySwitch?.desired==='secondary'){
   a.aimSideTarget=0;return;
  }
  updateContextualCrouch(s,a);
