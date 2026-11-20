@@ -20,6 +20,37 @@ export function muzzleFlashCue(weapon:WeaponId,age:number,
  * Reverse scan is bounded by the session's existing shot-history cap and
  * does not introduce particle state, animation authority, or extra effects.
  */
+/** A scene-local index over recorded shot AGE, not a second combat authority.
+ * The original resolver still checks muzzle configuration and disclosure for
+ * each eligible event, including a hidden newer shot before a visible older
+ * one. Unlike a one-shot cache, this retains overlapping bursts in exact
+ * chronological array order and works with reverse replay scrubbing.
+ *
+ * On a normal frame this replaces an O(actors × history) scan with one
+ * O(history) traversal plus only recent shots per actor. Reuse buckets between
+ * frames to avoid per-frame arrays during sustained combat.
+ */
+export const MAX_MUZZLE_FLASH_AGE=Math.max(...Object.values(lifetime));
+const EMPTY_MUZZLE_SHOTS:readonly never[]=Object.freeze([]);
+export class RecentMuzzleShotFrameIndex<T extends {shooterId:string;age:number}>{
+ private readonly byShooter=new Map<string,T[]>();
+ rebuild(shots:readonly T[]):void{
+  for(const list of this.byShooter.values())list.length=0;
+  for(const shot of shots){
+   // A future event, non-finite age, or historical effect beyond every
+   // weapon's maximum flash lifetime can never be an active muzzle cue.
+   if(!(shot.age>=0&&shot.age<MAX_MUZZLE_FLASH_AGE))continue;
+   let list=this.byShooter.get(shot.shooterId);
+   if(!list){list=[];this.byShooter.set(shot.shooterId,list);}
+   list.push(shot);
+  }
+ }
+ forShooter(id:string):readonly T[]{
+  return this.byShooter.get(id)??EMPTY_MUZZLE_SHOTS;
+ }
+ clear():void{this.byShooter.clear();}
+}
+
 export function mostRecentActiveMuzzleShot<T extends {
  shooterId:string;age:number
 }>(shots:readonly T[],shooterId:string,weapon:WeaponId,
